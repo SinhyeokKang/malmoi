@@ -5,9 +5,10 @@ import { join } from "node:path";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
+import { encodeUserFields } from "@/lib/credentials/records";
 import { optionalEnv } from "@/lib/env";
 
 import { runTokenFor, type EventPayload } from "../payload";
@@ -21,6 +22,11 @@ import { finishRun, recordEvent, recordRun } from "../record";
  *
  * ⚠️ **`pnpm test`에 없다** (`vitest.projects.config.ts`).
  */
+
+const actionDb = vi.hoisted(() => ({ prisma: undefined as unknown }));
+vi.mock("@/lib/db", () => ({ getPrisma: () => actionDb.prisma }));
+vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: "ok", userId: "owner" }) }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const directory = mkdtempSync(join(tmpdir(), "malmoi-events-record-"));
 let binaries: string;
@@ -45,6 +51,7 @@ beforeAll(async () => {
   const config = { host: directory, port: PORT, user: "postgres", database: "postgres" };
   pool = new Pool(config);
   prisma = new PrismaClient({ adapter: new PrismaPg(config), log: [] });
+  actionDb.prisma = prisma;
 });
 
 beforeEach(async () => {
@@ -195,4 +202,43 @@ describe("상태 변경 — 변경과 사건이 함께 롤백된다 (완료조�
     expect(chain[0]?.before).toBe("p1");
     expect((await prisma.project.findUnique({ where: { id: "p1" } }))?.name).toBe(chain[1]?.after);
   });
+});
+
+it("Project 잠금 안의 같은 실행 동시 기록은 두 요청 모두 성공하고 한 건이다", async () => {
+  const write = () => prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = 'p1' FOR UPDATE`;
+    await recordRun(tx, runInput({ result: "imported" }));
+  });
+  await Promise.all([write(), write()]);
+  expect(await prisma.projectEvent.count({ where: { projectId: "p1", runToken: token } })).toBe(1);
+});
+
+it("수동 Import의 거부 여섯만 기록하고 일시적 거부는 남기지 않는다", async () => {
+  const { recordImportRefusal } = await import("../record");
+  for (const error of ["already-running", "reconfirm", "invalid input", "forbidden", "not-ready"]) {
+    await prisma.$transaction(tx => recordImportRefusal(tx, { projectId: "p1", userId: null, error }));
+  }
+  const rows = await prisma.projectEvent.findMany({ where: { projectId: "p1" } });
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({ result: "notStarted", payload: { refusal: "not-ready", source: "manual" } });
+});
+
+it("실제 번역 Action의 동시 저장도 사건의 전후 값이 끊기지 않는다", async () => {
+  await prisma.user.create({ data: { id: "owner", ...encodeUserFields("owner", { email: "owner@example.com" }), email: encodeUserFields("owner", { email: "owner@example.com" }).email! } });
+  await prisma.projectMember.create({ data: { projectId: "p1", userId: "owner", role: "OWNER" } });
+  await prisma.project.update({ where: { id: "p1" }, data: { installationId: "1" } });
+  await prisma.translationSurface.update({ where: { id: "s1", projectId: "p1" }, data: { lastCommitSha: "a".repeat(40) } });
+  await prisma.locale.create({ data: { projectId: "p1", surfaceId: "s1", code: "ko", name: "Korean" } });
+  await prisma.stringKey.create({ data: { id: "key1", projectId: "p1", surfaceId: "s1", key: "hello", namespace: "_root", sourceText: "Hello", sourceHash: "hash" } });
+  const { saveTranslation } = await import("@/app/(edit)/actions");
+  const input = { slug: "p1", surfaceSlug: "web", keyId: "key1", localeCode: "ko" };
+  expect(await Promise.all([saveTranslation({ ...input, value: "A" }), saveTranslation({ ...input, value: "B" })]))
+    .toEqual([{ ok: true, value: "A" }, { ok: true, value: "B" }]);
+  const events = await prisma.projectEvent.findMany({ where: { projectId: "p1", kind: "TRANSLATION" } });
+  const changes = events.map(event => event.payload as { before: string | null; after: string });
+  expect(changes).toHaveLength(2);
+  const first = changes.find(change => change.before === null)!;
+  const second = changes.find(change => change.before === first.after)!;
+  expect(second).toBeDefined();
+  expect(await prisma.translation.findFirst({ where: { projectId: "p1", keyId: "key1", localeCode: "ko" } })).toMatchObject({ value: second.after });
 });

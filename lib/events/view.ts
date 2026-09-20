@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { m } from "@/lib/i18n";
 import type { SurfaceImportResult } from "@/lib/import/result";
+import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
 import { languageName } from "@/lib/onboarding/language-name";
 
 import type { EventCursor } from "./filter";
@@ -245,6 +246,7 @@ export function eventSentence(
       const slugs = payload?.kind === "IMPORT" ? payload.surfaceSlugs : [];
       switch (row.result) {
         case null:
+        case "running":
           return m.logs.sentence.import.running(actor);
         case "deferred":
           return m.logs.sentence.import.deferred(actor, slugs[0] ?? m.logs.none);
@@ -376,4 +378,110 @@ export function summarizeImportEvent(
   if (results.every((result) => result.status === "superseded")) return "superseded";
   if (results.some((result) => result.status === "imported" || result.status === "partial")) return "partial";
   return "failed";
+}
+
+export type EventMetaRow = {
+  kind: EventKind;
+  subtype: string;
+  result: EventResult | null;
+  payload: EventPayload | null;
+  actor: { kind: "USER" | "AUTOMATION" | "UNKNOWN" };
+  run: { changed: number | null; prUrl: string | null; errorCode: string | null } | null;
+};
+
+export type EventMetaPart = string | { kind: "code" | "link"; text: string };
+
+/** 적재 실패를 발송 실패 문구로 설명하면 복구 방향이 반대가 된다. */
+export function eventFailureMessage(row: Pick<EventMetaRow, "kind" | "payload" | "run">, archived: boolean): string {
+  if (row.kind !== "IMPORT") return planArchivedReason(row.run?.errorCode ?? "", archived);
+  const code = row.payload?.kind === "IMPORT" ? row.payload.errorCode : null;
+  return importReasonMessage(code);
+}
+
+export function importReasonMessage(code: string | null): string {
+  if (isImportFailureCode(code)) return importFailureMessage(code);
+  const reasons: Readonly<Record<string, string>> = m.repositorySync.errors;
+  return code !== null && Object.hasOwn(reasons, code) ? reasons[code]! : m.projects.importFailure.importFailed;
+}
+
+/**
+ * 보조줄 — **그 종류가 실제로 가진 맥락만** 적는다. 없는 값을 자리 채우려고 적지 않는다.
+ *
+ * ⚠️ **파일 수 `null`은 `—`이고 `0`이 아니다** — 0으로 적으면 "아무것도 안 바뀐 성공"과 같아진다.
+ */
+export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[] {
+  const payload = row.payload;
+  const parts: EventMetaPart[] = [];
+  switch (row.kind) {
+    case "TRANSLATION": {
+      if (payload?.kind !== "TRANSLATION") break;
+      parts.push(payload.surfaceSlug, payload.locale);
+      const before = valueState(payload.before);
+      const after = valueState(payload.after);
+      parts.push(`${before.kind === "text" ? before.text : before.label} → ${after.kind === "text" ? after.text : after.label}`);
+      break;
+    }
+    case "PUBLISH": {
+      parts.push(m.logs.kinds.publish, row.actor.kind === "AUTOMATION" ? m.logs.meta.automatic : m.logs.meta.manual);
+      parts.push(row.run?.changed === null || row.run === null ? `${m.logs.detail.labels.files}: ${m.logs.none}` : m.logs.meta.files(row.run.changed));
+      if (row.run?.prUrl != null) parts.push({ kind: "link", text: m.translations.publish.viewLink });
+      else if (row.result !== "running") parts.push(m.logs.meta.noPullRequest);
+      if (payload?.kind === "PUBLISH" && payload.refusal !== null) parts.push(refusalMessage(payload.refusal));
+      break;
+    }
+    case "IMPORT": {
+      parts.push(m.logs.kinds.imports);
+      if (payload?.kind !== "IMPORT") break;
+      parts.push(payload.source === "ci" ? m.logs.meta.automatic : m.logs.meta.manual);
+      if (payload.refusal !== null) parts.push(refusalMessage(payload.refusal), m.logs.meta.nothingImported);
+      else if (row.result === "deferred" && payload.pendingEdits !== null) parts.push(m.logs.deferredReason(payload.pendingEdits));
+      else if (payload.surfaces.length > 0) {
+        parts.push(payload.surfaces.map((surface) => `${surface.surfaceSlug}: ${resultWord(surface.status)}${surface.count === null ? "" : `, ${m.logs.meta.keys(surface.count)}`}`).join(" · "));
+      } else if (payload.keys !== null) parts.push(m.logs.meta.keys(payload.keys));
+      if (row.result !== "deferred" && (payload.pendingEdits ?? 0) > 0) parts.push(m.repositorySync.kept(payload.pendingEdits!));
+      break;
+    }
+    case "MEMBER": {
+      parts.push(m.logs.kinds.members);
+      if (payload?.kind !== "MEMBER") break;
+      if (payload.role !== null) parts.push(`${roleWord(payload.role.before)} → ${roleWord(payload.role.after)}`);
+      else parts.push(payload.targetLabel);
+      break;
+    }
+    case "SURFACE": {
+      parts.push(m.logs.kinds.sources);
+      if (payload?.kind !== "SURFACE") break;
+      if (payload.adapter !== null) parts.push({ kind: "code", text: payload.adapter });
+      if (payload.baseLocale !== null) {
+        parts.push(`${payload.baseLocale.before ?? m.logs.none} → ${payload.baseLocale.after ?? m.logs.none}`);
+        if (row.subtype.startsWith("surface.baseLocale")) parts.push(m.logs.meta.declarationOnly);
+      }
+      break;
+    }
+    default: {
+      parts.push(m.logs.kinds.settings);
+      if (payload?.kind !== "SETTINGS") break;
+      if (row.subtype === "settings.pushTokenRotated") parts.push(m.logs.meta.tokenEffect);
+      else if (row.subtype === "settings.archived") parts.push(m.logs.meta.archivedEffect);
+      else if (row.subtype === "settings.restored") parts.push(m.logs.meta.restoredEffect);
+      else if (payload.value !== null) parts.push(`${payload.value.before ?? m.logs.none} → ${payload.value.after ?? m.logs.none}`);
+      break;
+    }
+  }
+  // 실패 사유는 마지막이다 — 보관 중이면 야간 절이 빠진다 (`planArchivedReason`).
+  if (row.result === "failed") {
+    parts.push(eventFailureMessage(row, archived));
+  }
+  return parts;
+}
+
+function resultWord(status: "imported" | "partial" | "failed" | "superseded"): string {
+  if (status === "imported") return m.logs.status.imported;
+  if (status === "partial") return m.logs.status.partial;
+  if (status === "superseded") return m.logs.status.superseded;
+  return m.logs.status.failed;
+}
+
+function roleWord(role: string | null): string {
+  return role === null ? m.logs.none : role.charAt(0) + role.slice(1).toLowerCase();
 }

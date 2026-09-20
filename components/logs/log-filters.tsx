@@ -50,6 +50,12 @@ export function LogFilters({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState(filter.q ?? "");
+  const [previousQuery, setPreviousQuery] = useState(filter.q);
+  // 뒤로 가기·필터 초기화가 URL을 바꾸면 작성 중이던 옛 검색어를 다시 제출하지 않는다.
+  if (previousQuery !== filter.q) {
+    setPreviousQuery(filter.q);
+    setQuery(filter.q ?? "");
+  }
 
   /** ⚠️ **좁히는 축이 바뀌면 커서를 뺀다** — `logsQuery`가 새 필터로 다시 조립한다. */
   const go = (next: Partial<LogFilter>) => {
@@ -168,7 +174,7 @@ export function LogFilters({
           </DropdownMenuItem>
         </Filter>
 
-        <Filter axis={m.logs.filters.axis.source} label={filter.sources.length === 0 ? m.logs.filters.anySource : filter.sources.join(", ")} on={filter.sources.length > 0}>
+        <Filter axis={m.logs.filters.axis.source} label={filter.sources.length === 0 ? m.logs.filters.anySource : filter.sources.map(source => source === PROJECT_WIDE ? m.logs.filters.projectWide : source).join(", ")} on={filter.sources.length > 0}>
           {/* 소스가 없는 사건(멤버 · 설정)을 고른다 — 그 사건에 가짜 소스 값을 넣지 않기 때문이다. */}
           <DropdownMenuCheckboxItem
             checked={filter.sources.includes(PROJECT_WIDE)}

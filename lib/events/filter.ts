@@ -29,7 +29,7 @@ export type LogFilter = {
   /** 사용자 id · `automation` · `removed`. 해석은 조회가 한다 (결정 8). */
   actor: string | null;
   /**
-   * 소스 **slug** 여럿 + 특수값 `project-wide` (캔버스 `1m` — 다중 선택). 사건 당시 대상 집합에
+   * 소스 **slug** 여럿 + 특수값 `@project-wide` (캔버스 `1m` — 다중 선택). 사건 당시 대상 집합에
    * 그중 하나라도 있으면 남는다 (결정 14).
    *
    * ⚠️ **id가 아니라 slug다** — URL은 사람이 읽고 공유하는 자리이고, 메뉴의 라벨과 같은 값이어야
@@ -65,8 +65,8 @@ export function parseLogFilter(params: LogSearchParams): LogFilter {
   };
 }
 
-/** 소스가 없는 사건(멤버 · 설정)을 고르는 값. 소스 slug와 겹칠 수 없다 — slug에 `-`는 되지만 이 낱말 전체는 예약이다. */
-export const PROJECT_WIDE = "project-wide";
+/** `@`는 소스 slug에 허용되지 않는다 — 실제 `project-wide` 소스와 전역 선택을 구별한다. */
+export const PROJECT_WIDE = "@project-wide";
 
 /**
  * 다중 선택 축의 URL 표현. **쉼표로 잇고 정렬·중복 제거한다** — 같은 선택이 두 URL로 갈리면

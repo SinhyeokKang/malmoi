@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  PROJECT_WIDE,
   decodeCursor,
   encodeCursor,
   filterChanged,
@@ -221,4 +222,9 @@ describe("filterChanged — 커서를 버릴지", () => {
     expect(filterChanged(filter(), filter({ cursor }))).toBe(false);
     expect(filterChanged(filter(), filter({ event: "evt_9" }))).toBe(false);
   });
+});
+
+it("전역 선택값은 실제 소스 slug와 겹치지 않는다", () => {
+  expect(PROJECT_WIDE).toBe("@project-wide");
+  expect(parseLogFilter({ source: `${PROJECT_WIDE},project-wide` }).sources).toEqual([PROJECT_WIDE, "project-wide"]);
 });

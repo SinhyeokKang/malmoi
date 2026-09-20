@@ -198,7 +198,7 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
    * 마스킹 라벨을 나르는 `payload`·`searchText`다. 나머지는 사건의 좌표와 결과다.
    *
    * ⚠️ **`actorKind`도 `collected`다** — `SyncRun.trigger`와 같은 축으로 "사람이 했나"를 직접 말한다.
-   * ⚠️ **번역 본문·사람 이름·원문 이메일은 어느 컬럼에도 없다** (`buildSearchText`·`EventPayload`).
+   * ⚠️ **번역 전후 값은 payload에 보존된다.** searchText에는 본문·사람 이름·원문 이메일을 넣지 않는다.
    */
   "ProjectEvent.id": NOT_PERSONAL,
   "ProjectEvent.ref": NOT_PERSONAL,

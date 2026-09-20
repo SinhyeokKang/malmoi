@@ -246,6 +246,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         const message = { archived: "archived", "wrong-format": "format mismatch", "wrong-project": "project mismatch", "stale-commit": "stale commit" }[error.code];
         return NextResponse.json({ error: message }, { status: guardStatus(error.code) });
       }
+      // 적재 실패도 서버가 관측한 종료다 — 롤백 밖에서 기록하되 회전된 토큰에는 쓰지 않는다.
+      await record({ surface, result: "failed", errorCode: "import-failed",
+        surfaces: [{ surfaceSlug: surface.slug, status: "failed", count: null, reason: "import-failed" }],
+      });
       throw error;
     } finally {
       /**

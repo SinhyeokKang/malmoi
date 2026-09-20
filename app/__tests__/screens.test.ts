@@ -254,11 +254,10 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
    */
   it("보관을 읽는 화면은 배너와 야간 문구 제거를 함께 든다", () => {
     expect(read(LOGS)).toContain("m.logs.archived");
-    // ⚠️ **야간 절 제거는 사유를 그리는 자리에 있다** — 행과 상세 둘 다 그것을 그린다. 화면 파일만
-    // 보면 판정이 컴포넌트로 내려간 순간 이 검사가 조용히 통과한다.
-    for (const path of ["components/logs/event-row.tsx", "components/logs/event-detail.tsx"]) {
-      expect(read(path), path).toContain("planArchivedReason");
-    }
+    // 추출된 판정에 보관 상태가 도달해야 야간 절이 사라진다 — 실제 문장은 DOM 회귀 테스트가 센다.
+    expect(read("components/logs/event-row.tsx")).toContain("eventMeta(row, archived)");
+    expect(read("components/logs/event-detail.tsx")).toContain("eventFailureMessage(row, archived)");
+    expect(read("lib/events/view.ts")).toContain("planArchivedReason(row.run?.errorCode");
     expect(read(LOGS)).not.toContain("syncReasonMessage");
   });
 

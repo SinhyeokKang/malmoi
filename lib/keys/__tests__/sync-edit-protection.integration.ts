@@ -544,6 +544,13 @@ describe("토큰 회전 경합 (L7.6)", () => {
     throw new Error("apply never waited on the Project lock");
   }
 
+  it("최초 토큰 인증 실패도 사건 0건이다", async () => {
+    await fixture();
+    await prisma.project.update({ where: { id: "p" }, data: { pushTokenHash: hashPushToken("rotated-token") } });
+    expect(await post(ciPayload())).toEqual({ status: 401, body: { error: "unauthorized" } });
+    expect(await prisma.projectEvent.count({ where: { projectId: "p" } })).toBe(0);
+  });
+
   it("조회 뒤 회전이 커밋되면 401이고 아무것도 적재하지 않는다 — 진행 표시도 거둔다", async () => {
     await fixture();
     const blocker = await pool.connect();
@@ -559,6 +566,7 @@ describe("토큰 회전 경합 (L7.6)", () => {
       blocker.release();
     }
     expect(await running).toEqual({ status: 401, body: { error: "unauthorized" } });
+    expect(await prisma.projectEvent.count({ where: { projectId: "p" } })).toBe(0);
     expect(await cell("p", "k1", "ko")).toBeUndefined();
     expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-p" } })).toMatchObject({ lastImportToken: null, lastCommitAt: BEFORE });
   });
@@ -579,4 +587,14 @@ describe("토큰 회전 경합 (L7.6)", () => {
     expect(await running).toMatchObject({ status: 200, body: { status: "applied" } });
     expect(await cell("p", "k1", "ko")).toMatchObject({ value: "repo-ko" });
   });
+});
+
+it("적재 트랜잭션이 실패하면 관측한 CI 실패 사건을 남긴다", async () => {
+  await seed("p", { lastPulledAt: PULLED, cells: [] });
+  await prisma.project.update({ where: { id: "p" }, data: { pushTokenHash: hashPushToken(PUSH_TOKEN) } });
+  await pool.query(`CREATE FUNCTION reject_translation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected write failure'; END $$;
+    CREATE TRIGGER reject_translation BEFORE INSERT ON "Translation" FOR EACH STATEMENT EXECUTE FUNCTION reject_translation()`);
+  expect((await post(ciPayload())).status).toBe(500);
+  expect(await prisma.projectEvent.findMany({ where: { projectId: "p" }, select: { result: true, payload: true } }))
+    .toEqual([expect.objectContaining({ result: "failed", payload: expect.objectContaining({ errorCode: "import-failed" }) })]);
 });

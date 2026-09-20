@@ -100,7 +100,7 @@ export type EventPayload =
       /** 실행이 **시작 시점에 잡은** 대상 소스 전부. 이후 소스를 더해도 과거 집합은 바뀌지 않는다. */
       surfaceSlugs: readonly string[];
       keys: number | null;
-      /** `Deferred`의 관측된 미전달 편집 수. 다른 결과에서는 `null`이다. */
+      /** 보류 시 보호한 편집 수, 수동 적재 종료 시 남은 편집 수. 수집하지 않으면 `null`이다. */
       pendingEdits: number | null;
       surfaces: readonly SurfaceOutcome[];
       errorCode: string | null;

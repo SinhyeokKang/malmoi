@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import type { Prisma } from "@/generated/prisma/client";
 
-import { normalizeSurfaceIds, type EventPayload, type EventResult, type SurfaceScope } from "./payload";
+import { NOT_STARTED_REASONS, normalizeSurfaceIds, type EventPayload, type EventResult, type SurfaceScope } from "./payload";
 import { buildSearchText } from "./search";
 
 /**
@@ -83,8 +83,8 @@ export async function recordEvent(tx: Prisma.TransactionClient, input: EventInpu
  *
  * ⚠️ **호출부가 `Project` 행 잠금을 들고 있어야 한다.** 그래서 "있으면 그만두고 없으면 만든다"가
  * 경합하지 않는다 — 이 리포의 모든 실행 경로(Publish 시작 · import lease 획득 · CI 적용·기록)가
- * 그 잠금 안이다. `upsert`를 쓰지 않는 이유는 **트랜잭션 안의 unique 충돌이 트랜잭션 전체를
- * 중단시키기** 때문이고(Postgres), 그러면 적재까지 500이 된다. `@@unique([projectId, runToken])`은
+ * 그 잠금 안이다. 충돌한 INSERT의 unique 예외를 catch해도 Postgres 트랜잭션은 이미 중단됐으므로,
+ * 경합을 잠금으로 막고 완료된 행을 그대로 둔다. `@@unique([projectId, runToken])`은
  * 그 약속이 깨졌을 때 조용히 두 줄이 되지 않게 하는 **마지막 그물**로 남는다.
  */
 export async function recordRun(
@@ -142,4 +142,19 @@ export async function finishRun(
     },
   });
   return count > 0;
+}
+
+/** 인가 뒤 관측한 거부만 받는다 — 일시적인 재시도·확인 요구를 이력으로 부풀리지 않는다. */
+export async function recordImportRefusal(
+  tx: Prisma.TransactionClient,
+  input: { projectId: string; userId: string | null; error: string },
+): Promise<void> {
+  const refusal = NOT_STARTED_REASONS.find(reason => reason === input.error);
+  if (refusal === undefined) return;
+  await recordEvent(tx, {
+    projectId: input.projectId, subtype: "import.notStarted", actor: { kind: "USER", userId: input.userId },
+    scope: "project-wide", result: "notStarted", finishedAt: new Date(),
+    payload: { kind: "IMPORT", source: "manual", surfaceSlugs: [], keys: null, pendingEdits: null,
+      surfaces: [], errorCode: null, refusal },
+  });
 }

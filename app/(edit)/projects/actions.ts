@@ -36,7 +36,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { invitationEventLabel, userEventLabel } from "@/lib/events/member-label";
 import { runTokenFor } from "@/lib/events/payload";
-import { finishRun, recordEvent, recordRun } from "@/lib/events/record";
+import { finishRun, recordEvent, recordImportRefusal, recordRun } from "@/lib/events/record";
 import { optionalEnv, requireEnv } from "@/lib/env";
 import { listBranches, openRepoReader, probeRepo } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
@@ -73,7 +73,7 @@ import { resolveLocalePaths } from "@/lib/pull/plan";
 import { readDiscardApproval } from "@/lib/import/approval";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
-import type { RepositoryImportOutcome } from "@/lib/import/result";
+import type { RepositoryImportError, RepositoryImportOutcome } from "@/lib/import/result";
 import type { OpenImportPr } from "@/lib/import/confirm";
 import { readFiles, snapshotError } from "@/lib/import/read";
 import { readSurfaceSnapshot } from "@/lib/import/surface";
@@ -274,6 +274,11 @@ export async function revokeInvitation(raw: { slug: string; invitationId: string
   // 처리되지 않은 throw는 사용자에게 digest만 있는 오류가 된다 (`changeMember`와 같은 형).
   // ⚠️ **사건이 같은 트랜잭션이다** — 0행이면 아무것도 안 쓰고, 사건 기록이 실패하면 무효화도 롤백된다.
   const written = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${access.projectId} FOR UPDATE`;
+    const invitation = await tx.projectInvitation.findFirst({ where: { id: input.invitationId, projectId: access.projectId } });
+    if (invitation === null || invitation.acceptedAt !== null) return 0;
+    // 이미 만료된 초대는 무효화할 상태가 없다 — 성공 응답은 유지하되 사건을 만들지 않는다.
+    if (invitation.expiresAt <= new Date()) return 1;
     // 라벨을 **쓰기 전에** 읽는다 — 무효화는 행을 지우지 않지만 순서를 뒤집을 이유도 없다.
     const targetLabel = await invitationEventLabel(tx, { projectId: access.projectId, invitationId: input.invitationId });
     const count = (await tx.projectInvitation.updateMany({
@@ -351,6 +356,7 @@ export async function changeMember(raw: {
 
     const plan = planMemberChange({ members, targetUserId: input.targetUserId, nextRole: input.nextRole });
     if (plan !== "ok") return plan;
+    if (members.find(member => member.userId === input.targetUserId)?.role === input.nextRole) return "ok" as const;
 
     // ⚠️ **조건부 쓰기의 count를 읽는다.** `delete`/`update`는 행이 사라졌을 때 P2025로 던지는데,
     // 그건 다른 경로가 같은 멤버를 먼저 지운 경우 실제로 일어난다 — Server Action에서 처리되지 않은
@@ -1268,11 +1274,14 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
   const runToken = runTokenFor({ kind: "import", token });
   const surfaceSlugs = [surface.slug];
   await prisma
-    .$transaction(tx => recordRun(tx, {
-      projectId, subtype: "import.first", actor: { kind: "USER", userId },
-      surfaceIds: [surface.id], occurredAt: startedAt, runToken,
-      payload: { kind: "IMPORT", source: "first", surfaceSlugs, keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null },
-    }))
+    .$transaction(async tx => {
+      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+      await recordRun(tx, {
+        projectId, subtype: "import.first", actor: { kind: "USER", userId },
+        surfaceIds: [surface.id], occurredAt: startedAt, runToken,
+        payload: { kind: "IMPORT", source: "first", surfaceSlugs, keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null },
+      });
+    })
     .catch((error: unknown) => logFailure("onboard-ingest-event", error));
   const closeRun = async (
     result: "imported" | "partial" | "failed",
@@ -1384,15 +1393,20 @@ export async function runRepositoryImport(raw: { slug: string; approval: string 
   const prisma = getPrisma();
   const access = await getProjectAccess(prisma, { userId: session.userId, slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
+  const refuse = async (error: RepositoryImportError): Promise<RepositoryImportOutcome> => {
+    try { await recordImportRefusal(prisma, { projectId: access.projectId, userId: session.userId, error }); }
+    catch (recordError) { logFailure("repository-import-event", recordError); }
+    return { ok: false, error };
+  };
   try {
     const project = await prisma.project.findUnique({ where: { id: access.projectId }, include: { surfaces: true } });
     if (project === null) return { ok: false, error: "not-found" };
-    if (project.archivedAt !== null) return { ok: false, error: "archived" };
-    if (planProjectReadiness(project) !== "ready") return { ok: false, error: "not-ready" };
+    if (project.archivedAt !== null) return await refuse("archived");
+    if (planProjectReadiness(project) !== "ready") return await refuse("not-ready");
     if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "not-connected" };
     const connected = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
-    if (connected.status !== "ok") return { ok: false, error: connected.error };
-    if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return { ok: false, error: "repo-replaced" };
+    if (connected.status !== "ok") return await refuse(connected.error);
+    if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return await refuse("repo-replaced");
     const installationId = project.installationId;
     return await runRepositoryImportFromReader(prisma, { projectId: access.projectId, userId: session.userId, approval,
       repository: { repositoryId: project.repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
@@ -1532,6 +1546,9 @@ export async function archiveProject(slug: unknown): Promise<ArchiveResult> {
 
   // ⚠️ `where`가 **인가가 돌려준 projectId**다 — slug로 다시 찾으면 클라이언트 입력이 조회 조건이 된다.
   await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${access.projectId} FOR UPDATE`;
+    const project = await tx.project.findUnique({ where: { id: access.projectId }, select: { archivedAt: true } });
+    if (project === null || project.archivedAt !== null) return;
     await tx.project.update({ where: { id: access.projectId }, data: { archivedAt: new Date() } });
     /**
      * ⚠️ **보관 사건 자체를 읽을 수 있어야 한다** — 그 때문에 Logs가 보관된 프로젝트에서도 열린다
@@ -1574,6 +1591,9 @@ export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
   if (access.status !== "ok") return { ok: false, error: access.status };
 
   await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${access.projectId} FOR UPDATE`;
+    const project = await tx.project.findUnique({ where: { id: access.projectId }, select: { archivedAt: true } });
+    if (project === null || project.archivedAt === null) return;
     await tx.project.update({ where: { id: access.projectId }, data: { archivedAt: null } });
     await recordEvent(tx, {
       projectId: access.projectId,

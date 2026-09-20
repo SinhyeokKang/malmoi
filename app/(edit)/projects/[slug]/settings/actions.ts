@@ -289,18 +289,12 @@ export async function updateRepositorySettings(raw: {
    */
   if (!isValidBranchName(baseBranch)) return { ok: false, error: "invalid-branch" };
 
-  // ⚠️ **인가가 준 projectId로 읽는다** — slug로 다시 찾으면 인가한 행과 조회한 행이 갈릴 수 있다.
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { baseBranch: true },
-  });
-  // 인가와 조회 사이에 지워진 경우다 — 존재 여부를 말하지 않는 같은 갈래로 접는다.
-  if (project === null) return { ok: false, error: "not-found" };
-
-  // **바뀐 것이 없으면 쓰지 않는다** — 빈 update는 `Project.updatedAt`만 올린다.
-  // ⚠️ **no-op은 사건도 아니다** (완료조건 3) — 값이 그대로면 일어난 일이 없다.
-  if (baseBranch !== project.baseBranch) {
-    await prisma.$transaction(async (tx) => {
+  const outcome = await prisma.$transaction(async (tx) => {
+    // 잠금 뒤 읽어야 동시 변경의 before와 no-op 판정이 실제 저장 직전 상태를 가리킨다.
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    const project = await tx.project.findUnique({ where: { id: projectId }, select: { baseBranch: true } });
+    if (project === null) return { ok: false, error: "not-found" } as const;
+    if (baseBranch !== project.baseBranch) {
       await tx.project.update({ where: { id: projectId }, data: { baseBranch } });
       await recordEvent(tx, {
         projectId,
@@ -309,8 +303,10 @@ export async function updateRepositorySettings(raw: {
         scope: "project-wide",
         payload: { kind: "SETTINGS", field: "baseBranch", value: { before: project.baseBranch, after: baseBranch } },
       });
-    });
-  }
+    }
+    return { ok: true } as const;
+  });
+  if (!outcome.ok) return outcome;
 
   revalidatePath(`/projects/${slug}/settings`);
   /**
@@ -440,6 +436,7 @@ export async function deleteProjectImage(slug: string): Promise<{ ok: true } | {
       await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
       const row = await tx.project.findUnique({ where: { id: projectId }, select: { image: true } });
       if (!row) throw new Error("Project disappeared");
+      if (row.image === null) return null;
       await tx.project.update({ where: { id: projectId }, data: { image: null } });
       await recordEvent(tx, {
         projectId,

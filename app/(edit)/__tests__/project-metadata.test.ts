@@ -77,3 +77,9 @@ it("업로드는 커밋 뒤 이전 객체 정리가 실패해도 성공을 유�
   expect(await actions.uploadProjectImage(form())).toEqual({ ok: true });
   expect(db.projects[0]).toMatchObject({ image: fresh });
 });
+
+it("이미 없는 이미지는 삭제 사건을 만들지 않는다", async () => {
+  Object.assign(db.projects[0]!, { image: null });
+  expect(await actions.deleteProjectImage("alpha")).toEqual({ ok: true });
+  expect(db.projectEvents).toHaveLength(0);
+});

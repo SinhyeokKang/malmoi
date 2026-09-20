@@ -1762,11 +1762,13 @@ describe("repository import Actions", () => {
     db.surfaces[0]!.lastCommitSha = null;
     db.projects[0]!.repositoryId = null;
     expect(await runRepositoryImport({ slug: "acme", approval: null })).toEqual({ ok: false, error: "not-ready" });
+    expect(db.projectEvents).toEqual([expect.objectContaining({ result: "notStarted", payload: expect.objectContaining({ refusal: "not-ready" }) })]);
     expect(hoisted.ensureUserToken).not.toHaveBeenCalled();
   });
   it("같은 이름의 다른 리포를 blob 읽기 전에 거부한다", async () => {
     hoisted.probeRepo.mockResolvedValue({ ...PROBE_OK, repositoryId: "other" });
     expect(await runRepositoryImport({ slug: "acme", approval: null })).toEqual({ ok: false, error: "repo-replaced" });
+    expect(db.projectEvents).toEqual([expect.objectContaining({ result: "notStarted", payload: expect.objectContaining({ refusal: "repo-replaced" }) })]);
     expect(hoisted.runRepositoryImportFromReader).not.toHaveBeenCalled();
   });
   it("공용 읽기 실패를 그대로 반환하고 finally에서 캐시를 지운다", async () => {

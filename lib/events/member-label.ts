@@ -16,12 +16,13 @@ import { m } from "@/lib/i18n";
  * 주소가 저장 시점에 따라 다른 라벨로 굳는다. 목록 라벨은 조회가 따로 만든다.
  */
 export async function userEventLabel(tx: Prisma.TransactionClient, userId: string): Promise<string> {
-  const row = await tx.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, emailLookup: true } });
+  const row = await tx.user.findUnique({ where: { id: userId }, select: { id: true, email: true, emailLookup: true } });
   if (row === null) return m.logs.trigger.removed;
   const user = readable(() => decodeUser(row));
   // 복호 실패는 "없음"이 아니다 — 같은 낱말을 화면이 이미 쓴다.
   if (user === null) return m.common.unreadable;
-  return user.name ?? maskEmail(user.email);
+  // 이름은 계정 삭제가 지우지 못하는 사본이 된다 — 영구 사건에는 마스킹 주소만 남긴다.
+  return maskEmail(user.email);
 }
 
 export async function invitationEventLabel(

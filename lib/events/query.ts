@@ -87,7 +87,7 @@ const SELECT = {
   payload: true,
   // ⚠️ `email`을 **읽되 돌려주지 않는다** — 가리려면 원문이 필요하고, 나가면 안 되는 것은 반환값이다.
   actor: { select: { id: true, name: true, email: true, emailLookup: true } },
-  syncRun: { select: { status: true, changed: true, warnings: true, prUrl: true, errorCode: true } },
+  syncRun: { select: { status: true, finishedAt: true, changed: true, warnings: true, prUrl: true, errorCode: true } },
 } satisfies Prisma.ProjectEventSelect;
 
 type Selected = Prisma.ProjectEventGetPayload<{ select: typeof SELECT }>;
@@ -167,7 +167,7 @@ function present(rows: readonly Selected[]): EventRow[] {
       kind: row.kind,
       subtype: row.subtype,
       occurredAt: row.occurredAt,
-      finishedAt: row.finishedAt,
+      finishedAt: row.syncRun?.finishedAt ?? row.finishedAt,
       result: eventResult(row),
       actor: {
         kind: row.actorKind,
@@ -203,9 +203,9 @@ function present(rows: readonly Selected[]): EventRow[] {
  * (선행 거부의 `Not started`), 없으면 조인한 상태를 어휘로 옮긴다. 두 값을 복제하지 않으므로
  * `RUNNING` 행이 나중에 닫혀도 갈릴 수 없다.
  */
-function eventResult(row: Pick<Selected, "result" | "syncRun">): EventResult | null {
+function eventResult(row: Pick<Selected, "kind" | "result" | "syncRun" | "finishedAt">): EventResult | null {
   if (row.result !== null) return asResult(row.result);
-  if (row.syncRun === null) return null;
+  if (row.syncRun === null) return row.kind === "IMPORT" && row.finishedAt === null ? "running" : null;
   switch (row.syncRun.status) {
     case "SUCCEEDED":
       return "sent";
@@ -288,7 +288,7 @@ function narrow(filter: LogFilter, sourceIds: readonly string[]): Prisma.Project
    */
   if (filter.sources.length > 0) {
     const parts: Prisma.ProjectEventWhereInput[] = [{ surfaceIds: { hasSome: [...sourceIds] } }];
-    if (filter.sources.includes(PROJECT_WIDE)) parts.push({ surfaceScope: PROJECT_WIDE });
+    if (filter.sources.includes(PROJECT_WIDE)) parts.push({ surfaceScope: "project-wide" });
     and.push({ OR: parts });
   }
 
@@ -318,7 +318,9 @@ function narrow(filter: LogFilter, sourceIds: readonly string[]): Prisma.Project
 function resultWhere(result: EventResult): Prisma.ProjectEventWhereInput {
   const status = PUBLISH_STATUS[result];
   if (status === undefined) return { result };
-  return { OR: [{ result }, { syncRun: { status } }] };
+  return { OR: [{ result }, { syncRun: { status } },
+    ...(result === "running" ? [{ kind: "IMPORT" as const, result: null, finishedAt: null }] : []),
+  ] };
 }
 
 const PUBLISH_STATUS: Partial<Record<EventResult, "RUNNING" | "SUCCEEDED" | "SKIPPED" | "FAILED">> = {

@@ -1,11 +1,12 @@
-import { CircleAlert, Copy } from "lucide-react";
+import { CircleAlert } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { CopyButton } from "@/components/onboarding/copy-button";
 import { EventGlyph } from "@/components/logs/glyph";
 import { Badge } from "@/components/ui/badge";
 import { Dialog as DialogTitleSlot } from "radix-ui";
-import { eventGlyph, eventSentence, eventView, planArchivedReason, refusalMessage, valueState } from "@/lib/events/view";
+import { eventGlyph, eventSentence, eventView, eventFailureMessage, importReasonMessage, refusalMessage, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
@@ -56,6 +57,7 @@ export function EventDetail({
               ) : (
                 <span className="text-muted-foreground text-xs">{view.label}</span>
               ))}
+            {view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
           </span>
           <DialogTitleSlot.Title className="text-lg font-medium text-pretty">
             {eventSentence(row, {
@@ -82,10 +84,7 @@ export function EventDetail({
             <span className="flex min-w-0 items-center gap-2">
               <span className="font-mono text-sm [overflow-wrap:anywhere]">{row.ref}</span>
               {/* 동료에게 붙여넣는 것이 링크보다 짧고 **권한과 무관**하다 — 받은 사람은 검색창에 넣는다. */}
-              <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
-                <Copy className="size-3.5 shrink-0" aria-hidden />
-                {m.logs.detail.actions.copy}
-              </span>
+              <CopyButton value={row.ref} label={m.logs.detail.actions.copy} size="sm" />
             </span>
           </Field>
           {fields(row).map(([label, value]) => (
@@ -113,7 +112,7 @@ export function EventDetail({
                     <span className="text-[15px] font-medium">{surface.surfaceSlug}</span>
                     <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
                       {surface.count === null ? m.logs.value.notRecorded : m.logs.meta.keys(surface.count)}
-                      {surface.reason === null ? "" : ` · ${surface.reason}`}
+                      {surface.reason === null ? "" : ` · ${importReasonMessage(surface.reason)}`}
                     </span>
                   </span>
                   <span className={surface.status === "failed" ? "text-destructive shrink-0 text-xs font-medium" : "text-muted-foreground shrink-0 text-xs"}>
@@ -128,7 +127,7 @@ export function EventDetail({
 
         {/* ⚠️ **보관 중에는 야간 절이 빠진다** — 다음 야간 실행이 없으므로 그 문장이 거짓이 된다. */}
         {row.result === "failed" && (
-          <Note tone="danger" body={planArchivedReason(row.run?.errorCode ?? "", archived)} note={row.kind === "PUBLISH" ? m.logs.detail.notes.publish : null} />
+          <Note tone="danger" body={eventFailureMessage(row, archived)} note={row.kind === "PUBLISH" ? m.logs.detail.notes.publish : null} />
         )}
         {row.result === "running" && <Note tone="muted" body={m.logs.detail.noResult} note={null} />}
         {row.subtype === "settings.pushTokenRotated" && <Note tone="muted" body={m.logs.meta.tokenEffect} note={m.logs.detail.notes.token} />}
@@ -245,7 +244,9 @@ function fields(row: EventRow): [string, ReactNode][] {
   }
   if (payload?.kind === "IMPORT") {
     out.push([m.logs.detail.labels.trigger, `${payload.source === "ci" ? m.logs.trigger.ci : actorLabel(row)}`]);
-    if (payload.pendingEdits !== null) out.push([m.logs.detail.labels.unsentEdits, m.logs.deferredReason(payload.pendingEdits)]);
+    if (row.result === "deferred" && payload.pendingEdits !== null) out.push([m.logs.detail.labels.unsentEdits, m.logs.deferredReason(payload.pendingEdits)]);
+    else if ((payload.pendingEdits ?? 0) > 0) out.push([m.logs.detail.labels.unsentEdits, m.repositorySync.kept(payload.pendingEdits!)]);
+    if (payload.errorCode !== null) out.push([m.logs.detail.labels.errorCode, <span className="font-mono text-sm">{payload.errorCode}</span>]);
     if (payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(payload.refusal)]);
     if (payload.keys !== null) out.push([m.logs.detail.labels.resultPerSource, m.logs.meta.keys(payload.keys)]);
   }

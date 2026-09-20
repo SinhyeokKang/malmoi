@@ -364,6 +364,7 @@ describe("클라이언트 그래프", () => {
       "lib/i18n/index.ts",
       // 언어 이름은 이미 잎이다(import 0) — 온보딩 ③이 같은 함수를 쓴다.
       "lib/onboarding/language-name.ts",
+      "lib/projects/import-failure.ts",
       "messages/en.tsx",
     ]);
     expect([...view.packages].filter((name) => !allowed(name))).toEqual([]);

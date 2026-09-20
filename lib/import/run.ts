@@ -12,7 +12,7 @@ import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { planDiscardConfirmation, planProtectedImport } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
 import { runTokenFor } from "@/lib/events/payload";
-import { finishRun, recordRun } from "@/lib/events/record";
+import { finishRun, recordImportRefusal, recordRun } from "@/lib/events/record";
 import { summarizeImportEvent } from "@/lib/events/view";
 import { readDiscardApproval } from "./approval";
 import { planImportApply, type ImportSettings } from "./apply-plan";
@@ -47,7 +47,10 @@ async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ o
     if (project === null) return { ok: false, error: "not-found" };
     const member = await tx.projectMember.findUnique({ where: { projectId_userId: { projectId: input.projectId, userId: input.userId } } });
     if (member?.role !== "OWNER") return { ok: false, error: "forbidden" };
-    if (project.archivedAt !== null) return { ok: false, error: "archived" };
+    if (project.archivedAt !== null) {
+      await recordImportRefusal(tx, { projectId: project.id, userId: input.userId, error: "archived" });
+      return { ok: false, error: "archived" };
+    }
     const surfaces = await tx.translationSurface.findMany({ where: { projectId: input.projectId }, orderBy: { slug: "asc" } });
     const expected = input.repository;
     const identity = project.repositoryId === null || project.installationId === null ? "not-connected" :
@@ -57,7 +60,10 @@ async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ o
     // Publish가 스냅샷을 뜨는 중에 리포 값으로 덮으면 절반만 덮인 DB가 PR로 나간다 — 같은 Project 잠금 안에서 읽는다 (ARCHITECTURE §5.6.1).
     const runningSync = await tx.syncRun.findFirst({ where: { projectId: project.id, status: "RUNNING" }, orderBy: { startedAt: "desc" }, select: { startedAt: true } });
     const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ installationId: project.installationId, surfaces }), identity, surfaces, runningSync });
-    if (!plan.ok) return plan;
+    if (!plan.ok) {
+      await recordImportRefusal(tx, { projectId: project.id, userId: input.userId, error: plan.error });
+      return plan;
+    }
     /**
      * **폐기 승인은 잠금 뒤에 재계산한다** (ARCHITECTURE §5.5.2 · POSTMORTEM 2026-09-13 "일회용 연결 요청을 락 전에 읽었다").
      * 클라이언트의 `discard: true`를 믿지 않는다 — Dialog 뒤 새 편집·적용·설정 변경은 전부 지문을 바꿔 reconfirm이 된다.

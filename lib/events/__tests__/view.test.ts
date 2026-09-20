@@ -306,3 +306,19 @@ describe("summarizeImportEvent — 소스별 결과 → 결과 어휘", () => {
     expect(summarizeImportEvent([])).toBe("failed");
   });
 });
+
+it("Import 보조줄 판정은 남은 편집과 소스별 결과를 함께 보존한다", async () => {
+  const { eventMeta } = await import("../view");
+  const parts = eventMeta({ kind: "IMPORT", subtype: "import.run", result: "imported", actor: { kind: "USER" }, run: null,
+    payload: { kind: "IMPORT", source: "manual", surfaceSlugs: ["web"], keys: 4, pendingEdits: 2,
+      surfaces: [{ surfaceSlug: "web", status: "imported", count: 4, reason: null }], errorCode: null, refusal: null } }, false);
+  expect(parts).toContain(m.repositorySync.kept(2));
+  expect(parts).toContain(`web: ${m.logs.status.imported}, ${m.logs.meta.keys(4)}`);
+});
+
+it("소스 추가는 다음 CI에서 적용할 선언이라고 표시하지 않는다", async () => {
+  const { eventMeta } = await import("../view");
+  expect(eventMeta({ kind: "SURFACE", subtype: "surface.added", result: null, actor: { kind: "USER" }, run: null,
+    payload: { kind: "SURFACE", surfaceSlug: "web", adapter: "json-catalog", baseLocale: { before: null, after: "en" } } }, false))
+    .not.toContain(m.logs.meta.declarationOnly);
+});

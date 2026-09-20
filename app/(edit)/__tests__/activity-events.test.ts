@@ -219,3 +219,25 @@ describe("검색 문자열 — 유일한 관문을 지난다 (결정 3)", () => 
     }
   });
 });
+
+it("이미 같은 역할과 복원 상태면 사건이 없다", async () => {
+  expect(await changeMember({ slug: "alpha", targetUserId: "u-editor", nextRole: "EDITOR" })).toEqual({ ok: true });
+  expect(await unarchiveProject("alpha")).toEqual({ ok: true });
+  expect(db.projectEvents).toHaveLength(0);
+});
+
+it("이미 취소된 초대는 다시 사건을 만들지 않는다", async () => {
+  const created = await createInvitation({ slug: "alpha", email: "new@example.com", role: "EDITOR" });
+  expect(created.ok).toBe(true);
+  const invitation = db.invitations[0]!;
+  await revokeInvitation({ slug: "alpha", invitationId: invitation.id });
+  await revokeInvitation({ slug: "alpha", invitationId: invitation.id });
+  expect(db.projectEvents.filter(row => row.subtype === "member.invitationRevoked")).toHaveLength(1);
+});
+
+it("멤버 대상 이름을 영구 사건과 검색 문자열에 복제하지 않는다", async () => {
+  db.users.find(user => user.id === "u-editor")!.name = "Private Member Name";
+  await changeMember({ slug: "alpha", targetUserId: "u-editor", nextRole: "OWNER" });
+  expect(JSON.stringify(db.projectEvents)).not.toContain("Private Member Name");
+  expect(db.projectEvents[0]?.payload).toMatchObject({ targetLabel: "e***@example.com" });
+});

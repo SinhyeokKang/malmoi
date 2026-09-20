@@ -238,6 +238,15 @@ describe("Publish 결과는 조인이 든다 (결정 1)", () => {
     expect(row?.run).toEqual({ changed: 3, warnings: 2, prUrl: "https://x/1", errorCode: null });
   });
 
+  it("완료 시각은 SyncRun에서 읽고 상세와 목록이 같다", async () => {
+    const ref = await publishRun("run-time", "RUNNING");
+    expect((await loadEvent(prisma, "p1", ref))?.finishedAt).toBe(null);
+    const finishedAt = new Date(AT.getTime() + 12_000);
+    await prisma.syncRun.update({ where: { id: "run-time", projectId: "p1" }, data: { status: "SUCCEEDED", finishedAt } });
+    expect((await loadEvent(prisma, "p1", ref))?.finishedAt).toEqual(finishedAt);
+    expect((await loadEvents(prisma, "p1", base())).rows[0]?.finishedAt).toEqual(finishedAt);
+  });
+
   it("결과 필터가 조인한 Publish도 잡는다", async () => {
     const sent = await publishRun("run-ok", "SUCCEEDED", { occurredAt: new Date(AT.getTime() + 1000) });
     const imported = await event({ kind: "IMPORT", result: "imported" });
@@ -325,4 +334,17 @@ describe("payload", () => {
     const [row] = (await loadEvents(prisma, "p1", base())).rows;
     expect(row?.payload).toMatchObject({ before: "", after: long });
   });
+});
+
+it("진행 중 Import는 Running 필터와 목록에서 같은 결과다", async () => {
+  const ref = await event({ kind: "IMPORT", result: null, payload: { kind: "IMPORT", source: "manual" } });
+  expect((await loadEvent(prisma, "p1", ref))?.result).toBe("running");
+  expect((await loadEvents(prisma, "p1", base({ results: ["running"] }))).rows.map(row => row.ref)).toEqual([ref]);
+});
+
+it("project-wide라는 실제 소스와 프로젝트 전역 사건이 구별된다", async () => {
+  await prisma.translationSurface.create({ data: { id: "sWide", projectId: "p1", slug: "project-wide" } });
+  const source = await event({ surfaceIds: ["sWide"] });
+  await event({ kind: "SETTINGS", surfaceIds: [], surfaceScope: "project-wide" });
+  expect((await loadEvents(prisma, "p1", base({ sources: ["project-wide"] }))).rows.map(row => row.ref)).toEqual([source]);
 });

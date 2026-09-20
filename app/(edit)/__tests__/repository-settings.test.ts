@@ -239,3 +239,18 @@ describe("updateBaseLocale — 저장", () => {
     expect(db.surfaces.find(s => s.projectId === "pA")!.declaredBaseLocale).toBeNull();
   });
 });
+
+it("동일한 기준 언어 선언을 재저장해도 사건이 늘지 않는다", async () => {
+  await updateBaseLocale({ slug: "alpha", surfaceSlug: "default", baseLocale: "ko" });
+  await updateBaseLocale({ slug: "alpha", surfaceSlug: "default", baseLocale: "ko" });
+  expect(db.projectEvents).toHaveLength(1);
+});
+
+it("브랜치 사건의 before는 잠금 뒤 읽은 값이다", async () => {
+  db.spies.executeRaw.mockImplementationOnce(async () => {
+    alpha().baseBranch = "release";
+    return 1;
+  });
+  await updateRepositorySettings({ slug: "alpha", baseBranch: "dev" });
+  expect(db.projectEvents[0]?.payload).toMatchObject({ value: { before: "release", after: "dev" } });
+});
