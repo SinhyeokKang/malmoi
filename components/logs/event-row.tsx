@@ -50,7 +50,7 @@ export function EventRow({
   return (
     <Link
       href={href}
-      className="focus-visible:ring-ring flex items-center gap-3 px-4 py-[13px] hover:bg-[rgba(10,10,10,0.02)] focus-visible:ring-2 focus-visible:outline-none"
+      className="focus-visible:ring-ring flex items-center gap-3 px-4 py-[13px] hover:bg-foreground/[0.02] focus-visible:ring-2 focus-visible:outline-none"
     >
       {showTime && (
         /*

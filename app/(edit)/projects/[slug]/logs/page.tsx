@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
-import { clearedLogsQuery, encodeCursor, logsQuery, parseLogFilter, type LogSearchParams } from "@/lib/events/filter";
+import { clearedLogsQuery, encodeCursor, hasNarrowing, logsQuery, parseLogFilter, type LogSearchParams } from "@/lib/events/filter";
 import { loadEvent, loadEventActors, loadEvents } from "@/lib/events/query";
 import { coverageBoundaryIndex, groupByDay } from "@/lib/events/view";
 import { m } from "@/lib/i18n";
@@ -73,7 +73,8 @@ export default async function LogsPage({
   const boundary = coverageBoundaryIndex(page.rows, project.activityCoverageStartedAt, filter.cursor);
   const href = (ref: string) => routes.logs(slug, { ...logsQuery(filter), event: ref });
   const closeHref = routes.logs(slug, { ...logsQuery(filter), event: undefined });
-  const narrowed = Object.keys(clearedLogsQuery(filter)).length !== Object.keys(logsQuery({ ...filter, cursor: null })).length;
+  // ⚠️ **판정은 `hasNarrowing` 하나다** — 같은 규칙을 화면이 다시 조립하면 축이 늘 때 한쪽만 고쳐진다.
+  const narrowed = hasNarrowing(filter);
 
   let index = 0;
 
@@ -121,7 +122,7 @@ export default async function LogsPage({
                   const showBoundary = index === boundary && project.activityCoverageStartedAt !== null;
                   index += 1;
                   return (
-                    <div key={row.id} className="border-border border-t first:border-[#f0f0f0]">
+                    <div key={row.id} className="border-border border-t first:border-foreground/[0.06]">
                       {showBoundary && (
                         <div className="flex items-center gap-3 px-4 py-3">
                           <span className="bg-border h-px flex-1" />

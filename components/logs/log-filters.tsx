@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "@/lib/events/payload";
-import { PROJECT_WIDE, clearedLogsQuery, logsQuery, type LogFilter } from "@/lib/events/filter";
+import { PROJECT_WIDE, clearedLogsQuery, hasNarrowing, logsQuery, type LogFilter } from "@/lib/events/filter";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
@@ -65,14 +65,8 @@ export function LogFilters({
   const toggle = (list: readonly string[], value: string): string[] =>
     list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 
-  const narrowed =
-    filter.kind !== "all" ||
-    filter.from !== null ||
-    filter.to !== null ||
-    filter.actor !== null ||
-    filter.sources.length > 0 ||
-    filter.results.length > 0 ||
-    filter.q !== null;
+  // ⚠️ **축 일곱을 여기서 다시 세지 않는다** — `hasNarrowing`이 그 판정을 소유한다(축이 늘면 한 곳만 고친다).
+  const narrowed = hasNarrowing(filter);
 
   return (
     <div className="flex flex-col gap-3">
@@ -292,12 +286,34 @@ const RESULT_KEY: Readonly<Record<EventResult, keyof typeof m.logs.status>> = {
   failed: "failed",
 };
 
-/** 어느 종류의 결과인지 그룹으로 보인다 (캔버스 `1m`). */
-const RESULT_GROUPS: readonly { label: string; results: readonly EventResult[] }[] = [
-  { label: m.logs.filters.groupImports, results: ["imported", "deferred", "partial", "superseded", "notStarted"] },
-  { label: m.logs.filters.groupPublish, results: ["sent", "nothingToSend"] },
-  { label: m.logs.filters.groupBoth, results: ["running", "failed"] },
-];
+/**
+ * 결과 어휘 → 어느 그룹인가. **`Record`라 어휘가 늘면 여기서 컴파일이 걸린다** (`RESULT_KEY`와 같은 형).
+ *
+ * ⚠️ **목록을 손으로 적지 않는다** — 전에는 그룹마다 결과를 나열하고 `EVENT_RESULTS satisfies
+ * readonly EventResult[]` 한 줄로 "아홉이 빠짐없이 들어갔다"를 주장했는데, **그 식은 항진명제라
+ * 아무것도 재지 않았다**: 열 번째 어휘를 늘려도 컴파일이 통과하고 그 결과로 좁힐 길만 화면에서
+ * 사라진다(어느 화면에도 안 나타나는 부류다).
+ */
+const RESULT_GROUP_OF: Readonly<Record<EventResult, "imports" | "publish" | "both">> = {
+  imported: "imports",
+  deferred: "imports",
+  partial: "imports",
+  superseded: "imports",
+  notStarted: "imports",
+  sent: "publish",
+  nothingToSend: "publish",
+  running: "both",
+  failed: "both",
+};
 
-// 아홉이 그룹 셋에 빠짐없이 들어갔는지 — 하나가 빠지면 그 결과로 좁힐 길이 화면에 없다.
-void (EVENT_RESULTS satisfies readonly EventResult[]);
+/** 어느 종류의 결과인지 그룹으로 보인다 (캔버스 `1m`). 순서는 `EVENT_RESULTS`가 든다. */
+const RESULT_GROUPS: readonly { label: string; results: readonly EventResult[] }[] = (
+  [
+    { key: "imports", label: m.logs.filters.groupImports },
+    { key: "publish", label: m.logs.filters.groupPublish },
+    { key: "both", label: m.logs.filters.groupBoth },
+  ] as const
+).map((group) => ({
+  label: group.label,
+  results: EVENT_RESULTS.filter((result) => RESULT_GROUP_OF[result] === group.key),
+}));

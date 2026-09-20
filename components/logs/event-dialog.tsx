@@ -43,7 +43,7 @@ export function EventDialog({
       }}
     >
       <Primitive.Portal>
-        <Primitive.Overlay className="fixed inset-0 z-50 bg-[rgba(10,10,10,0.35)]" />
+        <Primitive.Overlay className="fixed inset-0 z-50 bg-foreground/35" />
         <Primitive.Content
           className="bg-background fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100vh-96px)] w-[640px] max-w-[calc(100vw-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl shadow-[0_6px_16px_2px_rgba(22,24,27,0.15)]"
           onCloseAutoFocus={(event) => {
