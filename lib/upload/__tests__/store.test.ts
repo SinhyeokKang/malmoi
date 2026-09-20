@@ -30,3 +30,12 @@ it("WebP 저장은 WebP MIME을 사용한다", async () => {
   await putImage("avatars/u/n.webp", Uint8Array.of(1), "webp");
   expect(sdk.put).toHaveBeenCalledWith("avatars/u/n.webp", expect.any(Buffer), expect.objectContaining({ contentType: "image/webp" }));
 });
+
+it.each(["avatars/", "projects/"] as const)("접두 %s의 모든 페이지를 조회한다", async prefix => {
+  vi.stubEnv("BLOB_READ_WRITE_TOKEN", "test-token");
+  sdk.list.mockResolvedValueOnce({ blobs: [{ pathname: `${prefix}p/a.webp` }], hasMore: true, cursor: "next" }).mockResolvedValueOnce({ blobs: [{ pathname: `${prefix}p/b.webp` }], hasMore: false });
+  const { listImages } = await import("../store");
+  expect(await listImages(prefix)).toEqual([{ pathname: `${prefix}p/a.webp` }, { pathname: `${prefix}p/b.webp` }]);
+  expect(sdk.list).toHaveBeenNthCalledWith(1, { prefix, cursor: undefined, token: "test-token" });
+  expect(sdk.list).toHaveBeenNthCalledWith(2, { prefix, cursor: "next", token: "test-token" });
+});
