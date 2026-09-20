@@ -1804,7 +1804,7 @@ describe("설정의 다중 소스 추가와 소스별 첫 적재", () => {
     expect(r.snapshot).toHaveBeenCalledTimes(1); expect(r.blob).toHaveBeenCalledTimes(4);
   });
   it("커밋 뒤 캐시 실패를 아무것도 추가되지 않은 것으로 보고하지 않는다", async () => {
-    const files = ["a/en.json", "b/en.json"].map(path => ({ path, sha: path, size: 100 }));
+    const files = ["a/en.json", "a/ko.json", "b/en.json", "b/ko.json"].map(path => ({ path, sha: path, size: 100 }));
     hoisted.openRepoReader.mockResolvedValue(reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs: new Map(files.map(f => [f.sha, CATALOG])) }));
     hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache failure"); });
     expect(await addSurfaces({ slug: "acme", picks })).toMatchObject({ ok: true });

@@ -46,7 +46,7 @@ afterAll(async () => {
 
 
 it.each([1, 5])("%i표면 집계의 정답과 적재 직후/ANALYZE 뒤 500ms 상한", async size => {
-  console.log({ version: (await pool.query("SHOW server_version")).rows[0], environment: process.platform + "/" + process.arch, surfaces: size });
+  process.stdout.write(JSON.stringify({ version: (await pool.query("SHOW server_version")).rows[0], environment: process.platform + "/" + process.arch, surfaces: size }) + "\n");
   for (let round = 0; round < 5; round++) {
     await resetSchema();
     for (const table of ["TranslationSurface", "StringKey", "Locale", "Translation"]) await pool.query(`ALTER TABLE "${table}" SET (autovacuum_enabled=false)`);
@@ -80,7 +80,7 @@ it.each([1, 5])("%i표면 집계의 정답과 적재 직후/ANALYZE 뒤 500ms �
       if (phase === "after") await pool.query('ANALYZE');
       const explain = await pool.query(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${sql}`, values);
       const plan = explain.rows[0]["QUERY PLAN"][0];
-      console.log(JSON.stringify({ size, round, phase, keys: size * 20000, locales: size * 200, translations: size * 200000, stats, plan }));
+      process.stdout.write(JSON.stringify({ size, round, phase, keys: size * 20000, locales: size * 200, translations: size * 200000, stats, plan }) + "\n");
       expect(plan["Execution Time"]).toBeLessThanOrEqual(500);
     }
   }

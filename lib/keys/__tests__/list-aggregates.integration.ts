@@ -750,17 +750,18 @@ it("다중 소스는 한 tx로 생성하고 적재 부분 실패를 그대로 �
 });
 it.each(["second-surface", "last-write", "timeout"])("다중 생성의 %s 실패는 모든 신규 자식을 롤백한다", async kind => {
   const input = await multiFixture(); const before = await existingSurface();
-  const table = kind === "last-write" ? "TranslationSurface" : "TranslationSurface";
+  const table = "TranslationSurface";
   const condition = kind === "last-write" ? `NEW.slug = 'third' AND NEW."lastCommitSha" IS NOT NULL` : `NEW.slug = 'third'`;
   const operation = kind === "timeout" ? "PERFORM pg_sleep(31);" : "RAISE EXCEPTION 'injected multi failure';";
   await pool.query(`CREATE FUNCTION reject_multi() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF ${condition} THEN ${operation} END IF; RETURN NEW; END $$;
     CREATE TRIGGER reject_multi BEFORE INSERT OR UPDATE ON "${table}" FOR EACH ROW EXECUTE FUNCTION reject_multi()`);
   await expect(addSurfacesFromSnapshot(prisma, input)).rejects.toThrow();
   expect(await prisma.translationSurface.count({ where: { projectId: "add", id: { not: "surface-add" } } })).toBe(0);
-  for (const table of ["Locale", "StringKey", "Translation", "KeyRef"]) {
+  for (const table of ["Locale", "StringKey", "Translation"]) {
     const result = await pool.query(`SELECT count(*)::int AS n FROM "${table}" WHERE "projectId"='add' AND "surfaceId" <> 'surface-add'`);
     expect(result.rows[0].n).toBe(0);
   }
+  expect((await pool.query(`SELECT count(*)::int AS n FROM "KeyRef" r JOIN "StringKey" k ON k.id=r."keyId" WHERE k."projectId"='add' AND k."surfaceId" <> 'surface-add'`)).rows[0].n).toBe(0);
   expect(await existingSurface()).toEqual(before);
 }, 45000);
 it("다중 생성의 중복 템플릿과 경로 경합은 기존 데이터를 보존한다", async () => {
@@ -772,4 +773,30 @@ it("다중 생성의 중복 템플릿과 경로 경합은 기존 데이터를 �
   expect(failed?.status === "rejected" && failed.reason.code).toBe("path-conflict");
   expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(3);
   expect(await existingSurface()).toEqual(before);
+});
+
+
+const imageIO = vi.hoisted(() => ({ put: vi.fn(), del: vi.fn() }));
+vi.mock("@/lib/upload/store", () => ({ putImage: imageIO.put, deleteImage: imageIO.del }));
+vi.mock("@/lib/upload/normalize", () => ({ normalizeImage: async () => ({ ok: true, bytes: Uint8Array.of(1) }) }));
+it("프로젝트 이미지의 동시 교체·제거는 현재 URL을 삭제하지 않는다", async () => {
+  await addFixture();
+  vi.resetModules();
+  vi.doMock("@/auth", () => ({ auth: async () => ({ user: { id: "owner" } }) }));
+  vi.doMock("@/lib/db", () => ({ getPrisma: () => prisma }));
+  vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+  const { uploadProjectImage, deleteProjectImage, updateProjectName } = await import("@/app/(edit)/projects/[slug]/settings/actions");
+  const original = "https://store.public.blob.vercel-storage.com/projects/add/original.webp";
+  await prisma.project.update({ where: { id: "add" }, data: { image: original, archivedAt: AFTER } });
+  imageIO.put.mockImplementation(async (key: string) => `https://store.public.blob.vercel-storage.com/${key}`);
+  imageIO.del.mockReset();
+  const form = () => { const value = new FormData(); value.set("slug", "add"); value.set("image", new File(["png"], "p.png")); return value; };
+  expect(await Promise.all([uploadProjectImage(form()), uploadProjectImage(form()), deleteProjectImage("add")])).toEqual([{ ok: true }, { ok: true }, { ok: true }]);
+  const current = await prisma.project.findUniqueOrThrow({ where: { id: "add" } });
+  const removed = imageIO.del.mock.calls.map(([key]) => `https://store.public.blob.vercel-storage.com/${key}`);
+  if (current.image) expect(removed).not.toContain(current.image);
+  expect(removed).toContain(original);
+  expect(new Set(removed).size).toBe(removed.length);
+  expect(await updateProjectName({ slug: "add", name: "  Renamed  " })).toEqual({ ok: true, name: "Renamed" });
+  expect(await prisma.project.findUniqueOrThrow({ where: { id: "add" } })).toMatchObject({ name: "Renamed", slug: "add", archivedAt: AFTER });
 });

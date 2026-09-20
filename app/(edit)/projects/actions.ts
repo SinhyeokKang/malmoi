@@ -7,7 +7,7 @@ import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { findUserByEmail } from "@/lib/credentials/access";
 import { isUniqueViolation, logCaught } from "@/lib/failure";
 import { planSurfaceSlug, surfaceOwnership, selectDefaultSurface } from "@/lib/surfaces/plan";
-import { addSurfaceFromSnapshot, SurfaceCreationError } from "@/lib/surfaces/create";
+import { addSurfaceFromSnapshot, addSurfacesFromSnapshot, SurfaceCreationError, type AddSurfaceErrorCode, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
 
@@ -78,7 +78,7 @@ import { ingestFirstSnapshot, prepareFirstSnapshot } from "@/lib/onboarding/inge
 import { renderSurfaceWorkflowStep, renderProjectWorkflowYaml } from "@/lib/onboarding/workflow";
 import type { OnboardError } from "@/lib/onboarding/message";
 import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
-import { planProjectReadiness } from "@/lib/onboarding/readiness";
+import { planSurfaceReadiness, planProjectReadiness } from "@/lib/onboarding/readiness";
 import { planSlug } from "@/lib/onboarding/slug";
 import { isPathSafeLocale } from "@/lib/locale-code";
 import { isValidBranchName } from "@/lib/pull/branch-name";
@@ -1158,10 +1158,10 @@ export type FirstIngestResultView =
  * 템플릿으로 파일을 다시 읽어 `planConfirmedFormat`을 지난다: 확정과 같은 경로이고, 그 사이에
  * 파일이 옮겨졌으면 여기서 잡힌다.
  */
-export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngestResultView> {
-  const parsed = SlugOnlyInput.safeParse(raw);
+export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }): Promise<FirstIngestResultView> {
+  const parsed = SlugOnlyInput.extend({ surfaceSlug: z.string().min(1).max(40).optional() }).safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
-  const { slug } = parsed.data;
+  const { slug, surfaceSlug } = parsed.data;
 
   const session = await readSession();
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
@@ -1196,9 +1196,9 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
    */
   if (project.archivedAt !== null) return { ok: false, error: "archived" };
 
-  const surface = project.defaultSurface;
+  const surface = surfaceSlug === undefined ? project.defaultSurface : await prisma.translationSurface.findFirst({ where: { projectId, slug: surfaceSlug } });
   if (!surface || surface.archivedAt !== null) return { ok: false, error: "not-found" };
-  if (planProjectReadiness({ installationId: project.installationId, surfaces: [surface] }) !== "awaiting_first_sync") return { ok: false, error: "not-awaiting" };
+  if (planSurfaceReadiness({ installationId: project.installationId, surface }) !== "awaiting_first_sync") return { ok: false, error: "not-awaiting" };
   const { installationId } = project;
   const { adapterName, pathTemplate, baseLocale } = surface;
   // `awaiting_first_sync`는 `installationId`가 있다는 뜻이지만 컴파일러는 그것을 모른다.
@@ -1608,4 +1608,68 @@ function candidateOutputPaths(format: DetectedFormat, paths: readonly string[]):
     ...ingestTargets(format, layout, paths),
     ...resolveLocalePaths(format, layout, paths).map(item => item.path),
   ])].sort(compareKeys);
+}
+
+
+export type AddSurfacesResult =
+  | { ok: true; results: import("@/lib/surfaces/plan-add").SurfaceAdded[]; yaml: string }
+  | { ok: false; error: OnboardError | AccessError | AddSurfaceErrorCode | "invalid input" | ConnectError; conflicts?: { path: string; surfaceSlugs: string[] }[] };
+
+export async function addSurfaces(raw: { slug: string; picks: { adapter: string; pathTemplate: string; baseLocale: string }[] }): Promise<AddSurfacesResult> {
+  const parsed = z.object({ slug: z.string().min(1).max(40), picks: z.array(z.object({ adapter: z.string(), pathTemplate: z.string().min(1).max(500), baseLocale: z.string().min(1) })).min(1).max(200) }).safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const input = parsed.data;
+  if (new Set(input.picks.map(pick => pick.pathTemplate)).size !== input.picks.length || input.picks.some(pick => !isAdapterName(pick.adapter) || !isPathSafeLocale(pick.baseLocale))) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status !== "ok") return { ok: false, error: session.status === "none" ? "unauthorized" : "unavailable" };
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug: input.slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  const project = await prisma.project.findUnique({ where: { id: access.projectId } });
+  if (!project) return { ok: false, error: "not-found" };
+  if (project.archivedAt !== null) return { ok: false, error: "archived" };
+  const inputs: AddSurfaceSnapshot[] = [];
+  let results: import("@/lib/surfaces/plan-add").SurfaceAdded[];
+  try {
+    const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
+    if (repo.status !== "ok") return { ok: false, error: repo.error };
+    if (repo.repositoryId !== project.repositoryId || repo.installationId !== project.installationId) return { ok: false, error: "repo-replaced" };
+    const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId);
+    const snapshot = await reader.snapshot(project.baseBranch);
+    if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+    const paths = snapshot.files.map(file => file.path);
+    const selected = input.picks.map(pick => {
+      if (!isAdapterName(pick.adapter)) throw new SurfaceCreationError("ingest-failed");
+      return { pick: { ...pick, adapter: pick.adapter }, targets: templatePaths(pick.adapter, pick.pathTemplate, paths) };
+    });
+    // 합집합을 한 번 내려받아 요청 전체 예산을 적용한다. 표면별 다운로드는 상한을 N배로 넓힌다.
+    const files = await readFiles(reader, snapshot, [...new Set(selected.flatMap(item => item.targets))]);
+    for (const { pick, targets } of selected) {
+      const relevant = files.filter(file => targets.includes(file.path));
+      const confirmed = planConfirmedFormat(pick, relevant);
+      if (confirmed.status !== "ok") return { ok: false, error: relevant.length < targets.length ? "unavailable" : "manual-no-match" };
+      inputs.push({ projectId: access.projectId, userId: session.userId,
+        repository: { repositoryId: repo.repositoryId, installationId: repo.installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
+        format: confirmed.format, baseLocale: confirmed.baseLocale, paths, targets, blobs: new Map(relevant.map(file => [file.path, file.content])), headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt });
+    }
+    results = await addSurfacesFromSnapshot(prisma, { projectSlug: input.slug, inputs });
+  } catch (error) {
+    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
+    if (error instanceof SurfaceCreationError) return { ok: false, error: error.code, conflicts: error.conflicts };
+    logFailure("onboard-add-surfaces", error);
+    return { ok: false, error: "ingest-failed" };
+  }
+  // The transaction has committed. Cache failures must not claim that nothing was added.
+  try {
+    revalidatePath(`/projects/${input.slug}`, "layout");
+    revalidatePath("/projects");
+  } catch (error) {
+    logFailure("onboard-add-surfaces-cache", error);
+  }
+  const yaml = results.map((result, index) => {
+    const source = inputs[index]!;
+    return renderSurfaceWorkflowStep({ slug: input.slug, surfaceSlug: result.surfaceSlug, pathTemplate: source.format.pathTemplate, adapter: source.format.adapter, baseLocale: source.baseLocale });
+  }).join("\n");
+  return { ok: true, results, yaml };
+
 }
