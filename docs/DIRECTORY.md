@@ -318,6 +318,16 @@ lib/
                         ⚠️ **뒤의 셋은 화면이 값으로 부르는 잎이다**(client-graph) — confirm은 어느 경고
                         줄이 서는지, result는 결과 요약, refusal은 거부의 tone·닫기·액션을 정한다.
                         판정을 컴포넌트에 두면 "형이 둘"(성공 한 줄 · 사고 두 줄)이 테스트 밖으로 나간다
+  events/               **프로젝트 활동 스트림** (2026-09-20, logs-rework) — payload(어휘·종류별 맥락·
+                        `runToken` 조립·`readPayload`) · view(결과 아홉·값 상태·UTC 날짜 카드·수집 경계선) ·
+                        filter(URL 판정·커서·UTC 구간) · search(검색 문자열의 **유일한 관문**) /
+                        query(`server-only` 조회) · record(사건 기록) · ci(CI 적재 사건) · member-label
+                        ⚠️ **앞의 넷은 잎이다** — 클라이언트가 값으로 읽고, 조회를 물면 그 순간 Prisma가
+                        번들에 온다(POSTMORTEM 2026-09-07의 7.2MB). `client-graph.test.ts`가 파일 집합을
+                        정확 일치로 고정한다
+                        ⚠️ **record와 query를 섞지 않는다** — 상태 변경은 `recordEvent`로 **변경과 같은
+                        트랜잭션**, 외부 실행은 `recordRun`/`finishRun`으로 **관측된 종료**다(ARCHITECTURE §5.7)
+                        ⚠️ **`buildSearchText`를 안 지나면 그 종류가 조용히 검색에서 빠진다**
   keys/                 view(집계·배지·행 축 다섯·localeProgress) · query(server-only 조회 —
                         loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다) ·
                         save · refocus · filters · edit-command(Enter → save / Escape → restore.
