@@ -46,6 +46,12 @@ export const MODEL_CLASSES = {
   /** `updatedBy` 하나 때문에 personal이다 — 나머지 11은 번역 값과 그 좌표다. */
   Translation: "personal",
   SyncRun: "personal",
+  /**
+   * ⚠️ **`actorUserId` 하나 때문만이 아니다** — `payload`가 멤버 사건의 **마스킹 라벨**을 담고
+   * `searchText`가 그것을 다시 싣는다 (logs-rework design §11). 행위자 FK를 비우는 것만으로
+   * 식별 정보가 사라진다고 가정하면 계정 삭제 계약이 거짓이 된다.
+   */
+  ProjectEvent: "personal",
   User: "personal",
   Account: "personal",
   Session: "personal",
@@ -71,6 +77,7 @@ type PersonalModel = {
 interface ScalarFieldsOf extends Record<PersonalModel, string> {
   Translation: Prisma.TranslationScalarFieldEnum;
   SyncRun: Prisma.SyncRunScalarFieldEnum;
+  ProjectEvent: Prisma.ProjectEventScalarFieldEnum;
   User: Prisma.UserScalarFieldEnum;
   Account: Prisma.AccountScalarFieldEnum;
   Session: Prisma.SessionScalarFieldEnum;
@@ -185,4 +192,28 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "SyncRun.changed": NOT_PERSONAL,
   "SyncRun.warnings": NOT_PERSONAL,
   "SyncRun.requestedBy": "collected",
+
+  /**
+   * 활동 사건 (logs-rework). 사람을 기술하는 것은 **행위자 셋과 시각 둘**, 그리고 멤버 사건의
+   * 마스킹 라벨을 나르는 `payload`·`searchText`다. 나머지는 사건의 좌표와 결과다.
+   *
+   * ⚠️ **`actorKind`도 `collected`다** — `SyncRun.trigger`와 같은 축으로 "사람이 했나"를 직접 말한다.
+   * ⚠️ **번역 본문·사람 이름·원문 이메일은 어느 컬럼에도 없다** (`buildSearchText`·`EventPayload`).
+   */
+  "ProjectEvent.id": NOT_PERSONAL,
+  "ProjectEvent.ref": NOT_PERSONAL,
+  "ProjectEvent.projectId": NOT_PERSONAL,
+  "ProjectEvent.kind": NOT_PERSONAL,
+  "ProjectEvent.subtype": NOT_PERSONAL,
+  "ProjectEvent.occurredAt": "collected",
+  "ProjectEvent.finishedAt": "collected",
+  "ProjectEvent.result": NOT_PERSONAL,
+  "ProjectEvent.actorKind": "collected",
+  "ProjectEvent.actorUserId": "collected",
+  "ProjectEvent.surfaceIds": NOT_PERSONAL,
+  "ProjectEvent.surfaceScope": NOT_PERSONAL,
+  "ProjectEvent.syncRunId": NOT_PERSONAL,
+  "ProjectEvent.payload": "collected",
+  "ProjectEvent.searchText": "collected",
+  "ProjectEvent.runToken": NOT_PERSONAL,
 };
