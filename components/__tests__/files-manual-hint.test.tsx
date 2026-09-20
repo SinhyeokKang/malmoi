@@ -67,3 +67,25 @@ it("후보 목록 아래 토글로 연 폼에는 안내 문장이 남는다", as
   expect(container.querySelector("#manual-path")).not.toBeNull();
   expect(container.textContent).toContain(HINT);
 });
+
+it("기존 소스는 체크된 채 잠기고 키보드·마우스가 선택을 바꾸지 못한다", async () => {
+  const toggle = vi.fn();
+  const { container } = await render(<FilesStep state={state([candidate])} selection={{ checked: new Set(), locked: new Set([0]), conflicts: [], onToggle: toggle }} onPick={noop} onLocale={noop} onManual={noop} onRetry={noop} />);
+  const checkbox = container.querySelector<HTMLButtonElement>('[role="checkbox"]')!;
+  expect(checkbox.getAttribute("aria-checked")).toBe("true");
+  expect(checkbox.disabled).toBe(true);
+  await act(async () => { await userEvent.setup().click(checkbox); checkbox.focus(); await userEvent.setup().keyboard(" "); });
+  expect(toggle).not.toHaveBeenCalled();
+});
+it("pending은 열린 Portal 언어 선택과 수동 필드를 직접 잠근다", async () => {
+  const onLocale = vi.fn();
+  const many = { ...candidate, locales: ["en", "ko", "ja", "fr", "de", "es", "it"] };
+  const view = (pending: boolean) => <FilesStep state={state([many])} pending={pending} onPick={noop} onLocale={onLocale} onManual={noop} onRetry={noop} />;
+  const { container, rerender } = await render(view(false));
+  await act(async () => { await userEvent.setup().click(container.querySelector('[role="combobox"]')!); });
+  expect(document.querySelector('[role="option"]')).not.toBeNull();
+  await rerender(view(true));
+  for (const option of document.querySelectorAll('[role="option"]')) expect(option.getAttribute("aria-disabled")).toBe("true");
+  expect(container.querySelector<HTMLButtonElement>('[role="combobox"]')?.disabled).toBe(true);
+  expect(onLocale).not.toHaveBeenCalled();
+});

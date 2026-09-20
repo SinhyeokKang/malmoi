@@ -17,7 +17,7 @@ import { m } from "@/lib/i18n";
  * ⚠️ **성공 문구를 따로 두지 않는다.** `revalidatePath`가 서버에서 돌아 건강성 문구가 `ok`로
  * 바뀌는 것이 곧 성공 신호다 — 문구를 하나 더 두면 그 상태와 어긋날 수 있다.
  */
-export function ReconnectButton({ slug, label, variant }: {
+export function ReconnectButton({ slug, label, variant, onFailure }: {
   slug: string;
   label: string;
   /**
@@ -25,6 +25,8 @@ export function ReconnectButton({ slug, label, variant }: {
    * 하나라 검정이 Publish가 아니다. 설정 화면은 블록이 여럿이라 기본형을 쓴다.
    */
   variant?: "primary";
+  /** Settings owns its card-wide notice; Home keeps the local fallback. */
+  onFailure?: (message: string | null) => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -33,12 +35,17 @@ export function ReconnectButton({ slug, label, variant }: {
       <Button
         variant={variant}
         loading={pending}
+        aria-busy={pending}
         onClick={() => {
           setError(null);
+          onFailure?.(null);
           startTransition(async () => {
             const result = await connectRepository({ slug });
             // 거부는 값으로 온다 — 던지지 않으므로 화면이 죽지 않는다 (ARCHITECTURE §6.3).
-            if (!result.ok) setError(result.error);
+            if (!result.ok) {
+              if (onFailure) onFailure(messageFor(result.error));
+              else setError(result.error);
+            }
           });
         }}
       >

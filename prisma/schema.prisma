@@ -19,6 +19,8 @@ model Project {
   id   String @id @default(cuid())
   slug String @unique
   name String
+  // 사용자 PII가 아닌 프로젝트 표시용 공개 Blob URL이다.
+  image String?
 
   /// 대상 리포. 초기엔 환경변수였다가 여기로 내려왔다 — 고객마다 리포가 다르다.
   repoOwner  String
@@ -78,6 +80,14 @@ model Project {
   /// ⚠️ **열린 PR을 닫지 않는다** (PRODUCT §7.9) — 보관은 "멈춘다"이고 GitHub 상태를 정리하는 일이 아니다.
   archivedAt DateTime?
 
+  /// **활동 스트림을 실제로 수집하기 시작한 시각** (logs-rework spec §7.1). 이 값보다 앞선 사건은
+  /// 보존된 Publish 실행을 백필한 것 말고는 **없는 것이 정상이고**, Logs가 그 경계에 선을 하나 긋는다.
+  ///
+  /// ⚠️ **가장 이른 이벤트나 마이그레이션 시각으로 추정하지 않는다** — 그러면 화면이 없는 사실을
+  /// 말하게 되고, 그것이 정확히 이 기능이 피하려는 부류다. 전환 시각을 입증할 수 없으면 **null을
+  /// 유지해 선을 숨긴다.** 신규 프로젝트는 생성 tx에서 채우고, **재백필이 이 값을 바꾸지 않는다.**
+  activityCoverageStartedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -91,6 +101,7 @@ model Project {
   members     ProjectMember[]
   invitations ProjectInvitation[]
   syncRuns    SyncRun[]
+  events      ProjectEvent[]
 }
 
 /// 프로젝트 안의 비중첩 번역 표면. 포맷·적재 상태는 이 행이 소유하고 Publish는 Project가 소유한다.
@@ -376,10 +387,127 @@ model SyncRun {
   /// Restrict — `Project`의 기존 관계 전부와 같은 근거다. Cascade면 프로젝트 삭제가 이력을 조용히 날린다.
   project   Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
   requester User?   @relation(fields: [requestedBy], references: [id], onDelete: SetNull)
+  /// 이 실행을 가리키는 활동 사건. **결과를 복제하지 않는 참조 한 벌이다** (logs-rework 결정 1).
+  event     ProjectEvent?
 
+  /// `ProjectEvent.syncRunId`의 **복합 FK가 참조하는 키다** — 이것이 없으면 다른 프로젝트의 실행을
+  /// 가리키는 이벤트를 DB가 막지 못한다 (`TranslationSurface`의 같은 줄과 같은 근거).
+  @@unique([projectId, id])
   /// `Translation`의 `[projectId, updatedAt]`과 같은 형 — `logs`도 게이트 조회도 **역방향으로 탄다**
   /// (최신 몇 건). 별도 sort 인덱스를 두지 않는다.
   @@index([projectId, startedAt])
+}
+
+/// **활동 스트림의 사건 종류 여섯** (logs-rework spec §3.A.1). URL의 `?kind=`는 화면 낱말이라
+/// 이것과 갈린다 (`lib/events/payload.ts`의 `LOG_KINDS`) — 저장 값을 주소창에 그대로 실으면
+/// 사용자가 읽는 자리에 대문자 코드가 선다.
+enum EventKind {
+  TRANSLATION
+  IMPORT
+  PUBLISH
+  SURFACE
+  MEMBER
+  SETTINGS
+}
+
+/// 누가 일으켰나. ⚠️ **`USER`인데 `actorUserId`가 비어 있으면 계정이 지워진 사람이다**(`SetNull`) —
+/// 그래야 `Removed user`가 `AUTOMATION`·`UNKNOWN`과 구별된다 (logs-rework 결정 8).
+enum ActorKind {
+  USER
+  AUTOMATION
+  UNKNOWN
+}
+
+/// **프로젝트에서 일어난 사건 하나** (logs-rework). `SyncRun`이 Publish 실행 전용인 것과 달리
+/// 종류 여섯이 한 테이블에 최신순으로 쌓이고, `logs` 화면과 Home의 Recent logs가 **같은 조회**를 읽는다.
+///
+/// ⚠️ **두 부류를 섞지 않는다** (design §3): 상태 변경은 **변경과 같은 트랜잭션**에서 확정되고,
+/// 외부 실행은 **서버가 관측한 사실만** 남긴다. 네트워크가 끊겨 응답이 안 닿은 것은 관측이 아니다.
+///
+/// ⚠️ **사건을 지우지 않는다** (불변식 3의 확장). `onDelete: Restrict`이고, 사용자 삭제는 `SetNull`로
+/// 저자만 빈다. 보존 기간에 따른 삭제 경로는 **만들지 않는다** (결정 6).
+model ProjectEvent {
+  id String @id @default(cuid())
+
+  /// 공개 참조 — `?event=`와 [Copy reference]가 쓴다. **id를 그대로 노출하지 않는다**: 목록과 링크에
+  /// 실리는 값이라 형식을 우리가 정할 수 있어야 하고, cuid는 생성 순서를 흘린다.
+  ///
+  /// ⚠️ **전역 unique가 아니라 `@@unique([projectId, ref])`다** — 모든 조회가 인가된 `projectId`로
+  /// 먼저 좁혀지므로(불변식 5) 테넌트 밖 유일성은 필요 없고, 전역 unique는 projectId 선두 규칙을
+  /// 깨는 인덱스를 하나 더 만든다.
+  ref String
+
+  projectId String
+  kind      EventKind
+
+  /// 하위 종류(`translation.saved` · `member.invited` …). **앱 층 어휘라 enum이 아니다** —
+  /// `SyncRun.errorCode`와 같은 근거로, 코드가 늘 때마다 마이그레이션을 요구하면 "던지는 자리가
+  /// 코드를 든다"는 규칙이 배포에 묶인다. 읽는 쪽이 폴백을 든다.
+  subtype String
+
+  occurredAt DateTime @default(now())
+
+  /// **내부 Import 실행만 쓴다.** 시작에 `INSERT`(null), 종료에 같은 행을 갱신한다 — 실행은 행 하나다
+  /// (결정 12). Publish의 종료·결과는 `SyncRun`에서 읽고, 비실행 사건은 이 컬럼을 안 쓴다.
+  finishedAt DateTime?
+
+  /// 결과 어휘 아홉 중 하나(`lib/events/payload.ts`의 `EVENT_RESULTS`). **`SyncRun`에 연결된
+  /// Publish와 비실행 사건은 null이다** — 그 결과는 조인이 읽는다(복제하면 두 곳이 갈린다).
+  result String?
+
+  actorKind ActorKind
+
+  /// ⚠️ **번역 사건도 세션의 `User.id`를 쓴다** — malmoi#3의 핸들 혼입은 `Translation.updatedBy`에만
+  /// 남기고 이 컬럼으로 번지지 않게 한다 (결정 4).
+  actorUserId String?
+
+  /// 사건 당시 대상 소스. 단일 소스도 배열 한 벌로 표현하고 **실행 행을 소스별로 복제하지 않는다**
+  /// (결정 14). 이후 새 소스를 추가해도 과거 실행의 집합은 바뀌지 않는다.
+  surfaceIds String[] @default([])
+
+  /// `sources` · `project-wide` · `not-recorded`. ⚠️ **백필의 미수집 소스를 프로젝트 전역으로
+  /// 오인하지 않기 위해 셋이다** — 빈 배열 하나로는 "전역"과 "모른다"가 같은 모양이 된다.
+  surfaceScope String
+
+  /// 기존 Publish 실행과의 연결 — **복제가 아니라 참조다** (결정 1). `SyncRun`이 계속 결과·파일 수·
+  /// PR·warnings의 정본이라 `RUNNING` 행이 나중에 닫혀도 두 곳이 갈릴 수 없다.
+  syncRunId String?
+
+  /// 종류별 맥락(`lib/events/payload.ts`의 `EventPayload`). 전후 값은 **전문 그대로** 들어간다 —
+  /// 상한은 이미 저장 층이 양쪽 10,000자로 든다 (결정 5).
+  ///
+  /// ⚠️ **남이 정한 키로 조회하면 `Object.hasOwn`** (CLAUDE.md) — 번역 키가 이 안에 들어간다.
+  payload Json
+
+  /// 검색 대상(참조·키·경로·대상 이름)을 이어 붙인 값. **조립은 `buildSearchText` 하나가 독점한다**
+  /// (결정 3) — payload 형태가 바뀌어도 검색이 조용히 안 깨지게 하는 것이 요지다.
+  /// ⚠️ **번역 본문·사람 이름·원문 이메일은 넣지 않는다.**
+  searchText String?
+
+  /// 멱등 키. 내부 실행 식별자 또는 CI `executionId`에 **서버가 실행 종류·소스 범위를 붙인다**
+  /// (design §3.3). 외부 식별자는 인증 증거가 아니므로 그대로 쓰지 않는다.
+  runToken String?
+
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  actor   User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  /// ⚠️ **복합 FK다** — `syncRunId` 하나로 묶으면 **다른 프로젝트의 실행**을 가리키는 행을 DB가
+  /// 막지 못한다 (`Project.defaultSurface`와 같은 형).
+  syncRun SyncRun? @relation(fields: [projectId, syncRunId], references: [projectId, id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([projectId, ref])
+  /// 재전달·동시 요청이 같은 실행을 두 줄로 만들지 않는다 (spec 완료조건 4b). Postgres는 NULL을
+  /// 여럿 허용하므로 실행이 아닌 사건에는 무해하다.
+  @@unique([projectId, runToken])
+  /// 백필·시작 기록이 같은 실행에 이벤트를 둘 만들지 않는다.
+  @@unique([projectId, syncRunId])
+  /// 정렬 tie-breaker까지 포함한다 — 커서 둘과 **같은 키여야** 같은 DB 상태가 같은 목록을 낸다(불변식 4).
+  @@index([projectId, occurredAt, id])
+  /// 행위자 필터의 목록 전용 (`loadEventActors` — code-review 2026-09-21). ⚠️ **위 인덱스로는 못 탄다**:
+  /// 그쪽 두 번째 열이 `occurredAt`이라 `actorUserId` distinct가 **프로젝트의 사건 전부를 읽고 정렬**한다.
+  /// 사건은 지우지 않으므로(불변식 3의 확장) 그 비용은 시간이 지날수록만 커지고, Logs를 그릴 때마다 든다.
+  /// ⚠️ **`actorKind`가 가운데다** — 조회가 `USER`로 등호를 걸고 `actorUserId`로 정렬하므로 이 순서여야
+  /// 정렬이 사라지고 세 열이 다 인덱스에 있어 힙을 안 본다.
+  @@index([projectId, actorKind, actorUserId])
 }
 
 /// 로그인 사용자. **`email`이 unique인 것은 어댑터의 `getUserByEmail`이 `findUnique`이기 때문이다.**
@@ -411,6 +539,7 @@ model User {
   memberships     ProjectMember[]
   invitationsSent ProjectInvitation[]
   syncRuns        SyncRun[]
+  events          ProjectEvent[]
 }
 
 /// OAuth provider 연결. **컬럼 이름이 snake_case인 것은 OAuth 응답 필드를 그대로 받기 때문이다** —

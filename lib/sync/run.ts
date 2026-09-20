@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { runTokenFor } from "@/lib/events/payload";
+import { recordRun } from "@/lib/events/record";
 import { classifyFailure } from "@/lib/failure";
 import type { PullOutcome } from "@/lib/pull/message";
 import { triggerPull } from "@/lib/pull/trigger";
@@ -151,6 +153,30 @@ async function startRun(
         requestedBy,
       },
       select: { id: true },
+    });
+
+    /**
+     * ⚠️ **시작 tx에서 참조만 만든다** (logs-rework 결정 1·12). 결과·파일 수·PR·warnings는 조회가
+     * `SyncRun`을 조인해 읽으므로, 이 행이 나중에 닫혀도 두 곳이 갈릴 수 없다 — 복제하지 않는 것이
+     * 요지다. 그래서 종료 지점에 이벤트 갱신이 없다.
+     *
+     * ⚠️ **대상 소스를 지금 잡는다** (T5f) — 나중에 소스를 추가해도 과거 실행의 집합은 그대로다.
+     * 보관된 소스는 pull이 건너뛰므로 대상이 아니다(`lib/pull/targets.ts`와 같은 술어).
+     */
+    const surfaces = await tx.translationSurface.findMany({
+      where: { projectId, archivedAt: null },
+      select: { id: true, slug: true },
+      orderBy: { slug: "asc" },
+    });
+    await recordRun(tx, {
+      projectId,
+      subtype: "publish.run",
+      // cron 행에는 사람이 없다 — 트리거가 그 사실을 직접 말한다.
+      actor: trigger === "cron" ? { kind: "AUTOMATION" } : { kind: "USER", userId: requestedBy },
+      surfaceIds: surfaces.map((surface) => surface.id),
+      syncRunId: row.id,
+      runToken: runTokenFor({ kind: "publish", syncRunId: row.id }),
+      payload: { kind: "PUBLISH", surfaceSlugs: surfaces.map((surface) => surface.slug), refusal: null },
     });
     return { status: "ok", runId: row.id };
   });

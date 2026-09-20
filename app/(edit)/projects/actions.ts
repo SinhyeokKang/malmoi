@@ -1,11 +1,13 @@
 "use server";
 
+import { PROJECT_NAME_MAX_CHARS } from "@/lib/projects/plan";
+
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 
 import { findUserByEmail } from "@/lib/credentials/access";
 import { isUniqueViolation, logCaught } from "@/lib/failure";
 import { planSurfaceSlug, surfaceOwnership, selectDefaultSurface } from "@/lib/surfaces/plan";
-import { addSurfaceFromSnapshot, SurfaceCreationError } from "@/lib/surfaces/create";
+import { addSurfacesFromSnapshot, SurfaceCreationError, type AddSurfaceErrorCode, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
 
@@ -22,7 +24,7 @@ import { adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapter
 import { compareKeys } from "@/lib/adapters/shared";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import type { AdapterError, AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/types";
-import { normalizeEmail } from "@/lib/auth/email";
+import { maskEmail, normalizeEmail } from "@/lib/auth/email";
 import { hashInviteToken, planInvitationCreate } from "@/lib/auth/invitation";
 import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import type { AccessError } from "@/lib/auth/message";
@@ -32,6 +34,9 @@ import { getProjectAccess } from "@/lib/auth/query";
 import { readSession } from "@/lib/auth/read-session";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
+import { invitationEventLabel, userEventLabel } from "@/lib/events/member-label";
+import { runTokenFor } from "@/lib/events/payload";
+import { finishRun, recordEvent, recordImportRefusal, recordRun } from "@/lib/events/record";
 import { optionalEnv, requireEnv } from "@/lib/env";
 import { listBranches, openRepoReader, probeRepo } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
@@ -68,7 +73,7 @@ import { resolveLocalePaths } from "@/lib/pull/plan";
 import { readDiscardApproval } from "@/lib/import/approval";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
-import type { RepositoryImportOutcome } from "@/lib/import/result";
+import type { RepositoryImportError, RepositoryImportOutcome } from "@/lib/import/result";
 import type { OpenImportPr } from "@/lib/import/confirm";
 import { readFiles, snapshotError } from "@/lib/import/read";
 import { readSurfaceSnapshot } from "@/lib/import/surface";
@@ -76,7 +81,7 @@ import { ingestFirstSnapshot, prepareFirstSnapshot } from "@/lib/onboarding/inge
 import { renderSurfaceWorkflowStep, renderProjectWorkflowYaml } from "@/lib/onboarding/workflow";
 import type { OnboardError } from "@/lib/onboarding/message";
 import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
-import { planProjectReadiness } from "@/lib/onboarding/readiness";
+import { planSurfaceReadiness, planProjectReadiness } from "@/lib/onboarding/readiness";
 import { planSlug } from "@/lib/onboarding/slug";
 import { isPathSafeLocale } from "@/lib/locale-code";
 import { isValidBranchName } from "@/lib/pull/branch-name";
@@ -206,6 +211,17 @@ export async function createInvitation(raw: {
           invitedBy: userId,
         },
       });
+      /**
+       * ⚠️ **초대 링크 원문도 해시도 payload에 없다** (spec §3.C.14 · T5c). 남는 것은 "누구를 어떤
+       * 역할로 불렀다"는 사실과 **마스킹 라벨**뿐이다.
+       */
+      await recordEvent(tx, {
+        projectId,
+        subtype: "member.invited",
+        actor: { kind: "USER", userId },
+        scope: "project-wide",
+        payload: { kind: "MEMBER", targetLabel: maskEmail(email), role: { before: null, after: input.role } },
+      });
       return "ok" as const;
     });
     if (outcome !== "ok") return { ok: false, error: outcome };
@@ -256,11 +272,30 @@ export async function revokeInvitation(raw: { slug: string; invitationId: string
 
   // 조건부 쓰기의 count를 읽는다 — `update`는 행이 없을 때 P2025로 던지고, Server Action의
   // 처리되지 않은 throw는 사용자에게 digest만 있는 오류가 된다 (`changeMember`와 같은 형).
-  const written = await prisma.projectInvitation.updateMany({
-    where: { id: input.invitationId, projectId: access.projectId, acceptedAt: null },
-    data: { expiresAt: new Date() },
+  // ⚠️ **사건이 같은 트랜잭션이다** — 0행이면 아무것도 안 쓰고, 사건 기록이 실패하면 무효화도 롤백된다.
+  const written = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${access.projectId} FOR UPDATE`;
+    const invitation = await tx.projectInvitation.findFirst({ where: { id: input.invitationId, projectId: access.projectId } });
+    if (invitation === null || invitation.acceptedAt !== null) return 0;
+    // 이미 만료된 초대는 무효화할 상태가 없다 — 성공 응답은 유지하되 사건을 만들지 않는다.
+    if (invitation.expiresAt <= new Date()) return 1;
+    // 라벨을 **쓰기 전에** 읽는다 — 무효화는 행을 지우지 않지만 순서를 뒤집을 이유도 없다.
+    const targetLabel = await invitationEventLabel(tx, { projectId: access.projectId, invitationId: input.invitationId });
+    const count = (await tx.projectInvitation.updateMany({
+      where: { id: input.invitationId, projectId: access.projectId, acceptedAt: null },
+      data: { expiresAt: new Date() },
+    })).count;
+    if (count === 0) return 0;
+    await recordEvent(tx, {
+      projectId: access.projectId,
+      subtype: "member.invitationRevoked",
+      actor: { kind: "USER", userId: session.userId },
+      scope: "project-wide",
+      payload: { kind: "MEMBER", targetLabel, role: null },
+    });
+    return count;
   });
-  if (written.count === 0) return { ok: false, error: "not-found" };
+  if (written === 0) return { ok: false, error: "not-found" };
 
   revalidatePath(`/projects/${input.slug}/members`);
   return { ok: true };
@@ -321,6 +356,7 @@ export async function changeMember(raw: {
 
     const plan = planMemberChange({ members, targetUserId: input.targetUserId, nextRole: input.nextRole });
     if (plan !== "ok") return plan;
+    if (members.find(member => member.userId === input.targetUserId)?.role === input.nextRole) return "ok" as const;
 
     // ⚠️ **조건부 쓰기의 count를 읽는다.** `delete`/`update`는 행이 사라졌을 때 P2025로 던지는데,
     // 그건 다른 경로가 같은 멤버를 먼저 지운 경우 실제로 일어난다 — Server Action에서 처리되지 않은
@@ -334,6 +370,19 @@ export async function changeMember(raw: {
 
     // 판정과 쓰기 사이에 사라졌다 — 다른 요청이 먼저 처리한 것이고, 결과는 그쪽이 옳다.
     if (written.count === 0) return "not-member" as const;
+
+    // 제거와 역할 변경이 **같은 사건 계열**이다 — `after`가 null이면 제거다(판정이 하나인 것과 같은 축).
+    await recordEvent(tx, {
+      projectId,
+      subtype: input.nextRole === null ? "member.removed" : "member.roleChanged",
+      actor: { kind: "USER", userId },
+      scope: "project-wide",
+      payload: {
+        kind: "MEMBER",
+        targetLabel: await userEventLabel(tx, input.targetUserId),
+        role: { before: members.find((member) => member.userId === input.targetUserId)?.role ?? null, after: input.nextRole },
+      },
+    });
 
     const owners = await tx.projectMember.count({ where: { projectId, role: "OWNER" } });
     if (owners === 0) throw new LastOwnerRollback();
@@ -392,7 +441,7 @@ const CreateProjectInput = z.object({
   // 막지만 이름은 목록·헤더에 그대로 렌더된다 (code-review 2026-09-07 🟡5).
   // ⚠️ **트림이 검사보다 먼저다** — 순서가 반대면 공백만인 이름이 통과해 목록에 빈 줄로 뜬다
   // (2026-09-07 리뷰 ⚪15).
-  name: z.string().trim().min(1).max(200),
+  name: z.string().trim().min(1).max(PROJECT_NAME_MAX_CHARS),
 });
 
 /**
@@ -1056,17 +1105,65 @@ export async function createProject(raw: {
         select: { id: true },
       });
       await tx.projectMember.create({ data: { projectId: project.id, userId, role: "OWNER" } });
+      /**
+       * ⚠️ **생성은 사건 셋이다** (결정 13): 생성 1 + **소스당** 1 + 최초 적재 1. 한 줄로 접으면
+       * 나중에 추가한 소스가 **같은 일인데 다른 모양**으로 남고, 소스 필터가 그 한 줄을 어디에 넣을지
+       * 애매해진다. 로케일·키는 독립 행을 만들지 않고 적재 실행의 집계로만 남는다.
+       */
+      await recordEvent(tx, {
+        projectId: project.id,
+        subtype: "settings.projectCreated",
+        actor: { kind: "USER", userId },
+        scope: "project-wide",
+        payload: { kind: "SETTINGS", field: "project", value: { before: null, after: `${plan.repoOwner}/${plan.repoName}` } },
+      });
       for (const item of prepared) {
         writingPath = item.surface.pathTemplate;
         await tx.translationSurface.create({ data: { id: item.id, projectId: project.id,
           slug: item.surface.surfaceSlug, adapterName: item.surface.adapter, pathTemplate: item.surface.pathTemplate,
           baseLocale: item.surface.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token,
         } });
+        await recordEvent(tx, {
+          projectId: project.id,
+          subtype: "surface.added",
+          actor: { kind: "USER", userId },
+          surfaceIds: [item.id],
+          payload: { kind: "SURFACE", surfaceSlug: item.surface.surfaceSlug, adapter: item.surface.adapter,
+            baseLocale: { before: null, after: item.surface.baseLocale } },
+        });
         await applyPushInTransaction(tx, { projectId: project.id, surfaceId: item.id }, item.payload, {
           refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: null,
         });
       }
-      await tx.project.update({ where: { id: project.id }, data: { defaultSurfaceId: defaultSurface.id } });
+      /**
+       * 최초 적재 실행 하나 — **소스별로 복제하지 않는다** (결정 14). 여기까지 온 것은 모든 표면의
+       * `failed`가 0이라는 뜻이라(위에서 하나라도 실패하면 `ingest-failed`로 반환한다) 결과가
+       * `Imported`로 고정이고, 그 사실을 소스별 결과로도 남긴다.
+       */
+      await recordRun(tx, {
+        projectId: project.id,
+        subtype: "import.first",
+        actor: { kind: "USER", userId },
+        surfaceIds: prepared.map(item => item.id),
+        result: "imported",
+        occurredAt: startedAt,
+        finishedAt: new Date(),
+        runToken: runTokenFor({ kind: "import", token }),
+        payload: {
+          kind: "IMPORT", source: "first",
+          surfaceSlugs: prepared.map(item => item.surface.surfaceSlug),
+          keys: prepared.reduce((sum, item) => sum + item.payload.keys.length, 0),
+          pendingEdits: null,
+          surfaces: prepared.map(item => ({ surfaceSlug: item.surface.surfaceSlug, status: "imported" as const, count: item.payload.keys.length, reason: null })),
+          errorCode: null, refusal: null,
+        },
+      });
+      /**
+       * ⚠️ **수집 개시 시각을 생성 tx에서 쓴다** (spec §7.1). 신규 프로젝트는 이 순간부터 전부
+       * 기록되므로 경계선이 없고, 기존 프로젝트는 구 writer 종료가 확인된 뒤 한 번 기록한다 —
+       * 여기서 `now()`를 쓰는 것과 그것을 추정으로 채우는 것은 다른 일이다.
+       */
+      await tx.project.update({ where: { id: project.id }, data: { defaultSurfaceId: defaultSurface.id, activityCoverageStartedAt: startedAt } });
     }, { maxWait: 10_000, timeout: 30_000 });
   } catch (error) {
     // 잠금 안에서 센 결과가 넘쳤다 — 쓰기는 되돌아갔고 사용자에게는 선조회와 같은 사유가 간다.
@@ -1086,62 +1183,6 @@ export async function createProject(raw: {
     count: prepared.reduce((sum, s) => sum + s.payload.keys.length, 0), yaml };
 }
 
-export type AddSurfaceResult =
-  | { ok: true; surfaceSlug: string; count: number; failed: number; yaml: string }
-  | { ok: false; error: string; conflicts?: { path: string; surfaceSlugs: string[] }[] };
-
-/** 리포·토큰은 기존 Project가 소유한다. 요청은 새 표면의 후보만 고른다. */
-export async function addSurface(raw: {
-  slug: string; adapter: string; pathTemplate: string; baseLocale: string;
-}): Promise<AddSurfaceResult> {
-  const parsed = z.object({ slug: z.string().min(1).max(40), adapter: z.string(),
-    pathTemplate: z.string().min(1).max(500), baseLocale: z.string().min(1) }).safeParse(raw);
-  if (!parsed.success) return { ok: false, error: "invalid input" };
-  const input = parsed.data;
-  if (!isAdapterName(input.adapter) || !isPathSafeLocale(input.baseLocale)) return { ok: false, error: "invalid input" };
-  const session = await readSession();
-  if (session.status !== "ok") return { ok: false, error: session.status === "none" ? "unauthorized" : "unavailable" };
-  const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, { userId: session.userId, slug: input.slug, permission: "project:settings" });
-  if (access.status !== "ok") return { ok: false, error: access.status };
-  const project = await prisma.project.findUnique({ where: { id: access.projectId } });
-  if (project === null) return { ok: false, error: "not-found" };
-  if (project.archivedAt !== null) return { ok: false, error: "archived" };
-  try {
-    const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
-    if (repo.status !== "ok") return { ok: false, error: repo.error };
-    if (repo.repositoryId !== project.repositoryId || repo.installationId !== project.installationId) {
-      return { ok: false, error: "repo-replaced" };
-    }
-    const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId);
-    const snapshot = await reader.snapshot(project.baseBranch);
-    if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
-    const paths = snapshot.files.map(f => f.path);
-    const targets = templatePaths(input.adapter, input.pathTemplate, paths);
-    // 예산은 이 표면의 호출 하나에 적용한다. 기존 표면과 합산하지 않는다.
-    const files = await readFiles(reader, snapshot, targets);
-    const confirmed = planConfirmedFormat(input, files);
-    if (confirmed.status !== "ok") return { ok: false, error: files.length < targets.length ? "unavailable" : "manual-no-match" };
-    const result = await addSurfaceFromSnapshot(prisma, {
-      projectId: access.projectId, userId: session.userId,
-      repository: { repositoryId: repo.repositoryId, installationId: repo.installationId,
-        repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
-      format: confirmed.format, baseLocale: confirmed.baseLocale, paths, targets,
-      blobs: new Map(files.map(f => [f.path, f.content])), headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt,
-    });
-    revalidatePath(`/projects/${input.slug}`, "layout");
-    revalidatePath("/projects");
-    return { ok: true, surfaceSlug: result.surfaceSlug, count: result.count, failed: result.failed,
-      yaml: renderSurfaceWorkflowStep({ slug: input.slug, surfaceSlug: result.surfaceSlug,
-        pathTemplate: confirmed.format.pathTemplate, adapter: confirmed.format.adapter, baseLocale: confirmed.baseLocale }) };
-  } catch (error) {
-    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
-    if (error instanceof SurfaceCreationError) return { ok: false, error: error.code, conflicts: error.conflicts };
-    logFailure("onboard-add-surface", error);
-    return { ok: false, error: "ingest-failed" };
-  }
-}
-
 export type FirstIngestResultView =
   | { ok: true; count: number; failed: number; errors: AdapterError[] }
   | { ok: false; error: OnboardError | AccessError | "invalid input" };
@@ -1156,10 +1197,10 @@ export type FirstIngestResultView =
  * 템플릿으로 파일을 다시 읽어 `planConfirmedFormat`을 지난다: 확정과 같은 경로이고, 그 사이에
  * 파일이 옮겨졌으면 여기서 잡힌다.
  */
-export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngestResultView> {
-  const parsed = SlugOnlyInput.safeParse(raw);
+export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }): Promise<FirstIngestResultView> {
+  const parsed = SlugOnlyInput.extend({ surfaceSlug: z.string().min(1).max(40).optional() }).safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
-  const { slug } = parsed.data;
+  const { slug, surfaceSlug } = parsed.data;
 
   const session = await readSession();
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
@@ -1187,16 +1228,16 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
   /**
    * ⚠️ **인가가 이것을 안 막는다** — 이 Action은 `project:settings` 뒤에 있고 그 권한만 보관 중에도
    * 통과한다(PRODUCT §7.9 — 전부 막으면 보관이 편도가 된다). 번역을 바꾸는 쓰기는 자기가 한 번 더
-   * 봐야 하고, 형제 `addSurface`·`runRepositoryImport`가 같은 형이다.
+   * 봐야 하고, 형제 `addSurfaces`·`runRepositoryImport`가 같은 형이다.
    *
    * ⚠️ **`apply.ts`의 트랜잭션 가드가 이미 막고 있었지만 너무 늦었다** — 거기까지 가면 스냅샷을
    * 이미 내려받은 뒤이고, 그 예외가 아래에서 `ingest-failed`로 접혀 **"적재 실패"로 오진**된다.
    */
   if (project.archivedAt !== null) return { ok: false, error: "archived" };
 
-  const surface = project.defaultSurface;
+  const surface = surfaceSlug === undefined ? project.defaultSurface : await prisma.translationSurface.findFirst({ where: { projectId, slug: surfaceSlug } });
   if (!surface || surface.archivedAt !== null) return { ok: false, error: "not-found" };
-  if (planProjectReadiness({ installationId: project.installationId, surfaces: [surface] }) !== "awaiting_first_sync") return { ok: false, error: "not-awaiting" };
+  if (planSurfaceReadiness({ installationId: project.installationId, surface }) !== "awaiting_first_sync") return { ok: false, error: "not-awaiting" };
   const { installationId } = project;
   const { adapterName, pathTemplate, baseLocale } = surface;
   // `awaiting_first_sync`는 `installationId`가 있다는 뜻이지만 컴파일러는 그것을 모른다.
@@ -1224,11 +1265,51 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
   const failRun = (code: "import-failed" | "partial-import" = "import-failed") =>
     finishImportRun(prisma, { ...scope, token, code });
 
+  /**
+   * 실행 사건 — 시작에 열고 **모든 반환·예외 경로**가 닫는다 (T5b-0). 조기 반환이 여섯이라 하나라도
+   * 빠지면 그 실행이 영영 `Running…`으로 남고, 화면에 그것을 닫을 수단이 없다.
+   *
+   * ⚠️ **기록 실패가 적재를 되돌리지 않는다** — 관측 기반이라 실행은 이미 일어났다.
+   */
+  const runToken = runTokenFor({ kind: "import", token });
+  const surfaceSlugs = [surface.slug];
+  await prisma
+    .$transaction(async tx => {
+      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+      await recordRun(tx, {
+        projectId, subtype: "import.first", actor: { kind: "USER", userId },
+        surfaceIds: [surface.id], occurredAt: startedAt, runToken,
+        payload: { kind: "IMPORT", source: "first", surfaceSlugs, keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null },
+      });
+    })
+    .catch((error: unknown) => logFailure("onboard-ingest-event", error));
+  const closeRun = async (
+    result: "imported" | "partial" | "failed",
+    outcome: { keys: number | null; errorCode: string | null },
+  ) => {
+    try {
+      const closed = await prisma.$transaction(tx => finishRun(tx, {
+        projectId, runToken, result,
+        payload: {
+          kind: "IMPORT", source: "first", surfaceSlugs, keys: outcome.keys, pendingEdits: null,
+          surfaces: [{ surfaceSlug: surface.slug, status: result === "failed" ? "failed" : result === "partial" ? "partial" : "imported", count: outcome.keys, reason: outcome.errorCode }],
+          errorCode: outcome.errorCode, refusal: null,
+        },
+      }));
+      // ⚠️ **0행 갱신은 조용하다** (POSTMORTEM 2026-09-14) — 다른 실행이 이 행을 먼저 닫았다는 뜻이고,
+      // 그러면 이력의 결과가 이 실행의 결과가 아니다. 적재는 그대로 두고 사실만 남긴다.
+      if (!closed) logFailure("onboard-ingest-event", new Error(`run event already closed: ${runToken}`));
+    } catch (error) {
+      logFailure("onboard-ingest-event", error);
+    }
+  };
+
   try {
     const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
     const snapshot = await reader.snapshot(project.baseBranch);
     if (snapshot.status !== "ok") {
       await failRun();
+      await closeRun("failed", { keys: null, errorCode: snapshotError(snapshot) });
       return { ok: false, error: snapshotError(snapshot) };
     }
 
@@ -1238,11 +1319,13 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
     } catch (error) {
       if (!(error instanceof IngestBudgetError)) throw error;
       await failRun();
+      await closeRun("failed", { keys: null, errorCode: "resource-limit" });
       return { ok: false, error: "resource-limit" };
     }
     if (prepared.status !== "ok") {
       logFailure("onboard-ingest", new Error(`stored format no longer holds: ${prepared.reason}`));
       await failRun();
+      await closeRun("failed", { keys: null, errorCode: "ingest-failed" });
       return { ok: false, error: "ingest-failed" };
     }
     const { paths, targets, blobs } = prepared;
@@ -1280,12 +1363,14 @@ export async function runFirstIngest(raw: { slug: string }): Promise<FirstIngest
      */
     if (result.count === 0) await failRun("partial-import");
 
+    await closeRun(result.failed > 0 || result.count === 0 ? "partial" : "imported", { keys: result.count, errorCode: null });
     return { ok: true, count: result.count, failed: result.failed, errors: [...result.errors] };
   } catch (error) {
     // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다. 행은 그대로 남고
     // 설정 화면의 [다시 시도]가 같은 Action을 부른다.
     logFailure("onboard-ingest", error);
     await failRun();
+    await closeRun("failed", { keys: null, errorCode: "ingest-failed" });
     return { ok: false, error: "ingest-failed" };
   } finally {
     // 조기 실패도 목록의 상태를 바꾼다 — 성공 때만 지우면 실패 사유 대신 캐시된 대기가 남는다.
@@ -1311,15 +1396,20 @@ export async function runRepositoryImport(raw: { slug: string; approval: string 
   const prisma = getPrisma();
   const access = await getProjectAccess(prisma, { userId: session.userId, slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
+  const refuse = async (error: RepositoryImportError): Promise<RepositoryImportOutcome> => {
+    try { await recordImportRefusal(prisma, { projectId: access.projectId, userId: session.userId, error }); }
+    catch (recordError) { logFailure("repository-import-event", recordError); }
+    return { ok: false, error };
+  };
   try {
     const project = await prisma.project.findUnique({ where: { id: access.projectId }, include: { surfaces: true } });
     if (project === null) return { ok: false, error: "not-found" };
-    if (project.archivedAt !== null) return { ok: false, error: "archived" };
-    if (planProjectReadiness(project) !== "ready") return { ok: false, error: "not-ready" };
+    if (project.archivedAt !== null) return await refuse("archived");
+    if (planProjectReadiness(project) !== "ready") return await refuse("not-ready");
     if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "not-connected" };
     const connected = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
-    if (connected.status !== "ok") return { ok: false, error: connected.error };
-    if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return { ok: false, error: "repo-replaced" };
+    if (connected.status !== "ok") return await refuse(connected.error);
+    if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return await refuse("repo-replaced");
     const installationId = project.installationId;
     return await runRepositoryImportFromReader(prisma, { projectId: access.projectId, userId: session.userId, approval,
       repository: { repositoryId: project.repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
@@ -1402,9 +1492,22 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
 
   const pushToken = generatePushToken();
   // ⚠️ `where`가 **인가가 돌려준 projectId**다.
-  await prisma.project.update({
-    where: { id: access.projectId },
-    data: { pushTokenHash: hashPushToken(pushToken) },
+  await prisma.$transaction(async (tx) => {
+    await tx.project.update({
+      where: { id: access.projectId },
+      data: { pushTokenHash: hashPushToken(pushToken) },
+    });
+    /**
+     * ⚠️ **값도 해시도 payload에 없다** (spec §3.C.14 · T5c). 남는 것은 "회전했다"는 사실뿐이고,
+     * 그 사실이 곧 "그 리포의 CI가 지금부터 401이다"를 설명한다.
+     */
+    await recordEvent(tx, {
+      projectId: access.projectId,
+      subtype: "settings.pushTokenRotated",
+      actor: { kind: "USER", userId },
+      scope: "project-wide",
+      payload: { kind: "SETTINGS", field: "pushToken", value: null },
+    });
   });
 
   revalidatePath(`/projects/${slug}/settings`);
@@ -1445,7 +1548,23 @@ export async function archiveProject(slug: unknown): Promise<ArchiveResult> {
   if (access.status !== "ok") return { ok: false, error: access.status };
 
   // ⚠️ `where`가 **인가가 돌려준 projectId**다 — slug로 다시 찾으면 클라이언트 입력이 조회 조건이 된다.
-  await prisma.project.update({ where: { id: access.projectId }, data: { archivedAt: new Date() } });
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${access.projectId} FOR UPDATE`;
+    const project = await tx.project.findUnique({ where: { id: access.projectId }, select: { archivedAt: true } });
+    if (project === null || project.archivedAt !== null) return;
+    await tx.project.update({ where: { id: access.projectId }, data: { archivedAt: new Date() } });
+    /**
+     * ⚠️ **보관 사건 자체를 읽을 수 있어야 한다** — 그 때문에 Logs가 보관된 프로젝트에서도 열린다
+     * (완료조건 11). 사건은 남았는데 볼 화면이 없으면 기록한 의미가 없다.
+     */
+    await recordEvent(tx, {
+      projectId: access.projectId,
+      subtype: "settings.archived",
+      actor: { kind: "USER", userId: session.userId },
+      scope: "project-wide",
+      payload: { kind: "SETTINGS", field: "archived", value: { before: null, after: "archived" } },
+    });
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };
@@ -1474,7 +1593,19 @@ export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
   });
   if (access.status !== "ok") return { ok: false, error: access.status };
 
-  await prisma.project.update({ where: { id: access.projectId }, data: { archivedAt: null } });
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${access.projectId} FOR UPDATE`;
+    const project = await tx.project.findUnique({ where: { id: access.projectId }, select: { archivedAt: true } });
+    if (project === null || project.archivedAt === null) return;
+    await tx.project.update({ where: { id: access.projectId }, data: { archivedAt: null } });
+    await recordEvent(tx, {
+      projectId: access.projectId,
+      subtype: "settings.restored",
+      actor: { kind: "USER", userId: session.userId },
+      scope: "project-wide",
+      payload: { kind: "SETTINGS", field: "archived", value: { before: "archived", after: null } },
+    });
+  });
 
   revalidatePath("/", "layout");
   return { ok: true };
@@ -1606,4 +1737,68 @@ function candidateOutputPaths(format: DetectedFormat, paths: readonly string[]):
     ...ingestTargets(format, layout, paths),
     ...resolveLocalePaths(format, layout, paths).map(item => item.path),
   ])].sort(compareKeys);
+}
+
+
+export type AddSurfacesResult =
+  | { ok: true; results: import("@/lib/surfaces/plan-add").SurfaceAdded[]; yaml: string }
+  | { ok: false; error: OnboardError | AccessError | AddSurfaceErrorCode | "invalid input" | ConnectError; conflicts?: { path: string; surfaceSlugs: string[] }[] };
+
+export async function addSurfaces(raw: { slug: string; picks: { adapter: string; pathTemplate: string; baseLocale: string }[] }): Promise<AddSurfacesResult> {
+  const parsed = z.object({ slug: z.string().min(1).max(40), picks: z.array(z.object({ adapter: z.string(), pathTemplate: z.string().min(1).max(500), baseLocale: z.string().min(1) })).min(1).max(200) }).safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const input = parsed.data;
+  if (new Set(input.picks.map(pick => pick.pathTemplate)).size !== input.picks.length || input.picks.some(pick => !isAdapterName(pick.adapter) || !isPathSafeLocale(pick.baseLocale))) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status !== "ok") return { ok: false, error: session.status === "none" ? "unauthorized" : "unavailable" };
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug: input.slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  const project = await prisma.project.findUnique({ where: { id: access.projectId } });
+  if (!project) return { ok: false, error: "not-found" };
+  if (project.archivedAt !== null) return { ok: false, error: "archived" };
+  const inputs: AddSurfaceSnapshot[] = [];
+  let results: import("@/lib/surfaces/plan-add").SurfaceAdded[];
+  try {
+    const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
+    if (repo.status !== "ok") return { ok: false, error: repo.error };
+    if (repo.repositoryId !== project.repositoryId || repo.installationId !== project.installationId) return { ok: false, error: "repo-replaced" };
+    const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId);
+    const snapshot = await reader.snapshot(project.baseBranch);
+    if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+    const paths = snapshot.files.map(file => file.path);
+    const selected = input.picks.map(pick => {
+      if (!isAdapterName(pick.adapter)) throw new SurfaceCreationError("ingest-failed");
+      return { pick: { ...pick, adapter: pick.adapter }, targets: templatePaths(pick.adapter, pick.pathTemplate, paths) };
+    });
+    // 합집합을 한 번 내려받아 요청 전체 예산을 적용한다. 표면별 다운로드는 상한을 N배로 넓힌다.
+    const files = await readFiles(reader, snapshot, [...new Set(selected.flatMap(item => item.targets))]);
+    for (const { pick, targets } of selected) {
+      const relevant = files.filter(file => targets.includes(file.path));
+      const confirmed = planConfirmedFormat(pick, relevant);
+      if (confirmed.status !== "ok") return { ok: false, error: relevant.length < targets.length ? "unavailable" : "manual-no-match" };
+      inputs.push({ projectId: access.projectId, userId: session.userId,
+        repository: { repositoryId: repo.repositoryId, installationId: repo.installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
+        format: confirmed.format, baseLocale: confirmed.baseLocale, paths, targets, blobs: new Map(relevant.map(file => [file.path, file.content])), headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt });
+    }
+    results = await addSurfacesFromSnapshot(prisma, { projectSlug: input.slug, inputs });
+  } catch (error) {
+    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
+    if (error instanceof SurfaceCreationError) return { ok: false, error: error.code, conflicts: error.conflicts };
+    logFailure("onboard-add-surfaces", error);
+    return { ok: false, error: "ingest-failed" };
+  }
+  // The transaction has committed. Cache failures must not claim that nothing was added.
+  try {
+    revalidatePath(`/projects/${input.slug}`, "layout");
+    revalidatePath("/projects");
+  } catch (error) {
+    logFailure("onboard-add-surfaces-cache", error);
+  }
+  const yaml = results.map((result, index) => {
+    const source = inputs[index]!;
+    return renderSurfaceWorkflowStep({ slug: input.slug, surfaceSlug: result.surfaceSlug, pathTemplate: source.format.pathTemplate, adapter: source.format.adapter, baseLocale: source.baseLocale });
+  }).join("\n");
+  return { ok: true, results, yaml };
+
 }

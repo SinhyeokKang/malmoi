@@ -11,6 +11,9 @@ import { applyPushInTransaction } from "@/lib/push/apply";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { planDiscardConfirmation, planProtectedImport } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
+import { runTokenFor } from "@/lib/events/payload";
+import { finishRun, recordImportRefusal, recordRun } from "@/lib/events/record";
+import { summarizeImportEvent } from "@/lib/events/view";
 import { readDiscardApproval } from "./approval";
 import { planImportApply, type ImportSettings } from "./apply-plan";
 import { hasActiveImport, planRepositoryImport } from "./plan";
@@ -44,7 +47,10 @@ async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ o
     if (project === null) return { ok: false, error: "not-found" };
     const member = await tx.projectMember.findUnique({ where: { projectId_userId: { projectId: input.projectId, userId: input.userId } } });
     if (member?.role !== "OWNER") return { ok: false, error: "forbidden" };
-    if (project.archivedAt !== null) return { ok: false, error: "archived" };
+    if (project.archivedAt !== null) {
+      await recordImportRefusal(tx, { projectId: project.id, userId: input.userId, error: "archived" });
+      return { ok: false, error: "archived" };
+    }
     const surfaces = await tx.translationSurface.findMany({ where: { projectId: input.projectId }, orderBy: { slug: "asc" } });
     const expected = input.repository;
     const identity = project.repositoryId === null || project.installationId === null ? "not-connected" :
@@ -54,7 +60,10 @@ async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ o
     // Publish가 스냅샷을 뜨는 중에 리포 값으로 덮으면 절반만 덮인 DB가 PR로 나간다 — 같은 Project 잠금 안에서 읽는다 (ARCHITECTURE §5.6.1).
     const runningSync = await tx.syncRun.findFirst({ where: { projectId: project.id, status: "RUNNING" }, orderBy: { startedAt: "desc" }, select: { startedAt: true } });
     const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ installationId: project.installationId, surfaces }), identity, surfaces, runningSync });
-    if (!plan.ok) return plan;
+    if (!plan.ok) {
+      await recordImportRefusal(tx, { projectId: project.id, userId: input.userId, error: plan.error });
+      return plan;
+    }
     /**
      * **폐기 승인은 잠금 뒤에 재계산한다** (ARCHITECTURE §5.5.2 · POSTMORTEM 2026-09-13 "일회용 연결 요청을 락 전에 읽었다").
      * 클라이언트의 `discard: true`를 믿지 않는다 — Dialog 뒤 새 편집·적용·설정 변경은 전부 지문을 바꿔 reconfirm이 된다.
@@ -65,8 +74,38 @@ async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ o
     if (decision.action !== "apply") return { ok: false, error: "reconfirm" };
     const token = randomUUID();
     await tx.project.update({ where: { id: project.id }, data: { repositoryImportToken: token, repositoryImportStartedAt: startedAt } });
+    const active = surfaces.filter(surface => surface.archivedAt === null).sort((a, b) => a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0);
+
+    /**
+     * ⚠️ **중단된 이전 실행을 여기서 닫는다** (logs-rework T5b-0 · spec §7.4). 잠금을 얻었다는 것은
+     * 이전 lease가 더 이상 살아 있지 않다는 뜻이므로(`planRepositoryImport`가 활성 실행을 거부한다),
+     * 아직 안 닫힌 내부 Import 이벤트는 전부 만료된 것이다. **브라우저·조회가 이것을 하지 않는다** —
+     * 다음 실행이 닫는다는 점에서 Publish의 stale 처리와 같은 형이다.
+     *
+     * ⚠️ **`import:` 접두로 좁힌다** — CI(`ci:`)는 종료만 기록하므로 미종료 행이 없고, 접두가 없으면
+     * 그쪽까지 건드리게 된다.
+     */
+    await tx.projectEvent.updateMany({
+      where: { projectId: project.id, kind: "IMPORT", finishedAt: null, runToken: { startsWith: "import:" } },
+      data: { result: "failed", finishedAt: startedAt },
+    });
+
+    /**
+     * 실행은 행 하나다 (결정 12) — 시작에 `INSERT`(결과 null), 종료에 같은 행을 갱신한다.
+     * ⚠️ **대상 소스를 지금 잡는다** — 실행 중에 소스가 늘어도 이 집합은 안 바뀐다.
+     */
+    await recordRun(tx, {
+      projectId: project.id,
+      subtype: "import.run",
+      actor: { kind: "USER", userId: input.userId },
+      surfaceIds: active.map(surface => surface.id),
+      occurredAt: startedAt,
+      runToken: runTokenFor({ kind: "import", token }),
+      payload: { kind: "IMPORT", source: "manual", surfaceSlugs: active.map(surface => surface.slug),
+        keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null },
+    });
     return { ok: true, lease: { project, token, startedAt, userId: input.userId, approvedTokens: approval.pending.map(edit => edit.token),
-      surfaces: surfaces.filter(surface => surface.archivedAt === null).sort((a, b) => a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0) } };
+      surfaces: active } };
   }, transactionOptions);
 }
 
@@ -128,17 +167,52 @@ export async function runRepositoryImportFromReader(prisma: PrismaClient, input:
   const acquired = await acquire(prisma, input);
   if (!acquired.ok) return acquired;
   const { lease } = acquired;
+  /**
+   * **모든 반환·예외 경로가 이것을 지난다** (T5b-0). 조기 반환이 넷이라 하나라도 빠지면 그 실행이
+   * 영영 `Running…`으로 남는다 — 화면에 그것을 닫을 수단이 없다.
+   *
+   * ⚠️ **기록 실패가 적재를 되돌리지 않는다.** 관측 기반 기록이라 실행은 이미 일어났고, 여기서
+   * 던지면 성공한 적재가 실패로 보고된다 — 상태 변경 사건의 양방향 롤백과 **부류가 다르다.**
+   */
+  const runToken = runTokenFor({ kind: "import", token: lease.token });
+  const close = async (outcome: RepositoryImportOutcome): Promise<RepositoryImportOutcome> => {
+    try {
+      const surfaces = outcome.ok ? outcome.surfaces : [];
+      const closed = await finishRun(prisma, {
+        projectId: input.projectId,
+        runToken,
+        result: outcome.ok ? summarizeImportEvent(outcome.surfaces) : "failed",
+        payload: {
+          kind: "IMPORT",
+          source: "manual",
+          surfaceSlugs: lease.surfaces.map(surface => surface.slug),
+          // 관측한 값만 싣는다 — 실패 경로는 키 수를 세지 않았으므로 `Not recorded`다.
+          keys: outcome.ok ? surfaces.reduce((sum, surface) => sum + surface.count, 0) : null,
+          pendingEdits: outcome.ok ? outcome.remainingEdits : null,
+          surfaces: surfaces.map(surface => ({ surfaceSlug: surface.surfaceSlug, status: surface.status, count: surface.count, reason: surface.reason })),
+          errorCode: outcome.ok ? null : outcome.error,
+          refusal: null,
+        },
+      });
+      // ⚠️ **0행 갱신은 조용하다** (POSTMORTEM 2026-09-14) — 다음 실행의 stale 정리가 이 행을 먼저
+      // 닫았다는 뜻이고, 그러면 이력에 남는 결과가 실제 결과가 아니다. 적재를 되돌리지는 않되 남긴다.
+      if (!closed) logFailure("repository-import-event", new Error(`run event already closed: ${runToken}`));
+    } catch (error) {
+      logFailure("repository-import-event", error);
+    }
+    return outcome;
+  };
   const failure: PreparedSurfaceImport = { kind: "failed", error: "ingest-failed", result: { count: 0, failed: 1, errors: [] } };
   const unchangedSnapshot = { headSha: "", headCommittedAt: lease.startedAt.toISOString() };
   try {
     if (lease.surfaces.every(surface => surface.adapterName === null || !isAdapterName(surface.adapterName) || !surface.pathTemplate || !surface.baseLocale)) {
-      return { ok: true, surfaces: lease.surfaces.map(surface => result(surface, "failed", "invalid-format")), remainingEdits: await countPending(prisma, input.projectId) };
+      return await close({ ok: true, surfaces: lease.surfaces.map(surface => result(surface, "failed", "invalid-format")), remainingEdits: await countPending(prisma, input.projectId) });
     }
     const reader = await openReader();
     const snapshot = await reader.snapshot(lease.project.baseBranch);
     if (snapshot.status !== "ok") {
       for (const surface of lease.surfaces) await finishSurface(prisma, lease, surface, failure, unchangedSnapshot);
-      return { ok: false, error: snapshotError(snapshot) };
+      return await close({ ok: false, error: snapshotError(snapshot) });
     }
     const surfaces: SurfaceImportResult[] = [];
     for (const surface of lease.surfaces) {
@@ -167,14 +241,14 @@ export async function runRepositoryImportFromReader(prisma: PrismaClient, input:
       }
     }
     // **승인 뒤 남은 편집을 성공으로 접지 않는다** (POSTMORTEM 2026-09-16) — 남아 있는 한 리포 갱신은 계속 멈춘다.
-    return { ok: true, surfaces, remainingEdits: await countPending(prisma, input.projectId) };
+    return await close({ ok: true, surfaces, remainingEdits: await countPending(prisma, input.projectId) });
   } catch (error) {
     logFailure("repository-import-read", error);
     for (const surface of lease.surfaces) {
       try { await finishSurface(prisma, lease, surface, failure, unchangedSnapshot); }
       catch (recordError) { logFailure("repository-import-record", recordError); }
     }
-    return { ok: false, error: "ingest-failed" };
+    return await close({ ok: false, error: "ingest-failed" });
   } finally {
     try {
       await prisma.$transaction(async tx => {

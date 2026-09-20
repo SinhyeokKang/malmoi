@@ -48,6 +48,17 @@ type NameResult = { ok: true; name: string } | { ok: false; reason: "empty" | "t
  * ⚠️ **키 검증이 쓰기보다 앞이다** — 키가 없는 채로 `sealPii`에 들어가면 던지는 자리가 봉인
  * 한가운데라 사유가 `unavailable`로 뭉개진다 (POSTMORTEM 2026-09-13).
  */
+/**
+ * 커밋 **뒤**에 도는 캐시 갱신 — 던져도 쓰기 결과를 바꾸지 않는다 (POSTMORTEM 2026-09-20 🔁).
+ * 원자성을 약속한 경계는 DB tx이고, 그 밖의 실패를 호출부로 흘리면 저장된 이름·사진을 화면이
+ * "실패"로 말한다(사진은 사용자가 다시 올려 두 번째 Blob 객체를 만든다). unlink는 결과 union이
+ * 아니라 `redirect`라 증상이 다르다 — 끊긴 뒤 계정 화면 대신 오류 화면에 착지한다.
+ */
+function revalidateAfterCommit(scope: string, userId: string): void {
+  try { revalidatePath("/", "layout"); }
+  catch (error) { logCaught("account", `${scope}-cache`, error); }
+}
+
 export async function updateProfileName(raw: string): Promise<NameResult> {
   const { userId } = await requireUser();
   // 판정은 순수 함수가 한다 — Action이 유일한 방어선이 아니다.
@@ -62,7 +73,7 @@ export async function updateProfileName(raw: string): Promise<NameResult> {
     return { ok: false, reason: "unavailable" };
   }
   // 셸 아바타·사용자 메뉴가 같은 값을 읽는다 — 경로를 나열하면 다음 소비자가 조용히 빠진다.
-  revalidatePath("/", "layout");
+  revalidateAfterCommit("name", userId);
   return { ok: true, name: plan.name };
 }
 
@@ -109,7 +120,7 @@ export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
   }
   // 이전 이미지는 커밋 뒤에만 지운다 — 롤백되면 그 URL이 계속 쓰여야 한다.
   await cleanImage(previous, userId);
-  revalidatePath("/", "layout");
+  revalidateAfterCommit("image-upload", userId);
   return { ok: true };
 }
 
@@ -132,7 +143,7 @@ export async function deleteProfileImage(): Promise<ImageResult> {
     return { ok: false, reason: "unavailable" };
   }
   await cleanImage(previous, userId);
-  revalidatePath("/", "layout");
+  revalidateAfterCommit("image-delete", userId);
   return { ok: true };
 }
 
@@ -202,7 +213,7 @@ export async function unlinkLoginMethod(provider: string): Promise<void> {
     outcome = "unavailable";
   }
   // 셸의 사용자 메뉴까지 바뀔 수 있다 — 경로를 나열하면 다음에 생기는 소비자가 조용히 빠진다.
-  revalidatePath("/", "layout");
+  revalidateAfterCommit("unlink", userId);
   // Next의 redirect는 던진다 — 실패 처리 밖에 둔다.
   redirect(routes.account({ link: outcome }));
 }

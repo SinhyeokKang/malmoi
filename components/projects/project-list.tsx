@@ -74,11 +74,16 @@ import { cn } from "@/lib/utils";
 const STATUS_CHIP = {
   active: { variant: "success", tone: "" },
   /**
-   * ⚠️ **보관만 `#737373`이고 나머지 무색 둘은 `#525252`다** (캔버스 `1c`). `Badge neutral`의 기본
-   * 글자색은 foreground(`#0a0a0a`)이므로 셋 다 호출부에서 내린다 — 프리미티브를 바꾸면 이 루프가
-   * 보지 않은 화면의 배지가 함께 움직인다.
+   * ⚠️ **보관만 `#a3a3a3`이고 나머지 무색 둘은 `#525252`다**. `Badge neutral`의 기본 글자색은
+   * foreground(`#0a0a0a`)이므로 셋 다 호출부에서 내린다 — 프리미티브를 바꾸면 이 루프가 보지 않은
+   * 화면의 배지가 함께 움직인다.
+   *
+   * ⚠️ **`#737373`이었다** (캔버스 `1c` · 2026-09-20에 사용자가 한 단계 더 내렸다 — *"거의 비활성
+   * 상태에 가깝게"*). 그 값은 이 리포에서 **꺼진 컨트롤의 글자색**이라(`button.tsx`·`select.tsx`)
+   * 더 내려갈 데가 없었고, 이름·메타와 **함께** 움직여야 한다: 배지만 남으면 그것이 행에서 가장
+   * 진한 것이 되어 물러나게 하려던 행으로 눈이 먼저 간다.
    */
-  archived: { variant: "neutral", tone: "text-muted-foreground" },
+  archived: { variant: "neutral", tone: "text-neutral-400" },
   setup: { variant: "neutral", tone: "text-neutral-600" },
   awaiting_first_sync: { variant: "neutral", tone: "text-neutral-600" },
   needs_reconnect: { variant: "warning", tone: "" },
@@ -235,7 +240,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
          */
         className="hover:bg-foreground/[0.02] focus-visible:ring-ring flex items-center gap-4 py-3.5 pr-3.5 pl-3 focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
       >
-        <ProjectThumbnail name={row.name} />
+        <ProjectThumbnail name={row.name} src={row.image} />
 
         {/*
           ⚠️ **420 고정 + `shrink-0`이다.** 이름 칸이 늘어나면 Meter의 x가 행마다 달라지고,
@@ -246,10 +251,16 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             ⚠️ **보관은 이름까지 회색이다** (캔버스 `1c`의 `muted: true`) — 숨기지 않는 대신 훑는
             눈에서만 멀어진다. 배지 하나로는 그 행이 여전히 같은 무게로 읽힌다.
 
+            ⚠️ **그 회색이 `#a3a3a3`이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).
+            `#737373`은 이 리포에서 **꺼진 컨트롤의 글자색**이라 "비활성처럼"의 하한이 아니라 그 값
+            자체였다. 아래 메타·배지와 **한 색**이라야 이 행이 통째로 물러난 것으로 읽힌다.
+            ⚠️ **대비가 2.3:1이라 DESIGN §6.2의 `neutral-400` 규칙(*"본문에 쓰지 않는다"*)에서 벗어난
+            자리다** — 등재된 이탈이고 근거는 §6.63에 있다.
+
             ⚠️ **일치 구간은 이름에서만 칠한다** — `searchProjects`의 대상이 이름 하나라, 리포 줄까지
             칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다.
           */}
-          <span className={cn("truncate text-base font-medium", status === "archived" && "text-muted-foreground")}>
+          <span className={cn("truncate text-base font-medium", status === "archived" && "text-neutral-400")}>
             {highlightName(row.name, q).map((part, index) =>
               part.match ? (
                 <mark key={index} className="rounded-[3px] bg-blue-600/[0.14] px-px text-inherit">
@@ -266,7 +277,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
 
             ⚠️ **리포가 링크가 아니다** — 행 전체가 이미 `<a>`라 중첩할 수 없다.
           */}
-          <span className="text-muted-foreground truncate text-sm">
+          <span className={cn("truncate text-sm", status === "archived" ? "text-neutral-400" : "text-muted-foreground")}>
             {`${row.repoOwner}/${row.repoName}`}
             {" · "}
             {m.projects.role[row.role]}

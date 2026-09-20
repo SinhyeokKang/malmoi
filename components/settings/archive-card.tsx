@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useRef, useTransition } from "react";
 
 import { archiveProject, unarchiveProject } from "@/app/(edit)/projects/actions";
 import { Button } from "@/components/ui/button";
@@ -34,12 +34,13 @@ export function ArchiveCard({
   openPrUrl: string | null | undefined;
 }) {
   const [pending, startTransition] = useTransition();
+  const cancel = useRef<HTMLButtonElement>(null);
 
   if (archived) {
     return (
       <Button
         variant="default"
-        loading={pending}
+        loading={pending} aria-busy={pending} className="[&_.animate-spin]:size-3.5"
         onClick={() => startTransition(async () => void (await unarchiveProject(slug)))}
       >
         {m.archive.restore}
@@ -50,17 +51,18 @@ export function ArchiveCard({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="default" loading={pending}>
+        <Button variant="default" loading={pending} aria-busy={pending} className="[&_.animate-spin]:size-3.5">
           {m.archive.action}
         </Button>
       </DialogTrigger>
       <DialogContent
+        onOpenAutoFocus={event => { event.preventDefault(); cancel.current?.focus(); }}
         title={m.archive.confirm.title(name)}
         description={m.archive.confirm.body}
         footer={
           <>
             <DialogClose asChild>
-              <Button variant="default">{m.archive.confirm.cancel}</Button>
+              <Button ref={cancel} variant="default">{m.archive.confirm.cancel}</Button>
             </DialogClose>
             <DialogClose asChild>
               <Button

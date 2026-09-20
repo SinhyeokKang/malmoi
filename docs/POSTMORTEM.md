@@ -2314,3 +2314,49 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     바닥 버튼이 `disabled`가 되는 모달이다).
   - ⚠️ **`useTransition`의 `isPending`으로 포커스 복귀를 배선할 때는 그것을 의존성에 넣는다.**
     상태를 직접 드는 화면(`pendingId`)과 달리 **커밋 시점을 고를 수 없다**는 것이 이 함정의 전부다.
+
+### 2026-09-20 — 소스 추가 커밋 뒤 캐시 오류가 전체 롤백으로 보고될 수 있었다
+
+- **영역**: `app/(edit)/projects/actions.ts`의 `addSurfaces`
+- **증상**: DB의 다중 소스 추가는 확정됐는데 `revalidatePath` 실패가 쓰기 실패 catch로 들어가면 UI가 “Nothing was added”를 표시한다. 재시도하면 기존 경로 충돌을 만나 최초 결과까지 오해하게 된다.
+- **근본 원인**: 사용자에게 약속하는 원자성 경계는 DB tx인데, 외부 캐시 갱신까지 같은 try/catch로 감싸면 성공 여부의 경계가 커밋 뒤로 늘어난다. 캐시 실패는 커밋된 행을 되돌리지 않는다.
+- **그물**: 커밋된 결과를 돌려준 뒤 revalidatePath가 던지도록 한 회귀 테스트가 잡았다. DB rollback 테스트만으로는 커밋 이후 실패가 보이지 않는다.
+- **재발 방지**: `rg -n 'revalidatePath|catch' 'app/(edit)/projects/actions.ts'`로 실제 점검했다. addSurfaces는 커밋 이후 캐시 실패를 별도 로깅하고 성공 결과를 유지한다. createProject의 캐시는 쓰기 catch 밖이고 runFirstIngest는 finally에 있어 같은 거짓 rollback union은 없었다. 새 all-or-nothing Action은 **커밋 후 후처리 예외 주입**도 검사한다.
+- 🔁 **재발 (2026-09-20, 같은 날 · 같은 기능의 형제 Action 셋)**: 위 재발 방지의 grep이 **`app/(edit)/projects/actions.ts` 한 파일**이었고, 같은 변경이 `app/(edit)/projects/[slug]/settings/actions.ts`에 만든 `updateProjectName`·`uploadProjectImage`·`deleteProjectImage` 셋이 검사 범위 밖이었다. 셋 다 DB tx가 **커밋된 뒤** `cleanProjectImage` + `revalidatePath("/", "layout")`을 try 밖에서 부르므로, 그것이 던지면 Action이 reject되고 클라이언트 `catch`가 `setError`를 세운다 — 저장된 이름·이미지를 화면이 "실패"로 말하고, 사용자가 업로드를 다시 눌러 **두 번째 Blob 객체**를 만든다. 조치는 `revalidateAfterCommit(scope, projectId)` 하나를 셋이 지나게 한 것이고, 회귀 테스트는 `app/(edit)/__tests__/project-metadata.test.ts`가 `revalidatePath`에 예외를 주입해 `{ ok: true }`를 단언한다.
+  - ⚠️ **"그 파일에서 다 봤다"가 재발 방지가 아니다** — 이 부류의 단위는 파일이 아니라 **"커밋 뒤에 무언가를 더 하는 Server Action"**이다. 같은 기능의 새 Action이 옆 디렉터리에 생기면 앞 항목의 grep은 그것을 영영 안 센다.
+  - ⚠️ **전수 grep이 원본을 찾아냈다**: `for f in $(grep -rl '"use server"' app --include="*.ts"); do grep -n revalidatePath "$f"; done` → **`app/(edit)/account/actions.ts`의 `updateProfileName`·`uploadProfileImage`·`deleteProfileImage` 셋이 글자까지 같은 형이다**(커밋 뒤 `cleanImage` + `revalidatePath` + 결과 union). 프로젝트 쪽이 그 셋을 베껴 쓴 것이라 **원본이 뒤에 고쳐진 순서**가 됐다 — 같은 날 `4712d23`이 그 셋에 같은 `revalidateAfterCommit`을 붙였고, `unlink` 하나가 더 있었다(결과 union이 아니라 `redirect`라 증상이 다르다: 끊긴 뒤 계정 화면 대신 오류 화면에 착지한다). 회귀 테스트는 `app/(edit)/account/__tests__/image.test.ts`·`name.test.ts`가 `revalidatePath`와 `deleteImage` 양쪽에 예외를 주입해 `{ ok: true }`를 단언한다. ⚠️ **베낀 쪽을 고치고 원본을 안 세면 결함이 원본에 남는다** — 이 항목이 그 전수 grep으로만 원본을 찾았다.
+
+### 2026-09-20 — 화면 하나에 세운 규칙 셋을 새 화면이 다시 어겼고, 그 규칙의 그물이 전부 원래 화면에만 있었다
+
+- **영역**: `messages/en.tsx`(설정 General 문구) · `app/(edit)/projects/[slug]/settings/page.tsx` · `components/projects/project-thumbnail.tsx`·`components/invite/project-card.tsx`·`components/settings/general-card.tsx`
+- **증상**: 설정 재편이 만든 새 화면이 **이미 결정되고 이미 고쳐진 규칙 셋**을 다시 어겼고, 테스트 4,799개가 전부 green이었다.
+  1. 주소 힌트가 `Opens at mal-moi.com/projects/{slug}`로 호스트를 박았다 — launch-readiness **L7.5가 2026-09-18에 같은 문장형에서 지운 값**이다. `dev.mal-moi.com`에서 지금 보고 있는 호스트와 다른 주소를 알려 준다(L7.5 리허설이 기록한 증상과 글자까지 같다).
+  2. 보관 일시가 `toLocaleDateString("en-US", { timeZone: "UTC" })`로 **라벨 없는 날짜**였다 — L7.1이 "절대 시각은 `<time dateTime>` 안의 `… UTC`"로 정한 뒤였다. KST 09-21 08:30에 보관한 사람이 "9/20/2026"을 보고 어제 보관한 것으로 읽는다.
+  3. 새로 만든 `<img>` 셋이 **깨진 URL 폴백 없이** 그려졌다 — `Avatar`가 malmoi#50으로 이미 해결한 부류인데, `image`가 truthy라 `toneFill` 폴백 분기에 못 들어가 Blob이 사라진 프로젝트가 **빈 테두리 상자**로 남는다.
+- **근본 원인**: 셋 다 **결정은 정본에 있었고 그물은 그 결정을 낳은 화면에만 있었다.** ①은 `naming-hint.test.tsx`가 `NamingStep`만 렌더해 재고, ②는 `publish-button`·Logs가 각자 자기 값을 재고, ③은 `avatar.test.tsx`가 `Avatar`만 렌더한다. 그래서 **새 소비자가 생기는 순간 규칙은 남고 검사는 안 따라온다** — 규칙별 검사를 컴포넌트 단위로 묶은 것이 원인이고, 새 화면을 만든 사람의 부주의가 아니다(정본을 읽었어도 "이 규칙에 소비자가 몇인지"는 어디에도 안 적혀 있었다).
+- **그물**: 놓쳤다 — 세 규칙 모두 **자동 검사가 있는데도** 통과했다(각 검사의 렌더 대상에 새 화면이 없었다). 잡은 것은 `/code-review`의 정적 대조뿐이고, ①은 문서(L7.5 태스크)와 코드를 사람이 맞대 본 결과다. 지금은 셋 다 새 화면에서 red→green을 본 테스트가 섰다(`settings-general.test.tsx` 주소·폴백 · `settings-layout.test.tsx` UTC · `project-row.test.tsx` 폴백 3갈래).
+- **재발 방지**: 규칙마다 **전수 grep**을 돌렸고 지금 남은 위반은 0이다.
+  - 호스트: `grep -rn "mal-moi\.com\|vercel\.app" messages app components lib --include="*.ts" --include="*.tsx" | grep -v __tests__ | grep -v origin.ts` → **0건**(`lib/github-connect/origin.ts`의 `ALLOWED_HOSTS`만 남는다 — 그쪽은 판정 입력이라 대상이 아니다).
+  - 절대 시각: `grep -rn "toLocaleDateString\|toLocaleTimeString" app components lib --include="*.ts" --include="*.tsx" | grep -v __tests__` → **0건**. 절대 시각의 생산자는 `lib/utc-time.ts`의 `utcMinute` 하나여야 하고, 이 grep이 그것을 우회한 자리를 센다.
+  - 이미지 폴백: `grep -rn "<img " app components --include="*.tsx" | grep -v __tests__` → **3건**이고 전부 통과다: `components/ui/avatar.tsx`·`components/ui/image-tile.tsx`(둘이 `useImageFallback`을 공유한다) + `components/publish-button.tsx`의 국기(자사 정적 자산이고 매핑이 확인된 것만 그린다 — 외부 URL이 아니라 대상이 아니다). **새 `<img>`는 이 셋 중 하나를 지나거나 여기 근거를 더한다.**
+  - ⚠️ **셋에 공통인 물음은 "이 규칙의 소비자가 몇인가"다.** DESIGN §6.4가 프리미티브마다 소비자 수를 적는 이유와 같다 — 새 화면을 만들 때 규칙을 읽는 것으로는 부족하고, **그 규칙을 재는 검사가 새 화면을 렌더하는지**를 따로 봐야 한다.
+
+
+### 2026-09-20 — 활동 판정은 통과했지만 조회·렌더·적재 연결에서 사실이 달라졌다
+
+- **영역**: `lib/events/` · `components/logs/` · 설정·적재 진입점.
+- **증상**: 완료된 Publish에 종료 시각이 없고, 진행 중 Import는 Running 필터에서 빠졌다. 수동 적재 성공은
+  `pendingEdits: 0`만 보고 "Nothing was imported"로 표시했다. Copy는 동작 없는 span이었고 Home·상세는
+  dropped 경고를 버렸다. 실제 `project-wide` 소스 필터가 전역 사건을 반환했다. 동일 값 재저장·동시 설정
+  변경은 중복 사건·낡은 before를 만들었으며 CI 쓰기 실패와 수동 Sync 사전 거부는 사건이 없었다.
+- **근본 원인**: 순수 판정의 입력·반환값만 검사했고 생산자→조회→컴포넌트의 실제 연결은 검사하지 않았다.
+  `null`은 Import에서 실행 중, 다른 종류에서 결과 없음인데 한 갈래로 접었다. 미전달 수의 부재와 0도
+  같은 뜻으로 다뤘다. URL 특수값은 실제 slug 생성 규칙과 대조하지 않았다. tx로 쓰기를 묶는 것만으로는
+  tx 밖에서 읽은 before나 no-op 판정까지 참이 되지 않는다.
+- **그물**: 새 DOM 테스트가 실제 Copy·문구·경고·URL 검색 상태를 검사하고, PostgreSQL 테스트가 종료 시각
+  조인·Running 필터·slug 충돌·CI 실패 및 두 인증 실패 경로·동시 기록을 검사한다. 설정 Action 테스트는
+  같은 값 반복과 잠금 시점 변경을 주입한다. 기존 문자열·파일 존재 검사는 이 연결을 놓쳤다.
+- **재발 방지**: `rg -n 'pendingEdits !== null|finishedAt: row.finishedAt|PROJECT_WIDE|before: project\.' lib/events components/logs app`
+  로 분기·시각·특수값·전후 값 생산자를 함께 본다. `pendingEdits !== null`은 반드시 결과 종류와 함께 판정한다.
+  실조회 행을 필터로 다시 찾는 양방향 검사와 DOM 행동 검사를 유지한다. 멤버 대상은 마스킹 주소만 저장해
+  이름이 영구 payload·searchText에 복제되지 않게 한다.

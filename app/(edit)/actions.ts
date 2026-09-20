@@ -8,6 +8,8 @@ import { getProjectAccess } from "@/lib/auth/query";
 import { getSurfaceAccess } from "@/lib/surfaces/access";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
+import type { NotStartedReason } from "@/lib/events/payload";
+import { recordEvent } from "@/lib/events/record";
 import { SaveInput, planSave } from "@/lib/keys/save";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import type { PullOutcome } from "@/lib/pull/message";
@@ -49,42 +51,82 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   // `ACCESS_ERRORS` Set을 손으로 늘리게 되고 컴파일러가 그것을 잇지 않는다.
   if (!(await isReady(prisma, projectId))) return { ok: false, error: "not-ready" };
 
-  // ⚠️ **인가가 준 projectId로 다시 좁힌다** (CLAUDE.md 테넌트 규칙). 멤버십을 확인했다는 것은
-  // "이 프로젝트에 들어올 자격"이지 "이 keyId가 그 프로젝트 것"이 아니다 — RLS가 없어
-  // 애플리케이션이 유일한 방어선이다.
-  const key = await prisma.stringKey.findFirst({
-    where: { id: keyId, projectId, surfaceId },
-    select: { id: true, orphaned: true },
-  });
-  if (!key) return { ok: false, error: "key not found in this project" };
-  // 코드에서 사라진 키는 export가 빼므로 이 값이 리포에 도달할 길이 없다.
-  if (key.orphaned) return { ok: false, error: "key is no longer in the code" };
+  /**
+   * ⚠️ **읽기·판정·저장·사건 기록이 한 트랜잭션이다** (logs-rework 완료조건 2). 전에는 트랜잭션
+   * 밖에서 읽고 무조건 upsert했는데, 그러면 사건의 `before`가 **내 저장 직전 값이 아닐 수 있다** —
+   * 이력이 거짓이 되는 부류다. 잠금 순서는 `Project` → `TranslationSurface`로 CI 적재·수동 Sync와
+   * 맞춘다(`lib/push/apply.ts`) — 순서가 갈리면 교착이 난다.
+   *
+   * ⚠️ **나중 저장이 최종 값이 되는 동작은 그대로다.** 클라이언트 버전 비교나 충돌 거부 UI를
+   * 넣지 않는다 — 같은 프로젝트의 저장이 짧게 직렬화되는 것이 그 대가다.
+   *
+   * ⚠️ **잠금 안에서 외부 API를 부르지 않는다.**
+   *
+   * ⚠️ **상한이 Prisma 기본값(5초)이면 안 된다** (code-review 2026-09-21). 같은 `Project` 행을
+   * `applyProtectedPush`·`addSurfacesFromSnapshot`·`createProject`가 **30초** 트랜잭션으로 쥔다 —
+   * 큰 소스의 CI 적재 중에 누른 Save가 잠금을 기다리다 P2028로 죽고, 번역자에게는 이유 없는 실패가
+   * 된다(커밋된 것은 없다). **기다렸다 성공하는 쪽이 옳고**, 상한은 잠금을 쥐는 쪽과 같은 값이다.
+   */
+  const outcome = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${projectId} AND "id" = ${surfaceId} FOR UPDATE`;
 
-  const locale = await prisma.locale.findUnique({
-    where: { projectId_surfaceId_code: { projectId, surfaceId, code: localeCode } },
-    select: { code: true, orphaned: true },
-  });
-  if (!locale) return { ok: false, error: "locale not found in this project" };
-  // 리포에서 사라진 로케일이면 이 값이 pull로 나갈 길이 없다. 저장을 받으면 `updatedAt`만 올라
-  // pull이 헛돌고, 번역자는 반영될 것이라 믿는다.
-  if (locale.orphaned) return { ok: false, error: "locale is no longer in the repo" };
+    // ⚠️ **인가가 준 projectId로 다시 좁힌다** (CLAUDE.md 테넌트 규칙). 멤버십을 확인했다는 것은
+    // "이 프로젝트에 들어올 자격"이지 "이 keyId가 그 프로젝트 것"이 아니다 — RLS가 없어
+    // 애플리케이션이 유일한 방어선이다.
+    const key = await tx.stringKey.findFirst({
+      where: { id: keyId, projectId, surfaceId },
+      select: { id: true, key: true, orphaned: true },
+    });
+    if (!key) return { ok: false, error: "key not found in this project" } as const;
+    // 코드에서 사라진 키는 export가 빼므로 이 값이 리포에 도달할 길이 없다.
+    if (key.orphaned) return { ok: false, error: "key is no longer in the code" } as const;
 
-  const existing = await prisma.translation.findUnique({
-    where: { keyId_localeCode: { keyId, localeCode }, projectId, surfaceId },
-    select: { value: true },
-  });
-  const plan = planSave(existing?.value ?? null, value);
-  if (plan.action === "noop") return { ok: true, value: existing?.value ?? "" };
+    const locale = await tx.locale.findUnique({
+      where: { projectId_surfaceId_code: { projectId, surfaceId, code: localeCode } },
+      select: { code: true, orphaned: true },
+    });
+    if (!locale) return { ok: false, error: "locale not found in this project" } as const;
+    // 리포에서 사라진 로케일이면 이 값이 pull로 나갈 길이 없다. 저장을 받으면 `updatedAt`만 올라
+    // pull이 헛돌고, 번역자는 반영될 것이라 믿는다.
+    if (locale.orphaned) return { ok: false, error: "locale is no longer in the repo" } as const;
 
-  // 사용자가 저장했으면 검토가 끝난 것이므로 needsReview를 내린다.
-  // 편집 토큰은 값이 실제로 바뀐 이 갈래에서만 새로 쓴다 — no-op은 위에서 끝났다. Publish가 캡처한 토큰과 달라야
-  // 전달 확인 CAS가 이 저장을 해제하지 않는다(같은 밀리초여도) (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
-  const pendingEditToken = randomUUID();
-  await prisma.translation.upsert({
-    where: { keyId_localeCode: { keyId, localeCode }, projectId, surfaceId },
-    create: { projectId, surfaceId, keyId, localeCode, value: plan.value, needsReview: false, updatedBy: userId, pendingEditToken },
-    update: { value: plan.value, needsReview: false, updatedBy: userId, pendingEditToken },
-  });
+    const existing = await tx.translation.findUnique({
+      where: { keyId_localeCode: { keyId, localeCode }, projectId, surfaceId },
+      select: { value: true },
+    });
+    const plan = planSave(existing?.value ?? null, value);
+    // ⚠️ **no-op은 번역·편집 토큰·사건 셋 다 안 쓴다** (완료조건 3).
+    if (plan.action === "noop") return { ok: true, value: existing?.value ?? "", changed: false } as const;
+
+    // 사용자가 저장했으면 검토가 끝난 것이므로 needsReview를 내린다.
+    // 편집 토큰은 값이 실제로 바뀐 이 갈래에서만 새로 쓴다 — no-op은 위에서 끝났다. Publish가 캡처한 토큰과 달라야
+    // 전달 확인 CAS가 이 저장을 해제하지 않는다(같은 밀리초여도) (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
+    const pendingEditToken = randomUUID();
+    await tx.translation.upsert({
+      where: { keyId_localeCode: { keyId, localeCode }, projectId, surfaceId },
+      create: { projectId, surfaceId, keyId, localeCode, value: plan.value, needsReview: false, updatedBy: userId, pendingEditToken },
+      update: { value: plan.value, needsReview: false, updatedBy: userId, pendingEditToken },
+    });
+    await recordEvent(tx, {
+      projectId,
+      subtype: "translation.saved",
+      actor: { kind: "USER", userId },
+      surfaceIds: [surfaceId],
+      payload: {
+        kind: "TRANSLATION",
+        surfaceSlug,
+        key: key.key,
+        locale: localeCode,
+        // 잠금 뒤에 읽은 값이다 — 그래서 `before`가 실제로 내가 덮은 값이다.
+        before: existing?.value ?? null,
+        after: plan.value,
+      },
+    });
+    return { ok: true, value: plan.value, changed: true } as const;
+  }, { maxWait: 10_000, timeout: 30_000 });
+
+  if (!outcome.ok) return outcome;
 
   /**
    * ⚠️ **이 행을 읽는 화면이 셋이다**: 번역 화면 · 로케일 화면의 진행률(6b-5) · Home의 진행률과 최근
@@ -101,7 +143,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
    */
   revalidatePath("/projects");
   revalidatePath("/projects/new");
-  return { ok: true, value: plan.value };
+  return { ok: true, value: outcome.value };
 }
 
 /**
@@ -129,11 +171,22 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
 
   const prisma = getPrisma();
   const access = await getProjectAccess(prisma, { userId, slug, permission: "translation:write" });
-  if (access.status !== "ok") return { status: "failed", error: access.status, delivery: "not-started", retryable: false };
+  if (access.status !== "ok") {
+    /**
+     * ⚠️ **거부 여섯 중 여기서 기록하는 것은 `archived` 하나다** (logs-rework spec §6.1 — T5d).
+     * 세션·멤버십 거부는 **payload가 주장하는 프로젝트에 아무것도 쓰지 않는다**: 인가되지 않은
+     * 호출이 남의 프로젝트 이력에 줄을 하나 세울 수 있으면 그 자체가 쓰기 경로다.
+     */
+    if (access.status === "archived") await recordPublishRefusal(prisma, access.projectId, userId, "archived");
+    return { status: "failed", error: access.status, delivery: "not-started", retryable: false };
+  }
 
   // 첫 적재 전에는 내보낼 것이 없다 — `triggerPull`이 저장되지 않은 포맷으로 `fail()`하는 대신
   // 여기서 문구가 있는 사유로 거부한다 (PRODUCT §7.5).
-  if (!(await isReady(prisma, access.projectId))) return { status: "failed", error: "not-ready", delivery: "not-started", retryable: false };
+  if (!(await isReady(prisma, access.projectId))) {
+    await recordPublishRefusal(prisma, access.projectId, userId, "not-ready");
+    return { status: "failed", error: "not-ready", delivery: "not-started", retryable: false };
+  }
 
   /**
    * ⚠️ **`triggerPull`을 직접 부르지 않는다** (7단계). `runSync`가 게이트(동시 실행·최소 간격)·
@@ -157,6 +210,29 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
   revalidatePath("/projects");
   revalidatePath("/projects/new");
   return result;
+}
+
+/**
+ * **다음 번에도 같은 이유로 거부될 것만 남긴다** (결정 7). `already-running`·`too-soon`은 한 번 더
+ * 누르면 사라지므로 이력에 없다 — `SyncRun`이 그 거부를 행으로 만들지 않는 기존 판정과 같다.
+ *
+ * ⚠️ **`scope: "project-wide"`다** — 거부는 소스를 고르기 전에 일어난다. 빈 배열을 `not-recorded`로
+ * 두면 "모른다"가 되는데, 여기는 정말로 프로젝트 전체의 일이다.
+ */
+async function recordPublishRefusal(
+  prisma: ReturnType<typeof getPrisma>,
+  projectId: string,
+  userId: string,
+  refusal: NotStartedReason,
+): Promise<void> {
+  await recordEvent(prisma, {
+    projectId,
+    subtype: "publish.notStarted",
+    actor: { kind: "USER", userId },
+    result: "notStarted",
+    scope: "project-wide",
+    payload: { kind: "PUBLISH", surfaceSlugs: [], refusal },
+  });
 }
 
 /**

@@ -55,3 +55,20 @@ export function planImageDelete(prev: string | null): string | null {
     return /^avatars\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.(png|jpeg|webp)$/.test(key) ? key : null;
   } catch { return null; }
 }
+
+export function projectImageObjectKey(projectId: string, ext: StoredImageType, nonce: string): string {
+  if (![projectId, nonce].every((part) => /^[A-Za-z0-9_-]+$/.test(part)) || !["png", "jpeg", "webp"].includes(ext)) {
+    throw new Error("Invalid image object key");
+  }
+  return `projects/${projectId}/${nonce}.${ext}`;
+}
+
+export function planProjectImageDelete(prev: string | null): string | null {
+  if (prev === null) return null;
+  try {
+    const url = new URL(prev);
+    if (url.protocol !== "https:" || url.username || url.password || url.port || !url.hostname.endsWith(".public.blob.vercel-storage.com")) return null;
+    const key = url.pathname.slice(1);
+    return /^projects\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.(png|jpeg|webp)$/.test(key) ? key : null;
+  } catch { return null; }
+}

@@ -128,7 +128,12 @@ it("never carries the parser detail, the token, or a source string", async () =>
   expect(body).not.toContain("fixture-token");
   expect(body).not.toContain("hello");
   expect(body).not.toMatch(/SyntaxError|Unexpected|position \d/i);
-  expect(Object.keys(JSON.parse(body)).sort()).toEqual(["code", "commitAt", "commitSha", "projectSlug", "surfaceSlug"]);
+  /**
+   * ⚠️ **`executionId`가 늘었다** (logs-rework design §3.3) — 정상 push와 같은 실행을 가리키는
+   * UUID 하나이고, 그래서 서버가 한 실행을 한 줄로 남긴다. **사람도 소스도 담지 않는다.**
+   */
+  expect(Object.keys(JSON.parse(body)).sort()).toEqual(["code", "commitAt", "commitSha", "executionId", "projectSlug", "surfaceSlug"]);
+  expect(JSON.parse(body).executionId).toMatch(/^[0-9a-f-]{36}$/);
 }, 60000);
 
 /**

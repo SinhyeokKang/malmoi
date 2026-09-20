@@ -246,6 +246,13 @@ export function createHarness(seed: Seed = {}) {
     ...r,
   }));
 
+  /**
+   * 활동 사건 (logs-rework). **트랜잭션 스냅샷에 들어간다** — 안 넣으면 "변경이 롤백되면 사건도
+   * 없다"가 이 하네스에서 원리적으로 검증되지 않는다 (`syncRuns`를 넣은 것과 같은 근거).
+   */
+  type EventRowSeed = Record<string, unknown> & { id: string; projectId: string; runToken: string | null; finishedAt: Date | null };
+  const projectEvents: EventRowSeed[] = [];
+
   // 저장마다 시각이 앞으로 간다 — pull의 1층 스킵 판정이 이 값 하나에 걸려 있다.
   let now = new Date("2026-09-03T00:00:00Z");
   const tick = () => {
@@ -728,6 +735,7 @@ export function createHarness(seed: Seed = {}) {
       // ⚠️ **빠뜨리면 롤백 테스트가 공허하다** — 트랜잭션 안에서 만든 `RUNNING` 행이 예외 뒤에도
       // 남아 있는데 아무도 그것을 보지 않게 된다 (7단계).
       syncRuns: snapshot(syncRuns),
+      projectEvents: snapshot(projectEvents),
     };
     try {
       return await fn(prisma);
@@ -739,6 +747,7 @@ export function createHarness(seed: Seed = {}) {
       restore(surfaces, saved.surfaces);
       restore(accounts, saved.accounts);
       restore(syncRuns, saved.syncRuns);
+      restore(projectEvents, saved.projectEvents);
       throw error;
     }
   };
@@ -895,9 +904,52 @@ export function createHarness(seed: Seed = {}) {
     },
   );
 
+  /**
+   * ⚠️ **`select`를 해석하지 않고 행을 통째로 낸다** — 이 하네스가 재는 것은 "사건이 남았나·롤백됐나"이고,
+   * 컬럼 투영과 조인 결과는 격리 Postgres가 본다 (`pnpm test:projects:postgres`).
+   */
+  const matchesEvent = (row: EventRowSeed, where: Record<string, unknown> | undefined): boolean => {
+    if (where === undefined) return true;
+    for (const [key, value] of Object.entries(where)) {
+      if (key === "runToken" && typeof value === "object" && value !== null && "startsWith" in value) {
+        const prefix = (value as { startsWith: string }).startsWith;
+        if (typeof row.runToken !== "string" || !row.runToken.startsWith(prefix)) return false;
+        continue;
+      }
+      if (row[key] !== value) return false;
+    }
+    return true;
+  };
+
+  const createEvent = vi.fn(async (args: { data: Record<string, unknown> }) => {
+    const row = { id: `evt-${projectEvents.length + 1}`, finishedAt: null, runToken: null, ...args.data } as EventRowSeed;
+    // 실 DB의 `@@unique([projectId, runToken])`을 흉내낸다 — 없으면 "재전달이 한 건"이 공허하다.
+    if (row.runToken !== null && projectEvents.some((r) => r.projectId === row.projectId && r.runToken === row.runToken)) {
+      throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+    }
+    projectEvents.push(row);
+    return row;
+  });
+
   const prisma = {
     $transaction,
     $executeRaw: executeRaw,
+    projectEvent: {
+      create: createEvent,
+      upsert: vi.fn(async (args: { where: { projectId_runToken: { projectId: string; runToken: string } }; create: Record<string, unknown> }) => {
+        const { projectId, runToken } = args.where.projectId_runToken;
+        const existing = projectEvents.find((r) => r.projectId === projectId && r.runToken === runToken);
+        if (existing !== undefined) return existing;
+        return createEvent({ data: args.create });
+      }),
+      findFirst: vi.fn(async (args: { where?: Record<string, unknown> }) => projectEvents.find((r) => matchesEvent(r, args.where)) ?? null),
+      findMany: vi.fn(async (args: { where?: Record<string, unknown> }) => projectEvents.filter((r) => matchesEvent(r, args.where))),
+      updateMany: vi.fn(async (args: { where?: Record<string, unknown>; data: Record<string, unknown> }) => {
+        const rows = projectEvents.filter((r) => matchesEvent(r, args.where));
+        for (const row of rows) Object.assign(row, args.data);
+        return { count: rows.length };
+      }),
+    },
     syncRun: {
       create: createSyncRun,
       findFirst: findFirstSyncRun,
@@ -977,6 +1029,9 @@ export function createHarness(seed: Seed = {}) {
       create: createSurface, update: updateSurface, updateMany: updateManySurfaces },
     projectInvitation: {
       findUnique: findInvitation,
+      /** 사건의 대상 라벨을 읽는 자리다 (`invitationEventLabel`) — **`projectId`로 함께 좁힌다.** */
+      findFirst: vi.fn(async (args: { where: { id: string; projectId: string } }) =>
+        invitations.find((row) => row.id === args.where.id && row.projectId === args.where.projectId) ?? null),
       findMany: findManyInvitations,
       create: createInvitationRow,
       updateMany: updateManyInvitations,
@@ -1063,16 +1118,24 @@ export function createHarness(seed: Seed = {}) {
       },
     },
     translation: {
+      /**
+       * ⚠️ **사본을 낸다, 살아 있는 행이 아니다** (2026-09-20). 참조를 내주면 그 뒤의 `upsert`가
+       * 호출부가 들고 있는 "이전 값"까지 바꾼다 — 실 Prisma는 분리된 객체를 주므로 **가짜만 그렇고**,
+       * 그 차이가 사건의 `before`를 저장 후 값으로 보이게 했다(실측). 가짜가 실제와 다르면 어느
+       * 방향이든 결함을 만든다.
+       */
       findUnique: async ({
         where,
       }: {
         where: { keyId_localeCode: { keyId: string; localeCode: string }; projectId?: string } & ScopedWhere;
-      }) =>
-        translations.find(
+      }) => {
+        const row = translations.find(
           (t) =>
             t.keyId === where.keyId_localeCode.keyId &&
             t.localeCode === where.keyId_localeCode.localeCode && matchesScope(t, where) && (where.projectId === undefined || t.projectId === where.projectId),
-        ) ?? null,
+        );
+        return row === undefined ? null : { ...row };
+      },
       upsert: async ({
         where,
         create,
@@ -1243,8 +1306,11 @@ export function createHarness(seed: Seed = {}) {
     translations,
     accounts,
     syncRuns,
+    projectEvents,
     spies: {
       findSurface, createSurface, updateSurface, updateManySurfaces,
+      /** 사건 INSERT 실패를 주입하는 자리 — "변경도 함께 롤백되나"를 재는 유일한 방법이다. */
+      createEvent,
       createSyncRun,
       findFirstSyncRun,
       findManySyncRuns,

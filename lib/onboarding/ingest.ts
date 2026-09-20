@@ -95,6 +95,9 @@ export function prepareFirstSnapshot(input: FirstSnapshotInput) {
   const { payload, duplicateKeys } = buildPushPayload({
     projectSlug: input.projectSlug,
     surfaceSlug: input.surfaceSlug,
+    // ⚠️ **내부 적재라 `null`이다** — 이 페이로드는 HTTP를 건너지 않고, 실행의 멱등 키는 lease
+    // 토큰에서 나온다(`runTokenFor({ kind: "import" })`). CI 식별자를 흉내내면 두 벌이 된다.
+    executionId: null,
     commitSha: input.headSha,
     commitAt: input.headCommittedAt,
     format: input.format,

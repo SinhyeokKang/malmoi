@@ -85,7 +85,7 @@ describe("getProjectAccess — 권한", () => {
     const { db } = memoryDb(seeded);
     await expect(
       getProjectAccess(db, { userId: "u1", slug: "acme", permission: "translation:write" }),
-    ).resolves.toEqual({ status: "ok", projectId: "p1", role: "EDITOR" });
+    ).resolves.toEqual({ status: "ok", projectId: "p1", role: "EDITOR", archived: false });
   });
 
   it("EDITOR의 member:manage는 forbidden이다 — not-found와 구별된다", async () => {
@@ -99,7 +99,7 @@ describe("getProjectAccess — 권한", () => {
     const { db } = memoryDb({ members: [{ projectId: "p1", userId: "u1", role: "OWNER" }] });
     await expect(
       getProjectAccess(db, { userId: "u1", slug: "acme", permission: "member:manage" }),
-    ).resolves.toEqual({ status: "ok", projectId: "p1", role: "OWNER" });
+    ).resolves.toEqual({ status: "ok", projectId: "p1", role: "OWNER", archived: false });
   });
 });
 
@@ -126,7 +126,7 @@ describe("getProjectAccess — 조회가 projectId로 좁혀진다", () => {
       slug: "acme",
       permission: "translation:write",
     });
-    expect(result).toEqual({ status: "ok", projectId: "authorized-id", role: "OWNER" });
+    expect(result).toEqual({ status: "ok", projectId: "authorized-id", role: "OWNER", archived: false });
   });
 });
 
@@ -152,7 +152,7 @@ describe("getProjectAccess — 보관", () => {
     });
     await expect(
       getProjectAccess(db, { userId: "u1", slug: "acme", permission: "project:settings" }),
-    ).resolves.toEqual({ status: "ok", projectId: "p1", role: "OWNER" });
+    ).resolves.toEqual({ status: "ok", projectId: "p1", role: "OWNER", archived: true });
   });
 
   it("조회가 `archivedAt`을 select한다 — 판정이 그 값을 볼 수 있어야 한다", async () => {

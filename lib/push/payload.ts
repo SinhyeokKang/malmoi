@@ -53,6 +53,15 @@ export function selectLocaleFiles(
 export type PushPayloadInput = {
   projectSlug: string;
   surfaceSlug: string;
+  /**
+   * 실행 식별자(UUID). ⚠️ **여기서 발급하지 않는다** — 호출부가 **파싱·조립 이전**에 한 번 만들어
+   * 넘긴다 (logs-rework design §3.3). 이 함수가 만들면 재전달마다 새 값이 나와 중복 방지가 무너진다.
+   *
+   * ⚠️ **`null`을 명시해야 한다, optional이 아니다.** 페이로드에서는 선택 필드지만 **생산자는
+   * 결정을 해야 한다** — optional로 두면 새 생산자가 조용히 빠뜨리고 컴파일러가 그것을 안 잡는다
+   * (POSTMORTEM 2026-08-31의 그 계약). HTTP를 건너지 않는 내부 적재가 `null`을 준다.
+   */
+  executionId: string | null;
   commitSha: string;
   /** `git show -s --format=%cI` — offset이 붙은 ISO 8601. 역행 판정의 근거다. */
   commitAt: string;
@@ -105,6 +114,7 @@ export function buildPushPayload(input: PushPayloadInput): BuiltPushPayload {
   const payload: PushPayloadType = {
     projectSlug: input.projectSlug,
     surfaceSlug: input.surfaceSlug,
+    ...(input.executionId === null ? {} : { executionId: input.executionId }),
     commitSha: input.commitSha,
     commitAt: input.commitAt,
     format: {

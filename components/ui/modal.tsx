@@ -42,6 +42,7 @@ export type OnboardingModalProps = {
   step?: Step;
   footer?: ReactNode;
   closeLabel?: string;
+  closeDisabled?: boolean;
   panelClassName?: string;
   transitionKey?: string;
   quiet?: boolean;
@@ -82,7 +83,7 @@ export function OnboardingModal({
   onNext,
   onBack,
   onClose,
-  children, footer, actions, closeLabel, panelClassName, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef,
+  children, footer, actions, closeLabel, closeDisabled = false, panelClassName, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef,
 }: OnboardingModalProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   /**
@@ -125,7 +126,7 @@ export function OnboardingModal({
   }, [announce]);
 
   return (
-    <Primitive.Root open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+    <Primitive.Root open={open} onOpenChange={(next) => { if (!next && !closeDisabled) onClose(); }}>
       <Primitive.Portal>
         {/*
           dim은 `bg-foreground/32` — 기존 `Dialog`의 `/40`과 값이 갈리는 것이 의도다(이 모달은 뒤의
@@ -186,6 +187,7 @@ export function OnboardingModal({
               type="button"
               variant="ghost"
               aria-label={closeLabel ?? m.newProject.modal.close}
+              disabled={closeDisabled}
               onClick={onClose}
               className="hover:bg-foreground/3 size-9 rounded-full px-0"
             >

@@ -1,5 +1,10 @@
 "use server";
 
+import { planProjectName } from "@/lib/projects/plan";
+import { projectImageObjectKey, planProjectImageDelete, IMAGE_MAX_BYTES, type UploadReject } from "@/lib/upload/image";
+import { normalizeImage } from "@/lib/upload/normalize";
+import { putImage, deleteImage } from "@/lib/upload/store";
+
 import { randomBytes } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
@@ -11,6 +16,7 @@ import type { AccessError } from "@/lib/auth/message";
 import { getProjectAccess } from "@/lib/auth/query";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
+import { recordEvent } from "@/lib/events/record";
 import { requireEnv } from "@/lib/env";
 import { planRepoConnect } from "@/lib/github-connect/connect-plan";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
@@ -182,14 +188,29 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
 
   // ⚠️ `where`가 **인가가 돌려준 projectId**다 — 클라이언트가 보낸 slug는 판정 입력일 뿐이다.
   try {
-    await prisma.project.update({
-      where: { id: projectId, repositoryId: project.repositoryId ?? null, repoOwner: project.repoOwner, repoName: project.repoName },
-      data: {
-        installationId: plan.installationId,
-        repositoryId: probe.repositoryId,
-        repoOwner: plan.repoOwner,
-        repoName: plan.repoName,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.project.update({
+        where: { id: projectId, repositoryId: project.repositoryId ?? null, repoOwner: project.repoOwner, repoName: project.repoName },
+        data: {
+          installationId: plan.installationId,
+          repositoryId: probe.repositoryId,
+          repoOwner: plan.repoOwner,
+          repoName: plan.repoName,
+        },
+      });
+      // ⚠️ **설치 id·리포 id를 싣지 않는다** — 자격증명 경계의 값이고, 사람이 읽을 사실은 "어느
+      // 리포에 붙였나"뿐이다.
+      await recordEvent(tx, {
+        projectId,
+        subtype: "settings.repositoryConnected",
+        actor: { kind: "USER", userId },
+        scope: "project-wide",
+        payload: {
+          kind: "SETTINGS",
+          field: "repository",
+          value: { before: `${project.repoOwner}/${project.repoName}`, after: `${plan.repoOwner}/${plan.repoName}` },
+        },
+      });
     });
   } catch (error) {
     // 동시에 들어온 재연결이 우리가 인가한 신원·주소를 바꿨다.
@@ -268,18 +289,24 @@ export async function updateRepositorySettings(raw: {
    */
   if (!isValidBranchName(baseBranch)) return { ok: false, error: "invalid-branch" };
 
-  // ⚠️ **인가가 준 projectId로 읽는다** — slug로 다시 찾으면 인가한 행과 조회한 행이 갈릴 수 있다.
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { baseBranch: true },
+  const outcome = await prisma.$transaction(async (tx) => {
+    // 잠금 뒤 읽어야 동시 변경의 before와 no-op 판정이 실제 저장 직전 상태를 가리킨다.
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    const project = await tx.project.findUnique({ where: { id: projectId }, select: { baseBranch: true } });
+    if (project === null) return { ok: false, error: "not-found" } as const;
+    if (baseBranch !== project.baseBranch) {
+      await tx.project.update({ where: { id: projectId }, data: { baseBranch } });
+      await recordEvent(tx, {
+        projectId,
+        subtype: "settings.baseBranchChanged",
+        actor: { kind: "USER", userId: session.userId },
+        scope: "project-wide",
+        payload: { kind: "SETTINGS", field: "baseBranch", value: { before: project.baseBranch, after: baseBranch } },
+      });
+    }
+    return { ok: true } as const;
   });
-  // 인가와 조회 사이에 지워진 경우다 — 존재 여부를 말하지 않는 같은 갈래로 접는다.
-  if (project === null) return { ok: false, error: "not-found" };
-
-  // **바뀐 것이 없으면 쓰지 않는다** — 빈 update는 `Project.updatedAt`만 올린다.
-  if (baseBranch !== project.baseBranch) {
-    await prisma.project.update({ where: { id: projectId }, data: { baseBranch } });
-  }
+  if (!outcome.ok) return outcome;
 
   revalidatePath(`/projects/${slug}/settings`);
   /**
@@ -287,5 +314,141 @@ export async function updateRepositorySettings(raw: {
    * 본문이 그 값을 읽는다. 전 주석("이 화면 하나다")이 그때 거짓이 됐다.
    */
   revalidatePath(`/projects/${slug}`, "layout");
+  return { ok: true };
+}
+
+/**
+ * 커밋 **뒤**에 도는 캐시 갱신 — 던져도 쓰기 결과를 바꾸지 않는다 (POSTMORTEM 2026-09-20).
+ * 원자성을 약속한 경계는 DB tx이고, 그 밖의 실패를 호출부로 흘리면 저장된 값을 화면이
+ * "실패"로 말한다(이미지는 사용자가 다시 눌러 두 번째 객체를 만든다).
+ */
+function revalidateAfterCommit(scope: string, projectId: string): void {
+  try { revalidatePath("/", "layout"); }
+  catch { console.error("Project metadata cache refresh failed after commit.", { scope, projectId }); }
+}
+
+export async function updateProjectName(raw: { slug: string; name: string }): Promise<
+  { ok: true; name: string } | { ok: false; error: "empty" | "too-long" | AccessError | "invalid input" }
+> {
+  const parsed = z.object({ slug: z.string().min(1), name: z.string() }).safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status !== "ok") return { ok: false, error: session.status === "none" ? "unauthorized" : "unavailable" };
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug: parsed.data.slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  const plan = planProjectName(parsed.data.name);
+  if (!plan.ok) return { ok: false, error: plan.reason };
+  // 보관 중에도 표시값은 되돌릴 수 있다. 적재와 달리 서버에서 보관 가드를 더하지 않는다(D7).
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${access.projectId} FOR UPDATE`;
+      const row = await tx.project.findUnique({ where: { id: access.projectId }, select: { name: true } });
+      if (!row) throw new Error("Project disappeared");
+      // 잠금 뒤에 읽은 값이라 `before`가 실제로 내가 덮은 이름이다.
+      if (row.name === plan.name) return;
+      await tx.project.update({ where: { id: access.projectId }, data: { name: plan.name } });
+      await recordEvent(tx, {
+        projectId: access.projectId,
+        subtype: "settings.nameChanged",
+        actor: { kind: "USER", userId: session.userId },
+        scope: "project-wide",
+        payload: { kind: "SETTINGS", field: "name", value: { before: row.name, after: plan.name } },
+      });
+    });
+  }
+  catch { console.error("Project name update failed.", { projectId: access.projectId }); return { ok: false, error: "unavailable" }; }
+  revalidateAfterCommit("name", access.projectId);
+  return { ok: true, name: plan.name };
+}
+
+async function cleanProjectImage(url: string | null, projectId: string): Promise<void> {
+  const key = planProjectImageDelete(url);
+  if (key === null || !key.startsWith(`projects/${projectId}/`)) return;
+  try { await deleteImage(key); }
+  catch { console.warn("Project image cleanup failed; an orphan may remain.", { projectId }); }
+}
+
+type ProjectImageResult = { ok: true } | { ok: false; reason: UploadReject | AccessError };
+
+export async function uploadProjectImage(form: FormData): Promise<ProjectImageResult> {
+  const slug = form.get("slug");
+  if (typeof slug !== "string" || !slug) return { ok: false, reason: "not-found" };
+  const session = await readSession();
+  if (session.status !== "ok") return { ok: false, reason: session.status === "none" ? "unauthorized" : "unavailable" };
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, reason: access.status };
+  const { projectId } = access;
+  const file = form.get("image");
+  if (!(file instanceof File)) return { ok: false, reason: "not-a-file" };
+  if (file.size > IMAGE_MAX_BYTES) return { ok: false, reason: "too-large" };
+  let uploaded: string | null = null;
+  let previous: string | null;
+  let stage = "normalization";
+  try {
+    const normalized = await normalizeImage(new Uint8Array(await file.arrayBuffer()));
+    if (!normalized.ok) return normalized;
+    stage = "blob-upload";
+    uploaded = await putImage(projectImageObjectKey(projectId, "webp", randomBytes(24).toString("base64url")), normalized.bytes, "webp");
+    const image = uploaded;
+    stage = "database-update";
+    // 네트워크 I/O는 잠금 밖, 이전 이미지 삭제는 커밋 뒤다. 보관은 표시값 편집을 막지 않는다(D7).
+    previous = await prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+      const row = await tx.project.findUnique({ where: { id: projectId }, select: { image: true } });
+      if (!row) throw new Error("Project disappeared");
+      await tx.project.update({ where: { id: projectId }, data: { image } });
+      /**
+       * ⚠️ **사실만 남긴다** — Blob URL은 키에 난수가 들어간 공개 주소이고, 이력에 굳으면 교체
+       * 뒤에도 옛 주소가 영구히 남는다. "바꿨다"만이 사람이 읽을 사실이다.
+       */
+      await recordEvent(tx, {
+        projectId,
+        subtype: "settings.imageChanged",
+        actor: { kind: "USER", userId: session.userId },
+        scope: "project-wide",
+        payload: { kind: "SETTINGS", field: "image", value: null },
+      });
+      return row.image;
+    });
+  } catch {
+    console.error("Project image upload failed.", { stage, projectId });
+    await cleanProjectImage(uploaded, projectId);
+    return { ok: false, reason: "unavailable" };
+  }
+  await cleanProjectImage(previous, projectId);
+  revalidateAfterCommit("image-upload", projectId);
+  return { ok: true };
+}
+
+export async function deleteProjectImage(slug: string): Promise<{ ok: true } | { ok: false; reason: AccessError }> {
+  const session = await readSession();
+  if (session.status !== "ok") return { ok: false, reason: session.status === "none" ? "unauthorized" : "unavailable" };
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, reason: access.status };
+  const { projectId } = access;
+  let previous: string | null;
+  // D7: 보관 중에도 제거는 허용한다. 화면의 비활성 정책과 서버 인가를 섞지 않는다.
+  try {
+    previous = await prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+      const row = await tx.project.findUnique({ where: { id: projectId }, select: { image: true } });
+      if (!row) throw new Error("Project disappeared");
+      if (row.image === null) return null;
+      await tx.project.update({ where: { id: projectId }, data: { image: null } });
+      await recordEvent(tx, {
+        projectId,
+        subtype: "settings.imageRemoved",
+        actor: { kind: "USER", userId: session.userId },
+        scope: "project-wide",
+        payload: { kind: "SETTINGS", field: "image", value: null },
+      });
+      return row.image;
+    });
+  } catch { console.error("Project image deletion failed.", { projectId }); return { ok: false, reason: "unavailable" }; }
+  await cleanProjectImage(previous, projectId);
+  revalidateAfterCommit("image-delete", projectId);
   return { ok: true };
 }

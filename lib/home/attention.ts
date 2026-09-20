@@ -88,7 +88,7 @@ function who(updatedBy: string | null, actors: ReadonlyMap<string, Actor>): stri
  * `null`인 행은 마이그레이션 이전 행뿐이고, 임의 위치를 주면 배포 직후 목록이 흔들린다.
  *
  * ⚠️ **`localeCompare`를 쓰지 않는다** — 로케일 설정에 따라 답이 달라져 같은 DB 상태가 다른 화면을
- * 낸다. `recentActivity`의 `compareEdit`·export 정렬과 같은 규칙이다 (ARCHITECTURE §1.1).
+ * 낸다. export 정렬과 같은 규칙이다 (ARCHITECTURE §1.1).
  */
 function compare(a: AttentionItem, b: AttentionItem): number {
   // 시각 없는 항목끼리는 아래 보조 키로 갈린다 — 뺄셈으로 접으면 `-Infinity - -Infinity`가 NaN이다.

@@ -21,6 +21,14 @@ export function planProjectReadiness(project: {
 }): ProjectReadiness {
   // 연결이 먼저다 — 더미 SHA가 있어도 설치가 없으면 pull이 돌 수 없다.
   if (project.installationId === null) return "setup";
-  if (!project.surfaces.some(surface => surface.archivedAt === null && surface.lastCommitSha !== null)) return "awaiting_first_sync";
+  if (!project.surfaces.some(surface => surface.archivedAt === null && planSurfaceReadiness({ installationId: project.installationId, surface }) === "ready")) return "awaiting_first_sync";
   return "ready";
+}
+
+export function planSurfaceReadiness(input: {
+  installationId: string | null;
+  surface: { lastCommitSha: string | null };
+}): ProjectReadiness {
+  if (input.installationId === null) return "setup";
+  return input.surface.lastCommitSha === null ? "awaiting_first_sync" : "ready";
 }

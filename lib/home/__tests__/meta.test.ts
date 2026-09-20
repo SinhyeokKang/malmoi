@@ -104,7 +104,7 @@ describe("metaRows — 상태가 행을 바꾼다", () => {
     expect(row(archived, "archived")).toEqual({ kind: "archived", at: at("2026-09-12T00:00:00Z") });
   });
 
-  /** 보관 시각이 없으면 그 행도 없다 — 시각 없는 사건을 세우지 않는다 (`recentActivity`와 같은 규칙). */
+  /** 보관 시각이 없으면 그 행도 없다 — 시각 없는 사건을 세우지 않는다(활동 스트림과 같은 규칙). */
   it("보관 상태여도 시각이 없으면 행을 만들지 않는다", () => {
     expect(kinds({ ...base, state: "archived", archivedAt: null })).not.toContain("archived");
   });

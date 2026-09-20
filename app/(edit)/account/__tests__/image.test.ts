@@ -159,3 +159,19 @@ it("시그니처만 있는 손상 파일은 Blob과 DB에 닿지 않는다", asy
   expect(mocks.putImage).not.toHaveBeenCalled();
   expect(mocks.getPrisma).not.toHaveBeenCalled();
 });
+/**
+ * ⚠️ **커밋 뒤에 도는 것은 성공 여부를 못 바꾼다** (POSTMORTEM 2026-09-20 🔁 — 프로젝트 쪽 셋이 이
+ * 파일을 베껴 같은 결함을 물려받았고, 전수 grep이 원본인 여기를 찾아냈다). 이전 객체 정리와 캐시
+ * 갱신은 tx가 **끝난 뒤** 도므로, 그 예외가 Action 밖으로 나가면 화면이 저장된 사진을 "실패"로 말하고
+ * 사용자가 다시 올려 **두 번째 Blob 객체**를 만든다.
+ */
+it.each(["upload", "delete"])("%s는 커밋 뒤 캐시 실패를 저장 실패로 보고하지 않는다", async kind => {
+  mocks.revalidatePath.mockImplementationOnce(() => { throw new Error("cache failure"); });
+  expect(await (kind === "upload" ? uploadProfileImage(form()) : deleteProfileImage())).toEqual({ ok: true });
+  expect(decodeUser(row)?.image ?? null).toBe(kind === "upload" ? newUrl : null);
+});
+it.each(["upload", "delete"])("%s는 커밋 뒤 이전 객체 정리가 실패해도 성공을 유지한다", async kind => {
+  mocks.deleteImage.mockRejectedValue(new Error("blob down"));
+  expect(await (kind === "upload" ? uploadProfileImage(form()) : deleteProfileImage())).toEqual({ ok: true });
+  expect(decodeUser(row)?.image ?? null).toBe(kind === "upload" ? newUrl : null);
+});

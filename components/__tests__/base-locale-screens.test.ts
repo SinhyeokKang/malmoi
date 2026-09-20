@@ -185,11 +185,12 @@ describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
 describe("설정 화면 — 기준 브랜치만 남았다 (6b-5)", () => {
   it("readiness 분기 밖이다 — revalidate가 저장 결과를 씻지 않는다", () => {
     const src = read(SETTINGS_PAGE);
-    const form = src.indexOf("<RepositoryForm");
+    const form = src.indexOf("<RepositoryCard");
+    expect(read("components/settings/repository-card.tsx")).toContain("<RepositoryForm");
     const readiness = src.indexOf("readiness === ");
     expect(form).toBeGreaterThan(-1);
     // 폼이 readiness를 처음 읽는 자리보다 **앞**이다 — 그 분기 안에 있을 수 없다.
-    expect(form).toBeLessThan(readiness);
+    expect(readiness).toBe(-1); // Import readiness is now scoped to source rows, not the form.
   });
 
   /**

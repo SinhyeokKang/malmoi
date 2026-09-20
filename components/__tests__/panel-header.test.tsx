@@ -155,7 +155,7 @@ describe("PanelBody — 같은 여백, 같은 등급", () => {
 });
 
 /**
- * **소비자 열둘이 여백을 판단하지 않는다** (완료 조건 1).
+ * **소비자 열하나이 여백을 판단하지 않는다** (완료 조건 1).
  *
  * ⚠️ **세는 명령을 실제로 돌려 본문과 맞췄다** — `grep -rln "PanelHeader"`는 더 많이 내는데
  * `project-archived.tsx`·`project-not-ready.tsx`가 *"`PanelHeader`가 없다"*는 **주석**으로 잡히고
@@ -172,9 +172,10 @@ describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
   const CONSUMERS = [
     "components/projects/project-list.tsx",
     "components/translations/header.tsx",
-    "components/onboarding/add-surface.tsx",
     "app/(edit)/projects/loading.tsx",
     "app/(edit)/projects/[slug]/loading.tsx",
+    // Logs도 골격을 갖는다 (logs-rework) — 머리 높이가 실물과 같아야 도착할 때 안 튄다.
+    "app/(edit)/projects/[slug]/logs/loading.tsx",
     "app/(edit)/projects/[slug]/page.tsx",
     "app/(edit)/projects/[slug]/settings/page.tsx",
     "app/(edit)/projects/[slug]/logs/page.tsx",
@@ -191,14 +192,20 @@ describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
    * 빠졌던 하나가 하필 그 변경의 소비자였다).
    *
    * 세는 명령 (2026-09-20에 다시 돌렸다 — 주석의 이름 인용을 빼고 센다):
-   * `grep -rn "<PanelHeader" components app | grep -v __tests__ | grep -v content-panel` → **12**
-   * `grep -rn "<PanelBody" components app | grep -v __tests__ | grep -v content-panel` → **15**
-   * 차이 셋이 아래 `BODY_ONLY`다.
+   * `grep -rn "<PanelHeader" components app | grep -v __tests__ | grep -v content-panel` → **13**
+   * `grep -rn "<PanelBody" components app | grep -v __tests__ | grep -v content-panel` → **17**
+   * 차이 넷이 아래 `BODY_ONLY`다.
    */
   const BODY_ONLY = [
     "components/project-archived.tsx",
     "components/project-not-ready.tsx",
     "app/(edit)/error.tsx",
+    /**
+     * ⚠️ **Logs 전용 오류 화면이다** (logs-rework 결정 16) — 조회 실패를 빈 목록으로 접지 않으려면
+     * 문구가 "이력이 없다"가 아니라 "이력을 못 읽었다"여야 하고, 그 문구는 세그먼트 공용 오류가
+     * 못 든다. 머리가 없는 이유는 필터가 서버 데이터를 받기 때문이다.
+     */
+    "app/(edit)/projects/[slug]/logs/error.tsx",
   ];
 
   /**
@@ -223,9 +230,9 @@ describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
     expect(uses("<PanelBody").sort()).toEqual([...CONSUMERS, ...BODY_ONLY].sort());
   });
 
-  it("소비자가 열둘 + 본문 전용 셋이다 — 수가 바뀌면 다시 센다", () => {
+  it("소비자가 열둘 + 본문 전용 넷이다 — 수가 바뀌면 다시 센다", () => {
     expect(CONSUMERS).toHaveLength(12);
-    expect(BODY_ONLY).toHaveLength(3);
+    expect(BODY_ONLY).toHaveLength(4);
   });
 
   it.each(BODY_ONLY)("%s도 여백·폭을 다시 정하지 않는다", (path) => {

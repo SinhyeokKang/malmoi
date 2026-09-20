@@ -27,7 +27,9 @@ import { relativeTime } from "@/lib/relative-time";
  *
  * ⚠️ **사전 차단이 서버 거부와 같은 함수를 지난다** — 마지막 오너 판정은 `planMemberChange`이고
  * 문구는 `accessErrorMessage("last-owner")`다. 사전 문구와 사후 Alert이 **같은 문자열**인 것이
- * 배선이 아니라 구조로 보장된다.
+ * 배선이 아니라 구조로 보장된다. ⚠️ **다만 색이 갈린다** (2026-09-20 사용자) — 사전 띠는 `muted`이고
+ * 사후 `Alert`만 붉다. 사전은 **오너가 하나이면 언제나 참인 상태**이고 사후는 **사람이 방금 시도한
+ * 것에 대한 답**이라, 같은 붉기로 두면 매번 서 있는 쪽이 진짜 거부의 무게를 깎는다.
  *
  * ⚠️ **이메일은 전원에게 마스킹한다** — 규칙을 역할로 나누지 않는다(OWNER도 같다). 라벨은 서버가
  * 목록 전체를 보고 만든다 (sec-audit 발견 4 · malmoi#18).
@@ -130,6 +132,10 @@ export function MemberList({
             /**
              * ⚠️ **한 행에 띠는 하나다.** 못 읽음 → 마지막 오너 순으로 문장을 잇는다.
              *
+             * ⚠️ **둘 다 `muted`다** (2026-09-20 사용자 — *"alert 계열 말고 그냥 일반 계열"*). 마지막
+             * 오너는 **막힌 예외가 아니라 상시 상태**다: 오너가 하나인 프로젝트에서 그 행은 언제나
+             * 참이라, 붉은 띠로 말하면 경고가 배경이 되고 진짜 거부(사후 `Alert`)와 구별되지 않는다.
+             *
              * ⚠️ **못 읽음은 EDITOR에게도 보인다** — 행이 `Couldn't be read`라고 말하는 이유를 설명하는
              * 문장이지 막힌 행동을 설명하는 문장이 아니다.
              */
@@ -153,8 +159,6 @@ export function MemberList({
                     </span>
                   }
                   band={sentences.length === 0 ? null : sentences.join(" ")}
-                  /* 막힌 동작의 사유는 붉게, 못 읽음만이면 조용히 (캔버스 `1c` ↔ `1d`). */
-                  bandTone={blocked ? "danger" : "muted"}
                   controls={(describedBy) =>
                     manage ? (
                       <>

@@ -66,7 +66,7 @@ export default async function InvitePage({
         acceptedAt: true,
         // 수락 판단에는 살아 있는 로케일 코드만 필요하다. 규모를 노출하는 숫자는 싣지 않는다.
         // `slug`는 **이미 멤버인 사람을 그 프로젝트로 보내는 데만** 쓴다 (2026-09-12).
-        project: { select: { name: true, slug: true, locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } } } },
+        project: { select: { name: true, image: true, slug: true, locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } } } },
       },
     });
     return row === null ? null : decodeInvitation(row);
@@ -162,6 +162,7 @@ export default async function InvitePage({
       {(view.kind === "accept" || view.kind === "wrong-account") && invitation != null && (
         <InviteProjectCard
           name={invitation.project.name}
+          image={invitation.project.image}
           role={m.projects.role[invitation.role]}
           // ⚠️ `Locale` 행은 표면마다 선다 — 표면이 둘이면 같은 코드가 둘 온다 (malmoi#48). 조회가 `code asc`라 순서는 남는다.
           locales={[...new Set(invitation.project.locales.map((locale) => locale.code))]}

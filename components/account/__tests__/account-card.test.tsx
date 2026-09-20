@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 
-import { AccountCard, AccountFacts, AccountRow, AccountRows } from "../account-section";
+import { PanelCard, PanelFacts, PanelRow, PanelRows } from "@/components/ui/panel-card";
 
 /**
  * `/account`의 카드 프리미티브 **자체**를 잰다 (2026-09-16 재검토 🟡B).
@@ -27,16 +27,16 @@ import { AccountCard, AccountFacts, AccountRow, AccountRows } from "../account-s
 
 it("구분자는 상태가 있을 때만 선다 — 없으면 이름만 남는다", async () => {
   const withStatus = await render(
-    <AccountRows>
-      <AccountRow glyph={<i />} name="GitHub" status="Connected" />
-    </AccountRows>,
+    <PanelRows>
+      <PanelRow glyph={<i />} name="GitHub" status="Connected" />
+    </PanelRows>,
   );
   expect(withStatus.container.textContent).toBe("GitHub — Connected");
 
   const withoutStatus = await render(
-    <AccountRows>
-      <AccountRow glyph={<i />} name="GitHub" />
-    </AccountRows>,
+    <PanelRows>
+      <PanelRow glyph={<i />} name="GitHub" />
+    </PanelRows>,
   );
   // 꼬리 대시가 남으면 `GitHub — `가 된다.
   expect(withoutStatus.container.textContent).toBe("GitHub");
@@ -44,10 +44,10 @@ it("구분자는 상태가 있을 때만 선다 — 없으면 이름만 남는�
 
 it("보조 줄은 없으면 그리지 않는다 — 빈 줄이 서면 행 높이가 갈린다", async () => {
   const { container } = await render(
-    <AccountRows>
-      <AccountRow glyph={<i />} name="GitHub" status="Connected" />
-      <AccountRow glyph={<i />} name="Google" status="Connected" detail="Next step." />
-    </AccountRows>,
+    <PanelRows>
+      <PanelRow glyph={<i />} name="GitHub" status="Connected" />
+      <PanelRow glyph={<i />} name="Google" status="Connected" detail="Next step." />
+    </PanelRows>,
   );
   const rows = [...container.querySelectorAll("li")];
   /**
@@ -66,11 +66,11 @@ it("보조 줄은 없으면 그리지 않는다 — 빈 줄이 서면 행 높이
  */
 it("카드가 자기 제목을 가리키는 접근 이름을 든다", async () => {
   const { container } = await render(
-    <AccountCard title="Sessions" subtitle="Close what's open right now.">
-      <AccountRows>
-        <AccountRow glyph={<i />} name="Sign out" status="this device" />
-      </AccountRows>
-    </AccountCard>,
+    <PanelCard title="Sessions" subtitle="Close what's open right now.">
+      <PanelRows>
+        <PanelRow glyph={<i />} name="Sign out" status="this device" />
+      </PanelRows>
+    </PanelCard>,
   );
   const section = container.querySelector("section");
   expect(section).not.toBeNull();
@@ -88,12 +88,12 @@ it("카드가 자기 제목을 가리키는 접근 이름을 든다", async () =
  */
 it("사실 블록을 든 카드에는 목록이 없다", async () => {
   const { container } = await render(
-    <AccountCard title="Profile">
-      <AccountFacts>
+    <PanelCard title="Profile">
+      <PanelFacts>
         <span>Avatar</span>
         <div>[avatar]</div>
-      </AccountFacts>
-    </AccountCard>,
+      </PanelFacts>
+    </PanelCard>,
   );
   expect(container.querySelectorAll("ul")).toHaveLength(0);
   expect(container.querySelectorAll("li")).toHaveLength(0);

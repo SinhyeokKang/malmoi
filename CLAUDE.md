@@ -38,6 +38,12 @@
 
 **불변식 열하나의 정본은 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §0**이다.
 
+- **활동 사건도 이 축 위에 선다** (2026-09-20, `ProjectEvent` — ARCHITECTURE §5.7 · DESIGN §6.68). 상태 변경은
+  **변경과 같은 트랜잭션**에서 확정되고(어느 쪽이 실패해도 둘 다 롤백된다), 외부 실행은 **서버가
+  관측한 종료만** 남긴다. ⚠️ **사건은 지우지 않고 보존 기간도 만들지 않는다** — 불변식 3의 확장이다.
+  ⚠️ **번역 저장이 `Project`→`TranslationSurface` 잠금 안으로 들어갔다** — 사건의 전후 값이 잠금 뒤
+  읽은 값이어야 이력이 참이다. 나중 저장이 최종 값이 되는 동작은 그대로다.
+
 ## 작업 원칙
 
 - **가정을 명시**: 해석이 여러 개면 조용히 하나 고르지 말고 선택지를 제시. 불확실하면 물어라.
@@ -62,7 +68,7 @@
 | 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**(서명 URL을 안 쓰는 대신 열거를 막고, 교체마다 URL이 바뀌어 CDN 무효화가 필요 없다). 소비자는 프로필 사진 하나로 **확정**이다 | `@vercel/blob` 2.8.0 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(EXIF 방향 적용 후 192px 이내 WebP 재인코딩, 메타데이터는 그때 사라진다). ⚠️ **버전을 Next의 전이 의존성과 같은 값에 고정한다** — 갈리면 네이티브 바이너리가 두 벌 깔린다. ⚠️ **파일 크기 상한이 디코더 메모리를 묶지 못해** `limitInputPixels`가 따로 선다 | `sharp` 0.35.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 23개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select 여섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 24개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select 여섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
 | 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 컴포넌트다**(`app/layout.tsx`의 `<Toaster>`). ⚠️ **`theme="light"`가 필수다** — 스스로 테마를 감지하므로 안 주면 OS 다크에서 살아난다. ⚠️ **`classNames`로 우리 토큰에 묶는다** — 안 묶으면 자기 배경·테두리·radius를 쓴다 | `sonner` 2.0.8 |
 | 패널 리사이즈 | `resizable.tsx` 하나가 쓴다 — 셸 LNB와 새 프로젝트 모달 ②. ⚠️ **`minSize`·`defaultSize`·`maxSize`가 % 전용이라** 셸은 `ResizeObserver`로 재고 px→%로 환산한다(`lib/shell/panel-size.ts`). ⚠️ **커서는 라이브러리가 `document.head`에 꽂는 `<style>`이 건다** — 핸들에 `cursor-*`를 쓰면 안 먹는다. ⚠️ **jsdom에서는 이 라이브러리가 화면의 모든 클릭을 삼킨다** — document 레벨 `pointerdown`이 핸들 rect ± 마진으로 히트 판정하는데 jsdom은 모든 rect가 `0×0 @ (0,0)`이다. `vitest.setup.ts`가 핸들 rect만 화면 밖으로 밀어 막는다(실 브라우저에는 없는 조건이라 프로덕션 코드를 비틀지 않는다). 시각 규칙은 DESIGN §6.56 | `react-resizable-panels` 2.1.9 |
 | 아이콘·폰트 | `lucide-react` / **Pretendard Variable 동적 서브셋, 자사 호스트** | 1.37.0 / `pretendard` 1.3.9 |
@@ -143,7 +149,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
 | 자격증명 cutover 마무리 | `pnpm credentials:finalize:dev` / `credentials:finalize:prod` — 봉투 재검증 + 마이그레이션 SQL 바이트 대조 + `_prisma_migrations` 체크섬 재계산. 기본 **verify-only**이고 `--apply`를 줘야 `prisma migrate deploy`까지 간다. ⚠️ **`db:deploy` 말고 prod 마이그레이션 상태를 움직일 수 있는 명령이 이것 하나 더 있다** — 실패하면 트래픽을 막은 채로 둔다 |
 | 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
-| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. ⚠️ **미전달 술어가 공유 조각 하나(`pendingWhere`) + 손 사본 둘(셀 `pending` 투영 · 목록 집계 raw SQL)이라** "같은 행을 세나"를 재는 유일한 자리다. 표면 backfill·복합 FK·A/B 격리·Add surface 원자성·실제 Project 생성, **편집 토큰의 조건부 쓰기**(적재 정리·Publish CAS·backfill)와 **동시 CI push의 결과 표시**도 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`를 건드렸으면 손으로 돌린다 |
+| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. ⚠️ **미전달 술어가 공유 조각 하나(`pendingWhere`) + 손 사본 둘(셀 `pending` 투영 · 목록 집계 raw SQL)이라** "같은 행을 세나"를 재는 유일한 자리다. 표면 backfill·복합 FK·A/B 격리·Add surface 원자성·실제 Project 생성, **편집 토큰의 조건부 쓰기**(적재 정리·Publish CAS·backfill)와 **동시 CI push의 결과 표시**도 검사하므로 `lib/keys/**`·`lib/events/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`를 건드렸으면 손으로 돌린다 |
 
 ### 새 머신 셋업 (체크아웃 3개 산출물이 전부 gitignore다)
 

@@ -66,6 +66,13 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 | base branch **변경** | O | X |
 | 기준 로케일 **변경** | O | X |
 | 멤버 관리·프로젝트 **보관** | O | X |
+| **보관된 프로젝트의 이력 읽기** | O | O |
+
+⚠️ **마지막 칸이 보관의 예외다** (2026-09-20, logs-rework). 보관은 `project:settings`를 뺀 모든
+permission을 거부하는데, 그러면 **보관 사건과 그 직전 기록을 보려고 복원해야 하는 순환**이 생긴다.
+`/logs` 하나만 읽기로 통과시키고 **쓰기는 그대로 막는다** — 정책이 `planProjectAccess`의 인자이고
+기본이 거부라, 정책을 안 넘기는 Server Action은 새로 생겨도 막힌다. **읽기 허용은 쓰기 허용이
+아니다.** 제거된 멤버는 과거 참여자여도 `not-found`다.
 
 **역할 둘 아래에 permission은 셋이다** (`lib/auth/permission.ts`의 `Permission`) — 표의 칸이 그중
 하나로 내려간다. `translation:write`(OWNER·EDITOR — 조회·수정·Publish) · `project:settings`(OWNER —
@@ -127,6 +134,8 @@ ARCHITECTURE §0 불변식 2와 정면 충돌한다.
 ## 4. 범위
 
 ### 4.1 만드는 것
+
+- **프로젝트 표시 정보** — OWNER가 설정에서 이름(최대 200자)과 썸네일(PNG/JPEG 3MB)을 수정한다. 주소·리포는 이름 변경으로 움직이지 않는다. 이미지는 설정·목록·Home·초대에 반영된다.
 
 - **테넌트 인증·인가** — User·Account·ProjectMember·초대, DB 세션
 - **GitHub 설치 연결** — OAuth 계정 ↔ installation ↔ repository 3중 검증
@@ -321,11 +330,19 @@ resolved path가 겹치면 GitHub 쓰기 전에 전체 실패한다. 값 병합�
 기본 표면은 `Project.defaultSurfaceId`로 저장한다. 기존 translations/locales URL은 그 표면으로 redirect한다.
 sync 브랜치는 계속 `malmoi-i18n/sync-<project-slug>`다. 기존 여러 Project를 자동 통합하지 않는다.
 
-**단계 B가 OWNER의 Settings → Add surface를 열었다** (`/projects/:slug/surfaces/new`). 기존 리포의 후보 하나 또는 수동 경로를
-골라 표면 생성과 첫 적재를 원자적으로 끝낸다. 다른 표면은 같은 키·언어 코드를 가질 수 있지만 출력 경로는
-겹칠 수 없다. 실패하면 기존 입력을 유지하고, 성공하면 기존 PUSH_TOKEN을 쓰는 추가 workflow step을 준다.
+**OWNER의 Settings → Add sources 모달**에서 후보 여럿 또는 수동 경로를 선택한다. 기존 소스는 체크된
+채 잠기고 새 항목만 요청한다. 요청 전체의 읽기 예산은 200파일·10MB(파일당 2MB)이고, 모든 표면의
+생성·첫 적재는 한 트랜잭션으로 전부 성공하거나 롤백한다. 포맷 내 부분 적재 실패는 성공+경고다.
+확정 거부 뒤 선택을 보존하고, 성공 뒤 기존 PUSH_TOKEN을 사용하는 workflow 반영 안내를 남긴다.
+다른 표면은 같은 키·언어 코드를 가질 수 있지만 출력 경로는 겹칠 수 없다.
 신규 생성에서는 후보 여럿을 체크해 한 번에 추가한다. 기본 표면은 체크된 후보 중 탐지 순서가 가장 앞선 표면이다.
 표면 보관·복원은 다음 라운드다.
+
+설정은 General·Repository·Translation sources·CI integration·Archive 다섯 카드다. 소스별 상태는
+미적재·적재 중·최초 실패·적재 이후 실패·적재 완료 다섯이며 첫 적재만 소스별 재시도한다. 집계는
+orphaned를 제외한 활성 키·언어 수다. 워크플로의 SHA 없는 소스 안내는 CI 등록 여부를 증명하지 않는다.
+보관 시 Restore를 첫 카드로 옮기고 나머지 UI 편집을 막는다. 이름·이미지의 서버 Action은 메타데이터여서
+보관 후에도 허용한다. 번역을 덮는 세 동작의 보관 거부와 섞지 않는다.
 
 ### 7.2 로케일 소유권 — 리포가 정본이다
 
@@ -465,9 +482,9 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /projects/:slug/locales        → **기본 표면으로 redirect** (옛 URL 껍데기)
 /projects/:slug/surfaces/:surface/translations  ✅ 번역             ← multi-surface B
 /projects/:slug/surfaces/:surface/locales       ✅ 로케일 목록 + 기준 로케일 지정 ← 6b-5 → multi-surface B
-/projects/:slug/surfaces/new   ✅ Add surface (`project:settings`) ← multi-surface B
+/projects/:slug/surfaces/new   ✅ 권한 검사 후 /settings?add=sources redirect (OAuth 복귀 포함)
 /projects/:slug/members        멤버
-/projects/:slug/logs           ✅ 변경 이력                        ← 7단계 (SyncRun 소비자)
+/projects/:slug/logs           ✅ 프로젝트 전체 활동 이력 (?event= 상세)  ← logs-rework (ProjectEvent 소비자)
 /projects/:slug/settings       나머지 프로젝트 설정 전부
 ```
 
@@ -540,10 +557,21 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
      만들면 그것이 곧 미발송 술어의 넷째 벌이고, `pnpm test:projects:postgres`가 그것을 잡는다.
    - `Home`이 소유하는 나머지는 그대로다 — "한 화면에 모아야만 보이는 것": 지금 손봐야 할 항목과
      최근 로그.
-3. **`logs`의 데이터 원천은 7단계의 `SyncRun`이다** (ARCHITECTURE §5). ✅ **그래서 `Home`이 그 부분집합으로 먼저
-   섰다** (6b-6) — 지금 재료로 낼 수 있는 것은 `Translation.updatedAt`+`updatedBy`(최근 편집) ·
-   `TranslationSurface.lastCommitAt`(CI push) · `lastPublishedAt`+`lastPrUrl`(마지막 Publish 1건)이고, 그것은
-   "변경 이력"이 아니라 그 부분집합이다. `Home`은 그 부분집합으로 시작하고 `SyncRun`이 서면 늘린다.
+3. ~~**`logs`의 데이터 원천은 7단계의 `SyncRun`이다**~~ — **2026-09-20에 뒤집혔다** (logs-rework).
+   지우지 않고 남기는 이유는 무엇이 왜 바뀌었는지가 이 결정의 내용이기 때문이다.
+   - **옛 판정**: 낼 수 있는 재료가 `SyncRun`(Publish 실행)뿐이라 `logs`가 그것만 보고, `Home`은
+     `Translation.updatedAt` · `lastCommitAt` · `lastPublishedAt` 셋을 **그때그때 조합한** 부분집합을
+     먼저 세운다. "`SyncRun`이 서면 늘린다"가 그 다음 걸음이었다.
+   - **왜 뒤집었나**: 그 조합은 **사건을 보존하지 못한다.** 같은 셀을 세 번 고치면 한 줄이고, 적재
+     실패가 둘이면 컬럼이 하나라 하나만 남으며, 7일 창은 조용한 프로젝트의 카드를 통째로 비운다.
+     그리고 표 다섯 열은 Publish에만 맞아서, 종류가 여섯이면 절반이 영원히 빈 칸이 된다 —
+     **빈 칸은 "값이 없다"와 "이 종류엔 해당 없다"를 구별하지 못한다.**
+   - **지금 판정**: 원천은 **`ProjectEvent` 하나**다 (ARCHITECTURE §5.7). `logs`가 종류 여섯을 한
+     스트림으로 보이고, **`Home`은 같은 조회의 최신 여섯**이다 — 같은 참조·같은 상세·같은 권한
+     판정이고, 조합 쿼리와 7일 창은 소스에서 사라졌다. 옛 `SyncRun`은 지우지 않고 **참조로 잇는다**:
+     Publish의 결과·파일 수·PR은 계속 그 테이블이 정본이다.
+   - **대가**: 수집 시작 이전은 복원되지 않는다. 백필 대상은 보존된 Publish 실행뿐이고, 그 경계에
+     화면이 선을 하나 긋는다(개시 시각을 모르면 **선을 아예 안 그린다** — 추정값을 만들지 않는다).
 4. ✅ **기준 로케일은 `locales`가 소유한다** (2026-09-09, 6b-5) — 로케일 목록과 base 지정이 한
    화면에 있어야 한다. 6b-3이 그것을 `settings`의 Repository 카드에 넣었고 **하루 뒤 6b-5가
    옮겼다.** 옮긴 이유: 그때까지 로케일은 **번역 표의 열로만 존재해** orphaned 로케일이 왜 그렇게
@@ -696,7 +724,7 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 대상 리포 CI가 red가 되는 것은 의도된 신호다(워크플로를 떼라는 뜻).
 
 **Server Action의 경계도 같은 선이다** (2026-09-17): **번역을 바꾸는 쓰기는 보관 중
-거부**(`runFirstIngest`·`addSurface`·`runRepositoryImport` — 전부 `applyPush`로 번역을 덮는다), **설정 쓰기는
+거부**(`runFirstIngest`·`addSurfaces`·`runRepositoryImport` — 전부 `applyPush`로 번역을 덮는다), **설정 쓰기는
 허용**(`updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·`rotatePushToken` — 번역을 안
 바꾸고, 되돌릴 때 필요한 것들이다). 판정은 "이 Action이 `Translation` 행을 쓰는가"다.
 

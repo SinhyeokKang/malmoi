@@ -141,6 +141,7 @@ function payloadFromFiles(scanRefs: Parameters<typeof buildPushPayload>[0]["scan
   return buildPushPayload({
     projectSlug: "acme",
     surfaceSlug: "default",
+    executionId: "11111111-2222-4333-8444-555555555555",
     commitSha: "a".repeat(40),
     commitAt: "2026-09-03T00:00:00+09:00",
     format: format!,
@@ -494,6 +495,7 @@ describe("push 흐름 — nestedByPath가 Project까지 간다", () => {
     const payload = buildPushPayload({
       projectSlug: "acme",
       surfaceSlug: "default",
+      executionId: "11111111-2222-4333-8444-555555555555",
       commitSha: "b".repeat(40),
       commitAt: "2026-09-04T00:00:00+09:00",
       format: format!,

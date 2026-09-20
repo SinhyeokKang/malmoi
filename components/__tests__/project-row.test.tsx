@@ -29,6 +29,7 @@ import { m } from "@/lib/i18n";
  */
 
 const BASE: ProjectListRow = {
+  image: null,
   slug: "acme", reviewSurfaceSlug: "default", unsentSurfaceSlug: "default", repoAheadFrom: "s",
   name: "Acme",
   role: "OWNER",
@@ -145,4 +146,38 @@ it.each(["Acme", "말모이", "Example"])("%s 프로젝트의 목록과 상세 �
   expect(homeTile).not.toBeNull();
   const visualClasses = (tile: HTMLElement | null | undefined) => [...(tile?.classList ?? [])].filter((c) => c.startsWith("bg-") || c.startsWith("rounded")).sort();
   expect(visualClasses(homeTile)).toEqual(visualClasses(listTile));
+});
+
+it.each(["/saved.webp", "/replacement.webp", null])("목록·Home·초대에 최신 프로젝트 이미지 %s를 전달한다", async image => {
+  const { InviteProjectCard } = await import("@/components/invite/project-card");
+  const list = await draw({ image });
+  const home = await render(<HomeActions slug="acme"><HomeTitle archived={false} image={image}>Acme</HomeTitle></HomeActions>);
+  const invite = await render(<InviteProjectCard name="Acme" role="Editor" locales={[]} image={image} />);
+  for (const node of [list, home.container, invite.container]) {
+    expect(node.querySelector("img")?.getAttribute("src") ?? null).toBe(image);
+    expect(node.querySelector("svg.lucide-box") !== null).toBe(image === null);
+  }
+});
+
+/**
+ * **죽은 이미지 URL은 색 타일로 떨어진다** (malmoi#50 — `Avatar`가 이미 그렇게 한다).
+ *
+ * ⚠️ `Project.image`가 가리키는 Blob이 사라지는 길이 여럿이다 — 스토어 교체·환경 간 행 이동·업로드 tx가
+ * 커밋됐는데 드라이버가 오류로 보고해 정리가 방금 쓴 객체를 지운 경우. 폴백이 없으면 `image`가 truthy라
+ * `toneFill` 분기에 못 들어가 **빈 테두리 상자**가 남는다.
+ */
+it.each(["list", "home", "invite"])("%s의 이미지 로드 실패는 이름 색 Box 타일로 떨어진다", async where => {
+  const { InviteProjectCard } = await import("@/components/invite/project-card");
+  const { toneFill } = await import("@/components/ui/tone");
+  const { act } = await import("react");
+  const src = "https://store.public.blob.vercel-storage.com/projects/p/gone.webp";
+  const container = where === "list" ? await draw({ image: src })
+    : where === "home" ? (await render(<HomeActions slug="acme"><HomeTitle archived={false} image={src}>Acme</HomeTitle></HomeActions>)).container
+    : (await render(<InviteProjectCard name="Acme" role="Editor" locales={[]} image={src} />)).container;
+  const image = container.querySelector("img")!;
+  expect(image).not.toBeNull();
+  await act(async () => { image.dispatchEvent(new Event("error")); });
+  expect(container.querySelector("img")).toBeNull();
+  const tile = container.querySelector("svg.lucide-box")?.parentElement;
+  expect(tile?.classList.contains(toneFill("Acme"))).toBe(true);
 });

@@ -1,4 +1,7 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useId, type ReactNode } from "react";
+import { CircleAlert } from "lucide-react";
 
 /**
  * label + help + error를 한 형으로 든다 (DESIGN §6.4).
@@ -32,6 +35,12 @@ export function FormGroup({
   optional?: boolean;
   children: ReactNode;
 }) {
+  /**
+   * 오류 문구의 id — **소비자가 `aria-describedby`로 잇는다**(DESIGN §6.4). `htmlFor`가 있으면 그것에서
+   * 파생해 호출부가 문자열을 그대로 적을 수 있고, 없을 때만 생성한다.
+   */
+  const generatedId = useId();
+  const id = htmlFor ? `${htmlFor}-error` : `${generatedId}-error`;
   return (
     <div className="space-y-2">
       <label id={labelId} htmlFor={htmlFor} className="block text-sm font-medium">
@@ -40,7 +49,7 @@ export function FormGroup({
       </label>
       {children}
       {error !== undefined ? (
-        <p className="text-destructive text-xs leading-[1.7]">{error}</p>
+        <p id={id} role="alert" className="text-destructive flex items-start gap-1.5 text-xs leading-[1.7]"><CircleAlert className="mt-1 size-3.5 shrink-0" aria-hidden />{error}</p>
       ) : help !== undefined ? (
         <p className="text-muted-foreground text-xs leading-[1.7]">{help}</p>
       ) : null}

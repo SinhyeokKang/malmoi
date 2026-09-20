@@ -6,6 +6,7 @@ import { getPrisma } from "@/lib/db";
 
 import { rejectTarget } from "./landing";
 
+import type { ArchivedPolicy } from "./access";
 import type { Permission } from "./permission";
 import { getProjectAccess } from "./query";
 import { readSession } from "./read-session";
@@ -32,6 +33,11 @@ export async function requireUser(): Promise<{ userId: string }> {
 export async function requireProjectAccess(input: {
   slug: string;
   permission: Permission;
+  /**
+   * 보관된 프로젝트를 **읽기로** 통과시킬지. 기본은 `block`이라 정책을 안 주는 화면은 그대로
+   * `ProjectArchived`를 그린다 — 지금 `read`를 주는 곳은 Logs 하나다 (logs-rework).
+   */
+  archivedPolicy?: ArchivedPolicy;
 }): Promise<{ projectId: string; role: "OWNER" | "EDITOR"; userId: string; archived: boolean }> {
   const { userId } = await requireUser();
   const access = await getProjectAccess(getPrisma(), { userId, ...input });
@@ -52,5 +58,6 @@ export async function requireProjectAccess(input: {
   if (access.status !== "ok") redirect(`/projects?e=${access.status}`);
   // `userId`도 돌려준다 — 호출부가 세션을 다시 읽으면 DB 왕복이 하나 늘고, 무엇보다 **자기 행이
   // 아닌 것을 조회하는 실수**가 열린다 (설정 화면이 `findFirst({ provider })`로 남의 계정을 집을 뻔했다).
-  return { projectId: access.projectId, role: access.role, userId, archived: false };
+  // ⚠️ **`archived`가 여기서도 참일 수 있다** — `read` 정책으로 통과한 경우다. 화면이 배너를 그린다.
+  return { projectId: access.projectId, role: access.role, userId, archived: access.archived };
 }

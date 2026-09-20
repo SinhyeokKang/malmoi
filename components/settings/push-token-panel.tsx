@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCcw } from "lucide-react";
+import { KeyRound, RotateCcw } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { rotatePushToken } from "@/app/(edit)/projects/actions";
@@ -10,7 +10,7 @@ import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 
-import { CopyButton } from "./copy-button";
+import { CopyButton } from "@/components/onboarding/copy-button";
 
 /**
  * push 토큰 재발급 (PRODUCT §7.8). **원문은 이 반환값에만 있다** — 저장되는 것은 해시뿐이다.
@@ -21,17 +21,23 @@ import { CopyButton } from "./copy-button";
  * ⚠️ **이 블록은 readiness와 무관하다** — 조건부 분기가 없으므로 `revalidatePath`가 결과를 씻지 않는다
  * (POSTMORTEM 2026-09-07).
  */
-export function PushTokenPanel({ slug }: { slug: string }) {
+export function PushTokenPanel({ slug, disabled = false }: { slug: string; disabled?: boolean }) {
   const [pending, startTransition] = useTransition();
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <div className="space-y-2">
-      <p className="text-muted-foreground text-xs">
-        {m.settings.token.description(<span className="text-mono">PUSH_TOKEN</span>)}
-      </p>
+    <>
+    <div className="space-y-2 px-4 py-[13px]">
+      <div className="flex items-center gap-3 @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start">
+        <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded"><KeyRound className="size-4" aria-hidden /></span>
+        <div className="min-w-0 flex-1 space-y-[3px]"><p className="text-base font-medium">{m.settings.token.title}</p><p className="text-muted-foreground text-xs">
+          {m.settings.token.description(<span className="text-mono">PUSH_TOKEN</span>)}
+        </p></div>
       <Button
+        className="[&_.animate-spin]:size-3.5 @max-[640px]:col-start-2 @max-[640px]:justify-self-start"
+        aria-busy={pending}
+        disabled={disabled}
         loading={pending}
         onClick={() => {
           setToken(null);
@@ -43,10 +49,10 @@ export function PushTokenPanel({ slug }: { slug: string }) {
           });
         }}
       >
-        <RotateCcw aria-hidden />
+        {!pending && <RotateCcw aria-hidden />}
         {m.settings.token.rotate}
       </Button>
-      {error !== null && <Alert variant="danger">{messageFor(error)}</Alert>}
+      </div>
       {token !== null && (
         <div className="space-y-1">
           {/*
@@ -64,6 +70,8 @@ export function PushTokenPanel({ slug }: { slug: string }) {
         </div>
       )}
     </div>
+    {error !== null && <Alert inset variant="danger">{messageFor(error)}</Alert>}
+    </>
   );
 }
 

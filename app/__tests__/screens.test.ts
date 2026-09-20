@@ -42,11 +42,9 @@ describe("설정 화면 — revalidate가 결과를 씻지 않는다 (POSTMORTEM
    * `awaiting_first_sync` → `ready`로 바뀐다 — 그 조건부 분기 **안**에 결과 컴포넌트가 있으면 성공이
    * 자기 표시기를 언마운트하고, `failed > 0`의 "M건을 읽지 못했다"가 아무에게도 닿지 않는다(불변식 9).
    */
-  it("`FirstIngestRetry`가 readiness 분기 밖이다 — 버튼만 `canRun`으로 감춘다", () => {
-    expect(src).toMatch(/<FirstIngestRetry/);
-    expect(src).toMatch(/canRun=\{/);
-    // 분기 안에 있으면 `&&` 뒤에 붙는다 — 그 형태를 금지한다.
-    expect(src).not.toMatch(/&&\s*<FirstIngestRetry/);
+  it("소스 카드가 적재 상태와 무관하게 유지된다 — 결과 유지 DOM 검증은 settings-sources가 담당한다", () => {
+    expect(src).toMatch(/<SourcesCard/);
+    expect(src).not.toMatch(/&&\s*<SourcesCard/);
   });
 
   /**
@@ -232,8 +230,36 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
     "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx",
     "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
-    "app/(edit)/projects/[slug]/logs/page.tsx",
   ];
+
+  /**
+   * ⚠️ **Logs가 2026-09-20에 이 목록에서 빠졌다** (logs-rework 완료조건 11). 보관 사건과 그 직전
+   * 기록을 확인하려면 **복원해야 하는 순환**이었다 — 전면 교체 대신 `archivedPolicy: "read"`로
+   * 통과시키고 화면이 배너를 그린다. **읽기 허용이 쓰기 허용이 아니라는 것**은 `access.test.ts`가
+   * 갈래마다 세고, 여기서는 **그 정책을 실제로 넘기는 화면이 이 하나뿐인지**를 센다.
+   */
+  const LOGS = "app/(edit)/projects/[slug]/logs/page.tsx";
+
+  it("Logs만 보관을 읽기로 통과시킨다", () => {
+    expect(read(LOGS)).toContain('archivedPolicy: "read"');
+    expect(read(LOGS)).not.toContain("ProjectArchived");
+    for (const path of SITES) expect(read(path), path).not.toContain("archivedPolicy");
+    expect(read(SETTINGS)).not.toContain("archivedPolicy");
+  });
+
+  /**
+   * ⚠️ **읽기를 허용했으면 화면이 그 사실을 말해야 한다.** 전면 교체를 걷어낸 자리에 아무 표시가
+   * 없으면 보관된 프로젝트의 이력이 **계속 쌓이는 것처럼** 읽힌다 — 조건부 렌더라 눈에 안 보이는
+   * 부류이고(POSTMORTEM 2026-09-15 계열), 그래서 소스로 센다.
+   */
+  it("보관을 읽는 화면은 배너와 야간 문구 제거를 함께 든다", () => {
+    expect(read(LOGS)).toContain("m.logs.archived");
+    // 추출된 판정에 보관 상태가 도달해야 야간 절이 사라진다 — 실제 문장은 DOM 회귀 테스트가 센다.
+    expect(read("components/logs/event-row.tsx")).toContain("eventMeta(row, archived)");
+    expect(read("components/logs/event-detail.tsx")).toContain("eventFailureMessage(row, archived)");
+    expect(read("lib/events/view.ts")).toContain("planArchivedReason(row.run?.errorCode");
+    expect(read(LOGS)).not.toContain("syncReasonMessage");
+  });
 
   it("`translation:write` 화면 전부가 `ProjectArchived`를 반환한다", () => {
     for (const path of SITES) {
@@ -279,7 +305,7 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
  * 밟았다 (POSTMORTEM 2026-09-06: 사유를 쿼리로 넘겨놓고 읽는 쪽이 없어 거부가 조용했다).
  */
 describe("설정 화면 — 저장된 임포트 실패를 읽는다", () => {
-  const src = read(SETTINGS);
+  const src = read("components/settings/sources-card.tsx");
 
   it("컬럼을 select하고 판정 함수로 거른다 — DB 문자열을 직접 인덱싱하지 않는다", () => {
     expect(src).toContain("lastImportError");
@@ -293,7 +319,7 @@ describe("설정 화면 — 저장된 임포트 실패를 읽는다", () => {
   /** 첫 적재 전이면 이 화면의 버튼이, 이미 적재된 뒤면 대상 리포의 CI가 고칠 자리다. */
   it("복구 안내가 readiness로 갈린다", () => {
     expect(src).toContain("importRetry");
-    expect(src).toContain("importRerun");
+    expect(src).toContain("m.settings.sources.rerun");
   });
 });
 
@@ -324,16 +350,11 @@ describe("쓰기 경로가 목록 둘을 무효화한다", () => {
  * 쪽도 못 믿는다 — [다시 시도]를 누른 직후가 정확히 그 창이다 (2026-09-13 리뷰).
  */
 describe("설정 화면 — 진행 중이 지난 실패를 이긴다", () => {
-  const src = read(SETTINGS);
-
-  it("진행 표시 컬럼을 함께 읽는다", () => {
-    expect(src).toContain("surfaces: { where: { archivedAt: null }");
-    expect(src).toContain("s.lastImportStartedAt");
-  });
-
-  it("목록과 같은 판정 함수를 쓴다 — 술어를 두 벌로 만들지 않는다", () => {
-    expect(src).toContain("failing({");
-    expect(src).toContain('from "@/lib/projects/list"');
+  it("활성 표면을 전부 읽고 행마다 검증된 판정 함수를 사용한다", () => {
+    expect(read(SETTINGS)).toContain("surfaces: { where: { archivedAt: null }");
+    expect(read("components/settings/sources-card.tsx")).toContain("planSurfaceImportStatus(source)");
+    const planner = read("lib/import/surface-status.ts");
+    expect(planner.indexOf("surface.lastImportStartedAt !== null")).toBeLessThan(planner.indexOf("isImportFailureCode(surface.lastImportError)"));
   });
 });
 

@@ -120,6 +120,12 @@ class PendingEditsDuringApply extends Error {
 export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | { status: "deferred"; pendingCount: number } | { status: "unauthorized" };
 
 /**
+ * 적재가 **확정되는 같은 트랜잭션에서** 부를 훅 (logs-rework design §3.2). 성공 사건을 밖에서 쓰면
+ * "적재는 됐는데 이력에는 없다"와 "이력엔 있는데 롤백됐다"가 둘 다 열린다.
+ */
+export type AppliedHook = (tx: Prisma.TransactionClient, outcome: PushOutcome) => Promise<void>;
+
+/**
  * **CI 자동 적재** — 프로젝트 전체에 미전달 편집이 하나라도 있으면 아무것도 쓰지 않고 보류한다 (sync-edit-protection — ARCHITECTURE §5.5.2).
  *
  * 리포를 보지 않는다 — 판정 입력은 DB의 pending 수 하나이고 리포 값과 DB 값을 견주지 않는다(병합이 아니다).
@@ -128,7 +134,7 @@ export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | 
  * 토큰 가드가 그 셀을 안 덮어도 **조건 불일치는 0행 갱신이라 조용하다**(POSTMORTEM 2026-09-14) — 재집계 예외가 그 무음을 깬다.
  * ⚠️ 이 판정은 CI 경로 전용이다 — 새 표면 추가·첫 적재는 다른 표면의 편집 때문에 막히면 안 된다(그 표면엔 토큰이 없다).
  */
-export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens"> & { pushTokenHash: string }): Promise<ProtectedPushResult> {
+export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens"> & { pushTokenHash: string; onApplied?: AppliedHook }): Promise<ProtectedPushResult> {
   try {
     return await prisma.$transaction(async tx => {
       // Project → Surface 잠금 순서를 지킨다(`applyPushInTransaction`이 같은 순서로 다시 잡는다 — 같은 트랜잭션이라 재진입이다).
@@ -140,10 +146,13 @@ export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope,
       const pending = await countPending(tx, scope.projectId);
       const decision = planProtectedImport({ mode: "auto", pending });
       if (decision.action !== "apply") return { status: "deferred", pendingCount: pending } as const;
-      const { pushTokenHash: _verified, ...applyOptions } = options;
+      const { pushTokenHash: _verified, onApplied, ...applyOptions } = options;
       const outcome = await applyPushInTransaction(tx, scope, payload, { ...applyOptions, approvedTokens: [] });
       const after = await countPending(tx, scope.projectId);
       if (after > 0) throw new PendingEditsDuringApply(after);
+      // ⚠️ **재집계 뒤다** — 앞에 두면 보류로 되돌아가는 트랜잭션에도 사건이 쓰였다가 함께 사라진다(무해하지만
+      // 의도를 흐린다). 여기서 던지면 적재도 롤백되고, 그것이 원자성의 값이다.
+      if (onApplied !== undefined) await onApplied(tx, outcome);
       return { status: "applied", outcome } as const;
     }, { maxWait: 10_000, timeout: 30_000 });
   } catch (error) {

@@ -95,6 +95,11 @@ const CLIENT_LIB_FILES = [
   "lib/auth/message.ts",
   "lib/auth/permission.ts",
   "lib/compare.ts",
+  // Logs의 필터 바가 값으로 읽는 잎 둘 — 조회(`lib/events/query.ts`)는 이 그래프에 없다.
+  "lib/events/filter.ts",
+  "lib/events/payload.ts",
+  // Settings recovery now owns its card notice; this leaf only assembles public URLs.
+  "lib/github-connect/installation-url.ts",
   "lib/github-connect/message.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
@@ -118,6 +123,11 @@ const CLIENT_LIB_FILES = [
   "lib/onboarding/select-surfaces.ts",
   "lib/onboarding/slug.ts",
   "lib/projects/import-failure.ts",
+  // Settings share these pure status/name/selection planners; no server dependencies.
+  "lib/projects/plan.ts",
+  "lib/import/surface-status.ts",
+  "lib/onboarding/readiness.ts",
+  "lib/surfaces/plan-add.ts",
   "lib/projects/pr-url.ts",
   "lib/publish/plan.ts",
   "lib/publish/warnings.ts",
@@ -339,6 +349,36 @@ describe("클라이언트 그래프", () => {
 
     const fingerprint = walk([join(ROOT, "lib/protection/fingerprint.ts")]);
     expect([...fingerprint.packages].filter((name) => !allowed(name))).not.toEqual([]);
+  });
+
+  /**
+   * ⚠️ **Logs의 판정 모듈은 잎이어야 한다** (logs-rework design §1 — 조회는 `lib/events/query.ts`가
+   * `server-only`로 든다). 소비자(T6 이후)가 붙기 전에도 검사가 공허하지 않도록 여기서 직접 건다 —
+   * `lib/protection/plan.ts`와 같은 형이다. 판정이 조회를 물면 그 순간 Prisma가 번들에 들어온다
+   * (POSTMORTEM 2026-09-07의 7.2MB 청크).
+   */
+  it("`lib/events`의 판정 모듈 셋은 잎이다 — 조회를 물지 않는다", () => {
+    const view = walk([join(ROOT, "lib/events/view.ts")]);
+    expect([...view.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      "lib/events/view.ts",
+      "lib/i18n/index.ts",
+      // 언어 이름은 이미 잎이다(import 0) — 온보딩 ③이 같은 함수를 쓴다.
+      "lib/onboarding/language-name.ts",
+      "lib/projects/import-failure.ts",
+      "messages/en.tsx",
+    ]);
+    expect([...view.packages].filter((name) => !allowed(name))).toEqual([]);
+
+    const filter = walk([join(ROOT, "lib/events/filter.ts")]);
+    expect([...filter.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      "lib/events/filter.ts",
+      "lib/events/payload.ts",
+    ]);
+    expect([...filter.packages].filter((name) => !allowed(name))).toEqual([]);
+
+    const search = walk([join(ROOT, "lib/events/search.ts")]);
+    expect([...search.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/events/search.ts"]);
+    expect([...search.packages].filter((name) => !allowed(name))).toEqual([]);
   });
 
   it("클라이언트 그래프가 닿는 `lib/**` 파일이 허용 목록과 정확히 같다", () => {

@@ -5,6 +5,8 @@ import { syncBranchFor } from "@/lib/pull/trigger";
 import { HomeActions, HomeHeaderActions, HomeNotices, HomeTitle } from "@/components/home/actions";
 import { AttentionCard } from "@/components/home/attention-card";
 import { CountCards } from "@/components/home/count-cards";
+import { EventDetail } from "@/components/logs/event-detail";
+import { EventDialog } from "@/components/logs/event-dialog";
 import { LogsCard } from "@/components/home/logs-card";
 import { MetaColumn } from "@/components/home/meta-column";
 import { ProjectNotReady } from "@/components/project-not-ready";
@@ -12,15 +14,17 @@ import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
+import { parseLogFilter, type LogSearchParams } from "@/lib/events/filter";
+import { m } from "@/lib/i18n";
+import { HOME_EVENT_LIMIT, loadEvent, loadEvents } from "@/lib/events/query";
 import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems } from "@/lib/home/attention";
 import { countCards } from "@/lib/home/cards";
 import { metaRows } from "@/lib/home/meta";
-import { ACTIVITY_LIMIT, ACTIVITY_WINDOW_DAYS, recentActivity } from "@/lib/home/overview";
 import { planHomeState } from "@/lib/home/state";
 import {
-  loadActors, loadLastSyncNewKeys, loadProjectListAggregates, loadRecentEdits, loadRecentPublishes, loadReviewAttention,
+  loadActors, loadProjectListAggregates, loadReviewAttention,
 } from "@/lib/keys/query";
 import { actorLabel } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
@@ -64,15 +68,24 @@ import { routes } from "@/lib/routes";
  */
 export const maxDuration = 60;
 
-export default async function ProjectHomePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ProjectHomePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  /** ⚠️ **`event` 하나를 받는다** — Recent logs가 **Home 위에서** 상세를 연다 (캔버스 `1h`). */
+  searchParams: Promise<LogSearchParams>;
+}) {
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
+  const openRef = parseLogFilter(await searchParams).event;
 
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
       name: true,
+      image: true,
       installationId: true,
       repositoryId: true,
       repoOwner: true,
@@ -103,9 +116,8 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
    */
   if (planProjectReadiness(project) !== "ready") return <ProjectNotReady slug={slug} role={role} />;
 
-  // 기준 시각을 서버에서 한 번 만든다 — 항목마다 부르면 창의 경계와 상대 시각의 기준이 갈린다.
+  // 기준 시각을 서버에서 한 번 만든다 — 항목마다 부르면 상대 시각의 기준이 갈린다.
   const now = new Date();
-  const since = new Date(now.getTime() - ACTIVITY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
   /**
    * ⚠️ **한 라운드다** (POSTMORTEM 2026-09-05 — 병목이 행 수가 아니라 함수 리전이었다). 조회가
@@ -115,12 +127,19 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
    * ⚠️ **연결 조회는 `installationId`가 있을 때만 GitHub을 친다** — `loadConnectionHealth`가 그
    * 가드를 든다. GitHub 장애는 값(`unknown`)으로 오므로 이 화면이 그것에 죽지 않는다.
    */
-  const [aggregates, edits, review, newKeys, publishes, health] = await Promise.all([
+  const [aggregates, events, review, openEvent, health] = await Promise.all([
     loadProjectListAggregates(prisma, [projectId]),
-    loadRecentEdits(prisma, projectId, ACTIVITY_LIMIT),
+    /**
+     * ⚠️ **Logs와 같은 함수다** (logs-rework 결정 — 조합 쿼리 넷이 사라졌다). 같은 수를 두 번 세지
+     * 않는다: 정렬·행위자 마스킹·참조 ID가 한 곳에서 나오고, 그래서 같은 사건이 두 화면에서 같은
+     * 모양·같은 ID다.
+     *
+     * ⚠️ **`try`로 감싸지 않는다** (결정 16) — 실패는 Home 전체가 오류 화면이 되어야 한다.
+     */
+    loadEvents(prisma, projectId, parseLogFilter({}), { limit: HOME_EVENT_LIMIT }),
     loadReviewAttention(prisma, projectId),
-    loadLastSyncNewKeys(prisma, projectId),
-    loadRecentPublishes(prisma, projectId, since, ACTIVITY_LIMIT),
+    // ⚠️ **상세는 Home 위에서 연다** — Logs로 튕겨 보내지 않는다(캔버스 `1h`).
+    openRef === null ? Promise.resolve(null) : loadEvent(prisma, projectId, openRef),
     /**
      * ⚠️ **여기서만 던지는 것을 삼킨다** (code-review 2026-09-15 🟡4). `probeRepo`는 GitHub 실패를
      * 값으로 주지만 `createApp()`은 `GITHUB_APP_ID`·PEM이 깨졌을 때 **던진다** — 설정 화면에서는
@@ -134,9 +153,14 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
       return { status: "unknown" } as const;
     }),
   ]);
-  // **렌더되는 항목만** 지난다 — 903키 리포에서 전 행의 편집자를 조회하지 않는다.
+  /**
+   * **렌더되는 항목만** 지난다 — 903키 리포에서 전 행의 편집자를 조회하지 않는다.
+   *
+   * ⚠️ **활동 목록이 여기서 빠졌다** (logs-rework) — 이벤트의 행위자 라벨은 `loadEvents`가 목록
+   * 전체를 보고 이미 마스킹해서 준다(같은 도메인 두 주소가 같은 라벨이 되지 않게 하려면 그래야 한다).
+   */
   const actors = await loadActors(prisma, [
-    ...new Set([...edits.map((e) => e.updatedBy), ...review.flatMap((r) => (r.updatedBy === null ? [] : [r.updatedBy]))]),
+    ...new Set(review.flatMap((r) => (r.updatedBy === null ? [] : [r.updatedBy]))),
   ]);
 
   /**
@@ -204,15 +228,6 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
     actors,
   });
 
-  const activity = recentActivity({
-    edits: edits.map((e) => ({ ...e, actor: actorLabel(e.updatedBy, actors) })),
-    pushes: surfaces.flatMap((s) => (s.lastCommitAt === null ? [] : [{ surfaceSlug: s.slug, at: s.lastCommitAt, newKeys: newKeys.get(s.id) ?? 0 }])),
-    publishes: publishes.map((p) => ({ at: p.at, prNumber: pullNumberFrom(p.prUrl), changed: p.changed })),
-    // ⚠️ **마지막 하나뿐이다** — 7일 창에 실패가 둘이면 하나만 보인다. 이력이 아니다 (PRODUCT §4.1).
-    syncFailures: surfaces.flatMap((s) => (s.lastImportFailedAt === null ? [] : [{ surfaceSlug: s.slug, at: s.lastImportFailedAt }])),
-    now, windowDays: ACTIVITY_WINDOW_DAYS, limit: ACTIVITY_LIMIT,
-  });
-
   const paused = state === "not_connected" || state === "archived";
 
   return (
@@ -230,7 +245,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
       <PanelHeader width="fluid">
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
-          <HomeTitle archived={state === "archived"}>{project.name}</HomeTitle>
+          <HomeTitle image={project.image} archived={state === "archived"}>{project.name}</HomeTitle>
           <HomeHeaderActions
             slug={slug}
             name={project.name}
@@ -290,7 +305,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
             now={now}
           />
           <AttentionCard items={items} slug={slug} state={state} now={now} />
-          <LogsCard items={activity} slug={slug} now={now} syncedBefore={lastSyncAt !== null} />
+          <LogsCard rows={events.rows} slug={slug} now={now} archived={archived} syncedBefore={lastSyncAt !== null} />
         </div>
 
         <MetaColumn
@@ -315,6 +330,31 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
           canOpenSettings={canPerform(role, "project:settings")}
         />
       </PanelBody>
+
+      {/*
+        ⚠️ **Home 위에서 열고 Home으로 돌아온다** (캔버스 `1h`) — Logs로 튕겨 보내면 "Home에서 열었는데
+        뒤로가기가 Logs로 간다"가 생긴다. 같은 참조·같은 640 상세이고, 닫으면 `event`만 빠진다.
+      */}
+      {openRef !== null && (
+        <EventDialog closeHref={routes.project(slug)} returnFocusId={`event-${openRef}`}>
+          {openEvent === null ? (
+            /* ⚠️ **상세 대상 없음은 조회 실패와 다르다** — 없는 참조·다른 프로젝트의 참조가 여기다. */
+            <div className="flex flex-col gap-1 p-6">
+              <h2 className="text-lg font-medium">{m.logs.detail.missing.title}</h2>
+              <p className="text-muted-foreground text-sm">{m.logs.detail.missing.description}</p>
+            </div>
+          ) : (
+            <EventDetail
+              row={openEvent}
+              slug={slug}
+              now={now}
+              archived={archived}
+              canOpenSettings={canPerform(role, "project:settings")}
+              repoUrl={`https://github.com/${project.repoOwner}/${project.repoName}`}
+            />
+          )}
+        </EventDialog>
+      )}
     </HomeActions>
   );
 }

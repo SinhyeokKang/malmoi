@@ -134,13 +134,14 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
   });
 
   /**
-   * ⚠️ **무색 배지의 글자색이 셋으로 갈린다** (캔버스 `1c`): 보관은 `#737373`, 온보딩 중인 둘은
-   * `#525252`, 총계·그룹 카운트는 foreground 그대로다. `Badge neutral`의 기본이 foreground이므로
-   * **호출부에서 내린다** — 프리미티브를 바꾸면 이 루프가 보지 않은 화면의 배지가 함께 움직인다.
+   * ⚠️ **무색 배지의 글자색이 셋으로 갈린다**: 보관은 **`#a3a3a3`**(2026-09-20 — 이름·메타와 한 색으로
+   * 내려갔다, DESIGN §6.63), 온보딩 중인 둘은 `#525252`, 총계·그룹 카운트는 foreground 그대로다.
+   * `Badge neutral`의 기본이 foreground이므로 **호출부에서 내린다** — 프리미티브를 바꾸면 이 루프가
+   * 보지 않은 화면의 배지가 함께 움직인다.
    */
   it("무색 배지의 글자색을 호출부가 내린다", () => {
     const map = /const STATUS_CHIP = \{([\s\S]*?)\n\} as const/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
-    expect(map).toMatch(/archived:[^\n]*tone: "text-muted-foreground"/);
+    expect(map).toMatch(/archived:[^\n]*tone: "text-neutral-400"/);
     expect(map).toMatch(/setup:[^\n]*tone: "text-neutral-600"/);
     expect(map).toMatch(/awaiting_first_sync:[^\n]*tone: "text-neutral-600"/);
   });
@@ -483,9 +484,16 @@ describe("캔버스 대조로 잡은 자리", () => {
     expect(EMPTY).toContain(literal);
   });
 
-  /** ⚠️ **보관은 이름까지 회색이다** — 숨기지 않는 대신 훑는 눈에서만 멀어진다. */
-  it("보관 행의 이름이 muted다", () => {
-    expect(BODY).toContain('status === "archived" && "text-muted-foreground"');
+  /**
+   * ⚠️ **보관은 이름까지 회색이다** — 숨기지 않는 대신 훑는 눈에서만 멀어진다.
+   *
+   * ⚠️ **그 회색이 `#a3a3a3`이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*). `#737373`은
+   * 이 리포에서 꺼진 컨트롤의 글자색이라 더 내려갈 데가 없었다. **메타도 같은 값으로 따라간다** —
+   * 색을 재는 렌더 단언은 `projects-cards.test.tsx`에 있고, 여기서는 갈래가 상태에 묶여 있는지를 센다.
+   */
+  it("보관 행의 이름과 메타가 neutral-400이다", () => {
+    expect(BODY).toContain('status === "archived" && "text-neutral-400"');
+    expect(BODY).toContain('status === "archived" ? "text-neutral-400" : "text-muted-foreground"');
   });
 
   /**

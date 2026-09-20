@@ -17,12 +17,12 @@ export async function deleteImage(key: string): Promise<void> {
   await del(key, { token: requireEnv("BLOB_READ_WRITE_TOKEN") });
 }
 
-export async function listImages(): Promise<ListBlobResultBlob[]> {
+export async function listImages(prefix: "avatars/" | "projects/" = "avatars/"): Promise<ListBlobResultBlob[]> {
   const token = requireEnv("BLOB_READ_WRITE_TOKEN");
   const images: ListBlobResultBlob[] = [];
   let cursor: string | undefined;
   do {
-    const page = await list({ prefix: "avatars/", cursor, token });
+    const page = await list({ prefix, cursor, token });
     images.push(...page.blobs);
     if (!page.hasMore) return images;
     cursor = page.cursor;

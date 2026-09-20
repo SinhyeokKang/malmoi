@@ -195,6 +195,72 @@ describe("테넌트 모델 — ProjectMember · ProjectInvitation", () => {
   });
 });
 
+describe("활동 스트림 — ProjectEvent (logs-rework)", () => {
+  it("enum 둘의 값 목록이 고정이다 — 새 값은 마이그레이션을 요구한다", () => {
+    expect(fieldNames(block("enum", "EventKind"))).toEqual([
+      "TRANSLATION",
+      "IMPORT",
+      "PUBLISH",
+      "SURFACE",
+      "MEMBER",
+      "SETTINGS",
+    ]);
+    expect(fieldNames(block("enum", "ActorKind"))).toEqual(["USER", "AUTOMATION", "UNKNOWN"]);
+  });
+
+  it("사건 하나가 갖는 열여섯", () => {
+    const names = fieldNames(block("model", "ProjectEvent"));
+    for (const f of [
+      "id", "ref", "projectId", "kind", "subtype", "occurredAt", "finishedAt", "result",
+      "actorKind", "actorUserId", "surfaceIds", "surfaceScope", "syncRunId", "payload",
+      "searchText", "runToken",
+    ]) {
+      expect(names, f).toContain(f);
+    }
+  });
+
+  /** ⚠️ 불변식 3의 확장 — 사건도 지우지 않는다. 사용자 삭제만 저자를 비운다 (결정 4). */
+  it("사건을 지우지 않는다 — Restrict이고 행위자만 SetNull이다", () => {
+    const body = block("model", "ProjectEvent");
+    expect(body).not.toContain("onDelete: Cascade");
+    expect(body).toMatch(/actor\s+User\?.*onDelete: SetNull/);
+    expect(body.match(/onDelete: Restrict/g)?.length ?? 0).toBe(2);
+  });
+
+  /** ⚠️ 복합 FK가 아니면 **다른 프로젝트의 실행**을 가리키는 이벤트를 DB가 막지 못한다. */
+  it("SyncRun 참조가 복합 FK이고 참조측 unique가 있다", () => {
+    expect(block("model", "ProjectEvent")).toContain(
+      "references: [projectId, id]",
+    );
+    expect(block("model", "SyncRun")).toContain("@@unique([projectId, id])");
+  });
+
+  /** 같은 실행이 두 줄이 되지 않는다 (spec 완료조건 4b) — 재전달·백필 양쪽을 DB 층이 막는다. */
+  it("실행 멱등 키 둘이 unique다", () => {
+    const body = block("model", "ProjectEvent");
+    expect(body).toContain("@@unique([projectId, runToken])");
+    expect(body).toContain("@@unique([projectId, syncRunId])");
+  });
+
+  /** 인덱스·unique가 전부 projectId 선두다 (불변식 5) — `ref`도 전역 unique가 아니다. */
+  it("모든 인덱스가 projectId 선두다", () => {
+    const body = block("model", "ProjectEvent");
+    for (const m of body.matchAll(/@@(?:index|unique)\(\[([^\]]+)\]\)/g)) {
+      expect((m[1] ?? "").split(",")[0]?.trim()).toBe("projectId");
+    }
+    expect(body).not.toMatch(/^\s*ref\s+String.*@unique/m);
+  });
+
+  /** 정렬 tie-breaker가 커서와 **같은 키여야** 같은 DB 상태가 같은 목록을 낸다 (불변식 4). */
+  it("조회 인덱스가 (projectId, occurredAt, id)다", () => {
+    expect(block("model", "ProjectEvent")).toContain("@@index([projectId, occurredAt, id])");
+  });
+
+  it("수집 개시 시각이 Project에 nullable로 있다 — 추정하지 않으려면 '모른다'가 표현돼야 한다", () => {
+    expect(block("model", "Project")).toMatch(/activityCoverageStartedAt\s+DateTime\?/);
+  });
+});
+
 describe("additive — 기존 다섯 모델이 그대로다", () => {
   it("PoC의 다섯 모델이 남아 있다", () => {
     for (const model of ["Project", "Locale", "StringKey", "KeyRef", "Translation"]) {

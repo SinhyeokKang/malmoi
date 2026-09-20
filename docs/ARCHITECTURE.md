@@ -760,8 +760,8 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
   줄 단위로 대조한다 — 한쪽만 고치면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
   - **step 생산자는 `renderSurfaceWorkflowStep` 하나다.** 파일 전체는 `renderProjectWorkflowYaml`이
     그것을 **활성 표면 수만큼** 이어 붙인다 — 온보딩 ④와 설정 화면이 둘 다 이것을 부른다(표면 하나짜리
-    래퍼가 있었지만 테스트만 불러 2026-09-18에 지웠다 — launch-readiness L4.7). 설정 화면이 이것을 부른다 — ⚠️ **Add surface 결과 화면은 새로고침 한 번에 사라지므로 비기본
-    표면의 step을 다시 볼 자리가 그 화면뿐이고**, push 토큰이 프로젝트 단위라 손으로 조립한 틀린
+    래퍼가 있었지만 테스트만 불러 2026-09-18에 지웠다 — launch-readiness L4.7). 설정 화면이 이것을 부른다 — ⚠️ **소스 추가 결과 안내는 전체 새로고침 뒤 사라지므로 비기본
+    표면의 step은 설정의 Workflow 모달에서 다시 보며**, push 토큰이 프로젝트 단위라 손으로 조립한 틀린
     `surface:`는 409가 아니라 **다른 표면을 덮어쓴다.**
   - **표면 행 → step 입력 변환은 `workflowSurfaceOf`다** — 6b-3의 "대기 중에는 `base-locale:`을
     무조건 박는다"가 여기 산다. 화면 안에 두면 표면마다 분기가 반복되고 렌더 없이는 잴 수 없다.
@@ -1310,6 +1310,13 @@ PRODUCT §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 
   ⚠️ **선조회와 트랜잭션 안 재집계가 같은 조건이어야 한다**: 하나만 좁히면 증상이 같다(선조회 통과 뒤
   재집계가 거부하거나, 그 반대).
 - ⚠️ **열린 PR을 닫지 않는다** (PRODUCT §7.9) — 보관은 GitHub 상태를 정리하는 일이 아니다.
+- ⚠️ **Logs만 읽기로 통과한다** (2026-09-20, logs-rework). 보관 사건과 그 직전 기록을 확인하려면
+  **복원해야 하는 순환**이었다. `planProjectAccess`가 `archivedPolicy: "block" | "read"`를 받고
+  기본이 `block`이라 **정책을 안 주는 진입점은 새로 생겨도 막힌다**(fail-closed). 읽기 허용은
+  쓰기 허용이 아니다 — Server Action은 정책을 넘기지 않으므로 그대로 거부된다. 통과한 결과는
+  `{ status: "ok", archived: true }`라 화면이 배너를 그릴 수 있고, **제거된 멤버는 여전히
+  `not-found`다**(판정 순서가 그것을 앞지르지 않는다). 상시 검사는 `access.test.ts`(갈래별
+  읽기≠쓰기)와 `screens.test.ts`(정책을 넘기는 화면이 하나뿐인지)다.
 
 ### 5.6.5 cron 순회 순서는 아사 대책이다
 
@@ -1317,6 +1324,105 @@ PRODUCT §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 
 맨 앞, 동점은 slug). 전에는 `slug` 오름차순이라 `PULL_BATCH_LIMIT`에서 잘리는 뒤쪽이 **매일 밤 같은
 프로젝트**였고 — 그 프로젝트는 영원히 안 돈다. `project-onboarding`이 "7단계가 큐로 가른다"고 넘긴
 자리이고, **큐 없이 정렬로** 풀었다. 동점 폴백이 slug인 것은 결정성을 잃지 않기 위해서다.
+
+## 5.7 활동 스트림 (`ProjectEvent` — 2026-09-20, logs-rework)
+
+**종류 여섯**(번역·적재·Publish·소스·멤버·설정)의 사건이 한 테이블에 쌓이고, `logs` 화면과 Home의
+Recent logs가 **같은 조회**(`lib/events/query.ts`)를 읽는다. `SyncRun`은 Publish 실행 전용으로 그대로
+남는다 — 이 테이블은 그것을 **참조**한다.
+
+### 5.7.1 두 부류를 섞지 않는다
+
+| 부류 | 확정 지점 | 실패 모드 |
+|---|---|---|
+| **상태 변경** (번역 저장 · 멤버 · 설정 · 소스) | **변경과 같은 트랜잭션** (`recordEvent`) | 어느 쪽이 실패해도 **둘 다 롤백**된다 |
+| **외부 실행** (CI 적재 · 수동 Sync · 최초 적재 · Publish) | **서버가 관측한 종료** (`recordRun`/`finishRun`) | 기록 실패가 실행을 되돌리지 않는다 — 실행은 이미 일어났다 |
+
+- ⚠️ **이벤트만 남고 변경이 없는 조합이 생기면 이력이 거짓이 된다.** 그래서 `recordEvent`는
+  트랜잭션 클라이언트만 받고 스스로 트랜잭션을 열지 않는다.
+- ⚠️ **번역 저장이 `Project` → `TranslationSurface` 잠금 뒤로 들어갔다.** 전에는 트랜잭션 밖에서
+  읽고 무조건 upsert했는데, 그러면 사건의 `before`가 **내가 덮은 값이 아닐 수 있다.** 잠금 순서는
+  CI 적재·수동 Sync와 같다(§5.5.15) — 갈리면 교착이다. **나중 저장이 최종 값이 되는 동작은 그대로다.**
+  셀 잠금만으로 축소하면 프로젝트 전체의 미전달 편집 검사와 배타성이 사라진다. 동시 편집 처리량은
+  운영 부하로 별도 측정하고, 그 전까지 이 잠금 순서를 유지한다. 기준 브랜치·기준 언어 선언의 전후 값도
+  같은 잠금 뒤에 읽는다.
+  ⚠️ **그래서 저장 트랜잭션의 상한이 Prisma 기본값(5초)이면 안 된다** (code-review 2026-09-21) —
+  같은 `Project` 행을 `applyProtectedPush`·`addSurfacesFromSnapshot`·`createProject`가 **30초**로 쥐므로,
+  큰 소스의 적재 중에 누른 Save가 잠금을 기다리다 `P2028`로 죽는다(커밋된 것은 없고 화면에는 이유 없는
+  실패로 보인다). **기다렸다 성공하는 쪽이 옳고**, 상한은 잠금을 쥐는 쪽과 같은 값이다.
+- ⚠️ **no-op은 사건이 아니다.** 값이 그대로면 번역·편집 토큰·사건 셋 다 안 쓴다.
+- ⚠️ **서버가 보지 못한 실패를 사건으로 만들지 않는다.** 네트워크가 끊겨 응답이 안 닿은 것은 관측이 아니다.
+
+### 5.7.2 실행은 행 하나다 — `runToken`
+
+`@@unique([projectId, runToken])`이 재전달·동시 요청을 한 건으로 만든다. 토큰은 **서버가** 실행 종류와
+소스 범위를 붙여 조립한다(`runTokenFor`): `publish:<syncRunId>` · `import:<leaseToken>` ·
+`ci:<surfaceId|->:<executionId>`.
+
+- **CI의 `executionId`는 생산자가 소스별 실행 시작에 한 번 발급한다**(`scripts/push-local.ts`가
+  파싱·조립 **이전에**). HTTP 재전달은 같은 값, 새 CLI 호출·워크플로 재실행은 새 값이다.
+  **커밋 SHA는 실행 식별자가 아니다.**
+- ⚠️ **외부 식별자는 인증 증거가 아니다** — 인가된 `projectId`와 확인된 `surfaceId` 아래에서만 쓴다.
+- ⚠️ **`recordRun`은 `upsert`가 아니라 "있으면 그만둔다"다.** Postgres에서 트랜잭션 안의 unique 충돌은
+  **트랜잭션 전체를 중단**시키므로, 충돌을 catch해서 정상 흐름으로 복구할 수 없다. 모든 호출부가
+  `Project` 행 잠금 안이라 경합하지 않고, unique 인덱스는 그 약속이 깨졌을 때의 **마지막 그물**이다.
+  `createProject`는 같은 tx에서 만든 새 행이며 최초 적재가 그 잠금도 획득한다. `runFirstIngest`의
+  시작 기록도 잠금 안이다.
+- ⚠️ **늦은 종료가 남의 결과를 덮지 않는다** — `finishRun`이 자기 `runToken`의 **미종료** 행만 갱신하고
+  갱신 건수를 돌려준다(0행 갱신은 조용하다 — POSTMORTEM 2026-09-14).
+- **중단된 내부 Import는 다음 실행이 닫는다** — lease를 얻는 트랜잭션에서 `import:` 접두의 미종료 행을
+  `failed`로 닫는다. Publish의 stale 처리와 같은 형이고, **조회·브라우저는 상태를 바꾸지 않는다.**
+
+### 5.7.3 값을 복제하지 않는다
+
+Publish 사건은 `SyncRun`을 **복합 FK**(`projectId, syncRunId`)로 가리키기만 하고 결과·파일 수·PR·
+warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에 닫혀도 두 곳이 갈릴 수 없다.
+내부 Import의 `result = null` + `finishedAt = null`은 목록과 결과 필터에서 모두 `Running…`이다. 결과 필터는 저장된
+`result`와 **조인한 상태를 OR로 함께** 본다(안 그러면 Publish 실행이 결과 필터에서 통째로 빠진다).
+
+### 5.7.4 경계
+
+- **`projectId` 선두다** — `ref`도 전역 unique가 아니라 `@@unique([projectId, ref])`이고, 정렬·커서가
+  `(occurredAt desc, id desc)`로 **같은 키**를 쓴다(불변식 4).
+- **행위자 목록은 전용 인덱스가 받는다** — `@@index([projectId, actorKind, actorUserId])`
+  (2026-09-21). 정렬 인덱스는 두 번째 열이 `occurredAt`이라 `actorUserId` distinct를 못 받고,
+  그러면 Logs를 그릴 때마다 **그 프로젝트의 사건 전부**를 읽고 정렬한다 — 사건은 지우지 않으므로
+  그 비용은 시간이 지날수록만 커진다. `actorKind`가 가운데인 것은 조회가 그 열에 등호를 걸고
+  `actorUserId`로 정렬하기 때문이다.
+- **원문 이메일이 나가지 않는다** — 행위자 라벨은 목록 전체를 보고 만들고(`maskedEmailLabels`),
+  payload의 멤버 대상은 이름 대신 저장 시점의 `maskEmail` 라벨만 남긴다. **사건은 지우지 않으므로**, 원문을
+  넣으면 계정 삭제가 지우지 못하는 자리가 하나 늘어난다.
+- **토큰 값·해시·초대 링크 원문이 payload에 없다** — 남는 것은 "발급/교체했다"는 사실뿐이다.
+- **검색은 `searchText` 한 컬럼이고 조립은 `buildSearchText` 하나가 독점한다.** 번역 본문·사람
+  이름·원문 이메일은 넣지 않는다 — 적재 지점이 그 관문을 안 지나면 그 종류가 조용히 검색에서 빠진다.
+- **사건을 지우지 않는다**(불변식 3의 확장) — `onDelete: Restrict`이고 사용자 삭제만 `SetNull`로 저자를
+  비운다. **보존 기간에 따른 삭제 경로를 만들지 않는다.**
+- **조회는 `try`로 감싸지 않는다** — 실패는 던져서 페이지 전체가 오류 경계로 가야 한다. 빈 배열로
+  접으면 "아직 사건이 없다"와 "물어보지 못했다"가 바이트 단위로 같아진다(POSTMORTEM 2026-09-03).
+
+### 5.7.5 수집 공백
+
+`Project.activityCoverageStartedAt`이 **실제 수집 개시 시각**이다. 마이그레이션은 보존된 `SyncRun`마다
+참조 이벤트 하나를 백필하고(결정적 id라 재실행이 no-op), **과거 대상 소스는 알 수 없으므로**
+`surfaceScope: "not-recorded"` + 빈 배열이다 — 전체 목록에는 남고 특정 소스·Project-wide 필터에는 안 든다.
+
+⚠️ **가장 이른 이벤트나 마이그레이션 시각으로 추정하지 않는다.** 전환 시각을 입증할 수 없으면 `null`을
+유지해 경계선을 숨긴다. 신규 프로젝트는 생성 트랜잭션에서 기록하고, **재백필이 이 값을 바꾸지 않는다.**
+
+### 5.7.6 화면은 RSC 하나가 그린다
+
+`logs`도 Home의 Recent logs도 **Route Handler를 새로 만들지 않는다** — "내부 쓰기에 Route Handler를
+만들지 않는다"의 읽기 쪽 대응물이다. `?event=`가 있으면 **같은 페이지 렌더**가 640 상세를 함께 낸다.
+
+- **대가**: 상세를 열 때 페이지 내비게이션이 한 번 돈다. 필터·검색·커서는 URL이 보존한다.
+- **얻는 것**: 스키마가 한 벌이고, 로딩·오류 갈래를 손으로 배선하지 않으며(`loading.tsx`·`error.tsx`),
+  목록과 상세가 **같은 오류 경계**를 쓴다.
+- ⚠️ **URL의 소스 필터는 slug이고 id가 아니다** — 주소는 사람이 읽고 공유하는 자리라 메뉴의 라벨과
+  같은 값이어야 한다. id 해석은 조회가 인가된 `projectId` 아래에서 한다.
+  전역 사건의 URL 선택값만 `@project-wide`다 — 실제 소스 slug `project-wide`와 겹치지 않으며,
+  DB의 `surfaceScope: "project-wide"`와는 구별한다.
+- ⚠️ **모르는 slug를 고른 URL은 0건이다** — 빈 목록을 "필터 없음"으로 되돌리면 지운 소스를 고른
+  주소가 전체 목록을 보여준다.
 
 ## 6. 인증 경계
 
@@ -1701,7 +1807,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - `runFirstIngest` → `/projects/<slug>` **layout**. 첫 적재가 바꾸는 것은 `TranslationSurface.lastCommitSha` 하나인데 **그 값을 읽는 것은 `planProjectReadiness`이고 소비자가 넷이다** — Home · 번역 화면 · 설정 · 목록(`lib/projects/list.ts`의 `projectStatus`).
   - ⚠️ **접두로는 못 덮는다** (2026-09-11 등재). `/projects/<slug>/settings` + `/projects` 둘만 무효화하면 **Home과 번역 화면이 캐시된 "준비 안 됨"으로 남는다** — 사용자는 방금 "N개 키를 적재했어요"를 읽고 들어가서 빈 화면을 본다. 목록 화면은 `/projects` 접두라 갱신되므로 **증상이 화면마다 갈려** 캐시 문제로 안 보이고 적재 실패로 읽힌다. 이 절의 첫 문장이 말하는 부류 그대로다: 무효화 범위는 경로가 아니라 **"이 값을 보이는 화면 집합"**이고, readiness는 그 집합이 `/projects/<slug>` 서브트리 전체다.
 - `triggerPullAction`(Publish) → `/projects/<slug>` **layout** + `/projects` + `/projects/new`. 되돌려보내기가 바꾸는 것은 `lastPulledAt`·`lastPublishedAt`·`lastPrUrl`·편집 토큰이고, **미전달 배지가 그 토큰 위에 서므로**(§5) 배너·Home 카드·목록 행이 한꺼번에 움직인다.
-- `addSurface`·`runRepositoryImport` → 같은 범위. 표면이 늘거나 리포 값이 덮이면 그 프로젝트의 **모든 화면**의 재료가 바뀐다.
+- `addSurfaces`·`runRepositoryImport` → 같은 범위. 표면이 늘거나 리포 값이 덮이면 그 프로젝트의 **모든 화면**의 재료가 바뀐다.
 - `connectRepository`·`updateRepositorySettings` → `/projects/<slug>/settings` + `/projects/<slug>` **layout**. ⚠️ **2026-09-14까지 이 절은 이 둘을 "설정만 보인다"로 적고 있었고 그것이 틀렸다** — 리포 연결·base 브랜치는 readiness와 `planConnectionHealth`의 입력이라 Home·번역 화면·목록이 함께 읽는다. **좁은 것 하나만 남기면 설정 화면만 초록이 되고 나머지가 캐시된 옛 상태로 남는다**(§0 불변식 11이 경고하는 모양 그대로다).
 - `updateProfileName`·`uploadProfileImage`·`deleteProfileImage`·`unlinkLoginMethod` → `/` **layout**. 셸 헤더의 아바타·이름이 **매 페이지**에 있어 좁힐 수단이 없다 — `disconnectGithub`과 같은 이유다.
 - `/api/push`·`/api/push/failure`(라우트 핸들러 둘) → `/projects/<slug>` **layout** + `/projects`(+`/projects/new`). 외부가 부르는 진입점인데도 무효화가 필요한 이유는 같다: 적재 성공·CI 파싱 실패가 readiness·상태 배지·Home을 한꺼번에 바꾼다.
@@ -2000,6 +2106,19 @@ PNG/JPEG 시그니처를 검사한 뒤 `normalizeImage`(`lib/upload/normalize.ts
 대한 Blob 호스트·키 형식 allowlist와 **실제 삭제 직전 세션 사용자 경로 검사**를 모두 통과해야 한다.
 실패 로그에는 단계·사용자 ID만 남기고 SDK·DB 오류 원문과 URL을 기록하지 않는다.
 
+### 6.75 프로젝트 메타데이터 (2026-09-20)
+
+`Project.image String?`는 `projects/<projectId>/…` 난수 키를 사용하는 공개 Blob URL을 저장한다. avatar 키 판정을
+넓히지 않고 `projectImageObjectKey`·`planProjectImageDelete`로 접두를 분리한다. 3MB PNG/JPEG를 기존
+sharp 정규화(192px 이내 WebP)로 재사용하며 PII 봉투는 쓰지 않는다. 모든 Action은 네트워크 호출 전에
+`project:settings` 인가를 확인한다. 업로드는 tx 밖, Project 행 잠금 뒤 이전 URL 조회·새 URL 저장은 tx 안,
+이전 객체 삭제는 커밋 뒤다. DB 실패는 새 객체만 정리하고 삭제 실패는 스모크의 고아 후보로 남는다.
+
+`updateProjectName`은 생성과 공유하는 200자 상한·trim을 적용하고 slug를 바꾸지 않는다. 이름·이미지는
+번역 값이 아니므로 서버에서 archived를 거부하지 않는다. 보관 UI의 비활성과 의도적으로 갈린다.
+성공 뒤 `/` layout을 갱신하고 설정·목록·Home·초대 네 reader가 image를 읽는다. Blob 스모크는 avatars와
+projects를 각각 조회해 User.image/Project.image 참조와 대조하며 고아를 자동 삭제하지 않는다.
+
 ### 6.8 표시 이름의 소유권 (2026-09-13)
 
 `User.name`은 **사용자 소유**이고 `User.email`은 provider 소유다. 이메일을 고칠 수 없는 근거는
@@ -2035,11 +2154,24 @@ A(additive) → Surface writer 배포 → B(제약 교체) 순서다. **B에서 
 마이그레이션은 테이블 잠금 후 null 자식·잘못된 기본 표면에서 중단한다. 기존 Surface 상태를 덮는
 재백필은 새 writer 활성화 이전에만 허용한다. dev는 `/push` 전, prod는 해당 `/merge` 직전에 적용한다.
 
-Add surface는 GitHub snapshot과 파일을 먼저 읽고, Project `FOR UPDATE` 후 멤버십·보관·리포 identity와
-활성 표면의 출력 경로를 다시 검사한다. 경로는 현재 tree와 저장 Locale에서 다음 Publish가 만들 경로를
-함께 센다. Surface 생성과 첫 적재는 같은 callback transaction(30초)에 들어가고, 외부 API는 그 밖이다.
-`applyPushInTransaction`은 이미 열린 연결에서 순서대로 실행하며 중첩 트랜잭션을 만들지 않는다.
-일부 파일 실패는 `partial-import`, 0키·쓰기 실패·예산 초과는 새 표면 전체 rollback이다.
+`addSurfaces`는 여러 후보를 한 요청으로 확정한다. 스냅샷·경로별 blob 합집합 읽기·포맷 준비는
+트랜잭션 밖에서 끝낸다. 요청 전체 200파일·10MB, 파일당 2MB이며 알 수 없는 크기는 읽기 전에 거부하고
+실제 바이트도 다시 잰다. Project `FOR UPDATE` 후 인가·보관·리포 identity·출력 경로를 다시 확인하고
+모든 Surface/Locale/StringKey/Translation/KeyRef 쓰기를 **한 tx**로 확정한다(`maxWait: 10_000`,
+`timeout: 30_000`). 기존 표면과 새 표면끼리의 충돌 모두 전체 rollback이다. 중첩 tx·외부 I/O는 없다.
+
+파일 단위 일부 실패는 불변식 9의 새 소비자다: 유효한 키를 적재하고 표면을 생성하되 `failed > 0`이면
+성공 결과의 tone은 warning이다. 0키·쓰기 실패·timeout은 새 표면 모두 rollback이다. 둘째 표면·마지막
+쓰기·timeout 실패 주입과 동시 경로 충돌을 격리 PG에서 검사한다. **커밋 이후 캐시 갱신 오류를 rollback
+실패로 돌려주지 않는다** — UI가 “아무것도 추가되지 않았다”고 잘못 말하지 않도록 별도로 로깅한다.
+
+소스별 첫 적재 `runFirstIngest({ slug, surfaceSlug? })`는 미지정 시 기본 표면을 유지한다. 지정한 표면도
+프로젝트로 좁히고 SHA가 있으면 `not-awaiting`이다. 형제 표면의 준비 상태가 대상 표면의 재시도를 막지 않는다.
+
+`loadSurfaceCounts`는 활성 표면별 non-orphan 키·언어 수를 쿼리 하나로 읽는다. Translation과 join하지 않아
+곱집합을 만들지 않는다. Darwin arm64·PostgreSQL 17의 1/5표면 fixture(표면당 20,000키·200언어·200,000번역),
+각 5회 새 fixture·ANALYZE 전후 EXPLAIN (ANALYZE, BUFFERS) 최종 실측 최댓값은 각각 8.376ms/40.524ms였다.
+합격선 500ms 이하며 해당 환경·규모의 결과이지 프로덕션 지연 보장은 아니다.
 
 `Project.defaultSurfaceId`는 생성 순환 참조 때문에 nullable을 유지한다. 생성 Action이 Project → Surface →
 기본 포인터를 한 트랜잭션으로 확정한다. **Project id는 randomUUID로 명시한다**: 공유 id를 포함한 nullable

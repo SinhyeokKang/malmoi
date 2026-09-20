@@ -61,8 +61,16 @@ describe("logs — 시각과 페이지네이션", () => {
    * ⚠️ **이력에서 "2 days ago"는 어느 밤인지 못 가른다.** 상대 시각은 보조이고 절대 시각이
    * `<time dateTime>`에 들어가야 브라우저·스크린리더가 정확한 값을 든다.
    */
+  /**
+   * ⚠️ **행이 `09:42`만 들지만 정확한 값은 사라지지 않는다** (logs-rework — 날짜는 카드 머리가
+   * 한 번 든다). 그 값이 `<time dateTime>`과 접근 이름에 있어야 브라우저·스크린리더가 어느 밤인지
+   * 안다 — **화면 파일이 아니라 행·상세 컴포넌트**가 그것을 그린다.
+   */
   it("절대 시각을 `<time dateTime>`에 싣는다", () => {
-    expect(src).toMatch(/<time[^>]*dateTime=/);
+    for (const path of ["components/logs/event-row.tsx", "components/logs/event-detail.tsx"]) {
+      expect(read(path), path).toMatch(/<time[^>]*dateTime=/);
+    }
+    expect(read("components/logs/event-row.tsx")).toContain("aria-label={utcMinute(");
   });
 
   it("'Older'가 `routes.logs`를 지난다 — 경로를 화면이 조립하지 않는다", () => {
@@ -102,9 +110,25 @@ describe("logs — 사유 사전", () => {
     expect(dict).not.toContain("SyncErrorCode");
   });
 
-  it("사유 문장에 git 어휘를 쓰지 않는다 — 읽는 사람은 번역 편집자다", () => {
-    const block = dict.slice(dict.indexOf("reasons:"), dict.indexOf("reasons:") + 1400);
-    expect(block).not.toMatch(/\bbranch\b/i);
-    expect(block).not.toMatch(/\bcommit\b/i);
+  /**
+   * ⚠️ **거부 문장도 같은 규칙이다** (logs-rework `logs.refusals`) — 실행이 시작도 못 한 이유를
+   * 읽는 사람 역시 번역 편집자다. 전에는 슬라이스가 `reasons:`만 덮어서 그쪽이 사각지대였다.
+   */
+  it("사유·거부 문장에 git 어휘를 쓰지 않는다 — 읽는 사람은 번역 편집자다", () => {
+    for (const key of ["reasons:", "refusals:"]) {
+      const start = dict.indexOf(key);
+      expect(start, key).toBeGreaterThan(-1);
+      // ⚠️ **블록의 끝까지만 자른다** — 고정 길이로 자르면 이웃 절이 섞여 어느 쪽이 걸린 것인지
+      // 알 수 없고, 절이 하나 늘 때마다 그 숫자가 낡는다.
+      const block = dict.slice(start, dict.indexOf("\n    },", start));
+      /**
+       * ⚠️ **값만 본다, 키는 안 본다** — 키는 서버 코드(`stale-commit`)라 사용자에게 안 보인다.
+       * 블록 전체를 훑으면 그 코드가 문장으로 오진돼, 규칙을 지키려고 **코드 이름을 바꾸게** 된다.
+       */
+      const sentences = [...block.matchAll(/:\s*"([^"]+)"/g)].map((match) => match[1] ?? "").join(" ");
+      expect(sentences.length, key).toBeGreaterThan(0);
+      expect(sentences, key).not.toMatch(/\bbranch\b/i);
+      expect(sentences, key).not.toMatch(/\bcommit\b/i);
+    }
   });
 });

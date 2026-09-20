@@ -151,3 +151,8 @@ function header(slug: string, baseBranch: string): string[] {
 export function baseLocaleLine(baseLocale: string): string {
   return `          base-locale: ${baseLocale}`;
 }
+
+/** 서버 첫 적재도 SHA를 채우므로 빈 결과가 CI 연결 완료를 증명하지 않는다. */
+export function planWorkflowStale(surfaces: readonly { slug: string; lastCommitSha: string | null }[]): string[] {
+  return surfaces.filter(surface => surface.lastCommitSha === null).map(surface => surface.slug);
+}

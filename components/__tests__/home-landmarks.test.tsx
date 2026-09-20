@@ -36,7 +36,7 @@ describe("Home의 블록 셋이 이름 있는 랜드마크다", () => {
   });
 
   it("`Recent logs`가 자기 제목으로 이름을 든다", async () => {
-    const { container } = await render(<LogsCard items={[]} slug="acme" now={now} syncedBefore />);
+    const { container } = await render(<LogsCard rows={[]} slug="acme" now={now} archived={false} syncedBefore />);
     expect(labelledBy(container, "section")).toContain("Recent logs");
   });
 

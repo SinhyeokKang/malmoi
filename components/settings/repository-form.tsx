@@ -3,40 +3,26 @@
 import { useState, useTransition } from "react";
 
 import { updateRepositorySettings } from "@/app/(edit)/projects/[slug]/settings/actions";
-import { Alert } from "@/components/ui/alert";
+import { Check, CircleAlert } from "lucide-react";
+import { PanelFacts } from "@/components/ui/panel-card";
 import { Button } from "@/components/ui/button";
-import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib/settings/message";
 
-/**
- * 기준 브랜치 (6b-3 — DESIGN §6.6. **6b-5가 기준 언어 필드를 `/projects/:slug/locales`로 옮겼다** —
- * PRODUCT §7.7 결정 4).
- *
- * ⚠️ **여기서 선언 컬럼을 건드리지 않는다.** 두 필드가 한 폼이던 동안, 대기 중에 화면을 새로 열면
- * 필드가 옛 언어를 보이고 **브랜치만 고친 저장이 그 선언을 지웠다**(malmoi#20). 자리를 가른 것이
- * 그 구조를 없앤다 — 이 폼이 보내는 값에 언어가 아예 없다.
- *
- * ⚠️ **실패는 in-block `Alert danger`다** (DESIGN §6.6) — 블록이 각자 실패하고, 페이지 수준
- * 거부(`?e=`)만 global Alert다.
- *
- * ⚠️ **브랜치 형식은 보내기 전에 여기서도 본다** — 왕복 없이 답하는 편이 낫고, 무엇보다 판정이
- * **한 벌**이어야 한다(`isValidBranchName`이 잎인 이유다 — 그 모듈에 import을 더하면
- * `lib/pull`의 그래프가 클라이언트 번들로 따라온다). **방어는 여전히 Action**이다.
- */
-export function RepositoryForm({ slug, baseBranch }: { slug: string; baseBranch: string }) {
+export function RepositoryForm({ slug, baseBranch, disabled = false }: { slug: string; baseBranch: string; disabled?: boolean }) {
   const [pending, startTransition] = useTransition();
   const [branch, setBranch] = useState(baseBranch);
   const [result, setResult] = useState<"idle" | "saved" | { error: string }>("idle");
 
   return (
     <form
-      className="space-y-4"
+      className="border-border border-t"
       onSubmit={(event) => {
         event.preventDefault();
+        if (disabled || pending) return;
         setResult("idle");
         // 같은 갈래 이름을 쓴다 — 문구가 두 벌이면 서버가 거부할 때와 다른 말을 한다.
         if (!isValidBranchName(branch)) {
@@ -44,36 +30,23 @@ export function RepositoryForm({ slug, baseBranch }: { slug: string; baseBranch:
           return;
         }
         startTransition(async () => {
-          const next = await updateRepositorySettings({ slug, baseBranch: branch });
-          setResult(next.ok ? "saved" : { error: next.error });
+          try { const next = await updateRepositorySettings({ slug, baseBranch: branch }); setResult(next.ok ? "saved" : { error: next.error }); }
+          catch { setResult({ error: "unavailable" }); }
         });
       }}
     >
-      <FormGroup
-        label={m.settings.repository.fields.branch}
-        htmlFor="base-branch"
-        help={m.settings.repository.fields.branchHelp}
-      >
-        <Input
-          id="base-branch"
-          name="baseBranch"
-          value={branch}
-          // ⚠️ 트림하지 않는다 — 저장값과 보이는 값이 갈리면 `checkFormat`에서 조용한 409가 된다
-          // (`isValidBranchName`이 앞뒤 공백을 거부하는 것과 같은 근거).
-          onChange={(event) => setBranch(event.target.value)}
-        />
-      </FormGroup>
-
-      <div className="flex items-center gap-2">
-        <Button type="submit" loading={pending}>
-          {m.settings.repository.fields.save}
-        </Button>
-        {result === "saved" && (
-          <span className="text-muted-foreground text-xs">{m.settings.repository.fields.saved}</span>
-        )}
-      </div>
-
-      {typeof result === "object" && <Alert variant="danger">{messageFor(result.error)}</Alert>}
+      <PanelFacts>
+        <label htmlFor="base-branch" className="text-neutral-400 text-xs">{m.settings.repository.fields.branch}</label>
+        <div className="[&_.animate-spin]:size-3.5 flex min-w-0 flex-wrap items-center gap-2">
+          <Input id="base-branch" name="baseBranch" className="w-60 max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={branch} disabled={disabled || pending}
+            aria-invalid={typeof result === "object"} aria-describedby="base-branch-caption"
+            onChange={event => { setBranch(event.target.value); setResult("idle"); }} />
+          <Button type="submit" loading={pending} aria-busy={pending} disabled={disabled}>{m.settings.repository.fields.save}</Button>
+          <p id="base-branch-caption" role={typeof result === "object" ? "alert" : undefined} className={typeof result === "object" ? "text-destructive min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs" : "text-muted-foreground min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs"}>
+            {typeof result === "object" ? <><CircleAlert className="mr-1 inline size-3.5" aria-hidden />{messageFor(result.error)}</> : disabled ? m.settings.archivedReason : result === "saved" ? <><Check className="mr-1 inline size-3.5" aria-hidden />{m.settings.repository.fields.saved}</> : m.settings.repository.fields.branchHelp}
+          </p>
+        </div>
+      </PanelFacts>
     </form>
   );
 }

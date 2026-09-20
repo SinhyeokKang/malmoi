@@ -61,9 +61,9 @@ app/
                         router.refresh()가 방금 받은 결과를 언마운트한다
       surfaces/[surfaceSlug]/locales/  로케일·base 선언 + actions.ts(updateBaseLocale 하나).
                         requireSurfaceAccess 뒤 projectId + surfaceId로 조회 — Action도 같은 두 축으로 좁힌다
-      surfaces/new/    OWNER 전용 Add surface. 기존 리포 재탐지·직접 URL·OAuth 복귀 (maxDuration 60)
+      surfaces/new/    OWNER·보관 검사 뒤 settings?add=sources redirect. OAuth 오류도 전달
       not-found.tsx    없는 표면의 제품 안내와 Projects 복귀
-      members/ logs/ settings/   (settings/actions.ts — GitHub 연결 시작 · 리포 (재)연결 · 리포 설정 갱신)
+      members/ logs/ settings/   (settings/actions.ts — GitHub 연결 시작 · 리포 (재)연결 · 리포 설정 갱신 · 프로젝트 이름/이미지)
                         ⚠️ 넷 다 게이트가 translation:write다(settings만 project:settings) — EDITOR도
                         목록을 보고 컨트롤만 role로 갈린다. 판정은 Action이 한다
                         ⚠️ logs에 try가 없다 — 조회 실패는 던져야 "없음"과 다른 화면이 된다
@@ -112,9 +112,13 @@ components/
                         BannerLine/EmptyRowCard) — /projects의 그룹 카드와 멤버 화면 둘이 공유한다.
                         복사하면 선의 급 둘·divide-y 금지·shrink-0·@container 위치·ring-inset,
                         주석으로만 지켜지던 함정 다섯이 두 벌로 갈린다 (DESIGN §6.4)
+  ui/image-tile.tsx     프로젝트 타일의 이미지 + 깨진 URL 폴백. useImageFallback은 Avatar와 한 벌이고
+                        마크업만 다르다 — 소비자 셋(목록·Home / 초대 / 설정)은 서버 컴포넌트로 남는다
+  ui/panel-card.tsx     PanelCard/Rows/Row/Facts. 계정 구역에서 승격, 제목 없는 locales도 지원.
+                        옛 ui/card.tsx와 account/account-section.tsx는 마지막 소비자 전환과 함께 삭제
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
-  ui/modal.tsx          모달 껍데기. ⚠️ 소비자가 셋이다 — 새 프로젝트 온보딩(네 단계) · Publish 모달
-                        (갈래 열하나) · 초대 모달(폼→링크 두 얼굴, 2026-09-19). ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고 Radix
+  ui/modal.tsx          모달 껍데기. ⚠️ 소비자가 다섯이다 — 새 프로젝트 온보딩(네 단계) · Publish 모달
+                        (갈래 열하나) · 초대 모달(폼→링크 두 얼굴) · 설정 Add sources/Workflow. ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고 Radix
                         Dialog.*를 직접 조립한다 — 그 프리미티브는 Overlay·padding·바닥 배치가
                         고정이라 1024 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
                         넷이 함께 움직인다. [Back]·[Next]와 "Step n of 4"를 껍데기가 소유하되
@@ -157,7 +161,7 @@ components/
                         (POSTMORTEM 2026-09-19)
                         ⚠️ **maskEmail 금지선이 이 디렉터리를 전수로 훑는다** — 마스킹은 서버의 일이고,
                         파일 목록을 손으로 적던 검사가 파일이 넷이 되자 신설분을 놓쳤다
-  account/              계정 화면 — 머리 하나 + 리스트 셋. account-section(구역·항목 규격 하나) ·
+  account/              계정 화면 — 공유 ui/panel-card(구역·항목 규격 하나)를 사용하는 머리 하나 + 리스트 셋.
                         login-methods · github-section · sessions-section · profile-name-form ·
                         profile-picture · dismissible-alert
                         ⚠️ **구역이 자기 리스트와 Alert를 함께 든다** — 구역 Alert 자리가 헤더 아래·
@@ -165,6 +169,12 @@ components/
                         ⚠️ **항목의 우측 클러스터가 shrink-0이다** — 실패 Alert를 그 안에 두면 좌측
                         본문이 truncate로 사라진 뒤 행이 패널 밖으로 밀린다. 그래서 연결/해제 버튼이
                         결과를 콜백으로 바깥에 넘긴다(onResult · onFailure)
+  logs/                 **활동 스트림의 화면 조각** (2026-09-20, logs-rework — DESIGN §6.68)
+                        glyph(칩 28 · 팔레트 일곱) · event-row(행 다섯 칸) · log-filters(`"use client"` —
+                        드롭다운 다섯 + 검색 + [Refresh]) · event-detail(640 본문) · event-dialog(껍데기)
+                        ⚠️ **Home의 Recent logs가 `event-row`를 그대로 쓴다** — 같은 사건이 두 화면에서
+                        같은 모양이어야 한다. 그래서 파랑 한 자리도 이 파일에 있다(home-vocabulary가 센다)
+                        ⚠️ **상세 본문은 서버가 그린다** — 클라이언트는 열림·닫힘·포커스만 든다
   home/                 Home 화면의 블록 넷 + 클라이언트 호스트. count-cards · attention-card ·
                         logs-card · meta-column은 **순수 서버 컴포넌트**다(`+n more`가 <details>라
                         클라이언트 상태가 0이다) · actions.tsx만 "use client"
@@ -174,7 +184,9 @@ components/
                         ⚠️ **sync-button·sync-result는 sync-repository의 산출물이다** — 같은 디렉터리에
                         살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다
   onboarding/modal.tsx  components/ui/modal.tsx를 그대로 재수출한다 — 호출부를 안 건드리려는 한 줄이다
-  onboarding/add-surface.tsx  FilesStep 재사용·수동 확인·추가 step 결과, 입력 실패 보존
+  settings/             general-card · repository-card/repository-form · sources-card/add-sources-modal ·
+                        ci-card · archive-card · push-token-panel. 독립 add-surface.tsx는 모달 전환 뒤
+                        삭제했고, push-token-panel은 소비자가 ci-card 하나뿐이라 onboarding/에서 옮겼다.
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
@@ -277,12 +289,12 @@ lib/
                         roundtrip-cookies(server-only. 새 왕복이 시작될 때 병합·회수·연결의 **버려진 쿠키를
                         전부 선점 해제**한다 — 목적이 셋이라 남은 쿠키가 다음 왕복의 갈래를 바꾼다)
                         ⚠️ 판정은 순수 함수, 조회·세션은 얇은 껍데기라는 규칙이 이 디렉터리의 형이다
-  upload/               사용자 프로필 사진 전용. image(형식·크기·키·삭제 allowlist 판정 +
+  upload/               프로필·프로젝트 이미지. image(형식·크기·키·삭제 allowlist 판정 +
                         planImagePick — 클라이언트 선검사) · normalize(server-only. sharp로 EXIF 방향
                         적용 → 192px 이내 축소 → WebP 재인코딩) · store(server-only Vercel Blob I/O) ·
                         message(거부 → 문구). 실 저장소 검증·고아 후보 조회는 pnpm smoke:blob
                         ⚠️ **normalize는 인증·사용자·Blob·DB에 닿지 않는다** — bytes → bytes라
-                        아바타 밖(프로젝트 이미지 등)에서도 그대로 재사용된다
+                        프로젝트 이미지도 그대로 재사용한다. avatars/projects 키·삭제 판정은 분리한다
                         ⚠️ **문구가 image.ts가 아니라 message.ts다** — 능력 쪽에 두면 no-korean-ui가
                         한글만 세므로 green인 채 사전을 통째로 우회한다
                         ⚠️ **클라이언트 선검사는 방어선이 아니다** — File.type이 확장자에서 오므로
@@ -312,6 +324,16 @@ lib/
                         ⚠️ **뒤의 셋은 화면이 값으로 부르는 잎이다**(client-graph) — confirm은 어느 경고
                         줄이 서는지, result는 결과 요약, refusal은 거부의 tone·닫기·액션을 정한다.
                         판정을 컴포넌트에 두면 "형이 둘"(성공 한 줄 · 사고 두 줄)이 테스트 밖으로 나간다
+  events/               **프로젝트 활동 스트림** (2026-09-20, logs-rework) — payload(어휘·종류별 맥락·
+                        `runToken` 조립·`readPayload`) · view(결과 아홉·값 상태·UTC 날짜 카드·수집 경계선) ·
+                        filter(URL 판정·커서·UTC 구간) · search(검색 문자열의 **유일한 관문**) /
+                        query(`server-only` 조회) · record(사건 기록) · ci(CI 적재 사건) · member-label
+                        ⚠️ **앞의 넷은 잎이다** — 클라이언트가 값으로 읽고, 조회를 물면 그 순간 Prisma가
+                        번들에 온다(POSTMORTEM 2026-09-07의 7.2MB). `client-graph.test.ts`가 파일 집합을
+                        정확 일치로 고정한다
+                        ⚠️ **record와 query를 섞지 않는다** — 상태 변경은 `recordEvent`로 **변경과 같은
+                        트랜잭션**, 외부 실행은 `recordRun`/`finishRun`으로 **관측된 종료**다(ARCHITECTURE §5.7)
+                        ⚠️ **`buildSearchText`를 안 지나면 그 종류가 조용히 검색에서 빠진다**
   keys/                 view(집계·배지·행 축 다섯·localeProgress) · query(server-only 조회 —
                         loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다) ·
                         save · refocus · filters · edit-command(Enter → save / Escape → restore.
@@ -321,7 +343,10 @@ lib/
                         계약은 실패했을 때 코드만 그리는 것이다)
   surfaces/            plan(정렬·slug·경로 라벨·소유권, client-safe) · access(프로젝트 인가 뒤 표면 좁힘)
                         push·편집 조회는 projectId + surfaceId. Publish는 프로젝트 단위 단일 PR
-  surfaces/create.ts   Project 잠금 후 인가·리포·출력 경로 재검사, 생성+첫 적재 원자적 확정
+  surfaces/create.ts   Project 잠금 후 인가·리포·출력 경로 재검사, 다중 생성+첫 적재 한 tx 확정
+  surfaces/plan-add.ts  기존 소스 잠금·중복 템플릿·추가 결과/부분 적재 경고·집계 문구 순수 판정
+  keys/query.ts         loadSurfaceCounts — 활성 표면의 non-orphan 키/언어 수를 SQL 하나로 집계
+  import/surface-status.ts  소스 적재 상태 다섯 갈래와 최초 적재 재시도 가능 여부
   publish/              Publish 모달이 읽는 순수 판정 다섯. diff(셀 단위 조립·키 병합·상한) ·
                         plan(결과 8갈래 planPublishView + 버튼 planPublishButton, 둘 다 never 검사) ·
                         warnings(파일별 묶기 — 파서 원문의 개행을 보존한다) · words(낱말 diff) ·

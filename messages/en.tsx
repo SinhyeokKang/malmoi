@@ -17,6 +17,13 @@ import type { ReactNode } from "react";
  * 문체는 DESIGN §10이다 — sentence case · 라벨에 마침표 없음 · "please"·"sorry" 금지 ·
  * 오류는 다음 행동을 말한다 · **편집자 화면에 git 어휘를 쓰지 않는다.**
  */
+/**
+ * ⚠️ **한 낱말이 두 자리에 선다** — 저장된 값을 지금 키로 못 여는 칸(`common.unreadable`)과 이벤트
+ * 상세의 값 상태(`logs.value.unavailable`)가 같은 사실을 말한다. 리터럴을 두 벌 두면 하나가 낡고,
+ * 그 어긋남은 두 화면을 함께 보는 눈이 없어 안 보인다 (2026-09-13 `malmoi`/`Malmoi` 계열).
+ */
+const UNAVAILABLE = "Unavailable";
+
 export const en = {
   /**
    * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.
@@ -154,6 +161,7 @@ export const en = {
     },
   },
   surfaces: {
+    sourceCounts: (keys: number, locales: number): string => `${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"} · ${locales.toLocaleString("en-US")} ${locales === 1 ? "language" : "languages"}`,
     label: "Translation surface", title: "Translation surfaces", add: "Add surface",
     description: "Choose another set of translation files from this repository.",
     workflow: "Add this step to your existing workflow. It uses the same PUSH_TOKEN.",
@@ -234,7 +242,7 @@ export const en = {
      * "이 사람은 이메일이 없구나"로 읽고, 그것이 POSTMORTEM 2026-09-03이 말하는 실패다.
      * 표 셀에 들어가므로 한 단어이고, 사용자가 할 일은 없다(운영자가 키를 되살린다).
      */
-    unreadable: "Unavailable",
+    unreadable: UNAVAILABLE,
   },
 
   /**
@@ -697,15 +705,72 @@ export const en = {
    * sync 이력 (7단계 — DESIGN §6.68). **과거 시제다** — Publish Alert가 "지금 무슨 일이
    * 일어났나"를 현재 시제로 말하고, 이 화면은 "그때 무슨 일이 있었나"라 어휘가 갈려야 한다.
    */
+  /**
+   * 활동 이력 (logs-rework — 시안 `design_handoff_project_logs`). **Logs가 프로젝트 전체 활동**이고
+   * Home의 Recent logs가 같은 스트림의 최신 여섯이다.
+   *
+   * ⚠️ **사실을 왜곡하지 않는 낱말이 이 절의 요지다** (spec §6): `Sent`는 PR 생성/갱신이지 머지가
+   * 아니고 · `Nothing to send`는 성공 전송이 아니며 · `Deferred`는 삭제도 성공도 아니고 ·
+   * `Failed`는 GitHub에 아무것도 안 갔다는 보장이 아니다.
+   */
   logs: {
-    description: "Every time your translations were sent back to the repository.",
-    columns: {
-      when: "When",
-      trigger: "Started by",
-      result: "Result",
-      changed: "Files",
-      reason: "Reason",
+    description:
+      "Everything that happened in this project — translation edits, imports, publishes, and changes to sources, members and settings. Times are UTC.",
+    /** 종류 일곱 — URL 값(`?kind=`)과 메뉴 라벨이 같은 축이다. */
+    kinds: {
+      all: "All activity",
+      translations: "Translations",
+      imports: "Imports",
+      publish: "Publish",
+      sources: "Sources & locales",
+      members: "Members",
+      settings: "Project settings",
     },
+    /**
+     * 필터 다섯의 기본 라벨과 메뉴 안 낱말.
+     *
+     * ⚠️ **`axis`는 접근 이름에 붙는다** ("Source: web, emails") — 트리거 라벨만으로는 스크린리더가
+     * 무엇을 고른 것인지 모른다.
+     */
+    filters: {
+      anyDate: "Any date",
+      anyone: "Anyone",
+      anySource: "Any source",
+      anyResult: "Any result",
+      clear: "Clear filters",
+      findPerson: "Find a person",
+      people: "People",
+      automation: "Automation",
+      /** 소스가 없는 사건(멤버 · 설정)을 고르는 항목 — 그 사건에 가짜 소스 값을 넣지 않기 때문이다. */
+      projectWide: "Project-wide",
+      clearSources: "Clear sources",
+      /** 결과 축이 실행에만 적용된다는 사실을 **고르기 전에** 말한다. */
+      resultScope: "Applies to imports and publishes. Other events have no result.",
+      groupImports: "Imports",
+      groupPublish: "Publish",
+      groupBoth: "Both",
+      axis: {
+        kind: "Kind",
+        date: "Date",
+        actor: "Actor",
+        source: "Source",
+        result: "Result",
+      },
+    },
+    /** 기간 프리셋 넷 + 네이티브 `<input type="date">` 둘 (결정 9 — 라이브러리를 넣지 않는다). */
+    range: {
+      today: "Today",
+      yesterday: "Yesterday",
+      last7: "Last 7 days",
+      last30: "Last 30 days",
+      custom: "Custom range (UTC)",
+      from: "From (UTC)",
+      to: "To (UTC)",
+      apply: "Apply range",
+    },
+    /** ⚠️ **`aria-label`에는 줄임표가 없다** — 스크린리더가 읽는 이름이라 장식이 붙으면 안 된다. */
+    search: { label: "Search logs", placeholder: "Search logs…", clear: "Clear search" },
+    refresh: "Refresh",
     status: {
       succeeded: "Sent",
       /** ⚠️ **"branch equals base"가 아니다** — 읽는 사람은 번역 편집자다. */
@@ -713,24 +778,234 @@ export const en = {
       failed: "Failed",
       /** ⚠️ 줄임표는 진행 중에만이다 (DESIGN §10). */
       running: "Running…",
+      /**
+       * 적재 실행의 결과 다섯 (spec §6). **색은 셋뿐이라 낱말이 뜻을 든다.**
+       *
+       * ⚠️ **왜곡 금지**: `Deferred`는 삭제도 성공도 아니고(미전달 편집이 있어 적재를 통째로
+       * 보류했다), `Superseded`는 **확인된 사유만** 말한다 — 대체한 실행이 무엇인지 우리는 모른다.
+       */
+      imported: "Imported",
+      deferred: "Deferred",
+      partial: "Partially completed",
+      superseded: "Superseded",
+      /** 사람이 고쳐야 풀리는 거부 여섯 (spec §6.1). 다시 눌러 사라지는 거부는 이력에 안 남는다. */
+      notStarted: "Not started",
+    },
+    /**
+     * 날짜 카드의 머리 (캔버스 `1a`). **UTC 자정으로 끊는다** — 로컬로 끊으면 밤 사이 실행이
+     * 보는 사람마다 다른 날에 선다. 나머지 날은 `YYYY-MM-DD`를 그대로 쓴다.
+     */
+    day: {
+      today: "Today",
+      yesterday: "Yesterday",
+    },
+    /**
+     * 값이 없는 칸. **실패의 변경 수는 0이 아니라 부재다** — 0으로 쓰면 "안 바뀌었다"는 거짓말이고,
+     * 그건 관측이 있었다는 뜻이 된다.
+     */
+    none: "—",
+    /** 버린 값이 있는 실행. **성공한 행에도 붙는다** — 조용히 숨기면 ARCHITECTURE §0 불변식 9 위반이다. */
+    warnings: (count: number): string => (count === 1 ? "1 dropped" : `${count.toLocaleString("en-US")} dropped`),
+    /** 보류 사유 — **삭제도 성공도 아니다**를 한 문장이 말한다. */
+    deferredReason: (count: number): string =>
+      `${count.toLocaleString("en-US")} unsent edit${count === 1 ? " is" : "s are"} being protected. Nothing was imported.`,
+    empty: {
+      title: "No activity yet",
+      description: "Imports, translation edits and publishes show up here as they happen.",
+    },
+    /** ⚠️ **빈 이력과 원인이 반대다** — 하나는 프로젝트가 비었고 하나는 내가 좁혔다. */
+    noMatch: {
+      title: "No events match these filters",
+      description: "This project has activity — none of it is in this slice. Widen the date range or clear the filters.",
+    },
+    /** 수집 공백 경계선. ⚠️ **날짜를 서버가 주지 못하면 이 줄을 아예 그리지 않는다**(추정값 금지). */
+    coverage: (date: string): string =>
+      `Full activity history is available from ${date}. Earlier records include publish runs only.`,
+    /**
+     * ⚠️ **조회 실패는 all-or-nothing이다** (결정 16) — 목록·새로고침·다음 페이지·상세 중 하나라도
+     * 실패하면 페이지 전체가 이 화면이 된다. **빈 상태로 접지 않는다** (POSTMORTEM 2026-09-03).
+     */
+    queryError: {
+      title: "We couldn't load the activity",
+      description: "Nothing is lost — this is a problem reading the history, not a project without activity.",
+      retry: "Try again",
+    },
+    loading: { list: "Loading activity…", event: "Loading event…", more: "Loading…" },
+    older: "Older",
+    page: {
+      perPage: "20 events per page, newest first.",
+      noOlder: "No older events match these filters.",
+    },
+    /** 행의 보조줄이 쓰는 낱말. **없는 값을 자리 채우려고 적지 않는다.** */
+    meta: {
+      manual: "manual",
+      automatic: "automatic",
+      projectWide: "project-wide",
+      files: (n: number): string => `${n.toLocaleString("en-US")} file${n === 1 ? "" : "s"}`,
+      keys: (n: number): string => `${n.toLocaleString("en-US")} key${n === 1 ? "" : "s"}`,
+      noPullRequest: "no pull request",
+      /** 기준 언어는 **선언**이고 CI의 다음 push가 확정한다 (`checkFormat`). */
+      declarationOnly: "declaration only",
+      nothingImported: "nothing was imported",
+      archivedEffect: "editing stopped and nightly publishes ended",
+      restoredEffect: "editing and nightly publishes resumed",
+      tokenEffect: "the previous token stopped working",
+      removedEditor: "the editor is no longer a member",
+      unreadableActor: "we could not read who did this",
+    },
+    /**
+     * 행의 문장. **행위자로 시작한다** — 사람과 자동화(`Nightly` · `CI`)를 같은 문법으로 읽는다.
+     *
+     * ⚠️ **방향을 낱말이 말한다** — 같은 `SyncRun`에서 나왔어도 내보내기는 `sent … to GitHub`,
+     * 가져오기는 `synced … from the repository`다. 내부 이름이 하나라는 사실이 두 방향을 섞을
+     * 근거가 되지 않는다.
+     */
+    sentence: {
+      translation: {
+        updated: (who: ReactNode, key: ReactNode, language: string): ReactNode => (
+          <>{who} updated {key} in {language}</>
+        ),
+        cleared: (who: ReactNode, key: ReactNode, language: string): ReactNode => (
+          <>{who} cleared {key} in {language}</>
+        ),
+      },
+      publish: {
+        running: (who: ReactNode): ReactNode => <>{who} is sending translations to GitHub</>,
+        sent: (who: ReactNode): ReactNode => <>{who} sent translations to GitHub</>,
+        nothing: (who: ReactNode): ReactNode => <>{who} publish had nothing to send</>,
+        failed: (who: ReactNode): ReactNode => <>{who} publish failed</>,
+        notStarted: (who: ReactNode): ReactNode => <>{who} publish was refused</>,
+      },
+      import: {
+        running: (who: ReactNode): ReactNode => <>{who} is reading the repository</>,
+        imported: (who: ReactNode, sources: number): ReactNode => (
+          <>{who} synced {sources.toLocaleString("en-US")} source{sources === 1 ? "" : "s"} from the repository</>
+        ),
+        deferred: (who: ReactNode, source: string): ReactNode => <>{who} import was held back on {source}</>,
+        superseded: (who: ReactNode): ReactNode => <>{who} import gave way to another run</>,
+        failed: (who: ReactNode): ReactNode => <>{who} import failed</>,
+        notStarted: (who: ReactNode): ReactNode => <>{who} import was refused</>,
+      },
+      member: {
+        invited: (who: ReactNode, target: string): ReactNode => <>{who} invited {target}</>,
+        joined: (who: ReactNode): ReactNode => <>{who} joined the project</>,
+        roleChanged: (who: ReactNode, target: string): ReactNode => <>{who} changed {target}&rsquo;s role</>,
+        removed: (who: ReactNode, target: string): ReactNode => <>{who} removed {target}</>,
+        invitationRevoked: (who: ReactNode): ReactNode => <>{who} cancelled an invitation</>,
+      },
+      surface: {
+        added: (who: ReactNode, source: string): ReactNode => <>{who} added the {source} source</>,
+        baseLocale: (who: ReactNode, source: string): ReactNode => (
+          <>{who} changed the base language of {source}</>
+        ),
+      },
+      settings: {
+        created: (who: ReactNode): ReactNode => <>{who} created this project</>,
+        name: (who: ReactNode): ReactNode => <>{who} renamed the project</>,
+        baseBranch: (who: ReactNode): ReactNode => <>{who} changed the base branch</>,
+        repository: (who: ReactNode): ReactNode => <>{who} reconnected the repository</>,
+        pushToken: (who: ReactNode): ReactNode => <>{who} rotated the push token</>,
+        image: (who: ReactNode): ReactNode => <>{who} changed the project image</>,
+        archived: (who: ReactNode): ReactNode => <>{who} archived this project</>,
+        restored: (who: ReactNode): ReactNode => <>{who} restored this project</>,
+      },
+      /** 모르는 하위 종류 — **던지지 않고** 종류 이름으로 떨어진다 (읽는 쪽이 폴백을 든다). */
+      fallback: (who: ReactNode, kind: string): ReactNode => <>{who} changed {kind}</>,
+    },
+    /**
+     * 상세 640 (캔버스 `1d`–`1f`). **공통은 참조 하나**이고 나머지는 종류가 정한다 —
+     * 모든 상세에 같은 격자를 깔면 빈 칸이 "못 읽었다"로 읽힌다.
+     */
+    detail: {
+      kindLabel: {
+        translation: "Translation edit",
+        import: "Import run",
+        publish: "Publish run",
+        surface: "Source change",
+        member: "Member change",
+        settings: "Project setting",
+      },
+      labels: {
+        reference: "Reference",
+        run: "Run",
+        trigger: "Trigger",
+        source: "Source",
+        key: "Key",
+        locale: "Locale",
+        before: "Before",
+        after: "After",
+        files: "Files",
+        pullRequest: "Pull request",
+        errorCode: "Error code",
+        resultPerSource: "Result per source",
+        member: "Member",
+        role: "Role",
+        effect: "Effect",
+        unsentEdits: "Unsent edits",
+      },
+      actions: {
+        copy: "Copy reference",
+        openTranslation: "Open this translation",
+        openSource: "Open this source",
+        openMembers: "Open members",
+        openSettings: "Open project settings",
+        openRepository: "Open repository",
+        close: "Close",
+      },
+      /**
+       * ⚠️ **실패 문장이 복구를 약속하지 않는다** — PR 생성 뒤 후속 저장이 실패할 수 있다.
+       * ⚠️ **토큰 값은 부분도 남기지 않는다** — 그 사실을 화면이 직접 말한다.
+       */
+      notes: {
+        publish: "A failed run does not prove that nothing reached GitHub. Check the repository if you expect a pull request.",
+        import: "Counts are keys, not files or translation cells. Adding a source and importing it are separate events — this run is the import.",
+        token: "Token values are never stored in logs, not even in part.",
+      },
+      /** ⚠️ **`Running…`을 브라우저 타이머로 바꾸지 않는다** (결정 10) — 닫는 것은 다음 실행이다. */
+      noResult: "The server has not recorded a result.",
+      /** 파일 수 `null`은 `—`이고 `0`이 아니다 — 0으로 적으면 "아무것도 안 바뀐 성공"과 같아진다. */
+      notRecordedForRun: "not recorded for this run",
+      noPullRequest: "None",
+      /** 상세 대상이 없다 — **조회 실패와 구별된다.** */
+      missing: { title: "We couldn't find this event", description: "The reference may be from another project, or it may never have existed." },
+      startedFinished: (started: string, finished: string): string => `Started ${started} · finished ${finished}`,
+      startedOnly: (started: string): string => `Started ${started}`,
+    },
+    /**
+     * 값 상태 넷 (spec §6). **빈 칸을 만들지 않는 규칙의 유일한 관문이다** — 빈 칸은 "값이 없다"와
+     * "이 종류엔 해당 없다"를 구별하지 못한다 (POSTMORTEM 2026-09-03). '해당 없음'은 `logs.none`이다.
+     */
+    value: {
+      /** 사람이 **비운** 값. 수집하지 못한 값(`notRecorded`)과 다른 사실이다. */
+      empty: "Empty",
+      /** 보이지 않는 차이를 보이게 한다 — 전후가 공백 수만 다를 수 있다. */
+      spacesOnly: (n: number): string =>
+        `Spaces only (${n.toLocaleString("en-US")} character${n === 1 ? "" : "s"})`,
+      /** 사건 당시 그 값을 수집하지 않았다. **과거를 추정해 채우지 않는다** (spec §7). */
+      notRecorded: "Not recorded",
+      /** 저장된 값을 지금 키로 못 열었다 — `common.unreadable`과 **같은 낱말이어야 한다.** */
+      unavailable: UNAVAILABLE,
+    },
+    /**
+     * 보관된 프로젝트에서 이력을 읽을 때 (캔버스 `1j`).
+     *
+     * ⚠️ **읽기 전용 신호가 셋이다** — 제목 옆 배지 · 설명 한 줄 · [Refresh] 없음(진행 중 실행이
+     * 생길 수 없다). 필터·검색은 남는다: 읽기가 이 화면의 전부이므로 읽는 도구를 뺄 이유가 없다.
+     * ⚠️ **복원 링크는 OWNER에게만** — EDITOR는 그 화면에 못 들어간다.
+     */
+    archived: {
+      badge: "Archived",
+      description: "This project is archived. The history stays readable — editing, publishing and syncing are off.",
+      restoreLine: (date: string): string => `Archived on ${date}. Owners can restore this project from Project settings.`,
+      restoreAction: "Open project settings",
     },
     trigger: {
       cron: "Nightly",
       /** FK가 `SetNull`이라 이력은 남고 저자만 빈다. */
       removed: "Removed user",
+      /** CI 러너에는 사람이 없다 — 토큰이 프로젝트를 정할 뿐 누구인지는 말하지 않는다. */
+      ci: "CI",
     },
-    /**
-     * 값이 없는 칸. **실패의 변경 수는 0이 아니라 부재다** — 0으로 쓰면 "안 바뀌었다"는 거짓말이고,
-     * 그건 관측이 있었다는 뜻이 된다. 사유가 없는 행도 같은 글자를 쓴다(빈 칸은 열이 깨진 것처럼 보인다).
-     */
-    none: "—",
-    /** 버린 값이 있는 실행. **성공한 행에도 붙는다** — 조용히 숨기면 ARCHITECTURE §0 불변식 9 위반이다. */
-    warnings: (count: number): string => (count === 1 ? "1 dropped" : `${count.toLocaleString("en-US")} dropped`),
-    empty: {
-      title: "No syncs yet",
-      description: "This fills in the first time your translations are sent back.",
-    },
-    older: "Older",
     /**
      * ⚠️ **과거 시제이고 git 어휘가 없다.** 이 문장을 읽는 사람은 실패를 겪은 번역 편집자이고,
      * 그가 할 수 있는 일(개발자에게 말한다·기다린다)까지 말한다.
@@ -745,6 +1020,16 @@ export const en = {
       unknown: "Something went wrong. The next nightly run tries again.",
       fallback: "Something went wrong. Tell your developers if it keeps happening.",
     },
+    /** 거부 여섯의 문장 (spec §6.1). **다음 번에도 같은 이유로 거부될 것**만 여기 있다. */
+    refusals: {
+      archived: "The project was archived.",
+      "not-ready": "The first import hasn't finished yet.",
+      "stale-commit": "A newer version of the repository was already imported.",
+      "wrong-format": "The repository no longer matches the saved format.",
+      "repo-replaced": "The connected repository changed.",
+      "not-installed": "The app wasn't connected to the repository.",
+      fallback: "The run was refused before it started.",
+    },
   },
 
   /**
@@ -757,6 +1042,8 @@ export const en = {
     action: "Archive project",
     /** 되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다. */
     restore: "Restore project",
+    /** ⚠️ **절대 시각은 `<time dateTime>`이 든다** (L7.1) — 호출부가 `utcMinute`로 만든 노드를 넘긴다. */
+    archivedBy: (when: ReactNode): ReactNode => <>Archived on {when}</>,
     archived: (when: string): string => `Archived ${when}.`,
     confirm: {
       title: (name: string): string => `Archive ${name}?`,
@@ -2082,10 +2369,41 @@ export const en = {
 
   /** settings-block 넷 + 계정 (DESIGN §6.6). **블록이 각자 실패한다** — 문구도 블록별로 갈라져 있다. */
   settings: {
+    general: {
+      title: "General", thumbnail: "Thumbnail", name: "Name", address: "Address",
+      upload: "Upload", remove: "Remove",
+      caption: "PNG or JPEG, up to 3 MB. Shown in the project list, on Home, and on invites.",
+      /** ⚠️ **호스트를 말하지 않는다** (launch-readiness L7.5) — 박아 두면 dev·로컬에서도 프로덕션 주소가 보인다. */
+      addressHelp: (slug: string): string => `Opens at /projects/${slug}. The address can't be changed later.`,
+      nameHelp: "The display name only. The URL and the repository stay the same.",
+      emptyName: "Enter a project name.", longName: "Use 200 characters or fewer.",
+      busy: "Updating the thumbnail…", noImage: "There is no thumbnail to remove.",
+    },
+    sources: {
+      title: "Translation sources", add: "Add sources", locked: "Already a source",
+      empty: "No translation sources yet", emptyHelp: "Add locale files from your repository to start translating.",
+      notImported: "Not imported yet", importing: "Importing…", imported: "Imported", failed: "Import failed",
+      failedAfter: "Last import failed", retry: "Run first import", rerun: "Re-run the workflow on GitHub.",
+      added: (count: number): string => `${count.toLocaleString("en-US")} translation ${count === 1 ? "source" : "sources"} added.`,
+      yamlReminder: "Update the workflow in your repository to include the new sources.",
+      unknown: "We could not confirm the result. Check the source list before trying again.",
+      nothingAdded: "Nothing was added. Your selection is still here.",
+      description: "Choose locale files from your repository. Existing sources stay selected.",
+      selectHelp: "Select at least one new source to add.",
+    },
+    ci: { description: "Your workflow pushes source strings into malmoi on every merge.", title: "CI integration", workflow: "Workflow file", open: "View workflow", stale: "Some sources have not been imported yet. Check that the workflow includes them." },
+    archivedReason: "Restore this project to change its settings.",
+    recovery: "Syncs keep running. Manage your GitHub authorization in account settings to reconnect this repository or add sources.",
+    accountLink: "Account settings",
+    installed: "The malmoi app is installed on this repository.",
+    openRepo: "Open on GitHub",
 
     repository: {
+      disconnected: "Disconnected", notConnected: "Not connected", unknown: "Couldn't check the connection",
+      movedHint: "Reconnect to store the new name. Syncs keep working in the meantime.",
+      paused: "Syncs and publishes are paused. Everything already translated is safe.",
       title: "Repository",
-      description: "Where your source strings come from, and where translations go back.",
+      description: "Source strings come from here, and translations go back as pull requests.",
       connect: "Connect",
       reconnect: "Reconnect",
       connectFailed: "We couldn't start the connection. Try again in a moment.",
@@ -2118,7 +2436,7 @@ export const en = {
        */
       fields: {
         branch: "Base branch",
-        branchHelp: "The branch translations are sent back to, and the one CI watches.",
+        branchHelp: "Syncs read this branch, and pull requests open against it.",
         save: "Save",
         /** ⚠️ **버튼 로딩과 다른 축이다** — 셀 인라인 상태줄이라 `loadingLabel` 제거 대상이 아니다. */
       saving: "Saving…",
