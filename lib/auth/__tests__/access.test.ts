@@ -49,7 +49,7 @@ describe("planProjectAccess — 통과하면 인가된 projectId를 준다", () 
   it("EDITOR는 translation:write로 통과하고 projectId·role을 받는다", () => {
     expect(
       planProjectAccess({ member: { projectId: "p1", role: "EDITOR" }, permission: "translation:write", archivedAt: null }),
-    ).toEqual({ status: "ok", projectId: "p1", role: "EDITOR" });
+    ).toEqual({ status: "ok", projectId: "p1", role: "EDITOR", archived: false });
   });
 
   it("OWNER는 셋 다 통과한다", () => {
@@ -58,6 +58,7 @@ describe("planProjectAccess — 통과하면 인가된 projectId를 준다", () 
         status: "ok",
         projectId: "p2",
         role: "OWNER",
+        archived: false,
       });
     }
   });
@@ -68,7 +69,7 @@ describe("planProjectAccess — 통과하면 인가된 projectId를 준다", () 
       permission: "translation:write",
       archivedAt: null,
     });
-    expect(result).toEqual({ status: "ok", projectId: "authorized-project", role: "OWNER" });
+    expect(result).toEqual({ status: "ok", projectId: "authorized-project", role: "OWNER", archived: false });
   });
 
   it("canPerform을 실제로 지난다 — 표가 바뀌면 이 판정도 함께 바뀐다", () => {
@@ -122,6 +123,7 @@ describe("planProjectAccess — 보관", () => {
       status: "ok",
       projectId: "p1",
       role: "OWNER",
+      archived: true,
     });
   });
 
@@ -142,6 +144,67 @@ describe("planProjectAccess — 보관", () => {
       status: "ok",
       projectId: "p1",
       role: "EDITOR",
+      archived: false,
     });
+  });
+});
+
+/**
+ * **보관된 프로젝트의 읽기 허용** (logs-rework spec 완료조건 11 · T4a).
+ *
+ * ⚠️ **읽기 허용이 쓰기 허용을 뜻하지 않는다.** 정책이 인자라 Server Action은 계속 기본값을 쓰고,
+ * 그 기본값이 `block`이라 **정책을 안 주는 진입점은 새로 생겨도 막힌다**(fail-closed).
+ */
+describe("planProjectAccess — archivedPolicy", () => {
+  const owner = { projectId: "p1", role: "OWNER" } as const;
+  const editor = { projectId: "p1", role: "EDITOR" } as const;
+  const archivedAt = new Date("2026-09-10T00:00:00Z");
+
+  it("정책을 안 주면 지금까지와 같다 — 기본이 block이다", () => {
+    expect(planProjectAccess({ member: editor, permission: "translation:write", archivedAt })).toEqual({
+      status: "archived",
+      projectId: "p1",
+      role: "EDITOR",
+    });
+  });
+
+  it("read면 두 역할 모두 통과하고, 보관 사실을 함께 싣는다", () => {
+    for (const member of [owner, editor]) {
+      expect(
+        planProjectAccess({ member, permission: "translation:write", archivedAt, archivedPolicy: "read" }),
+        member.role,
+      ).toEqual({ status: "ok", projectId: "p1", role: member.role, archived: true });
+    }
+  });
+
+  /** ⚠️ **읽기 허용이 쓰기 허용이 아니다** — 같은 permission이라도 정책을 안 주면 그대로 막힌다. */
+  it("같은 permission이라도 정책이 block이면 막힌다 — 갈래마다 센다", () => {
+    for (const member of [owner, editor]) {
+      for (const policy of ["block", undefined] as const) {
+        expect(
+          planProjectAccess({ member, permission: "translation:write", archivedAt, archivedPolicy: policy }).status,
+          `${member.role}/${policy}`,
+        ).toBe("archived");
+      }
+    }
+  });
+
+  it("read가 부족한 권한을 열어 주지 않는다 — 판정 순서는 그대로다", () => {
+    expect(
+      planProjectAccess({ member: editor, permission: "member:manage", archivedAt, archivedPolicy: "read" }),
+    ).toEqual({ status: "forbidden" });
+  });
+
+  /** 제거된 멤버는 과거 참여자여도 `not-found`다 — 정책이 그 판정을 앞지르지 않는다. */
+  it("멤버가 아니면 read여도 not-found다", () => {
+    expect(
+      planProjectAccess({ member: null, permission: "translation:write", archivedAt, archivedPolicy: "read" }),
+    ).toEqual({ status: "not-found" });
+  });
+
+  it("보관이 아닌 프로젝트에서 read는 아무것도 바꾸지 않는다", () => {
+    expect(
+      planProjectAccess({ member: editor, permission: "translation:write", archivedAt: null, archivedPolicy: "read" }),
+    ).toEqual({ status: "ok", projectId: "p1", role: "EDITOR", archived: false });
   });
 });

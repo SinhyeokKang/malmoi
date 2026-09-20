@@ -4,7 +4,7 @@ import { validatePiiReadKeys } from "@/lib/credentials/storage";
 import { m } from "@/lib/i18n";
 import type { PrismaClient } from "@/generated/prisma/client";
 
-import { planProjectAccess, type ProjectAccess } from "./access";
+import { planProjectAccess, type ArchivedPolicy, type ProjectAccess } from "./access";
 import { maskedEmailLabels } from "./invite-label";
 import type { Permission, Role } from "./permission";
 
@@ -18,7 +18,7 @@ import type { Permission, Role } from "./permission";
  */
 export async function getProjectAccess(
   prisma: PrismaClient,
-  input: { userId: string; slug: string; permission: Permission },
+  input: { userId: string; slug: string; permission: Permission; archivedPolicy?: ArchivedPolicy },
 ): Promise<ProjectAccess> {
   const project = await prisma.project.findUnique({
     where: { slug: input.slug },
@@ -38,7 +38,13 @@ export async function getProjectAccess(
     select: { projectId: true, role: true },
   });
 
-  return planProjectAccess({ member, permission: input.permission, archivedAt: project.archivedAt });
+  return planProjectAccess({
+    member,
+    permission: input.permission,
+    archivedAt: project.archivedAt,
+    // ⚠️ **전달만 한다** — 기본값(`block`)은 판정 모듈이 든다. 여기서 폴백을 또 쓰면 두 벌이 된다.
+    archivedPolicy: input.archivedPolicy,
+  });
 }
 
 /**

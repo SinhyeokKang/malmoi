@@ -1,7 +1,6 @@
 import { History } from "lucide-react";
 import { redirect } from "next/navigation";
 
-import { ProjectArchived } from "@/components/project-archived";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -43,8 +42,16 @@ export default async function LogsPage({
   searchParams: Promise<Search>;
 }) {
   const { slug } = await params;
-  const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
-  if (archived) return <ProjectArchived slug={slug} role={role} />;
+  /**
+   * ⚠️ **보관돼도 현 멤버가 읽는다** (logs-rework spec 완료조건 11) — 보관 사건과 그 직전 기록을
+   * 확인하려고 **복원해야 하는 순환**을 끊는다. 쓰기는 정책을 안 주는 Server Action 쪽에서 그대로
+   * 막히고, 제거된 멤버는 여전히 `not-found`다. 이 화면 하나만 `read`를 준다.
+   */
+  const { projectId, archived } = await requireProjectAccess({
+    slug,
+    permission: "translation:write",
+    archivedPolicy: "read",
+  });
   const { cursor } = firstQueryValues(await searchParams);
 
   const prisma = getPrisma();

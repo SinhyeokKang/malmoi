@@ -230,8 +230,22 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
     "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx",
     "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
-    "app/(edit)/projects/[slug]/logs/page.tsx",
   ];
+
+  /**
+   * ⚠️ **Logs가 2026-09-20에 이 목록에서 빠졌다** (logs-rework 완료조건 11). 보관 사건과 그 직전
+   * 기록을 확인하려면 **복원해야 하는 순환**이었다 — 전면 교체 대신 `archivedPolicy: "read"`로
+   * 통과시키고 화면이 배너를 그린다. **읽기 허용이 쓰기 허용이 아니라는 것**은 `access.test.ts`가
+   * 갈래마다 세고, 여기서는 **그 정책을 실제로 넘기는 화면이 이 하나뿐인지**를 센다.
+   */
+  const LOGS = "app/(edit)/projects/[slug]/logs/page.tsx";
+
+  it("Logs만 보관을 읽기로 통과시킨다", () => {
+    expect(read(LOGS)).toContain('archivedPolicy: "read"');
+    expect(read(LOGS)).not.toContain("ProjectArchived");
+    for (const path of SITES) expect(read(path), path).not.toContain("archivedPolicy");
+    expect(read(SETTINGS)).not.toContain("archivedPolicy");
+  });
 
   it("`translation:write` 화면 전부가 `ProjectArchived`를 반환한다", () => {
     for (const path of SITES) {
