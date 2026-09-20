@@ -27,7 +27,6 @@ export function MemberRow({
   meta,
   controls,
   band = null,
-  bandTone = "muted",
   glyph,
   after = null,
 }: {
@@ -54,8 +53,6 @@ export function MemberRow({
    * 둘로 나누면 `aria-describedby`가 어느 쪽을 가리킬지 화면마다 정하게 된다.
    */
   band?: ReactNode;
-  /** 막힌 동작의 사유는 `danger`, 상태 설명은 `muted` (캔버스 `1c` ↔ `1d`). */
-  bandTone?: "muted" | "danger";
   /** 사후 거부 `Alert` — 띠와 같은 자리(행 아래)다. 어느 행이 거부됐는지가 정보다. */
   after?: ReactNode;
 }) {
@@ -105,8 +102,11 @@ export function MemberRow({
         <span className="ml-auto flex shrink-0 items-center gap-2">{controls?.(bandId)}</span>
       </div>
 
+      {/* ⚠️ **톤을 받지 않는다** — 이 카드의 띠는 전부 `muted`다 (2026-09-20 사용자: *"alert 계열 말고
+          그냥 일반 계열"*). 마지막 오너는 **막힌 예외가 아니라 상시 상태**라(오너가 하나면 언제나 참)
+          붉은 띠가 매번 서면 경고가 배경이 된다 — 같은 이유로 `bandTone`도 그때 지웠다. */}
       {band !== null && (
-        <BannerLine id={bandId} tone={bandTone} indent="avatar">
+        <BannerLine id={bandId} indent="avatar">
           {band}
         </BannerLine>
       )}

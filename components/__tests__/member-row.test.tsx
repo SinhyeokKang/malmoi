@@ -102,8 +102,8 @@ describe("MemberRow — 사유 띠와 aria-describedby", () => {
   });
 
   /**
-   * ⚠️ **한 행에 띠는 항상 하나다** — 못 읽음과 마지막 오너가 겹치면 문장 둘을 한 띠에 싣는다.
-   * 띠가 둘이면 `aria-describedby`가 어느 쪽을 가리킬지 정해야 하고, 그 판정이 화면마다 갈린다.
+   * ⚠️ **한 행에 띠는 항상 하나다** — 띠가 둘이면 `aria-describedby`가 어느 쪽을 가리킬지 정해야 하고,
+   * 그 판정이 화면마다 갈린다.
    */
   it("문장이 둘이어도 띠는 하나다", async () => {
     const { container } = await render(
@@ -112,6 +112,20 @@ describe("MemberRow — 사유 띠와 aria-describedby", () => {
     expect(container.querySelectorAll(BAND)).toHaveLength(1);
     expect(find(container, BAND).textContent).toContain(m.members.unreadableHint);
     expect(find(container, BAND).textContent).toContain(m.errors.access["last-owner"]);
+  });
+
+  /**
+   * ⚠️ **띠에 붉은 톤이 없다** (2026-09-20 사용자 — *"alert 계열 말고 그냥 일반 계열"*). 마지막 오너는
+   * 오너가 하나이면 **언제나 참인 상태**라, 그 문장이 붉으면 경고가 배경이 되고 진짜 거부(사후
+   * `Alert`)와 구별되지 않는다. 톤 슬롯 자체를 지웠으므로 호출부가 되살릴 자리도 없다.
+   */
+  it("띠가 언제나 muted다 — 사유가 붉지 않다", async () => {
+    const { container } = await render(
+      <MemberRow id="u1" identity={identity("A", null)} band={m.errors.access["last-owner"]} />,
+    );
+    const band = find<HTMLElement>(container, BAND);
+    expect(band.className).toContain("text-muted-foreground");
+    expect(band.className).not.toContain("text-destructive");
   });
 });
 

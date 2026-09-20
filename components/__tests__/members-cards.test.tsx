@@ -122,7 +122,12 @@ describe("#2 OWNER · 오너 1명", () => {
     expect(trigger.textContent).toContain(m.projects.role.OWNER);
   });
 
-  /** **이 단언이 이 기능의 실질 위험을 막는다** — 같은 상황에 두 문장이 서는 것. */
+  /**
+   * **이 단언이 이 기능의 실질 위험을 막는다** — 같은 상황에 두 문장이 서는 것.
+   *
+   * ⚠️ **사유가 화면에 서지 않는다** (2026-09-20 사용자 — *"지울 수는 없는데 굳이 캡션으로 보여주지는
+   * 말자"*). 붉은 띠는 사라졌고 문장은 `sr-only`로 남아 꺼진 컨트롤이 계속 그것을 가리킨다.
+   */
   it("띠 문구가 서버 거부 문구와 같은 문자열이다", async () => {
     const container = await draw([owner, editor]);
     expect(bands(container)[0]!.textContent).toBe(accessErrorMessage("last-owner"));
@@ -141,7 +146,12 @@ describe("#5 · #6 복호화 실패 행", () => {
     expect(broken.querySelector('[role="combobox"]')?.getAttribute("aria-disabled")).toBeNull();
   });
 
-  /** ⚠️ **한 행에 띠는 항상 하나다** — 둘이면 `aria-describedby`가 어느 쪽을 가리킬지 정해야 한다. */
+  /**
+   * ⚠️ **한 행에 띠는 항상 하나다** — 둘이면 `aria-describedby`가 어느 쪽을 가리킬지 정해야 한다.
+   *
+   * ⚠️ **겹쳐도 보이는 것은 못 읽음 하나다** (2026-09-20). 마지막 오너는 띠에서 빠져 `sr-only`로 갔고,
+   * 그래서 이 행의 띠는 **상태 설명만** 든다 — 막힌 행동의 사유는 컨트롤에 붙는다.
+   */
   it("못 읽음 + 마지막 오너가 겹치면 띠 하나에 문장 둘이다", async () => {
     const container = await draw([member({ userId: "u1", role: "OWNER", readable: false }), editor]);
     const band = bands(container)[0]!;
@@ -341,14 +351,15 @@ describe("캔버스 대조로 되돌린 자리", () => {
    * ⚠️ **막힌 동작의 사유와 상태 설명이 다른 색이다** (캔버스 `1c` ↔ `1d`). 같은 색으로 두면
    * "지금 막혀 있다"와 "이런 상태다"가 한 화면에서 구별되지 않는다.
    */
-  it("띠 색이 사유에 따라 갈린다", async () => {
+  it("띠가 사유와 무관하게 muted다", async () => {
+    // 2026-09-20 사용자: *"alert 계열 말고 그냥 일반 계열"*. 옛 판정은 이 자리에서 붉은 띠를 요구했다.
     const blocked = await draw([owner, editor]);
-    expect(bands(blocked)[0]!.className).toContain("text-destructive");
+    expect(bands(blocked)[0]!.className).toContain("text-muted-foreground");
+    expect(bands(blocked)[0]!.className).not.toContain("text-destructive");
 
     const unreadable = await draw([owner, second, member({ userId: "u9", readable: false })]);
     const band = bands(unreadable).find((b) => b.textContent === m.members.unreadableHint);
     expect(band?.className).toContain("text-muted-foreground");
-    expect(band?.className).not.toContain("text-destructive");
   });
 
   /**
