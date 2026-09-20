@@ -80,3 +80,10 @@ it("활성 쓰기 키가 없으면 DB에 닿지 않는다", async () => {
   expect(await updateProfileName("Jane")).toEqual({ ok: false, reason: "unavailable" });
   expect(update).not.toHaveBeenCalled();
 });
+
+/** 이름도 같다 — 커밋 뒤 캐시 실패가 저장된 이름을 "실패"로 만들지 않는다 (POSTMORTEM 2026-09-20 🔁). */
+it("커밋 뒤 캐시 실패를 저장 실패로 보고하지 않는다", async () => {
+  mocks.revalidatePath.mockImplementationOnce(() => { throw new Error("cache failure"); });
+  expect(await updateProfileName("Jane")).toEqual({ ok: true, name: "Jane" });
+  expect(update).toHaveBeenCalledTimes(1);
+});
