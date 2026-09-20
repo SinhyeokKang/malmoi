@@ -4,7 +4,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { requireEnv } from "../lib/env";
 import { decodeUser, readable } from "../lib/credentials/records";
 import { validatePiiReadKeys } from "../lib/credentials/storage";
-import { imageObjectKey, planImageDelete } from "../lib/upload/image";
+import { imageObjectKey, planImageDelete, planProjectImageDelete } from "../lib/upload/image";
 import { deleteImage, listImages, putImage } from "../lib/upload/store";
 import { loadLocalEnv, scriptPrisma } from "./local";
 
@@ -43,7 +43,7 @@ async function main() {
     if (!deleted) throw new Error("Deleted image did not return 404 within the smoke deadline");
     console.log("Blob upload/download/delete: OK");
     stage = "image-listing";
-    const images = await listImages();
+    const images = [...await listImages("avatars/"), ...await listImages("projects/")];
     stage = "user-image-query";
     const rows = await prisma.user.findMany({ select: { id: true, image: true } });
     const referenced = new Set<string>();
@@ -53,7 +53,10 @@ async function main() {
       if (user === null) { unreadable++; continue; }
       if (user.image !== null) referenced.add(user.image);
     }
-    const candidates = images.filter((blob) => planImageDelete(blob.url) !== null && !referenced.has(blob.url));
+    stage = "project-image-query";
+    const projects = await prisma.project.findMany({ select: { image: true } });
+    for (const project of projects) if (project.image !== null) referenced.add(project.image);
+    const candidates = images.filter((blob) => (planImageDelete(blob.url) !== null || planProjectImageDelete(blob.url) !== null) && !referenced.has(blob.url));
     console.log(JSON.stringify({ orphanCandidates: candidates.map((blob) => blob.pathname), unreadableUsers: unreadable, note: "Read-only candidates; concurrent uploads and unreadable rows can cause false positives. Never delete automatically." }, null, 2));
   } finally {
     try {
