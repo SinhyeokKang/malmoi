@@ -94,9 +94,11 @@ export function FilesStep({
   onManual,
   onRetry,
   selection,
+  pending = false,
 }: {
   state: FilesStepState;
-  selection?: { checked: ReadonlySet<number>; conflicts: readonly { path: string }[]; onToggle: (index: number) => void };
+  pending?: boolean;
+  selection?: { locked?: ReadonlySet<number>; checked: ReadonlySet<number>; conflicts: readonly { path: string }[]; onToggle: (index: number) => void };
   onPick: (index: number) => void;
   onLocale: (locale: string) => void;
   onManual: (next: ManualEntry) => void;
@@ -110,7 +112,7 @@ export function FilesStep({
       <div className="flex flex-1 flex-col gap-3">
         <Alert variant="danger">{failureText(detectError)}</Alert>
         <div>
-          <Button variant="default" onClick={onRetry}>
+          <Button variant="default" disabled={pending} onClick={onRetry}>
             {m.newProject.result.ingest.retry}
           </Button>
         </div>
@@ -130,6 +132,7 @@ export function FilesStep({
     <ul className="border-border min-h-0 overflow-y-auto rounded-md border" aria-label={m.newProject.files.candidates}>
       {candidates.map((c, index) => {
         const active = picked === index;
+        const locked = selection?.locked?.has(index) ?? false;
         const prevActive = index > 0 && picked === index - 1;
         /*
           ⚠️ **글리프가 파일 종류로 갈린다** — 어댑터 이름이 아니라 **경로의 확장자**로 판정한다
@@ -159,6 +162,7 @@ export function FilesStep({
           <li
             key={c.pathTemplate}
             className={cn(
+              locked && "opacity-50",
               index > 0 && "border-t",
               index > 0 && (active || prevActive ? "border-border" : "border-divider"),
               active ? "bg-muted" : "hover:bg-foreground/3",
@@ -166,12 +170,12 @@ export function FilesStep({
           >
             <div className={cn("p-3", selection && "flex items-center gap-3")}>
               {selection ? <>
-                <Checkbox aria-label={m.newProject.files.include(c.pathTemplate)} checked={selection.checked.has(index)}
-                  onCheckedChange={() => selection.onToggle(index)} />
+                <Checkbox aria-label={m.newProject.files.include(c.pathTemplate)} checked={locked || selection.checked.has(index)} disabled={pending || locked}
+                  onCheckedChange={() => { if (!pending && !locked) selection.onToggle(index); }} />
                 <Button variant="ghost" type="button" aria-label={m.newProject.files.previewCandidate(c.pathTemplate)}
-                  className="text-foreground h-auto min-w-0 flex-1 justify-start gap-3 rounded p-0 text-left whitespace-normal"
-                  onClick={() => onPick(index)}>{content}</Button>
-              </> : <Radio value={String(index)} labelClassName="gap-3" label={content} />}
+                  disabled={pending} className="text-foreground h-auto min-w-0 flex-1 justify-start gap-3 rounded p-0 text-left whitespace-normal"
+                  onClick={() => onPick(index)}>{content}</Button>{locked && <span className="sr-only">{m.settings.sources.locked}</span>}
+              </> : <Radio disabled={pending} value={String(index)} labelClassName="gap-3" label={content} />}
             </div>
           </li>
         );
@@ -221,17 +225,17 @@ export function FilesStep({
             ))}
           </ul>
         ) : candidates.length === 0 ? (
-          <ManualForm state={state} onManual={onManual} clearsSelection={false} />
+          <ManualForm pending={pending} state={state} onManual={onManual} clearsSelection={false} />
         ) : (
           <>
-            {selection ? candidateList : <RadioGroup aria-label={m.newProject.files.candidates}
+            {selection ? candidateList : <RadioGroup disabled={pending} aria-label={m.newProject.files.candidates}
               value={picked === null ? "" : String(picked)} onValueChange={value => onPick(Number(value))}
               className="min-h-0 overflow-y-auto">{candidateList}</RadioGroup>}
             {selection && selection.conflicts.length > 0 && <Alert variant="danger">
               <p>{m.newProject.files.conflicts}</p>
               {selection.conflicts.map(conflict => <p key={conflict.path}>{conflict.path}</p>)}
             </Alert>}
-            <ManualToggle state={state} onManual={onManual} />
+            <ManualToggle pending={pending} state={state} onManual={onManual} />
           </>
         )}
       </ResizablePanel>
@@ -246,6 +250,7 @@ export function FilesStep({
       */}
       <ResizablePanel className="flex min-w-0">
         <Preview
+          pending={pending}
           state={state}
           candidate={candidate ?? state.manualCandidate}
           onLocale={onLocale}
@@ -261,12 +266,14 @@ function Preview({
   candidate,
   onLocale,
   empty = false,
+  pending,
 }: {
   state: FilesStepState;
   candidate: CandidateSummary | undefined;
   onLocale: (locale: string) => void;
   /** 예외 E — 보여 줄 후보가 아직 없다. **헤더는 그대로 서고 본문 자리만 빈다.** */
   empty?: boolean;
+  pending: boolean;
 }) {
   const locales = candidate?.locales ?? [];
   /**
@@ -294,7 +301,7 @@ function Preview({
       {!empty && (
       <div className="border-border flex shrink-0 items-center gap-2 border-b p-2">
         {collapsed ? (
-          <Select value={state.locale} onValueChange={onLocale}>
+          <Select disabled={pending} value={state.locale} onValueChange={value => { if (!pending) onLocale(value); }}>
             {/* ⚠️ 라벨이 트리거 **밖**이다 — 안에 두면 자기 참조가 내용으로 풀릴 때 두 번 읽힌다 (리뷰 2026-09-13). */}
             <span id="preview-language-label" className="sr-only">{m.newProject.files.preview.language}</span>
             <SelectTrigger id="preview-language" aria-labelledby="preview-language-label preview-language" className="w-48">
@@ -302,7 +309,7 @@ function Preview({
             </SelectTrigger>
             <SelectContent>
               {locales.map((code) => (
-                <SelectItem key={code} value={code}>
+                <SelectItem disabled={pending} key={code} value={code}>
                   {/* ⚠️ 세그먼트 칸에는 국기가 있다 — 접혔다고 빠지면 같은 로케일이 두 가지로 보인다. */}
                   <LocaleFlag code={code} />
                   {m.newProject.files.preview.option(code, keysFor(code))}
@@ -317,13 +324,13 @@ function Preview({
           */
           <div className="bg-canvas h-9 w-[150px] rounded-lg" aria-hidden />
         ) : (
-          <SegmentedControl
+          <fieldset disabled={pending}><SegmentedControl
             label={m.newProject.files.preview.language}
             value={state.locale}
-            onChange={onLocale}
+            onChange={value => { if (!pending) onLocale(value); }}
             /* 칸마다 국기가 앞에 선다 — `leading`이 그 자리다 (`SegmentContent`는 아이콘 컴포넌트만 받는다). */
             options={locales.map((code) => ({ value: code, label: code, leading: <LocaleFlag code={code} /> }))}
-          />
+          /></fieldset>
         )}
         <span className="text-muted-foreground min-w-0 flex-1 truncate text-right text-xs">{candidate?.pathTemplate}</span>
       </div>
@@ -441,19 +448,19 @@ function Preview({
   );
 }
 
-function ManualToggle({ state, onManual }: { state: FilesStepState; onManual: (next: ManualEntry) => void }) {
+function ManualToggle({ state, onManual, pending }: { pending: boolean; state: FilesStepState; onManual: (next: ManualEntry) => void }) {
   const [open, setOpen] = useState(false);
   if (!open) {
     return (
       <p className="text-muted-foreground text-xs">
         {m.newProject.files.notListed}{" "}
-        <Button variant="link" size="sm" onClick={() => setOpen(true)} className="px-0">
+        <Button variant="link" size="sm" disabled={pending} onClick={() => setOpen(true)} className="px-0">
           {m.newProject.files.setPath}
         </Button>
       </p>
     );
   }
-  return <ManualForm state={state} onManual={onManual} clearsSelection />;
+  return <ManualForm pending={pending} state={state} onManual={onManual} clearsSelection />;
 }
 
 /** 예외 E — 후보 0개. **경로를 치면 우측이 키로 차고 그것이 검증이다.** */
@@ -461,11 +468,13 @@ function ManualForm({
   state,
   onManual,
   clearsSelection,
+  pending,
 }: {
   state: FilesStepState;
   onManual: (next: ManualEntry) => void;
   /** ⚠️ **후보 0개에는 위에 지울 선택이 없다** (malmoi#47) — 그 갈래에서 안내 문장은 없는 UI를 가리킨다. */
   clearsSelection: boolean;
+  pending: boolean;
 }) {
   const { manual, adapters } = state;
   // 셀렉트의 선택지가 `adapters` 그 배열이라 못 찾을 수 없다 — 폴백은 타입을 닫기 위한 것이다.
@@ -474,13 +483,13 @@ function ManualForm({
   return (
     <div className="flex flex-col gap-3">
       <FormGroup label={m.newProject.files.manual.format} labelId="manual-format-label" htmlFor="manual-format">
-        <Select value={manual.adapter} onValueChange={(value) => onManual({ ...manual, adapter: value as AdapterName })}>
+        <Select disabled={pending} value={manual.adapter} onValueChange={(value) => { if (!pending) onManual({ ...manual, adapter: value as AdapterName }); }}>
           <SelectTrigger id="manual-format" aria-labelledby="manual-format-label manual-format" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {adapters.map((c) => (
-              <SelectItem key={c.adapter} value={c.adapter}>
+              <SelectItem disabled={pending} key={c.adapter} value={c.adapter}>
                 {c.label}
               </SelectItem>
             ))}
@@ -495,6 +504,7 @@ function ManualForm({
         )}
       >
         <Input
+          disabled={pending}
           id="manual-path"
           value={manual.pathTemplate}
           onChange={(e) => onManual({ ...manual, pathTemplate: e.target.value })}
@@ -504,6 +514,7 @@ function ManualForm({
       </FormGroup>
       <FormGroup label={m.newProject.files.manual.baseLocale} htmlFor="manual-base">
         <Input
+          disabled={pending}
           id="manual-base"
           value={manual.baseLocale}
           onChange={(e) => onManual({ ...manual, baseLocale: e.target.value })}
