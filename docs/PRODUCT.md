@@ -484,7 +484,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /projects/:slug/surfaces/:surface/locales       ✅ 로케일 목록 + 기준 로케일 지정 ← 6b-5 → multi-surface B
 /projects/:slug/surfaces/new   ✅ 권한 검사 후 /settings?add=sources redirect (OAuth 복귀 포함)
 /projects/:slug/members        멤버
-/projects/:slug/logs           ✅ 변경 이력                        ← 7단계 (SyncRun 소비자)
+/projects/:slug/logs           ✅ 프로젝트 전체 활동 이력 (?event= 상세)  ← logs-rework (ProjectEvent 소비자)
 /projects/:slug/settings       나머지 프로젝트 설정 전부
 ```
 
@@ -557,10 +557,21 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
      만들면 그것이 곧 미발송 술어의 넷째 벌이고, `pnpm test:projects:postgres`가 그것을 잡는다.
    - `Home`이 소유하는 나머지는 그대로다 — "한 화면에 모아야만 보이는 것": 지금 손봐야 할 항목과
      최근 로그.
-3. **`logs`의 데이터 원천은 7단계의 `SyncRun`이다** (ARCHITECTURE §5). ✅ **그래서 `Home`이 그 부분집합으로 먼저
-   섰다** (6b-6) — 지금 재료로 낼 수 있는 것은 `Translation.updatedAt`+`updatedBy`(최근 편집) ·
-   `TranslationSurface.lastCommitAt`(CI push) · `lastPublishedAt`+`lastPrUrl`(마지막 Publish 1건)이고, 그것은
-   "변경 이력"이 아니라 그 부분집합이다. `Home`은 그 부분집합으로 시작하고 `SyncRun`이 서면 늘린다.
+3. ~~**`logs`의 데이터 원천은 7단계의 `SyncRun`이다**~~ — **2026-09-20에 뒤집혔다** (logs-rework).
+   지우지 않고 남기는 이유는 무엇이 왜 바뀌었는지가 이 결정의 내용이기 때문이다.
+   - **옛 판정**: 낼 수 있는 재료가 `SyncRun`(Publish 실행)뿐이라 `logs`가 그것만 보고, `Home`은
+     `Translation.updatedAt` · `lastCommitAt` · `lastPublishedAt` 셋을 **그때그때 조합한** 부분집합을
+     먼저 세운다. "`SyncRun`이 서면 늘린다"가 그 다음 걸음이었다.
+   - **왜 뒤집었나**: 그 조합은 **사건을 보존하지 못한다.** 같은 셀을 세 번 고치면 한 줄이고, 적재
+     실패가 둘이면 컬럼이 하나라 하나만 남으며, 7일 창은 조용한 프로젝트의 카드를 통째로 비운다.
+     그리고 표 다섯 열은 Publish에만 맞아서, 종류가 여섯이면 절반이 영원히 빈 칸이 된다 —
+     **빈 칸은 "값이 없다"와 "이 종류엔 해당 없다"를 구별하지 못한다.**
+   - **지금 판정**: 원천은 **`ProjectEvent` 하나**다 (ARCHITECTURE §5.7). `logs`가 종류 여섯을 한
+     스트림으로 보이고, **`Home`은 같은 조회의 최신 여섯**이다 — 같은 참조·같은 상세·같은 권한
+     판정이고, 조합 쿼리와 7일 창은 소스에서 사라졌다. 옛 `SyncRun`은 지우지 않고 **참조로 잇는다**:
+     Publish의 결과·파일 수·PR은 계속 그 테이블이 정본이다.
+   - **대가**: 수집 시작 이전은 복원되지 않는다. 백필 대상은 보존된 Publish 실행뿐이고, 그 경계에
+     화면이 선을 하나 긋는다(개시 시각을 모르면 **선을 아예 안 그린다** — 추정값을 만들지 않는다).
 4. ✅ **기준 로케일은 `locales`가 소유한다** (2026-09-09, 6b-5) — 로케일 목록과 base 지정이 한
    화면에 있어야 한다. 6b-3이 그것을 `settings`의 Repository 카드에 넣었고 **하루 뒤 6b-5가
    옮겼다.** 옮긴 이유: 그때까지 로케일은 **번역 표의 열로만 존재해** orphaned 로케일이 왜 그렇게
