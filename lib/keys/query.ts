@@ -431,66 +431,6 @@ export async function loadLocaleCounts(prisma: PrismaClient, projectId: string, 
   return { total, cells };
 }
 
-/**
- * Home의 최근 활동 재료 — **사람이 만진 편집만** (6b-6).
- *
- * ⚠️ **`updatedBy: { not: null }`이 빠지면 안 된다.** push는 그 컬럼을 비우면서 전 행의 `updatedAt`을
- * 올리므로(strict — ARCHITECTURE §0 불변식 2), 조건이 없으면 code push 직후 활동 목록이 **903건의 "편집"**으로 덮인다.
- * `countUnpublished`가 같은 술어를 쓰는 것과 같은 이유다.
- *
- * ⚠️ **`take`가 인덱스 앞에 있다.** `@@index([projectId, updatedAt])`를 역방향으로 타 첫 N행에서
- * 멈춘다 — 정렬 없이 전부 읽어 JS에서 자르면 903키 리포에서 전 행이 넘어온다.
- *
- * ⚠️ **`value`를 select하지 않는다.** 활동 목록은 "무엇이 바뀌었나"를 키 이름으로 말하고, 값을
- * 실으면 번역 본문 전체가 이 화면에 따라온다.
- */
-export type RecentEditRow = {
-  surfaceSlug: string;
-  at: Date;
-  key: string;
-  namespace: string;
-  locale: string;
-  /** SQL이 null을 걸렀으므로 여기서 좁힌다 — 화면이 다시 가드하지 않는다. */
-  updatedBy: string;
-};
-
-export async function loadRecentEdits(
-  prisma: PrismaClient,
-  projectId: string,
-  limit: number,
-): Promise<RecentEditRow[]> {
-  const rows = await prisma.translation.findMany({
-    // ⚠️ **`projectId`로 좁힌다** — RLS가 없어 애플리케이션이 유일한 테넌트 방어선이다.
-    where: { projectId, surface: { archivedAt: null }, updatedBy: { not: null } },
-    /**
-     * ⚠️ **보조 키가 있어야 어느 N건이 오는지 결정적이다.** 경계 시각을 공유하는 행이 셋인데
-     * `take`가 둘만 받으면, 보조 키 없이는 그 셋 중 무엇이 오는지가 요청마다 달라진다. 화면 순서의
-     * 보증은 `recentActivity`가 따로 들고 있다 — 이쪽은 **선택**을 고정한다.
-     */
-    orderBy: [{ updatedAt: "desc" }, { keyId: "asc" }, { localeCode: "asc" }],
-    take: limit,
-    select: {
-      updatedAt: true,
-      updatedBy: true,
-      localeCode: true,
-      surface: { select: { slug: true } },
-      stringKey: { select: { key: true, namespace: true } },
-    },
-  });
-  return rows.flatMap((row) =>
-    // `updatedBy`는 위 `where`가 보장하지만 타입은 nullable이다 — 단언 대신 걸러 낸다.
-    row.updatedBy === null || row.surface === null
-      ? []
-      : [{
-          surfaceSlug: row.surface.slug,
-          at: row.updatedAt,
-          key: row.stringKey.key,
-          namespace: row.stringKey.namespace,
-          locale: row.localeCode,
-          updatedBy: row.updatedBy,
-        }],
-  );
-}
 
 /**
  * 목록 집계 다섯 — **왕복 수가 프로젝트 수와 무관하다** (DESIGN §6.63).
@@ -672,54 +612,6 @@ export async function loadReviewAttention(prisma: PrismaClient, projectId: strin
   }]));
 }
 
-/**
- * 표면별로 **마지막 Sync가 들여온 키 수** — 로그의 `CI synced {n} new keys into {surface}`.
- *
- * ⚠️ **`lastPulledAt` 기준의 ④와 다른 수다.** 저쪽은 "마지막 pull 이후 리포에서 들어온 것"이고
- * 여기는 "마지막 Sync가 들여온 것"이다 — 카드와 로그가 말하는 시점이 다르므로 같은 수를 쓰면
- * 둘 중 하나가 거짓이 된다.
- */
-export async function loadLastSyncNewKeys(prisma: PrismaClient, projectId: string): Promise<Map<string, number>> {
-  const rows = await prisma.$queryRaw<{ surfaceId: string; n: number }[]>`
-    SELECT k."surfaceId", COUNT(*)::int AS n
-    FROM "StringKey" k
-    JOIN "TranslationSurface" s ON s."projectId" = k."projectId" AND s."id" = k."surfaceId"
-    WHERE k."projectId" = ${projectId}
-      AND k."orphaned" = false
-      AND s."archivedAt" IS NULL
-      AND s."lastCommitAt" IS NOT NULL
-      AND k."createdAt" >= s."lastCommitAt"
-    GROUP BY k."surfaceId"`;
-  return new Map(rows.map((row) => [row.surfaceId, row.n]));
-}
-
-/** 되돌려보낸 실행 하나. **`prUrl`은 링크가 아니라 번호의 출처다** — 로그 줄은 번호만 쓴다. */
-export type PublishRun = { at: Date; prUrl: string | null; changed: number | null };
-
-/**
- * 창 안의 **성공한** Publish (DESIGN §6.64).
- *
- * ⚠️ **`SUCCEEDED`만이다.** `skipped`는 보낸 것이 없어 사건이 아니고(`lastPublishedAt`도 안 건드린다),
- * 실패는 `changed`가 `null`이라 문장이 "0 files changed"가 된다 — 실패엔 관측 자체가 없다.
- *
- * ⚠️ **`finishedAt`이 아니라 `startedAt`으로 좁힌다** — `@@index([projectId, startedAt])`를 역방향으로
- * 탄다. 둘의 차이는 실행 시간뿐이고 이 창은 7일이다.
- */
-export async function loadRecentPublishes(
-  prisma: PrismaClient,
-  projectId: string,
-  since: Date,
-  limit: number,
-): Promise<PublishRun[]> {
-  const rows = await prisma.syncRun.findMany({
-    where: { projectId, status: "SUCCEEDED", finishedAt: { not: null }, startedAt: { gte: since } },
-    orderBy: [{ startedAt: "desc" }, { id: "asc" }],
-    take: limit,
-    select: { finishedAt: true, prUrl: true, changed: true },
-  });
-  // `finishedAt`은 위 `where`가 보장하지만 타입은 nullable이다 — 단언 대신 걸러 낸다.
-  return rows.flatMap((row) => (row.finishedAt === null ? [] : [{ at: row.finishedAt, prUrl: row.prUrl, changed: row.changed }]));
-}
 
 /** 같은 활성·비고아 술어로 두 축을 따로 센다. Translation을 조인하면 키 수가 로케일 수만큼 불어난다. */
 export async function loadSurfaceCounts(prisma: PrismaClient, projectId: string): Promise<{ surfaceId: string; keys: number; locales: number }[]> {

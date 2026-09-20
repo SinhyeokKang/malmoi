@@ -54,7 +54,9 @@ describe("Home — 개요가 일로 이어진다 (project-home)", () => {
    * 흩으면 테스트가 전수로 들 자리가 없다.
    */
   it("순수 판정 다섯을 `lib/home/*`에서 받는다", () => {
-    for (const fn of ["planHomeState(", "countCards(", "attentionItems(", "metaRows(", "recentActivity("]) {
+    // ⚠️ **`recentActivity`가 2026-09-20에 빠졌다** (logs-rework) — 활동 조합이 사라지고 Home도
+    // `lib/events/query.ts`의 같은 스트림을 읽는다. 아래 `loadEvents` 검사가 그 자리를 대신한다.
+    for (const fn of ["planHomeState(", "countCards(", "attentionItems(", "metaRows("]) {
       expect(src, fn).toContain(fn);
     }
   });
@@ -210,5 +212,44 @@ describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () =
     const source = skeleton();
     expect(source).toMatch(/<Card rows=\{3\} footer=\{false\} \/>/);
     expect(source).toMatch(/<Card rows=\{5\} footer divided=\{false\} \/>/);
+  });
+});
+
+/**
+ * **Home의 Recent logs가 Logs와 같은 스트림을 읽는다** (logs-rework T8a·T8b·T8c).
+ *
+ * ⚠️ **소스로 센다** — 같은 사건이 두 화면에서 같은 ID·같은 상세여야 한다는 성질은 렌더 테스트가
+ * 못 본다(둘을 같은 테스트에서 세우지 않는다). 조합 쿼리가 되살아나는 것도 마찬가지다.
+ */
+describe("Home — 활동은 이벤트 스트림 하나다", () => {
+  const src = read("app/(edit)/projects/[slug]/page.tsx");
+
+  it("조합 쿼리와 7일 창이 소스에서 사라졌다", () => {
+    for (const gone of ["recentActivity(", "ACTIVITY_WINDOW_DAYS", "ACTIVITY_LIMIT", "loadRecentEdits", "loadRecentPublishes", "loadLastSyncNewKeys"]) {
+      expect(src, gone).not.toContain(gone);
+    }
+  });
+
+  it("Logs와 같은 조회를 `HOME_EVENT_LIMIT`으로 부른다 — 같은 수를 두 번 세지 않는다", () => {
+    expect(src).toContain("loadEvents(");
+    expect(src).toContain("HOME_EVENT_LIMIT");
+  });
+
+  /** ⚠️ **all-or-nothing이다** (결정 16) — 실패를 빈 카드로 접으면 "활동이 없다"가 거짓이 된다. */
+  it("조회를 `try`로 감싸지 않는다", () => {
+    const body = src.slice(src.indexOf("const [aggregates"), src.indexOf("const actors"));
+    expect(body).not.toMatch(/\btry\s*\{/);
+  });
+
+  it("`?event=`를 받아 Home 위에서 상세를 연다 — Logs로 튕기지 않는다", () => {
+    expect(src).toContain("searchParams");
+    expect(src).toContain("EventDialog");
+    expect(src).toContain("routes.project(slug)");
+    // 카드의 행은 Home으로 돌아오는 링크를 낸다.
+    expect(read("components/home/logs-card.tsx")).toContain("routes.project(slug, { event: row.ref })");
+  });
+
+  it("카드가 Logs와 **같은 행 컴포넌트**를 쓴다 — 같은 사건이 두 모양이 되지 않는다", () => {
+    expect(read("components/home/logs-card.tsx")).toContain('from "@/components/logs/event-row"');
   });
 });

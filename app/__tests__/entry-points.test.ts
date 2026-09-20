@@ -506,6 +506,11 @@ describe("쿼리 파라미터의 수신자", () => {
      * 안 넣으면 이 절이 "검사 밖으로 옮겨졌다"를 또 반복한다.
      */
     "components/logs/log-filters.tsx",
+    /**
+     * ⚠️ **Home의 Recent logs가 `routes.project(slug, { event })`를 낸다** (logs-rework T8b) —
+     * 상세를 **Home 위에서** 여는 유일한 발신처이고, Home 화면 파일에는 인자 없는 호출만 남는다.
+     */
+    "components/home/logs-card.tsx",
   ];
 
   const SOURCES = [

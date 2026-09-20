@@ -38,6 +38,12 @@ const HOME_GRAPH = [
   "components/home/attention-card.tsx",
   "components/home/logs-card.tsx",
   "components/home/meta-column.tsx",
+  /**
+   * ⚠️ **2026-09-20에 들어왔다** (logs-rework) — Recent logs가 Logs와 **같은 행 컴포넌트**를 쓰면서
+   * 카드의 파랑이 이 파일로 옮겨갔다. 안 넣으면 "화면의 파랑이 몇 자리인가"가 Home 파일만 세어
+   * 조용히 줄어든다 — 옮기는 것 자체가 검사를 회피시키는 모양이다.
+   */
+  "components/logs/event-row.tsx",
 ];
 
 describe("완료 조건 7 — 화면에 `pull`·`push` 낱말이 0이다", () => {
@@ -86,7 +92,7 @@ describe("완료 조건 8 — Home 소스에 고정폭 글꼴이 0이다", () =>
    * **slug를 mono로** 지시하고(`docs/DESIGN.md` §6.644) 그것이 이 규칙보다 좁은 계약이다. 목록에
    * 넣으면 그 둘이 서로를 부정한다.
    */
-  it("그래프 일곱에 `text-mono`가 없다", () => {
+  it("그래프 여덟에 `text-mono`가 없다", () => {
     for (const path of HOME_GRAPH) {
       expect(bare(read(path)), path).not.toMatch(/text-mono/);
     }
@@ -97,17 +103,17 @@ describe("완료 조건 8 — Home 소스에 고정폭 글꼴이 0이다", () =>
   });
 });
 
-describe("완료 조건 9 — 파랑이 정확히 다섯 자리다", () => {
+describe("완료 조건 9 — 파랑이 정확히 네 자리다", () => {
   /**
-   * 화면의 다섯 자리: 유입 카드 · 로그의 sync 줄 · 로그의 PR 번호 · 메타의 리포 주소 · 메타의 PR 번호.
+   * 화면의 네 자리: 유입 카드 · 로그 행의 PR 번호 · 메타의 리포 주소 · 메타의 PR 번호.
+   * (로그의 sync 줄 파랑은 logs-rework가 걷었다 — 점이 값을 싣지 않았고 "새 것"은 새로고침하면 뜻이 바뀐다.)
    *
-   * ⚠️ **소스 리터럴은 일곱이고 화면 자리는 다섯이다.** 유입 카드는 글리프와 수치가 **한 요소로**
-   * 읽히지만 색을 두 곳에 적어야 하고(`tone` 분기 + 수치 분기), 로그의 sync 줄도 점의 테두리와
-   * 키 수 조각 둘이 한 줄을 이룬다. 그래서 총합이 아니라 **파일별 분해**를 고정한다 — 총합만
+   * ⚠️ **소스 리터럴은 다섯이고 화면 자리는 넷이다.** 유입 카드는 글리프와 수치가 **한 요소로**
+   * 읽히지만 색을 두 곳에 적어야 하고(`tone` 분기 + 수치 분기), 그래서 총합이 아니라 **파일별 분해**를 고정한다 — 총합만
    * 맞추면 자리가 옮겨가도 green이다.
    *
    * ⚠️ **파랑은 링크색이 아니라 "리포 트래픽"이다.** 카드 넷이 전부 링크인데 파란 것은 첫 칸
-   * 하나이고, 로그의 두 자리는 링크가 아니다 — `<a>`를 세는 것으로는 이 규칙을 못 센다.
+   * 하나이고, 로그의 PR 번호는 링크가 아니다 — `<a>`를 세는 것으로는 이 규칙을 못 센다.
    *
    * ⚠️ **색 이름을 하드코딩하지 않는다.** DESIGN §6.2에 등재된 raw 파랑(`blue-600`)을 세는 것이고,
    * 그 값이 바뀌면 이 정규식 한 줄이 함께 바뀐다.
@@ -119,8 +125,15 @@ describe("완료 조건 9 — 파랑이 정확히 다섯 자리다", () => {
     expect(count("components/home/count-cards.tsx")).toBe(2);
   });
 
-  it("로그가 sync 줄(점 + 키 수)과 PR 번호로 셋을 든다", () => {
-    expect(count("components/home/logs-card.tsx")).toBe(3);
+  /**
+   * ⚠️ **셋에서 하나로 줄었다** (logs-rework). 타임라인 점과 "새 키 수"의 파랑이 사라졌다 —
+   * 점은 아무 값도 싣지 않았고, 파랑이 뜻하던 "새 것"은 새로고침하면 뜻이 바뀐다. 남은 하나는
+   * **PR 번호**이고 그것이 이 규칙이 말하는 "리포 트래픽"이다. 카드가 행을 `event-row`에 넘겼으므로
+   * 그 자리도 그 파일에 있다.
+   */
+  it("로그 카드에는 파랑이 없고, 행의 PR 번호 하나가 그 자리를 든다", () => {
+    expect(count("components/home/logs-card.tsx")).toBe(0);
+    expect(count("components/logs/event-row.tsx")).toBe(1);
   });
 
   it("메타가 리포 주소와 PR 번호로 둘을 든다", () => {
@@ -133,8 +146,8 @@ describe("완료 조건 9 — 파랑이 정확히 다섯 자리다", () => {
     }
   });
 
-  it("그래프 전체의 합이 일곱이다 — 자리가 늘면 위 분해도 함께 바뀐다", () => {
-    expect(HOME_GRAPH.reduce((sum, path) => sum + count(path), 0)).toBe(7);
+  it("그래프 전체의 합이 다섯이다 — 자리가 늘면 위 분해도 함께 바뀐다", () => {
+    expect(HOME_GRAPH.reduce((sum, path) => sum + count(path), 0)).toBe(5);
   });
 });
 

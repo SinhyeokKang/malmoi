@@ -65,7 +65,7 @@ export function metaRows(input: {
     { kind: "lastPublish", at: input.lastPublishedAt, prUrl: input.lastPrUrl },
     { kind: "created", at: input.createdAt },
   );
-  // 시각 없는 사건을 세우지 않는다 — `recentActivity`와 같은 규칙이다.
+  // 시각 없는 사건을 세우지 않는다 — 활동 스트림이 관측된 것만 남기는 것과 같은 규칙이다.
   if (input.state === "archived" && input.archivedAt !== null) rows.push({ kind: "archived", at: input.archivedAt });
   return rows;
 }

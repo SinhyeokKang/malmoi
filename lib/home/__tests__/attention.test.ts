@@ -36,7 +36,7 @@ describe("attentionItems — 시간순(최신)", () => {
 
   /**
    * ⚠️ **`localeCompare`를 쓰지 않는다** — 로케일 설정에 따라 답이 달라져 같은 DB 상태가 다른 화면을
-   * 낸다. `recentActivity`의 `compareEdit`·export 정렬과 같은 규칙이다 (ARCHITECTURE §1.1).
+   * 낸다. export 정렬과 같은 규칙이다 (ARCHITECTURE §1.1).
    */
   it("동점은 표면 → 로케일 코드 유닛 비교로 기울인다 — 입력 순서가 뒤바뀌어도 같다", () => {
     const same = at("2026-09-15T10:00:00Z");
