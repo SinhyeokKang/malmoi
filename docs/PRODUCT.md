@@ -66,6 +66,13 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 | base branch **변경** | O | X |
 | 기준 로케일 **변경** | O | X |
 | 멤버 관리·프로젝트 **보관** | O | X |
+| **보관된 프로젝트의 이력 읽기** | O | O |
+
+⚠️ **마지막 칸이 보관의 예외다** (2026-09-20, logs-rework). 보관은 `project:settings`를 뺀 모든
+permission을 거부하는데, 그러면 **보관 사건과 그 직전 기록을 보려고 복원해야 하는 순환**이 생긴다.
+`/logs` 하나만 읽기로 통과시키고 **쓰기는 그대로 막는다** — 정책이 `planProjectAccess`의 인자이고
+기본이 거부라, 정책을 안 넘기는 Server Action은 새로 생겨도 막힌다. **읽기 허용은 쓰기 허용이
+아니다.** 제거된 멤버는 과거 참여자여도 `not-found`다.
 
 **역할 둘 아래에 permission은 셋이다** (`lib/auth/permission.ts`의 `Permission`) — 표의 칸이 그중
 하나로 내려간다. `translation:write`(OWNER·EDITOR — 조회·수정·Publish) · `project:settings`(OWNER —
