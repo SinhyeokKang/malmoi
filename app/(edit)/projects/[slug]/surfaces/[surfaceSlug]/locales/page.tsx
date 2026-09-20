@@ -7,7 +7,7 @@ import { CopyButton } from "@/components/onboarding/copy-button";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { Card } from "@/components/ui/card";
+import { PanelCard } from "@/components/ui/panel-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
 import { canPerform } from "@/lib/auth/permission";
@@ -141,7 +141,7 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
         같은 문장이 화면에 두 번 나온다(실물로 확인했다). Card는 경계선만 든다.
         */}
         {canManage && (
-          <Card>
+          <PanelCard><div className="space-y-2 p-4">
             <BaseLocaleForm
               slug={slug}
               surfaceSlug={surfaceSlug}
@@ -164,7 +164,7 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
                 </p>
               </Alert>
             )}
-          </Card>
+          </div></PanelCard>
         )}
       </PanelBody>
     </>
