@@ -102,6 +102,31 @@ it("hover: 예외가 buttonClass에서 실제로 쓰인다", () => {
  * `new-project-button`이 그랬다. `aria-disabled` **속성**을 세우는 것은 자유이고, 막는 것은
  * **그 모양을 직접 그리는 것**뿐이다.
  */
+/**
+ * **꺼진 `danger`는 회색으로 죽지 않는다** (2026-09-20 — 사용자가 화면에서 잡았다).
+ *
+ * 꺼진 상태를 `text-muted-foreground`로 접으면 **"되돌릴 수 없는 동작"이라는 신호가 사라진다.**
+ * 캔버스가 danger의 꺼진 형을 따로 정의한 이유가 그것이고(선·글자를 같은 붉은색의 다른 알파로 함께
+ * 옅힌다), 이 variant의 소비자는 전부 파괴적 동작이다 — Discard · Archive · Sign out everywhere ·
+ * Unlink · Remove · Revoke.
+ *
+ * ⚠️ **한쪽만 옅히면 색이 섞인다.** 실제로 그렇게 나가 있었다: 테두리는 `destructive/40` 그대로인데
+ * 글자만 회색이라 **붉은 테두리 + 회색 글자**였다. 그래서 선과 글자를 **짝으로** 센다.
+ */
+it("꺼진 danger가 destructive 계열을 유지한다 — 선과 글자가 함께 옅어진다", () => {
+  const source = read(BUTTON);
+  const danger = /danger: cn\(([\s\S]*?)\n        \),/.exec(source)?.[1];
+  expect(danger, "danger variant를 못 찾았다").toBeDefined();
+  for (const prefix of ["disabled", "aria-disabled"]) {
+    const utilities = [...(danger ?? "").matchAll(new RegExp(`(?<![\\w-])${prefix}:([^\\s"'\`]+)`, "g"))].map((x) => x[1]!);
+    // 글자: muted로 접지 않고 destructive의 알파를 쓴다.
+    expect(utilities, prefix).not.toContain("text-muted-foreground");
+    expect(utilities.some((u) => u.startsWith("text-destructive/")), `${prefix} 글자`).toBe(true);
+    // 선: 켜진 상태(40)보다 옅어진다 — 안 건드리면 붉은 테두리에 회색 글자가 된다.
+    expect(utilities.some((u) => u.startsWith("border-destructive/")), `${prefix} 선`).toBe(true);
+  }
+});
+
 it("aria-disabled: 스타일을 buttonClass 밖에서 쓰지 않는다", () => {
   const offenders = sourceFiles(join(ROOT, "components"))
     .concat(sourceFiles(join(ROOT, "app")))

@@ -84,13 +84,29 @@ export const buttonClass = cva(
           "aria-disabled:text-muted-foreground aria-disabled:hover:bg-background",
         ),
         // ⚠️ `bg-destructive`가 없다 — destructive는 **글자색 전용**이다 (§2.3).
+        /**
+         * ⚠️ **꺼져도 destructive 계열을 유지한다** (2026-09-20 — 사용자가 화면에서 잡았다).
+         *
+         * 다른 variant는 꺼지면 `text-muted-foreground`로 죽지만 여기는 아니다: 이 variant의 소비자가
+         * **전부 되돌릴 수 없는 동작**이라(Discard · Archive · Sign out everywhere · Unlink · Remove ·
+         * Revoke) 회색으로 접으면 **"이건 파괴적이다"라는 신호가 사라진다.** 핸드오프가 danger의 꺼진
+         * 형을 따로 정의한 이유이고, 값은 선 `/20` · 글자 `/40` — 켜진 상태(선 `/40` · 글자 100%)에서
+         * 한 단계씩 내려간다.
+         *
+         * ⚠️ **선과 글자를 반드시 짝으로 옅힌다.** 글자만 바꿨더니 테두리가 `/40` 그대로 남아
+         * **붉은 테두리 + 회색 글자**가 됐다 — 꺼진 것으로도 켜진 것으로도 안 읽히는 모양이다.
+         *
+         * ⚠️ **대비가 낮아진다** — `text-destructive/40`은 흰 배경에서 약 1.6:1로 muted(4.7:1)보다
+         * 낮다. 꺼진 컨트롤이라 WCAG 1.4.3 대상은 아니고, **이 리포는 꺼진 컨트롤에 사유를 반드시
+         * 붙인다**(DESIGN §6.65) — 색이 지지 않는 정보를 그 문장이 진다.
+         */
         danger: cn(
           "border-destructive/40 text-destructive hover:bg-destructive/5 bg-background border",
-          "disabled:text-muted-foreground disabled:hover:bg-transparent",
+          "disabled:border-destructive/20 disabled:text-destructive/40 disabled:hover:bg-transparent",
           // ⚠️ `bg-background`이고 `bg-transparent`가 아니다 — 짝인 `disabled:hover:bg-transparent`는
           //    브라우저가 disabled에 hover를 안 태워 **한 번도 적용된 적이 없고**, 그대로 복제하면
           //    aria-disabled에서만 배경이 투명해진다(2026-09-17 실측: 흰색 → rgba(0,0,0,0)).
-          "aria-disabled:text-muted-foreground aria-disabled:hover:bg-background",
+          "aria-disabled:border-destructive/20 aria-disabled:text-destructive/40 aria-disabled:hover:bg-background",
         ),
         ghost: cn(
           "text-muted-foreground hover:text-foreground",
