@@ -1803,13 +1803,19 @@ describe("설정의 다중 소스 추가와 소스별 첫 적재", () => {
     expect(hoisted.addSurfacesFromSnapshot).toHaveBeenCalledTimes(1);
     expect(r.snapshot).toHaveBeenCalledTimes(1); expect(r.blob).toHaveBeenCalledTimes(4);
   });
+  it("커밋 뒤 캐시 실패를 아무것도 추가되지 않은 것으로 보고하지 않는다", async () => {
+    const files = ["a/en.json", "b/en.json"].map(path => ({ path, sha: path, size: 100 }));
+    hoisted.openRepoReader.mockResolvedValue(reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs: new Map(files.map(f => [f.sha, CATALOG])) }));
+    hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache failure"); });
+    expect(await addSurfaces({ slug: "acme", picks })).toMatchObject({ ok: true });
+  });
   it("선택 안의 중복 템플릿은 다운로드와 쓰기 전에 거부한다", async () => {
     expect(await addSurfaces({ slug: "acme", picks: [picks[0]!, picks[0]!] })).toEqual({ ok: false, error: "invalid input" });
     expect(hoisted.openRepoReader).not.toHaveBeenCalled(); expect(hoisted.addSurfacesFromSnapshot).not.toHaveBeenCalled();
   });
   it.each(["file-count", "total-size", "unknown-size", "actual-size"])("요청 전체 예산 %s를 넘으면 DB 쓰기가 없다", async kind => {
     const count = kind === "file-count" ? 201 : 6;
-    const files = Array.from({ length: count }, (_, i) => ({ path: `${i < count / 2 ? "a" : "b"}/l${i}.json`, sha: String(i), ...(kind === "unknown-size" ? {} : { size: kind === "total-size" ? 1_800_000 : 100 }) }));
+    const files = Array.from({ length: count }, (_, i) => ({ path: `${i < count / 2 ? "a" : "b"}/${String.fromCharCode(97 + Math.floor(i / 26))}${String.fromCharCode(97 + i % 26)}.json`, sha: String(i), ...(kind === "unknown-size" ? {} : { size: kind === "total-size" ? 1_800_000 : 100 }) }));
     const r = reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs: new Map(files.map(f => [f.sha, kind === "actual-size" ? "x".repeat(1_800_000) : CATALOG])) });
     hoisted.openRepoReader.mockResolvedValue(r);
     expect(await addSurfaces({ slug: "acme", picks })).toEqual({ ok: false, error: "resource-limit" });
