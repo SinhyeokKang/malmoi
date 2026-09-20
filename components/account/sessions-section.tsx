@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { startSessionRevocation } from "@/app/(edit)/account/actions";
-import { AccountCard, AccountRow, AccountRows } from "@/components/account/account-section";
+import { PanelCard, PanelRow, PanelRows } from "@/components/ui/panel-card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -43,21 +43,21 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
   const message = failed ? m.account.sessions.failed : sessionRevocationMessage(outcome);
 
   return (
-    <AccountCard
+    <PanelCard
       title={m.account.sessionsSection.title}
       subtitle={m.account.sessionsSection.description}
-      notice={message !== null ? <Alert variant="danger">{message}</Alert> : undefined}
+      notice={message !== null ? <Alert inset variant="danger">{message}</Alert> : undefined}
     >
-      <AccountRows>
-      <AccountRow
+      <PanelRows>
+      <PanelRow
         glyph={<LogOut className="text-muted-foreground size-4" aria-hidden />}
         name={m.account.signOut.title}
         status={m.account.signOut.scope}
         detail={m.account.signOut.description}
       >
         <SignOutButton signOut={signOut} />
-      </AccountRow>
-      <AccountRow
+      </PanelRow>
+      <PanelRow
         glyph={<MonitorSmartphone className="text-muted-foreground size-4" aria-hidden />}
         name={m.account.sessions.title}
         status={m.account.sessions.scope}
@@ -108,9 +108,9 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
             {confirmProvider !== null && m.account.sessions.confirmDetail(confirmProvider)}
           </DialogContent>
         </Dialog>
-      </AccountRow>
-      </AccountRows>
-    </AccountCard>
+      </PanelRow>
+      </PanelRows>
+    </PanelCard>
   );
 }
 

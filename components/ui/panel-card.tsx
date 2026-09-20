@@ -2,33 +2,15 @@
 
 import { useId, type ReactNode } from "react";
 
-/**
- * `/account`의 **카드 규격 하나** (2026-09-16 — 핸드오프 v2).
- *
- * ⚠️ **제목이 카드 안으로 들어왔다.** 전엔 카드 밖 14/500 소제목 + 옆 회색 설명문이었는데, 그러면
- * 제목과 리스트 사이에 **주인 없는 12px**이 생기고 그 틈이 카드 사이 간격과 경쟁해 화면이 몇
- * 덩이인지 세어야 읽힌다. 전역 패널 규칙이 정한 자리가 카드 헤더이고, Project Home의
- * `Needs your attention`·`Recent logs`와 같은 머리다.
- *
- * ⚠️ **공유 프리미티브를 뽑지 않는다.** Project Home의 카드와 같은 규격이 되지만 그쪽은 빈 상태·
- * `<details>`·Meter를 각자 들고 있어, 추출하면 이 기능이 브라우저로 밟지 않는 화면이 함께 움직인다
- * (POSTMORTEM 2026-09-15 🔁 — 형제 프리미티브 둘을 옮기며 한쪽 소비자만 셌다). **중복이 셋이 되면**
- * 그때 뽑고, 그 판단은 `docs/DESIGN.md` §6.67에 있다.
- *
- * ⚠️ **디바이더가 둘이다** — 헤더 아래 `--divider`(#f0f0f0) · 행 사이 `--border`(#e5e5e5). 같은
- * 회색 하나면 머리가 **첫 행처럼** 보인다: 옅은 선이 "여기부터 내용", 진한 선이 "항목과 항목"이다.
- *
- * ⚠️ **`rounded-lg`가 12다** — 이 리포에서 `rounded-xl`은 **16**이라 카드가 한 단계 둥글어진다
- * (POSTMORTEM 2026-09-15).
- */
-export function AccountCard({
+/** Shared account and project settings card. Header and row dividers have distinct roles. */
+export function PanelCard({
   title,
   badge,
   subtitle,
   notice,
   children,
 }: {
-  title: ReactNode;
+  title?: ReactNode;
   /** 헤더 제목 옆 카운트 배지 — **수단 카드에만** 있다(세는 값이 그 카드에만 있다). */
   badge?: ReactNode;
   /**
@@ -49,29 +31,29 @@ export function AccountCard({
   const titleId = useId();
   return (
     <section
-      aria-labelledby={titleId}
+      aria-labelledby={title === undefined ? undefined : titleId}
       // 배경을 카드가 든다 — 캔버스가 `#fff`를 카드에 명시했다. 오늘은 패널과 같은 값이다.
-      className="border-border bg-background overflow-hidden rounded-lg border"
+      className="@container border-border bg-background overflow-hidden rounded-lg border"
     >
       {/* 머리는 한 줄이다 — 제목·배지가 왼쪽, 설명이 `ml-auto`로 툴바 자리에 선다. */}
-      <div className="border-divider flex items-center gap-2 border-b p-4">
+      {title !== undefined && <header className={`border-divider flex flex-wrap items-center gap-2 p-4 ${notice === undefined ? "border-b" : ""}`}>
         <h2 id={titleId} className="text-base font-medium tracking-[0.015em]">{title}</h2>
         {badge}
-        {subtitle !== undefined && <p className="text-muted-foreground ml-auto text-xs tracking-[0.02em]">{subtitle}</p>}
-      </div>
+        {subtitle !== undefined && <div className="text-muted-foreground ml-auto @max-[640px]:ml-0 @max-[640px]:w-full text-xs tracking-[0.02em]">{subtitle}</div>}
+      </header>}
       {notice}
       {/*
         ⚠️ **카드가 `<ul>`을 만들지 않는다** — Profile 카드의 몸통은 목록이 아니라 사실 블록이다.
         여기서 감싸면 `<ul>` 안에 `<div>`가 들어가 구조가 깨지고, 스크린리더가 편집 폼을 목록으로
-        예고한다. 행을 드는 카드 셋만 `AccountRows`를 쓴다.
+        예고한다. 행을 드는 카드 셋만 `PanelRows`를 쓴다.
       */}
       {children}
     </section>
   );
 }
 
-/** 행 목록 래퍼 — 카드 넷 중 셋이 쓴다. 행 사이 선은 `AccountRow`가 `border-t`로 든다. */
-export function AccountRows({ children }: { children: ReactNode }) {
+/** 행 목록 래퍼 — 카드 넷 중 셋이 쓴다. 행 사이 선은 `PanelRow`가 `border-t`로 든다. */
+export function PanelRows({ children }: { children: ReactNode }) {
   return <ul>{children}</ul>;
 }
 
@@ -89,7 +71,7 @@ export function AccountRows({ children }: { children: ReactNode }) {
  * ⚠️ **우측 컨트롤이 `shrink-0`이다** — 없으면 이름이 긴 계정에서 버튼이 줄바꿈돼 행 높이가 튄다.
  * 줄어들 자리는 본문의 `min-w-0`과 `truncate`가 든다.
  */
-export function AccountRow({
+export function PanelRow({
   glyph,
   name,
   status,
@@ -135,6 +117,6 @@ export function AccountRow({
  * ⚠️ **행마다 `items-center`가 아니라 첫 줄 정렬이 필요한 칸이 있다** — 아바타 행은 두 열을
  * 가로지르므로 호출부가 `full`로 표시한다.
  */
-export function AccountFacts({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-[96px_1fr] items-center gap-x-3 gap-y-[14px] px-4 py-3.5">{children}</div>;
+export function PanelFacts({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-1 @min-[640px]:grid-cols-[96px_1fr] items-center gap-x-3 gap-y-[6px] @min-[640px]:gap-y-[14px] px-4 py-3.5">{children}</div>;
 }

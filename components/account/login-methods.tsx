@@ -4,7 +4,7 @@ import { useFormStatus } from "react-dom";
 import { useId, useTransition } from "react";
 
 import { unlinkLoginMethod, startLoginMethodConnect } from "@/app/(edit)/account/actions";
-import { AccountCard, AccountRow, AccountRows } from "@/components/account/account-section";
+import { PanelCard, PanelRow, PanelRows } from "@/components/ui/panel-card";
 import type { ConnectOutcome } from "@/lib/account-connect/plan";
 import { Alert } from "@/components/ui/alert";
 import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
@@ -39,11 +39,11 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
   const counts = methodCounts(rows);
   /** 왕복 결과와 해제 실패가 같은 슬롯을 나눠 쓴다 — 둘이 함께 서면 카드 머리가 두 겹이 된다. */
   const notice =
-    unlinkFailure !== null ? <Alert variant="danger">{unlinkFailure}</Alert>
-    : outcome !== null ? <Alert variant={outcome === "connected" ? "success" : "danger"} role={outcome === "connected" ? "status" : undefined}>{m.errors.connectMethod[outcome]}</Alert>
+    unlinkFailure !== null ? <Alert inset variant="danger">{unlinkFailure}</Alert>
+    : outcome !== null ? <Alert inset variant={outcome === "connected" ? "success" : "danger"} role={outcome === "connected" ? "status" : undefined}>{m.errors.connectMethod[outcome]}</Alert>
     : undefined;
   return (
-    <AccountCard
+    <PanelCard
       title={m.link.methods.title}
       /**
        * ⚠️ **새 variant를 만들지 않았다** — `neutral`이 이미 `bg-foreground/5 text-foreground`이고
@@ -54,12 +54,12 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
       subtitle={m.link.methods.description}
       notice={notice}
     >
-      <AccountRows>
+      <PanelRows>
         {rows.map((row) => (
           <MethodRow key={row.provider} row={row} removable={canUnlink(connected, row.provider)} />
         ))}
-      </AccountRows>
-    </AccountCard>
+      </PanelRows>
+    </PanelCard>
   );
 }
 
@@ -73,7 +73,7 @@ function MethodRow({ row, removable }: { row: { provider: LoginProvider; connect
    */
   const reasonId = useId();
   return (
-    <AccountRow
+    <PanelRow
       // 브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를 그대로 받는다 (DESIGN §6.4).
       glyph={row.provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
       name={label}
@@ -106,7 +106,7 @@ function MethodRow({ row, removable }: { row: { provider: LoginProvider; connect
           <Button variant="default" aria-label={m.link.methods.disconnectLabel(label)} aria-describedby={reasonId} disabled={true}>{m.link.methods.disconnect}</Button>
         </>
       )}
-    </AccountRow>
+    </PanelRow>
   );
 }
 

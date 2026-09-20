@@ -3,7 +3,7 @@
 import { Link2 } from "lucide-react";
 import { useState } from "react";
 
-import { AccountCard, AccountRow, AccountRows } from "@/components/account/account-section";
+import { PanelCard, PanelRow, PanelRows } from "@/components/ui/panel-card";
 import { DisconnectGithubButton } from "@/components/github-account";
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { GithubIcon } from "@/components/signin/brand-icons";
@@ -40,17 +40,17 @@ export function GithubSection({
   const connected = account.status === "ok" && account.login !== null;
 
   return (
-    <AccountCard
+    <PanelCard
       title={m.account.github.title}
       subtitle={m.account.github.description}
-      notice={failure !== null ? <Alert variant="danger">{failure}</Alert> : undefined}
+      notice={failure !== null ? <Alert inset variant="danger">{failure}</Alert> : undefined}
     >
-      <AccountRows>
+      <PanelRows>
       {/*
         ⚠️ **브랜드 마크는 연결됐을 때뿐이다** — 붙어 있는 것이 그 계정이기 때문이다. 미연결·장애는
         대상이 아직 없으므로 동작을 가리키는 lucide 글리프(`link-2`, 회색)가 선다.
       */}
-      <AccountRow
+      <PanelRow
         glyph={connected ? <GithubIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}
         name={connected ? `@${account.login}` : m.account.github.rowName}
         // 상태가 본문이고 보조 줄은 **다음에 할 일**을 든다 (핸드오프 v2 §항목 규격).
@@ -101,8 +101,8 @@ export function GithubSection({
         ) : account.status === "ok" ? (
           <ConnectGithubButton dest="account" label={m.settings.account.connect} onResult={setFailure} />
         ) : undefined}
-      </AccountRow>
-      </AccountRows>
-    </AccountCard>
+      </PanelRow>
+      </PanelRows>
+    </PanelCard>
   );
 }
