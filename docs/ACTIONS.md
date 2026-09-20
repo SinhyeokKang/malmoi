@@ -191,7 +191,7 @@ Settings의 Add surface 결과에서 실제 등록 slug·path-template을 담은
 | 무엇 | 값 |
 |---|---|
 | 인증 | **같은 `PUSH_TOKEN`** — 새 토큰도 새 input도 없다 |
-| 본문 | `{ projectSlug, surfaceSlug, commitSha, commitAt, code }` — 코드는 넷(`parse-failed` · `parse-crashed` · `invalid-locale-data` · `prepare-failed`). **닫힌 스키마라 `surfaceSlug`가 빠지면 400 `invalid report`다**(기본값이 없다 — 위 §"표면별 입력") |
+| 본문 | `{ projectSlug, surfaceSlug, commitSha, commitAt, code, executionId }` — 코드는 넷(`parse-failed` · `parse-crashed` · `invalid-locale-data` · `prepare-failed`). **닫힌 스키마라 `surfaceSlug`가 빠지면 400 `invalid report`다**(기본값이 없다 — 위 §"표면별 입력") |
 | 응답 | 성공은 **204**(본문 없음). 거부는 401 · 400(`body too large` — 본문 상한 **4096바이트** · `invalid json` · `invalid report`) · 409(`archived` · `project mismatch` · `surface mismatch` · `stale commit` · `stale report`) · 500 `{"error":"internal","ref":"…"}` — **전부 경고 한 줄로 접힌다** |
 | 제한 | **5초 · 재시도 없음**. 비정상 응답·네트워크 실패는 경고 한 줄로 남고 **원래 진단과 exit 1은 그대로다** |
 | 안 보내는 것 | 파서 원문 · 소스 문자열 · 로컬 절대경로 · 토큰 |
@@ -208,6 +208,28 @@ Settings의 Add surface 결과에서 실제 등록 slug·path-template을 담은
 ⚠️ **401부터 푼다 — 토큰이 틀리면 400·409를 아예 못 본다.** JSON 파싱과 zod 검증이 **인증 뒤에** 있다(`app/api/push/route.ts` — `maxDuration = 60`인 공개 엔드포인트라 무효 토큰 하나로 1446키 페이로드를 파싱시키고 zod `issues`로 스키마 구조까지 받아 가게 두지 않는다). 그래서 페이로드가 아무리 깨져 있어도 토큰이 안 맞으면 응답은 401이다 — 진단을 페이로드에서 시작하면 엉뚱한 곳을 판다.
 
 응답 본문이 run 로그에 **800자**까지 찍힌다(`scripts/push-local.ts`의 `slice(0, 800)` — 바이트가 아니라 UTF-16 문자다. 한국어 문구가 실리면 실제 상한이 최대 ~2,400바이트다). 4xx는 본문으로 진단된다 — 400은 `{"error":"invalid payload", issues}`(zod) 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때), 409는 다섯이고 **보관이 맨 앞이다**(`{"error":"archived"}` — 위 표 참고) — 나머지 넷은 판정 순서대로 slug 오배송(`expected/got`) · 표면 불일치(`surface mismatch`) · **표면 교체**(`format mismatch` — `got`이 `adapter`·`pathTemplate`·`baseLocale` 객체이고, `expected`엔 거기에 **`declaredBaseLocale`이 하나 더** 실린다: 대기 중인 프로젝트의 CI 로그에서 "선언한 그 값도 받아들여진다"가 보여야 한다 — 6b-3) · 커밋 역행(`commitAt/lastCommitAt`)이다. ⚠️ **표면 교체가 커밋 역행보다 앞이다** — 둘 다 걸린 run은 `format mismatch`를 받는다. 표면 교체는 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다. ⚠️ **같은 409의 두 번째 경로가 있고 그쪽엔 이 처방이 안 듣는다** — 리포가 **로케일 파일 경로를 옮긴** 경우다(`checkFormat`이 `pathTemplate`도 비교하므로 워크플로에 무엇을 박아도 영구 red다). 서버는 GitHub을 부르지 않아 정당한 이전을 오배송과 구별할 수 없다 — ⚠️ **재설정 UI는 아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다, PRODUCT),  **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
+
+### 실행 식별자 — 같은 실행이 두 줄이 되지 않게 한다 (2026-09-20)
+
+말모이의 활동 이력은 **실행 하나를 한 줄로** 보인다. 그 판정에 커밋 SHA를 쓸 수 없어서 — 같은 커밋을
+다시 처리하는 것은 **별도 실행**이다 — 생산자가 식별자를 하나 발급한다.
+
+| 무엇 | 값 |
+|---|---|
+| 필드 | `executionId` — UUID. **정상 push와 실패 보고에 같은 값**이 실린다 |
+| 언제 발급하나 | **소스별 실행 시작, 파싱·페이로드 조립 이전에 한 번.** HTTP 재전달은 같은 값을 유지한다 |
+| 무엇이 새 값인가 | **새 CLI 호출 · 워크플로 재실행.** 그 둘은 실제로 다른 실행이다 |
+| 서버가 하는 일 | 인가된 프로젝트·확인된 소스 아래에서만 쓴다. **인증 증거가 아니다** |
+
+⚠️ **전환 순서는 "서버 먼저, 생산자 나중"이다.** 서버는 이 필드를 **선택**으로 받는다 — 식별자 없는
+구 생산자의 요청은 계속 처리되고, 서버가 요청별 값을 대신 쓴다. 그 상태에서는 **HTTP 재전달의 중복
+방지가 보장되지 않는다**(재전달마다 다른 값이라 줄이 둘이 될 수 있다).
+
+⚠️ **새 생산자를 구 서버에 먼저 연결하지 않는다.** 실패 보고의 스키마가 **닫혀 있어**(`strictObject`)
+모르는 필드를 400 `invalid report`로 거부한다 — 그러면 원래 실패가 보고 실패로 바뀐다.
+
+⚠️ **대상 리포가 쓰는 `@malmoi-i18n-push-v1`은 서버 배포만으로 새 스크립트를 받지 않는다** — 그 태그를
+옮기는 것이 릴리스다(CLAUDE.md). 순서: **서버 배포 → 태그 릴리스 → 사용 리포 전환.**
 
 ### 열린 PR 경고는 차단이 아니다
 
