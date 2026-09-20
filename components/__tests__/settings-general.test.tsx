@@ -9,7 +9,7 @@ vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => actions);
 beforeEach(() => { vi.resetAllMocks(); actions.updateProjectName.mockResolvedValue({ ok: true, name: "Renamed" }); });
 const view = (image: string | null = null, archived = false) => <GeneralCard slug="acme" name="Acme" image={image} archived={archived} />;
 function button(container: HTMLElement, label: string) { return [...container.querySelectorAll("button")].find(b => b.textContent === label)!; }
-it("名前の保存はURLを変えず、成功表示は次の入力まで残る", async () => {
+it("Saving preserves the address and shows success until the next edit", async () => {
   const { container } = await render(view());
   const name = container.querySelector<HTMLInputElement>('#project-name')!;
   await input(name, "  Renamed  ");
@@ -20,9 +20,9 @@ it("名前の保存はURLを変えず、成功表示は次の入力まで残る"
   await input(name, "Next");
   expect(container.textContent).not.toContain("Saved");
   const address = container.querySelector<HTMLInputElement>('#project-address')!;
-  expect(address.value).toBe("acme"); expect(address.readOnly).toBe(true); expect(address.tabIndex).toBe(-1);
+  expect(address.value).toBe("acme"); expect(address.readOnly).toBe(true); expect(address.tabIndex).toBe(0);
 });
-it("空の名前は送信せず、拒否理由をフィールドに接続する", async () => {
+it("An empty name cannot submit and describes the rejection", async () => {
   const { container } = await render(view());
   const name = container.querySelector<HTMLInputElement>('#project-name')!;
   await input(name, " ");
@@ -30,7 +30,7 @@ it("空の名前は送信せず、拒否理由をフィールドに接続する"
   expect(name.getAttribute("aria-invalid")).toBe("true");
   expect(document.getElementById(name.getAttribute("aria-describedby")!)?.textContent).toContain("Enter a project name");
 });
-it("画像更新中は両操作を止め、完了後URLを置換して削除時はフォールバックに戻る", async () => {
+it("Image operations lock both controls and reflect replacement and deletion", async () => {
   let resolve!: (value: { ok: true; image: string }) => void;
   actions.uploadProjectImage.mockReturnValue(new Promise(r => { resolve = r; }));
   actions.deleteProjectImage.mockResolvedValue({ ok: true, image: null });
@@ -44,7 +44,7 @@ it("画像更新中は両操作を止め、完了後URLを置換して削除時�
   await rerender(view(null));
   expect(container.querySelector("img")).toBeNull();
 });
-it("保管中はメタデータ編集も画面上で無効にし理由を表示する", async () => {
+it("Archived metadata controls are disabled with a reason", async () => {
   const { container } = await render(view("/logo.webp", true));
   for (const b of container.querySelectorAll("button")) expect(b.disabled).toBe(true);
   expect(container.textContent).toContain("Restore this project");
