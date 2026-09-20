@@ -231,7 +231,7 @@ export default async function ProjectHomePage({ params }: { params: Promise<{ sl
       <PanelHeader width="fluid">
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
-          <HomeTitle archived={state === "archived"}>{project.name}</HomeTitle>
+          <HomeTitle image={project.image} archived={state === "archived"}>{project.name}</HomeTitle>
           <HomeHeaderActions
             slug={slug}
             name={project.name}

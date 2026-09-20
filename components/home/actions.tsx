@@ -94,11 +94,11 @@ export function HomeActions({ children, slug }: { children: ReactNode; slug: str
  *
  * ⚠️ **머리에 리포·브랜치·멤버 수를 적지 않는다** — 오른쪽 `Project` 카드가 그 사실의 소유자다.
  */
-export function HomeTitle({ archived, children }: { archived: boolean; children: string }) {
+export function HomeTitle({ archived, children, image }: { archived: boolean; children: string; image?: string | null }) {
   const { titleRef } = useHomeActions();
   return (
     <span className="flex min-w-0 items-center gap-2.5">
-      <ProjectThumbnail name={children} />
+      <ProjectThumbnail name={children} src={image} />
       <h1 ref={titleRef} tabIndex={-1} className="truncate text-lg font-medium">
         {children}
       </h1>

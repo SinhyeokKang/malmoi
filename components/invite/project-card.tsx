@@ -15,10 +15,12 @@ import { toneFill } from "@/components/ui/tone";
  */
 export function InviteProjectCard({
   name,
+  image,
   role,
   locales,
 }: {
   name: string;
+  image?: string | null;
   role: string;
   locales: readonly string[];
 }) {
@@ -39,9 +41,9 @@ export function InviteProjectCard({
       */}
       <span
         aria-hidden
-        className={`border-border flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border text-white ${toneFill(name)}`}
+        className={`border-border flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm border text-white ${image ? "" : toneFill(name)}`}
       >
-        <Box className="size-4" />
+        {image ? <img src={image} alt="" className="size-full object-contain" /> : <Box className="size-4" />}
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-px">
         <span className="truncate text-sm">{name}</span>

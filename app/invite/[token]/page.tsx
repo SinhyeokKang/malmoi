@@ -162,6 +162,7 @@ export default async function InvitePage({
       {(view.kind === "accept" || view.kind === "wrong-account") && invitation != null && (
         <InviteProjectCard
           name={invitation.project.name}
+          image={invitation.project.image}
           role={m.projects.role[invitation.role]}
           // ⚠️ `Locale` 행은 표면마다 선다 — 표면이 둘이면 같은 코드가 둘 온다 (malmoi#48). 조회가 `code asc`라 순서는 남는다.
           locales={[...new Set(invitation.project.locales.map((locale) => locale.code))]}

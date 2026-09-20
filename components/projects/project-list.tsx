@@ -240,7 +240,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
          */
         className="hover:bg-foreground/[0.02] focus-visible:ring-ring flex items-center gap-4 py-3.5 pr-3.5 pl-3 focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
       >
-        <ProjectThumbnail name={row.name} />
+        <ProjectThumbnail name={row.name} src={row.image} />
 
         {/*
           ⚠️ **420 고정 + `shrink-0`이다.** 이름 칸이 늘어나면 Meter의 x가 행마다 달라지고,
