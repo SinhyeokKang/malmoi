@@ -1288,7 +1288,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
     outcome: { keys: number | null; errorCode: string | null },
   ) => {
     try {
-      await prisma.$transaction(tx => finishRun(tx, {
+      const closed = await prisma.$transaction(tx => finishRun(tx, {
         projectId, runToken, result,
         payload: {
           kind: "IMPORT", source: "first", surfaceSlugs, keys: outcome.keys, pendingEdits: null,
@@ -1296,6 +1296,9 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
           errorCode: outcome.errorCode, refusal: null,
         },
       }));
+      // ⚠️ **0행 갱신은 조용하다** (POSTMORTEM 2026-09-14) — 다른 실행이 이 행을 먼저 닫았다는 뜻이고,
+      // 그러면 이력의 결과가 이 실행의 결과가 아니다. 적재는 그대로 두고 사실만 남긴다.
+      if (!closed) logFailure("onboard-ingest-event", new Error(`run event already closed: ${runToken}`));
     } catch (error) {
       logFailure("onboard-ingest-event", error);
     }

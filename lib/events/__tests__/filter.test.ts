@@ -77,6 +77,23 @@ describe("parseLogFilter — 기본값", () => {
     expect(parseLogFilter({ source: "project-wide,web" }).sources).toEqual(["project-wide", "web"]);
   });
 
+  /**
+   * ⚠️ **길이 상한이 목록 전체가 아니라 항목마다 걸린다** (code-review 2026-09-21).
+   * 전에는 `text()`의 200자 상한을 목록 **전체**에 걸어, 소스를 여덟 개쯤 고르면 **마지막 slug가
+   * 중간에서 잘렸다** — 잘린 값은 어느 소스와도 안 맞아 결과가 조용히 0건이 된다(고른 소스가
+   * 화면에는 그대로 보인다). slug 상한이 40자라 그 안의 값은 어느 개수에서도 온전해야 한다.
+   */
+  it("소스를 많이 골라도 마지막 slug가 잘리지 않는다", () => {
+    const slugs = Array.from({ length: 12 }, (_, index) => `surface-${String(index).padStart(2, "0")}-locales`);
+    expect(slugs.join(",").length).toBeGreaterThan(200);
+    expect(parseLogFilter({ source: slugs.join(",") }).sources).toEqual([...slugs].sort());
+  });
+
+  it("항목 수는 상한에서 멈춘다 — 주소창 값이 쿼리 길이를 정하지 않는다", () => {
+    const many = Array.from({ length: 80 }, (_, index) => `s${String(index).padStart(3, "0")}`);
+    expect(parseLogFilter({ source: many.join(",") }).sources).toHaveLength(50);
+  });
+
   /** ⚠️ 반복 파라미터(`?kind=a&kind=b`)는 Next가 배열로 준다 — 첫 값을 쓴다. */
   it("배열 값은 첫 값을 쓴다", () => {
     expect(parseLogFilter({ kind: ["members", "publish"] }).kind).toBe("members");

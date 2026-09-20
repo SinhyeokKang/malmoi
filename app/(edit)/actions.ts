@@ -61,6 +61,11 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
    * 넣지 않는다 — 같은 프로젝트의 저장이 짧게 직렬화되는 것이 그 대가다.
    *
    * ⚠️ **잠금 안에서 외부 API를 부르지 않는다.**
+   *
+   * ⚠️ **상한이 Prisma 기본값(5초)이면 안 된다** (code-review 2026-09-21). 같은 `Project` 행을
+   * `applyProtectedPush`·`addSurfacesFromSnapshot`·`createProject`가 **30초** 트랜잭션으로 쥔다 —
+   * 큰 소스의 CI 적재 중에 누른 Save가 잠금을 기다리다 P2028로 죽고, 번역자에게는 이유 없는 실패가
+   * 된다(커밋된 것은 없다). **기다렸다 성공하는 쪽이 옳고**, 상한은 잠금을 쥐는 쪽과 같은 값이다.
    */
   const outcome = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
@@ -119,7 +124,7 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
       },
     });
     return { ok: true, value: plan.value, changed: true } as const;
-  });
+  }, { maxWait: 10_000, timeout: 30_000 });
 
   if (!outcome.ok) return outcome;
 

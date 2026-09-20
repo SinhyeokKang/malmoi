@@ -223,15 +223,20 @@ it("수동 Import의 거부 여섯만 기록하고 일시적 거부는 남기지
   expect(rows[0]).toMatchObject({ result: "notStarted", payload: { refusal: "not-ready", source: "manual" } });
 });
 
-it("실제 번역 Action의 동시 저장도 사건의 전후 값이 끊기지 않는다", async () => {
+/** 번역 저장이 지나는 최소 상태 — 멤버십·첫 적재·로케일·키. 두 테스트가 같은 바닥을 쓴다. */
+async function seedTranslationFixture() {
   await prisma.user.create({ data: { id: "owner", ...encodeUserFields("owner", { email: "owner@example.com" }), email: encodeUserFields("owner", { email: "owner@example.com" }).email! } });
   await prisma.projectMember.create({ data: { projectId: "p1", userId: "owner", role: "OWNER" } });
   await prisma.project.update({ where: { id: "p1" }, data: { installationId: "1" } });
   await prisma.translationSurface.update({ where: { id: "s1", projectId: "p1" }, data: { lastCommitSha: "a".repeat(40) } });
   await prisma.locale.create({ data: { projectId: "p1", surfaceId: "s1", code: "ko", name: "Korean" } });
   await prisma.stringKey.create({ data: { id: "key1", projectId: "p1", surfaceId: "s1", key: "hello", namespace: "_root", sourceText: "Hello", sourceHash: "hash" } });
+  return { slug: "p1", surfaceSlug: "web", keyId: "key1", localeCode: "ko" };
+}
+
+it("실제 번역 Action의 동시 저장도 사건의 전후 값이 끊기지 않는다", async () => {
+  const input = await seedTranslationFixture();
   const { saveTranslation } = await import("@/app/(edit)/actions");
-  const input = { slug: "p1", surfaceSlug: "web", keyId: "key1", localeCode: "ko" };
   expect(await Promise.all([saveTranslation({ ...input, value: "A" }), saveTranslation({ ...input, value: "B" })]))
     .toEqual([{ ok: true, value: "A" }, { ok: true, value: "B" }]);
   const events = await prisma.projectEvent.findMany({ where: { projectId: "p1", kind: "TRANSLATION" } });
@@ -241,4 +246,32 @@ it("실제 번역 Action의 동시 저장도 사건의 전후 값이 끊기지 �
   const second = changes.find(change => change.before === first.after)!;
   expect(second).toBeDefined();
   expect(await prisma.translation.findFirst({ where: { projectId: "p1", keyId: "key1", localeCode: "ko" } })).toMatchObject({ value: second.after });
+});
+
+/**
+ * ⚠️ **저장 트랜잭션의 상한이 잠금을 쥐는 쪽과 같아야 한다** (code-review 2026-09-21).
+ * `applyProtectedPush`·`addSurfacesFromSnapshot`·`createProject`는 같은 `Project` 행을 **30초**
+ * 트랜잭션으로 잡는데, 저장이 Prisma 기본값(5초)으로 열리면 큰 소스의 CI 적재 중에 누른 Save가
+ * 잠금을 기다리다 P2028로 죽는다 — 커밋된 것은 없지만 번역자에게는 이유 없는 실패다.
+ *
+ * 잠금을 6초 쥐는 것은 기본 상한(5초)을 **넘기기 위한 최소값**이다.
+ */
+it("적재가 Project 잠금을 오래 쥐고 있어도 저장은 기다렸다 성공한다", async () => {
+  const input = await seedTranslationFixture();
+  const { saveTranslation } = await import("@/app/(edit)/actions");
+
+  let locked: () => void = () => {};
+  const acquired = new Promise<void>((resolve) => { locked = resolve; });
+  const holder = prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = 'p1' FOR UPDATE`;
+    locked();
+    await new Promise((resolve) => setTimeout(resolve, 6_000));
+  }, { maxWait: 10_000, timeout: 30_000 });
+
+  await acquired;
+  const saved = await saveTranslation({ ...input, value: "A" });
+  await holder;
+
+  expect(saved).toEqual({ ok: true, value: "A" });
+  expect(await prisma.projectEvent.count({ where: { projectId: "p1", kind: "TRANSLATION" } })).toBe(1);
 });

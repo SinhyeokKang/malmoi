@@ -178,7 +178,7 @@ export async function runRepositoryImportFromReader(prisma: PrismaClient, input:
   const close = async (outcome: RepositoryImportOutcome): Promise<RepositoryImportOutcome> => {
     try {
       const surfaces = outcome.ok ? outcome.surfaces : [];
-      await finishRun(prisma, {
+      const closed = await finishRun(prisma, {
         projectId: input.projectId,
         runToken,
         result: outcome.ok ? summarizeImportEvent(outcome.surfaces) : "failed",
@@ -194,6 +194,9 @@ export async function runRepositoryImportFromReader(prisma: PrismaClient, input:
           refusal: null,
         },
       });
+      // ⚠️ **0행 갱신은 조용하다** (POSTMORTEM 2026-09-14) — 다음 실행의 stale 정리가 이 행을 먼저
+      // 닫았다는 뜻이고, 그러면 이력에 남는 결과가 실제 결과가 아니다. 적재를 되돌리지는 않되 남긴다.
+      if (!closed) logFailure("repository-import-event", new Error(`run event already closed: ${runToken}`));
     } catch (error) {
       logFailure("repository-import-event", error);
     }
