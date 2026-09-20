@@ -108,6 +108,43 @@ sync-edit-protection. **운영 차단·drain이 없다** — A가 저장마다 �
    §3의 규칙 그대로다 — `_prisma_migrations`가 전부 롤백된 것을 확인한 경우에만, 체크섬 수정·무조건 applied·reset 금지. `migrate dev`가 리셋을 제안하면 거부한다.
 5. B 뒤 미전달 카운트가 **한 번 줄어들 수 있다** — orphan 키·로케일의 편집이 집계에서 빠지기 때문이다(값은 DB에 남는다). "번역이 사라졌다"는 제보면 먼저 `orphaned`를 본다.
 
+## 활동 스트림 배포 — 마이그레이션 → 새 writer → 보충 백필 → 수집 개시 시각
+
+logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블과 nullable 컬럼 하나뿐이고 기존
+읽기 경로는 그대로다. 순서를 지키는 이유는 **과거를 만들어내지 않기 위해서**다.
+
+1. **스키마**: `/merge` 1단계의 `pnpm db:deploy`로 `add_project_event_store`를 프로덕션에 넣는다.
+   같은 마이그레이션이 **보존된 `SyncRun`마다 참조 이벤트 하나**를 만든다(결정적 id라 재실행이 no-op).
+2. **새 writer 배포** — 프로덕션 alias 전환 + 60초(가장 긴 `maxDuration`) 경과. 여기까지는 구
+   writer가 만든 실행이 이벤트 없이 남을 수 있다.
+3. **보충 백필** — 1과 같은 `INSERT … ON CONFLICT DO NOTHING`을 다시 돌린다. **구 writer가 더
+   쓰지 않는 것을 확인한 뒤에만** 한다(2가 끝나지 않았으면 다시 벌어진다).
+   ```sql
+   -- 프로젝트별로 세 수가 전부 0이어야 끝난 것이다. 건수 비교 하나로 판정하지 않는다.
+   select count(*) from "SyncRun" r
+     left join "ProjectEvent" e on e."syncRunId" = r.id and e."projectId" = r."projectId"
+    where e.id is null;                                            -- 누락
+   select count(*) from (select "projectId","syncRunId" from "ProjectEvent"
+     where "syncRunId" is not null group by 1,2 having count(*) > 1) t;   -- 중복
+   select count(*) from "ProjectEvent" e join "SyncRun" r on r.id = e."syncRunId"
+    where r."projectId" <> e."projectId";                          -- 잘못된 연결
+   ```
+4. **수집 개시 시각** — 3이 0/0/0으로 끝난 **뒤에** 기존 프로젝트에 실제 전환 시각을 한 번 쓴다.
+   ```sql
+   update "Project" set "activityCoverageStartedAt" = '<2단계 alias 전환 시각 UTC>'
+    where "activityCoverageStartedAt" is null;
+   ```
+   ⚠️ **입증할 수 없으면 `null`로 둔다** — 화면이 경계선을 숨긴다. 가장 이른 이벤트나 마이그레이션
+   시각으로 추정하면 **없는 사실을 말하는** 줄이 하나 생긴다. 신규 프로젝트는 생성 트랜잭션이 이미 쓴다.
+   ⚠️ **재백필이 이 값을 바꾸지 않는다** — 3을 다시 돌려도 4는 다시 하지 않는다.
+5. **CI 계약 전환은 별개 순서다** (docs/ACTIONS.md "실행 식별자"): 서버가 선택적 `executionId`를
+   **받는 상태로 먼저 배포** → 불변 Action 태그(`@malmoi-i18n-push-v1`) 릴리스 → 사용 리포 전환.
+   그 사이의 구 생산자는 정상 처리되지만 **HTTP 재전달 중복 방지가 보장되지 않는다.**
+
+⚠️ **계정 삭제와의 관계**: `ProjectEvent.actorUserId`가 `SetNull`이라 사용자를 지우면 저자만 빈다.
+**payload·searchText에는 원문 이메일도 사람 이름도 없다**(멤버 대상은 저장 시점에 마스킹된다) —
+그래서 FK 하나로 정리가 끝난다. 그 성질이 깨지면 이 절에 정리 절차를 추가해야 한다.
+
 ## 1. 암호화 키 셋 — 섞지 않는다
 
 **저장된 것은 전부 봉투·해시이고 원문은 쿠키와 프로세스 메모리에만 있다.** 키가 셋인 이유는 용도가
