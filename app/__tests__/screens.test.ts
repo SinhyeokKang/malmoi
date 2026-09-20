@@ -247,6 +247,19 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
     expect(read(SETTINGS)).not.toContain("archivedPolicy");
   });
 
+  /**
+   * ⚠️ **읽기를 허용했으면 화면이 그 사실을 말해야 한다.** 전면 교체를 걷어낸 자리에 아무 표시가
+   * 없으면 보관된 프로젝트의 이력이 **계속 쌓이는 것처럼** 읽힌다 — 조건부 렌더라 눈에 안 보이는
+   * 부류이고(POSTMORTEM 2026-09-15 계열), 그래서 소스로 센다.
+   */
+  it("보관을 읽는 화면은 배너와 야간 문구 제거를 함께 든다", () => {
+    const src = read(LOGS);
+    expect(src).toContain("m.logs.archived");
+    // 야간 발송이 보관을 건너뛰므로 `logs.reasons`의 그 절이 거짓이 된다 — 판정은 순수 함수가 든다.
+    expect(src).toContain("planArchivedReason");
+    expect(src).not.toContain("syncReasonMessage");
+  });
+
   it("`translation:write` 화면 전부가 `ProjectArchived`를 반환한다", () => {
     for (const path of SITES) {
       const src = read(path);

@@ -775,6 +775,21 @@ export const en = {
     },
     older: "Older",
     /**
+     * 보관된 프로젝트에서 이력을 읽을 때의 배너 (logs-rework 완료조건 11 · spec §8).
+     *
+     * ⚠️ **이 화면은 보관돼도 열린다** — 보관 사건과 그 직전 기록을 확인하려고 복원해야 하는
+     * 순환을 끊는다. 그래서 "여기는 멈춰 있다"를 화면이 말해야 하고, 안 말하면 읽는 사람이
+     * 지금도 돌고 있는 것으로 읽는다.
+     *
+     * ⚠️ **복원 안내는 OWNER에게만 간다** — EDITOR는 `project:settings` 뒤의 그 화면에 못 들어가므로
+     * 누를 수 없는 링크를 주지 않는다 (`project-archived.tsx`와 같은 판정).
+     */
+    archived: {
+      badge: "Archived",
+      description: "This project is stopped. Nothing new is recorded here until it is restored.",
+      restore: "Open settings to restore it",
+    },
+    /**
      * ⚠️ **과거 시제이고 git 어휘가 없다.** 이 문장을 읽는 사람은 실패를 겪은 번역 편집자이고,
      * 그가 할 수 있는 일(개발자에게 말한다·기다린다)까지 말한다.
      */

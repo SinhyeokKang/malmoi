@@ -1,18 +1,22 @@
 import { History } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Table, Td, Th, Tr } from "@/components/ui/table";
+import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
+import { planArchivedReason } from "@/lib/events/view";
 import { getPrisma } from "@/lib/db";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 import { loadSyncRuns } from "@/lib/sync/query";
-import { encodeCursor, syncReasonMessage, syncRunView } from "@/lib/sync/view";
+import { encodeCursor, syncRunView } from "@/lib/sync/view";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 import { utcMinute } from "@/lib/utc-time";
 
@@ -47,7 +51,7 @@ export default async function LogsPage({
    * 확인하려고 **복원해야 하는 순환**을 끊는다. 쓰기는 정책을 안 주는 Server Action 쪽에서 그대로
    * 막히고, 제거된 멤버는 여전히 `not-found`다. 이 화면 하나만 `read`를 준다.
    */
-  const { projectId, archived } = await requireProjectAccess({
+  const { projectId, role, archived } = await requireProjectAccess({
     slug,
     permission: "translation:write",
     archivedPolicy: "read",
@@ -77,6 +81,27 @@ export default async function LogsPage({
       </PanelHeader>
 
       <PanelBody width="fluid" className="space-y-6">
+        {/*
+          ⚠️ **보관돼도 이 화면은 열린다** (logs-rework 완료조건 11) — 그래서 "멈춰 있다"를 화면이
+          말해야 한다. 전에는 화면 전체가 `ProjectArchived`라 그 사실이 자명했는데, 읽기를 허용한
+          지금은 **아무 표시가 없으면 이력이 계속 쌓이는 것처럼 읽힌다.**
+
+          ⚠️ **복원 링크는 OWNER에게만** — EDITOR는 그 화면에 못 들어간다 (`project-archived.tsx`와 같은 판정).
+        */}
+        {archived && (
+          <Alert variant="warning" title={m.logs.archived.badge}>
+            {m.logs.archived.description}
+            {canPerform(role, "project:settings") && (
+              <>
+                {" "}
+                <Link href={routes.settings(slug)} className="underline">
+                  {m.logs.archived.restore}
+                </Link>
+              </>
+            )}
+          </Alert>
+        )}
+
         {/* ⚠️ **표는 Card 밖이다** (로케일·멤버 화면과 같은 관용구) — Card의 `p-4`와 셀의 `px-4`가 겹친다. */}
         {page.rows.length === 0 ? (
           <EmptyState icon={History} title={m.logs.empty.title} description={m.logs.empty.description} />
@@ -134,10 +159,15 @@ export default async function LogsPage({
                       )}
                     </Td>
                     <Td>
+                      {/*
+                        ⚠️ **보관 중에는 "The next nightly run tries again."을 뺀다** — 야간 발송이
+                        보관 프로젝트를 건너뛰므로(`lib/pull/targets.ts`) 그 문장이 거짓이 된다.
+                        판정은 순수 함수 하나가 든다 (`planArchivedReason`).
+                      */}
                       {view.reasonKey === null ? (
                         <span className="text-muted-foreground text-xs">{m.logs.none}</span>
                       ) : (
-                        <span className="text-xs">{syncReasonMessage(view.reasonKey)}</span>
+                        <span className="text-xs">{planArchivedReason(view.reasonKey, archived)}</span>
                       )}
                     </Td>
                   </Tr>
