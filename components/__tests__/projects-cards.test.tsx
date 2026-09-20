@@ -216,3 +216,36 @@ describe("Summary 넷이 화면에서 사라진다", () => {
     expect((await draw()).textContent).not.toContain(label);
   });
 });
+
+describe("보관 행이 한 단계 더 물러난다", () => {
+  /** 보관 카드의 유일한 행을 집는다 — 그룹 순서는 위 `1a` 테스트가 이미 고정한다. */
+  const archivedRow = (container: HTMLElement) => find<HTMLElement>(cards(container)[2]!, "li");
+  const activeRow = (container: HTMLElement) => find<HTMLElement>(cards(container)[1]!, "li");
+  const nameOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-base");
+  const metaOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-sm.truncate");
+
+  /**
+   * ⚠️ **이름·메타·배지가 `#a3a3a3` 한 색이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).
+   * 전에는 셋 다 `#737373`이었는데 그 값은 이 리포에서 **꺼진 컨트롤의 글자색**이라 더 내려갈 데가
+   * 없었다. 한 단계 아래인 `neutral-400`을 이 행에 들이는 것이 그 요청의 답이다.
+   *
+   * ⚠️ **셋이 함께 움직여야 한다** — 하나라도 남으면 그것이 행에서 가장 진한 것이 되어 눈이 먼저 간다.
+   */
+  it("이름·메타·배지가 전부 neutral-400이다", async () => {
+    const row = archivedRow(await draw());
+    expect(nameOf(row).className).toContain("text-neutral-400");
+    expect(metaOf(row).className).toContain("text-neutral-400");
+    const badge = find<HTMLElement>(row, "span.rounded-full");
+    expect(badge.textContent).toBe(m.projects.archived);
+    expect(badge.className).toContain("text-neutral-400");
+  });
+
+  /** ⚠️ **살아 있는 행은 안 움직인다** — 이름은 `#0a0a0a`, 메타는 `#737373` 그대로다. */
+  it("보관이 아닌 행의 색은 그대로다", async () => {
+    const row = activeRow(await draw());
+    expect(nameOf(row).className).not.toContain("text-neutral-400");
+    expect(nameOf(row).className).not.toContain("text-muted-foreground");
+    expect(metaOf(row).className).toContain("text-muted-foreground");
+    expect(metaOf(row).className).not.toContain("text-neutral-400");
+  });
+});
