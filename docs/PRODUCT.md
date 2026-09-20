@@ -128,6 +128,8 @@ ARCHITECTURE §0 불변식 2와 정면 충돌한다.
 
 ### 4.1 만드는 것
 
+- **프로젝트 표시 정보** — OWNER가 설정에서 이름(최대 200자)과 썸네일(PNG/JPEG 3MB)을 수정한다. 주소·리포는 이름 변경으로 움직이지 않는다. 이미지는 설정·목록·Home·초대에 반영된다.
+
 - **테넌트 인증·인가** — User·Account·ProjectMember·초대, DB 세션
 - **GitHub 설치 연결** — OAuth 계정 ↔ installation ↔ repository 3중 검증
 - **탐지 기반 프로젝트 생성** — 후보를 보여주고 사용자가 확정
@@ -321,11 +323,19 @@ resolved path가 겹치면 GitHub 쓰기 전에 전체 실패한다. 값 병합�
 기본 표면은 `Project.defaultSurfaceId`로 저장한다. 기존 translations/locales URL은 그 표면으로 redirect한다.
 sync 브랜치는 계속 `malmoi-i18n/sync-<project-slug>`다. 기존 여러 Project를 자동 통합하지 않는다.
 
-**단계 B가 OWNER의 Settings → Add surface를 열었다** (`/projects/:slug/surfaces/new`). 기존 리포의 후보 하나 또는 수동 경로를
-골라 표면 생성과 첫 적재를 원자적으로 끝낸다. 다른 표면은 같은 키·언어 코드를 가질 수 있지만 출력 경로는
-겹칠 수 없다. 실패하면 기존 입력을 유지하고, 성공하면 기존 PUSH_TOKEN을 쓰는 추가 workflow step을 준다.
+**OWNER의 Settings → Add sources 모달**에서 후보 여럿 또는 수동 경로를 선택한다. 기존 소스는 체크된
+채 잠기고 새 항목만 요청한다. 요청 전체의 읽기 예산은 200파일·10MB(파일당 2MB)이고, 모든 표면의
+생성·첫 적재는 한 트랜잭션으로 전부 성공하거나 롤백한다. 포맷 내 부분 적재 실패는 성공+경고다.
+확정 거부 뒤 선택을 보존하고, 성공 뒤 기존 PUSH_TOKEN을 사용하는 workflow 반영 안내를 남긴다.
+다른 표면은 같은 키·언어 코드를 가질 수 있지만 출력 경로는 겹칠 수 없다.
 신규 생성에서는 후보 여럿을 체크해 한 번에 추가한다. 기본 표면은 체크된 후보 중 탐지 순서가 가장 앞선 표면이다.
 표면 보관·복원은 다음 라운드다.
+
+설정은 General·Repository·Translation sources·CI integration·Archive 다섯 카드다. 소스별 상태는
+미적재·적재 중·최초 실패·적재 이후 실패·적재 완료 다섯이며 첫 적재만 소스별 재시도한다. 집계는
+orphaned를 제외한 활성 키·언어 수다. 워크플로의 SHA 없는 소스 안내는 CI 등록 여부를 증명하지 않는다.
+보관 시 Restore를 첫 카드로 옮기고 나머지 UI 편집을 막는다. 이름·이미지의 서버 Action은 메타데이터여서
+보관 후에도 허용한다. 번역을 덮는 세 동작의 보관 거부와 섞지 않는다.
 
 ### 7.2 로케일 소유권 — 리포가 정본이다
 
@@ -465,7 +475,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /projects/:slug/locales        → **기본 표면으로 redirect** (옛 URL 껍데기)
 /projects/:slug/surfaces/:surface/translations  ✅ 번역             ← multi-surface B
 /projects/:slug/surfaces/:surface/locales       ✅ 로케일 목록 + 기준 로케일 지정 ← 6b-5 → multi-surface B
-/projects/:slug/surfaces/new   ✅ Add surface (`project:settings`) ← multi-surface B
+/projects/:slug/surfaces/new   ✅ 권한 검사 후 /settings?add=sources redirect (OAuth 복귀 포함)
 /projects/:slug/members        멤버
 /projects/:slug/logs           ✅ 변경 이력                        ← 7단계 (SyncRun 소비자)
 /projects/:slug/settings       나머지 프로젝트 설정 전부
@@ -696,7 +706,7 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 대상 리포 CI가 red가 되는 것은 의도된 신호다(워크플로를 떼라는 뜻).
 
 **Server Action의 경계도 같은 선이다** (2026-09-17): **번역을 바꾸는 쓰기는 보관 중
-거부**(`runFirstIngest`·`addSurface`·`runRepositoryImport` — 전부 `applyPush`로 번역을 덮는다), **설정 쓰기는
+거부**(`runFirstIngest`·`addSurfaces`·`runRepositoryImport` — 전부 `applyPush`로 번역을 덮는다), **설정 쓰기는
 허용**(`updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·`rotatePushToken` — 번역을 안
 바꾸고, 되돌릴 때 필요한 것들이다). 판정은 "이 Action이 `Translation` 행을 쓰는가"다.
 
