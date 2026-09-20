@@ -154,6 +154,7 @@ export const en = {
     },
   },
   surfaces: {
+    sourceCounts: (keys: number, locales: number): string => `${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"} · ${locales.toLocaleString("en-US")} ${locales === 1 ? "language" : "languages"}`,
     label: "Translation surface", title: "Translation surfaces", add: "Add surface",
     description: "Choose another set of translation files from this repository.",
     workflow: "Add this step to your existing workflow. It uses the same PUSH_TOKEN.",

@@ -15,7 +15,8 @@ it("적재 부분 실패는 파일 오류 배열 대신 failed 합으로 경고�
   expect(summarizeAddResults([])).toEqual({ surfaces: 0, keys: 0, failed: 0, tone: "success" });
   const good = { pathTemplate: "a", surfaceSlug: "a", count: 5, failed: 0 };
   expect(summarizeAddResults([good])).toEqual({ surfaces: 1, keys: 5, failed: 0, tone: "success" });
-  expect(summarizeAddResults([good, { ...good, count: 2, failed: 3, errors: [] }])).toEqual({ surfaces: 2, keys: 7, failed: 3, tone: "warning" });
+  const duplicateFailure = { ...good, count: 2, failed: 3, errors: [] };
+  expect(summarizeAddResults([good, duplicateFailure])).toEqual({ surfaces: 2, keys: 7, failed: 3, tone: "warning" });
 });
 it("서버가 orphaned를 제외해 센 수를 표시한다", () => {
   expect(formatSourceCounts({ keys: 0, locales: 0 })).toBe("0 keys · 0 languages");
