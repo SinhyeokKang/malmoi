@@ -59,8 +59,14 @@ const CONTENT_MAX = {
 } as const;
 
 /**
- * ⚠️ **기본이 `limited`다** — 소비자 열하나 중 일곱이고, 빠뜨렸을 때 좁아지는 쪽이 넘치는 쪽보다
- * 눈에 띈다. fluid 넷은 번역 표 · 프로젝트 목록(+ 그 스켈레톤) · 표면 추가다.
+ * ⚠️ **기본이 `limited`인데 이제 그쪽이 소수다** (2026-09-20 사용자 판정 — *"limited를 쓰는 것은
+ * 설정 페이지 둘뿐"*). `PanelHeader` 소비자 열둘 중 **fluid 아홉 · limited 셋**(프로젝트 설정 ·
+ * `/account`와 그 스켈레톤)이고, `PanelBody`는 거기에 **본문 전용 셋**(`error` · `ProjectArchived` ·
+ * `ProjectNotReady`)이 limited로 더 붙는다.
+ *
+ * ⚠️ **그래도 기본값을 뒤집지 않는다.** 근거가 "다수"가 아니라 **빠뜨렸을 때의 증상**이라서다 —
+ * 좁아지는 쪽이 넘치는 쪽보다 눈에 띈다. 기본을 fluid로 돌리면 위 본문 전용 셋이 **아무도 안 본 채**
+ * 1280으로 넓어진다(그 셋은 세로 중앙 빈 상태라 폭이 커져도 화면이 "그럭저럭" 보인다).
  */
 type PanelWidth = keyof typeof CONTENT_MAX;
 

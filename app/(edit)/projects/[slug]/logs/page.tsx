@@ -63,13 +63,13 @@ export default async function LogsPage({
         여백·폭 등급·머리 아래 선은 **프리미티브가 든다**(기본 등급이 `limited` = `max-w-4xl`) —
         화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
-      <PanelHeader description={m.logs.description}>
+      <PanelHeader width="fluid" description={m.logs.description}>
         {/* ⚠️ **breadcrumb이 없다** (8-4 — DESIGN §0) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.logs}</h1>
       </PanelHeader>
 
-      <PanelBody className="space-y-6">
+      <PanelBody width="fluid" className="space-y-6">
         {/* ⚠️ **표는 Card 밖이다** (로케일·멤버 화면과 같은 관용구) — Card의 `p-4`와 셀의 `px-4`가 겹친다. */}
         {page.rows.length === 0 ? (
           <EmptyState icon={History} title={m.logs.empty.title} description={m.logs.empty.description} />

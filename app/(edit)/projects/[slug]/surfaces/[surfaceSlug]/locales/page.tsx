@@ -72,14 +72,14 @@ export default async function LocalesPage({ params }: { params: Promise<{ slug: 
         여백·폭 등급·머리 아래 선은 **프리미티브가 든다**(기본 등급이 `limited` = `max-w-4xl`) —
         화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
-      <PanelHeader description={m.locales.description}>
+      <PanelHeader width="fluid" description={m.locales.description}>
         {/* ⚠️ **breadcrumb이 없다** (8-4 — DESIGN §0) — 프로젝트 하위 화면 다섯에서 함께 지웠다.
             위로 가는 길은 사이드바가 든다(프로젝트 구역 여섯이 항상 보인다). */}
         <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.locales}</h1>
         <LocaleSurfaceSelector slug={slug} surfaceSlug={surfaceSlug} surfaces={surfaces} />
       </PanelHeader>
 
-      <PanelBody className="space-y-6">
+      <PanelBody width="fluid" className="space-y-6">
         {/*
           ⚠️ **표는 Card 밖이다** (멤버 화면과 같은 관용구). Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐
           표만 16px 더 들여쓰였다 — 실측으로 확인했다. 행 구분은 `Td`의 `border-t`가 든다.
