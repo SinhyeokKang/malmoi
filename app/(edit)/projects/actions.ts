@@ -7,7 +7,7 @@ import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { findUserByEmail } from "@/lib/credentials/access";
 import { isUniqueViolation, logCaught } from "@/lib/failure";
 import { planSurfaceSlug, surfaceOwnership, selectDefaultSurface } from "@/lib/surfaces/plan";
-import { addSurfaceFromSnapshot, addSurfacesFromSnapshot, SurfaceCreationError, type AddSurfaceErrorCode, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
+import { addSurfacesFromSnapshot, SurfaceCreationError, type AddSurfaceErrorCode, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
 
@@ -1088,62 +1088,6 @@ export async function createProject(raw: {
     count: prepared.reduce((sum, s) => sum + s.payload.keys.length, 0), yaml };
 }
 
-export type AddSurfaceResult =
-  | { ok: true; surfaceSlug: string; count: number; failed: number; yaml: string }
-  | { ok: false; error: string; conflicts?: { path: string; surfaceSlugs: string[] }[] };
-
-/** 리포·토큰은 기존 Project가 소유한다. 요청은 새 표면의 후보만 고른다. */
-export async function addSurface(raw: {
-  slug: string; adapter: string; pathTemplate: string; baseLocale: string;
-}): Promise<AddSurfaceResult> {
-  const parsed = z.object({ slug: z.string().min(1).max(40), adapter: z.string(),
-    pathTemplate: z.string().min(1).max(500), baseLocale: z.string().min(1) }).safeParse(raw);
-  if (!parsed.success) return { ok: false, error: "invalid input" };
-  const input = parsed.data;
-  if (!isAdapterName(input.adapter) || !isPathSafeLocale(input.baseLocale)) return { ok: false, error: "invalid input" };
-  const session = await readSession();
-  if (session.status !== "ok") return { ok: false, error: session.status === "none" ? "unauthorized" : "unavailable" };
-  const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, { userId: session.userId, slug: input.slug, permission: "project:settings" });
-  if (access.status !== "ok") return { ok: false, error: access.status };
-  const project = await prisma.project.findUnique({ where: { id: access.projectId } });
-  if (project === null) return { ok: false, error: "not-found" };
-  if (project.archivedAt !== null) return { ok: false, error: "archived" };
-  try {
-    const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
-    if (repo.status !== "ok") return { ok: false, error: repo.error };
-    if (repo.repositoryId !== project.repositoryId || repo.installationId !== project.installationId) {
-      return { ok: false, error: "repo-replaced" };
-    }
-    const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId);
-    const snapshot = await reader.snapshot(project.baseBranch);
-    if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
-    const paths = snapshot.files.map(f => f.path);
-    const targets = templatePaths(input.adapter, input.pathTemplate, paths);
-    // 예산은 이 표면의 호출 하나에 적용한다. 기존 표면과 합산하지 않는다.
-    const files = await readFiles(reader, snapshot, targets);
-    const confirmed = planConfirmedFormat(input, files);
-    if (confirmed.status !== "ok") return { ok: false, error: files.length < targets.length ? "unavailable" : "manual-no-match" };
-    const result = await addSurfaceFromSnapshot(prisma, {
-      projectId: access.projectId, userId: session.userId,
-      repository: { repositoryId: repo.repositoryId, installationId: repo.installationId,
-        repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
-      format: confirmed.format, baseLocale: confirmed.baseLocale, paths, targets,
-      blobs: new Map(files.map(f => [f.path, f.content])), headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt,
-    });
-    revalidatePath(`/projects/${input.slug}`, "layout");
-    revalidatePath("/projects");
-    return { ok: true, surfaceSlug: result.surfaceSlug, count: result.count, failed: result.failed,
-      yaml: renderSurfaceWorkflowStep({ slug: input.slug, surfaceSlug: result.surfaceSlug,
-        pathTemplate: confirmed.format.pathTemplate, adapter: confirmed.format.adapter, baseLocale: confirmed.baseLocale }) };
-  } catch (error) {
-    if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
-    if (error instanceof SurfaceCreationError) return { ok: false, error: error.code, conflicts: error.conflicts };
-    logFailure("onboard-add-surface", error);
-    return { ok: false, error: "ingest-failed" };
-  }
-}
-
 export type FirstIngestResultView =
   | { ok: true; count: number; failed: number; errors: AdapterError[] }
   | { ok: false; error: OnboardError | AccessError | "invalid input" };
@@ -1189,7 +1133,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
   /**
    * ⚠️ **인가가 이것을 안 막는다** — 이 Action은 `project:settings` 뒤에 있고 그 권한만 보관 중에도
    * 통과한다(PRODUCT §7.9 — 전부 막으면 보관이 편도가 된다). 번역을 바꾸는 쓰기는 자기가 한 번 더
-   * 봐야 하고, 형제 `addSurface`·`runRepositoryImport`가 같은 형이다.
+   * 봐야 하고, 형제 `addSurfaces`·`runRepositoryImport`가 같은 형이다.
    *
    * ⚠️ **`apply.ts`의 트랜잭션 가드가 이미 막고 있었지만 너무 늦었다** — 거기까지 가면 스냅샷을
    * 이미 내려받은 뒤이고, 그 예외가 아래에서 `ingest-failed`로 접혀 **"적재 실패"로 오진**된다.

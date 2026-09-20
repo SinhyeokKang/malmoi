@@ -88,10 +88,10 @@ type CellSpec = { key: string; locale: string; value?: string; updatedBy?: strin
  */
 async function seed(projectId: string, input: { lastPulledAt: Date | null; cells: CellSpec[] }) {
   const surfaceId = `surface-${projectId}`;
-  await prisma.project.create({ data: { id: projectId, slug: projectId, name: projectId, repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", lastPulledAt: input.lastPulledAt } });
+  await prisma.project.create({ select: { id: true }, data: { id: projectId, slug: projectId, name: projectId, repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", lastPulledAt: input.lastPulledAt } });
   await prisma.translationSurface.create({ data: { id: surfaceId, projectId, slug: "default",
     adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en", lastCommitAt: BEFORE } });
-  await prisma.project.update({ where: { id: projectId }, data: { defaultSurfaceId: surfaceId } });
+  await prisma.project.update({ select: { id: true }, where: { id: projectId }, data: { defaultSurfaceId: surfaceId } });
   await prisma.locale.createMany({ data: [
     ...["en", "ko", "fr"].map(code => ({ projectId, surfaceId, code, name: code, isBase: code === "en", orphaned: false })),
     { projectId, surfaceId, code: "gone", name: "gone", isBase: false, orphaned: true },

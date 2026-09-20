@@ -15,7 +15,7 @@ import { isUnpublished } from "@/lib/keys/view";
 import { reviewByLocale } from "@/lib/projects/list";
 import { countUnpublished, countUnpublishedBySurface, loadKeys, loadProjectListAggregates, loadReviewAttention } from "../query";
 import { loadPullState } from "@/lib/pull/load";
-import { addSurfacesFromSnapshot, addSurfaceFromSnapshot } from "@/lib/surfaces/create";
+import { addSurfacesFromSnapshot, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 
 /**
  * **raw 집계 둘이 기준 판정과 같은 답을 내는가** (ARCHITECTURE §5).
@@ -95,6 +95,14 @@ async function addFixture() {
   };
 }
 
+// Run the original single-source regression cases through the new batch writer.
+async function addOneFixture(input: AddSurfaceSnapshot) {
+  const [result] = await addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input] });
+  if (!result) throw new Error("Missing added source");
+  const surface = await prisma.translationSurface.findUniqueOrThrow({ where: { projectId_slug: { projectId: input.projectId, slug: result.surfaceSlug } } });
+  return { ...result, surfaceId: surface.id };
+}
+
 async function existingSurface() {
   return prisma.translationSurface.findUniqueOrThrow({ where: { id: "surface-add" },
     include: { locales: true, keys: { include: { refs: true } }, translations: true } });
@@ -103,7 +111,7 @@ async function existingSurface() {
 it("Add surface는 첫 적재와 생성이 원자적이며 같은 경로 동시 요청은 하나만 성공한다", async () => {
   const input = await addFixture();
   const before = await existingSurface();
-  const results = await Promise.allSettled([addSurfaceFromSnapshot(prisma, input), addSurfaceFromSnapshot(prisma, input)]);
+  const results = await Promise.allSettled([addOneFixture(input), addOneFixture(input)]);
   expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
   const rejected = results.find(r => r.status === "rejected");
   expect(rejected?.status === "rejected" && rejected.reason).toMatchObject({ code: "path-conflict" });
@@ -117,7 +125,7 @@ it.each(["TranslationSurface", "Locale", "StringKey", "Translation", "KeyRef"])(
   const before = await existingSurface();
   await pool.query(`CREATE FUNCTION reject_add() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected write failure'; END $$;
     CREATE TRIGGER reject_add BEFORE INSERT OR UPDATE OR DELETE ON "${table}" FOR EACH STATEMENT EXECUTE FUNCTION reject_add()`);
-  await expect(addSurfaceFromSnapshot(prisma, input)).rejects.toThrow();
+  await expect(addOneFixture(input)).rejects.toThrow();
   expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(1);
   expect(await existingSurface()).toEqual(before);
 });
@@ -130,7 +138,7 @@ it.each(["repo-replaced", "path-conflict", "forbidden", "archived", "ingest-fail
   if (reason === "archived") await prisma.project.update({ where: { id: "add" }, data: { archivedAt: AFTER } });
   if (reason === "ingest-failed") input.blobs = new Map([["second/en.json", "{}"]]);
   const before = await existingSurface();
-  await expect(addSurfaceFromSnapshot(prisma, input)).rejects.toMatchObject({ code: reason });
+  await expect(addOneFixture(input)).rejects.toMatchObject({ code: reason });
   expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(1);
   expect(await existingSurface()).toEqual(before);
 });
@@ -138,7 +146,7 @@ it.each(["repo-replaced", "path-conflict", "forbidden", "archived", "ingest-fail
 it("Add surface는 일부 파일 실패를 partial-import로 남기고 성공으로 숨기지 않는다", async () => {
   const input = await addFixture();
   input.blobs.delete("second/ko.json");
-  const result = await addSurfaceFromSnapshot(prisma, input);
+  const result = await addOneFixture(input);
   expect(result).toMatchObject({ count: 1, failed: 1, surfaceSlug: "second" });
   expect(await prisma.translationSurface.findUnique({ where: { id: result.surfaceId } })).toMatchObject({ lastImportError: "partial-import" });
 });
@@ -547,7 +555,7 @@ it("단계 B 복합 인덱스는 표면 목록과 미발송 범위를 자연 계
 it("적재 예산 초과도 생성한 표면과 자식을 전부 롤백한다", async () => {
   const input = await addFixture(); const before = await existingSurface();
   input.blobs.set("second/en.json", '"' + 'a'.repeat(2_000_001) + '"');
-  await expect(addSurfaceFromSnapshot(prisma, input)).rejects.toThrow("resource limits");
+  await expect(addOneFixture(input)).rejects.toThrow("resource limits");
   expect(await prisma.translationSurface.count({ where: { projectId: "add" } })).toBe(1);
   expect(await existingSurface()).toEqual(before);
 });

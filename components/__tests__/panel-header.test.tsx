@@ -155,7 +155,7 @@ describe("PanelBody — 같은 여백, 같은 등급", () => {
 });
 
 /**
- * **소비자 열둘이 여백을 판단하지 않는다** (완료 조건 1).
+ * **소비자 열하나이 여백을 판단하지 않는다** (완료 조건 1).
  *
  * ⚠️ **세는 명령을 실제로 돌려 본문과 맞췄다** — `grep -rln "PanelHeader"`는 더 많이 내는데
  * `project-archived.tsx`·`project-not-ready.tsx`가 *"`PanelHeader`가 없다"*는 **주석**으로 잡히고
@@ -168,11 +168,10 @@ describe("PanelBody — 같은 여백, 같은 등급", () => {
  * 이번이 **네 번째**다 (POSTMORTEM 2026-09-14 · 2026-09-15).
  * ⚠️ **`<PanelHeader`를 새로 쓰면 이 배열에 한 줄을 더한다** — 그러지 않으면 새 화면이 검사 밖이다.
  */
-describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
+describe("소비자 열하나 — 여백을 넘기지 않는다", () => {
   const CONSUMERS = [
     "components/projects/project-list.tsx",
     "components/translations/header.tsx",
-    "components/onboarding/add-surface.tsx",
     "app/(edit)/projects/loading.tsx",
     "app/(edit)/projects/[slug]/loading.tsx",
     "app/(edit)/projects/[slug]/page.tsx",
@@ -223,8 +222,8 @@ describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
     expect(uses("<PanelBody").sort()).toEqual([...CONSUMERS, ...BODY_ONLY].sort());
   });
 
-  it("소비자가 열둘 + 본문 전용 셋이다 — 수가 바뀌면 다시 센다", () => {
-    expect(CONSUMERS).toHaveLength(12);
+  it("소비자가 열하나 + 본문 전용 셋이다 — 수가 바뀌면 다시 센다", () => {
+    expect(CONSUMERS).toHaveLength(11);
     expect(BODY_ONLY).toHaveLength(3);
   });
 

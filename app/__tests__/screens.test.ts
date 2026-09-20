@@ -42,11 +42,9 @@ describe("설정 화면 — revalidate가 결과를 씻지 않는다 (POSTMORTEM
    * `awaiting_first_sync` → `ready`로 바뀐다 — 그 조건부 분기 **안**에 결과 컴포넌트가 있으면 성공이
    * 자기 표시기를 언마운트하고, `failed > 0`의 "M건을 읽지 못했다"가 아무에게도 닿지 않는다(불변식 9).
    */
-  it("`FirstIngestRetry`가 readiness 분기 밖이다 — 버튼만 `canRun`으로 감춘다", () => {
-    expect(src).toMatch(/<FirstIngestRetry/);
-    expect(src).toMatch(/canRun=\{/);
-    // 분기 안에 있으면 `&&` 뒤에 붙는다 — 그 형태를 금지한다.
-    expect(src).not.toMatch(/&&\s*<FirstIngestRetry/);
+  it("소스 카드가 적재 상태와 무관하게 유지된다 — 결과 유지 DOM 검증은 settings-sources가 담당한다", () => {
+    expect(src).toMatch(/<SourcesCard/);
+    expect(src).not.toMatch(/&&\s*<SourcesCard/);
   });
 
   /**
@@ -279,7 +277,7 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
  * 밟았다 (POSTMORTEM 2026-09-06: 사유를 쿼리로 넘겨놓고 읽는 쪽이 없어 거부가 조용했다).
  */
 describe("설정 화면 — 저장된 임포트 실패를 읽는다", () => {
-  const src = read(SETTINGS);
+  const src = read("components/settings/sources-card.tsx");
 
   it("컬럼을 select하고 판정 함수로 거른다 — DB 문자열을 직접 인덱싱하지 않는다", () => {
     expect(src).toContain("lastImportError");
@@ -293,7 +291,7 @@ describe("설정 화면 — 저장된 임포트 실패를 읽는다", () => {
   /** 첫 적재 전이면 이 화면의 버튼이, 이미 적재된 뒤면 대상 리포의 CI가 고칠 자리다. */
   it("복구 안내가 readiness로 갈린다", () => {
     expect(src).toContain("importRetry");
-    expect(src).toContain("importRerun");
+    expect(src).toContain("m.settings.sources.rerun");
   });
 });
 
@@ -324,16 +322,11 @@ describe("쓰기 경로가 목록 둘을 무효화한다", () => {
  * 쪽도 못 믿는다 — [다시 시도]를 누른 직후가 정확히 그 창이다 (2026-09-13 리뷰).
  */
 describe("설정 화면 — 진행 중이 지난 실패를 이긴다", () => {
-  const src = read(SETTINGS);
-
-  it("진행 표시 컬럼을 함께 읽는다", () => {
-    expect(src).toContain("surfaces: { where: { archivedAt: null }");
-    expect(src).toContain("s.lastImportStartedAt");
-  });
-
-  it("목록과 같은 판정 함수를 쓴다 — 술어를 두 벌로 만들지 않는다", () => {
-    expect(src).toContain("failing({");
-    expect(src).toContain('from "@/lib/projects/list"');
+  it("활성 표면을 전부 읽고 행마다 검증된 판정 함수를 사용한다", () => {
+    expect(read(SETTINGS)).toContain("surfaces: { where: { archivedAt: null }");
+    expect(read("components/settings/sources-card.tsx")).toContain("planSurfaceImportStatus(source)");
+    const planner = read("lib/import/surface-status.ts");
+    expect(planner.indexOf("surface.lastImportStartedAt !== null")).toBeLessThan(planner.indexOf("isImportFailureCode(surface.lastImportError)"));
   });
 });
 

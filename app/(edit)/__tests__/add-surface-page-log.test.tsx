@@ -1,25 +1,18 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
-const state = vi.hoisted(() => ({ detect: vi.fn() }));
-vi.mock("@/lib/auth/session", () => ({ requireProjectAccess: async () => ({ projectId: "p1" }) }));
-vi.mock("@/lib/db", () => ({ getPrisma: () => ({ project: { findUnique: async () => ({ repoOwner: "o", repoName: "r", baseBranch: "main", archivedAt: null }) } }) }));
+import { beforeEach, expect, it, vi } from "vitest";
+const state = vi.hoisted(() => ({ require: vi.fn(), find: vi.fn(), detect: vi.fn(), redirect: vi.fn((url: string) => { throw new Error(url); }) }));
+vi.mock("@/lib/auth/session", () => ({ requireProjectAccess: state.require }));
+vi.mock("@/lib/db", () => ({ getPrisma: () => ({ project: { findUnique: state.find } }) }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ detectRepoFormats: state.detect }));
-vi.mock("@/components/onboarding/add-surface", () => ({ AddSurface: () => null }));
+vi.mock("next/navigation", () => ({ redirect: state.redirect, notFound: () => { throw new Error("not-found"); } }));
 import Page from "../projects/[slug]/surfaces/new/page";
-
-/**
- * 탐지 장애는 `unavailable` 초기값으로 접힌다 — 원인을 볼 곳이 서버 로그 한 줄뿐이다 (launch-readiness L5.2).
- */
-let log: { mock: { calls: unknown[][] }; mockRestore: () => void };
-beforeEach(() => { log = vi.spyOn(console, "error").mockImplementation(() => {}); });
-afterEach(() => log.mockRestore());
-const input = { params: Promise.resolve({ slug: "alpha" }), searchParams: Promise.resolve({}) };
-
-it("탐지 장애는 분류 한 줄, 성공은 0줄", async () => {
-  state.detect.mockResolvedValue({ ok: true, candidates: [] });
-  await Page(input);
-  expect(log).not.toHaveBeenCalled();
-  state.detect.mockRejectedValue(Object.assign(new Error("secret"), { status: 502 }));
-  const element = await Page(input);
-  expect(element.props.initial).toEqual({ ok: false, error: "unavailable" });
-  expect(log.mock.calls.map((c) => String(c[0]))).toEqual([expect.stringMatching(/^\[surface\] \w{8} detect: http-502$/)]);
+beforeEach(() => { vi.clearAllMocks(); state.require.mockResolvedValue({ projectId: "p1" }); state.find.mockResolvedValue({ archivedAt: null }); });
+it("OAuth 복귀의 오류를 보존해 설정 모달로 보내고 리포를 재탐지하지 않는다", async () => {
+  await expect(Page({ params: Promise.resolve({ slug: "alpha" }), searchParams: Promise.resolve({ e: "reauthorize" }) })).rejects.toThrow("/projects/alpha/settings?add=sources&e=reauthorize");
+  expect(state.require).toHaveBeenCalledWith({ slug: "alpha", permission: "project:settings" });
+  expect(state.detect).not.toHaveBeenCalled();
+});
+it("보관된 프로젝트는 모달로 보내지 않는다", async () => {
+  state.find.mockResolvedValue({ archivedAt: new Date() });
+  await expect(Page({ params: Promise.resolve({ slug: "alpha" }), searchParams: Promise.resolve({}) })).rejects.toThrow("not-found");
+  expect(state.redirect).not.toHaveBeenCalled();
 });

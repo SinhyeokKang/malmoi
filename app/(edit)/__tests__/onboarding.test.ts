@@ -46,7 +46,6 @@ const hoisted = vi.hoisted(() => ({
   runRepositoryImportFromReader: vi.fn(),
   loadOpenPrUrl: vi.fn(),
   applyPushInTransaction: vi.fn(),
-  addSurfaceFromSnapshot: vi.fn(),
   addSurfacesFromSnapshot: vi.fn(),
   triggerPull: vi.fn(),
   revalidatePath: vi.fn(),
@@ -60,7 +59,6 @@ vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: hoisted.loadOpenPrUrl 
 
 vi.mock("@/lib/surfaces/create", async (original) => ({
   ...(await original<typeof import("@/lib/surfaces/create")>()),
-  addSurfaceFromSnapshot: hoisted.addSurfaceFromSnapshot,
   addSurfacesFromSnapshot: hoisted.addSurfacesFromSnapshot,
 }));
 vi.mock("server-only", () => ({}));
@@ -103,7 +101,6 @@ vi.mock("next/navigation", () => ({
 
 const {
   createProject,
-  addSurface,
   addSurfaces,
   detectRepoFormats,
   listRepoBranches,
@@ -1618,16 +1615,16 @@ describe("Add surface 요청 경계", () => {
   const input = { slug: "acme", adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" };
   beforeEach(() => {
     Object.assign(db.projects[0]!, { repoOwner: "acme", repoName: "web", repositoryId: "1035512", installationId: "77", baseBranch: "develop" });
-    hoisted.addSurfaceFromSnapshot.mockResolvedValue({ surfaceSlug: "i18n", count: 2, failed: 0 });
+    hoisted.addSurfacesFromSnapshot.mockResolvedValue([{ pathTemplate: "i18n/{locale}.json", surfaceSlug: "i18n", count: 2, failed: 0 }]);
   });
   it("후보와 수동 입력은 저장된 리포 snapshot을 재검증한 뒤 같은 원자적 생성에 들어간다", async () => {
-    const result = await addSurface(input);
-    expect(result).toMatchObject({ ok: true, surfaceSlug: "i18n", count: 2 });
-    expect(hoisted.addSurfaceFromSnapshot).toHaveBeenCalledWith(db.prisma, expect.objectContaining({
+    const result = await addSurfaces({ slug: input.slug, picks: [input] });
+    expect(result).toMatchObject({ ok: true, results: [{ surfaceSlug: "i18n", count: 2 }] });
+    expect(hoisted.addSurfacesFromSnapshot).toHaveBeenCalledWith(db.prisma, { projectSlug: "acme", inputs: [expect.objectContaining({
       projectId: "p1", userId: OWNER, headSha: HEAD_SHA,
       repository: expect.objectContaining({ baseBranch: "develop", repositoryId: "1035512" }),
       targets: ["i18n/en.json", "i18n/fr.json", "i18n/ko.json"],
-    }));
+    })] });
     expect(db.projects).toHaveLength(1);
     expect(result.ok && result.yaml).toContain("surface: i18n");
   });
@@ -1638,8 +1635,8 @@ describe("Add surface 요청 경계", () => {
     if (reason === "manual-no-match") hoisted.openRepoReader.mockImplementation(async () => reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files: [] } }));
     if (reason === "resource-limit") hoisted.openRepoReader.mockImplementation(async () => reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files: [{ path: "i18n/en.json", sha: "en", size: 2_000_001 }] } }));
     const before = structuredClone({ projects: db.projects, surfaces: db.surfaces, translations: db.translations });
-    expect(await addSurface(input)).toEqual({ ok: false, error: reason });
-    expect(hoisted.addSurfaceFromSnapshot).not.toHaveBeenCalled();
+    expect(await addSurfaces({ slug: input.slug, picks: [input] })).toEqual({ ok: false, error: reason });
+    expect(hoisted.addSurfacesFromSnapshot).not.toHaveBeenCalled();
     expect({ projects: db.projects, surfaces: db.surfaces, translations: db.translations }).toEqual(before);
   });
 });
