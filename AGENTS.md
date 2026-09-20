@@ -57,7 +57,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 
 **불변식 열하나의 정본은 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) §0**이다.
 
-- **활동 사건도 이 축 위에 선다** (2026-09-20, `ProjectEvent` — ARCHITECTURE §5.7). 상태 변경은
+- **활동 사건도 이 축 위에 선다** (2026-09-20, `ProjectEvent` — ARCHITECTURE §5.7 · DESIGN §6.68). 상태 변경은
   **변경과 같은 트랜잭션**에서 확정되고(어느 쪽이 실패해도 둘 다 롤백된다), 외부 실행은 **서버가
   관측한 종료만** 남긴다. ⚠️ **사건은 지우지 않고 보존 기간도 만들지 않는다** — 불변식 3의 확장이다.
   ⚠️ **번역 저장이 `Project`→`TranslationSurface` 잠금 안으로 들어갔다** — 사건의 전후 값이 잠금 뒤
