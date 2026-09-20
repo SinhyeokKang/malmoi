@@ -1,5 +1,7 @@
 "use server";
 
+import { PROJECT_NAME_MAX_CHARS } from "@/lib/projects/plan";
+
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 
 import { findUserByEmail } from "@/lib/credentials/access";
@@ -392,7 +394,7 @@ const CreateProjectInput = z.object({
   // 막지만 이름은 목록·헤더에 그대로 렌더된다 (code-review 2026-09-07 🟡5).
   // ⚠️ **트림이 검사보다 먼저다** — 순서가 반대면 공백만인 이름이 통과해 목록에 빈 줄로 뜬다
   // (2026-09-07 리뷰 ⚪15).
-  name: z.string().trim().min(1).max(200),
+  name: z.string().trim().min(1).max(PROJECT_NAME_MAX_CHARS),
 });
 
 /**
