@@ -38,14 +38,14 @@ let started = false;
 const PRECONDITION_SUFFIX = "_pending_edit_token_precondition";
 
 /**
- * @param beforePrecondition 참이면 precondition 마이그레이션 **앞에서 멈춘다.** 픽스처가 매번 전체 마이그레이션을 재생하므로
+ * @param beforePrecondition 참이면 precondition 마이그레이션 **하나만 건너뛴다.** 픽스처가 매번 전체 마이그레이션을 재생하므로
  *   빈 DB에서는 precondition이 언제나 통과한다 — 실제로 던지는지 보려면 데이터를 심은 뒤 그 SQL만 따로 돌려야 한다.
  */
 async function resetSchema(beforePrecondition = false) {
   await pool.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public");
   for (const name of readdirSync("prisma/migrations").sort()) {
     if (name === "migration_lock.toml") continue;
-    if (beforePrecondition && name.endsWith(PRECONDITION_SUFFIX)) break;
+    if (beforePrecondition && name.endsWith(PRECONDITION_SUFFIX)) continue;
     await pool.query(readFileSync(join("prisma/migrations", name, "migration.sql"), "utf8"));
   }
 }
