@@ -161,7 +161,7 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
 
 ## 커밋 C — 검증·문서 신선도
 
-- [ ] C1. 영향 테스트를 실행한다.
+- [x] C1. 영향 테스트를 실행한다.
   - `pnpm typecheck`, `pnpm test`, `pnpm test:projects:postgres` green.
     ⚠️ `pnpm test:projects:postgres`가 필수인 이유: design §3이 `loadLocaleCounts`/`loadSurfaceCounts`를
     쓰고 그 둘은 `lib/keys/query.ts:423·617`에 산다 — CLAUDE.md의 "`lib/keys/**`를 건드렸으면 손으로 돌린다"가
@@ -195,7 +195,7 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
   - ⚠️ **못 밟은 갈래는 "검증했다"고 적지 않는다.** 소스 0개는 dev DB에 그 상태의 프로젝트가 필요하고,
     `bugshot-i18n-test-qa`는 **지우지 않는다**(CLAUDE.md).
 
-- [ ] C3. 문서 신선도. **문서별 전용 커밋으로 쪼갠다**(`docs(PRODUCT): …` / `docs(DESIGN): …` 꼴).
+- [x] C3. 문서 신선도. **문서별 전용 커밋으로 쪼갠다**(`docs(PRODUCT): …` / `docs(DESIGN): …` 꼴).
   - 대상과 판정 방법:
     - **PRODUCT** — §3(EDITOR 노출 제한: 이번 기능이 **제한을 유지**했음을 확인만 한다, 갱신 불필요) ·
       **§7.1:341 "설정은 다섯 카드다" → 넷** · §7.7 IA 표의 세 줄(`/locales` ·
@@ -217,7 +217,7 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
   - 검증: 위 각 문서에서 Settings/Locales 소유권을 단언하는 문장을 grep해 **몇 개를 찾아 각각 수정/유지로
     판정했는지 목록으로 남긴다.** "일치한다"로 끝내지 않는다. POSTMORTEM은 이번에 수정하지 않는다.
 
-- [ ] C4. 완료 조건을 점검한다.
+- [x] C4. 완료 조건을 점검한다.
   - 검증: **spec §9의 체크박스 열셋을 하나씩 근거와 짝지어 표로 남긴다** — 근거는 테스트 파일명 또는
     C2의 관측 항목이다. 미확정 사용자 제안 **0개**, 환경변수·마이그레이션 추가 **없음**,
     `components/ui/modal.tsx` diff **0줄**. 디자인 변경으로 구현 범위가 늘었으면 별도 승격 없이 사용자에게 남긴다.
@@ -238,3 +238,6 @@ Codex 커밋에는 Codex 트레일러를 붙이고 원격 push는 Claude Code가
 - B 검증: 4,996건 통과 뒤 저장 중 이탈·빈 목록 두 역할 DOM 3건을 추가(추가 대상 14건 통과). 최종 숫자는 C 실행 기록에 남긴다. typecheck 통과.
 - B 브라우저: OWNER 실데이터에서 1440×900 모달 1024×800, 960×900 모달 864×800, 960×600 모달 864×504·Close 화면 내. 두 폭 가로 overflow 0. Esc 후 진입 행 포커스 복구, 주소/이력 불변, reload 목록 착지, 언어 Open 실제 4키, 옛 Locales 두 URL redirect 확인.
 - B의 체크는 구현 완료를 뜻하며 수동 검증 전체 완료를 뜻하지 않는다. 남은 브라우저 갈래는 C2에서 구분한다. 시안 대조 정식 게이트는 Claude Code `/design-sync`로 인계한다.
+
+- C: typecheck·단위350파일4,999건·격리PG9파일172건·미러 검사 통과. C2는 일부 실관측만 완료했으며 남은 갈래를 성공으로 세지 않는다.
+- C3: 문서5종 갱신, 문서별 커밋. C4: spec §9의13개 항목 근거·미완료 구분은 [verification.md](./verification.md). 최종 전면 완료 판정은 C2와 Claude의 build/design-sync 뒤다.
