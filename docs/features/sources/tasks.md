@@ -22,13 +22,13 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
     남긴 둘(본문 좌우 48의 정체 · 목록 상태의 배지 사용 여부)이 각각 값으로 적혔다.
   - ⚠️ 목록 순서(slug 오름차순)와 상세 URL 없음은 **확정이므로 재논의하지 않는다.**
 
-- [ ] A1. 행 행동/폼 상태의 인터페이스·회귀 테스트를 먼저 작성한다.
+- [x] A1. 행 행동/폼 상태의 인터페이스·회귀 테스트를 먼저 작성한다.
   - 대상은 둘이다 — `planSourceActions`, `planBaseLanguageForm`. **`planSourceExit`는 만들지 않는다**
     (이탈 확인창이 없어졌다, spec §7).
   - 검증: `[auto]` EDITOR 재시도 불가, 설치 없음, first/after 구분, pending+refresh+실패 교차,
     대기값 재선택으로 취소가 각각 red로 선다.
 
-- [ ] A2. `lib/sources` 잎 함수를 구현하고 기존 상태·기준 언어 판정을 재사용한다.
+- [x] A2. `lib/sources` 잎 함수를 구현하고 기존 상태·기준 언어 판정을 재사용한다.
   - `canEdit`는 `canPerform(role, "project:settings")`를 지난다(design §5).
   - 검증: `[auto]` A1 green, 기존 base-locale/base-pending/import-status 테스트 green.
     **"서버 모듈 import 없음"을 직접 센다** — `lib/sources/` 잎 파일에 `@/lib/db`·`server-only`·
@@ -36,19 +36,19 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
     ⚠️ `components/__tests__/client-graph.test.ts:241-243`은 `"use client"` 진입점을 스캔하므로
     **커밋 A 시점엔 `lib/sources/`를 보지 않는다** — 그 검사에 기대면 아무것도 안 잰다.
 
-- [ ] A2a. `localeProgress`에 clamp를 더한다(design §3).
+- [x] A2a. `localeProgress`에 clamp를 더한다(design §3).
   - `untranslated`는 0 미만이 되지 않고 `percent`는 0..100을 벗어나지 않는다.
   - 검증: `[auto]` `total < translated + needsReview`인 입력에서 음수·100% 초과가 안 나오고,
     기존 `localeProgress` 테스트가 전부 green이다. **새 helper를 만들지 않았다**(기존 함수에 경계 보정만).
 
-- [ ] A3. Sources reader 테스트를 먼저 작성한 뒤 목록+선택 상세 조회를 구현한다.
+- [x] A3. Sources reader 테스트를 먼저 작성한 뒤 목록+선택 상세 조회를 구현한다.
   - `Locale` 조회는 **orphaned를 포함한 목록**이고 카운트는 `NOT orphaned`다 — 두 술어를 통일하지 않는다(design §3).
   - `getSurfaceAccess`의 `surface`를 스프레드하지 않고 reader의 명시 projection만 싣는다(design §3).
   - 검증: `[auto]` 프로젝트 A/B 격리, 보관 소스·고아 키/언어, **소스 1개와 5개에서 `findMany` 호출 수가
     같다(= k회)**, 상세 미선택 시 셀 조회 0, 원본 번역·`lastImportToken`·`nestedByPath` 미전달,
     실패를 빈 목록으로 바꾸지 않음, EDITOR 응답에 `pathTemplate`·`adapterName`·`repo*`가 **없음**.
 
-- [ ] A4. 집계 일관성을 실제 PostgreSQL에서 검증한다.
+- [x] A4. 집계 일관성을 실제 PostgreSQL에서 검증한다.
   - **파일 경로: `lib/keys/__tests__/sources-progress.integration.ts`.**
     ⚠️ **`lib/sources/__tests__/`에 두지 않는다** — `vitest.projects.config.ts:9`의 include가
     `lib/keys/__tests__/*.integration.ts`와 `lib/events/__tests__/*.integration.ts` **두 디렉터리
@@ -227,3 +227,9 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
 린터가 없다) 커밋 A 단독의 관측 가능한 동작은 A4의 `[pg]` 검증뿐이다. 그것이 의도이며, A를 dev에 먼저
 보내지 않고 **A와 B를 같은 푸시에 담는다.**
 Codex 커밋에는 Codex 트레일러를 붙이고 원격 push는 Claude Code가 담당한다.
+
+## 실행 기록
+
+- A: 단위 4,973건·346파일 및 typecheck 통과. 새 reader/상태 단위 18건. 격리 PG 새 2건 통과.
+- A4: 1,446키·8,676셀의 ANALYZE 전 상세 읽기 2,177ms(로컬 PostgreSQL 17). 새 PG 파일은 기존 include에 수집되어 A4a 확장 불필요.
+- A 자체 검증: 불변식·원칙·타입/경계·단순성 4관점 지적 0. 스키마 영향 없음. 문서 영향은 C3에서 처리.
