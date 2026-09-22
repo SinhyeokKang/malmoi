@@ -68,8 +68,10 @@ app/
                         ⚠️ 넷 다 게이트가 translation:write다(settings만 project:settings) — EDITOR도
                         목록을 보고 컨트롤만 role로 갈린다. 판정은 Action이 한다
                         ⚠️ logs에 try가 없다 — 조회 실패는 던져야 "없음"과 다른 화면이 된다
-    __tests__/          harness(메모리 DB) + harness 자기검사 + 흐름·인가·멤버십·연결·게시실패·게시미리보기·
-                        온보딩·조회·목록질의·셸레이아웃·오류경계·모달·보관·리포설정·sync 열여섯
+    __tests__/          harness(메모리 DB) + 테스트 스물하나 — harness 자기검사 · 흐름 · 인가 · 멤버십 ·
+                        연결 · 게시실패 · 게시미리보기 · 온보딩 · 조회 · 목록질의 · 셸레이아웃 · 오류경계 ·
+                        모달 · 보관 · 리포설정 · sync · 활동사건 · 표면추가로그 · 프로젝트메타데이터 ·
+                        소스Action · 소스페이지
   invite/[token]/       ⚠️ (edit) 밖이고 matcher 밖이다 — 비로그인으로 열려야 토큰이 보존된다.
                         갈래는 planInviteView가 고른다(화면이 조건을 다시 적지 않는다)
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
@@ -92,7 +94,7 @@ middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/pro
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 23개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 24개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
@@ -185,8 +187,13 @@ components/
                         ⚠️ **sync-button·sync-result는 sync-repository의 산출물이다** — 같은 디렉터리에
                         살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다
   onboarding/modal.tsx  components/ui/modal.tsx를 그대로 재수출한다 — 호출부를 안 건드리려는 한 줄이다
-  sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal.
+  sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
+                        sources-archived · github-mark 일곱.
                         목록 소유자가 선택·쓰기 결과를 유지. 로딩/거부/장애를 구별하고 쓰기는 기존 Action 경계를 따른다.
+                        sources-archived는 보관 프로젝트의 안내 한 장이고 목록·상세를 아예 열지 않는다
+                        (판정이 조회 **전에** 선다). ⚠️ github-mark는 **이 리포의 유일한 브랜드 마크다** —
+                        `lucide-react` 1.37이 브랜드 아이콘을 통째로 빼서 0.462의 path를 손으로 들고 있다.
+                        늘리지 말고 다른 자리가 생기면 여기서 가져다 쓴다
   settings/             general-card · repository-card/repository-form ·
                         ci-card · archive-card · push-token-panel. 독립 add-surface.tsx는 모달 전환 뒤
                         삭제했고, push-token-panel은 소비자가 ci-card 하나뿐이라 onboarding/에서 옮겼다.
@@ -471,7 +478,8 @@ lib/
 ```
 messages/en.tsx         ⚠️ UI 문자열의 단일 출처. 값은 문자열 또는 함수다(헬퍼 셋을 만들지 않는다).
                         갈래 누락은 소비자가 거는 satisfies Record<Union, string>이 잡는다. ⚠️ 잎이다
-prisma/schema.prisma    13테이블 + enum 셋(TranslationSurface가 2026-09-14에 들어와 표면 축이 생겼다).
+prisma/schema.prisma    14테이블 + enum 다섯(TranslationSurface가 2026-09-14에 들어와 표면 축이 생겼고,
+                        ProjectEvent·EventKind·ActorKind가 2026-09-20 활동 스트림에서 붙었다).
                         ⚠️ Auth.js 4테이블의 모양은 어댑터가 정한다 — 컬럼 하나만
                         빠져도 linkAccount가 런타임에 던지고 타입 검사는 못 본다
 prisma/migrations/      ⚠️ dev는 /push 전, prod는 /merge 전에 넓힌다(additive-first)
