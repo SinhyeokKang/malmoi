@@ -2,9 +2,11 @@
 
 프로젝트는 리포·권한·토큰·Publish를, TranslationSurface는 포맷·적재 상태·키·번역을 소유한다.
 여러 활성 표면도 비중첩 경로만 허용하고 프로젝트당 PR 하나로 보낸다.
-편집 URL은 `/projects/:slug/surfaces/:surfaceSlug/translations`·`locales`이며
-옛 URL은 저장된 기본 표면으로 이동한다. OWNER는 Settings에서 표면을 추가할 수 있고,
-동일 키·언어 코드가 표면마다 공존한다.
+번역 URL은 `/projects/:slug/surfaces/:surfaceSlug/translations`, 소스 관리는 `/projects/:slug/sources`다.
+옛 번역 URL은 기본 표면으로, 옛 Locales 두 URL은 Sources 목록으로 이동한다.
+OWNER는 Sources에서 소스를 추가하고 기준 언어를 선언한다. EDITOR는 연결 정보를 제외한 상태를 읽는다.
+LNB는 Home → Sources → Translations → Members → Logs → Project settings(OWNER) 순서다.
+동일 키·언어 코드가 표면마다 공존한다. Sources 변경은 구현 완료·프로덕션 배포 대기 상태다.
 
 사내 로컬라이제이션 관리 도구(TMS). 크롬 확장의 `_locales/<locale>/messages.json`에서 출발했고, 개발자가 코드에 심은 소스 문자열을 DB로 올리고(push), 비개발자가 웹 UI에서 번역하고, 그 결과를 고정 브랜치의 PR 하나로 되돌려보낸다(pull). **지금은 어댑터 5종을 읽고 쓴다** — 크롬 `_locales` · JSON 카탈로그 · YAML 카탈로그 · TS/JS 딕셔너리 둘. **리포를 연결하면 로케일 파일을 탐지해 프로젝트를 만들고 첫 적재까지 웹에서 끝낸다**(`/projects/new`) — 대상 리포는 복사용 워크플로 YAML과 그 프로젝트의 push 토큰만 붙인다.
 
