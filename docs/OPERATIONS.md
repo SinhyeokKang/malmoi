@@ -1,113 +1,5 @@
 # OPERATIONS — 운영 절차
 
-## 다중 표면 배포 1 — additive migration과 writer 전환
-
-⚠️ **dev 반영 완료(2026-09-14). prod 반영을 `pnpm db:status:prod`로 확인한 뒤 이 절을 걷어낸다.**
-걷어낼 때 3단계의 `backfill-surfaces.sql` 사용법은 §3 복구로 옮길 후보다 — 백업 복원·새 DB에서 다시 밟는다.
-
-Add surface는 2026-09-14에 열렸다(`app/(edit)/projects/[slug]/surfaces/new`, `lib/surfaces/create.ts`).
-옛 Locale PK·StringKey unique와 nullable `surfaceId`도 같은 날 `20260914070000_finalize_translation_surfaces`로 교체됐다.
-dev는 `/push` 전, prod는 별도 `/merge` 1단계에서 해당 DB 마이그레이션을 적용한다. prod를 dev 푸시 때 미리 바꾸지 않는다.
-
-1. 대상 환경의 CI push·첫 적재·편집 등 옛 writer를 중지하고 진행 중 요청이 끝난 것을 확인한다.
-2. `20260914042000_add_translation_surfaces`를 적용한다. 기존 Project마다 `default` 표면과 자식 FK가 생긴다.
-3. 마이그레이션과 코드 전환 사이에 옛 writer가 실행됐다면, **새 writer를 활성화하기 전에**
-   `prisma/maintenance/backfill-surfaces.sql`을 같은 DB에서 실행한다. 이 파일은 테이블을 잠그고 옛 Project의
-   포맷·적재 상태 및 null 자식을 재백필한다. 새 Surface 상태가 Project보다 앞섰거나 기본 외 표면이 있으면 중단한다.
-   새 코드 활성화 뒤에는 실행하지 않는다 — dual-write가 아니므로 Project의 옛 값이 더 이상 정본이 아니다.
-4. 아래 SQL 결과가 모두 0인지, 마이그레이션 drift가 없는지 확인한 뒤 새 코드와 새 payload 생산자를 활성화한다.
-5. 기존 URL redirect, 편집, 프로젝트 단위 Publish를 dev에서 검토한다. T17의 파괴적 제약 교체는 별도 배포다.
-
-```sql
-SELECT 'Locale' AS model, count(*) FROM "Locale" WHERE "surfaceId" IS NULL
-UNION ALL SELECT 'StringKey', count(*) FROM "StringKey" WHERE "surfaceId" IS NULL
-UNION ALL SELECT 'Translation', count(*) FROM "Translation" WHERE "surfaceId" IS NULL
-UNION ALL SELECT 'Project', count(*) FROM "Project" WHERE "defaultSurfaceId" IS NULL;
-SELECT count(*) FROM information_schema.role_table_grants
-WHERE table_schema = 'public' AND table_name = 'TranslationSurface'
-  AND grantee IN ('anon', 'authenticated');
-```
-
-## 다중 표면 배포 2 — 제약과 writer 동시 전환
-
-⚠️ **dev 반영 완료(2026-09-14). prod 반영을 `pnpm db:status:prod`로 확인한 뒤 이 절을 걷어낸다.**
-걷어낼 때 3단계의 precondition 실패 복구는 §3 복구로 옮길 후보다.
-
-1. 배포 1의 commit·CI·Vercel 성공 SHA와 dev/prod 마이그레이션 상태를 각각 확인한다.
-   Surface writer가 활성화된 DB에서 옛 Project 값을 복사하는 재백필은 실행하지 않는다.
-2. 대상 환경의 push·첫 적재·추가·편집 요청을 멈추고 진행 중 요청을 drain한다. 단계 A writer의
-   Locale `ON CONFLICT (projectId, code)`는 단계 B에서 유효하지 않다. **B SQL만 적용하고 A 서버를 재개하지 않는다.**
-3. `20260914070000_finalize_translation_surfaces`와 대응 writer를 함께 전환한다.
-   dev는 `/push` 직전, prod는 Claude Code `/merge` 1단계다. Codex는 커밋까지 수행한다.
-   precondition 실패 시 SQL을 우회하거나 TRUNCATE하지 말고 누락된 surface/default 소유권을 조사한다.
-4. `pnpm db:status` / `pnpm db:status:prod`, drift, 아래 정합성 SQL과 공개 권한을 확인한다.
-   새 코드 배포 성공 SHA 확인 뒤 요청을 재개한다. Add surface·동일 key/locale 공존·교차 FK 거부는
-   `pnpm test:projects:postgres`(§4)로 격리 PostgreSQL에서도 검사한다.
-   빈 DB의 0건 결과만으로 migration 방어가 검증됐다고 쓰지 않는다.
-5. 기존 URL·첫 온보딩·Add surface·두 표면의 단일 Publish 왕복을 검증한다.
-   dev의 `bugshot-i18n-test-qa`는 상주 프로젝트이므로 삭제·TRUNCATE하지 않는다.
-
-```sql
-SELECT 'key' AS model, count(*) FROM "Translation" t
-LEFT JOIN "StringKey" k ON k.id=t."keyId" AND k."projectId"=t."projectId" AND k."surfaceId"=t."surfaceId"
-WHERE k.id IS NULL
-UNION ALL SELECT 'locale', count(*) FROM "Translation" t
-LEFT JOIN "Locale" l ON l."projectId"=t."projectId" AND l."surfaceId"=t."surfaceId" AND l.code=t."localeCode"
-WHERE l.code IS NULL;
-SELECT count(*) FROM "Project" p LEFT JOIN "TranslationSurface" s
-ON s.id=p."defaultSurfaceId" AND s."projectId"=p.id AND s."archivedAt" IS NULL WHERE s.id IS NULL;
-SELECT count(*) FROM information_schema.role_column_grants
-WHERE table_schema='public' AND table_name IN ('Project','TranslationSurface','Locale','StringKey','Translation','KeyRef')
-AND grantee IN ('anon','authenticated');
-```
-
-null 자식·잘못된 부모/default·공개 권한은 모두 0이어야 한다. 활성 표면의 출력 경로는
-`loadPullState` → `planMultiSurfacePull`에 같은 base snapshot 경로를 넘겨 `surfaceOwnership` 충돌 0건을
-확인한다. per-locale은 저장 Locale의 생성 예정 경로도 포함한다. prefix 비교만으로 대신하지 않는다.
-
-### Action 릴리스와 대상 workflow
-
-현재 외부 계약은 `.github/actions/malmoi-i18n-push` · `malmoi-i18n-push-v1` · `MALMOI_I18N_*` ·
-`.github/workflows/malmoi-i18n.yml` · `malmoi-i18n/sync-<slug>` · `[skip-malmoi-i18n]`이다.
-기존 `l10n-push-v1` 구현은 surfaceSlug를 생산하지 않았고 삭제됐다. 현재 새 태그의 코드(8511d37)는
-`surface` 기본값 default와 `path-template`을 생산자에게 전달한다. **새로 만든 첫 표면도 slug가 default라는
-가정은 금지**다. 등록된 실제 slug와 path-template을 생성 YAML에서 그대로 가져온다.
-
-서버 필수 계약과 릴리스 순서는 서버 writer 배포 → action 태그의 실제 payload 생산 코드 확인/필요 시 릴리스 →
-대상 리포별 새 YAML 전환 → smoke/왕복이다. 호환되지 않는 기존 workflow는 전환 동안 중지한다.
-새 태그가 이미 필드를 생산하면 T17이라는 이유만으로 태그를 다시 옮기지 않는다. 다만 Project 생성 ID 수정처럼
-새 서버 코드가 필요한 변경은 서버 배포를 완료한 뒤 재검증한다.
-
-dev 검증은 현재 체크아웃 CLI의 `--project <slug> --surface <등록 slug> --path-template '<등록 경로>'`를
-명시한다. 토큰은 로그·화면 캡처에 남기지 않는다.
-
-**나중에 다시 실행할 절차만 둔다.** 일회성 전환 기록은 `git log`가 든다. 불변식은
-[ARCHITECTURE.md](./ARCHITECTURE.md), 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md)다.
-
-## 미전달 편집 보호 배포 — A(호환) → backfill → B(보호)
-
-⚠️ **dev 반영 완료(2026-09-17). prod 반영을 `pnpm db:status:prod`로 확인한 뒤 이 절을 걷어낸다.**
-걷어낼 때 backfill 단계의 스크립트 사용법과 4의 precondition 실패 복구는 §3 복구로 옮길 후보다.
-
-sync-edit-protection. **운영 차단·drain이 없다** — A가 저장마다 편집 토큰을 쓰므로(dual-write) A 롤아웃이 끝나면 "토큰 없이 저장되는 창"은 스스로 닫힌다.
-
-1. **A**: `/push`(dev) → dev backfill → `/merge`(1단계 `pnpm db:status:prod` → `pnpm db:deploy`로 `add_translation_pending_edit_token`) → 프로덕션 alias 전환 + 60초(가장 긴 `maxDuration`) 경과.
-2. **backfill** — 대상 DB마다 0행이 **두 번 연속** 나올 때까지(스크립트가 반복한다):
-   ```
-   pnpm exec tsx scripts/backfill-pending-edit-token.ts                       # dev (.env.local의 DATABASE_URL)
-   DATABASE_URL='<prod 접속 문자열>' pnpm exec tsx scripts/backfill-pending-edit-token.ts   # prod — 값은 사람이 붙인다
-   ```
-   ⚠️ `.env.local`을 편집해 prod를 겨누지 않는다. `DIRECT_URL_PROD`(5432)도 쓸 수 있다 — 한 문장 UPDATE라 세션 모드면 된다.
-3. **B**: `/push`(dev — precondition `pending_edit_token_precondition`이 dev에서 통과해야 한다) → `/merge`(prod `db:deploy`가 precondition 게이트).
-4. **precondition이 실패하면** (`precondition failed: unsent edits without pendingEditToken remain`): 편집을 버리거나 토큰을 손으로 채워 통과시키지 않는다.
-   ```
-   PRISMA_TARGET=prod pnpm exec prisma migrate resolve --rolled-back 20260917170000_pending_edit_token_precondition   # dev는 PRISMA_TARGET 없이
-   # backfill 단계를 그 DB에 다시 돌린다
-   pnpm db:deploy
-   ```
-   §3의 규칙 그대로다 — `_prisma_migrations`가 전부 롤백된 것을 확인한 경우에만, 체크섬 수정·무조건 applied·reset 금지. `migrate dev`가 리셋을 제안하면 거부한다.
-5. B 뒤 미전달 카운트가 **한 번 줄어들 수 있다** — orphan 키·로케일의 편집이 집계에서 빠지기 때문이다(값은 DB에 남는다). "번역이 사라졌다"는 제보면 먼저 `orphaned`를 본다.
-
 ## 활동 스트림 배포 — 마이그레이션 → 새 writer → 보충 백필 → 수집 개시 시각
 
 logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블과 nullable 컬럼 하나뿐이고 기존
@@ -239,6 +131,33 @@ pnpm credentials:dev --mode=verify
 - 마이그레이션 실패 시 `_prisma_migrations`와 실제 DDL을 대조한다. 전부 롤백된 것이 확인된 경우에만
   검토 후 `migrate resolve --rolled-back <name>`으로 재시도하고, **체크섬 수정·무조건 applied·DB
   reset으로 통과시키지 않는다.**
+- **백업 복원·새 DB에서 표면 축을 다시 밟을 때만 `prisma/maintenance/backfill-surfaces.sql`을 쓴다.**
+  같은 DB에서 테이블을 잠그고 옛 Project의 포맷·적재 상태와 null 자식을 재백필한다. ⚠️ **새 writer가
+  활성화된 뒤에는 실행하지 않는다** — dual-write가 아니므로 Project의 옛 값이 더 이상 정본이 아니다.
+  새 Surface 상태가 Project보다 앞섰거나 기본 외 표면이 있으면 스크립트가 중단한다. 끝난 뒤 아래가 전부 0이어야 한다:
+  ```sql
+  SELECT 'Locale' AS model, count(*) FROM "Locale" WHERE "surfaceId" IS NULL
+  UNION ALL SELECT 'StringKey', count(*) FROM "StringKey" WHERE "surfaceId" IS NULL
+  UNION ALL SELECT 'Translation', count(*) FROM "Translation" WHERE "surfaceId" IS NULL
+  UNION ALL SELECT 'Project', count(*) FROM "Project" WHERE "defaultSurfaceId" IS NULL;
+  ```
+- **편집 토큰 backfill은 0행이 두 번 연속 나올 때까지 돌린다**(스크립트가 반복한다). 백업 복원이나
+  새 DB에서 `pending_edit_token_precondition`이 걸릴 때 필요하다:
+  ```
+  pnpm exec tsx scripts/backfill-pending-edit-token.ts                     # dev (.env.local의 DATABASE_URL)
+  DATABASE_URL='<prod 접속 문자열>' pnpm exec tsx scripts/backfill-pending-edit-token.ts   # prod — 값은 사람이 붙인다
+  ```
+  ⚠️ **`.env.local`을 편집해 prod를 겨누지 않는다** — 그 파일은 에이전트가 건드리지 않는 파일이다.
+  `DIRECT_URL_PROD`(5432)도 쓸 수 있다(한 문장 UPDATE라 세션 모드면 된다).
+- **precondition이 실패하면 편집을 버리거나 토큰을 손으로 채워 통과시키지 않는다.**
+  `precondition failed: unsent edits without pendingEditToken remain`이면 롤백 → backfill → 재적용이다:
+  ```
+  PRISMA_TARGET=prod pnpm exec prisma migrate resolve --rolled-back 20260917170000_pending_edit_token_precondition   # dev는 PRISMA_TARGET 없이
+  # backfill을 그 DB에 다시 돌린다
+  pnpm db:deploy
+  ```
+  위 "마이그레이션 실패" 규칙 그대로다 — `migrate dev`가 리셋을 제안하면 거부한다. 표면 축의
+  precondition도 같다: SQL을 우회하거나 TRUNCATE하지 말고 누락된 surface·default 소유권을 조사한다.
 
 ## 4. 재현 가능한 검증
 
