@@ -43,6 +43,15 @@ const badge = cva("inline-flex min-w-5 items-center justify-center rounded-full 
       // 배경 없음 — orphaned는 "삭제됨"이 아니라 되돌릴 수 있는 상태다 (§6.2).
       danger: "text-destructive",
       /**
+       * 채운 붉은 알약 (2026-09-22 — Sources 시안 `1c`의 사라진 언어).
+       *
+       * ⚠️ **`danger`와 축이 다르다.** 그쪽은 같은 행의 다른 배지들과 나란히 서는 표식이라 배경을
+       * 안 들었고, 이쪽은 **비고 열 전체가 그 한 알약**이라 amber `warning`과 같은 무게로 서야
+       * 검토 필요와 사라짐이 한눈에 갈린다. `red-700`(#b91c1c)은 `destructive`(#dc2626)보다
+       * 한 단계 어둡고, 시안이 두 색을 구별해 쓴다(실패 글자 vs 사라짐 알약).
+       */
+      missing: "gap-1.5 bg-red-700/10 text-red-700",
+      /**
        * 회색 알약 (8-3 — 목록 행의 상태 · 제목 옆 총계). ⚠️ **새 raw 색이 아니다**:
        * `--foreground`의 알파라 §6.2의 "등재된 것이 전부" 규칙 밖이다.
        *

@@ -228,9 +228,24 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
    */
   const SITES = [
     "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx",
-    "app/(edit)/projects/[slug]/sources/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
   ];
+
+  /**
+   * ⚠️ **Sources가 2026-09-22에 이 목록에서 빠졌다** (시안 `1g`). 전면 교체의 **판정**은 그대로다 —
+   * 인가 바로 다음에서 끊고 목록·상세를 조회하지 않는다 — 바뀐 것은 그 자리에 그리는 화면이다:
+   * 이 축은 `Archived` 배지와 보관 시각을 든 자기 카드를 그린다. **공용 `ProjectArchived`를 지우지
+   * 않는다** — 남은 둘이 계속 쓴다.
+   */
+  const SOURCES = "app/(edit)/projects/[slug]/sources/page.tsx";
+
+  it("Sources는 자기 보관 화면을 그리되 조회 전에 끊는다", () => {
+    const src = read(SOURCES);
+    expect(src).toContain("SourcesArchived");
+    expect(src).not.toContain("ProjectArchived");
+    // 인가 → 보관 판정 → 조회 순서를 지킨다. 뒤로 밀면 목록이 이미 돌고 RSC 페이로드에 실린다.
+    expect(src.indexOf("if (archived)")).toBeLessThan(src.indexOf("loadSources("));
+  });
 
   /**
    * ⚠️ **Logs가 2026-09-20에 이 목록에서 빠졌다** (logs-rework 완료조건 11). 보관 사건과 그 직전

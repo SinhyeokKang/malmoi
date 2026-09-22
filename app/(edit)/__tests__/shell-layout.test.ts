@@ -300,3 +300,94 @@ describe("콘텐츠 패널 — 라우트마다 정확히 하나", () => {
     expect(wrong).toEqual([]);
   });
 });
+
+/**
+ * ⚠️ **폭 등급은 프리미티브가 들지만 고르는 것은 화면이고, 아무도 그 선택을 세지 않았다.**
+ * `content-panel.tsx`의 기본값이 `limited`인데 **그쪽이 소수다**(설정 둘) — 그래서 목록 화면이
+ * prop을 빠뜨리면 조용히 896으로 좁아진다. 2026-09-22에 실제로 밟았다: Sources가 옛 Locales의
+ * `width="fluid"`를 옮겨오지 못한 채 배포됐고, `typecheck`·`pnpm test` 5,008건이 전부 green이었다.
+ * 증상이 "내용이 안 보인다"가 아니라 **"여백이 넓다"**라서 화면을 봐도 결함으로 안 읽힌다.
+ */
+describe("패널 폭 등급을 화면이 고르고 있다", () => {
+  /** 프로젝트·사용자 축의 **목록** 화면 — 카드가 패널을 채운다(시안 `1a`). */
+  const FLUID = new Set([
+    "app/(edit)/projects/loading.tsx",
+    "app/(edit)/projects/[slug]/loading.tsx",
+    "app/(edit)/projects/[slug]/page.tsx",
+    "app/(edit)/projects/[slug]/logs/error.tsx",
+    "app/(edit)/projects/[slug]/logs/loading.tsx",
+    "app/(edit)/projects/[slug]/logs/page.tsx",
+    "app/(edit)/projects/[slug]/members/page.tsx",
+    "components/projects/project-list.tsx",
+    "components/sources/sources-archived.tsx",
+    "components/sources/sources-screen.tsx",
+    "components/translations/header.tsx",
+  ]);
+  /** 폼만 있는 화면과 **본문 전용** — 한 줄이 1280까지 늘면 라벨과 입력이 갈린다. */
+  const LIMITED = new Set([
+    "app/(edit)/account/loading.tsx",
+    "app/(edit)/account/page.tsx",
+    "app/(edit)/error.tsx",
+    "app/(edit)/projects/[slug]/settings/page.tsx",
+    "components/project-archived.tsx",
+    "components/project-not-ready.tsx",
+  ]);
+
+  /** 소스에서 주석을 걷는다 — JSDoc이 `<PanelBody`를 **말만 해도** 태그로 세는 것을 막는다. */
+  const code = (source: string): string =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+
+  /**
+   * 여는 태그를 **중괄호 깊이로** 읽는다 — `[^>]*`는 `onScroll={(e) => …}`의 `>`에서 끊겨
+   * 뒤의 `width`를 못 본다(있는데 없다고 읽는 쪽이 더 나쁘다).
+   */
+  const tags = (source: string): string[] => {
+    // ⚠️ 주석을 걷은 **그 문자열에서** 잘라낸다 — 원본에서 자르면 걷어낸 길이만큼 위치가 밀린다.
+    const stripped = code(source);
+    const out: string[] = [];
+    for (const match of stripped.matchAll(/<Panel(?:Header|Body)\b/g)) {
+      let depth = 0;
+      for (let i = match.index! + match[0].length; i < stripped.length; i++) {
+        const c = stripped[i];
+        if (c === "{") depth++;
+        else if (c === "}") depth--;
+        else if (c === ">" && depth === 0) { out.push(stripped.slice(match.index!, i)); break; }
+      }
+    }
+    return out;
+  };
+
+  const walk = (dir: string): string[] =>
+    readdirSync(join(ROOT, dir)).flatMap((entry) => {
+      const rel = `${dir}/${entry}`;
+      if (statSync(join(ROOT, rel)).isDirectory()) return entry === "__tests__" ? [] : walk(rel);
+      return entry.endsWith(".tsx") ? [rel] : [];
+    });
+
+  const consumers = [...walk("app"), ...walk("components")]
+    .filter((rel) => rel !== "components/shell/content-panel.tsx")
+    .map((rel) => ({ rel, tags: tags(read(rel)) }))
+    .filter((file) => file.tags.length > 0);
+
+  /**
+   * ⚠️ **새 파일을 세는 것이 요지다.** Sources는 **새 화면**이었고 목록형 검사였다면 영영 안 걸렸다 —
+   * 하드코딩 목록은 "지금 맞다"만 고정하고 "빠뜨렸다"는 못 잡는다.
+   */
+  it("패널을 쓰는 화면이 전부 등급 판정을 받았다", () => {
+    const listed = new Set([...FLUID, ...LIMITED]);
+    expect(consumers.map((file) => file.rel).filter((rel) => !listed.has(rel))).toEqual([]);
+    expect(consumers.length).toBe(listed.size);
+  });
+
+  it.each([...FLUID])("%s는 두 패널 모두 fluid다", (rel) => {
+    const found = consumers.find((file) => file.rel === rel)?.tags ?? [];
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.filter((tag) => !tag.includes('width="fluid"'))).toEqual([]);
+  });
+
+  it.each([...LIMITED])("%s는 limited다", (rel) => {
+    const found = consumers.find((file) => file.rel === rel)?.tags ?? [];
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.filter((tag) => tag.includes('width="fluid"'))).toEqual([]);
+  });
+});
