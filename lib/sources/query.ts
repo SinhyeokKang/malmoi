@@ -4,6 +4,7 @@ import { canPerform, type Role } from "@/lib/auth/permission";
 import { loadLocaleCounts, loadSurfaceCounts } from "@/lib/keys/query";
 import { localeProgress } from "@/lib/keys/view";
 import { isAdapterName } from "@/lib/adapters";
+import { baseLocaleLine } from "@/lib/onboarding/workflow";
 import { formatLabel } from "@/lib/onboarding/detect";
 
 const sourceSelect = {
@@ -55,7 +56,7 @@ export async function loadSource(prisma: PrismaClient, projectId: string, surfac
     loadLocaleCounts(prisma, projectId, surfaceId),
   ]);
   if (project === null) return null;
-  return { ...sourceView(source, role), ...projectView(project, role), keys: counts.total, locales: locales.filter(locale => !locale.orphaned).length, languages: localeProgress({ ...counts, locales }) };
+  return { ...sourceView(source, role), ...projectView(project, role), ...(canPerform(role, "project:settings") && source.declaredBaseLocale ? { workflowLine: baseLocaleLine(source.declaredBaseLocale) } : {}), keys: counts.total, locales: locales.filter(locale => !locale.orphaned).length, languages: localeProgress({ ...counts, locales }) };
 }
 export type SourcesData = NonNullable<Awaited<ReturnType<typeof loadSources>>>;
 export type SourceDetail = NonNullable<Awaited<ReturnType<typeof loadSource>>>;

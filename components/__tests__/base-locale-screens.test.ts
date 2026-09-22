@@ -26,8 +26,8 @@ const read = (path: string): string =>
 
 const SETTINGS_PAGE = "app/(edit)/projects/[slug]/settings/page.tsx";
 const SETTINGS_FORM = "components/settings/repository-form.tsx";
-const LOCALES_PAGE = "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx";
-const LOCALES_FORM = "components/locales/base-locale-form.tsx";
+const LOCALES_PAGE = "components/sources/source-detail-modal.tsx";
+const LOCALES_FORM = "components/sources/base-language-form.tsx";
 const TRANSLATIONS_PAGE = "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx";
 const HEADER = "components/translations/header.tsx";
 const BASE_BANNER = "components/translations/base-pending-banner.tsx";
@@ -121,8 +121,8 @@ describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
   /** 여러 줄일 수 있는 코드는 값 칩이 아니라 `<pre>`다 (DESIGN §6.4). */
   it("대기 Alert가 고칠 줄을 `<pre>`로 내고 복사할 수 있다", () => {
     const src = read(LOCALES_PAGE);
-    expect(src).toMatch(/<Alert variant="warning"/);
-    expect(src).toMatch(/<pre/);
+    expect(src).toMatch(/<Alert variant="info"/);
+    expect(src).toMatch(/<code/);
     expect(src).toMatch(/<CopyButton/);
   });
 
@@ -133,7 +133,7 @@ describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
    */
   it("`base-locale:` 리터럴을 화면이 직접 만들지 않는다", () => {
     const src = read(LOCALES_PAGE);
-    expect(src).toMatch(/baseLocaleLine\(/);
+    expect(read("lib/sources/query.ts")).toMatch(/baseLocaleLine\(/);
     expect(src).not.toMatch(/base-locale:/);
   });
 
@@ -178,7 +178,8 @@ describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
     const src = read(LOCALES_PAGE);
     expect(src).toMatch(/variant="danger"/);
     expect(src).toMatch(/orphaned/);
-    expect(src).toMatch(/m\.locales\.orphaned/);
+    expect(src).toMatch(/m\.sources\.orphanReason/);
+    expect(src).toMatch(/m\.sources\.orphanRestore/);
   });
 });
 
@@ -213,7 +214,7 @@ describe("설정 화면 — 기준 브랜치만 남았다 (6b-5)", () => {
     const src = read(SETTINGS_PAGE);
     expect(src).not.toMatch(/locales:\s*\{/);
     // 로케일 화면은 반대다 — orphaned 행을 **보여주는 것**이 그 화면의 요지라 걸러 오지도 않는다.
-    expect(read(LOCALES_PAGE)).toContain("loadProject(prisma, projectId, surfaceId)");
+    expect(read("lib/sources/query.ts")).toContain("prisma.locale.findMany");
     expect(read("lib/keys/query.ts")).toMatch(/locales:\s*\{/);
   });
 

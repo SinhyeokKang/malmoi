@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { Box, CircleHelp, CircleUser, Globe, History, House, Languages, Settings, Users } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Files, History, House, Languages, Settings, Users } from "lucide-react";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -41,7 +41,7 @@ export function activeProject(pathname: string, memberships: readonly NavProject
 }
 
 export type NavSection = {
-  key: "home" | "locales" | "translations" | "members" | "logs" | "settings";
+  key: "home" | "sources" | "translations" | "members" | "logs" | "settings";
   label: string;
   icon: ComponentType<{ className?: string }>;
   href: (slug: string) => string;
@@ -73,7 +73,7 @@ export function projectSections(role: Role): NavSection[] {
   const sections: NavSection[] = [
     // 착지점이라 맨 앞이다 (PRODUCT §7.7 결정 1).
     { key: "home", label: m.common.nav.home, icon: House, href: (slug) => routes.project(slug), exact: true },
-    { key: "locales", label: m.common.nav.locales, icon: Globe, href: (slug) => routes.locales(slug), exact: false },
+    { key: "sources", label: m.common.nav.sources, icon: Files, href: (slug) => routes.sources(slug), exact: false },
     {
       key: "translations",
       label: m.common.nav.translations,
@@ -177,7 +177,6 @@ export function navZones(
         label: section.label,
         icon: section.icon,
         href: project.surfaceSlug && section.key === "translations" ? routes.surfaceTranslations(project.slug, project.surfaceSlug)
-          : project.surfaceSlug && section.key === "locales" ? routes.surfaceLocales(project.slug, project.surfaceSlug)
           : section.href(project.slug),
         exact: section.exact,
       })),

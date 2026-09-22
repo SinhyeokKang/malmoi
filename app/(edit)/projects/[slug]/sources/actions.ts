@@ -1,6 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateAfterCommit } from "@/lib/revalidate-after-commit";
+import { loadSource } from "@/lib/sources/query";
+import { logFailure } from "@/lib/github-connect/log";
 import { z } from "zod";
 
 import type { AccessError } from "@/lib/auth/message";
@@ -12,7 +14,7 @@ import { planBaseLocaleChange } from "@/lib/onboarding/base-locale";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 
 /**
- * 기준 로케일 — **`/projects/:slug/locales`가 소유한다** (6b-5 · PRODUCT §7.7 결정 4).
+ * 기준 로케일 — **`/projects/:slug/sources`가 소유한다** (6b-5 · PRODUCT §7.7 결정 4).
  *
  * ⚠️ **6b-3이 하루 전에 이것을 `updateRepositorySettings`와 한 Action에 뒀다.** 화면이 갈리면서
  * Action도 갈랐다: 인자를 optional로 만들면 서버가 "무엇을 안 보냈나"를 추측하게 되고, 그 추측이
@@ -93,6 +95,22 @@ export async function updateBaseLocale(raw: {
    * 소비자가 생길 때 조용히 빠지고, 그것이 POSTMORTEM 2026-09-09이 기록한 실패다 — 셋이 전부
    * `/projects/<slug>` 아래이므로 **그 세그먼트의 레이아웃**을 무효화한다.
    */
-  revalidatePath(`/projects/${slug}`, "layout");
+  revalidateAfterCommit("source-base-language", projectId, `/projects/${slug}`);
   return { ok: true };
+}
+
+export type SourceDetailResult = { ok: true; detail: import("@/lib/sources/query").SourceDetail } | { rejected: string } | { failed: true };
+export async function loadSourceDetail(raw: { slug: string; surfaceSlug: string }): Promise<SourceDetailResult> {
+  if (!raw || typeof raw.slug !== "string" || !raw.slug || typeof raw.surfaceSlug !== "string" || !raw.surfaceSlug) return { rejected: "invalid input" };
+  const session = await readSession();
+  if (session.status === "none") return { rejected: "unauthorized" };
+  if (session.status !== "ok") return { failed: true };
+  try {
+    const prisma = getPrisma();
+    const access = await getSurfaceAccess(prisma, { userId: session.userId, slug: raw.slug, surfaceSlug: raw.surfaceSlug, permission: "translation:write" });
+    if (access.status !== "ok") return { rejected: access.status };
+    if (access.archived) return { rejected: "archived" };
+    const detail = await loadSource(prisma, access.projectId, access.surfaceId, access.role);
+    return detail === null ? { rejected: "not-found" } : { ok: true, detail };
+  } catch (error) { logFailure("source-detail", error); return { failed: true }; }
 }

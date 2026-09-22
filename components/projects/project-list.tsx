@@ -12,7 +12,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { EmptyProjects, NoProjectsMatch } from "@/components/projects/empty-projects";
-import { LocaleMeter } from "@/components/projects/locale-meter";
+import { LocaleMeter } from "@/components/locale-meter";
 import { ProjectSearch } from "@/components/projects/search-input";
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { NewProjectButton } from "@/components/projects/new-project-button";

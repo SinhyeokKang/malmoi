@@ -43,8 +43,8 @@ describe("설정 화면 — revalidate가 결과를 씻지 않는다 (POSTMORTEM
    * 자기 표시기를 언마운트하고, `failed > 0`의 "M건을 읽지 못했다"가 아무에게도 닿지 않는다(불변식 9).
    */
   it("소스 카드가 적재 상태와 무관하게 유지된다 — 결과 유지 DOM 검증은 settings-sources가 담당한다", () => {
-    expect(src).toMatch(/<SourcesCard/);
-    expect(src).not.toMatch(/&&\s*<SourcesCard/);
+    expect(src).not.toMatch(/<SourcesCard/);
+    expect(read("app/(edit)/projects/[slug]/sources/page.tsx")).toMatch(/<SourcesScreen/);
   });
 
   /**
@@ -228,7 +228,7 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
    */
   const SITES = [
     "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx",
-    "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx",
+    "app/(edit)/projects/[slug]/sources/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
   ];
 
@@ -305,7 +305,7 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
  * 밟았다 (POSTMORTEM 2026-09-06: 사유를 쿼리로 넘겨놓고 읽는 쪽이 없어 거부가 조용했다).
  */
 describe("설정 화면 — 저장된 임포트 실패를 읽는다", () => {
-  const src = read("components/settings/sources-card.tsx");
+  const src = read("components/sources/source-detail-modal.tsx");
 
   it("컬럼을 select하고 판정 함수로 거른다 — DB 문자열을 직접 인덱싱하지 않는다", () => {
     expect(src).toContain("lastImportError");
@@ -318,7 +318,7 @@ describe("설정 화면 — 저장된 임포트 실패를 읽는다", () => {
 
   /** 첫 적재 전이면 이 화면의 버튼이, 이미 적재된 뒤면 대상 리포의 CI가 고칠 자리다. */
   it("복구 안내가 readiness로 갈린다", () => {
-    expect(src).toContain("importRetry");
+    expect(src).toContain("importStatus?.canRetry");
     expect(src).toContain("m.settings.sources.rerun");
   });
 });
@@ -352,7 +352,7 @@ describe("쓰기 경로가 목록 둘을 무효화한다", () => {
 describe("설정 화면 — 진행 중이 지난 실패를 이긴다", () => {
   it("활성 표면을 전부 읽고 행마다 검증된 판정 함수를 사용한다", () => {
     expect(read(SETTINGS)).toContain("surfaces: { where: { archivedAt: null }");
-    expect(read("components/settings/sources-card.tsx")).toContain("planSurfaceImportStatus(source)");
+    expect(read("components/sources/source-status.tsx")).toContain("planSurfaceImportStatus(source)");
     const planner = read("lib/import/surface-status.ts");
     expect(planner.indexOf("surface.lastImportStartedAt !== null")).toBeLessThan(planner.indexOf("isImportFailureCode(surface.lastImportError)"));
   });

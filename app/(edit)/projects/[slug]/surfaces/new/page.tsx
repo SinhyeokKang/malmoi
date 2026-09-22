@@ -12,7 +12,5 @@ export default async function AddSurfacePage({ params, searchParams }: {
   const project = await getPrisma().project.findUnique({ where: { id: projectId }, select: { archivedAt: true } });
   if (!project || project.archivedAt !== null) notFound();
   const { e } = firstQueryValues(await searchParams);
-  const query = new URLSearchParams({ add: "sources" });
-  if (e) query.set("e", e);
-  redirect(`${routes.settings(slug)}?${query}`);
+  redirect(routes.sources(slug, { add: "sources", e }));
 }

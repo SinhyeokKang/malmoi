@@ -28,7 +28,7 @@ it("EDITOR는 연결계·재시도 없이 진행률과 고아 복구 안내를 �
   expect(button("Run first import")).toBeUndefined();
   expect(document.querySelector('[data-source-connection]')).toBeNull();
   expect(document.querySelector('a[href*="settings"]')).toBeNull();
-  expect(document.querySelector('a[href*="locales=en"]')?.getAttribute('href')).toContain("ns=%2A");
+  expect(new URL(document.querySelector('a[href*="locales=en"]')!.getAttribute('href')!, 'http://localhost').searchParams.get('ns')).toBe('*');
   expect(document.querySelector('a[href*="locales=ja"]')).toBeNull();
   expect(document.querySelector('button button, button a, a button')).toBeNull();
 });
@@ -71,4 +71,39 @@ it("첫 적재 성공 뒤 상세 재조회 실패가 성공 결과를 뒤집지 
   await act(async () => { await userEvent.setup().click(button("Run first import")); });
   expect(document.body.textContent).toContain("7");
   expect(document.body.textContent).toContain("latest");
+});
+it("첫 적재 거부도 서버에 남은 실패 상태를 다시 읽는다", async () => {
+  const first = { ...detail, lastCommitSha: null, lastImportError: null };
+  mocks.load.mockResolvedValueOnce({ ok: true, detail: first }).mockResolvedValue({ ok: true, detail: { ...first, lastImportError: "partial-import" } });
+  mocks.runFirstIngest.mockResolvedValue({ ok: false, error: "resource-limit" });
+  await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
+  await open();
+  await act(async () => { await userEvent.setup().click(button("Run first import")); });
+  expect(mocks.load).toHaveBeenCalledTimes(2);
+  expect(mocks.refresh).toHaveBeenCalled();
+});
+it("저장 중 닫기와 모든 번역 진입을 잠그고 거부 뒤 다시 연다", async () => {
+  let resolve!: (result: unknown) => void;
+  mocks.save.mockReturnValue(new Promise(r => { resolve = r; }));
+  mocks.load.mockResolvedValue({ ok: true, detail: { ...detail, languages: [...detail.languages, { ...detail.languages[0], code: "ko", isBase: false }] } });
+  await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
+  await open();
+  const user = userEvent.setup();
+  await act(async () => { await user.click(document.querySelector('[role="combobox"]')!); });
+  await act(async () => { await user.click([...document.querySelectorAll('[role="option"]')].find(n => n.textContent === "ko")!); });
+  await act(async () => { await user.click(button("Save")); });
+  const dialog = document.querySelector('[role="dialog"]')!;
+  expect(dialog.querySelector('button[aria-label="Close"]')).toHaveProperty('disabled', true);
+  expect(button('Close')).toHaveProperty('disabled', true);
+  expect(dialog.querySelector('a')).toBeNull();
+  expect([...dialog.querySelectorAll('button')].filter(n => n.textContent === 'Open').every(n => n.disabled)).toBe(true);
+  await act(async () => { resolve({ ok: false, error: 'orphaned-locale' }); });
+  expect(button('Close')).toHaveProperty('disabled', false);
+  expect(dialog.querySelector('a[href*="locales=en"]')).not.toBeNull();
+});
+it.each(["OWNER", "EDITOR"] as const)("소스가 없을 때 안내와 추가 권한 %s", async role => {
+  await render(<SourcesScreen slug="p" role={role} data={{ installed: true, sources: [] }} adapters={[]} now={new Date()} />);
+  expect(document.querySelector('[data-source-row]')).toBeNull();
+  expect(!!button('Add source')).toBe(role === 'OWNER');
+  expect(document.body.textContent).toContain(role === 'OWNER' ? 'Add a source' : 'Ask a project owner');
 });

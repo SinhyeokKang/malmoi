@@ -67,7 +67,7 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
 ⚠️ **순서가 바뀌었다.** 모달 껍데기(B3)가 화면 소유자(B2)의 닫기·포커스 검증과 상세 연결(B4)보다
 **먼저** 선다 — 렌더된 모달이 없으면 그 둘의 검증이 관측 대상을 못 가진다.
 
-- [ ] B1. `routes.sources`/쿼리 수신자/인가/레거시 redirect 테스트를 먼저 작성한다.
+- [x] B1. `routes.sources`/쿼리 수신자/인가/레거시 redirect 테스트를 먼저 작성한다.
   - `sources`는 **`routes` 객체 안에** 추가한다 — 문자열 연결이면 `entry-points.test.ts:466`의
     쿼리 수신자 검사를 통째로 회피한다(design §2).
   - 검증: `[auto]` 옛 두 Locales URL, add-surface, Settings add, OAuth `e` 복귀, 없는 소스,
@@ -76,12 +76,12 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
     (spec §4가 그 둘을 다른 문구로 정했다). 새 page/action이 `entry-points.test.ts`의 `callsGuard`에
     실제로 걸리는지 확인한다(POSTMORTEM `:2132` — 이름이 아니라 호출을 센다).
 
-- [ ] B2. `locale-meter`를 공유 위치로 옮긴다.
+- [x] B2. `locale-meter`를 공유 위치로 옮긴다.
   - `components/projects/locale-meter.tsx`를 값 변경 없이 이동하고 Projects 목록의 import를 갱신한다.
   - 검증: `[auto]` 기존 Projects 목록 테스트 green, 이동 전후 클래스 문자열이 **바이트 동일**,
     `aria-hidden`이 유지된다. 두 번째 구현을 만들지 않았다(grep으로 막대 구현이 하나임을 센다).
 
-- [ ] B3. SourceDetailModal 껍데기를 구현한다. **`components/ui/modal.tsx`는 건드리지 않는다.**
+- [x] B3. SourceDetailModal 껍데기를 구현한다. **`components/ui/modal.tsx`는 건드리지 않는다.**
   - 바닥 행동은 `Open translations` + `Close`. 헤더 보조 행동 없음. `headerAction` 슬롯을 만들지 않는다.
   - 높이 세 갈래(본체·로딩·오류)를 `panelClassName`으로 각각 준다(design §6) —
     ⚠️ 안 주면 `min-h`가 하한으로 이겨 로딩·오류가 800px 빈 판이 된다.
@@ -90,7 +90,7 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
     불변**임이 자동으로 따라온다), 바닥 버튼 둘의 접근 이름, 로딩 골격의 행 수가 3, 오류 갈래에
     `failed`일 때만 [Retry]가 있다. `[manual]` 낮은 창 높이에서 세 갈래 모두 바닥 버튼이 화면 안에 있다.
 
-- [ ] B4. Sources 페이지와 안정적인 클라이언트 화면 소유자를 구현한다.
+- [x] B4. Sources 페이지와 안정적인 클라이언트 화면 소유자를 구현한다.
   - 검증: `[auto]` **결과 state가 선택 변경·`router.refresh`로 재마운트되지 않는다**(마운트 카운터로 센다).
     선택 상태를 `searchParams`에서 **읽지 않는다**(소스 검사 — "전체 새로고침은 목록"의 실제 판정 가능한 형태다).
     `[manual]` 상세 열기/닫기에 주소·브라우저 이력이 불변, 전체 새로고침이 목록으로 착지,
@@ -98,15 +98,15 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
     ⚠️ 주소·이력·스크롤은 `[auto]`로 쓰지 않는다 — `router.push`가 소스에 없음을 세는 검사가 되면
     POSTMORTEM `:2132`의 형이다.
 
-- [ ] B5. 상세 읽기 Server Action과 클라이언트 로딩·재시도를 연결한다.
+- [x] B5. 상세 읽기 Server Action과 클라이언트 로딩·재시도를 연결한다.
   - 결과는 `ok`/`rejected`/`failed` **세 갈래**이고 [Retry]는 `failed`에만 붙는다(design §3).
   - 검증: `[auto]` 매 호출 인가, A/B 소스 격리·보관·권한 회수, 읽기 중 revalidate/쓰기 **없음**,
     늦게 도착한 이전 소스 응답 무시, 저장/적재 후 열린 상세 재조회, 재조회 실패가 쓰기 성공을 실패로
     뒤집지 않음, `rejected`에 [Retry]가 **없음**.
 
-- [ ] B6. 기존 기준 언어 Action/폼을 Sources로 이동하고 상태·오류 UI를 연결한다.
+- [x] B6. 기존 기준 언어 Action/폼을 Sources로 이동하고 상태·오류 UI를 연결한다.
   - `revalidateAfterCommit`을 지난다. **사본 둘을 한 곳에서 export하고 세 번째 사본을 만들지 않는다**(design §4).
-  - [ ] B6a. **`base-language-form`의 DOM 테스트를 신규 작성한다.**
+  - [x] B6a. **`base-language-form`의 DOM 테스트를 신규 작성한다.**
         ⚠️ `BaseLocaleForm`을 렌더하는 DOM 테스트가 지금 **0건**이고,
         `components/__tests__/base-locale-screens.test.ts`는 `readFileSync` + 정규식 **소스 스캔**이다.
         reducer가 green인 것과 폼이 그 reducer를 그렇게 부르는 것은 다른 사실이다 —
@@ -118,7 +118,7 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
     기준값이 최신 서버값**, 늦게 도착한 성공 전 props가 제출값을 되돌리지 않음.
     `[manual]` 저장 거부 뒤 포커스가 Save로 돌아온다(`useEffect`여야 한다 — 커밋 `9890bf9`).
 
-- [ ] B7. 적재 상태·언어 표·시각 문구를 연결한다.
+- [x] B7. 적재 상태·언어 표·시각 문구를 연결한다.
   - 검증: `[auto]` First/Last 실패 구분, EDITOR 재시도 버튼 **부재**, 설치 없음 안내(+ **EDITOR에게는
     Settings를 가리키지 않음** — spec §4), `Source commit` 라벨, **null 시각 생략**,
     **`partial-import`가 경고를 유지하고 최초 실패로 바뀌지 않음**(상태 블록의 계약 — B8의 추가 결과와 다른 자리),
@@ -129,19 +129,19 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
   - 비활성 `Select`는 `onPointerDown`·`onClick`·`onKeyDown` **셋을 다 막는다**(POSTMORTEM `:2227`).
     꺼진 형은 `aria-disabled`이고 `loading`과 겸용하지 않는다.
 
-- [ ] B8. 저장 중 이탈 잠금을 연결한다.
+- [x] B8. 저장 중 이탈 잠금을 연결한다.
   - ⚠️ **대폭 축소됐다** — 확인창이 없으므로 18칸 매트릭스가 사라지고 `closeDisabled` 하나다.
     `components/ui/modal.tsx:129`의 `onOpenChange`가 이미 그것을 보므로 새 배선이 거의 없다.
   - 검증: `[auto]` 저장 중 X·Close·바닥 `Open translations`·언어 행 `Open`이 **비활성**,
     저장 중이 아니면 여섯 경로가 확인창 없이 즉시 실행. `[manual]` 저장 중 **Esc·배경 클릭**이 닫지 않음
     (⚠️ Dialog를 Escape로 닫는 jsdom 선례가 리포에 **0건**이다 — `[auto]`로 쓰면 harness를 신설해야 한다).
 
-- [ ] B9. AddSourcesModal을 이동하고 결과 안내를 목록의 고정 영역에 연결한다.
+- [x] B9. AddSourcesModal을 이동하고 결과 안내를 목록의 고정 영역에 연결한다.
   - 검증: `[auto]` 요청 원자 실패 / 성공 + 부분 적재 경고 / 응답 불명을 **셋으로 구별**,
     소스명별 결과·워크플로 안내, `router.refresh` 후 결과 존속, 성공 뒤 가짜 `importing` 없음,
     `failed`가 "소스 생성 실패"로 읽히지 않음.
 
-- [ ] B10. Settings의 소스 카드·LocaleSurfaceSelector를 제거하고 내비게이션을 전환한다.
+- [x] B10. Settings의 소스 카드·LocaleSurfaceSelector를 제거하고 내비게이션을 전환한다.
   - **여기서 함께 손대는 기존 테스트 넷** (design §7):
     - `app/__tests__/screens.test.ts:23·37-48`(`<SourcesCard` 비조건부 렌더 단언)과
       **`:307-323`(`components/settings/sources-card.tsx`를 경로로 직접 읽는다 — 옮기면 ENOENT로 죽는다)**
@@ -154,7 +154,7 @@ POSTMORTEM 2026-09-20(`docs/POSTMORTEM.md:2278`)이 *"그것을 재는 테스트
     Settings CI YAML 유지, 새 링크 생성기만 내부 사용, 옛 URL은 호환 redirect,
     연결 복귀의 `e` 안내 보존, 경로 셀에 `text-mono`와 `text-xs`가 같은 문자열에 함께 없음.
 
-- [ ] B11. 변경 때문에 생긴 무사용 컴포넌트·문구만 정리한다.
+- [x] B11. 변경 때문에 생긴 무사용 컴포넌트·문구만 정리한다.
   - 검증: `[auto]` `base-locale-screens`·`settings-sources`·`add-surface`·
     `lib/shell/__tests__/nav.test.ts`·`entry-points`·`screens`·`add-surface-page-log`·`routes`
     **여덟**이 새 경로를 검사한다. 기존 unrelated dead code는 제거하지 않는다.
@@ -233,3 +233,8 @@ Codex 커밋에는 Codex 트레일러를 붙이고 원격 push는 Claude Code가
 - A: 단위 4,973건·346파일 및 typecheck 통과. 새 reader/상태 단위 18건. 격리 PG 새 2건 통과.
 - A4: 1,446키·8,676셀의 ANALYZE 전 상세 읽기 2,177ms(로컬 PostgreSQL 17). 새 PG 파일은 기존 include에 수집되어 A4a 확장 불필요.
 - A 자체 검증: 불변식·원칙·타입/경계·단순성 4관점 지적 0. 스키마 영향 없음. 문서 영향은 C3에서 처리.
+
+- B: Sources 목록·상세·기준 언어 폼·추가 모달 이전·legacy redirect 구현. 리뷰의 실패 적재 후 재조회 누락을 수정하고 DOM 회귀로 고정했다.
+- B 검증: 4,996건 통과 뒤 저장 중 이탈·빈 목록 두 역할 DOM 3건을 추가(추가 대상 14건 통과). 최종 숫자는 C 실행 기록에 남긴다. typecheck 통과.
+- B 브라우저: OWNER 실데이터에서 1440×900 모달 1024×800, 960×900 모달 864×800, 960×600 모달 864×504·Close 화면 내. 두 폭 가로 overflow 0. Esc 후 진입 행 포커스 복구, 주소/이력 불변, reload 목록 착지, 언어 Open 실제 4키, 옛 Locales 두 URL redirect 확인.
+- B의 체크는 구현 완료를 뜻하며 수동 검증 전체 완료를 뜻하지 않는다. 남은 브라우저 갈래는 C2에서 구분한다. 시안 대조 정식 게이트는 Claude Code `/design-sync`로 인계한다.

@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({ redirect: state.redirect, notFound: () => { 
 import Page from "../projects/[slug]/surfaces/new/page";
 beforeEach(() => { vi.clearAllMocks(); state.require.mockResolvedValue({ projectId: "p1" }); state.find.mockResolvedValue({ archivedAt: null }); });
 it("OAuth 복귀의 오류를 보존해 설정 모달로 보내고 리포를 재탐지하지 않는다", async () => {
-  await expect(Page({ params: Promise.resolve({ slug: "alpha" }), searchParams: Promise.resolve({ e: "reauthorize" }) })).rejects.toThrow("/projects/alpha/settings?add=sources&e=reauthorize");
+  await expect(Page({ params: Promise.resolve({ slug: "alpha" }), searchParams: Promise.resolve({ e: "reauthorize" }) })).rejects.toThrow("/projects/alpha/sources?add=sources&e=reauthorize");
   expect(state.require).toHaveBeenCalledWith({ slug: "alpha", permission: "project:settings" });
   expect(state.detect).not.toHaveBeenCalled();
 });

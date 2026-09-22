@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import { routes } from "@/lib/routes";
 import { useRef, useState, type ReactNode } from "react";
 import { OnboardingModal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -10,6 +12,7 @@ export function CiCard({ slug, archived, stale, children }: { slug: string; arch
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   return <PanelCard title={m.settings.ci.title} subtitle={m.settings.ci.description}>
+    <p className="px-4 pb-3 text-xs"><Link className="text-link" href={routes.sources(slug)}>{m.sources.title}</Link></p>
     <PushTokenPanel slug={slug} disabled={archived} />
     <div className="border-border border-t">
       <Button ref={trigger} variant="ghost" className="text-foreground focus-visible:ring-inset h-auto w-full justify-start gap-3 rounded-none px-4 py-[13px] text-left" disabled={archived || !children} onClick={() => setOpen(true)}>
