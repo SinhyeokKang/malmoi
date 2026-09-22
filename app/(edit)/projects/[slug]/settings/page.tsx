@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { Archive } from "lucide-react";
 import { GeneralCard } from "@/components/settings/general-card";
-import { SourcesCard } from "@/components/settings/sources-card";
 import { CiCard } from "@/components/settings/ci-card";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { RepositoryCard } from "@/components/settings/repository-card";
@@ -9,7 +8,6 @@ import { WorkflowBlock } from "@/components/onboarding/workflow-block";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { PanelCard } from "@/components/ui/panel-card";
 import { Alert } from "@/components/ui/alert";
-import { ADAPTERS } from "@/lib/adapters";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { optionalEnv } from "@/lib/env";
@@ -17,8 +15,6 @@ import { loadConnectionHealth } from "@/lib/github";
 import { loadAccountView } from "@/lib/github-connect/account-view";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
-import { loadSurfaceCounts } from "@/lib/keys/query";
-import { formatLabel } from "@/lib/onboarding/detect";
 import { planWorkflowStale, renderProjectWorkflowYaml, workflowSurfaceOf } from "@/lib/onboarding/workflow";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { routes } from "@/lib/routes";
@@ -31,6 +27,7 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   // Pages and layouts render independently: authorize before any query or external read.
   const { projectId, userId } = await requireProjectAccess({ slug, permission: "project:settings" });
   const { e, add } = firstQueryValues(await searchParams);
+  if (add === "sources") redirect(routes.sources(slug, { add, e }));
   const notice = isConnectError(e) ? connectErrorMessage(e) : null;
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: {
@@ -38,8 +35,8 @@ export default async function SettingsPage({ params, searchParams }: { params: P
     surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" } }, baseBranch: true, archivedAt: true,
   } });
   if (project === null) redirect(`${routes.projects()}?e=not-found`);
-  const [health, account, openPrUrl, counts] = await Promise.all([
-    loadConnectionHealth(project), loadAccountView(prisma, userId), loadOpenPrUrl(slug, project), loadSurfaceCounts(prisma, projectId),
+  const [health, account, openPrUrl] = await Promise.all([
+    loadConnectionHealth(project), loadAccountView(prisma, userId), loadOpenPrUrl(slug, project),
   ]);
   const archived = project.archivedAt !== null;
   const archive = <PanelCard title={archived ? m.archive.restore : m.archive.title}>
@@ -55,7 +52,6 @@ export default async function SettingsPage({ params, searchParams }: { params: P
       {archived && archive}
       <GeneralCard slug={slug} name={project.name} image={project.image} archived={archived} />
       <RepositoryCard slug={slug} owner={project.repoOwner} repo={project.repoName} branch={project.baseBranch} archived={archived} health={health} account={account} appSlug={optionalEnv("GITHUB_APP_SLUG")} />
-      <SourcesCard slug={slug} owner={project.repoOwner} repo={project.repoName} branch={project.baseBranch} installationId={project.installationId} archived={archived} sources={project.surfaces} counts={counts} adapters={ADAPTERS.map(a => ({ adapter: a.name, layout: a.layout, ...formatLabel(a.name) }))} now={new Date()} initialOpen={add === "sources"} />
       <CiCard slug={slug} archived={archived} stale={planWorkflowStale(project.surfaces)}>{workflow}</CiCard>
       {!archived && archive}
     </PanelBody>

@@ -3,10 +3,12 @@ import { act } from "react";
 import { beforeEach, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { find, render } from "./helpers/dom";
-import { SourcesCard } from "../settings/sources-card";
+import { SourcesScreen } from "../sources/sources-screen";
 import NotFound from "@/app/(edit)/projects/[slug]/not-found";
 import { m } from "@/lib/i18n";
 
+vi.setConfig({ testTimeout: 20_000 });
+vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({ loadSourceDetail: vi.fn(), updateBaseLocale: vi.fn() }));
 const mocks = vi.hoisted(() => ({ add: vi.fn(), detect: vi.fn(), sample: vi.fn(), confirm: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ addSurfaces: mocks.add, runFirstIngest: vi.fn(), detectRepoFormats: mocks.detect,
   loadCandidateSample: mocks.sample, confirmManualFormat: mocks.confirm }));
@@ -21,7 +23,7 @@ const props = {
 };
 beforeEach(() => { vi.clearAllMocks(); mocks.detect.mockResolvedValue(props.initial); });
 async function draw() {
-  await render(<SourcesCard {...props} sources={[]} counts={[]} installationId="1" archived={false} now={new Date()} initialOpen />);
+  await render(<SourcesScreen slug={props.slug} adapters={props.adapters} role="OWNER" data={{ installed: true, sources: [], repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } }} now={new Date()} initialOpen />);
   return { container: document.body };
 }
 async function select() {

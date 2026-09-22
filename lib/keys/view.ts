@@ -496,9 +496,9 @@ export function localeProgress(input: {
       total: input.total,
       translated,
       needsReview,
-      untranslated: input.total - translated - needsReview,
+      untranslated: Math.max(0, input.total - translated - needsReview),
       // 0으로 나누지 않는다 — 첫 적재 전에는 키가 없다.
-      percent: input.total === 0 ? 0 : Math.floor((translated / input.total) * 100),
+      percent: input.total <= 0 ? 0 : Math.min(100, Math.max(0, Math.floor((translated / input.total) * 100))),
     };
   });
 

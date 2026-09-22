@@ -208,7 +208,7 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
  * `/design-sync`가 든다.
  */
 describe("로케일 Meter — 캔버스 값 그대로", () => {
-  const METER = code("components/projects/locale-meter.tsx");
+  const METER = code("components/locale-meter.tsx");
 
   it.each([
     ["칸 폭 100", "w-25"],

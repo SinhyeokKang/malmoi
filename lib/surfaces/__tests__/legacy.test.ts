@@ -11,9 +11,10 @@ it("legacy routes use the saved default, not a hardcoded slug", async () => {
   state.surface = { slug: "saved-default", archivedAt: null };
   await expect(Translations({ params: Promise.resolve({ slug: "demo" }), searchParams: Promise.resolve({ ns: "common", locales: "ko", q: "hello" }) }))
     .rejects.toThrow("redirect:/projects/demo/surfaces/saved-default/translations?ns=common&locales=ko&q=hello");
-  await expect(Locales({ params: Promise.resolve({ slug: "demo" }) })).rejects.toThrow("redirect:/projects/demo/surfaces/saved-default/locales");
+  await expect(Locales({ params: Promise.resolve({ slug: "demo" }) })).rejects.toThrow("redirect:/projects/demo/sources");
 });
 it.each([null, { slug: "gone", archivedAt: new Date(0) }])("a missing or archived default fails closed", async surface => {
   state.surface = surface;
-  await expect(Locales({ params: Promise.resolve({ slug: "demo" }) })).rejects.toThrow("notFound");
+  await expect(Translations({ params: Promise.resolve({ slug: "demo" }), searchParams: Promise.resolve({}) })).rejects.toThrow("notFound");
+  await expect(Locales({ params: Promise.resolve({ slug: "demo" }) })).rejects.toThrow("redirect:/projects/demo/sources");
 });

@@ -180,7 +180,7 @@ describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
     "app/(edit)/projects/[slug]/settings/page.tsx",
     "app/(edit)/projects/[slug]/logs/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
-    "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx",
+    "components/sources/sources-screen.tsx",
     "app/(edit)/account/page.tsx",
     "app/(edit)/account/loading.tsx",
   ];

@@ -24,18 +24,19 @@ const hoisted = vi.hoisted(() => ({
   session: null as { user: { id: string } } | null,
   prisma: undefined as unknown,
   revalidated: [] as string[],
+  failRevalidate: false,
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
-vi.mock("next/cache", () => ({ revalidatePath: (p: string) => hoisted.revalidated.push(p) }));
+vi.mock("next/cache", () => ({ revalidatePath: (p: string) => { if (hoisted.failRevalidate) throw new Error("cache unavailable"); hoisted.revalidated.push(p); } }));
 // 이 Action은 쿠키·redirect 경로를 지나지 않지만, 같은 파일의 `startGithubConnect`가 그것들을 물어 온다.
 vi.mock("next/headers", () => ({ cookies: async () => ({ set: () => {} }), headers: async () => ({ get: () => null }) }));
 vi.mock("next/navigation", () => ({ redirect: () => { throw new Error("NEXT_REDIRECT"); } }));
 
 const { updateRepositorySettings } = await import("../projects/[slug]/settings/actions");
-const { updateBaseLocale } = await import("../projects/[slug]/surfaces/[surfaceSlug]/locales/actions");
+const { updateBaseLocale } = await import("../projects/[slug]/sources/actions");
 
 function seeded() {
   return createHarness({
@@ -63,6 +64,7 @@ beforeEach(() => {
   hoisted.prisma = db.prisma;
   hoisted.session = sessionFor("u-owner");
   hoisted.revalidated = [];
+  hoisted.failRevalidate = false;
 });
 
 const alpha = () => db.projects.find((p) => p.id === "pA")!;
@@ -253,4 +255,9 @@ it("브랜치 사건의 before는 잠금 뒤 읽은 값이다", async () => {
   });
   await updateRepositorySettings({ slug: "alpha", baseBranch: "dev" });
   expect(db.projectEvents[0]?.payload).toMatchObject({ value: { before: "release", after: "dev" } });
+});
+
+it("기준 언어 커밋 뒤 캐시 예외가 저장 결과를 뒤집지 않는다", async () => {
+  hoisted.failRevalidate = true;
+  expect(await updateBaseLocale({ slug: "alpha", surfaceSlug: "default", baseLocale: "ko" })).toEqual({ ok: true });
 });

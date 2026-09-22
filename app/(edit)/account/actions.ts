@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidateAfterCommit } from "@/lib/revalidate-after-commit";
+
 import { withConnectStart } from "@/lib/account-connect/http";
 import { beginConnect } from "@/lib/account-connect/store";
 import { connectCookie } from "@/lib/account-connect/policy";
@@ -54,10 +56,7 @@ type NameResult = { ok: true; name: string } | { ok: false; reason: "empty" | "t
  * "실패"로 말한다(사진은 사용자가 다시 올려 두 번째 Blob 객체를 만든다). unlink는 결과 union이
  * 아니라 `redirect`라 증상이 다르다 — 끊긴 뒤 계정 화면 대신 오류 화면에 착지한다.
  */
-function revalidateAfterCommit(scope: string, userId: string): void {
-  try { revalidatePath("/", "layout"); }
-  catch (error) { logCaught("account", `${scope}-cache`, error); }
-}
+
 
 export async function updateProfileName(raw: string): Promise<NameResult> {
   const { userId } = await requireUser();

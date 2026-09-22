@@ -157,6 +157,8 @@ export const routes = {
     withQuery(`/projects/${slug}/translations`, query),
   surfaceTranslations: (slug: string, surfaceSlug: string, query: TranslationsQuery = {}): string =>
     withQuery(`/projects/${slug}/surfaces/${surfaceSlug}/translations`, query),
+  sources: (slug: string, query: { add?: string; e?: string } = {}): string =>
+    withQuery(`/projects/${slug}/sources`, query),
   addSurface: (slug: string): string => `/projects/${slug}/surfaces/new`,
   surfaceLocales: (slug: string, surfaceSlug: string): string => `/projects/${slug}/surfaces/${surfaceSlug}/locales`,
   /**

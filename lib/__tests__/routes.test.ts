@@ -174,3 +174,10 @@ describe("routes.translations — 쿼리", () => {
     ]);
   });
 });
+
+describe("Sources", () => {
+  it("추가·OAuth 오류만 URL에 담고 상세는 목록에서 선택한다", () => {
+    expect(routes.sources("acme")).toBe("/projects/acme/sources");
+    expect(routes.sources("acme", { add: "sources", e: "reauthorize" })).toBe("/projects/acme/sources?add=sources&e=reauthorize");
+  });
+});

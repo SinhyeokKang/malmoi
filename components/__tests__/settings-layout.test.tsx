@@ -14,10 +14,10 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replac
 import SettingsPage from "@/app/(edit)/projects/[slug]/settings/page";
 beforeEach(() => { state.archived = false; state.image = null; state.find.mockImplementation(async () => ({ name: "Acme", image: state.image, repoOwner: "owner", repoName: "repo", installationId: "1", repositoryId: "r1", baseBranch: "main", archivedAt: state.archived ? new Date("2026-09-20") : null, surfaces: [] })); });
 const page = () => SettingsPage({ params: Promise.resolve({ slug: "acme" }), searchParams: Promise.resolve({}) });
-it.each([false, true])("활성·보관 상태 모두 다섯 카드이고 복원이 첫 자리다: %s", async archived => {
+it.each([false, true])("활성·보관 상태 모두 네 카드이고 복원이 첫 자리다: %s", async archived => {
   state.archived = archived;
   const { container } = await render(await page());
-  expect([...container.querySelectorAll("section > header h2")].map(n => n.textContent)).toEqual(archived ? ["Restore project", "General", "Repository", "Translation sources", "CI integration"] : ["General", "Repository", "Translation sources", "CI integration", "Archive project"]);
+  expect([...container.querySelectorAll("section > header h2")].map(n => n.textContent)).toEqual(archived ? ["Restore project", "General", "Repository", "CI integration"] : ["General", "Repository", "CI integration", "Archive project"]);
   expect(container.querySelector("pre")).toBeNull();
   if (archived) for (const button of container.querySelectorAll<HTMLButtonElement>('section button')) {
     expect(button.disabled || button.matches(':disabled')).toBe(button.textContent !== "Restore project");

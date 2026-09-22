@@ -276,7 +276,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | 제목 행 | `flex min-h-9 items-center gap-3` | `36px` / `12px`. ⚠️ **`min-h-9`가 없으면 버튼 없는 화면에서 28로 떨어져 머리가 라우트마다 4px 튄다** |
 | 제목 묶음 | `gap-2` (8) | `8px` — 배지는 제목의 일부(총계)이고 툴바는 다른 종류다 |
 | PageTitle | `h1 text-lg font-medium` (18/500/0.01em) | `18px`·`500`·`0.18px`. ⚠️ **`tracking-[0.01em]`을 손으로 쓰지 않는다** — `--text-lg--letter-spacing`이 이미 그 값이다 |
-| 설명 한 줄 | `description` **prop** — `text-xs text-muted-foreground`(13) | `13px`·`#737373`. 소비자 셋(`logs`·`locales`·`surfaces/new`)이고 **전에는 12와 14 두 벌로 갈려 있었다** |
+| 설명 한 줄 | `description` **prop** — `text-xs text-muted-foreground`(13) | `13px`·`#737373`. 소비자는 `logs`와 설명 prop을 쓰는 패널이고 **전에는 12와 14 두 벌로 갈려 있었다** |
 | 본문 여백 | `p-4` (16) | 같음 |
 | 폭 등급 | `width` prop — `fluid` 1280 / `limited` 896 (기본) | **fluid 아홉**(목록 · 그 스켈레톤 · 번역 · `surfaces/new` · Home · 그 스켈레톤 · **멤버 · 언어 · 이력**) / **limited 셋**(프로젝트 설정 · `/account` · 그 스켈레톤) + 본문 전용 셋 |
 
@@ -554,7 +554,7 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 | **SegmentedControl / SegmentedLinks** | 8-2 신설 · 8-3이 링크판을 더했다. 트랙 `bg-canvas rounded-lg p-1 gap-1` · 세그먼트 `rounded-md px-2 py-1 text-sm gap-1.5`(`min-w-11`은 **링크판만**) · 선택 `bg-background shadow-low font-medium` / 비선택 `text-muted-foreground hover:text-foreground`. ⚠️ **칸의 radius가 `md` 버튼과 같다** (2026-09-11) — 선택된 칸이 흰 배경 + `shadow-low`로 떠올라 버튼처럼 보이고 툴바에서 실제 `Button`과 나란히 선다. 트랙은 칸이 `p-1`만큼 안쪽이라 **한 단계 크다**(동심이 되는 14가 스케일에 없어 12). ⚠️ **`SegmentContent`가 `icon`·`badge`를 받는다**(라벨 왼쪽 `size-4 aria-hidden` / 오른쪽 `Badge neutral`, **0도 보인다**) — **지금 그 두 축의 소비자는 0이다**. 치수를 프리미티브가 드는 이유는 bugshot-2가 children으로 넘기다 배지 크기가 두 벌로 갈렸기 때문이다. ⚠️ **형이 둘인 것이 요지다**: 상태를 클라이언트가 들면 `SegmentedControl`(버튼 · `role=radiogroup`), **URL이 들면 `SegmentedLinks`**(`<nav>` + `aria-current="page"`). 필터·탭은 뒤엣것이다 — 뒤로가기·공유·새로고침이 그냥 돼야 한다. ⚠️ **`role="tablist"`가 아니다**: ARIA 탭은 `aria-controls`와 패널 연결이 계약인데 이 컨트롤은 그걸 안 든다. ⚠️ **대신 라디오의 키보드 계약은 든다** — 2026-09-12부터 **Radix `RadioGroup`이** 방향키·roving tabindex·`loop`를 들고, **Home/End만 프리미티브가 얹는다**(Radix가 안 준다). 2026-09-11의 손수 구현(`nextRovingIndex` + `tabIndex={selected ? 0 : -1}`)을 대체했고, 링 검사가 `button[role="radio"]`를 보므로 Radix가 곁들이는 숨은 `<input>`이 보이지 않는 링으로 green을 만들지 않는다 |
 | **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). **레이블은 `font-medium`(500)으로 전역 통일한다** (2026-09-12 사용자). variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
 | **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 **`ghost` + `size-9 rounded-md p-0`**(36 정방 · 음수 마진 `-mt-2 -mr-2`). ⚠️ **`ghost sm`(28 / radius 8)이었다** (2026-09-13 — 계정 화면 핸드오프): `size="icon"`을 만들지 않고 `md`의 높이·radius를 그대로 쓰고 정사각 유틸로 폭만 맞춘다. 라벨은 `m.common.dismiss`다. variant 넷은 §6.2. **배치 셋** — global(페이지 콘텐츠 맨 위 전폭 — `?e=` 거부) · page-level(제목 아래 — 리포 갱신 보류 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) **`inset`**은 radius·사방 테두리 없이 상단 divider와 padding 13/16으로 카드 전폭에 붙는다. 페이지형의 역할·색은 유지한다. |
-| **PanelCard** | 계정 구역에서 승격한 공유 카드. PanelCard/Rows/Row/Facts 넷이며 제목 없는 사용도 지원한다. 설정·계정·locales에서 사용한다. radius 12 · header padding 16 · title 15/500 · container query 640. 옛 Card는 삭제했다 (§6.6·§6.67) |
+| **PanelCard** | 계정 구역에서 승격한 공유 카드. PanelCard/Rows/Row/Facts 넷이며 제목 없는 사용도 지원한다. 설정·계정·Sources에서 사용한다. radius 12 · header padding 16 · title 15/500 · container query 640. 옛 Card는 삭제했다 (§6.6·§6.67) |
 | **Table** | 번역·언어·이력 **셋** + 공개 문서(§6.61) **넷**이 쓴다 (⚠️ **2026-09-19에 멤버가 빠졌다** — 그 화면이 카드 + `<ul>`로 갔다, §6.65. 온보딩 ②의 파일 표는 이 수 밖이다 — §6.643. 세는 명령: `grep -rln 'from "@/components/ui/table"' components app | grep -v __tests__ | grep -v ui/table` → **파일 여섯**, 화면 다섯). shadcn `new-york-v4` 기반이고 `TableHeader`·`TableBody`·`TableRow`·`TableHead`·`TableCell` 다섯을 낸다(⚠️ **`TableFooter`·`TableCaption`은 안 들인다** — 소비자 0). ⚠️ **`Th`·`Td`·`Tr`은 별도 구현이 아니라 그 위의 프리셋이다** (2026-09-12) — 번역 화면이 프리미티브를 직접 들고, 공개 문서는 **섞어 쓴다**(열 머리는 `TableHead`, 셀은 `Td` — §6.61이 그 이유를 든다). 나머지 셋은 프리셋만 쓴다. 프리셋이 **되눌러야 하는 기본값**(`whitespace-nowrap`·`align-middle`·`border-b`·`h-10`·`px-2`)은 각 함수 위에 적혀 있고 `components/__tests__/table-presets.test.ts`가 렌더해서 센다 — 하나가 안 지워지면 긴 사유가 한 줄로 늘어나고 마지막 행 아래에 선이 하나 더 선다. ⚠️ **`scrollable` 기본이 참이고 끄는 곳이 셋이다** — 번역 화면(`PanelBody`가 스크롤을 소유한다, §6.1) · 온보딩 ②의 파일 표(그 `div`가 스크롤을 들어야 `Th`의 `sticky`가 붙는다, §6.643) · 공개 문서(그 `div`가 `role="region"`을 들어야 키보드로 가로 스크롤된다, §6.61). 컨테이너를 하나 더 만들면 스크롤이 중첩된다 |
 | **Breadcrumb** | `text-xs` · 항목 `text-muted-foreground hover:text-foreground` · 마지막 `text-foreground font-medium` `aria-current="page"` · 구분자 `/` `text-muted-foreground/60 px-2` |
 | **DropdownMenu** | `min-w-60 rounded-lg border bg-popover shadow-md py-1` · 항목 `mx-1 px-2 py-1.5 rounded text-sm hover:bg-accent` · selected `bg-muted` + `Check` 16 |
@@ -598,12 +598,12 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 | 사이드바 | `w-60 shrink-0 p-1 gap-2 overflow-y-auto`, **배경도 border도 없다.** ⚠️ **접기가 없다** (8-3 — 시안에 없다): 아이콘 레일과 함께 **레일에서만 렌더되던 툴팁도 사라졌다**(2026-09-08에 셸을 죽였던 그 자리다). 소비자가 0이 되어 **2026-09-11에 `Tooltip` 프리미티브 자체를 걷었다** — 조상 provider를 요구하는 Radix 컴포넌트는 프리미티브가 자기 provider를 든다는 교훈은 POSTMORTEM 2026-09-08에 남아 있고, 다음에 그런 컴포넌트를 들일 때 그 확인을 한 번 한다. ⚠️ **반응형 분기가 0개다**(규약 3 — 최소 대응 너비 1280) |
 | **항목 hover·선택** | ⚠️ **배경 알파다** — 선택 `bg-foreground/[0.07]`, 비활성 hover `hover:bg-foreground/[0.03]` — 2026-09-11에 **둘 다 한 단계 내렸다**(사이드바는 배경 없이 캔버스 위에 얹혀 같은 알파도 흰 패널 위보다 진하다). ⚠️ **선택에 weight가 없다 — 면 하나로만 표현한다** (2026-09-20 사용자 — 옛 판정 *"선택의 weight는 라벨 `<span>`이 든다"*의 철회. 그 판정은 **굵기를 `<Link>`가 아니라 라벨에 두는** 자리 문제를 푼 것이고, 굵기가 필요한가는 묻지 않았다). 굵기가 면과 함께 움직이면 선택을 옮길 때마다 **라벨 폭이 바뀌어 글자가 흔들리고**, 신호가 둘이라 면의 알파를 조정할 근거도 흐려진다. `components/__tests__/sidebar-selection.test.ts`가 소스에서 `font-medium` 개수를 **1**(구역 라벨 `<p>`)로 고정한다 — 사이드바에 렌더 테스트가 없어 스캔이 든다. Badge는 자체 `font-medium`(500)을 쓰므로 상속 문제도 함께 사라졌다. `--accent == --muted`(§2.1)라 캔버스 위에서 `hover:bg-accent`가 **보이지 않고**, 6단계의 "흰 알약"(`bg-background`)도 배경이 흰색이 아니게 되면서 근거가 사라졌다. **hover와 선택은 한 단계 벌린다** — 같은 알파면 포인터 아래 항목이 선택된 것처럼 보인다 |
 | 섹션 항목 | `flex items-center gap-2 rounded-sm p-1.5 text-sm` · 아이콘 16(**전 항목 표는 §6.8**) · 글자는 `text-foreground`(캔버스가 거의 흰색이라 §2.2의 muted 표면 문제가 없다) |
-| **개수 배지** | ⚠️ **`Projects` 하나에만 붙는다** (8-3). 그 값은 셸이 **이미 조회한** 멤버십 배열의 길이라 왕복이 0이다. 시안의 나머지 셋(Locales·Translations·Members)은 프로젝트별 집계라 **모든 페이지에 왕복을 더한다** — PRODUCT §7.7 결정 5가 거절했고 §8이 🔒로 다시 열어 둔 항목이다. ⚠️ **`0`도 보인다** — `undefined`와 다르다: 프로젝트가 없다는 사실이 정보이고, 화면이 `badge && …`로 쓰면 0이 falsy라 조용히 사라진다 |
+| **개수 배지** | ⚠️ **`Projects` 하나에만 붙는다** (8-3). 그 값은 셸이 **이미 조회한** 멤버십 배열의 길이라 왕복이 0이다. 시안의 나머지 셋(Sources·Translations·Members)은 프로젝트별 집계라 **모든 페이지에 왕복을 더한다** — PRODUCT §7.7 결정 5가 거절했고 §8이 🔒로 다시 열어 둔 항목이다. ⚠️ **`0`도 보인다** — `undefined`와 다르다: 프로젝트가 없다는 사실이 정보이고, 화면이 `badge && …`로 쓰면 0이 falsy라 조용히 사라진다 |
 | **구역 둘** | ⚠️ **축이 둘이라 구역이 둘이다** (PRODUCT §7.7). 순서는 **사용자 축 먼저**(`Projects`·`Settings`) → **프로젝트 축**. ⚠️ **라벨이 이름 그대로다** (8-3 — 시안): 사용자 축은 **사용자 이름**, 프로젝트 축은 **프로젝트 이름**. 6b-4의 `Your work` 라벨과 6a의 프로젝트 스위처를 **함께** 대체했다. 라벨은 `<p>` `text-foreground py-1.5 text-sm font-medium`이고, 둘째 구역만 `border-t border-border pt-2`. ⚠️ **`<nav>` 둘이 `aria-label`을 든다** — 라벨이 `<p>`라 접근성 트리에서 이름이 아니다 |
 | **스위처가 없다** | ⚠️ 8-3이 지웠다 (시안). 프로젝트를 옮기는 길이 **목록 하나**로 통일됐고, `New project`를 사이드바에서 뺀 것과 같은 방향이다 — 진입점이 하나면 "어디서 눌렀나"에 따라 다른 곳에 착지할 수 없다. 그와 함께 `DropdownMenuItem asChild`의 실사용이 셸에서 사라졌다(규칙과 그 테스트는 그대로다) |
 | 사용자 축 항목 | **Projects**(`Box`, 개수 배지) · **Settings**(`CircleUser` → `/account`). ⚠️ **아이콘 둘이 2026-09-11에 바뀌었다**: Projects는 **목록 행 타일과 같은 글리프**(같은 대상을 두 글리프로 가리키지 않는다), Settings는 **헤더 서랍 안 같은 항목과 같은 글리프**(`Settings` 톱니는 프로젝트 설정이 쓰므로 사용자 축과 섞인다). ⚠️ **`New project`가 없다** (8-3) — 라우트는 그대로라 URL로는 열린다. ⚠️ **유저 메뉴도 같은 `Settings` 문구를 쓴다** — 한 곳을 가리키는 이름이 둘이면 그중 하나가 낡는다 |
-| 프로젝트 축 항목 | **Home**(`House`) · **Locales**(`Globe`) · **Translations**(`Languages`) · **Members**(`Users`) · **Logs**(`History`) · **Project settings**(`Settings`, `project:settings`가 있는 역할에만 — 편의다, 방어는 페이지). ⚠️ **순서가 시안이다**: Locales가 Translations **앞**이다("어떤 언어가 있나"가 "그 언어를 채운다"보다 앞선 질문이다). ⚠️ **라벨이 8-3에 바뀌었다**: `Overview`→**Home** · `Languages`→**Locales** · `Settings`→**Project settings**. 6b-5가 적었던 "`locale`은 내부 낱말이라 화면에 쓰지 않는다"는 **시안이 뒤집었다** |
-| 활성 판정 | ⚠️ **규칙이 축이 아니라 항목에 붙는다** (6b-6 — `NavItem.exact`). **접두인 것 셋**: Locales·Translations·Members·Project settings 중 하위 경로가 있는 것들. **정확히 일치인 것**: Home(`/projects/<slug>`는 그 프로젝트 **모든** 하위 라우트의 접두다) · **Logs**(하위 라우트가 없다 — `?cursor=`는 쿼리다) · Projects(`/projects`가 `/projects/new`의 접두다) · Settings |
+| 프로젝트 축 항목 | **Home**(`House`) · **Sources**(`Files`) · **Translations**(`Languages`) · **Members**(`Users`) · **Logs**(`History`) · **Project settings**(`Settings`, `project:settings` 역할만). Sources가 Translations 앞이다 — 소스 구성·언어 상태를 확인한 뒤 번역으로 간다. |
+| 활성 판정 | ⚠️ **규칙이 축이 아니라 항목에 붙는다** (6b-6 — `NavItem.exact`). **접두인 것 셋**: Sources·Translations·Members·Project settings 중 하위 경로가 있는 것들. **정확히 일치인 것**: Home(`/projects/<slug>`는 그 프로젝트 **모든** 하위 라우트의 접두다) · **Logs**(하위 라우트가 없다 — `?cursor=`는 쿼리다) · Projects(`/projects`가 `/projects/new`의 접두다) · Settings |
 | 하단 전역 | **Docs**(`CircleHelp` → `/docs`) · **Sign out**(`LogOut`). 라우트가 아니라 "앱을 벗어나는 것"이라 구역 밖 `mt-auto`다. ⚠️ **`<nav>`가 아니다** — 둘의 성격이 갈려(문서 링크 / 폼 제출) 하나로 묶을 이름이 없다. ⚠️ **라벨이 그 화면의 제목과 같은 키다**(`m.publicDocs.docs.title`) — 2026-09-11까지 `nav.help: "Help"`로 갈려 있었고, 같은 라우트를 가리키는 라벨이 둘이면 하나가 낡는다. 그 화면은 아직 placeholder이지만 **라우트는 실재한다**(8-1a가 땄다). ⚠️ **Collapse는 사라졌다** |
 | 콘텐츠 패널 | `components/shell/content-panel.tsx` — **`<main>`**이고 `flex min-w-0 flex-1 flex-col **overflow-hidden** rounded-xl border border-border-subtle bg-background shadow-low`. ⚠️ **스크롤이 패널이 아니라 본문에 있다** (2026-09-11) — 패널이 통째로 스크롤하면 제목·툴바가 콘텐츠와 함께 올라가는데 그 둘은 "지금 보고 있는 것이 무엇인지"를 말한다. 형제 둘이 그것을 가른다: **`PanelHeader`**(`shrink-0`) · **`PanelBody`**(`min-h-0 flex-1 overflow-y-auto`). `head` prop이 아닌 이유는 라우트 넷 중 셋이 패널을 **레이아웃**에서 드는데 레이아웃은 페이지 props를 못 받아서다. 여백과 폭 상한은 **§5.15가 정본이다** — 둘 다 그 프리미티브가 들고 화면이 적지 않는다(⚠️ **폭 상한은 안쪽 래퍼가 든다** — 스크롤 컨테이너에 직접 주면 좁아져 스크롤바가 콘텐츠 옆에 생긴다). ⚠️ **본문 랜드마크를 이것이 든다 — 화면은 자기 `<main>`을 만들지 않는다**(라우트당 하나가 구조로 보장된다. 8-2에서 `/projects`가 실제로 그것을 잃었다). ⚠️ **넷이 함께 있어야 패널이 뜬다**(흰 배경·radius·border·그림자) — 8-1b가 그중 몇을 한꺼번에 잃고도 "그럭저럭" 보여서 못 알아챘다 |
 
@@ -685,32 +685,27 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 ⚠️ **재기 전에는 LNB를 px로 못박는다** — SSR은 뷰포트를 모르므로 %가 거짓이고, 그 상태로 그리면
 큰 모니터에서 LNB가 **하이드레이션이 끝날 때까지** 부풀어 있는다(한 프레임이 아니다).
 
-### 6.6 설정 (`/projects/[slug]/settings`) — 카드 다섯 (2026-09-20)
+### 6.6 설정 (`/projects/[slug]/settings`) — 카드 넷 (2026-09-22 Sources)
 
-활성 프로젝트는 **General → Repository → Translation sources → CI integration → Archive project**다.
+활성 프로젝트는 **General → Repository → CI integration → Archive project**다.
 보관되면 Restore 카드가 첫 자리이고 나머지 편집 컨트롤은 사유와 함께 비활성이다. 페이지 거부(`?e=`)는
 카드 밖 Alert, 카드 결과는 inset Alert, 필드 오류는 안정된 ID·`role="alert"`·장식 아이콘 14로 구분한다.
 
 공유 `PanelCard`는 radius 12 · `@container` · 머리 padding 16 · 제목 15/500이다. 헤더↔본문은
-`border-divider`, 행↔행은 `border-border`다. 제목 없는 locales 사용은 헤더와 `aria-labelledby`를 생략한다.
-활성·보관 상태 모두 이름 있는 설정 region 다섯을 유지한다. 본문 폭은 기존 limited PanelBody 규칙을 따른다.
+`border-divider`, 행↔행은 `border-border`다. 제목 없는 사용은 헤더와 `aria-labelledby`를 생략한다.
+활성·보관 상태 모두 이름 있는 설정 region 넷을 유지한다. 본문 폭은 기존 limited PanelBody 규칙을 따른다.
 
 | 카드 | 계약 |
 |---|---|
 | General | 썸네일 56/radius 8/`object-contain`, PNG·JPEG 3MB, Upload·Remove는 작업 중 함께 잠기고 실행한 버튼에만 스피너. 저장 이미지는 목록·Home·초대에도 쓰며 null은 기존 Box 폴백이다. Name은 320×36·최대 200자, 성공 후 입력 원문을 보존하고 다음 입력까지 Saved. Address는 320×36·sans·읽기 전용이며 Copy 버튼이 없다. 키보드 선택·복사를 위해 Tab 진입은 유지한다. 각 사실 행 padding 14/16, 라벨 열 96 |
 | Repository | 리포명은 sans. 건강성 일곱 갈래: ok / not-connected / app-uninstalled / installation-changed / repo-moved / repo-replaced / unknown. 해제·설치 변경·리포 대체는 카드 전폭 danger, 이동은 warning. unknown을 해제로 단정하지 않는다. 재연결 버튼은 연결 가능한 갈래에만 선다. Base branch 입력 240×36. GitHub account 독립 카드는 없고 재인가 안내와 `/account` 링크 한 줄이다 |
-| Translation sources | 행마다 이름·활성 키/언어 수·mono 경로·상태. not-imported / importing / failed-first / failed-after / imported 다섯 갈래이며 실행 중이 과거 오류보다 우선한다. 첫 적재만 소스별 재시도, 이미 적재된 실패는 워크플로 재실행 안내. 재시도·추가 결과는 행 밖 카드 수준 Alert에 남겨 리프레시가 버튼을 없애도 유지한다 |
-| CI integration | Push token 행과 Workflow file 행. 토큰 원문은 발급 응답에만 남고 저장 즉시 리포 secret을 갱신하라는 안내를 유지한다. 카드에 YAML `<pre>`를 두지 않는다. 워크플로 모달은 1024×640(작은 화면은 가용 높이 상한), 코드만 스크롤하며 훅 안내 포함. SHA가 없는 소스 안내는 CI 설정 검증이 아니다 |
+| CI integration | Sources 링크 한 줄, Push token 행과 Workflow file 행. 토큰 원문은 발급 응답에만 남고 저장 즉시 리포 secret을 갱신하라는 안내를 유지한다. 카드에 YAML `<pre>`를 두지 않는다. 워크플로 모달은 1024×640(작은 화면은 가용 높이 상한), 코드만 스크롤하며 훅 안내 포함. SHA가 없는 소스 안내는 CI 설정 검증이 아니다 |
 | Archive / Restore | 보관 확인 Dialog는 Cancel에 최초 포커스, 열린 PR 문자열/null/조회 실패 삼상태를 구분한다. 복원은 확인 없이 실행. 보관 성공 후 카드 전환이 결과 피드백이다. 보관 일시는 표시하되 저장하지 않는 보관자 이름은 만들지 않는다 |
 
-**Add sources 모달**은 1024×680(가용 높이 상한). `FilesStep`의 후보·미리보기·수동 포맷을 재사용한다.
-기존 소스는 체크+잠금이며 요청에서 제외한다. 선택 전체가 성공하거나 전부 롤백하고, 확정 거부는
-“Nothing was added”와 사유·충돌 경로를 보이며 열린 채 선택을 유지한다. 응답을 못 받은 네트워크 오류는
-성공 여부를 단정하지 않는다. 적재 부분 실패는 추가 성공+warning이다. 성공 뒤 YAML 반영 안내는 새 SHA와
-독립적으로 남는다. pending 동안 X·Esc·바깥 클릭·모든 입력(열린 Select Portal 포함)을 잠근다.
-`/surfaces/new`는 권한·보관 검사 뒤 `/settings?add=sources`로 redirect하고 OAuth 오류도 넘긴다.
+소스 추가 모달은 Sources가 소유한다(§6.66). Settings에는 워크플로 모달만 남는다.
+`/settings?add=sources`·`/surfaces/new`는 `/sources?add=sources`로 보내며 OAuth 오류 `e`를 보존한다.
 
-두 모달은 포커스를 각각 원래 트리거로 돌린다. pending은 `aria-busy`와 14px 스피너, 라벨은 유지한다.
+워크플로 모달은 포커스를 원래 트리거로 돌린다. pending은 `aria-busy`와 14px 스피너, 라벨은 유지한다.
 카드 폭 **640 미만**에서 라벨은 값 위(간격 6), 필드는 남는 폭, 보조 문구는 아래, 사실 행 버튼은 본문
 아래로 옮긴다. 머리 설명도 제목 아래로 내려간다. 뷰포트 분기는 추가하지 않는다.
 
@@ -762,6 +757,10 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 계정 병합 (2026-09-12) | 같은 골격 · 320 컬럼 다섯 줄(로고 · `h1` · 설명 · `EntityCard` · 채움 버튼 + 각주) + 구분선 아래 outlined 버튼. ⚠️ **실패는 기본 상태 + `Alert variant="danger"` 한 장이 전부다** — 부제·각주·구분선·버튼 라벨이 그대로다(실패에서 레이아웃을 갈아치우면 같은 화면으로 돌아온 것을 못 알아본다). 자리는 설명 **아래**, 카드 **위**. ⚠️ **§6.25 Layer A가 아니라 의도적 예외다** — 빼도 화면이 안 비지만, **메시지와 조치가 한 자리에 있어야** 한다: 다시 누를 버튼이 바로 아래이고 토스트는 그 둘을 화면의 반대 끝으로 가른다. ⚠️ **만료는 이 화면을 다시 그리지 않는다** — `/signin`으로 되돌린다(다시 그리면 그 상태가 또 하나의 표면이 된다) |
 
 ### 6.63 프로젝트 목록 (`/projects`) — 그룹 **카드** 셋 + 행마다 Meter (2026-09-15 2차 재설계)
+
+**LocaleMeter의 공유 소비자는 Projects와 Sources다.** `components/locale-meter.tsx`로 값 변경 없이 이동했다.
+완료/검토 막대 클래스·국기·aria-hidden은 동일하고 두 번째 막대 구현은 만들지 않는다.
+
 
 **시안이 둘이고 뒤엣것이 이긴다.** 행의 규격은 `design_handoff_projects_list/Projects.dc.html`
 (2026-09-13)이 정본이고, **그것을 담는 그릇**은 `design_handoff_projects_panel_rework/Projects v2.dc.html`
@@ -1275,26 +1274,58 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
   ([malmoi#53](https://github.com/SinhyeokKang/malmoi/issues/53)) — 실행 중 버튼이 `loading`(= `disabled`)
   이라 브라우저가 포커스를 `body`로 떨어뜨린다.
 
-### 6.66 언어 (`/projects/[slug]/locales`) — 표 + 폼 (2026-09-09, 6b-5)
+### 6.66 Sources (`/projects/[slug]/sources`) — 목록 + 상세 모달 (2026-09-22, 배포 대기)
 
-**이 화면이 생긴 이유는 orphaned 로케일이다.** 그때까지 로케일은 **번역 표의 열로만** 존재해서, 파일이
-사라진 로케일이 왜 그렇게 됐고 어떻게 되살리는지 말할 자리가 없었다 (ARCHITECTURE §5.5.16).
-
-셸 안 **`fluid`**(2026-09-20 — §5.1. 여백·폭 상한은 `PanelHeader`·`PanelBody`가 든다, §5.15가 정본이다). `h1` → 설명 한 줄
-(`text-xs text-muted-foreground`) → **표** → **기준 언어 Card**. ⚠️ **breadcrumb이 없다** (8-4 — §0).
+옛 Locales 두 주소는 인가 뒤 이 목록으로 보낸다. orphaned 언어의 사유·복구 안내를 유지하며,
+로케일 코드는 **sans**다(§4.1). 과거 이 절의 `text-mono` 설명은 잘못됐고 경로에만 mono를 쓴다.
+로컬 정본은 `design_handoff_sources/Sources.dc.html`이다. 확정 spec이 덮는 동작은
+미저장 이탈 확인창 없음·Open translations의 바닥 배치·절대 UTC 시각이다.
 
 | 요소 | 규칙 |
 |---|---|
-| 표 | ⚠️ **`Card` 밖이다** — Card 본문의 `p-4`와 셀의 `px-4`가 겹쳐 표만 16px 더 들여쓰인다(실측). `<Table>`을 `<main>`에 직접 둔다. ⚠️ **2026-09-19까지 이 줄이 멤버 화면을 선례로 인용했는데 그 화면이 카드로 갔다**(§6.65) — 같은 관용구를 쓰는 곳은 이제 이력(§6.68)이다. 열 둘: Language · Translated |
-| Language 열 | 코드는 파일명 그대로가 진실이라 **`text-mono`**(§4.1) + base면 `Badge`(muted) + orphaned면 `Badge danger`("File missing" — **배경 없음**, 되돌릴 수 있는 상태다 §6.2) |
-| orphaned 행 | ⚠️ **배지만 달지 않는다** — 사유와 되살리는 방법을 `text-xs text-muted-foreground` 한 단락으로 함께 낸다. 그 둘이 이 화면이 존재하는 이유다. **진행률도 계속 낸다**("되살리면 돌아온다"의 근거) |
-| Translated 열 | `localeProgress` — "N% · a of b" + 검토 필요가 있으면 `Badge warning`. ⚠️ **percent는 내림**이라 902/903이 100%로 보이지 않고, **base 로케일도 100%가 아닐 수 있다**(그 파일에 빈 값이 있을 수 있다) |
-| 정렬 | base 먼저(나머지가 그것의 번역이다) → 살아 있는 로케일 코드순 → **orphaned 맨 뒤**(행마다 설명이 붙어 사이에 끼면 건강한 목록이 쪼개진다). base가 orphaned여도 맨 앞이다 |
-| 기준 언어 Card | ⚠️ **Card에 제목·설명을 달지 않는다** — `FormGroup`이 라벨과 help를 들고, 둘을 다 두면 같은 문장이 화면에 두 번 나온다(실측). `Select` + [Save] 하나. ⚠️ **트리거가 `<button>`이라 `FormGroup`의 `htmlFor`가 버튼을 가리킨다** — 클릭 포워딩은 그대로 되지만 `labels`로 세는 검사는 `label[for]`를 직접 세야 한다. **orphaned 로케일은 목록에 없다** — 감추는 것은 편의이고 방어는 Action이다 |
-| 대기 Alert | `Alert warning` + 고칠 줄을 **`<pre>`**로(여러 줄일 수 있는 코드는 값 칩이 아니다 §6.4) + [Copy line]. ⚠️ **`settings`로 링크하지 않는다** — 그러면 고치려고 두 화면을 오간다(§7.7 결정 4의 경계). 워크플로 YAML **전체**는 설정에 남는다 |
-| 역할 | 페이지 게이트는 **`translation:write`**(번역자도 "왜 열이 사라졌나"를 봐야 한다). **기준 언어 Card와 대기 Alert만 `project:settings`로 갈리고 판정은 Action**이 한다. ⚠️ **여기는 안 그리고, 멤버(§6.65)는 꺼서 그린다** — 2026-09-19에 그 화면이 관용구를 뒤집었고 왜 갈리는지는 §6.65가 든다(요지: 멤버는 두 역할이 같은 화면을 나란히 보고 컨트롤이 행마다 반복된다) |
+| 목록 | slug 오름차순. 이름·활성 키/언어 수·진행률·사라진 언어 수·평문 적재 상태. OWNER에게만 형식·mono 경로·리포/브랜치. 행의 상세 버튼과 Open translations는 형제로 두고 중첩하지 않는다 |
+| 역할 | 페이지·상세 읽기 모두 `translation:write`. 연결 정보는 EDITOR 응답에서 제외한다. 추가·첫 적재 재시도·기준 언어 Save는 OWNER 전용. 보관 프로젝트는 OWNER 복원 링크 / EDITOR 소유자 요청 안내 |
+| 상세 상태 | URL 없는 클라이언트 선택. 주소·이력 불변, 새로고침은 목록. 안정된 화면 소유자가 추가/적재 결과를 유지한다. 늦은 읽기는 선택/요청 번호로 무시한다 |
+| 모달 | 기존 OnboardingModal 그대로. 폭 min(1024px, 창−96px), 본문 좌우32, dim 여백48. 본체·로딩 min(560px, 창높이−96px)/max(800px, 창높이−96px), 오류 min-height 0. 바닥 Open translations + Close. 본문만 스크롤 |
+| 로딩·오류 | 제목+값 skeleton 세 블록 + 언어 세 행. 읽기 실패는 Retry, 접근 거부에는 Retry 없음. 성공 후 최신 조회만 실패하면 기존 상세와 성공 결과를 보존하고 재조회 안내 |
+| 연결 블록 | OWNER만. 경로·형식·리포/브랜치, border/radius12·muted 배경. 넓을 때 1fr/180/280, 컨테이너850 이하에서 경로 한 줄+형식/리포 두 칸. null은 Not configured, 알 수 없는 형식은 Unrecognized format |
+| 카드 | Import status · Base language · Languages. 공유 PanelCard, 간격16, header16, 본문13/16. 정상 적재는 무채색, 실패만 warning. 미적재·진행 중은 info 아이콘 |
+| 적재 | not-imported / importing / failed-first / failed-after / imported. 최초 실패만 재시도, 이후 실패는 OWNER에게 워크플로 재실행 안내. Source commit은 원본 커밋 시각이고 적재 완료 시각이라고 부르지 않는다. `<time dateTime>`+UTC 접근 이름, null 시각 생략, 상대 표기는 importing뿐 |
+| 기준 언어 | 활성 언어 Select + Save. **적용 대기는 신호 셋이다** — 카드 머리의 `warning` 배지 · Select의 `border-amber-500/50` · 적용값/요청값 두 줄. 저장이 즉시 적용된 것처럼 보이지 않게 하는 장치이고, 배지가 낱말을 들었으므로 아래 Alert에 같은 제목을 또 쓰지 않는다. 선언만 저장한다. 저장 중 refresh와 실패에서도 draft를 보존하고 baseline만 갱신. 오류 뒤 Save 포커스. EDITOR는 적용값만 읽고 대기 시 적용값/요청값을 본다. OWNER만 workflow 한 줄+Copy. 비활성 Select는 pointer/click/key 셋을 막는다 |
+| 언어 | base 먼저→활성 코드순→고아(기존 localeProgress 정렬). 코드·Base·완료 수·공유 Meter·검토 수·고아 사유/복구·Open. percent는 완료만, 막대는 완료+검토. 0분모는0%, 동시 읽기 어긋남은 clamp. 고아는 활성 수에서 제외하되 행은 남기며 Open은 비활성 |
+| 좁은 표 | 컨테이너640 이하에서 고아 사유를 별도 행으로 내려 코드·진행률·복구 문구를 보존한다 |
+| 이탈 | 미저장 확인창 없음. 저장 중 X·Esc·배경·Close·두 Open을 잠그고 그 외 즉시 실행. 닫기 후 진입 행, 사라졌으면 제목에 포커스. 브라우저 Back을 모달 Close로 재정의하지 않는다 |
+| 행 시각 | 글리프 칩 28 정방 radius 4 — 기본 `bg-foreground/5`, **실패만 `bg-destructive/8`+`text-destructive`이고 행 자체는 칠하지 않는다**(눈이 먼저 닿아야 하는 것이 파일 이름이다). 첫 줄은 `text-foreground`로 되돌린다 — ghost Button이 본문을 muted로 상속시켜 시안의 진함/연함 대비가 0이 됐었다. chevron 16 `text-neutral-400`. 상세가 열린 행은 `disabled:bg-foreground/3`으로 눌린 채 남는다 |
+| 상태 낱말·글리프 | **색만으로 말하지 않는다** — `First import failed`(데이터 없음·재시도 가능)와 `Last import failed`(기존 데이터 있음·CI에서 고친다)를 목록에서도 낱말로 가르고, 실패는 `CircleAlert` 14 · 진행 중은 `LoaderCircle` 14 회전이 붙는다. ⚠️ **글리프는 목록 전용(`icon` prop)이다** — 상세는 같은 줄을 `Alert` 안에서 쓰고 그 그릇이 이미 아이콘을 그려 경고가 둘이 된다. 사라진 언어는 목록 배지와 표의 `Missing` 배지 둘 다 `danger`(배경 없는 붉은 글자, §6.2의 orphaned 규칙)이고 **파일이 사라졌다고 단정하지 않는다** |
+| Add sources | 기존 FilesStep·탐지·수동 경로 재사용. 기존 소스는 체크+잠금. 원자 거부는 선택 보존·Nothing was added, 부분 적재는 추가 성공+warning, 응답 불명은 확정하지 않는다. 소스별 결과·workflow 안내는 목록 고정 영역에 남는다. 모달1024×680, 저장 중 입력/이탈 잠금 |
 
-⚠️ **`?e=` 슬롯이 없다** — 보내는 자리가 0이다(거부는 `/projects?e=`, 저장 실패는 폼 안 `Alert danger`).
+Logs 필터 **Sources & locales**는 사건 범주이므로 유지한다.
+
+**실측 (2026-09-22, `/design-sync` + `/bugshot-qa` — 로컬 dev, computed style)**: 1440×900 모달
+**1024×800**, 960×900 **864×800**, 960×600 **864×504**(Close 488–528이라 화면 안). 읽기 실패 패널
+**301**, 접근 거부 **275**로 둘 다 바닥 행동이 보인다. 모달 radius 16 · 머리 32/32/20 · 제목 20/500/0.005em ·
+바닥 24/32 + `border-top #f0f0f0` + 버튼 40/radius 12 · 연결 판 셀 14/16 + 열 1fr/180/280 ·
+행 13/16 + 경로 mono 13 — 전부 핸드오프와 일치했다.
+
+⚠️ **핸드오프와 의도적으로 다른 자리 넷**: ① 경로 줄바꿈이 `overflow-wrap:anywhere`가 아니라
+`break-all`이다(리포 관용구 — `naming.tsx`·`repository-card`·`key-group`가 같다). ② 연결 판의 경로가
+mono 14가 아니라 **13**이다(`text-mono` 유틸이 소비 경로 하나로 고정, §4.1). ③ 언어 행의 열 구성은
+시안의 4열이 아니라 spec §6이 정한 **6열**이고 행의 `Open`은 공용 `size="sm"`이다. ④ 모달 본문 위
+패딩 2px는 공용 `modal.tsx`가 다섯 모달과 공유하는 값이다. **넷 다 프리미티브·확정 spec이 이긴
+자리이고, 고치면 이 화면만 다른 폼이 된다.**
+
+⚠️ **셸이 `min-w-[1280px]`이라 창 960에서는 문서에 가로 스크롤 320px이 생긴다** — Sources가 만든
+것이 아니라 셸의 기존 하한이고, 그 안에서 모달은 `min(1024, 창−96)`을 지킨다.
+
+**기록해 두는 미이행 넷** (2026-09-22 `/design-sync` 리뷰가 캔버스에서 찾은 것들 — 다음 라운드의 후보다):
+① 카드 셋의 머리 보조문(`Updated by imports from your repository.` 등)을 넣지 않았다 — 같은 뜻의 문장이
+각 카드 **본문**에 이미 서 있어 머리에 또 두면 한 카드가 같은 말을 두 번 한다. ② 목록 카드 머리의
+저장소 앞 `github` 글리프가 없다 — **`lucide-react` 1.37이 브랜드 아이콘을 뺐고**, 그 하나를 위해
+자체 SVG를 들이지 않았다. ③ 행 안 순서가 캔버스(상태 → Open → chevron)와 달리 상태 → chevron → Open이다 —
+chevron을 버튼 밖으로 빼면 순서는 맞지만 행의 클릭 영역이 좁아진다. ④ 좁은 폭(컨테이너 1016 이하)에서
+캔버스는 상태를 셋째 줄로 내리고 헤더 설명을 감추는데 구현은 그대로다 — 그 규칙의 목적(경로가 먼저
+줄바꿈되는 것을 막는다)은 `min-w-0` + `break-all`이 이미 지킨다(1280 실측: 경로 잘림 0 · 가로 overflow 0).
+(기준 언어의 적용 대기 3신호는 2026-09-22에 넷과 분리해 **구현했다** — 위 표를 본다.)
 
 ### 6.67 계정 (`/account`) — 카드 넷 (2026-09-09 6b-4 · 2026-09-10 세션 회수 · 2026-09-13 재편 · **2026-09-16 카드 규격**)
 
@@ -1320,7 +1351,7 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 
 **설정 재편에서 `components/ui/panel-card.tsx`로 승격했다**(2026-09-20). 이전 AccountCard/Rows/Row/Facts
 소비자를 각각 **4 / 3 / 3 / 1**로 센 뒤 계정 화면을 전환했다. 이름은 PanelCard/Rows/Row/Facts이고,
-locales는 제목 없는 PanelCard다. 옛 `Card` 두 소비자(locales·settings)를 모두 옮긴 뒤 파일을 삭제했다.
+당시 locales는 제목 없는 PanelCard였다. 지금은 Sources의 이름 있는 카드로 옮겼다. 옛 `Card`는 삭제됐다.
 Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상태·details·Meter는 그대로 소유한다.
 
 ⚠️ **`PanelCard`가 `<ul>`을 만들지 않는다.** Profile 카드의 몸통은 목록이 아니라 **사실 블록**(`PanelFacts` — 라벨 열 **96** `text-xs text-neutral-400` · `px-4 py-3.5`, Project Home 오른쪽 `Project` 카드의 메타 열과 같은 형)이다. 카드가 감싸면 `<ul>` 안에 `<div>`가 들어가고, 스크린리더가 **편집 가능한 폼을 "목록, 항목 3개"로 예고**한다. 행을 드는 카드 셋만 `PanelRows`를 쓴다.
@@ -1458,7 +1489,7 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 | 자리 | 아이콘 |
 |---|---|
 | 사이드바 — 사용자 구역 | Projects `Box` · Settings `CircleUser` (2026-09-11) |
-| 사이드바 — 프로젝트 구역 | Home `House` · Locales `Globe` · Translations `Languages` · Members `Users` · Logs `History` · Project settings `Settings` (8-3이 이름과 순서를 시안에 맞췄다) |
+| 사이드바 — 프로젝트 구역 | Home `House` · Sources `Files` · Translations `Languages` · Members `Users` · Logs `History` · Project settings `Settings` (8-3이 이름과 순서를 시안에 맞췄다) |
 | 사이드바 하단 전역 | **Docs `CircleHelp` · Sign out `LogOut`** — 둘뿐이다 (8-3). ⚠️ `LayoutGrid`·`PanelLeft`는 소비자가 0이 됐다(`Plus`·`CircleUser`는 아래 두 자리에서 다시 쓰인다) |
 | ~~프로젝트 컨텍스트~~ | ⚠️ **스위처가 8-3에 사라졌다** — `ChevronsUpDown`도 함께 소비자 0이다 (§6.5) |
 | 헤더 | **로고와 사용자 메뉴 아바타뿐이다** (8-2) — ⚠️ 햄버거 `Menu`는 **없어졌다**(반응형 분기 0). breadcrumb 구분자는 아이콘이 아니라 텍스트 `/`다(§6.4) |
@@ -1468,7 +1499,7 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 | 필터 | 검색 `Input` 앞 `Search`(`absolute left-2` + `pl-8`) · **로케일 다중 선택 트리거 안 `ChevronDown`**(§6.1). ⚠️ **상태 `Select`가 없어져 `ListFilter`도 소비자 0이다** (8-4) |
 | Alert 4종 | `Info`·`CircleCheck`·`TriangleAlert`·`CircleX` — **정본은 §6.2 표**다 |
 | 외부 링크 | **글리프 없음** — 색과 새 탭만 든다 (§6.3, 2026-09-18 반전) |
-| `EmptyState` | **48 원형 칩 안의 16** `text-muted-foreground` (8-3) — **일러스트는 여전히 없다**. 빈 이력 `History` · 보관된 프로젝트 `Archive` · 프로젝트 0개 `FolderGit2` · **필터·검색 0건 `Search`**(§6.63) · **대기 초대 0건 `MailPlus`** · 번역 화면 셋 `Languages` · 로케일 0개 `Globe` |
+| `EmptyState` | **48 원형 칩 안의 16** `text-muted-foreground` (8-3) — **일러스트는 여전히 없다**. 빈 이력 `History` · 보관된 프로젝트 `Archive` · 프로젝트 0개 `FolderGit2` · **필터·검색 0건 `Search`**(§6.63) · **대기 초대 0건 `MailPlus`** · 번역 화면 셋 `Languages` · 소스 0개는 역할별 평문 안내 |
 
 **쓰지 않는 자리** (아이콘이 정보를 안 더하고 스캔만 방해한다): 배지(§6.2는 텍스트만) · `Card` 제목 · 표 헤더 · **반복 목록의 모든 행**(네임스페이스 패널·리포 목록·키 행 — 같은 아이콘이 n번 반복되면 정보량이 0이다) · 텍스트 링크 안(외부 링크 예외).
 
@@ -1482,7 +1513,7 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 
 ### 표면 선택기
 
-Translations·Locales의 **패널 머리**에만 둔다. Home·Settings·사이드바에는 두지 않는다.
+Translations의 **패널 머리**에만 둔다. Sources는 선택기가 아니라 전체 소스 목록이다. Home·Settings·사이드바에는 두지 않는다.
 활성 표면이 하나면 렌더하지 않고, 둘 이상이면 빈 표면에서도 남겨 전환할 수 있게 한다.
 표시는 경로의 마지막 고정 디렉터리 조각을 **sans**로 낸다(`default`·충돌 suffix는 라벨이 아니다).
 닫힌 선택기는 짧은 라벨과 tooltip을, 열린 목록은 전체 path template 보조 줄을 함께 낸다.

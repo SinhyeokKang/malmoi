@@ -29,7 +29,7 @@ describe("activeProject — pathname에서 프로젝트 컨텍스트", () => {
     expect(current).toMatchObject({ slug: "acme", surfaceSlug: "web" });
     const items = navZones(current, { userName: "Shin", projectCount: 2 })[1]!.items;
     expect(items.find(item => item.key === "translations")!.href).toBe("/projects/acme/surfaces/web/translations");
-    expect(items.find(item => item.key === "locales")!.href).toBe("/projects/acme/surfaces/web/locales");
+    expect(items.find(item => item.key === "sources")!.href).toBe("/projects/acme/sources");
     expect(items).toHaveLength(6);
   });
   it("프로젝트 라우트면 그 멤버십을 낸다", () => {
@@ -78,7 +78,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
   it("OWNER는 여섯을 본다 — 순서까지 시안이다", () => {
     expect(projectSections("OWNER").map((s) => s.key)).toEqual([
       "home",
-      "locales",
+      "sources",
       "translations",
       "members",
       "logs",
@@ -89,7 +89,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
   it("EDITOR는 Project settings만 못 본다 — Home·Locales·Logs는 전원이 본다", () => {
     expect(projectSections("EDITOR").map((s) => s.key)).toEqual([
       "home",
-      "locales",
+      "sources",
       "translations",
       "members",
       "logs",
@@ -108,7 +108,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
     // ⚠️ Logs의 `?cursor=`는 쿼리라 경로가 아니다 — 접두로 재도 결과가 같지만, 규칙이 **라우트
     // 모양**에 붙는다는 것을 지키면 다음 사람이 하위 라우트를 더할 때 여기서 걸린다.
     expect(byKey.get("logs")).toBe(true);
-    for (const key of ["translations", "locales", "members", "settings"] as const) {
+    for (const key of ["translations", "sources", "members", "settings"] as const) {
       expect(byKey.get(key), key).toBe(false);
     }
   });
@@ -130,7 +130,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
    */
   it("Locales는 두 역할에 다 있다 — 컨트롤만 갈린다", () => {
     for (const role of ["OWNER", "EDITOR"] as const) {
-      expect(projectSections(role).map((s) => s.key), role).toContain("locales");
+      expect(projectSections(role).map((s) => s.key), role).toContain("sources");
     }
   });
 

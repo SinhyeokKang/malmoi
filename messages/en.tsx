@@ -221,6 +221,7 @@ export const en = {
        * 싶어지면 그 순간이 "메뉴명과 갈라도 되는가"를 판정할 자리다.
        */
       home: "Home",
+      sources: "Sources",
       locales: "Locales",
       translations: "Translations",
       members: "Members",
@@ -1914,8 +1915,7 @@ export const en = {
       /** 첫 적재 전. OWNER는 설정으로 보내므로 이 문구를 읽는 사람은 번역자다 (PRODUCT §7.5). */
       notReady: "Nothing to translate yet",
       noLocales: {
-        title: "No languages yet",
-        description: "The first import hasn't found any locale files. Ask the project owner.",
+          description: "The first import hasn't found any locale files. Ask the project owner.",
       },
       noKeys: {
         title: "No keys yet",
@@ -2173,29 +2173,61 @@ export const en = {
    * ⚠️ **`save`류를 설정과 공유하지 않는다.** 서로 다른 폼의 서로 다른 버튼이라 한 벌로 묶을 이유가
    * 없고, 묶으면 한 화면의 문구 변경이 다른 화면을 조용히 바꾼다.
    */
+  sources: {
+    title: "Sources",
+    description: "The translation files malmoi reads from your repository.",
+    add: "Add source",
+    open: "Open translations",
+    openLanguage: "Open",
+    details: "Source details",
+    files: "Files",
+    path: "Path pattern",
+    format: "File format",
+    repository: "Repository / branch",
+    notConfigured: "Not configured",
+    unknownFormat: "Unrecognized format",
+    status: "Import status",
+    languages: "Languages",
+    progress: "Progress",
+    review: "Needs review",
+    sourceCommit: "Source commit",
+    lastCommit: "Last imported commit",
+    failedAt: "Failed",
+    retry: "Retry",
+    loading: "Loading source details…",
+    unavailable: "We couldn't load this source. Try again.",
+    rejected: "This source isn't available to you. Close this window and refresh the page.",
+    latestFailed: "The change completed, but we couldn't load the latest state. Retry loading the details.",
+    emptyOwner: "Add a source to start importing translation files.",
+    emptyEditor: "Ask a project owner to add a translation source.",
+    ownerOnly: "Only a project owner can add sources.",
+    askOwner: "Ask a project owner to run the first import.",
+    reconnectOwner: "Reconnect the repository in Project settings, then try again.",
+    reconnectEditor: "Ask a project owner to reconnect the repository.",
+    firstImport: "The first import hasn't finished yet. Adding a source doesn't connect its CI workflow.",
+    noLanguages: "No active languages are available. Restore a language in the repository and import it again.",
+    applied: "Applied",
+    requested: "Requested",
+    waiting: "Waiting to apply",
+    pendingHelp: "If your CI passes the base language for this source, update its workflow entry to the requested language.",
+    missing: (count: number): string => `${count.toLocaleString("en-US")} missing ${count === 1 ? "language" : "languages"}`,
+    // ⚠️ 파일이 사라졌다고 단정하지 않는다 — 한 파일에 여러 언어가 드는 형식에서는 파일이 남아도 언어가 빠진다.
+    missingBadge: "Missing",
+    orphanReason: "This language wasn't found in the last import.",
+    orphanRestore: "Its translations are kept. Restore the language in the repository and import it again.",
+    importedHelp: "This is the data currently imported from your repository.",
+    workflow: "Update the workflow in Project settings to include the added sources.",
+    added: (slug: string, count: number, failed: number): string => `${slug}: source added · ${count.toLocaleString("en-US")} keys imported${failed ? ` · ${failed.toLocaleString("en-US")} files couldn't be read` : ""}`,
+  },
+
   locales: {
-    description: "The list comes from the locale files in your repository.",
     columns: { code: "Language", progress: "Translated" },
     /** base 배지 — 가장 흔한 상태가 조용해야 하므로 나머지 행에는 배지가 없다 (DESIGN §6.2). */
     base: "Base",
-    /** `localeProgress` — 검토 필요는 번역된 것이 아니라 따로 센다. */
-    progress: (percent: number, translated: number, total: number): string =>
-      `${percent}% · ${translated.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}`,
-    needsReview: (n: number): string => (n === 1 ? "1 needs review" : `${n.toLocaleString("en-US")} need review`),
-    /**
-     * ⚠️ **orphaned 로케일이 이 화면의 존재 이유다** (ARCHITECTURE §5.5.16). 그 상태는 오래전부터
-     * 정의돼 있었는데 **화면이 없어서** 번역자가 볼 수 있는 것은 "열이 사라졌다"뿐이었다. 그래서
-     * 사유와 되살리는 방법을 둘 다 말한다 — 되돌릴 수 있는 상태라는 것이 요지다.
-     */
     orphaned: {
       badge: "File missing",
-      reason: (code: string): string =>
-        `There's no file for ${code} in the repository any more, so it isn't sent back.`,
-      /** ⚠️ "below"라고 쓰지 않는다 — 그 번역은 아래가 아니라 같은 행의 진행률 열이다(실물로 확인했다). */
-      restore: "Add the file again and its translations come back on the next CI push.",
     },
     empty: {
-      title: "No languages yet",
       description: "They appear after the first import reads your locale files.",
     },
     /** 기준 언어 폼. **선언만 저장한다** — 현실은 push가 소유한다 (PRODUCT §3). */
@@ -2210,18 +2242,7 @@ export const en = {
       /** 첫 적재 전 — 고를 언어가 없어 폼이 막힌다. 이유를 말하지 않으면 고장으로 보인다. */
       noLocales: "You can set this after the first import.",
     },
-    /**
-     * 선언과 현실이 어긋난 동안 상시로 뜬다 (`basePending`) — 저장 직후만이 아니다.
-     *
-     * ⚠️ **git 어휘를 피하지 않는다** — 이 Alert는 **`project:settings`가 있는 역할에만** 렌더된다
-     * (페이지 게이트는 `translation:write`이고 컨트롤만 role로 갈린다 — 6b-2 관용구). 고칠 수 없는
-     * 사람에게 YAML 한 줄과 [Copy]는 소음이고, 번역 화면의 배너가 편집자 어휘로 같은 사실을 말한다.
-     */
     pending: {
-      title: "The base language change is waiting on your workflow",
-      body: (path: ReactNode): ReactNode => (
-        <>Update {path} — until then CI pushes keep the old base language.</>
-      ),
       copy: "Copy line",
     },
   },
@@ -2380,12 +2401,9 @@ export const en = {
       busy: "Updating the thumbnail…", noImage: "There is no thumbnail to remove.",
     },
     sources: {
-      title: "Translation sources", add: "Add sources", locked: "Already a source",
-      empty: "No translation sources yet", emptyHelp: "Add locale files from your repository to start translating.",
-      notImported: "Not imported yet", importing: "Importing…", imported: "Imported", failed: "Import failed",
+      add: "Add sources", locked: "Already a source",
+      notImported: "Not imported yet", importing: "Importing…", imported: "Imported", failed: "First import failed",
       failedAfter: "Last import failed", retry: "Run first import", rerun: "Re-run the workflow on GitHub.",
-      added: (count: number): string => `${count.toLocaleString("en-US")} translation ${count === 1 ? "source" : "sources"} added.`,
-      yamlReminder: "Update the workflow in your repository to include the new sources.",
       unknown: "We could not confirm the result. Check the source list before trying again.",
       nothingAdded: "Nothing was added. Your selection is still here.",
       description: "Choose locale files from your repository. Existing sources stay selected.",
@@ -2428,7 +2446,7 @@ export const en = {
 
       /**
        * 기준 브랜치 하나다 (6b-3이 언어와 한 폼에 뒀던 것을 **6b-5가 갈랐다** — 언어는
-       * `m.locales.field`이고 화면은 `/projects/:slug/locales`다, PRODUCT §7.7 결정 4).
+       * `m.locales.field`이고 화면은 `/projects/:slug/sources` 상세다, PRODUCT §7.7 결정 4).
        *
        * ⚠️ **브랜치는 즉시 쓰인다** — pull의 커밋 parent와 PR base가 그것이고 대기 개념이 없다.
        * 선언만 쓰이는 축(base language)이 여기서 사라졌으므로 두 성질을 한 help 문구로 설명할

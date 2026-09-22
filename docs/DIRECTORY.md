@@ -53,15 +53,16 @@ app/
                         · loading.tsx Home 골격(⚠️ 여기도 ContentPanel을 안 든다 — 레이아웃이 이미 들어 둘이 된다)
                         ⚠️ 레이아웃은 인가의 차단 지점이 될 수 없다(페이지와 병렬 렌더) — 서버 데이터를 안 읽는다
       page.tsx          Home(착지점). ⚠️ 툴바 지표를 복제하지 않는다 · 착지 클릭 하나를 링크로 갚는다
-      translations/ locales/  저장된 defaultSurfaceId로 보내는 legacy redirect
+      translations/    저장된 defaultSurfaceId로 보내는 legacy redirect
+      locales/         Sources 목록으로 보내는 legacy redirect
+      sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale + 읽기 전용 loadSourceDetail)
       surfaces/[surfaceSlug]/translations/  번역 표(로케일 = 행). URL 계약은 ns·locales·q
                         ⚠️ maxDuration=60이 여기 있어야 한다 — 없으면 기본 300이 STALE_AFTER_SECONDS와
                         같아져 정상 실행이 스스로를 stale로 본다
                         ⚠️ 헤더를 무조건 렌더한다 — Publish 결과 Alert가 그 안이라 조건부 분기에 두면
                         router.refresh()가 방금 받은 결과를 언마운트한다
-      surfaces/[surfaceSlug]/locales/  로케일·base 선언 + actions.ts(updateBaseLocale 하나).
-                        requireSurfaceAccess 뒤 projectId + surfaceId로 조회 — Action도 같은 두 축으로 좁힌다
-      surfaces/new/    OWNER·보관 검사 뒤 settings?add=sources redirect. OAuth 오류도 전달
+      surfaces/[surfaceSlug]/locales/  requireSurfaceAccess 뒤 Sources 목록으로 redirect
+      surfaces/new/    OWNER·보관 검사 뒤 sources?add=sources redirect. OAuth 오류도 전달
       not-found.tsx    없는 표면의 제품 안내와 Projects 복귀
       members/ logs/ settings/   (settings/actions.ts — GitHub 연결 시작 · 리포 (재)연결 · 리포 설정 갱신 · 프로젝트 이름/이미지)
                         ⚠️ 넷 다 게이트가 translation:write다(settings만 project:settings) — EDITOR도
@@ -114,11 +115,11 @@ components/
                         주석으로만 지켜지던 함정 다섯이 두 벌로 갈린다 (DESIGN §6.4)
   ui/image-tile.tsx     프로젝트 타일의 이미지 + 깨진 URL 폴백. useImageFallback은 Avatar와 한 벌이고
                         마크업만 다르다 — 소비자 셋(목록·Home / 초대 / 설정)은 서버 컴포넌트로 남는다
-  ui/panel-card.tsx     PanelCard/Rows/Row/Facts. 계정 구역에서 승격, 제목 없는 locales도 지원.
+  ui/panel-card.tsx     PanelCard/Rows/Row/Facts. 계정 구역에서 승격, 제목 없는 카드도 지원.
                         옛 ui/card.tsx와 account/account-section.tsx는 마지막 소비자 전환과 함께 삭제
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
-  ui/modal.tsx          모달 껍데기. ⚠️ 소비자가 다섯이다 — 새 프로젝트 온보딩(네 단계) · Publish 모달
-                        (갈래 열하나) · 초대 모달(폼→링크 두 얼굴) · 설정 Add sources/Workflow. ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고 Radix
+  ui/modal.tsx          모달 껍데기. ⚠️ 소비자가 여섯이다 — 새 프로젝트 온보딩(네 단계) · Publish 모달
+                        (갈래 열하나) · 초대 모달(폼→링크 두 얼굴) · Sources 추가/상세 · 설정 Workflow. ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고 Radix
                         Dialog.*를 직접 조립한다 — 그 프리미티브는 Overlay·padding·바닥 배치가
                         고정이라 1024 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
                         넷이 함께 움직인다. [Back]·[Next]와 "Step n of 4"를 껍데기가 소유하되
@@ -148,7 +149,7 @@ components/
                         원인은 소스의 상수이고 translations-screen.test.ts가 그 예산을 센다
                         ⚠️ 국기는 CSS background-image다 — ?ns=*에서 2,709개가 서므로 <img>면 요소가 그만큼 는다
                         ⚠️ live region은 표 하나다(셀마다 두면 2,700개)
-  locales/ settings/ onboarding/ projects/ signin/ account/ invite/
+  sources/ settings/ onboarding/ projects/ signin/ account/ invite/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
   members/              멤버 화면 조각 다섯 (2026-09-19 리워크). members-panel-header(좌석 라벨 +
@@ -184,7 +185,9 @@ components/
                         ⚠️ **sync-button·sync-result는 sync-repository의 산출물이다** — 같은 디렉터리에
                         살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다
   onboarding/modal.tsx  components/ui/modal.tsx를 그대로 재수출한다 — 호출부를 안 건드리려는 한 줄이다
-  settings/             general-card · repository-card/repository-form · sources-card/add-sources-modal ·
+  sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal.
+                        목록 소유자가 선택·쓰기 결과를 유지. 로딩/거부/장애를 구별하고 쓰기는 기존 Action 경계를 따른다.
+  settings/             general-card · repository-card/repository-form ·
                         ci-card · archive-card · push-token-panel. 독립 add-surface.tsx는 모달 전환 뒤
                         삭제했고, push-token-panel은 소비자가 ci-card 하나뿐이라 onboarding/에서 옮겼다.
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
@@ -206,8 +209,8 @@ components/
                         설치된 next 소스에 따로 고정한다
                         ⚠️ ButtonLink가 아니라 buttonClass를 빌려 쓴다 — onNavigate가 필요해서다
                         (publish-button·github-section과 같은 관용구)
-  projects/locale-meter.tsx
-                        행의 로케일 Meter. 치수가 캔버스 리터럴 그대로이고 폭만 인라인 스타일이다
+  locale-meter.tsx
+                        Projects·Sources 공유 로케일 Meter. 치수가 캔버스 리터럴 그대로이고 폭만 인라인 스타일이다
                         (퍼센트가 데이터라서 — 나머지를 스타일로 만들면 소스 검사 밖으로 나간다)
   projects/empty-projects.tsx
                         본문이 빌 때의 **카드 둘** — 프로젝트 0건(`EmptyProjects`)과 검색 0건
@@ -341,6 +344,9 @@ lib/
                         본다. components/search-input.tsx가 같은 함정을 제 자리에서 설명한다) ·
                         flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
+  sources/             query(server-only 목록/선택 상세, 역할별 명시 projection) ·
+                        actions(planSourceActions) · base-language(폼 상태 판정). 두 잎은 서버 import가 없다.
+  revalidate-after-commit.ts  커밋 뒤 재검증 실패를 저장 실패로 뒤집지 않는 공유 helper(account/settings/sources).
   surfaces/            plan(정렬·slug·경로 라벨·소유권, client-safe) · access(프로젝트 인가 뒤 표면 좁힘)
                         push·편집 조회는 projectId + surfaceId. Publish는 프로젝트 단위 단일 PR
   surfaces/create.ts   Project 잠금 후 인가·리포·출력 경로 재검사, 다중 생성+첫 적재 한 tx 확정

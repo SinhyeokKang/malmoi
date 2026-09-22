@@ -1,10 +1,7 @@
 "use client";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { m } from "@/lib/i18n";
-import { routes } from "@/lib/routes";
 import { surfaceLabel } from "@/lib/surfaces/plan";
 
 export type SurfaceOption = { slug: string; pathTemplate: string | null; unpublished: number };
@@ -25,13 +22,4 @@ export function SurfaceSelector({ value, surfaces, pending, onChange }: {
       </span>
     </SelectItem>)}</SelectContent>
   </Select>;
-}
-
-export function LocaleSurfaceSelector({ slug, surfaceSlug, surfaces }: {
-  slug: string; surfaceSlug: string; surfaces: readonly SurfaceOption[];
-}) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  return <SurfaceSelector value={surfaceSlug} surfaces={surfaces} pending={pending}
-    onChange={next => startTransition(() => router.push(routes.surfaceLocales(slug, next)))} />;
 }
