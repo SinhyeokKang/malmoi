@@ -180,6 +180,7 @@ describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
     "app/(edit)/projects/[slug]/settings/page.tsx",
     "app/(edit)/projects/[slug]/logs/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
+    "components/sources/sources-archived.tsx",
     "components/sources/sources-screen.tsx",
     "app/(edit)/account/page.tsx",
     "app/(edit)/account/loading.tsx",
@@ -231,7 +232,7 @@ describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
   });
 
   it("소비자가 열둘 + 본문 전용 넷이다 — 수가 바뀌면 다시 센다", () => {
-    expect(CONSUMERS).toHaveLength(12);
+    expect(CONSUMERS).toHaveLength(13);
     expect(BODY_ONLY).toHaveLength(4);
   });
 

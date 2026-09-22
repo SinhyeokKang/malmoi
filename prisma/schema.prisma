@@ -135,6 +135,18 @@ model TranslationSurface {
   /// ⚠️ **backfill이 없다.** 에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이고, 시간순
   /// 정렬에서 **가장 오래된 것으로 취급한다**(임의 순서를 만들지 않는다).
   lastImportFailedAt  DateTime?
+  /// 마지막으로 **성공한** 적재가 끝난 시각. `lastCommitAt`(원본 커밋 시각)과 다른 축이고, 화면이
+  /// "언제 읽어 왔나"에 답하려면 이 값이어야 한다 — 커밋 시각을 그 자리에 쓰면 리포에 오래 전
+  /// 커밋이 있는 소스가 "방금 적재됨"으로 읽힌다(Sources 시안 `1d` ⑤).
+  ///
+  /// ⚠️ **backfill이 없다.** 이 컬럼 이전의 성공에는 시각이 없고, 그 행은 화면에서 시각을 **생략한다** —
+  /// `lastCommitAt`으로 메우면 그 값이 적재 시각이라는 거짓이 DB에 남는다.
+  lastImportedAt      DateTime?
+  /// 소스가 **선언된** 시각. 첫 적재 전 화면이 "얼마나 기다렸나"에 답하는 유일한 값이다(`1d` ①).
+  ///
+  /// ⚠️ **기존 행은 마이그레이션 시각으로 채워진다 — 진짜 시각이 아니다**(`Locale.createdAt`과 같은
+  /// 사정). 이 값을 "소스가 정확히 언제 생겼나"의 답으로 믿는 코드를 만들지 않는다.
+  createdAt           DateTime      @default(now())
   project             Project       @relation("ProjectSurfaces", fields: [projectId], references: [id], onDelete: Restrict)
   defaultFor          Project[]     @relation("DefaultSurface")
   locales             Locale[]

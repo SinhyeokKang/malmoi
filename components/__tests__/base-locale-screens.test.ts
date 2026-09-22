@@ -121,7 +121,8 @@ describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
   /** 여러 줄일 수 있는 코드는 값 칩이 아니라 `<pre>`다 (DESIGN §6.4). */
   it("대기 Alert가 고칠 줄을 `<pre>`로 내고 복사할 수 있다", () => {
     const src = read(LOCALES_PAGE);
-    expect(src).toMatch(/<Alert variant="info"/);
+    // 시안 `1e` ①은 상자가 아니라 배지 + 사유 행이다 — Alert를 쓰면 카드 안에 그릇이 둘이 된다.
+    expect(src).toMatch(/variant="warning">\{m\.sources\.waiting\}/);
     expect(src).toMatch(/<code/);
     expect(src).toMatch(/<CopyButton/);
   });
@@ -152,10 +153,12 @@ describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
     expect(src).not.toMatch(/useState\(\s*baseLocale\s*\?\?/);
   });
 
-  /** 저장 실패는 **in-block** `Alert danger`다 — 페이지 수준 거부(`?e=`)만 global이다 (DESIGN §6.6). */
-  it("저장 실패가 폼 안의 danger Alert로 간다", () => {
+  /** 저장 실패는 **컨테이너 없는 한 줄**이다 (시안 `1e` ③) — 페이지 수준 거부(`?e=`)만 Alert 상자다. */
+  it("저장 실패가 폼 안의 붉은 한 줄로 간다", () => {
     const src = read(LOCALES_FORM);
-    expect(src).toMatch(/<Alert variant="danger"/);
+    expect(src).not.toMatch(/<Alert/);
+    expect(src).toMatch(/text-destructive/);
+    expect(src).toMatch(/<CircleAlert/);
     expect(src).toMatch(/isRepositorySettingsError/);
   });
 
@@ -176,10 +179,11 @@ describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
    */
   it("orphaned 행이 danger 배지와 설명을 든다", () => {
     const src = read(LOCALES_PAGE);
-    expect(src).toMatch(/variant="danger"/);
+    expect(src).toMatch(/variant="missing"/);
     expect(src).toMatch(/orphaned/);
-    expect(src).toMatch(/m\.sources\.orphanReason/);
-    expect(src).toMatch(/m\.sources\.orphanRestore/);
+    expect(src).toMatch(/m\.sources\.missingRepo/);
+    expect(src).toMatch(/m\.sources\.orphanStrip/);
+    expect(src).toMatch(/m\.sources\.orphanStripRest/);
   });
 });
 

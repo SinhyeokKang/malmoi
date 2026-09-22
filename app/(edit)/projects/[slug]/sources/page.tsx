@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { SourcesScreen } from "@/components/sources/sources-screen";
-import { ProjectArchived } from "@/components/project-archived";
+import { SourcesArchived } from "@/components/sources/sources-archived";
 import { Alert } from "@/components/ui/alert";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { canPerform } from "@/lib/auth/permission";
@@ -16,7 +16,10 @@ export const maxDuration = 60;
 export default async function SourcesPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<Raw<"add" | "e" | "source">> }) {
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
-  if (archived) return <ProjectArchived slug={slug} role={role} />;
+  if (archived) {
+    const project = await getPrisma().project.findUnique({ where: { id: projectId }, select: { archivedAt: true } });
+    return <SourcesArchived slug={slug} role={role} archivedAt={project?.archivedAt ?? null} />;
+  }
   const { add, e } = firstQueryValues(await searchParams);
   const canEdit = canPerform(role, "project:settings");
   const data = await loadSources(getPrisma(), projectId, role);

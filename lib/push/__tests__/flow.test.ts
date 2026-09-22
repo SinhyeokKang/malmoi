@@ -327,7 +327,7 @@ describe("push 흐름 — 신규 프로젝트 (DB가 비어 있다)", () => {
       // 결과는 토큰과 **무관하다** — 교차한 실행이 토큰을 덮어도 이 성공이 기록된다 (launch-readiness L3.7).
       where: { id: "surface-1", projectId: PROJECT_ID },
       // ⚠️ **성공이 실패 시각도 비운다** — 안 비우면 성공한 뒤에도 Home이 옛 실패를 말한다.
-      data: { lastImportError: null, lastImportFailedAt: null },
+      data: { lastImportError: null, lastImportFailedAt: null, lastImportedAt: expect.any(Date) },
     }, {
       // 진행 표시는 조건부다 — 나중 실행의 표시를 지우지 않는다.
       where: { id: "surface-1", projectId: PROJECT_ID, lastImportToken: "fixture-run" },
@@ -636,7 +636,7 @@ describe("push 흐름 — 키 생성 시각과 임포트 결과", () => {
 
   it("완전 성공이 이전 실패와 진행 표시를 같이 비운다", async () => {
     const { projectUpdates } = await run(null);
-    expect(projectUpdates[1]).toEqual({ where: { id: "surface-1", projectId: PROJECT_ID }, data: { lastImportError: null, lastImportFailedAt: null } });
+    expect(projectUpdates[1]).toEqual({ where: { id: "surface-1", projectId: PROJECT_ID }, data: { lastImportError: null, lastImportFailedAt: null, lastImportedAt: expect.any(Date) } });
     expect(projectUpdates[2]).toMatchObject({
       where: { id: "surface-1", projectId: PROJECT_ID, lastImportToken: "fixture-run" },
       data: { lastImportStartedAt: null, lastImportToken: null },

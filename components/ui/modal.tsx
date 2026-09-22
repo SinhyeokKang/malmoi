@@ -43,6 +43,14 @@ export type OnboardingModalProps = {
   footer?: ReactNode;
   closeLabel?: string;
   closeDisabled?: boolean;
+  /**
+   * 닫기 왼쪽의 **보조 행동** (2026-09-22 — Sources 시안 `1b`가 캔버스 `Modal`에 더한 prop).
+   *
+   * ⚠️ **값이 없으면 그리지 않는다** — 기존 다섯 단계 모달의 머리 DOM이 그대로여야 한다.
+   * ⚠️ **확정 행동을 여기 두지 않는다.** 바닥의 검정 버튼이 저장으로 읽히는 모달에서만 쓰는 자리이고,
+   * 그래서 이 슬롯의 버튼은 default다.
+   */
+  headerAction?: ReactNode;
   panelClassName?: string;
   transitionKey?: string;
   quiet?: boolean;
@@ -83,7 +91,7 @@ export function OnboardingModal({
   onNext,
   onBack,
   onClose,
-  children, footer, actions, closeLabel, closeDisabled = false, panelClassName, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef,
+  children, footer, actions, headerAction, closeLabel, closeDisabled = false, panelClassName, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef,
 }: OnboardingModalProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   /**
@@ -183,6 +191,8 @@ export function OnboardingModal({
               ⚠️ **`asChild`를 쓰지 않는다** — `DialogClose asChild` 자식 옆에 형제를 두는 형이
               POSTMORTEM 2026-09-09의 지뢰다. 여기서는 Close 자신이 버튼이다.
             */}
+            <div className="flex shrink-0 items-center gap-2">
+            {headerAction}
             <Button
               type="button"
               variant="ghost"
@@ -193,6 +203,7 @@ export function OnboardingModal({
             >
               <X className="size-5" aria-hidden />
             </Button>
+            </div>
           </header>
 
           {/*

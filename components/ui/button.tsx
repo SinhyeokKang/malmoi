@@ -1,7 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
+import type { ButtonHTMLAttributes, MouseEventHandler, ReactNode, Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -195,15 +195,23 @@ export function ButtonLink({
   variant,
   size,
   className,
+  onClick,
   children,
 }: VariantProps<typeof buttonClass> & {
   href: string;
   className?: string;
+  /**
+   * ⚠️ **이동을 막는 자리에만 쓴다** (2026-09-22 — Sources 상세의 미저장 확인창). 링크는 그대로
+   * 링크여야 하므로(가운데 클릭·새 탭이 살아 있다) `onClick`에서 `preventDefault`를 하는 쪽이
+   * 버튼으로 바꾸는 것보다 잃는 것이 적다.
+   */
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
   children: ReactNode;
 }) {
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)}
     >
       {children}
