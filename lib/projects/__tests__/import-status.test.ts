@@ -112,7 +112,7 @@ const AT = new Date("2026-09-15T09:00:00Z");
  * 항목·배너·메타가 옛 실패를 말한다.
  */
 it("importOutcomeFields clears all three columns on a clean import", () => {
-  expect(importOutcomeFields(null, AT)).toEqual({ lastImportError: null, lastImportStartedAt: null, lastImportFailedAt: null });
+  expect(importOutcomeFields(null, AT)).toEqual({ lastImportError: null, lastImportStartedAt: null, lastImportFailedAt: null, lastImportedAt: AT });
 });
 
 /** 부분 실패는 데이터가 들어간 채로 남는 표시다 — 진행 표시는 같이 지운다. */

@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "TranslationSurface" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "lastImportedAt" TIMESTAMP(3);

@@ -77,6 +77,14 @@ export function importOutcomeFields(code: ImportFailureCode | null, at: Date): {
   lastImportError: ImportFailureCode | null;
   lastImportStartedAt: null;
   lastImportFailedAt: Date | null;
+  lastImportedAt?: Date;
 } {
-  return { lastImportError: code, lastImportStartedAt: null, lastImportFailedAt: code === null ? null : at };
+  return {
+    lastImportError: code,
+    lastImportStartedAt: null,
+    lastImportFailedAt: code === null ? null : at,
+    // ⚠️ **실패는 이 값을 건드리지 않는다** — 마지막 성공은 실패한 뒤에도 유효한 사실이고(시안 `1d` ④가
+    // 그 두 줄을 함께 세운다), 비우면 "지금 보이는 키가 언제 것인가"에 답할 값이 사라진다.
+    ...(code === null ? { lastImportedAt: at } : {}),
+  };
 }

@@ -10,6 +10,7 @@ import { formatLabel } from "@/lib/onboarding/detect";
 const sourceSelect = {
   id: true, slug: true, adapterName: true, pathTemplate: true, baseLocale: true, declaredBaseLocale: true,
   lastCommitSha: true, lastCommitAt: true, lastImportStartedAt: true, lastImportError: true, lastImportFailedAt: true,
+  lastImportedAt: true, createdAt: true,
 } satisfies Prisma.TranslationSurfaceSelect;
 type SourceRecord = Prisma.TranslationSurfaceGetPayload<{ select: typeof sourceSelect }>;
 function sourceView(source: SourceRecord, role: Role) {
@@ -18,6 +19,7 @@ function sourceView(source: SourceRecord, role: Role) {
     id: source.id, slug: source.slug, baseLocale: source.baseLocale, declaredBaseLocale: source.declaredBaseLocale,
     lastCommitSha: source.lastCommitSha, lastCommitAt: source.lastCommitAt,
     lastImportStartedAt: source.lastImportStartedAt, lastImportError: source.lastImportError, lastImportFailedAt: source.lastImportFailedAt,
+    lastImportedAt: source.lastImportedAt, createdAt: source.createdAt,
     ...(canPerform(role, "project:settings") ? { connection: { adapterName: source.adapterName, pathTemplate: source.pathTemplate, format: source.adapterName !== null && isAdapterName(source.adapterName) ? formatLabel(source.adapterName).label : null } } : {}),
   };
 }
