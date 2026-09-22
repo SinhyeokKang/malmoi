@@ -95,3 +95,28 @@ it("보관된 Publish의 행과 상세 모두 야간 재시도를 약속하지 �
   </Dialog.Content></Dialog.Root>);
   expect(dialog.container.textContent).not.toContain("nightly");
 });
+
+/**
+ * 상세 껍데기가 **시안이 아니라 1024 모달을 따른다** (2026-09-22 사용자 — `/design-sync`에서
+ * 핸드오프 `1d`의 640 판정을 뒤집었다. 근거는 DESIGN §6.68).
+ *
+ * ⚠️ **여기서 세는 것은 전부 실측이 잡은 것**이다 — 화면에도 값 테스트에도 안 나타난 부류라
+ * 구조로 고정하지 않으면 다음 리팩터가 같은 자리를 지운다.
+ */
+describe("상세 껍데기 — 실측이 잡은 자리", () => {
+  /**
+   * ⚠️ **목적지 링크가 없는 종류가 있다** — SURFACE·SETTINGS(EDITOR)·번역(대상 소실)이 그렇고,
+   * 그때 푸터가 **버튼 0개로 선다**: 구분선과 56px 공백만 남는 판이 실측에서 나왔다.
+   * [Close]는 종류와 무관하므로 그 자리를 채우는 것이 맞고, 핸드오프의 세 상세도 전부 들고 있다.
+   */
+  it("목적지 링크가 없어도 푸터에 [Close]가 선다 — 빈 푸터가 생기지 않는다", async () => {
+    const value = row({
+      kind: "SURFACE", subtype: "surface.baseLocaleChanged", result: null, finishedAt: null,
+      payload: { kind: "SURFACE", surfaceSlug: "web", adapter: null, baseLocale: { before: "ko", after: "en" } },
+    });
+    const { container } = await detail(value);
+    const footer = container.querySelector("[data-event-detail-footer]");
+    expect(footer).not.toBeNull();
+    expect(footer!.textContent).toContain(m.logs.detail.actions.close);
+  });
+});
