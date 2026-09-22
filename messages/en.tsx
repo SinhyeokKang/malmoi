@@ -2211,6 +2211,8 @@ export const en = {
     waiting: "Waiting to apply",
     pendingHelp: "If your CI passes the base language for this source, update its workflow entry to the requested language.",
     missing: (count: number): string => `${count.toLocaleString("en-US")} missing ${count === 1 ? "language" : "languages"}`,
+    // ⚠️ 파일이 사라졌다고 단정하지 않는다 — 한 파일에 여러 언어가 드는 형식에서는 파일이 남아도 언어가 빠진다.
+    missingBadge: "Missing",
     orphanReason: "This language wasn't found in the last import.",
     orphanRestore: "Its translations are kept. Restore the language in the repository and import it again.",
     importedHelp: "This is the data currently imported from your repository.",
@@ -2400,7 +2402,7 @@ export const en = {
     },
     sources: {
       add: "Add sources", locked: "Already a source",
-      notImported: "Not imported yet", importing: "Importing…", imported: "Imported", failed: "Import failed",
+      notImported: "Not imported yet", importing: "Importing…", imported: "Imported", failed: "First import failed",
       failedAfter: "Last import failed", retry: "Run first import", rerun: "Re-run the workflow on GitHub.",
       unknown: "We could not confirm the result. Check the source list before trying again.",
       nothingAdded: "Nothing was added. Your selection is still here.",

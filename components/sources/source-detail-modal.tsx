@@ -9,6 +9,7 @@ import { PanelCard } from "@/components/ui/panel-card";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LocaleMeter } from "@/components/locale-meter";
+import { LocaleFlag } from "@/components/translations/locale-badge";
 import { CopyButton } from "@/components/onboarding/copy-button";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -37,7 +38,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
   const canOpen = !!actions?.canOpen && detail !== null && detail.locales > 0;
   const disabledReason = !detail?.installed ? canEdit ? m.sources.reconnectOwner : m.sources.reconnectEditor : !detail?.lastCommitSha ? m.sources.firstImport : m.sources.noLanguages;
   const failed = state.status === "failed" || state.status === "rejected";
-  return <OnboardingModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, detail.locales)}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : m.sources.loading}
+  return <OnboardingModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, detail.locales)}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : failed ? undefined : m.sources.loading}
     onClose={onClose} closeDisabled={busy} returnFocusRef={returnFocusRef} fallbackFocusRef={fallbackFocusRef} quiet={fieldError}
     panelClassName={cn(failed ? "min-h-0" : "min-h-[min(560px,calc(100svh-96px))] max-h-[min(800px,calc(100svh-96px))]")}
     actions={<div className="flex items-center gap-2">
@@ -91,10 +92,10 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             // 집계 두 쿼리 사이 적재가 바뀌어도 막대 합은 트랙을 넘지 않는다. 퍼센트는 완료만 센다.
             const done = Math.min(row.total, row.translated);
             const review = Math.min(Math.max(0, row.total - done), row.needsReview);
-            const reason = <><p>{m.sources.orphanReason}</p><p>{m.sources.orphanRestore}</p></>;
+            const reason = <><p><Badge variant="danger">{m.sources.missingBadge}</Badge></p><p>{m.sources.orphanReason}</p><p>{m.sources.orphanRestore}</p></>;
             return <Fragment key={row.code}><tr className="border-border border-b">
-              <td className="py-4"><span>{row.code}</span>{row.isBase && <Badge className="ml-2" variant="neutral">{m.locales.base}</Badge>}</td>
-              <td>{row.translated}/{row.total}</td><td><LocaleMeter locale={{ surfaceSlug: detail.slug, code: row.code, isBase: row.isBase, total: row.total, done, review, percent: row.percent }} /></td>
+              <td className="py-4"><span className="flex items-center gap-1.5"><LocaleFlag code={row.code} /><span>{row.code}</span>{row.isBase && <Badge variant="neutral">{m.locales.base}</Badge>}</span></td>
+              <td>{row.translated}/{row.total}</td><td><LocaleMeter locale={{ surfaceSlug: detail.slug, code: "", isBase: row.isBase, total: row.total, done, review, percent: row.percent }} /></td>
               <td>{row.needsReview}</td><td className="pr-3 leading-[1.6] @max-[640px]:hidden">{row.orphaned && reason}</td>
               <td>{canOpen && !row.orphaned ? <ButtonLink size="sm" href={routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, locales: row.code })}>{m.sources.openLanguage}</ButtonLink> : <Button size="sm" disabled title={row.orphaned ? m.sources.orphanReason : busy ? m.locales.field.saving : disabledReason}>{m.sources.openLanguage}</Button>}</td>
             </tr>{row.orphaned && <tr className="hidden @max-[640px]:table-row"><td colSpan={6} className="text-muted-foreground pb-4 leading-[1.6]">{reason}</td></tr>}</Fragment>;

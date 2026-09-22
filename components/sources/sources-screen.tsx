@@ -13,10 +13,12 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { LocaleMeter } from "@/components/locale-meter";
 import { failureText } from "@/components/onboarding/failure";
 import { canPerform, type Role } from "@/lib/auth/permission";
+import { cn } from "@/lib/utils";
 import { m } from "@/lib/i18n";
 import { ingestHeadline } from "@/lib/onboarding/message";
 import type { AdapterChoice } from "@/lib/onboarding/types";
 import { routes, ALL_NAMESPACES } from "@/lib/routes";
+import { planSurfaceImportStatus } from "@/lib/import/surface-status";
 import { planSourceActions } from "@/lib/sources/actions";
 import type { SourcesData } from "@/lib/sources/query";
 import { summarizeAddResults, type SurfaceAdded } from "@/lib/surfaces/plan-add";
@@ -75,17 +77,19 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           const actions = planSourceActions({ ...source, role, archived: false, installed: data.installed, pending: busy });
           const openReason = !data.installed ? canEdit ? m.sources.reconnectOwner : m.sources.reconnectEditor : !source.lastCommitSha ? m.sources.firstImport : m.sources.noLanguages;
           const Glyph = source.connection?.adapterName === "json-catalog" || source.connection?.adapterName === "chrome-locales" ? FileJson2 : FileCode2;
+          // 시안은 실패한 소스에서 **글리프 칩만** 붉다 — 행 전체를 칠하면 눈이 먼저 닿는 것이 파일 이름이 아니게 된다.
+          const failed = planSurfaceImportStatus(source).state.startsWith("failed");
           return <li key={source.id} className="border-border border-t first:border-t-0">
             <div className="flex items-center gap-3 pr-4">
-              <Button variant="ghost" type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="hover:bg-foreground/2 h-auto min-w-0 flex-1 justify-start gap-3 whitespace-normal rounded-none px-4 py-[13px] text-left focus-visible:ring-inset" onClick={event => {
+              <Button variant="ghost" type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="hover:bg-foreground/2 disabled:bg-foreground/3 h-auto min-w-0 flex-1 justify-start gap-3 whitespace-normal rounded-none px-4 py-[13px] text-left focus-visible:ring-inset" onClick={event => {
                 returnFocus.current = event.currentTarget; selection.current = source.slug; setSelected(source.slug); void load(source.slug, false);
               }}>
-                <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded"><Glyph className="size-4" aria-hidden /></span>
-                <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
+                <span data-source-glyph data-tone={failed ? "failed" : "default"} className={cn("flex size-7 shrink-0 items-center justify-center rounded", failed ? "bg-destructive/8 text-destructive" : "bg-foreground/5")}><Glyph className="size-4" aria-hidden /></span>
+                <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-foreground text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
                   {source.connection && <span className="text-mono text-muted-foreground break-all">{source.connection.pathTemplate ?? m.sources.notConfigured}</span>}
-                  <span className="flex items-center gap-3"><LocaleMeter locale={{ surfaceSlug: source.slug, code: "", isBase: false, ...source.progress }} />{source.orphanedLocales > 0 && <Badge variant="neutral">{m.sources.missing(source.orphanedLocales)}</Badge>}</span>
+                  <span className="flex items-center gap-3"><LocaleMeter locale={{ surfaceSlug: source.slug, code: "", isBase: false, ...source.progress }} />{source.orphanedLocales > 0 && <Badge variant="danger">{m.sources.missing(source.orphanedLocales)}</Badge>}</span>
                 </span>
-                <SourceStatus source={source} now={now} /><ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
+                <SourceStatus icon source={source} now={now} /><ChevronRight className="size-4 shrink-0 text-neutral-400" aria-hidden />
               </Button>
               {actions.canOpen && source.locales > 0 ? <ButtonLink href={routes.surfaceTranslations(slug, source.slug, { ns: ALL_NAMESPACES })}>{m.sources.open}</ButtonLink> : <Button disabled title={openReason}>{m.sources.open}</Button>}
             </div>

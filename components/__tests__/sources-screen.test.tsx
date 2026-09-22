@@ -107,3 +107,44 @@ it.each(["OWNER", "EDITOR"] as const)("소스가 없을 때 안내와 추가 권
   expect(!!button('Add source')).toBe(role === 'OWNER');
   expect(document.body.textContent).toContain(role === 'OWNER' ? 'Add a source' : 'Ask a project owner');
 });
+// 아래 셋은 실브라우저 대조(2026-09-22)에서 시안과 갈린 자리다 — 색·글리프라 값 테스트로는 안 잡힌다.
+const failedFirst = { ...source, lastCommitSha: null, lastImportError: "parse-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") };
+it.each([
+  { state: "imported" as const, row: source, icon: false, tone: "default", label: "Imported" },
+  { state: "failed-first" as const, row: failedFirst, icon: true, tone: "failed", label: "First import failed" },
+  { state: "failed-after" as const, row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") }, icon: true, tone: "failed", label: "Last import failed" },
+  { state: "importing" as const, row: { ...source, lastCommitSha: null, lastImportStartedAt: new Date() }, icon: true, tone: "default", label: "Importing" },
+])("목록 행은 적재 상태를 색이 아니라 낱말과 글리프로도 말한다 $state", async ({ state, row, icon, tone, label }) => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [row] }} adapters={[]} now={new Date()} />);
+  const status = document.querySelector(`[data-source-status="${state}"]`);
+  expect(status).not.toBeNull();
+  expect(status!.textContent).toContain(label);
+  expect(!!status!.querySelector("svg")).toBe(icon);
+  // 장식이라 접근성 트리에 이름 없는 그래픽으로 새면 "색만으로 말하지 않는다"가 반대로 깨진다.
+  expect([...status!.querySelectorAll("svg")].every(node => node.getAttribute("aria-hidden") !== null)).toBe(true);
+  expect(document.querySelector("[data-source-glyph]")?.getAttribute("data-tone")).toBe(tone);
+});
+it("상세의 상태 줄은 Alert 아이콘 옆에 같은 글리프를 또 세우지 않는다", async () => {
+  mocks.load.mockResolvedValue({ ok: true, detail: { ...detail, ...failedFirst } });
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [failedFirst] }} adapters={[]} now={new Date()} />);
+  await open();
+  const status = document.querySelector('[role="dialog"] [data-source-status]')!;
+  expect(status.textContent).toContain("First import failed");
+  expect(status.querySelector("svg")).toBeNull();
+});
+it("상세를 읽지 못하면 설명이 로딩 중이라고 말하지 않는다", async () => {
+  mocks.load.mockResolvedValue({ failed: true });
+  await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
+  await open();
+  const dialog = document.querySelector('[role="dialog"]')!;
+  expect(dialog.textContent).toContain("We couldn't load this source");
+  expect(dialog.textContent).not.toContain("Loading source details");
+});
+it("사라진 언어는 낱말과 색을 함께 들되 파일이 사라졌다고 단정하지 않는다", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
+  await open();
+  const row = [...document.querySelectorAll('[role="dialog"] tbody tr')].find(node => node.textContent?.startsWith("ja"))!;
+  expect(row.textContent).toContain("Missing");
+  expect(row.textContent).toContain("wasn't found in the last import");
+  expect(row.textContent).not.toContain("File missing");
+});

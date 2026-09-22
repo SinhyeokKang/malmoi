@@ -37,7 +37,7 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
     <label id="base-locale-label" htmlFor="base-locale" className="sr-only">{m.locales.field.label}</label>
       <div className="flex flex-wrap items-center gap-3">
         <Select value={state.draft} onValueChange={value => { if (!locked) setState(s => planBaseLanguageForm(s, { type: "change", value })); }}>
-          <SelectTrigger id="base-locale" aria-labelledby="base-locale-label base-locale" aria-disabled={locked || undefined} aria-describedby={unavailable ? "base-unavailable" : undefined} className="w-48"
+          <SelectTrigger id="base-locale" aria-labelledby="base-locale-label base-locale" aria-disabled={locked || undefined} aria-describedby={unavailable ? "base-unavailable" : undefined} className="w-40"
             onPointerDown={event => { if (locked) event.preventDefault(); }} onClick={event => { if (locked) event.preventDefault(); }} onKeyDown={event => { if (locked) event.preventDefault(); }}><SelectValue /></SelectTrigger>
           <SelectContent>{locales.map(code => <SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent>
         </Select>
