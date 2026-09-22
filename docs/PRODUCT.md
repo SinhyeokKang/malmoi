@@ -100,7 +100,7 @@ permission을 거부하는데, 그러면 **보관 사건과 그 직전 기록을
 마스킹하지 않는다. 근거 축은 ARCHITECTURE §6.2(PII)다.
 
 ⚠️ **뒤의 둘은 화면도 Action도 갈려 있다** (6b-5, 2026-09-09). base branch는 `/settings`의
-`updateRepositorySettings`가 `Project.baseBranch`를 **즉시** 쓰고, 기준 로케일은 `/locales`의
+`updateRepositorySettings`가 `Project.baseBranch`를 **즉시** 쓰고, 기준 로케일은 `/sources` 상세의
 `updateBaseLocale`이 **선언**(`TranslationSurface.declaredBaseLocale`)만 써서 다음 CI push가 그것을 가져올 때
 현실이 된다 (design §3.13). 인가는 둘 다 `project:settings`다 — ⚠️ **`updateRepositorySettings`는
 선언 컬럼을 아예 모른다**: 인자를 optional로 두면 서버가 "무엇을 안 보냈나"를 추측하게 되고
@@ -327,10 +327,10 @@ resolved path가 겹치면 GitHub 쓰기 전에 전체 실패한다. 값 병합�
 
 §7.3의 탐지기 순위는 그대로다. 기본 선택은 1순위이고 키 수로 재정렬하지 않는다.
 기존 프로젝트는 `default` 표면으로 이관하고 새 프로젝트는 확정 경로에서 slug를 유도한다.
-기본 표면은 `Project.defaultSurfaceId`로 저장한다. 기존 translations/locales URL은 그 표면으로 redirect한다.
+기본 표면은 `Project.defaultSurfaceId`로 저장한다. 기존 translations URL은 그 표면으로, 옛 Locales 두 URL은 Sources 목록으로 redirect한다.
 sync 브랜치는 계속 `malmoi-i18n/sync-<project-slug>`다. 기존 여러 Project를 자동 통합하지 않는다.
 
-**OWNER의 Settings → Add sources 모달**에서 후보 여럿 또는 수동 경로를 선택한다. 기존 소스는 체크된
+**OWNER의 Sources → Add source 모달**에서 후보 여럿 또는 수동 경로를 선택한다. 기존 소스는 체크된
 채 잠기고 새 항목만 요청한다. 요청 전체의 읽기 예산은 200파일·10MB(파일당 2MB)이고, 모든 표면의
 생성·첫 적재는 한 트랜잭션으로 전부 성공하거나 롤백한다. 포맷 내 부분 적재 실패는 성공+경고다.
 확정 거부 뒤 선택을 보존하고, 성공 뒤 기존 PUSH_TOKEN을 사용하는 workflow 반영 안내를 남긴다.
@@ -338,7 +338,8 @@ sync 브랜치는 계속 `malmoi-i18n/sync-<project-slug>`다. 기존 여러 Pro
 신규 생성에서는 후보 여럿을 체크해 한 번에 추가한다. 기본 표면은 체크된 후보 중 탐지 순서가 가장 앞선 표면이다.
 표면 보관·복원은 다음 라운드다.
 
-설정은 General·Repository·Translation sources·CI integration·Archive 다섯 카드다. 소스별 상태는
+설정은 General·Repository·CI integration·Archive 네 카드다. CI 카드의 Sources 링크가 소스 관리로 잇는다.
+Sources 목록·상세가 추가·기준 언어·언어 상태를 소유한다. 소스별 상태는
 미적재·적재 중·최초 실패·적재 이후 실패·적재 완료 다섯이며 첫 적재만 소스별 재시도한다. 집계는
 orphaned를 제외한 활성 키·언어 수다. 워크플로의 SHA 없는 소스 안내는 CI 등록 여부를 증명하지 않는다.
 보관 시 Restore를 첫 카드로 옮기고 나머지 UI 편집을 막는다. 이름·이미지의 서버 Action은 메타데이터여서
@@ -479,20 +480,22 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
 /projects/:slug                ✅ Home — 개요 (착지점)            ← 6b-6 (2026-09-09, 프로덕션)
 /projects/:slug/translations   → **기본 표면으로 redirect** (옛 URL 껍데기)
-/projects/:slug/locales        → **기본 표면으로 redirect** (옛 URL 껍데기)
+/projects/:slug/locales        → Sources 목록 redirect (옛 URL 껍데기)
+/projects/:slug/sources        구현 · 배포 대기: 소스 목록 + 선택 상세 모달 (상세 URL 없음)
 /projects/:slug/surfaces/:surface/translations  ✅ 번역             ← multi-surface B
-/projects/:slug/surfaces/:surface/locales       ✅ 로케일 목록 + 기준 로케일 지정 ← 6b-5 → multi-surface B
-/projects/:slug/surfaces/new   ✅ 권한 검사 후 /settings?add=sources redirect (OAuth 복귀 포함)
+/projects/:slug/surfaces/:surface/locales       → 인가 뒤 Sources 목록 redirect
+/projects/:slug/surfaces/new   → 권한 검사 후 /sources?add=sources redirect (OAuth 오류 e 보존)
 /projects/:slug/members        멤버
 /projects/:slug/logs           ✅ 프로젝트 전체 활동 이력 (?event= 상세)  ← logs-rework (ProjectEvent 소비자)
 /projects/:slug/settings       나머지 프로젝트 설정 전부
 ```
 
-⚠️ **프로젝트 축은 실제로 3단계다** — 번역·로케일은 표면 아래에 있다(§7.1). 생성기는
-`routes.surfaceTranslations`·`routes.surfaceLocales`·`routes.addSurface`이고, 표의 앞 두 줄은
-`defaultSurface`로 던지는 **redirect 껍데기**다(`routes.translations`·`routes.locales`가 계속
-그것을 가리킨다 — 옛 링크와 공유된 주소가 살아 있어야 한다). ⚠️ **그 껍데기도 쿼리를 실어 보낸다** —
-`?ns=`·`?locales=`·`?q=`·`?state=`를 빠뜨리면 Home 카드가 준 좁힘이 redirect에서 사라진다.
+**번역은 표면 아래, 소스 관리는 프로젝트 아래다.** 내부 링크는 `routes.surfaceTranslations`와
+`routes.sources`를 쓴다. `routes.translations`의 옛 주소는 저장된 기본 표면으로 보내며
+`?ns=`·`?locales=`·`?q=`·`?state=`를 보존한다. 옛 Locales 두 주소는 권한 검사 후 Sources 목록으로 간다.
+`/settings?add=sources`도 Sources로 보내고 OAuth 오류 `e`를 보존한다.
+Sources 상세 선택은 클라이언트 상태라 주소·이력이 바뀌지 않고 전체 새로고침은 목록이다.
+Sources 변경은 2026-09-22 구현·검증 중이며 프로덕션 배포 여부는 `/merge`에서 확정한다.
 
 ⚠️ **`/account` 행은 지금 있는 것만 적는다** — 이 표의 ✅는 **프로덕션에 선 것**을 뜻한다.
 앞서 적으면 그것을 믿은 사람이 의심해야 할 곳을 의심하지 않는다. §4.1이 얹기로 판정했던 항목 둘
@@ -572,18 +575,14 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
      Publish의 결과·파일 수·PR은 계속 그 테이블이 정본이다.
    - **대가**: 수집 시작 이전은 복원되지 않는다. 백필 대상은 보존된 Publish 실행뿐이고, 그 경계에
      화면이 선을 하나 긋는다(개시 시각을 모르면 **선을 아예 안 그린다** — 추정값을 만들지 않는다).
-4. ✅ **기준 로케일은 `locales`가 소유한다** (2026-09-09, 6b-5) — 로케일 목록과 base 지정이 한
-   화면에 있어야 한다. 6b-3이 그것을 `settings`의 Repository 카드에 넣었고 **하루 뒤 6b-5가
-   옮겼다.** 옮긴 이유: 그때까지 로케일은 **번역 표의 열로만 존재해** orphaned 로케일이 왜 그렇게
-   됐고 어떻게 되살리는지 말할 자리가 없었다(ARCHITECTURE §5.5.16이 그 상태를 정의해 놓고 화면이
-   없었다). **화면이 갈리면서 Action도 갈랐다** — `updateBaseLocale` 신설이고, 인자를 optional로
-   두지 않은 이유는 "무엇을 안 보냈나"를 서버가 추측하게 되면 그것이 곧 malmoi#20의 모양이기
-   때문이다(대기 중에 브랜치만 고친 저장이 선언을 지웠다).
-   - ⚠️ **경계 하나가 남는다**: `checkFormat`은 `adapter`·`pathTemplate`·`baseLocale` **셋을 한 묶음**으로
-     검사하고 워크플로 YAML도 그 셋을 함께 낸다. base만 `locales`로 가면 **한 화면에서 고친 값이 다른
-     화면의 코드 블록을 바꾼다.** 답: **`locales`의 대기 Alert가 고칠 줄을 직접 보인다**(6b-3이 이미 그
-     모양이다 — 파일 전체가 아니라 `base-locale:` 한 줄 + Copy). `settings`로 링크하면 "고치려면 두
-     화면을 오간다"가 된다.
+4. **기준 로케일과 언어 진단은 Sources 상세가 소유한다** (2026-09-22 Sources, 배포 대기).
+   소스 목록은 OWNER·EDITOR가 함께 보고 EDITOR에게 경로·형식·저장소/브랜치를 보내지 않는다.
+   추가·첫 적재 재시도·기준 언어 저장은 OWNER만 쓴다. `updateBaseLocale`은 선언만 저장하며
+   Project→TranslationSurface 잠금·같은 트랜잭션의 이벤트를 유지한다. 브랜치 저장과 합치지 않는다.
+   - 고아 언어는 사유·보존·복구 방법과 진행률을 남긴다. 한 파일의 여러 언어도 있으므로 파일 삭제를 단정하지 않는다.
+   - 대기 안내는 두 역할에 적용값/요청값을 보이고, OWNER에게만 CI `base-locale:` 한 줄과 Copy를 준다.
+     전체 워크플로는 Settings CI 모달에 남는다. 미저장 이탈 확인창은 없고 저장 중만 닫기·번역 진입을 잠근다.
+   - Logs 필터의 **Sources & locales**는 사건 종류의 이름이므로 유지한다. 화면 이름 Sources와 별개다.
 5. **사이드바 항목에 카운트를 달지 않는다** (초안 시안엔 있었다). 그 숫자는 **셸 레이아웃이 매 페이지
    렌더에서** 세야 하는데, 그 레이아웃은 이미 `readSession` + `loadMemberships` 2왕복이고 번역 화면에
    **키 수와 무관한 1.9초 고정비**가 실측돼 있었다(CLAUDE.md 가상화 절). 카운트 넷은 **모든 화면**에
