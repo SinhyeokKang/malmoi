@@ -50,7 +50,7 @@ it("keeps unreadable and unapplied surfaces distinct with original diagnostics",
   expect(container.textContent).toContain("2 surfaces were not replaced");
   // 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (DESIGN §6.644) — 성공한 `web`은 서지 않는다.
   for (const text of ["ci", "format", "broken", "locales/ko.json"]) expect(container.textContent).toContain(text);
-  expect(container.querySelector('[role="status"] .text-mono')?.textContent).toBe("broken");
+  expect(container.querySelector('[role="status"] [data-surface]')?.textContent).toBe("broken");
   expect(container.querySelector('[data-reason="superseded"]')).not.toBeNull();
   expect(container.querySelector('[data-error-code="parse-failed"]')).not.toBeNull();
   expect([...container.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(true);
@@ -108,8 +108,8 @@ it("파일 일부 실패는 없는 사유를 만들어 내지 않는다 — 원�
   expect(container.textContent).not.toContain("The last import did not finish");
   // 파일 줄은 그대로다 — 무엇이 버려졌는지를 말하는 유일한 문장이다.
   expect(container.querySelector('[data-error-code="parse-failed"]')?.textContent).toBe("locales/ja.yml: The file couldn't be parsed.");
-  // 표면 이름은 파일 경로가 이미 들고 있다 — mono 조각을 따로 세우지 않는다.
-  expect(container.querySelector('[role="status"] .text-mono')).toBeNull();
+  // 표면 이름은 파일 경로가 이미 들고 있다 — 원인 줄의 slug를 따로 세우지 않는다.
+  expect(container.querySelector('[role="status"] [data-surface]')).toBeNull();
 });
 
 /**
@@ -122,7 +122,7 @@ it("사유도 파일 오류도 없는 사고는 빈 자리를 남기지 않는�
     { ...row("web", "partial", null), count: 8, failed: 1 },
   ] }} />);
   expect(container.textContent).toContain("Synced 8 keys");
-  expect(container.querySelector('[role="status"] .text-mono')).toBeNull();
+  expect(container.querySelector('[role="status"] [data-surface]')).toBeNull();
   /*
     ⚠️ **재는 대상이 있다는 것부터 단언한다** — 빈 노드를 `for`로 훑기만 하면 셀렉터가 0개를 잡는
     순간 루프가 한 번도 안 돌고 통과한다. 이 파일이 `lines()`에서 클래스 셀렉터를 버린 것과 같은
@@ -140,7 +140,7 @@ it("superseded는 사유가 있으므로 원인 줄이 그대로 선다", async 
   ] }} />);
   expect(container.textContent).toContain("Synced 9 keys, but 1 surface was not replaced");
   expect(container.querySelector('[data-reason="superseded"]')?.textContent).toContain("New repository data arrived while syncing");
-  expect(container.querySelector('[role="status"] .text-mono')?.textContent).toBe("locales");
+  expect(container.querySelector('[role="status"] [data-surface]')?.textContent).toBe("locales");
 });
 
 /**

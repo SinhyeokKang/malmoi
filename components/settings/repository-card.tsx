@@ -21,7 +21,7 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, health, ac
   const canConnect = disconnected || health.status === "not-connected" || health.status === "repo-moved";
   const installUrl = installationSettingsUrl(appSlug);
   const recovery = account.status !== "ok" || account.login === null;
-  const notice = health.status === "repo-moved" ? <Alert inset variant="warning">{m.settings.repository.health.moved(<span className="text-mono">{health.fullName}</span>)}</Alert>
+  const notice = health.status === "repo-moved" ? <Alert inset variant="warning">{m.settings.repository.health.moved(health.fullName)}</Alert>
     : disconnected || health.status === "repo-replaced" ? <Alert inset variant="danger">{m.settings.repository.health[health.status]}
       {health.status === "app-uninstalled" && installUrl && <> <a className="text-blue-600 underline focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={installUrl} target="_blank" rel="noreferrer">{m.settings.repository.health.install}</a> — {m.settings.repository.health.installHint}</>}
     </Alert> : undefined;

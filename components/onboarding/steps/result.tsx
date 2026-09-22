@@ -14,15 +14,16 @@ export function ResultStep({ pushToken, yaml }: { pushToken: string; yaml: strin
         <p className="text-sm font-medium">{m.newProject.result.token.title}</p>
         {/*
           ⚠️ **값 칩이 필드와 같은 형이다** — 높이 36 · radius 10 · border · 안쪽 여백 10 (핸드오프 1d).
-          토큰은 사람이 그대로 옮겨 적는 값이라 여기와 YAML **둘만** mono다.
+          ⚠️ **mono는 YAML 블록 하나뿐이다** — 토큰 칩도 sans다 (DESIGN §4.1). `<code>`는 preflight가
+          mono를 깔아서 `font-sans`를 명시한다.
         */}
         <div className="flex items-center gap-2">
-          <code className="text-mono border-input bg-muted flex h-9 min-w-0 flex-1 items-center truncate rounded-md border px-2.5">
+          <code className="border-input bg-muted flex h-9 min-w-0 flex-1 items-center truncate rounded-md border px-2.5 font-sans text-xs">
             {pushToken}
           </code>
           <CopyButton value={pushToken} />
         </div>
-        {/* ⚠️ `PUSH_TOKEN`은 **읽는 값**이라 mono가 아니다 — 색만 올린다 (1d). */}
+        {/* ⚠️ `PUSH_TOKEN`은 색만 올린다 (1d). */}
         <p className="text-muted-foreground text-xs leading-[1.7]">
           {m.newProject.result.token.description(<span className="text-foreground">PUSH_TOKEN</span>)}
         </p>
@@ -34,7 +35,7 @@ export function ResultStep({ pushToken, yaml }: { pushToken: string; yaml: strin
         saveAs={
           <>
             {m.newProject.result.workflow.saveAs}{" "}
-            <span className="text-mono text-foreground">.github/workflows/malmoi-i18n.yml</span>
+            <span className="text-foreground">.github/workflows/malmoi-i18n.yml</span>
           </>
         }
         copyLabel={m.common.copy}

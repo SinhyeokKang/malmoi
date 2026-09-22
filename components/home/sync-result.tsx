@@ -112,7 +112,7 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
           부정한다 (2026-09-16 브라우저 실측). 이 갈래의 원인은 아래 파일 줄이 든다.
         */}
         {surface.reason !== null &&
-          <p>{m.repositorySync.cause(<span className="text-mono">{surface.surfaceSlug}</span>, reasonMessage(surface.reason))}</p>}
+          <p>{m.repositorySync.cause(<span data-surface="">{surface.surfaceSlug}</span>, reasonMessage(surface.reason))}</p>}
         {surface.errors.map((error, index) => <p key={index} data-error-code={error.code} className="whitespace-pre-wrap break-words">{error.path}: {adapterErrorMessage(error)}</p>)}
       </div>)}
   </>;

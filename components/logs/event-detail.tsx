@@ -65,7 +65,7 @@ export function EventDetail({
           <DialogTitleSlot.Title className="text-lg font-medium text-pretty">
             {eventSentence(row, {
               actor: actorLabel(row),
-              key: <span className="font-mono text-[17px]">{row.payload?.kind === "TRANSLATION" ? row.payload.key : ""}</span>,
+              key: row.payload?.kind === "TRANSLATION" ? row.payload.key : "",
             })}
           </DialogTitleSlot.Title>
           {/* ⚠️ **절대 시각은 `<time dateTime>`이 든다** (L7.1) — 상대 시각은 보조다. */}
@@ -85,7 +85,7 @@ export function EventDetail({
         <dl className="grid grid-cols-[104px_1fr] items-baseline gap-x-3 gap-y-2.5">
           <Field label={m.logs.detail.labels.reference}>
             <span className="flex min-w-0 items-center gap-2">
-              <span className="font-mono text-sm [overflow-wrap:anywhere]">{row.ref}</span>
+              <span className="[overflow-wrap:anywhere]">{row.ref}</span>
               {/* 동료에게 붙여넣는 것이 링크보다 짧고 **권한과 무관**하다 — 받은 사람은 검색창에 넣는다. */}
               <CopyButton value={row.ref} label={m.logs.detail.actions.copy} size="sm" />
             </span>
@@ -248,19 +248,19 @@ function fields(row: EventRow): [string, ReactNode][] {
         </a>
       ),
     ]);
-    if (row.run?.errorCode != null) out.push([m.logs.detail.labels.errorCode, <span className="font-mono text-sm">{row.run.errorCode}</span>]);
+    if (row.run?.errorCode != null) out.push([m.logs.detail.labels.errorCode, row.run.errorCode]);
     if (payload?.kind === "PUBLISH" && payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(payload.refusal)]);
   }
   if (payload?.kind === "TRANSLATION") {
     out.push([m.logs.detail.labels.source, payload.surfaceSlug]);
-    out.push([m.logs.detail.labels.key, <span className="font-mono text-sm [overflow-wrap:anywhere]">{payload.key}</span>]);
+    out.push([m.logs.detail.labels.key, <span className="[overflow-wrap:anywhere]">{payload.key}</span>]);
     out.push([m.logs.detail.labels.locale, payload.locale]);
   }
   if (payload?.kind === "IMPORT") {
     out.push([m.logs.detail.labels.trigger, `${payload.source === "ci" ? m.logs.trigger.ci : actorLabel(row)}`]);
     if (row.result === "deferred" && payload.pendingEdits !== null) out.push([m.logs.detail.labels.unsentEdits, m.logs.deferredReason(payload.pendingEdits)]);
     else if ((payload.pendingEdits ?? 0) > 0) out.push([m.logs.detail.labels.unsentEdits, m.repositorySync.kept(payload.pendingEdits!)]);
-    if (payload.errorCode !== null) out.push([m.logs.detail.labels.errorCode, <span className="font-mono text-sm">{payload.errorCode}</span>]);
+    if (payload.errorCode !== null) out.push([m.logs.detail.labels.errorCode, payload.errorCode]);
     if (payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(payload.refusal)]);
     if (payload.keys !== null) out.push([m.logs.detail.labels.resultPerSource, m.logs.meta.keys(payload.keys)]);
   }

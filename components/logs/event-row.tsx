@@ -44,7 +44,7 @@ export function EventRow({
   const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype });
   const sentence = eventSentence(row, {
     actor: <span className="font-medium">{actorLabel(row)}</span>,
-    key: <span className="font-mono text-sm">{translationKey(row)}</span>,
+    key: translationKey(row),
   });
 
   return (
@@ -72,7 +72,7 @@ export function EventRow({
           {!showTime && view.label !== null && <ResultLabel view={view} />}
           {!showTime && view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
           {eventMeta(row, archived).map((part, index) => (
-            <span key={index} className={typeof part === "string" ? undefined : part.kind === "code" ? "font-mono text-xs" : "text-blue-600"}>{typeof part === "string" ? part : part.text}</span>
+            <span key={index} className={typeof part !== "string" && part.kind === "link" ? "text-blue-600" : undefined}>{typeof part === "string" ? part : part.text}</span>
           ))}
         </span>
       </span>

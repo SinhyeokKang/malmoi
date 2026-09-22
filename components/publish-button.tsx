@@ -250,7 +250,7 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
             return <tr key={`${row.keyId}:${row.localeCode}`}>
               {/* ⚠️ **`rowSpan`이 병합을 든다** — 테두리를 지워 병합처럼 보이게 하면 낭독에는 빈 칸이 하나 더 생긴다. */}
               {row.keySpan > 0 && <td rowSpan={row.keySpan} className="border-divider w-[220px] border-t border-r px-3.5 py-[11px] align-top">
-                <span className="text-mono block truncate text-[12px]"><span className="text-muted-foreground">{namespace}</span>{row.key.slice(namespace.length)}</span>
+                <span className="block truncate text-[12px]"><span className="text-muted-foreground">{namespace}</span>{row.key.slice(namespace.length)}</span>
               </td>}
               <td className="border-divider w-[84px] border-t border-r px-3 py-[11px] align-top">
                 <span className="flex items-start gap-2">
@@ -482,7 +482,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
                 <span className="text-muted-foreground">{p.repository}</span><span>{label}</span>
                 <span className="text-muted-foreground">{p.baseBranch}</span><span>{repo.branch}</span>
                 <span className="text-muted-foreground">{p.failedAt}</span><span>{at === null ? "" : stamp(at)}</span>
-                <span className="text-muted-foreground">{p.reference}</span><span className="text-muted-foreground text-mono">{failed.code}</span>
+                <span className="text-muted-foreground">{p.reference}</span><span className="text-muted-foreground">{failed.code}</span>
               </div>
               <Hint>{p.sendReference}</Hint>
             </>}
@@ -501,7 +501,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             {/* ⚠️ 응답 유실에는 `Reference`를 만들어 붙이지 않는다 — 코드가 없으면 줄이 통째로 빠진다. */}
             {failed?.code !== undefined && <div className="border-border flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3 text-xs">
               <span className="text-muted-foreground">{p.reference}</span>
-              <span className="text-mono">{failed.code}</span>
+              <span>{failed.code}</span>
               {at !== null && <span className="text-muted-foreground ml-auto">{stamp(at)}</span>}
             </div>}
           </Stack>;
