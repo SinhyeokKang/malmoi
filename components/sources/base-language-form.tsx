@@ -9,9 +9,12 @@ import { m } from "@/lib/i18n";
 import { baseLocaleFieldValue } from "@/lib/onboarding/base-pending";
 import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib/settings/message";
 import { createBaseLanguageForm, planBaseLanguageForm } from "@/lib/sources/base-language";
+import { cn } from "@/lib/utils";
 
-export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLocale, locales, onPending, onError, onSaved }: {
+export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLocale, locales, awaiting, onPending, onError, onSaved }: {
   slug: string; surfaceSlug: string; baseLocale: string | null; declaredBaseLocale: string | null; locales: readonly string[];
+  /** 선언이 적재를 기다리는 중. 필드가 **요청 값**을 들고 있다는 표식이라 값 자체와 함께 서야 한다. */
+  awaiting: boolean;
   onPending: (pending: boolean) => void; onError: (error: boolean) => void; onSaved: () => void;
 }) {
   const [state, setState] = useState(() => createBaseLanguageForm({ baseLocale, declaredBaseLocale }));
@@ -37,7 +40,7 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
     <label id="base-locale-label" htmlFor="base-locale" className="sr-only">{m.locales.field.label}</label>
       <div className="flex flex-wrap items-center gap-3">
         <Select value={state.draft} onValueChange={value => { if (!locked) setState(s => planBaseLanguageForm(s, { type: "change", value })); }}>
-          <SelectTrigger id="base-locale" aria-labelledby="base-locale-label base-locale" aria-disabled={locked || undefined} aria-describedby={unavailable ? "base-unavailable" : undefined} className="w-40"
+          <SelectTrigger id="base-locale" aria-labelledby="base-locale-label base-locale" aria-disabled={locked || undefined} aria-describedby={unavailable ? "base-unavailable" : undefined} data-base-pending={awaiting || undefined} className={cn("w-40", awaiting && "border-amber-500/50")}
             onPointerDown={event => { if (locked) event.preventDefault(); }} onClick={event => { if (locked) event.preventDefault(); }} onKeyDown={event => { if (locked) event.preventDefault(); }}><SelectValue /></SelectTrigger>
           <SelectContent>{locales.map(code => <SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent>
         </Select>

@@ -7,7 +7,7 @@ import { render } from "./helpers/dom";
 vi.setConfig({ testTimeout: 20_000 });
 const mocks = vi.hoisted(() => ({ save: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({ updateBaseLocale: mocks.save }));
-const props = { slug: "p", surfaceSlug: "web", baseLocale: "en", declaredBaseLocale: "ko", locales: ["en", "ko", "ja"], onPending: vi.fn(), onError: vi.fn(), onSaved: vi.fn() };
+const props = { slug: "p", surfaceSlug: "web", baseLocale: "en", declaredBaseLocale: "ko", locales: ["en", "ko", "ja"], awaiting: true, onPending: vi.fn(), onError: vi.fn(), onSaved: vi.fn() };
 const save = () => [...document.querySelectorAll('button')].find(b => b.textContent === "Save")!;
 let fixup: MutationObserver;
 beforeEach(() => { vi.clearAllMocks(); fixup = new MutationObserver(() => { const active = document.activeElement; if (active instanceof HTMLElement && active.matches(':disabled')) { active.removeAttribute('disabled'); active.blur(); active.setAttribute('disabled', ''); } }); fixup.observe(document.body, { attributes: true, attributeFilter: ['disabled'], subtree: true }); });
@@ -52,7 +52,7 @@ it("성공 후 낡은 props와 통신 실패가 저장된 입력을 되돌리지
   expect(document.querySelector('[role="alert"]')).not.toBeNull();
 });
 it("활성 언어가 없으면 포인터·클릭·키보드 모두 Select를 열지 않는다", async () => {
-  await render(<BaseLanguageForm {...props} baseLocale={null} declaredBaseLocale={null} locales={[]} />);
+  await render(<BaseLanguageForm {...props} baseLocale={null} declaredBaseLocale={null} locales={[]} awaiting={false} />);
   const select = document.querySelector<HTMLElement>('[role="combobox"]')!;
   await act(async () => { const user = userEvent.setup(); await user.click(select); select.focus(); await user.keyboard('[Enter][Space][ArrowDown]'); });
   expect(document.querySelector('[role="listbox"]')).toBeNull();

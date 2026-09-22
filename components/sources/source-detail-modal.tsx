@@ -75,10 +75,10 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         </Alert>
         </div>
       </PanelCard>
-      <PanelCard title={m.locales.field.label}>
+      <PanelCard title={m.locales.field.label} badge={basePending(detail) ? <Badge variant="warning">{m.sources.waiting}</Badge> : undefined}>
         <div className="space-y-3 px-4 py-[13px]">
-        {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned).map(row => row.code)} onPending={onBusy} onError={setFieldError} onSaved={onSaved} /> : <p className="text-sm">{m.sources.applied}: {detail.baseLocale ?? m.sources.notConfigured}</p>}
-        {basePending(detail) && <Alert variant="info" title={m.sources.waiting}>
+        {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned).map(row => row.code)} awaiting={basePending(detail)} onPending={onBusy} onError={setFieldError} onSaved={onSaved} /> : <p className="text-sm">{m.sources.applied}: {detail.baseLocale ?? m.sources.notConfigured}</p>}
+        {basePending(detail) && <Alert variant="info">
           <p>{m.sources.applied}: {detail.baseLocale} · {m.sources.requested}: {detail.declaredBaseLocale}</p>
           {canEdit && <><p className="mt-2">{m.sources.pendingHelp}</p>{detail.workflowLine && <div className="mt-3 flex items-center gap-3"><code className="text-mono">{detail.workflowLine}</code><CopyButton value={detail.workflowLine} label={m.locales.pending.copy} /></div>}</>}
         </Alert>}

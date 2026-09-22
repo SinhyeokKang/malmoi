@@ -148,3 +148,20 @@ it("사라진 언어는 낱말과 색을 함께 들되 파일이 사라졌다고
   expect(row.textContent).toContain("wasn't found in the last import");
   expect(row.textContent).not.toContain("File missing");
 });
+it("적용 대기는 배지·필드 표식·값 두 줄 셋으로 말하고 같은 낱말을 두 번 쓰지 않는다", async () => {
+  mocks.load.mockResolvedValue({ ok: true, detail: { ...detail, declaredBaseLocale: "ja" } });
+  await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
+  await open();
+  const dialog = document.querySelector('[role="dialog"]')!;
+  expect(dialog.textContent!.match(/Waiting to apply/g)).toHaveLength(1);
+  expect(dialog.querySelector('[data-base-pending]')).not.toBeNull();
+  expect(dialog.textContent).toContain("Applied: en");
+  expect(dialog.textContent).toContain("Requested: ja");
+});
+it("적용 대기가 아니면 배지도 필드 표식도 없다", async () => {
+  await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
+  await open();
+  const dialog = document.querySelector('[role="dialog"]')!;
+  expect(dialog.textContent).not.toContain("Waiting to apply");
+  expect(dialog.querySelector('[data-base-pending]')).toBeNull();
+});
