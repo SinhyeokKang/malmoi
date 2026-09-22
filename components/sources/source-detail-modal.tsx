@@ -77,8 +77,9 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
     {detail && <div className="@container space-y-4">
       {state.status === "ready" && state.refreshFailed && <Alert variant="warning" actions={<Button disabled={busy} onClick={onReload}>{m.sources.retry}</Button>}>{m.sources.latestFailed}</Alert>}
       {detail.connection && detail.repository && <section data-source-connection aria-label={m.sources.files} className="border-border bg-muted/40 overflow-hidden rounded-lg border">
+        {/* ⚠️ 경로 셀이 형제 둘과 같은 14다 — 13이었던 것은 옛 `text-mono`(13/18)가 강제한 값이고, mono를 걷으면서 핸드오프의 14로 돌아왔다 (DESIGN §4.1·§6.66) */}
         <dl className="grid grid-cols-[minmax(0,1fr)_180px_280px] text-sm @max-[850px]:grid-cols-2">
-          <div className="min-w-0 space-y-1 px-4 py-3.5 @max-[850px]:col-span-2"><dt className="text-muted-foreground text-xs">{m.sources.path}</dt><dd className="text-mono break-all">{detail.connection.pathTemplate ?? m.sources.notConfigured}</dd></div>
+          <div className="min-w-0 space-y-1 px-4 py-3.5 @max-[850px]:col-span-2"><dt className="text-muted-foreground text-xs">{m.sources.path}</dt><dd className="break-all">{detail.connection.pathTemplate ?? m.sources.notConfigured}</dd></div>
           <div className="border-border space-y-1 border-l px-4 py-3.5 @max-[850px]:border-t @max-[850px]:border-l-0"><dt className="text-muted-foreground text-xs">{m.sources.format}</dt><dd>{detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}</dd></div>
           <div className="border-border min-w-0 space-y-1 border-l px-4 py-3.5 @max-[850px]:border-t"><dt className="text-muted-foreground text-xs">{m.sources.repository}</dt><dd className="break-all">{detail.repository.repoOwner}/{detail.repository.repoName} · {detail.repository.baseBranch}</dd></div>
         </dl>
@@ -125,7 +126,8 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             </div>}
         {basePending(detail) && <div className="mt-3 space-y-2 text-xs">
           <p className="text-muted-foreground">{m.sources.applied}: <span className="text-foreground">{detail.baseLocale}</span> · {m.sources.requested}: <span className="text-foreground">{detail.declaredBaseLocale}</span></p>
-          {canEdit && <><p className="text-muted-foreground leading-[1.6]">{m.sources.pendingHelp}</p>{detail.workflowLine && <div className="flex items-center gap-3"><code className="text-mono">{detail.workflowLine}</code><CopyButton value={detail.workflowLine} label={m.locales.pending.copy} /></div>}</>}
+          {/* ⚠️ `<code>`는 preflight가 mono를 깔아서 `font-sans`를 명시한다 — 클래스만 지우면 화면은 그대로 mono다 (DESIGN §4.1) */}
+          {canEdit && <><p className="text-muted-foreground leading-[1.6]">{m.sources.pendingHelp}</p>{detail.workflowLine && <div className="flex items-center gap-3"><code className="font-sans">{detail.workflowLine}</code><CopyButton value={detail.workflowLine} label={m.locales.pending.copy} /></div>}</>}
         </div>}
         </div>
       </PanelCard>

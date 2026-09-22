@@ -95,7 +95,8 @@ describe("완료 조건 8 — Home 소스에 고정폭 글꼴이 0이다", () =>
 
   /**
    * ⚠️ **카나리아가 코드 블록으로 옮겨 갔다** (2026-09-23). `text-mono`가 화면에서 걷히면서 Home 밖의
-   * mono도 `<pre>` 둘과 파서 오류 하나만 남았다 — 그 전 카나리아였던 `sync-button.tsx`는 이제 sans다.
+   * mono도 `<pre>` 하나와 파서 오류 하나만 남았다 — 그 전 카나리아였던 `sync-button.tsx`는 이제 sans다.
+   * **전수로 세는 것은 `surface-rules.test.ts`다** — 여기는 Home 그래프만 본다.
    */
   it("스캐너가 실제로 잡는다 — mono를 쓰는 파일에서는 red다", () => {
     expect(bare(read("components/onboarding/workflow-block.tsx"))).toMatch(/text-mono/);
