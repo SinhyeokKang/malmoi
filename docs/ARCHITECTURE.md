@@ -772,10 +772,9 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
     `lib/onboarding/__tests__/workflow.test.ts`가 매트릭스로 고정한다.
 
 ⚠️ **Server Action의 `maxDuration`은 호출한 페이지 세그먼트가 정한다.** `app/api/*`의 세그먼트 config가
-Action에 적용되지 않으므로 **페이지가 각자** `export const maxDuration = 60`을 든다 — 지금 **열 곳**이다(`app/api/push`·`app/api/pull`은 라우트라 별개다):
+Action에 적용되지 않으므로 **페이지가 각자** `export const maxDuration = 60`을 든다 — 지금 **여덟 곳**이다(`app/api/push`·`app/api/pull`은 라우트라 별개다):
 `projects/page.tsx` · `projects/new/page.tsx` · `projects/@modal/(.)new/page.tsx` · `[slug]/page.tsx` · `[slug]/settings/page.tsx` ·
-`[slug]/locales/page.tsx` · `[slug]/translations/page.tsx` · `[slug]/surfaces/new/page.tsx` ·
-`[slug]/surfaces/[surfaceSlug]/locales/page.tsx` · **`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`**. **새 Action 화면을 만들 때마다 선언한다** — 안 하면 기본값에서
+`[slug]/sources/page.tsx` · `[slug]/translations/page.tsx` · **`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`**. **새 Action 화면을 만들 때마다 선언한다** — 안 하면 기본값에서
 첫 적재가 잘리고, 증상이 "큰 리포에서만 실패"라 재현이 어렵다. **세는 법은 grep 하나다**(`rg -n 'maxDuration' app`) — 이 목록을 손으로 늘리면 낡는다.
 
 ⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Send changes]가 사는 곳은
@@ -1055,7 +1054,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
     그대로 `isBase` 우선이므로 **위험은 한 줄도 줄지 않았고 자리만 옮겼다.**
 - ⚠️ **목록이 비면 표시 문장을 내지 않는다.** `<> ALL('{}')`은 전 로케일을 orphan시킨다.
 - **편집 UI는 그 열을 보이되 편집을 막는다** (2026-09-06) — 헤더에 키와 같은 어휘의 `orphaned` 배지, 그 열의 입력은 `disabled`. `loadProject`가 `orphaned`를 함께 싣는다. 셋(저장 거부 + 배지 + 비활성)이 한 축이다 — 전에는 저장 거부만 있어 편집자가 **내부 토큰**을 봤다.
-- ✅ **이 상태를 설명하는 화면이 생겼다** (2026-09-09, 6b-5 — 지금 경로는 **`/projects/[slug]/surfaces/[surfaceSlug]/locales`**이고, 옛 `/projects/[slug]/locales`는 `defaultSurface`로 보내는 redirect 껍데기만 남았다). 그때까지 이 절이 정의한 상태를 **사용자가 볼 수 있는 형태는 "열이 사라졌다" 하나뿐**이었다: 배지는 왜인지 말하지 않고, 되살리는 방법은 어디에도 없었다. 그 화면이 행마다 **사유와 복구 방법**을 함께 내고 진행률도 계속 낸다(되살리면 돌아온다는 것의 근거다). ⚠️ **게이트가 `translation:write`인 이유가 이것이다** — 열이 사라진 것을 보는 사람이 번역자이므로, `project:settings` 뒤에 두면 설명이 그 사람에게 닿지 않는다.
+- ✅ **이 상태를 설명하는 화면이 생겼다** (2026-09-09, 6b-5 — 지금은 **`/projects/[slug]/sources` 상세 모달**이고, 옛 Locales 두 주소는 권한 검사 뒤 Sources 목록으로 보낸다). 그때까지 이 절이 정의한 상태를 **사용자가 볼 수 있는 형태는 "열이 사라졌다" 하나뿐**이었다: 배지는 왜인지 말하지 않고, 되살리는 방법은 어디에도 없었다. 그 화면이 행마다 **사유와 복구 방법**을 함께 내고 진행률도 계속 낸다(되살리면 돌아온다는 것의 근거다). ⚠️ **게이트가 `translation:write`인 이유가 이것이다** — 열이 사라진 것을 보는 사람이 번역자이므로, `project:settings` 뒤에 두면 설명이 그 사람에게 닿지 않는다.
   - ⚠️ **기준 로케일 선택 목록에서는 빼고, 거부는 Action이 한다** (`planBaseLocaleChange`의 `orphaned-locale`). 감추는 것은 편의이고 **렌더 뒤에 orphaned가 된 경우**가 그 갈래가 실제로 닿는 경로다 — orphaned를 base로 세우면 다음 push가 그 파일을 못 읽어 **키 집합이 0**이 되고 살아 있던 키 전부가 orphan한다.
 
 ### 5.5.2 번역값은 strict 덮어쓰기다
@@ -1854,7 +1853,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - ⚠️ **그 명부가 실제로 낡아 있었다** (2026-09-18 전수 대조). 손으로 잇는 목록이라 `/doc-check` 사이에 조용히 갈린다 — **정본은 `components/__tests__/client-graph.test.ts`가 실제로 걷는 그래프이고**, 세는 법은 "`\"use client\"` 파일이 무는 `@/lib/*`를 전부 모아 각 모듈의 import 수를 본다" 하나다. 그때 **미등재 잎이 열셋** 나왔다:
   - **클라이언트가 값으로 읽는 것 열둘** — `lib/publish/warnings.ts`·`lib/publish/words.ts`(`components/publish-button.tsx`) · `lib/search-params.ts`(쿼리 정규화 — ⚠️ `Object.create(null)`을 쓰는 자리라 §6.36의 프로토타입 규칙이 여기도 산다) · `lib/account/plan.ts` · `lib/keys/edit-command.ts` · `lib/import/confirm.ts` · `lib/onboarding/branch.ts`·`key-gap.ts`·`language-name.ts`·`locale-picker.ts` · `lib/shell/panel-size.ts` · `lib/upload/image.ts`. **열셋 전부 import가 0이다.**
   - **아직 소비자가 없는 것 하나** — `lib/protection/plan.ts`. 소비자 연결(T13) 전이지만 `client-graph.test.ts`가 **파일 목록을 `toEqual`로** 이미 고정한다: 같은 디렉터리의 `./fingerprint`를 한 줄만 물어도 `node:crypto`가 번들로 오고, 음성 대조로 `fingerprint.ts` 쪽은 실제로 걸리는지까지 센다. `lib/i18n`·`lib/keys/filters.ts`·`lib/keys/flag.ts`와 같은 형이다.
-- ⚠️ **문구 모듈 둘이 명부에서 빠져 있었다** (2026-09-11 등재): **`lib/settings/message.ts`**(`RepositorySettingsError` → 문구. `@/lib/i18n` 하나만 문고 `lib/auth/message.ts`와 같은 형이다 — 클라이언트 소비자가 `components/locales/base-locale-form.tsx`·`components/settings/repository-form.tsx` 둘) · **`lib/i18n/adapter-errors.ts`**(어댑터 오류 코드 → 문장. ⚠️ **`@/lib/adapters/types`를 타입으로만** 가져온다 — 값이면 `ADAPTER_ERROR_CODES`를 따라 그 디렉터리가 통째로 열리고 `ts-dict` → ts-morph가 온다. 소비자는 온보딩 클라이언트 둘). **둘 다 위 "문구 모듈 여섯"의 새 식구다** — 문구 경로가 곧 클라이언트 경로라 그 둘은 같은 목록의 양면이다.
+- ⚠️ **문구 모듈 둘이 명부에서 빠져 있었다** (2026-09-11 등재): **`lib/settings/message.ts`**(`RepositorySettingsError` → 문구. `@/lib/i18n` 하나만 문고 `lib/auth/message.ts`와 같은 형이다 — 클라이언트 소비자가 `components/sources/base-language-form.tsx`·`components/settings/repository-form.tsx` 둘) · **`lib/i18n/adapter-errors.ts`**(어댑터 오류 코드 → 문장. ⚠️ **`@/lib/adapters/types`를 타입으로만** 가져온다 — 값이면 `ADAPTER_ERROR_CODES`를 따라 그 디렉터리가 통째로 열리고 `ts-dict` → ts-morph가 온다. 소비자는 온보딩 클라이언트 둘). **둘 다 위 "문구 모듈 여섯"의 새 식구다** — 문구 경로가 곧 클라이언트 경로라 그 둘은 같은 목록의 양면이다.
   ⚠️ **뒤의 둘은 `client-graph.test.ts`가 파일 목록을 `toEqual`로 고정한다** (8-4). 그 검사의 기본형은 **패키지 이름만** 보는데, `lib/keys/view.ts`가 무는 것은 전부 리포 안 모듈이라 npm 패키지가 하나도 안 나온다 — **클라이언트가 그것을 값으로 읽어도 green이다.** `lib/i18n`에 걸어 둔 정확 일치 단언이 그 구멍을 메우는 형이고, 이 배송이 같은 형을 둘 더 걸었다.
 - ⚠️ **`lib/onboarding/readiness.ts`도 8-3에 잎이 됐다** — `readinessLabel`이 나가면서 `@/lib/i18n` import가 사라졌다. 잎이 된 것은 의도가 아니라 **결과**이고, 그래서 §1.3의 "온보딩 판정층이 사전을 문다"가 셋에서 둘로 줄었다.
   앞의 것은 위 문구 모듈 **넷이 전부** 물게 됐으므로 — 즉 클라이언트가 문구를 읽는 모든 경로가 사전을
