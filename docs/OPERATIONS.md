@@ -172,6 +172,10 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
   삭제 실패도 고아를 남긴다. `pnpm smoke:blob`은 테스트 파일의 저장·다운로드·삭제·404를 확인하고
   Blob 목록과 복호화된 `User.image`의 차집합을 **삭제 없이 후보로만** 출력한다. 복호 불가 행이나
   동시 업로드가 있으면 오탐할 수 있으므로 후보를 자동 삭제하지 않는다.
+  ⚠️ **같은 저장소가 프로젝트 로고도 든다** (2026-09-20 — `projects/<projectId>/…` 프리픽스).
+  `Project.image`는 **PII 봉투가 아니라 평문 컬럼**이라 PII 키를 잃어도 살아남는다 —
+  `pnpm smoke:blob`은 `avatars/`·`projects/` 두 프리픽스를 모두 훑고 `planImageDelete`·
+  `planProjectImageDelete` 둘로 고아 후보를 가른다.
   로컬에는 `BLOB_READ_WRITE_TOKEN`이 필요하며 환경별로 별도 공개 저장소를 쓴다.
 
 ## 2. 키 회전
