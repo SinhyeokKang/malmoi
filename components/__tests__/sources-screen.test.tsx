@@ -1,0 +1,74 @@
+// @vitest-environment jsdom
+import { act } from "react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, expect, it, vi } from "vitest";
+import { SourcesScreen } from "@/components/sources/sources-screen";
+import type { SourceDetail, SourcesData } from "@/lib/sources/query";
+import { render } from "./helpers/dom";
+vi.setConfig({ testTimeout: 20_000 });
+const mocks = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn(), runFirstIngest: vi.fn(), refresh: vi.fn(), replace: vi.fn() }));
+vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({ loadSourceDetail: mocks.load, updateBaseLocale: mocks.save }));
+vi.mock("@/app/(edit)/projects/actions", () => ({ runFirstIngest: mocks.runFirstIngest }));
+vi.mock("@/components/sources/add-sources-modal", () => ({ AddSourcesModal: ({ open, onAdded, onClose }: { open: boolean; onAdded: (r: unknown[]) => void; onClose: () => void }) => open ? <button onClick={() => { onAdded([{ surfaceSlug: "mobile", count: 9, failed: 2 }]); onClose(); }}>Finish adding</button> : null }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, replace: mocks.replace }) }));
+const source = { id: "s", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"), lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, keys: 248, locales: 1, orphanedLocales: 1, progress: { total: 248, done: 210, review: 12, percent: 84 } };
+const data: SourcesData = { installed: true, sources: [source] };
+const detail: SourceDetail = { ...source, installed: true, languages: [{ code: "en", isBase: true, orphaned: false, total: 248, translated: 210, needsReview: 12, untranslated: 26, percent: 84 }, { code: "ja", isBase: false, orphaned: true, total: 248, translated: 0, needsReview: 0, untranslated: 248, percent: 0 }] };
+const button = (text: string) => [...document.querySelectorAll('button')].find(node => node.textContent === text)!;
+const open = async () => { await act(async () => { await userEvent.setup().click(document.querySelector('[data-source-row]')!); }); };
+beforeEach(() => { vi.clearAllMocks(); mocks.load.mockResolvedValue({ ok: true, detail }); });
+it("EDITOR는 연결계·재시도 없이 진행률과 고아 복구 안내를 본다", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
+  expect(button("Add source")).toBeUndefined();
+  await open();
+  expect(document.body.textContent).toContain("84%");
+  expect(document.body.textContent).toContain("Source commit");
+  expect(document.querySelector('time')?.getAttribute('aria-label')).toContain("UTC");
+  expect(document.body.textContent).toContain("ja");
+  expect(button("Run first import")).toBeUndefined();
+  expect(document.querySelector('[data-source-connection]')).toBeNull();
+  expect(document.querySelector('a[href*="settings"]')).toBeNull();
+  expect(document.querySelector('a[href*="locales=en"]')?.getAttribute('href')).toContain("ns=%2A");
+  expect(document.querySelector('a[href*="locales=ja"]')).toBeNull();
+  expect(document.querySelector('button button, button a, a button')).toBeNull();
+});
+it.each([{ rejected: "forbidden" }, { failed: true }])("상세 오류에서 장애만 재시도한다 %j", async result => {
+  mocks.load.mockResolvedValue(result);
+  await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
+  await open();
+  expect(!!button("Retry")).toBe("failed" in result);
+  expect(document.querySelector('[data-onboarding-panel]')?.className).toContain("min-h-0");
+});
+it("늦게 도착한 이전 상세는 닫힌 모달을 다시 열지 않는다", async () => {
+  let resolve!: (result: unknown) => void;
+  mocks.load.mockReturnValue(new Promise(r => { resolve = r; }));
+  await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
+  await open();
+  expect(document.querySelectorAll('[data-language-skeleton]')).toHaveLength(3);
+  await act(async () => { await userEvent.setup().click(button("Close")); });
+  await act(async () => { resolve({ ok: true, detail }); });
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+});
+it("추가 결과는 refresh와 상세 열기/닫기 뒤에도 같은 소유자에 남는다", async () => {
+  const ownerData = { ...data, repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } };
+  const view = await render(<SourcesScreen slug="p" role="OWNER" data={ownerData} adapters={[]} now={new Date()} />);
+  const owner = view.container.querySelector('[data-sources-screen]');
+  await act(async () => { await userEvent.setup().click(button("Add source")); await userEvent.setup().click(button("Finish adding")); });
+  expect(view.container.textContent).toContain("mobile");
+  await view.rerender(<SourcesScreen slug="p" role="OWNER" data={{ ...ownerData }} adapters={[]} now={new Date()} />);
+  await open();
+  await act(async () => { await userEvent.setup().click(button("Close")); });
+  expect(view.container.querySelector('[data-sources-screen]')).toBe(owner);
+  expect(view.container.textContent).toContain("mobile");
+  expect(view.container.textContent).toContain("Update the workflow");
+});
+it("첫 적재 성공 뒤 상세 재조회 실패가 성공 결과를 뒤집지 않는다", async () => {
+  const first = { ...source, lastCommitSha: null, lastImportError: "partial-import" };
+  mocks.load.mockResolvedValueOnce({ ok: true, detail: { ...detail, ...first } }).mockResolvedValue({ failed: true });
+  mocks.runFirstIngest.mockResolvedValue({ ok: true, count: 7, failed: 1 });
+  await render(<SourcesScreen slug="p" role="OWNER" data={{ ...data, sources: [first] }} adapters={[]} now={new Date()} />);
+  await open();
+  await act(async () => { await userEvent.setup().click(button("Run first import")); });
+  expect(document.body.textContent).toContain("7");
+  expect(document.body.textContent).toContain("latest");
+});
