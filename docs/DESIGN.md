@@ -1291,7 +1291,7 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 | 연결 블록 | OWNER만. 경로·형식·리포/브랜치, border/radius12·muted 배경. 넓을 때 1fr/180/280, 컨테이너850 이하에서 경로 한 줄+형식/리포 두 칸. null은 Not configured, 알 수 없는 형식은 Unrecognized format |
 | 카드 | Import status · Base language · Languages. 공유 PanelCard, 간격16, header16, 본문13/16. 정상 적재는 무채색, 실패만 warning. 미적재·진행 중은 info 아이콘 |
 | 적재 | not-imported / importing / failed-first / failed-after / imported. 최초 실패만 재시도, 이후 실패는 OWNER에게 워크플로 재실행 안내. Source commit은 원본 커밋 시각이고 적재 완료 시각이라고 부르지 않는다. `<time dateTime>`+UTC 접근 이름, null 시각 생략, 상대 표기는 importing뿐 |
-| 기준 언어 | 활성 언어 Select + Save. 선언만 저장한다. 저장 중 refresh와 실패에서도 draft를 보존하고 baseline만 갱신. 오류 뒤 Save 포커스. EDITOR는 적용값만 읽고 대기 시 적용값/요청값을 본다. OWNER만 workflow 한 줄+Copy. 비활성 Select는 pointer/click/key 셋을 막는다 |
+| 기준 언어 | 활성 언어 Select + Save. **적용 대기는 신호 셋이다** — 카드 머리의 `warning` 배지 · Select의 `border-amber-500/50` · 적용값/요청값 두 줄. 저장이 즉시 적용된 것처럼 보이지 않게 하는 장치이고, 배지가 낱말을 들었으므로 아래 Alert에 같은 제목을 또 쓰지 않는다. 선언만 저장한다. 저장 중 refresh와 실패에서도 draft를 보존하고 baseline만 갱신. 오류 뒤 Save 포커스. EDITOR는 적용값만 읽고 대기 시 적용값/요청값을 본다. OWNER만 workflow 한 줄+Copy. 비활성 Select는 pointer/click/key 셋을 막는다 |
 | 언어 | base 먼저→활성 코드순→고아(기존 localeProgress 정렬). 코드·Base·완료 수·공유 Meter·검토 수·고아 사유/복구·Open. percent는 완료만, 막대는 완료+검토. 0분모는0%, 동시 읽기 어긋남은 clamp. 고아는 활성 수에서 제외하되 행은 남기며 Open은 비활성 |
 | 좁은 표 | 컨테이너640 이하에서 고아 사유를 별도 행으로 내려 코드·진행률·복구 문구를 보존한다 |
 | 이탈 | 미저장 확인창 없음. 저장 중 X·Esc·배경·Close·두 Open을 잠그고 그 외 즉시 실행. 닫기 후 진입 행, 사라졌으면 제목에 포커스. 브라우저 Back을 모달 Close로 재정의하지 않는다 |
@@ -1325,7 +1325,7 @@ mono 14가 아니라 **13**이다(`text-mono` 유틸이 소비 경로 하나로 
 chevron을 버튼 밖으로 빼면 순서는 맞지만 행의 클릭 영역이 좁아진다. ④ 좁은 폭(컨테이너 1016 이하)에서
 캔버스는 상태를 셋째 줄로 내리고 헤더 설명을 감추는데 구현은 그대로다 — 그 규칙의 목적(경로가 먼저
 줄바꿈되는 것을 막는다)은 `min-w-0` + `break-all`이 이미 지킨다(1280 실측: 경로 잘림 0 · 가로 overflow 0).
-기준 언어의 적용 대기도 캔버스는 amber 배지·Select 테두리·사유 행 **셋**인데 구현은 info Alert 하나다.
+(기준 언어의 적용 대기 3신호는 2026-09-22에 넷과 분리해 **구현했다** — 위 표를 본다.)
 
 ### 6.67 계정 (`/account`) — 카드 넷 (2026-09-09 6b-4 · 2026-09-10 세션 회수 · 2026-09-13 재편 · **2026-09-16 카드 규격**)
 
