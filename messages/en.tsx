@@ -205,10 +205,15 @@ export const en = {
        */
       projects: "Projects",
       /**
-       * 사용자 축의 설정(`/account`) — **프로젝트 축의 `Project settings`와 이름으로 갈린다.**
+       * 사용자 축의 계정 화면(`/account`) — **프로젝트 축의 `Project settings`와 이름으로 갈린다.**
        * ⚠️ 유저 메뉴도 같은 문구를 쓴다: 한 곳을 가리키는 이름이 둘이면 그중 하나가 낡는다.
+       *
+       * ⚠️ **2026-09-23에 `Settings`에서 바뀌었다** (사용자) — 시안(8-3)이 `Settings`였는데, 그 낱말이
+       * 같은 사이드바의 `Project settings`와 축만 다른 동의어라 "어느 설정인가"를 매번 되묻게 했다.
+       * `Account`는 라우트(`/account`)·아이콘(`CircleUser`)과도 같은 낱말이다. **키 이름도 함께 옮겼다** —
+       * 값만 바꾸면 `nav.settings`가 `Account`를 뱉어 다음 사람이 프로젝트 설정으로 오인한다.
        */
-      settings: "Settings",
+      account: "Account",
       /**
        * 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다.
        *
