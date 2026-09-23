@@ -52,11 +52,13 @@
   - 검증: 실제 외부 전송과 문서 대조, 관련 기존 개인정보 테스트 green.
 - [ ] **T4.3** 제목·인증 가능한 발신 주소를 운영에서 확정하고 환경별 키/from/origin·DNS(SPF/DKIM/DMARC)·추적 비활성화를 설정한다.
   - 검증: 키 원문을 기록하지 않고 설정 유효성을 확인한다. `.env.local`은 에이전트가 편집하지 않는다.
-- [ ] **T4.4** 사용자 지정 수신자로 dev에서 역할 혼합 다중 초대→개별 수신→로그인→수락, Pending Resend→옛 링크 거부를 확인한다.
+- [x] **T4.4** 사용자 지정 수신자로 dev에서 역할 혼합 다중 초대→개별 수신→로그인→수락, Pending Resend→옛 링크 거부를 확인한다.
   - 검증: 메일은 자기 링크 한 줄, 다른 주소 없음, dev 착지, 서버 저장 역할 일치. 실제 메일은 지정 수신자가 있을 때만 보낸다.
 - [ ] **T4.5** 프로덕션 배포 뒤 지정 수신자로 prod 왕복을 확인한다. 장애 시 초대 발송을 중단하고 기존 로그인·멤버 접근은 유지한다.
   - 검증: prod 초대가 prod에서 수락된다. 미실행이면 운영 활성화 완료로 기록하지 않는다.
 
 T4.2 — 2026-09-24: 방침(`messages/en.tsx` privacy, 시행일 2026-09-24)과 OPERATIONS "초대 메일 — Resend". ⚠️ **보존 30일은 Resend Free 플랜 값이다** — 계정의 실제 요금제를 사용자가 확인해야 한다.
+
+T4.4 — 2026-09-24 dev(`dev.mal-moi.com`, preview 키) 실측: ① `bugshot-i18n-test-qa`에 ox501tube(이미 EDITOR)+hancycle 한 요청 → ox501tube 행 `already-member` · 바닥 `Nothing was sent by this request…` · Pending 수 불변(쓰기 0). ② `i18n-format-check`에 ox501tube(Editor)+hancycle(Owner) → 토스트 `Invitations sent to 2 people` · 각 메일의 수신자는 자기 하나 · 링크는 dev 초대 URL(버튼·대체 링크 같은 값). ③ 다른 계정(OWNER)으로 열면 `The one you're using wasn't.`(GET은 소비하지 않는다) → ox501tube Google 로그인 → Accept → 프로젝트 Home 착지 · 멤버 목록 Editor(서버 저장 역할 일치) · 로그에 invited×2·joined. ④ 같은 링크 재열람 → `This link was already used`. ⑤ OWNER로 hancycle Resend → 토스트 · 역할 Owner 유지 · 스레드에 메일 2통(토큰 다름) · 옛 링크 → `This invitation expired`. ⚠️ **ox501tube 쪽 메일이 Gmail 스팸함으로 갔다**(hancycle은 받은편지함) — 원인(헤더의 SPF/DKIM/DMARC 판정)은 미확인이다. T4.5 전에 원본 헤더를 보고 판단한다.
 
 커밋 경계 4: 문서별로 분리. Codex 커밋에는 지정 트레일러를 붙인다. 원격 push/merge는 Claude Code의 `/push`·`/merge`가 담당한다. 이 스펙 단계에서는 배포·계정 생성·DNS 변경·실제 메일 발송을 하지 않는다.
