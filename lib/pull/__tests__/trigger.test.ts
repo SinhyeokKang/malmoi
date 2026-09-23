@@ -116,6 +116,24 @@ describe("triggerPull — 조립", () => {
     spy.mockRestore();
   });
 
+  it("보류도 console.warn으로 낸다 — 매 밤 같은 판정이 반복되는데 흔적이 없으면 안 된다 (delivery-invariants D3)", async () => {
+    const EN = "en:\n  a: one\n";
+    const { client } = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [{ path: "config/locales/en.yml", sha: "e" }] }, blobs: { e: EN } });
+    hoisted.createGitClient.mockResolvedValue(client);
+    const columns = { adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", nested: null, nestedByPath: null, baseLocale: "en" };
+    hoisted.loadPullState.mockResolvedValue({
+      project: { id: "p1", slug: "fmt", repoOwner: "o", repoName: "r", baseBranch: "dev", installationId: "1", repositoryId: "100", lastPulledAt: null, ...columns },
+      surfaces: [{ id: "s1", slug: "default", ...columns, localeCodes: ["en", "fr"],
+        keys: [{ id: "k", key: "a", sourceText: "one", orphaned: false, cells: { en: { value: "one" }, fr: { value: "un" } } }] }],
+      maxUpdatedAt: new Date("2026-09-04T00:00:00Z"), unpublished: 1,
+      pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s1", keyId: "k", localeCode: "fr", restoreValue: "" } }],
+    });
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(await triggerPull({} as never, "fmt", null)).toMatchObject({ status: "skipped", reason: "withheld" });
+    expect(spy.mock.calls.map(c => String(c[0]))).toEqual(["[pull:fmt] withheld edits: 1 missing file, 0 missing key"]);
+    spy.mockRestore();
+  });
+
 });
 
 /**

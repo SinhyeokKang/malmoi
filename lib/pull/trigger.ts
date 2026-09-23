@@ -69,5 +69,8 @@ export async function triggerPull(prisma: PrismaClient, slug: string, runId: str
   if (result.status === "skipped" && result.reason === "writer-warnings") {
     for (const w of result.warnings) console.warn(`[pull:${slug}] ${w}`);
   }
+  // 보류도 남긴다 — 사람이 파일을 되돌리거나 Revert할 때까지 매 밤 같은 판정이 반복되는데, cron 응답을 놓치면 흔적이 없다(delivery-invariants D3).
+  const withheld = result.status === "committed" || (result.status === "skipped" && (result.reason === "no-changes" || result.reason === "withheld")) ? result.withheld : undefined;
+  if (withheld !== undefined) console.warn(`[pull:${slug}] withheld edits: ${withheld.file} missing file, ${withheld.key} missing key`);
   return result;
 }
