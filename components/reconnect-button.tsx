@@ -61,13 +61,13 @@ export function ReconnectButton({ slug, label, variant, onFailure }: {
   );
 }
 
+/** 호출이 던졌다 — 어느 union에도 없는 값이라 `messageFor`의 폴백(`connectFailed`)으로 떨어진다. */
+const FAILED = "thrown";
+
 /**
  * 두 union이 겹치는 값은 `unavailable` 하나이고 뜻이 같다 — 먼저 보는 쪽이 이겨도 문제가 없다.
  * 모르는 값에 던지지 않는다: Action이 새 갈래를 늘려도 화면이 죽지 않아야 한다.
  */
-/** 호출이 던졌다 — 어느 union에도 없는 값이라 `messageFor`의 폴백(`connectFailed`)으로 떨어진다. */
-const FAILED = "thrown";
-
 function messageFor(error: string): string {
   if (isAccessError(error)) return accessErrorMessage(error);
   if (isConnectError(error)) return connectErrorMessage(error);

@@ -1,6 +1,6 @@
 import { Archive, ChevronRight, CircleCheck, CircleDot, Languages, TriangleAlert } from "lucide-react";
 import Link from "next/link";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { canPerform, type Role } from "@/lib/auth/permission";
@@ -37,7 +37,7 @@ const TILE: Record<AttentionItem["kind"], { icon: ComponentType<{ className?: st
 export function AttentionCard({ items, slug, role, state, now }: {
   items: AttentionList;
   slug: string;
-  /** 가져오기 실패의 목적지(Sources의 재시도)가 OWNER 전용이라 역할이 행의 형을 가른다. */
+  /** 가져오기 실패의 재시도가 OWNER 전용이라 EDITOR 행에만 그 사실 한 줄이 붙는다. */
   role: Role;
   state: HomeState;
   now: Date;
@@ -106,14 +106,14 @@ export function AttentionCard({ items, slug, role, state, now }: {
  * 재시도가 사는 자리 — audit #6: 전엔 설정 화면이었고 거기엔 그 정보가 0이었다), 나머지 둘은 그 로케일만
  * 보이는 번역 화면이다.
  *
- * ⚠️ **EDITOR의 가져오기 실패는 링크가 아니다** — 재시도가 `project:settings` 뒤라 누를 곳이 없다. 사실(어느
- * 표면이 실패했나)은 그대로 읽히고 담당자 안내 한 줄이 붙는다 (`/projects` 목록 띠와 같은 규칙).
+ * ⚠️ **EDITOR도 같은 링크다** (audit #6 r1 — 사용자 결정) — Sources는 `translation:write`라 EDITOR도 열어 사유를
+ * 읽는다. 재시도만 `project:settings` 뒤라 그 사실 한 줄이 붙는다 (`/projects` 목록 띠와 같은 규칙).
  *
  * ⚠️ **구분선이 `--divider`(#f0f0f0)이고 `--border`(#e5e5e5)가 아니다** — 카드 **안**의 선은 카드
  * 테두리보다 연해야 행 셋이 한 덩어리로 읽힌다 (DESIGN §6.2에 등재된 토큰).
  */
 function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: string; role: Role; now: Date }) {
-  const settled = item.kind !== "import_failed" || canPerform(role, "project:settings");
+  const ownerRetries = item.kind === "import_failed" && !canPerform(role, "project:settings");
   const href =
     item.kind === "import_failed"
       ? routes.sources(slug)
@@ -125,12 +125,11 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
   const tile = TILE[item.kind];
   const Tile = tile.icon;
 
-  const row = (children: ReactNode) => settled
-    ? <Link href={href} className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-divider flex items-center gap-3 border-t px-4 py-3.5 focus-visible:ring-2 focus-visible:outline-none">{children}</Link>
-    : <div className="border-divider flex items-center gap-3 border-t px-4 py-3.5">{children}</div>;
-
-  return row(
-    <>
+  return (
+    <Link
+      href={href}
+      className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-divider flex items-center gap-3 border-t px-4 py-3.5 focus-visible:ring-2 focus-visible:outline-none"
+    >
       <span className={`flex size-7 shrink-0 items-center justify-center rounded ${tile.className}`}>
         <Tile className="size-4" aria-hidden />
       </span>
@@ -142,14 +141,14 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
           <span className="font-medium">{body(item)}</span>
           {tail(item)}
         </span>
-        {!settled && <span className="text-muted-foreground text-xs">{m.projects.importFailure.contactOwner}</span>}
+        {ownerRetries && <span className="text-muted-foreground text-xs">{m.projects.importFailure.ownerRetries}</span>}
       </span>
       {/* ⚠️ 시각은 `neutral-400`이다 — 보조 줄(`#737373`)보다 한 단계 더 물러난다. */}
       <span className="shrink-0 text-xs text-neutral-400">
         {item.at === null ? m.home.meta.never : relativeTime(item.at, now)}
       </span>
-      {settled && <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden />}
-    </>,
+      <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
+    </Link>
   );
 }
 

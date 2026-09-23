@@ -335,7 +335,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
  * ⚠️ **이름이 `BannerLine`이 아니다** — 프리미티브와 한 파일 안에서 충돌한다. 바깥에 있는 사실
  * (`</Link>` 뒤)을 `projects-screen.test.ts`가 이 이름으로 센다.
  *
- * ⚠️ **링크가 역할로 갈리는 것은 셋이다**(`Reconnect`·`Continue setup`·`View details`). 그 셋은
+ * ⚠️ **링크가 역할로 갈리는 것은 둘이다**(`Reconnect`·`Continue setup` — `View details`는 r1에 Sources로 가며 빠졌다). 그 둘은
  * `project:settings` 뒤라 EDITOR에게 보여 주면 눌러서 거절당하는 경험이 된다 — 그 자리에는
  * "누가 할 수 있는지"를 말한다. **판정은 여기서 하고 `rowBanner`는 역할을 안 받는다** (DESIGN §6.63).
  */
@@ -356,7 +356,7 @@ function ProjectBanner({ row, banner }: { row: ProjectListRow; banner: NonNullab
       {banner.kind === "import_failed" && (
         <>
           {importFailureMessage(banner.reason)}{" "}
-          {canSettle ? m.projects.banner.checkDetails : m.projects.importFailure.contactOwner}
+          {canSettle ? m.projects.banner.checkDetails : m.projects.importFailure.ownerRetries}
         </>
       )}
     </BannerLine>
@@ -436,7 +436,8 @@ function BannerAction({
     case "import_failed":
       // ⚠️ EDITOR의 안내 문장은 위 `BannerLine`이 이미 냈다 — 여기서 한 번 더 말하지 않는다.
       // 상세·재시도는 Sources에 산다 (audit #6) — Settings에는 가져오기 실패에 관한 정보가 0이다.
-      return canSettle ? internal(routes.sources(row.slug), m.projects.banner.action.viewDetails) : null;
+      // ⚠️ **EDITOR도 링크를 받는다** (r1 사용자 결정) — Sources는 EDITOR도 열어 사유를 읽고, 재시도만 위 문장이 OWNER 몫이라고 말한다.
+      return internal(routes.sources(row.slug), m.projects.banner.action.viewDetails);
   }
 }
 

@@ -25,30 +25,36 @@ import { m } from "@/lib/i18n";
  * @param openPrUrl 열린 PR. **보관은 그것을 닫지 않으므로**(PRODUCT §7.9) 사람이 알고 판단해야 한다.
  *   `null`은 "없다", `undefined`는 **"확인하지 못했다"** — 조회 실패를 부재로 접으면 그 정보가 조용히
  *   사라진다 (POSTMORTEM 2026-09-03).
+ * @param onFailure 거부 문구를 **바깥이 든다** (r1) — 실패는 문자열, 다시 누르면 `null`. Home 배너의 `actions` 안에서
+ *   자기 아래에 Alert를 세우면 warning 배너 속 danger Alert로 중첩된다. 안 주면 블록 안에 그린다(Settings 행).
+ *   `ReconnectButton`·`DisconnectGithubButton`의 `onFailure`와 같은 계약이다.
  */
 export function ArchiveCard({
   slug,
   name,
   archived,
   openPrUrl,
+  onFailure,
 }: {
   slug: string;
   name: string;
   archived: boolean;
   openPrUrl: string | null | undefined;
+  onFailure?: (message: string | null) => void;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const cancel = useRef<HTMLButtonElement>(null);
 
   /** ⚠️ **던져도 제자리로 돌아온다** — 통신이 끊기면 서버가 바꿨는지 모르므로 사유 대신 확인 불가를 말한다. */
+  const report = (message: string | null) => { if (onFailure) onFailure(message); else setError(message); };
   function run(action: (slug: string) => Promise<ArchiveResult>) {
-    setError(null);
+    report(null);
     startTransition(async () => {
       let result: ArchiveResult | null;
       try { result = await action(slug); } catch { result = null; }
-      if (result === null) setError(m.archive.failedUnknown);
-      else if (!result.ok) setError(isAccessError(result.error) ? accessErrorMessage(result.error) : m.archive.failed(result.error));
+      if (result === null) report(m.archive.failedUnknown);
+      else if (!result.ok) report(isAccessError(result.error) ? accessErrorMessage(result.error) : m.archive.failed(result.error));
     });
   }
   /*

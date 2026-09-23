@@ -2,11 +2,12 @@
 
 import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
+import { FormGroup } from "@/components/ui/form-group";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -67,7 +68,13 @@ export function LogFilters({
   // ⚠️ **축 일곱을 여기서 다시 세지 않는다** — `hasNarrowing`이 그 판정을 소유한다(축이 늘면 한 곳만 고친다).
   const narrowed = hasNarrowing(filter);
   const [customOpen, setCustomOpen] = useState(false);
-  const dateTriggerId = useId();
+  /**
+   * ⚠️ **여는 때마다 Dialog를 새로 세운다** (r1) — 두 칸의 초깃값이 `useState(filter.from)`이라 한 번만 평가되고, 이
+   * Dialog엔 트리거가 없어 Radix `onOpenChange`가 여는 쪽으로 불리지 않는다. 그래서 취소한 입력이 다음 열기에 남았고,
+   * 프리셋으로 바꾼 뒤 다시 열어 Apply하면 **옛 범위가 조용히 되돌아왔다.** key가 바뀌면 URL의 현재 값에서 시작한다.
+   */
+  const [customRun, setCustomRun] = useState(0);
+  const dateTrigger = useRef<HTMLButtonElement>(null);
 
   return (
     <div className="flex flex-col gap-3">
@@ -97,7 +104,7 @@ export function LogFilters({
           ))}
         </Filter>
 
-        <Filter id={dateTriggerId} axis={m.logs.filters.axis.date} label={dateLabel(filter)} on={filter.from !== null || filter.to !== null}>
+        <Filter triggerRef={dateTrigger} axis={m.logs.filters.axis.date} label={dateLabel(filter)} on={filter.from !== null || filter.to !== null}>
           <DropdownMenuItem selected={filter.from === null && filter.to === null} onSelect={() => go({ from: null, to: null })}>
             {m.logs.filters.anyDate}
           </DropdownMenuItem>
@@ -111,7 +118,7 @@ export function LogFilters({
             ⚠️ **입력 칸을 메뉴 안에 두지 않는다** (audit #8 — WCAG 2.1.1). 메뉴의 roving focus는 `menuitem`만 들르고
             Tab은 메뉴를 닫으므로, 안에 둔 `<input>`에는 키보드로 도달할 수 없었다. 항목 하나가 Dialog를 연다.
           */}
-          <DropdownMenuItem onSelect={() => setCustomOpen(true)}>{m.logs.range.customOpen}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => { setCustomRun(run => run + 1); setCustomOpen(true); }}>{m.logs.range.customOpen}</DropdownMenuItem>
         </Filter>
 
         <Filter axis={m.logs.filters.axis.actor} label={actorLabel(filter, actors)} on={filter.actor !== null}>
@@ -183,7 +190,7 @@ export function LogFilters({
             {m.logs.filters.clear}
           </Button>
         )}
-        <CustomRangeDialog open={customOpen} onOpenChange={setCustomOpen} filter={filter} returnFocusId={dateTriggerId}
+        <CustomRangeDialog key={customRun} open={customOpen} onOpenChange={setCustomOpen} filter={filter} returnFocusRef={dateTrigger}
           onApply={range => go(range)} />
         <SearchInput
           className="ml-auto"
@@ -202,13 +209,17 @@ export function LogFilters({
  * 트리거 — **접근 가능한 이름이 축을 포함한다** ("Source: web, emails"). 라벨만으로는 스크린리더가
  * 무엇을 고른 것인지 모른다. 켜짐은 색이 아니라 **테두리·굵기**로도 구별된다.
  */
-function Filter({ id, axis, label, on, children }: { id?: string; axis: string; label: string; on: boolean; children: ReactNode }) {
+/*
+  ⚠️ **트리거에 `id`를 넘기지 않는다** (r1) — Radix는 `context.triggerId`를 트리거의 id로 쓰고 메뉴의 `aria-labelledby`가 그것을
+  가리키는데, `id` prop이 그 값을 덮는다(값이 `undefined`여도 덮인다). 다섯 메뉴가 전부 없는 id를 가리켰다. 포커스 복귀는 ref가 든다.
+*/
+function Filter({ triggerRef, axis, label, on, children }: { triggerRef?: RefObject<HTMLButtonElement | null>; axis: string; label: string; on: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const Chevron = open ? ChevronUp : ChevronDown;
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        id={id}
+        ref={triggerRef}
         aria-label={`${axis}: ${label}`}
         className={cn(
           "hover:bg-accent focus-visible:ring-ring inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-2.5 text-sm focus-visible:ring-2 focus-visible:outline-none",
@@ -229,26 +240,26 @@ function Filter({ id, axis, label, on, children }: { id?: string; axis: string; 
  * ⚠️ **칸을 바꿀 때마다 이동하지 않는다** — 메뉴 밖으로 나온 대가로 [Apply]가 생겼다. 한 칸씩 고치는 동안 URL이 바뀌면
  * 목록이 매번 다시 그려지고, 두 칸 중 하나만 고친 중간 상태가 결과처럼 선다.
  * ⚠️ **닫히면 Date 트리거로 포커스를 돌려준다** — 연 항목은 메뉴와 함께 사라져 Radix의 기본 복귀가 `body`로 떨어진다.
+ * ⚠️ **초깃값은 마운트 때 한 번이다** — 여는 때마다 새로 세우는 것은 호출부의 `key`가 든다.
+ * ⚠️ **칸은 Dialog의 필드다** — 보이는 라벨(`FormGroup`)과 기본 `Input` 크기이고, 메뉴 안에서 쓰던 `h-8 text-xs`가 아니다.
  */
-function CustomRangeDialog({ open, onOpenChange, filter, returnFocusId, onApply }: {
+function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   filter: LogFilter;
-  returnFocusId: string;
+  returnFocusRef: RefObject<HTMLButtonElement | null>;
   onApply: (range: { from: string | null; to: string | null }) => void;
 }) {
   const [from, setFrom] = useState(filter.from ?? "");
   const [to, setTo] = useState(filter.to ?? "");
-  // 열 때마다 URL의 현재 값에서 시작한다 — 취소한 입력이 다음 열기에 남으면 적용된 범위처럼 보인다.
-  const change = (next: boolean) => {
-    if (next) { setFrom(filter.from ?? ""); setTo(filter.to ?? ""); }
-    onOpenChange(next);
-  };
+  const fromId = useId();
+  const toId = useId();
   return (
-    <Dialog open={open} onOpenChange={change}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         title={m.logs.range.custom}
-        onCloseAutoFocus={event => { event.preventDefault(); document.getElementById(returnFocusId)?.focus(); }}
+        description={m.logs.range.description}
+        onCloseAutoFocus={event => { event.preventDefault(); returnFocusRef.current?.focus(); }}
         footer={<>
           <DialogClose asChild><Button>{m.common.cancel}</Button></DialogClose>
           <Button variant="primary" onClick={() => { onApply({ from: from === "" ? null : from, to: to === "" ? null : to }); onOpenChange(false); }}>
@@ -256,10 +267,13 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusId, onApply 
           </Button>
         </>}
       >
-        <div className="flex items-center gap-1.5">
-          <Input type="date" aria-label={m.logs.range.from} value={from} onChange={event => setFrom(event.target.value)} className="h-8 min-w-0 flex-1 text-xs" />
-          <span className="text-muted-foreground shrink-0 text-xs">–</span>
-          <Input type="date" aria-label={m.logs.range.to} value={to} onChange={event => setTo(event.target.value)} className="h-8 min-w-0 flex-1 text-xs" />
+        <div className="grid grid-cols-2 gap-3">
+          <FormGroup label={m.logs.range.from} htmlFor={fromId}>
+            <Input id={fromId} type="date" value={from} onChange={event => setFrom(event.target.value)} className="w-full" />
+          </FormGroup>
+          <FormGroup label={m.logs.range.to} htmlFor={toId}>
+            <Input id={toId} type="date" value={to} onChange={event => setTo(event.target.value)} className="w-full" />
+          </FormGroup>
         </div>
       </DialogContent>
     </Dialog>

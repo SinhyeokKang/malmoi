@@ -168,8 +168,10 @@ it("보관 배너에서 복원이 거부되면 사유 Alert가 배너 밖 형제
   await click("Restore project");
   const failure = [...document.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(m.errors.access.forbidden));
   expect(failure).toBeDefined();
-  const banner = [...document.querySelectorAll("div")].find(node => node !== failure && node.textContent?.startsWith(m.home.banner.archived.title));
-  expect(banner).toBeDefined();
+  // 배너 = [Restore project]에서 위로 올라가며 처음 만나는, 배너 제목으로 시작하는 조상(가장 안쪽 — 바깥 래퍼가 아니다).
+  let banner: HTMLElement | null = button("Restore project");
+  while (banner && !banner.textContent?.startsWith(m.home.banner.archived.title)) banner = banner.parentElement;
+  expect(banner).not.toBeNull();
   expect(banner!.contains(failure!)).toBe(false);
   expect(failure!.parentElement?.closest('[role="alert"], [role="status"]')).toBeNull();
 });

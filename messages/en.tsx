@@ -800,6 +800,8 @@ export const en = {
       from: "From (UTC)",
       to: "To (UTC)",
       apply: "Apply range",
+      /** Dialog 설명 — 한쪽을 비우면 열린 범위라는 것을 고르기 전에 말한다. */
+      description: "Pick the first and last day to show. Leave one empty for an open-ended range.",
     },
     /** ⚠️ **`aria-label`에는 줄임표가 없다** — 스크린리더가 읽는 이름이라 장식이 붙으면 안 된다. */
     search: { label: "Search logs", placeholder: "Search logs…", clear: "Clear search" },
@@ -1304,8 +1306,8 @@ export const en = {
      * 이 문장은 **번역자도 보는 목록**에 나가므로 파서 어휘를 쓰지 않는다 (DESIGN §10).
      * 상세 진단은 CI 로그에 남아 있고 화면은 그리로 보낸다.
      *
-     * ⚠️ **`contactOwner`가 EDITOR 갈래다** — `View details`가 `project:settings` 뒤라
-     * 그 링크를 보여주면 눌러서 거절당하는 경험이 된다 (PRODUCT §3).
+     * ⚠️ **`ownerRetries`가 EDITOR 갈래다** (audit #6 r1) — `View details`는 이제 Sources로 가서 EDITOR도 누르고
+     * 사유를 읽는다. 재시도만 `project:settings` 뒤라 그 사실 한 줄을 더한다 (PRODUCT §3).
      */
     importFailure: {
       parseFailed: "Locale files could not be parsed.",
@@ -1315,7 +1317,7 @@ export const en = {
       /** 데이터는 들어갔다 — "실패"가 아니라 "일부가 빠졌다"여야 사용자가 목록의 숫자를 믿는다. */
       partialImport: "Some locale files were left out of the last import.",
       importFailed: "The last import did not finish.",
-      contactOwner: "Ask a project owner to check the import.",
+      ownerRetries: "Only a project owner can retry it.",
     },
   },
 

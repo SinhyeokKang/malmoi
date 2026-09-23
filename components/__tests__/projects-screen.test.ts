@@ -334,14 +334,15 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   });
 
   /**
-   * ⚠️ **역할로 갈리는 것은 링크 셋뿐이다** (DESIGN §6.63) — `project:settings` 뒤라 EDITOR에게
-   * 보여 주면 눌러서 거절당하는 경험이 된다. 판정은 **호출부**가 하고 `rowBanner`는 역할을 안 받는다.
+   * ⚠️ **역할로 갈리는 것은 링크 둘과 문장 하나다** (DESIGN §6.63) — `project:settings` 뒤라 EDITOR에게
+   * 보여 주면 눌러서 거절당하는 경험이 된다. 가져오기 실패의 `View details`는 Sources로 가서 EDITOR도 받고(audit #6 r1),
+   * 재시도가 OWNER 몫이라는 문장만 갈린다. 판정은 **호출부**가 하고 `rowBanner`는 역할을 안 받는다.
    */
-  it("세 링크가 `project:settings`로 갈린다", () => {
+  it("두 링크와 재시도 문장이 `project:settings`로 갈린다", () => {
     expect(BODY).toContain('canPerform(row.role, "project:settings")');
     expect(BODY).toContain("m.projects.banner.askOwner.reconnect");
     expect(BODY).toContain("m.projects.banner.askOwner.setup");
-    expect(BODY).toContain("m.projects.importFailure.contactOwner");
+    expect(BODY).toContain("m.projects.importFailure.ownerRetries");
   });
 
   /**

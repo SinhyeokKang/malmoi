@@ -184,6 +184,8 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
 }) {
   const { outcome, setOutcome, publish, titleRef, setSyncOpen, publishPending } = useHomeActions();
   const owner = role === "OWNER";
+  /** 복원 거부 — 배너 `actions` 안이 아니라 **배너의 형제**로 선다 (audit #7 r1: 경고 속 경고가 됐다). */
+  const [restoreError, setRestoreError] = useState<string | null>(null);
 
   return (
     /*
@@ -237,12 +239,13 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
             분기가 그 값을 안 읽어 증상이 없지만, 같은 화면의 배너 문구가 정확히 그 거짓 단언을
             들고 있다가 2026-09-16에 걷혔다.
           */
-          actions={owner ? <ArchiveCard slug={slug} name={name} archived openPrUrl={undefined} /> : undefined}
+          actions={owner ? <ArchiveCard slug={slug} name={name} archived openPrUrl={undefined} onFailure={setRestoreError} /> : undefined}
         >
           {m.home.banner.archived.body}
           {!owner && <> {m.home.banner.archived.editor}</>}
         </Alert>
       )}
+      {state === "archived" && restoreError !== null && <Alert variant="danger">{restoreError}</Alert>}
 
       <SyncResult
         slug={slug}
