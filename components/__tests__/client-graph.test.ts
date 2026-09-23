@@ -86,7 +86,7 @@ const KNOWN_OFFENDERS = ["ts-morph", "octokit", "@prisma/client", "node:fs", "se
  * 위 패키지 허용 목록은 **npm 이름**만 본다. 그래서 `lib/keys/view.ts` → `lib/adapters/shared` → `json-style`처럼
  * **리포 안 모듈만으로 이어진 서버 그래프**는 패키지가 하나도 안 나와 green이었다 — 금지 목록 방식이라 재발을 못 본 것과
  * 같은 형이다. 여기서 뒤집는다: 닿는 파일 집합 자체를 고정한다. 클라이언트가 새 `lib/**` 모듈을 값으로 읽으면 red이고,
- * 그 모듈이 **잎인지 확인한 뒤** 이 목록에 한 줄을 더하는 것이 그 결정이다(`lib/i18n`·`lib/keys/filters` 잎 검사와 같은 형).
+ * 그 모듈이 **잎인지 확인한 뒤** 이 목록에 한 줄을 더하는 것이 그 결정이다(`lib/i18n`·`lib/keys/flag` 잎 검사와 같은 형).
  */
 const CLIENT_LIB_FILES = [
   "lib/account/plan.ts",

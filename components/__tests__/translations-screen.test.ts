@@ -24,6 +24,17 @@ const read = (path: string): string =>
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
 
+/**
+ * `shrink-0`과 함께 쓰인 Tailwind 고정 폭(px). `w-N`은 `N * 4`px이다.
+ *
+ * ⚠️ **`shrink-0`이 붙은 것만 센다** — 줄어들 수 있는 폭은 좁은 화면에서 예산을 다투지 않는다.
+ */
+const fixedWidths = (source: string): number[] =>
+  [...source.matchAll(/className=(?:"([^"]*)"|\{cn\("([^"]*)")/g)]
+    .map((m) => m[1] ?? m[2] ?? "")
+    .filter((cls) => /\bshrink-0\b/.test(cls))
+    .flatMap((cls) => [...cls.matchAll(/(?:^|\s)w-(\d+)(?:\s|$)/g)].map((w) => Number(w[1]) * 4));
+
 const PAGE = "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx";
 const WORKSPACE = "components/translations/workspace/workspace.tsx";
 const WORKSPACE_LOCALE = "components/translations/workspace/locale-panel.tsx";
@@ -117,6 +128,28 @@ describe("접근 이름과 경로 (code-review 2026-09-08 🟡)", () => {
    * `components/invite-form.tsx`가 멤버 화면의 `InviteDialog`로 대체되면서 이 화면에서 사라졌다.
    * 근거(경로 리터럴은 타입이 아니라 데이터다 — POSTMORTEM 2026-09-05)는 그대로 그쪽에 있다.
    */
+});
+
+/**
+ * ⚠️ **로케일 입력의 폭 예산** (malmoi#33 — 옛 표에서 우측 `w-40 shrink-0` 메타 슬롯이 1280px에서 입력을 28px로 만들었다).
+ * 옛 표의 예산 스캔은 표와 함께 사라졌고 같은 부류가 새 패널에 올 수 있다 — 로케일 카드는 1280에서 420까지 준다(§6.1a).
+ * 그래서 **행 안에 고정 폭 슬롯이 0**이고 입력이 `w-full`이다(`field-sizing-content`가 폭도 내용에 맞춰 줄인다 — POSTMORTEM 2026-09-23).
+ */
+describe("로케일 입력 폭 (malmoi#33 · translation-rework)", () => {
+  it("로케일 패널에 고정 폭 슬롯이 없다 — 있으면 420 카드에서 입력이 그만큼 준다", () => {
+    expect(fixedWidths(read(WORKSPACE_LOCALE))).toEqual([]);
+  });
+
+  it("입력이 행을 채운다 — `w-full`이 없으면 빈 칸이 한 글자 폭으로 선다", () => {
+    expect(read(WORKSPACE_LOCALE)).toMatch(/<Textarea[\s\S]*?\bw-full\b/);
+  });
+
+  it("고정 폭 스캐너가 실제로 `w-40 shrink-0`을 잡는다", () => {
+    expect(fixedWidths('<div className="w-40 shrink-0 justify-end">')).toEqual([160]);
+    expect(fixedWidths('<div className={cn("flex w-20 shrink-0", x)}>')).toEqual([80]);
+    // `shrink-0`이 없으면 예산을 쓰지 않는다 — 줄어들 수 있는 폭은 대상이 아니다.
+    expect(fixedWidths('<div className="w-40 justify-end">')).toEqual([]);
+  });
 });
 
 describe("리포 갱신 보류 배너 (sync-edit-protection T13)", () => {

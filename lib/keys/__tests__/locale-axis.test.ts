@@ -5,7 +5,6 @@ import {
   filterRows,
   groupByNamespace,
   namespaceCountsFor,
-  parseLocaleSelection,
   pendingFirst,
   type KeyRow,
 } from "../view";
@@ -34,64 +33,6 @@ const cell = (over: Partial<NonNullable<KeyRow["cells"][string]>> = {}) => ({
 });
 
 const locale = (code: string, orphaned = false) => ({ code, orphaned });
-
-describe("parseLocaleSelection — `?locales=`의 해석", () => {
-  const LOCALES = [locale("en"), locale("ko"), locale("ja")];
-
-  it("미지정이면 전체다 — 폴백이 빈 배열이면 화면이 통째로 빈다", () => {
-    expect(parseLocaleSelection(undefined, LOCALES)).toEqual(["en", "ko", "ja"]);
-  });
-
-  it("빈 문자열도 전체다 — 필터를 비운 것은 필터가 없는 것이다", () => {
-    expect(parseLocaleSelection("", LOCALES)).toEqual(["en", "ko", "ja"]);
-    expect(parseLocaleSelection("  ,  ", LOCALES)).toEqual(["en", "ko", "ja"]);
-  });
-
-  /**
-   * ⚠️ orphaned 로케일이 폴백에 섞이면 그 로케일의 빈 셀이 전부 `untranslated`로 잡혀
-   * `defaultNamespace`가 **행이 전부 disabled인 네임스페이스**에 착지한다.
-   */
-  it("폴백에서 orphaned 로케일을 뺀다", () => {
-    expect(parseLocaleSelection(undefined, [locale("en"), locale("fr", true)])).toEqual(["en"]);
-  });
-
-  it("명시 선택은 orphaned를 허용한다 — 사라진 로케일의 값을 볼 길이 있어야 한다", () => {
-    expect(parseLocaleSelection("fr", [locale("en"), locale("fr", true)])).toEqual(["fr"]);
-  });
-
-  it("전부 orphaned면 그래도 전체를 낸다 — 빈 화면보다 낫다", () => {
-    expect(parseLocaleSelection(undefined, [locale("en", true), locale("fr", true)])).toEqual(["en", "fr"]);
-  });
-
-  it("순서는 URL이 아니라 인자 순서다 — 같은 선택이 두 링크에서 다르게 보이지 않는다", () => {
-    expect(parseLocaleSelection("ja,en", LOCALES)).toEqual(["en", "ja"]);
-  });
-
-  it("중복은 접는다", () => {
-    expect(parseLocaleSelection("ko,ko,ko", LOCALES)).toEqual(["ko"]);
-  });
-
-  it("모르는 코드는 버린다 — 404가 아니다", () => {
-    expect(parseLocaleSelection("ko,zz", LOCALES)).toEqual(["ko"]);
-  });
-
-  it("전부 걸러지면 폴백이다 — 선택 0개로 두지 않는다", () => {
-    expect(parseLocaleSelection("zz,yy", LOCALES)).toEqual(["en", "ko", "ja"]);
-  });
-
-  /**
-   * ⚠️ 주소창 값이라 객체 조회가 아니라 배열 `includes`다 — 조회 쪽의 프로토타입 차단이고,
-   * 대입 쪽의 짝은 `lib/search-params.ts`의 `Object.create(null)`이다 (CLAUDE.md 코드 컨벤션).
-   */
-  it("`__proto__`가 갈래로 새지 않는다", () => {
-    expect(parseLocaleSelection("__proto__", LOCALES)).toEqual(["en", "ko", "ja"]);
-    expect(parseLocaleSelection("constructor", LOCALES)).toEqual(["en", "ko", "ja"]);
-  });
-
-  it("로케일 목록에 있으면 이상한 이름도 통과한다 — 진실은 리포다", () => {
-    expect(parseLocaleSelection("__proto__", [locale("__proto__"), locale("en")])).toEqual(["__proto__"]);
-  });
-});
 
 describe("namespaceCountsFor — 선택된 로케일 기준 집계", () => {
   /** ⚠️ 키 단위로 한 번만 센다 — 로케일마다 세면 `pending`이 `total`을 넘는다. */

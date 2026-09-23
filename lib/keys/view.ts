@@ -155,42 +155,6 @@ export type NamespaceCount = {
 export type LocaleOption = { code: string; orphaned: boolean };
 
 /**
- * `?locales=ko,ja` → 보일 로케일 코드 (8-4 — DESIGN §6.1).
- *
- * 로케일이 행이 된 뒤로 "기준 열"이라는 개념에 대응물이 없다. 그 자리를 **선택 집합**이 대신하고
- * 집계·검색·pending 정렬·기본 착지가 전부 이 결과 위에 선다.
- *
- * ⚠️ **폴백이 "살아 있는 로케일 전체"다.** orphaned 로케일을 섞으면 리포에서 사라진 파일의 빈 셀이
- * 전부 `untranslated`로 잡혀 `defaultNamespace`가 **행이 전부 disabled인 네임스페이스**에 착지한다
- * (`cellState`는 키의 orphaned만 보고 로케일의 것을 모른다). `activeLocaleProgress`가 같은 이유로
- * 이미 orphaned를 뺐다. **명시 선택(`?locales=fr`)은 허용한다** — 사라진 로케일의 값을 볼 길이
- * 있어야 한다.
- *
- * ⚠️ **배열 `includes`로 거른다.** 주소창 값이라 객체 조회는 프로토타입 키가 갈래로 새고,
- * 이 리포가 그 부류를 두 번 밟았다 (POSTMORTEM 2026-09-08·09 — `isImportFailureCode`가 같은 관용구다).
- *
- * ⚠️ **순서가 URL이 아니라 인자 순서다** — 같은 선택이 두 링크에서 다르게 보이면 안 된다.
- * `columns`가 base를 맨 앞에 두므로 원문이 위에 온다.
- */
-export function parseLocaleSelection(
-  param: string | undefined,
-  locales: readonly LocaleOption[],
-): string[] {
-  const order = locales.map((l) => l.code);
-  const asked = (param ?? "")
-    .split(",")
-    .map((code) => code.trim())
-    .filter((code) => code !== "" && order.includes(code));
-  // 인자 순서로 되돌리면서 중복이 함께 접힌다 — `order`의 코드가 유일하기 때문이다.
-  const picked = order.filter((code) => asked.includes(code));
-  if (picked.length > 0) return picked;
-
-  const living = locales.filter((l) => !l.orphaned).map((l) => l.code);
-  // 전부 orphaned인 프로젝트에서도 빈 화면을 내지 않는다 — 폴백의 폴백이다.
-  return living.length > 0 ? living : order;
-}
-
-/**
  * 키 하나의 상태를 **선택된 로케일 전체**로 판정한다 (DESIGN §6.1).
  *
  * ⚠️ **키 단위로 한 번만 센다.** 로케일마다 세면 집계의 합이 `total`을 넘어 드롭다운의
@@ -435,7 +399,7 @@ export function isUnpublished(cell: { pending: boolean; surfaceArchivedAt: Date 
  * ⚠️ **`relativeTime`은 이 파일에 없다 — `lib/relative-time.ts`(잎)에 있다.** 클라이언트 컴포넌트
  * 둘(멤버 표·대기 초대)이 그것을 값으로 읽는데, **이 모듈은 잎이 아니다**(`compareKeys` 때문에
  * `lib/adapters/shared` → `json-style`을 문다). 여기서 재수출하면 그 그래프가 그대로 따라오므로
- * 재수출도 하지 않는다 — 서버 호출부도 잎을 직접 읽는다 (`lib/keys/refocus.ts`와 같은 근거).
+ * 재수출도 하지 않는다 — 서버 호출부도 잎을 직접 읽는다(클라이언트가 값으로 읽는 판정은 무거운 그래프를 물면 그대로 번들이 된다).
  */
 
 /**
