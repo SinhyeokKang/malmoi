@@ -270,3 +270,14 @@ describe("navFooterItems", () => {
     expect(navFooterItems().some((i) => i.key === "signOut")).toBe(false);
   });
 });
+
+describe("프로젝트 설정 항목의 라벨", () => {
+  /**
+   * ⚠️ **2026-09-23에 `Project settings`에서 `Settings`로 줄었다** (사용자). 같은 날 계정 항목이
+   * `Account`가 되어 사이드바에 `Settings`가 하나만 남으므로 "어느 설정인가"가 다시 생기지 않는다.
+   */
+  it("LNB 라벨이 `Settings`다", () => {
+    const item = projectSections("OWNER").find((s) => s.key === "settings");
+    expect(item?.label).toBe("Settings");
+  });
+});

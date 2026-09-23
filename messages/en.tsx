@@ -231,7 +231,11 @@ export const en = {
       translations: "Translations",
       members: "Members",
       logs: "Logs",
-      projectSettings: "Project settings",
+      /**
+       * ⚠️ **2026-09-23에 `Project settings`에서 줄었다** (사용자) — 같은 날 계정 항목이 `Account`가 되어
+       * 사이드바의 `Settings`가 하나만 남는다. 키 이름은 그대로 둔다: 값이 짧아져도 축은 프로젝트다.
+       */
+      projectSettings: "Settings",
       signOut: "Sign out",
       /** ⚠️ **사이드바에는 없다** (8-3) — 목록 화면의 버튼과 빈 상태만 쓴다. */
       newProject: "New project",

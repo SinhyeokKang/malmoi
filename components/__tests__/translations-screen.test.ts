@@ -192,6 +192,15 @@ describe("보관 카드 (7단계)", () => {
     expect(read(CARD)).toMatch(/variant="danger"/);
   });
 
+  /**
+   * ⚠️ **트리거도 `danger`다** (2026-09-23 사용자). 카드의 버튼이 `default`면 같은 화면의 Save·Copy와
+   * 무게가 같아 "되돌리기 어려운 동작"이라는 신호가 확인 창을 열어야만 드러난다. 복원은 잃는 것이
+   * 없어 `default`로 남는다.
+   */
+  it("보관 트리거와 확인 버튼이 둘 다 `danger`다", () => {
+    expect(read(CARD).match(/variant="danger"/g)?.length ?? 0).toBe(2);
+  });
+
   it("⚠️ 인라인 결과 Alert가 없다 — revalidate가 그것을 언마운트한다", () => {
     expect(read(CARD)).not.toContain("<Alert");
   });

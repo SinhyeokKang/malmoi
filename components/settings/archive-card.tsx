@@ -51,7 +51,7 @@ export function ArchiveCard({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="default" loading={pending} aria-busy={pending} className="[&_.animate-spin]:size-3.5">
+        <Button variant="danger" loading={pending} aria-busy={pending} className="[&_.animate-spin]:size-3.5">
           {m.archive.action}
         </Button>
       </DialogTrigger>

@@ -240,3 +240,20 @@ describe("설정 화면 — 기준 브랜치만 남았다 (6b-5)", () => {
     expect(read(WORKFLOW)).toMatch(/declaredBaseLocale/);
   });
 });
+
+/**
+ * ⚠️ **Base branch 행이 카드 안의 회색 면이다** (2026-09-23 사용자) — 리포 사실 행 아래의 편집 영역을
+ * 한 단 깊게 읽히게 한다. 아이콘은 새 프로젝트 모달 ①의 `BranchLabel`과 같은 `GitBranch` 14다 —
+ * 같은 값을 두 화면이 다른 모양으로 말하지 않는다.
+ */
+describe("설정의 Base branch 행", () => {
+  it("폼이 회색 면(`bg-muted`)이다", () => {
+    expect(read(SETTINGS_FORM)).toMatch(/<form\s+className="[^"]*\bbg-muted\b/);
+  });
+
+  it("라벨 앞에 `GitBranch` 아이콘이 있다", () => {
+    const src = read(SETTINGS_FORM);
+    expect(src).toMatch(/import \{[^}]*\bGitBranch\b[^}]*\} from "lucide-react"/);
+    expect(src).toMatch(/<GitBranch className="size-3\.5" aria-hidden \/>/);
+  });
+});
