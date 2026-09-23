@@ -213,6 +213,8 @@ export type MembershipRow = {
    * 도달할 길이 없어지고, 그건 보관을 편도로 만든다 (PRODUCT §7.9).
    */
   archivedAt: Date | null;
+  /** 프로젝트 표시용 공개 Blob URL — 사이드바 썸네일이 쓴다. */
+  image: string | null;
 };
 
 /**
@@ -227,7 +229,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     select: {
       role: true,
       project: {
-        select: { slug: true, name: true, installationId: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } }, archivedAt: true },
+        select: { slug: true, name: true, image: true, installationId: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } }, archivedAt: true },
       },
     },
     // 결정적 순서 — 목록이 렌더마다 흔들리면 사용자가 항목을 근육 기억으로 못 찾는다.
@@ -240,6 +242,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     installationId: r.project.installationId,
     surfaces: r.project.surfaces,
     archivedAt: r.project.archivedAt,
+    image: r.project.image,
   }));
 }
 

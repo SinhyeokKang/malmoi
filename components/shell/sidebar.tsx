@@ -4,6 +4,8 @@ import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
@@ -35,10 +37,12 @@ import { cn } from "@/lib/utils";
 export function Sidebar({
   memberships,
   userName,
+  userImage,
   signOut,
 }: {
   memberships: NavProject[];
   userName: string;
+  userImage: string | null;
   signOut: () => void;
 }) {
   const pathname = usePathname();
@@ -67,7 +71,20 @@ export function Sidebar({
           aria-label={zone.label}
           className={cn("flex flex-col gap-0.5", index === 0 ? undefined : "border-border border-t pt-2")}
         >
-          <p className="text-foreground truncate py-1.5 text-sm font-medium">{zone.label}</p>
+          {/*
+            ⚠️ **라벨 앞에 대상의 얼굴이 선다** (2026-09-24 사용자) — 사용자는 `Avatar`(원), 프로젝트는
+            `ProjectThumbnail`(라운드 사각). 모양이 대상을 말한다(DESIGN §6.4). 둘 다 24이고 `py-1`이라
+            머리 줄 높이는 옛 `py-1.5` + 20줄과 같은 32다. `px-0.5`는 24의 중심을 아래 항목 아이콘 16의
+            중심(6 + 8 = 14)에 맞춘다.
+          */}
+          <p data-zone-head className="text-foreground flex items-center gap-2 px-0.5 py-1 text-sm font-medium">
+            {zone.key === "work" ? (
+              <Avatar name={userName} src={userImage} size={24} />
+            ) : (
+              <ProjectThumbnail name={zone.label} src={project?.image} size={24} />
+            )}
+            <span className="min-w-0 truncate">{zone.label}</span>
+          </p>
           {zone.items.map((item) => (
             <Item key={item.key} item={item} active={isActive(pathname, item)} />
           ))}
