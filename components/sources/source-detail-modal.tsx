@@ -139,7 +139,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
           // 집계 두 쿼리 사이 적재가 바뀌어도 막대 합은 트랙을 넘지 않는다. 퍼센트는 완료만 센다.
           const done = Math.min(row.total, row.translated);
           const review = Math.min(Math.max(0, row.total - done), row.needsReview);
-          return <li key={row.code} className={cn("flex items-center gap-4 px-4 py-[13px]", index === 0 ? "border-divider border-t" : "border-border border-t")}>
+          return <li key={row.code} className={cn("flex items-center gap-4 px-4 py-[13px] @max-[640px]:flex-wrap", index === 0 ? "border-divider border-t" : "border-border border-t")}>
             <span className="flex w-[150px] shrink-0 items-center gap-2 @max-[850px]:w-[120px]">
               <span className={cn("flex", row.orphaned && "opacity-50")}><LocaleFlag code={row.code} /></span>
               <span className={cn("text-base", row.orphaned && "text-muted-foreground")}>{row.code}</span>
@@ -154,7 +154,9 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
                 {!row.orphaned && <span className="h-1 bg-amber-500" style={{ width: `${row.total === 0 ? 0 : (review / row.total) * 100}%` }} />}
               </span>
             </span>
-            <span className="min-w-0 flex-1 text-xs @max-[640px]:hidden">
+            {/* ⚠️ **좁은 폭에서 숨기지 않고 행 아래로 내린다** (audit #42) — 숨기면 `aria-hidden` Meter의 amber 조각만 남아 검토·누락이
+                색으로만 전달됐다. 비어 있으면 줄을 만들지 않는다. */}
+            <span className="min-w-0 flex-1 text-xs @max-[640px]:order-last @max-[640px]:basis-full @max-[640px]:empty:hidden">
               {row.orphaned ? <Badge variant="missing"><CircleAlert className="size-[13px]" aria-hidden />{m.sources.missingRepo}</Badge>
                 : row.needsReview > 0 ? <Badge variant="warning">{m.sources.needReview(row.needsReview)}</Badge>
                 : row.isBase ? <span className="text-neutral-400">{m.sources.baseRow}</span> : null}

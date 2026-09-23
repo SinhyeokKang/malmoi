@@ -9,6 +9,7 @@ import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { PanelCard } from "@/components/ui/panel-card";
 import { Badge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { neighbourFocus } from "@/components/ui/focus";
 import { failureText } from "@/components/onboarding/failure";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { cn } from "@/lib/utils";
@@ -88,7 +89,8 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
               <p className="text-muted-foreground text-xs">{m.sources.resultKeep}</p>
               <p className="text-muted-foreground text-xs">{m.sources.workflow} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></p></>}
           </div>
-          <Button variant="ghost" aria-label={m.common.close} className="hover:bg-foreground/5 size-7 shrink-0 rounded-full px-0" onClick={() => setResult(null)}><X className="size-4" aria-hidden /></Button>
+          {/* ⚠️ 닫기 전에 이웃으로 포커스를 옮긴다 (audit #35) — 이 버튼이 결과 행과 함께 사라져 포커스가 `body`로 빠졌다(`Alert`와 같다). */}
+          <Button variant="ghost" aria-label={m.common.close} className="hover:bg-foreground/5 size-7 shrink-0 rounded-full px-0" onClick={event => { neighbourFocus(event.currentTarget.closest('[role="status"]') ?? event.currentTarget)?.focus(); setResult(null); }}><X className="size-4" aria-hidden /></Button>
         </div>}
         {data.sources.length === 0
           ? <div className="border-divider flex flex-col items-center gap-2.5 border-t px-6 py-10 text-center">

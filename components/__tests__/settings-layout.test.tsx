@@ -20,7 +20,8 @@ it.each([false, true])("활성·보관 상태 모두 네 카드이고 복원이 
   expect([...container.querySelectorAll("section > header h2")].map(n => n.textContent)).toEqual(archived ? ["Restore project", "General", "Repository", "CI integration"] : ["General", "Repository", "CI integration", "Archive project"]);
   expect(container.querySelector("pre")).toBeNull();
   if (archived) for (const button of container.querySelectorAll<HTMLButtonElement>('section button')) {
-    expect(button.disabled || button.matches(':disabled')).toBe(button.textContent !== "Restore project");
+    // 꺼짐은 진짜 `disabled`이거나 사유를 든 `aria-disabled`다 (audit #37 — 워크플로 행이 뒤엣것이다).
+    expect(button.disabled || button.getAttribute("aria-disabled") === "true").toBe(button.textContent !== "Restore project");
   }
 });
 it.each(["/saved.webp", "/replaced.webp", null])("설정 서버 조회가 보낸 최신 이미지 %s를 미리보기에 쓴다", async image => {

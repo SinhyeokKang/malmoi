@@ -159,6 +159,17 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { ref?: Ref<
      * 도는지는 **스피너 위치**가 이미 말한다.
      */
     loading?: boolean;
+    /**
+     * 진행 중이되 **포커스를 지킨다** (audit #32 — DESIGN §6.65). `loading`과 같은 스피너이고 `disabled` 대신
+     * `aria-disabled` + `aria-busy`를 걸며 클릭은 막는다.
+     *
+     * ⚠️ **Dialog 트리거 전용이다.** Radix는 닫힐 때 포커스를 트리거로 돌려주는데, 확정과 같은 커밋에 트리거가
+     * `loading`(진짜 `disabled`)이 되면 그 포커스가 `body`로 빠진다 — Revoke·Remove·Rotate·Archive·Disconnect가
+     * 전부 그 모양이었다. 폼의 [Save]는 여기가 아니다: 저장 중 `loading`이 규칙이고(§6.6) 끝난 뒤 착지한다
+     * (`useLandAfter`). ⚠️ **`onClick`을 부르지 않고 `preventDefault`한다** — `DialogTrigger asChild`의 토글은 Slot이
+     * 이 `onClick`에 합쳐 넘기므로 안 부르면 Dialog가 다시 열리지 않고, 기본 동작을 막아 submit 버튼도 제출하지 않는다.
+     */
+    busy?: boolean;
   };
 
 export function Button({
@@ -166,8 +177,10 @@ export function Button({
   variant,
   size,
   loading = false,
+  busy = false,
   children,
   disabled,
+  onClick,
   ...props
 }: ButtonProps) {
   return (
@@ -175,9 +188,12 @@ export function Button({
       className={cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)}
       disabled={disabled === true || loading}
       {...props}
+      aria-disabled={busy ? true : props["aria-disabled"]}
+      aria-busy={busy ? true : props["aria-busy"]}
+      onClick={busy ? event => event.preventDefault() : onClick}
     >
       {/* 스피너가 라벨 **앞에** 선다 — 16px는 §6.8의 기본 크기다. */}
-      {loading && <Loader2 className="size-4 animate-spin" aria-hidden />}
+      {(loading || busy) && <Loader2 className="size-4 animate-spin" aria-hidden />}
       {children}
     </button>
   );

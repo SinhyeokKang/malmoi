@@ -3,6 +3,7 @@ import { CircleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { updateBaseLocale } from "@/app/(edit)/projects/[slug]/sources/actions";
 import { Button } from "@/components/ui/button";
+import { useLandAfter } from "@/components/ui/focus";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
@@ -25,6 +26,8 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
   if (state.serverValue !== server) setState(planBaseLanguageForm(state, { type: "refresh", value: server }));
   const error = typeof state.result === "object" ? state.result.error : null;
   useEffect(() => { onError(error !== null); if (error !== null && !state.pending) submit.current?.focus(); }, [error, state.pending, onError]);
+  // ⚠️ 성공하면 [Save]가 "저장할 것 없음"으로 꺼진 채 남는다 — 방금 고른 셀렉트로 착지한다 (audit #32). 실패는 위 effect가 [Save]로 든다.
+  useLandAfter(state.pending, () => [submit.current, document.getElementById("base-locale")]);
   const dirty = state.draft !== state.baseline;
   useEffect(() => { onDirty(dirty ? state.draft : null); }, [dirty, state.draft, onDirty]);
   const unavailable = baseLocale === null || locales.length === 0;

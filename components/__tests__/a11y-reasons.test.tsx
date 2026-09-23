@@ -57,7 +57,7 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
 
   it("Publish가 도는 동안 결과의 [Try again]은 포커스를 받고 사유를 들며 눌러도 아무 일이 없다 — 짝: 풀리면 연다", async () => {
     const onRetry = vi.fn();
-    const outcome = { ok: true as const, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "failed" as const, count: 0, failed: 0, reason: "unavailable" as const, errors: [] }] };
+    const outcome = { ok: true as const, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "failed" as const, count: 0, failed: 0, reason: "parse-failed" as const, errors: [] }] };
     const view = await render(<SyncResult slug="acme" branch="main" outcome={outcome} onRetry={onRetry} retryDisabled />);
     const retry = byText(m.common.retry);
     expectReasoned(retry, m.repositorySync.waitPublish);

@@ -46,6 +46,12 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
   const cancelId = useId();
   const describedId = useId();
   const warningId = useId();
+  const pausedReasonId = useId();
+  /**
+   * 확정으로 닫혔나 — 그때는 **트리거로** 돌아온다(`Syncing…`이 진행을 든다). 배너의 [Try again]으로 열었어도 그렇다:
+   * 연 자리로 돌려보내면(`dialog.tsx`) 성공 뒤 그 배너가 사라져 포커스가 다시 빠진다. 취소는 연 자리로 간다.
+   */
+  const confirmed = useRef(false);
   const [pending, setPending] = useState(false);
   /** ⚠️ **`"checking"`을 `undefined`(실패)로 접지 않는다** (malmoi#75) — 조회 중과 조회 실패는 다른 줄이다. */
   const [openPr, setOpenPr] = useState<OpenImportPr | "checking">("checking");
@@ -95,6 +101,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
   async function confirm() {
     if (busy.current || approvalPending) return;
     busy.current = true;
+    confirmed.current = true;
     setPending(true);
     changeOpen(false);
     let outcome: RepositoryImportOutcome;
@@ -124,13 +131,19 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     바뀔 때(배너의 `[Try again]`) 확인 창이 열려 실행까지 간다. 보이는 것은 같은 자리의 같은 버튼이고
     누를 수 없을 뿐이다.
   */
+  /*
+    ⚠️ **`disabled`가 아니라 `aria-disabled` + 사유다** (audit #37 — DESIGN §6.65). 진짜 `disabled`는 포커스를 못 받아
+    왜 멈췄는지 닿을 길이 없었다. 사유는 원인(미연결·보관·Publish 진행)을 가르지 않는다 — 원인은 같은 화면의 배너·
+    Publish 버튼이 이미 말한다.
+  */
   if (paused) {
-    return (
-      <Button disabled>
+    return <>
+      <Button aria-disabled aria-describedby={pausedReasonId} onClick={event => event.preventDefault()}>
         <ArrowDownToLine className="size-3.5" aria-hidden />
         {m.repositorySync.action}
       </Button>
-    );
+      <span id={pausedReasonId} className="sr-only">{m.repositorySync.paused}</span>
+    </>;
   }
   return <Dialog open={open && !pending} onOpenChange={changeOpen}>
     <DialogTrigger asChild>
@@ -153,9 +166,15 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
       /** 포커스는 [Cancel]이다 — 확인에 두면 Enter 한 번으로 되돌릴 수 없는 동작이 실행된다 (시안 §8). */
       onOpenAutoFocus={event => { event.preventDefault(); document.getElementById(cancelId)?.focus(); }}
       onCloseAutoFocus={event => {
-        if (!document.getElementById(triggerId) && fallbackFocusRef?.current) {
+        const trigger = document.getElementById(triggerId);
+        const wasConfirmed = confirmed.current;
+        confirmed.current = false;
+        if (!trigger && fallbackFocusRef?.current) {
           event.preventDefault();
           fallbackFocusRef.current.focus();
+        } else if (trigger && wasConfirmed) {
+          event.preventDefault();
+          trigger.focus();
         }
       }}
       title={m.repositorySync.title(name)}

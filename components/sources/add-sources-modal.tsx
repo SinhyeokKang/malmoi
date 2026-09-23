@@ -67,11 +67,19 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   }, [open, candidate, locale, owner, repo, branch]);
 
   const connect = [error, detectError, manualError].find(e => e === "reauthorize" || e === "not-connected");
+  /*
+    ⚠️ **꺼진 두 버튼은 `aria-disabled`다** (audit #37 — DESIGN §6.65). 진짜 `disabled`는 포커스를 못 받아 describedby의
+    사유(`selectHelp` · `manualReason`)가 닿을 길이 없었다. 진행 중(`pending`)은 `loading`의 진짜 `disabled`가 그대로다 —
+    잠깐이고 스피너가 이유를 말한다.
+  */
+  const addBlocked = detecting || !!detectError || selection.formats.length === 0 || selection.conflicts.length > 0 || selection.formats.some(f => !f.baseLocale);
+  const manualBlocked = !manual.pathTemplate.trim() || !manual.baseLocale.trim();
   return <OnboardingModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}
     title={m.settings.sources.add} description={m.settings.sources.description} bodyScroll="hidden"
     panelClassName="[&_.animate-spin]:size-3.5 h-[min(680px,calc(100svh-96px))] min-h-0" actions={<>
       <Button size="lg" disabled={pending} onClick={onClose}>{m.surfaces.cancel}</Button>
-      <Button size="lg" data-add-sources variant="primary" loading={pending} aria-busy={pending} disabled={detecting || !!detectError || selection.formats.length === 0 || selection.conflicts.length > 0 || selection.formats.some(f => !f.baseLocale)} aria-describedby="add-source-help" onClick={() => {
+      <Button size="lg" data-add-sources variant="primary" loading={pending} aria-busy={pending} aria-disabled={addBlocked || undefined} aria-describedby="add-source-help" onClick={() => {
+        if (addBlocked) return;
         const plan = planAddSources({ picked: candidates.filter((_, i) => checked.has(i)), existing });
         if (!plan.ok || plan.add.length === 0 || pending) return;
         setError(undefined); setManualError(undefined); setUnknown(false); setConflicts([]);
@@ -95,7 +103,8 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
         onManual={value => { setPicked(null); setManual(value); }} onRetry={() => setRevision(v => v + 1)} />
     </div>
     <div className="flex shrink-0 items-center gap-3">
-      {picked === null && !detecting && <Button loading={pending} aria-busy={pending} disabled={!manual.pathTemplate.trim() || !manual.baseLocale.trim()} onClick={() => run(async () => {
+      {picked === null && !detecting && manualBlocked && <span id="add-source-manual-reason" className="sr-only">{m.settings.sources.manualReason}</span>}
+      {picked === null && !detecting && <Button loading={pending} aria-busy={pending} aria-disabled={manualBlocked || undefined} aria-describedby={manualBlocked ? "add-source-manual-reason" : undefined} onClick={() => { if (!manualBlocked) run(async () => {
         setManualError(undefined);
         try {
           const result = await confirmManualFormat({ owner, repo, ref: branch, ...manual });
@@ -107,7 +116,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
           setPicked(index); setLocale(result.candidate.baseLocale); setBases(previous => ({ ...previous, [index]: result.candidate.baseLocale }));
           setChecked(previous => new Set([...previous, index]));
         } catch { setManualError("unavailable"); }
-      })}>{m.surfaces.confirm}</Button>}
+      }); }}>{m.surfaces.confirm}</Button>}
       {candidate && <><span className="text-muted-foreground text-xs">{m.surfaces.baseLocale}</span><Select disabled={pending || locked.has(picked!)} value={bases[picked!] ?? candidate.baseLocale} onValueChange={value => { if (!pending && !locked.has(picked!)) setBases(previous => ({ ...previous, [picked!]: value })); }}>
         <SelectTrigger className="w-40" aria-label={m.surfaces.baseLocale}><SelectValue /></SelectTrigger>
         <SelectContent>{candidate.locales.map(code => <SelectItem disabled={pending || locked.has(picked!)} key={code} value={code}>{code}</SelectItem>)}</SelectContent>

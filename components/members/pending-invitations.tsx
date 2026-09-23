@@ -64,10 +64,9 @@ export function PendingInvitations({
   const [, startTransition] = useTransition();
 
   /**
-   * ⚠️ **거부되면 누른 Revoke로 포커스를 돌려준다** (malmoi#53). 그 버튼은 `loading` 동안 `disabled`라
-   * 브라우저가 포커스를 `body`로 떨어뜨리고, 행 옆 Alert를 찾으려면 맨 위부터 다시 탭해야 했다.
-   * 응답 콜백에서 바로 부르지 않는 이유: 그 시점엔 `pendingId`가 아직 커밋 전이라 버튼이 여전히
-   * `disabled`고 `focus()`가 무시된다 — 커밋 뒤인 effect에서 부른다.
+   * ⚠️ **거부되면 누른 Revoke로 포커스를 돌려준다** (malmoi#53). 그때 그 버튼은 `loading` 동안 `disabled`라
+   * 브라우저가 포커스를 `body`로 떨어뜨렸다. 2026-09-24(audit #32b)부터 `busy`라 포커스를 지키므로 이 effect는
+   * 그 사이 옮겨진 포커스의 복귀다 — 커밋 뒤인 effect에서 부르는 이유(`resending`의 `disabled`)는 그대로다.
    */
   useEffect(() => {
     if (failed !== null) document.getElementById(`revoke-${failed.id}`)?.focus();
@@ -222,7 +221,9 @@ export function PendingInvitations({
                                   id={`revoke-${invitation.id}`}
                                   variant="danger"
                                   aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
-                                  loading={pendingId === invitation.id}
+                                  /* ⚠️ `loading`이 아니라 `busy`다 (audit #32b) — 확정하면 Dialog가 이 트리거로 포커스를 돌려주는데, 같은
+                                     커밋에 진짜 `disabled`가 되면 그 포커스가 `body`로 빠졌다(`button.tsx`의 `busy`). */
+                                  busy={pendingId === invitation.id}
                                   disabled={resending.has(invitation.id)}
                                 >
                                   {m.members.pending.revoke}

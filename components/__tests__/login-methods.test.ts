@@ -23,10 +23,11 @@ it("로그인 수단 추가는 GitHub App 연결과 분리된다", () => {
  * ⚠️ **사유 없는 disabled는 이 리포가 반복해 밟은 부류다** (POSTMORTEM 2026-09-06) — 관용구는
  * 멤버 화면의 **행 옆 인라인**이다.
  */
-it("마지막 수단은 비활성이고 사유가 그 행 옆에 있다", () => {
+it("마지막 수단은 비활성이고 사유가 그 행 옆에 있다 — 포커스를 받는 aria-disabled다 (audit #37)", () => {
   expect(CARD).toContain("canUnlink");
   expect(CARD).toContain("m.link.methods.lastMethod");
-  expect(CARD).toMatch(/disabled=\{/);
+  expect(CARD).toMatch(/aria-describedby=\{reasonId\} aria-disabled/);
+  expect(CARD).not.toMatch(/disabled=\{true\}/);
 });
 
 /**

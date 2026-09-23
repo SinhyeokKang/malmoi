@@ -94,9 +94,10 @@ export function LocalePanel({ detail, draft, language, onLanguage, onEdit, onRes
               <>
                 {" · "}
                 {detail.refs[0].href === null
-                  ? <span title={w.noCommit}>{`${detail.refs[0].path}:${detail.refs[0].line}`}</span>
+                  ? <span title={w.noCommit}>{`${detail.refs[0].path}:${detail.refs[0].line}`}<span className="sr-only">{` (${w.noCommit})`}</span></span>
                   : <a href={detail.refs[0].href} target="_blank" rel="noreferrer" className="text-blue-600">{`${lastSegment(detail.refs[0].path)}:${detail.refs[0].line}`}</a>}
-                {detail.refs.length > 1 && <span title={w.referenced(detail.refs.length)}>{` +${detail.refs.length - 1}`}</span>}
+                {/* ⚠️ `title`만으로는 hover에서만 읽힌다 (audit #38) — 같은 문장을 sr-only로 겹친다. 보이는 `+N`은 숨긴다(두 번 읽힌다). */}
+                {detail.refs.length > 1 && <span title={w.referenced(detail.refs.length)}><span aria-hidden>{` +${detail.refs.length - 1}`}</span><span className="sr-only">{` · ${w.referenced(detail.refs.length)}`}</span></span>}
               </>
             )}
           </span>
@@ -221,7 +222,8 @@ function CopyLink({ href }: { href: string }) {
       {state === "failed" && <Input autoFocus readOnly value={url} aria-label={w.copyFailed} onFocus={event => event.currentTarget.select()} className="h-7 w-48 text-xs" />}
       <Button
         size="sm"
-        aria-label={w.copyLink}
+        // ⚠️ 복사된 동안은 이름을 비운다 (audit #39 · WCAG 2.5.3) — 보이는 `Copied`를 `Copy link`가 덮었다.
+        aria-label={state === "copied" ? undefined : w.copyLink}
         onClick={() => {
           if (navigator.clipboard === undefined) { setState("failed"); return; }
           navigator.clipboard.writeText(url).then(() => setState("copied"), () => setState("failed"));

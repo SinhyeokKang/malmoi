@@ -41,9 +41,10 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
         <DialogTrigger asChild>
           <Button
             className="[&_.animate-spin]:size-3.5 @max-[640px]:col-start-2 @max-[640px]:justify-self-start"
-            aria-busy={pending}
             disabled={disabled}
-            loading={pending}
+            /* ⚠️ `loading`이 아니라 `busy`다 (audit #32) — 확정하면 Dialog가 이 트리거로 포커스를 돌려주는데, 같은 커밋에
+               진짜 `disabled`가 되면 그 포커스가 `body`로 빠진다. */
+            busy={pending}
           >
             {!pending && <RotateCcw aria-hidden />}
             {m.settings.token.rotate}

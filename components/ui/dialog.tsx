@@ -16,6 +16,36 @@ import { Button } from "./button";
  * 제목은 **대상을 명시한 질문**이고 액션 라벨은 결과다 (§10) — "Remove Jane Doe from bugshot-2?" / "Remove member".
  */
 export const Dialog = Primitive.Root;
+
+/**
+ * ⚠️ **닫히면 연 자리로 돌아간다** (audit #34). Radix의 기본 복귀 대상은 `DialogTrigger`뿐이라 **상태로 여는** Dialog
+ * (미저장 확인 · Revert · 역할 변경 · 배너의 [Try again])는 닫히면 포커스가 `body`로 빠졌다 — 중첩이면 부모 모달 밖이다.
+ *
+ * ⚠️ **"열 때의 `activeElement`"로는 못 잡는다** — 두 갈래가 그것을 이미 지운다: 안쪽 버튼의 `autoFocus`는 React 커밋에서
+ * FocusScope의 mount 이벤트보다 **먼저** 돌아 `onOpenAutoFocus`가 아예 안 오고, Select 옵션에서 여는 Dialog는 그 순간
+ * 포커스가 사라질 옵션 위다(Select의 트리거 복귀는 `setTimeout` 뒤다). 그래서 **최근 포커스 기록**을 들고, 닫힐 때
+ * 아직 붙어 있고 켜진 가장 최근 것으로 간다 — Dialog 안의 요소는 그때 떨어져 있어 저절로 빠진다.
+ *
+ * ⚠️ **호출부의 `onCloseAutoFocus`가 먼저다** — 그것이 `preventDefault`했으면 손대지 않는다. 후보가 없으면 Radix 기본
+ * (트리거)으로 넘기고, 그래도 빠지면 호출부의 착지(`useLandAfter`)가 받는다. 트리거로 연 Dialog는 결과가 같다.
+ */
+const recent: HTMLElement[] = [];
+if (typeof document !== "undefined") {
+  document.addEventListener("focusin", (event) => {
+    if (!(event.target instanceof HTMLElement) || event.target === document.body) return;
+    const at = recent.indexOf(event.target);
+    if (at >= 0) recent.splice(at, 1);
+    recent.push(event.target);
+    if (recent.length > 8) recent.shift();
+  });
+}
+function returnTarget(): HTMLElement | null {
+  for (let i = recent.length - 1; i >= 0; i--) {
+    const node = recent[i];
+    if (node !== undefined && node.isConnected && !node.matches(":disabled")) return node;
+  }
+  return null;
+}
 export const DialogTrigger = Primitive.Trigger;
 export const DialogClose = Primitive.Close;
 
@@ -25,6 +55,7 @@ export function DialogContent({
   footer,
   className,
   children,
+  onCloseAutoFocus,
   ...props
 }: ComponentProps<typeof Primitive.Content> & {
   title: ReactNode;
@@ -49,6 +80,14 @@ export function DialogContent({
           className,
         )}
         {...props}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          if (event.defaultPrevented) return;
+          const target = returnTarget();
+          if (target === null) return;
+          event.preventDefault();
+          target.focus();
+        }}
       >
         <header className="flex items-start justify-between gap-2 p-4 pb-2">
           <Primitive.Title className="text-base font-medium">{title}</Primitive.Title>

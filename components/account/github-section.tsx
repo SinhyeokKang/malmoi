@@ -1,13 +1,14 @@
 "use client";
 
 import { Link2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { PanelCard, PanelRow, PanelRows } from "@/components/ui/panel-card";
 import { DisconnectGithubButton } from "@/components/github-account";
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
+import { landFocus } from "@/components/ui/focus";
 import { buttonClass } from "@/components/ui/button";
 import type { AccountView } from "@/lib/github-connect/account-view";
 import { m } from "@/lib/i18n";
@@ -38,6 +39,17 @@ export function GithubSection({
 }) {
   const [failure, setFailure] = useState<string | null>(null);
   const connected = account.status === "ok" && account.login !== null;
+  /**
+   * ⚠️ **해제가 성공하면 누른 [Disconnect]가 행과 함께 바뀐다** (audit #32) — 포커스가 `body`로 빠졌다. 버튼은 그 순간
+   * 언마운트되어 자기 착지를 못 하므로, 남는 이 구역이 연결 상태의 전이를 보고 같은 행의 새 컨트롤로 옮긴다.
+   * ⚠️ 래퍼가 `contents`라 행의 flex 배치는 그대로다.
+   */
+  const controls = useRef<HTMLDivElement>(null);
+  const wasConnected = useRef(connected);
+  useEffect(() => {
+    if (wasConnected.current && !connected) landFocus(controls.current?.querySelector<HTMLElement>("button, a[href]"));
+    wasConnected.current = connected;
+  }, [connected]);
 
   return (
     <PanelCard
@@ -78,6 +90,8 @@ export function GithubSection({
           ⚠️ **실패 문구를 셋 다 구역 Alert로 올린다** (`onResult`·`onFailure`) — 여기는 리스트
           항목의 우측 컨트롤이고 그 클러스터가 `shrink-0`이라, Alert를 형제로 두면 행이 밀려난다.
         */}
+        {/* `unavailable`에는 컨트롤이 없다 — 래퍼까지 빼야 PanelRow가 빈 컨트롤 칸(gap)을 세우지 않는다. */}
+        {account.status === "unavailable" ? undefined : <div ref={controls} className="contents">
         {account.status === "reauthorize" ? (
           // 자동 redirect가 아니라 버튼이다 — 렌더 중 튕기면 callback 실패 시 루프다.
           <ConnectGithubButton dest="account" label={m.settings.account.reconnect} onResult={setFailure} />
@@ -101,6 +115,7 @@ export function GithubSection({
         ) : account.status === "ok" ? (
           <ConnectGithubButton dest="account" label={m.settings.account.connect} onResult={setFailure} />
         ) : undefined}
+        </div>}
       </PanelRow>
       </PanelRows>
     </PanelCard>

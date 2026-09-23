@@ -139,7 +139,8 @@ it.each([
   // 실패는 `circle-alert`, 적재 중은 테두리 스피너 — 매체가 달라도 "글리프가 선다"는 같다.
   expect(status.firstElementChild !== null).toBe(icon);
   // 장식이라 접근성 트리에 이름 없는 그래픽으로 새면 "색만으로 말하지 않는다"가 반대로 깨진다.
-  expect([...status.children].every(node => node.getAttribute("aria-hidden") !== null)).toBe(true);
+  // `<time>`은 장식이 아니라 시각이다 — UTC 접근 이름을 든다 (audit #41).
+  expect([...status.children].filter(node => node.tagName !== "TIME").every(node => node.getAttribute("aria-hidden") !== null)).toBe(true);
   expect(document.querySelector("[data-source-glyph]")?.getAttribute("data-tone")).toBe(tone);
 });
 it("상세의 적재 상태는 칩 하나와 두 줄로 선다", async () => {

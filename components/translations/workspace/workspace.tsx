@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { useLandAfter } from "@/components/ui/focus";
 import type { RepositoryImportOutcome } from "@/lib/import/result";
 import type { TranslationList, TranslationListRow, TranslationTree } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
@@ -133,6 +134,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const [revertBusy, setRevertBusy] = useState(false);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const resultRef = useRef<HTMLSpanElement>(null);
+  const saveRef = useRef<HTMLButtonElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => { setStatus(null); setRevertedLocales(new Set()); setRevertReason(null); }, [keyId]);
   useEffect(() => {
@@ -288,6 +290,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       setSaving(false);
     }
   }
+
+  /*
+    ⚠️ **Save가 끝나면 착지한다** (audit #32 — 주 흐름). 저장 중 `loading`이 [Save]를 꺼 포커스가 `body`로 빠지고, 성공하면
+    저장할 것이 없어 꺼진 채 남는다 — 그때는 결과 줄(Revert 성공과 같은 자리 · DESIGN §7), 거부면 다시 켜진 [Save]다.
+    단축키로 저장했으면 포커스가 입력에 그대로라 옮기지 않는다(빠졌을 때만 옮긴다).
+  */
+  useLandAfter(saving, () => [saveRef.current, resultRef.current]);
 
   // ── Revert ────────────────────────────────────────────────────────────────
   const pendingLocales = detail?.locales.filter(l => l.pending && !revertedLocales.has(l.code)).map(l => l.code) ?? [];
@@ -534,6 +543,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                     status={status}
                     saving={saving}
                     resultRef={resultRef}
+                    saveRef={saveRef}
                     hasPending={pendingLocales.length > 0}
                     revertBlocked={revertBlocked}
                     revertBusy={revertBusy}
@@ -565,8 +575,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   );
 }
 
-function Footer({ alertId, dirty, status, saving, resultRef, hasPending, revertBlocked, revertBusy, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
-  alertId: string; dirty: number; status: FooterStatus | null; saving: boolean; resultRef: React.RefObject<HTMLSpanElement | null>;
+function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending, revertBlocked, revertBusy, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
+  alertId: string; dirty: number; status: FooterStatus | null; saving: boolean; resultRef: React.RefObject<HTMLSpanElement | null>; saveRef: React.RefObject<HTMLButtonElement | null>;
   hasPending: boolean; revertBlocked: RevertReason | null; revertBusy: boolean; saveDisabled: boolean;
   onSave: () => void; onRevert: () => void; onCheck: () => void; slug: string; storageBlocked: boolean;
 }) {
@@ -602,7 +612,7 @@ function Footer({ alertId, dirty, status, saving, resultRef, hasPending, revertB
               {w.revert.button}
             </Button>
           )}
-          <Button variant="primary" loading={saving} disabled={saveDisabled} onClick={onSave}>{w.footer.save}</Button>
+          <Button ref={saveRef} variant="primary" loading={saving} disabled={saveDisabled} onClick={onSave}>{w.footer.save}</Button>
         </span>
       </div>
     </div>

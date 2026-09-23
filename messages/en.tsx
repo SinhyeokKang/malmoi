@@ -42,6 +42,13 @@ export const en = {
     action: "Sync",
     /** 진행 중 트리거 라벨 — 줄임표는 진행 중에만 쓰고 문자는 `…`(U+2026)다 (DESIGN §10). */
     pending: "Syncing…",
+    /**
+     * 멈춘 [Sync]의 사유 (audit #37) — `aria-describedby`로만 읽힌다. ⚠️ **원인을 가르지 않는다** — 미연결·보관은 같은 화면의
+     * 배너가, Publish 진행은 그 버튼의 `Publishing…`이 이미 말한다. `translations.publish.paused`와 같은 형이다.
+     */
+    paused: "Syncing is currently unavailable.",
+    /** Publish가 도는 동안 꺼진 [Try again]의 사유 (audit #37) — 두 방향이 겹치면 남는 값을 화면이 설명할 수 없다(§6.64). */
+    waitPublish: "Wait for Publish to finish.",
     confirm: "Sync from repository",
     /**
      * 미전달 편집이 있을 때의 확정 라벨 (sync-edit-protection spec "수동 Sync"). 트리거 `Sync`와 접근 이름이 달라야 한다는
@@ -2626,8 +2633,12 @@ export const en = {
       nothingAdded: "Nothing was added. Your selection is still here.",
       description: "Choose translation files from your repository. Existing sources stay selected.",
       selectHelp: "Select at least one new source to add.",
+      /** 꺼진 수동 확인([Check files])의 사유 (audit #37). */
+      manualReason: "Enter a file path and a base language to check.",
     },
-    ci: { description: "Your workflow pushes source strings into malmoi on every merge.", title: "CI integration", workflow: "Workflow file", sourcesLead: "One workflow covers every source. Add or change sources in", open: "View workflow", stale: "Some sources have not been synced yet. Check that the workflow includes them." },
+    ci: { description: "Your workflow pushes source strings into malmoi on every merge.", title: "CI integration", workflow: "Workflow file", sourcesLead: "One workflow covers every source. Add or change sources in", open: "View workflow", stale: "Some sources have not been synced yet. Check that the workflow includes them.",
+      /** 소스가 없어 꺼진 워크플로 행의 사유 (audit #37) — 워크플로는 소스 목록에서 만들어진다. */
+      noSources: "Add a source to get the workflow." },
     archivedReason: "Restore this project to change its settings.",
     recovery: "Syncs keep running. Manage your GitHub authorization in account settings to reconnect this repository or add sources.",
     accountLink: "Account settings",

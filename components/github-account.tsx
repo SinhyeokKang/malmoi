@@ -44,7 +44,7 @@ export function DisconnectGithubButton({ onFailure }: {
             되돌릴 수 없는 넷과 같은 무게로 읽히는데, 그 무게는 이제 확인 Dialog가 든다 —
             **같은 버튼이 화면마다 다른 무게면 그 자체가 결함이라** `/projects/:slug/settings`도 함께 바뀐다.
           */}
-          <Button variant="default" aria-label={m.settings.account.disconnectLabel} loading={pending}>{m.settings.account.disconnect}</Button>
+          <Button variant="default" aria-label={m.settings.account.disconnectLabel} busy={pending}>{m.settings.account.disconnect}</Button>
         </DialogTrigger>
         <DialogContent
           title={m.account.github.confirmDisconnect}

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { SyncButton } from "@/components/home/sync-button";
 import { SyncResult } from "@/components/home/sync-result";
@@ -186,6 +186,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
   const owner = role === "OWNER";
   /** 복원 거부 — 배너 `actions` 안이 아니라 **배너의 형제**로 선다 (audit #7 r1: 경고 속 경고가 됐다). */
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const retryReasonId = useId();
 
   return (
     /*
@@ -201,7 +202,11 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
           /* ⚠️ **`[Try again]`은 `[Sync]`와 같은 Action이다** — 확인 Dialog를 건너뛰지 않는다. */
           /* ⚠️ **머리의 `[Sync]`와 같은 잠금을 받는다** — 같은 Action을 여는 세 자리가 다르게 움직이면
              "같은 라벨·같은 Action"이 화면에서 깨진다. 무반응인 버튼은 비활성보다 한 단계 아래다. */
-          actions={owner ? <Button disabled={publishPending} onClick={() => setSyncOpen(true)}>{m.home.banner.syncFailed.action}</Button> : undefined}
+          /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 결과 Alert의 [Try again]과 같은 형이다. */
+          actions={owner ? <>
+            <Button aria-disabled={publishPending || undefined} aria-describedby={publishPending ? retryReasonId : undefined} onClick={() => { if (!publishPending) setSyncOpen(true); }}>{m.home.banner.syncFailed.action}</Button>
+            {publishPending && <span id={retryReasonId} className="sr-only">{m.repositorySync.waitPublish}</span>}
+          </> : undefined}
         >
           {/*
             ⚠️ **본문이 muted다 — 제목과 글리프만 빨강이다** (캔버스 `2b`). 배너 전체가 빨가면

@@ -173,10 +173,9 @@ describe("해제 뒤 행이 바뀌면 그 행의 새 컨트롤로 (#32)", () => 
     const view = await render(<LoginMethods rows={both} />);
     await click(byLabel(m.link.methods.disconnectLabel("Google")));
     await click(byText(m.link.methods.disconnect));
-    await act(async () => {
-      response.resolve();
-      await view.rerender(<LoginMethods rows={[both[0]!, { provider: "google", connected: false }]} />);
-    });
+    // `redirect`가 싣는 새 행은 transition이 끝나는 커밋에 함께 온다 — 행이 먼저 바뀌고 pending이 그 뒤에 풀린다.
+    await view.rerender(<LoginMethods rows={[both[0]!, { provider: "google", connected: false }]} />);
+    await response.resolve();
     expect(document.activeElement).toBe(byLabel(m.link.methods.connectLabel("Google")));
   });
 

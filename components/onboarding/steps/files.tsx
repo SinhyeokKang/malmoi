@@ -364,7 +364,9 @@ function Preview({
           ⚠️ **`shrink-0`이 flex 전환의 대가다** — flex 아이템은 기본이 `shrink:1`이라, 행이 많아
           내용이 컨테이너를 넘으면 표가 눌릴 수 있다. 넘치는 만큼은 스크롤이 받는다.
         */}
-        <Table scrollable={false} className="table-fixed shrink-0">
+        {/* ⚠️ **래퍼와 같은 이름을 표에도 준다** (audit #40 · POSTMORTEM 2026-09-19) — 래퍼의 이름은 랜드마크의 이름이고,
+            스크린리더의 표 목록은 `<table>` 자신의 이름을 읽는다. */}
+        <Table aria-label={m.newProject.files.preview.rows} scrollable={false} className="table-fixed shrink-0">
           {/*
             ⚠️ **`[&_tr]:border-b-0`이 `TableRow`가 아니라 여기 있다.** 프리셋과 **같은 요소·같은
             변형**이라 twMerge가 뒤엣것만 남기고 프리셋은 CSS로 나가지도 않는다. 행에 `border-b-0`을

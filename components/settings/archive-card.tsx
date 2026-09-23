@@ -6,6 +6,7 @@ import { archiveProject, unarchiveProject, type ArchiveResult } from "@/app/(edi
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { useLandAfter } from "@/components/ui/focus";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 
@@ -45,6 +46,13 @@ export function ArchiveCard({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const cancel = useRef<HTMLButtonElement>(null);
+  /**
+   * ⚠️ **성공하면 버튼이 바뀐다** (audit #32) — 보관 ↔ 복원이 서로 다른 갈래라 누른 버튼이 언마운트되고 포커스가 `body`로
+   * 빠진다. 두 갈래가 같은 ref를 쥐고, revalidate가 실린 커밋 뒤에 새 버튼으로 착지한다. [Archive]는 Dialog 트리거라 진행 중에도
+   * `busy`로 포커스를 지키고, [Restore]는 트리거가 아니라 `loading` 그대로다(끝난 뒤의 착지가 받는다).
+   */
+  const button = useRef<HTMLButtonElement>(null);
+  useLandAfter(pending, () => button.current);
 
   /** ⚠️ **던져도 제자리로 돌아온다** — 통신이 끊기면 서버가 바꿨는지 모르므로 사유 대신 확인 불가를 말한다. */
   const report = (message: string | null) => { if (onFailure) onFailure(message); else setError(message); };
@@ -67,6 +75,7 @@ export function ArchiveCard({
     return (
       <div data-archive-card className="shrink-0 space-y-2">
         <Button
+          ref={button}
           variant="default"
           loading={pending} aria-busy={pending} className="[&_.animate-spin]:size-3.5"
           onClick={() => run(unarchiveProject)}
@@ -82,7 +91,7 @@ export function ArchiveCard({
     <div data-archive-card className="shrink-0 space-y-2">
       <Dialog>
         <DialogTrigger asChild>
-          <Button variant="danger" loading={pending} aria-busy={pending} className="[&_.animate-spin]:size-3.5">
+          <Button ref={button} variant="danger" busy={pending} className="[&_.animate-spin]:size-3.5">
             {m.archive.action}
           </Button>
         </DialogTrigger>

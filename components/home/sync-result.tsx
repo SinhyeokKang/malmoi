@@ -1,6 +1,7 @@
 "use client";
 
 import { RotateCcw } from "lucide-react";
+import { useId } from "react";
 
 import { Alert } from "@/components/ui/alert";
 import { Button, ButtonLink, buttonClass } from "@/components/ui/button";
@@ -52,6 +53,7 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
   retryDisabled?: boolean;
   onDismiss?: () => void;
 }) {
+  const retryReasonId = useId();
   if (outcome === null) return null;
   if (!outcome.ok) {
     const refusal = planImportRefusal(outcome.error);
@@ -123,7 +125,12 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
       </div>)}
   </>;
   return <Alert variant={tone} role="status" title={title} onDismiss={onDismiss}
-    actions={retry && onRetry ? <Button disabled={retryDisabled} onClick={onRetry}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button> : undefined}>
+    /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 진짜 `disabled`는 포커스를 못 받아 왜 꺼졌는지 닿지 않았다.
+       사유는 `<span>`이다 — 이 Alert의 형(줄 수)을 `<p>`로 센다. */
+    actions={retry && onRetry ? <>
+      <Button aria-disabled={retryDisabled || undefined} aria-describedby={retryDisabled ? retryReasonId : undefined} onClick={() => { if (!retryDisabled) onRetry(); }}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button>
+      {retryDisabled && <span id={retryReasonId} className="sr-only">{m.repositorySync.waitPublish}</span>}
+    </> : undefined}>
     {details}
   </Alert>;
 }
