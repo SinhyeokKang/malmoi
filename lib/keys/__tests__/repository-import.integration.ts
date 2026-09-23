@@ -289,7 +289,7 @@ import { runSync } from "@/lib/sync/run";
 
 /**
  * **폐기는 서버가 발급한 지문을 되돌려 받았을 때만 열린다** (ARCHITECTURE §5.5.2). 각 거부 줄은 같은 픽스처의 성공 대조를 든다.
- * 편집은 `saveTranslation`과 같은 컬럼(값·저자·토큰)을 SQL로 심는다.
+ * 편집은 `saveTranslationKey`와 같은 컬럼(값·저자·토큰)을 SQL로 심는다.
  */
 async function editedFixture() {
   await seed(); await ci();

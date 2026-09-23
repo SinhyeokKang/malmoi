@@ -3,15 +3,17 @@ import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeActions, HomeTitle, HomeHeaderActions, HomeNotices } from "@/components/home/actions";
-import { TranslationsHeader } from "@/components/translations/header";
+import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
+import { props as workspaceProps } from "./helpers/workspace-props";
 import { render } from "./helpers/dom";
 const mocks = vi.hoisted(() => ({ preview: vi.fn(), pull: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: mocks.preview }));
-vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
+vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull, saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: vi.fn(), replace: vi.fn() }) }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectRepository: vi.fn() }));
 const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null };
+const PUBLISH_LIVE = '[aria-live="polite"]:not([data-footer-result])';
 const ok = (data: unknown) => ({ status: "ok", preview: data });
 function button(name: string) {
   const node = [...document.querySelectorAll("button")].find(b => b.textContent?.trim() === name || b.getAttribute("aria-label") === name);
@@ -27,9 +29,7 @@ function Host({ count = 1, role = "EDITOR" }: { count?: number; role?: "OWNER" |
     <HomeHeaderActions slug="acme" name="Host" branch="main" role={role} unsent={count} paused={false} />
     <HomeNotices slug="acme" name="Host" branch="main" role={role} state="default" repo={{ owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }} unsent={count} failedSurface={null} reason={null} lastSyncAt={null} now={new Date()} />
   </HomeActions>;
-  return <TranslationsHeader slug="acme" surfaceSlug="default" surfaces={[]} totalCount={1} query={{}} chipQuery={{}}
-    namespaces={[]} locales={[]} selected={[]} fallback={[]} unpublished={count} repo={{ owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }} role={role} lastSentLabel={null} lastPrUrl={null}
-    baseLocale="en" declaredBaseLocale="en"><p>Rows</p></TranslationsHeader>;
+  return <TranslationWorkspace {...workspaceProps({ role, unpublished: count, publish: { repo: { owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }, lastSentLabel: null, lastPrUrl: null } })} />;
 }
 it("확인 전에는 쓰지 않고 0건 refresh 뒤에도 결과와 재열기를 보존한다", async () => {
   const view = await render(<Host />);
@@ -95,7 +95,8 @@ it("열기는 컨테이너, 열린 상태 전이는 본문, disabled 호출부�
   const read2 = deferred<unknown>(); mocks.preview.mockReturnValueOnce(read2.promise);
   await click("Publish1");
   expect(document.activeElement).toBe(document.querySelector('[role="dialog"]'));
-  expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe("");
+  // 번역 호스트의 저장 상태줄(`data-footer-result`)은 Publish와 무관한 자기 영역이라 뺀다 — 여기서 보는 것은 Publish가 낭독하지 않는가다.
+  expect(document.querySelector(PUBLISH_LIVE)?.textContent).toBe("");
   await act(async () => read2.resolve(ok(preview))); await click("Open pull request");
   await view.rerender(<Host count={0} />); await click("Close");
   expect(document.activeElement?.textContent).toBe(kind === "home" ? "Host" : "Translations");
@@ -186,7 +187,7 @@ it("실패의 alert만 낭독하고 닫힌 동안 완료는 포커스를 빼앗�
   expect(document.activeElement).toBe(focused);
   await click("View result");
   expect(document.querySelectorAll('[role="alert"]')).toHaveLength(1);
-  expect(document.querySelector('[aria-live="polite"]')).toBeNull();
+  expect(document.querySelector(PUBLISH_LIVE)).toBeNull();
   expect(document.body.textContent).not.toContain("Reference");
   expect(document.body.textContent).not.toContain("Next");
 });

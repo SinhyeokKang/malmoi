@@ -67,15 +67,40 @@ C4 완료는 프로덕션 개방이 아니다. preview에서 C5의 T18–T20을 
 
 ## C5. 제거·문서·최종 검증 — 커밋 경계 5
 
-- [ ] T16. 새 화면의 소비자 전환을 확인한 뒤 옛 locale 선택·KeyGroup·blur 저장·옛 칩/문구를 제거한다. 공유 함수와 URL 호환은 소비자 확인 후 유지/교체한다.
+- [x] T16. 새 화면의 소비자 전환을 확인한 뒤 옛 locale 선택·KeyGroup·blur 저장·옛 칩/문구를 제거한다. 공유 함수와 URL 호환은 소비자 확인 후 유지/교체한다.
   검증: `rg`로 dead import/옛 Action 소비자 확인. 기존 `components/__tests__/{translation-interactions,translation-table,translations-screen}` 테스트의 행동 계약을 새 UI 테스트에 이관. 핸드오프가 지칭한 `query.test.ts`/surface 페이지 테스트는 현재 실재 여부를 확인하고 필요한 경로에 신설.
-- [ ] T17. PRODUCT(명시 저장·Revert 권한/폐기 예외·URL), ARCHITECTURE(스냅샷·성공 CAS·잠금·무효화), DESIGN(세 패널/상태/폭), DIRECTORY(실제 파일)와 운영 배포 절차를 갱신한다. 새 env는 없으므로 env 샘플 변경 없음.
+  결과(2026-09-23, `497d61c`·`fbb1df4`): 옛 표 조각 6 · 고아 헬퍼 3(refocus·edit-command·keys/filters) · `m.translations` 옛 키 14 · 옛 셀 Action `saveTranslation`+`SaveInput`을 지웠다. 옛 Action 소비자 테스트 11개는 `saveTranslationKey`로 옮겼고 교차 테넌트 거부는 정확한 값으로 강화했다(삭제 0). 이관 판정: 저장·키보드·이동 확인은 `translation-workspace.test.tsx`, orphaned 로케일 거부는 `save-key` 계열이 든다. `rowSpan`·열 구성 같은 **표 구조** 계약은 구조가 사라져 이관 대상이 아니다. `query.test.ts`는 `lib/translations/__tests__/`에 실재한다.
+- [x] T17. PRODUCT(명시 저장·Revert 권한/폐기 예외·URL), ARCHITECTURE(스냅샷·성공 CAS·잠금·무효화), DESIGN(세 패널/상태/폭), DIRECTORY(실제 파일)와 운영 배포 절차를 갱신한다. 새 env는 없으므로 env 샘플 변경 없음.
   검증: 문서가 실제 코드의 계약만 설명하고 이 spec의 미확정 항목을 구현된 사실로 쓰지 않음. AGENTS/명령 미러는 직접 편집하지 않음.
-- [ ] T18. `pnpm typecheck`, `pnpm test`, `pnpm test:projects:postgres`를 실행한다. DB 또는 환경 부재로 못 돌리면 구체적인 미검증 범위를 보고한다.
+  결과(2026-09-23): PRODUCT §3 명시 저장 판정 + URL 계약 · ARCHITECTURE 쓰기 주체·편집 토큰·재검증·잎 명부 · DESIGN §6.1 정리(§6.1a가 정본) · DIRECTORY · OPERATIONS 배포 B. 불변식·§5.8 본문은 C4 때 이미 올렸다.
+- [x] T18. `pnpm typecheck`, `pnpm test`, `pnpm test:projects:postgres`를 실행한다. DB 또는 환경 부재로 못 돌리면 구체적인 미검증 범위를 보고한다.
   검증: 신규/기존 전체 결과 기록. 실패를 소스 단언 삭제로 덮지 않음. 이 feature 문서 작성 단계에서는 빌드·테스트를 실행하지 않음.
+  결과(2026-09-23, T16 뒤 HEAD): typecheck OK · `pnpm test` 360파일 5,197 passed · `pnpm test:projects:postgres` 14파일 241 passed. ⚠️ 프로덕션 배포 B(#71)는 T19·T20 **전에** 나갔다.
 - [ ] T19. 실제 브라우저에서 1280/1440/1920 × LNB 200/240/320, 긴 키/원문/200 언어 fixture, 키보드/IME, 440 Dialog 취소·복원 성공 후 disabled 버튼 대체 포커스, 접힌 트리 열림·선택·닫힘, 리사이즈, history·재로그인을 검증한다.
   검증: 카드/textarea 실제 폭·클리핑·포커스 결과 기록. FCP뿐 아니라 responseEnd/transferSize/loadEventEnd·목록 선택 가능 시각을 기존 fixture와 비교. 절대 성능은 dev 서버 수치로 판정하지 않음.
+  진행(2026-09-23, 로컬 Chrome · QA 프로젝트 3언어 4키):
+  - 폭 9조합(1280/1440/1920 × LNB 200/240/320) 전부 로케일 ≥420, 입력 = 카드 − 34. 1280/240은 목록 336 · 트리 210이고, 1280/320에서만 트리가 접힌다. 페이지 가로 스크롤 0.
+    ⚠️ 가려진 창에서는 합성 프레임이 멈춰 ResizeObserver가 늦게 온다(394px처럼 보였다). 스크린샷으로 프레임을 강제해 재면 즉시 맞는다 — 측정 환경 문제이고 결함이 아니다.
+  - 접힌 트리 오버레이: 280×208. 열면 선택 항목으로, Escape·선택이면 토글로 포커스가 간다(`abbf705`에서 고쳤다 — 전엔 목록 뒤에 붙어 Tab으로 못 닿고 닫으면 body로 떨어졌다). 트리 전환은 첫 키를 자동 선택한다.
+  - 키보드: IME 조합 Ctrl+Enter(229)는 저장 안 함 · Escape는 그 입력만 복원 · Enter는 줄바꿈 · Ctrl+Enter는 키 저장. Revert 확인창은 440이고 기본 포커스는 Cancel, 성공하면 포커스가 푸터 결과 줄로 간다.
+  - 57언어 · 619키(`i18n-many-locales` 온보딩으로 dev 프로젝트 생성 — 리포 쓰기 없음. **Publish 금지**, 포크다): 1280·1440 × LNB 320에서 로케일 420 · 입력 57개(채운 칸 371 / 빈 칸 점선 안 349) · 잘린 요소 0 · 목록 100행 가로 넘침 0 · 로케일 패널 세로 스크롤(7034/480) · 페이지 가로 스크롤 0.
+  - ⚠️ **대량 적재 직후 첫 렌더가 서버에서 2.0분**이었다(둘째 요청 1.6초). 그 요청이 끝난 시각에 `Translation`·`StringKey` autoanalyze가 돌았다 — 통계가 낡은 채로 계획이 선 것으로 **추정**하고 EXPLAIN으로는 재현하지 않았다. 프로덕션의 새 대형 프로젝트 첫 화면에 같은 창이 열리는지는 미확인.
+  - 고정 푸터: 57언어 끝까지 스크롤해도 마지막 상자 아래 801 < 푸터 위 813 — 가리지 않는다. (앞서 멈춘 측정은 셸 인용 문제였다.)
+  - 재로그인: 세션 쿠키를 지우고 Save → `Your session ended` Alert · 입력 유지 · 세션 복구 사본 1건 → 쿠키 복원 후 새로고침에 draft 복원(1 unsaved change). Escape로 되돌리면 사본도 사라진다.
+  - 사용자 지적 셋을 고쳤다(`4f93803`): 빈 칸 원문을 입력 첫 줄에 겹침 · 네임스페이스 들여쓰기 30 · 트리 필터 폭 가득.
+  - **미검증**: 200언어(실리포 상한 57) · Safari/Firefox · 네이티브 beforeunload · 성능 지표(dev 서버라 판정 안 함).
 - [ ] T20. preview 환경에서 승인된 실리포의 전달→재편집→Revert→Publish 왕복을 검증한다. base 빈값/비-base 부재·수술적/재생성 어댑터·동일값 재전송을 포함한다.
   검증: DB 복원값과 실제 PR 의미·결정적 바이트, no-changes 브랜치 원복, 경고 시 기준/토큰 불변. 원격 쓰기는 Claude Code의 승인된 `/l10n-roundtrip` 실행으로 인계하고 결과를 기록. T18–T20 통과 기록은 프로덕션 배포 B의 선행 조건이다.
+  진행(2026-09-23, 로컬 dev + dev DB · `malmoi-test-org/bugshot-i18n-test` chrome-locales):
+  - 전달: UI Publish → PR #3(1파일 +1 −1, 헝크 1, 제목에 `[skip-malmoi-i18n]`) → `DeliveryConfirmation` SUCCEEDED, 셀 미전달 해제.
+  - 재편집 → Save → `TranslationBaseline`의 ko가 전달값과 같은 revision으로 섰다.
+  - UI Revert → DB 값이 전달값으로 돌아오고 토큰 null · 기준 행 삭제 · 사건 `translation.reverted` · 화면 Not sent·Publish 개수 0. 문구 단수형 결함 1건을 고쳤다(`73a4918`).
+  - 수술적 어댑터(`SinhyeokKang/i18n-format-check` yaml-catalog, 9키 3로케일 dev 프로젝트 신설): 접힌 스칼라 `settings.help` ja 편집 → Publish → PR #8(1파일 +1 −1, 헝크 1 — `>` 블록·`<<: *common` 앵커·따옴표 형식 보존) → 재편집 → Revert → 전달값 복원 · 결과 줄 포커스 · Publish 0.
+  - 동일값: 입력했다 지우면 미저장 0 · Save 꺼짐 · Ctrl+Enter no-op · DB 불변.
+  - PR #3 머지(squash, 첫 줄 `[skip-malmoi-i18n]`, sync 브랜치 삭제) → 앱 Sync가 머지 head `587aa99`를 읽어 4키 적재 · ko 값이 PR과 같다 · `importRevision` 2로 올라 옛 확인이 지문으로 무효가 된다(다음 Publish 전 Revert 차단 — 설계대로).
+  - no-changes: 리포와 같은 값으로 되돌려 저장한 미전달 1건 → Publish가 `Nothing changed in the files`로 끝나고 PR 없음 · 미전달 0 · 새 확인(SKIPPED) · 리포에 sync 브랜치 없음.
+    ⚠️ 기존 동작 둘(이 기능 밖): Publish 미리보기가 리포와 같은 값도 `1 change`로 센다 · Sync 확인창이 열린 PR **조회 중**에도 `We couldn't check…`(실패 문구)를 보인다(로딩과 실패가 같은 `undefined`).
+  - PR #8 머지(squash, 첫 줄 마커, sync 브랜치 삭제 · 머지된 ja.yml의 `>` 블록·앵커·따옴표 보존) → 앱 Sync가 머지 head를 읽고 ja 값이 PR과 같다 · 미전달 0.
+  - **미완**: 비-base 부재 셀의 Revert(두 폐기용 리포에 빈 셀이 없다 — 리포를 고쳐야 만들 수 있어 안 했다. `revert-key.integration.ts`만 덮는다) · base 빈값 · 값 고정점(편집 전 pull no-changes)을 순서대로 먼저 안 돌렸다.
 
 다음 진입점: T1(design §10)·C1(T2–T4, `lib/translations/*` · `planKeySave`)이 닫혔고 불변식 문서(ARCHITECTURE §0·§5.8 · PRODUCT §3 · CLAUDE.md)를 미구현 표시로 먼저 고쳤다. 다음은 C2(T5 `/db`)다 — 불변식 변경이라 `/ship bypass`가 아니라 수동 흐름이다. 문서 작성 완료는 Revert 구현/배포 완료가 아니다.

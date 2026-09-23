@@ -114,7 +114,7 @@ const {
   checkOpenPullRequest,
   startGithubConnectForUser,
 } = await import("../projects/actions");
-const { saveTranslation, triggerPullAction } = await import("../actions");
+const { saveTranslationKey, triggerPullAction } = await import("../actions");
 
 /** 탐지가 후보를 내는 최소 리포 — `i18n/{locale}.json` 3로케일. */
 const TREE = [
@@ -1153,7 +1153,7 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (PRODUCT §7.5)
    * `ProjectNotReady`로 남아, **적재를 막 끝낸 사용자가 "아직 준비 안 됐다"를 본다.**
    *
    * 접두가 아니라 **서브트리**여야 하는 이유가 그것이다 — POSTMORTEM 2026-09-09(화면을 옮겼는데
-   * 무효화가 안 따라갔다)와 같은 모양이고, `saveTranslation`이 이미 그 형이다.
+   * 무효화가 안 따라갔다)와 같은 모양이고, `saveTranslationKey`가 이미 그 형이다.
    */
   it("`/projects/<slug>` 서브트리를 지운다 — settings만으로는 Home·번역이 안 따라온다", async () => {
     expect(await runFirstIngest({ slug: "acme" })).toMatchObject({ ok: true });
@@ -1462,9 +1462,9 @@ describe("ready가 아닌 프로젝트의 번역 Action은 not-ready다 (PRODUCT
     db.surfaces[0]!.lastCommitSha = null;
   });
 
-  it("saveTranslation이 거부하고 아무것도 쓰지 않는다", async () => {
+  it("saveTranslationKey가 거부하고 아무것도 쓰지 않는다", async () => {
     expect(
-      await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" }),
+      await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕" }] }),
     ).toEqual({ ok: false, error: "not-ready" });
     expect(db.translations).toEqual([]);
   });
@@ -1480,8 +1480,8 @@ describe("ready가 아닌 프로젝트의 번역 Action은 not-ready다 (PRODUCT
 
 
     expect(
-      await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" }),
-    ).toEqual({ ok: true, value: "안녕" });
+      await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕" }] }),
+    ).toEqual({ ok: true, keyId: "k-greet", cells: [{ localeCode: "ko", value: "안녕" }] });
     expect(await triggerPullAction("acme")).toEqual({ status: "skipped" });
   });
 });

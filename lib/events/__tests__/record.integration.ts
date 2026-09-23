@@ -231,14 +231,16 @@ async function seedTranslationFixture() {
   await prisma.translationSurface.update({ where: { id: "s1", projectId: "p1" }, data: { lastCommitSha: "a".repeat(40) } });
   await prisma.locale.create({ data: { projectId: "p1", surfaceId: "s1", code: "ko", name: "Korean" } });
   await prisma.stringKey.create({ data: { id: "key1", projectId: "p1", surfaceId: "s1", key: "hello", namespace: "_root", sourceText: "Hello", sourceHash: "hash" } });
-  return { slug: "p1", surfaceSlug: "web", keyId: "key1", localeCode: "ko" };
+  return { slug: "p1", surfaceSlug: "web", keyId: "key1" };
 }
+const koChange = (value: string) => [{ localeCode: "ko", value }];
+const koSaved = (value: string) => ({ ok: true, keyId: "key1", cells: [{ localeCode: "ko", value }] });
 
 it("실제 번역 Action의 동시 저장도 사건의 전후 값이 끊기지 않는다", async () => {
   const input = await seedTranslationFixture();
-  const { saveTranslation } = await import("@/app/(edit)/actions");
-  expect(await Promise.all([saveTranslation({ ...input, value: "A" }), saveTranslation({ ...input, value: "B" })]))
-    .toEqual([{ ok: true, value: "A" }, { ok: true, value: "B" }]);
+  const { saveTranslationKey } = await import("@/app/(edit)/actions");
+  expect(await Promise.all([saveTranslationKey({ ...input, changes: koChange("A") }), saveTranslationKey({ ...input, changes: koChange("B") })]))
+    .toEqual([koSaved("A"), koSaved("B")]);
   const events = await prisma.projectEvent.findMany({ where: { projectId: "p1", kind: "TRANSLATION" } });
   const changes = events.map(event => event.payload as { before: string | null; after: string });
   expect(changes).toHaveLength(2);
@@ -258,7 +260,7 @@ it("실제 번역 Action의 동시 저장도 사건의 전후 값이 끊기지 �
  */
 it("적재가 Project 잠금을 오래 쥐고 있어도 저장은 기다렸다 성공한다", async () => {
   const input = await seedTranslationFixture();
-  const { saveTranslation } = await import("@/app/(edit)/actions");
+  const { saveTranslationKey } = await import("@/app/(edit)/actions");
 
   let locked: () => void = () => {};
   const acquired = new Promise<void>((resolve) => { locked = resolve; });
@@ -269,9 +271,9 @@ it("적재가 Project 잠금을 오래 쥐고 있어도 저장은 기다렸다 �
   }, { maxWait: 10_000, timeout: 30_000 });
 
   await acquired;
-  const saved = await saveTranslation({ ...input, value: "A" });
+  const saved = await saveTranslationKey({ ...input, changes: koChange("A") });
   await holder;
 
-  expect(saved).toEqual({ ok: true, value: "A" });
+  expect(saved).toEqual(koSaved("A"));
   expect(await prisma.projectEvent.count({ where: { projectId: "p1", kind: "TRANSLATION" } })).toBe(1);
 });

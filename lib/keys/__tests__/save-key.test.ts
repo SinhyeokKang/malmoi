@@ -86,4 +86,14 @@ describe("KeySaveInput — 공개 엔드포인트 입력", () => {
     expect(KeySaveInput.safeParse({ slug: "p", surfaceSlug: "web", keyId: "k", changes: [{ localeCode: "en", value: 1 }] }).success).toBe(false);
     expect(KeySaveInput.safeParse({ slug: "p", surfaceSlug: "web", keyId: "k", changes: [{ localeCode: "en", value: "x".repeat(10_001) }] }).success).toBe(false);
   });
+
+  // 옛 셀 저장의 `SaveInput` 검사에서 옮겼다(T16) — 편집 경로에 env 폴백이 없고, 대상은 멤버십이 준 projectId다.
+  it("slug·keyId·localeCode가 비거나 slug가 없으면 거부한다", () => {
+    const valid = { slug: "p", surfaceSlug: "web", keyId: "k", changes: [{ localeCode: "en", value: "v" }] };
+    expect(KeySaveInput.safeParse({ ...valid, slug: "" }).success).toBe(false);
+    const { slug: _omitted, ...withoutSlug } = valid;
+    expect(KeySaveInput.safeParse(withoutSlug).success).toBe(false);
+    expect(KeySaveInput.safeParse({ ...valid, keyId: "" }).success).toBe(false);
+    expect(KeySaveInput.safeParse({ ...valid, changes: [{ localeCode: "", value: "v" }] }).success).toBe(false);
+  });
 });

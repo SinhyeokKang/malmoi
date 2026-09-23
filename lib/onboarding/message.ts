@@ -9,7 +9,7 @@ import { PROJECT_SLUG_MAX } from "./slug";
  * 사전(`messages/en.tsx`)이 들고 갈래 누락은 `satisfies Record<Union, string>`이 컴파일 타임에 막으며,
  * 모르는 값에는 **던지지 않고 폴백**한다 — `?e=`는 주소창에 있어 사용자가 손댈 수 있다.
  *
- * ⚠️ **이 모듈은 클라이언트 컴포넌트가 import한다** (`translation-input`·`pull-button`·온보딩 화면).
+ * ⚠️ **이 모듈은 클라이언트 컴포넌트가 import한다** (`publish-button`·Sources·Home 동기화 결과·온보딩 화면).
  * 그래서 여기서 **값**으로 끌어오는 것이 곧 클라이언트 번들이다. 2026-09-07에 실제로 새어 나갔다:
  * `./slug`가 `lib/pull/trigger`를 import했고 그 그래프가 `lib/adapters` → `ts-dict` → **ts-morph
  * (TypeScript 컴파일러 전체)** 로 이어져 **7.2MB 청크**가 세 페이지에 붙었다. 트리 셰이킹은 그것을

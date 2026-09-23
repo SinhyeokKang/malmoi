@@ -101,7 +101,7 @@ export function planDraftRecovery(state: KeyDraftState): DraftRecovery {
 
 /**
  * 입력 안의 키보드 — Enter는 줄바꿈, Ctrl/Cmd+Enter는 키 저장, Escape는 현재 입력 취소.
- * IME 조합 중의 키는 조합의 것이다 (`lib/keys/edit-command.ts`와 같은 판정).
+ * IME 조합 중의 키는 조합의 것이다 — `isComposing`과 `keyCode 229`를 둘 다 본다(`SearchInput`과 같은 판정. 하나만 보면 브라우저에 따라 조합 확정 Enter가 저장이 된다).
  */
 export function keyEditCommand(event: {
   key: string;

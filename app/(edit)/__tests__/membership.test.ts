@@ -276,7 +276,7 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
 });
 
 /**
- * **Server Action 입력을 타입만 믿지 않는다.** `saveTranslation`만 zod를 지나고 나머지는 `role: Role`을 그대로
+ * **Server Action 입력을 타입만 믿지 않는다.** `saveTranslationKey`만 zod를 지나고 나머지는 `role: Role`을 그대로
  * DB에 넣었다 — 조작된 `"ADMIN"`은 Prisma enum 검증에서 던져 digest 오류가 된다 (code-review 2026-09-06 🟡13).
  * 인가는 그 앞에서 끝나므로 권한 구멍은 아니지만, 거부가 예외로 죽지 않는다는 규칙(ARCHITECTURE §6.3)이 깨진다.
  */
@@ -361,7 +361,7 @@ describe("changeMember — 마지막 OWNER 보호", () => {
  * **거부는 응답으로 흘러야 한다 — 예외로 죽으면 안 된다.**
  *
  * Server Action에서 처리되지 않은 throw는 사용자에게 digest만 있는 일반 오류가 되고, 판정 함수가
- * 만들어 둔 사유(`not-member`·`already-member`)가 무시된다. `saveTranslation`·`triggerPullAction`이
+ * 만들어 둔 사유(`not-member`·`already-member`)가 무시된다. `saveTranslationKey`·`triggerPullAction`이
  * 구조화된 거부를 내는데 이쪽만 다르면 화면이 두 계약을 상대하게 된다.
  */
 describe("경합에서도 거부가 응답으로 온다", () => {

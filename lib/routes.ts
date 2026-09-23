@@ -15,7 +15,7 @@
  * "전체" 네임스페이스의 URL 값. **어댑터가 만들 수 없는 이름**이라 실제 키 접두와 충돌하지 않는다
  * (`all`은 진짜 접두일 수 있다).
  *
- * ⚠️ **2026-09-11에 `lib/keys/view.ts`에서 여기로 내려왔다** (8-4). 칩 판정(`lib/keys/filters.ts`)이
+ * ⚠️ **2026-09-11에 `lib/keys/view.ts`에서 여기로 내려왔다** (8-4 — 칩 판정 `lib/keys/filters.ts`는 2026-09-23에 지웠고 지금 잎 소비자는 `lib/translations/query.ts`다). 그때 칩 판정이
  * "네임스페이스 칩을 떼면 전체로 넓어진다"를 표현하려면 이 값을 알아야 하는데, 그 모듈은 **잎**이라
  * `view.ts`를 물 수 없다(`compareKeys` → `lib/adapters/shared`가 번들에 따라온다 —
  * POSTMORTEM 2026-09-07). URL 값이므로 이 파일이 원래 자리이기도 하다.
@@ -76,10 +76,6 @@ export type TranslationsQuery = {
 export const KEY_STATES = ["new", "untranslated", "review", "unsent"] as const;
 
 export type KeyState = (typeof KEY_STATES)[number];
-
-export function isKeyState(raw: string | undefined): raw is KeyState {
-  return raw !== undefined && (KEY_STATES as readonly string[]).includes(raw);
-}
 
 /**
  * `undefined`인 파라미터를 **지운다** — `?ns=undefined`가 URL에 실리면 서버가 그것을 이름으로 읽어

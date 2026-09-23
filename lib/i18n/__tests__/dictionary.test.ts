@@ -115,3 +115,11 @@ describe("pick — 모르는 키에 항상 문자열", () => {
     expect(pick({ counter: (n: number) => `${n}` }, "counter", "fallback")).toBe("fallback");
   });
 });
+
+describe("사전 — Revert 확인 문장의 주어와 동사가 수를 맞춘다", () => {
+  // T19 실브라우저에서 "Your 1 language … go back"을 봤다 — 관계절 동사만 갈라 주동사가 복수로 고정돼 있었다.
+  it("단수는 goes back, 복수는 go back", () => {
+    expect(m.translations.workspace.revert.body(1, "ko")).toContain("Your 1 language that isn't sent yet — ko — goes back");
+    expect(m.translations.workspace.revert.body(2, "ko, ja")).toContain("Your 2 languages that aren't sent yet — ko, ja — go back");
+  });
+});

@@ -114,7 +114,7 @@ describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
   const SITES = [
     // 목록 본문은 `components/projects/project-list.tsx`로 내려갔다 (new-project-modal T8).
     "components/projects/project-list.tsx",
-    "components/translations/header.tsx",
+    "components/translations/workspace/workspace.tsx",
     "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/locales/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
     "app/(edit)/projects/[slug]/settings/page.tsx",

@@ -22,8 +22,8 @@ function reasonMessage(reason: Reason): string {
 /**
  * 표시 이름 편집 (account-settings 태스크 2).
  *
- * ⚠️ **blur 저장이 아니다.** 이 리포의 blur 저장은 `components/translation-input.tsx` 하나이고
- * 903행 × 3로케일이라는 규모가 그 근거다 — 필드 하나에 그것을 쓰는 쪽이 이탈이다.
+ * ⚠️ **blur 저장이 아니다.** 이 리포에 blur 저장은 없다 — 마지막이던 번역 셀도 translation-rework에서
+ * 명시 저장(Save · Ctrl/Cmd+Enter)으로 옮겨 갔다. 필드 하나에 그것을 쓰면 이탈이다.
  *
  * ⚠️ **성공 피드백이 토스트가 아니라 `[Save]` 오른쪽 인라인이다** (DESIGN §6.6 —
  * `repository-form.tsx`·`base-locale-form.tsx`와 같은 형). 저장 결과를 토스트로 내는 자리가

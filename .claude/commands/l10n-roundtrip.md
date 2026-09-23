@@ -92,7 +92,7 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/pull
 **보존이 깨지기 쉬운 자리를 일부러 고른다**: 여러 줄로 감긴 값, YAML 접힌 스칼라(`>`), 주석 바로 옆 줄, 작은따옴표 리터럴. 값에 `'`·`"`·백슬래시를 섞으면 이스케이프까지 본다.
 
 두 표면이면 각각 최소 1건을 편집하고 같은 key/locale의 상대 표면 값은 그대로인지 확인한다.
-편집은 projectId + surfaceId + keyId + localeCode로 좁힌 Prisma 직접 쓰기로 한다 (`saveTranslation` 경로는 `app/(edit)/__tests__/edit-flow.test.ts`가 덮는다). **원래 값을 파일로 남겨** 되돌릴 수 있게 한다.
+편집은 projectId + surfaceId + keyId + localeCode로 좁힌 Prisma 직접 쓰기로 한다 (`saveTranslationKey` 경로는 `app/(edit)/__tests__/edit-flow.test.ts`가 덮는다). **원래 값을 파일로 남겨** 되돌릴 수 있게 한다.
 
 **게이트 셋**:
 1. 두 표면도 tree·commit·PR·SyncRun이 프로젝트당 하나이며 `changed` 배열에 **편집한 키가 속한 파일만** 있다

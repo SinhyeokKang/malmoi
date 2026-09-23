@@ -86,7 +86,7 @@ const KNOWN_OFFENDERS = ["ts-morph", "octokit", "@prisma/client", "node:fs", "se
  * 위 패키지 허용 목록은 **npm 이름**만 본다. 그래서 `lib/keys/view.ts` → `lib/adapters/shared` → `json-style`처럼
  * **리포 안 모듈만으로 이어진 서버 그래프**는 패키지가 하나도 안 나와 green이었다 — 금지 목록 방식이라 재발을 못 본 것과
  * 같은 형이다. 여기서 뒤집는다: 닿는 파일 집합 자체를 고정한다. 클라이언트가 새 `lib/**` 모듈을 값으로 읽으면 red이고,
- * 그 모듈이 **잎인지 확인한 뒤** 이 목록에 한 줄을 더하는 것이 그 결정이다(`lib/i18n`·`lib/keys/filters` 잎 검사와 같은 형).
+ * 그 모듈이 **잎인지 확인한 뒤** 이 목록에 한 줄을 더하는 것이 그 결정이다(`lib/i18n`·`lib/keys/flag` 잎 검사와 같은 형).
  */
 const CLIENT_LIB_FILES = [
   "lib/account/plan.ts",
@@ -106,10 +106,7 @@ const CLIENT_LIB_FILES = [
   "lib/import/confirm.ts",
   "lib/import/refusal.ts",
   "lib/import/result.ts",
-  "lib/keys/edit-command.ts",
-  "lib/keys/filters.ts",
   "lib/keys/flag.ts",
-  "lib/keys/refocus.ts",
   "lib/login-link/message.ts",
   "lib/login-link/policy.ts",
   "lib/onboarding/base-pending.ts",
@@ -319,21 +316,15 @@ describe("클라이언트 그래프", () => {
   });
 
   /**
-   * ⚠️ **`lib/keys/filters.ts`·`lib/keys/flag.ts`도 잎이어야 한다** (ARCHITECTURE §0). 칩 행과
-   * 로케일 배지가 그것을 값으로 읽는데, 이웃한 `lib/keys/view.ts`는 잎이 아니다
+   * ⚠️ **`lib/keys/flag.ts`도 잎이어야 한다** (ARCHITECTURE §0). 로케일 배지가 그것을 값으로 읽는데
+   * (칩 판정 `lib/keys/filters.ts`는 translation-rework T16에서 옛 칩과 함께 지웠다), 이웃한 `lib/keys/view.ts`는 잎이 아니다
    * (`compareKeys` → `lib/adapters/shared` → `json-style`).
    *
    * ⚠️ **위 패키지 검사로는 못 잡는다** — `view.ts`가 무는 것이 전부 리포 안 모듈이라 npm 패키지가
    * 하나도 안 나오고, 그래서 클라이언트가 그것을 값으로 읽어도 **green이다**. 그래서 `lib/i18n`과
    * 같은 형으로 **파일 목록을 정확 일치**로 고정한다.
    */
-  it("칩·국기 판정은 잎이다 — `lib/keys/view.ts`를 물지 않는다", () => {
-    const chips = walk([join(ROOT, "lib/keys/filters.ts")]);
-    expect([...chips.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
-      "lib/keys/filters.ts",
-      "lib/routes.ts",
-    ]);
-
+  it("국기 판정은 잎이다 — `lib/keys/view.ts`를 물지 않는다", () => {
     const flag = walk([join(ROOT, "lib/keys/flag.ts")]);
     expect([...flag.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/keys/flag.ts"]);
   });

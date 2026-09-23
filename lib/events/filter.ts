@@ -96,7 +96,7 @@ function list(value: string | string[] | undefined): string[] {
   return [...new Set(items)].sort().slice(0, MAX_ITEMS);
 }
 
-/** 필터 하나를 뗀 뒤의 URL 쿼리. **조립을 화면이 다시 하면 규칙이 두 벌이 된다** (`lib/keys/filters.ts`와 같은 형). */
+/** 필터 하나를 뗀 뒤의 URL 쿼리. **조립을 화면이 다시 하면 규칙이 두 벌이 된다** (옛 번역 칩의 `lib/keys/filters.ts`가 같은 형이었다 — 2026-09-23에 칩과 함께 지웠다). */
 export function logsQuery(filter: LogFilter): {
   kind?: string;
   from?: string;

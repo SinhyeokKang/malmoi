@@ -335,6 +335,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     try { window.localStorage.setItem(widthKey(userId, slug), String(value)); } catch { /* 메모리 폴백 */ }
   }
   const [treeOverlay, setTreeOverlay] = useState(false);
+  const treeOverlayId = useId();
   const treeCollapsed = layout !== null && layout.tree === null;
 
   // ── 머리 ──────────────────────────────────────────────────────────────────
@@ -455,13 +456,14 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               showSource={query.scope === "project"}
               onSelect={selectRow}
               onMore={list.nextCursor === null ? null : () => router.push(withQuery({ ...query, cursor: list.nextCursor ?? undefined }))}
-              treeButton={treeCollapsed ? { open: treeOverlay, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span className="text-muted-foreground text-xs">{routeSurfaceSlug}</span> } : undefined}
+              treeButton={treeCollapsed ? { open: treeOverlay, controls: treeOverlayId, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span className="text-muted-foreground text-xs">{routeSurfaceSlug}</span> } : undefined}
               empty={listEmpty}
             />
             {treeCollapsed && treeOverlay && (
-              <TreeOverlay onClose={() => setTreeOverlay(false)}>
+              <TreeOverlay id={treeOverlayId} onClose={() => setTreeOverlay(false)}>
                 <TreePanel tree={tree} surfaceSlug={routeSurfaceSlug} ns={query.scope === "namespace" ? query.ns : ALL_NAMESPACES}
-                  onSelect={(surface, ns) => { setTreeOverlay(false); selectTree(surface, ns); }} />
+                  // 선택한 항목이 오버레이와 함께 사라지므로 토글로 돌려준다 — 안 하면 이동이 있든 없든 body로 떨어진다(T19 실측).
+                  onSelect={(surface, ns) => { focusController(treeOverlayId); setTreeOverlay(false); selectTree(surface, ns); }} />
               </TreeOverlay>
             )}
           </div>
@@ -618,17 +620,33 @@ function WorkspaceDialog({ dialog, keyName, projectName, onClose, onPreview, onR
 }
 
 /** 접힌 트리를 여는 겹친 패널 280 · 최대 320 (README §7). Escape·바깥 클릭으로 닫는다. */
-function TreeOverlay({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+/** `aria-controls`로 이 id를 가리키는 컨트롤에 포커스를 준다. `useId`의 `:`가 선택자 이스케이프를 요구해 속성값을 직접 비교한다. */
+function focusController(id: string): void {
+  [...document.querySelectorAll<HTMLElement>("[aria-controls]")].find(node => node.getAttribute("aria-controls") === id)?.focus();
+}
+
+/**
+ * ⚠️ **열리면 포커스를 안으로 옮긴다** — 이 오버레이는 DOM상 키 목록 **뒤**에 붙어, 그대로 두면 키보드 사용자가 목록 전체를 Tab으로 지나야
+ * 트리에 닿는다(T19 실측). ⚠️ **토글로 돌려주는 것은 Escape뿐이다** — 바깥 클릭은 사용자가 누른 곳이 포커스를 가져야 한다.
+ * ⚠️ **돌아갈 곳을 마운트 때의 `activeElement`로 잡지 않는다** — dev StrictMode가 이펙트를 두 번 돌려 둘째 실행이 이미 포커스를 받은
+ * 트리 항목을 잡았고, Escape가 곧 사라질 그 항목에 포커스를 줘 body로 떨어졌다(T19 실측). `aria-controls`로 이 오버레이를 가리키는 토글이 정본이다.
+ */
+function TreeOverlay({ id, onClose, children }: { id: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const key = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    (ref.current?.querySelector<HTMLElement>('[aria-current="true"]') ?? ref.current?.querySelector<HTMLElement>("button"))?.focus();
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      onClose();
+      focusController(id);
+    };
     const outside = (event: PointerEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) onClose(); };
     document.addEventListener("keydown", key);
     document.addEventListener("pointerdown", outside);
     return () => { document.removeEventListener("keydown", key); document.removeEventListener("pointerdown", outside); };
-  }, [onClose]);
+  }, [id, onClose]);
   return (
-    <div ref={ref} className="border-border bg-popover shadow-medium absolute top-14 left-3 z-20 flex max-h-80 w-70 flex-col overflow-hidden rounded-lg border">
+    <div ref={ref} id={id} className="border-border bg-popover shadow-medium absolute top-14 left-3 z-20 flex max-h-80 w-70 flex-col overflow-hidden rounded-lg border">
       {children}
     </div>
   );

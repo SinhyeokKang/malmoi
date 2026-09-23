@@ -102,7 +102,7 @@ description: 코드베이스 전체를 불변식·원칙·경계·부채 기준�
 | 하위 에이전트 | 영역 | 체크 |
 |---|---|---|
 | merge-free | `lib/push/**`, `lib/pull/**` | **머지 로직·3-way·충돌 해소·"누가 이겼나" 판정이 슬며시 들어왔는가** / push가 `ON CONFLICT DO UPDATE`(strict)를 유지하는가 / pull이 기존 파일 값과 DB 값을 견줘 고르는 코드가 있는가 / **키 삭제(`DELETE`) 대신 `orphaned`인가** |
-| write-owners | `app/(edit)/**`, `lib/keys/**` | **`Translation.value` 쓰기 주체가 둘인가**(편집 UI `saveTranslation` + push strict). 셋째가 생겼으면 판정이 필요해진 것 / 저장이 `updatedAt`을 올려 pull 1층 스킵을 푸는가 / 같은 값 재저장이 noop인가(빈 PR 방지) |
+| write-owners | `app/(edit)/**`, `lib/keys/**` | **`Translation.value` 쓰기 주체가 둘인가**(편집 UI — 키 단위 저장 `saveTranslationKey`와 그 명시 복원 `revertTranslationKey` — + push strict). 셋째가 생겼으면 판정이 필요해진 것 / 저장이 `updatedAt`을 올려 pull 1층 스킵을 푸는가 / 같은 값 재저장이 noop인가(빈 PR 방지) |
 | scope | `prisma/**`, `scripts/**`, 전역 | **비범위가 유입됐는가 — PRODUCT §4.2** — ICU 복수형, 동시 편집, 세밀한 권한, in-context 편집, 스크린샷, 번역자 노트, 승인 워크플로, push 웹훅 / 요청 없는 유연성·설정 가능성·추상화(PoC에서 선반영은 그 자체가 결함) / **새 모델이 코어 원칙에서 파생되는가** — `prisma/schema.prisma`는 현재 12모델(도메인 6 + Auth.js 4 + 멤버십 2)이고, ⚠️ **숫자 상한을 기준으로 쓰지 않는다**(2026-09-13 정정: "5테이블을 넘었는가"가 남아 있어 감사를 돌릴 때마다 걸렸다). 묻는 것은 개수가 아니라 **그 모델이 §0의 어느 불변식에서 나오는가**다 |
 
 **전문가 통합 점검**

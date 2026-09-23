@@ -30,7 +30,7 @@ it("does not query surfaces before project authorization", async () => {
 /**
  * ⚠️ **두 래퍼가 같은 거부를 서로 다른 모양으로 낸다** — 소비자가 다르기 때문이다 (CLAUDE.md
  * "데이터 변경 경로"). 페이지는 404가 옳고, Server Action은 `{ ok: false, error }`를 돌려줘야
- * `saveTranslation`이 입력값을 남긴 채 문구를 고를 수 있다. 여기서 던지면 그 계약이 깨진다.
+ * `saveTranslationKey`가 입력값을 남긴 채 문구를 고를 수 있다. 여기서 던지면 그 계약이 깨진다.
  *
  * `not-found`를 고르는 것은 프로젝트 부재와 같은 이유다 — 표면의 존재 여부를 노출하지 않고,
  * `ProjectAccess` 유니온에 이미 있어 `ACCESS_ERRORS`를 손으로 늘리지 않는다.

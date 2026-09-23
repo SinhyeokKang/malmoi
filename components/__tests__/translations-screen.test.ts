@@ -30,25 +30,34 @@ const read = (path: string): string =>
  * ⚠️ **`shrink-0`이 붙은 것만 센다** — 줄어들 수 있는 폭은 좁은 화면에서 예산을 다투지 않는다.
  */
 const fixedWidths = (source: string): number[] =>
-  [...source.matchAll(/className="([^"]*)"/g)]
-    .map((m) => m[1] ?? "")
+  [...source.matchAll(/className=(?:"([^"]*)"|\{cn\("([^"]*)")/g)]
+    .map((m) => m[1] ?? m[2] ?? "")
     .filter((cls) => /\bshrink-0\b/.test(cls))
     .flatMap((cls) => [...cls.matchAll(/(?:^|\s)w-(\d+)(?:\s|$)/g)].map((w) => Number(w[1]) * 4));
 
 const PAGE = "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx";
-const HEADER = "components/translations/header.tsx";
 const WORKSPACE = "components/translations/workspace/workspace.tsx";
 const WORKSPACE_LOCALE = "components/translations/workspace/locale-panel.tsx";
-const ANNOUNCER = "components/translations/announcer.tsx";
+/** 세 패널의 나머지 조각 — live region·`<main>` 검사가 파일 전수를 본다. */
+const WORKSPACE_PARTS = ["tree-panel", "key-list", "filter-menu"].map(name => `components/translations/workspace/${name}.tsx`);
 const BANNER = "components/translations/edit-loss-banner.tsx";
 const PUBLISH = "components/publish-button.tsx";
-const INPUT = "components/translation-input.tsx";
-/** 8-4가 더한 자리들 — 표 축이 바뀌면서 배선이 이 넷으로 갈렸다. */
-const FILTERS = "components/translations/filters.tsx";
-const CHIPS = "components/translations/filter-chips.tsx";
-const KEY_GROUP = "components/translations/key-group.tsx";
 const LOCALE_BADGE = "components/translations/locale-badge.tsx";
 const PANEL = "components/shell/content-panel.tsx";
+
+/**
+ * ⚠️ **옛 번역 표는 두 벌로 남기지 않는다** (translation-rework T16). 라우트가 세 패널로 옮겨 간 뒤에도 옛 조각이 남으면
+ * 판정·문구가 두 벌이 되고, 특히 옛 셀 저장은 **복원 기준을 기록하지 않는 쓰기 경로**다(ARCHITECTURE §5.8).
+ */
+describe("옛 번역 표 — 사라졌다", () => {
+  it.each([
+    "components/translations/header.tsx", "components/translations/filters.tsx", "components/translations/filter-chips.tsx",
+    "components/translations/key-group.tsx", "components/translation-input.tsx", "components/translations/announcer.tsx",
+    "lib/keys/refocus.ts",
+  ])("%s가 없다", path => {
+    expect(existsSync(join(ROOT, path))).toBe(false);
+  });
+});
 
 describe("Publish — 결과가 모달 갈래 열하나로 가는 길이 한 줄이다", () => {
   it("옛 `pull-button.tsx`는 사라졌다 — 두 벌이 남으면 그중 하나가 낡는다", () => {
@@ -70,7 +79,7 @@ describe("Publish — 결과가 모달 갈래 열하나로 가는 길이 한 줄
   });
 
   it("성공 뒤 서버 렌더를 갱신한다 — 툴바의 'Last sent'가 그때 바뀐다", () => {
-    expect(read(PUBLISH) + read(HEADER)).toMatch(/router\.refresh\(\)/);
+    expect(read(PUBLISH) + read(WORKSPACE)).toMatch(/router\.refresh\(\)/);
   });
 
   /**
@@ -88,49 +97,19 @@ describe("Publish — 결과가 모달 갈래 열하나로 가는 길이 한 줄
 });
 
 describe("live region — 표 하나에 하나다 (DESIGN §7)", () => {
-  it("`aria-live`가 announcer에만 있다 — 903행×3로케일이면 셀마다 두는 순간 2,700개다", () => {
-    for (const path of [PAGE, HEADER, BANNER, PUBLISH, INPUT, FILTERS, CHIPS, KEY_GROUP, LOCALE_BADGE]) {
+  it("작업 화면 밖의 조각에는 `aria-live`가 없다 — 로케일 200개면 행마다 두는 순간 200개다", () => {
+    for (const path of [PAGE, BANNER, PUBLISH, LOCALE_BADGE, ...WORKSPACE_PARTS]) {
       expect(read(path), path).not.toMatch(/aria-live/);
     }
-    expect(read(ANNOUNCER)).toMatch(/aria-live="polite"/);
-    expect(read(ANNOUNCER)).toMatch(/sr-only/);
+    expect(read(WORKSPACE_LOCALE)).not.toMatch(/role="status"/);
   });
 
-  it("셀 안 상태줄은 **시각 전용**이다 — `role=\"status\"`를 셀에 두지 않는다", () => {
-    expect(read(INPUT)).not.toMatch(/role="status"/);
-  });
-
-  /**
-   * ⚠️ **provider가 없으면 알림이 조용히 사라진다.** 기본값을 no-op로 둔 것은 셀 하나가 표 전체를
-   * 죽이지 않게 하려는 것이고(POSTMORTEM 2026-09-08 Tooltip), 그 대가로 배선을 여기서 센다.
-   */
   // ⚠️ translation-rework C4 — 셀마다 두지 않는다는 계약이 새 화면에서는 **푸터 결과 영역 하나**다(셀 표가 없다).
   it("작업 화면의 live region은 푸터 결과 영역 하나다 — 로케일 행마다 두지 않는다", () => {
     const workspace = read(WORKSPACE);
     expect(workspace.match(/aria-live=/g) ?? []).toHaveLength(1);
     expect(read(WORKSPACE_LOCALE)).not.toMatch(/aria-live/);
     expect(read(PAGE)).not.toMatch(/aria-live/);
-  });
-});
-
-describe("셀 편집 — 포커스를 뺏지 않는다 (DESIGN §7)", () => {
-  const src = read(INPUT);
-
-  it("판정을 순수 함수에 맡긴다 — `activeElement`를 직접 비교하지 않는다", () => {
-    expect(src).toMatch(/shouldRefocus\(/);
-    expect(src).toMatch(/document\.activeElement/);
-  });
-
-  it("되돌리지 않은 실패에는 [Retry]가 남는다 — 포커스는 사용자가 옮긴다", () => {
-    expect(src).toMatch(/save\.retry/);
-  });
-
-  it("프리미티브를 쓴다 — `Textarea` `rows=1`이 903행에서 세로 스크롤을 줄인다 (DESIGN §6.1)", () => {
-    expect(src).toMatch(/<Textarea/);
-  });
-
-  it("Shift+Enter는 개행이다 — Enter가 개행이면 저장 트리거가 blur뿐이다", () => {
-    expect(src).toMatch(/shiftKey/);
   });
 });
 
@@ -141,7 +120,7 @@ describe("접근 이름과 경로 (code-review 2026-09-08 🟡)", () => {
    * buttons.cancel · ja`처럼 말하면서 정작 입력에는 그 맥락이 없었다 (DESIGN §7).
    */
   it("셀이 키와 로케일을 접근 이름으로 든다", () => {
-    expect(read(INPUT)).toMatch(/aria-label=\{m\.translations\.cellLabel\(/);
+    expect(read(WORKSPACE_LOCALE)).toMatch(/aria-label=\{m\.translations\.cellLabel\(/);
   });
 
   /**
@@ -149,6 +128,28 @@ describe("접근 이름과 경로 (code-review 2026-09-08 🟡)", () => {
    * `components/invite-form.tsx`가 멤버 화면의 `InviteDialog`로 대체되면서 이 화면에서 사라졌다.
    * 근거(경로 리터럴은 타입이 아니라 데이터다 — POSTMORTEM 2026-09-05)는 그대로 그쪽에 있다.
    */
+});
+
+/**
+ * ⚠️ **로케일 입력의 폭 예산** (malmoi#33 — 옛 표에서 우측 `w-40 shrink-0` 메타 슬롯이 1280px에서 입력을 28px로 만들었다).
+ * 옛 표의 예산 스캔은 표와 함께 사라졌고 같은 부류가 새 패널에 올 수 있다 — 로케일 카드는 1280에서 420까지 준다(§6.1a).
+ * 그래서 **행 안에 고정 폭 슬롯이 0**이고 입력이 `w-full`이다(`field-sizing-content`가 폭도 내용에 맞춰 줄인다 — POSTMORTEM 2026-09-23).
+ */
+describe("로케일 입력 폭 (malmoi#33 · translation-rework)", () => {
+  it("로케일 패널에 고정 폭 슬롯이 없다 — 있으면 420 카드에서 입력이 그만큼 준다", () => {
+    expect(fixedWidths(read(WORKSPACE_LOCALE))).toEqual([]);
+  });
+
+  it("입력이 행을 채운다 — `w-full`이 없으면 빈 칸이 한 글자 폭으로 선다", () => {
+    expect(read(WORKSPACE_LOCALE)).toMatch(/<Textarea[\s\S]*?\bw-full\b/);
+  });
+
+  it("고정 폭 스캐너가 실제로 `w-40 shrink-0`을 잡는다", () => {
+    expect(fixedWidths('<div className="w-40 shrink-0 justify-end">')).toEqual([160]);
+    expect(fixedWidths('<div className={cn("flex w-20 shrink-0", x)}>')).toEqual([80]);
+    // `shrink-0`이 없으면 예산을 쓰지 않는다 — 줄어들 수 있는 폭은 대상이 아니다.
+    expect(fixedWidths('<div className="w-40 justify-end">')).toEqual([]);
+  });
 });
 
 describe("리포 갱신 보류 배너 (sync-edit-protection T13)", () => {
@@ -165,9 +166,9 @@ describe("리포 갱신 보류 배너 (sync-edit-protection T13)", () => {
     expect(src).not.toMatch(/variant="warning"/);
   });
 
-  it("헤더가 Publish 버튼 id를 배너에 넘긴다 — 액션은 둘째 트리거가 아니라 포커스 이동이다", () => {
-    expect(read(HEADER)).toMatch(/publishButtonId=/);
-    expect(read(HEADER)).not.toMatch(/dismissKey/);
+  it("작업 화면이 Publish 버튼 id를 배너에 넘긴다 — 액션은 둘째 트리거가 아니라 포커스 이동이다", () => {
+    expect(read(WORKSPACE)).toMatch(/publishButtonId=/);
+    expect(read(WORKSPACE)).not.toMatch(/dismissKey/);
   });
 });
 
@@ -243,23 +244,11 @@ describe("행 축 (8-4)", () => {
    * ⚠️ **제출 버튼 없는 `<form>`은 Enter로 submit되지 않는다** (POSTMORTEM 2026-09-08 — 검색이
    * 조용히 무효였고 CDP 원시 키까지 먹여 봐도 같았다). 툴바 재작성에서 되돌아가지 않게 고정한다.
    */
-  it("툴바가 공통 검색 입력을 사용한다 — Enter 동작은 filter-interactions에서 검증한다", () => {
-    const src = read(FILTERS);
+  it("툴바가 공통 검색 입력을 사용한다 — IME 확정 Enter는 `SearchInput`이 거른다", () => {
+    const src = read(WORKSPACE);
     expect(src).not.toMatch(/<form\b/);
     expect(src).toMatch(/<SearchInput\b/);
     expect(src).toMatch(/onSearch=\{/);
-  });
-
-  /**
-   * ⚠️ **칩의 제거 버튼이 링크 안에 있으면 안 된다.** 상호작용 요소의 중첩은 접근성으로 금지이고,
-   * 그 모양이 정확히 Radix Slot이 던진 자리와 같다 (POSTMORTEM 2026-09-09 — `asChild` 자식 옆의
-   * 형제 하나로 셸이 죽었다). 형태와 이름 두 축으로 센다.
-   */
-  it("칩은 링크가 아니다 — 라벨이 평문이고 제거만 버튼이다", () => {
-    const src = read(CHIPS);
-    expect(src).not.toMatch(/<Link\b/);
-    expect(src).not.toMatch(/<a\b/);
-    expect(src).toMatch(/aria-label=\{m\.translations\.chips\.remove\(/);
   });
 
   /**
@@ -283,7 +272,6 @@ describe("행 축 (8-4)", () => {
    */
   it("배지가 base 라벨을 안 든다 — 이 표에서 base는 맨 위 한 줄이다", () => {
     expect(read(LOCALE_BADGE)).not.toMatch(/m\.locales\.base/);
-    expect(read(KEY_GROUP)).not.toMatch(/isBase/);
     /*
       사전 키는 남는다 — `/locales`가 계속 쓴다.
       ⚠️ **Home이 2026-09-15에 이 목록에서 빠졌다** (project-home) — 로케일 목록 블록이 사라지고
@@ -293,23 +281,13 @@ describe("행 축 (8-4)", () => {
   });
 
   /**
-   * ⚠️ **`Untranslated` 배지·상태 필터·입력 테두리가 같은 배송에서 사라졌다** — 값이 빈 셀의
-   * 유일한 시각 신호가 `placeholder`다 (DESIGN §6.1).
-   */
-  it("빈 셀의 `placeholder`가 살아 있다", () => {
-    expect(read(INPUT)).toMatch(/placeholder=\{[^}]*m\.translations\.placeholder/);
-    // 배지 쪽은 반대로 사라졌다 — 사전에서 지웠으므로 남아 있으면 typecheck가 죽지만, 의도를 남긴다.
-    expect(read(KEY_GROUP)).not.toMatch(/m\.translations\.untranslated/);
-  });
-
-  /**
    * ⚠️ **본문 랜드마크를 `ContentPanel`이 든다** — 표 갈래가 `<table>`에서 `div` + `grid`로 바뀌면서
    * 이 화면의 트리를 통째로 다시 썼다. `shell-layout.test.ts`가 스스로 "렌더 경로를 못 본다"고
    * 적어 뒀으므로 **어느 자리가 드는지를 이름으로** 고정한다 (DESIGN §6.5).
    */
   it("`<main>`을 `ContentPanel`이 들고 번역 화면은 자기 것을 안 든다", () => {
     expect(read(PANEL)).toMatch(/<main\b/);
-    for (const path of [PAGE, HEADER, KEY_GROUP]) {
+    for (const path of [PAGE, WORKSPACE, WORKSPACE_LOCALE, ...WORKSPACE_PARTS]) {
       expect(read(path), path).not.toMatch(/<main\b/);
     }
   });
@@ -321,7 +299,7 @@ describe("행 축 (8-4)", () => {
    * 한다는 ARCHITECTURE §0 불변식 9가 거기서 깨진다 (2026-09-11 code-review 🟡).
    */
   it("Publish 결과를 화면으로 끌어온다", () => {
-    const src = read(HEADER);
+    const src = read(WORKSPACE);
     expect(src).toMatch(/<PublishModal/);
     // 배너가 아니라 **결과**에만 걸린다 — 배너는 도착 시점의 조건이라 사용자가 위에서 본다.
     expect(src).toMatch(/publish=\{publish\}/);
@@ -329,47 +307,12 @@ describe("행 축 (8-4)", () => {
 
   /** ⚠️ 숫자만 그리면 접근 이름이 "Translations 1134"다 — 시안의 숫자 배지를 유지하며 문장을 준다. */
   it("개수 배지가 접근 이름으로 완전한 문장을 든다", () => {
-    for (const path of [HEADER, WORKSPACE]) {
-      expect(read(path), path).toMatch(/sr-only[^>]*>\{m\.translations\.keys\(/);
-    }
-  });
-
-  /**
-   * ⚠️ **로케일 행의 고정 폭 예산** (malmoi#33, 2026-09-11 `/bugshot-qa` 실측).
-   *
-   * 1280px(규약 3의 최소 폭)에서 콘텐츠 패널이 688이고 키 셀 320을 빼면 **값 열이 366**이다. 그
-   * 안에서 로케일 칸·메타 슬롯·padding·gap이 전부 고정이면 입력에 남는 폭이 그만큼 줄어드는데,
-   * 메타가 `w-40`(160)을 고정으로 들던 동안 **입력이 28px**였다 — 값이 한 글자씩 세로로 쌓이고
-   * 행 높이가 210px이 됐다.
-   *
-   * ⚠️ **spec의 "값 열 ≈368px에서도 한 줄 번역은 성립한다"가 열 전체를 입력 폭으로 읽은 것이다.**
-   * 그래서 이 검사는 **행 안의 고정 폭 합**을 센다 — 다음 사람이 우측에 또 고정 폭을 더하면 red다.
-   *
-   * ⚠️ **폭은 렌더 결과라 소스 스캔이 원리적으로 못 보는 축이지만**, 원인은 소스에 있는 상수다.
-   * 재는 것은 픽셀이 아니라 **예산을 쓰는 클래스**다.
-   */
-  it("로케일 행의 고정 폭이 로케일 칸 하나뿐이다", () => {
-    const fixed = fixedWidths(read(KEY_GROUP));
-    // ⚠️ **68이다** (2026-09-11 — 시안 `212:5076`). 80에서 12를 값 열에 돌려줬다.
-    expect(fixed).toEqual([68]);
-    // 1280에서 값 열 366 − 로케일 칸 68 − 입력 px-3(24) − 값 칸 pr-3(12) = 262.
-    // ⚠️ **실측은 238이다** (2026-09-11 ego, 1280×900): 위 산식은 입력의 border-box를 재고 실측은
-    // 그 안쪽까지 본다. 하한 200은 **어느 쪽으로 재도** 값이 한 글자씩 쌓이지 않는 선이다.
-    expect(366 - fixed.reduce((n, w) => n + w, 0) - 24 - 12).toBeGreaterThanOrEqual(200);
-  });
-
-  it("고정 폭 스캐너가 실제로 `w-40 shrink-0`을 잡는다", () => {
-    expect(fixedWidths('<div className="flex w-20 shrink-0 justify-center">')).toEqual([80]);
-    expect(fixedWidths('<div className="w-40 shrink-0 justify-end">')).toEqual([160]);
-    // `shrink-0`이 없으면 예산을 쓰지 않는다 — 줄어들 수 있는 폭은 대상이 아니다.
-    expect(fixedWidths('<div className="w-40 justify-end">')).toEqual([]);
-    // 키 셀 폭은 그리드가 들고 이 검사의 대상이 아니다.
-    expect(fixedWidths('<div className="grid grid-cols-[320px_minmax(0,1fr)]">')).toEqual([]);
+    expect(read(WORKSPACE)).toMatch(/sr-only[^>]*>\{m\.translations\.keys\(/);
   });
 
   /** ⚠️ 왼쪽 패널이 **소스에서** 사라졌다 — 남으면 같은 필터가 두 곳이고 하나가 낡는다. */
   it("`NamespacePanel`·`NsLink`가 없다", () => {
-    for (const path of [PAGE, HEADER, FILTERS]) {
+    for (const path of [PAGE, WORKSPACE]) {
       expect(read(path), path).not.toMatch(/NamespacePanel|NsLink/);
     }
   });

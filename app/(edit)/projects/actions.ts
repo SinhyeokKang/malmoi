@@ -1355,7 +1355,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
      * 되돌릴 수도 없다.
      *
      * 경로를 나열하지 않는 이유는 POSTMORTEM 2026-09-09과 같다 — 다음에 생기는 화면이 조용히 빠진다.
-     * `saveTranslation`이 이미 이 형이다.
+     * `saveTranslationKey`가 이미 이 형이다.
      */
     /**
      * ⚠️ **키가 0이면 `applyPush`를 타지 않았다** — 그쪽 트랜잭션이 결과를 확정하므로, 안 탄 갈래만

@@ -321,7 +321,7 @@ describe("패널 폭 등급을 화면이 고르고 있다", () => {
     "components/projects/project-list.tsx",
     "components/sources/sources-archived.tsx",
     "components/sources/sources-screen.tsx",
-    "components/translations/header.tsx",
+    // translation-rework T16 — 옛 번역 머리가 빠졌다. 작업 화면은 폭 등급을 고르지 않고 세 패널이 본문 전체를 든다(DESIGN §6.1a).
   ]);
   /** 폼만 있는 화면과 **본문 전용** — 한 줄이 1280까지 늘면 라벨과 입력이 갈린다. */
   const LIMITED = new Set([

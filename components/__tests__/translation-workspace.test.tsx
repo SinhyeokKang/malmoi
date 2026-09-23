@@ -24,38 +24,11 @@ vi.mock("@/app/(edit)/actions", () => ({
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: mocks.publishPreview }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn() }));
 
-import { TranslationWorkspace, type WorkspaceProps } from "@/components/translations/workspace/workspace";
+import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
 
-function props(over: Partial<WorkspaceProps> = {}): WorkspaceProps {
-  return {
-    slug: "acme", routeSurfaceSlug: "web", role: "OWNER", userId: "u1",
-    query: { ...DEFAULT_TRANSLATION_QUERY, key: "k1", keySurface: "web" },
-    tree: { projectKeyCount: 2, surfaces: [{ id: "s1", slug: "web", baseLocale: "en", locales: ["en", "ko", "zh"], keyCount: 2, namespaces: [{ name: "common", keyCount: 2 }] }] },
-    list: {
-      rows: [
-        { keyId: "k1", surfaceSlug: "web", namespace: "common", key: "common.empty", sourceText: "Nothing here", missingCount: 1, totalLocales: 3, hasPending: true, hasReview: false, isNew: false },
-        { keyId: "k2", surfaceSlug: "web", namespace: "common", key: "common.save", sourceText: "Save", missingCount: 0, totalLocales: 3, hasPending: false, hasReview: false, isNew: false },
-      ],
-      matchedKeyCount: 2, incompleteKeyCount: 1, nextCursor: null,
-      effective: { completion: "all", substituted: false, excludedSurfaceIds: [] }, selectedInResult: true,
-    },
-    detail: {
-      key: { id: "k1", key: "common.empty", namespace: "common", sourceText: "Nothing here", description: "Shown on the empty list.", surfaceSlug: "web" },
-      refs: [{ path: "src/empty.tsx", line: 24, href: "https://github.com/o/r/blob/abc/src/empty.tsx#L24" }],
-      locales: [
-        { code: "en", isBase: true, value: "Nothing here", needsReview: false, pending: false, actorLabel: null },
-        { code: "ko", isBase: false, value: "비어 있음", needsReview: false, pending: true, actorLabel: "Editor" },
-        { code: "zh", isBase: false, value: null, needsReview: false, pending: false, actorLabel: null },
-      ],
-    },
-    unpublished: 1,
-    publish: { repo: { owner: "o", name: "r", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }, lastSentLabel: null, lastPrUrl: null },
-    sync: { name: "acme", branch: "main" },
-    baseLocale: "en", declaredBaseLocale: null,
-    ...over,
-  };
-}
+import { props } from "./helpers/workspace-props";
+
 
 const area = (container: HTMLElement, code: string) => {
   const node = container.querySelector<HTMLTextAreaElement>(`textarea[data-locale="${code}"]`);
@@ -281,4 +254,43 @@ it("키 목록은 목록 의미를 갖는다 — 스크린리더가 몇 개 중 
   const { container } = await render(<TranslationWorkspace {...props()} />);
   const items = [...container.querySelectorAll("[data-key-row]")].map(node => node.closest("li")?.parentElement?.tagName);
   expect(items).toEqual(["UL", "UL"]);
+});
+
+/**
+ * ⚠️ **접힌 트리 오버레이는 DOM상 키 목록 뒤에 붙는다** (T19 실브라우저 1280×LNB 320에서 잡았다). 포커스를 옮기지 않으면 키보드 사용자는
+ * 목록 전체를 Tab으로 지나야 트리에 닿는다 — 키 100개면 100번이다. 열면 선택된 항목으로, 닫으면 토글로 돌아온다.
+ */
+it("접힌 트리를 열면 포커스가 오버레이의 선택 항목으로 가고, Escape는 토글로 돌려준다", async () => {
+  stubArea(700);
+  try {
+    const user = userEvent.setup();
+    await render(<TranslationWorkspace {...props()} />);
+    const toggle = document.querySelector<HTMLButtonElement>('[aria-label="Show sources"]');
+    if (!toggle) throw new Error("no tree toggle");
+    await user.click(toggle);
+    const overlay = document.getElementById(toggle.getAttribute("aria-controls") ?? "");
+    expect(overlay).not.toBeNull();
+    expect(overlay?.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.getAttribute("aria-current")).toBe("true");
+    await user.keyboard("{Escape}");
+    expect(document.getElementById(toggle.getAttribute("aria-controls") ?? "")).toBeNull();
+    expect(document.activeElement).toBe(toggle);
+  } finally { vi.unstubAllGlobals(); }
+});
+
+it("접힌 트리에서 항목을 고르면 오버레이가 닫히고 포커스가 토글로 돌아온다 — body로 떨어지지 않는다", async () => {
+  stubArea(700);
+  try {
+    const user = userEvent.setup();
+    await render(<TranslationWorkspace {...props()} />);
+    const toggle = document.querySelector<HTMLButtonElement>('[aria-label="Show sources"]');
+    if (!toggle) throw new Error("no tree toggle");
+    await user.click(toggle);
+    const common = [...(document.getElementById(toggle.getAttribute("aria-controls") ?? "")?.querySelectorAll("button") ?? [])].find(node => node.textContent?.startsWith("common"));
+    if (!common) throw new Error("no namespace item");
+    await user.click(common);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(toggle);
+    expect(mocks.push).toHaveBeenCalledTimes(1);
+  } finally { vi.unstubAllGlobals(); }
 });

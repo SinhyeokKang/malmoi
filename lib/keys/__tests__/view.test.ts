@@ -433,7 +433,6 @@ describe("소스 스캔 — cells를 직접 인덱싱하지 않는다", () => {
     "lib/keys/view.ts",
     "lib/keys/query.ts",
     "lib/pull/render.ts",
-    "components/translations/key-group.tsx",
   ] as const;
 
   it("`.cells[`는 hasOwn 가드 안에만 있다", () => {

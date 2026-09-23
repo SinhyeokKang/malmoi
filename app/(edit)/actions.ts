@@ -1,7 +1,5 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-
 import { revalidatePath } from "next/cache";
 
 import { getProjectAccess } from "@/lib/auth/query";
@@ -11,7 +9,7 @@ import { getPrisma } from "@/lib/db";
 import type { NotStartedReason } from "@/lib/events/payload";
 import { recordEvent } from "@/lib/events/record";
 import { executeKeyRevert, previewKeyRevert, type RevertPreview, type RevertResult } from "@/lib/keys/revert";
-import { KeySaveInput, SaveInput, planSave } from "@/lib/keys/save";
+import { KeySaveInput } from "@/lib/keys/save";
 import { applyKeySave, type KeySaveResult } from "@/lib/keys/save-key";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import type { PullOutcome } from "@/lib/pull/message";
@@ -25,129 +23,9 @@ import { z } from "zod";
  * 스스로 인증·인가·테넌트 격리를 전부 한다 — 미들웨어의 렌더 차단도 레이아웃도 지나지 않는다
  * (ARCHITECTURE §6.1). `app/__tests__/entry-points.test.ts`가 그 호출을 강제한다.
  *
- * ⚠️ **여기서 `redirect()`를 쓰지 않는다.** blur 저장 중의 redirect는 입력 중인 셀을 날린다 —
+ * ⚠️ **여기서 `redirect()`를 쓰지 않는다.** 저장 중의 redirect는 입력 중인 draft를 날린다 —
  * 거부는 결과값으로 돌려주고 화면이 `accessErrorMessage`로 문구를 정한다 (ARCHITECTURE §6.3).
  */
-
-/** 거부 사유는 `AccessError`와 같은 문자열이다 — 화면이 한 곳에서 문구로 바꾼다. */
-export type SaveResult = { ok: true; value: string } | { ok: false; error: string };
-
-export async function saveTranslation(raw: unknown): Promise<SaveResult> {
-  // `auth()`를 직접 부르지 않는다 — DB 장애가 "비로그인"으로 접힌다 (`lib/auth/read-session.ts`).
-  const session = await readSession();
-  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
-  if (session.status === "none") return { ok: false, error: "unauthorized" };
-  const { userId } = session;
-
-  // 입력 검증이 인가보다 먼저다 — slug가 없으면 무엇을 인가할지 정할 수 없다.
-  const parsed = SaveInput.safeParse(raw);
-  if (!parsed.success) return { ok: false, error: "invalid input" };
-  const { slug, surfaceSlug, keyId, localeCode, value } = parsed.data;
-
-  const prisma = getPrisma();
-  const access = await getSurfaceAccess(prisma, { userId, slug, surfaceSlug, permission: "translation:write" });
-  if (access.status !== "ok") return { ok: false, error: access.status };
-  const { projectId, surfaceId } = access;
-
-  // 첫 적재 전에는 저장할 키가 없어 화면으로는 도달하지 않는다 — **URL 직접 호출**을 막는다
-  // (PRODUCT §7.5). 판정을 `ProjectAccess` union에 넣지 않는 이유가 여기 있다: 넣으면
-  // `ACCESS_ERRORS` Set을 손으로 늘리게 되고 컴파일러가 그것을 잇지 않는다.
-  if (!(await isReady(prisma, projectId))) return { ok: false, error: "not-ready" };
-
-  /**
-   * ⚠️ **읽기·판정·저장·사건 기록이 한 트랜잭션이다** (logs-rework 완료조건 2). 전에는 트랜잭션
-   * 밖에서 읽고 무조건 upsert했는데, 그러면 사건의 `before`가 **내 저장 직전 값이 아닐 수 있다** —
-   * 이력이 거짓이 되는 부류다. 잠금 순서는 `Project` → `TranslationSurface`로 CI 적재·수동 Sync와
-   * 맞춘다(`lib/push/apply.ts`) — 순서가 갈리면 교착이 난다.
-   *
-   * ⚠️ **나중 저장이 최종 값이 되는 동작은 그대로다.** 클라이언트 버전 비교나 충돌 거부 UI를
-   * 넣지 않는다 — 같은 프로젝트의 저장이 짧게 직렬화되는 것이 그 대가다.
-   *
-   * ⚠️ **잠금 안에서 외부 API를 부르지 않는다.**
-   *
-   * ⚠️ **상한이 Prisma 기본값(5초)이면 안 된다** (code-review 2026-09-21). 같은 `Project` 행을
-   * `applyProtectedPush`·`addSurfacesFromSnapshot`·`createProject`가 **30초** 트랜잭션으로 쥔다 —
-   * 큰 소스의 CI 적재 중에 누른 Save가 잠금을 기다리다 P2028로 죽고, 번역자에게는 이유 없는 실패가
-   * 된다(커밋된 것은 없다). **기다렸다 성공하는 쪽이 옳고**, 상한은 잠금을 쥐는 쪽과 같은 값이다.
-   */
-  const outcome = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
-    await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${projectId} AND "id" = ${surfaceId} FOR UPDATE`;
-
-    // ⚠️ **인가가 준 projectId로 다시 좁힌다** (CLAUDE.md 테넌트 규칙). 멤버십을 확인했다는 것은
-    // "이 프로젝트에 들어올 자격"이지 "이 keyId가 그 프로젝트 것"이 아니다 — RLS가 없어
-    // 애플리케이션이 유일한 방어선이다.
-    const key = await tx.stringKey.findFirst({
-      where: { id: keyId, projectId, surfaceId },
-      select: { id: true, key: true, orphaned: true },
-    });
-    if (!key) return { ok: false, error: "key not found in this project" } as const;
-    // 코드에서 사라진 키는 export가 빼므로 이 값이 리포에 도달할 길이 없다.
-    if (key.orphaned) return { ok: false, error: "key is no longer in the code" } as const;
-
-    const locale = await tx.locale.findUnique({
-      where: { projectId_surfaceId_code: { projectId, surfaceId, code: localeCode } },
-      select: { code: true, orphaned: true },
-    });
-    if (!locale) return { ok: false, error: "locale not found in this project" } as const;
-    // 리포에서 사라진 로케일이면 이 값이 pull로 나갈 길이 없다. 저장을 받으면 `updatedAt`만 올라
-    // pull이 헛돌고, 번역자는 반영될 것이라 믿는다.
-    if (locale.orphaned) return { ok: false, error: "locale is no longer in the repo" } as const;
-
-    const existing = await tx.translation.findUnique({
-      where: { keyId_localeCode: { keyId, localeCode }, projectId, surfaceId },
-      select: { value: true },
-    });
-    const plan = planSave(existing?.value ?? null, value);
-    // ⚠️ **no-op은 번역·편집 토큰·사건 셋 다 안 쓴다** (완료조건 3).
-    if (plan.action === "noop") return { ok: true, value: existing?.value ?? "", changed: false } as const;
-
-    // 사용자가 저장했으면 검토가 끝난 것이므로 needsReview를 내린다.
-    // 편집 토큰은 값이 실제로 바뀐 이 갈래에서만 새로 쓴다 — no-op은 위에서 끝났다. Publish가 캡처한 토큰과 달라야
-    // 전달 확인 CAS가 이 저장을 해제하지 않는다(같은 밀리초여도) (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
-    const pendingEditToken = randomUUID();
-    await tx.translation.upsert({
-      where: { keyId_localeCode: { keyId, localeCode }, projectId, surfaceId },
-      create: { projectId, surfaceId, keyId, localeCode, value: plan.value, needsReview: false, updatedBy: userId, pendingEditToken },
-      update: { value: plan.value, needsReview: false, updatedBy: userId, pendingEditToken },
-    });
-    await recordEvent(tx, {
-      projectId,
-      subtype: "translation.saved",
-      actor: { kind: "USER", userId },
-      surfaceIds: [surfaceId],
-      payload: {
-        kind: "TRANSLATION",
-        surfaceSlug,
-        key: key.key,
-        locale: localeCode,
-        // 잠금 뒤에 읽은 값이다 — 그래서 `before`가 실제로 내가 덮은 값이다.
-        before: existing?.value ?? null,
-        after: plan.value,
-      },
-    });
-    return { ok: true, value: plan.value, changed: true } as const;
-  }, { maxWait: 10_000, timeout: 30_000 });
-
-  if (!outcome.ok) return outcome;
-
-  /**
-   * ⚠️ **이 행을 읽는 화면이 셋이다**: 번역 화면 · 로케일 화면의 진행률(6b-5) · Home의 진행률과 최근
-   * 활동(6b-6). 경로를 하나씩 나열하면 넷째 소비자가 조용히 빠지고, 그때 번역자가 저장한 값이 다른
-   * 화면에서 옛 숫자로 남는다 — 쓰기는 성공했는데 화면이 거짓말을 하는 부류다
-   * (POSTMORTEM 2026-09-09가 이 자리를 이름으로 적어 뒀다). 그래서 세그먼트 레이아웃을 무효화한다.
-   */
-  revalidatePath(`/projects/${slug}`, "layout");
-  /**
-   * ⚠️ **목록도 이 값을 읽는다** (DESIGN §6.63). 위가 **접두가 아니라 세그먼트**라 `/projects`를
-   * 안 덮고, `/projects/new`는 모달 뒤에 같은 목록을 그리는 **또 다른 경로**다
-   * (POSTMORTEM 2026-09-09). 저장 하나가 Summary의 `To review`·`To send`와 행의 Meter를 동시에
-   * 움직이므로, 여기서 안 지우면 번역자가 저장한 값이 목록에서만 옛 숫자로 남는다.
-   */
-  revalidatePath("/projects");
-  revalidatePath("/projects/new");
-  return { ok: true, value: outcome.value };
-}
 
 /**
  * **키 단위 저장** (translation-rework T10 — spec §3.4). 선택 키의 바뀐 로케일 전부를 한 트랜잭션으로 쓴다 — 본체는
@@ -225,7 +103,13 @@ export async function revertTranslationKey(raw: unknown): Promise<RevertResult |
   return result;
 }
 
-/** 번역 값을 읽는 화면들 — `saveTranslation`의 재검증과 같은 셋이다(그 주석이 이유를 든다). */
+/**
+ * 번역 값을 읽는 화면들 — 번역 화면·Sources 진행률·Home, 그리고 목록(`/projects`·`/projects/new`)이다.
+ *
+ * ⚠️ **경로를 하나씩 나열하지 않고 세그먼트 레이아웃을 무효화한다** — 나열하면 넷째 소비자가 조용히 빠지고, 저장은 성공했는데
+ * 다른 화면이 옛 숫자로 남는다(POSTMORTEM 2026-09-09). 그 세그먼트가 `/projects`를 덮지 않고 `/projects/new`는 모달 뒤에 같은 목록을
+ * 그리는 또 다른 경로라 둘을 따로 지운다.
+ */
 function revalidateTranslationReaders(slug: string): void {
   revalidatePath(`/projects/${slug}`, "layout");
   revalidatePath("/projects");
@@ -242,7 +126,7 @@ function revalidateTranslationReaders(slug: string): void {
  * **커밋 작성자는 항상 App 토큰이다.** 로그인한 사용자의 OAuth 토큰이 이 경로에 들어오지
  * 않는다 (ARCHITECTURE §6) — `triggerPull`이 `createGitClient`만 쓴다.
  *
- * ⚠️ **반환 형태가 `saveTranslation`과 다르다** (`{ok}` vs `{status}`). 의도된 것이다:
+ * ⚠️ **반환 형태가 `saveTranslationKey`와 다르다** (`{ok}` vs `{status}`). 의도된 것이다:
  * pull은 성공·스킵·실패 **3상태**라 `{ok: boolean}`에 담으면 스킵이 파생 모양이 되고,
  * `planPublishView`의 exhaustive switch가 상태 누락을 컴파일 에러로 잡는 장치를 잃는다.
  */
