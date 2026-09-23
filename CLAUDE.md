@@ -150,7 +150,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
 | 자격증명 cutover 마무리 | `pnpm credentials:finalize:dev` / `credentials:finalize:prod` — 봉투 재검증 + 마이그레이션 SQL 바이트 대조 + `_prisma_migrations` 체크섬 재계산. 기본 **verify-only**이고 `--apply`를 줘야 `prisma migrate deploy`까지 간다. ⚠️ **`db:deploy` 말고 prod 마이그레이션 상태를 움직일 수 있는 명령이 이것 하나 더 있다** — 실패하면 트래픽을 막은 채로 둔다 |
 | 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
-| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. ⚠️ **미전달 술어가 공유 조각 하나(`pendingWhere`) + 손 사본 둘(셀 `pending` 투영 · 목록 집계 raw SQL)이라** "같은 행을 세나"를 재는 유일한 자리다. 표면 backfill·복합 FK·A/B 격리·Add surface 원자성·실제 Project 생성, **편집 토큰의 조건부 쓰기**(적재 정리·Publish CAS·backfill)와 **동시 CI push의 결과 표시**, **초대 발급·재발급의 잠금·한도·수락 경합**도 검사하므로 `lib/invitation-email/issue.ts`·`lib/keys/**`·`lib/events/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`를 건드렸으면 손으로 돌린다 |
+| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. ⚠️ **미전달 술어가 공유 조각 하나(`pendingWhere`) + 손 사본 둘(셀 `pending` 투영 · 목록 집계 raw SQL)이라** "같은 행을 세나"를 재는 유일한 자리다. 표면 backfill·복합 FK·A/B 격리·Add surface 원자성·실제 Project 생성, **편집 토큰의 조건부 쓰기**(적재 정리·Publish CAS·backfill)와 **동시 CI push의 결과 표시**, **초대 발급·재발급의 잠금·한도·수락 경합**도 검사하므로 `lib/invitation-email/issue.ts`·`lib/auth/lock.ts`·`lib/sync/run.ts`·`lib/keys/**`·`lib/events/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`를 건드렸으면 손으로 돌린다 |
 
 ### 새 머신 셋업 (체크아웃 3개 산출물이 전부 gitignore다)
 
