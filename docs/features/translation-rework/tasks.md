@@ -100,6 +100,7 @@ C4 완료는 프로덕션 개방이 아니다. preview에서 C5의 T18–T20을 
   - PR #3 머지(squash, 첫 줄 `[skip-malmoi-i18n]`, sync 브랜치 삭제) → 앱 Sync가 머지 head `587aa99`를 읽어 4키 적재 · ko 값이 PR과 같다 · `importRevision` 2로 올라 옛 확인이 지문으로 무효가 된다(다음 Publish 전 Revert 차단 — 설계대로).
   - no-changes: 리포와 같은 값으로 되돌려 저장한 미전달 1건 → Publish가 `Nothing changed in the files`로 끝나고 PR 없음 · 미전달 0 · 새 확인(SKIPPED) · 리포에 sync 브랜치 없음.
     ⚠️ 기존 동작 둘(이 기능 밖): Publish 미리보기가 리포와 같은 값도 `1 change`로 센다 · Sync 확인창이 열린 PR **조회 중**에도 `We couldn't check…`(실패 문구)를 보인다(로딩과 실패가 같은 `undefined`).
-  - **미완**: PR #8 머지(사람) → format-check 수렴 · 비-base 부재 셀의 Revert(두 폐기용 리포에 빈 셀이 없다 — 리포를 고쳐야 만들 수 있어 안 했다. `revert-key.integration.ts`만 덮는다) · base 빈값 · 값 고정점(편집 전 pull no-changes)을 순서대로 먼저 안 돌렸다.
+  - PR #8 머지(squash, 첫 줄 마커, sync 브랜치 삭제 · 머지된 ja.yml의 `>` 블록·앵커·따옴표 보존) → 앱 Sync가 머지 head를 읽고 ja 값이 PR과 같다 · 미전달 0.
+  - **미완**: 비-base 부재 셀의 Revert(두 폐기용 리포에 빈 셀이 없다 — 리포를 고쳐야 만들 수 있어 안 했다. `revert-key.integration.ts`만 덮는다) · base 빈값 · 값 고정점(편집 전 pull no-changes)을 순서대로 먼저 안 돌렸다.
 
 다음 진입점: T1(design §10)·C1(T2–T4, `lib/translations/*` · `planKeySave`)이 닫혔고 불변식 문서(ARCHITECTURE §0·§5.8 · PRODUCT §3 · CLAUDE.md)를 미구현 표시로 먼저 고쳤다. 다음은 C2(T5 `/db`)다 — 불변식 변경이라 `/ship bypass`가 아니라 수동 흐름이다. 문서 작성 완료는 Revert 구현/배포 완료가 아니다.
