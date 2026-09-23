@@ -197,6 +197,7 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "SyncRun.prUrl": NOT_PERSONAL,
   "SyncRun.changed": NOT_PERSONAL,
   "SyncRun.warnings": NOT_PERSONAL,
+  "SyncRun.withheld": NOT_PERSONAL,
   "SyncRun.requestedBy": "collected",
 
   /**
