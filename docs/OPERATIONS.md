@@ -260,6 +260,17 @@ dig +short TXT mal-moi.com | tr -d '"' | sed 's/.*=//' | awk '{print length($0)}
 
 값은 인증 창의 **[복사] 버튼**으로 가져온다(드래그 선택 금지 — 칸이 잘려 보인다). 반영은 가비아 원본(`@ns.gabia.co.kr`)과 퍼블릭 리졸버(`@8.8.8.8`) 둘 다에서 확인한 뒤 [확인]을 누른다.
 
+## 개인정보 삭제 요청 (방침 `deletion` 절의 약속)
+
+방침이 공표한 약속: `ox501501@gmail.com`으로 온 열람·정정·삭제 요청에 **30일 안에** 답한다. 셀프서비스 화면은 없다(PRODUCT §4.2).
+
+**지우는 순서가 정해져 있다** — `ProjectMember.user`·`ProjectInvitation.invitedByUser`가 `onDelete: Restrict`라 `User`부터 지우면 던진다.
+① 그 사람의 `ProjectMember` 행 ② 그 사람이 **보낸** 초대(`invitedBy`) ③ 그 사람에게 **온** 미수락 초대 ④ `Session`·`Account` ⑤ 직접 올린
+프로필 사진(Blob) ⑥ 마지막에 `User`. ⚠️ **마지막 OWNER면 멈춘다** — 그 행을 지우면 아무도 접근할 수 없는 `Project`가 남으므로 소유권
+이전이 선행이다. ⚠️ **번역 값은 남기고 저자만 끊는다** — `Translation.updatedBy`는 FK가 없어 손으로 `NULL`을 쓰고, `SyncRun.requestedBy`는
+`SetNull`이라 자동이다. 활동 사건(`ProjectEvent`)은 지우지 않고 행위자 연결만 `SetNull`로 끊긴다(마스킹 라벨만 남는다).
+⚠️ **Resend의 발송 기록은 앞당겨 지울 수 없다** — 보낸 지 30일에 스스로 사라진다(방침이 그렇게 말한다).
+
 ## 초대 메일 — Resend (2026-09-24)
 
 **구성**: 도메인 `notify.mal-moi.com`(Resend 리전 **Tokyo** `ap-northeast-1`, 2026-09-23 Verified) · 발신 `malmoi <invite@notify.mal-moi.com>` ·
