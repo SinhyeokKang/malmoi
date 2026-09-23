@@ -95,9 +95,15 @@ export function FilesStep({
   onRetry,
   selection,
   pending = false,
+  previewNone = m.newProject.files.preview.noneDescription,
 }: {
   state: FilesStepState;
   pending?: boolean;
+  /**
+   * 빈 미리보기의 설명 (malmoi#80). ⚠️ **소비자가 둘이고 말할 사실이 다르다** — 새 프로젝트는 "안 맞으면 프로젝트가
+   * 안 생긴다"이고 Add sources는 프로젝트가 이미 있어 "안 맞으면 추가되지 않는다"다. 기본값이 새 프로젝트 문장이다.
+   */
+  previewNone?: string;
   selection?: { locked?: ReadonlySet<number>; checked: ReadonlySet<number>; conflicts: readonly { path: string }[]; onToggle: (index: number) => void };
   onPick: (index: number) => void;
   onLocale: (locale: string) => void;
@@ -255,6 +261,7 @@ export function FilesStep({
           candidate={candidate ?? state.manualCandidate}
           onLocale={onLocale}
           empty={manualMode && !state.manualMatched}
+          noneDescription={previewNone}
         />
       </ResizablePanel>
     </ResizablePanelGroup>
@@ -266,6 +273,7 @@ function Preview({
   candidate,
   onLocale,
   empty = false,
+  noneDescription,
   pending,
 }: {
   state: FilesStepState;
@@ -273,6 +281,7 @@ function Preview({
   onLocale: (locale: string) => void;
   /** 예외 E — 보여 줄 후보가 아직 없다. **헤더는 그대로 서고 본문 자리만 빈다.** */
   empty?: boolean;
+  noneDescription: string;
   pending: boolean;
 }) {
   const locales = candidate?.locales ?? [];
@@ -434,7 +443,7 @@ function Preview({
             <EmptyState
               icon={FileSearch2}
               title={m.newProject.files.preview.none}
-              description={m.newProject.files.preview.noneDescription}
+              description={noneDescription}
             />
           </div>
         )}

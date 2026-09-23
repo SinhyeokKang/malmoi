@@ -97,10 +97,10 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     {unknown && <Alert variant="warning">{m.settings.sources.unknown}</Alert>}
     {connect && <Button disabled={pending} onClick={() => run(async () => { const result = await startGithubConnect({ slug, returnTo: "add-surface" }); if (!result.ok) setError(result.error); })}>{connect === "reauthorize" ? m.newProject.empty.connect.reauthorize : m.newProject.empty.connect.action}</Button>}
     <div className="flex min-h-0 flex-1">
-      <FilesStep pending={pending} state={{ detecting, detectError, candidates, picked, locale, preview, manual, manualMatched: false, adapters, repoLabel: `${owner}/${repo}`, branch, banner: null }}
+      <FilesStep pending={pending} previewNone={m.settings.sources.previewNone} state={{ detecting, detectError, candidates, picked, locale, preview, manual, manualMatched: false, adapters, repoLabel: `${owner}/${repo}`, branch, banner: null }}
         selection={{ checked, locked, conflicts: selection.conflicts, onToggle: index => setChecked(previous => { const next = new Set(previous); if (next.has(index)) next.delete(index); else next.add(index); return next; }) }}
         onPick={index => { setPicked(index); setLocale(candidates[index]?.baseLocale ?? ""); }} onLocale={setLocale}
-        onManual={value => { setPicked(null); setManual(value); }} onRetry={() => setRevision(v => v + 1)} />
+        onManual={value => { setPicked(null); setManual(value); setManualError(undefined); }} onRetry={() => setRevision(v => v + 1)} />
     </div>
     <div className="flex shrink-0 items-center gap-3">
       {picked === null && !detecting && <Button busy={pending} aria-disabled={manualBlocked || undefined} aria-describedby={manualBlocked ? "add-source-manual-reason" : undefined} onClick={() => { if (!manualBlocked) run(async () => {

@@ -2646,6 +2646,11 @@ export const en = {
       nothingAdded: "Nothing was added. Your selection is still here.",
       description: "Choose translation files from your repository. Existing sources stay selected.",
       selectHelp: "Select at least one new source to add.",
+      /**
+       * 수동 지정의 빈 미리보기 설명 (malmoi#80). `newProject.files.preview.noneDescription`을 빌리지 않는다 — 그쪽은
+       * "the project isn't created"라 이미 있는 프로젝트에서 거짓이다.
+       */
+      previewNone: "Set a path and malmoi will show the keys it finds. If no file matches, nothing is added.",
       /** 꺼진 수동 확인([Check files])의 사유 (audit #37). */
       manualReason: "Enter a file path and a base language to check.",
     },
