@@ -1436,7 +1436,7 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 ## 5.8 전달 기준과 Revert (translation-rework — ⚠️ 설계 확정 2026-09-23, **미구현**)
 
 `Revert to last sent`가 읽는 기준값의 계약이다. 정본 설계는 `docs/features/translation-rework/design.md` §10.3·§10.4이고,
-구현이 끝나면 그 결론을 이 절로 올리고 디렉터리를 지운다. 순수 판정(`lib/translations/baseline.ts`)과 테이블 둘(`DeliveryConfirmation`·`TranslationBaseline`, `20260923020548_add_delivery_baselines` — 복합 FK는 `delivery-baseline-fk.integration.ts`가 고정한다)은 있고, **쓰는 코드(Save·Publish·무효화·Revert)가 아직 없다.**
+구현이 끝나면 그 결론을 이 절로 올리고 디렉터리를 지운다. 순수 판정(`lib/translations/baseline.ts`)과 테이블 둘(`DeliveryConfirmation`·`TranslationBaseline`, `20260923020548_add_delivery_baselines` — 복합 FK는 `delivery-baseline-fk.integration.ts`가 고정한다)이 있고, **Publish 쪽 writer와 무효화는 구현됐다**(배포 A, `lib/pull/load.ts`의 `confirmDelivery`·`invalidateDeliveryConfirmations` — `delivery-confirm.integration.ts`). **Save 시점 기록과 Revert는 아직 없다**(C3). 배포 절차는 OPERATIONS "전달 기준 배포 A".
 
 - **기준 행은 미전달 셀에만 있다.** 매 Publish에 활성 키×언어 전부를 쓰는 조밀 설계는 T1 실측으로 폐기했다 —
   20,000키×200언어 = 4.26M 행이 로컬 upsert 42초 · dev Supabase 추정 ~135초 · 580MB라 `maxDuration 60`과 무료 500MB를 둘 다 넘는다.
@@ -1445,8 +1445,14 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
   Revert(기준값으로 되돌리며 미전달을 푼다). 키·언어의 추가·부활은 적재로만 일어나므로 무효화에 포함된다.
 - **Save**가 미전달이 아닌 셀을 바꾸는 순간 같은 tx에서 직전 값을 export 폴백(`buildWriteEntries`: base 결측·빈값 → 원문, 비-base → `""`)으로
   유도해 기록한다. 레코드가 무효이거나 Publish가 진행 중이면 기록하지 않는다 — 그 셀은 unknown이고 Revert가 막힌다.
+- **무효화는 두 장치다.** ① 적재(strict push·수동 Sync)는 **증가만 하는 `importRevision`**이 context 지문(`lib/translations/context.ts`)을 바꿔 무효화한다 —
+  `applyPush`에 무효화 문장이 없는 것이 의도다. ② 되돌릴 수 있는 설정(base branch)은 변경 tx에서 `invalidateDeliveryConfirmations`로 `invalidatedAt`을 쓴다 —
+  A → B → A로 되돌리면 지문만으로는 옛 확인이 부활하기 때문이다(`delivery-invalidation-sources.test.ts`가 소스를 센다). 리포 id는 한 번 고정되면 바뀌지 않아 지문으로 충분하다.
+  ③ Publish는 **첫 외부 쓰기**(`createTree`, 또는 no-changes의 force 되돌림) 직전에 ②와 같은 함수를 부른다 — 쓰기 없는 종료(no-edits·writer-warnings·동등 확인)는 부르지 않는다.
 - **Publish 성공 tx**는 캡처한 미전달 셀만 다룬다: 토큰 CAS가 풀린 셀은 기준 행을 지우고, 캡처 뒤 재편집된 셀은 기준을 **캡처값**으로 바꾼다
-  (현재 DB 값이 아니다). 토큰 CAS와 기준 갱신을 같은 조건으로 묶지 않는다.
+  (현재 DB 값이 아니다). 토큰 CAS와 기준 갱신을 같은 조건으로 묶지 않는다. 잠금은 Project → 정렬된 Surface(번역 저장과 같은 순서)이고,
+  실행권(`SyncRun`이 아직 RUNNING)과 잠금 뒤 다시 잰 context 지문이 캡처와 같은 소스에만 확인을 쓴다 — 아니면 `lastPulledAt`·CAS만 기존대로 간다.
+  **`triggerPull`의 `runId`가 필수 인자인 이유**가 이것이다 — 실행권 없이는 교체된 늦은 성공을 가를 수 없다.
 - **교체·실패 실행의 외부 쓰기 종료 근거는 플랫폼 `maxDuration` 강제 종료다**(사용자 결정 2026-09-23). sync 브랜치를 `updateRefForce`로 옮기므로
   후속 실행의 성공은 증거가 아니다. 그 실행의 `startedAt + STALE_AFTER_SECONDS` 이후에 **시작해** 성공한 전달 확인이 있어야 Revert가 열린다.
   ⚠️ **`maxDuration`을 `STALE_AFTER_SECONDS`(300) 넘게 올리면 이 근거가 깨진다.**
