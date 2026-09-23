@@ -384,7 +384,7 @@ lib/
                         전수 → 방침의 절 id). ⚠️ **로직 0의 데이터 파일이고 게이트는 pnpm typecheck이다** —
                         모델·필드가 늘면 이름을 지목하며 red. import type 하나뿐이라 server-only가 아니다
   invitation-email/     초대 메일(docs/features/invitation-email). 순수 판정 — recipients(다중 입력·행별 역할·정규화 중복 거부) ·
-                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(URL 한 줄 payload) ·
+                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html — 템플릿은 template.ts, Claude Design `email/invite.html`이 정본, 로고는 public/email/logo@2x.png 고정 URL) ·
                         config(env 맵 → ready/unavailable, origin을 VERCEL_ENV와 대조) · result(batch 응답 → 요청 단위
                         accepted/rejected/unknown) · limits(상수, 잎). 껍데기(server-only) — issue(Project 잠금 안 발급·재발급,
                         메일을 안 보낸다 — 재발급은 옛 링크의 조건부 닫기 count=1이 선행조건) · send(commit 뒤 Resend batch 한 번,
