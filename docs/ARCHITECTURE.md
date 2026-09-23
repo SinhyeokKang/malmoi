@@ -1436,7 +1436,7 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 ## 5.8 전달 기준과 Revert (translation-rework — ⚠️ 설계 확정 2026-09-23, **미구현**)
 
 `Revert to last sent`가 읽는 기준값의 계약이다. 정본 설계는 `docs/features/translation-rework/design.md` §10.3·§10.4이고,
-구현이 끝나면 그 결론을 이 절로 올리고 디렉터리를 지운다. 순수 판정은 이미 있다(`lib/translations/baseline.ts`).
+구현이 끝나면 그 결론을 이 절로 올리고 디렉터리를 지운다. 순수 판정(`lib/translations/baseline.ts`)과 테이블 둘(`DeliveryConfirmation`·`TranslationBaseline`, `20260923020548_add_delivery_baselines` — 복합 FK는 `delivery-baseline-fk.integration.ts`가 고정한다)은 있고, **쓰는 코드(Save·Publish·무효화·Revert)가 아직 없다.**
 
 - **기준 행은 미전달 셀에만 있다.** 매 Publish에 활성 키×언어 전부를 쓰는 조밀 설계는 T1 실측으로 폐기했다 —
   20,000키×200언어 = 4.26M 행이 로컬 upsert 42초 · dev Supabase 추정 ~135초 · 580MB라 `maxDuration 60`과 무료 500MB를 둘 다 넘는다.
