@@ -600,6 +600,13 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     두지 않는다** — 건강성 배지가 대신 말한다) · `push-token-panel`(토큰 섹션은 readiness와 무관해 분기가 없다) ·
     `first-ingest-retry`(이번에 고친 것)뿐이고 나머지는 안전하다.
 
+- **🔁 2026-09-23 — 브랜치 선택기 구현 중 같은 결과 소실 경로를 차단했다.** `RepositoryForm`이 새
+  `baseBranch` prop으로 목록을 다시 조회하는 effect에서 `setResult("idle")`도 호출했다. 저장 성공 뒤
+  서버가 새 값을 보내면 성공 안내까지 초기화됐다. 저장만 mock한 테스트는 통과했고, 실물 저장 왕복을
+  계기로 추가한 **저장 → 새 prop rerender** 테스트가 red를 냈다. effect의 결과 초기화를 제거했다.
+  재발 방지: `rg -n 'setResult\("idle"\)|setStatus\("idle"\)' components/settings`로 조회 초기화와
+  사용자 입력 초기화를 구별한다. 확인한 나머지 호출은 제출·사용자 선택이며 같은 effect 초기화는 없다.
+
 ### 2026-09-07 — 컬럼의 **의미**가 바뀌었는데 렌더는 그대로여서 번역자에게 cuid가 보였다 ([malmoi#3](https://github.com/SinhyeokKang/malmoi/issues/3))
 
 - **영역**: `app/(edit)/projects/[slug]/translations/page.tsx`(`CellMeta`) · `lib/keys/query.ts` · `Translation.updatedBy`
