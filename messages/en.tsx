@@ -318,7 +318,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-09-19",
+      effectiveDate: "2026-09-24",
       intro:
         "malmoi is a localization tool: developers push the strings in their code to malmoi, their teammates translate them here, and malmoi opens a pull request back to the repository. This policy covers what malmoi stores about the people who sign in, why it stores it, and how to have it removed.",
       sections: [
@@ -362,7 +362,7 @@ export const en = {
                   [
                     "Your project membership and any invitation sent to your address",
                     "The person who invites you",
-                    "Deciding which projects you can open and what you can do in them",
+                    "Deciding which projects you can open and what you can do in them, and emailing you the invitation link",
                   ],
                   [
                     "Who last changed a translation, and who asked for a sync",
@@ -387,6 +387,7 @@ export const en = {
                 "Deciding which projects you can open and what you can do in them.",
                 "Showing your teammates who changed a translation and who asked for a sync.",
                 "Writing translations back to the repository a project is connected to, as a pull request.",
+                "Emailing an invitation link to an address a project owner enters. The email holds the link and nothing else — no project name, no role and no tracking.",
                 "Keeping the service running, which includes looking at error logs when something fails.",
               ],
             },
@@ -407,7 +408,8 @@ export const en = {
                 "Your account and its connections: kept until you ask us to delete them.",
                 "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
                 "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
-                "An invitation stops working after 7 days, or as soon as it is accepted or revoked. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
+                "An invitation stops working after 7 days, or as soon as it is accepted, revoked or sent again. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
+                "An invitation email: Resend, which sends it, keeps a record of the message — the address, the subject and the link in it — for 30 days.",
                 "Translations and the record of who changed them: kept for the life of the project.",
               ],
             },
@@ -417,17 +419,21 @@ export const en = {
           id: "third-parties",
           heading: "Who else sees it",
           blocks: [
-            { p: "malmoi sends your data to four services and to no one else." },
+            { p: "malmoi sends your data to five services and to no one else." },
             {
               ul: [
                 "GitHub — signing you in, and reading and writing the repository a project is connected to. Translations are committed and opened as a pull request by malmoi's GitHub App, not under your own account.",
                 "Google — signing you in, if you choose Google.",
                 "Supabase — the database, hosted in Tokyo.",
                 "Vercel — hosting for the app and storage for uploaded profile pictures. Vercel records requests to the service, including IP addresses, as part of running it.",
+                "Resend — sending invitation emails, from Tokyo. It receives the invited address and the message with the invitation link. Open and click tracking are off.",
               ],
             },
             {
               p: "A profile picture that comes from GitHub or Google is loaded by your browser directly from their servers, so those requests reach them even though malmoi sends them nothing.",
+            },
+            {
+              p: "An invitation email shows a logo that your email app loads from mal-moi.com. It is the same image at the same address for everyone, so it does not tell malmoi who opened the email.",
             },
           ],
         },
@@ -445,7 +451,7 @@ export const en = {
               ),
             },
             {
-              p: "Deleting your data removes your account, your GitHub and Google connections, your sessions, your project memberships, any invitation addressed to you that has not been accepted, and a profile picture you uploaded.",
+              p: "Deleting your data removes your account, your GitHub and Google connections, your sessions, your project memberships, any invitation addressed to you that has not been accepted, and a profile picture you uploaded. Resend's record of an invitation email is not removed early; it expires on its own 30 days after the email was sent.",
             },
             {
               p: "Translations stay. They are the project's output and are already in the repository, so removing them would delete work that belongs to the team — but the record of who wrote them stops pointing at you.",
@@ -494,7 +500,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-09-19 — first version."] },
+            { ul: ["2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
