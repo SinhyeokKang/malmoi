@@ -18,7 +18,7 @@
 | 1 | **B1 전달 층 불변식** | #1·2·3·4·58·59 | ✅ | `/feature` → `/ship bypass` | `pnpm test` + `pnpm test:projects:postgres` + `/l10n-roundtrip`(`i18n-order-check`·ts-dict 리포) | ✅ #1 · #3 |
 | 2 | ✅ **B2 보안 TOCTOU** | #9·10·26 | ✅ | `/ship` | `pnpm test` + `pnpm test:projects:postgres` | ✅ #26 |
 | 3 | ✅ **B3 UX 🔴·막다른 길** | #5·6·7·8·11·14·15·16·17·24·25 | ✅ | `/ship` | `pnpm test` + `/bugshot-qa`(EDITOR·OWNER 두 계정) | — |
-| 4 | **B4 확인·문구·용어** | #13·19·20·21·22·23·28·29·30·31 | ✅ | `/ship` | `pnpm test`(no-korean-ui·brand-spelling 포함) + `/bugshot-qa` | ✅ #29 |
+| 4 | ✅ **B4 확인·문구·용어** | #13·19·20·21·22·23·28·29·30·31 | ✅ | `/ship` | `pnpm test`(no-korean-ui·brand-spelling 포함) + `/bugshot-qa` | ✅ #29 |
 | 5 | **B5 접근성(포커스)** | #32~42 | 권장 | `/ship` | `pnpm test`(jsdom) + `/design-sync` 접근성 트리 실측 | — |
 | 6 | **B6 시각 체계** | #43~50 | 권장 | `/ship` → `/design-sync` | `/design-sync` computed style 실측 | ✅ #50 |
 | 7 | **B7 어댑터·부채·문서** | #12·51~57·60~74 · ⚪ #75~90 | ❌ 출시 후 | 소배치로 쪼개 `/ship` | 항목별 | — |
@@ -122,16 +122,16 @@
   | 재시도 | **Try again** | Retry, Check again |
 
 **항목**
-- [ ] **#13** 🟡 `components/onboarding/new-project.tsx:469` — `OnboardingModal`에 `closeDisabled` 없음. "Creating…" 중 Esc·×·배경으로 닫히고 `createProject`는 계속 돈다. step 4의 일회용 push 토큰이 경고 없이 사라진다(DESIGN §6.4).
-- [ ] **#19** 🟡 `components/settings/push-token-panel.tsx:37` — 토큰 회전(이전 즉시 무효)에 확인 없음, 성공 직후 재클릭으로 방금 받은 토큰도 죽는다(PRODUCT §7.8).
-- [ ] **#20** 🟡 `components/members/member-list.tsx:170,238` · `pending-invitations.tsx:214` — 자기 강등 포함 역할 변경·Revoke에 확인 없음(같은 화면 Remove는 있다).
-- [ ] **#21** 🟡 오류 코드 원문이 문구에 섞인다 — `member-list:189` `changeFailed(failed.error)` · `pending-invitations:233,261` · `invite-modal:405` → "…: invalid input". `components/publish-button.tsx:327`은 모르는 문자열을 그대로 보이고 `invalid input`을 권한 없음으로 오역한다(DESIGN §10).
-- [ ] **#22** 🟡 문구가 상황과 어긋난다 — `revokeInvitation` `not-found`가 OWNER에게 "Check your invite link". `errors.access.unavailable`의 "— your text is kept"가 archive·token·disconnect와 `(edit)/error.tsx`에도 쓰인다.
-- [ ] **#23** 🟡 오류 갈래 뭉개짐 — `workspace.tsx:266-271`이 재시도로 안 풀리는 `key-unavailable`·`not-ready`를 "Try again"으로 접는다. `components/settings/general-card.tsx:72`가 전용 `emptyName`·`longName`을 두고 `fields.failed`. `add-sources-modal.tsx:82,96`이 `confirmManualFormat` 실패를 "Your selection is still here" 아래에 세운다.
-- [ ] **#28** 🟡 `messages/en.tsx:86,1242` — 링크 "Send changes (first)"인데 도착 화면 버튼은 `Publish`(POSTMORTEM 2026-09-14 재발). 주석 85·535도 거짓. 사용처 `sync-button.tsx:209` · `project-list.tsx:419`.
-- [ ] **#29** 🟡 용어 혼재 — 위 결정대로 전수 교체. `home.attention.importFailed.title`·"no active surfaces"·"Waiting for the first import"·`sources.add`(en:2204) vs 모달(en:2498) 등.
-- [ ] **#30** 🟡 Alert 제목 마침표(en:1879,1880,1900,1901) · 번역자 화면의 git 어휘(en:1957 "the push that switches it", en:2291 "next CI push", en:1231 "pushes and pull requests stop")(DESIGN §10).
-- [ ] **#31** 🟡 빈 상태·상태 문구 — `workspace.tsx:339` "No active keys"에 안내 없음(`translations.empty.noKeys`가 있다) · `projects.empty`가 초대받은 번역자에게도 "Connect a repository" · source-detail 푸터가 첫 가져오기 중에도 "Saving…".
+- [x] **#13** 🟡 `components/onboarding/new-project.tsx:469` — `OnboardingModal`에 `closeDisabled` 없음. "Creating…" 중 Esc·×·배경으로 닫히고 `createProject`는 계속 돈다. step 4의 일회용 push 토큰이 경고 없이 사라진다(DESIGN §6.4).
+- [x] **#19** 🟡 `components/settings/push-token-panel.tsx:37` — 토큰 회전(이전 즉시 무효)에 확인 없음, 성공 직후 재클릭으로 방금 받은 토큰도 죽는다(PRODUCT §7.8).
+- [x] **#20** 🟡 `components/members/member-list.tsx:170,238` · `pending-invitations.tsx:214` — 자기 강등 포함 역할 변경·Revoke에 확인 없음(같은 화면 Remove는 있다).
+- [x] **#21** 🟡 오류 코드 원문이 문구에 섞인다 — `member-list:189` `changeFailed(failed.error)` · `pending-invitations:233,261` · `invite-modal:405` → "…: invalid input". `components/publish-button.tsx:327`은 모르는 문자열을 그대로 보이고 `invalid input`을 권한 없음으로 오역한다(DESIGN §10).
+- [x] **#22** 🟡 문구가 상황과 어긋난다 — `revokeInvitation` `not-found`가 OWNER에게 "Check your invite link". `errors.access.unavailable`의 "— your text is kept"가 archive·token·disconnect와 `(edit)/error.tsx`에도 쓰인다.
+- [x] **#23** 🟡 오류 갈래 뭉개짐 — `workspace.tsx:266-271`이 재시도로 안 풀리는 `key-unavailable`·`not-ready`를 "Try again"으로 접는다. `components/settings/general-card.tsx:72`가 전용 `emptyName`·`longName`을 두고 `fields.failed`. `add-sources-modal.tsx:82,96`이 `confirmManualFormat` 실패를 "Your selection is still here" 아래에 세운다.
+- [x] **#28** 🟡 `messages/en.tsx:86,1242` — 링크 "Send changes (first)"인데 도착 화면 버튼은 `Publish`(POSTMORTEM 2026-09-14 재발). 주석 85·535도 거짓. 사용처 `sync-button.tsx:209` · `project-list.tsx:419`.
+- [x] **#29** 🟡 용어 혼재 — 위 결정대로 전수 교체. `home.attention.importFailed.title`·"no active surfaces"·"Waiting for the first import"·`sources.add`(en:2204) vs 모달(en:2498) 등.
+- [x] **#30** 🟡 Alert 제목 마침표(en:1879,1880,1900,1901) · 번역자 화면의 git 어휘(en:1957 "the push that switches it", en:2291 "next CI push", en:1231 "pushes and pull requests stop")(DESIGN §10).
+- [x] **#31** 🟡 빈 상태·상태 문구 — `workspace.tsx:339` "No active keys"에 안내 없음(`translations.empty.noKeys`가 있다) · `projects.empty`가 초대받은 번역자에게도 "Connect a repository" · source-detail 푸터가 첫 가져오기 중에도 "Saving…".
 
 **경계**: 이 배치에서 쓰지 않게 된 메시지 키는 이 배치에서 지운다(내 변경이 만든 고아). **이미 있던** 미사용 키 약 60개(#86)는 **B7**이다.
 
@@ -143,6 +143,7 @@
 
 **항목**
 - [ ] **#32** 🟡 포커스를 쥔 컨트롤이 `disabled`가 되거나 사라져 포커스가 body로 — `workspace.tsx:581`(번역 Save — 주 흐름) · `general-card.tsx:74-75` · `repository-form.tsx:85,88` · `base-language-form.tsx:51` · `push-token-panel.tsx:37` · `member-list.tsx:238` · `archive-card.tsx:54` · `github-account.tsx:47` · `login-methods.tsx:125`(DESIGN §6.65 · POSTMORTEM 2026-09-20 계열).
+- [ ] **#32b** 🟡 (B4 리뷰가 추가, 2026-09-24) B4의 새 확인 Dialog 둘이 포커스를 잃는다 — `components/members/pending-invitations.tsx:103-109` Revoke 트리거에 `loading`이 걸려 확정 뒤 `disabled` → body(`button.tsx:41`의 SyncButton 함정과 같다) · `components/members/member-list.tsx:212` 트리거 없는 역할 Dialog, 확정 뒤 셀렉트 `disabled`.
 - [ ] **#33** 🟡 `components/logs/event-dialog.tsx:53-56` — 폴백 `h1`(`log-filters.tsx:72`)에 `tabIndex={-1}` 없음 → 딥링크 `?event=` Dialog를 Esc로 닫으면 body.
 - [ ] **#34** 🟡 트리거 없는 Dialog에 `onCloseAutoFocus` 없음 — `workspace.tsx:644-647`(discard·publish·revert) · `source-detail-modal.tsx:173-178`(중첩 Dialog가 부모 밖으로 샌다) · `home/actions.tsx:202`.
 - [ ] **#35** 🟡 Alert·결과 X가 포커스 노드를 언마운트 — `sync-result.tsx:59,119` · `home/actions.tsx:251` · `pending-invitations.tsx:143` · `dismissible-alert.tsx:36` · `sources-screen.tsx:89`.
