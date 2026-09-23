@@ -1,9 +1,10 @@
-import { ArrowUpRight, CircleAlert } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { CopyButton } from "@/components/onboarding/copy-button";
 import { EventGlyph } from "@/components/logs/glyph";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
@@ -190,11 +191,11 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
       {state.kind === "text" ? (
         /* ⚠️ **`bg-muted`(#f5f5f5)가 아니라 #fafafa다** — 시안의 Before 면이고, 흰 After와의 대비가
            한 단계 더 연해야 두 블록이 "같은 값의 두 시점"으로 읽힌다. */
-        <div className={`border-border rounded-[10px] border px-3 py-2.5 text-base [overflow-wrap:anywhere] whitespace-pre-wrap ${muted ? "bg-neutral-50" : ""}`}>
+        <div className={`border-border rounded-md border px-3 py-2.5 text-base [overflow-wrap:anywhere] whitespace-pre-wrap ${muted ? "bg-neutral-50" : ""}`}>
           {state.text}
         </div>
       ) : (
-        <div className="border-border bg-neutral-50 text-muted-foreground rounded-[10px] border border-dashed px-3 py-2.5 text-base">
+        <div className="border-border bg-neutral-50 text-muted-foreground rounded-md border border-dashed px-3 py-2.5 text-base">
           {state.label}
         </div>
       )}
@@ -202,15 +203,18 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
   );
 }
 
+/**
+ * 상세의 안내 한 줄 — `Alert`다 (audit #49). 손으로 그린 상자가 Alert의 형(테두리·아이콘·padding)을 따로 들고 있었다.
+ * 실패는 `danger`(따라서 `role="alert"`), 나머지는 상시 안내라 `info`다.
+ */
 function Note({ tone, body, note }: { tone: "danger" | "muted"; body: string; note: string | null }) {
   return (
-    <div className="border-border flex items-start gap-2.5 rounded-[10px] border p-3.5">
-      <CircleAlert className={`mt-px size-[15px] shrink-0 ${tone === "danger" ? "text-destructive" : "text-muted-foreground"}`} aria-hidden />
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-sm leading-[1.5]">{body}</span>
+    <Alert variant={tone === "danger" ? "danger" : "info"}>
+      <span className="flex flex-col gap-1">
+        <span>{body}</span>
         {note !== null && <span className="text-muted-foreground text-xs text-pretty">{note}</span>}
       </span>
-    </div>
+    </Alert>
   );
 }
 
@@ -309,7 +313,7 @@ function fields(row: EventRow): [string, ReactNode][] {
 const FOOTER_LINK = cn(buttonClass(), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", "gap-1.5");
 
 /** ⚠️ **화살표는 "여기를 떠난다"는 신호다** — 캔버스가 목적지 셋에 모두 달았고 15/보조색이다. */
-const LEAVE = <ArrowUpRight className="text-muted-foreground size-[15px]" aria-hidden />;
+const LEAVE = <ArrowUpRight className="text-muted-foreground size-4" aria-hidden />;
 
 /** 목적지 링크 하나 — 권한이 없거나 대상이 없으면 **그리지 않는다.** */
 function destination(row: EventRow, slug: string, canOpenSettings: boolean, repoUrl: string | null, translationHref: string | null): ReactNode {

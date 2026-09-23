@@ -1,4 +1,5 @@
 import { ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * 목록이 서버에서 오는 동안의 스켈레톤 (2026-09-11 사용자).
@@ -35,11 +36,11 @@ export default function ProjectsLoading() {
         {/* 제목 줄: 제목 + 총계 배지 ── ml-auto ─→ 검색 + [New project] */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Block className="h-7 w-40" />
-            <Block className="size-5 rounded-full" />
+            <Skeleton className="h-7 w-40" />
+            <Skeleton className="size-5 rounded-full" />
           </div>
-          <Block className="ml-auto h-9 w-64" />
-          <Block className="h-9 w-32" />
+          <Skeleton className="ml-auto h-9 w-64" />
+          <Skeleton className="h-9 w-32" />
         </div>
       </PanelHeader>
 
@@ -48,8 +49,8 @@ export default function ProjectsLoading() {
         <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
           {/* 카드 헤더 — 실물과 같은 `p-4`라야 첫 행의 y가 안 튄다. */}
           <div className="flex items-center gap-2 p-4">
-            <Block className="h-5 w-32" />
-            <Block className="size-5 rounded-full" />
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="size-5 rounded-full" />
           </div>
           <ul>
             {[0, 1].map((i) => (
@@ -57,12 +58,12 @@ export default function ProjectsLoading() {
                 key={i}
                 className={`flex items-center gap-4 py-3.5 pr-3.5 pl-3 ${i === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}`}
               >
-                <Block className="size-7 rounded-[4px]" />
+                <Skeleton className="size-7 rounded-[4px]" />
                 <div className="flex w-[420px] shrink-0 flex-col gap-0.5">
-                  <Block className="h-5 w-48" />
-                  <Block className="h-5 w-72" />
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-5 w-72" />
                 </div>
-                <Block className="ml-auto h-5 w-16 rounded-full" />
+                <Skeleton className="ml-auto h-5 w-16 rounded-full" />
               </li>
             ))}
           </ul>
@@ -70,9 +71,4 @@ export default function ProjectsLoading() {
       </PanelBody>
     </ContentPanel>
   );
-}
-
-/** 회색 블록 하나. 색은 `EmptyState`의 아이콘 칩과 같은 `bg-foreground/5`다 — 새 raw 색이 아니다. */
-function Block({ className }: { className: string }) {
-  return <div className={`bg-foreground/5 motion-safe:animate-pulse rounded ${className}`} />;
 }

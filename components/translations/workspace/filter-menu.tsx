@@ -41,14 +41,14 @@ export function FilterMenu({ axis, label, on, size, options, value, onSelect, di
         aria-label={`${axis}: ${label}`}
         disabled={disabled}
         className={cn(
-          "hover:bg-primary-foreground focus-visible:ring-ring bg-background inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] border focus-visible:ring-2 focus-visible:outline-none",
-          "disabled:bg-accent disabled:text-neutral-400 disabled:cursor-not-allowed",
+          "hover:bg-primary-foreground focus-visible:ring-ring bg-background inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border focus-visible:ring-2 focus-visible:outline-none",
+          "disabled:bg-accent disabled:text-muted-foreground disabled:cursor-not-allowed",
           size === "md" ? "h-9 px-2.5 text-sm" : "h-7 px-2 text-xs",
           on ? "border-foreground text-foreground font-medium" : "border-border text-muted-foreground",
         )}
       >
         {label}
-        <Chevron className={cn("shrink-0", size === "md" ? "size-[15px]" : "size-3.5")} aria-hidden />
+        <Chevron className={cn("shrink-0", size === "md" ? "size-4" : "size-3.5")} aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-53">
         {groups.map((group, index) => (

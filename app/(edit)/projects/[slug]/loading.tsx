@@ -1,4 +1,5 @@
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 
 /**
@@ -34,11 +35,11 @@ export default function ProjectHomeLoading() {
       {/* ⚠️ `aria-hidden`이 머리와 본문 **둘 다**에 있다 — 하나만 빠져도 스크린리더가 회색 블록을 읽는다. */}
       <PanelHeader width="fluid" aria-hidden>
         <div className="flex items-center gap-2.5">
-          <Block className="size-7 rounded" />
-          <Block className="h-6 w-48 rounded-md" />
+          <Skeleton className="size-7 rounded" />
+          <Skeleton className="h-6 w-48 rounded-md" />
           <span className="ml-auto flex items-center gap-2">
-            <Block className="h-9 w-24 rounded-md" />
-            <Block className="h-9 w-28 rounded-md" />
+            <Skeleton className="h-9 w-24 rounded-md" />
+            <Skeleton className="h-9 w-28 rounded-md" />
           </span>
         </div>
       </PanelHeader>
@@ -49,12 +50,12 @@ export default function ProjectHomeLoading() {
             {[0, 1, 2, 3].map((i) => (
               <div key={i} className="border-border flex flex-col gap-3 rounded-lg border p-3.5">
                 <span className="flex items-center gap-2">
-                  <Block className="h-3.5 w-[62%] rounded-md" />
-                  <Block className="ml-auto size-4 rounded-full" />
+                  <Skeleton className="h-3.5 w-[62%] rounded-md" />
+                  <Skeleton className="ml-auto size-4 rounded-full" />
                 </span>
                 <span className="flex flex-col gap-1.5">
-                  <Block className="h-6 w-14 rounded-md" />
-                  <Block className="h-3 w-[72%] rounded-md" />
+                  <Skeleton className="h-6 w-14 rounded-md" />
+                  <Skeleton className="h-3 w-[72%] rounded-md" />
                 </span>
               </div>
             ))}
@@ -74,7 +75,7 @@ export default function ProjectHomeLoading() {
         */}
         <aside className="border-border overflow-hidden rounded-lg border">
           <div className="p-4">
-            <Block className="h-5 w-20 rounded-md" />
+            <Skeleton className="h-5 w-20 rounded-md" />
           </div>
           <MetaGroup rows={6} />
           <MetaGroup rows={3} />
@@ -96,7 +97,7 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
   return (
     <section className="border-border overflow-hidden rounded-lg border">
       <div className="p-4">
-        <Block className="h-5 w-40 rounded-md" />
+        <Skeleton className="h-5 w-40 rounded-md" />
       </div>
       <ul className={divided ? undefined : "border-divider border-t px-4 pt-3.5"}>
         {Array.from({ length: rows }, (_, i) => (
@@ -104,7 +105,7 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
             key={i}
             className={divided ? "border-divider flex items-center gap-3 border-t px-4 py-3.5" : "flex items-center gap-3 pb-4"}
           >
-            <Block className={divided ? "size-7 shrink-0 rounded" : "size-2.5 shrink-0 rounded-full"} />
+            <Skeleton className={divided ? "size-7 shrink-0 rounded" : "size-2.5 shrink-0 rounded-full"} />
             {/*
               ⚠️ **자리의 높이는 블록이 아니라 컨테이너가 든다** (2026-09-16 실측) — 블록을 두껍게
               키우면 행 높이는 맞아도 회색 덩어리가 글자보다 굵어진다. 할 일 행은 실물이 **두 줄**
@@ -112,10 +113,10 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
               도착하는 순간 할 일이 행마다 ~15, 로그가 ~8.5 늘어났다.
             */}
             <span className={`flex min-w-0 flex-1 flex-col justify-center gap-1 ${divided ? "h-[42px]" : "h-[22px]"}`}>
-              {divided && <Block className="h-[17px] w-[62%] rounded-md" />}
-              <Block className="h-[21px] w-[72%] rounded-md" />
+              {divided && <Skeleton className="h-[17px] w-[62%] rounded-md" />}
+              <Skeleton className="h-[21px] w-[72%] rounded-md" />
             </span>
-            <Block className="ml-auto h-3 w-12 shrink-0 rounded-md" />
+            <Skeleton className="ml-auto h-3 w-12 shrink-0 rounded-md" />
           </li>
         ))}
       </ul>
@@ -133,7 +134,7 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
 function FooterLink() {
   return (
     <div className="border-divider flex h-[45px] items-center justify-center border-t px-4">
-      <Block className="h-3.5 w-16 rounded-md" />
+      <Skeleton className="h-3.5 w-16 rounded-md" />
     </div>
   );
 }
@@ -149,21 +150,10 @@ function MetaGroup({ rows }: { rows: number }) {
     <div className="border-divider flex flex-col gap-2.5 border-t px-4 py-3.5">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex h-5 items-center gap-3">
-          <Block className="h-3 w-24 shrink-0 rounded-md" />
-          <Block className="h-3.5 w-[62%] rounded-md" />
+          <Skeleton className="h-3 w-24 shrink-0 rounded-md" />
+          <Skeleton className="h-3.5 w-[62%] rounded-md" />
         </div>
       ))}
     </div>
   );
-}
-
-/**
- * 회색 블록 하나. 색은 `EmptyState`의 아이콘 칩과 같은 `bg-foreground/5`다 — 새 raw 색이 아니다.
- *
- * ⚠️ **radius를 여기서 박지 않는다** (2026-09-15 리뷰). 기본값을 두고 호출부가 `rounded-full`을
- * 덧붙이면 **어느 쪽이 이기는지는 템플릿 순서가 아니라 생성된 CSS 순서**가 정한다 — 28px 타일이
- * 4px이 아니라 10px로 설 수 있다. 호출부가 전부 자기 radius를 든다.
- */
-function Block({ className }: { className: string }) {
-  return <div className={`bg-foreground/5 motion-safe:animate-pulse ${className}`} />;
 }

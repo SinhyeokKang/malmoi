@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { SearchInput } from "@/components/search-input";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { FormGroup } from "@/components/ui/form-group";
@@ -82,7 +83,7 @@ export function LogFilters({
         {/* ⚠️ `tabIndex={-1}` — 딥링크(`?event=`)로 연 상세의 폴백 복귀 대상이다(`event-dialog.tsx`). 없으면 `focus()`가
             조용히 무시되어 Esc로 닫은 포커스가 `body`로 빠졌다 (audit #33). */}
         <h1 tabIndex={-1} className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.logs}</h1>
-        {!refreshable && <span className="bg-muted rounded-full px-2 py-0.5 text-xs font-medium">{m.logs.archived.badge}</span>}
+        {!refreshable && <Badge variant="neutral">{m.logs.archived.badge}</Badge>}
         <div className="ml-auto flex items-center gap-2">
           {refreshable && (
             /*
@@ -191,6 +192,7 @@ export function LogFilters({
 
         {narrowed && (
           <Button type="button" variant="ghost" onClick={() => router.push(routes.logs(slug, clearedLogsQuery(filter)))}>
+            <RotateCcw aria-hidden />
             {m.logs.filters.clear}
           </Button>
         )}
@@ -226,8 +228,9 @@ function Filter({ triggerRef, axis, label, on, children }: { triggerRef?: RefObj
         ref={triggerRef}
         aria-label={`${axis}: ${label}`}
         className={cn(
-          "hover:bg-accent focus-visible:ring-ring inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-2.5 text-sm focus-visible:ring-2 focus-visible:outline-none",
-          on ? "border-foreground font-medium" : "border-border text-muted-foreground",
+          // ⚠️ 번역 화면 `FilterMenu`의 md와 같은 형이다 (audit #49) — hover는 `default` 버튼의 면(§6.2)이다.
+          "hover:bg-primary-foreground focus-visible:ring-ring bg-background inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-2.5 text-sm focus-visible:ring-2 focus-visible:outline-none",
+          on ? "border-foreground text-foreground font-medium" : "border-border text-muted-foreground",
         )}
       >
         {label}

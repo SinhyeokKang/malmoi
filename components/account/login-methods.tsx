@@ -114,7 +114,7 @@ function MethodRow({ row, removable }: { row: { provider: LoginProvider; connect
           {/* ⚠️ **비활성도 접근성 트리에는 남는다** — 이름이 없으면 무엇의 해제인지 말하지 않는다.
               ⚠️ **`disabled`가 아니라 `aria-disabled`다** (audit #37) — 진짜 `disabled`는 포커스를 못 받아 describedby가
               닿을 길이 없었다(DESIGN §6.65). 클릭은 여기서 막는다 — Dialog를 아예 세우지 않는 갈래다. */}
-          <Button variant="default" aria-label={m.link.methods.disconnectLabel(label)} aria-describedby={reasonId} aria-disabled onClick={event => event.preventDefault()}>{m.link.methods.disconnect}</Button>
+          <Button variant="danger" aria-label={m.link.methods.disconnectLabel(label)} aria-describedby={reasonId} aria-disabled onClick={event => event.preventDefault()}>{m.link.methods.disconnect}</Button>
         </>
       )}
       </div>
@@ -150,7 +150,7 @@ function DisconnectButton({ label, pending, onConfirm }: { label: string; pendin
     <Dialog>
       <DialogTrigger asChild>
         {/* ⚠️ `loading`이 아니라 `busy`다 (audit #32) — 확정하면 Dialog가 이 트리거로 포커스를 돌려준다. */}
-        <Button variant="default" aria-label={m.link.methods.disconnectLabel(label)} busy={pending}>
+        <Button variant="danger" aria-label={m.link.methods.disconnectLabel(label)} busy={pending}>
           {m.link.methods.disconnect}
         </Button>
       </DialogTrigger>

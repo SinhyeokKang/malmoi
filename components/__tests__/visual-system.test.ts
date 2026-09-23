@@ -187,7 +187,8 @@ describe("글자 크기·자간·radius는 스케일이 든다 (audit #45·#46·
    */
   it("`tracking-*`가 §6.67의 여덟뿐이다", () => {
     const found = hits(/(?<![\w-])tracking-[\w[\].-]+/g);
-    const byFile = Object.fromEntries(Object.entries(Object.groupBy(found, ({ path }) => path)).map(([path, list]) => [path, list?.length ?? 0]));
+    const byFile: Record<string, number> = {};
+    for (const { path } of found) byFile[path] = (byFile[path] ?? 0) + 1;
     expect(byFile).toEqual({ "app/(edit)/account/page.tsx": 3, "components/ui/panel-card.tsx": 4, "components/ui/modal.tsx": 1 });
   });
 
@@ -253,9 +254,8 @@ describe("프리미티브를 손으로 다시 만들지 않는다 (audit #49)", 
   });
 
   it("안내 상자는 `Alert`가 든다 — 이력 보관 안내·상세 노트", () => {
-    expect(read("components/logs/event-detail.tsx")).not.toMatch(/function Note\b/);
-    expect(read("components/logs/event-detail.tsx")).toContain("<Alert");
-    expect(read("app/(edit)/projects/[slug]/logs/page.tsx")).toMatch(/<Alert[^>]*>\s*\{m\.logs\.archived\.restoreLine/);
+    expect(read("components/logs/event-detail.tsx")).toMatch(/function Note\b[^]*?return \(\s*<Alert\b/);
+    expect(read("app/(edit)/projects/[slug]/logs/page.tsx")).toMatch(/<Alert\s+variant="info"[\s\S]{0,400}\{m\.logs\.archived\.restoreLine/);
   });
 });
 

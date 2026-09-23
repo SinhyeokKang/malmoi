@@ -400,9 +400,13 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
     expect(SKELETON).not.toMatch(/<PanelBody[^>]*\b(px|py|pt|pb)-\d/);
   });
 
-  /** ⚠️ **움직임을 줄인 사용자에게는 정지한 회색 블록이다.** */
-  it("`motion-safe:`를 유지한다", () => {
-    expect(SKELETON).toContain("motion-safe:animate-pulse");
+  /**
+   * ⚠️ **움직임을 줄인 사용자에게는 정지한 회색 블록이다.** 그 `motion-safe:`는 이제 `Skeleton` 프리미티브가
+   * 든다(audit #49 — 로컬 `Block`이 같은 클래스를 손으로 들었다). 프리미티브 쪽은 `skeleton.test.tsx`가 센다.
+   */
+  it("회색 블록이 `Skeleton` 프리미티브다", () => {
+    expect(SKELETON).toContain("<Skeleton ");
+    expect(SKELETON).not.toContain("animate-pulse");
   });
 
   /** ⚠️ **스크린리더가 회색 블록을 읽지 않는다** — 머리와 본문 둘 다 가린다. */

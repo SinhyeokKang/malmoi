@@ -123,7 +123,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned).map(row => row.code)} awaiting={basePending(detail)} onDirty={setDraft} onPending={onBusy} onError={setFieldError} onSaved={onSaved} />
           : <div className="flex items-center gap-3">
               {/* 시안 `1e` ④ — EDITOR는 점선 칩과 자물쇠이고 컨트롤이 없다. */}
-              <span className="border-border text-muted-foreground flex h-9 w-40 shrink-0 items-center gap-2 rounded-[10px] border border-dashed px-2.5 text-sm"><Lock className="size-3.5" aria-hidden />{detail.baseLocale ?? m.sources.notConfigured}</span>
+              <span className="border-border text-muted-foreground flex h-9 w-40 shrink-0 items-center gap-2 rounded-md border border-dashed px-2.5 text-sm"><Lock className="size-3.5" aria-hidden />{detail.baseLocale ?? m.sources.notConfigured}</span>
               <span className="text-muted-foreground min-w-0 flex-1 text-xs">{m.sources.editorBase}</span>
             </div>}
         {basePending(detail) && <div className="mt-3 space-y-2 text-xs">
@@ -157,13 +157,13 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             {/* ⚠️ **좁은 폭에서 숨기지 않고 행 아래로 내린다** (audit #42) — 숨기면 `aria-hidden` Meter의 amber 조각만 남아 검토·누락이
                 색으로만 전달됐다. 비어 있으면 줄을 만들지 않는다. */}
             <span className="min-w-0 flex-1 text-xs @max-[640px]:order-last @max-[640px]:basis-full @max-[640px]:empty:hidden">
-              {row.orphaned ? <Badge variant="missing"><CircleAlert className="size-[13px]" aria-hidden />{m.sources.missingRepo}</Badge>
+              {row.orphaned ? <Badge variant="missing"><CircleAlert className="size-3.5" aria-hidden />{m.sources.missingRepo}</Badge>
                 : row.needsReview > 0 ? <Badge variant="warning">{m.sources.needReview(row.needsReview)}</Badge>
-                : row.isBase ? <span className="text-neutral-400">{m.sources.baseRow}</span> : null}
+                : row.isBase ? <span className="text-muted-foreground">{m.sources.baseRow}</span> : null}
             </span>
-            {canOpen && !row.orphaned ? <ButtonLink size="sm" className="h-8 shrink-0 rounded-[10px]" href={routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })); } }}>{m.sources.openLanguage}<ArrowRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>
-              : busy ? <Button size="sm" className="h-8 shrink-0 rounded-[10px]" disabled>{m.sources.openLanguage}</Button>
-              : <><span id={`language-open-reason-${row.code}`} className="sr-only">{row.orphaned ? m.sources.orphanReason : disabledReason}</span><Button size="sm" className="h-8 shrink-0 rounded-[10px]" aria-disabled aria-describedby={`language-open-reason-${row.code}`} onClick={event => event.preventDefault()}>{m.sources.openLanguage}</Button></>}
+            {canOpen && !row.orphaned ? <ButtonLink size="sm" className="shrink-0" href={routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })); } }}>{m.sources.openLanguage}<ArrowRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>
+              : busy ? <Button size="sm" className="shrink-0" disabled>{m.sources.openLanguage}</Button>
+              : <><span id={`language-open-reason-${row.code}`} className="sr-only">{row.orphaned ? m.sources.orphanReason : disabledReason}</span><Button size="sm" className="shrink-0" aria-disabled aria-describedby={`language-open-reason-${row.code}`} onClick={event => event.preventDefault()}>{m.sources.openLanguage}</Button></>}
           </li>;
         })}</ul>}
         {/* ⚠️ **사라짐 안내는 행이 아니라 카드 바닥의 스트립이다** (시안 `1c`) — 행에 넣으면 비고 열이

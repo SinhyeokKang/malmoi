@@ -2,6 +2,7 @@ import { Archive, ChevronRight, CircleCheck, CircleDot, Languages, TriangleAlert
 import Link from "next/link";
 import type { ComponentType } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import type { AttentionItem, AttentionList } from "@/lib/home/attention";
@@ -53,9 +54,7 @@ export function AttentionCard({ items, slug, role, state, now }: {
         {m.home.attention.title}
         {/* ⚠️ **빈 상태에는 pill이 없다** (캔버스 `2a-empty`) — `0`을 배지로 세우면 하나의 항목처럼 읽힌다. */}
         {items.count > 0 && (
-          <span className="bg-foreground/5 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium">
-            {items.count}
-          </span>
+          <Badge variant="neutral">{items.count}</Badge>
         )}
       </h2>
 

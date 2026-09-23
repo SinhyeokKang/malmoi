@@ -50,7 +50,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
           className="border-border flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-sm border"
           fallbackClassName={`text-white ${toneFill(name)}`}
         >
-          <Box className="size-[26px]" />
+          <Box className="size-5" />
         </ImageTile>
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-center gap-2 [&_.animate-spin]:size-3.5">

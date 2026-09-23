@@ -94,7 +94,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
         </div>}
         {data.sources.length === 0
           ? <div className="border-divider flex flex-col items-center gap-2.5 border-t px-6 py-10 text-center">
-              <span className="bg-foreground/4 flex size-9 items-center justify-center rounded-lg text-neutral-600"><FileJson2 className="size-[18px]" aria-hidden /></span>
+              <span className="bg-foreground/4 flex size-9 items-center justify-center rounded-lg text-neutral-600"><FileJson2 className="size-5" aria-hidden /></span>
               <span className="text-base font-medium">{m.sources.emptyTitle}</span>
               <span className="text-muted-foreground max-w-[460px] text-xs leading-[1.7]">{canEdit ? m.sources.emptyOwner : m.sources.emptyEditor}</span>
             </div>

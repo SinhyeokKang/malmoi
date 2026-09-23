@@ -256,11 +256,11 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
             return <tr key={`${row.keyId}:${row.localeCode}`}>
               {/* ⚠️ **`rowSpan`이 병합을 든다** — 테두리를 지워 병합처럼 보이게 하면 낭독에는 빈 칸이 하나 더 생긴다. */}
               {row.keySpan > 0 && <td rowSpan={row.keySpan} className="border-divider w-[220px] border-t border-r px-3.5 py-[11px] align-top">
-                <span className="block truncate text-[12px]"><span className="text-muted-foreground">{namespace}</span>{row.key.slice(namespace.length)}</span>
+                <span className="block truncate text-xs"><span className="text-muted-foreground">{namespace}</span>{row.key.slice(namespace.length)}</span>
               </td>}
               <td className="border-divider w-[84px] border-t border-r px-3 py-[11px] align-top">
                 <span className="flex items-start gap-2">
-                  {flag !== null && <img src={`/flags/${flag}.svg`} alt="" className="mt-[5px] h-[11px] w-4 shrink-0 rounded-[2px] shadow-[0_0_0_1px_rgba(10,10,10,0.06)]" />}
+                  {flag !== null && <img src={`/flags/${flag}.svg`} alt="" className="mt-[5px] h-[11px] w-4 shrink-0 rounded-xs ring-1 ring-foreground/6" />}
                   <span className="text-xs leading-5 font-medium">{row.localeCode}</span>
                 </span>
               </td>
@@ -271,7 +271,7 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
                     <DiffLine sign="+" parts={diff.after} />
                   </span>
                   {/* ⚠️ 시안은 `#a3a3a3`이지만 그 색은 **본문 금지**다 — 흰 배경 2.6:1로 §7의 3:1 하한을 못 넘고, 저자 이름은 옆의 값이 뜻을 완성해 주지 않는다 (DESIGN §6.2). */}
-                  <span className="text-muted-foreground shrink-0 text-[12px] leading-5">{row.author}</span>
+                  <span className="text-muted-foreground shrink-0 text-xs leading-5">{row.author}</span>
                 </span>
               </td>
             </tr>;
@@ -370,7 +370,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         <NoticeSkeleton />
         <TableShell>
           <table className="w-full table-fixed border-separate border-spacing-0"><TableHead /></table>
-          <div className="bg-muted min-h-0 flex-1 animate-pulse" />
+          <Skeleton className="min-h-0 flex-1 rounded-none" />
         </TableShell>
       </>;
       break;

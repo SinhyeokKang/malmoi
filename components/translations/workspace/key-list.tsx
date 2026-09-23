@@ -37,14 +37,14 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-[53px] shrink-0 items-center gap-2 px-4">
         {treeButton !== undefined && (
-          <Button size="sm" aria-label={m.translations.workspace.tree.open} aria-expanded={treeButton.open} aria-controls={treeButton.open ? treeButton.controls : undefined} onClick={treeButton.onToggle} className="size-7 rounded-[10px] p-0">
+          <Button size="sm" aria-label={m.translations.workspace.tree.open} aria-expanded={treeButton.open} aria-controls={treeButton.open ? treeButton.controls : undefined} onClick={treeButton.onToggle} className="size-7 p-0">
             <PanelLeftOpen className="size-3.5 text-neutral-600" aria-hidden />
           </Button>
         )}
-        <h2 id={headingId} className="text-[15px] font-medium tracking-[0.015em]">{title}</h2>
+        <h2 id={headingId} className="text-base font-medium">{title}</h2>
         <Badge variant="neutral">{count.toLocaleString("en-US")}</Badge>
         {treeButton !== undefined && <span className="min-w-0 truncate">{treeButton.breadcrumb}</span>}
-        <span className="text-muted-foreground ml-auto shrink-0 text-xs tracking-[0.02em]">
+        <span className="text-muted-foreground ml-auto shrink-0 text-xs">
           {savedExtra > 0 && <>{w.savedExtra(savedExtra)} · </>}{w.incompleteFirst}
         </span>
       </div>
@@ -61,16 +61,16 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
                 className={cn("flex items-start gap-3 border-t px-4 py-3", index === 0 ? "border-divider" : "border-border")}
               >
                 <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-                  <span className={cn("text-sm leading-[1.45] tracking-[0.015em]", savedOut && "text-muted-foreground line-through")}>{row.sourceText}</span>
+                  <span className={cn("text-sm leading-[1.45]", savedOut && "text-muted-foreground line-through")}>{row.sourceText}</span>
                   <span className="flex flex-wrap items-center gap-1.5">
                     <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
                       {showSource ? `${row.surfaceSlug} · ${row.key}` : row.key}
                     </span>
                     {row.hasPending && <Pill>{w.notSent}</Pill>}
-                    {row.hasReview && <span className="text-xs tracking-[0.02em] text-amber-700">{w.needsReview}</span>}
+                    {row.hasReview && <span className="text-xs text-amber-700">{w.needsReview}</span>}
                   </span>
                 </span>
-                <span className={cn("shrink-0 text-xs tracking-[0.02em]", savedOut ? "text-muted-foreground" : row.missingCount > 0 ? "text-amber-700" : "text-muted-foreground")}>
+                <span className={cn("shrink-0 text-xs", savedOut ? "text-muted-foreground" : row.missingCount > 0 ? "text-amber-700" : "text-muted-foreground")}>
                   {savedOut ? w.saved : row.missingCount > 0 ? w.missing(row.missingCount) : w.complete}
                 </span>
               </ListItemButton>
@@ -87,7 +87,7 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
   );
 }
 
-/** `Not sent` 알약 — 테두리 `#e5e5e5` · 글자 `#525252` · 12px(README §5). */
+/** `Not sent` 알약 — 테두리 `#e5e5e5` · 글자 `#525252`. ⚠️ 시안은 12px인데 스케일에 12가 없어 `text-xs`(13)다 (audit #45 · DESIGN §4). */
 export function Pill({ children }: { children: ReactNode }) {
-  return <span className="border-border inline-flex shrink-0 items-center rounded-full border px-[7px] py-px text-[12px] tracking-[0.02em] whitespace-nowrap text-neutral-600">{children}</span>;
+  return <span className="border-border inline-flex shrink-0 items-center rounded-full border px-[7px] py-px text-xs whitespace-nowrap text-neutral-600">{children}</span>;
 }

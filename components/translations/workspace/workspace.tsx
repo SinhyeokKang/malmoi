@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownToLine, Languages, Loader2 } from "lucide-react";
+import { ArrowDownToLine, Languages, Loader2, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 
@@ -470,7 +470,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             ]}
             onSelect={value => filter({ scope: value as TranslationQuery["scope"] })}
           />
-          {narrowed && <Button variant="ghost" onClick={() => filter({}, "clear")}>{w.filters.clear}</Button>}
+          {narrowed && <Button variant="ghost" onClick={() => filter({}, "clear")}><RotateCcw aria-hidden />{w.filters.clear}</Button>}
           {noKeys && <span className="text-muted-foreground text-xs">{w.filters.nothingToFilter}</span>}
           <SearchInput className="ml-auto" inputClassName="w-80" value={query.q} label={w.filters.search} onSearch={q => filter({ q: q === "" ? undefined : q }, "search")} />
         </div>
@@ -597,10 +597,10 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
             세로로 묶는 래퍼가 결과 아래에 쌓이는 자리를 지킨다. */}
         <span className="flex min-w-0 flex-col">
           <span ref={resultRef} tabIndex={-1} data-footer-result="true" aria-live="polite"
-            className={cn("min-w-0 text-xs tracking-[0.02em] focus:outline-none", dirty > 0 ? "text-amber-700" : "text-muted-foreground")}>
+            className={cn("min-w-0 text-xs focus:outline-none", dirty > 0 ? "text-amber-700" : "text-muted-foreground")}>
             {text}
           </span>
-          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs tracking-[0.02em]">{REVERT_REASONS[revertBlocked]()}</span>}
+          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{REVERT_REASONS[revertBlocked]()}</span>}
         </span>
         <span className="ml-auto inline-flex items-center gap-2">
           {hasPending && (

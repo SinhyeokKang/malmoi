@@ -247,8 +247,8 @@ export function InviteModal({
       description={m.members.invite.description}
       bodyScroll="hidden"
       footer={
-        /* ⚠️ 껍데기 바닥은 12px이지만 이 모달은 캔버스가 13/1.6이다 — 상태 문장이 두 줄로 길어지는 유일한 바닥이다. */
-        <span data-invite-status aria-live="polite" className="text-[13px]">
+        /* 껍데기 바닥이 이미 13/1.6(`text-xs leading-[1.6]`)이라 크기를 다시 적지 않는다 — 상태 문장이 두 줄로 길어지는 유일한 바닥이다. */
+        <span data-invite-status aria-live="polite">
           {status}
         </span>
       }
@@ -283,7 +283,7 @@ export function InviteModal({
         )}
 
         {/* 열 머리 — 행과 같은 그리드다(오른쪽 44 = 제거 36 + 갭 8). */}
-        <div aria-hidden className="text-muted-foreground flex shrink-0 gap-2 pr-11 text-[13px]">
+        <div aria-hidden className="text-muted-foreground flex shrink-0 gap-2 pr-11 text-xs leading-normal">
           <span className="min-w-0 flex-1">{m.members.invite.columns.email}</span>
           <span className="w-[168px] shrink-0">{m.members.invite.columns.role}</span>
         </div>
@@ -356,7 +356,7 @@ export function InviteModal({
                 </div>
                 {error !== undefined && (
                   /* 오른쪽 44는 열 머리와 같은 그리드다 — 사유가 역할 칸 아래로 번지지 않는다. */
-                  <p id={reasonId} data-row-reason className="text-destructive flex items-center gap-2 pr-11 text-[13px] leading-[1.6]">
+                  <p id={reasonId} data-row-reason className="text-destructive flex items-center gap-2 pr-11 text-xs leading-[1.6]">
                     <CircleX aria-hidden className="size-3.5 shrink-0" />
                     <span>{error}</span>
                   </p>
