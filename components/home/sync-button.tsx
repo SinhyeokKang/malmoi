@@ -47,7 +47,8 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
   const describedId = useId();
   const warningId = useId();
   const [pending, setPending] = useState(false);
-  const [openPr, setOpenPr] = useState<OpenImportPr>(undefined);
+  /** ⚠️ **`"checking"`을 `undefined`(실패)로 접지 않는다** (malmoi#75) — 조회 중과 조회 실패는 다른 줄이다. */
+  const [openPr, setOpenPr] = useState<OpenImportPr | "checking">("checking");
   /**
    * 폐기 승인 지문 — Dialog가 열릴 때마다 새로 받는다 (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). 서버가 잠금 뒤 재계산해 대조하므로
    * 여기서 낡아도 편집이 사라지지 않고 reconfirm이 된다. 받기 전이거나 실패면 `null`로 보낸다.
@@ -57,7 +58,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
   const busy = useRef(false);
   useEffect(() => {
     const id = ++request.current;
-    setOpenPr(undefined);
+    setOpenPr("checking");
     if (!open || role !== "OWNER" || paused) return;
     if (busy.current) { onOpenChange(false); return; }
     approval.current = null;
@@ -77,7 +78,9 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     근원에서 파생되므로 두 벌이 어긋날 자리가 없다.
   */
   useEffect(() => { onPendingChange?.(pending); }, [pending]); // onPendingChange의 참조 변경은 트리거가 아니다.
-  const plan = planImportConfirmation({ unsent, openPr });
+  // 조회 중은 계획에서 미확인과 같다 — 둘 다 "열린 PR이 없다"를 모르므로 블록이 선다.
+  const plan = planImportConfirmation({ unsent, openPr: openPr === "checking" ? undefined : openPr });
+  const pr = plan.openPr;
   function changeOpen(next: boolean) {
     if (next && busy.current) return;
     onOpenChange(next);
@@ -188,9 +191,11 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
           */}
           <div aria-live="polite" className="min-w-0 flex-1 space-y-1.5">
             {plan.recommendSend && <p>{m.repositorySync.unsent(unsent, <span className="font-medium">{m.repositorySync.unsentCount(unsent)}</span>)}</p>}
-            {openPr === undefined
-              ? <p>{m.repositorySync.prUnknown}</p>
-              : openPr !== null ? <p>{m.repositorySync.openPr(openPr.number, branch)}</p> : null}
+            {openPr === "checking"
+              ? <p>{m.repositorySync.prChecking}</p>
+              : pr === undefined
+                ? <p>{m.repositorySync.prUnknown}</p>
+                : pr !== null ? <p>{m.repositorySync.openPr(pr.number, branch)}</p> : null}
           </div>
         </div>
         {/*
@@ -203,9 +208,9 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
           ? <p className="text-muted-foreground">{m.repositorySync.sendHint(
               <Link href={routes.translations(slug)} className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">{m.repositorySync.sendFirst}</Link>,
             )}</p>
-          : openPr !== undefined && openPr !== null
+          : pr !== undefined && pr !== null
             ? <p className="text-muted-foreground">{m.repositorySync.nothingUnsent}{" "}
-                <a href={openPr.url} target="_blank" rel="noreferrer" className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">
+                <a href={pr.url} target="_blank" rel="noreferrer" className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">
                   {m.repositorySync.seeOpen}
                 </a></p>
             : null}

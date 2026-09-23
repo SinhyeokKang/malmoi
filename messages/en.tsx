@@ -71,11 +71,15 @@ export const en = {
     openPr: (n: number, branch: string): string =>
       `Edits in pull request #${n} are not in ${branch} yet — they will be replaced too.`,
     /**
-     * ⚠️ **조회 시작부터 선다** — `undefined`가 초기값이자 실패값이라 화면은 "조회 중"과 "조회 실패"를
-     * 구별하지 않는다. 성공한 조회가 `null`을 줄 때만 사라지므로 **블록은 줄어드는 방향**이다:
+     * ⚠️ **조회 중 자리이고 `prUnknown`으로 대신하지 않는다** (malmoi#75 — Publish의 malmoi#49와 같은
+     * 부류). 그 문장은 조회가 **실패했다**는 말이라, 로딩에 세우면 몇 초 동안 일어나지 않은 실패를 읽힌다.
+     * 블록은 조회 시작부터 선다 — 성공한 조회가 `null`을 줄 때만 사라지므로 **블록은 줄어드는 방향**이다:
      * 반대로 두면 미발송 0 + 조회 중이 `4a`와 픽셀 단위로 같아져 경고를 한 번도 못 본 채 실행된다.
-     * ⚠️ 확인된 경고와 **같은 amber**에 둔다 — muted 한 줄이면 부재(줄이 서지 않는 것)와 같은
-     * 신호로 읽힌다 (POSTMORTEM 2026-09-03).
+     */
+    prChecking: "Checking whether anything is still waiting in a pull request…",
+    /**
+     * 조회 **실패** 전용이다. ⚠️ 확인된 경고와 **같은 amber**에 둔다 — muted 한 줄이면 부재(줄이 서지
+     * 않는 것)와 같은 신호로 읽힌다 (POSTMORTEM 2026-09-03).
      */
     prUnknown: "We couldn't check whether anything is still waiting in a pull request.",
     /** ⚠️ 라벨이 `Send changes first`로 고정이다 — 그 화면의 실제 버튼 이름이 `Send changes`다. */

@@ -92,10 +92,16 @@ it("실행 중 트리거는 포커스를 받고 클릭과 Enter 연타를 막는
   expect(trigger.textContent?.trim()).toBe("Sync");
 });
 
-it("PR은 조회 즉시 미확인이며 성공 null만 경고를 지운다", async () => {
+/**
+ * ⚠️ **조회 중을 실패 문장으로 말하지 않는다** (malmoi#75). 블록은 조회 시작부터 서지만 그 줄은
+ * "확인 중"이고, "couldn't check"는 조회가 실제로 실패했을 때만 선다.
+ */
+it("PR 조회 중에는 확인 중 줄이 서고 성공 null만 경고를 지운다", async () => {
   const pr = deferred<null>(); mocks.pr.mockReturnValue(pr.promise);
   await render(<SyncButton {...props} />); expect(mocks.pr).not.toHaveBeenCalled(); await click("Sync");
-  expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain("couldn't check");
+  const live = document.querySelector('[aria-live="polite"]')?.textContent ?? "";
+  expect(live).toContain("Checking whether anything is still waiting");
+  expect(live).not.toContain("couldn't check");
   await act(async () => pr.resolve(null));
   expect(dialog()?.textContent).not.toContain("couldn't check");
   expect(dialog()?.querySelector('[aria-live="polite"]')).toBeNull();
