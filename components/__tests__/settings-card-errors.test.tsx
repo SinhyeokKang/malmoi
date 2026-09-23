@@ -14,6 +14,11 @@ it.each(['repository', 'token'])('%s failures use the full-width card notice', a
   const label = kind === 'repository' ? 'Connect' : 'Rotate token';
   const button = [...container.querySelectorAll('button')].find(b => b.textContent === label)!;
   await act(async () => { await userEvent.setup().click(button); });
+  // 토큰 회전은 확인을 한 번 받는다 (audit #19) — 확정 버튼은 Portal 안이다.
+  if (kind === 'token') {
+    const confirm = [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find(b => b.textContent === 'Rotate and show new token')!;
+    await act(async () => { await userEvent.setup().click(confirm); });
+  }
   const alert = container.querySelector('[role="alert"]')!;
   expect(alert).not.toBeNull();
   expect(alert.className).toContain('rounded-none');

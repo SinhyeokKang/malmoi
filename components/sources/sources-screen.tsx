@@ -35,6 +35,8 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<DetailState>({ status: "loading" });
   const [busy, setBusy] = useState(false);
+  /** `busy`의 **까닭** — 푸터 문장이 그것으로 갈린다 (audit #31: 첫 Sync 중에 "Saving…"이라고 말했다). */
+  const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -125,9 +127,9 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
       </PanelCard>
     </PanelBody>
     {canEdit && data.repository && <AddSourcesModal open={adding} onClose={closeAdd} onAdded={added => { const summary = summarizeAddResults(added); setResult({ tone: summary.tone, added }); router.refresh(); }} returnFocusRef={trigger} slug={slug} owner={data.repository.repoOwner} repo={data.repository.repoName} branch={data.repository.baseBranch} existing={data.sources.map(source => ({ pathTemplate: source.connection?.pathTemplate ?? null }))} adapters={adapters} />}
-    <SourceDetailModal slug={slug} sourceSlug={selected} role={role} state={detail} now={now} importResult={result?.source === selected && result?.text ? { text: result.text, tone: result.tone } : undefined} busy={busy} onBusy={setBusy} onClose={close} onReload={reload} onSaved={reload} returnFocusRef={returnFocus} fallbackFocusRef={heading} onImport={() => {
+    <SourceDetailModal slug={slug} sourceSlug={selected} role={role} state={detail} now={now} importResult={result?.source === selected && result?.text ? { text: result.text, tone: result.tone } : undefined} busy={busy} importing={importing} onBusy={setBusy} onClose={close} onReload={reload} onSaved={reload} returnFocusRef={returnFocus} fallbackFocusRef={heading} onImport={() => {
       if (!selected || busy) return;
-      const surfaceSlug = selected; setBusy(true);
+      const surfaceSlug = selected; setBusy(true); setImporting(true);
       void (async () => {
         try {
           const outcome = await runFirstIngest({ slug, surfaceSlug });
@@ -140,7 +142,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           void load(surfaceSlug, true);
           if (outcome.ok) router.refresh();
         } catch { setResult({ tone: "danger", text: m.settings.status.failed, source: surfaceSlug }); }
-        finally { setBusy(false); }
+        finally { setBusy(false); setImporting(false); }
       })();
     }} />
   </div>;

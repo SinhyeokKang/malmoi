@@ -49,7 +49,7 @@ it("조용한 갈래는 제목과 설명문뿐이고 포커스가 Cancel에 선�
   await click("Sync");
   await vi.waitFor(() => expect(document.activeElement).toBe(button("Cancel")));
   expect(dialog()?.textContent).toContain("Sync malmoi web from the repository?");
-  expect(dialog()?.textContent).toContain("locale files on main");
+  expect(dialog()?.textContent).toContain("translation files on main");
   expect(dialog()?.querySelector('[aria-live="polite"]')).toBeNull();
   expect(button("Sync from repository").className).toContain("text-destructive");
 });
@@ -76,7 +76,7 @@ it("확인 Dialog의 접근 가능한 설명이 경고 블록까지 든다", asy
   await click("Sync");
   await vi.waitFor(() => expect((dialog()?.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean)).toHaveLength(1));
   const only = dialog()?.getAttribute("aria-describedby") ?? "";
-  expect(document.getElementById(only)?.textContent).toContain("locale files on main");
+  expect(document.getElementById(only)?.textContent).toContain("translation files on main");
 });
 
 it("실행 중 트리거는 포커스를 받고 클릭과 Enter 연타를 막는다", async () => {

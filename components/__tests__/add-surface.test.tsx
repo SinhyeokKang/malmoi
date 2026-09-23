@@ -59,7 +59,7 @@ it("추가 결과는 새 토큰 없이 기존 workflow step과 부분 실패를 
 
 it("없는 표면의 404는 제품 안내와 돌아갈 링크를 제공한다", async () => {
   const { container } = await render(<NotFound />);
-  expect(container.textContent).toContain("Translation surface");
+  expect(container.textContent).toContain("Source unavailable");
   expect(container.querySelector('a[href="/projects"]')).not.toBeNull();
 });
 

@@ -233,7 +233,7 @@ it("④는 모든 적재가 끝난 결과와 토큰을 보존하고 추가 적�
   await naming();
   await click(button("Create project"));
   expect(document.body.textContent).toContain("test-token");
-  expect(document.body.textContent).toContain("Imported 2 keys.");
+  expect(document.body.textContent).toContain("Synced 2 keys.");
   expect(document.body.textContent).toContain("server-workflow");
   expect(button("Start translating").disabled).toBe(false);
   expect(mocks.runFirstIngest).not.toHaveBeenCalled();
@@ -624,7 +624,7 @@ it("체크와 상세는 형제이며 리스트 시맨틱과 독립 동작을 보
   expect(checkbox.closest("label")).toBeNull();
   const list = checkbox.closest("ul"); expect(list).not.toBeNull();
   expect(list?.getAttribute("role")).toBeNull();
-  expect(list?.getAttribute("aria-label")).toBe("Locale file candidates");
+  expect(list?.getAttribute("aria-label")).toBe("Translation file candidates");
   expect(document.body.querySelector('button button, label button button')).toBeNull();
   await click(include("other/{locale}.json"));
   expect(checkbox.getAttribute("aria-checked")).toBe("true");
@@ -714,7 +714,7 @@ it("두 표면 완료 응답까지 ③에 머문 뒤 서버 YAML과 합산 결�
   await act(async () => pending.resolve({ ok: true, slug: "acme-web", pushToken: "saved-token", baseBranch: "main", count: 4,
     surfaces: [{ surfaceSlug: "i18n" }, { surfaceSlug: "other" }], yaml: "surface: i18n\nsurface: other\n" }));
   expect(document.body.textContent).toContain("Step 4 of 4");
-  expect(document.body.textContent).toContain("Imported 4 keys.");
+  expect(document.body.textContent).toContain("Synced 4 keys.");
   expect(document.body.textContent).toContain("saved-token");
   expect(document.body.querySelector("pre")?.textContent?.match(/surface:/g)).toHaveLength(2);
   expect(mocks.runFirstIngest).not.toHaveBeenCalled(); expect(mocks.createProject).toHaveBeenCalledTimes(1);
@@ -823,7 +823,7 @@ it.each(["no-installations", "no-repos"])("① D 대기(%s): 설치 제목 0회 
   expect(document.body.textContent).toContain("Waiting for approval");
   expect(count(INSTALL_TITLE)).toBe(0);
   expect(maybeButton("Install GitHub App")).toBeNull();
-  expect(maybeButton("Check again")).not.toBeNull();
+  expect(maybeButton("Try again")).not.toBeNull();
   expect(maybeButton("Install on a different account")).not.toBeNull();
   // 거부가 아니라 대기다 — 실패 배너로 서지 않는다.
   expect(document.body.querySelector('[role="alert"]')).toBeNull();
@@ -832,7 +832,7 @@ it.each(["no-installations", "no-repos"])("① D 대기(%s): 설치 제목 0회 
 it("① D: [Check again]은 목록을 다시 읽고, 아직이면 대기 중임을 알린다", async () => {
   await blocked("no-installations", { pending: true });
 
-  await click(button("Check again"));
+  await click(button("Try again"));
 
   expect(mocks.router.refresh).toHaveBeenCalledTimes(1);
   expect(find(document.body, '[aria-live="polite"]').textContent).toContain("Still waiting for approval.");
@@ -845,8 +845,8 @@ it("① D: 두 번째 [Check again]도 다시 알린다 — 같은 문장이라 
   const observer = new MutationObserver(() => { if (region.textContent?.includes("Still waiting for approval.")) announced += 1; });
   observer.observe(region, { childList: true, characterData: true, subtree: true });
 
-  await click(button("Check again"));
-  await click(button("Check again"));
+  await click(button("Try again"));
+  await click(button("Try again"));
   observer.disconnect();
 
   expect(announced).toBeGreaterThanOrEqual(2);
@@ -854,7 +854,7 @@ it("① D: 두 번째 [Check again]도 다시 알린다 — 같은 문장이라 
 
 it("① D: 승인돼 목록이 서면 포커스가 검색 필드로 간다 — 버튼 언마운트로 body에 떨어지지 않게", async () => {
   const view = await blocked("no-installations", { pending: true });
-  await click(button("Check again"));
+  await click(button("Try again"));
 
   await view.rerender(<NewProject repos={repos} listError={undefined} installUrl={SETTINGS} pending={false}
     now="2026-09-13T00:00:00Z" initialError={undefined} backQuery={{ q: "format" }} closeMode="list" adapters={[]} />);
@@ -918,7 +918,7 @@ describe("① GITHUB_APP_SLUG 없음 — 항상 실패하는 설치 버튼을 �
     await blocked("no-installations", { installUrl: null, pending: true });
 
     expect(maybeButton("Install on a different account")).toBeNull();
-    expect(maybeButton("Check again")).not.toBeNull();
+    expect(maybeButton("Try again")).not.toBeNull();
   });
 });
 

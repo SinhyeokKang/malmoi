@@ -29,6 +29,11 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   const [detectError, setDetectError] = useState<string>();
   const [error, setError] = useState<string>();
   const [unknown, setUnknown] = useState(false);
+  /**
+   * 수동 경로 확인의 거부 (audit #23). ⚠️ **`error`와 가른다** — 그쪽 Alert는 "Nothing was added. Your selection is still
+   * here."로 시작하는데, 확인은 추가가 아니고 선택을 건드리지도 않는다. 같은 칸에 두면 일어나지 않은 실패를 읽힌다.
+   */
+  const [manualError, setManualError] = useState<string>();
   const [conflicts, setConflicts] = useState<{ path: string; surfaceSlugs: string[] }[]>([]);
   const [manual, setManual] = useState<ManualEntry>({ adapter: adapters[0]?.adapter ?? "json-catalog", pathTemplate: "", baseLocale: "" });
   const [pending, run] = useTransition();
@@ -61,7 +66,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     return () => { active = false; };
   }, [open, candidate, locale, owner, repo, branch]);
 
-  const connect = [error, detectError].find(e => e === "reauthorize" || e === "not-connected");
+  const connect = [error, detectError, manualError].find(e => e === "reauthorize" || e === "not-connected");
   return <OnboardingModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}
     title={m.settings.sources.add} description={m.settings.sources.description} bodyScroll="hidden"
     panelClassName="[&_.animate-spin]:size-3.5 h-[min(680px,calc(100svh-96px))] min-h-0" actions={<>
@@ -69,7 +74,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
       <Button size="lg" data-add-sources variant="primary" loading={pending} aria-busy={pending} disabled={detecting || !!detectError || selection.formats.length === 0 || selection.conflicts.length > 0 || selection.formats.some(f => !f.baseLocale)} aria-describedby="add-source-help" onClick={() => {
         const plan = planAddSources({ picked: candidates.filter((_, i) => checked.has(i)), existing });
         if (!plan.ok || plan.add.length === 0 || pending) return;
-        setError(undefined); setUnknown(false); setConflicts([]);
+        setError(undefined); setManualError(undefined); setUnknown(false); setConflicts([]);
         run(async () => {
           try {
             const result = await addSurfaces({ slug, picks: plan.add.map(c => ({ adapter: c.adapter, pathTemplate: c.pathTemplate, baseLocale: bases[candidates.indexOf(c)] ?? c.baseLocale })) });
@@ -77,9 +82,10 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
             else { setError(result.error); setConflicts(result.conflicts ?? []); }
           } catch { setUnknown(true); }
         });
-      }}>{m.settings.sources.add}</Button>
+      }}>{m.settings.sources.confirm}</Button>
     </>} footer={<span id="add-source-help" className="text-muted-foreground text-xs">{m.settings.sources.selectHelp}</span>}>
     {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}</Alert>}
+    {manualError && <Alert variant="danger">{failureText(manualError)}</Alert>}
     {unknown && <Alert variant="warning">{m.settings.sources.unknown}</Alert>}
     {connect && <Button disabled={pending} onClick={() => run(async () => { const result = await startGithubConnect({ slug, returnTo: "add-surface" }); if (!result.ok) setError(result.error); })}>{connect === "reauthorize" ? m.newProject.empty.connect.reauthorize : m.newProject.empty.connect.action}</Button>}
     <div className="flex min-h-0 flex-1">
@@ -90,17 +96,17 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     </div>
     <div className="flex shrink-0 items-center gap-3">
       {picked === null && !detecting && <Button loading={pending} aria-busy={pending} disabled={!manual.pathTemplate.trim() || !manual.baseLocale.trim()} onClick={() => run(async () => {
-        setError(undefined);
+        setManualError(undefined);
         try {
           const result = await confirmManualFormat({ owner, repo, ref: branch, ...manual });
-          if (!result.ok) { setError(result.error); return; }
+          if (!result.ok) { setManualError(result.error); return; }
           const found = candidates.findIndex(c => c.pathTemplate === result.candidate.pathTemplate);
           const index = found < 0 ? candidates.length : found;
           if (found < 0) setCandidates([...candidates, result.candidate]);
           else if (!locked.has(found)) setCandidates(candidates.map((candidate, i) => i === found ? result.candidate : candidate));
           setPicked(index); setLocale(result.candidate.baseLocale); setBases(previous => ({ ...previous, [index]: result.candidate.baseLocale }));
           setChecked(previous => new Set([...previous, index]));
-        } catch { setError("unavailable"); }
+        } catch { setManualError("unavailable"); }
       })}>{m.surfaces.confirm}</Button>}
       {candidate && <><span className="text-muted-foreground text-xs">{m.surfaces.baseLocale}</span><Select disabled={pending || locked.has(picked!)} value={bases[picked!] ?? candidate.baseLocale} onValueChange={value => { if (!pending && !locked.has(picked!)) setBases(previous => ({ ...previous, [picked!]: value })); }}>
         <SelectTrigger className="w-40" aria-label={m.surfaces.baseLocale}><SelectValue /></SelectTrigger>

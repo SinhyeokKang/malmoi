@@ -70,6 +70,11 @@ export function MemberList({
   const [failed, setFailed] = useState<{ userId: string; error: string | null; removal: boolean } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  /**
+   * 확인을 기다리는 역할 변경 (audit #20). ⚠️ **셀렉트 값은 그동안 그대로다** — `value`가 서버 값(`member.role`)에
+   * 묶여 있어 취소가 되돌릴 것이 없다. 같은 화면의 Remove가 이미 확인을 받는데 강등(자기 강등 포함)만 한 번에 썼다.
+   */
+  const [roleChange, setRoleChange] = useState<{ userId: string; who: string; next: Role } | null>(null);
   const [, startTransition] = useTransition();
 
   /**
@@ -173,7 +178,7 @@ export function MemberList({
                           who={who}
                           pending={pending}
                           describedBy={blocked ? describedBy : undefined}
-                          onChange={(next) => apply(member.userId, next, who)}
+                          onChange={(next) => setRoleChange({ userId: member.userId, who, next })}
                         />
                         <RemoveButton
                           id={`remove-${member.userId}`}
@@ -194,7 +199,7 @@ export function MemberList({
                           ? m.members.changeUnconfirmed
                           : isAccessError(failed.error)
                             ? accessErrorMessage(failed.error)
-                            : m.members.changeFailed(failed.error)}
+                            : m.members.changeFailed}
                       </Alert>
                     ) : null
                   }
@@ -204,6 +209,26 @@ export function MemberList({
           })}
         </RowCardList>
       </RowCard>
+      <Dialog open={roleChange !== null} onOpenChange={(open) => { if (!open) setRoleChange(null); }}>
+        {roleChange !== null && (
+          <DialogContent
+            title={m.members.confirmRole(roleChange.who, m.projects.role[roleChange.next])}
+            description={roleChange.userId === viewerId && roleChange.next !== "OWNER" ? m.members.confirmSelfDemote : m.members.confirmRoleHint}
+            footer={
+              <>
+                <DialogClose asChild>
+                  <Button variant="default">{m.members.cancel}</Button>
+                </DialogClose>
+                <DialogClose asChild>
+                  <Button variant="primary" onClick={() => apply(roleChange.userId, roleChange.next, roleChange.who)}>
+                    {m.members.confirmRoleAction}
+                  </Button>
+                </DialogClose>
+              </>
+            }
+          />
+        )}
+      </Dialog>
     </>
   );
 }

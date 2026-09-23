@@ -129,7 +129,7 @@ describe("ingestHeadline — 불변식 9: 0건이 아니면 성공 문구를 그
   it("실패 0이면 성공 문구다", () => {
     const text = ingestHeadline(12, 0);
     expect(text).toContain("12");
-    expect(text).toMatch(/^Imported/);
+    expect(text).toMatch(/^Synced/);
     expect(text).not.toMatch(/couldn't be read/i);
   });
 

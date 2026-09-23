@@ -45,9 +45,9 @@ it("keeps unreadable and unapplied surfaces distinct with original diagnostics",
   ] }} />);
   expect(container.querySelector('[role="status"]')).not.toBeNull();
   // ⚠️ 사고가 붙는 헤드라인에는 브랜치가 없다 (시안 `4e`) — 절이 셋이 되면 사고가 뒤로 밀린다.
-  expect(container.textContent).toContain("Synced 4 keys, but 1 surface could not be read");
+  expect(container.textContent).toContain("Synced 4 keys, but 1 source could not be read");
   expect(container.textContent).not.toContain("keys from main");
-  expect(container.textContent).toContain("2 surfaces were not replaced");
+  expect(container.textContent).toContain("2 sources were not replaced");
   // 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (DESIGN §6.644) — 성공한 `web`은 서지 않는다.
   for (const text of ["ci", "format", "broken", "locales/ko.json"]) expect(container.textContent).toContain(text);
   expect(container.querySelector('[role="status"] [data-surface]')?.textContent).toBe("broken");
@@ -71,7 +71,7 @@ it("전 표면 실패는 성공 절을 앞에 두지 않는다", async () => {
 it("포맷 누락은 표면별 결과이고 재시도가 없다", async () => {
   const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [row("web", "failed", "invalid-format")] }} />);
   expect(container.textContent).not.toContain("could not be read");
-  expect(container.textContent).toContain("This surface has no valid import format.");
+  expect(container.textContent).toContain("This source has no valid file format.");
   expect([...container.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(false);
 });
 
@@ -138,7 +138,7 @@ it("superseded는 사유가 있으므로 원인 줄이 그대로 선다", async 
   const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [
     { ...row("i18n", "imported", null), count: 9 }, row("locales", "superseded", "superseded"),
   ] }} />);
-  expect(container.textContent).toContain("Synced 9 keys, but 1 surface was not replaced");
+  expect(container.textContent).toContain("Synced 9 keys, but 1 source was not replaced");
   expect(container.querySelector('[data-reason="superseded"]')?.textContent).toContain("New repository data arrived while syncing");
   expect(container.querySelector('[role="status"] [data-surface]')?.textContent).toBe("locales");
 });

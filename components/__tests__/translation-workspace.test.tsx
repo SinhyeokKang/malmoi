@@ -148,7 +148,7 @@ it("EDITOR에게 Revert와 Sync는 숨기지 않고 꺼진 채 사유를 붙인�
   const { container } = await render(<TranslationWorkspace {...props({ role: "EDITOR" })} />);
   const revert = button("Revert to last sent");
   expect(revert.getAttribute("aria-disabled")).toBe("true");
-  expect(container.textContent).toContain("Only the project owner can revert to a sent version.");
+  expect(container.textContent).toContain("Only project owners can revert to a sent version.");
   expect(button("Sync").getAttribute("aria-disabled")).toBe("true");
 });
 
@@ -173,7 +173,7 @@ it("OWNER의 Revert는 미리보기 확인창을 거쳐 발급된 지문으로 �
 it("Revert 사유는 describedby로만 닿고 결과 줄의 낭독에 섞이지 않는다", async () => {
   await render(<TranslationWorkspace {...props({ role: "EDITOR" })} />);
   const reason = document.getElementById(button("Revert to last sent").getAttribute("aria-describedby") ?? "");
-  expect(reason?.textContent).toBe("Only the project owner can revert to a sent version.");
+  expect(reason?.textContent).toBe("Only project owners can revert to a sent version.");
   expect(reason?.closest("[aria-live]")).toBeNull();
 });
 

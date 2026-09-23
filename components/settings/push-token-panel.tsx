@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { rotatePushToken } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
@@ -15,8 +16,9 @@ import { CopyButton } from "@/components/onboarding/copy-button";
 /**
  * push 토큰 재발급 (PRODUCT §7.8). **원문은 이 반환값에만 있다** — 저장되는 것은 해시뿐이다.
  *
- * ⚠️ **경고를 버튼 *위*에 상시로 둔다.** confirm 다이얼로그 전례가 리포에 없어 만들지 않는 대신,
- * 되돌릴 수 없는 결과(옛 토큰 즉시 무효 → 대상 리포 CI가 401)를 누르기 전에 읽게 한다.
+ * ⚠️ **확인을 한 번 받는다** (audit #19) — 옛 토큰이 즉시 무효가 되고(대상 리포 CI가 401) 되돌릴 수 없다.
+ * 상시 경고만으로는 **성공 직후의 재클릭**을 못 막았다: 방금 받아 아직 붙이지 않은 토큰까지 한 번에 죽는다.
+ * 같은 화면의 되돌릴 수 없는 행동(Archive·Remove)이 이미 Dialog를 받는다.
  *
  * ⚠️ **이 블록은 readiness와 무관하다** — 조건부 분기가 없으므로 `revalidatePath`가 결과를 씻지 않는다
  * (POSTMORTEM 2026-09-07).
@@ -34,24 +36,46 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
         <div className="min-w-0 flex-1 space-y-[3px]"><p className="text-base font-medium">{m.settings.token.title}</p><p className="text-muted-foreground text-xs">
           {m.settings.token.description(<span className="text-foreground">PUSH_TOKEN</span>)}
         </p></div>
-      <Button
-        className="[&_.animate-spin]:size-3.5 @max-[640px]:col-start-2 @max-[640px]:justify-self-start"
-        aria-busy={pending}
-        disabled={disabled}
-        loading={pending}
-        onClick={() => {
-          setToken(null);
-          setError(null);
-          startTransition(async () => {
-            const result = await rotatePushToken({ slug });
-            if (result.ok) setToken(result.pushToken);
-            else setError(result.error);
-          });
-        }}
-      >
-        {!pending && <RotateCcw aria-hidden />}
-        {m.settings.token.rotate}
-      </Button>
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button
+            className="[&_.animate-spin]:size-3.5 @max-[640px]:col-start-2 @max-[640px]:justify-self-start"
+            aria-busy={pending}
+            disabled={disabled}
+            loading={pending}
+          >
+            {!pending && <RotateCcw aria-hidden />}
+            {m.settings.token.rotate}
+          </Button>
+        </DialogTrigger>
+        <DialogContent
+          title={m.settings.token.confirmTitle}
+          description={m.settings.token.confirmBody}
+          footer={
+            <>
+              <DialogClose asChild>
+                <Button variant="default">{m.common.cancel}</Button>
+              </DialogClose>
+              <DialogClose asChild>
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    setToken(null);
+                    setError(null);
+                    startTransition(async () => {
+                      const result = await rotatePushToken({ slug });
+                      if (result.ok) setToken(result.pushToken);
+                      else setError(result.error);
+                    });
+                  }}
+                >
+                  {m.settings.token.confirmAction}
+                </Button>
+              </DialogClose>
+            </>
+          }
+        />
+      </Dialog>
       </div>
       {token !== null && (
         <div className="space-y-1">

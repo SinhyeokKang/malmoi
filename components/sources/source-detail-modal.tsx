@@ -27,8 +27,10 @@ import { BaseLanguageForm } from "./base-language-form";
 import { SourceStatus } from "./source-status";
 
 export type DetailState = { status: "loading" } | { status: "failed" | "rejected" } | { status: "ready"; detail: SourceDetail; refreshFailed?: boolean };
-export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, importResult, onBusy, onClose, onReload, onImport, onSaved, returnFocusRef, fallbackFocusRef }: {
+export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, importing = false, importResult, onBusy, onClose, onReload, onImport, onSaved, returnFocusRef, fallbackFocusRef }: {
   slug: string; sourceSlug: string | null; role: Role; state: DetailState; now: Date; busy: boolean;
+  /** `busy`가 첫 Sync 때문인가 — 아니면 기준 언어 저장이다. 푸터가 무엇을 기다리는지 말한다 (audit #31). */
+  importing?: boolean;
   importResult?: { text: string; tone: "success" | "warning" | "danger" };
   onBusy: (busy: boolean) => void; onClose: () => void; onReload: () => void; onImport: () => void; onSaved: () => void;
   returnFocusRef: RefObject<HTMLElement | null>; fallbackFocusRef: RefObject<HTMLElement | null>;
@@ -68,7 +70,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
     headerAction={canOpen && sourceSlug && !busy
       ? <ButtonLink href={routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })); } }}>{m.sources.open}<ArrowRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>
       : detail ? <Button aria-disabled aria-describedby="source-open-reason" onClick={event => event.preventDefault()}>{m.sources.open}<ArrowRight className="text-muted-foreground size-3.5" aria-hidden /></Button> : undefined}
-    actions={<Button size="lg" variant="primary" disabled={busy} onClick={() => leave()}>{m.common.close}</Button>} footer={<span id="source-open-reason" className="text-muted-foreground text-xs">{!canOpen && detail ? (busy ? m.locales.field.saving : disabledReason) : m.sources.readOnlyNote}</span>}>
+    actions={<Button size="lg" variant="primary" disabled={busy} onClick={() => leave()}>{m.common.close}</Button>} footer={<span id="source-open-reason" className="text-muted-foreground text-xs">{!canOpen && detail ? (busy ? importing ? m.settings.sources.importing : m.locales.field.saving : disabledReason) : m.sources.readOnlyNote}</span>}>
     {state.status === "loading" && <div className="space-y-6" aria-label={m.sources.loading}>
       {[1, 2, 3].map(n => <div key={n} className="space-y-3"><Skeleton className="h-4 w-32" /><Skeleton className="h-5 w-64" /></div>)}
       <div className="space-y-3"><Skeleton className="h-4 w-32" />{[1, 2, 3].map(n => <div key={n} data-language-skeleton><Skeleton className="h-10 w-full" /></div>)}</div>

@@ -324,7 +324,12 @@ function Warnings({ warnings }: { warnings: readonly string[] }) {
 function failureText(outcome: Extract<PullOutcome, { status: "failed" }>) {
   if (isAccessError(outcome.error)) return accessErrorMessage(outcome.error);
   if (isOnboardError(outcome.error)) return onboardErrorMessage(outcome.error);
-  return outcome.error === "invalid input" ? accessErrorMessage("forbidden") : outcome.error;
+  /*
+    ⚠️ **코드가 있는 실패만 서버 문장을 그대로 싣는다** — 그 문장은 `runSync`가 고른 safe 메시지다(DESIGN §6.646).
+    코드가 없는 거부의 모르는 문자열은 사람이 읽을 문장이 아니다 (audit #21). `invalid input`은 슬러그가 깨진 것이라
+    권한 없음(`forbidden`)으로 옮기면 오역이었다.
+  */
+  return outcome.code !== undefined ? outcome.error : m.translations.publish.refused;
 }
 
 // 절대 시각은 UTC라고 말한다 — 브라우저 로컬을 라벨 없이 내면 참조 코드로 Logs(UTC)와 대조할 때 어긋나 보인다 (launch-readiness L7.1).

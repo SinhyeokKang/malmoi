@@ -34,6 +34,12 @@ const byLabel = (label: string) => {
   return node;
 };
 async function click(node: HTMLElement) { await act(async () => { await userEvent.setup().click(node); }); }
+/** 철회는 확인을 한 번 받는다 (audit #20) — 확정 버튼은 트리거와 이름이 다르다. */
+async function confirmRevoke() {
+  const confirm = [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find((b) => b.textContent === "Revoke invitation");
+  if (!confirm) throw new Error("Missing confirm");
+  await click(confirm);
+}
 /** 응답을 손으로 푼다 — 즉시 풀리면 `disabled`가 켜졌다 꺼지는 사이에 아래 fixup이 돌 틈이 없다. */
 function deferred<T>() {
   let resolve: (value: T) => void = () => {};
@@ -43,7 +49,7 @@ function deferred<T>() {
 
 /**
  * ⚠️ **jsdom에는 HTML의 focus fixup 규칙이 없다** — 포커스된 버튼이 `disabled`가 되면 브라우저는
- * `activeElement`를 `body`로 돌리지만 jsdom은 그대로 둔다. 그래서 Revoke(Dialog 없이 누른 버튼
+ * `activeElement`를 `body`로 돌리지만 jsdom은 그대로 둔다. 그래서 Revoke(그때는 Dialog 없이 누른 버튼
  * 자체가 `loading`이 되는 갈래)의 #53이 jsdom에서 green이었다. 그 규칙만 흉내 낸다.
  */
 let fixup: MutationObserver | undefined;
@@ -123,6 +129,7 @@ describe("Pending invitations — Revoke", () => {
     expect(region?.textContent).toBe("");
 
     await click(byLabel("Revoke invitation for t***@example.com"));
+    await confirmRevoke();
     await view.rerender(<Screen invitations={[]} />);
 
     expect(mocks.revokeInvitation).toHaveBeenCalledWith({ slug: "acme", invitationId: "i1" });
@@ -138,6 +145,7 @@ describe("Pending invitations — Revoke", () => {
     await render(<Screen invitations={[invite]} />);
 
     await click(byLabel("Revoke invitation for t***@example.com"));
+    await confirmRevoke();
     await response.resolve({ ok: false, error: "unavailable" });
 
     expect(document.activeElement).toBe(byLabel("Revoke invitation for t***@example.com"));

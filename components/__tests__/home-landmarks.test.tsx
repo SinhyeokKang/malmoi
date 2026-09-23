@@ -78,7 +78,7 @@ describe("목록 시맨틱", () => {
     );
     const strong = container.querySelector("a span.font-medium");
     expect(strong?.textContent).toContain("waiting for review");
-    expect(container.querySelector("a")?.textContent).toContain("last edited in this locale by Kim");
+    expect(container.querySelector("a")?.textContent).toContain("last edited in this language by Kim");
   });
 
   it("`+n more`가 `<details>`다 — 클라이언트 상태를 만들지 않는다", async () => {

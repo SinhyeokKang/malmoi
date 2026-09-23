@@ -32,7 +32,7 @@ const detail = (value: Row) => render(
 describe("활동 행과 상세의 실제 동작", () => {
   it("수동 적재 성공은 보호 보류라고 말하지 않고 소스별 결과를 보인다", async () => {
     const { container } = await render(<EventRow row={row()} href="/logs" now={now} archived={false} />);
-    expect(container.textContent).toContain("web: Imported");
+    expect(container.textContent).toContain("web: Synced");
     expect(container.textContent).not.toContain("Nothing was imported");
   });
 

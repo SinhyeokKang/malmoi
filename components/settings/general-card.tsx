@@ -69,7 +69,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
       <form className="flex min-w-0 flex-wrap items-center gap-2" onSubmit={event => {
         event.preventDefault(); if (archived || saving || !plan.ok) return;
         setError(null); setSaved(false);
-        save(async () => { try { const result = await updateProjectName({ slug, name: value }); if (result.ok) { setCurrent(result.name); setSaved(true); } else setError(isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.repository.fields.failed); } catch { setError(m.settings.repository.fields.failed); } });
+        save(async () => { try { const result = await updateProjectName({ slug, name: value }); if (result.ok) { setCurrent(result.name); setSaved(true); } else setError(isAccessError(result.error) ? accessErrorMessage(result.error) : result.error === "empty" ? m.settings.general.emptyName : result.error === "too-long" ? m.settings.general.longName : m.settings.repository.fields.failed); } catch { setError(m.settings.repository.fields.failed); } });
       }}>
         <Input id="project-name" className="w-[320px] max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={value} maxLength={PROJECT_NAME_MAX_CHARS} disabled={archived || saving} aria-invalid={nameError !== null} aria-describedby="project-name-caption" onChange={event => { setValue(event.target.value); setSaved(false); setError(null); }} />
         <Button className="[&_.animate-spin]:size-3.5" type="submit" loading={saving} aria-busy={saving} disabled={archived || !plan.ok || plan.name === current} aria-describedby="project-name-caption">{m.settings.repository.fields.save}</Button>

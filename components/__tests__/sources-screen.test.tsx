@@ -19,14 +19,14 @@ const open = async () => { await act(async () => { await userEvent.setup().click
 beforeEach(() => { vi.clearAllMocks(); mocks.load.mockResolvedValue({ ok: true, detail }); });
 it("EDITOR는 연결계·재시도 없이 진행률과 고아 복구 안내를 본다", async () => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
-  expect(button("Add source")).toBeUndefined();
+  expect(button("Add sources")).toBeUndefined();
   await open();
   expect(document.body.textContent).toContain("84%");
-  expect(document.body.textContent).toContain("Imported");
+  expect(document.body.textContent).toContain("Synced");
   expect(document.body.textContent).not.toContain("Source commit");
   expect(document.querySelector('time')?.getAttribute('aria-label')).toContain("UTC");
   expect(document.body.textContent).toContain("ja");
-  expect(button("Run first import")).toBeUndefined();
+  expect(button("Run first sync")).toBeUndefined();
   expect(document.querySelector('[data-source-connection]')).toBeNull();
   expect(document.querySelector('a[href*="settings"]')).toBeNull();
   expect(new URL(document.querySelector('a[href*="language=en"]')!.getAttribute('href')!, 'http://localhost').searchParams.get('ns')).toBe('*');
@@ -37,7 +37,7 @@ it.each([{ rejected: "forbidden" }, { failed: true }])("상세 오류에서 장�
   mocks.load.mockResolvedValue(result);
   await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
   await open();
-  expect(!!button("Retry")).toBe("failed" in result);
+  expect(!!button("Try again")).toBe("failed" in result);
   expect(document.querySelector('[data-onboarding-panel]')?.className).toContain("min-h-0");
 });
 it("늦게 도착한 이전 상세는 닫힌 모달을 다시 열지 않는다", async () => {
@@ -54,7 +54,7 @@ it("추가 결과는 refresh와 상세 열기/닫기 뒤에도 같은 소유자�
   const ownerData = { ...data, repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } };
   const view = await render(<SourcesScreen slug="p" role="OWNER" data={ownerData} adapters={[]} now={new Date()} />);
   const owner = view.container.querySelector('[data-sources-screen]');
-  await act(async () => { await userEvent.setup().click(button("Add source")); await userEvent.setup().click(button("Finish adding")); });
+  await act(async () => { await userEvent.setup().click(button("Add sources")); await userEvent.setup().click(button("Finish adding")); });
   expect(view.container.textContent).toContain("mobile");
   await view.rerender(<SourcesScreen slug="p" role="OWNER" data={{ ...ownerData }} adapters={[]} now={new Date()} />);
   await open();
@@ -69,7 +69,7 @@ it("첫 적재 성공 뒤 상세 재조회 실패가 성공 결과를 뒤집지 
   mocks.runFirstIngest.mockResolvedValue({ ok: true, count: 7, failed: 1 });
   await render(<SourcesScreen slug="p" role="OWNER" data={{ ...data, sources: [first] }} adapters={[]} now={new Date()} />);
   await open();
-  await act(async () => { await userEvent.setup().click(button("Run first import")); });
+  await act(async () => { await userEvent.setup().click(button("Run first sync")); });
   expect(document.body.textContent).toContain("7");
   expect(document.body.textContent).toContain("latest");
 });
@@ -84,7 +84,7 @@ it.each(["resource-limit", "unauthorized"] as const)("첫 적재 거부(%s)도 �
   mocks.runFirstIngest.mockResolvedValue({ ok: false, error });
   await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
   await open();
-  await act(async () => { await userEvent.setup().click(button("Run first import")); });
+  await act(async () => { await userEvent.setup().click(button("Run first sync")); });
   expect(mocks.load).toHaveBeenCalledTimes(2);
   expect(mocks.refresh).not.toHaveBeenCalled();
 });
@@ -94,7 +94,7 @@ it("첫 적재 성공은 refresh를 한 번 부른다 — 위 거부 갈래의 �
   mocks.runFirstIngest.mockResolvedValue({ ok: true, count: 7, failed: 0 });
   await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
   await open();
-  await act(async () => { await userEvent.setup().click(button("Run first import")); });
+  await act(async () => { await userEvent.setup().click(button("Run first sync")); });
   expect(mocks.refresh).toHaveBeenCalledOnce();
 });
 it("저장 중 닫기와 모든 번역 진입을 잠그고 거부 뒤 다시 연다", async () => {
@@ -119,17 +119,17 @@ it("저장 중 닫기와 모든 번역 진입을 잠그고 거부 뒤 다시 연
 it.each(["OWNER", "EDITOR"] as const)("소스가 없을 때 안내와 추가 권한 %s", async role => {
   await render(<SourcesScreen slug="p" role={role} data={{ installed: true, sources: [] }} adapters={[]} now={new Date()} />);
   expect(document.querySelector('[data-source-row]')).toBeNull();
-  expect(!!button('Add source')).toBe(role === 'OWNER');
+  expect(!!button('Add sources')).toBe(role === 'OWNER');
   expect(document.body.textContent).toContain('No sources yet');
-  expect(document.body.textContent).toContain(role === 'OWNER' ? 'Add the files that hold your strings' : 'An owner of this project adds the translation files');
+  expect(document.body.textContent).toContain(role === 'OWNER' ? 'Add the files that hold your strings' : 'A project owner adds the translation files');
 });
 // 아래 셋은 실브라우저 대조(2026-09-22)에서 시안과 갈린 자리다 — 색·글리프라 값 테스트로는 안 잡힌다.
 const failedFirst = { ...source, lastCommitSha: null, lastImportError: "parse-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") };
 it.each([
-  { state: "imported" as const, row: source, icon: false, tone: "default", label: "Imported" },
-  { state: "failed-first" as const, row: failedFirst, icon: true, tone: "failed", label: "First import failed" },
-  { state: "failed-after" as const, row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") }, icon: true, tone: "failed", label: "Last import failed" },
-  { state: "importing" as const, row: { ...source, lastCommitSha: null, lastImportStartedAt: new Date() }, icon: true, tone: "default", label: "Importing" },
+  { state: "imported" as const, row: source, icon: false, tone: "default", label: "Synced" },
+  { state: "failed-first" as const, row: failedFirst, icon: true, tone: "failed", label: "First sync failed" },
+  { state: "failed-after" as const, row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") }, icon: true, tone: "failed", label: "Last sync failed" },
+  { state: "importing" as const, row: { ...source, lastCommitSha: null, lastImportStartedAt: new Date() }, icon: true, tone: "default", label: "Syncing" },
 ])("목록 행은 적재 상태를 색이 아니라 낱말과 글리프로도 말한다 $state", async ({ state, row, icon, tone, label }) => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [row] }} adapters={[]} now={new Date()} />);
   const all = [...document.querySelectorAll(`[data-source-status="${state}"]`)];
@@ -147,8 +147,8 @@ it("상세의 적재 상태는 칩 하나와 두 줄로 선다", async () => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [failedFirst] }} adapters={[]} now={new Date()} />);
   await open();
   const dialog = document.querySelector('[role="dialog"]')!;
-  expect(dialog.textContent).toContain("First import failed");
-  expect(dialog.textContent).toContain("Updated by imports from your repository.");
+  expect(dialog.textContent).toContain("First sync failed");
+  expect(dialog.textContent).toContain("Updated by syncs from your repository.");
   // 목록 줄을 상세에 다시 쓰지 않는다 — 두 벌이 되면 실패 낱말이 화면마다 갈린다.
   expect(dialog.querySelector("[data-source-status]")).toBeNull();
   expect(dialog.querySelector('[role="alert"]')).toBeNull();
@@ -166,7 +166,7 @@ it("사라진 언어는 낱말과 색을 함께 들되 파일이 사라졌다고
   await open();
   const row = [...document.querySelectorAll('[role="dialog"] li')].find(node => node.textContent?.startsWith("ja"))!;
   expect(row.textContent).toContain("Missing from repository");
-  expect(document.querySelector('[role="dialog"]')!.textContent).toContain("was not found in the last import");
+  expect(document.querySelector('[role="dialog"]')!.textContent).toContain("was not found in the last sync");
   expect(document.body.textContent).not.toContain("File missing");
 });
 it("적용 대기는 배지·필드 표식·값 두 줄 셋으로 말하고 같은 낱말을 두 번 쓰지 않는다", async () => {

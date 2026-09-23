@@ -75,6 +75,9 @@ function valuesOf(detail: DetailView | null): Record<string, string> {
 type FooterStatus =
   | { kind: "saved" }
   | { kind: "save-failed" }
+  /** 다시 해도 안 풀리는 저장 거부 둘 (audit #23) — `save-failed`의 "Try again"으로 접지 않는다. */
+  | { kind: "key-gone" }
+  | { kind: "not-ready" }
   | { kind: "save-unknown" }
   | { kind: "session" }
   | { kind: "archived" }
@@ -269,6 +272,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         setStatus(result.error === "unauthorized" ? { kind: "session" }
           : result.error === "archived" ? { kind: "archived" }
           : result.error === "forbidden" || result.error === "not-found" ? { kind: "lost-access" }
+          : result.error === "key-unavailable" ? { kind: "key-gone" }
+          : result.error === "not-ready" ? { kind: "not-ready" }
           : { kind: "save-failed" });
       }
     } catch {
@@ -378,6 +383,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const listEmpty = (
     <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
       <p className="text-sm">{query.q !== undefined ? w.empty.noMatch(query.q) : noKeys ? w.empty.noActive : w.empty.filteredOut}</p>
+      {/* 활성 키가 0이면 좁힌 것이 아니라 아직 온 것이 없다 — 다음 일을 말한다 (audit #31). */}
+      {query.q === undefined && noKeys && <p className="text-muted-foreground text-xs">{m.translations.empty.noKeys.description}</p>}
       {query.q !== undefined
         ? <Button size="sm" onClick={() => filter({ q: undefined }, "search")}>{w.empty.clearSearch}</Button>
         : narrowed && <Button size="sm" onClick={() => filter({}, "clear")}>{w.empty.showAll(tree.projectKeyCount)}</Button>}
@@ -598,6 +605,8 @@ function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, r
 
 const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { onCheck: () => void; slug: string; storageBlocked: boolean }) => ReactNode>> = {
   "save-failed": () => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.saveFailed.body}</Alert>,
+  "key-gone": () => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.keyGone}</Alert>,
+  "not-ready": () => <Alert variant="warning" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.notReady}</Alert>,
   "save-unknown": () => <Alert variant="danger" title={m.translations.workspace.footer.saveUnknown.title}>{m.translations.workspace.footer.saveUnknown.body}</Alert>,
   // ⚠️ 사본이 없으면 "이 탭에서 다시 로그인"이 입력을 지우는 안내가 된다 — 먼저 복사하라고 말한다 (ARCHITECTURE §6.04).
   session: ({ storageBlocked }) => (

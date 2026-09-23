@@ -54,6 +54,7 @@ it("초대 철회 호출이 던지면 행이 풀리고 확인 불가를 말한�
   mocks.revokeInvitation.mockRejectedValue(new Error("offline"));
   await render(<PendingInvitations slug="acme" invitations={[invite]} role="OWNER" now={now} headingId="h" />);
   await click(byLabel("Revoke invitation for t***@example.com"));
+  await click(inDialog(m.members.pending.confirmRevokeAction));
   expect(alert()).toContain(m.members.pending.revokeUnconfirmed);
   expect(byLabel("Revoke invitation for t***@example.com").hasAttribute("disabled")).toBe(false);
 });
