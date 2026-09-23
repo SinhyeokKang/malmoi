@@ -102,3 +102,12 @@ it("목록이 잘렸으면 생성 화면처럼 입력으로 전환한다", async
   expect(actions.updateRepositorySettings).not.toHaveBeenCalled();
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
 });
+
+it("저장 후 서버가 새 baseBranch를 보내도 성공 안내가 유지된다", async () => {
+  actions.updateRepositorySettings.mockResolvedValueOnce({ ok: true });
+  const { container, rerender } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="main" />);
+  await choose(container, "dev");
+  await act(async () => { await userEvent.setup().click(container.querySelector('button[type="submit"]')!); });
+  await rerender(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="dev" />);
+  expect(container.querySelector('#base-branch-caption')?.textContent).toContain("Saved");
+});

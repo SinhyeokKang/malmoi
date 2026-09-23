@@ -35,7 +35,7 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, health, ac
       {canConnect ? <fieldset className="[&_.animate-spin]:size-3.5" disabled={archived}><ReconnectButton onFailure={setFailure} slug={slug} label={health.status === "not-connected" ? m.settings.repository.connect : m.settings.repository.reconnect} variant={health.status === "repo-moved" ? undefined : "primary"} /></fieldset>
         : health.status === "ok" && <a className={buttonClass({ variant: "default", size: "md" }) + " focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none"} href={`https://github.com/${owner}/${repo}`} target="_blank" rel="noreferrer">{m.settings.openRepo}<ExternalLink aria-hidden /></a>}
     </div>
-    <RepositoryForm slug={slug} baseBranch={branch} disabled={archived} />
+    <RepositoryForm owner={owner} repo={repo} slug={slug} baseBranch={branch} disabled={archived} />
     {recovery && <div className="border-divider text-muted-foreground border-t px-4 py-[13px] text-xs">{account.status === "unavailable" ? m.settings.account.unavailable : m.settings.recovery} <ButtonLink variant="link" href="/account">{m.settings.accountLink}</ButtonLink></div>}
   </PanelCard>;
 }
