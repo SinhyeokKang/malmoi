@@ -1084,6 +1084,10 @@ diff 표가 **키 220 + 로케일 84 + 값**의 3열이라는 것이다 — 작�
 `1h`는 2026-09-18에 밟았다 — 미리보기 단계의 거부가 이 갈래로 흐르게 된 뒤(launch-readiness L3.3) 세션 쿠키를 지우고
 Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커스가 본문으로 간다(구조·포커스 실측. 높이는 안 쟀다).
 **표 아래 `withoutFile` 한 줄**(수술적 어댑터의 원본 파일 부재로 뺀 셀 수 — L3.7)은 설치된 리포에 그 모양이 없어 못 밟았다.
+**결과의 보류 줄** (2026-09-24, delivery-invariants D7 — **미실측**): `created`·`updated`·`no-changes`·`partial`(= `skipped/withheld`) 본문에
+`withoutFile`과 같은 `text-xs muted` 문단이 사유별 한 줄로 선다(새 raw 색·블록 없음). 문장은 미리보기와 같은 명사·같은 약속이고 역할별로
+끝이 갈린다(EDITOR `Ask a project owner.` / OWNER 파일 추가 또는 `Revert to last sent`). ⚠️ **갈래마다 고정한 패널 높이에 이 줄이 들어가는지
+재지 않았다.** 미리보기 표 아래 `withoutKey` 한 줄(ts-dict 자리 없는 키)도 같다.
 
 ### 6.65 멤버 (`/projects/[slug]/members`) — 카드 둘 (2026-09-19, members-rework)
 
