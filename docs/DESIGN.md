@@ -1088,6 +1088,9 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 `withoutFile`과 같은 `text-xs muted` 문단이 사유별 한 줄로 선다(새 raw 색·블록 없음). 문장은 미리보기와 같은 명사·같은 약속이고 역할별로
 끝이 갈린다(EDITOR `Ask a project owner.` / OWNER 파일 추가 또는 `Revert to last sent`). ⚠️ **갈래마다 고정한 패널 높이에 이 줄이 들어가는지
 재지 않았다.** 미리보기 표 아래 `withoutKey` 한 줄(ts-dict 자리 없는 키)도 같다.
+**미리보기 base 파일 부재는 전용 거부다** (2026-09-24 사용자 결정 — **미실측**): `configError` 패널을 쓰고 제목 `The base language file isn't in the
+repository` · 설명에 경로와 브랜치 · `Trying again won't help` Alert에 역할별 다음 행동 · 액션은 OWNER에게만 `Settings`다. **Try again이 없다** — 다시
+눌러도 같은 거부다(L3.3). **Logs에는 `Not sent`**(결과 어휘 `notSent` — warning 톤 · 글리프 amber)가 보류만 남은 Publish에 선다.
 
 ### 6.65 멤버 (`/projects/[slug]/members`) — 카드 둘 (2026-09-19, members-rework)
 
