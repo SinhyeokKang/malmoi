@@ -938,7 +938,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 미발송 N | `4b` | 미발송 한 줄 — **`Sync will discard N unsent translation changes and replace them with repository values.`** (2026-09-18 교체 — 전엔 "…will be replaced"였다. 문장을 더하지 않아 360 Dialog 줄 수가 같다) | `Send changes first` — **앱 내부 링크** |
 | 미발송 N ∧ 열린 PR | `4c` 좌 | **블록 하나 안에 `<p>` 둘** · 글리프는 블록 머리에 하나 · PR 번호는 **링크가 아니다** | 같은 `Send changes first` |
 | 미발송 0 ∧ 열린 PR | `4c` 우 | 미발송 줄이 **빠지고** PR 줄만(`0 edits …`를 안 쓴다) | `Nothing is waiting to be sent.` + `See what's open`(`_blank`·`noreferrer`·글리프 12·파랑) |
-| PR 조회 중·실패 | `4d` | 확인된 경고와 **같은 amber** — muted 한 줄이면 부재와 같은 신호로 읽힌다 | **줄 없음** |
+| PR 조회 중·실패 | `4d` | 확인된 경고와 **같은 amber** — muted 한 줄이면 부재와 같은 신호로 읽힌다. ⚠️ **줄 문장은 둘이다** — 조회 중 `Checking whether anything is still waiting in a pull request…` / 실패 `We couldn't check …`(malmoi#75 — 전엔 로딩에도 실패 문장이 섰다) | **줄 없음** |
 
 **결과 Alert는 형이 둘이고 그것이 방어다** (`4e` · ARCHITECTURE §0 불변식 9). 색만 다르면 `Synced …`라는
 앞머리가 같아 스캔에서 성공으로 읽힌다 — **높이와 줄 수가 달라야 읽지 않아도 다른 결과임이 보인다.**
