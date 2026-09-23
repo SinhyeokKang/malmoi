@@ -81,7 +81,7 @@ describe("readInvitationEmailConfig — 잘못된 값", () => {
     });
   });
 
-  it.each(["", "malmoi", "malmoi <invite>", "<>", "a b@x.com"])("발신자 %j는 거부한다", (from) => {
+  it.each(["", "malmoi", "malmoi <invite>", "<>", "a b@x.com", "malmoi\r\nBcc: x@y.com <invite@notify.mal-moi.com>"])("발신자 %j는 거부한다", (from) => {
     const result = readInvitationEmailConfig({ ...prod, INVITATION_EMAIL_FROM: from });
     expect(result.status).toBe("unavailable");
   });
