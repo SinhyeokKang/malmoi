@@ -12,15 +12,24 @@ const old = "https://store.public.blob.vercel-storage.com/projects/p/old.webp";
 const fresh = "https://store.public.blob.vercel-storage.com/projects/p/new.webp";
 beforeEach(() => {
   vi.clearAllMocks(); h.session = sessionFor("owner");
-  db = createHarness({ projects: [{ id: "p", slug: "alpha", name: "Before", archivedAt: new Date(0) }], members: [{ projectId: "p", userId: "owner", role: "OWNER" }, { projectId: "p", userId: "editor", role: "EDITOR" }] });
+  db = createHarness({ projects: [{ id: "p", slug: "alpha", name: "Before" }], members: [{ projectId: "p", userId: "owner", role: "OWNER" }, { projectId: "p", userId: "editor", role: "EDITOR" }] });
   h.prisma = db.prisma; Object.assign(db.projects[0]!, { image: old });
   h.put.mockResolvedValue(fresh); h.normalize.mockResolvedValue({ ok: true, bytes: Uint8Array.of(1, 2) });
 });
 const form = () => { const value = new FormData(); value.set("slug", "alpha"); value.set("image", new File(["png"], "p.png", { type: "image/png" })); return value; };
-it("보관 중에도 표시 이름만 바꾸며 주소와 전체 셸 갱신을 유지한다", async () => {
+it("표시 이름만 바꾸며 주소와 전체 셸 갱신을 유지한다", async () => {
   expect(await actions.updateProjectName({ slug: "alpha", name: "  After  " })).toEqual({ ok: true, name: "After" });
-  expect(db.projects[0]).toMatchObject({ slug: "alpha", name: "After", archivedAt: new Date(0) });
+  expect(db.projects[0]).toMatchObject({ slug: "alpha", name: "After" });
   expect(h.revalidate).toHaveBeenCalledWith("/", "layout");
+});
+// 보관 = Restore만 (2026-09-24, 감사 #26) — 전에는 이 자리가 "보관 중에도 이름을 바꾼다"를 고정했다.
+it("보관 중에는 이름·이미지 쓰기를 거부하고 올린 객체를 회수한다", async () => {
+  Object.assign(db.projects[0]!, { archivedAt: new Date(0) });
+  expect(await actions.updateProjectName({ slug: "alpha", name: "After" })).toEqual({ ok: false, error: "archived" });
+  expect(await actions.uploadProjectImage(form())).toEqual({ ok: false, reason: "archived" });
+  expect(await actions.deleteProjectImage("alpha")).toEqual({ ok: false, reason: "archived" });
+  expect(db.projects[0]).toMatchObject({ name: "Before", image: old });
+  expect(h.del).not.toHaveBeenCalledWith("projects/p/old.webp");
 });
 it.each(["editor", "stranger", null])("%s는 메타데이터와 Blob에 쓰지 못한다", async user => {
   h.session = sessionFor(user);

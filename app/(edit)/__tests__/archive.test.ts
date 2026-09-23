@@ -26,6 +26,9 @@ vi.mock("@/lib/pull/trigger", () => ({ triggerPull: hoisted.triggerPull }));
 
 const { archiveProject, unarchiveProject, runFirstIngest } = await import("../projects/actions");
 const { saveTranslationKey, triggerPullAction } = await import("../actions");
+const { rotatePushToken } = await import("../projects/actions");
+const settings = await import("../projects/[slug]/settings/actions");
+const { updateBaseLocale } = await import("../projects/[slug]/sources/actions");
 
 const ARCHIVED_AT = new Date("2026-09-10T00:00:00Z");
 
@@ -95,6 +98,45 @@ describe("보관된 프로젝트는 편집·Publish를 받지 않는다", () => 
     hoisted.prisma = db.prisma;
     const result = await saveTranslationKey({ surfaceSlug: "default", slug: "alpha", keyId: "k1", changes: [{ localeCode: "ko", value: "안녕" }] });
     expect(result).toEqual({ ok: true, keyId: "k1", cells: [{ localeCode: "ko", value: "안녕" }] });
+  });
+});
+
+/**
+ * **보관 = Restore만** (2026-09-24, 감사 #26 — PRODUCT §7.9). 인가는 `project:settings`를 보관 중에도 통과시키지만
+ * (되돌리는 길), 잠금 안 판정이 그 위에서 `unarchiveProject` 외 설정 쓰기를 `archived`로 거부한다. UI가 이미 그렇게 서 있었다.
+ */
+describe("보관된 프로젝트의 설정 쓰기는 서버가 거부한다", () => {
+  it.each([
+    ["rotatePushToken", () => rotatePushToken({ slug: "beta" })],
+    ["updateRepositorySettings", () => settings.updateRepositorySettings({ slug: "beta", baseBranch: "next" })],
+    ["updateProjectName", () => settings.updateProjectName({ slug: "beta", name: "Renamed" })],
+    ["updateBaseLocale", () => updateBaseLocale({ slug: "beta", surfaceSlug: "default", baseLocale: "ko" })],
+  ] as const)("%s → archived, 쓰기·사건 0건", async (_name, run) => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    const before = structuredClone(db.projects.find((p) => p.slug === "beta"));
+    expect(await run()).toEqual({ ok: false, error: "archived" });
+    expect(db.projects.find((p) => p.slug === "beta")).toEqual(before);
+    expect(db.projectEvents.filter((e) => e.projectId === "pB")).toEqual([]);
+  });
+
+  it("deleteProjectImage → archived", async () => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    expect(await settings.deleteProjectImage("beta")).toEqual({ ok: false, reason: "archived" });
+  });
+
+  it("대조: 같은 픽스처의 활성 프로젝트에서는 같은 쓰기가 통과한다", async () => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    expect(await settings.updateProjectName({ slug: "alpha", name: "Renamed" })).toEqual({ ok: true, name: "Renamed" });
+    expect((await rotatePushToken({ slug: "alpha" })).ok).toBe(true);
+  });
+
+  it("Restore는 통과한다 — 되돌리는 길은 열려 있다", async () => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    expect(await unarchiveProject("beta")).toEqual({ ok: true });
   });
 });
 

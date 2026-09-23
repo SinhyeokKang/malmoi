@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planProjectAccess } from "../access";
+import { planLockedAccess, planProjectAccess } from "../access";
 
 /**
  * 프로젝트 인가의 판정 전부 (ARCHITECTURE §6.1). 껍데기(`requireProjectAccess`)는 조회와 redirect만 하고
@@ -206,5 +206,49 @@ describe("planProjectAccess — archivedPolicy", () => {
     expect(
       planProjectAccess({ member: editor, permission: "translation:write", archivedAt: null, archivedPolicy: "read" }),
     ).toEqual({ status: "ok", projectId: "p1", role: "EDITOR", archived: false });
+  });
+});
+
+/**
+ * **잠금 안 쓰기 판정** (감사 #9·#10·#26 — ARCHITECTURE §5.6.4). 입력은 잠금 뒤 다시 읽은 값이고, 판정은
+ * `planProjectAccess` 위에 쓰기 규칙 하나를 얹는다: 보관된 프로젝트의 `project:settings` 쓰기는 `restore`만 통과한다.
+ */
+describe("planLockedAccess — 잠금 뒤 다시 읽은 값으로 쓰기를 판정한다", () => {
+  const owner = { projectId: "p1", role: "OWNER" as const };
+  const editor = { projectId: "p1", role: "EDITOR" as const };
+  const archivedAt = new Date("2026-09-24T00:00:00Z");
+
+  it("멤버가 사라졌으면 not-found다", () => {
+    expect(planLockedAccess({ member: null, permission: "project:settings", archivedAt: null })).toEqual({ status: "not-found" });
+  });
+
+  it("OWNER가 EDITOR로 강등됐으면 forbidden이다", () => {
+    expect(planLockedAccess({ member: editor, permission: "member:manage", archivedAt: null })).toEqual({ status: "forbidden" });
+  });
+
+  it("보관된 프로젝트의 설정 쓰기는 archived다 — 보관 = Restore만", () => {
+    expect(planLockedAccess({ member: owner, permission: "project:settings", archivedAt })).toEqual({ status: "archived" });
+  });
+
+  it("restore는 보관된 프로젝트에서 통과한다 (대조: 같은 입력에서 restore만 다르다)", () => {
+    expect(planLockedAccess({ member: owner, permission: "project:settings", archivedAt, restore: true })).toEqual({ status: "ok", role: "OWNER" });
+  });
+
+  it("restore가 권한 부족을 열어 주지 않는다", () => {
+    expect(planLockedAccess({ member: editor, permission: "project:settings", archivedAt, restore: true })).toEqual({ status: "forbidden" });
+  });
+
+  it("번역 쓰기도 보관이면 archived다", () => {
+    expect(planLockedAccess({ member: editor, permission: "translation:write", archivedAt })).toEqual({ status: "archived" });
+  });
+
+  it("표면이 없거나 보관됐으면 not-found다 — 진입점의 getSurfaceAccess와 같은 낱말", () => {
+    expect(planLockedAccess({ member: editor, permission: "translation:write", archivedAt: null, surface: null })).toEqual({ status: "not-found" });
+    expect(planLockedAccess({ member: editor, permission: "translation:write", archivedAt: null, surface: { archivedAt } })).toEqual({ status: "not-found" });
+    expect(planLockedAccess({ member: editor, permission: "translation:write", archivedAt: null, surface: { archivedAt: null } })).toEqual({ status: "ok", role: "EDITOR" });
+  });
+
+  it("활성 프로젝트의 멤버는 통과한다", () => {
+    expect(planLockedAccess({ member: owner, permission: "project:settings", archivedAt: null })).toEqual({ status: "ok", role: "OWNER" });
   });
 });
