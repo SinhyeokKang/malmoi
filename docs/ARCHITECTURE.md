@@ -758,7 +758,7 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
 기존 User 행 잠금·OWNER 한도 재집계를 유지하고, Project 명시적 id·OWNER·Surface N개·기본 포인터와
 `applyPushInTransaction(tx, ...)`를 같은 callback tx에 저장한다(`maxWait: 10_000`, `timeout: 30_000`).
 중간 쓰기·커밋 실패는 밖으로 전파해 모두 롤백한다. 캐시 무효화는 커밋 뒤라 그 실패를 롤백으로 보고하지 않는다.
-신규 모달은 별도 `runFirstIngest`를 부르지 않는다. 기존 Settings 재시도와 Add surface의 정책은 그대로다.
+신규 모달은 별도 `runFirstIngest`를 부르지 않는다. 기존 Sources 재시도와 Add sources(`addSurfaces`)의 정책은 그대로다.
 별도 연결의 부분 행 가시성·동시 한도·slug 경합·둘째 표면·마지막 쓰기·시간 초과 롤백은 격리 PG 검사가 지킨다.
 
 #### 온보딩의 쓰기 쪽 판정층 넷 — 순서가 판정이다
@@ -813,7 +813,7 @@ Action에 적용되지 않으므로 **페이지가 각자** `export const maxDur
 `[slug]/sources/page.tsx` · `[slug]/translations/page.tsx` · **`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`**. **새 Action 화면을 만들 때마다 선언한다** — 안 하면 기본값에서
 첫 적재가 잘리고, 증상이 "큰 리포에서만 실패"라 재현이 어렵다. **세는 법은 grep 하나다**(`rg -n 'maxDuration' app`) — 이 목록을 손으로 늘리면 낡는다.
 
-⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Send changes]가 사는 곳은
+⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Publish]가 사는 곳은
 **표면 경로**(`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`)이고 그 세그먼트를 쓴다.
 ⚠️ **옛 `[slug]/translations/page.tsx`는 지금 `defaultSurface`로 보내는 redirect 껍데기다** — 그쪽의 선언은
 표면 경로로 넘어가기 전에 인가·조회가 도는 자리라 남겨 두지만, 아래 논증이 가리키는 세그먼트는 표면 쪽이다.
@@ -1196,7 +1196,7 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 ### 5.5.7 적재 실행권 — 토큰 둘과 revision 하나 (2026-09-14 multi-surface B, 2026-09-17 정본화)
 
-적재 경로가 넷이다(CI push · 첫 적재 · Add surface · 수동 Sync). 서로 겹치거나 뒤늦게 끝나는 실행이 **남의 결과를 덮지 않게** 하는 컬럼이 셋이다.
+적재 경로가 넷이다(CI push · 첫 적재 · Add sources(`addSurfaces`) · 수동 Sync). 서로 겹치거나 뒤늦게 끝나는 실행이 **남의 결과를 덮지 않게** 하는 컬럼이 셋이다.
 
 | 컬럼 | 소유 | 무엇을 막나 |
 |---|---|---|
@@ -1210,7 +1210,7 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 **7단계가 pull 바깥에 껍데기를 하나 얹었다** (2026-09-10). `runPull`의 판정층은 한 줄도 안 바뀌었다 —
 1층 스킵·2층 blob 비교·`captured = maxUpdatedAt`이 그대로다. 새로 생긴 것은 **"돌려도 되는가"**와
-**"무엇으로 끝났는가"** 둘뿐이고, 진입점 둘(편집 UI [Send changes] · 야간 cron)이 같은 함수를 지난다.
+**"무엇으로 끝났는가"** 둘뿐이고, 진입점 둘(편집 UI [Publish] · 야간 cron)이 같은 함수를 지난다.
 
 ### 5.6.1 동시 실행은 `Project` 행 잠금이 막는다
 
