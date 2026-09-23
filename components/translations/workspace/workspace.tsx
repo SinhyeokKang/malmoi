@@ -424,7 +424,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           />
           {narrowed && <Button variant="ghost" onClick={() => filter({}, "clear")}>{w.filters.clear}</Button>}
           {noKeys && <span className="text-muted-foreground text-xs">{w.filters.nothingToFilter}</span>}
-          <SearchInput className="ml-auto" value={query.q} label={w.filters.search} onSearch={q => filter({ q: q === "" ? undefined : q }, "search")} />
+          <SearchInput className="ml-auto" inputClassName="w-80" value={query.q} label={w.filters.search} onSearch={q => filter({ q: q === "" ? undefined : q }, "search")} />
         </div>
         {substituted && (
           <p className="text-muted-foreground text-xs">{w.filters.substituted(routeSurfaceSlug, query.missingLocale ?? "")}</p>
@@ -441,7 +441,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
 
       <div ref={bodyRef} className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden p-4">
         <div className="flex h-full min-h-0" style={layout?.scrollWidth ? { minWidth: layout.scrollWidth } : undefined}>
-          <div className="border-border bg-background relative flex min-h-0 shrink-0 overflow-hidden rounded-xl border" style={layout ? { width: layout.left } : { width: PANEL.tree + PANEL.list }}>
+          <div className="border-border bg-background relative flex min-h-0 shrink-0 overflow-hidden rounded-lg border" style={layout ? { width: layout.left } : { width: PANEL.tree + PANEL.list }}>
             {!treeCollapsed && (
               <TreePanel tree={tree} surfaceSlug={routeSurfaceSlug} ns={query.scope === "namespace" ? query.ns : ALL_NAMESPACES} onSelect={selectTree}
                 className="border-border shrink-0 border-r" width={layout?.tree ?? PANEL.tree} />
@@ -466,7 +466,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             )}
           </div>
           <ResizeHandle layout={layout} onChange={rememberLeft} />
-          <div className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-xl border">
+          <div className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
             {detail === null ? (
               <div className="flex flex-1 items-center justify-center">
                 <EmptyState icon={Languages} title={props.detail !== null && "absent" in props.detail ? w.detail.keyGone(props.detail.surfaceSlug) : w.detail.selectKey} />
@@ -628,7 +628,7 @@ function TreeOverlay({ onClose, children }: { onClose: () => void; children: Rea
     return () => { document.removeEventListener("keydown", key); document.removeEventListener("pointerdown", outside); };
   }, [onClose]);
   return (
-    <div ref={ref} className="border-border bg-popover shadow-medium absolute top-14 left-3 z-20 flex max-h-80 w-70 flex-col overflow-hidden rounded-xl border">
+    <div ref={ref} className="border-border bg-popover shadow-medium absolute top-14 left-3 z-20 flex max-h-80 w-70 flex-col overflow-hidden rounded-lg border">
       {children}
     </div>
   );
@@ -642,14 +642,20 @@ function ResizeHandle({ layout, onChange }: { layout: ReturnType<typeof planTran
   const [drag, setDrag] = useState<{ start: number; origin: number } | null>(null);
   const [value, setValue] = useState<number | null>(null);
   const current = value ?? layout?.left ?? PANEL.tree + PANEL.list;
+  // 트리가 접혀 범위가 한 점이면 ←→가 아무것도 안 한다 — Tab이 들르면 죽은 정거장이다.
+  const fixed = layout !== null && layout.bounds.min === layout.bounds.max;
+  // ⚠️ pointerup만 끝내면 pointercancel·캡처 상실 뒤 drag가 남아, 버튼 없이 지나가는 포인터가 폭을 바꾸고 저장한다.
+  const endDrag = () => { setDrag(null); setValue(null); };
   return (
     <div
       role="separator"
       aria-orientation="vertical"
+      aria-label={m.translations.workspace.resize}
       aria-valuenow={Math.round(current)}
       aria-valuemin={layout?.bounds.min}
       aria-valuemax={layout?.bounds.max}
-      tabIndex={0}
+      aria-disabled={fixed || undefined}
+      tabIndex={fixed ? -1 : 0}
       data-state={drag !== null ? "drag" : undefined}
       onKeyDown={event => {
         if (layout === null) return;
@@ -659,7 +665,7 @@ function ResizeHandle({ layout, onChange }: { layout: ReturnType<typeof planTran
         onChange(next);
       }}
       onPointerDown={event => {
-        if (layout === null) return;
+        if (layout === null || fixed) return;
         event.currentTarget.setPointerCapture?.(event.pointerId);
         setDrag({ start: event.clientX, origin: layout.left });
       }}
@@ -669,9 +675,12 @@ function ResizeHandle({ layout, onChange }: { layout: ReturnType<typeof planTran
         setValue(next);
         onChange(next);
       }}
-      onPointerUp={() => { setDrag(null); setValue(null); }}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onLostPointerCapture={endDrag}
       className={cn(
-        "group relative w-4 shrink-0 cursor-col-resize focus-visible:outline-none",
+        "group relative w-4 shrink-0 focus-visible:outline-none",
+        !fixed && "cursor-col-resize",
         "after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-gradient-to-b after:from-transparent after:via-ring after:to-transparent",
         "after:opacity-0 hover:after:opacity-100 focus-visible:after:opacity-100 data-[state=drag]:after:opacity-100",
       )}

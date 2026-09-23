@@ -166,7 +166,8 @@ function LocaleRow({ keyName, sourceText, locale, first, draft, saved, readOnly,
         else onReset();
       }}
       className={cn(
-        "rounded-[10px] text-sm leading-[1.55] tracking-[0.015em]",
+        // ⚠️ `w-full`이 필요하다 — 프리미티브의 `field-sizing-content`가 폭까지 내용에 맞춰 줄인다(실측 473 → 269).
+        "w-full rounded-[10px] text-sm leading-[1.55] tracking-[0.015em]",
         empty ? "min-h-5 border-0 p-0 shadow-none focus-visible:ring-0" : "min-h-[62px] px-2.5 py-2.5",
       )}
     />

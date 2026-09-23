@@ -63,7 +63,7 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
               <ListItemButton
                 aria-expanded={open}
                 onClick={() => setCollapsed(prev => { const next = new Set(prev); if (open) next.add(surface.slug); else next.delete(surface.slug); return next; })}
-                className="flex items-center gap-2 rounded-lg px-2 py-[7px] text-sm tracking-[0.02em]"
+                className="flex items-center gap-2 rounded-sm px-2 py-[7px] text-sm tracking-[0.02em]"
               >
                 <span className="flex text-neutral-600">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
                 <span className="flex text-neutral-600"><FileJson2 className="size-4" aria-hidden /></span>
@@ -101,7 +101,7 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
 
 function TreeItem({ icon, label, count, selected, onClick }: { icon: ReactNode; label: string; count: number; selected: boolean; onClick: () => void }) {
   return (
-    <ListItemButton selected={selected} onClick={onClick} className="flex items-center gap-2 rounded-lg py-1.5 pr-2 pl-[34px] text-sm tracking-[0.02em]">
+    <ListItemButton selected={selected} onClick={onClick} className="flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-[34px] text-sm tracking-[0.02em]">
       <span className="flex text-neutral-400">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       <span className="text-muted-foreground text-xs">{count.toLocaleString("en-US")}</span>

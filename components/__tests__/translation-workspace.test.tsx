@@ -226,3 +226,59 @@ it("확인창에서 버린 draft는 세션 복구 사본에서도 지운다 — 
   expect(window.sessionStorage.length).toBe(0);
 });
 
+it("패널 구분선은 이름을 갖는다 — 이름 없는 separator는 스크린리더가 '구분선'만 읽는다", async () => {
+  // design-sync 실측(CDP)에서 aria-label 없이 나간 것을 잡았다. jsdom 렌더에도 시각에도 안 드러나는 부류다.
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  const separators = [...container.querySelectorAll<HTMLElement>('[role="separator"]')];
+  expect(separators.length).toBeGreaterThan(0);
+  for (const node of separators) expect(node.getAttribute("aria-label")?.trim()).toBeTruthy();
+});
+
+function stubArea(width: number) {
+  // jsdom에는 ResizeObserver가 없어 폭 계획이 null로 남는다 — 핸들 동작을 재려면 영역 폭을 준다.
+  vi.stubGlobal("ResizeObserver", class {
+    constructor(private readonly callback: ResizeObserverCallback) {}
+    observe() { this.callback([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver); }
+    disconnect() {}
+    unobserve() {}
+  });
+}
+
+const workspaceHandle = () => {
+  const node = document.querySelector<HTMLElement>('[role="separator"][aria-label="Resize key list"]');
+  if (!node) throw new Error("no workspace separator");
+  return node;
+};
+
+it("포인터가 취소되면 드래그가 끝난다 — 버튼 없이 지나가는 포인터가 폭을 바꾸지 않는다", async () => {
+  stubArea(1200);
+  try {
+    await render(<TranslationWorkspace {...props()} />);
+    const handle = workspaceHandle();
+    const before = handle.getAttribute("aria-valuenow");
+    await act(async () => {
+      handle.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, clientX: 600, pointerId: 1 }));
+      handle.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true, pointerId: 1 }));
+      handle.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: 560, pointerId: 1 }));
+    });
+    expect(handle.getAttribute("aria-valuenow")).toBe(before);
+    expect(handle.dataset.state).toBeUndefined();
+  } finally { vi.unstubAllGlobals(); }
+});
+
+it("움직일 범위가 없으면 핸들은 Tab이 들르지 않고 꺼졌다고 말한다", async () => {
+  stubArea(700);
+  try {
+    await render(<TranslationWorkspace {...props()} />);
+    const handle = workspaceHandle();
+    expect(handle.getAttribute("aria-valuemin")).toBe(handle.getAttribute("aria-valuemax"));
+    expect(handle.tabIndex).toBe(-1);
+    expect(handle.getAttribute("aria-disabled")).toBe("true");
+  } finally { vi.unstubAllGlobals(); }
+});
+
+it("키 목록은 목록 의미를 갖는다 — 스크린리더가 몇 개 중 몇 번째인지 읽는다", async () => {
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  const items = [...container.querySelectorAll("[data-key-row]")].map(node => node.closest("li")?.parentElement?.tagName);
+  expect(items).toEqual(["UL", "UL"]);
+});

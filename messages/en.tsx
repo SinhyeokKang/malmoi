@@ -1825,6 +1825,8 @@ export const en = {
         nothingToFilter: "Nothing to filter yet",
       },
       tree: { title: "Sources", allNamespaces: "All namespaces", filter: "Filter namespaces", open: "Show sources" },
+      /** 키 목록 ↔ 로케일 카드 구분선 — `common.resizeSidebar`와 같은 이유로 이름이 필요하다(이름 없는 separator는 스크린리더가 "구분선"만 읽는다). */
+      resize: "Resize key list",
       list: {
         keys: "Keys",
         incompleteKeys: "Incomplete keys",
