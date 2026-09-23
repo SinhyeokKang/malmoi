@@ -30,6 +30,8 @@ it("보관 중에는 이름·이미지 쓰기를 거부하고 올린 객체를 �
   expect(await actions.deleteProjectImage("alpha")).toEqual({ ok: false, reason: "archived" });
   expect(db.projects[0]).toMatchObject({ name: "Before", image: old });
   expect(h.del).not.toHaveBeenCalledWith("projects/p/old.webp");
+  // 거부될 업로드가 정규화·Blob을 태우지 않는다 — 잠금 안 판정 전에 진입점이 먼저 막는다.
+  expect(h.normalize).not.toHaveBeenCalled(); expect(h.put).not.toHaveBeenCalled();
 });
 it.each(["editor", "stranger", null])("%s는 메타데이터와 Blob에 쓰지 못한다", async user => {
   h.session = sessionFor(user);

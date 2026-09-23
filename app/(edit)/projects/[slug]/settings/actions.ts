@@ -142,6 +142,8 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   // 리밋을 태울 수 있다.
   const access = await getProjectAccess(prisma, { userId, slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
+  // 보관 = Restore만 — 거부될 요청이 GitHub을 부르지 않게 먼저 막는다. 경합 창은 잠금 안 판정이 닫는다.
+  if (access.archived) return { ok: false, error: "archived" };
   const { projectId } = access;
 
   const token = await ensureUserToken(prisma, userId, new Date());
@@ -391,6 +393,8 @@ export async function uploadProjectImage(form: FormData): Promise<ProjectImageRe
   const prisma = getPrisma();
   const access = await getProjectAccess(prisma, { userId: session.userId, slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, reason: access.status };
+  // 보관 = Restore만 — 거부될 업로드가 sharp·Blob을 태우지 않게 먼저 막는다. 경합 창은 잠금 안 판정이 닫는다.
+  if (access.archived) return { ok: false, reason: "archived" };
   const { projectId } = access;
   const file = form.get("image");
   if (!(file instanceof File)) return { ok: false, reason: "not-a-file" };

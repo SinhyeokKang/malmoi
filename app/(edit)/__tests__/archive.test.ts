@@ -16,6 +16,7 @@ const hoisted = vi.hoisted(() => ({
   prisma: undefined as unknown,
   revalidatePath: vi.fn(),
   triggerPull: vi.fn(),
+  ensureUserToken: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -23,6 +24,7 @@ vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/pull/trigger", () => ({ triggerPull: hoisted.triggerPull }));
+vi.mock("@/lib/github-connect/token-store", () => ({ ensureUserToken: hoisted.ensureUserToken }));
 
 const { archiveProject, unarchiveProject, runFirstIngest } = await import("../projects/actions");
 const { saveTranslationKey, triggerPullAction } = await import("../actions");
@@ -118,6 +120,13 @@ describe("보관된 프로젝트의 설정 쓰기는 서버가 거부한다", ()
     expect(await run()).toEqual({ ok: false, error: "archived" });
     expect(db.projects.find((p) => p.slug === "beta")).toEqual(before);
     expect(db.projectEvents.filter((e) => e.projectId === "pB")).toEqual([]);
+  });
+
+  it("connectRepository → archived, GitHub을 부르지 않는다", async () => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    expect(await settings.connectRepository({ slug: "beta" })).toEqual({ ok: false, error: "archived" });
+    expect(hoisted.ensureUserToken).not.toHaveBeenCalled();
   });
 
   it("deleteProjectImage → archived", async () => {
