@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 /**
  * **뒤로/앞으로·새로고침 guard** (translation-rework T13 — design §10.5 실측).
@@ -16,6 +17,9 @@ import { useEffect, useRef } from "react";
 type NavigationApi = { currentEntry?: { index: number } | null };
 
 export function useLeaveGuard(active: boolean, onBlocked: (proceed: () => void) => void): void {
+  const router = useRouter();
+  const navigate = useRef(router.push);
+  navigate.current = router.push;
   const blocked = useRef(onBlocked);
   blocked.current = onBlocked;
 
@@ -23,6 +27,18 @@ export function useLeaveGuard(active: boolean, onBlocked: (proceed: () => void) 
     if (!active) return undefined;
     const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
     window.addEventListener("beforeunload", beforeUnload);
+    // 셸의 Next Link도 React의 클릭 처리보다 먼저 막는다. 새 탭·다운로드·같은 문서의 hash는 이탈이 아니다.
+    const click = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
+      if (link === null || link.hasAttribute("download") || (link.target !== "" && link.target !== "_self")) return;
+      const url = new URL(link.href, window.location.href);
+      if (url.origin !== window.location.origin || (url.pathname === window.location.pathname && url.search === window.location.search)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      blocked.current(() => navigate.current(url.pathname + url.search + url.hash));
+    };
+    document.addEventListener("click", click, true);
 
     const navigation = (window as unknown as { navigation?: NavigationApi }).navigation;
     const indexNow = () => navigation?.currentEntry?.index ?? null;
@@ -43,6 +59,7 @@ export function useLeaveGuard(active: boolean, onBlocked: (proceed: () => void) 
     window.addEventListener("popstate", pop, true);
     return () => {
       window.removeEventListener("beforeunload", beforeUnload);
+      document.removeEventListener("click", click, true);
       window.removeEventListener("popstate", pop, true);
       settled = null;
     };

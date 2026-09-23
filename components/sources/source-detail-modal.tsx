@@ -105,7 +105,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
               {statusFailed && !canEdit && <span className="text-muted-foreground"> {m.sources.askOwner}</span>}
               {importStatus?.state === "failed-after" && canEdit && <span className="text-muted-foreground"> {m.settings.sources.rerun}</span>}
             </span>
-            {!detail.installed && <span className="text-muted-foreground text-xs">{canEdit ? <>{m.sources.reconnectOwner} <Link className="text-link" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></> : m.sources.reconnectEditor}</span>}
+            {!detail.installed && <span className="text-muted-foreground text-xs">{canEdit ? <>{m.sources.reconnectOwner} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></> : m.sources.reconnectEditor}</span>}
           </span>
           {importStatus?.canRetry && canEdit && <Button className="shrink-0" loading={busy} disabled={!actions?.canRetry} onClick={onImport}>{m.settings.sources.retry}</Button>}
         </div>

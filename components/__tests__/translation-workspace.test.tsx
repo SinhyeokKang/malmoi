@@ -294,3 +294,89 @@ it("접힌 트리에서 항목을 고르면 오버레이가 닫히고 포커스�
     expect(mocks.push).toHaveBeenCalledTimes(1);
   } finally { vi.unstubAllGlobals(); }
 });
+
+it("셸의 내부 링크도 미저장 확인을 거친다 — 취소 후 유지하고 승인할 때 한 번만 이동한다", async () => {
+  const user = userEvent.setup();
+  const navigate = vi.fn((event: React.MouseEvent) => event.preventDefault());
+  const { container } = await render(<><a href="/projects/acme" onClick={navigate}>Home</a><TranslationWorkspace {...props()} /></>);
+  const home = container.querySelector<HTMLAnchorElement>("a")!;
+  await user.type(area(container, "zh"), "draft");
+  await user.click(home);
+  expect(navigate).not.toHaveBeenCalled();
+  expect(document.body.textContent).toContain("Discard your changes?");
+  await user.click(button("Keep editing"));
+  expect(area(container, "zh").value).toBe("draft");
+  expect(mocks.push).not.toHaveBeenCalled();
+  await user.click(home);
+  await user.click(button("Discard changes"));
+  expect(mocks.push).toHaveBeenCalledExactlyOnceWith("/projects/acme");
+});
+
+it("새 탭 링크와 수정키 클릭은 현재 draft를 떠나지 않아 가로채지 않는다", async () => {
+  const user = userEvent.setup();
+  const navigate = vi.fn((event: React.MouseEvent) => event.preventDefault());
+  const { container } = await render(<><a href="/projects/acme" onClick={navigate}>Home</a><a href="/account" target="_blank" onClick={navigate}>Account</a><TranslationWorkspace {...props()} /></>);
+  await user.type(area(container, "zh"), "draft");
+  await user.keyboard("{Control>}");
+  await user.click(container.querySelector("a")!);
+  await user.keyboard("{/Control}");
+  await user.click(container.querySelector('a[target="_blank"]')!);
+  expect(navigate).toHaveBeenCalledTimes(2);
+  expect(document.body.textContent).not.toContain("Discard your changes?");
+});
+
+it("필터 변경 뒤 같은 키가 남아도 Discard는 메모리의 입력까지 버린다", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  await user.type(area(container, "zh"), "draft");
+  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="Completeness:"]')!);
+  const option = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(el => el.textContent?.includes("Incomplete"));
+  if (!option) throw new Error("no Incomplete option");
+  await user.click(option);
+  await user.click(button("Discard changes"));
+  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, completion: "incomplete" }} list={{ ...initial.list, rows: [initial.list.rows[0]!] }} />);
+  expect(area(container, "zh").value).toBe("");
+  expect(button("Save").disabled).toBe(true);
+  expect(window.sessionStorage.length).toBe(0);
+});
+
+it("Revert 뒤 같은 셀을 저장하면 Not sent와 Revert가 다시 나타난다", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  if (initial.detail === null || "absent" in initial.detail) throw new Error("missing fixture detail");
+  mocks.preview.mockResolvedValue({ status: "ready", locales: [{ code: "ko", before: "비어 있음", after: "없음" }], confirmation: "f".repeat(64) });
+  mocks.revert.mockResolvedValue({ status: "reverted", cells: [{ localeCode: "ko", value: "없음" }] });
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  await user.click(button("Revert to last sent"));
+  await user.click(button("Revert"));
+  const restored = { ...initial.detail, locales: initial.detail.locales.map(l => l.code === "ko" ? { ...l, value: "없음", pending: false } : l) };
+  await rerender(<TranslationWorkspace {...initial} detail={restored} />);
+  await user.type(area(container, "ko"), "!");
+  mocks.save.mockResolvedValue({ ok: true, keyId: "k1", cells: [{ localeCode: "ko", value: "없음!" }] });
+  await user.click(button("Save"));
+  await rerender(<TranslationWorkspace {...initial} detail={{ ...restored, locales: restored.locales.map(l => l.code === "ko" ? { ...l, value: "없음!", pending: true } : l) }} />);
+  expect(button("Revert to last sent").getAttribute("aria-disabled")).toBeNull();
+  expect(container.textContent).toContain("Not sent");
+});
+
+it("페이지를 추가했다가 첫 페이지로 돌아와도 페이지 밖 행을 Saved로 표시하지 않는다", async () => {
+  const initial = props();
+  const first = { ...initial.list, rows: [initial.list.rows[0]!], nextCursor: "page2" };
+  const second = { ...initial.list, rows: [initial.list.rows[1]!], nextCursor: null };
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} list={first} />);
+  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, cursor: "page2" }} list={second} />);
+  expect(container.querySelectorAll("[data-key-row]")).toHaveLength(2);
+  await rerender(<TranslationWorkspace {...initial} list={{ ...first }} />);
+  expect(row(container, "k2").textContent).not.toContain("Saved");
+  expect(container.textContent).not.toContain("+1 saved");
+});
+
+it("두 번째 페이지 재검증도 행 요약을 갱신하고 선택 키의 조건 이탈만 Saved로 남긴다", async () => {
+  const initial = props();
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  const pageQuery = { ...initial.query, cursor: "page2" };
+  await rerender(<TranslationWorkspace {...initial} query={pageQuery} list={{ ...initial.list, rows: [{ ...initial.list.rows[1]!, missingCount: 2 }], selectedInResult: false }} />);
+  expect(row(container, "k1").textContent).toContain("Saved");
+  expect(row(container, "k2").textContent).toContain("2 missing");
+});

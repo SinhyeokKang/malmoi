@@ -46,6 +46,7 @@ beforeEach(async () => {
   // 사건의 행위자 FK(`ProjectEvent.actorUserId`)가 실재하는 사용자를 요구한다.
   for (const id of ["editor", "owner", "other", "other-owner"]) await prisma.user.create({ data: { id, email: `fixture-${id}` } });
   await prisma.project.create({ data: { id: "p", slug: "p", name: "p", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", repositoryId: "100" } });
+  await prisma.projectMember.createMany({ data: ["owner", "other-owner"].map(userId => ({ projectId: "p", userId, role: "OWNER" as const })) });
   await prisma.translationSurface.create({ data: { id: "s", projectId: "p", slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en", lastCommitSha: "c1" } });
   await prisma.locale.createMany({ data: ["en", "ko", "ja"].map(code => ({ projectId: "p", surfaceId: "s", code, name: code, isBase: code === "en" })) });
   await prisma.stringKey.create({ data: { id: "k1", projectId: "p", surfaceId: "s", key: "greet", namespace: "_root", sourceText: "Hello", sourceHash: "h" } });
@@ -193,4 +194,32 @@ describe("executeKeyRevert", () => {
     await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation });
     expect(await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation })).toEqual({ status: "blocked", reason: "nothing" });
   });
+});
+
+// 인가 직후 Project 잠금 대기 중 바뀐 권한·보관 상태도 실행 전에 다시 읽어야 한다.
+it.each(["removed", "demoted", "archived"] as const)("잠금 대기 중 %s이면 복원값·토큰·사건을 바꾸지 않는다", async change => {
+  await edited();
+  const preview = await previewKeyRevert(prisma, target);
+  if (preview.status !== "ready") throw new Error("unreachable");
+  const before = await cell("ko");
+  const blocker = await pool.connect();
+  let reverting: ReturnType<typeof executeKeyRevert> | undefined;
+  try {
+    await blocker.query("BEGIN");
+    await blocker.query('SELECT "id" FROM "Project" WHERE "id" = $1 FOR UPDATE', ["p"]);
+    if (change === "removed") await blocker.query('DELETE FROM "ProjectMember" WHERE "projectId" = $1 AND "userId" = $2', ["p", "owner"]);
+    else if (change === "demoted") await blocker.query(`UPDATE "ProjectMember" SET "role" = 'EDITOR' WHERE "projectId" = $1 AND "userId" = $2`, ["p", "owner"]);
+    else await blocker.query('UPDATE "Project" SET "archivedAt" = now() WHERE "id" = $1', ["p"]);
+    reverting = executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation });
+    // 타이머 대신 실제 잠금 대기를 관측한다 — execute가 잠금 전 상태를 읽어도 회귀가 잡힌다.
+    await expect.poll(async () => (await pool.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%'")).rows[0].n).toBeGreaterThan(0);
+    await blocker.query("COMMIT");
+    expect(await reverting).toEqual({ status: "blocked", reason: change === "archived" ? "key-unavailable" : "forbidden" });
+    expect(await cell("ko")).toEqual(before);
+    expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "translation.reverted" } })).toBe(0);
+  } finally {
+    await blocker.query("ROLLBACK");
+    blocker.release();
+    await reverting;
+  }
 });

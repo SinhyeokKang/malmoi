@@ -1458,6 +1458,9 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
   ⚠️ **`maxDuration`을 `STALE_AFTER_SECONDS`(300) 넘게 올리면 이 근거가 깨진다.**
 - **Revert**는 대상 키의 활성 미전달 셀 **전부**가 기준을 가질 때만 연다(부분 복원 없음). `needsReview`를 해제하지 않고, 값이 같아도
   pending 해제가 일어나므로 no-op이 아니다. 인가는 `project:settings`다.
+  ⚠️ **실행은 `Project`→`TranslationSurface` 잠금을 얻은 뒤 OWNER 멤버십과 활성 프로젝트·표면을 다시 잰다** (2026-09-23 리뷰) —
+  미리보기와 실행 사이의 강등·제거·보관이 잠금 대기 동안 끝날 수 있어, 진입점 판정만으로는 권한 잃은 사람의 쓰기와 사건이 남는다
+  (`revert-key.integration.ts`가 실제 PG 잠금 대기로 세 경합을 재현한다). 키 저장(`save-key`)의 같은 재확인은 후속 검토 후보다.
 
 ## 6. 인증 경계
 

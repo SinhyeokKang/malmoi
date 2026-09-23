@@ -2129,6 +2129,9 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **그물**: 잡은 것 — 실측을 **기록만** 하던 PG 테스트의 타임아웃(단언이 아니라 30초 기본 제한). 놓친 것 — 단위 테스트·메모리 하네스(플래너가 없다), 배포 A의 EXPLAIN(T3)은 **`ANALYZE`를 돌린 합성 데이터**로 재서 인덱스를 탔다고 판정했다. 대응 뒤 같은 POST가 cold 814ms / warm 240~247ms로 돌아왔다.
 - **재발 방지**: 토큰 술어를 세는 자리는 `countPending`·`loadPendingEdits`만 쓴다 — **토큰 컬럼만 보는 count가 0이면 관계 조인을 돌리지 않는다**. `rg -n "count\(\{ where: pendingWhere|findMany\(\{ where: pendingWhere" lib app` → 남은 자리는 `lib/pull/load.ts`(1층이 0이면 건너뛴다)와 `lib/publish/read.ts`(사용자가 미리보기를 열 때만)여야 한다. EXPLAIN으로 인덱스를 판정할 때는 **`ANALYZE` 전과 후를 둘 다** 잰다 — 대량 적재 직후가 실제로 요청이 오는 순간이다. ⚠️ **같은 모양의 관계 필터가 다른 집계에도 있다**(2026-09-18 grep, 문제로 관측되진 않음): `rg -n "stringKey: \{ orphaned|surface: \{ archivedAt: null \}" lib app --glob '!**/__tests__/**'` → `lib/keys/query.ts:413·415·452·518·524·535`. 목록·Home 집계라 적재 직후 첫 화면이 느릴 수 있는 후보다.
 
+
+- **재발 — 2026-09-23, translation-rework**: `lib/keys/translation-list.ts`의 count·page 집계도 낡은 통계에서 같은 실패를 냈다. 사용자 제공 PG17 재현은 619키 × 57로케일에서 169초(작은 기존 데이터), 436초(다른 프로젝트 12만 행)였고 ANALYZE 뒤에는 각각 32ms·419ms였다. 키 전체와 번역 전체를 먼저 조인하는 모양을 **번역을 한 번 집계하는 MATERIALIZED CTE**로 바꿨고, 번역값 검색 판정도 그 안에 넣었다. LATERAL만 적용한 중간안도 표면 인덱스로 전체 번역을 키마다 다시 읽어 약 1,569만 행을 방문했고, 별도 검색 EXISTS는 약 1,266만 행을 방문했다. 적재 뒤 ANALYZE만 추가하면 커밋 직후 조회와 통계 갱신 실패가 여전히 빈틈이다. 새 `translation-list-performance.integration.ts`는 autovacuum을 끈 격리 DB에서 통계 없음·소량 통계·다른 프로젝트 대량 통계 셋을 만들고, count·page·번역값 검색에 문장당 5초 제한을 걸고 EXPLAIN ANALYZE의 Translation 방문 행 수가 테이블 행 수의 4배 미만인지도 검사한다. 기존 쿼리의 57014 실패와 수정 후 통과를 관측했다. `rg -n 'LEFT JOIN "Translation"|LATERAL|AS MATERIALIZED' lib/keys`로 같은 집계 모양을 검토한다.
+
 ### 2026-09-18 — 인가 방어선이 호출이 아니라 이름을 셌다 — `import` 줄과 주석 인용만으로 green
 
 - **영역**: `app/__tests__/entry-points.test.ts`("예외가 아닌 진입점은 전부 인가를 지난다") · 발견 자리 `app/api/github/setup/route.ts`
@@ -2383,3 +2386,28 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     직접 만든 separator는 `aria-label` + `onPointerCancel` + `onLostPointerCapture` 셋을 함께 든다.
   - jsdom에서 `ResizeObserver`에 기대는 컴포넌트는 스텁 없이는 **그 분기가 안 돈다** — 폭 계획을 쓰는
     컴포넌트의 테스트는 `vi.stubGlobal("ResizeObserver", …)`로 영역을 준다.
+
+
+### 2026-09-23 — Revert가 잠금 대기 중 회수된 OWNER 권한으로 실행됐다
+
+- **영역**: `lib/keys/revert.ts` · `lib/keys/__tests__/revert-key.integration.ts`
+- **증상**: Action 입구 인가 후 Project 잠금을 기다리는 동안 멤버 제거·EDITOR 강등·프로젝트 보관이 끝나도 Revert가 번역과 미전달 토큰을 바꿨다.
+- **근본 원인**: 잠금 뒤에는 편집 지문만 다시 확인했고, 실행 주체의 현재 권한과 프로젝트 활성 상태는 다시 읽지 않았다. 지문은 권한을 증명하지 않는다.
+- **그물**: 기존 단위 인가·지문 테스트는 통과했다. 별도 PG 연결이 Project 잠금을 쥔 채 권한을 바꾸고 실행의 실제 잠금 대기를 확인한 회귀 테스트가 세 경우 모두 red를 냈다. 실행이 Project→Surface 잠금을 얻은 뒤 OWNER와 활성 프로젝트·표면을 확인하도록 수정했다.
+- **재발 방지**: `rg -n 'FOR UPDATE|projectMember\.(delete|update)' 'app/(edit)/projects' lib/keys`로 권한 변경과 실행의 직렬화 경계를 함께 읽는다. 같은 검색에 나온 `save-key.ts`는 편집 권한 경합의 별도 검토 후보이며 이번 Revert 수정 범위에는 넣지 않는다.
+
+### 2026-09-23 — 번역 화면의 부분 응답과 낙관적 상태가 다음 작업을 가렸다
+
+- **영역**: `lib/translations/{draft,saved-rows}.ts` · `components/translations/workspace/{workspace,use-leave-guard}.tsx`
+- **증상**: 셸 링크는 미저장 확인을 건너뛰었고, Discard는 복구 사본만 지워 같은 키에 남은 입력이 살아 있었다. Revert 뒤 새 편집이 Not sent에서 숨었으며 no-op Save는 미저장으로 남았다. 페이지를 되돌리면 뒤 페이지 행이 Saved로 바뀌었고 서버에 새로 생긴 로케일은 입력을 받지 못했다.
+- **근본 원인**: 이동 가드가 화면 안의 버튼만 다뤘다. 복구 사본 삭제와 메모리 draft 폐기를 동일시했고, Revert 낙관적 표시를 키가 바뀔 때까지 유지했다. 저장 응답은 실제 쓰기 셀만, 목록은 한 페이지만 주는데 이를 전체 확인 결과로 해석했다. 서버 갱신은 초기 로케일 집합만 순회했다.
+- **그물**: 기존 순수 함수·화면 내부 버튼 테스트가 경계 조합을 놓쳤다. 셸 anchor 클릭, 같은 키가 남는 필터 변경, Revert→Save, 두 페이지 왕복의 DOM 회귀와 no-op·로케일 집합 변경 reducer 회귀에서 red를 관측했다.
+- **재발 방지**: `rg -n 'mergeServerRows|inFlight.sent|state.order|beforeunload' lib/translations components/translations`로 부분 응답과 활성 집합의 소비자를 함께 검사한다. 서버의 `selectedInResult`를 페이지 부재와 구분하고, 전부 성공한 저장의 생략 셀은 공유 정규화 함수로 확정한다. 이후 입력 보존·실패·다른 키의 늦은 응답 테스트도 함께 유지한다.
+
+### 2026-09-23 — 테마에 없는 `text-link` 클래스로 인라인 링크 셋이 본문 글자로 섰다
+
+- **영역**: `components/settings/ci-card.tsx` · `components/sources/{sources-screen,source-detail-modal}.tsx`
+- **증상**: Settings의 CI integration 카드 머리 아래에 검정 `Sources` 한 낱말이 문장 없이 떠 있었다(사용자: "알 수 없는 Sources"). 같은 클래스를 쓴 Sources 화면의 `Project settings` 링크 둘도 앞뒤 문장과 같은 색이라 눌리는 것인지 안 보였다.
+- **근본 원인**: Tailwind v4는 `@theme`에 없는 유틸리티를 **경고 없이 버린다** — `text-link`는 `--color-link` 토큰이 없어 CSS가 0바이트였다. 리포의 인라인 링크 색은 `text-blue-600`(Button `link`)인데, #67에서 소스 카드를 걷고 남긴 안내가 존재하지 않는 시맨틱 이름을 새로 지었다. 동시에 시안 §13-2의 "링크 **한 줄**"을 낱말 하나로 옮겨, 색이 있었더라도 무엇으로 가는지 읽히지 않는 판이었다.
+- **그물**: 놓친 것 — `pnpm typecheck`·`pnpm build`·단위 테스트 전부(클래스 문자열은 타입도 런타임 오류도 없다). `/design-sync`는 시안에 이 줄의 아트보드가 없어 대조 대상이 아니었다. 잡은 것 — 사용자의 화면 확인. 고친 뒤 DOM 테스트(`settings-card-errors.test.tsx` — 링크가 `text-blue-600`이고 부모 문장이 링크 글자보다 길다)와 소스 스캔(`screens.test.ts` — 세 파일에 `text-link` 0)을 세웠다.
+- **재발 방지**: 색 유틸리티의 이름이 Tailwind 기본 팔레트도 `app/globals.css`의 `--color-*`도 아니면 죽은 클래스다 — `text|bg|border|ring|fill|stroke-<name>`을 뽑아 `--color-<name>` 목록과 대조하는 스캔을 돌린다(2026-09-23 전수: 남은 후보 8건 전부 오탐 — 측면 지정 `border-t-*`, `@utility text-mono`, 주석 속 CSS). 새 시맨틱 색 이름을 쓰고 싶으면 **먼저 `@theme`에 토큰을 두고** DESIGN §6.2에 등재한다. 링크를 낱말 하나로 두지 않는다 — 셸 안 텍스트 링크는 문장 안의 `text-blue-600`이다.

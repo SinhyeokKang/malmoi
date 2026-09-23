@@ -12,7 +12,6 @@ export function CiCard({ slug, archived, stale, children }: { slug: string; arch
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   return <PanelCard title={m.settings.ci.title} subtitle={m.settings.ci.description}>
-    <p className="px-4 pb-3 text-xs"><Link className="text-link" href={routes.sources(slug)}>{m.sources.title}</Link></p>
     <PushTokenPanel slug={slug} disabled={archived} />
     <div className="border-border border-t">
       <Button ref={trigger} variant="ghost" className="text-foreground focus-visible:ring-inset h-auto w-full justify-start gap-3 rounded-none px-4 py-[13px] text-left" disabled={archived || !children} onClick={() => setOpen(true)}>
@@ -21,6 +20,11 @@ export function CiCard({ slug, archived, stale, children }: { slug: string; arch
         <ChevronRight className="text-muted-foreground size-4" aria-hidden />
       </Button>
     </div>
+    {/*
+      ⚠️ **낱말 하나가 아니라 문장이다** (Sources 시안 §13-2 — 소스 카드를 걷은 자리의 안내). `Sources` 한 낱말만
+      서면 무엇으로 가는 링크인지 읽히지 않았다. 워크플로 행 바로 아래라 "한 워크플로가 전부 덮는다"가 이어 읽힌다.
+    */}
+    <p className="border-border text-muted-foreground border-t px-4 py-[13px] text-xs">{m.settings.ci.sourcesLead} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.sources(slug)}>{m.sources.title}</Link>.</p>
     {archived && <p className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.archivedReason}</p>}
     {stale.length > 0 && <p className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.ci.stale} {stale.join(", ")}</p>}
     <OnboardingModal open={open && !archived} onClose={() => setOpen(false)} returnFocusRef={trigger} bodyScroll="hidden" title={m.settings.ci.workflow} description={m.settings.workflow.saveAs(".github/workflows/malmoi-i18n.yml")} panelClassName="h-[min(640px,calc(100svh-96px))] min-h-0" actions={<Button size="lg" onClick={() => setOpen(false)}>{m.common.dismiss}</Button>}>

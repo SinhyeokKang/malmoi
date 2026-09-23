@@ -130,9 +130,7 @@ export async function loadTranslationList(
   if (query.scope === "namespace" && query.ns !== ALL_NAMESPACES) conditions.push(Prisma.sql`k."namespace" = ${query.ns}`);
   if (pattern !== null) {
     // 설명은 검색 대상이 아니다(spec §7). 번역값은 **활성 로케일**의 저장값만 본다.
-    conditions.push(Prisma.sql`(k."key" ILIKE ${pattern} ESCAPE '\\' OR k."sourceText" ILIKE ${pattern} ESCAPE '\\' OR EXISTS (
-      SELECT 1 FROM "Translation" t2 JOIN "Locale" l2 ON l2."projectId" = t2."projectId" AND l2."surfaceId" = t2."surfaceId" AND l2."code" = t2."localeCode" AND NOT l2."orphaned"
-      WHERE t2."projectId" = k."projectId" AND t2."surfaceId" = k."surfaceId" AND t2."keyId" = k."id" AND t2."value" ILIKE ${pattern} ESCAPE '\\'))`);
+    conditions.push(Prisma.sql`(k."key" ILIKE ${pattern} ESCAPE '\\' OR k."sourceText" ILIKE ${pattern} ESCAPE '\\' OR COALESCE(cells."matchesTranslation", false))`);
   }
 
   const filters: Prisma.Sql[] = [Prisma.sql`TRUE`];
@@ -145,27 +143,34 @@ export async function loadTranslationList(
   if (query.state === "new") filters.push(project.lastPulledAt === null ? Prisma.sql`TRUE` : Prisma.sql`"createdAt" > ${project.lastPulledAt}`);
 
   /**
-   * ⚠️ **키 단위로 먼저 집계한다** — KeyRef를 조인하지 않고, 번역은 활성 로케일 셀만 LEFT JOIN한다. 그래야 셀 수가 배수로 늘지 않는다.
+   * ⚠️ **키 단위로 먼저 집계한다** — KeyRef를 조인하지 않고, 번역 집계를 MATERIALIZED로 한 번 확정한다. 통계가 낡아도 표면 전체 셀을 키마다 다시 훑지 않는다.
    * ⚠️ **정렬은 `COLLATE "C"`다** — DB 로캘에 따라 키 순서가 갈리면 cursor 비교와 oracle이 어긋난다.
    */
   const filtered = Prisma.sql`
-    WITH lc AS (
+    WITH lc AS MATERIALIZED (
       SELECT "surfaceId", count(*)::int AS n FROM "Locale"
       WHERE "projectId" = ${projectId} AND NOT "orphaned" AND "surfaceId" = ANY(${surfaceIds}::text[]) GROUP BY 1
+    ), cells AS MATERIALIZED (
+      SELECT t."keyId", count(*) FILTER (WHERE t."value" <> '')::int AS filled,
+        bool_or(t."needsReview" AND t."value" <> '') AS "review",
+        bool_or(t."pendingEditToken" IS NOT NULL) AS "pending",
+        bool_or(t."localeCode" = ${missingLocale} AND t."value" <> '') AS "hasLocale",
+        ${pattern === null ? Prisma.sql`false` : Prisma.sql`bool_or(t."value" ILIKE ${pattern} ESCAPE '\\')`} AS "matchesTranslation"
+      FROM "Translation" t
+      WHERE t."projectId" = ${projectId} AND t."surfaceId" = ANY(${surfaceIds}::text[])
+        AND EXISTS (SELECT 1 FROM "Locale" l WHERE l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode" AND NOT l."orphaned")
+      GROUP BY t."keyId"
     ), ks AS (
       SELECT k."id", s."slug" AS "surfaceSlug", k."namespace", k."key", k."sourceText", k."createdAt",
         COALESCE(k."sortIndex", ${NO_SORT})::int AS "sidx", lc.n AS "total",
-        (lc.n - count(t."id") FILTER (WHERE t."value" <> ''))::int AS "missing",
-        COALESCE(bool_or(t."needsReview" AND t."value" <> ''), false) AS "review",
-        COALESCE(bool_or(t."pendingEditToken" IS NOT NULL), false) AS "pending",
-        COALESCE(bool_or(t."localeCode" = ${missingLocale} AND t."value" <> ''), false) AS "hasLocale"
+        (lc.n - COALESCE(cells.filled, 0))::int AS "missing",
+        COALESCE(cells."review", false) AS "review", COALESCE(cells."pending", false) AS "pending",
+        COALESCE(cells."hasLocale", false) AS "hasLocale"
       FROM "StringKey" k
       JOIN "TranslationSurface" s ON s."projectId" = k."projectId" AND s."id" = k."surfaceId" AND s."archivedAt" IS NULL
       JOIN lc ON lc."surfaceId" = k."surfaceId"
-      LEFT JOIN "Translation" t ON t."projectId" = k."projectId" AND t."surfaceId" = k."surfaceId" AND t."keyId" = k."id"
-        AND EXISTS (SELECT 1 FROM "Locale" l WHERE l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode" AND NOT l."orphaned")
+      LEFT JOIN cells ON cells."keyId" = k."id"
       WHERE ${Prisma.join(conditions, " AND ")}
-      GROUP BY k."id", s."slug", lc.n
     ), f AS (
       SELECT *, CASE WHEN "missing" > 0 OR "review" THEN 0 ELSE 1 END AS "rank" FROM ks WHERE ${Prisma.join(filters, " AND ")}
     )`;

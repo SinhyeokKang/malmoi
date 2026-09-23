@@ -128,6 +128,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const resultRef = useRef<HTMLSpanElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => { setStatus(null); setRevertedLocales(new Set()); setRevertReason(null); }, [keyId]);
+  useEffect(() => {
+    // Revert 응답의 낙관적 표시는 다음 서버 상세까지만 유효하다. 이후의 편집 토큰을 가리지 않는다.
+    setRevertedLocales(new Set());
+    setRevertReason(null);
+  }, [detail]);
 
   // ── 세션 복구 사본 — 이 탭 sessionStorage의 한 키 draft, 사용자별 (spec §3.5) ───────────────────
   const restoredFor = useRef<string | null>(null);
@@ -170,11 +175,17 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     if (generation.current.key !== conditionKey) {
       generation.current = { key: conditionKey, value: generation.current.value + 1 };
       setRows(startListGeneration(list.rows, generation.current.value));
-    } else if (query.cursor !== undefined) {
-      // 다음 페이지 — 같은 세대에 이어 붙인다.
-      setRows(prev => ({ generation: prev.generation, rows: [...prev.rows, ...list.rows.filter(r => !prev.rows.some(p => p.row.keyId === r.keyId)).map(row => ({ row, savedOut: false }))] }));
     } else {
-      setRows(prev => mergeServerRows(prev, list.rows));
+      // 서버 응답은 한 페이지다. 페이지 밖의 행은 유지하고, 전체 조건 판정이 있는 선택 키만 이탈 여부를 갱신한다.
+      const membership = new Map<string, boolean>();
+      if (query.key !== undefined && list.selectedInResult !== null) membership.set(query.key, list.selectedInResult);
+      setRows(prev => {
+        const merged = mergeServerRows(prev, list.rows, membership);
+        return query.cursor === undefined ? merged : {
+          generation: merged.generation,
+          rows: [...merged.rows, ...list.rows.filter(r => !merged.rows.some(p => p.row.keyId === r.keyId)).map(row => ({ row, savedOut: false }))],
+        };
+      });
     }
   }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -196,6 +207,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   // ── 이동 — 전부 한 판정을 지난다 ────────────────────────────────────────────
   // 확인창에서 버린 draft는 복구 사본에서도 지운다 — 안 지우면 돌아왔을 때 버린 입력이 "restored"로 되살아난다(spec §3.5).
   const discardThen = (proceed: () => void) => () => {
+    dispatch({ type: "discard" });
     try { window.sessionStorage.removeItem(storageKey(userId, slug)); } catch { /* 저장소가 막혀 있으면 지울 것도 없다 */ }
     proceed();
   };
@@ -234,6 +246,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       const result = await saveTranslationKey({ slug, surfaceSlug: detail.key.surfaceSlug, keyId: detail.key.id, changes });
       if (result.ok) {
         dispatch({ type: "success", requestId, keyId: detail.key.id, cells: result.cells });
+        setRevertedLocales(prev => new Set([...prev].filter(code => !result.cells.some(cell => cell.localeCode === code))));
         setStatus({ kind: "saved" });
         // 목록 행은 자리에 남기고 수만 최신 저장값으로 — 조건 이탈 여부는 재검증(`mergeServerRows`)이 정한다.
         const saved = { ...draft.saved, ...Object.fromEntries(result.cells.map(c => [c.localeCode, c.value])) };

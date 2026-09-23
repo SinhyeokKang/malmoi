@@ -14,7 +14,7 @@ import { readDeliveryState } from "./delivery";
  * 기준값은 전달 확인된 **DB 스냅샷**이고 현재 리포를 읽지 않는다 — 값을 고르는 코드가 아니라 스냅샷이 지정한 값을 쓰는 명령이다.
  * 대상은 그 키의 활성 미전달 셀 **전부**이고, 하나라도 기준이 없거나 낡았으면 쓰기 0건이다(부분 복원 없음).
  *
- * ⚠️ **인가(`project:settings` — OWNER)는 호출하는 Server Action이 끝냈다.** 여기의 `canRevert`는 그 결과를 받는 자리다.
+ * ⚠️ Action의 OWNER 인가는 입구 검사다. 실행은 잠금 뒤에도 멤버십과 보관 상태를 다시 확인한다.
  * ⚠️ `server-only`를 붙이지 않는다 — 격리 PG 통합 테스트가 직접 부른다.
  */
 export type RevertTarget = { projectId: string; surfaceId: string; surfaceSlug: string; keyId: string; userId: string };
@@ -94,6 +94,13 @@ export async function executeKeyRevert(prisma: PrismaClient, target: RevertTarge
     // 저장·Publish 확정과 같은 잠금 순서다 — 잠금 뒤에 다시 판정해야 확인창 이후의 변화를 본다.
     await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
     await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${projectId} AND "id" = ${surfaceId} FOR UPDATE`;
+    const member = await tx.projectMember.findFirst({ where: { projectId, userId, role: "OWNER" }, select: { userId: true } });
+    if (member === null) return { status: "blocked", reason: "forbidden" } as const;
+    const active = await tx.translationSurface.findFirst({
+      where: { id: surfaceId, projectId, archivedAt: null, project: { archivedAt: null } },
+      select: { id: true },
+    });
+    if (active === null) return { status: "blocked", reason: "key-unavailable" } as const;
     const state = await revertState(tx, target);
     if (!state.ok) return state.blocked;
     if (!sameFingerprint(target.confirmation, state.fingerprint)) return { status: "reconfirm" } as const;

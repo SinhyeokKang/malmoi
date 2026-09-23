@@ -7,9 +7,14 @@
  */
 type Values = Record<string, string>;
 
+/** 공백만 입력은 미번역이다. 서버 저장과 draft의 성공 적용이 공유하고, 값이 있으면 앞뒤 공백도 보존한다. */
+export function normalizeTranslationValue(value: string): string {
+  return value.trim() === "" ? "" : value;
+}
+
 export type KeyDraftState = {
   keyId: string;
-  /** 초기 로케일 순서. 미저장 목록이 이 순서를 따른다. */
+  /** 서버가 준 활성 로케일 순서. 미저장 목록이 이 순서를 따른다. */
   order: readonly string[];
   saved: Values;
   draft: Values;
@@ -19,6 +24,7 @@ export type KeyDraftState = {
 export type KeyDraftAction =
   | { type: "edit"; locale: string; value: string }
   | { type: "reset"; locale: string }
+  | { type: "discard" }
   | { type: "submit"; requestId: string }
   | { type: "success"; requestId: string; keyId: string; cells: readonly { localeCode: string; value: string }[] }
   | { type: "failure"; requestId: string }
@@ -41,6 +47,8 @@ export function dirtyLocales(state: KeyDraftState): string[] {
 
 export function reduceKeyDraft(state: KeyDraftState, action: KeyDraftAction): KeyDraftState {
   switch (action.type) {
+    case "discard":
+      return initKeyDraft(state.keyId, state.saved);
     case "edit": {
       if (!Object.hasOwn(state.saved, action.locale)) return state;
       return { ...state, draft: values([...Object.entries(state.draft), [action.locale, action.value]]) };
@@ -60,7 +68,11 @@ export function reduceKeyDraft(state: KeyDraftState, action: KeyDraftAction): Ke
       const saved = values(Object.entries(state.saved));
       const draft = values(Object.entries(state.draft));
       const sent = state.inFlight.sent;
-      for (const cell of action.cells) {
+      // 키 저장은 전부 성공하거나 실패한다. 응답에서 빠진 제출 셀은 정규화 후 DB와 같았던 no-op이다.
+      const acknowledged = new Map(Object.entries(sent).map(([code, value]) => [code, normalizeTranslationValue(value)]));
+      for (const cell of action.cells) acknowledged.set(cell.localeCode, cell.value);
+      for (const [localeCode, value] of acknowledged) {
+        const cell = { localeCode, value };
         if (!Object.hasOwn(saved, cell.localeCode)) continue;
         // 보낸 셀은 보낸 그대로인 입력에만 서버 정규화값을 입히고(뒤에 더 친 입력은 남긴다), 보내지 않은 셀은
         // `server`와 같게 미저장이 아닐 때만 따라간다 — 안 그러면 깨끗한 셀이 Not saved가 되어 남의 값을 덮는다.
@@ -78,16 +90,16 @@ export function reduceKeyDraft(state: KeyDraftState, action: KeyDraftAction): Ke
     }
     case "server": {
       if (action.keyId !== state.keyId) return state;
-      const saved = values(Object.entries(state.saved));
-      const draft = values(Object.entries(state.draft));
-      for (const code of state.order) {
-        if (!Object.hasOwn(action.values, code)) continue;
+      const order = Object.keys(action.values);
+      const saved = values([]);
+      const draft = values([]);
+      for (const code of order) {
         const next = action.values[code] ?? "";
         // 미저장이 아닌 셀은 입력도 서버를 따라가고, 미저장 입력은 보존한다.
-        if (draft[code] === saved[code]) draft[code] = next;
+        draft[code] = !Object.hasOwn(state.saved, code) || state.draft[code] === state.saved[code] ? next : state.draft[code] ?? "";
         saved[code] = next;
       }
-      return { ...state, saved, draft };
+      return { ...state, order, saved, draft };
     }
   }
 }
