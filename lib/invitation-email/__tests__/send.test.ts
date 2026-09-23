@@ -60,8 +60,8 @@ describe("sendInvitationEmails — 요청 모양", () => {
     fetchMock.mockResolvedValueOnce(ok(2));
     await sendInvitationEmails(config, messages);
     expect(JSON.parse(String(lastRequest().init.body))).toEqual([
-      { from: config.from, to: ["a@x.com"], subject: "You're invited to malmoi", text: "https://mal-moi.com/invite/tok_a" },
-      { from: config.from, to: ["b@x.com"], subject: "You're invited to malmoi", text: "https://mal-moi.com/invite/tok_b" },
+      { from: config.from, to: ["a@x.com"], subject: "You're invited to malmoi", text: "https://mal-moi.com/invite/tok_a", html: expect.stringContaining("https://mal-moi.com/invite/tok_a") },
+      { from: config.from, to: ["b@x.com"], subject: "You're invited to malmoi", text: "https://mal-moi.com/invite/tok_b", html: expect.stringContaining("https://mal-moi.com/invite/tok_b") },
     ]);
   });
 
