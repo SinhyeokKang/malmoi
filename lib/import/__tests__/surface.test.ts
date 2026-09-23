@@ -31,6 +31,8 @@ describe("readSurfaceSnapshot", () => {
     expect([...result.blobs.keys()]).toEqual(result.targets);
     expect(result.baseLocale).toBe("en");
     expect(blob.mock.calls).toEqual([["en-blob"], ["fr-blob"], ["ko-blob"], ["ko-blob"]]);
+    // 재시도로 읽힌 ko가 재탐지 로케일에 남아야 적재가 ko를 orphan시키지 않는다 (delivery-invariants D6 · 감사 #59).
+    expect(result.format.locales).toContain("ko");
   });
   it("재시도도 실패한 경로를 targets에서 지우지 않는다", async () => {
     const blob = vi.fn<RepoReader["blob"]>().mockImplementation(async sha => sha !== "ko-blob" ? '{"hello":"Hello"}' : undefined);
@@ -38,6 +40,8 @@ describe("readSurfaceSnapshot", () => {
     expect(result).toMatchObject({ status: "ok", targets: ["locales/en.json", "locales/fr.json", "locales/ko.json"] });
     if (result.status !== "ok") throw new Error("expected prepared snapshot");
     expect(result.blobs.has("locales/ko.json")).toBe(false);
+    // 끝내 못 읽은 ko도 목록에 남는다 — 번역 없이 남아 orphan되지 않고 `partial-import`가 그 사실을 말한다.
+    expect(result.format.locales).toContain("ko");
   });
   it("base 다운로드 실패를 정상 빈 카탈로그로 바꾸지 않는다", async () => {
     const blob = vi.fn<RepoReader["blob"]>().mockImplementation(async sha => sha !== "en-blob" ? '{"hello":"안녕"}' : undefined);

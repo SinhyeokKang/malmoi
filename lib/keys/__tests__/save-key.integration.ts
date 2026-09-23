@@ -187,3 +187,27 @@ describe("applyKeySave — 복원 기준 기록 (design §10.3)", () => {
     expect(await baselines()).toEqual([]);
   });
 });
+
+/**
+ * **수술적 표면의 비-base 비우기 거부** (delivery-invariants D2 · 감사 #2). 수술적 writer는 값을 지울 줄 몰라 비운 셀은 원본 리터럴이
+ * 남는데 pull이 토큰을 해제했다. 판정은 잠금 안이고 거부 단위는 키 전체다 — 행·값·토큰·사건 불변.
+ */
+describe("applyKeySave — 수술적 표면의 비-base 비우기", () => {
+  beforeEach(async () => {
+    await prisma.translationSurface.update({ where: { id: "p-s" }, data: { adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", nested: null } });
+  });
+
+  it("비-base ko \"\" → cannot-clear · 그 키의 어떤 셀도 쓰이지 않는다", async () => {
+    const before = await cell("ko");
+    expect(await applyKeySave(prisma, input([{ localeCode: "ja", value: "J" }, { localeCode: "ko", value: "  " }])))
+      .toEqual({ ok: false, error: "cannot-clear", localeCodes: ["ko"] });
+    expect(await cell("ko")).toEqual(before);
+    expect(await cell("ja")).toBeNull();
+    expect(await events()).toEqual([]);
+  });
+
+  it("base en \"\"는 기존대로 저장된다 (짝)", async () => {
+    expect(await applyKeySave(prisma, input([{ localeCode: "en", value: "" }]))).toEqual({ ok: true, keyId: "p-k1", cells: [{ localeCode: "en", value: "" }] });
+    expect(await cell("en")).toMatchObject({ value: "", updatedBy: "u1" });
+  });
+});

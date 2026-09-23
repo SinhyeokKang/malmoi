@@ -294,3 +294,34 @@ describe("renderLocaleFiles — writer가 버린 항목을 errors로 싣는다",
     expect(en?.errors?.[0]?.key).toBe("a.b");
   });
 });
+
+/**
+ * **보류 좌표를 렌더 출력에 싣는다** (delivery-invariants D3). `content`·`path`는 그대로라 트리 페이로드·blob SHA에 영향이 없다.
+ */
+describe("renderLocaleFiles — 보류 좌표", () => {
+  it("per-locale 출력에 locale이 붙고, 그 오류에도 locale이 붙는다", () => {
+    const format = formatFromProject(
+      { adapterName: "code-dict", pathTemplate: "i18n/{locale}.ts", nested: null, nestedByPath: null, baseLocale: "en" },
+      ["en", "ko"],
+    );
+    const paths = resolveLocalePaths(format, "per-locale", ["i18n/en.ts"]);
+    const out = renderLocaleFiles(format, "per-locale", paths, [key({ key: "a", cells: { en: { value: "one" }, ko: { value: "하나" } } })], "en",
+      new Map([["i18n/en.ts", "export default { a: 'x' };\n"]]));
+    expect(out.map((f) => f.locale)).toEqual(paths.map((p) => p.locale));
+    expect(out.find((f) => f.path === "i18n/ko.ts")?.errors?.[0]).toMatchObject({ code: "original-file-missing", locale: "ko" });
+  });
+
+  it("ts-dict write-slot-missing에 그 write 호출의 locale이 붙는다", () => {
+    const format = formatFromProject(
+      { adapterName: "ts-dict", pathTemplate: "ns/*.ts", nested: null, nestedByPath: null, baseLocale: "ko" },
+      ["ko", "fr"],
+    );
+    const source = `const ko = { "a": "하나", "z": "끝" } as const;\nconst fr = { "a": "un" } as const;\n`;
+    const paths = resolveLocalePaths(format, "multi-locale", ["ns/x.ts"]);
+    const out = renderLocaleFiles(format, "multi-locale", paths,
+      [key({ key: "a", cells: { ko: { value: "하나" }, fr: { value: "un" } } }), key({ key: "z", cells: { ko: { value: "끝" }, fr: { value: "fin" } } })],
+      "ko", new Map([["ns/x.ts", source]]));
+    expect(out[0]?.errors).toEqual([{ path: "ns/x.ts", code: "write-slot-missing", key: "z", locale: "fr" }]);
+    expect(out[0]?.locale).toBeUndefined();
+  });
+});

@@ -804,3 +804,107 @@ describe("runPull — 캡처한 편집 토큰을 성공·동등 경로에서만 
     expect(delivered).toEqual([]);
   });
 });
+
+/**
+ * **전달 불가 셀은 좌표로 보류하고 나머지는 보낸다** (delivery-invariants D3 · 감사 #3 · C). 전에는 비-base 로케일 파일 하나가
+ * base에 없으면 `original-file-missing`으로 Publish 전체가 `writer-warnings`였고, 미리보기는 "나머지는 나간다"고 보였다.
+ * ⚠️ 보류 셀의 토큰은 **해제 쓰기에 실리지 않는다** — 그것이 불변식 9다. `deliveryContexts`는 좁히지 않는다(Revert가 산다).
+ */
+describe("runPull — 보류 셀 (per-locale 수술적 · 비-base 파일 부재)", () => {
+  const yamlSurface = { ...PROJECT, adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", nested: null as boolean | null };
+  const EN = "en:\n  a: one\n";
+  const KO = "ko:\n  a: 하나\n";
+  const koEdit = { id: "t-ko", token: "tok-ko", cell: { surfaceId: "s1", keyId: "k1", localeCode: "ko", restoreValue: "하나" } };
+  const frEdit = { id: "t-fr", token: "tok-fr", cell: { surfaceId: "s1", keyId: "k1", localeCode: "fr", restoreValue: "" } };
+  const CONTEXTS = [{ surfaceId: "s1", fingerprint: "fp" }];
+
+  function run(edits: PullState["pendingEdits"], cells: RenderKey["cells"], tree: { path: string; content: string }[]) {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: tree.map(f => ({ path: f.path, sha: blobSha(f.content) })) },
+      blobs: Object.fromEntries(tree.map(f => [blobSha(f.content), f.content])),
+    });
+    const saved: { delivered: unknown; contexts: unknown; withheld: unknown }[] = [];
+    const promise = runPull({
+      loadState: async () => ({
+        project: { ...PROJECT },
+        surfaces: [{ ...yamlSurface, id: "s1", slug: "default", localeCodes: ["en", "fr", "ko"],
+          keys: [{ id: "k1", key: "a", sourceText: "one", orphaned: false, cells }] }],
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: edits.length, pendingEdits: edits, deliveryContexts: CONTEXTS,
+      }),
+      createClient: async () => client,
+      saveLastPulledAt: async (_id, _at, _published, delivered, contexts, withheld) => void saved.push({ delivered, contexts, withheld }),
+      syncBranch: "malmoi-i18n/sync",
+    });
+    return { promise, calls, saved };
+  }
+
+  it("ko·fr 편집 + fr.yml 없음 → committed · 해제에는 ko만 · 보류에 fr · contexts 그대로 · 결과는 실린 수", async () => {
+    const { promise, calls, saved } = run([koEdit, frEdit],
+      { en: { value: "one" }, ko: { value: "하나!" }, fr: { value: "un" } },
+      [{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }]);
+    const result = await promise;
+    expect(result).toMatchObject({ status: "committed", delivered: 1, withheld: { file: 1, key: 0 } });
+    expect(calls.map(c => c.method)).toContain("createCommit");
+    expect(saved).toEqual([{ delivered: [koEdit], contexts: CONTEXTS, withheld: [frEdit] }]);
+  });
+
+  it("보류 셀만 있으면 skipped/withheld — GitHub 쓰기 0회 · 해제 0회 (실린 편집이 없다)", async () => {
+    const { promise, calls, saved } = run([frEdit],
+      { en: { value: "one" }, ko: { value: "하나" }, fr: { value: "un" } },
+      [{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }]);
+    expect(await promise).toEqual({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } });
+    const writes = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr"];
+    expect(calls.map(c => c.method).filter(m => writes.includes(m))).toEqual([]);
+    expect(saved).toEqual([]);
+  });
+
+  it("**base** en.yml이 없으면 여전히 writer-warnings다 (설정 오류)", async () => {
+    const { promise, saved } = run([koEdit],
+      { en: { value: "one" }, ko: { value: "하나!" } },
+      [{ path: "config/locales/ko.yml", content: KO }]);
+    expect(await promise).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+    expect(saved).toEqual([]);
+  });
+
+  it("보류가 없으면 withheld 필드가 없다 (짝)", async () => {
+    const { promise, saved } = run([koEdit],
+      { en: { value: "one" }, ko: { value: "하나!" } },
+      [{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }, { path: "config/locales/fr.yml", content: "fr:\n  a: un\n" }]);
+    const result = await promise;
+    expect(result).toMatchObject({ status: "committed", delivered: 1 });
+    expect(result).not.toHaveProperty("withheld");
+    expect(saved[0]?.withheld).toEqual([]);
+  });
+});
+
+describe("runPull — 보류 셀 (ts-dict · 로케일 객체에 자리가 없는 키)", () => {
+  const tsSurface = { ...PROJECT, adapterName: "ts-dict", pathTemplate: "ns/*.ts", nested: null as boolean | null, baseLocale: "ko" };
+  const SOURCE = `const ko = { "a": "하나", "z": "끝" } as const;\nconst fr = { "a": "un" } as const;\n`;
+
+  it("fr 객체에 없는 z 번역은 보류되고 a 편집은 나간다", async () => {
+    const { client } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [{ path: "ns/x.ts", sha: blobSha(SOURCE) }] },
+      blobs: { [blobSha(SOURCE)]: SOURCE },
+    });
+    const aEdit = { id: "t-a", token: "tok-a", cell: { surfaceId: "s1", keyId: "ka", localeCode: "fr", restoreValue: "un" } };
+    const zEdit = { id: "t-z", token: "tok-z", cell: { surfaceId: "s1", keyId: "kz", localeCode: "fr", restoreValue: "" } };
+    const saved: unknown[] = [];
+    const result = await runPull({
+      loadState: async () => ({
+        project: { ...PROJECT },
+        surfaces: [{ ...tsSurface, id: "s1", slug: "default", localeCodes: ["fr", "ko"], keys: [
+          { id: "ka", key: "a", sourceText: "하나", orphaned: false, cells: { ko: { value: "하나" }, fr: { value: "un!" } } },
+          { id: "kz", key: "z", sourceText: "끝", orphaned: false, cells: { ko: { value: "끝" }, fr: { value: "fin" } } },
+        ] }],
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 2, pendingEdits: [aEdit, zEdit],
+      }),
+      createClient: async () => client,
+      saveLastPulledAt: async (_id, _at, _published, delivered, _contexts, withheld) => void saved.push([delivered, withheld]),
+      syncBranch: "malmoi-i18n/sync",
+    });
+    expect(result).toMatchObject({ status: "committed", delivered: 1, withheld: { file: 0, key: 1 } });
+    expect(saved).toEqual([[[aEdit], [zEdit]]]);
+  });
+});

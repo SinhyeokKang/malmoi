@@ -325,10 +325,43 @@ describe("ts-dict — write의 방어", () => {
     expect(out).toBe(SRC);
   });
 
-  it("writeWithErrors가 비리터럴 프로퍼티를 에러로 돌려준다 — write는 그것을 버렸다", () => {
+  /**
+   * ⚠️ **보고는 `wanted`에 든 키만이다** (delivery-invariants D4 · 감사 #4). 전에는 쓰려는 키와 무관한 비리터럴까지 경고로
+   * 내서 `{ a: "A", b: someFn }` 파일의 `a` 편집이 `writer-warnings`로 영영 나가지 않았다.
+   */
+  it("쓰려는 키와 무관한 비리터럴은 보고하지 않는다 — a만 편집한 write는 경고 0건", () => {
     const res = tsDict.writeWithErrors!(fmt, { locale: "ko", entries: [{ key: "a", message: "둘" }] });
     expect(res.content).toContain('"둘"');
-    expect(res.errors.some((e) => e.code === "value-not-string-literal" && e.key === "b")).toBe(true);
+    expect(res.errors).toEqual([]);
+  });
+
+  it("쓰려는 키가 비리터럴이면 그 키의 경고는 그대로 난다 (짝)", () => {
+    const res = tsDict.writeWithErrors!(fmt, { locale: "ko", entries: [{ key: "a", message: "둘" }, { key: "b", message: "셋" }] });
+    expect(res.errors.filter((e) => e.code === "value-not-string-literal").map((e) => e.key)).toEqual(["b"]);
+  });
+});
+
+/**
+ * **wanted인데 로케일 객체에 자리가 없는 키** (delivery-invariants D4 · C). 삽입하지 않는다(ARCHITECTURE §1.4의 ts-dict 예외는
+ * 유지) — 대신 `write-slot-missing`으로 보고해 pull이 그 셀만 보류한다. 전에는 조용해서 파일은 그대로인데 토큰이 해제됐다.
+ *
+ * ⚠️ **키가 이 파일 것인지는 같은 파일의 다른 로케일 객체가 말한다.** 한 표면이 네임스페이스 파일 여럿이고 렌더가 모든
+ * 파일에 표면 전체 키를 넘기므로, "이 객체에 없다"만으로 보고하면 다른 파일 키 전부가 경고가 된다.
+ */
+describe("ts-dict — 로케일 객체에 자리가 없는 wanted 키", () => {
+  const SRC = `const ko = { "a": "하나", "z": "끝" } as const;\nconst fr = { "a": "un" } as const;\n`;
+  const fmt = { adapter: "ts-dict" as const, pathTemplate: "ns/*.ts", locales: ["ko", "fr"], currentFiles: [{ path: "ns/x.ts", content: SRC }] };
+
+  it("fr 객체에 없는 z를 쓰려 하면 write-slot-missing 1건 · 내용은 그대로다", () => {
+    const res = tsDict.writeWithErrors!(fmt, { locale: "fr", entries: [{ key: "a", message: "un" }, { key: "z", message: "fin" }] });
+    expect(res.errors).toEqual([{ path: "ns/x.ts", code: "write-slot-missing", key: "z" }]);
+    expect(res.content).toBe(SRC);
+  });
+
+  it("이 파일의 어느 로케일 객체에도 없는 키는 다른 네임스페이스 것이다 — 보고하지 않는다", () => {
+    const res = tsDict.writeWithErrors!(fmt, { locale: "fr", entries: [{ key: "a", message: "un!" }, { key: "other.ns", message: "x" }] });
+    expect(res.errors).toEqual([]);
+    expect(res.content).toContain('"un!"');
   });
 });
 
