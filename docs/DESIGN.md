@@ -290,6 +290,10 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 17 (+ 같은 자�
 
 ### 6.1 번역 화면 — 머리 · 툴바 · 칩 · **키 그룹**
 
+⚠️ **2026-09-23(translation-rework C4)부터 라우트가 이 절의 화면을 렌더하지 않는다** — 세 패널
+작업 화면(§6.1a)으로 바뀌었다. 이 절은 옛 컴포넌트가 리포에 남아 있는 동안만 참이고, 그 제거(T16)와
+이 절의 정리(T17)는 C5에서 한다.
+
 ⚠️ **2026-09-11(8-4)에 표의 축이 바뀌었다.** 그 전에는 `| Key | en(base) | ko | fr |`로 **로케일이
 열**이었고, 지금은 **키가 왼쪽 셀 하나(320)이고 로케일이 그 아래 행으로 쌓인다**(시안 `212:937`).
 열이 축이면 로케일이 늘 때마다 가로가 늘어 6개에서 표가 화면을 넘었다 — 그 가로 스크롤 규칙이
@@ -352,6 +356,38 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 17 (+ 같은 자�
 **"Translated"에는 배지를 붙이지 않는다** — **가장 흔한 상태가 가장 조용해야 한다** (§6.2와 같은
 원리). 같은 이유로 8-4가 `Untranslated` 배지를 뗐고("값 칸이 비어 있는 것이 이미 그 말이다"),
 **"From repository" 같은 표시도 두지 않는다**.
+
+### 6.1a 번역 작업 화면 — 트리 · 키 목록 · 로케일 세 패널 (2026-09-23, translation-rework C4 · 시안 `design_handoff_translations` 2a · 트리 2k-B)
+
+**SoT는 Claude Design 캔버스 `Translations.dc.html`의 2a다.** 아래 값은 Chrome 1440×900(LNB 열림)에서
+computed style로 잰 것이다.
+
+| 무엇 | 값 | 근거 |
+|---|---|---|
+| 본문 | `p-4` · 카드 사이 16(리사이저 폭) | 캔버스 2a |
+| 카드 둘 | `rounded-lg`(12) · `border-border` · 흰 면 · 그림자 없음 | 캔버스 2a. ⚠️ 첫 구현이 `rounded-xl`(16)이었다 |
+| 트리 | 260 · 우측 `border-border` · 행 `rounded-sm`(8) · gap 8 · 14/20. **소스 행** 34 높이 `px-2 py-[7px]` · `FileJson2` 16. **네임스페이스 행** 32 높이 `py-1.5 pr-2 pl-[34px]` · `Folder` 14, "All namespaces" `Layers` 14 | 캔버스 2a · 트리 아이콘 **2k-B 확정** |
+| 키 목록 | 392(⚠️ **카드 테두리 안쪽은 390**이다 — 캔버스는 260+392를 테두리 **바깥**에 두어 외곽이 654이고, 구현은 `layout.left` 652를 border-box에 준다. 2px를 맞추려면 폭 계약의 모든 하한이 함께 움직여서 두었다) · `<ul>`/`<li>` · 행 `px-4 py-3` · gap 12 · 행 사이 `border-t`(첫 행 `border-divider`, 나머지 `border-border`) · 선택 `bg-foreground/[0.07]`(`ListItemButton` — `sidebar.tsx`와 같은 규칙) | 캔버스 2a |
+| 검색 | **320**(`SearchInput`의 `inputClassName="w-80"`) · 36 높이 | 캔버스 2a. ⚠️ 프리미티브 기본 `w-64`는 그대로다 — 다른 화면의 검색을 이 루프가 안 봤다 |
+| 로케일 입력 | `w-full` — 행을 채운다 · `rounded-[10px]` · padding 10 · 14 / `leading-[1.55]` | ⚠️ `field-sizing-content`가 폭도 내용에 맞춰 줄여서, `w-full`이 없으면 빈 칸이 한 글자 폭으로 선다 |
+
+**폭 계약은 `lib/translations/layout.ts`가 정본이다** — 로케일 ≥ 420을 마지막까지 지키고, 모자라면
+목록 392→336 → 트리 260→208 → 트리 접힘(목록 머리의 버튼이 겹쳐 뜨는 패널을 연다) 순으로 준다. 접힌 뒤에도
+772 미만이면 본문만 가로 스크롤이다. 1280 창에서 실측: 좌 546 · 로케일 420(`aria-valuemax` 546.09 = 영역
+982.1 − 16 − 420).
+
+**리사이저는 시안에 없고 사용자 결정이다**(트리+목록 카드 ↔ 로케일 카드 사이). `react-resizable-panels`를 쓰지
+않는다 — 그 라이브러리의 크기가 % 전용이라 px 하한 셋(420·336·208)을 매 리사이즈에 환산해야 하고, 핸들이
+카드 사이 16px 간격 자체여야 해서다. `role="separator"` + `aria-valuenow/min/max` + ←→ 8px · Home · End. 트리가 접혀 범위가 한 점이면 `tabIndex=-1` + `aria-disabled`다(죽은 Tab 정거장). 드래그는 `pointerup`·`pointercancel`·캡처 상실 셋 다에서 끝난다 — 하나만 걸면 끝나지 않은 드래그가 버튼 없이 지나가는 포인터로 폭을 바꾸고 저장한다.
+⚠️ **접근 이름 `Resize key list`가 필수다** — 첫 구현이 이름 없이 나갔고 화면에도 jsdom에도 안 드러나 CDP로만
+잡혔다(`translation-workspace.test.tsx`가 고정한다). 선호 폭은 사용자×프로젝트별 `localStorage`이고 **clamp 값을
+저장하지 않는다** — 좁은 창에서 저장하면 넓혔을 때 안 돌아온다.
+
+**문서화된 이탈** — 프리미티브가 이긴 자리: Badge 칩 padding · 꺼진 Button 색은 `components/ui/`의 값을 따른다.
+키 카드 머리는 캔버스 후보 중 **2c**를 골랐다. 목록 머리 우측은 2a의 `All keys` 드롭다운 칩이 아니라 평문 `+n saved · Incomplete first`다 — 캔버스 안에서도 아트보드마다 칩형과 평문형이 엇갈리고, 정렬이 하나뿐이라 고를 것이 없는 칩은 누를 이유가 없는 버튼이다. Publish 버튼 아이콘은 §6.646의 헤더 버튼과 같은 것을 쓴다.
+
+**브라우저로 못 밟은 것** — Safari·Firefox, 네이티브 `beforeunload` 확인창, 트리 접힘 오버레이·772 미만 가로
+스크롤(단위 테스트 `layout.test.ts`만), 대량 데이터에서의 Not sent·Missing 상태.
 
 ### 6.2 상태 색 — 배지 4종 + 연결 건강성 7종 + Alert 4종, 색 체계는 하나
 
