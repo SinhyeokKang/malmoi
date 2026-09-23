@@ -21,19 +21,19 @@ it("루트 not-found는 제품 문구와 목록 출구를 든다", () => {
   expect(html).toContain('href="/projects"');
 });
 
-it("루트 error는 다시 시도(reset)와 목록 출구를 든다", async () => {
-  const reset = vi.fn();
-  const { container } = await render(<RootError error={new Error("boom")} reset={reset} />);
+it("루트 error는 다시 시도(retry)와 목록 출구를 든다", async () => {
+  const retry = vi.fn();
+  const { container } = await render(<RootError error={new Error("boom")} retry={retry} />);
   expect(container.textContent).toContain(m.crash.title);
   expect(container.textContent).not.toContain("boom");
   expect(container.querySelector('a[href="/projects"]')).not.toBeNull();
-  const retry = [...container.querySelectorAll("button")].find(b => b.textContent?.trim() === m.common.retry);
-  await act(async () => retry?.click());
-  expect(reset).toHaveBeenCalledOnce();
+  const button = [...container.querySelectorAll("button")].find(b => b.textContent?.trim() === m.common.retry);
+  await act(async () => button?.click());
+  expect(retry).toHaveBeenCalledOnce();
 });
 
 it("global-error는 루트 레이아웃을 대신하므로 html·body를 스스로 든다", () => {
-  const html = renderToStaticMarkup(<GlobalError error={new Error("boom")} reset={() => {}} />);
+  const html = renderToStaticMarkup(<GlobalError error={new Error("boom")} retry={() => {}} />);
   expect(html.startsWith("<html")).toBe(true);
   expect(html).toContain("<body");
   expect(html).toContain(m.crash.title);

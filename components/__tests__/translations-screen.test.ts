@@ -198,11 +198,19 @@ describe("보관 카드 (7단계)", () => {
    * 없어 `default`로 남는다.
    */
   it("보관 트리거와 확인 버튼이 둘 다 `danger`다", () => {
-    expect(read(CARD).match(/variant="danger"/g)?.length ?? 0).toBe(2);
+    // 거부 Alert의 `danger`(audit #7)는 버튼이 아니다 — 빼고 센다.
+    const src = read(CARD);
+    expect((src.match(/variant="danger"/g)?.length ?? 0) - (src.match(/<Alert variant="danger"/g)?.length ?? 0)).toBe(2);
   });
 
-  it("⚠️ 인라인 결과 Alert가 없다 — revalidate가 그것을 언마운트한다", () => {
-    expect(read(CARD)).not.toContain("<Alert");
+  /**
+   * ⚠️ **성공 Alert가 없다 — revalidate가 그것을 언마운트한다.** 거부만 Alert를 세운다(audit #7): 거부는 revalidate가 없어
+   * 살아남고, 없으면 버튼만 제자리로 돌아와 무엇이 안 됐는지 모른다. 그래서 Alert는 `error` 하나가 드는 한 자리뿐이다.
+   */
+  it("⚠️ 성공 Alert가 없다 — Alert는 거부(`error`)가 드는 한 자리뿐이다", () => {
+    const src = read(CARD);
+    expect(src.match(/<Alert\b/g)?.length ?? 0).toBe(1);
+    expect(src).toMatch(/error !== null && <Alert variant="danger"/);
   });
 
   it("되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다", () => {

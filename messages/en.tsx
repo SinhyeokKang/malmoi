@@ -164,6 +164,20 @@ export const en = {
       "repo-replaced": "This connection points to a different repository",
     },
   },
+  /**
+   * not-found 경계 문구 (audit #16·#17). ⚠️ **무엇을 잃었는지 단정하지 않는다** — 프로젝트 세그먼트와 루트가 함께 쓰고,
+   * 그 아래 갈래(없는 주소 · 사라진 소스 · 지워진 프로젝트)가 여럿이다.
+   */
+  notFound: {
+    title: "Page not found",
+    description: "This page may have moved or is no longer available.",
+    action: "Go to your projects",
+  },
+  /** 셸 밖 오류 경계(`app/error.tsx`·`app/global-error.tsx`) — 무엇이 실패했는지 모르므로 다시 시도만 권한다. */
+  crash: {
+    title: "Something went wrong",
+    description: "This page couldn't load. Try again in a moment.",
+  },
   surfaces: {
     sourceCounts: (keys: number, locales: number): string => `${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"} · ${locales.toLocaleString("en-US")} ${locales === 1 ? "language" : "languages"}`,
     label: "Translation surface", title: "Translation surfaces", add: "Add surface",
@@ -781,6 +795,8 @@ export const en = {
       last7: "Last 7 days",
       last30: "Last 30 days",
       custom: "Custom range (UTC)",
+      /** 메뉴 항목 — 눌러서 Dialog가 열린다는 것을 줄임표가 말한다 (audit #8 — 칸은 메뉴 밖에 산다). */
+      customOpen: "Custom range (UTC)…",
       from: "From (UTC)",
       to: "To (UTC)",
       apply: "Apply range",
@@ -1077,6 +1093,8 @@ export const en = {
       cancel: "Cancel",
     },
     failed: (reason: string): string => `Couldn't change this: ${reason}`,
+    /** 호출이 끊겨 서버가 바꿨는지 모른다 — 사유를 지어내지 않고 새로고침으로 확인하게 한다. */
+    failedUnknown: "We couldn't confirm the change. Refresh the page to see the current state.",
     /** 보관된 프로젝트를 연 사람이 보는 화면. **사유는 `errors.access.archived`가 든다** — 저장 실패
      *  한 줄과 같은 문장이어야 사용자가 두 자리를 같은 일로 읽는다. */
     empty: { title: "This project is archived", action: "Open settings" },
@@ -2376,6 +2394,8 @@ export const en = {
     cancel: "Cancel",
     /** 마지막 OWNER 보호는 `accessErrorMessage("last-owner")`가 낸다 — 여기 두 벌로 쓰지 않는다. */
     changeFailed: (reason: string): string => `Couldn't apply that change: ${reason}`,
+    /** 호출이 끊겨 적용됐는지 모른다 (audit #24) — 사유를 지어내지 않는다. */
+    changeUnconfirmed: "We couldn't confirm that change. Refresh to see the current members.",
 
     /** 초대 발급 — 6a의 임시 폼(`translations.invite`)에서 여기로 옮겼다. 화면 하나에 어휘 한 벌이다. */
     invite: {
@@ -2475,6 +2495,7 @@ export const en = {
       revokeLabel: (who: string): string => `Revoke invitation for ${who}`,
       revoked: (who: string): string => `Revoked the invitation for ${who}`,
       revokeFailed: (reason: string): string => `Couldn't revoke that invitation: ${reason}`,
+      revokeUnconfirmed: "We couldn't confirm the invitation was revoked. Refresh to check.",
       empty: {
         title: "No pending invitations",
         description: "Everyone you invited has joined, or their links have expired.",
@@ -2653,6 +2674,9 @@ export const en = {
      * 화면이 시키는 일(프로젝트를 연다)과 반대되는 버튼만 남는다. 이 화면은 셸 밖이라 사이드바가 없다.
      */
     openProject: "Open project",
+    /** 쓸 수 없는 초대(없음·만료·사용됨)의 출구 둘 (audit #15) — 로그인 상태가 고른다. */
+    openProjects: "Go to your projects",
+    signIn: "Sign in",
     /**
      * ⚠️ **각주에서 설명으로 올라왔고 둘째 문장이 빠졌다** (DESIGN §6.62). 지금까지의 값은
      * *"…Signing in with a different account won't accept it."*이었는데 **그 문장이 병합으로
@@ -2861,7 +2885,8 @@ export const en = {
       "invalid-branch": "That branch name isn't valid. Pick another branch.",
       "not-awaiting": "The first import already finished. Importing again would overwrite edited translations, so it's blocked here.",
       "resource-limit": "These translation files are too large or too deeply nested to import. Reduce their size and try again.",
-      "ingest-failed": "The first import failed. You can try again from settings.",
+      // ⚠️ **재시도는 Sources에 있다** (audit #6) — 전엔 "from settings"였고 설정 화면에 그 버튼이 없었다.
+      "ingest-failed": "The first import failed. You can try again from Sources.",
       // 번역자가 읽는다 — 무엇을 기다리는지와 누가 끝낼 수 있는지를 말한다.
       "not-ready": "This project isn't ready yet. The owner needs to finish setting it up.",
       // "입력한 값은 그대로"를 쓰지 않는다 — 중간 상태를 저장하지 않으므로 거짓이다.

@@ -54,17 +54,24 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
    * 여기서 낡아도 편집이 사라지지 않고 reconfirm이 된다. 받기 전이거나 실패면 `null`로 보낸다.
    */
   const approval = useRef<string | null>(null);
+  /**
+   * ⚠️ **지문 발급이 끝나기 전에는 확정할 수 없다** (audit #14) — 그 전에 누르면 `null`이 나가 서버가 reconfirm을 내고,
+   * 화면은 *"Translations changed after you opened Sync"* 라는 사실과 다른 문장을 띄웠다. **실패는 끝난 것이다** —
+   * 그때는 풀어서 `null`을 보내고 서버가 재확인을 요구한다(위 계약). 기다리는 것은 "아직 모른다" 하나다.
+   */
+  const [approvalPending, setApprovalPending] = useState(true);
   const request = useRef(0);
   const busy = useRef(false);
   useEffect(() => {
     const id = ++request.current;
     setOpenPr("checking");
+    setApprovalPending(true);
     if (!open || role !== "OWNER" || paused) return;
     if (busy.current) { onOpenChange(false); return; }
     approval.current = null;
     void prepareRepositorySync({ slug }).then(
-      value => { if (request.current === id) approval.current = value?.approval ?? null; },
-      () => { if (request.current === id) approval.current = null; },
+      value => { if (request.current === id) { approval.current = value?.approval ?? null; setApprovalPending(false); } },
+      () => { if (request.current === id) { approval.current = null; setApprovalPending(false); } },
     );
     void checkOpenPullRequest({ slug }).then(
       value => { if (request.current === id) setOpenPr(value); },
@@ -86,7 +93,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     onOpenChange(next);
   }
   async function confirm() {
-    if (busy.current) return;
+    if (busy.current || approvalPending) return;
     busy.current = true;
     setPending(true);
     changeOpen(false);
@@ -164,7 +171,11 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
       footer={<>
         <DialogClose asChild><Button id={cancelId}>{m.common.cancel}</Button></DialogClose>
         {/* ⚠️ 무엇을 버리는지를 라벨이 먼저 말한다 — 미전달이 있으면 확정이 곧 폐기다 (sync-edit-protection spec "수동 Sync"). */}
-        <Button variant="danger" onClick={() => void confirm()}>{unsent > 0 ? m.repositorySync.confirmDiscard : m.repositorySync.confirm}</Button>
+        {/* ⚠️ `disabled`가 아니라 `aria-disabled`다 — 지문이 도착하면 같은 버튼이 풀리므로 포커스·Tab 순서가 그대로 남아야 한다. */}
+        <Button variant="danger" aria-disabled={approvalPending} onClick={() => void confirm()}>
+          {approvalPending && <LoaderCircle className="size-3.5 animate-spin" aria-hidden />}
+          {unsent > 0 ? m.repositorySync.confirmDiscard : m.repositorySync.confirm}
+        </Button>
       </>}>
       {/*
         ⚠️ **위험이 없으면 본문 자체가 없다** (시안 `4a`) — "없음"을 한 줄로 세우지 않는다: 부재가 곧

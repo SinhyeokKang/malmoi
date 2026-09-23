@@ -8,6 +8,7 @@ import { previewTranslationRevert, revertTranslationKey, saveTranslationKey } fr
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
 import { SearchInput } from "@/components/search-input";
 import { SyncButton } from "@/components/home/sync-button";
+import { SyncResult } from "@/components/home/sync-result";
 import { BasePendingBanner } from "@/components/translations/base-pending-banner";
 import { EditLossBanner } from "@/components/translations/edit-loss-banner";
 import { Alert } from "@/components/ui/alert";
@@ -15,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import type { RepositoryImportOutcome } from "@/lib/import/result";
 import type { TranslationList, TranslationListRow, TranslationTree } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
@@ -333,6 +335,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const syncReasonId = useId();
   const publishButtonId = useId();
   const [syncOpen, setSyncOpen] = useState(false);
+  /**
+   * ⚠️ **[Sync]의 원결과를 이 화면이 든다** (audit #5 — POSTMORTEM 2026-09-08 재발) — 전엔 `onResult`가 결과를 버리고
+   * refresh만 불러 거부가 설명 없이 버튼만 복귀했다. refresh는 `SyncButton`이 성공에만 부른다.
+   */
+  const [syncOutcome, setSyncOutcome] = useState<RepositoryImportOutcome | null>(null);
+  /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
+  const openSync = () => attempt({ kind: "sync" }, () => setSyncOpen(true));
 
   // ── 폭 ────────────────────────────────────────────────────────────────────
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -388,9 +397,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           </span>
           <span className="ml-auto flex items-center gap-2">
             {role === "OWNER" ? (
-              <span onClickCapture={event => { if (dirty.length > 0) { event.preventDefault(); event.stopPropagation(); attempt({ kind: "sync" }, () => setSyncOpen(true)); } }}>
+              <span onClickCapture={event => { if (dirty.length > 0) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
                 <SyncButton slug={slug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
-                  open={syncOpen} onOpenChange={setSyncOpen} onResult={() => router.refresh()} fallbackFocusRef={titleRef} />
+                  open={syncOpen} onOpenChange={setSyncOpen} onResult={setSyncOutcome} fallbackFocusRef={titleRef} />
               </span>
             ) : (
               <>
@@ -449,12 +458,14 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           <p className="text-muted-foreground text-xs">{w.filters.substituted(routeSurfaceSlug, query.missingLocale ?? "")}</p>
         )}
         {/*
-          ⚠️ **두 배너는 조건부 분기 밖의 형제다** (DESIGN §6.1 · POSTMORTEM 2026-09-07) — 분기 안에 두면 `router.refresh()`가 방금 만든
+          ⚠️ **두 배너와 Sync 결과는 조건부 분기 밖의 형제다** (DESIGN §6.1 · POSTMORTEM 2026-09-07) — 분기 안에 두면 `router.refresh()`가 방금 만든
           상태를 언마운트한다. 대기 배너가 먼저다: "왜 지금 보내야 하는가"가 "보내라"보다 앞이다.
         */}
         <div className="space-y-3 empty:hidden">
           <BasePendingBanner baseLocale={props.baseLocale} declaredBaseLocale={props.declaredBaseLocale} />
           <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} />
+          <SyncResult slug={slug} branch={props.sync.branch} outcome={syncOutcome} onDismiss={() => setSyncOutcome(null)}
+            retryDisabled={publish.pending} onRetry={role === "OWNER" ? openSync : undefined} />
         </div>
       </div>
 

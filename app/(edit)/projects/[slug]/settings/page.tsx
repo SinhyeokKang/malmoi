@@ -40,7 +40,7 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   ]);
   const archived = project.archivedAt !== null;
   const archive = <PanelCard title={archived ? m.archive.restore : m.archive.title}>
-    <div className="flex items-center justify-between gap-4 px-4 py-[13px] @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start @max-[640px]:[&>button]:col-start-2 @max-[640px]:[&>button]:justify-self-start">
+    <div className="flex items-center justify-between gap-4 px-4 py-[13px] @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start @max-[640px]:[&>[data-archive-card]]:col-start-2 @max-[640px]:[&>[data-archive-card]]:justify-self-start">
       <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded"><Archive className="size-4" aria-hidden /></span><p className="text-muted-foreground flex-1 text-xs">{archived ? m.archive.archivedBy(<time dateTime={project.archivedAt!.toISOString()}>{utcMinute(project.archivedAt!)}</time>) : m.archive.description}</p>
       <ArchiveCard slug={slug} name={project.name} archived={archived} openPrUrl={openPrUrl} />
     </div>

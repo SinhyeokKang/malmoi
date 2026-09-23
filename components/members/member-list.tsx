@@ -66,7 +66,8 @@ export function MemberList({
 }) {
   const manage = canPerform(role, "member:manage");
   /** `removal` — 거부된 것이 제거였나. 포커스를 돌려줄 컨트롤이 그것으로 갈린다. */
-  const [failed, setFailed] = useState<{ userId: string; error: string; removal: boolean } | null>(null);
+  /** `error: null`은 **확인 불가**다 — 호출이 던져 서버가 바꿨는지 모른다 (audit #24). */
+  const [failed, setFailed] = useState<{ userId: string; error: string | null; removal: boolean } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [, startTransition] = useTransition();
@@ -86,10 +87,15 @@ export function MemberList({
     setAnnouncement("");
     setPendingId(targetUserId);
     startTransition(async () => {
-      const result = await changeMember({ slug, targetUserId, nextRole });
+      /*
+        ⚠️ **던져도 행을 풀고 그 자리에서 말한다** (audit #24) — try가 없으면 transition 안의 예외가 error boundary로
+        올라가 화면이 통째로 오류 화면이 되고 `pendingId`도 남는다.
+      */
+      let result: Awaited<ReturnType<typeof changeMember>> | null;
+      try { result = await changeMember({ slug, targetUserId, nextRole }); } catch { result = null; }
       setPendingId(null);
-      if (!result.ok) {
-        setFailed({ userId: targetUserId, error: result.error, removal: nextRole === null });
+      if (result === null || !result.ok) {
+        setFailed({ userId: targetUserId, error: result === null ? null : result.error, removal: nextRole === null });
         return;
       }
       // 역할 변경은 행이 남아 포커스가 셀렉트에 그대로 있다 — 옮기는 것은 행이 사라지는 제거뿐이다.
@@ -184,9 +190,11 @@ export function MemberList({
                   after={
                     failed?.userId === member.userId ? (
                       <Alert variant="danger" className="mx-4 mb-3.5 text-left">
-                        {isAccessError(failed.error)
-                          ? accessErrorMessage(failed.error)
-                          : m.members.changeFailed(failed.error)}
+                        {failed.error === null
+                          ? m.members.changeUnconfirmed
+                          : isAccessError(failed.error)
+                            ? accessErrorMessage(failed.error)
+                            : m.members.changeFailed(failed.error)}
                       </Alert>
                     ) : null
                   }

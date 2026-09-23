@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { find, render } from "./helpers/dom";
 import { SourcesScreen } from "../sources/sources-screen";
-import NotFound from "@/app/(edit)/projects/[slug]/not-found";
+import NotFound from "@/app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/not-found";
 import { m } from "@/lib/i18n";
 
 vi.setConfig({ testTimeout: 20_000 });

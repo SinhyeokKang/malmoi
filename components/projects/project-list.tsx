@@ -435,7 +435,8 @@ function BannerAction({
         : ownerOnly(m.projects.banner.askOwner.reconnect);
     case "import_failed":
       // ⚠️ EDITOR의 안내 문장은 위 `BannerLine`이 이미 냈다 — 여기서 한 번 더 말하지 않는다.
-      return canSettle ? internal(routes.settings(row.slug), m.projects.banner.action.viewDetails) : null;
+      // 상세·재시도는 Sources에 산다 (audit #6) — Settings에는 가져오기 실패에 관한 정보가 0이다.
+      return canSettle ? internal(routes.sources(row.slug), m.projects.banner.action.viewDetails) : null;
   }
 }
 

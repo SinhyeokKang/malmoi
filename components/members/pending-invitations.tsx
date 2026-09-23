@@ -51,7 +51,8 @@ export function PendingInvitations({
   headingId: string;
 }) {
   const manage = canPerform(role, "member:manage");
-  const [failed, setFailed] = useState<{ id: string; error: string } | null>(null);
+  /** `error: null`은 **확인 불가**다 — 호출이 던져 서버가 철회했는지 모른다 (audit #24). */
+  const [failed, setFailed] = useState<{ id: string; error: string | null } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   /** ⚠️ **집합이다** — 값 하나면 두 행을 연달아 누를 때 먼저 끝난 응답이 다른 행의 잠금까지 푼다. */
   const [resending, setResending] = useState<ReadonlySet<string>>(new Set());
@@ -115,10 +116,12 @@ export function PendingInvitations({
     setAnnouncement("");
     setPendingId(invitationId);
     startTransition(async () => {
-      const result = await revokeInvitation({ slug, invitationId });
+      // ⚠️ 던져도 행을 풀고 그 자리에서 말한다 (audit #24) — 위 `resend`와 같은 형이다.
+      let result: Awaited<ReturnType<typeof revokeInvitation>> | null;
+      try { result = await revokeInvitation({ slug, invitationId }); } catch { result = null; }
       setPendingId(null);
-      if (!result.ok) {
-        setFailed({ id: invitationId, error: result.error });
+      if (result === null || !result.ok) {
+        setFailed({ id: invitationId, error: result === null ? null : result.error });
         return;
       }
       document.getElementById(headingId)?.focus();
@@ -228,9 +231,11 @@ export function PendingInvitations({
                     after={
                       failed?.id === invitation.id ? (
                         <Alert variant="danger" className="mx-4 mb-3.5 text-left">
-                          {isAccessError(failed.error)
-                            ? accessErrorMessage(failed.error)
-                            : m.members.pending.revokeFailed(failed.error)}
+                          {failed.error === null
+                            ? m.members.pending.revokeUnconfirmed
+                            : isAccessError(failed.error)
+                              ? accessErrorMessage(failed.error)
+                              : m.members.pending.revokeFailed(failed.error)}
                         </Alert>
                       ) : null
                     }

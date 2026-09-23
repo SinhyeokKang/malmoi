@@ -60,8 +60,11 @@ export function DisconnectGithubButton({ onFailure }: {
                   onClick={() => {
                     report(null);
                     startTransition(async () => {
-                      const result = await disconnectGithub();
-                      report(result.ok ? null : isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.account.disconnectFailed);
+                      // ⚠️ 던지면 error boundary가 `/account` 전체를 삼킨다 (audit #24) — 거부와 같은 자리로 접는다.
+                      let result: Awaited<ReturnType<typeof disconnectGithub>> | null;
+                      try { result = await disconnectGithub(); } catch { result = null; }
+                      if (result?.ok) report(null);
+                      else report(result !== null && isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.account.disconnectFailed);
                     });
                   }}
                 >

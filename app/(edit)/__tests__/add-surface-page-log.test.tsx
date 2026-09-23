@@ -16,6 +16,7 @@ it("OAuth 복귀의 오류를 보존해 설정 모달로 보내고 리포를 재
  * unavailable"이 섰다 — 사실이 아니다. 모달은 열리지 않는다: Sources가 보관을 먼저 보고 보관 화면을 그린다(`sources-page.test.tsx`).
  */
 it("보관된 프로젝트도 Sources로 보낸다 — 거짓 not-found를 세우지 않는다", async () => {
-  state.find.mockResolvedValue({ archivedAt: new Date() });
   await expect(Page({ params: Promise.resolve({ slug: "alpha" }), searchParams: Promise.resolve({}) })).rejects.toThrow("/projects/alpha/sources?add=sources");
+  // 보관 여부를 읽지 않는다 — 판정은 Sources가 한다.
+  expect(state.find).not.toHaveBeenCalled();
 });

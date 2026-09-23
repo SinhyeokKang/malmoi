@@ -53,7 +53,8 @@ export default async function TranslationsPage({
   const prisma = getPrisma();
   const project = await loadProject(prisma, projectId, surfaceId);
   if (!project) redirect(routes.projects());
-  if (planProjectReadiness(project) !== "ready") return <ProjectNotReady slug={slug} role={role} />;
+  const readiness = planProjectReadiness(project);
+  if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} />;
 
   // 옛 링크(`state=untranslated` · `locales` · `focus`)는 새 요청값으로 옮겨 정규 주소로 보낸다 — 공유·새로고침이 같은 URL을 쓴다.
   const query = parseTranslationQuery(raw);

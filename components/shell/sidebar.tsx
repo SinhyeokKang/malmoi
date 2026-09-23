@@ -1,8 +1,9 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useFormStatus } from "react-dom";
 
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { Avatar } from "@/components/ui/avatar";
@@ -100,17 +101,7 @@ export function Sidebar({
           <Item key={item.key} item={item} active={isActive(pathname, item)} />
         ))}
         <form action={signOut}>
-          <Button
-            type="submit"
-            variant="ghost"
-            // ⚠️ hover 알파가 위 링크 항목과 같아야 한다 — 하단 둘 중 하나만 진하면 그 차이가 상태로 읽힌다.
-            className="text-foreground hover:bg-foreground/[0.03] h-auto w-full justify-start gap-2 rounded-sm p-1.5"
-          >
-            <span className="flex size-4 shrink-0 items-center justify-center">
-              <LogOut className="size-4" aria-hidden />
-            </span>
-            <span className="truncate">{m.common.nav.signOut}</span>
-          </Button>
+          <SignOutSubmit />
         </form>
       </div>
     </aside>
@@ -168,5 +159,29 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
         </Badge>
       )}
     </Link>
+  );
+}
+
+/**
+ * ⚠️ **제출 중에는 disabled + 스피너다** (audit #25) — `/account`의 Sign out과 같은 `useFormStatus` 형. 없으면 느린
+ * 응답 동안 눌린 것이 먹혔는지 몰라 다시 누른다. 스피너는 **아이콘 자리를 대신한다** — `Button`의 `loading`은 글자 앞에
+ * 하나를 더 세워 아이콘이 둘이 된다.
+ */
+function SignOutSubmit() {
+  const { pending } = useFormStatus();
+  return (
+    <Button
+      type="submit"
+      variant="ghost"
+      disabled={pending}
+      aria-busy={pending}
+      // ⚠️ hover 알파가 위 링크 항목과 같아야 한다 — 하단 둘 중 하나만 진하면 그 차이가 상태로 읽힌다.
+      className="text-foreground hover:bg-foreground/[0.03] h-auto w-full justify-start gap-2 rounded-sm p-1.5"
+    >
+      <span className="flex size-4 shrink-0 items-center justify-center">
+        {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <LogOut className="size-4" aria-hidden />}
+      </span>
+      <span className="truncate">{m.common.nav.signOut}</span>
+    </Button>
   );
 }

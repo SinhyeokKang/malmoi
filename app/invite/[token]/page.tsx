@@ -103,11 +103,19 @@ export default async function InvitePage({
   let cta: ReactNode;
   switch (view.kind) {
     case "blocked":
+      /*
+        ⚠️ **재시도가 없는 막힘에도 출구를 준다** (audit #15) — 없음·만료·사용됨에서 CTA가 `null`이었고 이 화면은
+        셸 밖이라 사이드바도 없어, 링크를 연 사람이 할 수 있는 일이 0이었다. 로그인했으면 자기 목록, 아니면 로그인.
+      */
       cta = view.retry ? (
         <form method="get" action={routes.invite(token)}>
           <Button type="submit">{m.common.retry}</Button>
         </form>
-      ) : null;
+      ) : session.status === "ok" ? (
+        <ButtonLink size="lg" className="w-full" href={routes.projects()}>{m.invite.openProjects}</ButtonLink>
+      ) : (
+        <ButtonLink size="lg" className="w-full" href={routes.signIn()}>{m.invite.signIn}</ButtonLink>
+      );
       break;
     case "sign-in":
       cta = (

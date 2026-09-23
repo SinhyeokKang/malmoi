@@ -115,7 +115,8 @@ export default async function ProjectHomePage({
    * 첫 적재 전에는 볼 것이 없다. **정책과 문구는 `ProjectNotReady`가 든다** — 번역 화면도 같은
    * 갈래를 만나고, 이 화면이 착지점이라 그것을 **먼저** 만나는 자리가 여기다.
    */
-  if (planProjectReadiness(project) !== "ready") return <ProjectNotReady slug={slug} role={role} />;
+  const readiness = planProjectReadiness(project);
+  if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} />;
 
   // 기준 시각을 서버에서 한 번 만든다 — 항목마다 부르면 상대 시각의 기준이 갈린다.
   const now = new Date();
@@ -309,7 +310,7 @@ export default async function ProjectHomePage({
             slug={slug}
             now={now}
           />
-          <AttentionCard items={items} slug={slug} state={state} now={now} />
+          <AttentionCard items={items} slug={slug} role={role} state={state} now={now} />
           <LogsCard rows={events.rows} slug={slug} now={now} archived={archived} syncedBefore={lastSyncAt !== null} />
         </div>
 

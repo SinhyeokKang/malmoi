@@ -132,7 +132,13 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
         try {
           const outcome = await runFirstIngest({ slug, surfaceSlug });
           setResult(outcome.ok ? { tone: outcome.failed > 0 ? "warning" : "success", text: ingestHeadline(outcome.count, outcome.failed), source: surfaceSlug } : { tone: "danger", text: failureText(outcome.error), source: surfaceSlug });
-          void load(surfaceSlug, true); router.refresh();
+          /*
+            ⚠️ **refresh는 성공에만 부른다** (audit #11 — POSTMORTEM 2026-09-08 재발). 세션이 끊긴 거부 직후의 refresh는
+            미들웨어에 걸려 로그인 이동이 되고 방금 세운 거부를 씻어 간다. 서버에 남은 실패 상태는 아래 재조회가 읽고,
+            목록은 Action의 `finally`가 부르는 `revalidatePath`가 갱신한다.
+          */
+          void load(surfaceSlug, true);
+          if (outcome.ok) router.refresh();
         } catch { setResult({ tone: "danger", text: m.settings.status.failed, source: surfaceSlug }); }
         finally { setBusy(false); }
       })();

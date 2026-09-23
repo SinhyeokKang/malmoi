@@ -1,19 +1,23 @@
 "use client";
 
-import { useRef, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
-import { archiveProject, unarchiveProject } from "@/app/(edit)/projects/actions";
+import { archiveProject, unarchiveProject, type ArchiveResult } from "@/app/(edit)/projects/actions";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 
 /**
  * 보관 카드 — settings-block **여섯째, 맨 아래** (7단계 — PRODUCT §7.9 · DESIGN §6.6).
  *
- * ⚠️ **인라인 결과 Alert가 없다.** 성공하면 Action이 `revalidatePath("/", "layout")`을 부르고 이
+ * ⚠️ **성공 Alert가 없다.** 성공하면 Action이 `revalidatePath("/", "layout")`을 부르고 이
  * 화면이 다시 그려지는데, 결과 문구를 여기 두면 **방금 받은 그것이 언마운트되면서 사라진다** —
  * POSTMORTEM 2026-09-07(`FirstIngestRetry`)이 정확히 그 함정이다. 여기서는 **카드 상태 전환 자체가
  * 피드백**이라(버튼이 [Restore project]로 바뀐다) 문구를 둘 이유도 없다 (`reconnect-button` 선례).
+ * ⚠️ **거부는 다르다** (audit #7) — 버튼이 제자리로 돌아올 뿐이라 사유를 말하지 않으면 누른 사람은 무엇이 안 됐는지
+ * 모른다. 거부는 revalidate가 없어 블록 안 Alert가 살아남는다.
  *
  * ⚠️ **확인이 보관 쪽에만 있다.** 전 멤버의 편집·야간 sync·CI push가 한꺼번에 멈추는 일이라 클릭
  * 하나로 끝나면 안 되고, 되돌리기는 잃는 것이 없어 묻지 않는다.
@@ -34,63 +38,86 @@ export function ArchiveCard({
   openPrUrl: string | null | undefined;
 }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const cancel = useRef<HTMLButtonElement>(null);
+
+  /** ⚠️ **던져도 제자리로 돌아온다** — 통신이 끊기면 서버가 바꿨는지 모르므로 사유 대신 확인 불가를 말한다. */
+  function run(action: (slug: string) => Promise<ArchiveResult>) {
+    setError(null);
+    startTransition(async () => {
+      let result: ArchiveResult | null;
+      try { result = await action(slug); } catch { result = null; }
+      if (result === null) setError(m.archive.failedUnknown);
+      else if (!result.ok) setError(isAccessError(result.error) ? accessErrorMessage(result.error) : m.archive.failed(result.error));
+    });
+  }
+  /*
+    ⚠️ **루트가 버튼이 아니라 래퍼다** — Settings 행의 좁은 폭 규칙이 `[&>[data-archive-card]]`로 이 자리를 옮긴다.
+    Alert를 형제로 밖에 두면 호출부 둘(Settings 행 · Home 배너 actions)이 각자 자리를 만들어야 한다.
+  */
+  const alert = error !== null && <Alert variant="danger" className="max-w-80">{error}</Alert>;
 
   if (archived) {
     return (
-      <Button
-        variant="default"
-        loading={pending} aria-busy={pending} className="[&_.animate-spin]:size-3.5"
-        onClick={() => startTransition(async () => void (await unarchiveProject(slug)))}
-      >
-        {m.archive.restore}
-      </Button>
+      <div data-archive-card className="shrink-0 space-y-2">
+        <Button
+          variant="default"
+          loading={pending} aria-busy={pending} className="[&_.animate-spin]:size-3.5"
+          onClick={() => run(unarchiveProject)}
+        >
+          {m.archive.restore}
+        </Button>
+        {alert}
+      </div>
     );
   }
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="danger" loading={pending} aria-busy={pending} className="[&_.animate-spin]:size-3.5">
-          {m.archive.action}
-        </Button>
-      </DialogTrigger>
-      <DialogContent
-        onOpenAutoFocus={event => { event.preventDefault(); cancel.current?.focus(); }}
-        title={m.archive.confirm.title(name)}
-        description={m.archive.confirm.body}
-        footer={
-          <>
-            <DialogClose asChild>
-              <Button ref={cancel} variant="default">{m.archive.confirm.cancel}</Button>
-            </DialogClose>
-            <DialogClose asChild>
-              <Button
-                variant="danger"
-                onClick={() => startTransition(async () => void (await archiveProject(slug)))}
+    <div data-archive-card className="shrink-0 space-y-2">
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="danger" loading={pending} aria-busy={pending} className="[&_.animate-spin]:size-3.5">
+            {m.archive.action}
+          </Button>
+        </DialogTrigger>
+        <DialogContent
+          onOpenAutoFocus={event => { event.preventDefault(); cancel.current?.focus(); }}
+          title={m.archive.confirm.title(name)}
+          description={m.archive.confirm.body}
+          footer={
+            <>
+              <DialogClose asChild>
+                <Button ref={cancel} variant="default">{m.archive.confirm.cancel}</Button>
+              </DialogClose>
+              <DialogClose asChild>
+                <Button
+                  variant="danger"
+                  onClick={() => run(archiveProject)}
+                >
+                  {m.archive.action}
+                </Button>
+              </DialogClose>
+            </>
+          }
+        >
+          {openPrUrl === undefined ? (
+            <p className="text-muted-foreground text-xs">{m.archive.confirm.prUnknown}</p>
+          ) : openPrUrl !== null ? (
+            <p className="text-xs">
+              {m.archive.confirm.openPr}{" "}
+              <a
+                href={openPrUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
               >
-                {m.archive.action}
-              </Button>
-            </DialogClose>
-          </>
-        }
-      >
-        {openPrUrl === undefined ? (
-          <p className="text-muted-foreground text-xs">{m.archive.confirm.prUnknown}</p>
-        ) : openPrUrl !== null ? (
-          <p className="text-xs">
-            {m.archive.confirm.openPr}{" "}
-            <a
-              href={openPrUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
-            >
-              {m.archive.confirm.openPrLink}
-            </a>
-          </p>
-        ) : null}
-      </DialogContent>
-    </Dialog>
+                {m.archive.confirm.openPrLink}
+              </a>
+            </p>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+      {alert}
+    </div>
   );
 }
