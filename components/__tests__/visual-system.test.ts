@@ -50,6 +50,39 @@ const RAW_COLOR = new RegExp(
 /** 변형 접두(`hover:` 등)는 같은 색이다 — 값으로 센다. */
 const colorValue = (token: string): string => token.replace(/^(?:[a-z-]+:)+/, "");
 
+/**
+ * `<Button …>`·`<ButtonLink …>` 여는 태그를 통째로 떼어낸다 — 중괄호 깊이·따옴표를 보며 **깊이 0의 `>`**까지
+ * (`focus-ring.test.ts`의 `openingTag`와 같은 방법). 정규식 `[^>]*`는 `onClick={() => …}`의 화살표에서 끊긴다.
+ */
+function openingTags(source: string, names: string): string[] {
+  const out: string[] = [];
+  for (const match of source.matchAll(new RegExp(`<(?:${names})\\b`, "g"))) {
+    let depth = 0;
+    let quote: string | null = null;
+    for (let i = match.index; i < source.length; i++) {
+      const c = source[i];
+      if (quote !== null) { if (c === quote) quote = null; continue; }
+      if (c === '"' || c === "'" || c === "`") quote = c;
+      else if (c === "{") depth++;
+      else if (c === "}") depth--;
+      else if (c === ">" && depth === 0) { out.push(source.slice(match.index, i + 1)); break; }
+    }
+  }
+  return out;
+}
+
+const buttonTags = (source: string): string[] => openingTags(source, "Button|ButtonLink");
+
+/** 넷째 높이 `h-8` · 임의 radius · `size="sm"` 위의 다른 radius — 덮은 className 문자열을 돌려준다. */
+function buttonOverrides(source: string): string[] {
+  return buttonTags(source).flatMap((tag) => {
+    const cls = tag.match(/className="([^"]*)"/)?.[1];
+    if (cls === undefined) return [];
+    if (/(?<![\w-])(?:h-8|rounded-\[[^\]]*\])(?![\w-])/.test(cls)) return [cls];
+    return /size="sm"/.test(tag) && /(?<![\w-])rounded-(?!full)[\w-]+/.test(cls) ? [cls] : [];
+  });
+}
+
 const TONE_FILES = ["components/ui/tone.ts"];
 const GLYPH = ["components/logs/glyph.tsx"];
 
@@ -204,13 +237,25 @@ describe("글자 크기·자간·radius는 스케일이 든다 (audit #45·#46·
    * `size="sm"`(8) 위에 다른 radius를 얹는 것.
    */
   it("Button 호출부가 radius·높이를 덮지 않는다", () => {
-    const opening = hits(/<(?:Button|ButtonLink)\b[^>]*?className="[^"]*"/g);
-    const overridden = opening.filter(({ token }) => {
-      const cls = token.match(/className="([^"]*)"/)?.[1] ?? "";
-      if (/(?<![\w-])(?:h-8|rounded-\[[^\]]*\])(?![\w-])/.test(cls)) return true;
-      return /size="sm"/.test(token) && /(?<![\w-])rounded-(?!full)[\w-]+/.test(cls);
-    });
-    expect(overridden.map(({ path, token }) => `${path}: ${token.match(/className="[^"]*"/)?.[0]}`)).toEqual([]);
+    const opening = SOURCES.flatMap(({ path, source }) => buttonOverrides(source).map((cls) => `${path}: ${cls}`));
+    expect(opening).toEqual([]);
+  });
+
+  /** ⚠️ 스캐너가 실제로 잡는지 — r1 전의 `[^>]*?`는 `onClick={() => …}`의 `>`에서 멈춰 CopyLink를 통째로 놓쳤다. */
+  it("카나리아 — CopyLink에 `h-8`을 얹으면 잡는다", () => {
+    const path = "components/translations/workspace/locale-panel.tsx";
+    const source = SOURCES.find((entry) => entry.path === path)?.source ?? "";
+    expect(buttonOverrides(source)).toEqual([]);
+    const mutated = source.replace('className="h-7 min-w-7 gap-1 px-1.5"', 'className="h-8 min-w-7 gap-1 px-1.5"');
+    expect(mutated).not.toBe(source);
+    expect(buttonOverrides(mutated)).toEqual(["h-8 min-w-7 gap-1 px-1.5"]);
+  });
+
+  it("리터럴 Button 여는 태그를 전부 읽는다 — `=>`나 className 뒤의 `size`에서 끊기지 않는다", () => {
+    const tags = SOURCES.flatMap(({ source }) => buttonTags(source));
+    expect(tags.length).toBeGreaterThan(100);
+    const copy = SOURCES.find((entry) => entry.path === "components/translations/workspace/locale-panel.tsx")?.source ?? "";
+    expect(buttonTags(copy).some((tag) => tag.includes('size="sm"') && tag.includes("h-7 min-w-7"))).toBe(true);
   });
 });
 
@@ -227,8 +272,10 @@ describe("아이콘은 §6.8의 넷(16·14·12·20)이다 (audit #48)", () => {
     const ALLOWED = new Set(["text-muted-foreground", "text-foreground", "text-destructive", "text-neutral-300", "text-neutral-400", "text-neutral-600", "text-green-800"]);
     const icons = SOURCES.flatMap(({ path, source }) => {
       const names = [...source.matchAll(/import\s*\{([^}]*)\}\s*from\s*"lucide-react"/g)].flatMap((match) => (match[1] ?? "").split(",").map((name) => name.trim()).filter(Boolean));
-      return names.flatMap((name) => [...source.matchAll(new RegExp(`<${name}\\b[^>]*className="([^"]*)"`, "g"))].flatMap((match) =>
-        (match[1] ?? "").split(/\s+/).filter((token) => /^text-(?!xs|sm|base|lg|xl|\d|left|right|center)/.test(token)).map((token) => ({ path, token }))));
+      // ⚠️ `className={cn(…)}`·템플릿 리터럴도 읽는다 — 여는 태그 안의 문자열 조각을 전부 모은다.
+      return names.length === 0 ? [] : openingTags(source, names.join("|")).flatMap((tag) =>
+        [...tag.matchAll(/"([^"]*)"|`([^`]*)`/g)].flatMap((match) => (match[1] ?? match[2] ?? "").split(/\s+/))
+          .filter((token) => /^text-(?!xs|sm|base|lg|xl|\d|left|right|center|\[)/.test(token)).map((token) => ({ path, token })));
     });
     expect(icons.length).toBeGreaterThan(10);
     expect(icons.filter(({ token }) => !ALLOWED.has(token)).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);

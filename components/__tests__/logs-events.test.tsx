@@ -60,6 +60,28 @@ describe("활동 행과 상세의 실제 동작", () => {
     expect(container.textContent).toContain(m.projects.importFailure.parseFailed);
   });
 
+  /**
+   * ⚠️ **상세는 지난 기록이다 — live 영역을 두지 않는다** (B6 r1, 2026-09-24 사용자). 실패 노트를 `Alert danger`로
+   * 올렸더니 `role="alert"`가 따라와 상세를 여는 순간 assertive로 끼어들었다(DESIGN §6.644의 판정과 반대).
+   * 실패는 **아이콘만 붉다.** 짝: 같은 상세가 실패 문장을 실제로 보인다.
+   */
+  it.each([
+    ["실패", row({ result: "failed" })],
+    ["진행 중", row({ result: "running" })],
+  ] as const)("%s 상세에 live 영역이 없다", async (_, value) => {
+    const { container } = await detail(value);
+    expect(container.querySelectorAll('[role="alert"], [role="status"], [aria-live]')).toHaveLength(0);
+  });
+
+  it("실패 노트는 아이콘만 붉고 문장은 본문 색이다", async () => {
+    const { container } = await detail(row({ result: "failed" }));
+    const note = [...container.querySelectorAll("[data-event-note]")];
+    expect(note).toHaveLength(1);
+    expect(note[0]!.querySelector("svg")?.getAttribute("class")).toContain("text-destructive");
+    expect(note[0]!.className).not.toContain("text-destructive");
+    expect(note[0]!.textContent?.length).toBeGreaterThan(0);
+  });
+
   it("상세의 Copy가 참조를 복사한다", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
