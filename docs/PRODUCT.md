@@ -131,6 +131,11 @@ ARCHITECTURE §0 불변식 2와 정면 충돌한다.
 Sync와 같이 서버 발급 지문으로만 열린다. EDITOR에게는 숨기지 않고 꺼진 버튼 + 사유다. 한 언어라도 기준이 없으면 전체가 불가능하고,
 `needsReview`는 해제하지 않는다(복원은 검토 완료가 아니다).
 
+**수술적 표면의 비-base 셀은 비울 수 없다** (결정 2026-09-24, delivery-invariants D2 — **명시적 빈값 export(§10)가 생기기 전까지의 임시 규칙**).
+`ts-dict`·`yaml-catalog`·`code-dict` 표면에서 base 아닌 언어를 비워 저장하면 키 전체가 거부되고(`… can't be left empty` — 아무것도 저장되지 않는다)
+입력은 화면에 남는다. 그 writer는 값을 지울 줄 몰라, 전에는 비운 셀이 리포에 한 번도 닿지 않았는데 "보냈다"로 표시됐다. base 비우기와 재생성
+표면(`json-catalog`·`chrome-locales`)은 그대로 된다.
+
 **번역 저장은 명시적이다** (결정·구현 2026-09-23, translation-rework — 옛 셀 blur 저장의 반전). 선택한 키 하나의 바뀐 언어 전부를
 `Save` 한 번(또는 Ctrl/Cmd+Enter)이 한 트랜잭션으로 보낸다. blur·Tab은 저장하지 않고 Escape는 그 입력만 되돌린다. 미저장이 있는 채로
 다른 키·트리·필터로 가거나 뒤로 가면 확인창이 서고(`Keep editing` / `Discard changes`), 새로고침·닫기는 브라우저 확인이다.
@@ -481,6 +486,9 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 
 결과 상태가 서로 달라야 한다: 배포할 변경 없음 / 새 PR 생성 / 기존 PR 갱신 / **값 일부를 파일에 쓸 수 없어 보내지 않음**
 (`skipped/writer-warnings` — 2026-09-18부터 writer 경고가 있으면 GitHub에 쓰기 전에 멈춘다. 전에는 PR을 열고 버린 값을 알렸다) / 실패.
+**부분 전달** (2026-09-24, delivery-invariants): 비-base 언어 파일이 base에 없거나 ts-dict 파일에 그 키의 자리가 없으면 **그 셀만 보류**하고
+나머지를 보낸다 — 결과는 **실린 수**로 말하고 보류 한 줄(`N edits weren't sent because …`)을 붙이며, 실린 것이 0이면 `Not sent` 틀이다.
+보류된 편집은 malmoi에 남아 CI 적재를 계속 멈춘다. **base 파일 부재는 여전히 `writer-warnings`다**(설정 오류).
 야간 cron은 미전달 편집이 있는 프로젝트만 GitHub에 닿고, 열린 PR이 있어도 새 편집이 있으면 오늘처럼 갱신한다.
 
 ### 7.7 URL과 정보 구조 — 축이 둘이다 (IA 확정: 2026-09-09)
