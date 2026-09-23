@@ -157,8 +157,9 @@ components/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
   members/              멤버 화면 조각 다섯 (2026-09-19 리워크). members-panel-header(좌석 라벨 +
-                        [Invite] + 모달 소유) · member-list · pending-invitations · member-row
-                        (두 카드가 공유하는 행 껍데기 + 사유 띠) · role-chip
+                        [Invite] + 모달 소유) · invite-modal(다중 초대 폼 — 행 = 사람 하나, 성공이면 닫힘) ·
+                        member-list · pending-invitations(Revoke · Resend — Resend 결과는 행이 아니라 카드 Alert) ·
+                        member-row (두 카드가 공유하는 행 껍데기 + 사유 띠) · role-chip
                         ⚠️ **행 껍데기가 aria-describedby 배선을 든다** — controls가 띠의 id를 받는
                         함수다. 소비자가 그 id를 직접 알면 띠 없는 갈래에서 빈 문자열을 남긴다
                         ⚠️ **꺼진 컨트롤은 aria-disabled다** — 진짜 disabled는 포커스를 못 받아
@@ -388,8 +389,8 @@ lib/
                         config(env 맵 → ready/unavailable, origin을 VERCEL_ENV와 대조) · result(batch 응답 → 요청 단위
                         accepted/rejected/unknown) · limits(상수, 잎). 껍데기(server-only) — issue(Project 잠금 안 발급·재발급,
                         메일을 안 보낸다 — 재발급은 옛 링크의 조건부 닫기 count=1이 선행조건) · send(commit 뒤 Resend batch 한 번,
-                        재시도 0·10초 timeout, 로그에 상태 코드만). 호출부는 createInvitations·resendInvitation이고 **모달은
-                        아직 단건 createInvitation**이다(T3에서 옮긴다). ⚠️ recipients는 클라이언트 폼도 부르므로
+                        재시도 0·10초 timeout, 로그에 상태 코드만). 호출부는 createInvitations·resendInvitation이고
+                        화면은 초대 모달과 Pending의 Resend다 · retry-at(retryAt → UTC 분 올림, 잎). ⚠️ recipients는 클라이언트 폼도 부르므로
                         zod·node:crypto를 물지 않는다 — 한도를 plan이 아니라 limits에서 읽고 zod의 이메일 정규식을
                         옮겨 뒀다(client-safe.test가 그래프, recipients.test가 zod와의 판정 일치를 고정한다).
                         PostgreSQL 경합은 invitation.integration.ts(`pnpm test:projects:postgres`)가 잰다
