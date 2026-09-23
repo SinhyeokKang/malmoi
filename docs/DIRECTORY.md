@@ -383,13 +383,16 @@ lib/
   privacy/              개인정보처리방침의 등재부 — collected(모델 15 전수 분류 + personal 모델의 스칼라
                         전수 → 방침의 절 id). ⚠️ **로직 0의 데이터 파일이고 게이트는 pnpm typecheck이다** —
                         모델·필드가 늘면 이름을 지목하며 red. import type 하나뿐이라 server-only가 아니다
-  invitation-email/     초대 메일(docs/features/invitation-email) T1의 순수 판정 — ⚠️ **아직 호출부가 없다**
-                        (Action·Resend 호출·모달은 T2·T3). recipients(다중 입력·행별 역할·정규화 중복 거부) ·
+  invitation-email/     초대 메일(docs/features/invitation-email). 순수 판정 — recipients(다중 입력·행별 역할·정규화 중복 거부) ·
                         plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(URL 한 줄 payload) ·
                         config(env 맵 → ready/unavailable, origin을 VERCEL_ENV와 대조) · result(batch 응답 → 요청 단위
-                        accepted/rejected/unknown) · limits(상수, 잎). ⚠️ recipients는 클라이언트 폼도 부르므로
+                        accepted/rejected/unknown) · limits(상수, 잎). 껍데기(server-only) — issue(Project 잠금 안 발급·재발급,
+                        메일을 안 보낸다 — 재발급은 옛 링크의 조건부 닫기 count=1이 선행조건) · send(commit 뒤 Resend batch 한 번,
+                        재시도 0·10초 timeout, 로그에 상태 코드만). 호출부는 createInvitations·resendInvitation이고 **모달은
+                        아직 단건 createInvitation**이다(T3에서 옮긴다). ⚠️ recipients는 클라이언트 폼도 부르므로
                         zod·node:crypto를 물지 않는다 — 한도를 plan이 아니라 limits에서 읽고 zod의 이메일 정규식을
-                        옮겨 뒀다(client-safe.test가 그래프, recipients.test가 zod와의 판정 일치를 고정한다)
+                        옮겨 뒀다(client-safe.test가 그래프, recipients.test가 zod와의 판정 일치를 고정한다).
+                        PostgreSQL 경합은 invitation.integration.ts(`pnpm test:projects:postgres`)가 잰다
   pull/surfaces.ts      planMultiSurfacePull — 중복 경로 거부와 path 순 평탄화
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
