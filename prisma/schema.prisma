@@ -152,6 +152,7 @@ model TranslationSurface {
   locales             Locale[]
   keys                StringKey[]
   translations        Translation[]
+  deliveryConfirmation DeliveryConfirmation?
 
   @@unique([projectId, slug])
   @@unique([projectId, id])
@@ -186,6 +187,7 @@ model Locale {
   /// 번역을 조용히 날린다. 프로젝트 삭제가 필요해지면 soft delete로 푼다.
   project             Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
   translations        Translation[]
+  baselines           TranslationBaseline[]
   surface             TranslationSurface  @relation(fields: [projectId, surfaceId], references: [projectId, id], onDelete: Restrict)
 
   @@id([projectId, surfaceId, code])
@@ -231,6 +233,7 @@ model StringKey {
   project             Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
   refs                KeyRef[]
   translations        Translation[]
+  baselines           TranslationBaseline[]
   surface             TranslationSurface  @relation(fields: [projectId, surfaceId], references: [projectId, id], onDelete: Restrict)
 
   @@unique([projectId, surfaceId, id])
@@ -401,6 +404,8 @@ model SyncRun {
   requester User?   @relation(fields: [requestedBy], references: [id], onDelete: SetNull)
   /// 이 실행을 가리키는 활동 사건. **결과를 복제하지 않는 참조 한 벌이다** (logs-rework 결정 1).
   event     ProjectEvent?
+  /// 이 실행이 세운 전달 확인 (translation-rework — ARCHITECTURE §5.8).
+  deliveryConfirmations DeliveryConfirmation[]
 
   /// `ProjectEvent.syncRunId`의 **복합 FK가 참조하는 키다** — 이것이 없으면 다른 프로젝트의 실행을
   /// 가리키는 이벤트를 DB가 막지 못한다 (`TranslationSurface`의 같은 줄과 같은 근거).
@@ -665,4 +670,55 @@ model ProjectInvitation {
   /// 점유하는데, unique면 **멤버를 뺐다가 다시 부르는 정상 경로가 제약 위반**이 된다.
   /// 행이 여럿이어도 `planInvitationAccept`가 `expired`·`already-accepted`를 가르므로 판정은 선다.
   @@index([projectId, emailLookup])
+}
+
+/// **소스별 전달 확인** (translation-rework — ARCHITECTURE §5.8 · design §10.3). 소스마다 한 행이고 제자리에서 갱신된다.
+///
+/// 유효하면(`invalidatedAt` null) "미전달이 아닌 활성 셀의 현재 값 = 마지막으로 확인된 export 값"이 성립한다 — 그래서
+/// 셀 전체의 스냅샷을 두지 않는다. 그 등식을 깨는 strict 적재·설정 변경이 이 행을 무효화하고, Publish는 첫 외부 쓰기
+/// **전에** 무효화한 뒤 성공 확정 tx에서만 새 `revision`으로 되살린다.
+///
+/// ⚠️ **지우지 않는다** — 무효화는 `invalidatedAt`이다. 행이 없는 소스는 "한 번도 확인된 적 없음"이고 Revert가 막힌다.
+/// ⚠️ **교체된 실행의 종료 판정은 `syncRun.startedAt`을 읽는다** — 시각을 여기 복제하지 않는다(`revertSettled`).
+model DeliveryConfirmation {
+  projectId          String
+  surfaceId          String
+  /// 확인마다 새 UUID. 같은 값을 다시 확인해도 다른 관측이다 — 기준 행의 `revision`이 이것과 같아야 복원할 수 있다.
+  revision           String
+  confirmedAt        DateTime
+  syncRunId          String
+  /// 원문·실제 base·어댑터·경로·리포 정체성·브랜치·importRevision의 지문. 확인 뒤 바뀌면 복원을 막는다.
+  contextFingerprint String
+  invalidatedAt      DateTime?
+
+  surface   TranslationSurface    @relation(fields: [projectId, surfaceId], references: [projectId, id], onDelete: Restrict)
+  /// SyncRun의 `@@unique([projectId, id])`를 참조한다 — 다른 프로젝트의 실행을 가리키는 확인을 DB가 막는다.
+  syncRun   SyncRun               @relation(fields: [projectId, syncRunId], references: [projectId, id], onDelete: Restrict)
+  baselines TranslationBaseline[]
+
+  @@id([projectId, surfaceId])
+}
+
+/// **미전달 셀의 복원 기준** (translation-rework — ARCHITECTURE §5.8). 셀이 미전달이 되는 순간(Save)과 캡처 뒤 재편집된
+/// 셀(Publish 성공)에만 생기고, 전달이 확인되면 지운다 — 이력이 아니라 작업 상태다(감사 이력은 `ProjectEvent`가 든다).
+///
+/// ⚠️ **`restoreValue`는 DB export 입력에서 유도한다**(`lib/translations/baseline.ts` `restoreValueOf`) — 리포를 읽어 고르면
+/// "병합 없음"이 깨진다. `Translation` 행이 없던 셀도 기준을 가질 수 있어 `Translation`의 컬럼으로 두지 않는다.
+/// ⚠️ **세 FK가 `projectId`·`surfaceId`를 공유한다** — `Translation`과 같은 테넌트 격리 장치다.
+model TranslationBaseline {
+  projectId    String
+  surfaceId    String
+  keyId        String
+  localeCode   String
+  restoreValue String
+  /// 기록할 때의 `DeliveryConfirmation.revision`. 다르면 옛 확인의 기준이라 복원하지 않는다.
+  revision     String
+  recordedAt   DateTime @default(now())
+
+  stringKey    StringKey            @relation(fields: [projectId, surfaceId, keyId], references: [projectId, surfaceId, id], onDelete: Restrict)
+  locale       Locale               @relation(fields: [projectId, surfaceId, localeCode], references: [projectId, surfaceId, code], onDelete: Restrict)
+  confirmation DeliveryConfirmation @relation(fields: [projectId, surfaceId], references: [projectId, surfaceId], onDelete: Restrict)
+
+  /// 조회는 셀 단건(Publish 해제)과 키 단위(Revert — PK 선두 세 열)뿐이라 PK가 인덱스를 겸한다(design §10.2 — 신규 인덱스 없음).
+  @@id([projectId, surfaceId, keyId, localeCode])
 }
