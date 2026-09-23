@@ -255,3 +255,42 @@ it("키 목록은 목록 의미를 갖는다 — 스크린리더가 몇 개 중 
   const items = [...container.querySelectorAll("[data-key-row]")].map(node => node.closest("li")?.parentElement?.tagName);
   expect(items).toEqual(["UL", "UL"]);
 });
+
+/**
+ * ⚠️ **접힌 트리 오버레이는 DOM상 키 목록 뒤에 붙는다** (T19 실브라우저 1280×LNB 320에서 잡았다). 포커스를 옮기지 않으면 키보드 사용자는
+ * 목록 전체를 Tab으로 지나야 트리에 닿는다 — 키 100개면 100번이다. 열면 선택된 항목으로, 닫으면 토글로 돌아온다.
+ */
+it("접힌 트리를 열면 포커스가 오버레이의 선택 항목으로 가고, Escape는 토글로 돌려준다", async () => {
+  stubArea(700);
+  try {
+    const user = userEvent.setup();
+    await render(<TranslationWorkspace {...props()} />);
+    const toggle = document.querySelector<HTMLButtonElement>('[aria-label="Show sources"]');
+    if (!toggle) throw new Error("no tree toggle");
+    await user.click(toggle);
+    const overlay = document.getElementById(toggle.getAttribute("aria-controls") ?? "");
+    expect(overlay).not.toBeNull();
+    expect(overlay?.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement?.getAttribute("aria-current")).toBe("true");
+    await user.keyboard("{Escape}");
+    expect(document.getElementById(toggle.getAttribute("aria-controls") ?? "")).toBeNull();
+    expect(document.activeElement).toBe(toggle);
+  } finally { vi.unstubAllGlobals(); }
+});
+
+it("접힌 트리에서 항목을 고르면 오버레이가 닫히고 포커스가 토글로 돌아온다 — body로 떨어지지 않는다", async () => {
+  stubArea(700);
+  try {
+    const user = userEvent.setup();
+    await render(<TranslationWorkspace {...props()} />);
+    const toggle = document.querySelector<HTMLButtonElement>('[aria-label="Show sources"]');
+    if (!toggle) throw new Error("no tree toggle");
+    await user.click(toggle);
+    const common = [...(document.getElementById(toggle.getAttribute("aria-controls") ?? "")?.querySelectorAll("button") ?? [])].find(node => node.textContent?.startsWith("common"));
+    if (!common) throw new Error("no namespace item");
+    await user.click(common);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(toggle);
+    expect(mocks.push).toHaveBeenCalledTimes(1);
+  } finally { vi.unstubAllGlobals(); }
+});

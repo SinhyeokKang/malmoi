@@ -28,7 +28,7 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
   onSelect: (row: TranslationListRow) => void;
   onMore: (() => void) | null;
   /** 트리가 접혔을 때 목록 머리에 들어가는 트리 버튼(README §7 — 아이콘 레일을 만들지 않는다). */
-  treeButton?: { open: boolean; onToggle: () => void; breadcrumb: ReactNode };
+  treeButton?: { open: boolean; controls: string; onToggle: () => void; breadcrumb: ReactNode };
   empty: ReactNode;
 }) {
   const w = m.translations.workspace.list;
@@ -37,7 +37,7 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-[53px] shrink-0 items-center gap-2 px-4">
         {treeButton !== undefined && (
-          <Button size="sm" aria-label={m.translations.workspace.tree.open} aria-expanded={treeButton.open} onClick={treeButton.onToggle} className="size-7 rounded-[10px] p-0">
+          <Button size="sm" aria-label={m.translations.workspace.tree.open} aria-expanded={treeButton.open} aria-controls={treeButton.open ? treeButton.controls : undefined} onClick={treeButton.onToggle} className="size-7 rounded-[10px] p-0">
             <PanelLeftOpen className="size-3.5 text-neutral-600" aria-hidden />
           </Button>
         )}
