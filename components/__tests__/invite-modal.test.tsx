@@ -57,6 +57,9 @@ const reason = (i: number) => rows()[i]!.querySelector("[data-row-reason]")?.tex
 const addAnother = () => [...panel().querySelectorAll("button")].find((b) => b.textContent === m.members.invite.addAnother) as HTMLButtonElement;
 const status = () => find<HTMLElement>(panel(), "[data-invite-status]");
 const formAlert = () => panel().querySelector<HTMLElement>("[data-form-alert] > div");
+/** `aria-labelledby`를 따라 접근 이름을 조립한다 — 역할 셀렉트는 라벨 + 현재 값이다. */
+const nameOf = (el: Element) =>
+  (el.getAttribute("aria-labelledby") ?? "").split(" ").filter(Boolean).map((id) => document.getElementById(id)?.textContent ?? "").join(" ").replace(/\s+/g, " ").trim() || el.getAttribute("aria-label");
 const closeButton = () => find<HTMLButtonElement>(document.body, `button[aria-label="${m.common.close}"]`);
 const click = async (node: HTMLElement) => { await act(async () => { await userEvent.setup().click(node); }); };
 /**
@@ -161,7 +164,10 @@ describe("1b 입력 — 여러 명 · 역할 혼합", () => {
   it("역할 선택의 접근 이름에 대상 주소가 들어간다", async () => {
     await open();
     await fill(["mina@example.com"]);
-    expect(role(0).getAttribute("aria-label")).toBe(m.members.invite.roleFor("mina@example.com"));
+    // ⚠️ 이름에 현재 값이 들어간다 — `aria-label`만 주면 버튼형 combobox가 값을 안 읽어 행마다 역할을 확인할 길이 없다.
+    expect(nameOf(role(0))).toBe(`${m.members.invite.roleFor("mina@example.com")} ${m.projects.role.EDITOR}`);
+    await pickOwner(0);
+    expect(nameOf(role(0))).toBe(`${m.members.invite.roleFor("mina@example.com")} ${m.projects.role.OWNER}`);
     expect(remove(0).getAttribute("aria-label")).toBe(m.members.invite.removeRecipient("mina@example.com"));
   });
 
@@ -255,6 +261,54 @@ describe("1c 입력 오류 — 제출 전 전체 검증", () => {
     expect(reason(1)).toBe(m.members.invite.rowError.invalidEmail);
   });
 
+  it("행을 지우면 남은 사유의 행 번호가 따라 움직인다 — 자기 자신을 가리키지 않는다", async () => {
+    await open();
+    await fill(["x@x.com", "keep@x.com", "dup@x.com", "dup@x.com"]);
+    await click(submit());
+    expect(reason(3)).toBe(m.members.invite.rowError.duplicate(3));
+    await click(remove(0));
+    expect(reason(2)).toBe(m.members.invite.rowError.duplicate(2));
+  });
+
+  it("짝이 되는 행을 지우면 중복 사유가 사라진다", async () => {
+    await open();
+    await fill(["dup@x.com", "dup@x.com"]);
+    await click(submit());
+    expect(reason(1)).toBe(m.members.invite.rowError.duplicate(1));
+    await click(remove(0));
+    expect(reason(0)).toBeNull();
+  });
+
+  it("역할만 바꾸면 주소 사유는 남고, 역할 충돌만 풀린다", async () => {
+    await open();
+    await fill(["bad", "a@x.com", "a@x.com"]);
+    await pickOwner(2);
+    await click(submit());
+    await pickOwner(0);
+    expect(reason(0)).toBe(m.members.invite.rowError.invalidEmail);
+    await pickOwner(1);
+    expect(reason(1)).toBeNull();
+  });
+
+  it("역할 충돌 짝의 역할을 같게 맞추면 양쪽 사유가 모두 사라진다 — 모순된 문장을 남기지 않는다", async () => {
+    await open();
+    await fill(["a@x.com", "a@x.com"]);
+    await pickOwner(1);
+    await click(submit());
+    expect(reason(0)).toBe(m.members.invite.rowError.roleConflict(2, m.projects.role.OWNER));
+    // 1행을 Owner로 맞춘다(2행에서 이어 치면 Radix 타이프어헤드가 "oe"로 누적해 안 바뀐다).
+    await pickOwner(0);
+    expect(reason(0)).toBeNull();
+    expect(reason(1)).toBeNull();
+  });
+
+  it("IME 확정 키(keyCode 229)의 Enter는 행을 추가하지 않는다 — Safari는 isComposing이 false로 온다", async () => {
+    await open();
+    await fill(["가"]);
+    await key(email(0), "Enter", { keyCode: 229 } as KeyboardEventInit);
+    expect(rows()).toHaveLength(1);
+  });
+
   it("오류 행을 지워도 성공 표시가 남지 않는다", async () => {
     await open();
     await fill(["ok@x.com", "bad"]);
@@ -337,7 +391,7 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     await settle();
     const alert = formAlert();
     expect(alert?.textContent).toContain(m.members.invite.limit.title);
-    expect(alert?.textContent).toContain(m.members.invite.limit.project(18, 3, "2026-09-23 12:01 UTC"));
+    expect(alert?.textContent).toContain(m.members.invite.limit.project(20, 18, 3, "2026-09-23 12:01 UTC"));
     expect(alert?.className).toContain("amber");
     expect(email(2).value).toBe("c@x.com");
     expect(document.activeElement).toBe(submit());

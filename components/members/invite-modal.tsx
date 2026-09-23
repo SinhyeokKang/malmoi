@@ -15,6 +15,7 @@ import type { Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import { parseRecipients, splitPastedEmails, type RecipientRowError } from "@/lib/invitation-email/recipients";
 import type { IssueRowError } from "@/lib/invitation-email/plan";
+import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 
 /**
@@ -31,6 +32,13 @@ import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 const FORM_ID = "invite-form";
 
 type Row = { id: number; email: string; role: Role };
+/**
+ * 행 사유는 **문장이 아니라 사실**로 든다 — 상대 행을 번호가 아니라 id로 가리키고 번호는 렌더 때 센다.
+ * 문장으로 굳히면 행을 넣거나 지울 때 "Already in row 1"이 자기 자신을 가리킨다(리뷰 🟡).
+ */
+type RowIssue =
+  | { code: "invalid-email" | "invalid-role" | "already-member" }
+  | { code: "duplicate" | "role-conflict"; otherRowId: number };
 type FormAlert = { variant: "warning" | "danger"; title?: string; body: string };
 type FocusTarget = { kind: "email"; id: number } | { kind: "add" } | { kind: "submit" };
 
@@ -54,7 +62,7 @@ export function InviteModal({
   returnFocusRef: RefObject<HTMLElement | null>;
 }) {
   const [rows, setRows] = useState<Row[]>(() => [blank()]);
-  const [rowErrors, setRowErrors] = useState<ReadonlyMap<number, string>>(new Map());
+  const [rowErrors, setRowErrors] = useState<ReadonlyMap<number, RowIssue>>(new Map());
   const [nothingSent, setNothingSent] = useState(false);
   const [alert, setAlert] = useState<FormAlert | null>(null);
   const [focus, setFocus] = useState<FocusTarget | null>(null);
@@ -62,11 +70,8 @@ export function InviteModal({
   const submitRef = useRef<HTMLButtonElement | null>(null);
   const addRef = useRef<HTMLButtonElement | null>(null);
 
-  /** 열릴 때 첫 이메일로 — 껍데기(`transitionKey`)는 패널에 포커스를 둔다. */
-  useEffect(() => {
-    // ⚠️ 열림 전이에서만 돈다 — `rows`를 의존성에 넣으면 행을 고칠 때마다 첫 행으로 끌려간다.
-    if (open) setFocus({ kind: "email", id: rows[0]?.id ?? 0 });
-  }, [open]);
+  /** 열릴 때 첫 이메일 — 껍데기의 `initialFocusRef`가 Radix 자동 포커스 자리에서 옮긴다. */
+  const firstEmailRef = useRef<HTMLInputElement | null>(null);
 
   /**
    * ⚠️ **`pending`이 의존성에 있어야 한다** (malmoi#64). 응답이 커밋되는 시점엔 `useTransition`의 pending이
@@ -104,7 +109,8 @@ export function InviteModal({
 
   function update(id: number, patch: Partial<Row>) {
     setRows((current) => current.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-    clearRowError(id);
+    // 역할만 바꾸면 주소 사유는 그대로다 — 문제는 남았는데 화면이 "고쳤다"로 보이면 안 된다. 역할 충돌만 역할로 풀린다.
+    if (patch.email !== undefined || rowErrors.get(id)?.code === "role-conflict") clearRowError(id);
   }
 
   function insertAfter(index: number, added: Row[]) {
@@ -125,7 +131,8 @@ export function InviteModal({
 
   function onEmailKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
     // IME 조합 중 Enter는 글자를 확정하는 키다 — 가로채면 한글·일본어 입력이 깨진다.
-    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    // ⚠️ Safari는 compositionend를 keydown보다 먼저 쏴서 확정 Enter의 `isComposing`이 false다 — 229가 그 표시다.
+    if (event.key !== "Enter" || event.nativeEvent.isComposing || event.keyCode === 229) return;
     event.preventDefault();
     insertAfter(index, [blank()]);
   }
@@ -142,18 +149,38 @@ export function InviteModal({
     insertAfter(index, rest.map((email) => ({ ...blank(), email })));
   }
 
-  /** 서버·클라이언트 행 오류 → 화면 행 id와 문구. `toRow`는 오류의 index를 화면 행 번호(0부터)로 옮긴다. */
-  function describeRowErrors(errors: readonly (RecipientRowError | IssueRowError)[], toRow: (i: number) => number): Map<number, string> {
-    const map = new Map<number, string>();
+  /** 서버·클라이언트 행 오류 → 화면 행 id의 사유. `toRow`는 오류의 index를 화면 행(0부터)으로 옮긴다. */
+  function describeRowErrors(errors: readonly (RecipientRowError | IssueRowError)[], toRow: (i: number) => number): Map<number, RowIssue> {
+    const map = new Map<number, RowIssue>();
     for (const error of errors) {
       const row = rows[toRow(error.index)];
       if (row === undefined) continue;
-      map.set(row.id, rowErrorText(error, (i) => toRow(i) + 1));
+      if (error.code === "duplicate" || error.code === "role-conflict") {
+        const other = rows[toRow(error.otherIndex)];
+        if (other !== undefined) map.set(row.id, { code: error.code, otherRowId: other.id });
+      } else {
+        map.set(row.id, { code: error.code });
+      }
     }
     return map;
   }
 
-  function showRowErrors(map: Map<number, string>, server: boolean) {
+  /**
+   * 사유 문장 — 상대 행의 **지금** 번호·역할로 쓴다. 상대 행이 사라졌으면 중복도 사라졌고, 역할 충돌 짝의 역할이
+   * 이제 같으면 "역할을 하나로"가 거짓이라 세우지 않는다(다음 제출이 같은 역할 중복으로 다시 판정한다).
+   */
+  function reasonText(row: Row, issue: RowIssue): string | null {
+    if (issue.code !== "duplicate" && issue.code !== "role-conflict") return rowErrorText(issue.code);
+    const at = rows.findIndex((r) => r.id === issue.otherRowId);
+    const other = rows[at];
+    if (other === undefined) return null;
+    if (issue.code === "role-conflict" && other.role === row.role) return null;
+    return issue.code === "duplicate"
+      ? m.members.invite.rowError.duplicate(at + 1)
+      : m.members.invite.rowError.roleConflict(at + 1, m.projects.role[other.role]);
+  }
+
+  function showRowErrors(map: Map<number, RowIssue>, server: boolean) {
     setRowErrors(map);
     setNothingSent(server);
     const first = rows.find((r) => map.has(r.id));
@@ -174,7 +201,7 @@ export function InviteModal({
     }
     setRowErrors(new Map());
     if (parsed.status === "too-many") {
-      setAlert({ variant: "danger", body: m.members.invite.tooMany });
+      setAlert({ variant: "danger", body: m.members.invite.tooMany(INVITATION_HOURLY_LIMIT) });
       setFocus({ kind: "submit" });
       return;
     }
@@ -215,11 +242,13 @@ export function InviteModal({
       closeLabel={m.common.close}
       closeDisabled={pending}
       returnFocusRef={returnFocusRef}
+      initialFocusRef={firstEmailRef}
       title={m.members.invite.title}
       description={m.members.invite.description}
       bodyScroll="hidden"
       footer={
-        <span data-invite-status aria-live="polite">
+        /* ⚠️ 껍데기 바닥은 12px이지만 이 모달은 캔버스가 13/1.6이다 — 상태 문장이 두 줄로 길어지는 유일한 바닥이다. */
+        <span data-invite-status aria-live="polite" className="text-[13px]">
           {status}
         </span>
       }
@@ -266,12 +295,14 @@ export function InviteModal({
         <ul className="-mx-1 -my-0.5 flex min-h-0 shrink flex-col gap-2.5 overflow-y-auto p-1">
           {rows.map((row, index) => {
             const who = row.email.trim() === "" ? m.members.invite.emptyRecipient(index + 1) : row.email.trim();
-            const error = rowErrors.get(row.id);
+            const issue = rowErrors.get(row.id);
+            const error = issue === undefined ? undefined : (reasonText(row, issue) ?? undefined);
             const reasonId = `invite-reason-${row.id}`;
             return (
               <li key={row.id} data-recipient-row className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2">
                   <Input
+                    ref={index === 0 ? firstEmailRef : undefined}
                     id={`invite-email-${row.id}`}
                     /*
                       ⚠️ **`type="email"`이 아니다** — 브라우저가 값의 앞뒤 공백을 지우고(표시가 원문이 아니게 된다)
@@ -292,8 +323,15 @@ export function InviteModal({
                     onPaste={(event) => onEmailPaste(index, event)}
                     className="min-w-0 flex-1"
                   />
+                  {/*
+                    ⚠️ **`aria-label`이 아니라 라벨 + 트리거 자신이다** — 버튼형 combobox는 안의 값을 이름에 안 싣는다.
+                    `aria-label`만 주면 여덟 행을 탭으로 돌 때 Editor인지 Owner인지 들을 수 없다(리포의 다른 트리거와 같은 형).
+                  */}
+                  <span id={`invite-role-label-${row.id}`} hidden>
+                    {m.members.invite.roleFor(who)}
+                  </span>
                   <Select value={row.role} onValueChange={(next) => update(row.id, { role: next as Role })} disabled={pending}>
-                    <SelectTrigger aria-label={m.members.invite.roleFor(who)} className="w-[168px] shrink-0">
+                    <SelectTrigger id={`invite-role-${row.id}`} aria-labelledby={`invite-role-label-${row.id} invite-role-${row.id}`} className="w-[168px] shrink-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="w-[280px]">
@@ -317,8 +355,9 @@ export function InviteModal({
                   </Button>
                 </div>
                 {error !== undefined && (
-                  <p id={reasonId} data-row-reason className="text-destructive flex items-start gap-1.5 text-[13px] leading-[1.6]">
-                    <CircleX aria-hidden className="mt-[3px] size-3.5 shrink-0" />
+                  /* 오른쪽 44는 열 머리와 같은 그리드다 — 사유가 역할 칸 아래로 번지지 않는다. */
+                  <p id={reasonId} data-row-reason className="text-destructive flex items-center gap-2 pr-11 text-[13px] leading-[1.6]">
+                    <CircleX aria-hidden className="size-3.5 shrink-0" />
                     <span>{error}</span>
                   </p>
                 )}
@@ -328,8 +367,9 @@ export function InviteModal({
         </ul>
 
         <div className="shrink-0">
-          <Button ref={addRef} type="button" variant="ghost" disabled={pending} onClick={() => insertAfter(rows.length - 1, [blank()])} className="-ml-2">
-            <Plus aria-hidden />
+          {/* ⚠️ **테두리 있는 기본 버튼이다** (캔버스 — h36·px12·아이콘 14). ghost면 스크롤이 끝난 목록 아래에서 버튼인지 안 읽힌다. */}
+          <Button ref={addRef} type="button" disabled={pending} onClick={() => insertAfter(rows.length - 1, [blank()])} className="px-3">
+            <Plus aria-hidden className="size-3.5" />
             {m.members.invite.addAnother}
           </Button>
         </div>
@@ -338,19 +378,10 @@ export function InviteModal({
   );
 }
 
-function rowErrorText(error: RecipientRowError | IssueRowError, rowNumber: (index: number) => number): string {
-  switch (error.code) {
-    case "invalid-email":
-      return m.members.invite.rowError.invalidEmail;
-    case "invalid-role":
-      return m.members.invite.rowError.invalidRole;
-    case "duplicate":
-      return m.members.invite.rowError.duplicate(rowNumber(error.otherIndex));
-    case "role-conflict":
-      return m.members.invite.rowError.roleConflict(rowNumber(error.otherIndex), m.projects.role[error.otherRole]);
-    case "already-member":
-      return m.members.invite.alreadyMember;
-  }
+function rowErrorText(code: "invalid-email" | "invalid-role" | "already-member"): string {
+  if (code === "invalid-email") return m.members.invite.rowError.invalidEmail;
+  if (code === "invalid-role") return m.members.invite.rowError.invalidRole;
+  return m.members.invite.alreadyMember;
 }
 
 /** 행이 아닌 거부 → 폼 Alert 한 장. `null`은 호출 자체가 끊긴 경우다(결과 미확인). */
@@ -360,12 +391,15 @@ function formAlertFor(result: Exclude<InvitationsResult, { ok: true }> | null, e
   }
   if (result.error === "rate-limited" && "limit" in result) {
     const time = retryAtLabel(result.retryAt);
-    const body = result.limit === "project" ? m.members.invite.limit.project(result.used, count, time) : m.members.invite.limit.address(emailAt(result.index), time);
+    const body =
+      result.limit === "project"
+        ? m.members.invite.limit.project(INVITATION_HOURLY_LIMIT, result.used, count, time)
+        : m.members.invite.limit.address(emailAt(result.index), time);
     return { variant: "warning", title: m.members.invite.limit.title, body };
   }
   if (result.error === "email-rejected") return { variant: "danger", body: m.members.invite.sendFailed };
   if (result.error === "email-unavailable") return { variant: "danger", body: m.members.invite.emailUnavailable };
-  if (result.error === "too-many") return { variant: "danger", body: m.members.invite.tooMany };
+  if (result.error === "too-many") return { variant: "danger", body: m.members.invite.tooMany(INVITATION_HOURLY_LIMIT) };
   if (result.error === "member-limit") return { variant: "danger", body: m.members.seatsFull(seatsLimit) };
   if (isAccessError(result.error)) return { variant: "danger", body: accessErrorMessage(result.error) };
   return { variant: "danger", body: m.members.invite.failed(result.error) };

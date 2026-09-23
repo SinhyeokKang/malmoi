@@ -56,6 +56,11 @@ export type OnboardingModalProps = {
   quiet?: boolean;
   fallbackFocusRef?: RefObject<HTMLElement | null>;
   returnFocusRef?: RefObject<HTMLElement | null>;
+  /**
+   * 열릴 때 포커스를 둘 자리 (2026-09-23 — 초대 모달 `1a`의 "첫 이메일"). ⚠️ **effect로 옮기면 진다** —
+   * Radix의 열림 자동 포커스가 소비자 effect보다 늦게 돌아 패널이 가져간다(실측). 없으면 기존 동작 그대로다.
+   */
+  initialFocusRef?: RefObject<HTMLElement | null>;
   nextLabel?: string;
   /** ③은 확정이라 화살표가 없다 — 다음이 아니라 결과다. */
   nextArrow?: boolean;
@@ -91,7 +96,7 @@ export function OnboardingModal({
   onNext,
   onBack,
   onClose,
-  children, footer, actions, headerAction, closeLabel, closeDisabled = false, panelClassName, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef,
+  children, footer, actions, headerAction, closeLabel, closeDisabled = false, panelClassName, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef, initialFocusRef,
 }: OnboardingModalProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   /**
@@ -155,7 +160,11 @@ export function OnboardingModal({
            * 1,100px 화면에서 하한(880)이 이겨 상한이 없는 것과 같아진다. 세 값 중 가장 작은 것이
            * 이기도록 `min()` 안에 함께 넣는다.
            */
-          onOpenAutoFocus={transitionKey === undefined ? undefined : (event) => { event.preventDefault(); (event.currentTarget as HTMLElement).focus(); }}
+          onOpenAutoFocus={
+            initialFocusRef !== undefined
+              ? (event) => { event.preventDefault(); (initialFocusRef.current ?? (event.currentTarget as HTMLElement)).focus(); }
+              : transitionKey === undefined ? undefined : (event) => { event.preventDefault(); (event.currentTarget as HTMLElement).focus(); }
+          }
           onCloseAutoFocus={returnFocusRef === undefined ? undefined : (event) => {
             event.preventDefault();
             const target = returnFocusRef.current;

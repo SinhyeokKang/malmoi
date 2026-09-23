@@ -2413,11 +2413,12 @@ export const en = {
        */
       limit: {
         title: "This would go over the invitation limit",
-        project: (used: number, n: number, time: string): string =>
-          `A project can create 20 invitations an hour, and ${used.toLocaleString("en-US")} ${used === 1 ? "was" : "were"} created in the last hour. You can send ${n === 1 ? "this one" : `these ${n.toLocaleString("en-US")}`} after ${time}.`,
+        /** ⚠️ 한도를 인자로 받는다 — 문구가 20을 따로 들면 `INVITATION_HOURLY_LIMIT`와 갈리는 날 화면만 틀린 수를 말한다. */
+        project: (limit: number, used: number, n: number, time: string): string =>
+          `A project can create ${limit.toLocaleString("en-US")} invitations an hour, and ${used.toLocaleString("en-US")} ${used === 1 ? "was" : "were"} created in the last hour. You can send ${n === 1 ? "this one" : `these ${n.toLocaleString("en-US")}`} after ${time}.`,
         address: (email: string, time: string): string => `${email} was invited less than a minute ago. You can send again after ${time}.`,
       },
-      tooMany: "You can invite up to 20 people at a time.",
+      tooMany: (limit: number): string => `You can invite up to ${limit.toLocaleString("en-US")} people at a time.`,
       /** 결과 미확인은 모드가 아니라 문구다 — 일부가 갔을 수 있다는 사실을 숨기지 않고, 사람별 결과를 복원하지 않는다. */
       unconfirmed: {
         title: "We couldn't confirm the email request",
@@ -2457,8 +2458,8 @@ export const en = {
       /** 카드 안 Alert — 대상 라벨을 문장에 넣는다(행이 교체돼도 무엇에 관한 안내인지 남게). 시각은 서버 값·UTC. */
       resendFailed: (who: string, time: string): string => `Couldn't resend the invitation to ${who}. You can try again after ${time}.`,
       resendLimited: (who: string, time: string): string => `${who} was invited less than a minute ago. You can resend after ${time}.`,
-      resendProjectLimited: (who: string, time: string): string =>
-        `Couldn't resend to ${who}: this project has created 20 invitations in the last hour. You can resend after ${time}.`,
+      resendProjectLimited: (who: string, limit: number, time: string): string =>
+        `Couldn't resend to ${who}: this project has created ${limit.toLocaleString("en-US")} invitations in the last hour. You can resend after ${time}.`,
       resendUnconfirmed: (who: string): string => `We couldn't confirm the email to ${who}. It may have been sent — Resend again replaces that link.`,
       resendUnavailable: (who: string): string => `Couldn't resend to ${who}. Email is unavailable right now. Try again later.`,
       resendGone: (who: string): string => `The invitation to ${who} is no longer pending.`,

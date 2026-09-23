@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from "react";
+import type { InputHTMLAttributes, Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ export const fieldClass = cn(
  * 올리면 번역 화면 툴바에서 32 필드와 36 버튼이 나란히 어긋난다** — 한 줄에 서는 컨트롤은 같은
  * 높이여야 한다. `Textarea`는 이 규칙 밖이다(`field-sizing-content`라 높이를 내용이 정한다).
  */
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+/** `ref`는 React 19의 평범한 prop이라 `...props`로 그대로 내려간다 — `Button`과 같은 형이다. */
+export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement> & { ref?: Ref<HTMLInputElement> }) {
   return <input className={cn(fieldClass, "h-9", "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)} {...props} />;
 }
