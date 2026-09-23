@@ -20,7 +20,7 @@
 | 3 | ✅ **B3 UX 🔴·막다른 길** | #5·6·7·8·11·14·15·16·17·24·25 | ✅ | `/ship` | `pnpm test` + `/bugshot-qa`(EDITOR·OWNER 두 계정) | — |
 | 4 | ✅ **B4 확인·문구·용어** | #13·19·20·21·22·23·28·29·30·31 | ✅ | `/ship` | `pnpm test`(no-korean-ui·brand-spelling 포함) + `/bugshot-qa` | ✅ #29 |
 | 5 | ✅ **B5 접근성(포커스)** | #32~42 | 권장 | `/ship` | `pnpm test`(jsdom) + `/design-sync` 접근성 트리 실측 | — |
-| 6 | **B6 시각 체계** | #43~50 | 권장 | `/ship` → `/design-sync` | `/design-sync` computed style 실측 | ✅ #50 |
+| 6 | ✅ **B6 시각 체계** | #43~50 | 권장 | `/ship` → `/design-sync` | `/design-sync` computed style 실측 | ✅ #50 |
 | 7 | **B7 어댑터·부채·문서** | #12·51~57·60~74 · ⚪ #75~90 | ❌ 출시 후 | 소배치로 쪼개 `/ship` | 항목별 | — |
 
 **배치 밖**: #27 `/docs` 본문은 코드가 아니라 글쓰기다 — launch-readiness L2.3이 소유한다.
@@ -167,14 +167,14 @@
 - **#50 → danger로 바꾼다** — DESIGN §6.4가 정본. `components/github-account.tsx:47`·`components/account/login-methods.tsx:106,140` 트리거를 `danger`로, 그 위의 "`danger`가 아니라 `default`다" 주석을 걷는다. ⚠️ 2026-09-13 핸드오프와 어긋나므로 **시안도 같이 고친다** — 안 고치면 `/design-sync`가 불일치로 되돌린다. `/projects/:slug/settings`의 같은 버튼도 함께 움직인다(주석이 "같은 버튼이 화면마다 다른 무게면 결함"이라 적는다).
 
 **항목**
-- [ ] **#43** 🟡 `app/(edit)/projects/[slug]/logs/page.tsx:119` — `bg-white`(§6.2는 `auth-layout.tsx` 하나로 한정). → `bg-background`.
-- [ ] **#44** 🟡 §6.2 미등재 raw 색 — `text-amber-700`(key-list:70,73 · locale-panel:86,183-185 · workspace:566) · `border-amber-500/50`(base-language-form:47) · neutral-300(locale-panel:196 · role-chip:42) · neutral-400(publish-button:297 · tree-panel:107 · locale-panel:63 · source-detail-modal:147,158 · filter-menu:45 · general-card:34,68,82) · neutral-600(번역 작업 화면 전반) · `shadow-[…rgba(10,10,10,0.06)]`(publish-button:262). 번역 작업 화면 C4 분량이 §6.2에서 통째로 빠져 있다.
-- [ ] **#45** 🟡 임의 글자 크기 — `text-[15px]`(tree-panel:40 · key-list:44 · locale-panel:85) · `text-[13px]`(invite-modal:251,286,359 — `row-card.tsx:142` "0건" 주석이 거짓이 됨) · `text-[12px]`(key-list:92 · publish-button:258,273).
-- [ ] **#46** 🟡 `tracking-*` 29곳 vs DESIGN 체크리스트 "여덟". 3곳(key-list:64 · locale-panel:170,198)이 `text-sm` 토큰 값을 덮는다.
-- [ ] **#47** 🟡 `rounded-[10px]` 16곳(= `rounded-md`). Button size radius 덮기(key-list:40 · locale-panel:224 · source-detail-modal:160-162) · `h-8`이 넷째 버튼 높이(§6.4·§8).
-- [ ] **#48** 🟡 §6.8 밖 아이콘 크기 — `size-[15px]`(event-detail:208,310 · locale-panel:61 · filter-menu:51) · `[13px]`(source-detail-modal:156) · `[18px]`(sources-screen:93) · `[26px]`(general-card:42). 아이콘에 색 클래스 8곳(key-list:41 · workspace:398 등).
-- [ ] **#49** 🟡 프리미티브 손 재구현 — Skeleton(projects/loading:76 · [slug]/loading:167 · logs/loading:47 · publish-button:366) · Badge(attention-card:53 · log-filters:73 — Archived는 `Badge neutral`) · DropdownMenuTrigger hover 불일치(filter-menu:40-47 vs log-filters:223-228) · Alert 대용(logs/page:171 · event-detail:207).
-- [ ] **#50** 🟡 같은 행동 다른 variant — 연결 해제(github-account:47 · login-methods:106,140) · Retry(error.tsx default vs logs/error.tsx primary) · Clear filters(ghost vs primary, §6.8의 `RotateCcw` 없음) · Clear search(Link vs default Button, §6.4 예외 2는 default).
+- [x] **#43** 🟡 `app/(edit)/projects/[slug]/logs/page.tsx:119` — `bg-white`(§6.2는 `auth-layout.tsx` 하나로 한정). → `bg-background`.
+- [x] **#44** 🟡 §6.2 미등재 raw 색 — `text-amber-700`(key-list:70,73 · locale-panel:86,183-185 · workspace:566) · `border-amber-500/50`(base-language-form:47) · neutral-300(locale-panel:196 · role-chip:42) · neutral-400(publish-button:297 · tree-panel:107 · locale-panel:63 · source-detail-modal:147,158 · filter-menu:45 · general-card:34,68,82) · neutral-600(번역 작업 화면 전반) · `shadow-[…rgba(10,10,10,0.06)]`(publish-button:262). 번역 작업 화면 C4 분량이 §6.2에서 통째로 빠져 있다.
+- [x] **#45** 🟡 임의 글자 크기 — `text-[15px]`(tree-panel:40 · key-list:44 · locale-panel:85) · `text-[13px]`(invite-modal:251,286,359 — `row-card.tsx:142` "0건" 주석이 거짓이 됨) · `text-[12px]`(key-list:92 · publish-button:258,273).
+- [x] **#46** 🟡 `tracking-*` 29곳 vs DESIGN 체크리스트 "여덟". 3곳(key-list:64 · locale-panel:170,198)이 `text-sm` 토큰 값을 덮는다.
+- [x] **#47** 🟡 `rounded-[10px]` 16곳(= `rounded-md`). Button size radius 덮기(key-list:40 · locale-panel:224 · source-detail-modal:160-162) · `h-8`이 넷째 버튼 높이(§6.4·§8).
+- [x] **#48** 🟡 §6.8 밖 아이콘 크기 — `size-[15px]`(event-detail:208,310 · locale-panel:61 · filter-menu:51) · `[13px]`(source-detail-modal:156) · `[18px]`(sources-screen:93) · `[26px]`(general-card:42). 아이콘에 색 클래스 8곳(key-list:41 · workspace:398 등).
+- [x] **#49** 🟡 프리미티브 손 재구현 — Skeleton(projects/loading:76 · [slug]/loading:167 · logs/loading:47 · publish-button:366) · Badge(attention-card:53 · log-filters:73 — Archived는 `Badge neutral`) · DropdownMenuTrigger hover 불일치(filter-menu:40-47 vs log-filters:223-228) · Alert 대용(logs/page:171 · event-detail:207).
+- [x] **#50** 🟡 같은 행동 다른 variant — 연결 해제(github-account:47 · login-methods:106,140) · Retry(error.tsx default vs logs/error.tsx primary) · Clear filters(ghost vs primary, §6.8의 `RotateCcw` 없음) · Clear search(Link vs default Button, §6.4 예외 2는 default).
 
 **경계**: `[slug]/loading.tsx`의 골격이 도착 화면과 다른 것(#18)은 **B7**(브라우저 확인이 먼저다). 이 배치는 Skeleton 프리미티브 교체만 한다.
 
