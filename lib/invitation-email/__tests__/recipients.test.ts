@@ -90,23 +90,46 @@ describe("parseRecipients — 오류는 입력 인덱스로 돌려주고 일부�
     });
   });
 
-  it("정규화 후 같은 주소는 뒤 행이 duplicate다", () => {
+  it("정규화 후 같은 주소·같은 역할은 뒤 행만 duplicate이고 앞 행 번호를 든다", () => {
     expect(
       parseRecipients([
         { email: "a@x.com", role: "EDITOR" },
         { email: "b@x.com", role: "EDITOR" },
         { email: " A@X.com", role: "EDITOR" },
       ]),
-    ).toEqual({ status: "invalid-rows", rowErrors: [{ index: 2, code: "duplicate" }] });
+    ).toEqual({ status: "invalid-rows", rowErrors: [{ index: 2, code: "duplicate", otherIndex: 0 }] });
   });
 
-  it("같은 주소의 역할 충돌을 조용히 합치지 않는다", () => {
+  it("같은 주소의 역할 충돌을 조용히 합치지 않는다 — 양쪽 행에 상대 행과 역할을 적는다", () => {
     expect(
       parseRecipients([
         { email: "a@x.com", role: "EDITOR" },
+        { email: "A@x.com ", role: "OWNER" },
+      ]),
+    ).toEqual({
+      status: "invalid-rows",
+      rowErrors: [
+        { index: 0, code: "role-conflict", otherIndex: 1, otherRole: "OWNER" },
+        { index: 1, code: "role-conflict", otherIndex: 0, otherRole: "EDITOR" },
+      ],
+    });
+  });
+
+  it("같은 역할 중복과 역할 충돌이 섞여도 첫 등장 행을 기준으로 판정한다", () => {
+    expect(
+      parseRecipients([
+        { email: "a@x.com", role: "EDITOR" },
+        { email: "a@x.com", role: "EDITOR" },
         { email: "a@x.com", role: "OWNER" },
       ]),
-    ).toEqual({ status: "invalid-rows", rowErrors: [{ index: 1, code: "duplicate" }] });
+    ).toEqual({
+      status: "invalid-rows",
+      rowErrors: [
+        { index: 0, code: "role-conflict", otherIndex: 2, otherRole: "OWNER" },
+        { index: 1, code: "duplicate", otherIndex: 0 },
+        { index: 2, code: "role-conflict", otherIndex: 0, otherRole: "EDITOR" },
+      ],
+    });
   });
 
   it("빈 행을 건너뛰어도 인덱스는 원래 입력 기준이다", () => {
@@ -129,7 +152,7 @@ describe("parseRecipients — 오류는 입력 인덱스로 돌려주고 일부�
       status: "invalid-rows",
       rowErrors: [
         { index: 0, code: "invalid-email" },
-        { index: 2, code: "duplicate" },
+        { index: 2, code: "duplicate", otherIndex: 1 },
       ],
     });
   });
@@ -140,7 +163,7 @@ describe("parseRecipients — 오류는 입력 인덱스로 돌려주고 일부�
         { email: "__proto__@x.com", role: "EDITOR" },
         { email: "__proto__@x.com", role: "EDITOR" },
       ]),
-    ).toEqual({ status: "invalid-rows", rowErrors: [{ index: 1, code: "duplicate" }] });
+    ).toEqual({ status: "invalid-rows", rowErrors: [{ index: 1, code: "duplicate", otherIndex: 0 }] });
   });
 });
 

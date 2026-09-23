@@ -82,6 +82,8 @@ describe("planInvitationIssue — 같은 주소 60초 간격", () => {
     expect(plan({ targets: [target(), target({ lastIssuedAt: last })] })).toEqual({
       status: "rate-limited",
       retryAt: new Date(last.getTime() + ADDRESS_INTERVAL_MS),
+      limit: "address",
+      index: 1,
     });
   });
 
@@ -95,6 +97,8 @@ describe("planInvitationIssue — 같은 주소 60초 간격", () => {
     expect(plan({ targets: [target({ lastIssuedAt: early }), target({ lastIssuedAt: late })] })).toEqual({
       status: "rate-limited",
       retryAt: new Date(late.getTime() + ADDRESS_INTERVAL_MS),
+      limit: "address",
+      index: 1,
     });
   });
 });
@@ -112,6 +116,8 @@ describe("planInvitationIssue — 프로젝트 최근 1시간 20건", () => {
     expect(plan({ recentIssues: recent })).toEqual({
       status: "rate-limited",
       retryAt: new Date((recent[0] as Date).getTime() + PROJECT_WINDOW_MS),
+      limit: "project",
+      used: 20,
     });
   });
 
@@ -121,6 +127,8 @@ describe("planInvitationIssue — 프로젝트 최근 1시간 20건", () => {
     expect(plan({ recentIssues: recent, targets: [target(), target(), target()] })).toEqual({
       status: "rate-limited",
       retryAt: new Date((recent[1] as Date).getTime() + PROJECT_WINDOW_MS),
+      limit: "project",
+      used: 19,
     });
   });
 
@@ -135,6 +143,8 @@ describe("planInvitationIssue — 프로젝트 최근 1시간 20건", () => {
     expect(plan({ recentIssues: shuffled })).toEqual({
       status: "rate-limited",
       retryAt: new Date((recent[0] as Date).getTime() + PROJECT_WINDOW_MS),
+      limit: "project",
+      used: 20,
     });
   });
 
@@ -143,14 +153,23 @@ describe("planInvitationIssue — 프로젝트 최근 1시간 20건", () => {
     expect(plan({ recentIssues: recent }).status).toBe("rate-limited");
   });
 
-  it("간격과 시간창이 둘 다 막으면 더 늦은 시각이다", () => {
+  it("간격과 시간창이 둘 다 막으면 더 늦은 시각이고, 그 시각을 정한 쪽이 사유다", () => {
     const recent = issues(20);
     const last = ago(1_000);
-    const windowRetry = (recent[0] as Date).getTime() + PROJECT_WINDOW_MS;
-    const addressRetry = last.getTime() + ADDRESS_INTERVAL_MS;
+    // 창의 가장 오래된 기록이 곧 빠지므로(1ms 뒤) 60초 간격이 더 늦다.
     expect(plan({ recentIssues: recent, targets: [target({ lastIssuedAt: last })] })).toEqual({
       status: "rate-limited",
-      retryAt: new Date(Math.max(windowRetry, addressRetry)),
+      retryAt: new Date(last.getTime() + ADDRESS_INTERVAL_MS),
+      limit: "address",
+      index: 0,
+    });
+    // 창이 한참 뒤에 풀리면 프로젝트 한도가 사유다.
+    const late = Array.from({ length: 20 }, (_, i) => ago(10_000 + i));
+    expect(plan({ recentIssues: late, targets: [target({ lastIssuedAt: last })] })).toEqual({
+      status: "rate-limited",
+      retryAt: new Date(ago(10_000 + 19).getTime() + PROJECT_WINDOW_MS),
+      limit: "project",
+      used: 20,
     });
   });
 

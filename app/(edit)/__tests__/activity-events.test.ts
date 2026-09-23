@@ -17,6 +17,7 @@ const hoisted = vi.hoisted(() => ({
   prisma: undefined as unknown,
   revalidatePath: vi.fn(),
   triggerPull: vi.fn(),
+  send: vi.fn(async () => "accepted"),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -24,9 +25,13 @@ vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/pull/trigger", () => ({ triggerPull: hoisted.triggerPull }));
+vi.mock("@/lib/invitation-email/send", () => ({
+  readInvitationEmailConfigFromEnv: () => ({ status: "ready", apiKey: "k", from: "invite@notify.mal-moi.com", origin: "http://localhost:3000" }),
+  sendInvitationEmails: hoisted.send,
+}));
 
 const { saveTranslationKey, triggerPullAction } = await import("../actions");
-const { createInvitation, revokeInvitation, changeMember, archiveProject, unarchiveProject, rotatePushToken } =
+const { createInvitations, revokeInvitation, changeMember, archiveProject, unarchiveProject, rotatePushToken } =
   await import("../projects/actions");
 
 const ARCHIVED_AT = new Date("2026-09-10T00:00:00Z");
@@ -142,8 +147,9 @@ describe("Publish 선행 거부 — 여섯만 남는다 (결정 7)", () => {
 
 describe("멤버 — 넷이 같은 계열로 남는다", () => {
   it("초대는 마스킹 라벨과 역할만 남긴다 — 링크 원문도 해시도 없다", async () => {
-    const result = await createInvitation({ slug: "alpha", email: "New.Person@Example.com", role: "EDITOR" });
+    const result = await createInvitations({ slug: "alpha", recipients: [{ email: "New.Person@Example.com", role: "EDITOR" }] });
     expect(result.ok).toBe(true);
+    const token = (hoisted.send.mock.calls.at(-1) as unknown as [unknown, { token: string }[]])[1][0]!.token;
 
     expect(db.projectEvents).toHaveLength(1);
     const event = db.projectEvents[0]!;
@@ -151,7 +157,7 @@ describe("멤버 — 넷이 같은 계열로 남는다", () => {
     expect(event.payload).toEqual({ kind: "MEMBER", targetLabel: "n***@example.com", role: { before: null, after: "EDITOR" } });
     const serialized = JSON.stringify(event);
     expect(serialized).not.toContain("new.person@example.com");
-    expect(serialized).not.toContain(result.ok ? result.token : "");
+    expect(serialized).not.toContain(token);
   });
 
   it("무효화가 0행이면 사건도 없다", async () => {
@@ -210,7 +216,7 @@ describe("검색 문자열 — 유일한 관문을 지난다 (결정 3)", () => 
 
   it("모든 사건이 자기 참조로 검색된다 — 조립을 빠뜨린 종류가 없다", async () => {
     await save("안녕");
-    await createInvitation({ slug: "alpha", email: "a@b.com", role: "EDITOR" });
+    await createInvitations({ slug: "alpha", recipients: [{ email: "a@b.com", role: "EDITOR" }] });
     await rotatePushToken({ slug: "alpha" });
     expect(db.projectEvents).toHaveLength(3);
     for (const row of db.projectEvents) {
@@ -227,7 +233,7 @@ it("이미 같은 역할과 복원 상태면 사건이 없다", async () => {
 });
 
 it("이미 취소된 초대는 다시 사건을 만들지 않는다", async () => {
-  const created = await createInvitation({ slug: "alpha", email: "new@example.com", role: "EDITOR" });
+  const created = await createInvitations({ slug: "alpha", recipients: [{ email: "new@example.com", role: "EDITOR" }] });
   expect(created.ok).toBe(true);
   const invitation = db.invitations[0]!;
   await revokeInvitation({ slug: "alpha", invitationId: invitation.id });

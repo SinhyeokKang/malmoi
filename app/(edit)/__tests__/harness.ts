@@ -98,6 +98,11 @@ export type InvitationSeed = {
   invitedBy: string;
   /** 옛 키로 봉인된 행 — `sealedWithLostKey` 참고. */
   unreadable?: boolean;
+  /**
+   * 발급 시각 — 초대 메일 한도(60초·시간당 20건)가 센다. ⚠️ 시드가 안 주면 **창 밖**으로 읽는다
+   * (`findManyInvitations`의 `createdAt.gt`가 `undefined`를 통과시키지 않는다) — 기존 시드가 한도에 걸리지 않게.
+   */
+  createdAt?: Date;
 };
 
 export type KeySeed = {
@@ -759,12 +764,13 @@ export function createHarness(seed: Seed = {}) {
    */
   const findManyInvitations = vi.fn(
     async (args: {
-      where: { projectId: string; acceptedAt?: null; expiresAt?: { gt: Date; equals?: Date } };
+      where: { projectId: string; acceptedAt?: null; expiresAt?: { gt: Date; equals?: Date }; createdAt?: { gt: Date } };
       orderBy?: { email?: "asc" | "desc" };
     }) => {
       const rows = invitations.filter(
         (i) =>
           i.projectId === args.where.projectId &&
+          (args.where.createdAt === undefined || (i.createdAt !== undefined && i.createdAt.getTime() > args.where.createdAt.gt.getTime())) &&
           (args.where.acceptedAt === undefined || i.acceptedAt === null) &&
           (args.where.expiresAt === undefined || (i.expiresAt.getTime() > args.where.expiresAt.gt.getTime() && (args.where.expiresAt.equals === undefined || i.expiresAt.getTime() === args.where.expiresAt.equals.getTime()))),
       );
