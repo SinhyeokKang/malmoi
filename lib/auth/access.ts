@@ -73,3 +73,26 @@ export function planProjectAccess(input: {
   }
   return { status: "ok", projectId: member.projectId, role: member.role, archived };
 }
+
+export type LockedAccess = { status: "ok"; role: Role } | { status: "not-found" } | { status: "forbidden" } | { status: "archived" };
+
+/**
+ * **잠금 뒤 다시 읽은 값으로 쓰기를 판정한다** (감사 #9·#10·#26 — ARCHITECTURE §5.6.4). 진입점 판정은 잠금 전 1회라
+ * 대기 중 제거·강등·보관을 못 본다. 판정은 `planProjectAccess` 그대로이고 **쓰기 규칙 하나**를 얹는다:
+ * 보관된 프로젝트의 `project:settings` 쓰기는 보관 토글(`archiveToggle` — `archiveProject`·`unarchiveProject`)만 통과한다(PRODUCT §7.9 "보관 = Restore만").
+ *
+ * @param surface 표면 범위 쓰기면 잠금 뒤 읽은 표면. 없거나 보관됐으면 `not-found` — 진입점의 `getSurfaceAccess`와 같은 낱말이다.
+ */
+export function planLockedAccess(input: {
+  member: MemberContext | null;
+  permission: Permission;
+  archivedAt: Date | null;
+  surface?: { archivedAt: Date | null } | null;
+  archiveToggle?: boolean;
+}): LockedAccess {
+  const access = planProjectAccess(input);
+  if (access.status === "not-found" || access.status === "forbidden" || access.status === "archived") return { status: access.status };
+  if (access.archived && input.archiveToggle !== true) return { status: "archived" };
+  if (input.surface !== undefined && (input.surface === null || input.surface.archivedAt !== null)) return { status: "not-found" };
+  return { status: "ok", role: access.role };
+}

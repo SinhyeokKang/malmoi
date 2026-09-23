@@ -47,6 +47,8 @@ beforeEach(async () => {
   for (const id of ["editor", "owner", "other", "other-owner"]) await prisma.user.create({ data: { id, email: `fixture-${id}` } });
   await prisma.project.create({ data: { id: "p", slug: "p", name: "p", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", repositoryId: "100" } });
   await prisma.projectMember.createMany({ data: ["owner", "other-owner"].map(userId => ({ projectId: "p", userId, role: "OWNER" as const })) });
+  // 저장이 잠금 뒤 저자의 멤버십을 다시 본다 (감사 #10).
+  await prisma.projectMember.createMany({ data: ["editor", "other"].map(userId => ({ projectId: "p", userId, role: "EDITOR" as const })) });
   await prisma.translationSurface.create({ data: { id: "s", projectId: "p", slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en", lastCommitSha: "c1" } });
   await prisma.locale.createMany({ data: ["en", "ko", "ja"].map(code => ({ projectId: "p", surfaceId: "s", code, name: code, isBase: code === "en" })) });
   await prisma.stringKey.create({ data: { id: "k1", projectId: "p", surfaceId: "s", key: "greet", namespace: "_root", sourceText: "Hello", sourceHash: "h" } });

@@ -60,7 +60,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   h.put.mockResolvedValue(NEW_IMAGE);
   h.normalize.mockResolvedValue({ ok: true, bytes: Uint8Array.of(1) });
-  h.pull.mockResolvedValue({ status: "failed", error: "fixture", delivery: "not-started", retryable: false });
+  h.pull.mockRejectedValue(new Error("fixture"));
   await pool.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public");
   for (const name of readdirSync("prisma/migrations").sort()) {
     if (name === "migration_lock.toml") continue;

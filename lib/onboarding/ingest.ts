@@ -3,7 +3,9 @@ import "server-only";
 import { checkContentBudget } from "./budget";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { AdapterError, DetectedFormat } from "@/lib/adapters/types";
-import { applyPush } from "@/lib/push/apply";
+import type { LockedAccess } from "@/lib/auth/access";
+import { lockProjectAccess } from "@/lib/auth/lock";
+import { applyPushInTransaction } from "@/lib/push/apply";
 import { assemblePushInput } from "@/lib/push/assemble";
 import { PushPayload } from "@/lib/push/plan";
 import { fail } from "@/lib/failure";
@@ -61,12 +63,26 @@ export type FirstSnapshotInput = {
   blobs: ReadonlyMap<string, string>;
 };
 
-export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnapshotInput): Promise<FirstIngestResult> {
+/** 잠금 뒤 다시 본 인가가 적재를 거부했다 — 호출부가 실행을 닫고 그 낱말로 답한다. */
+export class FirstIngestRefused extends Error {
+  constructor(readonly code: Exclude<LockedAccess["status"], "ok">) { super(code); }
+}
+
+/**
+ * ⚠️ **`userId`는 잠금 뒤 재인가의 입력이다** (감사 #9). Action 입구 인가 뒤 GitHub에서 스냅샷을 받는 초 단위 창에 OWNER가
+ * 강등·제거될 수 있다 — 적재 트랜잭션이 `Project` 잠금 뒤 다시 본다.
+ */
+export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnapshotInput & { userId: string }): Promise<FirstIngestResult> {
   const prepared = prepareFirstSnapshot(input);
-  if (prepared.payload !== null) await applyPush(prisma, { projectId: input.projectId, surfaceId: input.surfaceId }, prepared.payload, {
-    refsMode: "replace", previousBaseLocale: null, startedAt: input.startedAt, token: input.token,
-    importOutcome: prepared.result.failed === 0 ? null : "partial-import",
-  });
+  const { payload } = prepared;
+  if (payload !== null) await prisma.$transaction(async tx => {
+    const locked = await lockProjectAccess(tx, { projectId: input.projectId, userId: input.userId, permission: "project:settings", surfaceId: input.surfaceId });
+    if (locked.status !== "ok") throw new FirstIngestRefused(locked.status);
+    await applyPushInTransaction(tx, { projectId: input.projectId, surfaceId: input.surfaceId }, payload, {
+      refsMode: "replace", previousBaseLocale: null, startedAt: input.startedAt, token: input.token,
+      importOutcome: prepared.result.failed === 0 ? null : "partial-import",
+    });
+  }, { maxWait: 10_000, timeout: 30_000 });
   return prepared.result;
 }
 

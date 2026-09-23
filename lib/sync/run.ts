@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { lockProjectAccess } from "@/lib/auth/lock";
 import { runTokenFor } from "@/lib/events/payload";
 import { recordRun } from "@/lib/events/record";
 import { classifyFailure } from "@/lib/failure";
@@ -92,7 +93,13 @@ async function startRun(
   requestedBy: string | null,
 ): Promise<Started> {
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    // 수동 실행은 사람이 연다 — 진입점 인가 뒤 잠금을 기다리는 동안 제거·보관됐으면 행을 만들지 않는다(감사 #10).
+    // cron은 사람이 없고 보관 프로젝트를 `selectPullTargets`가 이미 뺀다.
+    if (requestedBy === null) await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    else {
+      const locked = await lockProjectAccess(tx, { projectId, userId: requestedBy, permission: "translation:write" });
+      if (locked.status !== "ok") return { status: "rejected", outcome: { status: "failed", error: locked.status, delivery: "not-started", retryable: false } };
+    }
 
     // ⚠️ **순차로 보낸다.** 대화형 트랜잭션은 커넥션 하나라 `Promise.all`이 왕복을 줄이지 못하고,
     // 엔진 내부 직렬화에 기대는 모양이 된다 — 이 리포에 트랜잭션 안 `Promise.all` 선례가 없다.

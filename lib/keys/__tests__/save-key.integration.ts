@@ -58,6 +58,8 @@ afterAll(async () => {
 /** 프로젝트 · 표면 `s` · en(base)·ko·ja · 키 k1(en "Hi" · ko "안녕" · ja 없음) · 오펀 키 k0 · 편집 없음. */
 async function seed(p: string) {
   await prisma.project.create({ data: { id: p, slug: p, name: p, repoOwner: "o", repoName: p, baseBranch: "main", installationId: "1", repositoryId: `r-${p}` } });
+  // 저장이 잠금 뒤 저자의 멤버십을 다시 본다 (감사 #10) — 저자 둘을 EDITOR로 둔다.
+  await prisma.projectMember.createMany({ data: ["u1", "u2"].map(userId => ({ projectId: p, userId, role: "EDITOR" as const })) });
   await prisma.translationSurface.create({ data: { id: `${p}-s`, projectId: p, slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en", lastCommitSha: "c1" } });
   await prisma.locale.createMany({ data: ["en", "ko", "ja"].map(code => ({ projectId: p, surfaceId: `${p}-s`, code, name: code, isBase: code === "en" })) });
   await prisma.stringKey.create({ data: { id: `${p}-k1`, projectId: p, surfaceId: `${p}-s`, key: "greet", namespace: "_root", sourceText: "Hello", sourceHash: "h" } });

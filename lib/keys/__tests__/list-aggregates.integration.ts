@@ -795,7 +795,8 @@ it("프로젝트 이미지의 동시 교체·제거는 현재 URL을 삭제하�
   vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
   const { uploadProjectImage, deleteProjectImage, updateProjectName } = await import("@/app/(edit)/projects/[slug]/settings/actions");
   const original = "https://store.public.blob.vercel-storage.com/projects/add/original.webp";
-  await prisma.project.update({ where: { id: "add" }, data: { image: original, archivedAt: AFTER } });
+  // 보관 = Restore만 (2026-09-24, 감사 #26) — 전에는 보관 중에도 이미지·이름을 바꿀 수 있다는 것을 같이 고정했다.
+  await prisma.project.update({ where: { id: "add" }, data: { image: original } });
   imageIO.put.mockImplementation(async (key: string) => `https://store.public.blob.vercel-storage.com/${key}`);
   imageIO.del.mockReset();
   const form = () => { const value = new FormData(); value.set("slug", "add"); value.set("image", new File(["png"], "p.png")); return value; };
@@ -806,5 +807,5 @@ it("프로젝트 이미지의 동시 교체·제거는 현재 URL을 삭제하�
   expect(removed).toContain(original);
   expect(new Set(removed).size).toBe(removed.length);
   expect(await updateProjectName({ slug: "add", name: "  Renamed  " })).toEqual({ ok: true, name: "Renamed" });
-  expect(await prisma.project.findUniqueOrThrow({ where: { id: "add" } })).toMatchObject({ name: "Renamed", slug: "add", archivedAt: AFTER });
+  expect(await prisma.project.findUniqueOrThrow({ where: { id: "add" } })).toMatchObject({ name: "Renamed", slug: "add" });
 });

@@ -211,7 +211,7 @@ describe("planProjectAccess — archivedPolicy", () => {
 
 /**
  * **잠금 안 쓰기 판정** (감사 #9·#10·#26 — ARCHITECTURE §5.6.4). 입력은 잠금 뒤 다시 읽은 값이고, 판정은
- * `planProjectAccess` 위에 쓰기 규칙 하나를 얹는다: 보관된 프로젝트의 `project:settings` 쓰기는 `restore`만 통과한다.
+ * `planProjectAccess` 위에 쓰기 규칙 하나를 얹는다: 보관된 프로젝트의 `project:settings` 쓰기는 보관 토글(`archiveToggle`)만 통과한다.
  */
 describe("planLockedAccess — 잠금 뒤 다시 읽은 값으로 쓰기를 판정한다", () => {
   const owner = { projectId: "p1", role: "OWNER" as const };
@@ -230,12 +230,12 @@ describe("planLockedAccess — 잠금 뒤 다시 읽은 값으로 쓰기를 판�
     expect(planLockedAccess({ member: owner, permission: "project:settings", archivedAt })).toEqual({ status: "archived" });
   });
 
-  it("restore는 보관된 프로젝트에서 통과한다 (대조: 같은 입력에서 restore만 다르다)", () => {
-    expect(planLockedAccess({ member: owner, permission: "project:settings", archivedAt, restore: true })).toEqual({ status: "ok", role: "OWNER" });
+  it("보관 토글은 보관된 프로젝트에서 통과한다 (대조: 같은 입력에서 archiveToggle만 다르다)", () => {
+    expect(planLockedAccess({ member: owner, permission: "project:settings", archivedAt, archiveToggle: true })).toEqual({ status: "ok", role: "OWNER" });
   });
 
-  it("restore가 권한 부족을 열어 주지 않는다", () => {
-    expect(planLockedAccess({ member: editor, permission: "project:settings", archivedAt, restore: true })).toEqual({ status: "forbidden" });
+  it("보관 토글이 권한 부족을 열어 주지 않는다", () => {
+    expect(planLockedAccess({ member: editor, permission: "project:settings", archivedAt, archiveToggle: true })).toEqual({ status: "forbidden" });
   });
 
   it("번역 쓰기도 보관이면 archived다", () => {

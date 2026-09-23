@@ -45,6 +45,8 @@ function stubPrisma() {
   const projectUpdates: unknown[] = [];
   const prisma = {
     project: { findUnique: async () => ({ slug: "acme", archivedAt: null }) },
+    // 적재 트랜잭션이 잠금 뒤 호출자 권한을 다시 본다 (감사 #9).
+    projectMember: { findUnique: async () => ({ projectId: "p1", role: "OWNER" }) },
     locale: { findFirst: async () => null },
     $executeRaw: (strings: TemplateStringsArray, ...values: unknown[]) => {
       const c = { sql: strings.join(" ? "), values };
@@ -58,6 +60,7 @@ function stubPrisma() {
     },
     translationSurface: {
       findUnique: async () => ({ slug: "default", archivedAt: null, adapterName: null, pathTemplate: null, baseLocale: null, declaredBaseLocale: null, lastCommitAt: null }),
+      findFirst: async () => ({ archivedAt: null }),
       updateMany: async () => ({ count: 1 }),
       update: async (args: unknown) => {
         projectUpdates.push(args);
@@ -73,7 +76,7 @@ const run = (over: Partial<Parameters<typeof ingestFirstSnapshot>[1]> = {}) => {
   return {
     stub,
     result: ingestFirstSnapshot(stub.prisma, {
-      projectId: "p1", surfaceId: "s1",
+      projectId: "p1", surfaceId: "s1", userId: "owner",
       token: "fixture-run", startedAt: new Date("2026-09-13T00:00:00Z"),
       projectSlug: "acme",
       surfaceSlug: "default",

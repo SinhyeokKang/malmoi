@@ -29,6 +29,7 @@ import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import type { AccessError } from "@/lib/auth/message";
 import { planMemberChange } from "@/lib/auth/membership";
 import type { Role } from "@/lib/auth/permission";
+import { lockProjectAccess } from "@/lib/auth/lock";
 import { getProjectAccess } from "@/lib/auth/query";
 import { readSession } from "@/lib/auth/read-session";
 import { requireUser } from "@/lib/auth/session";
@@ -76,7 +77,7 @@ import type { RepositoryImportError, RepositoryImportOutcome } from "@/lib/impor
 import type { OpenImportPr } from "@/lib/import/confirm";
 import { readFiles, snapshotError } from "@/lib/import/read";
 import { readSurfaceSnapshot } from "@/lib/import/surface";
-import { ingestFirstSnapshot, prepareFirstSnapshot } from "@/lib/onboarding/ingest";
+import { FirstIngestRefused, ingestFirstSnapshot, prepareFirstSnapshot } from "@/lib/onboarding/ingest";
 import { renderSurfaceWorkflowStep, renderProjectWorkflowYaml } from "@/lib/onboarding/workflow";
 import type { OnboardError } from "@/lib/onboarding/message";
 import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
@@ -274,7 +275,8 @@ export async function revokeInvitation(raw: { slug: string; invitationId: string
   // 처리되지 않은 throw는 사용자에게 digest만 있는 오류가 된다 (`changeMember`와 같은 형).
   // ⚠️ **사건이 같은 트랜잭션이다** — 0행이면 아무것도 안 쓰고, 사건 기록이 실패하면 무효화도 롤백된다.
   const written = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${access.projectId} FOR UPDATE`;
+    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId: session.userId, permission: "member:manage" });
+    if (locked.status !== "ok") return locked;
     const invitation = await tx.projectInvitation.findFirst({ where: { id: input.invitationId, projectId: access.projectId } });
     if (invitation === null || invitation.acceptedAt !== null) return 0;
     // 이미 만료된 초대는 무효화할 상태가 없다 — 성공 응답은 유지하되 사건을 만들지 않는다.
@@ -295,6 +297,7 @@ export async function revokeInvitation(raw: { slug: string; invitationId: string
     });
     return count;
   });
+  if (typeof written !== "number") return { ok: false, error: written.status };
   if (written === 0) return { ok: false, error: "not-found" };
 
   revalidatePath(`/projects/${input.slug}/members`);
@@ -346,7 +349,9 @@ export async function changeMember(raw: {
    * 것은 잠금이 새는 경우(다른 경로의 쓰기)의 그물이다 — 0이면 던져 롤백한다.
    */
   const outcome = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    // 잠금 대기 중 호출자가 제거·강등됐으면 여기서 멈춘다 — OWNER 재집계는 "남은 OWNER가 있나"만 보고 "누가 지우나"를 안 본다.
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage" });
+    if (locked.status !== "ok") return locked.status;
 
     // 인가된 projectId로 좁힌다 — 안 좁히면 남의 프로젝트 멤버가 목록에 섞여 판정이 흔들린다.
     const members = await tx.projectMember.findMany({
@@ -1332,6 +1337,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
 
     const result = await ingestFirstSnapshot(prisma, {
       projectId,
+      userId,
       surfaceId: surface.id,
       surfaceSlug: surface.slug,
       startedAt, token,
@@ -1366,6 +1372,12 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
     await closeRun(result.failed > 0 || result.count === 0 ? "partial" : "imported", { keys: result.count, errorCode: null });
     return { ok: true, count: result.count, failed: result.failed, errors: [...result.errors] };
   } catch (error) {
+    // 스냅샷을 받는 동안 권한·보관이 바뀌었다 — 적재 실패가 아니라 거부다.
+    if (error instanceof FirstIngestRefused) {
+      await failRun();
+      await closeRun("failed", { keys: null, errorCode: error.code });
+      return { ok: false, error: error.code };
+    }
     // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다. 행은 그대로 남고
     // 설정 화면의 [다시 시도]가 같은 Action을 부른다.
     logFailure("onboard-ingest", error);
@@ -1492,7 +1504,9 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
 
   const pushToken = generatePushToken();
   // ⚠️ `where`가 **인가가 돌려준 projectId**다.
-  await prisma.$transaction(async (tx) => {
+  const locked = await prisma.$transaction(async (tx) => {
+    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId, permission: "project:settings" });
+    if (locked.status !== "ok") return locked;
     await tx.project.update({
       where: { id: access.projectId },
       data: { pushTokenHash: hashPushToken(pushToken) },
@@ -1508,7 +1522,9 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
       scope: "project-wide",
       payload: { kind: "SETTINGS", field: "pushToken", value: null },
     });
+    return locked;
   });
+  if (locked.status !== "ok") return { ok: false, error: locked.status };
 
   revalidatePath(`/projects/${slug}/settings`);
   return { ok: true, pushToken };
@@ -1548,10 +1564,12 @@ export async function archiveProject(slug: unknown): Promise<ArchiveResult> {
   if (access.status !== "ok") return { ok: false, error: access.status };
 
   // ⚠️ `where`가 **인가가 돌려준 projectId**다 — slug로 다시 찾으면 클라이언트 입력이 조회 조건이 된다.
-  await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${access.projectId} FOR UPDATE`;
+  const archived = await prisma.$transaction(async (tx) => {
+    // 보관 토글은 보관 중에도 통과한다 — 이미 보관됐으면 아래에서 no-op이다(PRODUCT §7.9).
+    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId: session.userId, permission: "project:settings", archiveToggle: true });
+    if (locked.status !== "ok") return locked;
     const project = await tx.project.findUnique({ where: { id: access.projectId }, select: { archivedAt: true } });
-    if (project === null || project.archivedAt !== null) return;
+    if (project === null || project.archivedAt !== null) return locked;
     await tx.project.update({ where: { id: access.projectId }, data: { archivedAt: new Date() } });
     /**
      * ⚠️ **보관 사건 자체를 읽을 수 있어야 한다** — 그 때문에 Logs가 보관된 프로젝트에서도 열린다
@@ -1564,7 +1582,9 @@ export async function archiveProject(slug: unknown): Promise<ArchiveResult> {
       scope: "project-wide",
       payload: { kind: "SETTINGS", field: "archived", value: { before: null, after: "archived" } },
     });
+    return locked;
   });
+  if (archived.status !== "ok") return { ok: false, error: archived.status };
 
   revalidatePath("/", "layout");
   return { ok: true };
@@ -1593,10 +1613,11 @@ export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
   });
   if (access.status !== "ok") return { ok: false, error: access.status };
 
-  await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${access.projectId} FOR UPDATE`;
+  const restored = await prisma.$transaction(async (tx) => {
+    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId: session.userId, permission: "project:settings", archiveToggle: true });
+    if (locked.status !== "ok") return locked;
     const project = await tx.project.findUnique({ where: { id: access.projectId }, select: { archivedAt: true } });
-    if (project === null || project.archivedAt === null) return;
+    if (project === null || project.archivedAt === null) return locked;
     await tx.project.update({ where: { id: access.projectId }, data: { archivedAt: null } });
     await recordEvent(tx, {
       projectId: access.projectId,
@@ -1605,7 +1626,9 @@ export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
       scope: "project-wide",
       payload: { kind: "SETTINGS", field: "archived", value: { before: "archived", after: null } },
     });
+    return locked;
   });
+  if (restored.status !== "ok") return { ok: false, error: restored.status };
 
   revalidatePath("/", "layout");
   return { ok: true };
