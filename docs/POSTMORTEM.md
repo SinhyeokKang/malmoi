@@ -720,6 +720,16 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     라우터 갱신을 부르지 않는다.** 인증이 걸린 화면에서 갱신은 언제든 리다이렉트가 될 수 있다.
   - grep: `grep -rn 'router.refresh()' app components lib | grep -v __tests__` → **한 곳**(이 파일)뿐이다.
     `revalidatePath` 아홉 곳은 전부 Server Action의 **성공 경로**에 있어 같은 형태가 아니다.
+- **재발 — 2026-09-24, 출시 전 감사(audit #5·#11)**: 같은 형이 두 자리에 남아 있었다. 번역 화면의 `[Sync]`는
+  `onResult={() => router.refresh()}`로 **결과를 버리고** 무조건 refresh했고(거부가 설명 없이 버튼만 복귀, 세션이
+  끊긴 거부에서는 로그인 이동), Sources의 [Run first import]는 danger 결과를 세운 직후 refresh했다 — **테스트가 그
+  refresh를 "서버에 남은 실패 상태를 다시 읽는다"는 이유로 단언하고 있었다.** 실패 상태는 상세 재조회와 Action의
+  `finally`(`revalidatePath`)가 이미 갱신하므로 클라이언트 refresh가 할 일이 없었다. 위 grep의 "한 곳뿐"은 그 뒤
+  화면이 늘며 거짓이 됐다 — **정적 감사가 잡았다**(렌더 테스트는 둘 다 green).
+  - 재발 방지: 두 자리를 `outcome.ok`일 때만 refresh로 바꾸고 거부·성공 짝을 렌더로 단언한다
+    (`translation-workspace-sync.test.tsx` · `sources-screen.test.tsx`). grep을 고친다:
+    `rg -n 'router\.refresh\(\)' app components | grep -v __tests__` → 결과를 받는 콜백 안의 자리마다
+    **성공 조건 뒤에 있나**를 본다(`[Refresh]` 버튼·검토 확인처럼 요청 결과가 아닌 자리는 대상이 아니다).
 
 ### 2026-09-08 — 도달 불가한 오류 갈래를 겨냥한 테스트가 1년치 green이었다 — 단언이 보간된 키만 봤다
 
