@@ -76,6 +76,8 @@ describe("#20 역할 변경은 확인을 받는다", () => {
     await draw("u1", [owner, second, alice]);
     await pickRole("u1", m.projects.role.EDITOR);
     expect(dialog()?.textContent).toContain(m.members.confirmSelfDemote);
+    // EDITOR도 Members를 읽는다 — 잃는 것은 "접근"이 아니라 관리다 (code-review 🟡1).
+    expect(m.members.confirmSelfDemote).not.toMatch(/lose access/i);
     await click(inDialog(m.members.cancel));
     await pickRole("u3", m.projects.role.EDITOR);
     expect(dialog()?.textContent).not.toContain(m.members.confirmSelfDemote);

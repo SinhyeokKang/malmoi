@@ -2424,8 +2424,11 @@ export const en = {
      */
     confirmRole: (who: string, role: string): string => `Change ${who}'s role to ${role}?`,
     confirmRoleHint: "The new role applies right away.",
-    /** 자기 강등 — 이 Dialog가 서야 하는 **가장 큰 이유**다. 확인하는 순간 이 화면의 컨트롤이 사라진다. */
-    confirmSelfDemote: "You'll lose access to members and settings right away, and only a project owner can give it back.",
+    /**
+     * 자기 강등 — 이 Dialog가 서야 하는 **가장 큰 이유**다. 확인하는 순간 이 화면의 컨트롤이 사라진다.
+     * ⚠️ **"lose access to members"가 아니다** — EDITOR도 이 화면을 읽는다. 잃는 것은 관리다 (POSTMORTEM 2026-09-14 확인 Dialog 논거).
+     */
+    confirmSelfDemote: "You'll stop being able to manage members and settings right away, and only a project owner can give that back.",
     /** 트리거(셀렉트)의 이름과 달라야 한다 (DESIGN §6.646). */
     confirmRoleAction: "Change role",
     /** 호출이 끊겨 적용됐는지 모른다 (audit #24) — 사유를 지어내지 않는다. */
