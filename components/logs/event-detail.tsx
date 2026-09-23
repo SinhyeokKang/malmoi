@@ -1,4 +1,4 @@
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, CircleAlert } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -204,17 +204,26 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
 }
 
 /**
- * 상세의 안내 한 줄 — `Alert`다 (audit #49). 손으로 그린 상자가 Alert의 형(테두리·아이콘·padding)을 따로 들고 있었다.
- * 실패는 `danger`(따라서 `role="alert"`), 나머지는 상시 안내라 `info`다.
+ * 상세의 안내 한 줄.
+ *
+ * ⚠️ **실패는 `Alert danger`가 아니다** (B6 r1, 2026-09-24 사용자). 상세는 **지난 기록**인데 `danger`는
+ * `role="alert"`를 들어 여는 순간 assertive로 끼어든다 — 결과가 방금 일어난 자리(Sync·Publish)의 판정을
+ * 과거 기록에 적용하는 셈이다. 그래서 **아이콘만 붉은** 무색 상자이고 live 의미가 없다.
+ * 나머지(진행 중·토큰 회전)는 상시 안내라 `Alert info`다 — 그 variant는 `role`을 들지 않는다.
  */
 function Note({ tone, body, note }: { tone: "danger" | "muted"; body: string; note: string | null }) {
+  const text = (
+    <span className="flex min-w-0 flex-1 flex-col gap-1">
+      <span className="text-sm leading-[1.5]">{body}</span>
+      {note !== null && <span className="text-muted-foreground text-xs text-pretty">{note}</span>}
+    </span>
+  );
+  if (tone === "muted") return <Alert variant="info"><span data-event-note className="flex">{text}</span></Alert>;
   return (
-    <Alert variant={tone === "danger" ? "danger" : "info"}>
-      <span className="flex flex-col gap-1">
-        <span>{body}</span>
-        {note !== null && <span className="text-muted-foreground text-xs text-pretty">{note}</span>}
-      </span>
-    </Alert>
+    <div data-event-note className="border-border flex items-start gap-2.5 rounded-md border p-3.5">
+      <CircleAlert className="text-destructive mt-px size-4 shrink-0" aria-hidden />
+      {text}
+    </div>
   );
 }
 

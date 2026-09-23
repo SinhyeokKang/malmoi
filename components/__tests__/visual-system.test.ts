@@ -301,7 +301,8 @@ describe("프리미티브를 손으로 다시 만들지 않는다 (audit #49)", 
   });
 
   it("안내 상자는 `Alert`가 든다 — 이력 보관 안내·상세 노트", () => {
-    expect(read("components/logs/event-detail.tsx")).toMatch(/function Note\b[^]*?return \(\s*<Alert\b/);
+    // 상시 안내는 `Alert info`다. 실패 노트는 live 의미를 피하려고 Alert가 아니다(B6 r1 — `logs-events.test.tsx`가 센다).
+    expect(read("components/logs/event-detail.tsx")).toMatch(/function Note\b[^]*?<Alert variant="info">/);
     expect(read("app/(edit)/projects/[slug]/logs/page.tsx")).toMatch(/<Alert\s+variant="info"[\s\S]{0,400}\{m\.logs\.archived\.restoreLine/);
   });
 });
