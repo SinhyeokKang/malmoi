@@ -224,7 +224,7 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     const id = `run-${++runs}`;
     await prisma.syncRun.create({ data: { id, projectId: "p", status: "RUNNING", trigger: "MANUAL" } });
     const { client } = createFakeGitClient({
-      refSha: { "heads/main": "basehead" },
+      refSha: { [`heads/${(await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).baseBranch}`]: "basehead" },
       tree: { basehead: tree.map(f => ({ path: f.path, sha: blobSha(f.content) })) },
       blobs: Object.fromEntries(tree.map(f => [blobSha(f.content), f.content])),
     });
@@ -241,7 +241,7 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
   }
   const target = async () => ({ projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: (await prisma.stringKey.findFirstOrThrow({ where: { projectId: "p", key: "a" } })).id, userId: "owner" });
 
-  async function withheldFixture() {
+  async function withheldFixture(beforePublish?: () => Promise<void>) {
     await seed(yaml);
     await ci(yamlPayload());
     // 편집 전 전달 확인을 세운다 — Save가 기준을 기록하려면 유효한 확인이 있어야 한다(편집 0이면 Publish가 1층에서 끝나므로 확정만 직접 부른다).
@@ -251,6 +251,7 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     await prisma.syncRun.update({ where: { id: "confirm" }, data: { status: "SUCCEEDED", finishedAt: new Date() } });
     const t = await target();
     expect(await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "하나!" }, { localeCode: "fr", value: "un!" }] })).toMatchObject({ ok: true });
+    await beforePublish?.();
     // fr.yml이 base에 없다 — fr 셀은 보류되고 ko는 나간다.
     expect(await publish([{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }]))
       .toMatchObject({ status: "committed", delivered: 1 });
@@ -266,6 +267,19 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     if (preview.status !== "ready") throw new Error("expected ready");
     expect(await executeKeyRevert(prisma, { ...t, confirmation: preview.confirmation })).toMatchObject({ status: "reverted" });
     expect(await cellOf("a", "fr")).toMatchObject({ value: "Repo", pendingEditToken: null });
+  });
+
+  /**
+   * ⚠️ **보류 셀 기준의 재갱신은 같은 context의 직전 확인에서 온 기준만이다** (coordinator review r1 🔴). base branch가 main → release로
+   * 바뀐 뒤 release에 fr.yml이 없으면, main에서 확인된 fr 기준을 release의 새 revision으로 찍는 순간 Revert가 release에서 한 번도 확인된 적
+   * 없는 값을 복원하고 토큰을 비운다(불변식 9 · §5.8 등식).
+   */
+  it("context가 바뀐 뒤(base branch main → release)의 보류 셀 Revert는 baseline-stale로 남는다", async () => {
+    const t = await withheldFixture(async () => {
+      await prisma.project.update({ where: { id: "p" }, data: { baseBranch: "release" } });
+      await invalidateDeliveryConfirmations(prisma, "p");
+    });
+    expect(await previewKeyRevert(prisma, t)).toMatchObject({ status: "blocked", reason: "baseline-stale" });
   });
 
   it("대가 — 보류 fr이 남은 동안 CI push는 deferred, Revert로 0이 되면 다음 CI push가 applied", async () => {

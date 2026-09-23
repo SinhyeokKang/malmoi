@@ -257,11 +257,18 @@ async function confirmDelivery(
   const rows = await tx.translationSurface.findMany({ where: { projectId, id: { in: surfaceIds }, archivedAt: null } });
   const now = new Date();
   const revisionBySurface = new Map<string, string>();
+  /** 보류 셀 기준을 옮길 수 있는 표면 — 같은 context의 직전 확인 revision → 새 revision. 아래 재갱신 주석이 이유다. */
+  const restamp = new Map<string, { from: string; to: string }>();
   for (const context of delivery.contexts) {
     const row = rows.find(r => r.id === context.surfaceId);
     if (row === undefined || contextOf(owner, row) !== context.fingerprint) continue;
     const revision = randomUUID();
     revisionBySurface.set(row.id, revision);
+    // 덮기 전에 읽는다 — 직전 확인이 어느 context의 것이었는지가 재갱신의 자격이다.
+    const prior = await tx.deliveryConfirmation.findUnique({
+      where: { projectId_surfaceId: { projectId, surfaceId: row.id } }, select: { revision: true, contextFingerprint: true },
+    });
+    if (prior !== null && prior.contextFingerprint === context.fingerprint) restamp.set(row.id, { from: prior.revision, to: revision });
     const data = { revision, confirmedAt: now, syncRunId: delivery.runId, contextFingerprint: context.fingerprint, invalidatedAt: null };
     await tx.deliveryConfirmation.upsert({
       where: { projectId_surfaceId: { projectId, surfaceId: row.id } },
@@ -274,14 +281,18 @@ async function confirmDelivery(
    * 행이 옛 revision이면 Revert가 `baseline-stale`로 막힌다 — 보류가 풀리는 길 하나(OWNER Revert)가 닫힌다. `restoreValue`는 불변이다
    * (마지막 전달 값 그대로). 기준 행이 없는 셀은 만들지 않는다 — 그 셀은 원래 unknown이다.
    * 확인 등식("미전달이 아닌 셀은 export 값 = 기준")은 pending 셀에 걸리지 않으므로 보류 셀이 등식을 깨지 않는다.
+   *
+   * ⚠️ **같은 context의 직전 확인에서 온 기준만 옮긴다** (coordinator review r1). 직전 확인의 지문이 지금과 같고, 기준 행의 revision이 그
+   * 확인의 것일 때만이다. base branch가 main → release로 바뀐 뒤 release에 파일이 없으면, main에서 확인된 기준을 release의 revision으로
+   * 찍는 순간 Revert가 release에서 한 번도 확인된 적 없는 값을 복원하고 토큰을 비운다(불변식 9). 그 셀은 `baseline-stale`로 남는 것이 맞다.
    */
   const withheldCells = (delivery.withheld ?? []).flatMap(edit => edit.cell === undefined ? [] : [edit.cell]);
-  for (const [surfaceId, revision] of revisionBySurface) {
+  for (const [surfaceId, { from, to }] of restamp) {
     const cells = withheldCells.filter(cell => cell.surfaceId === surfaceId);
     if (cells.length === 0) continue;
     await tx.translationBaseline.updateMany({
-      where: { projectId, surfaceId, OR: cells.map(cell => ({ keyId: cell.keyId, localeCode: cell.localeCode })) },
-      data: { revision },
+      where: { projectId, surfaceId, revision: from, OR: cells.map(cell => ({ keyId: cell.keyId, localeCode: cell.localeCode })) },
+      data: { revision: to },
     });
   }
   for (const { cellId, restoreValue } of plan.rebase) {
