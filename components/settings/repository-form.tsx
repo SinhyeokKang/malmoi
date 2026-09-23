@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 
 import { updateRepositorySettings } from "@/app/(edit)/projects/[slug]/settings/actions";
 import { Check, CircleAlert, GitBranch } from "lucide-react";
-import { PanelFacts } from "@/components/ui/panel-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
@@ -35,9 +34,9 @@ export function RepositoryForm({ slug, baseBranch, disabled = false }: { slug: s
         });
       }}
     >
-      <PanelFacts>
-        <label htmlFor="base-branch" className="text-foreground flex items-center gap-1.5 text-sm font-medium whitespace-nowrap"><GitBranch className="size-3.5" aria-hidden />{m.settings.repository.fields.branch}</label>
-        <div className="[&_.animate-spin]:size-3.5 flex min-w-0 flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-[6px] px-4 py-3.5">
+        <label htmlFor="base-branch" className="text-foreground flex shrink-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap @max-[640px]:basis-full"><GitBranch className="size-3.5 shrink-0" aria-hidden />{m.settings.repository.fields.branch}</label>
+        <div className="[&_.animate-spin]:size-3.5 flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <Input id="base-branch" name="baseBranch" className="w-60 max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={branch} disabled={disabled || pending}
             aria-invalid={typeof result === "object"} aria-describedby="base-branch-caption"
             onChange={event => { setBranch(event.target.value); setResult("idle"); }} />
@@ -46,7 +45,7 @@ export function RepositoryForm({ slug, baseBranch, disabled = false }: { slug: s
             {typeof result === "object" ? <><CircleAlert className="mr-1 inline size-3.5" aria-hidden />{messageFor(result.error)}</> : disabled ? m.settings.archivedReason : result === "saved" ? <><Check className="mr-1 inline size-3.5" aria-hidden />{m.settings.repository.fields.saved}</> : m.settings.repository.fields.branchHelp}
           </p>
         </div>
-      </PanelFacts>
+      </div>
     </form>
   );
 }

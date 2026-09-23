@@ -254,7 +254,7 @@ describe("설정의 Base branch 행", () => {
   it("라벨 앞에 `GitBranch` 아이콘이 있다", () => {
     const src = read(SETTINGS_FORM);
     expect(src).toMatch(/import \{[^}]*\bGitBranch\b[^}]*\} from "lucide-react"/);
-    expect(src).toMatch(/<GitBranch className="size-3\.5" aria-hidden \/>/);
+    expect(src).toMatch(/<GitBranch className="size-3\.5 shrink-0" aria-hidden \/>/);
   });
 
   /** 모달 ①의 `BranchLabel`처럼 진한 라벨이고, 행 시작선이 위 리포 이름(16 + 칩 28 + gap 12 = 56)과 같다. */
@@ -263,5 +263,14 @@ describe("설정의 Base branch 행", () => {
     expect(src).toMatch(/<label htmlFor="base-branch" className="[^"]*\btext-foreground\b[^"]*\bfont-medium\b/);
     expect(src).not.toMatch(/<label htmlFor="base-branch" className="[^"]*text-neutral-400/);
     expect(src).toMatch(/<form\s+className="[^"]*\bpl-10\b/);
+  });
+
+  /**
+   * ⚠️ **공용 96 라벨 열(`PanelFacts`)에 넣지 않는다** (2026-09-23 실측) — 아이콘 + `text-sm font-medium`
+   * 라벨이 약 102라 96 열을 넘쳐 flex가 아이콘을 7.6으로 눌렀다. 들여 쓴 행이라 다른 카드의 라벨 열과
+   * 어차피 선이 갈리므로, 모달 ①의 `BranchShell`처럼 라벨이 제 폭을 갖는 flex 행이다.
+   */
+  it("행이 96 격자가 아니라 라벨이 제 폭을 갖는 flex 행이다", () => {
+    expect(read(SETTINGS_FORM)).not.toContain("PanelFacts");
   });
 });
