@@ -70,17 +70,22 @@ describe("#20 역할 변경은 확인을 받는다", () => {
     await click(inDialog(m.members.cancel));
     expect(mocks.changeMember).not.toHaveBeenCalled();
     expect(dialog()).toBeNull();
+    // 셀렉트가 옛 역할을 그대로 보인다 — 값이 서버 값에 묶여 있어 취소가 되돌릴 것이 없다.
+    expect(find(document.body, "#role-u2").textContent).toContain(m.projects.role.EDITOR);
   });
 
   it("자기 강등은 잃는 것을 말한다 — 남의 변경에는 그 문장이 없다", async () => {
     await draw("u1", [owner, second, alice]);
     await pickRole("u1", m.projects.role.EDITOR);
     expect(dialog()?.textContent).toContain(m.members.confirmSelfDemote);
+    // 자기 강등은 본인에게 되돌릴 수 없다 — 확정 버튼이 danger다 (r1). 남의 변경은 primary로 남는다(아래).
+    expect(inDialog(m.members.confirmRoleAction).className).toContain("text-destructive");
     // EDITOR도 Members를 읽는다 — 잃는 것은 "접근"이 아니라 관리다 (code-review 🟡1).
     expect(m.members.confirmSelfDemote).not.toMatch(/lose access/i);
     await click(inDialog(m.members.cancel));
     await pickRole("u3", m.projects.role.EDITOR);
     expect(dialog()?.textContent).not.toContain(m.members.confirmSelfDemote);
+    expect(inDialog(m.members.confirmRoleAction).className).not.toContain("text-destructive");
   });
 
   it("모르는 거부 코드를 문장에 끼우지 않는다 (#21)", async () => {

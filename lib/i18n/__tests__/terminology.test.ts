@@ -60,6 +60,8 @@ const BANNED: readonly [string, RegExp][] = [
   ["an owner", /\ban owner\b/i],
   ["owner of this project", /\bowners? of this project\b/i],
   ["only owners", /\bonly owners\b/i],
+  // 주어 자리는 복수형이다(표: "Only project owners") — 문장 중간의 "only a project owner can give that back"은 통과한다.
+  ["only a project owner", /(^|[.!?]\s+)only a project owner\b/i],
   ["owners can", /(^|[^t] )owners can\b/i],
   ["retry", /\bretry(ing)?\b/i],
   ["check again", /\bcheck again\b/i],
@@ -120,11 +122,13 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
     caught("Ask an owner of this project to restore it.");
     caught("Only owners can invite or change roles");
     caught("Owners can manage members");
+    caught("Only a project owner can add sources.");
     caught("Retry");
     caught("Check again");
     // 표가 고른 말과 고유명사는 통과한다
     expect(sample("Only project owners can sync. Project owners can restore it.")).toEqual([]);
     expect(sample("View pull request")).toEqual([]);
+    expect(sample("You'll stop managing, and only a project owner can give that back.")).toEqual([]);
     expect(sample("Rotate the push token for PUSH_TOKEN")).toEqual([]);
     expect(sample("_locales/{locale}/messages.json · src/locales/{locale}.json")).toEqual([]);
     expect(sample("Ask the repository owner for access. An organization owner has to approve.")).toEqual([]);
@@ -165,4 +169,35 @@ describe("링크 라벨이 도착 화면의 버튼 이름을 든다 (audit #28)"
 /** audit #31 — 프로젝트가 0개인 사람은 초대받은 번역자일 수도 있다. 리포 연결만 권하면 그 사람의 길이 없다. */
 it("프로젝트 0건 문장이 초대받은 사람의 길도 말한다 (audit #31)", () => {
   expect(m.projects.empty.description).toMatch(/invit/i);
+});
+
+/**
+ * coordinator review r1 — **문장이 단언하는 사실이 코드와 맞는다.** 값을 통째로 박는 이유: 여기 문장들은 각각
+ * 거짓이던 단언을 걷어낸 결과라, 한 절이라도 돌아오면 다시 거짓이 된다.
+ */
+describe("사실을 단언하는 문장 (B4 r1)", () => {
+  it("기준 언어 교체 배너는 덮어쓰기를 예고하지 않는다 — 미전달 편집이 있으면 Sync가 기다린다 (ARCHITECTURE §0-1)", () => {
+    const text = m.translations.banner.basePending("ja");
+    expect(text).toBe("The base language is changing to ja. It switches on the next sync from the repository — syncs wait while changes are unpublished, so publish them first.");
+    expect(text).not.toMatch(/overwrite/i);
+  });
+  it("프로젝트 0건은 '발행 전엔 안 쓴다'고 하지 않는다 — 야간 cron이 발행한다 (PRODUCT)", () => {
+    expect(m.projects.empty.description).not.toMatch(/until you publish/i);
+    expect(m.projects.empty.description).toContain("it only writes back by opening a pull request");
+  });
+  it("Sync 권유 링크는 번역 화면을 연다고만 말한다 — Publish는 Home에도 있다", () => {
+    expect(textOf(m.repositorySync.sendHint("LINK"))).toBe("To keep them, LINK — it opens the translation screen.");
+  });
+  it("Publish 거부 폴백은 같은 모달의 'Trying again won't help'과 모순되지 않는다", () => {
+    expect(m.translations.publish.refused).not.toMatch(/try again/i);
+    expect(m.translations.publish.refused).toBe("Publishing couldn't start. Open this project again from your project list.");
+  });
+  it("lease-lost는 확인 안 된 원인(다른 Sync)을 단언하지 않는다", () => {
+    const text = m.repositorySync.errors["lease-lost"];
+    expect(text).not.toMatch(/another sync/i);
+    expect(text).toBe("This sync stopped before it could replace this source. Refresh to see the current state before trying again.");
+  });
+  it("Sources 추가 권한 문장은 주어 자리 복수형이다", () => {
+    expect(m.sources.ownerOnly).toBe("Only project owners can add sources.");
+  });
 });
