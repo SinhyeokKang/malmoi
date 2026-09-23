@@ -39,22 +39,24 @@ function installFocusFixup(): MutationObserver {
  * 흐름은 하나다: 입력 → 전송 → 성공이면 닫힘 / 오류면 같은 폼. 결과 화면·링크 화면이 없다.
  */
 const ref = { current: null } as { current: HTMLElement | null };
-let onClose: ReturnType<typeof vi.fn>;
+let onClose: ReturnType<typeof vi.fn<() => void>>;
 
 const open = async () => {
+  // 앞 테스트의 모달이 닫히며 돌려주는 포커스(매크로태스크)가 이 테스트로 넘어오지 않게 먼저 비운다.
+  await settle();
   await render(<InviteModal slug="acme" open onClose={onClose} seats={{ n: 4, limit: 10 }} returnFocusRef={ref} />);
   await settle();
 };
 const panel = () => find<HTMLElement>(document.body, "[data-onboarding-panel]");
 const submit = () => find<HTMLButtonElement>(panel(), 'button[type="submit"]');
 const rows = () => [...panel().querySelectorAll<HTMLElement>("[data-recipient-row]")];
-const email = (i: number) => find<HTMLInputElement>(rows()[i]!, 'input[type="email"]');
+const email = (i: number) => find<HTMLInputElement>(rows()[i]!, 'input[inputmode="email"]');
 const role = (i: number) => find<HTMLElement>(rows()[i]!, '[role="combobox"]');
 const remove = (i: number) => find<HTMLButtonElement>(rows()[i]!, "button[data-remove]");
 const reason = (i: number) => rows()[i]!.querySelector("[data-row-reason]")?.textContent ?? null;
 const addAnother = () => [...panel().querySelectorAll("button")].find((b) => b.textContent === m.members.invite.addAnother) as HTMLButtonElement;
 const status = () => find<HTMLElement>(panel(), "[data-invite-status]");
-const formAlert = () => panel().querySelector<HTMLElement>("[data-form-alert]");
+const formAlert = () => panel().querySelector<HTMLElement>("[data-form-alert] > div");
 const closeButton = () => find<HTMLButtonElement>(document.body, `button[aria-label="${m.common.close}"]`);
 const click = async (node: HTMLElement) => { await act(async () => { await userEvent.setup().click(node); }); };
 /**
@@ -85,7 +87,7 @@ afterEach(() => { fixup?.disconnect(); fixup = undefined; });
 
 beforeEach(() => {
   vi.clearAllMocks();
-  onClose = vi.fn();
+  onClose = vi.fn<() => void>();
   mocks.createInvitations.mockResolvedValue({ ok: true, count: 1 });
   fixup = installFocusFixup();
   const trigger = document.createElement("button");
@@ -237,9 +239,9 @@ describe("1c 입력 오류 — 제출 전 전체 검증", () => {
     expect(m.members.invite.rowError.roleConflict(2, "Owner")).toBe("Also in row 2 as Owner. Keep one role for this address.");
   });
 
-  it("입력은 몰래 고치지 않는다 — 표시는 원문이다", async () => {
+  it("입력은 몰래 고치지 않는다 — 오류로 남은 폼의 표시는 원문이다", async () => {
     await open();
-    await fill(["MINA@Example.com "]);
+    await fill(["MINA@Example.com ", "bad"]);
     await click(submit());
     expect(email(0).value).toBe("MINA@Example.com ");
   });

@@ -84,7 +84,7 @@ export type InvitationCreate = { status: "ok"; limit: number } | { status: "memb
  * 상한을 넘긴 채 수락된다"는 것이다. 대기까지 세면 **만료된 초대 때문에 못 부르는** 상태가 생기고
  * 그것을 설명할 화면이 없다.
  *
- * @param memberCount `createInvitation`이 **이미 잠근 `Project` 행**의 트랜잭션 안에서 센 값이다 —
+ * @param memberCount `issueInvitations`가 **이미 잠근 `Project` 행**의 트랜잭션 안에서 센 값이다 —
  *   밖에서 세면 두 탭의 동시 초대가 자리를 하나 더 만든다 (`planProjectCreate`의 재집계와 같은 형).
  * @returns `limit`을 값으로 돌려준다 — 문구가 상수를 따로 들면 둘이 갈린다.
  */

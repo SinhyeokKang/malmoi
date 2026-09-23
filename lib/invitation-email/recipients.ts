@@ -10,7 +10,14 @@ import { INVITATION_HOURLY_LIMIT } from "./limits";
 
 export type InviteRole = "OWNER" | "EDITOR";
 export type Recipient = { email: string; role: InviteRole };
-export type RecipientRowError = { index: number; code: "invalid-email" | "invalid-role" | "duplicate" };
+/**
+ * ⚠️ 중복은 **첫 등장 행**을 기준으로 가른다. 같은 역할이면 뒤 행만(지우면 끝난다), 역할이 다르면 양쪽 행이다 —
+ * 한쪽만 표시하면 사용자가 고른 역할 하나가 조용히 버려진다. 문구가 상대 행 번호·역할을 든다(핸드오프 `1c`).
+ */
+export type RecipientRowError =
+  | { index: number; code: "invalid-email" | "invalid-role" }
+  | { index: number; code: "duplicate"; otherIndex: number }
+  | { index: number; code: "role-conflict"; otherIndex: number; otherRole: InviteRole };
 
 export type RecipientsResult =
   | { status: "ok"; recipients: Recipient[] }
@@ -38,7 +45,9 @@ export function parseRecipients(rows: readonly { email: string; role: string }[]
   const recipients: Recipient[] = [];
   const rowErrors: RecipientRowError[] = [];
   // Map이다 — 남이 정한 문자열(주소)을 키로 쓰므로 평범한 객체면 `__proto__`가 조용히 사라진다.
-  const seen = new Map<string, number>();
+  const seen = new Map<string, { index: number; role: InviteRole }>();
+  // 첫 등장 행에 붙일 역할 충돌 — 첫 충돌 상대 하나만 적는다.
+  const firstConflicts = new Map<number, RecipientRowError>();
 
   rows.forEach((row, index) => {
     // 완전히 빈 행은 "아직 안 채운 칸"이지 잘못된 주소가 아니다.
@@ -56,14 +65,24 @@ export function parseRecipients(rows: readonly { email: string; role: string }[]
     }
     // 중복은 정규화한 원문으로 가린다 — 마스킹 라벨로 가리면 다른 두 주소가 한 행이 된다(POSTMORTEM 2026-09-09).
     const email = normalizeEmail(trimmed);
-    if (seen.has(email)) {
-      rowErrors.push({ index, code: "duplicate" });
+    const first = seen.get(email);
+    if (first !== undefined) {
+      if (first.role === role) {
+        rowErrors.push({ index, code: "duplicate", otherIndex: first.index });
+      } else {
+        rowErrors.push({ index, code: "role-conflict", otherIndex: first.index, otherRole: first.role });
+        if (!firstConflicts.has(first.index)) {
+          firstConflicts.set(first.index, { index: first.index, code: "role-conflict", otherIndex: index, otherRole: role });
+        }
+      }
       return;
     }
-    seen.set(email, index);
+    seen.set(email, { index, role });
     recipients.push({ email, role });
   });
 
+  rowErrors.push(...firstConflicts.values());
+  rowErrors.sort((a, b) => a.index - b.index);
   if (rowErrors.length > 0) return { status: "invalid-rows", rowErrors };
   if (recipients.length === 0) return { status: "empty" };
   if (recipients.length > INVITATION_HOURLY_LIMIT) return { status: "too-many", limit: INVITATION_HOURLY_LIMIT };

@@ -454,7 +454,7 @@ describe("경합에서도 거부가 응답으로 온다", () => {
   });
 
   it("이미 멤버인 사람이 옛 초대를 수락하면 already-member다 — unique 위반으로 죽지 않는다", async () => {
-    // 초대가 만들어진 뒤 다른 경로로 멤버가 된 상태. `createInvitation`이 그 조합을 막지만
+    // 초대가 만들어진 뒤 다른 경로로 멤버가 된 상태. `createInvitations`이 그 조합을 막지만
     // **막혀 있다는 것이 코드가 아니라 추론에 있으면** 다음 변경에서 열린다.
     db.invitations.push({
       id: "inv-1", projectId: "pA", email: "editor@a.com", role: "EDITOR",
@@ -474,7 +474,7 @@ describe("경합에서도 거부가 응답으로 온다", () => {
  *
  * ⚠️ **행을 지우지 않는다.** `prisma/schema.prisma`의 `acceptedAt` 주석이 그것을 금지한다 — 지우면
  * 재사용 시도가 `already-accepted`가 아니라 `not-found`가 되어 만료·오배송과 뭉개진다. 무효화의
- * 기존 관용구는 `expiresAt = now`이고(`createInvitation`의 회전) `loadPendingInvitations`의
+ * 기존 관용구는 `expiresAt = now`이고(`createInvitations`의 회전) `loadPendingInvitations`의
  * `expiresAt > now()` 술어가 그대로 맞는다.
  */
 describe("revokeInvitation — 무효화는 삭제가 아니다", () => {

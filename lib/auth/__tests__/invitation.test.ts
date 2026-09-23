@@ -131,7 +131,7 @@ describe("planInvitationAccept — 다섯 분기", () => {
  * **프로젝트당 멤버 제한** (PRODUCT §4.2).
  *
  * 상한이 `PROJECT_LIMIT`(`lib/onboarding/create-plan.ts`)과 같은 형이다 — 상수는 **소비자 옆**에
- * 두고 모음 파일을 만들지 않는다. `createInvitation`이 이미 `Project` 행을 잠그므로 그 트랜잭션
+ * 두고 모음 파일을 만들지 않는다. `createInvitations`이 이미 `Project` 행을 잠그므로 그 트랜잭션
  * 안에서 센 값을 넘긴다.
  */
 describe("planInvitationCreate — 멤버 10명 제한", () => {

@@ -5,7 +5,7 @@ import { canPerform, type Role } from "./permission";
  * 멤버 패널 헤더 우측이 무엇을 말하고 [Invite]가 열려 있는가 (DESIGN §6.65).
  *
  * ⚠️ **사전 차단은 편의이고 차단이 아니다.** 다른 탭이 그 사이에 좌석을 채울 수 있으므로 서버 거부
- * (`createInvitation` 안의 잠긴 집계)는 그대로 남는다. 여기서 지키는 것은 **같은 상황에 두 문장이
+ * (`createInvitations` 안의 잠긴 집계)는 그대로 남는다. 여기서 지키는 것은 **같은 상황에 두 문장이
  * 서지 않는 것**이고, 그래서 판정을 다시 쓰지 않고 `planInvitationCreate`를 그대로 부른다.
  *
  * ⚠️ **서버 전용이다** — `lib/auth/invitation.ts`가 `node:crypto`를 문다. `page.tsx`가 부르고

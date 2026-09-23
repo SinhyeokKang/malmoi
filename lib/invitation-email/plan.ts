@@ -25,7 +25,12 @@ export type IssuePlan =
   | { status: "member-limit"; limit: number }
   | { status: "too-many"; limit: number }
   | { status: "invalid-rows"; rowErrors: IssueRowError[] }
-  | { status: "rate-limited"; retryAt: Date };
+  /**
+   * 사유는 `retryAt`을 정한 쪽이다 — 문구가 다르다(주소면 그 주소를, 프로젝트면 최근 1시간 발급 수를 든다).
+   * `index`는 가장 늦게 풀리는 대상의 입력 인덱스다.
+   */
+  | { status: "rate-limited"; retryAt: Date; limit: "address"; index: number }
+  | { status: "rate-limited"; retryAt: Date; limit: "project"; used: number };
 
 /**
  * 판정 순서는 "사용자가 무엇을 해야 풀리나"다 — 좌석·요청 크기(입력을 고쳐도 안 풀림) → 행 오류(고치면 풀림)
@@ -51,12 +56,11 @@ export function planInvitationIssue(input: {
   if (rowErrors.length > 0) return { status: "invalid-rows", rowErrors };
 
   const now = input.now.getTime();
-  let retryAt = now;
-
-  for (const t of input.targets) {
+  let address: { at: number; index: number } | null = null;
+  for (const [index, t] of input.targets.entries()) {
     if (t.lastIssuedAt === null) continue;
     const open = t.lastIssuedAt.getTime() + ADDRESS_INTERVAL_MS;
-    if (open > now) retryAt = Math.max(retryAt, open);
+    if (open > now && (address === null || open > address.at)) address = { at: open, index };
   }
 
   // 정각은 창 밖이다(`>`). 미래 시각(서버 간 시계 차)도 창 안으로 센다 — 빼면 그만큼 한도가 늘어난다.
@@ -65,11 +69,15 @@ export function planInvitationIssue(input: {
     .filter((t) => t > now - PROJECT_WINDOW_MS)
     .sort((a, b) => a - b);
   const excess = inWindow.length + count - INVITATION_HOURLY_LIMIT;
-  if (excess > 0) {
-    // 가장 오래된 `excess`건이 창을 벗어나야 이번 요청 전체가 들어간다.
-    const leaving = inWindow[excess - 1];
-    if (leaving !== undefined) retryAt = Math.max(retryAt, leaving + PROJECT_WINDOW_MS);
-  }
+  // 가장 오래된 `excess`건이 창을 벗어나야 이번 요청 전체가 들어간다.
+  const leaving = excess > 0 ? inWindow[excess - 1] : undefined;
+  const project = leaving === undefined ? null : leaving + PROJECT_WINDOW_MS;
 
-  return retryAt > now ? { status: "rate-limited", retryAt: new Date(retryAt) } : { status: "ok" };
+  if (project !== null && (address === null || project >= address.at)) {
+    return { status: "rate-limited", retryAt: new Date(project), limit: "project", used: inWindow.length };
+  }
+  if (address !== null) {
+    return { status: "rate-limited", retryAt: new Date(address.at), limit: "address", index: address.index };
+  }
+  return { status: "ok" };
 }

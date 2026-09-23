@@ -2374,34 +2374,60 @@ export const en = {
     /** 초대 발급 — 6a의 임시 폼(`translations.invite`)에서 여기로 옮겼다. 화면 하나에 어휘 한 벌이다. */
     invite: {
       open: "Invite member",
-      /** ⚠️ **`translator`가 아니다** — 역할 선택이 붙는 순간 그 낱말이 거짓이 된다. */
-      title: "Invite a member",
-      /** ⚠️ **제품 이름은 문장 첫 자리도 소문자다** (`brand-spelling.test.ts`). */
-      description: "malmoi doesn't send email. You'll get a link to pass on yourself.",
-      email: "Email",
-      /** 링크가 주소에 묶인다는 사실 — 수락이 그 주소의 검증된 로그인을 요구한다 (ARCHITECTURE §6.02). */
-      help: "The link only works for this address, signed in with it.",
-      roleLabel: "Role",
-      /** 역할 선택의 보조 줄 — 권한표(`lib/auth/permission.ts`)를 한 문장씩 옮긴 것이다. */
+      /** ⚠️ **여러 명이다** (핸드오프 `1a`) — 한 폼이 여러 행을 보낸다. */
+      title: "Invite members",
+      description: "Send invitations by email and choose a role for each person.",
+      /** 열 머리 둘 — 빈 행 하나로 열리면 두 번째 컨트롤이 무엇인지 값만으로는 안 읽힌다. */
+      columns: { email: "Email", role: "Role" },
+      placeholder: "name@company.com",
+      /** 역할 메뉴 항목의 둘째 줄 — 권한표(`lib/auth/permission.ts`)를 한 문장씩 옮긴 것이다. 폼에는 캡션을 두지 않는다. */
       roleHint: {
         EDITOR: "Can translate and publish",
         OWNER: "Also manages members and settings",
       },
+      /** ⚠️ **대상이 접근 이름에 들어간다** — 여덟 행의 제거 버튼이 전부 "Remove"면 무엇을 지우는지 모른다. 빈 행은 `recipient {n}`. */
+      roleFor: (who: string): string => `Role for ${who}`,
+      removeRecipient: (who: string): string => `Remove ${who}`,
+      emptyRecipient: (n: number): string => `recipient ${n.toLocaleString("en-US")}`,
+      addAnother: "Add another",
+      /** 주 버튼이 몇 명에게 보내는지 말한다. 0명이면 꺼진 버튼의 라벨이다. */
+      send: (n: number): string => (n === 0 ? "Send invitations" : n === 1 ? "Send invitation" : `Send ${n.toLocaleString("en-US")} invitations`),
+      /** 바닥 왼쪽 상태 슬롯 — 좌석 수가 서던 자리를 순서대로 쓴다. ⚠️ 버튼 라벨은 바꾸지 않는다(`loadingLabel`이 없다). */
+      sending: "Sending invitations…",
+      /** ⚠️ **"by this request"다** (design §6) — 앞선 요청이 결과 미확인이었을 수 있으므로 범위를 이번 요청으로 좁힌다. */
+      nothingSent: "Nothing was sent by this request. Fix or remove the highlighted row, then send again.",
       /** 모달 바닥 왼쪽. 헤더의 `seats`와 다른 문장인 것은 시안이고, 수는 같은 값에서 온다. */
       seatsUsed: (n: number, limit: number): string => `${n} of ${limit} seats used`,
-      create: "Create invite link",
-      /** ⚠️ **라벨은 서버가 만든다** (`maskedEmailLabels`) — 클라이언트에서 가리면 세 번째 마스킹 구현이다. */
-      ready: (label: string): string => `Link ready for ${label}`,
-      readyHint: "Send it to them yourself. You won't be able to see this link again after closing.",
-      expiresIn: (role: string): string => `Expires in 7 days \u00b7 ${role}`,
-      /** 링크 얼굴의 안내 카드 — 무엇이 남고 무엇이 사라지는지, 잃었을 때의 복구 경로까지. */
-      notKept: {
-        title: "malmoi doesn't keep the link",
-        body: "The invitation stays in Pending invitations, but the address above is gone once this closes. If it's lost, revoke the invitation and make a new one.",
+      rowError: {
+        invalidEmail: "This doesn't look like an email address.",
+        invalidRole: "Choose a role for this address.",
+        /** 같은 역할 중복 — 뒤 행 하나에만 선다. `row`는 화면의 1부터 센 행 번호다. */
+        duplicate: (row: number): string => `Already in row ${row.toLocaleString("en-US")}. Remove this one.`,
+        /** 역할이 다른 중복 — 양쪽 행에 상대 행과 역할을 적는다. 조용히 한쪽을 버리면 고른 역할이 사라진다. */
+        roleConflict: (row: number, role: string): string => `Also in row ${row.toLocaleString("en-US")} as ${role}. Keep one role for this address.`,
       },
-      done: "Done",
       alreadyMember: "That email is already a member of this project.",
-      failed: (reason: string): string => `Couldn't create the link: ${reason}`,
+      /**
+       * 발급 제한의 폼 Alert (warning). ⚠️ **"sent"가 아니라 "created"다** (design §6) — 한도는 발송 성공 수가
+       * 아니라 초대 발급 수이고, 메일이 실패해도 센다. 시각은 서버 값을 UTC로 적는다(카운트다운 없음).
+       */
+      limit: {
+        title: "This would go over the invitation limit",
+        project: (used: number, n: number, time: string): string =>
+          `A project can create 20 invitations an hour, and ${used.toLocaleString("en-US")} ${used === 1 ? "was" : "were"} created in the last hour. You can send ${n === 1 ? "this one" : `these ${n.toLocaleString("en-US")}`} after ${time}.`,
+        address: (email: string, time: string): string => `${email} was invited less than a minute ago. You can send again after ${time}.`,
+      },
+      tooMany: "You can invite up to 20 people at a time.",
+      /** 결과 미확인은 모드가 아니라 문구다 — 일부가 갔을 수 있다는 사실을 숨기지 않고, 사람별 결과를 복원하지 않는다. */
+      unconfirmed: {
+        title: "We couldn't confirm the email request",
+        body: "Some invitations may have been sent. Sending again replaces the earlier links.",
+      },
+      sendFailed: "The invitation emails couldn't be sent. Sending again replaces any links from this attempt.",
+      /** ⚠️ **workspace가 없다** (design §6) — 제품 계층에 없는 낱말이다. 키·코드도 노출하지 않는다. */
+      emailUnavailable: "Email is unavailable right now. Try again later.",
+      failed: (reason: string): string => `Couldn't send the invitations: ${reason}`,
+      sentToast: (n: number): string => (n === 1 ? "Invitation sent" : `Invitations sent to ${n.toLocaleString("en-US")} people`),
     },
 
     pending: {
@@ -2425,6 +2451,18 @@ export const en = {
        * (열이 사라지기 전에는 *"이미 마스킹한 열이 옆에 있다"*가 근거였는데, 그 열이 없어졌다.)
        */
       unknownInviter: "a member",
+      resend: "Resend",
+      resendLabel: (who: string): string => `Resend invitation to ${who}`,
+      resentToast: (who: string): string => `Invitation resent to ${who}`,
+      /** 카드 안 Alert — 대상 라벨을 문장에 넣는다(행이 교체돼도 무엇에 관한 안내인지 남게). 시각은 서버 값·UTC. */
+      resendFailed: (who: string, time: string): string => `Couldn't resend the invitation to ${who}. You can try again after ${time}.`,
+      resendLimited: (who: string, time: string): string => `${who} was invited less than a minute ago. You can resend after ${time}.`,
+      resendProjectLimited: (who: string, time: string): string =>
+        `Couldn't resend to ${who}: this project has created 20 invitations in the last hour. You can resend after ${time}.`,
+      resendUnconfirmed: (who: string): string => `We couldn't confirm the email to ${who}. It may have been sent — Resend again replaces that link.`,
+      resendUnavailable: (who: string): string => `Couldn't resend to ${who}. Email is unavailable right now. Try again later.`,
+      resendGone: (who: string): string => `The invitation to ${who} is no longer pending.`,
+      resendError: (who: string, reason: string): string => `Couldn't resend the invitation to ${who}: ${reason}`,
       revoke: "Revoke",
       /** 같은 이유로 대상을 든다 — 대기 초대가 여럿이면 어느 주소인지가 유일한 구별점이다. */
       revokeLabel: (who: string): string => `Revoke invitation for ${who}`,

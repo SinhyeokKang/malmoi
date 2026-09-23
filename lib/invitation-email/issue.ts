@@ -18,13 +18,13 @@ import { planInvitationIssue, type IssuePlan, type IssueTarget } from "./plan";
  * 초대 발급·재발급의 DB 쪽 (design §3). **메일을 보내지 않는다** — 발송은 commit 뒤 호출부가 한다.
  *
  * ⚠️ **판정 입력을 전부 `Project` 잠금 안에서 읽는다.** 밖에서 세면 동시 요청이 마지막 한도 자리와
- * 같은 주소의 60초를 둘 다 통과한다 — 기존 `createInvitation`·`changeMember`와 같은 잠금이다.
+ * 같은 주소의 60초를 둘 다 통과한다 — `changeMember`와 같은 잠금이다.
  *
  * DB 오류는 던진다(트랜잭션 전체 롤백). 교착으로 죽은 요청도 같은 갈래라 새 초대·사건이 남지 않고,
  * 호출부는 발송하지 않는다.
  */
 
-/** 초대 유효 기간 — 단건 `createInvitation`과 같은 값이다. */
+/** 초대 유효 기간. 링크가 사람 손을 거쳐 열리므로 하루는 짧고 한 달은 길다. */
 const INVITE_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
