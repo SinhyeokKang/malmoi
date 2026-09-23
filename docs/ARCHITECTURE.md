@@ -1626,6 +1626,23 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
 - **state 없이·위조한 state로 연결 callback 도착** (§6.4) — code 교환과 `Account` 쓰기가 **0회**여야 한다
 - 로그·클라이언트 응답에 토큰·PEM·DB URL 노출 (§6.0)
 
+#### 6.035 개인정보 방침의 게이트 셋 (privacy, 2026-09-24)
+
+방침(`messages/en.tsx`의 `publicDocs.privacy`)이 코드보다 뒤처지는 것을 셋이 막는다. ⚠️ **넷째 축은 사람이다** — 아래 셋이
+못 보는 새 목적·새 전송처·쿠키·보존·본문 모순은 `/push` 4단계 판단 게이트가 묻는다.
+
+- **(A) 전수 등재 — `pnpm typecheck`.** `lib/privacy/collected.ts`의 `MODEL_CLASSES`는 `satisfies Record<Prisma.ModelName, …>`,
+  `CLASSIFIED`는 개인정보 모델 스칼라 전수의 mapped type이다 — **모델이나 컬럼이 늘면 이름을 지목하며 red**다. 등재는
+  **필드별 1:1**이고 방침 표는 여럿을 한 행으로 접는다. 그래서 아래 (B)의 **대조 단위는 절 id이지 항목 라벨이 아니다.**
+- **(B) 등재 ↔ 본문의 절 — `pnpm test`**(`sectionGaps`): 등재가 가리키는 절이 전부 있고, 대상 절(`DISCLOSURE_SECTIONS`)이 전부
+  쓰이고, 절 id가 겹치지 않는다(Set이면 중복이 조용히 접히고 앵커가 첫 절로만 간다).
+- **(C) 본문 ↔ 개정 이력 — `pnpm test`**(`docText`·`docDigest`): 본문 해시가 `REVISIONS`의 마지막 행과 같고, 시행일이 그 행의
+  날짜이고, 모든 개정 날짜가 `changes` 절에 적혀 있다. 본문을 고치면 행을 하나 더 써야 하고 **그 행의 날짜가 곧 시행일 갱신**이다.
+  ⚠️ **git log로 대신하지 않는다** — CI 체크아웃이 깊이 1이라 파일 이력이 없다. ⚠️ `docText`는 jsdom 없이
+  `renderToStaticMarkup` + 태그 제거다.
+- ⚠️ **외부 전송처 허용목록 검사는 만들지 않았다** (2026-09-24 사용자) — 다섯째(Resend)가 생기면 만들기로 했던 판정이
+  충족됐지만, 호스트가 SDK·env 안에 있어 리터럴 전수가 원리적으로 못 본다. 판단 게이트(`/push`)로 갈음한다.
+
 #### 6.04 미저장 번역의 복구 사본 — 이 탭의 `sessionStorage` 하나에만 (translation-rework)
 
 세션이 만료되면 draft를 화면에 남기고 Save를 막는다. 선택 키 URL만으로는 입력이 돌아오지 않으므로 **한 키의 draft를 이 탭의
