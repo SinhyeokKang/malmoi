@@ -72,8 +72,15 @@ ARCHITECTURE §0의 export 결정성·병합 없음은 영향 없다. 인가된 
 - 전체 accepted면 닫기+루트 Sonner 토스트, Invite 버튼 포커스 복귀. 1명이면 `Invitation sent`, 여러 명이면 `Invitations sent to N people`. 입력 이메일을 토스트에 추가로 노출할 필요는 없다.
 - 오류면 별도 화면 없이 폼을 유지한다. 제한은 서버 시각을 문장으로 안내한다. 초 단위 카운트다운·대상별 재시도 가능 수·성공자 블록은 없다. 수정 후 다시 제출할 때 서버가 재검사한다.
 - unknown은 “발송 결과를 확인하지 못했습니다. 일부 메일이 도착했을 수 있으며 다시 보내면 이전 링크가 만료됩니다” 의미의 영어 안내다. 성공 인원 수를 추정하지 않는다.
-- Pending의 `Resend`는 OWNER만 보며 역할 칩 뒤·Revoke 앞에 둔다. 진행 중 해당 행의 Resend/Revoke만 잠그고 버튼 폭을 유지한다. 성공은 서버 마스킹 라벨의 토스트, 오류는 같은 결과 전달 방식. 새 모달·확인창·상시 발송 배지·복사 버튼은 없다.
+- Pending의 `Resend`는 OWNER만 보며 역할 칩 뒤·Revoke 앞에 둔다. 진행 중 해당 행의 Resend/Revoke만 잠그고 버튼 폭을 유지한다. 성공은 서버 마스킹 라벨의 토스트다. **오류는 Pending 카드 머리 아래, 카드 안 Alert 하나**로 표시한다(수정본 `1l`). 행 id에 묶지 않고 대상 라벨을 포함하며, 목록 갱신 뒤에도 유지한다. X 또는 다음 Resend/Revoke 시작 시 지운다. 새 모달·확인창·상시 발송 배지·복사 버튼은 없다.
 - 설정이 없는 상태는 “Email is unavailable right now” 안내다. 수동 링크 폼으로 전환하지 않는다.
+
+수정본의 문구는 아래만 구현 시 보정한다. 새 상태나 디자인 재작업은 필요 없다.
+
+- 한도는 **발송 성공 수가 아니라 초대 발급 수**다. `were sent in the last hour`는 `invitations were created in the last hour` 의미로 바꾼다. 메일이 실패해도 제한을 사용한다는 계약과 맞춘다.
+- `Try Resend again in a few minutes` 같은 임의 시간 대신 서버의 `retryAt`을 사용한다. 주소 제한과 프로젝트 제한 중 더 늦은 시각을 안내한다.
+- `workspace`는 제품 계층에 없으므로 설정 없음은 기존 `Email is unavailable right now`를 쓴다.
+- `Nothing was sent`는 **이번 요청의 사전 거부**에만 적용한다. 앞선 요청이 unknown이었을 수도 있으므로 `Nothing was sent by this request`로 범위를 명확히 한다. 메일 단계의 결과 미확인에는 쓰지 않는다.
 
 ## 7. 과거 함정과 검증
 

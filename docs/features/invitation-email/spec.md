@@ -13,11 +13,11 @@
 ### 1.1 디자인 핸드오프
 
 - [Claude Design — Invite Modal](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=design_handoff_invite_modal%2FREADME.md)
-- 로컬: `/Users/sinhyeok/Downloads/design_handoff_invite_modal/`
+- 최신 로컬 핸드오프(2026-09-23 수정본): `/Users/sinhyeok/Downloads/design_handoff_invite_modal 2/`. 이전 `design_handoff_invite_modal/`을 대체한다.
 - `README.md`는 설명·치수·상태·문구, `Invite Modal.dc.html`은 캔버스 `1a`–`1l`이다. HTML은 구현 레퍼런스이며 기존 UI 컴포넌트·토큰으로 구현한다.
-- README/소스 대조 및 `1f`·`1g`·`1i` 렌더 확인 완료. 정적 보드여서 실제 입력·재시도 동작은 미검증이다.
-- **현재 스펙이 상태·범위의 기준**이다. `1a`–`1e`·`1i`의 기본 형과 `1l` Resend는 유지하되, `1f`–`1h`의 다중 결과·복사 흐름은 단순 오류 안내로 대체한다. 치수 상세는 [design.md](./design.md) §6.
-- 최신 전달 피드백: `/Users/sinhyeok/Desktop/malmoi-invite-modal-design-feedback.md`. 앞선 복구 분기를 추가하는 피드백을 대체한다.
+- 수정본 README·전달 프롬프트 대조 완료. 단일 폼·전체 사전 검증·성공 시 닫기·Pending Resend가 스펙과 일치한다. 이전 버전의 `1f`·`1g`·`1i` 렌더는 확인했으나 **수정본 렌더와 실제 입력·재시도 동작은 미검증**이다.
+- **현재 스펙이 상태·범위의 기준**이다. 수정본 `1f`는 행 단위 서버 거부, `1g`는 폼 제한 Alert, `1h`는 같은 자리의 결과 미확인 안내다. `1l`의 Resend 오류는 행 교체에도 남는 Pending 카드 Alert로 반영한다. 치수·문구 보정은 [design.md](./design.md) §6.
+- 전달 피드백: `/Users/sinhyeok/Desktop/malmoi-invite-modal-design-feedback.md`. 수정본에 단순화 방향이 반영됐으며, 제거한 분기를 다시 만들지 않는다.
 
 ## 2. 사용자와 문제
 
