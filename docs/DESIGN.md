@@ -517,7 +517,7 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 | **FileInput** | account-settings 신설 (2026-09-13) — **프리미티브 19**. 보이는 것은 `Button`(`default` `md`)이고 `<input type="file">`은 `sr-only` + **`tabIndex={-1}` + `aria-hidden`**이다. ⚠️ **`sr-only` + `<label>` 관용구를 쓰지 않는다** — 그 형은 포커스를 **숨은 input**이 받아 보이는 것에 아무 표시가 없고, 링을 `peer-focus-visible`로 옮겨 붙이면 **포커스 링 검사가 보는 자리(여는 태그)와 링이 사는 자리가 갈린다.** 대신 input을 포커스 대상에서 통째로 빼고 링은 `Button`이 든다(§7). ⚠️ **`focus-ring.test.ts`의 면제가 그래서 넓어졌다** — `type="hidden"`이 될 수 없는 태그라 **`tabIndex={-1}`와 `aria-hidden`을 함께** 든 것만 면제하고, 하나만으로는 안 빠지는 것을 메타 테스트가 센다. ⚠️ **`change` 뒤 `value`를 비운다** — 거부된 파일을 고쳐 같은 이름으로 다시 고르는 것이 흔한 경로인데, 안 비우면 같은 파일에서 이벤트가 안 난다. ⚠️ **`accept`는 대화상자 필터이고 방어선이 아니다**(사용자가 "모든 파일"을 고를 수 있다) — 판정은 `planImagePick`(클라이언트)과 `planImageUpload`(서버 시그니처)가 든다. ⚠️ **`disabled`가 `loading`과 갈라져 있다** (2026-09-14) — 짝이 되는 컨트롤([Delete])이 도는 동안 이 자리를 막되 **스피너는 그쪽에 세워야** 하기 때문이다. 하나로 합치면 도는 쪽이 둘로 보이고, 안 막으면 둘이 동시에 돌아 먼저 끝난 쪽이 남의 스피너를 끈다 |
 | **캡션 강조** | ⚠️ **필드 아래 캡션(help·hint·경고 한 줄)에서 굵게 쓰지 않는다** (2026-09-13 사용자). 13px 한 덩어리에 굵기를 섞으면 그 조각이 **제목처럼** 읽혀 바로 위 라벨과 경쟁한다 — **보이는** 강조는 `text-foreground`까지다(바탕이 `text-muted-foreground`라 그것만으로 충분히 뜬다). ⚠️ **`<strong>`은 지우지 않는다 — `font-normal`로 되누른다**: 되돌릴 수 없음을 말하는 문장(주소 확정·토큰 1회 노출)이 색만 남으면 스크린리더가 평평하게 읽고 고대비 모드에서도 사라진다. 색에 시맨틱을 딸려 보내는 것은 `LocaleBadge`의 `sr-only`와 같은 규칙이다(§7). `(optional)`이 `font-normal`로 라벨의 500을 되누르는 관용구가 이미 있다 |
 | **FormGroup** | label `text-sm font-medium` · help `text-xs text-muted-foreground **leading-[1.7]**` · error `text-xs text-destructive **leading-[1.7]**` (2026-09-13 — 시안. 필드 아래 설명은 두세 줄이 되는 자리라 기본 행간 1.33이면 줄이 붙어 한 덩어리로 읽힌다. ⚠️ **`text-xs`에 `line-height`를 짝으로 안 주는 것이 `@theme`의 결정**이라 이 값은 소비자가 든다) · `labelId`(Radix `Select` 트리거가 `aria-labelledby="{labelId} {triggerId}"`로 라벨+값을 잇는다) · "(optional)" `text-muted-foreground font-normal`(⚠️ label이 500이라 **되눌러야 한다** — §4의 기본 400) 오류는 14px 장식 아이콘·role=alert·안정된 ID를 제공한다. 필드의 aria-invalid/aria-describedby는 소비자가 잇는다. |
-| **Radio** | **Radix `RadioGroup.Item`이다** (2026-09-13 — 그 전엔 native `<input type="radio">`였다). 16 원 · 비선택 테두리 **`neutral-300`**(#d4d4d4) · 선택 테두리 `foreground` + 안쪽 점 **8**(`Indicator`) · label `text-sm`. ⚠️ **`Radio`는 `RadioGroup` 안에서만 선다** — Radix `Item`이 Root 컨텍스트를 읽으므로 홀로 쓰면 던진다. 목록을 그리는 쪽이 `RadioGroup`을 감싸고 `aria-label`로 그룹 이름을 준다. ⚠️ **`asChild`로 `<ul>`에 얹지 않는다** (2026-09-13 실측) — Radix가 그 태그의 role을 `radiogroup`으로 덮어써 `<li>`가 부모 list를 잃은 고아가 된다. Root의 div 한 겹을 받아들이면 리스트와 radiogroup이 둘 다 산다. ⚠️ **`fieldset`/`legend`와 겹쳐 쓰지 않는다** — 그룹이 둘이 되어 이름이 두 번 읽힌다. ⚠️ **`labelClassName`이 행의 gap을 연다** — 온보딩 행이 "라디오 16 + 칩 40 + 텍스트"이고 셋 사이가 전부 12인데, `className`은 지시자로 가므로 그 자리로는 바깥 `<label>`의 `gap-2`를 못 덮는다. **`Checkbox`는 아래 별도 행이다**<br>⚠️ **`RadioGroupItem`(맨 재수출)의 소비자가 둘이다** — `SegmentedControl`과 **초대 모달의 Role 카드**(2026-09-19, §6.65). 둘 다 Radix의 선택·roving focus만 쓰고 **형은 자기가 얹으며**, 그래서 **포커스 링도 자기가 든다** — `Radio`와 달리 지시자 원이 없어 링이 빠지면 키보드로 어디 있는지 알 수 없다 (§7) |
+| **Radio** | **Radix `RadioGroup.Item`이다** (2026-09-13 — 그 전엔 native `<input type="radio">`였다). 16 원 · 비선택 테두리 **`neutral-300`**(#d4d4d4) · 선택 테두리 `foreground` + 안쪽 점 **8**(`Indicator`) · label `text-sm`. ⚠️ **`Radio`는 `RadioGroup` 안에서만 선다** — Radix `Item`이 Root 컨텍스트를 읽으므로 홀로 쓰면 던진다. 목록을 그리는 쪽이 `RadioGroup`을 감싸고 `aria-label`로 그룹 이름을 준다. ⚠️ **`asChild`로 `<ul>`에 얹지 않는다** (2026-09-13 실측) — Radix가 그 태그의 role을 `radiogroup`으로 덮어써 `<li>`가 부모 list를 잃은 고아가 된다. Root의 div 한 겹을 받아들이면 리스트와 radiogroup이 둘 다 산다. ⚠️ **`fieldset`/`legend`와 겹쳐 쓰지 않는다** — 그룹이 둘이 되어 이름이 두 번 읽힌다. ⚠️ **`labelClassName`이 행의 gap을 연다** — 온보딩 행이 "라디오 16 + 칩 40 + 텍스트"이고 셋 사이가 전부 12인데, `className`은 지시자로 가므로 그 자리로는 바깥 `<label>`의 `gap-2`를 못 덮는다. **`Checkbox`는 아래 별도 행이다**<br>⚠️ **`RadioGroupItem`(맨 재수출)의 소비자는 `SegmentedControl` 하나다** (2026-09-23 — 초대 모달의 Role 카드가 행마다의 `Select`로 가며 빠졌다, §6.65). Radix의 선택·roving focus만 쓰고 **형은 자기가 얹으며**, 그래서 **포커스 링도 자기가 든다** — `Radio`와 달리 지시자 원이 없어 링이 빠지면 키보드로 어디 있는지 알 수 없다 (§7) |
 | **Checkbox** | Radix `Checkbox.Root` · 16 사각 · 비선택 `neutral-300`, 선택 `foreground` + 체크 12. Radio와 같은 포커스 링·disabled. 시각 label은 필수가 아니며 `aria-label` 또는 `aria-labelledby`로 이름을 준다. 포함 체크와 상세 버튼은 형제다 |
 | **SegmentedControl / SegmentedLinks** | 8-2 신설 · 8-3이 링크판을 더했다. 트랙 `bg-canvas rounded-lg p-1 gap-1` · 세그먼트 `rounded-md px-2 py-1 text-sm gap-1.5`(`min-w-11`은 **링크판만**) · 선택 `bg-background shadow-low font-medium` / 비선택 `text-muted-foreground hover:text-foreground`. ⚠️ **칸의 radius가 `md` 버튼과 같다** (2026-09-11) — 선택된 칸이 흰 배경 + `shadow-low`로 떠올라 버튼처럼 보이고 툴바에서 실제 `Button`과 나란히 선다. 트랙은 칸이 `p-1`만큼 안쪽이라 **한 단계 크다**(동심이 되는 14가 스케일에 없어 12). ⚠️ **`SegmentContent`가 `icon`·`badge`를 받는다**(라벨 왼쪽 `size-4 aria-hidden` / 오른쪽 `Badge neutral`, **0도 보인다**) — **지금 그 두 축의 소비자는 0이다**. 치수를 프리미티브가 드는 이유는 bugshot-2가 children으로 넘기다 배지 크기가 두 벌로 갈렸기 때문이다. ⚠️ **형이 둘인 것이 요지다**: 상태를 클라이언트가 들면 `SegmentedControl`(버튼 · `role=radiogroup`), **URL이 들면 `SegmentedLinks`**(`<nav>` + `aria-current="page"`). 필터·탭은 뒤엣것이다 — 뒤로가기·공유·새로고침이 그냥 돼야 한다. ⚠️ **`role="tablist"`가 아니다**: ARIA 탭은 `aria-controls`와 패널 연결이 계약인데 이 컨트롤은 그걸 안 든다. ⚠️ **대신 라디오의 키보드 계약은 든다** — 2026-09-12부터 **Radix `RadioGroup`이** 방향키·roving tabindex·`loop`를 들고, **Home/End만 프리미티브가 얹는다**(Radix가 안 준다). 2026-09-11의 손수 구현(`nextRovingIndex` + `tabIndex={selected ? 0 : -1}`)을 대체했고, 링 검사가 `button[role="radio"]`를 보므로 Radix가 곁들이는 숨은 `<input>`이 보이지 않는 링으로 green을 만들지 않는다 |
 | **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). **레이블은 `font-medium`(500)으로 전역 통일한다** (2026-09-12 사용자). variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
@@ -527,7 +527,7 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 | **Breadcrumb** | `text-xs` · 항목 `text-muted-foreground hover:text-foreground` · 마지막 `text-foreground font-medium` `aria-current="page"` · 구분자 `/` `text-muted-foreground/60 px-2` |
 | **DropdownMenu** | `min-w-60 rounded-lg border bg-popover shadow-md py-1` · 항목 `mx-1 px-2 py-1.5 rounded text-sm hover:bg-accent` · selected `bg-muted` + `Check` 16 |
 | **Dialog** | **`max-w-110`(440 — 2026-09-18, 옛 360)** `rounded-lg border bg-background` **`shadow-medium`** · 헤더 `p-4 pb-2` · 제목 `text-base font-medium`(15/500) · 설명 `px-4 text-xs leading-[1.6]`(13/1.6) · 푸터 **`p-4`** `gap-2` 버튼 최대 3(primary·default·ghost cancel) · 배경 `bg-foreground/40` · Overlay·Content 모두 `z-50` · Esc·배경·X·Cancel 넷으로 닫힌다. 닫기는 위 Alert와 **같은 36 정방**(음수 마진만 `-mt-1.5 -mr-2`), 라벨은 `m.common.close`<br>⚠️ **넷이 2026-09-13에 움직였다**(계정 화면 핸드오프 — 폭 512→360 · `shadow-lg`→`shadow-medium` · 설명 14→13/1.6 · 푸터 위 24→16). **`shadow-lg`는 Tailwind 기본 그림자라 §4.5가 금지한 값이었다** — 이건 이탈이 아니라 기존 위반의 교정이다. 소비자 **여덟**이 함께 움직인다(archive-card · member-list · login-methods · github-account · sessions-section · home/sync-button · **publish-button** · **sources/source-detail-modal** — 2026-09-22에 Sources 상세의 미저장 이탈 확인창이 붙었다) — ⚠️ **이 수가 네 번 틀렸다**(넷 → 다섯 → 여섯 → 일곱 → **그때 실제로는 여덟**). 2026-09-19에 아래 명령을 다시 돌려 보니 그 시점 소비자가 **여덟**이었고 **`publish-button`이 목록에서 빠져 있었다** — 이 줄이 *"프리미티브를 만질 때마다 소비자를 다시 센다"*고 적어 두고 스스로 그것을 안 한 것이다. 지금 일곱인 이유는 같은 날 `invite-dialog`가 사라졌기 때문이다(초대가 `OnboardingModal`로 갔다, §6.65). *"프리미티브를 만질 때마다 소비자를 다시 센다"*의 입력이 이 숫자이고, 빠졌던 하나가 하필 **푸터 유무로 본문 형이 갈리는** 변경의 소비자였다. 세는 명령은 `grep -rln "import .*DialogContent" components app | grep -v __tests__ | grep -v ui/dialog`다 — ⚠️ **프리미티브 자신을 빼야 한다**, 그리고 **`import` 없이 세면 주석에서 그 이름을 부른 파일까지 든다**(2026-09-15에 실제로 한 건 더 셌다). 이 줄을 처음 적었을 때 그것이 빠져 **명령과 본문이 서로 다른 수를 냈다**<br>⚠️ **본문의 형이 푸터 유무를 따라간다** — 확인 Dialog의 "검은 줄"은 `p-4 pb-0 text-xs leading-[1.6]`(*지금 참인 값*을 말하는 한 줄이고 푸터가 자기 16을 갖는다), **푸터 없는 소비자**(초대 폼)는 본문이 곧 폼이라 `p-4 text-sm`이다. 구별 없이 `pb-0`을 주면 그 폼이 바닥에 붙고 `FormGroup` help까지 13으로 내려간다(2026-09-13 실측)<br>⚠️ **본문이 없으면 그 `<div>`를 그리지 않는다** — 확인 Dialog는 대부분 본문이 없어서 빈 블록의 `p-4`가 설명문과 푸터 사이에 **죽은 32px**을 만들고 있었다<br>⚠️ **Dialog 안의 경고는 `Alert`가 아니라 전용 블록이다** (2026-09-15 — sync 핸드오프 §7 · 실측): `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert`로 **색은 `Alert warning` 그대로**이고 **치수만 한 단계 줄인다**(radius **10** · padding **12** · 글자 **13** · 글리프 **14** · 줄 사이 **6**). 360 Dialog에서 `p-4` Alert는 본문 폭을 296으로 떨어뜨려 두 줄 문장이 네 줄이 된다. **프리미티브로 올리지 않는다 — 소비자가 `home/sync-button` 하나다**(올리면 안 본 화면 넷이 함께 움직인다). 글리프는 **블록 머리에 하나**이고 줄마다 주지 않는다: 글리프가 둘이면 경고가 둘인 화면이 되는데 실제로는 한 경고의 근거가 둘이다 |
-| **Modal** | **큰 모달 껍데기** — 정의는 `components/ui/modal.tsx`의 `OnboardingModal`이다(⚠️ **`components/onboarding/modal.tsx`는 2줄 re-export shim이다** — 경로를 그쪽으로 적지 않는다). ⚠️ **위 `Dialog`를 쓰지 않고 Radix `Dialog.*`를 직접 조립한다**: Overlay 색이 고정이고 머리·본문·바닥 padding이 박혀 있고 바닥이 `justify-end`라 왼쪽 `Step n of 4`가 안 들어가는데, 그것을 고치면 440 Dialog 소비자 **여덟이 함께 움직인다**. 폭 **1024**(2026-09-18 사용자, 옛 800 — `w-[calc(100%-96px)] max-w-[1024px]`. 온보딩·Publish 공통이다 — Publish가 736으로 덮던 것을 지웠다) · `rounded-xl` · `shadow-medium` · dim **`bg-foreground/32` + `backdrop-blur-[6px]`**(360 Dialog의 `bg-foreground/40`과 다르다 — 이쪽은 흐린다) · 머리 `px-8 pt-8 pb-5` 제목 `text-xl font-medium` · 닫기 `ghost` `size-9 rounded-full` 안의 `X` 20 · 바닥 버튼 `size="lg"`(§5의 "셸 밖 카드 전용"에 이 모달을 예외로 넣었다 — dim 위에 뜬 표면이라 셸 안이 아니다). 소비자 **여섯**(`onboarding/new-project` · `publish-button` · **`members/invite-modal`** — 2026-09-19. 초대가 폼→링크 두 얼굴이 되면서 440 `Dialog`에서 옮겨 왔다, §6.65 · **`sources/source-detail-modal`** — 2026-09-22) + settings Add sources·Workflow (§6.6). 선택적 closeDisabled는 X·Esc·backdrop을 함께 막는다 |
+| **Modal** | **큰 모달 껍데기** — 정의는 `components/ui/modal.tsx`의 `OnboardingModal`이다(⚠️ **`components/onboarding/modal.tsx`는 2줄 re-export shim이다** — 경로를 그쪽으로 적지 않는다). ⚠️ **위 `Dialog`를 쓰지 않고 Radix `Dialog.*`를 직접 조립한다**: Overlay 색이 고정이고 머리·본문·바닥 padding이 박혀 있고 바닥이 `justify-end`라 왼쪽 `Step n of 4`가 안 들어가는데, 그것을 고치면 440 Dialog 소비자 **여덟이 함께 움직인다**. 폭 **1024**(2026-09-18 사용자, 옛 800 — `w-[calc(100%-96px)] max-w-[1024px]`. 온보딩·Publish 공통이다 — Publish가 736으로 덮던 것을 지웠다) · `rounded-xl` · `shadow-medium` · dim **`bg-foreground/32` + `backdrop-blur-[6px]`**(360 Dialog의 `bg-foreground/40`과 다르다 — 이쪽은 흐린다) · 머리 `px-8 pt-8 pb-5` 제목 `text-xl font-medium` · 닫기 `ghost` `size-9 rounded-full` 안의 `X` 20 · 바닥 버튼 `size="lg"`(§5의 "셸 밖 카드 전용"에 이 모달을 예외로 넣었다 — dim 위에 뜬 표면이라 셸 안이 아니다). 소비자 **여섯**(`onboarding/new-project` · `publish-button` · **`members/invite-modal`** — 2026-09-19에 440 `Dialog`에서 옮겨 왔고 2026-09-23에 다중 초대 폼 하나가 됐다, §6.65 · **`sources/source-detail-modal`** — 2026-09-22) + settings Add sources·Workflow (§6.6). 선택적 closeDisabled는 X·Esc·backdrop을 함께 막는다. 선택적 `initialFocusRef`는 **Radix 열림 자동 포커스 자리에서** 그 요소로 옮긴다(2026-09-23 — 소비자 effect로는 Radix가 뒤에 돌아 진다) |
 | **DropdownMenu** | ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09). 호출부가 `asChild`를 주면 Radix Slot이 그 자식에 props를 얹는데 **자식이 정확히 하나여야 한다** — `selected`의 `Check`가 형제로 붙는 순간 던지고, 그 트리(= 앱 셸)가 통째로 죽는다. 실측: 프로젝트 스위처를 **한 번 열면** "This page couldn't load"였고 `add099a`부터 프로덕션에 있었다(POSTMORTEM 2026-09-09 — 툴팁 provider와 같은 계보). `components/__tests__/slottable-item.test.ts`가 `asChild`가 닿는 프리미티브 전수 + 이 이름을 고정한다 |
 | **RowCard** | members-rework 신설 (2026-09-19) — **프리미티브 23**. **행 목록 카드**: `RowCard`(헤더 = 제목 · 카운트 배지 · 설명 한 줄) / `RowCardList`(`<ul>` + `@container`) / `RowCardItem`(선의 급 둘) / `BannerLine`(행 아래 사유 띠) / `EmptyRowCard`(칩 36 · padding `48 24` · `inset`이면 카드 안). 소비자 **다섯**(`projects/project-list` · `projects/empty-projects` · `members/member-list` · `members/pending-invitations` · `members/member-row`). 카드 `border-border rounded-lg shrink-0 overflow-hidden` · 헤더 `p-4` 제목 `text-base font-medium` · 헤더↔첫 행 `border-foreground/[0.06]` · 행↔행 `border-border`. ⚠️ **`Card`가 아닌 이유**: 제목이 `text-sm`, 헤더 선이 전폭 `border-border`, 본문 `space-y-2 p-4`라 행 목록에 padding이 두 벌, 카운트 배지 슬롯도 `overflow-hidden`·`shrink-0`도 없다. ⚠️ **`EntityCard`도 아니다** — 형은 가깝지만 **개별 카드이고 목록 카드가 아니다.** ⚠️ **`divide-y` 금지** — 띠가 행의 형제라 그 규칙이 띠와 행 사이에도 `#e5e5e5`를 넣는데 시안은 거기가 `#f0f0f0`이다. ⚠️ **`countLabel`에 기본값이 없다** — 전에는 `m.projects.count`가 박혀 있었고, 그대로 공유했으면 멤버 카드가 "3 projects"를 낭독했다. ⚠️ **`description`은 `/projects`가 안 쓰는 슬롯이라 조건을 코드에 조건으로 쓴다**(POSTMORTEM 2026-09-14) — 설명이 없으면 헤더가 예전과 글자 하나까지 같은 한 줄이다. ⚠️ **hover·`ring-inset`·전체-링크 형은 올리지 않는다** — 소비자에 남는다(헤더에 hover가 붙으면 누를 수 없는 것이 눌릴 것처럼 보이고 `projects-cards.test.tsx`가 그것을 0으로 고정한다). ⚠️ **`titleId`가 있으면 `tabIndex={-1}`도 같이 붙는다** — 그 id가 붙는 유일한 이유가 포커스 착지점이라(malmoi#51) 둘이 갈리면 `focus()`가 조용히 무시된다 |
 | **EntityCard** | account-linking 신설 (2026-09-12) — **프리미티브 17**. "지금 다루는 대상 하나"를 보이는 자리이고 소비자는 **병합 화면 하나**다. 박스 `flex items-center gap-3 rounded-lg border p-3 w-full`(radius **12** — ⚠️ `rounded-xl`은 16이라 같은 화면의 `Card`·`Alert`·`Dialog`(전부 12) 사이에서 **작은 카드 하나만 더 둥글어진다**) · 본문 `min-w-0 flex-1 flex-col gap-px`, 1행 `text-sm truncate`, 2행 `text-xs text-muted-foreground` · 우측 슬롯(provider 마크 16, ⚠️ **브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를 그대로 받는다**). ⚠️ **아바타 소스가 1행 텍스트와 갈라져 있다**(`avatarName`·`image`, 2026-09-12) — 병합 화면의 1행은 **마스킹한 이메일**이라 이니셜이 주소의 첫 글자가 되는데 셸 아바타는 표시 이름에서 온다. 같은 계정이 화면마다 다른 글자·다른 색으로 보이면 아바타가 사람을 가리키지 못하고 소음이 된다. ⚠️ **`kind` prop이 없다** — 초대의 프로젝트 카드는 **같은 박스 규격**을 쓰지만 `components/invite/project-card.tsx`의 화면 조각이다: 아바타 폴백이 이니셜이 아니라 **흰 `Box` 글리프**이고 §6.63이 이미 그 대체를 거부해 뒀다(`Avatar`는 한 줄도 안 건드린다). ⚠️ **그 글리프 박스의 radius는 `rounded-sm`(8)로 §6.63의 목록 행과 같다** (2026-09-12 실측 — 12로 나가 있었다. ⚠️ **그 사이 목록 행만 4로 내려가 이 문장이 한동안 거짓이었고, 2026-09-17에 목록·Home을 8로 올려 다시 참이 됐다** — 이 줄을 읽고 8을 고른 사람이 실제로는 어긋난 값을 보고 있었다): 같은 대상을 가리키는 표식이 화면마다 다른 모서리를 가지면 같은 것이라는 신호가 죽는다. 크기는 카드 규격을 따라 32이고 목록 행은 28이다. ⚠️ **테두리 `border border-border`도 셋이 같다** (2026-09-20 사용자 — `Avatar`·`ProjectThumbnail`·이 글리프 박스). ⚠️ **`LocaleFlag`를 물지 않는다** — 프리미티브가 `components/translations/`를 import하면 `ui/`가 잎에 가깝다는 성질이 깨진다 |
@@ -1184,32 +1184,67 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 ⚠️ **`danger` variant의 색도 캔버스와 1:1이 아니다** — 캔버스는 `#b91c1c`(red-700)이고 이 리포의
 `--destructive`는 `hsl(0 72.2% 50.6%)`다. 같은 이유로 프리미티브를 따른다(§2.3).
 
-#### 초대 — `OnboardingModal` 두 얼굴
+#### 초대 — `OnboardingModal` 폼 하나 (2026-09-23, invitation-email)
 
 [Invite member]와 모달을 **같은 클라이언트 컴포넌트**(`members-panel-header.tsx`)가 든다 —
-`OnboardingModal`은 제어형이고 `DialogTrigger`가 없다.
+`OnboardingModal`은 제어형이고 `DialogTrigger`가 없다. 정본은 Claude Design `Invite Modal.dc.html`
+(`1a`–`1i`·`1l`)이고 아래는 2026-09-23 Chrome 실측값이다.
 
-- **얼굴 ① 폼**: Email `Input` + **Role 카드 둘**(**기본 Editor**). 바닥 왼쪽 `{n} of {limit} seats used`,
-  오른쪽 [Create invite link]. ⚠️ **`step`을 넘기지 않는다** — 초대는 단계가 아니라 두 얼굴이다.
-- **Role 카드**: `RadioGroupItem` 위에 형만 얹는다 — 라디오 **지시자가 없고 선택을 테두리가 말한다**
-  (`data-[state=checked]:border-primary`). 나란히 둘뿐이라 원이 없어도 "둘 중 하나"가 형에서 읽히고,
-  각 카드가 설명 한 줄을 들어 고르는 근거를 가까이 둔다. ⚠️ **새 색·radius·size를 만들지 않는다.**
-  ⚠️ **포커스 링이 반드시 산다** — 선택을 테두리로만 말하므로 링이 없으면 키보드로 어디 있는지 모른다(§7).
-- **얼굴 ② 링크**: 제목 `Link ready for {label}`(**라벨은 서버가 만든다** — 클라이언트에서 가리면 세 번째
-  마스킹 구현이다), 링크 줄 **sans 14**(§4.1 — 화면의 값은 전부 sans다), 안내 카드, 바닥 [Done].
-- **링크 행·안내 카드는 테두리 카드다** — 채운 면이 아니다. 링크는 값이 주인공이라 배경으로 눌러 두지
-  않고, 안내는 **정상 동작의 사실**이라 `Alert info`(muted 면 + 아이콘)의 "무언가 잘못됐다" 계열로
-  읽히면 안 된다. [Copy]는 `primary`다 — 그 얼굴에서 할 일이 복사 하나다(바닥 [Done]은 닫기다).
-- ⚠️ **제출 버튼이 바닥이라 `<form>` 바깥이다 → `form="invite-form"`으로 묶는다.** 안 묶으면 Enter가
-  **조용히** 죽는다 (POSTMORTEM 2026-09-08). **이 리포의 `form=` 첫 도입이다.**
-- ⚠️ **사후 거부는 세 번째 얼굴이 아니다** — `createInvitation`이 실패를 **값으로** 돌려주므로 폼 얼굴에
-  머물며 본문 맨 아래 `Alert`으로 선다. 입력값이 남고 포커스는 누른 제출 버튼으로 돌아간다(malmoi#53).
-  ⚠️ **그 복귀가 `pending`에 물려 있다** (malmoi#64). 이 모달은 `useTransition`을 쓰므로 실패를 기록하는
-  커밋에서도 `isPending`이 **아직 true**이고, 그때 `focus()`를 부르면 버튼이 `disabled`라 **조용히
-  무시된다** — 그러면 포커스가 Radix 트랩에 걸려 **패널에 갇힌다.** 행 액션(`member-list`)은
-  `pendingId`를 자기가 들어서 이 문제가 없다: **두 화면이 같은 관용구로 보이지만 수단이 다르다.**
-- ⚠️ **테두리 있는 카드 라디오를 만들지 않았다** — 리포 전수 0건인 시각 형이고, 만들면 등재할 부품이
-  하나 는다. `Radio`가 이미 라벨 행이고 보조 줄만 아래에 붙인다.
+- **흐름은 하나다**: 입력 → 전송 → 성공이면 **닫힘 + 토스트**(`Invitation sent` / `Invitations sent to N people`),
+  오류면 같은 폼. ⚠️ **링크 얼굴·결과 화면·Done이 없다** — 원문 링크는 메일로만 나간다(클라이언트 상태에 토큰이
+  없다). `members-screen.test.ts`가 모달 소스에서 `routes.invite(`·`/invite/`·`token`을 0으로 센다.
+- **행 = 사람 하나**: Email `Input`(flex 1 · 36) · Role `Select`(**168** 고정 · 36) · 제거 ghost **36** 정방,
+  갭 **8** · 행 사이 **10**. 열 머리 `Email`/`Role` **13 · `--muted-foreground`**, 오른쪽 **44**(제거 36 + 갭 8) —
+  빈 행 하나로 열리면 두 번째 컨트롤이 무엇인지 값만으로 안 읽힌다. 한 행일 때 제거는 **꺼진 채 자리를 지킨다**.
+- ⚠️ **역할 셀렉트의 이름은 `aria-labelledby="{숨긴 라벨} {트리거 자신}"`이다** — `aria-label`만 주면 버튼형
+  combobox가 값을 안 실어 여덟 행을 탭으로 돌 때 Editor/Owner를 들을 수 없다(실측 이름 `Role for {email} Editor`).
+  제거 버튼은 `Remove {email}`, 빈 행은 `recipient {n}`.
+- ⚠️ **Email은 `type="text"` + `inputMode="email"`이다** — `type="email"`이면 브라우저가 앞뒤 공백을 지워 표시가
+  원문이 아니게 되고, 제출 전에 자기 검증 말풍선을 띄워 **행 사유 검증이 한 번도 돌지 않는다**(jsdom 실측).
+  폼은 `noValidate`. 판정은 `parseRecipients` 하나다.
+- **역할 메뉴** `SelectContent` **280** · 항목 두 줄(`SelectItem`의 `description` — ⚠️ **`ItemText` 밖이다**,
+  안에 두면 닫힌 트리거에도 두 줄이 찍힌다). 폼에는 역할 설명·붙여넣기 안내 캡션이 없다.
+- **키보드**: 이메일에서 Enter는 **아래에 행 추가**(제출이 아니다 — 여덟 행에서 Enter 제출은 다 치기 전에 나간다),
+  IME 조합 중 Enter는 통과. 여러 주소 붙여 넣기는 쉼표·줄바꿈·공백으로 갈라 행이 되고 포커스는 마지막 새 행.
+  행 삭제 → 다음 행 이메일(마지막이면 [Add another]). ⚠️ **열리면 첫 이메일이다 — `initialFocusRef`로 준다**:
+  소비자 effect로 주면 jsdom은 green인데 Chrome에서는 Radix의 열림 자동 포커스가 뒤에 돌아 **패널이 가져갔다**
+  (`modal-initial-focus.test.tsx`가 그 핸들러를 걷으면 red다).
+- **[Add another]는 테두리 있는 `default`** — h36 · px 12 · `Plus` 14. 스크롤이 끝난 목록 아래에서 ghost면 버튼인지
+  안 읽힌다. **스크롤하는 것은 행 목록뿐**이고 열 머리·[Add another]·바닥은 고정이다(1280×720에서 목록만 스크롤,
+  바닥은 화면 안 — 실측). 목록은 `p-1` + `-mx-1 -my-0.5`로 포커스 링 자리를 둔다.
+- **오류가 서는 자리는 둘뿐이다**: **그 행 아래**(주소 형식·목록 안 중복·이미 멤버 — `CircleX` 14 · 13/1.6 · 갭 8 ·
+  오른쪽 44 · 입력 테두리 destructive)와 **본문 맨 위 폼 `Alert` 하나**(제한·결과 미확인은 `warning`, 발송 실패·
+  메일 설정·21명 이상은 `danger`). 같은 주소에 역할 둘이면 **양쪽 행**, 같은 역할이면 **뒤 행만**이다.
+  서버 행 거부의 "아무것도 안 나갔다"는 새 Alert가 아니라 **바닥 왼쪽**이 `Nothing was sent by this request…`로 말한다.
+  ⚠️ **사유는 문장이 아니라 사실(`code` + 상대 행 id)로 들고 번호는 렌더 때 센다** — 문장으로 굳히면 행을 지운 뒤
+  `Already in row 1`이 자기 자신을 가리킨다. 상대 행이 사라지면 중복 사유도 사라진다. 역할만 바꾸면 주소 사유는 남고
+  역할 충돌만 풀린다.
+- **바닥 왼쪽 상태 슬롯**은 `aria-live="polite"`이고 **13/1.6**이다(⚠️ 껍데기 기본 12를 이 모달만 덮는다 — 상태
+  문장이 두 줄까지 길어지는 유일한 바닥이다). 좌석 수 → `Sending invitations…` → `Nothing was sent…`을 한 자리에 쓴다.
+- **전송 중**은 입력·역할·제거·[Add another]·X·Esc·배경이 전부 잠긴다(`closeDisabled`). 주 버튼은 스피너 + 같은 라벨
+  (`loadingLabel`이 없다), 라벨은 수를 든다(`Send invitation` / `Send N invitations`, 0명이면 꺼진 `Send invitations`).
+- ⚠️ **제출 버튼이 바닥이라 `<form>` 바깥이다 → `form="invite-form"`으로 묶는다** (POSTMORTEM 2026-09-08).
+- ⚠️ **포커스 복귀가 `pending`에 물려 있다** (malmoi#64) — 행 오류는 첫 문제 행 이메일, 폼 Alert는 주 버튼.
+  `useTransition`의 pending이 응답 커밋에도 아직 true라 그때 `focus()`하면 무시된다.
+- **시각은 서버의 `retryAt`을 UTC로**(`retryAtLabel` — 분 단위로 **올린다**, 내리면 그 시각에 눌러 다시 막힌다).
+  캔버스의 `3:40 PM`은 라벨 없는 로컬 시각이라 리포 규칙(CLAUDE.md 날짜)에 진다.
+
+**캔버스와 다른 채 둔 것** (전부 프리미티브·리포 규칙이 이긴 자리다): 폼 Alert 본문 14(캔버스 13 — `Alert`
+프리미티브) · 꺼진 주 버튼 `bg-muted`+`--muted-foreground`(캔버스 `foreground/5`+`#a3a3a3` — §6.4 전역 규칙) ·
+destructive 글자 `#dc2626`(캔버스 `#b91c1c` — §2.3 토큰, 전 화면 공통) · 1280×720 패널 624(캔버스 576 — 껍데기의
+min/max 규칙, 내용이 많으면 상한까지 자란다).
+
+#### 대기 초대의 [Resend] (`1l`)
+
+- OWNER만(`member:manage`). 순서는 **역할 칩 → [Resend](`default`) → [Revoke](`danger`)**, 둘 다 **h36**
+  (캔버스 32 — 멤버 행 규칙에 맞춘 design §6 보정) · radius 10 · px 12. 모달·확인창이 없다.
+- 처리 중엔 **그 행의 두 버튼만** 잠긴다(`aria-busy`). ⚠️ **처리 중인 행을 집합으로 든다** — 값 하나면 두 행을
+  연달아 누를 때 먼저 끝난 응답이 다른 행의 잠금까지 푼다(`pending-resend.test.tsx`). 스피너는 `Button loading`의
+  형(스피너 + 라벨)이다 — 캔버스의 라벨 숨김 + 겹침은 2026-09-10 프리미티브 규칙에 진다.
+- 성공은 토스트 `Invitation resent to {label}` + 목록 갱신이고 포커스는 **카드 제목**이다(행이 새 초대로 바뀐다).
+- ⚠️ **실패·제한·미확인은 행이 아니라 카드 머리 아래 `Alert inset` 하나다** — Resend가 행을 새 초대로 바꾸므로
+  행에 매단 안내는 행과 함께 사라진다. 대상 라벨을 문장에 넣고, 목록이 갱신돼도 남고, X 또는 다음 Resend/Revoke에
+  지워진다. 사전 거부로 행이 남으면 포커스는 **그 [Resend]**로 돌아온다(실측).
 
 #### 그대로 남는 것
 
