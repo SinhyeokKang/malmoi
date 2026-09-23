@@ -19,10 +19,10 @@ import { render } from "./helpers/dom";
  * ⚠️ **`[Sync]`는 native `disabled`가 아니라 `aria-disabled`다** — Dialog가 닫힐 때 포커스를 되돌릴
  * 대상으로 남아야 한다(DESIGN §6.64). 그래서 이 파일은 두 버튼을 **다른 속성**으로 센다.
  */
-const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), pull: vi.fn(), refresh: vi.fn(), preview: vi.fn() }));
+const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), pull: vi.fn(), refresh: vi.fn(), preview: vi.fn(), unarchive: vi.fn() }));
 // ⚠️ 보관·재연결 Action까지 mock한다 — 호스트가 배너 액션으로 그 둘을 들고 오고, 실물 모듈은
 // `next-auth`를 통해 서버 전용 코드를 끌어온다.
-vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: vi.fn().mockResolvedValue(undefined), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: vi.fn().mockResolvedValue(undefined), archiveProject: vi.fn(), unarchiveProject: mocks.unarchive }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectRepository: vi.fn() }));
 vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
@@ -154,4 +154,22 @@ it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼�
   expect(locked(button("Try again"))).toBe(false);
   await click("Try again");
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+});
+
+/**
+ * **보관 배너의 복원 거부는 배너 안에 끼지 않는다** (audit #7 r1). ArchiveCard가 자기 아래에 Alert를 세우면 warning
+ * 배너의 `actions` 줄 안에 danger Alert(`role=alert`)가 중첩된다 — 경고 속 경고이고, `actions`의 좁은 flex에 눌린다.
+ * 배너가 사유를 받아 **자기 형제 자리**에 세운다.
+ */
+it("보관 배너에서 복원이 거부되면 사유 Alert가 배너 밖 형제로 선다", async () => {
+  mocks.unarchive.mockResolvedValue({ ok: false, error: "forbidden" });
+  const { m } = await import("@/lib/i18n");
+  await render(<HomeActions slug="acme"><HomeNotices {...props} state="archived" failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} /></HomeActions>);
+  await click("Restore project");
+  const failure = [...document.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(m.errors.access.forbidden));
+  expect(failure).toBeDefined();
+  const banner = [...document.querySelectorAll("div")].find(node => node !== failure && node.textContent?.startsWith(m.home.banner.archived.title));
+  expect(banner).toBeDefined();
+  expect(banner!.contains(failure!)).toBe(false);
+  expect(failure!.parentElement?.closest('[role="alert"], [role="status"]')).toBeNull();
 });

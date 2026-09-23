@@ -100,8 +100,11 @@ it.each([
   expect(editor.textContent).toContain(guidance);
 });
 
-/** 임포트 실패는 사유 문장이 역할과 무관하게 서고, `View details` 링크만 OWNER에게 간다. */
-it("임포트 실패: EDITOR에게는 링크 대신 담당자 안내", async () => {
+/**
+ * 임포트 실패는 사유 문장과 `View details`(Sources)가 역할과 무관하게 선다 (audit #6 r1 — 사용자 결정: Sources는
+ * `translation:write`라 EDITOR도 열어 사유를 읽는다). 재시도만 OWNER 전용이라 EDITOR에게 그 한 줄이 붙는다.
+ */
+it("임포트 실패: EDITOR도 Sources 링크를 받고 재시도는 소유자 몫이라는 한 줄이 붙는다", async () => {
   const over = { importError: "parse-failed" as const };
   const owner = await draw({ ...over, role: "OWNER" });
   // ⚠️ **상세·재시도가 사는 곳은 Sources다** (audit #6) — Settings에는 가져오기 실패에 관한 정보가 0이다.
@@ -109,8 +112,9 @@ it("임포트 실패: EDITOR에게는 링크 대신 담당자 안내", async () 
   expect(owner.textContent).toContain(m.projects.banner.checkDetails);
 
   const editor = await draw({ ...over, role: "EDITOR" });
-  expect(links(editor).some((a) => a.text === m.projects.banner.action.viewDetails)).toBe(false);
-  expect(editor.textContent).toContain(m.projects.importFailure.contactOwner);
+  expect(links(editor).find((a) => a.text === m.projects.banner.action.viewDetails)?.href).toBe("/projects/acme/sources");
+  expect(editor.textContent).toContain(m.projects.importFailure.ownerRetries);
+  expect(owner.textContent).not.toContain(m.projects.importFailure.ownerRetries);
   // 사유 자체는 둘 다 읽는다 — 무엇이 틀렸는지는 역할과 무관한 사실이다.
   expect(editor.textContent).toContain(m.projects.importFailure.parseFailed);
 });

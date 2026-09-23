@@ -6,7 +6,8 @@ import { render } from "./helpers/dom";
 /**
  * **가져오기 실패 안내는 Sources로 간다** (audit #6). 상세(사유·파일 오류)와 [Run first import]가 사는 곳이 Sources
  * 모달이고, Settings에는 가져오기 실패에 관한 정보가 0이다. EDITOR는 Settings에 들어갈 수 없어(`?e=forbidden`) 링크가
- * 곧 막다른 길이었다 — 링크 대신 담당자 안내 문장이다.
+ * 곧 막다른 길이었다. Sources는 EDITOR도 열 수 있으므로 같은 링크를 받고(r1 사용자 결정), 재시도가 OWNER 전용이라는
+ * 한 줄이 붙는다.
  */
 const nav = vi.hoisted(() => ({ redirect: vi.fn((to: string) => { throw new Error(`redirect:${to}`); }) }));
 vi.mock("next/navigation", () => ({ redirect: nav.redirect, useRouter: () => ({ push: vi.fn() }) }));
@@ -29,11 +30,13 @@ it("OWNER의 Home 가져오기 실패 항목은 Sources로 간다", async () => 
   expect(hrefs).toEqual(["/projects/acme/sources"]);
 });
 
-it("EDITOR의 같은 항목은 링크가 아니라 담당자 안내다 — 사실(어느 표면이 실패했나)은 그대로 읽힌다", async () => {
+it("EDITOR의 같은 항목도 Sources로 가고, 재시도는 소유자 몫이라는 한 줄이 붙는다", async () => {
   const { container } = await card("EDITOR");
-  expect(container.querySelectorAll("a")).toHaveLength(0);
+  expect([...container.querySelectorAll("a")].map(a => a.getAttribute("href"))).toEqual(["/projects/acme/sources"]);
   expect(container.textContent).toContain(m.home.attention.importFailed.title("web"));
-  expect(container.textContent).toContain(m.projects.importFailure.contactOwner);
+  expect(container.textContent).toContain(m.projects.importFailure.ownerRetries);
+  const owner = await card("OWNER");
+  expect(owner.container.textContent).not.toContain(m.projects.importFailure.ownerRetries);
 });
 
 it("첫 적재 전 OWNER는 Sources로, 연결 전 OWNER는 Settings로 간다 — EDITOR는 이동하지 않는다", async () => {
