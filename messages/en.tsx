@@ -311,9 +311,8 @@ export const en = {
     privacy: {
       title: "Privacy Policy",
       /**
-       * ⚠️ **본문을 고치면 `effectiveDate`를 같이 옮긴다.** 지금 그것을 강제하는 것은 이 주석뿐이다 —
-       * 본문 해시 ↔ 개정 이력 게이트는 `docs/features/privacy/tasks.md` P4이고 **아직 없다.**
-       * 그래서 `changes` 절도 그 게이트를 말하지 않는다: 없는 통제를 공표하지 않는다.
+       * ⚠️ **본문을 고치면 `effectiveDate`를 같이 옮긴다** — `lib/privacy/__tests__/policy-gate.test.tsx`가
+       * 본문 해시를 개정 이력(`REVISIONS`)과 대조해 red를 낸다. 새 행에 날짜를 쓰고, `changes` 절에도 적는다.
        * ⚠️ **절 `id`는 URL 조각이다** — 제목 문구를 고쳐도 `id`는 따라 고치지 않는다.
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
