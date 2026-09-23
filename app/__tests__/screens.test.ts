@@ -285,6 +285,16 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
     expect(read(LOGS)).not.toContain('className="contents"');
   });
 
+  /**
+   * ⚠️ **`text-link`는 테마에 없는 클래스다** (2026-09-23 실측) — Tailwind가 조용히 버려 링크가 본문과 같은
+   * 검정 글자로 섰다. 인라인 링크 색은 `text-blue-600`(Button `link`와 같은 값)이다.
+   */
+  it("정의되지 않은 `text-link` 클래스를 쓰지 않는다", () => {
+    for (const path of ["components/settings/ci-card.tsx", "components/sources/source-detail-modal.tsx", "components/sources/sources-screen.tsx"]) {
+      expect(read(path), path).not.toContain("text-link");
+    }
+  });
+
   it("`translation:write` 화면 전부가 `ProjectArchived`를 반환한다", () => {
     for (const path of SITES) {
       const src = read(path);

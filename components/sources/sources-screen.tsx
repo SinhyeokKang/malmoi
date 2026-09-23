@@ -84,7 +84,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
                 {index > 0 && ", "}<span className={source.failed > 0 ? "text-destructive" : undefined}>{source.surfaceSlug}</span> {source.failed > 0 ? m.sources.addedFailed : m.sources.addedOne(source.count)}
               </Fragment>)}.</p>
               <p className="text-muted-foreground text-xs">{m.sources.resultKeep}</p>
-              <p className="text-muted-foreground text-xs">{m.sources.workflow} <Link className="text-link" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></p></>}
+              <p className="text-muted-foreground text-xs">{m.sources.workflow} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></p></>}
           </div>
           <Button variant="ghost" aria-label={m.common.close} className="hover:bg-foreground/5 size-7 shrink-0 rounded-full px-0" onClick={() => setResult(null)}><X className="size-4" aria-hidden /></Button>
         </div>}

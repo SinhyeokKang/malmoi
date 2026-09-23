@@ -2457,7 +2457,7 @@ export const en = {
       description: "Choose locale files from your repository. Existing sources stay selected.",
       selectHelp: "Select at least one new source to add.",
     },
-    ci: { description: "Your workflow pushes source strings into malmoi on every merge.", title: "CI integration", workflow: "Workflow file", open: "View workflow", stale: "Some sources have not been imported yet. Check that the workflow includes them." },
+    ci: { description: "Your workflow pushes source strings into malmoi on every merge.", title: "CI integration", workflow: "Workflow file", sourcesLead: "One workflow covers every source. Add or change sources in", open: "View workflow", stale: "Some sources have not been imported yet. Check that the workflow includes them." },
     archivedReason: "Restore this project to change its settings.",
     recovery: "Syncs keep running. Manage your GitHub authorization in account settings to reconnect this repository or add sources.",
     accountLink: "Account settings",
