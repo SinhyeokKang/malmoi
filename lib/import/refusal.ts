@@ -44,8 +44,11 @@ export type ImportRefusalPlan = {
   tone: "info" | "warning" | "danger";
   /** ⚠️ 닫아도 같은 버튼이 같은 거부를 반복하는 갈래에는 닫기를 주지 않는다. */
   dismissible: boolean;
-  /** 고칠 자리로 보내는 링크. 표면 추가·포맷 수정은 이 Alert가 보낼 곳이 아니다(액션이 둘이 된다). */
-  action: "settings" | "reconnect" | null;
+  /**
+   * 고칠 자리로 보내는 링크. 표면 추가·포맷 수정은 이 Alert가 보낼 곳이 아니다(액션이 둘이 된다).
+   * `sign-in`은 **새 탭**의 로그인이다 — 같은 화면의 편집자 세션 Alert와 같은 형이라 이 탭(번역 화면의 draft)을 떠나지 않는다.
+   */
+  action: "settings" | "reconnect" | "sign-in" | null;
 };
 
 const PLANS: Partial<Record<string, ImportRefusalPlan>> = {
@@ -83,13 +86,19 @@ const PLANS: Partial<Record<string, ImportRefusalPlan>> = {
    * 것이라 액션 버튼도 두지 않는다(보낼 곳이 자기 자신이면 버튼이 둘로 보인다).
    */
   "ingest-failed": { tone: "danger", dismissible: true, action: null },
+  /**
+   * ⚠️ **세션 만료는 막다른 길이 아니다** (QA D2 — 2026-09-24). `AccessError` 폴백에 두면 닫기도 액션도 없는 danger가
+   * 고정됐다. 다시 로그인하면 같은 버튼이 다른 답을 내므로 **닫을 수 있고**, 갈 곳은 로그인이다. tone은 그대로 danger다 —
+   * Sync가 안 됐다는 사실이 불변식 9 계열이다.
+   */
+  "unauthorized": { tone: "danger", dismissible: true, action: "sign-in" },
   "unavailable": { tone: "danger", dismissible: true, action: null },
 };
 
 /**
  * ⚠️ **모르는 값은 warning으로 떨어진다** — `danger`로 떨어뜨리면 기다리면 풀리는 장애가 최종
  * 실패처럼 보이고, `info`로 떨어뜨리면 버린 값이 성공처럼 보인다(ARCHITECTURE §0 불변식 9).
- * `AccessError`만 갈래를 알아 danger로 올린다 — 세션 만료·인가 거부는 이 화면에서 풀리지 않는다.
+ * `AccessError`만 갈래를 알아 danger로 올린다 — 인가 거부는 이 화면에서 풀리지 않는다(세션 만료는 위 `PLANS`가 먼저 든다).
  */
 export function planImportRefusal(error: RepositoryImportError): ImportRefusalPlan {
   // 남이 정한 키가 아니라 서버 union이지만, 프로토타입에서 찾아진 값이 계획으로 읽히지 않게 막는다.

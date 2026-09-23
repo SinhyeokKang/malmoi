@@ -122,8 +122,10 @@ export const en = {
     /** ⚠️ 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (DESIGN §6.644) — 셋 이상이면 헤드라인이 무너진다. */
     cause: (surface: ReactNode, reason: string): ReactNode => <>{surface} — {reason}</>,
     failedTitle: "Sync could not finish",
-    /** 거부 Alert의 액션 둘. 다른 구역(`archive.empty` · `settings.repository`)에서 빌려 오지 않는다. */
+    /** 거부 Alert의 액션 셋(아래 `signIn` 포함). 다른 구역(`archive.empty` · `settings.repository`)에서 빌려 오지 않는다. */
     openSettings: "Open settings",
+    /** 세션이 끝난 거부의 액션 (QA D2) — 편집자 세션 Alert의 `Sign in`과 같은 낱말이다. */
+    signIn: "Sign in",
     reconnect: "Reconnect",
     /**
      * **`Alert`의 어느 자리에 서는지가 구두점을 정한다.** 앞의 셋은 표면별 사고의 **원인 줄**(본문이라
@@ -159,6 +161,11 @@ export const en = {
        * 전용인데 **덮는 union보다 문장이 더 구체적**이라 거짓이 됐다. 단계를 말하지 않으면 전부 참이다.
        */
       "ingest-failed": "The sync didn't go through",
+      /**
+       * ⚠️ **공용 `access.unauthorized`를 빌리지 않는다** (QA D2) — 그 꼬리 "to save your work"는 편집 화면의 문장이고
+       * `[Sync]`에는 저장할 입력이 없다. 제목 자리라 마침표가 없다(DESIGN §10). 다음 행동은 옆의 [Sign in]이 든다.
+       */
+      "unauthorized": "Your session ended — nothing was synced. Sign in, then sync again",
       "unavailable": "The sync didn't go through",
       /**
        * ⚠️ **[Reconnect]를 붙이지 않는다** (DESIGN §6.2 · 2026-09-10 sec-audit-2 발견 34) — 리포는

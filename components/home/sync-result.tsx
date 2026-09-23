@@ -3,7 +3,7 @@
 import { RotateCcw } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink, buttonClass } from "@/components/ui/button";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
@@ -57,8 +57,14 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
     const refusal = planImportRefusal(outcome.error);
     return <Alert variant={refusal.tone} role="status" title={reasonMessage(outcome.error)}
       onDismiss={refusal.dismissible ? onDismiss : undefined}
-      actions={refusal.action === null ? undefined :
-        <ButtonLink href={routes.settings(slug)}>{refusal.action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;
+      actions={refusal.action === null ? undefined
+        /*
+          ⚠️ **로그인은 새 탭이다** (QA D2) — 같은 화면의 편집자 세션 Alert와 같은 형. 이 탭을 떠나면 번역 화면의 draft가
+          함께 사라진다. `ButtonLink`는 `next/link`라 `target`을 안 받아 `<a>` + `buttonClass()`다(DESIGN §6.3).
+        */
+        : refusal.action === "sign-in"
+          ? <a href={routes.signIn()} target="_blank" rel="noreferrer" className={buttonClass()}>{m.repositorySync.signIn}</a>
+          : <ButtonLink href={routes.settings(slug)}>{refusal.action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;
   }
   const summary = summarizeImport(outcome.surfaces);
   /*
