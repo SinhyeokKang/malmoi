@@ -117,7 +117,7 @@ describe("#20 초대 철회는 확인을 받는다", () => {
     await click(byLabel(m.members.pending.revokeLabel("t***@example.com")));
     await click(inDialog(m.members.pending.confirmRevokeAction));
     expect(alertText()).not.toContain("invite link");
-    expect(alertText()).toContain(m.members.pending.revokeGone("t***@example.com"));
+    expect(alertText()).toContain(m.members.pending.gone("t***@example.com"));
   });
 
   it("모르는 거부 코드를 문장에 끼우지 않는다 (#21)", async () => {

@@ -220,7 +220,11 @@ export function MemberList({
                   <Button variant="default">{m.members.cancel}</Button>
                 </DialogClose>
                 <DialogClose asChild>
-                  <Button variant="primary" onClick={() => apply(roleChange.userId, roleChange.next, roleChange.who)}>
+                  {/* 자기 강등은 본인에게 되돌릴 수 없다 — danger다. 남의 변경은 되돌릴 수 있어 primary로 둔다 (r1). */}
+                  <Button
+                    variant={roleChange.userId === viewerId && roleChange.next !== "OWNER" ? "danger" : "primary"}
+                    onClick={() => apply(roleChange.userId, roleChange.next, roleChange.who)}
+                  >
                     {m.members.confirmRoleAction}
                   </Button>
                 </DialogClose>

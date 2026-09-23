@@ -212,7 +212,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
         {/*
           ⚠️ **권유는 링크이고 확인 버튼과 두 축으로 떨어진다** — 누르면 다른 라우트로 떠나므로 바닥
           오른쪽(= 이 질문에 답하는 자리)에 서면 세 번째 답으로 읽힌다.
-          ⚠️ 미발송이 0이면 `Send changes first`가 **거짓**이라 열린 PR 링크로 갈린다 (시안 `4c` 오른쪽).
+          ⚠️ 미발송이 0이면 `Publish first`가 **거짓**이라 열린 PR 링크로 갈린다 (시안 `4c` 오른쪽).
           조회 중·실패(`undefined`)에는 권할 다음 행동이 없어 줄 자체가 없다 (`4d`).
         */}
         {plan.recommendSend

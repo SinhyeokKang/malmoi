@@ -91,9 +91,9 @@ export const en = {
      * 링크가 앱 안(번역 화면)으로 간다는 것을 **문장이** 말한다. 2026-09-18에 외부 링크도 글리프를
      * 버려서 모양으로는 안팎이 안 갈린다 — 목적지를 알리는 몫이 전부 이 문장에 있다.
      */
-    sendHint: (link: ReactNode): ReactNode => <>To keep them, {link} — the Publish button is on the translation screen.</>,
+    sendHint: (link: ReactNode): ReactNode => <>To keep them, {link} — it opens the translation screen.</>,
     /**
-     * 미발송 0 ∧ 열린 PR — `Send changes first`가 **거짓이 되는** 갈래다 (시안 `4c` 오른쪽).
+     * 미발송 0 ∧ 열린 PR — `Publish first`가 **거짓이 되는** 갈래다 (시안 `4c` 오른쪽).
      * 링크만 두면 권유가 왜 바뀌었는지가 화면에 없어 문장을 함께 둔다.
      */
     nothingUnsent: "Nothing is waiting to be sent.",
@@ -135,7 +135,8 @@ export const en = {
     errors: {
       "invalid-format": "This source has no valid file format.",
       "superseded": "New repository data arrived while syncing. This source was not replaced. Try again if needed.",
-      "lease-lost": "Another sync took over this source. Wait for it to finish before trying again.",
+      // ⚠️ **원인을 단언하지 않는다** (r1) — lease 상실은 다른 실행만이 아니라 만료·권한 상실·보관·소스 삭제도 덮는다(`lib/import/apply-plan.ts`).
+      "lease-lost": "This sync stopped before it could replace this source. Refresh to see the current state before trying again.",
       "not-ready": "This project hasn't finished its first sync yet",
       "not-connected": "malmoi is not connected to this repository",
       "already-running": "A sync is already running",
@@ -1173,7 +1174,7 @@ export const en = {
        * 시작 버튼 옆에 있어야 한다.
        */
       description:
-        "Connect a repository and malmoi will find the translation files for you — nothing is written back until you publish. Invited to someone else's project? Open the link in your invitation email.",
+        "Connect a repository and malmoi will find the translation files for you — it only writes back by opening a pull request. Invited to someone else's project? Open the link in your invitation email.",
     },
     /**
      * 큐 넷의 제목.
@@ -1987,7 +1988,7 @@ export const en = {
        */
       basePending: (locale: string): string =>
         `The base language is changing to ${locale}. ` +
-        "Publish your changes now — the sync that switches it overwrites translations that haven't been published.",
+        "It switches on the next sync from the repository — syncs wait while changes are unpublished, so publish them first.",
     },
 
     empty: {
@@ -2165,7 +2166,7 @@ export const en = {
       failedAt: "Failed at",
       reference: "Reference",
       /** ⚠️ **`Reference`가 없는 갈래에서는 이 줄도 빠진다** — 그 다섯은 실행 행 자체가 안 생긴다. */
-      sendReference: "Not a project owner? Send one the reference above \u2014 it is in Logs too.",
+      sendReference: "Not a project owner? Share the reference above with one \u2014 it is in Logs too.",
       settings: "Open settings",
       signIn: "Sign in",
 
@@ -2193,7 +2194,8 @@ export const en = {
        * 코드도 사전 문장도 없는 거부 (audit #21). 전엔 원문을 그대로 보이고, `invalid input`은 권한 없음으로 오역했다 —
        * 그 거부는 슬러그가 깨진 것이라 권한과 무관하다.
        */
-      refused: "Publishing couldn't start. Refresh the page and try again.",
+      // ⚠️ **"try again"을 쓰지 않는다** (r1) — 같은 모달의 Alert 제목이 `wontHelp`("Trying again won't help")다.
+      refused: "Publishing couldn't start. Open this project again from your project list.",
       unknownDelivery: "We couldn't confirm whether your changes were sent.",
 
       /** `1j` — 행조차 생기지 않는 거부 둘. 폭 512이고 danger가 아니다. */
@@ -2264,7 +2266,7 @@ export const en = {
     emptyTitle: "No sources yet",
     emptyOwner: "Add the files that hold your strings, and malmoi will read them from your base branch. Keys and languages appear here after the first sync.",
     emptyEditor: "A project owner adds the translation files. Nothing to translate until then — you will see the languages here once the first sync lands.",
-    ownerOnly: "Only a project owner can add sources.",
+    ownerOnly: "Only project owners can add sources.",
     askOwner: "Ask a project owner to run the first sync.",
     reconnectOwner: "Reconnect the repository in Settings, then try again.",
     reconnectEditor: "Ask a project owner to reconnect the repository.",
@@ -2526,7 +2528,11 @@ export const en = {
         `Couldn't resend to ${who}: this project has created ${limit.toLocaleString("en-US")} invitations in the last hour. You can resend after ${time}.`,
       resendUnconfirmed: (who: string): string => `We couldn't confirm the email to ${who}. It may have been sent — Resend again replaces that link.`,
       resendUnavailable: (who: string): string => `Couldn't resend to ${who}. Email is unavailable right now. Try again later.`,
-      resendGone: (who: string): string => `The invitation to ${who} is no longer pending.`,
+      /**
+       * 이미 없는 초대 — **Resend·Revoke가 같은 문장을 쓴다**. ⚠️ **`accessErrorMessage("not-found")`로 떨어뜨리지 않는다**
+       * (audit #22) — 그 문장은 초대받은 사람에게 "Check your invite link"라고 말하는데 여기서 읽는 사람은 OWNER다.
+       */
+      gone: (who: string): string => `The invitation to ${who} is no longer pending.`,
       /** ⚠️ 사유 원문을 받지 않는다 (audit #21). */
       resendError: (who: string): string => `Couldn't resend the invitation to ${who}. Refresh the page and try again.`,
       revoke: "Revoke",
@@ -2535,11 +2541,6 @@ export const en = {
       revoked: (who: string): string => `Revoked the invitation for ${who}`,
       /** ⚠️ 사유 원문을 받지 않는다 (audit #21). */
       revokeFailed: "We couldn't revoke that invitation. Refresh the page and try again.",
-      /**
-       * 이미 없는 초대 (audit #22). ⚠️ **`accessErrorMessage("not-found")`로 떨어뜨리지 않는다** — 그 문장은
-       * 초대받은 사람에게 "Check your invite link"라고 말하는데 여기서 읽는 사람은 OWNER다.
-       */
-      revokeGone: (who: string): string => `The invitation to ${who} is no longer pending.`,
       /** 확인 (audit #20) — 링크가 즉시 죽고 되돌릴 수 없다. 확정 라벨은 트리거(`Revoke`)와 달라야 한다. */
       confirmRevoke: (who: string): string => `Revoke the invitation for ${who}?`,
       confirmRevokeHint: "The link stops working right away. You can invite the same address again.",
