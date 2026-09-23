@@ -15,11 +15,15 @@
    ⚠️ **미전달 편집을 버리는 길이 둘이다 — (translation-rework, 2026-09-23 · 프로덕션, #71)** — 수동 Sync(리포 값으로 덮는다)와
    **`Revert to last sent`**(키 하나의 미전달 셀을 **마지막으로 전달 확인된 DB 값**으로 되돌린다). 둘 다 OWNER 전용이고 서버가 발급한
    지문을 되돌려 받을 때만 열린다. Revert가 풀어 준 셀도 미전달이 아니게 되므로 CI 보류를 푸는 셋째 경로가 된다. §5.8.
+   ⚠️ **Publish가 보내지 못한 셀도 유예를 잇는다** (2026-09-24, delivery-invariants) — 비-base 로케일 파일이 base에 없거나 ts-dict
+   로케일 객체에 그 키의 자리가 없으면 그 셀은 **보류**되어 토큰이 남는다(§3). 풀리는 길은 파일 복구 뒤 Publish · Revert · 폐기 승인 Sync다.
 2. push 시점 외에는 리포 값과 DB 값을 비교해 **승자를 고르지 않는다**.
    ⚠️ **Revert도 이 불변식 안에 선다 (§5.8)** — 복원값은 전달 확인 시점의 **DB export 입력**에서 유도한 스냅샷이고,
    현재 리포를 읽어 고르지 않는다. "옛 DB 값과 새 리포 값 중 고르는" Sync 되돌리기는 여전히 만들지 않는다(PRODUCT §3).
 3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다. **코드에서 번역을 지우는 방법은 없다** — 지우려면
    UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
+   ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
+   저장이 `cannot-clear`로 거부한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
 4. 같은 DB 상태와 같은 원본 구조는 **같은 바이트**를 만든다.
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
    표면 데이터는 그 뒤 **`surfaceId`로도 제한**한다. 역할·리포·push 토큰·SyncRun·Publish는 Project가,
@@ -35,6 +39,9 @@
 9. **버린 값을 성공으로 숨기지 않는다** — 실패한 sync는 마지막 성공 상태를 전진시키지 않는다.
    ⚠️ **전달 기준도 같다 (§5.8)** — Publish는 첫 외부 쓰기 **전에** 그 소스의 전달 확인을 무효화하고, 성공 확정 tx에서만
    다시 세운다. 실패·결과 미확인·FAILED 종료는 옛 기준을 되살리지 않는다.
+   ⚠️ **실리지 않은 셀은 확인하지 않는다** (2026-09-24, delivery-invariants D3·D4) — pull은 렌더 출력의 좌표(파일 부재·키 자리 없음)로
+   못 실은 셀을 가려 그 토큰을 남기고, 결과가 그 수(`withheld`)를 말한다. 전에는 수술적 writer가 조용히 건너뛴 셀(비운 셀·ts-dict의
+   빈 자리)의 토큰까지 해제해 "보냈다"가 거짓이었다.
    ⚠️ **화면에 닿는 것까지가 이 불변식이다** (2026-09-07 추가, POSTMORTEM 2026-09-07): Server Action의
    결과를 인라인으로 보이는 컴포넌트는 **그 Action의 `revalidatePath`가 바꾸는 조건부 분기 안에 있어서는
    안 된다.** 실제로 `revalidatePath`가 readiness를 `ready`로 바꾸자 재시도 컴포넌트를 감싼 분기가 거짓이
@@ -649,6 +656,16 @@ backfill은 토큰을 더하기만 하므로 못 지운다. ⚠️ 해제 UPDATE
 
 ⚠️ **writer 경고가 있으면 GitHub에 쓰기 전에 멈춘다** (2026-09-18, sync-edit-protection T10 — 2026-09-04 결정의 반전). 렌더 뒤·2층 비교 전에 **판정과 껍데기가 갈린다**: 순수 판정 `planProtectedPublish`(`lib/protection/plan.ts`)가 `{ action: "reject", reason: "writer-warnings" }`를 내고, 그것을 `PullResult`의 `skipped/writer-warnings`로 접는 것은 `lib/pull/run.ts`다 — `lastPulledAt`도 토큰도 쓰지 않는다. ⚠️ **같은 디렉터리의 적재 쪽 이름은 `planProtectedPush`가 아니다**: 판정이 `planProtectedImport`, 그것을 잠금·트랜잭션으로 감싸는 껍데기가 `applyProtectedPush`(`lib/push/apply.ts`)다. 전에는 경고를 커밋·스킵 결과에 실어 보냈는데, 그러면 **버린 값의 편집 토큰까지 전달 확인으로 비워져** 보내지 않은 편집을 보냈다고 기록한다. 경고는 `PullResult`의 그 갈래에만 있다(`committed`·`no-changes`에 자리가 없다). **대가**: `missingOriginal`처럼 **지속 상태**인 경고는 사람이 해소할 때까지 매 밤 트리·blob을 다시 읽는다 — 1층이 토큰으로 판정하므로 미전달 편집이 없는 프로젝트는 여전히 GitHub을 안 부른다. `lib/pull/trigger.ts`가 `console.warn`으로도 낸다.
 
+⚠️ **좌표가 정확한 두 부류는 거부가 아니라 보류다** (2026-09-24, delivery-invariants D3 — `lib/pull/undeliverable.ts`). 수술적 per-locale 표면의
+**비-base** `original-file-missing`과 `write-slot-missing`(ts-dict가 로케일 객체에 자리가 없는 wanted 키를 보고한다 — D4)은 `blockingErrors`에서
+빠지고 `withheldCoordinates`가 된다. 그 좌표의 캡처 편집은 전달 확인에서 빠지고(`splitEdits` — 토큰 유지) 나머지는 Publish한다. 결과는
+`committed.delivered`(실린 수)와 `withheld: { file, key }`를 들고, 실린 0 + 보류만이면 `skipped/withheld`로 **쓰기도 확인도 없다**.
+**base 파일 부재는 여전히 reject다** — 사실상 경로 이동·설정 오류이고, 보류로 넘기면 전 셀이 빠져 문제가 가려진다. `deliveryContexts`는
+좁히지 않는다(§5.8 — 좁히면 표면 전체의 Revert가 막힌다). ⚠️ **ts-dict는 키가 그 파일 것인지를 같은 파일의 다른 로케일 객체로 판정한다** —
+렌더가 네임스페이스 파일마다 표면 전체 키를 넘기므로 "이 객체에 없다"만으로 보고하면 다른 파일 키 전부가 보류된다. 같은 이유로 비리터럴
+보고도 wanted 키로 좁힌다(감사 #4 — 무관한 `b: someFn` 하나가 파일 전체 Publish를 막았다). ⚠️ **code-dict의 `write-slot-missing`(구조상 삽입
+포기)도 같은 분류를 탄다** — 좌표가 정확해서다. **대가**: 보류가 남으면 1층이 매 실행 트리를 읽고 CI 적재가 계속 `deferred`다.
+
 ⚠️ **2층 동등(`no-changes`)의 전달 확인은 기존 no-op 탐지의 토큰판이다** — 값을 고르지 않고 "렌더 결과가 base와 같다"만 본다(§0 불변식 2 안). 원복한 편집이 이 경로로 끝나므로 이것을 없애면 그 편집이 영영 pending이라 CI가 영구 보류된다.
 
 ### 함정
@@ -1112,6 +1129,24 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ⚠️ **"지우려면 UI에서 비운다"는 재생성 어댑터(`chrome-locales`·`json-catalog`)에서만 참이다** (2026-09-18, launch-readiness L1.3 흡수). 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 빈 값으로 치환하지 않으므로(§1.4) UI에서 비운 셀의 **원본 값이 파일에 남고**, 머지 뒤 push가 그 값을 DB로 되돌린다. 코드에서 지워도 위 규칙대로 DB 값이 남아 다음 pull이 되살린다 — **그 방식에는 번역을 지우는 길이 아직 없다.** 같은 결정의 두 면이고 여는 수단도 같다(명시적 빈값 export). 검증은 `lib/keys/__tests__/push-absent-cells.integration.ts`(적재 쪽 네 갈래 + 뒤이은 pull)다.
 
+⚠️ **그래서 수술적 표면의 비-base 비우기는 저장 단계에서 거부한다** (2026-09-24, delivery-invariants D2 · 감사 #2). 전에는 저장은 되고 pull이
+그 토큰을 전달 확인으로 해제해 "보냈다"가 거짓이었다. `planClearability`가 **정규화 뒤** 값으로 판정하고(공백만의 입력도 걸린다) 거부 단위는
+키 전체다(`cannot-clear` — 아무것도 저장되지 않는다). Revert의 `""` 복원은 이 판정을 지나지 않는다 — 원래 비어 있던 셀의 정당한 복원이다.
+
+**폐기 승인 Sync는 이번 적재로 orphan이 된 승인 셀의 토큰을 비운다** (2026-09-24, delivery-invariants D1 · 감사 #1). upsert는 페이로드에 없는
+셀에 안 닿아서, 승인한 Sync가 떨어뜨린 키·로케일의 셀에 토큰이 남았다 — `pendingWhere`가 orphan을 빼므로 화면 어디에도 0이다가 그 키가 되살아나면
+CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복했다. `finishSurface`의 `payload`·`empty` 갈래(적재 확정)에서만 돈다. 빈 값·실패 파일
+승인 셀은 그대로 남아 `remainingEdits`로 보인다 — 리포에 값이 없던 셀의 편집값을 pending 아닌 채 남기면 다른 Publish에 조용히 실린다.
+⚠️ **배포 전 잔존 유령 토큰은 이 문장이 못 푼다**(승인 집합이 `pendingWhere` 기준이라 이미 orphan인 셀을 뺀다 — 2026-09-24 실측 0).
+
+**비-base 셀은 이번 페이로드의 base 키 집합으로 거른다** (2026-09-24, delivery-invariants D5 · 감사 #58). `idByKey`에 기존 orphan 키가 들어 있어
+비-base 파일에만 남은 orphan 키의 셀이 덮이고 저자가 비고 행이 INSERT됐다. refs 매핑은 그대로 `idByKey`를 쓴다 — 코드가 아직 참조하는 orphan
+키의 사용처는 메타데이터라 적재 값이 아니다.
+
+**수동 Sync는 다운로드 실패 로케일을 재탐지 목록에 되살린다** (2026-09-24, delivery-invariants D6 · 감사 #59). 재탐지가 첫 다운로드분만 보고
+재시도는 blob만 채워서, fr blob 한 번의 일시 실패가 fr을 `payload.locales`에서 빼 orphan시켰다. `localesToKeep`이 트리의 템플릿 경로에서 로케일을
+다시 얻는다 — 끝내 못 읽은 로케일은 번역 없이 남고 `partial-import`가 말한다.
+
 **따라서 `Translation.value`의 쓰기 주체는 둘이다**: 편집 UI(키 단위 저장 `saveTranslationKey`, 그리고 같은 편집 UI의 명시적 복원 명령 `revertTranslationKey` — 스냅샷이 지정한 값을 쓰는 것이지 판정이 아니다, §5.8)와 push. 셋째가 생기면 어느 쪽이 이기는지 다시 판정해야 하므로 늘리지 않는다.
 
 ### 5.5.3 보고값은 실제 영향 행수다
@@ -1327,6 +1362,10 @@ Action이고 인가는 **`translation:write`**다 — 기존 `checkOpenPullReque
 ⚠️ **pull이 안 쓰는 셀을 약속하지 않는다** (2026-09-18, L3.7). 수술적 per-locale 어댑터는 원본 파일이 base에 없으면 그 로케일을
 안 낸다(`render.ts`의 `original-file-missing`) — 미리보기는 그 셀을 표에서 빼고 `withoutFile`로 센다. **막지 않는다**: 막으면 파일
 하나 빠진 프로젝트의 Publish가 통째로 멈춘다. `truncated`는 상한 때문에 조회하지 않은 행만이라 두 수가 섞이지 않는다.
+⚠️ **실행과 같은 판정이다** (2026-09-24, delivery-invariants D3). 실행은 그 셀을 보류하고(`withheld.file`) 나머지를 보낸다 — 전에는 미리보기만
+"나머지는 나간다"고 하고 실행은 `writer-warnings`로 전체를 거부했다. ts-dict 자리 없는 키는 `withoutKey`(= `withheld.key`)다. **base 파일
+부재는 실행이 거부하므로 미리보기도 `Preview base file missing`으로 막는다.** ⚠️ **두 수가 같은 것은 pending 200행(`PREVIEW_LIMIT`) 이하에서만이다** —
+상한을 넘으면 `truncated`와 같이 읽힌다.
 
 ### 5.6.4 보관은 인가 union의 갈래 하나다
 
@@ -1475,8 +1514,12 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 - **기준 행은 미전달 셀에만 있다.** 매 Publish에 활성 키×언어 전부를 쓰는 조밀 설계는 T1 실측으로 폐기했다 —
   20,000키×200언어 = 4.26M 행이 로컬 upsert 42초 · dev Supabase 추정 ~135초 · 580MB라 `maxDuration 60`과 무료 500MB를 둘 다 넘는다.
 - **소스별 전달 확인 레코드**(revision · confirmedAt · syncRunId · context · invalidatedAt)가 유효하면 "미전달이 아닌 활성 셀의 현재 값 =
-  마지막 확인된 export 값"이 성립한다. 그 등식을 깨는 쓰기는 셋뿐이다 — strict 적재(레코드 무효화) · Save(셀을 미전달로 만든다) ·
-  Revert(기준값으로 되돌리며 미전달을 푼다). 키·언어의 추가·부활은 적재로만 일어나므로 무효화에 포함된다.
+  마지막 확인된 export 값"이 성립한다. 그 등식을 깨는 쓰기는 넷이다 — strict 적재(레코드 무효화) · Save(셀을 미전달로 만든다) ·
+  Revert(기준값으로 되돌리며 미전달을 푼다) · 폐기 승인 Sync의 orphan 셀 토큰 해제(delivery-invariants D1 — 같은 tx의 `importRevision` 증가가
+  확인을 이미 무효화하므로 드러나 깨지지는 않는다).
+- ⚠️ **보류 셀의 기준은 새 revision으로 다시 찍는다** (2026-09-24, delivery-invariants D3). 보류가 있는 Publish도 표면 확인은 새 revision으로
+  쓰고, 보류 셀 중 **기준 행이 이미 있는 셀**의 `revision`만 갱신한다(`restoreValue` 불변 · 없는 행은 만들지 않는다 — 그 셀은 원래 unknown이다).
+  안 하면 기준이 옛 revision이라 Revert가 `baseline-stale`로 막혀 보류를 푸는 길 하나가 닫힌다. 보류 셀은 pending이라 위 등식에 걸리지 않는다. 키·언어의 추가·부활은 적재로만 일어나므로 무효화에 포함된다.
 - **Save**가 미전달이 아닌 셀을 바꾸는 순간 같은 tx에서 직전 값을 export 폴백(`buildWriteEntries`: base 결측·빈값 → 원문, 비-base → `""`)으로
   유도해 기록한다. 레코드가 무효이거나 Publish가 진행 중이면 기록하지 않는다 — 그 셀은 unknown이고 Revert가 막힌다.
 - **무효화는 두 장치다.** ① 적재(strict push·수동 Sync)는 **증가만 하는 `importRevision`**이 context 지문(`lib/translations/context.ts`)을 바꿔 무효화한다 —
