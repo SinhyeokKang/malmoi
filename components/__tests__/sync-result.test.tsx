@@ -185,3 +185,21 @@ it("[C4][C10] 남은 편집이 있으면 두 줄 warning이고 브랜치 헤드�
   expect(lines(container)).toBe(2);
   expect(container.querySelector(".border-amber-200")).not.toBeNull();
 });
+
+/**
+ * **세션이 끝난 Sync 거부는 막다른 길이 아니다** (QA D2). 전엔 공용 접근 문장 *"Sign in again to save your work."*
+ * (Sync엔 저장할 입력이 없다)에 닫기도 로그인도 없었다. Home과 번역 화면이 이 한 컴포넌트를 쓰므로 여기서 고정한다.
+ * [Sign in]은 **새 탭**이다 — 같은 화면의 편집자 세션 Alert와 같은 형(이 탭의 draft·화면을 떠나지 않는다).
+ */
+it("unauthorized 거부는 Sync 문장 + 새 탭 [Sign in] + 닫기를 든다", async () => {
+  const { m } = await import("@/lib/i18n");
+  const onDismiss = vi.fn();
+  const { container } = await render(<SyncResult {...props} onDismiss={onDismiss} outcome={{ ok: false, error: "unauthorized" }} />);
+  const text = container.textContent ?? "";
+  expect(text).toContain(m.repositorySync.errors.unauthorized);
+  expect(text).not.toContain("save your work");
+  const signIn = [...container.querySelectorAll("a")].find(a => a.textContent?.trim() === m.repositorySync.signIn);
+  expect(signIn?.getAttribute("href")).toBe("/signin");
+  expect(signIn?.getAttribute("target")).toBe("_blank");
+  expect(container.querySelector('button[aria-label="Dismiss"]')).not.toBeNull();
+});

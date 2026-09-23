@@ -34,8 +34,16 @@ describe("planImportRefusal", () => {
   it("세션·인가 갈래는 danger다", () => {
     for (const error of ["unauthorized", "unavailable", "forbidden", "not-found", "archived"] as const) {
       expect(planImportRefusal(error).tone).toBe("danger");
-      expect(planImportRefusal(error).action).toBeNull();
     }
+    for (const error of ["unavailable", "forbidden", "not-found", "archived"] as const) expect(planImportRefusal(error).action).toBeNull();
+  });
+
+  /**
+   * ⚠️ **세션 만료에는 앞으로 갈 길이 있다** (QA D2 — 2026-09-24). 전엔 `AccessError` 폴백에 떨어져 닫기도 액션도 없는 붉은
+   * Alert가 고정됐다 — 같은 화면의 편집자 세션 Alert는 [Sign in]을 드는데. 다시 로그인하면 풀리므로 **닫을 수 있다.**
+   */
+  it("unauthorized는 danger이고 닫을 수 있으며 로그인으로 보낸다", () => {
+    expect(planImportRefusal("unauthorized")).toEqual({ tone: "danger", dismissible: true, action: "sign-in" });
   });
 
   /**
@@ -87,8 +95,8 @@ describe("planImportRefusal", () => {
     const repeats = [
       // 이 기능이 직접 내는 것
       "not-ready", "not-connected", "no-surfaces", "repo-replaced", "invalid input",
-      // 세션·인가 — 다시 눌러도 같다
-      "unauthorized", "forbidden", "not-found", "archived", "last-owner", "not-member",
+      // 인가 — 다시 눌러도 같다(세션 만료는 아래 transient — 다시 로그인하면 풀린다)
+      "forbidden", "not-found", "archived", "last-owner", "not-member",
       // 연결·설치 — 사람이 GitHub에서 손대야 풀린다
       "reauthorize", "repo-not-installed", "installation-forbidden", "repo-forbidden",
       "no-installations", "no-repos", "no-candidates",
@@ -111,7 +119,7 @@ describe("planImportRefusal", () => {
       "state-mismatch", "state-expired", "wrong-user", "denied", "exchange-failed", "taken-by-other",
     ] as const satisfies readonly RepositoryImportError[];
     /** 기다리거나 다시 누르면 답이 달라진다. */
-    const transient = ["already-running", "ingest-failed", "unavailable", "reconfirm"] as const satisfies readonly RepositoryImportError[];
+    const transient = ["already-running", "ingest-failed", "unavailable", "reconfirm", "unauthorized"] as const satisfies readonly RepositoryImportError[];
     type Classified = (typeof repeats)[number] | (typeof transient)[number];
     type Unclassified = Exclude<RepositoryImportError, Classified>;
     // 남은 코드가 있으면 `never`가 아니게 되어 이 별칭이 컴파일 에러다.

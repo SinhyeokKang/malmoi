@@ -48,7 +48,8 @@ it.each(["already-running", "reconfirm", "unauthorized"] as const)("거부(%s)�
   await sync();
   expect(mocks.run).toHaveBeenCalledOnce();
   const status = [...document.querySelectorAll('[role="status"], [role="alert"]')].map(node => node.textContent ?? "").join(" ");
-  const expected = error === "unauthorized" ? m.errors.access.unauthorized : m.repositorySync.errors[error];
+  // ⚠️ 세션 만료도 Sync 문장이다 (QA D2) — 공용 접근 문장("save your work")을 빌리지 않는다.
+  const expected = m.repositorySync.errors[error];
   expect(status).toContain(expected);
   expect(mocks.refresh).not.toHaveBeenCalled();
 });
