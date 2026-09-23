@@ -2403,3 +2403,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 이동 가드가 화면 안의 버튼만 다뤘다. 복구 사본 삭제와 메모리 draft 폐기를 동일시했고, Revert 낙관적 표시를 키가 바뀔 때까지 유지했다. 저장 응답은 실제 쓰기 셀만, 목록은 한 페이지만 주는데 이를 전체 확인 결과로 해석했다. 서버 갱신은 초기 로케일 집합만 순회했다.
 - **그물**: 기존 순수 함수·화면 내부 버튼 테스트가 경계 조합을 놓쳤다. 셸 anchor 클릭, 같은 키가 남는 필터 변경, Revert→Save, 두 페이지 왕복의 DOM 회귀와 no-op·로케일 집합 변경 reducer 회귀에서 red를 관측했다.
 - **재발 방지**: `rg -n 'mergeServerRows|inFlight.sent|state.order|beforeunload' lib/translations components/translations`로 부분 응답과 활성 집합의 소비자를 함께 검사한다. 서버의 `selectedInResult`를 페이지 부재와 구분하고, 전부 성공한 저장의 생략 셀은 공유 정규화 함수로 확정한다. 이후 입력 보존·실패·다른 키의 늦은 응답 테스트도 함께 유지한다.
+
+### 2026-09-23 — 테마에 없는 `text-link` 클래스로 인라인 링크 셋이 본문 글자로 섰다
+
+- **영역**: `components/settings/ci-card.tsx` · `components/sources/{sources-screen,source-detail-modal}.tsx`
+- **증상**: Settings의 CI integration 카드 머리 아래에 검정 `Sources` 한 낱말이 문장 없이 떠 있었다(사용자: "알 수 없는 Sources"). 같은 클래스를 쓴 Sources 화면의 `Project settings` 링크 둘도 앞뒤 문장과 같은 색이라 눌리는 것인지 안 보였다.
+- **근본 원인**: Tailwind v4는 `@theme`에 없는 유틸리티를 **경고 없이 버린다** — `text-link`는 `--color-link` 토큰이 없어 CSS가 0바이트였다. 리포의 인라인 링크 색은 `text-blue-600`(Button `link`)인데, #67에서 소스 카드를 걷고 남긴 안내가 존재하지 않는 시맨틱 이름을 새로 지었다. 동시에 시안 §13-2의 "링크 **한 줄**"을 낱말 하나로 옮겨, 색이 있었더라도 무엇으로 가는지 읽히지 않는 판이었다.
+- **그물**: 놓친 것 — `pnpm typecheck`·`pnpm build`·단위 테스트 전부(클래스 문자열은 타입도 런타임 오류도 없다). `/design-sync`는 시안에 이 줄의 아트보드가 없어 대조 대상이 아니었다. 잡은 것 — 사용자의 화면 확인. 고친 뒤 DOM 테스트(`settings-card-errors.test.tsx` — 링크가 `text-blue-600`이고 부모 문장이 링크 글자보다 길다)와 소스 스캔(`screens.test.ts` — 세 파일에 `text-link` 0)을 세웠다.
+- **재발 방지**: 색 유틸리티의 이름이 Tailwind 기본 팔레트도 `app/globals.css`의 `--color-*`도 아니면 죽은 클래스다 — `text|bg|border|ring|fill|stroke-<name>`을 뽑아 `--color-<name>` 목록과 대조하는 스캔을 돌린다(2026-09-23 전수: 남은 후보 8건 전부 오탐 — 측면 지정 `border-t-*`, `@utility text-mono`, 주석 속 CSS). 새 시맨틱 색 이름을 쓰고 싶으면 **먼저 `@theme`에 토큰을 두고** DESIGN §6.2에 등재한다. 링크를 낱말 하나로 두지 않는다 — 셸 안 텍스트 링크는 문장 안의 `text-blue-600`이다.
