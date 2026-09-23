@@ -171,7 +171,6 @@ describe("PanelBody — 같은 여백, 같은 등급", () => {
 describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
   const CONSUMERS = [
     "components/projects/project-list.tsx",
-    "components/translations/header.tsx",
     "app/(edit)/projects/loading.tsx",
     "app/(edit)/projects/[slug]/loading.tsx",
     // Logs도 골격을 갖는다 (logs-rework) — 머리 높이가 실물과 같아야 도착할 때 안 튄다.
@@ -232,7 +231,8 @@ describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
   });
 
   it("소비자가 열둘 + 본문 전용 넷이다 — 수가 바뀌면 다시 센다", () => {
-    expect(CONSUMERS).toHaveLength(13);
+    // translation-rework T16 — 옛 번역 머리가 빠졌다. 새 작업 화면은 `PanelHeader`를 쓰지 않는다(세 패널이 본문 전체를 든다).
+    expect(CONSUMERS).toHaveLength(12);
     expect(BODY_ONLY).toHaveLength(4);
   });
 

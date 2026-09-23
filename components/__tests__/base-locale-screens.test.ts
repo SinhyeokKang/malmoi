@@ -29,7 +29,8 @@ const SETTINGS_FORM = "components/settings/repository-form.tsx";
 const LOCALES_PAGE = "components/sources/source-detail-modal.tsx";
 const LOCALES_FORM = "components/sources/base-language-form.tsx";
 const TRANSLATIONS_PAGE = "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx";
-const HEADER = "components/translations/header.tsx";
+// translation-rework C4 — 두 배너를 드는 자리가 옛 `TranslationsHeader`에서 작업 화면으로 옮겨 갔다. 계약은 같다.
+const HEADER = "components/translations/workspace/workspace.tsx";
 const BASE_BANNER = "components/translations/base-pending-banner.tsx";
 const WORKFLOW = "lib/onboarding/workflow.ts";
 const EDIT_LOSS_BANNER = "components/translations/edit-loss-banner.tsx";

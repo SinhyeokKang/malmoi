@@ -1920,92 +1920,7 @@ export const en = {
       },
     },
 
-    /** ⚠️ URL 값은 `"*"`다 — 이건 그 옵션의 라벨이다 (`ALL_NAMESPACES`). */
-    allNamespaces: "All namespaces",
-
-    /**
-     * 배지 (DESIGN §6.2) — **"Translated"가 없다**: 가장 흔한 상태가 가장 조용해야 한다.
-     *
-     * ⚠️ **`Untranslated`가 8-4에서 사라졌다** — 값 칸이 비어 있는 것이 이미 그 말이고, 남는
-     * 신호는 입력의 `placeholder`다(DESIGN §6.1 — 배지·상태 필터·입력 테두리가 **같은 배송에서**
-     * 사라지므로 그 하나가 유일하다). `needsReview`는 값이 차 있어 다른 신호가 없으므로 남는다.
-     */
-    orphaned: "Orphaned",
-    needsReview: "Needs review",
-    /** 셀 메타 — `updatedBy`가 사람일 때만 붙는다. push가 덮은 셀에는 표기가 없다 (ARCHITECTURE §5.5.2). */
-    editedBy: (name: string): string => `Edited by ${name}`,
-    notSent: "Not yet sent",
-
-    /** orphaned 축(키·로케일 어느 쪽이든)이면 셀이 disabled다 (DESIGN §6.1). */
-    notEditable: "Not editable — removed from the code",
-    placeholder: "Add a translation",
-    /**
-     * ⚠️ **셀의 접근 이름 — placeholder로 대신할 수 없다.** placeholder는 값이 있으면 읽히지 않아
-     * 채워진 셀이 이름 없는 입력이 된다. 903행 × 3로케일에서 그건 표 전체가 익명이라는 뜻이다.
-     * live region이 같은 어휘(`키 · 로케일`)를 쓰므로 알림과 입력이 같은 이름을 가리킨다.
-     */
-    columns: { key: "Key", locale: "Language", value: "Translation" },
     cellLabel: (key: string, locale: string): string => `${key} · ${locale}`,
-
-    /**
-     * 툴바 셋 (8-4 — 시안 `212:937`). **상태 필터가 없다** (DESIGN §6.1): 시안의 칩 행이 정확히 세
-     * 종류라 그 부재가 누락이 아니라 의도로 읽힌다. 대신 섹션 안에서 pending 키가 위로 온다.
-     */
-    filters: {
-      search: "Search keys and values",
-      namespace: "Filter by namespace",
-      /** 다중 선택 드롭다운의 트리거이자 접근 이름이다. */
-      locales: "Select locales",
-      /**
-       * 네임스페이스 옵션의 라벨. ⚠️ **숫자가 문자열 안에 들어갈 수밖에 없다** — native
-       * `<select>`라 옵션 안에 배지를 그릴 수 없다. 남은 일이 0이면 총계만 보인다.
-       */
-      namespaceOption: (name: string, pending: number, total: number): string =>
-        pending > 0
-          ? `${name} (${pending.toLocaleString("en-US")}/${total.toLocaleString("en-US")})`
-          : `${name} (${total.toLocaleString("en-US")})`,
-      /** 초기화 버튼은 아이콘 하나라 접근 이름이 여기서만 온다. */
-      clear: "Clear filters",
-    },
-
-    /**
-     * 적용된 필터의 칩 (8-4 — DESIGN §6.1). **라벨을 `lib/keys/filters.ts`가 만들지 않는다** —
-     * 그 모듈은 잎이어야 해서 사전을 물지 않는다.
-     *
-     * ⚠️ **로케일 칩이 하나다** — 코드마다 내면 마지막 하나를 떼는 순간 폴백이 걸려 오히려
-     * 넓어지고, 6로케일에서 칩 행 한 줄을 넘는다.
-     */
-    chips: {
-      namespace: (value: string): string => `Namespace: ${value}`,
-      locales: (value: string): string => `Languages: ${value}`,
-      search: (value: string): string => `Search: ${value}`,
-      /**
-       * Home의 카운트 카드가 실어 보낸 좁힘 (DESIGN §6.64).
-       *
-       * ⚠️ **카드의 제목을 그대로 쓰지 않는다** — 카드는 `To review`(할 일)이고 칩은 "지금 무엇으로
-       * 좁혀져 있나"라 `Showing: waiting for review`가 맞는 말이다. 같은 낱말을 쓰면 칩이 할 일
-       * 목록의 일부처럼 읽힌다.
-       */
-      state: (value: string): string => `Showing: ${value}`,
-      /** 제거 버튼은 X 하나다 — 어느 칩을 떼는지가 접근 이름에만 있다. */
-      remove: (label: string): string => `Remove ${label}`,
-    },
-
-    /**
-     * `?state=`의 네 어휘 (PRODUCT §7.7).
-     *
-     * ⚠️ **URL의 값으로 직접 인덱싱하지 않는다** — 남이 정한 키다. 호출부가 `isKeyState`로 거른 뒤
-     * 읽는다 (POSTMORTEM 2026-09-08·09).
-     */
-    states: {
-      new: "new from GitHub",
-      untranslated: "not translated yet",
-      review: "waiting for review",
-      unsent: "not sent yet",
-    },
-
-    /** ⚠️ 상대 시각은 서버가 `relativeTime`으로 만들어 넘긴다 — 사전은 문장만 든다. */
-    lastSent: (when: string): string => `Last sent ${when}`,
 
     banner: {
       /**
@@ -2046,27 +1961,6 @@ export const en = {
         title: "No keys match",
         description: "Remove a filter above to see the rest.",
       },
-    },
-
-    /** ⚠️ 셀 안 상태줄은 **시각 전용**이다 — 알림은 표 하나의 live region이 든다 (DESIGN §6.1). */
-    save: {
-      /** ⚠️ **버튼 로딩과 다른 축이다** — 셀 인라인 상태줄이라 `loadingLabel` 제거 대상이 아니다. */
-      saving: "Saving…",
-      saved: "Saved",
-      unsaved: "Not saved yet — leave the cell to save",
-      failed: (reason: string): string => `Couldn't save: ${reason}`,
-      retry: "Retry",
-      /** 입력값을 지우지 않는다 — 다시 로그인하면 그대로 저장할 수 있어야 한다. */
-      sessionEnded: "Your session ended — sign in again. Your text is kept.",
-      signIn: "Sign in",
-      unavailable: "Temporary problem — try again",
-    },
-
-    /** 표 하나의 `aria-live` 영역이 읽는 문구. **"Saving…"은 알리지 않는다** — 결과만이다. */
-    announce: {
-      saved: (key: string, locale: string): string => `Saved ${key} · ${locale}`,
-      failed: (key: string, locale: string, reason: string): string =>
-        `Couldn't save ${key} · ${locale}: ${reason}`,
     },
 
     /**

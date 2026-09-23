@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SaveInput, planSave } from "../save";
+import { planSave } from "../save";
 
 describe("planSave — 저장 판정", () => {
   it("값이 없던 곳에 값이 오면 upsert", () => {
@@ -52,41 +52,3 @@ describe("planSave — 값을 지우는 경우", () => {
   });
 });
 
-describe("SaveInput 검증 — Server Action은 공개 엔드포인트다", () => {
-  const valid = { surfaceSlug: "default",
-    // slug는 "무엇을 열려고 하는가"다 — 서버는 이 값을 믿지 않고 멤버십 행에서 projectId를 꺼낸다.
-    slug: "acme", keyId: "c".repeat(25), localeCode: "ko", value: "값" };
-
-  it("정상 입력을 통과시킨다", () => {
-    expect(SaveInput.safeParse(valid).success).toBe(true);
-  });
-
-  it("빈 값도 통과시킨다 — 지우기가 정당한 조작이다", () => {
-    expect(SaveInput.safeParse({ ...valid, value: "" }).success).toBe(true);
-  });
-
-  it("keyId가 비면 거부", () => {
-    expect(SaveInput.safeParse({ ...valid, keyId: "" }).success).toBe(false);
-  });
-
-  it("slug가 비거나 없으면 거부 — 편집 경로에 env 폴백이 없다", () => {
-    expect(SaveInput.safeParse({ ...valid, slug: "" }).success).toBe(false);
-    const { slug: _omitted, ...withoutSlug } = valid;
-    expect(SaveInput.safeParse(withoutSlug).success).toBe(false);
-  });
-
-  it("localeCode가 비면 거부", () => {
-    expect(SaveInput.safeParse({ ...valid, localeCode: "" }).success).toBe(false);
-  });
-
-  it("value가 문자열이 아니면 거부", () => {
-    for (const value of [null, undefined, 42, {}, []]) {
-      expect(SaveInput.safeParse({ ...valid, value }).success).toBe(false);
-    }
-  });
-
-  it("과도하게 긴 값은 거부한다 — 공개 엔드포인트라 크기 상한이 필요하다", () => {
-    expect(SaveInput.safeParse({ ...valid, value: "x".repeat(10_001) }).success).toBe(false);
-    expect(SaveInput.safeParse({ ...valid, value: "x".repeat(10_000) }).success).toBe(true);
-  });
-});

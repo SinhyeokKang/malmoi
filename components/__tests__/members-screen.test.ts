@@ -347,7 +347,7 @@ describe("멤버 화면 — 임시 폼이 대체됐다", () => {
   });
 
   it("번역 화면이 그것을 더 이상 import하지 않는다", () => {
-    expect(read("components/translations/header.tsx")).not.toContain("invite-form");
+    expect(read("components/translations/workspace/workspace.tsx")).not.toContain("invite-form");
   });
 });
 

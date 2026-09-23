@@ -124,7 +124,7 @@ const PANEL = {
 /*
  * ⚠️ **블록에 `aria-live`를 주지 않는다** — 시안은 PR 줄에 `polite`를 적었지만 **리뷰 6번이
  * "껍데기의 polite live 한 곳"으로 정정했다**: 같은 전이를 둘이 알리면 중복 낭독이 되고,
- * `translations-screen.test.ts`가 이 화면의 live 영역을 announcer 하나로 고정한다.
+ * `translations-screen.test.ts`가 번역 작업 화면의 live 영역을 푸터 결과 영역 하나로 고정한다.
  */
 function Notice({ icon: Icon, title, children }: { icon: typeof Info; title?: string; children: ReactNode }) {
   // ⚠️ 제목 없는 형(`1f`)은 padding 16이고 제목 있는 형은 14 16이다 — 시안이 그 둘을 갈라 그렸다.
