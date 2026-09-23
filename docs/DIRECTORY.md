@@ -402,6 +402,10 @@ lib/
                         옮겨 뒀다(client-safe.test가 그래프, recipients.test가 zod와의 판정 일치를 고정한다).
                         PostgreSQL 경합은 invitation.integration.ts(`pnpm test:projects:postgres`)가 잰다
   pull/surfaces.ts      planMultiSurfacePull — 중복 경로 거부와 path 순 평탄화
+  pull/undeliverable.ts 전달 불가 셀의 좌표 보류(잎) — writer 오류를 보류(비-base 파일 부재 · 키 자리 없음)와 거부로
+                        가르고 캡처 편집을 실린 것/보류된 것으로 나눈다. 미리보기(publish/read)는 같은 판정을 행 단위로 따로 든다
+  import/locales.ts     localesToKeep — 다운로드 실패 로케일을 재탐지 목록에 되살린다(경로 → 로케일은 onboarding/confirm의
+                        localeOfTemplatePath가 templatePaths와 같은 패턴으로 든다)
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
                         account-view · connect-plan · health · token · token-store · user · repository-id ·
@@ -548,7 +552,8 @@ vitest.projects.config.ts
                         ⚠️ `pnpm test`에 없다 — 실제 클러스터를 띄우고, 미전달 술어가 공유 조각(pendingWhere)
                         + 손 사본 둘(셀 투영 · 목록 raw SQL)이라 "같은 행을 세나"를 재는 유일한 자리다. `lib/keys/**`의 raw 집계를
                         건드렸으면 손으로 돌린다. 편집 토큰의 조건부 쓰기(적재 정리·Publish CAS·backfill)와
-                        동시 CI push의 결과 표시(concurrent-import — barrier로 두 요청을 교차시킨다)도
+                        동시 CI push의 결과 표시(concurrent-import — barrier로 두 요청을 교차시킨다)와 전달 층 불변식
+                        (delivery-invariants — 승인 Sync의 orphan 토큰 해제 · orphan 셀 적재 제외 · 로케일 재시도 · 보류 뒤 Revert)도
                         여기서만 잰다 — include가 `lib/keys/__tests__/`로 박혀 있어 그 테스트도 그 디렉터리에 산다
 vitest.credentials.config.ts
                         같은 형의 둘째다 — 자격증명 암·복호의 **격리 PostgreSQL** 검증
