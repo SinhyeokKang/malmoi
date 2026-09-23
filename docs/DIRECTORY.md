@@ -355,7 +355,8 @@ lib/
                         query(URL 계약 — 요청값을 들고 옛 `state=untranslated`·`locales`를 받는다, `sort` 없음) ·
                         summary(키 집계 oracle · Incomplete first 안정 분할 · effectiveCompletion) · selection ·
                         draft(saved/draft/inFlight 세 층 reducer + 세션 복구 사본) · saved-rows · navigation ·
-                        baseline(미전달 셀 delta 기준 — design §10.3). ⚠️ **전부 잎이다** — import는 서로와
+                        baseline(미전달 셀 delta 기준 — design §10.3) · context(전달 확인의 context 지문 — ⚠️ **이것만 잎이 아니다**:
+                        `node:crypto`를 물어 서버 전용이고 `lib/pull/load.ts`·Save가 쓴다). 나머지는 잎이다 — import는 서로와
                         잎인 `lib/routes.ts`뿐이다. 키 단위 저장 계획(`planKeySave`)은 `planSave` 옆 `keys/save.ts`에 있다
   sources/             query(server-only 목록/선택 상세, 역할별 명시 projection) ·
                         actions(planSourceActions) · base-language(폼 상태 판정). 두 잎은 서버 import가 없다.
