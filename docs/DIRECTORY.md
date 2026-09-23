@@ -22,6 +22,8 @@ app/
                         아직 placeholder(L2.1·L2.3). ⚠️ 세션을 읽는 이유는 차단이 아니라 복귀 링크
                         하나다 — 로그인 상태면 /projects, 아니면 /signin. 그래서 둘 다 동적이다
   layout.tsx            루트 레이아웃(Pretendard <link>). ⚠️ lang="en" — screens.test.ts가 고정한다
+  not-found.tsx · error.tsx · global-error.tsx  셸 밖(/invite·/signin·오타 URL)의 경계. 앞 둘은 components/root-fallback.tsx를
+                        쓰고, global-error는 루트 레이아웃을 대신하므로 html·body를 스스로 든 맨 HTML이다(전역 CSS 없음)
   globals.css           Tailwind 4 @theme. ⚠️ @custom-variant dark 한 줄이 라이트를 고정한다
   __tests__/            entry-points(진입점 소스 스캔 — 모든 page·route·actions가 인가를 지나는지 fs로
                         센다. 예외 열을 이름으로 고정(2026-09-13에 api/push/failure가 붙어 하나 늘었다)
@@ -64,8 +66,9 @@ app/
                         ⚠️ 헤더를 무조건 렌더한다 — Publish 결과 Alert가 그 안이라 조건부 분기에 두면
                         router.refresh()가 방금 받은 결과를 언마운트한다
       surfaces/[surfaceSlug]/locales/  requireSurfaceAccess 뒤 Sources 목록으로 redirect
-      surfaces/new/    OWNER·보관 검사 뒤 sources?add=sources redirect. OAuth 오류도 전달
-      not-found.tsx    없는 표면의 제품 안내와 Projects 복귀
+      surfaces/new/    OWNER 검사 뒤 sources?add=sources redirect(보관도 — Sources가 보관 화면을 그린다). OAuth 오류도 전달
+      surfaces/[surfaceSlug]/not-found.tsx  없는 표면의 제품 안내(requireSurfaceAccess의 notFound). translations/not-found.tsx가 다시 내보낸다
+      not-found.tsx    프로젝트 세그먼트 경계 — ⚠️ 무엇을 잃었는지 단정하지 않는다(그 아래 notFound()가 여럿이다). Projects 복귀
       members/ logs/ settings/   (settings/actions.ts — GitHub 연결 시작 · 리포 (재)연결 · 리포 설정 갱신 · 프로젝트 이름/이미지)
                         ⚠️ 넷 다 게이트가 translation:write다(settings만 project:settings) — EDITOR도
                         목록을 보고 컨트롤만 role로 갈린다. 판정은 Action이 한다
@@ -249,7 +252,7 @@ components/
                         ⚠️ **이름이 같은 파일이 components/projects/에도 있다** — 그쪽(ProjectSearch)은
                         이것을 감싸 useRouter로 ?q=를 미는 배선 래퍼이고, 여기는 라우터를 모르는 프리미티브다
   surface-selector.tsx · github-account.tsx · reconnect-button.tsx · submit-button.tsx ·
-  project-archived.tsx · project-not-ready.tsx
+  project-archived.tsx · project-not-ready.tsx · root-fallback.tsx
                         화면에 걸치는 조각들. surface-selector는 **표면 축의 유일한 전역 스위처**다
                         (표면이 둘 미만이면 스스로 null을 낸다 — 축이 안 보이는 프로젝트에 컨트롤을 세우지 않는다).
                         ⚠️ project-archived·project-not-ready는 **화면 대신 서는 안내 한 쌍**이고 정책과
