@@ -398,6 +398,9 @@ model SyncRun {
   changed  Int?
   /// writer가 **버린** 항목 수. skipped에도 센다 (SAAS 불변식 9).
   warnings Int     @default(0)
+  /// 이번 PR에 **못 실은** 미전달 편집 수 (delivery-invariants D3·D7). 버린 것이 아니다 — 토큰이 남아 다음 Publish를 기다린다.
+  /// 결과 모달과 Logs가 같은 수를 말하는 자리다. ⚠️ Publish 사건 payload에 복제하지 않는다(logs-rework 결정 1 — 조회가 이 행을 조인한다).
+  withheld Int     @default(0)
 
   /// Restrict — `Project`의 기존 관계 전부와 같은 근거다. Cascade면 프로젝트 삭제가 이력을 조용히 날린다.
   project   Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
