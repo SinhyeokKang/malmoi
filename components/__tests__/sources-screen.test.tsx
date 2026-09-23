@@ -73,15 +73,29 @@ it("첫 적재 성공 뒤 상세 재조회 실패가 성공 결과를 뒤집지 
   expect(document.body.textContent).toContain("7");
   expect(document.body.textContent).toContain("latest");
 });
-it("첫 적재 거부도 서버에 남은 실패 상태를 다시 읽는다", async () => {
+/**
+ * ⚠️ **거부에는 `router.refresh()`를 부르지 않는다** (audit #11 — POSTMORTEM 2026-09-08 재발). 세션이 끊긴 거부 직후의
+ * refresh는 미들웨어에 걸려 로그인 이동이 되고 방금 세운 거부 문구를 씻어 간다. 서버에 남은 실패 상태는 상세 재조회가
+ * 읽고, 목록은 Action의 `finally`가 부르는 `revalidatePath`가 갱신한다 — 클라이언트 refresh가 할 일이 없다.
+ */
+it.each(["resource-limit", "unauthorized"] as const)("첫 적재 거부(%s)도 서버에 남은 실패 상태를 다시 읽되 refresh하지 않는다", async error => {
   const first = { ...detail, lastCommitSha: null, lastImportError: null };
   mocks.load.mockResolvedValueOnce({ ok: true, detail: first }).mockResolvedValue({ ok: true, detail: { ...first, lastImportError: "partial-import" } });
-  mocks.runFirstIngest.mockResolvedValue({ ok: false, error: "resource-limit" });
+  mocks.runFirstIngest.mockResolvedValue({ ok: false, error });
   await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
   await open();
   await act(async () => { await userEvent.setup().click(button("Run first import")); });
   expect(mocks.load).toHaveBeenCalledTimes(2);
-  expect(mocks.refresh).toHaveBeenCalled();
+  expect(mocks.refresh).not.toHaveBeenCalled();
+});
+it("첫 적재 성공은 refresh를 한 번 부른다 — 위 거부 갈래의 짝", async () => {
+  const first = { ...detail, lastCommitSha: null, lastImportError: null };
+  mocks.load.mockResolvedValue({ ok: true, detail: first });
+  mocks.runFirstIngest.mockResolvedValue({ ok: true, count: 7, failed: 0 });
+  await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
+  await open();
+  await act(async () => { await userEvent.setup().click(button("Run first import")); });
+  expect(mocks.refresh).toHaveBeenCalledOnce();
 });
 it("저장 중 닫기와 모든 번역 진입을 잠그고 거부 뒤 다시 연다", async () => {
   let resolve!: (result: unknown) => void;

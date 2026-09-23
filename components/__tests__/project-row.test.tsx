@@ -104,7 +104,8 @@ it.each([
 it("임포트 실패: EDITOR에게는 링크 대신 담당자 안내", async () => {
   const over = { importError: "parse-failed" as const };
   const owner = await draw({ ...over, role: "OWNER" });
-  expect(links(owner).some((a) => a.text === m.projects.banner.action.viewDetails)).toBe(true);
+  // ⚠️ **상세·재시도가 사는 곳은 Sources다** (audit #6) — Settings에는 가져오기 실패에 관한 정보가 0이다.
+  expect(links(owner).find((a) => a.text === m.projects.banner.action.viewDetails)?.href).toBe("/projects/acme/sources");
   expect(owner.textContent).toContain(m.projects.banner.checkDetails);
 
   const editor = await draw({ ...over, role: "EDITOR" });

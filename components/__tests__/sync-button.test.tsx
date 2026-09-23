@@ -274,3 +274,25 @@ it("[C4] 미전달 편집의 경고 줄은 discard와 replace를 한 번씩만 �
   await click("Cancel");
   expect(mocks.run).not.toHaveBeenCalled();
 });
+
+/**
+ * **지문이 오기 전에는 확정할 수 없다** (audit #14). 전엔 `prepareRepositorySync`가 돌아오기 전에 누르면 `approval: null`이
+ * 나가 서버가 reconfirm을 냈고, 화면은 *"Translations changed after you opened Sync"* 라는 **사실과 다른** 문장을 띄웠다.
+ * 발급 **실패**는 다르다 — 그때는 확정이 풀리고 `null`을 보내 서버가 재확인을 요구한다(위 [C4]).
+ */
+it("지문 도착 전 확정은 aria-disabled + 스피너이고 눌러도 Action을 부르지 않는다 — 도착하면 풀린다", async () => {
+  const issued = deferred<{ approval: string; unsent: number }>();
+  mocks.prepare.mockReturnValue(issued.promise);
+  await render(<SyncButton {...props} unsent={2} />);
+  await click("Sync");
+  const confirm = button("Discard changes and sync");
+  expect(confirm.getAttribute("aria-disabled")).toBe("true");
+  expect(confirm.querySelector(".animate-spin")).not.toBeNull();
+  await click("Discard changes and sync");
+  expect(mocks.run).not.toHaveBeenCalled();
+  expect(dialog()).not.toBeNull();
+  await act(async () => issued.resolve({ approval: "digest-late", unsent: 2 }));
+  expect(button("Discard changes and sync").getAttribute("aria-disabled")).not.toBe("true");
+  await click("Discard changes and sync");
+  expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: "digest-late" });
+});
