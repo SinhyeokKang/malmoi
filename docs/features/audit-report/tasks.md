@@ -19,7 +19,7 @@
 | 2 | ✅ **B2 보안 TOCTOU** | #9·10·26 | ✅ | `/ship` | `pnpm test` + `pnpm test:projects:postgres` | ✅ #26 |
 | 3 | ✅ **B3 UX 🔴·막다른 길** | #5·6·7·8·11·14·15·16·17·24·25 | ✅ | `/ship` | `pnpm test` + `/bugshot-qa`(EDITOR·OWNER 두 계정) | — |
 | 4 | ✅ **B4 확인·문구·용어** | #13·19·20·21·22·23·28·29·30·31 | ✅ | `/ship` | `pnpm test`(no-korean-ui·brand-spelling 포함) + `/bugshot-qa` | ✅ #29 |
-| 5 | **B5 접근성(포커스)** | #32~42 | 권장 | `/ship` | `pnpm test`(jsdom) + `/design-sync` 접근성 트리 실측 | — |
+| 5 | ✅ **B5 접근성(포커스)** | #32~42 | 권장 | `/ship` | `pnpm test`(jsdom) + `/design-sync` 접근성 트리 실측 | — |
 | 6 | **B6 시각 체계** | #43~50 | 권장 | `/ship` → `/design-sync` | `/design-sync` computed style 실측 | ✅ #50 |
 | 7 | **B7 어댑터·부채·문서** | #12·51~57·60~74 · ⚪ #75~90 | ❌ 출시 후 | 소배치로 쪼개 `/ship` | 항목별 | — |
 
@@ -142,18 +142,18 @@
 **왜 한 배치인가**: 포커스 복귀 · disabled 사유 · live region이 같은 세 패턴이고 검증 도구(CDP 접근성 트리)도 하나다.
 
 **항목**
-- [ ] **#32** 🟡 포커스를 쥔 컨트롤이 `disabled`가 되거나 사라져 포커스가 body로 — `workspace.tsx:581`(번역 Save — 주 흐름) · `general-card.tsx:74-75` · `repository-form.tsx:85,88` · `base-language-form.tsx:51` · `push-token-panel.tsx:37` · `member-list.tsx:238` · `archive-card.tsx:54` · `github-account.tsx:47` · `login-methods.tsx:125`(DESIGN §6.65 · POSTMORTEM 2026-09-20 계열).
-- [ ] **#32b** 🟡 (B4 리뷰가 추가, 2026-09-24) B4의 새 확인 Dialog 둘이 포커스를 잃는다 — `components/members/pending-invitations.tsx:103-109` Revoke 트리거에 `loading`이 걸려 확정 뒤 `disabled` → body(`button.tsx:41`의 SyncButton 함정과 같다) · `components/members/member-list.tsx:212` 트리거 없는 역할 Dialog, 확정 뒤 셀렉트 `disabled`.
-- [ ] **#33** 🟡 `components/logs/event-dialog.tsx:53-56` — 폴백 `h1`(`log-filters.tsx:72`)에 `tabIndex={-1}` 없음 → 딥링크 `?event=` Dialog를 Esc로 닫으면 body.
-- [ ] **#34** 🟡 트리거 없는 Dialog에 `onCloseAutoFocus` 없음 — `workspace.tsx:644-647`(discard·publish·revert) · `source-detail-modal.tsx:173-178`(중첩 Dialog가 부모 밖으로 샌다) · `home/actions.tsx:202`.
-- [ ] **#35** 🟡 Alert·결과 X가 포커스 노드를 언마운트 — `sync-result.tsx:59,119` · `home/actions.tsx:251` · `pending-invitations.tsx:143` · `dismissible-alert.tsx:36` · `sources-screen.tsx:89`.
-- [ ] **#36** 🟡 `components/ui/dropdown-menu.tsx:55-70` — `selected`에 `aria-checked`/`menuitemradio` 없음(Logs 필터·번역 필터).
-- [ ] **#37** 🟡 네이티브 `disabled`에 사유 없음 — `sync-button.tsx:120-126` · `login-methods.tsx:106`(`aria-describedby`가 있어도 포커스 불가) · `add-sources-modal.tsx:69,92` · `ci-card.tsx:17` · `home/actions.tsx:202` · `sync-result.tsx:120`.
-- [ ] **#38** 🟡 `title`이 유일한 설명 — `locale-panel.tsx:95,97` · `surface-selector.tsx:13,17`(DESIGN §7의 보조 줄 기술과 다름).
-- [ ] **#39** 🟡 성공 live region 없음 — `profile-name-form.tsx:72` · `general-card.tsx:76-77` · `repository-form.tsx:89-90`. `locale-panel.tsx:217` CopyLink의 `aria-label`이 보이는 "Copied"를 덮는다(WCAG 2.5.3).
-- [ ] **#40** 🟡 `components/onboarding/steps/files.tsx:352,367` — `<Table>` 이름 없음(POSTMORTEM 2026-09-19 미해결).
-- [ ] **#41** 🟡 `components/sources/source-status.tsx:20` — 상대 시각에 `<time dateTime>`·UTC 접근 이름 없음(DESIGN §6.66).
-- [ ] **#42** 🟡 `source-detail-modal.tsx:155` — 640px 이하에서 notes 열이 숨고 `aria-hidden` Meter만 남는다(색만으로 전달).
+- [x] **#32** 🟡 포커스를 쥔 컨트롤이 `disabled`가 되거나 사라져 포커스가 body로 — `workspace.tsx:581`(번역 Save — 주 흐름) · `general-card.tsx:74-75` · `repository-form.tsx:85,88` · `base-language-form.tsx:51` · `push-token-panel.tsx:37` · `member-list.tsx:238` · `archive-card.tsx:54` · `github-account.tsx:47` · `login-methods.tsx:125`(DESIGN §6.65 · POSTMORTEM 2026-09-20 계열).
+- [x] **#32b** 🟡 (B4 리뷰가 추가, 2026-09-24) B4의 새 확인 Dialog 둘이 포커스를 잃는다 — `components/members/pending-invitations.tsx:103-109` Revoke 트리거에 `loading`이 걸려 확정 뒤 `disabled` → body(`button.tsx:41`의 SyncButton 함정과 같다) · `components/members/member-list.tsx:212` 트리거 없는 역할 Dialog, 확정 뒤 셀렉트 `disabled`.
+- [x] **#33** 🟡 `components/logs/event-dialog.tsx:53-56` — 폴백 `h1`(`log-filters.tsx:72`)에 `tabIndex={-1}` 없음 → 딥링크 `?event=` Dialog를 Esc로 닫으면 body.
+- [x] **#34** 🟡 트리거 없는 Dialog에 `onCloseAutoFocus` 없음 — `workspace.tsx:644-647`(discard·publish·revert) · `source-detail-modal.tsx:173-178`(중첩 Dialog가 부모 밖으로 샌다) · `home/actions.tsx:202`.
+- [x] **#35** 🟡 Alert·결과 X가 포커스 노드를 언마운트 — `sync-result.tsx:59,119` · `home/actions.tsx:251` · `pending-invitations.tsx:143` · `dismissible-alert.tsx:36` · `sources-screen.tsx:89`.
+- [x] **#36** 🟡 `components/ui/dropdown-menu.tsx:55-70` — `selected`에 `aria-checked`/`menuitemradio` 없음(Logs 필터·번역 필터).
+- [x] **#37** 🟡 네이티브 `disabled`에 사유 없음 — `sync-button.tsx:120-126` · `login-methods.tsx:106`(`aria-describedby`가 있어도 포커스 불가) · `add-sources-modal.tsx:69,92` · `ci-card.tsx:17` · `home/actions.tsx:202` · `sync-result.tsx:120`.
+- [x] **#38** 🟡 `title`이 유일한 설명 — `locale-panel.tsx:95,97` · `surface-selector.tsx:13,17`(DESIGN §7의 보조 줄 기술과 다름).
+- [x] **#39** 🟡 성공 live region 없음 — `profile-name-form.tsx:72` · `general-card.tsx:76-77` · `repository-form.tsx:89-90`. `locale-panel.tsx:217` CopyLink의 `aria-label`이 보이는 "Copied"를 덮는다(WCAG 2.5.3).
+- [x] **#40** 🟡 `components/onboarding/steps/files.tsx:352,367` — `<Table>` 이름 없음(POSTMORTEM 2026-09-19 미해결).
+- [x] **#41** 🟡 `components/sources/source-status.tsx:20` — 상대 시각에 `<time dateTime>`·UTC 접근 이름 없음(DESIGN §6.66).
+- [x] **#42** 🟡 `source-detail-modal.tsx:155` — 640px 이하에서 notes 열이 숨고 `aria-hidden` Meter만 남는다(색만으로 전달).
 
 **경계**: #89의 작은 a11y 정리(`locale-meter.tsx:43` 주석 등)는 **B7**. `components/ui/dropdown-menu.tsx`는 감사 제외 대상이지만 #36은 이 리포가 소유한 프리미티브의 결함이라 이 배치에서 고친다.
 
