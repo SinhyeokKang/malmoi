@@ -41,15 +41,17 @@
 
 ## C3. 조회·저장·복원 껍데기 — 커밋 경계 3
 
-- [ ] T9. 트리/요약 목록/상세·검색 조회를 구현한다. 조회·상세에 projectId+surfaceId를 적용하고 summary와 match 조각만 목록에 전달한다.
+- [x] T9. 트리/요약 목록/상세·검색 조회를 구현한다. 조회·상세에 projectId+surfaceId를 적용하고 summary와 match 조각만 목록에 전달한다.
   검증: SQL 집계와 순수 oracle이 같은 키/셀을 셈, refs fan-out 없음, 페이지 경계 안정성, 다른 테넌트 데이터 0, 입력 상한/성능은 T1 확정값 이내. 설명에만 검색어가 있는 키는 제외하고 키 이름·원문·활성 저장 번역 일치는 포함한다.
-- [ ] T10. batch Save Action을 구현한다. 전체 validation/plan 후 쓰기·셀별 사건을 같은 tx로 적용한다.
+- [x] T10. batch Save Action을 구현한다. 전체 validation/plan 후 쓰기·셀별 사건을 같은 tx로 적용한다.
   검증: `pnpm test:projects:postgres`에 두 언어 중 하나 실패·사건 실패 롤백, 두 사용자 마지막 저장 승리, Publish CAS와 잠금 경합 회귀 추가; 기존 권한/세션/readiness 거부 유지.
-- [ ] T11. preview/execute Revert Action과 `translation.reverted` 사건 표시를 구현한다. 확인 지문과 실행권/context를 서버에서 검증한다.
+- [x] T11. preview/execute Revert Action과 `translation.reverted` 사건 표시를 구현한다. 확인 지문과 실행권/context를 서버에서 검증한다.
   검증: 권한별 matrix, 다른 키/소스 재사용, 확인 후 Save/Publish/Sync, unknown/invalid baseline, 동일값 token 폐기, 네트워크 재시도·PG 원자성 회귀 통과.
   검증: Publish 실패/결과 미확인 뒤 preview·execute 모두 옛 기준 복원을 거부하고 차단 사유를 표시한다. FAILED 종료·단순 재조회·시간 경과로 재활성화하지 않는다.
 - [ ] T12. `routes`·기본 redirect·Home·Sources·Logs·Copy link를 새 Query 계약에 연결한다.
   검증: `app/__tests__/entry-points.test.ts`, `lib/__tests__/routes.test.ts`, 기존 landing 및 신규 선택키 착지 테스트; 키 이름 중복/특수문자/사라진 키/부적격 표면 검사.
+  결과(2026-09-23, C3): **C4로 옮긴다** — `entry-points.test.ts`가 생성기의 쿼리 키를 번역 페이지가 받는지 검사하는데, 옛 페이지는 새 키(`completion`·`scope`·`key`…)를 읽지 않는다. 링크를 먼저 바꾸면 소비자가 전부 깨진다. C3에는 Logs용 해석기 `resolveKeyIdByName`만 들어갔다(`lib/keys/translation-list.ts`).
+  C3 결과: T9 `lib/keys/translation-list.ts`(oracle 대조 25건) · T10 `lib/keys/save-key.ts` + `saveTranslationKey`(13건) · T11 `lib/keys/revert.ts` + `previewTranslationRevert`·`revertTranslationKey` + `translation.reverted` 문장(13건 + 2건). ⚠️ 상세 조회는 `revertAvailability`를 싣지 않는다 — 화면이 미리보기 Action으로 묻는다(지문이 사용자별이라 목록 조회에 섞지 않는다). 권한 matrix의 DOM 검증은 T13–T15다.
 
 ## C4. 화면과 상호작용 — 커밋 경계 4 / 배포 B 구현
 
