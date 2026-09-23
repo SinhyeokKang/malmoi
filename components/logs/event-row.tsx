@@ -67,7 +67,7 @@ export function EventRow({
       )}
       <EventGlyph icon={glyph.icon} tone={glyph.tone} />
       <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <span className="text-[15px] [overflow-wrap:anywhere]">{sentence}</span>
+        <span className="text-base [overflow-wrap:anywhere]">{sentence}</span>
         <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs [overflow-wrap:anywhere]">
           {!showTime && view.label !== null && <ResultLabel view={view} />}
           {!showTime && view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}

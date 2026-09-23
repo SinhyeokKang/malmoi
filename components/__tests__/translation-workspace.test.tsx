@@ -165,6 +165,40 @@ it("OWNER의 Revert는 미리보기 확인창을 거쳐 발급된 지문으로 �
   expect(document.activeElement?.getAttribute("data-footer-result")).toBe("true");
 });
 
+/**
+ * ⚠️ **사유는 결과 줄(`aria-live`) 밖이다** — 안에 두면 사유가 바뀔 때마다 결과처럼 다시 낭독된다.
+ * 사유의 전달 경로는 `aria-describedby` 하나다.
+ */
+it("Revert 사유는 describedby로만 닿고 결과 줄의 낭독에 섞이지 않는다", async () => {
+  await render(<TranslationWorkspace {...props({ role: "EDITOR" })} />);
+  const reason = document.getElementById(button("Revert to last sent").getAttribute("aria-describedby") ?? "");
+  expect(reason?.textContent).toBe("Only the project owner can revert to a sent version.");
+  expect(reason?.closest("[aria-live]")).toBeNull();
+});
+
+/** ⚠️ **처리 중에도 `aria-disabled`다** — `loading`은 진짜 `disabled`를 걸어 방금 누른 버튼이 포커스를 잃는다 (DESIGN §6.65). */
+it("Revert 미리보기를 기다리는 동안 버튼은 포커스를 지키고 busy 사유를 든다", async () => {
+  const user = userEvent.setup();
+  mocks.preview.mockReturnValue(new Promise(() => {}));
+  await render(<TranslationWorkspace {...props()} />);
+  await user.click(button("Revert to last sent"));
+  const revert = button("Revert to last sent");
+  expect(revert.hasAttribute("disabled")).toBe(false);
+  expect(revert.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(revert);
+  expect(document.getElementById(revert.getAttribute("aria-describedby") ?? "")?.textContent).toBe("This stays off while a save, publish, or sync is running.");
+});
+
+/** ⚠️ 꺼진 Publish는 `aria-disabled`라 클릭 이벤트가 온다 — 미저장 가로채기가 그것을 보내기로 읽으면 확인창이 뜬다. */
+it("보낼 것이 없는 Publish는 미저장이 있어도 확인창을 열지 않는다", async () => {
+  const user = userEvent.setup();
+  const { container } = await render(<TranslationWorkspace {...props({ unpublished: 0 })} />);
+  await user.type(area(container, "zh"), "空");
+  await user.click(button("Publish"));
+  expect(document.body.textContent).not.toContain("Publish without saving your changes?");
+  expect(mocks.publishPreview).not.toHaveBeenCalled();
+});
+
 it("미저장이 있으면 Revert를 실행하지 않고 사유를 보인다", async () => {
   const user = userEvent.setup();
   const { container } = await render(<TranslationWorkspace {...props()} />);
@@ -186,6 +220,8 @@ it("저장 응답이 유실되면 '확인 불가'로 말하고 draft를 지키�
 it("선택 키가 없으면 키를 고르라는 빈 상태다 — 다른 키를 자동으로 열지 않는다", async () => {
   const { container } = await render(<TranslationWorkspace {...props({ detail: null, query: DEFAULT_TRANSLATION_QUERY })} />);
   expect(container.textContent).toContain("Select a key to translate");
+  // 캔버스 2h의 본문 한 줄 — 제목만 두면 무엇이 여기 열리는지 말하지 않는다.
+  expect(container.textContent).toContain("Its translations in every language open here.");
   expect(mocks.push).not.toHaveBeenCalled();
 });
 

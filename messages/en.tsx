@@ -1858,6 +1858,7 @@ export const en = {
         copied: "Copied",
         copyFailed: "Couldn't copy",
         selectKey: "Select a key to translate",
+        selectKeyBody: "Its translations in every language open here.",
         keyGone: (source: string): string => `This key is no longer in ${source}`,
       },
       footer: {
@@ -2595,6 +2596,8 @@ export const en = {
      * 경우가 있고 그때 거짓이다.
      */
     title: "You're invited",
+    /** 쓸 수 없는 초대(없음·만료·사용됨)의 제목 — 그 아래 Alert가 까닭을 말한다. `title`을 그대로 두면 두 줄이 반대 말을 한다. */
+    unavailableTitle: "Invitation unavailable",
     signInHint: (email: string): string => `Sign in with the account at ${email} to accept.`,
     // ⚠️ **provider 버튼 문구가 여기 없다** (2026-09-12) — `/signin`과 같은 버튼을 쓰므로
     // `signIn.github`·`signIn.google`이 든다. 사본을 두면 같은 버튼이 화면마다 다른 말을 한다.

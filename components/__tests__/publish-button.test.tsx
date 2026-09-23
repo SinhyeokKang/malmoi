@@ -99,7 +99,18 @@ it("열기는 컨테이너, 열린 상태 전이는 본문, disabled 호출부�
   expect(document.querySelector(PUBLISH_LIVE)?.textContent).toBe("");
   await act(async () => read2.resolve(ok(preview))); await click("Open pull request");
   await view.rerender(<Host count={0} />); await click("Close");
-  expect(document.activeElement?.textContent).toBe(kind === "home" ? "Host" : "Translations");
+  // 꺼진 Publish는 `aria-disabled`라 포커스를 받는다 — 사유(describedby)가 닿는 자리로 돌아간다.
+  expect(document.activeElement?.textContent?.trim()).toBe("Publish");
+});
+/** ⚠️ **꺼진 Publish의 사유가 hover `title`에만 있으면 키보드·스크린리더로 닿지 않는다** (DESIGN §6.65). */
+it("꺼진 Publish는 aria-disabled이고 사유를 describedby로 든다", async () => {
+  await render(<Host count={0} />);
+  const publish = button("Publish");
+  expect(publish.hasAttribute("disabled")).toBe(false);
+  expect(publish.getAttribute("aria-disabled")).toBe("true");
+  expect(document.getElementById(publish.getAttribute("aria-describedby") ?? "")?.textContent).toBe("Everything you've edited is already sent.");
+  await click("Publish");
+  expect(mocks.preview).not.toHaveBeenCalled();
 });
 /**
  * ⚠️ **브라우저가 잡은 둘을 여기에 박는다** (2026-09-16 `/design-sync` 실측).

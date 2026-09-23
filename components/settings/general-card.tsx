@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 
 export function GeneralCard({ slug, name, image, archived }: { slug: string; name: string; image: string | null; archived: boolean }) {
   const [value, setValue] = useState(name);
+  // 저장된 이름 — 앞뒤 공백만 다른 값은 서버가 같은 이름으로 접으므로 [Save]를 켜지 않는다.
+  const [current, setCurrent] = useState(name);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -67,10 +69,10 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
       <form className="flex min-w-0 flex-wrap items-center gap-2" onSubmit={event => {
         event.preventDefault(); if (archived || saving || !plan.ok) return;
         setError(null); setSaved(false);
-        save(async () => { try { const result = await updateProjectName({ slug, name: value }); if (result.ok) setSaved(true); else setError(isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.repository.fields.failed); } catch { setError(m.settings.repository.fields.failed); } });
+        save(async () => { try { const result = await updateProjectName({ slug, name: value }); if (result.ok) { setCurrent(result.name); setSaved(true); } else setError(isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.repository.fields.failed); } catch { setError(m.settings.repository.fields.failed); } });
       }}>
         <Input id="project-name" className="w-[320px] max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={value} maxLength={PROJECT_NAME_MAX_CHARS} disabled={archived || saving} aria-invalid={nameError !== null} aria-describedby="project-name-caption" onChange={event => { setValue(event.target.value); setSaved(false); setError(null); }} />
-        <Button className="[&_.animate-spin]:size-3.5" type="submit" loading={saving} aria-busy={saving} disabled={archived || !plan.ok} aria-describedby="project-name-caption">{m.settings.repository.fields.save}</Button>
+        <Button className="[&_.animate-spin]:size-3.5" type="submit" loading={saving} aria-busy={saving} disabled={archived || !plan.ok || plan.name === current} aria-describedby="project-name-caption">{m.settings.repository.fields.save}</Button>
         <p id="project-name-caption" role={nameError ? "alert" : undefined} className={cn("min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs", nameError ? "text-destructive" : "text-muted-foreground")}>
           {nameError ? <><CircleAlert aria-hidden className="mr-1 inline size-3.5" />{nameError}</> : archived ? m.settings.archivedReason : saved ? <><Check aria-hidden className="mr-1 inline size-3.5" />{m.settings.repository.fields.saved}</> : m.settings.general.nameHelp}
         </p>
