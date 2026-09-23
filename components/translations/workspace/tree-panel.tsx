@@ -50,7 +50,8 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
               onChange={event => setFilter(event.target.value)}
               aria-label={m.translations.workspace.tree.filter}
               placeholder={m.translations.workspace.tree.filter}
-              className="h-8 pl-8 text-xs"
+              // `Input` 프리미티브는 폭을 들지 않는다 — 트리 행과 같은 폭으로 채운다.
+              className="h-8 w-full pl-8 text-xs"
             />
           </div>
         )}
@@ -101,7 +102,8 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
 
 function TreeItem({ icon, label, count, selected, onClick }: { icon: ReactNode; label: string; count: number; selected: boolean; onClick: () => void }) {
   return (
-    <ListItemButton selected={selected} onClick={onClick} className="flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-[34px] text-sm tracking-[0.02em]">
+    // 30 = 소스 행의 px-2(8) + chevron(14) + gap(8) — 네임스페이스 아이콘의 왼쪽 끝을 소스 아이콘과 맞춘다(시안은 34로 4px 어긋났다, 사용자 결정).
+    <ListItemButton selected={selected} onClick={onClick} className="flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-[30px] text-sm tracking-[0.02em]">
       <span className="flex text-neutral-400">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       <span className="text-muted-foreground text-xs">{count.toLocaleString("en-US")}</span>

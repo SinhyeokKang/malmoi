@@ -168,7 +168,8 @@ function LocaleRow({ keyName, sourceText, locale, first, draft, saved, readOnly,
       className={cn(
         // ⚠️ `w-full`이 필요하다 — 프리미티브의 `field-sizing-content`가 폭까지 내용에 맞춰 줄인다(실측 473 → 269).
         "w-full rounded-[10px] text-sm leading-[1.55] tracking-[0.015em]",
-        empty ? "min-h-5 border-0 p-0 shadow-none focus-visible:ring-0" : "min-h-[62px] px-2.5 py-2.5",
+        // 빈 칸은 입력이 점선 상자 안쪽 전체다 — 어디를 눌러도 커서가 서고, 원문이 그 첫 줄 자리에 겹친다.
+        empty ? "col-start-1 row-start-1 min-h-[42px] border-0 bg-transparent p-0 shadow-none focus-visible:ring-0" : "min-h-[62px] px-2.5 py-2.5",
       )}
     />
   );
@@ -187,11 +188,14 @@ function LocaleRow({ keyName, sourceText, locale, first, draft, saved, readOnly,
       </div>
       {/*
         ⚠️ **래퍼를 항상 그린다** — 빈 칸에서 첫 글자를 치는 순간 트리 모양이 바뀌면 textarea가 다시 마운트되어 포커스를 잃는다
-        (구현 중 DOM 테스트가 잡았다). 비어 있으면 래퍼가 점선이고 입력 + 도움말이 형제다 — 포커스 링은 래퍼가 든다.
+        (구현 중 DOM 테스트가 잡았다). 비어 있으면 래퍼가 점선이고 포커스 링은 래퍼가 든다.
+        ⚠️ **원문은 입력 첫 줄 자리에 겹친다** — 아래 형제로 두면 빈 입력줄 밑에 붙어 "플레이스홀더가 아래에 있다"로 읽혔다(사용자 지적).
+        `placeholder` 속성이 아니라 겹친 span인 이유: 접근 이름과 따로 `aria-describedby`로 읽혀야 하고, 포인터를 가로채지 않아야 한다.
+        absolute가 아니라 grid 한 칸에 쌓는다 — 원문이 여러 줄이면 상자가 그 높이를 따라야 다음 행을 덮지 않는다.
       */}
-      <div className={cn(empty && "has-[textarea:focus-visible]:ring-ring flex min-h-[62px] flex-col gap-1.5 rounded-[10px] border border-dashed border-neutral-300 p-2.5 has-[textarea:focus-visible]:ring-2")}>
+      <div className={cn(empty && "has-[textarea:focus-visible]:ring-ring grid min-h-[62px] rounded-[10px] border border-dashed border-neutral-300 p-2.5 has-[textarea:focus-visible]:ring-2")}>
         {field}
-        {empty && <span id={helpId} className="text-muted-foreground text-xs leading-normal tracking-[0.015em]">{sourceText}</span>}
+        {empty && <span id={helpId} className="text-muted-foreground pointer-events-none col-start-1 row-start-1 text-sm leading-[1.55] tracking-[0.015em]">{sourceText}</span>}
       </div>
     </div>
   );
