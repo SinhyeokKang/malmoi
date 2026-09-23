@@ -98,6 +98,19 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
     expect(source).not.toMatch(/disabled=\{detecting \|\|/);
     expect(source).not.toMatch(/disabled=\{!manual\.pathTemplate/);
     expect(source).toContain("m.settings.sources.manualReason");
+    // ⚠️ `loading`과 `aria-disabled`를 한 버튼에 겸하지 않는다 (DESIGN §6.65) — 진행 중은 `busy`다 (B5 리뷰 r1).
+    expect(source).not.toMatch(/loading=\{pending\}[^>]*aria-disabled=/);
+    expect(source.match(/busy=\{pending\}/g) ?? []).toHaveLength(2);
+  });
+
+  it("보이는 사람에게도 사유가 보인다 — 워크플로 행·수동 확인은 글자로, 머리의 Sync·Try again은 title로 (§6.646의 Publish와 같다)", async () => {
+    await render(<CiCard slug="acme" archived={false} stale={[]}>{false}</CiCard>);
+    const reason = [...document.querySelectorAll("p, span")].find(node => node.textContent === m.settings.ci.noSources);
+    expect(reason?.classList.contains("sr-only")).toBe(false);
+    expect(read("components/sources/add-sources-modal.tsx")).not.toMatch(/className="sr-only">\{m\.settings\.sources\.manualReason/);
+    expect(read("components/home/sync-button.tsx")).toMatch(/title=\{m\.repositorySync\.paused\}/);
+    expect(read("components/home/sync-result.tsx")).toMatch(/title=\{retryDisabled \? m\.repositorySync\.waitPublish/);
+    expect(read("components/home/actions.tsx")).toMatch(/title=\{publishPending \? m\.repositorySync\.waitPublish/);
   });
 });
 

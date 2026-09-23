@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, useState } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { focusLost, landFocus, neighbourFocus, useLandAfter } from "@/components/ui/focus";
 
@@ -64,9 +64,11 @@ describe("neighbourFocus", () => {
     const hidden = button("Hidden");
     hidden.tabIndex = -1;
     const after = button("After");
-    expect(neighbourFocus(alert)).toBe(after);
+    // jsdom은 rect가 비어 있다 — 가시성 판정은 아래 describe가 따로 잰다.
+    const visible = () => true;
+    expect(neighbourFocus(alert, visible)).toBe(after);
     after.remove();
-    expect(neighbourFocus(alert)).toBe(before);
+    expect(neighbourFocus(alert, visible)).toBe(before);
   });
 });
 
@@ -91,5 +93,25 @@ describe("useLandAfter", () => {
     await act(async () => { (document.getElementById("finish") as HTMLButtonElement).click(); });
     // finish 클릭은 포커스를 옮기지 않으므로 여전히 꺼진 Save 위다 — 빠진 포커스다.
     expect(document.activeElement?.id).toBe("field");
+  });
+});
+
+describe("neighbourFocus — 보이지 않는 요소", () => {
+  /**
+   * ⚠️ `display:none`(`@max-[640px]:hidden` · 접힌 LNB) 요소에 `focus()`는 조용히 실패해 `body`로 남는다 (B5 리뷰 r1). jsdom은 모든
+   * rect가 비어 있어 기본 판정(`getClientRects`)을 그대로 쓸 수 없다 — 판정을 주입해 잰다.
+   */
+  it("보이지 않는 요소를 건너뛴다 — 기본 판정은 getClientRects다", () => {
+    const alert = document.createElement("div");
+    document.body.append(alert);
+    const hidden = button("Hidden");
+    hidden.dataset.invisible = "";
+    const shown = button("Shown");
+    expect(neighbourFocus(alert, el => !("invisible" in el.dataset))).toBe(shown);
+    const rects = vi.spyOn(Element.prototype, "getClientRects").mockImplementation(function (this: Element) {
+      return ("invisible" in (this as HTMLElement).dataset ? [] : [{}]) as unknown as DOMRectList;
+    });
+    expect(neighbourFocus(alert)).toBe(shown);
+    rects.mockRestore();
   });
 });

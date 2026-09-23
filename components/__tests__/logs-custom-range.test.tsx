@@ -122,3 +122,20 @@ it.each(["Kind", "Date", "Actor", "Source", "Result"])("%s 메뉴의 aria-labell
   expect(menu).not.toBeNull();
   expect(document.getElementById(menu!.getAttribute("aria-labelledby") ?? "")).toBe(node);
 });
+
+/**
+ * **Date 축도 다른 필터 넷과 같은 단일 선택이다** (B5 리뷰 r1) — `Any date`만 `menuitemradio`이고 프리셋이 `menuitem`이면 프리셋을
+ * 적용한 뒤 스크린리더가 "아무것도 선택 안 됨"을 읽는다. 현재 범위와 같은 프리셋이 선택된 라디오다. `Custom…`은 동작이라 `menuitem`이다.
+ */
+it("현재 범위와 같은 프리셋이 선택된 라디오다", async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  await render(<LogFilters {...props} filter={parseLogFilter({ from: today, to: today })} />);
+  const user = userEvent.setup();
+  trigger("Date").focus();
+  await act(async () => user.keyboard("{Enter}"));
+  const items = [...document.querySelectorAll('[role="menu"] [role^="menuitem"]')].map(node => [node.textContent, node.getAttribute("role"), node.getAttribute("aria-checked")]);
+  expect(items).toContainEqual([m.logs.filters.anyDate, "menuitemradio", "false"]);
+  expect(items).toContainEqual([m.logs.range.today, "menuitemradio", "true"]);
+  expect(items).toContainEqual([m.logs.range.last7, "menuitemradio", "false"]);
+  expect(items).toContainEqual([m.logs.range.customOpen, "menuitem", null]);
+});

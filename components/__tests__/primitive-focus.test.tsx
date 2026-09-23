@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, useState } from "react";
 import userEvent from "@testing-library/user-event";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -70,8 +70,11 @@ it("Alert 닫기는 그 자리의 다음 컨트롤로 착지한다", async () =>
       <Button>After</Button>
     </>;
   }
+  // jsdom은 rect가 비어 있어 모든 요소가 "안 보인다" — 착지의 가시성 판정을 통과시킨다.
+  const rects = vi.spyOn(Element.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
   await render(<Host />);
   await click(document.querySelector(`[aria-label="${m.common.dismiss}"]`)!);
+  rects.mockRestore();
   expect(document.body.textContent).not.toContain("Synced");
   expect(document.activeElement).toBe(byText("After"));
 });
@@ -118,4 +121,48 @@ it("연 버튼이 꺼져 있으면 그 앞의 무관한 버튼으로 가지 않�
   await click(byText("Run"));
   await act(async () => { await new Promise(r => setTimeout(r, 0)); });
   expect(document.activeElement).not.toBe(byText("Older"));
+});
+
+/**
+ * ⚠️ **Safari·macOS Firefox는 마우스 클릭으로 버튼에 포커스를 주지 않는다** (B5 리뷰 r1 🔴) — 트리거에 `focusin`이 안 와서 기록의
+ * 마지막이 더 오래된 요소였고, 닫힐 때 Radix의 트리거 복귀를 가로채 **엉뚱한 자리로 스크롤까지** 튀었다. 여기서는 포커스를 옮기지
+ * 않는 클릭(`dispatchEvent`)으로 그 브라우저를 흉내 낸다.
+ */
+function clickWithoutFocus(node: Element) {
+  node.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+  node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+}
+
+it("포커스 없이 트리거를 눌러 연 Dialog는 닫히면 트리거로 돌아온다 — 앞서 포커스를 가진 요소로 튀지 않는다", async () => {
+  const { DialogTrigger } = await import("@/components/ui/dialog");
+  await render(<>
+    <input id="earlier" />
+    <Dialog>
+      <DialogTrigger asChild><Button>Rotate</Button></DialogTrigger>
+      <DialogContent title="Rotate?" footer={<DialogClose asChild><Button>Cancel</Button></DialogClose>} />
+    </Dialog>
+  </>);
+  document.getElementById("earlier")!.focus();
+  await act(async () => { clickWithoutFocus(byText("Rotate")); });
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  await act(async () => { clickWithoutFocus(byText("Cancel")); await new Promise(r => setTimeout(r, 0)); });
+  expect(document.activeElement).toBe(byText("Rotate"));
+});
+
+it("포커스 없이 버튼을 눌러 상태로 연 Dialog도 그 버튼으로 돌아온다", async () => {
+  function Host() {
+    const [open, setOpen] = useState(false);
+    return <>
+      <input id="earlier" />
+      <Button onClick={() => setOpen(true)}>Open</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent title="Discard?" footer={<DialogClose asChild><Button>Keep editing</Button></DialogClose>} />
+      </Dialog>
+    </>;
+  }
+  await render(<Host />);
+  document.getElementById("earlier")!.focus();
+  await act(async () => { clickWithoutFocus(byText("Open")); });
+  await act(async () => { clickWithoutFocus(byText("Keep editing")); await new Promise(r => setTimeout(r, 0)); });
+  expect(document.activeElement).toBe(byText("Open"));
 });
