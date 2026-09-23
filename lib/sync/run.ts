@@ -43,7 +43,7 @@ export async function runSync(
   let result: Parameters<typeof planSyncFinish>[0];
   let outcome: PullOutcome;
   try {
-    const pulled = await triggerPull(prisma, slug);
+    const pulled = await triggerPull(prisma, slug, runId);
     result = pulled;
     outcome = pulled;
   } catch (error) {

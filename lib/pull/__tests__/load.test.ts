@@ -57,7 +57,7 @@ it("로케일·값·완료 기준을 repeatable-read 스냅샷으로 읽는다",
     translation: {
       aggregate: vi.fn(async () => ({ _max: { updatedAt: new Date(100) } })),
       count: vi.fn(async (_args: unknown) => 2),
-      findMany: vi.fn(async () => [{ id: "t1", pendingEditToken: "tok" }]),
+      findMany: vi.fn(async () => [{ id: "t1", pendingEditToken: "tok", surfaceId: "s1", keyId: "k1", localeCode: "en", value: "v", stringKey: { sourceText: "src" } }]),
     },
   };
   const transaction = vi.fn(async (fn: (client: typeof tx) => Promise<unknown>, _options: unknown) => fn(tx));

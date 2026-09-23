@@ -17,13 +17,15 @@ import { cn } from "@/lib/utils";
  * 사용자가 아직 다 치지도 않은 질의로 URL이 바뀐다. `isComposing`과 `keyCode === 229`를 **둘 다**
  * 보는 것은 브라우저마다 하나씩만 주는 경우가 있어서다.
  */
-export function SearchInput({ value, onSearch, label, placeholder = label, disabled, className }: {
+export function SearchInput({ value, onSearch, label, placeholder = label, disabled, className, inputClassName = "w-64" }: {
   value: string | undefined;
   onSearch: (query: string) => void;
   label: string;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** 입력 폭 — 기본 256. 번역 작업 화면은 시안 `2a`가 320이라 넘긴다(다른 소비자는 기본값 그대로다). */
+  inputClassName?: string;
 }) {
   const [text, setText] = useState(value ?? "");
   useEffect(() => setText(value ?? ""), [value]);
@@ -43,7 +45,7 @@ export function SearchInput({ value, onSearch, label, placeholder = label, disab
         }}
         placeholder={placeholder}
         aria-label={label}
-        className="w-64 pl-8"
+        className={cn(inputClassName, "pl-8")}
       />
     </div>
   );

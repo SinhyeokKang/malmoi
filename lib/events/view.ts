@@ -225,6 +225,7 @@ export function eventSentence(
       const locale = payload?.kind === "TRANSLATION" ? payload.locale : "";
       const cleared = payload?.kind === "TRANSLATION" && payload.after === "";
       const language = languageOf(locale);
+      if (row.subtype === "translation.reverted") return m.logs.sentence.translation.reverted(actor, nodes.key, language);
       return cleared
         ? m.logs.sentence.translation.cleared(actor, nodes.key, language)
         : m.logs.sentence.translation.updated(actor, nodes.key, language);

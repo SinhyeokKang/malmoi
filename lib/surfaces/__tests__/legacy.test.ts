@@ -10,7 +10,7 @@ import Locales from "@/app/(edit)/projects/[slug]/locales/page";
 it("legacy routes use the saved default, not a hardcoded slug", async () => {
   state.surface = { slug: "saved-default", archivedAt: null };
   await expect(Translations({ params: Promise.resolve({ slug: "demo" }), searchParams: Promise.resolve({ ns: "common", locales: "ko", q: "hello" }) }))
-    .rejects.toThrow("redirect:/projects/demo/surfaces/saved-default/translations?ns=common&locales=ko&q=hello");
+    .rejects.toThrow("redirect:/projects/demo/surfaces/saved-default/translations?ns=common&q=hello&language=ko");
   await expect(Locales({ params: Promise.resolve({ slug: "demo" }) })).rejects.toThrow("redirect:/projects/demo/sources");
 });
 it.each([null, { slug: "gone", archivedAt: new Date(0) }])("a missing or archived default fails closed", async surface => {

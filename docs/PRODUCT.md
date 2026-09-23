@@ -63,7 +63,7 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 | Publish (PR 생성·갱신) | O | O |
 | 리포 재연결 | O | X |
 | **리포 재적재(Sync)** | O | X |
-| **Revert to last sent** (미구현 — translation-rework) | O | X |
+| **Revert to last sent** (translation-rework — 프로덕션 배포 대기) | O | X |
 | base branch **변경** | O | X |
 | 기준 로케일 **변경** | O | X |
 | 멤버 관리·프로젝트 **보관** | O | X |
@@ -77,7 +77,7 @@ permission을 거부하는데, 그러면 **보관 사건과 그 직전 기록을
 
 **역할 둘 아래에 permission은 셋이다** (`lib/auth/permission.ts`의 `Permission`) — 표의 칸이 그중
 하나로 내려간다. `translation:write`(OWNER·EDITOR — 조회·수정·Publish) · `project:settings`(OWNER —
-리포 재연결·재적재·base branch·기준 로케일·표면 추가·보관 · **Revert**(미구현)) · `member:manage`(OWNER — `createInvitation`·
+리포 재연결·재적재·base branch·기준 로케일·표면 추가·보관 · **Revert**) · `member:manage`(OWNER — `createInvitation`·
 `revokeInvitation`·`changeMember`). ⚠️ **아래에서 "넷째 permission을 만들지 않는다"고 말할 때의 셋이
 이것이다** — 그 문장이 무엇을 세는지 이 목록 없이는 문서 안에서 확인할 수 없었다.
 
@@ -125,7 +125,7 @@ permission을 거부하는데, 그러면 **보관 사건과 그 직전 기록을
 ⚠️ **되돌리기를 함께 만들지 않는다**: 옛 DB 값과 새 리포 값 중 고르는 코드가 곧 병합 로직이고
 ARCHITECTURE §0 불변식 2와 정면 충돌한다.
 
-⚠️ **미전달 편집을 버리는 둘째 경로가 생긴다 — `Revert to last sent`** (결정 2026-09-23, translation-rework — **미구현**).
+⚠️ **미전달 편집을 버리는 둘째 경로가 생긴다 — `Revert to last sent`** (결정·구현 2026-09-23, translation-rework — 프로덕션 배포 대기).
 선택한 키의 미전달 언어 전부를 **마지막으로 전달 확인된 DB 값**으로 되돌린다. 위의 "되돌리기"와 다르다 — 리포 값과 견주지 않고
 전달 확인 시점에 DB가 export에 넣은 값 하나만 쓴다(ARCHITECTURE §5.8). **OWNER 전용**이고(`project:settings`, 넷째 permission 없음)
 Sync와 같이 서버 발급 지문으로만 열린다. EDITOR에게는 숨기지 않고 꺼진 버튼 + 사유다. 한 언어라도 기준이 없으면 전체가 불가능하고,
@@ -499,7 +499,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 
 **번역은 표면 아래, 소스 관리는 프로젝트 아래다.** 내부 링크는 `routes.surfaceTranslations`와
 `routes.sources`를 쓴다. `routes.translations`의 옛 주소는 저장된 기본 표면으로 보내며
-`?ns=`·`?locales=`·`?q=`·`?state=`를 보존한다. 옛 Locales 두 주소는 권한 검사 후 Sources 목록으로 간다.
+`?ns=`·`?locales=`·`?q=`·`?state=`와 번역 작업 화면의 키(`scope`·`completion`·`missingLocale`·`cursor`·`key`·`keySurface`·`language`)를 `parseTranslationQuery`→`serializeTranslationQuery` 한 경로로 보존한다. 옛 Locales 두 주소는 권한 검사 후 Sources 목록으로 간다.
 `/settings?add=sources`도 Sources로 보내고 OAuth 오류 `e`를 보존한다.
 Sources 상세 선택은 클라이언트 상태라 주소·이력이 바뀌지 않고 전체 새로고침은 목록이다.
 Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#68).

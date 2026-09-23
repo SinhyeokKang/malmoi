@@ -56,7 +56,8 @@ app/
       translations/    저장된 defaultSurfaceId로 보내는 legacy redirect
       locales/         Sources 목록으로 보내는 legacy redirect
       sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale + 읽기 전용 loadSourceDetail)
-      surfaces/[surfaceSlug]/translations/  번역 표(로케일 = 행). URL 계약은 ns·locales·q
+      surfaces/[surfaceSlug]/translations/  번역 작업 화면(트리·키 목록·로케일 세 패널 — translation-rework C4).
+                        URL 계약은 lib/translations/query.ts 하나다. 선택 키의 permalink는 서버가 조립한다
                         ⚠️ maxDuration=60이 여기 있어야 한다 — 없으면 기본 300이 STALE_AFTER_SECONDS와
                         같아져 정상 실행이 스스로를 stale로 본다
                         ⚠️ 헤더를 무조건 렌더한다 — Publish 결과 Alert가 그 안이라 조건부 분기에 두면
@@ -94,7 +95,7 @@ middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/pro
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 24개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 25개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
@@ -139,7 +140,12 @@ components/
                         ⚠️ 사이드바 폭이 aside가 아니라 여기 Panel에 있다(200/240/320) — 둘 다 들면
                         고정 폭이 드래그를 덮어 "핸들만 움직인다"가 된다
                         ⚠️ 행의 gap-2가 핸들 폭(w-2)으로 옮겨 갔다 — gap 안에 핸들을 끼우면 8+8+8이다
-  translations/         번역 화면 조각 여덟. key-group(서버 컴포넌트 — 키별 TableBody + rowSpan 키 셀) ·
+  translations/workspace/  **번역 작업 화면** (2026-09-23, translation-rework C4 — DESIGN §6.1a). workspace(draft·이동·폭의
+                        **한 소유자** — 저장·Revert·Publish 확인이 전부 여기서 갈린다) · tree-panel · key-list · locale-panel ·
+                        filter-menu · use-leave-guard(뒤로가기는 capture 단계 popstate에서 되돌리고 새로고침·닫기는
+                        beforeunload다). ⚠️ 카드 사이 핸들은 react-resizable-panels가 아니다 — px 하한 셋(420·336·208)을
+                        % 환산 없이 지키려고 lib/translations/layout.ts가 폭을 계획한다
+  translations/         ⚠️ **옛 번역 표 조각 — 라우트가 더는 렌더하지 않는다**(C5 T16에서 지운다). key-group(서버 컴포넌트 — 키별 TableBody + rowSpan 키 셀) ·
                         announcer · filters · filter-chips · locale-badge ·
                         header(TranslationsHeader — usePublish를 드는 **무조건 렌더되는 호스트**다) ·
                         edit-loss-banner · base-pending-banner(⚠️ 뒤의 둘은 sync-edit-protection의
@@ -351,11 +357,15 @@ lib/
                         본다. components/search-input.tsx가 같은 함정을 제 자리에서 설명한다) ·
                         flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
-  translations/         **번역 화면 리워크의 순수 계약** (2026-09-23, translation-rework C1 — 소비자는 C3/C4에서 붙는다).
+                        · translation-rework 서버 경로 넷(2026-09-23 — 화면은 C4에서 붙는다): translation-list(트리·요약 목록·상세
+                        조회, oracle은 `lib/translations/summary.ts`) · save-key(키 단위 저장 + 복원 기준 기록) · revert(Revert
+                        미리보기·실행) · delivery(전달 확인 상태 — 저장과 Revert가 같은 판정을 쓴다). 넷 다 `server-only`가 없다(격리 PG가 직접 부른다)
+  translations/         **번역 화면 리워크의 순수 계약** (2026-09-23, translation-rework C1 — 소비자는 C3/C4에서 붙었다).
                         query(URL 계약 — 요청값을 들고 옛 `state=untranslated`·`locales`를 받는다, `sort` 없음) ·
                         summary(키 집계 oracle · Incomplete first 안정 분할 · effectiveCompletion) · selection ·
                         draft(saved/draft/inFlight 세 층 reducer + 세션 복구 사본) · saved-rows · navigation ·
-                        baseline(미전달 셀 delta 기준 — design §10.3). ⚠️ **전부 잎이다** — import는 서로와
+                        baseline(미전달 셀 delta 기준 — design §10.3) · layout(세 패널 폭 계약 — 로케일 ≥420을 마지막까지 지킨다) · context(전달 확인의 context 지문 — ⚠️ **이것만 잎이 아니다**:
+                        `node:crypto`를 물어 서버 전용이고 `lib/pull/load.ts`·Save가 쓴다). 나머지는 잎이다 — import는 서로와
                         잎인 `lib/routes.ts`뿐이다. 키 단위 저장 계획(`planKeySave`)은 `planSave` 옆 `keys/save.ts`에 있다
   sources/             query(server-only 목록/선택 상세, 역할별 명시 projection) ·
                         actions(planSourceActions) · base-language(폼 상태 판정). 두 잎은 서버 import가 없다.

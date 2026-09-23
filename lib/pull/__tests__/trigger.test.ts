@@ -10,9 +10,14 @@ const hoisted = vi.hoisted(() => ({
   createGitClient: vi.fn(),
   loadPullState: vi.fn(),
   saveLastPulledAt: vi.fn(),
+  invalidateDeliveryConfirmations: vi.fn(),
 }));
 vi.mock("@/lib/github", () => ({ createGitClient: hoisted.createGitClient }));
-vi.mock("../load", () => ({ loadPullState: hoisted.loadPullState, saveLastPulledAt: hoisted.saveLastPulledAt }));
+vi.mock("../load", () => ({
+  loadPullState: hoisted.loadPullState,
+  saveLastPulledAt: hoisted.saveLastPulledAt,
+  invalidateDeliveryConfirmations: hoisted.invalidateDeliveryConfirmations,
+}));
 
 import { createFakeGitClient } from "./fake-client";
 import { syncBranchFor, triggerPull } from "../trigger";
@@ -39,7 +44,7 @@ describe("triggerPull — 조립", () => {
       keys: [],
       maxUpdatedAt: new Date("2026-09-03T00:00:00Z"), unpublished: 0,
     });
-    const result = await triggerPull({} as never, "slug");
+    const result = await triggerPull({} as never, "slug", null);
     expect(result).toEqual({ status: "skipped", reason: "no-edits" });
     expect(hoisted.createGitClient).not.toHaveBeenCalled();
     expect(hoisted.loadPullState).toHaveBeenCalledWith({}, "slug");
@@ -65,7 +70,7 @@ describe("triggerPull — 조립", () => {
       keys: [],
       maxUpdatedAt: new Date("2026-09-03T00:00:00Z"), unpublished: 1,
     });
-    await expect(triggerPull({} as never, "slug")).rejects.toThrow(/installationId/);
+    await expect(triggerPull({} as never, "slug", null)).rejects.toThrow(/installationId/);
     expect(hoisted.createGitClient).not.toHaveBeenCalled();
   });
 
@@ -103,7 +108,7 @@ describe("triggerPull — 조립", () => {
       maxUpdatedAt: new Date("2026-09-04T00:00:00Z"), unpublished: 1, pendingEdits: [],
     });
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const result = await triggerPull({} as never, "fmt");
+    const result = await triggerPull({} as never, "fmt", null);
     expect(result.status === "skipped" && result.reason === "writer-warnings" ? result.warnings.length : 0).toBeGreaterThan(0);
     expect(spy).toHaveBeenCalled();
     expect(spy.mock.calls[0]?.[0]).toContain("config/locales/en.yml");
@@ -111,6 +116,41 @@ describe("triggerPull — 조립", () => {
     spy.mockRestore();
   });
 
+});
+
+/**
+ * **전달 기준 배선** (translation-rework T6). 실행 id가 있으면 성공 확정에 실행권(runId)과 context를 싣고, 첫 외부 쓰기 전
+ * 무효화를 같은 prisma로 부른다. 실행 id가 없는 호출은 확인을 쓰지 않는다 — 실행권 없이는 늦은 성공을 가를 수 없다.
+ */
+describe("triggerPull — 전달 기준 배선", () => {
+  const committingState = () => ({
+    project: { id: "p1", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "dev", installationId: "1", repositoryId: "100", lastPulledAt: null },
+    surfaces: [{ id: "s1", slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en",
+      localeCodes: ["en"], keys: [{ key: "a", sourceText: "A", orphaned: false, cells: { en: { value: "A" } } }] }],
+    maxUpdatedAt: new Date("2026-09-04T00:00:00Z"), unpublished: 1, pendingEdits: [],
+    deliveryContexts: [{ surfaceId: "s1", fingerprint: "ctx" }],
+  });
+
+  it("실행 id를 받으면 무효화 뒤 성공 확정에 runId·context를 싣는다", async () => {
+    const prisma = {} as never;
+    hoisted.loadPullState.mockResolvedValue(committingState());
+    hoisted.createGitClient.mockReturnValue(createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] } }).client);
+    hoisted.invalidateDeliveryConfirmations.mockResolvedValue(undefined);
+    hoisted.saveLastPulledAt.mockResolvedValue(undefined);
+    const result = await triggerPull(prisma, "demo", "run-1");
+    expect(result.status).toBe("committed");
+    expect(hoisted.invalidateDeliveryConfirmations).toHaveBeenCalledWith(prisma, "p1");
+    const call = hoisted.saveLastPulledAt.mock.calls.at(-1);
+    expect(call?.[5]).toEqual({ runId: "run-1", contexts: [{ surfaceId: "s1", fingerprint: "ctx" }] });
+  });
+
+  it("실행 id가 없으면 확인을 싣지 않는다 (위 대조)", async () => {
+    hoisted.loadPullState.mockResolvedValue(committingState());
+    hoisted.createGitClient.mockReturnValue(createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] } }).client);
+    hoisted.saveLastPulledAt.mockResolvedValue(undefined);
+    await triggerPull({} as never, "demo", null);
+    expect(hoisted.saveLastPulledAt.mock.calls.at(-1)?.[5]).toBeUndefined();
+  });
 });
 
 /**

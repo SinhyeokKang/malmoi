@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { EventDetail } from "@/components/logs/event-detail";
+import { translationLinkFor } from "@/lib/keys/translation-list";
 import { EventDialog } from "@/components/logs/event-dialog";
 import { EventRow } from "@/components/logs/event-row";
 import { LogFilters } from "@/components/logs/log-filters";
@@ -66,6 +67,11 @@ export default async function LogsPage({
     // ⚠️ **상세 조회는 목록 필터와 독립이다** (결정 15) — 필터 밖 이벤트도 열되 목록은 그대로 둔다.
     filter.event === null ? Promise.resolve(null) : loadEvent(prisma, projectId, filter.event),
   ]);
+
+  // 번역 사건은 키 **이름**을 든다 — 그 키의 현재 id로 해석해야 상세가 선택된 채로 착지한다(translation-rework T12).
+  const translationHref = openEvent?.payload?.kind === "TRANSLATION"
+    ? await translationLinkFor(prisma, { projectId, slug, surfaceSlug: openEvent.payload.surfaceSlug, key: openEvent.payload.key })
+    : null;
 
   // ⚠️ **`now`를 한 번 만들어 내린다** — 행마다 만들면 같은 페이지 안에서 기준이 흔들린다.
   const now = new Date();
@@ -195,6 +201,7 @@ export default async function LogsPage({
               archived={archived}
               canOpenSettings={canPerform(role, "project:settings")}
               repoUrl={`https://github.com/${project.repoOwner}/${project.repoName}`}
+              translationHref={translationHref}
             />
           )}
         </EventDialog>

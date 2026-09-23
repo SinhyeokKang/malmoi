@@ -1014,6 +1014,8 @@ export function createHarness(seed: Seed = {}) {
         return { count: 1 };
       },
     },
+    /** 전달 확인 무효화(`invalidateDeliveryConfirmations`)만 부른다 — 기록만 하고 행은 없다. */
+    deliveryConfirmation: { updateMany: vi.fn(async () => ({ count: 0 })) },
     projectMember: {
       findUnique: findMember,
       findMany: findManyMembers,
@@ -1255,7 +1257,10 @@ export function createHarness(seed: Seed = {}) {
           locale?: { orphaned?: boolean };
           pendingEditToken?: { not: null };
         } & ScopedWhere;
-        select?: { localeCode?: boolean; needsReview?: boolean; id?: boolean; pendingEditToken?: boolean };
+        select?: {
+          localeCode?: boolean; needsReview?: boolean; id?: boolean; pendingEditToken?: boolean;
+          surfaceId?: boolean; keyId?: boolean; value?: boolean; stringKey?: { select: { sourceText?: boolean } };
+        };
       }) => {
         const live = new Map(keys.filter((k) => k.projectId === where.projectId).map((k) => [k.id, k]));
         const rows = translations.filter((t) => {
@@ -1280,6 +1285,11 @@ export function createHarness(seed: Seed = {}) {
           // 시드 행에는 id가 없다 — 실제 테이블의 `@@unique([keyId, localeCode])`와 같은 축으로 만든다.
           ...(select.id === true ? { id: `${t.keyId}:${t.localeCode}` } : {}),
           ...(select.pendingEditToken === true ? { pendingEditToken: t.pendingEditToken ?? null } : {}),
+          // Publish 캡처가 복원 기준을 만들 때 읽는다 (translation-rework — lib/pull/load.ts).
+          ...(select.surfaceId === true ? { surfaceId: t.surfaceId ?? null } : {}),
+          ...(select.keyId === true ? { keyId: t.keyId } : {}),
+          ...(select.value === true ? { value: t.value } : {}),
+          ...(select.stringKey?.select.sourceText === true ? { stringKey: { sourceText: live.get(t.keyId)?.sourceText ?? "" } } : {}),
         }));
       },
       aggregate: async ({ where }: { where: { projectId: string } }) => {

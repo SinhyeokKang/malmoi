@@ -30,6 +30,7 @@ import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { authorizeUrl, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
 import { probeRepo } from "@/lib/github";
 import { isValidBranchName } from "@/lib/pull/branch-name";
+import { invalidateDeliveryConfirmations } from "@/lib/pull/load";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 
 /**
@@ -298,6 +299,8 @@ export async function updateRepositorySettings(raw: {
     if (project === null) return { ok: false, error: "not-found" } as const;
     if (baseBranch !== project.baseBranch) {
       await tx.project.update({ where: { id: projectId }, data: { baseBranch } });
+      // 브랜치는 되돌릴 수 있어 context 지문만으로는 옛 확인이 부활한다 — 같은 tx에서 무효화한다 (ARCHITECTURE §5.8).
+      await invalidateDeliveryConfirmations(tx, projectId);
       await recordEvent(tx, {
         projectId,
         subtype: "settings.baseBranchChanged",

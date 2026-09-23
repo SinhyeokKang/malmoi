@@ -4,7 +4,7 @@ import { fail } from "@/lib/failure";
 import { isRefSafeSlug, SYNC_BRANCH_PREFIX } from "./ref-slug";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createGitClient } from "@/lib/github";
-import { loadPullState, saveLastPulledAt } from "./load";
+import { invalidateDeliveryConfirmations, loadPullState, saveLastPulledAt } from "./load";
 import { runPull, type PullResult } from "./run";
 
 /**
@@ -42,7 +42,11 @@ export function syncBranchFor(slug: string): string {
   return `${SYNC_BRANCH_PREFIX}${slug}`;
 }
 
-export async function triggerPull(prisma: PrismaClient, slug: string): Promise<PullResult> {
+/**
+ * @param runId 이 실행의 `SyncRun.id`. 있으면 성공 확정이 그 실행권으로 전달 확인을 쓴다(translation-rework — ARCHITECTURE §5.8).
+ *   `null`이면 확인을 쓰지 않는다 — 실행권 없이는 교체된 늦은 성공을 가를 수 없다. **인자를 생략할 수 없게 둔 것이 요지다.**
+ */
+export async function triggerPull(prisma: PrismaClient, slug: string, runId: string | null): Promise<PullResult> {
   const result = await runPull({
     loadState: () => loadPullState(prisma, slug),
     createClient: async (project) => {
@@ -51,7 +55,9 @@ export async function triggerPull(prisma: PrismaClient, slug: string): Promise<P
       if (!project.repositoryId) fail("repository identity is not pinned; reconnect the project", "not-installed");
       return createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId);
     },
-    saveLastPulledAt: (projectId, at, published, delivered) => saveLastPulledAt(prisma, projectId, at, published, delivered),
+    saveLastPulledAt: (projectId, at, published, delivered, contexts) =>
+      saveLastPulledAt(prisma, projectId, at, published, delivered, runId === null ? undefined : { runId, contexts }),
+    invalidateDelivery: (projectId) => invalidateDeliveryConfirmations(prisma, projectId),
     syncBranch: syncBranchFor(slug),
   });
 

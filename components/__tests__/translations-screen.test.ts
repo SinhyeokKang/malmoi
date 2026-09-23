@@ -37,6 +37,8 @@ const fixedWidths = (source: string): number[] =>
 
 const PAGE = "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx";
 const HEADER = "components/translations/header.tsx";
+const WORKSPACE = "components/translations/workspace/workspace.tsx";
+const WORKSPACE_LOCALE = "components/translations/workspace/locale-panel.tsx";
 const ANNOUNCER = "components/translations/announcer.tsx";
 const BANNER = "components/translations/edit-loss-banner.tsx";
 const PUBLISH = "components/publish-button.tsx";
@@ -76,11 +78,12 @@ describe("Publish — 결과가 모달 갈래 열하나로 가는 길이 한 줄
    * `revalidatePath`가 성공 직후 그 분기를 거짓으로 만들어 결과 문구를 언마운트했다. Publish는
    * `router.refresh()`라 축이 같다 — 헤더가 페이지의 무조건 렌더 자리에 있어야 상태가 살아남는다.
    */
-  it("헤더는 페이지가 무조건 렌더한다 — readiness·필터 분기 안이 아니다", () => {
+  // ⚠️ translation-rework C4 — 머리·Publish 상태의 소유자가 `TranslationsHeader`에서 `TranslationWorkspace`로 옮겨 갔다. 계약은 같다.
+  it("작업 화면은 페이지가 무조건 렌더한다 — readiness·필터 분기 안이 아니다", () => {
     const src = read(PAGE);
-    expect(src).toMatch(/<TranslationsHeader/);
+    expect(src).toMatch(/<TranslationWorkspace/);
     // 분기 안에 있으면 `&&` 뒤에 붙는다 — 그 형태를 금지한다.
-    expect(src).not.toMatch(/&&\s*<TranslationsHeader/);
+    expect(src).not.toMatch(/&&\s*<TranslationWorkspace/);
   });
 });
 
@@ -101,8 +104,12 @@ describe("live region — 표 하나에 하나다 (DESIGN §7)", () => {
    * ⚠️ **provider가 없으면 알림이 조용히 사라진다.** 기본값을 no-op로 둔 것은 셀 하나가 표 전체를
    * 죽이지 않게 하려는 것이고(POSTMORTEM 2026-09-08 Tooltip), 그 대가로 배선을 여기서 센다.
    */
-  it("페이지가 표를 `Announcer`로 감싼다 — 감싸지 않으면 알림이 무음이다", () => {
-    expect(read(PAGE)).toMatch(/<Announcer>/);
+  // ⚠️ translation-rework C4 — 셀마다 두지 않는다는 계약이 새 화면에서는 **푸터 결과 영역 하나**다(셀 표가 없다).
+  it("작업 화면의 live region은 푸터 결과 영역 하나다 — 로케일 행마다 두지 않는다", () => {
+    const workspace = read(WORKSPACE);
+    expect(workspace.match(/aria-live=/g) ?? []).toHaveLength(1);
+    expect(read(WORKSPACE_LOCALE)).not.toMatch(/aria-live/);
+    expect(read(PAGE)).not.toMatch(/aria-live/);
   });
 });
 
@@ -322,7 +329,7 @@ describe("행 축 (8-4)", () => {
 
   /** ⚠️ 숫자만 그리면 접근 이름이 "Translations 1134"다 — 시안의 숫자 배지를 유지하며 문장을 준다. */
   it("개수 배지가 접근 이름으로 완전한 문장을 든다", () => {
-    for (const path of [HEADER, PAGE]) {
+    for (const path of [HEADER, WORKSPACE]) {
       expect(read(path), path).toMatch(/sr-only[^>]*>\{m\.translations\.keys\(/);
     }
   });

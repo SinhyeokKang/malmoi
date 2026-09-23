@@ -6,6 +6,7 @@ import { HomeActions, HomeHeaderActions, HomeNotices, HomeTitle } from "@/compon
 import { AttentionCard } from "@/components/home/attention-card";
 import { CountCards } from "@/components/home/count-cards";
 import { EventDetail } from "@/components/logs/event-detail";
+import { translationLinkFor } from "@/lib/keys/translation-list";
 import { EventDialog } from "@/components/logs/event-dialog";
 import { LogsCard } from "@/components/home/logs-card";
 import { MetaColumn } from "@/components/home/meta-column";
@@ -153,6 +154,10 @@ export default async function ProjectHomePage({
       return { status: "unknown" } as const;
     }),
   ]);
+  // 번역 사건은 키 **이름**을 든다 — Logs와 같은 해석이다(translation-rework T12).
+  const translationHref = openEvent?.payload?.kind === "TRANSLATION"
+    ? await translationLinkFor(prisma, { projectId, slug, surfaceSlug: openEvent.payload.surfaceSlug, key: openEvent.payload.key })
+    : null;
   /**
    * **렌더되는 항목만** 지난다 — 903키 리포에서 전 행의 편집자를 조회하지 않는다.
    *
@@ -351,6 +356,7 @@ export default async function ProjectHomePage({
               archived={archived}
               canOpenSettings={canPerform(role, "project:settings")}
               repoUrl={`https://github.com/${project.repoOwner}/${project.repoName}`}
+              translationHref={translationHref}
             />
           )}
         </EventDialog>

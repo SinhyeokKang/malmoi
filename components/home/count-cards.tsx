@@ -65,7 +65,7 @@ export function CountCards({ cards, slug, now }: { cards: readonly HomeCard[]; s
                   상태를 안 본다 — `To review 12`를 눌렀는데 그 네임스페이스엔 미번역만 있어 **0건**이
                   나온다. 구간을 보러 온 사람에게 네임스페이스 좁힘은 교집합을 비우는 축이다.
                 */
-                href={routes.translations(slug, { ns: ALL_NAMESPACES, state: CARD_STATE[card.key] })}
+                href={routes.translations(slug, cardQuery(CARD_STATE[card.key]))}
                 className="focus-visible:ring-ring border-border hover:bg-foreground/[0.02] flex flex-col gap-3 rounded-lg border p-3.5 focus-visible:ring-2 focus-visible:outline-none"
               >
                 <span className="flex items-center gap-2">
@@ -153,4 +153,13 @@ function sublineText(subline: CardSubline, now: Date): string {
     case "repositoryUpdatesPaused":
       return m.home.cards.repositoryUpdatesPaused;
   }
+}
+
+/**
+ * 카드 → 번역 화면의 요청값 (translation-rework T12). **카드의 수는 프로젝트 전체라 범위도 `All sources`다** — 한 소스로 착지하면
+ * 합계와 목록이 갈린다. 미번역은 완성도 축(`Incomplete`)으로, 나머지 셋은 상태 축으로 간다.
+ * ⚠️ 카드는 **셀**을 세고 목록은 **키**를 센다 — 두 수가 같다고 주장하지 않는다(design §3 옛 링크).
+ */
+function cardQuery(state: (typeof CARD_STATE)[keyof typeof CARD_STATE]) {
+  return state === "untranslated" ? { ns: ALL_NAMESPACES, scope: "project", completion: "incomplete" } : { ns: ALL_NAMESPACES, scope: "project", state };
 }

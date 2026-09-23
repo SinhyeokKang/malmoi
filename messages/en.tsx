@@ -874,6 +874,10 @@ export const en = {
         cleared: (who: ReactNode, key: ReactNode, language: string): ReactNode => (
           <>{who} cleared {key} in {language}</>
         ),
+        /** `Revert to last sent` — 빈 값으로 되돌려도 cleared가 아니다(되돌린 것과 지운 것이 Logs에서 갈려야 한다). */
+        reverted: (who: ReactNode, key: ReactNode, language: string): ReactNode => (
+          <>{who} reverted {key} in {language} to the version last confirmed as sent</>
+        ),
       },
       publish: {
         running: (who: ReactNode): ReactNode => <>{who} is sending translations to GitHub</>,
@@ -1804,6 +1808,117 @@ export const en = {
   translations: {
     /** 카운터 — ICU가 아니라 삼항 하나다 (PRODUCT §4.2). */
     keys: (n: number): string => (n === 1 ? "1 key" : `${n.toLocaleString("en-US")} keys`),
+
+    /**
+     * **세 패널 작업 화면** (translation-rework — 핸드오프 README §12). 옛 표 화면의 문구(`filters`·`chips`·`save`…)는
+     * 그 화면을 걷어내는 C5(T16)까지 남는다 — 두 벌이 공존하는 동안 이 절만 새 화면이 읽는다.
+     * ⚠️ 주체를 단정하지 않는다: 다른 멤버나 cron도 Publish하므로 `you last sent`가 아니라 **the version last confirmed as sent**다.
+     */
+    workspace: {
+      filters: {
+        completion: { axis: "Completeness", all: "All keys", incomplete: "Incomplete", missingIn: (locale: string): string => `Missing in ${locale}`, missingMenu: "Missing in…", complete: "Complete" },
+        state: { axis: "State", any: "Any state", unsent: "Not sent", review: "Needs review", new: "New from GitHub", newHint: "Keys that arrived after malmoi last confirmed your files." },
+        scope: { axis: "Scope", namespace: "This namespace", source: "This source", project: "All sources" },
+        clear: "Clear filters",
+        search: "Search keys",
+        substituted: (source: string, locale: string): string => `${source} has no ${locale}. Showing incomplete keys instead.`,
+        nothingToFilter: "Nothing to filter yet",
+      },
+      tree: { title: "Sources", allNamespaces: "All namespaces", filter: "Filter namespaces", open: "Show sources" },
+      /** 키 목록 ↔ 로케일 카드 구분선 — `common.resizeSidebar`와 같은 이유로 이름이 필요하다(이름 없는 separator는 스크린리더가 "구분선"만 읽는다). */
+      resize: "Resize key list",
+      list: {
+        keys: "Keys",
+        incompleteKeys: "Incomplete keys",
+        incompleteFirst: "Incomplete first",
+        savedExtra: (n: number): string => `+${n.toLocaleString("en-US")} saved`,
+        missing: (n: number): string => `${n.toLocaleString("en-US")} missing`,
+        complete: "Complete",
+        notSent: "Not sent",
+        needsReview: "Needs review",
+        saved: "Saved",
+        more: "Show more keys",
+      },
+      detail: {
+        languages: (filled: number, total: number): string => `${filled.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} languages`,
+        allLanguages: "All languages",
+        missingOnly: "Missing only",
+        languagesGroup: "Languages",
+        source: "Source",
+        notSaved: "Not saved",
+        missing: "Missing",
+        noDescription: "No description in the code",
+        noCommit: "No commit to link to yet",
+        referenced: (n: number): string => `Referenced in ${n.toLocaleString("en-US")} places`,
+        copyLink: "Copy link",
+        copied: "Copied",
+        copyFailed: "Couldn't copy",
+        selectKey: "Select a key to translate",
+        keyGone: (source: string): string => `This key is no longer in ${source}`,
+      },
+      footer: {
+        unsaved: (n: number): string => `${n.toLocaleString("en-US")} unsaved change${n === 1 ? "" : "s"}`,
+        saved: "Saved",
+        savedNotSent: "Saved · not sent yet",
+        savedSince: (n: number): string => `Saved · ${n.toLocaleString("en-US")} change${n === 1 ? "" : "s"} since you pressed Save`,
+        save: "Save",
+        tryAgain: "Try again",
+        saveFailed: { title: "We couldn't save this key", body: "Your text is still here. Try again, or save it in a moment." },
+        saveUnknown: { title: "We couldn't confirm the save.", body: "Your text is still here. Check the current values before saving again." },
+        archived: "This project is archived. Editing is off.",
+        lostAccess: "You no longer have access to this project.",
+        session: {
+          title: "Your session ended",
+          body: "Sign in again in this tab. The text you typed stays on screen until you do.",
+          signIn: "Sign in",
+          restored: (n: number): string => `Signed back in · ${n.toLocaleString("en-US")} unsaved change${n === 1 ? "" : "s"} restored`,
+          otherAccount: { title: "Signed in as another account", body: "The unsaved text belongs to the account that typed it, so it isn't shown here." },
+          storageBlocked: "Copy your text before you sign in — this browser isn't keeping it for you.",
+        },
+      },
+      revert: {
+        button: "Revert to last sent",
+        title: "Revert to the last confirmed version?",
+        body: (n: number, list: string): string =>
+          `Your ${n.toLocaleString("en-US")} language${n === 1 ? "" : "s"} that ${n === 1 ? "isn't" : "aren't"} sent yet — ${list} — go back to the version last confirmed as sent. What you saved since then is discarded.`,
+        confirm: "Revert",
+        unavailable: "The last sent version isn't available for every changed language.",
+        unsaved: "Save or discard your changes first.",
+        busy: "This stays off while a save, publish, or sync is running.",
+        forbidden: "Only the project owner can revert to a sent version.",
+        failed: { title: "We couldn't revert this key.", body: "No changes were made. Try again, or check the last sync." },
+        unknown: { title: "We couldn't confirm the revert.", body: "The revert may have completed. Check the current values before trying again.", check: "Check current values" },
+        changed: { title: "The values changed while this was open", body: "Someone saved new values for this key. Look at them before you revert — this dialog no longer matches what is saved.", again: "Review again" },
+        reverted: "Reverted to the version last confirmed as sent",
+      },
+      sync: { ownerOnly: "Only the project owner can sync." },
+      publish: {
+        title: "Publish without saving your changes?",
+        body: (project: string, list: string, key: string, n: number): string =>
+          `Publish sends every saved value in ${project}. Your unsaved ${list} translation${n === 1 ? "" : "s"} of ${key} — ${n.toLocaleString("en-US")} language${n === 1 ? "" : "s"} — stay here as drafts.`,
+        keep: "Keep editing",
+        preview: "Preview saved changes",
+      },
+      discard: {
+        title: "Discard your changes?",
+        body: (key: string, list: string, n: number): string =>
+          `Your unsaved ${list} translation${n === 1 ? "" : "s"} of ${key} (${n.toLocaleString("en-US")}) will be lost.`,
+        keep: "Keep editing",
+        discard: "Discard changes",
+        leave: "Leave and discard",
+      },
+      empty: {
+        noIncomplete: (ns: string): string => `No incomplete keys in ${ns}`,
+        noMatch: (q: string): string => `No keys match "${q}"`,
+        noIncompleteMatch: (q: string): string => `No incomplete keys match "${q}"`,
+        filteredOut: "No keys match these filters",
+        showAll: (n: number): string => `Show all ${n.toLocaleString("en-US")} keys`,
+        searchAll: "Search all sources",
+        clearSearch: "Clear search",
+        noKeys: (ns: string): string => `No keys in ${ns}`,
+        noActive: "No active keys in this project",
+      },
+    },
 
     /** ⚠️ URL 값은 `"*"`다 — 이건 그 옵션의 라벨이다 (`ALL_NAMESPACES`). */
     allNamespaces: "All namespaces",

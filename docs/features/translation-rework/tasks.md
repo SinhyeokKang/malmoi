@@ -29,26 +29,29 @@
 - [x] T5. `/db` 절차로 additive baseline 테이블·복합 FK/unique와 실측으로 정한 인덱스만 생성한다. dev에서 확인한 SQL을 검토하고 prod 적용 순서를 기록한다. 과거값 추정 backfill은 넣지 않는다. 모델 추가와 함께 `lib/privacy/collected.ts`의 `MODEL_CLASSES` 분류·등재를 수행한다. 현 필드 기준 not-personal 분류를 검토하고 개인정보 필드가 생기면 해당 필드 등재도 갱신한다.
   검증: dev/prod migration 상태 구별, A/B 테넌트 교차 FK 거부, anon/authenticated 권한 0, 기존 앱 쿼리 호환. schema와 migration만 별도 커밋하고 분류 등재는 동반 앱 코드 커밋으로 분리한다. T5 완료 전에 두 변경을 함께 둔 상태에서 Prisma 재생성 후 `pnpm typecheck`를 통과한다. T17/T18로 등재 작업을 미루지 않는다.
   결과(2026-09-23): `20260923020548_add_delivery_baselines`(테이블 둘 + 복합 FK 다섯, 신규 인덱스 없음) dev 적용 · dev anon 0 · `delivery-baseline-fk.integration.ts` 4건 · `MODEL_CLASSES` 15. ⚠️ **prod는 미적용** — `/merge` 1단계의 `pnpm db:deploy` 뒤 prod anon 0을 확인한다. 배포 A에서 writer(T6·T7)보다 먼저 나간다.
-- [ ] T6. `loadPullState`와 `runPull`/`saveLastPulledAt`에 동일 export 스냅샷 baseline 전달·성공 확정 tx를 연결한다. 첫 외부 mutation 전 기존 기준 무효화를 커밋한다. `lib/sync/run.ts`에서 실행권을 전달하고 실행 종료를 조건부로 확정한다. cron 경로도 동일하게 연결한다.
+- [x] T6. `loadPullState`와 `runPull`/`saveLastPulledAt`에 동일 export 스냅샷 baseline 전달·성공 확정 tx를 연결한다. 첫 외부 mutation 전 기존 기준 무효화를 커밋한다. `lib/sync/run.ts`에서 실행권을 전달하고 실행 종료를 조건부로 확정한다. cron 경로도 동일하게 연결한다.
   검증: fake GitHub 단위 테스트에서 committed/no-changes만 기준 활성화; writer-warnings/no-edits/API 실패는 새 기준 활성화 0건. 무효화 실패 시 GitHub mutation 0회, no-changes 브랜치 원복 전 무효화 확인. 실제 PG에서 baseline+timestamp+token CAS 원자성, A 전송 중 B 편집, 늦은 실행 fencing 확인.
   검증: T1의 희소 번역·다중 소스 fixture에서 후보 수와 실제 렌더 범위의 기록 수를 대조하고 전체 시간·메모리·잠금 비용이 확정 예산을 만족하는지 확인한다. chunk를 나누더라도 성공 확정의 원자성을 유지하며, 중간 chunk 실패 시 기준·timestamp·token CAS가 함께 롤백된다.
   검증: A 기준→B 저장→GitHub B 쓰기 성공→DB 완료 실패/응답 유실→Revert A 거부·B pending 유지. 교체된 외부 실행의 늦은 쓰기 종료가 미확인인 동안 후속 성공만으로 복원이 열리지 않고, 종료 확인 뒤 새 전달 확인으로만 복원이 열린다.
-- [ ] T7. strict push·수동 Sync·실제 소스 구성/리포 설정 변경에 기준 무효화를 연결한다. 선언만 바뀐 base와 실제 적용 base를 구별한다.
+- [x] T7. strict push·수동 Sync·실제 소스 구성/리포 설정 변경에 기준 무효화를 연결한다. 선언만 바뀐 base와 실제 적용 base를 구별한다.
   검증: deferred/거부/실패는 무효화하지 않음, 성공한 표면만 무효화, 재활성화로 기준 부활 없음, 늦은 Publish가 무효화를 덮지 않음.
-- [ ] T8. 배포 A의 구버전 writer 종료·수집 개시·롤백 절차를 문서화하고 적용 상태를 확인한다.
+- [x] T8. 배포 A의 구버전 writer 종료·수집 개시·롤백 절차를 문서화하고 적용 상태를 확인한다.
+  결과(2026-09-23, C2): writer `bc91a95`. T7은 적재 쪽을 `importRevision` 지문으로, base branch 변경만 명시 무효화로 닫았다(ARCHITECTURE §5.8). 절차는 OPERATIONS "전달 기준 배포 A". ⚠️ T6 검증의 대량 fixture 항목(후보 수·chunk)은 delta 설계로 대상이 사라졌다 — 쓰기 규모가 편집 수라 chunk가 없다. 외부 쓰기 종료 뒤 복원 개방(T6 셋째 검증)은 읽는 쪽이 T11이다.
   검증: 구버전 혼재 기간에 수집한 기준으로 Revert가 열리지 않음. 초기 unknown이 남아도 기존 Save/Publish가 동작함.
 
 ## C3. 조회·저장·복원 껍데기 — 커밋 경계 3
 
-- [ ] T9. 트리/요약 목록/상세·검색 조회를 구현한다. 조회·상세에 projectId+surfaceId를 적용하고 summary와 match 조각만 목록에 전달한다.
+- [x] T9. 트리/요약 목록/상세·검색 조회를 구현한다. 조회·상세에 projectId+surfaceId를 적용하고 summary와 match 조각만 목록에 전달한다.
   검증: SQL 집계와 순수 oracle이 같은 키/셀을 셈, refs fan-out 없음, 페이지 경계 안정성, 다른 테넌트 데이터 0, 입력 상한/성능은 T1 확정값 이내. 설명에만 검색어가 있는 키는 제외하고 키 이름·원문·활성 저장 번역 일치는 포함한다.
-- [ ] T10. batch Save Action을 구현한다. 전체 validation/plan 후 쓰기·셀별 사건을 같은 tx로 적용한다.
+- [x] T10. batch Save Action을 구현한다. 전체 validation/plan 후 쓰기·셀별 사건을 같은 tx로 적용한다.
   검증: `pnpm test:projects:postgres`에 두 언어 중 하나 실패·사건 실패 롤백, 두 사용자 마지막 저장 승리, Publish CAS와 잠금 경합 회귀 추가; 기존 권한/세션/readiness 거부 유지.
-- [ ] T11. preview/execute Revert Action과 `translation.reverted` 사건 표시를 구현한다. 확인 지문과 실행권/context를 서버에서 검증한다.
+- [x] T11. preview/execute Revert Action과 `translation.reverted` 사건 표시를 구현한다. 확인 지문과 실행권/context를 서버에서 검증한다.
   검증: 권한별 matrix, 다른 키/소스 재사용, 확인 후 Save/Publish/Sync, unknown/invalid baseline, 동일값 token 폐기, 네트워크 재시도·PG 원자성 회귀 통과.
   검증: Publish 실패/결과 미확인 뒤 preview·execute 모두 옛 기준 복원을 거부하고 차단 사유를 표시한다. FAILED 종료·단순 재조회·시간 경과로 재활성화하지 않는다.
 - [ ] T12. `routes`·기본 redirect·Home·Sources·Logs·Copy link를 새 Query 계약에 연결한다.
   검증: `app/__tests__/entry-points.test.ts`, `lib/__tests__/routes.test.ts`, 기존 landing 및 신규 선택키 착지 테스트; 키 이름 중복/특수문자/사라진 키/부적격 표면 검사.
+  결과(2026-09-23, C3): **C4로 옮긴다** — `entry-points.test.ts`가 생성기의 쿼리 키를 번역 페이지가 받는지 검사하는데, 옛 페이지는 새 키(`completion`·`scope`·`key`…)를 읽지 않는다. 링크를 먼저 바꾸면 소비자가 전부 깨진다. C3에는 Logs용 해석기 `resolveKeyIdByName`만 들어갔다(`lib/keys/translation-list.ts`).
+  C3 결과: T9 `lib/keys/translation-list.ts`(oracle 대조 25건) · T10 `lib/keys/save-key.ts` + `saveTranslationKey`(13건) · T11 `lib/keys/revert.ts` + `previewTranslationRevert`·`revertTranslationKey` + `translation.reverted` 문장(13건 + 2건). ⚠️ 상세 조회는 `revertAvailability`를 싣지 않는다 — 화면이 미리보기 Action으로 묻는다(지문이 사용자별이라 목록 조회에 섞지 않는다). 권한 matrix의 DOM 검증은 T13–T15다.
 
 ## C4. 화면과 상호작용 — 커밋 경계 4 / 배포 B 구현
 

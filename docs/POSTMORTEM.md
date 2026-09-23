@@ -2360,3 +2360,26 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   로 분기·시각·특수값·전후 값 생산자를 함께 본다. `pendingEdits !== null`은 반드시 결과 종류와 함께 판정한다.
   실조회 행을 필터로 다시 찾는 양방향 검사와 DOM 행동 검사를 유지한다. 멤버 대상은 마스킹 주소만 저장해
   이름이 영구 payload·searchText에 복제되지 않게 한다.
+
+### 2026-09-23 — 번역 작업 화면이 테스트 5,249개 green인 채 시안·접근성과 셋 어긋났다
+
+- **영역**: `components/translations/workspace/{workspace,locale-panel,key-list}.tsx` · `components/ui/textarea.tsx`
+- **증상**: (1) 로케일 입력이 행을 채우지 않고 내용 폭으로 줄었다(실측 473 → 269, 빈 칸은 한 글자 폭).
+  (2) 카드 사이 리사이저가 접근 이름 없는 `role="separator"`로 나갔다. (3) 드래그가 `pointerup`에서만 끝나
+  `pointercancel`·캡처 상실 뒤 버튼 없이 지나가는 포인터가 폭을 바꾸고 `localStorage`에 저장했다. 덤으로
+  키 목록이 `<button>` 나열이라 목록 의미가 없었다.
+- **근본 원인**: (1) `Textarea` 프리미티브의 `field-sizing-content`는 높이만이 아니라 **폭도** 내용에 맞춘다 —
+  프리미티브 주석이 높이 쪽만 말하고, 기존 소비자(`translation-input.tsx`)는 부모 폭에 우연히 묶여 드러나지
+  않았다. (2)(3) 셸 LNB는 `react-resizable-panels`가 이름·포인터 정리를 들어 주는데, 여기서 px 하한 때문에
+  핸들을 **직접** 만들면서 라이브러리가 하던 일이 함께 빠졌다. jsdom은 `ResizeObserver`가 없어 레이아웃이
+  `null`이라 핸들 코드가 테스트에서 한 줄도 돌지 않았다.
+- **그물**: 놓친 것 — `pnpm test`·code-review(`796c305`는 다른 두 결함을 잡았다). 잡은 것 — `/design-sync`의
+  computed style(1)과 CDP 접근성 트리(2), 그 뒤 리뷰 서브에이전트(3·목록 의미). 지금은
+  `translation-workspace.test.tsx`가 `ResizeObserver` 스텁으로 핸들을 돌려 이름·취소·고정 범위·`<ul>`을 고정한다.
+- **재발 방지**:
+  - `grep -rn "<Textarea" app components | grep -v __tests__` — 소비자마다 폭을 쥐는지(`w-full` 또는 고정 폭) 본다.
+    지금 셋: 새 `locale-panel.tsx`(통과) · 옛 `translation-input.tsx`와 옛 번역 페이지(C5 T16에서 지운다).
+  - `grep -rn 'role="separator"' app components | grep -v __tests__` → **1건**(`workspace.tsx`, `aria-label` 있음).
+    직접 만든 separator는 `aria-label` + `onPointerCancel` + `onLostPointerCapture` 셋을 함께 든다.
+  - jsdom에서 `ResizeObserver`에 기대는 컴포넌트는 스텁 없이는 **그 분기가 안 돈다** — 폭 계획을 쓰는
+    컴포넌트의 테스트는 `vi.stubGlobal("ResizeObserver", …)`로 영역을 준다.

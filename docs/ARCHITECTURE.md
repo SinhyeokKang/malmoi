@@ -12,11 +12,11 @@
 1. 번역 값은 DB, 소스 키와 로케일 존재 여부는 리포가 정본이다.
    ⚠️ **미전달 편집이 있는 동안은 유예된다** (2026-09-18, sync-edit-protection) — CI 자동 적재가 통째로 보류되므로
    리포의 새 키·삭제·로케일 추가도 그동안 앱에 안 들어온다(§5.5.2). 편집을 Publish하거나 OWNER가 폐기를 승인하면 풀린다.
-   ⚠️ **미전달 편집을 버리는 길이 둘이 된다 — (미구현, translation-rework C2·C3)** — 수동 Sync(리포 값으로 덮는다)와
+   ⚠️ **미전달 편집을 버리는 길이 둘이다 — (translation-rework, 2026-09-23 · dev, 프로덕션 배포 대기)** — 수동 Sync(리포 값으로 덮는다)와
    **`Revert to last sent`**(키 하나의 미전달 셀을 **마지막으로 전달 확인된 DB 값**으로 되돌린다). 둘 다 OWNER 전용이고 서버가 발급한
    지문을 되돌려 받을 때만 열린다. Revert가 풀어 준 셀도 미전달이 아니게 되므로 CI 보류를 푸는 셋째 경로가 된다. §5.8.
 2. push 시점 외에는 리포 값과 DB 값을 비교해 **승자를 고르지 않는다**.
-   ⚠️ **Revert도 이 불변식 안에 선다 (미구현, §5.8)** — 복원값은 전달 확인 시점의 **DB export 입력**에서 유도한 스냅샷이고,
+   ⚠️ **Revert도 이 불변식 안에 선다 (§5.8)** — 복원값은 전달 확인 시점의 **DB export 입력**에서 유도한 스냅샷이고,
    현재 리포를 읽어 고르지 않는다. "옛 DB 값과 새 리포 값 중 고르는" Sync 되돌리기는 여전히 만들지 않는다(PRODUCT §3).
 3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다. **코드에서 번역을 지우는 방법은 없다** — 지우려면
    UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
@@ -33,7 +33,7 @@
 7. 로그인 provider가 아니라 **`ProjectMember`가 권한을 결정**한다.
 8. **`ready`는 설정 저장이 아니라 최초 적재 성공**으로 판정한다.
 9. **버린 값을 성공으로 숨기지 않는다** — 실패한 sync는 마지막 성공 상태를 전진시키지 않는다.
-   ⚠️ **전달 기준도 같다 (미구현, §5.8)** — Publish는 첫 외부 쓰기 **전에** 그 소스의 전달 확인을 무효화하고, 성공 확정 tx에서만
+   ⚠️ **전달 기준도 같다 (§5.8)** — Publish는 첫 외부 쓰기 **전에** 그 소스의 전달 확인을 무효화하고, 성공 확정 tx에서만
    다시 세운다. 실패·결과 미확인·FAILED 종료는 옛 기준을 되살리지 않는다.
    ⚠️ **화면에 닿는 것까지가 이 불변식이다** (2026-09-07 추가, POSTMORTEM 2026-09-07): Server Action의
    결과를 인라인으로 보이는 컴포넌트는 **그 Action의 `revalidatePath`가 바꾸는 조건부 분기 안에 있어서는
@@ -895,7 +895,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   cuid를 그대로 찍었다** (malmoi#3, POSTMORTEM 2026-09-07) — 타입이 같은 채로 의미만 바뀐 컬럼은
   어느 게이트에도 신호를 주지 않는다.
 - **`Translation.pendingEditToken`은 "아직 전달 확인되지 않은 마지막 편집"의 식별자다** (2026-09-18, sync-edit-protection 배포 A).
-  쓰는 자리가 넷이고 **전부 여기 적힌 것뿐이다**(⚠️ translation-rework C3가 다섯째 — Revert가 캡처한 토큰 조건으로 비운다 — 를 더한다, §5.8. 미구현): `saveTranslation`이 값이 실제로 바뀔 때 새 UUID를 쓰고(no-op은 안 쓴다) ·
+  쓰는 자리가 넷이고 **전부 여기 적힌 것뿐이다**(⚠️ translation-rework가 다섯째를 더했다 — Revert가 미리보기 때 캡처한 토큰 조건으로 비운다, `lib/keys/revert.ts` · §5.8. 서버 경로만 있고 화면이 아직 부르지 않는다. 키 단위 저장 `applyKeySave`는 `saveTranslation`과 같은 첫째 자리의 다른 입구다): `saveTranslation`이 값이 실제로 바뀔 때 새 UUID를 쓰고(no-op은 안 쓴다) ·
   `applyPush`의 `DO UPDATE`가 덮은 셀에서 비우고(페이로드에 없는 셀은 남는다) · Publish가 `committed`와 **`no-changes` 둘 다**에서
   캡처한 `(id, token)`이 아직 같은 셀만 조건부 UPDATE로 비우고(§3 흐름 절 — `lastPulledAt`과 한 트랜잭션) · backfill 스크립트가 배포 A 이전 편집에 채운다.
   ⚠️ **시각으로 대체하지 않는다** — 같은 밀리초의 재저장을 `updatedAt`으로는 가를 수 없다.
@@ -1433,10 +1433,10 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 - ⚠️ **모르는 slug를 고른 URL은 0건이다** — 빈 목록을 "필터 없음"으로 되돌리면 지운 소스를 고른
   주소가 전체 목록을 보여준다.
 
-## 5.8 전달 기준과 Revert (translation-rework — ⚠️ 설계 확정 2026-09-23, **미구현**)
+## 5.8 전달 기준과 Revert (translation-rework — 2026-09-23 구현 · dev, 프로덕션 배포 대기)
 
 `Revert to last sent`가 읽는 기준값의 계약이다. 정본 설계는 `docs/features/translation-rework/design.md` §10.3·§10.4이고,
-구현이 끝나면 그 결론을 이 절로 올리고 디렉터리를 지운다. 순수 판정(`lib/translations/baseline.ts`)과 테이블 둘(`DeliveryConfirmation`·`TranslationBaseline`, `20260923020548_add_delivery_baselines` — 복합 FK는 `delivery-baseline-fk.integration.ts`가 고정한다)은 있고, **쓰는 코드(Save·Publish·무효화·Revert)가 아직 없다.**
+구현이 끝나면 그 결론을 이 절로 올리고 디렉터리를 지운다. 순수 판정(`lib/translations/baseline.ts`)과 테이블 둘(`DeliveryConfirmation`·`TranslationBaseline`, `20260923020548_add_delivery_baselines` — 복합 FK는 `delivery-baseline-fk.integration.ts`가 고정한다)이 있고, **서버 경로는 전부 구현됐다** — Publish writer·무효화(`lib/pull/load.ts` — `delivery-confirm.integration.ts`), 키 단위 저장의 기준 기록(`lib/keys/save-key.ts` — `save-key.integration.ts`), Revert 미리보기·실행(`lib/keys/revert.ts` — `revert-key.integration.ts`, Server Action `previewTranslationRevert`·`revertTranslationKey`). **화면이 C4에서 붙었다** — 번역 작업 화면의 키 카드가 저장(`saveTranslationKey`)과 Revert 미리보기·실행을 부르고, EDITOR에게는 꺼진 버튼 + 사유다. 배포 절차는 OPERATIONS "전달 기준 배포 A".
 
 - **기준 행은 미전달 셀에만 있다.** 매 Publish에 활성 키×언어 전부를 쓰는 조밀 설계는 T1 실측으로 폐기했다 —
   20,000키×200언어 = 4.26M 행이 로컬 upsert 42초 · dev Supabase 추정 ~135초 · 580MB라 `maxDuration 60`과 무료 500MB를 둘 다 넘는다.
@@ -1445,8 +1445,14 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
   Revert(기준값으로 되돌리며 미전달을 푼다). 키·언어의 추가·부활은 적재로만 일어나므로 무효화에 포함된다.
 - **Save**가 미전달이 아닌 셀을 바꾸는 순간 같은 tx에서 직전 값을 export 폴백(`buildWriteEntries`: base 결측·빈값 → 원문, 비-base → `""`)으로
   유도해 기록한다. 레코드가 무효이거나 Publish가 진행 중이면 기록하지 않는다 — 그 셀은 unknown이고 Revert가 막힌다.
+- **무효화는 두 장치다.** ① 적재(strict push·수동 Sync)는 **증가만 하는 `importRevision`**이 context 지문(`lib/translations/context.ts`)을 바꿔 무효화한다 —
+  `applyPush`에 무효화 문장이 없는 것이 의도다. ② 되돌릴 수 있는 설정(base branch)은 변경 tx에서 `invalidateDeliveryConfirmations`로 `invalidatedAt`을 쓴다 —
+  A → B → A로 되돌리면 지문만으로는 옛 확인이 부활하기 때문이다(`delivery-invalidation-sources.test.ts`가 소스를 센다). 리포 id는 한 번 고정되면 바뀌지 않아 지문으로 충분하다.
+  ③ Publish는 **첫 외부 쓰기**(`createTree`, 또는 no-changes의 force 되돌림) 직전에 ②와 같은 함수를 부른다 — 쓰기 없는 종료(no-edits·writer-warnings·동등 확인)는 부르지 않는다.
 - **Publish 성공 tx**는 캡처한 미전달 셀만 다룬다: 토큰 CAS가 풀린 셀은 기준 행을 지우고, 캡처 뒤 재편집된 셀은 기준을 **캡처값**으로 바꾼다
-  (현재 DB 값이 아니다). 토큰 CAS와 기준 갱신을 같은 조건으로 묶지 않는다.
+  (현재 DB 값이 아니다). 토큰 CAS와 기준 갱신을 같은 조건으로 묶지 않는다. 잠금은 Project → 정렬된 Surface(번역 저장과 같은 순서)이고,
+  실행권(`SyncRun`이 아직 RUNNING)과 잠금 뒤 다시 잰 context 지문이 캡처와 같은 소스에만 확인을 쓴다 — 아니면 `lastPulledAt`·CAS만 기존대로 간다.
+  **`triggerPull`의 `runId`가 필수 인자인 이유**가 이것이다 — 실행권 없이는 교체된 늦은 성공을 가를 수 없다.
 - **교체·실패 실행의 외부 쓰기 종료 근거는 플랫폼 `maxDuration` 강제 종료다**(사용자 결정 2026-09-23). sync 브랜치를 `updateRefForce`로 옮기므로
   후속 실행의 성공은 증거가 아니다. 그 실행의 `startedAt + STALE_AFTER_SECONDS` 이후에 **시작해** 성공한 전달 확인이 있어야 Revert가 열린다.
   ⚠️ **`maxDuration`을 `STALE_AFTER_SECONDS`(300) 넘게 올리면 이 근거가 깨진다.**

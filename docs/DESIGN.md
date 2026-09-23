@@ -290,6 +290,10 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 17 (+ 같은 자�
 
 ### 6.1 번역 화면 — 머리 · 툴바 · 칩 · **키 그룹**
 
+⚠️ **2026-09-23(translation-rework C4)부터 라우트가 이 절의 화면을 렌더하지 않는다** — 세 패널
+작업 화면(§6.1a)으로 바뀌었다. 이 절은 옛 컴포넌트가 리포에 남아 있는 동안만 참이고, 그 제거(T16)와
+이 절의 정리(T17)는 C5에서 한다.
+
 ⚠️ **2026-09-11(8-4)에 표의 축이 바뀌었다.** 그 전에는 `| Key | en(base) | ko | fr |`로 **로케일이
 열**이었고, 지금은 **키가 왼쪽 셀 하나(320)이고 로케일이 그 아래 행으로 쌓인다**(시안 `212:937`).
 열이 축이면 로케일이 늘 때마다 가로가 늘어 6개에서 표가 화면을 넘었다 — 그 가로 스크롤 규칙이
@@ -352,6 +356,38 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 17 (+ 같은 자�
 **"Translated"에는 배지를 붙이지 않는다** — **가장 흔한 상태가 가장 조용해야 한다** (§6.2와 같은
 원리). 같은 이유로 8-4가 `Untranslated` 배지를 뗐고("값 칸이 비어 있는 것이 이미 그 말이다"),
 **"From repository" 같은 표시도 두지 않는다**.
+
+### 6.1a 번역 작업 화면 — 트리 · 키 목록 · 로케일 세 패널 (2026-09-23, translation-rework C4 · 시안 `design_handoff_translations` 2a · 트리 2k-B)
+
+**SoT는 Claude Design 캔버스 `Translations.dc.html`의 2a다.** 아래 값은 Chrome 1440×900(LNB 열림)에서
+computed style로 잰 것이다.
+
+| 무엇 | 값 | 근거 |
+|---|---|---|
+| 본문 | `p-4` · 카드 사이 16(리사이저 폭) | 캔버스 2a |
+| 카드 둘 | `rounded-lg`(12) · `border-border` · 흰 면 · 그림자 없음 | 캔버스 2a. ⚠️ 첫 구현이 `rounded-xl`(16)이었다 |
+| 트리 | 260 · 우측 `border-border` · 행 `rounded-sm`(8) · gap 8 · 14/20. **소스 행** 34 높이 `px-2 py-[7px]` · `FileJson2` 16. **네임스페이스 행** 32 높이 `py-1.5 pr-2 pl-[34px]` · `Folder` 14, "All namespaces" `Layers` 14 | 캔버스 2a · 트리 아이콘 **2k-B 확정** |
+| 키 목록 | 392(⚠️ **카드 테두리 안쪽은 390**이다 — 캔버스는 260+392를 테두리 **바깥**에 두어 외곽이 654이고, 구현은 `layout.left` 652를 border-box에 준다. 2px를 맞추려면 폭 계약의 모든 하한이 함께 움직여서 두었다) · `<ul>`/`<li>` · 행 `px-4 py-3` · gap 12 · 행 사이 `border-t`(첫 행 `border-divider`, 나머지 `border-border`) · 선택 `bg-foreground/[0.07]`(`ListItemButton` — `sidebar.tsx`와 같은 규칙) | 캔버스 2a |
+| 검색 | **320**(`SearchInput`의 `inputClassName="w-80"`) · 36 높이 | 캔버스 2a. ⚠️ 프리미티브 기본 `w-64`는 그대로다 — 다른 화면의 검색을 이 루프가 안 봤다 |
+| 로케일 입력 | `w-full` — 행을 채운다 · `rounded-[10px]` · padding 10 · 14 / `leading-[1.55]` | ⚠️ `field-sizing-content`가 폭도 내용에 맞춰 줄여서, `w-full`이 없으면 빈 칸이 한 글자 폭으로 선다 |
+
+**폭 계약은 `lib/translations/layout.ts`가 정본이다** — 로케일 ≥ 420을 마지막까지 지키고, 모자라면
+목록 392→336 → 트리 260→208 → 트리 접힘(목록 머리의 버튼이 겹쳐 뜨는 패널을 연다) 순으로 준다. 접힌 뒤에도
+772 미만이면 본문만 가로 스크롤이다. 1280 창에서 실측: 좌 546 · 로케일 420(`aria-valuemax` 546.09 = 영역
+982.1 − 16 − 420).
+
+**리사이저는 시안에 없고 사용자 결정이다**(트리+목록 카드 ↔ 로케일 카드 사이). `react-resizable-panels`를 쓰지
+않는다 — 그 라이브러리의 크기가 % 전용이라 px 하한 셋(420·336·208)을 매 리사이즈에 환산해야 하고, 핸들이
+카드 사이 16px 간격 자체여야 해서다. `role="separator"` + `aria-valuenow/min/max` + ←→ 8px · Home · End. 트리가 접혀 범위가 한 점이면 `tabIndex=-1` + `aria-disabled`다(죽은 Tab 정거장). 드래그는 `pointerup`·`pointercancel`·캡처 상실 셋 다에서 끝난다 — 하나만 걸면 끝나지 않은 드래그가 버튼 없이 지나가는 포인터로 폭을 바꾸고 저장한다.
+⚠️ **접근 이름 `Resize key list`가 필수다** — 첫 구현이 이름 없이 나갔고 화면에도 jsdom에도 안 드러나 CDP로만
+잡혔다(`translation-workspace.test.tsx`가 고정한다). 선호 폭은 사용자×프로젝트별 `localStorage`이고 **clamp 값을
+저장하지 않는다** — 좁은 창에서 저장하면 넓혔을 때 안 돌아온다.
+
+**문서화된 이탈** — 프리미티브가 이긴 자리: Badge 칩 padding · 꺼진 Button 색은 `components/ui/`의 값을 따른다.
+키 카드 머리는 캔버스 후보 중 **2c**를 골랐다. 목록 머리 우측은 2a의 `All keys` 드롭다운 칩이 아니라 평문 `+n saved · Incomplete first`다 — 캔버스 안에서도 아트보드마다 칩형과 평문형이 엇갈리고, 정렬이 하나뿐이라 고를 것이 없는 칩은 누를 이유가 없는 버튼이다. Publish 버튼 아이콘은 §6.646의 헤더 버튼과 같은 것을 쓴다.
+
+**브라우저로 못 밟은 것** — Safari·Firefox, 네이티브 `beforeunload` 확인창, 트리 접힘 오버레이·772 미만 가로
+스크롤(단위 테스트 `layout.test.ts`만), 대량 데이터에서의 Not sent·Missing 상태.
 
 ### 6.2 상태 색 — 배지 4종 + 연결 건강성 7종 + Alert 4종, 색 체계는 하나
 
@@ -551,6 +587,7 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 | **DropdownMenuCheckboxItem** | 8-4 신설 — 번역 화면의 `Select locales`가 유일한 소비자다. ⚠️ **`dropdown-menu.tsx`의 export이지 새 프리미티브가 아니다** — 이 리포는 **파일 단위로** 센다(`SegmentedControl`/`SegmentedLinks`가 한 행인 것이 그 근거다). 그래서 **프리미티브는 16 그대로였다** (2026-09-12에 `EntityCard`가 붙어 **17**이다 — 아래 행). 형은 `DropdownMenuItem`과 같고 다른 것이 셋이다: `role="menuitemcheckbox"` + `aria-checked`를 **Radix가 준다**(옛 `selected`는 `bg-muted` + `Check`라는 시각 표시뿐이라 접근성 트리에 상태가 없었다) · **`onSelect`의 `preventDefault()`를 프리미티브가 든다**(Radix `Item`은 선택 시 메뉴를 닫아서, 소비자가 그것을 기억하게 하면 하나가 빠진다) · 체크가 `Primitive.ItemIndicator`라 켜질 때만 그려진다. ⚠️ `{children}`은 여기서도 `Slot.Slottable`을 지난다(위 줄과 같은 이유) |
 | **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32/**56** — ⚠️ **56은 `/account` 머리 하나다** (2026-09-13) 그리고 **글자 크기가 `size`를 따라간다**(56은 `text-xl` = 20/500, 나머지는 `text-xs` = 13). 56짜리 원 안의 13은 점처럼 보인다. 소비자 둘(`entity-card`·`user-menu`)은 32라 안 움직인다. ⚠️ **사진 렌더는 이 유니온과 무관하다** — `src`를 받으면 raw `<img>`다(`next/image`가 아니다 — POSTMORTEM 2026-09-11) · 이니셜 폴백이 **`toneFill(name)` 배경 + `text-white font-medium`**이다 (2026-09-11 — 전엔 `bg-muted text-foreground/60` 하나라 사람이 여럿인 화면에서 아바타가 전부 같은 회색이었다). 색 판정은 §6.2 · **테두리 `border border-border`가 사진·이니셜 두 갈래에 똑같이 붙는다** (2026-09-20 사용자) — 흰 배경에 가까운 사진은 윤곽이 없으면 경계가 사라지고, 한쪽에만 붙이면 폴백이 일어난 순간 같은 `size`가 달라 보인다(`box-sizing: border-box`라 바깥 크기는 안 움직인다) |
 | **ImageTile** | project-settings-rework 신설 (2026-09-20) — **프리미티브 24**. 프로젝트 타일의 **이미지 한 장과 그 폴백**을 같은 정사각 상자에서 바꾼다. 소비자 **셋**(`projects/project-thumbnail` · `invite/project-card` · `settings/general-card`)이고 치수·radius·폴백 배경은 전부 호출부가 준다 — 이 잎이 드는 것은 **실패 판정**과 `object-contain` 둘이다(후자는 셋이 같은 값이라 prop으로 열지 않는다). ⚠️ **`Avatar`를 흡수하지 않는다** — 그쪽은 사람이라 `object-cover`에 폴백이 이니셜 글자이고, 공유하는 것은 `useImageFallback` 훅뿐이다(마크업을 합치면 §6.63이 거부해 둔 "이니셜 폴백"이 프로젝트 타일로 새어 든다). ⚠️ **실패를 불리언이 아니라 그 `src`로 기억하고 `ref`가 한 번 더 본다** (malmoi#50) — 하이드레이션 전에 끝난 실패는 `onError`로 안 오고(`complete = true`·`naturalWidth = 0`), 불리언이면 사진 교체 때 새 URL이 한 박자 늦는다. ⚠️ **`fallbackClassName`이 폴백에만 붙는다** — `toneFill`이 이미지 뒤에 깔리면 투명 PNG의 배경이 프로젝트마다 달라진다. ⚠️ **소비자가 `"use client"`가 되지 않는다** — 상태를 이 잎이 들어 `ProjectThumbnail`·초대 카드가 서버 컴포넌트로 남는다 |
+| **ListItemButton** | translation-rework C4 신설 (2026-09-23) — **프리미티브 25**. 목록 행 전체가 누를 수 있는 `<button>`: `w-full text-left` · 선택 `bg-foreground/[0.07]` · hover `[0.03]`(`sidebar.tsx`와 같은 규칙) · `ring-inset` 포커스 링. 소비자 **둘**(`translations/workspace/tree-panel` · `key-list`). ⚠️ **선택은 배경만 바꾸고 굵기를 주지 않는다** — 굵기가 바뀌면 행 폭이 흔들린다. ⚠️ **이 파일이 생긴 이유는 `focus-ring.test.ts`다** — `components/ui` 밖의 raw `<button>`을 금지하므로 행 버튼도 프리미티브를 지나야 한다. 목록 의미(`<ul>`/`<li>`)는 소비자가 든다(§6.1a) |
 | **Button `loading`** | **`Loader2` 스피너를 라벨 앞에** 세우고 disabled. ⚠️ **문구를 바꾸지 않는다** (2026-09-10 규칙 변경) — 전에는 `loadingLabel`로 `"Saving…"` 류를 넣었는데 폭이 흔들리고 화면마다 문구를 따로 들어야 했다(제거하며 죽은 문구 16개가 나왔다). 어느 버튼이 도는지는 스피너 위치가 말한다. ⚠️ **아이콘이 있는 버튼은 스피너를 *더하지* 않고 그 아이콘을 *교체*한다** (2026-09-17 — `NewProjectButton`의 `Plus` → `Loader2`, 둘 다 16): 더하면 라벨 폭이 그대로여도 버튼이 글리프 하나만큼 넓어졌다 좁아진다. **`Button`의 `loading`은 여전히 더하는 쪽이다** — 그쪽 소비자는 아이콘 없는 확정 버튼이라 교체할 대상이 없다. ⚠️ **라우트 이동의 pending은 `Button`이 못 든다**(`<a>`가 아니다) — `Link.onNavigate`를 가로채 `useTransition`으로 재는 것이 그 자리의 형이고, 지금 소비자는 [New project] 하나다<br>⚠️ **`disabled`를 못 쓰는 자리는 `aria-disabled` 속성만 세운다** (2026-09-17 사용자 — 전역 규칙): `buttonClass`의 모든 `disabled:` 유틸리티가 `aria-disabled:` 짝을 들고 있어 **겉모습은 같은 한 곳에서 나온다.** 소비자가 그 모양을 직접 그리면 `disabled-pairing.test.ts`가 red다 — 전엔 `sync-button`과 `new-project-button`이 각자 철자를 들어 같은 pending이 세 화면에서 달랐다. ⚠️ **`hover:`만 두 접두사의 값이 다르다**: 브라우저가 진짜 `disabled`에 hover를 안 태워 `disabled:hover:*`는 죽은 규칙이고, 그것을 복제하면 `default`·`danger`의 배경이 흰색에서 **투명**으로 떨어진다(2026-09-17 computed style 실측) |
 | **Button `size` 셋** | `md` `h-9 rounded-md px-3`(기본 — 2026-09-11에 32에서 36으로 올렸다, 시안의 기본 버튼이 36이고 입력 셋도 같이 올라갔다) · `sm` `h-7 rounded-sm px-2 text-xs` · `lg` `h-10 rounded-lg px-4`(**셸 밖 카드 전용** — 로그인·초대 수락). ⚠️ **넷으로 늘리지 않는다** — 그러면 "어느 걸 쓰나"가 매 화면 판단이 된다. ⚠️ **radius가 base가 아니라 `size`에 붙어 있다**(§5) — base에 두고 size가 덮으면 cva가 충돌하는 클래스 둘을 내고 twMerge가 이기는 것에 기대게 된다. ⚠️ **`size="icon"`은 없다** — 정사각 아이콘 버튼은 `ghost` + 정사각 유틸이다(`user-menu.tsx`·칩 행의 초기화) |
 | **EmptyState** | ⚠️ **아이콘이 48px 원형 칩 안이다** (8-3 — `bg-foreground/5` + 아이콘 16). 맨 아이콘은 텍스트에 붙어 제목의 일부처럼 읽히는데 칩이 그것을 **그림 자리**로 만든다(시안은 아이콘 20인데 이 자리는 §6.8의 기본 16이다 — 20은 40 칩 안에만 산다). 제목 **`text-lg font-medium` + `mb-1`** (2026-09-11 — `--text-base`가 15px로 내려가 설명 14와 1px 차이가 됐다) ≤5단어 마침표 없음 · 설명 `text-sm text-muted-foreground` **`max-w-[46ch]`** 완전 문장 (2026-09-13 — 시안값. `max-w-prose`(65ch)는 한 문장을 세 줄로 흘려 칩·제목과 무게가 뒤집힌다) · 액션 **버튼 하나** · 일러스트 없음. ⚠️ **액션 래퍼가 `mt-4 flex flex-wrap items-center justify-center gap-2`다** (2026-09-13 사용자 실물) — 액션 둘(검색 0건, 아래 예외 2)을 호출부가 `<>`로 넘기므로 사이를 벌릴 자리가 거기뿐이고, `mt-4`만 들고 있으면 버튼 둘이 **간격 0으로 맞붙는다**. 바로 아래 "컨테이너 `gap` 금지"와 충돌하지 않는다: 그쪽은 칩·제목·설명·액션 **사이**의 수직 간격이고 이것은 액션 **안**의 수평 간격이다. ⚠️ **수직 중앙을 컴포넌트가 하지 않는다** — 표 안(`logs`·대기 초대)에서도 쓰여서 자리마다 다르다. `flex-1`은 호출부가 든다. ⚠️ **컨테이너에 `gap`이 없다** (2026-09-11) — 칩 `mb-3` · 제목 `mb-1` · 액션 `mt-4`가 각자 여백을 들어 gap이 **거기에 더해지고**, 그러면 하나를 건드릴 때 세 간격이 함께 움직인다. 구조는 shadcn `Empty`와 1:1이고 **CLI를 돌리지 않는다**(Radix 없는 순수 마크업이다) |

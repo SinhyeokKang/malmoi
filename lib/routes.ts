@@ -52,6 +52,18 @@ export type TranslationsQuery = {
    * 그 사실을 **미리** 말한다.
    */
   state?: KeyState;
+  /**
+   * ⚠️ **세 패널 작업 화면의 축이다** (translation-rework — design §3, 2026-09-23). 값의 해석은 `lib/translations/query.ts`의
+   * `parseTranslationQuery`가 정본이고, 여기는 **링크가 무엇을 실어 보낼 수 있나**만 든다. 옛 키(`locales`·`state=untranslated`)는
+   * 옛 링크를 받기 위해 남는다 — 새 링크는 `serializeTranslationQuery`로 만들어 그 둘을 내지 않는다.
+   */
+  scope?: string;
+  completion?: string;
+  missingLocale?: string;
+  cursor?: string;
+  key?: string;
+  keySurface?: string;
+  language?: string;
 };
 
 /**

@@ -1,7 +1,11 @@
+import { randomUUID } from "node:crypto";
+
 import { fail } from "@/lib/failure";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { countPending, pendingWhere } from "@/lib/protection/where";
-import type { PendingEdit, PullState } from "./run";
+import { planPublishBaselines, restoreValueOf } from "@/lib/translations/baseline";
+import { deliveryContextFingerprint } from "@/lib/translations/context";
+import type { DeliveryContext, PendingEdit, PullState } from "./run";
 
 /**
  * pull이 필요한 DB 상태를 읽고, 성공 후 `lastPulledAt`을 쓴다.
@@ -72,7 +76,12 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
   const unpublished = await countPending(prisma, project.id);
   // 전달 확인할 편집 — export와 **같은 스냅샷**에서 읽어야 "PR에 실린 값의 토큰"이 된다 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
   // 0이면 조회하지 않는다 — 관계 조인이 낡은 통계에서 인덱스를 버리는 창이 있다(`countPending` 주석). 같은 스냅샷이라 결과가 같다.
-  const pending = unpublished === 0 ? [] : await prisma.translation.findMany({ where: pendingWhere(project.id), select: { id: true, pendingEditToken: true } });
+  // 좌표와 값도 같은 스냅샷에서 읽는다 — 캡처 뒤 재편집된 셀의 복원 기준이 이 값이다 (translation-rework — ARCHITECTURE §5.8).
+  const pending = unpublished === 0 ? [] : await prisma.translation.findMany({
+    where: pendingWhere(project.id),
+    select: { id: true, pendingEditToken: true, surfaceId: true, keyId: true, localeCode: true, value: true, stringKey: { select: { sourceText: true } } },
+  });
+  const surfaceById = new Map(surfaces.map(surface => [surface.id, surface]));
 
   return {
     project: rest,
@@ -101,8 +110,34 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     })),
     maxUpdatedAt: agg._max.updatedAt,
     unpublished,
-    pendingEdits: pending.flatMap(t => t.pendingEditToken === null ? [] : [{ id: t.id, token: t.pendingEditToken }]),
+    pendingEdits: pending.flatMap(t => {
+      if (t.pendingEditToken === null) return [];
+      // 실제 적용 base로 판정한다 — 선언만 바뀐 base(`declaredBaseLocale`)는 export에 쓰이지 않았다.
+      const isBase = surfaceById.get(t.surfaceId)?.baseLocale === t.localeCode;
+      const restoreValue = restoreValueOf({ value: t.value, isBase, sourceText: t.stringKey.sourceText });
+      return [{ id: t.id, token: t.pendingEditToken, cell: { surfaceId: t.surfaceId, keyId: t.keyId, localeCode: t.localeCode, restoreValue } }];
+    }),
+    deliveryContexts: surfaces.map(surface => ({ surfaceId: surface.id, fingerprint: contextOf(project, surface) })),
   };
+}
+
+function contextOf(
+  project: { repositoryId: string | null; baseBranch: string },
+  surface: { id: string; importRevision: number; adapterName: string | null; pathTemplate: string | null; nested: boolean | null; nestedByPath: unknown; baseLocale: string | null },
+): string {
+  return deliveryContextFingerprint({ repositoryId: project.repositoryId, baseBranch: project.baseBranch, surface });
+}
+
+/**
+ * **첫 외부 쓰기 직전의 무효화** (ARCHITECTURE §0 불변식 9 · §5.8). 이미 무효인 행의 시각은 바꾸지 않는다 — 처음 무효가 된 순간이
+ * 남아야 한다. 되살리는 길은 성공 확정 tx(`saveLastPulledAt`의 `delivery`) 하나뿐이다.
+ * base branch 변경도 이 함수를 같은 tx에서 부른다 — A → B → A로 되돌려도 지문만으로는 옛 확인이 부활하기 때문이다.
+ */
+export async function invalidateDeliveryConfirmations(
+  db: { deliveryConfirmation: Pick<Prisma.TransactionClient["deliveryConfirmation"], "updateMany"> },
+  projectId: string,
+): Promise<void> {
+  await db.deliveryConfirmation.updateMany({ where: { projectId, invalidatedAt: null }, data: { invalidatedAt: new Date() } });
 }
 
 /**
@@ -122,6 +157,8 @@ export async function saveLastPulledAt(
   at: Date,
   published: { prUrl: string } | undefined,
   delivered: readonly PendingEdit[],
+  /** 실행권과 캡처 context. 없으면(실행 행 없는 호출) 전달 확인·기준을 건드리지 않는다 — 늦은 성공을 가를 수 없다. */
+  delivery?: { runId: string; contexts: readonly DeliveryContext[] },
 ): Promise<void> {
   const project = {
     where: { id: projectId },
@@ -130,6 +167,10 @@ export async function saveLastPulledAt(
       ...(published === undefined ? {} : { lastPublishedAt: new Date(), lastPrUrl: published.prUrl }),
     },
   };
+  if (delivery !== undefined) {
+    await prisma.$transaction(tx => confirmDelivery(tx, projectId, project, delivered, delivery));
+    return;
+  }
   if (delivered.length === 0) {
     await prisma.project.update(project);
     return;
@@ -160,4 +201,78 @@ async function acknowledgeDelivered(tx: Prisma.TransactionClient, projectId: str
       AND s."projectId" = t."projectId" AND s."id" = t."surfaceId" AND s."archivedAt" IS NULL
       AND k."projectId" = t."projectId" AND k."surfaceId" = t."surfaceId" AND k."id" = t."keyId" AND k."orphaned" = false
       AND l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode" AND l."orphaned" = false`;
+}
+
+
+/**
+ * **성공 확정 tx** — `lastPulledAt` · 토큰 CAS · 기준 해제/교체 · 소스별 전달 확인이 한 트랜잭션이다 (ARCHITECTURE §5.8).
+ *
+ * ⚠️ **잠금은 Project → 정렬된 Surface다** — 번역 저장과 같은 순서라, 기준을 고르는 사이 저장이 끼어 토큰을 바꾸지 못한다.
+ * ⚠️ **토큰 CAS와 기준 교체를 같은 조건으로 묶지 않는다** — 캡처 뒤 재편집된 셀은 pending이 남고 기준은 캡처값이다(현재 DB 값이 아니다).
+ * ⚠️ 실행권(RUNNING)을 잃었거나 캡처 뒤 context가 바뀐 소스는 확인을 쓰지 않는다 — 늦은 Publish가 무효화를 덮지 않는다.
+ * 그때도 `lastPulledAt`·CAS는 기존대로 간다 — 전달 자체는 일어났고, 그 판정은 이 기능 전부터의 계약이다.
+ */
+async function confirmDelivery(
+  tx: Prisma.TransactionClient,
+  projectId: string,
+  project: { where: { id: string }; data: Prisma.ProjectUpdateInput },
+  delivered: readonly PendingEdit[],
+  delivery: { runId: string; contexts: readonly DeliveryContext[] },
+): Promise<void> {
+  const surfaceIds = [...new Set(delivery.contexts.map(c => c.surfaceId))].sort();
+  await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+  // ⚠️ 한 문장·id 순이다 — 잠금 순서가 고정돼야 저장과 교착하지 않는다.
+  if (surfaceIds.length > 0) {
+    await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${projectId} AND "id" = ANY(${surfaceIds}::text[]) ORDER BY "id" FOR UPDATE`;
+  }
+
+  // CAS가 토큰을 비우기 전에 읽는다 — "캡처 뒤 바뀌었나"는 지금 값과 캡처 값의 비교다.
+  const current = delivered.length === 0 ? [] : await tx.translation.findMany({
+    where: { projectId, id: { in: delivered.map(d => d.id) } },
+    select: { id: true, pendingEditToken: true },
+  });
+  await tx.project.update(project);
+  if (delivered.length > 0) await acknowledgeDelivered(tx, projectId, delivered);
+
+  const cellById = new Map(delivered.flatMap(d => d.cell === undefined ? [] : [[d.id, d.cell] as const]));
+  const plan = planPublishBaselines(
+    delivered.flatMap(d => d.cell === undefined ? [] : [{ cellId: d.id, token: d.token, restoreValue: d.cell.restoreValue }]),
+    new Map(current.map(row => [row.id, row.pendingEditToken])),
+  );
+  const released = plan.release.flatMap(id => { const cell = cellById.get(id); return cell === undefined ? [] : [cell]; });
+  if (released.length > 0) {
+    await tx.translationBaseline.deleteMany({ where: { projectId, OR: released.map(c => ({ surfaceId: c.surfaceId, keyId: c.keyId, localeCode: c.localeCode })) } });
+  }
+
+  const run = await tx.syncRun.findFirst({ where: { id: delivery.runId, projectId }, select: { status: true } });
+  if (run?.status !== "RUNNING") return;
+
+  // 순차로 읽는다 — 대화형 트랜잭션은 커넥션 하나라 `Promise.all`이 왕복을 줄이지 못한다(POSTMORTEM 2026-09-16).
+  const owner = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { repositoryId: true, baseBranch: true } });
+  const rows = await tx.translationSurface.findMany({ where: { projectId, id: { in: surfaceIds }, archivedAt: null } });
+  const now = new Date();
+  const revisionBySurface = new Map<string, string>();
+  for (const context of delivery.contexts) {
+    const row = rows.find(r => r.id === context.surfaceId);
+    if (row === undefined || contextOf(owner, row) !== context.fingerprint) continue;
+    const revision = randomUUID();
+    revisionBySurface.set(row.id, revision);
+    const data = { revision, confirmedAt: now, syncRunId: delivery.runId, contextFingerprint: context.fingerprint, invalidatedAt: null };
+    await tx.deliveryConfirmation.upsert({
+      where: { projectId_surfaceId: { projectId, surfaceId: row.id } },
+      create: { projectId, surfaceId: row.id, ...data },
+      update: data,
+    });
+  }
+  for (const { cellId, restoreValue } of plan.rebase) {
+    const cell = cellById.get(cellId);
+    const revision = cell === undefined ? undefined : revisionBySurface.get(cell.surfaceId);
+    if (cell === undefined || revision === undefined) continue;
+    const key = { projectId, surfaceId: cell.surfaceId, keyId: cell.keyId, localeCode: cell.localeCode };
+    await tx.translationBaseline.upsert({
+      where: { projectId_surfaceId_keyId_localeCode: key },
+      create: { ...key, restoreValue, revision, recordedAt: now },
+      update: { restoreValue, revision, recordedAt: now },
+    });
+  }
 }
