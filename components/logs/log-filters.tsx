@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronDown, ChevronUp, RefreshCw, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
+import { SearchInput } from "@/components/search-input";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,6 +24,10 @@ import { cn } from "@/lib/utils";
 
 /**
  * 필터 다섯 + 검색 + [Refresh] (캔버스 `1a`·`1m`).
+ *
+ * ⚠️ **검색은 필터 줄 끝이고 공용 `SearchInput`이다** (2026-09-24 사용자) — 번역 화면 툴바와 같은 형:
+ * 제목 줄은 제목·행동([Refresh])뿐이고 좁히는 도구는 한 줄에 모인다. 전엔 제목 줄에 손으로 만든
+ * 폼이 있었고 IME 조합 확정 Enter를 거르지 않았다.
  *
  * ⚠️ **[Apply]가 없다** — 고를 때마다 URL이 바뀌고 서버가 목록을 다시 그린다. 클라이언트 상태는
  * **드롭다운 열림 하나**이고, 좁히는 축은 전부 URL에 산다(새로고침·뒤로가기·공유가 그냥 된다).
@@ -49,13 +54,6 @@ export function LogFilters({
   refreshable: boolean;
 }) {
   const router = useRouter();
-  const [query, setQuery] = useState(filter.q ?? "");
-  const [previousQuery, setPreviousQuery] = useState(filter.q);
-  // 뒤로 가기·필터 초기화가 URL을 바꾸면 작성 중이던 옛 검색어를 다시 제출하지 않는다.
-  if (previousQuery !== filter.q) {
-    setPreviousQuery(filter.q);
-    setQuery(filter.q ?? "");
-  }
 
   /** ⚠️ **좁히는 축이 바뀌면 커서를 뺀다** — `logsQuery`가 새 필터로 다시 조립한다. */
   const go = (next: Partial<LogFilter>) => {
@@ -74,24 +72,6 @@ export function LogFilters({
         <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.logs}</h1>
         {!refreshable && <span className="bg-muted rounded-full px-2 py-0.5 text-xs font-medium">{m.logs.archived.badge}</span>}
         <div className="ml-auto flex items-center gap-2">
-          <form
-            className="border-border flex h-9 w-50 items-center gap-2 rounded-[10px] border px-2.5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              go({ q: query.trim() === "" ? null : query.trim() });
-            }}
-          >
-            <Search className="text-muted-foreground size-4 shrink-0" aria-hidden />
-            {/* ⚠️ **프리미티브를 지난다** — 화면이 raw 태그를 쓰면 포커스 링이 그 한 곳만 빠진다 (DESIGN §7). */}
-            <Input
-              type="search"
-              aria-label={m.logs.search.label}
-              placeholder={m.logs.search.placeholder}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              className="h-auto min-w-0 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-            />
-          </form>
           {refreshable && (
             /*
               ⚠️ **자동 갱신이 없다** — `Running…`이 조회 시점 스냅샷이라는 사실을 이 버튼 하나가 든다.
@@ -105,7 +85,7 @@ export function LogFilters({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div data-log-filter-row className="flex flex-wrap items-center gap-2">
         <Filter axis={m.logs.filters.axis.kind} label={filter.kind === "all" ? m.logs.kinds.all : m.logs.kinds[filter.kind]} on={filter.kind !== "all"}>
           {LOG_KINDS.map((kind) => (
             <DropdownMenuItem key={kind} selected={filter.kind === kind} onSelect={() => go({ kind })}>
@@ -218,6 +198,14 @@ export function LogFilters({
             {m.logs.filters.clear}
           </Button>
         )}
+        <SearchInput
+          className="ml-auto"
+          inputClassName="w-80"
+          value={filter.q ?? undefined}
+          label={m.logs.search.label}
+          placeholder={m.logs.search.placeholder}
+          onSearch={(q) => go({ q: q === "" ? null : q })}
+        />
       </div>
     </div>
   );

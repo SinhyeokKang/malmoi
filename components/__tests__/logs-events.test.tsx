@@ -73,6 +73,22 @@ describe("활동 행과 상세의 실제 동작", () => {
   });
 });
 
+/**
+ * ⚠️ **검색은 필터 줄 끝이다** (2026-09-24 사용자) — 번역 화면의 툴바와 같은 형이다: 제목 줄은
+ * 제목과 행동([Refresh])뿐이고, 좁히는 도구(필터 · 검색)는 한 줄에 모인다. 공용 `SearchInput`을
+ * 지나야 IME 조합 확정 Enter가 검색으로 나가지 않는다.
+ */
+it("검색 필드가 필터와 같은 줄의 끝에 선다 — 제목 줄에 없다", async () => {
+  const props = { slug: "alpha", sources: [], actors: [], refreshable: true };
+  const { container } = await render(<LogFilters {...props} filter={parseLogFilter({})} />);
+  const search = container.querySelector('input[type="search"]');
+  const row = search?.closest("[data-log-filter-row]");
+  expect(row).not.toBeNull();
+  expect(row!.lastElementChild!.contains(search!)).toBe(true);
+  expect(row!.querySelector('button[aria-label^="Kind"]')).not.toBeNull();
+  expect(container.querySelector("h1")?.parentElement?.contains(search!)).toBe(false);
+});
+
 it("검색 URL이 바뀌면 입력값도 따라간다", async () => {
   const props = { slug: "alpha", sources: [], actors: [], refreshable: true };
   const { container, rerender } = await render(<LogFilters {...props} filter={parseLogFilter({ q: "old" })} />);
@@ -118,5 +134,35 @@ describe("상세 껍데기 — 실측이 잡은 자리", () => {
     const footer = container.querySelector("[data-event-detail-footer]");
     expect(footer).not.toBeNull();
     expect(footer!.textContent).toContain(m.logs.detail.actions.close);
+  });
+
+  /**
+   * 상세의 칩은 목록 행(28)보다 크고, 본문은 칩이 아니라 **제목 열**에 맞춰 들어간다 —
+   * 좌측 24 + 칩 40 + 간격 12 = 76. 셋 중 하나만 바뀌면 필드가 제목과 어긋난다.
+   */
+  it("칩은 40이고 본문은 제목 열(76px)에서 시작한다", async () => {
+    const { container } = await detail(row());
+    const glyph = container.querySelector("[data-event-detail-header] > [aria-hidden]");
+    expect(glyph?.className).toContain("size-10");
+    expect(container.querySelector("[data-event-detail-header]")?.className).toMatch(/\bpx-6\b.*\bgap-3\b|\bgap-3\b.*\bpx-6\b/);
+    expect(container.querySelector("[data-event-detail-body]")?.className).toContain("pl-[76px]");
+  });
+
+  it("필드는 표이고 라벨이 행 헤더다 — 값마다 라벨이 읽힌다", async () => {
+    const { container } = await detail(row());
+    const head = [...container.querySelectorAll("[data-event-detail-body] table th")];
+    expect(head.map(th => th.getAttribute("scope"))).toEqual(head.map(() => "row"));
+    expect(head[0]?.textContent).toBe(m.logs.detail.labels.reference);
+  });
+
+  /**
+   * 행 높이의 기준은 [Copy reference]가 든 행이다 — 버튼 28 + 위아래 10×2 = 48. 기준이 없으면
+   * 참조 행만 6px 더 높아 표의 리듬이 첫 줄에서 깨진다.
+   */
+  it("모든 행이 참조 행 높이(48)를 최소로 갖는다", async () => {
+    const { container } = await detail(row());
+    const rows = [...container.querySelectorAll("[data-event-detail-body] table tr")];
+    expect(rows.length).toBeGreaterThan(1);
+    for (const tr of rows) expect(tr.className).toMatch(/\bh-12\b/);
   });
 });

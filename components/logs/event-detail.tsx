@@ -7,6 +7,7 @@ import { EventGlyph } from "@/components/logs/glyph";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
 import { eventGlyph, eventSentence, eventView, eventFailureMessage, importReasonMessage, refusalMessage, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
@@ -50,8 +51,8 @@ export function EventDetail({
 
   return (
     <>
-      <div className="flex shrink-0 items-start gap-3 px-6 pt-6 pb-4">
-        <EventGlyph icon={glyph.icon} tone={glyph.tone} className="mt-0.5" />
+      <div data-event-detail-header className="flex shrink-0 items-start gap-3 px-6 pt-6 pb-4">
+        <EventGlyph icon={glyph.icon} tone={glyph.tone} size="lg" />
         <span className="flex min-w-0 flex-1 flex-col gap-1 pr-9">
           <span className="text-muted-foreground flex items-center gap-2 text-xs">
             {m.logs.detail.kindLabel[KIND_KEY[row.kind]]}
@@ -84,21 +85,27 @@ export function EventDetail({
         </span>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-5">
-        <dl className="grid grid-cols-[104px_1fr] items-baseline gap-x-3 gap-y-2.5">
-          <Field label={m.logs.detail.labels.reference}>
-            <span className="flex min-w-0 items-center gap-2">
-              <span className="[overflow-wrap:anywhere]">{row.ref}</span>
-              {/* 동료에게 붙여넣는 것이 링크보다 짧고 **권한과 무관**하다 — 받은 사람은 검색창에 넣는다. */}
-              <CopyButton value={row.ref} label={m.logs.detail.actions.copy} size="sm" />
-            </span>
-          </Field>
-          {fields(row).map(([label, value]) => (
-            <Field key={label} label={label}>
-              {value}
-            </Field>
-          ))}
-        </dl>
+      {/* ⚠️ **본문은 칩이 아니라 제목 열에서 시작한다** — 좌측 24 + 칩 40 + 간격 12 = 76. 칩 크기나
+          헤더 간격을 바꾸면 이 값도 같이 움직인다 (`logs-events.test.tsx`가 셋을 함께 본다). */}
+      <div data-event-detail-body className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-6 pb-5 pl-[76px]">
+        <div className="border-border overflow-hidden rounded-lg border">
+          <Table scrollable={false}>
+            <TableBody>
+              <Field label={m.logs.detail.labels.reference}>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="[overflow-wrap:anywhere]">{row.ref}</span>
+                  {/* 동료에게 붙여넣는 것이 링크보다 짧고 **권한과 무관**하다 — 받은 사람은 검색창에 넣는다. */}
+                  <CopyButton value={row.ref} label={m.logs.detail.actions.copy} size="sm" />
+                </span>
+              </Field>
+              {fields(row).map(([label, value]) => (
+                <Field key={label} label={label}>
+                  {value}
+                </Field>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
 
         {row.payload?.kind === "TRANSLATION" && (
           <div className="border-divider flex flex-col gap-2 border-t pt-4">
@@ -155,12 +162,22 @@ export function EventDetail({
   );
 }
 
+/**
+ * 키-값 한 줄. ⚠️ **라벨은 `th scope="row"`다** — 표로 감싼 뒤에도 스크린리더가 값마다 라벨을
+ * 읽어야 `dl`이던 때의 짝이 유지된다. 읽기 전용 사실이라 행 hover를 끈다.
+ *
+ * ⚠️ **행 높이 48(`h-12`)의 기준은 [Copy reference]가 든 참조 행이다** — 버튼 28 + 위아래 10×2.
+ * 표 행의 `height`는 최소값으로 동작해 여러 줄 값은 그대로 늘어난다. 높이가 고정되면 baseline이
+ * 위로 몰리므로 세로 정렬은 가운데다.
+ */
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <>
-      <dt className="text-neutral-400 text-xs">{label}</dt>
-      <dd className="m-0 text-base">{children}</dd>
-    </>
+    <TableRow className="h-12 hover:bg-transparent">
+      <TableHead scope="row" className="text-neutral-400 h-auto w-[104px] px-3.5 py-2.5 align-middle text-xs font-normal">
+        {label}
+      </TableHead>
+      <TableCell className="px-3.5 py-2.5 align-middle text-base whitespace-normal">{children}</TableCell>
+    </TableRow>
   );
 }
 

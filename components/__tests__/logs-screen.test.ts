@@ -39,6 +39,15 @@ describe("logs — 조회 실패와 '없음'이 다른 모양이다", () => {
     expect(src).not.toMatch(/\bcatch\s*\(/);
   });
 
+  /**
+   * ⚠️ **머리 설명문이 없다** (2026-09-24 사용자) — 무엇이 쌓이는지는 종류 필터가 이미 말하고,
+   * 보관 중일 때의 읽기 전용 안내만 남는다(DESIGN §6.68의 읽기 전용 신호 셋 중 하나).
+   */
+  it("머리 설명은 보관 안내 하나뿐이다", () => {
+    expect(src).not.toContain("m.logs.description");
+    expect(src).toContain("m.logs.archived.description");
+  });
+
   it("빈 상태가 `EmptyState`다 — 빈 표가 아니다", () => {
     expect(src).toContain("EmptyState");
   });
@@ -155,6 +164,18 @@ describe("logs 상세 — 껍데기 시각 값", () => {
     expect(dialog).not.toContain("calc(100vw-48px)");
   });
 
+  /**
+   * ⚠️ **dim·radius가 1024 모달(`modal.tsx`)과 같다** (2026-09-24 사용자) — 폭만 빌리고 셋을 따로
+   * 두던 판정(`/35`·blur 없음·`rounded-2xl`)을 접었다. Sources 상세와 나란히 서면 차이가 먼저 보였다.
+   */
+  it("dim과 radius가 1024 모달과 같다 — `/32` + blur 6 · `rounded-xl`", () => {
+    expect(dialog).toContain("bg-foreground/32");
+    expect(dialog).toContain("backdrop-blur-[6px]");
+    expect(dialog).toContain("rounded-xl");
+    expect(dialog).not.toContain("bg-foreground/35");
+    expect(dialog).not.toContain("rounded-2xl");
+  });
+
   /** ⚠️ **`--shadow-medium`이 이 값과 바이트 단위로 같다** — raw로 박으면 토큰이 움직일 때 혼자 남는다. */
   it("그림자가 토큰이다 — raw rgba를 박지 않는다", () => {
     expect(dialog).toContain("shadow-medium");
@@ -166,7 +187,7 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    * 시각·설명 `#737373`(`text-muted-foreground`)이고 구현이 둘을 하나로 합쳐 두었다.
    */
   it("필드 라벨이 `text-neutral-400`이다", () => {
-    expect(body).toMatch(/<dt className="text-neutral-400/);
+    expect(body).toMatch(/<TableHead scope="row" className="text-neutral-400/);
   });
 
   /**

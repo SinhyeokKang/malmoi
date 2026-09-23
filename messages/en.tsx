@@ -733,8 +733,6 @@ export const en = {
    * `Failed`는 GitHub에 아무것도 안 갔다는 보장이 아니다.
    */
   logs: {
-    description:
-      "Everything that happened in this project — translation edits, imports, publishes, and changes to sources, members and settings. Times are UTC.",
     /** 종류 일곱 — URL 값(`?kind=`)과 메뉴 라벨이 같은 축이다. */
     kinds: {
       all: "All activity",

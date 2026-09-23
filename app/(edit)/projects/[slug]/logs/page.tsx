@@ -89,8 +89,10 @@ export default async function LogsPage({
         ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
         ⚠️ **총계 배지가 없다** — 키셋 페이지네이션이라 셀 수 있는 총계가 없고, 지어낸 총계·성공률
         카드를 두지 않는 것이 이 화면의 규칙이다.
+        ⚠️ **설명은 보관 안내 하나뿐이다** (2026-09-24 사용자) — 옛 "Everything that happened…"는 종류
+        필터가 이미 말하는 목록이었다.
       */}
-      <PanelHeader width="fluid" description={archived ? m.logs.archived.description : m.logs.description}>
+      <PanelHeader width="fluid" description={archived ? m.logs.archived.description : undefined}>
         <LogFilters slug={slug} filter={filter} sources={sources} actors={actors} refreshable={!archived} />
       </PanelHeader>
 

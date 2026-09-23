@@ -16,7 +16,7 @@ import type { GlyphIcon, GlyphTone } from "@/lib/events/view";
 import { cn } from "@/lib/utils";
 
 /**
- * 이벤트 글리프 칩 28 (캔버스 `1a` — 연한 면 + 진한 아이콘).
+ * 이벤트 글리프 칩 28 · 상세 40 (캔버스 `1a` — 연한 면 + 진한 아이콘).
  *
  * ⚠️ **색이 보조다.** 결과는 결과 열의 낱말이, 종류는 문장이 말한다 — 칩만으로 성립하는 정보는
  * 싣지 않았다. 그래서 `aria-hidden`이다.
@@ -48,14 +48,23 @@ const ICON: Readonly<Record<GlyphIcon, LucideIcon>> = {
   settings: Settings,
 };
 
-export function EventGlyph({ icon, tone, className }: { icon: GlyphIcon; tone: GlyphTone; className?: string }) {
+/**
+ * ⚠️ **`lg`(40)는 상세 머리 전용이다** — 목록 행은 28이다. 40은 온보딩 ①②의 글리프 칩과 같은
+ * 규격이라 글리프 20 · radius 10(`rounded-md`)도 그쪽을 따른다 (DESIGN §5.1 · §6.7).
+ */
+const SIZE = {
+  sm: { chip: "size-7 rounded-sm", icon: "size-4" },
+  lg: { chip: "size-10 rounded-md", icon: "size-5" },
+} as const;
+
+export function EventGlyph({ icon, tone, size = "sm", className }: { icon: GlyphIcon; tone: GlyphTone; size?: keyof typeof SIZE; className?: string }) {
   const Icon = ICON[icon];
   return (
     <span
       aria-hidden
-      className={cn("flex size-7 shrink-0 items-center justify-center rounded-sm", TONE[tone], className)}
+      className={cn("flex shrink-0 items-center justify-center", SIZE[size].chip, TONE[tone], className)}
     >
-      <Icon className="size-4 shrink-0" />
+      <Icon className={cn("shrink-0", SIZE[size].icon)} />
     </span>
   );
 }
