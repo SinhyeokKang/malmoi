@@ -351,6 +351,9 @@ lib/
                         본다. components/search-input.tsx가 같은 함정을 제 자리에서 설명한다) ·
                         flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
+                        · translation-rework 서버 경로 넷(2026-09-23 — 화면은 C4에서 붙는다): translation-list(트리·요약 목록·상세
+                        조회, oracle은 `lib/translations/summary.ts`) · save-key(키 단위 저장 + 복원 기준 기록) · revert(Revert
+                        미리보기·실행) · delivery(전달 확인 상태 — 저장과 Revert가 같은 판정을 쓴다). 넷 다 `server-only`가 없다(격리 PG가 직접 부른다)
   translations/         **번역 화면 리워크의 순수 계약** (2026-09-23, translation-rework C1 — 소비자는 C3/C4에서 붙는다).
                         query(URL 계약 — 요청값을 들고 옛 `state=untranslated`·`locales`를 받는다, `sort` 없음) ·
                         summary(키 집계 oracle · Incomplete first 안정 분할 · effectiveCompletion) · selection ·
