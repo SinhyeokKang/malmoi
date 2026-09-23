@@ -895,7 +895,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   cuid를 그대로 찍었다** (malmoi#3, POSTMORTEM 2026-09-07) — 타입이 같은 채로 의미만 바뀐 컬럼은
   어느 게이트에도 신호를 주지 않는다.
 - **`Translation.pendingEditToken`은 "아직 전달 확인되지 않은 마지막 편집"의 식별자다** (2026-09-18, sync-edit-protection 배포 A).
-  쓰는 자리가 넷이고 **전부 여기 적힌 것뿐이다**(⚠️ translation-rework C3가 다섯째 — Revert가 캡처한 토큰 조건으로 비운다 — 를 더한다, §5.8. 미구현): `saveTranslation`이 값이 실제로 바뀔 때 새 UUID를 쓰고(no-op은 안 쓴다) ·
+  쓰는 자리가 넷이고 **전부 여기 적힌 것뿐이다**(⚠️ translation-rework가 다섯째를 더했다 — Revert가 미리보기 때 캡처한 토큰 조건으로 비운다, `lib/keys/revert.ts` · §5.8. 서버 경로만 있고 화면이 아직 부르지 않는다. 키 단위 저장 `applyKeySave`는 `saveTranslation`과 같은 첫째 자리의 다른 입구다): `saveTranslation`이 값이 실제로 바뀔 때 새 UUID를 쓰고(no-op은 안 쓴다) ·
   `applyPush`의 `DO UPDATE`가 덮은 셀에서 비우고(페이로드에 없는 셀은 남는다) · Publish가 `committed`와 **`no-changes` 둘 다**에서
   캡처한 `(id, token)`이 아직 같은 셀만 조건부 UPDATE로 비우고(§3 흐름 절 — `lastPulledAt`과 한 트랜잭션) · backfill 스크립트가 배포 A 이전 편집에 채운다.
   ⚠️ **시각으로 대체하지 않는다** — 같은 밀리초의 재저장을 `updatedAt`으로는 가를 수 없다.
@@ -1436,7 +1436,7 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 ## 5.8 전달 기준과 Revert (translation-rework — ⚠️ 설계 확정 2026-09-23, **미구현**)
 
 `Revert to last sent`가 읽는 기준값의 계약이다. 정본 설계는 `docs/features/translation-rework/design.md` §10.3·§10.4이고,
-구현이 끝나면 그 결론을 이 절로 올리고 디렉터리를 지운다. 순수 판정(`lib/translations/baseline.ts`)과 테이블 둘(`DeliveryConfirmation`·`TranslationBaseline`, `20260923020548_add_delivery_baselines` — 복합 FK는 `delivery-baseline-fk.integration.ts`가 고정한다)이 있고, **Publish 쪽 writer와 무효화는 구현됐다**(배포 A, `lib/pull/load.ts`의 `confirmDelivery`·`invalidateDeliveryConfirmations` — `delivery-confirm.integration.ts`). **Save 시점 기록과 Revert는 아직 없다**(C3). 배포 절차는 OPERATIONS "전달 기준 배포 A".
+구현이 끝나면 그 결론을 이 절로 올리고 디렉터리를 지운다. 순수 판정(`lib/translations/baseline.ts`)과 테이블 둘(`DeliveryConfirmation`·`TranslationBaseline`, `20260923020548_add_delivery_baselines` — 복합 FK는 `delivery-baseline-fk.integration.ts`가 고정한다)이 있고, **서버 경로는 전부 구현됐다** — Publish writer·무효화(`lib/pull/load.ts` — `delivery-confirm.integration.ts`), 키 단위 저장의 기준 기록(`lib/keys/save-key.ts` — `save-key.integration.ts`), Revert 미리보기·실행(`lib/keys/revert.ts` — `revert-key.integration.ts`, Server Action `previewTranslationRevert`·`revertTranslationKey`). **화면이 아직 부르지 않는다**(C4) — 그래서 불변식 절의 "미구현" 표시는 화면 개방 전까지 남긴다. 배포 절차는 OPERATIONS "전달 기준 배포 A".
 
 - **기준 행은 미전달 셀에만 있다.** 매 Publish에 활성 키×언어 전부를 쓰는 조밀 설계는 T1 실측으로 폐기했다 —
   20,000키×200언어 = 4.26M 행이 로컬 upsert 42초 · dev Supabase 추정 ~135초 · 580MB라 `maxDuration 60`과 무료 500MB를 둘 다 넘는다.
