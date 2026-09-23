@@ -1,3 +1,4 @@
+import { accessErrorMessage, type AccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 
 /**
@@ -21,4 +22,12 @@ export function isRepositorySettingsError(value: string | undefined): value is R
 
 export function repositorySettingsErrorMessage(error: RepositorySettingsError): string {
   return DICT[error];
+}
+
+/**
+ * Settings 화면의 접근 거부 → 문구 (QA D1, 2026-09-24). `archived`만 갈린다 — 공용 문구(`errors.access.archived`)는
+ * "설정에서 복원하라"를 말하는데 보는 사람이 이미 그 설정에 있다. 다른 행과 같은 `archivedReason` 한 문장을 쓴다.
+ */
+export function settingsAccessMessage(error: AccessError): string {
+  return error === "archived" ? m.settings.archivedReason : accessErrorMessage(error);
 }

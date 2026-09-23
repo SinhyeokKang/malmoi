@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateAfterCommit } from "@/lib/revalidate-after-commit";
+import { redrawIfArchived, revalidateAfterCommit } from "@/lib/revalidate-after-commit";
 
 import { planProjectName } from "@/lib/projects/plan";
 import { projectImageObjectKey, planProjectImageDelete, IMAGE_MAX_BYTES, type UploadReject } from "@/lib/upload/image";
@@ -143,7 +143,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   const access = await getProjectAccess(prisma, { userId, slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
   // 보관 = Restore만 — 거부될 요청이 GitHub을 부르지 않게 먼저 막는다. 경합 창은 잠금 안 판정이 닫는다.
-  if (access.archived) return { ok: false, error: "archived" };
+  if (access.archived) return redrawIfArchived(slug, "archived", { ok: false, error: "archived" });
   const { projectId } = access;
 
   const token = await ensureUserToken(prisma, userId, new Date());
@@ -231,7 +231,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
     }
     throw error;
   }
-  if (locked.status !== "ok") return { ok: false, error: locked.status };
+  if (locked.status !== "ok") return redrawIfArchived(slug, locked.status, { ok: false, error: locked.status });
 
   revalidatePath(`/projects/${slug}/settings`);
   /**
@@ -319,7 +319,7 @@ export async function updateRepositorySettings(raw: {
     }
     return { ok: true } as const;
   });
-  if (!outcome.ok) return outcome;
+  if (!outcome.ok) return redrawIfArchived(slug, outcome.error, outcome);
 
   revalidatePath(`/projects/${slug}/settings`);
   /**
@@ -371,7 +371,7 @@ export async function updateProjectName(raw: { slug: string; name: string }): Pr
     });
   }
   catch { console.error("Project name update failed.", { projectId: access.projectId }); return { ok: false, error: "unavailable" }; }
-  if (locked.status !== "ok") return { ok: false, error: locked.status };
+  if (locked.status !== "ok") return redrawIfArchived(parsed.data.slug, locked.status, { ok: false, error: locked.status });
   revalidateAfterCommit("name", access.projectId);
   return { ok: true, name: plan.name };
 }
@@ -394,7 +394,7 @@ export async function uploadProjectImage(form: FormData): Promise<ProjectImageRe
   const access = await getProjectAccess(prisma, { userId: session.userId, slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, reason: access.status };
   // 보관 = Restore만 — 거부될 업로드가 sharp·Blob을 태우지 않게 먼저 막는다. 경합 창은 잠금 안 판정이 닫는다.
-  if (access.archived) return { ok: false, reason: "archived" };
+  if (access.archived) return redrawIfArchived(slug, "archived", { ok: false, reason: "archived" });
   const { projectId } = access;
   const file = form.get("image");
   if (!(file instanceof File)) return { ok: false, reason: "not-a-file" };
@@ -437,7 +437,7 @@ export async function uploadProjectImage(form: FormData): Promise<ProjectImageRe
   if (typeof previous === "object" && previous !== null) {
     // 거부됐다 — 방금 올린 객체는 어느 행도 가리키지 않는다.
     await cleanProjectImage(uploaded, projectId);
-    return { ok: false, reason: previous.status };
+    return redrawIfArchived(slug, previous.status, { ok: false, reason: previous.status });
   }
   await cleanProjectImage(previous, projectId);
   revalidateAfterCommit("image-upload", projectId);
@@ -471,7 +471,7 @@ export async function deleteProjectImage(slug: string): Promise<{ ok: true } | {
       return row.image;
     });
   } catch { console.error("Project image deletion failed.", { projectId }); return { ok: false, reason: "unavailable" }; }
-  if (typeof previous === "object" && previous !== null) return { ok: false, reason: previous.status };
+  if (typeof previous === "object" && previous !== null) return redrawIfArchived(slug, previous.status, { ok: false, reason: previous.status });
   await cleanProjectImage(previous, projectId);
   revalidateAfterCommit("image-delete", projectId);
   return { ok: true };

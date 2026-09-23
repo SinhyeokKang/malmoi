@@ -11,10 +11,10 @@ import { failureText } from "@/components/onboarding/failure";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+import { isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 import { isValidBranchName } from "@/lib/pull/branch-name";
-import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib/settings/message";
+import { isRepositorySettingsError, repositorySettingsErrorMessage, settingsAccessMessage } from "@/lib/settings/message";
 
 export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false }: { slug: string; owner: string; repo: string; baseBranch: string; disabled?: boolean }) {
   const [pending, startTransition] = useTransition();
@@ -50,6 +50,8 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
     return () => { active = false; };
   }, [owner, repo, baseBranch, disabled]);
   const editable = !disabled && choice !== undefined && choice.mode !== "fixed";
+  // 보관 상태가 오면(`disabled`) 옛 거부를 내린다 — 다른 행과 같은 `archivedReason` 한 문장만 선다 (QA D1).
+  const failure = disabled || typeof result !== "object" ? null : result.error;
 
   return (
     <form
@@ -86,8 +88,8 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
               aria-invalid={typeof result === "object"} aria-describedby="base-branch-caption"
               onChange={event => { setBranch(event.target.value); setResult("idle"); }} />}
           <Button type="submit" loading={pending} aria-busy={pending} disabled={!editable || branch === current}>{m.settings.repository.fields.save}</Button>
-          <p id="base-branch-caption" role={lookupError || typeof result === "object" ? "alert" : undefined} className={lookupError || typeof result === "object" ? "text-destructive min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs" : "text-foreground/60 min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs"}>
-            {lookupError ? <><CircleAlert className="mr-1 inline size-3.5" aria-hidden />{failureText(lookupError)}</> : typeof result === "object" ? <><CircleAlert className="mr-1 inline size-3.5" aria-hidden />{messageFor(result.error)}</> : disabled ? m.settings.archivedReason : result === "saved" ? <><Check className="mr-1 inline size-3.5" aria-hidden />{m.settings.repository.fields.saved}</> : choice?.mode === "input" ? m.newProject.repo.branchTooMany : m.settings.repository.fields.branchHelp}
+          <p id="base-branch-caption" role={lookupError || failure !== null ? "alert" : undefined} className={lookupError || failure !== null ? "text-destructive min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs" : "text-foreground/60 min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs"}>
+            {lookupError ? <><CircleAlert className="mr-1 inline size-3.5" aria-hidden />{failureText(lookupError)}</> : failure !== null ? <><CircleAlert className="mr-1 inline size-3.5" aria-hidden />{messageFor(failure)}</> : disabled ? m.settings.archivedReason : result === "saved" ? <><Check className="mr-1 inline size-3.5" aria-hidden />{m.settings.repository.fields.saved}</> : choice?.mode === "input" ? m.newProject.repo.branchTooMany : m.settings.repository.fields.branchHelp}
           </p>
         </div>
       </div>
@@ -98,6 +100,6 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
 /** 갈래 이름을 문구로. 모르는 값은 재시도 가능한 실패로 접는다 (`PushTokenPanel`과 같은 형). */
 function messageFor(error: string): string {
   if (isRepositorySettingsError(error)) return repositorySettingsErrorMessage(error);
-  if (isAccessError(error)) return accessErrorMessage(error);
+  if (isAccessError(error)) return settingsAccessMessage(error);
   return m.settings.repository.fields.failed;
 }

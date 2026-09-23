@@ -69,6 +69,7 @@ import {
   type SampleRow,
 } from "@/lib/onboarding/detect";
 import { applyPushInTransaction } from "@/lib/push/apply";
+import { redrawIfArchived } from "@/lib/revalidate-after-commit";
 import { resolveLocalePaths } from "@/lib/pull/plan";
 import { readDiscardApproval } from "@/lib/import/approval";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
@@ -1524,7 +1525,7 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
     });
     return locked;
   });
-  if (locked.status !== "ok") return { ok: false, error: locked.status };
+  if (locked.status !== "ok") return redrawIfArchived(slug, locked.status, { ok: false, error: locked.status });
 
   revalidatePath(`/projects/${slug}/settings`);
   return { ok: true, pushToken };

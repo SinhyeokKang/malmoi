@@ -5,6 +5,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 
 import { GeneralCard } from "@/components/settings/general-card";
 import { PushTokenPanel } from "@/components/settings/push-token-panel";
+import { RepositoryCard } from "@/components/settings/repository-card";
 import { RepositoryForm } from "@/components/settings/repository-form";
 import { m } from "@/lib/i18n";
 
@@ -45,6 +46,8 @@ it("Name: 보관 거부는 Settings 문구로 말하고, 보관 상태가 오면
   expect(caption().textContent).toBe(m.settings.archivedReason);
   expect(caption().getAttribute("role")).toBeNull();
   expect(container.querySelector("#project-name")!.getAttribute("aria-invalid")).toBe("false");
+  // 거부된 입력도 내린다 — 꺼진 입력란에 저장되지 않은 이름이 남으면 그것이 저장된 이름처럼 읽힌다.
+  expect(container.querySelector<HTMLInputElement>("#project-name")!.value).toBe("Acme");
 });
 
 it("Upload: 보관 거부는 Settings 문구로 말하고, 보관 상태가 오면 경고 표시가 사라진다", async () => {
@@ -83,5 +86,16 @@ it("Rotate token: 보관 거부는 Settings 문구로 말하고, 보관 상태�
   expect(document.body.textContent).toContain(m.settings.archivedReason);
   expect(document.body.textContent).not.toContain(elsewhere);
   await rerender(<PushTokenPanel slug="acme" disabled />);
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+});
+
+it("Reconnect: 보관 거부는 Settings 문구로 말하고, 보관 상태가 오면 카드의 옛 경고가 사라진다", async () => {
+  actions.connectRepository.mockResolvedValue({ ok: false, error: "archived" });
+  const view = (archived: boolean) => <RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={archived} health={{ status: "not-connected" }} account={{ status: "reauthorize" }} />;
+  const { rerender } = await render(view(false));
+  await click(button(m.settings.repository.connect));
+  expect(document.body.textContent).toContain(m.settings.archivedReason);
+  expect(document.body.textContent).not.toContain(elsewhere);
+  await rerender(view(true));
   expect(document.querySelector('[role="alert"]')).toBeNull();
 });

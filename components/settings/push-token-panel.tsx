@@ -7,7 +7,8 @@ import { rotatePushToken } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+import { isAccessError } from "@/lib/auth/message";
+import { settingsAccessMessage } from "@/lib/settings/message";
 import { m } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 
@@ -94,13 +95,14 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
         </div>
       )}
     </div>
-    {error !== null && <Alert inset variant="danger">{messageFor(error)}</Alert>}
+    {/* 보관 상태가 오면(`disabled`) 옛 거부를 내린다 — 카드 아래 `archivedReason`이 대신 말한다 (QA D1). */}
+    {error !== null && !disabled && <Alert inset variant="danger">{messageFor(error)}</Alert>}
     </>
   );
 }
 
 function messageFor(error: string): string {
   if (isOnboardError(error)) return onboardErrorMessage(error);
-  if (isAccessError(error)) return accessErrorMessage(error);
+  if (isAccessError(error)) return settingsAccessMessage(error);
   return m.settings.token.failed;
 }

@@ -6,7 +6,8 @@ import { useState, useTransition } from "react";
 import { connectRepository } from "@/app/(edit)/projects/[slug]/settings/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+import { accessErrorMessage, isAccessError, type AccessError } from "@/lib/auth/message";
+import { settingsAccessMessage } from "@/lib/settings/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
 
@@ -47,7 +48,8 @@ export function ReconnectButton({ slug, label, variant, onFailure }: {
               error = result.ok ? null : result.error;
             } catch { error = FAILED; }
             if (error !== null) {
-              if (onFailure) onFailure(messageFor(error));
+              // Settings가 받는 쪽이면 보관 거부를 그 화면의 문구로 말한다 — 공용 문구는 "설정에서 복원하라"다 (QA D1).
+              if (onFailure) onFailure(messageFor(error, settingsAccessMessage));
               else setError(error);
             }
           });
@@ -68,8 +70,8 @@ const FAILED = "thrown";
  * 두 union이 겹치는 값은 `unavailable` 하나이고 뜻이 같다 — 먼저 보는 쪽이 이겨도 문제가 없다.
  * 모르는 값에 던지지 않는다: Action이 새 갈래를 늘려도 화면이 죽지 않아야 한다.
  */
-function messageFor(error: string): string {
-  if (isAccessError(error)) return accessErrorMessage(error);
+function messageFor(error: string, access: (error: AccessError) => string = accessErrorMessage): string {
+  if (isAccessError(error)) return access(error);
   if (isConnectError(error)) return connectErrorMessage(error);
   return m.settings.repository.connectFailed;
 }
