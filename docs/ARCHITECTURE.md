@@ -1336,6 +1336,12 @@ PRODUCT §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 
 - 거부는 `planProjectAccess`가 한다. **`project:settings`를 제외한 모든 permission이 `archived`로 떨어지고**,
   그래서 페이지·Server Action 전부가 **한 자리**에서 거부된다 — `entry-points.test.ts`가 진입점 전수를
   세므로 새 갈래를 빠뜨린 화면이 없다. 설정만 통과하는 이유는 **그것이 되돌리는 길**이어서다.
+- ⚠️ **진입점 판정은 잠금 전 1회라 쓰기의 근거가 아니다** (2026-09-24, 감사 #9·#10·#26). 쓰는 트랜잭션은
+  `lockProjectAccess`(`lib/auth/lock.ts`)로 **`Project`(→`TranslationSurface`) 잠금 뒤** 호출자의 멤버십·역할과
+  보관 상태를 다시 읽는다 — 잠금 대기 중 제거·강등·보관이 끝나면 여기서 거부된다(POSTMORTEM 2026-09-23의
+  Revert와 같은 형). 판정은 같은 `planProjectAccess`이고, 그 위에 **쓰기 규칙 하나**를 얹는다: 보관된
+  프로젝트의 `project:settings` 쓰기는 `restore`(보관 토글)만 통과한다(PRODUCT §7.9 "보관 = Restore만").
+  `app/__tests__/locked-access.test.ts`가 대상 Action 전수에 그 호출이 있는지 센다.
 - ⚠️ **판정 순서가 권한 → 보관이다.** EDITOR가 보관된 프로젝트의 설정을 열려 하면 답이 `forbidden`이지
   `archived`가 아니다 — 그래야 보관 여부가 권한 없는 사람에게 새지 않는다.
 - **목록에서 숨기지 않는다** — 숨기면 되돌릴 링크에 도달할 길이 없다. `loadMemberships`가 `archivedAt`을
@@ -1492,7 +1498,7 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
   pending 해제가 일어나므로 no-op이 아니다. 인가는 `project:settings`다.
   ⚠️ **실행은 `Project`→`TranslationSurface` 잠금을 얻은 뒤 OWNER 멤버십과 활성 프로젝트·표면을 다시 잰다** (2026-09-23 리뷰) —
   미리보기와 실행 사이의 강등·제거·보관이 잠금 대기 동안 끝날 수 있어, 진입점 판정만으로는 권한 잃은 사람의 쓰기와 사건이 남는다
-  (`revert-key.integration.ts`가 실제 PG 잠금 대기로 세 경합을 재현한다). 키 저장(`save-key`)의 같은 재확인은 후속 검토 후보다.
+  (`revert-key.integration.ts`가 실제 PG 잠금 대기로 세 경합을 재현한다). 키 저장(`save-key`)과 수동 Publish 시작(`lib/sync/run.ts`)도 2026-09-24에 같은 재확인(`lockProjectAccess`)을 얻었다.
 
 ## 6. 인증 경계
 
