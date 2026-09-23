@@ -15,7 +15,15 @@ import { Sidebar } from "@/components/shell/sidebar";
 import { UserMenu } from "@/components/shell/user-menu";
 import { m } from "@/lib/i18n";
 
-const never = () => new Promise<void>(() => {});
+/**
+ * ⚠️ **끝에서 푼다** (POSTMORTEM 2026-09-18) — 영원히 안 끝나는 form action은 React의 전역 async action 스코프를 붙잡아
+ * 뒤 테스트의 transition까지 pending으로 둔다.
+ */
+function held() {
+  let settle: () => void = () => {};
+  const promise = new Promise<void>(resolve => { settle = resolve; });
+  return { run: vi.fn(() => promise), settle: () => act(async () => settle()) };
+}
 const signOutButton = () => {
   const node = [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === m.common.nav.signOut);
   if (!node) throw new Error("no sign out");
@@ -23,16 +31,17 @@ const signOutButton = () => {
 };
 
 it("사이드바 Sign out은 제출 중 disabled + 스피너다", async () => {
-  const signOut = vi.fn(never);
+  const { run: signOut, settle } = held();
   await render(<Sidebar memberships={[]} userName="Kim" userImage={null} signOut={signOut} />);
   await act(async () => userEvent.setup().click(signOutButton()));
   expect(signOut).toHaveBeenCalledOnce();
   expect(signOutButton().disabled).toBe(true);
   expect(signOutButton().querySelector(".animate-spin")).not.toBeNull();
+  await settle();
 });
 
 it("사용자 메뉴 Sign out은 제출 중에도 메뉴가 열린 채 disabled + 스피너다", async () => {
-  const signOut = vi.fn(never);
+  const { run: signOut, settle } = held();
   const user = userEvent.setup();
   await render(<UserMenu name="Kim" email="k***@acme.com" image={null} signOut={signOut} />);
   await act(async () => user.click(document.querySelector<HTMLButtonElement>(`button[aria-label="${m.common.nav.userMenu}"]`)!));
@@ -40,4 +49,5 @@ it("사용자 메뉴 Sign out은 제출 중에도 메뉴가 열린 채 disabled 
   expect(signOut).toHaveBeenCalledOnce();
   expect(signOutButton().disabled).toBe(true);
   expect(signOutButton().querySelector(".animate-spin")).not.toBeNull();
+  await settle();
 });
