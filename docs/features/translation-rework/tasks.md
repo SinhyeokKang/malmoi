@@ -97,6 +97,9 @@ C4 완료는 프로덕션 개방이 아니다. preview에서 C5의 T18–T20을 
   - UI Revert → DB 값이 전달값으로 돌아오고 토큰 null · 기준 행 삭제 · 사건 `translation.reverted` · 화면 Not sent·Publish 개수 0. 문구 단수형 결함 1건을 고쳤다(`73a4918`).
   - 수술적 어댑터(`SinhyeokKang/i18n-format-check` yaml-catalog, 9키 3로케일 dev 프로젝트 신설): 접힌 스칼라 `settings.help` ja 편집 → Publish → PR #8(1파일 +1 −1, 헝크 1 — `>` 블록·`<<: *common` 앵커·따옴표 형식 보존) → 재편집 → Revert → 전달값 복원 · 결과 줄 포커스 · Publish 0.
   - 동일값: 입력했다 지우면 미저장 0 · Save 꺼짐 · Ctrl+Enter no-op · DB 불변.
-  - **미완**: PR #3·#8 머지(사람) → 재push·재pull 수렴 · no-changes 브랜치 원복 · 비-base 부재 셀의 Revert(두 폐기용 리포에 빈 셀이 없다 — 리포를 고쳐야 만들 수 있어 안 했다. `revert-key.integration.ts`만 덮는다) · base 빈값 · 값 고정점(편집 전 pull no-changes)을 순서대로 먼저 안 돌렸다.
+  - PR #3 머지(squash, 첫 줄 `[skip-malmoi-i18n]`, sync 브랜치 삭제) → 앱 Sync가 머지 head `587aa99`를 읽어 4키 적재 · ko 값이 PR과 같다 · `importRevision` 2로 올라 옛 확인이 지문으로 무효가 된다(다음 Publish 전 Revert 차단 — 설계대로).
+  - no-changes: 리포와 같은 값으로 되돌려 저장한 미전달 1건 → Publish가 `Nothing changed in the files`로 끝나고 PR 없음 · 미전달 0 · 새 확인(SKIPPED) · 리포에 sync 브랜치 없음.
+    ⚠️ 기존 동작 둘(이 기능 밖): Publish 미리보기가 리포와 같은 값도 `1 change`로 센다 · Sync 확인창이 열린 PR **조회 중**에도 `We couldn't check…`(실패 문구)를 보인다(로딩과 실패가 같은 `undefined`).
+  - **미완**: PR #8 머지(사람) → format-check 수렴 · 비-base 부재 셀의 Revert(두 폐기용 리포에 빈 셀이 없다 — 리포를 고쳐야 만들 수 있어 안 했다. `revert-key.integration.ts`만 덮는다) · base 빈값 · 값 고정점(편집 전 pull no-changes)을 순서대로 먼저 안 돌렸다.
 
 다음 진입점: T1(design §10)·C1(T2–T4, `lib/translations/*` · `planKeySave`)이 닫혔고 불변식 문서(ARCHITECTURE §0·§5.8 · PRODUCT §3 · CLAUDE.md)를 미구현 표시로 먼저 고쳤다. 다음은 C2(T5 `/db`)다 — 불변식 변경이라 `/ship bypass`가 아니라 수동 흐름이다. 문서 작성 완료는 Revert 구현/배포 완료가 아니다.
