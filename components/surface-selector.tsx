@@ -17,7 +17,7 @@ export function SurfaceSelector({ value, surfaces, pending, onChange }: {
       <span title={surface.pathTemplate ?? undefined} className="flex items-center gap-2">
         <span className="flex flex-col items-start">
           <span>{surface.pathTemplate === null ? surface.slug : surfaceLabel(surface.pathTemplate)}</span>
-          {surface.pathTemplate !== null && <span className="text-mono text-muted-foreground">{surface.pathTemplate}</span>}
+          {surface.pathTemplate !== null && <span className="text-muted-foreground text-xs">{surface.pathTemplate}</span>}
         </span>{surface.unpublished > 0 && <Badge>{surface.unpublished}</Badge>}
       </span>
     </SelectItem>)}</SelectContent>

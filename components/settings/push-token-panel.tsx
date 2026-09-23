@@ -32,7 +32,7 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
       <div className="flex items-center gap-3 @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start">
         <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded"><KeyRound className="size-4" aria-hidden /></span>
         <div className="min-w-0 flex-1 space-y-[3px]"><p className="text-base font-medium">{m.settings.token.title}</p><p className="text-muted-foreground text-xs">
-          {m.settings.token.description(<span className="text-mono">PUSH_TOKEN</span>)}
+          {m.settings.token.description(<span className="text-foreground">PUSH_TOKEN</span>)}
         </p></div>
       <Button
         className="[&_.animate-spin]:size-3.5 @max-[640px]:col-start-2 @max-[640px]:justify-self-start"
@@ -63,8 +63,8 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
             <strong className="text-foreground font-normal">{m.settings.token.warning}</strong>
           </p>
           <div className="flex items-center gap-2">
-            {/* 토큰은 식별자라 mono다 (DESIGN §4.1) */}
-            <code className="text-mono bg-muted min-w-0 flex-1 truncate rounded px-2 py-1">{token}</code>
+            {/* ⚠️ `<code>`는 preflight가 mono를 깔아서 `font-sans`를 명시한다 — mono는 코드 블록 전용이다 (DESIGN §4.1) */}
+            <code className="bg-muted min-w-0 flex-1 truncate rounded px-2 py-1 font-sans text-xs">{token}</code>
             <CopyButton value={token} />
           </div>
         </div>

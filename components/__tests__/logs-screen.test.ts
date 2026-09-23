@@ -132,3 +132,70 @@ describe("logs — 사유 사전", () => {
     }
   });
 });
+
+/**
+ * 상세 껍데기의 시각 값을 **소스에서** 센다 (2026-09-22 `/design-sync` 실측 — DESIGN §6.68).
+ *
+ * ⚠️ **화면에도 값 테스트에도 안 나타나는 부류다.** 폭·구분선·라벨 색이 어긋나도 글자는 다 읽히고
+ * DOM 테스트는 `textContent`만 본다 — computed style로 한 번 잡은 것을 여기서 상시로 든다.
+ */
+describe("logs 상세 — 껍데기 시각 값", () => {
+  const dialog = read("components/logs/event-dialog.tsx");
+  const body = read("components/logs/event-detail.tsx");
+
+  /**
+   * ⚠️ **1024는 핸드오프를 뒤집은 값이다** (2026-09-22 사용자 — 시안 `1d`는 640이었다).
+   * `modal.tsx`와 같은 관용구를 쓰므로 dim 여백 48도 함께 따라온다 — 옛 `max-w-[calc(100vw-48px)]`는
+   * 좌우 24만 비워 시안의 절반이었다.
+   */
+  it("폭이 1024 껍데기 관용구다 — 좁은 화면 여백도 96이다", () => {
+    expect(dialog).toContain("max-w-[1024px]");
+    expect(dialog).toContain("w-[calc(100%-96px)]");
+    expect(dialog).not.toContain("w-[640px]");
+    expect(dialog).not.toContain("calc(100vw-48px)");
+  });
+
+  /** ⚠️ **`--shadow-medium`이 이 값과 바이트 단위로 같다** — raw로 박으면 토큰이 움직일 때 혼자 남는다. */
+  it("그림자가 토큰이다 — raw rgba를 박지 않는다", () => {
+    expect(dialog).toContain("shadow-medium");
+    expect(dialog).not.toMatch(/rgba\(22,\s*24,\s*27/);
+  });
+
+  /**
+   * ⚠️ **라벨과 보조 텍스트가 다른 색이다** — 시안은 필드 라벨 `#a3a3a3`(`text-neutral-400`),
+   * 시각·설명 `#737373`(`text-muted-foreground`)이고 구현이 둘을 하나로 합쳐 두었다.
+   */
+  it("필드 라벨이 `text-neutral-400`이다", () => {
+    expect(body).toMatch(/<dt className="text-neutral-400/);
+  });
+
+  /**
+   * ⚠️ **그룹 안의 선은 `--divider`(#f0f0f0)이고 `--border`(#e5e5e5)가 아니다.** 상세 안에서
+   * 둘이 섞이면 같은 판에 두 굵기의 선이 선다 — 캔버스가 `--border`로 두는 것은 소스별 결과
+   * **카드**의 테두리와 그 안의 **행 사이 선**뿐이다(`1e`).
+   *
+   * ⚠️ **개수로 센다** — 클래스 문자열의 순서를 박으면 누가 재배열하는 순간 조용히 통과한다
+   * (이 리포에는 prettier도 tailwind 정렬 플러그인도 없어 순서가 사람 손이다).
+   */
+  it("`border-t`를 쓰는 넷 중 셋이 `border-divider`다 — 나머지 하나가 카드 안 행 선이다", () => {
+    expect(body.match(/border-t\b/g)).toHaveLength(4);
+    expect(body.match(/border-divider/g)).toHaveLength(3);
+  });
+
+  /**
+   * ⚠️ **푸터 버튼의 폼을 손으로 쓰지 않는다** — `Button` `default`/`md`가 캔버스 값과 정확히
+   * 겹치고(h36 · radius 10 · px 12 · hover `#fafafa`), 손수 문자열은 `Button`이 받은 갱신을
+   * 못 받는다. 실제로 옛 문자열의 hover가 `--accent`(#f5f5f5)에 남아 2026-09-13의 교체를 놓쳤다.
+   * ⚠️ **`ButtonLink`가 아닌 이유는 목적지 셋 중 하나가 `target="_blank"`라서다.**
+   */
+  it("푸터가 버튼 폼을 빌려 쓴다 — [Close]는 `Button`, 목적지는 `buttonClass()`다", () => {
+    expect(body).toContain("buttonClass()");
+    expect(body).toMatch(/<DialogClose asChild>\s*<Button/);
+    expect(body).not.toMatch(/hover:bg-accent[^"]*rounded-\[10px\]/);
+  });
+
+  /** ⚠️ **화살표가 "여기를 떠난다"를 말한다** — 캔버스가 목적지 셋 모두에 달았다(`1d`·`1e`·`1f`). */
+  it("목적지 링크 셋이 모두 화살표를 든다", () => {
+    expect(body.match(/\{LEAVE\}/g)).toHaveLength(3);
+  });
+});

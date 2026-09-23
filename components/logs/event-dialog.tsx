@@ -8,12 +8,12 @@ import type { ReactNode } from "react";
 import { m } from "@/lib/i18n";
 
 /**
- * 이벤트 상세의 **껍데기 640** (캔버스 `1d`–`1f`).
+ * 이벤트 상세의 **껍데기 1024** (캔버스 `1d`–`1f`).
  *
- * ⚠️ **`dialog.tsx`(440)도 `modal.tsx`(1024)도 쓰지 않는다.** 440은 **묻고 끝나는** 표면이라
- * Before/After 두 블록과 소스별 결과 목록이 들어가면 줄바꿈이 무너지고, 1024는 **라우트를 대신하는**
- * 온보딩 껍데기라 Back/Next 푸터를 든다 — 토큰 재발급 상세에 쓰면 빈 상자가 된다. 640은 본문 한 줄이
- * 약 70자에서 끊기는 폭이고, 껍데기 값은 1024에서 비율만 줄여 물려받았다.
+ * ⚠️ **폭이 핸드오프를 뒤집은 값이다** (2026-09-22 사용자 — `/design-sync`). 시안 `1d`의 640
+ * 판정과 그것을 뒤집은 근거는 **DESIGN §6.68이 정본**이다. 여기서 알아야 할 것 하나: `modal.tsx`에서
+ * 가져오는 것은 **폭뿐이고** radius·그림자·dim은 시안 값이다 — 온보딩 껍데기까지 따라가면 목록 위에
+ * 뜬 이 표면이 라우트를 대신하는 판으로 읽힌다.
  *
  * ⚠️ **본문은 서버가 그린다** (결정 2) — 이 파일은 열림·닫힘·포커스만 든다. 그래서 상세 조회가
  * 클라이언트 fetch로 갈라지지 않고, 목록과 **같은 페이지 오류 경계**를 쓴다.
@@ -45,7 +45,9 @@ export function EventDialog({
       <Primitive.Portal>
         <Primitive.Overlay className="fixed inset-0 z-50 bg-foreground/35" />
         <Primitive.Content
-          className="bg-background fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100vh-96px)] w-[640px] max-w-[calc(100vw-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl shadow-[0_6px_16px_2px_rgba(22,24,27,0.15)]"
+          /* ⚠️ **`w-[calc(100%-96px)]`이 dim 여백 48을 든다** — 옛 `max-w-[calc(100vw-48px)]`는 좌우로
+             24씩만 비워 시안의 절반이었다(높이는 그때도 96을 뺐다). */
+          className="bg-background fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100vh-96px)] w-[calc(100%-96px)] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl shadow-medium"
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             const row = document.getElementById(returnFocusId);

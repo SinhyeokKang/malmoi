@@ -157,7 +157,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
         우리가 들고 함께 넘긴다(빠뜨리면 설명문이 통째로 안 읽힌다).
       */
       aria-describedby={plan.atRisk ? `${describedId} ${warningId}` : describedId}
-      description={<span id={describedId}>{m.repositorySync.body(<span className="text-mono text-neutral-600">{branch}</span>)}</span>}
+      description={<span id={describedId}>{m.repositorySync.body(<span className="text-neutral-600">{branch}</span>)}</span>}
       footer={<>
         <DialogClose asChild><Button id={cancelId}>{m.common.cancel}</Button></DialogClose>
         {/* ⚠️ 무엇을 버리는지를 라벨이 먼저 말한다 — 미전달이 있으면 확정이 곧 폐기다 (sync-edit-protection spec "수동 Sync"). */}

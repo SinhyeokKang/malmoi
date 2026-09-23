@@ -65,7 +65,7 @@ export function UserMenu({
         <DropdownMenuItem asChild>
           <Link href={routes.account()} className="flex w-full items-center gap-2 px-2">
             <CircleUser className="size-4" aria-hidden />
-            {m.common.nav.settings}
+            {m.common.nav.account}
           </Link>
         </DropdownMenuItem>
         {/* 폼이 항목을 감싼다 — Radix Item은 기본이 `div`라 그 안에 submit을 두어야 한다. */}

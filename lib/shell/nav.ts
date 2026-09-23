@@ -162,7 +162,7 @@ export function navZones(
        * 같은 글리프라야 "내 계정"이 한 어휘로 읽힌다. `Settings`(톱니)는 프로젝트 설정이 쓰므로,
        * 여기에 같이 쓰면 사용자 축과 프로젝트 축이 같은 모양으로 섞인다.
        */
-      { key: "account", label: m.common.nav.settings, icon: CircleUser, href: routes.account(), exact: true },
+      { key: "account", label: m.common.nav.account, icon: CircleUser, href: routes.account(), exact: true },
     ],
   };
   if (project === null) return [work];

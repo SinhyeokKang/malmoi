@@ -500,7 +500,7 @@ function ManualForm({
         label={m.newProject.files.manual.path}
         htmlFor="manual-path"
         help={PATH_HINTS[choice?.layout ?? "per-locale"](
-          <span className="text-mono">{choice?.layout === "multi-locale" ? "*" : "{locale}"}</span>,
+          <span>{choice?.layout === "multi-locale" ? "*" : "{locale}"}</span>,
         )}
       >
         <Input
@@ -509,7 +509,7 @@ function ManualForm({
           value={manual.pathTemplate}
           onChange={(e) => onManual({ ...manual, pathTemplate: e.target.value })}
           placeholder={choice?.example ?? "src/locales/{locale}.json"}
-          className="text-mono w-full"
+          className="w-full"
         />
       </FormGroup>
       <FormGroup label={m.newProject.files.manual.baseLocale} htmlFor="manual-base">

@@ -136,7 +136,7 @@ export function LogFilters({
               aria-label={m.logs.range.from}
               defaultValue={filter.from ?? ""}
               onChange={(event) => go({ from: event.target.value === "" ? null : event.target.value })}
-              className="h-8 min-w-0 flex-1 font-mono text-xs"
+              className="h-8 min-w-0 flex-1 text-xs"
             />
             <span className="text-muted-foreground shrink-0 text-xs">–</span>
             <Input
@@ -144,7 +144,7 @@ export function LogFilters({
               aria-label={m.logs.range.to}
               defaultValue={filter.to ?? ""}
               onChange={(event) => go({ to: event.target.value === "" ? null : event.target.value })}
-              className="h-8 min-w-0 flex-1 font-mono text-xs"
+              className="h-8 min-w-0 flex-1 text-xs"
             />
           </div>
         </Filter>

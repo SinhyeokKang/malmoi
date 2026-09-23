@@ -481,7 +481,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /projects/:slug                ✅ Home — 개요 (착지점)            ← 6b-6 (2026-09-09, 프로덕션)
 /projects/:slug/translations   → **기본 표면으로 redirect** (옛 URL 껍데기)
 /projects/:slug/locales        → Sources 목록 redirect (옛 URL 껍데기)
-/projects/:slug/sources        구현 · 배포 대기: 소스 목록 + 선택 상세 모달 (상세 URL 없음)
+/projects/:slug/sources        소스 목록 + 선택 상세 모달 (상세 URL 없음) — 2026-09-22 프로덕션 배포 (#68)
 /projects/:slug/surfaces/:surface/translations  ✅ 번역             ← multi-surface B
 /projects/:slug/surfaces/:surface/locales       → 인가 뒤 Sources 목록 redirect
 /projects/:slug/surfaces/new   → 권한 검사 후 /sources?add=sources redirect (OAuth 오류 e 보존)
@@ -495,7 +495,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 `?ns=`·`?locales=`·`?q=`·`?state=`를 보존한다. 옛 Locales 두 주소는 권한 검사 후 Sources 목록으로 간다.
 `/settings?add=sources`도 Sources로 보내고 OAuth 오류 `e`를 보존한다.
 Sources 상세 선택은 클라이언트 상태라 주소·이력이 바뀌지 않고 전체 새로고침은 목록이다.
-Sources 변경은 2026-09-22 구현·검증 중이며 프로덕션 배포 여부는 `/merge`에서 확정한다.
+Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#68).
 
 ⚠️ **`/account` 행은 지금 있는 것만 적는다** — 이 표의 ✅는 **프로덕션에 선 것**을 뜻한다.
 앞서 적으면 그것을 믿은 사람이 의심해야 할 곳을 의심하지 않는다. §4.1이 얹기로 판정했던 항목 둘
@@ -575,13 +575,15 @@ Sources 변경은 2026-09-22 구현·검증 중이며 프로덕션 배포 여부
      Publish의 결과·파일 수·PR은 계속 그 테이블이 정본이다.
    - **대가**: 수집 시작 이전은 복원되지 않는다. 백필 대상은 보존된 Publish 실행뿐이고, 그 경계에
      화면이 선을 하나 긋는다(개시 시각을 모르면 **선을 아예 안 그린다** — 추정값을 만들지 않는다).
-4. **기준 로케일과 언어 진단은 Sources 상세가 소유한다** (2026-09-22 Sources, 배포 대기).
+4. **기준 로케일과 언어 진단은 Sources 상세가 소유한다** (2026-09-22 Sources, 프로덕션 배포 완료 #68).
    소스 목록은 OWNER·EDITOR가 함께 보고 EDITOR에게 경로·형식·저장소/브랜치를 보내지 않는다.
    추가·첫 적재 재시도·기준 언어 저장은 OWNER만 쓴다. `updateBaseLocale`은 선언만 저장하며
    Project→TranslationSurface 잠금·같은 트랜잭션의 이벤트를 유지한다. 브랜치 저장과 합치지 않는다.
    - 고아 언어는 사유·보존·복구 방법과 진행률을 남긴다. 한 파일의 여러 언어도 있으므로 파일 삭제를 단정하지 않는다.
    - 대기 안내는 두 역할에 적용값/요청값을 보이고, OWNER에게만 CI `base-locale:` 한 줄과 Copy를 준다.
-     전체 워크플로는 Settings CI 모달에 남는다. 미저장 이탈 확인창은 없고 저장 중만 닫기·번역 진입을 잠근다.
+     전체 워크플로는 Settings CI 모달에 남는다. **미저장 이탈은 확인 Dialog를 지난다** — 기준 언어에
+     미저장 변경이 있으면 닫기(×·Esc·배경·[Close])와 번역 진입([Open]) **전부가 같은 문**을 지나
+     [Keep editing] / [Discard change]로 갈린다. 저장 중은 그와 별개로 닫기·번역 진입을 잠근다.
    - Logs 필터의 **Sources & locales**는 사건 종류의 이름이므로 유지한다. 화면 이름 Sources와 별개다.
 5. **사이드바 항목에 카운트를 달지 않는다** (초안 시안엔 있었다). 그 숫자는 **셸 레이아웃이 매 페이지
    렌더에서** 세야 하는데, 그 레이아웃은 이미 `readSession` + `loadMemberships` 2왕복이고 번역 화면에
@@ -611,7 +613,7 @@ Sources 변경은 2026-09-22 구현·검증 중이며 프로덕션 배포 여부
    - ⚠️ **순서**: 백로그의 조건이 *"착수 전에 어느 왕복이 얼마인지부터 재야 한다"* 다
      **재기 전에 스키마를 늘리는 것은 순서가 거꾸로다.**
 
-⚠️ **그 뒤 뒤집혔다** (8-3, 2026-09-11) — 구역 라벨은 **이름 그대로**(사용자 이름 / 프로젝트 이름)이고 계정 항목은 `Settings`다. 아래는 그때의 판정이다. ~~**문구는 2인칭으로 통일한다** — 구역 `Your work`, 항목 `Your account`. 시안의 `My account`는 구역과
+⚠️ **그 뒤 뒤집혔다** (8-3, 2026-09-11) — 구역 라벨은 **이름 그대로**(사용자 이름 / 프로젝트 이름)이고 계정 항목은 `Settings`다. ⚠️ **계정 항목은 2026-09-23에 다시 `Account`가 됐다**(사용자) — 같은 사이드바에 `Project settings`가 서 있어 `Settings`가 축만 다른 동의어였고, 2인칭(`Your account`)으로 돌아간 것이 아니라 라우트·아이콘과 같은 낱말을 고른 것이다. 아래는 8-3 때의 판정이다. ~~**문구는 2인칭으로 통일한다** — 구역 `Your work`, 항목 `Your account`. 시안의 `My account`는 구역과
 인칭이 섞였다.~~
 
 ⚠️ **역할 게이팅은 6b-2 관용구를 그대로 쓴다**: 페이지 게이트는 `translation:write`(EDITOR도 로케일·

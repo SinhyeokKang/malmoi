@@ -129,7 +129,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader>
-        <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.settings}</h1>
+        <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.account}</h1>
         {/*
           페이지 수준 거부는 **global Alert**이고 제목 **아래**다 (DESIGN §6.4).
           ⚠️ **머리에 있으므로 스크롤하지 않는다** — 거부 사유가 화면 밖으로 밀려나면 사용자는

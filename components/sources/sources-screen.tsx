@@ -109,7 +109,8 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
               }}>
                 <span data-source-glyph data-tone={failed ? "failed" : "default"} className={cn("flex size-7 shrink-0 items-center justify-center rounded", failed ? "bg-destructive/8 text-destructive" : "bg-foreground/5 text-neutral-600")}><Glyph className="size-4" aria-hidden /></span>
                 <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-foreground text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
-                  {source.connection && <span className="text-mono text-muted-foreground [overflow-wrap:anywhere]">{source.connection.pathTemplate ?? m.sources.notConfigured}</span>}
+                  {/* ⚠️ 경로가 sans다 — mono는 `<pre>` 코드 블록 전용이다 (DESIGN §4.1, 2026-09-23). `text-xs`가 13px라 옛 `text-mono`와 크기는 같다. */}
+                  {source.connection && <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">{source.connection.pathTemplate ?? m.sources.notConfigured}</span>}
                   <SourceStatus icon source={source} now={now} className="hidden pt-0.5 @max-[1016px]/panel:flex" />
                 </span>
                 <SourceStatus icon source={source} now={now} className="@max-[1016px]/panel:hidden" />

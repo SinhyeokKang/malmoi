@@ -236,7 +236,7 @@ it("화면의 모든 행이 상태를 들고 구분자가 선다", async () => {
  */
 it("본문이 카드 넷이고 heading 순서가 고정이다", async () => {
   const container = await screen();
-  expect(container.querySelector("h1")?.textContent).toBe(m.common.nav.settings);
+  expect(container.querySelector("h1")?.textContent).toBe(m.common.nav.account);
 
   // 순서는 나 → 들어오는 길 → 붙어 있는 것 → 나가는 길이다.
   expect([...container.querySelectorAll("h2")].map((h) => h.textContent)).toEqual([

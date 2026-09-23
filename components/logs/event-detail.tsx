@@ -1,10 +1,12 @@
-import { CircleAlert } from "lucide-react";
+import { ArrowUpRight, CircleAlert } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { CopyButton } from "@/components/onboarding/copy-button";
 import { EventGlyph } from "@/components/logs/glyph";
 import { Badge } from "@/components/ui/badge";
+import { Button, buttonClass } from "@/components/ui/button";
+import { DialogClose } from "@/components/ui/dialog";
 import { Dialog as DialogTitleSlot } from "radix-ui";
 import { eventGlyph, eventSentence, eventView, eventFailureMessage, importReasonMessage, refusalMessage, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
@@ -12,6 +14,7 @@ import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 import { utcMinute } from "@/lib/utc-time";
+import { cn } from "@/lib/utils";
 
 /**
  * 이벤트 상세의 **본문** (캔버스 `1d`–`1f`).
@@ -62,7 +65,7 @@ export function EventDetail({
           <DialogTitleSlot.Title className="text-lg font-medium text-pretty">
             {eventSentence(row, {
               actor: actorLabel(row),
-              key: <span className="font-mono text-[17px]">{row.payload?.kind === "TRANSLATION" ? row.payload.key : ""}</span>,
+              key: row.payload?.kind === "TRANSLATION" ? row.payload.key : "",
             })}
           </DialogTitleSlot.Title>
           {/* ⚠️ **절대 시각은 `<time dateTime>`이 든다** (L7.1) — 상대 시각은 보조다. */}
@@ -82,7 +85,7 @@ export function EventDetail({
         <dl className="grid grid-cols-[104px_1fr] items-baseline gap-x-3 gap-y-2.5">
           <Field label={m.logs.detail.labels.reference}>
             <span className="flex min-w-0 items-center gap-2">
-              <span className="font-mono text-sm [overflow-wrap:anywhere]">{row.ref}</span>
+              <span className="[overflow-wrap:anywhere]">{row.ref}</span>
               {/* 동료에게 붙여넣는 것이 링크보다 짧고 **권한과 무관**하다 — 받은 사람은 검색창에 넣는다. */}
               <CopyButton value={row.ref} label={m.logs.detail.actions.copy} size="sm" />
             </span>
@@ -95,7 +98,7 @@ export function EventDetail({
         </dl>
 
         {row.payload?.kind === "TRANSLATION" && (
-          <div className="border-border flex flex-col gap-2 border-t pt-4">
+          <div className="border-divider flex flex-col gap-2 border-t pt-4">
             {/* ⚠️ **색이 아니라 라벨과 자리로 가른다** — 붉은·초록 diff는 색각·흑백에서 두 블록이 같아진다. */}
             <ValueBlock label={m.logs.detail.labels.before} value={row.payload.before} muted />
             <ValueBlock label={m.logs.detail.labels.after} value={row.payload.after} muted={false} />
@@ -103,13 +106,13 @@ export function EventDetail({
         )}
 
         {row.payload?.kind === "IMPORT" && row.payload.surfaces.length > 0 && (
-          <div className="border-border flex flex-col gap-2 border-t pt-4">
-            <span className="text-muted-foreground text-xs">{m.logs.detail.labels.resultPerSource}</span>
-            <div className="border-border overflow-hidden rounded-xl border">
+          <div className="border-divider flex flex-col gap-2 border-t pt-4">
+            <span className="text-neutral-400 text-xs">{m.logs.detail.labels.resultPerSource}</span>
+            <div className="border-border overflow-hidden rounded-lg border">
               {row.payload.surfaces.map((surface, index) => (
                 <div key={surface.surfaceSlug} className={`flex items-start gap-3 px-3.5 py-3 ${index === 0 ? "" : "border-border border-t"}`}>
                   <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-                    <span className="text-[15px] font-medium">{surface.surfaceSlug}</span>
+                    <span className="text-base font-medium">{surface.surfaceSlug}</span>
                     <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
                       {surface.count === null ? m.logs.value.notRecorded : m.logs.meta.keys(surface.count)}
                       {surface.reason === null ? "" : ` · ${importReasonMessage(surface.reason)}`}
@@ -133,8 +136,17 @@ export function EventDetail({
         {row.subtype === "settings.pushTokenRotated" && <Note tone="muted" body={m.logs.meta.tokenEffect} note={m.logs.detail.notes.token} />}
       </div>
 
-      <div className="border-border flex shrink-0 items-center gap-2 border-t px-6 py-4">
+      {/*
+        ⚠️ **[Close]가 항상 선다.** 목적지 링크는 종류·권한·대상 생존이 정하므로 없을 수 있고
+        (SURFACE·EDITOR가 보는 SETTINGS·대상이 사라진 번역), 그때 이 푸터가 **버튼 0개**로 서서
+        구분선과 빈 56px만 남는 판이 됐다 (2026-09-22 `/design-sync` 실측). 닫기는 종류와 무관하다.
+        ⚠️ **`data-*`로 잡는다** — 우상단 X와 접근 이름이 같아(둘 다 "Close") role 질의가 둘을 함께 집는다.
+      */}
+      <div data-event-detail-footer className="border-divider flex shrink-0 items-center gap-2 border-t px-6 py-4">
         {destination(row, slug, canOpenSettings, repoUrl)}
+        <DialogClose asChild>
+          <Button className="ml-auto">{m.logs.detail.actions.close}</Button>
+        </DialogClose>
       </div>
     </>
   );
@@ -143,8 +155,8 @@ export function EventDetail({
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <>
-      <dt className="text-muted-foreground text-xs">{label}</dt>
-      <dd className="m-0 text-[15px]">{children}</dd>
+      <dt className="text-neutral-400 text-xs">{label}</dt>
+      <dd className="m-0 text-base">{children}</dd>
     </>
   );
 }
@@ -154,13 +166,15 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
   const state = valueState(value);
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-muted-foreground text-xs">{label}</span>
+      <span className="text-neutral-400 text-xs">{label}</span>
       {state.kind === "text" ? (
-        <div className={`border-border rounded-[10px] border px-3 py-2.5 text-[15px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap ${muted ? "bg-muted" : ""}`}>
+        /* ⚠️ **`bg-muted`(#f5f5f5)가 아니라 #fafafa다** — 시안의 Before 면이고, 흰 After와의 대비가
+           한 단계 더 연해야 두 블록이 "같은 값의 두 시점"으로 읽힌다. */
+        <div className={`border-border rounded-[10px] border px-3 py-2.5 text-base [overflow-wrap:anywhere] whitespace-pre-wrap ${muted ? "bg-neutral-50" : ""}`}>
           {state.text}
         </div>
       ) : (
-        <div className="border-border bg-muted text-muted-foreground rounded-[10px] border border-dashed px-3 py-2.5 text-[15px]">
+        <div className="border-border bg-neutral-50 text-muted-foreground rounded-[10px] border border-dashed px-3 py-2.5 text-base">
           {state.label}
         </div>
       )}
@@ -171,9 +185,9 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
 function Note({ tone, body, note }: { tone: "danger" | "muted"; body: string; note: string | null }) {
   return (
     <div className="border-border flex items-start gap-2.5 rounded-[10px] border p-3.5">
-      <CircleAlert className={`mt-px size-4 shrink-0 ${tone === "danger" ? "text-destructive" : "text-muted-foreground"}`} aria-hidden />
+      <CircleAlert className={`mt-px size-[15px] shrink-0 ${tone === "danger" ? "text-destructive" : "text-muted-foreground"}`} aria-hidden />
       <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-sm leading-relaxed">{body}</span>
+        <span className="text-sm leading-[1.5]">{body}</span>
         {note !== null && <span className="text-muted-foreground text-xs text-pretty">{note}</span>}
       </span>
     </div>
@@ -234,19 +248,19 @@ function fields(row: EventRow): [string, ReactNode][] {
         </a>
       ),
     ]);
-    if (row.run?.errorCode != null) out.push([m.logs.detail.labels.errorCode, <span className="font-mono text-sm">{row.run.errorCode}</span>]);
+    if (row.run?.errorCode != null) out.push([m.logs.detail.labels.errorCode, row.run.errorCode]);
     if (payload?.kind === "PUBLISH" && payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(payload.refusal)]);
   }
   if (payload?.kind === "TRANSLATION") {
     out.push([m.logs.detail.labels.source, payload.surfaceSlug]);
-    out.push([m.logs.detail.labels.key, <span className="font-mono text-sm [overflow-wrap:anywhere]">{payload.key}</span>]);
+    out.push([m.logs.detail.labels.key, <span className="[overflow-wrap:anywhere]">{payload.key}</span>]);
     out.push([m.logs.detail.labels.locale, payload.locale]);
   }
   if (payload?.kind === "IMPORT") {
     out.push([m.logs.detail.labels.trigger, `${payload.source === "ci" ? m.logs.trigger.ci : actorLabel(row)}`]);
     if (row.result === "deferred" && payload.pendingEdits !== null) out.push([m.logs.detail.labels.unsentEdits, m.logs.deferredReason(payload.pendingEdits)]);
     else if ((payload.pendingEdits ?? 0) > 0) out.push([m.logs.detail.labels.unsentEdits, m.repositorySync.kept(payload.pendingEdits!)]);
-    if (payload.errorCode !== null) out.push([m.logs.detail.labels.errorCode, <span className="font-mono text-sm">{payload.errorCode}</span>]);
+    if (payload.errorCode !== null) out.push([m.logs.detail.labels.errorCode, payload.errorCode]);
     if (payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(payload.refusal)]);
     if (payload.keys !== null) out.push([m.logs.detail.labels.resultPerSource, m.logs.meta.keys(payload.keys)]);
   }
@@ -264,12 +278,21 @@ function fields(row: EventRow): [string, ReactNode][] {
   return out;
 }
 
+/**
+ * 시안의 푸터 버튼은 폼이 하나다 — [Close]와 목적지 링크가 `Button` `default`/`md`로 정확히 겹친다
+ * (h36 · radius 10 · px 12 · 14 · hover `#fafafa`). ⚠️ **`ButtonLink`가 아니라 `buttonClass()`다** —
+ * 셋 중 하나가 외부 리포로 나가는 `target="_blank"`라 `<a>`여야 하고, 그 차용은 `button.tsx`가 정한
+ * 경로다(손으로 쓴 클래스 문자열은 `Button`이 받은 hover 교체 같은 갱신을 못 받는다).
+ */
+const FOOTER_LINK = cn(buttonClass(), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", "gap-1.5");
+
+/** ⚠️ **화살표는 "여기를 떠난다"는 신호다** — 캔버스가 목적지 셋에 모두 달았고 15/보조색이다. */
+const LEAVE = <ArrowUpRight className="text-muted-foreground size-[15px]" aria-hidden />;
+
 /** 목적지 링크 하나 — 권한이 없거나 대상이 없으면 **그리지 않는다.** */
 function destination(row: EventRow, slug: string, canOpenSettings: boolean, repoUrl: string | null): ReactNode {
-  const className =
-    "border-border hover:bg-accent focus-visible:ring-ring inline-flex h-9 items-center gap-1.5 rounded-[10px] border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none";
-  if (row.kind === "MEMBER") return <Link href={routes.members(slug)} className={className}>{m.logs.detail.actions.openMembers}</Link>;
-  if (row.kind === "SETTINGS" && canOpenSettings) return <Link href={routes.settings(slug)} className={className}>{m.logs.detail.actions.openSettings}</Link>;
-  if (row.kind === "PUBLISH" && repoUrl !== null) return <a href={repoUrl} target="_blank" rel="noreferrer" className={className}>{m.logs.detail.actions.openRepository}</a>;
+  if (row.kind === "MEMBER") return <Link href={routes.members(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openMembers}{LEAVE}</Link>;
+  if (row.kind === "SETTINGS" && canOpenSettings) return <Link href={routes.settings(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openSettings}{LEAVE}</Link>;
+  if (row.kind === "PUBLISH" && repoUrl !== null) return <a href={repoUrl} target="_blank" rel="noreferrer" className={FOOTER_LINK}>{m.logs.detail.actions.openRepository}{LEAVE}</a>;
   return null;
 }
