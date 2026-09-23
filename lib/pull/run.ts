@@ -35,7 +35,18 @@ export type PullProject = {
 };
 
 /** 전달 확인 대상 — Publish 스냅샷에서 읽은 활성 셀의 편집 토큰 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`). 원문은 서버 밖으로 나가지 않는다. */
-export type PendingEdit = { id: string; token: string };
+export type PendingEdit = {
+  id: string;
+  token: string;
+  /**
+   * 그 셀의 좌표와 **캡처 시점의 export 값**(translation-rework — ARCHITECTURE §5.8). 캡처 뒤 재편집된 셀의 복원 기준이 이 값이다.
+   * 없으면(옛 호출부) 그 셀은 기준을 얻지 못한다 — unknown이라 Revert가 막히는 보수적인 쪽이다.
+   */
+  cell?: { surfaceId: string; keyId: string; localeCode: string; restoreValue: string };
+};
+
+/** 캡처 시점 소스의 context 지문(`lib/translations/context.ts`). 성공 확정이 잠금 뒤 다시 재서 같을 때만 확인을 쓴다. */
+export type DeliveryContext = { surfaceId: string; fingerprint: string };
 
 export type PullState = {
   project: PullProject;
@@ -46,6 +57,8 @@ export type PullState = {
   unpublished: number;
   /** 같은 스냅샷의 `pendingWhere` 셀. `committed`·`no-changes`에서만 해제 쓰기에 실린다. */
   pendingEdits: readonly PendingEdit[];
+  /** 같은 스냅샷의 활성 표면별 context. 없으면 확인할 소스가 없다. */
+  deliveryContexts?: readonly DeliveryContext[];
 };
 
 export type PullDeps = {
@@ -55,7 +68,18 @@ export type PullDeps = {
    * 2층까지 통과했을 때 부른다 — 커밋이 나갔든(성공 후), 변경이 없었든(export == base 트리가 검증된
    * 순간). **실패 경로에서는 부르지 않는다** — 먼저 쓰면 그 편집이 영영 스킵된다 (아래 두 호출 주석).
    */
-  saveLastPulledAt(projectId: string, at: Date, published: { prUrl: string } | undefined, delivered: readonly PendingEdit[]): Promise<void>;
+  saveLastPulledAt(
+    projectId: string,
+    at: Date,
+    published: { prUrl: string } | undefined,
+    delivered: readonly PendingEdit[],
+    contexts: readonly DeliveryContext[],
+  ): Promise<void>;
+  /**
+   * **첫 외부 쓰기 직전에** 이 프로젝트의 전달 확인을 무효화한다 (ARCHITECTURE §0 불변식 9 · §5.8). 던지면 GitHub에 아무것도 쓰지 않는다.
+   * 쓰기 뒤 실패·결과 미확인이면 확인은 무효인 채 남고, 다음 성공 확정만 되살린다.
+   */
+  invalidateDelivery?(projectId: string): Promise<void>;
   syncBranch: string;
 };
 
@@ -85,7 +109,7 @@ export type PullResult =
 const BLOB_CONCURRENCY = 8;
 
 export async function runPull(deps: PullDeps): Promise<PullResult> {
-  const { project, surfaces, maxUpdatedAt, unpublished, pendingEdits } = await deps.loadState();
+  const { project, surfaces, maxUpdatedAt, unpublished, pendingEdits, deliveryContexts = [] } = await deps.loadState();
 
   // ── 1층: DB 측 스킵. 여기서 끝나면 GitHub을 한 번도 부르지 않는다 ────────────
   if (shouldSkipPull(unpublished)) {
@@ -198,6 +222,8 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
      * 이 판정도 함께 다시 봐야 한다.
      */
     if (staleHead !== null && staleHead !== baseHead) {
+      // 되돌리기도 외부 쓰기다 — 그 결과를 모르는 채 옛 확인으로 복원하지 않게 먼저 무효화한다.
+      await deps.invalidateDelivery?.(project.id);
       await client.updateRefForce(deps.syncBranch, baseHead);
     }
     // **커밋이 안 나갔어도 갱신한다** — 그 순간 export == base 트리가 검증된 상태다.
@@ -207,11 +233,13 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     // ⚠️ `published`를 넘기지 않는다 — 되돌리기는 "보낸" 것이 아니다 (ARCHITECTURE §3).
     // ⚠️ **캡처 편집도 여기서 전달 확인한다** — 원복한 편집이 이 경로로 끝나는데 해제하지 않으면 토큰이 영영 남는다
     // (sync-edit-protection — ARCHITECTURE §3의 "유령 pending"). 값을 고르지 않고 no-op을 탐지할 뿐이다.
-    await deps.saveLastPulledAt(project.id, captured, undefined, pendingEdits);
+    await deps.saveLastPulledAt(project.id, captured, undefined, pendingEdits, deliveryContexts);
     return { status: "skipped", reason: "no-changes" };
   }
 
   const summary = `${changes.length} file${changes.length === 1 ? "" : "s"}`;
+  // ⚠️ **createTree가 첫 외부 쓰기다** — 여기까지는 읽기뿐이라, 무효화가 실패하면 GitHub에 아무것도 남지 않는다.
+  await deps.invalidateDelivery?.(project.id);
   const treeSha = await client.createTree(buildTreePayload(changes, baseHead));
   const commitSha = await client.createCommit(buildCommitPayload(treeSha, baseHead, summary));
 
@@ -249,7 +277,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
 
   // 마지막에 쓴다 — 먼저 쓰면 실패한 pull이 다음 실행을 스킵시켜 편집이 영영 안 나간다.
   // **보낸 것의 링크가 새로고침을 넘어야 한다** — cron 경로도 여기를 지나므로 야간 pull이 만든 PR도 남는다.
-  await deps.saveLastPulledAt(project.id, captured, { prUrl }, pendingEdits);
+  await deps.saveLastPulledAt(project.id, captured, { prUrl }, pendingEdits, deliveryContexts);
 
   return {
     status: "committed",

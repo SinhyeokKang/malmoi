@@ -177,7 +177,8 @@ describe("Publish 캡처와 전달 확인 CAS (T4)", () => {
   it("[C9] 캡처는 활성 셀의 (id, token)만 담는다 — orphan 키·로케일과 토큰 없는 셀은 없다", async () => {
     await seed("p", { lastPulledAt: PULLED, cells });
     const state = await loadPullState(prisma, "p");
-    expect([...state.pendingEdits].sort((a, b) => a.id.localeCompare(b.id))).toEqual([
+    // 캡처는 복원용 좌표(`cell`)도 싣는다(translation-rework) — 여기서 재는 것은 "어느 셀의 어느 토큰인가"다.
+    expect([...state.pendingEdits].map(({ id, token }) => ({ id, token })).sort((a, b) => a.id.localeCompare(b.id))).toEqual([
       { id: cellId("p", "k1", "ko"), token: "tok-1" },
       { id: cellId("p", "k2", "ko"), token: "tok-2" },
     ]);
