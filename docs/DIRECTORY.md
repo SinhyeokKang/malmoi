@@ -100,7 +100,8 @@ middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/pro
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 25개 + tone.ts 헬퍼 (skeleton이 2026-09-13에
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 25개 + tone.ts·focus.ts 헬퍼 (focus.ts는 2026-09-24 audit B5 —
+                        포커스 착지 셋 landFocus·neighbourFocus·useLandAfter, DESIGN §7) (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
