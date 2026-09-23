@@ -63,6 +63,7 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 | Publish (PR 생성·갱신) | O | O |
 | 리포 재연결 | O | X |
 | **리포 재적재(Sync)** | O | X |
+| **Revert to last sent** (미구현 — translation-rework) | O | X |
 | base branch **변경** | O | X |
 | 기준 로케일 **변경** | O | X |
 | 멤버 관리·프로젝트 **보관** | O | X |
@@ -76,7 +77,7 @@ permission을 거부하는데, 그러면 **보관 사건과 그 직전 기록을
 
 **역할 둘 아래에 permission은 셋이다** (`lib/auth/permission.ts`의 `Permission`) — 표의 칸이 그중
 하나로 내려간다. `translation:write`(OWNER·EDITOR — 조회·수정·Publish) · `project:settings`(OWNER —
-리포 재연결·재적재·base branch·기준 로케일·표면 추가·보관) · `member:manage`(OWNER — `createInvitation`·
+리포 재연결·재적재·base branch·기준 로케일·표면 추가·보관 · **Revert**(미구현)) · `member:manage`(OWNER — `createInvitation`·
 `revokeInvitation`·`changeMember`). ⚠️ **아래에서 "넷째 permission을 만들지 않는다"고 말할 때의 셋이
 이것이다** — 그 문장이 무엇을 세는지 이 목록 없이는 문서 안에서 확인할 수 없었다.
 
@@ -115,7 +116,7 @@ permission을 거부하는데, 그러면 **보관 사건과 그 직전 기록을
 
 ⚠️ **리포 재적재(Sync)는 그 반대편이고 OWNER 전용이다** (판정 2026-09-15 · 2026-09-16 실물 왕복까지
 완료). 리포의 로케일 파일을 다시 읽어 **번역을 리포 값으로 덮는 동작**이라
-(`applyPush`의 `"updatedBy" = NULL`), **미전달 편집을 버리는 유일한 경로다** (2026-09-18 — CI 적재는 미전달 편집이 있으면
+(`applyPush`의 `"updatedBy" = NULL`), **미전달 편집을 버리는 경로다** (2026-09-18 — CI 적재는 미전달 편집이 있으면
 통째로 보류된다, ARCHITECTURE §5.5.2). **편집의 당사자(EDITOR)가 그것을 스스로 버리는 경로를 만들지 않는다** — 그래서 Publish와
 방향이 갈린다. 인가는 `project:settings`이고 넷째 permission을 만들지 않는다.
 ⚠️ **폐기는 Dialog가 열릴 때 서버가 발급한 지문을 되돌려 받을 때만 열린다** — boolean 동의가 아니다. Dialog 뒤 새 편집·설정 변경은
@@ -123,6 +124,12 @@ permission을 거부하는데, 그러면 **보관 사건과 그 직전 기록을
 `Discard changes and sync`다.
 ⚠️ **되돌리기를 함께 만들지 않는다**: 옛 DB 값과 새 리포 값 중 고르는 코드가 곧 병합 로직이고
 ARCHITECTURE §0 불변식 2와 정면 충돌한다.
+
+⚠️ **미전달 편집을 버리는 둘째 경로가 생긴다 — `Revert to last sent`** (결정 2026-09-23, translation-rework — **미구현**).
+선택한 키의 미전달 언어 전부를 **마지막으로 전달 확인된 DB 값**으로 되돌린다. 위의 "되돌리기"와 다르다 — 리포 값과 견주지 않고
+전달 확인 시점에 DB가 export에 넣은 값 하나만 쓴다(ARCHITECTURE §5.8). **OWNER 전용**이고(`project:settings`, 넷째 permission 없음)
+Sync와 같이 서버 발급 지문으로만 열린다. EDITOR에게는 숨기지 않고 꺼진 버튼 + 사유다. 한 언어라도 기준이 없으면 전체가 불가능하고,
+`needsReview`는 해제하지 않는다(복원은 검토 완료가 아니다).
 
 **로그인 방식이 역할을 정하지 않는다.** GitHub으로 로그인한 EDITOR도, Google로 로그인한 OWNER도
 성립한다. 권한은 `ProjectMember.role`만 결정한다.
