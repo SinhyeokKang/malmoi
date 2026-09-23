@@ -1,0 +1,114 @@
+/**
+ * 한 키 draft (translation-rework — spec §3.4 · design §4).
+ *
+ * 세 층을 섞지 않는다: `saved`(미저장·취소의 기준) · `draft`(입력) · `inFlight`(보낸 스냅샷).
+ * ⚠️ **저장 중 받은 서버 값도 `saved`를 갱신한다** (POSTMORTEM 2026-09-12) — 안 그러면 실패 뒤 Escape가 옛 값을 되살린다.
+ * ⚠️ 로케일 코드는 남이 정한 키라 레코드를 `Object.create(null)`로 만든다 — `{}`에 `__proto__`를 대입하면 키가 사라진다.
+ */
+type Values = Record<string, string>;
+
+export type KeyDraftState = {
+  keyId: string;
+  /** 초기 로케일 순서. 미저장 목록이 이 순서를 따른다. */
+  order: readonly string[];
+  saved: Values;
+  draft: Values;
+  inFlight?: { requestId: string; sent: Values };
+};
+
+export type KeyDraftAction =
+  | { type: "edit"; locale: string; value: string }
+  | { type: "reset"; locale: string }
+  | { type: "submit"; requestId: string }
+  | { type: "success"; requestId: string; keyId: string; cells: readonly { localeCode: string; value: string }[] }
+  | { type: "failure"; requestId: string }
+  | { type: "server"; keyId: string; values: Readonly<Values> };
+
+function values(entries: Iterable<readonly [string, string]>): Values {
+  const out = Object.create(null) as Values;
+  for (const [code, value] of entries) out[code] = value;
+  return out;
+}
+
+export function initKeyDraft(keyId: string, saved: Readonly<Values>): KeyDraftState {
+  const order = Object.keys(saved);
+  return { keyId, order, saved: values(order.map(code => [code, saved[code] ?? ""])), draft: values(order.map(code => [code, saved[code] ?? ""])) };
+}
+
+export function dirtyLocales(state: KeyDraftState): string[] {
+  return state.order.filter(code => state.draft[code] !== state.saved[code]);
+}
+
+export function reduceKeyDraft(state: KeyDraftState, action: KeyDraftAction): KeyDraftState {
+  switch (action.type) {
+    case "edit": {
+      if (!Object.hasOwn(state.saved, action.locale)) return state;
+      return { ...state, draft: values([...Object.entries(state.draft), [action.locale, action.value]]) };
+    }
+    case "reset": {
+      if (!Object.hasOwn(state.saved, action.locale)) return state;
+      return { ...state, draft: values([...Object.entries(state.draft), [action.locale, state.saved[action.locale] ?? ""]]) };
+    }
+    case "submit": {
+      const dirty = dirtyLocales(state);
+      // 전송 중 중복 제출과 바뀐 것 없는 제출은 요청을 만들지 않는다.
+      if (state.inFlight !== undefined || dirty.length === 0) return state;
+      return { ...state, inFlight: { requestId: action.requestId, sent: values(dirty.map(code => [code, state.draft[code] ?? ""])) } };
+    }
+    case "success": {
+      if (state.inFlight?.requestId !== action.requestId || action.keyId !== state.keyId) return state;
+      const saved = values(Object.entries(state.saved));
+      const draft = values(Object.entries(state.draft));
+      const sent = state.inFlight.sent;
+      for (const cell of action.cells) {
+        if (!Object.hasOwn(saved, cell.localeCode)) continue;
+        saved[cell.localeCode] = cell.value;
+        // 보낸 뒤 더 친 입력은 남긴다 — 서버 정규화값은 보낸 그대로인 입력에만 입힌다.
+        if (Object.hasOwn(sent, cell.localeCode) && draft[cell.localeCode] === sent[cell.localeCode]) draft[cell.localeCode] = cell.value;
+      }
+      return { keyId: state.keyId, order: state.order, saved, draft };
+    }
+    case "failure": {
+      if (state.inFlight?.requestId !== action.requestId) return state;
+      return { keyId: state.keyId, order: state.order, saved: state.saved, draft: state.draft };
+    }
+    case "server": {
+      if (action.keyId !== state.keyId) return state;
+      const saved = values(Object.entries(state.saved));
+      const draft = values(Object.entries(state.draft));
+      for (const code of state.order) {
+        if (!Object.hasOwn(action.values, code)) continue;
+        const next = action.values[code] ?? "";
+        // 미저장이 아닌 셀은 입력도 서버를 따라가고, 미저장 입력은 보존한다.
+        if (draft[code] === saved[code]) draft[code] = next;
+        saved[code] = next;
+      }
+      return { ...state, saved, draft };
+    }
+  }
+}
+
+export type DraftRecovery = { kind: "clear" } | { kind: "write"; keyId: string; saved: Values; draft: Values };
+
+/** 세션 복구 사본 — 미저장이 남으면 최신 draft와 갱신된 기준을, 0이면 지운다. */
+export function planDraftRecovery(state: KeyDraftState): DraftRecovery {
+  return dirtyLocales(state).length === 0 ? { kind: "clear" } : { kind: "write", keyId: state.keyId, saved: state.saved, draft: state.draft };
+}
+
+/**
+ * 입력 안의 키보드 — Enter는 줄바꿈, Ctrl/Cmd+Enter는 키 저장, Escape는 현재 입력 취소.
+ * IME 조합 중의 키는 조합의 것이다 (`lib/keys/edit-command.ts`와 같은 판정).
+ */
+export function keyEditCommand(event: {
+  key: string;
+  shiftKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  isComposing?: boolean;
+  keyCode?: number;
+}): "save" | "reset" | null {
+  if (event.isComposing || event.keyCode === 229) return null;
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) return "save";
+  if (event.key === "Escape") return "reset";
+  return null;
+}
