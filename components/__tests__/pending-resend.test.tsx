@@ -106,6 +106,24 @@ describe("Resend — 처리 중", () => {
   });
 });
 
+describe("Resend — 두 행을 연달아", () => {
+  it("각 행은 자기 응답이 올 때까지 잠긴다 — 먼저 끝난 응답이 다른 행을 풀지 않는다", async () => {
+    const resolvers: ((value: unknown) => void)[] = [];
+    mocks.resendInvitation.mockImplementation(() => new Promise((r) => { resolvers.push(r); }));
+    await draw();
+    await click(resend(0));
+    await click(resend(1));
+    expect(resend(0).disabled).toBe(true);
+    expect(resend(1).disabled).toBe(true);
+    await act(async () => { resolvers[0]?.({ ok: true, label: "a***@acme.com" }); });
+    expect(resend(0).disabled).toBe(false);
+    expect(resend(1).disabled).toBe(true);
+    expect(revoke(1).disabled).toBe(true);
+    await act(async () => { resolvers[1]?.({ ok: true, label: "b***@acme.com" }); });
+    expect(resend(1).disabled).toBe(false);
+  });
+});
+
 describe("Resend — 성공", () => {
   it("토스트는 누른 행의 라벨로 말하고 카드 Alert를 세우지 않는다", async () => {
     await draw();

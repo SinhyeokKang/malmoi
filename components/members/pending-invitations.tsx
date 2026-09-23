@@ -52,7 +52,8 @@ export function PendingInvitations({
   const manage = canPerform(role, "member:manage");
   const [failed, setFailed] = useState<{ id: string; error: string } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [resendingId, setResendingId] = useState<string | null>(null);
+  /** ⚠️ **집합이다** — 값 하나면 두 행을 연달아 누를 때 먼저 끝난 응답이 다른 행의 잠금까지 푼다. */
+  const [resending, setResending] = useState<ReadonlySet<string>>(new Set());
   const [cardAlert, setCardAlert] = useState<{ variant: "warning" | "danger"; text: string } | null>(null);
   /** Resend 뒤 포커스 착지점 — 행이 남으면 그 버튼, 교체되면 카드 제목. 잠금이 풀린 커밋에서 옮긴다. */
   const [landing, setLanding] = useState<{ kind: "resend"; id: string } | { kind: "heading" } | null>(null);
@@ -70,18 +71,18 @@ export function PendingInvitations({
   }, [failed]);
 
   useEffect(() => {
-    if (landing === null || resendingId !== null) return;
+    if (landing === null || (landing.kind === "resend" && resending.has(landing.id))) return;
     const button = landing.kind === "resend" ? (document.getElementById(`resend-${landing.id}`) as HTMLButtonElement | null) : null;
     if (button !== null && !button.disabled) button.focus();
     else document.getElementById(headingId)?.focus();
     setLanding(null);
-  }, [landing, resendingId, headingId]);
+  }, [landing, resending, headingId]);
 
   function resend(invitationId: string, who: string) {
     setFailed(null);
     setCardAlert(null);
     setAnnouncement("");
-    setResendingId(invitationId);
+    setResending((current) => new Set(current).add(invitationId));
     startTransition(async () => {
       let result: ResendResult | null;
       try {
@@ -90,7 +91,11 @@ export function PendingInvitations({
         // 호출이 끊기면 서버가 재발급했는지 모른다 — 미확인으로 말한다.
         result = null;
       }
-      setResendingId(null);
+      setResending((current) => {
+        const next = new Set(current);
+        next.delete(invitationId);
+        return next;
+      });
       if (result !== null && result.ok) {
         toast.success(m.members.pending.resentToast(who));
         setLanding({ kind: "heading" });
@@ -198,8 +203,8 @@ export function PendingInvitations({
                               id={`resend-${invitation.id}`}
                               data-resend
                               aria-label={m.members.pending.resendLabel(invitation.emailLabel)}
-                              aria-busy={resendingId === invitation.id}
-                              loading={resendingId === invitation.id}
+                              aria-busy={resending.has(invitation.id)}
+                              loading={resending.has(invitation.id)}
                               disabled={pendingId === invitation.id}
                               onClick={() => resend(invitation.id, invitation.emailLabel)}
                             >
@@ -210,7 +215,7 @@ export function PendingInvitations({
                               variant="danger"
                               aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
                               loading={pendingId === invitation.id}
-                              disabled={resendingId === invitation.id}
+                              disabled={resending.has(invitation.id)}
                               onClick={() => revoke(invitation.id, invitation.emailLabel)}
                             >
                               {m.members.pending.revoke}
