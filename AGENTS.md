@@ -50,7 +50,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 따라서:
 
 - **push는 리포 값으로 번역을 덮고 저자도 비운다** (`ON CONFLICT DO UPDATE`, `"updatedBy" = NULL`). 변경 감지도 병합도 없다. **덮인 값의 저자는 리포이므로 사람 이름이 남는 쪽이 거짓이었다.**
-- **단, 미전달 편집이 하나라도 있으면 CI 적재를 통째로 보류한다** (2026-09-18, sync-edit-protection — 옛 판정 "편집 손실 창은 코드에서 지우지 않는다"의 반전). **보류 판정은 리포를 보지 않는다** — 입력은 `Translation.pendingEditToken`으로 센 미전달 편집 수 하나이고, 0이면 위의 strict 적재가 그대로 돈다. 그래서 변경 감지도 병합도 아니다. 미배포 집계·1층 스킵·배지가 전부 그 토큰 술어(`lib/protection/where.ts`) 위에 선다. 편집을 버리는 길은 OWNER가 서버 발급 지문으로 승인한 수동 Sync뿐이다(⚠️ translation-rework가 둘째 — 마지막 전달 확인된 DB 값으로 되돌리는 OWNER 전용 `Revert to last sent` — 를 더했다 — 2026-09-23 dev, 프로덕션 배포 대기, ARCHITECTURE §5.8). **대가는 적재 지연이다** — 미전달 편집이 남은 동안 리포의 새 키·삭제도 앱에 안 들어온다(`/api/push`는 200 `deferred`).
+- **단, 미전달 편집이 하나라도 있으면 CI 적재를 통째로 보류한다** (2026-09-18, sync-edit-protection — 옛 판정 "편집 손실 창은 코드에서 지우지 않는다"의 반전). **보류 판정은 리포를 보지 않는다** — 입력은 `Translation.pendingEditToken`으로 센 미전달 편집 수 하나이고, 0이면 위의 strict 적재가 그대로 돈다. 그래서 변경 감지도 병합도 아니다. 미배포 집계·1층 스킵·배지가 전부 그 토큰 술어(`lib/protection/where.ts`) 위에 선다. 편집을 버리는 길은 OWNER가 서버 발급 지문으로 승인한 수동 Sync뿐이다(⚠️ translation-rework가 둘째 — 마지막 전달 확인된 DB 값으로 되돌리는 OWNER 전용 `Revert to last sent` — 를 더했다 — 2026-09-23, 프로덕션 #71, ARCHITECTURE §5.8). **대가는 적재 지연이다** — 미전달 편집이 남은 동안 리포의 새 키·삭제도 앱에 안 들어온다(`/api/push`는 200 `deferred`).
 - **키는 삭제하지 않는다.** 코드에서 사라진 키도 `orphaned` 플래그만 세운다 — 브랜치를 되돌리거나 기능을 복구하면 번역이 그대로 살아 돌아와야 한다.
 - **pull은 값을 병합하지 않는다.** **모든 어댑터가 원본 파일 내용을 읽는다** — 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 **구조**(빈 줄·주석·키 순서)를, 재생성(`chrome-locales`·`json-catalog`)은 **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)을 가져온다. 어느 쪽도 **값**은 아니다. 기존 값과 DB 값을 견줘 고르는 코드가 생기는 순간 이 원칙이 깨진다.
 - **export는 결정적이어야 한다.** 같은 DB 상태 → 언제나 바이트 단위로 같은 파일. 이게 깨지면 blob SHA 비교가 매번 "변경됨"을 뱉어 무의미한 커밋이 쌓이고, 변경 감지 최적화 전체가 무너진다.
@@ -276,6 +276,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.
 - **⚠️ 남이 정한 키로 조회하거나 대입하면 프로토타입을 먼저 끊는다.** 조회는 `Object.hasOwn`(`?? 폴백`은 `Object.prototype`에서 찾아진 값을 못 막는다), **대입은 `Object.create(null)`**이다. 평범한 `{}`에 `out["__proto__"] = v`를 하면 setter가 불려 own property가 안 생기고 **그 키가 조용히 사라진다.** **로케일 파일의 키·`Locale.code`·`pathTemplate`·`searchParams`가 전부 이 부류다.**
+- **⚠️ 개인정보 방침(`/privacy`)은 코드와 같이 움직인다.** 스키마·로그인·자격증명·새 외부 호스트·새 쿠키를 건드렸으면 방침이 여전히 참인지 본다 — 새 **목적** · 새 **전송처** · **쿠키·보존** · 본문 **모순** 넷은 자동 게이트가 못 본다(`/push` 4단계). 개인정보 모델의 새 필드는 `lib/privacy/collected.ts` 등재 없이 typecheck가 red이고, 본문을 고치면 `lib/privacy/__tests__/policy-gate.test.tsx`가 개정 이력·시행일을 요구한다.
 - **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`). 인가 판정에 넘기는 값(`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다. 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 단 테스트가 직접 import하는 순수 모듈엔 붙이지 않는다. ⚠️ **`vitest.setup.ts`가 그것을 전역 mock하므로 "테스트가 죽는다"는 더 이상 잎 모듈을 분리시키는 압력이 아니다** — **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**이고 그것은 `"use client"` 그래프만 본다.

@@ -69,14 +69,26 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
 ### 배포 B — 화면 개방 (Revert를 사람이 누른다)
 
 **배포 B는 기준을 읽는 쪽이다** — 세 패널 작업 화면이 키 단위 저장(`saveTranslationKey`)과 `Revert to last sent`를 연다.
-스키마 변경이 없다. 선행 조건은 translation-rework T18(격리 PG)·T19(실브라우저)·T20(실리포 왕복)이다.
-⚠️ **2026-09-23에 T19·T20보다 먼저 나갔다**(#71 — C2~C4가 한 번에 머지됐다). 그 두 검증은 배포 뒤에 닫는다.
+스키마 변경이 없다. ⚠️ **2026-09-23에 실브라우저·실리포 검증보다 먼저 나갔다**(#71 — C2~C4가 한 번에 머지됐다). 격리 PG
+(`pnpm test:projects:postgres`)는 배포 전에 통과했고, 나머지는 배포 뒤 **로컬 dev + dev DB**(preview가 아니다)에서 돌렸다 —
+실브라우저 폭·키보드·IME·접힌 트리·재로그인 복구는 Chrome으로, 실리포 왕복은 `bugshot-i18n-test` PR #3(chrome-locales) ·
+`i18n-format-check` PR #8(yaml-catalog)으로 전달 → 재편집 → Revert → 머지 → Sync · `no-changes`까지 확인했다.
 
 1. **옛 셀 저장이 남아 있는 빌드와 섞이지 않게 한다** — 옛 `saveTranslation`(T16에서 지웠다)은 복원 기준을 기록하지 않고 값을 쓴다.
    그 Action이 살아 있는 빌드로 되돌렸다가 다시 올리면, 그 사이 저장된 셀의 기준이 없거나 낡았다. **재전진 직후 한 번** 위 4번의
    전부 무효화를 돌린다(다음 편집 있는 Publish가 되살린다 — 그 사이 Revert는 `baseline-unknown`으로 막힌다. 막히는 쪽이 옳다).
 2. **확인**: 위 3번의 두 쿼리가 계속 0이어야 한다. Revert가 거부만 낸다면(`baseline-unknown`·`baseline-stale`) 먼저 그 소스의 확인이
    무효화됐는지 본다 — push·import·base branch 변경·Publish 시작이 전부 무효화한다(ARCHITECTURE §5.8). 정상 동작이다.
+
+**남은 검증** — 아래는 한 번도 밟지 않았다. 이 화면을 다시 만질 때 먼저 닫는다.
+
+- 200언어 fixture(실리포 상한이 57이었다 — `i18n-many-locales`) · Safari·Firefox · 네이티브 `beforeunload` 확인창 육안 ·
+  성능 지표(`responseEnd`·`transferSize`·`loadEventEnd` — dev 서버 수치로 판정하지 않는다, ARCHITECTURE §1.95) · 실브라우저 뒤로/앞으로
+  (guard가 Next 내부 동작에 기댄다, ARCHITECTURE §1.97).
+- 실리포 왕복에서 빠진 셋: **비-base 부재 셀의 Revert**(두 폐기용 리포에 빈 셀이 없어 리포를 고쳐야 만들 수 있다 — 지금은
+  `revert-key.integration.ts`만 덮는다) · **base 빈값** · **편집 전 pull이 `no-changes`로 끝나는 고정점**.
+- ⚠️ 대량 적재 직후 첫 렌더가 서버에서 2.0분이었다(57언어 · 619키, 둘째 요청 1.6초). 낡은 통계로 계획이 섰다고 **추정**만 했고
+  재현하지 않았다 — 프로덕션의 새 대형 프로젝트 첫 화면에 같은 창이 열리는지 미확인이다.
 
 ## 1. 암호화 키 셋 — 섞지 않는다
 
@@ -247,6 +259,17 @@ dig +short TXT mal-moi.com | tr -d '"' | sed 's/.*=//' | awk '{print length($0)}
 ```
 
 값은 인증 창의 **[복사] 버튼**으로 가져온다(드래그 선택 금지 — 칸이 잘려 보인다). 반영은 가비아 원본(`@ns.gabia.co.kr`)과 퍼블릭 리졸버(`@8.8.8.8`) 둘 다에서 확인한 뒤 [확인]을 누른다.
+
+## 개인정보 삭제 요청 (방침 `deletion` 절의 약속)
+
+방침이 공표한 약속: `ox501501@gmail.com`으로 온 열람·정정·삭제 요청에 **30일 안에** 답한다. 셀프서비스 화면은 없다(PRODUCT §4.2).
+
+**지우는 순서가 정해져 있다** — `ProjectMember.user`·`ProjectInvitation.invitedByUser`가 `onDelete: Restrict`라 `User`부터 지우면 던진다.
+① 그 사람의 `ProjectMember` 행 ② 그 사람이 **보낸** 초대(`invitedBy`) ③ 그 사람에게 **온** 미수락 초대 ④ `Session`·`Account` ⑤ 직접 올린
+프로필 사진(Blob) ⑥ 마지막에 `User`. ⚠️ **마지막 OWNER면 멈춘다** — 그 행을 지우면 아무도 접근할 수 없는 `Project`가 남으므로 소유권
+이전이 선행이다. ⚠️ **번역 값은 남기고 저자만 끊는다** — `Translation.updatedBy`는 FK가 없어 손으로 `NULL`을 쓰고, `SyncRun.requestedBy`는
+`SetNull`이라 자동이다. 활동 사건(`ProjectEvent`)은 지우지 않고 행위자 연결만 `SetNull`로 끊긴다(마스킹 라벨만 남는다).
+⚠️ **Resend의 발송 기록은 앞당겨 지울 수 없다** — 보낸 지 30일에 스스로 사라진다(방침이 그렇게 말한다).
 
 ## 초대 메일 — Resend (2026-09-24)
 

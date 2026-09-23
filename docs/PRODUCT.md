@@ -63,7 +63,7 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 | Publish (PR 생성·갱신) | O | O |
 | 리포 재연결 | O | X |
 | **리포 재적재(Sync)** | O | X |
-| **Revert to last sent** (translation-rework — 프로덕션 배포 대기) | O | X |
+| **Revert to last sent** (translation-rework — 2026-09-23 프로덕션, #71) | O | X |
 | base branch **변경** | O | X |
 | 기준 로케일 **변경** | O | X |
 | 멤버 관리·프로젝트 **보관** | O | X |
@@ -125,7 +125,7 @@ permission을 거부하는데, 그러면 **보관 사건과 그 직전 기록을
 ⚠️ **되돌리기를 함께 만들지 않는다**: 옛 DB 값과 새 리포 값 중 고르는 코드가 곧 병합 로직이고
 ARCHITECTURE §0 불변식 2와 정면 충돌한다.
 
-⚠️ **미전달 편집을 버리는 둘째 경로가 생긴다 — `Revert to last sent`** (결정·구현 2026-09-23, translation-rework — 프로덕션 배포 대기).
+⚠️ **미전달 편집을 버리는 둘째 경로가 생긴다 — `Revert to last sent`** (결정·구현 2026-09-23, translation-rework — 프로덕션에 있다, #71–#73).
 선택한 키의 미전달 언어 전부를 **마지막으로 전달 확인된 DB 값**으로 되돌린다. 위의 "되돌리기"와 다르다 — 리포 값과 견주지 않고
 전달 확인 시점에 DB가 export에 넣은 값 하나만 쓴다(ARCHITECTURE §5.8). **OWNER 전용**이고(`project:settings`, 넷째 permission 없음)
 Sync와 같이 서버 발급 지문으로만 열린다. EDITOR에게는 숨기지 않고 꺼진 버튼 + 사유다. 한 언어라도 기준이 없으면 전체가 불가능하고,
@@ -137,6 +137,15 @@ Sync와 같이 서버 발급 지문으로만 열린다. EDITOR에게는 숨기�
 Publish는 미저장을 **버리지 않는다** — 확인창에서 저장된 변경만 미리보기로 간다. 근거: 옛 표는 찾기와 편집이 같은 표를 공유하고 저장에
 명시적인 경계가 없었다 — 찾는 곳(소스 트리 + 키 목록)과 고치는 곳(선택 키의 로케일 상세)을 나누고, 경계를 Save 하나로 세웠다(사용자 확정).
 여러 언어의 Save는 원자적이다 — 한 셀이나 사건 기록이 실패하면 전부 롤백한다.
+
+**찾기의 기본값** (translation-rework, 사용자 승인). 검색은 키 이름·원문(`sourceText`)·활성 로케일의 **저장된** 번역값을
+대소문자 무시 부분 일치로 찾는다 — 설명(description)은 대상이 아니다. 최초 진입과 `Clear filters`의 범위는 `This source`이고,
+트리에서 네임스페이스를 누르면 `This namespace`가 함께 선다. `Clear filters`는 완성도·상태·범위 **세 축만** 되돌린다 — 검색어·트리
+선택·상세 언어·선택 키는 남는다.
+
+**저장한 행은 목록에서 바로 빠지지 않는다** (translation-rework, 사용자 승인). 저장으로 조건을 벗어난 행은 취소선 + `Saved`로
+자리에 남고, 목록 머리의 `+n saved`가 그 수를 따로 센다. 다른 키를 눌러도 남는다 — 목록 세대가 바뀔 때(필터·검색·범위·트리
+변경) 또는 새로고침·재진입에만 다시 계산한다.
 
 **로그인 방식이 역할을 정하지 않는다.** GitHub으로 로그인한 EDITOR도, Google로 로그인한 OWNER도
 성립한다. 권한은 `ProjectMember.role`만 결정한다.
@@ -546,7 +555,9 @@ Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#6
   쿠키 표 둘. 사전이 들고 `lib/privacy/collected.ts`의 전수 등재와 절 id로 묶인다). `/docs`는 아직
   placeholder이고 출시 전에 채운다. 라우트를 먼저 딴 이유는 로그인 화면 푸터가 그것을 가리키기
   때문이다. **Terms of Service는 만들지 않는다** — 돈을 받고 파는 서비스가 아니라 Privacy Policy
-  하나로 퉁친다(2026-09-10 사용자).
+  하나로 퉁친다(2026-09-10 사용자). **방침은 en 단일이다**(2026-09-19 privacy) — ko를 열면 본문 두 벌의 신선도를
+  각각 게이트해야 하고 §10(ko 여는 시점)을 선행해 정하게 된다. 대가: 동의를 받는 문서를 한국어 화자 동료가 en으로 읽는다.
+  **쿠키 동의 배너는 없다** — 쿠키가 로그인·왕복 state뿐이라 고지로 충분하다.
 
 ⚠️ **MCP 토큰 화면은 라우트로 만들지 않는다** (§4.3 ⑤). `settings`의 섹션이다 — push 토큰이 이미
 거기 있고 MCP 토큰도 토큰이다. 전용 라우트는 "MCP로 무엇을 시킬 수 있나"를 설명할 **지면**이
@@ -644,6 +655,14 @@ Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#6
 둘 다 "프로젝트를 어떻게 잇는가"를 바꾼다. `member:manage` 뒤에 두는 **페이지는 없다**(§3).
 
 ⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?scope=`·`?completion=`(+`?missingLocale=`)·`?q=`·`?cursor=`와 선택 키 `?key=`·`?keySurface=`·상세 언어 `?language=`(translation-rework — 정본은 `lib/translations/query.ts`. ⚠️ 옛 `?locales=`는 단일 코드일 때만 `language`로, `?state=untranslated`는 `completion=incomplete`로 읽고 다시 내보내지 않는다. 8-4가 `?focus=`를 폐기했다)·**`?state=`**(`unsent`·`review`·`new`)(⚠️ **8-4가 뺐다가 2026-09-15에 Home 카운트 카드가 되살렸다** — 카드 넷이 수만 말하고 목적지가 없으면 개요가 일로 이어지지 않는다(결정 1의 대가). 섹션 안 pending 우선 정렬은 그대로 남는다: 그쪽은 필터를 안 건 사람을 위한 것이고 이쪽은 특정 구간을 보러 온 사람을 위한 것이다)와 **목록의 `?q=`(이름 검색, 2026-09-11 — ⚠️ `?filter=`는 2026-09-13에 사라졌다: 상태를 말하는 자리가 탭에서 **그룹 셋**으로 옮겨갔고, 옛 링크의 그 키는 `?focus=`와 같은 관용구로 **조용히 무시된다**)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. `/account`도 같은 계약 안이다 — `routes.account({ e, sessionRevocation, link, connect })`가 넷을 만들고, **`?connect=`는 GitHub App 연동/해제의 결과**다(`lib/account-connect/http.ts`가 읽는 쪽이고, 만드는 쪽과 읽는 쪽을 같은 함수로 묶지 않는다 — 아래 `?sessionRevocation=` 항목과 같은 이유). 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
+
+⚠️ **번역 화면의 URL은 요청값을, 조회는 적용값을 든다** (translation-rework). `?completion=missing&missingLocale=ja`는 ja가 없는
+범위에서도 URL에 남는다 — 범위 안 소스 **전부**에 ja가 없으면 `Incomplete`로, 일부에만 없으면 **그 소스를 결과에서 빼고** 계산한다
+(`effectiveCompletion`, `lib/translations/summary.ts`). ja가 없는 소스의 키를 전부 미번역으로 세지 않는다 — 분모는 각 소스의 활성
+로케일이다. 범위를 다시 넓히면 ja가 돌아오고, 뒤로/앞으로·새로고침·공유 링크가 같은 요청값에서 같은 결과를 낸다. 다른 완성도를
+고르거나 `Clear filters`를 누르면 기억한 언어도 버린다. 상태 축(`?state=`)은 `All sources`에서도 선다 — 소스별 활성 셀로 판정한 뒤
+합친다. **`New from GitHub`(`state=new`)은 `StringKey.createdAt > Project.lastPulledAt`이고**(`lastPulledAt`이 null이면 활성 키 전체)
+**Sync 시각이 아니다.**
 
 ⚠️ **`?e=`만 생성기가 없다** (거부 사유 — 읽는 라우트 **일곱**: `projects`·`projects/new`·`account`·
 `settings`·`surfaces/new`·`invite/[token]`·`signin/link/[challenge]`). ⚠️ **`/projects/new?e=`는 2026-09-13부터 "모달이 열린 채 그 사유를

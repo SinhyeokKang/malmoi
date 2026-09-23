@@ -12,7 +12,7 @@
 1. 번역 값은 DB, 소스 키와 로케일 존재 여부는 리포가 정본이다.
    ⚠️ **미전달 편집이 있는 동안은 유예된다** (2026-09-18, sync-edit-protection) — CI 자동 적재가 통째로 보류되므로
    리포의 새 키·삭제·로케일 추가도 그동안 앱에 안 들어온다(§5.5.2). 편집을 Publish하거나 OWNER가 폐기를 승인하면 풀린다.
-   ⚠️ **미전달 편집을 버리는 길이 둘이다 — (translation-rework, 2026-09-23 · dev, 프로덕션 배포 대기)** — 수동 Sync(리포 값으로 덮는다)와
+   ⚠️ **미전달 편집을 버리는 길이 둘이다 — (translation-rework, 2026-09-23 · 프로덕션, #71)** — 수동 Sync(리포 값으로 덮는다)와
    **`Revert to last sent`**(키 하나의 미전달 셀을 **마지막으로 전달 확인된 DB 값**으로 되돌린다). 둘 다 OWNER 전용이고 서버가 발급한
    지문을 되돌려 받을 때만 열린다. Revert가 풀어 준 셀도 미전달이 아니게 되므로 CI 보류를 푸는 셋째 경로가 된다. §5.8.
 2. push 시점 외에는 리포 값과 DB 값을 비교해 **승자를 고르지 않는다**.
@@ -547,6 +547,35 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 `responseEnd`가 **10,086ms**이고 본문이 1MB다 — 헤더와 셸이 먼저 나가고 서버가 표를 10초 붙들고 있다.
 같은 코드가 Vercel 빌드에서 0.74초·181KB다. **스트리밍 응답에서는 `responseEnd`와 `transferSize`를
 함께 본다** (POSTMORTEM 2026-09-09 — TTFB만 보고 "셸은 빠른데 클라이언트가 느리다"로 오진했다).
+
+### 1.96 번역 작업 화면의 조회 상수 — 코드 상수의 근거 (translation-rework T1 실측, 2026-09-23)
+
+격리 PG 17에 20,000키×200언어(번역 20만 행) 소스를 포함한 fixture(번역 31만 행 · KeyRef 6만 · 미전달 1,051셀 · 다른 테넌트 1)를
+넣고 EXPLAIN ANALYZE로 쟀다. 절대값은 로컬 Mac이다 — 목록 This source 첫 100 146ms · This namespace 61ms · All sources 389ms ·
+검색 흔한 단어 232ms · 상세(키 1×200언어) 1ms 미만 · 트리 7ms.
+
+- **신규 인덱스가 없다.** 키 요약은 기존 `(projectId, surfaceId, …)` 인덱스 위의 키 단위 집계이고 KeyRef를 조인하지 않는다.
+  **pg_trgm GIN(value·sourceText)은 기각했다** — 키별 EXISTS 계획이라 131→94ms · 36→11ms로 확장 하나를 들일 값이 아니었다.
+- **정렬은 `Incomplete first` 하나이고 URL에 `sort`가 없다** — 고를 것이 없는 파라미터는 만들지 않는다.
+- **`PAGE_SIZE` 100 + keyset cursor**(`lib/keys/translation-list.ts`). 안정 분할이 범위 전체 집계를 요구하므로 비용은 페이지 크기가
+  아니라 `scope`에 좌우된다 — 페이지를 줄여 빨라지길 기대하지 않는다. 조건이 바뀌면 cursor를 푼다.
+- **`q`는 200자**(`Q_MAX_LENGTH`) — trim 뒤 비면 검색 없음, LIKE 메타문자는 escape한다.
+- **Save는 `KEY_SAVE_LIMITS`**(`lib/keys/save.ts`) — 값당 10,000 · 로케일 200 · **변경값 합계 UTF-16 1,000,000 코드유닛**. 최악이
+  UTF-8 약 3MB(CJK 1유닛=3바이트, 서로게이트 2유닛=4바이트)라 `serverActions.bodySizeLimit: "4mb"` 안에 든다. ⚠️ **둘 중 하나를
+  움직이면 다른 쪽을 같이 본다** — 합계가 body 한도를 넘으면 초과가 우리 거부 문구가 아니라 프레임워크 오류로 난다.
+
+### 1.97 ⚠️ 미저장 이탈 guard는 Next 내부 동작에 기댄다 (`components/translations/workspace/use-leave-guard.ts`)
+
+- **링크**: document capture `click` 리스너 하나가 같은 origin 이동을 막는다. `<Link onNavigate>`(공개 API)는 쓰지 않았다 — 작업 화면
+  밖(셸 LNB·헤더)의 Link까지 막아야 하고, 직접 부르는 `router.push`는 그 API가 덮지 않는다.
+- **뒤로/앞으로**: Next App Router가 window **bubble** `popstate`로 이동하므로 capture 리스너가 먼저 돈다 —
+  `stopImmediatePropagation()` + `history.go(-delta)`로 되돌리고, 확인하면 `history.go(delta)`. delta는 Navigation API의
+  `currentEntry.index` 차이다.
+- **Navigation API `navigate`의 `preventDefault`는 기각했다** — 사용자 활성화 없이 반복하면 `cancelable=false`가 되어 draft를 잃었다.
+- **새로고침·닫기**: native `beforeunload`.
+- ⚠️ **Next가 Navigation API로 옮기면 뒤로/앞으로 guard가 조용히 무력화된다**(`app-router.js`의 TODO) — 테스트도 화면도 red를 안
+  낸다. Next를 올렸으면 실브라우저로 뒤로가기를 눌러 본다. Navigation API가 없는 브라우저는 delta를 몰라 막지 않는다 — draft가
+  사라질 수 있는 유일한 갈래다.
 
 ## 2. blob SHA 로컬 계산 (`lib/githash.ts`)
 
@@ -1433,10 +1462,9 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 - ⚠️ **모르는 slug를 고른 URL은 0건이다** — 빈 목록을 "필터 없음"으로 되돌리면 지운 소스를 고른
   주소가 전체 목록을 보여준다.
 
-## 5.8 전달 기준과 Revert (translation-rework — 2026-09-23 구현 · dev, 프로덕션 배포 대기)
+## 5.8 전달 기준과 Revert (translation-rework — 2026-09-23 구현 · 프로덕션, #71–#73)
 
-`Revert to last sent`가 읽는 기준값의 계약이다. 정본 설계는 `docs/features/translation-rework/design.md` §10.3·§10.4이고,
-구현이 끝나면 그 결론을 이 절로 올리고 디렉터리를 지운다. 순수 판정(`lib/translations/baseline.ts`)과 테이블 둘(`DeliveryConfirmation`·`TranslationBaseline`, `20260923020548_add_delivery_baselines` — 복합 FK는 `delivery-baseline-fk.integration.ts`가 고정한다)이 있고, **서버 경로는 전부 구현됐다** — Publish writer·무효화(`lib/pull/load.ts` — `delivery-confirm.integration.ts`), 키 단위 저장의 기준 기록(`lib/keys/save-key.ts` — `save-key.integration.ts`), Revert 미리보기·실행(`lib/keys/revert.ts` — `revert-key.integration.ts`, Server Action `previewTranslationRevert`·`revertTranslationKey`). **화면이 C4에서 붙었다** — 번역 작업 화면의 키 카드가 저장(`saveTranslationKey`)과 Revert 미리보기·실행을 부르고, EDITOR에게는 꺼진 버튼 + 사유다. 배포 절차는 OPERATIONS "전달 기준 배포 A".
+`Revert to last sent`가 읽는 기준값의 계약이고, **이 절이 정본이다**. 순수 판정(`lib/translations/baseline.ts`)과 테이블 둘(`DeliveryConfirmation`·`TranslationBaseline`, `20260923020548_add_delivery_baselines` — 복합 FK는 `delivery-baseline-fk.integration.ts`가 고정한다)이 있고, **서버 경로는 전부 구현됐다** — Publish writer·무효화(`lib/pull/load.ts` — `delivery-confirm.integration.ts`), 키 단위 저장의 기준 기록(`lib/keys/save-key.ts` — `save-key.integration.ts`), Revert 미리보기·실행(`lib/keys/revert.ts` — `revert-key.integration.ts`, Server Action `previewTranslationRevert`·`revertTranslationKey`). **화면이 C4에서 붙었다** — 번역 작업 화면의 키 카드가 저장(`saveTranslationKey`)과 Revert 미리보기·실행을 부르고, EDITOR에게는 꺼진 버튼 + 사유다. 배포 절차는 OPERATIONS "전달 기준 배포 A".
 
 - **기준 행은 미전달 셀에만 있다.** 매 Publish에 활성 키×언어 전부를 쓰는 조밀 설계는 T1 실측으로 폐기했다 —
   20,000키×200언어 = 4.26M 행이 로컬 upsert 42초 · dev Supabase 추정 ~135초 · 580MB라 `maxDuration 60`과 무료 500MB를 둘 다 넘는다.
@@ -1456,6 +1484,10 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 - **교체·실패 실행의 외부 쓰기 종료 근거는 플랫폼 `maxDuration` 강제 종료다**(사용자 결정 2026-09-23). sync 브랜치를 `updateRefForce`로 옮기므로
   후속 실행의 성공은 증거가 아니다. 그 실행의 `startedAt + STALE_AFTER_SECONDS` 이후에 **시작해** 성공한 전달 확인이 있어야 Revert가 열린다.
   ⚠️ **`maxDuration`을 `STALE_AFTER_SECONDS`(300) 넘게 올리면 이 근거가 깨진다.**
+- **기준값은 "전달 확인된 DB 상태"이지 파일에 있던 문자열의 백업이 아니다.** 기준은 캡처한 DB 값에서 export 폴백으로 유도하고
+  리포를 읽지 않는다 — 원본 파일에서 읽는 것은 여전히 구조·표현뿐이다(불변식 2). 그래서 수술적 writer가 비-base 빈값 자리에 원본 값을
+  남긴 경우 파일에는 옛 문자열이 있어도 기준은 `""`다. ⚠️ **`no-changes`(리포가 이미 같은 값)도 전달 확인이다** — 기준이 서는 것은
+  PR 머지·배포가 아니라 "그 값이 리포에 있음을 서버가 확인했다"이다. 요구가 "파일에 있던 마지막 문자열"로 바뀌면 이 설계를 다시 본다.
 - **Revert**는 대상 키의 활성 미전달 셀 **전부**가 기준을 가질 때만 연다(부분 복원 없음). `needsReview`를 해제하지 않고, 값이 같아도
   pending 해제가 일어나므로 no-op이 아니다. 인가는 `project:settings`다.
   ⚠️ **실행은 `Project`→`TranslationSurface` 잠금을 얻은 뒤 OWNER 멤버십과 활성 프로젝트·표면을 다시 잰다** (2026-09-23 리뷰) —
@@ -1593,6 +1625,37 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
 - 초대받은 이메일과 다른 계정으로 초대 수락 · 초대 토큰 재사용·만료 후 사용
 - **state 없이·위조한 state로 연결 callback 도착** (§6.4) — code 교환과 `Account` 쓰기가 **0회**여야 한다
 - 로그·클라이언트 응답에 토큰·PEM·DB URL 노출 (§6.0)
+
+#### 6.035 개인정보 방침의 게이트 셋 (privacy, 2026-09-24)
+
+방침(`messages/en.tsx`의 `publicDocs.privacy`)이 코드보다 뒤처지는 것을 셋이 막는다. ⚠️ **넷째 축은 사람이다** — 아래 셋이
+못 보는 새 목적·새 전송처·쿠키·보존·본문 모순은 `/push` 4단계 판단 게이트가 묻는다.
+
+- **(A) 전수 등재 — `pnpm typecheck`.** `lib/privacy/collected.ts`의 `MODEL_CLASSES`는 `satisfies Record<Prisma.ModelName, …>`,
+  `CLASSIFIED`는 개인정보 모델 스칼라 전수의 mapped type이다 — **모델이나 컬럼이 늘면 이름을 지목하며 red**다. 등재는
+  **필드별 1:1**이고 방침 표는 여럿을 한 행으로 접는다. 그래서 아래 (B)의 **대조 단위는 절 id이지 항목 라벨이 아니다.**
+- **(B) 등재 ↔ 본문의 절 — `pnpm test`**(`sectionGaps`): 등재가 가리키는 절이 전부 있고, 대상 절(`DISCLOSURE_SECTIONS`)이 전부
+  쓰이고, 절 id가 겹치지 않는다(Set이면 중복이 조용히 접히고 앵커가 첫 절로만 간다).
+- **(C) 본문 ↔ 개정 이력 — `pnpm test`**(`docText`·`docDigest`): 본문 해시가 `REVISIONS`의 마지막 행과 같고, 시행일이 그 행의
+  날짜이고, 모든 개정 날짜가 `changes` 절에 적혀 있다. 본문을 고치면 행을 하나 더 써야 하고 **그 행의 날짜가 곧 시행일 갱신**이다.
+  ⚠️ **git log로 대신하지 않는다** — CI 체크아웃이 깊이 1이라 파일 이력이 없다. ⚠️ `docText`는 jsdom 없이
+  `renderToStaticMarkup` + 태그 제거다.
+- ⚠️ **외부 전송처 허용목록 검사는 만들지 않았다** (2026-09-24 사용자) — 다섯째(Resend)가 생기면 만들기로 했던 판정이
+  충족됐지만, 호스트가 SDK·env 안에 있어 리터럴 전수가 원리적으로 못 본다. 판단 게이트(`/push`)로 갈음한다.
+
+#### 6.04 미저장 번역의 복구 사본 — 이 탭의 `sessionStorage` 하나에만 (translation-rework)
+
+세션이 만료되면 draft를 화면에 남기고 Save를 막는다. 선택 키 URL만으로는 입력이 돌아오지 않으므로 **한 키의 draft를 이 탭의
+`sessionStorage` 키 하나**(`malmoi.translation-draft.<userId>.<slug>` — `workspace.tsx`)에 둔다.
+
+- **번역 문자열은 URL·`localStorage`·로그에 싣지 않는다** — `localStorage`에는 패널 폭만 간다. 탭을 닫으면 사본도 사라진다.
+- **사용자별이다** — 키에 `userId`가 들어가, 같은 사용자로 재인증하면 인가 뒤 복구하고 다른 사용자면 복구하지 않는다(공용 기기에서
+  남의 입력이 되살아나지 않게).
+- 저장 성공 뒤 미저장이 0이면 사본을 지우고, 남으면 최신 draft와 갱신된 저장 기준으로 다시 쓴다. 확인창에서 버린 draft는 사본에서도
+  지운다 — 안 지우면 돌아왔을 때 버린 입력이 되살아난다.
+- storage를 못 쓰면 보존을 약속하지 않고 "복사한 뒤 로그인하라"를 보인다.
+- **보관된 프로젝트는 `ProjectArchived` 화면**이라 작업 화면도 복구도 돌지 않는다 — 번역을 읽기 전용으로 새로 열지 않는다. 편집 중
+  보관되면 입력이 읽기 전용이 된다.
 
 ### 6.0 ⚠️ 500 본문은 우리 메시지만 담는다
 
