@@ -22,16 +22,16 @@
 
 ## T2. 서버 발급·메일·Resend
 
-- [ ] **T2.1** 서버 전용 Resend `/emails/batch` 호출과 env 배선을 구현한다. 10초 timeout·자동 재시도 없음·요청 UUID 멱등 키. `.env.example`도 갱신한다.
+- [x] **T2.1** 서버 전용 Resend `/emails/batch` 호출과 env 배선을 구현한다. 10초 timeout·자동 재시도 없음·요청 UUID 멱등 키. `.env.example`도 갱신한다.
   - 검증: mock HTTP로 접수/명시적 거부/불완전·timeout·5xx를 검사하고 주소·토큰·API 키가 로그에 없는지 확인한다.
-- [ ] **T2.2** `createInvitations`를 전체 사전 검증→Project 잠금 안 전체 회전·생성·사건→commit 후 발송으로 구현한다. 설정 불가도 생성 전에 막는다. 기존 단건 호출부와 하네스를 전환한다.
+- [x] **T2.2** `createInvitations`를 전체 사전 검증→Project 잠금 안 전체 회전·생성·사건→commit 후 발송으로 구현한다. 설정 불가도 생성 전에 막는다. 기존 단건 호출부와 하네스를 전환한다.
   - 검증: 한 대상이라도 사전 거부면 쓰기·발송0, 중간 DB 실패는 전체 롤백, 메일 실패는 저장 유지, 성공/실패 응답 모두 토큰·URL 없음. `membership.test.ts`와 Action 회귀 green.
-- [ ] **T2.3** `resendInvitation({slug, invitationId})`를 추가한다. 서버의 기존 주소/역할로 재발급하고 같은 제한·발송 경로를 쓴다. design §3의 대상 초대 조건부 회전 count=1을 새 초대·사건 생성의 선행조건으로 둔다.
+- [x] **T2.3** `resendInvitation({slug, invitationId})`를 추가한다. 서버의 기존 주소/역할로 재발급하고 같은 제한·발송 경로를 쓴다. design §3의 대상 초대 조건부 회전 count=1을 새 초대·사건 생성의 선행조건으로 둔다.
   - 검증: OWNER만 가능, 타 프로젝트/철회/수락/만료된 id/복호화 실패는 무변경. 재조회 뒤 수락되어 회전이 0건이면 새 초대·사건·발송도 0건. 새 만료7일·inviter·사건, 기존 토큰 무효, API 결과 마스킹을 단언한다.
-- [ ] **T2.4** `lib/invitation-email/__tests__/invitation.integration.ts`에 격리 PostgreSQL의 동시 초대·Resend·Revoke·수락·한도 경합 검사를 추가하고 `vitest.projects.config.ts`의 include에 등록한다.
+- [x] **T2.4** `lib/invitation-email/__tests__/invitation.integration.ts`에 격리 PostgreSQL의 동시 초대·Resend·Revoke·수락·한도 경합 검사를 추가하고 `vitest.projects.config.ts`의 include에 등록한다.
   - 검증: 마지막 한도 자리의 동시 요청은 하나만 통과하고 60초 우회가 없다. 수락 선행/Resend 선행 순서를 각각 강제하여 전자는 재발급·초대 사건·발송0, 후자는 옛 링크 수락 실패를 단언한다. 교착 등 DB 오류로 롤백된 요청은 새 초대·사건이 남지 않고 발송0이다. `pnpm test:projects:postgres` green과 실행 보고서의 **새 파일·경합 테스트 실제 수집 및 실행**을 확인한다. 환경이 없으면 미검증으로 남긴다.
 
-커밋 경계 2: `feat: send and resend invitation emails`
+커밋 경계 2: `feat: send and resend invitation emails` — 2026-09-23 완료(`3c508c3`·`5a049be`). ⚠️ T2.2의 "기존 단건 호출부 전환"은 T3로 미뤘다 — 모달이 아직 링크 화면을 쓰므로 T2만 배포돼도 preview 초대가 살아 있게 단건 `createInvitation`을 남겼다. 교착 경합은 희생자와 무관한 불변식(반쪽 상태 없음)으로 단언한다.
 
 ## T3. UI
 
