@@ -655,7 +655,7 @@ export const en = {
       lastPublish: "Last publish",
       created: "Created",
       archived: "Archived",
-      settings: "Project settings",
+      settings: "Settings",
       notConnected: "Not connected",
       /** `2b`의 둘째 값 — `1d ago · failed 10m ago`. */
       failedAt: (when: string): string => `failed ${when}`,
@@ -734,7 +734,7 @@ export const en = {
       publish: "Publish",
       sources: "Sources & locales",
       members: "Members",
-      settings: "Project settings",
+      settings: "Settings",
     },
     /**
      * 필터 다섯의 기본 라벨과 메뉴 안 낱말.
@@ -962,7 +962,7 @@ export const en = {
         openTranslation: "Open this translation",
         openSource: "Open this source",
         openMembers: "Open members",
-        openSettings: "Open project settings",
+        openSettings: "Open settings",
         openRepository: "Open repository",
         close: "Close",
       },
@@ -1010,8 +1010,8 @@ export const en = {
     archived: {
       badge: "Archived",
       description: "This project is archived. The history stays readable — editing, publishing and syncing are off.",
-      restoreLine: (date: string): string => `Archived on ${date}. Owners can restore this project from Project settings.`,
-      restoreAction: "Open project settings",
+      restoreLine: (date: string): string => `Archived on ${date}. Owners can restore this project from Settings.`,
+      restoreAction: "Open settings",
     },
     trigger: {
       cron: "Nightly",
@@ -1626,7 +1626,7 @@ export const en = {
       /** 상대 시각은 `lib/relative-time.ts`가 만든다 — 사전은 그것을 감쌀 뿐이다. */
       pushedAt: (rel: string): string => `Pushed ${rel}`,
       branch: "Branch",
-      branchHelp: "malmoi reads the locale files from this branch. You can change it later in project settings.",
+      branchHelp: "malmoi reads the locale files from this branch. You can change it later in Settings.",
       /** 예외 D — 목록 조회만 실패했다. **"브랜치가 없다"가 아니다** (POSTMORTEM 2026-09-03). */
       branchDefault: "Using the repository's default branch.",
       branchTooMany: "This repository has too many branches to list — type the branch name.",
@@ -2126,7 +2126,7 @@ export const en = {
       reference: "Reference",
       /** ⚠️ **`Reference`가 없는 갈래에서는 이 줄도 빠진다** — 그 다섯은 실행 행 자체가 안 생긴다. */
       sendReference: "Not an owner? Send them the reference above \u2014 it is in Logs too.",
-      settings: "Open project settings",
+      settings: "Open settings",
       signIn: "Sign in",
 
       /** `1i` — 다시 하면 된다. "절반만 나갔나"에 **먼저** 답한다. */
@@ -2169,7 +2169,7 @@ export const en = {
       previewFailedBody: (n: number): string =>
         `Your ${n.toLocaleString("en-US")} ${n === 1 ? "change is" : "changes are"} still here. Publishing stays off until this list can be shown \u2014 sending without it would skip the one step that says what a pull request replaces.`,
       previewFailedHint:
-        "If this keeps happening, the repository connection is the place to look \u2014 an owner can check it in project settings.",
+        "If this keeps happening, the repository connection is the place to look \u2014 an owner can check it in Settings.",
     },
 
     /**
@@ -2221,7 +2221,7 @@ export const en = {
     emptyEditor: "An owner of this project adds the translation files. Nothing to translate until then — you will see the languages here once the first import lands.",
     ownerOnly: "Only a project owner can add sources.",
     askOwner: "Ask a project owner to run the first import.",
-    reconnectOwner: "Reconnect the repository in Project settings, then try again.",
+    reconnectOwner: "Reconnect the repository in Settings, then try again.",
     reconnectEditor: "Ask a project owner to reconnect the repository.",
     firstImport: "The first import hasn't finished yet. Adding a source doesn't connect its CI workflow.",
     noLanguages: "No active languages are available. Restore a language in the repository and import it again.",
@@ -2260,7 +2260,7 @@ export const en = {
     importedSummary: (keys: number, locales: number): string =>
       `${keys.toLocaleString("en-US")} active keys in ${locales.toLocaleString("en-US")} ${locales === 1 ? "language" : "languages"}, read from the repository.`,
     notImportedHelp: "No keys or languages have arrived from this file yet. Adding a source does not connect CI on its own — the workflow in your repository sends the strings.",
-    workflow: "Update the workflow in Project settings to include the added sources.",
+    workflow: "Update the workflow in Settings to include the added sources.",
     added: (slug: string, count: number, failed: number): string => `${slug}: source added · ${count.toLocaleString("en-US")} keys imported${failed ? ` · ${failed.toLocaleString("en-US")} files couldn't be read` : ""}`,
     addedCount: (count: number): string => `${count.toLocaleString("en-US")} ${count === 1 ? "source" : "sources"} added`,
     addedOne: (count: number): string => `imported ${count.toLocaleString("en-US")} keys`,
@@ -2308,7 +2308,7 @@ export const en = {
     /** EDITOR 시야. ⚠️ **좌석 초과보다 이 사유가 이긴다** (`planSeatNotice`의 단언이 그것을 고정한다). */
     ownerOnly: "Only owners can invite or change roles",
     /** Members 카드 헤더의 설명 한 줄. */
-    cardHint: "Owners can manage members and project settings",
+    cardHint: "Owners can manage members and settings",
     /**
      * 카드 카운트 배지의 sr-only 문장.
      *

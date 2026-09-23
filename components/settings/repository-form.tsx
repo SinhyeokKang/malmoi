@@ -19,7 +19,7 @@ export function RepositoryForm({ slug, baseBranch, disabled = false }: { slug: s
 
   return (
     <form
-      className="border-border bg-muted border-t"
+      className="border-border bg-muted border-t pl-10"
       onSubmit={(event) => {
         event.preventDefault();
         if (disabled || pending) return;
@@ -36,7 +36,7 @@ export function RepositoryForm({ slug, baseBranch, disabled = false }: { slug: s
       }}
     >
       <PanelFacts>
-        <label htmlFor="base-branch" className="flex items-center gap-1.5 text-neutral-400 text-xs"><GitBranch className="size-3.5" aria-hidden />{m.settings.repository.fields.branch}</label>
+        <label htmlFor="base-branch" className="text-foreground flex items-center gap-1.5 text-sm font-medium whitespace-nowrap"><GitBranch className="size-3.5" aria-hidden />{m.settings.repository.fields.branch}</label>
         <div className="[&_.animate-spin]:size-3.5 flex min-w-0 flex-wrap items-center gap-2">
           <Input id="base-branch" name="baseBranch" className="w-60 max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={branch} disabled={disabled || pending}
             aria-invalid={typeof result === "object"} aria-describedby="base-branch-caption"

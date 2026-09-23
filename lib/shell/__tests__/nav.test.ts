@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import type { Role } from "@/lib/auth/permission";
@@ -279,5 +282,13 @@ describe("프로젝트 설정 항목의 라벨", () => {
   it("LNB 라벨이 `Settings`다", () => {
     const item = projectSections("OWNER").find((s) => s.key === "settings");
     expect(item?.label).toBe("Settings");
+  });
+
+  /** 문장·링크가 메뉴에 없는 이름으로 그 화면을 부르면 사이드바에서 찾을 수 없다. */
+  it("화면 문구가 옛 이름 `Project settings`로 그 화면을 부르지 않는다", () => {
+    const src = readFileSync(join(process.cwd(), "messages/en.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
+    expect(src).not.toMatch(/[Pp]roject settings/);
   });
 });
