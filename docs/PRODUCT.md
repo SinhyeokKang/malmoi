@@ -765,10 +765,13 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 "멈춘다"인데 리포가 계속 덮으면 **보관 중에 번역이 조용히 바뀌기** 때문이다(strict push라 되돌릴 수 없다) —
 대상 리포 CI가 red가 되는 것은 의도된 신호다(워크플로를 떼라는 뜻).
 
-**Server Action의 경계도 같은 선이다** (2026-09-17): **번역을 바꾸는 쓰기는 보관 중
-거부**(`runFirstIngest`·`addSurfaces`·`runRepositoryImport` — 전부 `applyPush`로 번역을 덮는다), **설정 쓰기는
-허용**(`updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·`rotatePushToken` — 번역을 안
-바꾸고, 되돌릴 때 필요한 것들이다). 판정은 "이 Action이 `Translation` 행을 쓰는가"다.
+**Server Action의 경계는 "보관 = Restore만"이다** (2026-09-24 — 2026-09-17의 "설정 쓰기는 허용"을 뒤집었다).
+보관된 프로젝트에서 서버가 받는 설정 쓰기는 **`unarchiveProject` 하나**다 — 번역을 바꾸는 쓰기(`runFirstIngest`·
+`addSurfaces`·`runRepositoryImport`)는 물론이고 `updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·
+`rotatePushToken`·이름·이미지도 `archived`로 거부한다. **UI가 이미 그렇게 서 있었다**(general·repository·ci 카드가
+전부 꺼져 있다) — 서버만 허용하던 어긋남을 UI 쪽으로 닫았다. 되돌린 뒤 고치면 되므로 잃는 것이 없고, "보관 =
+멈춤" 한 줄 모델이 된다. 보관된 프로젝트를 다시 보관하는 것은 쓰기가 아니라 no-op이라 성공으로 둔다.
+판정은 잠금 안에서 한다(`lockProjectAccess` — ARCHITECTURE §5.6.4).
 
 - 보관해도 **번역 데이터는 남는다.** 되돌릴 수 있는 것이 이 프로젝트의 성질이다(`orphaned`와 같은 이유).
 - **열린 `malmoi-i18n/sync-<slug>` PR은 닫지 않는다** — 리포는 사용자 것이고, 우리가 그쪽 PR을 정리할 권한을
