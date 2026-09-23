@@ -6,11 +6,12 @@
 
 - [x] T0. 6차 핸드오프까지 [2차 디자인 피드백](/Users/sinhyeok/Desktop/translation-rework-design-feedback-round2.md)과 대조하고 [spec](./spec.md)에 판정을 기록했다.
   검증: R1–R6 반영 확인. OWNER·Copy link·상세 기본값도 확정. [3차 피드백](/Users/sinhyeok/Desktop/translation-rework-design-feedback-round3.md)의 구문서 잔여 표현도 6차에서 수정 확인했다. 브라우저 검증 완료를 뜻하지 않는다.
-- [ ] T1. 설치된 Next/프리미티브를 확인하여 history 포함 이동 guard와 검색 가능한 언어 메뉴를 spike한다. 기존 데이터 규모/실제 조회계획에서 검색·집계·전체 baseline 캡처·Save 페이로드 비용을 측정한다.
+- [x] T1. 설치된 Next/프리미티브를 확인하여 history 포함 이동 guard와 검색 가능한 언어 메뉴를 spike한다. 기존 데이터 규모/실제 조회계획에서 검색·집계·전체 baseline 캡처·Save 페이로드 비용을 측정한다.
   검증: spec §7 결정표의 검색 대상·기본 범위·Saved 행 수명을 URL/조회/화면 계약과 대조한다. 제품 결정을 실측 항목과 분리하고 임의 변경하지 않는다.
   검증: 재현 입력/수치/EXPLAIN과 페이지 크기·상한·인덱스 결정 근거를 design에 기록. 실패한 guard 경로가 남으면 UI 구현 착수 보류.
   검증: baseline 후보 수를 Σ(소스별 활성 키×활성 언어)로 계산하고, 번역 행이 희소한 20,000키×200언어 단일 소스 및 다중 소스 fixture의 캡처/저장 시간·메모리·잠금 시간을 기록한다. 200,000 번역 행 제한을 baseline 상한으로 사용하지 않는다. 현재 지원 규모에서 원자성과 실행 시간 제한을 함께 만족하는 설계가 없으면 baseline writer 구현 착수를 보류한다.
   검증: 교체된 Publish 실행의 외부 쓰기 종료를 확인할 근거와 Revert 차단 해제 조건을 기록한다. 시간 경과/FAILED만으로 종료를 가정하지 않으며, 종료를 입증할 수 없으면 Revert 개방을 보류한다.
+  결과(2026-09-23): [design §10](./design.md#10-t1-실측-결과-2026-09-23). 조밀 baseline 불가 → 미전달 셀 delta 설계, 종료 근거는 플랫폼 maxDuration(둘 다 사용자 결정). `sort` 파라미터 없음·페이지 100·신규 인덱스 없음·Save 합계 1,000,000 코드유닛. 미종결: prod 규모(권한 거부)·Safari/Firefox guard·네이티브 beforeunload 육안 — T19/T20에서 닫는다.
 
 ## C1. 순수 계약과 회귀 테스트 — 커밋 경계 1
 
@@ -21,6 +22,7 @@
   검증: A 제출→B 추가 입력→A 성공 뒤 dirty B와 갱신된 saved 기준으로 복구 사본을 유지한다. 성공 응답 적용 뒤 dirty 0개인 경우에만 사본을 제거한다.
 - [ ] T4. 전달 baseline/복원 계획과 지문 대상 결정 테스트를 먼저 구현한다.
   검증: base 폴백·빈 원문·비-base 부재, unknown 하나가 전체 차단, 새 token은 남고 전송값은 기준 갱신, context 변경/실행권 상실/기준 변경은 거부, review 보존 red→green.
+  검증(§10.3 delta): Save의 비미전달→미전달 전이에서만 기준 기록(이미 미전달 재저장·레코드 무효·Publish 진행 중은 기록 없음), Publish 성공 시 CAS 해제 셀은 기준 제거·재편집 셀은 캡처값으로 교체, §10.4 종료 조건 미충족은 전체 차단.
 
 ## C2. 전달 스냅샷 — 커밋 경계 2 / 배포 A
 
@@ -72,4 +74,4 @@ C4 완료는 프로덕션 개방이 아니다. preview에서 C5의 T18–T20을 
 - [ ] T20. preview 환경에서 승인된 실리포의 전달→재편집→Revert→Publish 왕복을 검증한다. base 빈값/비-base 부재·수술적/재생성 어댑터·동일값 재전송을 포함한다.
   검증: DB 복원값과 실제 PR 의미·결정적 바이트, no-changes 브랜치 원복, 경고 시 기준/토큰 불변. 원격 쓰기는 Claude Code의 승인된 `/l10n-roundtrip` 실행으로 인계하고 결과를 기록. T18–T20 통과 기록은 프로덕션 배포 B의 선행 조건이다.
 
-다음 진입점: T1 실측을 닫고 `/tdd interface`로 T2–T4부터 시작한다. 문서 작성 완료는 Revert 구현/배포 완료가 아니다.
+다음 진입점: T1은 닫혔다(design §10). `/tdd interface`로 T2–T4부터 시작한다. 문서 작성 완료는 Revert 구현/배포 완료가 아니다.

@@ -54,7 +54,7 @@
 | `scope` | `namespace` / `source`(기본) / `project` |
 | `completion`, `missingLocale` | `all`(기본) / `incomplete` / `missing` / `complete`; missing일 때만 언어 필요 |
 | `state` | `unsent` / `review` / `new`, 생략은 Any state. project에서도 동일하게 적용 |
-| `q`, `sort`, `cursor` | 검색·정렬·페이지. 정렬의 의미는 spec §3.2를 따르고 URL sort 값/페이지 크기는 tasks T1에서 확정, 조건 변경 시 cursor 해제 |
+| `q`, `cursor` | 검색·페이지. 정렬은 `Incomplete first` 하나로 항상 적용하며 `sort` 파라미터는 없다. 페이지 100·keyset cursor, 조건 변경 시 cursor 해제(§10.2) |
 | `key`, `keySurface` | keyId, 소속 surfaceSlug. 다른 프로젝트/소스에 대한 id는 조회 범위를 넓히는 근거가 아님 |
 | `language` | 생략은 전체, `@missing`은 Missing only, 나머지는 활성 locale code. 실제 코드와 충돌하지 않는 예약값 검증 |
 
@@ -90,6 +90,8 @@ Logs의 과거 payload에는 keyId 대신 키 이름이 있으므로 인가된 p
 ## 5. 전달값 스냅샷과 Revert
 
 ### 5.1 데이터 모델 — additive 제안
+
+> ⚠️ **T1 실측으로 셀 전체 테이블 설계는 폐기됐다 — 미전달 셀 delta 설계는 §10.3이 정본이다.** 아래 필드 표 중 셀 행에는 `restoreValue`·`revision`(소스 레코드 참조)만, 확인 시각·실행·context·무효화는 소스별 전달 확인 레코드로 옮긴다.
 
 별도 `TranslationDeliveryBaseline` 테이블을 제안한다. Translation 행이 없던 셀도 전달 상태를 가질 수 있어 Translation의 nullable 컬럼만으로는 부족하다.
 
@@ -200,3 +202,142 @@ UI 교체를 마친 뒤 소비자 `rg`로 확인한 것만 제거한다. `namesp
 - 2026-09-15 ‘상태 링크가 0건 착지’: Home·Logs·기본 redirect의 조합을 실제 페이지에서 검사한다.
 - 2026-09-18 미전달 count의 5.5초: SQL 계획/통계 및 0-token 경로를 확인한다. baseline 도입으로 편집 없는 cron의 GitHub 0회 계약을 깨지 않는다.
 - 2026-09-20 ‘포커스 복귀’: disabled를 지나는 DOM 단언은 focus fixup을 포함하고 실제 브라우저에서도 재확인한다.
+
+## 10. T1 실측 결과 (2026-09-23)
+
+재현 스크립트는 `.scratch/db-measure.mjs`(격리 PG 17, 마이그레이션 30개 적용)와 `.scratch/db-dev-sparse.mjs`(dev Supabase TEMP 테이블)이며 둘 다 gitignore 대상이다. 절대 수치는 로컬 Mac 기준이고, Supabase까지의 왕복은 43–49ms로 측정했다(한국 → 도쿄 경로이며 Vercel `hnd1`보다 멀다).
+
+### 10.1 데이터 규모
+
+- dev DB: 소스 1개(키 4 × 언어 3, 번역 12행). 2026-09-18 초기화 이후로는 사실상 빈 DB다.
+- **prod 규모는 미측정.** 읽기 전용 집계도 자동 권한 판정이 거부했다. 설계 수치는 아래 상한 fixture로 잡는다.
+- fixture:
+
+| 소스 | 키 × 언어 | 번역 행 | 비고 |
+|---|---|---|---|
+| s1 | 20,000 × 200 | 200,000 | base 전부 + 희소 |
+| s2 | 5,000 × 50 | 50,000 | |
+| s3 | 1,000 × 10 | 10,000 | 전부 채움 |
+| t1 | 5,000 × 20 | 50,000 | 다른 테넌트 |
+
+- 이 외에 KeyRef 60,000행, pending 1,051셀을 넣었다.
+- baseline 후보 수 Σ(활성 키 × 활성 언어) = **4,260,000**.
+
+### 10.2 조회·검색
+
+EXPLAIN ANALYZE 결과(ms, 버퍼 수):
+
+| 조회 | ms | 버퍼 |
+|---|---|---|
+| 목록 This source 첫 100 | 146 | 4,782 |
+| 목록 This source 전체 수·Incomplete 수 | 112 | — |
+| 목록 This namespace 첫 100 | 61 | — |
+| 목록 All sources 첫 100 | 389 | — |
+| 목록 All sources, Not sent 필터 | 389 | — |
+| 검색 This source, 드문 문자열 | 162 | — |
+| 검색 This source, 흔한 단어 | 232 | 128,632 |
+| 검색 All sources, 드문 문자열 | 131 | — |
+| 검색 All sources, 일치 없음 | 36 | — |
+| 상세(키 1 × 200언어) | < 1 | — |
+| 트리 | 7 | — |
+
+확정:
+
+- **신규 인덱스 없음.** 키 요약은 키 단위 집계가 기존 `(projectId,surfaceId,…)` 인덱스를 타고, KeyRef는 조인하지 않는다.
+  - pg_trgm GIN(value·sourceText)은 키별 EXISTS 계획 때문에 개선이 미미했다(131→94, 36→11). 도입하지 않는다.
+- **정렬은 `Incomplete first` 하나이고 항상 적용한다. URL `sort` 파라미터는 두지 않는다.**
+  - 현재 코드에도 정렬 선택 UI가 없다(`pendingFirst` 상시 적용).
+  - 순서 키: 결측 또는 review(내림차순) → (All sources에서만) 소스 → `sortIndex` ASC NULLS LAST → `key` → `id`.
+- **페이지 크기 100, keyset cursor.** `cursor`는 위 순서 키의 마지막 튜플을 불투명 문자열로 담는다. 조건이 바뀌면 cursor를 해제한다.
+  - 분할 정렬이 범위 전체 집계를 요구하므로, 비용은 페이지 크기보다 범위(`scope`)에 좌우된다.
+- **입력 상한**
+  - `q`: 200자. 앞뒤 공백을 제거한 뒤 비면 검색 없음으로 취급한다. LIKE 메타문자는 escape한다.
+  - `key`·`keySurface`·`ns`·`language`: 각각 기존 식별자 상한을 따른다.
+- **Save 페이로드**
+  - 기존 `serverActions.bodySizeLimit: "4mb"`는 유지한다.
+  - 값당 10,000자, 로케일 200개 상한에 더해 **변경값 합계 UTF-16 길이 1,000,000**을 둔다. 최악의 경우 UTF-8로 3MB(CJK 1코드유닛=3바이트, 서로게이트 2유닛=4바이트)라 4MB 안에 든다. 초과는 전체 거부한다.
+
+### 10.3 전달 baseline — 조밀 설계 불가, **미전달 셀 delta 설계로 교체**(사용자 결정 2026-09-23)
+
+| 방식 | 행 | 시간 | 크기·메모리 |
+|---|---|---|---|
+| 조밀 insert(Node unnest, 20k chunk, 단일 tx) | 4.26M | 28.3초 | 테이블 580MB, 캡처 heap 517MB |
+| 조밀 upsert(정상 상태) | 4.26M | 42.3초 | — |
+| 조밀 서버측 `INSERT…SELECT` 하한 | 4.26M | 20.2초 | — |
+| dev Supabase TEMP upsert | 1M | 31.7초 | — |
+
+- dev Supabase의 1M 행 결과를 늘려 잡으면 4.26M 행은 약 135초다.
+- 성공 확정 tx가 Project 잠금을 쥔 채 이 시간을 쓴다. 그래서 `maxDuration 60`, Supabase 무료 500MB, 동시 Save 대기를 모두 넘는다.
+- chunk로 나눠도 원자성을 유지하려면 한 tx에 넣어야 하므로 해결이 되지 않는다.
+- **T1 규칙에 따라 조밀 writer는 폐기한다.**
+- 번역 행만 저장하는 대안(26만 행)은 로컬 2.4초, dev Supabase 8.0초, 63MB였다. 비용이 번역 행 수에 비례해 자라므로 채택하지 않는다.
+
+채택 — **baseline 행은 미전달 셀에만 둔다.**
+
+1. **소스별 전달 확인 레코드** 하나를 둔다(`revision`·`confirmedAt`·`syncRunId`·`contextFingerprint`·`invalidatedAt`).
+   - 이 레코드가 유효하면 "그 소스에서 **미전달이 아닌** 활성 셀의 현재 DB 값 = 마지막 확인된 export 값"이 성립한다.
+   - 이 등식을 깨는 쓰기가 셋뿐이기 때문이다.
+     - strict 적재는 이 레코드를 무효화한다.
+     - Save는 셀을 미전달로 만든다.
+     - Revert는 기준값으로 되돌리며 미전달을 해제한다.
+   - 키·언어 추가·부활은 적재로만 일어나므로 무효화에 포함된다.
+2. **Save**가 미전달이 아닌 셀을 미전달로 바꾸는 순간, 같은 tx에서 직전 값을 export 규칙(`buildWriteEntries`: base 결측·빈값→원문, 비-base 결측·빈값→`""`)으로 유도해 baseline 행으로 기록한다.
+   - 조건: 소스 레코드가 유효하고 진행 중인 Publish가 없어야 한다. 아니면 기록하지 않고, 그 셀은 unknown이 된다.
+   - 이미 미전달인 셀의 재저장은 baseline을 바꾸지 않는다.
+3. **Publish 성공 tx**는 캡처한 미전달 셀만 다룬다(규모 = 사람의 편집 수).
+   - 토큰 CAS가 해제된 셀: baseline 행이 더 이상 필요 없으므로 지운다. 이 행은 감사 기록이 아니다. 감사 이력은 ProjectEvent가 가진다.
+   - 캡처 뒤 재편집되어 토큰이 바뀐 셀: baseline을 **캡처값 A**로 교체한다.
+   - 이어서 소스 레코드를 새 revision으로 갱신한다.
+   - 외부 쓰기 전 무효화, 실행권 fencing, `no-changes` 원복 뒤 확정 등 §5.2의 나머지 규칙은 그대로다.
+4. **Revert 가능 조건**: 대상 키의 활성 미전달 셀 **전부**에 대해 다음을 만족해야 한다.
+   - 현재 소스 레코드가 유효하고 revision이 일치한다.
+   - 그 revision 이후로 교체 실행의 종료가 확인되었다(§10.4).
+   - 셀마다 baseline 행이 있다.
+   - 하나라도 빠지면 전체를 거부한다.
+5. **대가**
+   - Publish 진행 중에 새로 미전달이 된 셀은 다음 전달 확인 전까지 Revert 대상이 아니다(unknown).
+   - 최초 도입 뒤에는 첫 전달 확인 전까지 모든 셀이 unknown이다. 과거값을 backfill하지 않는다.
+
+§5.1의 셀 전체 테이블 설계와 §5.2 7번의 대량 upsert는 이 절로 대체된다. `restoreValue` 유도 규칙과 §5.2의 1–6번(캡처 스냅샷, 성공 위치, 토큰 CAS와 기준 갱신의 분리, 실행권 fencing)은 유지한다.
+
+### 10.4 교체된 실행의 외부 쓰기 종료 — 플랫폼 강제 종료를 증거로 인정(사용자 결정 2026-09-23)
+
+- sync 브랜치는 `updateRefForce`로 옮긴다. 그래서 늦게 도착한 교체 실행의 쓰기가 후속 실행의 커밋을 덮을 수 있고, 후속 실행의 성공만으로는 종료를 입증할 수 없다.
+- 이 시스템이 가진 종료 근거는 **Vercel `maxDuration`의 강제 종료**뿐이다. Publish 경로는 모두 `maxDuration = 60`이다(`/api/pull`, 번역·설정 페이지의 Server Action).
+- 해제 조건:
+  - 교체되었거나 FAILED로 닫힌 실행이 있으면 `startedAt + STALE_AFTER_SECONDS(300)`가 지나야 한다.
+  - 그 **뒤에 시작해 성공한 새 전달 확인**이 있어야 한다.
+  - 두 조건이 모두 참일 때만 Revert를 연다.
+- 벽시계 추정이 아니라 플랫폼이 강제하는 상한이라는 근거로 spec §3.6 문구를 고친다.
+- `maxDuration`을 300초 넘게 올리면 이 근거가 깨진다. 올릴 때 이 조건을 함께 재검토한다.
+
+### 10.5 이동 guard·언어 메뉴 (Chromium 실측, `.scratch/nav-spike/`)
+
+- **링크: 공개 API로 가능.** `<Link onNavigate>`에서 `preventDefault()`하면 취소된다.
+  - 근거: `next/dist/client/app-dir/link.js:71-81`, 문서 `link.md` "Blocking navigation", v15.3+.
+  - 수정키 클릭·`target`·`download`·외부 URL은 호출 전에 빠진다(`link.js:45-60`). 새 탭은 가드하지 않는다.
+  - 직접 부르는 `router.push`·`replace`는 이 API가 덮지 않으므로 `guardedPush` 래퍼를 둔다.
+- **뒤로/앞으로: 가능하지만 내부 동작에 의존한다.**
+  - Next는 window bubble `popstate` 리스너를 쓴다(`app-router.js:301`). 그래서 window capture 리스너가 먼저 실행된다.
+  - capture 리스너에서 `stopImmediatePropagation()`을 부르고 `history.go(-delta)`로 복원한다. delta는 `navigation.currentEntry.index` 차이다.
+  - 실측: 취소·확인 1회 이동·앞으로 스택 보존·-2 점프·연타가 모두 통과했다. history state(`__NA` 등)도 오염되지 않았다.
+  - Navigation API `navigate`의 `preventDefault`는 사용자 활성화 없이 반복하면 `cancelable=false`가 되어 draft를 잃었다. 주 수단에서 제외한다.
+  - **위험**: Next가 Navigation API로 옮기면(`app-router.js:50` TODO) 이 방식은 조용히 무력화된다. 그래서 T19 실브라우저 회귀에 이 항목을 고정한다. Safari·Firefox는 미확인이다.
+- **새로고침/닫기**: `beforeunload`로 처리한다. 리스너 호출과 `returnValue` 설정까지는 확인했다. 네이티브 확인창은 자동화 환경에서 관측되지 않아 T19에서 사람이 확인한다.
+- **언어 메뉴: DropdownMenu + input은 조치 네 가지를 붙이면 된다. Select + input은 쓰지 않는다.**
+  - DropdownMenu 조치:
+    1. `onOpenAutoFocus`에서 input에 포커스를 준다.
+    2. input `onKeyDown`에서 Escape·Tab 외에는 `stopPropagation`한다. Content의 typeahead(`react-menu index.mjs:307-324`)를 막기 위해서다.
+    3. ArrowDown에서 첫 항목에 포커스를 준다.
+    4. 항목의 `onPointerMove`에 `preventDefault`를 준다. hover 표시는 CSS `:hover`로 한다.
+  - 한계: 항목에 포커스가 있는 동안 친 글자는 typeahead로 간다. 첫 항목에서 ArrowUp을 눌러도 input으로 돌아가지 않는다.
+  - Select + input이 안 되는 이유: 한 글자 키마다 typeahead가 돌고, 필터로 선택 항목이 언마운트되면 트리거 텍스트가 사라진다. listbox 안에 textbox를 두는 것도 ARIA 위반이다.
+
+### 10.6 T1에서 닫지 못한 것
+
+- prod 데이터 규모. 읽기 권한이 거부됐다.
+- Safari·Firefox의 guard 동작.
+- 네이티브 beforeunload 확인창의 육안 확인.
+- Vercel `hnd1`에서의 절대 시간.
+
+위 항목은 T19(실브라우저)와 T20(preview)에서 닫는다. 구현 착수를 막지 않는다.
