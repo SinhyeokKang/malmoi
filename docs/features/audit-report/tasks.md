@@ -15,7 +15,7 @@
 
 | 순서 | 배치 | 항목 | 출시 차단 | 진입 | 검증 게이트 | 결정 |
 |---|---|---|---|---|---|---|
-| 1 | **B1 전달 층 불변식** | #1·2·3·4·58·59 | ✅ | `/feature` → `/ship bypass` | `pnpm test` + `pnpm test:projects:postgres` + `/l10n-roundtrip`(`i18n-order-check`·ts-dict 리포) | ✅ #1 · #3 |
+| 1 | ✅ **B1 전달 층 불변식** | #1·2·3·4·58·59 | ✅ | `/feature` → `/ship bypass` | `pnpm test` + `pnpm test:projects:postgres` + `/l10n-roundtrip`(`i18n-order-check`·ts-dict 리포) | ✅ #1 · #3 |
 | 2 | ✅ **B2 보안 TOCTOU** | #9·10·26 | ✅ | `/ship` | `pnpm test` + `pnpm test:projects:postgres` | ✅ #26 |
 | 3 | ✅ **B3 UX 🔴·막다른 길** | #5·6·7·8·11·14·15·16·17·24·25 | ✅ | `/ship` | `pnpm test` + `/bugshot-qa`(EDITOR·OWNER 두 계정) | — |
 | 4 | ✅ **B4 확인·문구·용어** | #13·19·20·21·22·23·28·29·30·31 | ✅ | `/ship` | `pnpm test`(no-korean-ui·brand-spelling 포함) + `/bugshot-qa` | ✅ #29 |
@@ -42,19 +42,19 @@
 - **#3 → 빠진 파일만 남기고 나머지는 보낸다** — `original-file-missing`을 reject 대상에서 뺀다(§5.6.35가 정본, §3 T10의 "writer 경고면 멈춘다"는 그 코드를 예외로 둔다). 빠진 파일의 셀은 **전달 확인에서 제외해 토큰을 남긴다**(불변식 9 — 보내지 않은 편집을 보냈다고 기록하지 않는다). 남은 편집은 배너에 서므로 Revert나 파일 복구로 풀린다. 개발자가 언어를 빼려고 파일을 지워도 다른 언어의 Publish가 멈추지 않는다. 대가: 전달 확인 CAS가 셀 단위로 거른다. 그 밖의 writer 경고(#4 포함)는 여전히 reject다. 정본: ARCHITECTURE §3 T10 문단 · §5.6.35.
 
 **항목**
-- [ ] **#1** 🔴 `lib/push/apply.ts:146-153` — orphan 셀에 남은 편집 토큰이 CI 적재를 영구·무표시로 보류시킨다. 토큰을 비우는 세 자리(`lib/pull/load.ts:196` · `lib/keys/revert.ts:113` · `apply.ts:357`)가 전부 orphan을 건너뛴다.
+- [x] **#1** 🔴 `lib/push/apply.ts:146-153` — orphan 셀에 남은 편집 토큰이 CI 적재를 영구·무표시로 보류시킨다. 토큰을 비우는 세 자리(`lib/pull/load.ts:196` · `lib/keys/revert.ts:113` · `apply.ts:357`)가 전부 orphan을 건너뛴다.
   - 실패 시나리오: 키 `a` 편집 → 리포에서 `a`가 빠진 채 OWNER 폐기 승인 Sync → `a` orphan · 토큰 잔존 → 코드가 `a` 복구 → CI push가 unorphan → 사후 재집계 1 → 롤백 · `deferred`, 이후 매번 반복. `pendingWhere`가 orphan을 빼서 배너·Publish가 0으로 보인다. EDITOR에겐 출구가 없다.
   - 재현: `sync-edit-protection.integration.ts:194`가 잔존을 고정하고 있다 — 거기서 시작한다.
-- [ ] **#2** 🔴 `lib/pull/plan.ts:201-203` + `lib/pull/run.ts:236` — 수술적 어댑터(ts-dict·yaml-catalog·code-dict)에서 UI로 비운 비-base 셀은 write entry가 없어 파일이 그대로인데, 토큰이 "전달됨"으로 해제된다(불변식 9).
+- [x] **#2** 🔴 `lib/pull/plan.ts:201-203` + `lib/pull/run.ts:236` — 수술적 어댑터(ts-dict·yaml-catalog·code-dict)에서 UI로 비운 비-base 셀은 write entry가 없어 파일이 그대로인데, 토큰이 "전달됨"으로 해제된다(불변식 9).
   - 실패 시나리오: ts-dict fr 셀을 비우고 Publish → `no-changes` · 전달됨 표시 → 다음 CI push가 옛 값으로 DB를 덮는다.
   - 방향: 수술적 writer가 빈 값 셀을 건너뛰면 `writer-warnings`로 올린다. ARCHITECTURE §5.5.2의 "코드에서 번역을 지우는 길은 없다"와 같이 읽힌다.
-- [ ] **#3** 🔴 `lib/pull/run.ts:183-191` × `lib/pull/render.ts:107-111` · `lib/publish/read.ts:63-66` — writer 경고가 하나라도 있으면 Publish 전체가 거부되는데, 미리보기는 `withoutFile`만 빼고 나머지가 나간다고 보인다.
+- [x] **#3** 🔴 `lib/pull/run.ts:183-191` × `lib/pull/render.ts:107-111` · `lib/publish/read.ts:63-66` — writer 경고가 하나라도 있으면 Publish 전체가 거부되는데, 미리보기는 `withoutFile`만 빼고 나머지가 나간다고 보인다.
   - 실패 시나리오: yaml 표면 ko 미전달 편집 + `fr.yml` 삭제 → CI 보류라 fr이 orphan 안 됨 → 매 Publish·매 밤 `original-file-missing` → `skipped/writer-warnings`. 보류와 거부가 서로를 잠근다.
-- [ ] **#4** 🔴 `lib/adapters/ts-dict.ts:295`(`pairs` :57-75) — 쓰려는 키와 무관한 비리터럴 프로퍼티까지 파일×로케일마다 `value-not-string-literal`을 낸다. `write-locale-object-missing`(:287)도 같은 부류다.
+- [x] **#4** 🔴 `lib/adapters/ts-dict.ts:295`(`pairs` :57-75) — 쓰려는 키와 무관한 비리터럴 프로퍼티까지 파일×로케일마다 `value-not-string-literal`을 낸다. `write-locale-object-missing`(:287)도 같은 부류다.
   - 실패 시나리오: `const ko = { a: "A", b: someFn }` → 온보딩 성공 → `a` 편집이 매번 `skipped: writer-warnings`로 영영 안 나간다.
   - 방향: code-dict(:340)·yaml(:386)처럼 `wanted` 키로 좁힌다. `ts-dict.test.ts:328-332`가 지금 동작을 고정하고 있다 — 그 단언을 먼저 뒤집는다.
-- [ ] **#58** 🟡 `lib/push/apply.ts:204-207,310-316` — "base에 없는 키는 조용히 버린다" 주석이 거짓이다. `idByKey`에 orphan 키가 들어 있어 비-base 파일에만 남은 orphan 키 셀도 strict upsert되고 토큰이 비워진다. #1이 발생하는지가 여기에 달렸다. 방향: 이번 push의 base 키 집합으로 거른다.
-- [ ] **#59** 🟡 `lib/import/surface.ts:33-34` → `lib/onboarding/confirm.ts:74-77` — 수동 Sync의 blob 다운로드 일시 실패가 그 로케일을 `payload.locales`에서 빼고 `apply.ts:245`가 orphan시킨다. #1의 선행 조건. 방향: 실패한 로케일은 `locales` 판정에 유지한다.
+- [x] **#58** 🟡 `lib/push/apply.ts:204-207,310-316` — "base에 없는 키는 조용히 버린다" 주석이 거짓이다. `idByKey`에 orphan 키가 들어 있어 비-base 파일에만 남은 orphan 키 셀도 strict upsert되고 토큰이 비워진다. #1이 발생하는지가 여기에 달렸다. 방향: 이번 push의 base 키 집합으로 거른다.
+- [x] **#59** 🟡 `lib/import/surface.ts:33-34` → `lib/onboarding/confirm.ts:74-77` — 수동 Sync의 blob 다운로드 일시 실패가 그 로케일을 `payload.locales`에서 빼고 `apply.ts:245`가 orphan시킨다. #1의 선행 조건. 방향: 실패한 로케일은 `locales` 판정에 유지한다.
 
 **경계**: `lib/push/apply.ts:133`의 거짓 주석(#61)과 `lib/protection/where.ts`의 손 사본 목록(#63)은 같은 파일이지만 **B7**이다 — 단 #1 수정이 재집계의 존재 이유를 바꾸면 #61 주석은 이 배치에서 같이 고친다.
 
