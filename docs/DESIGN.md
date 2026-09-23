@@ -969,6 +969,11 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 ⚠️ **후자를 "비활성 버튼은 이유를 말하지 못한다"로 반박하지 않는다** — 그 화면은 `not_connected` 배너가
 `[Reconnect]`를 들어 거부 Alert의 액션이 하려던 일을 이미 한다.
 
+**세션이 끝난 거부(`unauthorized`)는 막다른 길이 아니다** (2026-09-24 QA D2) — danger · **닫을 수 있음** · 액션 **[Sign in]**(새 탭,
+`<a>` + `buttonClass()`). 같은 화면의 편집자 세션 Alert와 같은 형이다: 이 탭(번역 화면의 draft)을 떠나지 않고 로그인한 뒤
+`[Sync]`를 다시 누른다. 제목은 Sync 전용 문장이고 공용 `access.unauthorized`("…to save your work")를 빌리지 않는다 —
+`[Sync]`에는 저장할 입력이 없다. Home과 번역 화면이 같은 `SyncResult`를 써서 두 자리가 함께 움직인다.
+
 **실측 상태** — ⚠️ **jsdom 통과를 실물 검증으로 바꿔 적지 않는다.** `sync-button.test.tsx`·
 `sync-result.test.tsx`가 재는 것은 **판정**이고 여기가 재는 것은 **시안과 같은가**다.
 
