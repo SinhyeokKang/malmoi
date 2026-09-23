@@ -15,6 +15,7 @@
   2. 수술적 표면(`adapterName IN ('ts-dict','yaml-catalog','code-dict')`)의 비-base `value = ''` + 토큰 보유 셀 수 (#2)
   3. 보관 안 된 표면 중 CI 보류가 연속으로 난 표면(최근 `ProjectEvent` IMPORT `deferred` 연속) — 참고용
 - 검증: 수를 이 파일에 기록한다. **1이 0이 아니면** T9(데이터 정리)를 연다. 2가 0이 아니면 그 셀은 Revert 대상으로 남긴다(D2 주석).
+- ✅ **2026-09-24 실측 (`.scratch/t0-delivery.mjs`, 읽기 전용 세션)** — dev·prod 모두 **1 = 0 · 2 = 0**(수술적 비-base 빈 값은 토큰 유무와 무관하게 0) · 전체 미전달 토큰 0 · 최근 14일 IMPORT 사건에 `deferred` 없음(dev 4건·prod 1건 전부 `imported`). → **T9 불필요, D2 이전 데이터 없음.** 결함은 아직 운영 데이터에서 일어나지 않았다.
 
 ## T1 순수 함수 — 테스트 먼저 (커밋 #0 `test:`)
 
@@ -75,7 +76,7 @@
 - [ ] `docs/features/audit-report/tasks.md` B1 체크 · 끝나면 이 디렉터리 삭제는 `/push` 뒤
 - 검증: `/push` 4단계 신선도 게이트 통과
 
-## T9 데이터 정리 (T0의 1이 0이 아닐 때만)
+## T9 데이터 정리 (T0의 1이 0이 아닐 때만) — ⏭ 2026-09-24 T0 결과 0이라 불필요
 
 - [ ] 사용자 승인 뒤 한 번 도는 스크립트: orphan 키·로케일 위 토큰을 NULL로(`updatedAt` 불변). dev 먼저, prod는 `/merge` 뒤.
 - 검증: T0 쿼리 1이 0
