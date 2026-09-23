@@ -67,12 +67,15 @@ C4 완료는 프로덕션 개방이 아니다. preview에서 C5의 T18–T20을 
 
 ## C5. 제거·문서·최종 검증 — 커밋 경계 5
 
-- [ ] T16. 새 화면의 소비자 전환을 확인한 뒤 옛 locale 선택·KeyGroup·blur 저장·옛 칩/문구를 제거한다. 공유 함수와 URL 호환은 소비자 확인 후 유지/교체한다.
+- [x] T16. 새 화면의 소비자 전환을 확인한 뒤 옛 locale 선택·KeyGroup·blur 저장·옛 칩/문구를 제거한다. 공유 함수와 URL 호환은 소비자 확인 후 유지/교체한다.
   검증: `rg`로 dead import/옛 Action 소비자 확인. 기존 `components/__tests__/{translation-interactions,translation-table,translations-screen}` 테스트의 행동 계약을 새 UI 테스트에 이관. 핸드오프가 지칭한 `query.test.ts`/surface 페이지 테스트는 현재 실재 여부를 확인하고 필요한 경로에 신설.
-- [ ] T17. PRODUCT(명시 저장·Revert 권한/폐기 예외·URL), ARCHITECTURE(스냅샷·성공 CAS·잠금·무효화), DESIGN(세 패널/상태/폭), DIRECTORY(실제 파일)와 운영 배포 절차를 갱신한다. 새 env는 없으므로 env 샘플 변경 없음.
+  결과(2026-09-23, `497d61c`·`fbb1df4`): 옛 표 조각 6 · 고아 헬퍼 3(refocus·edit-command·keys/filters) · `m.translations` 옛 키 14 · 옛 셀 Action `saveTranslation`+`SaveInput`을 지웠다. 옛 Action 소비자 테스트 11개는 `saveTranslationKey`로 옮겼고 교차 테넌트 거부는 정확한 값으로 강화했다(삭제 0). 이관 판정: 저장·키보드·이동 확인은 `translation-workspace.test.tsx`, orphaned 로케일 거부는 `save-key` 계열이 든다. `rowSpan`·열 구성 같은 **표 구조** 계약은 구조가 사라져 이관 대상이 아니다. `query.test.ts`는 `lib/translations/__tests__/`에 실재한다.
+- [x] T17. PRODUCT(명시 저장·Revert 권한/폐기 예외·URL), ARCHITECTURE(스냅샷·성공 CAS·잠금·무효화), DESIGN(세 패널/상태/폭), DIRECTORY(실제 파일)와 운영 배포 절차를 갱신한다. 새 env는 없으므로 env 샘플 변경 없음.
   검증: 문서가 실제 코드의 계약만 설명하고 이 spec의 미확정 항목을 구현된 사실로 쓰지 않음. AGENTS/명령 미러는 직접 편집하지 않음.
-- [ ] T18. `pnpm typecheck`, `pnpm test`, `pnpm test:projects:postgres`를 실행한다. DB 또는 환경 부재로 못 돌리면 구체적인 미검증 범위를 보고한다.
+  결과(2026-09-23): PRODUCT §3 명시 저장 판정 + URL 계약 · ARCHITECTURE 쓰기 주체·편집 토큰·재검증·잎 명부 · DESIGN §6.1 정리(§6.1a가 정본) · DIRECTORY · OPERATIONS 배포 B. 불변식·§5.8 본문은 C4 때 이미 올렸다.
+- [x] T18. `pnpm typecheck`, `pnpm test`, `pnpm test:projects:postgres`를 실행한다. DB 또는 환경 부재로 못 돌리면 구체적인 미검증 범위를 보고한다.
   검증: 신규/기존 전체 결과 기록. 실패를 소스 단언 삭제로 덮지 않음. 이 feature 문서 작성 단계에서는 빌드·테스트를 실행하지 않음.
+  결과(2026-09-23, T16 뒤 HEAD): typecheck OK · `pnpm test` 360파일 5,197 passed · `pnpm test:projects:postgres` 14파일 241 passed. ⚠️ 프로덕션 배포 B(#71)는 T19·T20 **전에** 나갔다.
 - [ ] T19. 실제 브라우저에서 1280/1440/1920 × LNB 200/240/320, 긴 키/원문/200 언어 fixture, 키보드/IME, 440 Dialog 취소·복원 성공 후 disabled 버튼 대체 포커스, 접힌 트리 열림·선택·닫힘, 리사이즈, history·재로그인을 검증한다.
   검증: 카드/textarea 실제 폭·클리핑·포커스 결과 기록. FCP뿐 아니라 responseEnd/transferSize/loadEventEnd·목록 선택 가능 시각을 기존 fixture와 비교. 절대 성능은 dev 서버 수치로 판정하지 않음.
 - [ ] T20. preview 환경에서 승인된 실리포의 전달→재편집→Revert→Publish 왕복을 검증한다. base 빈값/비-base 부재·수술적/재생성 어댑터·동일값 재전송을 포함한다.
