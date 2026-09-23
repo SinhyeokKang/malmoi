@@ -37,7 +37,7 @@
 **왜 한 배치인가**: 여섯 항목이 전부 "토큰 해제 · CI 보류 · Publish 거부" 세 판정의 교차점이다. #58·#59는 #1의 선행 조건이고, #4는 #3의 거부 정책과 만나서 🔴가 된다. 하나씩 고치면 서로를 다시 깬다.
 
 **결정 기록 (2026-09-24)**
-- **#1 → 승인 Sync가 승인 집합의 토큰을 전부 비운다** — 페이로드에 셀이 있든 없든(orphan·실패 파일·빈 값) 같은 tx에서 `pendingEditToken = NULL`. OWNER가 승인한 것은 "이 편집들을 버린다"이므로 뜻이 맞는다. 키가 나중에 되살아나면 strict 적재대로 리포 값이 덮는다. 승인 뒤 저장은 토큰이 달라 살아남는다(`remainingEdits`). 기각: 사전 count에 orphan 포함(보류가 일찍 날 뿐 여전히 화면 0) · `pendingWhere`에 orphan 포함(orphan은 export에 없어 Publish로 못 푼다). 정본: ARCHITECTURE §0-1 · §5.5.2 · `apply.ts:355` 주석.
+- **#1 → 승인 Sync가 이번 적재로 orphan이 된 승인 셀의 토큰만 비운다** — 그 표면 적재가 확정되는 tx에서. 처음엔 "승인 집합 전부"였으나 2026-09-24 `/feature-review`(CTO)가 뒤집었다: 리포에 값이 없던 셀의 편집값이 pending 아닌 채 남아 다른 Publish에 조용히 실리고 backfill로 되살아난다. 빈 값·실패 파일 셀은 지금처럼 토큰이 남아 `remainingEdits`로 보인다. 상세는 `docs/features/delivery-invariants/`.
 
 - **#3 → 빠진 파일만 남기고 나머지는 보낸다** — `original-file-missing`을 reject 대상에서 뺀다(§5.6.35가 정본, §3 T10의 "writer 경고면 멈춘다"는 그 코드를 예외로 둔다). 빠진 파일의 셀은 **전달 확인에서 제외해 토큰을 남긴다**(불변식 9 — 보내지 않은 편집을 보냈다고 기록하지 않는다). 남은 편집은 배너에 서므로 Revert나 파일 복구로 풀린다. 개발자가 언어를 빼려고 파일을 지워도 다른 언어의 Publish가 멈추지 않는다. 대가: 전달 확인 CAS가 셀 단위로 거른다. 그 밖의 writer 경고(#4 포함)는 여전히 reject다. 정본: ARCHITECTURE §3 T10 문단 · §5.6.35.
 
