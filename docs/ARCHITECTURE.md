@@ -1340,7 +1340,7 @@ PRODUCT §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 
   `lockProjectAccess`(`lib/auth/lock.ts`)로 **`Project`(→`TranslationSurface`) 잠금 뒤** 호출자의 멤버십·역할과
   보관 상태를 다시 읽는다 — 잠금 대기 중 제거·강등·보관이 끝나면 여기서 거부된다(POSTMORTEM 2026-09-23의
   Revert와 같은 형). 판정은 같은 `planProjectAccess`이고, 그 위에 **쓰기 규칙 하나**를 얹는다: 보관된
-  프로젝트의 `project:settings` 쓰기는 `restore`(보관 토글)만 통과한다(PRODUCT §7.9 "보관 = Restore만").
+  프로젝트의 `project:settings` 쓰기는 보관 토글(`archiveToggle` — `archiveProject`·`unarchiveProject`)만 통과한다(PRODUCT §7.9 "보관 = Restore만").
   `app/__tests__/locked-access.test.ts`가 대상 Action 전수에 그 호출이 있는지 센다.
 - ⚠️ **판정 순서가 권한 → 보관이다.** EDITOR가 보관된 프로젝트의 설정을 열려 하면 답이 `forbidden`이지
   `archived`가 아니다 — 그래야 보관 여부가 권한 없는 사람에게 새지 않는다.
