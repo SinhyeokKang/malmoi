@@ -276,6 +276,15 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
     expect(read(LOGS)).not.toContain("syncReasonMessage");
   });
 
+  /**
+   * ⚠️ **본문의 `space-y-4`는 직계 자식의 margin이다** — 날짜 카드를 `display: contents` 래퍼로 감싸면
+   * 박스가 없는 요소에 margin이 걸려 무시되고 카드 사이 간격이 0이 된다. 화면에만 드러나는 부류라
+   * 소스로 센다.
+   */
+  it("Logs 날짜 카드가 `contents` 래퍼 없이 본문의 직계 자식이다", () => {
+    expect(read(LOGS)).not.toContain('className="contents"');
+  });
+
   it("`translation:write` 화면 전부가 `ProjectArchived`를 반환한다", () => {
     for (const path of SITES) {
       const src = read(path);
