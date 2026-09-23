@@ -78,7 +78,18 @@ C4 완료는 프로덕션 개방이 아니다. preview에서 C5의 T18–T20을 
   결과(2026-09-23, T16 뒤 HEAD): typecheck OK · `pnpm test` 360파일 5,197 passed · `pnpm test:projects:postgres` 14파일 241 passed. ⚠️ 프로덕션 배포 B(#71)는 T19·T20 **전에** 나갔다.
 - [ ] T19. 실제 브라우저에서 1280/1440/1920 × LNB 200/240/320, 긴 키/원문/200 언어 fixture, 키보드/IME, 440 Dialog 취소·복원 성공 후 disabled 버튼 대체 포커스, 접힌 트리 열림·선택·닫힘, 리사이즈, history·재로그인을 검증한다.
   검증: 카드/textarea 실제 폭·클리핑·포커스 결과 기록. FCP뿐 아니라 responseEnd/transferSize/loadEventEnd·목록 선택 가능 시각을 기존 fixture와 비교. 절대 성능은 dev 서버 수치로 판정하지 않음.
+  진행(2026-09-23, 로컬 Chrome · QA 프로젝트 3언어 4키):
+  - 폭 9조합(1280/1440/1920 × LNB 200/240/320) 전부 로케일 ≥420, 입력 = 카드 − 34. 1280/240은 목록 336 · 트리 210이고, 1280/320에서만 트리가 접힌다. 페이지 가로 스크롤 0.
+    ⚠️ 가려진 창에서는 합성 프레임이 멈춰 ResizeObserver가 늦게 온다(394px처럼 보였다). 스크린샷으로 프레임을 강제해 재면 즉시 맞는다 — 측정 환경 문제이고 결함이 아니다.
+  - 접힌 트리 오버레이: 280×208. 열면 선택 항목으로, Escape·선택이면 토글로 포커스가 간다(`abbf705`에서 고쳤다 — 전엔 목록 뒤에 붙어 Tab으로 못 닿고 닫으면 body로 떨어졌다). 트리 전환은 첫 키를 자동 선택한다.
+  - 키보드: IME 조합 Ctrl+Enter(229)는 저장 안 함 · Escape는 그 입력만 복원 · Enter는 줄바꿈 · Ctrl+Enter는 키 저장. Revert 확인창은 440이고 기본 포커스는 Cancel, 성공하면 포커스가 푸터 결과 줄로 간다.
+  - **미검증**: 200언어·긴 키 픽스처(실리포 상한 59 — `i18n-many-locales`가 App 설치 목록에 없어 못 붙였다) · 재로그인 · Safari/Firefox · 네이티브 beforeunload · 성능 지표(dev 서버라 판정 안 함).
 - [ ] T20. preview 환경에서 승인된 실리포의 전달→재편집→Revert→Publish 왕복을 검증한다. base 빈값/비-base 부재·수술적/재생성 어댑터·동일값 재전송을 포함한다.
   검증: DB 복원값과 실제 PR 의미·결정적 바이트, no-changes 브랜치 원복, 경고 시 기준/토큰 불변. 원격 쓰기는 Claude Code의 승인된 `/l10n-roundtrip` 실행으로 인계하고 결과를 기록. T18–T20 통과 기록은 프로덕션 배포 B의 선행 조건이다.
+  진행(2026-09-23, 로컬 dev + dev DB · `malmoi-test-org/bugshot-i18n-test` chrome-locales):
+  - 전달: UI Publish → PR #3(1파일 +1 −1, 헝크 1, 제목에 `[skip-malmoi-i18n]`) → `DeliveryConfirmation` SUCCEEDED, 셀 미전달 해제.
+  - 재편집 → Save → `TranslationBaseline`의 ko가 전달값과 같은 revision으로 섰다.
+  - UI Revert → DB 값이 전달값으로 돌아오고 토큰 null · 기준 행 삭제 · 사건 `translation.reverted` · 화면 Not sent·Publish 개수 0. 문구 단수형 결함 1건을 고쳤다(`73a4918`).
+  - **미완**: PR #3 머지(사람) → 재push·재pull 수렴 · no-changes 브랜치 원복 · 수술적 어댑터 · base 빈값/비-base 부재 · 동일값 재전송 · 값 고정점(편집 전 pull no-changes)을 순서대로 먼저 안 돌렸다.
 
 다음 진입점: T1(design §10)·C1(T2–T4, `lib/translations/*` · `planKeySave`)이 닫혔고 불변식 문서(ARCHITECTURE §0·§5.8 · PRODUCT §3 · CLAUDE.md)를 미구현 표시로 먼저 고쳤다. 다음은 C2(T5 `/db`)다 — 불변식 변경이라 `/ship bypass`가 아니라 수동 흐름이다. 문서 작성 완료는 Revert 구현/배포 완료가 아니다.
