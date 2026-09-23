@@ -215,3 +215,14 @@ it("선택 키가 없으면 키를 고르라는 빈 상태다 — 다른 키를 
   expect(container.textContent).toContain("Select a key to translate");
   expect(mocks.push).not.toHaveBeenCalled();
 });
+
+it("확인창에서 버린 draft는 세션 복구 사본에서도 지운다 — 돌아와도 되살아나지 않는다", async () => {
+  const user = userEvent.setup();
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  expect(window.sessionStorage.length).toBe(1);
+  await user.click(row(container, "k2"));
+  await user.click(button("Discard changes"));
+  expect(window.sessionStorage.length).toBe(0);
+});
+

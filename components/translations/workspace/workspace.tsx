@@ -194,15 +194,20 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── 이동 — 전부 한 판정을 지난다 ────────────────────────────────────────────
+  // 확인창에서 버린 draft는 복구 사본에서도 지운다 — 안 지우면 돌아왔을 때 버린 입력이 "restored"로 되살아난다(spec §3.5).
+  const discardThen = (proceed: () => void) => () => {
+    try { window.sessionStorage.removeItem(storageKey(userId, slug)); } catch { /* 저장소가 막혀 있으면 지울 것도 없다 */ }
+    proceed();
+  };
   function attempt(intent: EditorIntent, proceed: () => void) {
     const plan = planEditorNavigation({ dirtyLocales: dirty, saving, current: keyId }, intent);
     if (plan.action === "go") proceed();
-    else if (plan.action === "confirm" && plan.dialog === "discard") setDialog({ kind: "discard", locales: plan.locales, proceed });
+    else if (plan.action === "confirm" && plan.dialog === "discard") setDialog({ kind: "discard", locales: plan.locales, proceed: discardThen(proceed) });
     else if (plan.action === "confirm") setDialog({ kind: "publish", locales: plan.locales });
   }
   const go = (href: string) => () => router.push(href);
   const withQuery = (next: TranslationQuery, surface = routeSurfaceSlug) => translationsHref(slug, surface, next);
-  useLeaveGuard(dirty.length > 0, proceed => setDialog({ kind: "discard", locales: dirty, proceed }));
+  useLeaveGuard(dirty.length > 0, proceed => setDialog({ kind: "discard", locales: dirty, proceed: discardThen(proceed) }));
 
   function selectRow(row: TranslationListRow) {
     attempt({ kind: "select-key", target: row.keyId }, go(withQuery({ ...query, key: row.keyId, keySurface: row.surfaceSlug })));
@@ -378,7 +383,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                 <span id={syncReasonId} className="sr-only">{w.sync.ownerOnly}</span>
               </>
             )}
-            <span onClickCapture={event => { if (dirty.length > 0 && !publish.pending) { event.preventDefault(); event.stopPropagation(); setDialog({ kind: "publish", locales: dirty }); } }}>
+            {/* ⚠️ **Publish 버튼 하나만 가로챈다** — 같은 컨테이너의 `View result`는 결과를 보는 클릭이지 보내는 클릭이 아니다. */}
+            <span onClickCapture={event => {
+              const onPublish = event.target instanceof Element && event.target.closest(`[id="${publishButtonId}"]`) !== null;
+              if (onPublish && dirty.length > 0 && !publish.pending) { event.preventDefault(); event.stopPropagation(); setDialog({ kind: "publish", locales: dirty }); }
+            }}>
               <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} />
             </span>
           </span>
