@@ -95,3 +95,27 @@ it("selected를 받는 메뉴 항목은 menuitemradio + aria-checked다 — 안 
     ["menuitemradio", "true"], ["menuitemradio", "false"], ["menuitem", null],
   ]);
 });
+
+/**
+ * ⚠️ **연 자리가 꺼졌으면 더 오래된 요소로 거슬러 가지 않는다** (B5 리뷰) — 그러면 무관한 컨트롤에 포커스가 서고, "빠졌을 때만"
+ * 옮기는 호출부의 착지(`useLandAfter`)가 그것을 살아 있는 포커스로 읽어 비켜선다.
+ */
+it("연 버튼이 꺼져 있으면 그 앞의 무관한 버튼으로 가지 않는다", async () => {
+  function Host() {
+    const [open, setOpen] = useState(false);
+    const [off, setOff] = useState(false);
+    return <>
+      <Button>Older</Button>
+      <Button disabled={off} onClick={() => setOpen(true)}>Open</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent title="Run" footer={<Button onClick={() => { setOff(true); setOpen(false); }}>Run</Button>} />
+      </Dialog>
+    </>;
+  }
+  await render(<Host />);
+  await click(byText("Older"));
+  await click(byText("Open"));
+  await click(byText("Run"));
+  await act(async () => { await new Promise(r => setTimeout(r, 0)); });
+  expect(document.activeElement).not.toBe(byText("Older"));
+});

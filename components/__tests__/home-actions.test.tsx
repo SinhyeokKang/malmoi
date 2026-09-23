@@ -175,3 +175,18 @@ it("보관 배너에서 복원이 거부되면 사유 Alert가 배너 밖 형제
   expect(banner!.contains(failure!)).toBe(false);
   expect(failure!.parentElement?.closest('[role="alert"], [role="status"]')).toBeNull();
 });
+
+/**
+ * **복원이 성공하면 보관 배너가 통째로 사라진다** (audit #32 — B5 리뷰). 누른 [Restore project]와 그 착지 훅이 함께 언마운트되어
+ * 포커스가 `body`로 빠졌다. 남는 제목이 받는다 — `SyncButton`의 폴백과 같은 자리다.
+ */
+it("보관 배너에서 복원이 성공하면 Home 제목으로 착지한다", async () => {
+  const { HomeTitle } = await import("@/components/home/actions");
+  mocks.unarchive.mockResolvedValue({ ok: true });
+  const view = (state: "archived" | "default") => <HomeActions slug="acme"><HomeTitle archived={state === "archived"}>acme</HomeTitle>
+    <HomeNotices {...props} state={state} failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} /></HomeActions>;
+  const { rerender } = await render(view("archived"));
+  await click("Restore project");
+  await rerender(view("default"));
+  expect(document.activeElement?.tagName).toBe("H1");
+});

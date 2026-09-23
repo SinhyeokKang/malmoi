@@ -24,7 +24,9 @@ export const Dialog = Primitive.Root;
  * ⚠️ **"열 때의 `activeElement`"로는 못 잡는다** — 두 갈래가 그것을 이미 지운다: 안쪽 버튼의 `autoFocus`는 React 커밋에서
  * FocusScope의 mount 이벤트보다 **먼저** 돌아 `onOpenAutoFocus`가 아예 안 오고, Select 옵션에서 여는 Dialog는 그 순간
  * 포커스가 사라질 옵션 위다(Select의 트리거 복귀는 `setTimeout` 뒤다). 그래서 **최근 포커스 기록**을 들고, 닫힐 때
- * 아직 붙어 있고 켜진 가장 최근 것으로 간다 — Dialog 안의 요소는 그때 떨어져 있어 저절로 빠진다.
+ * 아직 붙어 있는 가장 최근 것으로 간다 — Dialog 안의 요소는 그때 떨어져 있어 저절로 빠진다.
+ * ⚠️ **그것이 꺼져 있으면 더 거슬러 가지 않는다** — 앞의 무관한 컨트롤에 포커스가 서면 "빠졌을 때만" 옮기는 호출부의
+ * 착지(`useLandAfter`)가 그것을 살아 있는 포커스로 읽어 비켜선다 (B5 리뷰).
  *
  * ⚠️ **호출부의 `onCloseAutoFocus`가 먼저다** — 그것이 `preventDefault`했으면 손대지 않는다. 후보가 없으면 Radix 기본
  * (트리거)으로 넘기고, 그래도 빠지면 호출부의 착지(`useLandAfter`)가 받는다. 트리거로 연 Dialog는 결과가 같다.
@@ -42,7 +44,8 @@ if (typeof document !== "undefined") {
 function returnTarget(): HTMLElement | null {
   for (let i = recent.length - 1; i >= 0; i--) {
     const node = recent[i];
-    if (node !== undefined && node.isConnected && !node.matches(":disabled")) return node;
+    if (node === undefined || !node.isConnected) continue;
+    return node.matches(":disabled") ? null : node;
   }
   return null;
 }
