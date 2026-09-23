@@ -1886,7 +1886,6 @@ export const en = {
           body: "Sign in again in this tab. The text you typed stays on screen until you do.",
           signIn: "Sign in",
           restored: (n: number): string => `Signed back in · ${n.toLocaleString("en-US")} unsaved change${n === 1 ? "" : "s"} restored`,
-          otherAccount: { title: "Signed in as another account", body: "The unsaved text belongs to the account that typed it, so it isn't shown here." },
           storageBlocked: "Copy your text before you sign in — this browser isn't keeping it for you.",
         },
       },

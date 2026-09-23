@@ -136,6 +136,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
 
   // ── 세션 복구 사본 — 이 탭 sessionStorage의 한 키 draft, 사용자별 (spec §3.5) ───────────────────
   const restoredFor = useRef<string | null>(null);
+  /** 복구 사본을 못 읽거나 못 썼다 — 세션 만료 Alert가 보존을 약속하지 않는다 (ARCHITECTURE §6.04 · malmoi#76). */
+  const [storageBlocked, setStorageBlocked] = useState(false);
   useEffect(() => {
     if (keyId === undefined || restoredFor.current === keyId) return;
     restoredFor.current = keyId;
@@ -154,6 +156,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       if (count > 0) setStatus({ kind: "restored", count });
     } catch {
       // 저장소가 막힌 브라우저 — 보존을 약속하지 않는다(세션 만료 문구가 그 갈래를 말한다).
+      setStorageBlocked(true);
     }
   }, [keyId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -164,6 +167,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       else window.sessionStorage.setItem(storageKey(userId, slug), JSON.stringify({ surfaceSlug: detailSurface, keyId, saved: plan.saved, draft: plan.draft }));
     } catch {
       // 위와 같다.
+      setStorageBlocked(true);
     }
   }, [draft, keyId, userId, slug, detailSurface]);
 
@@ -514,6 +518,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                     onRevert={() => void openRevert()}
                     onCheck={() => { setStatus(null); router.refresh(); }}
                     slug={slug}
+                    storageBlocked={storageBlocked}
                   />
                 }
               />
@@ -536,10 +541,10 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   );
 }
 
-function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, revertBusy, saveDisabled, onSave, onRevert, onCheck, slug }: {
+function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, revertBusy, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
   dirty: number; status: FooterStatus | null; saving: boolean; resultRef: React.RefObject<HTMLSpanElement | null>;
   hasPending: boolean; revertBlocked: RevertReason | null; revertBusy: boolean; saveDisabled: boolean;
-  onSave: () => void; onRevert: () => void; onCheck: () => void; slug: string;
+  onSave: () => void; onRevert: () => void; onCheck: () => void; slug: string; storageBlocked: boolean;
 }) {
   const w = m.translations.workspace;
   const reasonId = useId();
@@ -551,7 +556,7 @@ function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, r
   return (
     <div className="border-border shrink-0 border-t">
       {status !== null && ALERTS[status.kind] !== undefined && (
-        <div className="px-4 pt-3">{ALERTS[status.kind]?.({ onCheck, slug })}</div>
+        <div className="px-4 pt-3">{ALERTS[status.kind]?.({ onCheck, slug, storageBlocked })}</div>
       )}
       <div className="flex items-center gap-3 px-4 py-3">
         {/* ⚠️ 사유는 결과 줄(`aria-live`) 밖의 형제다 — 안에 두면 사유가 바뀔 때마다 결과처럼 다시 낭독된다.
@@ -580,12 +585,13 @@ function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, r
   );
 }
 
-const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { onCheck: () => void; slug: string }) => ReactNode>> = {
+const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { onCheck: () => void; slug: string; storageBlocked: boolean }) => ReactNode>> = {
   "save-failed": () => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.saveFailed.body}</Alert>,
   "save-unknown": () => <Alert variant="danger" title={m.translations.workspace.footer.saveUnknown.title}>{m.translations.workspace.footer.saveUnknown.body}</Alert>,
-  session: () => (
+  // ⚠️ 사본이 없으면 "이 탭에서 다시 로그인"이 입력을 지우는 안내가 된다 — 먼저 복사하라고 말한다 (ARCHITECTURE §6.04).
+  session: ({ storageBlocked }) => (
     <Alert variant="danger" title={m.translations.workspace.footer.session.title}>
-      {m.translations.workspace.footer.session.body}{" "}
+      {storageBlocked ? m.translations.workspace.footer.session.storageBlocked : m.translations.workspace.footer.session.body}{" "}
       <a href={routes.signIn()} target="_blank" rel="noreferrer" className="text-blue-600">{m.translations.workspace.footer.session.signIn}</a>
     </Alert>
   ),

@@ -416,3 +416,37 @@ it("두 번째 페이지 재검증도 행 요약을 갱신하고 선택 키의 �
   expect(row(container, "k1").textContent).toContain("Saved");
   expect(row(container, "k2").textContent).toContain("2 missing");
 });
+
+/**
+ * ⚠️ **세션 만료 Alert는 복구 사본이 실제로 쓰였을 때만 "이 탭에서 다시 로그인하라"고 말한다** (malmoi#76 —
+ * ARCHITECTURE §6.04). 저장소가 막힌 브라우저에서 같은 문장을 세우면 로그인 이동이 입력을 지운다.
+ */
+it("세션이 끝나면 복구 사본이 있는 동안 이 탭에서 다시 로그인하라고 말한다", async () => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error: "unauthorized" });
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  await user.click(button("Save"));
+  expect(container.textContent).toContain("Your session ended");
+  expect(container.textContent).toContain("Sign in again in this tab.");
+  expect(container.textContent).not.toContain("this browser isn't keeping it for you");
+});
+
+it("저장소가 막힌 브라우저에서는 보존을 약속하지 않고 먼저 복사하라고 말한다", async () => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error: "unauthorized" });
+  // 막힌 브라우저는 `window.sessionStorage` 접근 자체가 던진다(SecurityError).
+  const original = Object.getOwnPropertyDescriptor(window, "sessionStorage")!;
+  Object.defineProperty(window, "sessionStorage", { configurable: true, get: () => { throw new DOMException("blocked", "SecurityError"); } });
+  try {
+    const { container } = await render(<TranslationWorkspace {...props()} />);
+    await user.type(area(container, "zh"), "空");
+    await user.click(button("Save"));
+    expect(container.textContent).toContain("Your session ended");
+    expect(container.textContent).toContain("Copy your text before you sign in — this browser isn't keeping it for you.");
+    expect(container.textContent).not.toContain("Sign in again in this tab.");
+    expect(area(container, "zh").value).toBe("空");
+  } finally {
+    Object.defineProperty(window, "sessionStorage", original);
+  }
+});
