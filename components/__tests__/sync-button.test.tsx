@@ -128,7 +128,8 @@ it("미발송과 열린 PR을 각각의 줄로 말하고 권유는 번역 화면
   expect(lines).toHaveLength(2);
   expect(lines[0]).toContain("Sync will discard 7 unsent translation changes");
   expect(lines[1]).toContain("pull request #42 are not in main yet");
-  expect(document.querySelector('a[href="/projects/acme/translations"]')?.textContent).toBe("Send changes first");
+  // audit #28 — 링크가 도착 화면에 실제로 있는 버튼 이름(`Publish`)을 부른다 (POSTMORTEM 2026-09-14).
+  expect(document.querySelector('a[href="/projects/acme/translations"]')?.textContent).toBe("Publish first");
 });
 
 /**

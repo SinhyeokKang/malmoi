@@ -6,6 +6,7 @@ import { HomeActions, HomeTitle, HomeHeaderActions, HomeNotices } from "@/compon
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import { props as workspaceProps } from "./helpers/workspace-props";
 import { render } from "./helpers/dom";
+import { m } from "@/lib/i18n";
 const mocks = vi.hoisted(() => ({ preview: vi.fn(), pull: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: mocks.preview }));
 vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull, saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn() }));
@@ -184,10 +185,27 @@ it.each([["OWNER", 1], ["EDITOR", 0]] as const)("설정 링크는 %s에게 %i개
   await render(<Host role={role} />);
   await click("Publish1"); await click("Open pull request");
   expect(document.querySelectorAll('a[href="/projects/acme/settings"]')).toHaveLength(links);
-  expect(document.body.textContent).toContain("Not an owner?");
+  expect(document.body.textContent).toContain("Not a project owner?");
   // 서버가 준 safe 메시지를 코드로 갈음하지 않는다 — 코드만 남기면 "안 된대요"가 한 낱말 바뀔 뿐이다.
   expect(document.body.textContent).toContain("could not read the base branch");
   expect(document.body.textContent).toContain("base-unreadable");
+});
+/**
+ * audit #21 — 코드가 없는 거부의 **모르는 문자열**을 그대로 보이지 않고, `invalid input`을 권한 없음으로 오역하지 않는다.
+ * 짝(N > 0): 아는 사유(`not-ready`)는 여전히 그 문장이 선다.
+ */
+it.each(["invalid input", "weird-code"])("코드 없는 모르는 거부 %s는 원문도 권한 문장도 아니다", async error => {
+  mocks.pull.mockResolvedValue({ status: "failed", error, delivery: "not-started", retryable: false });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  const text = document.body.textContent ?? "";
+  expect(text).not.toContain(error);
+  expect(text).not.toContain(m.errors.access.forbidden);
+  expect(text).toContain(m.translations.publish.refused);
+});
+it("아는 거부는 그 문장이 선다 — 폴백이 모든 거부를 삼키지 않는다", async () => {
+  mocks.pull.mockResolvedValue({ status: "failed", error: "not-ready", delivery: "not-started", retryable: false });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  expect(document.body.textContent).toContain(m.errors.onboarding["not-ready"]);
 });
 it("실패의 alert만 낭독하고 닫힌 동안 완료는 포커스를 빼앗지 않는다", async () => {
   const run = deferred<unknown>(); mocks.pull.mockReturnValueOnce(run.promise);

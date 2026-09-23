@@ -281,6 +281,27 @@ it("생성 중 Back으로 이동했다가 실패가 다른 단계에 표시되�
   expect(button("Back").disabled).toBe(false);
 });
 
+/**
+ * audit #13 — "Creating…" 중에는 모달이 닫히지 않는다. 닫히면 `createProject`는 계속 돌고 ④의 일회용 push 토큰이
+ * 경고 없이 사라진다(DESIGN §6.4). ⚠️ **"0회"만 단언하지 않는다** — 같은 픽스처의 대기 전에는 Esc가 닫는다(N > 0 짝).
+ */
+it("생성 중에는 Esc·×가 모달을 닫지 않는다 — 대기 전에는 닫힌다", async () => {
+  const pending = deferred<unknown>();
+  mocks.createProject.mockReturnValueOnce(pending.promise);
+  await naming();
+  const closeButton = () => find<HTMLButtonElement>(document.body, 'button[aria-label="Close"]');
+  expect(closeButton().disabled).toBe(false);
+  await click(button("Create project"));
+  expect(closeButton().disabled).toBe(true);
+  await act(async () => { document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+  expect(mocks.router.replace).not.toHaveBeenCalled();
+  expect(mocks.router.back).not.toHaveBeenCalled();
+  await act(async () => pending.resolve({ ok: false, error: "unavailable" }));
+  expect(closeButton().disabled).toBe(false);
+  await act(async () => { document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+  expect(mocks.router.replace).toHaveBeenCalledTimes(1);
+});
+
 it.each(["reauthorize", "repo-not-installed", "forbidden"])("미리보기 인가 거부 %s도 Next를 막는다", async (error) => {
   mocks.loadCandidateSample.mockResolvedValue({ ok: false, error });
   await files();

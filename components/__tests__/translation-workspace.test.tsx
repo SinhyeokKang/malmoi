@@ -28,6 +28,7 @@ import { TranslationWorkspace } from "@/components/translations/workspace/worksp
 import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
 
 import { props } from "./helpers/workspace-props";
+import { m } from "@/lib/i18n";
 
 
 const area = (container: HTMLElement, code: string) => {
@@ -213,7 +214,7 @@ it("저장 응답이 유실되면 '확인 불가'로 말하고 draft를 지키�
   const { container } = await render(<TranslationWorkspace {...props()} />);
   await user.type(area(container, "zh"), "空");
   await user.click(button("Save"));
-  expect(container.textContent).toContain("We couldn't confirm the save.");
+  expect(container.textContent).toContain("We couldn't confirm the save");
   expect(area(container, "zh").value).toBe("空");
 });
 
@@ -449,4 +450,32 @@ it("저장소가 막힌 브라우저에서는 보존을 약속하지 않고 먼�
   } finally {
     Object.defineProperty(window, "sessionStorage", original);
   }
+});
+
+/**
+ * audit #23 — 다시 해도 안 풀리는 저장 거부 둘을 "Try again"으로 접지 않는다. 짝: 장애(`unavailable`)는 여전히 재시도 문장이다.
+ */
+it.each([
+  ["key-unavailable", m.translations.workspace.footer.keyGone],
+  ["not-ready", m.translations.workspace.footer.notReady],
+  ["unavailable", m.translations.workspace.footer.saveFailed.body],
+] as const)("저장 거부 %s는 그 사유의 문장이다", async (error, expected) => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error });
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  await user.click(button("Save"));
+  expect(container.textContent).toContain(expected);
+  if (error !== "unavailable") expect(container.textContent).not.toContain(m.translations.workspace.footer.saveFailed.body);
+});
+
+/** audit #31 — 활성 키가 0인 프로젝트의 빈 목록이 다음 일을 말한다. */
+it("활성 키가 없으면 빈 목록이 안내를 든다", async () => {
+  const { container } = await render(<TranslationWorkspace {...props({
+    detail: null, query: DEFAULT_TRANSLATION_QUERY,
+    tree: { projectKeyCount: 0, surfaces: [{ id: "s1", slug: "web", baseLocale: "en", locales: ["en"], keyCount: 0, namespaces: [] }] },
+    list: { rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, nextCursor: null, effective: { completion: "all", substituted: false, excludedSurfaceIds: [] }, selectedInResult: false },
+  })} />);
+  expect(container.textContent).toContain(m.translations.workspace.empty.noActive);
+  expect(container.textContent).toContain(m.translations.empty.noKeys.description);
 });

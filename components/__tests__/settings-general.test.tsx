@@ -88,3 +88,11 @@ it("A broken thumbnail URL falls back to the name tile", async () => {
   expect(container.querySelector("img")).toBeNull();
   expect(container.querySelector("svg.lucide-box")).not.toBeNull();
 });
+// audit #23 — 서버가 같은 판정(`planProjectName`)으로 거부해도 전용 문장이다. 폴백(`fields.failed`)으로 뭉개지 않는다.
+it.each([["empty", "Enter a project name."], ["too-long", "Use 200 characters or fewer."], ["unavailable", "We couldn't save this. Try again in a moment."]] as const)("A server rejection %s names its own reason", async (error, text) => {
+  actions.updateProjectName.mockResolvedValueOnce({ ok: false, error });
+  const { container } = await render(view());
+  await input(container.querySelector<HTMLInputElement>('#project-name')!, "Renamed");
+  await act(async () => { await userEvent.setup().click(button(container, "Save")); });
+  expect(container.textContent).toContain(text);
+});
