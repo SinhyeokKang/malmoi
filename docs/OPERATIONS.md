@@ -37,6 +37,35 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
 **payload·searchText에는 원문 이메일도 사람 이름도 없다**(멤버 대상은 저장 시점에 마스킹된다) —
 그래서 FK 하나로 정리가 끝난다. 그 성질이 깨지면 이 절에 정리 절차를 추가해야 한다.
 
+## 전달 기준 배포 A — 스키마 → writer → 수집 (translation-rework, ARCHITECTURE §5.8)
+
+**운영 차단이 없다** — 새 테이블 둘이고 기존 읽기 경로는 그대로다. 배포 A는 기준을 **모으기만** 하고 아무도 읽지 않는다
+(Revert는 배포 B다). 순서를 지키는 이유는 **옛 코드가 남긴 상태를 기준으로 믿지 않기 위해서**다.
+
+1. **스키마**: `/merge` 1단계의 `pnpm db:deploy`로 `20260923020548_add_delivery_baselines`를 넣는다(2026-09-23 적용 완료).
+   두 테이블은 비어 있고, 빈 것이 정상이다 — **과거 전달을 추정해 backfill하지 않는다.**
+2. **writer 배포**(`bc91a95` 이후) — 첫 **편집 있는** Publish 성공부터 소스마다 `DeliveryConfirmation`이 선다.
+   ⚠️ **구 writer와 섞이는 창이 따로 없다** — 전환 직전에 시작한 구 실행은 `RUNNING` 행을 들고 있어 `startRun` 게이트가
+   새 실행을 거부하고(`already-running`), 그 실행은 `maxDuration`(60초) 안에 끝난다. 그래서 새 확인 뒤에 구 writer의
+   Publish가 끼어들 수 없다. 전환 뒤 첫 확인 전까지는 모든 셀이 unknown이다(정상).
+3. **확인**: 아래가 0이어야 한다 — 확인이 가리키는 실행이 성공으로 닫혔는지, 기준 행이 확인과 같은 revision인지.
+   ```sql
+   select count(*) from "DeliveryConfirmation" c join "SyncRun" r on r.id = c."syncRunId"
+    where r.status not in ('SUCCEEDED','SKIPPED');                  -- 실패로 닫힌 실행의 확인
+   select count(*) from "TranslationBaseline" b join "DeliveryConfirmation" c
+     on c."projectId" = b."projectId" and c."surfaceId" = b."surfaceId"
+    where c."invalidatedAt" is null and c.revision <> b.revision;  -- 유효한 확인과 어긋난 기준(Revert가 거부한다 — 0이 아니면 원인 조사)
+   ```
+   ⚠️ 첫째 쿼리는 **실행 행 종료가 실패한 드문 경우**(성공 확정 뒤 `SyncRun` 갱신 실패)에 1이 될 수 있다 — 그 실행의 외부 쓰기는
+   끝났으므로 확인 자체는 참이다. 0이 아니면 그 실행의 로그를 본다.
+4. **롤백 후 재전진** — `bc91a95` 이전 빌드로 되돌렸다가 다시 올리면, 그 사이 구 writer가 한 Publish는 확인·기준을 갱신하지
+   않았다. **재전진 직후 한 번** 전부 무효화한다(행은 지우지 않는다 — 다음 성공 확정이 되살린다).
+   ```sql
+   update "DeliveryConfirmation" set "invalidatedAt" = now() where "invalidatedAt" is null;
+   ```
+   ⚠️ 테이블은 롤백해도 지우지 않는다(additive). 구 코드는 그 테이블을 모르고, FK가 Restrict라 키·로케일 삭제도 막지 않는다
+   (그 경로가 원래 없다).
+
 ## 1. 암호화 키 셋 — 섞지 않는다
 
 **저장된 것은 전부 봉투·해시이고 원문은 쿠키와 프로세스 메모리에만 있다.** 키가 셋인 이유는 용도가
