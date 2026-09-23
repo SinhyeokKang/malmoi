@@ -358,6 +358,12 @@ describe("ts-dict — 로케일 객체에 자리가 없는 wanted 키", () => {
     expect(res.content).toBe(SRC);
   });
 
+  it("다른 로케일 객체에 비리터럴로만 있는 키도 이 파일 것이다 — 자리 없음으로 보고한다", () => {
+    const src = `const ko = { "a": "하나", "z": someFn } as const;\nconst fr = { "a": "un" } as const;\n`;
+    const res = tsDict.writeWithErrors!({ ...fmt, currentFiles: [{ path: "ns/x.ts", content: src }] }, { locale: "fr", entries: [{ key: "z", message: "fin" }] });
+    expect(res.errors).toEqual([{ path: "ns/x.ts", code: "write-slot-missing", key: "z" }]);
+  });
+
   it("이 파일의 어느 로케일 객체에도 없는 키는 다른 네임스페이스 것이다 — 보고하지 않는다", () => {
     const res = tsDict.writeWithErrors!(fmt, { locale: "fr", entries: [{ key: "a", message: "un!" }, { key: "other.ns", message: "x" }] });
     expect(res.errors).toEqual([]);

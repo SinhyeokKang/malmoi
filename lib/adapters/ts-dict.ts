@@ -311,6 +311,8 @@ function writeWithErrors(
    * 넘기므로 "이 객체에 없다"만으로 보고하면 다른 파일의 키 전부가 경고가 된다.
    */
   const inObject = new Set([...present.map((p) => p.key), ...skipped.flatMap((e) => (e.key === undefined ? [] : [e.key]))]);
+  // ⚠️ **다른 객체의 비리터럴 프로퍼티도 파일 소유로 센다** (coordinator review r1). 리터럴만 세면 `ko = { z: fn }` · `fr = {}`에서 fr의 z가
+  // 조용히 건너뛰어져 C형 거짓 전달로 돌아간다. 미리보기는 그런 파일을 읽기 오류로 막으므로(편집 대상 키가 비리터럴일 때) 두 판정이 갈리지 않는다.
   const inFile = new Set<string>();
   for (const [locale, other] of localeObjects(sf)) {
     if (locale === input.locale) continue;

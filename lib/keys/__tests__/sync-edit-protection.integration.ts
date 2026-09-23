@@ -135,7 +135,7 @@ function payload(projectId: string, translations: { key: string; locale: string;
 }
 
 describe("적재의 토큰 정리 (T4)", () => {
-  it("[C4] 승인된 토큰의 셀만 덮고 토큰을 비운다 — 페이로드에 없는 셀(실패 파일)은 토큰 유지", async () => {
+  it("[C4] applyPush는 페이로드 밖 토큰을 안 건드린다 — 승인된 토큰의 셀만 덮고 비우며, 페이로드에 없는 셀은 토큰 유지", async () => {
     await seed("p", { lastPulledAt: PULLED, cells: [
       { key: "k1", locale: "ko", token: "tok-ko" },
       { key: "k1", locale: "fr", token: "tok-fr" },

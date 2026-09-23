@@ -111,3 +111,45 @@ it("같은 픽스처에서 미리보기의 withoutFile과 실행의 withheld가 
   expect(preview.withoutFile).toBe(2);
   expect(result).toMatchObject({ status: "committed", withheld: { file: preview.withoutFile, key: 0 } });
 });
+/**
+ * code-dict의 구조 충돌은 보류가 아니다 (coordinator review r1 — C는 ts-dict만). ⚠️ 이 픽스처가 실제로 내는 코드는 `write-slot-not-string-literal`이다 —
+ * code-dict의 `write-slot-missing`은 같은 충돌이 그 앞에서 잡혀 실측 도달 경로가 없고, 분류 자체는 `undeliverable.test.ts`가 고정한다.
+ */
+it("code-dict 구조 충돌(문자열 자리에 중첩 키)은 보류가 아니다 — 미리보기 withoutKey 0 · 실행은 writer-warnings (같은 픽스처)", async () => {
+  const { runPull } = await import("@/lib/pull/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  const EN = "export default { a: { b: 'B' } };\n";
+  const KO = "export default { a: '가' };\n";
+  const cols = { adapterName: "code-dict", pathTemplate: "{locale}.ts", nested: null };
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, ...cols, locales: [{ code: "en" }, { code: "ko" }] }] });
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "ko", value: "비", stringKey: { key: "a.b" } }]);
+  mocks.client.getTree.mockResolvedValue([{ path: "en.ts", sha: "en" }, { path: "ko.ts", sha: "ko" }]);
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => (sha === "en" ? EN : KO));
+  const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme").catch(() => null);
+  const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: [{ path: "en.ts", sha: "en" }, { path: "ko.ts", sha: "ko" }] }, blobs: { en: EN, ko: KO } });
+  const result = await runPull({
+    loadState: async () => ({
+      project: { ...project, slug: "acme" },
+      surfaces: [{ ...surface, ...cols, localeCodes: ["en", "ko"],
+        keys: [{ id: "k", key: "a.b", sourceText: "B", orphaned: false, cells: { en: { value: "B" }, ko: { value: "비" } } }] }],
+      maxUpdatedAt: new Date(), unpublished: 1, pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s", keyId: "k", localeCode: "ko", restoreValue: "" } }],
+    }),
+    createClient: async () => client, saveLastPulledAt: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
+  });
+  expect(preview?.withoutKey ?? 0).toBe(0);
+  expect(result).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+});
+/**
+ * **편집과 무관한 비리터럴은 미리보기도 막지 않는다** (coordinator review r1 · D4와 같은 판정). 실행은 wanted 키의 비리터럴만 경고하는데
+ * 미리보기가 파일의 모든 읽기 오류로 throw하면 `{ hello: "hi", b: someFn }` 파일의 Publish가 화면에서 영영 열리지 않는다(감사 #4의 화면 쪽).
+ */
+it("ts-dict 파일의 무관한 비리터럴은 미리보기를 막지 않는다 · 편집 대상 키가 비리터럴이면 막는다 (짝)", async () => {
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "ts-dict", pathTemplate: "*.ts", locales: [{ code: "en" }, { code: "ko" }] }] });
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "ko" }]);
+  mocks.client.getTree.mockResolvedValue([{ path: "a.ts", sha: "a" }]);
+  mocks.client.getBlobText.mockResolvedValue('const en = { hello: "hi", b: someFn };\nconst ko = { hello: "안녕" };');
+  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(result.groups[0]).toMatchObject({ path: "a.ts", rows: [{ before: "안녕", after: "new" }] });
+  mocks.client.getBlobText.mockResolvedValue('const en = { hello: "hi" };\nconst ko = { hello: someFn };');
+  await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow();
+});
