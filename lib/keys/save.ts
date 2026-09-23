@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeTranslationValue } from "@/lib/translations/draft";
 
 /**
  * 번역값 저장 판정. **유일한 사용자 mutation이다** — 키·로케일 CRUD는 없다.
@@ -19,7 +20,7 @@ export type SavePlan = { action: "noop" } | { action: "upsert"; value: string };
 export function planSave(current: string | null, next: string): SavePlan {
   // 공백만 입력은 미번역 의도다. 단 값 안의 앞뒤 공백은 보존한다 —
   // 번역에 의미 있는 공백이 있을 수 있어 trim을 값에 적용하지 않는다.
-  const value = next.trim() === "" ? "" : next;
+  const value = normalizeTranslationValue(next);
 
   // 행이 없는데 빈 값이면 저장할 것이 없다.
   if (current === null && value === "") return { action: "noop" };

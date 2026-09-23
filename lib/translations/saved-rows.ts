@@ -30,14 +30,18 @@ export function savedOutCount(list: ListGeneration<unknown>): number {
 /**
  * 같은 세대의 **재검증**(저장 뒤 `revalidatePath`)을 받는다 — 서버 목록에 남은 행은 새 요약으로 바꾸고, 빠진 행은 자리에 남아
  * `savedOut`이 된다. 세대 시작 때 없던 행을 끼워 넣지 않는다 — 목록 멤버십·순서는 재필터(새 세대)에서만 바뀐다.
+ * 페이지 일부만 받았다면 `membership`을 넘긴다. 페이지 부재는 조건 이탈의 증거가 아니므로, 확인된 키만 판정한다.
  */
-export function mergeServerRows<Row extends { keyId: string }>(list: ListGeneration<Row>, server: readonly Row[]): ListGeneration<Row> {
+export function mergeServerRows<Row extends { keyId: string }>(list: ListGeneration<Row>, server: readonly Row[], membership?: ReadonlyMap<string, boolean>): ListGeneration<Row> {
   const fresh = new Map(server.map(row => [row.keyId, row]));
   return {
     generation: list.generation,
     rows: list.rows.map(entry => {
       const next = fresh.get(entry.row.keyId);
-      return next === undefined ? { row: entry.row, savedOut: true } : { row: next, savedOut: false };
+      if (next !== undefined) return { row: next, savedOut: false };
+      const matches = membership?.get(entry.row.keyId);
+      return membership === undefined ? { row: entry.row, savedOut: true }
+        : matches === undefined ? entry : { row: entry.row, savedOut: !matches };
     }),
   };
 }

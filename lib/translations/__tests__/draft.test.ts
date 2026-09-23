@@ -189,3 +189,35 @@ describe("keyEditCommand — 입력 안의 키보드 (spec §3.4)", () => {
     expect(keyEditCommand({ key: "Tab" })).toBeNull();
   });
 });
+
+it("서버가 no-op 셀을 생략해도 공백 정규화된 제출은 깨끗해진다", () => {
+  const state = reduceKeyDraft(submit(edit(start(), "ja", "   ")), { type: "success", requestId: "r1", keyId: "k1", cells: [] });
+  expect(state.saved.ja).toBe("");
+  expect(state.draft.ja).toBe("");
+  expect(dirtyLocales(state)).toEqual([]);
+});
+
+it("동일값 no-op 성공도 보낸 값을 기준으로 확정하고 제출 이후 입력은 보존한다", () => {
+  const state = reduceKeyDraft(edit(submit(edit(start(), "ko", "A")), "ko", "B"), { type: "success", requestId: "r1", keyId: "k1", cells: [] });
+  expect(state.saved.ko).toBe("A");
+  expect(state.draft.ko).toBe("B");
+  expect(dirtyLocales(state)).toEqual(["ko"]);
+});
+
+it("재검증에서 추가된 활성 로케일은 즉시 편집·제출할 수 있고 기존 미저장은 유지된다", () => {
+  let state = edit(initKeyDraft("k1", { en: "Hello", ko: "안녕" }), "ko", "mine");
+  state = reduceKeyDraft(state, { type: "server", keyId: "k1", values: { en: "Hello", ko: "theirs", fr: "Bonjour" } });
+  state = edit(state, "fr", "Salut");
+  expect(state.order).toEqual(["en", "ko", "fr"]);
+  expect(state.saved.fr).toBe("Bonjour");
+  expect(submit(state).inFlight?.sent).toEqual({ ko: "mine", fr: "Salut" });
+});
+
+it("활성 집합에서 빠진 로케일은 draft와 제출에서 빠지고 늦은 응답으로 되살아나지 않는다", () => {
+  let state = submit(edit(start(), "ko", "mine"));
+  state = reduceKeyDraft(state, { type: "server", keyId: "k1", values: { en: "Hello", ja: "" } });
+  state = reduceKeyDraft(state, { type: "success", requestId: "r1", keyId: "k1", cells: [{ localeCode: "ko", value: "mine" }] });
+  expect(state.order).toEqual(["en", "ja"]);
+  expect(Object.hasOwn(state.saved, "ko")).toBe(false);
+  expect(dirtyLocales(state)).toEqual([]);
+});
