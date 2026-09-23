@@ -351,6 +351,12 @@ lib/
                         본다. components/search-input.tsx가 같은 함정을 제 자리에서 설명한다) ·
                         flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
+  translations/         **번역 화면 리워크의 순수 계약** (2026-09-23, translation-rework C1 — 소비자는 C3/C4에서 붙는다).
+                        query(URL 계약 — 요청값을 들고 옛 `state=untranslated`·`locales`를 받는다, `sort` 없음) ·
+                        summary(키 집계 oracle · Incomplete first 안정 분할 · effectiveCompletion) · selection ·
+                        draft(saved/draft/inFlight 세 층 reducer + 세션 복구 사본) · saved-rows · navigation ·
+                        baseline(미전달 셀 delta 기준 — design §10.3). ⚠️ **전부 잎이다** — import는 서로와
+                        잎인 `lib/routes.ts`뿐이다. 키 단위 저장 계획(`planKeySave`)은 `planSave` 옆 `keys/save.ts`에 있다
   sources/             query(server-only 목록/선택 상세, 역할별 명시 projection) ·
                         actions(planSourceActions) · base-language(폼 상태 판정). 두 잎은 서버 import가 없다.
   revalidate-after-commit.ts  커밋 뒤 재검증 실패를 저장 실패로 뒤집지 않는 공유 helper(account/settings/sources).
