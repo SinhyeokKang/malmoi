@@ -59,3 +59,14 @@ it("활성 언어가 없으면 포인터·클릭·키보드 모두 Select를 열
   expect(select.getAttribute('aria-disabled')).toBe('true');
   expect(save().disabled).toBe(true);
 });
+/** 성공하면 Save가 "저장할 것 없음"으로 꺼진다 — 포커스를 방금 고른 필드로 돌려준다 (audit #32). */
+it("저장 성공 뒤 꺼진 Save 대신 언어 셀렉트로 착지한다", async () => {
+  let resolve!: (r: unknown) => void;
+  mocks.save.mockReturnValue(new Promise(r => { resolve = r; }));
+  await render(<BaseLanguageForm {...props} />);
+  await pick("en");
+  await act(async () => { await userEvent.setup().click(save()); });
+  await act(async () => { resolve({ ok: true }); });
+  expect(save().disabled).toBe(true);
+  expect(document.activeElement).toBe(document.querySelector('[role="combobox"]'));
+});
