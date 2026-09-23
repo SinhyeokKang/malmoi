@@ -265,7 +265,7 @@ describe("reissueInvitation — 저장된 주소·역할로 재발급", () => {
     await seedInvitation(seed);
     const result = await reissueInvitation(prisma, { projectId: "p", userId: "u1", invitationId: "inv" });
     expect(result).toEqual({ status: "not-found" });
-    expect(await invitations("p")).toHaveLength(seed.projectId === "q" ? 0 : 1);
+    expect(await invitations("p")).toHaveLength("projectId" in seed ? 0 : 1);
     expect(await invitedEvents()).toHaveLength(0);
   });
 

@@ -10,6 +10,10 @@ import { planSurfaceSlug, surfaceOwnership, selectDefaultSurface } from "@/lib/s
 import { addSurfacesFromSnapshot, SurfaceCreationError, type AddSurfaceErrorCode, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
+import { issueInvitations, reissueInvitation, type IssuedInvitation } from "@/lib/invitation-email/issue";
+import { parseRecipients, type RecipientRowError } from "@/lib/invitation-email/recipients";
+import type { IssueRowError } from "@/lib/invitation-email/plan";
+import { readInvitationEmailConfigFromEnv, sendInvitationEmails } from "@/lib/invitation-email/send";
 
 import { IngestBudgetError } from "@/lib/onboarding/budget";
 
@@ -234,6 +238,120 @@ export async function createInvitation(raw: {
     logCaught("invite", "create", error);
     return { ok: false, error: "unavailable" };
   }
+}
+
+/**
+ * 다중 초대 메일 (docs/features/invitation-email design §3·§4). **요청 전체가 통과하거나 전체가 막힌다.**
+ *
+ * ⚠️ 단건 `createInvitation`은 모달이 T3에서 이쪽으로 옮길 때까지 남는다 — 그 전에 지우면 preview의 링크 초대가 끊긴다.
+ *
+ * 순서가 계약이다: 입력 → 인가 → 메일 설정(없으면 **쓰기 전에** 막는다) → 잠금 안 발급 → commit 뒤 발송 한 번.
+ * ⚠️ **응답에 토큰·URL이 없다** — 원문은 서버 메모리와 메일에만 있다.
+ */
+const InvitationsInput = z.object({
+  slug: z.string().min(1),
+  // 상한은 `parseRecipients`가 판정한다(too-many를 값으로 돌려준다). 여기 숫자는 파싱 비용의 방어선이다.
+  recipients: z.array(z.object({ email: z.string().max(1000), role: z.string().max(20) })).min(1).max(200),
+});
+
+export type InvitationsResult =
+  | { ok: true; count: number }
+  | { ok: false; error: "invalid-rows"; rowErrors: (RecipientRowError | IssueRowError)[] }
+  | { ok: false; error: "rate-limited" | "email-rejected" | "email-unknown"; retryAt: string }
+  | { ok: false; error: string };
+
+export async function createInvitations(raw: { slug: string; recipients: { email: string; role: string }[] }): Promise<InvitationsResult> {
+  const parsed = InvitationsInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const input = parsed.data;
+  // 빈 행은 클라이언트가 전송 전에 뺀다(design §3.2). 서버가 조용히 건너뛰면 행 오류 인덱스가 입력과 어긋난다.
+  if (input.recipients.some((r) => r.email.trim() === "")) return { ok: false, error: "invalid input" };
+
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
+
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "member:manage" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+
+  const recipients = parseRecipients(input.recipients);
+  if (recipients.status === "invalid-rows") return { ok: false, error: "invalid-rows", rowErrors: recipients.rowErrors };
+  if (recipients.status !== "ok") return { ok: false, error: recipients.status === "empty" ? "invalid input" : recipients.status };
+
+  const config = readInvitationEmailConfigFromEnv();
+  if (config.status !== "ready") return { ok: false, error: "email-unavailable" };
+
+  let issued: Awaited<ReturnType<typeof issueInvitations>>;
+  try {
+    issued = await issueInvitations(prisma, { projectId: access.projectId, userId, recipients: recipients.recipients });
+  } catch (error) {
+    logCaught("invite", "issue", error);
+    return { ok: false, error: "unavailable" };
+  }
+  if (issued.status === "invalid-rows") return { ok: false, error: "invalid-rows", rowErrors: issued.rowErrors };
+  if (issued.status === "rate-limited") return { ok: false, error: "rate-limited", retryAt: issued.retryAt.toISOString() };
+  if (issued.status !== "issued") return { ok: false, error: issued.status };
+
+  const outcome = await sendInvitationEmails(config, toMessages(issued.invitations));
+  // ⚠️ 발송 결과와 무관하게 다시 그린다 — 초대는 이미 생겼고 Pending에 보여야 Resend로 복구할 수 있다.
+  revalidatePath(`/projects/${input.slug}/members`);
+  if (outcome === "accepted") return { ok: true, count: issued.invitations.length };
+  return { ok: false, error: outcome === "rejected" ? "email-rejected" : "email-unknown", retryAt: issued.retryAt.toISOString() };
+}
+
+const ResendInput = z.object({ slug: z.string().min(1), invitationId: z.string().min(1) });
+
+export type ResendResult =
+  | { ok: true; label: string }
+  | { ok: false; error: "rate-limited"; retryAt: string }
+  | { ok: false; error: "email-rejected" | "email-unknown"; label: string; retryAt: string }
+  | { ok: false; error: string };
+
+/**
+ * Pending의 Resend — **서버에 저장된 주소·역할로** 새 초대와 메일을 만든다. 클라이언트는 id만 보낸다.
+ * 옛 링크를 닫는 조건부 갱신이 새 초대의 선행조건이다(`reissueInvitation`).
+ */
+export async function resendInvitation(raw: { slug: string; invitationId: string }): Promise<ResendResult> {
+  const parsed = ResendInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const input = parsed.data;
+
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
+
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "member:manage" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+
+  const config = readInvitationEmailConfigFromEnv();
+  if (config.status !== "ready") return { ok: false, error: "email-unavailable" };
+
+  let issued: Awaited<ReturnType<typeof reissueInvitation>>;
+  try {
+    issued = await reissueInvitation(prisma, { projectId: access.projectId, userId, invitationId: input.invitationId });
+  } catch (error) {
+    logCaught("invite", "reissue", error);
+    return { ok: false, error: "unavailable" };
+  }
+  if (issued.status === "unreadable") return { ok: false, error: "unavailable" };
+  if (issued.status === "invalid-rows") return { ok: false, error: "already-member" };
+  if (issued.status === "rate-limited") return { ok: false, error: "rate-limited", retryAt: issued.retryAt.toISOString() };
+  if (issued.status !== "issued") return { ok: false, error: issued.status };
+
+  const outcome = await sendInvitationEmails(config, toMessages([issued.invitation]));
+  revalidatePath(`/projects/${input.slug}/members`);
+  // 한 주소를 가리는 자리라 충돌 판정이 필요 없다 — 단건 발급의 라벨과 같다.
+  const label = maskedEmailLabels([issued.invitation.email])[0] ?? "";
+  if (outcome === "accepted") return { ok: true, label };
+  return { ok: false, error: outcome === "rejected" ? "email-rejected" : "email-unknown", label, retryAt: issued.retryAt.toISOString() };
+}
+
+function toMessages(invitations: readonly IssuedInvitation[]) {
+  return invitations.map((i) => ({ to: i.email, token: i.token }));
 }
 
 const RevokeInput = z.object({ slug: z.string().min(1), invitationId: z.string().min(1) });
