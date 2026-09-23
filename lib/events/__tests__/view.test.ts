@@ -23,11 +23,11 @@ function row(over: Partial<EventViewRow> = {}): EventViewRow {
   return { kind: "PUBLISH", result: "sent", warnings: 0, errorCode: null, ...over };
 }
 
-describe("eventView — 결과 어휘 아홉", () => {
-  it("아홉이 전부 라벨을 갖고, 서로 다르다", () => {
+describe("eventView — 결과 어휘 전부", () => {
+  it("전부 라벨을 갖고, 서로 다르다", () => {
     const labels = EVENT_RESULTS.map((result) => eventView(row({ result })).label);
-    expect(labels.filter((label) => label !== null)).toHaveLength(9);
-    expect(new Set(labels).size).toBe(9);
+    expect(labels.filter((label) => label !== null)).toHaveLength(EVENT_RESULTS.length);
+    expect(new Set(labels).size).toBe(EVENT_RESULTS.length);
   });
 
   it("실패만 danger다", () => {
@@ -35,7 +35,7 @@ describe("eventView — 결과 어휘 아홉", () => {
   });
 
   it("사람이 고쳐야 풀리는 셋은 warning이다", () => {
-    for (const result of ["deferred", "partial", "notStarted"] as const) {
+    for (const result of ["deferred", "partial", "notStarted", "notSent"] as const) {
       expect(eventView(row({ result })).tone, result).toBe("warning");
     }
   });
@@ -321,4 +321,14 @@ it("소스 추가는 다음 CI에서 적용할 선언이라고 표시하지 않�
   expect(eventMeta({ kind: "SURFACE", subtype: "surface.added", result: null, actor: { kind: "USER" }, run: null,
     payload: { kind: "SURFACE", surfaceSlug: "web", adapter: "json-catalog", baseLocale: { before: null, after: "en" } } }, false))
     .not.toContain(m.logs.meta.declarationOnly);
+});
+
+/** delivery-invariants D7 — 보류만 남은 Publish는 "Nothing to send"가 아니다. 모달의 `Not sent`와 같은 낱말이다(DESIGN §10.1). */
+describe("eventView — 보류만 남은 Publish", () => {
+  it("notSent는 Not sent이고 warning이다 — Nothing to send와 다르다", () => {
+    const view = eventView(row({ result: "notSent" }));
+    expect(view.label).toBe(m.logs.status.notSent);
+    expect(view.label).not.toBe(m.logs.status.skipped);
+    expect(view.tone).toBe("warning");
+  });
 });

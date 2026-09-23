@@ -62,6 +62,7 @@ export async function runSync(
         prUrl: finish.prUrl,
         changed: finish.changed,
         warnings: finish.warnings,
+        withheld: finish.withheld,
         finishedAt: new Date(),
       },
     });

@@ -143,6 +143,11 @@ export type SyncFinish = {
   /** **실패는 `null`이다** — 0은 "아무것도 안 바뀌었다"는 관측이고, 실패엔 관측 자체가 없다. */
   changed: number | null;
   warnings: number;
+  /**
+   * 이번 PR에 **못 실은** 편집 수 (delivery-invariants D7 — `SyncRun.withheld`). 버린 것(`warnings`)이 아니다 — 토큰이 남아 다음 Publish를 기다린다.
+   * 결과 모달과 Logs가 같은 수를 말하는 자리다. ⚠️ Publish 사건 payload에 복제하지 않는다(logs-rework 결정 1).
+   */
+  withheld: number;
 };
 
 /**
@@ -161,12 +166,14 @@ export type SyncFinish = {
 export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFinish {
   if ("thrown" in result) {
     const { code, retryable } = classifySyncError(result.thrown);
-    return { status: "FAILED", errorCode: code, retryable, prUrl: null, changed: null, warnings: 0 };
+    return { status: "FAILED", errorCode: code, retryable, prUrl: null, changed: null, warnings: 0, withheld: 0 };
   }
 
   const warnings = result.status === "skipped" && result.reason === "writer-warnings" ? result.warnings.length : 0;
+  const counted = result.status === "committed" || result.reason === "no-changes" || result.reason === "withheld" ? result.withheld : undefined;
+  const withheld = counted === undefined ? 0 : counted.file + counted.key;
   if (result.status === "skipped") {
-    return { status: "SKIPPED", errorCode: null, retryable: null, prUrl: null, changed: 0, warnings };
+    return { status: "SKIPPED", errorCode: null, retryable: null, prUrl: null, changed: 0, warnings, withheld };
   }
   return {
     status: "SUCCEEDED",
@@ -175,6 +182,7 @@ export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFi
     prUrl: result.prUrl,
     changed: result.changed.length,
     warnings,
+    withheld,
   };
 }
 

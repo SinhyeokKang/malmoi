@@ -268,6 +268,8 @@ function fields(row: EventRow): [string, ReactNode][] {
         </a>
       ),
     ]);
+    // 모달의 보류 줄과 같은 수다 — 같은 `SyncRun.withheld`에서 온다(delivery-invariants D7).
+    if (row.run !== null && row.run.withheld > 0) out.push([m.logs.detail.labels.withheld, m.logs.detail.withheld(row.run.withheld)]);
     if (row.run?.errorCode != null) out.push([m.logs.detail.labels.errorCode, row.run.errorCode]);
     if (payload?.kind === "PUBLISH" && payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(payload.refusal)]);
   }

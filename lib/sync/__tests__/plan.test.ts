@@ -155,6 +155,7 @@ describe("planSyncFinish — 결과를 행으로", () => {
       prUrl: "https://github.com/o/r/pull/1",
       changed: 2,
       warnings: 0,
+      withheld: 0,
     });
   });
 
@@ -167,6 +168,7 @@ describe("planSyncFinish — 결과를 행으로", () => {
       prUrl: null,
       changed: 0,
       warnings: 0,
+      withheld: 0,
     });
   });
 
@@ -185,6 +187,7 @@ describe("planSyncFinish — 결과를 행으로", () => {
       prUrl: null,
       changed: null,
       warnings: 0,
+      withheld: 0,
     });
   });
 
@@ -299,5 +302,23 @@ describe("planSyncStart — 수동 Sync와의 상호 배제 (sync-edit-protectio
     }).ok;
     expect(publishBlocked).toBe(importBlocked);
     expect(publishBlocked).toBe(age <= STALE_AFTER_SECONDS * 1000);
+  });
+});
+
+/**
+ * **보류 수는 `SyncRun.withheld`에 산다** (delivery-invariants D7 · 사용자 결정 2026-09-24). 결과 모달과 Logs가 같은 수를 말하는 자리이고,
+ * Publish 사건 payload에 복제하지 않는다(logs-rework 결정 1). 버린 것(`warnings`)과 섞지 않는다 — 보류는 토큰이 남아 다음 Publish를 기다린다.
+ */
+describe("planSyncFinish — 보류 수", () => {
+  const committed = { status: "committed", delivered: 1, pr: "created", commitSha: "c", prUrl: "https://github.com/o/r/pull/1", changed: ["a.yml"] as string[] } as const;
+  it("committed · no-changes · skipped/withheld는 사유를 합친 보류 수를 싣는다", () => {
+    expect(planSyncFinish({ ...committed, withheld: { file: 1, key: 2 } })).toMatchObject({ status: "SUCCEEDED", withheld: 3, warnings: 0 });
+    expect(planSyncFinish({ status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } })).toMatchObject({ status: "SKIPPED", withheld: 1 });
+    expect(planSyncFinish({ status: "skipped", reason: "withheld", withheld: { file: 0, key: 1 } })).toMatchObject({ status: "SKIPPED", withheld: 1, changed: 0 });
+  });
+  it("보류가 없거나 실패면 0이다 (짝)", () => {
+    expect(planSyncFinish(committed)).toMatchObject({ withheld: 0 });
+    expect(planSyncFinish({ status: "skipped", reason: "writer-warnings", warnings: ["x"] })).toMatchObject({ withheld: 0, warnings: 1 });
+    expect(planSyncFinish({ thrown: new Error("x") })).toMatchObject({ withheld: 0 });
   });
 });

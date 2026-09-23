@@ -20,7 +20,15 @@ import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
 import { applyProtectedPush, applyPush } from "@/lib/push/apply";
 import { hashPushToken } from "@/lib/push/token";
 
+import { loadEvents } from "@/lib/events/query";
+import { parseLogFilter } from "@/lib/events/filter";
+import { runSync } from "@/lib/sync/run";
+import { planWithheldLines } from "@/lib/publish/plan";
+
 import { applyKeySave } from "../save-key";
+
+const github = vi.hoisted(() => ({ client: null as unknown }));
+vi.mock("@/lib/github", async importOriginal => ({ ...(await importOriginal<object>()), createGitClient: async () => github.client }));
 import { executeKeyRevert, previewKeyRevert } from "../revert";
 
 /**
@@ -280,6 +288,27 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
       await invalidateDeliveryConfirmations(prisma, "p");
     });
     expect(await previewKeyRevert(prisma, t)).toMatchObject({ status: "blocked", reason: "baseline-stale" });
+  });
+
+  /**
+   * **모달과 Logs가 같은 수를 말한다** (spec 완료 조건 12 · 사용자 결정 2026-09-24 — `SyncRun.withheld`). 실제 `runSync`가 행을 닫고 Logs 조회가
+   * 그 행을 조인해 읽는다 — Publish 사건 payload에는 복제하지 않는다(logs-rework 결정 1).
+   */
+  it("runSync의 보류 수가 SyncRun.withheld로 남고 Logs 행이 같은 수를 든다", async () => {
+    await withheldFixture();
+    const t = await target();
+    await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "하나!!" }] });
+    const tree = [{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }];
+    github.client = createFakeGitClient({
+      refSha: { "heads/main": "basehead" },
+      tree: { basehead: tree.map(f => ({ path: f.path, sha: blobSha(f.content) })) },
+      blobs: Object.fromEntries(tree.map(f => [blobSha(f.content), f.content])),
+    }).client;
+    const outcome = await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null });
+    expect(outcome).toMatchObject({ status: "committed", withheld: { file: 1, key: 0 } });
+    const [row] = (await loadEvents(prisma, "p", { ...parseLogFilter({}) })).rows.filter(r => r.kind === "PUBLISH");
+    expect(row?.run?.withheld).toBe(1);
+    expect(planWithheldLines(outcome, "OWNER")).toHaveLength(1);
   });
 
   it("대가 — 보류 fr이 남은 동안 CI push는 deferred, Revert로 0이 되면 다음 CI push가 applied", async () => {

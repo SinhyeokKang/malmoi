@@ -45,6 +45,7 @@ const TONES: Readonly<Record<EventResult, EventTone>> = {
   running: "muted",
   sent: "muted",
   nothingToSend: "muted",
+  notSent: "warning",
   imported: "muted",
   superseded: "muted",
   deferred: "warning",
@@ -57,6 +58,7 @@ const LABELS: Readonly<Record<EventResult, string>> = {
   running: m.logs.status.running,
   sent: m.logs.status.succeeded,
   nothingToSend: m.logs.status.skipped,
+  notSent: m.logs.status.notSent,
   imported: m.logs.status.imported,
   deferred: m.logs.status.deferred,
   partial: m.logs.status.partial,
@@ -159,6 +161,7 @@ const RESULT_GLYPH_TONE: Readonly<Record<EventResult, GlyphTone>> = {
   failed: "red",
   running: "slate",
   nothingToSend: "slate",
+  notSent: "amber",
   superseded: "slate",
 };
 
@@ -238,6 +241,8 @@ export function eventSentence(
           return m.logs.sentence.publish.sent(actor);
         case "nothingToSend":
           return m.logs.sentence.publish.nothing(actor);
+        case "notSent":
+          return m.logs.sentence.publish.notSent(actor);
         case "notStarted":
           return m.logs.sentence.publish.notStarted(actor);
         default:

@@ -30,6 +30,13 @@ const detail = (value: Row) => render(
 );
 
 describe("활동 행과 상세의 실제 동작", () => {
+  /** delivery-invariants D7 — Logs 상세가 모달과 같은 수를 한 줄로 말한다. 짝: 보류 0이면 줄이 없다. */
+  it.each([[2, true], [0, false]] as const)("Publish 상세는 보류 %i건을 한 줄로 말한다(%s)", async (n, shown) => {
+    const { container } = await detail(row({ kind: "PUBLISH", subtype: "publish.run", result: n > 0 ? "notSent" : "nothingToSend",
+      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, warnings: 0, withheld: n, prUrl: null, errorCode: null } }));
+    expect(container.textContent?.includes(m.logs.detail.withheld(2))).toBe(shown);
+  });
+
   it("수동 적재 성공은 보호 보류라고 말하지 않고 소스별 결과를 보인다", async () => {
     const { container } = await render(<EventRow row={row()} href="/logs" now={now} archived={false} />);
     expect(container.textContent).toContain("web: Synced");
@@ -66,7 +73,7 @@ describe("활동 행과 상세의 실제 동작", () => {
 
   it("Home과 상세에도 Publish의 dropped 경고가 보인다", async () => {
     const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "sent", payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null },
-      run: { changed: 1, warnings: 2, prUrl: null, errorCode: null } });
+      run: { changed: 1, warnings: 2, withheld: 0, prUrl: null, errorCode: null } });
     const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} showTime={false} />);
     expect(container.textContent).toContain(m.logs.warnings(2));
     expect((await detail(value)).container.textContent).toContain(m.logs.warnings(2));
@@ -100,7 +107,7 @@ it("보관된 Publish의 행과 상세 모두 야간 재시도를 약속하지 �
   const code = Object.entries(m.logs.reasons).find(([, value]) => value.includes("nightly"))?.[0];
   expect(code).toBeDefined();
   const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "failed",
-    run: { changed: null, warnings: 0, prUrl: null, errorCode: code! },
+    run: { changed: null, warnings: 0, withheld: 0, prUrl: null, errorCode: code! },
     payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: null } });
   const { container, rerender } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
   expect(container.textContent).toContain("nightly");

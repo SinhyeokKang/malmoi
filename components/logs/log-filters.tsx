@@ -311,6 +311,7 @@ const RESULT_KEY: Readonly<Record<EventResult, keyof typeof m.logs.status>> = {
   running: "running",
   sent: "succeeded",
   nothingToSend: "skipped",
+  notSent: "notSent",
   imported: "imported",
   deferred: "deferred",
   partial: "partial",
@@ -323,7 +324,7 @@ const RESULT_KEY: Readonly<Record<EventResult, keyof typeof m.logs.status>> = {
  * 결과 어휘 → 어느 그룹인가. **`Record`라 어휘가 늘면 여기서 컴파일이 걸린다** (`RESULT_KEY`와 같은 형).
  *
  * ⚠️ **목록을 손으로 적지 않는다** — 전에는 그룹마다 결과를 나열하고 `EVENT_RESULTS satisfies
- * readonly EventResult[]` 한 줄로 "아홉이 빠짐없이 들어갔다"를 주장했는데, **그 식은 항진명제라
+ * readonly EventResult[]` 한 줄로 "전부 빠짐없이 들어갔다"를 주장했는데, **그 식은 항진명제라
  * 아무것도 재지 않았다**: 열 번째 어휘를 늘려도 컴파일이 통과하고 그 결과로 좁힐 길만 화면에서
  * 사라진다(어느 화면에도 안 나타나는 부류다).
  */
@@ -335,6 +336,7 @@ const RESULT_GROUP_OF: Readonly<Record<EventResult, "imports" | "publish" | "bot
   notStarted: "imports",
   sent: "publish",
   nothingToSend: "publish",
+  notSent: "publish",
   running: "both",
   failed: "both",
 };

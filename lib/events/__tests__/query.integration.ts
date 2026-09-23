@@ -107,12 +107,12 @@ async function event(over: Partial<{
   return id;
 }
 
-async function publishRun(id: string, status: "RUNNING" | "SUCCEEDED" | "SKIPPED" | "FAILED", over: Partial<{ projectId: string; warnings: number; changed: number | null; prUrl: string | null; errorCode: string | null; surfaceIds: string[]; occurredAt: Date }> = {}) {
+async function publishRun(id: string, status: "RUNNING" | "SUCCEEDED" | "SKIPPED" | "FAILED", over: Partial<{ projectId: string; warnings: number; withheld: number; changed: number | null; prUrl: string | null; errorCode: string | null; surfaceIds: string[]; occurredAt: Date }> = {}) {
   const projectId = over.projectId ?? "p1";
   await prisma.syncRun.create({
     data: {
       id, projectId, status, trigger: "MANUAL", startedAt: over.occurredAt ?? AT,
-      warnings: over.warnings ?? 0, changed: over.changed ?? null, prUrl: over.prUrl ?? null, errorCode: over.errorCode ?? null,
+      warnings: over.warnings ?? 0, withheld: over.withheld ?? 0, changed: over.changed ?? null, prUrl: over.prUrl ?? null, errorCode: over.errorCode ?? null,
     },
   });
   return event({
@@ -230,12 +230,22 @@ describe("Publish 결과는 조인이 든다 (결정 1)", () => {
     }
   });
 
+  /** delivery-invariants D7 — 보류만 남은 실행(SKIPPED + withheld > 0)은 Nothing to send가 아니다. 결과 필터도 둘을 가른다. */
+  it("SKIPPED + withheld > 0은 notSent이고 run.withheld를 든다 · 필터가 nothingToSend와 가른다", async () => {
+    const notSent = await publishRun("run-w", "SKIPPED", { withheld: 2, changed: 0, occurredAt: new Date(AT.getTime() + 1000) });
+    const nothing = await publishRun("run-n", "SKIPPED", { changed: 0 });
+    const rows = (await loadEvents(prisma, "p1", base())).rows;
+    expect(rows.map((r) => [r.ref, r.result, r.run?.withheld])).toEqual([[notSent, "notSent", 2], [nothing, "nothingToSend", 0]]);
+    expect((await loadEvents(prisma, "p1", base({ results: ["notSent"] }))).rows.map((r) => r.ref)).toEqual([notSent]);
+    expect((await loadEvents(prisma, "p1", base({ results: ["nothingToSend"] }))).rows.map((r) => r.ref)).toEqual([nothing]);
+  });
+
   it("실행이 나중에 닫혀도 이벤트 쪽 값이 갈리지 않는다", async () => {
     await publishRun("run-1", "RUNNING");
     await prisma.syncRun.update({ where: { id: "run-1" }, data: { status: "SUCCEEDED", changed: 3, warnings: 2, prUrl: "https://x/1" } });
     const [row] = (await loadEvents(prisma, "p1", base())).rows;
     expect(row?.result).toBe("sent");
-    expect(row?.run).toEqual({ changed: 3, warnings: 2, prUrl: "https://x/1", errorCode: null });
+    expect(row?.run).toEqual({ changed: 3, warnings: 2, withheld: 0, prUrl: "https://x/1", errorCode: null });
   });
 
   it("완료 시각은 SyncRun에서 읽고 상세와 목록이 같다", async () => {

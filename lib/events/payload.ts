@@ -22,13 +22,15 @@ export const ACTOR_KINDS = ["USER", "AUTOMATION", "UNKNOWN"] as const;
 export type ActorKind = (typeof ACTOR_KINDS)[number];
 
 /**
- * 결과 어휘 아홉 (spec §6). **실행에만 붙는다** — 비실행 사건의 결과는 `null`이고, 화면은 그 칸을
+ * 결과 어휘 열 (spec §6 — `notSent`는 delivery-invariants D7이 더했다). **실행에만 붙는다** — 비실행 사건의 결과는 `null`이고, 화면은 그 칸을
  * 빈 채 폭만 유지한다. `N dropped`는 여기 없다: 그것은 결과와 **독립으로** 붙는 경고다(불변식 9).
  */
 export const EVENT_RESULTS = [
   "running",
   "sent",
   "nothingToSend",
+  /** Publish 전용 — 실린 편집 0 + 보류 > 0 (delivery-invariants D7). `SKIPPED`인데 `SyncRun.withheld > 0`인 행이다. */
+  "notSent",
   "imported",
   "deferred",
   "partial",

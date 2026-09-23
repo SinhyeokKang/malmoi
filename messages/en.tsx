@@ -821,6 +821,8 @@ export const en = {
       succeeded: "Sent",
       /** ⚠️ **"branch equals base"가 아니다** — 읽는 사람은 번역 편집자다. */
       skipped: "Nothing to send",
+      /** 보류만 남은 Publish (delivery-invariants D7) — 편집은 있었고 못 실었다. 결과 모달의 `Not sent`와 같은 낱말이다(DESIGN §10.1). */
+      notSent: "Not sent",
       failed: "Failed",
       /** ⚠️ 줄임표는 진행 중에만이다 (DESIGN §10). */
       running: "Running…",
@@ -923,6 +925,7 @@ export const en = {
         running: (who: ReactNode): ReactNode => <>{who} is sending translations to GitHub</>,
         sent: (who: ReactNode): ReactNode => <>{who} sent translations to GitHub</>,
         nothing: (who: ReactNode): ReactNode => <>{who} publish had nothing to send</>,
+        notSent: (who: ReactNode): ReactNode => <>{who} publish couldn't send its edits</>,
         failed: (who: ReactNode): ReactNode => <>{who} publish failed</>,
         notStarted: (who: ReactNode): ReactNode => <>{who} publish was refused</>,
       },
@@ -992,7 +995,11 @@ export const en = {
         role: "Role",
         effect: "Effect",
         unsentEdits: "Unsent edits",
+        withheld: "Not sent",
       },
+      /** 결과 모달의 보류 줄과 같은 수·같은 약속이다 (delivery-invariants D7). */
+      withheld: (n: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "edit" : "edits"} stayed in malmoi because the language file or key isn't in the repository yet.`,
       actions: {
         copy: "Copy reference",
         openTranslation: "Open this translation",
