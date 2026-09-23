@@ -248,6 +248,36 @@ dig +short TXT mal-moi.com | tr -d '"' | sed 's/.*=//' | awk '{print length($0)}
 
 값은 인증 창의 **[복사] 버튼**으로 가져온다(드래그 선택 금지 — 칸이 잘려 보인다). 반영은 가비아 원본(`@ns.gabia.co.kr`)과 퍼블릭 리졸버(`@8.8.8.8`) 둘 다에서 확인한 뒤 [확인]을 누른다.
 
+## 초대 메일 — Resend (2026-09-24)
+
+**구성**: 도메인 `notify.mal-moi.com`(Resend 리전 **Tokyo** `ap-northeast-1`, 2026-09-23 Verified) · 발신 `malmoi <invite@notify.mal-moi.com>` ·
+open/click tracking **꺼짐**(추적 서브도메인을 구성하지 않았다 — 켜면 초대 URL이 추적 링크로 바뀌고 방침의 "no tracking"이 거짓이 된다) ·
+TLS Opportunistic. DNS는 가비아다: `send.notify`의 MX·SPF(TXT), `resend._domainkey.notify`의 DKIM(TXT) — 값은 Resend 도메인 화면이
+정본이다. DMARC는 따로 두지 않았다 — 루트 `_dmarc.mal-moi.com`(`p=none`)이 서브도메인에 적용된다.
+
+**환경변수 셋 × 환경**(`lib/invitation-email/send.ts`가 읽는다 — `.env.example` 참고): `RESEND_API_KEY` · `INVITATION_EMAIL_FROM` ·
+`INVITATION_EMAIL_ORIGIN`. production은 `https://mal-moi.com`, preview(dev 브랜치)는 `https://dev.mal-moi.com`, 로컬은 `http://localhost:3000`.
+⚠️ **키는 환경마다 따로다** — Resend API Keys에서 Sending access · 도메인 `notify.mal-moi.com` 한정으로 `malmoi-prod`·`malmoi-preview`를
+발급했고 로컬은 preview 키를 쓴다. 하나가 새도 다른 환경의 키를 회전하지 않아도 된다.
+
+**키 회전**: ① Resend에서 같은 권한으로 새 키 발급 ② `vercel env rm RESEND_API_KEY <env> --yes` 후 `vercel env add RESEND_API_KEY <env>`(값은
+프롬프트로 — `--value`는 `ps`에 남는다, preview는 `preview dev`) ③ `vercel env ls <env>`의 시각 열로 바뀐 것을 확인(성공 메시지는 근거가 아니다 —
+CLAUDE.md) ④ 재배포 ⑤ 초대 한 통을 지정 수신자로 보내 접수를 확인한 뒤 옛 키를 Resend에서 revoke. ⚠️ **①~④ 사이에는 옛 키가 살아 있어야 한다** —
+먼저 revoke하면 그 창 동안 모든 발급이 `email-rejected`(401)로 떨어지고, 이미 만든 초대는 메일 없이 Pending에 남는다(Resend로 복구).
+
+**설정이 틀렸을 때의 증상**: 셋 중 하나라도 없거나 origin이 환경과 안 맞으면(`config.ts`의 `origin-mismatch`) **발급 전에** `email-unavailable`이고
+화면은 *Email is unavailable right now*다 — 초대 행이 생기지 않는다. 키가 틀리면(401) 발급은 되고 메일만 `rejected`다.
+
+**오류 확인**: 서버 로그의 `[invite-email] batch <rejected|unknown> <http-NNN|network> count=N` 한 줄이 전부다(주소·토큰·키·공급자 원문은
+남기지 않는다). 그 시각으로 Resend 대시보드 **Emails**에서 같은 요청을 찾는다. `unknown`(timeout·5xx·불완전 응답)은 **일부가 나갔을 수 있다** —
+다시 보내면 이전 링크가 만료된다.
+
+**보존**: Resend는 보낸 메시지(수신 주소·제목·링크가 든 본문)를 **30일** 보관한다(Free 플랜 값 — 요금제를 바꾸면 방침 `retention` 절도 확인한다).
+방침 `third-parties`·`retention` 절이 이 사실을 공표한다.
+
+**한도**: 앱 쪽은 같은 주소 60초 · 프로젝트 최근 1시간 20건이고(`lib/invitation-email/limits.ts`), Resend 요금제 한도는 그보다 넓다고 가정한다 —
+넘으면 429가 `email-rejected`로 보인다.
+
 ## 호스팅 플랜과 한도 (2026-09-19 확인)
 
 | 무엇 | 플랜 | 따라오는 제약 |
