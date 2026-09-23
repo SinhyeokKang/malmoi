@@ -15,12 +15,12 @@
 
 ## C1. 순수 계약과 회귀 테스트 — 커밋 경계 1
 
-- [ ] T2. URL 파싱/옛 링크/선택/reset, 키 결측/review/pending 집계·정렬 테스트를 먼저 작성한 뒤 순수 함수를 구현한다.
+- [x] T2. URL 파싱/옛 링크/선택/reset, 키 결측/review/pending 집계·정렬 테스트를 먼저 작성한 뒤 순수 함수를 구현한다.
   검증: 서로 다른 언어 구성의 두 소스, 전체 상태 필터, orphan, 빈값, prototype 이름, 상태+ns 교차, 안정 분할(review 포함), missingLocale fallback/reset/history, Saved 행 선택 예외 red→green.
-- [ ] T3. `planKeySave`, draft reducer, 목록 보존, navigation 계획을 테스트 먼저 구현한다.
+- [x] T3. `planKeySave`, draft reducer, 목록 보존, navigation 계획을 테스트 먼저 구현한다.
   검증: 변경 둘 중 하나 무효→쓰기 계획 없음, no-op, 공백 정규화, A 제출 후 B 입력, 실패+서버 C 수신, 늦은 다른 키 응답, IME, 목록 재필터 경계 red→green.
   검증: A 제출→B 추가 입력→A 성공 뒤 dirty B와 갱신된 saved 기준으로 복구 사본을 유지한다. 성공 응답 적용 뒤 dirty 0개인 경우에만 사본을 제거한다.
-- [ ] T4. 전달 baseline/복원 계획과 지문 대상 결정 테스트를 먼저 구현한다.
+- [x] T4. 전달 baseline/복원 계획과 지문 대상 결정 테스트를 먼저 구현한다.
   검증: base 폴백·빈 원문·비-base 부재, unknown 하나가 전체 차단, 새 token은 남고 전송값은 기준 갱신, context 변경/실행권 상실/기준 변경은 거부, review 보존 red→green.
   검증(§10.3 delta): Save의 비미전달→미전달 전이에서만 기준 기록(이미 미전달 재저장·레코드 무효·Publish 진행 중은 기록 없음), Publish 성공 시 CAS 해제 셀은 기준 제거·재편집 셀은 캡처값으로 교체, §10.4 종료 조건 미충족은 전체 차단.
 
@@ -74,4 +74,4 @@ C4 완료는 프로덕션 개방이 아니다. preview에서 C5의 T18–T20을 
 - [ ] T20. preview 환경에서 승인된 실리포의 전달→재편집→Revert→Publish 왕복을 검증한다. base 빈값/비-base 부재·수술적/재생성 어댑터·동일값 재전송을 포함한다.
   검증: DB 복원값과 실제 PR 의미·결정적 바이트, no-changes 브랜치 원복, 경고 시 기준/토큰 불변. 원격 쓰기는 Claude Code의 승인된 `/l10n-roundtrip` 실행으로 인계하고 결과를 기록. T18–T20 통과 기록은 프로덕션 배포 B의 선행 조건이다.
 
-다음 진입점: T1은 닫혔다(design §10). `/tdd interface`로 T2–T4부터 시작한다. 문서 작성 완료는 Revert 구현/배포 완료가 아니다.
+다음 진입점: T1(design §10)·C1(T2–T4, `lib/translations/*` · `planKeySave`)이 닫혔고 불변식 문서(ARCHITECTURE §0·§5.8 · PRODUCT §3 · CLAUDE.md)를 미구현 표시로 먼저 고쳤다. 다음은 C2(T5 `/db`)다 — 불변식 변경이라 `/ship bypass`가 아니라 수동 흐름이다. 문서 작성 완료는 Revert 구현/배포 완료가 아니다.
