@@ -363,7 +363,7 @@ computed style로 잰 것이다.
 
 | variant | 색 | 쓰는 곳 |
 |---|---|---|
-| `info` | `border-border bg-muted/40` + `Info` 아이콘 `text-muted-foreground` | **번역 화면의 리포 갱신 보류 배너** (2026-09-18 — 소비자 0에서 1로 부활했다). `Repository updates are paused until N unsent changes are sent.` · **닫기 없음**(상시 조건) · 액션 `Send with Publish ↑`는 헤더 Publish 버튼으로 **포커스만** 옮긴다(둘째 트리거를 만들지 않는다). 새 색·토큰은 없다. ⚠️ 2026-09-16의 "Nothing to publish"는 여전히 꺼진 Publish 버튼 hover다(§6.646) |
+| `info` | `border-border bg-muted/40` + `Info` 아이콘 `text-muted-foreground` | **번역 화면의 리포 갱신 보류 배너** (2026-09-18 — 소비자 0에서 1로 부활했다). `Repository updates are paused until N unsent changes are sent.` · **닫기 없음**(상시 조건) · 액션 `Send with Publish ↑`는 헤더 Publish 버튼으로 **포커스만** 옮긴다(둘째 트리거를 만들지 않는다). 새 색·토큰은 없다. ⚠️ 꺼진 Publish의 사유(`Everything you've edited is already sent.` 등)는 **`aria-disabled` + `aria-describedby`**다(2026-09-23 — 그 전엔 진짜 `disabled` 버튼을 감싼 span의 hover `title`뿐이라 키보드·스크린리더로 닿지 않았다, §6.65). `title`은 마우스용으로 남는다(§6.646) |
 | `success` | `border-border bg-background` + `CircleCheck` 아이콘 `text-foreground` | ⚠️ **소비자가 0이다** (2026-09-16) — Publish 성공 둘이 모달의 무색 블록으로 내려갔다(§6.646). **초록을 쓰지 않는다**는 근거는 그대로 산다. ⚠️ **로그인 화면의 전체 로그아웃 완료(`?sessions=revoked`)는 8-1b가 토스트로 옮겼다** — 아래 §6.25 |
 | `warning` | `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert` | `repo-moved` · 수동 Sync 결과의 `reconfirm` 거부와 "남은 편집" 결과 (⚠️ **편집 손실 배너가 2026-09-18에 여기서 빠져 `info`로 갔다** — 보호가 켜진 뒤 안전한 상태에 amber를 띄우면 "가장 흔한 상태가 가장 조용하다"(§6.1) 위반이다) |
 | `danger` | `border-destructive/40 bg-background text-destructive` + `CircleX` | Publish 실패 **둘**(모달 안 — §6.646) · 페이지 수준 거부(`?e=`) · 블록 안 컨트롤 실패 |
@@ -667,7 +667,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 카드 | 계약 |
 |---|---|
 | General | 썸네일 56/radius 8/`object-contain`, PNG·JPEG 3MB, Upload·Remove는 작업 중 함께 잠기고 실행한 버튼에만 스피너. 저장 이미지는 목록·Home·초대에도 쓰며 null은 기존 Box 폴백이다. Name은 320×36·최대 200자, 성공 후 입력 원문을 보존하고 다음 입력까지 Saved. Address는 320×36·sans·읽기 전용이며 Copy 버튼이 없다. 키보드 선택·복사를 위해 Tab 진입은 유지한다. 각 사실 행 padding 14/16, 라벨 열 96 |
-| Repository | 리포명은 sans. 건강성 일곱 갈래: ok / not-connected / app-uninstalled / installation-changed / repo-moved / repo-replaced / unknown. 해제·설치 변경·리포 대체는 카드 전폭 danger, 이동은 warning. unknown을 해제로 단정하지 않는다. 재연결 버튼은 연결 가능한 갈래에만 선다. Base branch 입력 240×36. ⚠️ **Base branch 행은 카드 안의 `bg-muted` 면이고, 라벨은 `GitBranch` 14 + `text-sm font-medium` `--foreground`다** (2026-09-23 사용자) — 새 프로젝트 모달 ①의 `BranchLabel`과 같은 모양이다. 폼이 `pl-10`으로 들여 써 행 시작선이 위 리포 이름(16 + 칩 28 + gap 12 = 56)과 같다 — 모달의 `pl-20`과 같은 원리다. ⚠️ **이 행은 공용 96 라벨 열(`PanelFacts`)이 아니다** — 아이콘 + 라벨이 약 102라 96 열에서 flex가 아이콘을 7.6으로 눌렀다(실측). 라벨이 제 폭을 갖는 flex 행이고, 640 미만에서는 라벨이 위로 올라간다. GitHub account 독립 카드는 없고 재인가 안내와 `/account` 링크 한 줄이다 |
+| Repository | 리포명은 sans. 건강성 일곱 갈래: ok / not-connected / app-uninstalled / installation-changed / repo-moved / repo-replaced / unknown. 해제·설치 변경·리포 대체는 카드 전폭 danger, 이동은 warning. unknown을 해제로 단정하지 않는다. 재연결 버튼은 연결 가능한 갈래에만 선다. Base branch 입력 240×36. ⚠️ **그 행의 안내 캡션은 `text-foreground/60`이다** (2026-09-23 실측 — muted 면 위 `text-muted-foreground`는 4.35:1로 AA 미달, 온보딩 ①과 같은 판정). 오류 캡션은 `text-destructive` 그대로다. ⚠️ **Name·Base branch의 [Save]는 저장된 값과 다를 때만 켜진다**(이름은 앞뒤 공백을 접어 비교한다). ⚠️ **이 꺼짐은 §6.65 `aria-disabled` 규칙의 예외다** — 저장할 것이 없다는 것 외에 사유가 없고, 같은 버튼이 저장 중에는 `loading`으로 진짜 `disabled`를 걸어 한 버튼에 두 형이 섞이지 않게 한다. ⚠️ **Base branch 행은 카드 안의 `bg-muted` 면이고, 라벨은 `GitBranch` 14 + `text-sm font-medium` `--foreground`다** (2026-09-23 사용자) — 새 프로젝트 모달 ①의 `BranchLabel`과 같은 모양이다. 폼이 `pl-10`으로 들여 써 행 시작선이 위 리포 이름(16 + 칩 28 + gap 12 = 56)과 같다 — 모달의 `pl-20`과 같은 원리다. ⚠️ **이 행은 공용 96 라벨 열(`PanelFacts`)이 아니다** — 아이콘 + 라벨이 약 102라 96 열에서 flex가 아이콘을 7.6으로 눌렀다(실측). 라벨이 제 폭을 갖는 flex 행이고, 640 미만에서는 라벨이 위로 올라간다. GitHub account 독립 카드는 없고 재인가 안내와 `/account` 링크 한 줄이다 |
 | CI integration | Push token 행과 Workflow file 행, 그 아래 **Sources 안내 한 문장**(`One workflow covers every source. Add or change sources in [Sources].` — 시안 §13-2). ⚠️ **낱말 하나로 두지 않는다**(2026-09-23 실측 — `Sources`만 서서 무엇으로 가는 링크인지 안 읽혔고, 테마에 없는 `text-link` 클래스라 색도 없었다). 링크는 `text-blue-600`. 토큰 원문은 발급 응답에만 남고 저장 즉시 리포 secret을 갱신하라는 안내를 유지한다. 카드에 YAML `<pre>`를 두지 않는다. 워크플로 모달은 1024×640(작은 화면은 가용 높이 상한), 코드만 스크롤하며 훅 안내 포함. SHA가 없는 소스 안내는 CI 설정 검증이 아니다 |
 | Archive / Restore | 보관 확인 Dialog는 Cancel에 최초 포커스, 열린 PR 문자열/null/조회 실패 삼상태를 구분한다. ⚠️ **카드의 [Archive project] 트리거도 `danger`다** (2026-09-23 사용자 — 확인 창을 열기 전에 파괴적이라는 신호가 서야 한다). 복원은 `default`이고 확인 없이 실행. 보관 성공 후 카드 전환이 결과 피드백이다. 보관 일시는 표시하되 저장하지 않는 보관자 이름은 만들지 않는다 |
 
@@ -1018,7 +1018,7 @@ diff 표가 **키 220 + 로케일 84 + 값**의 3열이라는 것이다 — 작�
 
 **알림은 한 곳이다.** danger 갈래는 `Alert`의 `role="alert"` 하나이고 그때 껍데기의 live는 `off`다 —
 같은 결과를 두 번 읽지 않는다(시안의 블록별 `aria-live="polite"`를 이 규칙으로 정정했다).
-**포커스**는 열릴 때 컨테이너, 목록·결과로 전이하면 본문, 닫으면 호출 버튼(사라졌으면 호스트 제목).
+**포커스**는 열릴 때 컨테이너, 목록·결과로 전이하면 본문, 닫으면 호출 버튼(사라졌으면 호스트 제목). ⚠️ **꺼진 Publish도 호출 버튼이다** (2026-09-23) — `aria-disabled`라 포커스를 받으므로 닫힌 뒤 그 버튼으로 돌아와 사유를 읽힌다. 번역 화면의 미저장 가로채기는 `aria-disabled` 버튼을 건너뛴다(꺼진 버튼의 클릭도 이벤트는 오므로).
 
 **⚠️ `bodyScroll`은 안쪽 스크롤러가 있는 갈래만 `hidden`이다**(`1a`·`1k`·`1g`, 그리고 경고가 붙은
 `1f`). 나머지는 `shrink-0` 블록만 쌓으므로 잠그면 **낮은 뷰포트에서 마지막 줄에 스크롤로도 못
@@ -1533,7 +1533,7 @@ Translations의 **패널 머리**에만 둔다. Sources는 선택기가 아니�
   - ⚠️ **`focus-visible:ring-offset-1`의 실물 사용처가 0건이다** (2026-09-13 실측 — `grep -rn "ring-offset-1" app components`가 주석 둘만 낸다). 이 절이 *"값 칩 옆 버튼 하나(온보딩의 리포 되돌리기)에서 남겨 뒀다"*고 적고 있었는데 그 호출부는 이미 사라졌다. **규칙이 아니라 사실이 낡은 것이고, 지금 offset을 덧대는 자리는 없다.** ⚠️ **`lib/__tests__/globals-css.test.ts`는 이 대비를 안 본다**(`--border`와 다른가 · 무채색이 아닌가 둘뿐이라 지금 값에서도 green이다) — 링이 안 보인다는 제보의 첫 확인 자리는 검사가 아니라 `--ring` 값이다. 사이드바 항목은 8-2부터 캔버스 위라 대상이 아니다.
   - ⚠️ **`--input`과 값을 다시 같게 두지 않는다** — 필드 테두리는 쉬는 상태의 윤곽, 링은 포커스 신호로 축이 다르다. `lib/__tests__/globals-css.test.ts`가 `--border`와의 동일성과 무채색 여부를 센다.
 - ⚠️ **`overflow-hidden` 부모 안에서는 `focus-visible:ring-inset`이 예외로 붙는다** (2026-09-11 실측). 링은 box-shadow라 요소 **밖으로** 3px 퍼지는데, 프로젝트 목록의 `<ul>`이 `rounded-lg`로 첫·끝 행의 모서리를 자르려고 `overflow-hidden`을 들고 있어 **그 3px이 통째로 잘렸다** — 키보드 사용자에게 포커스가 아예 안 보였다. 부모의 `overflow-hidden`을 뗄 수 없는 자리에서만 안쪽으로 그린다.
-- **저장 알림은 작업 화면에 `aria-live="polite"` 영역 하나**다 — 키 카드 푸터의 결과 줄(`data-footer-result`). 로케일 행마다 두면 200개다. Revert 뒤에는 포커스가 그 결과 줄로 간다(꺼진 버튼에 포커스를 둘 수 없어서다). 저장 거부·결과 미확인은 그 위의 `Alert`가 든다.
+- **저장 알림은 작업 화면에 `aria-live="polite"` 영역 하나**다 — 키 카드 푸터의 결과 줄(`data-footer-result`). 로케일 행마다 두면 200개다. Revert 뒤에는 포커스가 그 결과 줄로 간다(성공 뒤 Revert가 사라지고 Save는 꺼져 있어서다). 저장 거부·결과 미확인은 그 위의 `Alert`가 든다. ⚠️ **Revert가 꺼진 사유는 그 결과 줄 밖의 형제 span이다** (2026-09-23) — 안에 두면 사유가 바뀔 때마다 결과처럼 다시 낭독된다. 전달 경로는 `aria-describedby` 하나이고, 처리 중에도 `loading` 대신 `aria-disabled` + 스피너라 방금 누른 버튼이 포커스를 지킨다(§6.65 "`loading`과 겸용 불가").
 - **번역 화면의 규칙 여럿은 `components/__tests__/translations-screen.test.ts`가 소스로 고정한다** — 작업 화면의 live region이 푸터 하나인지 · 로케일 입력에 `role="status"`가 없는지 · 입력이 키·로케일을 접근 이름으로 드는지 · 보류 배너가 `info`이고 닫기·세션 저장이 없는지 · 옛 표 조각과 `pull-button.tsx`가 사라졌는지. 이 절의 규칙을 고치려면 그 파일이 red를 낸다.
 - 아이콘만 있는 버튼은 `aria-label`.
 - 드롭다운·모달은 Radix가 포커스 트랩·Esc·`aria-*`를 든다 — 직접 만들지 않는다.
