@@ -29,6 +29,7 @@ app/
                         센다. 예외 열을 이름으로 고정(2026-09-13에 api/push/failure가 붙어 하나 늘었다)
                         + routes.ts↔라우트 대조 + 쿼리 생성기/수신자 대조)
                         · screens(lang·revalidate 안전·보관 갈래 다섯) · security-headers(next.config를 불러서)
+                        · locked-access(잠금 재판정 16자리를 AST로 센다 — `$transaction` 콜백 안의 호출만, 주석 제외)
   (edit)/               인증 필요. 1차 차단은 middleware, 본판정은 각 진입점
     layout.tsx          셸. ⚠️ {children}을 흰 패널로 감싸지 않는다 — 감싸면 흰 패널이 겹쳐 padding이 두 배다.
                         ContentPanel은 각 갈래의 레이아웃이 든다(shell-layout.test.ts가 라우트마다
@@ -297,7 +298,7 @@ lib/
                         1행이 마스킹 주소면 이니셜이 셸 아바타와 다른 글자가 된다) ·
                         seat-notice(좌석 라벨 갈래 + EDITOR 우선순위. ⚠️ 서버 전용 — invitation이
                         node:crypto를 문다. 화면은 값만 받는다) ·
-                        lock(lockUser — 인증 왕복 셋의 User 행 잠금) · message · landing · invite-label ·
+                        lock(lockUser — 인증 왕복 셋의 User 행 잠금 · lockProjectAccess — Project→Surface 잠금 뒤 멤버십·역할·보관 재판정, 순수 판정은 access의 planLockedAccess) · message · landing · invite-label ·
                         profile(⚠️ GitHub provider의 기본 userinfo를 대체한다 — @auth/core는 /user/emails에서
                         주소만 뽑고 verified를 버려, 검증한 주소와 저장되는 주소가 갈린다. /user 조회 실패는
                         던지고 검증 실패는 email을 비워 signIn이 막게 한다) ·
@@ -349,6 +350,7 @@ lib/
                         ⚠️ **record와 query를 섞지 않는다** — 상태 변경은 `recordEvent`로 **변경과 같은
                         트랜잭션**, 외부 실행은 `recordRun`/`finishRun`으로 **관측된 종료**다(ARCHITECTURE §5.7)
                         ⚠️ **`buildSearchText`를 안 지나면 그 종류가 조용히 검색에서 빠진다**
+                        `__tests__/locked-access.integration.ts` — 잠금 재판정의 경합 재현(`pg_stat_activity`로 실제 잠금 대기를 관측)
   keys/                 view(집계·배지·행 축 다섯·localeProgress) · query(server-only 조회 —
                         loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다) ·
                         save(planSave·planKeySave·KeySaveInput — 셀 판정의 정본은 planSave 하나다) ·
