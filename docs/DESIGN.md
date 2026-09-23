@@ -664,6 +664,9 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 활성 프로젝트는 **General → Repository → CI integration → Archive project**다.
 보관되면 Restore 카드가 첫 자리이고 나머지 편집 컨트롤은 사유와 함께 비활성이다. 페이지 거부(`?e=`)는
 카드 밖 Alert, 카드 결과는 inset Alert, 필드 오류는 안정된 ID·`role="alert"`·장식 아이콘 14로 구분한다.
+⚠️ **연 채로 다른 탭이 보관하면** (2026-09-24, QA D1) 그 뒤 누른 쓰기의 `archived` 거부가 세그먼트를 다시 그려 화면이
+보관 상태로 옮겨 간다. 거부 문구는 공용 `errors.access.archived`("설정에서 복원하라")가 아니라 다른 행과 같은
+`settings.archivedReason`이고(`settingsAccessMessage`), 보관 상태가 오면 그 행의 옛 오류·거부된 입력은 내린다.
 
 공유 `PanelCard`는 radius 12 · `@container` · 머리 padding 16 · 제목 15/500이다. 헤더↔본문은
 `border-divider`, 행↔행은 `border-border`다. 제목 없는 사용은 헤더와 `aria-labelledby`를 생략한다.
