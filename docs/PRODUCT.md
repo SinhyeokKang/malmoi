@@ -131,6 +131,13 @@ ARCHITECTURE §0 불변식 2와 정면 충돌한다.
 Sync와 같이 서버 발급 지문으로만 열린다. EDITOR에게는 숨기지 않고 꺼진 버튼 + 사유다. 한 언어라도 기준이 없으면 전체가 불가능하고,
 `needsReview`는 해제하지 않는다(복원은 검토 완료가 아니다).
 
+**번역 저장은 명시적이다** (결정·구현 2026-09-23, translation-rework — 옛 셀 blur 저장의 반전). 선택한 키 하나의 바뀐 언어 전부를
+`Save` 한 번(또는 Ctrl/Cmd+Enter)이 한 트랜잭션으로 보낸다. blur·Tab은 저장하지 않고 Escape는 그 입력만 되돌린다. 미저장이 있는 채로
+다른 키·트리·필터로 가거나 뒤로 가면 확인창이 서고(`Keep editing` / `Discard changes`), 새로고침·닫기는 브라우저 확인이다.
+Publish는 미저장을 **버리지 않는다** — 확인창에서 저장된 변경만 미리보기로 간다. 근거: 옛 표는 찾기와 편집이 같은 표를 공유하고 저장에
+명시적인 경계가 없었다 — 찾는 곳(소스 트리 + 키 목록)과 고치는 곳(선택 키의 로케일 상세)을 나누고, 경계를 Save 하나로 세웠다(사용자 확정).
+여러 언어의 Save는 원자적이다 — 한 셀이나 사건 기록이 실패하면 전부 롤백한다.
+
 **로그인 방식이 역할을 정하지 않는다.** GitHub으로 로그인한 EDITOR도, Google로 로그인한 OWNER도
 성립한다. 권한은 `ProjectMember.role`만 결정한다.
 
@@ -608,7 +615,7 @@ Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#6
      `revalidate`로 끝나고, 정확해야 한다면 "적당한 시점"이 성립하지 않는다 — CI push 하나가 키 300개를
      바꾼 직후 사이드바가 옛 숫자를 보이면 **방금 워크플로를 돌린 개발자가 적재 실패로 읽는다**(이 리포가
      반복해 밟은 "조용히 틀린다"다). 게다가 갱신 트리거의 자연스러운 정의(`applyPush`의 끝 ·
-     `saveTranslation` · `revalidatePath`)가 곧 쓰기 경로여서 위쪽 갈래의 캐시 무효화와 같아진다.
+     `saveTranslationKey` · `revalidatePath`)가 곧 쓰기 경로여서 위쪽 갈래의 캐시 무효화와 같아진다.
    - ⚠️ **파생값의 사본을 늘리는 것은 코어 원칙과 마찰한다.** `TranslationSurface.nestedByPath`는 **관측값**이라
      사본이 아니지만(ARCHITECTURE §1.35), 카운트는 진실에서 계산되는 값이라 **갈릴 수 있는 자리를 새로
      만드는 것**이다.
@@ -628,7 +635,7 @@ Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#6
 `settings`와 `surfaces/new` 둘이다 — 앞은 리포 연결과 push 토큰이고, 뒤는 표면을 늘리는 자리라
 둘 다 "프로젝트를 어떻게 잇는가"를 바꾼다. `member:manage` 뒤에 두는 **페이지는 없다**(§3).
 
-⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?q=`·**`?locales=`**(8-4가 `?focus=`를 폐기했다 — 로케일이 행이라 "기준 열"에 대응물이 없다)·**`?state=`**(⚠️ **8-4가 뺐다가 2026-09-15에 Home 카운트 카드가 되살렸다** — 카드 넷이 수만 말하고 목적지가 없으면 개요가 일로 이어지지 않는다(결정 1의 대가). 섹션 안 pending 우선 정렬은 그대로 남는다: 그쪽은 필터를 안 건 사람을 위한 것이고 이쪽은 특정 구간을 보러 온 사람을 위한 것이다)와 **목록의 `?q=`(이름 검색, 2026-09-11 — ⚠️ `?filter=`는 2026-09-13에 사라졌다: 상태를 말하는 자리가 탭에서 **그룹 셋**으로 옮겨갔고, 옛 링크의 그 키는 `?focus=`와 같은 관용구로 **조용히 무시된다**)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. `/account`도 같은 계약 안이다 — `routes.account({ e, sessionRevocation, link, connect })`가 넷을 만들고, **`?connect=`는 GitHub App 연동/해제의 결과**다(`lib/account-connect/http.ts`가 읽는 쪽이고, 만드는 쪽과 읽는 쪽을 같은 함수로 묶지 않는다 — 아래 `?sessionRevocation=` 항목과 같은 이유). 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
+⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?scope=`·`?completion=`(+`?missingLocale=`)·`?q=`·`?cursor=`와 선택 키 `?key=`·`?keySurface=`·상세 언어 `?language=`(translation-rework — 정본은 `lib/translations/query.ts`. ⚠️ 옛 `?locales=`는 단일 코드일 때만 `language`로, `?state=untranslated`는 `completion=incomplete`로 읽고 다시 내보내지 않는다. 8-4가 `?focus=`를 폐기했다)·**`?state=`**(`unsent`·`review`·`new`)(⚠️ **8-4가 뺐다가 2026-09-15에 Home 카운트 카드가 되살렸다** — 카드 넷이 수만 말하고 목적지가 없으면 개요가 일로 이어지지 않는다(결정 1의 대가). 섹션 안 pending 우선 정렬은 그대로 남는다: 그쪽은 필터를 안 건 사람을 위한 것이고 이쪽은 특정 구간을 보러 온 사람을 위한 것이다)와 **목록의 `?q=`(이름 검색, 2026-09-11 — ⚠️ `?filter=`는 2026-09-13에 사라졌다: 상태를 말하는 자리가 탭에서 **그룹 셋**으로 옮겨갔고, 옛 링크의 그 키는 `?focus=`와 같은 관용구로 **조용히 무시된다**)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. `/account`도 같은 계약 안이다 — `routes.account({ e, sessionRevocation, link, connect })`가 넷을 만들고, **`?connect=`는 GitHub App 연동/해제의 결과**다(`lib/account-connect/http.ts`가 읽는 쪽이고, 만드는 쪽과 읽는 쪽을 같은 함수로 묶지 않는다 — 아래 `?sessionRevocation=` 항목과 같은 이유). 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
 
 ⚠️ **`?e=`만 생성기가 없다** (거부 사유 — 읽는 라우트 **일곱**: `projects`·`projects/new`·`account`·
 `settings`·`surfaces/new`·`invite/[token]`·`signin/link/[challenge]`). ⚠️ **`/projects/new?e=`는 2026-09-13부터 "모달이 열린 채 그 사유를
