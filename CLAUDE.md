@@ -257,6 +257,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.
 - **⚠️ 남이 정한 키로 조회하거나 대입하면 프로토타입을 먼저 끊는다.** 조회는 `Object.hasOwn`(`?? 폴백`은 `Object.prototype`에서 찾아진 값을 못 막는다), **대입은 `Object.create(null)`**이다. 평범한 `{}`에 `out["__proto__"] = v`를 하면 setter가 불려 own property가 안 생기고 **그 키가 조용히 사라진다.** **로케일 파일의 키·`Locale.code`·`pathTemplate`·`searchParams`가 전부 이 부류다.**
+- **⚠️ 개인정보 방침(`/privacy`)은 코드와 같이 움직인다.** 스키마·로그인·자격증명·새 외부 호스트·새 쿠키를 건드렸으면 방침이 여전히 참인지 본다 — 새 **목적** · 새 **전송처** · **쿠키·보존** · 본문 **모순** 넷은 자동 게이트가 못 본다(`/push` 4단계). 개인정보 모델의 새 필드는 `lib/privacy/collected.ts` 등재 없이 typecheck가 red이고, 본문을 고치면 `lib/privacy/__tests__/policy-gate.test.tsx`가 개정 이력·시행일을 요구한다.
 - **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`). 인가 판정에 넘기는 값(`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다. 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 단 테스트가 직접 import하는 순수 모듈엔 붙이지 않는다. ⚠️ **`vitest.setup.ts`가 그것을 전역 mock하므로 "테스트가 죽는다"는 더 이상 잎 모듈을 분리시키는 압력이 아니다** — **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**이고 그것은 `"use client"` 그래프만 본다.
