@@ -1,5 +1,9 @@
 import { planInvitationCreate } from "@/lib/auth/invitation";
 
+import { ADDRESS_INTERVAL_MS, INVITATION_HOURLY_LIMIT, PROJECT_WINDOW_MS } from "./limits";
+
+export { ADDRESS_INTERVAL_MS, INVITATION_HOURLY_LIMIT, PROJECT_WINDOW_MS };
+
 /**
  * 초대 발급 판정 (docs/features/invitation-email design §3). **요청 전체가 통과하거나 전체가 막힌다** —
  * 배열 순서로 일부만 보내면 "누구에게 갔나"를 설명할 화면이 필요해지고, 그 화면을 만들지 않기로 했다.
@@ -7,11 +11,6 @@ import { planInvitationCreate } from "@/lib/auth/invitation";
  * ⚠️ 입력은 전부 `Project` 행 잠금 **안에서** 읽은 값이어야 한다 — 밖에서 세면 동시 요청이 마지막
  * 한도 자리를 둘 다 가져간다(`planInvitationCreate`와 같은 형).
  */
-
-export const ADDRESS_INTERVAL_MS = 60_000;
-export const PROJECT_WINDOW_MS = 60 * 60 * 1000;
-/** 한 요청의 주소 수 상한도 이 값이다 — 넘는 요청은 기다려도 통과할 수 없다. */
-export const INVITATION_HOURLY_LIMIT = 20;
 
 export type IssueTarget = {
   alreadyMember: boolean;

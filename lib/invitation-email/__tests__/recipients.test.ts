@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { INVITATION_HOURLY_LIMIT } from "../plan";
 import { parseRecipients, splitPastedEmails } from "../recipients";
@@ -161,5 +162,26 @@ describe("parseRecipients — 한 요청의 주소 수 상한", () => {
   it("빈 행은 상한에 세지 않는다", () => {
     const result = parseRecipients([...rows(INVITATION_HOURLY_LIMIT), { email: "", role: "EDITOR" }]);
     expect(result.status).toBe("ok");
+  });
+});
+
+describe("parseRecipients — 주소 판정이 단건 초대의 zod 판정과 같다", () => {
+  // 정규식을 옮겨 왔으므로(클라이언트 그래프에 zod를 못 들인다) 옮긴 사본이 원본과 갈리지 않는지 잰다.
+  it.each([
+    "a@x.com",
+    "first.last+tag@sub.example.co.kr",
+    "o'brien@x.io",
+    ".lead@x.com",
+    "double..dot@x.com",
+    "trail.@x.com",
+    "no-tld@x",
+    "a@-x.com",
+    "a@x.c",
+    "한글@x.com",
+    "a@x..com",
+    "a b@x.com",
+  ])("%s", (email) => {
+    const zodOk = z.string().email().safeParse(email).success;
+    expect(parseRecipients([{ email, role: "EDITOR" }]).status === "ok").toBe(zodOk);
   });
 });
