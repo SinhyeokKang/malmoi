@@ -106,6 +106,37 @@ it("수동 확인 실패는 추가 실패 문장 없이 그 사유만 말한다"
   expect(document.body.textContent).not.toContain(m.settings.sources.nothingAdded);
 });
 
+/**
+ * malmoi#80 — Add sources는 온보딩 ②의 `FilesStep`을 빌려 쓰는데, 빈 미리보기 설명이 **새 프로젝트 문장**
+ * ("…the project isn't created.")이었다. 프로젝트는 이미 있다 — 이 화면에서 안 되는 것은 소스 추가다.
+ * 짝: 새 프로젝트 화면은 그 문장을 그대로 쓴다(`new-project.test.tsx`).
+ */
+it("수동 지정의 빈 미리보기는 프로젝트 생성을 말하지 않는다 (#80)", async () => {
+  await render(<Screen {...props} adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "app/{locale}.json" }]} />);
+  const user = userEvent.setup();
+  await act(async () => { await user.click(find("Add sources")); });
+  await act(async () => { await user.click(find("Set the path yourself")); });
+  // 경로를 치기 시작해야 선택이 풀리고 우측이 빈 미리보기로 바뀐다(`clearsSelection`).
+  await act(async () => { await user.type(document.querySelector('#manual-path')!, "nope"); });
+  expect(document.body.textContent).toContain(m.newProject.files.preview.none);
+  expect(document.body.textContent).not.toContain("the project isn't created");
+  expect(document.body.textContent).toContain(m.settings.sources.previewNone);
+});
+
+/** malmoi#80 부수 관찰 — 경로를 고치면 옛 확인 실패가 새 입력 옆에 남지 않는다. 짝: 고치기 전에는 선다. */
+it("경로를 고치면 이전 수동 확인 실패를 지운다 (#80)", async () => {
+  actions.confirmManualFormat.mockResolvedValue({ ok: false, error: "manual-no-match" });
+  await render(<Screen {...props} adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "app/{locale}.json" }]} />);
+  const user = userEvent.setup();
+  await act(async () => { await user.click(find("Add sources")); });
+  await act(async () => { await user.click(find("Set the path yourself")); });
+  await act(async () => { await user.type(document.querySelector('#manual-path')!, "app/{{locale}.json"); await user.type(document.querySelector('#manual-base')!, "en"); });
+  await act(async () => { await user.click(find(m.surfaces.confirm)); });
+  expect(document.body.textContent).toContain(m.errors.onboarding["manual-no-match"]);
+  await act(async () => { await user.clear(document.querySelector('#manual-path')!); });
+  expect(document.body.textContent).not.toContain(m.errors.onboarding["manual-no-match"]);
+});
+
 /** audit #31 — 첫 가져오기가 도는 동안 상세 푸터가 "Saving…"이라고 말하지 않는다 — 저장한 것이 없다. */
 it("첫 Sync 중 상세 푸터는 저장 중이 아니라 Sync 중이다", async () => {
   let finish: (value: unknown) => void = () => {};
