@@ -88,7 +88,8 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
           {nameError ? <><CircleAlert aria-hidden className="mr-1 inline size-3.5" />{nameError}</> : archived ? m.settings.archivedReason : saved ? <><Check aria-hidden className="mr-1 inline size-3.5" />{m.settings.repository.fields.saved}</> : m.settings.general.nameHelp}
         </p>
         {/* ⚠️ **성공은 전부터 있던 live 영역에 쓴다** (audit #39) — 캡션이 `Saved`로 바뀌는 것만으로는 아무도 알리지 않고,
-            텍스트와 함께 새로 붙는 `role="status"`는 스크린리더가 놓친다. 캡션은 describedby라 두 번 읽히지 않는다. */}
+            텍스트와 함께 새로 붙는 `role="status"`는 스크린리더가 놓친다. ⚠️ **성공 뒤 착지가 이름 칸으로 오면 `Saved`가 두 번 읽힐 수 있다** — 칸의 describedby(캡션)와 이 영역이다. 착지는
+            포커스가 빠졌을 때만 일어나므로 이 영역을 뺄 수 없고, 한 번 더 읽히는 쪽을 받는다(B5 리뷰 r1). */}
         <span role="status" data-save-status="project-name" className="sr-only">{saved && !archived ? m.settings.repository.fields.saved : ""}</span>
       </form>
     </PanelFacts></div>

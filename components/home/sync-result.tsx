@@ -128,7 +128,7 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
     /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 진짜 `disabled`는 포커스를 못 받아 왜 꺼졌는지 닿지 않았다.
        사유는 `<span>`이다 — 이 Alert의 형(줄 수)을 `<p>`로 센다. */
     actions={retry && onRetry ? <>
-      <Button aria-disabled={retryDisabled || undefined} aria-describedby={retryDisabled ? retryReasonId : undefined} onClick={() => { if (!retryDisabled) onRetry(); }}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button>
+      <Button aria-disabled={retryDisabled || undefined} aria-describedby={retryDisabled ? retryReasonId : undefined} title={retryDisabled ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!retryDisabled) onRetry(); }}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button>
       {retryDisabled && <span id={retryReasonId} className="sr-only">{m.repositorySync.waitPublish}</span>}
     </> : undefined}>
     {details}

@@ -214,7 +214,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
              "같은 라벨·같은 Action"이 화면에서 깨진다. 무반응인 버튼은 비활성보다 한 단계 아래다. */
           /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 결과 Alert의 [Try again]과 같은 형이다. */
           actions={owner ? <>
-            <Button aria-disabled={publishPending || undefined} aria-describedby={publishPending ? retryReasonId : undefined} onClick={() => { if (!publishPending) setSyncOpen(true); }}>{m.home.banner.syncFailed.action}</Button>
+            <Button aria-disabled={publishPending || undefined} aria-describedby={publishPending ? retryReasonId : undefined} title={publishPending ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!publishPending) setSyncOpen(true); }}>{m.home.banner.syncFailed.action}</Button>
             {publishPending && <span id={retryReasonId} className="sr-only">{m.repositorySync.waitPublish}</span>}
           </> : undefined}
         >

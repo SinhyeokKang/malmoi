@@ -33,7 +33,7 @@ export function CiCard({ slug, archived, stale, children }: { slug: string; arch
     */}
     <p className="border-border text-muted-foreground border-t px-4 py-[13px] text-xs">{m.settings.ci.sourcesLead} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.sources(slug)}>{m.sources.title}</Link>.</p>
     {archived && <p id={archivedId} className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.archivedReason}</p>}
-    {!archived && !children && <span id={noSourcesId} className="sr-only">{m.settings.ci.noSources}</span>}
+    {!archived && !children && <p id={noSourcesId} className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.ci.noSources}</p>}
     {stale.length > 0 && <p className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.ci.stale} {stale.join(", ")}</p>}
     <OnboardingModal open={open && !archived} onClose={() => setOpen(false)} returnFocusRef={trigger} bodyScroll="hidden" title={m.settings.ci.workflow} description={m.settings.workflow.saveAs(".github/workflows/malmoi-i18n.yml")} panelClassName="h-[min(640px,calc(100svh-96px))] min-h-0" actions={<Button size="lg" onClick={() => setOpen(false)}>{m.common.dismiss}</Button>}>
       {children}

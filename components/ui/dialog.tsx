@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { Dialog as Primitive } from "radix-ui";
-import type { ComponentProps, ReactNode } from "react";
+import { useRef, type ComponentProps, type ReactNode } from "react";
 
 import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -29,17 +29,28 @@ export const Dialog = Primitive.Root;
  * 착지(`useLandAfter`)가 그것을 살아 있는 포커스로 읽어 비켜선다 (B5 리뷰).
  *
  * ⚠️ **호출부의 `onCloseAutoFocus`가 먼저다** — 그것이 `preventDefault`했으면 손대지 않는다. 후보가 없으면 Radix 기본
- * (트리거)으로 넘기고, 그래도 빠지면 호출부의 착지(`useLandAfter`)가 받는다. 트리거로 연 Dialog는 결과가 같다.
+ * (트리거)으로 넘기고, 그래도 빠지면 호출부의 착지(`useLandAfter`)가 받는다.
+ *
+ * ⚠️ **트리거가 붙어 있으면 아예 끼어들지 않는다** (B5 리뷰 r1 🔴). Safari·macOS Firefox는 마우스 클릭으로 버튼에 포커스를 주지
+ * 않아 트리거에 `focusin`이 안 오고, 기록의 마지막이 **더 오래된 요소**였다 — 가로채면 닫힐 때 포커스와 스크롤이 그리로 튀었다
+ * (Settings: 이름 저장 → 스크롤 → Rotate token → Cancel → 이름 칸으로 점프). 트리거 판정은 Radix가 트리거에 거는
+ * `aria-controls="<content id>"`다. ⚠️ **같은 이유로 `pointerdown`도 기록한다** — 트리거 없는 Dialog를 연 버튼도 그
+ * 브라우저에서는 `focusin`을 안 낸다. 트리거로 연 Dialog에서 Radix 기본이 가는 곳은 트리거다 — 배너의 [Try again]처럼
+ * 같은 Dialog를 트리거 밖에서 열었어도 그 트리거로 돌아간다.
  */
 const recent: HTMLElement[] = [];
+function remember(node: HTMLElement | null) {
+  if (node === null || node === document.body) return;
+  const at = recent.indexOf(node);
+  if (at >= 0) recent.splice(at, 1);
+  recent.push(node);
+  if (recent.length > 8) recent.shift();
+}
 if (typeof document !== "undefined") {
-  document.addEventListener("focusin", (event) => {
-    if (!(event.target instanceof HTMLElement) || event.target === document.body) return;
-    const at = recent.indexOf(event.target);
-    if (at >= 0) recent.splice(at, 1);
-    recent.push(event.target);
-    if (recent.length > 8) recent.shift();
-  });
+  document.addEventListener("focusin", (event) => { if (event.target instanceof HTMLElement) remember(event.target); });
+  document.addEventListener("pointerdown", (event) => {
+    if (event.target instanceof Element) remember(event.target.closest<HTMLElement>('button, a[href], [role="option"], [tabindex]'));
+  }, true);
 }
 function returnTarget(): HTMLElement | null {
   for (let i = recent.length - 1; i >= 0; i--) {
@@ -65,6 +76,8 @@ export function DialogContent({
   description?: ReactNode;
   footer?: ReactNode;
 }) {
+  /** Content의 id — 트리거가 `aria-controls`로 이것을 가리킨다. 닫힐 땐 Content가 이미 떨어져 있어 열려 있을 때 잡는다. */
+  const contentId = useRef<string | null>(null);
   return (
     <Primitive.Portal>
       <Primitive.Overlay className="bg-foreground/40 fixed inset-0 z-50" />
@@ -83,9 +96,12 @@ export function DialogContent({
           className,
         )}
         {...props}
+        ref={(node: HTMLDivElement | null) => { if (node !== null) contentId.current = node.id; }}
         onCloseAutoFocus={(event) => {
           onCloseAutoFocus?.(event);
           if (event.defaultPrevented) return;
+          const id = contentId.current;
+          if (id !== null && id !== "" && [...document.querySelectorAll("[aria-controls]")].some(node => node.getAttribute("aria-controls") === id)) return;
           const target = returnTarget();
           if (target === null) return;
           event.preventDefault();

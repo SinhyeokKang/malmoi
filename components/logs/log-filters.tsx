@@ -110,8 +110,10 @@ export function LogFilters({
           <DropdownMenuItem selected={filter.from === null && filter.to === null} onSelect={() => go({ from: null, to: null })}>
             {m.logs.filters.anyDate}
           </DropdownMenuItem>
+          {/* ⚠️ 프리셋도 선택 상태를 든다 (B5 리뷰 r1) — 다른 필터 넷과 같은 단일 선택이고, 없으면 프리셋을 적용한 뒤 스크린리더가
+              "아무것도 선택 안 됨"을 읽는다. 판정은 지금 범위가 그 프리셋의 범위와 같은가다. `Custom…`은 값이 아니라 동작이다. */}
           {PRESETS.map((preset) => (
-            <DropdownMenuItem key={preset.key} onSelect={() => go(preset.range())}>
+            <DropdownMenuItem key={preset.key} selected={sameRange(filter, preset.range())} onSelect={() => go(preset.range())}>
               {m.logs.range[preset.key]}
             </DropdownMenuItem>
           ))}
@@ -293,6 +295,10 @@ const PRESETS = [
 function utcDay(offset: number): string {
   const at = new Date(Date.now() + offset * 24 * 60 * 60 * 1000);
   return at.toISOString().slice(0, 10);
+}
+
+function sameRange(filter: LogFilter, range: { from: string; to: string }): boolean {
+  return filter.from === range.from && filter.to === range.to;
 }
 
 function dateLabel(filter: LogFilter): string {

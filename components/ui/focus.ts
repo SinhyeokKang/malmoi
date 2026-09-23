@@ -36,9 +36,12 @@ const TABBABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([ty
 /**
  * 사라질 노드의 **다음** 포커스 가능 요소, 없으면 앞의 마지막 요소. 브라우저의 순차 탐색 시작점이 거기라
  * 키보드 사용자에게 가장 덜 놀라운 착지다.
+ *
+ * ⚠️ **보이지 않는 요소는 건너뛴다** (B5 리뷰 r1) — `display:none`(`@max-[640px]:hidden` · 접힌 LNB)에 `focus()`는 조용히 실패해
+ * 포커스가 `body`에 남는다. 판정이 인자인 것은 jsdom 때문이다 — 거기선 모든 rect가 비어 기본 판정이 전부를 숨긴 것으로 본다.
  */
-export function neighbourFocus(node: Element): HTMLElement | null {
-  const all = [...document.querySelectorAll<HTMLElement>(TABBABLE)].filter(el => !node.contains(el) && el.getAttribute("tabindex") !== "-1" && el.closest('[aria-hidden="true"], [inert]') === null);
+export function neighbourFocus(node: Element, visible: (el: HTMLElement) => boolean = el => el.getClientRects().length > 0): HTMLElement | null {
+  const all = [...document.querySelectorAll<HTMLElement>(TABBABLE)].filter(el => !node.contains(el) && el.getAttribute("tabindex") !== "-1" && el.closest('[aria-hidden="true"], [inert]') === null && visible(el));
   const after = all.find(el => (node.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0);
   return after ?? all.filter(el => (node.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_PRECEDING) !== 0).at(-1) ?? null;
 }

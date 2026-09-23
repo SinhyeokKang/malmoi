@@ -145,7 +145,8 @@ it("포커스 없이 트리거를 눌러 연 Dialog는 닫히면 트리거로 �
   document.getElementById("earlier")!.focus();
   await act(async () => { clickWithoutFocus(byText("Rotate")); });
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
-  await act(async () => { clickWithoutFocus(byText("Cancel")); await new Promise(r => setTimeout(r, 0)); });
+  // Radix의 트리거 복귀는 FocusScope 언마운트의 타이머 뒤다 — 한 틱으로는 아직 body다.
+  await act(async () => { clickWithoutFocus(byText("Cancel")); await new Promise(r => setTimeout(r, 20)); });
   expect(document.activeElement).toBe(byText("Rotate"));
 });
 
@@ -163,6 +164,6 @@ it("포커스 없이 버튼을 눌러 상태로 연 Dialog도 그 버튼으로 �
   await render(<Host />);
   document.getElementById("earlier")!.focus();
   await act(async () => { clickWithoutFocus(byText("Open")); });
-  await act(async () => { clickWithoutFocus(byText("Keep editing")); await new Promise(r => setTimeout(r, 0)); });
+  await act(async () => { clickWithoutFocus(byText("Keep editing")); await new Promise(r => setTimeout(r, 20)); });
   expect(document.activeElement).toBe(byText("Open"));
 });
