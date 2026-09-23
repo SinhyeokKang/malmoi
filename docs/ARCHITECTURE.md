@@ -663,8 +663,12 @@ backfill은 토큰을 더하기만 하므로 못 지운다. ⚠️ 해제 UPDATE
 **base 파일 부재는 여전히 reject다** — 사실상 경로 이동·설정 오류이고, 보류로 넘기면 전 셀이 빠져 문제가 가려진다. `deliveryContexts`는
 좁히지 않는다(§5.8 — 좁히면 표면 전체의 Revert가 막힌다). ⚠️ **ts-dict는 키가 그 파일 것인지를 같은 파일의 다른 로케일 객체로 판정한다** —
 렌더가 네임스페이스 파일마다 표면 전체 키를 넘기므로 "이 객체에 없다"만으로 보고하면 다른 파일 키 전부가 보류된다. 같은 이유로 비리터럴
-보고도 wanted 키로 좁힌다(감사 #4 — 무관한 `b: someFn` 하나가 파일 전체 Publish를 막았다). ⚠️ **code-dict의 `write-slot-missing`(구조상 삽입
-포기)도 같은 분류를 탄다** — 좌표가 정확해서다. **대가**: 보류가 남으면 1층이 매 실행 트리를 읽고 CI 적재가 계속 `deferred`다.
+보고도 wanted 키로 좁힌다(감사 #4 — 무관한 `b: someFn` 하나가 파일 전체 Publish를 막았다). 미리보기도 편집 대상이 아닌 키의 비리터럴은 막지
+않는다 — 막으면 그 파일의 Publish가 화면에서 열리지 않는다. ⚠️ **셀 보류는 multi-locale(ts-dict) 파일의 `write-slot-missing`만이다** —
+per-locale code-dict의 같은 코드는 "문자열 자리를 객체로 덮는" 구조 충돌이라 파일을 고쳐야 풀리고 결과 문구("키가 아직 파일에 없다")가 거짓이
+된다. 거부로 남는다(2026-09-24 리뷰). **보류 수는 `SyncRun.withheld`에 산다** — 결과 모달과 Logs가 같은 수를 말하고(Logs는 조인으로 읽는다),
+Publish 사건 payload에는 복제하지 않는다(logs-rework 결정 1). 보류만 남은 `SKIPPED` 실행은 Logs에서 `notSent`("Not sent")다 — "Nothing to send"가
+아니다. **대가**: 보류가 남으면 1층이 매 실행 트리를 읽고 CI 적재가 계속 `deferred`다.
 
 ⚠️ **2층 동등(`no-changes`)의 전달 확인은 기존 no-op 탐지의 토큰판이다** — 값을 고르지 않고 "렌더 결과가 base와 같다"만 본다(§0 불변식 2 안). 원복한 편집이 이 경로로 끝나므로 이것을 없애면 그 편집이 영영 pending이라 CI가 영구 보류된다.
 
@@ -1364,7 +1368,8 @@ Action이고 인가는 **`translation:write`**다 — 기존 `checkOpenPullReque
 하나 빠진 프로젝트의 Publish가 통째로 멈춘다. `truncated`는 상한 때문에 조회하지 않은 행만이라 두 수가 섞이지 않는다.
 ⚠️ **실행과 같은 판정이다** (2026-09-24, delivery-invariants D3). 실행은 그 셀을 보류하고(`withheld.file`) 나머지를 보낸다 — 전에는 미리보기만
 "나머지는 나간다"고 하고 실행은 `writer-warnings`로 전체를 거부했다. ts-dict 자리 없는 키는 `withoutKey`(= `withheld.key`)다. **base 파일
-부재는 실행이 거부하므로 미리보기도 `Preview base file missing`으로 막는다.** ⚠️ **두 수가 같은 것은 pending 200행(`PREVIEW_LIMIT`) 이하에서만이다** —
+부재는 실행이 거부하므로 미리보기도 막는다** — `preview-error`(Try again)가 아니라 **전용 거부**다(`refused/base-file-missing` — 경로·브랜치를
+말하고 Try again이 없다. 다시 눌러도 같은 거부다, L3.3. OWNER는 Settings로, EDITOR는 a project owner를 가리킨다 — 2026-09-24 사용자 결정). ⚠️ **두 수가 같은 것은 pending 200행(`PREVIEW_LIMIT`) 이하에서만이다** —
 상한을 넘으면 `truncated`와 같이 읽힌다.
 
 ### 5.6.4 보관은 인가 union의 갈래 하나다
@@ -1516,10 +1521,14 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 - **소스별 전달 확인 레코드**(revision · confirmedAt · syncRunId · context · invalidatedAt)가 유효하면 "미전달이 아닌 활성 셀의 현재 값 =
   마지막 확인된 export 값"이 성립한다. 그 등식을 깨는 쓰기는 넷이다 — strict 적재(레코드 무효화) · Save(셀을 미전달로 만든다) ·
   Revert(기준값으로 되돌리며 미전달을 푼다) · 폐기 승인 Sync의 orphan 셀 토큰 해제(delivery-invariants D1 — 같은 tx의 `importRevision` 증가가
-  확인을 이미 무효화하므로 드러나 깨지지는 않는다).
+  확인을 이미 무효화하므로 드러나 깨지지는 않는다). 키·언어의 추가·부활은 적재로만 일어나므로 무효화에 포함된다.
 - ⚠️ **보류 셀의 기준은 새 revision으로 다시 찍는다** (2026-09-24, delivery-invariants D3). 보류가 있는 Publish도 표면 확인은 새 revision으로
   쓰고, 보류 셀 중 **기준 행이 이미 있는 셀**의 `revision`만 갱신한다(`restoreValue` 불변 · 없는 행은 만들지 않는다 — 그 셀은 원래 unknown이다).
-  안 하면 기준이 옛 revision이라 Revert가 `baseline-stale`로 막혀 보류를 푸는 길 하나가 닫힌다. 보류 셀은 pending이라 위 등식에 걸리지 않는다. 키·언어의 추가·부활은 적재로만 일어나므로 무효화에 포함된다.
+  안 하면 기준이 옛 revision이라 Revert가 `baseline-stale`로 막혀 보류를 푸는 길 하나가 닫힌다. 보류 셀은 pending이라 위 등식에 걸리지 않는다.
+  ⚠️ **같은 context의 직전 확인에서 온 기준만 옮긴다** (2026-09-24 리뷰) — 덮기 전에 읽은 직전 확인의 지문이 지금과 같고, 기준 행의 revision이
+  그 확인의 것일 때만이다. base branch가 main → release로 바뀐 뒤 release에 파일이 없으면, main에서 확인된 기준을 release의 revision으로 찍는
+  순간 Revert가 release에서 한 번도 확인된 적 없는 값을 복원하고 토큰을 비운다(불변식 9). 그 셀은 `baseline-stale`로 남는다
+  (`delivery-invariants.integration.ts`가 두 갈래를 고정한다).
 - **Save**가 미전달이 아닌 셀을 바꾸는 순간 같은 tx에서 직전 값을 export 폴백(`buildWriteEntries`: base 결측·빈값 → 원문, 비-base → `""`)으로
   유도해 기록한다. 레코드가 무효이거나 Publish가 진행 중이면 기록하지 않는다 — 그 셀은 unknown이고 Revert가 막힌다.
 - **무효화는 두 장치다.** ① 적재(strict push·수동 Sync)는 **증가만 하는 `importRevision`**이 context 지문(`lib/translations/context.ts`)을 바꿔 무효화한다 —
