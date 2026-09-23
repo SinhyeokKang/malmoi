@@ -142,6 +142,29 @@ describe("보관된 프로젝트의 설정 쓰기는 서버가 거부한다", ()
     expect((await rotatePushToken({ slug: "alpha" })).ok).toBe(true);
   });
 
+  /**
+   * QA D1 (2026-09-24): Settings를 연 채로 다른 탭이 보관하면, 거부만 돌려주고 끝날 때 화면이 켜진 컨트롤과 Restore 없는 상태로
+   * 남는다. 거부가 **그 세그먼트를 다시 그려** 화면이 보관 상태(Restore 카드·꺼진 컨트롤)로 옮겨 가야 한다.
+   */
+  it.each([
+    ["rotatePushToken", () => rotatePushToken({ slug: "beta" })],
+    ["updateRepositorySettings", () => settings.updateRepositorySettings({ slug: "beta", baseBranch: "next" })],
+    ["updateProjectName", () => settings.updateProjectName({ slug: "beta", name: "Renamed" })],
+    ["deleteProjectImage", () => settings.deleteProjectImage("beta")],
+    ["connectRepository", () => settings.connectRepository({ slug: "beta" })],
+  ] as const)("%s의 보관 거부는 설정 화면을 다시 그린다", async (_name, run) => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    await run();
+    expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/beta", "layout");
+  });
+
+  it("대조: 권한 거부는 화면을 다시 그리지 않는다 — 보관 상태가 바뀐 것이 아니다", async () => {
+    hoisted.session = sessionFor("u-editor");
+    expect(await settings.updateProjectName({ slug: "beta", name: "Renamed" })).toEqual({ ok: false, error: "forbidden" });
+    expect(hoisted.revalidatePath).not.toHaveBeenCalled();
+  });
+
   it("Restore는 통과한다 — 되돌리는 길은 열려 있다", async () => {
     const db = seeded();
     hoisted.prisma = db.prisma;

@@ -32,6 +32,8 @@ it("보관 중에는 이름·이미지 쓰기를 거부하고 올린 객체를 �
   expect(h.del).not.toHaveBeenCalledWith("projects/p/old.webp");
   // 거부될 업로드가 정규화·Blob을 태우지 않는다 — 잠금 안 판정 전에 진입점이 먼저 막는다.
   expect(h.normalize).not.toHaveBeenCalled(); expect(h.put).not.toHaveBeenCalled();
+  // QA D1 — 보관 거부가 설정 화면을 보관 상태로 다시 그린다.
+  expect(h.revalidate).toHaveBeenCalledWith("/projects/alpha", "layout");
 });
 it.each(["editor", "stranger", null])("%s는 메타데이터와 Blob에 쓰지 못한다", async user => {
   h.session = sessionFor(user);
