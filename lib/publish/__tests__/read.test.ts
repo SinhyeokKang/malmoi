@@ -66,3 +66,48 @@ it("재생성 어댑터의 없는 파일은 새 파일이라 빼지 않는다 (�
   expect(result.withoutFile).toBe(0);
   expect(result.groups[0]?.rows).toHaveLength(1);
 });
+/**
+ * **미리보기와 실행이 같은 판정을 쓴다** (delivery-invariants D3 · T4 — POSTMORTEM 2026-09-17 "같은 pending이 화면마다 다르게").
+ * base 파일 부재는 실행이 `writer-warnings`로 거부하므로 미리보기도 약속하지 않는다. ⚠️ 두 수가 같은 것은 pending 200행 이하에서만이다.
+ */
+it("수술적 per-locale의 **base** 파일이 없으면 미리보기를 막는다 — 실행이 거부하는 셀을 약속하지 않는다", async () => {
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", locales: [{ code: "en" }, { code: "ko" }] }] });
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "ko", value: "새" }]);
+  mocks.client.getTree.mockResolvedValue([{ path: "ko.yml", sha: "blob" }]);
+  mocks.client.getBlobText.mockResolvedValue("ko:\n  hello: old\n");
+  await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow("Preview base file missing");
+});
+it("ts-dict 로케일 객체에 자리가 없는 키는 빼고 withoutKey로 센다 — 같은 파일의 다른 로케일이 그 키를 가진다", async () => {
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "ts-dict", pathTemplate: "*.ts", locales: [{ code: "en" }, { code: "ko" }] }] });
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "ko" }, { ...rows[0], keyId: "k2", localeCode: "ko", stringKey: { key: "bye" } }]);
+  db.translation.count.mockResolvedValue(2);
+  mocks.client.getTree.mockResolvedValue([{ path: "a.ts", sha: "a" }]);
+  mocks.client.getBlobText.mockResolvedValue('const en = { hello: "hi", bye: "bye" };\nconst ko = { bye: "잘가" };');
+  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(result.groups.flatMap(g => g.rows.map(r => r.key))).toEqual(["bye"]);
+  expect(result).toMatchObject({ withoutFile: 0, withoutKey: 1 });
+});
+it("같은 픽스처에서 미리보기의 withoutFile과 실행의 withheld가 같다 (yaml · 비-base 파일 부재)", async () => {
+  const { runPull } = await import("@/lib/pull/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  const EN = "en:\n  hello: old\n";
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", nested: null, locales: [{ code: "en" }, { code: "fr" }, { code: "ko" }] }] });
+  db.translation.findMany.mockResolvedValue([rows[0], { ...rows[0], localeCode: "fr", value: "neuf" }, { ...rows[0], localeCode: "ko", value: "새" }]);
+  db.translation.count.mockResolvedValue(3);
+  mocks.client.getTree.mockResolvedValue([{ path: "en.yml", sha: "blob" }]);
+  mocks.client.getBlobText.mockResolvedValue(EN);
+  const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: [{ path: "en.yml", sha: "blob" }] }, blobs: { blob: EN } });
+  const edit = (locale: string) => ({ id: locale, token: locale, cell: { surfaceId: "s", keyId: "k", localeCode: locale, restoreValue: "" } });
+  const result = await runPull({
+    loadState: async () => ({
+      project: { ...project, slug: "acme" },
+      surfaces: [{ ...surface, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", nested: null, localeCodes: ["en", "fr", "ko"],
+        keys: [{ id: "k", key: "hello", sourceText: "old", orphaned: false, cells: { en: { value: "new" }, fr: { value: "neuf" }, ko: { value: "새" } } }] }],
+      maxUpdatedAt: new Date(), unpublished: 3, pendingEdits: ["en", "fr", "ko"].map(edit),
+    }),
+    createClient: async () => client, saveLastPulledAt: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
+  });
+  expect(preview.withoutFile).toBe(2);
+  expect(result).toMatchObject({ status: "committed", withheld: { file: preview.withoutFile, key: 0 } });
+});

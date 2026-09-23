@@ -54,6 +54,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     //    출처라 절대 바꾸지 않는다.** grep하면 둘 다 잡힌다.
     orderBy: [{ sortIndex: "asc" }, { key: "asc" }],
     select: {
+      id: true,
       surfaceId: true,
       key: true,
       sourceText: true,
@@ -88,6 +89,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     surfaces: surfaces.map(surface => ({ ...surface,
     localeCodes: surface.locales.map((l) => l.code),
     keys: keys.filter(k => k.surfaceId === surface.id).map((k) => ({
+      id: k.id,
       key: k.key,
       sourceText: k.sourceText,
       description: k.description,
@@ -157,8 +159,11 @@ export async function saveLastPulledAt(
   at: Date,
   published: { prUrl: string } | undefined,
   delivered: readonly PendingEdit[],
-  /** 실행권과 캡처 context. 없으면(실행 행 없는 호출) 전달 확인·기준을 건드리지 않는다 — 늦은 성공을 가를 수 없다. */
-  delivery?: { runId: string; contexts: readonly DeliveryContext[] },
+  /**
+   * 실행권과 캡처 context. 없으면(실행 행 없는 호출) 전달 확인·기준을 건드리지 않는다 — 늦은 성공을 가를 수 없다.
+   * `withheld`는 이번 PR에 못 실은 캡처 편집이다 — 토큰은 그대로 두고 기준 행의 revision만 새 확인으로 다시 찍는다.
+   */
+  delivery?: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[] },
 ): Promise<void> {
   const project = {
     where: { id: projectId },
@@ -217,7 +222,7 @@ async function confirmDelivery(
   projectId: string,
   project: { where: { id: string }; data: Prisma.ProjectUpdateInput },
   delivered: readonly PendingEdit[],
-  delivery: { runId: string; contexts: readonly DeliveryContext[] },
+  delivery: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[] },
 ): Promise<void> {
   const surfaceIds = [...new Set(delivery.contexts.map(c => c.surfaceId))].sort();
   await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
@@ -262,6 +267,21 @@ async function confirmDelivery(
       where: { projectId_surfaceId: { projectId, surfaceId: row.id } },
       create: { projectId, surfaceId: row.id, ...data },
       update: data,
+    });
+  }
+  /**
+   * ⚠️ **보류 셀의 기준을 새 revision으로 다시 찍는다** (delivery-invariants D3). 표면 확인은 새 revision으로 바뀌었는데 보류 셀의 기준
+   * 행이 옛 revision이면 Revert가 `baseline-stale`로 막힌다 — 보류가 풀리는 길 하나(OWNER Revert)가 닫힌다. `restoreValue`는 불변이다
+   * (마지막 전달 값 그대로). 기준 행이 없는 셀은 만들지 않는다 — 그 셀은 원래 unknown이다.
+   * 확인 등식("미전달이 아닌 셀은 export 값 = 기준")은 pending 셀에 걸리지 않으므로 보류 셀이 등식을 깨지 않는다.
+   */
+  const withheldCells = (delivery.withheld ?? []).flatMap(edit => edit.cell === undefined ? [] : [edit.cell]);
+  for (const [surfaceId, revision] of revisionBySurface) {
+    const cells = withheldCells.filter(cell => cell.surfaceId === surfaceId);
+    if (cells.length === 0) continue;
+    await tx.translationBaseline.updateMany({
+      where: { projectId, surfaceId, OR: cells.map(cell => ({ keyId: cell.keyId, localeCode: cell.localeCode })) },
+      data: { revision },
     });
   }
   for (const { cellId, restoreValue } of plan.rebase) {

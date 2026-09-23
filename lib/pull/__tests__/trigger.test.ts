@@ -141,7 +141,7 @@ describe("triggerPull — 전달 기준 배선", () => {
     expect(result.status).toBe("committed");
     expect(hoisted.invalidateDeliveryConfirmations).toHaveBeenCalledWith(prisma, "p1");
     const call = hoisted.saveLastPulledAt.mock.calls.at(-1);
-    expect(call?.[5]).toEqual({ runId: "run-1", contexts: [{ surfaceId: "s1", fingerprint: "ctx" }] });
+    expect(call?.[5]).toEqual({ runId: "run-1", contexts: [{ surfaceId: "s1", fingerprint: "ctx" }], withheld: [] });
   });
 
   it("실행 id가 없으면 확인을 싣지 않는다 (위 대조)", async () => {

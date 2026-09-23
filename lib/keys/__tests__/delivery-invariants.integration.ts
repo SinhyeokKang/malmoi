@@ -79,7 +79,7 @@ function payload(keys: string[], opts: { value?: string; locales?: string[]; tra
   commits += 1;
   return {
     projectSlug: "fixture", surfaceSlug: "default", commitSha: String(commits).padStart(40, "0"),
-    commitAt: new Date(Date.UTC(2026, 8, 15, 0, commits)).toISOString(),
+    commitAt: new Date(Date.UTC(2026, 8, 20, 0, commits)).toISOString(),
     format: { adapter: opts.adapter ?? "json-catalog" as const, pathTemplate: opts.pathTemplate ?? "i18n/{locale}.json", baseLocale: "en", nested: false },
     locales,
     keys: keys.map(key => ({ key, namespace: "_root", sourceText: `Source ${key}` })),

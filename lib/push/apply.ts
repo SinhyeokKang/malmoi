@@ -307,9 +307,11 @@ async function applyWith(
         AND "localeCode" <> ${payload.format.baseLocale}`]),
   ];
 
+  const payloadKeys = new Set(payload.keys.map((k) => k.key));
   const translations = payload.translations
-    .map((t) => ({ ...t, keyId: idByKey.get(t.key) }))
-    // 로케일 파일에만 있고 base에 없는 키는 적재 대상이 아니다 — 조용히 버린다.
+    .map((t) => ({ ...t, keyId: payloadKeys.has(t.key) ? idByKey.get(t.key) : undefined }))
+    // 이번 push의 base 파일에 없는 키 — **기존 orphan 포함** — 의 셀은 적재하지 않는다(delivery-invariants D5 · 감사 #58). `idByKey`에는
+    // 기존 orphan 키도 들어 있어서, 비-base 파일에만 남은 orphan 키의 셀이 덮이고 저자가 비고 행이 INSERT됐다.
     // `""`도 적재하지 않는다 — 리포의 빈 값·부재는 "모름"이지 "삭제"가 아니다(ARCHITECTURE §0 불변식 3,
     // §5.5.2). pull이 DB의 `""`를 부재로 내보내므로 여기서 비우면 다음 PR에서 그 키가 통째로 사라진다.
     // 코드에서 번역을 지우는 길은 없다 — 지우려면 UI에서 비운다.

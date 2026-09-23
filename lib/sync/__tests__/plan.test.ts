@@ -142,6 +142,7 @@ describe("planSyncFinish — 결과를 행으로", () => {
     expect(
       planSyncFinish({
         status: "committed",
+        delivered: 1,
         pr: "created",
         commitSha: "abc",
         prUrl: "https://github.com/o/r/pull/1",

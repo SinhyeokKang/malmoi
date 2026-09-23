@@ -5,7 +5,11 @@ import type { PublishDiff } from "./diff";
  * `withoutFile`은 **pull이 쓰지 않아 표에서 뺀 셀 수**다 — 수술적 per-locale 어댑터의 원본 파일이 base에 없다
  * (`render.ts`의 `original-file-missing`). `truncated`(상한 밖)와 섞지 않는다 (launch-readiness L3.7).
  */
-export type PublishPreview = PublishDiff & { openPr: OpenImportPr; keys: number; withoutFile: number };
+/**
+ * `withoutKey`는 ts-dict 로케일 객체에 **자리가 없는** 키의 셀 수다(`write-slot-missing` — 실행이 그 셀만 보류한다, delivery-invariants D3).
+ * 두 수는 실행 결과의 `withheld.file`·`withheld.key`와 같은 판정이다 — 단 이 표가 읽는 pending 200행 안에서만 같다(`truncated`와 같이 읽힌다).
+ */
+export type PublishPreview = PublishDiff & { openPr: OpenImportPr; keys: number; withoutFile: number; withoutKey: number };
 /**
  * 미리보기 조회의 결과. **거부(`rejected`)와 읽기 실패(`failed`)가 갈린다** (launch-readiness L3.3) — 거부는 실행 전
  * 거부(`1h`)로, 실패만 `1k`의 Retry로 그린다. `error`는 `triggerPullAction`의 실행 전 거부와 같은 낱말이다.

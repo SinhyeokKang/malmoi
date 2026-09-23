@@ -35,6 +35,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   const base: BaseValues = Object.create(null);
   const cells: PublishCell[] = [];
   let withoutFile = 0;
+  let withoutKey = 0;
   for (const surface of project.surfaces) {
     const surfaceRows = rows.filter(r => r.surfaceId === surface.id);
     if (!surfaceRows.length) continue;
@@ -58,15 +59,31 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         base[p.path] = file;
       }));
     }
+    const surgicalPerLocale = adapter.layout === "per-locale" && adapter.writeStrategy === "surgical";
+    // ⚠️ **실행과 같은 판정이다** (delivery-invariants D3 — `lib/pull/undeliverable.ts`). base 파일 부재는 실행이 `writer-warnings`로
+    // 거부하므로 어느 셀도 약속하지 않는다 — 편집이 비-base에만 있어도 렌더는 base 파일부터 못 낸다.
+    if (surgicalPerLocale) {
+      const basePath = paths.find(p => p.locale === surface.baseLocale);
+      if (basePath !== undefined && !shas.has(basePath.path)) throw new Error("Preview base file missing");
+    }
     for (const row of surfaceRows) {
       if (!surface.locales.some(locale => locale.code === row.localeCode)) throw new Error("Preview path unavailable");
-      // 수술적 치환은 원본이 없으면 그 파일을 안 낸다(`render.ts`) — 나가지 않을 셀을 약속하지 않는다.
-      if (adapter.layout === "per-locale" && adapter.writeStrategy === "surgical") {
+      // 수술적 치환은 원본이 없으면 그 파일을 안 낸다(`render.ts`) — 나가지 않을 셀을 약속하지 않는다. 실행은 그 셀을 보류한다.
+      if (surgicalPerLocale) {
         const target = paths.find(p => p.locale === row.localeCode);
         if (target !== undefined && !shas.has(target.path)) { withoutFile++; continue; }
       }
       const matches = paths.filter(p => adapter.layout === "per-locale" ? p.locale === row.localeCode :
         Object.hasOwn(base[p.path] ?? {}, row.localeCode) && Object.hasOwn(base[p.path]![row.localeCode]!, row.stringKey.key));
+      // ts-dict: 그 로케일 객체에 자리가 없고 같은 파일의 다른 로케일이 그 키를 가지면 실행은 `write-slot-missing`으로 그 셀만 보류한다.
+      if (adapter.layout === "multi-locale" && adapter.writeStrategy === "surgical" && matches.length === 0) {
+        const owners = paths.filter(p => {
+          const file = base[p.path];
+          return file !== undefined && Object.hasOwn(file, row.localeCode)
+            && Object.keys(file).some(locale => locale !== row.localeCode && Object.hasOwn(file[locale]!, row.stringKey.key));
+        });
+        if (owners.length > 0) { withoutKey++; continue; }
+      }
       // 대상을 확정하지 못했는데 첫 파일을 고르면 무엇을 덮는지 거짓으로 안내한다.
       const path = matches.length === 1 ? matches[0]?.path : undefined;
       if (!path) throw new Error("Preview path unavailable");
@@ -74,6 +91,6 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         after: row.value, author: actorLabel(row.updatedBy, actors) ?? "", updatedAt: row.updatedAt.toISOString() });
     }
   }
-  // `truncated`는 상한 때문에 **조회하지 않은** 행만이다 — 뺀 셀은 `withoutFile`이 따로 말한다.
-  return { ...buildPublishDiff(cells, base), total, keys: keyIds.length, truncated: Math.max(0, total - rows.length), withoutFile, openPr: parseGithubPrUrl(rawPr, project) };
+  // `truncated`는 상한 때문에 **조회하지 않은** 행만이다 — 뺀 셀은 `withoutFile`·`withoutKey`가 따로 말한다.
+  return { ...buildPublishDiff(cells, base), total, keys: keyIds.length, truncated: Math.max(0, total - rows.length), withoutFile, withoutKey, openPr: parseGithubPrUrl(rawPr, project) };
 }

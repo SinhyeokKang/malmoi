@@ -6,6 +6,7 @@ import { compareKeys } from "@/lib/adapters/shared";
 import type { AdapterName } from "@/lib/adapters/types";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
 import { ingestTargets } from "@/lib/onboarding/detect";
+import { localesToKeep } from "./locales";
 import { readFiles } from "./read";
 import { verifyEmptyCatalog } from "./empty";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
@@ -43,7 +44,10 @@ async function readSurfaceFiles(
   for (const extra of await readFiles(reader, snapshot, targets.filter(path => !blobs.has(path)))) {
     blobs.set(extra.path, extra.content);
   }
-  return { ...confirmed, paths, targets, blobs };
+  // ⚠️ **재탐지가 본 것은 첫 다운로드분뿐이다** — 재시도로 읽힌(또는 끝내 못 읽은) 로케일을 되살리지 않으면 적재가 그 로케일을
+  // orphan시킨다(delivery-invariants D6 · 감사 #59).
+  const locales = localesToKeep({ format: confirmed.format, layout: adapterFor(confirmed.format).layout, attempted });
+  return { ...confirmed, format: { ...confirmed.format, locales }, paths, targets, blobs };
 }
 
 export type StoredSurfaceImport = {

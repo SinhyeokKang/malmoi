@@ -5,7 +5,7 @@ import { summarizeWarnings } from "../warnings";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { SYNC_ERROR_CODES } from "@/lib/sync/plan";
 
-const committed = { status: "committed", pr: "created", prUrl: "https://github.com/o/r/pull/12", commitSha: "abc", changed: ["ko.json"] as string[] } as const;
+const committed = { status: "committed", delivered: 1, pr: "created", prUrl: "https://github.com/o/r/pull/12", commitSha: "abc", changed: ["ko.json"] as string[] } as const;
 it("실행 결과 여덟 갈래와 스킵 경고를 보존한다", () => {
   expect(planPublishView(committed)).toBe("created");
   expect(planPublishView({ ...committed, pr: "updated" })).toBe("updated");

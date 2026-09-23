@@ -63,9 +63,9 @@ describe("withheldCoordinates · blockingErrors — ts-dict", () => {
 describe("blockingErrors — 그 밖의 writer 경고는 그대로 reject다", () => {
   it("json-catalog 접두 충돌 → blocking 1 · 표면 slug가 붙는다", () => {
     const rendered = [surface([
-      { path: "i18n/en.json", locale: "en", content: "{}", errors: [{ path: "i18n/en.json", code: "key-prefix-conflict", key: "a.b", locale: "en" }] },
+      { path: "i18n/en.json", locale: "en", content: "{}", errors: [{ path: "i18n/en.json", code: "key-shadowed", key: "a.b", locale: "en" }] },
     ], { surfaceSlug: "web" })];
-    expect(blockingErrors(rendered)).toEqual([{ surfaceSlug: "web", error: expect.objectContaining({ code: "key-prefix-conflict" }) }]);
+    expect(blockingErrors(rendered)).toEqual([{ surfaceSlug: "web", error: expect.objectContaining({ code: "key-shadowed" }) }]);
   });
 });
 

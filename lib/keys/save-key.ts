@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { ADAPTERS } from "@/lib/adapters";
 import type { LockedAccess } from "@/lib/auth/access";
 import { lockProjectAccess } from "@/lib/auth/lock";
 import { recordEvent } from "@/lib/events/record";
@@ -37,12 +38,14 @@ export async function applyKeySave(
     // 인가가 준 projectId·surfaceId로 다시 좁힌다 — 멤버십은 "이 keyId가 그 프로젝트 것"을 뜻하지 않는다.
     const key = await tx.stringKey.findFirst({ where: { id: keyId, projectId, surfaceId, orphaned: false }, select: { key: true, sourceText: true } });
     if (key === null) return { ok: false, error: "key-unavailable" } as const;
-    const surface = await tx.translationSurface.findFirstOrThrow({ where: { id: surfaceId, projectId }, select: { baseLocale: true } });
+    const surface = await tx.translationSurface.findFirstOrThrow({ where: { id: surfaceId, projectId }, select: { baseLocale: true, adapterName: true } });
+    // 비우기 판정의 입력이라 잠금 안에서 읽는다(delivery-invariants D2). 모르는 어댑터는 수술적으로 친다 — 비우기를 막는 쪽이 안전하다.
+    const writeStrategy = ADAPTERS.find(adapter => adapter.name === surface.adapterName)?.writeStrategy ?? "surgical";
     const locales = await tx.locale.findMany({ where: { projectId, surfaceId, orphaned: false }, select: { code: true } });
     const rows = await tx.translation.findMany({ where: { projectId, surfaceId, keyId }, select: { localeCode: true, value: true, pendingEditToken: true } });
     const rowOf = new Map(rows.map(row => [row.localeCode, row]));
 
-    const plan = planKeySave(new Map(locales.map(l => [l.code, rowOf.get(l.code)?.value ?? null])), input.changes);
+    const plan = planKeySave(new Map(locales.map(l => [l.code, rowOf.get(l.code)?.value ?? null])), input.changes, { writeStrategy, baseLocale: surface.baseLocale });
     if (!plan.ok) return plan;
     if (plan.writes.length === 0) return { ok: true, keyId, cells: [] };
 

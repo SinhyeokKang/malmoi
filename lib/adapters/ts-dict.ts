@@ -1,4 +1,4 @@
-import { Project, SyntaxKind, type ObjectLiteralExpression, type SourceFile } from "ts-morph";
+import { Project, SyntaxKind, type ObjectLiteralExpression, type PropertyAssignment, type SourceFile } from "ts-morph";
 
 import { quoteLiteral, quoteOf } from "./quote-style";
 import { compareKeys, hasStrongLocale, looksLikeLocale, pathSignals } from "./shared";
@@ -53,6 +53,12 @@ function localeObjects(sourceFile: SourceFile): Map<string, ObjectLiteralExpress
   return found;
 }
 
+/** 프로퍼티 이름 — 따옴표 키는 값으로, 식별자 키는 텍스트로. */
+function propertyKey(prop: PropertyAssignment): string {
+  const nameNode = prop.getNameNode();
+  return nameNode.isKind(SyntaxKind.StringLiteral) ? nameNode.getLiteralValue() : nameNode.getText();
+}
+
 /** 객체 리터럴의 `"key": "value"` 쌍. 값이 문자열 리터럴이 아니면 에러로 보고한다. */
 function pairs(
   obj: ObjectLiteralExpression,
@@ -62,8 +68,7 @@ function pairs(
   const out = [];
   for (const prop of obj.getProperties()) {
     if (!prop.isKind(SyntaxKind.PropertyAssignment)) continue;
-    const nameNode = prop.getNameNode();
-    const key = nameNode.isKind(SyntaxKind.StringLiteral) ? nameNode.getLiteralValue() : nameNode.getText();
+    const key = propertyKey(prop);
     const init = prop.getInitializer();
     if (!init?.isKind(SyntaxKind.StringLiteral)) {
       errors.push({ path, code: "value-not-string-literal", key, detail: init?.getKindName() ?? "none" });
@@ -253,7 +258,12 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
   return writeWithErrors(format, input).content;
 }
 
-/** `write`와 같되 `pairs`가 건너뛴 비리터럴 프로퍼티를 에러로 돌려준다 — 전에는 모아서 버렸다. */
+/**
+ * `write`와 같되 쓰지 못한 항목을 에러로 돌려준다.
+ *
+ * ⚠️ **보고는 `wanted`에 든 키만이다** (delivery-invariants D4). 쓰려는 키와 무관한 비리터럴까지 내면 `{ a: "A", b: someFn }`
+ * 파일의 `a` 편집이 `writer-warnings`로 영영 나가지 않는다(감사 #4). `read`는 적재 시 정보라 전부 보고한다.
+ */
 function writeWithErrors(
   format: DetectedFormat,
   input: WriteInput,
@@ -291,8 +301,27 @@ function writeWithErrors(
     };
   }
 
+  const skipped: AdapterError[] = [];
+  const present = pairs(obj, file.path, skipped);
+  errors.push(...skipped.filter((e) => e.key !== undefined && wanted.has(e.key)));
+  /**
+   * ⚠️ **자리가 없는 wanted 키도 보고한다** (delivery-invariants D4 · C). 삽입은 하지 않는다(ARCHITECTURE §1.4의 ts-dict 예외) —
+   * 조용하면 파일은 그대로인데 pull이 토큰을 해제해 "보냈다"가 거짓이 된다. 보고받은 pull은 그 셀만 보류한다.
+   * ⚠️ **키가 이 파일 것인지는 같은 파일의 다른 로케일 객체가 말한다** — 렌더는 네임스페이스 파일마다 표면 전체 키를
+   * 넘기므로 "이 객체에 없다"만으로 보고하면 다른 파일의 키 전부가 경고가 된다.
+   */
+  const inObject = new Set([...present.map((p) => p.key), ...skipped.flatMap((e) => (e.key === undefined ? [] : [e.key]))]);
+  const inFile = new Set<string>();
+  for (const [locale, other] of localeObjects(sf)) {
+    if (locale === input.locale) continue;
+    for (const prop of other.getProperties()) if (prop.isKind(SyntaxKind.PropertyAssignment)) inFile.add(propertyKey(prop));
+  }
+  for (const key of [...wanted.keys()].sort(compareKeys)) {
+    if (!inObject.has(key) && inFile.has(key)) errors.push({ path: file.path, code: "write-slot-missing", key });
+  }
+
   let changed = false;
-  for (const { key, value, assignment } of pairs(obj, file.path, errors)) {
+  for (const { key, value, assignment } of present) {
     const next = wanted.get(key);
     if (next === undefined || next === value) continue;
     const init = assignment.asKindOrThrow(SyntaxKind.PropertyAssignment).getInitializerIfKindOrThrow(SyntaxKind.StringLiteral);
