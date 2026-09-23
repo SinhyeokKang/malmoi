@@ -5,8 +5,8 @@ import type { PendingEdit } from "./run";
  * **전달 불가 셀의 좌표 보류** (delivery-invariants D3 · 감사 #3 · C). 잎 모듈이다 — 테스트가 직접 import한다.
  *
  * writer 경고를 두 부류로 가른다:
- * - **보류** — 그 좌표의 셀만 이번 PR에 못 싣는다. 비-base per-locale 파일 부재(`original-file-missing`)와 로케일 객체에
- *   자리가 없는 키(`write-slot-missing`). 그 셀의 토큰은 남고 나머지는 Publish한다.
+ * - **보류** — 그 좌표의 셀만 이번 PR에 못 싣는다. 비-base per-locale 파일 부재(`original-file-missing`)와 ts-dict 로케일
+ *   객체에 자리가 없는 키(multi-locale 파일의 `write-slot-missing`). 그 셀의 토큰은 남고 나머지는 Publish한다.
  * - **거부** — 그 밖의 전부. base 파일 부재는 여기다: 사실상 경로 이동·설정 오류이고, 보류로 넘기면 전 셀이 빠져 결과가
  *   "보낼 것 없음"으로 문제를 가린다(사용자 결정 2026-09-24).
  *
@@ -23,7 +23,9 @@ function classify(surface: RenderedSurface, file: LocalFile, error: RenderError)
   if (error.code === "original-file-missing" && file.locale !== undefined && file.locale !== surface.baseLocale) {
     return { kind: "locale", coordinate: `${surface.surfaceId}\0${file.locale}` };
   }
-  if (error.code === "write-slot-missing" && error.locale !== undefined && error.key !== undefined) {
+  // ⚠️ **multi-locale(ts-dict) 파일만이다** (coordinator review r1). per-locale code-dict의 `write-slot-missing`은 "문자열 자리를 객체로 덮는"
+  // 구조 충돌이라 파일을 고쳐야 풀리고, 결과 문구("키가 아직 파일에 없다")도 거짓이 된다 — 그대로 거부한다.
+  if (error.code === "write-slot-missing" && file.locale === undefined && error.locale !== undefined && error.key !== undefined) {
     return { kind: "cell", coordinate: `${surface.surfaceId}\0${error.locale}\0${error.key}` };
   }
   return { kind: "blocking" };

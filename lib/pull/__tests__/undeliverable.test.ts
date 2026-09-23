@@ -61,6 +61,14 @@ describe("withheldCoordinates · blockingErrors — ts-dict", () => {
 });
 
 describe("blockingErrors — 그 밖의 writer 경고는 그대로 reject다", () => {
+  it("per-locale(code-dict)의 write-slot-missing은 blocking이다 — 구조상 삽입 포기라 셀 보류 대상이 아니다 (C는 ts-dict만)", () => {
+    const rendered = [surface([
+      { path: "i18n/ko.ts", locale: "ko", content: "…", errors: [{ path: "i18n/ko.ts", code: "write-slot-missing", key: "a.b", locale: "ko" }] },
+    ])];
+    expect(blockingErrors(rendered)).toHaveLength(1);
+    expect(withheldCoordinates(rendered).cells.size).toBe(0);
+  });
+
   it("json-catalog 접두 충돌 → blocking 1 · 표면 slug가 붙는다", () => {
     const rendered = [surface([
       { path: "i18n/en.json", locale: "en", content: "{}", errors: [{ path: "i18n/en.json", code: "key-shadowed", key: "a.b", locale: "en" }] },
