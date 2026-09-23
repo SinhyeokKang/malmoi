@@ -956,6 +956,9 @@ export function createHarness(seed: Seed = {}) {
       findMany: findManySyncRuns,
       update: updateSyncRun,
       updateMany: updateManySyncRuns,
+      /** 키 단위 저장의 `publishInFlight`가 센다. */
+      count: vi.fn(async (args: { where: { projectId: string; status?: unknown } }) =>
+        syncRuns.filter((r) => matchesSyncRun(r, args.where)).length),
     },
     /**
      * ④⑤ raw 집계 (DESIGN §6.63). **SQL을 해석하지 않고 대상 테이블로 갈래만 가른다** —
@@ -1015,7 +1018,7 @@ export function createHarness(seed: Seed = {}) {
       },
     },
     /** 전달 확인 무효화(`invalidateDeliveryConfirmations`)만 부른다 — 기록만 하고 행은 없다. */
-    deliveryConfirmation: { updateMany: vi.fn(async () => ({ count: 0 })) },
+    deliveryConfirmation: { updateMany: vi.fn(async () => ({ count: 0 })), findUnique: vi.fn(async () => null) },
     projectMember: {
       findUnique: findMember,
       findMany: findManyMembers,
@@ -1027,6 +1030,11 @@ export function createHarness(seed: Seed = {}) {
       updateMany: updateManyMembers,
     },
     translationSurface: { findFirst: findSurface, findUnique: findSurface,
+      findFirstOrThrow: async (args: { where: SurfaceWhere }) => {
+        const row = await findSurface(args);
+        if (row === null) throw Object.assign(new Error("surface not found"), { code: "P2025" });
+        return row;
+      },
       findMany: async ({ where }: { where: SurfaceWhere }) => surfaces.filter(s => surfaceMatches(s, where)).map(surfaceRow),
       create: createSurface, update: updateSurface, updateMany: updateManySurfaces },
     projectInvitation: {
@@ -1049,8 +1057,10 @@ export function createHarness(seed: Seed = {}) {
       deleteMany: deleteManyAccounts,
     },
     stringKey: {
-      findFirst: async ({ where }: { where: { id: string; projectId: string } & ScopedWhere }) =>
-        keys.find((k) => k.id === where.id && k.projectId === where.projectId && matchesScope(k, where)) ?? null,
+      // ⚠️ `orphaned`를 실제로 본다 — 키 단위 저장이 그 조건 하나로 사라진 키를 거부한다(`applyKeySave`).
+      findFirst: async ({ where }: { where: { id: string; projectId: string; orphaned?: boolean } & ScopedWhere }) =>
+        keys.find((k) => k.id === where.id && k.projectId === where.projectId && matchesScope(k, where) &&
+          (where.orphaned === undefined || (k.orphaned ?? false) === where.orphaned)) ?? null,
       /**
        * 로케일별 진행률의 **분모** (6b-5). ⚠️ **`orphaned`를 실제로 본다** — 무시하면 코드에서
        * 사라진 키가 분모에 남아 진행률이 영구히 100%에 못 닿고, 그건 페이크가 스키마보다 느슨해
@@ -1099,11 +1109,13 @@ export function createHarness(seed: Seed = {}) {
        * ⚠️ **`orphaned`를 실제로 본다** — 무시하면 사라진 로케일이 Meter에 열로 서고, 그 셀의
        * 번역이 분자에 들어가 **분모보다 커진다.**
        */
-      findMany: async ({ where }: { where: { projectId: { in: string[] }; orphaned?: boolean } & ScopedWhere }) =>
+      // 키 단위 저장은 한 프로젝트(`projectId: string`)로, 목록 집계는 여럿(`{ in }`)으로 좁힌다.
+      findMany: async ({ where }: { where: { projectId: string | { in: string[] }; orphaned?: boolean } & ScopedWhere }) =>
         locales
           .filter(
             (l) =>
-              where.projectId.in.includes(l.projectId) && matchesScope(l, where) &&
+              (typeof where.projectId === "string" ? l.projectId === where.projectId : where.projectId.in.includes(l.projectId)) &&
+              matchesScope(l, where) &&
               (where.orphaned === undefined || (l.orphaned ?? false) === where.orphaned),
           )
           .map((l) => ({ projectId: l.projectId, surfaceId: l.surfaceId, surface: surfaces.find(s => s.id === l.surfaceId) ?? null, code: l.code, isBase: l.isBase ?? false })),
@@ -1252,6 +1264,7 @@ export function createHarness(seed: Seed = {}) {
       }: {
         where: {
           projectId: string;
+          keyId?: string;
           value?: { not: string };
           stringKey?: { orphaned?: boolean };
           locale?: { orphaned?: boolean };
@@ -1266,6 +1279,8 @@ export function createHarness(seed: Seed = {}) {
         const rows = translations.filter((t) => {
           const key = live.get(t.keyId);
           if (key === undefined) return false;
+          // 키 단위 저장이 한 키의 셀만 읽는다 — 무시하면 다른 키의 값이 그 키의 "이전 값"이 된다.
+          if (where.keyId !== undefined && t.keyId !== where.keyId) return false;
           if (!matchesScope(t, where)) return false;
           if (where.value !== undefined && t.value === where.value.not) return false;
           const wantOrphaned = where.stringKey?.orphaned;

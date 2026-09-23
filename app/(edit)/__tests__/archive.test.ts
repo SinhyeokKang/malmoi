@@ -25,7 +25,7 @@ vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/pull/trigger", () => ({ triggerPull: hoisted.triggerPull }));
 
 const { archiveProject, unarchiveProject, runFirstIngest } = await import("../projects/actions");
-const { saveTranslation, triggerPullAction } = await import("../actions");
+const { saveTranslationKey, triggerPullAction } = await import("../actions");
 
 const ARCHIVED_AT = new Date("2026-09-10T00:00:00Z");
 
@@ -60,7 +60,7 @@ beforeEach(() => {
 describe("보관된 프로젝트는 편집·Publish를 받지 않는다", () => {
   it("저장이 archived로 거부된다", async () => {
     hoisted.session = sessionFor("u-editor");
-    const result = await saveTranslation({ surfaceSlug: "default", slug: "beta", keyId: "k1", localeCode: "ko", value: "안녕" });
+    const result = await saveTranslationKey({ surfaceSlug: "default", slug: "beta", keyId: "k1", changes: [{ localeCode: "ko", value: "안녕" }] });
     expect(result).toEqual({ ok: false, error: "archived" });
   });
 
@@ -93,8 +93,8 @@ describe("보관된 프로젝트는 편집·Publish를 받지 않는다", () => 
       locales: [{ projectId: "pA", code: "ko", isBase: false, orphaned: false }],
     });
     hoisted.prisma = db.prisma;
-    const result = await saveTranslation({ surfaceSlug: "default", slug: "alpha", keyId: "k1", localeCode: "ko", value: "안녕" });
-    expect(result).toEqual({ ok: true, value: "안녕" });
+    const result = await saveTranslationKey({ surfaceSlug: "default", slug: "alpha", keyId: "k1", changes: [{ localeCode: "ko", value: "안녕" }] });
+    expect(result).toEqual({ ok: true, keyId: "k1", cells: [{ localeCode: "ko", value: "안녕" }] });
   });
 });
 

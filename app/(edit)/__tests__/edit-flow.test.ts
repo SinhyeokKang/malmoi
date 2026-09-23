@@ -9,7 +9,7 @@ import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
 import { createHarness, sessionFor, type Seed } from "./harness";
 
 /**
- * **편집 흐름을 끝에서 끝까지 본다**: `saveTranslation` → DB →
+ * **편집 흐름을 끝에서 끝까지 본다**: `saveTranslationKey` → DB →
  * `loadPullState` → `runPull`이 커밋에 싣는 **파일 내용**.
  *
  * 편집 UI는 동작 확인용으로 동결됐지만(PoC 시절 동결) **이 경로는 살아 있어야 한다** — 저장이
@@ -43,7 +43,7 @@ function memoryDb(seed: Seed = {}) {
   });
 }
 
-const { saveTranslation } = await import("../actions");
+const { saveTranslationKey } = await import("../actions");
 
 /** 저장된 DB 상태로 pull을 한 바퀴 돌리고 커밋에 실린 파일을 돌려준다. */
 async function pullFiles(prisma: PrismaClient, opts: { lastPulledAt?: Date } = {}) {
@@ -82,7 +82,7 @@ describe("편집 → DB → 다음 pull의 출력", () => {
    * 쓰기는 성공했는데 화면이 거짓말을 하는 부류다. `/projects/<slug>` 세그먼트의 레이아웃을 무효화한다.
    */
   it("무효화가 `/projects/<slug>` 서브트리다 — 같은 행을 세 화면이 읽는다", async () => {
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕" }] });
 
     expect(hoisted.revalidated, JSON.stringify(hoisted.revalidated)).toContainEqual([
       "/projects/acme",
@@ -91,15 +91,15 @@ describe("편집 → DB → 다음 pull의 출력", () => {
   });
 
   it("저장한 값이 pull이 커밋하는 파일에 그대로 나온다", async () => {
-    const saved = await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕하세요" });
-    expect(saved).toEqual({ ok: true, value: "안녕하세요" });
+    const saved = await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕하세요" }] });
+    expect(saved).toEqual({ ok: true, keyId: "k-greet", cells: [{ localeCode: "ko", value: "안녕하세요" }] });
 
     const { byPath } = await pullFiles(db.prisma);
     expect(byPath["i18n/ko.json"]).toBe('{\n  "a.greet": "안녕하세요"\n}\n');
   });
 
   it("base 로케일 편집도 파일에 반영된다 — 고정된 것은 키뿐이다", async () => {
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "en", value: "Hi there" });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "en", value: "Hi there" }] });
     const { byPath } = await pullFiles(db.prisma);
     expect(byPath["i18n/en.json"]).toContain('"a.greet": "Hi there"');
   });
@@ -108,26 +108,26 @@ describe("편집 → DB → 다음 pull의 출력", () => {
     db.surfaces.push({ ...db.surfaces[0]!, id: "b", slug: "b", baseLocale: "ko" });
     db.keys[1]!.surfaceId = "b";
     db.locales[1]!.surfaceId = "b";
-    const wrongKey = await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-bye", localeCode: "en", value: "wrong" });
-    expect(wrongKey).toEqual({ ok: false, error: "key not found in this project" });
-    const wrongLocale = await saveTranslation({ surfaceSlug: "b", slug: "acme", keyId: "k-bye", localeCode: "en", value: "wrong" });
-    expect(wrongLocale).toEqual({ ok: false, error: "locale not found in this project" });
+    const wrongKey = await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-bye", changes: [{ localeCode: "en", value: "wrong" }] });
+    expect(wrongKey).toEqual({ ok: false, error: "key-unavailable" });
+    const wrongLocale = await saveTranslationKey({ surfaceSlug: "b", slug: "acme", keyId: "k-bye", changes: [{ localeCode: "en", value: "wrong" }] });
+    expect(wrongLocale).toEqual({ ok: false, error: "unknown-locale", localeCodes: ["en"] });
     expect(db.translations).toEqual([]);
-    expect(await saveTranslation({ surfaceSlug: "b", slug: "acme", keyId: "k-bye", localeCode: "ko", value: "B" })).toEqual({ ok: true, value: "B" });
+    expect(await saveTranslationKey({ surfaceSlug: "b", slug: "acme", keyId: "k-bye", changes: [{ localeCode: "ko", value: "B" }] })).toEqual({ ok: true, keyId: "k-bye", cells: [{ localeCode: "ko", value: "B" }] });
     expect(db.translations).toHaveLength(1);
     expect(db.translations[0]).toMatchObject({ projectId: "p1", surfaceId: "b", keyId: "k-bye", value: "B" });
   });
 
   it("저장하지 않은 키는 파일에 없다 — 미번역과 빈 값은 다르다", async () => {
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕" }] });
     const { byPath } = await pullFiles(db.prisma);
     expect(byPath["i18n/ko.json"]).not.toContain("a.bye");
   });
 
   it("값을 지우면 그 키가 파일에서 빠진다 — 행은 남고 키는 살아 있다", async () => {
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" });
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-bye", localeCode: "ko", value: "잘가" });
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "" });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕" }] });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-bye", changes: [{ localeCode: "ko", value: "잘가" }] });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "" }] });
 
     // 행은 남는다 — 지우면 export에서 키가 빠져 코드가 참조하는 키가 사라진다 (lib/keys/save.ts).
     expect(db.translations.find((t) => t.keyId === "k-greet" && t.localeCode === "ko")?.value).toBe("");
@@ -137,8 +137,8 @@ describe("편집 → DB → 다음 pull의 출력", () => {
   });
 
   it("공백만 입력은 미번역이고, 값 안의 앞뒤 공백은 보존한다", async () => {
-    expect(await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "   " })).toEqual({ ok: true, value: "" });
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-bye", localeCode: "ko", value: " 잘가 " });
+    expect(await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "   " }] })).toEqual({ ok: true, keyId: "k-greet", cells: [] });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-bye", changes: [{ localeCode: "ko", value: " 잘가 " }] });
     const { byPath } = await pullFiles(db.prisma);
     expect(byPath["i18n/ko.json"]).toBe('{\n  "a.bye": " 잘가 "\n}\n');
   });
@@ -150,7 +150,7 @@ describe("편집 → DB → 다음 pull의 출력", () => {
       description: null, placeholders: null, needsReview: true, updatedBy: null,
       updatedAt: new Date("2026-09-02T00:00:00Z"),
     });
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "새 번역" });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "새 번역" }] });
 
     const row = db.translations.find((t) => t.keyId === "k-greet");
     // ⚠️ **핸들이 아니라 `User.id`다** (SaaS 2단계 §4). 컬럼 타입은 그대로이고 담기는 값만 바뀌었다 —
@@ -181,7 +181,7 @@ describe("편집이 pull의 1층 스킵을 푼다", () => {
     const skipped = await pullFiles(db.prisma, { lastPulledAt: before });
     expect(skipped.calls).toEqual([]);
 
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕" }] });
 
     const woken = await pullFiles(db.prisma, { lastPulledAt: before });
     expect(woken.calls.length).toBeGreaterThan(0);
@@ -189,13 +189,13 @@ describe("편집이 pull의 1층 스킵을 푼다", () => {
   });
 
   it("같은 값 재저장은 DB를 건드리지 않는다 — noop이 pull을 깨우면 빈 PR이 쌓인다", async () => {
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕" }] });
     const stamp = db.translations[0]?.updatedAt;
     // "DB를 건드리지 않는다"를 **쓰기 미발행**으로 관측한다 — updatedAt 동일성만으로는 같은 값을
     // 다시 쓴 경우와 구별되지 않는다 (2026-09-04 audit #24).
     const upsert = vi.spyOn(db.prisma.translation, "upsert");
 
-    expect(await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" })).toEqual({ ok: true, value: "안녕" });
+    expect(await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕" }] })).toEqual({ ok: true, keyId: "k-greet", cells: [] });
     expect(db.translations[0]?.updatedAt).toEqual(stamp);
     expect(upsert).not.toHaveBeenCalled();
   });
@@ -214,26 +214,20 @@ describe("Server Action은 공개 엔드포인트다 — 스스로 막는다", (
       keys: [{ id: "k-other", projectId: "p2", key: "x", sourceText: "X", description: null, sortIndex: 0, orphaned: false }],
     });
     hoisted.prisma = other.prisma;
-    expect(await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-other", localeCode: "ko", value: "탈취" })).toEqual({
-      ok: false,
-      error: "key not found in this project",
-    });
+    expect(await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-other", changes: [{ localeCode: "ko", value: "탈취" }] })).toEqual({ ok: false, error: "key-unavailable" });
     expect(other.translations).toEqual([]);
   });
 
   it("프로젝트에 없는 로케일은 거부한다", async () => {
-    expect(await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "fr", value: "bonjour" })).toEqual({
-      ok: false,
-      error: "locale not found in this project",
-    });
+    expect(await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "fr", value: "bonjour" }] })).toEqual({ ok: false, error: "unknown-locale", localeCodes: ["fr"] });
   });
 
   it("입력이 계약을 벗어나면 거부한다", async () => {
-    expect(await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "", localeCode: "ko", value: "x" })).toMatchObject({ ok: false });
-    expect(await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "x".repeat(10_001) })).toMatchObject({ ok: false });
-    expect(await saveTranslation(null)).toMatchObject({ ok: false });
+    expect(await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "", changes: [{ localeCode: "ko", value: "x" }] })).toMatchObject({ ok: false });
+    expect(await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "x".repeat(10_001) }] })).toMatchObject({ ok: false });
+    expect(await saveTranslationKey(null)).toMatchObject({ ok: false });
     // slug가 없으면 기본값으로 떨어지지 않는다 — 편집 경로에 env 폴백이 없다.
-    expect(await saveTranslation({ keyId: "k-greet", localeCode: "ko", value: "x" })).toMatchObject({ ok: false });
+    expect(await saveTranslationKey({ keyId: "k-greet", changes: [{ localeCode: "ko", value: "x" }] })).toMatchObject({ ok: false });
   });
 });
 
@@ -263,21 +257,18 @@ describe("orphaned 로케일", () => {
   });
 
   it("pull이 그 로케일 파일을 내지 않는다 — 지운 파일이 되살아나면 안 된다", async () => {
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕" }] });
     const { byPath } = await pullFiles(orphanDb.prisma);
     expect(Object.keys(byPath)).not.toContain("i18n/fr.json");
     expect(Object.keys(byPath)).toContain("i18n/ko.json");
   });
 
   it("저장을 거부한다 — 리포에 도달할 수 없는 값을 받으면 pull이 헛돈다", async () => {
-    expect(await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "fr", value: "Salut" })).toEqual({
-      ok: false,
-      error: "locale is no longer in the repo",
-    });
+    expect(await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "fr", value: "Salut" }] })).toEqual({ ok: false, error: "unknown-locale", localeCodes: ["fr"] });
   });
 
   it("번역 행은 남는다 — 로케일이 돌아오면 값이 살아 돌아와야 한다", async () => {
-    await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" });
+    await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕" }] });
     expect(orphanDb.translations.find((t) => t.localeCode === "fr")?.value).toBe("Bonjour");
   });
 });
@@ -298,14 +289,11 @@ describe("orphaned 키", () => {
   });
 
   it("저장을 거부한다 — UI 방어에 의존하지 않는다", async () => {
-    expect(await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-gone", localeCode: "ko", value: "사라진" })).toEqual({
-      ok: false,
-      error: "key is no longer in the code",
-    });
+    expect(await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-gone", changes: [{ localeCode: "ko", value: "사라진" }] })).toEqual({ ok: false, error: "key-unavailable" });
   });
 
   it("살아 있는 키는 그대로 받는다", async () => {
-    expect((await saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value: "안녕" })).ok).toBe(true);
+    expect((await saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value: "안녕" }] })).ok).toBe(true);
   });
 });
 
@@ -324,7 +312,7 @@ describe("저장의 편집 토큰 (T4)", () => {
   });
 
   const row = () => db.translations.find((t) => t.keyId === "k-greet" && t.localeCode === "ko") as { pendingEditToken?: string | null } | undefined;
-  const save = (value: string) => saveTranslation({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", localeCode: "ko", value });
+  const save = (value: string) => saveTranslationKey({ surfaceSlug: "default", slug: "acme", keyId: "k-greet", changes: [{ localeCode: "ko", value }] });
 
   it("[C7] 새 셀 저장 → 토큰이 생긴다", async () => {
     await save("안녕");

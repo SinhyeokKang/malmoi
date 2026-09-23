@@ -120,7 +120,7 @@ async function cell(projectId: string, key: string, locale: string) {
   return rows[0];
 }
 
-/** 편집 저장을 흉내 낸다 — `saveTranslation`의 upsert와 같은 컬럼을 같은 문장에서 쓴다. */
+/** 편집 저장을 흉내 낸다 — `saveTranslationKey`의 upsert와 같은 컬럼을 같은 문장에서 쓴다. */
 async function resave(projectId: string, key: string, locale: string, value: string, token: string, updatedAt?: Date) {
   await pool.query(`UPDATE "Translation" SET "value" = $1, "updatedBy" = 'editor', "pendingEditToken" = $2, "updatedAt" = COALESCE($3, now()) WHERE "id" = $4`,
     [value, token, updatedAt ?? null, cellId(projectId, key, locale)]);

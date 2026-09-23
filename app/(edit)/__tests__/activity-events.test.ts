@@ -25,7 +25,7 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/pull/trigger", () => ({ triggerPull: hoisted.triggerPull }));
 
-const { saveTranslation, triggerPullAction } = await import("../actions");
+const { saveTranslationKey, triggerPullAction } = await import("../actions");
 const { createInvitation, revokeInvitation, changeMember, archiveProject, unarchiveProject, rotatePushToken } =
   await import("../projects/actions");
 
@@ -63,7 +63,7 @@ beforeEach(() => {
 });
 
 const save = (value: string) =>
-  saveTranslation({ slug: "alpha", surfaceSlug: "default", keyId: "k1", localeCode: "ko", value });
+  saveTranslationKey({ slug: "alpha", surfaceSlug: "default", keyId: "k1", changes: [{ localeCode: "ko", value }] });
 
 describe("번역 저장 — 값과 사건이 같은 트랜잭션이다", () => {
   it("실제로 바뀐 저장만 사건을 만들고, 전후 값이 잠금 뒤 읽은 값이다", async () => {
@@ -97,8 +97,8 @@ describe("번역 저장 — 값과 사건이 같은 트랜잭션이다", () => {
   });
 
   it("거부된 저장은 사건을 만들지 않는다 — 키가 이 프로젝트 것이 아니다", async () => {
-    const result = await saveTranslation({ slug: "alpha", surfaceSlug: "default", keyId: "nope", localeCode: "ko", value: "x" });
-    expect(result).toEqual({ ok: false, error: "key not found in this project" });
+    const result = await saveTranslationKey({ slug: "alpha", surfaceSlug: "default", keyId: "nope", changes: [{ localeCode: "ko", value: "x" }] });
+    expect(result).toEqual({ ok: false, error: "key-unavailable" });
     expect(db.projectEvents).toHaveLength(0);
   });
 

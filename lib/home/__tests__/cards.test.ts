@@ -170,7 +170,7 @@ describe("세 셀 구간의 겹침 0 — summaryQueue가 같은 셀을 두 번 �
   });
 
   /**
-   * ⚠️ **미발송은 사람이 저장한 칸이므로 값이 있다** — `saveTranslation`이 `needsReview: false`와
+   * ⚠️ **미발송은 사람이 저장한 칸이므로 값이 있다** — `saveTranslationKey`가 `needsReview: false`와
    * `updatedBy`를 함께 쓰고 push는 `updatedBy = NULL`과 `needsReview = true`를 함께 쓴다. 둘이 동시에
    * 참일 수 없다는 것이 이 배타성의 근거다.
    */
