@@ -29,8 +29,8 @@ it("EDITOR는 연결계·재시도 없이 진행률과 고아 복구 안내를 �
   expect(button("Run first import")).toBeUndefined();
   expect(document.querySelector('[data-source-connection]')).toBeNull();
   expect(document.querySelector('a[href*="settings"]')).toBeNull();
-  expect(new URL(document.querySelector('a[href*="locales=en"]')!.getAttribute('href')!, 'http://localhost').searchParams.get('ns')).toBe('*');
-  expect(document.querySelector('a[href*="locales=ja"]')).toBeNull();
+  expect(new URL(document.querySelector('a[href*="language=en"]')!.getAttribute('href')!, 'http://localhost').searchParams.get('ns')).toBe('*');
+  expect(document.querySelector('a[href*="language=ja"]')).toBeNull();
   expect(document.querySelector('button button, button a, a button')).toBeNull();
 });
 it.each([{ rejected: "forbidden" }, { failed: true }])("상세 오류에서 장애만 재시도한다 %j", async result => {
@@ -100,7 +100,7 @@ it("저장 중 닫기와 모든 번역 진입을 잠그고 거부 뒤 다시 연
   expect([...dialog.querySelectorAll('button')].filter(n => n.textContent === 'Open').every(n => n.disabled)).toBe(true);
   await act(async () => { resolve({ ok: false, error: 'orphaned-locale' }); });
   expect(button('Close')).toHaveProperty('disabled', false);
-  expect(dialog.querySelector('a[href*="locales=en"]')).not.toBeNull();
+  expect(dialog.querySelector('a[href*="language=en"]')).not.toBeNull();
 });
 it.each(["OWNER", "EDITOR"] as const)("소스가 없을 때 안내와 추가 권한 %s", async role => {
   await render(<SourcesScreen slug="p" role={role} data={{ installed: true, sources: [] }} adapters={[]} now={new Date()} />);

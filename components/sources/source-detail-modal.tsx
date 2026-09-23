@@ -157,7 +157,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
                 : row.needsReview > 0 ? <Badge variant="warning">{m.sources.needReview(row.needsReview)}</Badge>
                 : row.isBase ? <span className="text-neutral-400">{m.sources.baseRow}</span> : null}
             </span>
-            {canOpen && !row.orphaned ? <ButtonLink size="sm" className="h-8 shrink-0 rounded-[10px]" href={routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, locales: row.code })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, locales: row.code })); } }}>{m.sources.openLanguage}<ArrowRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>
+            {canOpen && !row.orphaned ? <ButtonLink size="sm" className="h-8 shrink-0 rounded-[10px]" href={routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })); } }}>{m.sources.openLanguage}<ArrowRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>
               : busy ? <Button size="sm" className="h-8 shrink-0 rounded-[10px]" disabled>{m.sources.openLanguage}</Button>
               : <><span id={`language-open-reason-${row.code}`} className="sr-only">{row.orphaned ? m.sources.orphanReason : disabledReason}</span><Button size="sm" className="h-8 shrink-0 rounded-[10px]" aria-disabled aria-describedby={`language-open-reason-${row.code}`} onClick={event => event.preventDefault()}>{m.sources.openLanguage}</Button></>}
           </li>;

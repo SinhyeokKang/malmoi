@@ -109,12 +109,11 @@ function AttentionRow({ item, slug, now }: { item: AttentionItem; slug: string; 
   const href =
     item.kind === "import_failed"
       ? routes.settings(slug)
-      : routes.surfaceTranslations(slug, item.surfaceSlug, {
-          // ⚠️ **카드와 같은 이유로 `ns`를 명시한다** — 기본 착지는 상태를 안 봐서 0건이 나온다.
-          ns: ALL_NAMESPACES,
-          locales: item.code,
-          state: item.kind === "review" ? "review" : "untranslated",
-        });
+      : routes.surfaceTranslations(slug, item.surfaceSlug, item.kind === "review"
+          // 그 로케일의 검토 대기 — 상세 언어를 그 로케일로 좁힌다(translation-rework T12).
+          ? { ns: ALL_NAMESPACES, state: "review", language: item.code }
+          // 그 로케일이 비어 있는 키 — `Missing in {locale}`이 정확히 그 뜻이다.
+          : { ns: ALL_NAMESPACES, completion: "missing", missingLocale: item.code });
   const tile = TILE[item.kind];
   const Tile = tile.icon;
 

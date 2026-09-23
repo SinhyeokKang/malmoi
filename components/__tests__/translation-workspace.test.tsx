@@ -38,11 +38,11 @@ function props(over: Partial<WorkspaceProps> = {}): WorkspaceProps {
         { keyId: "k2", surfaceSlug: "web", namespace: "common", key: "common.save", sourceText: "Save", missingCount: 0, totalLocales: 3, hasPending: false, hasReview: false, isNew: false },
       ],
       matchedKeyCount: 2, incompleteKeyCount: 1, nextCursor: null,
-      effective: { completion: "all", substituted: false, excludedSurfaceIds: [] },
+      effective: { completion: "all", substituted: false, excludedSurfaceIds: [] }, selectedInResult: true,
     },
     detail: {
       key: { id: "k1", key: "common.empty", namespace: "common", sourceText: "Nothing here", description: "Shown on the empty list.", surfaceSlug: "web" },
-      lastCommitSha: "abc", repo: { owner: "o", name: "r" }, refs: [{ path: "src/empty.tsx", line: 24 }],
+      refs: [{ path: "src/empty.tsx", line: 24, href: "https://github.com/o/r/blob/abc/src/empty.tsx#L24" }],
       locales: [
         { code: "en", isBase: true, value: "Nothing here", needsReview: false, pending: false, actorLabel: null },
         { code: "ko", isBase: false, value: "비어 있음", needsReview: false, pending: true, actorLabel: "Editor" },
@@ -52,6 +52,7 @@ function props(over: Partial<WorkspaceProps> = {}): WorkspaceProps {
     unpublished: 1,
     publish: { repo: { owner: "o", name: "r", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }, lastSentLabel: null, lastPrUrl: null },
     sync: { name: "acme", branch: "main" },
+    baseLocale: "en", declaredBaseLocale: null,
     ...over,
   };
 }
@@ -75,6 +76,8 @@ const row = (container: HTMLElement, key: string) => {
 
 beforeEach(() => {
   for (const fn of Object.values(mocks)) fn.mockReset();
+  // 세션 복구 사본이 테스트 사이에 남으면 앞 테스트의 draft가 복원된다 — 복구가 동작한다는 뜻이지만 격리가 먼저다.
+  window.sessionStorage.clear();
   mocks.save.mockResolvedValue({ ok: true, keyId: "k1", cells: [{ localeCode: "zh", value: "空" }] });
 });
 

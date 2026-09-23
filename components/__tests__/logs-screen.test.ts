@@ -195,7 +195,8 @@ describe("logs 상세 — 껍데기 시각 값", () => {
   });
 
   /** ⚠️ **화살표가 "여기를 떠난다"를 말한다** — 캔버스가 목적지 셋 모두에 달았다(`1d`·`1e`·`1f`). */
-  it("목적지 링크 셋이 모두 화살표를 든다", () => {
-    expect(body.match(/\{LEAVE\}/g)).toHaveLength(3);
+  // translation-rework T12가 넷째(`Open this translation`)를 더했다 — 문구는 그 전부터 사전에 있었고 소비자가 없었다.
+  it("목적지 링크 넷이 모두 화살표를 든다", () => {
+    expect(body.match(/\{LEAVE\}/g)).toHaveLength(4);
   });
 });

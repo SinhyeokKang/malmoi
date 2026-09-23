@@ -1,4 +1,4 @@
-import { ALL_NAMESPACES } from "@/lib/routes";
+import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
 
 /**
  * 번역 화면의 URL 계약 (translation-rework — design §3·§3.1·§10.2).
@@ -84,12 +84,13 @@ export function parseTranslationQuery(raw: RawParams): TranslationQuery {
 }
 
 /** 기본값을 빼고 내보낸다 — 옛 파라미터(`locales`·`focus`·`state=untranslated`)는 다시 나가지 않는다. */
-export function serializeTranslationQuery(query: TranslationQuery): Record<string, string> {
-  const out: Record<string, string> = {};
+export function serializeTranslationQuery(query: TranslationQuery): TranslationsQuery {
+  const out: TranslationsQuery = {};
   if (query.ns !== ALL_NAMESPACES) out.ns = query.ns;
   if (query.scope !== "source") out.scope = query.scope;
   if (query.completion !== "all") out.completion = query.completion;
-  for (const name of ["missingLocale", "state", "q", "cursor", "key", "keySurface", "language"] as const) {
+  if (query.state !== undefined) out.state = query.state;
+  for (const name of ["missingLocale", "q", "cursor", "key", "keySurface", "language"] as const) {
     const value = query[name];
     if (value !== undefined) out[name] = value;
   }
@@ -128,4 +129,9 @@ export function treeQuery(query: TranslationQuery, ns: string): TranslationQuery
   delete next.key;
   delete next.keySurface;
   return next;
+}
+
+/** 작업 화면의 링크 — 경로 리터럴은 `lib/routes.ts`가 든다(`entry-points.test.ts`의 죽은 라우트·쿼리 수신자 검사). */
+export function translationsHref(slug: string, surfaceSlug: string, query: TranslationQuery): string {
+  return routes.surfaceTranslations(slug, surfaceSlug, serializeTranslationQuery(query));
 }

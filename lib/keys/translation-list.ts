@@ -1,7 +1,7 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { actorLabel } from "@/lib/keys/view";
 import { effectiveCompletion, type EffectiveCompletion } from "@/lib/translations/summary";
-import { ALL_NAMESPACES, type TranslationQuery } from "@/lib/translations/query";
+import { ALL_NAMESPACES, DEFAULT_TRANSLATION_QUERY, translationsHref, type TranslationQuery } from "@/lib/translations/query";
 
 /**
  * **번역 화면의 조회 셋** (translation-rework T9 — design §2 · §10.2). 트리 · 요약 목록 · 선택 키 상세.
@@ -69,6 +69,8 @@ export type TranslationList = {
   incompleteKeyCount: number;
   nextCursor: string | null;
   effective: EffectiveCompletion;
+  /** 선택 키가 이 조건의 결과(첫 페이지 밖 포함)에 있는가. 선택이 없으면 `null`. 필터·검색 뒤 상세를 비울지의 근거다. */
+  selectedInResult: boolean | null;
 };
 
 type Cursor = [rank: number, surfaceSlug: string, sortIndex: number, key: string, id: string];
@@ -103,7 +105,7 @@ type Row = {
 
 export async function loadTranslationList(
   prisma: PrismaClient,
-  input: { projectId: string; routeSurfaceId: string; query: TranslationQuery; pageSize?: number },
+  input: { projectId: string; routeSurfaceId: string; query: TranslationQuery; pageSize?: number; selectedKeyId?: string },
 ): Promise<TranslationList> {
   const { projectId, routeSurfaceId, query } = input;
   const pageSize = input.pageSize ?? PAGE_SIZE;
@@ -114,7 +116,8 @@ export async function loadTranslationList(
   });
   const effective = effectiveCompletion(query, scope.map(s => ({ surfaceId: s.id, locales: s.locales.map(l => l.code) })));
   const surfaceIds = scope.map(s => s.id).filter(id => !effective.excludedSurfaceIds.includes(id));
-  if (surfaceIds.length === 0) return { rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, nextCursor: null, effective };
+  const selected = input.selectedKeyId ?? null;
+  if (surfaceIds.length === 0) return { rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, nextCursor: null, effective, selectedInResult: selected === null ? null : false };
 
   const pattern = query.q === undefined ? null : likePattern(query.q);
   const missingLocale = effective.completion === "missing" ? effective.missingLocale ?? null : null;
@@ -167,8 +170,9 @@ export async function loadTranslationList(
       SELECT *, CASE WHEN "missing" > 0 OR "review" THEN 0 ELSE 1 END AS "rank" FROM ks WHERE ${Prisma.join(filters, " AND ")}
     )`;
 
-  const [counts] = await prisma.$queryRaw<{ matched: number; incomplete: number }[]>`
-    ${filtered} SELECT count(*)::int AS "matched", (count(*) FILTER (WHERE "missing" > 0))::int AS "incomplete" FROM f`;
+  const [counts] = await prisma.$queryRaw<{ matched: number; incomplete: number; selected: boolean | null }[]>`
+    ${filtered} SELECT count(*)::int AS "matched", (count(*) FILTER (WHERE "missing" > 0))::int AS "incomplete",
+      CASE WHEN ${selected}::text IS NULL THEN NULL ELSE bool_or("id" = ${selected}) END AS "selected" FROM f`;
   const cursor = decodeCursor(query.cursor);
   const after = cursor === null ? Prisma.sql`TRUE` : Prisma.sql`("rank", "surfaceSlug" COLLATE "C", "sidx", "key" COLLATE "C", "id" COLLATE "C")
     > (${cursor[0]}::int, ${cursor[1]} COLLATE "C", ${cursor[2]}::int, ${cursor[3]} COLLATE "C", ${cursor[4]} COLLATE "C")`;
@@ -190,6 +194,8 @@ export async function loadTranslationList(
     incompleteKeyCount: counts?.incomplete ?? 0,
     nextCursor: page.length > pageSize && last !== undefined ? encodeCursor([last.rank, last.surfaceSlug, last.sidx, last.key, last.id]) : null,
     effective,
+    // 결과가 0행이면 bool_or가 NULL이다 — 선택이 있었으면 "없다"로 읽는다.
+    selectedInResult: selected === null ? null : counts?.selected === true,
   };
 }
 
@@ -276,9 +282,19 @@ export function withActorLabels(
 
 /** Logs의 옛 사건은 keyId 대신 키 이름을 든다 — 인가된 프로젝트·소스 slug·이름으로 **현재** id를 찾는다. 없으면 부재 안내다. */
 export async function resolveKeyIdByName(prisma: PrismaClient, input: { projectId: string; surfaceSlug: string; key: string }): Promise<string | null> {
-  const row = await prisma.stringKey.findFirst({
+  return (await findKeyByName(prisma, input))?.id ?? null;
+}
+
+async function findKeyByName(prisma: PrismaClient, input: { projectId: string; surfaceSlug: string; key: string }) {
+  return prisma.stringKey.findFirst({
     where: { projectId: input.projectId, key: input.key, orphaned: false, surface: { slug: input.surfaceSlug, archivedAt: null } },
-    select: { id: true },
+    select: { id: true, namespace: true },
   });
-  return row?.id ?? null;
+}
+
+/** Logs 상세의 `Open this translation` — 그 키의 네임스페이스에 선택된 채로 착지한다. 키가 없으면 링크를 그리지 않는다(`null`). */
+export async function translationLinkFor(prisma: PrismaClient, input: { projectId: string; slug: string; surfaceSlug: string; key: string }): Promise<string | null> {
+  const row = await findKeyByName(prisma, input);
+  if (row === null) return null;
+  return translationsHref(input.slug, input.surfaceSlug, { ...DEFAULT_TRANSLATION_QUERY, ns: row.namespace, scope: "namespace", key: row.id, keySurface: input.surfaceSlug });
 }

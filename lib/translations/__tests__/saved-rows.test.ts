@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applySavedRow, savedOutCount, startListGeneration } from "../saved-rows";
+import { applySavedRow, mergeServerRows, savedOutCount, startListGeneration } from "../saved-rows";
 
 /**
  * 저장 직후 목록 보존 (translation-rework T3 — spec §3.4 · §7 Saved 행 보존 · design §4).
@@ -46,5 +46,27 @@ describe("startListGeneration — 세대가 바뀌면 보존이 끝난다", () =
     const list = startListGeneration(rows, 3);
     expect(list.generation).toBe(3);
     expect(list.rows.every(r => !r.savedOut)).toBe(true);
+  });
+});
+
+describe("mergeServerRows — 같은 세대의 재검증", () => {
+  it("서버 목록에 남은 행은 새 요약으로 바꾸고, 빠진 행은 자리에 남아 savedOut이 된다", () => {
+    const list = startListGeneration(rows, 1);
+    const merged = mergeServerRows(list, [{ keyId: "a", missingCount: 1 }, { keyId: "c", missingCount: 0 }]);
+    expect(merged.rows).toEqual([
+      { row: { keyId: "a", missingCount: 1 }, savedOut: false },
+      { row: { keyId: "b", missingCount: 1 }, savedOut: true },
+      { row: { keyId: "c", missingCount: 0 }, savedOut: false },
+    ]);
+  });
+
+  it("세대 시작 때 없던 행을 끼워 넣지 않는다 — 목록 멤버십은 재필터에서만 바뀐다", () => {
+    const merged = mergeServerRows(startListGeneration(rows, 1), [...rows, { keyId: "z", missingCount: 9 }]);
+    expect(merged.rows.map(r => r.row.keyId)).toEqual(["a", "b", "c"]);
+  });
+
+  it("다시 서버 목록에 들어오면 savedOut을 푼다", () => {
+    const out = mergeServerRows(startListGeneration(rows, 1), [rows[0]!, rows[2]!]);
+    expect(savedOutCount(mergeServerRows(out, rows))).toBe(0);
   });
 });

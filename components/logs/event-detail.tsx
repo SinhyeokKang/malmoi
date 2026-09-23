@@ -32,6 +32,7 @@ export function EventDetail({
   archived,
   canOpenSettings,
   repoUrl,
+  translationHref = null,
 }: {
   row: EventRow;
   slug: string;
@@ -40,6 +41,8 @@ export function EventDetail({
   /** OWNER만 — EDITOR는 그 화면에 못 들어간다. */
   canOpenSettings: boolean;
   repoUrl: string | null;
+  /** 번역 사건의 키에 착지하는 주소 — 페이지가 서버에서 키 이름을 현재 id로 해석한다. 사라진 키면 `null`이고 링크가 없다. */
+  translationHref?: string | null;
 }) {
   const view = eventView({ kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
   const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype });
@@ -143,7 +146,7 @@ export function EventDetail({
         ⚠️ **`data-*`로 잡는다** — 우상단 X와 접근 이름이 같아(둘 다 "Close") role 질의가 둘을 함께 집는다.
       */}
       <div data-event-detail-footer className="border-divider flex shrink-0 items-center gap-2 border-t px-6 py-4">
-        {destination(row, slug, canOpenSettings, repoUrl)}
+        {destination(row, slug, canOpenSettings, repoUrl, translationHref)}
         <DialogClose asChild>
           <Button className="ml-auto">{m.logs.detail.actions.close}</Button>
         </DialogClose>
@@ -290,7 +293,8 @@ const FOOTER_LINK = cn(buttonClass(), "focus-visible:ring-ring focus-visible:rin
 const LEAVE = <ArrowUpRight className="text-muted-foreground size-[15px]" aria-hidden />;
 
 /** 목적지 링크 하나 — 권한이 없거나 대상이 없으면 **그리지 않는다.** */
-function destination(row: EventRow, slug: string, canOpenSettings: boolean, repoUrl: string | null): ReactNode {
+function destination(row: EventRow, slug: string, canOpenSettings: boolean, repoUrl: string | null, translationHref: string | null): ReactNode {
+  if (row.kind === "TRANSLATION" && translationHref !== null) return <Link href={translationHref} className={FOOTER_LINK}>{m.logs.detail.actions.openTranslation}{LEAVE}</Link>;
   if (row.kind === "MEMBER") return <Link href={routes.members(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openMembers}{LEAVE}</Link>;
   if (row.kind === "SETTINGS" && canOpenSettings) return <Link href={routes.settings(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openSettings}{LEAVE}</Link>;
   if (row.kind === "PUBLISH" && repoUrl !== null) return <a href={repoUrl} target="_blank" rel="noreferrer" className={FOOTER_LINK}>{m.logs.detail.actions.openRepository}{LEAVE}</a>;

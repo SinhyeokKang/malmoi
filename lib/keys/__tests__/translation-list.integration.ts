@@ -14,6 +14,7 @@ import {
   loadTranslationList,
   loadTranslationTree,
   resolveKeyIdByName,
+  translationLinkFor,
 } from "@/lib/keys/translation-list";
 import { DEFAULT_TRANSLATION_QUERY, type TranslationQuery } from "@/lib/translations/query";
 import { keyMatches, orderKeySummaries, summarizeKey } from "@/lib/translations/summary";
@@ -195,6 +196,16 @@ describe("loadTranslationList — oracle 대조", () => {
   });
 });
 
+describe("loadTranslationList — 선택 키의 결과 포함", () => {
+  it("선택 키가 필터 결과에 있는지 첫 페이지 밖까지 판정한다", async () => {
+    const hit = await loadTranslationList(prisma, { projectId: "p", routeSurfaceId: "p-web", query: q({ completion: "incomplete" }), pageSize: 1, selectedKeyId: "w7" });
+    expect(hit.selectedInResult).toBe(true);
+    const miss = await loadTranslationList(prisma, { projectId: "p", routeSurfaceId: "p-web", query: q({ completion: "incomplete" }), selectedKeyId: "w1" });
+    expect(miss.selectedInResult).toBe(false);
+    expect((await list(q({}))).selectedInResult).toBeNull();
+  });
+});
+
 describe("loadTranslationList — 검색", () => {
   it("키 이름·원문·활성 로케일 저장 번역을 대소문자 무시로 찾는다", async () => {
     expect((await list(q({ q: "CANCEL" }))).rows.map(r => r.keyId)).toEqual(["w2"]);
@@ -272,5 +283,17 @@ describe("resolveKeyIdByName — Logs의 옛 사건이 가리키는 키", () => 
     expect(await resolveKeyIdByName(prisma, { projectId: "p", surfaceSlug: "web", key: "common.save" })).toBe("w1");
     expect(await resolveKeyIdByName(prisma, { projectId: "p", surfaceSlug: "web", key: "auth.old" })).toBeNull();
     expect(await resolveKeyIdByName(prisma, { projectId: "q", surfaceSlug: "app", key: "app.title" })).toBeNull();
+  });
+});
+
+describe("translationLinkFor — Logs 상세의 'Open this translation'", () => {
+  it("사건의 소스·키 이름으로 현재 키를 찾아 그 키에 착지하는 주소를 만든다", async () => {
+    const href = await translationLinkFor(prisma, { projectId: "p", slug: "p", surfaceSlug: "web", key: "common.save" });
+    expect(href).toBe("/projects/p/surfaces/web/translations?ns=common&scope=namespace&key=w1&keySurface=web");
+  });
+
+  it("사라진 키·다른 프로젝트의 키는 링크가 없다 — 그리지 않는다", async () => {
+    expect(await translationLinkFor(prisma, { projectId: "p", slug: "p", surfaceSlug: "web", key: "auth.old" })).toBeNull();
+    expect(await translationLinkFor(prisma, { projectId: "p", slug: "p", surfaceSlug: "web", key: "nope" })).toBeNull();
   });
 });
