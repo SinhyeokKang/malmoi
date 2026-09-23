@@ -62,9 +62,13 @@ export function reduceKeyDraft(state: KeyDraftState, action: KeyDraftAction): Ke
       const sent = state.inFlight.sent;
       for (const cell of action.cells) {
         if (!Object.hasOwn(saved, cell.localeCode)) continue;
+        // 보낸 셀은 보낸 그대로인 입력에만 서버 정규화값을 입히고(뒤에 더 친 입력은 남긴다), 보내지 않은 셀은
+        // `server`와 같게 미저장이 아닐 때만 따라간다 — 안 그러면 깨끗한 셀이 Not saved가 되어 남의 값을 덮는다.
+        const follows = Object.hasOwn(sent, cell.localeCode)
+          ? draft[cell.localeCode] === sent[cell.localeCode]
+          : draft[cell.localeCode] === saved[cell.localeCode];
         saved[cell.localeCode] = cell.value;
-        // 보낸 뒤 더 친 입력은 남긴다 — 서버 정규화값은 보낸 그대로인 입력에만 입힌다.
-        if (Object.hasOwn(sent, cell.localeCode) && draft[cell.localeCode] === sent[cell.localeCode]) draft[cell.localeCode] = cell.value;
+        if (follows) draft[cell.localeCode] = cell.value;
       }
       return { keyId: state.keyId, order: state.order, saved, draft };
     }

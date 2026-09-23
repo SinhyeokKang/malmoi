@@ -104,6 +104,8 @@ const CONDITION_FIELDS = ["ns", "scope", "completion", "missingLocale", "state",
  */
 export function nextQuery(query: TranslationQuery, patch: Partial<TranslationQuery>): TranslationQuery {
   const next: TranslationQuery = { ...query, ...patch };
+  // 언어 없는 missing은 All keys다 — parse와 같은 규칙이어야 URL 왕복이 같은 상태를 낸다(R5).
+  if (next.completion === "missing" && next.missingLocale === undefined) next.completion = "all";
   if (next.completion !== "missing") delete next.missingLocale;
   for (const name of Object.keys(next) as (keyof TranslationQuery)[]) if (next[name] === undefined) delete next[name];
   if (CONDITION_FIELDS.some(name => next[name] !== query[name])) delete next.cursor;

@@ -146,6 +146,12 @@ describe("nextQuery — 조건이 바뀌면 cursor를 푼다", () => {
     expect(nextQuery(missing, { completion: "incomplete" }).missingLocale).toBeUndefined();
   });
 
+  it("언어 없는 missing은 All keys로 접는다 — URL 왕복과 같은 상태여야 한다 (R5)", () => {
+    const next = nextQuery(base, { completion: "missing" });
+    expect(next.completion).toBe("all");
+    expect(parseTranslationQuery(serializeTranslationQuery(next))).toEqual(next);
+  });
+
   it("같은 값으로 바꾸는 것은 조건 변경이 아니다", () => {
     expect(nextQuery(base, { scope: "source" }).cursor).toBe("c9");
   });

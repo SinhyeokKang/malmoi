@@ -91,6 +91,20 @@ describe("reduceKeyDraft — success는 보낸 draft에만 적용한다", () => 
     expect(dirtyLocales(s)).toEqual([]);
   });
 
+  it("응답에 실린 보내지 않은 셀은 미저장이 아니면 입력도 서버 값을 따른다 — 깨끗한 셀이 Not saved가 되지 않는다", () => {
+    const sent = submit(edit(start(), "ko", "x"));
+    const s = reduceKeyDraft(sent, { type: "success", requestId: "r1", keyId: "k1", cells: [{ localeCode: "ko", value: "x" }, { localeCode: "ja", value: "theirs" }] });
+    expect(s.draft.ja).toBe("theirs");
+    expect(dirtyLocales(s)).toEqual([]);
+  });
+
+  it("응답에 실린 보내지 않은 셀이 미저장이면 입력을 보존한다", () => {
+    const sent = edit(submit(edit(start(), "ko", "x")), "en", "mine");
+    const s = reduceKeyDraft(sent, { type: "success", requestId: "r1", keyId: "k1", cells: [{ localeCode: "ko", value: "x" }, { localeCode: "en", value: "theirs" }] });
+    expect(s.draft.en).toBe("mine");
+    expect(s.saved.en).toBe("theirs");
+  });
+
   it("다른 요청이나 다른 키의 늦은 응답은 적용하지 않는다", () => {
     const sent = submit(edit(start(), "ko", "x"));
     expect(reduceKeyDraft(sent, { type: "success", requestId: "old", keyId: "k1", cells: [{ localeCode: "ko", value: "x" }] })).toEqual(sent);
