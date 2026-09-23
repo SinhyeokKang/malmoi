@@ -2437,3 +2437,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 첫째는 Radix Dialog의 열림 자동 포커스가 소비자 컴포넌트의 `useEffect`보다 **늦게** 돌기 때문이다. effect로 준 포커스를 Radix가 덮는다. 둘째는 `type="email"`의 값 정규화와 constraint validation이 앱의 판정(`parseRecipients`)보다 **앞에** 서기 때문이다.
 - **그물**: 놓친 것은 DOM 테스트다. 첫째는 실행 순서에 따라 통과와 실패가 갈렸고, 둘째는 jsdom에서도 red였지만 원인이 테스트로 보였다. 잡은 것은 `/design-sync` 4단계의 Chrome 실측과 jsdom red 추적이다. 고친 뒤 `OnboardingModal`에 `initialFocusRef`를 두고(Radix의 `onOpenAutoFocus` 자리에서 옮긴다), 그 핸들러를 걷으면 red가 나는 `modal-initial-focus.test.tsx`를 세웠다. 입력은 `type="text"` + `inputMode="email"`, 폼은 `noValidate`로 바꿨다.
 - **재발 방지**: 모달이 열릴 때 포커스를 줄 자리는 effect가 아니라 `initialFocusRef`로 준다. `rg -n 'useEffect\(\(\) => \{[^}]*focus' components`로 열림 effect의 포커스를 찾는다. 앱이 직접 판정하는 입력에는 `type="email"`·`required`·`pattern`을 쓰지 않는다. 브라우저 검증이 먼저 돌아 앱의 사유 문구가 도달하지 않는다(POSTMORTEM 2026-09-06의 "거부 문구 미도달"과 같은 부류다).
+
+### 2026-09-24 — 🔁 링크 둘이 도착 화면에 없는 버튼 이름(`Send changes`)을 불렀다 (2026-09-14의 재발)
+
+- **영역**: `messages/en.tsx`(`repositorySync.sendFirst` · `projects.banner.action.send`) · `components/home/sync-button.tsx` · `components/projects/project-list.tsx`
+- **증상**: Sync 확인 Dialog의 `Send changes first`와 목록 띠의 `Send changes`가 번역 화면으로 데려가는데, 그 화면의 버튼은 `Publish`였다. 사전 주석 둘(`sendFirst` · `home.publish`)은 "그 화면의 실제 버튼 이름이 `Send changes`다"라고 단언하고 있었다 — 버튼 이름이 바뀔 때 주석과 링크가 함께 낡았다.
+- **근본 원인**: 가리키는 문구와 가리켜지는 버튼이 **같은 사전의 다른 절**(`repositorySync` · `projects` ↔ `translations.publish`)에 살아 구조로 묶여 있지 않았다. 2026-09-14의 재발 방지는 "새로 쓸 때 본다"였고, **대상 쪽 이름이 바뀔 때**를 덮지 못했다. 같은 계보로 용어가 절마다 갈려(surface/source · import/sync · locale/language · Retry/Try again) 한 화면에 둘이 섰다.
+- **그물**: 놓친 것 — 소스 스캔 전부(문장 사이의 참조를 못 본다). 잡은 것 — 2026-09-24 `/audit` UX 렌즈(#28 · #29). 고친 뒤 `lib/i18n/__tests__/terminology.test.ts`가 (1) 링크 라벨이 `m.translations.publish.button`을 **값으로** 포함하는지 — 버튼 이름이 바뀌면 red, (2) 사전 전체(함수 값은 호출해 렌더한 문장까지)에 DESIGN §10.1의 금지어가 0인지를 센다. 두 검사 모두 옛 값에서 red를 관측했다.
+- **재발 방지**: 다른 화면의 컨트롤을 부르는 문구는 **그 컨트롤의 사전 값을 테스트에서 참조해** 묶는다(문자열 사본으로 단언하지 않는다). 화면 용어를 늘리거나 바꿀 때는 DESIGN §10.1 표부터 고치고 `terminology.test.ts`의 `BANNED`를 함께 옮긴다. `rg -n 'Send changes|surface|import' messages/en.tsx`는 주석이 걸리므로 근거가 아니다 — 테스트가 문장만 센다.
