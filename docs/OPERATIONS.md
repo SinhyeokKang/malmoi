@@ -252,7 +252,9 @@ dig +short TXT mal-moi.com | tr -d '"' | sed 's/.*=//' | awk '{print length($0)}
 
 **구성**: 도메인 `notify.mal-moi.com`(Resend 리전 **Tokyo** `ap-northeast-1`, 2026-09-23 Verified) · 발신 `malmoi <invite@notify.mal-moi.com>` ·
 open/click tracking **꺼짐**(추적 서브도메인을 구성하지 않았다 — 켜면 초대 URL이 추적 링크로 바뀌고 방침의 "no tracking"이 거짓이 된다) ·
-TLS Opportunistic. DNS는 가비아다: `send.notify`의 MX·SPF(TXT), `resend._domainkey.notify`의 DKIM(TXT) — 값은 Resend 도메인 화면이
+TLS **Enforced**(2026-09-24 — Opportunistic이던 첫 발송 한 통이 SES→Gmail 구간을 평문 `ESMTP`로 가서 Gmail이 "암호화하지 않았습니다" 경고를 달았다.
+같은 설정의 다른 발송은 `ESMTPS TLS1_3`이었다 — 발송마다 갈린다. Enforced는 TLS를 못 하는 수신 서버로의 발송을 실패시키고, 그것은 앱에 `email-rejected`/`unknown`으로 보인다).
+확인은 받은 메일 원본의 `Received: from …amazonses.com … with ESMTPS … version=TLS1_3` 한 줄이다. DNS는 가비아다: `send.notify`의 MX·SPF(TXT), `resend._domainkey.notify`의 DKIM(TXT) — 값은 Resend 도메인 화면이
 정본이다. DMARC는 따로 두지 않았다 — 루트 `_dmarc.mal-moi.com`(`p=none`)이 서브도메인에 적용된다.
 
 **환경변수 셋 × 환경**(`lib/invitation-email/send.ts`가 읽는다 — `.env.example` 참고): `RESEND_API_KEY` · `INVITATION_EMAIL_FROM` ·
