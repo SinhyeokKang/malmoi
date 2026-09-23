@@ -32,8 +32,9 @@ app/
                         ContentPanel은 각 갈래의 레이아웃이 든다(shell-layout.test.ts가 라우트마다
                         정확히 하나인지 센다)
     error.tsx           오류 경계. ⚠️ 예외 메시지를 그대로 뿌리지 않는다
-    actions.ts          saveTranslation · triggerPullAction. ⚠️ 무효화는 /projects/<slug> 서브트리다 —
-                        그 행을 읽는 화면이 셋이라 경로를 나열하면 넷째가 조용히 빠진다
+    actions.ts          saveTranslationKey · previewTranslationRevert · revertTranslationKey · triggerPullAction.
+                        ⚠️ 무효화는 /projects/<slug> 서브트리 + 목록 둘이다 — 그 행을 읽는 화면이 넷이라
+                        경로를 나열하면 다섯째가 조용히 빠진다
     publish-actions.ts  loadPublishPreview 하나. ⚠️ actions.ts와 갈라 둔다 — 모달이 열릴 때만 부르는
                         **읽기**라 쓰기 Action과 무효화 규칙이 다르다
     projects/           목록(?q=) · loading.tsx 스켈레톤 · new/(온보딩 딥링크) · actions.ts
@@ -145,18 +146,13 @@ components/
                         filter-menu · use-leave-guard(뒤로가기는 capture 단계 popstate에서 되돌리고 새로고침·닫기는
                         beforeunload다). ⚠️ 카드 사이 핸들은 react-resizable-panels가 아니다 — px 하한 셋(420·336·208)을
                         % 환산 없이 지키려고 lib/translations/layout.ts가 폭을 계획한다
-  translations/         ⚠️ **옛 번역 표 조각 — 라우트가 더는 렌더하지 않는다**(C5 T16에서 지운다). key-group(서버 컴포넌트 — 키별 TableBody + rowSpan 키 셀) ·
-                        announcer · filters · filter-chips · locale-badge ·
-                        header(TranslationsHeader — usePublish를 드는 **무조건 렌더되는 호스트**다) ·
-                        edit-loss-banner · base-pending-banner(⚠️ 뒤의 둘은 sync-edit-protection의
+  translations/         작업 화면 밖에 남은 조각 셋 — edit-loss-banner · base-pending-banner(⚠️ 둘은 sync-edit-protection의
                         화면 쪽 산출물이고 **판정을 다시 쓰지 않는다** — 앞은 미전달 편집 수를 값으로 받아
                         "손실"이 아니라 "리포 갱신 보류"를 말하고, 뒤는 lib/onboarding/base-pending을
-                        불러 설정 화면의 Alert와 같은 조건 하나를 공유한다. 둘 다 닫기가 없다)
-                        ⚠️ 행에 고정 폭이 로케일 칸 하나뿐이다 — 우측 w-40 슬롯에 메타를 두었더니
-                        1280px에서 입력이 28px가 됐다(malmoi#33). 폭은 렌더 결과라 스캔이 못 보지만
-                        원인은 소스의 상수이고 translations-screen.test.ts가 그 예산을 센다
-                        ⚠️ 국기는 CSS background-image다 — ?ns=*에서 2,709개가 서므로 <img>면 요소가 그만큼 는다
-                        ⚠️ live region은 표 하나다(셀마다 두면 2,700개)
+                        불러 설정 화면의 Alert와 같은 조건 하나를 공유한다. 둘 다 닫기가 없다) · locale-badge
+                        (⚠️ 국기는 CSS background-image다 — 로케일 200개 행에서 <img>면 요소가 그만큼 는다).
+                        옛 번역 표 조각(header·filters·filter-chips·key-group·announcer)과 셀 편집
+                        translation-input은 translation-rework T16에서 지웠다
   sources/ settings/ onboarding/ projects/ signin/ account/ invite/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
@@ -240,15 +236,14 @@ components/
                         ⚠️ 본문의 갈래 넷은 lib/projects/list.ts의 listBody가 정한다 — 전엔
                         hasProjects·질의·건수가 JSX 안에서 섞여 판정됐다. 그릇은 카드이고 그룹
                         헤더가 그 안에 산다(DESIGN §6.63)
-  translation-input.tsx 셀 편집. 실패 시 포커스는 shouldRefocus가 정한다(다른 셀을 치고 있으면 안 뺏는다)
   publish-button.tsx    Publish 버튼 + 모달 갈래 열하나(DESIGN §6.646). ⚠️ 실패에는 router.refresh()를
                         부르지 않는다 ⚠️ **usePublish를 무조건 렌더되는 호스트가 든다** — 번역 화면은
-                        TranslationsHeader, Home은 HomeNotices다. 조건부 자리에 두면 refresh가 방금
+                        TranslationWorkspace, Home은 HomeNotices다. 조건부 자리에 두면 refresh가 방금
                         받은 결과를 언마운트한다 ⚠️ **리포 이름·base·sync 브랜치를 서버가 넘긴다** —
                         syncBranchFor가 사는 모듈(lib/pull/trigger)은 octokit·ts-morph를 물어
                         클라이언트 그래프에 오면 안 된다
   search-input.tsx      ⚠️ IME 조합 확정 Enter를 거른다(isComposing과 keyCode 229를 둘 다 본다 —
-                        판정의 주인은 lib/keys/edit-command.ts이고 셀 편집이 같은 함정을 공유한다)
+                        번역 입력의 keyEditCommand(lib/translations/draft.ts)가 같은 판정을 쓴다)
                         ⚠️ <form> 암시적 submit을 안 쓴다 — 제출 버튼 없는 폼은 Enter로 submit되지 않는다
                         ⚠️ **이름이 같은 파일이 components/projects/에도 있다** — 그쪽(ProjectSearch)은
                         이것을 감싸 useRouter로 ?q=를 미는 배선 래퍼이고, 여기는 라우터를 모르는 프리미티브다
@@ -352,9 +347,7 @@ lib/
                         ⚠️ **`buildSearchText`를 안 지나면 그 종류가 조용히 검색에서 빠진다**
   keys/                 view(집계·배지·행 축 다섯·localeProgress) · query(server-only 조회 —
                         loadProjectList는 집계 다섯을 Promise.all로 보내고 원격 조회와 함께 기다린다) ·
-                        save · refocus · filters · edit-command(Enter → save / Escape → restore.
-                        ⚠️ **IME 확정 Enter를 거르는 판정의 주인**이다 — isComposing과 keyCode 229를 둘 다
-                        본다. components/search-input.tsx가 같은 함정을 제 자리에서 설명한다) ·
+                        save(planSave·planKeySave·KeySaveInput — 셀 판정의 정본은 planSave 하나다) ·
                         flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
                         · translation-rework 서버 경로 넷(2026-09-23 — 화면은 C4에서 붙는다): translation-list(트리·요약 목록·상세
@@ -484,7 +477,7 @@ lib/
   env.ts db.ts githash.ts utils.ts relative-time.ts tone.ts
 ```
 
-⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `refocus`·`relative-time`·`utc-time`·`compare`·`ref-slug`·`flag`·`filters`는
+⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `relative-time`·`utc-time`·`compare`·`ref-slug`·`flag`는
 클라이언트가 값으로 읽는 판정이라 무거운 그래프를 물면 그대로 번들이 된다. **재수출도 하지 않는다.**
 `vitest.setup.ts`가 `server-only`를 전역 mock하므로 "테스트가 죽는다"는 더 이상 그 압력이 아니고,
 **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**다.
