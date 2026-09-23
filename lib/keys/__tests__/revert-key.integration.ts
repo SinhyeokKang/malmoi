@@ -43,6 +43,8 @@ beforeEach(async () => {
     if (name === "migration_lock.toml") continue;
     await pool.query(readFileSync(join("prisma/migrations", name, "migration.sql"), "utf8"));
   }
+  // 사건의 행위자 FK(`ProjectEvent.actorUserId`)가 실재하는 사용자를 요구한다.
+  for (const id of ["editor", "owner", "other", "other-owner"]) await prisma.user.create({ data: { id, email: `fixture-${id}` } });
   await prisma.project.create({ data: { id: "p", slug: "p", name: "p", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", repositoryId: "100" } });
   await prisma.translationSurface.create({ data: { id: "s", projectId: "p", slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en", lastCommitSha: "c1" } });
   await prisma.locale.createMany({ data: ["en", "ko", "ja"].map(code => ({ projectId: "p", surfaceId: "s", code, name: code, isBase: code === "en" })) });

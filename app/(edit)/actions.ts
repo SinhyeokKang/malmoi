@@ -10,10 +10,13 @@ import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import type { NotStartedReason } from "@/lib/events/payload";
 import { recordEvent } from "@/lib/events/record";
-import { SaveInput, planSave } from "@/lib/keys/save";
+import { executeKeyRevert, previewKeyRevert, type RevertPreview, type RevertResult } from "@/lib/keys/revert";
+import { KeySaveInput, SaveInput, planSave } from "@/lib/keys/save";
+import { applyKeySave, type KeySaveResult } from "@/lib/keys/save-key";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import type { PullOutcome } from "@/lib/pull/message";
 import { runSync } from "@/lib/sync/run";
+import { z } from "zod";
 
 /**
  * 번역값 저장과 Publish.
@@ -144,6 +147,89 @@ export async function saveTranslation(raw: unknown): Promise<SaveResult> {
   revalidatePath("/projects");
   revalidatePath("/projects/new");
   return { ok: true, value: outcome.value };
+}
+
+/**
+ * **키 단위 저장** (translation-rework T10 — spec §3.4). 선택 키의 바뀐 로케일 전부를 한 트랜잭션으로 쓴다 — 본체는
+ * `applyKeySave`이고 여기는 인증·인가·readiness·재검증만 든다. 도메인 거부(`unknown-locale` 등)와 접근 거부를 같은
+ * `error` 자리에 싣고, DB 실패는 던진다 — 화면은 그것을 "저장 여부 확인 불가"로 받는다(전혀 안 됐다고 단정하지 않는다).
+ */
+export type KeySaveActionResult = KeySaveResult | { ok: false; error: string };
+
+export async function saveTranslationKey(raw: unknown): Promise<KeySaveActionResult> {
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+
+  const parsed = KeySaveInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const { slug, surfaceSlug, keyId, changes } = parsed.data;
+
+  const prisma = getPrisma();
+  const access = await getSurfaceAccess(prisma, { userId: session.userId, slug, surfaceSlug, permission: "translation:write" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  if (!(await isReady(prisma, access.projectId))) return { ok: false, error: "not-ready" };
+
+  const result = await applyKeySave(prisma, { projectId: access.projectId, surfaceId: access.surfaceId, surfaceSlug, keyId, userId: session.userId, changes });
+  // no-op만 있던 저장은 아무것도 안 바꿨다 — 화면을 다시 그릴 이유가 없다.
+  if (result.ok && result.cells.length > 0) revalidateTranslationReaders(slug);
+  return result;
+}
+
+const RevertInput = z.object({ slug: z.string().min(1), surfaceSlug: z.string().min(1), keyId: z.string().min(1) });
+const RevertExecuteInput = RevertInput.extend({ confirmation: z.string().regex(/^[0-9a-f]{64}$/) });
+
+type RevertAccessError = { status: "error"; error: string };
+
+/**
+ * **Revert 미리보기** (translation-rework T11 — spec §3.6). 읽기 전용이다 — 그래서 `revalidatePath`가 없다(Publish 미리보기와 같다).
+ * ⚠️ **권한은 `project:settings`(OWNER)다** — EDITOR에게는 거부를 `blocked: forbidden`으로 돌려준다. 화면이 버튼을 숨기지 않고
+ * 사유를 붙이는 계약이라, 접근 오류와 다른 자리에 싣는다.
+ */
+export async function previewTranslationRevert(raw: unknown): Promise<RevertPreview | RevertAccessError | { status: "blocked"; reason: "forbidden" }> {
+  const session = await readSession();
+  if (session.status === "unavailable") return { status: "error", error: "unavailable" };
+  if (session.status === "none") return { status: "error", error: "unauthorized" };
+  const parsed = RevertInput.safeParse(raw);
+  if (!parsed.success) return { status: "error", error: "invalid input" };
+  const { slug, surfaceSlug, keyId } = parsed.data;
+
+  const prisma = getPrisma();
+  const access = await getSurfaceAccess(prisma, { userId: session.userId, slug, surfaceSlug, permission: "project:settings" });
+  if (access.status === "forbidden") return { status: "blocked", reason: "forbidden" };
+  if (access.status !== "ok") return { status: "error", error: access.status };
+  if (!(await isReady(prisma, access.projectId))) return { status: "error", error: "not-ready" };
+  return previewKeyRevert(prisma, { projectId: access.projectId, surfaceId: access.surfaceId, surfaceSlug, keyId, userId: session.userId });
+}
+
+/**
+ * **Revert 실행**. 미리보기가 발급한 지문을 되돌려 받을 때만 쓴다 — 잠금 뒤 다시 재서 다르면 `reconfirm`이고 쓰기 0건이다.
+ * DB 실패는 던진다 — 커밋 뒤 응답만 유실될 수 있으므로 화면은 "결과 미확인"으로 받고 같은 지문으로 재실행하지 않는다.
+ */
+export async function revertTranslationKey(raw: unknown): Promise<RevertResult | RevertAccessError | { status: "blocked"; reason: "forbidden" }> {
+  const session = await readSession();
+  if (session.status === "unavailable") return { status: "error", error: "unavailable" };
+  if (session.status === "none") return { status: "error", error: "unauthorized" };
+  const parsed = RevertExecuteInput.safeParse(raw);
+  if (!parsed.success) return { status: "error", error: "invalid input" };
+  const { slug, surfaceSlug, keyId, confirmation } = parsed.data;
+
+  const prisma = getPrisma();
+  const access = await getSurfaceAccess(prisma, { userId: session.userId, slug, surfaceSlug, permission: "project:settings" });
+  if (access.status === "forbidden") return { status: "blocked", reason: "forbidden" };
+  if (access.status !== "ok") return { status: "error", error: access.status };
+  if (!(await isReady(prisma, access.projectId))) return { status: "error", error: "not-ready" };
+
+  const result = await executeKeyRevert(prisma, { projectId: access.projectId, surfaceId: access.surfaceId, surfaceSlug, keyId, userId: session.userId, confirmation });
+  if (result.status === "reverted") revalidateTranslationReaders(slug);
+  return result;
+}
+
+/** 번역 값을 읽는 화면들 — `saveTranslation`의 재검증과 같은 셋이다(그 주석이 이유를 든다). */
+function revalidateTranslationReaders(slug: string): void {
+  revalidatePath(`/projects/${slug}`, "layout");
+  revalidatePath("/projects");
+  revalidatePath("/projects/new");
 }
 
 /**

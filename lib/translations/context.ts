@@ -45,3 +45,27 @@ export function deliveryContextFingerprint(input: DeliveryContextInput): string 
 export function confirmationValid(row: { invalidatedAt: Date | null; contextFingerprint: string } | null, current: string): boolean {
   return row !== null && row.invalidatedAt === null && row.contextFingerprint === current;
 }
+
+/**
+ * **Revert 확인 지문** — 확인창을 연 사람이 본 상태 그대로일 때만 실행한다(`lib/protection/fingerprint.ts`의 폐기 승인과 같은 형).
+ * 서버만 아는 토큰·기준 revision·context를 묶으므로 클라이언트가 위조할 수 없고, 그 사이 누가 저장하면 지문이 바뀐다.
+ * HMAC·만료가 없는 이유도 같다 — 재사용은 상태 변화가 막는다.
+ */
+export function revertFingerprint(input: {
+  userId: string;
+  projectId: string;
+  surfaceId: string;
+  keyId: string;
+  targets: readonly { localeCode: string; token: string }[];
+  baselines: readonly { localeCode: string; revision: string }[];
+  contextFingerprint: string | null;
+}): string {
+  const byCode = (a: { localeCode: string }, b: { localeCode: string }) => (a.localeCode < b.localeCode ? -1 : a.localeCode > b.localeCode ? 1 : 0);
+  const canonical = JSON.stringify([
+    input.userId, input.projectId, input.surfaceId, input.keyId,
+    [...input.targets].sort(byCode).map(t => [t.localeCode, t.token]),
+    [...input.baselines].sort(byCode).map(b => [b.localeCode, b.revision]),
+    input.contextFingerprint,
+  ]);
+  return createHash("sha256").update(canonical).digest("hex");
+}

@@ -874,6 +874,10 @@ export const en = {
         cleared: (who: ReactNode, key: ReactNode, language: string): ReactNode => (
           <>{who} cleared {key} in {language}</>
         ),
+        /** `Revert to last sent` — 빈 값으로 되돌려도 cleared가 아니다(되돌린 것과 지운 것이 Logs에서 갈려야 한다). */
+        reverted: (who: ReactNode, key: ReactNode, language: string): ReactNode => (
+          <>{who} reverted {key} in {language} to the version last confirmed as sent</>
+        ),
       },
       publish: {
         running: (who: ReactNode): ReactNode => <>{who} is sending translations to GitHub</>,

@@ -43,6 +43,8 @@ beforeEach(async () => {
     if (name === "migration_lock.toml") continue;
     await pool.query(readFileSync(join("prisma/migrations", name, "migration.sql"), "utf8"));
   }
+  // 사건의 행위자 FK(`ProjectEvent.actorUserId`)가 실재하는 사용자를 요구한다.
+  for (const id of ["u1", "u2"]) await prisma.user.create({ data: { id, email: `fixture-${id}` } });
   await seed("p");
 });
 
@@ -87,9 +89,11 @@ describe("applyKeySave — 한 트랜잭션", () => {
     expect(ja).toMatchObject({ value: "こんにちは", updatedBy: "u1" });
     expect(ko?.pendingEditToken).toEqual(expect.any(String));
     expect(ja?.pendingEditToken).not.toBe(ko?.pendingEditToken);
-    expect((await events()).map(e => e.payload)).toEqual([
-      expect.objectContaining({ locale: "ko", before: "안녕", after: "안녕하세요" }),
+    // 같은 tx의 사건은 `occurredAt`이 같다 — 순서가 아니라 집합을 본다.
+    const payloads = (await events()).map(e => e.payload as { locale: string }).sort((a, b) => a.locale.localeCompare(b.locale));
+    expect(payloads).toEqual([
       expect.objectContaining({ locale: "ja", before: null, after: "こんにちは" }),
+      expect.objectContaining({ locale: "ko", before: "안녕", after: "안녕하세요" }),
     ]);
   });
 

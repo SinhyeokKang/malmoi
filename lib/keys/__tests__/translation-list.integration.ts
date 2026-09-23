@@ -161,6 +161,10 @@ describe("loadTranslationList — oracle 대조", () => {
     expect(project.rows.find(r => r.keyId === "a2")).toMatchObject({ surfaceSlug: "app", namespace: "app", totalLocales: 2, missingCount: 1 });
   });
 
+  it("This namespace인데 네임스페이스가 전체(*)면 This source와 같다 — `*`라는 이름을 찾아 0건이 되지 않는다", async () => {
+    expect((await list(q({ scope: "namespace" }))).rows.map(r => r.keyId)).toEqual((await list(q({}))).rows.map(r => r.keyId));
+  });
+
   it.each([
     ["incomplete", { completion: "incomplete" as const }],
     ["complete", { completion: "complete" as const }],
