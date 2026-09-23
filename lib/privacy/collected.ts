@@ -63,6 +63,12 @@ export const MODEL_CLASSES = {
   VerificationToken: "personal",
   ProjectMember: "personal",
   ProjectInvitation: "personal",
+  /**
+   * 전달 확인과 복원 기준은 **번역 작업 상태**다 — 사람을 가리키는 컬럼이 없다. `DeliveryConfirmation.syncRunId`가
+   * 가리키는 `SyncRun`은 `requestedBy` 때문에 personal이지만 참조 id 자체는 사람을 식별하지 않는다(ProjectEvent와 다른 이유).
+   */
+  DeliveryConfirmation: "not-personal",
+  TranslationBaseline: "not-personal",
 } as const satisfies Record<Prisma.ModelName, "personal" | "not-personal">;
 
 type PersonalModel = {
