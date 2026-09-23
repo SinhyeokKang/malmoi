@@ -9,7 +9,7 @@ import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
 import { buildPublishDiff, PREVIEW_LIMIT, type BaseValues, type PublishCell } from "./diff";
-import type { PublishPreview } from "./preview";
+import { PreviewBaseFileMissing, type PublishPreview } from "./preview";
 
 /** 이전 값은 표시 전용이다 — export·커밋·PR 판정의 입력으로 넘기지 않는다. */
 export async function readPublishPreview(prisma: PrismaClient, projectId: string, slug: string): Promise<PublishPreview> {
@@ -67,7 +67,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     // 거부하므로 어느 셀도 약속하지 않는다 — 편집이 비-base에만 있어도 렌더는 base 파일부터 못 낸다.
     if (surgicalPerLocale) {
       const basePath = paths.find(p => p.locale === surface.baseLocale);
-      if (basePath !== undefined && !shas.has(basePath.path)) throw new Error("Preview base file missing");
+      if (basePath !== undefined && !shas.has(basePath.path)) throw new PreviewBaseFileMissing(basePath.path, project.baseBranch);
     }
     for (const row of surfaceRows) {
       if (!surface.locales.some(locale => locale.code === row.localeCode)) throw new Error("Preview path unavailable");

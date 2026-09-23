@@ -208,6 +208,24 @@ it("미리보기가 키 자리 없는 셀을 따로 말한다", async () => {
   await render(<Host count={2} />); await click("Publish2");
   expect(document.body.textContent).toContain(m.translations.publish.withoutKey(1));
 });
+/**
+ * **base 언어 파일 부재는 전용 거부다** (coordinator review r1 — 사용자 결정). 원인(경로·브랜치)과 고칠 곳을 말하고 Try again을 두지 않는다 —
+ * 다시 눌러도 같은 거부다(L3.3). OWNER는 Settings로 가고, EDITOR에게는 a project owner를 가리킨다(DESIGN §10.1).
+ */
+it.each(["OWNER", "EDITOR"] as const)("미리보기 base 파일 부재(%s)는 경로를 말하는 거부이고 Try again이 없다", async role => {
+  mocks.preview.mockResolvedValue({ status: "refused", reason: "base-file-missing", path: "config/locales/en.yml", branch: "main" });
+  await render(<Host role={role} />);
+  await click("Publish1");
+  const text = document.body.textContent ?? "";
+  const r = m.translations.publish.baseFileMissing;
+  expect(text).toContain(r.title);
+  expect(text).toContain(r.description("config/locales/en.yml", "main"));
+  expect(text).toContain(role === "OWNER" ? r.owner : r.editor);
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(false);
+  const settings = [...document.querySelectorAll('[role="dialog"] a')].filter(a => a.getAttribute("href") === "/projects/acme/settings");
+  expect(settings).toHaveLength(role === "OWNER" ? 1 : 0);
+  expect(mocks.pull).not.toHaveBeenCalled();
+});
 it("미리보기 읽기 실패는 1k의 Retry다 (짝)", async () => {
   mocks.preview.mockResolvedValueOnce({ status: "failed" });
   await render(<Host />);

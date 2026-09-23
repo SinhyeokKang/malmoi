@@ -2229,6 +2229,17 @@ export const en = {
        */
       // ⚠️ **"try again"을 쓰지 않는다** (r1) — 같은 모달의 Alert 제목이 `wontHelp`("Trying again won't help")다.
       refused: "Publishing couldn't start. Open this project again from your project list.",
+      /**
+       * 미리보기의 base 언어 파일 부재 (delivery-invariants · coordinator review r1). 원인과 고칠 곳을 말하고 Try again을 두지 않는다 —
+       * 다시 눌러도 같은 거부다. EDITOR에게는 Settings가 열리지 않으므로 a project owner를 가리킨다(DESIGN §10.1).
+       */
+      baseFileMissing: {
+        title: "The base language file isn't in the repository",
+        description: (path: string, branch: string): string =>
+          `malmoi looks for it at ${path} on ${branch}, and nothing was sent while it's missing.`,
+        owner: "Restore the file on that branch, or change the path or branch in Settings.",
+        editor: "Ask a project owner to restore the file or change the path in Settings.",
+      },
       unknownDelivery: "We couldn't confirm whether your changes were sent.",
 
       /** `1j` — 행조차 생기지 않는 거부 둘. 폭 512이고 danger가 아니다. */

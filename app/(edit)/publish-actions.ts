@@ -3,7 +3,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { getProjectAccess } from "@/lib/auth/query";
 import { getPrisma } from "@/lib/db";
 import { readPublishPreview } from "@/lib/publish/read";
-import type { PublishPreviewResult } from "@/lib/publish/preview";
+import { PreviewBaseFileMissing, type PublishPreviewResult } from "@/lib/publish/preview";
 import { logFailure } from "@/lib/github-connect/log";
 
 /**
@@ -22,5 +22,9 @@ export async function loadPublishPreview(raw: { slug: string }): Promise<Publish
     const access = await getProjectAccess(prisma, { userId: session.userId, slug: raw.slug, permission: "translation:write" });
     if (access.status !== "ok") return { status: "rejected", error: access.status };
     return { status: "ok", preview: await readPublishPreview(prisma, access.projectId, raw.slug) };
-  } catch (error) { logFailure("publish-preview", error); return { status: "failed" }; }
+  } catch (error) {
+    // 이유가 있는 거부다 — Try again으로 그리면 같은 거부를 영영 받는다(L3.3). 경로·브랜치는 설정값이라 화면에 실어도 된다.
+    if (error instanceof PreviewBaseFileMissing) return { status: "refused", reason: "base-file-missing", path: error.path, branch: error.branch };
+    logFailure("publish-preview", error); return { status: "failed" };
+  }
 }

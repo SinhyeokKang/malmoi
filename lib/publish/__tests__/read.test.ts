@@ -75,7 +75,7 @@ it("수술적 per-locale의 **base** 파일이 없으면 미리보기를 막는�
   db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "ko", value: "새" }]);
   mocks.client.getTree.mockResolvedValue([{ path: "ko.yml", sha: "blob" }]);
   mocks.client.getBlobText.mockResolvedValue("ko:\n  hello: old\n");
-  await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow("Preview base file missing");
+  await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toMatchObject({ name: "PreviewBaseFileMissing", path: "en.yml", branch: "main" });
 });
 it("ts-dict 로케일 객체에 자리가 없는 키는 빼고 withoutKey로 센다 — 같은 파일의 다른 로케일이 그 키를 가진다", async () => {
   db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "ts-dict", pathTemplate: "*.ts", locales: [{ code: "en" }, { code: "ko" }] }] });
