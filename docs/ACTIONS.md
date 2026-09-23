@@ -110,7 +110,7 @@ job 안에 있으므로 **핀한다** — 고칠 자리가 셋(이 문서 · `wo
 CLI의 대응 옵션은 `--surface`·`--path-template`이다. 서버의 `surfaceSlug`는 성공·실패 보고 모두 필수이며 기본값이 없다.
 없는·비활성·다른 프로젝트 표면은 동일한 `409 {"error":"surface mismatch"}`다. 따라서 409 가드는 보관 → 프로젝트 slug
 → 표면 → 포맷 → 커밋 순서의 다섯 개다. 아래 step은 동일 프로젝트 토큰과 concurrency job을 공유한다.
-Settings의 Add surface 결과에서 실제 등록 slug·path-template을 담은 step을 복사한다.
+Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 step을 복사한다.
 그 화면을 벗어났으면 **Settings의 워크플로 블록이 활성 표면 전부의 step을 담은 파일 전체를 낸다**
 (`renderProjectWorkflowYaml`) — slug·path-template을 손으로 조립하지 않는다. 토큰이 프로젝트 단위라
 틀린 `surface:`는 409가 아니라 다른 표면을 덮어쓴다.
