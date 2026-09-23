@@ -16,8 +16,8 @@
 | 순서 | 배치 | 항목 | 출시 차단 | 진입 | 검증 게이트 | 결정 |
 |---|---|---|---|---|---|---|
 | 1 | **B1 전달 층 불변식** | #1·2·3·4·58·59 | ✅ | `/feature` → `/ship bypass` | `pnpm test` + `pnpm test:projects:postgres` + `/l10n-roundtrip`(`i18n-order-check`·ts-dict 리포) | ✅ #1 · #3 |
-| 2 | **B2 보안 TOCTOU** | #9·10·26 | ✅ | `/ship` | `pnpm test` + `pnpm test:projects:postgres` | ✅ #26 |
-| 3 | **B3 UX 🔴·막다른 길** | #5·6·7·8·11·14·15·16·17·24·25 | ✅ | `/ship` | `pnpm test` + `/bugshot-qa`(EDITOR·OWNER 두 계정) | — |
+| 2 | ✅ **B2 보안 TOCTOU** | #9·10·26 | ✅ | `/ship` | `pnpm test` + `pnpm test:projects:postgres` | ✅ #26 |
+| 3 | ✅ **B3 UX 🔴·막다른 길** | #5·6·7·8·11·14·15·16·17·24·25 | ✅ | `/ship` | `pnpm test` + `/bugshot-qa`(EDITOR·OWNER 두 계정) | — |
 | 4 | **B4 확인·문구·용어** | #13·19·20·21·22·23·28·29·30·31 | ✅ | `/ship` | `pnpm test`(no-korean-ui·brand-spelling 포함) + `/bugshot-qa` | ✅ #29 |
 | 5 | **B5 접근성(포커스)** | #32~42 | 권장 | `/ship` | `pnpm test`(jsdom) + `/design-sync` 접근성 트리 실측 | — |
 | 6 | **B6 시각 체계** | #43~50 | 권장 | `/ship` → `/design-sync` | `/design-sync` computed style 실측 | ✅ #50 |
@@ -68,13 +68,13 @@
 - **#26 → 보관 = Restore만** — 보관된 프로젝트에서는 `unarchiveProject` 외 설정 쓰기를 서버가 거부한다. UI가 이미 그렇게 서 있으므로 UI가 정본이다. 공용 헬퍼가 잠금 안에서 보관 상태를 다시 보는 김에 같이 닫는다(원래 B7이었으나 이 배치로 옮겼다). "보관 = 멈춤" 한 줄 모델이 된다.
 
 **항목**
-- [ ] **#9** 🟡 OWNER 전용 Action 14곳 — 잠금 안에서 호출자의 OWNER 여부·보관 상태를 다시 읽지 않는다.
+- [x] **#9** 🟡 OWNER 전용 Action 14곳 — 잠금 안에서 호출자의 OWNER 여부·보관 상태를 다시 읽지 않는다.
   - `app/(edit)/projects/actions.ts`: `changeMember` :333 · `createInvitations` :146(→`lib/invitation-email/issue.ts:125`) · `resendInvitation` :198(→`issue.ts:143`) · `revokeInvitation` :266 · `runFirstIngest` :1211 · `rotatePushToken` :1490(**잠금 자체가 없다**) · `archiveProject` :1543 · `unarchiveProject` :1589
   - `app/(edit)/projects/[slug]/settings/actions.ts`: `connectRepository` :141 · `updateRepositorySettings` :272 · `updateProjectName` :337 · `uploadProjectImage` :379(sharp·Blob이 잠금 전이라 창이 초 단위) · `deleteProjectImage` :428
   - `app/(edit)/projects/[slug]/sources/actions.ts`: `updateBaseLocale` :56
   - 시나리오: OWNER A·B·C. A가 B 제거, B가 C 제거를 동시에 → A 먼저 커밋 → B의 tx가 OWNER 재집계 1로 통과 → 권한을 잃은 B가 C를 지운다.
-- [ ] **#10** 🟡 `lib/keys/save-key.ts:28-37` · `lib/sync/run.ts:95` — `translation:write` 층의 같은 TOCTOU. 30초 적재 잠금 대기 중 제거된 EDITOR의 저장·사건이 커밋된다(ARCHITECTURE §5.8 "후속 검토 후보").
-- [ ] **#26** 🟡 보관된 프로젝트의 설정 쓰기 — PRODUCT §7.9와 Action 주석은 허용(`updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·`rotatePushToken`·이름·이미지), 서버도 허용하는데 UI(general-card·repository-card·ci-card)는 전부 꺼 둔다. 결정대로 서버가 거부하도록 헬퍼가 보관 상태를 잠금 안에서 본다. PRODUCT §7.9의 "설정 쓰기는 허용" 문단과 각 Action 주석을 먼저 고친다.
+- [x] **#10** 🟡 `lib/keys/save-key.ts:28-37` · `lib/sync/run.ts:95` — `translation:write` 층의 같은 TOCTOU. 30초 적재 잠금 대기 중 제거된 EDITOR의 저장·사건이 커밋된다(ARCHITECTURE §5.8 "후속 검토 후보").
+- [x] **#26** 🟡 보관된 프로젝트의 설정 쓰기 — PRODUCT §7.9와 Action 주석은 허용(`updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·`rotatePushToken`·이름·이미지), 서버도 허용하는데 UI(general-card·repository-card·ci-card)는 전부 꺼 둔다. 결정대로 서버가 거부하도록 헬퍼가 보관 상태를 잠금 안에서 본다. PRODUCT §7.9의 "설정 쓰기는 허용" 문단과 각 Action 주석을 먼저 고친다.
 
 **검증**: 경합은 `pnpm test:projects:postgres`의 동시 tx로 재현한다. 헬퍼가 17곳에 전부 걸렸는지는 `app/__tests__/entry-points.test.ts` 같은 소스 전수 가드로 센다 — 그 가드는 줄 끝 주석을 호출로 오인한다(#80). 새 가드를 쓸 때 같은 결함을 들이지 않는다.
 
@@ -87,19 +87,19 @@
 **왜 한 배치인가**: 사용자가 **막히거나 결과를 못 보는** 부류만 모았다. 문구 교체가 아니라 동작·목적지·경로 수정이다.
 
 **항목**
-- [ ] **#5** 🔴 `components/translations/workspace/workspace.tsx:393` — `SyncButton onResult={() => router.refresh()}`가 결과를 버리고 실패에도 refresh한다(POSTMORTEM 2026-09-08 재발). 방향: `components/home/actions.tsx:149`처럼 `SyncResult`를 들고 `outcome.ok`일 때만 refresh.
+- [x] **#5** 🔴 `components/translations/workspace/workspace.tsx:393` — `SyncButton onResult={() => router.refresh()}`가 결과를 버리고 실패에도 refresh한다(POSTMORTEM 2026-09-08 재발). 방향: `components/home/actions.tsx:149`처럼 `SyncResult`를 들고 `outcome.ok`일 때만 refresh.
   - 실패 시나리오: 번역 화면 Sync → `already-running`·`not-connected`·`reconfirm` → 설명 없이 버튼만 복귀. 세션이 끊겼으면 refresh가 로그인 이동이 되어 거부 문구가 사라진다.
-- [ ] **#11** 🟡 `components/sources/sources-screen.tsx:133-135` — danger 결과를 세운 직후 무조건 refresh(#5와 같은 부류).
-- [ ] **#6** 🔴 가져오기 실패 안내가 전부 Settings로 간다 — `components/home/attention-card.tsx:109` · `components/projects/project-list.tsx:438` · `components/project-not-ready.tsx:22` · `messages/en.tsx:2864`("try again from settings"). 상세·재시도는 Sources 모달에만 있다. 방향: `routes.sources(slug)`, EDITOR에겐 링크 대신 문구.
+- [x] **#11** 🟡 `components/sources/sources-screen.tsx:133-135` — danger 결과를 세운 직후 무조건 refresh(#5와 같은 부류).
+- [x] **#6** 🔴 가져오기 실패 안내가 전부 Settings로 간다 — `components/home/attention-card.tsx:109` · `components/projects/project-list.tsx:438` · `components/project-not-ready.tsx:22` · `messages/en.tsx:2864`("try again from settings"). 상세·재시도는 Sources 모달에만 있다. 방향: `routes.sources(slug)`, EDITOR에겐 링크 대신 문구.
   - 실패 시나리오: EDITOR가 Home "import failed" 클릭 → `?e=forbidden`. OWNER는 Settings 도착 → 관련 정보 0.
-- [ ] **#7** 🔴 `components/settings/archive-card.tsx:44,70` — `void (await archiveProject(slug))`가 `{ok:false}`를 버린다. `m.archive.failed`는 정의만 있다. 방향: in-block `Alert danger`.
-- [ ] **#8** 🔴 `components/logs/log-filters.tsx:113-129` — custom From/To `<Input type="date">`가 Radix `DropdownMenuContent` 안이라 키보드로 도달할 수 없다(WCAG 2.1.1). 방향: 메뉴 밖(인라인 필드 또는 popover/Dialog).
-- [ ] **#14** 🟡 `components/home/sync-button.tsx:64-67,88-94,167` — `prepareRepositorySync` 전에 확정하면 `approval: null` → 사실과 다른 "Translations changed after you opened Sync". 방향: 지문 도착 전 확정 `aria-disabled` + 스피너.
-- [ ] **#15** 🟡 `app/invite/[token]/page.tsx:106` — `blocked && !retry`(not-found·expired·already-accepted)에서 CTA `null`, 셸 밖이라 출구 없음. 방향: `/projects` 또는 `/signin` 링크.
-- [ ] **#16** 🟡 `app/(edit)/projects/[slug]/not-found.tsx:7` — 이 segment의 모든 `notFound()`가 "Translation surface unavailable". `sources/page.tsx:26` · `surfaces/new/page.tsx:13`(보관 프로젝트 — PRODUCT §7.7은 redirect로 기술) · `translations/page.tsx:21`.
-- [ ] **#17** 🟡 루트 `app/not-found.tsx`·`app/error.tsx`·`app/global-error.tsx` 없음 — `/invite`·`/signin`·`/signin/link`의 예외·오타 URL이 Next 기본 페이지.
-- [ ] **#24** 🟡 Server Action 호출에 try/catch 없음 — throw 시 pending id가 남은 채 error boundary. `components/members/pending-invitations.tsx:118` · `member-list.tsx:89` · `components/github-account.tsx:63` · `components/reconnect-button.tsx:43`.
-- [ ] **#25** 🟡 `components/shell/sidebar.tsx:102` · `user-menu.tsx:72` — Sign out에 pending 없음(`/account`의 것에는 있다).
+- [x] **#7** 🔴 `components/settings/archive-card.tsx:44,70` — `void (await archiveProject(slug))`가 `{ok:false}`를 버린다. `m.archive.failed`는 정의만 있다. 방향: in-block `Alert danger`.
+- [x] **#8** 🔴 `components/logs/log-filters.tsx:113-129` — custom From/To `<Input type="date">`가 Radix `DropdownMenuContent` 안이라 키보드로 도달할 수 없다(WCAG 2.1.1). 방향: 메뉴 밖(인라인 필드 또는 popover/Dialog).
+- [x] **#14** 🟡 `components/home/sync-button.tsx:64-67,88-94,167` — `prepareRepositorySync` 전에 확정하면 `approval: null` → 사실과 다른 "Translations changed after you opened Sync". 방향: 지문 도착 전 확정 `aria-disabled` + 스피너.
+- [x] **#15** 🟡 `app/invite/[token]/page.tsx:106` — `blocked && !retry`(not-found·expired·already-accepted)에서 CTA `null`, 셸 밖이라 출구 없음. 방향: `/projects` 또는 `/signin` 링크.
+- [x] **#16** 🟡 `app/(edit)/projects/[slug]/not-found.tsx:7` — 이 segment의 모든 `notFound()`가 "Translation surface unavailable". `sources/page.tsx:26` · `surfaces/new/page.tsx:13`(보관 프로젝트 — PRODUCT §7.7은 redirect로 기술) · `translations/page.tsx:21`.
+- [x] **#17** 🟡 루트 `app/not-found.tsx`·`app/error.tsx`·`app/global-error.tsx` 없음 — `/invite`·`/signin`·`/signin/link`의 예외·오타 URL이 Next 기본 페이지.
+- [x] **#24** 🟡 Server Action 호출에 try/catch 없음 — throw 시 pending id가 남은 채 error boundary. `components/members/pending-invitations.tsx:118` · `member-list.tsx:89` · `components/github-account.tsx:63` · `components/reconnect-button.tsx:43`.
+- [x] **#25** 🟡 `components/shell/sidebar.tsx:102` · `user-menu.tsx:72` — Sign out에 pending 없음(`/account`의 것에는 있다).
 
 **경계**: `workspace.tsx`의 오류 갈래(#23)·빈 상태(#31)는 **B4**, Save 포커스(#32)·Dialog 포커스(#34)는 **B5**. `sync-button.tsx`의 disabled 사유(#37)는 **B5**. #6의 en.tsx:2864 문구 교체는 목적지와 한 몸이라 **이 배치**다.
 
