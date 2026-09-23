@@ -29,13 +29,14 @@
 - [x] T5. `/db` 절차로 additive baseline 테이블·복합 FK/unique와 실측으로 정한 인덱스만 생성한다. dev에서 확인한 SQL을 검토하고 prod 적용 순서를 기록한다. 과거값 추정 backfill은 넣지 않는다. 모델 추가와 함께 `lib/privacy/collected.ts`의 `MODEL_CLASSES` 분류·등재를 수행한다. 현 필드 기준 not-personal 분류를 검토하고 개인정보 필드가 생기면 해당 필드 등재도 갱신한다.
   검증: dev/prod migration 상태 구별, A/B 테넌트 교차 FK 거부, anon/authenticated 권한 0, 기존 앱 쿼리 호환. schema와 migration만 별도 커밋하고 분류 등재는 동반 앱 코드 커밋으로 분리한다. T5 완료 전에 두 변경을 함께 둔 상태에서 Prisma 재생성 후 `pnpm typecheck`를 통과한다. T17/T18로 등재 작업을 미루지 않는다.
   결과(2026-09-23): `20260923020548_add_delivery_baselines`(테이블 둘 + 복합 FK 다섯, 신규 인덱스 없음) dev 적용 · dev anon 0 · `delivery-baseline-fk.integration.ts` 4건 · `MODEL_CLASSES` 15. ⚠️ **prod는 미적용** — `/merge` 1단계의 `pnpm db:deploy` 뒤 prod anon 0을 확인한다. 배포 A에서 writer(T6·T7)보다 먼저 나간다.
-- [ ] T6. `loadPullState`와 `runPull`/`saveLastPulledAt`에 동일 export 스냅샷 baseline 전달·성공 확정 tx를 연결한다. 첫 외부 mutation 전 기존 기준 무효화를 커밋한다. `lib/sync/run.ts`에서 실행권을 전달하고 실행 종료를 조건부로 확정한다. cron 경로도 동일하게 연결한다.
+- [x] T6. `loadPullState`와 `runPull`/`saveLastPulledAt`에 동일 export 스냅샷 baseline 전달·성공 확정 tx를 연결한다. 첫 외부 mutation 전 기존 기준 무효화를 커밋한다. `lib/sync/run.ts`에서 실행권을 전달하고 실행 종료를 조건부로 확정한다. cron 경로도 동일하게 연결한다.
   검증: fake GitHub 단위 테스트에서 committed/no-changes만 기준 활성화; writer-warnings/no-edits/API 실패는 새 기준 활성화 0건. 무효화 실패 시 GitHub mutation 0회, no-changes 브랜치 원복 전 무효화 확인. 실제 PG에서 baseline+timestamp+token CAS 원자성, A 전송 중 B 편집, 늦은 실행 fencing 확인.
   검증: T1의 희소 번역·다중 소스 fixture에서 후보 수와 실제 렌더 범위의 기록 수를 대조하고 전체 시간·메모리·잠금 비용이 확정 예산을 만족하는지 확인한다. chunk를 나누더라도 성공 확정의 원자성을 유지하며, 중간 chunk 실패 시 기준·timestamp·token CAS가 함께 롤백된다.
   검증: A 기준→B 저장→GitHub B 쓰기 성공→DB 완료 실패/응답 유실→Revert A 거부·B pending 유지. 교체된 외부 실행의 늦은 쓰기 종료가 미확인인 동안 후속 성공만으로 복원이 열리지 않고, 종료 확인 뒤 새 전달 확인으로만 복원이 열린다.
-- [ ] T7. strict push·수동 Sync·실제 소스 구성/리포 설정 변경에 기준 무효화를 연결한다. 선언만 바뀐 base와 실제 적용 base를 구별한다.
+- [x] T7. strict push·수동 Sync·실제 소스 구성/리포 설정 변경에 기준 무효화를 연결한다. 선언만 바뀐 base와 실제 적용 base를 구별한다.
   검증: deferred/거부/실패는 무효화하지 않음, 성공한 표면만 무효화, 재활성화로 기준 부활 없음, 늦은 Publish가 무효화를 덮지 않음.
-- [ ] T8. 배포 A의 구버전 writer 종료·수집 개시·롤백 절차를 문서화하고 적용 상태를 확인한다.
+- [x] T8. 배포 A의 구버전 writer 종료·수집 개시·롤백 절차를 문서화하고 적용 상태를 확인한다.
+  결과(2026-09-23, C2): writer `bc91a95`. T7은 적재 쪽을 `importRevision` 지문으로, base branch 변경만 명시 무효화로 닫았다(ARCHITECTURE §5.8). 절차는 OPERATIONS "전달 기준 배포 A". ⚠️ T6 검증의 대량 fixture 항목(후보 수·chunk)은 delta 설계로 대상이 사라졌다 — 쓰기 규모가 편집 수라 chunk가 없다. 외부 쓰기 종료 뒤 복원 개방(T6 셋째 검증)은 읽는 쪽이 T11이다.
   검증: 구버전 혼재 기간에 수집한 기준으로 Revert가 열리지 않음. 초기 unknown이 남아도 기존 Save/Publish가 동작함.
 
 ## C3. 조회·저장·복원 껍데기 — 커밋 경계 3
