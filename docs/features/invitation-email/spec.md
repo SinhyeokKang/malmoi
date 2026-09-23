@@ -34,7 +34,7 @@
 5. 실패나 결과 미확인은 **같은 폼에서 입력을 유지하고 안내 한 곳**에 보인다. 성공자/실패자 목록을 나누지 않는다. 자동 재시도하지 않으며 제한이 풀린 뒤 수동 재시도한다.
 6. Pending의 **Resend**는 저장된 주소·역할로 새 초대와 메일을 만든다. 별도 모달/확인창 없이 그 행만 처리 중으로 표시한다. 성공 토스트 후 목록을 갱신하고, 오류는 대상 라벨을 포함한 안내로 보인다.
 
-메일 제목 기본안은 `You're invited to malmoi`, 발신자 제안은 `malmoi <invite@notify.mal-moi.com>`이다. 발신 주소는 DNS 인증 가능한 주소로 운영 설정 때 확정한다. 본문은 `https://mal-moi.com/invite/<token>` 형태의 plain-text URL 하나다. HTML·서명·프로젝트명·역할·추적 요소는 넣지 않는다.
+메일 제목 기본안은 `You're invited to malmoi`, 발신자 제안은 `malmoi <invite@notify.mal-moi.com>`이다. 발신 주소는 DNS 인증 가능한 주소로 운영 설정 때 확정한다. 본문은 **HTML + text 두 파트**다(2026-09-23 사용자 — plain-text 단독 결정을 대체). text는 `https://mal-moi.com/invite/<token>` URL 한 줄, HTML은 Claude Design 시안 `email/invite.html`(버튼 + 대체 링크 + 7일 만료 안내)이다. 이미지는 자사 도메인 고정 URL 로고 PNG 하나뿐이다(`https://mal-moi.com/email/logo@2x.png` — 수신자별 값이 없어 열람 추적이 아니다). 서명·프로젝트명·역할·초대한 사람·추적 요소는 넣지 않는다.
 
 ## 4. 실패 계약과 수용하는 비용
 

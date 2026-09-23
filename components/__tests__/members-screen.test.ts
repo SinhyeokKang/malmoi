@@ -267,10 +267,15 @@ describe("멤버 화면 — 컨트롤", () => {
     expect(read(LIST) + read(PENDING)).toContain("canPerform");
   });
 
-  it("초대 링크는 한 번만 보인다 — 닫으면 사라진다는 것이 상태로 있다", () => {
+  /**
+   * ⚠️ **초대 원문은 메일로만 나간다** (invitation-email, 2026-09-23) — 모달이 링크를 만들거나 보이는 순간
+   * "토큰이 클라이언트 상태에 없다"(spec §5)가 거짓이 된다. 옛 두 검사(링크는 한 번만 · `routes.invite`)를 뒤집은 것이다.
+   */
+  it("초대 모달은 초대 링크를 만들지도 보이지도 않는다", () => {
     const src = read(INVITE);
-    expect(src).toContain("function close()");
-    expect(src).toContain("setIssued(null)");
+    expect(src).not.toMatch(/routes\.invite\(/);
+    expect(src).not.toMatch(/["`']\/invite\//);
+    expect(src).not.toMatch(/\btoken\b/);
   });
 
   /**
@@ -296,11 +301,6 @@ describe("멤버 화면 — 컨트롤", () => {
    * `app/` 아래 진입점만 읽어 `components/`가 사각지대다. 6a에서는 `translations-screen.test.ts`가
    * 이 몫을 셌고, 폼이 여기로 옮겨오면서 검사도 따라왔다.
    */
-  it("초대 링크를 `routes.invite`로 만든다 — 경로를 문자열로 조립하지 않는다", () => {
-    const src = read(INVITE);
-    expect(src).toMatch(/routes\.invite\(/);
-    expect(src).not.toMatch(/["`']\/invite\//);
-  });
 });
 
 /**
@@ -308,7 +308,7 @@ describe("멤버 화면 — 컨트롤", () => {
  */
 describe("멤버 화면 — 패널 머리", () => {
   /**
-   * ⚠️ **조건부 렌더는 차단이 아니었다** — 서버 거부는 `createInvitation`에 그대로 있고, 감추는 것은
+   * ⚠️ **조건부 렌더는 차단이 아니었다** — 서버 거부는 `createInvitations`에 그대로 있고, 감추는 것은
    * 노출 판정이었다. 그 판정을 걷어낸 것이 이 배송이고, 되돌아오면 EDITOR 화면의 오른쪽 끝이 다시 빈다.
    */
   it("페이지가 [Invite]를 역할로 감추지 않는다", () => {

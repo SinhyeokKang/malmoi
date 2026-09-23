@@ -77,7 +77,7 @@ type Started = { status: "ok"; runId: string } | { status: "rejected"; outcome: 
  * 게이트 판정 · stale 닫기 · 행 생성을 **한 트랜잭션**에서 한다 (ARCHITECTURE §5.6.1).
  *
  * ⚠️ **잠금은 `Project` 행이지 `SyncRun`이 아니다** — 막으려는 것이 "이 프로젝트에 대한 두 번째
- * 실행"이고, 아직 존재하지 않는 행은 잠글 수 없다. `createInvitation`·`changeMember`·`createProject`가
+ * 실행"이고, 아직 존재하지 않는 행은 잠글 수 없다. `createInvitations`·`changeMember`·`createProject`가
  * 정확히 이 형이다.
  *
  * ⚠️ **트랜잭션 안에서 GitHub을 부르지 않는다.** 여기까지가 수 ms이고 실제 pull은 밖에서 돈다 —

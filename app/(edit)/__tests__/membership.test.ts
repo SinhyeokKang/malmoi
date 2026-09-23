@@ -16,6 +16,7 @@ import { createHarness, sessionFor } from "./harness";
 const hoisted = vi.hoisted(() => ({
   session: null as { user: { id: string } } | null,
   prisma: undefined as unknown,
+  send: vi.fn(),
 }));
 
 // `projects/actions.ts`가 `requireUser`(=`lib/auth/session.ts`)를 물면서 `server-only`가 딸려 온다 —
@@ -24,8 +25,18 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
+// 발급은 하네스로 실제로 돌리고 메일만 멈춘다 — 토큰 원문은 발송 인자로만 나온다.
+vi.mock("@/lib/invitation-email/send", () => ({
+  readInvitationEmailConfigFromEnv: () => ({ status: "ready", apiKey: "k", from: "invite@notify.mal-moi.com", origin: "http://localhost:3000" }),
+  sendInvitationEmails: hoisted.send,
+}));
 
-const { createInvitation, changeMember, revokeInvitation } = await import("../projects/actions");
+const { createInvitations, changeMember, revokeInvitation } = await import("../projects/actions");
+
+const invite = (email: string, role: string = "EDITOR", slug = "alpha") =>
+  createInvitations({ slug, recipients: [{ email, role }] });
+/** 마지막 발송의 첫 메시지 토큰 — 응답에는 원문이 없다. */
+const sentToken = (): string => (hoisted.send.mock.calls.at(-1)?.[1] as { token: string }[] | undefined)?.[0]?.token ?? "";
 const { acceptInvitation } = await import("../../invite/actions");
 
 const LATER = new Date("2126-01-01T00:00:00Z");
@@ -57,74 +68,80 @@ beforeEach(() => {
   db = seeded();
   hoisted.prisma = db.prisma;
   hoisted.session = sessionFor("u-owner");
+  hoisted.send.mockReset();
+  hoisted.send.mockResolvedValue("accepted");
 });
 
-describe("createInvitation — 누가 부를 수 있나", () => {
+describe("createInvitations — 누가 부를 수 있나", () => {
   it("비로그인은 거부된다", async () => {
     hoisted.session = null;
-    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    const result = await invite("new@a.com");
     expect(result).toEqual({ ok: false, error: "unauthorized" });
   });
 
   it("멤버가 아니면 not-found다", async () => {
     hoisted.session = sessionFor("u-other");
-    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    const result = await invite("new@a.com");
     expect(result).toEqual({ ok: false, error: "not-found" });
   });
 
   it("EDITOR는 forbidden이다 — 멤버 관리는 OWNER만이다 (PRODUCT §3)", async () => {
     hoisted.session = sessionFor("u-editor");
-    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    const result = await invite("new@a.com");
     expect(result).toEqual({ ok: false, error: "forbidden" });
   });
 
   it("OWNER는 초대를 만든다", async () => {
-    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    const result = await invite("new@a.com");
     expect(result).toMatchObject({ ok: true });
     expect(db.invitations).toHaveLength(1);
   });
 });
 
-describe("createInvitation — 토큰은 해시만 남는다", () => {
-  it("원문이 응답에 한 번 실리고 DB에는 해시만 있다", async () => {
-    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
-    if (!result.ok) throw new Error("초대가 만들어져야 한다");
+describe("createInvitations — 토큰은 해시만 남는다", () => {
+  it("원문은 메일로만 나가고 응답에도 DB에도 없다 — DB에는 해시만 있다", async () => {
+    const result = await invite("new@a.com");
+    expect(result).toEqual({ ok: true, count: 1 });
+    const token = sentToken();
+    expect(token).not.toBe("");
 
     const row = db.invitations[0];
     expect(row).toBeDefined();
-    expect(row?.tokenHash).toBe(hashInviteToken(result.token));
-    // 원문이 어느 컬럼에도 남지 않는다.
-    expect(JSON.stringify(row)).not.toContain(result.token);
+    expect(row?.tokenHash).toBe(hashInviteToken(token));
+    // 원문이 어느 컬럼에도, 응답에도 남지 않는다.
+    expect(JSON.stringify(row)).not.toContain(token);
+    expect(JSON.stringify(result)).not.toContain(token);
   });
 
   it("두 번 만들면 토큰이 다르다 — 예측 가능한 값이 아니다", async () => {
-    const a = await createInvitation({ slug: "alpha", email: "one@a.com", role: "EDITOR" });
-    const b = await createInvitation({ slug: "alpha", email: "two@a.com", role: "EDITOR" });
-    if (!a.ok || !b.ok) throw new Error("둘 다 만들어져야 한다");
-    expect(a.token).not.toBe(b.token);
+    await invite("one@a.com");
+    const a = sentToken();
+    await invite("two@a.com");
+    expect(sentToken()).not.toBe(a);
   });
 
   it("이메일을 정규화해 저장한다 — 수락 시 대조가 대소문자로 갈리지 않게", async () => {
-    await createInvitation({ slug: "alpha", email: " New@A.com ", role: "EDITOR" });
+    await invite(" New@A.com ");
     expect(db.invitations[0]?.email).toBe("new@a.com");
   });
 
   it("초대는 인가된 projectId에 붙는다", async () => {
-    await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    await invite("new@a.com");
     expect(db.invitations[0]).toMatchObject({ projectId: "pA", invitedBy: "u-owner" });
   });
 });
 
-describe("createInvitation — 이미 있는 관계", () => {
-  it("이미 멤버인 이메일은 거부한다", async () => {
-    const result = await createInvitation({ slug: "alpha", email: "editor@a.com", role: "EDITOR" });
-    expect(result).toEqual({ ok: false, error: "already-member" });
+describe("createInvitations — 이미 있는 관계", () => {
+  it("이미 멤버인 이메일은 그 행의 오류로 거부하고 발송하지 않는다", async () => {
+    const result = await invite("editor@a.com");
+    expect(result).toEqual({ ok: false, error: "invalid-rows", rowErrors: [{ index: 0, code: "already-member" }] });
     expect(db.invitations).toHaveLength(0);
+    expect(hoisted.send).not.toHaveBeenCalled();
   });
 
   it("자기 자신을 초대할 수 없다", async () => {
-    const result = await createInvitation({ slug: "alpha", email: "owner@a.com", role: "EDITOR" });
-    expect(result).toEqual({ ok: false, error: "already-member" });
+    const result = await invite("owner@a.com");
+    expect(result).toEqual({ ok: false, error: "invalid-rows", rowErrors: [{ index: 0, code: "already-member" }] });
   });
 
   it("만료된 초대를 다시 보내면 **토큰이 회전한다** — unique가 아니라 index인 이유다", async () => {
@@ -133,7 +150,7 @@ describe("createInvitation — 이미 있는 관계", () => {
       tokenHash: "old-hash", expiresAt: EARLIER, acceptedAt: null, invitedBy: "u-owner",
     });
 
-    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    const result = await invite("new@a.com");
     expect(result).toMatchObject({ ok: true });
     // 새 행이 생기고 옛 행은 더 이상 수락되지 않아야 한다.
     expect(db.invitations).toHaveLength(2);
@@ -147,9 +164,9 @@ describe("createInvitation — 이미 있는 관계", () => {
  * 살아 있고 role이 다르면 둘 다 유효하다. `changeMember`와 같은 형태로 `Project` 행을 잠근 트랜잭션에 넣는다.
  * 메모리 DB는 잠금을 못 흉내내므로 **잠금이 회전보다 먼저인 것**과 **create가 실패하면 회전이 되돌아가는 것**을 본다.
  */
-describe("createInvitation — 회전과 생성이 한 트랜잭션이다", () => {
+describe("createInvitations — 회전과 생성이 한 트랜잭션이다", () => {
   it("프로젝트 행을 잠근 뒤 회전한다", async () => {
-    await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    await invite("new@a.com");
     const sql = db.spies.executeRaw.mock.calls.map((c) => (c[0] as TemplateStringsArray).join("?")).join("\n");
     expect(sql).toMatch(/"Project"[\s\S]*FOR UPDATE/);
     expect(db.spies.executeRaw.mock.invocationCallOrder[0]).toBeLessThan(
@@ -165,7 +182,10 @@ describe("createInvitation — 회전과 생성이 한 트랜잭션이다", () =
     db.spies.createInvitationRow.mockImplementationOnce(async () => {
       throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
     });
-    await expect(createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" })).resolves.toEqual({ ok: false, error: "unavailable" });
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(invite("new@a.com")).resolves.toEqual({ ok: false, error: "unavailable" });
+    quiet.mockRestore();
+    expect(hoisted.send).not.toHaveBeenCalled();
     expect(db.invitations).toHaveLength(1);
     expect(db.invitations[0]?.expiresAt).toEqual(LATER);
   });
@@ -281,9 +301,9 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
  * 인가는 그 앞에서 끝나므로 권한 구멍은 아니지만, 거부가 예외로 죽지 않는다는 규칙(ARCHITECTURE §6.3)이 깨진다.
  */
 describe("입력 검증 — 거부가 예외로 죽지 않는다", () => {
-  it("createInvitation: 모르는 role은 invalid input", async () => {
-    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "ADMIN" as never });
-    expect(result).toEqual({ ok: false, error: "invalid input" });
+  it("createInvitations: 모르는 role은 그 행의 invalid-role이다", async () => {
+    const result = await invite("new@a.com", "ADMIN");
+    expect(result).toEqual({ ok: false, error: "invalid-rows", rowErrors: [{ index: 0, code: "invalid-role" }] });
     expect(db.invitations).toHaveLength(0);
   });
 
@@ -301,7 +321,7 @@ describe("입력 검증 — 거부가 예외로 죽지 않는다", () => {
   });
 
   it("검증이 인가보다 앞이다 — slug가 없으면 무엇을 인가할지 정할 수 없다", async () => {
-    const result = await createInvitation({ slug: "", email: "new@a.com", role: "EDITOR" });
+    const result = await invite("new@a.com", "EDITOR", "");
     expect(result).toEqual({ ok: false, error: "invalid input" });
   });
 });
@@ -434,7 +454,7 @@ describe("경합에서도 거부가 응답으로 온다", () => {
   });
 
   it("이미 멤버인 사람이 옛 초대를 수락하면 already-member다 — unique 위반으로 죽지 않는다", async () => {
-    // 초대가 만들어진 뒤 다른 경로로 멤버가 된 상태. `createInvitation`이 그 조합을 막지만
+    // 초대가 만들어진 뒤 다른 경로로 멤버가 된 상태. `createInvitations`이 그 조합을 막지만
     // **막혀 있다는 것이 코드가 아니라 추론에 있으면** 다음 변경에서 열린다.
     db.invitations.push({
       id: "inv-1", projectId: "pA", email: "editor@a.com", role: "EDITOR",
@@ -454,7 +474,7 @@ describe("경합에서도 거부가 응답으로 온다", () => {
  *
  * ⚠️ **행을 지우지 않는다.** `prisma/schema.prisma`의 `acceptedAt` 주석이 그것을 금지한다 — 지우면
  * 재사용 시도가 `already-accepted`가 아니라 `not-found`가 되어 만료·오배송과 뭉개진다. 무효화의
- * 기존 관용구는 `expiresAt = now`이고(`createInvitation`의 회전) `loadPendingInvitations`의
+ * 기존 관용구는 `expiresAt = now`이고(`createInvitations`의 회전) `loadPendingInvitations`의
  * `expiresAt > now()` 술어가 그대로 맞는다.
  */
 describe("revokeInvitation — 무효화는 삭제가 아니다", () => {
@@ -548,7 +568,7 @@ describe("revokeInvitation — 무효화는 삭제가 아니다", () => {
  * ⚠️ **집계가 잠금 안이다.** 밖에서 세면 두 OWNER가 동시에 초대할 때 각자 "자리 있음"을 보고
  * 각자 만든다 — `createProject`의 재집계와 같은 형이고, 여기는 잠글 `Project` 행이 **이미 있다**.
  */
-describe("createInvitation — 멤버 제한", () => {
+describe("createInvitations — 멤버 제한", () => {
   const many = (n: number) =>
     Array.from({ length: n }, (_, i) => ({
       projectId: "pA",
@@ -568,7 +588,7 @@ describe("createInvitation — 멤버 제한", () => {
     const db = withMembers(9);
     hoisted.prisma = db.prisma;
     hoisted.session = sessionFor("u-owner");
-    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    const result = await invite("new@a.com");
     expect(result).toMatchObject({ ok: true });
   });
 
@@ -577,7 +597,7 @@ describe("createInvitation — 멤버 제한", () => {
     hoisted.prisma = db.prisma;
     hoisted.session = sessionFor("u-owner");
     const before = db.invitations.length;
-    const result = await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    const result = await invite("new@a.com");
     expect(result).toEqual({ ok: false, error: "member-limit" });
     expect(db.invitations).toHaveLength(before);
   });
@@ -586,7 +606,7 @@ describe("createInvitation — 멤버 제한", () => {
     const db = withMembers(10);
     hoisted.prisma = db.prisma;
     hoisted.session = sessionFor("u-owner");
-    await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" });
+    await invite("new@a.com");
 
     const lockOrder = db.spies.executeRaw.mock.invocationCallOrder[0] ?? Infinity;
     const countOrder = db.spies.countMembers.mock.invocationCallOrder.at(-1) ?? -Infinity;
@@ -608,7 +628,7 @@ describe("createInvitation — 멤버 제한", () => {
     });
     hoisted.prisma = db.prisma;
     hoisted.session = sessionFor("u-owner");
-    expect(await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" })).toMatchObject({
+    expect(await invite("new@a.com")).toMatchObject({
       ok: true,
     });
   });
@@ -624,12 +644,12 @@ describe("삼킨 장애의 로그 한 줄", () => {
   afterEach(() => log.mockRestore());
   const lines = () => log.mock.calls.map((c) => String(c[0]));
 
-  it("createInvitation — 성공 0줄, 장애 한 줄", async () => {
-    expect((await createInvitation({ slug: "alpha", email: "new@a.com", role: "EDITOR" })).ok).toBe(true);
+  it("createInvitations — 성공 0줄, 장애 한 줄", async () => {
+    expect((await invite("new@a.com")).ok).toBe(true);
     expect(lines()).toEqual([]);
     vi.spyOn(db.prisma, "$transaction").mockRejectedValue(new Error("secret argument"));
-    expect(await createInvitation({ slug: "alpha", email: "late@a.com", role: "EDITOR" })).toEqual({ ok: false, error: "unavailable" });
-    expect(lines()).toEqual([expect.stringMatching(/^\[invite\] \w{8} create: Error$/)]);
+    expect(await invite("late@a.com")).toEqual({ ok: false, error: "unavailable" });
+    expect(lines()).toEqual([expect.stringMatching(/^\[invite\] \w{8} issue: Error$/)]);
   });
 
   it("acceptInvitation — 장애 한 줄", async () => {

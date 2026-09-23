@@ -1,5 +1,4 @@
 import { History, SearchX } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { EventDetail } from "@/components/logs/event-detail";
@@ -121,7 +120,7 @@ export default async function LogsPage({
                 걸리면 아래 페이지가 들고, 커서가 이미 과거면 그리지 않는다.
               */}
               <div className="flex items-center gap-2 p-4">
-                <h2 className="text-[15px] font-medium">{group.dayKey}</h2>
+                <h2 className="text-base font-medium">{group.dayKey}</h2>
                 {group.label !== group.dayKey && <span className="text-muted-foreground text-xs">{group.label}</span>}
               </div>
               {group.rows.map((row) => {
@@ -173,12 +172,12 @@ export default async function LogsPage({
             </span>
             {/* ⚠️ **복원 링크는 OWNER에게만** — EDITOR에게 누를 수 없는 것을 보이지 않는다. */}
             {canPerform(role, "project:settings") && (
-              <Link
+              <ButtonLink
                 href={routes.settings(slug)}
-                className="border-border hover:bg-accent focus-visible:ring-ring inline-flex h-9 shrink-0 items-center rounded-[10px] border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
+                className="shrink-0"
               >
                 {m.logs.archived.restoreAction}
-              </Link>
+              </ButtonLink>
             )}
           </div>
         )}

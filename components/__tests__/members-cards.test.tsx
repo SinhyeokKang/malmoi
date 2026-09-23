@@ -15,7 +15,7 @@ import { m } from "@/lib/i18n";
 
 import { find, render } from "./helpers/dom";
 
-const mocks = vi.hoisted(() => ({ changeMember: vi.fn(), revokeInvitation: vi.fn(), createInvitation: vi.fn() }));
+const mocks = vi.hoisted(() => ({ changeMember: vi.fn(), revokeInvitation: vi.fn(), resendInvitation: vi.fn(), createInvitations: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => mocks);
 const { changeMember } = mocks;
 

@@ -42,7 +42,7 @@
 
 commit 뒤 서버 메모리의 주소·토큰으로 `POST https://api.resend.com/emails/batch`를 **한 번 await**한다. 단건 Resend도 메시지 하나의 같은 경로다. DB 잠금 안 네트워크 호출·fire-and-forget은 없다.
 
-- 한 메시지의 `to`는 한 명, `text`는 `INVITATION_EMAIL_ORIGIN + routes.invite(token)` 한 줄이다. 제목은 `You're invited to malmoi` 기본안. HTML·CC/BCC·첨부·추적은 없다.
+- 한 메시지의 `to`는 한 명, `text`는 `INVITATION_EMAIL_ORIGIN + routes.invite(token)` 한 줄, `html`은 시안 템플릿(`lib/invitation-email/template.ts`)의 `{{INVITE_URL}}` 네 자리에 **HTML 이스케이프한** 같은 URL을 넣은 것이다. 제목은 `You're invited to malmoi`. CC/BCC·첨부·추적은 없다. 로고는 프로덕션 고정 URL이다 — preview 호스트는 Vercel SSO 뒤라 메일 클라이언트가 못 받고, 프로덕션 배포 전에는 alt `malmoi`가 자리를 채운다.
 - Bearer 키와 서버 생성 UUID의 `Idempotency-Key: invitation-batch/<uuid>`를 쓴다. 10초 timeout, 자동 재시도 0회. 멱등 키는 새로운 발급 요청 간 중복을 없애는 장치가 아니다.
 - 2xx와 요청 수만큼의 유효 id 목록을 확인한 때만 accepted다. 명시적으로 요청을 거부한 응답은 rejected, timeout·네트워크·5xx·해석 불가/불완전 결과는 unknown이다. 공급자의 배달 원자성·대상별 성공을 추정하지 않는다.
 - 서버 결과는 **요청 단위** `accepted(count)` / `blocked(code, rowErrors?, retryAt?)` / `email-error(rejected|unknown, retryAt)`다. Resend 성공에는 서버 마스킹 라벨을 추가한다. 클라이언트는 발송 상태 배열·토큰·URL을 받지 않는다.

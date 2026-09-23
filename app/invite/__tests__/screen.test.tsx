@@ -46,6 +46,15 @@ it("제목이 선다 — 설명이 제목을 겸하지 않는다", async () => {
   }
 });
 
+/** ⚠️ **쓸 수 없는 초대에 "You're invited"를 세우지 않는다** — 바로 아래 Alert가 반대 말을 한다. */
+it("쓸 수 없는 초대는 제목이 그 사실을 말한다", async () => {
+  state.session.mockResolvedValue({ status: "ok", userId: "u1" });
+  state.row.mockResolvedValue(null);
+  const markup = renderToStaticMarkup(await Page({ params: Promise.resolve({ token: "t" }), searchParams: Promise.resolve({}) }));
+  expect(markup).toContain(m.invite.unavailableTitle.replace(/'/g, "&#x27;"));
+  expect(markup).not.toContain(m.invite.title.replace(/'/g, "&#x27;"));
+});
+
 /**
  * ⚠️ **노출을 단계로 가른다** — 이 화면은 matcher 밖이라 링크를 가진 누구에게나 열린다. 그때 고를
  * 것은 "로그인할까"뿐이라 프로젝트 상세가 필요 없다.

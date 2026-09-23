@@ -200,13 +200,13 @@ describe("설정 화면 — 기준 브랜치만 남았다 (6b-5)", () => {
   });
 
   /**
-   * ⚠️ **셀렉트가 남아 있으면 소유자가 둘이다.** 두 화면에서 같은 컬럼을 쓸 수 있으면 한쪽의 저장이
+   * ⚠️ **로케일 셀렉트가 남아 있으면 소유자가 둘이다.** 두 화면에서 같은 컬럼을 쓸 수 있으면 한쪽의 저장이
    * 다른 쪽의 대기를 지우는 경로가 다시 열린다 (malmoi#20의 원인 구조).
    */
   it("설정 폼에 로케일 셀렉트가 없다", () => {
     const src = read(SETTINGS_FORM);
-    expect(src).not.toMatch(/from "@\/components\/ui\/select"/);
-    expect(src).not.toMatch(/<Select/);
+    expect(src).not.toMatch(/baseLocale|base-locale|LocaleSelect/);
+    expect(src).toMatch(/<Select name="baseBranch"/);
     expect(src).not.toMatch(/baseLocaleFieldValue\(/);
   });
 

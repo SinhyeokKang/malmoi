@@ -153,7 +153,8 @@ export function PublicDoc({
       ))}
       <Link
         href={back.href}
-        className="focus-visible:ring-ring text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+        // `self-start` — flex-col 자식의 기본 stretch면 줄 전체가 눌리는 자리가 된다.
+        className="focus-visible:ring-ring self-start text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
       >
         {back.label}
       </Link>

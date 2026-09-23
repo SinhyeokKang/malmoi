@@ -318,7 +318,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-09-19",
+      effectiveDate: "2026-09-24",
       intro:
         "malmoi is a localization tool: developers push the strings in their code to malmoi, their teammates translate them here, and malmoi opens a pull request back to the repository. This policy covers what malmoi stores about the people who sign in, why it stores it, and how to have it removed.",
       sections: [
@@ -362,7 +362,7 @@ export const en = {
                   [
                     "Your project membership and any invitation sent to your address",
                     "The person who invites you",
-                    "Deciding which projects you can open and what you can do in them",
+                    "Deciding which projects you can open and what you can do in them, and emailing you the invitation link",
                   ],
                   [
                     "Who last changed a translation, and who asked for a sync",
@@ -387,6 +387,7 @@ export const en = {
                 "Deciding which projects you can open and what you can do in them.",
                 "Showing your teammates who changed a translation and who asked for a sync.",
                 "Writing translations back to the repository a project is connected to, as a pull request.",
+                "Emailing an invitation link to an address a project owner enters. The email holds the link and nothing else — no project name, no role and no tracking.",
                 "Keeping the service running, which includes looking at error logs when something fails.",
               ],
             },
@@ -407,7 +408,8 @@ export const en = {
                 "Your account and its connections: kept until you ask us to delete them.",
                 "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
                 "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
-                "An invitation stops working after 7 days, or as soon as it is accepted or revoked. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
+                "An invitation stops working after 7 days, or as soon as it is accepted, revoked or sent again. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
+                "An invitation email: Resend, which sends it, keeps a record of the message — the address, the subject and the link in it — for 30 days.",
                 "Translations and the record of who changed them: kept for the life of the project.",
               ],
             },
@@ -417,17 +419,21 @@ export const en = {
           id: "third-parties",
           heading: "Who else sees it",
           blocks: [
-            { p: "malmoi sends your data to four services and to no one else." },
+            { p: "malmoi sends your data to five services and to no one else." },
             {
               ul: [
                 "GitHub — signing you in, and reading and writing the repository a project is connected to. Translations are committed and opened as a pull request by malmoi's GitHub App, not under your own account.",
                 "Google — signing you in, if you choose Google.",
                 "Supabase — the database, hosted in Tokyo.",
                 "Vercel — hosting for the app and storage for uploaded profile pictures. Vercel records requests to the service, including IP addresses, as part of running it.",
+                "Resend — sending invitation emails, from Tokyo. It receives the invited address and the message with the invitation link. Open and click tracking are off.",
               ],
             },
             {
               p: "A profile picture that comes from GitHub or Google is loaded by your browser directly from their servers, so those requests reach them even though malmoi sends them nothing.",
+            },
+            {
+              p: "An invitation email shows a logo that your email app loads from mal-moi.com. It is the same image at the same address for everyone, so it does not tell malmoi who opened the email.",
             },
           ],
         },
@@ -445,7 +451,7 @@ export const en = {
               ),
             },
             {
-              p: "Deleting your data removes your account, your GitHub and Google connections, your sessions, your project memberships, any invitation addressed to you that has not been accepted, and a profile picture you uploaded.",
+              p: "Deleting your data removes your account, your GitHub and Google connections, your sessions, your project memberships, any invitation addressed to you that has not been accepted, and a profile picture you uploaded. Resend's record of an invitation email is not removed early; it expires on its own 30 days after the email was sent.",
             },
             {
               p: "Translations stay. They are the project's output and are already in the repository, so removing them would delete work that belongs to the team — but the record of who wrote them stops pointing at you.",
@@ -494,7 +500,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-09-19 — first version."] },
+            { ul: ["2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
@@ -1858,6 +1864,7 @@ export const en = {
         copied: "Copied",
         copyFailed: "Couldn't copy",
         selectKey: "Select a key to translate",
+        selectKeyBody: "Its translations in every language open here.",
         keyGone: (source: string): string => `This key is no longer in ${source}`,
       },
       footer: {
@@ -2373,34 +2380,61 @@ export const en = {
     /** 초대 발급 — 6a의 임시 폼(`translations.invite`)에서 여기로 옮겼다. 화면 하나에 어휘 한 벌이다. */
     invite: {
       open: "Invite member",
-      /** ⚠️ **`translator`가 아니다** — 역할 선택이 붙는 순간 그 낱말이 거짓이 된다. */
-      title: "Invite a member",
-      /** ⚠️ **제품 이름은 문장 첫 자리도 소문자다** (`brand-spelling.test.ts`). */
-      description: "malmoi doesn't send email. You'll get a link to pass on yourself.",
-      email: "Email",
-      /** 링크가 주소에 묶인다는 사실 — 수락이 그 주소의 검증된 로그인을 요구한다 (ARCHITECTURE §6.02). */
-      help: "The link only works for this address, signed in with it.",
-      roleLabel: "Role",
-      /** 역할 선택의 보조 줄 — 권한표(`lib/auth/permission.ts`)를 한 문장씩 옮긴 것이다. */
+      /** ⚠️ **여러 명이다** (핸드오프 `1a`) — 한 폼이 여러 행을 보낸다. */
+      title: "Invite members",
+      description: "Send invitations by email and choose a role for each person.",
+      /** 열 머리 둘 — 빈 행 하나로 열리면 두 번째 컨트롤이 무엇인지 값만으로는 안 읽힌다. */
+      columns: { email: "Email", role: "Role" },
+      placeholder: "name@company.com",
+      /** 역할 메뉴 항목의 둘째 줄 — 권한표(`lib/auth/permission.ts`)를 한 문장씩 옮긴 것이다. 폼에는 캡션을 두지 않는다. */
       roleHint: {
         EDITOR: "Can translate and publish",
         OWNER: "Also manages members and settings",
       },
+      /** ⚠️ **대상이 접근 이름에 들어간다** — 여덟 행의 제거 버튼이 전부 "Remove"면 무엇을 지우는지 모른다. 빈 행은 `recipient {n}`. */
+      roleFor: (who: string): string => `Role for ${who}`,
+      removeRecipient: (who: string): string => `Remove ${who}`,
+      emptyRecipient: (n: number): string => `recipient ${n.toLocaleString("en-US")}`,
+      addAnother: "Add another",
+      /** 주 버튼이 몇 명에게 보내는지 말한다. 0명이면 꺼진 버튼의 라벨이다. */
+      send: (n: number): string => (n === 0 ? "Send invitations" : n === 1 ? "Send invitation" : `Send ${n.toLocaleString("en-US")} invitations`),
+      /** 바닥 왼쪽 상태 슬롯 — 좌석 수가 서던 자리를 순서대로 쓴다. ⚠️ 버튼 라벨은 바꾸지 않는다(`loadingLabel`이 없다). */
+      sending: "Sending invitations…",
+      /** ⚠️ **"by this request"다** (design §6) — 앞선 요청이 결과 미확인이었을 수 있으므로 범위를 이번 요청으로 좁힌다. */
+      nothingSent: "Nothing was sent by this request. Fix or remove the highlighted row, then send again.",
       /** 모달 바닥 왼쪽. 헤더의 `seats`와 다른 문장인 것은 시안이고, 수는 같은 값에서 온다. */
       seatsUsed: (n: number, limit: number): string => `${n} of ${limit} seats used`,
-      create: "Create invite link",
-      /** ⚠️ **라벨은 서버가 만든다** (`maskedEmailLabels`) — 클라이언트에서 가리면 세 번째 마스킹 구현이다. */
-      ready: (label: string): string => `Link ready for ${label}`,
-      readyHint: "Send it to them yourself. You won't be able to see this link again after closing.",
-      expiresIn: (role: string): string => `Expires in 7 days \u00b7 ${role}`,
-      /** 링크 얼굴의 안내 카드 — 무엇이 남고 무엇이 사라지는지, 잃었을 때의 복구 경로까지. */
-      notKept: {
-        title: "malmoi doesn't keep the link",
-        body: "The invitation stays in Pending invitations, but the address above is gone once this closes. If it's lost, revoke the invitation and make a new one.",
+      rowError: {
+        invalidEmail: "This doesn't look like an email address.",
+        invalidRole: "Choose a role for this address.",
+        /** 같은 역할 중복 — 뒤 행 하나에만 선다. `row`는 화면의 1부터 센 행 번호다. */
+        duplicate: (row: number): string => `Already in row ${row.toLocaleString("en-US")}. Remove this one.`,
+        /** 역할이 다른 중복 — 양쪽 행에 상대 행과 역할을 적는다. 조용히 한쪽을 버리면 고른 역할이 사라진다. */
+        roleConflict: (row: number, role: string): string => `Also in row ${row.toLocaleString("en-US")} as ${role}. Keep one role for this address.`,
       },
-      done: "Done",
       alreadyMember: "That email is already a member of this project.",
-      failed: (reason: string): string => `Couldn't create the link: ${reason}`,
+      /**
+       * 발급 제한의 폼 Alert (warning). ⚠️ **"sent"가 아니라 "created"다** (design §6) — 한도는 발송 성공 수가
+       * 아니라 초대 발급 수이고, 메일이 실패해도 센다. 시각은 서버 값을 UTC로 적는다(카운트다운 없음).
+       */
+      limit: {
+        title: "This would go over the invitation limit",
+        /** ⚠️ 한도를 인자로 받는다 — 문구가 20을 따로 들면 `INVITATION_HOURLY_LIMIT`와 갈리는 날 화면만 틀린 수를 말한다. */
+        project: (limit: number, used: number, n: number, time: string): string =>
+          `A project can create ${limit.toLocaleString("en-US")} invitations an hour, and ${used.toLocaleString("en-US")} ${used === 1 ? "was" : "were"} created in the last hour. You can send ${n === 1 ? "this one" : `these ${n.toLocaleString("en-US")}`} after ${time}.`,
+        address: (email: string, time: string): string => `${email} was invited less than a minute ago. You can send again after ${time}.`,
+      },
+      tooMany: (limit: number): string => `You can invite up to ${limit.toLocaleString("en-US")} people at a time.`,
+      /** 결과 미확인은 모드가 아니라 문구다 — 일부가 갔을 수 있다는 사실을 숨기지 않고, 사람별 결과를 복원하지 않는다. */
+      unconfirmed: {
+        title: "We couldn't confirm the email request",
+        body: "Some invitations may have been sent. Sending again replaces the earlier links.",
+      },
+      sendFailed: "The invitation emails couldn't be sent. Sending again replaces any links from this attempt.",
+      /** ⚠️ **workspace가 없다** (design §6) — 제품 계층에 없는 낱말이다. 키·코드도 노출하지 않는다. */
+      emailUnavailable: "Email is unavailable right now. Try again later.",
+      failed: (reason: string): string => `Couldn't send the invitations: ${reason}`,
+      sentToast: (n: number): string => (n === 1 ? "Invitation sent" : `Invitations sent to ${n.toLocaleString("en-US")} people`),
     },
 
     pending: {
@@ -2424,6 +2458,18 @@ export const en = {
        * (열이 사라지기 전에는 *"이미 마스킹한 열이 옆에 있다"*가 근거였는데, 그 열이 없어졌다.)
        */
       unknownInviter: "a member",
+      resend: "Resend",
+      resendLabel: (who: string): string => `Resend invitation to ${who}`,
+      resentToast: (who: string): string => `Invitation resent to ${who}`,
+      /** 카드 안 Alert — 대상 라벨을 문장에 넣는다(행이 교체돼도 무엇에 관한 안내인지 남게). 시각은 서버 값·UTC. */
+      resendFailed: (who: string, time: string): string => `Couldn't resend the invitation to ${who}. You can try again after ${time}.`,
+      resendLimited: (who: string, time: string): string => `${who} was invited less than a minute ago. You can resend after ${time}.`,
+      resendProjectLimited: (who: string, limit: number, time: string): string =>
+        `Couldn't resend to ${who}: this project has created ${limit.toLocaleString("en-US")} invitations in the last hour. You can resend after ${time}.`,
+      resendUnconfirmed: (who: string): string => `We couldn't confirm the email to ${who}. It may have been sent — Resend again replaces that link.`,
+      resendUnavailable: (who: string): string => `Couldn't resend to ${who}. Email is unavailable right now. Try again later.`,
+      resendGone: (who: string): string => `The invitation to ${who} is no longer pending.`,
+      resendError: (who: string, reason: string): string => `Couldn't resend the invitation to ${who}: ${reason}`,
       revoke: "Revoke",
       /** 같은 이유로 대상을 든다 — 대기 초대가 여럿이면 어느 주소인지가 유일한 구별점이다. */
       revokeLabel: (who: string): string => `Revoke invitation for ${who}`,
@@ -2595,6 +2641,8 @@ export const en = {
      * 경우가 있고 그때 거짓이다.
      */
     title: "You're invited",
+    /** 쓸 수 없는 초대(없음·만료·사용됨)의 제목 — 그 아래 Alert가 까닭을 말한다. `title`을 그대로 두면 두 줄이 반대 말을 한다. */
+    unavailableTitle: "Invitation unavailable",
     signInHint: (email: string): string => `Sign in with the account at ${email} to accept.`,
     // ⚠️ **provider 버튼 문구가 여기 없다** (2026-09-12) — `/signin`과 같은 버튼을 쓰므로
     // `signIn.github`·`signIn.google`이 든다. 사본을 두면 같은 버튼이 화면마다 다른 말을 한다.

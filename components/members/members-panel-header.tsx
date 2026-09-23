@@ -12,7 +12,7 @@ import { m } from "@/lib/i18n";
  * 멤버 패널 머리의 우측 — **좌석 잔량 + [Invite]** 와 초대 모달의 소유자 (DESIGN §6.65).
  *
  * ⚠️ **[Invite]가 조건부 렌더에서 빠졌다.** 전에는 `canPerform(role, "member:manage") && <InviteDialog/>`
- * 였는데 그것은 **차단이 아니라 노출 판정**이었다 — 서버 거부는 `createInvitation`에 그대로 있다.
+ * 였는데 그것은 **차단이 아니라 노출 판정**이었다 — 서버 거부는 `createInvitations`에 그대로 있다.
  * 감추면 EDITOR에게 오른쪽 끝이 통째로 비어 "왜 없는지"를 말할 자리조차 없다.
  *
  * ⚠️ **꺼진 버튼은 `aria-disabled`다** — 진짜 `disabled`는 포커스를 못 받아 사유의 전달 경로가 없다.

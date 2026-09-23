@@ -6,7 +6,7 @@ import { render } from './helpers/dom';
 import { RepositoryCard } from '@/components/settings/repository-card';
 import { CiCard } from '@/components/settings/ci-card';
 vi.mock('@/app/(edit)/projects/[slug]/settings/actions', () => ({ connectRepository: vi.fn(async () => ({ ok: false, error: 'unavailable' })), updateRepositorySettings: vi.fn() }));
-vi.mock('@/app/(edit)/projects/actions', () => ({ rotatePushToken: vi.fn(async () => ({ ok: false, error: 'unavailable' })) }));
+vi.mock('@/app/(edit)/projects/actions', () => ({ listRepoBranches: vi.fn(async () => ({ ok: true, names: ["main"], defaultBranch: "main", truncated: false })), rotatePushToken: vi.fn(async () => ({ ok: false, error: 'unavailable' })) }));
 it.each(['repository', 'token'])('%s failures use the full-width card notice', async kind => {
   const { container } = await render(kind === 'repository'
     ? <RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={{ status: 'not-connected' }} account={{ status: 'ok', login: 'owner' }} />

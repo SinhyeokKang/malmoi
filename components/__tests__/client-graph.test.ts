@@ -90,6 +90,7 @@ const KNOWN_OFFENDERS = ["ts-morph", "octokit", "@prisma/client", "node:fs", "se
  */
 const CLIENT_LIB_FILES = [
   "lib/account/plan.ts",
+  "lib/auth/email.ts",
   "lib/auth/member-identity.ts",
   "lib/auth/membership.ts",
   "lib/auth/message.ts",
@@ -106,6 +107,9 @@ const CLIENT_LIB_FILES = [
   "lib/import/confirm.ts",
   "lib/import/refusal.ts",
   "lib/import/result.ts",
+  "lib/invitation-email/limits.ts",
+  "lib/invitation-email/recipients.ts",
+  "lib/invitation-email/retry-at.ts",
   "lib/keys/flag.ts",
   "lib/login-link/message.ts",
   "lib/login-link/policy.ts",

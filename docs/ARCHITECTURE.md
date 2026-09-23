@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sources/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/protection/`·`lib/privacy/`·`lib/signin/`·`lib/translations/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/compare.ts`·`lib/relative-time.ts`·`lib/utc-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sources/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/protection/`·`lib/privacy/`·`lib/signin/`·`lib/translations/`·`lib/invitation-email/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/compare.ts`·`lib/relative-time.ts`·`lib/utc-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
 
 > 이 문서는 **선 코드의 계약만** 적는다. 아직 서지 않은 것은 `docs/PRODUCT.md` §10(아직 안 정한 것)이나 진행 중인 `docs/features/<slug>/`가 든다 — 여기에 미래형을 섞으면 "불변식"이 지켜야 할 것과 지키고 싶은 것으로 갈린다.
 
@@ -743,7 +743,7 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
   - ⚠️ **그 카운트는 선조회이고 방어선이 아니다** (2026-09-07 리뷰 🟡7). 트랜잭션 밖이라 두 탭이 동시에
     통과하면 슬롯이 셋인데 넷이 생기고, 삭제가 비범위라 사용자가 되찾을 수 없다. 그래서 `createProject`의
     트랜잭션이 **`User` 행을 잠그고 다시 센다** — 생성 경로에는 잠글 프로젝트가 없으므로 대상이 User다
-    (`createInvitation`·`changeMember`가 프로젝트 행을 잠그는 것과 같은 이유). 선조회를 남기는 이유는
+    (`issueInvitations`·`changeMember`가 프로젝트 행을 잠그는 것과 같은 이유). 선조회를 남기는 이유는
     거부될 요청이 GitHub을 읽지 않게 하는 것이다.
 - **`slug.ts`의 `planSlug`** — 형식·길이(`PROJECT_SLUG_MAX = 40`)·예약어(`RESERVED = {"new"}`)를 거른다.
   형식 판정은 `lib/pull/ref-slug.ts`의 `isRefSafeSlug` **한 벌**을 쓴다(브랜치 이름에 그대로 들어가므로).
@@ -1015,7 +1015,7 @@ push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙
 
 ### 5.5.1 pooler가 구현을 규정한다
 
-- **push는 대화형 `$transaction(async tx => …)`을 쓴다 — 잠금 때문이다** (2026-09-15에 배열형에서 옮겼다). 진입점 둘(`/api/push`·Sync)이 같은 표면을 동시에 적용할 수 있게 되면서 `Project` → `TranslationSurface`를 `FOR UPDATE`로 잠그고 **잠근 뒤 읽은 최신 상태로** 보관·오배송·포맷·역행을 다시 판정해야 하는데, 배열형은 그 사이에 판정을 끼울 자리가 없다. ⚠️ **대가가 실측으로 있다**: 1446키×6로케일 로컬 격리 핸들러에서 warm 240·242·243ms → **689·677·543ms**. 잠금과 최신 상태 조회가 왕복을 늘린 값이고, 배포 환경의 네트워크 지연은 여기 안 들어 있다(`lib/push/apply.ts`에 같은 수가 있다). 문장 자체는 여전히 배치로 만들어 그 연결에서 순서대로 보낸다 — 키마다 왕복하지 않는다. ⚠️ **"대화형은 pooler에서 못 쓴다"는 서술은 틀렸었다** (2026-09-06 정정): pgbouncer transaction 모드는 `BEGIN…COMMIT` 동안 서버 커넥션을 고정하고 Prisma는 대화형 tx를 커넥션 하나에 묶으므로 안전하다. 대화형 사용처에는 다음이 있다 — `changeMember`(`SELECT … FOR UPDATE` + 재집계) · `createInvitation`(같은 잠금) · **`createProject`**(`SELECT … "User" … FOR UPDATE` + `PROJECT_LIMIT` 재집계 — §3.1이 그 방어선을 설명한다) · `acceptInvitation`(조건부 소비 + 멤버 생성) · GitHub callback의 `Account` 연결. 잠금과 롤백이 필요한 자리다. 로그인 Account 연결과 sync 실행 등록도 대화형 트랜잭션을 쓴다. 배열형은 그 둘이 필요 없고 문장이 많을 때 고른다 — push는 2026-09-15에 그 조건에서 빠졌다.
+- **push는 대화형 `$transaction(async tx => …)`을 쓴다 — 잠금 때문이다** (2026-09-15에 배열형에서 옮겼다). 진입점 둘(`/api/push`·Sync)이 같은 표면을 동시에 적용할 수 있게 되면서 `Project` → `TranslationSurface`를 `FOR UPDATE`로 잠그고 **잠근 뒤 읽은 최신 상태로** 보관·오배송·포맷·역행을 다시 판정해야 하는데, 배열형은 그 사이에 판정을 끼울 자리가 없다. ⚠️ **대가가 실측으로 있다**: 1446키×6로케일 로컬 격리 핸들러에서 warm 240·242·243ms → **689·677·543ms**. 잠금과 최신 상태 조회가 왕복을 늘린 값이고, 배포 환경의 네트워크 지연은 여기 안 들어 있다(`lib/push/apply.ts`에 같은 수가 있다). 문장 자체는 여전히 배치로 만들어 그 연결에서 순서대로 보낸다 — 키마다 왕복하지 않는다. ⚠️ **"대화형은 pooler에서 못 쓴다"는 서술은 틀렸었다** (2026-09-06 정정): pgbouncer transaction 모드는 `BEGIN…COMMIT` 동안 서버 커넥션을 고정하고 Prisma는 대화형 tx를 커넥션 하나에 묶으므로 안전하다. 대화형 사용처에는 다음이 있다 — `changeMember`(`SELECT … FOR UPDATE` + 재집계) · `issueInvitations`·`reissueInvitation`(같은 잠금) · **`createProject`**(`SELECT … "User" … FOR UPDATE` + `PROJECT_LIMIT` 재집계 — §3.1이 그 방어선을 설명한다) · `acceptInvitation`(조건부 소비 + 멤버 생성) · GitHub callback의 `Account` 연결. 잠금과 롤백이 필요한 자리다. 로그인 Account 연결과 sync 실행 등록도 대화형 트랜잭션을 쓴다. 배열형은 그 둘이 필요 없고 문장이 많을 때 고른다 — push는 2026-09-15에 그 조건에서 빠졌다.
 - **키마다 왕복하면 타임아웃이다.** skillflo가 1446키다. `unnest()`로 배열을 넘겨 문장 하나가 전체를 처리한다. 실측 1446키 + 2892번역 + 1446refs가 **약 1.6초**(라우트 한도 60초).
 - **키 id를 JS에서 만든다.** 스키마의 `@default(cuid())`는 Prisma 클라이언트가 적용하는 값이라 raw SQL에는 오지 않는다. 현재 `randomUUID()`를 쓰고, 형식 혼재를 통일할지는 미결이다.
 
@@ -1196,7 +1196,7 @@ $transaction(tx):
 ```
 
 - ⚠️ **잠금은 `Project` 행이지 `SyncRun`이 아니다** — 막으려는 것이 "이 프로젝트에 대한 두 번째
-  실행"이고, **아직 존재하지 않는 행은 잠글 수 없다.** `createInvitation`·`changeMember`·`createProject`가
+  실행"이고, **아직 존재하지 않는 행은 잠글 수 없다.** `issueInvitations`·`changeMember`·`createProject`가
   같은 형이다.
 - ⚠️ **Publish와 수동 Sync가 서로를 막는다** (2026-09-18, sync-edit-protection). 방향이 반대인 두 실행이 겹치면 **남는 값이 두 요청의 도착 순서에 달린다** — Sync는 리포 값으로 DB를 덮고 Publish는 DB로 리포를 덮는다. ⚠️ **읽는 주체는 판정 함수가 아니라 껍데기다** — `planSyncStart`·`planRepositoryImport`는 I/O가 0이라 컬럼을 못 읽고, 서로의 상태를 **인자로 받는다**(`activeImport` · `runningSync`). 실제 조회는 `lib/sync/run.ts`가 같은 `Project` 잠금 안에서 `Project.repositoryImportToken`·`repositoryImportStartedAt`을, `lib/import/run.ts`가 같은 잠금 안에서 `SyncRun`의 `RUNNING` 행을 읽어 넘기는 것이다. **잠금 안이라는 사실이 이 방어의 전부이고**, 판정을 순수하게 둔 덕에 두 방향이 DB 없이 테스트된다. **stale 경계는 하나다**(`isRunActive` — `STALE_AFTER_SECONDS` 300초, 경계 정각은 아직 진행 중): 두 벌이면 한쪽은 막고 한쪽은 여는 창이 생긴다. 상수·판정이 `lib/sync/plan.ts`에 있고 `lib/import/plan.ts`가 그것을 쓴다 — **방향이 그쪽이다**(`lib/import/plan.ts`는 `@/lib/adapters`를 물어 화면 그래프로 새면 안 된다).
 - ⚠️ **부분 유니크 인덱스(`WHERE status='RUNNING'`)를 쓰지 않는다** — Prisma가 그 문법을 못 내서
@@ -1556,12 +1556,21 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
   넣어 두어서, 좌석 잔량을 보이려는 화면에는 `MEMBER_LIMIT`을 직접 import하는 길밖에 없었다. 지금은
   멤버 화면이 `planSeatNotice`(그 함수를 한 겹 감싼 서버 전용 판정)를 거쳐 **서버 거부와 같은 함수에서
   나온 수**를 그린다.
-- ⚠️ **`createInvitation`의 성공 응답이 `label`을 싣는다** (2026-09-19) — 발급 직후 화면이
-  *"Link ready for {label}"*을 말하는데, 그 마스킹을 클라이언트에서 다시 하면 **세 번째 구현**이 되어
-  같은 주소가 화면마다 다르게 보인다(§6.2의 마스킹 단일 출처). 토큰 원문과 달리 이 값은 저장되지 않고
-  응답에만 실린다.
+- ⚠️ **초대 원문은 메일로만 나간다** (2026-09-23, invitation-email) — 발급 Action(`createInvitations`·
+  `resendInvitation`)의 응답에도 클라이언트 상태에도 토큰·URL이 없다. 링크를 돌려주던 단건 발급은 지웠다.
+  서버 메모리의 원문은 **commit 뒤** Resend `/emails/batch`에 **한 번** 실린다(잠금 안 네트워크 호출·fire-and-forget·
+  자동 재시도가 없다, 10초 timeout · 요청 UUID 멱등 키). 결과는 요청 단위 `accepted`/`rejected`/`unknown`이고
+  주소별 발송 상태를 만들지 않는다 — 발송 실패는 이미 commit한 초대를 되돌리지 않는다.
+- ⚠️ **발급은 전부 아니면 아무것도다** (`lib/invitation-email/issue.ts`). 입력·인가·**메일 설정**(`config.ts` —
+  origin을 `VERCEL_ENV`와 대조한다)을 쓰기 전에 보고, `Project` 잠금 **안에서** 좌석·이미 멤버·같은 주소 60초·
+  프로젝트 최근 1시간 20건(`plan.ts`)을 판정한다. 한 대상이라도 거부면 회전·생성·사건이 0건이다. 한도 기록은
+  수락·철회·만료를 가리지 않는다 — 철회로 60초를 우회하지 못하게.
+- ⚠️ **재발급(Resend)은 대상 행의 조건부 닫기 count=1이 선행조건이다.** 수락은 `Project` 잠금에 참여하지 않으므로
+  재조회만으로는 경합이 닫히지 않는다 — 수락 CAS와 같은 조건(`acceptedAt: null` · 조회한 `expiresAt` 동등 · 미만료)으로
+  옛 링크를 닫고 0건이면 새 초대·사건·발송이 없다. 수락과 재발급이 교착하면 희생자가 어느 쪽이든 반쪽 상태가
+  남지 않는다(`invitation.integration.ts`).
 - ⚠️ `(projectId, emailLookup)`은 unique가 아니라 **index**다. unique로 걸면 수락·만료된 행이 이메일을
-  점유해 **재초대가 막힌다.** 대신 `createInvitation`이 미수락 행을 먼저 만료시켜 **토큰을 회전**시키고,
+  점유해 **재초대가 막힌다.** 대신 발급(`issueInvitations`)이 미수락 행을 먼저 만료시켜 **토큰을 회전**시키고,
   회전과 생성은 `Project` 행을 잠근 한 트랜잭션이다 — 갈라 두면 동시 발급이 유효 링크를 둘 남긴다.
 - ⚠️ **토큰이 URL 경로에 실린다** — 브라우저 히스토리·리퍼러·전달된 링크에 남는다. **단일 사용과 7일
   만료로 수용한 위험**이고, 없애려면 수락 폼에 토큰을 POST해야 하는데 그러면 비로그인 열람 화면이
@@ -1862,7 +1871,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 
 ⚠️ **판정과 쓰기 사이에 상태가 바뀌는 자리는 조건부 쓰기로 닫는다** (POSTMORTEM 2026-09-05). `acceptInvitation`은 `updateMany`의 `acceptedAt: null`·조회 당시 `expiresAt` 동등 조건·소비 직전 시각보다 미래인 조건의 count로 단일 사용을 강제한다 — **만료도 소비 조건에 넣는다**(2026-09-06): 판정 뒤 OWNER가 재초대로 옛 행을 만료시켜도 진행 중인 요청이 옛 role로 멤버를 만들지 않는다(Codex 감사 #3). 진 쪽은 행을 다시 읽어 `already-accepted`/`expired`를 가른다. `delete`/`update`를 쓰면 행이 사라졌을 때 P2025로 던지는데, 두 요청이 같은 행을 동시에 건드리는 것은 실제 경로다.
 
-⚠️ **`changeMember`는 count로 부족하다** (2026-09-06 Codex 감사 #2). OWNER 둘이 **동시에 각자를** 제거·강등하면 둘 다 OWNER 2명인 목록을 읽어 통과하고 서로 다른 행을 쓰므로 count도 각각 1이다 — OWNER 0명이고 아무도 되살릴 수 없다. FK Restrict는 멤버 행 **변경**을 막지 않는다(스키마 주석이 그렇게 주장했었다). 그래서 판정·쓰기·재집계가 **한 대화형 트랜잭션**이고 `SELECT "id" FROM "Project" WHERE "id" = $1 FOR UPDATE`로 프로젝트 행을 먼저 잠근다. 쓰기 뒤 OWNER를 다시 세어 0이면 던져 롤백하고 `last-owner`로 낸다 — 재집계는 잠금이 새는 경로(다른 쓰기 경로)의 그물이다. 테스트 하네스의 `$transaction`이 롤백을 흉내내야 이 경로를 볼 수 있다. **`createInvitation`도 같은 잠금을 쓴다** (2026-09-06, Codex 감사 #4) — 회전(`updateMany` 만료)과 `create`가 갈라져 있으면 두 OWNER가 같은 이메일을 동시에 초대할 때 유효 링크가 둘 남는다. 잠금 없는 트랜잭션은 "회전할 행이 없는 동시 발급"을 못 막는다.
+⚠️ **`changeMember`는 count로 부족하다** (2026-09-06 Codex 감사 #2). OWNER 둘이 **동시에 각자를** 제거·강등하면 둘 다 OWNER 2명인 목록을 읽어 통과하고 서로 다른 행을 쓰므로 count도 각각 1이다 — OWNER 0명이고 아무도 되살릴 수 없다. FK Restrict는 멤버 행 **변경**을 막지 않는다(스키마 주석이 그렇게 주장했었다). 그래서 판정·쓰기·재집계가 **한 대화형 트랜잭션**이고 `SELECT "id" FROM "Project" WHERE "id" = $1 FOR UPDATE`로 프로젝트 행을 먼저 잠근다. 쓰기 뒤 OWNER를 다시 세어 0이면 던져 롤백하고 `last-owner`로 낸다 — 재집계는 잠금이 새는 경로(다른 쓰기 경로)의 그물이다. 테스트 하네스의 `$transaction`이 롤백을 흉내내야 이 경로를 볼 수 있다. **초대 발급(`issueInvitations`, 2026-09-23 전에는 `createInvitation`)도 같은 잠금을 쓴다** (2026-09-06, Codex 감사 #4) — 회전(`updateMany` 만료)과 `create`가 갈라져 있으면 두 OWNER가 같은 이메일을 동시에 초대할 때 유효 링크가 둘 남는다. 잠금 없는 트랜잭션은 "회전할 행이 없는 동시 발급"을 못 막는다.
 
 ### 6.35 ⚠️ 판정을 오케스트레이션 파일에 두지 않는다 — 클라이언트 번들이 그 그래프를 따라온다 (2026-09-07)
 

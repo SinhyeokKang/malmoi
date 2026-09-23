@@ -22,6 +22,25 @@ it("Saving preserves the address and shows success until the next edit", async (
   const address = container.querySelector<HTMLInputElement>('#project-address')!;
   expect(address.value).toBe("acme"); expect(address.readOnly).toBe(true); expect(address.tabIndex).toBe(0);
 });
+// 저장할 것이 없는 [Save]를 켜 두면 눌러도 아무 일이 없는 버튼이 된다.
+it("Save stays off until the name differs from the saved one", async () => {
+  const { container } = await render(view());
+  const name = container.querySelector<HTMLInputElement>('#project-name')!;
+  expect(button(container, "Save").disabled).toBe(true);
+  await input(name, "Acme 2");
+  expect(button(container, "Save").disabled).toBe(false);
+  await input(name, " Acme ");
+  expect(button(container, "Save").disabled).toBe(true);
+});
+it.each([[{ ok: true, name: "Renamed" }, true], [{ ok: false, error: "unavailable" }, false]] as const)("A save result %o leaves Save disabled=%s — success makes the new name the baseline", async (response, off) => {
+  {
+    actions.updateProjectName.mockResolvedValueOnce(response);
+    const { container } = await render(view());
+    await input(container.querySelector<HTMLInputElement>('#project-name')!, "Renamed");
+    await act(async () => { await userEvent.setup().click(button(container, "Save")); });
+    expect(button(container, "Save").disabled).toBe(off);
+  }
+});
 it("An empty name cannot submit and describes the rejection", async () => {
   const { container } = await render(view());
   const name = container.querySelector<HTMLInputElement>('#project-name')!;

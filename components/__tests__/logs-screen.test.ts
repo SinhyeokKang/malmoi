@@ -200,3 +200,16 @@ describe("logs 상세 — 껍데기 시각 값", () => {
     expect(body.match(/\{LEAVE\}/g)).toHaveLength(4);
   });
 });
+
+/**
+ * ⚠️ **15px는 `text-base`다** — 임의값 `text-[15px]`는 토큰의 자간 짝(0.015em)을 잃는다 (DESIGN §6.68,
+ * 로그 상세가 같은 증상을 먼저 고쳤다). **손으로 쓴 버튼 형**은 hover가 `Button default`와 갈린다.
+ */
+describe("logs — 목록의 글자와 버튼이 토큰을 지난다", () => {
+  it("15px 임의값이 없다", () => {
+    for (const path of [PAGE, "components/logs/event-row.tsx"]) expect(read(path)).not.toContain("text-[15px]");
+  });
+  it("보관 안내의 복원 링크는 ButtonLink다", () => {
+    expect(read(PAGE)).toMatch(/<ButtonLink[^>]*href=\{routes\.settings\(slug\)\}/);
+  });
+});

@@ -24,6 +24,8 @@ it("복귀 링크가 세션으로 갈린다", async () => {
 
   expect(find<HTMLAnchorElement>(signedIn.container, "main > a").getAttribute("href")).toBe("/projects");
   expect(find<HTMLAnchorElement>(signedOut.container, "main > a").getAttribute("href")).toBe("/signin");
+  // flex-col의 자식은 기본이 stretch라 줄 전체(608px 실측)가 눌리는 자리가 된다.
+  expect(find<HTMLAnchorElement>(signedIn.container, "main > a").classList.contains("self-start")).toBe(true);
 });
 
 /**

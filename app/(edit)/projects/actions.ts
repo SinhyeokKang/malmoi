@@ -4,12 +4,13 @@ import { PROJECT_NAME_MAX_CHARS } from "@/lib/projects/plan";
 
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 
-import { findUserByEmail } from "@/lib/credentials/access";
 import { isUniqueViolation, logCaught } from "@/lib/failure";
 import { planSurfaceSlug, surfaceOwnership, selectDefaultSurface } from "@/lib/surfaces/plan";
 import { addSurfacesFromSnapshot, SurfaceCreationError, type AddSurfaceErrorCode, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
-import { encodeInvitationEmail } from "@/lib/credentials/records";
-import { lookupEmail } from "@/lib/credentials/storage";
+import { issueInvitations, reissueInvitation, type IssuedInvitation } from "@/lib/invitation-email/issue";
+import { parseRecipients, type RecipientRowError } from "@/lib/invitation-email/recipients";
+import type { IssuePlan, IssueRowError } from "@/lib/invitation-email/plan";
+import { readInvitationEmailConfigFromEnv, sendInvitationEmails } from "@/lib/invitation-email/send";
 
 import { IngestBudgetError } from "@/lib/onboarding/budget";
 
@@ -24,8 +25,6 @@ import { adapterFor, detectCandidatesAcross, isAdapterName } from "@/lib/adapter
 import { compareKeys } from "@/lib/adapters/shared";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import type { AdapterError, AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/types";
-import { maskEmail, normalizeEmail } from "@/lib/auth/email";
-import { hashInviteToken, planInvitationCreate } from "@/lib/auth/invitation";
 import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import type { AccessError } from "@/lib/auth/message";
 import { planMemberChange } from "@/lib/auth/membership";
@@ -96,46 +95,97 @@ import type { PrismaClient } from "@/generated/prisma/client";
  * (이 리포의 반복 실패 유형 — POSTMORTEM 2026-09-03).
  */
 
-/** 초대 유효 기간. 링크가 사람 손으로 전달되므로 하루는 짧고 한 달은 길다. */
-const INVITE_DAYS = 7;
-
 /**
  * ⚠️ **Server Action은 공개 엔드포인트다** — 타입 시그니처는 클라이언트를 구속하지 않는다 (`lib/keys/save.ts`의
  * `SaveInput`과 같은 이유). `role`은 DB enum에 그대로 들어가므로 조작된 값은 Prisma가 던져 digest 오류가 된다 —
  * 거부는 값으로 흘러야 한다 (ARCHITECTURE §6.3, code-review 2026-09-06 🟡13).
  */
 const RoleSchema = z.enum(["OWNER", "EDITOR"]);
-// ⚠️ `email`은 **형식과 상한**을 둘 다 갖는다 (2026-09-09, sec-audit 발견 19). 두 줄 아래 `name`엔
-// `.max(200)`이 있었는데 여기만 `min(1)`뿐이었다. 320은 RFC 5321의 주소 최대 길이다.
-const InvitationInput = z.object({
-  slug: z.string().min(1),
-  // ⚠️ **`.trim()`이 `.email()`보다 앞이다** — 폼이 앞뒤 공백을 실어 보내고(`" New@A.com "`),
-  // 검증을 먼저 하면 정상 입력이 거부된다. 정규화(`normalizeEmail`)는 그 뒤에 소문자만 더한다.
-  email: z.string().trim().email().max(320),
-  role: RoleSchema,
-});
 const MemberChangeInput = z.object({
   slug: z.string().min(1),
   targetUserId: z.string().min(1),
   nextRole: RoleSchema.nullable(),
 });
 
-export type InviteResult =
-  /**
-   * ⚠️ **`label`이 서버에서 온다** — 링크 얼굴 제목이 *"Link ready for {label}"*이고, 그 마스킹을
-   * 클라이언트에서 다시 하면 **세 번째 구현**이 된다(같은 주소가 화면마다 다르게 보인다 —
-   * `lib/auth/email.ts`). 유출이 아닌 것과 별개로, 멤버 화면의 `maskEmail` 금지선이 그 순간 예외를 갖는다.
-   */
-  | { ok: true; token: string; label: string }
+/**
+ * 다중 초대 메일 (docs/features/invitation-email design §3·§4). **요청 전체가 통과하거나 전체가 막힌다.**
+ *
+ * ⚠️ **링크를 돌려주는 단건 발급은 없다** (2026-09-23) — 원문은 메일로만 나간다. 메일 장애 동안 초대는 지연되고,
+ *   발급 뒤 메일이 안 나간 초대는 Pending의 Resend로 복구한다.
+ *
+ * 순서가 계약이다: 입력 → 인가 → 메일 설정(없으면 **쓰기 전에** 막는다) → 잠금 안 발급 → commit 뒤 발송 한 번.
+ * ⚠️ **응답에 토큰·URL이 없다** — 원문은 서버 메모리와 메일에만 있다.
+ */
+const InvitationsInput = z.object({
+  slug: z.string().min(1),
+  // 상한은 `parseRecipients`가 판정한다(too-many를 값으로 돌려준다). 여기 숫자는 파싱 비용의 방어선이다.
+  recipients: z.array(z.object({ email: z.string().max(1000), role: z.string().max(20) })).min(1).max(200),
+});
+
+export type InvitationsResult =
+  | { ok: true; count: number }
+  | { ok: false; error: "invalid-rows"; rowErrors: (RecipientRowError | IssueRowError)[] }
+  | { ok: false; error: "rate-limited"; retryAt: string; limit: "address"; index: number }
+  | { ok: false; error: "rate-limited"; retryAt: string; limit: "project"; used: number }
+  | { ok: false; error: "email-rejected" | "email-unknown"; retryAt: string }
   | { ok: false; error: string };
 
-export async function createInvitation(raw: {
-  slug: string;
-  email: string;
-  role: Role;
-}): Promise<InviteResult> {
-  // 입력 검증이 인가보다 먼저다 — slug가 없으면 무엇을 인가할지 정할 수 없다.
-  const parsed = InvitationInput.safeParse(raw);
+export async function createInvitations(raw: { slug: string; recipients: { email: string; role: string }[] }): Promise<InvitationsResult> {
+  const parsed = InvitationsInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const input = parsed.data;
+  // 빈 행은 클라이언트가 전송 전에 뺀다(design §3.2). 서버가 조용히 건너뛰면 행 오류 인덱스가 입력과 어긋난다.
+  if (input.recipients.some((r) => r.email.trim() === "")) return { ok: false, error: "invalid input" };
+
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const { userId } = session;
+
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "member:manage" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+
+  const recipients = parseRecipients(input.recipients);
+  if (recipients.status === "invalid-rows") return { ok: false, error: "invalid-rows", rowErrors: recipients.rowErrors };
+  if (recipients.status !== "ok") return { ok: false, error: recipients.status === "empty" ? "invalid input" : recipients.status };
+
+  const config = readInvitationEmailConfigFromEnv();
+  if (config.status !== "ready") return { ok: false, error: "email-unavailable" };
+
+  let issued: Awaited<ReturnType<typeof issueInvitations>>;
+  try {
+    issued = await issueInvitations(prisma, { projectId: access.projectId, userId, recipients: recipients.recipients });
+  } catch (error) {
+    logCaught("invite", "issue", error);
+    return { ok: false, error: "unavailable" };
+  }
+  if (issued.status === "invalid-rows") return { ok: false, error: "invalid-rows", rowErrors: issued.rowErrors };
+  if (issued.status === "rate-limited") return rateLimited(issued);
+  if (issued.status !== "issued") return { ok: false, error: issued.status };
+
+  const outcome = await sendInvitationEmails(config, toMessages(issued.invitations));
+  // ⚠️ 발송 결과와 무관하게 다시 그린다 — 초대는 이미 생겼고 Pending에 보여야 Resend로 복구할 수 있다.
+  revalidatePath(`/projects/${input.slug}/members`);
+  if (outcome === "accepted") return { ok: true, count: issued.invitations.length };
+  return { ok: false, error: outcome === "rejected" ? "email-rejected" : "email-unknown", retryAt: issued.retryAt.toISOString() };
+}
+
+const ResendInput = z.object({ slug: z.string().min(1), invitationId: z.string().min(1) });
+
+export type ResendResult =
+  | { ok: true; label: string }
+  | { ok: false; error: "rate-limited"; retryAt: string; limit: "address" }
+  | { ok: false; error: "rate-limited"; retryAt: string; limit: "project"; used: number }
+  | { ok: false; error: "email-rejected" | "email-unknown"; label: string; retryAt: string }
+  | { ok: false; error: string };
+
+/**
+ * Pending의 Resend — **서버에 저장된 주소·역할로** 새 초대와 메일을 만든다. 클라이언트는 id만 보낸다.
+ * 옛 링크를 닫는 조건부 갱신이 새 초대의 선행조건이다(`reissueInvitation`).
+ */
+export async function resendInvitation(raw: { slug: string; invitationId: string }): Promise<ResendResult> {
+  const parsed = ResendInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
 
@@ -145,95 +195,45 @@ export async function createInvitation(raw: {
   const { userId } = session;
 
   const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, {
-    userId,
-    slug: input.slug,
-    permission: "member:manage",
-  });
+  const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "member:manage" });
   if (access.status !== "ok") return { ok: false, error: access.status };
-  const { projectId } = access;
 
-  // 저장·대조가 같은 정규화를 지나야 수락 시 대소문자로 갈리지 않는다.
-  const email = normalizeEmail(input.email);
-  if (email === "") return { ok: false, error: "invalid input" };
+  const config = readInvitationEmailConfigFromEnv();
+  if (config.status !== "ready") return { ok: false, error: "email-unavailable" };
 
+  let issued: Awaited<ReturnType<typeof reissueInvitation>>;
   try {
-    // 이미 멤버인 사람에게 초대를 보내면 수락해도 바뀌는 것이 없다 — 거부해서 OWNER가
-    // "보냈는데 왜 안 되지"를 겪지 않게 한다.
-    const existing = await findUserByEmail(prisma, email);
-    if (existing !== null) {
-      const member = await prisma.projectMember.findUnique({
-        where: { projectId_userId: { projectId, userId: existing.id } },
-        select: { userId: true },
-      });
-      if (member !== null) return { ok: false, error: "already-member" };
-    }
-
-    // 원문은 여기서 한 번 돌려주고 **저장하지 않는다** (ARCHITECTURE §6.02).
-    const token = randomBytes(32).toString("base64url");
-    const now = new Date();
-
-    /**
-     * ⚠️ **회전과 생성이 한 트랜잭션이고, 프로젝트 행을 먼저 잠근다** (Codex 감사 2026-09-06 #4). 갈라 두면
-     * 두 OWNER가 같은 이메일을 동시에 초대할 때 각자 회전을 끝내고 각자 만들어 **유효 링크가 둘** 남는다 —
-     * role이 다르면 둘 다 수락된다. `changeMember`와 같은 잠금이다. 잠금 없이 트랜잭션만 걸면 "기존 행이 없는
-     * 동시 발급"은 막지 못한다 — 두 요청 모두 회전할 행이 없어 충돌이 안 난다.
-     */
-    const outcome = await prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
-
-      /**
-       * ⚠️ **집계가 잠금 안이다** (7단계 — ARCHITECTURE §6.02). 밖에서 세면 두 OWNER가 동시에
-       * 초대할 때 각자 "자리 있음"을 보고 각자 만든다 — `createProject`의 재집계와 같은 형이고,
-       * 여기는 잠글 `Project` 행이 **이미 있다**. 대기 초대는 안 센다(`planInvitationCreate`).
-       */
-      const memberCount = await tx.projectMember.count({ where: { projectId } });
-      const limit = planInvitationCreate({ memberCount });
-      if (limit.status !== "ok") return limit.status;
-
-      // ⚠️ **미수락 행을 먼저 만료시킨다 = 토큰 회전.** `(projectId, emailLookup)`이 unique가 아니라
-      // index인 이유가 이것이다 — 수락·만료된 행이 이메일을 점유하면 재초대가 막힌다 (ARCHITECTURE §6.02).
-      await tx.projectInvitation.updateMany({
-        where: { projectId, emailLookup: lookupEmail(email, projectId), acceptedAt: null },
-        data: { expiresAt: now },
-      });
-
-      const id = randomUUID();
-      await tx.projectInvitation.create({
-        data: {
-          id,
-          projectId,
-          ...encodeInvitationEmail(id, projectId, email),
-          role: input.role,
-          tokenHash: hashInviteToken(token),
-          expiresAt: new Date(now.getTime() + INVITE_DAYS * 24 * 60 * 60 * 1000),
-          acceptedAt: null,
-          invitedBy: userId,
-        },
-      });
-      /**
-       * ⚠️ **초대 링크 원문도 해시도 payload에 없다** (spec §3.C.14 · T5c). 남는 것은 "누구를 어떤
-       * 역할로 불렀다"는 사실과 **마스킹 라벨**뿐이다.
-       */
-      await recordEvent(tx, {
-        projectId,
-        subtype: "member.invited",
-        actor: { kind: "USER", userId },
-        scope: "project-wide",
-        payload: { kind: "MEMBER", targetLabel: maskEmail(email), role: { before: null, after: input.role } },
-      });
-      return "ok" as const;
-    });
-    if (outcome !== "ok") return { ok: false, error: outcome };
-
-    // 화면이 생겼으므로 목록을 다시 그린다 — 대기 초대 표에 방금 만든 행이 있어야 한다.
-    revalidatePath(`/projects/${input.slug}/members`);
-    // 목록 전체가 아니라 한 주소를 가리는 자리다 — 충돌 판정이 필요 없으므로 라벨은 `maskEmail`과 같다.
-    return { ok: true, token, label: maskedEmailLabels([email])[0] ?? "" };
+    issued = await reissueInvitation(prisma, { projectId: access.projectId, userId, invitationId: input.invitationId });
   } catch (error) {
-    logCaught("invite", "create", error);
+    logCaught("invite", "reissue", error);
     return { ok: false, error: "unavailable" };
   }
+  if (issued.status === "unreadable") return { ok: false, error: "unavailable" };
+  if (issued.status === "invalid-rows") return { ok: false, error: "already-member" };
+  if (issued.status === "rate-limited") {
+    // 재발급은 한 주소라 막힌 행을 가리킬 필요가 없다 — 화면은 누른 행의 라벨로 말한다.
+    const retryAt = issued.retryAt.toISOString();
+    return issued.limit === "project" ? { ok: false, error: "rate-limited", retryAt, limit: "project", used: issued.used } : { ok: false, error: "rate-limited", retryAt, limit: "address" };
+  }
+  if (issued.status !== "issued") return { ok: false, error: issued.status };
+
+  const outcome = await sendInvitationEmails(config, toMessages([issued.invitation]));
+  revalidatePath(`/projects/${input.slug}/members`);
+  // 한 주소를 가리는 자리라 충돌 판정이 필요 없다 — 단건 발급의 라벨과 같다.
+  const label = maskedEmailLabels([issued.invitation.email])[0] ?? "";
+  if (outcome === "accepted") return { ok: true, label };
+  return { ok: false, error: outcome === "rejected" ? "email-rejected" : "email-unknown", label, retryAt: issued.retryAt.toISOString() };
+}
+
+function rateLimited(plan: Extract<IssuePlan, { status: "rate-limited" }>): InvitationsResult {
+  const retryAt = plan.retryAt.toISOString();
+  return plan.limit === "project"
+    ? { ok: false, error: "rate-limited", retryAt, limit: "project", used: plan.used }
+    : { ok: false, error: "rate-limited", retryAt, limit: "address", index: plan.index };
+}
+
+function toMessages(invitations: readonly IssuedInvitation[]) {
+  return invitations.map((i) => ({ to: i.email, token: i.token }));
 }
 
 const RevokeInput = z.object({ slug: z.string().min(1), invitationId: z.string().min(1) });
@@ -245,7 +245,7 @@ export type RevokeResult = { ok: true } | { ok: false; error: string };
  *
  * ⚠️ **행을 지우지 않는다.** `prisma/schema.prisma`의 `acceptedAt` 주석이 그것을 금지한다 — 지우면
  * 그 링크의 재사용 시도가 `already-accepted`가 아니라 `not-found`가 되어 만료·오배송과 뭉개진다.
- * 무효화의 기존 관용구는 **만료 시각을 당기는 것**이고(`createInvitation`의 토큰 회전이 같은 쓰기다)
+ * 무효화의 기존 관용구는 **만료 시각을 당기는 것**이고(`createInvitations`의 토큰 회전이 같은 쓰기다)
  * `loadPendingInvitations`의 `expiresAt > now()` 술어가 그대로 맞는다.
  *
  * ⚠️ **`where`에 `projectId`와 `acceptedAt: null`이 함께 있다.** 앞은 테넌트 경계다 — id를 알아도
@@ -1075,7 +1075,7 @@ export async function createProject(raw: {
       /**
        * ⚠️ **같은 사용자의 동시 생성을 직렬화한다** (2026-09-07 리뷰 🟡7). 위 `ownerCount` 선조회는
        * 트랜잭션 밖이라 두 탭이 동시에 통과하면 슬롯이 셋인데 넷이 생기고, 삭제가 비범위라
-       * 사용자가 그 슬롯을 되찾을 수 없다. `createInvitation`·`changeMember`가 프로젝트 행을
+       * 사용자가 그 슬롯을 되찾을 수 없다. `createInvitations`·`changeMember`가 프로젝트 행을
        * 잠그는 것과 같은 이유이고 — **생성 경로에는 잠글 프로젝트가 없으므로 대상이 `User`다.**
        * 선조회를 남겨 두는 것은 거부될 요청이 GitHub을 읽지 않게 하기 위해서다.
        */

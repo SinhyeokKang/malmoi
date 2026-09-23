@@ -2,8 +2,9 @@
 
 import { Mail, MailPlus } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 
-import { revokeInvitation } from "@/app/(edit)/projects/actions";
+import { resendInvitation, revokeInvitation, type ResendResult } from "@/app/(edit)/projects/actions";
 import { MemberRow } from "@/components/members/member-row";
 import { RoleChip } from "@/components/members/role-chip";
 import { Alert } from "@/components/ui/alert";
@@ -14,6 +15,8 @@ import { canPerform, type Role } from "@/lib/auth/permission";
 import { planMemberIdentity } from "@/lib/auth/member-identity";
 import type { PendingInvitation } from "@/lib/auth/query";
 import { m } from "@/lib/i18n";
+import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
+import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 import { relativeTime } from "@/lib/relative-time";
 
 /**
@@ -28,6 +31,10 @@ import { relativeTime } from "@/lib/relative-time";
  * ⚠️ **마스킹 라벨이 유일한 식별자다** (malmoi#18). 이름도 아바타도 없으므로 행을 가르는 것은 그
  * 라벨뿐이고, 그것은 서버가 **목록 전체를 보고** 만든다 — 행마다 따로 마스킹하면 서로 다른 주소가
  * 같은 행이 되고 되돌릴 수 없는 [Revoke]가 엉뚱한 링크를 지운다.
+ *
+ * ⚠️ **[Resend]의 결과는 행이 아니라 카드에 붙는다** (핸드오프 `1l`). Resend는 서버가 새 초대로 행을 바꾸고
+ * 목록을 다시 그리므로, 행에 매단 안내는 행과 함께 사라진다 — 그래서 카드 머리 아래 Alert 하나이고 대상
+ * 라벨을 문장에 넣는다. 성공은 토스트다. 라벨은 **누른 행의 것**이다(목록 전체를 보고 만든 값이라 화면과 같다).
  */
 export function PendingInvitations({
   slug,
@@ -46,6 +53,11 @@ export function PendingInvitations({
   const manage = canPerform(role, "member:manage");
   const [failed, setFailed] = useState<{ id: string; error: string } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  /** ⚠️ **집합이다** — 값 하나면 두 행을 연달아 누를 때 먼저 끝난 응답이 다른 행의 잠금까지 푼다. */
+  const [resending, setResending] = useState<ReadonlySet<string>>(new Set());
+  const [cardAlert, setCardAlert] = useState<{ variant: "warning" | "danger"; text: string } | null>(null);
+  /** Resend 뒤 포커스 착지점 — 행이 남으면 그 버튼, 교체되면 카드 제목. 잠금이 풀린 커밋에서 옮긴다. */
+  const [landing, setLanding] = useState<{ kind: "resend"; id: string } | { kind: "heading" } | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [, startTransition] = useTransition();
 
@@ -59,8 +71,47 @@ export function PendingInvitations({
     if (failed !== null) document.getElementById(`revoke-${failed.id}`)?.focus();
   }, [failed]);
 
+  useEffect(() => {
+    if (landing === null || (landing.kind === "resend" && resending.has(landing.id))) return;
+    const button = landing.kind === "resend" ? (document.getElementById(`resend-${landing.id}`) as HTMLButtonElement | null) : null;
+    if (button !== null && !button.disabled) button.focus();
+    else document.getElementById(headingId)?.focus();
+    setLanding(null);
+  }, [landing, resending, headingId]);
+
+  function resend(invitationId: string, who: string) {
+    setFailed(null);
+    setCardAlert(null);
+    setAnnouncement("");
+    setResending((current) => new Set(current).add(invitationId));
+    startTransition(async () => {
+      let result: ResendResult | null;
+      try {
+        result = await resendInvitation({ slug, invitationId });
+      } catch {
+        // 호출이 끊기면 서버가 재발급했는지 모른다 — 미확인으로 말한다.
+        result = null;
+      }
+      setResending((current) => {
+        const next = new Set(current);
+        next.delete(invitationId);
+        return next;
+      });
+      if (result !== null && result.ok) {
+        toast.success(m.members.pending.resentToast(who));
+        setLanding({ kind: "heading" });
+        return;
+      }
+      setCardAlert(resendAlert(result, who));
+      // 발급 뒤 메일 단계의 실패면 행이 이미 새 초대로 바뀌었다 — 성공 여부가 아니라 행이 남는지로 고른다.
+      const replaced = result === null || result.error === "email-rejected" || result.error === "email-unknown";
+      setLanding(replaced ? { kind: "heading" } : { kind: "resend", id: invitationId });
+    });
+  }
+
   function revoke(invitationId: string, who: string) {
     setFailed(null);
+    setCardAlert(null);
     setAnnouncement("");
     setPendingId(invitationId);
     startTransition(async () => {
@@ -87,6 +138,13 @@ export function PendingInvitations({
         countLabel={m.members.pending.count(invitations.length)}
         description={m.members.pending.cardHint}
       >
+        {cardAlert !== null && (
+          <div data-pending-alert>
+            <Alert inset variant={cardAlert.variant} onDismiss={() => setCardAlert(null)}>
+              {cardAlert.text}
+            </Alert>
+          </div>
+        )}
         {invitations.length === 0 ? (
           /* ⚠️ **버튼이 없다** — 여기서 할 일은 헤더의 [Invite]이고, 카드가 그것을 두 번 말하지 않는다. */
           <EmptyRowCard
@@ -140,15 +198,30 @@ export function PendingInvitations({
                       <>
                         <RoleChip role={invitation.role} reason="pending" />
                         {manage && (
-                          <Button
-                            id={`revoke-${invitation.id}`}
-                            variant="danger"
-                            aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
-                            loading={pendingId === invitation.id}
-                            onClick={() => revoke(invitation.id, invitation.emailLabel)}
-                          >
-                            {m.members.pending.revoke}
-                          </Button>
+                          <>
+                            {/* ⚠️ 처리 중엔 **그 행의** 두 버튼만 잠근다 — 다른 행은 계속 누를 수 있다. */}
+                            <Button
+                              id={`resend-${invitation.id}`}
+                              data-resend
+                              aria-label={m.members.pending.resendLabel(invitation.emailLabel)}
+                              aria-busy={resending.has(invitation.id)}
+                              loading={resending.has(invitation.id)}
+                              disabled={pendingId === invitation.id}
+                              onClick={() => resend(invitation.id, invitation.emailLabel)}
+                            >
+                              {m.members.pending.resend}
+                            </Button>
+                            <Button
+                              id={`revoke-${invitation.id}`}
+                              variant="danger"
+                              aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
+                              loading={pendingId === invitation.id}
+                              disabled={resending.has(invitation.id)}
+                              onClick={() => revoke(invitation.id, invitation.emailLabel)}
+                            >
+                              {m.members.pending.revoke}
+                            </Button>
+                          </>
                         )}
                       </>
                     )}
@@ -170,4 +243,20 @@ export function PendingInvitations({
       </RowCard>
     </>
   );
+}
+
+/** Resend 거부 → 카드 Alert 한 장. `null`은 호출 자체가 끊긴 경우다(결과 미확인). */
+function resendAlert(result: Exclude<ResendResult, { ok: true }> | null, who: string): { variant: "warning" | "danger"; text: string } {
+  const p = m.members.pending;
+  if (result === null || result.error === "email-unknown") return { variant: "warning", text: p.resendUnconfirmed(who) };
+  if (result.error === "rate-limited" && "limit" in result) {
+    const time = retryAtLabel(result.retryAt);
+    return { variant: "warning", text: result.limit === "project" ? p.resendProjectLimited(who, INVITATION_HOURLY_LIMIT, time) : p.resendLimited(who, time) };
+  }
+  if (result.error === "email-rejected" && "retryAt" in result) return { variant: "danger", text: p.resendFailed(who, retryAtLabel(result.retryAt)) };
+  if (result.error === "email-unavailable") return { variant: "danger", text: p.resendUnavailable(who) };
+  if (result.error === "not-found") return { variant: "danger", text: p.resendGone(who) };
+  if (result.error === "already-member") return { variant: "danger", text: p.resendError(who, m.members.invite.alreadyMember) };
+  if (isAccessError(result.error)) return { variant: "danger", text: accessErrorMessage(result.error) };
+  return { variant: "danger", text: p.resendError(who, result.error) };
 }

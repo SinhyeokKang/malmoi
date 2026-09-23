@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownToLine, Languages } from "lucide-react";
+import { ArrowDownToLine, Languages, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 
@@ -399,7 +399,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             )}
             {/* ⚠️ **Publish 버튼 하나만 가로챈다** — 같은 컨테이너의 `View result`는 결과를 보는 클릭이지 보내는 클릭이 아니다. */}
             <span onClickCapture={event => {
-              const onPublish = event.target instanceof Element && event.target.closest(`[id="${publishButtonId}"]`) !== null;
+              // 꺼진 Publish(`aria-disabled`)도 클릭 이벤트는 오므로 여기서 걸러야 미저장 확인창이 안 뜬다.
+              const onPublish = event.target instanceof Element && event.target.closest(`[id="${publishButtonId}"]:not([aria-disabled="true"])`) !== null;
               if (onPublish && dirty.length > 0 && !publish.pending) { event.preventDefault(); event.stopPropagation(); setDialog({ kind: "publish", locales: dirty }); }
             }}>
               <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} />
@@ -484,7 +485,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           <div className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
             {detail === null ? (
               <div className="flex flex-1 items-center justify-center">
-                <EmptyState icon={Languages} title={props.detail !== null && "absent" in props.detail ? w.detail.keyGone(props.detail.surfaceSlug) : w.detail.selectKey} />
+                {props.detail !== null && "absent" in props.detail
+                  ? <EmptyState icon={Languages} title={w.detail.keyGone(props.detail.surfaceSlug)} />
+                  : <EmptyState icon={Languages} title={w.detail.selectKey} description={w.detail.selectKeyBody} />}
               </div>
             ) : (
               <LocalePanel
@@ -551,15 +554,22 @@ function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, r
         <div className="px-4 pt-3">{ALERTS[status.kind]?.({ onCheck, slug })}</div>
       )}
       <div className="flex items-center gap-3 px-4 py-3">
-        <span ref={resultRef} tabIndex={-1} data-footer-result="true" aria-live="polite"
-          className={cn("min-w-0 text-xs tracking-[0.02em] focus:outline-none", dirty > 0 ? "text-amber-700" : "text-muted-foreground")}>
-          {text}
-          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground block">{REVERT_REASONS[revertBlocked]()}</span>}
+        {/* ⚠️ 사유는 결과 줄(`aria-live`) 밖의 형제다 — 안에 두면 사유가 바뀔 때마다 결과처럼 다시 낭독된다.
+            세로로 묶는 래퍼가 결과 아래에 쌓이는 자리를 지킨다. */}
+        <span className="flex min-w-0 flex-col">
+          <span ref={resultRef} tabIndex={-1} data-footer-result="true" aria-live="polite"
+            className={cn("min-w-0 text-xs tracking-[0.02em] focus:outline-none", dirty > 0 ? "text-amber-700" : "text-muted-foreground")}>
+            {text}
+          </span>
+          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs tracking-[0.02em]">{REVERT_REASONS[revertBlocked]()}</span>}
         </span>
         <span className="ml-auto inline-flex items-center gap-2">
           {hasPending && (
+            // ⚠️ **`loading`을 쓰지 않는다** — 그쪽은 진짜 `disabled`를 걸어 방금 누른 버튼이 포커스를 잃고
+            // busy 사유(describedby)에 닿을 길이 사라진다 (DESIGN §6.65). 스피너만 같은 모양으로 직접 둔다.
             <Button aria-disabled={revertBlocked !== null ? "true" : undefined} aria-describedby={revertBlocked !== null ? reasonId : undefined}
-              loading={revertBusy} onClick={() => { if (revertBlocked === null) onRevert(); }}>
+              aria-busy={revertBusy || undefined} onClick={() => { if (revertBlocked === null) onRevert(); }}>
+              {revertBusy && <Loader2 className="size-4 animate-spin" aria-hidden />}
               {w.revert.button}
             </Button>
           )}

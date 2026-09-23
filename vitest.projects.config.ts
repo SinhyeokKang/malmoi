@@ -6,4 +6,4 @@ import base from "./vitest.config.js";
  *
  * ⚠️ **`lib/keys/**`의 raw 집계를 건드렸으면 손으로 돌린다**: `pnpm test:projects:postgres`.
  */
-export default defineConfig({ ...base, test: { ...base.test, include: ["lib/keys/__tests__/*.integration.ts", "lib/events/__tests__/*.integration.ts"], testTimeout: 30000, hookTimeout: 60000, fileParallelism: false } });
+export default defineConfig({ ...base, test: { ...base.test, include: ["lib/keys/__tests__/*.integration.ts", "lib/events/__tests__/*.integration.ts", "lib/invitation-email/__tests__/*.integration.ts"], testTimeout: 30000, hookTimeout: 60000, fileParallelism: false } });

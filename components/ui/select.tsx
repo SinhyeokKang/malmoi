@@ -2,7 +2,7 @@
 
 import { Check, ChevronDown } from "lucide-react";
 import { Select as Primitive, Slot } from "radix-ui";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -93,17 +93,29 @@ export function SelectContent({
   );
 }
 
-export function SelectItem({ className, children, ...props }: ComponentProps<typeof Primitive.Item>) {
+/**
+ * ⚠️ **`description`은 `ItemText` 밖이다** — Radix가 `ItemText`의 내용을 트리거(`SelectValue`)로 복제하므로
+ * 설명 줄을 그 안에 넣으면 닫힌 셀렉트에도 두 줄이 찍힌다. 초대 모달의 역할 메뉴(핸드오프 `1b`)가 첫 소비자다.
+ */
+export function SelectItem({ className, children, description, ...props }: ComponentProps<typeof Primitive.Item> & { description?: ReactNode }) {
   return (
     <Primitive.Item
       className={cn(
-        "mx-1 flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm outline-none",
+        "mx-1 flex cursor-pointer gap-2 rounded px-2 py-1.5 text-sm outline-none",
+        description === undefined ? "items-center" : "items-start",
         "hover:bg-accent focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className,
       )}
       {...props}
     >
-      <Primitive.ItemText>{children}</Primitive.ItemText>
+      {description === undefined ? (
+        <Primitive.ItemText>{children}</Primitive.ItemText>
+      ) : (
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <Primitive.ItemText>{children}</Primitive.ItemText>
+          <span className="text-muted-foreground text-xs leading-[1.5]">{description}</span>
+        </span>
+      )}
       {/* 체크 자리는 켜질 때만 그려지고 `ml-auto`가 오른쪽으로 민다 (`DropdownMenuCheckboxItem`과 같은 형). */}
       <Primitive.ItemIndicator className="ml-auto">
         <Check className="size-4" aria-hidden />

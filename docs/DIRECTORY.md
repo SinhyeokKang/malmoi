@@ -157,8 +157,9 @@ components/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
   members/              멤버 화면 조각 다섯 (2026-09-19 리워크). members-panel-header(좌석 라벨 +
-                        [Invite] + 모달 소유) · member-list · pending-invitations · member-row
-                        (두 카드가 공유하는 행 껍데기 + 사유 띠) · role-chip
+                        [Invite] + 모달 소유) · invite-modal(다중 초대 폼 — 행 = 사람 하나, 성공이면 닫힘) ·
+                        member-list · pending-invitations(Revoke · Resend — Resend 결과는 행이 아니라 카드 Alert) ·
+                        member-row (두 카드가 공유하는 행 껍데기 + 사유 띠) · role-chip
                         ⚠️ **행 껍데기가 aria-describedby 배선을 든다** — controls가 띠의 id를 받는
                         함수다. 소비자가 그 id를 직접 알면 띠 없는 갈래에서 빈 문자열을 남긴다
                         ⚠️ **꺼진 컨트롤은 aria-disabled다** — 진짜 disabled는 포커스를 못 받아
@@ -383,6 +384,16 @@ lib/
   privacy/              개인정보처리방침의 등재부 — collected(모델 15 전수 분류 + personal 모델의 스칼라
                         전수 → 방침의 절 id). ⚠️ **로직 0의 데이터 파일이고 게이트는 pnpm typecheck이다** —
                         모델·필드가 늘면 이름을 지목하며 red. import type 하나뿐이라 server-only가 아니다
+  invitation-email/     초대 메일(docs/features/invitation-email). 순수 판정 — recipients(다중 입력·행별 역할·정규화 중복 거부) ·
+                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html — 템플릿은 template.ts, Claude Design `email/invite.html`이 정본, 로고는 public/email/logo@2x.png 고정 URL) ·
+                        config(env 맵 → ready/unavailable, origin을 VERCEL_ENV와 대조) · result(batch 응답 → 요청 단위
+                        accepted/rejected/unknown) · limits(상수, 잎). 껍데기(server-only) — issue(Project 잠금 안 발급·재발급,
+                        메일을 안 보낸다 — 재발급은 옛 링크의 조건부 닫기 count=1이 선행조건) · send(commit 뒤 Resend batch 한 번,
+                        재시도 0·10초 timeout, 로그에 상태 코드만). 호출부는 createInvitations·resendInvitation이고
+                        화면은 초대 모달과 Pending의 Resend다 · retry-at(retryAt → UTC 분 올림, 잎). ⚠️ recipients는 클라이언트 폼도 부르므로
+                        zod·node:crypto를 물지 않는다 — 한도를 plan이 아니라 limits에서 읽고 zod의 이메일 정규식을
+                        옮겨 뒀다(client-safe.test가 그래프, recipients.test가 zod와의 판정 일치를 고정한다).
+                        PostgreSQL 경합은 invitation.integration.ts(`pnpm test:projects:postgres`)가 잰다
   pull/surfaces.ts      planMultiSurfacePull — 중복 경로 거부와 path 순 평탄화
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·

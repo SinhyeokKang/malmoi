@@ -8,7 +8,7 @@ vi.mock("@/lib/github", () => ({ loadConnectionHealth: async () => ({ status: "o
 vi.mock("@/lib/github-connect/account-view", () => ({ loadAccountView: async () => ({ status: "ok", login: "owner" }) }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: async () => null }));
 vi.mock("@/lib/keys/query", () => ({ loadSurfaceCounts: async () => [] }));
-vi.mock("@/app/(edit)/projects/actions", () => ({ runFirstIngest: vi.fn(), addSurfaces: vi.fn(), detectRepoFormats: vi.fn(), confirmManualFormat: vi.fn(), loadCandidateSample: vi.fn(), rotatePushToken: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => ({ runFirstIngest: vi.fn(), addSurfaces: vi.fn(), detectRepoFormats: vi.fn(), confirmManualFormat: vi.fn(), loadCandidateSample: vi.fn(), listRepoBranches: vi.fn(async () => ({ ok: true, names: ["main"], defaultBranch: "main", truncated: false })), rotatePushToken: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ startGithubConnect: vi.fn(), connectRepository: vi.fn(), updateProjectName: vi.fn(), updateRepositorySettings: vi.fn(), uploadProjectImage: vi.fn(), deleteProjectImage: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replace: vi.fn() }), redirect: vi.fn() }));
 import SettingsPage from "@/app/(edit)/projects/[slug]/settings/page";

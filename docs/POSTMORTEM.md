@@ -600,6 +600,13 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     두지 않는다** — 건강성 배지가 대신 말한다) · `push-token-panel`(토큰 섹션은 readiness와 무관해 분기가 없다) ·
     `first-ingest-retry`(이번에 고친 것)뿐이고 나머지는 안전하다.
 
+- **🔁 2026-09-23 — 브랜치 선택기 구현 중 같은 결과 소실 경로를 차단했다.** `RepositoryForm`이 새
+  `baseBranch` prop으로 목록을 다시 조회하는 effect에서 `setResult("idle")`도 호출했다. 저장 성공 뒤
+  서버가 새 값을 보내면 성공 안내까지 초기화됐다. 저장만 mock한 테스트는 통과했고, 실물 저장 왕복을
+  계기로 추가한 **저장 → 새 prop rerender** 테스트가 red를 냈다. effect의 결과 초기화를 제거했다.
+  재발 방지: `rg -n 'setResult\("idle"\)|setStatus\("idle"\)' components/settings`로 조회 초기화와
+  사용자 입력 초기화를 구별한다. 확인한 나머지 호출은 제출·사용자 선택이며 같은 effect 초기화는 없다.
+
 ### 2026-09-07 — 컬럼의 **의미**가 바뀌었는데 렌더는 그대로여서 번역자에게 cuid가 보였다 ([malmoi#3](https://github.com/SinhyeokKang/malmoi/issues/3))
 
 - **영역**: `app/(edit)/projects/[slug]/translations/page.tsx`(`CellMeta`) · `lib/keys/query.ts` · `Translation.updatedBy`
@@ -2411,3 +2418,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: Tailwind v4는 `@theme`에 없는 유틸리티를 **경고 없이 버린다** — `text-link`는 `--color-link` 토큰이 없어 CSS가 0바이트였다. 리포의 인라인 링크 색은 `text-blue-600`(Button `link`)인데, #67에서 소스 카드를 걷고 남긴 안내가 존재하지 않는 시맨틱 이름을 새로 지었다. 동시에 시안 §13-2의 "링크 **한 줄**"을 낱말 하나로 옮겨, 색이 있었더라도 무엇으로 가는지 읽히지 않는 판이었다.
 - **그물**: 놓친 것 — `pnpm typecheck`·`pnpm build`·단위 테스트 전부(클래스 문자열은 타입도 런타임 오류도 없다). `/design-sync`는 시안에 이 줄의 아트보드가 없어 대조 대상이 아니었다. 잡은 것 — 사용자의 화면 확인. 고친 뒤 DOM 테스트(`settings-card-errors.test.tsx` — 링크가 `text-blue-600`이고 부모 문장이 링크 글자보다 길다)와 소스 스캔(`screens.test.ts` — 세 파일에 `text-link` 0)을 세웠다.
 - **재발 방지**: 색 유틸리티의 이름이 Tailwind 기본 팔레트도 `app/globals.css`의 `--color-*`도 아니면 죽은 클래스다 — `text|bg|border|ring|fill|stroke-<name>`을 뽑아 `--color-<name>` 목록과 대조하는 스캔을 돌린다(2026-09-23 전수: 남은 후보 8건 전부 오탐 — 측면 지정 `border-t-*`, `@utility text-mono`, 주석 속 CSS). 새 시맨틱 색 이름을 쓰고 싶으면 **먼저 `@theme`에 토큰을 두고** DESIGN §6.2에 등재한다. 링크를 낱말 하나로 두지 않는다 — 셸 안 텍스트 링크는 문장 안의 `text-blue-600`이다.
+
+### 2026-09-24 — 초대 모달의 포커스·입력 규칙이 jsdom에서만 참이었다
+
+- **영역**: `components/members/invite-modal.tsx` · `components/ui/modal.tsx` · `components/ui/input.tsx`
+- **증상**: 두 가지였다. 첫째, 모달을 열면 첫 이메일이 아니라 패널에 포커스가 섰다(Chrome 실측, jsdom DOM 테스트는 green). 둘째, 이메일 입력이 `type="email"`이면 브라우저가 앞뒤 공백을 지워 원문 표시가 사라지고, 제출할 때 자기 검증 말풍선을 띄워 행 사유 검증이 한 번도 돌지 않았다.
+- **근본 원인**: 첫째는 Radix Dialog의 열림 자동 포커스가 소비자 컴포넌트의 `useEffect`보다 **늦게** 돌기 때문이다. effect로 준 포커스를 Radix가 덮는다. 둘째는 `type="email"`의 값 정규화와 constraint validation이 앱의 판정(`parseRecipients`)보다 **앞에** 서기 때문이다.
+- **그물**: 놓친 것은 DOM 테스트다. 첫째는 실행 순서에 따라 통과와 실패가 갈렸고, 둘째는 jsdom에서도 red였지만 원인이 테스트로 보였다. 잡은 것은 `/design-sync` 4단계의 Chrome 실측과 jsdom red 추적이다. 고친 뒤 `OnboardingModal`에 `initialFocusRef`를 두고(Radix의 `onOpenAutoFocus` 자리에서 옮긴다), 그 핸들러를 걷으면 red가 나는 `modal-initial-focus.test.tsx`를 세웠다. 입력은 `type="text"` + `inputMode="email"`, 폼은 `noValidate`로 바꿨다.
+- **재발 방지**: 모달이 열릴 때 포커스를 줄 자리는 effect가 아니라 `initialFocusRef`로 준다. `rg -n 'useEffect\(\(\) => \{[^}]*focus' components`로 열림 effect의 포커스를 찾는다. 앱이 직접 판정하는 입력에는 `type="email"`·`required`·`pattern`을 쓰지 않는다. 브라우저 검증이 먼저 돌아 앱의 사유 문구가 도달하지 않는다(POSTMORTEM 2026-09-06의 "거부 문구 미도달"과 같은 부류다).
