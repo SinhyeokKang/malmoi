@@ -488,7 +488,8 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 (`skipped/writer-warnings` — 2026-09-18부터 writer 경고가 있으면 GitHub에 쓰기 전에 멈춘다. 전에는 PR을 열고 버린 값을 알렸다) / 실패.
 **부분 전달** (2026-09-24, delivery-invariants): 비-base 언어 파일이 base에 없거나 ts-dict 파일에 그 키의 자리가 없으면 **그 셀만 보류**하고
 나머지를 보낸다 — 결과는 **실린 수**로 말하고 보류 한 줄(`N edits weren't sent because …`)을 붙이며, 실린 것이 0이면 `Not sent` 틀이다.
-보류된 편집은 malmoi에 남아 CI 적재를 계속 멈춘다. **base 파일 부재는 여전히 `writer-warnings`다**(설정 오류).
+보류된 편집은 malmoi에 남아 CI 적재를 계속 멈춘다. Logs는 그 실행을 같은 수로 보이고, 실린 것이 0이면 `Not sent`다(`Nothing to send`가 아니다).
+**base 파일 부재는 여전히 `writer-warnings`다**(설정 오류) — 미리보기가 먼저 경로·브랜치를 말하며 막는다(Try again 없음).
 야간 cron은 미전달 편집이 있는 프로젝트만 GitHub에 닿고, 열린 PR이 있어도 새 편집이 있으면 오늘처럼 갱신한다.
 
 ### 7.7 URL과 정보 구조 — 축이 둘이다 (IA 확정: 2026-09-09)
