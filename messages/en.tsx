@@ -1880,7 +1880,7 @@ export const en = {
         button: "Revert to last sent",
         title: "Revert to the last confirmed version?",
         body: (n: number, list: string): string =>
-          `Your ${n.toLocaleString("en-US")} language${n === 1 ? "" : "s"} that ${n === 1 ? "isn't" : "aren't"} sent yet — ${list} — go back to the version last confirmed as sent. What you saved since then is discarded.`,
+          `Your ${n.toLocaleString("en-US")} language${n === 1 ? "" : "s"} that ${n === 1 ? "isn't" : "aren't"} sent yet — ${list} — ${n === 1 ? "goes" : "go"} back to the version last confirmed as sent. What you saved since then is discarded.`,
         confirm: "Revert",
         unavailable: "The last sent version isn't available for every changed language.",
         unsaved: "Save or discard your changes first.",
