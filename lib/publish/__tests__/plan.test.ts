@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { planPublishButton, planPublishView } from "../plan";
+import { planPublishButton, planPublishView, planWithheldLines } from "../plan";
+import { m } from "@/lib/i18n";
 import { buildPublishDiff, type PublishCell } from "../diff";
 import { summarizeWarnings } from "../warnings";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
@@ -20,6 +21,23 @@ it("실행 결과 여덟 갈래와 스킵 경고를 보존한다", () => {
     const retryable = !["base-unreadable", "not-installed", "glob-matched-nothing"].includes(code);
     expect(planPublishView({ status: "failed", error: "safe", code, retryable, delivery: "unknown" })).toBe(retryable ? "transient-error" : "config-error");
   }
+});
+/**
+ * **보류는 실린 수와 따로 한 줄이다** (delivery-invariants D7). 실린 0 + 보류만이면 "No changes"(파일이 같았다)가 거짓이 되므로
+ * 기존 Not sent 틀(`partial`)을 쓴다. 문구는 역할별로 화면에 있는 컨트롤만 가리킨다(POSTMORTEM 2026-09-14).
+ */
+it("skipped/withheld는 Not sent 틀이다 — No changes가 아니다", () => {
+  expect(planPublishView({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } })).toBe("partial");
+  expect(planPublishView({ status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } })).toBe("no-changes");
+});
+it("보류 줄 — 사유별 한 줄 + 역할별 다음 행동 · 보류 0이면 줄이 없다 (짝)", () => {
+  const p = m.translations.publish;
+  expect(planWithheldLines({ ...committed, withheld: { file: 2, key: 0 } }, "EDITOR")).toEqual([`${p.withheld.file(2)} ${p.withheld.editor}`]);
+  expect(planWithheldLines({ ...committed, withheld: { file: 0, key: 1 } }, "OWNER")).toEqual([`${p.withheld.key(1)} ${p.withheld.owner.key}`]);
+  expect(planWithheldLines({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 1 } }, "OWNER"))
+    .toEqual([`${p.withheld.file(1)} ${p.withheld.owner.file}`, `${p.withheld.key(1)} ${p.withheld.owner.key}`]);
+  expect(planWithheldLines(committed, "OWNER")).toEqual([]);
+  expect(planWithheldLines({ status: "skipped", reason: "writer-warnings", warnings: ["x"] }, "OWNER")).toEqual([]);
 });
 it("0건은 비활성이나 실행 중에는 재열기가 우선한다", () => {
   expect(planPublishButton({ count: 0, paused: false, otherPending: false, publishPending: false })).toMatchObject({ mode: "preview", disabled: true, badge: null, hint: expect.any(String) });

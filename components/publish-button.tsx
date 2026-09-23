@@ -19,7 +19,7 @@ import type { PullOutcome } from "@/lib/pull/message";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { routes } from "@/lib/routes";
 import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
-import { planPublishButton, planPublishView } from "@/lib/publish/plan";
+import { planPublishButton, planPublishView, planWithheldLines } from "@/lib/publish/plan";
 import { summarizeWarnings } from "@/lib/publish/warnings";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
@@ -280,6 +280,7 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
       {preview.truncated > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.truncated(preview.truncated)}</p>}
       {/* 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐으니 수를 말한다 (launch-readiness L3.7). */}
       {preview.withoutFile > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutFile(preview.withoutFile)}</p>}
+      {preview.withoutKey > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutKey(preview.withoutKey)}</p>}
     </div>
   </TableShell>;
 }
@@ -418,7 +419,10 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       const outcome = state.outcome;
       const view = planPublishView(outcome);
       const at = result?.at ?? null;
-      const total = result?.total ?? count;
+      // ⚠️ **성공은 서버가 센 실린 수로 말한다** (delivery-invariants D7) — 미리보기 `total`은 보류를 안 뺀 미발송 전체라, 그 수로 말하면
+      // "3 changes are in a pull request" 아래 "1 wasn't sent"가 서는 모순이 된다.
+      const total = outcome.status === "committed" ? outcome.delivered : result?.total ?? count;
+      const withheld = planWithheldLines(outcome, role).map(line => <p key={line} className="text-muted-foreground text-xs">{line}</p>);
       // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(DESIGN §6.646).
       const number = outcome.status === "committed"
         ? parseGithubPrUrl(outcome.prUrl, { repoOwner: repo.owner, repoName: repo.name })?.number ?? null
@@ -433,7 +437,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           title = p.created; description = p.createdDescription(total);
           footer = number === null ? null : p.prMeta(number, files);
           actions = viewPr;
-          body = <Stack><PrCard repo={label} number={number} note={p.openedJustNow} /><Hint>{p.accessNote}</Hint></Stack>;
+          body = <Stack><PrCard repo={label} number={number} note={p.openedJustNow} />{withheld}<Hint>{p.accessNote}</Hint></Stack>;
           break;
         case "updated":
           panel = PANEL.updated; inner = false;
@@ -442,6 +446,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           actions = viewPr;
           body = <Stack>
             <PrCard repo={label} number={number} note={p.holdsEverything} />
+            {withheld}
             <Replaced branch={repo.syncBranch} base={repo.branch} />
             {number !== null && <Hint>{p.tellReviewer(number)}</Hint>}
           </Stack>;
@@ -455,7 +460,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           title = p.notSent; description = p.notSentDescription;
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
           body = <Stack>
-            <Warnings warnings={outcome.status === "skipped" && outcome.reason === "writer-warnings" ? outcome.warnings : []} />
+            {outcome.status === "skipped" && outcome.reason === "writer-warnings" && <Warnings warnings={outcome.warnings} />}
+            {withheld}
           </Stack>;
           break;
         }
@@ -465,6 +471,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
           body = <Stack>
             <Notice icon={CircleCheck}>{p.noChangesBody(repo.branch)}</Notice>
+            {withheld}
             <Hint icon={History}>{p.inLogs}</Hint>
           </Stack>;
           break;

@@ -172,6 +172,42 @@ it.each([[2, true], [0, false]] as const)("파일이 없어 빠진 셀 %i개를 
   await click("Publish3");
   expect(document.body.textContent?.includes("language file isn't in the repository")).toBe(shown);
 });
+/**
+ * **결과는 실린 수로 말하고 보류는 한 줄이다** (delivery-invariants D7). 미리보기 `total`(보류를 안 뺀 미발송 전체)로 말하면
+ * "3 changes are in a pull request" 아래 "1 wasn't sent"가 서는 모순이 된다. 실린 0 + 보류만이면 No changes가 아니다.
+ */
+const committedWith = (withheld?: { file: number; key: number }) => ({ status: "committed", delivered: 2, pr: "created", commitSha: "c", changed: ["ko.yml"],
+  prUrl: "https://github.com/owner/repo/pull/7", ...(withheld === undefined ? {} : { withheld }) });
+it.each([
+  ["created", committedWith({ file: 1, key: 0 }), m.translations.publish.createdDescription(2)],
+  ["updated", { ...committedWith({ file: 1, key: 0 }), pr: "updated" }, m.translations.publish.updatedDescription(7, 2)],
+  ["no-changes", { status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } }, m.translations.publish.noChangesDescription],
+  ["withheld", { status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } }, m.translations.publish.notSentDescription],
+] as const)("결과 %s는 실린 수로 말하고 보류 한 줄을 붙인다", async (_name, outcome, description) => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, total: 3, withoutFile: 1 }));
+  mocks.pull.mockResolvedValueOnce(outcome);
+  await render(<Host count={3} />); await click("Publish3"); await click("Open pull request");
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(description);
+  expect(text).toContain(`${m.translations.publish.withheld.file(1)} ${m.translations.publish.withheld.editor}`);
+  if (_name === "withheld") expect(text).not.toContain(m.translations.publish.noChanges);
+});
+it("보류가 없으면 결과에 보류 줄이 없다 (짝) · OWNER에게는 Revert를 가리킨다", async () => {
+  mocks.pull.mockResolvedValueOnce(committedWith());
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  expect(document.body.textContent).not.toContain("wasn't sent");
+  expect(document.body.textContent).toContain(m.translations.publish.createdDescription(2));
+});
+it("OWNER의 보류 줄은 파일 추가나 Revert to last sent를 가리킨다", async () => {
+  mocks.pull.mockResolvedValueOnce(committedWith({ file: 0, key: 1 }));
+  await render(<Host role="OWNER" />); await click("Publish1"); await click("Open pull request");
+  expect(document.body.textContent).toContain(`${m.translations.publish.withheld.key(1)} ${m.translations.publish.withheld.owner.key}`);
+});
+it("미리보기가 키 자리 없는 셀을 따로 말한다", async () => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, total: 2, withoutFile: 0, withoutKey: 1 }));
+  await render(<Host count={2} />); await click("Publish2");
+  expect(document.body.textContent).toContain(m.translations.publish.withoutKey(1));
+});
 it("미리보기 읽기 실패는 1k의 Retry다 (짝)", async () => {
   mocks.preview.mockResolvedValueOnce({ status: "failed" });
   await render(<Host />);

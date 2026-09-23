@@ -469,6 +469,36 @@ it.each([
   if (error !== "unavailable") expect(container.textContent).not.toContain(m.translations.workspace.footer.saveFailed.body);
 });
 
+/**
+ * delivery-invariants D2 — 수술적 표면의 비-base 비우기 거부. 푸터 Alert(제목에 로케일) + 그 셀만 `aria-invalid`·`aria-describedby`로
+ * Alert를 가리키고, 입력은 그대로 남는다. 짝: 다른 거부는 기존 `saveFailed` Alert이고 셀에 invalid가 붙지 않는다.
+ */
+it("cannot-clear 거부는 로케일을 제목에 든 푸터 Alert이고 그 셀만 invalid로 Alert를 가리킨다 · 입력은 남는다", async () => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error: "cannot-clear", localeCodes: ["zh"] });
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  await user.click(button("Save"));
+  const alert = [...container.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(m.translations.workspace.footer.cannotClear.title("zh")));
+  expect(alert?.textContent).toContain(m.translations.workspace.footer.cannotClear.body);
+  const cell = area(container, "zh");
+  expect(cell.getAttribute("aria-invalid")).toBe("true");
+  const described = (cell.getAttribute("aria-describedby") ?? "").split(" ");
+  expect(described.some(id => id !== "" && document.getElementById(id)?.contains(alert ?? null))).toBe(true);
+  expect(cell.value).toBe("空");
+  expect(container.querySelectorAll('[aria-invalid="true"]')).toHaveLength(1);
+});
+
+it("다른 저장 거부에는 셀 invalid가 붙지 않는다 (짝)", async () => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error: "unavailable" });
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  await user.click(button("Save"));
+  expect(container.textContent).toContain(m.translations.workspace.footer.saveFailed.body);
+  expect(container.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+});
+
 /** audit #31 — 활성 키가 0인 프로젝트의 빈 목록이 다음 일을 말한다. */
 it("활성 키가 없으면 빈 목록이 안내를 든다", async () => {
   const { container } = await render(<TranslationWorkspace {...props({

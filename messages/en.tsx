@@ -1911,6 +1911,14 @@ export const en = {
         tryAgain: "Try again",
         saveFailed: { title: "We couldn't save this key", body: "Your text is still here. Try again, or save it in a moment." },
         saveUnknown: { title: "We couldn't confirm the save", body: "Your text is still here. Check the current values before saving again." },
+        /**
+         * 수술적 표면의 비-base 비우기 거부 (delivery-invariants D2). "revert"를 쓰지 않는다 — `Revert to last sent`는 OWNER 전용이고
+         * 미저장 변경이 있으면 막힌다. "discard"는 이 화면이 이미 쓰는 어휘다. ⚠️ 명시적 빈값 export(PRODUCT §10)가 생기면 사라질 문구다.
+         */
+        cannotClear: {
+          title: (locales: string): string => `${locales} can't be left empty`,
+          body: "This file format can't remove a translation, so nothing was saved. Enter a value, or discard the change.",
+        },
         /** ⚠️ **Alert 제목 자리다** — 구두점 없는 문장 조각 (DESIGN §10 · audit #30). */
         archived: "This project is archived — editing is off",
         lostAccess: "You no longer have access to this project",
@@ -2064,6 +2072,24 @@ export const en = {
       /** 수술적 어댑터의 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐다 (launch-readiness L3.7). 편집은 DB에 남는다. */
       withoutFile: (n: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "edit isn't" : "edits aren't"} listed because the language file isn't in the repository yet. ${n === 1 ? "It stays" : "They stay"} here until the file exists.`,
+      /** ts-dict 로케일 객체에 자리가 없는 키의 셀 — pull이 그 셀만 보류한다 (delivery-invariants D3). `withoutFile`과 같은 약속이다. */
+      withoutKey: (n: number): string =>
+        `${n.toLocaleString("en-US")} ${n === 1 ? "edit isn't" : "edits aren't"} listed because ${n === 1 ? "its key isn't" : "their keys aren't"} in the language file yet. ${n === 1 ? "It stays" : "They stay"} here until the ${n === 1 ? "key exists" : "keys exist"}.`,
+      /**
+       * 결과의 보류 줄 (delivery-invariants D7) — 미리보기 `withoutFile`·`withoutKey`와 **같은 명사·같은 약속**이다. 역할 갈림은 화면에 있는
+       * 컨트롤만 가리킨다: EDITOR에게는 `Revert to last sent`가 없다.
+       */
+      withheld: {
+        file: (n: number): string =>
+          `${n.toLocaleString("en-US")} ${n === 1 ? "edit wasn't" : "edits weren't"} sent because the language file isn't in the repository. ${n === 1 ? "It stays" : "They stay"} here until the file exists.`,
+        key: (n: number): string =>
+          `${n.toLocaleString("en-US")} ${n === 1 ? "edit wasn't" : "edits weren't"} sent because ${n === 1 ? "its key isn't" : "their keys aren't"} in the language file yet. ${n === 1 ? "It stays" : "They stay"} here until the ${n === 1 ? "key exists" : "keys exist"}.`,
+        editor: "Ask a project owner.",
+        owner: {
+          file: "Add the file to the repository, or use Revert to last sent.",
+          key: "Add the keys to the language file, or use Revert to last sent.",
+        },
+      },
 
       /** 열린 PR 삼상태 — `null`로 접지 않는다. "없다"와 "모른다"는 다른 줄이다. */
       prOpen: {

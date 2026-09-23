@@ -79,6 +79,8 @@ type FooterStatus =
   | { kind: "key-gone" }
   | { kind: "not-ready" }
   | { kind: "save-unknown" }
+  /** 수술적 표면의 비-base 비우기 거부 (delivery-invariants D2) — 아무것도 저장되지 않았다. 입력은 그대로 남는다. */
+  | { kind: "cannot-clear"; locales: string[] }
   | { kind: "session" }
   | { kind: "archived" }
   | { kind: "lost-access" }
@@ -274,6 +276,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           : result.error === "forbidden" || result.error === "not-found" ? { kind: "lost-access" }
           : result.error === "key-unavailable" ? { kind: "key-gone" }
           : result.error === "not-ready" ? { kind: "not-ready" }
+          : result.error === "cannot-clear" && "localeCodes" in result ? { kind: "cannot-clear", locales: result.localeCodes }
           : { kind: "save-failed" });
       }
     } catch {
@@ -339,6 +342,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const publish = usePublish(slug);
   const syncReasonId = useId();
   const publishButtonId = useId();
+  const footerAlertId = useId();
   const [syncOpen, setSyncOpen] = useState(false);
   /**
    * ⚠️ **[Sync]의 원결과를 이 화면이 든다** (audit #5 — POSTMORTEM 2026-09-08 재발) — 전엔 `onResult`가 결과를 버리고
@@ -522,8 +526,10 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                 onSave={() => void save()}
                 copyHref={withQuery({ ...DEFAULT_TRANSLATION_QUERY, ns: detail.key.namespace, scope: "namespace", key: detail.key.id, keySurface: detail.key.surfaceSlug }, detail.key.surfaceSlug)}
                 readOnly={status?.kind === "archived" || status?.kind === "lost-access"}
+                invalid={status?.kind === "cannot-clear" ? { locales: status.locales, describedBy: footerAlertId } : undefined}
                 footer={
                   <Footer
+                    alertId={footerAlertId}
                     dirty={dirty.length}
                     status={status}
                     saving={saving}
@@ -559,8 +565,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   );
 }
 
-function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, revertBusy, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
-  dirty: number; status: FooterStatus | null; saving: boolean; resultRef: React.RefObject<HTMLSpanElement | null>;
+function Footer({ alertId, dirty, status, saving, resultRef, hasPending, revertBlocked, revertBusy, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
+  alertId: string; dirty: number; status: FooterStatus | null; saving: boolean; resultRef: React.RefObject<HTMLSpanElement | null>;
   hasPending: boolean; revertBlocked: RevertReason | null; revertBusy: boolean; saveDisabled: boolean;
   onSave: () => void; onRevert: () => void; onCheck: () => void; slug: string; storageBlocked: boolean;
 }) {
@@ -574,7 +580,7 @@ function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, r
   return (
     <div className="border-border shrink-0 border-t">
       {status !== null && ALERTS[status.kind] !== undefined && (
-        <div className="px-4 pt-3">{ALERTS[status.kind]?.({ onCheck, slug, storageBlocked })}</div>
+        <div id={alertId} className="px-4 pt-3">{ALERTS[status.kind]?.({ onCheck, slug, storageBlocked, status })}</div>
       )}
       <div className="flex items-center gap-3 px-4 py-3">
         {/* ⚠️ 사유는 결과 줄(`aria-live`) 밖의 형제다 — 안에 두면 사유가 바뀔 때마다 결과처럼 다시 낭독된다.
@@ -603,7 +609,11 @@ function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, r
   );
 }
 
-const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { onCheck: () => void; slug: string; storageBlocked: boolean }) => ReactNode>> = {
+const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { onCheck: () => void; slug: string; storageBlocked: boolean; status: FooterStatus }) => ReactNode>> = {
+  // 거부 단위는 키 전체다 — 제목이 로케일을, 본문이 "아무것도 저장되지 않았다"를 말한다(delivery-invariants D2).
+  "cannot-clear": ({ status }) => status.kind === "cannot-clear" && (
+    <Alert variant="danger" title={m.translations.workspace.footer.cannotClear.title(status.locales.join(", "))}>{m.translations.workspace.footer.cannotClear.body}</Alert>
+  ),
   "save-failed": () => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.saveFailed.body}</Alert>,
   "key-gone": () => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.keyGone}</Alert>,
   "not-ready": () => <Alert variant="warning" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.notReady}</Alert>,

@@ -30,7 +30,7 @@ export type DetailView = {
   locales: { code: string; isBase: boolean; value: string | null; needsReview: boolean; pending: boolean; actorLabel: string | null }[];
 };
 
-export function LocalePanel({ detail, draft, language, onLanguage, onEdit, onReset, onSave, copyHref, readOnly, footer }: {
+export function LocalePanel({ detail, draft, language, onLanguage, onEdit, onReset, onSave, copyHref, readOnly, footer, invalid }: {
   detail: DetailView;
   draft: KeyDraftState;
   language: string | undefined;
@@ -41,6 +41,8 @@ export function LocalePanel({ detail, draft, language, onLanguage, onEdit, onRes
   copyHref: string;
   readOnly: boolean;
   footer: ReactNode;
+  /** 저장 거부가 가리키는 로케일과 그 사유(푸터 Alert)의 id. 셀 옆에 새 패턴을 만들지 않는다 — 이유는 푸터 한 곳에 선다(delivery-invariants D2). */
+  invalid?: { locales: readonly string[]; describedBy: string };
 }) {
   const w = m.translations.workspace.detail;
   const filled = detail.locales.filter(l => l.value !== null && l.value !== "").length;
@@ -111,6 +113,7 @@ export function LocalePanel({ detail, draft, language, onLanguage, onEdit, onRes
               saved={draft.saved[locale.code] ?? ""}
               readOnly={readOnly}
               isBase={locale.code === base}
+              invalidBy={invalid?.locales.includes(locale.code) ? invalid.describedBy : undefined}
               onEdit={value => onEdit(locale.code, value)}
               onReset={() => onReset(locale.code)}
               onSave={onSave}
@@ -127,7 +130,7 @@ function lastSegment(path: string): string {
   return path.split("/").at(-1) ?? path;
 }
 
-function LocaleRow({ keyName, sourceText, locale, first, draft, saved, readOnly, isBase, onEdit, onReset, onSave }: {
+function LocaleRow({ keyName, sourceText, locale, first, draft, saved, readOnly, isBase, invalidBy, onEdit, onReset, onSave }: {
   keyName: string;
   sourceText: string;
   locale: DetailView["locales"][number];
@@ -136,6 +139,7 @@ function LocaleRow({ keyName, sourceText, locale, first, draft, saved, readOnly,
   saved: string;
   readOnly: boolean;
   isBase: boolean;
+  invalidBy?: string;
   onEdit: (value: string) => void;
   onReset: () => void;
   onSave: () => void;
@@ -152,7 +156,8 @@ function LocaleRow({ keyName, sourceText, locale, first, draft, saved, readOnly,
       value={draft}
       readOnly={readOnly}
       aria-label={m.translations.cellLabel(keyName, locale.code)}
-      aria-describedby={empty ? helpId : undefined}
+      aria-invalid={invalidBy === undefined ? undefined : true}
+      aria-describedby={[empty ? helpId : undefined, invalidBy].filter(Boolean).join(" ") || undefined}
       placeholder=""
       onChange={event => onEdit(event.target.value)}
       onKeyDown={event => {
