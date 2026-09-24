@@ -860,3 +860,36 @@ describe("yaml-catalog — 삽입 인용: 형제가 맵뿐이면 파일을 본�
     expect(out).toBe('ko:\n  a:\n    x: "old"\n  b:\n    y: "old"\n  top: "new"\n');
   });
 });
+
+/**
+ * **점 키와 중첩이 같은 평탄 키를 낸다** (audit B7a r1 — `a.b: x` + `a: {b: y}`). 전에는 read가 조용히 하나(마지막)로 접었고,
+ * write는 긴 리터럴 우선(`locate`)이라 **다른 줄**을 고쳤다. YAML의 같은 이름 중복과 같은 실패(`duplicate-key`)로 알리고,
+ * read가 싣는 값은 write가 고칠 노드의 값이다 — push가 적재하는 것과 편집이 닿는 자리가 같다.
+ */
+describe("yaml-catalog — 평탄화 충돌 (B7a r1)", () => {
+  it.each([
+    ["리터럴이 앞", "a.b: flat\na:\n  b: nested\n"],
+    ["리터럴이 뒤", "a:\n  b: nested\na.b: flat\n"],
+  ])("duplicate-key로 알리고 write가 고칠 리터럴의 값을 싣는다 — %s", (_name, source) => {
+    const r = yamlCatalog.read(base(), [f("config/locales/ko.yml", source)]);
+    expect(r.errors).toEqual([{ path: "config/locales/ko.yml", code: "duplicate-key", key: "a.b" }]);
+    expect(r.locales[0]?.entries).toEqual([{ key: "a.b", message: "flat" }]);
+    expect(yamlCatalog.write(withSource(source), { locale: "ko", entries: r.locales[0]!.entries })).toBe(source);
+  });
+
+  it("같은 이름 중복은 한 번만 알린다 (collect가 이미 알린 것을 겹쳐 세지 않는다)", () => {
+    const r = yamlCatalog.read(base(), [f("config/locales/ko.yml", "a: one\na: two\n")]);
+    expect(r.errors).toEqual([{ path: "config/locales/ko.yml", code: "duplicate-key", key: "a" }]);
+    expect(r.locales[0]?.entries).toEqual([{ key: "a", message: "two" }]);
+  });
+});
+
+/** 작은따옴표 다수 형제 아래에 개행 든 값을 넣으면 folded single-quote가 공백만 있는 줄을 남긴다(yamllint trailing-spaces). */
+describe("yaml-catalog — 개행 값 삽입은 큰따옴표다 (B7a r1)", () => {
+  it("형제가 작은따옴표여도 개행이 있으면 QUOTE_DOUBLE로 넣는다", () => {
+    const out = yamlCatalog.write(withSource("a:\n  x: 'old'\n  y: 'two'\n"), { locale: "ko", entries: [{ key: "a.z", message: "line\n\nnext" }] })!;
+    expect(out).toBe('a:\n  x: \'old\'\n  y: \'two\'\n  z: "line\\n\\nnext"\n');
+    expect(out.split("\n").some((line) => /^\s+$/.test(line))).toBe(false);
+    expect(parseDocument(out).getIn(["a", "z"])).toBe("line\n\nnext");
+  });
+});

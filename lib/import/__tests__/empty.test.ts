@@ -26,3 +26,12 @@ describe("verifyEmptyCatalog", () => {
     });
   }
 });
+
+/** BOM이 붙은 빈 `{}` — read는 BOM을 벗기는데(audit #57) 이 판정의 두 번째 `JSON.parse`가 벗기지 않아 던졌다(B7a r1). */
+describe("verifyEmptyCatalog — BOM", () => {
+  it("BOM이 붙은 빈 json-catalog를 빈 카탈로그로 인식하고 던지지 않는다", () => {
+    const paths = ["i18n/en.json", "i18n/ko.json"];
+    const input = { stored: { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}.json", baseLocale: "en" }, paths, blobs: new Map(paths.map(path => [path, "\uFEFF{}"])) };
+    expect(verifyEmptyCatalog(input)).toBe(true);
+  });
+});

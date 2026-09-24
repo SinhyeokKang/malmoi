@@ -237,6 +237,19 @@ describe("prepareFirstSnapshot — 관리하지 않는 항목과 실패를 가�
     expect(result.errors.map(e => e.code)).toEqual(["download-failed"]);
   });
 
+  /** code-dict의 중복 프로퍼티는 경고다(B7a r1 사용자 결정) — failed도 unmanaged도 아니다. 마지막 값이 적재된다. */
+  it("code-dict의 중복 프로퍼티는 failed·unmanaged 어느 쪽에도 세지 않는다", () => {
+    const CODE: Record<string, string> = {
+      "src/locale/en.ts": "export default {\n  a: 'first',\n  b: 'B',\n  a: 'A',\n}\n",
+      "src/locale/ko.ts": "export default {\n  a: '가',\n  b: '나',\n}\n",
+    };
+    const found = detectFormat(Object.keys(CODE), p => CODE[p]);
+    expect(found?.adapter).toBe("code-dict");
+    const { payload, result } = prepareFirstSnapshot({ ...base, format: found!, baseLocale: "en", paths: Object.keys(CODE), targets: Object.keys(CODE), blobs: new Map(Object.entries(CODE)) });
+    expect(result).toMatchObject({ count: 2, failed: 0, unmanaged: 0, errors: [] });
+    expect(payload?.translations).toContainEqual(expect.objectContaining({ locale: "en", key: "a", value: "A" }));
+  });
+
   it("대조: json-catalog의 숫자 값은 다음 Publish에서 지워지므로 failed다", () => {
     const tree = { ...TREE, "src/locales/ko.json": '{\n  "a.greet": "안녕",\n  "a.bye": 3\n}\n' };
     const { result } = prepareFirstSnapshot({ ...base, format: format(), baseLocale: "en", paths: PATHS, targets: PATHS.filter(p => p.startsWith("src/locales/")), blobs: new Map(Object.entries(tree)) });

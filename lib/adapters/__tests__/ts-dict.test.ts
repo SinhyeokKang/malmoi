@@ -410,3 +410,29 @@ describe("ts-dict — 로케일 객체 부재도 보고한다 (2026-09-04 audit 
     expect(res.content).toContain("둘");
   });
 });
+
+/**
+ * **같은 로케일 객체의 중복 키** (audit B7a r1 — code-dict #51과 같은 결함). JS는 마지막이 이기고 push `lastWins`도 마지막을
+ * 적재하는데, read가 둘 다 조용히 냈고 write는 **모든 자리를** DB 값으로 바꿔서 편집 0건에도 첫 자리가 바뀌었다.
+ * 알림은 code-dict와 같은 경고(`duplicate-property`)다 — CI를 red로 만들지 않는다(ACTIONS §3).
+ */
+describe("ts-dict — 중복 키 (B7a r1)", () => {
+  const SRC = "const en = {\n  a: 'first',\n  b: 'B',\n  a: 'last',\n} as const;\nconst ko = {\n  a: '가',\n  b: '나',\n} as const;\n";
+  const fmt = { adapter: "ts-dict" as const, pathTemplate: "ns/*.ts", locales: ["en", "ko"] };
+
+  it("read가 duplicate-property를 내고 마지막 값 하나만 싣는다", () => {
+    const r = tsDict.read(fmt, [{ path: "ns/x.ts", content: SRC }]);
+    expect(r.errors).toEqual([{ path: "ns/x.ts", code: "duplicate-property", key: "a" }]);
+    expect(r.locales.find((l) => l.locale === "en")?.entries).toEqual([{ key: "a", message: "last" }, { key: "b", message: "B" }]);
+  });
+
+  it("값이 같으면 바이트를 안 바꾸고, 편집은 마지막 자리만 바꾼다", () => {
+    const withSrc = { ...fmt, currentFiles: [{ path: "ns/x.ts", content: SRC }] };
+    expect(tsDict.write(withSrc, { locale: "en", entries: [{ key: "a", message: "last" }, { key: "b", message: "B" }] })).toBe(SRC);
+    expect(tsDict.write(withSrc, { locale: "en", entries: [{ key: "a", message: "edited" }] })).toBe(SRC.replace("a: 'last'", "a: 'edited'"));
+  });
+
+  it("중복이 없으면 에러가 없다 (짝)", () => {
+    expect(tsDict.read(fmt, [{ path: "ns/x.ts", content: SRC.replace("  a: 'last',\n", "") }]).errors).toEqual([]);
+  });
+});

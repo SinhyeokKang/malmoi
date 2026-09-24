@@ -736,7 +736,7 @@ describe("code-dict — 깊은 점 키는 중복 삽입하지 않는다 (L1.4)",
       expect(diff).toHaveLength(1);
       const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
       // 혼재는 같은 평탄 키가 둘이라 read가 알린다(audit #51) — 마지막(리터럴)이 이기고, write가 바꾼 것도 그 자리다.
-      expect(back.errors).toEqual(name.startsWith("실제 중첩과 혼재") ? [{ path: "src/locale/ko.ts", code: "duplicate-key", key }] : []);
+      expect(back.errors).toEqual(name.startsWith("실제 중첩과 혼재") ? [{ path: "src/locale/ko.ts", code: "duplicate-property", key }] : []);
       expect(back.locales[0]?.entries).toContainEqual({ key, message: "new" });
       expect(codeDict.write(withSource(out), input)).toBe(out);
     });
@@ -755,23 +755,31 @@ describe("code-dict — 깊은 점 키는 중복 삽입하지 않는다 (L1.4)",
 });
 
 /**
- * **중복 키는 read·write·push가 같은 항목을 가리킨다** (audit #51). JS 객체 리터럴은 같은 이름이 둘이면 **마지막이 이긴다** —
+ * **중복 키는 read·write·push가 같은 항목을 가리킨다** (audit #51 · r1). JS 객체 리터럴은 같은 이름이 둘이면 **마지막이 이긴다** —
  * push의 `lastWins`(`lib/push/payload.ts`)도 마지막을 적재한다. 전에는 read가 둘 다 조용히 내고 write가 **첫 항목**을 바꿔서,
- * 편집이 런타임에 안 보이는 자리에 들어갔다. json-catalog·yaml-catalog처럼 `duplicate-key`로 알린다.
+ * 편집이 런타임에 안 보이는 자리에 들어갔다.
+ * ⚠️ **알림은 실패가 아니라 경고다** (`duplicate-property`, 2026-09-24 사용자 결정) — 대상 리포 CI를 red로 만들지 않는다.
+ * ⚠️ **read가 싣는 값은 write가 고칠 바로 그 노드의 값이다** — 점 키와 중첩이 같은 평탄 키를 낼 때도(`locate`가 긴 리터럴 우선).
  */
 describe("code-dict — 중복 키 (audit #51)", () => {
   const DUP = "export default {\n  a: 'first',\n  hello: 'Hi',\n  a: 'last',\n}\n";
+  const warning = (key: string) => ({ path: "src/locale/ko.ts", code: "duplicate-property", key });
 
-  it("read가 duplicate-key를 내고 마지막 값 하나만 싣는다", () => {
+  it("read가 duplicate-property를 내고 마지막 값 하나만 싣는다", () => {
     const r = codeDict.read(base(), [f("src/locale/ko.ts", DUP)]);
-    expect(r.errors).toEqual([{ path: "src/locale/ko.ts", code: "duplicate-key", key: "a" }]);
+    expect(r.errors).toEqual([warning("a")]);
     expect(r.locales[0]?.entries).toEqual([{ key: "a", message: "last" }, { key: "hello", message: "Hi" }]);
   });
 
-  it("점 키와 중첩이 같은 평탄 키를 내도 알린다", () => {
-    const r = codeDict.read(base(), [f("src/locale/ko.ts", "export default {\n  'a.b': 'flat',\n  a: { b: 'nested' },\n}\n")]);
-    expect(r.errors).toEqual([{ path: "src/locale/ko.ts", code: "duplicate-key", key: "a.b" }]);
-    expect(r.locales[0]?.entries.filter((e) => e.key === "a.b")).toHaveLength(1);
+  it.each([
+    ["리터럴이 앞", "export default {\n  'a.b': 'flat',\n  a: { b: 'nested' },\n}\n"],
+    ["리터럴이 뒤", "export default {\n  a: { b: 'nested' },\n  'a.b': 'flat',\n}\n"],
+  ])("점 키와 중첩이 같은 평탄 키를 내면 알리고, write가 고치는 리터럴의 값을 싣는다 — %s", (_name, source) => {
+    const r = codeDict.read(base(), [f("src/locale/ko.ts", source)]);
+    expect(r.errors).toEqual([warning("a.b")]);
+    expect(r.locales[0]?.entries).toEqual([{ key: "a.b", message: "flat" }]);
+    // 값이 같으면 write는 바이트를 안 바꾼다 — read와 write가 같은 노드를 본다는 증거다.
+    expect(codeDict.write(withSource(source), { locale: "ko", entries: r.locales[0]!.entries })).toBe(source);
   });
 
   it("write는 마지막 항목을 바꾼다 — 런타임이 읽는 자리다", () => {

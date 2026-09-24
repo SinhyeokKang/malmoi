@@ -19,6 +19,15 @@ describe("adapterErrorKind", () => {
     ]);
   });
 
+  /**
+   * **경고는 하나다** (B7a r1, 2026-09-24 사용자 결정). code-dict·ts-dict의 중복 프로퍼티는 JS 의미대로 마지막 값이 적재되고
+   * write도 그 자리를 고친다 — 잃는 번역이 없다. 대상 리포 CI를 red로 만들지 않고, 실패로도 unmanaged로도 세지 않는다.
+   * 대조: YAML·JSON의 `duplicate-key`는 그대로 실패다.
+   */
+  it("duplicate-property만 warning이다", () => {
+    expect(ADAPTER_ERROR_CODES.filter(code => adapterErrorKind(code) === "warning")).toEqual(["duplicate-property"]);
+  });
+
   // 대조: 실패로 남아야 하는 대표 — 파일 층 · 다운로드 · 중복 · 재생성 writer가 잃는 값.
   it.each(["parse-failed", "parse-crashed", "root-not-object", "no-default-export", "download-failed", "duplicate-key",
     "value-not-string-or-container", "value-not-message-object", "missing-message-field", "invalid-chrome-key"] as const)("%s는 failure다", code => {

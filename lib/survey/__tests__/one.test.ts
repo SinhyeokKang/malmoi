@@ -353,3 +353,13 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect(tsDict.detectCandidates(["src/i18n/x.ts", "src/i18n/y.ts"])).toEqual([]);
   });
 });
+
+/** chrome 필드 관측 카운터도 BOM을 벗기고 읽는다 (B7a r1 — read는 audit #57로 벗기는데 카운터만 `JSON.parse`가 던져 조용히 건너뛰었다). */
+describe("surveyOne — chrome 필드 카운터와 BOM", () => {
+  it("BOM이 붙은 _locales 파일의 placeholders를 센다", () => {
+    const entry = '{\n  "hi": {\n    "message": "Hi $1",\n    "placeholders": { "n": { "content": "$1" } }\n  }\n}\n';
+    const s = surveyOne(input("acme/chrome-bom", { "_locales/en/messages.json": "\uFEFF" + entry, "_locales/ko/messages.json": "\uFEFF" + entry }));
+    expect(s.chosen?.adapter).toBe("chrome-locales");
+    expect(s.chromeFields.placeholders).toBe(true);
+  });
+});
