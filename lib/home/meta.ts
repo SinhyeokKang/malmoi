@@ -1,4 +1,5 @@
 import type { HomeState } from "./state";
+import type { SyncTime } from "./sync-time";
 
 /**
  * 오른쪽 `Project` 메타 열 (캔버스 `2a` 오른쪽 · DESIGN §6.64).
@@ -39,7 +40,8 @@ export function metaRows(input: {
   locales: readonly string[];
   keys: number;
   members: number;
-  lastSyncAt: Date | null;
+  /** `"unrecorded"`면 행을 그리지 않는다 — 적재는 됐는데 시각이 없다. `Never`는 거짓이다 (malmoi#81). */
+  lastSyncAt: SyncTime;
   lastImportFailedAt: Date | null;
   lastPublishedAt: Date | null;
   lastPrUrl: string | null;
@@ -61,7 +63,10 @@ export function metaRows(input: {
     { kind: "keys", count: input.keys },
     { kind: "members", count: input.members },
     // 실패 시각은 실패 상태에서만 나란히 선다 — 성공한 뒤에도 남으면 옛 실패를 상시로 말한다.
-    { kind: "lastSync", at: input.lastSyncAt, failedAt: input.state === "import_failed" ? input.lastImportFailedAt : null },
+  );
+  if (input.lastSyncAt !== "unrecorded")
+    rows.push({ kind: "lastSync", at: input.lastSyncAt, failedAt: input.state === "import_failed" ? input.lastImportFailedAt : null });
+  rows.push(
     { kind: "lastPublish", at: input.lastPublishedAt, prUrl: input.lastPrUrl },
     { kind: "created", at: input.createdAt },
   );

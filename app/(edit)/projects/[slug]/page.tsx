@@ -23,6 +23,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems } from "@/lib/home/attention";
 import { countCards } from "@/lib/home/cards";
 import { metaRows } from "@/lib/home/meta";
+import { lastSyncTime } from "@/lib/home/sync-time";
 import { planHomeState } from "@/lib/home/state";
 import {
   loadActors, loadProjectListAggregates, loadReviewAttention,
@@ -100,7 +101,7 @@ export default async function ProjectHomePage({
         where: { archivedAt: null },
         orderBy: { slug: "asc" },
         select: {
-          id: true, slug: true, archivedAt: true, lastCommitSha: true, lastCommitAt: true,
+          id: true, slug: true, archivedAt: true, lastCommitSha: true, lastCommitAt: true, lastImportedAt: true,
           lastImportError: true, lastImportStartedAt: true, lastImportFailedAt: true,
           locales: { select: { code: true, name: true, isBase: true, orphaned: true, createdAt: true } },
         },
@@ -184,10 +185,8 @@ export default async function ProjectHomePage({
   }));
   const state = planHomeState({ archived, connection: health, surfaces, counts });
 
-  const lastSyncAt = surfaces
-    .map((s) => s.lastCommitAt)
-    .filter((at): at is Date => at !== null)
-    .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+  // ⚠️ **커밋 시각이 아니라 적재 시각이다** (malmoi#81) — `lastSyncTime`이 그 판정과 "기록 없음" 갈래를 든다.
+  const lastSyncAt = lastSyncTime(surfaces);
 
   const keys = [...aggregates.keyTotals.values()].reduce((sum, n) => sum + n, 0);
   const bySurface = new Map(surfaces.map((s) => [s.id, s]));
@@ -287,7 +286,8 @@ export default async function ProjectHomePage({
         unsent={counts.toSend}
         failedSurface={failed?.slug ?? null}
         reason={failed?.importError ?? null}
-        lastSyncAt={lastSyncAt}
+        /* 시각 없는 성공은 "이 Sync 전의 값"으로 말한다 — 지어낸 시각을 배너에 넣지 않는다 (malmoi#81). */
+        lastSyncAt={lastSyncAt === "unrecorded" ? null : lastSyncAt}
         now={now}
       />
 
