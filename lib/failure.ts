@@ -95,8 +95,16 @@ export function classifyFailure(error: unknown): Failure {
  * `lib/credentials/log.ts`·`lib/github-connect/log.ts`와 같은 모양이고 그 둘은 자기 접두를 고정한 사본이다.
  */
 export function logCaught(scope: string, stage: string, error: unknown): void {
+  console.error(`[${scope}] ${randomUUID().slice(0, 8)} ${stage}: ${describeFailure(error)}`);
+}
+
+/**
+ * `logCaught`의 한 낱말만 — 이미 문장·필드를 갖춘 로그 줄에 `cause`로 붙인다 (audit #72). catch가 오류를
+ * 통째로 버리면 "무엇이 실패했나"는 남아도 "왜"가 안 남는다(POSTMORTEM 2026-09-14).
+ */
+export function describeFailure(error: unknown): string {
   const failure = classifyFailure(error);
-  console.error(`[${scope}] ${randomUUID().slice(0, 8)} ${stage}: ${failure.safe ? failure.message : failure.detail}`);
+  return failure.safe ? failure.message : failure.detail;
 }
 
 /**

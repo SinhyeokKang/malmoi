@@ -73,6 +73,18 @@ it("DB 실패는 새 객체만 회수하고 이전 이미지를 남긴다", asyn
   expect(h.del).not.toHaveBeenCalledWith("projects/p/old.webp");
   expect(db.projects[0]).toMatchObject({ image: old });
 });
+/** 접는 자리가 단계와 **분류**를 남긴다 — 원문은 안 싣는다 (audit #72, POSTMORTEM 2026-09-14 형태). */
+it("실패 로그가 단계와 분류를 남기고 원문은 싣지 않는다", async () => {
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(db.prisma, "$transaction").mockRejectedValueOnce(new TypeError("secret host"));
+  expect(await actions.uploadProjectImage(form())).toEqual({ ok: false, reason: "unavailable" });
+  vi.spyOn(db.prisma, "$transaction").mockRejectedValueOnce(new RangeError("secret host"));
+  expect(await actions.deleteProjectImage("alpha")).toEqual({ ok: false, reason: "unavailable" });
+  expect(error.mock.calls).toEqual([
+    ["Project image upload failed.", { stage: "database-update", projectId: "p", cause: "TypeError" }],
+    ["Project image deletion failed.", { projectId: "p", cause: "RangeError" }],
+  ]);
+});
 /**
  * ⚠️ **커밋 뒤에 도는 것은 성공 여부를 못 바꾼다** (POSTMORTEM 2026-09-20 — `addSurfaces`와 같은 부류).
  * 여기 셋은 DB tx가 끝난 **뒤** `revalidatePath`·Blob 정리를 부르므로, 그 예외가 Action 밖으로 나가면

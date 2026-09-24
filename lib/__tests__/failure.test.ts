@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { requireEnv } from "../env";
-import { AppError, MissingEnvError, classifyFailure, fail, httpStatus, isUniqueViolation, logCaught } from "../failure";
+import { AppError, MissingEnvError, classifyFailure, describeFailure, fail, httpStatus, isUniqueViolation, logCaught } from "../failure";
 
 /**
  * **500 본문에 무엇을 실을지의 판정** (2026-09-04 audit #15).
@@ -170,6 +170,14 @@ describe("logCaught", () => {
       spy.mockRestore();
     }
   });
+});
+
+/** 기존 로그 객체에 붙이는 한 낱말 (audit #72) — `logCaught`와 같은 규칙이다. */
+it("describeFailure는 우리 메시지는 그대로, 남의 메시지는 분류만 돌려준다", () => {
+  expect(describeFailure(new AppError("missing slug"))).toBe("missing slug");
+  expect(describeFailure(new TypeError("secret row"))).toBe("TypeError");
+  expect(describeFailure(Object.assign(new Error("secret"), { status: 502 }))).toBe("http-502");
+  expect(describeFailure("boom")).toBe("string");
 });
 
 // 같은 판정이 셋·넷씩 흩어져 있던 것을 여기 하나로 모았다 (launch-readiness L7.4).

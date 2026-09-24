@@ -24,7 +24,7 @@ import { recordEvent } from "@/lib/events/record";
 import { requireEnv } from "@/lib/env";
 import { planRepoConnect } from "@/lib/github-connect/connect-plan";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
-import { httpStatus } from "@/lib/failure";
+import { describeFailure, httpStatus } from "@/lib/failure";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { STATE_TTL_MINUTES, signState, stateCookieName } from "@/lib/github-connect/state";
@@ -370,7 +370,7 @@ export async function updateProjectName(raw: { slug: string; name: string }): Pr
       return locked;
     });
   }
-  catch { console.error("Project name update failed.", { projectId: access.projectId }); return { ok: false, error: "unavailable" }; }
+  catch (error) { console.error("Project name update failed.", { projectId: access.projectId, cause: describeFailure(error) }); return { ok: false, error: "unavailable" }; }
   if (locked.status !== "ok") return redrawIfArchived(parsed.data.slug, locked.status, { ok: false, error: locked.status });
   revalidateAfterCommit("name");
   return { ok: true, name: plan.name };
@@ -380,7 +380,7 @@ async function cleanProjectImage(url: string | null, projectId: string): Promise
   const key = planProjectImageDelete(url);
   if (key === null || !key.startsWith(`projects/${projectId}/`)) return;
   try { await deleteImage(key); }
-  catch { console.warn("Project image cleanup failed; an orphan may remain.", { projectId }); }
+  catch (error) { console.warn("Project image cleanup failed; an orphan may remain.", { projectId, cause: describeFailure(error) }); }
 }
 
 type ProjectImageResult = { ok: true } | { ok: false; reason: UploadReject | AccessError };
@@ -429,8 +429,8 @@ export async function uploadProjectImage(form: FormData): Promise<ProjectImageRe
       });
       return row.image;
     });
-  } catch {
-    console.error("Project image upload failed.", { stage, projectId });
+  } catch (error) {
+    console.error("Project image upload failed.", { stage, projectId, cause: describeFailure(error) });
     await cleanProjectImage(uploaded, projectId);
     return { ok: false, reason: "unavailable" };
   }
@@ -470,7 +470,7 @@ export async function deleteProjectImage(slug: string): Promise<{ ok: true } | {
       });
       return row.image;
     });
-  } catch { console.error("Project image deletion failed.", { projectId }); return { ok: false, reason: "unavailable" }; }
+  } catch (error) { console.error("Project image deletion failed.", { projectId, cause: describeFailure(error) }); return { ok: false, reason: "unavailable" }; }
   if (typeof previous === "object" && previous !== null) return redrawIfArchived(slug, previous.status, { ok: false, reason: previous.status });
   await cleanProjectImage(previous, projectId);
   revalidateAfterCommit("image-delete");
