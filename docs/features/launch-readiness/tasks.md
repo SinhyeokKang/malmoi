@@ -239,6 +239,12 @@
 
 ---
 
+## R8 — 감사 후속 (2026-09-25, audit-report·delivery-invariants 디렉터리를 지우며 옮겼다)
+
+- [ ] L8.1 `/l10n-roundtrip` 미실시 — delivery-invariants(B1)의 수동 게이트. DESIGN §6.646의 보류 줄·base 부재 거부·전부 보류 미리보기가 "미실측"이다. 폐기용 리포(`i18n-order-check` · ts-dict 리포)로 한 바퀴.
+- [ ] L8.2 CSP enforce 뒤 런타임 콘솔 확인(audit #75) — 프로덕션·preview 콘솔에 CSP 위반이 0인지.
+- [ ] L8.3 prod `pg_default_acl` 재측정(audit #82) — 워커에 prod 자격증명이 없어 dev만 쟀다. `anon`·`authenticated`의 `public` 권한 0을 prod에서 확인(`/db` 5단계).
+
 ## 완료 판정
 
 **R0 · R1(L1.5 포함) · R2 중 L2.0·L2.1·L2.3·L2.4가 닫힌 뒤**, 아래 왕복을 **L0.5의 두 계정**으로 한 번 완주한다. 오너는 관찰만 한다.
