@@ -43,7 +43,7 @@ if (typeof globalThis.ResizeObserver === "undefined") {
  *
  * ⚠️ **실제 브라우저에는 없는 조건이다** — 거기서는 rect가 진짜 값이라 8px·16px 스트립 근처에서만
  * 걸린다. 그래서 프로덕션 코드를 비트는 대신 핸들의 rect만 화면 밖으로 민다. **드래그 자체를
- * jsdom에서 검증할 수는 없다** — 그건 `/bugshot-qa`와 실물 확인이 든다.
+ * jsdom에서 검증할 수는 없다** — 그건 `/runtime-test`와 실물 확인이 든다.
  */
 if (typeof Element !== "undefined") {
   const rect = Element.prototype.getBoundingClientRect;

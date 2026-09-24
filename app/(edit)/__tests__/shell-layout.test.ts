@@ -7,14 +7,14 @@ import { describe, expect, it } from "vitest";
 /**
  * **셸은 뷰포트에 고정되고 콘텐츠 컬럼만 스크롤한다** (DESIGN §6.5).
  *
- * ⚠️ 회귀 (malmoi#13, 2026-09-08 `/bugshot-qa` preview 실측): 셸 루트가 `min-h-svh`였고 `aside`·`header`가
+ * ⚠️ 회귀 (malmoi#13, 2026-09-08 `/runtime-test` preview 실측): 셸 루트가 `min-h-svh`였고 `aside`·`header`가
  * `position: static`이라, 콘텐츠가 뷰포트보다 길면 **문서 전체가 스크롤되면서 셸이 함께 밀려 올라갔다.**
  * 24키짜리 번역 화면에서도 `scrollHeight` 1483 / 뷰포트 775였고, **Sign out(top 1411)과
  * Collapse sidebar(top 1443)가 스크롤 전부터 화면 밖**이었다 — 사이드바 접기는 그 버튼이 유일한 경로다.
  *
  * ⚠️ **렌더 테스트를 두지 않는 리포라**(ARCHITECTURE §0.5) 소스로 센다. `focus-ring`·`globals-css`와
  * 같은 계열이고, 이 결함의 조건이 정확히 **레이아웃 클래스 조합**이라 그 층에서 판정이 성립한다.
- * 실물 확인은 `/bugshot-qa`가 계속 든다.
+ * 실물 확인은 `/runtime-test`가 계속 든다.
  *
  * **8-2(2026-09-10)가 골격을 시안으로 옮기면서 검사가 늘었다** — 셸이 "배경 위에 뜬 패널"이 됐고
  * (당시엔 셋이었고 2026-09-16에 우측 프로젝트 패널을 지워 둘이다 — DESIGN §6.55·§5.1)

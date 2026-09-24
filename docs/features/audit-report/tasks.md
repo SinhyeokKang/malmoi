@@ -17,8 +17,8 @@
 |---|---|---|---|---|---|---|
 | 1 | ✅ **B1 전달 층 불변식** | #1·2·3·4·58·59 | ✅ | `/feature` → `/ship bypass` | `pnpm test` + `pnpm test:projects:postgres` + `/l10n-roundtrip`(`i18n-order-check`·ts-dict 리포) | ✅ #1 · #3 |
 | 2 | ✅ **B2 보안 TOCTOU** | #9·10·26 | ✅ | `/ship` | `pnpm test` + `pnpm test:projects:postgres` | ✅ #26 |
-| 3 | ✅ **B3 UX 🔴·막다른 길** | #5·6·7·8·11·14·15·16·17·24·25 | ✅ | `/ship` | `pnpm test` + `/bugshot-qa`(EDITOR·OWNER 두 계정) | — |
-| 4 | ✅ **B4 확인·문구·용어** | #13·19·20·21·22·23·28·29·30·31 | ✅ | `/ship` | `pnpm test`(no-korean-ui·brand-spelling 포함) + `/bugshot-qa` | ✅ #29 |
+| 3 | ✅ **B3 UX 🔴·막다른 길** | #5·6·7·8·11·14·15·16·17·24·25 | ✅ | `/ship` | `pnpm test` + `/runtime-test`(EDITOR·OWNER 두 계정) | — |
+| 4 | ✅ **B4 확인·문구·용어** | #13·19·20·21·22·23·28·29·30·31 | ✅ | `/ship` | `pnpm test`(no-korean-ui·brand-spelling 포함) + `/runtime-test` | ✅ #29 |
 | 5 | ✅ **B5 접근성(포커스)** | #32~42 | 권장 | `/ship` | `pnpm test`(jsdom) + `/design-sync` 접근성 트리 실측 | — |
 | 6 | ✅ **B6 시각 체계** | #43~50 | 권장 | `/ship` → `/design-sync` | `/design-sync` computed style 실측 | ✅ #50 |
 | 7 | **B7 어댑터·부채·문서** | #12·51~57·60~74 · ⚪ #75~90 | ❌ 출시 후 | 소배치로 쪼개 `/ship` | 항목별 | — |

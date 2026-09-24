@@ -6,7 +6,7 @@
 - 감사 발견은 정적 읽기다 — **각 태스크의 첫 검증은 재현(red)이다.** 재현이 안 되면 태스크를 닫고 적는다.
 - PG 통합 테스트는 `vitest.projects.config.ts:9` include(`lib/keys`·`lib/events`·`lib/invitation-email`의 `__tests__/*.integration.ts`) 안에만 둔다 — 밖은 조용히 0건 수집된다.
 - "0건"을 단언하는 검증은 같은 픽스처의 허용 경로에서 N > 0을 짝으로 단언한다(POSTMORTEM 2026-09-14).
-- 자동 검증(`pnpm test` · `pnpm test:projects:postgres` · `pnpm typecheck`)과 수동(`/bugshot-qa` · `/l10n-roundtrip`)을 구분한다 — e2e 프레임워크는 없다.
+- 자동 검증(`pnpm test` · `pnpm test:projects:postgres` · `pnpm typecheck`)과 수동(`/runtime-test` · `/l10n-roundtrip`)을 구분한다 — e2e 프레임워크는 없다.
 - 작업 중인 파일에 `git checkout -- <경로>`를 쓰지 않는다(POSTMORTEM 2026-09-16).
 
 **커밋 경계** (`/ship`): #0 `test:` = T1 · #1 `fix:` = T2~T7 · #2 `refactor:` = T8 · 문서 = T9.
@@ -87,7 +87,7 @@
 
 - [ ] `save-key.ts`: 잠금 뒤 select에 `adapterName` · `formatFromProject`→`adapterFor`로 `writeStrategy` · `planKeySave`에 넘긴다. Revert 경로(`revert.ts`)는 건드리지 않는다
 - [ ] `messages/en.tsx` 문구(design D2) · `workspace.tsx`의 도메인 오류 매핑(:267-270)에 `cannot-clear` 갈래 · 셀 `aria-invalid`·`aria-describedby`
-- 검증: T1 D2 postgres·jsdom green · 수동 `/bugshot-qa`(로컬, yaml 표면에서 fr 비우기 → 푸터 Alert·입력 유지)
+- 검증: T1 D2 postgres·jsdom green · 수동 `/runtime-test`(로컬, yaml 표면에서 fr 비우기 → 푸터 Alert·입력 유지)
 
 ## T7 결과·기록 배선 (커밋 #1)
 

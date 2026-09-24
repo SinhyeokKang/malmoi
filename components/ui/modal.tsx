@@ -101,7 +101,7 @@ export function OnboardingModal({
   const bodyRef = useRef<HTMLDivElement>(null);
   /**
    * live 영역에 **지금 말할 것**만 담는다. 제목을 상시 들고 있으면 헤더와 합쳐 두 번 읽히고,
-   * 단계와 무관한 리렌더에도 같은 문장이 다시 낭독된다 (bugshot-qa 2026-09-13 실측).
+   * 단계와 무관한 리렌더에도 같은 문장이 다시 낭독된다 (runtime-test 2026-09-13 실측).
    */
   const [live, setLive] = useState("");
 
@@ -114,7 +114,7 @@ export function OnboardingModal({
   const wasOpen = useRef(open);
   useEffect(() => {
     // ⚠️ **첫 렌더는 전이가 아니다.** 모달이 열릴 때 제목은 Radix가 `Dialog.Title`로 이미 말한다 —
-    // 여기서 또 담으면 같은 문장이 두 번 낭독된다 (bugshot-qa 2026-09-13).
+    // 여기서 또 담으면 같은 문장이 두 번 낭독된다 (runtime-test 2026-09-13).
     const reopening = open && !wasOpen.current;
     wasOpen.current = open;
     if (transitionKey !== undefined && (!open || reopening)) {

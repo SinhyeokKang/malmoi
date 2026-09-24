@@ -59,7 +59,7 @@ orca worktree create --repo id:<repoId> --name <batch> --base-branch dev --no-pa
 
 Codex 워커의 차이는 브리프에 명시한다:
 - **스킬은 미러로 부른다** — `.agents/skills/source-command-ship/SKILL.md`(= `/ship`)를 따르라고 경로로 적는다. Codex의 `/ship`은 원래 **10단계 커밋에서 멈추므로** "push 전 정지" 재정의가 이미 기본 동작이다.
-- **브라우저·DesignSync 단계가 없다** — `/bugshot-qa`·`/design-sync`는 미러가 없다. 그래서 **QA 워커는 Codex로 띄우지 않는다**(사용자가 지시해도 불가능하다고 답한다). 코드 배치의 6.5단계는 "시안 대조: 미검증"으로 남는다.
+- **브라우저·DesignSync 단계가 없다** — `/runtime-test`·`/design-sync`는 미러가 없다. 그래서 **QA 워커는 Codex로 띄우지 않는다**(사용자가 지시해도 불가능하다고 답한다). 코드 배치의 6.5단계는 "시안 대조: 미검증"으로 남는다.
 - **권한 플래그를 붙이지 않는다** — 사용자의 Codex 기본 설정으로 띄운다. 승인 대기가 생기면 사용자에게 알린다.
 - 인계 프로토콜(인계 문서 · 워크트리 코멘트 · `HANDOFF READY: <batch>` 마커)은 같다. 감시·리뷰·통합 절차도 같다 — 워커 종류는 지휘자 쪽 절차를 바꾸지 않는다.
 - 수정 라운드도 같은 Codex 터미널로 보낸다(`orca terminal send`).
@@ -96,7 +96,7 @@ git push                                            # = /push 1·3·4·5단계�
 
 ## 5. 런타임 검증 (모든 배치가 dev에 들어간 뒤)
 
-- **QA 워커를 main 체크아웃에서** 띄운다(`/bugshot-qa` · `/l10n-roundtrip` · 레이아웃 QA). dev 서버는 하나라 QA는 **직렬**이다.
+- **QA 워커를 main 체크아웃에서** 띄운다(`/runtime-test` · `/l10n-roundtrip` · 레이아웃 QA). dev 서버는 하나라 QA는 **직렬**이다.
 - 범위는 각 인계 문서의 "런타임 검증 목록"을 모은 것 + 레이아웃 QA(1280·1440·1890 · 극단 데이터 · DOM 측정: 가로 스크롤 · 겹침 · 잘림 · 빈 박스).
   시안(Claude Design)은 없으므로 `/design-sync`가 아니라 DESIGN.md 대비 레이아웃 QA다.
 - **권한**: QA가 dev DB에 상태를 만들거나 세션 쿠키를 지워야 하면 분류기가 막는다. 그 규칙(`~/.claude/settings.json`의 `autoMode.allow` — **dev ref만**, prod 명시 제외, "작업 후 복구" 조건)은
