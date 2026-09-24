@@ -81,9 +81,9 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
       {detail.connection && detail.repository && <section data-source-connection aria-label={m.sources.files} className="border-border bg-muted/40 overflow-hidden rounded-lg border">
         {/* ⚠️ 경로 셀이 형제 둘과 같은 14다 — 13이었던 것은 옛 `text-mono`(13/18)가 강제한 값이고, mono를 걷으면서 핸드오프의 14로 돌아왔다 (DESIGN §4.1·§6.66) */}
         <dl className="grid grid-cols-[minmax(0,1fr)_180px_280px] text-sm @max-[850px]:grid-cols-2">
-          <div className="min-w-0 space-y-1 px-4 py-3.5 @max-[850px]:col-span-2"><dt className="text-muted-foreground text-xs">{m.sources.path}</dt><dd className="break-all">{detail.connection.pathTemplate ?? m.sources.notConfigured}</dd></div>
+          <div className="min-w-0 space-y-1 px-4 py-3.5 @max-[850px]:col-span-2"><dt className="text-muted-foreground text-xs">{m.sources.path}</dt><dd className="[overflow-wrap:anywhere]">{detail.connection.pathTemplate === null ? m.sources.notConfigured : slashBreaks(detail.connection.pathTemplate)}</dd></div>
           <div className="border-border space-y-1 border-l px-4 py-3.5 @max-[850px]:border-t @max-[850px]:border-l-0"><dt className="text-muted-foreground text-xs">{m.sources.format}</dt><dd>{detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}</dd></div>
-          <div className="border-border min-w-0 space-y-1 border-l px-4 py-3.5 @max-[850px]:border-t"><dt className="text-muted-foreground text-xs">{m.sources.repository}</dt><dd className="break-all">{detail.repository.repoOwner}/{detail.repository.repoName} · {detail.repository.baseBranch}</dd></div>
+          <div className="border-border min-w-0 space-y-1 border-l px-4 py-3.5 @max-[850px]:border-t"><dt className="text-muted-foreground text-xs">{m.sources.repository}</dt><dd className="[overflow-wrap:anywhere]">{detail.repository.repoOwner}/<wbr />{detail.repository.repoName} · {detail.repository.baseBranch}</dd></div>
         </dl>
       </section>}
       {/* ⚠️ **시안 `1d`의 행 형이다** — 28 칩 + 제목/보조 두 줄 + 오른쪽 행동. `Alert` 상자가 아니다:
@@ -182,6 +182,14 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         </>} />
     </Dialog>}
   </OnboardingModal>;
+}
+/**
+ * ⚠️ **`/` 뒤에 줄바꿈 기회를 둔다** (malmoi#89). 경로·리포 값은 공백 없는 한 낱말이라 `overflow-wrap:anywhere`만으로는 칸 끝의
+ * 아무 글자에서 꺾인다 — `break-all`이 `master`를 `m`/`aster`로 갈라 두 값처럼 읽혔던 그 모양이다. 조각 경계에서 먼저 꺾고,
+ * 한 조각이 칸보다 길 때만 그 안에서 꺾는다. `<wbr>`는 복사한 텍스트에 아무것도 더하지 않는다.
+ */
+function slashBreaks(text: string) {
+  return text.split("/").map((part, index) => <Fragment key={index}>{index > 0 && <>/<wbr /></>}{part}</Fragment>);
 }
 function SourceTime({ at }: { at: Date }) { return <time dateTime={at.toISOString()} aria-label={utcMinute(at)}>{utcMinute(at)}</time>; }
 /** 상대 표기여도 절대 값을 함께 든다 — 화면의 낱말이 "5분 전"이어도 접근 이름은 UTC다 (DESIGN §6.68). */
