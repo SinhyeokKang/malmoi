@@ -146,6 +146,10 @@ export function FilesStep({
           (PRODUCT §3: 어댑터 내부 이름은 화면에 안 쓴다). 값이 아니라 모양만 가르는 자리다.
         */
         const Glyph = c.pathTemplate.endsWith(".json") ? FileJson2 : FileCode2;
+        const summary = m.newProject.files.summaryShort(
+          c.locales.length,
+          c.keys.status === "counted" ? m.newProject.files.keys(c.keys.count) : onboardErrorMessage("key-count-failed"),
+        );
         const content = (
                   <>
                     <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-md", active ? "bg-background" : "bg-muted")}>
@@ -153,14 +157,10 @@ export function FilesStep({
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       {/* 경로는 사용자가 자기 리포에서 확인할 수 있는 유일한 단서다 — **이름 자리가 경로다**. */}
-                      <span className="block truncate text-base font-medium">{c.pathTemplate}</span>
-                      <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
-                        {m.newProject.files.summaryShort(
-                          c.locales.length,
-                          c.keys.status === "counted"
-                            ? m.newProject.files.keys(c.keys.count)
-                            : onboardErrorMessage("key-count-failed"),
-                        )}
+                      {/* ⚠️ 240px 열이라 둘 다 잘리고 선택 안 한 후보는 경로를 읽을 곳이 없다 — 잘림을 받되 전문을 `title`로 든다 (malmoi#97). */}
+                      <span className="block truncate text-base font-medium" title={c.pathTemplate}>{c.pathTemplate}</span>
+                      <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")} title={summary}>
+                        {summary}
                       </span>
                     </span>
                   </>
