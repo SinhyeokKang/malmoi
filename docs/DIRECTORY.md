@@ -54,9 +54,11 @@ app/
                         (⚠️ ContentPanel을 안 든다 — 이 라우트는 layout.tsx가 든다. /projects만
                         페이지가 들어서 그쪽 loading.tsx가 패널을 드는 것이고, 여기서 또 들면 두 겹이다)
     projects/[slug]/    프로젝트 축. layout.tsx가 ContentPanel 하나를 든다 (우측 패널은 2026-09-16 제거 — DESIGN §6.55)
-                        · loading.tsx Home 골격(⚠️ 여기도 ContentPanel을 안 든다 — 레이아웃이 이미 들어 둘이 된다)
                         ⚠️ 레이아웃은 인가의 차단 지점이 될 수 없다(페이지와 병렬 렌더) — 서버 데이터를 안 읽는다
-      page.tsx          Home(착지점). ⚠️ 툴바 지표를 복제하지 않는다 · 착지 클릭 하나를 링크로 갚는다
+      (home)/           Home 전용 route group(URL 불변). ⚠️ loading.tsx를 [slug]/에 바로 두면 자기 경계가 없는
+                        형제 화면으로 가는 동안에도 Home 골격이 뜬다(malmoi#95) — 그래서 page·loading을 여기 가둔다
+        page.tsx        Home(착지점). ⚠️ 툴바 지표를 복제하지 않는다 · 착지 클릭 하나를 링크로 갚는다
+        loading.tsx     Home 골격(⚠️ 여기도 ContentPanel을 안 든다 — 레이아웃이 이미 들어 둘이 된다)
       translations/    저장된 defaultSurfaceId로 보내는 legacy redirect
       locales/         Sources 목록으로 보내는 legacy redirect
       sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale + 읽기 전용 loadSourceDetail)
