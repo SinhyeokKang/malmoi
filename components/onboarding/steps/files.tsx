@@ -457,8 +457,8 @@ function Preview({
         )}
       </div>
 
-      {/* 총량 줄 — 스크롤 밖에 남는다. */}
-      {state.preview.status === "ready" && state.preview.total > state.preview.rows.length && (
+      {/* 총량 줄 — 스크롤 밖에 남는다. ⚠️ 빈 미리보기에서는 서지 않는다 (malmoi#92) — `preview`는 이전 후보의 것이라 안 보이는 행을 센다. */}
+      {!empty && state.preview.status === "ready" && state.preview.total > state.preview.rows.length && (
         <p className="border-border text-muted-foreground shrink-0 border-t px-4 py-3 text-center text-xs">
           {m.newProject.files.preview.more(state.preview.total - state.preview.rows.length)}
         </p>
