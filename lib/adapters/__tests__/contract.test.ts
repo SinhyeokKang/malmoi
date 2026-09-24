@@ -30,13 +30,19 @@ describe("writer 계약 — ADAPTERS 전수 (ARCHITECTURE §1.1 / ARCHITECTURE �
     ]);
   });
 
-  it("규칙 적용은 layout이 아니라 writeStrategy로 갈린다", () => {
-    // yaml-catalog가 그 증거다 — per-locale인데 재생성 규칙을 지나지 않는다
-    const yaml = ADAPTERS.find((a) => a.name === "yaml-catalog")!;
-    expect(yaml.layout).toBe("per-locale");
-    expect(yaml.writeStrategy).toBe("surgical");
-    const json = ADAPTERS.find((a) => a.name === "json-catalog")!;
-    expect(json.writeStrategy).toBe("regenerate");
+  /**
+   * 규칙 적용은 layout이 아니라 writeStrategy로 갈린다 — yaml-catalog·code-dict가 per-locale인데 재생성 규칙을 지나지 않는다.
+   * ⚠️ **전 어댑터의 두 축을 매트릭스로 고정한다** (audit #85). 둘만 단언하던 때는 chrome·code-dict·ts-dict의 축이 바뀌어도
+   * 이 블록이 green이었고, 원본 필수 판정(`lib/pull/render.ts`)·계약 검사(`contract.ts`)가 조용히 다른 규칙을 탔다.
+   */
+  it("규칙 적용은 layout이 아니라 writeStrategy로 갈린다 — 전 어댑터 매트릭스", () => {
+    expect(Object.fromEntries(ADAPTERS.map((a) => [a.name, `${a.layout} / ${a.writeStrategy}`]))).toEqual({
+      "chrome-locales": "per-locale / regenerate",
+      "json-catalog": "per-locale / regenerate",
+      "yaml-catalog": "per-locale / surgical",
+      "code-dict": "per-locale / surgical",
+      "ts-dict": "multi-locale / surgical",
+    });
   });
 });
 

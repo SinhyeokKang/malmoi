@@ -752,3 +752,35 @@ describe("code-dict — 깊은 점 키는 중복 삽입하지 않는다 (L1.4)",
     expect(codeDict.write(withSource(out), input)).toBe(out);
   });
 });
+
+/**
+ * **중복 키는 read·write·push가 같은 항목을 가리킨다** (audit #51). JS 객체 리터럴은 같은 이름이 둘이면 **마지막이 이긴다** —
+ * push의 `lastWins`(`lib/push/payload.ts`)도 마지막을 적재한다. 전에는 read가 둘 다 조용히 내고 write가 **첫 항목**을 바꿔서,
+ * 편집이 런타임에 안 보이는 자리에 들어갔다. json-catalog·yaml-catalog처럼 `duplicate-key`로 알린다.
+ */
+describe("code-dict — 중복 키 (audit #51)", () => {
+  const DUP = "export default {\n  a: 'first',\n  hello: 'Hi',\n  a: 'last',\n}\n";
+
+  it("read가 duplicate-key를 내고 마지막 값 하나만 싣는다", () => {
+    const r = codeDict.read(base(), [f("src/locale/ko.ts", DUP)]);
+    expect(r.errors).toEqual([{ path: "src/locale/ko.ts", code: "duplicate-key", key: "a" }]);
+    expect(r.locales[0]?.entries).toEqual([{ key: "a", message: "last" }, { key: "hello", message: "Hi" }]);
+  });
+
+  it("점 키와 중첩이 같은 평탄 키를 내도 알린다", () => {
+    const r = codeDict.read(base(), [f("src/locale/ko.ts", "export default {\n  'a.b': 'flat',\n  a: { b: 'nested' },\n}\n")]);
+    expect(r.errors).toEqual([{ path: "src/locale/ko.ts", code: "duplicate-key", key: "a.b" }]);
+    expect(r.locales[0]?.entries.filter((e) => e.key === "a.b")).toHaveLength(1);
+  });
+
+  it("write는 마지막 항목을 바꾼다 — 런타임이 읽는 자리다", () => {
+    const out = codeDict.write(withSource(DUP), { locale: "ko", entries: [{ key: "a", message: "edited" }] })!;
+    expect(out).toBe("export default {\n  a: 'first',\n  hello: 'Hi',\n  a: 'edited',\n}\n");
+  });
+
+  it("중복이 없으면 에러가 없다 (짝)", () => {
+    const r = codeDict.read(base(), [f("src/locale/ko.ts", "export default {\n  a: 'only',\n  hello: 'Hi',\n}\n")]);
+    expect(r.errors).toEqual([]);
+    expect(r.locales[0]?.entries).toHaveLength(2);
+  });
+});

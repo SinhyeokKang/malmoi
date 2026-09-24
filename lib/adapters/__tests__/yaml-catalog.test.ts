@@ -816,3 +816,37 @@ describe("yaml-catalog — 깊은 점 키는 중복 삽입하지 않는다 (L1.4
     expect(yamlCatalog.write(withSource(out), input)).toBe(out);
   });
 });
+
+/**
+ * **삽입하는 항목은 형제 스칼라의 인용 타입을 따른다** (audit #56). 전에는 키·값 모두 PLAIN이라 전부 큰따옴표인 Rails 파일에
+ * 새 키 하나만 맨 문자열로 들어가 lint(yamllint `quoted-strings`)를 깨뜨렸다. 치환(`scalarReplacement`)은 이미 원래 노드의
+ * 타입을 따른다 — 삽입만 빠져 있었다. code-dict의 `dominantQuote`와 같은 다수결이고, 동수면 옛 동작(PLAIN)이다.
+ */
+describe("yaml-catalog — 삽입 인용 타입 (audit #56)", () => {
+  const insert = (source: string, key = "a.z", message = "new") =>
+    yamlCatalog.write(withSource(source), { locale: "ko", entries: [{ key, message }] })!;
+
+  it.each([
+    ["큰따옴표 값", 'a:\n  x: "old"\n  y: "two"\n', 'a:\n  x: "old"\n  y: "two"\n  z: "new"\n'],
+    ["작은따옴표 값", "a:\n  x: 'old'\n  y: 'two'\n", "a:\n  x: 'old'\n  y: 'two'\n  z: 'new'\n"],
+    ["인용 키", 'a:\n  "x": old\n  "y": two\n', 'a:\n  "x": old\n  "y": two\n  "z": new\n'],
+    ["맨 문자열 (짝)", "a:\n  x: old\n  y: two\n", "a:\n  x: old\n  y: two\n  z: new\n"],
+    ["동수는 맨 문자열", "a:\n  x: \"old\"\n  y: two\n", "a:\n  x: \"old\"\n  y: two\n  z: new\n"],
+    ["flow 맵", 'a: {x: "old"}\n', 'a: {x: "old", z: "new"}\n'],
+  ])("%s", (_name, source, expected) => {
+    const out = insert(source);
+    expect(out).toBe(expected);
+    expect(yamlCatalog.read(base(), [f("config/locales/ko.yml", out)]).locales[0]?.entries).toContainEqual({ key: "a.z", message: "new" });
+    expect(insert(out)).toBe(out);
+  });
+
+  it("형제가 없는 빈 맵은 파일 전체의 다수를 본다", () => {
+    const out = insert('b: "keep"\nc: "keep"\na: {}\n');
+    expect(out).toBe('b: "keep"\nc: "keep"\na: {z: "new"}\n');
+  });
+
+  it("인용이 필요한 값은 형제가 맨 문자열이어도 안전하게 인용한다", () => {
+    const out = insert("a:\n  x: old\n", "a.z", "yes");
+    expect(parseDocument(out).getIn(["a", "z"])).toBe("yes");
+  });
+});

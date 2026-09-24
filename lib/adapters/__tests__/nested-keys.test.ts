@@ -145,3 +145,11 @@ describe("평탄·중첩 충돌은 read가 duplicate-key로 보고한다", () =>
     expect(res.locales[0]!.entries).toHaveLength(2);
   });
 });
+
+describe("json-catalog read — nestedByPath는 프로토타입 없는 객체다 (audit #84)", () => {
+  it("경로 키 대입이 Object.prototype의 setter를 타지 않는다", () => {
+    const r = jsonCatalog.read({ adapter: "json-catalog", pathTemplate: "l/{locale}.json", locales: ["en"] }, [{ path: "l/en.json", content: '{"a":"b"}' }]);
+    expect(Object.getPrototypeOf(r.nestedByPath)).toBeNull();
+    expect(r.nestedByPath).toEqual(Object.assign(Object.create(null) as object, { "l/en.json": false }));
+  });
+});
