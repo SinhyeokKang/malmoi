@@ -190,3 +190,19 @@ it("보관 배너에서 복원이 성공하면 Home 제목으로 착지한다", 
   await rerender(view("default"));
   expect(document.activeElement?.tagName).toBe("H1");
 });
+
+/**
+ * **배너의 [Try again]으로 연 Sync 확인을 닫으면 그 [Try again]으로 돌아온다** (malmoi#86 — 코디네이터 판정). 누른 자리로 돌아오는
+ * 쪽이 머리의 [Sync]보다 나은 착지다: 사람은 배너를 읽다가 눌렀고, 머리로 튀면 배너 문장을 다시 찾아 내려와야 한다.
+ */
+it("배너 [Try again] → Enter → Esc면 포커스가 그 [Try again]에 선다 — 머리의 [Sync]가 아니다", async () => {
+  const user = userEvent.setup();
+  await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  const retry = button("Try again");
+  retry.focus();
+  await act(async () => { await user.keyboard("{Enter}"); });
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  await act(async () => { await user.keyboard("{Escape}"); await new Promise(r => setTimeout(r, 20)); });
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(document.activeElement).toBe(button("Try again"));
+});
