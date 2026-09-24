@@ -93,6 +93,26 @@ it("추가 중에는 닫기와 모든 입력을 잠그고 완료 뒤 트리거�
   expect(document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]')?.disabled).toBe(false);
 });
 
+/** audit-ux #23 — 추가는 첫 적재까지 돈다. 8초가 지나면 "큰 리포는 오래 걸린다" 한 줄이 바닥에 선다. */
+it("추가가 8초를 넘기면 지연 문구가 서고 끝나면 사라진다", async () => {
+  let resolve!: (value: { ok: false; error: string }) => void;
+  actions.addSurfaces.mockReturnValue(new Promise(r => { resolve = r; }));
+  await render(<Screen {...props} />);
+  const user = userEvent.setup();
+  await act(async () => { await user.click(find("Add sources")); });
+  await act(async () => { await user.click(document.querySelectorAll('[role="checkbox"]')[1]!); });
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    await act(async () => { await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(document.querySelector('[data-add-sources]')!); });
+    await act(async () => { vi.advanceTimersByTime(7_000); });
+    expect(document.body.textContent).not.toContain(m.common.slow);
+    await act(async () => { vi.advanceTimersByTime(1_000); });
+    expect(document.body.textContent).toContain(m.common.slow);
+    await act(async () => { resolve({ ok: false, error: "resource-limit" }); });
+    expect(document.body.textContent).not.toContain(m.common.slow);
+  } finally { vi.useRealTimers(); }
+});
+
 /** audit #23 — 수동 경로 확인의 실패는 **추가 실패가 아니다**. "Nothing was added. Your selection is still here." 아래 세우지 않는다. */
 it("수동 확인 실패는 추가 실패 문장 없이 그 사유만 말한다", async () => {
   actions.confirmManualFormat.mockResolvedValue({ ok: false, error: "manual-no-match" });

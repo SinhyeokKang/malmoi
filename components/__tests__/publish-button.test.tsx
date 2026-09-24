@@ -48,13 +48,41 @@ it("확인 전에는 쓰지 않고 0건 refresh 뒤에도 결과와 재열기를
 it("닫힌 동안 실행을 유지하고 완료가 자동으로 열리지 않는다", async () => {
   const run = deferred<unknown>(); mocks.pull.mockReturnValue(run.promise);
   await render(<Host />); await click("Publish1"); await click("Open pull request"); await click("Close");
-  await click("Publishing…"); expect(mocks.pull).toHaveBeenCalledTimes(1); await click("Close");
+  // D1 (audit-ux #25) — 라벨은 `Publish` 그대로이고 스피너가 아이콘을 교체하며 진행 신호는 `aria-busy`가 든다.
+  expect(button("Publish").getAttribute("aria-busy")).toBe("true");
+  expect(button("Publish").querySelectorAll("svg")).toHaveLength(1);
+  expect(button("Publish").querySelector("svg")?.getAttribute("class")).toContain("animate-spin");
+  expect(document.body.textContent).not.toContain("Publishing\u2026");
+  await click("Publish"); expect(mocks.pull).toHaveBeenCalledTimes(1);
+  expect(document.body.textContent).not.toContain("Publishing\u2026");
+  await click("Close");
   await act(async () => run.resolve({ status: "skipped", reason: "writer-warnings", warnings: ["web: ko.json: bad\n ^"] }));
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   // writer 경고는 쓰기 전에 멈춘 결과다(T10) — PR 카드가 없고 "보내지 않았다"가 제목이며 버린 값은 펼친 목록이다.
   await click("View result"); expect(document.body.textContent).toContain("Not sent"); expect(document.body.textContent).not.toContain("#12");
   expect(document.querySelector("details")).toBeNull();
   expect(document.body.textContent).toContain("bad\n ^");
+});
+/**
+ * **진행 모달은 일어나지 않은 단계를 주장하지 않는다** (audit-ux #23). 전엔 2.5초·6.5초 타이머가 체크 표시를 넘겨 마지막 단계에서
+ * 멈춘 채 돌았다 — 진행 이벤트를 내는 API가 없다. 대신 8초가 지나면 "큰 리포는 오래 걸린다" 한 줄이 선다.
+ */
+it("진행 모달의 단계 목록은 시간이 흘러도 바뀌지 않고, 8초가 지나면 지연 문구가 선다", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    const run = deferred<unknown>(); mocks.pull.mockReturnValue(run.promise);
+    await render(<Host />); await click("Publish1"); await click("Open pull request");
+    const steps = () => document.querySelector('[role="dialog"] ol')?.outerHTML;
+    const before = steps();
+    expect(before).toBeDefined();
+    await act(async () => { vi.advanceTimersByTime(7_000); });
+    expect(steps()).toBe(before);
+    expect(document.body.textContent).not.toContain(m.common.slow);
+    await act(async () => { vi.advanceTimersByTime(1_000); });
+    expect(document.body.textContent).toContain(m.common.slow);
+    await act(async () => run.resolve({ status: "skipped", reason: "no-edits" }));
+    expect(document.body.textContent).not.toContain(m.common.slow);
+  } finally { vi.useRealTimers(); }
 });
 it.each([true, false])("이전 조회의 늦은 응답을 무시한다 (성공=%s)", async success => {
   const a = deferred<unknown>(); const b = deferred<unknown>();

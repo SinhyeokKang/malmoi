@@ -3,6 +3,7 @@ import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { isAccessLost } from "@/components/onboarding/failure";
+import { m } from "@/lib/i18n";
 import { NewProject } from "@/components/onboarding/new-project";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import type { RepoOption } from "@/lib/onboarding/types";
@@ -315,6 +316,23 @@ it("생성 중 Back으로 이동했다가 실패가 다른 단계에 표시되�
   await act(async () => pending.resolve({ ok: false, error: "unavailable" }));
   expect(field("project-name").value).toBe("web");
   expect(button("Back").disabled).toBe(false);
+});
+
+/** audit-ux #23 — 생성은 선택한 파일 전부를 적재한다(첫 적재). 8초가 지나면 "큰 리포는 오래 걸린다" 한 줄이 선다. */
+it("생성이 8초를 넘기면 지연 문구가 서고 끝나면 사라진다", async () => {
+  const pending = deferred<unknown>();
+  mocks.createProject.mockReturnValueOnce(pending.promise);
+  await naming();
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    await click(button("Create project"));
+    await act(async () => { vi.advanceTimersByTime(7_000); });
+    expect(document.body.textContent).not.toContain(m.common.slow);
+    await act(async () => { vi.advanceTimersByTime(1_000); });
+    expect(document.body.textContent).toContain(m.common.slow);
+    await act(async () => pending.resolve({ ok: false, error: "unavailable" }));
+    expect(document.body.textContent).not.toContain(m.common.slow);
+  } finally { vi.useRealTimers(); }
 });
 
 /**

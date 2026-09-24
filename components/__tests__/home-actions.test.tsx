@@ -5,6 +5,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 
 import { HomeActions, HomeHeaderActions, HomeNotices } from "@/components/home/actions";
 import { render } from "./helpers/dom";
+import { m } from "@/lib/i18n";
 
 /**
  * **머리의 버튼 둘이 서로를 잠근다** (시안 `4f` · sync-repository T9 연결 계약).
@@ -73,7 +74,9 @@ it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", asyn
   // 미전달 편집이 있는 픽스처라 확정이 곧 폐기다 — 라벨이 그 사실을 말한다 (sync-edit-protection T13).
   await click("Discard changes and sync");
 
-  expect(button("Syncing")).toBeDefined();
+  // D1 (audit-ux #25) — 라벨은 `Sync` 그대로이고 진행 신호는 `aria-busy`가 든다.
+  expect(button("Sync").getAttribute("aria-busy")).toBe("true");
+  expect(document.body.textContent).not.toContain("Syncing");
   expect(locked(button("Publish"))).toBe(true);
   // ⚠️ 잠겼어도 **호출까지 막혀야 한다** — 비활성 표시만 하고 핸들러가 살아 있으면 Enter가 통과한다.
   await click("Publish");
@@ -81,6 +84,24 @@ it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", asyn
 
   await act(async () => { run.resolve({ ok: true, surfaces: [], remainingEdits: 0 }); await run.promise; });
   expect(locked(button("Publish"))).toBe(false);
+});
+
+/** audit-ux #23 — Sync는 큰 리포에서 30초를 넘긴다. 8초가 지나면 본문에 "큰 리포는 오래 걸린다" 한 줄이 선다. */
+it("Sync가 8초를 넘기면 지연 문구가 서고 끝나면 사라진다", async () => {
+  const run = deferred<{ ok: true; surfaces: []; remainingEdits: number }>();
+  mocks.run.mockReturnValue(run.promise);
+  await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  await click("Sync");
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    await act(async () => { await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(button("Discard changes and sync")); });
+    await act(async () => { vi.advanceTimersByTime(7_000); });
+    expect(document.body.textContent).not.toContain(m.common.slow);
+    await act(async () => { vi.advanceTimersByTime(1_000); });
+    expect(document.body.textContent).toContain(m.common.slow);
+    await act(async () => { run.resolve({ ok: true, surfaces: [], remainingEdits: 0 }); await run.promise; });
+    expect(document.body.textContent).not.toContain(m.common.slow);
+  } finally { vi.useRealTimers(); }
 });
 
 it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는다", async () => {
@@ -93,6 +114,9 @@ it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는
   await click("Open pull request");
   await act(async () => { (document.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click(); });
   expect(locked(button("Sync"))).toBe(true);
+  // 사유가 원인을 든다 — `Publishing…` 라벨이 사라져 옆 버튼이 더는 그것을 말하지 않는다 (audit-ux #10).
+  expect(document.getElementById(button("Sync").getAttribute("aria-describedby") ?? "")?.textContent).toBe(m.repositorySync.waitPublish);
+  expect(button("Publish").getAttribute("aria-busy")).toBe("true");
 
   await click("Sync");
   expect(document.querySelector('[role="dialog"]')).toBeNull();

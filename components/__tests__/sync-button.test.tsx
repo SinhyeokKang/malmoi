@@ -83,13 +83,20 @@ it("확인 Dialog의 접근 가능한 설명이 경고 블록까지 든다", asy
 it("실행 중 트리거는 포커스를 받고 클릭과 Enter 연타를 막는다", async () => {
   const run = deferred<RepositoryImportOutcome>(); mocks.run.mockReturnValue(run.promise);
   await render(<SyncButton {...props} />); await click("Sync"); await click("Sync from repository");
-  const trigger = button("Syncing…");
+  // D1 (audit-ux #25) — 라벨은 `Sync` 그대로이고 스피너가 아이콘을 교체한다. 라벨이 접근 이름이라 진행 신호는 `aria-busy`가 든다.
+  const trigger = button("Sync");
   expect(trigger.disabled).toBe(false); expect(trigger.getAttribute("aria-disabled")).toBe("true");
+  expect(trigger.getAttribute("aria-busy")).toBe("true");
+  expect(trigger.querySelectorAll("svg")).toHaveLength(1);
+  expect(trigger.querySelector("svg")?.classList.contains("animate-spin")).toBe(true);
+  expect(document.body.textContent).not.toContain("Syncing");
   expect(document.activeElement).toBe(trigger);
-  await click("Syncing…"); await act(async () => userEvent.setup().keyboard("{Enter}{Enter}"));
+  await click("Sync"); await act(async () => userEvent.setup().keyboard("{Enter}{Enter}"));
   expect(dialog()).toBeNull(); expect(mocks.run).toHaveBeenCalledOnce();
   await act(async () => run.resolve(success));
   expect(trigger.getAttribute("aria-disabled")).toBe("false"); expect(document.activeElement).toBe(trigger);
+  expect(trigger.getAttribute("aria-busy")).toBeNull();
+  expect(trigger.querySelector("svg")?.classList.contains("animate-spin")).toBe(false);
   expect(trigger.textContent?.trim()).toBe("Sync");
 });
 

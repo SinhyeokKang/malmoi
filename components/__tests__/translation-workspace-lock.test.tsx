@@ -13,11 +13,11 @@ import { render } from "./helpers/dom";
  */
 const mocks = vi.hoisted(() => ({
   push: vi.fn(), replace: vi.fn(), refresh: vi.fn(),
-  run: vi.fn(), pr: vi.fn(), prepare: vi.fn(),
+  run: vi.fn(), pr: vi.fn(), prepare: vi.fn(), save: vi.fn(),
   publishing: { value: false },
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }), useSearchParams: () => new URLSearchParams(window.location.search) }));
-vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
+vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: mocks.save, previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare }));
 vi.mock("@/components/publish-button", async (importActual) => {
@@ -42,7 +42,7 @@ const button = (label: string | RegExp) => {
 const reason = (node: HTMLElement) => document.getElementById(node.getAttribute("aria-describedby") ?? "")?.textContent ?? "";
 
 beforeEach(() => {
-  for (const fn of [mocks.push, mocks.replace, mocks.refresh, mocks.run, mocks.pr, mocks.prepare]) fn.mockReset();
+  for (const fn of [mocks.push, mocks.replace, mocks.refresh, mocks.run, mocks.pr, mocks.prepare, mocks.save]) fn.mockReset();
   mocks.publishing.value = false;
   window.sessionStorage.clear();
   mocks.pr.mockResolvedValue(null);
@@ -74,7 +74,8 @@ it("Publish가 도는 동안 Sync와 Revert가 꺼지고, Sync 확인 창은 예
   await rerender(<TranslationWorkspace {...initial} />);
   const sync = button("Sync");
   expect(sync.getAttribute("aria-disabled")).toBe("true");
-  expect(reason(sync)).toBe(m.repositorySync.paused);
+  // 라벨이 더는 `Publishing…`을 말하지 않으므로(D1) 사유가 원인을 든다 (audit-ux #10).
+  expect(reason(sync)).toBe(m.repositorySync.waitPublish);
   const revert = button("Revert to last sent");
   expect(revert.getAttribute("aria-disabled")).toBe("true");
   expect(reason(revert)).toBe(m.translations.workspace.revert.busy);
@@ -101,7 +102,7 @@ it("미저장이 있을 때 Publish 진행 중 Sync를 눌러도 폐기 확인�
   expect(document.body.textContent).not.toContain("Discard your changes?");
 });
 
-it("Sync가 도는 동안 미저장이 생겨도 [Syncing…]을 누르면 폐기 확인창이 서지 않는다", async () => {
+it("Sync가 도는 동안 미저장이 생겨도 [Sync]를 누르면 폐기 확인창이 서지 않는다", async () => {
   const user = userEvent.setup();
   let settle: (value: unknown) => void = () => {};
   mocks.run.mockImplementation(() => new Promise(resolve => { settle = resolve; }));
@@ -115,7 +116,52 @@ it("Sync가 도는 동안 미저장이 생겨도 [Syncing…]을 누르면 폐�
   await act(async () => user.click(button("Discard changes and sync")));
   expect(mocks.run).toHaveBeenCalledOnce();
   await user.type(zh(), "空");
-  await user.click(button(/Syncing/));
+  await user.click(button("Sync"));
   expect(document.body.textContent).not.toContain("Discard your changes?");
   await act(async () => { settle({ ok: false, error: "unavailable" }); });
+});
+
+/**
+ * **Publish가 도는 동안 [Save]도 잠긴다** (audit-ux #10 · D3). Server Action은 순서대로 실행되므로 풀어 두면 Save가 PR 생성
+ * 뒤에 줄을 서서 스피너만 돌았다. 사유는 보이는 한 줄이고, 단축키(Ctrl/Cmd+Enter)도 같은 문을 지난다.
+ */
+it("Publish가 도는 동안 Save가 aria-disabled로 잠기고 사유를 보이며 단축키도 막힌다 — 짝 단언: 끝나면 저장된다", async () => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error: "save-failed" });
+  const initial = props();
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  const zh = () => container.querySelector<HTMLTextAreaElement>('textarea[data-locale="zh"]')!;
+  await user.type(zh(), "空");
+  mocks.publishing.value = true;
+  await rerender(<TranslationWorkspace {...initial} />);
+  const save = button("Save");
+  expect(save.disabled).toBe(false);
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  expect(reason(save)).toBe(m.repositorySync.waitPublish);
+  // 보이는 사유 — describedby 대상이 sr-only가 아니다.
+  expect(document.getElementById(save.getAttribute("aria-describedby") ?? "")?.className ?? "").not.toContain("sr-only");
+  await user.click(save);
+  await user.click(zh());
+  await user.keyboard("{Control>}{Enter}{/Control}");
+  expect(mocks.save).not.toHaveBeenCalled();
+  mocks.publishing.value = false;
+  await rerender(<TranslationWorkspace {...initial} />);
+  expect(button("Save").getAttribute("aria-disabled")).not.toBe("true");
+  await act(async () => user.click(button("Save")));
+  expect(mocks.save).toHaveBeenCalledOnce();
+});
+
+/** audit-ux #23 — 번역 화면의 [Sync]도 Home과 같은 지연 문구를 받는다. */
+it("번역 화면의 Sync가 8초를 넘기면 지연 문구가 선다", async () => {
+  mocks.run.mockImplementation(() => new Promise(() => {}));
+  await render(<TranslationWorkspace {...props()} />);
+  await act(async () => userEvent.setup().click(button("Sync")));
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    await act(async () => userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(button("Discard changes and sync")));
+    await act(async () => { vi.advanceTimersByTime(7_000); });
+    expect(document.body.textContent).not.toContain(m.common.slow);
+    await act(async () => { vi.advanceTimersByTime(1_000); });
+    expect(document.body.textContent).toContain(m.common.slow);
+  } finally { vi.useRealTimers(); }
 });
