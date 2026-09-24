@@ -1143,7 +1143,7 @@ repository` · 설명에 경로와 브랜치 · `Trying again won't help` Alert�
 **전부 보류인 미리보기**(#84 — **미실측**): 제목 `Nothing can be sent yet` · 액션 `Close` 하나 · PR 줄 없음 · 표와 보류 줄은 그대로다. 보류가 섞이면 제목·요약이 나가는 수이고
 도입 문장이 `The edits that can be sent go to …`로 갈린다. `no-changes` + 보류 결과는 `Not sent` 틀(#83)이고 설명이 보류 사유 문장이다.
 **PR을 닫는 no-changes** (B1 r3 — **미실측**): 미리보기 제목 `Publishing closes pull request #N` · 버튼 `Close pull request #N`, PR이 없으면
-`Nothing differs from <base>` · 버튼 `Publish`. base와 같은 행은 −/+ 두 줄 대신 값 한 줄 + `text-xs muted` 사유(`Undoes the change in #N` /
+`Nothing differs from <base>` · 버튼 `Publish`. 푸터는 파일 수를 빼고 `N changes · K keys`다(#94 — 실행·Logs가 `0 files`라 편집이 사는 파일을 세면 한 흐름 안에서 수가 갈린다). base와 같은 행은 −/+ 두 줄 대신 값 한 줄 + `text-xs muted` 사유(`Undoes the change in #N` /
 `Already in the repository`). 결과에는 `text-xs muted` 한 줄(역할별 끝맺음) + `View #N` 링크(`text-blue-600`, §6.3 외부 링크), Logs 상세는
 `Closed pull request` 필드다.
 
