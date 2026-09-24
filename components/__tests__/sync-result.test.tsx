@@ -203,3 +203,26 @@ it("unauthorized 거부는 Sync 문장 + 새 탭 [Sign in] + 닫기를 든다", 
   expect(signIn?.getAttribute("target")).toBe("_blank");
   expect(container.querySelector('button[aria-label="Dismiss"]')).not.toBeNull();
 });
+
+/**
+ * malmoi#85 — Sync의 `base-branch-missing`이 온보딩 문장("We can't read the default branch. Check that the repository has
+ * commits.")을 빌렸다. 여기서 없는 것은 리포의 기본 브랜치가 아니라 **설정의 base branch**다 — 그 이름을 대고 고칠 자리
+ * (Settings → Base branch)로 보낸다. OWNER는 설정 링크, EDITOR는 링크 없이 "ask a project owner"다.
+ */
+it("base branch가 사라지면 그 이름과 설정의 Base branch를 말한다 — OWNER는 설정 링크", async () => {
+  const { container } = await render(<SyncResult slug="acme" branch="qa3-missing-branch" outcome={{ ok: false, error: "base-branch-missing" }} />);
+  const text = container.textContent ?? "";
+  expect(text).toContain("qa3-missing-branch");
+  expect(text).toMatch(/base branch/i);
+  expect(text).not.toMatch(/default branch|has commits/i);
+  expect(container.querySelector('a[href="/projects/acme/settings"]')).not.toBeNull();
+});
+
+it("EDITOR에게는 설정 링크 대신 project owner를 부른다 (#85) — 짝: OWNER에게는 그 문장이 없다", async () => {
+  const { container } = await render(<SyncResult slug="acme" branch="qa3-missing-branch" role="EDITOR" outcome={{ ok: false, error: "base-branch-missing" }} />);
+  expect(container.querySelector('a[href="/projects/acme/settings"]')).toBeNull();
+  expect(container.textContent).toMatch(/ask a project owner/i);
+  expect(container.textContent).toContain("qa3-missing-branch");
+  const owner = await render(<SyncResult slug="acme" branch="qa3-missing-branch" role="OWNER" outcome={{ ok: false, error: "base-branch-missing" }} />);
+  expect(owner.container.textContent).not.toMatch(/ask a project owner/i);
+});
