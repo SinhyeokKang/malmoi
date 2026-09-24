@@ -2267,8 +2267,9 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
   `getInstallationOctokit`의 **토큰 발급**이 404로 죽는다.
 - **⚠️ `createApp()`은 `try` 밖이다** (2026-09-07). 환경변수 누락(`MissingEnvError`)은 GitHub 실패가 아니라
   우리 설정 오류인데, 값으로 접으면 화면이 `m.settings.repository.health.unknown`을 **영원히** 보이고 로그도
-  없다 — 2026-09-06 개인키 사고가 정확히 그 화면이었다. 그래서 던지고, **호출부(설정 화면 `loadHealth`·
-  `connectRepository`)도 그것을 잡지 않는다** — Server Action에서는 digest만 있는 일반 오류가 되지만
+  없다 — 2026-09-06 개인키 사고가 정확히 그 화면이었다. 그래서 던지고, **호출부(설정 화면의 `loadConnectionHealth`·
+  `connectRepository`)도 그것을 잡지 않는다** — 설정 화면은 그 promise를 await하지 않고 내려 보내므로(§6.5.2) 거부는
+  연결 카드의 `use`가 가장 가까운 오류 경계로 올린다. Server Action에서는 digest만 있는 일반 오류가 되지만
   사용자가 할 수 있는 일이 없는 오류라 §6.3("거부는 값으로")의 예외다. `state.ts`의 `requireSecret`이
   빈 키를 `state-mismatch`로 접지 않고 던지는 것과 같은 판단이다.
 - **⚠️ 예외를 삼켜 `not-installed`로 접지 않는다.** 분류는 `probeFromError` **한 곳**이고, **403·404만
@@ -2324,7 +2325,7 @@ GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" 
 
 #### 6.5.2 GitHub 대기 마감은 8초 하나다 (2026-09-25, audit-ux D5)
 
-**화면을 그리는 동안 GitHub을 기다리는 자리는 전부 `lib/github-wait.ts`의 `GITHUB_WAIT_MS`(8초)를 읽는다** — 목록의 원격 신호(`loadRemoteSignals`)·연결 확인(`probeRepo`)·설정의 열린 PR(`loadOpenPrUrl`). 넘기면 각자의 실패 갈래(신호 없음 · `error`→`unknown` · `undefined`)로 접고 로그 한 줄을 남긴다. 같은 원격을 기다리는 두 화면의 마감이 다르면 한쪽은 "확인할 수 없음", 다른 쪽은 아직 매달린 채로 갈린다 — 그래서 사본을 두지 않는다. 설정 화면은 그 셋을 await하지 않고 Suspense로 스트리밍하며, **App 인스턴스는 요청 사이에 남는다**(설치 토큰 캐시가 인스턴스에 붙어 있다 — `createApp`).
+**화면을 그리는 동안 GitHub을 기다리는 자리는 전부 `lib/github-wait.ts`의 `GITHUB_WAIT_MS`(8초)를 읽는다** — 목록의 원격 신호(`loadRemoteSignals`)·연결 확인(`probeRepo`)·설정의 열린 PR(`loadOpenPrUrl`)·계정 조회(`loadAccountView` — 설정·`/account`). 넘기면 각자의 실패 갈래(신호 없음 · `error`→`unknown` · `undefined` · `unavailable`)로 접고 로그 한 줄을 남긴다. 같은 원격을 기다리는 두 화면의 마감이 다르면 한쪽은 "확인할 수 없음", 다른 쪽은 아직 매달린 채로 갈린다 — 그래서 사본을 두지 않는다. 설정 화면은 그 셋을 await하지 않고 Suspense로 스트리밍하며, **App 인스턴스는 요청 사이에 남는다**(설치 토큰 캐시가 인스턴스에 붙어 있다 — `createApp`). ⚠️ 그래서 캐시가 만료 직전 토큰을 줄 수 있고, 고정 토큰을 쥐는 `createGitClient`는 만료가 5분 안이면 `refresh: true`로 다시 받는다.
 
 ### 6.6 Credential 저장 경계 (2026-09-10, dev·prod 전환 완료)
 
