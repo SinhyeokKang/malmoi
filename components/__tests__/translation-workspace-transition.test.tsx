@@ -323,3 +323,90 @@ it("번역 화면의 Sync 확인창이 권하는 Publish 링크는 지금 소스
   const link = [...document.querySelectorAll<HTMLAnchorElement>("a")].find(a => a.textContent === m.repositorySync.sendFirst);
   expect(link?.getAttribute("href")).toBe("/projects/acme/surfaces/app/translations");
 });
+
+// ── fix r1 ──────────────────────────────────────────────────────────────────
+
+/*
+  ⚠️ **대기 중의 두 번째 조작은 낙관값 위에 쌓는다** (POSTMORTEM 2026-09-12 부류) — 트리거가 누른 값으로 먼저 서므로 사용자는 다음 축을
+  바로 고른다. 그 주소를 서버 prop(`query`)으로 조립하면 첫 선택이 조용히 되돌아간다.
+*/
+it("응답 전에 두 축을 잇달아 고르면 둘째 이동이 첫 선택을 싣는다", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  respond = () => ({ next: initial, gate: gate() });
+  const { container } = await render(<Harness initial={initial} />);
+  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="Completeness:"]')!);
+  await user.click(menuItem(m.translations.workspace.filters.completion.incomplete));
+  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="State:"]')!);
+  await user.click(menuItem(m.translations.workspace.filters.state.unsent));
+  expect(mocks.push).toHaveBeenCalledTimes(2);
+  // 짝 — 첫 이동은 첫 축만, 둘째는 둘 다.
+  expect(mocks.push.mock.calls[0]?.[0]).toContain("completion=incomplete");
+  expect(mocks.push.mock.calls[0]?.[0]).not.toContain("state=");
+  expect(mocks.push.mock.calls[1]?.[0]).toContain("completion=incomplete");
+  expect(mocks.push.mock.calls[1]?.[0]).toContain("state=unsent");
+});
+
+it("응답 전에 키를 고른 뒤 필터를 고르면 필터 이동이 새 키를 잇는다", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  respond = () => ({ next: initial, gate: gate() });
+  const { container } = await render(<Harness initial={initial} />);
+  await user.click(row(container, "k2")!);
+  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="State:"]')!);
+  await user.click(menuItem(m.translations.workspace.filters.state.unsent));
+  expect(mocks.push.mock.calls[0]?.[0]).toContain("key=k2");
+});
+
+/*
+  ⚠️ **`history.replaceState`는 대기 중인 이동을 버린다** (Next 16.3 — ACTION_RESTORE가 pending navigation을 대체한다). 옛 상세의
+  언어 메뉴는 읽기 전용 잠금 밖이라 키 이동을 기다리는 동안 바꾸면 그 이동이 사라졌다.
+*/
+it("키 이동을 기다리는 동안 언어 메뉴가 잠기고, 도착하면 풀린다", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  const b = gate();
+  respond = () => ({ next: { ...initial, query: { ...initial.query, key: "k2" }, detail: detailOf("k2") }, gate: b });
+  const { container } = await render(<Harness initial={initial} />);
+  const languages = () => container.querySelector<HTMLButtonElement>('button[aria-label^="Languages:"]')!;
+  // 짝 — 대기 전에는 열 수 있다.
+  expect(languages().disabled).toBe(false);
+  await user.click(row(container, "k2")!);
+  expect(languages().disabled).toBe(true);
+  await arrive(b);
+  expect(languages().disabled).toBe(false);
+});
+
+it.each([
+  ["archived", (): string => m.translations.workspace.footer.archived],
+  ["not-found", (): string => m.translations.workspace.footer.lostAccess],
+  ["forbidden", (): string => m.translations.workspace.footer.lostAccess],
+] as const)("More의 %s 거부는 그 상태를 말하고 편집기를 잠근다 — 일반 재시도 문구가 아니다", async (error, text) => {
+  const user = userEvent.setup();
+  mocks.more.mockResolvedValue({ ok: false, error });
+  const initial = props();
+  const { container } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
+  await user.click(button(m.translations.workspace.list.more)!);
+  expect(container.textContent).toContain(text());
+  expect(container.textContent).not.toContain(m.translations.workspace.list.moreFailed);
+  expect(area(container, "zh")?.readOnly).toBe(true);
+});
+
+it("More 실패 문구는 조건이 바뀌면 사라지고, 옛 조건의 늦은 실패는 새 목록에 서지 않는다", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  mocks.more.mockResolvedValueOnce({ ok: false, error: "unavailable" });
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
+  await user.click(button(m.translations.workspace.list.more)!);
+  expect(container.textContent).toContain(m.translations.workspace.list.moreFailed);
+  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, q: "save" }} list={{ ...initial.list, nextCursor: "c2" }} />);
+  expect(container.textContent).not.toContain(m.translations.workspace.list.moreFailed);
+  // 새 조건에서 More를 누르고, 응답 전에 조건이 또 바뀐 뒤 실패가 온다.
+  let settle: (value: unknown) => void = () => {};
+  mocks.more.mockReturnValueOnce(new Promise(resolve => { settle = resolve; }));
+  await user.click(button(m.translations.workspace.list.more)!);
+  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, q: "other" }} list={{ ...initial.list, nextCursor: "c3" }} />);
+  await act(async () => settle({ ok: false, error: "unavailable" }));
+  expect(container.textContent).not.toContain(m.translations.workspace.list.moreFailed);
+  expect(button(m.translations.workspace.list.more)?.disabled).toBe(false);
+});

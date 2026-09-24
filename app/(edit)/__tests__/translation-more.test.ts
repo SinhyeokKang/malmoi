@@ -9,10 +9,12 @@ const state = vi.hoisted(() => ({
   access: vi.fn(),
   list: vi.fn(),
   revalidate: vi.fn(),
+  project: vi.fn(),
 }));
 vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => state.session }));
 vi.mock("@/lib/surfaces/access", () => ({ getSurfaceAccess: state.access }));
-vi.mock("@/lib/db", () => ({ getPrisma: () => ({}) }));
+const PRISMA = { project: { findUnique: (...args: unknown[]) => state.project(...args) } };
+vi.mock("@/lib/db", () => ({ getPrisma: () => PRISMA }));
 vi.mock("@/lib/keys/translation-list", () => ({ loadTranslationList: state.list }));
 vi.mock("next/cache", () => ({ revalidatePath: state.revalidate }));
 
@@ -25,13 +27,14 @@ beforeEach(() => {
   state.access.mockReset().mockResolvedValue({ status: "ok", projectId: "p1", surfaceId: "s1" });
   state.list.mockReset().mockResolvedValue({ rows: [ROW], matchedKeyCount: 3, incompleteKeyCount: 0, nextCursor: "c2", effective: {}, selectedInResult: null });
   state.revalidate.mockReset();
+  state.project.mockReset().mockResolvedValue({ installationId: "1", surfaces: [{ archivedAt: null, lastCommitSha: "sha" }] });
 });
 
 it("인가된 표면에서 요청 조건 그대로 cursor 다음 페이지를 읽고, 행과 다음 cursor만 돌려준다", async () => {
   const result = await loadMoreTranslationKeys({ slug: "acme", surfaceSlug: "web", query: { ns: "common", scope: "namespace", q: "th", key: "k1" }, cursor: "c1" });
-  expect(state.access).toHaveBeenCalledWith({}, { userId: "u1", slug: "acme", surfaceSlug: "web", permission: "translation:write" });
+  expect(state.access).toHaveBeenCalledWith(PRISMA, { userId: "u1", slug: "acme", surfaceSlug: "web", permission: "translation:write" });
   // 조건은 서버가 다시 해석한다 — 선택 키는 페이지와 무관하다.
-  expect(state.list).toHaveBeenCalledExactlyOnceWith({}, { projectId: "p1", routeSurfaceId: "s1", query: { ns: "common", scope: "namespace", completion: "all", q: "th", cursor: "c1" } });
+  expect(state.list).toHaveBeenCalledExactlyOnceWith(PRISMA, { projectId: "p1", routeSurfaceId: "s1", query: { ns: "common", scope: "namespace", completion: "all", q: "th", cursor: "c1" } });
   expect(result).toEqual({ ok: true, rows: [ROW], nextCursor: "c2" });
   expect(state.revalidate).not.toHaveBeenCalled();
 });
@@ -49,8 +52,17 @@ it("접근이 거부되면 그 사유를 돌려주고 읽지 않는다", async (
   expect(state.list).not.toHaveBeenCalled();
 });
 
-it("cursor가 없거나 모양이 틀리면 invalid input이다 — 첫 페이지를 다시 주지 않는다", async () => {
+// ⚠️ 입력의 **모양**만 거른다 — 형식이 맞는 문자열인데 해독이 안 되는 cursor는 `loadTranslationList`가 첫 페이지로 읽는다(화면이 중복 행을 거른다).
+it("cursor가 없거나 입력 모양이 틀리거나 길이 상한을 넘으면 invalid input이다", async () => {
   expect(await loadMoreTranslationKeys({ slug: "acme", surfaceSlug: "web", query: {} })).toEqual({ ok: false, error: "invalid input" });
   expect(await loadMoreTranslationKeys({ slug: "acme", surfaceSlug: "web", query: { ns: 3 }, cursor: "c1" })).toEqual({ ok: false, error: "invalid input" });
+  expect(await loadMoreTranslationKeys({ slug: "acme", surfaceSlug: "web", query: {}, cursor: "c".repeat(2049) })).toEqual({ ok: false, error: "invalid input" });
+  expect(await loadMoreTranslationKeys({ slug: "acme", surfaceSlug: "web", query: { q: "x".repeat(1025) }, cursor: "c1" })).toEqual({ ok: false, error: "invalid input" });
+  expect(state.list).not.toHaveBeenCalled();
+});
+
+it("준비되지 않은 프로젝트는 not-ready다 — 저장·Revert와 같은 판정을 지난다", async () => {
+  state.project.mockResolvedValue({ installationId: null, surfaces: [] });
+  expect(await loadMoreTranslationKeys({ slug: "acme", surfaceSlug: "web", query: {}, cursor: "c1" })).toEqual({ ok: false, error: "not-ready" });
   expect(state.list).not.toHaveBeenCalled();
 });

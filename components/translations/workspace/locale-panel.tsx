@@ -31,10 +31,15 @@ export type DetailView = {
   locales: { code: string; isBase: boolean; value: string | null; needsReview: boolean; pending: boolean; actorLabel: string | null }[];
 };
 
-export function LocalePanel({ detail, draft, language, onLanguage, onEdit, onReset, onSave, copyHref, readOnly, footer, invalid }: {
+export function LocalePanel({ detail, draft, language, languageLocked = false, onLanguage, onEdit, onReset, onSave, copyHref, readOnly, footer, invalid }: {
   detail: DetailView;
   draft: KeyDraftState;
   language: string | undefined;
+  /**
+   * 이동을 기다리는 동안 언어 메뉴를 잠근다 (U3 리뷰 r1) — 언어는 `history.replaceState`로 바뀌고 Next 16.3에서 그것이 대기 중인 이동을
+   * 버린다. 입력의 읽기 전용 잠금(`readOnly`)은 이 메뉴를 덮지 않는다.
+   */
+  languageLocked?: boolean;
   onLanguage: (value: string | undefined) => void;
   onEdit: (code: string, value: string) => void;
   onReset: (code: string) => void;
@@ -72,6 +77,7 @@ export function LocalePanel({ detail, draft, language, onLanguage, onEdit, onRes
             label={languageLabel}
             on={language !== undefined}
             size="sm"
+            disabled={languageLocked}
             value={language ?? ""}
             options={[
               { value: "", label: w.allLanguages },
