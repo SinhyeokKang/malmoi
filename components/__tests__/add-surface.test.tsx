@@ -122,3 +122,20 @@ it.each([
   const buttons = [...container.querySelectorAll("button")].map(b => b.textContent?.trim());
   expect(buttons).toContain(label);
 });
+
+/**
+ * **사유는 버튼이 꺼져 있는 동안만 선다** (malmoi#93). `Select at least one new source to add.`가 무조건 푸터에 서고
+ * `aria-describedby`도 무조건이라, 고른 뒤 켜진 [Add selected sources]가 "…, 하나 이상 고르라"로 낭독됐다. 짝으로 켜진 뒤에는
+ * 문장도 describedby도 없다.
+ */
+it("고르기 전엔 사유가 보이고 버튼이 그것을 가리키며, 고른 뒤엔 둘 다 사라진다", async () => {
+  const { container } = await draw();
+  await act(async () => { await new Promise(r => setTimeout(r, 0)); });
+  const add = () => find<HTMLButtonElement>(container, '[data-add-sources]');
+  expect(blocked(container)).toBe(true);
+  expect(document.getElementById(add().getAttribute("aria-describedby") ?? "")?.textContent).toBe(m.settings.sources.selectHelp);
+  await select();
+  expect(blocked(container)).toBe(false);
+  expect(add().getAttribute("aria-describedby")).toBeNull();
+  expect(container.textContent).not.toContain(m.settings.sources.selectHelp);
+});
