@@ -490,6 +490,8 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 나머지를 보낸다 — 결과는 **실린 수**로 말하고 보류 한 줄(`N edits weren't sent because …`)을 붙이며, 실린 것이 0이면 `Not sent` 틀이다.
 보류된 편집은 malmoi에 남아 CI 적재를 계속 멈춘다. Logs는 그 실행을 같은 수로 보이고, 실린 것이 0이면 `Not sent`다(`Nothing to send`가 아니다).
 **미리보기도 나가는 수로 말한다**(#84) — 보류를 뺀 수가 제목·요약·PR 줄에 서고, 전부 보류면 PR 버튼 대신 이유를 말한다.
+**되돌린 편집만 남은 Publish는 열린 PR을 닫는다** (2026-09-24, B1 r3) — 파일이 base와 같아지면 그 PR에 머지할 것이 없다. 조용히 닫히게 두지 않고
+코멘트로 이유를 남겨 닫으며, 미리보기("Publishing closes pull request #N")·결과·Logs가 같은 사실을 말한다.
 **base 파일 부재는 여전히 `writer-warnings`다**(설정 오류) — 미리보기가 먼저 경로·브랜치를 말하며 막는다(Try again 없음).
 야간 cron은 미전달 편집이 있는 프로젝트만 GitHub에 닿고, 열린 PR이 있어도 새 편집이 있으면 오늘처럼 갱신한다.
 
