@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { hashSessionToken } from "@/lib/credentials/crypto";
-import { challengeIdentifier, parseChallengeIdentifier, challengePrefix, nonceHash, stateHash, validNonce, checkChallenge, revocationCookie, outcomeUrl } from "../policy";
+import { challengeIdentifier, parseChallengeIdentifier, challengePrefix, nonceHash, stateHash, checkChallenge, revocationCookie, outcomeUrl } from "../policy";
 const nonce = Buffer.alloc(32, 11).toString("base64url");
 const context = { userId: "u1", provider: "github" as const, providerAccountId: "gh1", sessionDigest: hashSessionToken("raw-session"), stateDigest: stateHash("fresh-state") };
 const input = { provider: "github", providerAccountId: "gh1", sessionToken: "raw-session", state: "fresh-state", expires: new Date(100), now: new Date(99) };
@@ -14,10 +14,6 @@ it("확인 요청은 사용자·공급자 계정·세션·OAuth state를 담되 
 });
 it("모호한 ID·잘못된 목적·알 수 없는 provider·여분 필드를 거부한다", () => {
   for (const value of ["{}", "[]", "null", challengeIdentifier(context).replace("v1", "v2"), challengeIdentifier(context).replace("github", "github-app"), challengeIdentifier(context).replace(/]$/, ',"extra"]')]) expect(parseChallengeIdentifier(value)).toBeNull();
-});
-it("nonce는 canonical 32바이트 base64url만 허용한다", () => {
-  expect(validNonce(nonce)).toBe(true);
-  for (const value of ["", "short", nonce + "=", nonce.slice(0, -1) + "B"]) expect(validNonce(value)).toBe(false);
 });
 it("현재 세션·state·공급자 ID가 일치한 미만료 요청만 통과한다", () => {
   expect(checkChallenge(context, input)).toBe("ok");

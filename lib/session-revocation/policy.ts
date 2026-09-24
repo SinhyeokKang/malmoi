@@ -37,9 +37,6 @@ export function nonceHash(raw: string): string {
 export function stateHash(raw: string): string {
   return createHash("sha256").update(`${PURPOSE}/state/v1\0${raw}`).digest("hex");
 }
-export function validNonce(raw: string): boolean {
-  return /^[A-Za-z0-9_-]{43}$/.test(raw) && Buffer.from(raw, "base64url").toString("base64url") === raw;
-}
 export function checkChallenge(c: Challenge, input: {
   provider: string; providerAccountId: string; sessionToken: string; state: string; expires: Date; now: Date;
 }): "ok" | "expired" | "invalid" | "wrong-account" {

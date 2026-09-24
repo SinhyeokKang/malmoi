@@ -56,4 +56,25 @@ describe.each(WRAPPERS)("$scope", (w) => {
     expect(lines()).toEqual([]);
     expect(cleared(response)).toEqual(expect.arrayContaining([w.nonce(true), w.nonce(false), w.state(true), w.state(false)].map((c) => c.name)));
   });
+
+  /**
+   * **판정 못 한 origin은 fail-closed다** (audit #78). 시작 셋은 `requestOrigin`이 `null`이면 쿠키를 심지 않고
+   * 멈추는데(`/signin/link` · `startSessionRevocation` · `startAccountConnect`) callback만 `url.protocol`로
+   * 떨어져 Auth.js를 돌렸다 — 두 판정이 갈리면 state 쿠키 이름이 어긋나 증상이 엉뚱한 곳에 난다(CLAUDE.md 2026-09-14).
+   * 허용 목록 밖의 호스트에서 시작된 왕복은 우리가 시작한 것일 수 없으므로 Auth.js를 부르지 않고 착지한다.
+   */
+  it("허용 목록 밖의 호스트에서는 run()을 부르지 않고 303 착지 · 쿠키 두 변형 정리", async () => {
+    const run = vi.fn(async () => new Response(null, { status: 302 }));
+    const response = await w.wrap(new NextRequest("https://evil.example/api/auth/callback/github?state=s", { headers: request(w).headers }), run);
+    expect(run).not.toHaveBeenCalled();
+    expect(response.status).toBe(303);
+    expect(new URL(response.headers.get("location")!).searchParams.toString()).not.toBe("");
+    expect(cleared(response)).toEqual(expect.arrayContaining([w.nonce(true), w.nonce(false), w.state(true), w.state(false)].map((c) => c.name)));
+  });
+
+  it("짝: 허용된 호스트에서는 같은 요청이 run()을 부른다", async () => {
+    const run = vi.fn(async () => new Response(null, { status: 302 }));
+    await w.wrap(request(w), run);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
 });

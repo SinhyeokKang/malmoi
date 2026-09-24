@@ -7,6 +7,7 @@ import { requestOrigin } from "@/lib/github-connect/origin";
 import { finishRevocation } from "./store";
 import { outcomeUrl, revocationCookie, revocationStateCookie, type Outcome } from "./policy";
 import { sessionCookieName } from "@/lib/auth/cookie";
+import { expireBothVariants, isOAuthCallback } from "@/lib/auth/roundtrip";
 
 type Attempt = { nonce: string; sessionToken: string; state: string; outcome?: Outcome };
 // 결과는 이 핸들러 호출의 것이지, 호출자가 고른 리다이렉트 URL의 것이 아니다.
@@ -28,10 +29,9 @@ export async function authorizeRevocation(prisma: PrismaClient, account: { provi
 }
 export async function withRevocation(request: NextRequest, run: () => Promise<Response>): Promise<Response> {
   const url = new URL(request.url);
-  if (!/^\/api\/auth\/callback\/(github|google)$/.test(url.pathname)) return run();
+  if (!isOAuthCallback(url.pathname)) return run();
   const origin = requestOrigin({ host: request.headers.get("host") ?? url.host, forwardedProto: request.headers.get("x-forwarded-proto") ?? url.protocol.slice(0, -1) });
-  const secure = origin?.secure ?? url.protocol === "https:";
-  const cookie = revocationCookie(secure);
+  const secure = origin?.secure ?? false;
   const nonceCookie = request.cookies.get(revocationCookie(true).name) ?? request.cookies.get(revocationCookie(false).name);
   const state = url.searchParams.get("state") ?? "";
   // callback-url은 거부 표시일 뿐 인가의 증거가 아니다. 늦거나 소비된 왕복을 일반 로그인에서 떼어 둔다.
@@ -53,11 +53,14 @@ export async function withRevocation(request: NextRequest, run: () => Promise<Re
     state,
   };
   return stateScope.run(secure, () => pending.run(attempt, async () => {
-    let original: Response;
-    try { original = await run(); }
-    catch (error) {
-      logCaught("session-revocation", "callback", error);
-      original = new Response(null, { status: 500 });
+    // ⚠️ **origin을 판정 못 하면 Auth.js를 부르지 않는다** (audit #78) — 시작이 그 조건에서 쿠키를 안 심으므로 이 왕복은
+    // 우리가 시작한 것일 수 없고, `url.protocol`로 떨어지면 시작과 다른 쿠키 이름으로 판정한다(CLAUDE.md 2026-09-14).
+    let original: Response = new Response(null, { status: 500 });
+    if (origin !== null) {
+      try { original = await run(); }
+      catch (error) {
+        logCaught("session-revocation", "callback", error);
+      }
     }
     const outcome = attempt.outcome ?? (url.searchParams.get("error") === "access_denied" ? "cancelled" : "unavailable");
     const headers = new Headers(original.headers);
@@ -66,14 +69,7 @@ export async function withRevocation(request: NextRequest, run: () => Promise<Re
     headers.set("location", new URL(outcomeUrl(outcome), origin?.origin ?? url.origin).href);
     headers.set("cache-control", "no-store");
     const response = new NextResponse(null, { status: 303, headers });
-    response.cookies.set(cookie.name, "", { ...cookie.options, maxAge: 0 });
-    const stateCookie = revocationStateCookie(secure);
-    response.cookies.set(stateCookie.name, "", { ...stateCookie.options, maxAge: 0 });
-    // ⚠️ secure 호스트에서도 non-secure 변형을 지운다 — 로컬로 시작한 왕복의 stale state가 남는다(L5.2 계약 테스트).
-    if (secure) {
-      response.cookies.set(revocationCookie(false).name, "", { ...revocationCookie(false).options, maxAge: 0 });
-      response.cookies.set(revocationStateCookie(false).name, "", { ...revocationStateCookie(false).options, maxAge: 0 });
-    }
+    expireBothVariants(response.cookies, [revocationCookie, revocationStateCookie]);
     if (outcome === "revoked") {
       response.cookies.set(sessionCookieName(false), "", { path: "/", httpOnly: true, sameSite: "lax", maxAge: 0 });
       if (secure) response.cookies.set(sessionCookieName(true), "", { path: "/", httpOnly: true, sameSite: "lax", secure: true, maxAge: 0 });
