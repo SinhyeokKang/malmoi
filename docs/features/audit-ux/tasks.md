@@ -69,6 +69,7 @@
 - [ ] **#4** 🔴 `lib/shell/nav.ts:82` → `app/(edit)/projects/[slug]/translations/page.tsx:18-23` — 사이드바 Translations가 옛 주소를 가리켜, 누를 때마다 서버 리다이렉트를 한 번 더 거친다(인증 → 접근 → `defaultSurface` 조회 → `redirect` → 표면 렌더). 두 세그먼트 모두 경계가 없어 prefetch도 무의미하고, 그동안 옛 화면이 멈춰 있다.
   - 같은 옛 링크: `components/home/count-cards.tsx:68` · `components/home/sync-button.tsx:228` · `components/onboarding/new-project.tsx:479`.
   - 방향: `defaultSurface`의 slug를 셸 데이터에 싣고 `routes.surfaceTranslations`로 직접 조립한다. 옛 라우트는 외부 링크 호환용으로 남긴다.
+  - ⚠️ **Home의 두 링크(`count-cards.tsx:68` · `home/sync-button.tsx:228`)는 U5가 소유한다**(2026-09-25 orchestrate 인테이크) — 표면 slug를 `(home)/page.tsx`에서 내려야 하는데 그 파일은 U5가 고친다. U2는 사이드바(`nav.ts`)와 `new-project.tsx:479`만 고친다.
 - [ ] **#5** 🔴 `loading.tsx`가 없는 형제 화면들 — `surfaces/[surfaceSlug]/translations` · `surfaces/[surfaceSlug]/locales` · `members` · `sources` · `settings`. Home·Logs에서 이 화면들로, 또 이 화면들끼리 이동하면 옛 화면이 표시 없이 멈춘다(추정 — 스로틀로 확정).
   - 방향: 각 세그먼트에 실물 치수의 골격을 둔다(번역은 세 패널). `[slug]/`에 하나로 두지 않는다 — malmoi#95의 이유와 같다.
 - [ ] **#6** 🔴 `components/shell/sidebar.tsx:119-121` — 이동 pending 표시가 앱 전체에 [New project] 하나뿐이다(`useLinkStatus` 0곳). 사이드바 선택 표시가 커밋 뒤의 `usePathname`을 봐서 응답이 올 때까지 옛 항목에 남는다.
@@ -145,6 +146,8 @@
   - 방향: 연결 상태 카드를 `<Suspense>`로 떼어 스트리밍하고, probe에 D5 마감을 두고, `App`을 모듈 스코프 lazy 싱글턴으로 둔다. ⚠️ 모듈 최상위에서 env를 평가하지 않는다(CLAUDE.md) — 싱글턴은 첫 호출 때 만든다. ⚠️ installation 토큰 경계(`credential-separation.test.ts`)를 넘지 않는다.
 - [ ] **#24** 🟡 `app/(edit)/projects/[slug]/(home)/page.tsx:82→86→133→160→169` — 모든 Home 진입이 같은 probe(GitHub 3홉)를 기다린다. 골격은 있지만 그만큼 오래 서 있다. 방향: 연결 상태만 Suspense로 떼어, 카운트 카드와 메타 열이 먼저 뜨게 한다.
 - [ ] **#9** 🔴 (서버 쪽) `(home)/page.tsx:133-158` — `?event=`로 대화상자를 여닫을 때마다 Home 전체와 probe가 다시 돈다. 방향: #24의 Suspense 분리로 probe가 상세 여닫기의 임계 경로에서 빠지게 한다.
+
+- [ ] **#4b** (U2에서 이관) `components/home/count-cards.tsx:68` · `components/home/sync-button.tsx:228` — Home의 번역 링크를 옛 `routes.translations`에서 `routes.surfaceTranslations`로 직접 조립한다. 카드의 `cardQuery`(`ns` 명시 — `count-cards.tsx:62-67` 주석)는 그대로 싣는다. `sync-button.tsx`는 `:228` 링크만 — `:120`은 U6, `:157`은 U7이다.
 
 **경계**: `event-dialog.tsx`·`logs-card.tsx`(#9 클라이언트)는 **U4**다. `lib/projects/remote.ts`는 읽기만 하고 고치지 않는다(D5의 기준값).
 
