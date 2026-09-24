@@ -241,7 +241,11 @@ export function OnboardingModal({
 
           <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6">
             <span className="text-muted-foreground text-xs leading-[1.6]">{footer ?? (step === undefined ? null : m.newProject.modal.step(step))}</span>
-            {actions !== undefined ? actions : <div className="flex items-center gap-2">
+            {/*
+              ⚠️ **소비자의 `actions`도 같은 무리에 싼다** (malmoi#87) — fragment를 넘기면 버튼들이 바닥의 직계 자식이 되어
+              `justify-between`이 [Cancel]을 가운데로 띄웠다. `null`(Publish의 버튼 없는 갈래)이면 빈 무리를 세우지 않는다.
+            */}
+            {actions !== undefined ? (actions === null || actions === false ? null : <div className="flex items-center gap-2">{actions}</div>) : <div className="flex items-center gap-2">
               {showBack && (
                 <Button type="button" size="lg" onClick={onBack} disabled={nextPending}>
                   {m.newProject.modal.back}
