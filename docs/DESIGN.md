@@ -365,7 +365,7 @@ computed style로 잰 것이다.
 
 **첫 적재 상태** (`planProjectReadiness`): 판정 자체는 셋이지만 **화면 문구는 목록의 `projectStatus`가 든다** (8-3 — `readinessLabel`은 삭제됐다). 목록에서는 `setup`·`awaiting_first_sync`가 **`Badge neutral`**로 `Setup`·`Pending`이고 `ready`는 **`Badge success`**(초록) `Active`다 (2026-09-11 정정 — 그 둘은 새 프로젝트가 지나가는 **정상 경로**라 amber로 칠하면 고장난 것처럼 보인다). amber는 `Disconnected` 하나뿐이다.
 
-**sync 실행 4종** (`logs` 화면, 2026-09-10 7단계 — `lib/sync/view.ts`의 `syncRunView`): `SUCCEEDED`("Sent")·`SKIPPED`("Nothing to send")·`RUNNING`("Running…") → **무색 `Badge muted`** / `FAILED`("Failed") → **`Badge danger`**. ⚠️ **색이 셋뿐이라 구별은 라벨이 든다** — 새 raw 색을 만들지 않는 것이 §6.2의 규칙이고, 성공·스킵·진행 중을 색으로 가르려 들면 그 규칙이 첫날에 깨진다. **판정 함수가 tone을 `Badge` variant와 같은 이름으로 낸다** — 화면이 매핑 표를 또 들지 않는다(⚠️ 선례로 적혀 있던 `PublishTone`은 2026-09-16에 사라졌다 — Publish는 tone이 아니라 **갈래 이름**을 내는 쪽으로 갔다, §6.646). ⚠️ 버린 값이 있는 실행에는 `Badge warning` "N dropped"가 **성공한 행에도** 붙는다 (PRODUCT 불변식 9).
+**sync 실행 4종** (`logs` 화면, 2026-09-10 7단계 — 옛 `syncRunView`. 지금 판정은 `lib/events/view.ts`의 `eventView`가 들고 결과 어휘가 늘었다): `SUCCEEDED`("Sent")·`SKIPPED`("Nothing to send")·`RUNNING`("Running…") → **무색 `Badge muted`** / `FAILED`("Failed") → **`Badge danger`**. ⚠️ **색이 셋뿐이라 구별은 라벨이 든다** — 새 raw 색을 만들지 않는 것이 §6.2의 규칙이고, 성공·스킵·진행 중을 색으로 가르려 들면 그 규칙이 첫날에 깨진다. **판정 함수가 tone을 `Badge` variant와 같은 이름으로 낸다** — 화면이 매핑 표를 또 들지 않는다(⚠️ 선례로 적혀 있던 `PublishTone`은 2026-09-16에 사라졌다 — Publish는 tone이 아니라 **갈래 이름**을 내는 쪽으로 갔다, §6.646). ⚠️ 버린 값이 있는 실행에는 `Badge warning` "N dropped"가 **성공한 행에도** 붙는다 (PRODUCT 불변식 9).
 
 **보관** (2026-09-10): 목록 행의 상태 배지가 `Badge neutral` "Archived"다(8-3 — 배지가 **항상 하나**이고 갈래는 `projectStatus`가 정한다, §6.63). ⚠️ **숨기지 않는다** — 숨기면 OWNER가 되돌릴 링크에 도달할 길이 없다. ⚠️ **프로젝트 스위처는 8-3에 사라졌다** — 프로젝트를 옮기는 길이 목록 하나로 통일됐다(§6.5).
 
@@ -1043,7 +1043,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 |---|---|---|
 | 값 있음 | 남의 주소 | **마스킹 라벨**(`a***@acme.com`) — 충돌하는 행만 접두를 늘린다(malmoi#18). **서버가** 만든다 |
 | 부재 | 그 값이 원래 없다 | 이력 표는 `—`, 멤버 행은 **마스킹 주소가 이름 자리로 올라간다**(§6.68·§6.65 — `planMemberIdentity`. 둘 다 없으면 `No name set`이고, 못 읽은 행은 `Couldn't be read`로 갈래가 하나 더 있다) |
-| **못 읽었다** | 저장된 값을 지금 키로 못 연다 | **`m.common.unreadable`("Unavailable")** — `lib/auth/query.ts`·`lib/sync/query.ts`가 낸다 |
+| **못 읽었다** | 저장된 값을 지금 키로 못 연다 | **`m.common.unreadable`("Unavailable")** — `lib/auth/query.ts`·`lib/events/query.ts`가 낸다 |
 
 ⚠️ **셋째를 부재로 접지 않는다.** 빈 칸으로 두면 관리자가 "이 사람은 이메일이 없구나"로 읽는데, 실제로는 키가 옛 세대라 못 연 것이다 — POSTMORTEM 2026-09-03("실패한 조회를 '없음'으로 읽어 경고가 존재하지 않는 것과 구별되지 않았다")이 화면 층으로 내려온 자리다. 이력 표에서는 `—`와 "Unavailable"이 **같은 열에서** 갈린다.
 
