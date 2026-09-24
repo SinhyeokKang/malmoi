@@ -58,6 +58,26 @@ describe("보안 응답 헤더 (sec-audit 9)", () => {
     expect(report?.split("; ").find((directive) => directive.startsWith("img-src "))).toBe("img-src 'self' data: https://avatars.githubusercontent.com https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com");
   });
 
+  /**
+   * ⚠️ **Google 로그인은 폼 POST → 302 `accounts.google.com`이다** (audit #75). `form-action`은 폼 제출 뒤의
+   * 리다이렉트에도 걸리므로, 이 호스트가 없는 채로 enforce를 켜면 Google 로그인이 **콘솔에만 남고** 멈춘다.
+   */
+  it("`form-action`이 두 로그인 공급자를 다 연다", async () => {
+    const [rule] = (await rules()).filter((r) => r.source === "/(.*)");
+    const formAction = valueOf(rule!, "Content-Security-Policy-Report-Only")?.split("; ").find((d) => d.startsWith("form-action "));
+    expect(formAction).toBe("form-action 'self' https://github.com https://accounts.google.com");
+  });
+
+  it("HSTS와 Permissions-Policy는 enforce다 — 화면을 깨뜨릴 여지가 없다", async () => {
+    const [rule] = (await rules()).filter((r) => r.source === "/(.*)");
+    // ⚠️ `preload`·`includeSubDomains`는 되돌리기 어려운 결정이라 넣지 않는다 — 브라우저 목록에 박히면 수개월 간다.
+    expect(valueOf(rule!, "Strict-Transport-Security")).toBe("max-age=63072000");
+    const policy = valueOf(rule!, "Permissions-Policy");
+    for (const feature of ["camera=()", "microphone=()", "geolocation=()", "payment=()", "usb=()", "browsing-topics=()"]) {
+      expect(policy?.split(", ")).toContain(feature);
+    }
+  });
+
   it("enforce 쪽에 `default-src`를 넣지 않는다 — Report-Only와 섞이면 그게 곧 enforce다", async () => {
     const [rule] = (await rules()).filter((r) => r.source === "/(.*)");
     expect(valueOf(rule!, "Content-Security-Policy")).not.toContain("default-src");

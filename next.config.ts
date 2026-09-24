@@ -40,6 +40,14 @@ const nextConfig: NextConfig = {
            */
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
           /**
+           * HTTPS 고정 (audit #75). http인 로컬은 브라우저가 이 헤더를 무시한다.
+           * ⚠️ **`includeSubDomains`·`preload`를 붙이지 않는다** — preload 목록에 박히면 되돌리는 데 수개월이
+           * 걸리고, 하위 도메인까지 묶는 것은 도메인 운영 판단이다. 필요해지면 그때 따로 정한다.
+           */
+          { key: "Strict-Transport-Security", value: "max-age=63072000" },
+          // 쓰지 않는 강력 기능을 끈다 — 우리 화면은 이 중 무엇도 부르지 않는다(업로드는 파일 입력이라 대상이 아니다).
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()" },
+          /**
            * **CSP 본체는 Report-Only로 시작한다** (2026-09-09 판정). Next가 인라인 스타일·스크립트를
            * 넣으므로 enforce를 바로 켜면 화면이 깨질 수 있고 **깨지는 방식이 조용하다**(콘솔에만 난다).
            * 이 리포엔 렌더 테스트가 없어 `pnpm build`로도 못 본다.
@@ -59,7 +67,9 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: https://avatars.githubusercontent.com https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com",
               // GitHub 왕복은 브라우저 이동(navigation)이라 `connect-src`가 아니라 `form-action`이다.
               "connect-src 'self'",
-              "form-action 'self' https://github.com",
+              // ⚠️ `form-action`은 폼 제출 뒤의 302에도 걸린다 — Google 로그인(POST → `accounts.google.com`)이 빠지면
+              // enforce 순간 그 로그인만 조용히 멈춘다 (audit #75).
+              "form-action 'self' https://github.com https://accounts.google.com",
               "object-src 'none'",
               "base-uri 'self'",
               "frame-ancestors 'none'",
