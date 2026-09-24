@@ -1724,6 +1724,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 
 - **`pull request`는 예외다** — GitHub의 고유명사이고 링크가 실제로 그리 간다(위 git 어휘 규칙과 같은 근거). 금지하는 것은 **방향 동사**다.
 - **`push`는 토큰 이름(`Push token`·`PUSH_TOKEN`)과 개발자 화면 둘(①의 `Pushed 3d ago` · 설정의 CI 설명)에만 선다.** 번역자가 읽는 문장에 "the next CI push"를 쓰지 않는다 — "the next sync from the repository"다.
+- **설정의 브랜치는 "base branch"다** (malmoi#85) — "default branch"는 **GitHub 리포의 기본 브랜치**이고 새 프로젝트 ①에서만 뜻이 맞는다. 이미 있는 프로젝트의 Sync·Publish가 그 브랜치를 못 읽으면 **설정된 이름**을 대고 Settings → Base branch로 보낸다(OWNER는 설정 링크, EDITOR는 "ask a project owner"). 온보딩 문장(`onboarding["base-branch-missing"]`)을 빌리지 않는다.
 - **파일은 "translation files"다** — `locale files`는 표의 `locale` 금지에 걸린다. 한 언어의 파일을 가리킬 때만 "language file"이다. 경로 예시의 `{locale}` 자리표시는 **사용자가 칠 값**이라 예외다.
 - **남을 가리키는 문구는 그 화면·그 역할에 실제로 있는 컨트롤만 부른다** (POSTMORTEM 2026-09-14). 번역 화면으로 데려가는 링크는 "Go to Publish"이고 "Send changes"가 아니다 — 도착한 화면의 버튼이 `Publish`다.
 - **모르는 오류 코드를 문장에 끼우지 않는다** — `Couldn't apply that change: invalid input`은 코드 원문을 사람에게 읽힌다. 아는 코드는 사전 문장으로, 모르는 것은 "Refresh the page and try again." 폴백으로 간다.
