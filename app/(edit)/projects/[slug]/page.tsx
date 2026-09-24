@@ -194,7 +194,7 @@ export default async function ProjectHomePage({
   /**
    * 한 번도 안 채워진 로케일 — 그 로케일에 **값이 있는 셀이 하나도 없는** 경우다.
    *
-   * ⚠️ **`activeLocaleProgress`에 먹이지 않는다** (code-review 2026-09-15 🟡1). 그 함수는 셀을 행으로
+   * ⚠️ **`localeProgress`에 먹이지 않는다** (code-review 2026-09-15 🟡1). 그 함수는 셀을 행으로
    * 받는데 여기 있는 것은 그룹 카운트라, 먹이려면 `count`만큼 객체를 만들어야 한다 — 903키 × 59로케일
    * 리포에서 5만 개다. 답할 질문이 "합이 0인가" 하나라 카운트에서 바로 센다.
    *

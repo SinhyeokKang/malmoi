@@ -4,11 +4,10 @@ import {
   planDiscardConfirmation,
   planProtectedImport,
   planProtectedPublish,
-  planSyncProtectionView,
 } from "../plan";
 
 /**
- * sync-edit-protection의 순수 판정 넷 (ARCHITECTURE §5.5.2). **I/O가 0이다** — 보류·폐기·전달 확인의 "해도 되는가"가
+ * sync-edit-protection의 순수 판정 셋 (ARCHITECTURE §5.5.2). **I/O가 0이다** — 보류·폐기·전달 확인의 "해도 되는가"가
  * 전부 여기서 결정되고, 껍데기는 그 답을 조건부 UPDATE로 감쌀 뿐이다.
  *
  * 테스트 이름의 `[C#]`은 spec 완료 조건 번호다. "0회/없음" 단언은 같은 입력 축의 양성 대조와 짝이다
@@ -70,41 +69,5 @@ describe("planDiscardConfirmation — 폐기는 OWNER의 일치하는 지문만 
 
   it("[C4] EDITOR 직접 호출 → reject, 지문이 일치해도", () => {
     expect(planDiscardConfirmation({ role: "EDITOR", fingerprintMatches: true })).toEqual({ action: "reject", reason: "forbidden" });
-  });
-});
-
-describe("planSyncProtectionView — 보호 상태의 화면 갈래", () => {
-  it("[C11] pending 0 → 배너 없음·Home 보조 줄 없음", () => {
-    const view = planSyncProtectionView({ pending: 0, role: "OWNER" });
-    expect(view.banner).toBeNull();
-    expect(view.homeSubline).toBeNull();
-  });
-
-  it("[C11] pending > 0 → 배너가 건수를 들고, 출구가 비어 있지 않으며 Publish가 첫째다", () => {
-    const view = planSyncProtectionView({ pending: 4, role: "OWNER" });
-    expect(view.banner).not.toBeNull();
-    expect(view.banner?.pendingCount).toBe(4);
-    expect(view.banner?.exits.length).toBeGreaterThan(0);
-    expect(view.banner?.exits[0]).toBe("publish");
-  });
-
-  it("[C11] EDITOR의 출구는 Publish뿐이다 — 폐기 출구가 없다 (OWNER → 있음 대조)", () => {
-    expect(planSyncProtectionView({ pending: 1, role: "EDITOR" }).banner?.exits).toEqual(["publish"]);
-    expect(planSyncProtectionView({ pending: 1, role: "OWNER" }).banner?.exits).toContain("discard");
-  });
-
-  it("[C11] EDITOR에게 Sync CTA가 없다 (OWNER → 있음 대조)", () => {
-    expect(planSyncProtectionView({ pending: 1, role: "EDITOR" }).sync).toBeNull();
-    expect(planSyncProtectionView({ pending: 1, role: "OWNER" }).sync).not.toBeNull();
-  });
-
-  it("[C4] Sync 확정 라벨이 건수로 갈린다 — N=0 sync / N>0 discard-and-sync", () => {
-    expect(planSyncProtectionView({ pending: 0, role: "OWNER" }).sync).toEqual({ confirmLabel: "sync", discardCount: 0 });
-    expect(planSyncProtectionView({ pending: 2, role: "OWNER" }).sync).toEqual({ confirmLabel: "discard-and-sync", discardCount: 2 });
-  });
-
-  it("[C12] Home 카드 — pending > 0이면 repositoryUpdatesPaused (pending 0 → null 대조)", () => {
-    expect(planSyncProtectionView({ pending: 1, role: "EDITOR" }).homeSubline).toBe("repositoryUpdatesPaused");
-    expect(planSyncProtectionView({ pending: 0, role: "EDITOR" }).homeSubline).toBeNull();
   });
 });
