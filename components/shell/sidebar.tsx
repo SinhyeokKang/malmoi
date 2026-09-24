@@ -143,8 +143,10 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
          * ⚠️ **누른 항목은 응답 전에 선택 면을 든다** (audit-ux #6 · DESIGN §6.4 `Button loading`). `active`는 커밋 뒤의
          * `usePathname`이라 느린 이동 동안 옛 항목에 남는다. `useLinkStatus`는 **링크의 자손에서만** 값을 내므로
          * 자손이 표식을 내고 링크가 `has-[…]`로 읽는다 — 면을 자손으로 옮기면 hit 영역과 치수가 움직인다.
+         * ⚠️ **hover와 겹친 변형이 짝이다** — 누른 직후 커서는 그 항목 위이고, `:hover`와 `:has(…)`는 명시도가 같아
+         * 뒤에 나오는 hover 면(0.03)이 이길 수 있다. 둘을 겹치면 명시도로 이긴다.
          */
-        "has-[[data-nav-pending]]:bg-foreground/[0.07]",
+        "has-[[data-nav-pending]]:bg-foreground/[0.07] hover:has-[[data-nav-pending]]:bg-foreground/[0.07]",
       )}
     >
       <PendingMark />

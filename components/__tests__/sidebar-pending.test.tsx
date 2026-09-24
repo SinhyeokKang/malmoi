@@ -37,6 +37,8 @@ describe("사이드바 이동 pending", () => {
     const members = link(container, "/projects/acme/members");
     expect(members.querySelector("[data-nav-pending]")).not.toBeNull();
     expect(members.className).toContain("has-[[data-nav-pending]]:bg-foreground/[0.07]");
+    // 누른 직후 커서는 그 항목 위다 — hover(0.03)가 명시도 동률로 뒤에서 이기지 않게 겹친 변형이 있어야 한다.
+    expect(members.className).toContain("hover:has-[[data-nav-pending]]:bg-foreground/[0.07]");
     // 짝 — 나머지 항목에는 표식이 없다.
     expect(container.querySelectorAll("[data-nav-pending]")).toHaveLength(1);
   });
