@@ -156,14 +156,13 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 
 ### 4.1 mono는 코드 블록 전용이다 — 13px / 18px
 
-⚠️ **2026-09-23에 화면에서 mono를 통째로 걷었다** (사용자 — "YAML 같은 코드 블록 제외하고 전부 sans"). 살아 있는 자리는 **둘뿐**이다:
+⚠️ **2026-09-23에 화면에서 mono를 통째로 걷었다** (사용자 — "YAML 같은 코드 블록 제외하고 전부 sans"). 살아 있는 자리는 **하나뿐**이다:
 
 | 자리 | 왜 남았나 |
 |---|---|
 | `components/onboarding/workflow-block.tsx` `<pre>` | 워크플로 YAML — 원본 줄바꿈과 들여쓰기가 값의 일부다 |
-| `components/onboarding/first-ingest-retry.tsx` | 어댑터 오류의 파서 원문. **코드 블록은 아니지만 캐럿(`^`) 다이어그램이 열을 맞춰야 읽힌다** — sans면 캐럿이 엉뚱한 글자를 가리킨다 |
 
-⚠️ **셋이었다가 둘이 됐다** — 옛 로케일 화면의 대기 Alert `<pre>`가 사라졌다(2026-09-22 Sources 리워크로 `locales/page.tsx` 둘이 전부 리다이렉트가 됐다). 같은 값(`base-locale:` 한 줄)은 Sources 상세가 **sans `<code>`**로 낸다.
+⚠️ **셋이었다가 하나가 됐다** — 옛 로케일 화면의 대기 Alert `<pre>`가 사라졌고(2026-09-22 Sources 리워크로 `locales/page.tsx` 둘이 전부 리다이렉트가 됐다. 같은 값 `base-locale:` 한 줄은 Sources 상세가 **sans `<code>`**로 낸다), importer가 0이던 `first-ingest-retry.tsx`(어댑터 오류의 캐럿 다이어그램)를 2026-09-24에 지웠다(audit #66).
 
 ⚠️ **목록의 정본은 `components/__tests__/surface-rules.test.ts`다** — 그 스캐너가 `components`·`app`의 `.tsx` 전수에서 `text-mono`를 세고 허용 목록 밖이면 red다. **자리를 늘리려면 위 표와 그 목록을 함께 바꾼다**(표가 "왜 남았나"를, 목록이 "지금 몇이나"를 든다). 같은 파일이 §6.3의 `underline` 0건도 함께 센다 — 둘 다 값은 맞고 글꼴·장식만 어긋나는 부류라 렌더 테스트가 green인 채 회귀했다(2026-09-22 Sources 셋 · 2026-09-21 설정 하나).
 
