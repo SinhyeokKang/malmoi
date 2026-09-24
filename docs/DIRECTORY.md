@@ -498,6 +498,8 @@ lib/
                         httpStatus · isUniqueViolation — 흩어진 사본이 셋·넷이던 판정
   compare.ts            ⚠️ 잎. compareCodeUnits — 결정적 정렬 전부의 `<` 비교(localeCompare 금지)
   utc-time.ts           ⚠️ 잎. 절대 시각의 UTC 표기 하나(`2026-09-10 12:00 UTC`) — Logs·Publish가 같이 쓴다
+  url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
+                        Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
   env.ts db.ts githash.ts utils.ts relative-time.ts tone.ts
 ```
 
