@@ -107,7 +107,8 @@
 | 초대·멤버·보관·프로젝트 생성·온보딩 | **Server Action** (`app/(edit)/projects/actions.ts` 등) | 편집 UI |
 | 기준 로케일 선언, 소스 상세 조회 | **Server Action** (`app/(edit)/projects/[slug]/sources/actions.ts`) | 편집 UI — `updateBaseLocale`이 `Project`→`TranslationSurface` 잠금과 같은 트랜잭션의 `ProjectEvent`를 든다 |
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
-| Publish 미리보기 | **Server Action** (`app/(edit)/publish-actions.ts`) | 편집 UI — **읽기만 한다.** 그래서 `revalidatePath`를 부르지 않는 유일한 Action이다 |
+| Publish 미리보기 | **Server Action** (`app/(edit)/publish-actions.ts`) | 편집 UI — **읽기만 한다.** 그래서 `revalidatePath`를 부르지 않는다 |
+| 읽기 전용 조회 — Revert 미리보기(`previewTranslationRevert`), 키 목록 다음 페이지(`loadMoreTranslationKeys`) | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI — Publish 미리보기와 같이 **`revalidatePath`를 부르지 않는다.** 인증·인가·readiness는 쓰기 Action과 같은 판정을 지난다. More가 Action인 이유는 cursor를 주소에 싣지 않으려는 것이다(audit-ux #19) |
 | `/api/push` | Route Handler | GitHub Actions — Bearer가 **그 프로젝트의 토큰 원문**이다 |
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
 | `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) |
