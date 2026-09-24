@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Dialog as Primitive } from "radix-ui";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { m } from "@/lib/i18n";
 
@@ -22,6 +22,12 @@ import { m } from "@/lib/i18n";
  * ⚠️ **닫으면 `event`만 뺀다** — 목록의 필터·검색·커서는 그대로다(결정 15). 스크롤은 라우터가
  * 같은 페이지 안의 이동으로 보존한다.
  *
+ * ⚠️ **닫기는 로컬이 먼저고 URL이 뒤따른다** (audit-ux #9). 전엔 `open`이 늘 true인 제어형이라 Esc·×가
+ * `router.push`의 전체 재조회(Home이면 GitHub probe까지)를 기다렸다. 닫을 결과를 서버에 물을 것이 없으니
+ * 먼저 닫고, 주소는 **`replace`**로 맞춘다 — `push`면 뒤로가기가 방금 닫은 상세를 다시 열었다.
+ * 닫힌 표시는 **대상 id에 묶는다**: 서버가 옛 상세를 아직 그리는 사이 다른 행을 누르면 같은 인스턴스가
+ * 새 대상으로 다시 렌더되는데, 불리언이면 그 상세가 닫힌 채로 떴다.
+ *
  * ⚠️ **닫은 뒤 포커스가 눌렀던 행으로 돌아간다.** Radix의 기본 복귀 대상은 트리거인데 여기엔
  * 트리거가 없다(링크 내비게이션으로 열렸다) — 행이 남아 있으면 그 행, 없으면 화면 제목이다.
  */
@@ -36,11 +42,14 @@ export function EventDialog({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const [closedFor, setClosedFor] = useState<string | null>(null);
   return (
     <Primitive.Root
-      open
+      open={closedFor !== returnFocusId}
       onOpenChange={(next) => {
-        if (!next) router.push(closeHref, { scroll: false });
+        if (next) return;
+        setClosedFor(returnFocusId);
+        router.replace(closeHref, { scroll: false });
       }}
     >
       <Primitive.Portal>

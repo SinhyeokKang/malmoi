@@ -1,7 +1,7 @@
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 import { EventGlyph } from "@/components/logs/glyph";
+import { RowChevron } from "@/components/logs/row-chevron";
 import { Badge } from "@/components/ui/badge";
 import { eventGlyph, eventSentence, eventView, eventMeta } from "@/lib/events/view";
 import type { EventRow as Row } from "@/lib/events/query";
@@ -85,7 +85,7 @@ export function EventRow({
         <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(row.occurredAt, now)}</span>
       )}
       <span className="text-muted-foreground flex shrink-0">
-        <ChevronRight className="size-4 shrink-0" aria-hidden />
+        <RowChevron />
       </span>
     </Link>
   );
