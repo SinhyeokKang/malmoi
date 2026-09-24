@@ -1371,6 +1371,9 @@ Action이고 인가는 **`translation:write`**다 — 기존 `checkOpenPullReque
 부재는 실행이 거부하므로 미리보기도 막는다** — `preview-error`(Try again)가 아니라 **전용 거부**다(`refused/base-file-missing` — 경로·브랜치를
 말하고 Try again이 없다. 다시 눌러도 같은 거부다, L3.3. OWNER는 Settings로, EDITOR는 a project owner를 가리킨다 — 2026-09-24 사용자 결정). ⚠️ **두 수가 같은 것은 pending 200행(`PREVIEW_LIMIT`) 이하에서만이다** —
 상한을 넘으면 `truncated`와 같이 읽힌다.
+⚠️ **미리보기가 말하는 수는 나가는 수다** (2026-09-24, #84 — POSTMORTEM 2026-09-17). 제목·요약·PR 줄·실행 진행 제목이 `sendable`(`total − withoutFile −
+withoutKey`, 키는 실린 셀이 하나도 없는 키를 뺀다)로 말한다 — 결과의 `delivered`·Logs와 같은 모집단이다. 전부 보류(`sendable.total = 0`)면 PR을 만들거나
+바꾸는 버튼이 없고 이유를 말한다. 결과 쪽도 같다: `no-changes` + 보류는 Logs처럼 `Not sent` 틀이다(#83 — "이미 리포에 있었다"·"nothing to send"가 거짓이 된다).
 
 ### 5.6.4 보관은 인가 union의 갈래 하나다
 
