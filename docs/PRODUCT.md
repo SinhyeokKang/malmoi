@@ -807,7 +807,8 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
   수정합니다"가 비개발자에게 가장 무거운 문장이고, 그 권한은 리포의 CI 정의를 통째로 바꿀 수 있다.
   ⚠️ **"권한을 더하면 재승인 대기 중 기존 설치의 pull이 죽는다"는 미실측이라 근거로 쓰지 않았다** —
   GitHub은 승인 전까지 옛 권한으로 계속 동작하는 것으로 알려져 있다
-- **`AuditEvent`를 만드는 시점** (ARCHITECTURE §5) — "누가 언제 뭘 했는지"를 못 찾는 상황이 실제로 나올 때
+- ~~**`AuditEvent`를 만드는 시점**~~ → ✅ **`ProjectEvent`로 만들었다** (2026-09-20, logs-rework — ARCHITECTURE §5.7).
+  "누가 언제 뭘 했는지"는 Logs 화면이 답한다. 사건은 지우지 않고 보존 기간도 두지 않는다
 - ~~**표면 여러 개의 Actions 배선**~~ → ✅ **확정했다** (2026-09-14, multi-surface B — §7.1). 한 Project의
   여러 step이 `PUSH_TOKEN` 하나를 공유하고 각각 `surface`·`path-template`을 명시한다. concurrency는
   프로젝트 단위다. 기존에 같은 리포를 가리키던 여러 Project는 자동 통합하지 않으며, 그 상태를 유지하면
