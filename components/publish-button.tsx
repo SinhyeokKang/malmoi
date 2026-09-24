@@ -34,6 +34,8 @@ export function usePublish(slug: string) {
   const [result, setResult] = useState<PublishResultState | null>(null);
   /** ⚠️ **진행 중인 실행의 건수는 `result`에서 못 읽는다** — 그 값은 아직 **직전** 실행의 것이다. */
   const [runTotal, setRunTotal] = useState(0);
+  /** 누른 확정 버튼의 라벨 — 진행 모달이 같은 자리에 그 라벨로 스피너를 세운다 (audit-ux D1: 도는 동안 라벨이 바뀌지 않는다). */
+  const [runLabel, setRunLabel] = useState("");
   const current = useRef(state); current.current = state;
   const running = useRef(false);
   const generation = useRef(0);
@@ -41,7 +43,7 @@ export function usePublish(slug: string) {
   const triggerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     host.current++; generation.current++; running.current = false;
-    setOpen(false); setPending(false); setResult(null); setRunTotal(0); setState({ kind: "preview-loading" });
+    setOpen(false); setPending(false); setResult(null); setRunTotal(0); setRunLabel(""); setState({ kind: "preview-loading" });
     return () => { host.current++; generation.current++; };
   }, [slug]);
   function close() { generation.current++; setOpen(false); }
@@ -64,13 +66,13 @@ export function usePublish(slug: string) {
       if (request === generation.current) { current.current = { kind: "preview-error" }; setState(current.current); }
     }
   }
-  async function confirm() {
+  async function confirm(label: string) {
     if (running.current || current.current.kind !== "preview-ready") return;
     const owner = host.current;
     // 진행 제목도 나가는 수로 말한다(#84) — 보류만 있으면 애초에 실행 버튼이 없다.
     const total = current.current.preview.sendable.total;
     if (total === 0) return;
-    running.current = true; generation.current++; setPending(true); setRunTotal(total);
+    running.current = true; generation.current++; setPending(true); setRunTotal(total); setRunLabel(label);
     current.current = { kind: "running" }; setState(current.current);
     const next: PullOutcome = await triggerPullAction(slug).catch(() => ({ status: "failed", error: "unavailable", retryable: true, delivery: "unknown" }));
     if (owner !== host.current) return;
@@ -84,7 +86,7 @@ export function usePublish(slug: string) {
   }
   function showResult() { if (result) { generation.current++; setState({ kind: "result", outcome: result.outcome }); setOpen(true); } }
   function launch() { if (running.current) { setState({ kind: "running" }); setOpen(true); } else void preview(); }
-  return { state, open, pending, result, runTotal, triggerRef, close, preview, confirm, showResult, launch };
+  return { state, open, pending, result, runTotal, runLabel, triggerRef, close, preview, confirm, showResult, launch };
 }
 export type PublishController = ReturnType<typeof usePublish>;
 
@@ -434,7 +436,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         description = open === null ? p.same.nothingBody : p.same.closesBody(open.number, repo.branch);
         // ⚠️ **파일 수를 빼고 말한다** (#94) — `groups`는 편집이 사는 파일이지 바뀌는 파일이 아니다. 실행·Logs는 `0 files`다.
         footer = p.fileSummary(sending, sendingKeys);
-        actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm()}>{open === null ? p.same.action : p.same.closeAction(open.number)}</Button>;
+        const confirmLabel = open === null ? p.same.action : p.same.closeAction(open.number);
+        actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm(confirmLabel)}>{confirmLabel}</Button>;
         body = <PreviewTable preview={data} />;
         break;
       }
@@ -442,7 +445,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       description = `${partial ? p.previewIntroPartial(label) : p.previewIntro(label)} ${p.previewCounts(sending, sendingKeys)}`;
       // ⚠️ **상한을 넘으면 파일 수를 빼고 말한다** — `total`·`keys`는 미발송 전체인데 `groups`는 실린 200행뿐이라, 셋을 나란히 두면 한 줄 안에서 모집단이 갈린다.
       footer = data.truncated > 0 ? p.fileSummary(sending, sendingKeys) : p.previewSummary(sending, sendingKeys, data.groups.length);
-      actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm()}>{open ? p.replacePr(open.number) : p.openPr}</Button>;
+      const confirmLabel = open ? p.replacePr(open.number) : p.openPr;
+      actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm(confirmLabel)}>{confirmLabel}</Button>;
       body = <>
         {/* ⚠️ **삼상태를 `null`로 접지 않는다** — "없다"와 "모른다"는 다른 줄이다. 줄은 조회 전에도 선다. */}
         {open === undefined
@@ -457,8 +461,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
     case "running":
       panel = PANEL.running; inner = false;
       title = p.progressTitle(runTotal || count); description = p.progressDescription; footer = p.leave;
-      // D1 — 라벨은 확정 버튼의 것 그대로이고 스피너만 선다.
-      actions = <Button variant="primary" size="lg" loading>{p.button}</Button>;
+      // D1 — 라벨은 누른 확정 버튼의 것 그대로이고 스피너만 선다. 닫았다 다시 연 모달도 같은 라벨이다.
+      actions = <Button variant="primary" size="lg" loading>{publish.runLabel || p.button}</Button>;
       body = <Progress branch={repo.syncBranch} />;
       break;
     case "result": {
