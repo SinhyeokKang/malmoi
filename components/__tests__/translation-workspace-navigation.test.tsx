@@ -80,7 +80,7 @@ it("다른 키로 가는 동안 옛 키의 칸은 읽기 전용이고, 새 상�
   await user.type(area(container, "zh")!, "空");
   expect(area(container, "zh")?.value).toBe("");
   await arrive(b);
-  expect(container.querySelector("h2, [data-detail-key]")?.textContent ?? container.textContent).toContain("common.k2");
+  expect(container.textContent).toContain("common.k2");
   expect(area(container, "zh")?.readOnly).toBe(false);
   await user.type(area(container, "zh")!, "空");
   expect(area(container, "zh")?.value).toBe("空");
@@ -115,7 +115,8 @@ it("트리 전환 중에도 옛 키의 칸은 읽기 전용이고, 첫 키가 �
   const second = gate();
   respond = href => href.includes("key=")
     ? { next: { ...initial, query: { ...initial.query, key: "k2" }, detail: detailOf("k2") }, gate: second }
-    : { next: { ...initial, query: { ...initial.query, key: undefined, keySurface: undefined }, detail: null }, gate: first };
+    // 목록은 응답마다 새 객체다(서버 렌더) — 같은 객체를 넘기면 후속 선택 effect가 안 돈다.
+    : { next: { ...initial, query: { ...initial.query, key: undefined, keySurface: undefined }, list: { ...initial.list }, detail: null }, gate: first };
   const { container } = await render(<Harness initial={initial} />);
   const node = [...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.includes("common") && !b.closest("[data-key-row]"));
   await user.click(node!);
@@ -141,6 +142,7 @@ it("응답 전에 원래 조건으로 되돌리면 편집기가 다시 쓸 수 �
   expect(area(container, "zh")?.readOnly).toBe(true);
   await user.clear(search);
   await user.type(search, "{Enter}");
+  await act(async () => {});
   expect(mocks.push).toHaveBeenCalledTimes(2);
   expect(area(container, "zh")?.readOnly).toBe(false);
 });

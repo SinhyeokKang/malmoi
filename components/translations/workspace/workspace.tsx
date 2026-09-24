@@ -2,7 +2,7 @@
 
 import { ArrowDownToLine, Languages, Loader2, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
@@ -169,10 +169,18 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     }
   }, [keyId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (keyId === undefined || restoredFor.current !== keyId) return;
+    // 키가 바뀐 커밋의 `draft`는 아직 옛 키의 것이다 — 그대로 쓰면 옛 입력이 새 키의 사본으로 적힌다.
+    if (keyId === undefined || restoredFor.current !== keyId || draft.keyId !== keyId) return;
     try {
       const plan = planDraftRecovery(draft);
-      if (plan.kind === "clear") window.sessionStorage.removeItem(storageKey(userId, slug));
+      /*
+        ⚠️ **다른 키의 사본은 지우지 않는다** (audit-ux #1 · D-U1a) — 확인창을 거치지 않은 교체(깨끗할 때 누른 뒤로가기 뒤의 입력 등)가
+        남긴 사본이 돌아왔을 때 되살릴 마지막 그물이다. 명시적 폐기는 `discardThen`이 따로 지운다.
+      */
+      if (plan.kind === "clear") {
+        const raw = window.sessionStorage.getItem(storageKey(userId, slug));
+        if (raw === null || (JSON.parse(raw) as { keyId?: unknown }).keyId === keyId) window.sessionStorage.removeItem(storageKey(userId, slug));
+      }
       else window.sessionStorage.setItem(storageKey(userId, slug), JSON.stringify({ surfaceSlug: detailSurface, keyId, saved: plan.saved, draft: plan.draft }));
     } catch {
       // 위와 같다.
@@ -203,17 +211,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /*
-    ⚠️ **이동이 대기 중인 목적지** (audit-ux #1) — 확인창 판정은 클릭 시점의 draft로 끝나는데 응답 전까지 옛 키의 칸이 그대로 서
-    있어, 거기 친 입력이 새 상세가 오는 순간 확인 없이 교체됐다(복구 사본까지 지워진다). 대기 중엔 상세를 읽기 전용으로 둔다.
-    `keyId`는 키 선택만 안다(트리·필터는 목적지 키를 모른다). 응답이 오면 풀리고, 아래의 후속 `replace`가 다시 건다 — 그래서
-    이 effect가 그것보다 **먼저** 선언돼야 한다.
+    ⚠️ **이동이 대기 중이면 상세가 읽기 전용이다** (audit-ux #1) — 확인창 판정은 클릭 시점의 draft로 끝나는데 응답 전까지 옛 키의
+    칸이 그대로 서 있어, 거기 친 입력이 새 상세가 오는 순간 확인 없이 교체됐다. 대기는 transition이 센다 — 응답이 커밋되거나
+    다음 이동이 앞 이동을 대신하면 풀리므로 해제 계기를 따로 두지 않는다.
   */
-  const [pendingTarget, setPendingTarget] = useState<{ href: string; keyId: string | null } | null>(null);
-  useEffect(() => setPendingTarget(null), [detail, list]);
-  function navigate(href: string, how: "push" | "replace" = "push", keyId: string | null = null) {
-    // 지금 주소로 가는 이동은 응답이 안 올 수 있다 — 걸면 풀릴 계기가 없다.
-    if (href !== translationsHref(slug, routeSurfaceSlug, query)) setPendingTarget({ href, keyId });
-    router[how](href);
+  const [navigating, startNavigation] = useTransition();
+  function navigate(href: string, how: "push" | "replace" = "push") {
+    startNavigation(() => router[how](href));
   }
 
   // 트리 전환은 새 목록의 첫 키를 연다. 필터·검색은 선택이 결과 밖이면 상세를 비운다 — 다른 키를 자동 선택하지 않는다.
@@ -222,7 +226,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     const reason = pendingSelection.current;
     pendingSelection.current = null;
     if (reason === "tree" && query.key === undefined && list.rows[0] !== undefined) {
-      navigate(translationsHref(slug, routeSurfaceSlug, { ...query, key: list.rows[0].keyId, keySurface: list.rows[0].surfaceSlug }), "replace", list.rows[0].keyId);
+      navigate(translationsHref(slug, routeSurfaceSlug, { ...query, key: list.rows[0].keyId, keySurface: list.rows[0].surfaceSlug }), "replace");
     } else if (reason === "filter" && query.key !== undefined && list.selectedInResult === false) {
       const next: TranslationQuery = { ...query };
       delete next.key;
@@ -244,12 +248,12 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     else if (plan.action === "confirm" && plan.dialog === "discard") setDialog({ kind: "discard", locales: plan.locales, proceed: discardThen(proceed) });
     else if (plan.action === "confirm") setDialog({ kind: "publish", locales: plan.locales });
   }
-  const go = (href: string, keyId: string) => () => navigate(href, "push", keyId);
+  const go = (href: string) => () => navigate(href);
   const withQuery = (next: TranslationQuery, surface = routeSurfaceSlug) => translationsHref(slug, surface, next);
   useLeaveGuard(dirty.length > 0, proceed => setDialog({ kind: "discard", locales: dirty, proceed: discardThen(proceed) }));
 
   function selectRow(row: TranslationListRow) {
-    attempt({ kind: "select-key", target: row.keyId }, go(withQuery({ ...query, key: row.keyId, keySurface: row.surfaceSlug }), row.keyId));
+    attempt({ kind: "select-key", target: row.keyId }, go(withQuery({ ...query, key: row.keyId, keySurface: row.surfaceSlug })));
   }
   function selectTree(surface: string, ns: string) {
     const next = treeQuery(query, ns);
@@ -377,7 +381,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
    */
   const [syncOutcome, setSyncOutcome] = useState<RepositoryImportOutcome | null>(null);
   /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
-  const openSync = () => { if (!publish.pending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
+  const openSync = () => { if (!publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
 
   const pendingLocales = detail?.locales.filter(l => l.pending && !revertedLocales.has(l.code)).map(l => l.code) ?? [];
   // 사유 문장("…while a save, publish, or sync is running")이 말하는 넷을 그대로 본다 (audit-ux #3) — 전엔 저장·Revert뿐이라 서버의 `busy`로만 멈췄다.
@@ -560,7 +564,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                 onReset={code => dispatch({ type: "reset", locale: code })}
                 onSave={() => void save()}
                 copyHref={withQuery({ ...DEFAULT_TRANSLATION_QUERY, ns: detail.key.namespace, scope: "namespace", key: detail.key.id, keySurface: detail.key.surfaceSlug }, detail.key.surfaceSlug)}
-                readOnly={pendingTarget !== null || status?.kind === "archived" || status?.kind === "lost-access"}
+                readOnly={navigating || status?.kind === "archived" || status?.kind === "lost-access"}
                 invalid={status?.kind === "cannot-clear" ? { locales: status.locales, describedBy: footerAlertId } : undefined}
                 footer={
                   <Footer
