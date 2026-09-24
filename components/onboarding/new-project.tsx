@@ -107,6 +107,17 @@ export function NewProject({
   const [slug, setSlug] = useState("");
   const [baseLocale, setBaseLocale] = useState("");
   const [slugTaken, setSlugTaken] = useState(false);
+  /**
+   * `slug-taken` 뒤 포커스를 주소 입력으로 (사전 "예외 G", launch-readiness L2.6). ⚠️ **잠금이 풀린 커밋에서 옮긴다** —
+   * 거부가 온 시점엔 아직 `pending`이라 입력이 `disabled`이고 `focus()`가 조용히 무시된다. 그 사이 포커스는
+   * 꺼진 [Create project]에서 `body`로 떨어져 있다.
+   */
+  const focusSlug = useRef(false);
+  useEffect(() => {
+    if (!focusSlug.current || pending || !slugTaken) return;
+    focusSlug.current = false;
+    document.getElementById("project-slug")?.focus();
+  }, [pending, slugTaken]);
 
   // ④ 결과
   const [created, setCreated] = useState<Extract<CreateProjectResult, { ok: true }> | undefined>(undefined);
@@ -396,6 +407,7 @@ export function NewProject({
       if (!result.ok) {
         if (isAccessLost(result.error)) setAccessLost(result.error);
         if (result.error === "slug-taken") {
+          focusSlug.current = true;
           setSlugTaken(true);
           return;
         }

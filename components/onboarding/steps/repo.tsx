@@ -1,6 +1,7 @@
 "use client";
 
-import { Clock, FolderGit2, GitBranch, Link2, Search } from "lucide-react";
+import { Archive, Clock, FolderGit2, GitBranch, Link2, Search } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
@@ -16,7 +17,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 import type { BranchChoice } from "@/lib/onboarding/branch";
 import type { RepoOption } from "@/lib/onboarding/types";
+import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
 import { relativeTime } from "@/lib/relative-time";
+import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 import { failureText } from "../failure";
@@ -422,6 +425,24 @@ function Blocked({
       {label}
     </Button>
   );
+
+  // ⚠️ **연결 상태보다 먼저다** — 상한이면 설치·연결을 권해도 끝에서 막힌다 (`listConnectableRepos`가 GitHub 전에 판정한다).
+  if (error === "limit-reached") {
+    return (
+      <BlockShell
+        icon={Archive}
+        title={m.newProject.empty.limit.title}
+        description={m.newProject.empty.limit.description(PROJECT_LIMIT)}
+        action={
+          <Link href={routes.projects()} className={cn(buttonClass({ variant: "primary" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none")}>
+            {m.newProject.empty.limit.action}
+          </Link>
+        }
+        secondary={null}
+        error={null}
+      />
+    );
+  }
 
   if ((error === "no-installations" || error === "no-repos") && pending) {
     return (

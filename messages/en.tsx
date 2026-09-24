@@ -1579,7 +1579,12 @@ export const en = {
       },
       result: {
         title: "malmoi is ready",
-        description: "Add the push token to the repository so CI can send translations back.",
+        /**
+         * ⚠️ **둘째 문장이 야간 PR 공지다** (launch-readiness L2.9) — 전에는 온보딩 어디에도 없어 첫 PR이 예고 없이 왔다.
+         * "every night"는 참이다: `vercel.json` 하루 1회(Hobby) · 프로덕션 배포에서만 · 대상은 `selectPullTargets`가
+         * 고르고 GitHub에 닿는 것은 미전달 편집이 있는 프로젝트뿐이다(PRODUCT §7.6).
+         */
+        description: "Add the push token to the repository so CI can send translations back. Every night, translations not yet sent go to the repository as a pull request.",
       },
     },
 
@@ -1619,6 +1624,15 @@ export const en = {
         still: "Still waiting for approval.",
         /** 다른 설치로 리포가 이미 보일 때 목록 위 한 줄 — 위 설명과 같은 사실이다. */
         info: "An organization owner still has to approve your install request.",
+      },
+      /**
+       * 프로젝트 상한 (launch-readiness L2.6). ⚠️ **[New project]를 끄지 않고 여기서 말한다** — 사유 없는 `disabled`는
+       * 0건이어야 하고(DESIGN §6.646), 상한은 ③ 끝이 아니라 들어오는 순간 아는 값이다. 보관이 자리를 비운다.
+       */
+      limit: {
+        title: "Project limit reached",
+        description: (limit: number): string => `You own ${limit.toLocaleString("en-US")} projects, the most you can have. Archive one to make room.`,
+        action: "Open projects",
       },
       reconnect: {
         title: "Reconnect GitHub",
@@ -2473,7 +2487,11 @@ export const en = {
       open: "Invite member",
       /** ⚠️ **여러 명이다** (핸드오프 `1a`) — 한 폼이 여러 행을 보낸다. */
       title: "Invite members",
-      description: "Send invitations by email and choose a role for each person.",
+      /**
+       * ⚠️ **둘째 문장이 수락 조건이다** (launch-readiness L2.8) — 수락은 로그인 계정의 주소와 대조하고 GitHub은
+       * primary 주소 하나만 쓴다(`lib/auth/email.ts`). 거부 문구는 초대 주소를 일부러 안 밝히므로 행동할 수 있는 쪽은 초대자다.
+       */
+      description: "Send invitations by email and choose a role for each person. Use the address they sign in with — for GitHub, their primary email.",
       /** 열 머리 둘 — 빈 행 하나로 열리면 두 번째 컨트롤이 무엇인지 값만으로는 안 읽힌다. */
       columns: { email: "Email", role: "Role" },
       placeholder: "name@company.com",
@@ -2960,9 +2978,11 @@ export const en = {
       "no-installations": "Your GitHub account is connected. Install the malmoi GitHub App on your personal account or organization to choose repositories.",
       "no-repos": "Your GitHub account is connected, but no repositories are available. Choose repositories the malmoi GitHub App can access in GitHub installation settings.",
       // 이유를 말한다 — 수동 지정으로 가는 근거다 (로케일이 하나뿐인 리포는 붙일 수 없다).
-      "no-candidates": "We couldn't find translation files. malmoi needs translation files in 2 or more languages.",
+      // ⚠️ **다음 행동까지 말한다** (launch-readiness L2.7) — 로케일 하나인 리포 주인이 할 수 있는 일은 둘째 파일뿐이다.
+      "no-candidates": "We couldn't find translation files. malmoi needs translation files in 2 or more languages — if this repository has only one, add a file for a second language and try again.",
       // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.
-      "tree-truncated": "This repository has too many files to search. Setting the path yourself hits the same limit.",
+      // ⚠️ **막다른 길임을 끝에 말한다** (L2.7) — 안 말하면 사용자가 같은 리포로 다시 시도한다.
+      "tree-truncated": "This repository has too many files to search, and setting the path yourself hits the same limit. malmoi can't connect repositories this large yet.",
       "base-branch-missing": "We can't read the default branch. Check that the repository has commits.",
       // ⚠️ **라벨이라 문장이 아니다** — 후보 줄의 "3 languages · 4 keys" 자리에 그대로 들어간다.
       "key-count-failed": "Key count unavailable",

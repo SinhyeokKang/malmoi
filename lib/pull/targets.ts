@@ -68,6 +68,14 @@ export function selectPullTargets(
 export const PULL_BATCH_LIMIT = 50;
 
 /**
+ * 한 번의 cron이 **새 프로젝트를 시작할 수 있는** 시간 (launch-readiness L2.9). 라우트의 `maxDuration = 60`보다
+ * 작아야 한다 — 그 값에 닿으면 함수가 통째로 죽어 요약 로그와 응답이 **하나도** 안 남는다(이미 돈 프로젝트의
+ * 결과까지). 판정은 루프 머리라 시작한 프로젝트는 끝까지 돌고, 남은 15초가 그 마지막 하나와 요약의 몫이다.
+ * 넘긴 프로젝트는 `unprocessed`에 더해지고 다음 밤 `selectPullTargets`의 정렬이 앞으로 가져온다.
+ */
+export const PULL_TIME_BUDGET_MS = 45_000;
+
+/**
  * cron 응답의 항목 하나. **계약을 타입으로 든다** — `unknown[]`이면 `slug`가 스프레드에 덮이거나
  * 실패 항목의 모양이 바뀌어도 컴파일러가 침묵한다 (POSTMORTEM 2026-08-31: 외부 계약을 리터럴로
  * 조립했다가 필수 필드가 늘어도 조용했다).
