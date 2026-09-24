@@ -15,7 +15,7 @@ import {
 } from "../view";
 
 /**
- * Logs 행의 순수 판정 (logs-rework design §6). `syncRunView`와 같은 형이다 —
+ * Logs 행의 순수 판정 (logs-rework design §6).
  * 화면이 `kind`로 삼항을 엮으면 갈래가 JSX 안에 흩어지고 그 자리에는 누락을 잡는 장치가 없다.
  */
 
