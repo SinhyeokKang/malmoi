@@ -2472,3 +2472,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: `failed`가 `read.errors.length`를 통째로 셌다. 어댑터 오류 코드가 "파일을 못 읽었다"와 "malmoi가 일부러 안 다루는 항목(코드의 식·참조)"을 같은 배열에 싣는데, 소비자 쪽에 둘을 가르는 판정이 없었다. 수술적 writer는 그 항목을 파일에 그대로 남겨 번역을 하나도 잃지 않는다 — 실패로 셀 근거가 없었다.
 - **그물**: 놓친 것 — 단위 테스트의 적재 픽스처가 전부 JSON이라 비리터럴 갈래를 밟지 않았다. 잡은 것 — QA5 실물 검증(폐기용 리포에 ts-dict 비리터럴을 심음). 재현: `lib/onboarding/__tests__/ingest.test.ts`("ts-dict의 비리터럴 값은 failed가 아니라 unmanaged", 대조: 다운로드 실패·json 숫자 값은 여전히 failed) · `lib/adapters/__tests__/error-kind.test.ts`(코드별 표) · `components/__tests__/unmanaged-entries.test.tsx`(Home Sync 결과가 success 톤 + 안내 줄).
 - **재발 방지**: 어댑터 오류 코드를 **세는** 코드는 `adapterErrorKind`를 지난다 — `rg -n 'errors\.length' lib/onboarding lib/import lib/surfaces lib/push -g '!**/__tests__/**'`로 소비자를 전수로 본다(2026-09-24: 남은 것은 `prepareFirstSnapshot`의 실패 목록 길이와 `surface.ts`의 실패 목록 길이 — 둘 다 거른 뒤다). 새 코드를 늘리면 `ERROR_KIND`의 `satisfies Record`가 컴파일 에러로 판정을 요구한다. ⚠️ 이미 `partial-import`가 찍힌 표면은 다음 적재까지 그대로다.
+
+### 2026-09-24 — chrome `"placeholders": null`이 push→pull 왕복에서 사라졌다 (Prisma가 JSON null과 SQL NULL을 같게 읽는다)
+
+- **영역**: `lib/pull/load.ts` · `lib/push/apply.ts` · `Translation.placeholders`(Json?)
+- **증상**: `_locales/*/messages.json`의 엔트리가 `"placeholders": null`을 들고 있으면 값 편집 0건인 Publish가 그 줄을 지우는 diff를 냈다. 값이 아니라 표현이 깨지는 부류라 왕복 의미 게이트가 원리적으로 못 본다(ARCHITECTURE §1 "placeholders는 그대로 왕복한다").
+- **근본 원인**: push는 `JSON.stringify(null)` → `'null'::jsonb`로 **JSON null을 정확히 적재**했다. 그런데 Prisma는 Json 컬럼을 읽을 때 SQL NULL(필드 부재)과 JSON null을 **둘 다 JS `null`로** 준다. `load.ts`가 `null`을 부재로 접어(`t.placeholders === null ? {} : …`) write가 필드를 뺐다. 쓰는 쪽과 읽는 쪽의 구별 능력이 비대칭이었다.
+- **그물**: 놓친 것 — 단위 테스트 전부(Prisma를 거치지 않거나 스텁이 `null`을 그대로 돌려준다) · 왕복 의미 게이트(값 비교다). 잡은 것 — 2026-09-24 `/audit` 정적 읽기(#52). 재현: `lib/keys/__tests__/placeholders-null.integration.ts`(실제 PG — push → `loadPullState` → render, 대조로 부재 셀이 부재로 남는지도 잰다). 고친 뒤 `load.ts`가 같은 스냅샷에서 `jsonb_typeof("placeholders") = 'null'` 좌표를 raw로 센다.
+- **재발 방지**: **"JSON null이 부재와 다른 의미"인 Json 컬럼을 Prisma로 읽으면 그 구별은 이미 사라진 뒤다** — 필요하면 raw로 `jsonb_typeof`를 본다(쓰기는 `Prisma.JsonNull`/`DbNull`로 가를 수 있지만 읽기는 못 가른다). `rg -n 'Json\?' prisma/schema.prisma`로 대상 컬럼을 본다(2026-09-24: 둘뿐이고 `placeholders`만 null에 의미가 있다 — `nestedByPath`의 null은 부재다).
