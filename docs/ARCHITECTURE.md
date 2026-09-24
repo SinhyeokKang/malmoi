@@ -2322,6 +2322,10 @@ GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" 
 
 **GitHub App 개인키는 개행이 든 PEM이다.** Vercel env에 넣으면 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 **조용히** 실패한다.
 
+#### 6.5.2 GitHub 대기 마감은 8초 하나다 (2026-09-25, audit-ux D5)
+
+**화면을 그리는 동안 GitHub을 기다리는 자리는 전부 `lib/github-wait.ts`의 `GITHUB_WAIT_MS`(8초)를 읽는다** — 목록의 원격 신호(`loadRemoteSignals`)·연결 확인(`probeRepo`)·설정의 열린 PR(`loadOpenPrUrl`). 넘기면 각자의 실패 갈래(신호 없음 · `error`→`unknown` · `undefined`)로 접고 로그 한 줄을 남긴다. 같은 원격을 기다리는 두 화면의 마감이 다르면 한쪽은 "확인할 수 없음", 다른 쪽은 아직 매달린 채로 갈린다 — 그래서 사본을 두지 않는다. 설정 화면은 그 셋을 await하지 않고 Suspense로 스트리밍하며, **App 인스턴스는 요청 사이에 남는다**(설치 토큰 캐시가 인스턴스에 붙어 있다 — `createApp`).
+
 ### 6.6 Credential 저장 경계 (2026-09-10, dev·prod 전환 완료)
 
 `refreshVerifiedEmail`은 기존 User 잠금 아래 HMAC 조회·복호화 이메일 대조 후 암호문과 lookup을 함께 갱신한다. 이미 사용 중인 주소 또는 동시 unique 충돌이면 옛 이메일·userId로 로그인을 허용하며 병합하지 않는다. 새 가입의 unique 충돌은 거부한다.
