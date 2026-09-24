@@ -229,8 +229,8 @@
   - ⏳ B7c: 코드 미변경 — 브라우저 확인 대기. 가설: `[slug]/loading.tsx`가 자기 `loading.tsx`가 없는 하위 세그먼트(members·sources·settings·translations)의 fallback도 되어 Home 골격이 뜬다. 확인되면 Home의 `page.tsx`·`loading.tsx`를 `[slug]/(home)/`로 옮겨 경계를 Home에만 건다.
 
 ### B7e 보안 하드닝(⚪)
-- [x] **#75** `next.config.ts` — CSP Report-Only · `unsafe-inline` · HSTS·Permissions-Policy 없음. **enforce 전에 `form-action`에 `accounts.google.com` 추가**(안 하면 Google 로그인이 막힌다). ✅ B7e — `form-action`에 Google · HSTS(`max-age=63072000`, preload·includeSubDomains 없음) · Permissions-Policy 추가. **CSP는 Report-Only 그대로** — enforce 전환은 런타임 콘솔 확인 뒤 사용자 결정(깨질 자리는 ARCHITECTURE 보안 헤더 절).
-- [x] **#76** `/api/push` 본문 크기 상한 없음 · `/api/push/failure`는 다 읽은 뒤 잰다. ✅ B7e — `lib/bounded-body.ts`(선언 길이는 읽기 전, chunked는 도중에). 상한 4.5MB / 4096B, 둘 다 400 `body too large`.
+- [x] **#75** `next.config.ts` — CSP Report-Only · `unsafe-inline` · HSTS·Permissions-Policy 없음. **enforce 전에 `form-action`에 `accounts.google.com` 추가**(안 하면 Google 로그인이 막힌다). ✅ B7e r1 — **CSP enforce**(사용자 판정 "보안 강하게"), 환경 셋(프로덕션 · preview=Vercel Toolbar · dev=eval·HMR)을 `lib/security-headers.ts`가 정한다 · `form-action`에 Google · HSTS `max-age=63072000; includeSubDomains; preload`(목록 제출은 오너 수동) · Permissions-Policy. ⏳ 런타임 콘솔 확인 대기.
+- [x] **#76** `/api/push` 본문 크기 상한 없음 · `/api/push/failure`는 다 읽은 뒤 잰다. ✅ B7e — `lib/bounded-body.ts`(선언 길이는 읽기 전, chunked는 도중에). 상한 4,500,000B(플랫폼 상한 이하) / 4096B, 둘 다 400 `body too large`.
 - [x] **#77** 레이트리밋 없음(업로드·토큰 회전·login-link·session-revocation·acceptInvitation). ✅ B7e — 범용 장치가 없어 코드 없음. 받아들인 위험과 재검토 조건을 ARCHITECTURE §6.06에 적었다.
 - [x] **#78** `account-connect/http.ts:33` · `session-revocation/http.ts:33` origin null 시 `secure` 규칙 갈림. ✅ B7e — callback 셋(login-link 포함)이 origin `null`이면 Auth.js를 안 부르고 실패 착지로 303(fail-closed).
 - [x] **#79** `app/invite/actions.ts:85` 보관 프로젝트 초대 수락(접근은 막힘). ✅ B7e — `archived`로 거부, 초대는 소비 안 함(복원 뒤 같은 링크가 산다). 초대 화면도 blocked.
