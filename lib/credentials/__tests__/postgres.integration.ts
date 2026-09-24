@@ -325,17 +325,12 @@ it("expired OAuth cookie cannot attach the new identity to its former user", asy
 it("personal-data consumers decrypt on the server and omit ciphertext, lookups and other projects", async () => {
   await legacy(); await convertCredentials(prisma, { mode: "backfill", ...cutover });
   const { loadMembers, loadPendingInvitations } = await import("@/lib/auth/query");
-  const { loadSyncRuns } = await import("@/lib/sync/query");
   const { loadActors } = await import("@/lib/keys/query");
-  await prisma.syncRun.create({ data: { projectId: ids.p1, trigger: "MANUAL", status: "SUCCEEDED", requestedBy: ids.u1 } });
   const members = await loadMembers(prisma, ids.p1);
   const invitations = await loadPendingInvitations(prisma, ids.p1, new Date("2026-01-01"));
-  const logs = await loadSyncRuns(prisma, ids.p1, undefined);
   expect(members[0]).toMatchObject({ name: "Alice" });
   expect(invitations[0]).toMatchObject({ invitedByName: "Alice" });
-  expect(logs.rows[0]?.requester).toMatchObject({ name: "Alice" });
-  expect((await loadSyncRuns(prisma, "another-project", undefined)).rows).toEqual([]);
-  const json = JSON.stringify({ members, invitations, logs });
+  const json = JSON.stringify({ members, invitations });
   for (const secret of ["enc:v1:", "hmac:v1:", "alice@example.com", "bob@example.com"]) expect(json).not.toContain(secret);
   expect((await loadActors(prisma, [ids.u1])).get(ids.u1)?.name).toBe("Alice");
   /**
@@ -349,7 +344,6 @@ it("personal-data consumers decrypt on the server and omit ciphertext, lookups a
   await prisma.user.update({ where: { id: ids.u1 }, data: { name: "damaged" } });
   const damaged = await loadMembers(prisma, ids.p1);
   expect(damaged.find(r => r.userId === ids.u1)).toMatchObject({ name: null, emailLabel: "Unavailable" });
-  expect((await loadSyncRuns(prisma, ids.p1, undefined)).rows[0]?.requester).toMatchObject({ name: null, emailLabel: "Unavailable" });
   // 편집자 지도에서는 **빠진다** — `actorLabel`이 그때 `updatedBy` 원문을 내므로 셀이 비지 않는다.
   expect((await loadActors(prisma, [ids.u1])).has(ids.u1)).toBe(false);
   expect(JSON.stringify(damaged)).not.toContain("enc:v1:");
@@ -357,7 +351,6 @@ it("personal-data consumers decrypt on the server and omit ciphertext, lookups a
   /** ⚠️ **키 자체가 없으면 장애다** — 행의 손상과 달리 여기서는 던져야 "전원 정보 없음"이 안 된다. */
   vi.stubEnv("PII_ENCRYPTION_KEYS", "");
   await expect(loadMembers(prisma, ids.p1)).rejects.toThrow("credential storage unavailable");
-  await expect(loadSyncRuns(prisma, ids.p1, undefined)).rejects.toThrow("credential storage unavailable");
   await expect(loadActors(prisma, [ids.u1])).rejects.toThrow("credential storage unavailable");
   vi.unstubAllEnvs();
 });

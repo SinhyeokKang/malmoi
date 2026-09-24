@@ -157,7 +157,7 @@ export async function loadEventActors(
 
 /** 저장 행 → 화면이 읽는 행. 마스킹은 **목록 전체를 한 번에** 본다. */
 function present(rows: readonly Selected[]): EventRow[] {
-  // 행 하나가 못 열려도 이력은 산다 — 키 부재만 장애로 남긴다 (`loadSyncRuns`와 같은 규칙).
+  // 행 하나가 못 열려도 이력은 산다 — 키 부재만 장애로 남긴다 (`loadMembers`와 같은 규칙).
   validatePiiReadKeys();
   const decoded = rows.map((row) => (row.actor === null ? null : readable(() => decodeUser(row.actor!))));
   const labels = maskedEmailLabels(decoded.map((user) => user?.email ?? ""));

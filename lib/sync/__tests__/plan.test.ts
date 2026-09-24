@@ -6,7 +6,6 @@ import {
   PUBLISH_MIN_INTERVAL_SECONDS,
   STALE_AFTER_SECONDS,
   SYNC_ERROR_CODES,
-  SYNC_LOG_PAGE_SIZE,
   classifySyncError,
   planSyncFinish,
   planSyncStart,
@@ -32,9 +31,8 @@ describe("상수 — 값이 아니라 관계가 계약이다", () => {
     expect(STALE_AFTER_SECONDS).toBeGreaterThan(60);
   });
 
-  it("게시 최소 간격과 로그 페이지 크기가 있다", () => {
+  it("게시 최소 간격이 있다", () => {
     expect(PUBLISH_MIN_INTERVAL_SECONDS).toBe(30);
-    expect(SYNC_LOG_PAGE_SIZE).toBe(20);
   });
 });
 

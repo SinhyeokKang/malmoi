@@ -40,12 +40,9 @@ export function isRunActive(startedAt: Date, now: Date): boolean {
   return now.getTime() - startedAt.getTime() <= STALE_AFTER_SECONDS * 1000;
 }
 
-/** `logs` 화면의 한 페이지. 서버 `?cursor=` + "Older"가 이 수로 자른다. */
-export const SYNC_LOG_PAGE_SIZE = 20;
-
 // ⚠️ **다른 두 제한은 여기 없다** — 상수는 **소비자 옆**에 두고 모음 파일을 만들지 않는다:
 // `PROJECT_LIMIT`은 `lib/onboarding/create-plan.ts`, `MEMBER_LIMIT`은 `lib/auth/invitation.ts`다.
-// 위 셋이 여기 있는 이유는 소비자가 sync 경로 안에서 여럿(게이트·껍데기·화면)이어서다.
+// 위 둘이 여기 있는 이유는 소비자가 sync 경로 안에서 여럿(게이트·껍데기)이어서다.
 
 /**
  * `SyncRun.errorCode`에 남는 값. **생산자 없는 코드는 두지 않는다** — 여기 일곱은 전부

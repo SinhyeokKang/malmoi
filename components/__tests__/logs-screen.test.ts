@@ -89,13 +89,17 @@ describe("logs — 시각과 페이지네이션", () => {
   });
 
   /**
-   * ⚠️ **한 페이지 크기를 화면이 모른다.** 자르는 것은 조회이고(`loadSyncRuns`), 화면이 숫자를
+   * ⚠️ **한 페이지 크기를 화면이 모른다.** 자르는 것은 조회이고(`loadEvents`), 화면이 숫자를
    * 다시 적으면 둘이 갈려 "Older"가 있는데 다음 페이지가 비거나 그 반대가 된다.
+   *
+   * ⚠️ **이 화면이 실제로 부르는 조회를 잰다** — 전에는 화면이 안 부르는 옛 `loadSyncRuns`의 소스를 읽어
+   * 이름만 참이었다(audit #64 · POSTMORTEM 2026-09-03 재발).
    */
-  it("페이지 크기는 조회가 `SYNC_LOG_PAGE_SIZE`로 든다 — 화면엔 그 숫자가 없다", () => {
-    expect(read("lib/sync/query.ts")).toContain("SYNC_LOG_PAGE_SIZE");
+  it("페이지 크기는 조회가 `EVENT_PAGE_SIZE`로 든다 — 화면엔 그 숫자가 없다", () => {
+    expect(src).toContain("loadEvents(");
+    expect(read("lib/events/query.ts")).toMatch(/options\.limit \?\? EVENT_PAGE_SIZE/);
     expect(src).not.toMatch(/\btake\b/);
-    expect(src).not.toContain("SYNC_LOG_PAGE_SIZE");
+    expect(src).not.toContain("EVENT_PAGE_SIZE");
   });
 });
 
@@ -110,7 +114,7 @@ describe("logs — 사유 사전", () => {
    * 아니게 되고, 그 그래프가 곧 클라이언트 번들이다 (POSTMORTEM 2026-09-07의 7.2MB).
    */
   it("`logs.reasons`의 전수 검사를 소비자가 건다", () => {
-    expect(read("lib/sync/view.ts")).toMatch(
+    expect(read("lib/events/view.ts")).toMatch(
       /satisfies\s+Record<\s*SyncErrorCode\s*\|\s*"fallback"\s*,\s*string\s*>/,
     );
   });

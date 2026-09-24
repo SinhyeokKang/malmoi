@@ -2479,8 +2479,8 @@ export const en = {
     /**
      * 복호화 실패 행 (멤버·대기 초대 공용).
      *
-     * ⚠️ **`m.common.unreadable`("Unavailable")과 갈라 둔다** — 그쪽은 표 셀 한 단어 제약을 지고
-     * `lib/sync/query.ts`가 여전히 표다. 이 화면은 행 아래 띠가 사유를 들 수 있다.
+     * ⚠️ **`m.common.unreadable`("Unavailable")과 갈라 둔다** — 그쪽은 표 셀·라벨 한 단어 제약을 지고
+     * Logs의 행위자 칸(`lib/events/query.ts`)이 여전히 그 자리다. 이 화면은 행 아래 띠가 사유를 들 수 있다.
      */
     unreadableLabel: "Couldn't be read",
     unreadableHint: "This person's name and address couldn't be decrypted. Role and join date are unaffected.",
