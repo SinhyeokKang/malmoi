@@ -252,6 +252,9 @@ components/
                         ⚠️ 본문의 갈래 넷은 lib/projects/list.ts의 listBody가 정한다 — 전엔
                         hasProjects·질의·건수가 JSX 안에서 섞여 판정됐다. 그릇은 카드이고 그룹
                         헤더가 그 안에 산다(DESIGN §6.63)
+  commit-wait.ts        useCommitWait — Action이 풀린 뒤 재검증 트리가 커밋될 때까지 교차 잠금을 잇는다(malmoi#103,
+                        ARCHITECTURE §3). ⚠️ 서버 prop의 **식별자**를 본다 — 값은 재검증 뒤에도 같을 수 있다
+                        ⚠️ 상한 10 s. 소비자는 Home Sync · 번역 화면 Sync · usePublish · Revert 넷
   publish-button.tsx    Publish 버튼 + 모달 갈래 열하나(DESIGN §6.646). ⚠️ router.refresh()를 부르지 않는다 —
                         Action의 revalidatePath가 새 트리를 싣고 온다 ⚠️ **usePublish를 무조건 렌더되는 호스트가 든다** — 번역 화면은
                         TranslationWorkspace, Home은 HomeNotices다. 조건부 자리에 두면 재검증이 방금
