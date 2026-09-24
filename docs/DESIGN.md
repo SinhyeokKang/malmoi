@@ -1430,7 +1430,7 @@ spec이 더한 것이었는데 그 근거가 정본 어디에도 없었다(featu
 
 - 카드 머리 보조문 셋(`Updated by imports from your repository.` · `The base language decides which keys exist in this source.` · `Languages come from the repository…`)
 - 목록 카드 머리의 `github` 글리프 14 — ⚠️ **`lucide-react` 1.37이 브랜드 아이콘을 뺐다.** 캔버스가 무는
-  lucide 0.462의 path를 `components/sources/github-mark.tsx`에 인라인했고 **그 파일이 이 리포의 유일한 브랜드 마크**다.
+  lucide 0.462의 path를 `components/sources/github-mark.tsx`에 인라인했고 **그 파일이 이 리포의 유일한 브랜드 마크**다. 소비자는 **둘**이다 — 이 머리와 `/projects` 목록 행의 메타 줄(리포 앞, 같은 14 · 색 상속, 2026-09-25 사용자). 새 자리도 여기서 가져다 쓴다.
 - 행 안 순서 `상태 → [Open translations] → chevron` — chevron을 행 버튼 **밖 형제**로 뺐다(클릭 영역이 그만큼 줄었다).
 - 좁은 폭(`@container/panel`, 1016 이하): 행이 `items-start`, 상태가 셋째 줄, 헤더 설명 숨김, chevron `pt-2`.
 - 모달: `[Open translations]`가 **머리 보조 행동**이고(`modal.tsx`에 `headerAction` 추가 — 값이 없으면 안 그려
