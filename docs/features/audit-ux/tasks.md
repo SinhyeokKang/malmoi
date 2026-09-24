@@ -177,13 +177,19 @@
 **왜 한 배치인가**: 공통 원인 3이다. pending이 화면 갱신보다 먼저 끝나거나, 실패가 화면 전체를 오류로 넘긴다. 기준 형은 이미 리포 안에 있다 — `general-card`·`repository-form`·`profile-picture`·`archive-card`는 transition pending이 재검증 커밋까지 유지되고, 끝난 뒤 `useLandAfter`로 착지한다.
 
 **항목**
-- [ ] **#12** 🟡 action이 이미 `revalidatePath(…, "layout")`를 부르는데(`app/(edit)/actions.ts:114,179` · `app/(edit)/projects/actions.ts:1409,1453,1836`) 클라이언트가 `router.refresh()`를 또 부른다 — `components/home/sync-button.tsx:120` · `components/publish-button.tsx:80` · `workspace.tsx:335` · `components/sources/sources-screen.tsx:131,145`. 결과 문구가 먼저 뜨고, 그 뒤 transition 밖에서 두 번째 전체 렌더가 표시 없이 돈다. Sources는 `load()` 직접 호출에 refresh로 바뀐 `data` effect(`:61`)까지 겹쳐 `loadSourceDetail`이 세 번 돈다. `sources-screen.tsx:131`은 모달을 닫고 결과 배너를 먼저 띄우는데, 목록은 refresh 뒤에야 바뀐다.
+- [x] **#12** 🟡 action이 이미 `revalidatePath(…, "layout")`를 부르는데(`app/(edit)/actions.ts:114,179` · `app/(edit)/projects/actions.ts:1409,1453,1836`) 클라이언트가 `router.refresh()`를 또 부른다 — `components/home/sync-button.tsx:120` · `components/publish-button.tsx:80` · `workspace.tsx:335` · `components/sources/sources-screen.tsx:131,145`. 결과 문구가 먼저 뜨고, 그 뒤 transition 밖에서 두 번째 전체 렌더가 표시 없이 돈다. Sources는 `load()` 직접 호출에 refresh로 바뀐 `data` effect(`:61`)까지 겹쳐 `loadSourceDetail`이 세 번 돈다. `sources-screen.tsx:131`은 모달을 닫고 결과 배너를 먼저 띄우는데, 목록은 refresh 뒤에야 바뀐다.
   - 방향: 중복 `router.refresh()`를 지운다. 꼭 남아야 하는 곳은 `startTransition`으로 감싸 pending에 포함한다. ⚠️ audit B3 #5·#11("실패에도 refresh")에서 고친 `outcome.ok` 가드를 되돌리지 않는다(POSTMORTEM 2026-09-08).
-- [ ] **#13** 🟡 `components/members/member-list.tsx:78`, `:100` · `components/members/pending-invitations.tsx:64`, `:96-103` · `components/members/invite-modal.tsx:220-222` — `[, startTransition]`으로 `isPending`을 버리고 `await` 뒤 `setPendingId(null)`로 잠금을 푼다. 목록 커밋 전에 곧 사라질 행의 [Remove]가 잠깐 다시 켜지고, 역할 Select가 옛 역할로 보인다. Resend·초대 완료 toast가 목록보다 먼저 뜬다.
+- [x] **#13** 🟡 `components/members/member-list.tsx:78`, `:100` · `components/members/pending-invitations.tsx:64`, `:96-103` · `components/members/invite-modal.tsx:220-222` — `[, startTransition]`으로 `isPending`을 버리고 `await` 뒤 `setPendingId(null)`로 잠금을 푼다. 목록 커밋 전에 곧 사라질 행의 [Remove]가 잠깐 다시 켜지고, 역할 Select가 옛 역할로 보인다. Resend·초대 완료 toast가 목록보다 먼저 뜬다.
   - 방향: `general-card.tsx`처럼 `isPending`과 AND로 잠금을 유지하고, toast·닫기는 커밋 뒤로 옮긴다.
-- [ ] **#14** 🟡 try/catch 없이 action을 부르는 일곱 곳 — `components/settings/push-token-panel.tsx:68` · `components/account/profile-picture.tsx:63-68`, `:88-94`(`finally`만 있다) · `components/account/profile-name-form.tsx:53` · `components/onboarding/connect-github.tsx:89` · `components/sources/add-sources-modal.tsx:101` · `components/account/login-methods.tsx:108` · `components/account/sessions-section.tsx:38`. 네트워크가 끊기면 화면 전체가 오류 경계로 넘어간다. audit B3 #24가 다른 넷(member-list·pending-invitations·github-account·reconnect-button)을 이미 고쳤다 — 같은 형으로 인라인 "확인 불가"를 말한다.
-- [ ] **#26** ⚪ 대기 상태 하나를 두 버튼이 나눠 써서 엉뚱한 버튼에 스피너가 돈다 — `add-sources-modal.tsx:84`/`:109`(Add와 수동 Confirm) · `components/sources/source-detail-modal.tsx:113`(Retry가 `loading={busy}`라 기준 언어 저장 중에도 돈다). `profile-picture.tsx:45` 주석이 경고한 함정이다.
-- [ ] **#27** ⚪ 비활성만 되고 스피너가 없는 트리거 — `add-sources-modal.tsx:101`(GitHub 재연결) · `components/onboarding/steps/repo.tsx:424`(보조 링크).
+- [x] **#14** 🟡 try/catch 없이 action을 부르는 일곱 곳 — `components/settings/push-token-panel.tsx:68` · `components/account/profile-picture.tsx:63-68`, `:88-94`(`finally`만 있다) · `components/account/profile-name-form.tsx:53` · `components/onboarding/connect-github.tsx:89` · `components/sources/add-sources-modal.tsx:101` · `components/account/login-methods.tsx:108` · `components/account/sessions-section.tsx:38`. 네트워크가 끊기면 화면 전체가 오류 경계로 넘어간다. audit B3 #24가 다른 넷(member-list·pending-invitations·github-account·reconnect-button)을 이미 고쳤다 — 같은 형으로 인라인 "확인 불가"를 말한다.
+- [x] **#26** ⚪ 대기 상태 하나를 두 버튼이 나눠 써서 엉뚱한 버튼에 스피너가 돈다 — `add-sources-modal.tsx:84`/`:109`(Add와 수동 Confirm) · `components/sources/source-detail-modal.tsx:113`(Retry가 `loading={busy}`라 기준 언어 저장 중에도 돈다). `profile-picture.tsx:45` 주석이 경고한 함정이다.
+- [x] **#27** ⚪ 비활성만 되고 스피너가 없는 트리거 — `add-sources-modal.tsx:101`(GitHub 재연결) · `components/onboarding/steps/repo.tsx:424`(보조 링크).
+
+**진행 기록 (2026-09-25)**
+- #12: Sync·Publish·첫 적재는 중복 refresh만 걷었다 — 대기를 재검증 커밋까지 끌려면 `startTransition(async …)`로 감싸야 하는데 React 19가 열린 async action에 이후 모든 transition(Link 이동 포함)을 얽어 긴 실행 동안 이동이 막힌다(ARCHITECTURE에 규칙으로 올렸다). promise 해제가 라우터 커밋보다 한 렌더 먼저인 것은 받는 대가다.
+- #13: Resend는 행 독립 계약(`pending-resend.test.tsx`)을 지키려고 커밋까지 잠그지 않는다 — 토스트가 한 렌더 빠를 수 있다.
+- #14: redirect로 끝나는 호출부는 catch에서 `unstable_rethrow`로 되던진다(이 리포 첫 사용).
+- Sources `not-awaiting`(다른 실행이 이미 적재) 뒤에는 상세를 직접 다시 읽는다 — 재검증이 없는 유일한 상태 변화 거부다.
 
 **경계**: `publish-button.tsx`의 `:99` 라벨(#25)·`:296` 진행(#23)은 **U7**이다. `add-sources-modal.tsx:50`의 탐지 대기(#23)도 **U7**이다.
 
