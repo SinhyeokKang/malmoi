@@ -163,8 +163,8 @@ it("Home 호스트는 원결과를 소유해 refresh 후 재렌더에서도 보�
  * ⚠️ **통신 실패에 온보딩 코드를 쓰지 않는다** (2026-09-15 재리뷰 🔴3). `ingest-failed`는 `PLANS`에도
  * `m.repositorySync.errors`에도 없어 **두 폴백을 동시에 탄다**: 계획은 `{warning, 닫기 없음, 액션
  * 없음}`이고 문구는 `onboardErrorMessage`의 *"The first import failed. You can try again from
- * settings."*가 된다 — 첫 적재가 아닌데 그렇게 말하고, 가리키는 설정 화면의 컨트롤(`FirstIngestRetry`)은
- * `awaiting_first_sync`에서만 서므로 **존재하지 않는 버튼**을 가리킨 채 굳는다.
+ * settings."*가 된다 — 첫 적재가 아닌데 그렇게 말하고, **존재하지 않는 버튼**(설정 화면의 옛 재시도 컨트롤,
+ * 2026-09-24 삭제)을 가리킨 채 굳는다.
  * 캔버스 §6 `4f`의 tone 표가 이 부류에 `unavailable`을 배정했다(danger · 기존 `errors.access.*`).
  */
 it("Action 통신 실패는 렌더 가능한 거부로 떨어지고 다시 실행할 수 있다", async () => {
@@ -185,7 +185,7 @@ it("Action 통신 실패는 렌더 가능한 거부로 떨어지고 다시 실�
  * 그래서 **둘 다** 이 화면이 그릴 수 있는 값이어야 한다 — 한쪽만 고치면 증상이 그대로 재생된다.
  *
  * ⚠️ **빌려 온 문장이 이 화면에서 거짓이 되는 자리를 센다**: `onboardErrorMessage`의 "first import"·
- * "from settings"(가리키는 `FirstIngestRetry`가 이 화면에 없다) · `accessErrorMessage`의 "your text is
+ * "from settings"(가리키는 재시도 컨트롤이 이 화면에 없다) · `accessErrorMessage`의 "your text is
  * kept"(`[Sync]`에는 입력이 없고, 하필 이 동작은 **리포 값으로 번역을 덮고 저자까지 비운다** — 그
  * 절이 "내 번역은 안전하다"로 읽히면 불변식이 말하는 것의 정반대다).
  */

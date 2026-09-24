@@ -156,7 +156,7 @@ export const en = {
       /**
        * ⚠️ **빌려 온 문장이 이 화면에서 거짓이 되는 자리다** — `onboardErrorMessage("ingest-failed")`는
        * "The first import failed. You can try again from settings."이고, 첫 적재가 아닌데 그렇게 말하며
-       * 가리키는 `FirstIngestRetry`는 `awaiting_first_sync`에서만 선다. `accessErrorMessage("unavailable")`의
+       * 가리키던 설정 화면의 재시도 컨트롤은 이제 없다(2026-09-24 삭제 — 첫 적재는 Sources 상세가 든다). `accessErrorMessage("unavailable")`의
        * 꼬리 "— your text is kept"는 `[Sync]`에 입력이 없어 지킬 text가 없고, 하필 이 동작은 **리포 값으로
        * 번역을 덮고 저자까지 비운다** — 그 절이 "내 번역은 안전하다"로 읽히면 불변식의 정반대다.
        * 둘은 같은 사건("요청이 못 갔다")이라 같은 문장을 쓴다.

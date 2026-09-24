@@ -68,27 +68,22 @@ describe("적재 결과 tone은 `failed`가 정한다 (code-review 2026-09-08 �
    * ARCHITECTURE §0 불변식 9(버린 값을 숨기지 않는다)가 정확히 그 자리에서 깨진다. 같은 커밋의 온보딩 결과
    * 화면은 처음부터 `failed`를 봤다: **두 화면이 같은 지표를 봐야 한다.**
    */
-  it("Settings 재시도는 부분 실패 지표(`failed`)를 본다", () => {
-    // 신규 생성은 부분 실패 전체를 거부한다. 기존 Settings 재시도만 부분 성공을 표시한다.
-    for (const path of [
-      "components/onboarding/first-ingest-retry.tsx",
-    ]) {
-      expect(read(path), path).toMatch(/failed === 0\s*\?/);
-      /*
-        ⚠️ **`errors.length`로 갈리면 안 된다 — 철자를 가리지 않는다.** `failed`는
-        `errors.length + duplicateKeys`(ARCHITECTURE)라 **중복 키만 있는 부분 실패는
-        `errors.length === 0`**이다. `? "success"`만 막으면 `? null`·`? <></>`가 그대로 지나간다.
-      */
-      expect(read(path), path).not.toMatch(/errors\.length === 0\s*\?/);
-    }
-  });
+  /**
+   * ⚠️ **실제로 첫 적재를 다시 부르는 자리를 잰다** — 전에는 importer가 0인 `first-ingest-retry.tsx`를 셌고
+   * 실제 경로(Sources 상세의 [Import])는 검사 밖이었다(audit #66, 2026-09-24에 그 컴포넌트를 지웠다).
+   */
+  const SOURCES = "components/sources/sources-screen.tsx";
 
-  it("버린 값이 있는 결과는 `warning`을 실제로 그린다", () => {
-    // 판정뿐 아니라 실제 경고 그릇이 남아 있는지도 검사한다.
-    for (const path of ["components/onboarding/first-ingest-retry.tsx"]) {
-      // 한쪽은 `variant={… : "warning"}`이고 다른 쪽은 `variant="warning"`이다 — 그리는 값만 센다.
-      expect(read(path), path).toMatch(/"warning"/);
-    }
+  it("Sources 첫 적재는 부분 실패 지표(`failed`)를 본다", () => {
+    const src = read(SOURCES);
+    expect(src).toContain("runFirstIngest(");
+    expect(src).toMatch(/outcome\.failed > 0 \? "warning" : "success"/);
+    /*
+      ⚠️ **`errors.length`로 갈리면 안 된다 — 철자를 가리지 않는다.** `failed`는
+      `errors.length + duplicateKeys`(ARCHITECTURE)라 **중복 키만 있는 부분 실패는
+      `errors.length === 0`**이다.
+    */
+    expect(src).not.toMatch(/errors\.length\s*(===|>)\s*0\s*\?/);
   });
 });
 

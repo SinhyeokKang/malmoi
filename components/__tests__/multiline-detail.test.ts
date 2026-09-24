@@ -16,8 +16,7 @@ import { describe, expect, it } from "vitest";
  * 그것은 다섯 어댑터 중 `yaml-catalog` 하나다 — 정상 온보딩을 눈으로 훑어서는 원리적으로 안 보인다.
  * `focus-ring.test.ts`("키보드 사용자에게만 보이는 결함이라 눈으로 두 번 놓쳤다")와 같은 계열이다.
  *
- * **전수로 세는 것이 요지다** — 소비자가 늘어도 잡힌다. 지금 둘(`new-project-flow`·`first-ingest-retry`)이고
- * 6b-3의 화면이 셋째가 될 수 있다.
+ * **전수로 세는 것이 요지다** — 소비자가 늘어도 잡힌다(`first-ingest-retry`는 2026-09-24에 지웠다 — audit #66).
  */
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
