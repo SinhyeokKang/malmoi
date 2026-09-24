@@ -1,7 +1,8 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { useId, useRef, useTransition } from "react";
+import { unstable_rethrow } from "next/navigation";
+import { useId, useRef, useState, useTransition } from "react";
 
 import { unlinkLoginMethod, startLoginMethodConnect } from "@/app/(edit)/account/actions";
 import { PanelCard, PanelRow, PanelRows } from "@/components/ui/panel-card";
@@ -38,9 +39,15 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
 }) {
   const connected = rows.filter((row) => row.connected).map((row) => row.provider);
   const counts = methodCounts(rows);
+  /**
+   * 해제 호출이 던졌다 (audit-ux #14) — 성공·거부는 전부 `?link=` redirect로 오므로, 여기 닿는 것은 통신 실패뿐이고 해제됐는지 모른다.
+   * ⚠️ 새로 누르면 지운다 — 그 결과는 다시 redirect가 말한다.
+   */
+  const [unconfirmed, setUnconfirmed] = useState(false);
   /** 왕복 결과와 해제 실패가 같은 슬롯을 나눠 쓴다 — 둘이 함께 서면 카드 머리가 두 겹이 된다. */
   const notice =
-    unlinkFailure !== null ? <Alert inset variant="danger">{unlinkFailure}</Alert>
+    unconfirmed ? <Alert inset variant="danger">{m.link.methods.unlinkUnconfirmed}</Alert>
+    : unlinkFailure !== null ? <Alert inset variant="danger">{unlinkFailure}</Alert>
     : outcome !== null ? <Alert inset variant={outcome === "connected" ? "success" : "danger"} role={outcome === "connected" ? "status" : undefined}>{m.errors.connectMethod[outcome]}</Alert>
     : undefined;
   return (
@@ -57,14 +64,14 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
     >
       <PanelRows>
         {rows.map((row) => (
-          <MethodRow key={row.provider} row={row} removable={canUnlink(connected, row.provider)} />
+          <MethodRow key={row.provider} row={row} removable={canUnlink(connected, row.provider)} onUnconfirmed={setUnconfirmed} />
         ))}
       </PanelRows>
     </PanelCard>
   );
 }
 
-function MethodRow({ row, removable }: { row: { provider: LoginProvider; connected: boolean }; removable: boolean }) {
+function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginProvider; connected: boolean }; removable: boolean; onUnconfirmed: (unconfirmed: boolean) => void }) {
   const [pending, startTransition] = useTransition();
   const label = providerLabel(row.provider);
   /**
@@ -105,7 +112,10 @@ function MethodRow({ row, removable }: { row: { provider: LoginProvider; connect
         <DisconnectButton
           label={label}
           pending={pending}
-          onConfirm={() => startTransition(async () => { await unlinkLoginMethod(row.provider); })}
+          onConfirm={() => { onUnconfirmed(false); startTransition(async () => {
+            // 성공·거부 모두 `redirect`(= reject)다 — 되던지고, 그 밖의 throw만 확인 불가로 접는다.
+            try { await unlinkLoginMethod(row.provider); } catch (thrown) { unstable_rethrow(thrown); onUnconfirmed(true); }
+          }); }}
         />
       ) : (
         <>

@@ -1,5 +1,6 @@
 "use client";
 
+import { unstable_rethrow } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { startGithubConnectForUser, type ConnectVia, type UserConnectDest } from "@/app/(edit)/projects/actions";
@@ -86,8 +87,11 @@ export function useGithubConnect({
     start: (via) => {
       report(null);
       startTransition(async () => {
-        const result = await startGithubConnectForUser(dest, back ?? {}, via);
         // 거부는 값으로 온다 — 성공은 redirect라 여기 도달하지 않는다 (ARCHITECTURE §6.3).
+        // ⚠️ 그 redirect는 reject로 오므로 되던지고, 그 밖의 throw만 거부와 같은 자리로 접는다 (audit-ux #14).
+        let result: Awaited<ReturnType<typeof startGithubConnectForUser>>;
+        try { result = await startGithubConnectForUser(dest, back ?? {}, via); }
+        catch (thrown) { unstable_rethrow(thrown); report(m.settings.repository.connectFailed); return; }
         if (!result.ok) report(messageFor(result.error));
       });
     },

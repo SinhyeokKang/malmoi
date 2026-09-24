@@ -65,8 +65,11 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
                     setToken(null);
                     setError(null);
                     startTransition(async () => {
-                      const result = await rotatePushToken({ slug });
-                      if (result.ok) setToken(result.pushToken);
+                      // ⚠️ 던지면 서버가 돌렸는지 모른다 (audit-ux #14) — 옛 토큰이 이미 죽었을 수 있어 "다시 시도"가 아니라 확인 불가로 말한다.
+                      let result: Awaited<ReturnType<typeof rotatePushToken>> | null;
+                      try { result = await rotatePushToken({ slug }); } catch { result = null; }
+                      if (result === null) setError(UNCONFIRMED);
+                      else if (result.ok) setToken(result.pushToken);
                       else setError(result.error);
                     });
                   }}
@@ -102,7 +105,11 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
   );
 }
 
+/** 호출이 끊긴 갈래의 표식 — 서버 오류 코드와 겹치지 않는 값이다. */
+const UNCONFIRMED = "unconfirmed";
+
 function messageFor(error: string): string {
+  if (error === UNCONFIRMED) return m.settings.token.unconfirmed;
   if (isOnboardError(error)) return onboardErrorMessage(error);
   if (isAccessError(error)) return settingsAccessMessage(error);
   return m.settings.token.failed;

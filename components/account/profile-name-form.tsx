@@ -1,5 +1,6 @@
 "use client";
 
+import { unstable_rethrow } from "next/navigation";
 import { useActionState, useRef, useState } from "react";
 
 import { updateProfileName } from "@/app/(edit)/account/actions";
@@ -50,7 +51,10 @@ export function ProfileNameForm({ name, inputId }: { name: string; inputId: stri
    * 버그로 읽고 `setValue(result.name)`을 되돌리면 **전송 중 편집을 덮는 쪽**으로 돌아간다.
    */
   const [state, submit, pending] = useActionState<Reason | { saved: string } | null, FormData>(async (_previous, form) => {
-    const result = await updateProfileName(String(form.get("name") ?? ""));
+    // ⚠️ 던지면 `useActionState`가 error boundary로 올린다 (audit-ux #14) — 통신 실패는 `unavailable`과 같은 자리다. redirect만 되던진다.
+    let result: Awaited<ReturnType<typeof updateProfileName>>;
+    try { result = await updateProfileName(String(form.get("name") ?? "")); }
+    catch (thrown) { unstable_rethrow(thrown); return "unavailable"; }
     return result.ok ? { saved: result.name } : result.reason;
   }, null);
   const failure = state === null || typeof state === "object" ? null : reasonMessage(state);

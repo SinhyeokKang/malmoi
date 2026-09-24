@@ -2832,6 +2832,8 @@ export const en = {
       rotate: "Rotate token",
       warning: "You won't see this again after you leave this page. If you lose it, rotate it again.",
       failed: "We couldn't rotate the token. Try again in a moment.",
+      /** 호출이 끊겼다 — 옛 토큰이 이미 죽었을 수 있다 (audit-ux #14). 새 원문은 다시 발급해야만 받는다. */
+      unconfirmed: "We couldn't confirm the rotation. The current token may already be invalid — rotate again to get a new one.",
       /**
        * 확인 (audit #19) — 이전 토큰이 **즉시** 죽는다. 성공 직후의 재클릭도 여기를 지나 방금 받은 토큰을 지킨다.
        * 확정 라벨은 트리거(`Rotate token`)와 달라야 한다 (DESIGN §6.646).
@@ -2972,6 +2974,8 @@ export const en = {
       lastMethod: "This is your only way to sign in.",
       confirmDisconnect: (provider: string): string => `Disconnect ${provider}?`,
       confirmHint: "You won't be able to sign in with it until you sign in with it again at this address.",
+      /** 호출이 끊겨 해제됐는지 모른다 (audit-ux #14) — 사유를 지어내지 않고 새로고침으로 확인하게 한다. */
+      unlinkUnconfirmed: "We couldn't confirm that change. Refresh to see your sign-in methods.",
     },
   },
 
