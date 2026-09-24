@@ -303,6 +303,13 @@ CLAUDE.md) ④ 재배포 ⑤ 초대 한 통을 지정 수신자로 보내 접수
 **한도**: 앱 쪽은 같은 주소 60초 · 프로젝트 최근 1시간 20건이고(`lib/invitation-email/limits.ts`), Resend 요금제 한도는 그보다 넓다고 가정한다 —
 넘으면 429가 `email-rejected`로 보인다.
 
+## HSTS preload 제출 — 오너 수동 절차 (2026-09-24)
+
+응답 헤더가 `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`를 **선언**한다(`lib/security-headers.ts`).
+**hstspreload.org 제출은 코드가 하지 않는다** — 오너가 손으로 하고, 한 번 목록에 실리면 브라우저 배포 주기를 따라
+빠지기까지 **수개월**이 걸린다. ⚠️ **`includeSubDomains`가 `*.mal-moi.com` 전부를 HTTPS에 묶는다**(`dev.mal-moi.com` 포함) —
+제출 전에 http로만 뜨는 하위 호스트가 없는지, 앞으로도 만들지 않을지 확인한다.
+
 ## 호스팅 플랜과 한도 (2026-09-19 확인)
 
 | 무엇 | 플랜 | 따라오는 제약 |
