@@ -68,7 +68,9 @@ export function usePublish(slug: string) {
   async function confirm() {
     if (running.current || current.current.kind !== "preview-ready") return;
     const owner = host.current;
-    const total = current.current.preview.total;
+    // 진행 제목도 나가는 수로 말한다(#84) — 보류만 있으면 애초에 실행 버튼이 없다.
+    const total = current.current.preview.sendable.total;
+    if (total === 0) return;
     running.current = true; generation.current++; setPending(true); setRunTotal(total);
     current.current = { kind: "running" }; setState(current.current);
     const next: PullOutcome = await triggerPullAction(slug).catch(() => ({ status: "failed", error: "unavailable", retryable: true, delivery: "unknown" }));
@@ -403,18 +405,28 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
     case "preview-ready": {
       const data = state.preview;
       const open = data.openPr;
-      title = p.previewTitle(data.total);
-      description = `${p.previewIntro(label)} ${p.previewCounts(data.total, data.keys)}`;
+      // ⚠️ **나가는 수로 말한다** (#84 — POSTMORTEM 2026-09-17). 보류(`withoutFile`·`withoutKey`)를 뺀 수가 결과의 `delivered`·Logs와 같은 모집단이다.
+      const { total: sending, keys: sendingKeys } = data.sendable;
+      const partial = sending < data.total;
+      if (sending === 0) {
+        // 전부 보류면 PR을 만들거나 바꿀 것이 없다 — 그 버튼을 두지 않고 이유를 말한다. 표의 보류 줄이 사유별로 선다.
+        title = p.nothingSendable.title; description = p.nothingSendable.body; footer = p.notStarted;
+        actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
+        body = <PreviewTable preview={data} />;
+        break;
+      }
+      title = p.previewTitle(sending);
+      description = `${partial ? p.previewIntroPartial(label) : p.previewIntro(label)} ${p.previewCounts(sending, sendingKeys)}`;
       // ⚠️ **상한을 넘으면 파일 수를 빼고 말한다** — `total`·`keys`는 미발송 전체인데 `groups`는 실린 200행뿐이라, 셋을 나란히 두면 한 줄 안에서 모집단이 갈린다.
-      footer = data.truncated > 0 ? p.fileSummary(data.total, data.keys) : p.previewSummary(data.total, data.keys, data.groups.length);
+      footer = data.truncated > 0 ? p.fileSummary(sending, sendingKeys) : p.previewSummary(sending, sendingKeys, data.groups.length);
       actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm()}>{open ? p.replacePr(open.number) : p.openPr}</Button>;
       body = <>
         {/* ⚠️ **삼상태를 `null`로 접지 않는다** — "없다"와 "모른다"는 다른 줄이다. 줄은 조회 전에도 선다. */}
         {open === undefined
           ? <Notice icon={Info} title={p.prUnknown.title}>{p.prUnknown.body}</Notice>
           : open === null
-            ? <Notice icon={GitPullRequestArrow} title={p.prNone.title(label)}>{p.prNone.body(data.total)}</Notice>
-            : <Notice icon={GitPullRequestArrow} title={p.prOpen.title(open.number)}>{p.prOpen.body(open.number, data.total)}</Notice>}
+            ? <Notice icon={GitPullRequestArrow} title={p.prNone.title(label)}>{p.prNone.body(sending)}</Notice>
+            : <Notice icon={GitPullRequestArrow} title={p.prOpen.title(open.number)}>{p.prOpen.body(open.number, sending)}</Notice>}
         <PreviewTable preview={data} />
       </>;
       break;
@@ -467,7 +479,10 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             교체 줄이 없다 — 있으면 "보냈다"로 읽힌다. 버린 값은 펼친 목록으로 선다(불변식 9). 새 모달 갈래를 늘리지 않고 이 틀을 쓴다.
           */
           panel = PANEL.partial;
-          title = p.notSent; description = p.notSentDescription;
+          // 보류로 여기 온 결과는 writer가 값을 버린 것이 아니다 — 설명이 갈린다(#83). no-changes + 보류는 다른 편집이 이미 리포와 같았다.
+          const reason = outcome.status === "skipped" ? outcome.reason : null;
+          title = p.notSent;
+          description = reason === "withheld" ? p.withheldDescription.withheld : reason === "no-changes" ? p.withheldDescription.noChanges : p.notSentDescription;
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
           body = <Stack>
             {outcome.status === "skipped" && outcome.reason === "writer-warnings" && <Warnings warnings={outcome.warnings} />}

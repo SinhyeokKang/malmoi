@@ -28,7 +28,9 @@ it("실행 결과 여덟 갈래와 스킵 경고를 보존한다", () => {
  */
 it("skipped/withheld는 Not sent 틀이다 — No changes가 아니다", () => {
   expect(planPublishView({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } })).toBe("partial");
-  expect(planPublishView({ status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } })).toBe("no-changes");
+  // #83 — 보류가 있으면 Logs가 Not sent로 읽는다(SKIPPED + withheld > 0). 모달도 같은 틀이어야 "nothing to send"를 약속하지 않는다.
+  expect(planPublishView({ status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } })).toBe("partial");
+  expect(planPublishView({ status: "skipped", reason: "no-changes" })).toBe("no-changes");
 });
 it("보류 줄 — 사유별 한 줄 + 역할별 다음 행동 · 보류 0이면 줄이 없다 (짝)", () => {
   const p = m.translations.publish;

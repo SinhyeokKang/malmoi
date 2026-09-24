@@ -110,6 +110,9 @@ it("같은 픽스처에서 미리보기의 withoutFile과 실행의 withheld가 
   });
   expect(preview.withoutFile).toBe(2);
   expect(result).toMatchObject({ status: "committed", withheld: { file: preview.withoutFile, key: 0 } });
+  // #84 — 미리보기가 말하는 수는 실제로 나가는 수다(결과의 `delivered`와 같다).
+  expect(preview.sendable).toEqual({ total: 1, keys: 1 });
+  expect(result).toMatchObject({ delivered: preview.sendable.total });
 });
 /**
  * code-dict의 구조 충돌은 보류가 아니다 (coordinator review r1 — C는 ts-dict만). ⚠️ 이 픽스처가 실제로 내는 코드는 `write-slot-not-string-literal`이다 —
@@ -152,4 +155,12 @@ it("ts-dict 파일의 무관한 비리터럴은 미리보기를 막지 않는다
   expect(result.groups[0]).toMatchObject({ path: "a.ts", rows: [{ before: "안녕", after: "new" }] });
   mocks.client.getBlobText.mockResolvedValue('const en = { hello: "hi" };\nconst ko = { hello: someFn };');
   await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow();
+});
+it("#84 — 보류만 있으면 보낼 수 있는 편집·키가 0이다", async () => {
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", locales: [{ code: "en" }, { code: "de" }] }] });
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "de", value: "neu" }]);
+  mocks.client.getTree.mockResolvedValue([{ path: "en.yml", sha: "blob" }]);
+  mocks.client.getBlobText.mockResolvedValue("en:\n  hello: old\n");
+  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(result).toMatchObject({ total: 1, withoutFile: 1, sendable: { total: 0, keys: 0 } });
 });

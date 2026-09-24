@@ -36,6 +36,8 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   const cells: PublishCell[] = [];
   let withoutFile = 0;
   let withoutKey = 0;
+  /** 보류된 셀이 하나라도 있는 키 — 실린 셀이 하나도 없으면 "보낼 수 있는 키"에서 빠진다(#84). */
+  const heldKeys = new Set<string>();
   for (const surface of project.surfaces) {
     const surfaceRows = rows.filter(r => r.surfaceId === surface.id);
     if (!surfaceRows.length) continue;
@@ -74,7 +76,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
       // 수술적 치환은 원본이 없으면 그 파일을 안 낸다(`render.ts`) — 나가지 않을 셀을 약속하지 않는다. 실행은 그 셀을 보류한다.
       if (surgicalPerLocale) {
         const target = paths.find(p => p.locale === row.localeCode);
-        if (target !== undefined && !shas.has(target.path)) { withoutFile++; continue; }
+        if (target !== undefined && !shas.has(target.path)) { withoutFile++; heldKeys.add(row.keyId); continue; }
       }
       const matches = paths.filter(p => adapter.layout === "per-locale" ? p.locale === row.localeCode :
         Object.hasOwn(base[p.path] ?? {}, row.localeCode) && Object.hasOwn(base[p.path]![row.localeCode]!, row.stringKey.key));
@@ -85,7 +87,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
           return file !== undefined && Object.hasOwn(file, row.localeCode)
             && Object.keys(file).some(locale => locale !== row.localeCode && Object.hasOwn(file[locale]!, row.stringKey.key));
         });
-        if (owners.length > 0) { withoutKey++; continue; }
+        if (owners.length > 0) { withoutKey++; heldKeys.add(row.keyId); continue; }
       }
       // 대상을 확정하지 못했는데 첫 파일을 고르면 무엇을 덮는지 거짓으로 안내한다.
       const path = matches.length === 1 ? matches[0]?.path : undefined;
@@ -95,5 +97,9 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     }
   }
   // `truncated`는 상한 때문에 **조회하지 않은** 행만이다 — 뺀 셀은 `withoutFile`·`withoutKey`가 따로 말한다.
-  return { ...buildPublishDiff(cells, base), total, keys: keyIds.length, truncated: Math.max(0, total - rows.length), withoutFile, withoutKey, openPr: parseGithubPrUrl(rawPr, project) };
+  return { ...buildPublishDiff(cells, base), total, keys: keyIds.length, truncated: Math.max(0, total - rows.length), withoutFile, withoutKey,
+    // ⚠️ **화면이 말하는 수는 나가는 수다** (#84 — POSTMORTEM 2026-09-17). 결과의 `delivered`·Logs와 같은 모집단이어야 한다. 상한(200행) 밖 행은
+    // 판정하지 않았으므로 나가는 쪽으로 센다 — `truncated`와 같이 읽힌다.
+    sendable: { total: total - withoutFile - withoutKey, keys: keyIds.length - [...heldKeys].filter(id => !cells.some(c => c.keyId === id)).length },
+    openPr: parseGithubPrUrl(rawPr, project) };
 }

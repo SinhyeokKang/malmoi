@@ -9,7 +9,11 @@ import type { PublishDiff } from "./diff";
  * `withoutKey`는 ts-dict 로케일 객체에 **자리가 없는** 키의 셀 수다(`write-slot-missing` — 실행이 그 셀만 보류한다, delivery-invariants D3).
  * 두 수는 실행 결과의 `withheld.file`·`withheld.key`와 같은 판정이다 — 단 이 표가 읽는 pending 200행 안에서만 같다(`truncated`와 같이 읽힌다).
  */
-export type PublishPreview = PublishDiff & { openPr: OpenImportPr; keys: number; withoutFile: number; withoutKey: number };
+export type PublishPreview = PublishDiff & {
+  openPr: OpenImportPr; keys: number; withoutFile: number; withoutKey: number;
+  /** 실제로 나가는 편집·키 수 (#84). 제목·요약·PR 줄·실행 진행 제목이 이 수로 말한다 — `total`·`keys`는 보류를 포함한 미발송 전체다. */
+  sendable: { total: number; keys: number };
+};
 /**
  * 미리보기 조회의 결과. **거부(`rejected`)와 읽기 실패(`failed`)가 갈린다** (launch-readiness L3.3) — 거부는 실행 전
  * 거부(`1h`)로, 실패만 `1k`의 Retry로 그린다. `error`는 `triggerPullAction`의 실행 전 거부와 같은 낱말이다.

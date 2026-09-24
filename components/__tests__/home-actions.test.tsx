@@ -61,7 +61,7 @@ function Host() {
   </>;
 }
 
-beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.preview.mockResolvedValue({ status: "ok", preview: { groups: [], total: 12, keys: 9, truncated: 0, openPr: null } }); });
+beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.preview.mockResolvedValue({ status: "ok", preview: { groups: [], total: 12, keys: 9, truncated: 0, openPr: null, withoutFile: 0, withoutKey: 0, sendable: { total: 12, keys: 9 } } }); });
 
 it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", async () => {
   const run = deferred<{ ok: true; surfaces: []; remainingEdits: number }>();

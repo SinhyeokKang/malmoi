@@ -2063,6 +2063,14 @@ export const en = {
       previewTitle: (n: number): string => `Publish ${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`,
       previewIntro: (repo: string): string =>
         `Everything you've edited goes to ${repo} as one pull request.`,
+      /** 보류가 섞인 미리보기 (#84) — "전부 간다"가 거짓이다. 빠지는 편집은 표 아래 줄이 사유별로 말한다. */
+      previewIntroPartial: (repo: string): string =>
+        `The edits that can be sent go to ${repo} as one pull request.`,
+      /** 전부 보류 (#84) — 만들거나 바꿀 PR이 없으니 그 버튼을 두지 않는다. */
+      nothingSendable: {
+        title: "Nothing can be sent yet",
+        body: "Every unsent edit is waiting for its language file or key, so no pull request would change.",
+      },
       previewCounts: (n: number, keys: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} in ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}.`,
       previewSummary: (n: number, keys: number, files: number): string =>
@@ -2192,6 +2200,11 @@ export const en = {
       notSent: "Not sent \u2014 some values can't be written to the files",
       notSentDescription:
         "malmoi stopped before writing to the repository, because these values would have been left out. Your edits are still saved here.",
+      /** 보류로 Not sent가 된 결과 (#83). writer가 값을 버린 것이 아니라 설명이 갈린다 — Logs의 `Not sent`와 같은 판정이다. */
+      withheldDescription: {
+        withheld: "Nothing was written to the repository. These edits stay saved here until they can be sent.",
+        noChanges: "Nothing was written to the repository. Your other edits already matched it, and these stay saved here until they can be sent.",
+      },
       notWritten: "Not written",
       warnings: (n: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "warning" : "warnings"} \u00b7 values still saved in malmoi`,

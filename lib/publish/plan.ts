@@ -6,7 +6,8 @@ export function planPublishView(outcome: PullOutcome): PublishView {
     case "committed": return outcome.pr;
     // writer 경고는 **보내지 않은** 결과다(sync-edit-protection T10) — `partial` 갈래가 "보내지 않았다"로 선다. 새 갈래를 늘리지 않는다.
     // 보류만 있고 실린 편집이 0이면 "No changes"(파일이 같았다)가 거짓이다 — 같은 Not sent 틀을 쓴다(delivery-invariants D7).
-    case "skipped": return outcome.reason === "writer-warnings" || outcome.reason === "withheld" ? "partial" : "no-changes";
+    // no-changes라도 보류가 있으면 같은 틀이다 — Logs가 SKIPPED + withheld > 0을 Not sent로 읽는다(#83). "이미 리포에 있었다"가 거짓이 된다.
+    case "skipped": return outcome.reason === "writer-warnings" || outcome.reason === "withheld" || (outcome.reason === "no-changes" && outcome.withheld !== undefined) ? "partial" : "no-changes";
     case "failed":
       if (outcome.error === "already-running" || outcome.error === "too-soon") return outcome.error;
       return outcome.retryable ? "transient-error" : "config-error";
