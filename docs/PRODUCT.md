@@ -173,6 +173,8 @@ Publish는 미저장을 **버리지 않는다** — 확인창에서 저장된 �
   없어졌다** — 메일 장애 동안 초대는 지연되고, 발급 뒤 메일이 안 나간 초대는 Resend로 복구한다. 좌석은 발급 시점의
   현재 멤버 수로만 판정하므로(대기 초대를 예약으로 세지 않는다) 9명일 때 3명을 초대해 모두 수락하면 12명이 될 수 있다.
   방침이 전송처(Resend)·보존 30일을 공표한다(2026-09-24 개정, `third-parties`·`retention` 절).
+- **야간 자동 Publish** (2026-09-24 공지 — launch-readiness L2.9) — 하루 한 번(`vercel.json`, 프로덕션 배포에서만) 미전달 편집이 있는
+  프로젝트를 PR로 보낸다(§7.6). 온보딩 ④ 설명 둘째 문장과 `/docs#nightly`가 그 약속을 말한다 — 전에는 어디에도 없어 첫 PR이 예고 없이 왔다.
 - **GitHub 설치 연결** — OAuth 계정 ↔ installation ↔ repository 3중 검증
 - **탐지 기반 프로젝트 생성** — 후보를 보여주고 사용자가 확정
 - **프로젝트 단위 번역 UI** — 동결을 풀고 인가 경계 위에서 다시 만든다
@@ -513,7 +515,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /signin                        ✅ 로그인                          ← 8-1a
 /signin/link/:challenge        ✅ 계정 병합 안내 (challenge가 인가를 대신한다) ← account-linking (2026-09-12)
 /invite/:token                 초대 수락 (토큰이 인가를 대신한다)
-/privacy · /docs               ✅ 공개 문서 (/privacy 본문 완료 · /docs placeholder) ← 8-1a
+/privacy · /docs               ✅ 공개 문서 (둘 다 본문 완료 — /docs는 2026-09-24) ← 8-1a
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
@@ -564,8 +566,8 @@ Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#6
 - ⚠️ **로그아웃은 `/`(랜딩)로 간다** — `signOut({ redirectTo: "/" })` 둘은 이관 대상이 아니고,
   그 사실이 각 자리에 주석으로 있다.
 - **두 라우트가 갈렸다.** `/privacy`는 **본문이 섰다**(2026-09-19 — 절 일곱 · 시행일 · 수집 항목과
-  쿠키 표 둘. 사전이 들고 `lib/privacy/collected.ts`의 전수 등재와 절 id로 묶인다). `/docs`는 아직
-  placeholder이고 출시 전에 채운다. 라우트를 먼저 딴 이유는 로그인 화면 푸터가 그것을 가리키기
+  쿠키 표 둘. 사전이 들고 `lib/privacy/collected.ts`의 전수 등재와 절 id로 묶인다). `/docs`도 본문이
+  섰다(2026-09-24, launch-readiness L2.3 — 절 일곱. 상한·포맷·action 넷·마커를 `docs-content.test.tsx`가 정본 상수와 대조한다). 라우트를 먼저 딴 이유는 로그인 화면 푸터가 그것을 가리키기
   때문이다. **Terms of Service는 만들지 않는다** — 돈을 받고 파는 서비스가 아니라 Privacy Policy
   하나로 퉁친다(2026-09-10 사용자). **방침은 en 단일이다**(2026-09-19 privacy) — ko를 열면 본문 두 벌의 신선도를
   각각 게이트해야 하고 §10(ko 여는 시점)을 선행해 정하게 된다. 대가: 동의를 받는 문서를 한국어 화자 동료가 en으로 읽는다.
