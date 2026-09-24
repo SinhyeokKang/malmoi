@@ -72,7 +72,7 @@ export async function updateProfileName(raw: string): Promise<NameResult> {
     return { ok: false, reason: "unavailable" };
   }
   // 셸 아바타·사용자 메뉴가 같은 값을 읽는다 — 경로를 나열하면 다음 소비자가 조용히 빠진다.
-  revalidateAfterCommit("name", userId);
+  revalidateAfterCommit("name");
   return { ok: true, name: plan.name };
 }
 
@@ -119,7 +119,7 @@ export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
   }
   // 이전 이미지는 커밋 뒤에만 지운다 — 롤백되면 그 URL이 계속 쓰여야 한다.
   await cleanImage(previous, userId);
-  revalidateAfterCommit("image-upload", userId);
+  revalidateAfterCommit("image-upload");
   return { ok: true };
 }
 
@@ -142,7 +142,7 @@ export async function deleteProfileImage(): Promise<ImageResult> {
     return { ok: false, reason: "unavailable" };
   }
   await cleanImage(previous, userId);
-  revalidateAfterCommit("image-delete", userId);
+  revalidateAfterCommit("image-delete");
   return { ok: true };
 }
 
@@ -212,7 +212,7 @@ export async function unlinkLoginMethod(provider: string): Promise<void> {
     outcome = "unavailable";
   }
   // 셸의 사용자 메뉴까지 바뀔 수 있다 — 경로를 나열하면 다음에 생기는 소비자가 조용히 빠진다.
-  revalidateAfterCommit("unlink", userId);
+  revalidateAfterCommit("unlink");
   // Next의 redirect는 던진다 — 실패 처리 밖에 둔다.
   redirect(routes.account({ link: outcome }));
 }

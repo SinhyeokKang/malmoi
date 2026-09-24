@@ -96,7 +96,7 @@ export async function updateBaseLocale(raw: {
    * 소비자가 생길 때 조용히 빠지고, 그것이 POSTMORTEM 2026-09-09이 기록한 실패다 — 셋이 전부
    * `/projects/<slug>` 아래이므로 **그 세그먼트의 레이아웃**을 무효화한다.
    */
-  revalidateAfterCommit("source-base-language", projectId, `/projects/${slug}`);
+  revalidateAfterCommit("source-base-language", `/projects/${slug}`);
   return { ok: true };
 }
 

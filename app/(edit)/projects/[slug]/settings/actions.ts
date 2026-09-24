@@ -372,7 +372,7 @@ export async function updateProjectName(raw: { slug: string; name: string }): Pr
   }
   catch { console.error("Project name update failed.", { projectId: access.projectId }); return { ok: false, error: "unavailable" }; }
   if (locked.status !== "ok") return redrawIfArchived(parsed.data.slug, locked.status, { ok: false, error: locked.status });
-  revalidateAfterCommit("name", access.projectId);
+  revalidateAfterCommit("name");
   return { ok: true, name: plan.name };
 }
 
@@ -440,7 +440,7 @@ export async function uploadProjectImage(form: FormData): Promise<ProjectImageRe
     return redrawIfArchived(slug, previous.status, { ok: false, reason: previous.status });
   }
   await cleanProjectImage(previous, projectId);
-  revalidateAfterCommit("image-upload", projectId);
+  revalidateAfterCommit("image-upload");
   return { ok: true };
 }
 
@@ -473,6 +473,6 @@ export async function deleteProjectImage(slug: string): Promise<{ ok: true } | {
   } catch { console.error("Project image deletion failed.", { projectId }); return { ok: false, reason: "unavailable" }; }
   if (typeof previous === "object" && previous !== null) return redrawIfArchived(slug, previous.status, { ok: false, reason: previous.status });
   await cleanProjectImage(previous, projectId);
-  revalidateAfterCommit("image-delete", projectId);
+  revalidateAfterCommit("image-delete");
   return { ok: true };
 }
