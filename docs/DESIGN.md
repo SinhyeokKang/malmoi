@@ -1166,7 +1166,7 @@ repository` · 설명에 경로와 브랜치 · `Trying again won't help` Alert�
 | 행 | 아바타 **32** · 두 줄 텍스트 · 메타 · **오른쪽 군(갭 8)**. padding `14 14 14 12` · 요소 갭 16. 텍스트가 **60에서 시작**한다(`pl-3` 12 + 32 + `gap-4` 16) — 띠의 `pl-15`(60)와 같은 x라야 그 띠가 이 행에 속한 것으로 읽힌다 |
 | 고정 열 | 이름 **300** · 역할 **132** · 가입일/만료 **150**. ⚠️ **늘어나게 두면 오른쪽 메타의 x가 행마다 달라져** "오너가 몇인지"를 세로로 훑을 수 없다 — `/projects`의 이름 칸 420과 같은 장치다 |
 | 글자 | 이름 `text-base`(15/500) · 주소 `text-sm`(14) · 메타·띠 `text-xs`(13) · `(you)` 13/400 `text-neutral-400`. ⚠️ **캔버스의 15·14·13이 이 리포의 `base`·`sm`·`xs`와 정확히 맞물린다**(§4) |
-| 값이 자기 라벨을 든다 | `Joined {상대시각}` · `Expires {상대시각}` · `Invited by {누구}`. ⚠️ **열 머리를 지운 대가다** — 라벨이 없으면 `2 days ago`가 가입일인지 만료인지 화면이 말하지 않는다 |
+| 값이 자기 라벨을 든다 | `Joined {상대시각}` · `Expires {상대시각}` · `Invited by {누구}`. ⚠️ **열 머리를 지운 대가다** — 라벨이 없으면 `2 days ago`가 가입일인지 만료인지 화면이 말하지 않는다. ⚠️ **`Invited by`는 행의 유일한 가변 칸이라 잘린다** — 1280에서 112px(malmoi#90). 잘림을 받되 전문을 `title`로 든다 |
 | 두 줄 배치 | `planMemberIdentity`가 정한다 — 이름 → (없으면) 마스킹 주소가 1행으로 **올라가고** 2행은 빈다 → (없으면) `No name set`. 못 읽은 행은 `Couldn't be read` |
 | 아바타 | `<Avatar size={32}>` · `lib/tone.ts` 8색 — **기존 프리미티브 그대로**다. ⚠️ **씨앗이 1행 텍스트와 갈라져 있다** — 1행이 마스킹 주소면 이니셜이 `y***@…` → `y`가 되어 셸 아바타와 다른 글자·다른 색이 된다(`entity-card.tsx`가 밟은 함정). ⚠️ **씨앗이 없으면 빈 문자열을 넘겨 `?` + `toneOf("")`를 받는다 — 갈래를 늘리지 않는다.** ⚠️ **24·28을 쓰지 않는다**: 24는 두 줄 텍스트 옆에서 작고, 28은 `Avatar`의 `size` 유니온을 늘려 글자 크기 분기까지 따라 늘린다 |
 | 역할 — OWNER 시야 | `Select`(즉시 적용, `w-[132px]`) |
@@ -1374,7 +1374,7 @@ green이었고, 증상이 "내용이 안 보인다"가 아니라 **"여백이 �
 | 상세 상태 | URL 없는 클라이언트 선택. 주소·이력 불변, 새로고침은 목록. 안정된 화면 소유자가 추가/적재 결과를 유지한다. 늦은 읽기는 선택/요청 번호로 무시한다 |
 | 모달 | 기존 OnboardingModal 그대로. 폭 min(1024px, 창−96px), 본문 좌우32, dim 여백48. 본체·로딩 min(560px, 창높이−96px)/max(800px, 창높이−96px), 오류 min-height 0. 바닥 Open translations + Close. 본문만 스크롤 |
 | 로딩·오류 | 제목+값 skeleton 세 블록 + 언어 세 행. 읽기 실패는 Try again, 접근 거부에는 Try again 없음. 성공 후 최신 조회만 실패하면 기존 상세와 성공 결과를 보존하고 재조회 안내 |
-| 연결 블록 | OWNER만. 경로·형식·리포/브랜치, border/radius12·muted 배경. 넓을 때 1fr/180/280, 컨테이너850 이하에서 경로 한 줄+형식/리포 두 칸. null은 Not configured, 알 수 없는 형식은 Unrecognized format |
+| 연결 블록 | OWNER만. 경로·형식·리포/브랜치, border/radius12·muted 배경. 넓을 때 1fr/180/280, 컨테이너850 이하에서 경로 한 줄+형식/리포 두 칸. null은 Not configured, 알 수 없는 형식은 Unrecognized format. ⚠️ **경로·리포 값은 `break-all`이 아니라 `overflow-wrap:anywhere` + `/` 뒤 `<wbr>`다** (malmoi#89) — `break-all`이 `master`를 `m`/`aster`로 갈라 두 값처럼 읽혔다. 조각 경계(`/` · ` · `)에서 먼저 꺾고 한 조각이 칸보다 길 때만 그 안에서 꺾는다 |
 | 카드 | Sync status · Base language · Languages. 공유 PanelCard, 간격16, header16, 본문13/16. 정상 적재는 무채색, 실패만 warning. 미적재·진행 중은 info 아이콘 |
 | 적재 | not-imported / importing / failed-first / failed-after / imported. 최초 실패만 재시도, 이후 실패는 OWNER에게 워크플로 재실행 안내. Source commit은 원본 커밋 시각이고 적재 완료 시각이라고 부르지 않는다. `<time dateTime>`+UTC 접근 이름, null 시각 생략, 상대 표기는 importing뿐 |
 | 기준 언어 | 활성 언어 Select + Save. **적용 대기는 신호 셋이다** — 카드 머리의 `warning` 배지 · Select의 `border-amber-500/50` · 적용값/요청값 두 줄. 저장이 즉시 적용된 것처럼 보이지 않게 하는 장치이고, 배지가 낱말을 들었으므로 아래 Alert에 같은 제목을 또 쓰지 않는다. 선언만 저장한다. 저장 중 refresh와 실패에서도 draft를 보존하고 baseline만 갱신. 오류 뒤 Save 포커스. EDITOR는 적용값만 읽고 대기 시 적용값/요청값을 본다. OWNER만 workflow 한 줄+Copy. 비활성 Select는 pointer/click/key 셋을 막는다 |
