@@ -56,7 +56,7 @@ export type ConfirmedFormat =
   | { status: "ok"; format: DetectedFormat; baseLocale: string }
   | {
       status: "rejected";
-      reason: "unknown-adapter" | "manual-no-match" | "not-detected" | "template-mismatch" | "base-locale-missing";
+      reason: "unknown-adapter" | "manual-no-match" | "single-locale" | "not-detected" | "template-mismatch" | "base-locale-missing";
     };
 
 /**
@@ -81,7 +81,13 @@ export function planConfirmedFormat(
     files.map((f) => f.path),
     makeProbe(new Map(files.map((f) => [f.path, f.content]))),
   );
-  if (detected === undefined) return { status: "rejected", reason: "not-detected" };
+  if (detected === undefined) {
+    // ⚠️ **로케일별 어댑터에서 파일이 하나면 "모양이 아니다"가 아니라 "언어가 하나다"다** (malmoi#99) — 탐지는 로케일 둘
+    // 이상을 요구한다(ARCHITECTURE §3.1). `not-detected`로 접으면 호출부가 "그 경로에 파일이 없다"로 말해, 둘째 언어
+    // 파일을 만들면 되는 사람이 경로를 계속 고친다. 한 파일이 모든 언어를 드는 어댑터(`multi-locale`)는 해당 없다.
+    const layout = ADAPTERS.find((adapter) => adapter.name === input.adapter)?.layout;
+    return { status: "rejected", reason: layout === "per-locale" && files.length === 1 ? "single-locale" : "not-detected" };
+  }
   if (detected.pathTemplate !== input.pathTemplate) return { status: "rejected", reason: "template-mismatch" };
   // 기준 로케일은 **반환된** locales에 있어야 한다 — 입력이 아니라 재탐지가 본 것이다.
   if (!detected.locales.includes(input.baseLocale)) return { status: "rejected", reason: "base-locale-missing" };

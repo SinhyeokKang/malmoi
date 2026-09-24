@@ -96,6 +96,11 @@ export function NewProject({
   const [locale, setLocale] = useState("");
   const [manualCandidate, setManualCandidate] = useState<CandidateSummary | undefined>(undefined);
   const [samples, setSamples] = useState<Record<string, PreviewState>>({});
+  /**
+   * 수동 확인의 거부 사유 (malmoi#99). ⚠️ **미리보기 상태에 접지 않는다** — 후보 0개 화면은 미리보기가 비어 있어
+   * `unavailable`이 그려지지 않고, 그러면 거부가 "Nothing to preview yet"과 꺼진 Next만 남긴다.
+   */
+  const [manualError, setManualError] = useState<string | undefined>(undefined);
   const [manual, setManual] = useState<ManualEntry>({
     adapter: adapters[0]?.adapter ?? "json-catalog",
     pathTemplate: "",
@@ -338,6 +343,8 @@ export function NewProject({
 
   useEffect(() => {
     if (step !== 2 || !usingManual || repo === undefined) return;
+    // 이전 입력의 사유는 새 입력의 판정이 아니다 — 입력을 비운 경우에도 걷는다.
+    setManualError(undefined);
     const code = manual.baseLocale.trim();
     const template = manual.pathTemplate.trim();
     if (code === "" || template === "") return;
@@ -365,10 +372,13 @@ export function NewProject({
             ])));
           } else {
             setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } }));
+            if (!isAccessLost(result.error)) setManualError(result.error);
           }
         },
         () => {
-          if (active) setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } }));
+          if (!active) return;
+          setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } }));
+          setManualError("unavailable");
         },
       );
     }, 400);
@@ -522,6 +532,7 @@ export function NewProject({
             manual,
             manualCandidate,
             manualMatched,
+            manualError,
             adapters,
             repoLabel,
             branch: branchValue,

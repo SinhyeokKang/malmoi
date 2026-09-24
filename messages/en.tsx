@@ -1681,7 +1681,8 @@ export const en = {
          * 준다)을 말해야 한다 (핸드오프 3a).
          */
         emptyDescription: (repo: string, branch: string): string =>
-          `malmoi didn't find any on ${repo} · ${branch}. Set the path and it will check.`,
+          // ⚠️ **조건을 말한다** (malmoi#99) — 로케일 1개 리포에 "didn't find any"는 거짓이었다(파일은 있다).
+          `malmoi didn't find translation files in 2 or more languages on ${repo} · ${branch}. Set the path and it will check.`,
       },
       naming: {
         title: "Project details",
@@ -3099,6 +3100,8 @@ export const en = {
       // ⚠️ **라벨이라 문장이 아니다** — 후보 줄의 "3 languages · 4 keys" 자리에 그대로 들어간다.
       "key-count-failed": "Key count unavailable",
       "manual-no-match": "No files of that format at that path. Check the path and the format.",
+      // ⚠️ **파일이 없다고 말하지 않는다** (malmoi#99) — 파일은 있고 언어가 하나다. 할 일은 경로가 아니라 둘째 파일이다.
+      "single-locale": "Only one language was found at that path. malmoi needs translation files in 2 or more languages — add a file for a second language and try again.",
       "slug-taken": "That address is taken. Pick another one.",
       "limit-reached": (limit: number): string => `You can create up to ${limit} projects.`,
       "invalid-slug": (max: number): string =>

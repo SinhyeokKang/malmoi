@@ -42,6 +42,8 @@ export type OnboardError =
   | "key-count-failed"
   /** 수동 지정 템플릿이 아무 파일도 가리키지 않거나 재검증에 실패했다. */
   | "manual-no-match"
+  /** 수동 지정 템플릿이 로케일 **하나**만 가리킨다 — 파일은 있다 (malmoi#99). 할 일이 다르다: 둘째 언어 파일. */
+  | "single-locale"
   // ── ④ 생성 — planRepoConnect 그대로 ──────────────────────────────────────
   | "installation-forbidden"
   | "repo-forbidden"
@@ -83,6 +85,7 @@ const ONBOARD_ERRORS: ReadonlySet<string> = new Set<OnboardError>([
   "base-branch-missing",
   "key-count-failed",
   "manual-no-match",
+  "single-locale",
   "installation-forbidden",
   "repo-forbidden",
   "repo-not-installed",

@@ -107,7 +107,7 @@ describe("planImportRefusal", () => {
       "no-installations", "no-repos", "no-candidates",
       // 온보딩 판정 — 리포나 설정이 바뀌어야 답이 달라진다
       "base-branch-missing", "invalid-branch", "invalid-slug", "slug-taken", "limit-reached",
-      "manual-no-match", "not-awaiting",
+      "manual-no-match", "single-locale", "not-awaiting",
       /*
         규모 — 같은 리포에 같은 상한이라 다시 눌러도 같다. ⚠️ **`tree-truncated`만 생산자가 있다**
         (`snapshotError`). `resource-limit`은 표면별 `reason`으로만 접히고(`SurfaceImportReason`) 이

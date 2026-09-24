@@ -72,6 +72,8 @@ export type FilesStepState = {
   manual: ManualEntry;
   manualCandidate?: CandidateSummary;
   manualMatched: boolean;
+  /** 수동 확인의 거부 사유(`OnboardError`) — 경로 필드 아래에 선다 (malmoi#99). 없으면 도움말이 그 자리다. */
+  manualError?: string;
   adapters: AdapterChoice[];
   repoLabel: string;
   branch: string;
@@ -518,6 +520,8 @@ function ManualForm({
       <FormGroup
         label={m.newProject.files.manual.path}
         htmlFor="manual-path"
+        /* ⚠️ **`error`가 `help`를 대신한다**(FormGroup) — 두 속성과 `aria-describedby`가 같은 값을 본다. */
+        error={state.manualError === undefined ? undefined : failureText(state.manualError)}
         help={PATH_HINTS[choice?.layout ?? "per-locale"](
           <span>{choice?.layout === "multi-locale" ? "*" : "{locale}"}</span>,
         )}
@@ -525,7 +529,8 @@ function ManualForm({
         <Input
           disabled={pending}
           id="manual-path"
-          aria-describedby="manual-path-help"
+          aria-invalid={state.manualError === undefined ? undefined : true}
+          aria-describedby={state.manualError === undefined ? "manual-path-help" : "manual-path-error"}
           value={manual.pathTemplate}
           onChange={(e) => onManual({ ...manual, pathTemplate: e.target.value })}
           placeholder={choice?.example ?? "src/locales/{locale}.json"}

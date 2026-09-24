@@ -946,7 +946,8 @@ export async function confirmManualFormat(raw: {
     const files = await readFiles(reader, snapshot, targets);
     if (files.length !== targets.length) return { ok: false, error: "unavailable" };
     const confirmed = planConfirmedFormat(input, files);
-    if (confirmed.status !== "ok") return { ok: false, error: "manual-no-match" };
+    // 언어가 하나인 경로는 "파일이 없다"와 할 일이 달라 사유를 가른다 (malmoi#99).
+    if (confirmed.status !== "ok") return { ok: false, error: confirmed.reason === "single-locale" ? "single-locale" : "manual-no-match" };
     const summary = summarizeCandidates([confirmed.format], new Map(files.map((file) => [file.path, file.content])))[0];
     if (summary === undefined) return { ok: false, error: "manual-no-match" };
     // 수동 기준 언어는 sampleOrder의 초기 셋 밖일 수 있다. 다운로드는 이미 끝났으므로 추가 blob은 없다.
