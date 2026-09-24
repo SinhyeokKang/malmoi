@@ -6,6 +6,7 @@ const hoisted = vi.hoisted(() => ({
   getInstallationOctokit: vi.fn(),
   auth: vi.fn(),
   created: [] as { appId: string }[],
+  tokens: [] as unknown[],
 }));
 
 vi.mock("octokit", () => ({
@@ -18,6 +19,9 @@ vi.mock("octokit", () => ({
   },
   Octokit: class {
     request = hoisted.request;
+    constructor(options: { auth?: unknown } = {}) {
+      hoisted.tokens.push(options.auth);
+    }
   },
 }));
 
@@ -37,6 +41,7 @@ beforeEach(() => {
   vi.stubEnv("GITHUB_APP_ID", "123");
   vi.stubEnv("GITHUB_APP_PRIVATE_KEY", PEM);
   hoisted.created.length = 0;
+  hoisted.tokens.length = 0;
   for (const fn of [hoisted.request, hoisted.appRequest, hoisted.getInstallationOctokit, hoisted.auth]) fn.mockReset();
   hoisted.appRequest.mockResolvedValue({ data: { id: 7 } });
   hoisted.getInstallationOctokit.mockResolvedValue({ request: hoisted.request });
@@ -84,5 +89,29 @@ describe("probeRepo 마감", () => {
   it("마감 안의 응답은 그대로다", async () => {
     await expect(probeRepo("o", "r")).resolves.toEqual({ status: "ok", installationId: "7", repositoryId: "9", fullName: "o/r", defaultBranch: "main" });
     expect(log).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * ⚠️ **App이 요청 사이에 남으면 캐시된 설치 토큰이 만료 직전일 수 있다** (U5 리뷰). 캐시 수명이 59분이라 1분 남은
+ * 토큰이 나오고, `createGitClient`는 그 토큰을 고정 Octokit에 박는다 — 60초짜리 Publish·야간 pull이 도중에 401이면
+ * 브랜치만 밀리고 PR이 안 선다. 5분 안에 끝나는 토큰이면 새로 받는다.
+ */
+describe("createGitClient 토큰 수명", () => {
+  const inMinutes = (n: number) => new Date(Date.now() + n * 60_000).toISOString();
+
+  it("만료가 5분 안이면 `refresh: true`로 새 토큰을 받아 그것을 쓴다", async () => {
+    hoisted.auth.mockResolvedValueOnce({ token: "old", expiresAt: inMinutes(1) }).mockResolvedValueOnce({ token: "fresh", expiresAt: inMinutes(60) });
+    await createGitClient("o", "r", "7", "9");
+    expect(hoisted.auth).toHaveBeenCalledTimes(2);
+    expect(hoisted.auth.mock.calls[1]?.[0]).toMatchObject({ type: "installation", installationId: 7, repositoryIds: [9], refresh: true });
+    expect(hoisted.tokens).toEqual(["fresh"]);
+  });
+
+  it("넉넉히 남았으면 캐시 토큰을 그대로 쓴다 — 발급 왕복을 늘리지 않는다", async () => {
+    hoisted.auth.mockResolvedValueOnce({ token: "cached", expiresAt: inMinutes(30) });
+    await createGitClient("o", "r", "7", "9");
+    expect(hoisted.auth).toHaveBeenCalledTimes(1);
+    expect(hoisted.tokens).toEqual(["cached"]);
   });
 });

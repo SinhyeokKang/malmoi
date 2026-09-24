@@ -51,6 +51,13 @@ function createApp(): App {
   return app;
 }
 
+/** `createGitClient`가 고정 토큰을 쥐기 전의 여유. 만료 시각을 모르면(형이 다르면) 새로 받지 않는다 — 판정은 아래 형 검사가 한다. */
+const TOKEN_MARGIN_MS = 5 * 60_000;
+function expiresSoon(auth: unknown): boolean {
+  if (typeof auth !== "object" || auth === null || !("expiresAt" in auth) || typeof auth.expiresAt !== "string") return false;
+  return Date.parse(auth.expiresAt) - Date.now() < TOKEN_MARGIN_MS;
+}
+
 /** `null`을 주는 GitHub 404. 그 외 상태 코드는 그대로 던진다. */
 export function isNotFound(error: unknown): boolean {
   return httpStatus(error) === 404;
@@ -310,11 +317,14 @@ export async function createGitClient(
   const pinned = requirePinnedRepositoryId(repositoryId);
   // ⚠️ **토큰 범위도 그 리포 하나로 좁힌다.** 아래 대조는 `GET /repos`가 답한 시점의 사실이라,
   // 그 뒤에 이름이 다시 옮겨가도 이 토큰으로는 다른 리포를 못 건드린다 (sec-audit-2 발견 34).
-  const auth = await app.octokit.auth({
-    type: "installation",
-    installationId: Number(installationId),
-    repositoryIds: [Number(pinned)],
-  });
+  const scope = { type: "installation", installationId: Number(installationId), repositoryIds: [Number(pinned)] } as const;
+  let auth = await app.octokit.auth(scope);
+  /*
+    ⚠️ **토큰이 곧 만료되면 새로 받는다** (audit-ux #8 리뷰). App이 요청 사이에 남으면서 캐시(수명 59분)가 1분 남은
+    토큰을 줄 수 있고, 아래 Octokit은 그 토큰을 **고정으로** 들어 스스로 갱신하지 않는다 — 60초짜리 Publish·야간 pull이
+    도중에 401이면 브랜치만 밀리고 PR이 안 선다. 호출 하나의 수명(`maxDuration` 60초)보다 넉넉한 5분을 둔다.
+  */
+  if (expiresSoon(auth)) auth = await app.octokit.auth({ ...scope, refresh: true });
   if (typeof auth !== "object" || auth === null || !("token" in auth) || typeof auth.token !== "string") {
     fail("installation token unavailable");
   }
