@@ -88,7 +88,7 @@ const ONBOARDING_SOURCES = [
  * 사용자 토큰을 물면 두 자격증명이 한 파일에서 만난다. 전에는 이 루트들을 안 훑어 `lib/projects/open-pr.ts` 같은 자리가
  * 2홉 뒤에 사용자 토큰을 물어도 green이었다 (POSTMORTEM "2홉은 못 본다").
  */
-const APP_TOKEN_SOURCES = ["lib/pull", "lib/push", "lib/projects", "lib/publish"].flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
+const APP_TOKEN_SOURCES = ["lib/pull", "lib/push", "lib/projects", "lib/publish", "lib/import"].flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
 /** 커밋 경로(App 토큰) 모듈. 온보딩이 이걸 물면 두 자격증명이 한 파일에서 만날 길이 열린다. */
 const COMMIT_PATH_IMPORT = /from\s+["'](@\/lib\/github|\.\.\/github)["']/;
 
@@ -133,8 +133,8 @@ describe("검사식이 실제로 잡는다 — 스캐너가 공허하게 통과�
   it("스캔 대상을 실제로 찾았다", () => {
     expect(CONNECT_SOURCES.length).toBeGreaterThan(3);
     expect(ONBOARDING_SOURCES.length).toBeGreaterThan(3);
-    // 넷 다 들어왔는가 — 한 디렉터리가 이름이 바뀌면 조용히 0개가 된다.
-    for (const dir of ["lib/pull", "lib/push", "lib/projects", "lib/publish"]) {
+    // 다섯 다 들어왔는가 — 한 디렉터리가 이름이 바뀌면 조용히 0개가 된다.
+    for (const dir of ["lib/pull", "lib/push", "lib/projects", "lib/publish", "lib/import"]) {
       expect(APP_TOKEN_SOURCES.some((f) => f.rel.startsWith(`${dir}/`)), dir).toBe(true);
     }
   });
@@ -166,7 +166,19 @@ describe("온보딩은 두 자격증명을 모른다 (ARCHITECTURE §3.1)", () =
 });
 
 describe("App 토큰 경로가 사용자 토큰을 모른다", () => {
-  it("lib/pull·push·projects·publish가 사용자 토큰 모듈을 import하지 않는다", () => {
+  /**
+   * **루트 목록이 손 목록이라 새 소비자를 놓친다** (audit #81). 감사 시점에 `lib/import/`가 `@/lib/github`을 세 파일에서
+   * 물고 있었는데 목록 밖이라, 거기서 사용자 토큰을 물어도 green이었다. `lib/` 전체에서 커밋 경로를 무는 파일을
+   * 찾아 목록 안인지 잰다 — 짝으로 실제 소비자가 0이 아님을 본다.
+   */
+  it("lib/에서 `@/lib/github`을 무는 파일은 전부 스캔 범위 안이다", () => {
+    const scanned = new Set(APP_TOKEN_SOURCES.map((f) => f.rel));
+    const consumers = sourcesIn(join(ROOT, "lib"), "lib").filter((f) => COMMIT_PATH_IMPORT.test(codeOnly(f.source)));
+    expect(consumers.length).toBeGreaterThan(3);
+    expect(consumers.map((f) => f.rel).filter((rel) => !scanned.has(rel))).toEqual([]);
+  });
+
+  it("lib/pull·push·projects·publish·import가 사용자 토큰 모듈을 import하지 않는다", () => {
     const offenders = APP_TOKEN_SOURCES.filter((f) => USER_TOKEN_IMPORT.test(codeOnly(f.source))).map((f) => f.rel);
     expect(offenders).toEqual([]);
   });

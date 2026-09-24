@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { convertCredentials } from "../conversion";
 import { credentialCommand } from "../command";
+import { CredentialError } from "../crypto";
 it("defaults to read-only and rejects apply without both cutover attestations", async () => {
   const updateMany = vi.fn();
   const db = { user: { findMany: vi.fn().mockResolvedValue([{ id: "u1", email: "a@x.com", name: null, image: null, emailLookup: null }]), updateMany }, account: { findMany: vi.fn().mockResolvedValue([]) }, projectInvitation: { findMany: vi.fn().mockResolvedValue([]) }, session: { findMany: vi.fn().mockResolvedValue([]) } } as unknown as PrismaClient;
@@ -17,8 +18,18 @@ it("rejects duplicate App accounts before any conversion", async () => {
 });
 it("commands reject unknown flags, implicit writes and URL arguments", () => {
   expect(credentialCommand([])).toEqual({ mode: "backfill", apply: false, trafficBlocked: false, writersDrained: false });
-  expect(() => credentialCommand(["--url=postgres://secret"])).toThrow();
-  expect(() => credentialCommand(["--apply"])).toThrow();
+  // ⚠️ 맨 `toThrow()`로 재지 않는다 (audit #90) — 오타 하나로 난 TypeError도 통과한다. 거부는 CredentialError이고
+  // 메시지가 인자를 싣지 않는다(URL의 비밀이 스크립트 출력에 안 남는다).
+  const rejects = (args: string[]) => {
+    expect(() => credentialCommand(args)).toThrow(CredentialError);
+    try { credentialCommand(args); } catch (error) { expect(String(error)).not.toContain("secret"); }
+  };
+  rejects(["--url=postgres://secret"]);
+  rejects(["--apply"]);
+  rejects(["--apply", "--traffic-blocked"]);
+  rejects(["--apply", "--traffic-blocked", "--writers-drained", "--mode=verify"]);
+  rejects(["--mode=secret"]);
+  rejects(["--mode=reindex", "--mode=backfill"]);
   expect(credentialCommand(["--apply", "--traffic-blocked", "--writers-drained", "--mode=reindex"])).toMatchObject({ mode: "reindex", apply: true });
 });
 it("dev target cannot be overridden by pg query parameters", async () => {
