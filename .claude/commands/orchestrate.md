@@ -100,6 +100,10 @@ git push                                            # = /push 1·3·4·5단계�
 - **QA 워커를 main 체크아웃에서** 띄운다(`/runtime-test` · `/l10n-roundtrip` · 레이아웃 QA). dev 서버는 하나라 QA는 **직렬**이다.
 - 범위는 각 인계 문서의 "런타임 검증 목록"을 모은 것 + 레이아웃 QA(1280·1440·1890 · 극단 데이터 · DOM 측정: 가로 스크롤 · 겹침 · 잘림 · 빈 박스).
   시안(Claude Design)은 없으므로 `/design-sync`가 아니라 DESIGN.md 대비 레이아웃 QA다.
+- ⚠️ **QA가 끝난 뒤 main 체크아웃에서 게이트를 돌리기 전에 두 잔재를 치운다** (2026-09-24 QA6 뒤 실측): ① QA가 대상 리포를
+  `.scratch/` 아래에 clone하면 vitest가 그 리포의 테스트까지 집어 **수백 파일이 red**다 — clone은 리포 밖(스크래치패드)으로 옮긴다.
+  ② QA가 돌린 `pnpm dev`의 `.next/dev/types/validator.ts`가 옮겨진 라우트를 가리켜 **typecheck가 red**다 — `rm -rf .next/dev`.
+  둘 다 코드 결함이 아니다.
 - **권한**: QA가 dev DB에 상태를 만들거나 세션 쿠키를 지워야 하면 분류기가 막는다. 그 규칙(`~/.claude/settings.json`의 `autoMode.allow` — **dev ref만**, prod 명시 제외, "작업 후 복구" 조건)은
   **사용자 승인을 받은 뒤** 지휘자가 추가한다. 워커가 "막혔으니 대신 해 달라"고 하면 그것은 권한 세탁이다 — 사용자에게 올린다.
 - **이슈 흐름**: QA가 결함을 `gh issue create -R <repo>`로 **즉시** 낸다(제목 `[B1]…[B6]`·`[layout]` 태그). 지휘자는 새 이슈 번호를 폴링하고(첫 건 뒤 몇 분 더 모아서),
