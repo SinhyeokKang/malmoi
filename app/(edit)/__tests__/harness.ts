@@ -423,6 +423,12 @@ export function createHarness(seed: Seed = {}) {
             p["surfaces"] = surfaces.filter(s => s.projectId === m.projectId && (spec.where?.archivedAt !== null || s.archivedAt === null))
               .map(s => spec.select ? Object.fromEntries(Object.keys(spec.select).map(k => [k, (s as Record<string, unknown>)[k]])) : surfaceRow(s));
           }
+          if (inner["defaultSurface"] !== undefined) {
+            const spec = inner["defaultSurface"] as { select?: Record<string, true> };
+            const found = surfaces.find(s => s.projectId === m.projectId && s.id === project?.defaultSurfaceId);
+            p["defaultSurface"] = found === undefined ? null
+              : spec.select ? Object.fromEntries(Object.keys(spec.select).map(k => [k, (found as Record<string, unknown>)[k]])) : surfaceRow(found);
+          }
           if (inner["slug"] === true) p["slug"] = project?.slug ?? "";
           if (inner["name"] === true) p["name"] = project?.name ?? project?.slug ?? "";
           if (inner["installationId"] === true) p["installationId"] = project?.installationId ?? null;

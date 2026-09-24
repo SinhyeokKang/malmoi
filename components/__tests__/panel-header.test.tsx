@@ -168,10 +168,10 @@ describe("PanelBody — 같은 여백, 같은 등급", () => {
  * 이번이 **네 번째**다 (POSTMORTEM 2026-09-14 · 2026-09-15).
  * ⚠️ **`<PanelHeader`를 새로 쓰면 이 배열에 한 줄을 더한다** — 그러지 않으면 새 화면이 검사 밖이다.
  */
-describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
+describe("소비자 열다섯 — 여백을 넘기지 않는다", () => {
   const CONSUMERS = [
     "components/projects/project-list.tsx",
-    "app/(edit)/projects/loading.tsx",
+    "app/(edit)/projects/(list)/loading.tsx",
     "app/(edit)/projects/[slug]/(home)/loading.tsx",
     // Logs도 골격을 갖는다 (logs-rework) — 머리 높이가 실물과 같아야 도착할 때 안 튄다.
     "app/(edit)/projects/[slug]/logs/loading.tsx",
@@ -183,6 +183,10 @@ describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
     "components/sources/sources-screen.tsx",
     "app/(edit)/account/page.tsx",
     "app/(edit)/account/loading.tsx",
+    // 형제 화면의 골격 (audit-ux #5) — 번역 골격은 작업 화면처럼 프리미티브를 안 쓴다.
+    "app/(edit)/projects/[slug]/members/loading.tsx",
+    "app/(edit)/projects/[slug]/settings/loading.tsx",
+    "app/(edit)/projects/[slug]/sources/loading.tsx",
   ];
 
   /**
@@ -230,9 +234,9 @@ describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
     expect(uses("<PanelBody").sort()).toEqual([...CONSUMERS, ...BODY_ONLY].sort());
   });
 
-  it("소비자가 열둘 + 본문 전용 넷이다 — 수가 바뀌면 다시 센다", () => {
+  it("소비자가 열다섯 + 본문 전용 넷이다 — 수가 바뀌면 다시 센다", () => {
     // translation-rework T16 — 옛 번역 머리가 빠졌다. 새 작업 화면은 `PanelHeader`를 쓰지 않는다(세 패널이 본문 전체를 든다).
-    expect(CONSUMERS).toHaveLength(12);
+    expect(CONSUMERS).toHaveLength(15);
     expect(BODY_ONLY).toHaveLength(4);
   });
 

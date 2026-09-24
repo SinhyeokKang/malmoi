@@ -26,7 +26,7 @@ const code = (rel: string): string =>
  * 내려갔다 — `/projects/new`가 같은 목록을 모달 뒤에 그리기 때문이고, 라우트 페이지에는
  * `<ContentPanel>`과 데이터 로드만 남았다. **단언은 그대로이고 읽는 자리만 늘린다.**
  */
-const PAGE = ["app/(edit)/projects/page.tsx", "components/projects/project-list.tsx"];
+const PAGE = ["app/(edit)/projects/(list)/page.tsx", "components/projects/project-list.tsx"];
 
 /**
  * ⚠️ **그릇이 프리미티브로 올라갔다** (members-rework T5). 카드·행 목록·행·띠·빈 상태가
@@ -377,7 +377,7 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
  * 더 눈에 띈다.
  */
 describe("목록 스켈레톤 — 실물과 같은 골격", () => {
-  const SKELETON = code("app/(edit)/projects/loading.tsx");
+  const SKELETON = code("app/(edit)/projects/(list)/loading.tsx");
 
   it.each([
     ["본문 카드 사이 16", "gap-4"],

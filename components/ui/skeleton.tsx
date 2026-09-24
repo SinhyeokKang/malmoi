@@ -18,3 +18,20 @@ import { cn } from "@/lib/utils";
 export function Skeleton({ className }: { className?: string }) {
   return <div aria-hidden className={cn("bg-foreground/5 motion-safe:animate-pulse rounded", className)} />;
 }
+
+/**
+ * 글자 한 줄의 자리 (audit-ux #5 — 형제 화면 골격).
+ *
+ * ⚠️ **줄 높이를 px로 적지 않는다** — `text`(그 줄의 글자 크기 클래스)와 **보이지 않는 글자 하나**(U+200B)가 실물과
+ * 같은 line box를 세운다. `h-[22.5px]`처럼 적으면 `--text-*` 토큰이 바뀔 때 골격만 떠내려간다(POSTMORTEM 2026-09-16의
+ * "골격이 실물과 따로 떠내려갔다"). 블록 높이는 글자 크기의 비율이라 같은 이유로 `em`이다.
+ */
+export function SkeletonLine({ text, className }: { text: "text-xs" | "text-sm" | "text-base" | "text-lg"; className?: string }) {
+  return (
+    // `div`다 — 안의 `Skeleton`이 `div`라 `span`으로 감싸면 잘못된 중첩이다.
+    <div data-skeleton-line className={cn("flex min-w-0 items-center", text)}>
+      {"\u200b"}
+      <Skeleton className={cn("h-[0.8em] rounded-md", className)} />
+    </div>
+  );
+}

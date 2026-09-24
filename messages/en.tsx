@@ -1941,6 +1941,8 @@ export const en = {
   },
 
   translations: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
+    loading: "Loading translations",
     /** 카운터 — ICU가 아니라 삼항 하나다 (PRODUCT §4.2). */
     keys: (n: number): string => (n === 1 ? "1 key" : `${n.toLocaleString("en-US")} keys`),
 
@@ -2402,6 +2404,8 @@ export const en = {
    * 없고, 묶으면 한 화면의 문구 변경이 다른 화면을 조용히 바꾼다.
    */
   sources: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
+    screenLoading: "Loading sources",
     title: "Sources",
     description: "The translation files malmoi reads from your repository.",
     /**
@@ -2500,6 +2504,8 @@ export const en = {
   },
 
   members: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
+    loading: "Loading members",
     /**
      * 패널 헤더 우측의 좌석 잔량 — 갈래는 `planSeatNotice`가 정한다.
      *
@@ -2716,6 +2722,8 @@ export const en = {
 
   /** settings-block 넷 + 계정 (DESIGN §6.6). **블록이 각자 실패한다** — 문구도 블록별로 갈라져 있다. */
   settings: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
+    loading: "Loading settings",
     general: {
       title: "General", thumbnail: "Thumbnail", name: "Name", address: "Address",
       upload: "Upload", remove: "Remove",

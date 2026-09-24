@@ -150,7 +150,7 @@ describe("초대 수락 — 갇히는 길을 남기지 않는다", () => {
  */
 describe("계정 화면 — 옮겼고 복제하지 않았다 (6b-4)", () => {
   const ACCOUNT = "app/(edit)/account/page.tsx";
-  const PROJECTS = "app/(edit)/projects/page.tsx";
+  const PROJECTS = "app/(edit)/projects/(list)/page.tsx";
   const USER_MENU = "components/shell/user-menu.tsx";
 
   it("`requireUser`만 지난다 — 인가할 프로젝트가 없다", () => {

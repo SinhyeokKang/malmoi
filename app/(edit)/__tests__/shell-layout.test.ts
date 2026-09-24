@@ -311,13 +311,15 @@ describe("콘텐츠 패널 — 라우트마다 정확히 하나", () => {
 describe("패널 폭 등급을 화면이 고르고 있다", () => {
   /** 프로젝트·사용자 축의 **목록** 화면 — 카드가 패널을 채운다(시안 `1a`). */
   const FLUID = new Set([
-    "app/(edit)/projects/loading.tsx",
+    "app/(edit)/projects/(list)/loading.tsx",
     "app/(edit)/projects/[slug]/(home)/loading.tsx",
     "app/(edit)/projects/[slug]/(home)/page.tsx",
     "app/(edit)/projects/[slug]/logs/error.tsx",
     "app/(edit)/projects/[slug]/logs/loading.tsx",
     "app/(edit)/projects/[slug]/logs/page.tsx",
+    "app/(edit)/projects/[slug]/members/loading.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",
+    "app/(edit)/projects/[slug]/sources/loading.tsx",
     "components/projects/project-list.tsx",
     "components/sources/sources-archived.tsx",
     "components/sources/sources-screen.tsx",
@@ -328,6 +330,7 @@ describe("패널 폭 등급을 화면이 고르고 있다", () => {
     "app/(edit)/account/loading.tsx",
     "app/(edit)/account/page.tsx",
     "app/(edit)/error.tsx",
+    "app/(edit)/projects/[slug]/settings/loading.tsx",
     "app/(edit)/projects/[slug]/settings/page.tsx",
     "components/project-archived.tsx",
     "components/project-not-ready.tsx",

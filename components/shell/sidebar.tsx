@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, LogOut } from "lucide-react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useFormStatus } from "react-dom";
 
@@ -139,8 +139,15 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
          * 보인다. `[0.03]`은 프로젝트 목록 행의 hover와 같은 값이라 임의값이 늘지 않는다.
          */
         active ? "bg-foreground/[0.07]" : "hover:bg-foreground/[0.03]",
+        /**
+         * ⚠️ **누른 항목은 응답 전에 선택 면을 든다** (audit-ux #6 · DESIGN §6.4 `Button loading`). `active`는 커밋 뒤의
+         * `usePathname`이라 느린 이동 동안 옛 항목에 남는다. `useLinkStatus`는 **링크의 자손에서만** 값을 내므로
+         * 자손이 표식을 내고 링크가 `has-[…]`로 읽는다 — 면을 자손으로 옮기면 hit 영역과 치수가 움직인다.
+         */
+        "has-[[data-nav-pending]]:bg-foreground/[0.07]",
       )}
     >
+      <PendingMark />
       <span className="flex size-4 shrink-0 items-center justify-center">
         <Icon className="size-4" aria-hidden />
       </span>
@@ -161,6 +168,12 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
       )}
     </Link>
   );
+}
+
+/** 이 링크의 이동이 진행 중이면 보이지 않는 표식 하나 — 면은 링크가 그린다(`Item`). */
+function PendingMark() {
+  const { pending } = useLinkStatus();
+  return pending ? <span data-nav-pending hidden /> : null;
 }
 
 /**

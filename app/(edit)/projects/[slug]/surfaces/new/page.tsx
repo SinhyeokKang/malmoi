@@ -3,6 +3,10 @@ import { requireProjectAccess } from "@/lib/auth/session";
 import { routes } from "@/lib/routes";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
+/**
+ * ⚠️ **옛 링크 호환용이다** (audit-ux #31) — 앱 안에서 여기로 보내는 곳은 0이다. GitHub callback도 Sources의 추가 모달로
+ * 바로 간다. 지우지 않는 이유는 옛 `/translations`와 같다: 북마크·외부 링크로 들어온 사람이 404를 만나지 않는다.
+ */
 export default async function AddSurfacePage({ params, searchParams }: {
   params: Promise<{ slug: string }>; searchParams: Promise<Raw<"e">>;
 }) {

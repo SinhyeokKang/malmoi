@@ -978,7 +978,8 @@ export async function confirmManualFormat(raw: {
 
 export type CreatedSurface = { surfaceSlug: string; pathTemplate: string; adapter: AdapterName; baseLocale: string };
 export type CreateProjectResult =
-  | { ok: true; slug: string; pushToken: string; baseBranch: string; surfaces: CreatedSurface[]; count: number; yaml: string }
+  /** `defaultSurfaceSlug`는 ④의 [Start translating]이 옛 번역 라우트의 redirect를 건너뛰는 목적지다 (audit-ux #22). */
+  | { ok: true; slug: string; defaultSurfaceSlug: string; pushToken: string; baseBranch: string; surfaces: CreatedSurface[]; count: number; yaml: string }
   | { ok: false; error: OnboardFailure | "path-conflict";
       surface?: { pathTemplate: string; failed: number; errors: AdapterError[] };
       conflicts?: { path: string; surfaceSlugs: string[] }[] };
@@ -1205,7 +1206,7 @@ export async function createProject(raw: {
   // ⚠️ **`/projects/new`도 지운다.** 모달 뒤에 목록이 있으므로 그 라우트도 같은 목록을 그리는데,
   // 위가 **접두가 아니라 경로 하나**라 여기를 안 덮는다 (POSTMORTEM 2026-09-09).
   revalidatePath("/projects/new");
-  return { ok: true, slug: input.slug, pushToken, baseBranch, surfaces: prepared.map(s => s.surface),
+  return { ok: true, slug: input.slug, defaultSurfaceSlug: defaultSurface.surface.surfaceSlug, pushToken, baseBranch, surfaces: prepared.map(s => s.surface),
     count: prepared.reduce((sum, s) => sum + s.payload.keys.length, 0), yaml };
 }
 
