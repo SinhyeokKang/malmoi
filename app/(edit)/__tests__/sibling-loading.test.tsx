@@ -91,6 +91,15 @@ describe("목록 경계의 자리", () => {
     expect(existsSync(join(ROOT, "projects/(list)/page.tsx"))).toBe(true);
   });
 
+  /**
+   * **`/projects/new`도 목록 경계 아래다** (audit-ux #21 fix1). GitHub callback이 이 주소로 **전체 로드**로 착지하는데
+   * 그 페이지가 목록(`loadProjectList` — 원격 신호 최대 8초)을 기다린다. 경계 밖이면 그동안 빈 화면이다.
+   */
+  it("/projects/new는 목록 경계 아래다 — (list)/new/", () => {
+    expect(existsSync(join(ROOT, "projects/new"))).toBe(false);
+    expect(existsSync(join(ROOT, "projects/(list)/new/page.tsx"))).toBe(true);
+  });
+
   it("형제 화면의 경계는 [slug]/에 하나로 두지 않는다 — 각 세그먼트에 있다 (malmoi#95)", () => {
     expect(existsSync(join(ROOT, "projects/[slug]/loading.tsx"))).toBe(false);
     for (const segment of ["members", "settings", "sources", "surfaces/[surfaceSlug]/translations"]) {

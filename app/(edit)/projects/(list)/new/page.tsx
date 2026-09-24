@@ -5,7 +5,7 @@ import { getPrisma } from "@/lib/db";
 import { loadProjectList } from "@/lib/keys/query";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
-import { NewProjectModal } from "../new-project-modal";
+import { NewProjectModal } from "../../new-project-modal";
 
 /**
  * 직접 진입·새로고침·OAuth 복귀에는 유지할 배경이 없으므로 목록도 함께 만든다.

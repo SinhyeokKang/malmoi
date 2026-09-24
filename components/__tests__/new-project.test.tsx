@@ -255,6 +255,27 @@ it("④의 [Start translating]은 기본 표면으로 replace한다 — push가 
   expect(mocks.router.push).not.toHaveBeenCalled();
 });
 
+/**
+ * **④의 이동 pending은 [Start translating]만 잠그고 닫기는 잠그지 않는다** (audit-ux #22). 짝 둘: 이동이 커밋될 때까지
+ * 버튼이 로딩(`nextPending`)이고, 닫기는 생성 `pending`에만 묶여 있어 그대로 열려 있다 — 합치면 ④에서 모달이 갇힌다.
+ */
+it("④ 이동 중에는 [Start translating]이 로딩이고 ×는 그대로 열려 있다", async () => {
+  mocks.createProject.mockResolvedValue({ ok: true, slug: "acme-web", defaultSurfaceSlug: "app", pushToken: "t", baseBranch: "main", count: 2, surfaces: [], yaml: "y" });
+  // 이동이 커밋되지 않은 채로 둔다 — transition이 약속을 기다리는 동안이 pending이다.
+  const navigation = deferred<void>();
+  mocks.router.replace.mockReturnValueOnce(navigation.promise);
+  await naming();
+  await click(button("Create project"));
+  const closeButton = () => find<HTMLButtonElement>(document.body, 'button[aria-label="Close"]');
+  expect(button("Start translating").disabled).toBe(false);
+  await click(button("Start translating"));
+  expect(button("Start translating").disabled).toBe(true);
+  expect(closeButton().disabled).toBe(false);
+  await act(async () => navigation.resolve());
+  expect(button("Start translating").disabled).toBe(false);
+  expect(mocks.router.replace).toHaveBeenCalledTimes(1);
+});
+
 it("lazy 샘플을 받으면 언어 옵션과 다음 단계의 키 수도 갱신된다", async () => {
   await files();
   await select('[role="combobox"]', "fr");

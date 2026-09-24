@@ -9,7 +9,7 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => ({}) }));
 vi.mock("@/lib/keys/query", () => ({ loadProjectList: mocks.loadProjectList }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ listConnectableRepos: mocks.listConnectableRepos }));
 
-import DirectPage from "../projects/new/page";
+import DirectPage from "../projects/(list)/new/page";
 import InterceptedPage from "../projects/@modal/(.)new/page";
 import EmptySlot from "../projects/@modal/[...rest]/page";
 import EmptyRoot from "../projects/@modal/page";

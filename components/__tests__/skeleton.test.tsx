@@ -6,7 +6,7 @@ import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { render, find } from "./helpers/dom";
 
 /**
- * 스켈레톤 프리미티브 — 지금까지 `app/(edit)/projects/loading.tsx`의 관용구 하나뿐이었다.
+ * 스켈레톤 프리미티브 — 지금까지 `app/(edit)/projects/(list)/loading.tsx`의 관용구 하나뿐이었다.
  *
  * ⚠️ **`motion-safe:`가 붙는다** — 움직임을 줄인 사용자에게는 정지한 회색 블록으로 선다
  * (로그인 화면의 점 필드와 같은 판정).

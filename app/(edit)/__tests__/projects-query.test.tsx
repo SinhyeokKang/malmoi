@@ -15,7 +15,7 @@ it("중복 q 파라미터가 프로젝트 목록을 오류로 보내지 않는�
 vi.mock("@/app/(edit)/projects/actions", () => ({
   listConnectableRepos: async () => ({ ok: true, repos: [] }),
 }));
-const { default: NewPage } = await import("../projects/new/page");
+const { default: NewPage } = await import("../projects/(list)/new/page");
 
 it("`?e=`와 중복 `q`가 함께 와도 모달 라우트가 오류로 가지 않는다", async () => {
   await expect(

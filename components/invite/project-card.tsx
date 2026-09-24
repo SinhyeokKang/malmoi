@@ -40,7 +40,7 @@ export function InviteProjectCard({
         ⚠️ **깨진 URL의 폴백은 `ImageTile`이 든다** (malmoi#50) — 목록·Home과 같은 판정이다.
 
         ⚠️ **`overflow-hidden`도 목록과 같다** — 프로젝트 이미지가 생기는 날 이 배경이 그대로 그
-        이미지의 자리가 된다(`app/(edit)/projects/page.tsx`의 같은 주석).
+        이미지의 자리가 된다(`app/(edit)/projects/(list)/page.tsx`의 같은 주석).
       */}
       <ImageTile
         src={image}

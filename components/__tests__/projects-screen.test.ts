@@ -46,7 +46,7 @@ describe("프로젝트 목록 — 검색은 로컬로 거르고 주소가 그 �
    * **페이지는 여전히 서버 컴포넌트다**(인가·데이터 로드가 거기 산다).
    */
   it("페이지는 서버 컴포넌트이고, 목록은 검색어를 주소에서 읽어 로컬로 거른다", () => {
-    expect(code("app/(edit)/projects/page.tsx")).not.toContain('"use client"');
+    expect(code("app/(edit)/projects/(list)/page.tsx")).not.toContain('"use client"');
     const search = code("components/projects/search-input.tsx");
     expect(search).toContain("useSearchParams()");
     expect(search).toContain("window.history.replaceState(");
