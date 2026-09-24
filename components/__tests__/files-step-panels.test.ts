@@ -73,3 +73,25 @@ describe("② 파일 선택 — 패널 구분선", () => {
     expect(files).not.toMatch(/<ResizablePanel[^>]*overflow-y-auto/s);
   });
 });
+
+/**
+ * malmoi#88 — 1280×720에서 수동 지정 폼(315px)이 열리면 좌측의 **유일하게 줄어드는 자식**인 후보 목록이 24px로
+ * 눌렸다(행은 69). 목록에 한 행의 바닥을 주고, 넘치는 몫은 **좌측 열 전체**가 스크롤한다.
+ *
+ * ⚠️ **스크롤은 패널이 아니라 안쪽 래퍼가 든다** — 패널에 `overflow-y-auto`를 두면 가로도 `auto`가 되어 `w-full` 필드의
+ * 포커스 링이 잘린다(위 테스트). 래퍼는 `p-1`로 링 자리를 두고 `-m-1`로 자리를 되돌린다.
+ * ⚠️ 새 프로젝트 ②도 같은 `FilesStep`이다 — 두 소비자가 같은 규칙을 받는다(RadioGroup 갈래도 바닥을 든다).
+ */
+describe("② 좌측 열 — 목록이 한 행 아래로 눌리지 않는다 (#88)", () => {
+  it("좌측 열의 안쪽 래퍼가 스크롤하고 포커스 링 자리를 둔다", () => {
+    expect(files).toMatch(/data-files-left[^>]*className="[^"]*\boverflow-y-auto\b[^"]*"/);
+    expect(files).toMatch(/data-files-left[^>]*className="[^"]*-m-1\b[^"]*\bp-1\b[^"]*"/);
+  });
+
+  it("후보 목록(두 갈래 모두)이 한 행의 바닥을 든다", () => {
+    const floors = [...files.matchAll(/min-h-\[4\.5rem\]/g)];
+    expect(floors.length).toBeGreaterThanOrEqual(2);
+    expect(files).toMatch(/<ul className="[^"]*min-h-\[4\.5rem\][^"]*"[^>]*aria-label=\{m\.newProject\.files\.candidates\}/);
+    expect(files).toMatch(/<RadioGroup[^>]*className="[^"]*min-h-\[4\.5rem\]/s);
+  });
+});
