@@ -123,6 +123,22 @@ it("수동 지정의 빈 미리보기는 프로젝트 생성을 말하지 않는
   expect(document.body.textContent).toContain(m.settings.sources.previewNone);
 });
 
+/**
+ * malmoi#92 — 빈 미리보기로 바뀌어도 **이전 후보의 총량 줄**("N more keys")이 남았다. 그 줄은 더 이상 안 보이는 행을
+ * 말한다. 짝: 후보를 미리보는 동안에는 선다.
+ */
+it("수동 지정의 빈 미리보기에는 이전 후보의 총량 줄이 없다 (#92)", async () => {
+  actions.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate("app"), samples: [{ locale: "en", rows: [{ key: "x", value: "X" }], total: 20 }] }] });
+  await render(<Screen {...props} adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "app/{locale}.json" }]} />);
+  const user = userEvent.setup();
+  await act(async () => { await user.click(find("Add sources")); });
+  expect(document.body.textContent).toContain(m.newProject.files.preview.more(19));
+  await act(async () => { await user.click(find("Set the path yourself")); });
+  await act(async () => { await user.type(document.querySelector('#manual-path')!, "nope"); });
+  expect(document.body.textContent).toContain(m.newProject.files.preview.none);
+  expect(document.body.textContent).not.toContain(m.newProject.files.preview.more(19));
+});
+
 /** malmoi#80 부수 관찰 — 경로를 고치면 옛 확인 실패가 새 입력 옆에 남지 않는다. 짝: 고치기 전에는 선다. */
 it("경로를 고치면 이전 수동 확인 실패를 지운다 (#80)", async () => {
   actions.confirmManualFormat.mockResolvedValue({ ok: false, error: "manual-no-match" });
