@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 
 import { updateProfileName } from "@/app/(edit)/account/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useLandAfter } from "@/components/ui/focus";
 import { Input } from "@/components/ui/input";
 import { NAME_MAX_CHARS } from "@/lib/account/plan";
 import { m } from "@/lib/i18n";
@@ -53,6 +54,10 @@ export function ProfileNameForm({ name, inputId }: { name: string; inputId: stri
     return result.ok ? { saved: result.name } : result.reason;
   }, null);
   const failure = state === null || typeof state === "object" ? null : reasonMessage(state);
+  const saveRef = useRef<HTMLButtonElement>(null);
+  // ⚠️ 저장 중 `loading`이 [Save]를 꺼 포커스가 `body`로 빠진다 — 끝나면 다시 켜진 그 버튼으로 돌려준다 (audit #32 계열).
+  useLandAfter(pending, () => saveRef.current);
+  const saved = typeof state === "object" && state !== null && value.trim() === state.saved;
 
   return (
     <form action={submit} className="space-y-2">
@@ -64,13 +69,12 @@ export function ProfileNameForm({ name, inputId }: { name: string; inputId: stri
           onChange={(event) => setValue(event.target.value)}
           className="w-80"
         />
-        <Button type="submit" variant="default" loading={pending}>
+        <Button ref={saveRef} type="submit" variant="default" loading={pending}>
           {m.account.profile.save}
         </Button>
         {/* 저장된 값과 같을 때만 선다 — 다시 고치기 시작하면 이 조건이 지운다. */}
-        {typeof state === "object" && state !== null && value.trim() === state.saved && (
-          <span className="text-muted-foreground text-xs">{m.account.profile.saved}</span>
-        )}
+        {/* ⚠️ **live 영역이 전부터 있다** (audit #39) — 텍스트와 함께 새로 붙는 `role="status"`는 스크린리더가 놓친다. */}
+        <span role="status" className="text-muted-foreground text-xs">{saved ? m.account.profile.saved : ""}</span>
       </div>
       {failure !== null && <Alert variant="danger">{failure}</Alert>}
     </form>

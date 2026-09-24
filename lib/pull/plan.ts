@@ -56,7 +56,8 @@ export type ProjectFormatColumns = {
  */
 function nestedByPathOf(raw: unknown): Record<string, boolean> | undefined {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-  const out: Record<string, boolean> = {};
+  // ⚠️ **프로토타입 없는 객체다** (audit #84) — 키가 리포가 정한 경로라 `{}`에 `__proto__`를 대입하면 조용히 사라진다.
+  const out: Record<string, boolean> = Object.create(null) as Record<string, boolean>;
   for (const [path, value] of Object.entries(raw as Record<string, unknown>)) {
     if (typeof value === "boolean") out[path] = value;
   }
@@ -223,7 +224,13 @@ export function buildWriteEntries(
  * writer의 출력. `content`가 `null`이면 낼 항목이 0개라 파일을 만들지 않는다 (ARCHITECTURE §1.1).
  * `errors`는 writer가 **버린** 항목이다 — 값을 잃더라도 어느 키인지는 알려야 한다 (ARCHITECTURE §1.35).
  */
-export type LocalFile = { path: string; content: string | null; errors?: AdapterError[] };
+/**
+ * 렌더 출력 한 파일. `locale`은 per-locale에만 있다(multi-locale 파일은 여러 로케일을 담는다). 오류의 `locale`은 그 오류를 낸
+ * write 호출의 로케일이다 — pull이 전달 불가 셀을 **좌표로** 보류하는 입력이다(delivery-invariants D3). `content`·`path`만
+ * 트리 페이로드로 가므로 이 둘은 blob SHA에 영향이 없다.
+ */
+export type RenderError = AdapterError & { locale?: string };
+export type LocalFile = { path: string; content: string | null; locale?: string; errors?: RenderError[] };
 export type TreeBlob = { path: string; sha: string };
 export type PullChange = { path: string; content: string };
 

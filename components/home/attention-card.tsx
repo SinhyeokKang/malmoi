@@ -2,7 +2,9 @@ import { Archive, ChevronRight, CircleCheck, CircleDot, Languages, TriangleAlert
 import Link from "next/link";
 import type { ComponentType } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { canPerform, type Role } from "@/lib/auth/permission";
 import type { AttentionItem, AttentionList } from "@/lib/home/attention";
 import type { HomeState } from "@/lib/home/state";
 import { m } from "@/lib/i18n";
@@ -33,9 +35,11 @@ const TILE: Record<AttentionItem["kind"], { icon: ComponentType<{ className?: st
   never_filled: { icon: Languages, className: "bg-foreground/5 text-muted-foreground" },
 };
 
-export function AttentionCard({ items, slug, state, now }: {
+export function AttentionCard({ items, slug, role, state, now }: {
   items: AttentionList;
   slug: string;
+  /** 가져오기 실패의 재시도가 OWNER 전용이라 EDITOR 행에만 그 사실 한 줄이 붙는다. */
+  role: Role;
   state: HomeState;
   now: Date;
 }) {
@@ -50,9 +54,7 @@ export function AttentionCard({ items, slug, state, now }: {
         {m.home.attention.title}
         {/* ⚠️ **빈 상태에는 pill이 없다** (캔버스 `2a-empty`) — `0`을 배지로 세우면 하나의 항목처럼 읽힌다. */}
         {items.count > 0 && (
-          <span className="bg-foreground/5 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium">
-            {items.count}
-          </span>
+          <Badge variant="neutral">{items.count}</Badge>
         )}
       </h2>
 
@@ -68,7 +70,7 @@ export function AttentionCard({ items, slug, state, now }: {
           <ul>
             {items.shown.map((item) => (
               <li key={itemKey(item)}>
-                <AttentionRow item={item} slug={slug} now={now} />
+                <AttentionRow item={item} slug={slug} role={role} now={now} />
               </li>
             ))}
           </ul>
@@ -86,7 +88,7 @@ export function AttentionCard({ items, slug, state, now }: {
               <ul>
                 {items.more.map((item) => (
                   <li key={itemKey(item)}>
-                    <AttentionRow item={item} slug={slug} now={now} />
+                    <AttentionRow item={item} slug={slug} role={role} now={now} />
                   </li>
                 ))}
               </ul>
@@ -99,16 +101,21 @@ export function AttentionCard({ items, slug, state, now }: {
 }
 
 /**
- * 항목 하나. **행 전체가 링크이고 chevron은 표시일 뿐이다** — 파서 실패는 설정 화면(사유와 복구
- * 안내가 사는 자리), 나머지 둘은 그 로케일만 보이는 번역 화면이다.
+ * 항목 하나. **행 전체가 링크이고 chevron은 표시일 뿐이다** — 가져오기 실패는 Sources(표면별 사유와
+ * 재시도가 사는 자리 — audit #6: 전엔 설정 화면이었고 거기엔 그 정보가 0이었다), 나머지 둘은 그 로케일만
+ * 보이는 번역 화면이다.
+ *
+ * ⚠️ **EDITOR도 같은 링크다** (audit #6 r1 — 사용자 결정) — Sources는 `translation:write`라 EDITOR도 열어 사유를
+ * 읽는다. 재시도만 `project:settings` 뒤라 그 사실 한 줄이 붙는다 (`/projects` 목록 띠와 같은 규칙).
  *
  * ⚠️ **구분선이 `--divider`(#f0f0f0)이고 `--border`(#e5e5e5)가 아니다** — 카드 **안**의 선은 카드
  * 테두리보다 연해야 행 셋이 한 덩어리로 읽힌다 (DESIGN §6.2에 등재된 토큰).
  */
-function AttentionRow({ item, slug, now }: { item: AttentionItem; slug: string; now: Date }) {
+function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: string; role: Role; now: Date }) {
+  const ownerRetries = item.kind === "import_failed" && !canPerform(role, "project:settings");
   const href =
     item.kind === "import_failed"
-      ? routes.settings(slug)
+      ? routes.sources(slug)
       : routes.surfaceTranslations(slug, item.surfaceSlug, item.kind === "review"
           // 그 로케일의 검토 대기 — 상세 언어를 그 로케일로 좁힌다(translation-rework T12).
           ? { ns: ALL_NAMESPACES, state: "review", language: item.code }
@@ -133,6 +140,7 @@ function AttentionRow({ item, slug, now }: { item: AttentionItem; slug: string; 
           <span className="font-medium">{body(item)}</span>
           {tail(item)}
         </span>
+        {ownerRetries && <span className="text-muted-foreground text-xs">{m.projects.importFailure.ownerRetries}</span>}
       </span>
       {/* ⚠️ 시각은 `neutral-400`이다 — 보조 줄(`#737373`)보다 한 단계 더 물러난다. */}
       <span className="shrink-0 text-xs text-neutral-400">

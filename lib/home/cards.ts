@@ -1,6 +1,7 @@
 import type { SummaryQueue } from "@/lib/projects/list";
 
 import type { HomeState } from "./state";
+import type { SyncTime } from "./sync-time";
 
 /**
  * 카운트 카드 넷 (캔버스 `2a` · DESIGN §6.64).
@@ -71,8 +72,11 @@ export function countCards(input: {
   surfaces: number;
   /** 살아 있는 키 수 — `To translate`가 0일 때 "무엇이 다 찼나"의 분모다. */
   keys: number;
-  /** 표면별 `lastCommitAt`의 최댓값. 첫 Sync 전에는 `null`이다. */
-  lastSyncAt: Date | null;
+  /**
+   * 표면별 `lastImportedAt`(마지막 성공 적재)의 최댓값 — `lastSyncTime`. 첫 Sync 전에는 `null`이고,
+   * 시각 컬럼 이전의 성공이면 `"unrecorded"`다 (malmoi#81).
+   */
+  lastSyncAt: SyncTime;
   /** 검토 대기의 로케일별 분해 — `8 cells · 5 en, 3 ja`의 뒤쪽이다. */
   reviewByLocale: readonly { code: string; count: number }[];
 }): HomeCard[] {
@@ -96,6 +100,8 @@ function sublineFor(key: CardKey, input: Parameters<typeof countCards>[0]): Card
   const { state, counts, lastSyncAt } = input;
 
   if (key === "newFromGithub") {
+    // 시각이 기록되지 않은 성공 — "not synced yet"도 지어낸 시각도 아니다. 시각 없는 문장으로 말한다 (malmoi#81).
+    if (lastSyncAt === "unrecorded") return state === "archived" ? { kind: "frozenAtArchive" } : { kind: "asOfLastSync" };
     if (state === "import_failed") return { kind: "lastGoodSync", at: lastSyncAt };
     if (state === "not_connected") return { kind: "asOf", at: lastSyncAt };
     /**

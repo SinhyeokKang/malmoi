@@ -260,8 +260,9 @@ describe("설정의 Base branch 행", () => {
   /** 모달 ①의 `BranchLabel`처럼 진한 라벨이고, 행 시작선이 위 리포 이름(16 + 칩 28 + gap 12 = 56)과 같다. */
   it("라벨이 진한 글자이고 폼이 리포 이름 선까지 들여 쓴다", () => {
     const src = read(SETTINGS_FORM);
-    expect(src).toMatch(/<label htmlFor="base-branch" className="[^"]*\btext-foreground\b[^"]*\bfont-medium\b/);
-    expect(src).not.toMatch(/<label htmlFor="base-branch" className="[^"]*text-neutral-400/);
+    // `for`는 편집 컨트롤이 설 때만 잇는다(audit #89) — 식 안의 `"base-branch"`까지 한 덩어리로 본다.
+    expect(src).toMatch(/<label htmlFor=\{[^}]*"base-branch"\} className="[^"]*\btext-foreground\b[^"]*\bfont-medium\b/);
+    expect(src).not.toMatch(/<label htmlFor=\{[^}]*"base-branch"\} className="[^"]*text-neutral-400/);
     expect(src).toMatch(/<form\s+className="[^"]*\bpl-10\b/);
   });
 

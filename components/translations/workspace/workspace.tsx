@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownToLine, Languages, Loader2 } from "lucide-react";
+import { ArrowDownToLine, Languages, Loader2, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 
@@ -8,6 +8,7 @@ import { previewTranslationRevert, revertTranslationKey, saveTranslationKey } fr
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
 import { SearchInput } from "@/components/search-input";
 import { SyncButton } from "@/components/home/sync-button";
+import { SyncResult } from "@/components/home/sync-result";
 import { BasePendingBanner } from "@/components/translations/base-pending-banner";
 import { EditLossBanner } from "@/components/translations/edit-loss-banner";
 import { Alert } from "@/components/ui/alert";
@@ -15,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { useLandAfter } from "@/components/ui/focus";
+import type { RepositoryImportOutcome } from "@/lib/import/result";
 import type { TranslationList, TranslationListRow, TranslationTree } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
@@ -73,7 +76,12 @@ function valuesOf(detail: DetailView | null): Record<string, string> {
 type FooterStatus =
   | { kind: "saved" }
   | { kind: "save-failed" }
+  /** 다시 해도 안 풀리는 저장 거부 둘 (audit #23) — `save-failed`의 "Try again"으로 접지 않는다. */
+  | { kind: "key-gone" }
+  | { kind: "not-ready" }
   | { kind: "save-unknown" }
+  /** 수술적 표면의 비-base 비우기 거부 (delivery-invariants D2) — 아무것도 저장되지 않았다. 입력은 그대로 남는다. */
+  | { kind: "cannot-clear"; locales: string[] }
   | { kind: "session" }
   | { kind: "archived" }
   | { kind: "lost-access" }
@@ -126,6 +134,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const [revertBusy, setRevertBusy] = useState(false);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const resultRef = useRef<HTMLSpanElement>(null);
+  const saveRef = useRef<HTMLButtonElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => { setStatus(null); setRevertedLocales(new Set()); setRevertReason(null); }, [keyId]);
   useEffect(() => {
@@ -136,6 +145,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
 
   // ── 세션 복구 사본 — 이 탭 sessionStorage의 한 키 draft, 사용자별 (spec §3.5) ───────────────────
   const restoredFor = useRef<string | null>(null);
+  /** 복구 사본을 못 읽거나 못 썼다 — 세션 만료 Alert가 보존을 약속하지 않는다 (ARCHITECTURE §6.04 · malmoi#76). */
+  const [storageBlocked, setStorageBlocked] = useState(false);
   useEffect(() => {
     if (keyId === undefined || restoredFor.current === keyId) return;
     restoredFor.current = keyId;
@@ -154,6 +165,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       if (count > 0) setStatus({ kind: "restored", count });
     } catch {
       // 저장소가 막힌 브라우저 — 보존을 약속하지 않는다(세션 만료 문구가 그 갈래를 말한다).
+      setStorageBlocked(true);
     }
   }, [keyId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -164,6 +176,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       else window.sessionStorage.setItem(storageKey(userId, slug), JSON.stringify({ surfaceSlug: detailSurface, keyId, saved: plan.saved, draft: plan.draft }));
     } catch {
       // 위와 같다.
+      setStorageBlocked(true);
     }
   }, [draft, keyId, userId, slug, detailSurface]);
 
@@ -263,6 +276,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         setStatus(result.error === "unauthorized" ? { kind: "session" }
           : result.error === "archived" ? { kind: "archived" }
           : result.error === "forbidden" || result.error === "not-found" ? { kind: "lost-access" }
+          : result.error === "key-unavailable" ? { kind: "key-gone" }
+          : result.error === "not-ready" ? { kind: "not-ready" }
+          : result.error === "cannot-clear" && "localeCodes" in result ? { kind: "cannot-clear", locales: result.localeCodes }
           : { kind: "save-failed" });
       }
     } catch {
@@ -274,6 +290,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       setSaving(false);
     }
   }
+
+  /*
+    ⚠️ **Save가 끝나면 착지한다** (audit #32 — 주 흐름). 저장 중 `loading`이 [Save]를 꺼 포커스가 `body`로 빠지고, 성공하면
+    저장할 것이 없어 꺼진 채 남는다 — 그때는 결과 줄(Revert 성공과 같은 자리 · DESIGN §7), 거부면 다시 켜진 [Save]다.
+    단축키로 저장했으면 포커스가 입력에 그대로라 옮기지 않는다(빠졌을 때만 옮긴다).
+  */
+  useLandAfter(saving, () => [saveRef.current, resultRef.current]);
 
   // ── Revert ────────────────────────────────────────────────────────────────
   const pendingLocales = detail?.locales.filter(l => l.pending && !revertedLocales.has(l.code)).map(l => l.code) ?? [];
@@ -328,7 +351,15 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const publish = usePublish(slug);
   const syncReasonId = useId();
   const publishButtonId = useId();
+  const footerAlertId = useId();
   const [syncOpen, setSyncOpen] = useState(false);
+  /**
+   * ⚠️ **[Sync]의 원결과를 이 화면이 든다** (audit #5 — POSTMORTEM 2026-09-08 재발) — 전엔 `onResult`가 결과를 버리고
+   * refresh만 불러 거부가 설명 없이 버튼만 복귀했다. refresh는 `SyncButton`이 성공에만 부른다.
+   */
+  const [syncOutcome, setSyncOutcome] = useState<RepositoryImportOutcome | null>(null);
+  /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
+  const openSync = () => attempt({ kind: "sync" }, () => setSyncOpen(true));
 
   // ── 폭 ────────────────────────────────────────────────────────────────────
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -365,6 +396,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const listEmpty = (
     <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
       <p className="text-sm">{query.q !== undefined ? w.empty.noMatch(query.q) : noKeys ? w.empty.noActive : w.empty.filteredOut}</p>
+      {/* 활성 키가 0이면 좁힌 것이 아니라 아직 온 것이 없다 — 다음 일을 말한다 (audit #31). */}
+      {query.q === undefined && noKeys && <p className="text-muted-foreground text-xs">{m.translations.empty.noKeys.description}</p>}
       {query.q !== undefined
         ? <Button size="sm" onClick={() => filter({ q: undefined }, "search")}>{w.empty.clearSearch}</Button>
         : narrowed && <Button size="sm" onClick={() => filter({}, "clear")}>{w.empty.showAll(tree.projectKeyCount)}</Button>}
@@ -384,9 +417,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           </span>
           <span className="ml-auto flex items-center gap-2">
             {role === "OWNER" ? (
-              <span onClickCapture={event => { if (dirty.length > 0) { event.preventDefault(); event.stopPropagation(); attempt({ kind: "sync" }, () => setSyncOpen(true)); } }}>
+              <span onClickCapture={event => { if (dirty.length > 0) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
                 <SyncButton slug={slug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
-                  open={syncOpen} onOpenChange={setSyncOpen} onResult={() => router.refresh()} fallbackFocusRef={titleRef} />
+                  open={syncOpen} onOpenChange={setSyncOpen} onResult={setSyncOutcome} fallbackFocusRef={titleRef} />
               </span>
             ) : (
               <>
@@ -437,7 +470,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             ]}
             onSelect={value => filter({ scope: value as TranslationQuery["scope"] })}
           />
-          {narrowed && <Button variant="ghost" onClick={() => filter({}, "clear")}>{w.filters.clear}</Button>}
+          {narrowed && <Button variant="ghost" onClick={() => filter({}, "clear")}><RotateCcw aria-hidden />{w.filters.clear}</Button>}
           {noKeys && <span className="text-muted-foreground text-xs">{w.filters.nothingToFilter}</span>}
           <SearchInput className="ml-auto" inputClassName="w-80" value={query.q} label={w.filters.search} onSearch={q => filter({ q: q === "" ? undefined : q }, "search")} />
         </div>
@@ -445,12 +478,14 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           <p className="text-muted-foreground text-xs">{w.filters.substituted(routeSurfaceSlug, query.missingLocale ?? "")}</p>
         )}
         {/*
-          ⚠️ **두 배너는 조건부 분기 밖의 형제다** (DESIGN §6.1 · POSTMORTEM 2026-09-07) — 분기 안에 두면 `router.refresh()`가 방금 만든
+          ⚠️ **두 배너와 Sync 결과는 조건부 분기 밖의 형제다** (DESIGN §6.1 · POSTMORTEM 2026-09-07) — 분기 안에 두면 `router.refresh()`가 방금 만든
           상태를 언마운트한다. 대기 배너가 먼저다: "왜 지금 보내야 하는가"가 "보내라"보다 앞이다.
         */}
         <div className="space-y-3 empty:hidden">
           <BasePendingBanner baseLocale={props.baseLocale} declaredBaseLocale={props.declaredBaseLocale} />
           <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} />
+          <SyncResult slug={slug} branch={props.sync.branch} outcome={syncOutcome} onDismiss={() => setSyncOutcome(null)}
+            retryDisabled={publish.pending} onRetry={role === "OWNER" ? openSync : undefined} />
         </div>
       </div>
 
@@ -500,12 +535,15 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                 onSave={() => void save()}
                 copyHref={withQuery({ ...DEFAULT_TRANSLATION_QUERY, ns: detail.key.namespace, scope: "namespace", key: detail.key.id, keySurface: detail.key.surfaceSlug }, detail.key.surfaceSlug)}
                 readOnly={status?.kind === "archived" || status?.kind === "lost-access"}
+                invalid={status?.kind === "cannot-clear" ? { locales: status.locales, describedBy: footerAlertId } : undefined}
                 footer={
                   <Footer
+                    alertId={footerAlertId}
                     dirty={dirty.length}
                     status={status}
                     saving={saving}
                     resultRef={resultRef}
+                    saveRef={saveRef}
                     hasPending={pendingLocales.length > 0}
                     revertBlocked={revertBlocked}
                     revertBusy={revertBusy}
@@ -514,6 +552,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                     onRevert={() => void openRevert()}
                     onCheck={() => { setStatus(null); router.refresh(); }}
                     slug={slug}
+                    storageBlocked={storageBlocked}
                   />
                 }
               />
@@ -536,10 +575,10 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   );
 }
 
-function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, revertBusy, saveDisabled, onSave, onRevert, onCheck, slug }: {
-  dirty: number; status: FooterStatus | null; saving: boolean; resultRef: React.RefObject<HTMLSpanElement | null>;
+function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending, revertBlocked, revertBusy, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
+  alertId: string; dirty: number; status: FooterStatus | null; saving: boolean; resultRef: React.RefObject<HTMLSpanElement | null>; saveRef: React.RefObject<HTMLButtonElement | null>;
   hasPending: boolean; revertBlocked: RevertReason | null; revertBusy: boolean; saveDisabled: boolean;
-  onSave: () => void; onRevert: () => void; onCheck: () => void; slug: string;
+  onSave: () => void; onRevert: () => void; onCheck: () => void; slug: string; storageBlocked: boolean;
 }) {
   const w = m.translations.workspace;
   const reasonId = useId();
@@ -551,17 +590,17 @@ function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, r
   return (
     <div className="border-border shrink-0 border-t">
       {status !== null && ALERTS[status.kind] !== undefined && (
-        <div className="px-4 pt-3">{ALERTS[status.kind]?.({ onCheck, slug })}</div>
+        <div id={alertId} className="px-4 pt-3">{ALERTS[status.kind]?.({ onCheck, slug, storageBlocked, status })}</div>
       )}
       <div className="flex items-center gap-3 px-4 py-3">
         {/* ⚠️ 사유는 결과 줄(`aria-live`) 밖의 형제다 — 안에 두면 사유가 바뀔 때마다 결과처럼 다시 낭독된다.
             세로로 묶는 래퍼가 결과 아래에 쌓이는 자리를 지킨다. */}
         <span className="flex min-w-0 flex-col">
           <span ref={resultRef} tabIndex={-1} data-footer-result="true" aria-live="polite"
-            className={cn("min-w-0 text-xs tracking-[0.02em] focus:outline-none", dirty > 0 ? "text-amber-700" : "text-muted-foreground")}>
+            className={cn("min-w-0 text-xs focus:outline-none", dirty > 0 ? "text-amber-700" : "text-muted-foreground")}>
             {text}
           </span>
-          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs tracking-[0.02em]">{REVERT_REASONS[revertBlocked]()}</span>}
+          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{REVERT_REASONS[revertBlocked]()}</span>}
         </span>
         <span className="ml-auto inline-flex items-center gap-2">
           {hasPending && (
@@ -573,19 +612,26 @@ function Footer({ dirty, status, saving, resultRef, hasPending, revertBlocked, r
               {w.revert.button}
             </Button>
           )}
-          <Button variant="primary" loading={saving} disabled={saveDisabled} onClick={onSave}>{w.footer.save}</Button>
+          <Button ref={saveRef} variant="primary" loading={saving} disabled={saveDisabled} onClick={onSave}>{w.footer.save}</Button>
         </span>
       </div>
     </div>
   );
 }
 
-const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { onCheck: () => void; slug: string }) => ReactNode>> = {
+const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { onCheck: () => void; slug: string; storageBlocked: boolean; status: FooterStatus }) => ReactNode>> = {
+  // 거부 단위는 키 전체다 — 제목이 로케일을, 본문이 "아무것도 저장되지 않았다"를 말한다(delivery-invariants D2).
+  "cannot-clear": ({ status }) => status.kind === "cannot-clear" && (
+    <Alert variant="danger" title={m.translations.workspace.footer.cannotClear.title(status.locales.join(", "))}>{m.translations.workspace.footer.cannotClear.body}</Alert>
+  ),
   "save-failed": () => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.saveFailed.body}</Alert>,
+  "key-gone": () => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.keyGone}</Alert>,
+  "not-ready": () => <Alert variant="warning" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.notReady}</Alert>,
   "save-unknown": () => <Alert variant="danger" title={m.translations.workspace.footer.saveUnknown.title}>{m.translations.workspace.footer.saveUnknown.body}</Alert>,
-  session: () => (
+  // ⚠️ 사본이 없으면 "이 탭에서 다시 로그인"이 입력을 지우는 안내가 된다 — 먼저 복사하라고 말한다 (ARCHITECTURE §6.04).
+  session: ({ storageBlocked }) => (
     <Alert variant="danger" title={m.translations.workspace.footer.session.title}>
-      {m.translations.workspace.footer.session.body}{" "}
+      {storageBlocked ? m.translations.workspace.footer.session.storageBlocked : m.translations.workspace.footer.session.body}{" "}
       <a href={routes.signIn()} target="_blank" rel="noreferrer" className="text-blue-600">{m.translations.workspace.footer.session.signIn}</a>
     </Alert>
   ),

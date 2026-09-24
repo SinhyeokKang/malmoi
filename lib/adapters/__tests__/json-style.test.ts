@@ -317,3 +317,21 @@ describe("JSON 재생성 어댑터 — CRLF 원본", () => {
     expect(observeJsonStyle(undefined).eol).toBe("\n");
   });
 });
+
+/**
+ * **10칸 넘는 들여쓰기** (audit #83). `JSON.stringify(v, null, space)`는 `space` 문자열을 **10자에서 자른다**(명세) — 12칸 원본이
+ * 10칸으로 나가 값 편집 0건에 모든 줄이 바뀌었다. 그 폭에서는 손 직렬화기를 쓴다.
+ */
+describe("serializeJson — 10칸 넘는 들여쓰기 (audit #83)", () => {
+  it.each([["space 12", " ".repeat(12)], ["tab 11", "\t".repeat(11)]])("%s를 자르지 않는다", (_name, indent) => {
+    const text = `{\n${indent}"a": {\n${indent}${indent}"b": "c"\n${indent}}\n}\n`;
+    const style = observeJsonStyle(text);
+    expect(style.indent).toBe(indent);
+    expect(serializeJson({ a: { b: "c" } }, style)).toBe(text);
+  });
+
+  it("10칸 이하는 그대로다 (짝)", () => {
+    const text = `{\n${" ".repeat(10)}"a": "b"\n}\n`;
+    expect(serializeJson({ a: "b" }, observeJsonStyle(text))).toBe(text);
+  });
+});

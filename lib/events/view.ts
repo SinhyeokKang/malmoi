@@ -4,13 +4,13 @@ import { m } from "@/lib/i18n";
 import type { SurfaceImportResult } from "@/lib/import/result";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
 import { languageName } from "@/lib/onboarding/language-name";
+import type { SyncErrorCode } from "@/lib/sync/plan";
 
 import type { EventCursor } from "./filter";
 import type { EventKind, EventPayload, EventResult } from "./payload";
 
 /**
- * Logs 행의 **순수 판정** (logs-rework design §6). `lib/sync/view.ts`와 같은 형이다 —
- * 화면이 `kind`로 삼항을 엮으면 갈래가 JSX 안에 흩어지고 그 자리에는 누락을 잡는 장치가 없다.
+ * Logs 행의 **순수 판정** (logs-rework design §6). 화면이 `kind`로 삼항을 엮으면 갈래가 JSX 안에 흩어지고 그 자리에는 누락을 잡는 장치가 없다.
  *
  * ⚠️ **잎이다** — 사전과 `./payload`까지다. 조회(`lib/events/query.ts`)를 물면 그 순간 Prisma가
  * 클라이언트 번들에 들어온다 (POSTMORTEM 2026-09-07의 7.2MB 청크).
@@ -45,6 +45,7 @@ const TONES: Readonly<Record<EventResult, EventTone>> = {
   running: "muted",
   sent: "muted",
   nothingToSend: "muted",
+  notSent: "warning",
   imported: "muted",
   superseded: "muted",
   deferred: "warning",
@@ -57,6 +58,7 @@ const LABELS: Readonly<Record<EventResult, string>> = {
   running: m.logs.status.running,
   sent: m.logs.status.succeeded,
   nothingToSend: m.logs.status.skipped,
+  notSent: m.logs.status.notSent,
   imported: m.logs.status.imported,
   deferred: m.logs.status.deferred,
   partial: m.logs.status.partial,
@@ -78,11 +80,16 @@ export function eventView(row: EventViewRow): EventView {
 
 /**
  * 사유 문장의 키. **소비자가 `satisfies`를 건다** — `messages/en.tsx`에서 union을 import하면 그
- * 파일이 잎이 아니게 되고 그 그래프가 곧 클라이언트 번들이다 (`lib/sync/view.ts`와 같은 형).
+ * 파일이 잎이 아니게 되고 그 그래프가 곧 클라이언트 번들이다 (`lib/i18n/adapter-errors.ts`와 같은 형).
+ *
+ * ⚠️ **갈래 누락을 컴파일 타임에 잡는다** — `SYNC_ERROR_CODES`가 늘 때 문장이 안 늘면 그 행의 사유 칸이
+ * 폴백으로 떨어지고, 그것을 볼 사람은 실패를 겪은 사용자뿐이다.
  */
-export type ReasonKey = keyof typeof m.logs.reasons;
+const REASONS = m.logs.reasons satisfies Record<SyncErrorCode | "fallback", string>;
 
-const REASON_KEYS = Object.keys(m.logs.reasons) as ReasonKey[];
+export type ReasonKey = keyof typeof REASONS;
+
+const REASON_KEYS = Object.keys(REASONS) as ReasonKey[];
 
 function reasonKey(errorCode: string | null): ReasonKey {
   // ⚠️ **배열 `includes`다** — 사전을 직접 인덱싱하면 `__proto__`가 값을 돌려준다 (POSTMORTEM 2026-09-08).
@@ -159,6 +166,7 @@ const RESULT_GLYPH_TONE: Readonly<Record<EventResult, GlyphTone>> = {
   failed: "red",
   running: "slate",
   nothingToSend: "slate",
+  notSent: "amber",
   superseded: "slate",
 };
 
@@ -238,6 +246,8 @@ export function eventSentence(
           return m.logs.sentence.publish.sent(actor);
         case "nothingToSend":
           return m.logs.sentence.publish.nothing(actor);
+        case "notSent":
+          return m.logs.sentence.publish.notSent(actor);
         case "notStarted":
           return m.logs.sentence.publish.notStarted(actor);
         default:

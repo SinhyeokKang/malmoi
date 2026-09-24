@@ -1,9 +1,10 @@
 "use client";
 
 import { RotateCcw } from "lucide-react";
+import { useId } from "react";
 
 import { Alert } from "@/components/ui/alert";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink, buttonClass } from "@/components/ui/button";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
@@ -42,23 +43,41 @@ function reasonMessage(reason: RepositoryImportError | SurfaceImportReason): str
  * ⚠️ **진행 표시를 여기 세우지 않는다** — 이 자리는 결과의 자리이고, 진행 Alert를 세웠다가 결과
  * Alert로 바꾸면 같은 자리에서 뜻이 두 번 바뀐다. 진행은 트리거가 든다 (`sync-button.tsx`).
  */
-export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = false, onDismiss }: {
+export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, retryDisabled = false, onDismiss }: {
   outcome: RepositoryImportOutcome | null;
   slug: string;
   branch: string;
+  /**
+   * ⚠️ **설정으로 보내는 액션은 OWNER에게만 선다** (malmoi#85) — Settings는 `project:settings` 뒤라 EDITOR가 누르면
+   * 거절당한다. 기본값이 OWNER인 이유: `[Sync]` 자체가 OWNER 전용이라 지금 EDITOR가 결과를 가질 경로가 없다.
+   */
+  role?: "OWNER" | "EDITOR";
   /** 읽기 실패·`superseded`에만 선다. Home의 실패 배너와 **같은 라벨·같은 Action**이다. */
   onRetry?: () => void;
   /** ⚠️ 그 Action이 지금 잠겨 있나 (Publish 진행 중) — 같은 자리 셋이 같이 움직여야 한다. */
   retryDisabled?: boolean;
   onDismiss?: () => void;
 }) {
+  const retryReasonId = useId();
   if (outcome === null) return null;
   if (!outcome.ok) {
     const refusal = planImportRefusal(outcome.error);
-    return <Alert variant={refusal.tone} role="status" title={reasonMessage(outcome.error)}
+    const owner = role === "OWNER";
+    // 온보딩 문장을 빌리지 않는다 (malmoi#85) — 없는 것은 리포의 기본 브랜치가 아니라 설정된 base branch다.
+    const title = outcome.error === "base-branch-missing"
+      ? (owner ? m.repositorySync.baseBranchMissing.owner(branch) : m.repositorySync.baseBranchMissing.editor(branch))
+      : reasonMessage(outcome.error);
+    const action = !owner && (refusal.action === "settings" || refusal.action === "reconnect") ? null : refusal.action;
+    return <Alert variant={refusal.tone} role="status" title={title}
       onDismiss={refusal.dismissible ? onDismiss : undefined}
-      actions={refusal.action === null ? undefined :
-        <ButtonLink href={routes.settings(slug)}>{refusal.action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;
+      actions={action === null ? undefined
+        /*
+          ⚠️ **로그인은 새 탭이다** (QA D2) — 같은 화면의 편집자 세션 Alert와 같은 형. 이 탭을 떠나면 번역 화면의 draft가
+          함께 사라진다. `ButtonLink`는 `next/link`라 `target`을 안 받아 `<a>` + `buttonClass()`다(DESIGN §6.3).
+        */
+        : action === "sign-in"
+          ? <a href={routes.signIn()} target="_blank" rel="noreferrer" className={buttonClass()}>{m.repositorySync.signIn}</a>
+          : <ButtonLink href={routes.settings(slug)}>{action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;
   }
   const summary = summarizeImport(outcome.surfaces);
   /*
@@ -85,6 +104,8 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
   // `invalid-format`에는 재시도가 없다 — 포맷을 고치기 전에는 다시 눌러도 결과가 같다.
   const retry = summary.unreadable.length + summary.superseded.length > 0;
   const partialFailures = outcome.surfaces.filter(surface => surface.status === "partial").reduce((sum, surface) => sum + surface.failed, 0);
+  // 관리하지 않는 항목은 사고가 아니다 — 톤·헤드라인을 안 바꾸고 안내 한 줄로만 선다 (B2 r3 · QA5).
+  const unmanaged = outcome.surfaces.filter(surface => surface.status !== "failed").reduce((sum, surface) => sum + surface.unmanaged, 0);
   /*
     ⚠️ **말할 것이 없는 사고는 자리를 만들지 않는다** — 중복 키만으로도 `partial`이 된다
     (`buildPushPayload`의 `duplicateKeys`는 어댑터 오류가 아니라 `lastWins`가 조용히 흡수한다).
@@ -98,10 +119,11 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
    * `space-y-2`가 제목 아래에 **보이지 않는 8px**을 만든다(같은 부류를 확인 Dialog의 본문에서 한 번
    * 밟았다). 성공이 한 줄이라는 것이 이 화면의 방어이므로 그 8px이 곧 형의 차이를 깎는다.
    */
-  const details = incidents.length === 0 && partialFailures === 0 && kept === 0 ? undefined : <>
+  const details = incidents.length === 0 && partialFailures === 0 && kept === 0 && unmanaged === 0 ? undefined : <>
     {kept > 0 && <p>{m.repositorySync.kept(kept)}</p>}
     {summary.unreadable.length > 0 && notReplaced > 0 && <p>{m.repositorySync.notReplaced(notReplaced)}</p>}
     {partialFailures > 0 && <p>{m.repositorySync.partial(partialFailures)}</p>}
+    {unmanaged > 0 && <p>{m.sources.unmanaged(unmanaged)}</p>}
     {incidents.map(surface =>
       <div key={surface.surfaceSlug} data-reason={surface.reason ?? undefined}>
         {/*
@@ -117,7 +139,12 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
       </div>)}
   </>;
   return <Alert variant={tone} role="status" title={title} onDismiss={onDismiss}
-    actions={retry && onRetry ? <Button disabled={retryDisabled} onClick={onRetry}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button> : undefined}>
+    /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 진짜 `disabled`는 포커스를 못 받아 왜 꺼졌는지 닿지 않았다.
+       사유는 `<span>`이다 — 이 Alert의 형(줄 수)을 `<p>`로 센다. */
+    actions={retry && onRetry ? <>
+      <Button aria-disabled={retryDisabled || undefined} aria-describedby={retryDisabled ? retryReasonId : undefined} title={retryDisabled ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!retryDisabled) onRetry(); }}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button>
+      {retryDisabled && <span id={retryReasonId} className="sr-only">{m.repositorySync.waitPublish}</span>}
+    </> : undefined}>
     {details}
   </Alert>;
 }

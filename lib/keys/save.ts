@@ -59,7 +59,20 @@ export type KeySaveInputType = z.infer<typeof KeySaveInput>;
 export type KeySavePlan =
   | { ok: true; writes: { localeCode: string; value: string }[] }
   | { ok: false; error: "empty" | "too-many" | "payload-too-large" }
-  | { ok: false; error: "duplicate-locale" | "unknown-locale" | "too-long"; localeCodes: string[] };
+  | { ok: false; error: "duplicate-locale" | "unknown-locale" | "too-long" | "cannot-clear"; localeCodes: string[] };
+
+/**
+ * **수술적 표면의 비-base 셀은 비울 수 없다** (delivery-invariants D2 · 감사 #2). 수술적 writer는 값을 지울 줄 몰라 비운 셀은 원본
+ * 리터럴이 그대로 남고, pull이 그 토큰을 전달 확인으로 해제해 "보냈다"가 거짓이 됐다. 도달 불가능한 상태를 애초에 만들지 않는다.
+ * base는 원문으로 폴백하고(`buildWriteEntries`) 재생성은 키를 파일에서 빼므로 둘 다 전달된다.
+ *
+ * ⚠️ `value`는 **정규화 뒤** 값이다 — 정규화 전 값을 보면 공백만의 입력으로 우회된다.
+ * ⚠️ **PRODUCT §10 "명시적 빈값 export"가 생기면 풀릴 임시 규칙이다.** Revert(`lib/keys/revert.ts`)는 이 판정을 지나지 않는다 —
+ * 기준값 `""`로의 복원은 원래 비어 있던 셀의 정당한 복원이다.
+ */
+export function planClearability(input: { writeStrategy: "regenerate" | "surgical"; isBase: boolean; value: string }): "ok" | "cannot-clear" {
+  return input.value === "" && input.writeStrategy === "surgical" && !input.isBase ? "cannot-clear" : "ok";
+}
 
 /**
  * @param current 그 소스의 **활성** 로케일 → 현재 값(행이 없으면 `null`). 여기 없는 코드는 저장할 수 없다.
@@ -70,6 +83,8 @@ export type KeySavePlan =
 export function planKeySave(
   current: ReadonlyMap<string, string | null>,
   changes: readonly { localeCode: string; value: string }[],
+  /** 그 표면의 쓰기 방식과 실제 적용 base. 비우기 판정의 입력이다 — 빠뜨리면 컴파일이 막는다(기본값을 두지 않는다). */
+  surface: { writeStrategy: "regenerate" | "surgical"; baseLocale: string | null },
 ): KeySavePlan {
   if (changes.length === 0) return { ok: false, error: "empty" };
   if (changes.length > KEY_SAVE_LIMITS.locales) return { ok: false, error: "too-many" };
@@ -88,5 +103,8 @@ export function planKeySave(
     const plan = planSave(current.get(change.localeCode) ?? null, change.value);
     if (plan.action === "upsert") writes.push({ localeCode: change.localeCode, value: plan.value });
   }
+  // no-op이 아닌 쓰기만 본다 — 이미 빈 셀에 빈 값을 보낸 것은 비운 것이 아니다. 하나라도 걸리면 키 전체를 거부한다.
+  const uncleared = writes.filter(write => planClearability({ writeStrategy: surface.writeStrategy, isBase: write.localeCode === surface.baseLocale, value: write.value }) === "cannot-clear");
+  if (uncleared.length > 0) return { ok: false, error: "cannot-clear", localeCodes: uncleared.map(write => write.localeCode) };
   return { ok: true, writes };
 }

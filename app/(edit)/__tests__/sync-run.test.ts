@@ -29,8 +29,9 @@ const COMMITTED = {
   changed: ["i18n/ko.json"],
 };
 
+/** 수동 실행의 요청자는 멤버여야 한다 — 시작 트랜잭션이 잠금 뒤 권한을 다시 본다 (감사 #10). */
 function harness(seed: Seed = {}) {
-  return createHarness({ projects: [{ id: "p1", slug: "acme" }], ...seed });
+  return createHarness({ projects: [{ id: "p1", slug: "acme" }], members: [{ projectId: "p1", userId: "u1", role: "EDITOR" }, { projectId: "p1", userId: "u2", role: "EDITOR" }], ...seed });
 }
 
 /** `now`에서 `seconds`만큼 과거. */

@@ -3,9 +3,10 @@ import "server-only";
 import type { RepoReader, RepoSnapshot } from "@/lib/github";
 import { adapterFor } from "@/lib/adapters";
 import { compareKeys } from "@/lib/adapters/shared";
-import type { AdapterName } from "@/lib/adapters/types";
+import { adapterErrorKind, type AdapterName } from "@/lib/adapters/types";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
 import { ingestTargets } from "@/lib/onboarding/detect";
+import { localesToKeep } from "./locales";
 import { readFiles } from "./read";
 import { verifyEmptyCatalog } from "./empty";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
@@ -43,7 +44,10 @@ async function readSurfaceFiles(
   for (const extra of await readFiles(reader, snapshot, targets.filter(path => !blobs.has(path)))) {
     blobs.set(extra.path, extra.content);
   }
-  return { ...confirmed, paths, targets, blobs };
+  // ⚠️ **재탐지가 본 것은 첫 다운로드분뿐이다** — 재시도로 읽힌(또는 끝내 못 읽은) 로케일을 되살리지 않으면 적재가 그 로케일을
+  // orphan시킨다(delivery-invariants D6 · 감사 #59).
+  const locales = localesToKeep({ format: confirmed.format, layout: adapterFor(confirmed.format).layout, attempted });
+  return { ...confirmed, format: { ...confirmed.format, locales }, paths, targets, blobs };
 }
 
 export type StoredSurfaceImport = {
@@ -64,13 +68,15 @@ export async function prepareSurfaceImport(reader: RepoReader, input: SurfaceImp
   try {
     const read = await readSurfaceFiles(reader, input.snapshot, input.surface);
     if (input.mode === "repository" && verifyEmptyCatalog({ stored: input.surface, paths: read.paths, blobs: read.blobs })) {
-      return { kind: "empty", result: { count: 0, failed: 0, errors: [] } };
+      return { kind: "empty", result: { count: 0, failed: 0, unmanaged: 0, errors: [] } };
     }
     if (read.status !== "ok") {
       const format = { adapter: input.surface.adapter, pathTemplate: input.surface.pathTemplate, locales: [] };
       const parsed = adapterFor(format).read(format, [...read.blobs].map(([path, content]) => ({ path, content })));
-      const errors = [...parsed.errors, ...read.targets.filter(path => !read.blobs.has(path)).map(path => ({ path, code: "download-failed" as const }))];
-      return { kind: "failed", error: "ingest-failed", result: { count: 0, failed: Math.max(1, errors.length), errors } };
+      // 관리하지 않는 항목은 실패로 세지 않는다 — `prepareFirstSnapshot`과 같은 판정이다 (`adapterErrorKind`).
+      const failures = parsed.errors.filter(error => adapterErrorKind(error.code) === "failure");
+      const errors = [...failures, ...read.targets.filter(path => !read.blobs.has(path)).map(path => ({ path, code: "download-failed" as const }))];
+      return { kind: "failed", error: "ingest-failed", result: { count: 0, failed: Math.max(1, errors.length), unmanaged: parsed.errors.filter(error => adapterErrorKind(error.code) === "unmanaged").length, errors } };
     }
     const prepared = prepareFirstSnapshot({
       ...input, surfaceId: input.surface.id, surfaceSlug: input.surface.slug,
@@ -83,6 +89,6 @@ export async function prepareSurfaceImport(reader: RepoReader, input: SurfaceImp
       : { kind: "payload", ...prepared, payload: prepared.payload };
   } catch (error) {
     if (!(error instanceof IngestBudgetError)) throw error;
-    return { kind: "failed", error: "resource-limit", result: { count: 0, failed: 1, errors: [] } };
+    return { kind: "failed", error: "resource-limit", result: { count: 0, failed: 1, unmanaged: 0, errors: [] } };
   }
 }

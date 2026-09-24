@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { SyncButton } from "@/components/home/sync-button";
 import { SyncResult } from "@/components/home/sync-result";
@@ -11,6 +11,7 @@ import { ArchiveCard } from "@/components/settings/archive-card";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { landFocus } from "@/components/ui/focus";
 import { m } from "@/lib/i18n";
 import type { RepositoryImportOutcome } from "@/lib/import/result";
 import type { HomeState } from "@/lib/home/state";
@@ -184,6 +185,18 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
 }) {
   const { outcome, setOutcome, publish, titleRef, setSyncOpen, publishPending } = useHomeActions();
   const owner = role === "OWNER";
+  /** 복원 거부 — 배너 `actions` 안이 아니라 **배너의 형제**로 선다 (audit #7 r1: 경고 속 경고가 됐다). */
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const retryReasonId = useId();
+  /*
+    ⚠️ **복원이 성공하면 이 배너가 통째로 사라진다** (audit #32 — B5 리뷰) — 누른 [Restore project]와 `ArchiveCard`의 착지가
+    함께 언마운트되어 포커스가 `body`로 빠졌다. 남는 제목이 받는다(`SyncButton`의 폴백과 같은 자리).
+  */
+  const wasArchived = useRef(state === "archived");
+  useEffect(() => {
+    if (wasArchived.current && state !== "archived") landFocus(titleRef.current);
+    wasArchived.current = state === "archived";
+  }, [state, titleRef]);
 
   return (
     /*
@@ -199,7 +212,11 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
           /* ⚠️ **`[Try again]`은 `[Sync]`와 같은 Action이다** — 확인 Dialog를 건너뛰지 않는다. */
           /* ⚠️ **머리의 `[Sync]`와 같은 잠금을 받는다** — 같은 Action을 여는 세 자리가 다르게 움직이면
              "같은 라벨·같은 Action"이 화면에서 깨진다. 무반응인 버튼은 비활성보다 한 단계 아래다. */
-          actions={owner ? <Button disabled={publishPending} onClick={() => setSyncOpen(true)}>{m.home.banner.syncFailed.action}</Button> : undefined}
+          /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 결과 Alert의 [Try again]과 같은 형이다. */
+          actions={owner ? <>
+            <Button aria-disabled={publishPending || undefined} aria-describedby={publishPending ? retryReasonId : undefined} title={publishPending ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!publishPending) setSyncOpen(true); }}>{m.home.banner.syncFailed.action}</Button>
+            {publishPending && <span id={retryReasonId} className="sr-only">{m.repositorySync.waitPublish}</span>}
+          </> : undefined}
         >
           {/*
             ⚠️ **본문이 muted다 — 제목과 글리프만 빨강이다** (캔버스 `2b`). 배너 전체가 빨가면
@@ -237,12 +254,13 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
             분기가 그 값을 안 읽어 증상이 없지만, 같은 화면의 배너 문구가 정확히 그 거짓 단언을
             들고 있다가 2026-09-16에 걷혔다.
           */
-          actions={owner ? <ArchiveCard slug={slug} name={name} archived openPrUrl={undefined} /> : undefined}
+          actions={owner ? <ArchiveCard slug={slug} name={name} archived openPrUrl={undefined} onFailure={setRestoreError} /> : undefined}
         >
           {m.home.banner.archived.body}
           {!owner && <> {m.home.banner.archived.editor}</>}
         </Alert>
       )}
+      {state === "archived" && restoreError !== null && <Alert variant="danger">{restoreError}</Alert>}
 
       <SyncResult
         slug={slug}

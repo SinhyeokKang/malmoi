@@ -31,7 +31,7 @@ function labelledBy(root: HTMLElement, selector: string): string | null {
 
 describe("Home의 블록 셋이 이름 있는 랜드마크다", () => {
   it("`Needs your attention`이 자기 제목으로 이름을 든다", async () => {
-    const { container } = await render(<AttentionCard items={empty} slug="acme" state="default" now={now} />);
+    const { container } = await render(<AttentionCard items={empty} slug="acme" role="OWNER" state="default" now={now} />);
     expect(labelledBy(container, "section")).toContain("Needs your attention");
   });
 
@@ -66,7 +66,7 @@ describe("목록 시맨틱", () => {
 
   it("항목이 `<ul> > <li>`로 선다", async () => {
     const { container } = await render(
-      <AttentionCard items={{ shown: [item], more: [], count: 1 }} slug="acme" state="default" now={now} />,
+      <AttentionCard items={{ shown: [item], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />,
     );
     expect(container.querySelector("section > ul > li > a")).not.toBeNull();
   });
@@ -74,16 +74,16 @@ describe("목록 시맨틱", () => {
   /** ⚠️ **꼬리 절이 굵은 조각과 갈려야 한다** — 색이 아니라 무게로 가르는 것이 이 행의 규칙이다. */
   it("둘째 줄이 굵은 조각 + 문장으로 갈린다", async () => {
     const { container } = await render(
-      <AttentionCard items={{ shown: [item], more: [], count: 1 }} slug="acme" state="default" now={now} />,
+      <AttentionCard items={{ shown: [item], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />,
     );
     const strong = container.querySelector("a span.font-medium");
     expect(strong?.textContent).toContain("waiting for review");
-    expect(container.querySelector("a")?.textContent).toContain("last edited in this locale by Kim");
+    expect(container.querySelector("a")?.textContent).toContain("last edited in this language by Kim");
   });
 
   it("`+n more`가 `<details>`다 — 클라이언트 상태를 만들지 않는다", async () => {
     const { container } = await render(
-      <AttentionCard items={{ shown: [item], more: [{ ...item, code: "fr", name: "French" }], count: 2 }} slug="acme" state="default" now={now} />,
+      <AttentionCard items={{ shown: [item], more: [{ ...item, code: "fr", name: "French" }], count: 2 }} slug="acme" role="OWNER" state="default" now={now} />,
     );
     expect(container.querySelector("details > summary")).not.toBeNull();
     expect(container.querySelector("details > ul > li")).not.toBeNull();

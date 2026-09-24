@@ -37,7 +37,7 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
   return (
     <div className={cn("flex min-h-0 flex-col", className)} style={width === undefined ? undefined : { width }}>
       <div className="flex h-[53px] shrink-0 items-center gap-2 px-4">
-        <h2 className="text-[15px] font-medium tracking-[0.015em]">{m.translations.workspace.tree.title}</h2>
+        <h2 className="text-base font-medium">{m.translations.workspace.tree.title}</h2>
         <Badge variant="neutral">{tree.surfaces.length}</Badge>
       </div>
       <div className="border-divider flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto border-t p-2">
@@ -64,7 +64,7 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
               <ListItemButton
                 aria-expanded={open}
                 onClick={() => setCollapsed(prev => { const next = new Set(prev); if (open) next.add(surface.slug); else next.delete(surface.slug); return next; })}
-                className="flex items-center gap-2 rounded-sm px-2 py-[7px] text-sm tracking-[0.02em]"
+                className="flex items-center gap-2 rounded-sm px-2 py-[7px] text-sm"
               >
                 <span className="flex text-neutral-600">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
                 <span className="flex text-neutral-600"><FileJson2 className="size-4" aria-hidden /></span>
@@ -103,7 +103,7 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
 function TreeItem({ icon, label, count, selected, onClick }: { icon: ReactNode; label: string; count: number; selected: boolean; onClick: () => void }) {
   return (
     // 30 = 소스 행의 px-2(8) + chevron(14) + gap(8) — 네임스페이스 아이콘의 왼쪽 끝을 소스 아이콘과 맞춘다(시안은 34로 4px 어긋났다, 사용자 결정).
-    <ListItemButton selected={selected} onClick={onClick} className="flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-[30px] text-sm tracking-[0.02em]">
+    <ListItemButton selected={selected} onClick={onClick} className="flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-[30px] text-sm">
       <span className="flex text-neutral-400">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       <span className="text-muted-foreground text-xs">{count.toLocaleString("en-US")}</span>

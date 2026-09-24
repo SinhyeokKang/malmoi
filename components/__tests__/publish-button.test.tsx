@@ -6,13 +6,14 @@ import { HomeActions, HomeTitle, HomeHeaderActions, HomeNotices } from "@/compon
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import { props as workspaceProps } from "./helpers/workspace-props";
 import { render } from "./helpers/dom";
+import { m } from "@/lib/i18n";
 const mocks = vi.hoisted(() => ({ preview: vi.fn(), pull: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: mocks.preview }));
 vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull, saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: vi.fn(), replace: vi.fn() }) }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectRepository: vi.fn() }));
-const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null };
+const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, sendable: { total: 1, keys: 1 } };
 const PUBLISH_LIVE = '[aria-live="polite"]:not([data-footer-result])';
 const ok = (data: unknown) => ({ status: "ok", preview: data });
 function button(name: string) {
@@ -120,7 +121,7 @@ it("꺼진 Publish는 aria-disabled이고 사유를 describedby로 든다", asyn
  *    말하는 것은 `sr-only` 두 줄뿐이고, 지우면 화면은 그대로인 채 뜻만 사라진다.
  */
 it("키 병합은 rowSpan이 들고 diff 두 줄은 낭독될 이름을 든다", async () => {
-  mocks.preview.mockResolvedValue(ok({ total: 2, keys: 1, truncated: 0, openPr: null, groups: [{ surface: "web", path: "en.json", changes: 2, keys: 1, rows: [
+  mocks.preview.mockResolvedValue(ok({ total: 2, keys: 1, truncated: 0, openPr: null, withoutFile: 0, withoutKey: 0, sendable: { total: 2, keys: 1 }, groups: [{ surface: "web", path: "en.json", changes: 2, keys: 1, rows: [
     { keyId: "k", key: "onboarding.title", localeCode: "en", before: "Welcome", after: "Welcome to malmoi", author: "Jiwon", updatedAt: "", surface: "web", path: "en.json", keySpan: 2 },
     { keyId: "k", key: "onboarding.title", localeCode: "ja", before: null, after: "malmoi へようこそ", author: "Mina", updatedAt: "", surface: "web", path: "en.json", keySpan: 0 },
   ] }] }));
@@ -166,10 +167,188 @@ it.each([
  * 말하지 않으면 제목의 건수와 표의 행이 조용히 어긋난다.
  */
 it.each([[2, true], [0, false]] as const)("파일이 없어 빠진 셀 %i개를 표 아래에 말한다(%s)", async (n, shown) => {
-  mocks.preview.mockResolvedValue(ok({ ...preview, total: 3, withoutFile: n }));
+  mocks.preview.mockResolvedValue(ok({ ...preview, total: 3, withoutFile: n, sendable: { total: 3 - n, keys: 1 } }));
   await render(<Host count={3} />);
   await click("Publish3");
   expect(document.body.textContent?.includes("language file isn't in the repository")).toBe(shown);
+});
+/**
+ * **결과는 실린 수로 말하고 보류는 한 줄이다** (delivery-invariants D7). 미리보기 `total`(보류를 안 뺀 미발송 전체)로 말하면
+ * "3 changes are in a pull request" 아래 "1 wasn't sent"가 서는 모순이 된다. 실린 0 + 보류만이면 No changes가 아니다.
+ */
+const committedWith = (withheld?: { file: number; key: number }) => ({ status: "committed", delivered: 2, pr: "created", commitSha: "c", changed: ["ko.yml"],
+  prUrl: "https://github.com/owner/repo/pull/7", ...(withheld === undefined ? {} : { withheld }) });
+it.each([
+  ["created", committedWith({ file: 1, key: 0 }), m.translations.publish.createdDescription(2)],
+  ["updated", { ...committedWith({ file: 1, key: 0 }), pr: "updated" }, m.translations.publish.updatedDescription(7, 2)],
+  ["no-changes", { status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } }, m.translations.publish.withheldDescription?.noChanges],
+  ["withheld", { status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } }, m.translations.publish.withheldDescription?.withheld],
+] as const)("결과 %s는 실린 수로 말하고 보류 한 줄을 붙인다", async (_name, outcome, description) => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, total: 3, withoutFile: 1, sendable: { total: 2, keys: 1 } }));
+  mocks.pull.mockResolvedValueOnce(outcome);
+  await render(<Host count={3} />); await click("Publish3"); await click("Open pull request");
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(description);
+  expect(text).toContain(`${m.translations.publish.withheld.file(1)} ${m.translations.publish.withheld.editor}`);
+  if (_name === "withheld") expect(text).not.toContain(m.translations.publish.noChanges);
+});
+it("보류가 없으면 결과에 보류 줄이 없다 (짝) · OWNER에게는 Revert를 가리킨다", async () => {
+  mocks.pull.mockResolvedValueOnce(committedWith());
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  expect(document.body.textContent).not.toContain("wasn't sent");
+  expect(document.body.textContent).toContain(m.translations.publish.createdDescription(2));
+});
+it("OWNER의 보류 줄은 파일 추가나 Revert to last sent를 가리킨다", async () => {
+  mocks.pull.mockResolvedValueOnce(committedWith({ file: 0, key: 1 }));
+  await render(<Host role="OWNER" />); await click("Publish1"); await click("Open pull request");
+  expect(document.body.textContent).toContain(`${m.translations.publish.withheld.key(1)} ${m.translations.publish.withheld.owner.key}`);
+});
+it("미리보기가 키 자리 없는 셀을 따로 말한다", async () => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, total: 2, withoutFile: 0, withoutKey: 1, sendable: { total: 1, keys: 1 } }));
+  await render(<Host count={2} />); await click("Publish2");
+  expect(document.body.textContent).toContain(m.translations.publish.withoutKey(1));
+});
+/**
+ * **base 언어 파일 부재는 전용 거부다** (coordinator review r1 — 사용자 결정). 원인(경로·브랜치)과 고칠 곳을 말하고 Try again을 두지 않는다 —
+ * 다시 눌러도 같은 거부다(L3.3). OWNER는 Settings로 가고, EDITOR에게는 a project owner를 가리킨다(DESIGN §10.1).
+ */
+it.each(["OWNER", "EDITOR"] as const)("미리보기 base 파일 부재(%s)는 경로를 말하는 거부이고 Try again이 없다", async role => {
+  mocks.preview.mockResolvedValue({ status: "refused", reason: "base-file-missing", path: "config/locales/en.yml", branch: "main" });
+  await render(<Host role={role} />);
+  await click("Publish1");
+  const text = document.body.textContent ?? "";
+  const r = m.translations.publish.baseFileMissing;
+  expect(text).toContain(r.title);
+  expect(text).toContain(r.description("config/locales/en.yml", "main"));
+  expect(text).toContain(role === "OWNER" ? r.owner : r.editor);
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(false);
+  const settings = [...document.querySelectorAll('[role="dialog"] a')].filter(a => a.getAttribute("href") === "/projects/acme/settings");
+  expect(settings).toHaveLength(role === "OWNER" ? 1 : 0);
+  expect(mocks.pull).not.toHaveBeenCalled();
+});
+/**
+ * #84 — 미리보기의 수·약속은 **실제로 나가는** 편집이다(결과 `delivered`·Logs와 같은 모집단, POSTMORTEM 2026-09-17).
+ * 전부 보류면 PR을 만들거나 바꾸는 버튼을 두지 않고 이유를 말한다.
+ */
+it("보류가 섞인 미리보기는 나가는 수로 말하고 '전부 간다'고 하지 않는다", async () => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, total: 2, keys: 1, withoutFile: 1, sendable: { total: 1, keys: 1 } }));
+  await render(<Host count={2} />); await click("Publish2");
+  const p = m.translations.publish;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(p.previewTitle(1));
+  expect(text).not.toContain(p.previewTitle(2));
+  expect(text).toContain(p.previewCounts(1, 1));
+  expect(text).toContain(p.prNone.body(1));
+  expect(text).not.toContain(p.previewIntro("owner/repo"));
+  expect(text).toContain(p.previewIntroPartial("owner/repo"));
+});
+it("전부 보류면 PR 버튼이 없고 이유를 말한다 · 실행하지 않는다", async () => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, total: 1, keys: 1, withoutFile: 1, sendable: { total: 0, keys: 0 }, openPr: { number: 9, url: "https://github.com/owner/repo/pull/9" } }));
+  await render(<Host count={1} />); await click("Publish1");
+  const p = m.translations.publish;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(p.nothingSendable.title);
+  expect(text).toContain(p.nothingSendable.body);
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === p.replacePr(9) || b.textContent === p.openPr)).toBe(false);
+  expect(text).not.toContain(p.prOpen.title(9));
+  expect(mocks.pull).not.toHaveBeenCalled();
+});
+/** #83 — no-changes + 보류는 "편집이 이미 리포에 있었다"·"Logs에 nothing to send로 남는다"를 말하지 않는다(Logs는 Not sent다). */
+it("no-changes에 보류가 있으면 Not sent 틀이고 nothing-to-send 약속이 없다", async () => {
+  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  const p = m.translations.publish;
+  const text = document.body.textContent ?? "";
+  expect(text).not.toContain(p.noChangesDescription);
+  expect(text).not.toContain(p.inLogs);
+  expect(text).toContain(p.withheldDescription.noChanges);
+  expect(text).toContain(`${p.withheld.file(1)} ${p.withheld.editor}`);
+});
+it("skipped/withheld 설명은 writer 경고 문장이 아니다", async () => {
+  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  const text = document.body.textContent ?? "";
+  expect(text).not.toContain(m.translations.publish.notSentDescription);
+  expect(text).toContain(m.translations.publish.withheldDescription.withheld);
+});
+/**
+ * B1 r3 — no-changes 실행이 열린 PR을 닫았으면 결과가 그 사실과 이유를 말한다(역할별 — DESIGN §10.1). 전에는 "Nothing was written"만 서고
+ * PR은 조용히 닫혀 있었다(QA5 PR #4).
+ */
+it.each(["OWNER", "EDITOR"] as const)("no-changes가 PR #4를 닫았으면 결과가 그 이유를 말한다(%s)", async role => {
+  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "no-changes", closedPr: { number: 4, url: "https://github.com/owner/repo/pull/4" } });
+  await render(<Host role={role} />); await click("Publish1"); await click("Open pull request");
+  const c = m.translations.publish.closedPr;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(c.description("main"));
+  expect(text).toContain(`${c.line(4, "main")} ${role === "OWNER" ? c.owner : c.editor}`);
+  expect(text).not.toContain(m.translations.publish.noChangesDescription);
+  expect([...document.querySelectorAll('[role="dialog"] a')].some(a => a.getAttribute("href") === "https://github.com/owner/repo/pull/4")).toBe(true);
+});
+it("닫은 PR이 없으면 그 줄이 없다 (짝)", async () => {
+  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "no-changes" });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  expect(document.body.textContent).toContain(m.translations.publish.noChangesDescription);
+  expect(document.body.textContent).not.toContain("was closed because");
+});
+/**
+ * B1 r3 — 열린 PR의 변경을 base 값으로 되돌린 행은 양쪽이 같은 "변경"으로 그리지 않는다(QA5). 전부 그렇다면 실행은 no-changes 경로라
+ * 열린 PR을 닫는다 — 미리보기가 그렇게 말하고 버튼도 그 일을 이름으로 든다.
+ */
+const sameRow = { keyId: "k", key: "common.ok", localeCode: "ko", before: "확인", after: "확인", author: "Kim", updatedAt: "", surface: "web", path: "ko.json", keySpan: 1, same: true };
+const otherRow = { ...sameRow, keyId: "k2", key: "common.no", before: "아니요", after: "아니", same: false };
+const withRows = (rows: object[], openPr: object | null) => ok({ ...preview, total: rows.length, keys: rows.length, sendable: { total: rows.length, keys: rows.length },
+  same: rows.filter(r => (r as { same: boolean }).same).length, openPr, groups: [{ surface: "web", path: "ko.json", changes: rows.length, keys: rows.length, rows }] });
+it("열린 PR의 변경을 되돌리는 행은 그렇다고 말한다 · PR이 없으면 이미 리포에 있다고 말한다", async () => {
+  mocks.preview.mockResolvedValue(withRows([sameRow, otherRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }));
+  await render(<Host count={2} />); await click("Publish2");
+  const s = m.translations.publish.same;
+  expect(document.body.textContent).toContain(s.undoes(9));
+  expect(document.body.textContent).toContain(m.translations.publish.replacePr(9));
+});
+it("전부 되돌린 편집이고 PR이 열려 있으면 미리보기가 그 PR을 닫는다고 말하고 버튼이 그 일을 든다", async () => {
+  mocks.preview.mockResolvedValue(withRows([sameRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }));
+  await render(<Host />); await click("Publish1");
+  const s = m.translations.publish.same;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(s.closesTitle(9));
+  expect(text).toContain(s.closesBody(9, "main"));
+  expect(text).not.toContain(m.translations.publish.prOpen.title(9));
+  await click(s.closeAction(9));
+  expect(mocks.pull).toHaveBeenCalledTimes(1);
+});
+it("전부 base와 같고 PR이 없으면 파일이 바뀌지 않는다고 말한다", async () => {
+  mocks.preview.mockResolvedValue(withRows([sameRow], null));
+  await render(<Host />); await click("Publish1");
+  const s = m.translations.publish.same;
+  expect(document.body.textContent).toContain(s.nothingTitle("main"));
+  expect(document.body.textContent).toContain(s.already);
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === m.translations.publish.openPr)).toBe(false);
+});
+/**
+ * #94 — 전부 base와 같으면 실행이 파일을 하나도 안 쓴다(결과·Logs `0 files`). 푸터가 편집이 사는 파일(`groups`)을 세면 한 흐름 안에서 1과 0이 갈린다.
+ * 짝: 평소 갈래의 파일 수는 그대로다.
+ */
+it.each([[{ number: 9, url: "https://github.com/owner/repo/pull/9" }], [null]])("전부 base와 같으면 푸터가 파일 수를 세지 않는다 (PR %#)", async openPr => {
+  mocks.preview.mockResolvedValue(withRows([sameRow], openPr));
+  await render(<Host />); await click("Publish1");
+  const p = m.translations.publish;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(p.fileSummary(1, 1));
+  expect(text).not.toContain(p.previewSummary(1, 1, 1));
+});
+it("바뀌는 편집이 있으면 푸터가 파일 수를 센다 (짝)", async () => {
+  mocks.preview.mockResolvedValue(withRows([otherRow], null));
+  await render(<Host />); await click("Publish1");
+  expect(document.body.textContent).toContain(m.translations.publish.previewSummary(1, 1, 1));
+});
+/** #96 — 여러 줄 값의 줄바꿈이 공백으로 접히면 PR이 쓰는 개행과 공백을 미리보기가 구별하지 못한다. − 줄과 + 줄 둘 다다. */
+it("여러 줄 값의 −/+ 줄은 줄바꿈을 지킨다", async () => {
+  mocks.preview.mockResolvedValue(withRows([{ ...otherRow, before: "첫 줄\n둘째", after: "첫 줄\n셋째" }], null));
+  await render(<Host />); await click("Publish1");
+  const values = [...document.querySelectorAll('[role="dialog"] span.break-words')].filter(s => s.textContent?.includes("\n"));
+  expect(values).toHaveLength(2);
+  for (const value of values) expect(value.className).toContain("whitespace-pre-wrap");
 });
 it("미리보기 읽기 실패는 1k의 Retry다 (짝)", async () => {
   mocks.preview.mockResolvedValueOnce({ status: "failed" });
@@ -184,10 +363,27 @@ it.each([["OWNER", 1], ["EDITOR", 0]] as const)("설정 링크는 %s에게 %i개
   await render(<Host role={role} />);
   await click("Publish1"); await click("Open pull request");
   expect(document.querySelectorAll('a[href="/projects/acme/settings"]')).toHaveLength(links);
-  expect(document.body.textContent).toContain("Not an owner?");
+  expect(document.body.textContent).toContain("Not a project owner?");
   // 서버가 준 safe 메시지를 코드로 갈음하지 않는다 — 코드만 남기면 "안 된대요"가 한 낱말 바뀔 뿐이다.
   expect(document.body.textContent).toContain("could not read the base branch");
   expect(document.body.textContent).toContain("base-unreadable");
+});
+/**
+ * audit #21 — 코드가 없는 거부의 **모르는 문자열**을 그대로 보이지 않고, `invalid input`을 권한 없음으로 오역하지 않는다.
+ * 짝(N > 0): 아는 사유(`not-ready`)는 여전히 그 문장이 선다.
+ */
+it.each(["invalid input", "weird-code"])("코드 없는 모르는 거부 %s는 원문도 권한 문장도 아니다", async error => {
+  mocks.pull.mockResolvedValue({ status: "failed", error, delivery: "not-started", retryable: false });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  const text = document.body.textContent ?? "";
+  expect(text).not.toContain(error);
+  expect(text).not.toContain(m.errors.access.forbidden);
+  expect(text).toContain(m.translations.publish.refused);
+});
+it("아는 거부는 그 문장이 선다 — 폴백이 모든 거부를 삼키지 않는다", async () => {
+  mocks.pull.mockResolvedValue({ status: "failed", error: "not-ready", delivery: "not-started", retryable: false });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  expect(document.body.textContent).toContain(m.errors.onboarding["not-ready"]);
 });
 it("실패의 alert만 낭독하고 닫힌 동안 완료는 포커스를 빼앗지 않는다", async () => {
   const run = deferred<unknown>(); mocks.pull.mockReturnValueOnce(run.promise);

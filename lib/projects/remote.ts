@@ -1,6 +1,7 @@
 import "server-only";
 
 import { isAdapterName } from "@/lib/adapters";
+import { AppError, logCaught } from "@/lib/failure";
 import { createGitClient } from "@/lib/github";
 import type { GitClient } from "@/lib/pull/client";
 import { changedLocaleFileCount, pullNumberFrom } from "./remote-plan";
@@ -101,7 +102,10 @@ async function signalsFor(
       pullNumber === null ? null : client.isPullRequestOpen(pullNumber),
     ]);
     // 한쪽이 실패해도 나머지 요청이 끝나야 워커 자리를 반납한다 — Promise.all은 먼저 거부된다.
-    if (compared.status === "rejected" || opened.status === "rejected") return NONE;
+    if (compared.status === "rejected" || opened.status === "rejected") {
+      logCaught("remote-signals", "signals", compared.status === "rejected" ? compared.reason : (opened as PromiseRejectedResult).reason);
+      return NONE;
+    }
     const comparisons = compared.value;
     const open = opened.value;
     return {
@@ -111,11 +115,13 @@ async function signalsFor(
       ...(() => { const changed = comparisons.find(({ format, compare }) => compare.ahead && changedLocaleFileCount(format, compare.files) > 0);
         return changed ? { repoAheadFrom: changed.format.lastCommitSha } : {}; })(),
     };
-  } catch {
+  } catch (error) {
     /**
      * ⚠️ **불변식 9와 충돌하지 않는다** — "버린 값을 성공으로 숨기지 않는다"는 **sync 결과**에 대한
      * 것이고, 여기서 생략되는 것은 판정이 아니라 표시다. 다른 띠(발송·검토)는 DB만으로 선다.
+     * 다만 화면이 띠를 빼는 것으로 끝나므로 "왜 안 뜨나"를 볼 곳이 로그뿐이다 (POSTMORTEM 2026-09-14).
      */
+    logCaught("remote-signals", "fetch", error);
     return NONE;
   }
 }
@@ -124,7 +130,10 @@ async function signalsFor(
 async function withDeadline(work: Promise<RemoteSignals[]>): Promise<RemoteSignals[]> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<RemoteSignals[]>((resolve) => {
-    timer = setTimeout(() => resolve([]), DEADLINE_MS);
+    timer = setTimeout(() => {
+      logCaught("remote-signals", "deadline", new AppError(`no response within ${DEADLINE_MS}ms`));
+      resolve([]);
+    }, DEADLINE_MS);
   });
   try {
     return await Promise.race([work, deadline]);

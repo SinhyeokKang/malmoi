@@ -20,7 +20,7 @@ vi.mock("../load", () => ({
 }));
 
 import { createFakeGitClient } from "./fake-client";
-import { syncBranchFor, triggerPull } from "../trigger";
+import { triggerPull } from "../trigger";
 
 describe("triggerPull — 조립", () => {
   it("편집이 없으면 1층에서 끝나고 GitHub 클라이언트를 만들지 않는다", async () => {
@@ -116,6 +116,24 @@ describe("triggerPull — 조립", () => {
     spy.mockRestore();
   });
 
+  it("보류도 console.warn으로 낸다 — 매 밤 같은 판정이 반복되는데 흔적이 없으면 안 된다 (delivery-invariants D3)", async () => {
+    const EN = "en:\n  a: one\n";
+    const { client } = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [{ path: "config/locales/en.yml", sha: "e" }] }, blobs: { e: EN } });
+    hoisted.createGitClient.mockResolvedValue(client);
+    const columns = { adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", nested: null, nestedByPath: null, baseLocale: "en" };
+    hoisted.loadPullState.mockResolvedValue({
+      project: { id: "p1", slug: "fmt", repoOwner: "o", repoName: "r", baseBranch: "dev", installationId: "1", repositoryId: "100", lastPulledAt: null, ...columns },
+      surfaces: [{ id: "s1", slug: "default", ...columns, localeCodes: ["en", "fr"],
+        keys: [{ id: "k", key: "a", sourceText: "one", orphaned: false, cells: { en: { value: "one" }, fr: { value: "un" } } }] }],
+      maxUpdatedAt: new Date("2026-09-04T00:00:00Z"), unpublished: 1,
+      pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s1", keyId: "k", localeCode: "fr", restoreValue: "" } }],
+    });
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(await triggerPull({} as never, "fmt", null)).toMatchObject({ status: "skipped", reason: "withheld" });
+    expect(spy.mock.calls.map(c => String(c[0]))).toEqual(["[pull:fmt] withheld edits: 1 missing file, 0 missing key"]);
+    spy.mockRestore();
+  });
+
 });
 
 /**
@@ -141,7 +159,7 @@ describe("triggerPull — 전달 기준 배선", () => {
     expect(result.status).toBe("committed");
     expect(hoisted.invalidateDeliveryConfirmations).toHaveBeenCalledWith(prisma, "p1");
     const call = hoisted.saveLastPulledAt.mock.calls.at(-1);
-    expect(call?.[5]).toEqual({ runId: "run-1", contexts: [{ surfaceId: "s1", fingerprint: "ctx" }] });
+    expect(call?.[5]).toEqual({ runId: "run-1", contexts: [{ surfaceId: "s1", fingerprint: "ctx" }], withheld: [] });
   });
 
   it("실행 id가 없으면 확인을 싣지 않는다 (위 대조)", async () => {
@@ -153,53 +171,3 @@ describe("triggerPull — 전달 기준 배선", () => {
   });
 });
 
-/**
- * 브랜치 이름이 상수 `malmoi-i18n/sync`였다. 한 리포에 번역 표면이 둘이면 Project가 둘이 되는데
- * (PRODUCT §7.1), 그 둘이 **같은 브랜치를 force update로 서로 덮는다** — 그때는
- * 순차 실행으로 피해 간 함정이고 bugshot-2가 정확히 그 모양이다(`_locales` 4키 +
- * `ts-dict` 903키).
- */
-describe("syncBranchFor — 프로젝트마다 다른 브랜치", () => {
-  it("slug를 이름에 넣는다", () => {
-    expect(syncBranchFor("bugshot-2")).toBe("malmoi-i18n/sync-bugshot-2");
-  });
-
-  it("**다른 프로젝트는 다른 브랜치를 받는다** — 이 함수가 존재하는 이유다", () => {
-    expect(syncBranchFor("chrome-surface")).not.toBe(syncBranchFor("ts-surface"));
-  });
-
-  it("같은 slug는 언제나 같은 브랜치다 — pull이 자기 브랜치를 다시 찾아야 한다", () => {
-    expect(syncBranchFor("order-check")).toBe(syncBranchFor("order-check"));
-  });
-
-  /**
-   * `Project.slug`에 형식 제약이 없다(`slug String @unique`). 여기가 유일한 방어선이라
-   * git이 거부할 이름을 미리 던진다 — 안 던지면 `createRef`가 422로 죽고 원인이
-   * "GitHub이 거절함"으로만 보인다.
-   */
-  it.each([
-    ["빈 문자열", ""],
-    ["공백", "a b"],
-    ["물결", "a~b"],
-    ["캐럿", "a^b"],
-    ["콜론", "a:b"],
-    ["물음표", "a?b"],
-    ["별표", "a*b"],
-    ["대괄호", "a[b"],
-    ["역슬래시", "a\\b"],
-    ["연속 점", "a..b"],
-    ["점으로 끝남", "ab."],
-    ["점으로 시작", ".ab"],
-    ["reflog 문법", "a@{b"],
-    ["슬래시 — 브랜치 계층을 갈라 남의 ref를 덮을 수 있다", "a/b"],
-    ["제어문자", "a\u0001b"],
-  ])("git이 거부할 slug를 던진다: %s", (_label, slug) => {
-    expect(() => syncBranchFor(slug)).toThrow();
-  });
-
-  it("정상 slug는 통과한다", () => {
-    for (const slug of ["a", "bugshot-2", "order-check", "my_project", "v1.2"]) {
-      expect(() => syncBranchFor(slug)).not.toThrow();
-    }
-  });
-});

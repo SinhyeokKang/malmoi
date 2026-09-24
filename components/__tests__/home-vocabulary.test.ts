@@ -31,8 +31,8 @@ const bare = (source: string): string =>
  * 확인 Dialog 안의 링크 둘이라 이 화면의 다섯과 다른 규칙이다.
  */
 const HOME_GRAPH = [
-  "app/(edit)/projects/[slug]/page.tsx",
-  "app/(edit)/projects/[slug]/loading.tsx",
+  "app/(edit)/projects/[slug]/(home)/page.tsx",
+  "app/(edit)/projects/[slug]/(home)/loading.tsx",
   "components/home/actions.tsx",
   "components/home/count-cards.tsx",
   "components/home/attention-card.tsx",
@@ -141,7 +141,7 @@ describe("완료 조건 9 — 파랑이 정확히 네 자리다", () => {
   });
 
   it("나머지 그래프에는 파랑이 없다", () => {
-    for (const path of ["app/(edit)/projects/[slug]/page.tsx", "app/(edit)/projects/[slug]/loading.tsx", "components/home/actions.tsx", "components/home/attention-card.tsx"]) {
+    for (const path of ["app/(edit)/projects/[slug]/(home)/page.tsx", "app/(edit)/projects/[slug]/(home)/loading.tsx", "components/home/actions.tsx", "components/home/attention-card.tsx"]) {
       expect(count(path), path).toBe(0);
     }
   });
@@ -196,6 +196,12 @@ const NOT_A_COUNT: Record<string, string> = {
   "translations.publish.prOpen.title": "PR 번호",
   "translations.publish.replacePr": "PR 번호",
   "translations.publish.tellReviewer": "PR 번호",
+  "translations.publish.closedPr.line": "PR 번호",
+  "translations.publish.closedPr.view": "PR 번호",
+  "translations.publish.same.undoes": "PR 번호",
+  "translations.publish.same.closesTitle": "PR 번호",
+  "translations.publish.same.closesBody": "PR 번호",
+  "translations.publish.same.closeAction": "PR 번호",
   "translations.publish.wait": "남은 초 — 수가 아니라 대기 시간이다",
   "repositorySync.unreadable": "표면 수 — 강제 상한 없음(위 셋과 같은 부류)",
   "repositorySync.notReplaced": "표면 수 — 강제 상한 없음(위 셋과 같은 부류)",

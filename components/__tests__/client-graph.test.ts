@@ -143,6 +143,8 @@ const CLIENT_LIB_FILES = [
   "lib/shell/panel-size.ts",
   "lib/signin/dot-field.ts",
   "lib/sources/actions.ts",
+  // Add sources의 꺼진 사유 (malmoi#93) — `lib/i18n` 하나만 문다.
+  "lib/sources/add-block.ts",
   "lib/sources/base-language.ts",
   "lib/surfaces/plan.ts",
   "lib/tone.ts",
@@ -153,8 +155,12 @@ const CLIENT_LIB_FILES = [
   "lib/translations/query.ts",
   "lib/translations/saved-rows.ts",
   "lib/translations/summary.ts",
+  // malmoi#91 — 셀의 `dir`·`lang`. import가 없는 잎이다.
+  "lib/translations/text-direction.ts",
   "lib/upload/image.ts",
   "lib/upload/message.ts",
+  // Logs 커서의 base64url 코덱 (audit #73) — import가 없는 잎이다.
+  "lib/url-token.ts",
   "lib/utc-time.ts",
   "lib/utils.ts",
 ];
@@ -377,6 +383,7 @@ describe("클라이언트 그래프", () => {
     expect([...filter.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
       "lib/events/filter.ts",
       "lib/events/payload.ts",
+      "lib/url-token.ts",
     ]);
     expect([...filter.packages].filter((name) => !allowed(name))).toEqual([]);
 

@@ -50,6 +50,8 @@ export type EventActor = {
 export type PublishRun = {
   changed: number | null;
   warnings: number;
+  /** 못 실은 편집 수 (`SyncRun.withheld`) — 결과 모달과 같은 수다. */
+  withheld: number;
   prUrl: string | null;
   errorCode: string | null;
 };
@@ -87,7 +89,7 @@ const SELECT = {
   payload: true,
   // ⚠️ `email`을 **읽되 돌려주지 않는다** — 가리려면 원문이 필요하고, 나가면 안 되는 것은 반환값이다.
   actor: { select: { id: true, name: true, email: true, emailLookup: true } },
-  syncRun: { select: { status: true, finishedAt: true, changed: true, warnings: true, prUrl: true, errorCode: true } },
+  syncRun: { select: { status: true, finishedAt: true, changed: true, warnings: true, withheld: true, prUrl: true, errorCode: true } },
 } satisfies Prisma.ProjectEventSelect;
 
 type Selected = Prisma.ProjectEventGetPayload<{ select: typeof SELECT }>;
@@ -155,7 +157,7 @@ export async function loadEventActors(
 
 /** 저장 행 → 화면이 읽는 행. 마스킹은 **목록 전체를 한 번에** 본다. */
 function present(rows: readonly Selected[]): EventRow[] {
-  // 행 하나가 못 열려도 이력은 산다 — 키 부재만 장애로 남긴다 (`loadSyncRuns`와 같은 규칙).
+  // 행 하나가 못 열려도 이력은 산다 — 키 부재만 장애로 남긴다 (`loadMembers`와 같은 규칙).
   validatePiiReadKeys();
   const decoded = rows.map((row) => (row.actor === null ? null : readable(() => decodeUser(row.actor!))));
   const labels = maskedEmailLabels(decoded.map((user) => user?.email ?? ""));
@@ -191,6 +193,7 @@ function present(rows: readonly Selected[]): EventRow[] {
           : {
               changed: row.syncRun.changed,
               warnings: row.syncRun.warnings,
+              withheld: row.syncRun.withheld,
               prUrl: row.syncRun.prUrl,
               errorCode: row.syncRun.errorCode,
             },
@@ -209,8 +212,9 @@ function eventResult(row: Pick<Selected, "kind" | "result" | "syncRun" | "finish
   switch (row.syncRun.status) {
     case "SUCCEEDED":
       return "sent";
+    // ⚠️ **보류만 남은 실행은 "보낼 것이 없었다"가 아니다** (delivery-invariants D7) — 편집은 있었고 못 실었다.
     case "SKIPPED":
-      return "nothingToSend";
+      return row.syncRun.withheld > 0 ? "notSent" : "nothingToSend";
     case "FAILED":
       return "failed";
     default:
@@ -219,7 +223,7 @@ function eventResult(row: Pick<Selected, "kind" | "result" | "syncRun" | "finish
 }
 
 const RESULTS: readonly string[] = [
-  "running", "sent", "nothingToSend", "imported", "deferred", "partial", "superseded", "notStarted", "failed",
+  "running", "sent", "nothingToSend", "notSent", "imported", "deferred", "partial", "superseded", "notStarted", "failed",
 ];
 
 /** 모르는 값은 결과 없음이다 — 던지지 않는다(읽는 쪽이 폴백을 든다). */
@@ -318,7 +322,9 @@ function narrow(filter: LogFilter, sourceIds: readonly string[]): Prisma.Project
 function resultWhere(result: EventResult): Prisma.ProjectEventWhereInput {
   const status = PUBLISH_STATUS[result];
   if (status === undefined) return { result };
-  return { OR: [{ result }, { syncRun: { status } },
+  // SKIPPED 하나가 두 어휘로 갈린다 — 조회(`eventResult`)와 같은 술어여야 필터와 행 라벨이 갈리지 않는다.
+  const run: Prisma.SyncRunWhereInput = result === "notSent" ? { status, withheld: { gt: 0 } } : result === "nothingToSend" ? { status, withheld: 0 } : { status };
+  return { OR: [{ result }, { syncRun: run },
     ...(result === "running" ? [{ kind: "IMPORT" as const, result: null, finishedAt: null }] : []),
   ] };
 }
@@ -327,5 +333,6 @@ const PUBLISH_STATUS: Partial<Record<EventResult, "RUNNING" | "SUCCEEDED" | "SKI
   running: "RUNNING",
   sent: "SUCCEEDED",
   nothingToSend: "SKIPPED",
+  notSent: "SKIPPED",
   failed: "FAILED",
 };

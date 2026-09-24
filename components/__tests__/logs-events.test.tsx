@@ -30,9 +30,24 @@ const detail = (value: Row) => render(
 );
 
 describe("활동 행과 상세의 실제 동작", () => {
+  /** B1 r3 — no-changes 실행이 닫은 PR은 SKIPPED 행의 prUrl이다. 상세가 "닫았다"로 말하고, 보낸 PR로 읽히지 않는다. */
+  it.each([["https://github.com/o/r/pull/4", true], [null, false]] as const)("스킵 실행의 prUrl(%s)은 닫은 PR로 선다", async (url, shown) => {
+    const { container } = await detail(row({ kind: "PUBLISH", subtype: "publish.run", result: "nothingToSend",
+      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, warnings: 0, withheld: 0, prUrl: url, errorCode: null } }));
+    expect(container.textContent?.includes(m.logs.detail.labels.closedPullRequest)).toBe(shown);
+    expect(container.textContent?.includes(m.logs.detail.closedPullRequest)).toBe(shown);
+  });
+
+  /** delivery-invariants D7 — Logs 상세가 모달과 같은 수를 한 줄로 말한다. 짝: 보류 0이면 줄이 없다. */
+  it.each([[2, true], [0, false]] as const)("Publish 상세는 보류 %i건을 한 줄로 말한다(%s)", async (n, shown) => {
+    const { container } = await detail(row({ kind: "PUBLISH", subtype: "publish.run", result: n > 0 ? "notSent" : "nothingToSend",
+      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, warnings: 0, withheld: n, prUrl: null, errorCode: null } }));
+    expect(container.textContent?.includes(m.logs.detail.withheld(2))).toBe(shown);
+  });
+
   it("수동 적재 성공은 보호 보류라고 말하지 않고 소스별 결과를 보인다", async () => {
     const { container } = await render(<EventRow row={row()} href="/logs" now={now} archived={false} />);
-    expect(container.textContent).toContain("web: Imported");
+    expect(container.textContent).toContain("web: Synced");
     expect(container.textContent).not.toContain("Nothing was imported");
   });
 
@@ -53,6 +68,28 @@ describe("활동 행과 상세의 실제 동작", () => {
     expect(container.textContent).toContain(m.projects.importFailure.parseFailed);
   });
 
+  /**
+   * ⚠️ **상세는 지난 기록이다 — live 영역을 두지 않는다** (B6 r1, 2026-09-24 사용자). 실패 노트를 `Alert danger`로
+   * 올렸더니 `role="alert"`가 따라와 상세를 여는 순간 assertive로 끼어들었다(DESIGN §6.644의 판정과 반대).
+   * 실패는 **아이콘만 붉다.** 짝: 같은 상세가 실패 문장을 실제로 보인다.
+   */
+  it.each([
+    ["실패", row({ result: "failed" })],
+    ["진행 중", row({ result: "running" })],
+  ] as const)("%s 상세에 live 영역이 없다", async (_, value) => {
+    const { container } = await detail(value);
+    expect(container.querySelectorAll('[role="alert"], [role="status"], [aria-live]')).toHaveLength(0);
+  });
+
+  it("실패 노트는 아이콘만 붉고 문장은 본문 색이다", async () => {
+    const { container } = await detail(row({ result: "failed" }));
+    const note = [...container.querySelectorAll("[data-event-note]")];
+    expect(note).toHaveLength(1);
+    expect(note[0]!.querySelector("svg")?.getAttribute("class")).toContain("text-destructive");
+    expect(note[0]!.className).not.toContain("text-destructive");
+    expect(note[0]!.textContent?.length).toBeGreaterThan(0);
+  });
+
   it("상세의 Copy가 참조를 복사한다", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
@@ -66,11 +103,27 @@ describe("활동 행과 상세의 실제 동작", () => {
 
   it("Home과 상세에도 Publish의 dropped 경고가 보인다", async () => {
     const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "sent", payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null },
-      run: { changed: 1, warnings: 2, prUrl: null, errorCode: null } });
+      run: { changed: 1, warnings: 2, withheld: 0, prUrl: null, errorCode: null } });
     const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} showTime={false} />);
     expect(container.textContent).toContain(m.logs.warnings(2));
     expect((await detail(value)).container.textContent).toContain(m.logs.warnings(2));
   });
+});
+
+/**
+ * ⚠️ **검색은 필터 줄 끝이다** (2026-09-24 사용자) — 번역 화면의 툴바와 같은 형이다: 제목 줄은
+ * 제목과 행동([Refresh])뿐이고, 좁히는 도구(필터 · 검색)는 한 줄에 모인다. 공용 `SearchInput`을
+ * 지나야 IME 조합 확정 Enter가 검색으로 나가지 않는다.
+ */
+it("검색 필드가 필터와 같은 줄의 끝에 선다 — 제목 줄에 없다", async () => {
+  const props = { slug: "alpha", sources: [], actors: [], refreshable: true };
+  const { container } = await render(<LogFilters {...props} filter={parseLogFilter({})} />);
+  const search = container.querySelector('input[type="search"]');
+  const row = search?.closest("[data-log-filter-row]");
+  expect(row).not.toBeNull();
+  expect(row!.lastElementChild!.contains(search!)).toBe(true);
+  expect(row!.querySelector('button[aria-label^="Kind"]')).not.toBeNull();
+  expect(container.querySelector("h1")?.parentElement?.contains(search!)).toBe(false);
 });
 
 it("검색 URL이 바뀌면 입력값도 따라간다", async () => {
@@ -84,7 +137,7 @@ it("보관된 Publish의 행과 상세 모두 야간 재시도를 약속하지 �
   const code = Object.entries(m.logs.reasons).find(([, value]) => value.includes("nightly"))?.[0];
   expect(code).toBeDefined();
   const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "failed",
-    run: { changed: null, warnings: 0, prUrl: null, errorCode: code! },
+    run: { changed: null, warnings: 0, withheld: 0, prUrl: null, errorCode: code! },
     payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: null } });
   const { container, rerender } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
   expect(container.textContent).toContain("nightly");
@@ -118,5 +171,35 @@ describe("상세 껍데기 — 실측이 잡은 자리", () => {
     const footer = container.querySelector("[data-event-detail-footer]");
     expect(footer).not.toBeNull();
     expect(footer!.textContent).toContain(m.logs.detail.actions.close);
+  });
+
+  /**
+   * 상세의 칩은 목록 행(28)보다 크고, 본문은 칩이 아니라 **제목 열**에 맞춰 들어간다 —
+   * 좌측 24 + 칩 40 + 간격 12 = 76. 셋 중 하나만 바뀌면 필드가 제목과 어긋난다.
+   */
+  it("칩은 40이고 본문은 제목 열(76px)에서 시작한다", async () => {
+    const { container } = await detail(row());
+    const glyph = container.querySelector("[data-event-detail-header] > [aria-hidden]");
+    expect(glyph?.className).toContain("size-10");
+    expect(container.querySelector("[data-event-detail-header]")?.className).toMatch(/\bpx-6\b.*\bgap-3\b|\bgap-3\b.*\bpx-6\b/);
+    expect(container.querySelector("[data-event-detail-body]")?.className).toContain("pl-[76px]");
+  });
+
+  it("필드는 표이고 라벨이 행 헤더다 — 값마다 라벨이 읽힌다", async () => {
+    const { container } = await detail(row());
+    const head = [...container.querySelectorAll("[data-event-detail-body] table th")];
+    expect(head.map(th => th.getAttribute("scope"))).toEqual(head.map(() => "row"));
+    expect(head[0]?.textContent).toBe(m.logs.detail.labels.reference);
+  });
+
+  /**
+   * 행 높이의 기준은 [Copy reference]가 든 행이다 — 버튼 28 + 위아래 10×2 = 48. 기준이 없으면
+   * 참조 행만 6px 더 높아 표의 리듬이 첫 줄에서 깨진다.
+   */
+  it("모든 행이 참조 행 높이(48)를 최소로 갖는다", async () => {
+    const { container } = await detail(row());
+    const rows = [...container.querySelectorAll("[data-event-detail-body] table tr")];
+    expect(rows.length).toBeGreaterThan(1);
+    for (const tr of rows) expect(tr.className).toMatch(/\bh-12\b/);
   });
 });

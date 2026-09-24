@@ -466,6 +466,9 @@ export function NewProject({
         else if (step === 3) create();
         else router.push(routes.translations(created?.slug ?? ""));
       }}
+      // ⚠️ **생성 중에는 닫히지 않는다** (audit #13) — 닫아도 `createProject`는 계속 돌고, ④의 일회용 push 토큰을
+      // 볼 자리가 경고 없이 사라진다 (DESIGN §6.4). ×·Esc·배경이 전부 이 한 값을 지난다.
+      closeDisabled={pending}
       onClose={close}
     >
       {step === 1 && (

@@ -1,9 +1,12 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useFormStatus } from "react-dom";
 
+import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
@@ -35,10 +38,12 @@ import { cn } from "@/lib/utils";
 export function Sidebar({
   memberships,
   userName,
+  userImage,
   signOut,
 }: {
   memberships: NavProject[];
   userName: string;
+  userImage: string | null;
   signOut: () => void;
 }) {
   const pathname = usePathname();
@@ -67,7 +72,20 @@ export function Sidebar({
           aria-label={zone.label}
           className={cn("flex flex-col gap-0.5", index === 0 ? undefined : "border-border border-t pt-2")}
         >
-          <p className="text-foreground truncate py-1.5 text-sm font-medium">{zone.label}</p>
+          {/*
+            ⚠️ **라벨 앞에 대상의 얼굴이 선다** (2026-09-24 사용자) — 사용자는 `Avatar`(원), 프로젝트는
+            `ProjectThumbnail`(라운드 사각). 모양이 대상을 말한다(DESIGN §6.4). 둘 다 24이고 `py-1`이라
+            머리 줄 높이는 옛 `py-1.5` + 20줄과 같은 32다. `px-0.5`는 24의 중심을 아래 항목 아이콘 16의
+            중심(6 + 8 = 14)에 맞춘다.
+          */}
+          <p data-zone-head className="text-foreground flex items-center gap-2 px-0.5 py-1 text-sm font-medium">
+            {zone.key === "work" ? (
+              <Avatar name={userName} src={userImage} size={24} />
+            ) : (
+              <ProjectThumbnail name={zone.label} src={project?.image} size={24} />
+            )}
+            <span className="min-w-0 truncate">{zone.label}</span>
+          </p>
           {zone.items.map((item) => (
             <Item key={item.key} item={item} active={isActive(pathname, item)} />
           ))}
@@ -83,17 +101,7 @@ export function Sidebar({
           <Item key={item.key} item={item} active={isActive(pathname, item)} />
         ))}
         <form action={signOut}>
-          <Button
-            type="submit"
-            variant="ghost"
-            // ⚠️ hover 알파가 위 링크 항목과 같아야 한다 — 하단 둘 중 하나만 진하면 그 차이가 상태로 읽힌다.
-            className="text-foreground hover:bg-foreground/[0.03] h-auto w-full justify-start gap-2 rounded-sm p-1.5"
-          >
-            <span className="flex size-4 shrink-0 items-center justify-center">
-              <LogOut className="size-4" aria-hidden />
-            </span>
-            <span className="truncate">{m.common.nav.signOut}</span>
-          </Button>
+          <SignOutSubmit />
         </form>
       </div>
     </aside>
@@ -151,5 +159,29 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
         </Badge>
       )}
     </Link>
+  );
+}
+
+/**
+ * ⚠️ **제출 중에는 disabled + 스피너다** (audit #25) — `/account`의 Sign out과 같은 `useFormStatus` 형. 없으면 느린
+ * 응답 동안 눌린 것이 먹혔는지 몰라 다시 누른다. 스피너는 **아이콘 자리를 대신한다** — `Button`의 `loading`은 글자 앞에
+ * 하나를 더 세워 아이콘이 둘이 된다.
+ */
+function SignOutSubmit() {
+  const { pending } = useFormStatus();
+  return (
+    <Button
+      type="submit"
+      variant="ghost"
+      disabled={pending}
+      aria-busy={pending}
+      // ⚠️ hover 알파가 위 링크 항목과 같아야 한다 — 하단 둘 중 하나만 진하면 그 차이가 상태로 읽힌다.
+      className="text-foreground hover:bg-foreground/[0.03] h-auto w-full justify-start gap-2 rounded-sm p-1.5"
+    >
+      <span className="flex size-4 shrink-0 items-center justify-center">
+        {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <LogOut className="size-4" aria-hidden />}
+      </span>
+      <span className="truncate">{m.common.nav.signOut}</span>
+    </Button>
   );
 }

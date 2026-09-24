@@ -2,7 +2,7 @@ import "server-only";
 
 import { logCaught } from "@/lib/failure";
 import { createGitClient } from "@/lib/github";
-import { syncBranchFor } from "@/lib/pull/trigger";
+import { syncBranchFor } from "@/lib/pull/sync-branch";
 
 export async function loadOpenPrUrl(
   slug: string,

@@ -28,6 +28,7 @@ import { TranslationWorkspace } from "@/components/translations/workspace/worksp
 import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
 
 import { props } from "./helpers/workspace-props";
+import { m } from "@/lib/i18n";
 
 
 const area = (container: HTMLElement, code: string) => {
@@ -147,7 +148,7 @@ it("EDITOR에게 Revert와 Sync는 숨기지 않고 꺼진 채 사유를 붙인�
   const { container } = await render(<TranslationWorkspace {...props({ role: "EDITOR" })} />);
   const revert = button("Revert to last sent");
   expect(revert.getAttribute("aria-disabled")).toBe("true");
-  expect(container.textContent).toContain("Only the project owner can revert to a sent version.");
+  expect(container.textContent).toContain("Only project owners can revert to a sent version.");
   expect(button("Sync").getAttribute("aria-disabled")).toBe("true");
 });
 
@@ -172,7 +173,7 @@ it("OWNER의 Revert는 미리보기 확인창을 거쳐 발급된 지문으로 �
 it("Revert 사유는 describedby로만 닿고 결과 줄의 낭독에 섞이지 않는다", async () => {
   await render(<TranslationWorkspace {...props({ role: "EDITOR" })} />);
   const reason = document.getElementById(button("Revert to last sent").getAttribute("aria-describedby") ?? "");
-  expect(reason?.textContent).toBe("Only the project owner can revert to a sent version.");
+  expect(reason?.textContent).toBe("Only project owners can revert to a sent version.");
   expect(reason?.closest("[aria-live]")).toBeNull();
 });
 
@@ -213,7 +214,7 @@ it("저장 응답이 유실되면 '확인 불가'로 말하고 draft를 지키�
   const { container } = await render(<TranslationWorkspace {...props()} />);
   await user.type(area(container, "zh"), "空");
   await user.click(button("Save"));
-  expect(container.textContent).toContain("We couldn't confirm the save.");
+  expect(container.textContent).toContain("We couldn't confirm the save");
   expect(area(container, "zh").value).toBe("空");
 });
 
@@ -367,7 +368,7 @@ it("필터 변경 뒤 같은 키가 남아도 Discard는 메모리의 입력까�
   const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
   await user.type(area(container, "zh"), "draft");
   await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="Completeness:"]')!);
-  const option = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(el => el.textContent?.includes("Incomplete"));
+  const option = [...document.querySelectorAll<HTMLElement>('[role^="menuitem"]')].find(el => el.textContent?.includes("Incomplete"));
   if (!option) throw new Error("no Incomplete option");
   await user.click(option);
   await user.click(button("Discard changes"));
@@ -415,4 +416,125 @@ it("두 번째 페이지 재검증도 행 요약을 갱신하고 선택 키의 �
   await rerender(<TranslationWorkspace {...initial} query={pageQuery} list={{ ...initial.list, rows: [{ ...initial.list.rows[1]!, missingCount: 2 }], selectedInResult: false }} />);
   expect(row(container, "k1").textContent).toContain("Saved");
   expect(row(container, "k2").textContent).toContain("2 missing");
+});
+
+/**
+ * ⚠️ **세션 만료 Alert는 복구 사본이 실제로 쓰였을 때만 "이 탭에서 다시 로그인하라"고 말한다** (malmoi#76 —
+ * ARCHITECTURE §6.04). 저장소가 막힌 브라우저에서 같은 문장을 세우면 로그인 이동이 입력을 지운다.
+ */
+it("세션이 끝나면 복구 사본이 있는 동안 이 탭에서 다시 로그인하라고 말한다", async () => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error: "unauthorized" });
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  await user.click(button("Save"));
+  expect(container.textContent).toContain("Your session ended");
+  expect(container.textContent).toContain("Sign in again in this tab.");
+  expect(container.textContent).not.toContain("this browser isn't keeping it for you");
+});
+
+it("저장소가 막힌 브라우저에서는 보존을 약속하지 않고 먼저 복사하라고 말한다", async () => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error: "unauthorized" });
+  // 막힌 브라우저는 `window.sessionStorage` 접근 자체가 던진다(SecurityError).
+  const original = Object.getOwnPropertyDescriptor(window, "sessionStorage")!;
+  Object.defineProperty(window, "sessionStorage", { configurable: true, get: () => { throw new DOMException("blocked", "SecurityError"); } });
+  try {
+    const { container } = await render(<TranslationWorkspace {...props()} />);
+    await user.type(area(container, "zh"), "空");
+    await user.click(button("Save"));
+    expect(container.textContent).toContain("Your session ended");
+    expect(container.textContent).toContain("Copy your text before you sign in — this browser isn't keeping it for you.");
+    expect(container.textContent).not.toContain("Sign in again in this tab.");
+    expect(area(container, "zh").value).toBe("空");
+  } finally {
+    Object.defineProperty(window, "sessionStorage", original);
+  }
+});
+
+/**
+ * audit #23 — 다시 해도 안 풀리는 저장 거부 둘을 "Try again"으로 접지 않는다. 짝: 장애(`unavailable`)는 여전히 재시도 문장이다.
+ */
+it.each([
+  ["key-unavailable", m.translations.workspace.footer.keyGone],
+  ["not-ready", m.translations.workspace.footer.notReady],
+  ["unavailable", m.translations.workspace.footer.saveFailed.body],
+] as const)("저장 거부 %s는 그 사유의 문장이다", async (error, expected) => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error });
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  await user.click(button("Save"));
+  expect(container.textContent).toContain(expected);
+  if (error !== "unavailable") expect(container.textContent).not.toContain(m.translations.workspace.footer.saveFailed.body);
+});
+
+/**
+ * delivery-invariants D2 — 수술적 표면의 비-base 비우기 거부. 푸터 Alert(제목에 로케일) + 그 셀만 `aria-invalid`·`aria-describedby`로
+ * Alert를 가리키고, 입력은 그대로 남는다. 짝: 다른 거부는 기존 `saveFailed` Alert이고 셀에 invalid가 붙지 않는다.
+ */
+it("cannot-clear 거부는 로케일을 제목에 든 푸터 Alert이고 그 셀만 invalid로 Alert를 가리킨다 · 입력은 남는다", async () => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error: "cannot-clear", localeCodes: ["zh"] });
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  await user.click(button("Save"));
+  const alert = [...container.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(m.translations.workspace.footer.cannotClear.title("zh")));
+  expect(alert?.textContent).toContain(m.translations.workspace.footer.cannotClear.body);
+  const cell = area(container, "zh");
+  expect(cell.getAttribute("aria-invalid")).toBe("true");
+  const described = (cell.getAttribute("aria-describedby") ?? "").split(" ");
+  expect(described.some(id => id !== "" && document.getElementById(id)?.contains(alert ?? null))).toBe(true);
+  expect(cell.value).toBe("空");
+  expect(container.querySelectorAll('[aria-invalid="true"]')).toHaveLength(1);
+});
+
+it("다른 저장 거부에는 셀 invalid가 붙지 않는다 (짝)", async () => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error: "unavailable" });
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  await user.click(button("Save"));
+  expect(container.textContent).toContain(m.translations.workspace.footer.saveFailed.body);
+  expect(container.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+});
+
+/** audit #31 — 활성 키가 0인 프로젝트의 빈 목록이 다음 일을 말한다. */
+it("활성 키가 없으면 빈 목록이 안내를 든다", async () => {
+  const { container } = await render(<TranslationWorkspace {...props({
+    detail: null, query: DEFAULT_TRANSLATION_QUERY,
+    tree: { projectKeyCount: 0, surfaces: [{ id: "s1", slug: "web", baseLocale: "en", locales: ["en"], keyCount: 0, namespaces: [] }] },
+    list: { rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, nextCursor: null, effective: { completion: "all", substituted: false, excludedSurfaceIds: [] }, selectedInResult: false },
+  })} />);
+  expect(container.textContent).toContain(m.translations.workspace.empty.noActive);
+  expect(container.textContent).toContain(m.translations.empty.noKeys.description);
+});
+
+/**
+ * malmoi#91 — RTL 로케일 셀이 페이지의 `ltr`·`lang="en"`을 상속해 `.(…` 가 반대 끝으로 튀었다. 셀이 자기 방향과 언어를 든다.
+ * 짝: LTR 셀은 `ltr` 그대로다(레이아웃 이동 없음). 빈 칸에 겹친 원문은 **base**의 방향·언어를 든다.
+ */
+it("RTL 로케일 셀은 dir=rtl·lang을 들고 LTR 셀은 ltr이다", async () => {
+  const base = props();
+  const { container } = await render(<TranslationWorkspace {...props({
+    tree: { ...base.tree, surfaces: base.tree.surfaces.map(surface => ({ ...surface, locales: ["en", "ar-SA", "ku-TR"] })) },
+    detail: base.detail && {
+      ...base.detail,
+      locales: [
+        { code: "en", isBase: true, value: "Nothing here", needsReview: false, pending: false, actorLabel: null },
+        { code: "ar-SA", isBase: false, value: "لا شيء هنا.", needsReview: false, pending: false, actorLabel: null },
+        { code: "ku-TR", isBase: false, value: null, needsReview: false, pending: false, actorLabel: null },
+      ],
+    },
+  })} />);
+  expect(area(container, "ar-SA").getAttribute("dir")).toBe("rtl");
+  expect(area(container, "ar-SA").getAttribute("lang")).toBe("ar-SA");
+  expect(area(container, "en").getAttribute("dir")).toBe("ltr");
+  expect(area(container, "en").getAttribute("lang")).toBe("en");
+  expect(area(container, "ku-TR").getAttribute("dir")).toBe("auto");
+  // 빈 ku-TR 칸에 겹친 원문은 en이다 — 셀의 방향을 따르면 영어 원문이 오른쪽에 붙는다.
+  const hint = area(container, "ku-TR").parentElement?.querySelector("span[id]");
+  expect(hint?.textContent).toBe("Nothing here");
+  expect(hint?.getAttribute("dir")).toBe("ltr");
+  expect(hint?.getAttribute("lang")).toBe("en");
 });

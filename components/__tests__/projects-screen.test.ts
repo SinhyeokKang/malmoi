@@ -334,14 +334,15 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   });
 
   /**
-   * ⚠️ **역할로 갈리는 것은 링크 셋뿐이다** (DESIGN §6.63) — `project:settings` 뒤라 EDITOR에게
-   * 보여 주면 눌러서 거절당하는 경험이 된다. 판정은 **호출부**가 하고 `rowBanner`는 역할을 안 받는다.
+   * ⚠️ **역할로 갈리는 것은 링크 둘과 문장 하나다** (DESIGN §6.63) — `project:settings` 뒤라 EDITOR에게
+   * 보여 주면 눌러서 거절당하는 경험이 된다. 가져오기 실패의 `View details`는 Sources로 가서 EDITOR도 받고(audit #6 r1),
+   * 재시도가 OWNER 몫이라는 문장만 갈린다. 판정은 **호출부**가 하고 `rowBanner`는 역할을 안 받는다.
    */
-  it("세 링크가 `project:settings`로 갈린다", () => {
+  it("두 링크와 재시도 문장이 `project:settings`로 갈린다", () => {
     expect(BODY).toContain('canPerform(row.role, "project:settings")');
     expect(BODY).toContain("m.projects.banner.askOwner.reconnect");
     expect(BODY).toContain("m.projects.banner.askOwner.setup");
-    expect(BODY).toContain("m.projects.importFailure.contactOwner");
+    expect(BODY).toContain("m.projects.importFailure.ownerRetries");
   });
 
   /**
@@ -399,9 +400,13 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
     expect(SKELETON).not.toMatch(/<PanelBody[^>]*\b(px|py|pt|pb)-\d/);
   });
 
-  /** ⚠️ **움직임을 줄인 사용자에게는 정지한 회색 블록이다.** */
-  it("`motion-safe:`를 유지한다", () => {
-    expect(SKELETON).toContain("motion-safe:animate-pulse");
+  /**
+   * ⚠️ **움직임을 줄인 사용자에게는 정지한 회색 블록이다.** 그 `motion-safe:`는 이제 `Skeleton` 프리미티브가
+   * 든다(audit #49 — 로컬 `Block`이 같은 클래스를 손으로 들었다). 프리미티브 쪽은 `skeleton.test.tsx`가 센다.
+   */
+  it("회색 블록이 `Skeleton` 프리미티브다", () => {
+    expect(SKELETON).toContain("<Skeleton ");
+    expect(SKELETON).not.toContain("animate-pulse");
   });
 
   /** ⚠️ **스크린리더가 회색 블록을 읽지 않는다** — 머리와 본문 둘 다 가린다. */

@@ -720,6 +720,16 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
     라우터 갱신을 부르지 않는다.** 인증이 걸린 화면에서 갱신은 언제든 리다이렉트가 될 수 있다.
   - grep: `grep -rn 'router.refresh()' app components lib | grep -v __tests__` → **한 곳**(이 파일)뿐이다.
     `revalidatePath` 아홉 곳은 전부 Server Action의 **성공 경로**에 있어 같은 형태가 아니다.
+- **재발 — 2026-09-24, 출시 전 감사(audit #5·#11)**: 같은 형이 두 자리에 남아 있었다. 번역 화면의 `[Sync]`는
+  `onResult={() => router.refresh()}`로 **결과를 버리고** 무조건 refresh했고(거부가 설명 없이 버튼만 복귀, 세션이
+  끊긴 거부에서는 로그인 이동), Sources의 [Run first import]는 danger 결과를 세운 직후 refresh했다 — **테스트가 그
+  refresh를 "서버에 남은 실패 상태를 다시 읽는다"는 이유로 단언하고 있었다.** 실패 상태는 상세 재조회와 Action의
+  `finally`(`revalidatePath`)가 이미 갱신하므로 클라이언트 refresh가 할 일이 없었다. 위 grep의 "한 곳뿐"은 그 뒤
+  화면이 늘며 거짓이 됐다 — **정적 감사가 잡았다**(렌더 테스트는 둘 다 green).
+  - 재발 방지: 두 자리를 `outcome.ok`일 때만 refresh로 바꾸고 거부·성공 짝을 렌더로 단언한다
+    (`translation-workspace-sync.test.tsx` · `sources-screen.test.tsx`). grep을 고친다:
+    `rg -n 'router\.refresh\(\)' app components | grep -v __tests__` → 결과를 받는 콜백 안의 자리마다
+    **성공 조건 뒤에 있나**를 본다(`[Refresh]` 버튼·검토 확인처럼 요청 결과가 아닌 자리는 대상이 아니다).
 
 ### 2026-09-08 — 도달 불가한 오류 갈래를 겨냥한 테스트가 1년치 green이었다 — 단언이 보간된 키만 봤다
 
@@ -2402,6 +2412,7 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 잠금 뒤에는 편집 지문만 다시 확인했고, 실행 주체의 현재 권한과 프로젝트 활성 상태는 다시 읽지 않았다. 지문은 권한을 증명하지 않는다.
 - **그물**: 기존 단위 인가·지문 테스트는 통과했다. 별도 PG 연결이 Project 잠금을 쥔 채 권한을 바꾸고 실행의 실제 잠금 대기를 확인한 회귀 테스트가 세 경우 모두 red를 냈다. 실행이 Project→Surface 잠금을 얻은 뒤 OWNER와 활성 프로젝트·표면을 확인하도록 수정했다.
 - **재발 방지**: `rg -n 'FOR UPDATE|projectMember\.(delete|update)' 'app/(edit)/projects' lib/keys`로 권한 변경과 실행의 직렬화 경계를 함께 읽는다. 같은 검색에 나온 `save-key.ts`는 편집 권한 경합의 별도 검토 후보이며 이번 Revert 수정 범위에는 넣지 않는다.
+- **🔁 재발 — 2026-09-24, 감사 #9·#10·#26 (B2)**: 같은 결함이 OWNER Action 14곳(멤버 변경·초대 발급/재발급/무효화·첫 적재·push 토큰 회전·보관/복원·리포 재연결·기준 브랜치·이름·이미지 둘·기준 로케일)과 키 저장·수동 Publish 시작에 남아 있었다. `rotatePushToken`은 잠금 자체가 없었고, `changeMember`는 OWNER 재집계가 "남은 OWNER가 있나"만 봐서 **제거된 OWNER B가 C를 지우는** 감사 시나리오가 통과했다. Revert 때 한 자리만 고친 이유는 수정이 인라인이었기 때문이다 — 같은 모양의 다른 자리를 셀 장치가 없었다. 이번에는 판정을 `lockProjectAccess`(`lib/auth/lock.ts`, 순수 판정 `planLockedAccess`) 하나로 모았고, `app/__tests__/locked-access.test.ts`가 **AST로** 대상 16자리의 `$transaction` 콜백 안 호출을 센다(문자열 검색은 줄 끝 주석을 호출로 오인한다 — 감사 #80). 그물: `lib/events/__tests__/locked-access.integration.ts`가 실제 PG 잠금 대기로 15건을 red로 냈고, 비멤버로 저장·Publish하던 기존 픽스처 넷(save-key·revert-key·sync-run·invitation의 "없는 사용자로 FK 실패" 수법)이 새 판정에 걸려 드러났다. 재발 방지: `rg -n '"Project" WHERE "id" = .* FOR UPDATE' app lib -g '!**/__tests__/**'`의 결과 중 사람이 여는 쓰기 트랜잭션은 `lockProjectAccess`로 바꾸고 `SITES`에 더한다(2026-09-24 전수: 남은 raw 잠금은 사건 기록 전용 tx·CI 토큰 경로·이미 재확인하는 import/surfaces/revert·Publish 확정 `lib/pull/load.ts`뿐이다).
 
 ### 2026-09-23 — 번역 화면의 부분 응답과 낙관적 상태가 다음 작업을 가렸다
 
@@ -2426,3 +2437,46 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 첫째는 Radix Dialog의 열림 자동 포커스가 소비자 컴포넌트의 `useEffect`보다 **늦게** 돌기 때문이다. effect로 준 포커스를 Radix가 덮는다. 둘째는 `type="email"`의 값 정규화와 constraint validation이 앱의 판정(`parseRecipients`)보다 **앞에** 서기 때문이다.
 - **그물**: 놓친 것은 DOM 테스트다. 첫째는 실행 순서에 따라 통과와 실패가 갈렸고, 둘째는 jsdom에서도 red였지만 원인이 테스트로 보였다. 잡은 것은 `/design-sync` 4단계의 Chrome 실측과 jsdom red 추적이다. 고친 뒤 `OnboardingModal`에 `initialFocusRef`를 두고(Radix의 `onOpenAutoFocus` 자리에서 옮긴다), 그 핸들러를 걷으면 red가 나는 `modal-initial-focus.test.tsx`를 세웠다. 입력은 `type="text"` + `inputMode="email"`, 폼은 `noValidate`로 바꿨다.
 - **재발 방지**: 모달이 열릴 때 포커스를 줄 자리는 effect가 아니라 `initialFocusRef`로 준다. `rg -n 'useEffect\(\(\) => \{[^}]*focus' components`로 열림 effect의 포커스를 찾는다. 앱이 직접 판정하는 입력에는 `type="email"`·`required`·`pattern`을 쓰지 않는다. 브라우저 검증이 먼저 돌아 앱의 사유 문구가 도달하지 않는다(POSTMORTEM 2026-09-06의 "거부 문구 미도달"과 같은 부류다).
+
+### 2026-09-24 — 🔁 링크 둘이 도착 화면에 없는 버튼 이름(`Send changes`)을 불렀다 (2026-09-14의 재발)
+
+- **영역**: `messages/en.tsx`(`repositorySync.sendFirst` · `projects.banner.action.send`) · `components/home/sync-button.tsx` · `components/projects/project-list.tsx`
+- **증상**: Sync 확인 Dialog의 `Send changes first`와 목록 띠의 `Send changes`가 번역 화면으로 데려가는데, 그 화면의 버튼은 `Publish`였다. 사전 주석 둘(`sendFirst` · `home.publish`)은 "그 화면의 실제 버튼 이름이 `Send changes`다"라고 단언하고 있었다 — 버튼 이름이 바뀔 때 주석과 링크가 함께 낡았다.
+- **근본 원인**: 가리키는 문구와 가리켜지는 버튼이 **같은 사전의 다른 절**(`repositorySync` · `projects` ↔ `translations.publish`)에 살아 구조로 묶여 있지 않았다. 2026-09-14의 재발 방지는 "새로 쓸 때 본다"였고, **대상 쪽 이름이 바뀔 때**를 덮지 못했다. 같은 계보로 용어가 절마다 갈려(surface/source · import/sync · locale/language · Retry/Try again) 한 화면에 둘이 섰다.
+- **그물**: 놓친 것 — 소스 스캔 전부(문장 사이의 참조를 못 본다). 잡은 것 — 2026-09-24 `/audit` UX 렌즈(#28 · #29). 고친 뒤 `lib/i18n/__tests__/terminology.test.ts`가 (1) 링크 라벨이 `m.translations.publish.button`을 **값으로** 포함하는지 — 버튼 이름이 바뀌면 red, (2) 사전 전체(함수 값은 호출해 렌더한 문장까지)에 DESIGN §10.1의 금지어가 0인지를 센다. 두 검사 모두 옛 값에서 red를 관측했다.
+- **재발 방지**: 다른 화면의 컨트롤을 부르는 문구는 **그 컨트롤의 사전 값을 테스트에서 참조해** 묶는다(문자열 사본으로 단언하지 않는다). 화면 용어를 늘리거나 바꿀 때는 DESIGN §10.1 표부터 고치고 `terminology.test.ts`의 `BANNED`를 함께 옮긴다. `rg -n 'Send changes|surface|import' messages/en.tsx`는 주석이 걸리므로 근거가 아니다 — 테스트가 문장만 센다.
+
+### 2026-09-24 — 연 채로 보관된 Settings가 거부만 받고 보관 상태로 옮겨 가지 않았다
+
+- **영역**: `app/(edit)/projects/[slug]/settings/actions.ts` · `app/(edit)/projects/actions.ts#rotatePushToken` · `components/settings/*` · `components/reconnect-button.tsx`
+- **증상**: 다른 탭이 보관한 뒤 Name [Save]를 누르면 서버가 `archived`로 올바르게 거부했지만(B2 `lockProjectAccess`), 화면은 켜진 컨트롤·Restore 카드 없음 그대로였고 문구는 "An owner can restore it in its settings."였다 — 보는 사람이 그 설정에 있는 OWNER다. 다른 동작으로 새로 고친 뒤에도 Name 행만 옛 오류를 들고 있어 한 상태에 두 문장이 섰다.
+- **근본 원인**: B2가 거부 **판정**을 잠금 안으로 옮기면서 "거부 = 서버 상태가 이 화면과 다르다"는 뜻이 생겼는데, 거부 경로는 성공 경로와 달리 `revalidatePath`를 부르지 않았다. 클라이언트는 공용 `accessErrorMessage`로 문구를 골랐고, 그 문구가 화면 맥락(이미 Settings)을 모른다. 행 오류 state는 `archived` prop이 바뀌어도 남는다.
+- **그물**: 놓친 것 — B2의 PG 경합 테스트는 **서버 결과값**만 봤고, 컴포넌트 테스트는 `archived` prop을 처음부터 주고 렌더해 "열린 뒤 보관"을 한 번도 만들지 않았다. 잡은 것 — 로컬 `/bugshot-qa`(dev DB에 `archivedAt`을 심고 누름). 재현 테스트: `app/(edit)/__tests__/archive.test.ts`(거부가 `/projects/<slug>` layout을 다시 그린다, 권한 거부는 안 그린다) · `components/__tests__/settings-archived-refusal.test.tsx`(Name·Upload·Base branch·Rotate·Reconnect — 거부 문구가 `archivedReason`이고, `archived`로 rerender하면 옛 오류·거부된 입력이 사라진다).
+- **재발 방지**: 서버가 **상태 때문에** 거부하는 갈래를 새로 만들면 "그 화면이 그 상태를 알고 있나"를 묻는다 — 모르면 거부 전에 다시 그린다(`redrawIfArchived`). `rg -n 'error: (locked|access)\.status' app lib -g '!**/__tests__/**'`로 거부 반환을 전수로 본다(2026-09-24: Settings 여섯 + `rotatePushToken`은 처리했다. **남은 후보** — 번역 저장(`saveTranslationKey`)·Publish(`triggerPullAction`)·Sources `updateBaseLocale`·`addSurfaces`·`runRepositoryImport`의 `archived` 거부는 다시 그리지 않는다. 각 화면이 거부 뒤 무엇을 보이는지 실물로 확인할 대상이다).
+
+### 2026-09-24 — 포커스가 `body`로 빠지는 자리가 열한 곳이었고, 고친 두 곳이 나머지를 가렸다
+
+- **영역**: `components/ui/{button,dialog,alert,dropdown-menu,focus}.tsx` · settings·members·account·home·sources·translations의 확정 버튼 (audit B5 #32~#35)
+- **증상**: 확정 뒤 포커스가 `body`로 떨어졌다 — Dialog 트리거가 `loading`으로 진짜 `disabled`가 되는 자리(Rotate · Archive · Remove · Revoke · 두 Disconnect), 성공하면 저장할 것이 없어 꺼진 채 남는 [Save](General 이름 · Base branch · Base language · 번역 Save), 성공하면 컨트롤이 바뀌는 행(Archive↔Restore · 로그인 수단 · GitHub 연결), 트리거 없이 상태로 여는 Dialog(미저장 확인 · Revert · 역할 변경 · 중첩 확인), Alert의 닫기. 다음 Tab이 페이지 맨 위에서 시작하고 스크린리더는 읽던 자리를 잃는다.
+- **근본 원인**: 둘이다. (1) **`loading`이 진짜 `disabled`를 걸고, Radix의 기본 복귀 대상은 `DialogTrigger`뿐이다** — 확정과 같은 커밋에 트리거가 꺼지면 돌려줄 곳이 없고, 트리거 없는 Dialog에는 처음부터 없다. (2) **그 부류를 자리마다 손으로 고쳤다** — `SyncButton`(aria-disabled) · 번역 Revert(결과 줄) · members의 #53(effect 복귀)이 각자 형을 발명했고, 그 셋이 green인 것이 "이 리포는 포커스 복귀를 한다"로 읽혀 나머지 여덟이 남았다.
+- **그물**: 놓친 것 — `pnpm test` 5,700건(대부분의 렌더 테스트에 focus fixup이 없어 jsdom이 꺼진 버튼을 `activeElement`로 남긴다 — POSTMORTEM 2026-09-20과 같은 공회전) · `/design-sync`·`/bugshot-qa`(눈과 클릭으로는 안 보인다). 잡은 것 — 2026-09-24 `/audit` UX 렌즈(정적 읽기). 재현 테스트는 fixup observer를 단 `focus-return.test.tsx` · `translation-workspace-focus.test.tsx` · `primitive-focus.test.tsx`이고 전부 구현 전에 red였다.
+  - ⚠️ **"열 때의 `activeElement`"로 연 자리를 잡는 첫 구현이 두 갈래에서 red였다** — 안쪽 버튼의 `autoFocus`가 FocusScope의 mount 이벤트보다 먼저 돌아 `onOpenAutoFocus`가 안 오고, Select 옵션에서 여는 Dialog는 그 순간 포커스가 사라질 옵션 위다. `dialog.tsx`가 최근 포커스 기록을 드는 이유다.
+  - ⚠️ **그 기록이 Safari에서 거짓이었다** (코디네이터 리뷰 r1 — 머지 전). Safari·macOS Firefox는 마우스 클릭으로 버튼에 포커스를 주지 않아 트리거에 `focusin`이 안 오고, 기록의 마지막은 더 오래된 요소였다 — 가로채면 Cancel 한 번에 포커스와 스크롤이 몇 화면 위로 튄다. jsdom의 `userEvent.click`은 언제나 포커스를 주므로 그 브라우저를 흉내 내지 않으면 안 보인다. 고친 뒤: `pointerdown`도 기록한다. ⚠️ 같은 라운드에 넣은 "트리거(`aria-controls`)가 붙어 있으면 끼어들지 않는다"는 **죽은 판정이었다** — Radix가 닫힌 트리거에서 `aria-controls`를 지워 닫힐 때 한 번도 참이 아니었고, 동작은 기록이 만들었다(malmoi#86이 문서와 동작의 어긋남으로 드러냈다 — 걷었다). 테스트는 `dispatchEvent`로 **포커스 없는 클릭**을 만든다.
+  - ⚠️ **Settings의 보관↔복원이 여전히 `body`였다** ([malmoi#82](https://github.com/SinhyeokKang/malmoi/issues/82) — 머지 전 최종 QA). 페이지가 같은 카드를 **두 자리**에 그려 전환이 재마운트였고, `useLandAfter`가 옛 인스턴스와 함께 사라졌다. 카드를 **제자리에서** 다시 그린 jsdom 테스트는 그 재마운트를 원리적으로 못 본다 — 재현은 실제 페이지 조립을 두 상태로 그린 `settings-archive-focus.test.tsx`다. **규칙: 성공 뒤 착지를 컴포넌트 안에서 기다리면 "호출부가 그 컴포넌트를 같은 자리에 두는가"를 호출부 조립으로 잰다.**
+- **재발 방지**: 형을 프리미티브로 올렸다 — Dialog 트리거는 `Button busy`, 폼 저장은 `useLandAfter`, 닫기는 `neighbourFocus`, 트리거 없는 Dialog는 `DialogContent`가 든다(DESIGN §7). 새 확정 버튼을 만들면 **"성공·실패 뒤 이 버튼이 켜져 있나, 붙어 있나"**를 묻는다. `rg -n 'DialogTrigger asChild' -A3 components | rg 'loading='`가 0이어야 한다(2026-09-24: 0). 포커스 복귀를 단언하는 jsdom 테스트는 fixup observer를 단다. ⚠️ **남은 수동 형** — `SyncButton`과 번역 Revert는 `busy` 이전의 손 형이고 동작은 같다(외과적 변경 원칙으로 옮기지 않았다).
+
+### 2026-09-24 — 비리터럴 값 하나로 904키가 다 들어간 소스가 "Last sync failed"가 됐다
+
+- **영역**: `lib/onboarding/ingest.ts` `prepareFirstSnapshot` · `lib/import/surface.ts` · `lib/adapters/types.ts`
+- **증상**: ts-dict 파일에 `"networkLog.qa5Dynamic": String(…)` 하나가 있으면 904키가 전부 적재됐는데 표면이 `partial-import`가 되어 Sources가 "Last sync failed", Home이 위험 배너 "The last sync could not finish"를 냈다. 같은 판정이 온보딩 생성에서는 `failed > 0`이라 **프로젝트 생성 자체를 거부**했다.
+- **근본 원인**: `failed`가 `read.errors.length`를 통째로 셌다. 어댑터 오류 코드가 "파일을 못 읽었다"와 "malmoi가 일부러 안 다루는 항목(코드의 식·참조)"을 같은 배열에 싣는데, 소비자 쪽에 둘을 가르는 판정이 없었다. 수술적 writer는 그 항목을 파일에 그대로 남겨 번역을 하나도 잃지 않는다 — 실패로 셀 근거가 없었다.
+- **그물**: 놓친 것 — 단위 테스트의 적재 픽스처가 전부 JSON이라 비리터럴 갈래를 밟지 않았다. 잡은 것 — QA5 실물 검증(폐기용 리포에 ts-dict 비리터럴을 심음). 재현: `lib/onboarding/__tests__/ingest.test.ts`("ts-dict의 비리터럴 값은 failed가 아니라 unmanaged", 대조: 다운로드 실패·json 숫자 값은 여전히 failed) · `lib/adapters/__tests__/error-kind.test.ts`(코드별 표) · `components/__tests__/unmanaged-entries.test.tsx`(Home Sync 결과가 success 톤 + 안내 줄).
+- **재발 방지**: 어댑터 오류 코드를 **세는** 코드는 `adapterErrorKind`를 지난다 — `rg -n 'errors\.length' lib/onboarding lib/import lib/surfaces lib/push -g '!**/__tests__/**'`로 소비자를 전수로 본다(2026-09-24: 남은 것은 `prepareFirstSnapshot`의 실패 목록 길이와 `surface.ts`의 실패 목록 길이 — 둘 다 거른 뒤다). 새 코드를 늘리면 `ERROR_KIND`의 `satisfies Record`가 컴파일 에러로 판정을 요구한다. ⚠️ 이미 `partial-import`가 찍힌 표면은 다음 적재까지 그대로다.
+
+### 2026-09-24 — chrome `"placeholders": null`이 push→pull 왕복에서 사라졌다 (Prisma가 JSON null과 SQL NULL을 같게 읽는다)
+
+- **영역**: `lib/pull/load.ts` · `lib/push/apply.ts` · `Translation.placeholders`(Json?)
+- **증상**: `_locales/*/messages.json`의 엔트리가 `"placeholders": null`을 들고 있으면 값 편집 0건인 Publish가 그 줄을 지우는 diff를 냈다. 값이 아니라 표현이 깨지는 부류라 왕복 의미 게이트가 원리적으로 못 본다(ARCHITECTURE §1 "placeholders는 그대로 왕복한다").
+- **근본 원인**: push는 `JSON.stringify(null)` → `'null'::jsonb`로 **JSON null을 정확히 적재**했다. 그런데 Prisma는 Json 컬럼을 읽을 때 SQL NULL(필드 부재)과 JSON null을 **둘 다 JS `null`로** 준다. `load.ts`가 `null`을 부재로 접어(`t.placeholders === null ? {} : …`) write가 필드를 뺐다. 쓰는 쪽과 읽는 쪽의 구별 능력이 비대칭이었다.
+- **그물**: 놓친 것 — 단위 테스트 전부(Prisma를 거치지 않거나 스텁이 `null`을 그대로 돌려준다) · 왕복 의미 게이트(값 비교다). 잡은 것 — 2026-09-24 `/audit` 정적 읽기(#52). 재현: `lib/keys/__tests__/placeholders-null.integration.ts`(실제 PG — push → `loadPullState` → render, 대조로 부재 셀이 부재로 남는지도 잰다). 고친 뒤 `load.ts`가 같은 스냅샷에서 `jsonb_typeof("placeholders") = 'null'` 좌표를 raw로 센다.
+- **재발 방지**: **"JSON null이 부재와 다른 의미"인 Json 컬럼을 Prisma로 읽으면 그 구별은 이미 사라진 뒤다** — 필요하면 raw로 `jsonb_typeof`를 본다(쓰기는 `Prisma.JsonNull`/`DbNull`로 가를 수 있지만 읽기는 못 가른다). `rg -n 'Json\?' prisma/schema.prisma`로 대상 컬럼을 본다(2026-09-24: 둘뿐이고 `placeholders`만 null에 의미가 있다 — `nestedByPath`의 null은 부재다).

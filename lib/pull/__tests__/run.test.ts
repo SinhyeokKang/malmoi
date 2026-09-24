@@ -66,6 +66,7 @@ function makeDeps(
     saveLastPulledAt: async (_projectId, at) => {
       writes.push(at);
     },
+    invalidateDelivery: async () => {},
     syncBranch: "malmoi-i18n/sync",
     ...over,
   };
@@ -84,6 +85,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
 
@@ -102,6 +104,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(calls).toEqual([]);
@@ -119,6 +122,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
       }),
       createClient: async () => client,
       saveLastPulledAt: async (_p, at) => void writes.push(at),
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(writes).toEqual([]);
@@ -144,6 +148,7 @@ describe("runPull — 1층은 시각이 아니라 미발송 수로 판정한다 
       loadState: async () => pushedState(0),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(calls).toEqual([]);
@@ -156,6 +161,7 @@ describe("runPull — 1층은 시각이 아니라 미발송 수로 판정한다 
       loadState: async () => pushedState(1),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(calls.length).toBeGreaterThan(0);
@@ -240,8 +246,9 @@ describe("runPull — 2층 blob SHA 스킵", () => {
  */
 describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다", () => {
   /** 파일이 전부 base와 같은 상태. 이 셋이 2층 스킵 경로의 공통 입력이다. */
-  function cleanClient(refSha: Record<string, string>) {
+  function cleanClient(refSha: Record<string, string>, extra: Partial<Parameters<typeof createFakeGitClient>[0]> = {}) {
     return createFakeGitClient({
+      ...extra,
       refSha,
       tree: {
         basehead: [
@@ -264,6 +271,50 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
     expect(calls.map((c) => c.method)).not.toContain("createCommit");
     expect(calls.map((c) => c.method)).not.toContain("createPr");
     expect(result).toEqual({ status: "skipped", reason: "no-changes" });
+  });
+
+  /**
+   * ⚠️ **열린 PR을 조용히 닫지 않는다** (B1 r3 — QA5 PR #4). head를 base와 같게 만들면 GitHub이 그 PR을 스스로 닫는다(때로는 "merged"로 표시한다 —
+   * community discussion #7523). 스냅샷 불변식(브랜치 = DB 상태)은 지키되, **되돌리기 전에** 이유를 코멘트로 남기고 명시적으로 닫는다.
+   * 순서: 무효화(첫 외부 쓰기 전) → 코멘트·닫기 → 브랜치 초기화. 결과가 닫은 PR을 든다.
+   */
+  it("열린 PR이 있고 브랜치를 base로 되돌리면 먼저 코멘트와 함께 닫고, 결과가 그 PR을 든다", async () => {
+    const openPr = { url: "https://github.com/o/r/pull/4", number: 4, title: "t [skip-malmoi-i18n]" };
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" }, { openPr });
+    const order: string[] = [];
+    const { deps } = makeDeps({ invalidateDelivery: async () => void order.push("invalidate") }, { client, calls });
+    const result = await runPull(deps);
+    expect(result).toEqual({ status: "skipped", reason: "no-changes", closedPr: { number: 4, url: openPr.url } });
+    const writes = calls.map(c => c.method).filter(m => m === "closePr" || m === "updateRefForce");
+    expect(writes).toEqual(["closePr", "updateRefForce"]);
+    const comment = String(calls.find(c => c.method === "closePr")?.args[1]);
+    expect(comment).toContain("dev");
+    expect(comment).toContain("<!-- malmoi-i18n -->");
+    expect(order).toEqual(["invalidate"]);
+  });
+
+  it("열린 PR이 없으면 닫을 것이 없다 — closedPr 없음 (짝)", async () => {
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" });
+    const { deps } = makeDeps({}, { client, calls });
+    expect(await runPull(deps)).toEqual({ status: "skipped", reason: "no-changes" });
+    expect(calls.map(c => c.method)).not.toContain("closePr");
+  });
+
+  it("브랜치가 이미 base와 같으면 열린 PR도 건드리지 않는다 (짝)", async () => {
+    const openPr = { url: "https://github.com/o/r/pull/4", number: 4, title: "t" };
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "basehead" }, { openPr });
+    const { deps } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    expect(calls.map(c => c.method)).not.toContain("closePr");
+  });
+
+  it("닫기가 실패하면 브랜치를 옮기지 않고 lastPulledAt도 쓰지 않는다", async () => {
+    const openPr = { url: "https://github.com/o/r/pull/4", number: 4, title: "t" };
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" }, { openPr, failOn: "closePr" });
+    const { deps, writes } = makeDeps({}, { client, calls });
+    await expect(runPull(deps)).rejects.toThrow();
+    expect(calls.map(c => c.method)).not.toContain("updateRefForce");
+    expect(writes).toEqual([]);
   });
 
   it("브랜치가 이미 base head면 건드리지 않는다 — 무의미한 force가 매일 밤 나가면 안 된다", async () => {
@@ -492,6 +543,7 @@ describe("runPull — 실패 처리", () => {
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     };
     await expect(runPull(deps)).rejects.toThrow(/installationId/);
@@ -536,6 +588,7 @@ ko:
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(calls.filter((c) => c.method === "getBlobText")).toHaveLength(1);
@@ -556,6 +609,7 @@ ko:
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     const created = calls.find((c) => c.method === "createTree");
@@ -620,6 +674,7 @@ export const ns = { ko, en };
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
 
@@ -660,6 +715,7 @@ export const ns = { ko, en };
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
 
@@ -694,6 +750,7 @@ export const ns = { ko, en };
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
 
@@ -792,6 +849,7 @@ describe("runPull — 캡처한 편집 토큰을 성공·동등 경로에서만 
       }),
       createClient: async () => made.client,
       saveLastPulledAt: async (_id, _at, _published, edits) => void delivered.push(edits),
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(delivered).toEqual([]);
@@ -802,5 +860,111 @@ describe("runPull — 캡처한 편집 토큰을 성공·동등 경로에서만 
     const { deps, delivered } = capturing(made);
     await expect(runPull(deps)).rejects.toThrow();
     expect(delivered).toEqual([]);
+  });
+});
+
+/**
+ * **전달 불가 셀은 좌표로 보류하고 나머지는 보낸다** (delivery-invariants D3 · 감사 #3 · C). 전에는 비-base 로케일 파일 하나가
+ * base에 없으면 `original-file-missing`으로 Publish 전체가 `writer-warnings`였고, 미리보기는 "나머지는 나간다"고 보였다.
+ * ⚠️ 보류 셀의 토큰은 **해제 쓰기에 실리지 않는다** — 그것이 불변식 9다. `deliveryContexts`는 좁히지 않는다(Revert가 산다).
+ */
+describe("runPull — 보류 셀 (per-locale 수술적 · 비-base 파일 부재)", () => {
+  const yamlSurface = { ...PROJECT, adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", nested: null as boolean | null };
+  const EN = "en:\n  a: one\n";
+  const KO = "ko:\n  a: 하나\n";
+  const koEdit = { id: "t-ko", token: "tok-ko", cell: { surfaceId: "s1", keyId: "k1", localeCode: "ko", restoreValue: "하나" } };
+  const frEdit = { id: "t-fr", token: "tok-fr", cell: { surfaceId: "s1", keyId: "k1", localeCode: "fr", restoreValue: "" } };
+  const CONTEXTS = [{ surfaceId: "s1", fingerprint: "fp" }];
+
+  function run(edits: PullState["pendingEdits"], cells: RenderKey["cells"], tree: { path: string; content: string }[]) {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: tree.map(f => ({ path: f.path, sha: blobSha(f.content) })) },
+      blobs: Object.fromEntries(tree.map(f => [blobSha(f.content), f.content])),
+    });
+    const saved: { delivered: unknown; contexts: unknown; withheld: unknown }[] = [];
+    const promise = runPull({
+      loadState: async () => ({
+        project: { ...PROJECT },
+        surfaces: [{ ...yamlSurface, id: "s1", slug: "default", localeCodes: ["en", "fr", "ko"],
+          keys: [{ id: "k1", key: "a", sourceText: "one", orphaned: false, cells }] }],
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: edits.length, pendingEdits: edits, deliveryContexts: CONTEXTS,
+      }),
+      createClient: async () => client,
+      saveLastPulledAt: async (_id, _at, _published, delivered, contexts, withheld) => void saved.push({ delivered, contexts, withheld }),
+      invalidateDelivery: async () => {},
+      syncBranch: "malmoi-i18n/sync",
+    });
+    return { promise, calls, saved };
+  }
+
+  it("ko·fr 편집 + fr.yml 없음 → committed · 해제에는 ko만 · 보류에 fr · contexts 그대로 · 결과는 실린 수", async () => {
+    const { promise, calls, saved } = run([koEdit, frEdit],
+      { en: { value: "one" }, ko: { value: "하나!" }, fr: { value: "un" } },
+      [{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }]);
+    const result = await promise;
+    expect(result).toMatchObject({ status: "committed", delivered: 1, withheld: { file: 1, key: 0 } });
+    expect(calls.map(c => c.method)).toContain("createCommit");
+    expect(saved).toEqual([{ delivered: [koEdit], contexts: CONTEXTS, withheld: [frEdit] }]);
+  });
+
+  it("보류 셀만 있으면 skipped/withheld — GitHub 쓰기 0회 · 해제 0회 (실린 편집이 없다)", async () => {
+    const { promise, calls, saved } = run([frEdit],
+      { en: { value: "one" }, ko: { value: "하나" }, fr: { value: "un" } },
+      [{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }]);
+    expect(await promise).toEqual({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } });
+    const writes = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr"];
+    expect(calls.map(c => c.method).filter(m => writes.includes(m))).toEqual([]);
+    expect(saved).toEqual([]);
+  });
+
+  it("**base** en.yml이 없으면 여전히 writer-warnings다 (설정 오류)", async () => {
+    const { promise, saved } = run([koEdit],
+      { en: { value: "one" }, ko: { value: "하나!" } },
+      [{ path: "config/locales/ko.yml", content: KO }]);
+    expect(await promise).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+    expect(saved).toEqual([]);
+  });
+
+  it("보류가 없으면 withheld 필드가 없다 (짝)", async () => {
+    const { promise, saved } = run([koEdit],
+      { en: { value: "one" }, ko: { value: "하나!" } },
+      [{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }, { path: "config/locales/fr.yml", content: "fr:\n  a: un\n" }]);
+    const result = await promise;
+    expect(result).toMatchObject({ status: "committed", delivered: 1 });
+    expect(result).not.toHaveProperty("withheld");
+    expect(saved[0]?.withheld).toEqual([]);
+  });
+});
+
+describe("runPull — 보류 셀 (ts-dict · 로케일 객체에 자리가 없는 키)", () => {
+  const tsSurface = { ...PROJECT, adapterName: "ts-dict", pathTemplate: "ns/*.ts", nested: null as boolean | null, baseLocale: "ko" };
+  const SOURCE = `const ko = { "a": "하나", "z": "끝" } as const;\nconst fr = { "a": "un" } as const;\n`;
+
+  it("fr 객체에 없는 z 번역은 보류되고 a 편집은 나간다", async () => {
+    const { client } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [{ path: "ns/x.ts", sha: blobSha(SOURCE) }] },
+      blobs: { [blobSha(SOURCE)]: SOURCE },
+    });
+    const aEdit = { id: "t-a", token: "tok-a", cell: { surfaceId: "s1", keyId: "ka", localeCode: "fr", restoreValue: "un" } };
+    const zEdit = { id: "t-z", token: "tok-z", cell: { surfaceId: "s1", keyId: "kz", localeCode: "fr", restoreValue: "" } };
+    const saved: unknown[] = [];
+    const result = await runPull({
+      loadState: async () => ({
+        project: { ...PROJECT },
+        surfaces: [{ ...tsSurface, id: "s1", slug: "default", localeCodes: ["fr", "ko"], keys: [
+          { id: "ka", key: "a", sourceText: "하나", orphaned: false, cells: { ko: { value: "하나" }, fr: { value: "un!" } } },
+          { id: "kz", key: "z", sourceText: "끝", orphaned: false, cells: { ko: { value: "끝" }, fr: { value: "fin" } } },
+        ] }],
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 2, pendingEdits: [aEdit, zEdit],
+      }),
+      createClient: async () => client,
+      saveLastPulledAt: async (_id, _at, _published, delivered, _contexts, withheld) => void saved.push([delivered, withheld]),
+      invalidateDelivery: async () => {},
+      syncBranch: "malmoi-i18n/sync",
+    });
+    expect(result).toMatchObject({ status: "committed", delivered: 1, withheld: { file: 0, key: 1 } });
+    expect(saved).toEqual([[[aEdit], [zEdit]]]);
   });
 });

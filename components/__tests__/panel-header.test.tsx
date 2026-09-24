@@ -172,10 +172,10 @@ describe("소비자 열둘 — 여백을 넘기지 않는다", () => {
   const CONSUMERS = [
     "components/projects/project-list.tsx",
     "app/(edit)/projects/loading.tsx",
-    "app/(edit)/projects/[slug]/loading.tsx",
+    "app/(edit)/projects/[slug]/(home)/loading.tsx",
     // Logs도 골격을 갖는다 (logs-rework) — 머리 높이가 실물과 같아야 도착할 때 안 튄다.
     "app/(edit)/projects/[slug]/logs/loading.tsx",
-    "app/(edit)/projects/[slug]/page.tsx",
+    "app/(edit)/projects/[slug]/(home)/page.tsx",
     "app/(edit)/projects/[slug]/settings/page.tsx",
     "app/(edit)/projects/[slug]/logs/page.tsx",
     "app/(edit)/projects/[slug]/members/page.tsx",

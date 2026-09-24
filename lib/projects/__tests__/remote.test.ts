@@ -274,3 +274,37 @@ it("정상 완료는 마감을 기다리지 않는다", async () => {
     vi.useRealTimers();
   }
 });
+
+/**
+ * **접는 자리 셋이 서버 로그에 갈래를 남긴다** (audit #71 — POSTMORTEM 2026-09-14 형태). 화면은 띠 둘을 빼는 것으로
+ * 끝나므로 "왜 띠가 안 뜨나"를 볼 곳이 로그뿐이다. 성공 경로는 한 줄도 안 남긴다 — 짝 단언.
+ */
+it("클라이언트 실패·신호 거부·마감을 각각 한 줄씩 남기고, 성공은 무음이다", async () => {
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    await loadRemoteSignals([target()], { createClient: fakes().createClient });
+    expect(spy).not.toHaveBeenCalled();
+
+    await loadRemoteSignals([target()], { createClient: async () => { throw new TypeError("secret"); } });
+    const rejected = fakes({ async isPullRequestOpen() { throw Object.assign(new Error("secret"), { status: 502 }); } });
+    await loadRemoteSignals([target()], { createClient: rejected.createClient });
+    expect(spy.mock.calls.map((c) => String(c[0]))).toEqual([
+      expect.stringMatching(/^\[remote-signals\] \w{8} fetch: TypeError$/),
+      expect.stringMatching(/^\[remote-signals\] \w{8} signals: http-502$/),
+    ]);
+
+    spy.mockClear();
+    vi.useFakeTimers();
+    try {
+      const hang = () => new Promise<never>(() => {});
+      const pending = loadRemoteSignals([target()], { createClient: async () => ({ compareToBase: hang, isPullRequestOpen: hang }) as unknown as GitClient });
+      await vi.advanceTimersByTimeAsync(8_000);
+      await pending;
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(spy.mock.calls.map((c) => String(c[0]))).toEqual([expect.stringMatching(/^\[remote-signals\] \w{8} deadline: /)]);
+  } finally {
+    spy.mockRestore();
+  }
+});

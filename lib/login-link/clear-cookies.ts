@@ -1,6 +1,8 @@
 import "server-only";
 import { cookies } from "next/headers";
 
+import { expireBothVariants } from "@/lib/auth/roundtrip";
+
 import { linkCookie, linkStateCookie } from "./policy";
 
 /**
@@ -11,10 +13,5 @@ import { linkCookie, linkStateCookie } from "./policy";
  * 먹고 Location을 엉뚱한 화면으로 덮는다 (POSTMORTEM 2026-09-10).
  */
 export async function clearLinkCookies() {
-  const jar = await cookies();
-  for (const secure of [false, true]) {
-    for (const cookie of [linkCookie(secure), linkStateCookie(secure)]) {
-      jar.set(cookie.name, "", { ...cookie.options, maxAge: 0 });
-    }
-  }
+  expireBothVariants(await cookies(), [linkCookie, linkStateCookie]);
 }

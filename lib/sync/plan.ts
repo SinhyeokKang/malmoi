@@ -40,12 +40,9 @@ export function isRunActive(startedAt: Date, now: Date): boolean {
   return now.getTime() - startedAt.getTime() <= STALE_AFTER_SECONDS * 1000;
 }
 
-/** `logs` 화면의 한 페이지. 서버 `?cursor=` + "Older"가 이 수로 자른다. */
-export const SYNC_LOG_PAGE_SIZE = 20;
-
 // ⚠️ **다른 두 제한은 여기 없다** — 상수는 **소비자 옆**에 두고 모음 파일을 만들지 않는다:
 // `PROJECT_LIMIT`은 `lib/onboarding/create-plan.ts`, `MEMBER_LIMIT`은 `lib/auth/invitation.ts`다.
-// 위 셋이 여기 있는 이유는 소비자가 sync 경로 안에서 여럿(게이트·껍데기·화면)이어서다.
+// 위 둘이 여기 있는 이유는 소비자가 sync 경로 안에서 여럿(게이트·껍데기)이어서다.
 
 /**
  * `SyncRun.errorCode`에 남는 값. **생산자 없는 코드는 두지 않는다** — 여기 일곱은 전부
@@ -143,6 +140,11 @@ export type SyncFinish = {
   /** **실패는 `null`이다** — 0은 "아무것도 안 바뀌었다"는 관측이고, 실패엔 관측 자체가 없다. */
   changed: number | null;
   warnings: number;
+  /**
+   * 이번 PR에 **못 실은** 편집 수 (delivery-invariants D7 — `SyncRun.withheld`). 버린 것(`warnings`)이 아니다 — 토큰이 남아 다음 Publish를 기다린다.
+   * 결과 모달과 Logs가 같은 수를 말하는 자리다. ⚠️ Publish 사건 payload에 복제하지 않는다(logs-rework 결정 1).
+   */
+  withheld: number;
 };
 
 /**
@@ -161,12 +163,16 @@ export type SyncFinish = {
 export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFinish {
   if ("thrown" in result) {
     const { code, retryable } = classifySyncError(result.thrown);
-    return { status: "FAILED", errorCode: code, retryable, prUrl: null, changed: null, warnings: 0 };
+    return { status: "FAILED", errorCode: code, retryable, prUrl: null, changed: null, warnings: 0, withheld: 0 };
   }
 
   const warnings = result.status === "skipped" && result.reason === "writer-warnings" ? result.warnings.length : 0;
+  const counted = result.status === "committed" || result.reason === "no-changes" || result.reason === "withheld" ? result.withheld : undefined;
+  const withheld = counted === undefined ? 0 : counted.file + counted.key;
   if (result.status === "skipped") {
-    return { status: "SKIPPED", errorCode: null, retryable: null, prUrl: null, changed: 0, warnings };
+    // ⚠️ **SKIPPED 행의 `prUrl`은 이 실행이 닫은 PR이다** (B1 r3) — 스킵 행에 prUrl이 선 적이 없어 뜻이 겹치지 않는다. 새 컬럼을 만들지 않는다.
+    const prUrl = result.reason === "no-changes" && result.closedPr !== undefined ? result.closedPr.url : null;
+    return { status: "SKIPPED", errorCode: null, retryable: null, prUrl, changed: 0, warnings, withheld };
   }
   return {
     status: "SUCCEEDED",
@@ -175,6 +181,7 @@ export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFi
     prUrl: result.prUrl,
     changed: result.changed.length,
     warnings,
+    withheld,
   };
 }
 

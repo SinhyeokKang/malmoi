@@ -383,7 +383,7 @@ describe("verifyState — 오염된 쿠키가 던지지 않는다 (sec-audit 6)"
 
 /**
  * ⚠️ **`/projects/new`가 목록 위의 모달 딥링크가 되면서 착지가 쿼리를 잃으면 안 된다**
- * (bugshot-qa 2026-09-13 실측): 검색어를 넣은 목록에서 [New project] → [Connect GitHub]을 누르면
+ * (runtime-test 2026-09-13 실측): 검색어를 넣은 목록에서 [New project] → [Connect GitHub]을 누르면
  * 왕복 뒤 `/projects/new`로 맨몸 착지했고, 닫으면 필터 없는 목록으로 돌아갔다.
  *
  * ⚠️ **쿼리도 서명 대상이다.** GitHub이 돌려주는 값에서 읽으면 목적지를 공격자가 정한다 — 경로는

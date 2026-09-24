@@ -468,3 +468,21 @@ describe("resolveLocalePaths — 보간 결과가 리포를 벗어나지 않는�
     expect(() => resolveLocalePaths(fmt("../{locale}.json", ["en"]), "per-locale", [])).toThrow(/path/i);
   });
 });
+
+/**
+ * **`nestedByPath`의 키는 리포가 정한 경로다** (audit #84 — CLAUDE.md "남이 정한 키로 대입하면 프로토타입을 먼저 끊는다").
+ * 평범한 `{}`에 `out["__proto__"] = v`를 하면 setter가 불려 own property가 안 생기고 그 경로의 관측이 조용히 사라진다.
+ */
+describe("formatFromProject — nestedByPath는 프로토타입 없는 객체다 (audit #84)", () => {
+  it("`__proto__` 경로의 관측도 own property로 남는다", () => {
+    const cols: ProjectFormatColumns = {
+      adapterName: "json-catalog", pathTemplate: "{locale}", nested: true, baseLocale: "en",
+      nestedByPath: JSON.parse('{"__proto__": false, "en": true}') as unknown,
+    };
+    const byPath = formatFromProject(cols, ["en"]).nestedByPath!;
+    expect(Object.getPrototypeOf(byPath)).toBeNull();
+    expect(Object.hasOwn(byPath, "__proto__")).toBe(true);
+    expect(byPath["__proto__"]).toBe(false);
+    expect(byPath["en"]).toBe(true);
+  });
+});

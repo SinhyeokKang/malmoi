@@ -29,18 +29,23 @@ export function templatePaths(adapter: AdapterName, pathTemplate: string, paths:
   if (exceedsGlobBudget(pathTemplate)) return [];
   if (layout === "multi-locale") return matchGlobPaths(pathTemplate, paths);
 
+  if (pathTemplate.split("{locale}").length < 2) return [];
+  return paths.filter((p) => localeOfTemplatePath(pathTemplate, p) !== undefined).sort(compareKeys);
+}
+
+/**
+ * per-locale 템플릿 경로 → 로케일. 맞지 않으면 `undefined`. `templatePaths`와 **같은 패턴**이다 — 두 벌로 갈리면 내려받은 파일과
+ * 로케일 목록이 서로 다른 경로를 가리킨다(delivery-invariants D6의 입력이다).
+ */
+export function localeOfTemplatePath(pathTemplate: string, path: string): string | undefined {
   const parts = pathTemplate.split("{locale}");
-  if (parts.length < 2) return [];
-  const pattern = new RegExp(`^${parts.map(escapeRegExp).join("([A-Za-z_-]{2,8})")}$`);
-  return paths
-    .filter((p) => {
-      const m = pattern.exec(p);
-      if (!m) return false;
-      const captures = m.slice(1);
-      // `{locale}`이 여러 번이면 전부 같은 값이어야 한다 (`replaceAll`이 그렇게 만든다).
-      return captures.every((c) => c === captures[0] && looksLikeLocale(c));
-    })
-    .sort(compareKeys);
+  if (parts.length < 2) return undefined;
+  const m = new RegExp(`^${parts.map(escapeRegExp).join("([A-Za-z_-]{2,8})")}$`).exec(path);
+  if (!m) return undefined;
+  const captures = m.slice(1);
+  // `{locale}`이 여러 번이면 전부 같은 값이어야 한다 (`replaceAll`이 그렇게 만든다).
+  const first = captures[0];
+  return first !== undefined && captures.every((c) => c === first) && looksLikeLocale(first) ? first : undefined;
 }
 
 function escapeRegExp(s: string): string {

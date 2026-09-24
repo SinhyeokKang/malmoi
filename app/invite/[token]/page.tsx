@@ -66,7 +66,7 @@ export default async function InvitePage({
         acceptedAt: true,
         // 수락 판단에는 살아 있는 로케일 코드만 필요하다. 규모를 노출하는 숫자는 싣지 않는다.
         // `slug`는 **이미 멤버인 사람을 그 프로젝트로 보내는 데만** 쓴다 (2026-09-12).
-        project: { select: { name: true, image: true, slug: true, locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } } } },
+        project: { select: { name: true, image: true, slug: true, archivedAt: true, locales: { where: { orphaned: false }, select: { code: true }, orderBy: { code: "asc" } } } },
       },
     });
     return row === null ? null : decodeInvitation(row);
@@ -75,7 +75,7 @@ export default async function InvitePage({
     return undefined;
   });
 
-  const input = { session: session.status, invitation, viewerEmail: null, alreadyMember: false, queryError: e, now: new Date() };
+  const input = { session: session.status, invitation, archived: invitation?.project.archivedAt != null, viewerEmail: null, alreadyMember: false, queryError: e, now: new Date() };
   let view = planInviteView(input);
   // 비로그인과 사용할 수 없는 초대에서는 계정·멤버십을 조회하지 않는다.
   if (view.kind !== "blocked" && invitation != null && session.status === "ok") {
@@ -103,11 +103,19 @@ export default async function InvitePage({
   let cta: ReactNode;
   switch (view.kind) {
     case "blocked":
+      /*
+        ⚠️ **재시도가 없는 막힘에도 출구를 준다** (audit #15) — 없음·만료·사용됨에서 CTA가 `null`이었고 이 화면은
+        셸 밖이라 사이드바도 없어, 링크를 연 사람이 할 수 있는 일이 0이었다. 로그인했으면 자기 목록, 아니면 로그인.
+      */
       cta = view.retry ? (
         <form method="get" action={routes.invite(token)}>
           <Button type="submit">{m.common.retry}</Button>
         </form>
-      ) : null;
+      ) : session.status === "ok" ? (
+        <ButtonLink size="lg" className="w-full" href={routes.projects()}>{m.invite.openProjects}</ButtonLink>
+      ) : (
+        <ButtonLink size="lg" className="w-full" href={routes.signIn()}>{m.invite.signIn}</ButtonLink>
+      );
       break;
     case "sign-in":
       cta = (

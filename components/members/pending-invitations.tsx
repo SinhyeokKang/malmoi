@@ -9,6 +9,7 @@ import { MemberRow } from "@/components/members/member-row";
 import { RoleChip } from "@/components/members/role-chip";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { EmptyRowCard, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { canPerform, type Role } from "@/lib/auth/permission";
@@ -51,7 +52,8 @@ export function PendingInvitations({
   headingId: string;
 }) {
   const manage = canPerform(role, "member:manage");
-  const [failed, setFailed] = useState<{ id: string; error: string } | null>(null);
+  /** `error: null`은 **확인 불가**다 — 호출이 던져 서버가 철회했는지 모른다 (audit #24). */
+  const [failed, setFailed] = useState<{ id: string; error: string | null } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   /** ⚠️ **집합이다** — 값 하나면 두 행을 연달아 누를 때 먼저 끝난 응답이 다른 행의 잠금까지 푼다. */
   const [resending, setResending] = useState<ReadonlySet<string>>(new Set());
@@ -62,10 +64,9 @@ export function PendingInvitations({
   const [, startTransition] = useTransition();
 
   /**
-   * ⚠️ **거부되면 누른 Revoke로 포커스를 돌려준다** (malmoi#53). 그 버튼은 `loading` 동안 `disabled`라
-   * 브라우저가 포커스를 `body`로 떨어뜨리고, 행 옆 Alert를 찾으려면 맨 위부터 다시 탭해야 했다.
-   * 응답 콜백에서 바로 부르지 않는 이유: 그 시점엔 `pendingId`가 아직 커밋 전이라 버튼이 여전히
-   * `disabled`고 `focus()`가 무시된다 — 커밋 뒤인 effect에서 부른다.
+   * ⚠️ **거부되면 누른 Revoke로 포커스를 돌려준다** (malmoi#53). 그때 그 버튼은 `loading` 동안 `disabled`라
+   * 브라우저가 포커스를 `body`로 떨어뜨렸다. 2026-09-24(audit #32b)부터 `busy`라 포커스를 지키므로 이 effect는
+   * 그 사이 옮겨진 포커스의 복귀다 — 커밋 뒤인 effect에서 부르는 이유(`resending`의 `disabled`)는 그대로다.
    */
   useEffect(() => {
     if (failed !== null) document.getElementById(`revoke-${failed.id}`)?.focus();
@@ -115,10 +116,12 @@ export function PendingInvitations({
     setAnnouncement("");
     setPendingId(invitationId);
     startTransition(async () => {
-      const result = await revokeInvitation({ slug, invitationId });
+      // ⚠️ 던져도 행을 풀고 그 자리에서 말한다 (audit #24) — 위 `resend`와 같은 형이다.
+      let result: Awaited<ReturnType<typeof revokeInvitation>> | null;
+      try { result = await revokeInvitation({ slug, invitationId }); } catch { result = null; }
       setPendingId(null);
-      if (!result.ok) {
-        setFailed({ id: invitationId, error: result.error });
+      if (result === null || !result.ok) {
+        setFailed({ id: invitationId, error: result === null ? null : result.error });
         return;
       }
       document.getElementById(headingId)?.focus();
@@ -188,7 +191,9 @@ export function PendingInvitations({
                         <span className="text-muted-foreground w-[150px] shrink-0 text-xs">
                           {m.members.pending.expires(relativeTime(invitation.expiresAt, now))}
                         </span>
-                        <span className="text-muted-foreground min-w-0 truncate text-xs">
+                        {/* ⚠️ 잘리는 유일한 가변 칸이라 전문을 `title`로 든다 (malmoi#90) — 1280에서 112px라 12자 이름부터 잘리고,
+                            초대한 사람을 말하는 자리가 이 칸뿐이다. 보이는 문장이 곧 접근 이름이라 스크린리더는 원래 전문을 읽는다. */}
+                        <span className="text-muted-foreground min-w-0 truncate text-xs" title={m.members.pending.invitedBy(invitation.invitedByName ?? m.members.pending.unknownInviter)}>
                           {m.members.pending.invitedBy(invitation.invitedByName ?? m.members.pending.unknownInviter)}
                         </span>
                       </>
@@ -211,16 +216,38 @@ export function PendingInvitations({
                             >
                               {m.members.pending.resend}
                             </Button>
-                            <Button
-                              id={`revoke-${invitation.id}`}
-                              variant="danger"
-                              aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
-                              loading={pendingId === invitation.id}
-                              disabled={resending.has(invitation.id)}
-                              onClick={() => revoke(invitation.id, invitation.emailLabel)}
-                            >
-                              {m.members.pending.revoke}
-                            </Button>
+                            {/* 확인을 한 번 받는다 (audit #20) — 링크가 즉시 죽고 되돌릴 수 없다. 같은 화면의 Remove와 같은 형이다. */}
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  id={`revoke-${invitation.id}`}
+                                  variant="danger"
+                                  aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
+                                  /* ⚠️ `loading`이 아니라 `busy`다 (audit #32b) — 확정하면 Dialog가 이 트리거로 포커스를 돌려주는데, 같은
+                                     커밋에 진짜 `disabled`가 되면 그 포커스가 `body`로 빠졌다(`button.tsx`의 `busy`). */
+                                  busy={pendingId === invitation.id}
+                                  disabled={resending.has(invitation.id)}
+                                >
+                                  {m.members.pending.revoke}
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent
+                                title={m.members.pending.confirmRevoke(invitation.emailLabel)}
+                                description={m.members.pending.confirmRevokeHint}
+                                footer={
+                                  <>
+                                    <DialogClose asChild>
+                                      <Button variant="default">{m.members.cancel}</Button>
+                                    </DialogClose>
+                                    <DialogClose asChild>
+                                      <Button variant="danger" onClick={() => revoke(invitation.id, invitation.emailLabel)}>
+                                        {m.members.pending.confirmRevokeAction}
+                                      </Button>
+                                    </DialogClose>
+                                  </>
+                                }
+                              />
+                            </Dialog>
                           </>
                         )}
                       </>
@@ -228,9 +255,14 @@ export function PendingInvitations({
                     after={
                       failed?.id === invitation.id ? (
                         <Alert variant="danger" className="mx-4 mb-3.5 text-left">
-                          {isAccessError(failed.error)
-                            ? accessErrorMessage(failed.error)
-                            : m.members.pending.revokeFailed(failed.error)}
+                          {failed.error === null
+                            ? m.members.pending.revokeUnconfirmed
+                            // ⚠️ `not-found`를 access 문장으로 보내지 않는다 (audit #22) — 그 문장은 초대받은 사람에게 하는 말이다.
+                            : failed.error === "not-found"
+                              ? m.members.pending.gone(invitation.emailLabel)
+                              : isAccessError(failed.error)
+                                ? accessErrorMessage(failed.error)
+                                : m.members.pending.revokeFailed}
                         </Alert>
                       ) : null
                     }
@@ -255,8 +287,9 @@ function resendAlert(result: Exclude<ResendResult, { ok: true }> | null, who: st
   }
   if (result.error === "email-rejected" && "retryAt" in result) return { variant: "danger", text: p.resendFailed(who, retryAtLabel(result.retryAt)) };
   if (result.error === "email-unavailable") return { variant: "danger", text: p.resendUnavailable(who) };
-  if (result.error === "not-found") return { variant: "danger", text: p.resendGone(who) };
-  if (result.error === "already-member") return { variant: "danger", text: p.resendError(who, m.members.invite.alreadyMember) };
+  if (result.error === "not-found") return { variant: "danger", text: p.gone(who) };
+  if (result.error === "already-member") return { variant: "danger", text: m.members.invite.alreadyMember };
   if (isAccessError(result.error)) return { variant: "danger", text: accessErrorMessage(result.error) };
-  return { variant: "danger", text: p.resendError(who, result.error) };
+  // ⚠️ 코드 원문을 문장에 끼우지 않는다 (audit #21).
+  return { variant: "danger", text: p.resendError(who) };
 }

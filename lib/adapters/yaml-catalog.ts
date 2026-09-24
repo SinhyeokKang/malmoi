@@ -23,6 +23,7 @@ import type {
   WriteInput,
 } from "./types";
 import { localeFromPath } from "./chrome-locales";
+import { causeMessage } from "@/lib/cause";
 
 /**
  * YAML 카탈로그 — `<dir>/{locale}.y(a)ml`.
@@ -40,14 +41,14 @@ import { localeFromPath } from "./chrome-locales";
  */
 
 const SEP = KEY_SEP;
-const YAML_FILE = /^(.*\/)([^/]+)\.(ya?ml)$/;
+export const YAML_FILE = /^(.*\/)([^/]+)\.(ya?ml)$/;
 
 /**
  * ⚠️ **`.github/` 아래는 잡지 않는다.** CI 설정이 `{locale}.yml`처럼 보이는 일이 흔하다 — 실측에서
  * immich·bitwarden·Shopify가 `.github/workflows/{ko,en}.yml`로 후보를 냈다. probe가 `on: push`를
  * 카탈로그로 읽어버리므로 경로에서 막는 편이 확실하다.
  */
-const NEVER = /(^|\/)\.github\//;
+export const NEVER = /(^|\/)\.github\//;
 
 function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
   /**
@@ -150,7 +151,7 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
     try {
       doc = parseDocument(file.content, PARSE_OPTS);
     } catch (cause) {
-      errors.push({ path: file.path, code: "parse-failed", detail: (cause as Error).message });
+      errors.push({ path: file.path, code: "parse-failed", detail: causeMessage(cause) });
       continue;
     }
     if (doc.errors.length > 0) {
@@ -171,10 +172,21 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
 
     const collected: LocaleEntry[] = [];
     collect(root, "", collected, errors, file.path);
-    // 중복 키는 **마지막이 이긴다** — YAML 로더의 의미와 같다. 위 `collect`가 사실을 이미
-    // 보고했으므로 여기서는 값만 정한다. 안 하면 같은 키가 두 번 실려 push 페이로드가 흔들린다.
+    // 같은 이름 중복은 **마지막이 이긴다** — YAML 로더의 의미와 같고 위 `collect`가 이미 알렸다. 점 키와 중첩이 같은 평탄 키를
+    // 내는 충돌(`a.b: x` + `a: {b: y}`)은 여기서 알린다(B7a r1 — 전에는 조용히 접혔다). 어느 쪽이든 **write가 고칠 노드의 값**을
+    // 싣는다(`locate` — 긴 리터럴 우선, 같은 이름은 마지막) — 적재된 값과 편집이 닿는 자리가 같아야 한다.
     const byKey = new Map<string, LocaleEntry>();
-    for (const e of collected) byKey.set(e.key, e);
+    for (const e of collected) {
+      if (!byKey.has(e.key)) {
+        byKey.set(e.key, e);
+        continue;
+      }
+      if (!errors.some((x) => x.path === file.path && x.code === "duplicate-key" && x.key === e.key)) {
+        errors.push({ path: file.path, code: "duplicate-key", key: e.key });
+      }
+      const hit = locate(root, e.key.split(SEP));
+      byKey.set(e.key, hit.kind === "found" && isScalar(hit.node) && typeof hit.node.value === "string" ? { key: e.key, message: hit.node.value } : e);
+    }
     const entries = [...byKey.values()].sort((a, b) => compareKeys(a.key, b.key));
     locales.push({ locale, entries });
   }
@@ -295,11 +307,49 @@ function scalarReplacement(source: string, doc: Document, node: Scalar, value: s
   return { start, end, text };
 }
 
+type Quoted = "PLAIN" | "QUOTE_SINGLE" | "QUOTE_DOUBLE";
+
+/** 맵 항목들의 키·문자열 값 스칼라를 모은다 — 중첩 맵까지. 시퀀스·블록 스칼라는 인용 관례의 단서가 아니다. */
+function pairScalars(map: YAMLMap, out: { keys: Scalar[]; values: Scalar[] }, deep: boolean): void {
+  for (const item of map.items) {
+    if (isScalar(item.key)) out.keys.push(item.key);
+    if (isScalar(item.value) && typeof item.value.value === "string") out.values.push(item.value);
+    else if (deep && isMap(item.value)) pairScalars(item.value, out, deep);
+  }
+}
+
+/** 인용 타입 다수결. **동수·단서 없음은 PLAIN**(옛 동작) — 삽입이 다수를 늘리기만 하므로 2차 write가 같은 답을 낸다. */
+function dominantType(nodes: readonly Scalar[]): Quoted {
+  const votes = { PLAIN: 0, QUOTE_SINGLE: 0, QUOTE_DOUBLE: 0 };
+  for (const node of nodes) if (node.type === "PLAIN" || node.type === "QUOTE_SINGLE" || node.type === "QUOTE_DOUBLE") votes[node.type] += 1;
+  const top = Math.max(votes.QUOTE_SINGLE, votes.QUOTE_DOUBLE);
+  if (top <= votes.PLAIN || votes.QUOTE_SINGLE === votes.QUOTE_DOUBLE) return "PLAIN";
+  return votes.QUOTE_SINGLE > votes.QUOTE_DOUBLE ? "QUOTE_SINGLE" : "QUOTE_DOUBLE";
+}
+
+/**
+ * 삽입 항목의 키·값 인용 타입 (audit #56). **형제를 먼저 본다** — 치환(`scalarReplacement`)이 원래 노드의 타입을 따르는 것과
+ * 같은 취지다. 형제가 없으면(빈 맵·빈 문서) 파일 전체의 다수를 본다. code-dict의 `dominantQuote`처럼 키와 값을 따로 센다.
+ */
+function insertionTypes(doc: Document, map: YAMLMap | null): { key: Quoted; value: Quoted } {
+  const siblings = { keys: [] as Scalar[], values: [] as Scalar[] };
+  if (map !== null) pairScalars(map, siblings, false);
+  const file = { keys: [] as Scalar[], values: [] as Scalar[] };
+  // 형제가 맵뿐이면(`ko:` 아래가 전부 네임스페이스) 값 단서가 없다 — 키가 있어도 파일로 내려간다.
+  if ((siblings.keys.length === 0 || siblings.values.length === 0) && isMap(doc.contents)) pairScalars(doc.contents, file, true);
+  return {
+    key: dominantType(siblings.keys.length > 0 ? siblings.keys : file.keys),
+    value: dominantType(siblings.values.length > 0 ? siblings.values : file.values),
+  };
+}
+
 /** 기존 맵의 끝에만 새 항목을 더한다. 기존 노드는 직렬화하지 않는다. */
 function insertion(source: string, doc: Document, map: YAMLMap | null, entries: [string, string][]): Replacement {
   const token = map?.srcToken;
   const newline = source.includes("\r\n") ? "\r\n" : "\n";
-  const pairs = entries.map(([key, value]) => `${flowString(key, doc)}: ${flowString(value, doc)}`);
+  const types = insertionTypes(doc, map);
+  // ⚠️ 개행 든 값은 형제 다수와 무관하게 큰따옴표다 — 작은따옴표 folded 스칼라가 공백만 있는 줄을 남긴다(yamllint trailing-spaces, B7a r1).
+  const pairs = entries.map(([key, value]) => `${flowString(key, doc, types.key)}: ${flowString(value, doc, value.includes("\n") ? "QUOTE_DOUBLE" : types.value)}`);
   if (map?.flow) {
     const last = map.items.at(-1);
     const node = last?.value ?? last?.key;
@@ -339,7 +389,7 @@ function writeWithErrors(
   } catch (cause) {
     return {
       content: file.content,
-      errors: [{ path: file.path, code: "write-parse-failed", detail: (cause as Error).message }],
+      errors: [{ path: file.path, code: "write-parse-failed", detail: causeMessage(cause) }],
     };
   }
   if (doc.errors.length > 0) {

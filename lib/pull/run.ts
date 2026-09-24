@@ -14,6 +14,7 @@ import { renderLocaleFiles, type RenderKey } from "./render";
 import { compareSurfaces, surfaceOwnership } from "@/lib/surfaces/plan";
 import { planMultiSurfacePull } from "./surfaces";
 import { planProtectedPublish } from "@/lib/protection/plan";
+import { blockingErrors, splitEdits, withheldCoordinates } from "./undeliverable";
 
 /**
  * pull 오케스트레이션. **판정은 전부 `plan.ts`·`payload.ts`·`render.ts`에 있고** 여기는 순서와
@@ -74,12 +75,15 @@ export type PullDeps = {
     published: { prUrl: string } | undefined,
     delivered: readonly PendingEdit[],
     contexts: readonly DeliveryContext[],
+    /** 이번 PR에 못 실은 캡처 편집(delivery-invariants D3). 토큰은 남기고, 그 셀의 기준 행 revision만 새 확인으로 다시 찍는다. */
+    withheld: readonly PendingEdit[],
   ): Promise<void>;
   /**
    * **첫 외부 쓰기 직전에** 이 프로젝트의 전달 확인을 무효화한다 (ARCHITECTURE §0 불변식 9 · §5.8). 던지면 GitHub에 아무것도 쓰지 않는다.
    * 쓰기 뒤 실패·결과 미확인이면 확인은 무효인 채 남고, 다음 성공 확정만 되살린다.
+   * ⚠️ **필수다** (audit #60) — 선택이면 새 호출부가 빠뜨려도 컴파일되고, 그 경로는 GitHub에 쓰면서 옛 확인을 살려 둔다.
    */
-  invalidateDelivery?(projectId: string): Promise<void>;
+  invalidateDelivery(projectId: string): Promise<void>;
   syncBranch: string;
 };
 
@@ -89,12 +93,28 @@ export type PullDeps = {
  * ⚠️ **경고가 있으면 GitHub에 쓰기 전에 멈춘다** (sync-edit-protection T10, 2026-09-18). 전에는 경고를 커밋·스킵 결과에
  * 실어 보냈다 — 그러면 버린 값의 편집 토큰이 전달 확인으로 비워져 "보내지 않은 편집을 보냈다"가 된다. 그래서 경고는
  * **`writer-warnings` 갈래 하나에만** 산다. 성공(`committed`)·동등(`no-changes`) 결과에 경고 자리가 없다.
+ *
+ * ⚠️ **단 좌표가 정확한 두 부류는 거부가 아니라 보류다** (delivery-invariants D3, 2026-09-24) — 비-base per-locale 파일 부재와
+ * ts-dict 로케일 객체에 자리가 없는 키. 그 셀만 전달 확인에서 빠지고(토큰 유지) 나머지는 나간다. `withheld`는 **경고가 아니라
+ * 수**다 — T10이 막은 것은 "버린 값의 토큰을 성공으로 비우는 것"이었고 보류는 토큰을 안 비운다. 사유별로 센다(`file`·`key`) —
+ * 결과 문구가 둘을 다르게 말한다. 0이면 필드가 없다.
  */
+export type Withheld = { file: number; key: number };
 export type PullResult =
-  | { status: "skipped"; reason: "no-edits" | "no-changes" }
+  | { status: "skipped"; reason: "no-edits" }
+  /**
+   * `closedPr` — 이 실행이 닫은 열린 PR (B1 r3). 렌더가 base와 같아 sync 브랜치를 base로 되돌릴 때 그 PR은 할 일이 없다 — 조용히 닫히게 두지 않고
+   * 코멘트와 함께 닫은 뒤 결과·Logs(`SyncRun.prUrl`)가 그 사실을 말한다.
+   */
+  | { status: "skipped"; reason: "no-changes"; withheld?: Withheld; closedPr?: { number: number; url: string } }
+  /** 실린 편집 0 + 보류 > 0. 쓰기도 전달 확인도 없다 — 파일 변경이 있었더라도 이 편집들 몫이 아니다. */
+  | { status: "skipped"; reason: "withheld"; withheld: Withheld }
   | { status: "skipped"; reason: "writer-warnings"; warnings: string[] }
   | {
       status: "committed";
+      /** 전달 확인한 편집 수 — 결과 화면이 말하는 "N changes"다. 미리보기의 미발송 전체와 다르다(보류가 빠진다). */
+      delivered: number;
+      withheld?: Withheld;
       /**
        * 열린 PR이 있었는지 — 화면 문구가 갈린다("Sent for review" vs "Updated what you sent earlier").
        * `findOpenPr`의 결과로 이미 알고 있던 것을 값으로 안 내고 있었다 (ARCHITECTURE §3).
@@ -104,6 +124,13 @@ export type PullResult =
       prUrl: string;
       changed: string[];
     };
+
+/**
+ * 닫는 PR에 남기는 코멘트. 영문이다 — 대상 리포에 남는 문자열이다(PR title/body와 같은 규칙). 첫 줄의 HTML 주석이 malmoi가 쓴 것임을 표시한다.
+ */
+export function closedPrComment(baseBranch: string): string {
+  return `<!-- malmoi-i18n -->\nClosed by malmoi: the translation DB now matches \`${baseBranch}\`, so this pull request has nothing left to merge.\n\nThe next Publish with changes opens a new pull request.`;
+}
 
 /** blob 동시 읽기 수. GitHub 2차 rate limit(동시 요청)을 피하면서 106파일을 60초 안에 든다. */
 const BLOB_CONCURRENCY = 8;
@@ -176,11 +203,11 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   }
 
   const rendered = resolved.map(item => ({
-    surfaceId: item.surface.id, surfaceSlug: item.surface.slug,
+    surfaceId: item.surface.id, surfaceSlug: item.surface.slug, baseLocale: item.baseLocale,
     files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current),
   }));
   const local = planMultiSurfacePull(rendered);
-  const warnings = rendered.flatMap(p => p.files.flatMap(f => (f.errors ?? []).map(e => `${p.surfaceSlug}: ${e.path}: ${adapterErrorMessage(e)}`)));
+  const warnings = blockingErrors(rendered).map(({ surfaceSlug, error }) => `${surfaceSlug}: ${error.path}: ${adapterErrorMessage(error)}`);
   /**
    * ⚠️ **2층 비교·브랜치 되돌림보다 앞이다** — 경고가 있는 렌더는 무엇을 쓰든 값 일부가 빠진 파일이다. 1층을 지났으므로
    * 여기 오면 미전달 편집이 있고, 멈추면 `lastPulledAt`도 토큰도 그대로라 다음 실행이 같은 판정을 다시 한다.
@@ -189,6 +216,13 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
    */
   const decision = planProtectedPublish({ pending: unpublished, writerWarnings: warnings.length });
   if (decision.action === "reject") return { status: "skipped", reason: "writer-warnings", warnings };
+
+  // ⚠️ **보류 셀은 전달 확인에 싣지 않는다** — 불변식 9. `deliveryContexts`는 좁히지 않는다: 좁히면 그 표면의 확인이 무효로 남아
+  // 표면 안 모든 키의 Revert가 막힌다(delivery-invariants D3). 1층은 그대로 전체 pending 수라 보류가 남으면 매 실행 트리를 읽는다.
+  const keyById = new Map(surfaces.flatMap(surface => surface.keys.flatMap(k => (k.id === undefined ? [] : [[k.id, k.key] as const]))));
+  const split = splitEdits(pendingEdits, withheldCoordinates(rendered), keyId => keyById.get(keyId));
+  const withheld = split.withheld.length === 0 ? {} : { withheld: split.withheldBy };
+  if (split.delivered.length === 0 && split.withheld.length > 0) return { status: "skipped", reason: "withheld", withheld: split.withheldBy };
 
   // ── 2층: blob SHA 비교 ──────────────────────────────────────────────────────
   const changes = planPullChanges(
@@ -221,9 +255,20 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
      * `null`이면 던지고, 그 뒤 트리와 blob을 전부 읽고 나서야 이 지점에 온다. 그 순서가 바뀌면
      * 이 판정도 함께 다시 봐야 한다.
      */
+    let closedPr: { number: number; url: string } | undefined;
     if (staleHead !== null && staleHead !== baseHead) {
-      // 되돌리기도 외부 쓰기다 — 그 결과를 모르는 채 옛 확인으로 복원하지 않게 먼저 무효화한다.
-      await deps.invalidateDelivery?.(project.id);
+      // 되돌리기도 외부 쓰기다 — 그 결과를 모르는 채 옛 확인으로 복원하지 않게 먼저 무효화한다. 닫기가 첫 외부 쓰기라 그보다도 앞이다.
+      await deps.invalidateDelivery(project.id);
+      /**
+       * ⚠️ **열린 PR을 조용히 닫히게 두지 않는다** (B1 r3 — QA5). head가 base와 같아지면 GitHub이 그 PR을 스스로 닫는다(때로 "merged"로 표시한다).
+       * 스냅샷 불변식은 그대로 지키고, **되돌리기 전에** 이유를 남겨 명시적으로 닫는다 — 먼저 되돌리면 자동 종료가 앞서 "merged"가 남을 수 있다.
+       * 닫기가 실패하면 되돌리지 않고 던진다 — `lastPulledAt`도 토큰도 그대로라 다음 실행이 같은 판정을 다시 한다.
+       */
+      const open = await client.findOpenPr(`${project.repoOwner}:${deps.syncBranch}`);
+      if (open !== null) {
+        await client.closePr(open.number, closedPrComment(project.baseBranch));
+        closedPr = { number: open.number, url: open.url };
+      }
       await client.updateRefForce(deps.syncBranch, baseHead);
     }
     // **커밋이 안 나갔어도 갱신한다** — 그 순간 export == base 트리가 검증된 상태다.
@@ -233,13 +278,13 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     // ⚠️ `published`를 넘기지 않는다 — 되돌리기는 "보낸" 것이 아니다 (ARCHITECTURE §3).
     // ⚠️ **캡처 편집도 여기서 전달 확인한다** — 원복한 편집이 이 경로로 끝나는데 해제하지 않으면 토큰이 영영 남는다
     // (sync-edit-protection — ARCHITECTURE §3의 "유령 pending"). 값을 고르지 않고 no-op을 탐지할 뿐이다.
-    await deps.saveLastPulledAt(project.id, captured, undefined, pendingEdits, deliveryContexts);
-    return { status: "skipped", reason: "no-changes" };
+    await deps.saveLastPulledAt(project.id, captured, undefined, split.delivered, deliveryContexts, split.withheld);
+    return { status: "skipped", reason: "no-changes", ...withheld, ...(closedPr === undefined ? {} : { closedPr }) };
   }
 
   const summary = `${changes.length} file${changes.length === 1 ? "" : "s"}`;
   // ⚠️ **createTree가 첫 외부 쓰기다** — 여기까지는 읽기뿐이라, 무효화가 실패하면 GitHub에 아무것도 남지 않는다.
-  await deps.invalidateDelivery?.(project.id);
+  await deps.invalidateDelivery(project.id);
   const treeSha = await client.createTree(buildTreePayload(changes, baseHead));
   const commitSha = await client.createCommit(buildCommitPayload(treeSha, baseHead, summary));
 
@@ -277,10 +322,12 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
 
   // 마지막에 쓴다 — 먼저 쓰면 실패한 pull이 다음 실행을 스킵시켜 편집이 영영 안 나간다.
   // **보낸 것의 링크가 새로고침을 넘어야 한다** — cron 경로도 여기를 지나므로 야간 pull이 만든 PR도 남는다.
-  await deps.saveLastPulledAt(project.id, captured, { prUrl }, pendingEdits, deliveryContexts);
+  await deps.saveLastPulledAt(project.id, captured, { prUrl }, split.delivered, deliveryContexts, split.withheld);
 
   return {
     status: "committed",
+    delivered: split.delivered.length,
+    ...withheld,
     pr: existing === null ? "created" : "updated",
     commitSha,
     prUrl,

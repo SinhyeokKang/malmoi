@@ -2,20 +2,23 @@ import { describe, expect, it } from "vitest";
 
 import { m } from "@/lib/i18n";
 import type { SurfaceImportResult } from "@/lib/import/result";
+import { importFailureMessage } from "@/lib/projects/import-failure";
 
 import { EVENT_RESULTS } from "../payload";
 import {
   coverageBoundaryIndex,
   eventView,
   groupByDay,
+  importReasonMessage,
   planArchivedReason,
+  refusalMessage,
   summarizeImportEvent,
   valueState,
   type EventViewRow,
 } from "../view";
 
 /**
- * Logs 행의 순수 판정 (logs-rework design §6). `syncRunView`와 같은 형이다 —
+ * Logs 행의 순수 판정 (logs-rework design §6).
  * 화면이 `kind`로 삼항을 엮으면 갈래가 JSX 안에 흩어지고 그 자리에는 누락을 잡는 장치가 없다.
  */
 
@@ -23,11 +26,11 @@ function row(over: Partial<EventViewRow> = {}): EventViewRow {
   return { kind: "PUBLISH", result: "sent", warnings: 0, errorCode: null, ...over };
 }
 
-describe("eventView — 결과 어휘 아홉", () => {
-  it("아홉이 전부 라벨을 갖고, 서로 다르다", () => {
+describe("eventView — 결과 어휘 전부", () => {
+  it("전부 라벨을 갖고, 서로 다르다", () => {
     const labels = EVENT_RESULTS.map((result) => eventView(row({ result })).label);
-    expect(labels.filter((label) => label !== null)).toHaveLength(9);
-    expect(new Set(labels).size).toBe(9);
+    expect(labels.filter((label) => label !== null)).toHaveLength(EVENT_RESULTS.length);
+    expect(new Set(labels).size).toBe(EVENT_RESULTS.length);
   });
 
   it("실패만 danger다", () => {
@@ -35,7 +38,7 @@ describe("eventView — 결과 어휘 아홉", () => {
   });
 
   it("사람이 고쳐야 풀리는 셋은 warning이다", () => {
-    for (const result of ["deferred", "partial", "notStarted"] as const) {
+    for (const result of ["deferred", "partial", "notStarted", "notSent"] as const) {
       expect(eventView(row({ result })).tone, result).toBe("warning");
     }
   });
@@ -279,7 +282,7 @@ describe("coverageBoundaryIndex — 수집 공백 경계선", () => {
 
 describe("summarizeImportEvent — 소스별 결과 → 결과 어휘", () => {
   function result(status: SurfaceImportResult["status"], over: Partial<SurfaceImportResult> = {}): SurfaceImportResult {
-    return { surfaceSlug: "web", status, count: 0, failed: 0, reason: null, errors: [], ...over };
+    return { surfaceSlug: "web", status, count: 0, failed: 0, unmanaged: 0, reason: null, errors: [], ...over };
   }
 
   it("전 소스 성공은 Imported다", () => {
@@ -321,4 +324,39 @@ it("소스 추가는 다음 CI에서 적용할 선언이라고 표시하지 않�
   expect(eventMeta({ kind: "SURFACE", subtype: "surface.added", result: null, actor: { kind: "USER" }, run: null,
     payload: { kind: "SURFACE", surfaceSlug: "web", adapter: "json-catalog", baseLocale: { before: null, after: "en" } } }, false))
     .not.toContain(m.logs.meta.declarationOnly);
+});
+
+/** delivery-invariants D7 — 보류만 남은 Publish는 "Nothing to send"가 아니다. 모달의 `Not sent`와 같은 낱말이다(DESIGN §10.1). */
+describe("eventView — 보류만 남은 Publish", () => {
+  it("notSent는 Not sent이고 warning이다 — Nothing to send와 다르다", () => {
+    const view = eventView(row({ result: "notSent" }));
+    expect(view.label).toBe(m.logs.status.notSent);
+    expect(view.label).not.toBe(m.logs.status.skipped);
+    expect(view.tone).toBe("warning");
+  });
+});
+
+/**
+ * 거부·적재 실패 코드 → 문장 (audit #74 — 테스트 없는 export였다). 코드는 DB에서 읽은 남의 문자열이라
+ * **모르는 값과 프로토타입 이름이 폴백으로 떨어지는지**가 요지이고, 짝으로 알려진 값이 제 문장을 받는지 본다.
+ */
+describe("refusalMessage", () => {
+  it("거부 여섯은 제 문장, 모르는 코드·null·프로토타입 이름은 폴백이다", () => {
+    expect(refusalMessage("stale-commit")).toBe(m.logs.refusals["stale-commit"]);
+    expect(refusalMessage("archived")).toBe(m.logs.refusals.archived);
+    for (const code of [null, "too-soon", "constructor", "__proto__", "toString"]) {
+      expect(refusalMessage(code)).toBe(m.logs.refusals.fallback);
+    }
+  });
+});
+
+describe("importReasonMessage", () => {
+  it("적재 실패 코드 → 동기화 오류 코드 → 폴백 순으로 읽는다", () => {
+    expect(importReasonMessage("parse-failed")).toBe(importFailureMessage("parse-failed"));
+    expect(importFailureMessage("parse-failed")).not.toBe(m.projects.importFailure.importFailed);
+    expect(importReasonMessage("superseded")).toBe(m.repositorySync.errors.superseded);
+    for (const code of [null, "unknown-code", "constructor", "hasOwnProperty"]) {
+      expect(importReasonMessage(code)).toBe(m.projects.importFailure.importFailed);
+    }
+  });
 });

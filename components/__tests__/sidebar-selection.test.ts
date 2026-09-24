@@ -20,7 +20,7 @@ const source = readFileSync(SIDEBAR, "utf8")
 describe("사이드바 선택 표현", () => {
   it("항목에 굵기를 주지 않는다 — 구역 라벨의 500만 남는다", () => {
     expect(source.match(/font-medium/g)).toHaveLength(1);
-    expect(source).toContain('<p className="text-foreground truncate py-1.5 text-sm font-medium">');
+    expect(source).toContain('<p data-zone-head className="text-foreground flex items-center gap-2 px-0.5 py-1 text-sm font-medium">');
   });
 
   it("선택과 hover가 배경 알파이고 한 단계 벌어져 있다", () => {

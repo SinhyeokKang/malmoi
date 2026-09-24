@@ -39,12 +39,7 @@ export function DisconnectGithubButton({ onFailure }: {
     <>
       <Dialog>
         <DialogTrigger asChild>
-          {/*
-            ⚠️ **`danger`가 아니라 `default`다** (2026-09-13 핸드오프). 붉은 글자는 `/account`에서
-            되돌릴 수 없는 넷과 같은 무게로 읽히는데, 그 무게는 이제 확인 Dialog가 든다 —
-            **같은 버튼이 화면마다 다른 무게면 그 자체가 결함이라** `/projects/:slug/settings`도 함께 바뀐다.
-          */}
-          <Button variant="default" aria-label={m.settings.account.disconnectLabel} loading={pending}>{m.settings.account.disconnect}</Button>
+          <Button variant="danger" aria-label={m.settings.account.disconnectLabel} busy={pending}>{m.settings.account.disconnect}</Button>
         </DialogTrigger>
         <DialogContent
           title={m.account.github.confirmDisconnect}
@@ -60,8 +55,11 @@ export function DisconnectGithubButton({ onFailure }: {
                   onClick={() => {
                     report(null);
                     startTransition(async () => {
-                      const result = await disconnectGithub();
-                      report(result.ok ? null : isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.account.disconnectFailed);
+                      // ⚠️ 던지면 error boundary가 `/account` 전체를 삼킨다 (audit #24) — 거부와 같은 자리로 접는다.
+                      let result: Awaited<ReturnType<typeof disconnectGithub>> | null;
+                      try { result = await disconnectGithub(); } catch { result = null; }
+                      if (result?.ok) report(null);
+                      else report(result !== null && isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.account.disconnectFailed);
                     });
                   }}
                 >

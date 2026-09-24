@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   PROJECT_WIDE,
+  clearedLogsQuery,
   decodeCursor,
   encodeCursor,
   filterChanged,
+  hasNarrowing,
+  logsQuery,
   parseDateRange,
   parseLogFilter,
   type LogFilter,
@@ -244,4 +247,85 @@ describe("filterChanged — 커서를 버릴지", () => {
 it("전역 선택값은 실제 소스 slug와 겹치지 않는다", () => {
   expect(PROJECT_WIDE).toBe("@project-wide");
   expect(parseLogFilter({ source: `${PROJECT_WIDE},project-wide` }).sources).toEqual([PROJECT_WIDE, "project-wide"]);
+});
+
+/**
+ * URL 조립 셋 — **`parseLogFilter`의 역이어야 한다.** 조립한 쿼리를 다시 읽었을 때 다른 필터가 나오면 [Older]·필터
+ * 해제·공유한 주소가 사용자가 고른 것과 다른 목록을 연다. 그래서 값 하나하나가 아니라 **왕복**을 잰다.
+ */
+describe("logsQuery — parseLogFilter의 역", () => {
+  const cursor = { occurredAt: new Date("2026-09-10T12:00:00.000Z"), id: "evt|1" };
+  const full = filter({
+    kind: "members",
+    from: "2026-09-01",
+    to: "2026-09-10",
+    actor: "automation",
+    sources: [PROJECT_WIDE, "web"],
+    results: ["failed", "sent"],
+    q: "안녕 hello",
+    cursor,
+    event: "evt_9",
+  });
+
+  it("기본 필터는 빈 쿼리다 — 기본값을 URL에 싣지 않는다", () => {
+    expect(logsQuery(filter())).toEqual({});
+  });
+
+  it("모든 축이 켜진 필터가 왕복한다", () => {
+    expect(parseLogFilter(logsQuery(full))).toEqual(full);
+  });
+
+  it("축마다 켜진 필터가 왕복한다 — 한 축이 다른 축의 기본값을 흔들지 않는다", () => {
+    const axes: Partial<LogFilter>[] = [
+      { kind: "members" }, { from: "2026-09-01" }, { to: "2026-09-10" }, { actor: "usr_1" },
+      { sources: ["web"] }, { results: ["failed"] }, { q: "x" }, { cursor }, { event: "evt_9" },
+    ];
+    for (const over of axes) {
+      const one = filter(over);
+      expect(parseLogFilter(logsQuery(one)), JSON.stringify(over)).toEqual(one);
+    }
+  });
+
+  it("다중 선택은 정렬된 쉼표 목록 하나다 — 같은 선택이 두 URL로 갈리지 않는다", () => {
+    expect(logsQuery(filter({ sources: ["web", "app"] })).source).toBe("app,web");
+    expect(logsQuery(filter({ sources: ["app", "web"] })).source).toBe("app,web");
+    expect(logsQuery(filter({ results: [] }))).not.toHaveProperty("result");
+  });
+});
+
+describe("hasNarrowing — [Clear filters]가 서는 조건", () => {
+  it("기본 필터는 좁히지 않는다", () => {
+    expect(hasNarrowing(filter())).toBe(false);
+  });
+
+  it("좁히는 축 하나만 켜도 true다", () => {
+    for (const over of [
+      { kind: "members" }, { from: "2026-09-01" }, { to: "2026-09-10" }, { actor: "usr_1" },
+      { sources: ["web"] }, { results: ["failed"] }, { q: "x" },
+    ] satisfies Partial<LogFilter>[]) {
+      expect(hasNarrowing(filter(over)), JSON.stringify(over)).toBe(true);
+    }
+  });
+
+  /** ⚠️ 커서·열린 이벤트는 좁힘이 아니다 — 세면 [Older]를 누르거나 상세를 여는 것만으로 [Clear filters]가 선다. */
+  it("커서·열린 이벤트만으로는 false다 (위 축 대조)", () => {
+    expect(hasNarrowing(filter({ cursor: { occurredAt: new Date("2026-09-10T12:00:00.000Z"), id: "e" }, event: "evt_9" }))).toBe(false);
+  });
+});
+
+describe("clearedLogsQuery — 필터를 전부 뗀 쿼리", () => {
+  const narrowed = filter({
+    kind: "members", q: "x", sources: ["web"], results: ["failed"], actor: "usr_1", from: "2026-09-01", to: "2026-09-10",
+    cursor: { occurredAt: new Date("2026-09-10T12:00:00.000Z"), id: "e" },
+  });
+
+  it("좁힘과 커서를 함께 버린다 — 좁힘이 사라지면 옛 페이지의 커서가 뜻을 잃는다", () => {
+    expect(clearedLogsQuery(narrowed)).toEqual({});
+    expect(hasNarrowing(parseLogFilter(clearedLogsQuery(narrowed)))).toBe(false);
+  });
+
+  it("열린 이벤트는 남긴다 — 상세는 목록 필터와 독립이다 (결정 15)", () => {
+    expect(clearedLogsQuery({ ...narrowed, event: "evt_9" })).toEqual({ event: "evt_9" });
+    expect(parseLogFilter(clearedLogsQuery({ ...narrowed, event: "evt_9" }))).toEqual(filter({ event: "evt_9" }));
+  });
 });

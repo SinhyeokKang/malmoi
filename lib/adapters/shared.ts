@@ -1,4 +1,5 @@
 import { matchesGlob } from "./glob";
+import { stripBom } from "./json-style";
 import type { LocaleEntry, ReadResult } from "./types";
 import { compareCodeUnits } from "@/lib/compare";
 
@@ -330,7 +331,7 @@ export type CatalogVerdict = "yes" | "no" | "unknown";
 export function catalogVerdict(content: string): CatalogVerdict {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(content);
+    parsed = JSON.parse(stripBom(content));
   } catch {
     return "no";
   }
@@ -370,7 +371,7 @@ export function verifySamples(
   return false;
 }
 
-/** `en`을 먼저, 그다음 코드포인트 순. 상한까지만. */
+/** `en`을 먼저, 그다음 코드 유닛 순(`compareKeys`). 상한까지만. */
 export function sampleOrder(locales: ReadonlySet<string>): string[] {
   const rest = [...locales].filter((l) => l !== "en").sort(compareKeys);
   const ordered = locales.has("en") ? ["en", ...rest] : rest;

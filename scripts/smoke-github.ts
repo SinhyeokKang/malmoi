@@ -16,7 +16,7 @@ import { createGitClient, openRepoReader, probeRepo } from "../lib/github";
 import { checkContentBudget, checkDownloadBudget } from "../lib/onboarding/budget";
 import { makeProbe, probeTargets, summarizeCandidates } from "../lib/onboarding/detect";
 import { formatFromProject, resolveLocalePaths } from "../lib/pull/plan";
-import { syncBranchFor } from "../lib/pull/trigger";
+import { syncBranchFor } from "../lib/pull/sync-branch";
 import { loadLocalEnv, scriptPrisma } from "./local";
 
 // .env.local을 명시적으로 읽는다 — dotenv 기본값은 `.env`이고 이 프로젝트의 시크릿은

@@ -2,8 +2,10 @@ import "server-only";
 
 import { checkContentBudget } from "./budget";
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { AdapterError, DetectedFormat } from "@/lib/adapters/types";
-import { applyPush } from "@/lib/push/apply";
+import { adapterErrorKind, type AdapterError, type DetectedFormat } from "@/lib/adapters/types";
+import type { LockedAccess } from "@/lib/auth/access";
+import { lockProjectAccess } from "@/lib/auth/lock";
+import { applyPushInTransaction } from "@/lib/push/apply";
 import { assemblePushInput } from "@/lib/push/assemble";
 import { PushPayload } from "@/lib/push/plan";
 import { fail } from "@/lib/failure";
@@ -31,8 +33,13 @@ import { makeProbe } from "./detect";
 export type FirstIngestResult = {
   /** 적재한 키 수(base 로케일 기준). 화면 헤드라인의 앞 숫자다 (`ingestHeadline`). */
   count: number;
-  /** 읽지 못한 항목 수 = read 에러 + 중복으로 접힌 키. **0이 아니면 성공 문구를 쓰지 않는다** (불변식 9). */
+  /** 읽지 못한 항목 수 = 실패 갈래 read 에러 + 중복으로 접힌 키. **0이 아니면 성공 문구를 쓰지 않는다** (불변식 9). */
   failed: number;
+  /**
+   * malmoi가 관리하지 않아 코드에 그대로 남는 항목 수(`adapterErrorKind` — ts-dict의 `String(…)` 등). **실패가 아니다** —
+   * `partial-import`를 만들지 않고 결과 화면에 안내로만 선다 (B2 r3 · QA5).
+   */
+  unmanaged: number;
   /** 상위 몇 건을 화면에 보이기 위해. 후보를 떨어뜨리지 않는다 (ARCHITECTURE §4의 연장). */
   errors: AdapterError[];
 };
@@ -61,12 +68,26 @@ export type FirstSnapshotInput = {
   blobs: ReadonlyMap<string, string>;
 };
 
-export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnapshotInput): Promise<FirstIngestResult> {
+/** 잠금 뒤 다시 본 인가가 적재를 거부했다 — 호출부가 실행을 닫고 그 낱말로 답한다. */
+export class FirstIngestRefused extends Error {
+  constructor(readonly code: Exclude<LockedAccess["status"], "ok">) { super(code); }
+}
+
+/**
+ * ⚠️ **`userId`는 잠금 뒤 재인가의 입력이다** (감사 #9). Action 입구 인가 뒤 GitHub에서 스냅샷을 받는 초 단위 창에 OWNER가
+ * 강등·제거될 수 있다 — 적재 트랜잭션이 `Project` 잠금 뒤 다시 본다.
+ */
+export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnapshotInput & { userId: string }): Promise<FirstIngestResult> {
   const prepared = prepareFirstSnapshot(input);
-  if (prepared.payload !== null) await applyPush(prisma, { projectId: input.projectId, surfaceId: input.surfaceId }, prepared.payload, {
-    refsMode: "replace", previousBaseLocale: null, startedAt: input.startedAt, token: input.token,
-    importOutcome: prepared.result.failed === 0 ? null : "partial-import",
-  });
+  const { payload } = prepared;
+  if (payload !== null) await prisma.$transaction(async tx => {
+    const locked = await lockProjectAccess(tx, { projectId: input.projectId, userId: input.userId, permission: "project:settings", surfaceId: input.surfaceId });
+    if (locked.status !== "ok") throw new FirstIngestRefused(locked.status);
+    await applyPushInTransaction(tx, { projectId: input.projectId, surfaceId: input.surfaceId }, payload, {
+      refsMode: "replace", previousBaseLocale: null, startedAt: input.startedAt, token: input.token,
+      importOutcome: prepared.result.failed === 0 ? null : "partial-import",
+    });
+  }, { maxWait: 10_000, timeout: 30_000 });
   return prepared.result;
 }
 
@@ -108,14 +129,18 @@ export function prepareFirstSnapshot(input: FirstSnapshotInput) {
     scanRefs: [],
   });
 
-  if (payload.keys.length === 0) return { payload: null, result: { count: 0, failed: Math.max(1, read.errors.length + missing.length), errors: read.errors } };
+  // 관리하지 않는 항목은 실패 목록에서 빼고 개수만 든다 — 섞으면 그것 하나로 소스가 "Last sync failed"가 된다(QA5).
+  const failures = read.errors.filter(error => adapterErrorKind(error.code) === "failure");
+  // 경고(`duplicate-property`)는 어느 수에도 세지 않는다 — 빼기로 세면 unmanaged에 섞인다(B7a r1).
+  const unmanaged = read.errors.filter(error => adapterErrorKind(error.code) === "unmanaged").length;
+  if (payload.keys.length === 0) return { payload: null, result: { count: 0, failed: Math.max(1, failures.length + missing.length), unmanaged, errors: failures } };
   if (!PushPayload.safeParse(payload).success) fail("first ingest exceeds the push payload contract");
 
   const errors = [
-    ...read.errors,
+    ...failures,
     ...missing.map((path): AdapterError => ({ path, code: "download-failed" })),
   ];
   const failed = errors.length + duplicateKeys;
 
-  return { payload, result: { count: payload.keys.length, failed, errors } };
+  return { payload, result: { count: payload.keys.length, failed, unmanaged, errors } };
 }

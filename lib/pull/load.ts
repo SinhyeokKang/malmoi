@@ -54,6 +54,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     //    출처라 절대 바꾸지 않는다.** grep하면 둘 다 잡힌다.
     orderBy: [{ sortIndex: "asc" }, { key: "asc" }],
     select: {
+      id: true,
       surfaceId: true,
       key: true,
       sourceText: true,
@@ -64,6 +65,15 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
       translations: { select: { localeCode: true, value: true, description: true, placeholders: true } },
     },
   });
+
+  /**
+   * ⚠️ **JSON `null`인 placeholders 좌표** (audit #52). Prisma는 Json 컬럼의 SQL NULL(부재)과 JSON null(`"placeholders": null`)을
+   * **둘 다 `null`로** 읽는다 — 구별하지 않으면 그 필드가 pull에서 빠져 값 편집 0건인 Publish가 줄을 지운다. 같은 스냅샷에서 센다.
+   */
+  const jsonNull = await prisma.$queryRaw<{ keyId: string; localeCode: string }[]>`
+    SELECT "keyId", "localeCode" FROM "Translation"
+    WHERE "projectId" = ${project.id} AND "surfaceId" = ANY(${surfaces.map(s => s.id)}::text[]) AND jsonb_typeof("placeholders") = 'null'`;
+  const nullPlaceholders = new Set(jsonNull.map(row => `${row.keyId}\u0000${row.localeCode}`));
 
   // `lastPulledAt`에 캡처될 값. **`projectId`로 좁힌다** — 안 좁히면 다른 프로젝트의 편집이 이 프로젝트의
   // pull을 깨우고, 그쪽 `updatedAt`이 이쪽 `lastPulledAt`에 박힌다.
@@ -88,6 +98,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     surfaces: surfaces.map(surface => ({ ...surface,
     localeCodes: surface.locales.map((l) => l.code),
     keys: keys.filter(k => k.surfaceId === surface.id).map((k) => ({
+      id: k.id,
       key: k.key,
       sourceText: k.sourceText,
       description: k.description,
@@ -101,8 +112,9 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
           {
             value: t.value,
             ...(t.description === null ? {} : { description: t.description }),
-            // Prisma의 Json 컬럼은 비어 있으면 `null`을 준다 — 없는 것과 같게 다룬다.
-            ...(t.placeholders === null ? {} : { placeholders: t.placeholders }),
+            // Prisma의 Json 컬럼은 비어 있으면 `null`을 준다 — 없는 것과 같게 다루되, JSON null은 위에서 따로 센 좌표로 되살린다.
+            ...(t.placeholders !== null ? { placeholders: t.placeholders }
+              : nullPlaceholders.has(`${k.id}\u0000${t.localeCode}`) ? { placeholders: null } : {}),
           },
         ]),
       ),
@@ -157,8 +169,11 @@ export async function saveLastPulledAt(
   at: Date,
   published: { prUrl: string } | undefined,
   delivered: readonly PendingEdit[],
-  /** 실행권과 캡처 context. 없으면(실행 행 없는 호출) 전달 확인·기준을 건드리지 않는다 — 늦은 성공을 가를 수 없다. */
-  delivery?: { runId: string; contexts: readonly DeliveryContext[] },
+  /**
+   * 실행권과 캡처 context. 없으면(실행 행 없는 호출) 전달 확인·기준을 건드리지 않는다 — 늦은 성공을 가를 수 없다.
+   * `withheld`는 이번 PR에 못 실은 캡처 편집이다 — 토큰은 그대로 두고 기준 행의 revision만 새 확인으로 다시 찍는다.
+   */
+  delivery?: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[] },
 ): Promise<void> {
   const project = {
     where: { id: projectId },
@@ -217,7 +232,7 @@ async function confirmDelivery(
   projectId: string,
   project: { where: { id: string }; data: Prisma.ProjectUpdateInput },
   delivered: readonly PendingEdit[],
-  delivery: { runId: string; contexts: readonly DeliveryContext[] },
+  delivery: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[] },
 ): Promise<void> {
   const surfaceIds = [...new Set(delivery.contexts.map(c => c.surfaceId))].sort();
   await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
@@ -252,16 +267,42 @@ async function confirmDelivery(
   const rows = await tx.translationSurface.findMany({ where: { projectId, id: { in: surfaceIds }, archivedAt: null } });
   const now = new Date();
   const revisionBySurface = new Map<string, string>();
+  /** 보류 셀 기준을 옮길 수 있는 표면 — 같은 context의 직전 확인 revision → 새 revision. 아래 재갱신 주석이 이유다. */
+  const restamp = new Map<string, { from: string; to: string }>();
   for (const context of delivery.contexts) {
     const row = rows.find(r => r.id === context.surfaceId);
     if (row === undefined || contextOf(owner, row) !== context.fingerprint) continue;
     const revision = randomUUID();
     revisionBySurface.set(row.id, revision);
+    // 덮기 전에 읽는다 — 직전 확인이 어느 context의 것이었는지가 재갱신의 자격이다.
+    const prior = await tx.deliveryConfirmation.findUnique({
+      where: { projectId_surfaceId: { projectId, surfaceId: row.id } }, select: { revision: true, contextFingerprint: true },
+    });
+    if (prior !== null && prior.contextFingerprint === context.fingerprint) restamp.set(row.id, { from: prior.revision, to: revision });
     const data = { revision, confirmedAt: now, syncRunId: delivery.runId, contextFingerprint: context.fingerprint, invalidatedAt: null };
     await tx.deliveryConfirmation.upsert({
       where: { projectId_surfaceId: { projectId, surfaceId: row.id } },
       create: { projectId, surfaceId: row.id, ...data },
       update: data,
+    });
+  }
+  /**
+   * ⚠️ **보류 셀의 기준을 새 revision으로 다시 찍는다** (delivery-invariants D3). 표면 확인은 새 revision으로 바뀌었는데 보류 셀의 기준
+   * 행이 옛 revision이면 Revert가 `baseline-stale`로 막힌다 — 보류가 풀리는 길 하나(OWNER Revert)가 닫힌다. `restoreValue`는 불변이다
+   * (마지막 전달 값 그대로). 기준 행이 없는 셀은 만들지 않는다 — 그 셀은 원래 unknown이다.
+   * 확인 등식("미전달이 아닌 셀은 export 값 = 기준")은 pending 셀에 걸리지 않으므로 보류 셀이 등식을 깨지 않는다.
+   *
+   * ⚠️ **같은 context의 직전 확인에서 온 기준만 옮긴다** (coordinator review r1). 직전 확인의 지문이 지금과 같고, 기준 행의 revision이 그
+   * 확인의 것일 때만이다. base branch가 main → release로 바뀐 뒤 release에 파일이 없으면, main에서 확인된 기준을 release의 revision으로
+   * 찍는 순간 Revert가 release에서 한 번도 확인된 적 없는 값을 복원하고 토큰을 비운다(불변식 9). 그 셀은 `baseline-stale`로 남는 것이 맞다.
+   */
+  const withheldCells = (delivery.withheld ?? []).flatMap(edit => edit.cell === undefined ? [] : [edit.cell]);
+  for (const [surfaceId, { from, to }] of restamp) {
+    const cells = withheldCells.filter(cell => cell.surfaceId === surfaceId);
+    if (cells.length === 0) continue;
+    await tx.translationBaseline.updateMany({
+      where: { projectId, surfaceId, revision: from, OR: cells.map(cell => ({ keyId: cell.keyId, localeCode: cell.localeCode })) },
+      data: { revision: to },
     });
   }
   for (const { cellId, restoreValue } of plan.rebase) {

@@ -101,7 +101,8 @@ const USER_SCOPED_ACTIONS = new Set([
  * 이름을 인용하는 주석이 흔하고, 벗기지 않으면 인용 하나가 호출·읽기로 세어진다.
  */
 function stripComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  // 줄 끝 주석도 지운다 — `:` 뒤의 `//`(URL)만 남긴다. `error-codes.test.ts`와 같은 식이다 (audit #80).
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
 }
 
 /**
@@ -120,6 +121,16 @@ function hasUserGuard(body: string): boolean {
     /if \(session.status === "none"\) return \{ ok: false, error: "unauthorized" \}/.test(body) &&
     /if \(session.status === "unavailable"\) return \{ ok: false, error: "unavailable" \}/.test(body);
 }
+
+/**
+ * **줄 끝 주석도 벗긴다** (audit #80). 줄 머리 `//`만 지우면 `doThing(); // requireProjectAccess(…)` 같은 인용 한 줄이
+ * 가드로 세어져 인가 없는 export가 green이 된다. 짝: 같은 호출이 코드면 가드로 센다. URL의 `//`는 코드로 남는다.
+ */
+it("줄 끝 주석 속 가드 이름은 가드로 세지 않는다", () => {
+  expect(exportGuarded("await doThing(); // requireProjectAccess(prisma, …) 는 호출부가 한다", "x.ts#f")).toBe(false);
+  expect(exportGuarded("await requireProjectAccess(prisma, slug);", "x.ts#f")).toBe(true);
+  expect(stripComments('const u = "https://github.com"; // note').trimEnd()).toBe('const u = "https://github.com";');
+});
 
 it("사용자 Action의 readSession은 두 거부 반환 없이는 인증으로 인정하지 않는다", () => {
   const read = "const session = await readSession();";

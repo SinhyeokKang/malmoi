@@ -121,7 +121,7 @@ export async function loadKeys(
     // ⚠️ **평범한 `{}`가 아니다** — 키가 `Locale.code`(리포가 정한다)라서다. `__proto__`는
     // `isPathSafeLocale`이 막지만 그 방어선은 다른 모듈에 있는 한 겹이고, 평범한 객체에
     // `out["__proto__"] = v`를 하면 setter가 불려 own property가 안 생겨 **그 로케일 열이 조용히
-    // 사라진다** (CLAUDE.md 코드 컨벤션). 읽는 쪽 짝은 `lib/keys/view.ts`의 `cellAt`이다.
+    // 사라진다** (CLAUDE.md 코드 컨벤션). 읽는 쪽 짝은 `lib/pull/render.ts`의 `Object.hasOwn`이다.
     const cells: KeyRow["cells"] = Object.create(null);
     for (const t of k.translations) {
       cells[t.localeCode] = {
@@ -150,7 +150,7 @@ export async function loadKeys(
 /**
  * 편집자 이름의 출처. **`Translation.updatedBy`를 Prisma join으로 풀 수 없다** — 그 컬럼은 FK가 없고
  * `User.id`와 옛 GitHub 핸들이 섞여 있어(스키마 주석) join하면 옛 행이 통째로 떨어진다. 그래서
- * `collectActorIds`가 모은 id로 **한 번 더** 읽고, 못 찾은 값은 `actorLabel`이 원문으로 낸다.
+ * 호출부가 모은 id로 **한 번 더** 읽고, 못 찾은 값은 `actorLabel`이 원문으로 낸다.
  *
  * ⚠️ **`projectId`로 좁히지 않는다 — `User`는 프로젝트에 속한 테이블이 아니다** (POSTMORTEM
  * 2026-09-06이 넓힌 규칙). 대신 받는 `ids`가 **인가를 지난 그 프로젝트의 번역 행에서만** 나오므로
@@ -213,6 +213,8 @@ export type MembershipRow = {
    * 도달할 길이 없어지고, 그건 보관을 편도로 만든다 (PRODUCT §7.9).
    */
   archivedAt: Date | null;
+  /** 프로젝트 표시용 공개 Blob URL — 사이드바 썸네일이 쓴다. */
+  image: string | null;
 };
 
 /**
@@ -227,7 +229,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     select: {
       role: true,
       project: {
-        select: { slug: true, name: true, installationId: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } }, archivedAt: true },
+        select: { slug: true, name: true, image: true, installationId: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } }, archivedAt: true },
       },
     },
     // 결정적 순서 — 목록이 렌더마다 흔들리면 사용자가 항목을 근육 기억으로 못 찾는다.
@@ -240,6 +242,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     installationId: r.project.installationId,
     surfaces: r.project.surfaces,
     archivedAt: r.project.archivedAt,
+    image: r.project.image,
   }));
 }
 
@@ -316,6 +319,10 @@ export async function loadProjectList(
           name: true,
           image: true,
           installationId: true,
+          /**
+           * 원격 경로 판정(`RemoteTarget.surfaces`)의 입력. ⚠️ **로케일은 orphaned도 포함한 전체 저장 로케일이다** — 탐지
+           * 정규식이 거르는 코드(`es-419`·`zh-Hant-TW`)의 파일을 그 코드로 만든 정확한 경로로 지킨다. 서브쿼리라 왕복이 +0이다.
+           */
           surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: { locales: { select: { code: true } } } },
           archivedAt: true,
           repoOwner: true,
@@ -323,12 +330,6 @@ export async function loadProjectList(
           repositoryId: true,
           baseBranch: true,
           lastPrUrl: true,
-          // 임포트 진행·결과 (PRODUCT §7.8) — 띠와 Meter 자리가 이 둘로 갈린다.
-          // 원격 경로 판정의 입력.
-          /**
-           * ⚠️ **orphaned도 포함한 전체 저장 로케일이다** — 탐지 정규식이 거르는 코드(`es-419`·
-           * `zh-Hant-TW`)의 파일을 그 코드로 만든 정확한 경로로 지킨다. 서브쿼리라 왕복이 +0이다.
-           */
           _count: { select: { members: true } },
         },
       },
@@ -407,7 +408,7 @@ export async function loadProjectList(
  *
  * ⚠️ **필터 둘이 판정이다.**
  * - `value: { not: "" }` — 빈 값은 미번역이다. 편집 UI에서 값을 지우면 빈 문자열 행이 남는다
- *   (`translationState`와 같은 규칙 — 두 벌이 되면 표의 배지와 이 화면의 숫자가 갈린다).
+ *   (`summarizeKey`와 같은 규칙 — 두 벌이 되면 표의 배지와 이 화면의 숫자가 갈린다).
  * - `stringKey: { orphaned: false }` — 코드에서 사라진 키의 번역은 분자에서 빠져야 한다. 분모도 같은
  *   조건이므로 안 걸면 **분자가 분모보다 커진다.**
  *

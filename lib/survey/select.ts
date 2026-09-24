@@ -1,4 +1,8 @@
+import { LOCALES_PATH } from "../adapters/chrome-locales";
+import { CODE_FILE } from "../adapters/code-dict";
+import { JSON_FILE, LOCALE_DIR_FILE } from "../adapters/json-catalog";
 import { I18N_HINT, compareKeys, looksLikeLocale, pathSignals, splitLocaleSuffix } from "../adapters/shared";
+import { NEVER, YAML_FILE } from "../adapters/yaml-catalog";
 
 /**
  * **어떤 파일을 물리화할지 고르는 것 자체가 로직이다.**
@@ -10,17 +14,11 @@ import { I18N_HINT, compareKeys, looksLikeLocale, pathSignals, splitLocaleSuffix
  * 껍데기에 두면 테스트가 안 되므로 순수 함수로 뺐다 (design.md).
  */
 
-const CHROME = /^(.*)_locales\/([^/]+)\/messages\.json$/;
-const JSON_FILE = /^(.*\/)([^/]+)\.json$/;
-// ⚠️ `yaml-catalog.ts`의 정규식과 그룹 수를 맞춘다 — 전에는 그룹이 둘이라 아래 `y[3]`이 항상
-// `undefined`였고 `?? "yml"` 폴백이 그것을 가렸다 (2026-09-04 audit #11).
-const YAML_FILE = /^(.*\/)([^/]+)\.(ya?ml)$/;
-/** ⚠️ `.js`·`.mjs`도 받는다 — quasar가 `ui/lang/{locale}.js`다. */
-const CODE_FILE = /^(.*\/)([^/]+)\.(tsx?|mjs|js)$/;
-/** `<dir>/<locale>/<name>.json` — 로케일이 디렉터리인 형태 (grafana·open-webui·zulip). */
-const LOCALE_DIR_JSON = /^((?:[^/]+\/)*)([^/]+)\/([^/]+)\.json$/;
-/** CI 설정이 `{locale}.yml`처럼 보인다 — `yaml-catalog`의 제외 규칙과 같은 이유다. */
-const NEVER_YAML = /(^|\/)\.github\//;
+/*
+ * ⚠️ **경로 규칙은 어댑터의 것을 import한다 — 사본을 두지 않는다** (audit #73). 사본이던 동안 `yaml-catalog`의 그룹 수가
+ * 갈려 `y[3]`이 항상 `undefined`였고(2026-09-04 audit #11), 어댑터가 새 모양을 받을 때마다 "같은 커밋에서 고친다"는
+ * 규율에 기댔다(POSTMORTEM 2026-09-02). `__tests__/select-patterns.test.ts`가 사본 0과 import를 함께 센다.
+ */
 
 /**
  * 설정 파일 — 이 실험은 **구현하지 않고 빈도만 센다**. 있으면 다음 기능(설정 기반 탐지)의
@@ -74,7 +72,7 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
   // ── chrome `_locales` — 로케일이 2개 이상인 root의 파일 전부 ──────────
   const chromeByRoot = new Map<string, string[]>();
   for (const p of allPaths) {
-    const m = CHROME.exec(p);
+    const m = LOCALES_PATH.exec(p);
     if (!m || !looksLikeLocale(m[2] ?? "")) continue;
     const root = m[1] ?? "";
     (chromeByRoot.get(root) ?? chromeByRoot.set(root, []).get(root)!).push(p);
@@ -101,7 +99,7 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
   // 1순위로 잡힌 리포가 0개였는데 원인이 어댑터가 아니라 여기였다 — probe에 내용이 오지 않았다.
   const yamlByDir = new Map<string, string[]>();
   for (const p of allPaths) {
-    if (NEVER_YAML.test(p)) continue;
+    if (NEVER.test(p)) continue;
     const m = YAML_FILE.exec(p);
     if (!m || !looksLikeLocale(m[2] ?? "")) continue;
     const dir = m[1] ?? "";
@@ -126,11 +124,11 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
       if (split) push(`${j[1] ?? ""}${split.prefix}.json`, split.locale, p);
     }
     const y = YAML_FILE.exec(p);
-    if (y && !NEVER_YAML.test(p) && !looksLikeLocale(y[2] ?? "")) {
+    if (y && !NEVER.test(p) && !looksLikeLocale(y[2] ?? "")) {
       const split = splitLocaleSuffix(y[2] ?? "");
       if (split) push(`${y[1] ?? ""}${split.prefix}.${y[3] ?? "yml"}`, split.locale, p);
     }
-    const d = LOCALE_DIR_JSON.exec(p);
+    const d = LOCALE_DIR_FILE.exec(p);
     if (d && looksLikeLocale(d[2] ?? "")) {
       // 크롬 `_locales`는 위에서 이미 전부 담았다.
       const isChrome = d[3] === "messages" && (d[1] ?? "").endsWith("_locales/");

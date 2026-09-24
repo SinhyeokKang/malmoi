@@ -92,7 +92,10 @@ describe("runPull — 첫 외부 쓰기 전에 전달 확인을 무효화한다"
     expect(await runPull(deps)).toEqual({ status: "skipped", reason: "no-changes" });
     const force = fake.calls.findIndex(c => c.method === "updateRefForce");
     expect(force).toBeGreaterThanOrEqual(0);
-    expect(log).toEqual([`invalidate@${force}`]);
+    // 무효화와 force 사이에는 열린 PR 조회(읽기)만 낀다 — 무효화 시점까지 쓰기가 0회여야 한다(B1 r3가 닫기를 그 사이에 넣었다).
+    const at = Number(log[0]?.split("@")[1]);
+    expect(at).toBeLessThanOrEqual(force);
+    expect(fake.calls.slice(0, at).map(c => c.method).filter(m => ["updateRefForce", "closePr", "createTree", "createRef"].includes(m))).toEqual([]);
   });
 
   it("쓰기 없는 no-changes는 무효화하지 않는다 — 동등 확인이 기준을 이유 없이 잃지 않는다", async () => {

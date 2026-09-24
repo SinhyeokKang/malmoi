@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
 import { NamingStep } from "@/components/onboarding/steps/naming";
-import { syncBranchFor } from "@/lib/pull/trigger";
+import { syncBranchFor } from "@/lib/pull/sync-branch";
 import { render } from "./helpers/dom";
 
 /**
@@ -40,9 +40,12 @@ it.each([
   expect(described?.textContent?.trim()).not.toBe("");
 });
 
-it("오류가 없으면 없는 id를 가리키지 않는다", async () => {
+it("오류가 없으면 없는 id를 가리키지 않고, 그 자리의 도움말을 가리킨다", async () => {
   const { container } = await render(<NamingStep state={state} onChange={() => {}} />);
   const field = container.querySelector<HTMLInputElement>("#project-slug")!;
   expect(field.getAttribute("aria-invalid")).toBeNull();
-  expect(field.getAttribute("aria-describedby")).toBeNull();
+  const described = document.getElementById(field.getAttribute("aria-describedby")!);
+  expect(described).not.toBeNull();
+  expect(described?.getAttribute("role")).toBeNull();
+  expect(document.getElementById("project-slug-error")).toBeNull();
 });

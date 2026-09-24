@@ -20,8 +20,8 @@ import { SYNC_ERROR_CODES } from "@/lib/sync/plan";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
-/** 스캔 대상 — sync가 감싸는 실행 경로 셋이다. `load`·`payload`·`render`는 이 셋이 부른다. */
-const FILES = ["lib/pull/run.ts", "lib/pull/plan.ts", "lib/pull/trigger.ts"] as const;
+/** 스캔 대상 — sync가 감싸는 실행 경로 셋과 `trigger`가 부르는 브랜치 이름 판정이다. `load`·`payload`·`render`는 이 셋이 부른다. */
+const FILES = ["lib/pull/run.ts", "lib/pull/plan.ts", "lib/pull/trigger.ts", "lib/pull/sync-branch.ts"] as const;
 
 /** 코드를 **들어야** 하는 자리. 키는 메시지의 고유 조각이다. */
 const CODED: ReadonlyArray<readonly [needle: string, code: string]> = [

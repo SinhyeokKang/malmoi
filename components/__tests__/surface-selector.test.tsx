@@ -17,7 +17,7 @@ it("uses path labels, badges and a named keyboard control", async () => {
   const changed = vi.fn(), user = userEvent.setup();
   const { container } = await render(<SurfaceSelector value="default" surfaces={surfaces} pending={false} onChange={changed} />);
   const trigger = find<HTMLButtonElement>(container, '[role="combobox"]');
-  expect(trigger.getAttribute("aria-label")).toBe("Translation surface");
+  expect(trigger.getAttribute("aria-label")).toBe("Source");
   await act(async () => user.tab()); expect(document.activeElement).toBe(trigger);
   await act(async () => user.keyboard(" "));
   const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(el => el.textContent?.includes("web"));

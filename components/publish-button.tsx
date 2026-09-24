@@ -19,7 +19,7 @@ import type { PullOutcome } from "@/lib/pull/message";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { routes } from "@/lib/routes";
 import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
-import { planPublishButton, planPublishView } from "@/lib/publish/plan";
+import { planPublishButton, planPublishView, planWithheldLines } from "@/lib/publish/plan";
 import { summarizeWarnings } from "@/lib/publish/warnings";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
@@ -58,6 +58,7 @@ export function usePublish(slug: string) {
       const next: PublishModalState =
         data.status === "ok" ? { kind: "preview-ready", preview: data.preview }
         : data.status === "rejected" ? { kind: "result", outcome: { status: "failed", error: data.error, delivery: "not-started", retryable: false } }
+        : data.status === "refused" ? { kind: "preview-refused", path: data.path, branch: data.branch }
         : { kind: "preview-error" };
       current.current = next; setState(next);
     } catch {
@@ -67,7 +68,9 @@ export function usePublish(slug: string) {
   async function confirm() {
     if (running.current || current.current.kind !== "preview-ready") return;
     const owner = host.current;
-    const total = current.current.preview.total;
+    // 진행 제목도 나가는 수로 말한다(#84) — 보류만 있으면 애초에 실행 버튼이 없다.
+    const total = current.current.preview.sendable.total;
+    if (total === 0) return;
     running.current = true; generation.current++; setPending(true); setRunTotal(total);
     current.current = { kind: "running" }; setState(current.current);
     const next: PullOutcome = await triggerPullAction(slug).catch(() => ({ status: "failed", error: "unavailable", retryable: true, delivery: "unknown" }));
@@ -227,7 +230,7 @@ function DiffLine({ sign, parts, before }: { sign: string; parts: readonly { tex
     {/* 글리프는 장식이고 뜻은 `sr-only`가 든다 — 낭독에 "All … All actions"만 남으면 어느 쪽이 리포인지 모른다. */}
     <span className="sr-only">{before ? p.beforeLabel : p.afterLabel}</span>
     <span className={`w-2.5 shrink-0 text-xs leading-5 ${before ? "text-red-700" : "text-green-800"}`} aria-hidden>{sign}</span>
-    <span className={`min-w-0 flex-1 text-sm leading-5 break-words ${before ? "text-muted-foreground" : ""}`}>
+    <span className={`min-w-0 flex-1 text-sm leading-5 break-words whitespace-pre-wrap ${before ? "text-muted-foreground" : ""}`}>
       {parts.map((part, i) => <span key={i} className={!part.changed ? undefined : before ? "text-foreground rounded-[3px] bg-red-700/[0.14]" : "rounded-[3px] bg-green-800/[0.16]"}>{part.text}</span>)}
     </span>
   </span>;
@@ -255,22 +258,24 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
             return <tr key={`${row.keyId}:${row.localeCode}`}>
               {/* ⚠️ **`rowSpan`이 병합을 든다** — 테두리를 지워 병합처럼 보이게 하면 낭독에는 빈 칸이 하나 더 생긴다. */}
               {row.keySpan > 0 && <td rowSpan={row.keySpan} className="border-divider w-[220px] border-t border-r px-3.5 py-[11px] align-top">
-                <span className="block truncate text-[12px]"><span className="text-muted-foreground">{namespace}</span>{row.key.slice(namespace.length)}</span>
+                <span className="block truncate text-xs"><span className="text-muted-foreground">{namespace}</span>{row.key.slice(namespace.length)}</span>
               </td>}
               <td className="border-divider w-[84px] border-t border-r px-3 py-[11px] align-top">
                 <span className="flex items-start gap-2">
-                  {flag !== null && <img src={`/flags/${flag}.svg`} alt="" className="mt-[5px] h-[11px] w-4 shrink-0 rounded-[2px] shadow-[0_0_0_1px_rgba(10,10,10,0.06)]" />}
+                  {flag !== null && <img src={`/flags/${flag}.svg`} alt="" className="mt-[5px] h-[11px] w-4 shrink-0 rounded-xs ring-1 ring-foreground/6" />}
                   <span className="text-xs leading-5 font-medium">{row.localeCode}</span>
                 </span>
               </td>
               <td className="border-divider border-t px-3.5 py-[11px] align-top">
                 <span className="flex items-start gap-2.5">
                   <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-                    {row.before !== null && <DiffLine sign="−" parts={diff.before} before />}
+                    {/* base와 같은 값은 "변경"이 아니다(B1 r3) — 양쪽이 같은 −/+ 두 줄을 그리지 않고 값 한 줄과 사유를 둔다. */}
+                    {row.before !== null && !row.same && <DiffLine sign="−" parts={diff.before} before />}
                     <DiffLine sign="+" parts={diff.after} />
+                    {row.same && <span className="text-muted-foreground text-xs">{preview.openPr ? p.same.undoes(preview.openPr.number) : p.same.already}</span>}
                   </span>
                   {/* ⚠️ 시안은 `#a3a3a3`이지만 그 색은 **본문 금지**다 — 흰 배경 2.6:1로 §7의 3:1 하한을 못 넘고, 저자 이름은 옆의 값이 뜻을 완성해 주지 않는다 (DESIGN §6.2). */}
-                  <span className="text-muted-foreground shrink-0 text-[12px] leading-5">{row.author}</span>
+                  <span className="text-muted-foreground shrink-0 text-xs leading-5">{row.author}</span>
                 </span>
               </td>
             </tr>;
@@ -280,6 +285,7 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
       {preview.truncated > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.truncated(preview.truncated)}</p>}
       {/* 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐으니 수를 말한다 (launch-readiness L3.7). */}
       {preview.withoutFile > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutFile(preview.withoutFile)}</p>}
+      {preview.withoutKey > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.withoutKey(preview.withoutKey)}</p>}
     </div>
   </TableShell>;
 }
@@ -324,7 +330,12 @@ function Warnings({ warnings }: { warnings: readonly string[] }) {
 function failureText(outcome: Extract<PullOutcome, { status: "failed" }>) {
   if (isAccessError(outcome.error)) return accessErrorMessage(outcome.error);
   if (isOnboardError(outcome.error)) return onboardErrorMessage(outcome.error);
-  return outcome.error === "invalid input" ? accessErrorMessage("forbidden") : outcome.error;
+  /*
+    ⚠️ **코드가 있는 실패만 서버 문장을 그대로 싣는다** — 그 문장은 `runSync`가 고른 safe 메시지다(DESIGN §6.646).
+    코드가 없는 거부의 모르는 문자열은 사람이 읽을 문장이 아니다 (audit #21). `invalid input`은 슬러그가 깨진 것이라
+    권한 없음(`forbidden`)으로 옮기면 오역이었다.
+  */
+  return outcome.code !== undefined ? outcome.error : m.translations.publish.refused;
 }
 
 // 절대 시각은 UTC라고 말한다 — 브라우저 로컬을 라벨 없이 내면 참조 코드로 Logs(UTC)와 대조할 때 어긋나 보인다 (launch-readiness L7.1).
@@ -363,10 +374,19 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         <NoticeSkeleton />
         <TableShell>
           <table className="w-full table-fixed border-separate border-spacing-0"><TableHead /></table>
-          <div className="bg-muted min-h-0 flex-1 animate-pulse" />
+          <Skeleton className="min-h-0 flex-1 rounded-none" />
         </TableShell>
       </>;
       break;
+    case "preview-refused": {
+      // ⚠️ **Try again이 없다** — 파일이 생기거나 경로가 고쳐질 때까지 같은 거부다(L3.3). 고칠 곳은 역할이 가른다: Settings는 OWNER에게만 열린다.
+      panel = PANEL.configError; inner = false; quiet = true;
+      const r = p.baseFileMissing;
+      title = r.title; description = r.description(state.path, state.branch); footer = p.notStarted;
+      actions = role === "OWNER" ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.settings(slug)}>{p.settings}</a> : null;
+      body = <Stack><Alert variant="danger" title={p.wontHelp}>{role === "OWNER" ? r.owner : r.editor}</Alert></Stack>;
+      break;
+    }
     case "preview-error": {
       panel = PANEL.previewError;
       title = p.previewFailed; description = p.previewFailedDescription(repo.branch); footer = p.notStarted;
@@ -387,18 +407,42 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
     case "preview-ready": {
       const data = state.preview;
       const open = data.openPr;
-      title = p.previewTitle(data.total);
-      description = `${p.previewIntro(label)} ${p.previewCounts(data.total, data.keys)}`;
+      // ⚠️ **나가는 수로 말한다** (#84 — POSTMORTEM 2026-09-17). 보류(`withoutFile`·`withoutKey`)를 뺀 수가 결과의 `delivered`·Logs와 같은 모집단이다.
+      const { total: sending, keys: sendingKeys } = data.sendable;
+      const partial = sending < data.total;
+      if (sending === 0) {
+        // 전부 보류면 PR을 만들거나 바꿀 것이 없다 — 그 버튼을 두지 않고 이유를 말한다. 표의 보류 줄이 사유별로 선다.
+        title = p.nothingSendable.title; description = p.nothingSendable.body; footer = p.notStarted;
+        actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
+        body = <PreviewTable preview={data} />;
+        break;
+      }
+      /**
+       * ⚠️ **전부 base와 같으면 파일이 안 바뀐다** (B1 r3). 실행은 no-changes 경로이고, 열린 PR이 있으면 그 PR을 닫는다 — 미리보기가 그렇게 말하고
+       * 버튼도 그 일을 이름으로 든다. PR 유무를 모르면(`undefined`) 약속하지 않고 평소 문장으로 둔다. ⚠️ 셀 단위 근사다 — 실행은 파일 SHA로 판정한다.
+       */
+      const allSame = data.truncated === 0 && data.same === sending && open !== undefined;
+      if (allSame) {
+        title = open === null ? p.same.nothingTitle(repo.branch) : p.same.closesTitle(open.number);
+        description = open === null ? p.same.nothingBody : p.same.closesBody(open.number, repo.branch);
+        // ⚠️ **파일 수를 빼고 말한다** (#94) — `groups`는 편집이 사는 파일이지 바뀌는 파일이 아니다. 실행·Logs는 `0 files`다.
+        footer = p.fileSummary(sending, sendingKeys);
+        actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm()}>{open === null ? p.same.action : p.same.closeAction(open.number)}</Button>;
+        body = <PreviewTable preview={data} />;
+        break;
+      }
+      title = p.previewTitle(sending);
+      description = `${partial ? p.previewIntroPartial(label) : p.previewIntro(label)} ${p.previewCounts(sending, sendingKeys)}`;
       // ⚠️ **상한을 넘으면 파일 수를 빼고 말한다** — `total`·`keys`는 미발송 전체인데 `groups`는 실린 200행뿐이라, 셋을 나란히 두면 한 줄 안에서 모집단이 갈린다.
-      footer = data.truncated > 0 ? p.fileSummary(data.total, data.keys) : p.previewSummary(data.total, data.keys, data.groups.length);
+      footer = data.truncated > 0 ? p.fileSummary(sending, sendingKeys) : p.previewSummary(sending, sendingKeys, data.groups.length);
       actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm()}>{open ? p.replacePr(open.number) : p.openPr}</Button>;
       body = <>
         {/* ⚠️ **삼상태를 `null`로 접지 않는다** — "없다"와 "모른다"는 다른 줄이다. 줄은 조회 전에도 선다. */}
         {open === undefined
           ? <Notice icon={Info} title={p.prUnknown.title}>{p.prUnknown.body}</Notice>
           : open === null
-            ? <Notice icon={GitPullRequestArrow} title={p.prNone.title(label)}>{p.prNone.body(data.total)}</Notice>
-            : <Notice icon={GitPullRequestArrow} title={p.prOpen.title(open.number)}>{p.prOpen.body(open.number, data.total)}</Notice>}
+            ? <Notice icon={GitPullRequestArrow} title={p.prNone.title(label)}>{p.prNone.body(sending)}</Notice>
+            : <Notice icon={GitPullRequestArrow} title={p.prOpen.title(open.number)}>{p.prOpen.body(open.number, sending)}</Notice>}
         <PreviewTable preview={data} />
       </>;
       break;
@@ -413,7 +457,16 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       const outcome = state.outcome;
       const view = planPublishView(outcome);
       const at = result?.at ?? null;
-      const total = result?.total ?? count;
+      // ⚠️ **성공은 서버가 센 실린 수로 말한다** (delivery-invariants D7) — 미리보기 `total`은 보류를 안 뺀 미발송 전체라, 그 수로 말하면
+      // "3 changes are in a pull request" 아래 "1 wasn't sent"가 서는 모순이 된다.
+      const total = outcome.status === "committed" ? outcome.delivered : result?.total ?? count;
+      const withheld = planWithheldLines(outcome, role).map(line => <p key={line} className="text-muted-foreground text-xs">{line}</p>);
+      // no-changes 실행이 닫은 PR (B1 r3) — 조용히 닫힌 채 두지 않고 이유와 링크를 보인다. 보류가 섞여 Not sent 틀이어도 같은 줄이다.
+      const closed = outcome.status === "skipped" && outcome.reason === "no-changes" ? outcome.closedPr : undefined;
+      const closedLine = closed === undefined ? null : <p className="text-muted-foreground text-xs">
+        {`${p.closedPr.line(closed.number, repo.branch)} ${role === "OWNER" ? p.closedPr.owner : p.closedPr.editor}`}{" "}
+        <a href={closed.url} target="_blank" rel="noreferrer" className="text-blue-600">{p.closedPr.view(closed.number)}</a>
+      </p>;
       // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(DESIGN §6.646).
       const number = outcome.status === "committed"
         ? parseGithubPrUrl(outcome.prUrl, { repoOwner: repo.owner, repoName: repo.name })?.number ?? null
@@ -428,7 +481,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           title = p.created; description = p.createdDescription(total);
           footer = number === null ? null : p.prMeta(number, files);
           actions = viewPr;
-          body = <Stack><PrCard repo={label} number={number} note={p.openedJustNow} /><Hint>{p.accessNote}</Hint></Stack>;
+          body = <Stack><PrCard repo={label} number={number} note={p.openedJustNow} />{withheld}<Hint>{p.accessNote}</Hint></Stack>;
           break;
         case "updated":
           panel = PANEL.updated; inner = false;
@@ -437,6 +490,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           actions = viewPr;
           body = <Stack>
             <PrCard repo={label} number={number} note={p.holdsEverything} />
+            {withheld}
             <Replaced branch={repo.syncBranch} base={repo.branch} />
             {number !== null && <Hint>{p.tellReviewer(number)}</Hint>}
           </Stack>;
@@ -447,19 +501,28 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             교체 줄이 없다 — 있으면 "보냈다"로 읽힌다. 버린 값은 펼친 목록으로 선다(불변식 9). 새 모달 갈래를 늘리지 않고 이 틀을 쓴다.
           */
           panel = PANEL.partial;
-          title = p.notSent; description = p.notSentDescription;
+          // 보류로 여기 온 결과는 writer가 값을 버린 것이 아니다 — 설명이 갈린다(#83). no-changes + 보류는 다른 편집이 이미 리포와 같았다.
+          const reason = outcome.status === "skipped" ? outcome.reason : null;
+          title = p.notSent;
+          description = reason === "withheld" ? p.withheldDescription.withheld
+            : reason === "no-changes" ? (closed === undefined ? p.withheldDescription.noChanges : p.closedPr.description(repo.branch))
+            : p.notSentDescription;
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
           body = <Stack>
-            <Warnings warnings={outcome.status === "skipped" && outcome.reason === "writer-warnings" ? outcome.warnings : []} />
+            {outcome.status === "skipped" && outcome.reason === "writer-warnings" && <Warnings warnings={outcome.warnings} />}
+            {closedLine}
+            {withheld}
           </Stack>;
           break;
         }
         case "no-changes":
           panel = PANEL.noChanges; inner = false;
-          title = p.noChanges; description = p.noChangesDescription;
+          title = p.noChanges; description = closed === undefined ? p.noChangesDescription : p.closedPr.description(repo.branch);
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
           body = <Stack>
             <Notice icon={CircleCheck}>{p.noChangesBody(repo.branch)}</Notice>
+            {closedLine}
+            {withheld}
             <Hint icon={History}>{p.inLogs}</Hint>
           </Stack>;
           break;

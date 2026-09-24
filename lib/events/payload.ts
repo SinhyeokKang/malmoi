@@ -4,8 +4,8 @@
  * ⚠️ **잎이다 — import가 0이다.** 판정 모듈 셋(`view`·`filter`·`search`)이 전부 이것을 물고, 그중
  * 둘은 클라이언트가 값으로 읽는다 (`components/__tests__/client-graph.test.ts`).
  *
- * ⚠️ **`@/generated/prisma/client`를 값으로 import하지 않는다** — `lib/sync/view.ts`와 같은 근거로
- * enum을 **문자열 union으로 다시 적는다.** 스키마와 어긋나면 조회 함수의 반환 타입이 컴파일에서 걸린다.
+ * ⚠️ **`@/generated/prisma/client`를 값으로 import하지 않는다** — 이 모듈이 클라이언트 그래프에 닿으면 Prisma가
+ * 번들에 들어온다. 그래서 enum을 **문자열 union으로 다시 적는다.** 스키마와 어긋나면 조회 함수의 반환 타입이 컴파일에서 걸린다.
  */
 
 /** 사건의 종류 여섯. URL의 `?kind=`는 화면 낱말(`LOG_KINDS`)이고 이것은 저장 값이다. */
@@ -22,13 +22,15 @@ export const ACTOR_KINDS = ["USER", "AUTOMATION", "UNKNOWN"] as const;
 export type ActorKind = (typeof ACTOR_KINDS)[number];
 
 /**
- * 결과 어휘 아홉 (spec §6). **실행에만 붙는다** — 비실행 사건의 결과는 `null`이고, 화면은 그 칸을
+ * 결과 어휘 열 (spec §6 — `notSent`는 delivery-invariants D7이 더했다). **실행에만 붙는다** — 비실행 사건의 결과는 `null`이고, 화면은 그 칸을
  * 빈 채 폭만 유지한다. `N dropped`는 여기 없다: 그것은 결과와 **독립으로** 붙는 경고다(불변식 9).
  */
 export const EVENT_RESULTS = [
   "running",
   "sent",
   "nothingToSend",
+  /** Publish 전용 — 실린 편집 0 + 보류 > 0 (delivery-invariants D7). `SKIPPED`인데 `SyncRun.withheld > 0`인 행이다. */
+  "notSent",
   "imported",
   "deferred",
   "partial",

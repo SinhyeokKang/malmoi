@@ -6,6 +6,7 @@ import { SourcesScreen } from "@/components/sources/sources-screen";
 import type { AdapterChoice } from "@/lib/onboarding/types";
 vi.setConfig({ testTimeout: 20_000 });
 import { render } from "./helpers/dom";
+import { m } from "@/lib/i18n";
 const actions = vi.hoisted(() => ({ load: vi.fn(), runFirstIngest: vi.fn(), detectRepoFormats: vi.fn(), addSurfaces: vi.fn(), confirmManualFormat: vi.fn(), loadCandidateSample: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({ loadSourceDetail: actions.load, updateBaseLocale: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => actions);
@@ -25,7 +26,7 @@ it("재시도는 한 소스만 보내고 리프레시 뒤에도 카드 결과를
   actions.runFirstIngest.mockResolvedValue({ ok: true, count: 10, failed: 1, errors: [] });
   const { container, rerender } = await render(<Screen {...props} />);
   await act(async () => { await userEvent.setup().click(document.querySelector("[data-source-row]")!); });
-  await act(async () => { await userEvent.setup().click(find("Run first import")); });
+  await act(async () => { await userEvent.setup().click(find("Run first sync")); });
   expect(actions.runFirstIngest).toHaveBeenCalledWith({ slug: "acme", surfaceSlug: "web" });
   await rerender(<Screen {...props} sources={[{ ...source, lastCommitSha: "done" }]} />);
   expect(container.querySelector('[role="status"]')?.textContent).toContain("10");
@@ -35,12 +36,12 @@ it("설치가 없으면 재시도를 막는다", async () => {
   actions.load.mockResolvedValue({ ok: true, detail: { ...toSource(source), installed: false, languages: [] } });
   await render(<Screen {...props} installed={false} />);
   await act(async () => { await userEvent.setup().click(document.querySelector("[data-source-row]")!); });
-  expect(find("Run first import").disabled).toBe(true);
+  expect(find("Run first sync").disabled).toBe(true);
 });
 it("추가 실패에도 선택을 유지하고 기존 소스는 요청에서 제외한다", async () => {
   actions.addSurfaces.mockResolvedValue({ ok: false, error: "resource-limit" });
   await render(<Screen {...props} />);
-  await act(async () => { await userEvent.setup().click(find("Add source")); });
+  await act(async () => { await userEvent.setup().click(find("Add sources")); });
   const boxes = [...document.querySelectorAll<HTMLButtonElement>('[role="checkbox"]')];
   expect(boxes[0]?.disabled).toBe(true); expect(boxes[0]?.getAttribute("aria-checked")).toBe("true");
   await act(async () => { await userEvent.setup().click(boxes[1]!); });
@@ -55,7 +56,7 @@ it("추가 실패에도 선택을 유지하고 기존 소스는 요청에서 제
 it("새 소스의 SHA가 생겨도 YAML 수정 안내는 추가 결과와 함께 남는다", async () => {
   actions.addSurfaces.mockResolvedValue({ ok: true, results: [{ surfaceSlug: "app", pathTemplate: "app/{locale}.json", count: 5, failed: 0 }], yaml: "step" });
   const { container, rerender } = await render(<Screen {...props} />);
-  await act(async () => { await userEvent.setup().click(find("Add source")); });
+  await act(async () => { await userEvent.setup().click(find("Add sources")); });
   await act(async () => { await userEvent.setup().click(document.querySelectorAll('[role="checkbox"]')[1]!); });
   await act(async () => { await userEvent.setup().click(document.querySelector('[data-add-sources]')!); });
   await rerender(<Screen {...props} sources={[{ ...source, lastCommitSha: "done" }]} />);
@@ -68,7 +69,7 @@ it("수동 확정은 잠기지 않은 같은 경로의 자동 후보 어댑터�
   actions.addSurfaces.mockResolvedValue({ ok: false, error: "resource-limit" });
   await render(<Screen {...props} adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "app/{locale}.json" }, { adapter: "yaml-catalog", layout: "per-locale", label: "YAML", example: "app/{locale}.json" }]} />);
   const user = userEvent.setup();
-  await act(async () => { await user.click(find("Add source")); });
+  await act(async () => { await user.click(find("Add sources")); });
   await act(async () => { await user.click(find("Set the path yourself")); });
   await act(async () => { await user.click(document.querySelector('#manual-format')!); });
   await act(async () => { await user.click([...document.querySelectorAll('[role="option"]')].find(n => n.textContent === "YAML")!); });
@@ -83,11 +84,84 @@ it("추가 중에는 닫기와 모든 입력을 잠그고 완료 뒤 트리거�
   actions.addSurfaces.mockReturnValue(new Promise(r => { resolve = r; }));
   await render(<Screen {...props} />);
   const user = userEvent.setup();
-  await act(async () => { await user.click(find("Add source")); });
+  await act(async () => { await user.click(find("Add sources")); });
   await act(async () => { await user.click(document.querySelectorAll('[role="checkbox"]')[1]!); });
   await act(async () => { await user.click(document.querySelector('[data-add-sources]')!); });
   expect(document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]')?.disabled).toBe(true);
   for (const checkbox of document.querySelectorAll<HTMLButtonElement>('[role="checkbox"]')) expect(checkbox.disabled).toBe(true);
   await act(async () => { resolve({ ok: false, error: "resource-limit" }); });
   expect(document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]')?.disabled).toBe(false);
+});
+
+/** audit #23 — 수동 경로 확인의 실패는 **추가 실패가 아니다**. "Nothing was added. Your selection is still here." 아래 세우지 않는다. */
+it("수동 확인 실패는 추가 실패 문장 없이 그 사유만 말한다", async () => {
+  actions.confirmManualFormat.mockResolvedValue({ ok: false, error: "manual-no-match" });
+  await render(<Screen {...props} adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "app/{locale}.json" }]} />);
+  const user = userEvent.setup();
+  await act(async () => { await user.click(find("Add sources")); });
+  await act(async () => { await user.click(find("Set the path yourself")); });
+  await act(async () => { await user.type(document.querySelector('#manual-path')!, "app/{{locale}.json"); await user.type(document.querySelector('#manual-base')!, "en"); });
+  await act(async () => { await user.click(find(m.surfaces.confirm)); });
+  expect(document.body.textContent).toContain(m.errors.onboarding["manual-no-match"]);
+  expect(document.body.textContent).not.toContain(m.settings.sources.nothingAdded);
+});
+
+/**
+ * malmoi#80 — Add sources는 온보딩 ②의 `FilesStep`을 빌려 쓰는데, 빈 미리보기 설명이 **새 프로젝트 문장**
+ * ("…the project isn't created.")이었다. 프로젝트는 이미 있다 — 이 화면에서 안 되는 것은 소스 추가다.
+ * 짝: 새 프로젝트 화면은 그 문장을 그대로 쓴다(`new-project.test.tsx`).
+ */
+it("수동 지정의 빈 미리보기는 프로젝트 생성을 말하지 않는다 (#80)", async () => {
+  await render(<Screen {...props} adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "app/{locale}.json" }]} />);
+  const user = userEvent.setup();
+  await act(async () => { await user.click(find("Add sources")); });
+  await act(async () => { await user.click(find("Set the path yourself")); });
+  // 경로를 치기 시작해야 선택이 풀리고 우측이 빈 미리보기로 바뀐다(`clearsSelection`).
+  await act(async () => { await user.type(document.querySelector('#manual-path')!, "nope"); });
+  expect(document.body.textContent).toContain(m.newProject.files.preview.none);
+  expect(document.body.textContent).not.toContain("the project isn't created");
+  expect(document.body.textContent).toContain(m.settings.sources.previewNone);
+});
+
+/**
+ * malmoi#92 — 빈 미리보기로 바뀌어도 **이전 후보의 총량 줄**("N more keys")이 남았다. 그 줄은 더 이상 안 보이는 행을
+ * 말한다. 짝: 후보를 미리보는 동안에는 선다.
+ */
+it("수동 지정의 빈 미리보기에는 이전 후보의 총량 줄이 없다 (#92)", async () => {
+  actions.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate("app"), samples: [{ locale: "en", rows: [{ key: "x", value: "X" }], total: 20 }] }] });
+  await render(<Screen {...props} adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "app/{locale}.json" }]} />);
+  const user = userEvent.setup();
+  await act(async () => { await user.click(find("Add sources")); });
+  expect(document.body.textContent).toContain(m.newProject.files.preview.more(19));
+  await act(async () => { await user.click(find("Set the path yourself")); });
+  await act(async () => { await user.type(document.querySelector('#manual-path')!, "nope"); });
+  expect(document.body.textContent).toContain(m.newProject.files.preview.none);
+  expect(document.body.textContent).not.toContain(m.newProject.files.preview.more(19));
+});
+
+/** malmoi#80 부수 관찰 — 경로를 고치면 옛 확인 실패가 새 입력 옆에 남지 않는다. 짝: 고치기 전에는 선다. */
+it("경로를 고치면 이전 수동 확인 실패를 지운다 (#80)", async () => {
+  actions.confirmManualFormat.mockResolvedValue({ ok: false, error: "manual-no-match" });
+  await render(<Screen {...props} adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "app/{locale}.json" }]} />);
+  const user = userEvent.setup();
+  await act(async () => { await user.click(find("Add sources")); });
+  await act(async () => { await user.click(find("Set the path yourself")); });
+  await act(async () => { await user.type(document.querySelector('#manual-path')!, "app/{{locale}.json"); await user.type(document.querySelector('#manual-base')!, "en"); });
+  await act(async () => { await user.click(find(m.surfaces.confirm)); });
+  expect(document.body.textContent).toContain(m.errors.onboarding["manual-no-match"]);
+  await act(async () => { await user.clear(document.querySelector('#manual-path')!); });
+  expect(document.body.textContent).not.toContain(m.errors.onboarding["manual-no-match"]);
+});
+
+/** audit #31 — 첫 가져오기가 도는 동안 상세 푸터가 "Saving…"이라고 말하지 않는다 — 저장한 것이 없다. */
+it("첫 Sync 중 상세 푸터는 저장 중이 아니라 Sync 중이다", async () => {
+  let finish: (value: unknown) => void = () => {};
+  actions.runFirstIngest.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  await render(<Screen {...props} />);
+  await act(async () => { await userEvent.setup().click(document.querySelector("[data-source-row]")!); });
+  await act(async () => { await userEvent.setup().click(find("Run first sync")); });
+  const footer = document.getElementById("source-open-reason")?.textContent ?? "";
+  expect(footer).toBe(m.settings.sources.importing);
+  expect(footer).not.toBe(m.locales.field.saving);
+  await act(async () => { finish({ ok: true, count: 1, failed: 0, errors: [] }); });
 });

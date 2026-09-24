@@ -152,6 +152,7 @@ export const ADAPTER_ERROR_CODES = [
   "shorthand-property",
   "not-property-assignment",
   "duplicate-key",
+  "duplicate-property",
   // ── write ──
   "key-shadowed",
   "write-parse-failed",
@@ -166,6 +167,38 @@ export const ADAPTER_ERROR_CODES = [
 ] as const;
 
 export type AdapterErrorCode = (typeof ADAPTER_ERROR_CODES)[number];
+
+/**
+ * **적재 판정의 두 갈래** (B2 r3, 2026-09-24 — ARCHITECTURE §1 "read 오류의 두 갈래"). `unmanaged`는 malmoi가 일부러
+ * 관리하지 않는 항목이고 **surgical writer가 파일에 그대로 남긴다** — 번역을 잃지 않으므로 `partial-import`가 아니다.
+ * 판정 질문은 "다음 Publish에서 그 값이 살아남는가"다. regenerate writer가 지우는 값(json 숫자·chrome 엔트리)은 실패다.
+ *
+ * ⚠️ `Record`라 **코드를 늘리면 여기서 컴파일 에러가 난다** — 새 코드가 조용히 어느 한쪽으로 떨어지지 않는다.
+ */
+const ERROR_KIND = {
+  "parse-failed": "failure", "parse-crashed": "failure", "root-not-object": "failure", "no-default-export": "failure",
+  "invalid-chrome-key": "failure", "missing-message-field": "failure", "value-not-message-object": "failure",
+  // yaml-catalog(surgical)만 낸다 — 숫자·불린 스칼라가 파일에 남는다.
+  "value-not-string": "unmanaged",
+  // json-catalog(regenerate)만 낸다 — DB에 없는 값이라 다음 Publish가 지운다.
+  "value-not-string-or-container": "failure",
+  // ts-dict·code-dict(surgical) — 코드의 식·참조·spread는 번역 대상이 아니고 파일에 남는다.
+  "value-not-string-literal": "unmanaged", "shorthand-property": "unmanaged", "not-property-assignment": "unmanaged",
+  "duplicate-key": "failure",
+  // code-dict·ts-dict — 코드 객체의 같은 키. JS 의미대로 마지막이 적재되고 write도 그 자리를 고친다(B7a r1, 2026-09-24 사용자 결정):
+  // 잃는 번역이 없으므로 **대상 리포 CI를 red로 만들지 않는다**(docs/ACTIONS.md §3). 실패로도 unmanaged로도 세지 않는다.
+  "duplicate-property": "warning",
+  "key-shadowed": "failure", "write-parse-failed": "failure", "write-no-default-export": "failure", "write-locale-object-missing": "failure",
+  "write-slot-not-string-literal": "failure", "write-slot-not-scalar": "failure", "write-slot-missing": "failure", "original-file-missing": "failure",
+  "download-failed": "failure",
+} as const satisfies Record<AdapterErrorCode, AdapterErrorKind>;
+
+/** `warning`은 알리기만 한다 — 적재도 CI도 막지 않고 어느 수에도 세지 않는다(`duplicate-property` 하나). */
+export type AdapterErrorKind = "failure" | "unmanaged" | "warning";
+
+export function adapterErrorKind(code: AdapterErrorCode): AdapterErrorKind {
+  return ERROR_KIND[code];
+}
 
 /**
  * `path:line`이 아니라 `path`만 든다 — JSON 파서가 줄 번호를 주지 않는다.

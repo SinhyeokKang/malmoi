@@ -14,7 +14,7 @@ import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
-import { logCaught } from "@/lib/failure";
+import { describeFailure, logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { routes } from "@/lib/routes";
 import { revalidatePath } from "next/cache";
@@ -66,13 +66,13 @@ export async function updateProfileName(raw: string): Promise<NameResult> {
   try {
     validatePiiWriteKey();
     await getPrisma().user.update({ where: { id: userId }, data: encodeUserFields(userId, { name: plan.name }) });
-  } catch {
-    // 사유에 이름을 싣지 않는다 — 로그가 PII를 나르면 봉투가 무의미해진다.
-    console.error("Profile name update failed.", { userId });
+  } catch (error) {
+    // 사유에 이름을 싣지 않는다 — 로그가 PII를 나르면 봉투가 무의미해진다. `cause`는 분류 한 낱말이다.
+    console.error("Profile name update failed.", { userId, cause: describeFailure(error) });
     return { ok: false, reason: "unavailable" };
   }
   // 셸 아바타·사용자 메뉴가 같은 값을 읽는다 — 경로를 나열하면 다음 소비자가 조용히 빠진다.
-  revalidateAfterCommit("name", userId);
+  revalidateAfterCommit("name");
   return { ok: true, name: plan.name };
 }
 
@@ -80,7 +80,7 @@ async function cleanImage(url: string | null, userId: string): Promise<void> {
   const key = planImageDelete(url);
   if (key === null || !key.startsWith(`avatars/${userId}/`)) return;
   try { await deleteImage(key); }
-  catch { console.warn("Profile image cleanup failed; an orphan may remain.", { userId }); }
+  catch (error) { console.warn("Profile image cleanup failed; an orphan may remain.", { userId, cause: describeFailure(error) }); }
 }
 
 export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
@@ -112,14 +112,14 @@ export async function uploadProfileImage(form: FormData): Promise<ImageResult> {
       await tx.user.update({ where: { id: userId }, data: image });
       return prev;
     });
-  } catch {
-    console.error("Profile image upload failed.", { stage, userId });
+  } catch (error) {
+    console.error("Profile image upload failed.", { stage, userId, cause: describeFailure(error) });
     await cleanImage(uploaded, userId);
     return { ok: false, reason: "unavailable" };
   }
   // 이전 이미지는 커밋 뒤에만 지운다 — 롤백되면 그 URL이 계속 쓰여야 한다.
   await cleanImage(previous, userId);
-  revalidateAfterCommit("image-upload", userId);
+  revalidateAfterCommit("image-upload");
   return { ok: true };
 }
 
@@ -137,12 +137,12 @@ export async function deleteProfileImage(): Promise<ImageResult> {
       await tx.user.update({ where: { id: userId }, data: encodeUserFields(userId, { image: null }) });
       return prev;
     });
-  } catch {
-    console.error("Profile image deletion failed.", { stage, userId });
+  } catch (error) {
+    console.error("Profile image deletion failed.", { stage, userId, cause: describeFailure(error) });
     return { ok: false, reason: "unavailable" };
   }
   await cleanImage(previous, userId);
-  revalidateAfterCommit("image-delete", userId);
+  revalidateAfterCommit("image-delete");
   return { ok: true };
 }
 
@@ -212,7 +212,7 @@ export async function unlinkLoginMethod(provider: string): Promise<void> {
     outcome = "unavailable";
   }
   // 셸의 사용자 메뉴까지 바뀔 수 있다 — 경로를 나열하면 다음에 생기는 소비자가 조용히 빠진다.
-  revalidateAfterCommit("unlink", userId);
+  revalidateAfterCommit("unlink");
   // Next의 redirect는 던진다 — 실패 처리 밖에 둔다.
   redirect(routes.account({ link: outcome }));
 }
@@ -259,14 +259,14 @@ export async function startLoginMethodConnect(provider: string): Promise<void> {
         }
       }
     }
-  } catch {
-    console.error("Account connect start failed.", { stage });
+  } catch (error) {
+    console.error("Account connect start failed.", { stage, cause: describeFailure(error) });
     destination = routes.account({ connect: "failed" });
   }
   // signIn은 DB challenge보다 먼저 state를 쓴다. 실패한 시작이 나중 callback을 가로채면 안 된다.
   if (oauthStarted && !ready) {
-    try { await clearAuthRoundtripCookies(); } catch {
-      console.error("Account connect start failed.", { stage: "cleanup" });
+    try { await clearAuthRoundtripCookies(); } catch (error) {
+      console.error("Account connect start failed.", { stage: "cleanup", cause: describeFailure(error) });
       destination = routes.account({ connect: "failed" });
     }
   }

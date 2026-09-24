@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
-import { useId, useTransition } from "react";
+import { useId, useRef, useTransition } from "react";
 
 import { unlinkLoginMethod, startLoginMethodConnect } from "@/app/(edit)/account/actions";
 import { PanelCard, PanelRow, PanelRows } from "@/components/ui/panel-card";
@@ -10,6 +10,7 @@ import { Alert } from "@/components/ui/alert";
 import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { useLandAfter } from "@/components/ui/focus";
 import { m } from "@/lib/i18n";
 import { Badge } from "@/components/ui/badge";
 import { canUnlink, methodCounts, type LoginProvider } from "@/lib/login-link/policy";
@@ -72,6 +73,13 @@ function MethodRow({ row, removable }: { row: { provider: LoginProvider; connect
    * `disabled`를 만들지 않는다"(POSTMORTEM 2026-09-06)가 그 사용자에게만 안 지켜진다.
    */
   const reasonId = useId();
+  /**
+   * ⚠️ **해제가 끝나면 이 행의 새 컨트롤로 착지한다** (audit #32) — `unlinkLoginMethod`의 `redirect`가 같은 화면으로 돌아와
+   * 행이 [Connect]로(마지막 수단이 된 다른 행은 꺼진 [Disconnect]로) 바뀌고, 누른 트리거가 언마운트되어 포커스가 `body`로
+   * 빠졌다. 행 자체(`key={provider}`)는 남으므로 여기서 잰다. ⚠️ 래퍼가 `contents`라 행의 flex 배치는 그대로다.
+   */
+  const controls = useRef<HTMLDivElement>(null);
+  useLandAfter(pending, () => controls.current?.querySelector<HTMLElement>("button"));
   return (
     <PanelRow
       // 브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를 그대로 받는다 (DESIGN §6.4).
@@ -88,6 +96,7 @@ function MethodRow({ row, removable }: { row: { provider: LoginProvider; connect
        */
       status={row.connected ? m.link.methods.connected : m.link.methods.notConnected}
     >
+      <div ref={controls} className="contents">
       {!row.connected ? (
         <form action={startLoginMethodConnect.bind(null, row.provider)}>
           <ConnectButton label={label} />
@@ -102,10 +111,13 @@ function MethodRow({ row, removable }: { row: { provider: LoginProvider; connect
         <>
           {/* ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */}
           <span id={reasonId} className="text-muted-foreground text-xs">{m.link.methods.lastMethod}</span>
-          {/* ⚠️ **비활성도 접근성 트리에는 남는다** — 이름이 없으면 무엇의 해제인지 말하지 않는다. */}
-          <Button variant="default" aria-label={m.link.methods.disconnectLabel(label)} aria-describedby={reasonId} disabled={true}>{m.link.methods.disconnect}</Button>
+          {/* ⚠️ **비활성도 접근성 트리에는 남는다** — 이름이 없으면 무엇의 해제인지 말하지 않는다.
+              ⚠️ **`disabled`가 아니라 `aria-disabled`다** (audit #37) — 진짜 `disabled`는 포커스를 못 받아 describedby가
+              닿을 길이 없었다(DESIGN §6.65). 클릭은 여기서 막는다 — Dialog를 아예 세우지 않는 갈래다. */}
+          <Button variant="danger" aria-label={m.link.methods.disconnectLabel(label)} aria-describedby={reasonId} aria-disabled onClick={event => event.preventDefault()}>{m.link.methods.disconnect}</Button>
         </>
       )}
+      </div>
     </PanelRow>
   );
 }
@@ -137,7 +149,8 @@ function DisconnectButton({ label, pending, onConfirm }: { label: string; pendin
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="default" aria-label={m.link.methods.disconnectLabel(label)} loading={pending}>
+        {/* ⚠️ `loading`이 아니라 `busy`다 (audit #32) — 확정하면 Dialog가 이 트리거로 포커스를 돌려준다. */}
+        <Button variant="danger" aria-label={m.link.methods.disconnectLabel(label)} busy={pending}>
           {m.link.methods.disconnect}
         </Button>
       </DialogTrigger>

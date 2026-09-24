@@ -120,11 +120,12 @@ const INVITE_ERRORS: readonly InviteError[] = [
   "already-accepted",
   "email-mismatch",
   "already-member",
+  "archived",
 ];
 
-describe("inviteErrorMessage — 여섯 사유가 각자 다른 문구다", () => {
-  it("여섯이 서로 다른 문장을 낸다", () => {
-    expect(new Set(INVITE_ERRORS.map(inviteErrorMessage)).size).toBe(6);
+describe("inviteErrorMessage — 일곱 사유가 각자 다른 문구다", () => {
+  it("일곱이 서로 다른 문장을 낸다", () => {
+    expect(new Set(INVITE_ERRORS.map(inviteErrorMessage)).size).toBe(7);
   });
 
   it("빈 문구를 내지 않는다", () => {

@@ -47,7 +47,19 @@ export type JsonStyle = {
    * (launch-readiness L4.5 — yaml·code-dict는 이미 보존했다). 문자열 안의 개행은 `\n` 이스케이프라 치환이 값에 닿지 않는다.
    */
   eol: "\n" | "\r\n";
+  /**
+   * 원본이 UTF-8 BOM(`U+FEFF`)으로 시작했는가 (audit #57). Windows 편집기·번역 도구 내보내기가 붙인다. **표현이다** —
+   * 떼면 값 편집 0건에 첫 줄이 바뀌고, 없던 것을 붙이면 반대다. 읽기는 `stripBom`으로 벗긴다(`JSON.parse`가 던진다).
+   */
+  bom: boolean;
 };
+
+const BOM = "\uFEFF";
+
+/** 선행 BOM 하나를 벗긴다. `JSON.parse`는 `U+FEFF`를 공백으로 보지 않는다 — 읽는 자리는 전부 이걸 지난다. */
+export function stripBom(text: string): string {
+  return text.startsWith(BOM) ? text.slice(BOM.length) : text;
+}
 
 const NO_COMPACT: ReadonlySet<string> = new Set<string>();
 
@@ -58,6 +70,7 @@ export const DEFAULT_JSON_STYLE: JsonStyle = {
   escapeSlash: false,
   compactPaths: NO_COMPACT,
   eol: "\n",
+  bom: false,
 };
 
 /** 세그먼트 배열 → `compactPaths`의 키. 루트는 `[]`다. */
@@ -85,8 +98,10 @@ export function indentOf(text: string): IndentStyle {
 }
 
 /** 원본 텍스트 → 스타일. **던지지 않는다** — 관측 불가면 DEFAULT다. */
-export function observeJsonStyle(text: string | undefined): JsonStyle {
-  if (text === undefined || text === "") return DEFAULT_JSON_STYLE;
+export function observeJsonStyle(original: string | undefined): JsonStyle {
+  if (original === undefined || original === "") return DEFAULT_JSON_STYLE;
+  const bom = original.startsWith(BOM);
+  const text = stripBom(original);
   const scan = scanJson(text);
   const indent =
     scan.indent.char === "none"
@@ -97,13 +112,14 @@ export function observeJsonStyle(text: string | undefined): JsonStyle {
   // 줄바꿈도 스캐너와 무관하게 센다 — 우세한 쪽이다(섞인 파일은 다수결).
   const crlf = text.split("\r\n").length - 1;
   const eol = crlf > 0 && crlf >= text.split("\n").length - 1 - crlf ? "\r\n" : "\n";
-  if (scan.failed) return { indent, escapeNonAscii: false, escapeSlash: false, compactPaths: NO_COMPACT, eol };
+  if (scan.failed) return { indent, escapeNonAscii: false, escapeSlash: false, compactPaths: NO_COMPACT, eol, bom };
   return {
     indent,
     escapeNonAscii: scan.escapeNonAscii,
     escapeSlash: scan.escapeSlash,
     compactPaths: scan.compactPaths,
     eol,
+    bom,
   };
 }
 
@@ -117,11 +133,13 @@ export function observeJsonStyle(text: string | undefined): JsonStyle {
  * 쓰인다 — `replacer`·`space`로는 컨테이너마다 다른 펼침과 비ASCII 이스케이프를 낼 수 없다.
  */
 export function serializeJson(value: unknown, style: JsonStyle = DEFAULT_JSON_STYLE): string {
-  const lf = !style.escapeNonAscii && !style.escapeSlash && style.compactPaths.size === 0
+  // ⚠️ **`space` 문자열은 10자에서 잘린다**(명세) — 12칸 원본이 10칸으로 나가 모든 줄이 바뀌었다(audit #83).
+  const lf = !style.escapeNonAscii && !style.escapeSlash && style.compactPaths.size === 0 && style.indent.length <= 10
     ? `${JSON.stringify(value, null, style.indent)}\n`
     : `${render(value, style, [], "")}\n`;
   // 직렬화 결과의 개행은 전부 구조의 것이다 — 문자열 값의 개행은 `\n` 이스케이프로 나간다.
-  return style.eol === "\n" ? lf : lf.replaceAll("\n", style.eol);
+  const text = style.eol === "\n" ? lf : lf.replaceAll("\n", style.eol);
+  return style.bom ? BOM + text : text;
 }
 
 /** 코드 유닛 하나를 `\uXXXX`로. 소문자 4자리 — 원본 관례이자 `charCodeAt` 기본형이다. */
@@ -203,7 +221,7 @@ export type JsonScan = {
   indent: IndentStyle;
   /** 한 줄에 담긴 **비어 있지 않은** 컨테이너의 경로. 루트는 담지 않는다. */
   compactPaths: Set<string>;
-  /** 문자열 리터럴 **안에서** 코드포인트 > `0x7f`인 `\uXXXX`를 봤는가. */
+  /** 문자열 리터럴 **안에서** 값이 `0x7f`를 넘는 `\uXXXX`(UTF-16 코드 유닛)를 봤는가. */
   escapeNonAscii: boolean;
   /** 문자열 리터럴 **안에서** `\/`를 봤는가 — 선택적 이스케이프다. */
   escapeSlash: boolean;

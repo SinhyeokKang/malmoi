@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { syncBranchFor } from "@/lib/pull/trigger";
+import { syncBranchFor } from "@/lib/pull/sync-branch";
 
 import { HomeActions, HomeHeaderActions, HomeNotices, HomeTitle } from "@/components/home/actions";
 import { AttentionCard } from "@/components/home/attention-card";
@@ -23,6 +23,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems } from "@/lib/home/attention";
 import { countCards } from "@/lib/home/cards";
 import { metaRows } from "@/lib/home/meta";
+import { lastSyncTime } from "@/lib/home/sync-time";
 import { planHomeState } from "@/lib/home/state";
 import {
   loadActors, loadProjectListAggregates, loadReviewAttention,
@@ -100,7 +101,7 @@ export default async function ProjectHomePage({
         where: { archivedAt: null },
         orderBy: { slug: "asc" },
         select: {
-          id: true, slug: true, archivedAt: true, lastCommitSha: true, lastCommitAt: true,
+          id: true, slug: true, archivedAt: true, lastCommitSha: true, lastCommitAt: true, lastImportedAt: true,
           lastImportError: true, lastImportStartedAt: true, lastImportFailedAt: true,
           locales: { select: { code: true, name: true, isBase: true, orphaned: true, createdAt: true } },
         },
@@ -115,7 +116,8 @@ export default async function ProjectHomePage({
    * 첫 적재 전에는 볼 것이 없다. **정책과 문구는 `ProjectNotReady`가 든다** — 번역 화면도 같은
    * 갈래를 만나고, 이 화면이 착지점이라 그것을 **먼저** 만나는 자리가 여기다.
    */
-  if (planProjectReadiness(project) !== "ready") return <ProjectNotReady slug={slug} role={role} />;
+  const readiness = planProjectReadiness(project);
+  if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} />;
 
   // 기준 시각을 서버에서 한 번 만든다 — 항목마다 부르면 상대 시각의 기준이 갈린다.
   const now = new Date();
@@ -183,10 +185,8 @@ export default async function ProjectHomePage({
   }));
   const state = planHomeState({ archived, connection: health, surfaces, counts });
 
-  const lastSyncAt = surfaces
-    .map((s) => s.lastCommitAt)
-    .filter((at): at is Date => at !== null)
-    .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+  // ⚠️ **커밋 시각이 아니라 적재 시각이다** (malmoi#81) — `lastSyncTime`이 그 판정과 "기록 없음" 갈래를 든다.
+  const lastSyncAt = lastSyncTime(surfaces);
 
   const keys = [...aggregates.keyTotals.values()].reduce((sum, n) => sum + n, 0);
   const bySurface = new Map(surfaces.map((s) => [s.id, s]));
@@ -194,7 +194,7 @@ export default async function ProjectHomePage({
   /**
    * 한 번도 안 채워진 로케일 — 그 로케일에 **값이 있는 셀이 하나도 없는** 경우다.
    *
-   * ⚠️ **`activeLocaleProgress`에 먹이지 않는다** (code-review 2026-09-15 🟡1). 그 함수는 셀을 행으로
+   * ⚠️ **`localeProgress`에 먹이지 않는다** (code-review 2026-09-15 🟡1). 그 함수는 셀을 행으로
    * 받는데 여기 있는 것은 그룹 카운트라, 먹이려면 `count`만큼 객체를 만들어야 한다 — 903키 × 59로케일
    * 리포에서 5만 개다. 답할 질문이 "합이 0인가" 하나라 카운트에서 바로 센다.
    *
@@ -281,12 +281,13 @@ export default async function ProjectHomePage({
         state={state}
         role={role}
         branch={project.baseBranch}
-        /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 octokit·ts-morph를 물어 클라이언트가 물면 안 된다. */
+        /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
         repo={{ owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) }}
         unsent={counts.toSend}
         failedSurface={failed?.slug ?? null}
         reason={failed?.importError ?? null}
-        lastSyncAt={lastSyncAt}
+        /* 시각 없는 성공은 "이 Sync 전의 값"으로 말한다 — 지어낸 시각을 배너에 넣지 않는다 (malmoi#81). */
+        lastSyncAt={lastSyncAt === "unrecorded" ? null : lastSyncAt}
         now={now}
       />
 
@@ -309,7 +310,7 @@ export default async function ProjectHomePage({
             slug={slug}
             now={now}
           />
-          <AttentionCard items={items} slug={slug} state={state} now={now} />
+          <AttentionCard items={items} slug={slug} role={role} state={state} now={now} />
           <LogsCard rows={events.rows} slug={slug} now={now} archived={archived} syncedBefore={lastSyncAt !== null} />
         </div>
 

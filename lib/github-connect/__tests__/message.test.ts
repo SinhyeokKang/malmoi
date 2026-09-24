@@ -98,9 +98,17 @@ describe("connectErrorMessage — 재시도가 유효한 사유만 그렇게 말
 
   it("고정된 거부는 사용자가 할 수 있는 일을 말한다 — 막힌 이유만 알려주면 갇힌다", () => {
     // `taken-by-other`는 연결 해제(DESIGN §6.67)가, 나머지 둘은 GitHub 쪽 권한이 답이다.
-    expect(connectErrorMessage("taken-by-other").length).toBeGreaterThan(10);
-    expect(connectErrorMessage("installation-forbidden").length).toBeGreaterThan(10);
-    expect(connectErrorMessage("repo-forbidden").length).toBeGreaterThan(10);
+    // ⚠️ 길이로 재지 않는다 (audit #90) — 폴백 문구도 10자를 넘어서 매핑이 통째로 빠져도 green이었다.
+    const fallback = m.errors.connect.fallback;
+    expect(connectErrorMessage("taken-by-other")).toBe(m.errors.connect["taken-by-other"]);
+    expect(connectErrorMessage("taken-by-other")).toMatch(/disconnect/i);
+    for (const error of ["installation-forbidden", "repo-forbidden"] as const) {
+      expect(connectErrorMessage(error)).toBe(m.errors.connect[error]);
+      expect(connectErrorMessage(error)).toMatch(/ask the repository owner/i);
+    }
+    for (const error of ["taken-by-other", "installation-forbidden", "repo-forbidden"] as const) {
+      expect(connectErrorMessage(error)).not.toBe(fallback);
+    }
   });
 });
 

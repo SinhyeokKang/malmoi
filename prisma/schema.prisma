@@ -264,7 +264,9 @@ model KeyRef {
 
 /// 번역 값. **push가 리포 값으로 덮는다** (strict — `INSERT … ON CONFLICT DO UPDATE`, ARCHITECTURE §5.5.2).
 /// push 사이에는 DB가 진실이고 pull이 리포로 되돌린다 — 어느 시점에도 두 쪽을 병합하지 않는다.
-/// 쓰기 주체는 둘뿐이다: 편집 UI의 `saveTranslation`과 push (ARCHITECTURE §5.5.2).
+/// **값**을 쓰는 주체는 셋이다: 편집 UI의 키 저장(`applyKeySave` — `saveTranslationKey`), push(`applyPushInTransaction`),
+/// OWNER의 Revert to last sent(`executeKeyRevert`, ARCHITECTURE §5.8). 나머지는 `pendingEditToken`만 만진다 —
+/// 전달 확인(`lib/pull/load.ts`)·승인 orphan 해제(`lib/import/run.ts`)·backfill(`lib/protection/backfill.ts`).
 model Translation {
   id String @id @default(cuid())
 
@@ -398,6 +400,9 @@ model SyncRun {
   changed  Int?
   /// writer가 **버린** 항목 수. skipped에도 센다 (SAAS 불변식 9).
   warnings Int     @default(0)
+  /// 이번 PR에 **못 실은** 미전달 편집 수 (delivery-invariants D3·D7). 버린 것이 아니다 — 토큰이 남아 다음 Publish를 기다린다.
+  /// 결과 모달과 Logs가 같은 수를 말하는 자리다. ⚠️ Publish 사건 payload에 복제하지 않는다(logs-rework 결정 1 — 조회가 이 행을 조인한다).
+  withheld Int     @default(0)
 
   /// Restrict — `Project`의 기존 관계 전부와 같은 근거다. Cascade면 프로젝트 삭제가 이력을 조용히 날린다.
   project   Project @relation(fields: [projectId], references: [id], onDelete: Restrict)

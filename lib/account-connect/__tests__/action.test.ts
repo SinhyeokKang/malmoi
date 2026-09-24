@@ -62,5 +62,6 @@ it("failed OAuth initiation records only the fixed stage", async () => {
   const log = vi.spyOn(console, "error").mockImplementation(() => {});
   s.signIn.mockRejectedValue(new Error("provider secret"));
   await expect(startLoginMethodConnect("google")).rejects.toThrow("REDIRECT:/account?connect=failed");
-  expect(log).toHaveBeenCalledExactlyOnceWith("Account connect start failed.", { stage: "oauth" });
+  expect(log).toHaveBeenCalledExactlyOnceWith("Account connect start failed.", { stage: "oauth", cause: "Error" });
+  expect(JSON.stringify(log.mock.calls)).not.toContain("provider secret");
 });

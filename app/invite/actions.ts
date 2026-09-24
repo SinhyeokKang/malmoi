@@ -64,9 +64,15 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
 
     const project = await prisma.project.findUnique({
       where: { id: invitation.projectId },
-      select: { slug: true },
+      select: { slug: true, archivedAt: true },
     });
     if (project === null) return { ok: false, error: "not-found" };
+    /**
+     * ⚠️ **보관 = 멈춤** (audit #79, B2 #26) — 보관된 프로젝트에는 멤버가 새로 들지 않는다. 초대는 **소비하지 않는다**:
+     * 복원 뒤 만료 전이면 같은 링크가 산다. 보관과의 경합은 잠그지 않는다 — 진 쪽의 결과가 "보관 직전에 든 멤버"이고
+     * 그 멤버도 보관 중에는 접근이 막힌다(`planProjectAccess`의 `archived` 갈래).
+     */
+    if (project.archivedAt !== null) return { ok: false, error: "archived" };
 
     // ⚠️ **이미 멤버인지 먼저 본다.** `createInvitations`이 그 조합을 막지만 **막혀 있다는 것이 코드가
     // 아니라 추론에 있으면** 다음 변경에서 열린다 — 그때 `projectMember.create`가 unique 위반으로

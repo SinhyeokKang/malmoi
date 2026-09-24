@@ -206,9 +206,13 @@ describe("issueInvitations — 하나라도 거부면 전체 쓰기 0건", () =>
   it("중간 DB 실패는 전체 롤백이다 — 앞 대상의 회전·생성도 남지 않는다", async () => {
     await seedInvitation({ id: "pending-a", email: "a@x.com" });
     const before = await prisma.projectInvitation.findUniqueOrThrow({ where: { id: "pending-a" } });
-    // 없는 사용자는 `invitedBy`·사건 행위자 FK에서 실패한다.
+    // 둘째 대상의 사건 INSERT에서 실패시킨다. 전에는 없는 사용자(FK 실패)로 만들었는데, 이제 잠금 뒤 인가가 그보다 먼저 막는다.
+    await pool.query(`CREATE FUNCTION fail_second_invite() RETURNS trigger AS $$ BEGIN
+      IF EXISTS (SELECT 1 FROM "ProjectEvent" WHERE "projectId" = NEW."projectId" AND "subtype" = 'member.invited') THEN RAISE EXCEPTION 'injected'; END IF;
+      RETURN NEW; END $$ LANGUAGE plpgsql`);
+    await pool.query(`CREATE TRIGGER fail_second_invite BEFORE INSERT ON "ProjectEvent" FOR EACH ROW EXECUTE FUNCTION fail_second_invite()`);
     await expect(
-      issueInvitations(prisma, { projectId: "p", userId: "ghost", recipients: [{ email: "a@x.com", role: "EDITOR" }, { email: "b@x.com", role: "EDITOR" }] }),
+      issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }, { email: "b@x.com", role: "EDITOR" }] }),
     ).rejects.toThrow();
     expect(await invitations()).toHaveLength(1);
     expect((await prisma.projectInvitation.findUniqueOrThrow({ where: { id: "pending-a" } })).expiresAt).toEqual(before.expiresAt);

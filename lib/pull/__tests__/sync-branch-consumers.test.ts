@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
  * action의 "열린 PR 경고"는 `--head malmoi-i18n/sync`를 조회해 항상 "없음"을 찍었다 — 편집 손실 창의 유일한 신호가
  * 죽었고 `trigger.test.ts`는 생성 함수만 봐서 못 잡았다 (Codex 감사 2026-09-06 #8). 스모크도 옛 ref를 읽었다.
  *
- * 이름을 만드는 코드는 하나(`lib/pull/trigger.ts`)고, 그것을 쓸 수 없는 곳(YAML)은 **같은 접두 + input**으로
+ * 이름을 만드는 코드는 하나(`lib/pull/sync-branch.ts`)고, 그것을 쓸 수 없는 곳(YAML)은 **같은 접두 + input**으로
  * 조립한다. 여기서 셋을 텍스트로 대조한다.
  */
 

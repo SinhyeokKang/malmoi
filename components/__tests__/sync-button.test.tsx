@@ -10,7 +10,7 @@ import { render } from "./helpers/dom";
 const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), refresh: vi.fn(), prepare: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
-const success: RepositoryImportOutcome = { ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "imported", count: 0, failed: 0, reason: null, errors: [] }] };
+const success: RepositoryImportOutcome = { ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "imported", count: 0, failed: 0, unmanaged: 0, reason: null, errors: [] }] };
 const props = { slug: "acme", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 0, onResult: vi.fn() };
 function SyncButton(props: Omit<React.ComponentProps<typeof Control>, "open" | "onOpenChange">) {
   const [open, setOpen] = useState(false);
@@ -49,7 +49,7 @@ it("조용한 갈래는 제목과 설명문뿐이고 포커스가 Cancel에 선�
   await click("Sync");
   await vi.waitFor(() => expect(document.activeElement).toBe(button("Cancel")));
   expect(dialog()?.textContent).toContain("Sync malmoi web from the repository?");
-  expect(dialog()?.textContent).toContain("locale files on main");
+  expect(dialog()?.textContent).toContain("translation files on main");
   expect(dialog()?.querySelector('[aria-live="polite"]')).toBeNull();
   expect(button("Sync from repository").className).toContain("text-destructive");
 });
@@ -76,7 +76,7 @@ it("확인 Dialog의 접근 가능한 설명이 경고 블록까지 든다", asy
   await click("Sync");
   await vi.waitFor(() => expect((dialog()?.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean)).toHaveLength(1));
   const only = dialog()?.getAttribute("aria-describedby") ?? "";
-  expect(document.getElementById(only)?.textContent).toContain("locale files on main");
+  expect(document.getElementById(only)?.textContent).toContain("translation files on main");
 });
 
 it("실행 중 트리거는 포커스를 받고 클릭과 Enter 연타를 막는다", async () => {
@@ -92,10 +92,16 @@ it("실행 중 트리거는 포커스를 받고 클릭과 Enter 연타를 막는
   expect(trigger.textContent?.trim()).toBe("Sync");
 });
 
-it("PR은 조회 즉시 미확인이며 성공 null만 경고를 지운다", async () => {
+/**
+ * ⚠️ **조회 중을 실패 문장으로 말하지 않는다** (malmoi#75). 블록은 조회 시작부터 서지만 그 줄은
+ * "확인 중"이고, "couldn't check"는 조회가 실제로 실패했을 때만 선다.
+ */
+it("PR 조회 중에는 확인 중 줄이 서고 성공 null만 경고를 지운다", async () => {
   const pr = deferred<null>(); mocks.pr.mockReturnValue(pr.promise);
   await render(<SyncButton {...props} />); expect(mocks.pr).not.toHaveBeenCalled(); await click("Sync");
-  expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain("couldn't check");
+  const live = document.querySelector('[aria-live="polite"]')?.textContent ?? "";
+  expect(live).toContain("Checking whether anything is still waiting");
+  expect(live).not.toContain("couldn't check");
   await act(async () => pr.resolve(null));
   expect(dialog()?.textContent).not.toContain("couldn't check");
   expect(dialog()?.querySelector('[aria-live="polite"]')).toBeNull();
@@ -122,7 +128,8 @@ it("미발송과 열린 PR을 각각의 줄로 말하고 권유는 번역 화면
   expect(lines).toHaveLength(2);
   expect(lines[0]).toContain("Sync will discard 7 unsent translation changes");
   expect(lines[1]).toContain("pull request #42 are not in main yet");
-  expect(document.querySelector('a[href="/projects/acme/translations"]')?.textContent).toBe("Send changes first");
+  // audit #28 — 링크가 도착 화면에 실제로 있는 버튼 이름(`Publish`)을 부른다 (POSTMORTEM 2026-09-14).
+  expect(document.querySelector('a[href="/projects/acme/translations"]')?.textContent).toBe("Publish first");
 });
 
 /**
@@ -156,8 +163,8 @@ it("Home 호스트는 원결과를 소유해 refresh 후 재렌더에서도 보�
  * ⚠️ **통신 실패에 온보딩 코드를 쓰지 않는다** (2026-09-15 재리뷰 🔴3). `ingest-failed`는 `PLANS`에도
  * `m.repositorySync.errors`에도 없어 **두 폴백을 동시에 탄다**: 계획은 `{warning, 닫기 없음, 액션
  * 없음}`이고 문구는 `onboardErrorMessage`의 *"The first import failed. You can try again from
- * settings."*가 된다 — 첫 적재가 아닌데 그렇게 말하고, 가리키는 설정 화면의 컨트롤(`FirstIngestRetry`)은
- * `awaiting_first_sync`에서만 서므로 **존재하지 않는 버튼**을 가리킨 채 굳는다.
+ * settings."*가 된다 — 첫 적재가 아닌데 그렇게 말하고, **존재하지 않는 버튼**(설정 화면의 옛 재시도 컨트롤,
+ * 2026-09-24 삭제)을 가리킨 채 굳는다.
  * 캔버스 §6 `4f`의 tone 표가 이 부류에 `unavailable`을 배정했다(danger · 기존 `errors.access.*`).
  */
 it("Action 통신 실패는 렌더 가능한 거부로 떨어지고 다시 실행할 수 있다", async () => {
@@ -178,7 +185,7 @@ it("Action 통신 실패는 렌더 가능한 거부로 떨어지고 다시 실�
  * 그래서 **둘 다** 이 화면이 그릴 수 있는 값이어야 한다 — 한쪽만 고치면 증상이 그대로 재생된다.
  *
  * ⚠️ **빌려 온 문장이 이 화면에서 거짓이 되는 자리를 센다**: `onboardErrorMessage`의 "first import"·
- * "from settings"(가리키는 `FirstIngestRetry`가 이 화면에 없다) · `accessErrorMessage`의 "your text is
+ * "from settings"(가리키는 재시도 컨트롤이 이 화면에 없다) · `accessErrorMessage`의 "your text is
  * kept"(`[Sync]`에는 입력이 없고, 하필 이 동작은 **리포 값으로 번역을 덮고 저자까지 비운다** — 그
  * 절이 "내 번역은 안전하다"로 읽히면 불변식이 말하는 것의 정반대다).
  */
@@ -219,7 +226,7 @@ it("거부·실패 결과에는 refresh를 부르지 않고 성공에만 부른�
 it("결과 재시도는 같은 확인 Dialog를 열고 확인 전에는 Action을 호출하지 않는다", async () => {
   function Host() {
     const [open, setOpen] = useState(false);
-    return <><Control {...props} open={open} onOpenChange={setOpen} /><SyncResult slug="acme" branch="main" onRetry={() => setOpen(true)} outcome={{ ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "superseded", count: 0, failed: 0, reason: "superseded", errors: [] }] }} /></>;
+    return <><Control {...props} open={open} onOpenChange={setOpen} /><SyncResult slug="acme" branch="main" onRetry={() => setOpen(true)} outcome={{ ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "superseded", count: 0, failed: 0, unmanaged: 0, reason: "superseded", errors: [] }] }} /></>;
   }
   await render(<Host />); await click("Try again");
   expect(dialog()).not.toBeNull();
@@ -267,4 +274,26 @@ it("[C4] 미전달 편집의 경고 줄은 discard와 replace를 한 번씩만 �
   expect(warning.match(/replace/g)).toHaveLength(1);
   await click("Cancel");
   expect(mocks.run).not.toHaveBeenCalled();
+});
+
+/**
+ * **지문이 오기 전에는 확정할 수 없다** (audit #14). 전엔 `prepareRepositorySync`가 돌아오기 전에 누르면 `approval: null`이
+ * 나가 서버가 reconfirm을 냈고, 화면은 *"Translations changed after you opened Sync"* 라는 **사실과 다른** 문장을 띄웠다.
+ * 발급 **실패**는 다르다 — 그때는 확정이 풀리고 `null`을 보내 서버가 재확인을 요구한다(위 [C4]).
+ */
+it("지문 도착 전 확정은 aria-disabled + 스피너이고 눌러도 Action을 부르지 않는다 — 도착하면 풀린다", async () => {
+  const issued = deferred<{ approval: string; unsent: number }>();
+  mocks.prepare.mockReturnValue(issued.promise);
+  await render(<SyncButton {...props} unsent={2} />);
+  await click("Sync");
+  const confirm = button("Discard changes and sync");
+  expect(confirm.getAttribute("aria-disabled")).toBe("true");
+  expect(confirm.querySelector(".animate-spin")).not.toBeNull();
+  await click("Discard changes and sync");
+  expect(mocks.run).not.toHaveBeenCalled();
+  expect(dialog()).not.toBeNull();
+  await act(async () => issued.resolve({ approval: "digest-late", unsent: 2 }));
+  expect(button("Discard changes and sync").getAttribute("aria-disabled")).not.toBe("true");
+  await click("Discard changes and sync");
+  expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: "digest-late" });
 });

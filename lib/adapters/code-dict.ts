@@ -23,6 +23,7 @@ import type {
   WriteInput,
 } from "./types";
 import { localeFromPath } from "./chrome-locales";
+import { causeMessage } from "@/lib/cause";
 
 /**
  * 로케일당 파일 하나인 코드 딕셔너리 — `<dir>/{locale}.{ts,tsx,js,mjs}`.
@@ -40,7 +41,7 @@ import { localeFromPath } from "./chrome-locales";
  */
 
 const SEP = KEY_SEP;
-const CODE_FILE = /^(.*\/)([^/]+)\.(tsx?|mjs|js)$/;
+export const CODE_FILE = /^(.*\/)([^/]+)\.(tsx?|mjs|js)$/;
 
 function newProject(): Project {
   // 타입 정보가 필요 없다 — 객체 리터럴 형태만 본다.
@@ -218,7 +219,7 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
       }
       obj = defaultExportObject(sf);
     } catch (cause) {
-      errors.push({ path: file.path, code: "parse-crashed", detail: (cause as Error).message });
+      errors.push({ path: file.path, code: "parse-crashed", detail: causeMessage(cause) });
       continue;
     }
     if (obj === undefined) {
@@ -226,9 +227,24 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
       continue;
     }
 
-    const entries: LocaleEntry[] = [];
-    collect(obj, "", entries, errors, file.path);
-    entries.sort((a, b) => compareKeys(a.key, b.key));
+    const collected: LocaleEntry[] = [];
+    collect(obj, "", collected, errors, file.path);
+    // 같은 평탄 키가 둘이면 **write가 고칠 노드의 값**을 싣는다(audit #51 · B7a r1) — 같은 이름이면 마지막(JS 의미, push `lastWins`),
+    // 점 키와 중첩이 충돌하면 `locate`의 긴 리터럴 우선이다. 그래야 적재된 값과 편집이 닿는 자리가 같다.
+    // 알림은 경고다(`duplicate-property`) — 잃는 번역이 없어 대상 리포 CI를 red로 만들지 않는다(2026-09-24 사용자 결정).
+    const byKey = new Map<string, LocaleEntry>();
+    for (const e of collected) {
+      if (byKey.has(e.key)) {
+        if (!errors.some((x) => x.path === file.path && x.code === "duplicate-property" && x.key === e.key)) {
+          errors.push({ path: file.path, code: "duplicate-property", key: e.key });
+        }
+        const target = findScalar(obj, e.key);
+        byKey.set(e.key, target !== undefined && target !== "not-a-literal" ? { key: e.key, message: target.getLiteralValue() } : e);
+        continue;
+      }
+      byKey.set(e.key, e);
+    }
+    const entries = [...byKey.values()].sort((a, b) => compareKeys(a.key, b.key));
     locales.push({ locale, entries });
   }
 
@@ -313,7 +329,7 @@ function writeWithErrors(
     }
     root = defaultExportObject(sf);
   } catch (cause) {
-    return { content: file.content, errors: [{ path: file.path, code: "write-parse-failed", detail: (cause as Error).message }] };
+    return { content: file.content, errors: [{ path: file.path, code: "write-parse-failed", detail: causeMessage(cause) }] };
   }
   if (root === undefined) {
     return { content: file.content, errors: [{ path: file.path, code: "write-no-default-export" }] };
@@ -432,14 +448,16 @@ function locate(obj: ObjectLiteralExpression, segments: readonly string[]): Loca
   }
 }
 
+/** 같은 이름이 둘이면 **마지막**이다 — 런타임이 읽는 자리이고 read가 싣는 값이다(audit #51). */
 function propertyNamed(obj: ObjectLiteralExpression, name: string): PropertyAssignment | undefined {
+  let found: PropertyAssignment | undefined;
   for (const prop of obj.getProperties()) {
     if (!prop.isKind(SyntaxKind.PropertyAssignment)) continue;
     const nameNode = prop.getNameNode();
     const got = nameNode.isKind(SyntaxKind.StringLiteral) ? nameNode.getLiteralValue() : nameNode.getText();
-    if (got === name) return prop;
+    if (got === name) found = prop;
   }
-  return undefined;
+  return found;
 }
 
 /**

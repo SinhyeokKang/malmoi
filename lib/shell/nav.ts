@@ -20,7 +20,8 @@ import { routes } from "@/lib/routes";
  * ⚠️ **`archived`가 boolean이지 `Date`가 아니다** — 사이드바가 시각을 쓸 일이 없고, 셸이 넘기는
  * prop은 필요한 것만이라야 초과 프로퍼티가 안 샌다 (sec-audit 발견 23).
  */
-export type NavProject = { slug: string; name: string; role: Role; archived: boolean; surfaceSlug?: string };
+/** `image`는 사이드바 구역 머리의 썸네일이다 (2026-09-24) — 없으면 이름 색 폴백 타일이다. */
+export type NavProject = { slug: string; name: string; role: Role; archived: boolean; image?: string | null; surfaceSlug?: string };
 
 /**
  * pathname → 지금 보고 있는 프로젝트.

@@ -66,16 +66,21 @@ export function MemberList({
 }) {
   const manage = canPerform(role, "member:manage");
   /** `removal` — 거부된 것이 제거였나. 포커스를 돌려줄 컨트롤이 그것으로 갈린다. */
-  const [failed, setFailed] = useState<{ userId: string; error: string; removal: boolean } | null>(null);
+  /** `error: null`은 **확인 불가**다 — 호출이 던져 서버가 바꿨는지 모른다 (audit #24). */
+  const [failed, setFailed] = useState<{ userId: string; error: string | null; removal: boolean } | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  /**
+   * 확인을 기다리는 역할 변경 (audit #20). ⚠️ **셀렉트 값은 그동안 그대로다** — `value`가 서버 값(`member.role`)에
+   * 묶여 있어 취소가 되돌릴 것이 없다. 같은 화면의 Remove가 이미 확인을 받는데 강등(자기 강등 포함)만 한 번에 썼다.
+   */
+  const [roleChange, setRoleChange] = useState<{ userId: string; who: string; next: Role } | null>(null);
   const [, startTransition] = useTransition();
 
   /**
-   * ⚠️ **제거가 거부되면 그 행의 Remove로 포커스를 돌려준다** (malmoi#53). Dialog는 닫히면서 트리거로
-   * 포커스를 돌려주는데 그 순간 트리거가 `loading` → `disabled`라 받지 못하고 `body`로 빠진다.
-   * 응답 콜백에서 바로 부르지 않는 이유: 그 시점엔 `pendingId`가 아직 커밋 전이라 여전히 `disabled`고
-   * `focus()`가 무시된다 — 커밋 뒤인 effect에서 부른다.
+   * ⚠️ **제거가 거부되면 그 행의 Remove로 포커스를 돌려준다** (malmoi#53). 그때는 트리거가 `loading` → `disabled`라
+   * 닫히는 Dialog의 포커스를 받지 못하고 `body`로 빠졌다. 2026-09-24(audit #32)부터 트리거가 `busy`라 포커스를 지키므로
+   * 이 effect는 **그 사이 포커스가 옮겨졌을 때의 복귀**다 — 커밋 뒤인 effect에서 부르는 이유는 그대로다.
    */
   useEffect(() => {
     if (failed?.removal) document.getElementById(`remove-${failed.userId}`)?.focus();
@@ -86,10 +91,15 @@ export function MemberList({
     setAnnouncement("");
     setPendingId(targetUserId);
     startTransition(async () => {
-      const result = await changeMember({ slug, targetUserId, nextRole });
+      /*
+        ⚠️ **던져도 행을 풀고 그 자리에서 말한다** (audit #24) — try가 없으면 transition 안의 예외가 error boundary로
+        올라가 화면이 통째로 오류 화면이 되고 `pendingId`도 남는다.
+      */
+      let result: Awaited<ReturnType<typeof changeMember>> | null;
+      try { result = await changeMember({ slug, targetUserId, nextRole }); } catch { result = null; }
       setPendingId(null);
-      if (!result.ok) {
-        setFailed({ userId: targetUserId, error: result.error, removal: nextRole === null });
+      if (result === null || !result.ok) {
+        setFailed({ userId: targetUserId, error: result === null ? null : result.error, removal: nextRole === null });
         return;
       }
       // 역할 변경은 행이 남아 포커스가 셀렉트에 그대로 있다 — 옮기는 것은 행이 사라지는 제거뿐이다.
@@ -167,7 +177,7 @@ export function MemberList({
                           who={who}
                           pending={pending}
                           describedBy={blocked ? describedBy : undefined}
-                          onChange={(next) => apply(member.userId, next, who)}
+                          onChange={(next) => setRoleChange({ userId: member.userId, who, next })}
                         />
                         <RemoveButton
                           id={`remove-${member.userId}`}
@@ -184,9 +194,11 @@ export function MemberList({
                   after={
                     failed?.userId === member.userId ? (
                       <Alert variant="danger" className="mx-4 mb-3.5 text-left">
-                        {isAccessError(failed.error)
-                          ? accessErrorMessage(failed.error)
-                          : m.members.changeFailed(failed.error)}
+                        {failed.error === null
+                          ? m.members.changeUnconfirmed
+                          : isAccessError(failed.error)
+                            ? accessErrorMessage(failed.error)
+                            : m.members.changeFailed}
                       </Alert>
                     ) : null
                   }
@@ -196,6 +208,30 @@ export function MemberList({
           })}
         </RowCardList>
       </RowCard>
+      <Dialog open={roleChange !== null} onOpenChange={(open) => { if (!open) setRoleChange(null); }}>
+        {roleChange !== null && (
+          <DialogContent
+            title={m.members.confirmRole(roleChange.who, m.projects.role[roleChange.next])}
+            description={roleChange.userId === viewerId && roleChange.next !== "OWNER" ? m.members.confirmSelfDemote : m.members.confirmRoleHint}
+            footer={
+              <>
+                <DialogClose asChild>
+                  <Button variant="default">{m.members.cancel}</Button>
+                </DialogClose>
+                <DialogClose asChild>
+                  {/* 자기 강등은 본인에게 되돌릴 수 없다 — danger다. 남의 변경은 되돌릴 수 있어 primary로 둔다 (r1). */}
+                  <Button
+                    variant={roleChange.userId === viewerId && roleChange.next !== "OWNER" ? "danger" : "primary"}
+                    onClick={() => apply(roleChange.userId, roleChange.next, roleChange.who)}
+                  >
+                    {m.members.confirmRoleAction}
+                  </Button>
+                </DialogClose>
+              </>
+            }
+          />
+        )}
+      </Dialog>
     </>
   );
 }
@@ -217,8 +253,9 @@ export function MemberList({
  *     `event.key.length === 1`이면 여는 키 판정보다 **먼저** 검색을 돌려 창을 열지 않고 값을 바꾼다.
  *     그리고 그 여는 키 목록은 라이브러리 내부 상수라 우리가 복제하면 버전이 올라갈 때 조용히 어긋난다.
  *
- * ⚠️ **`pending`은 진짜 `disabled`다** — 그쪽은 사유를 들려줄 것이 없고 잠깐이다. 두 축이 한 행에
- * 겹치지 않는다(차단된 행은 제출될 수 없다).
+ * ⚠️ **`pending`도 `aria-disabled`다 — 진짜 `disabled`가 아니다** (2026-09-24, audit #32b). 역할 변경의 확인 Dialog는
+ * 트리거가 없어 닫히면 **이 셀렉트**로 포커스를 돌려주는데(연 자리 — `dialog.tsx`), 같은 커밋에 `disabled`가 되면 그
+ * 포커스가 `body`로 빠졌다. 막는 가드는 위의 셋 그대로이고, 사유(`describedBy`)는 차단일 때만 선다 — 진행은 잠깐이다.
  */
 function RoleSelect({
   member,
@@ -234,8 +271,9 @@ function RoleSelect({
   onChange: (next: Role) => void;
 }) {
   const blocked = describedBy !== undefined;
+  const locked = blocked || pending;
   return (
-    <Select value={member.role} disabled={pending} onValueChange={(value) => onChange(value as Role)}>
+    <Select value={member.role} onValueChange={(value) => { if (!locked) onChange(value as Role); }}>
       {/* ⚠️ 라벨이 트리거 **밖**이다 — 안에 두면 자기 참조가 내용으로 풀릴 때 두 번 읽힌다 (리뷰 2026-09-13). */}
       <span id={`role-${member.userId}-label`} className="sr-only">
         {m.members.changeRole(who)}
@@ -243,12 +281,13 @@ function RoleSelect({
       <SelectTrigger
         id={`role-${member.userId}`}
         aria-labelledby={`role-${member.userId}-label role-${member.userId}`}
-        aria-disabled={blocked || undefined}
+        aria-disabled={locked || undefined}
+        aria-busy={pending || undefined}
         aria-describedby={describedBy}
-        onPointerDown={blocked ? (event) => event.preventDefault() : undefined}
-        onClick={blocked ? (event) => event.preventDefault() : undefined}
+        onPointerDown={locked ? (event) => event.preventDefault() : undefined}
+        onClick={locked ? (event) => event.preventDefault() : undefined}
         // Tab만 통과시킨다 — 포커스는 받아야 사유가 낭독되고, 나머지는 전부 이 컨트롤의 동작이다.
-        onKeyDown={blocked ? (event) => { if (event.key !== "Tab") event.preventDefault(); } : undefined}
+        onKeyDown={locked ? (event) => { if (event.key !== "Tab") event.preventDefault(); } : undefined}
         className="w-[132px]"
       >
         <SelectValue />
@@ -306,7 +345,8 @@ function RemoveButton({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button id={id} variant="danger" aria-label={m.members.removeLabel(who)} loading={pending}>
+        {/* ⚠️ `loading`이 아니라 `busy`다 (audit #32) — Dialog가 닫히며 이 트리거로 포커스를 돌려준다(Revoke와 같다). */}
+        <Button id={id} variant="danger" aria-label={m.members.removeLabel(who)} busy={pending}>
           {m.members.remove}
         </Button>
       </DialogTrigger>

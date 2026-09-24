@@ -131,6 +131,11 @@ ARCHITECTURE §0 불변식 2와 정면 충돌한다.
 Sync와 같이 서버 발급 지문으로만 열린다. EDITOR에게는 숨기지 않고 꺼진 버튼 + 사유다. 한 언어라도 기준이 없으면 전체가 불가능하고,
 `needsReview`는 해제하지 않는다(복원은 검토 완료가 아니다).
 
+**수술적 표면의 비-base 셀은 비울 수 없다** (결정 2026-09-24, delivery-invariants D2 — **명시적 빈값 export(§10)가 생기기 전까지의 임시 규칙**).
+`ts-dict`·`yaml-catalog`·`code-dict` 표면에서 base 아닌 언어를 비워 저장하면 키 전체가 거부되고(`… can't be left empty` — 아무것도 저장되지 않는다)
+입력은 화면에 남는다. 그 writer는 값을 지울 줄 몰라, 전에는 비운 셀이 리포에 한 번도 닿지 않았는데 "보냈다"로 표시됐다. base 비우기와 재생성
+표면(`json-catalog`·`chrome-locales`)은 그대로 된다.
+
 **번역 저장은 명시적이다** (결정·구현 2026-09-23, translation-rework — 옛 셀 blur 저장의 반전). 선택한 키 하나의 바뀐 언어 전부를
 `Save` 한 번(또는 Ctrl/Cmd+Enter)이 한 트랜잭션으로 보낸다. blur·Tab은 저장하지 않고 Escape는 그 입력만 되돌린다. 미저장이 있는 채로
 다른 키·트리·필터로 가거나 뒤로 가면 확인창이 서고(`Keep editing` / `Discard changes`), 새로고침·닫기는 브라우저 확인이다.
@@ -361,7 +366,7 @@ resolved path가 겹치면 GitHub 쓰기 전에 전체 실패한다. 값 병합�
 기본 표면은 `Project.defaultSurfaceId`로 저장한다. 기존 translations URL은 그 표면으로, 옛 Locales 두 URL은 Sources 목록으로 redirect한다.
 sync 브랜치는 계속 `malmoi-i18n/sync-<project-slug>`다. 기존 여러 Project를 자동 통합하지 않는다.
 
-**OWNER의 Sources → Add source 모달**에서 후보 여럿 또는 수동 경로를 선택한다. 기존 소스는 체크된
+**OWNER의 Sources → Add sources 모달**에서 후보 여럿 또는 수동 경로를 선택한다. 기존 소스는 체크된
 채 잠기고 새 항목만 요청한다. 요청 전체의 읽기 예산은 200파일·10MB(파일당 2MB)이고, 모든 표면의
 생성·첫 적재는 한 트랜잭션으로 전부 성공하거나 롤백한다. 포맷 내 부분 적재 실패는 성공+경고다.
 확정 거부 뒤 선택을 보존하고, 성공 뒤 기존 PUSH_TOKEN을 사용하는 workflow 반영 안내를 남긴다.
@@ -407,7 +412,7 @@ Codex 검토는 연동 PR → 머지 → Actions를 온보딩의 전제로 뒀�
 한 표면의 일부 파일 실패·다운로드 누락·중복 키·0키·예산 초과·DB 실패도 전체 생성을 거부한다.
 ③에서 체크한 각 표면의 기준 언어를 고르고 생성 완료를 기다린다. 실패하면 입력과 경로별 사유를 남기고,
 모두 저장된 뒤에만 ④에서 합산 키 수·토큰·활성 표면 전체의 workflow를 제공한다.
-수동 지정은 탐지 체크와 섞지 않고 포맷 하나만 제출한다. 기존 Settings 재시도·Add surface의 부분 실패 정책은 유지한다.
+수동 지정은 탐지 체크와 섞지 않고 포맷 하나만 제출한다. 기존 Sources 재시도·Add sources의 부분 실패 정책은 유지한다.
 응답 유실은 미생성을 뜻하지 않는다. 자동 재제출하지 않고 목록에서 결과를 확인하며, 생성됐다면 Settings에서 토큰을 재발급한다.
 
 ### 7.5 `ready`는 설정 저장이 아니라 최초 적재 성공으로 판정한다
@@ -481,6 +486,13 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 
 결과 상태가 서로 달라야 한다: 배포할 변경 없음 / 새 PR 생성 / 기존 PR 갱신 / **값 일부를 파일에 쓸 수 없어 보내지 않음**
 (`skipped/writer-warnings` — 2026-09-18부터 writer 경고가 있으면 GitHub에 쓰기 전에 멈춘다. 전에는 PR을 열고 버린 값을 알렸다) / 실패.
+**부분 전달** (2026-09-24, delivery-invariants): 비-base 언어 파일이 base에 없거나 ts-dict 파일에 그 키의 자리가 없으면 **그 셀만 보류**하고
+나머지를 보낸다 — 결과는 **실린 수**로 말하고 보류 한 줄(`N edits weren't sent because …`)을 붙이며, 실린 것이 0이면 `Not sent` 틀이다.
+보류된 편집은 malmoi에 남아 CI 적재를 계속 멈춘다. Logs는 그 실행을 같은 수로 보이고, 실린 것이 0이면 `Not sent`다(`Nothing to send`가 아니다).
+**미리보기도 나가는 수로 말한다**(#84) — 보류를 뺀 수가 제목·요약·PR 줄에 서고, 전부 보류면 PR 버튼 대신 이유를 말한다.
+**되돌린 편집만 남은 Publish는 열린 PR을 닫는다** (2026-09-24, B1 r3) — 파일이 base와 같아지면 그 PR에 머지할 것이 없다. 조용히 닫히게 두지 않고
+코멘트로 이유를 남겨 닫으며, 미리보기("Publishing closes pull request #N")·결과·Logs가 같은 사실을 말한다.
+**base 파일 부재는 여전히 `writer-warnings`다**(설정 오류) — 미리보기가 먼저 경로·브랜치를 말하며 막는다(Try again 없음).
 야간 cron은 미전달 편집이 있는 프로젝트만 GitHub에 닿고, 열린 PR이 있어도 새 편집이 있으면 오늘처럼 갱신한다.
 
 ### 7.7 URL과 정보 구조 — 축이 둘이다 (IA 확정: 2026-09-09)
@@ -765,10 +777,15 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 "멈춘다"인데 리포가 계속 덮으면 **보관 중에 번역이 조용히 바뀌기** 때문이다(strict push라 되돌릴 수 없다) —
 대상 리포 CI가 red가 되는 것은 의도된 신호다(워크플로를 떼라는 뜻).
 
-**Server Action의 경계도 같은 선이다** (2026-09-17): **번역을 바꾸는 쓰기는 보관 중
-거부**(`runFirstIngest`·`addSurfaces`·`runRepositoryImport` — 전부 `applyPush`로 번역을 덮는다), **설정 쓰기는
-허용**(`updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·`rotatePushToken` — 번역을 안
-바꾸고, 되돌릴 때 필요한 것들이다). 판정은 "이 Action이 `Translation` 행을 쓰는가"다.
+**Server Action의 경계는 "보관 = Restore만"이다** (2026-09-24 — 2026-09-17의 "설정 쓰기는 허용"을 뒤집었다).
+보관된 프로젝트에서 서버가 받는 설정 쓰기는 **`unarchiveProject` 하나**다 — 번역을 바꾸는 쓰기(`runFirstIngest`·
+`addSurfaces`·`runRepositoryImport`)는 물론이고 `updateBaseLocale`·`connectRepository`·`updateRepositorySettings`·
+`rotatePushToken`·이름·이미지도 `archived`로 거부한다. **UI가 이미 그렇게 서 있었다**(general·repository·ci 카드가
+전부 꺼져 있다) — 서버만 허용하던 어긋남을 UI 쪽으로 닫았다. 되돌린 뒤 고치면 되므로 잃는 것이 없고, "보관 =
+멈춤" 한 줄 모델이 된다. 보관된 프로젝트를 다시 보관하는 것은 쓰기가 아니라 no-op이라 성공으로 둔다.
+판정은 잠금 안에서 한다(`lockProjectAccess` — ARCHITECTURE §5.6.4).
+**초대 수락도 `archived`로 거부한다** (2026-09-24, audit #79) — 보관 중에는 멤버가 새로 들지 않는다. 초대 화면이
+수락 버튼 대신 까닭을 보이고, 초대는 **소비하지 않는다**: 복원 뒤 만료 전이면 같은 링크가 산다.
 
 - 보관해도 **번역 데이터는 남는다.** 되돌릴 수 있는 것이 이 프로젝트의 성질이다(`orphaned`와 같은 이유).
 - **열린 `malmoi-i18n/sync-<slug>` PR은 닫지 않는다** — 리포는 사용자 것이고, 우리가 그쪽 PR을 정리할 권한을
@@ -792,7 +809,8 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
   수정합니다"가 비개발자에게 가장 무거운 문장이고, 그 권한은 리포의 CI 정의를 통째로 바꿀 수 있다.
   ⚠️ **"권한을 더하면 재승인 대기 중 기존 설치의 pull이 죽는다"는 미실측이라 근거로 쓰지 않았다** —
   GitHub은 승인 전까지 옛 권한으로 계속 동작하는 것으로 알려져 있다
-- **`AuditEvent`를 만드는 시점** (ARCHITECTURE §5) — "누가 언제 뭘 했는지"를 못 찾는 상황이 실제로 나올 때
+- ~~**`AuditEvent`를 만드는 시점**~~ → ✅ **`ProjectEvent`로 만들었다** (2026-09-20, logs-rework — ARCHITECTURE §5.7).
+  "누가 언제 뭘 했는지"는 Logs 화면이 답한다. 사건은 지우지 않고 보존 기간도 두지 않는다
 - ~~**표면 여러 개의 Actions 배선**~~ → ✅ **확정했다** (2026-09-14, multi-surface B — §7.1). 한 Project의
   여러 step이 `PUSH_TOKEN` 하나를 공유하고 각각 `surface`·`path-template`을 명시한다. concurrency는
   프로젝트 단위다. 기존에 같은 리포를 가리키던 여러 Project는 자동 통합하지 않으며, 그 상태를 유지하면

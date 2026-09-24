@@ -30,7 +30,6 @@ vi.mock("@/lib/keys/translation-list", () => ({
   loadTranslationDetail: state.detail,
   withActorLabels: (detail: { locales: object[] }) => ({ ...detail, locales: detail.locales.map(l => ({ ...l, actorLabel: null })) }),
 }));
-vi.mock("@/lib/pull/trigger", () => ({ syncBranchFor: (slug: string) => `malmoi-i18n/sync-${slug}` }));
 vi.mock("@/components/translations/workspace/workspace", () => ({ TranslationWorkspace: () => null }));
 vi.mock("@/components/project-archived", () => ({ ProjectArchived: () => null }));
 vi.mock("@/components/project-not-ready", () => ({ ProjectNotReady: () => null }));

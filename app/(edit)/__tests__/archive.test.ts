@@ -16,6 +16,7 @@ const hoisted = vi.hoisted(() => ({
   prisma: undefined as unknown,
   revalidatePath: vi.fn(),
   triggerPull: vi.fn(),
+  ensureUserToken: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -23,9 +24,13 @@ vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/pull/trigger", () => ({ triggerPull: hoisted.triggerPull }));
+vi.mock("@/lib/github-connect/token-store", () => ({ ensureUserToken: hoisted.ensureUserToken }));
 
 const { archiveProject, unarchiveProject, runFirstIngest } = await import("../projects/actions");
 const { saveTranslationKey, triggerPullAction } = await import("../actions");
+const { rotatePushToken } = await import("../projects/actions");
+const settings = await import("../projects/[slug]/settings/actions");
+const { updateBaseLocale } = await import("../projects/[slug]/sources/actions");
 
 const ARCHIVED_AT = new Date("2026-09-10T00:00:00Z");
 
@@ -95,6 +100,75 @@ describe("보관된 프로젝트는 편집·Publish를 받지 않는다", () => 
     hoisted.prisma = db.prisma;
     const result = await saveTranslationKey({ surfaceSlug: "default", slug: "alpha", keyId: "k1", changes: [{ localeCode: "ko", value: "안녕" }] });
     expect(result).toEqual({ ok: true, keyId: "k1", cells: [{ localeCode: "ko", value: "안녕" }] });
+  });
+});
+
+/**
+ * **보관 = Restore만** (2026-09-24, 감사 #26 — PRODUCT §7.9). 인가는 `project:settings`를 보관 중에도 통과시키지만
+ * (되돌리는 길), 잠금 안 판정이 그 위에서 `unarchiveProject` 외 설정 쓰기를 `archived`로 거부한다. UI가 이미 그렇게 서 있었다.
+ */
+describe("보관된 프로젝트의 설정 쓰기는 서버가 거부한다", () => {
+  it.each([
+    ["rotatePushToken", () => rotatePushToken({ slug: "beta" })],
+    ["updateRepositorySettings", () => settings.updateRepositorySettings({ slug: "beta", baseBranch: "next" })],
+    ["updateProjectName", () => settings.updateProjectName({ slug: "beta", name: "Renamed" })],
+    ["updateBaseLocale", () => updateBaseLocale({ slug: "beta", surfaceSlug: "default", baseLocale: "ko" })],
+  ] as const)("%s → archived, 쓰기·사건 0건", async (_name, run) => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    const before = structuredClone(db.projects.find((p) => p.slug === "beta"));
+    expect(await run()).toEqual({ ok: false, error: "archived" });
+    expect(db.projects.find((p) => p.slug === "beta")).toEqual(before);
+    expect(db.projectEvents.filter((e) => e.projectId === "pB")).toEqual([]);
+  });
+
+  it("connectRepository → archived, GitHub을 부르지 않는다", async () => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    expect(await settings.connectRepository({ slug: "beta" })).toEqual({ ok: false, error: "archived" });
+    expect(hoisted.ensureUserToken).not.toHaveBeenCalled();
+  });
+
+  it("deleteProjectImage → archived", async () => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    expect(await settings.deleteProjectImage("beta")).toEqual({ ok: false, reason: "archived" });
+  });
+
+  it("대조: 같은 픽스처의 활성 프로젝트에서는 같은 쓰기가 통과한다", async () => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    expect(await settings.updateProjectName({ slug: "alpha", name: "Renamed" })).toEqual({ ok: true, name: "Renamed" });
+    expect((await rotatePushToken({ slug: "alpha" })).ok).toBe(true);
+  });
+
+  /**
+   * QA D1 (2026-09-24): Settings를 연 채로 다른 탭이 보관하면, 거부만 돌려주고 끝날 때 화면이 켜진 컨트롤과 Restore 없는 상태로
+   * 남는다. 거부가 **그 세그먼트를 다시 그려** 화면이 보관 상태(Restore 카드·꺼진 컨트롤)로 옮겨 가야 한다.
+   */
+  it.each([
+    ["rotatePushToken", () => rotatePushToken({ slug: "beta" })],
+    ["updateRepositorySettings", () => settings.updateRepositorySettings({ slug: "beta", baseBranch: "next" })],
+    ["updateProjectName", () => settings.updateProjectName({ slug: "beta", name: "Renamed" })],
+    ["deleteProjectImage", () => settings.deleteProjectImage("beta")],
+    ["connectRepository", () => settings.connectRepository({ slug: "beta" })],
+  ] as const)("%s의 보관 거부는 설정 화면을 다시 그린다", async (_name, run) => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    await run();
+    expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/beta", "layout");
+  });
+
+  it("대조: 권한 거부는 화면을 다시 그리지 않는다 — 보관 상태가 바뀐 것이 아니다", async () => {
+    hoisted.session = sessionFor("u-editor");
+    expect(await settings.updateProjectName({ slug: "beta", name: "Renamed" })).toEqual({ ok: false, error: "forbidden" });
+    expect(hoisted.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("Restore는 통과한다 — 되돌리는 길은 열려 있다", async () => {
+    const db = seeded();
+    hoisted.prisma = db.prisma;
+    expect(await unarchiveProject("beta")).toEqual({ ok: true });
   });
 });
 

@@ -1,11 +1,12 @@
 import { expect, it } from "vitest";
-import { planPublishButton, planPublishView } from "../plan";
+import { planPublishButton, planPublishView, planWithheldLines } from "../plan";
+import { m } from "@/lib/i18n";
 import { buildPublishDiff, type PublishCell } from "../diff";
 import { summarizeWarnings } from "../warnings";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { SYNC_ERROR_CODES } from "@/lib/sync/plan";
 
-const committed = { status: "committed", pr: "created", prUrl: "https://github.com/o/r/pull/12", commitSha: "abc", changed: ["ko.json"] as string[] } as const;
+const committed = { status: "committed", delivered: 1, pr: "created", prUrl: "https://github.com/o/r/pull/12", commitSha: "abc", changed: ["ko.json"] as string[] } as const;
 it("실행 결과 여덟 갈래와 스킵 경고를 보존한다", () => {
   expect(planPublishView(committed)).toBe("created");
   expect(planPublishView({ ...committed, pr: "updated" })).toBe("updated");
@@ -20,6 +21,25 @@ it("실행 결과 여덟 갈래와 스킵 경고를 보존한다", () => {
     const retryable = !["base-unreadable", "not-installed", "glob-matched-nothing"].includes(code);
     expect(planPublishView({ status: "failed", error: "safe", code, retryable, delivery: "unknown" })).toBe(retryable ? "transient-error" : "config-error");
   }
+});
+/**
+ * **보류는 실린 수와 따로 한 줄이다** (delivery-invariants D7). 실린 0 + 보류만이면 "No changes"(파일이 같았다)가 거짓이 되므로
+ * 기존 Not sent 틀(`partial`)을 쓴다. 문구는 역할별로 화면에 있는 컨트롤만 가리킨다(POSTMORTEM 2026-09-14).
+ */
+it("skipped/withheld는 Not sent 틀이다 — No changes가 아니다", () => {
+  expect(planPublishView({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } })).toBe("partial");
+  // #83 — 보류가 있으면 Logs가 Not sent로 읽는다(SKIPPED + withheld > 0). 모달도 같은 틀이어야 "nothing to send"를 약속하지 않는다.
+  expect(planPublishView({ status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } })).toBe("partial");
+  expect(planPublishView({ status: "skipped", reason: "no-changes" })).toBe("no-changes");
+});
+it("보류 줄 — 사유별 한 줄 + 역할별 다음 행동 · 보류 0이면 줄이 없다 (짝)", () => {
+  const p = m.translations.publish;
+  expect(planWithheldLines({ ...committed, withheld: { file: 2, key: 0 } }, "EDITOR")).toEqual([`${p.withheld.file(2)} ${p.withheld.editor}`]);
+  expect(planWithheldLines({ ...committed, withheld: { file: 0, key: 1 } }, "OWNER")).toEqual([`${p.withheld.key(1)} ${p.withheld.owner.key}`]);
+  expect(planWithheldLines({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 1 } }, "OWNER"))
+    .toEqual([`${p.withheld.file(1)} ${p.withheld.owner.file}`, `${p.withheld.key(1)} ${p.withheld.owner.key}`]);
+  expect(planWithheldLines(committed, "OWNER")).toEqual([]);
+  expect(planWithheldLines({ status: "skipped", reason: "writer-warnings", warnings: ["x"] }, "OWNER")).toEqual([]);
 });
 it("0건은 비활성이나 실행 중에는 재열기가 우선한다", () => {
   expect(planPublishButton({ count: 0, paused: false, otherPending: false, publishPending: false })).toMatchObject({ mode: "preview", disabled: true, badge: null, hint: expect.any(String) });
@@ -65,4 +85,15 @@ it("바뀐 단어만 표시하고 공백·여러 줄을 보존한다", async () 
   expect(result.after.filter(t => t.changed).map(t => t.text).join("")).toBe("new");
   expect(result.before.map(t => t.text).join("")).toBe("hello old\nworld");
   expect(diffWords("", "")).toEqual({ before: [], after: [] });
+});
+
+/**
+ * B1 r3 — 되돌린 편집(값이 base와 같다)은 "바뀐다"가 아니다. 행이 그 사실을 들고(`same`), 수가 그 행을 센다(`same` 합계).
+ * 열린 PR이 있으면 그 PR의 변경을 되돌리는 것이고, 전부 그렇다면 실행은 no-changes 경로다.
+ */
+it("base와 같은 값의 행은 same이고 diff가 그 수를 센다 · 다른 값은 아니다 (짝)", () => {
+  const diff = buildPublishDiff([cell({ after: "old" }), cell({ keyId: "k2", key: "bye", after: "new" })], { "ko.json": { ko: { hello: "old", bye: "old" } } });
+  const rows = diff.groups.flatMap(g => g.rows);
+  expect(rows.map(r => [r.key, r.same])).toEqual([["bye", false], ["hello", true]]);
+  expect(diff.same).toBe(1);
 });

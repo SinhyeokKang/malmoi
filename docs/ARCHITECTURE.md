@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sources/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/protection/`·`lib/privacy/`·`lib/signin/`·`lib/translations/`·`lib/invitation-email/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/compare.ts`·`lib/relative-time.ts`·`lib/utc-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sources/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/protection/`·`lib/privacy/`·`lib/signin/`·`lib/translations/`·`lib/invitation-email/`·`lib/events/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/compare.ts`·`lib/cause.ts`·`lib/relative-time.ts`·`lib/utc-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
 
 > 이 문서는 **선 코드의 계약만** 적는다. 아직 서지 않은 것은 `docs/PRODUCT.md` §10(아직 안 정한 것)이나 진행 중인 `docs/features/<slug>/`가 든다 — 여기에 미래형을 섞으면 "불변식"이 지켜야 할 것과 지키고 싶은 것으로 갈린다.
 
@@ -15,11 +15,15 @@
    ⚠️ **미전달 편집을 버리는 길이 둘이다 — (translation-rework, 2026-09-23 · 프로덕션, #71)** — 수동 Sync(리포 값으로 덮는다)와
    **`Revert to last sent`**(키 하나의 미전달 셀을 **마지막으로 전달 확인된 DB 값**으로 되돌린다). 둘 다 OWNER 전용이고 서버가 발급한
    지문을 되돌려 받을 때만 열린다. Revert가 풀어 준 셀도 미전달이 아니게 되므로 CI 보류를 푸는 셋째 경로가 된다. §5.8.
+   ⚠️ **Publish가 보내지 못한 셀도 유예를 잇는다** (2026-09-24, delivery-invariants) — 비-base 로케일 파일이 base에 없거나 ts-dict
+   로케일 객체에 그 키의 자리가 없으면 그 셀은 **보류**되어 토큰이 남는다(§3). 풀리는 길은 파일 복구 뒤 Publish · Revert · 폐기 승인 Sync다.
 2. push 시점 외에는 리포 값과 DB 값을 비교해 **승자를 고르지 않는다**.
    ⚠️ **Revert도 이 불변식 안에 선다 (§5.8)** — 복원값은 전달 확인 시점의 **DB export 입력**에서 유도한 스냅샷이고,
    현재 리포를 읽어 고르지 않는다. "옛 DB 값과 새 리포 값 중 고르는" Sync 되돌리기는 여전히 만들지 않는다(PRODUCT §3).
 3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다. **코드에서 번역을 지우는 방법은 없다** — 지우려면
    UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
+   ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
+   저장이 `cannot-clear`로 거부한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
 4. 같은 DB 상태와 같은 원본 구조는 **같은 바이트**를 만든다.
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
    표면 데이터는 그 뒤 **`surfaceId`로도 제한**한다. 역할·리포·push 토큰·SyncRun·Publish는 Project가,
@@ -35,6 +39,9 @@
 9. **버린 값을 성공으로 숨기지 않는다** — 실패한 sync는 마지막 성공 상태를 전진시키지 않는다.
    ⚠️ **전달 기준도 같다 (§5.8)** — Publish는 첫 외부 쓰기 **전에** 그 소스의 전달 확인을 무효화하고, 성공 확정 tx에서만
    다시 세운다. 실패·결과 미확인·FAILED 종료는 옛 기준을 되살리지 않는다.
+   ⚠️ **실리지 않은 셀은 확인하지 않는다** (2026-09-24, delivery-invariants D3·D4) — pull은 렌더 출력의 좌표(파일 부재·키 자리 없음)로
+   못 실은 셀을 가려 그 토큰을 남기고, 결과가 그 수(`withheld`)를 말한다. 전에는 수술적 writer가 조용히 건너뛴 셀(비운 셀·ts-dict의
+   빈 자리)의 토큰까지 해제해 "보냈다"가 거짓이었다.
    ⚠️ **화면에 닿는 것까지가 이 불변식이다** (2026-09-07 추가, POSTMORTEM 2026-09-07): Server Action의
    결과를 인라인으로 보이는 컴포넌트는 **그 Action의 `revalidatePath`가 바꾸는 조건부 분기 안에 있어서는
    안 된다.** 실제로 `revalidatePath`가 readiness를 `ready`로 바꾸자 재시도 컴포넌트를 감싼 분기가 거짓이
@@ -63,13 +70,13 @@
 ## 0.5 자동 검증이 원리적으로 못 보는 층 — 실물 검증이 무엇을 잡나
 
 **`pnpm test` 4,369건과 `tsc`가 green인데 사용자에게는 깨져 있는 부류가 넷이다.** 이 목록이
-`/bugshot-qa`·`/l10n-roundtrip`이 따로 있는 이유이고, **각 항목은 한 번씩 실제로 프로덕션에 나갔다**
+`/runtime-test`·`/l10n-roundtrip`이 따로 있는 이유이고, **각 항목은 한 번씩 실제로 프로덕션에 나갔다**
 (개별 사고는 `docs/POSTMORTEM.md`, 그때 선 상시 방어선은 괄호 안).
 
 | 층 | 무엇이 새나 | 잡는 수단 |
 |---|---|---|
 | **표현** | 값은 맞는데 **바이트가 다르다** — 들여쓰기·인용부호·이스케이프·키 순서. 어댑터 계약 테스트는 "값이 같은가"만 본다 | `/l10n-roundtrip` (재생성 어댑터를 고쳤으면 `i18n-order-check` — 그 리포가 표현 5축이 섞이도록 재포맷돼 있다) |
-| **도달** | 판정은 옳은데 **문구가 화면에 안 닿는다** — `?e=`를 페이지가 안 읽거나, `revalidatePath`가 결과 Alert를 언마운트하거나, 죽은 라우트를 링크한다 | `/bugshot-qa` (`entry-points.test.ts`의 죽은 라우트 링크·쿼리 수신자 검사) |
+| **도달** | 판정은 옳은데 **문구가 화면에 안 닿는다** — `?e=`를 페이지가 안 읽거나, `revalidatePath`가 결과 Alert를 언마운트하거나, 죽은 라우트를 링크한다 | `/runtime-test` (`entry-points.test.ts`의 죽은 라우트 링크·쿼리 수신자 검사) |
 | **번들** | import 그래프가 **서버 전용 모듈을 클라이언트로 끌고 온다**. 7.2MB 청크가 조용히 나갔다 | `components/__tests__/client-graph.test.ts` (그전엔 `@octokit`만 grep해 "트리 셰이킹이 뗐다"는 틀린 결론을 주석으로 남겼다) |
 | **배선** | 코드가 아니라 **환경이 틀렸다** — preview가 session 모드(5432) pooler를 써서 `max clients reached`. 경고는 문서에 있었지만 배선에서 안 지켜졌고 부하가 낮아 오래 안 드러났다 | 실물 배포 + `/db` 5단계 |
 
@@ -88,6 +95,24 @@
 | `ts-dict` | `<dir>/*.ts` (글롭 — 한 파일에 로케일 여러 개) | 문자열 리터럴 | **multi-locale** | surgical | bugshot-2 (**903키 × ko/en/fr**). ⚠️ **자동 탐지는 내용을 봐야 한다** — 경로만으로는 후보가 0이고 씨앗(`tsDictProbePaths`)이 파일을 내려받게 한다 (§1.9 판정 ③) |
 | `yaml-catalog` | `<dir>/{locale}.y(a)ml` | 문자열 스칼라 | per-locale | **surgical** | 오픈소스 17개 (mastodon·decidim·directus·redmine·misskey) |
 | `code-dict` | `<dir>/{locale}.{ts,tsx,js,mjs}` | 문자열 리터럴 | per-locale | **surgical** | 오픈소스 12개 (ant-design·element-plus·vuetify·payload) |
+
+### read 오류의 갈래 — 실패 · "관리하지 않는 항목" · 경고 (2026-09-24, B2 r3 · QA5 · B7a r1)
+
+서버 적재(첫 Sync·Add source·수동 Sync)는 read 오류가 하나라도 있으면 `partial-import`를 남겼다. 그런데 ts-dict의
+`"x": String(…)`처럼 **malmoi가 일부러 다루지 않는 항목**은 수술적 writer가 파일에 그대로 남기므로 번역을 하나도 잃지 않는다 —
+904키가 다 들어간 소스가 그것 하나로 "Last sync failed"·Home 위험 배너가 됐다. 판정은 **"다음 Publish에서 그 값이 살아남는가"**다.
+`adapterErrorKind`(`lib/adapters/types.ts`)가 코드마다 정하고, `prepareFirstSnapshot`이 `unmanaged`만 `failed`에서 빼서 따로 센다. `warning`은 **어느 수에도 세지 않고**, CI(`push:local`·`ingest`)도 Publish 미리보기도 막지 않는다 — 찍기만 한다.
+
+| 갈래 | 코드 | 왜 |
+|---|---|---|
+| **unmanaged** — 안내만 | `value-not-string-literal`(ts-dict·code-dict) · `shorthand-property` · `not-property-assignment`(code-dict) · `value-not-string`(yaml 숫자·불린) | 전부 **surgical** writer라 파일에 그대로 남는다. 코드의 식·참조는 번역 대상이 아니다 |
+| **failure** — `partial-import` | 파일 층(`parse-failed`·`parse-crashed`·`root-not-object`·`no-default-export`) · `download-failed` · `duplicate-key` · chrome 엔트리(`invalid-chrome-key`·`missing-message-field`·`value-not-message-object`) · `value-not-string-or-container`(json 숫자·불린) | 못 읽었거나, **regenerate** writer가 DB에 없는 그 값을 다음 Publish에서 **지운다** |
+| **warning** — 알리기만 | `duplicate-property`(code-dict·ts-dict — 코드 객체의 같은 키, 점 키·중첩 충돌 포함) | read가 **write가 고칠 노드의 값**을 싣고(같은 이름이면 마지막 — JS 의미·push `lastWins`, 충돌이면 `locate`의 긴 리터럴 우선) write도 그 자리를 고친다 — 잃는 번역이 없다. **대상 리포 CI를 red로 만들지 않는다**(2026-09-24 사용자 결정 · ACTIONS §3). ⚠️ YAML·JSON의 같은 사건은 `duplicate-key`(failure)다 — 데이터 파일은 두 값 중 하나가 사라지는 파일이다 |
+| (write 코드) | `key-shadowed`·`write-*`·`original-file-missing` | 적재 판정에 오지 않는다 — failure로 둔다(fail-closed) |
+
+⚠️ **같은 "숫자 값"이 어댑터에 따라 갈린다** — yaml은 남고 json은 지워진다. 코드를 합치면 이 구분이 사라진다.
+⚠️ **개수는 적재 결과(Sources 첫 Sync 결과 문장 · Home Sync 결과)에만 선다** — 소스에 영속하는 컬럼이 없고, CI push는 read 오류를
+페이로드에 싣지 않는다(외부 계약, ACTIONS). 소스 상세에 상시로 보이려면 컬럼이 필요하다(미결).
 
 ### ⚠️ `layout`과 `writeStrategy`는 별개 축이다 (2026-09-02 분리)
 
@@ -114,9 +139,10 @@
 |---|---|---|
 | 키 정렬 | **`LocaleEntry.order` 오름차순, 없으면 `<` 비교** (UTF-16 코드 유닛). 동률은 키로 가른다 | 세 가지로 깨진다. ① `localeCompare`는 Node ICU 빌드·로케일에 따라 순서가 달라져 불변식이 실행 환경에 묶인다. ② 동률을 배열 위치로 가르면 **DB 조회 순서가 바이트에 샌다**. ③ `if (e.order)`로 보면 **0이 falsy라 파일의 첫 키가 맨 뒤로 밀린다** |
 | 재조립 | 정렬한 순서로 객체를 새로 만든다. **중첩은 각 층이 `setDeep`의 삽입 순서를 그대로 쓴다** | `JSON.stringify`는 삽입 순서를 따르고, Postgres는 `ORDER BY` 없는 쿼리의 순서를 보장하지 않는다. **각 층을 마지막에 다시 정렬하면 최상위를 고쳐도 하위 층이 통째로 재정렬된다** — diff 비율은 낮은데 hunk가 수십 개가 되는 모양이라 지표로는 안 잡힌다 |
-| 들여쓰기 | **원본 폭**, 없으면 2칸 | 2026-09-04 개정. `observeJsonStyle`이 원본 첫 들여쓴 줄에서 읽고 `serializeJson`이 그 폭으로 낸다. **원본이 없으면 2칸** — 재생성은 원본 없이도 파일을 만들어야 한다(신규 로케일). 고정점이 이 축의 안전 근거다: 우리가 낸 파일을 재관측하면 같은 폭이 나온다. ⚠️ **관측이 끝까지 못 가면 들여쓰기만 남기고 이스케이프 두 축과 `compactPaths`를 버린다** — 반쯤 관측한 표현으로 쓰면 원본과 어긋난 파일이 나간다 |
+| 들여쓰기 | **원본 폭**, 없으면 2칸 | 2026-09-04 개정. `observeJsonStyle`이 원본 첫 들여쓴 줄에서 읽고 `serializeJson`이 그 폭으로 낸다. **원본이 없으면 2칸** — 재생성은 원본 없이도 파일을 만들어야 한다(신규 로케일). 고정점이 이 축의 안전 근거다: 우리가 낸 파일을 재관측하면 같은 폭이 나온다. ⚠️ **관측이 끝까지 못 가면 들여쓰기만 남기고 이스케이프 두 축과 `compactPaths`를 버린다** — 반쯤 관측한 표현으로 쓰면 원본과 어긋난 파일이 나간다. ⚠️ **10칸을 넘는 폭은 손 직렬화기로 낸다** — `JSON.stringify`의 `space` 문자열은 명세상 10자에서 잘려 12칸 원본이 10칸으로 나갔다(audit #83) |
 | 한 줄 컨테이너 (⚠️ 루트 레벨은 **절대** 한 줄로 쓰지 않는다 — 파일 전체가 한 줄이 된다) | **원본에서 한 줄이던 경로만** 한 줄 | 2026-09-04 추가. chrome `_locales`의 `"k": { "message": … }`가 흔한 관례라 펼치면 **순서가 완벽해도 파일 전체가 diff**다(button-stealer 실측 0.964). `JsonStyle.compactPaths`가 그 경로를 든다 — **키는 세그먼트 배열이다**: `.` 조인이면 `{"a.b": [...]}`와 `{"a": {"b": [...]}}`가 같은 키가 되어 엉뚱한 컨테이너가 한 줄로 나간다 |
 | 줄바꿈 | **원본의 우세한 쪽**(CRLF·LF), 없으면 LF | 2026-09-18 추가 (launch-readiness L4.5). `JsonStyle.eol` — 전에는 이 축이 없어 **CRLF JSON을 LF로 다시 써서** 값 편집 0건에도 모든 줄이 바뀌었다. 수술적 어댑터(yaml·code-dict·ts-dict)는 원본 바이트를 두므로 이미 보존했다. 치환은 직렬화 **뒤**에 한 번 한다 — 문자열 값의 개행은 `\n` 이스케이프라 닿지 않는다 |
+| BOM | **원본이 `U+FEFF`로 시작했으면 붙인다**, 없거나 원본이 없으면 안 붙인다 | 2026-09-24 추가 (audit #57). `JsonStyle.bom` — Windows 편집기·번역 도구 내보내기가 붙인다. `JSON.parse`가 BOM을 공백으로 안 봐서 **read는 `parse-failed`(CI push exit 1), 탐지는 `catalogVerdict`가 `no`라 후보 0(온보딩 예외 E)**이었다. 읽는 자리는 전부 `stripBom`을 지나고, 떼면 값 편집 0건에 첫 줄이 바뀌므로 write는 되돌려 붙인다 |
 | 비ASCII | **원본이 `\uXXXX`였으면 그대로** | 2026-09-04 추가. `JSON.stringify`는 비ASCII를 풀어 쓰므로 그 줄 전부가 diff였다. ⚠️ **관측이 문자열 리터럴 안에서 일어나야 한다** — 전역 정규식으로 보면 DB 값이 담은 리터럴 `\u00e9`(여섯 글자)를 이스케이프로 오독하고, 재관측이 `false` → `true`로 뒤집혀 **2차 write가 1차와 달라진다**. 대문자 헥사는 소문자로 한 번 정규화되고 그다음이 고정점이다 |
 | 엔트리 필드 순서 | **원본 다수결**, 동률·관측 불가면 `message`→`description`→`placeholders` | 2026-09-04 추가 (chrome 전용). Midnight-Lizard가 전 엔트리를 `description` 먼저 쓰는데 우리가 반대로 내 diff **0.456**이었다. `dominantFieldOrder`가 원본 텍스트의 함수이고 우리 출력이 균일해지므로 2차 관측이 같은 답을 낸다 — `dominantQuote`와 같은 논증(§1.4) |
 | 슬래시 | **원본이 `\/`였으면 그대로** | 2026-09-04 추가. 합법이지만 **선택적인** JSON 이스케이프라 `JSON.stringify`가 절대 안 낸다. 관측은 비ASCII 축과 같은 문자열 리더 안에 있고 같은 함정을 공유한다 — 값이 리터럴 백슬래시-슬래시를 담으면 재관측이 뒤집힌다 |
@@ -154,7 +180,7 @@
 
 **`orderBy: { key: "asc" }`는 이제 `lib/keys/query.ts` 한 곳이다** — 편집 UI의 **SQL 기준 순서**다. `lib/pull/load.ts`는 `[{ sortIndex: "asc" }, { key: "asc" }]`로 바뀌었고 `entry-order.test.ts`가 옛 형태의 부재를 단언한다. grep하면 둘 다 잡히므로 어느 쪽인지 이름으로 확인한다.
 
-⚠️ **그것이 화면 순서의 유일한 출처는 아니다** (2026-09-11, 8-4). 그 위에 층이 둘 더 있고 둘 다 `lib/keys/view.ts`에 있다 — `pendingFirst`(남은 일을 앞으로 내는 **안정 분할**이라 그룹 안 상대 순서는 보존된다) · `groupByNamespace`(섹션 배열). ⚠️ **뒤엣것은 `rows` 순서를 일부러 안 쓰고 `counts` 순서를 받는다**: `rows`의 출처는 `loadKeys`의 `orderBy`(**Postgres collation**)인데 집계·드롭다운이 쓰는 것은 `compareKeys`(**UTF-16 코드 유닛**)라 **둘이 같다는 보장이 없다** — `rows`로 섹션을 세우면 **섹션 헤딩 순서 ≠ 드롭다운 순서**가 된다. 이 절의 "`localeCompare` 금지"와 같은 축이다: 순서의 자가 둘이면 어느 쪽이 정본인지 코드가 말해야 한다.
+⚠️ **8-4가 그 위에 얹었던 두 층(`pendingFirst` · `groupByNamespace`, `lib/keys/view.ts`)은 2026-09-24에 지웠다** (audit #65) — translation-rework 뒤로 번역 화면의 순서는 목록 SQL(`lib/keys/translation-list.ts`)이 정하고 두 함수는 테스트만 불렀다. 남은 교훈은 그대로다: **순서의 자가 둘이면(Postgres collation vs `compareKeys`의 UTF-16 코드 유닛) 어느 쪽이 정본인지 코드가 말해야 한다** — 이 절의 "`localeCompare` 금지"와 같은 축이다.
 
 ```
 grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys/*.ts
@@ -177,7 +203,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 두 값은 **다른 것이다**: `StringKey.description`(소스 키 메타데이터, base 파일에서 온다)과 `Translation.description`(그 로케일 파일이 갖고 있던 값). 합치면 base 값을 비-base에 복제하게 되고 그건 병합이다. **base만** `Translation.description`이 없을 때 `StringKey.description`으로 폴백한다 — `value ?? sourceText`와 같은 축이고, 그 판정은 `lib/pull/render.ts`의 `rowsForLocale(keys, locale, { isBase })`에 있다. ⚠️ **두 폴백의 범위가 2026-09-09에 갈렸다**: 값 폴백은 **빈 문자열까지** 잡고(base 셀을 비우면 그 키가 base 파일에서 빠져 다음 push가 **전 로케일에서 orphan**한다 — 그 파일이 키 집합의 진실이므로 "미번역"이 아니라 **키 삭제**다), description 폴백은 빈 문자열을 잡지 않는다(description은 키 집합이 아니라 메타데이터라 빠져도 키가 사라지지 않는다). **판정 기준은 "그 값이 없으면 키가 사라지는가"다.** ⚠️ 그 `isBase`가 `renderLocaleFiles`에서 빠져 있어 폴백이 **테스트에서만 켜지고 프로덕션에서는 죽어 있었다** (2026-09-04 audit #2 — `rowsForLocale` 단위 테스트가 `{ isBase: true }`를 직접 넘겨 이 홉을 못 봤다. 지금은 `render.test.ts`가 `renderLocaleFiles`를 통째로 지난다).
 ⚠️ **그 판정은 `render.ts`에만 있어야 한다.** `chrome-locales.write`가 계약(`WriteInput`)에 없는 `isBase`를 필수 파라미터로 들고 있었는데(옛 가드의 잔재), 메서드 파라미터가 **양변성**이라 타입 검사가 침묵했고 호출부가 갈렸다 — `render.ts`는 안 넘기고 `lib/survey/one.ts`는 넘겼다. 본문이 그 값을 안 읽어 우연히 무해했을 뿐, **읽기 시작하면 지표와 프로덕션이 다른 바이트를 낸다.** 2026-09-07에 계약대로 돌렸고 `lib/adapters/__tests__/write-contract.test.ts`가 다섯 어댑터가 `WriteInput`을 **이름으로** 받는지 소스로 센다 (POSTMORTEM 2026-09-07).
 
-**`placeholders`는 chrome에서 그대로 왕복한다** (2026-09-03). `LocaleEntry.placeholders`가 원본 JSON을 **해석하지 않고** 나르고 write가 그대로 되돌린다. 모양이 이상해도 버리지 않는다 — 거르면 원본에 있던 것이 우리 PR에서 조용히 사라지고, 에러로 보고하면 read 에러가 `push:local`을 막아 남의 리포가 우리 규칙으로 실패한다. ⚠️ **왕복 의미 게이트가 이 필드를 원리적으로 못 본다** — 바이트 비교만이 그물이다.
+**`placeholders`는 chrome에서 그대로 왕복한다** (2026-09-03). `LocaleEntry.placeholders`가 원본 JSON을 **해석하지 않고** 나르고 write가 그대로 되돌린다. 모양이 이상해도 버리지 않는다 — 거르면 원본에 있던 것이 우리 PR에서 조용히 사라지고, 에러로 보고하면 read 에러가 `push:local`을 막아 남의 리포가 우리 규칙으로 실패한다. ⚠️ **왕복 의미 게이트가 이 필드를 원리적으로 못 본다** — 바이트 비교만이 그물이다. ⚠️ **`"placeholders": null`도 null로 돌아온다** (2026-09-24 audit #52) — push는 JSON null로 적재하지만 Prisma가 Json 컬럼의 SQL NULL과 JSON null을 **둘 다 `null`로** 읽어서, `lib/pull/load.ts`가 같은 스냅샷에서 `jsonb_typeof = 'null'` 좌표를 raw로 따로 센다. 안 세면 값 편집 0건인 Publish가 그 줄을 지운다(`placeholders-null.integration.ts`).
 
 **실물 검증 (2026-09-01)**: bugshot-2 사본에 907키 × 3로케일을 전면 편집해 pull을 돌린 결과 8파일 **`+2745/-2745`** — 줄이 하나도 추가·삭제되지 않았다. `+N/-N` 대칭이 수술적 치환의 증거다: 그 방식에서는 빈 줄·주석이 사라지면 **줄 수가 줄어** 비대칭이 나므로, 대칭이면 잉여가 살아남았다는 뜻이다.
 
@@ -334,6 +360,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 - **인용 부호** (`code-dict`·`ts-dict`) — `lib/adapters/quote-style.ts`. 이스케이프 안전성은 계속 `JSON.stringify`가 지고, `quoteLiteral`이 그 결과를 원본의 부호로 옮긴다. **대응하는 원본 리터럴이 없는 삽입 값만** 카탈로그 번역 값의 다수 부호(`dominantQuote`)를 따른다 — 키·import·다른 코드의 문자열은 세지 않는다. 삽입 키 이름은 별도로 가장 가까운 선택적 형제의 표기를 따르고, 형제에 단서가 없으면 파일에서 찾는다.
   - 결정성: `dominantQuote`를 삽입 **전에** 세지만 삽입은 항상 다수 쪽을 늘리므로 판정이 진동하지 않는다. 진동하면 2차 write가 1차와 달라져 blob 비교가 매번 "변경됨"을 뱉는다 — `code-dict.test.ts`의 삽입 바이트 고정점 케이스가 이걸 고정한다.
+- **YAML 삽입 인용** (`yaml-catalog`, 2026-09-24 audit #56) — 삽입 항목의 키·값이 **형제 스칼라의 인용 타입 다수결**(`PLAIN`·`'…'`·`"…"`)을 따른다. 형제에 단서가 없으면(빈 맵, 자식이 전부 맵) 파일 전체를 센다. 동수·단서 없음은 PLAIN(옛 동작)이다 — 전에는 전부 큰따옴표인 Rails 파일에 새 키만 맨 문자열로 들어갔다. 결정성 논증은 `dominantQuote`와 같다. 치환은 원래 노드의 타입을 이미 따랐다.
 - **YAML 블록 스타일** (`yaml-catalog`) — CST 노드가 스타일을 들고 있어 값만 갈아끼우면 저절로 보존된다. **단 값 자체가 그 스타일과 모순되면 `yaml`이 지시자를 바꾼다** — 접힌 스칼라 `>`(clip)는 끝 개행을 함의하므로, 개행 없는 값으로 편집하면 `>-`(strip)가 된다. 값을 정확히 표현하기 위한 변경이라 정상이다 (실물 PR `i18n-format-check#1`).
 
 **왜 별도 규칙이 필요한가**: `JSON.stringify`처럼 이스케이프와 표현을 한 덩어리로 정하는 API는 안전성만 보고 고르면 스타일까지 함께 정해버린다. 값이 맞으니 왕복 테스트·바이트 고정점·실측 코퍼스가 전부 통과하고, **실물 PR에서야 드러난다** (POSTMORTEM 2026-09-03).
@@ -343,8 +370,8 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 값 교체만 하면 **그 로케일 파일에 아직 없는 키**는 번역해도 리포에 도달하지 못한다. base에 100키가 있고 `ko.yml`에 60키만 있으면 나머지 40키는 치환할 대상이 없다 — 재생성 어댑터는 그냥 쓰므로, 이 격차가 "수술적이면 번역이 반영되지 않는다"로 읽힌다.
 
 - 없는 키는 **가장 깊은 기존 맵/객체의 끝에** 넣는다. 남은 경로는 리터럴 키 하나로 삽입하며 중간 맵을 새로 만들지 않는다.
-  - ⚠️ **조회와 삽입이 같은 걷기(`locate`)를 쓴다 — 각 깊이에서 가장 긴 리터럴 접두를 먼저 보고 컨테이너면 내려간다** (2026-09-17, launch-readiness L1.4). 전에는 조회가 "리터럴 전체 키 / 전부 split" 둘만 시도해 `errors: { "messages.blank": x }`(read가 `errors.messages.blank`로 낸다)를 **못 찾았고**, 없는 키로 판정한 삽입이 `errors` 아래에 `"messages.blank"`를 **또** 넣어 write마다 중복이 하나씩 늘었다 — 2026-09-02 "구분자가 데이터에도 있어서"의 재발이고, 조회와 삽입이 다른 규칙으로 걸으면 같은 중복이 다시 생긴다. `lib/adapters/__tests__/contract.ts`의 "깊은 점 키" 축이 삽입하는 수술적 어댑터 둘에 값 무변경 바이트 동일·리터럴 개수 불변을 검사하고, `contract.test.ts`의 가짜 어댑터가 옛 동작을 red로 낸다. 알려진 한계: 같은 깊이에 `messages: { blank }`와 `"messages.blank"`가 **리터럴이 앞에** 오도록 공존하면 read(last-wins)와 write(긴 리터럴 우선)가 다른 항목을 고른다.
-- **결정성**: 추가되는 키를 코드포인트 정렬 순서로 넣으므로 `같은 DB 상태 + 같은 원본` → 같은 바이트다.
+  - ⚠️ **조회와 삽입이 같은 걷기(`locate`)를 쓴다 — 각 깊이에서 가장 긴 리터럴 접두를 먼저 보고 컨테이너면 내려간다** (2026-09-17, launch-readiness L1.4). 전에는 조회가 "리터럴 전체 키 / 전부 split" 둘만 시도해 `errors: { "messages.blank": x }`(read가 `errors.messages.blank`로 낸다)를 **못 찾았고**, 없는 키로 판정한 삽입이 `errors` 아래에 `"messages.blank"`를 **또** 넣어 write마다 중복이 하나씩 늘었다 — 2026-09-02 "구분자가 데이터에도 있어서"의 재발이고, 조회와 삽입이 다른 규칙으로 걸으면 같은 중복이 다시 생긴다. `lib/adapters/__tests__/contract.ts`의 "깊은 점 키" 축이 삽입하는 수술적 어댑터 둘에 값 무변경 바이트 동일·리터럴 개수 불변을 검사하고, `contract.test.ts`의 가짜 어댑터가 옛 동작을 red로 낸다. 알려진 한계: 같은 깊이에 `messages: { blank }`와 `"messages.blank"`가 **리터럴이 앞에** 오도록 공존하면 read(last-wins)와 write(긴 리터럴 우선)가 다른 항목을 고른다. **2026-09-24(audit #51 · B7a r1)부터 그 한계가 닫혔다** — read가 충돌한 평탄 키에 **write가 고칠 노드(`locate`)의 값**을 싣는다. 같은 이름 중복은 마지막(JS 런타임·push `lastWins`)이고 write도 마지막 자리를 고친다. 알림은 어댑터별이다: yaml은 `duplicate-key`(실패 — 평탄화 충돌도 이제 알린다, 전에는 조용히 접혔다), code-dict·ts-dict는 `duplicate-property`(경고 — CI green).
+- **결정성**: 추가되는 키를 코드 유닛 정렬 순서(`compareKeys`)로 넣으므로 `같은 DB 상태 + 같은 원본` → 같은 바이트다.
 - **`ts-dict`는 예외다.** bugshot-2가 세 로케일을 한 파일에 나란히 두어 키 격차가 구조적으로 생기지 않고, 삽입 지점을 고르는 규칙(어느 로케일 객체의 어디)이 파일 형태에 의존해 이득 없이 위험만 늘어난다.
 
 #### `yaml-catalog` 고유
@@ -402,6 +429,8 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 
 **최종 지표 (18차, 2026-09-14 — `ts-dict` 자동 탐지 복귀와 함께 다시 쟀다. 19차 2026-09-17, launch-readiness L1.4 뒤 재측정: 아래 표가 **한 칸도 안 바뀌었다** — 깊은 점 키 걷기 통일은 결함 케이스의 출력만 바꾸고 코퍼스에 그 모양이 없었다. ⚠️ 19차부터 "키 충돌" 지표가 read의 `duplicate-key` 보고도 세므로 그 수치(학습 454 · 홀드아웃 0)는 이전 회차와 비교하지 않는다)**
 
+⚠️ **2026-09-24(audit #54 · B7a)부터 지표 정의가 둘 바뀌었다 — 다음 회차의 `writeErrors`·`surgicalEditHunks`는 18·19차와 비교하지 않는다.** 측정이 pull의 `renderLocaleFiles`를 그대로 지나게 되면서 ① `writeErrors`가 렌더 오류(`original-file-missing` 포함)를 세고 multi-locale은 `format.locales` 전부를 돈다, ② 편집 탐침(`surgicalEditHunks`)이 비-base 로케일에도 DB 값을 싣는다(옛 탐침은 빈 입력이었다). 같은 날 `duplicate-property`(code-dict·ts-dict)가 "키 충돌"에 더해져 그 수치도 이어지지 않는다.
+
 | 지표 | 학습 109 | 홀드아웃 20 |
 |---|---|---|
 | 지원 포맷 탐지 | 100/101 (99.0%) | 16/17 (94.1%) |
@@ -442,6 +471,20 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 `i18n/glossary/{locale}.json`, 정답 2순위)이고 그 리포에 용어집 디렉터리가 생겼다. **변경 전
 코드(`765c20f`)로 같은 리포를 다시 재서 같은 결과를 확인했다** — 탐지 규칙 변경의 영향이 아니다.
 17차(2026-09-11)의 값은 학습 쪽이 한 칸도 다르지 않고 홀드아웃 오탐만 1/16 → 2/16이다.
+
+**22차 (2026-09-24, audit B7a 뒤 — `renderLocaleFiles` 경유 측정 · `duplicate-property` 도입)** — 위 ⚠️의 정의 변경 뒤 첫 측정이라 `writeErrors`·"키 충돌"은 21차와 비교하지 않는다.
+
+| 지표 | 학습 109 | 홀드아웃 20 |
+|---|---|---|
+| 지원 포맷 탐지 | 100/101 (99.0%) | 16/17 (94.1%) |
+| 오탐 | 0/100 (0.0%) | 2/16 (12.5%) |
+| 왕복 의미 동일 | 98/99 (siyuan — 21차와 같은 1건) | 17/17 |
+| **바이트 고정점** | **99/99** | **17/17** |
+| `writeErrors` > 0 | 1 (siyuan 22) | 0 |
+| 편집 탐침 1헝크 | 29/29 | 4/4 |
+| 조용한 손실 | 0건 | 0건 |
+
+새 정의로 재도 비교 가능한 칸은 21차와 한 칸도 안 바뀌었다 — B7a의 BOM·넓은 들여쓰기·YAML 삽입 인용·중복 정렬 수정은 코퍼스에 그 모양이 없거나(결함 케이스만 출력이 바뀐다) 이미 같은 출력이었다.
 
 **판정 넷**
 
@@ -649,6 +692,20 @@ backfill은 토큰을 더하기만 하므로 못 지운다. ⚠️ 해제 UPDATE
 
 ⚠️ **writer 경고가 있으면 GitHub에 쓰기 전에 멈춘다** (2026-09-18, sync-edit-protection T10 — 2026-09-04 결정의 반전). 렌더 뒤·2층 비교 전에 **판정과 껍데기가 갈린다**: 순수 판정 `planProtectedPublish`(`lib/protection/plan.ts`)가 `{ action: "reject", reason: "writer-warnings" }`를 내고, 그것을 `PullResult`의 `skipped/writer-warnings`로 접는 것은 `lib/pull/run.ts`다 — `lastPulledAt`도 토큰도 쓰지 않는다. ⚠️ **같은 디렉터리의 적재 쪽 이름은 `planProtectedPush`가 아니다**: 판정이 `planProtectedImport`, 그것을 잠금·트랜잭션으로 감싸는 껍데기가 `applyProtectedPush`(`lib/push/apply.ts`)다. 전에는 경고를 커밋·스킵 결과에 실어 보냈는데, 그러면 **버린 값의 편집 토큰까지 전달 확인으로 비워져** 보내지 않은 편집을 보냈다고 기록한다. 경고는 `PullResult`의 그 갈래에만 있다(`committed`·`no-changes`에 자리가 없다). **대가**: `missingOriginal`처럼 **지속 상태**인 경고는 사람이 해소할 때까지 매 밤 트리·blob을 다시 읽는다 — 1층이 토큰으로 판정하므로 미전달 편집이 없는 프로젝트는 여전히 GitHub을 안 부른다. `lib/pull/trigger.ts`가 `console.warn`으로도 낸다.
 
+⚠️ **좌표가 정확한 두 부류는 거부가 아니라 보류다** (2026-09-24, delivery-invariants D3 — `lib/pull/undeliverable.ts`). 수술적 per-locale 표면의
+**비-base** `original-file-missing`과 `write-slot-missing`(ts-dict가 로케일 객체에 자리가 없는 wanted 키를 보고한다 — D4)은 `blockingErrors`에서
+빠지고 `withheldCoordinates`가 된다. 그 좌표의 캡처 편집은 전달 확인에서 빠지고(`splitEdits` — 토큰 유지) 나머지는 Publish한다. 결과는
+`committed.delivered`(실린 수)와 `withheld: { file, key }`를 들고, 실린 0 + 보류만이면 `skipped/withheld`로 **쓰기도 확인도 없다**.
+**base 파일 부재는 여전히 reject다** — 사실상 경로 이동·설정 오류이고, 보류로 넘기면 전 셀이 빠져 문제가 가려진다. `deliveryContexts`는
+좁히지 않는다(§5.8 — 좁히면 표면 전체의 Revert가 막힌다). ⚠️ **ts-dict는 키가 그 파일 것인지를 같은 파일의 다른 로케일 객체로 판정한다** —
+렌더가 네임스페이스 파일마다 표면 전체 키를 넘기므로 "이 객체에 없다"만으로 보고하면 다른 파일 키 전부가 보류된다. 같은 이유로 비리터럴
+보고도 wanted 키로 좁힌다(감사 #4 — 무관한 `b: someFn` 하나가 파일 전체 Publish를 막았다). 미리보기도 편집 대상이 아닌 키의 비리터럴은 막지
+않는다 — 막으면 그 파일의 Publish가 화면에서 열리지 않는다. ⚠️ **셀 보류는 multi-locale(ts-dict) 파일의 `write-slot-missing`만이다** —
+per-locale code-dict의 같은 코드는 "문자열 자리를 객체로 덮는" 구조 충돌이라 파일을 고쳐야 풀리고 결과 문구("키가 아직 파일에 없다")가 거짓이
+된다. 거부로 남는다(2026-09-24 리뷰). **보류 수는 `SyncRun.withheld`에 산다** — 결과 모달과 Logs가 같은 수를 말하고(Logs는 조인으로 읽는다),
+Publish 사건 payload에는 복제하지 않는다(logs-rework 결정 1). 보류만 남은 `SKIPPED` 실행은 Logs에서 `notSent`("Not sent")다 — "Nothing to send"가
+아니다. **대가**: 보류가 남으면 1층이 매 실행 트리를 읽고 CI 적재가 계속 `deferred`다.
+
 ⚠️ **2층 동등(`no-changes`)의 전달 확인은 기존 no-op 탐지의 토큰판이다** — 값을 고르지 않고 "렌더 결과가 base와 같다"만 본다(§0 불변식 2 안). 원복한 편집이 이 경로로 끝나므로 이것을 없애면 그 편집이 영영 pending이라 CI가 영구 보류된다.
 
 ### 함정
@@ -661,8 +718,14 @@ backfill은 토큰을 더하기만 하므로 못 지운다. ⚠️ 해제 UPDATE
 - **브랜치가 없으면 `PATCH`가 아니라 `POST /git/refs`다.** 첫 실행 경로를 반드시 다뤄야 한다.
 - **parents는 항상 base head다.** `malmoi-i18n/sync`의 기존 head를 parent로 쓰면 누적 히스토리가 되고, base가 앞서 나간 뒤엔 3-way merge가 필요해진다 — 코어 원칙 위반.
 - **force update는 의도된 것이다.** `malmoi-i18n/sync`는 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다.
-  - ⚠️ **그 불변식을 지키는 코드가 커밋 경로에만 있었다** (2026-09-09, 6b-3 T6이 프로덕션에서 찾았다). 2층이 비교하는 것은 **base 트리**이므로 사용자가 편집을 되돌려 렌더가 base와 같아지면 변경 0건이 되고, 그때 커밋을 만들지 않으니 **브랜치는 직전 스냅샷을 그대로 들었다** — 그 PR을 머지하면 되돌린 편집이 리포에 적용된다. **"변경 0건"은 base 대비 0건이고 브랜치 대비 0건이 아니다.** 지금은 그 경로가 sync ref를 읽어 base보다 앞서 있으면 **base head로 되돌린다**(PR은 재사용 규칙대로 열린 채 diff만 0이 된다). 읽기 1회가 늘지만 **편집이 있었던 실행만** 그 줄에 닿으므로 1층 스킵의 "API 0회"는 그대로다.
-  - ⚠️ 화면 문구는 아직 그 경우를 구별하지 않는다 — `skipped/no-changes`가 "Nothing to send"라 **사용자의 열린 PR이 방금 비워진 사실을 말하지 않는다** (미해결).
+  - ⚠️ **그 불변식을 지키는 코드가 커밋 경로에만 있었다** (2026-09-09, 6b-3 T6이 프로덕션에서 찾았다). 2층이 비교하는 것은 **base 트리**이므로 사용자가 편집을 되돌려 렌더가 base와 같아지면 변경 0건이 되고, 그때 커밋을 만들지 않으니 **브랜치는 직전 스냅샷을 그대로 들었다** — 그 PR을 머지하면 되돌린 편집이 리포에 적용된다. **"변경 0건"은 base 대비 0건이고 브랜치 대비 0건이 아니다.** 지금은 그 경로가 sync ref를 읽어 base보다 앞서 있으면 **base head로 되돌린다**. 읽기 1회가 늘지만 **편집이 있었던 실행만** 그 줄에 닿으므로 1층 스킵의 "API 0회"는 그대로다.
+  - ⚠️ **"PR은 열린 채 diff만 0"은 거짓이었다** (2026-09-24, B1 r3 — QA5 PR #4). head가 base와 같아지면 **GitHub이 그 PR을 스스로 닫는다**(때로
+    "merged"로 표시한다 — [community discussion #7523](https://github.com/orgs/community/discussions/7523)). 그래서 되돌리기 **전에** 열린 PR을 찾아
+    **코멘트(`<!-- malmoi-i18n -->` + "the translation DB now matches `<base>`")를 남기고 명시적으로 닫는다**(`GitClient.closePr` — 코멘트가 먼저,
+    PR 쓰기 권한 그대로). 순서는 무효화(첫 외부 쓰기 전) → 닫기 → 초기화이고, 닫기가 실패하면 되돌리지 않고 던진다. 결과가 `closedPr`을 들고
+    화면이 역할별로 말하며, Logs는 **스킵 행의 `SyncRun.prUrl`**을 "닫은 PR"로 읽는다(스킵 행에 prUrl이 선 적이 없어 뜻이 겹치지 않는다 — 새 컬럼 없음).
+  - 미리보기도 같은 판정을 미리 말한다: base와 같은 값의 행은 `same`이라 "변경"으로 그리지 않고, 나가는 편집이 전부 그렇다면 "Publishing closes pull
+    request #N"(PR이 없으면 "Nothing differs from <base>")이다. ⚠️ **셀 단위 근사다** — 실행의 판정은 파일 blob SHA이고, 표현만 다른 파일은 실행이 정본이다.
 - **`[skip-malmoi-i18n]` 마커가 없으면 무한 루프**: pull이 만든 커밋이 main에 머지되면 push가 돌아 다시 DB에 쓰고, 그게 pull을 트리거한다. ⚠️ **마커는 커밋 메시지와 PR 제목(`PR_TITLE`) 둘 다에 든다** (2026-09-17, launch-readiness L1.2) — 가드 셋(`action.yml`·워크플로 템플릿·ACTIONS.md)은 `head_commit.message`의 부분 문자열만 보는데, "Create a merge commit"의 그 메시지는 `Merge pull request #N from …\n\n<PR 제목>`이라 커밋 메시지의 마커가 실리지 않는다. 제목에 있으면 세 머지 방식 전부에서 잡힌다(`lib/pull/__tests__/skip-marker.test.ts`가 다섯 모양을 대조하고 소비자 셋의 리터럴을 센다). 재사용하는 PR의 제목에 마커가 없으면 pull이 `PATCH /pulls`로 **원래 제목 뒤에 마커를 덧붙인다**(`withSkipMarker` — 사람이 고친 제목을 기본 제목으로 덮지 않는다; 256자 상한을 넘을 때만 `PR_TITLE`로 폴백). 마커가 있으면 PATCH 자체가 없다. 검사 쪽(둘째 부모 조회)을 고치는 안은 러너 `fetch-depth`와 태그 릴리스를 부르므로 버렸다.
 - **PR은 하나를 재사용한다.** `GET /pulls?head={owner}:malmoi-i18n/sync&state=open`으로 먼저 조회. **`head`가 `owner:branch` 형식이어야 필터가 걸린다** — 브랜치명만 넘기면 GitHub이 조용히 무시해 전체 목록이 오고 PR이 중복 생성된다. PoC 리포에 PR 수십 개가 쌓이면 사람이 안 본다. ⚠️ **`base`로 거르지 않는다** (2026-09-18, launch-readiness L3.7) — 설정에서 base 브랜치를 바꾸면 저장된 새 base로는 옛 PR이 안 보이고, GitHub은 base가 다르면 같은 head의 PR을 하나 더 허용한다. 조회가 PR의 base를 함께 돌려주고, 어긋나면 `PATCH /pulls`로 **base를 옮긴다**(스냅샷 커밋은 이미 새 base 위에 있다).
 - **⚠️ `multi-locale`의 write는 파일 × 로케일 이중 루프다** (2026-09-01 발견 — 그전 서술은 "파일별"까지만 말했다). `ts-dict.write`는 `currentFiles[0]`만 보고 **`input.locale`로 로케일 객체 하나를 고르므로**, 파일 하나를 완성하려면 로케일마다 한 번씩 부르며 **직전 결과를 다음 호출의 원본으로 넘겨야** 한다. 파일 축만 돌면 나머지 로케일이 조용히 원본으로 남아 PR에 ko만 바뀐 채 나간다.
@@ -710,7 +773,7 @@ pull과 **같은 App 설치 토큰**을 쓰지만 방향이 반대다(읽기 전
 - **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON 묶음일 수 있다
   (bugshot-web 실측) — 후보를 고르기 위한 중간값이지 화면에 쓰는 값이 아니다.
 - **내려받는 파일은 재탐지가 읽을 파일과 바이트 단위로 같아야 한다.** `verifySamples`·`hasDictionary`가
-  `sampleOrder(locales)`(en 우선 → 코드포인트 순, 3개)를 읽으므로 `probeTargets`가 **그 함수를 import해 쓴다** —
+  `sampleOrder(locales)`(en 우선 → 코드 유닛 순, 3개)를 읽으므로 `probeTargets`가 **그 함수를 import해 쓴다** —
   다른 3개를 받으면 후보가 검증 실패가 아니라 **미검증으로 통째로 떨어진다**.
 - **상한은 비용이 아니라 응답 시간이다**: JSON류 상위 5 × 3 + code-dict 상위 2 × 3 +
   **`ts-dict` 씨앗 2 × 8**(2026-09-14) = **blob ≤ 37**. 온보딩 한 번의 호출은
@@ -758,7 +821,7 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
 기존 User 행 잠금·OWNER 한도 재집계를 유지하고, Project 명시적 id·OWNER·Surface N개·기본 포인터와
 `applyPushInTransaction(tx, ...)`를 같은 callback tx에 저장한다(`maxWait: 10_000`, `timeout: 30_000`).
 중간 쓰기·커밋 실패는 밖으로 전파해 모두 롤백한다. 캐시 무효화는 커밋 뒤라 그 실패를 롤백으로 보고하지 않는다.
-신규 모달은 별도 `runFirstIngest`를 부르지 않는다. 기존 Settings 재시도와 Add surface의 정책은 그대로다.
+신규 모달은 별도 `runFirstIngest`를 부르지 않는다. 기존 Sources 재시도와 Add sources(`addSurfaces`)의 정책은 그대로다.
 별도 연결의 부분 행 가시성·동시 한도·slug 경합·둘째 표면·마지막 쓰기·시간 초과 롤백은 격리 PG 검사가 지킨다.
 
 #### 온보딩의 쓰기 쪽 판정층 넷 — 순서가 판정이다
@@ -809,11 +872,11 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
 
 ⚠️ **Server Action의 `maxDuration`은 호출한 페이지 세그먼트가 정한다.** `app/api/*`의 세그먼트 config가
 Action에 적용되지 않으므로 **페이지가 각자** `export const maxDuration = 60`을 든다 — 지금 **여덟 곳**이다(`app/api/push`·`app/api/pull`은 라우트라 별개다):
-`projects/page.tsx` · `projects/new/page.tsx` · `projects/@modal/(.)new/page.tsx` · `[slug]/page.tsx` · `[slug]/settings/page.tsx` ·
+`projects/page.tsx` · `projects/new/page.tsx` · `projects/@modal/(.)new/page.tsx` · `[slug]/(home)/page.tsx` · `[slug]/settings/page.tsx` ·
 `[slug]/sources/page.tsx` · `[slug]/translations/page.tsx` · **`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`**. **새 Action 화면을 만들 때마다 선언한다** — 안 하면 기본값에서
 첫 적재가 잘리고, 증상이 "큰 리포에서만 실패"라 재현이 어렵다. **세는 법은 grep 하나다**(`rg -n 'maxDuration' app`) — 이 목록을 손으로 늘리면 낡는다.
 
-⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Send changes]가 사는 곳은
+⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Publish]가 사는 곳은
 **표면 경로**(`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`)이고 그 세그먼트를 쓴다.
 ⚠️ **옛 `[slug]/translations/page.tsx`는 지금 `defaultSurface`로 보내는 redirect 껍데기다** — 그쪽의 선언은
 표면 경로로 넘어가기 전에 인가·조회가 도는 자리라 남겨 두지만, 아래 논증이 가리키는 세그먼트는 표면 쪽이다.
@@ -936,13 +999,13 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   strict 적재는 토큰 있는 셀을 덮지 않는다(`WHERE "pendingEditToken" IS NULL OR = ANY(approvedTokens)`) — 승인 토큰은 수동 Sync만 넘긴다.
   배포 B의 precondition 마이그레이션(`20260917170000_pending_edit_token_precondition`)이 backfill 미수렴을 `db:deploy`에서 거부한다(복구 절차는 OPERATIONS).
   인덱스는 일반 복합 `[projectId, pendingEditToken]`이다 — btree가 `IS NOT NULL`을 Index Cond로 써서 격리 PG 합성 3만 행에서 3행만 읽었다(없으면 3만 행 비트맵 스캔) — 그래서 스키마로 표현되지 않는 partial 인덱스는 쓰지 않는다.
-- **`TranslationSurface.lastImportFailedAt`은 실패에만 시각을 준다** (2026-09-15, `20260915082003_home_attention_timestamps`). `lastImportError`는 코드만 들고 `lastImportStartedAt`은 끝나는 순간 비워져서, **실패에 시각이 없었다** — Home의 할 일 항목이 세 종을 한 시간축에 세우려면 셋 다 시각이 있어야 한다. 성공은 이 값을 건드리지 않는다(성공 시각은 `lastCommitAt`이 이미 든다). ⚠️ **종료 경로가 다섯이고 전부 `importOutcomeFields`를 지난다** — `applyPush`·`finishImportRun`·`recordReportedFailure`·정상 0키·표면 실패. 필드를 손으로 나열하면 컬럼이 늘 때 몇이 조용히 빠지고, **실제로 이 컬럼이 처음에 둘에만 붙었다.** ⚠️ **성공이 이 값을 `null`로 비운다** — 안 비우면 복구된 표면이 계속 옛 실패를 말한다. ⚠️ **backfill이 없다** — 에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이고, 읽는 쪽이 그것을 **가장 오래된 것**으로 고정한다(임의 순서를 만들지 않는다).
+- **`TranslationSurface.lastImportFailedAt`은 실패에만 시각을 준다** (2026-09-15, `20260915082003_home_attention_timestamps`). `lastImportError`는 코드만 들고 `lastImportStartedAt`은 끝나는 순간 비워져서, **실패에 시각이 없었다** — Home의 할 일 항목이 세 종을 한 시간축에 세우려면 셋 다 시각이 있어야 한다. 성공은 이 값을 건드리지 않는다(성공 시각은 `lastImportedAt`이 든다 — 아래 절. `lastCommitAt`은 리포 커밋 시각이라 성공 시각이 아니다 — malmoi#81에서 Home이 그것을 "Last sync"로 읽어 17시간 전 Sync가 "13 days ago"로 보였다). ⚠️ **종료 경로가 다섯이고 전부 `importOutcomeFields`를 지난다** — `applyPush`·`finishImportRun`·`recordReportedFailure`·정상 0키·표면 실패. 필드를 손으로 나열하면 컬럼이 늘 때 몇이 조용히 빠지고, **실제로 이 컬럼이 처음에 둘에만 붙었다.** ⚠️ **성공이 이 값을 `null`로 비운다** — 안 비우면 복구된 표면이 계속 옛 실패를 말한다. ⚠️ **backfill이 없다** — 에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이고, 읽는 쪽이 그것을 **가장 오래된 것**으로 고정한다(임의 순서를 만들지 않는다).
 - **`TranslationSurface.lastImportedAt`·`createdAt`은 그 옆의 다른 축이다** (2026-09-22, `20260922062014_add_surface_import_timestamps` — Sources 화면이 소비자다, `lib/sources/query.ts`의 `sourceSelect`·`sourceView`).
   - `lastImportedAt`은 **마지막 성공 적재 시각**이고 `lastCommitAt`이 아니다 — 커밋 시각을 그 자리에 쓰면 리포에 오래 전 커밋이 있는 소스가 "방금 적재됨"으로 읽힌다. ⚠️ **backfill이 없다**: 이 컬럼 이전의 성공에는 시각이 없고 화면이 그 자리를 **생략한다**(`lastCommitAt`으로 메우면 "적재 시각"이라는 거짓이 DB에 남는다).
   - `createdAt`은 **소스가 선언된 시각**이고, 첫 적재 전 화면이 "얼마나 기다렸나"에 답하는 유일한 값이다. ⚠️ **기존 행은 마이그레이션 시각으로 채워진다 — 진짜 시각이 아니다**(`Locale.createdAt`과 같은 사정). "정확히 언제 생겼나"의 답으로 믿는 코드를 만들지 않는다.
 - **⚠️ `Locale.createdAt`의 기존 값은 프로젝트 생성 시각이다 — 진짜 시각이 아니다** (같은 마이그레이션). `Locale`에 시각 컬럼이 하나도 없어(`code`·`name`·`isBase`·`orphaned`뿐) "한 번도 안 채워진 로케일"을 시간축에 못 세웠다. **`@default(now())`만 두면 마이그레이션이 거짓을 만든다** — 기존 로케일 전부가 "마이그레이션 시각"을 들고 배포 직후 그 항목들이 목록 맨 위를 점령하며, 그 거짓은 되돌릴 수 없다(진짜 시각이 어디에도 없다). 그래서 마이그레이션이 `UPDATE "Locale" … FROM "Project"`로 프로젝트 생성 시각을 넣었다: 로케일이 프로젝트보다 먼저 생길 수는 없고 "지금"보다 덜 틀리다. **이 값을 "로케일이 정확히 언제 생겼나"의 답으로 믿는 코드를 만들지 않는다** — 답할 수 있는 것은 **정렬에서의 상대 순서**뿐이고, 같은 프로젝트의 로케일 여럿이 동점이 되는 것을 읽는 쪽의 동점 규칙(`surfaceSlug` → 코드 유닛 비교)이 받는다.
 - **`orphaned`는 `StringKey`와 `Locale` 둘 다에, `needsReview`는 `Translation`에.** 키의 존재 여부도 로케일의 존재 여부도 코드(리포)가 정하고, 번역의 신선도는 값마다 판정되기 때문이다. 로케일 쪽은 §5.5.16이 든다.
-- **`projectId`를 가진 테이블의 조회용 인덱스는 전부 `projectId` 선두 복합이다.** 그 조회는 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스가 쓸모없다. ⚠️ **전부는 아니다** — 진입 키(`Project.slug`·`Project.pushTokenHash`·`User.emailLookup`·`Session.sessionToken`·`ProjectInvitation.tokenHash`)와 `Translation(keyId, localeCode)`·`KeyRef(keyId)`는 프로젝트를 모르는 상태에서 찾는 값이라 예외다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — 편집 UI 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록), **`(projectId, updatedAt)`**(소비자 **둘** — 1층의 캡처 `aggregate` · `loadRecentEdits`. ⚠️ **1층 판정과 미배포 집계는 2026-09-18에 `[projectId, pendingEditToken]`으로 옮겼다**, §2), **`(projectId, startedAt)`**(`SyncRun` — `loadSyncRuns`의 키셋 페이지네이션이 그 위에 선다). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
+- **`projectId`를 가진 테이블의 조회용 인덱스는 전부 `projectId` 선두 복합이다.** 그 조회는 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스가 쓸모없다. ⚠️ **전부는 아니다** — 진입 키(`Project.slug`·`Project.pushTokenHash`·`User.emailLookup`·`Session.sessionToken`·`ProjectInvitation.tokenHash`)와 `Translation(keyId, localeCode)`·`KeyRef(keyId)`는 프로젝트를 모르는 상태에서 찾는 값이라 예외다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — 편집 UI 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록), **`(projectId, updatedAt)`**(소비자 **둘** — 1층의 캡처 `aggregate` · `loadRecentEdits`. ⚠️ **1층 판정과 미배포 집계는 2026-09-18에 `[projectId, pendingEditToken]`으로 옮겼다**, §2), **`(projectId, startedAt)`**(`SyncRun` — Logs가 `ProjectEvent`로 옮겨 가며(2026-09-20) 키셋 조회 소비자는 사라졌다). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
   - ⚠️ **표면 스코프 판과 2컬럼 판이 병존한다.** 표면이 생기면서 `StringKey(projectId, surfaceId, namespace)`·`(projectId, surfaceId, orphaned)`·`Translation(projectId, surfaceId, localeCode, needsReview)`·`(projectId, surfaceId, updatedAt)` 넷이 붙었고, 같은 이름의 2컬럼 판은 **지우지 않았다**. **프로덕션 화면 조회는 전부 표면으로 좁히므로 3·4열 판이 그 경로다**(불변식 5 — `projectId` 다음에 `surfaceId`). 2컬럼 판이 남은 이유는 **표면을 모르는 프로젝트 단위 집계**다 — 1층의 `aggregate`가 `[projectId, updatedAt]`을, 목록 raw 집계가 프로젝트 전체를 훑는다. 어느 한쪽을 지우려면 **먼저 그 축의 쿼리가 어느 판을 타는지 EXPLAIN으로 본다** — 이름이 비슷해 "중복"으로 보이지만 스캔 경로가 다르다.
 
 ### 5.1 SaaS 인증·인가 테이블 (2026-09-05, `20260904182548_add_tenant_auth_tables`)
@@ -1104,13 +1167,31 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 **미전달 편집이 있으면 CI 적재를 통째로 보류한다** (2026-09-18, sync-edit-protection — 옛 판정 "편집 손실 창은 코드에서 지우지 않는다, 완화는 pull 주기를 줄이는 쪽에서만"의 반전). 그 옛 판정이 금지한 것은 **변경 감지와 병합**이었고, 보류는 둘 다 하지 않는다: **자동 적재 판정은 리포를 보지 않는다** — 입력은 프로젝트 전체의 미전달 편집 수(`countPending`) 하나이고, 0이면 이 절의 strict 적재가 한 줄도 안 바뀐 채 돈다. 리포 값과 DB 값을 견주는 코드가 없어 승자를 고르는 자리도 없다.
 
-- `/api/push`는 가드(보관·오배송·포맷·역행) 뒤에 사전 집계 → 0이 아니면 **200 `{status: "deferred", reason: "pending-edits", pendingCount}`** 이고 어떤 컬럼도 쓰지 않는다(진행 표시 포함). 0이면 `applyProtectedPush`가 Project 잠금 안에서 다시 세고, upsert 뒤 **재집계**가 0이 아니면(판정과 upsert 사이에 커밋된 저장) 트랜잭션 전체를 롤백하고 `deferred`다 — 조건 불일치는 0행이라 조용하므로(POSTMORTEM 2026-09-14) 재집계 예외가 그 무음을 깬다. 저장 경로엔 잠금이 없다.
+- `/api/push`는 가드(보관·오배송·포맷·역행) 뒤에 사전 집계 → 0이 아니면 **200 `{status: "deferred", reason: "pending-edits", pendingCount}`** 이고 어떤 컬럼도 쓰지 않는다(진행 표시 포함). 0이면 `applyProtectedPush`가 Project 잠금 안에서 다시 세고, upsert 뒤 **재집계**가 0이 아니면 트랜잭션 전체를 롤백하고 `deferred`다 — 조건 불일치는 0행이라 조용하므로(POSTMORTEM 2026-09-14) 재집계 예외가 그 무음을 깬다. ⚠️ **저장도 같은 `Project` → `TranslationSurface` 잠금 안이라**(§5.7.1) "판정과 upsert 사이에 커밋된 저장"은 끼지 못한다 — 재집계가 잡는 것은 **이 적재가 unorphan시킨 토큰 셀**이다(사전 집계는 orphan을 빼서 0이었다가 키·로케일이 되살아나면 1이 된다).
 - 수동 Sync는 OWNER가 Dialog를 열 때 받은 **폐기 승인 지문**(사용자·프로젝트·활성 표면의 revision과 설정·pending `(id, token)`의 sha256)을 되돌려 줄 때만 편집을 덮는다. 서버가 Project 잠금 뒤 재계산해 대조하고(POSTMORTEM 2026-09-13), 승인 집합의 토큰만 upsert 가드를 통과한다 — 승인 뒤 저장은 살아남아 결과의 `remainingEdits`로 선다.
 - **대가는 정확히 하나다**: 미전달 편집이 남아 있는 동안 리포의 새 소스 키·삭제도 앱에 안 들어온다(§0 불변식 1의 유예). 손실을 막는 값이 "적재가 늦어짐"이고 병합이 아니다.
 
 **"예외 없음"의 범위는 값이 있는 셀이다** (2026-09-17 명문화, launch-readiness L1.3). `applyPush`는 `value === ""`인 엔트리를 적재 대상에서 뺀다(`lib/push/apply.ts`) — 리포에서 사라지거나 비워진 번역은 DB 셀을 **건드리지 않는다**. 이것은 셀 단위 "누가 이겼나"가 아니라 **"코드에서 번역을 지우는 방법은 없다"**(§0 불변식 3)의 귀결이다: pull은 DB의 `""`를 부재로 내보내므로(POSTMORTEM 2026-09-09 — `buildWriteEntries`의 판정 기준은 "그 값이 없으면 키가 사라지는가"), 부재를 삭제로 받으면 리포에 잠깐 없던 셀이 다음 PR에서 키째 사라진다. 지우려면 UI에서 비운다. **"리포 부재 → DB 비움"으로 바꾸는 것은 export가 명시적 빈값과 미번역 빈값을 구별하는 수단이 생긴 뒤의 일이다**(PRODUCT §10).
 
 ⚠️ **"지우려면 UI에서 비운다"는 재생성 어댑터(`chrome-locales`·`json-catalog`)에서만 참이다** (2026-09-18, launch-readiness L1.3 흡수). 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 빈 값으로 치환하지 않으므로(§1.4) UI에서 비운 셀의 **원본 값이 파일에 남고**, 머지 뒤 push가 그 값을 DB로 되돌린다. 코드에서 지워도 위 규칙대로 DB 값이 남아 다음 pull이 되살린다 — **그 방식에는 번역을 지우는 길이 아직 없다.** 같은 결정의 두 면이고 여는 수단도 같다(명시적 빈값 export). 검증은 `lib/keys/__tests__/push-absent-cells.integration.ts`(적재 쪽 네 갈래 + 뒤이은 pull)다.
+
+⚠️ **그래서 수술적 표면의 비-base 비우기는 저장 단계에서 거부한다** (2026-09-24, delivery-invariants D2 · 감사 #2). 전에는 저장은 되고 pull이
+그 토큰을 전달 확인으로 해제해 "보냈다"가 거짓이었다. `planClearability`가 **정규화 뒤** 값으로 판정하고(공백만의 입력도 걸린다) 거부 단위는
+키 전체다(`cannot-clear` — 아무것도 저장되지 않는다). Revert의 `""` 복원은 이 판정을 지나지 않는다 — 원래 비어 있던 셀의 정당한 복원이다.
+
+**폐기 승인 Sync는 이번 적재로 orphan이 된 승인 셀의 토큰을 비운다** (2026-09-24, delivery-invariants D1 · 감사 #1). upsert는 페이로드에 없는
+셀에 안 닿아서, 승인한 Sync가 떨어뜨린 키·로케일의 셀에 토큰이 남았다 — `pendingWhere`가 orphan을 빼므로 화면 어디에도 0이다가 그 키가 되살아나면
+CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복했다. `finishSurface`의 `payload`·`empty` 갈래(적재 확정)에서만 돈다. 빈 값·실패 파일
+승인 셀은 그대로 남아 `remainingEdits`로 보인다 — 리포에 값이 없던 셀의 편집값을 pending 아닌 채 남기면 다른 Publish에 조용히 실린다.
+⚠️ **배포 전 잔존 유령 토큰은 이 문장이 못 푼다**(승인 집합이 `pendingWhere` 기준이라 이미 orphan인 셀을 뺀다 — 2026-09-24 실측 0).
+
+**비-base 셀은 이번 페이로드의 base 키 집합으로 거른다** (2026-09-24, delivery-invariants D5 · 감사 #58). `idByKey`에 기존 orphan 키가 들어 있어
+비-base 파일에만 남은 orphan 키의 셀이 덮이고 저자가 비고 행이 INSERT됐다. refs 매핑은 그대로 `idByKey`를 쓴다 — 코드가 아직 참조하는 orphan
+키의 사용처는 메타데이터라 적재 값이 아니다.
+
+**수동 Sync는 다운로드 실패 로케일을 재탐지 목록에 되살린다** (2026-09-24, delivery-invariants D6 · 감사 #59). 재탐지가 첫 다운로드분만 보고
+재시도는 blob만 채워서, fr blob 한 번의 일시 실패가 fr을 `payload.locales`에서 빼 orphan시켰다. `localesToKeep`이 트리의 템플릿 경로에서 로케일을
+다시 얻는다 — 끝내 못 읽은 로케일은 번역 없이 남고 `partial-import`가 말한다.
 
 **따라서 `Translation.value`의 쓰기 주체는 둘이다**: 편집 UI(키 단위 저장 `saveTranslationKey`, 그리고 같은 편집 UI의 명시적 복원 명령 `revertTranslationKey` — 스냅샷이 지정한 값을 쓰는 것이지 판정이 아니다, §5.8)와 push. 셋째가 생기면 어느 쪽이 이기는지 다시 판정해야 하므로 늘리지 않는다.
 
@@ -1196,7 +1277,7 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 ### 5.5.7 적재 실행권 — 토큰 둘과 revision 하나 (2026-09-14 multi-surface B, 2026-09-17 정본화)
 
-적재 경로가 넷이다(CI push · 첫 적재 · Add surface · 수동 Sync). 서로 겹치거나 뒤늦게 끝나는 실행이 **남의 결과를 덮지 않게** 하는 컬럼이 셋이다.
+적재 경로가 넷이다(CI push · 첫 적재 · Add sources(`addSurfaces`) · 수동 Sync). 서로 겹치거나 뒤늦게 끝나는 실행이 **남의 결과를 덮지 않게** 하는 컬럼이 셋이다.
 
 | 컬럼 | 소유 | 무엇을 막나 |
 |---|---|---|
@@ -1210,7 +1291,7 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 **7단계가 pull 바깥에 껍데기를 하나 얹었다** (2026-09-10). `runPull`의 판정층은 한 줄도 안 바뀌었다 —
 1층 스킵·2층 blob 비교·`captured = maxUpdatedAt`이 그대로다. 새로 생긴 것은 **"돌려도 되는가"**와
-**"무엇으로 끝났는가"** 둘뿐이고, 진입점 둘(편집 UI [Send changes] · 야간 cron)이 같은 함수를 지난다.
+**"무엇으로 끝났는가"** 둘뿐이고, 진입점 둘(편집 UI [Publish] · 야간 cron)이 같은 함수를 지난다.
 
 ### 5.6.1 동시 실행은 `Project` 행 잠금이 막는다
 
@@ -1281,7 +1362,7 @@ $transaction(tx):
 ⚠️ **`retryable`이 2026-09-16부터 화면까지 간다** (그전 등재는 "소비자 0"이었다). `classifySyncError`가
 `RETRYABLE` 표로 정한 값을 `failureOutcome`이 **`PullOutcome`에 그대로 싣고**(`code`·`retryable`·`delivery`
 셋), Publish 모달이 그 하나로 실패 화면 둘을 가른다 — `true`면 "다시 하면 된다", `false`면 "설정을
-고쳐야 한다"(DESIGN §6.646). **`SyncRun`에는 여전히 컬럼이 없고** `loadSyncRuns`도 안 읽는다: 이력
+고쳐야 한다"(DESIGN §6.646). **`SyncRun`에는 여전히 컬럼이 없고** Logs(`lib/events/query.ts`)도 안 읽는다: 이력
 화면이 그 구별을 하려면 컬럼이 먼저다.
 
 - ⚠️ **`delivery`는 `retryable`과 다른 축이다** — "다시 해도 되나"와 "나갔나"는 별개다. 실행 **전**
@@ -1327,6 +1408,14 @@ Action이고 인가는 **`translation:write`**다 — 기존 `checkOpenPullReque
 ⚠️ **pull이 안 쓰는 셀을 약속하지 않는다** (2026-09-18, L3.7). 수술적 per-locale 어댑터는 원본 파일이 base에 없으면 그 로케일을
 안 낸다(`render.ts`의 `original-file-missing`) — 미리보기는 그 셀을 표에서 빼고 `withoutFile`로 센다. **막지 않는다**: 막으면 파일
 하나 빠진 프로젝트의 Publish가 통째로 멈춘다. `truncated`는 상한 때문에 조회하지 않은 행만이라 두 수가 섞이지 않는다.
+⚠️ **실행과 같은 판정이다** (2026-09-24, delivery-invariants D3). 실행은 그 셀을 보류하고(`withheld.file`) 나머지를 보낸다 — 전에는 미리보기만
+"나머지는 나간다"고 하고 실행은 `writer-warnings`로 전체를 거부했다. ts-dict 자리 없는 키는 `withoutKey`(= `withheld.key`)다. **base 파일
+부재는 실행이 거부하므로 미리보기도 막는다** — `preview-error`(Try again)가 아니라 **전용 거부**다(`refused/base-file-missing` — 경로·브랜치를
+말하고 Try again이 없다. 다시 눌러도 같은 거부다, L3.3. OWNER는 Settings로, EDITOR는 a project owner를 가리킨다 — 2026-09-24 사용자 결정). ⚠️ **두 수가 같은 것은 pending 200행(`PREVIEW_LIMIT`) 이하에서만이다** —
+상한을 넘으면 `truncated`와 같이 읽힌다.
+⚠️ **미리보기가 말하는 수는 나가는 수다** (2026-09-24, #84 — POSTMORTEM 2026-09-17). 제목·요약·PR 줄·실행 진행 제목이 `sendable`(`total − withoutFile −
+withoutKey`, 키는 실린 셀이 하나도 없는 키를 뺀다)로 말한다 — 결과의 `delivered`·Logs와 같은 모집단이다. 전부 보류(`sendable.total = 0`)면 PR을 만들거나
+바꾸는 버튼이 없고 이유를 말한다. 결과 쪽도 같다: `no-changes` + 보류는 Logs처럼 `Not sent` 틀이다(#83 — "이미 리포에 있었다"·"nothing to send"가 거짓이 된다).
 
 ### 5.6.4 보관은 인가 union의 갈래 하나다
 
@@ -1336,6 +1425,12 @@ PRODUCT §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 
 - 거부는 `planProjectAccess`가 한다. **`project:settings`를 제외한 모든 permission이 `archived`로 떨어지고**,
   그래서 페이지·Server Action 전부가 **한 자리**에서 거부된다 — `entry-points.test.ts`가 진입점 전수를
   세므로 새 갈래를 빠뜨린 화면이 없다. 설정만 통과하는 이유는 **그것이 되돌리는 길**이어서다.
+- ⚠️ **진입점 판정은 잠금 전 1회라 쓰기의 근거가 아니다** (2026-09-24, 감사 #9·#10·#26). 쓰는 트랜잭션은
+  `lockProjectAccess`(`lib/auth/lock.ts`)로 **`Project`(→`TranslationSurface`) 잠금 뒤** 호출자의 멤버십·역할과
+  보관 상태를 다시 읽는다 — 잠금 대기 중 제거·강등·보관이 끝나면 여기서 거부된다(POSTMORTEM 2026-09-23의
+  Revert와 같은 형). 판정은 같은 `planProjectAccess`이고, 그 위에 **쓰기 규칙 하나**를 얹는다: 보관된
+  프로젝트의 `project:settings` 쓰기는 보관 토글(`archiveToggle` — `archiveProject`·`unarchiveProject`)만 통과한다(PRODUCT §7.9 "보관 = Restore만").
+  `app/__tests__/locked-access.test.ts`가 **등재된 16자리**(`SITES`)의 `$transaction` 콜백 안에 그 호출이 있는지 센다 — 허용 목록 방식이라 새 Action은 스스로 찾지 못하고, 호출이 첫 문장인지·반환값을 검사하는지도 보지 않는다.
 - ⚠️ **판정 순서가 권한 → 보관이다.** EDITOR가 보관된 프로젝트의 설정을 열려 하면 답이 `forbidden`이지
   `archived`가 아니다 — 그래야 보관 여부가 권한 없는 사람에게 새지 않는다.
 - **목록에서 숨기지 않는다** — 숨기면 되돌릴 링크에 도달할 길이 없다. `loadMemberships`가 `archivedAt`을
@@ -1469,8 +1564,16 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 - **기준 행은 미전달 셀에만 있다.** 매 Publish에 활성 키×언어 전부를 쓰는 조밀 설계는 T1 실측으로 폐기했다 —
   20,000키×200언어 = 4.26M 행이 로컬 upsert 42초 · dev Supabase 추정 ~135초 · 580MB라 `maxDuration 60`과 무료 500MB를 둘 다 넘는다.
 - **소스별 전달 확인 레코드**(revision · confirmedAt · syncRunId · context · invalidatedAt)가 유효하면 "미전달이 아닌 활성 셀의 현재 값 =
-  마지막 확인된 export 값"이 성립한다. 그 등식을 깨는 쓰기는 셋뿐이다 — strict 적재(레코드 무효화) · Save(셀을 미전달로 만든다) ·
-  Revert(기준값으로 되돌리며 미전달을 푼다). 키·언어의 추가·부활은 적재로만 일어나므로 무효화에 포함된다.
+  마지막 확인된 export 값"이 성립한다. 그 등식을 깨는 쓰기는 넷이다 — strict 적재(레코드 무효화) · Save(셀을 미전달로 만든다) ·
+  Revert(기준값으로 되돌리며 미전달을 푼다) · 폐기 승인 Sync의 orphan 셀 토큰 해제(delivery-invariants D1 — 같은 tx의 `importRevision` 증가가
+  확인을 이미 무효화하므로 드러나 깨지지는 않는다). 키·언어의 추가·부활은 적재로만 일어나므로 무효화에 포함된다.
+- ⚠️ **보류 셀의 기준은 새 revision으로 다시 찍는다** (2026-09-24, delivery-invariants D3). 보류가 있는 Publish도 표면 확인은 새 revision으로
+  쓰고, 보류 셀 중 **기준 행이 이미 있는 셀**의 `revision`만 갱신한다(`restoreValue` 불변 · 없는 행은 만들지 않는다 — 그 셀은 원래 unknown이다).
+  안 하면 기준이 옛 revision이라 Revert가 `baseline-stale`로 막혀 보류를 푸는 길 하나가 닫힌다. 보류 셀은 pending이라 위 등식에 걸리지 않는다.
+  ⚠️ **같은 context의 직전 확인에서 온 기준만 옮긴다** (2026-09-24 리뷰) — 덮기 전에 읽은 직전 확인의 지문이 지금과 같고, 기준 행의 revision이
+  그 확인의 것일 때만이다. base branch가 main → release로 바뀐 뒤 release에 파일이 없으면, main에서 확인된 기준을 release의 revision으로 찍는
+  순간 Revert가 release에서 한 번도 확인된 적 없는 값을 복원하고 토큰을 비운다(불변식 9). 그 셀은 `baseline-stale`로 남는다
+  (`delivery-invariants.integration.ts`가 두 갈래를 고정한다).
 - **Save**가 미전달이 아닌 셀을 바꾸는 순간 같은 tx에서 직전 값을 export 폴백(`buildWriteEntries`: base 결측·빈값 → 원문, 비-base → `""`)으로
   유도해 기록한다. 레코드가 무효이거나 Publish가 진행 중이면 기록하지 않는다 — 그 셀은 unknown이고 Revert가 막힌다.
 - **무효화는 두 장치다.** ① 적재(strict push·수동 Sync)는 **증가만 하는 `importRevision`**이 context 지문(`lib/translations/context.ts`)을 바꿔 무효화한다 —
@@ -1492,7 +1595,7 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
   pending 해제가 일어나므로 no-op이 아니다. 인가는 `project:settings`다.
   ⚠️ **실행은 `Project`→`TranslationSurface` 잠금을 얻은 뒤 OWNER 멤버십과 활성 프로젝트·표면을 다시 잰다** (2026-09-23 리뷰) —
   미리보기와 실행 사이의 강등·제거·보관이 잠금 대기 동안 끝날 수 있어, 진입점 판정만으로는 권한 잃은 사람의 쓰기와 사건이 남는다
-  (`revert-key.integration.ts`가 실제 PG 잠금 대기로 세 경합을 재현한다). 키 저장(`save-key`)의 같은 재확인은 후속 검토 후보다.
+  (`revert-key.integration.ts`가 실제 PG 잠금 대기로 세 경합을 재현한다). 키 저장(`save-key`)과 수동 Publish 시작(`lib/sync/run.ts`)도 2026-09-24에 같은 재확인(`lockProjectAccess`)을 얻었다.
 
 ## 6. 인증 경계
 
@@ -1653,7 +1756,9 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
   남의 입력이 되살아나지 않게).
 - 저장 성공 뒤 미저장이 0이면 사본을 지우고, 남으면 최신 draft와 갱신된 저장 기준으로 다시 쓴다. 확인창에서 버린 draft는 사본에서도
   지운다 — 안 지우면 돌아왔을 때 버린 입력이 되살아난다.
-- storage를 못 쓰면 보존을 약속하지 않고 "복사한 뒤 로그인하라"를 보인다.
+- storage를 못 쓰면 보존을 약속하지 않고 "복사한 뒤 로그인하라"를 보인다 — 세션 만료 Alert의 본문이 `storageBlocked`로 **교체**된다
+  (malmoi#76 전까지 문구만 있고 렌더되지 않았다). 다른 사용자로 재인증했을 때는 **아무것도 말하지 않는다** — 남의 사본이 있다는
+  사실도 공용 기기에서는 정보다.
 - **보관된 프로젝트는 `ProjectArchived` 화면**이라 작업 화면도 복구도 돌지 않는다 — 번역을 읽기 전용으로 새로 열지 않는다. 편집 중
   보관되면 입력이 읽기 전용이 된다.
 
@@ -1728,6 +1833,40 @@ credential 리뷰에서 같은 위험(남의 라이브러리 메시지에 Prisma
 목록**을 든다. 실측으로는 Vercel 엣지가 `Host` 위조를 404로 막고 `X-Forwarded-Host`를 반영하지
 않지만(2026-09-09 프로덕션), 그 방어는 **플랫폼 설정의 성질이지 우리 코드의 성질이 아니다.**
 
+⚠️ **`requestOrigin`이 `null`이면 시작도 callback도 멈춘다** (2026-09-24, audit #78). 인증 왕복 셋(병합 확인 ·
+세션 회수 · 계정 연결)의 **시작**은 L7.6부터 그 조건에서 쿠키를 심지 않고 돌아갔는데, **callback**
+(`lib/{login-link,session-revocation,account-connect}/http.ts`)만 `url.protocol`로 떨어져 Auth.js를 돌렸다 —
+2026-09-14에 시작(`?? false`)과 콜백(`?? https`)이 갈려 state 쿠키 이름이 어긋난 것과 같은 모양이 남아 있던
+자리다. 지금은 허용 목록 밖의 호스트에서 intent 쿠키를 든 callback이 `run()`을 부르지 않고 각자의 실패
+착지(`failed` · `unavailable`)로 303하며 쿠키 두 변형을 지운다. 그 호스트에서 시작된 왕복은 우리가 시작한 것일
+수 없다. 세 가로채기가 사본으로 들던 원시 판정(callback 경로 · nonce 검사 · 쿠키 두 변형 만료)은
+`lib/auth/roundtrip.ts` 하나로 모였다 — **흐름은 공유하지 않는다**(`lib/__tests__/oauth-callback-contract.test.ts`).
+
+### 6.06 외부 진입점의 크기·빈도 상한 (2026-09-24, audit #76 · #77)
+
+**본문 크기는 읽기 전에 막는다.** `/api/push`는 `request.json()`이 크기와 무관하게 끝까지 버퍼링했고
+`/api/push/failure`는 `text()`로 다 읽은 뒤에 쟀다. 지금 둘 다 `lib/bounded-body.ts`의 `readBoundedText`를
+지난다 — 선언된 `content-length`는 읽기 전에, 선언이 없거나 거짓인 스트림은 누적 바이트로 도중에 끊는다.
+상한은 `/api/push` 4,500,000바이트(**플랫폼 상한 이하의 값** — Vercel 문서의 "4.5 MB"가 10진인지 2진인지
+확인하지 않았다. 2진(4,718,592)이라면 그 사이의 페이로드는 여기서 새로 걸린다) · `/api/push/failure` 4096바이트이고, 초과는 둘 다 400 `body too large`다.
+⚠️ **순서는 인증 → 크기 → 파싱이다** — 무효 토큰 하나로 본문을 읽히지 않는다.
+
+**빈도 상한(레이트리밋)은 두지 않는다 — 받아들인 위험이다.** 감사가 짚은 자리는 업로드 · 토큰 회전 ·
+login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이유:
+
+- **범용 장치가 없다.** 이 리포의 유일한 빈도 제한은 초대 발급(`lib/invitation-email/plan.ts` — 주소별·프로젝트별
+  창)이고 **초대 행을 세는 도메인 판정**이라 다른 자리에 재사용할 수 없다. 공유 카운터는 Vercel 함수가 인스턴스
+  사이에 상태를 안 나눠 DB 테이블이나 외부 저장소가 필요하다 — 확장성을 위한 선반영이다.
+- **전부 인증 뒤다.** 업로드·토큰 회전·세션 회수는 세션(+ 역할)이, `/api/push`는 프로젝트 토큰이 먼저 선다.
+  남용의 주체가 이미 식별된 사람이고, 폐기(멤버 제거·토큰 회전·세션 회수)가 곧 차단이다.
+- **추측할 비밀이 짧지 않다.** 초대·병합 challenge·push 토큰은 32바이트 난수의 해시 조회라 빈도 제한이
+  추측 공격의 방어선이 아니다. 초대 **발송**(외부로 메일이 나가는 유일한 자리)은 이미 제한된다.
+- **비용이 드는 쓰기는 잠금이 줄 세운다** — 업로드는 크기·픽셀 상한(`limitInputPixels`)이, 적재·Sync는
+  `Project` 행 잠금이 한 번에 하나로 묶는다.
+
+⚠️ **다시 볼 조건**: 인증 없이 부를 수 있는 쓰기 진입점이 생기거나, 누구나 로그인할 수 있는 지금(§6.2)
+가입·세션 남용이 관측되면 그때 Vercel Firewall의 rate limit 규칙부터 본다(코드가 아니라 플랫폼 설정이다).
+
 ### 6.1 ⚠️ 차단은 미들웨어, **인가는 진입점** (2026-09-05 갈렸다)
 
 **레이아웃의 조건부 렌더는 차단이 아니다.** App Router는 레이아웃과 페이지를 병렬로 렌더하므로, 레이아웃이 `children`을 쓰지 않아도 페이지는 이미 실행돼 DB를 조회하고 RSC 페이로드를 응답에 싣는다. 실측으로 세션 없는 `/keys` 응답 **1.3MB에 1446키가 노출**됐다 — 화면엔 로그인 버튼만 보이므로 눈으로는 안 보인다 (`docs/POSTMORTEM.md` 2026-08-31).
@@ -1771,7 +1910,7 @@ credential 리뷰에서 같은 위험(남의 라이브러리 메시지에 Prisma
 
 #### 6.1.15 ⚠️ 키 부재는 던지고 행 하나는 살린다 — **순서가 판정이다** (2026-09-10)
 
-암호화 전환 뒤 목록 로더 넷이 행마다 복호화한다: `loadMembers`·`loadPendingInvitations`(`lib/auth/query.ts`) · `loadSyncRuns`(`lib/sync/query.ts`) · `loadActors`(`lib/keys/query.ts`).
+암호화 전환 뒤 목록 로더들이 행마다 복호화한다: `loadMembers`·`loadPendingInvitations`(`lib/auth/query.ts`) · `loadEvents`·`loadEventActors`(`lib/events/query.ts` — 옛 `loadSyncRuns`의 자리, 2026-09-24 삭제) · `loadActors`(`lib/keys/query.ts`).
 
 - **한 행이 못 열려도 목록은 산다.** 전환 중에는 **부분 변환이 정상 상태**이고(backfill이 행 단위 CAS다) 키를 회전하고 옛 키를 폐기하면 옛 세대가 남는다. 던지면 멤버 아홉이 멀쩡한데 화면이 통째로 500이다. 못 읽은 행은 **자기 문구**(`m.common.unreadable` = "Unavailable")를 들고, 이름은 비운다 — 옛 값을 그럴듯하게 보여줄 자리가 없다. `loadActors`만 다르다: map에서 **빼면** `actorLabel`이 `updatedBy` 원문으로 폴백하므로 셀이 비지 않는다(옛 GitHub 핸들을 위해 이미 있던 갈래다).
 - ⚠️ **`null`(정보 없음)로 접지 않는다.** 그것이 POSTMORTEM 2026-09-03의 "실패한 조회를 '없음'으로 읽어 경고가 존재하지 않는 것과 구별되지 않았다"이고, 화면 층으로 내려온 같은 축이다 — 이력 표에서 `—`(부재)와 "Unavailable"(못 읽었다)이 **같은 열에서 갈린다**.
@@ -2003,10 +2142,10 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - ⚠️ **"남이 정한 문자열을 객체 키로 쓰지 않는다"는 규칙은 살아 있고, 자리만 옮겼다.** 이 리포는 그것을 두 번 밟았다
   (POSTMORTEM 2026-09-08 조회 · 2026-09-09 대입). §1.1의 "키 대입" 규칙과 같은 계보인데 그쪽은 어댑터 축에만
   적혀 있어 여기 다시 적는다. **지금 그 규칙이 서 있는 자리는 둘이다**:
-  - `lib/keys/view.ts` — `parseLocaleSelection`이 `?locales=`를 **배열 `includes`**로 거르고(주소창 값이다),
-    `namespaceCountsFor`·`groupByNamespace`의 누산기가 **`Map`이다**. 평범한 `{}`에 `out["__proto__"] = v`를 하면
-    setter가 불려 own property가 안 생기고 **그 네임스페이스 그룹이 조용히 사라진다**(POSTMORTEM 2026-09-09).
-    네임스페이스는 로케일 파일의 키에서 파생되므로 **남이 정하는 문자열**이다.
+  - `lib/keys/query.ts`·`lib/pull/render.ts` — 로케일 코드로 셀 맵을 만들고 읽는 자리다. 대입은 **`Object.create(null)`**,
+    조회는 **`Object.hasOwn`**이다(`lib/keys/__tests__/view.test.ts`의 소스 스캔이 센다). 평범한 `{}`에 `out["__proto__"] = v`를
+    하면 setter가 불려 own property가 안 생기고 **그 열이 조용히 사라진다**(POSTMORTEM 2026-09-09). ⚠️ 옛 자리였던
+    `lib/keys/view.ts`의 `namespaceCountsFor`·`groupByNamespace`(누산기 `Map`)는 2026-09-24에 지웠다(audit #65).
   - `lib/search-params.ts` — `firstQueryValues`가 화면이 받은 쿼리 객체 전체를 접는 자리이고, 누산기가
     **`Object.create(null)`이다**. 키를 주소창이 정하므로 같은 부류이고, **모든 화면의 `searchParams`가 이 한 함수를
     지난다** — 여기가 뚫리면 위 갈래가 방어할 기회조차 없다.
@@ -2293,7 +2432,7 @@ A(additive) → Surface writer 배포 → B(제약 교체) 순서다. **B에서 
 격리 40표면·20,000키/번역 fixture의 자연 EXPLAIN에서 표면 목록·미발송 범위가 복합 인덱스를 사용한다.
 이는 해당 규모·선택도의 근거이며 모든 계획에 Seq Scan이 없다는 보장은 아니다.
 
-Publish는 활성 표면을 slug 코드포인트 순으로 처리하고 하나의 base snapshot을 공유한다.
+Publish는 활성 표면을 slug 코드 유닛 순(`compareSurfaces`)으로 처리하고 하나의 base snapshot을 공유한다.
 resolved path 소유권 충돌은 렌더·GitHub 쓰기 전에 거부하며 파일은 path 순으로 평탄화한다.
 tree·commit·PR·SyncRun·`lastPulledAt`은 프로젝트당 하나다. 표면 하나가 실패해도 완료 기준을 전진시키지 않는다.
 **"1층 판정"과 "캡처값"은 다른 것이고 범위가 갈린다** (2026-09-18 정정). 1층 판정은 `shouldSkipPull(unpublished)`(`lib/pull/plan.ts`)이고 입력은 `pendingWhere`로 센 미전달 편집 수라 **비활성 표면을 뺀다**(술어에 `surface: { archivedAt: null }`이 있다 — 보관 표면의 셀은 export에 안 나가므로 세면 "보내지 않은 편집을 보냈다"가 된다). 시각은 더 이상 판정에 안 들어간다. `max(Translation.updatedAt)`은 `lastPulledAt`에 박을 **캡처값으로만** 남았고(`lib/pull/load.ts`의 `aggregate`), 그쪽은 여전히 **비활성 표면 포함 프로젝트 전체**다 — 좁히면 보관 표면의 편집이 다음 실행을 깨우는 창이 열린다. 화면 미발송·진행률·신규 키는 판정과 같은 범위(비활성 제외)다.
@@ -2338,15 +2477,37 @@ PR 생성·머지·재push 및 60초 전체 예산 검증은 미완료다.
     안 돌았다.** 응답이 항상 200이라 cron 실행은 성공으로 표시되고 요약에도 그 사실이 없어 **관측값이
     정상과 같았다.** 지금은 `selectPullTargets`가 못 돈 수를 함께 내고 응답이 `{ results, unprocessed }`다 —
     **상한이 잘림을 없애지 않는다, 시끄럽게 만든다.** 거기 닿으면 그때 cron 분할을 본다.
-- **응답 보안 헤더는 `next.config.ts`의 `headers()`가 낸다** (2026-09-09, sec-audit 발견 9). enforce 셋
-  (`X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·
-  `Content-Security-Policy: frame-ancestors 'none'`) + **CSP 본체는 Report-Only**다.
-  - ⚠️ **`Referrer-Policy`가 이 중 실질이 가장 크다** — `/invite/<token>`은 토큰이 **URL에** 있어, 그
-    화면에 외부 링크가 하나 추가되는 순간 토큰이 `Referer`로 나간다.
-  - ⚠️ **CSP를 바로 enforce하지 않는다** — Next가 인라인 스타일·스크립트를 넣고, 깨지면 **콘솔에만**
-    난다. 이 리포엔 렌더 테스트가 없어 `pnpm build`로도 못 본다. 콘솔을 읽은 뒤에 올린다.
-  - ⚠️ **`tsc`는 이 함수를 못 본다** — 없어도, 헤더 이름 오타도 타입은 통과한다.
-    `app/__tests__/security-headers.test.ts`가 **설정을 불러서** 검사한다.
+- **응답 보안 헤더는 `next.config.ts`의 `headers()`가 낸다** (2026-09-09, sec-audit 발견 9 → 2026-09-24 audit #75).
+  값은 `lib/security-headers.ts`의 순수 함수(`cspEnvironment` · `buildCsp` · `securityHeaders`)가 정하고, 다섯이 전부
+  enforce다: `X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·
+  **`Content-Security-Policy`(하나)** · `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` ·
+  `Permissions-Policy`(카메라·마이크·위치·결제·USB·topics 끔).
+  - **CSP는 enforce이고 환경 셋으로 갈린다** (2026-09-24 사용자 판정 "보안 강하게" — 2026-09-09의 "Report-Only로
+    시작"을 뒤집었다). **프로덕션**(그리고 판정 못 한 모든 환경 — 가장 좁은 쪽으로 접는다): `default-src 'self'` ·
+    script·style `'self' 'unsafe-inline'` · `font-src 'self'` · `img-src`에 `data:`·GitHub/Google 아바타 호스트 둘·
+    Blob 공개 호스트 · `connect-src 'self'` · `form-action 'self' https://github.com https://accounts.google.com` ·
+    `object-src 'none'` · `base-uri 'self'` · `frame-ancestors 'none'`. **`next dev`**: + script `'unsafe-eval'`(React
+    Refresh) · connect `ws:`·`wss:`(HMR). **preview**(`VERCEL_ENV=preview`): + Vercel Toolbar 호스트(Vercel 문서
+    "Using a Content Security Policy"의 목록 그대로 — `vercel.live`·`ws-us3.pusher.com`·`vercel.com`·
+    `assets.vercel.com`·`blob:`, `frame-src 'self' https://vercel.live`).
+  - ⚠️ **CSP 헤더는 하나만 보낸다** — 둘이면 브라우저가 교집합을 적용해 한쪽의 완화가 조용히 무시된다.
+    `frame-ancestors`도 그 하나에 들어 있다.
+  - ⚠️ **`'unsafe-inline'`이 script·style에 남는다** — Next의 인라인 부트스트랩(`self.__next_f.push`)과 인라인
+    스타일 때문이고 nonce 배선은 범위 밖이다(nonce로 가면 전 페이지가 요청마다 렌더된다). 그래서 이 정책이 막는 것은
+    **외부 출처**의 스크립트·연결·폼 전송·플러그인·`<base>` 탈취다.
+  - ⚠️ **`form-action`은 폼 제출 뒤의 302에도 걸린다** — Google 로그인은 폼 POST → 302 `accounts.google.com`이라
+    그 호스트가 빠지면 Google 로그인만 **콘솔에만 남고** 멈춘다. 새 외부 왕복(공급자·설치 흐름)을 늘리면 여기부터 본다.
+  - ⚠️ **`img-src`는 공급자 아바타 호스트를 둘만 연다** — Google이 `lh3` 밖의 호스트를 주면 그 아바타가 깨진다.
+  - ⚠️ **깨지는 방식이 조용하다** — 위반은 브라우저 콘솔에만 나고 렌더 테스트가 없어 `pnpm build`로도 못 본다.
+    정책을 바꿨으면 로컬 프로덕션 빌드(`pnpm build && pnpm start`)에서 로그인 둘·계정 연결·App 설치 링크·초대 수락·
+    Publish·이미지 업로드·토스트를 한 바퀴 돌며 콘솔 위반 0을 확인한다.
+  - ⚠️ **HSTS의 `includeSubDomains`는 `*.mal-moi.com` 전부를 HTTPS에 묶는다**(`dev.mal-moi.com` 포함) — http로만 뜨는
+    하위 호스트를 만들 수 없다. **`preload`는 선언일 뿐이다** — hstspreload.org 제출은 오너의 수동 절차이고 되돌리는 데
+    수개월이 걸린다(docs/OPERATIONS.md).
+  - ⚠️ **`Referrer-Policy`의 실질이 크다** — `/invite/<token>`은 토큰이 **URL에** 있어, 그 화면에 외부 링크가
+    하나 추가되는 순간 토큰이 `Referer`로 나간다.
+  - ⚠️ **`tsc`는 `headers()`를 못 본다** — 없어도, 헤더 이름 오타도 타입은 통과한다.
+    `app/__tests__/security-headers.test.ts`가 **설정을 불러서** 배선을, `lib/__tests__/security-headers.test.ts`가 값을 검사한다.
 - **서버리스 함수 타임아웃**: **blob 읽기는 이미 `BLOB_CONCURRENCY`(8) 청크 제한 병렬이다** — 실측 최대 106로케일이고 직렬이면 그 한 리포가 cron을 넘긴다 (2026-09-04 audit #18). 남은 순차 구간은 ref·tree·commit이고 파일 수와 무관하다.
 
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)

@@ -46,24 +46,33 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
   const cancelId = useId();
   const describedId = useId();
   const warningId = useId();
+  const pausedReasonId = useId();
   const [pending, setPending] = useState(false);
-  const [openPr, setOpenPr] = useState<OpenImportPr>(undefined);
+  /** ⚠️ **`"checking"`을 `undefined`(실패)로 접지 않는다** (malmoi#75) — 조회 중과 조회 실패는 다른 줄이다. */
+  const [openPr, setOpenPr] = useState<OpenImportPr | "checking">("checking");
   /**
    * 폐기 승인 지문 — Dialog가 열릴 때마다 새로 받는다 (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). 서버가 잠금 뒤 재계산해 대조하므로
    * 여기서 낡아도 편집이 사라지지 않고 reconfirm이 된다. 받기 전이거나 실패면 `null`로 보낸다.
    */
   const approval = useRef<string | null>(null);
+  /**
+   * ⚠️ **지문 발급이 끝나기 전에는 확정할 수 없다** (audit #14) — 그 전에 누르면 `null`이 나가 서버가 reconfirm을 내고,
+   * 화면은 *"Translations changed after you opened Sync"* 라는 사실과 다른 문장을 띄웠다. **실패는 끝난 것이다** —
+   * 그때는 풀어서 `null`을 보내고 서버가 재확인을 요구한다(위 계약). 기다리는 것은 "아직 모른다" 하나다.
+   */
+  const [approvalPending, setApprovalPending] = useState(true);
   const request = useRef(0);
   const busy = useRef(false);
   useEffect(() => {
     const id = ++request.current;
-    setOpenPr(undefined);
+    setOpenPr("checking");
+    setApprovalPending(true);
     if (!open || role !== "OWNER" || paused) return;
     if (busy.current) { onOpenChange(false); return; }
     approval.current = null;
     void prepareRepositorySync({ slug }).then(
-      value => { if (request.current === id) approval.current = value?.approval ?? null; },
-      () => { if (request.current === id) approval.current = null; },
+      value => { if (request.current === id) { approval.current = value?.approval ?? null; setApprovalPending(false); } },
+      () => { if (request.current === id) { approval.current = null; setApprovalPending(false); } },
     );
     void checkOpenPullRequest({ slug }).then(
       value => { if (request.current === id) setOpenPr(value); },
@@ -77,13 +86,15 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     근원에서 파생되므로 두 벌이 어긋날 자리가 없다.
   */
   useEffect(() => { onPendingChange?.(pending); }, [pending]); // onPendingChange의 참조 변경은 트리거가 아니다.
-  const plan = planImportConfirmation({ unsent, openPr });
+  // 조회 중은 계획에서 미확인과 같다 — 둘 다 "열린 PR이 없다"를 모르므로 블록이 선다.
+  const plan = planImportConfirmation({ unsent, openPr: openPr === "checking" ? undefined : openPr });
+  const pr = plan.openPr;
   function changeOpen(next: boolean) {
     if (next && busy.current) return;
     onOpenChange(next);
   }
   async function confirm() {
-    if (busy.current) return;
+    if (busy.current || approvalPending) return;
     busy.current = true;
     setPending(true);
     changeOpen(false);
@@ -114,13 +125,20 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     바뀔 때(배너의 `[Try again]`) 확인 창이 열려 실행까지 간다. 보이는 것은 같은 자리의 같은 버튼이고
     누를 수 없을 뿐이다.
   */
+  /*
+    ⚠️ **`disabled`가 아니라 `aria-disabled` + 사유다** (audit #37 — DESIGN §6.65). 진짜 `disabled`는 포커스를 못 받아
+    왜 멈췄는지 닿을 길이 없었다. 사유는 원인(미연결·보관·Publish 진행)을 가르지 않는다 — 원인은 같은 화면의 배너·
+    Publish 버튼이 이미 말한다. ⚠️ **보이는 사람에게는 `title`이다** — 머리에 문장을 세울 자리가 없고, 옆의 [Publish]가 같은 형이다
+    (§6.646: `title`은 마우스용, sr-only는 describedby용).
+  */
   if (paused) {
-    return (
-      <Button disabled>
+    return <>
+      <Button aria-disabled aria-describedby={pausedReasonId} title={m.repositorySync.paused} onClick={event => event.preventDefault()}>
         <ArrowDownToLine className="size-3.5" aria-hidden />
         {m.repositorySync.action}
       </Button>
-    );
+      <span id={pausedReasonId} className="sr-only">{m.repositorySync.paused}</span>
+    </>;
   }
   return <Dialog open={open && !pending} onOpenChange={changeOpen}>
     <DialogTrigger asChild>
@@ -161,7 +179,11 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
       footer={<>
         <DialogClose asChild><Button id={cancelId}>{m.common.cancel}</Button></DialogClose>
         {/* ⚠️ 무엇을 버리는지를 라벨이 먼저 말한다 — 미전달이 있으면 확정이 곧 폐기다 (sync-edit-protection spec "수동 Sync"). */}
-        <Button variant="danger" onClick={() => void confirm()}>{unsent > 0 ? m.repositorySync.confirmDiscard : m.repositorySync.confirm}</Button>
+        {/* ⚠️ `disabled`가 아니라 `aria-disabled`다 — 지문이 도착하면 같은 버튼이 풀리므로 포커스·Tab 순서가 그대로 남아야 한다. */}
+        <Button variant="danger" aria-disabled={approvalPending} onClick={() => void confirm()}>
+          {approvalPending && <LoaderCircle className="size-3.5 animate-spin" aria-hidden />}
+          {unsent > 0 ? m.repositorySync.confirmDiscard : m.repositorySync.confirm}
+        </Button>
       </>}>
       {/*
         ⚠️ **위험이 없으면 본문 자체가 없다** (시안 `4a`) — "없음"을 한 줄로 세우지 않는다: 부재가 곧
@@ -188,24 +210,26 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
           */}
           <div aria-live="polite" className="min-w-0 flex-1 space-y-1.5">
             {plan.recommendSend && <p>{m.repositorySync.unsent(unsent, <span className="font-medium">{m.repositorySync.unsentCount(unsent)}</span>)}</p>}
-            {openPr === undefined
-              ? <p>{m.repositorySync.prUnknown}</p>
-              : openPr !== null ? <p>{m.repositorySync.openPr(openPr.number, branch)}</p> : null}
+            {openPr === "checking"
+              ? <p>{m.repositorySync.prChecking}</p>
+              : pr === undefined
+                ? <p>{m.repositorySync.prUnknown}</p>
+                : pr !== null ? <p>{m.repositorySync.openPr(pr.number, branch)}</p> : null}
           </div>
         </div>
         {/*
           ⚠️ **권유는 링크이고 확인 버튼과 두 축으로 떨어진다** — 누르면 다른 라우트로 떠나므로 바닥
           오른쪽(= 이 질문에 답하는 자리)에 서면 세 번째 답으로 읽힌다.
-          ⚠️ 미발송이 0이면 `Send changes first`가 **거짓**이라 열린 PR 링크로 갈린다 (시안 `4c` 오른쪽).
+          ⚠️ 미발송이 0이면 `Publish first`가 **거짓**이라 열린 PR 링크로 갈린다 (시안 `4c` 오른쪽).
           조회 중·실패(`undefined`)에는 권할 다음 행동이 없어 줄 자체가 없다 (`4d`).
         */}
         {plan.recommendSend
           ? <p className="text-muted-foreground">{m.repositorySync.sendHint(
               <Link href={routes.translations(slug)} className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">{m.repositorySync.sendFirst}</Link>,
             )}</p>
-          : openPr !== undefined && openPr !== null
+          : pr !== undefined && pr !== null
             ? <p className="text-muted-foreground">{m.repositorySync.nothingUnsent}{" "}
-                <a href={openPr.url} target="_blank" rel="noreferrer" className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">
+                <a href={pr.url} target="_blank" rel="noreferrer" className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">
                   {m.repositorySync.seeOpen}
                 </a></p>
             : null}

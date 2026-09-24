@@ -3,7 +3,8 @@ import type { PrismaClient, Prisma } from "@/generated/prisma/client";
 import { hashSessionToken } from "@/lib/credentials/crypto";
 import { logCaught } from "@/lib/failure";
 import { pickLoginAccount } from "@/lib/login-link/policy";
-import { challengeIdentifier, challengePrefix, checkChallenge, nonceHash, parseChallengeIdentifier, stateHash, validNonce, type Outcome } from "./policy";
+import { challengeIdentifier, challengePrefix, checkChallenge, nonceHash, parseChallengeIdentifier, stateHash, type Outcome } from "./policy";
+import { validNonce } from "@/lib/auth/roundtrip";
 import { lockUser } from "@/lib/auth/lock";
 
 type Proof = { nonce: string; sessionToken: string; state: string; provider: string; providerAccountId: string };

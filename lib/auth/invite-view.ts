@@ -12,6 +12,8 @@ export function planInviteView(input: {
   session: "ok" | "none" | "unavailable";
   /** undefined는 읽기 실패이고 null은 행 없음이다. */
   invitation: InvitationRow | null | undefined;
+  /** 초대 대상 프로젝트가 보관됐는가 — 행이 없으면 의미가 없다. */
+  archived: boolean;
   viewerEmail: string | null;
   alreadyMember: boolean;
   queryError: string | undefined;
@@ -28,6 +30,8 @@ export function planInviteView(input: {
   if (acceptance === "not-found" || acceptance === "already-accepted" || acceptance === "expired") {
     return { kind: "blocked", notice: acceptance, retry: false };
   }
+  // 보관은 로그인·계정 전환으로 풀리지 않는다 — 버튼을 세우면 누른 뒤에야 거부를 본다 (audit #79).
+  if (input.archived) return { kind: "blocked", notice: "archived", retry: false };
 
   // 주소창의 프로토타입 키까지 거부하도록 아는 문자열만 고른다.
   let notice: InviteError | null = null;
@@ -39,6 +43,7 @@ export function planInviteView(input: {
     case "expired":
     case "email-mismatch":
     case "already-member":
+    case "archived":
       notice = input.queryError;
   }
   if (input.session === "none") return { kind: "sign-in", notice };

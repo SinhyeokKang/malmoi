@@ -237,7 +237,7 @@ App 설정 > General (2026-09-18, install-and-connect):
 - **Setup URL**은 **비운다** — 옵션이 켜져 있으면 쓰이지 않는다(GitHub이 callback으로 보낸다). 남겨 두면 누가 옵션을 끄는 순간 지운 라우트(`/api/github/setup`)로 가서 404다.
 - **Redirect on update** 켬 — 리포 선택을 바꾸고 Save하면 callback으로 state 없이 돌아오고, callback이 `/projects/new`에 쓰기 없이 착지시킨다.
 
-⚠️ **설치 URL은 `redirect_uri`를 받지 않는다** — 세 환경이 `malmoi-prod` 하나를 공유하는 동안 로컬·preview에서 시작한 설치도 프로덕션 callback으로 간다(쿠키가 없어 교환 0회로 거부된다). 로컬에서는 보조 링크(Authorize, `redirect_uri`가 로컬)로 연결하고 GitHub에서 직접 설치한 뒤 [Check again]으로 본다. 요청 대기(D)·목록 위 info는 dev DB의 `Account.installRequestedAt`을 직접 심어 본다. 설치 왕복 자체(1클릭·요청 복귀·승인 복귀)는 **프로덕션에서만** 실측한다. ⚠️ **L2.10에서 App을 나누면 dev App에도 같은 옵션을 켠다.**
+⚠️ **설치 URL은 `redirect_uri`를 받지 않는다** — 세 환경이 `malmoi-prod` 하나를 공유하는 동안 로컬·preview에서 시작한 설치도 프로덕션 callback으로 간다(쿠키가 없어 교환 0회로 거부된다). 로컬에서는 보조 링크(Authorize, `redirect_uri`가 로컬)로 연결하고 GitHub에서 직접 설치한 뒤 [Try again]으로 본다. 요청 대기(D)·목록 위 info는 dev DB의 `Account.installRequestedAt`을 직접 심어 본다. 설치 왕복 자체(1클릭·요청 복귀·승인 복귀)는 **프로덕션에서만** 실측한다. ⚠️ **L2.10에서 App을 나누면 dev App에도 같은 옵션을 켠다.**
 
 ## Google OAuth 동의 화면 — 게시와 도메인 소유권 (2026-09-19)
 
@@ -302,6 +302,13 @@ CLAUDE.md) ④ 재배포 ⑤ 초대 한 통을 지정 수신자로 보내 접수
 
 **한도**: 앱 쪽은 같은 주소 60초 · 프로젝트 최근 1시간 20건이고(`lib/invitation-email/limits.ts`), Resend 요금제 한도는 그보다 넓다고 가정한다 —
 넘으면 429가 `email-rejected`로 보인다.
+
+## HSTS preload 제출 — 오너 수동 절차 (2026-09-24)
+
+응답 헤더가 `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`를 **선언**한다(`lib/security-headers.ts`).
+**hstspreload.org 제출은 코드가 하지 않는다** — 오너가 손으로 하고, 한 번 목록에 실리면 브라우저 배포 주기를 따라
+빠지기까지 **수개월**이 걸린다. ⚠️ **`includeSubDomains`가 `*.mal-moi.com` 전부를 HTTPS에 묶는다**(`dev.mal-moi.com` 포함) —
+제출 전에 http로만 뜨는 하위 호스트가 없는지, 앞으로도 만들지 않을지 확인한다.
 
 ## 호스팅 플랜과 한도 (2026-09-19 확인)
 

@@ -7,14 +7,14 @@ import { describe, expect, it } from "vitest";
 /**
  * **셸은 뷰포트에 고정되고 콘텐츠 컬럼만 스크롤한다** (DESIGN §6.5).
  *
- * ⚠️ 회귀 (malmoi#13, 2026-09-08 `/bugshot-qa` preview 실측): 셸 루트가 `min-h-svh`였고 `aside`·`header`가
+ * ⚠️ 회귀 (malmoi#13, 2026-09-08 `/runtime-test` preview 실측): 셸 루트가 `min-h-svh`였고 `aside`·`header`가
  * `position: static`이라, 콘텐츠가 뷰포트보다 길면 **문서 전체가 스크롤되면서 셸이 함께 밀려 올라갔다.**
  * 24키짜리 번역 화면에서도 `scrollHeight` 1483 / 뷰포트 775였고, **Sign out(top 1411)과
  * Collapse sidebar(top 1443)가 스크롤 전부터 화면 밖**이었다 — 사이드바 접기는 그 버튼이 유일한 경로다.
  *
  * ⚠️ **렌더 테스트를 두지 않는 리포라**(ARCHITECTURE §0.5) 소스로 센다. `focus-ring`·`globals-css`와
  * 같은 계열이고, 이 결함의 조건이 정확히 **레이아웃 클래스 조합**이라 그 층에서 판정이 성립한다.
- * 실물 확인은 `/bugshot-qa`가 계속 든다.
+ * 실물 확인은 `/runtime-test`가 계속 든다.
  *
  * **8-2(2026-09-10)가 골격을 시안으로 옮기면서 검사가 늘었다** — 셸이 "배경 위에 뜬 패널"이 됐고
  * (당시엔 셋이었고 2026-09-16에 우측 프로젝트 패널을 지워 둘이다 — DESIGN §6.55·§5.1)
@@ -312,8 +312,8 @@ describe("패널 폭 등급을 화면이 고르고 있다", () => {
   /** 프로젝트·사용자 축의 **목록** 화면 — 카드가 패널을 채운다(시안 `1a`). */
   const FLUID = new Set([
     "app/(edit)/projects/loading.tsx",
-    "app/(edit)/projects/[slug]/loading.tsx",
-    "app/(edit)/projects/[slug]/page.tsx",
+    "app/(edit)/projects/[slug]/(home)/loading.tsx",
+    "app/(edit)/projects/[slug]/(home)/page.tsx",
     "app/(edit)/projects/[slug]/logs/error.tsx",
     "app/(edit)/projects/[slug]/logs/loading.tsx",
     "app/(edit)/projects/[slug]/logs/page.tsx",
@@ -389,5 +389,34 @@ describe("패널 폭 등급을 화면이 고르고 있다", () => {
     const found = consumers.find((file) => file.rel === rel)?.tags ?? [];
     expect(found.length).toBeGreaterThan(0);
     expect(found.filter((tag) => tag.includes('width="fluid"'))).toEqual([]);
+  });
+});
+
+/**
+ * **Home 골격은 Home만 감싼다** (malmoi#95 — audit #18).
+ *
+ * ⚠️ `loading.tsx`는 그 세그먼트의 **모든 하위 라우트**의 Suspense 경계다. Home 골격이 `[slug]/`에
+ * 바로 있을 때 자기 `loading.tsx`가 없는 Members·Sources·Settings·Translations로 가는 클라이언트
+ * 내비게이션이 **URL과 사이드바는 이미 도착 화면인데 Home의 카드 넷 골격**을 먼저 그렸다(느린 망
+ * 실측 ~1.6초). 그래서 Home의 `page.tsx`·`loading.tsx`를 route group `(home)/`에 둔다 — URL은 그대로다.
+ */
+describe("Home 로딩 경계가 형제 라우트를 감싸지 않는다", () => {
+  const SLUG = join(ROOT, "app/(edit)/projects/[slug]");
+  const exists = (rel: string): boolean => {
+    try {
+      return statSync(join(SLUG, rel)).isFile();
+    } catch {
+      return false;
+    }
+  };
+
+  it("`[slug]/` 바로 아래에 `loading.tsx`·`page.tsx`가 없다", () => {
+    expect(exists("loading.tsx")).toBe(false);
+    expect(exists("page.tsx")).toBe(false);
+  });
+
+  it("Home의 `page.tsx`·`loading.tsx`가 `(home)/`에 함께 있다", () => {
+    expect(exists("(home)/page.tsx")).toBe(true);
+    expect(exists("(home)/loading.tsx")).toBe(true);
   });
 });

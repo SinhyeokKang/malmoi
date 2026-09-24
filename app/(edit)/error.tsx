@@ -10,7 +10,7 @@ export default function PageError({ reset }: { reset: () => void }) {
       <PanelBody>
         <div className="space-y-4">
           <Alert variant="danger">{m.errors.access.unavailable}</Alert>
-          <Button type="button" onClick={reset}>{m.common.retry}</Button>
+          <Button type="button" variant="primary" onClick={reset}>{m.common.retry}</Button>
         </div>
       </PanelBody>
     </ContentPanel>

@@ -1,4 +1,4 @@
-import { History, SearchX } from "lucide-react";
+import { History, RotateCcw, SearchX } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { EventDetail } from "@/components/logs/event-detail";
@@ -7,6 +7,7 @@ import { EventDialog } from "@/components/logs/event-dialog";
 import { EventRow } from "@/components/logs/event-row";
 import { LogFilters } from "@/components/logs/log-filters";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { Alert } from "@/components/ui/alert";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { canPerform } from "@/lib/auth/permission";
@@ -89,8 +90,10 @@ export default async function LogsPage({
         ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
         ⚠️ **총계 배지가 없다** — 키셋 페이지네이션이라 셀 수 있는 총계가 없고, 지어낸 총계·성공률
         카드를 두지 않는 것이 이 화면의 규칙이다.
+        ⚠️ **설명은 보관 안내 하나뿐이다** (2026-09-24 사용자) — 옛 "Everything that happened…"는 종류
+        필터가 이미 말하는 목록이었다.
       */}
-      <PanelHeader width="fluid" description={archived ? m.logs.archived.description : m.logs.description}>
+      <PanelHeader width="fluid" description={archived ? m.logs.archived.description : undefined}>
         <LogFilters slug={slug} filter={filter} sources={sources} actors={actors} refreshable={!archived} />
       </PanelHeader>
 
@@ -103,7 +106,9 @@ export default async function LogsPage({
               title={m.logs.noMatch.title}
               description={m.logs.noMatch.description}
               action={
-                <ButtonLink href={routes.logs(slug, clearedLogsQuery(filter))} variant="primary">
+                // ⚠️ 되돌리기는 primary가 아니다 (audit #50 — DESIGN §6.4) — 툴바의 같은 버튼과 글리프를 함께 든다.
+                <ButtonLink href={routes.logs(slug, clearedLogsQuery(filter))}>
+                  <RotateCcw aria-hidden />
                   {m.logs.filters.clear}
                 </ButtonLink>
               }
@@ -114,7 +119,7 @@ export default async function LogsPage({
         ) : (
           groups.map((group) => (
             // ⚠️ 카드가 본문의 직계 자식이어야 한다 — `space-y-4`의 margin은 `display: contents` 래퍼에 안 걸린다.
-            <div key={group.dayKey} className="border-border overflow-hidden rounded-xl border bg-white">
+            <div key={group.dayKey} className="border-border overflow-hidden rounded-xl border bg-background">
               {/*
                 ⚠️ **경계선이 경계가 드러나는 행 바로 위에 한 번** 선다 (spec §7.1) — 페이지 경계에
                 걸리면 아래 페이지가 들고, 커서가 이미 과거면 그리지 않는다.
@@ -166,20 +171,14 @@ export default async function LogsPage({
         </div>
 
         {archived && project.archivedAt !== null && (
-          <div className="border-border flex items-start gap-2.5 rounded-[10px] border p-4">
-            <span className="text-muted-foreground flex-1 text-sm">
-              {m.logs.archived.restoreLine(project.archivedAt.toISOString().slice(0, 10))}
-            </span>
-            {/* ⚠️ **복원 링크는 OWNER에게만** — EDITOR에게 누를 수 없는 것을 보이지 않는다. */}
-            {canPerform(role, "project:settings") && (
-              <ButtonLink
-                href={routes.settings(slug)}
-                className="shrink-0"
-              >
-                {m.logs.archived.restoreAction}
-              </ButtonLink>
-            )}
-          </div>
+          /* 손으로 그린 상자였다 (audit #49) — 상시 조건의 안내라 `info`이고 닫기가 없다(§6.2 보류 배너와 같은 형). */
+          <Alert
+            variant="info"
+            /* ⚠️ **복원 링크는 OWNER에게만** — EDITOR에게 누를 수 없는 것을 보이지 않는다. */
+            actions={canPerform(role, "project:settings") ? <ButtonLink href={routes.settings(slug)}>{m.logs.archived.restoreAction}</ButtonLink> : undefined}
+          >
+            {m.logs.archived.restoreLine(project.archivedAt.toISOString().slice(0, 10))}
+          </Alert>
         )}
       </PanelBody>
 

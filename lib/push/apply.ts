@@ -130,8 +130,10 @@ export type AppliedHook = (tx: Prisma.TransactionClient, outcome: PushOutcome) =
  *
  * 리포를 보지 않는다 — 판정 입력은 DB의 pending 수 하나이고 리포 값과 DB 값을 견주지 않는다(병합이 아니다).
  *
- * ⚠️ **재집계를 지우지 않는다.** 저장 경로엔 잠금이 없어 "판정 뒤·upsert 전"에 커밋된 저장이 있을 수 있다. upsert의
- * 토큰 가드가 그 셀을 안 덮어도 **조건 불일치는 0행 갱신이라 조용하다**(POSTMORTEM 2026-09-14) — 재집계 예외가 그 무음을 깬다.
+ * ⚠️ **재집계를 지우지 않는다.** 저장은 이제 같은 `Project` → `TranslationSurface` 잠금 안이라 "판정 뒤·upsert 전" 저장은 끼지 못한다 —
+ * 재집계가 잡는 것은 **이 적재가 unorphan시킨 토큰 셀**이다: 사전 집계(`pendingWhere`)는 orphan을 빼므로 0이었다가 키·로케일이 되살아나면
+ * 1이 된다. upsert의 토큰 가드가 그 셀을 안 덮어도 **조건 불일치는 0행 갱신이라 조용하다**(POSTMORTEM 2026-09-14) — 재집계 예외가 그 무음을
+ * 깬다. 그 토큰이 폐기 승인 Sync가 남긴 유령이던 경로는 D1이 막았다(delivery-invariants · 감사 #1·#61).
  * ⚠️ 이 판정은 CI 경로 전용이다 — 새 표면 추가·첫 적재는 다른 표면의 편집 때문에 막히면 안 된다(그 표면엔 토큰이 없다).
  */
 export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens"> & { pushTokenHash: string; onApplied?: AppliedHook }): Promise<ProtectedPushResult> {
@@ -307,9 +309,11 @@ async function applyWith(
         AND "localeCode" <> ${payload.format.baseLocale}`]),
   ];
 
+  const payloadKeys = new Set(payload.keys.map((k) => k.key));
   const translations = payload.translations
-    .map((t) => ({ ...t, keyId: idByKey.get(t.key) }))
-    // 로케일 파일에만 있고 base에 없는 키는 적재 대상이 아니다 — 조용히 버린다.
+    .map((t) => ({ ...t, keyId: payloadKeys.has(t.key) ? idByKey.get(t.key) : undefined }))
+    // 이번 push의 base 파일에 없는 키 — **기존 orphan 포함** — 의 셀은 적재하지 않는다(delivery-invariants D5 · 감사 #58). `idByKey`에는
+    // 기존 orphan 키도 들어 있어서, 비-base 파일에만 남은 orphan 키의 셀이 덮이고 저자가 비고 행이 INSERT됐다.
     // `""`도 적재하지 않는다 — 리포의 빈 값·부재는 "모름"이지 "삭제"가 아니다(ARCHITECTURE §0 불변식 3,
     // §5.5.2). pull이 DB의 `""`를 부재로 내보내므로 여기서 비우면 다음 PR에서 그 키가 통째로 사라진다.
     // 코드에서 번역을 지우는 길은 없다 — 지우려면 UI에서 비운다.

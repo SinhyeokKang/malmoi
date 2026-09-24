@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { find, render } from "./helpers/dom";
 import { SourcesScreen } from "../sources/sources-screen";
-import NotFound from "@/app/(edit)/projects/[slug]/not-found";
+import NotFound from "@/app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/not-found";
 import { m } from "@/lib/i18n";
 
 vi.setConfig({ testTimeout: 20_000 });
@@ -31,6 +31,13 @@ async function select() {
 }
 
 
+
+/** 꺼짐은 `aria-disabled`다 (audit #37) — 포커스를 받아 describedby의 사유에 닿는다. 진행 중의 `loading`만 진짜 `disabled`다. */
+const blocked = (container: HTMLElement) => {
+  const node = find<HTMLButtonElement>(container, '[data-add-sources]');
+  return node.disabled || node.getAttribute("aria-disabled") === "true";
+};
+
 it("선택한 표면의 실패 뒤에도 후보와 입력을 보존하고 재시도한다", async () => {
   mocks.add.mockResolvedValue({ ok: false, error: "ingest-failed" });
   const user = userEvent.setup();
@@ -39,7 +46,7 @@ it("선택한 표면의 실패 뒤에도 후보와 입력을 보존하고 재시
   await act(async () => user.click(find(container, '[data-add-sources]')));
   expect(mocks.add).toHaveBeenCalledWith({ slug: "acme", picks: [{ adapter: "json-catalog", pathTemplate: "second/{locale}.json", baseLocale: "en" }] });
   expect(container.textContent).toContain("second/{locale}.json");
-  expect(find<HTMLButtonElement>(container, '[data-add-sources]').disabled).toBe(false);
+  expect(blocked(container)).toBe(false);
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
 });
 
@@ -59,7 +66,7 @@ it("추가 결과는 새 토큰 없이 기존 workflow step과 부분 실패를 
 
 it("없는 표면의 404는 제품 안내와 돌아갈 링크를 제공한다", async () => {
   const { container } = await render(<NotFound />);
-  expect(container.textContent).toContain("Translation surface");
+  expect(container.textContent).toContain("Source unavailable");
   expect(container.querySelector('a[href="/projects"]')).not.toBeNull();
 });
 
@@ -68,11 +75,11 @@ it("탐지 후보가 있어도 수동 경로를 검사하고 원래 후보로 �
   const { container } = await draw();
   await act(async () => user.click([...container.querySelectorAll('button')].find(b => b.textContent === 'Set the path yourself')!));
   await act(async () => user.type(find(container, '#manual-path'), 'other/{{locale}.json'));
-  expect(find<HTMLButtonElement>(container, '[data-add-sources]').disabled).toBe(true);
+  expect(blocked(container)).toBe(true);
   await select();
   await act(async () => user.click(find(container, 'button[aria-label="Preview second/{locale}.json"]')));
   expect(container.textContent).toContain("second/{locale}.json");
-  expect(find<HTMLButtonElement>(container, '[data-add-sources]').disabled).toBe(false);
+  expect(blocked(container)).toBe(false);
 });
 
 it("리포 정체성 변경은 재시도로 고칠 수 없는 원인을 안내한다", async () => {
@@ -94,7 +101,7 @@ it("0후보는 수동 입력을 열고 검사 실패 뒤 경로를 보존한다"
   await act(async () => user.click([...container.querySelectorAll('button')].find(b => b.textContent === 'Check files')!));
   expect(find<HTMLInputElement>(container, '#manual-path').value).toBe('manual/{locale}.json');
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
-  expect(find<HTMLButtonElement>(container, '[data-add-sources]').disabled).toBe(true);
+  expect(blocked(container)).toBe(true);
 });
 
 /**
@@ -114,4 +121,21 @@ it.each([
   expect(alert).toContain(label);
   const buttons = [...container.querySelectorAll("button")].map(b => b.textContent?.trim());
   expect(buttons).toContain(label);
+});
+
+/**
+ * **사유는 버튼이 꺼져 있는 동안만 선다** (malmoi#93). `Select at least one new source to add.`가 무조건 푸터에 서고
+ * `aria-describedby`도 무조건이라, 고른 뒤 켜진 [Add selected sources]가 "…, 하나 이상 고르라"로 낭독됐다. 짝으로 켜진 뒤에는
+ * 문장도 describedby도 없다.
+ */
+it("고르기 전엔 사유가 보이고 버튼이 그것을 가리키며, 고른 뒤엔 둘 다 사라진다", async () => {
+  const { container } = await draw();
+  await act(async () => { await new Promise(r => setTimeout(r, 0)); });
+  const add = () => find<HTMLButtonElement>(container, '[data-add-sources]');
+  expect(blocked(container)).toBe(true);
+  expect(document.getElementById(add().getAttribute("aria-describedby") ?? "")?.textContent).toBe(m.settings.sources.selectHelp);
+  await select();
+  expect(blocked(container)).toBe(false);
+  expect(add().getAttribute("aria-describedby")).toBeNull();
+  expect(container.textContent).not.toContain(m.settings.sources.selectHelp);
 });

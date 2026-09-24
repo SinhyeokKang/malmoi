@@ -95,9 +95,15 @@ export function FilesStep({
   onRetry,
   selection,
   pending = false,
+  previewNone = m.newProject.files.preview.noneDescription,
 }: {
   state: FilesStepState;
   pending?: boolean;
+  /**
+   * 빈 미리보기의 설명 (malmoi#80). ⚠️ **소비자가 둘이고 말할 사실이 다르다** — 새 프로젝트는 "안 맞으면 프로젝트가
+   * 안 생긴다"이고 Add sources는 프로젝트가 이미 있어 "안 맞으면 추가되지 않는다"다. 기본값이 새 프로젝트 문장이다.
+   */
+  previewNone?: string;
   selection?: { locked?: ReadonlySet<number>; checked: ReadonlySet<number>; conflicts: readonly { path: string }[]; onToggle: (index: number) => void };
   onPick: (index: number) => void;
   onLocale: (locale: string) => void;
@@ -122,14 +128,15 @@ export function FilesStep({
 
   const candidate = picked === null ? undefined : candidates[picked];
   /**
-   * ⚠️ **탐지 중은 수동 지정이 아니다** (bugshot-qa 2026-09-13). 후보가 아직 0개인 것은 "없다"가
+   * ⚠️ **탐지 중은 수동 지정이 아니다** (runtime-test 2026-09-13). 후보가 아직 0개인 것은 "없다"가
    * 아니라 "모른다"인데, 그때 예외 E의 "Nothing to preview yet"을 띄우면 화면이 먼저 "로케일
    * 파일이 없다"를 말해 놓고 몇 초 뒤 후보를 내놓는다.
    */
   const manualMode = !detecting && (candidates.length === 0 || candidate === undefined);
 
   const candidateList = (
-    <ul className="border-border min-h-0 overflow-y-auto rounded-md border" aria-label={m.newProject.files.candidates}>
+    // ⚠️ **바닥이 한 행이다** (malmoi#88) — 69px 행이 24px로 눌려 체크박스·글리프가 사라졌다. 그 아래로는 열이 스크롤한다.
+    <ul className="border-border min-h-[4.5rem] overflow-y-auto rounded-md border" aria-label={m.newProject.files.candidates}>
       {candidates.map((c, index) => {
         const active = picked === index;
         const locked = selection?.locked?.has(index) ?? false;
@@ -139,6 +146,10 @@ export function FilesStep({
           (PRODUCT §3: 어댑터 내부 이름은 화면에 안 쓴다). 값이 아니라 모양만 가르는 자리다.
         */
         const Glyph = c.pathTemplate.endsWith(".json") ? FileJson2 : FileCode2;
+        const summary = m.newProject.files.summaryShort(
+          c.locales.length,
+          c.keys.status === "counted" ? m.newProject.files.keys(c.keys.count) : onboardErrorMessage("key-count-failed"),
+        );
         const content = (
                   <>
                     <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-md", active ? "bg-background" : "bg-muted")}>
@@ -146,14 +157,10 @@ export function FilesStep({
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       {/* 경로는 사용자가 자기 리포에서 확인할 수 있는 유일한 단서다 — **이름 자리가 경로다**. */}
-                      <span className="block truncate text-base font-medium">{c.pathTemplate}</span>
-                      <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
-                        {m.newProject.files.summaryShort(
-                          c.locales.length,
-                          c.keys.status === "counted"
-                            ? m.newProject.files.keys(c.keys.count)
-                            : onboardErrorMessage("key-count-failed"),
-                        )}
+                      {/* ⚠️ 240px 열이라 둘 다 잘리고 선택 안 한 후보는 경로를 읽을 곳이 없다 — 잘림을 받되 전문을 `title`로 든다 (malmoi#97). */}
+                      <span className="block truncate text-base font-medium" title={c.pathTemplate}>{c.pathTemplate}</span>
+                      <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")} title={summary}>
+                        {summary}
                       </span>
                     </span>
                   </>
@@ -209,7 +216,13 @@ export function FilesStep({
         min-content(≈379)가 `flex-grow`를 이긴다 — `data-panel-size`는 33.3→44.4로 바뀌는데 폭은
         379에 붙박이고, 쉬는 폭도 240이 아니라 379다. 우측도 같은 이유로 함께 푼다.
       */}
-      <ResizablePanel {...FILES_LEFT} style={{ overflow: "visible" }} className="flex min-w-0 flex-col gap-3">
+      <ResizablePanel {...FILES_LEFT} style={{ overflow: "visible" }} className="flex min-w-0 flex-col">
+        {/*
+          ⚠️ **넘치는 몫은 이 래퍼가 스크롤한다** (malmoi#88) — 1280×720에서 수동 지정 폼이 열리면 후보 목록이 24px로 눌렸다.
+          패널이 아니라 안쪽이 스크롤하는 이유는 위 주석(가로 `auto` → 포커스 링 잘림)이다: `p-1`이 링 자리를 두고
+          `-m-1`이 그 자리를 되돌려 배치는 그대로다.
+        */}
+        <div data-files-left className="-m-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-1">
         {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
         {detecting ? (
           <ul className="border-border overflow-hidden rounded-md border" aria-hidden>
@@ -230,7 +243,7 @@ export function FilesStep({
           <>
             {selection ? candidateList : <RadioGroup disabled={pending} aria-label={m.newProject.files.candidates}
               value={picked === null ? "" : String(picked)} onValueChange={value => onPick(Number(value))}
-              className="min-h-0 overflow-y-auto">{candidateList}</RadioGroup>}
+              className="min-h-[4.5rem] overflow-y-auto">{candidateList}</RadioGroup>}
             {selection && selection.conflicts.length > 0 && <Alert variant="danger">
               <p>{m.newProject.files.conflicts}</p>
               {selection.conflicts.map(conflict => <p key={conflict.path}>{conflict.path}</p>)}
@@ -238,6 +251,7 @@ export function FilesStep({
             <ManualToggle pending={pending} state={state} onManual={onManual} />
           </>
         )}
+        </div>
       </ResizablePanel>
 
       <ResizableHandle aria-label={m.newProject.files.resize} className="w-2" />
@@ -255,6 +269,7 @@ export function FilesStep({
           candidate={candidate ?? state.manualCandidate}
           onLocale={onLocale}
           empty={manualMode && !state.manualMatched}
+          noneDescription={previewNone}
         />
       </ResizablePanel>
     </ResizablePanelGroup>
@@ -266,6 +281,7 @@ function Preview({
   candidate,
   onLocale,
   empty = false,
+  noneDescription,
   pending,
 }: {
   state: FilesStepState;
@@ -273,6 +289,7 @@ function Preview({
   onLocale: (locale: string) => void;
   /** 예외 E — 보여 줄 후보가 아직 없다. **헤더는 그대로 서고 본문 자리만 빈다.** */
   empty?: boolean;
+  noneDescription: string;
   pending: boolean;
 }) {
   const locales = candidate?.locales ?? [];
@@ -364,7 +381,9 @@ function Preview({
           ⚠️ **`shrink-0`이 flex 전환의 대가다** — flex 아이템은 기본이 `shrink:1`이라, 행이 많아
           내용이 컨테이너를 넘으면 표가 눌릴 수 있다. 넘치는 만큼은 스크롤이 받는다.
         */}
-        <Table scrollable={false} className="table-fixed shrink-0">
+        {/* ⚠️ **래퍼와 같은 이름을 표에도 준다** (audit #40 · POSTMORTEM 2026-09-19) — 래퍼의 이름은 랜드마크의 이름이고,
+            스크린리더의 표 목록은 `<table>` 자신의 이름을 읽는다. */}
+        <Table aria-label={m.newProject.files.preview.rows} scrollable={false} className="table-fixed shrink-0">
           {/*
             ⚠️ **`[&_tr]:border-b-0`이 `TableRow`가 아니라 여기 있다.** 프리셋과 **같은 요소·같은
             변형**이라 twMerge가 뒤엣것만 남기고 프리셋은 CSS로 나가지도 않는다. 행에 `border-b-0`을
@@ -432,14 +451,14 @@ function Preview({
             <EmptyState
               icon={FileSearch2}
               title={m.newProject.files.preview.none}
-              description={m.newProject.files.preview.noneDescription}
+              description={noneDescription}
             />
           </div>
         )}
       </div>
 
-      {/* 총량 줄 — 스크롤 밖에 남는다. */}
-      {state.preview.status === "ready" && state.preview.total > state.preview.rows.length && (
+      {/* 총량 줄 — 스크롤 밖에 남는다. ⚠️ 빈 미리보기에서는 서지 않는다 (malmoi#92) — `preview`는 이전 후보의 것이라 안 보이는 행을 센다. */}
+      {!empty && state.preview.status === "ready" && state.preview.total > state.preview.rows.length && (
         <p className="border-border text-muted-foreground shrink-0 border-t px-4 py-3 text-center text-xs">
           {m.newProject.files.preview.more(state.preview.total - state.preview.rows.length)}
         </p>
@@ -506,6 +525,7 @@ function ManualForm({
         <Input
           disabled={pending}
           id="manual-path"
+          aria-describedby="manual-path-help"
           value={manual.pathTemplate}
           onChange={(e) => onManual({ ...manual, pathTemplate: e.target.value })}
           placeholder={choice?.example ?? "src/locales/{locale}.json"}

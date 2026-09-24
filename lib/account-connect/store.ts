@@ -7,12 +7,12 @@ import { lookupEmail } from "@/lib/credentials/storage";
 import { isLoginProvider, type LoginProvider } from "@/lib/login-link/policy";
 import { connectChallengeIdentifier, connectChallengePrefix, parseConnectChallenge, planLoginMethodLink, type ConnectOutcome } from "./plan";
 import { lockUser } from "@/lib/auth/lock";
+import { validNonce } from "@/lib/auth/roundtrip";
 import { isUniqueViolation } from "@/lib/failure";
 
 function digest(kind: "nonce" | "state", raw: string): string {
   return createHash("sha256").update(`malmoi/account-connect/${kind}/v1\0${raw}`).digest("hex");
 }
-function validNonce(raw: string): boolean { return /^[A-Za-z0-9_-]{43}$/.test(raw) && Buffer.from(raw, "base64url").toString("base64url") === raw; }
 type Start = { userId: string; provider: LoginProvider; nonce: string; sessionToken: string; state: string };
 export async function beginConnect(prisma: PrismaClient, input: Start): Promise<"ready" | ConnectOutcome> {
   if (!isLoginProvider(input.provider) || !validNonce(input.nonce) || !input.sessionToken || !input.state) return "failed";

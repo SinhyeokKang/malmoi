@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 
 import type { PrismaClient } from "@/generated/prisma/client";
-import { finishImportRun, markImportStarted, recordReportedFailure } from "../import-status-store";
+import { abandonImportRun, finishImportRun, markImportStarted, recordReportedFailure } from "../import-status-store";
 
 const startedAt = new Date("2026-09-13T00:00:00.000Z");
 const commitAt = new Date("2026-09-13T01:00:00.000Z");
@@ -39,6 +39,32 @@ it("swallows its own write failure", async () => {
   const { db, project } = fixture();
   project.updateMany.mockRejectedValue(new Error("connection lost"));
   await expect(finishImportRun(db, { projectId: "p1", surfaceId: "s1", token: "run-token", code: "import-failed" })).resolves.toBeUndefined();
+});
+
+/**
+ * **삼키되 무음은 아니다** (audit #71 — POSTMORTEM 2026-09-14 형태). 여기서 버린 실패는 화면에 300초 "진행 중"으로만
+ * 남으므로 원인을 볼 곳이 서버 로그뿐이다. 성공한 쓰기는 한 줄도 안 남긴다 — 짝 단언.
+ */
+it("logs its own swallowed write failure, and stays silent on success", async () => {
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const ok = fixture();
+    await finishImportRun(ok.db, { projectId: "p1", surfaceId: "s1", token: "run-token", code: "import-failed" });
+    await abandonImportRun(ok.db, { projectId: "p1", surfaceId: "s1", token: "run-token" });
+    expect(ok.project.updateMany).toHaveBeenCalledTimes(2);
+    expect(spy).not.toHaveBeenCalled();
+
+    const { db, project } = fixture();
+    project.updateMany.mockRejectedValue(new TypeError("connection lost to secret host"));
+    await finishImportRun(db, { projectId: "p1", surfaceId: "s1", token: "run-token", code: "import-failed" });
+    await abandonImportRun(db, { projectId: "p1", surfaceId: "s1", token: "run-token" });
+    expect(spy.mock.calls.map((c) => String(c[0]))).toEqual([
+      expect.stringMatching(/^\[import-status\] \w{8} finish: TypeError$/),
+      expect.stringMatching(/^\[import-status\] \w{8} abandon: TypeError$/),
+    ]);
+  } finally {
+    spy.mockRestore();
+  }
 });
 
 /**

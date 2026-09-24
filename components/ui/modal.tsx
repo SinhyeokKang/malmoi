@@ -101,7 +101,7 @@ export function OnboardingModal({
   const bodyRef = useRef<HTMLDivElement>(null);
   /**
    * live 영역에 **지금 말할 것**만 담는다. 제목을 상시 들고 있으면 헤더와 합쳐 두 번 읽히고,
-   * 단계와 무관한 리렌더에도 같은 문장이 다시 낭독된다 (bugshot-qa 2026-09-13 실측).
+   * 단계와 무관한 리렌더에도 같은 문장이 다시 낭독된다 (runtime-test 2026-09-13 실측).
    */
   const [live, setLive] = useState("");
 
@@ -114,7 +114,7 @@ export function OnboardingModal({
   const wasOpen = useRef(open);
   useEffect(() => {
     // ⚠️ **첫 렌더는 전이가 아니다.** 모달이 열릴 때 제목은 Radix가 `Dialog.Title`로 이미 말한다 —
-    // 여기서 또 담으면 같은 문장이 두 번 낭독된다 (bugshot-qa 2026-09-13).
+    // 여기서 또 담으면 같은 문장이 두 번 낭독된다 (runtime-test 2026-09-13).
     const reopening = open && !wasOpen.current;
     wasOpen.current = open;
     if (transitionKey !== undefined && (!open || reopening)) {
@@ -241,7 +241,11 @@ export function OnboardingModal({
 
           <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6">
             <span className="text-muted-foreground text-xs leading-[1.6]">{footer ?? (step === undefined ? null : m.newProject.modal.step(step))}</span>
-            {actions !== undefined ? actions : <div className="flex items-center gap-2">
+            {/*
+              ⚠️ **소비자의 `actions`도 같은 무리에 싼다** (malmoi#87) — fragment를 넘기면 버튼들이 바닥의 직계 자식이 되어
+              `justify-between`이 [Cancel]을 가운데로 띄웠다. `null`(Publish의 버튼 없는 갈래)이면 빈 무리를 세우지 않는다.
+            */}
+            {actions !== undefined ? (actions === null || actions === false ? null : <div className="flex items-center gap-2">{actions}</div>) : <div className="flex items-center gap-2">
               {showBack && (
                 <Button type="button" size="lg" onClick={onBack} disabled={nextPending}>
                   {m.newProject.modal.back}

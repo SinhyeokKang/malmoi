@@ -52,8 +52,10 @@ const lines = (keep: (text: string) => boolean): string[] =>
 
 describe("DESIGN §4.1 — mono는 코드 블록 전용이다", () => {
   /**
-   * 살아 있는 자리 **둘**. 늘리려면 §4.1의 표와 이 목록을 함께 바꾼다 — 그 표가 "왜 남았나"를 들고
+   * 살아 있는 자리 **하나**. 늘리려면 §4.1의 표와 이 목록을 함께 바꾼다 — 그 표가 "왜 남았나"를 들고
    * 여기는 "지금 몇이나"를 든다.
+   *
+   * ⚠️ **둘이었다가 하나가 됐다** (2026-09-24): importer가 0이던 `first-ingest-retry.tsx`를 지웠다(audit #66).
    *
    * ⚠️ **셋이었다가 둘이 됐다** (2026-09-22): 옛 로케일 화면의 대기 Alert `<pre>`가 사라졌다.
    * 두 `locales/page.tsx`가 전부 Sources로 보내는 리다이렉트가 되면서 그 블록이 통째로 없어졌고,
@@ -62,8 +64,6 @@ describe("DESIGN §4.1 — mono는 코드 블록 전용이다", () => {
   const ALLOWED = [
     // 워크플로 YAML — 원본 줄바꿈과 들여쓰기가 값의 일부다.
     "components/onboarding/workflow-block.tsx",
-    // 어댑터 오류의 파서 원문 — 캐럿(`^`) 다이어그램이 열을 맞춰야 읽힌다.
-    "components/onboarding/first-ingest-retry.tsx",
   ];
 
   it("허용 목록 밖에서 `text-mono`를 쓰지 않는다", () => {
@@ -74,7 +74,7 @@ describe("DESIGN §4.1 — mono는 코드 블록 전용이다", () => {
   });
 
   /** ⚠️ 매칭이 0인 스캐너는 방어선이 아니라 장식이다 — 허용 목록이 실제로 살아 있는지 센다. */
-  it("허용 목록의 둘은 실제로 `text-mono`를 든다", () => {
+  it("허용 목록의 자리는 실제로 `text-mono`를 든다", () => {
     const dead = ALLOWED.filter((path) => !bare(readFileSync(join(ROOT, path), "utf8")).includes("text-mono"));
     expect(dead).toEqual([]);
   });

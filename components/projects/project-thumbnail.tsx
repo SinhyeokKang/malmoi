@@ -28,14 +28,23 @@ import { toneFill } from "@/components/ui/tone";
  * ⚠️ **깨진 URL의 폴백은 `ImageTile`이 든다** (malmoi#50) — `image`가 truthy라는 것은 "보인다"가
  * 아니다. 폴백이 없으면 Blob이 사라진 프로젝트가 빈 테두리 상자로 남는다.
  */
-export function ProjectThumbnail({ name, src }: { name: string; src?: string | null }) {
+/**
+ * ⚠️ **24는 사이드바 구역 머리 하나다** (2026-09-24 사용자) — 옆의 사용자 `Avatar` 24와 같은 크기여야
+ * 두 구역 머리가 한 줄 높이로 선다. 글리프는 14로 내린다(28 안의 16과 같은 비율, DESIGN §5.1의 넷 안).
+ */
+const SIZE = {
+  28: { tile: "size-7", glyph: "size-4" },
+  24: { tile: "size-6", glyph: "size-3.5" },
+} as const;
+
+export function ProjectThumbnail({ name, src, size = 28 }: { name: string; src?: string | null; size?: keyof typeof SIZE }) {
   return (
     <ImageTile
       src={src}
-      className="border-border flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-sm border"
+      className={`border-border flex ${SIZE[size].tile} shrink-0 items-center justify-center overflow-hidden rounded-sm border`}
       fallbackClassName={`text-white ${toneFill(name)}`}
     >
-      <Box className="size-4" />
+      <Box className={SIZE[size].glyph} />
     </ImageTile>
   );
 }

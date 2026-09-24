@@ -58,6 +58,8 @@ afterAll(async () => {
 /** 프로젝트 · 표면 `s` · en(base)·ko·ja · 키 k1(en "Hi" · ko "안녕" · ja 없음) · 오펀 키 k0 · 편집 없음. */
 async function seed(p: string) {
   await prisma.project.create({ data: { id: p, slug: p, name: p, repoOwner: "o", repoName: p, baseBranch: "main", installationId: "1", repositoryId: `r-${p}` } });
+  // 저장이 잠금 뒤 저자의 멤버십을 다시 본다 (감사 #10) — 저자 둘을 EDITOR로 둔다.
+  await prisma.projectMember.createMany({ data: ["u1", "u2"].map(userId => ({ projectId: p, userId, role: "EDITOR" as const })) });
   await prisma.translationSurface.create({ data: { id: `${p}-s`, projectId: p, slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en", lastCommitSha: "c1" } });
   await prisma.locale.createMany({ data: ["en", "ko", "ja"].map(code => ({ projectId: p, surfaceId: `${p}-s`, code, name: code, isBase: code === "en" })) });
   await prisma.stringKey.create({ data: { id: `${p}-k1`, projectId: p, surfaceId: `${p}-s`, key: "greet", namespace: "_root", sourceText: "Hello", sourceHash: "h" } });
@@ -183,5 +185,29 @@ describe("applyKeySave — 복원 기준 기록 (design §10.3)", () => {
     await prisma.translationSurface.update({ where: { id: "p-s" }, data: { importRevision: { increment: 1 } } });
     await applyKeySave(prisma, input([{ localeCode: "ko", value: "A" }]));
     expect(await baselines()).toEqual([]);
+  });
+});
+
+/**
+ * **수술적 표면의 비-base 비우기 거부** (delivery-invariants D2 · 감사 #2). 수술적 writer는 값을 지울 줄 몰라 비운 셀은 원본 리터럴이
+ * 남는데 pull이 토큰을 해제했다. 판정은 잠금 안이고 거부 단위는 키 전체다 — 행·값·토큰·사건 불변.
+ */
+describe("applyKeySave — 수술적 표면의 비-base 비우기", () => {
+  beforeEach(async () => {
+    await prisma.translationSurface.update({ where: { id: "p-s" }, data: { adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", nested: null } });
+  });
+
+  it("비-base ko \"\" → cannot-clear · 그 키의 어떤 셀도 쓰이지 않는다", async () => {
+    const before = await cell("ko");
+    expect(await applyKeySave(prisma, input([{ localeCode: "ja", value: "J" }, { localeCode: "ko", value: "  " }])))
+      .toEqual({ ok: false, error: "cannot-clear", localeCodes: ["ko"] });
+    expect(await cell("ko")).toEqual(before);
+    expect(await cell("ja")).toBeNull();
+    expect(await events()).toEqual([]);
+  });
+
+  it("base en \"\"는 기존대로 저장된다 (짝)", async () => {
+    expect(await applyKeySave(prisma, input([{ localeCode: "en", value: "" }]))).toEqual({ ok: true, keyId: "p-k1", cells: [{ localeCode: "en", value: "" }] });
+    expect(await cell("en")).toMatchObject({ value: "", updatedBy: "u1" });
   });
 });

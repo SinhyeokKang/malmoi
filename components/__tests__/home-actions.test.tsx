@@ -19,10 +19,10 @@ import { render } from "./helpers/dom";
  * ⚠️ **`[Sync]`는 native `disabled`가 아니라 `aria-disabled`다** — Dialog가 닫힐 때 포커스를 되돌릴
  * 대상으로 남아야 한다(DESIGN §6.64). 그래서 이 파일은 두 버튼을 **다른 속성**으로 센다.
  */
-const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), pull: vi.fn(), refresh: vi.fn(), preview: vi.fn() }));
+const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), pull: vi.fn(), refresh: vi.fn(), preview: vi.fn(), unarchive: vi.fn() }));
 // ⚠️ 보관·재연결 Action까지 mock한다 — 호스트가 배너 액션으로 그 둘을 들고 오고, 실물 모듈은
 // `next-auth`를 통해 서버 전용 코드를 끌어온다.
-vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: vi.fn().mockResolvedValue(undefined), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: vi.fn().mockResolvedValue(undefined), archiveProject: vi.fn(), unarchiveProject: mocks.unarchive }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectRepository: vi.fn() }));
 vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
@@ -61,7 +61,7 @@ function Host() {
   </>;
 }
 
-beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.preview.mockResolvedValue({ status: "ok", preview: { groups: [], total: 12, keys: 9, truncated: 0, openPr: null } }); });
+beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.preview.mockResolvedValue({ status: "ok", preview: { groups: [], total: 12, keys: 9, truncated: 0, openPr: null, withoutFile: 0, withoutKey: 0, sendable: { total: 12, keys: 9 } } }); });
 
 it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", async () => {
   const run = deferred<{ ok: true; surfaces: []; remainingEdits: number }>();
@@ -154,4 +154,55 @@ it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼�
   expect(locked(button("Try again"))).toBe(false);
   await click("Try again");
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+});
+
+/**
+ * **보관 배너의 복원 거부는 배너 안에 끼지 않는다** (audit #7 r1). ArchiveCard가 자기 아래에 Alert를 세우면 warning
+ * 배너의 `actions` 줄 안에 danger Alert(`role=alert`)가 중첩된다 — 경고 속 경고이고, `actions`의 좁은 flex에 눌린다.
+ * 배너가 사유를 받아 **자기 형제 자리**에 세운다.
+ */
+it("보관 배너에서 복원이 거부되면 사유 Alert가 배너 밖 형제로 선다", async () => {
+  mocks.unarchive.mockResolvedValue({ ok: false, error: "forbidden" });
+  const { m } = await import("@/lib/i18n");
+  await render(<HomeActions slug="acme"><HomeNotices {...props} state="archived" failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} /></HomeActions>);
+  await click("Restore project");
+  const failure = [...document.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(m.errors.access.forbidden));
+  expect(failure).toBeDefined();
+  // 배너 = [Restore project]에서 위로 올라가며 처음 만나는, 배너 제목으로 시작하는 조상(가장 안쪽 — 바깥 래퍼가 아니다).
+  let banner: HTMLElement | null = button("Restore project");
+  while (banner && !banner.textContent?.startsWith(m.home.banner.archived.title)) banner = banner.parentElement;
+  expect(banner).not.toBeNull();
+  expect(banner!.contains(failure!)).toBe(false);
+  expect(failure!.parentElement?.closest('[role="alert"], [role="status"]')).toBeNull();
+});
+
+/**
+ * **복원이 성공하면 보관 배너가 통째로 사라진다** (audit #32 — B5 리뷰). 누른 [Restore project]와 그 착지 훅이 함께 언마운트되어
+ * 포커스가 `body`로 빠졌다. 남는 제목이 받는다 — `SyncButton`의 폴백과 같은 자리다.
+ */
+it("보관 배너에서 복원이 성공하면 Home 제목으로 착지한다", async () => {
+  const { HomeTitle } = await import("@/components/home/actions");
+  mocks.unarchive.mockResolvedValue({ ok: true });
+  const view = (state: "archived" | "default") => <HomeActions slug="acme"><HomeTitle archived={state === "archived"}>acme</HomeTitle>
+    <HomeNotices {...props} state={state} failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} /></HomeActions>;
+  const { rerender } = await render(view("archived"));
+  await click("Restore project");
+  await rerender(view("default"));
+  expect(document.activeElement?.tagName).toBe("H1");
+});
+
+/**
+ * **배너의 [Try again]으로 연 Sync 확인을 닫으면 그 [Try again]으로 돌아온다** (malmoi#86 — 코디네이터 판정). 누른 자리로 돌아오는
+ * 쪽이 머리의 [Sync]보다 나은 착지다: 사람은 배너를 읽다가 눌렀고, 머리로 튀면 배너 문장을 다시 찾아 내려와야 한다.
+ */
+it("배너 [Try again] → Enter → Esc면 포커스가 그 [Try again]에 선다 — 머리의 [Sync]가 아니다", async () => {
+  const user = userEvent.setup();
+  await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  const retry = button("Try again");
+  retry.focus();
+  await act(async () => { await user.keyboard("{Enter}"); });
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  await act(async () => { await user.keyboard("{Escape}"); await new Promise(r => setTimeout(r, 20)); });
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(document.activeElement).toBe(button("Try again"));
 });

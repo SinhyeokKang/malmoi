@@ -63,7 +63,8 @@ it("이전 파일 삭제 실패는 저장 성공을 바꾸지 않으며 URL 없�
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   mocks.deleteImage.mockRejectedValue(new Error(oldUrl));
   expect(await uploadProfileImage(form())).toEqual({ ok: true });
-  expect(warn).toHaveBeenCalled(); expect(JSON.stringify(warn.mock.calls)).not.toContain(oldUrl);
+  expect(warn).toHaveBeenCalledExactlyOnceWith("Profile image cleanup failed; an orphan may remain.", { userId: "owner", cause: "Error" });
+  expect(JSON.stringify(warn.mock.calls)).not.toContain(oldUrl);
 });
 it("DB 쓰기 또는 커밋 실패는 새 파일만 정리한다", async () => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -131,7 +132,7 @@ it("실패 단계는 남기되 저장소 오류의 토큰과 URL은 기록하지
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
   mocks.putImage.mockRejectedValue(new Error("secret-token " + oldUrl));
   expect(await uploadProfileImage(form())).toEqual({ ok: false, reason: "unavailable" });
-  expect(error).toHaveBeenCalledWith("Profile image upload failed.", { stage: "blob-upload", userId: "owner" });
+  expect(error).toHaveBeenCalledWith("Profile image upload failed.", { stage: "blob-upload", userId: "owner", cause: "Error" });
   expect(JSON.stringify(error.mock.calls)).not.toContain("secret-token");
   expect(JSON.stringify(error.mock.calls)).not.toContain(oldUrl);
 });
@@ -139,7 +140,7 @@ it("삭제 DB 실패도 안전한 단계 로그를 남긴다", async () => {
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
   tx.user.update.mockRejectedValue(new Error("private database URL"));
   expect(await deleteProfileImage()).toEqual({ ok: false, reason: "unavailable" });
-  expect(error).toHaveBeenCalledWith("Profile image deletion failed.", { stage: "database-update", userId: "owner" });
+  expect(error).toHaveBeenCalledWith("Profile image deletion failed.", { stage: "database-update", userId: "owner", cause: "Error" });
 });
 it("자기 행에 다른 사용자 URL이 들어 있어도 다른 사용자의 파일을 삭제하지 않는다", async () => {
   row = { id: "owner", ...encodeUserFields("owner", { image: "https://store.public.blob.vercel-storage.com/avatars/victim/old.png" }) };

@@ -2,6 +2,7 @@ import { CircleAlert } from "lucide-react";
 import { m } from "@/lib/i18n";
 import { planSurfaceImportStatus } from "@/lib/import/surface-status";
 import { relativeTime } from "@/lib/relative-time";
+import { utcMinute } from "@/lib/utc-time";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,6 +18,7 @@ export function SourceStatus({ source, now, icon = false, className }: { source:
     {/* 색각 이상에서 정상과 실패가 같은 회색 문장이 되지 않게, 색이 아니라 모양이 상태를 든다. */}
     {icon && failed && <CircleAlert className="size-3.5 shrink-0" aria-hidden />}
     {icon && status.state === "importing" && <span aria-hidden className="border-foreground/15 border-t-muted-foreground size-3.5 shrink-0 animate-spin rounded-full border-2 [animation-duration:0.7s]" />}
-    {labels[status.state]}{status.state === "importing" && status.at !== null && <> · {relativeTime(status.at, now)}</>}
+    {/* ⚠️ 상대 시각도 절대 값을 든다 (audit #41 — DESIGN §6.66·§6.68) — 화면의 낱말이 "5분 전"이어도 접근 이름은 UTC다. */}
+    {labels[status.state]}{status.state === "importing" && status.at !== null && <> · <time dateTime={status.at.toISOString()} aria-label={utcMinute(status.at)}>{relativeTime(status.at, now)}</time></>}
   </span>;
 }

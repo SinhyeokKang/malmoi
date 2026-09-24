@@ -5,6 +5,7 @@ import { loadSource } from "@/lib/sources/query";
 import { logFailure } from "@/lib/github-connect/log";
 import { z } from "zod";
 
+import { lockProjectAccess } from "@/lib/auth/lock";
 import type { AccessError } from "@/lib/auth/message";
 import { getSurfaceAccess } from "@/lib/surfaces/access";
 import { readSession } from "@/lib/auth/read-session";
@@ -63,9 +64,9 @@ export async function updateBaseLocale(raw: {
   const { projectId, surfaceId } = access;
 
   const outcome = await prisma.$transaction(async (tx) => {
-    // CI와 같은 잠금 순서로 현실·선언을 함께 읽어야 오래된 값으로 이력을 만들지 않는다.
-    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
-    await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${projectId} AND "id" = ${surfaceId} FOR UPDATE`;
+    // CI와 같은 잠금 순서로 현실·선언을 함께 읽어야 오래된 값으로 이력을 만들지 않는다. 권한·보관도 잠금 뒤 다시 본다.
+    const locked = await lockProjectAccess(tx, { projectId, userId: session.userId, permission: "project:settings", surfaceId });
+    if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
     const project = await tx.translationSurface.findUnique({
       where: { id: surfaceId, projectId },
       select: { baseLocale: true, declaredBaseLocale: true, locales: { select: { code: true, orphaned: true } } },
@@ -95,7 +96,7 @@ export async function updateBaseLocale(raw: {
    * 소비자가 생길 때 조용히 빠지고, 그것이 POSTMORTEM 2026-09-09이 기록한 실패다 — 셋이 전부
    * `/projects/<slug>` 아래이므로 **그 세그먼트의 레이아웃**을 무효화한다.
    */
-  revalidateAfterCommit("source-base-language", projectId, `/projects/${slug}`);
+  revalidateAfterCommit("source-base-language", `/projects/${slug}`);
   return { ok: true };
 }
 

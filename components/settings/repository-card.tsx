@@ -28,7 +28,8 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, health, ac
     </Alert> : undefined;
   const status = health.status === "ok" || health.status === "repo-moved" ? m.settings.repository.health.ok : disconnected ? m.settings.repository.disconnected : health.status === "not-connected" ? m.settings.repository.notConnected : health.status === "unknown" ? m.settings.repository.unknown : null;
   const detail = health.status === "ok" ? m.settings.installed : health.status === "unknown" ? m.settings.repository.health.unknown : health.status === "not-connected" ? m.settings.repository.health["not-connected"] : health.status === "repo-moved" ? m.settings.repository.movedHint : disconnected ? m.settings.repository.paused : null;
-  return <PanelCard title={m.settings.repository.title} subtitle={m.settings.repository.description} notice={failure ? <>{notice}<Alert inset variant="danger">{failure}</Alert></> : notice}>
+  // 보관 상태가 오면 옛 거부를 내린다 — 카드가 보관 상태를 대신 말한다 (QA D1).
+  return <PanelCard title={m.settings.repository.title} subtitle={m.settings.repository.description} notice={failure && !archived ? <>{notice}<Alert inset variant="danger">{failure}</Alert></> : notice}>
     <div className="flex items-center gap-3 px-4 py-[13px] @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start @max-[640px]:[&>fieldset]:col-start-2 @max-[640px]:[&>a]:col-start-2 @max-[640px]:[&>a]:justify-self-start">
       <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded">{disconnected ? <Unplug className="size-4" aria-hidden /> : health.status === "not-connected" ? <Link2 className="size-4" aria-hidden /> : <GithubIcon className="size-4" />}</span>
       <div className="min-w-0 flex-1 space-y-[3px]"><p className="text-base break-all"><span className="font-medium">{owner}/{repo}</span>{status && <> — {status}</>}</p>{detail && <p className="text-muted-foreground text-xs">{detail}</p>}</div>

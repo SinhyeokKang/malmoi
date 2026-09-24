@@ -6,7 +6,7 @@ import { render } from "./helpers/dom";
 
 const props = { slug: "acme", branch: "main" };
 const row = (surfaceSlug: string, status: SurfaceImportResult["status"], reason: SurfaceImportResult["reason"]): SurfaceImportResult =>
-  ({ surfaceSlug, status, reason, count: status === "imported" ? 4 : 0, failed: 0, errors: [] });
+  ({ surfaceSlug, status, reason, count: status === "imported" ? 4 : 0, failed: 0, unmanaged: 0, errors: [] });
 function alert(container: HTMLElement) { return container.querySelector('[role="status"], [role="alert"]'); }
 /** `Alert`의 본문 블록 — 있으면 두 줄 형이고 없으면 한 줄 형이다. */
 /**
@@ -45,9 +45,9 @@ it("keeps unreadable and unapplied surfaces distinct with original diagnostics",
   ] }} />);
   expect(container.querySelector('[role="status"]')).not.toBeNull();
   // ⚠️ 사고가 붙는 헤드라인에는 브랜치가 없다 (시안 `4e`) — 절이 셋이 되면 사고가 뒤로 밀린다.
-  expect(container.textContent).toContain("Synced 4 keys, but 1 surface could not be read");
+  expect(container.textContent).toContain("Synced 4 keys, but 1 source could not be read");
   expect(container.textContent).not.toContain("keys from main");
-  expect(container.textContent).toContain("2 surfaces were not replaced");
+  expect(container.textContent).toContain("2 sources were not replaced");
   // 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (DESIGN §6.644) — 성공한 `web`은 서지 않는다.
   for (const text of ["ci", "format", "broken", "locales/ko.json"]) expect(container.textContent).toContain(text);
   expect(container.querySelector('[role="status"] [data-surface]')?.textContent).toBe("broken");
@@ -71,7 +71,7 @@ it("전 표면 실패는 성공 절을 앞에 두지 않는다", async () => {
 it("포맷 누락은 표면별 결과이고 재시도가 없다", async () => {
   const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [row("web", "failed", "invalid-format")] }} />);
   expect(container.textContent).not.toContain("could not be read");
-  expect(container.textContent).toContain("This surface has no valid import format.");
+  expect(container.textContent).toContain("This source has no valid file format.");
   expect([...container.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(false);
 });
 
@@ -138,7 +138,7 @@ it("superseded는 사유가 있으므로 원인 줄이 그대로 선다", async 
   const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [
     { ...row("i18n", "imported", null), count: 9 }, row("locales", "superseded", "superseded"),
   ] }} />);
-  expect(container.textContent).toContain("Synced 9 keys, but 1 surface was not replaced");
+  expect(container.textContent).toContain("Synced 9 keys, but 1 source was not replaced");
   expect(container.querySelector('[data-reason="superseded"]')?.textContent).toContain("New repository data arrived while syncing");
   expect(container.querySelector('[role="status"] [data-surface]')?.textContent).toBe("locales");
 });
@@ -184,4 +184,45 @@ it("[C4][C10] 남은 편집이 있으면 두 줄 warning이고 브랜치 헤드�
   expect(container.textContent).not.toContain("from main");
   expect(lines(container)).toBe(2);
   expect(container.querySelector(".border-amber-200")).not.toBeNull();
+});
+
+/**
+ * **세션이 끝난 Sync 거부는 막다른 길이 아니다** (QA D2). 전엔 공용 접근 문장 *"Sign in again to save your work."*
+ * (Sync엔 저장할 입력이 없다)에 닫기도 로그인도 없었다. Home과 번역 화면이 이 한 컴포넌트를 쓰므로 여기서 고정한다.
+ * [Sign in]은 **새 탭**이다 — 같은 화면의 편집자 세션 Alert와 같은 형(이 탭의 draft·화면을 떠나지 않는다).
+ */
+it("unauthorized 거부는 Sync 문장 + 새 탭 [Sign in] + 닫기를 든다", async () => {
+  const { m } = await import("@/lib/i18n");
+  const onDismiss = vi.fn();
+  const { container } = await render(<SyncResult {...props} onDismiss={onDismiss} outcome={{ ok: false, error: "unauthorized" }} />);
+  const text = container.textContent ?? "";
+  expect(text).toContain(m.repositorySync.errors.unauthorized);
+  expect(text).not.toContain("save your work");
+  const signIn = [...container.querySelectorAll("a")].find(a => a.textContent?.trim() === m.repositorySync.signIn);
+  expect(signIn?.getAttribute("href")).toBe("/signin");
+  expect(signIn?.getAttribute("target")).toBe("_blank");
+  expect(container.querySelector('button[aria-label="Dismiss"]')).not.toBeNull();
+});
+
+/**
+ * malmoi#85 — Sync의 `base-branch-missing`이 온보딩 문장("We can't read the default branch. Check that the repository has
+ * commits.")을 빌렸다. 여기서 없는 것은 리포의 기본 브랜치가 아니라 **설정의 base branch**다 — 그 이름을 대고 고칠 자리
+ * (Settings → Base branch)로 보낸다. OWNER는 설정 링크, EDITOR는 링크 없이 "ask a project owner"다.
+ */
+it("base branch가 사라지면 그 이름과 설정의 Base branch를 말한다 — OWNER는 설정 링크", async () => {
+  const { container } = await render(<SyncResult slug="acme" branch="qa3-missing-branch" outcome={{ ok: false, error: "base-branch-missing" }} />);
+  const text = container.textContent ?? "";
+  expect(text).toContain("qa3-missing-branch");
+  expect(text).toMatch(/base branch/i);
+  expect(text).not.toMatch(/default branch|has commits/i);
+  expect(container.querySelector('a[href="/projects/acme/settings"]')).not.toBeNull();
+});
+
+it("EDITOR에게는 설정 링크 대신 project owner를 부른다 (#85) — 짝: OWNER에게는 그 문장이 없다", async () => {
+  const { container } = await render(<SyncResult slug="acme" branch="qa3-missing-branch" role="EDITOR" outcome={{ ok: false, error: "base-branch-missing" }} />);
+  expect(container.querySelector('a[href="/projects/acme/settings"]')).toBeNull();
+  expect(container.textContent).toMatch(/ask a project owner/i);
+  expect(container.textContent).toContain("qa3-missing-branch");
+  const owner = await render(<SyncResult slug="acme" branch="qa3-missing-branch" role="OWNER" outcome={{ ok: false, error: "base-branch-missing" }} />);
+  expect(owner.container.textContent).not.toMatch(/ask a project owner/i);
 });

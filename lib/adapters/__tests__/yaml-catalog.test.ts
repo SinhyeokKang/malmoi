@@ -234,7 +234,7 @@ describe("yaml-catalog — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () 
     const a = yamlCatalog.write(withSource(RAILS), { locale: "ko", entries })!;
     const b = yamlCatalog.write(withSource(RAILS), { locale: "ko", entries: [...entries].reverse() })!;
     expect(b).toBe(a);
-    // 코드포인트 순서로 들어간다
+    // 코드 유닛 순서로 들어간다 (`compareKeys`)
     expect(a.indexOf("alpha")).toBeLessThan(a.indexOf("zeta"));
   });
 
@@ -243,7 +243,8 @@ describe("yaml-catalog — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () 
       locale: "ko",
       entries: [{ key: "nested.added", message: "추가" }],
     })!;
-    expect(out).toContain("added: 추가");
+    // 형제 `deep: "깊은 값"`의 인용을 따른다 (audit #56).
+    expect(out).toContain('added: "추가"');
     expect(out).toContain("_lang_:");
   });
 });
@@ -550,7 +551,8 @@ describe("yaml-catalog — T12 편집 범위 밖 바이트 보존", () => {
   it("누락 키 삽입도 기존 folded scalar와 바이트를 바꾸지 않는다", () => {
     const input = { locale: "ko", entries: [{ key: "errors.added", message: "追加" }] };
     const output = yamlCatalog.write(withSource(source), input)!;
-    expect(output).toBe(source + "  added: 追加\n");
+    // 형제 `unknown: '古い値'`의 인용을 따른다 (audit #56).
+    expect(output).toBe(source + "  added: '追加'\n");
     expect(yamlCatalog.read(base(), [f("config/locales/ko.yml", output)]).locales[0]?.entries)
       .toContainEqual(input.entries[0]);
     expect(yamlCatalog.write(withSource(source), input)).toBe(output);
@@ -798,7 +800,8 @@ describe("yaml-catalog — 깊은 점 키는 중복 삽입하지 않는다 (L1.4
       const diff = out.split("\n").filter((line, i) => line !== source.split("\n")[i]);
       expect(diff).toHaveLength(1);
       const back = yamlCatalog.read(base(), [f("config/locales/ko.yml", out)]);
-      expect(back.errors).toEqual([]);
+      // 혼재는 평탄화 충돌이라 read가 알린다(B7a r1) — 싣는 값은 write가 고친 리터럴의 것이다.
+      expect(back.errors).toEqual(name.startsWith("실제 중첩과 혼재") ? [{ path: "config/locales/ko.yml", code: "duplicate-key", key }] : []);
       expect(back.locales[0]?.entries).toContainEqual({ key, message: "new" });
       expect(yamlCatalog.write(withSource(out), input)).toBe(out);
     });
@@ -814,5 +817,80 @@ describe("yaml-catalog — 깊은 점 키는 중복 삽입하지 않는다 (L1.4
     expect(back.errors).toEqual([]);
     expect(back.locales[0]?.entries).toContainEqual({ key: "errors.messages.other", message: "added" });
     expect(yamlCatalog.write(withSource(out), input)).toBe(out);
+  });
+});
+
+/**
+ * **삽입하는 항목은 형제 스칼라의 인용 타입을 따른다** (audit #56). 전에는 키·값 모두 PLAIN이라 전부 큰따옴표인 Rails 파일에
+ * 새 키 하나만 맨 문자열로 들어가 lint(yamllint `quoted-strings`)를 깨뜨렸다. 치환(`scalarReplacement`)은 이미 원래 노드의
+ * 타입을 따른다 — 삽입만 빠져 있었다. code-dict의 `dominantQuote`와 같은 다수결이고, 동수면 옛 동작(PLAIN)이다.
+ */
+describe("yaml-catalog — 삽입 인용 타입 (audit #56)", () => {
+  const insert = (source: string, key = "a.z", message = "new") =>
+    yamlCatalog.write(withSource(source), { locale: "ko", entries: [{ key, message }] })!;
+
+  it.each([
+    ["큰따옴표 값", 'a:\n  x: "old"\n  y: "two"\n', 'a:\n  x: "old"\n  y: "two"\n  z: "new"\n'],
+    ["작은따옴표 값", "a:\n  x: 'old'\n  y: 'two'\n", "a:\n  x: 'old'\n  y: 'two'\n  z: 'new'\n"],
+    ["인용 키", 'a:\n  "x": old\n  "y": two\n', 'a:\n  "x": old\n  "y": two\n  "z": new\n'],
+    ["맨 문자열 (짝)", "a:\n  x: old\n  y: two\n", "a:\n  x: old\n  y: two\n  z: new\n"],
+    ["동수는 맨 문자열", "a:\n  x: \"old\"\n  y: two\n", "a:\n  x: \"old\"\n  y: two\n  z: new\n"],
+    ["flow 맵", 'a: {x: "old"}\n', 'a: {x: "old", z: "new"}\n'],
+  ])("%s", (_name, source, expected) => {
+    const out = insert(source);
+    expect(out).toBe(expected);
+    expect(yamlCatalog.read(base(), [f("config/locales/ko.yml", out)]).locales[0]?.entries).toContainEqual({ key: "a.z", message: "new" });
+    expect(insert(out)).toBe(out);
+  });
+
+  it("형제가 없는 빈 맵은 파일 전체의 다수를 본다", () => {
+    const out = insert('b: "keep"\nc: "keep"\na: {}\n');
+    expect(out).toBe('b: "keep"\nc: "keep"\na: {z: "new"}\n');
+  });
+
+  it("인용이 필요한 값은 형제가 맨 문자열이어도 안전하게 인용한다", () => {
+    const out = insert("a:\n  x: old\n", "a.z", "yes");
+    expect(parseDocument(out).getIn(["a", "z"])).toBe("yes");
+  });
+});
+
+describe("yaml-catalog — 삽입 인용: 형제가 맵뿐이면 파일을 본다 (audit #56 리뷰)", () => {
+  it("루트 로케일 아래가 전부 네임스페이스 맵이어도 파일의 다수 인용을 따른다", () => {
+    const source = 'ko:\n  a:\n    x: "old"\n  b:\n    y: "old"\n';
+    const out = yamlCatalog.write(withSource(source), { locale: "ko", entries: [{ key: "top", message: "new" }] })!;
+    expect(out).toBe('ko:\n  a:\n    x: "old"\n  b:\n    y: "old"\n  top: "new"\n');
+  });
+});
+
+/**
+ * **점 키와 중첩이 같은 평탄 키를 낸다** (audit B7a r1 — `a.b: x` + `a: {b: y}`). 전에는 read가 조용히 하나(마지막)로 접었고,
+ * write는 긴 리터럴 우선(`locate`)이라 **다른 줄**을 고쳤다. YAML의 같은 이름 중복과 같은 실패(`duplicate-key`)로 알리고,
+ * read가 싣는 값은 write가 고칠 노드의 값이다 — push가 적재하는 것과 편집이 닿는 자리가 같다.
+ */
+describe("yaml-catalog — 평탄화 충돌 (B7a r1)", () => {
+  it.each([
+    ["리터럴이 앞", "a.b: flat\na:\n  b: nested\n"],
+    ["리터럴이 뒤", "a:\n  b: nested\na.b: flat\n"],
+  ])("duplicate-key로 알리고 write가 고칠 리터럴의 값을 싣는다 — %s", (_name, source) => {
+    const r = yamlCatalog.read(base(), [f("config/locales/ko.yml", source)]);
+    expect(r.errors).toEqual([{ path: "config/locales/ko.yml", code: "duplicate-key", key: "a.b" }]);
+    expect(r.locales[0]?.entries).toEqual([{ key: "a.b", message: "flat" }]);
+    expect(yamlCatalog.write(withSource(source), { locale: "ko", entries: r.locales[0]!.entries })).toBe(source);
+  });
+
+  it("같은 이름 중복은 한 번만 알린다 (collect가 이미 알린 것을 겹쳐 세지 않는다)", () => {
+    const r = yamlCatalog.read(base(), [f("config/locales/ko.yml", "a: one\na: two\n")]);
+    expect(r.errors).toEqual([{ path: "config/locales/ko.yml", code: "duplicate-key", key: "a" }]);
+    expect(r.locales[0]?.entries).toEqual([{ key: "a", message: "two" }]);
+  });
+});
+
+/** 작은따옴표 다수 형제 아래에 개행 든 값을 넣으면 folded single-quote가 공백만 있는 줄을 남긴다(yamllint trailing-spaces). */
+describe("yaml-catalog — 개행 값 삽입은 큰따옴표다 (B7a r1)", () => {
+  it("형제가 작은따옴표여도 개행이 있으면 QUOTE_DOUBLE로 넣는다", () => {
+    const out = yamlCatalog.write(withSource("a:\n  x: 'old'\n  y: 'two'\n"), { locale: "ko", entries: [{ key: "a.z", message: "line\n\nnext" }] })!;
+    expect(out).toBe('a:\n  x: \'old\'\n  y: \'two\'\n  z: "line\\n\\nnext"\n');
+    expect(out.split("\n").some((line) => /^\s+$/.test(line))).toBe(false);
+    expect(parseDocument(out).getIn(["a", "z"])).toBe("line\n\nnext");
   });
 });

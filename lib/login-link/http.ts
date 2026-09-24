@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { NextRequest, NextResponse } from "next/server";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { expireBothVariants, isOAuthCallback } from "@/lib/auth/roundtrip";
 import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { routes } from "@/lib/routes";
@@ -102,12 +103,12 @@ function withoutSessionCookie(request: NextRequest): NextRequest {
 
 export async function withLoginLink(request: NextRequest, run: (request: NextRequest) => Promise<Response>): Promise<Response> {
   const url = new URL(request.url);
-  if (!/^\/api\/auth\/callback\/(github|google)$/.test(url.pathname)) return run(request);
+  if (!isOAuthCallback(url.pathname)) return run(request);
   const origin = requestOrigin({
     host: request.headers.get("host") ?? url.host,
     forwardedProto: request.headers.get("x-forwarded-proto") ?? url.protocol.slice(0, -1),
   });
-  const secure = origin?.secure ?? url.protocol === "https:";
+  const secure = origin?.secure ?? false;
   const tokenCookie = request.cookies.get(linkCookie(true).name) ?? request.cookies.get(linkCookie(false).name);
   const intent =
     tokenCookie !== undefined ||
@@ -120,12 +121,15 @@ export async function withLoginLink(request: NextRequest, run: (request: NextReq
   const attempt: Attempt = { token: tokenCookie?.value ?? "" };
   return stateScope.run(secure, () =>
     pending.run(attempt, async () => {
-      let original: Response;
-      try {
-        original = await run(callbackRequest);
-      } catch (error) {
-        logCaught("login-link", "callback", error);
-        original = new Response(null, { status: 500 });
+      // ⚠️ **origin을 판정 못 하면 Auth.js를 부르지 않는다** (audit #78) — 시작이 그 조건에서 쿠키를 안 심으므로 이 왕복은
+      // 우리가 시작한 것일 수 없고, `url.protocol`로 떨어지면 시작과 다른 쿠키 이름으로 판정한다(CLAUDE.md 2026-09-14).
+      let original: Response = new Response(null, { status: 500 });
+      if (origin !== null) {
+        try {
+          original = await run(callbackRequest);
+        } catch (error) {
+          logCaught("login-link", "callback", error);
+        }
       }
       // signIn 앞에서 난 오류에도 결론이 있어야 한다 — 취소와 장애를 가른다.
       const outcome = attempt.outcome ?? (url.searchParams.get("error") === "access_denied" ? "cancelled" : "unavailable");
@@ -150,15 +154,7 @@ export async function withLoginLink(request: NextRequest, run: (request: NextReq
       headers.set("cache-control", "no-store");
       const response = new NextResponse(null, { status: 303, headers });
 
-      const cookie = linkCookie(secure);
-      response.cookies.set(cookie.name, "", { ...cookie.options, maxAge: 0 });
-      const state = linkStateCookie(secure);
-      response.cookies.set(state.name, "", { ...state.options, maxAge: 0 });
-      // ⚠️ secure 호스트에서도 non-secure 변형을 지운다 — 로컬로 시작한 왕복의 stale state가 남는다(L5.2 계약 테스트).
-      if (secure) {
-        response.cookies.set(linkCookie(false).name, "", { ...linkCookie(false).options, maxAge: 0 });
-        response.cookies.set(linkStateCookie(false).name, "", { ...linkStateCookie(false).options, maxAge: 0 });
-      }
+      expireBothVariants(response.cookies, [linkCookie, linkStateCookie]);
       return response;
     }),
   );

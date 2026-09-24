@@ -342,6 +342,24 @@ describe("/api/push — 토큰이 프로젝트를 정한다 (PRODUCT §7.8)", ()
     await expect(res.json()).resolves.toEqual({ error: "unauthorized" });
   });
 
+  /**
+   * **본문 상한은 인증 뒤, 파싱 앞이다** (audit #76). 전에는 `request.json()`이 크기와 무관하게 끝까지 읽었다.
+   * 선언된 길이만 거짓으로 키운 정상 페이로드다 — 선언을 안 보면 이 요청은 적재까지 간다.
+   */
+  it("선언된 길이가 상한을 넘으면 파싱 전에 400 `body too large`다", async () => {
+    hoisted.prisma.project.findUnique.mockResolvedValue(project());
+    const res = await pushPost(
+      new Request("https://x/api/push", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}`, "content-length": String(64 * 1024 * 1024) },
+        body: JSON.stringify(payload()),
+      }),
+    );
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: "body too large" });
+    expect(hoisted.applyPush).not.toHaveBeenCalled();
+  });
+
   it("헤더가 없으면 401이고 DB를 조회하지 않는다", async () => {
     const res = await pushPost(
       new Request("https://x/api/push", {

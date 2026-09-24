@@ -4,9 +4,11 @@ import type { ReactNode } from "react";
 
 import { CopyButton } from "@/components/onboarding/copy-button";
 import { EventGlyph } from "@/components/logs/glyph";
+import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
 import { eventGlyph, eventSentence, eventView, eventFailureMessage, importReasonMessage, refusalMessage, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
@@ -50,8 +52,8 @@ export function EventDetail({
 
   return (
     <>
-      <div className="flex shrink-0 items-start gap-3 px-6 pt-6 pb-4">
-        <EventGlyph icon={glyph.icon} tone={glyph.tone} className="mt-0.5" />
+      <div data-event-detail-header className="flex shrink-0 items-start gap-3 px-6 pt-6 pb-4">
+        <EventGlyph icon={glyph.icon} tone={glyph.tone} size="lg" />
         <span className="flex min-w-0 flex-1 flex-col gap-1 pr-9">
           <span className="text-muted-foreground flex items-center gap-2 text-xs">
             {m.logs.detail.kindLabel[KIND_KEY[row.kind]]}
@@ -84,21 +86,27 @@ export function EventDetail({
         </span>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-5">
-        <dl className="grid grid-cols-[104px_1fr] items-baseline gap-x-3 gap-y-2.5">
-          <Field label={m.logs.detail.labels.reference}>
-            <span className="flex min-w-0 items-center gap-2">
-              <span className="[overflow-wrap:anywhere]">{row.ref}</span>
-              {/* 동료에게 붙여넣는 것이 링크보다 짧고 **권한과 무관**하다 — 받은 사람은 검색창에 넣는다. */}
-              <CopyButton value={row.ref} label={m.logs.detail.actions.copy} size="sm" />
-            </span>
-          </Field>
-          {fields(row).map(([label, value]) => (
-            <Field key={label} label={label}>
-              {value}
-            </Field>
-          ))}
-        </dl>
+      {/* ⚠️ **본문은 칩이 아니라 제목 열에서 시작한다** — 좌측 24 + 칩 40 + 간격 12 = 76. 칩 크기나
+          헤더 간격을 바꾸면 이 값도 같이 움직인다 (`logs-events.test.tsx`가 셋을 함께 본다). */}
+      <div data-event-detail-body className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-6 pb-5 pl-[76px]">
+        <div className="border-border overflow-hidden rounded-lg border">
+          <Table scrollable={false}>
+            <TableBody>
+              <Field label={m.logs.detail.labels.reference}>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="[overflow-wrap:anywhere]">{row.ref}</span>
+                  {/* 동료에게 붙여넣는 것이 링크보다 짧고 **권한과 무관**하다 — 받은 사람은 검색창에 넣는다. */}
+                  <CopyButton value={row.ref} label={m.logs.detail.actions.copy} size="sm" />
+                </span>
+              </Field>
+              {fields(row).map(([label, value]) => (
+                <Field key={label} label={label}>
+                  {value}
+                </Field>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
 
         {row.payload?.kind === "TRANSLATION" && (
           <div className="border-divider flex flex-col gap-2 border-t pt-4">
@@ -155,12 +163,22 @@ export function EventDetail({
   );
 }
 
+/**
+ * 키-값 한 줄. ⚠️ **라벨은 `th scope="row"`다** — 표로 감싼 뒤에도 스크린리더가 값마다 라벨을
+ * 읽어야 `dl`이던 때의 짝이 유지된다. 읽기 전용 사실이라 행 hover를 끈다.
+ *
+ * ⚠️ **행 높이 48(`h-12`)의 기준은 [Copy reference]가 든 참조 행이다** — 버튼 28 + 위아래 10×2.
+ * 표 행의 `height`는 최소값으로 동작해 여러 줄 값은 그대로 늘어난다. 높이가 고정되면 baseline이
+ * 위로 몰리므로 세로 정렬은 가운데다.
+ */
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <>
-      <dt className="text-neutral-400 text-xs">{label}</dt>
-      <dd className="m-0 text-base">{children}</dd>
-    </>
+    <TableRow className="h-12 hover:bg-transparent">
+      <TableHead scope="row" className="text-neutral-400 h-auto w-[104px] px-3.5 py-2.5 align-middle text-xs font-normal">
+        {label}
+      </TableHead>
+      <TableCell className="px-3.5 py-2.5 align-middle text-base whitespace-normal">{children}</TableCell>
+    </TableRow>
   );
 }
 
@@ -173,11 +191,11 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
       {state.kind === "text" ? (
         /* ⚠️ **`bg-muted`(#f5f5f5)가 아니라 #fafafa다** — 시안의 Before 면이고, 흰 After와의 대비가
            한 단계 더 연해야 두 블록이 "같은 값의 두 시점"으로 읽힌다. */
-        <div className={`border-border rounded-[10px] border px-3 py-2.5 text-base [overflow-wrap:anywhere] whitespace-pre-wrap ${muted ? "bg-neutral-50" : ""}`}>
+        <div className={`border-border rounded-md border px-3 py-2.5 text-base [overflow-wrap:anywhere] whitespace-pre-wrap ${muted ? "bg-neutral-50" : ""}`}>
           {state.text}
         </div>
       ) : (
-        <div className="border-border bg-neutral-50 text-muted-foreground rounded-[10px] border border-dashed px-3 py-2.5 text-base">
+        <div className="border-border bg-neutral-50 text-muted-foreground rounded-md border border-dashed px-3 py-2.5 text-base">
           {state.label}
         </div>
       )}
@@ -185,14 +203,26 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
   );
 }
 
+/**
+ * 상세의 안내 한 줄.
+ *
+ * ⚠️ **실패는 `Alert danger`가 아니다** (B6 r1, 2026-09-24 사용자). 상세는 **지난 기록**인데 `danger`는
+ * `role="alert"`를 들어 여는 순간 assertive로 끼어든다 — 결과가 방금 일어난 자리(Sync·Publish)의 판정을
+ * 과거 기록에 적용하는 셈이다. 그래서 **아이콘만 붉은** 무색 상자이고 live 의미가 없다.
+ * 나머지(진행 중·토큰 회전)는 상시 안내라 `Alert info`다 — 그 variant는 `role`을 들지 않는다.
+ */
 function Note({ tone, body, note }: { tone: "danger" | "muted"; body: string; note: string | null }) {
+  const text = (
+    <span className="flex min-w-0 flex-1 flex-col gap-1">
+      <span className="text-sm leading-[1.5]">{body}</span>
+      {note !== null && <span className="text-muted-foreground text-xs text-pretty">{note}</span>}
+    </span>
+  );
+  if (tone === "muted") return <Alert variant="info"><span data-event-note className="flex">{text}</span></Alert>;
   return (
-    <div className="border-border flex items-start gap-2.5 rounded-[10px] border p-3.5">
-      <CircleAlert className={`mt-px size-[15px] shrink-0 ${tone === "danger" ? "text-destructive" : "text-muted-foreground"}`} aria-hidden />
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-sm leading-[1.5]">{body}</span>
-        {note !== null && <span className="text-muted-foreground text-xs text-pretty">{note}</span>}
-      </span>
+    <div data-event-note className="border-border flex items-start gap-2.5 rounded-md border p-3.5">
+      <CircleAlert className="text-destructive mt-px size-4 shrink-0" aria-hidden />
+      {text}
     </div>
   );
 }
@@ -241,7 +271,13 @@ function fields(row: EventRow): [string, ReactNode][] {
         m.logs.meta.files(row.run.changed)
       ),
     ]);
-    out.push([
+    // ⚠️ **스킵 행의 prUrl은 이 실행이 닫은 PR이다** (B1 r3 — `planSyncFinish`). 보낸 PR의 "View"로 그리면 뜻이 뒤집힌다.
+    const closed = row.run !== null && row.run.prUrl !== null && (row.result === "nothingToSend" || row.result === "notSent");
+    if (closed && row.run?.prUrl) out.push([m.logs.detail.labels.closedPullRequest, <>
+      {m.logs.detail.closedPullRequest}{" "}
+      <a href={row.run.prUrl} target="_blank" rel="noreferrer" className="text-blue-600">{m.translations.publish.viewLink}</a>
+    </>]);
+    else out.push([
       m.logs.detail.labels.pullRequest,
       row.run?.prUrl == null ? (
         <span className="text-muted-foreground">{m.logs.detail.noPullRequest}</span>
@@ -251,6 +287,8 @@ function fields(row: EventRow): [string, ReactNode][] {
         </a>
       ),
     ]);
+    // 모달의 보류 줄과 같은 수다 — 같은 `SyncRun.withheld`에서 온다(delivery-invariants D7).
+    if (row.run !== null && row.run.withheld > 0) out.push([m.logs.detail.labels.withheld, m.logs.detail.withheld(row.run.withheld)]);
     if (row.run?.errorCode != null) out.push([m.logs.detail.labels.errorCode, row.run.errorCode]);
     if (payload?.kind === "PUBLISH" && payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(payload.refusal)]);
   }
@@ -290,7 +328,7 @@ function fields(row: EventRow): [string, ReactNode][] {
 const FOOTER_LINK = cn(buttonClass(), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", "gap-1.5");
 
 /** ⚠️ **화살표는 "여기를 떠난다"는 신호다** — 캔버스가 목적지 셋에 모두 달았고 15/보조색이다. */
-const LEAVE = <ArrowUpRight className="text-muted-foreground size-[15px]" aria-hidden />;
+const LEAVE = <ArrowUpRight className="text-muted-foreground size-4" aria-hidden />;
 
 /** 목적지 링크 하나 — 권한이 없거나 대상이 없으면 **그리지 않는다.** */
 function destination(row: EventRow, slug: string, canOpenSettings: boolean, repoUrl: string | null, translationHref: string | null): ReactNode {

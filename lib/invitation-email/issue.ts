@@ -5,6 +5,8 @@ import { randomBytes, randomUUID } from "node:crypto";
 import type { PrismaClient, Prisma } from "@/generated/prisma/client";
 import { maskEmail } from "@/lib/auth/email";
 import { hashInviteToken } from "@/lib/auth/invitation";
+import type { LockedAccess } from "@/lib/auth/access";
+import { lockProjectAccess } from "@/lib/auth/lock";
 import type { Role } from "@/lib/auth/permission";
 import { findUserByEmail } from "@/lib/credentials/access";
 import { decodeInvitation, encodeInvitationEmail, readable } from "@/lib/credentials/records";
@@ -32,18 +34,17 @@ export type IssueRecipient = { email: string; role: Role };
 export type IssuedInvitation = { email: string; token: string };
 type Refusal = Exclude<IssuePlan, { status: "ok" }>;
 
-export type IssueOutcome = { status: "issued"; invitations: IssuedInvitation[]; retryAt: Date } | Refusal;
+/** 잠금 뒤 다시 본 인가의 거부 — 발급자가 대기 중 강등·제거됐다. */
+type AccessRefusal = Exclude<LockedAccess, { status: "ok" }>;
+export type IssueOutcome = { status: "issued"; invitations: IssuedInvitation[]; retryAt: Date } | Refusal | AccessRefusal;
 export type ReissueOutcome =
   | { status: "issued"; invitation: IssuedInvitation; retryAt: Date }
   | { status: "not-found" }
   | { status: "unreadable" }
-  | Refusal;
+  | Refusal
+  | AccessRefusal;
 
 type Tx = Prisma.TransactionClient;
-
-async function lockProject(tx: Tx, projectId: string): Promise<void> {
-  await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
-}
 
 /** 잠금 안에서 판정 입력을 읽는다. 최근 1시간 발급은 수락·철회·만료를 가리지 않는다 — 철회로 우회되지 않게. */
 async function readLimits(tx: Tx, projectId: string, emails: readonly string[], now: Date) {
@@ -122,7 +123,8 @@ export async function issueInvitations(
 ): Promise<IssueOutcome> {
   const { projectId, userId, recipients } = input;
   return prisma.$transaction(async (tx) => {
-    await lockProject(tx, projectId);
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage" });
+    if (locked.status !== "ok") return locked;
     const now = new Date();
     const limits = await readLimits(tx, projectId, recipients.map((r) => r.email), now);
     const plan = planInvitationIssue({ now, ...limits });
@@ -140,7 +142,8 @@ export async function reissueInvitation(
 ): Promise<ReissueOutcome> {
   const { projectId, userId, invitationId } = input;
   return prisma.$transaction(async (tx) => {
-    await lockProject(tx, projectId);
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage" });
+    if (locked.status !== "ok") return locked;
     const now = new Date();
     // ⚠️ `projectId`로 좁힌다 — id를 알아도 남의 프로젝트 초대를 되살릴 수 없다.
     const row = await tx.projectInvitation.findFirst({

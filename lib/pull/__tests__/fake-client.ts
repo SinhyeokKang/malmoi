@@ -87,6 +87,9 @@ export function createFakeGitClient(opts: FakeGitOptions): {
     async updatePrBase(pullNumber, base) {
       record("updatePrBase", [pullNumber, base]);
     },
+    async closePr(pullNumber, comment) {
+      record("closePr", [pullNumber, comment]);
+    },
     // 목록 전용 둘. pull은 안 쓰지만 같은 인터페이스라 여기도 구현한다.
     async compareToBase(baseSha, branch) {
       record("compareToBase", [baseSha, branch]);

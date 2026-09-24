@@ -132,7 +132,7 @@ runs:
     # ⚠️ **조회 실패를 "PR 없음"으로 읽지 않는다.** `2>/dev/null || true`가 그렇게 만들어서
     # 경고가 존재하지 않는 것과 구별되지 않았다. 실패는 실패로 보고한다(단 red는 아니다 —
     # 이 스텝은 경고 전용이고 적재를 막을 근거가 없다).
-    # ⚠️ 브랜치는 **프로젝트별**이다 — `lib/pull/trigger.ts`의 `syncBranchFor`가 `malmoi-i18n/sync-<slug>`를 낸다
+    # ⚠️ 브랜치는 **프로젝트별**이다 — `lib/pull/sync-branch.ts`의 `syncBranchFor`가 `malmoi-i18n/sync-<slug>`를 낸다
     # (한 리포에 Project가 둘이면 서로 덮지 않게). 옛 상수 `malmoi-i18n/sync`를 조회하면 이 경고가 항상 "없음"을
     # 찍어 손실 창의 유일한 신호가 죽는다 (Codex 감사 2026-09-06 #8). 이름 규칙은
     # `lib/pull/__tests__/sync-branch-consumers.test.ts`가 대조한다.

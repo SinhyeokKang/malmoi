@@ -52,12 +52,21 @@ export function DropdownMenuContent({
  */
 export function DropdownMenuItem({
   className,
-  selected = false,
+  selected,
   children,
   ...props
-}: ComponentProps<typeof Primitive.Item> & { selected?: boolean }) {
+}: ComponentProps<typeof Primitive.Item> & {
+  /**
+   * 단일 선택 메뉴의 현재 값. ⚠️ **받는 항목은 `menuitemradio` + `aria-checked`다** (audit #36) — 전엔 `bg-muted` + 체크
+   * 글리프라는 시각 표시뿐이라 스크린리더는 어느 필터가 켜졌는지 몰랐다. **안 받는 항목**(프리셋·`Custom…`처럼 값이
+   * 아니라 동작인 것)은 `menuitem` 그대로다 — `false`와 `undefined`가 다른 뜻이다.
+   */
+  selected?: boolean;
+}) {
   return (
     <Primitive.Item
+      // ⚠️ 키째로 빼야 한다 — `role={undefined}`를 넘기면 Radix가 세운 `menuitem`까지 지운다.
+      {...(selected === undefined ? {} : { role: "menuitemradio", "aria-checked": selected })}
       className={cn(
         "mx-1 flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm outline-none",
         "hover:bg-accent focus:bg-accent data-[disabled]:pointer-events-none data-[disabled]:opacity-50",

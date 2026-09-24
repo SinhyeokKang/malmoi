@@ -6,10 +6,8 @@
  *
  * 파일시스템을 아는 유일한 층이다 — 어댑터의 detect·read·write는 순수 함수다.
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
-import { adapterFor, detectFormat, detectFormatWith, isAdapterName, namespaceOf } from "../lib/adapters/index";
+import { adapterFor, namespaceOf } from "../lib/adapters/index";
+import { adapterErrorKind } from "../lib/adapters/types";
 import { findTarget, flagValue, hasFlag } from "../lib/cli/args";
 import { walkFiles } from "../lib/cli/walk";
 import { blobSha } from "../lib/githash";
@@ -18,6 +16,7 @@ import { matchGlobPaths } from "../lib/adapters/index";
 import { sameMeaning } from "../lib/adapters/shared";
 import { AppError } from "../lib/failure";
 import { assemblePushInput } from "../lib/push/assemble";
+import { fileProbe, requestedFormat } from "./format";
 
 
 const argv = process.argv.slice(2);
@@ -33,32 +32,14 @@ const baseOverride = flagValue(argv, "--base");
 const paths = walkFiles(target);
 
 // probe를 준다 — 경로 신호만으로는 검색 인덱스 같은 무관한 JSON 묶음을 잡는다.
-const probe = (p: string): string | undefined => {
-  try {
-    return readFileSync(join(target, p), "utf8");
-  } catch {
-    return undefined;
-  }
-};
-// ⚠️ 한 리포에 포맷이 둘일 수 있다 — bugshot-2는 _locales(4키)와 ts-dict(903키)가 공존하고
-// 탐지 우선순위가 작은 쪽을 고른다. `--adapter <name>`으로 지정하면 그게 이긴다.
-const adapterName = flagValue(argv, "--adapter");
-// 이름 오타와 미탐지를 가른다 — 둘이 같은 메시지면 진단이 오래 걸린다.
-if (adapterName !== undefined && !isAdapterName(adapterName)) {
-  console.error(`--adapter ${adapterName}: 등록되지 않은 어댑터다.`);
-  process.exit(2);
+// 포맷 결정은 `push:local`과 같은 함수다(`scripts/format.ts`) — 미리 본 것과 올리는 것이 갈리지 않는다.
+const probe = fileProbe(target);
+const requested = requestedFormat(paths, probe, { adapterName: flagValue(argv, "--adapter") });
+if (!requested.ok) {
+  console.error(requested.message);
+  process.exit(requested.exitCode);
 }
-const format = adapterName === undefined
-  ? detectFormat(paths, probe)
-  : detectFormatWith(adapterName, paths, probe);
-if (adapterName !== undefined && !format) {
-  console.error(`--adapter ${adapterName}: 이 리포에서 해당 포맷을 찾지 못했다.`);
-  process.exit(1);
-}
-if (!format) {
-  console.error(`로케일 포맷을 찾지 못했다 (${paths.length}파일 훑음) — 연동 불가.`);
-  process.exit(1);
-}
+const { format } = requested;
 
 const adapter = adapterFor(format);
 
@@ -96,7 +77,7 @@ if (hasFlag(argv, "--json")) {
   // 프로세스가 죽으면 출력이 잘린다(skillflo의 --json이 73KB에서 끊겼다).
   // 대신 exitCode만 세우므로 **여기서 명시적으로 빠져나가야** 한다 — 안 그러면 아래
   // 사람용 출력이 이어져 JSON 문서가 두 개 나온다.
-  process.exitCode = result.errors.length ? 1 : 0;
+  if (result.errors.some((e) => adapterErrorKind(e.code) !== "warning")) process.exitCode = 1;
 } else {
 
 console.log(`어댑터: ${format.adapter}${result.nested ? " (중첩)" : " (flat)"}`);
@@ -166,6 +147,8 @@ if (baseLocale) {
     console.error(`\n에러 ${result.errors.length}건:`);
     for (const e of result.errors.slice(0, 15)) console.error(`  ${e.path}  ${adapterErrorMessage(e)}`);
     if (result.errors.length > 15) console.error(`  ... ${result.errors.length - 15}건 더`);
+    // 경고(`duplicate-property`)만이면 push:local처럼 실패로 끝내지 않는다(B7a r1).
+    if (result.errors.some((e) => adapterErrorKind(e.code) !== "warning")) process.exitCode = 1;
   }
-  process.exitCode = result.errors.length ? 1 : 0;
+  // ⚠️ **exitCode를 낮추지 않는다** (audit #53) — 위 왕복 게이트가 의미 손실로 세운 1을 `errors.length ? 1 : 0`이 0으로 덮었다.
 }

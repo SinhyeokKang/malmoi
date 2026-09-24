@@ -72,11 +72,13 @@ export type InviteError =
   | "email-mismatch"
   /** 이미 그 프로젝트의 멤버다 — 실패지만 원하는 상태는 이미 이뤄져 있다. */
   | "already-member"
+  /** 프로젝트가 보관됐다 — "보관 = 멈춤"이라 멤버가 새로 들지 않는다(audit #79). 초대는 소비되지 않는다. */
+  | "archived"
   /** 세션을 못 읽었다 — 거부가 아니다. */
   | "unavailable";
 
 /**
- * ⚠️ **일곱 중 셋은 여기서만 사용자에게 보인다.** `not-found`·`already-accepted`·`expired`는 페이지가
+ * ⚠️ **여덟 중 셋은 여기서만 사용자에게 보인다.** `not-found`·`already-accepted`·`expired`는 페이지가
  * 서버 렌더 단계에서 갈라 각자 화면을 내지만, **수락 버튼을 눌러서 나는 실패**(`email-mismatch`·
  * `already-member`·`unauthorized`)는 이 문구가 없으면 어디에도 나타나지 않는다 — 2026-09-06까지
  * 실제로 그랬고, 사용자에게는 버튼이 안 눌린 것으로 보였다 (POSTMORTEM 2026-09-06).

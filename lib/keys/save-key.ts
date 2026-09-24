@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { ADAPTERS } from "@/lib/adapters";
+import type { LockedAccess } from "@/lib/auth/access";
+import { lockProjectAccess } from "@/lib/auth/lock";
 import { recordEvent } from "@/lib/events/record";
 import { planBaselineOnSave } from "@/lib/translations/baseline";
 
@@ -13,12 +16,15 @@ import { planKeySave, type KeySavePlan } from "./save";
  * ⚠️ **전부 계획한 뒤에만 쓴다**(`planKeySave`) — 셀 루프 도중 거부하면 앞 셀이 커밋될 수 있다. 사건 기록이 실패하면 전부 롤백이다.
  * ⚠️ **나중 저장이 최종 값이다** — 버전 비교·충돌 거부를 넣지 않는다(사용자 확정).
  * ⚠️ 잠금은 `Project` → `TranslationSurface`다 — CI 적재·수동 Sync·Publish 성공 확정과 같은 순서라 교착하지 않는다.
- * ⚠️ `server-only`를 붙이지 않는다 — 격리 PG 통합 테스트가 직접 부른다. 인가는 호출하는 Server Action이 끝냈다.
+ * ⚠️ `server-only`를 붙이지 않는다 — 격리 PG 통합 테스트가 직접 부른다.
+ * ⚠️ **인가는 잠금 뒤 한 번 더 본다** (감사 #10) — Action 입구 판정 뒤 적재 잠금을 최대 30초 기다리는 동안 제거된 EDITOR의
+ *   저장·사건이 커밋되면 안 된다.
  */
 export type KeySaveResult =
   | { ok: true; keyId: string; cells: { localeCode: string; value: string }[] }
   | Exclude<KeySavePlan, { ok: true }>
-  | { ok: false; error: "key-unavailable" };
+  | { ok: false; error: "key-unavailable" }
+  | { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] };
 
 export async function applyKeySave(
   prisma: PrismaClient,
@@ -26,18 +32,20 @@ export async function applyKeySave(
 ): Promise<KeySaveResult> {
   const { projectId, surfaceId, surfaceSlug, keyId, userId } = input;
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
-    await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${projectId} AND "id" = ${surfaceId} FOR UPDATE`;
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId });
+    if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
 
     // 인가가 준 projectId·surfaceId로 다시 좁힌다 — 멤버십은 "이 keyId가 그 프로젝트 것"을 뜻하지 않는다.
     const key = await tx.stringKey.findFirst({ where: { id: keyId, projectId, surfaceId, orphaned: false }, select: { key: true, sourceText: true } });
     if (key === null) return { ok: false, error: "key-unavailable" } as const;
-    const surface = await tx.translationSurface.findFirstOrThrow({ where: { id: surfaceId, projectId }, select: { baseLocale: true } });
+    const surface = await tx.translationSurface.findFirstOrThrow({ where: { id: surfaceId, projectId }, select: { baseLocale: true, adapterName: true } });
+    // 비우기 판정의 입력이라 잠금 안에서 읽는다(delivery-invariants D2). 모르는 어댑터는 수술적으로 친다 — 비우기를 막는 쪽이 안전하다.
+    const writeStrategy = ADAPTERS.find(adapter => adapter.name === surface.adapterName)?.writeStrategy ?? "surgical";
     const locales = await tx.locale.findMany({ where: { projectId, surfaceId, orphaned: false }, select: { code: true } });
     const rows = await tx.translation.findMany({ where: { projectId, surfaceId, keyId }, select: { localeCode: true, value: true, pendingEditToken: true } });
     const rowOf = new Map(rows.map(row => [row.localeCode, row]));
 
-    const plan = planKeySave(new Map(locales.map(l => [l.code, rowOf.get(l.code)?.value ?? null])), input.changes);
+    const plan = planKeySave(new Map(locales.map(l => [l.code, rowOf.get(l.code)?.value ?? null])), input.changes, { writeStrategy, baseLocale: surface.baseLocale });
     if (!plan.ok) return plan;
     if (plan.writes.length === 0) return { ok: true, keyId, cells: [] };
 

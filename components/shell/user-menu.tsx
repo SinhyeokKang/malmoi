@@ -1,7 +1,8 @@
 "use client";
 
-import { CircleUser, LogOut } from "lucide-react";
+import { CircleUser, Loader2, LogOut } from "lucide-react";
 import Link from "next/link";
+import { useFormStatus } from "react-dom";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -70,14 +71,25 @@ export function UserMenu({
         </DropdownMenuItem>
         {/* 폼이 항목을 감싼다 — Radix Item은 기본이 `div`라 그 안에 submit을 두어야 한다. */}
         <form action={signOut}>
-          <DropdownMenuItem asChild>
-            <Button type="submit" variant="ghost" className="w-full justify-start gap-2 px-2">
-              <LogOut className="size-4" aria-hidden />
-              {m.common.nav.signOut}
-            </Button>
-          </DropdownMenuItem>
+          <SignOutItem />
         </form>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/**
+ * ⚠️ **제출 중에는 메뉴가 닫히지 않고 disabled + 스피너다** (audit #25) — 기본 동작대로 고르는 순간 닫히면 진행 표시를
+ * 세울 자리 자체가 사라진다. 이동이 끝나면 페이지가 바뀌므로 열린 채 남는 일은 없다.
+ */
+function SignOutItem() {
+  const { pending } = useFormStatus();
+  return (
+    <DropdownMenuItem asChild onSelect={event => event.preventDefault()}>
+      <Button type="submit" variant="ghost" disabled={pending} aria-busy={pending} className="w-full justify-start gap-2 px-2">
+        {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <LogOut className="size-4" aria-hidden />}
+        {m.common.nav.signOut}
+      </Button>
+    </DropdownMenuItem>
   );
 }

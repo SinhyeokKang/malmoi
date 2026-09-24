@@ -1,3 +1,5 @@
+import { decodeUrlToken, encodeUrlToken } from "@/lib/url-token";
+
 import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "./payload";
 
 /**
@@ -6,7 +8,7 @@ import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "./payl
  * ⚠️ **주소창 값이라 무엇을 받아도 던지지 않는다.** 모르는 값·해독 불가는 기본값이고 화면은 첫
  * 페이지를 그린다 — `decodeCursor`·`pick`과 같은 축이다 (POSTMORTEM 2026-09-08).
  *
- * ⚠️ **잎이다** — `./payload`(그쪽도 잎)까지다. 필터 UI가 클라이언트 컴포넌트라 이 그래프가 곧
+ * ⚠️ **잎이다** — `./payload`·`@/lib/url-token`(둘 다 잎)까지다. 필터 UI가 클라이언트 컴포넌트라 이 그래프가 곧
  * 번들이다 (`components/__tests__/client-graph.test.ts`).
  */
 
@@ -183,37 +185,22 @@ function utcDay(raw: string | null | undefined): Date | null {
   return at.toISOString().slice(0, 10) === raw ? at : null;
 }
 
-/**
- * 키셋 커서. ⚠️ **`Buffer`를 쓰지 않는다** — 이 모듈은 잎이고 클라이언트가 값으로 읽는다.
- * `btoa`/`atob`는 latin1만 받으므로 퍼센트 인코딩을 한 겹 지난다.
- */
+/** 키셋 커서. 문자열 ↔ base64url은 `@/lib/url-token`(잎)이 든다 — 이 모듈은 페이로드 모양만 정한다. */
 export function encodeCursor(cursor: EventCursor): string {
-  const raw = btoa(encodeURIComponent(`${cursor.occurredAt.toISOString()}|${cursor.id}`));
-  return raw.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return encodeUrlToken(`${cursor.occurredAt.toISOString()}|${cursor.id}`);
 }
 
 export function decodeCursor(raw: string): EventCursor | null {
-  const decoded = fromBase64Url(raw);
+  const decoded = decodeUrlToken(raw);
   if (decoded === null) return null;
-  // ⚠️ id에 `|`가 들어갈 수 있다고 보고 **첫 구분자에서만** 자른다 (`lib/sync/view.ts`와 같은 판단).
+  // ⚠️ id에 `|`가 들어갈 수 있다고 보고 **첫 구분자에서만** 자른다 — cuid엔 없지만, 그 가정이
+  // 깨지는 날 조용히 잘린 id로 조회하면 결과가 빈 페이지다.
   const at = decoded.indexOf("|");
   if (at === -1) return null;
   const occurredAt = new Date(decoded.slice(0, at));
   const id = decoded.slice(at + 1);
   if (Number.isNaN(occurredAt.getTime()) || id === "") return null;
   return { occurredAt, id };
-}
-
-function fromBase64Url(value: string): string | null {
-  if (value === "" || !/^[A-Za-z0-9_-]+$/.test(value)) return null;
-  const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
-  try {
-    const decoded = decodeURIComponent(atob(padded));
-    return decoded === "" ? null : decoded;
-  } catch {
-    // 주소창 값이다 — 깨진 커서는 첫 페이지를 뜻하지 500이 아니다.
-    return null;
-  }
 }
 
 /** 반복 파라미터는 첫 값을 쓴다. 빈 문자열·공백은 없는 것과 같다. */

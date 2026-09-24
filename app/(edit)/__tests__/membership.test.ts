@@ -286,6 +286,22 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
     expect(claim?.[0]?.where?.expiresAt?.gt).toBeInstanceOf(Date);
   });
 
+  /**
+   * **보관된 프로젝트에는 수락으로도 들어오지 않는다** (audit #79 — "보관 = 멈춤", B2 #26). 전에는 멤버가
+   * 되고 접근만 막혔다. 초대는 소비하지 않는다 — 복원 뒤 만료 전이면 같은 링크로 들어온다.
+   */
+  it("보관된 프로젝트의 초대는 archived로 거부되고 소비되지 않는다", async () => {
+    const project = db.projects.find((p) => p.id === "pA")!;
+    project.archivedAt = new Date("2026-09-01T00:00:00Z");
+    invite();
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: false, error: "archived" });
+    expect(db.members.some((m) => m.userId === "u-guest")).toBe(false);
+    expect(db.invitations[0]?.acceptedAt).toBeNull();
+    // 짝: 복원하면 같은 토큰이 수락된다.
+    project.archivedAt = null;
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: true, slug: "alpha" });
+  });
+
   it("토큰 원문이 아니라 해시로 조회한다", async () => {
     invite();
     await acceptInvitation({ token: "tok" });

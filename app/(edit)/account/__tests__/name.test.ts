@@ -69,6 +69,8 @@ it("저장 실패는 값으로 돌아오고 무효화하지 않는다", async ()
   expect(await updateProfileName("Jane")).toEqual({ ok: false, reason: "unavailable" });
   expect(mocks.revalidatePath).not.toHaveBeenCalled();
   // 로그가 PII도 드라이버 원문도 나르지 않는다 — 봉투가 무의미해지고 인자가 새어 나온다.
+  // 원문 대신 분류 한 낱말은 남는다 — 무음이면 원인을 볼 곳이 없다 (audit #72).
+  expect(error).toHaveBeenCalledExactlyOnceWith("Profile name update failed.", expect.objectContaining({ cause: "Error" }));
   expect(JSON.stringify(error.mock.calls[0])).not.toContain("db down");
   expect(JSON.stringify(error.mock.calls[0])).not.toContain("Jane");
 });
