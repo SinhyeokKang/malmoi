@@ -110,7 +110,24 @@ it.each([
   expect(hoisted.project.updateMany).not.toHaveBeenCalled();
 });
 
-/** 4 KiB를 넘는 본문은 읽고 나서 거부한다 — 보고에 그만한 정보가 들어갈 이유가 없다. */
+/**
+ * **선언된 길이가 상한을 넘으면 읽기 전에 거부한다** (audit #76) — 전에는 `text()`로 다 읽은 뒤에 쟀다.
+ * 본문 자체는 정상 보고라, 선언을 안 봤다면 204가 났을 것이다(짝 단언: 아래 첫 테스트가 같은 본문으로 204).
+ */
+it("answers 400 for a declared oversized body without reading it", async () => {
+  const res = await POST(
+    new Request("http://localhost/api/push/failure", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}`, "content-length": "4097" },
+      body: JSON.stringify(body),
+    }),
+  );
+  expect(res.status).toBe(400);
+  await expect(res.json()).resolves.toEqual({ error: "body too large" });
+  expect(hoisted.project.updateMany).not.toHaveBeenCalled();
+});
+
+/** 4 KiB를 넘는 본문은 거부한다 — 보고에 그만한 정보가 들어갈 이유가 없다. */
 it("answers 400 for an oversized body", async () => {
   const res = await post({ raw: JSON.stringify({ ...body, projectSlug: "a".repeat(5000) }) });
   expect(res.status).toBe(400);

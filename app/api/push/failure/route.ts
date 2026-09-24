@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
+import { readBoundedText } from "@/lib/bounded-body";
 import { getPrisma } from "@/lib/db";
 import { recordCiImport } from "@/lib/events/ci";
 import { classifyFailure } from "@/lib/failure";
@@ -59,8 +60,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
-    const raw = await request.text();
-    if (Buffer.byteLength(raw) > MAX_BODY_BYTES) {
+    // 선언된 길이는 읽기 전에, chunked는 읽는 도중에 끊는다 — 다 읽고 재면 메모리는 이미 쓴 뒤다 (audit #76).
+    const raw = await readBoundedText(request, MAX_BODY_BYTES);
+    if (raw === null) {
       return NextResponse.json({ error: "body too large" }, { status: 400 });
     }
     let body: unknown;

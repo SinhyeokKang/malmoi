@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
+import { readBoundedText } from "@/lib/bounded-body";
 import { getPrisma } from "@/lib/db";
 import { recordCiImport, recordCiImportInTransaction, type CiImportEvent } from "@/lib/events/ci";
 import { classifyFailure } from "@/lib/failure";
@@ -33,6 +34,13 @@ import { hashPushToken } from "@/lib/push/token";
 
 // 1446키 벌크 쓰기가 기본 10초 안에 안 끝날 수 있다.
 export const maxDuration = 60;
+
+/**
+ * 본문 상한 = Vercel 함수 요청 본문 상한(4.5 MB). 그보다 큰 본문은 플랫폼이 이미 끊으므로 이 값이 **새로 막는
+ * 정상 페이로드는 없다** — 그 방어를 우리 코드의 성질로 옮겨 둘 뿐이다(`ALLOWED_HOSTS`와 같은 이유).
+ * ⚠️ 올리려면 플랫폼 상한부터 바뀌어야 한다.
+ */
+const MAX_BODY_BYTES = 4_500_000;
 
 export async function POST(request: Request): Promise<NextResponse> {
   // 헤더 형식만 여기서 본다 — 대조는 DB 조회이고, 그건 아래 `try` 안이다(장애가 401로 접히면 안 된다).
@@ -79,9 +87,14 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
 
+    // ⚠️ **상한 검사가 파싱보다 앞이다** (audit #76) — `request.json()`은 크기와 무관하게 끝까지 버퍼링한다.
+    const raw = await readBoundedText(request, MAX_BODY_BYTES);
+    if (raw === null) {
+      return NextResponse.json({ error: "body too large" }, { status: 400 });
+    }
     let body: unknown;
     try {
-      body = await request.json();
+      body = JSON.parse(raw);
     } catch {
       return NextResponse.json({ error: "invalid json" }, { status: 400 });
     }
