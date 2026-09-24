@@ -271,6 +271,26 @@ it("skipped/withheld 설명은 writer 경고 문장이 아니다", async () => {
   expect(text).not.toContain(m.translations.publish.notSentDescription);
   expect(text).toContain(m.translations.publish.withheldDescription.withheld);
 });
+/**
+ * B1 r3 — no-changes 실행이 열린 PR을 닫았으면 결과가 그 사실과 이유를 말한다(역할별 — DESIGN §10.1). 전에는 "Nothing was written"만 서고
+ * PR은 조용히 닫혀 있었다(QA5 PR #4).
+ */
+it.each(["OWNER", "EDITOR"] as const)("no-changes가 PR #4를 닫았으면 결과가 그 이유를 말한다(%s)", async role => {
+  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "no-changes", closedPr: { number: 4, url: "https://github.com/owner/repo/pull/4" } });
+  await render(<Host role={role} />); await click("Publish1"); await click("Open pull request");
+  const c = m.translations.publish.closedPr;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(c.description("main"));
+  expect(text).toContain(`${c.line(4, "main")} ${role === "OWNER" ? c.owner : c.editor}`);
+  expect(text).not.toContain(m.translations.publish.noChangesDescription);
+  expect([...document.querySelectorAll('[role="dialog"] a')].some(a => a.getAttribute("href") === "https://github.com/owner/repo/pull/4")).toBe(true);
+});
+it("닫은 PR이 없으면 그 줄이 없다 (짝)", async () => {
+  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "no-changes" });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  expect(document.body.textContent).toContain(m.translations.publish.noChangesDescription);
+  expect(document.body.textContent).not.toContain("was closed because");
+});
 it("미리보기 읽기 실패는 1k의 Retry다 (짝)", async () => {
   mocks.preview.mockResolvedValueOnce({ status: "failed" });
   await render(<Host />);

@@ -1012,7 +1012,10 @@ export const en = {
         effect: "Effect",
         unsentEdits: "Unsent edits",
         withheld: "Not sent",
+        closedPullRequest: "Closed pull request",
       },
+      /** no-changes 실행이 닫은 PR (B1 r3 — 스킵 행의 `SyncRun.prUrl`). 보낸 PR로 읽히지 않게 따로 말한다. */
+      closedPullRequest: "Nothing in it differed from the base branch any more, so malmoi closed it.",
       /** 결과 모달의 보류 줄과 같은 수·같은 약속이다 (delivery-invariants D7). */
       withheld: (n: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "edit" : "edits"} stayed in malmoi because the language file or key isn't in the repository yet.`,
@@ -2209,6 +2212,17 @@ export const en = {
       notSent: "Not sent \u2014 some values can't be written to the files",
       notSentDescription:
         "malmoi stopped before writing to the repository, because these values would have been left out. Your edits are still saved here.",
+      /**
+       * no-changes 실행이 닫은 열린 PR (B1 r3). 렌더가 base와 같아 그 PR에 남은 차이가 없다 — 조용히 닫히게 두지 않고 이유를 말한다.
+       * 역할 갈림은 화면에 있는 컨트롤만 가리킨다(DESIGN §10.1): EDITOR에게는 되돌릴 컨트롤이 없으니 a project owner를 가리킨다.
+       */
+      closedPr: {
+        description: (branch: string): string => `Your edits now match ${branch}, so the earlier pull request was closed.`,
+        line: (n: number, branch: string): string => `Pull request #${n} was closed because nothing in it differs from ${branch} any more.`,
+        owner: "The next Publish with changes opens a new one.",
+        editor: "The next Publish with changes opens a new one. If it should have stayed open, ask a project owner.",
+        view: (n: number): string => `View #${n}`,
+      },
       /** 보류로 Not sent가 된 결과 (#83). writer가 값을 버린 것이 아니라 설명이 갈린다 — Logs의 `Not sent`와 같은 판정이다. */
       withheldDescription: {
         withheld: "Nothing was written to the repository. These edits stay saved here until they can be sent.",

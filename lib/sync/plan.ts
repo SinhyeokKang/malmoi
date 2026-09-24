@@ -173,7 +173,9 @@ export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFi
   const counted = result.status === "committed" || result.reason === "no-changes" || result.reason === "withheld" ? result.withheld : undefined;
   const withheld = counted === undefined ? 0 : counted.file + counted.key;
   if (result.status === "skipped") {
-    return { status: "SKIPPED", errorCode: null, retryable: null, prUrl: null, changed: 0, warnings, withheld };
+    // ⚠️ **SKIPPED 행의 `prUrl`은 이 실행이 닫은 PR이다** (B1 r3) — 스킵 행에 prUrl이 선 적이 없어 뜻이 겹치지 않는다. 새 컬럼을 만들지 않는다.
+    const prUrl = result.reason === "no-changes" && result.closedPr !== undefined ? result.closedPr.url : null;
+    return { status: "SKIPPED", errorCode: null, retryable: null, prUrl, changed: 0, warnings, withheld };
   }
   return {
     status: "SUCCEEDED",

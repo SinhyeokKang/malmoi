@@ -82,6 +82,12 @@ export type GitClient = {
   updatePrBase(pullNumber: number, base: string): Promise<void>;
 
   /**
+   * 코멘트를 남기고 PR을 닫는다 (B1 r3). no-changes 경로가 sync 브랜치를 base로 되돌리기 **전에** 부른다 — 되돌리면 GitHub이 그 PR을 스스로
+   * 닫고(때로 "merged"로 표시한다) 이유가 어디에도 안 남는다. 코멘트가 먼저다: 닫기가 성공하고 코멘트가 실패하면 이유 없이 닫힌 PR이 남는다.
+   */
+  closePr(pullNumber: number, comment: string): Promise<void>;
+
+  /**
    * **마지막으로 적재한 커밋 뒤로 base가 움직였나** (DESIGN §6.63).
    *
    * ⚠️ **이 둘은 목록 전용이다** — pull은 쓰지 않는다. 그래도 같은 인터페이스에 두는 이유는

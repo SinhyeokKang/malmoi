@@ -445,6 +445,12 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       // "3 changes are in a pull request" 아래 "1 wasn't sent"가 서는 모순이 된다.
       const total = outcome.status === "committed" ? outcome.delivered : result?.total ?? count;
       const withheld = planWithheldLines(outcome, role).map(line => <p key={line} className="text-muted-foreground text-xs">{line}</p>);
+      // no-changes 실행이 닫은 PR (B1 r3) — 조용히 닫힌 채 두지 않고 이유와 링크를 보인다. 보류가 섞여 Not sent 틀이어도 같은 줄이다.
+      const closed = outcome.status === "skipped" && outcome.reason === "no-changes" ? outcome.closedPr : undefined;
+      const closedLine = closed === undefined ? null : <p className="text-muted-foreground text-xs">
+        {`${p.closedPr.line(closed.number, repo.branch)} ${role === "OWNER" ? p.closedPr.owner : p.closedPr.editor}`}{" "}
+        <a href={closed.url} target="_blank" rel="noreferrer" className="text-blue-600">{p.closedPr.view(closed.number)}</a>
+      </p>;
       // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(DESIGN §6.646).
       const number = outcome.status === "committed"
         ? parseGithubPrUrl(outcome.prUrl, { repoOwner: repo.owner, repoName: repo.name })?.number ?? null
@@ -482,20 +488,24 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           // 보류로 여기 온 결과는 writer가 값을 버린 것이 아니다 — 설명이 갈린다(#83). no-changes + 보류는 다른 편집이 이미 리포와 같았다.
           const reason = outcome.status === "skipped" ? outcome.reason : null;
           title = p.notSent;
-          description = reason === "withheld" ? p.withheldDescription.withheld : reason === "no-changes" ? p.withheldDescription.noChanges : p.notSentDescription;
+          description = reason === "withheld" ? p.withheldDescription.withheld
+            : reason === "no-changes" ? (closed === undefined ? p.withheldDescription.noChanges : p.closedPr.description(repo.branch))
+            : p.notSentDescription;
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
           body = <Stack>
             {outcome.status === "skipped" && outcome.reason === "writer-warnings" && <Warnings warnings={outcome.warnings} />}
+            {closedLine}
             {withheld}
           </Stack>;
           break;
         }
         case "no-changes":
           panel = PANEL.noChanges; inner = false;
-          title = p.noChanges; description = p.noChangesDescription;
+          title = p.noChanges; description = closed === undefined ? p.noChangesDescription : p.closedPr.description(repo.branch);
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
           body = <Stack>
             <Notice icon={CircleCheck}>{p.noChangesBody(repo.branch)}</Notice>
+            {closedLine}
             {withheld}
             <Hint icon={History}>{p.inLogs}</Hint>
           </Stack>;

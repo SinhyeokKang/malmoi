@@ -418,6 +418,12 @@ export async function createGitClient(
       });
     },
 
+    async closePr(pullNumber, comment) {
+      // PR 코멘트는 issues 엔드포인트다 — App의 기존 Pull requests 쓰기 권한으로 된다(새 권한을 요구하지 않는다).
+      await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", { ...base, issue_number: pullNumber, body: comment });
+      await octokit.request("PATCH /repos/{owner}/{repo}/pulls/{pull_number}", { ...base, pull_number: pullNumber, state: "closed" });
+    },
+
     /**
      * ⚠️ **`basehead`는 `base...head`다** — 여기서 base가 **마지막으로 적재한 커밋**이고 head가
      * base 브랜치다. 뒤집으면 "우리가 앞섰다"를 재게 되고, 그건 이 화면이 묻는 것이 아니다.

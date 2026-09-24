@@ -240,8 +240,9 @@ describe("runPull — 2층 blob SHA 스킵", () => {
  */
 describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다", () => {
   /** 파일이 전부 base와 같은 상태. 이 셋이 2층 스킵 경로의 공통 입력이다. */
-  function cleanClient(refSha: Record<string, string>) {
+  function cleanClient(refSha: Record<string, string>, extra: Partial<Parameters<typeof createFakeGitClient>[0]> = {}) {
     return createFakeGitClient({
+      ...extra,
       refSha,
       tree: {
         basehead: [
@@ -264,6 +265,50 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
     expect(calls.map((c) => c.method)).not.toContain("createCommit");
     expect(calls.map((c) => c.method)).not.toContain("createPr");
     expect(result).toEqual({ status: "skipped", reason: "no-changes" });
+  });
+
+  /**
+   * ⚠️ **열린 PR을 조용히 닫지 않는다** (B1 r3 — QA5 PR #4). head를 base와 같게 만들면 GitHub이 그 PR을 스스로 닫는다(때로는 "merged"로 표시한다 —
+   * community discussion #7523). 스냅샷 불변식(브랜치 = DB 상태)은 지키되, **되돌리기 전에** 이유를 코멘트로 남기고 명시적으로 닫는다.
+   * 순서: 무효화(첫 외부 쓰기 전) → 코멘트·닫기 → 브랜치 초기화. 결과가 닫은 PR을 든다.
+   */
+  it("열린 PR이 있고 브랜치를 base로 되돌리면 먼저 코멘트와 함께 닫고, 결과가 그 PR을 든다", async () => {
+    const openPr = { url: "https://github.com/o/r/pull/4", number: 4, title: "t [skip-malmoi-i18n]" };
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" }, { openPr });
+    const order: string[] = [];
+    const { deps } = makeDeps({ invalidateDelivery: async () => void order.push("invalidate") }, { client, calls });
+    const result = await runPull(deps);
+    expect(result).toEqual({ status: "skipped", reason: "no-changes", closedPr: { number: 4, url: openPr.url } });
+    const writes = calls.map(c => c.method).filter(m => m === "closePr" || m === "updateRefForce");
+    expect(writes).toEqual(["closePr", "updateRefForce"]);
+    const comment = String(calls.find(c => c.method === "closePr")?.args[1]);
+    expect(comment).toContain("dev");
+    expect(comment).toContain("<!-- malmoi-i18n -->");
+    expect(order).toEqual(["invalidate"]);
+  });
+
+  it("열린 PR이 없으면 닫을 것이 없다 — closedPr 없음 (짝)", async () => {
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" });
+    const { deps } = makeDeps({}, { client, calls });
+    expect(await runPull(deps)).toEqual({ status: "skipped", reason: "no-changes" });
+    expect(calls.map(c => c.method)).not.toContain("closePr");
+  });
+
+  it("브랜치가 이미 base와 같으면 열린 PR도 건드리지 않는다 (짝)", async () => {
+    const openPr = { url: "https://github.com/o/r/pull/4", number: 4, title: "t" };
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "basehead" }, { openPr });
+    const { deps } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    expect(calls.map(c => c.method)).not.toContain("closePr");
+  });
+
+  it("닫기가 실패하면 브랜치를 옮기지 않고 lastPulledAt도 쓰지 않는다", async () => {
+    const openPr = { url: "https://github.com/o/r/pull/4", number: 4, title: "t" };
+    const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" }, { openPr, failOn: "closePr" });
+    const { deps, writes } = makeDeps({}, { client, calls });
+    await expect(runPull(deps)).rejects.toThrow();
+    expect(calls.map(c => c.method)).not.toContain("updateRefForce");
+    expect(writes).toEqual([]);
   });
 
   it("브랜치가 이미 base head면 건드리지 않는다 — 무의미한 force가 매일 밤 나가면 안 된다", async () => {

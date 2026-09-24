@@ -196,6 +196,8 @@ const NOT_A_COUNT: Record<string, string> = {
   "translations.publish.prOpen.title": "PR 번호",
   "translations.publish.replacePr": "PR 번호",
   "translations.publish.tellReviewer": "PR 번호",
+  "translations.publish.closedPr.line": "PR 번호",
+  "translations.publish.closedPr.view": "PR 번호",
   "translations.publish.wait": "남은 초 — 수가 아니라 대기 시간이다",
   "repositorySync.unreadable": "표면 수 — 강제 상한 없음(위 셋과 같은 부류)",
   "repositorySync.notReplaced": "표면 수 — 강제 상한 없음(위 셋과 같은 부류)",

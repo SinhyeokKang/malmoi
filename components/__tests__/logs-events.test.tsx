@@ -30,6 +30,14 @@ const detail = (value: Row) => render(
 );
 
 describe("활동 행과 상세의 실제 동작", () => {
+  /** B1 r3 — no-changes 실행이 닫은 PR은 SKIPPED 행의 prUrl이다. 상세가 "닫았다"로 말하고, 보낸 PR로 읽히지 않는다. */
+  it.each([["https://github.com/o/r/pull/4", true], [null, false]] as const)("스킵 실행의 prUrl(%s)은 닫은 PR로 선다", async (url, shown) => {
+    const { container } = await detail(row({ kind: "PUBLISH", subtype: "publish.run", result: "nothingToSend",
+      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, warnings: 0, withheld: 0, prUrl: url, errorCode: null } }));
+    expect(container.textContent?.includes(m.logs.detail.labels.closedPullRequest)).toBe(shown);
+    expect(container.textContent?.includes(m.logs.detail.closedPullRequest)).toBe(shown);
+  });
+
   /** delivery-invariants D7 — Logs 상세가 모달과 같은 수를 한 줄로 말한다. 짝: 보류 0이면 줄이 없다. */
   it.each([[2, true], [0, false]] as const)("Publish 상세는 보류 %i건을 한 줄로 말한다(%s)", async (n, shown) => {
     const { container } = await detail(row({ kind: "PUBLISH", subtype: "publish.run", result: n > 0 ? "notSent" : "nothingToSend",

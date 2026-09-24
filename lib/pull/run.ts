@@ -101,7 +101,11 @@ export type PullDeps = {
 export type Withheld = { file: number; key: number };
 export type PullResult =
   | { status: "skipped"; reason: "no-edits" }
-  | { status: "skipped"; reason: "no-changes"; withheld?: Withheld }
+  /**
+   * `closedPr` — 이 실행이 닫은 열린 PR (B1 r3). 렌더가 base와 같아 sync 브랜치를 base로 되돌릴 때 그 PR은 할 일이 없다 — 조용히 닫히게 두지 않고
+   * 코멘트와 함께 닫은 뒤 결과·Logs(`SyncRun.prUrl`)가 그 사실을 말한다.
+   */
+  | { status: "skipped"; reason: "no-changes"; withheld?: Withheld; closedPr?: { number: number; url: string } }
   /** 실린 편집 0 + 보류 > 0. 쓰기도 전달 확인도 없다 — 파일 변경이 있었더라도 이 편집들 몫이 아니다. */
   | { status: "skipped"; reason: "withheld"; withheld: Withheld }
   | { status: "skipped"; reason: "writer-warnings"; warnings: string[] }
@@ -119,6 +123,13 @@ export type PullResult =
       prUrl: string;
       changed: string[];
     };
+
+/**
+ * 닫는 PR에 남기는 코멘트. 영문이다 — 대상 리포에 남는 문자열이다(PR title/body와 같은 규칙). 첫 줄의 HTML 주석이 malmoi가 쓴 것임을 표시한다.
+ */
+export function closedPrComment(baseBranch: string): string {
+  return `<!-- malmoi-i18n -->\nClosed by malmoi: the translation DB now matches \`${baseBranch}\`, so this pull request has nothing left to merge.\n\nThe next Publish with changes opens a new pull request.`;
+}
 
 /** blob 동시 읽기 수. GitHub 2차 rate limit(동시 요청)을 피하면서 106파일을 60초 안에 든다. */
 const BLOB_CONCURRENCY = 8;
@@ -243,9 +254,20 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
      * `null`이면 던지고, 그 뒤 트리와 blob을 전부 읽고 나서야 이 지점에 온다. 그 순서가 바뀌면
      * 이 판정도 함께 다시 봐야 한다.
      */
+    let closedPr: { number: number; url: string } | undefined;
     if (staleHead !== null && staleHead !== baseHead) {
-      // 되돌리기도 외부 쓰기다 — 그 결과를 모르는 채 옛 확인으로 복원하지 않게 먼저 무효화한다.
+      // 되돌리기도 외부 쓰기다 — 그 결과를 모르는 채 옛 확인으로 복원하지 않게 먼저 무효화한다. 닫기가 첫 외부 쓰기라 그보다도 앞이다.
       await deps.invalidateDelivery?.(project.id);
+      /**
+       * ⚠️ **열린 PR을 조용히 닫히게 두지 않는다** (B1 r3 — QA5). head가 base와 같아지면 GitHub이 그 PR을 스스로 닫는다(때로 "merged"로 표시한다).
+       * 스냅샷 불변식은 그대로 지키고, **되돌리기 전에** 이유를 남겨 명시적으로 닫는다 — 먼저 되돌리면 자동 종료가 앞서 "merged"가 남을 수 있다.
+       * 닫기가 실패하면 되돌리지 않고 던진다 — `lastPulledAt`도 토큰도 그대로라 다음 실행이 같은 판정을 다시 한다.
+       */
+      const open = await client.findOpenPr(`${project.repoOwner}:${deps.syncBranch}`);
+      if (open !== null) {
+        await client.closePr(open.number, closedPrComment(project.baseBranch));
+        closedPr = { number: open.number, url: open.url };
+      }
       await client.updateRefForce(deps.syncBranch, baseHead);
     }
     // **커밋이 안 나갔어도 갱신한다** — 그 순간 export == base 트리가 검증된 상태다.
@@ -256,7 +278,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     // ⚠️ **캡처 편집도 여기서 전달 확인한다** — 원복한 편집이 이 경로로 끝나는데 해제하지 않으면 토큰이 영영 남는다
     // (sync-edit-protection — ARCHITECTURE §3의 "유령 pending"). 값을 고르지 않고 no-op을 탐지할 뿐이다.
     await deps.saveLastPulledAt(project.id, captured, undefined, split.delivered, deliveryContexts, split.withheld);
-    return { status: "skipped", reason: "no-changes", ...withheld };
+    return { status: "skipped", reason: "no-changes", ...withheld, ...(closedPr === undefined ? {} : { closedPr }) };
   }
 
   const summary = `${changes.length} file${changes.length === 1 ? "" : "s"}`;

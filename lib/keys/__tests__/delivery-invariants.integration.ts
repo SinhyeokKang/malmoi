@@ -311,6 +311,33 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     expect(planWithheldLines(outcome, "OWNER")).toHaveLength(1);
   });
 
+  /**
+   * B1 r3 — 되돌린 편집만 남아 렌더가 base와 같으면 실행은 sync 브랜치를 base로 되돌린다. 그때 열린 PR은 코멘트와 함께 **명시적으로** 닫히고,
+   * 결과(`closedPr`)와 Logs(스킵 행의 `SyncRun.prUrl`)가 같은 PR을 말한다. 전에는 GitHub이 조용히 닫았고 Logs에 흔적이 없었다(QA5 PR #4).
+   */
+  it("되돌린 편집만 남은 Publish가 열린 PR을 닫고 SyncRun·Logs가 그 PR을 든다", async () => {
+    await seed(yaml);
+    await ci(yamlPayload());
+    const t = await target();
+    await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "X" }] });
+    await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "Repo" }] });
+    const tree = ["en", "ko", "fr"].map(l => ({ path: `config/locales/${l}.yml`, content: `${l}:\n  a: Repo\n` }));
+    const fake = createFakeGitClient({
+      refSha: { "heads/main": "basehead", "heads/malmoi-i18n/sync-fixture": "stale" },
+      tree: { basehead: tree.map(f => ({ path: f.path, sha: blobSha(f.content) })) },
+      blobs: Object.fromEntries(tree.map(f => [blobSha(f.content), f.content])),
+      openPr: { url: "https://github.com/o/r/pull/4", number: 4, title: "t", base: "main" },
+    });
+    github.client = fake.client;
+    const outcome = await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null });
+    expect(outcome).toMatchObject({ status: "skipped", reason: "no-changes", closedPr: { number: 4 } });
+    expect(fake.calls.map(c => c.method).filter(m => m === "closePr" || m === "updateRefForce")).toEqual(["closePr", "updateRefForce"]);
+    expect(await prisma.syncRun.findFirst({ where: { projectId: "p", trigger: "CRON" } })).toMatchObject({ status: "SKIPPED", prUrl: "https://github.com/o/r/pull/4" });
+    const [row] = (await loadEvents(prisma, "p", { ...parseLogFilter({}) })).rows.filter(r => r.kind === "PUBLISH");
+    expect(row).toMatchObject({ result: "nothingToSend", run: { prUrl: "https://github.com/o/r/pull/4" } });
+    expect(await countPending(prisma, "p")).toBe(0);
+  });
+
   it("대가 — 보류 fr이 남은 동안 CI push는 deferred, Revert로 0이 되면 다음 CI push가 applied", async () => {
     const t = await withheldFixture();
     expect(await protectedCi(yamlPayload())).toMatchObject({ status: "deferred", pendingCount: 1 });

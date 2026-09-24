@@ -322,3 +322,12 @@ describe("planSyncFinish — 보류 수", () => {
     expect(planSyncFinish({ thrown: new Error("x") })).toMatchObject({ withheld: 0 });
   });
 });
+
+/** B1 r3 — no-changes 실행이 닫은 PR은 SKIPPED 행의 `prUrl`로 남는다. 스킵 행에 prUrl이 선 적이 없어 뜻이 겹치지 않는다. */
+describe("planSyncFinish — 닫은 PR", () => {
+  it("no-changes + closedPr → SKIPPED · prUrl이 닫은 PR이다 · 없으면 null (짝)", () => {
+    expect(planSyncFinish({ status: "skipped", reason: "no-changes", closedPr: { number: 4, url: "https://github.com/o/r/pull/4" } }))
+      .toMatchObject({ status: "SKIPPED", prUrl: "https://github.com/o/r/pull/4", changed: 0 });
+    expect(planSyncFinish({ status: "skipped", reason: "no-changes" })).toMatchObject({ prUrl: null });
+  });
+});

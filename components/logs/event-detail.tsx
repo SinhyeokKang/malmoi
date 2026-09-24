@@ -271,7 +271,13 @@ function fields(row: EventRow): [string, ReactNode][] {
         m.logs.meta.files(row.run.changed)
       ),
     ]);
-    out.push([
+    // ⚠️ **스킵 행의 prUrl은 이 실행이 닫은 PR이다** (B1 r3 — `planSyncFinish`). 보낸 PR의 "View"로 그리면 뜻이 뒤집힌다.
+    const closed = row.run !== null && row.run.prUrl !== null && (row.result === "nothingToSend" || row.result === "notSent");
+    if (closed && row.run?.prUrl) out.push([m.logs.detail.labels.closedPullRequest, <>
+      {m.logs.detail.closedPullRequest}{" "}
+      <a href={row.run.prUrl} target="_blank" rel="noreferrer" className="text-blue-600">{m.translations.publish.viewLink}</a>
+    </>]);
+    else out.push([
       m.logs.detail.labels.pullRequest,
       row.run?.prUrl == null ? (
         <span className="text-muted-foreground">{m.logs.detail.noPullRequest}</span>
