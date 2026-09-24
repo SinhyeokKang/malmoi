@@ -314,6 +314,8 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 17 (+ 같은 자�
 
 ### 6.1a 번역 작업 화면 — 트리 · 키 목록 · 로케일 세 패널 (2026-09-23, translation-rework C4 · 시안 `design_handoff_translations` 2a · 트리 2k-B)
 
+⚠️ **이동은 누른 즉시 반응하고 URL 커밋이 뒤따른다** (2026-09-25, audit-ux U1·U3) — 키·트리·필터·검색은 하나의 `useTransition`(`navigating`)을 지나고, 선택 행·필터 라벨·트리 선택은 `useOptimistic`(`view`)으로 먼저 선다. 대기 중 목록·상세는 `aria-busy`, 상세 입력과 언어 메뉴는 읽기 전용이다(응답 전 입력이 교체로 사라지던 결함 — `replaceState`가 대기 이동을 버리는 Next 16.3 `ACTION_RESTORE`도 이것이 막는다). 연속 조작은 **낙관값 `view.query` 위에 쌓는다** — 서버 prop `query`로 조립하면 앞 선택이 지워진다(POSTMORTEM 2026-09-12 부류). 키 선택·More는 `replace`, 트리·필터·검색은 `push`(D2). More는 클라이언트 누적이고 URL에 cursor가 없다. 소스 전환은 세그먼트가 바뀌어 `translations/loading.tsx` 골격이 전면을 덮는다(받아들인 동작).
+
 **SoT는 Claude Design 캔버스 `Translations.dc.html`의 2a다.** 아래 값은 Chrome 1440×900(LNB 열림)에서
 computed style로 잰 것이다.
 
@@ -613,6 +615,8 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
    `ReactNode` 하나라 구조는 이미 둘을 받는다.
 
 ### 6.5 앱 셸 — 헤더·사이드바·패널 (Figma 시안 `212:937`, 2026-09-10 8-2)
+
+⚠️ **사이드바 항목은 이동 중 pending을 즉시 보인다** (2026-09-25, audit-ux #6) — `Item` 자손의 `useLinkStatus`가 pending이면 누른 항목에 선택 면(`0.07`)이 서고 hover보다 이긴다(`sidebar-pending.test.tsx`). 커밋 전 `aria-current`는 옛 항목에 남는다. prefetch가 끝난 형제 이동은 골격이 즉시 서서 이 면이 거의 안 보인다 — 그래도 옛 화면이 멈춘 채 반응이 없는 창을 닫는 것이 요지다.
 
 **셸은 캔버스 위에 패널이 떠 있는 구조다.** 1920 기준 좌표다 — ⚠️ **아래 넷은 2026-09-10 시점의 실측이고 지금 값이 아니다**(§6.55가 우측 패널을 지웠다). 2026-09-16 실측은 §6.55의 표에 있다:
 헤더 `(8,8) 1904×48` · 사이드바 `(8,64) 240×1008` · 콘텐츠 `x=256 w=1328` · 프로젝트 패널 `x=1592 w=320`. ⚠️ **뒤엣것을 지웠으므로 콘텐츠는 이제 `x=256 w=1656`이다**(1920 실측 1655).
@@ -918,7 +922,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 거부 tone과 낭독 | ⚠️ **tone이 live politeness까지 정한다** — `Alert`가 `role`을 `danger`면 `"alert"`(assertive)로 덮는다(`alert.tsx`). 캔버스 `4f`는 **색**을 골랐는데 프리미티브가 그것을 **읽던 것을 끊는 결정**으로 번역한다 — "danger 시각 + `status`"라는 조합이 지금 구조에 **없다**. 일시적 실패(`ingest-failed`·`unavailable`)가 그 대가를 받는 자리이고, **알고 받는다**(2026-09-16 라운드 4). ⚠️ **거부의 tone은 캔버스 tone 표가 정하고 `dismissible`만 "다시 누르면 되나"로 갈린다** — 두 축의 소유자가 다르고, `lib/import/refusal.ts`의 주석이 근거다 |
 | 진행 중 상호 잠금 | ⚠️ **한쪽이 도는 동안 다른 쪽이 잠긴다** (sync-repository 캔버스 `4f`) — Sync는 리포로 DB를 덮고 Publish는 DB로 리포를 덮으므로, 겹치면 **남는 값이 두 요청의 도착 순서에 달린다**. 화면이 약속할 수 없는 근거다. ⚠️ **판정은 호스트(Home의 `components/home/actions.tsx` · 번역 작업 화면의 `components/translations/workspace/workspace.tsx`)의 몫이다** — 각 버튼은 자기 연타만 막고 서로의 존재를 모른다. ⚠️ **두 진행을 하나의 `busy`로 접지 않는다**: 접으면 Sync가 자기를 잠가 도는 트리거가 native `disabled`로 떨어지고 Dialog의 포커스 복귀 대상이 사라진다. 2026-09-15 브라우저 실측이 Sync 진행 중 `[Publish]`가 그대로 눌리는 것을 잡았다. ⚠️ **두 트리거의 라벨은 도는 동안에도 `Sync`·`Publish` 그대로다** (2026-09-24 audit-ux D1 — Button `loading` 규칙에 예외가 없다): 무엇이 도는지는 스피너 위치와 진행 모달·결과 문구가 말하고, 라벨이 접근 이름이므로 **트리거에 `aria-busy`가 선다** — 그것이 빠지면 스크린리더에겐 진행 신호가 0이다. ⚠️ **[Publish] 트리거는 `loading`도 `busy`도 쓰지 않는다** — 둘 다 클릭을 막는데, 도는 동안 누르면 진행 모달을 **다시 여는** 것이 이 트리거의 일이다. 스피너(아이콘 교체)와 `aria-busy`를 직접 걸고, 두 번 실행은 `usePublish`의 `running` 문이 막는다. 진행 모달의 확정 버튼도 **누른 라벨**(`Open pull request` 등) 그대로 `loading`이 된다. ⚠️ **Publish가 도는 동안 같은 화면의 다른 쓰기 트리거(번역 작업 화면의 Save·Revert, 두 호스트의 Sync)도 `aria-disabled`로 잠기고 사유가 선다** (D3 — Server Action은 순서대로 실행되므로 풀어 두면 PR 생성 뒤에 줄을 서 스피너만 돈다). 사유의 형은 자리가 가른다: Save·Revert는 푸터의 **보이는 한 줄**이고, 머리의 Sync는 문장을 세울 자리가 없어 `title` + `sr-only` describedby다(`Wait for Publish to finish.` — Publish 라벨이 더는 진행을 말하지 않으므로 원인을 든다). 다른 화면으로 옮기면 진행 표시가 사라지는 것은 받는 대가다 — 다시 누르면 서버의 `already-running`이 그 사실을 말한다 |
 | 배너 | **머리와 본문 사이 · 전폭**. 본문 안에 두면 스크롤과 함께 밀려 올라가 "왜 안 눌리나"를 말하는 문장이 화면 밖으로 나간다. ⚠️ **danger는 본문이 muted이고 제목·글리프만 빨강이다** — 전체가 빨가면 "무엇이 안전한가"까지 경고로 읽혀 이 배너가 하는 일의 절반이 사라진다 |
-| 로딩 | `[slug]/(home)/loading.tsx`. ⚠️ **route group `(home)/`에 둔다** — `[slug]/`에 바로 두면 형제 화면(Members·Sources·Settings·Translations)으로 가는 동안에도 이 골격이 뜬다(malmoi#95). 골격이 실물과 **같은 치수**여야 한다(머리 padding · 카드 테두리 · 행 높이 · 구분선). 개수를 모르는 자리는 가장 흔한 수(항목 3 · 로그 5 · 메타 9), 폭은 비율(`62%`·`72%`), `motion-safe:`<br>⚠️ **이 규칙이 형제 화면의 골격에도 그대로 선다** (2026-09-25, audit-ux U2) — Translations(`surfaces/[surfaceSlug]/translations`)·Members·Sources·Settings가 **각자** `loading.tsx`를 든다(Locales는 Sources로 redirect만 하는 라우트라 없다). 전엔 없어서 형제 사이 이동 동안 옛 화면이 표시 없이 멈췄다(위쪽 경계는 공유 레이아웃보다 위라 다시 서지 않는다). 모두 `ContentPanel`을 들지 않고(레이아웃이 든다) `role="status"` 한 줄 + `aria-hidden` 머리·본문이다. ⚠️ **목록 골격도 같은 이유로 `projects/(list)/`에 있다** — `projects/`에 바로 두면 목록 행이나 온보딩 ④에서 프로젝트로 가는 동안 목록 골격이 떴다가 바뀐다 |
+| 로딩 | `[slug]/(home)/loading.tsx`. ⚠️ **형제 화면도 각자 골격을 든다** (2026-09-25, audit-ux #5) — `members`·`settings`·`sources`·`surfaces/[s]/translations`·`logs`마다 실물 치수의 `loading.tsx`이고, 목록은 `projects/(list)/`(`new/`도 그 아래 — 전체 로드 착지가 빈 화면이 되지 않게)다. 폭 질의(`@max-[…]/panel:*`)도 실물과 같이 든다(#101). ⚠️ **route group `(home)/`에 둔다** — `[slug]/`에 바로 두면 형제 화면(Members·Sources·Settings·Translations)으로 가는 동안에도 이 골격이 뜬다(malmoi#95). 골격이 실물과 **같은 치수**여야 한다(머리 padding · 카드 테두리 · 행 높이 · 구분선). 개수를 모르는 자리는 가장 흔한 수(항목 3 · 로그 5 · 메타 9), 폭은 비율(`62%`·`72%`), `motion-safe:`<br>⚠️ **이 규칙이 형제 화면의 골격에도 그대로 선다** (2026-09-25, audit-ux U2) — Translations(`surfaces/[surfaceSlug]/translations`)·Members·Sources·Settings가 **각자** `loading.tsx`를 든다(Locales는 Sources로 redirect만 하는 라우트라 없다). 전엔 없어서 형제 사이 이동 동안 옛 화면이 표시 없이 멈췄다(위쪽 경계는 공유 레이아웃보다 위라 다시 서지 않는다). 모두 `ContentPanel`을 들지 않고(레이아웃이 든다) `role="status"` 한 줄 + `aria-hidden` 머리·본문이다. ⚠️ **목록 골격도 같은 이유로 `projects/(list)/`에 있다** — `projects/`에 바로 두면 목록 행이나 온보딩 ④에서 프로젝트로 가는 동안 목록 골격이 떴다가 바뀐다 |
 
 **접근성 — CDP로 잰 값** (2026-09-15). ⚠️ **jsdom은 accname을 계산하지 않아 이 층을 못 본다.**
 
@@ -1499,6 +1503,8 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 죽는다 (POSTMORTEM 2026-09-08).
 
 ### 6.68 이력 (`/projects/[slug]/logs`) — 날짜 카드 + 이벤트 행 (2026-09-20, logs-rework · 시안 `design_handoff_project_logs` 1a–1m)
+
+⚠️ **상세 Dialog의 열림은 URL(`?event=`)에서 파생된다** (2026-09-25, audit-ux #9·#102) — `open = useSearchParams().get("event") === ref`, 닫기는 `history.replaceState`라 서버 왕복이 없고 뒤로가기가 상세를 되살리지 않는다. 로컬 불리언을 곁에 두지 않는다(같은 행 재오픈이 영영 안 열렸다). 닫은 뒤 화면이 조립하는 모든 주소(필터·검색·[Clear filters]·[Older])는 `event`를 비운다 — 서버가 그린 `filter` prop에는 닫은 뒤에도 `event`가 남는다. 열 때는 행 chevron이 `useLinkStatus`로 스피너가 된다.
 
 셸 안 **`fluid`**(§5.1 — 여백·폭 상한은 `PanelHeader`·`PanelBody`가 든다, §5.15가 정본이다). 머리는 **제목 + 검색 + [Refresh] + 필터 다섯 + 한 줄 설명**, 본문은 **날짜 카드**(머리 `2026-09-20 · Today`)에 담긴 **이벤트 행**이다. ⚠️ **breadcrumb이 없다** (§0).
 
