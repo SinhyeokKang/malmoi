@@ -7,6 +7,7 @@ import { LocaleBadge } from "@/components/translations/locale-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { localeTextAttrs } from "@/lib/translations/text-direction";
 import { m } from "@/lib/i18n";
 import { keyEditCommand, type KeyDraftState } from "@/lib/translations/draft";
 import { MISSING_LANGUAGES } from "@/lib/translations/query";
@@ -114,6 +115,7 @@ export function LocalePanel({ detail, draft, language, onLanguage, onEdit, onRes
               saved={draft.saved[locale.code] ?? ""}
               readOnly={readOnly}
               isBase={locale.code === base}
+              sourceCode={base}
               invalidBy={invalid?.locales.includes(locale.code) ? invalid.describedBy : undefined}
               onEdit={value => onEdit(locale.code, value)}
               onReset={() => onReset(locale.code)}
@@ -131,9 +133,11 @@ function lastSegment(path: string): string {
   return path.split("/").at(-1) ?? path;
 }
 
-function LocaleRow({ keyName, sourceText, locale, first, draft, saved, readOnly, isBase, invalidBy, onEdit, onReset, onSave }: {
+function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, saved, readOnly, isBase, invalidBy, onEdit, onReset, onSave }: {
   keyName: string;
   sourceText: string;
+  /** 겹친 원문의 언어 — 셀이 아니라 base의 방향을 든다. */
+  sourceCode: string | undefined;
   locale: DetailView["locales"][number];
   first: boolean;
   draft: string;
@@ -153,6 +157,8 @@ function LocaleRow({ keyName, sourceText, locale, first, draft, saved, readOnly,
   const field = (
     <Textarea
       data-locale={locale.code}
+      /* ⚠️ 값이 자기 언어의 방향으로 선다 (malmoi#91) — 페이지의 `ltr`·`lang="en"`을 상속하면 RTL 값의 중립 문자가 반대 끝으로 튄다. */
+      {...localeTextAttrs(locale.code)}
       rows={2}
       value={draft}
       readOnly={readOnly}
@@ -201,7 +207,7 @@ function LocaleRow({ keyName, sourceText, locale, first, draft, saved, readOnly,
       */}
       <div className={cn(empty && "has-[textarea:focus-visible]:ring-ring grid min-h-[62px] rounded-md border border-dashed border-neutral-300 p-2.5 has-[textarea:focus-visible]:ring-2")}>
         {field}
-        {empty && <span id={helpId} className="text-muted-foreground pointer-events-none col-start-1 row-start-1 text-sm leading-[1.55]">{sourceText}</span>}
+        {empty && <span id={helpId} {...(sourceCode === undefined ? { dir: "auto" } : localeTextAttrs(sourceCode))} className="text-muted-foreground pointer-events-none col-start-1 row-start-1 text-sm leading-[1.55]">{sourceText}</span>}
       </div>
     </div>
   );

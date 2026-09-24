@@ -153,6 +153,8 @@ const CLIENT_LIB_FILES = [
   "lib/translations/query.ts",
   "lib/translations/saved-rows.ts",
   "lib/translations/summary.ts",
+  // malmoi#91 — 셀의 `dir`·`lang`. import가 없는 잎이다.
+  "lib/translations/text-direction.ts",
   "lib/upload/image.ts",
   "lib/upload/message.ts",
   "lib/utc-time.ts",
