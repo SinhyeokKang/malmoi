@@ -181,8 +181,8 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 
 - **13px인 이유**: 12px이 작고, 14px는 mono 자폭이 sans의 1.2배라 트렁케이션·가로 스크롤이 함께 늘어난다.
 - **`text-[13px]`가 아니라 `text-mono`를 쓴다.** 임의값은 행간이 따라오지 않아 표면마다 갈린다. 소비 경로는 **`@utility text-mono` 하나**이고 font-family·font-size·line-height 셋을 함께 싣는다 — 두 번째 경로를 만들지 않는다(2026-09-06에 font-size 토큰만 있어 **글꼴이 안 실린** 채 이름만 mono였다).
-- ⚠️ **`text-mono`는 `white-space`를 안 든다** (2026-09-08). `first-ingest-retry.tsx`처럼 접혀선 안 되는 값에는 `whitespace-pre-wrap`을 같은 태그에 함께 적는다 — 실제로 파서 원문이 세 자리에서 한 줄로 접혀 나갔다(POSTMORTEM 2026-09-08). `components/__tests__/multiline-detail.test.ts`가 그 자리를 상시로 센다. `<pre>` 쪽은 `overflow-x-auto`가 대신 붙는다. 가르는 기준은 "긴 줄을 접어야 하나(pre-wrap)"와 "원본 줄바꿈을 지켜야 하나(pre)"다.
-- ⚠️ **`components/__tests__/home-vocabulary.test.ts`의 카나리아가 `workflow-block.tsx`를 본다.** 스캐너가 실제로 red를 낼 수 있는지 재는 자리인데, 앱에서 mono를 쓰는 파일이 셋뿐이라 **그 셋 중 하나를 sans로 바꾸면 카나리아도 함께 옮겨야 한다** — 안 옮기면 매칭 0인 스캐너가 장식으로 남는다.
+- ⚠️ **`text-mono`는 `white-space`를 안 든다** (2026-09-08). 접혀선 안 되는 값(옛 `first-ingest-retry.tsx`의 파서 원문 — 2026-09-24 삭제)에는 `whitespace-pre-wrap`을 같은 태그에 함께 적는다 — 실제로 파서 원문이 세 자리에서 한 줄로 접혀 나갔다(POSTMORTEM 2026-09-08). `components/__tests__/multiline-detail.test.ts`가 그 자리를 상시로 센다. `<pre>` 쪽은 `overflow-x-auto`가 대신 붙는다. 가르는 기준은 "긴 줄을 접어야 하나(pre-wrap)"와 "원본 줄바꿈을 지켜야 하나(pre)"다.
+- ⚠️ **`components/__tests__/home-vocabulary.test.ts`의 카나리아가 `workflow-block.tsx`를 본다.** 스캐너가 실제로 red를 낼 수 있는지 재는 자리인데, 앱에서 mono를 쓰는 파일이 그것 하나뿐이라 **그 파일을 sans로 바꾸면 카나리아도 함께 옮겨야 한다** — 안 옮기면 매칭 0인 스캐너가 장식으로 남는다.
 
 ### 4.2 ⚠ `text-mono`를 twMerge에 등록해야 한다
 
