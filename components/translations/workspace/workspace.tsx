@@ -140,6 +140,14 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     // 같은 키의 재검증은 서버 값만 받는다 — draft는 보존된다(POSTMORTEM 2026-09-12).
   }, [detail]); // eslint-disable-line react-hooks/exhaustive-deps
   const dirty = useMemo(() => (keyId === undefined ? [] : dirtyLocales(draft)), [draft, keyId]);
+  /*
+    ⚠️ **복구 문구는 그것이 말하는 미저장보다 오래 살지 않는다** (malmoi#100) — 되돌려 0이 되면 지운다. effect로 가장자리를 보면
+    복구 자신의 첫 커밋(아직 0)에 지워지므로, 편집이 만드는 다음 상태로 판정한다.
+  */
+  function edit(action: KeyDraftAction) {
+    dispatch(action);
+    if (status?.kind === "restored" && dirtyLocales(reduceKeyDraft(draft, action)).length === 0) setStatus(null);
+  }
 
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -171,6 +179,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const [storageBlocked, setStorageBlocked] = useState(false);
   useEffect(() => {
     if (keyId === undefined || restoredFor.current === keyId) return;
+    /*
+      ⚠️ **세션 문구는 이 화면이 처음 여는 키의 복구에만 쓴다** (malmoi#100) — 다시 로그인한 뒤 연 탭이 그 갈래다. 같은 화면 안에서
+      보호 없이 교체된 키로 돌아올 때의 복구(backstop)는 로그인과 무관하고, 미저장 수가 이미 그 사실을 말한다.
+    */
+    const first = restoredFor.current === null;
     restoredFor.current = keyId;
     try {
       const raw = window.sessionStorage.getItem(storageKey(userId, slug));
@@ -184,7 +197,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         dispatch({ type: "edit", locale: code, value });
         count += 1;
       }
-      if (count > 0) setStatus({ kind: "restored", count });
+      if (count > 0 && first) setStatus({ kind: "restored", count });
     } catch {
       // 저장소가 막힌 브라우저 — 보존을 약속하지 않는다(세션 만료 문구가 그 갈래를 말한다).
       setStorageBlocked(true);
@@ -656,8 +669,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                   setLanguage(next);
                   window.history.replaceState(null, "", withQuery(nextQuery(query, { language: next })));
                 }}
-                onEdit={(code, value) => dispatch({ type: "edit", locale: code, value })}
-                onReset={code => dispatch({ type: "reset", locale: code })}
+                onEdit={(code, value) => edit({ type: "edit", locale: code, value })}
+                onReset={code => edit({ type: "reset", locale: code })}
                 onSave={() => void save()}
                 copyHref={withQuery({ ...DEFAULT_TRANSLATION_QUERY, ns: detail.key.namespace, scope: "namespace", key: detail.key.id, keySurface: detail.key.surfaceSlug }, detail.key.surfaceSlug)}
                 readOnly={navigating || status?.kind === "archived" || status?.kind === "lost-access"}
@@ -715,10 +728,10 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
     있을 때만 잠긴다 — 없으면 원래 꺼져 있고 사유가 할 말이 없다. 끝나면 같은 버튼이 풀리므로 포커스가 그대로 남는다.
   */
   const saveLocked = publishing && !saveDisabled;
-  const text = dirty > 0 ? (status?.kind === "saved" ? w.footer.savedSince(dirty) : w.footer.unsaved(dirty))
+  // 복구 문구는 미저장이 남은 동안의 말이다 — 0이면 `edit`가 이미 지웠다 (malmoi#100).
+  const text = dirty > 0 ? (status?.kind === "saved" ? w.footer.savedSince(dirty) : status?.kind === "restored" ? w.footer.session.restored(status.count) : w.footer.unsaved(dirty))
     : status?.kind === "saved" ? (hasPending ? w.footer.savedNotSent : w.footer.saved)
     : status?.kind === "reverted" ? w.revert.reverted
-    : status?.kind === "restored" ? w.footer.session.restored(status.count)
     : "";
   return (
     <div className="border-border shrink-0 border-t">
