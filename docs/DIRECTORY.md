@@ -18,8 +18,8 @@ app/
                         authjs.callback-url 쿠키뿐이고, 갈래가 invite일 때만 세운다(open redirect)
   signin/link/[challenge]/   계정 병합 안내. 인가가 없고 challenge가 대신한다 → matcher 밖.
                         ⚠️ 만료를 이 화면으로 말하지 않는다 — /signin으로 되돌린다
-  privacy/ · docs/      공개 문서. 둘 다 components/public-doc.tsx(장문 그릇 — DESIGN §6.61). 본문은
-                        아직 placeholder(L2.1·L2.3). ⚠️ 세션을 읽는 이유는 차단이 아니라 복귀 링크
+  privacy/ · docs/      공개 문서. 둘 다 components/public-doc.tsx(장문 그릇 — DESIGN §6.61). privacy 본문은
+                        messages/en.tsx의 publicDocs.privacy이고, docs 본문만 아직 placeholder(L2.3). ⚠️ 세션을 읽는 이유는 차단이 아니라 복귀 링크
                         하나다 — 로그인 상태면 /projects, 아니면 /signin. 그래서 둘 다 동적이다
   layout.tsx            루트 레이아웃(Pretendard <link>). ⚠️ lang="en" — screens.test.ts가 고정한다
   not-found.tsx · error.tsx · global-error.tsx  셸 밖(/invite·/signin·오타 URL)의 경계. 앞 둘은 components/root-fallback.tsx를
@@ -74,10 +74,10 @@ app/
                         ⚠️ 넷 다 게이트가 translation:write다(settings만 project:settings) — EDITOR도
                         목록을 보고 컨트롤만 role로 갈린다. 판정은 Action이 한다
                         ⚠️ logs에 try가 없다 — 조회 실패는 던져야 "없음"과 다른 화면이 된다
-    __tests__/          harness(메모리 DB) + 테스트 스물하나 — harness 자기검사 · 흐름 · 인가 · 멤버십 ·
+    __tests__/          harness(메모리 DB) + 테스트 스물셋 — harness 자기검사 · 흐름 · 인가 · 멤버십 ·
                         연결 · 게시실패 · 게시미리보기 · 온보딩 · 조회 · 목록질의 · 셸레이아웃 · 오류경계 ·
                         모달 · 보관 · 리포설정 · sync · 활동사건 · 표면추가로그 · 프로젝트메타데이터 ·
-                        소스Action · 소스페이지
+                        소스Action · 소스페이지 · 초대메일 · 없는화면
   invite/[token]/       ⚠️ (edit) 밖이고 matcher 밖이다 — 비로그인으로 열려야 토큰이 보존된다.
                         갈래는 planInviteView가 고른다(화면이 조건을 다시 적지 않는다)
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
@@ -513,8 +513,9 @@ lib/
 ```
 messages/en.tsx         ⚠️ UI 문자열의 단일 출처. 값은 문자열 또는 함수다(헬퍼 셋을 만들지 않는다).
                         갈래 누락은 소비자가 거는 satisfies Record<Union, string>이 잡는다. ⚠️ 잎이다
-prisma/schema.prisma    14테이블 + enum 다섯(TranslationSurface가 2026-09-14에 들어와 표면 축이 생겼고,
-                        ProjectEvent·EventKind·ActorKind가 2026-09-20 활동 스트림에서 붙었다).
+prisma/schema.prisma    16테이블 + enum 다섯(TranslationSurface가 2026-09-14에 들어와 표면 축이 생겼고,
+                        ProjectEvent·EventKind·ActorKind가 2026-09-20 활동 스트림에서, DeliveryConfirmation·
+                        TranslationBaseline이 2026-09-23 translation-rework에서 붙었다).
                         ⚠️ Auth.js 4테이블의 모양은 어댑터가 정한다 — 컬럼 하나만
                         빠져도 linkAccount가 런타임에 던지고 타입 검사는 못 본다
 prisma/migrations/      ⚠️ dev는 /push 전, prod는 /merge 전에 넓힌다(additive-first)
@@ -554,11 +555,12 @@ vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암
 vitest.projects.config.ts
                         목록 집계의 **격리 PostgreSQL** 검증(`pnpm test:projects:postgres`).
                         ⚠️ `pnpm test`에 없다 — 실제 클러스터를 띄우고, 미전달 술어가 공유 조각(pendingWhere)
-                        + 손 사본 둘(셀 투영 · 목록 raw SQL)이라 "같은 행을 세나"를 재는 유일한 자리다. `lib/keys/**`의 raw 집계를
+                        + 손 사본 셋(번역 목록 bool_or · 상세 셀 투영 · 프로젝트 목록 raw SQL)이라 "같은 행을 세나"를 재는 유일한 자리다. `lib/keys/**`의 raw 집계를
                         건드렸으면 손으로 돌린다. 편집 토큰의 조건부 쓰기(적재 정리·Publish CAS·backfill)와
                         동시 CI push의 결과 표시(concurrent-import — barrier로 두 요청을 교차시킨다)와 전달 층 불변식
                         (delivery-invariants — 승인 Sync의 orphan 토큰 해제 · orphan 셀 적재 제외 · 로케일 재시도 · 보류 뒤 Revert)도
-                        여기서만 잰다 — include가 `lib/keys/__tests__/`로 박혀 있어 그 테스트도 그 디렉터리에 산다
+                        여기서만 잰다 — include가 `lib/keys`·`lib/events`·`lib/invitation-email`의 `__tests__/*.integration.ts`로
+                        박혀 있어 그 밖에 만든 통합 테스트는 조용히 0건 수집된다
 vitest.credentials.config.ts
                         같은 형의 둘째다 — 자격증명 암·복호의 **격리 PostgreSQL** 검증
                         (`pnpm test:credentials:postgres`, include는 `lib/credentials/__tests__/*.integration.ts`).
