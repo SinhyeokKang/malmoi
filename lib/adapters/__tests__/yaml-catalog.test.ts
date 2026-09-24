@@ -852,3 +852,11 @@ describe("yaml-catalog — 삽입 인용 타입 (audit #56)", () => {
     expect(parseDocument(out).getIn(["a", "z"])).toBe("yes");
   });
 });
+
+describe("yaml-catalog — 삽입 인용: 형제가 맵뿐이면 파일을 본다 (audit #56 리뷰)", () => {
+  it("루트 로케일 아래가 전부 네임스페이스 맵이어도 파일의 다수 인용을 따른다", () => {
+    const source = 'ko:\n  a:\n    x: "old"\n  b:\n    y: "old"\n';
+    const out = yamlCatalog.write(withSource(source), { locale: "ko", entries: [{ key: "top", message: "new" }] })!;
+    expect(out).toBe('ko:\n  a:\n    x: "old"\n  b:\n    y: "old"\n  top: "new"\n');
+  });
+});

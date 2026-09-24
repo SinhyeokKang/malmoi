@@ -324,7 +324,8 @@ function insertionTypes(doc: Document, map: YAMLMap | null): { key: Quoted; valu
   const siblings = { keys: [] as Scalar[], values: [] as Scalar[] };
   if (map !== null) pairScalars(map, siblings, false);
   const file = { keys: [] as Scalar[], values: [] as Scalar[] };
-  if (siblings.keys.length === 0 && isMap(doc.contents)) pairScalars(doc.contents, file, true);
+  // 형제가 맵뿐이면(`ko:` 아래가 전부 네임스페이스) 값 단서가 없다 — 키가 있어도 파일로 내려간다.
+  if ((siblings.keys.length === 0 || siblings.values.length === 0) && isMap(doc.contents)) pairScalars(doc.contents, file, true);
   return {
     key: dominantType(siblings.keys.length > 0 ? siblings.keys : file.keys),
     value: dominantType(siblings.values.length > 0 ? siblings.values : file.values),
