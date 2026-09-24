@@ -29,6 +29,7 @@ app/
                         센다. 예외 열을 이름으로 고정(2026-09-13에 api/push/failure가 붙어 하나 늘었다)
                         + routes.ts↔라우트 대조 + 쿼리 생성기/수신자 대조)
                         · screens(lang·revalidate 안전·보관 갈래 다섯) · security-headers(next.config를 불러서)
+                        · api/__tests__/pull-budget(야간 cron 시간 예산 — 가짜 시계로 넘긴 수가 unprocessed에 실리는지)
                         · locked-access(잠금 재판정 16자리를 AST로 센다 — `$transaction` 콜백 안의 호출만, 주석 제외)
   (edit)/               인증 필요. 1차 차단은 middleware, 본판정은 각 진입점
     layout.tsx          셸. ⚠️ {children}을 흰 패널로 감싸지 않는다 — 감싸면 흰 패널이 겹쳐 padding이 두 배다.
@@ -265,6 +266,7 @@ components/
                         인라인 Alert로 내고 redirect하지 않는다. submit-button은 useFormStatus 하나를
                         감싸 로그인·초대 폼이 같은 pending을 쓰게 한다
   __tests__/            focus-ring(소스 스캔 — 탭으로 지나가야 보이는 결함이라 눈으로 두 번 놓쳤다) ·
+                        docs-content(`/docs`의 상한·포맷·action 넷·마커를 정본 상수와 실제 `uses:`에 대조) ·
                         disabled-pairing(⚠️ buttonClass의 disabled: 유틸리티마다 aria-disabled: 짝이
                         있는지 + 그 스타일을 ui/button.tsx 밖에서 쓰지 않는지. <a>와 Radix 트리거는
                         disabled 속성을 못 써서 각자 철자를 발명했고 같은 pending이 세 화면에서
