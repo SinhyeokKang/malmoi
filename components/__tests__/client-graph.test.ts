@@ -102,6 +102,8 @@ const CLIENT_LIB_FILES = [
   // Settings recovery now owns its card notice; this leaf only assembles public URLs.
   "lib/github-connect/installation-url.ts",
   "lib/github-connect/message.ts",
+  // `SlowNotice`가 지연 선으로 읽는 상수 하나 — import가 0개인 잎이다 (audit-ux U7 r1). octokit은 `lib/github.ts` 쪽이다.
+  "lib/github-wait.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
   "lib/import/confirm.ts",
@@ -124,6 +126,8 @@ const CLIENT_LIB_FILES = [
   "lib/onboarding/select-surfaces.ts",
   "lib/onboarding/slug.ts",
   "lib/projects/import-failure.ts",
+  // 프로젝트 목록이 검색을 로컬에서 거른다 (audit-ux #17) — 갈래·검색·하이라이트가 전부 I/O 없는 순수 함수다.
+  "lib/projects/list.ts",
   // Settings share these pure status/name/selection planners; no server dependencies.
   "lib/projects/plan.ts",
   "lib/import/surface-status.ts",
@@ -134,6 +138,8 @@ const CLIENT_LIB_FILES = [
   "lib/publish/warnings.ts",
   "lib/publish/words.ts",
   "lib/pull/branch-name.ts",
+  // `usePublish`가 결과가 재검증 트리를 싣고 오는지 읽는다(`pullRevalidates`, malmoi#103 r1) — import가 타입뿐인 잎이다.
+  "lib/pull/message.ts",
   "lib/pull/ref-slug.ts",
   "lib/relative-time.ts",
   "lib/routes.ts",

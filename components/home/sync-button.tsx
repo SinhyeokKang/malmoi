@@ -2,7 +2,6 @@
 
 import { ArrowDownToLine, LoaderCircle, TriangleAlert } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 
 import { checkOpenPullRequest, prepareRepositorySync, runRepositoryImport } from "@/app/(edit)/projects/actions";
@@ -20,20 +19,29 @@ import { routes } from "@/lib/routes";
  * `"updatedBy" = NULL`로 저자까지 비운다). 되돌리기·부분 선택·"내 편집만 지키기"를 그리지 않는 것은
  * 그것이 곧 병합 로직이고 제품 원칙 위반이기 때문이다 (ARCHITECTURE §0 불변식 2).
  *
- * ⚠️ **원결과와 확인 창 상태는 Home의 안정된 호스트가 소유한다** — `router.refresh()`로 이 컴포넌트가
+ * ⚠️ **원결과와 확인 창 상태는 Home의 안정된 호스트가 소유한다** — Action의 재검증으로 이 컴포넌트가
  * 다시 그려져도 결과가 살아 있어야 한다 (POSTMORTEM 2026-09-07의 `FirstIngestRetry`).
  */
-export function SyncButton({ slug, name, branch, role, unsent, paused = false, onResult, onPendingChange, open, onOpenChange, fallbackFocusRef }: {
+export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paused = false, pausedReason = m.repositorySync.paused, onResult, onPendingChange, open, onOpenChange, fallbackFocusRef }: {
   /** 트리거가 사라졌을 때(권한 변경) 포커스를 받을 Home 제목. */
   fallbackFocusRef?: RefObject<HTMLElement | null>;
   open: boolean; onOpenChange: (open: boolean) => void;
   slug: string; name: string; branch: string; role: "OWNER" | "EDITOR"; unsent: number;
+  /**
+   * 기본 표면 — `Publish first` 링크가 공가 redirect(`routes.translations`)를 건너뛰고 바로 간다 (audit-ux #4b).
+   * 없으면(번역 화면 안의 [Sync]) 옛 경로다.
+   */
+  surfaceSlug?: string;
   /**
    * 미연결·보관 — **비활성이고 부재가 아니다** (DESIGN §6.64의 `2c`·`2d`). 부재는 역할
    * 갈래의 규칙이고(EDITOR에게 누를 수 없는 버튼을 주지 않는다), 이쪽은 **OWNER가 가진 동작이
    * 지금 멈춰 있다**는 뜻이라 그 사실을 화면에 남긴다.
    */
   paused?: boolean;
+  /**
+   * 멈춘 사유 — 호스트가 원인을 안다 (audit-ux #10). Publish 진행이면 `waitPublish`다: 옆 [Publish]의 라벨이 더는 진행을 말하지 않는다(D1).
+   */
+  pausedReason?: string;
   onResult: (outcome: RepositoryImportOutcome) => void;
   /**
    * ⚠️ **호스트가 `[Publish]`를 잠그려고 듣는다** (시안 `4f`) — 두 방향이 동시에 돌면 어느 쪽 값이
@@ -41,7 +49,6 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
    */
   onPendingChange?: (pending: boolean) => void;
 }) {
-  const router = useRouter();
   const triggerId = useId();
   const cancelId = useId();
   const describedId = useId();
@@ -112,12 +119,13 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
     setPending(false);
     onResult(outcome);
     /*
-      ⚠️ **실패에는 부르지 않는다** (POSTMORTEM 2026-09-08 — 같은 부류가 Publish에서 한 번 터졌다).
-      `unauthorized`로 거부된 직후의 refresh는 미들웨어의 렌더 차단에 걸려 **네비게이션**이 되고,
-      한 줄 앞에서 세운 거부 Alert를 그대로 씻어 간다("왜 실패했는지가 어디에도 없다"). 갱신할 값은
-      성공에만 있다 — 실패는 DB를 바꾸지 않았으므로 화면이 낡지도 않는다.
+      ⚠️ **`router.refresh()`를 부르지 않는다** (audit-ux #12). Action이 `finally`에서 `revalidatePath(…, "layout")`를 부르고
+      Next가 그 응답에 새 트리를 실어 커밋한다 — 여기서 또 부르면 결과가 선 뒤 두 번째 전체 렌더가 표시 없이 돌았다.
+      실패 뒤의 refresh가 거부 Alert를 씻던 함정(POSTMORTEM 2026-09-08)도 호출이 없으니 생기지 않는다.
+
+      ⚠️ **이 실행을 async transition으로 감싸지 않는다** — React 19는 진행 중인 async transition을 전역으로 얽어
+      (POSTMORTEM 2026-09-18), 긴 Sync 동안 그 뒤의 모든 transition(내비게이션 포함)이 끝날 때까지 커밋되지 않는다.
     */
-    if (outcome.ok) router.refresh();
   }
   if (role !== "OWNER") return null;
   /*
@@ -127,17 +135,17 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
   */
   /*
     ⚠️ **`disabled`가 아니라 `aria-disabled` + 사유다** (audit #37 — DESIGN §6.65). 진짜 `disabled`는 포커스를 못 받아
-    왜 멈췄는지 닿을 길이 없었다. 사유는 원인(미연결·보관·Publish 진행)을 가르지 않는다 — 원인은 같은 화면의 배너·
-    Publish 버튼이 이미 말한다. ⚠️ **보이는 사람에게는 `title`이다** — 머리에 문장을 세울 자리가 없고, 옆의 [Publish]가 같은 형이다
+    왜 멈췄는지 닿을 길이 없었다. 미연결·보관은 가르지 않는다 — 같은 화면의 배너가 원인을 말한다. Publish 진행만 호스트가
+    `pausedReason`으로 가른다 — [Publish] 라벨이 더는 진행을 말하지 않는다 (audit-ux #10 · D1). ⚠️ **보이는 사람에게는 `title`이다** — 머리에 문장을 세울 자리가 없고, 옆의 [Publish]가 같은 형이다
     (§6.646: `title`은 마우스용, sr-only는 describedby용).
   */
   if (paused) {
     return <>
-      <Button aria-disabled aria-describedby={pausedReasonId} title={m.repositorySync.paused} onClick={event => event.preventDefault()}>
+      <Button aria-disabled aria-describedby={pausedReasonId} title={pausedReason} onClick={event => event.preventDefault()}>
         <ArrowDownToLine className="size-3.5" aria-hidden />
         {m.repositorySync.action}
       </Button>
-      <span id={pausedReasonId} className="sr-only">{m.repositorySync.paused}</span>
+      <span id={pausedReasonId} className="sr-only">{pausedReason}</span>
     </>;
   }
   return <Dialog open={open && !pending} onOpenChange={changeOpen}>
@@ -149,12 +157,13 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
 
         ⚠️ **그 겉모습을 여기서 그리지 않는다** (2026-09-17) — `buttonClass`의 `aria-disabled:` 짝이
         든다. 전엔 이 자리가 자기 철자를 들고 있었고, 같은 pending이 로그인·New project와 달라 보였다.
+
+        ⚠️ **라벨은 도는 동안에도 `Sync`다** (audit-ux D1 — Button `loading` 규칙에 예외가 없다). 스피너가 아이콘을 **교체**하고
+        (`[&_.animate-spin]:size-3.5`가 글리프 폭을 맞춘다), 라벨이 접근 이름이라 진행 신호는 `busy`의 `aria-busy`가 든다.
       */}
-      <Button id={triggerId} aria-disabled={pending} onClick={event => { if (busy.current) event.preventDefault(); }}>
-        {pending
-          ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-          : <ArrowDownToLine className="size-3.5 text-neutral-600" aria-hidden />}
-        {pending ? m.repositorySync.pending : m.repositorySync.action}
+      <Button id={triggerId} className="[&_.animate-spin]:size-3.5" busy={pending} aria-disabled={pending} onClick={event => { if (busy.current) event.preventDefault(); }}>
+        {!pending && <ArrowDownToLine className="size-3.5 text-neutral-600" aria-hidden />}
+        {m.repositorySync.action}
       </Button>
     </DialogTrigger>
     <DialogContent
@@ -225,7 +234,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
         */}
         {plan.recommendSend
           ? <p className="text-muted-foreground">{m.repositorySync.sendHint(
-              <Link href={routes.translations(slug)} className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">{m.repositorySync.sendFirst}</Link>,
+              <Link href={surfaceSlug === undefined ? routes.translations(slug) : routes.surfaceTranslations(slug, surfaceSlug)} className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">{m.repositorySync.sendFirst}</Link>,
             )}</p>
           : pr !== undefined && pr !== null
             ? <p className="text-muted-foreground">{m.repositorySync.nothingUnsent}{" "}

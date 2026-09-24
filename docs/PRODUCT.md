@@ -173,6 +173,8 @@ Publish는 미저장을 **버리지 않는다** — 확인창에서 저장된 �
   없어졌다** — 메일 장애 동안 초대는 지연되고, 발급 뒤 메일이 안 나간 초대는 Resend로 복구한다. 좌석은 발급 시점의
   현재 멤버 수로만 판정하므로(대기 초대를 예약으로 세지 않는다) 9명일 때 3명을 초대해 모두 수락하면 12명이 될 수 있다.
   방침이 전송처(Resend)·보존 30일을 공표한다(2026-09-24 개정, `third-parties`·`retention` 절).
+- **야간 자동 Publish** (2026-09-24 공지 — launch-readiness L2.9) — 하루 한 번(`vercel.json`, 프로덕션 배포에서만) 미전달 편집이 있는
+  프로젝트를 PR로 보낸다(§7.6). 온보딩 ④ 설명 둘째 문장과 `/docs#nightly`가 그 약속을 말한다 — 전에는 어디에도 없어 첫 PR이 예고 없이 왔다.
 - **GitHub 설치 연결** — OAuth 계정 ↔ installation ↔ repository 3중 검증
 - **탐지 기반 프로젝트 생성** — 후보를 보여주고 사용자가 확정
 - **프로젝트 단위 번역 UI** — 동결을 풀고 인가 경계 위에서 다시 만든다
@@ -183,7 +185,7 @@ Publish는 미저장을 **버리지 않는다** — 확인창에서 저장된 �
   ⚠️ **"미전달"은 편집 토큰(`Translation.pendingEditToken`)이다** (2026-09-18) — 저장이 값을 바꿀 때 서고 Publish가
   전달을 확인할 때(커밋 성공 또는 리포와 동일) 비워진다. 플래그를 **단계로 늘린 것이 아니다**: 미번역·번역됨·검토필요 3상태는
   그대로이고, 토큰은 "보내야 할 편집이 남았나" 한 축만 답한다. 남아 있는 동안 리포 갱신이 멈춘다(번역 화면 배너 · Home `To send` 카드).
-  실행 중 모달을 닫아도 실행은 계속되고, 진행은 `Publishing…`으로, 완료 결과는 `View result`로
+  실행 중 모달을 닫아도 실행은 계속되고, 진행은 [Publish]의 스피너(라벨 그대로)와 다시 연 진행 모달로, 완료 결과는 `View result`로
   **다시 연다**. ⚠️ **미전송을 단정하는 자리는 실행 전 명시적 거부 하나뿐이다** — 실행 중 오류와
   응답 유실은 "전송 여부를 확인하지 못함"이다(ARCHITECTURE §5.6.3).
 - **SyncRun** — 실행 이력·동시 실행 차단. ⚠️ **idempotency는 여기 없다** — `idempotencyKey`는
@@ -513,7 +515,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /signin                        ✅ 로그인                          ← 8-1a
 /signin/link/:challenge        ✅ 계정 병합 안내 (challenge가 인가를 대신한다) ← account-linking (2026-09-12)
 /invite/:token                 초대 수락 (토큰이 인가를 대신한다)
-/privacy · /docs               ✅ 공개 문서 (/privacy 본문 완료 · /docs placeholder) ← 8-1a
+/privacy · /docs               ✅ 공개 문서 (둘 다 본문 완료 — /docs는 2026-09-24) ← 8-1a
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
@@ -535,7 +537,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 
 **번역은 표면 아래, 소스 관리는 프로젝트 아래다.** 내부 링크는 `routes.surfaceTranslations`와
 `routes.sources`를 쓴다. `routes.translations`의 옛 주소는 저장된 기본 표면으로 보내며
-`?ns=`·`?locales=`·`?q=`·`?state=`와 번역 작업 화면의 키(`scope`·`completion`·`missingLocale`·`cursor`·`key`·`keySurface`·`language`)를 `parseTranslationQuery`→`serializeTranslationQuery` 한 경로로 보존한다. 옛 Locales 두 주소는 권한 검사 후 Sources 목록으로 간다.
+`?ns=`·`?locales=`·`?q=`·`?state=`와 번역 작업 화면의 키(`scope`·`completion`·`missingLocale`·`key`·`keySurface`·`language`)를 `parseTranslationQuery`→`serializeTranslationQuery` 한 경로로 보존한다. ⚠️ **`cursor`는 주소에 없다**(audit-ux #19 — "Show more keys"는 화면이 누적한다) — 옛 `?cursor=` 주소는 cursor를 뺀 정규 주소로 redirect한다. `key=@first`는 트리 이동이 싣는 예약값으로, 서버가 같은 렌더에서 목록의 첫 키로 풀고 화면이 주소를 그 키로 맞춘다. 옛 Locales 두 주소는 권한 검사 후 Sources 목록으로 간다.
 `/settings?add=sources`도 Sources로 보내고 OAuth 오류 `e`를 보존한다.
 Sources 상세 선택은 클라이언트 상태라 주소·이력이 바뀌지 않고 전체 새로고침은 목록이다.
 Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#68).
@@ -564,8 +566,8 @@ Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#6
 - ⚠️ **로그아웃은 `/`(랜딩)로 간다** — `signOut({ redirectTo: "/" })` 둘은 이관 대상이 아니고,
   그 사실이 각 자리에 주석으로 있다.
 - **두 라우트가 갈렸다.** `/privacy`는 **본문이 섰다**(2026-09-19 — 절 일곱 · 시행일 · 수집 항목과
-  쿠키 표 둘. 사전이 들고 `lib/privacy/collected.ts`의 전수 등재와 절 id로 묶인다). `/docs`는 아직
-  placeholder이고 출시 전에 채운다. 라우트를 먼저 딴 이유는 로그인 화면 푸터가 그것을 가리키기
+  쿠키 표 둘. 사전이 들고 `lib/privacy/collected.ts`의 전수 등재와 절 id로 묶인다). `/docs`도 본문이
+  섰다(2026-09-24, launch-readiness L2.3 — 절 일곱. 상한·포맷·action 넷·마커를 `docs-content.test.tsx`가 정본 상수와 대조한다). 라우트를 먼저 딴 이유는 로그인 화면 푸터가 그것을 가리키기
   때문이다. **Terms of Service는 만들지 않는다** — 돈을 받고 파는 서비스가 아니라 Privacy Policy
   하나로 퉁친다(2026-09-10 사용자). **방침은 en 단일이다**(2026-09-19 privacy) — ko를 열면 본문 두 벌의 신선도를
   각각 게이트해야 하고 §10(ko 여는 시점)을 선행해 정하게 된다. 대가: 동의를 받는 문서를 한국어 화자 동료가 en으로 읽는다.
@@ -666,7 +668,7 @@ Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#6
 `settings`와 `surfaces/new` 둘이다 — 앞은 리포 연결과 push 토큰이고, 뒤는 표면을 늘리는 자리라
 둘 다 "프로젝트를 어떻게 잇는가"를 바꾼다. `member:manage` 뒤에 두는 **페이지는 없다**(§3).
 
-⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?scope=`·`?completion=`(+`?missingLocale=`)·`?q=`·`?cursor=`와 선택 키 `?key=`·`?keySurface=`·상세 언어 `?language=`(translation-rework — 정본은 `lib/translations/query.ts`. ⚠️ 옛 `?locales=`는 단일 코드일 때만 `language`로, `?state=untranslated`는 `completion=incomplete`로 읽고 다시 내보내지 않는다. 8-4가 `?focus=`를 폐기했다)·**`?state=`**(`unsent`·`review`·`new`)(⚠️ **8-4가 뺐다가 2026-09-15에 Home 카운트 카드가 되살렸다** — 카드 넷이 수만 말하고 목적지가 없으면 개요가 일로 이어지지 않는다(결정 1의 대가). 섹션 안 pending 우선 정렬은 그대로 남는다: 그쪽은 필터를 안 건 사람을 위한 것이고 이쪽은 특정 구간을 보러 온 사람을 위한 것이다)와 **목록의 `?q=`(이름 검색, 2026-09-11 — ⚠️ `?filter=`는 2026-09-13에 사라졌다: 상태를 말하는 자리가 탭에서 **그룹 셋**으로 옮겨갔고, 옛 링크의 그 키는 `?focus=`와 같은 관용구로 **조용히 무시된다**)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. `/account`도 같은 계약 안이다 — `routes.account({ e, sessionRevocation, link, connect })`가 넷을 만들고, **`?connect=`는 GitHub App 연동/해제의 결과**다(`lib/account-connect/http.ts`가 읽는 쪽이고, 만드는 쪽과 읽는 쪽을 같은 함수로 묶지 않는다 — 아래 `?sessionRevocation=` 항목과 같은 이유). 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
+⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?scope=`·`?completion=`(+`?missingLocale=`)·`?q=`와 선택 키 `?key=`(예약값 `@first` = 트리 이동의 첫 키, audit-ux #18)·`?keySurface=`·상세 언어 `?language=`(translation-rework — 정본은 `lib/translations/query.ts`. ⚠️ 번역 목록의 `?cursor=`는 2026-09-25에 주소에서 빠졌다 — More는 클라이언트 누적이고 옛 주소는 redirect다. 상세 언어는 서버로 가지 않고 `history.replaceState`로 주소만 맞춘다. ⚠️ 옛 `?locales=`는 단일 코드일 때만 `language`로, `?state=untranslated`는 `completion=incomplete`로 읽고 다시 내보내지 않는다. 8-4가 `?focus=`를 폐기했다)·**`?state=`**(`unsent`·`review`·`new`)(⚠️ **8-4가 뺐다가 2026-09-15에 Home 카운트 카드가 되살렸다** — 카드 넷이 수만 말하고 목적지가 없으면 개요가 일로 이어지지 않는다(결정 1의 대가). 섹션 안 pending 우선 정렬은 그대로 남는다: 그쪽은 필터를 안 건 사람을 위한 것이고 이쪽은 특정 구간을 보러 온 사람을 위한 것이다)와 **목록의 `?q=`(이름 검색, 2026-09-11 — ⚠️ `?filter=`는 2026-09-13에 사라졌다: 상태를 말하는 자리가 탭에서 **그룹 셋**으로 옮겨갔고, 옛 링크의 그 키는 `?focus=`와 같은 관용구로 **조용히 무시된다**)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. `/account`도 같은 계약 안이다 — `routes.account({ e, sessionRevocation, link, connect })`가 넷을 만들고, **`?connect=`는 GitHub App 연동/해제의 결과**다(`lib/account-connect/http.ts`가 읽는 쪽이고, 만드는 쪽과 읽는 쪽을 같은 함수로 묶지 않는다 — 아래 `?sessionRevocation=` 항목과 같은 이유). 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
 
 ⚠️ **번역 화면의 URL은 요청값을, 조회는 적용값을 든다** (translation-rework). `?completion=missing&missingLocale=ja`는 ja가 없는
 범위에서도 URL에 남는다 — 범위 안 소스 **전부**에 ja가 없으면 `Incomplete`로, 일부에만 없으면 **그 소스를 결과에서 빼고** 계산한다

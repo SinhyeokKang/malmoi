@@ -16,6 +16,8 @@
 
 ⚠️ **한 리포에 프로젝트가 둘이면 secret 하나로 둘을 먹일 수 없다.** 토큰이 프로젝트를 정하므로 **스텝 둘 + secret 둘**이 필요하고(`PUSH_TOKEN_CODE`·`PUSH_TOKEN_YAML` 식), 각 스텝의 `project`와 `adapter`가 다르다. prod에 그 모양이 실재한다 — `i18n-format-check` 하나가 `format-check-code`(code-dict)·`format-check-yaml`(yaml-catalog) 둘을 먹인다. **secret 이름은 자유다** — 위는 예시이고 서버는 값만 본다(PRODUCT §10, 2026-09-14 확정).
 
+**조직이 action 허용 목록을 쓰면 넷을 전부 넣는다** (2026-09-24, launch-readiness L2.5): `SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push` · `actions/checkout`(워크플로 파일) · `pnpm/action-setup` · `actions/setup-node`(**malmoi action 안** — `action.yml`). 하나라도 빠지면 run이 `not allowed to be used`로 멈춘다. ⚠️ **안쪽 둘은 대상 리포 파일에 안 보여서 빠뜨리기 쉽다.** 공개 도움말(`/docs#allowed-actions`)이 같은 넷을 들고, `components/__tests__/docs-content.test.tsx`가 실제 `uses:`에서 읽어 대조한다 — action에 `uses:`를 더하면 그 테스트가 red다. **실측(2026-09-24, `malmoi-test-org/i18n-workflow-check`의 리포 단위 허용 목록 — org 단위와 같은 매칭이다)**: 넷을 `<이름>@*`(`SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@*` · `actions/checkout@*` · `pnpm/action-setup@*` · `actions/setup-node@*`)로 넣고 "GitHub 제작 action 허용"을 끈 상태에서 run green, `pnpm/action-setup`만 빼면 **"Set up job" 단계**에서 `The action pnpm/action-setup@… is not allowed …`로 red — 안쪽 action도 job 시작 때 전부 해석되므로 적재 단계까지 가지 않는다. ⚠️ `actions/*` 둘은 "Allow actions created by GitHub"를 켜면 목록 없이도 통과한다.
+
 **워크플로** `.github/workflows/malmoi-i18n.yml`:
 
 ⚠️ **아래 블록이 정본이다.** 말모이의 온보딩 결과 화면이 같은 스니펫을 slug만 바꿔 복사용으로 내고(`lib/onboarding/workflow.ts`의 `renderProjectWorkflowYaml`), **`lib/onboarding/__tests__/workflow.test.ts`가 이 문서의 첫 YAML 코드 블록을 읽어 줄 단위로 대조한다**(그 스캐너가 여는 펜스를 정규식으로 찾으므로 이 문서의 산문에 그 펜스 문자열을 쓰지 않는다) — 한쪽만 고치면 `pnpm test`가 red이고, 통과시키면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.

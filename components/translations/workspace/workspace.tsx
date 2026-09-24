@@ -1,14 +1,16 @@
 "use client";
 
 import { ArrowDownToLine, Languages, Loader2, RotateCcw } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
 
-import { previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
+import { loadMoreTranslationKeys, previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
+import { useCommitWait } from "@/components/commit-wait";
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
 import { SearchInput } from "@/components/search-input";
 import { SyncButton } from "@/components/home/sync-button";
 import { SyncResult } from "@/components/home/sync-result";
+import { SlowNotice } from "@/components/slow-notice";
 import { BasePendingBanner } from "@/components/translations/base-pending-banner";
 import { EditLossBanner } from "@/components/translations/edit-loss-banner";
 import { Alert } from "@/components/ui/alert";
@@ -17,14 +19,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useLandAfter } from "@/components/ui/focus";
-import type { RepositoryImportOutcome } from "@/lib/import/result";
+import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
 import type { TranslationList, TranslationListRow, TranslationTree } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { dirtyLocales, initKeyDraft, planDraftRecovery, reduceKeyDraft, type KeyDraftAction, type KeyDraftState } from "@/lib/translations/draft";
 import { planTranslationPanelLayout, stepPanelWidth, PANEL } from "@/lib/translations/layout";
 import { planEditorNavigation, type EditorIntent } from "@/lib/translations/navigation";
-import { ALL_NAMESPACES, clearFilters, DEFAULT_TRANSLATION_QUERY, nextQuery, translationsHref, treeQuery, type TranslationQuery } from "@/lib/translations/query";
+import { ALL_NAMESPACES, clearFilters, DEFAULT_TRANSLATION_QUERY, FIRST_KEY, nextQuery, serializeTranslationQuery, translationsHref, treeQuery, type TranslationQuery } from "@/lib/translations/query";
 import { applySavedRow, mergeServerRows, savedOutCount, startListGeneration, type ListGeneration } from "@/lib/translations/saved-rows";
 import { summarizeKey } from "@/lib/translations/summary";
 import { cn } from "@/lib/utils";
@@ -108,8 +110,23 @@ const storageKey = (userId: string, slug: string) => `malmoi.translation-draft.$
 const widthKey = (userId: string, slug: string) => `malmoi.translation-panels.${userId}.${slug}`;
 
 export function TranslationWorkspace(props: WorkspaceProps) {
-  const { slug, routeSurfaceSlug, role, userId, query, tree, list } = props;
+  const { slug, routeSurfaceSlug, role, userId, tree, list } = props;
   const router = useRouter();
+  /*
+    ⚠️ **상세의 언어 필터는 서버로 가지 않는다** (audit-ux #16) — 거르기는 받은 상세 위의 클라이언트 일이라 `history.replaceState`로
+    주소만 맞춘다(`useProjectQuery`와 같은 형). ⚠️ **원천은 서버 prop이 아니라 주소다** — `replaceState`는 prop을 못 바꾸므로 prop을
+    원천으로 두면 뒤로가기로 돌아온 화면이 캐시된 렌더의 옛 언어로 선다. 주소가 밖에서 바뀌면 렌더 중에 따라간다.
+    모든 이동 주소(`current`)가 이 값을 잇는다 — 서버 prop의 `language`로 조립하면 다음 키 이동이 필터를 잃는다.
+  */
+  const params = useSearchParams();
+  const languageFromUrl = params.get("language") || undefined;
+  const [language, setLanguage] = useState(languageFromUrl);
+  const [seenLanguage, setSeenLanguage] = useState(languageFromUrl);
+  if (seenLanguage !== languageFromUrl) {
+    setSeenLanguage(languageFromUrl);
+    setLanguage(languageFromUrl);
+  }
+  const query = nextQuery(props.query, { language });
   const w = m.translations.workspace;
   const detail = props.detail !== null && !("absent" in props.detail) ? props.detail : null;
   const keyId = detail?.key.id;
@@ -124,22 +141,43 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     // 같은 키의 재검증은 서버 값만 받는다 — draft는 보존된다(POSTMORTEM 2026-09-12).
   }, [detail]); // eslint-disable-line react-hooks/exhaustive-deps
   const dirty = useMemo(() => (keyId === undefined ? [] : dirtyLocales(draft)), [draft, keyId]);
+  /*
+    ⚠️ **복구 문구는 그것이 말하는 미저장보다 오래 살지 않는다** (malmoi#100) — 되돌려 0이 되면 지운다. effect로 가장자리를 보면
+    복구 자신의 첫 커밋(아직 0)에 지워지므로, 편집이 만드는 다음 상태로 판정한다.
+  */
+  function edit(action: KeyDraftAction) {
+    dispatch(action);
+    if (status?.kind === "restored" && dirtyLocales(reduceKeyDraft(draft, action)).length === 0) setStatus(null);
+  }
 
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const requestSeq = useRef(0);
   const [status, setStatus] = useState<FooterStatus | null>(null);
   const [revertedLocales, setRevertedLocales] = useState<ReadonlySet<string>>(new Set());
+  /**
+   * 방금 저장한 셀 — 저장은 편집 토큰을 세우므로 곧 미전달이다 (audit-ux #30). 서버 상세(`pending`)를 기다리면 푸터가 "Saved" →
+   * "Saved · not sent yet"으로 두 번 바뀌고 `aria-live`가 두 번 읽는다. 목록 행은 이미 이렇게 한다. 다음 서버 상세까지만 유효하다.
+   */
+  const [savedLocales, setSavedLocales] = useState<ReadonlySet<string>>(new Set());
   const [revertReason, setRevertReason] = useState<RevertReason | null>(null);
-  const [revertBusy, setRevertBusy] = useState(false);
+  /*
+    ⚠️ **잠금은 새 서버 트리까지 간다** (malmoi#103) — Action이 풀린 뒤 재검증 트리가 0.3–1.5 s 늦게 커밋되는 동안 Sync·Publish·Revert가
+    옛 상세·건수로 켜졌다. 신호는 **상세, 없으면 목록**이다 — 둘 다 서버가 렌더할 때마다 새 객체가 되고, 상세는 키를 고르지 않으면 `null`이다.
+  */
+  const server = props.detail ?? props.list;
+  const revertCommit = useCommitWait(server);
+  const [revertRunning, setRevertBusy] = useState(false);
+  const revertBusy = revertRunning || revertCommit.waiting;
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const resultRef = useRef<HTMLSpanElement>(null);
   const saveRef = useRef<HTMLButtonElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => { setStatus(null); setRevertedLocales(new Set()); setRevertReason(null); }, [keyId]);
+  useEffect(() => { setStatus(null); setRevertedLocales(new Set()); setSavedLocales(new Set()); setRevertReason(null); }, [keyId]);
   useEffect(() => {
-    // Revert 응답의 낙관적 표시는 다음 서버 상세까지만 유효하다. 이후의 편집 토큰을 가리지 않는다.
+    // Revert·Save 응답의 낙관적 표시는 다음 서버 상세까지만 유효하다. 이후의 편집 토큰을 가리지 않는다.
     setRevertedLocales(new Set());
+    setSavedLocales(new Set());
     setRevertReason(null);
   }, [detail]);
 
@@ -149,6 +187,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const [storageBlocked, setStorageBlocked] = useState(false);
   useEffect(() => {
     if (keyId === undefined || restoredFor.current === keyId) return;
+    /*
+      ⚠️ **세션 문구는 이 화면이 처음 여는 키의 복구에만 쓴다** (malmoi#100) — 다시 로그인한 뒤 연 탭이 그 갈래다. 같은 화면 안에서
+      보호 없이 교체된 키로 돌아올 때의 복구(backstop)는 로그인과 무관하고, 미저장 수가 이미 그 사실을 말한다.
+    */
+    const first = restoredFor.current === null;
     restoredFor.current = keyId;
     try {
       const raw = window.sessionStorage.getItem(storageKey(userId, slug));
@@ -162,17 +205,25 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         dispatch({ type: "edit", locale: code, value });
         count += 1;
       }
-      if (count > 0) setStatus({ kind: "restored", count });
+      if (count > 0 && first) setStatus({ kind: "restored", count });
     } catch {
       // 저장소가 막힌 브라우저 — 보존을 약속하지 않는다(세션 만료 문구가 그 갈래를 말한다).
       setStorageBlocked(true);
     }
   }, [keyId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (keyId === undefined || restoredFor.current !== keyId) return;
+    // 키가 바뀐 커밋의 `draft`는 아직 옛 키의 것이다 — 그대로 쓰면 옛 입력이 새 키의 사본으로 적힌다.
+    if (keyId === undefined || restoredFor.current !== keyId || draft.keyId !== keyId) return;
     try {
       const plan = planDraftRecovery(draft);
-      if (plan.kind === "clear") window.sessionStorage.removeItem(storageKey(userId, slug));
+      /*
+        ⚠️ **다른 키의 사본은 지우지 않는다** (audit-ux #1 · D-U1a) — 확인창을 거치지 않은 교체(깨끗할 때 누른 뒤로가기 뒤의 입력 등)가
+        남긴 사본이 돌아왔을 때 되살릴 마지막 그물이다. 명시적 폐기는 `discardThen`이 따로 지운다.
+      */
+      if (plan.kind === "clear") {
+        const raw = window.sessionStorage.getItem(storageKey(userId, slug));
+        if (raw === null || (JSON.parse(raw) as { keyId?: unknown }).keyId === keyId) window.sessionStorage.removeItem(storageKey(userId, slug));
+      }
       else window.sessionStorage.setItem(storageKey(userId, slug), JSON.stringify({ surfaceSlug: detailSurface, keyId, saved: plan.saved, draft: plan.draft }));
     } catch {
       // 위와 같다.
@@ -181,39 +232,103 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   }, [draft, keyId, userId, slug, detailSurface]);
 
   // ── 목록 세대 — 조건이 바뀔 때만 새로 시작한다. 저장·재검증은 행을 자리에 남긴다 ────────────────────
+  /*
+    ⚠️ **새 목록은 렌더 중에 받는다, effect가 아니다** (audit-ux #29) — effect로 받으면 조건이 바뀐 첫 커밋이 새 제목·수 아래 옛 행을
+    그렸고, 결과가 0↔N으로 바뀔 때 빈 상태가 한 프레임 번쩍였다.
+    ⚠️ **More로 붙인 행은 이 화면이 든다** (audit-ux #19) — 재검증은 언제나 첫 페이지라 그 밖의 행은 `mergeServerRows`가 자리에 남기고,
+    다음 cursor도 붙인 페이지 뒤의 것을 지킨다(첫 페이지의 cursor로 되돌아가면 같은 행을 다시 붙인다).
+  */
   const conditionKey = JSON.stringify([routeSurfaceSlug, query.ns, query.scope, query.completion, query.missingLocale, query.state, query.q]);
-  const [rows, setRows] = useState<ListGeneration<TranslationListRow>>(() => startListGeneration(list.rows, 0));
-  const generation = useRef({ key: conditionKey, value: 0 });
-  useEffect(() => {
-    if (generation.current.key !== conditionKey) {
-      generation.current = { key: conditionKey, value: generation.current.value + 1 };
-      setRows(startListGeneration(list.rows, generation.current.value));
+  /** `more`도 세대에 묶는다 — 새 조건에서 옛 조건의 실패 문구가 남거나, 옛 조건의 늦은 응답이 새 목록의 버튼을 잠그지 않게. */
+  type ListState = { source: typeof list; key: string; rows: ListGeneration<TranslationListRow>; cursor: string | null; extended: boolean; more: "idle" | "loading" | "failed" };
+  const [listState, setListState] = useState<ListState>(() => ({ source: list, key: conditionKey, rows: startListGeneration(list.rows, 0), cursor: list.nextCursor, extended: false, more: "idle" }));
+  let shownList = listState;
+  if (listState.source !== list) {
+    if (listState.key !== conditionKey) {
+      shownList = { source: list, key: conditionKey, rows: startListGeneration(list.rows, listState.rows.generation + 1), cursor: list.nextCursor, extended: false, more: "idle" };
     } else {
-      // 서버 응답은 한 페이지다. 페이지 밖의 행은 유지하고, 전체 조건 판정이 있는 선택 키만 이탈 여부를 갱신한다.
+      // 서버 응답은 첫 페이지다. 페이지 밖의 행은 유지하고, 전체 조건 판정이 있는 선택 키만 이탈 여부를 갱신한다.
       const membership = new Map<string, boolean>();
       if (query.key !== undefined && list.selectedInResult !== null) membership.set(query.key, list.selectedInResult);
-      setRows(prev => {
-        const merged = mergeServerRows(prev, list.rows, membership);
-        return query.cursor === undefined ? merged : {
-          generation: merged.generation,
-          rows: [...merged.rows, ...list.rows.filter(r => !merged.rows.some(p => p.row.keyId === r.keyId)).map(row => ({ row, savedOut: false }))],
-        };
-      });
+      shownList = { ...listState, source: list, rows: mergeServerRows(listState.rows, list.rows, membership), cursor: listState.extended ? listState.cursor : list.nextCursor };
     }
-  }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
+    setListState(shownList);
+  }
+  const rows = shownList.rows;
+  const setRows = (update: (prev: ListGeneration<TranslationListRow>) => ListGeneration<TranslationListRow>) => setListState(prev => ({ ...prev, rows: update(prev.rows) }));
 
-  // 트리 전환은 새 목록의 첫 키를 연다. 필터·검색은 선택이 결과 밖이면 상세를 비운다 — 다른 키를 자동 선택하지 않는다.
-  const pendingSelection = useRef<"tree" | "filter" | null>(null);
+  /** 요청 중인 세대 — 연타는 막고, 조건이 바뀐 뒤의 새 세대는 옛 요청을 기다리지 않는다. */
+  const moreBusy = useRef<number | null>(null);
+  async function loadMore() {
+    const { cursor, rows: { generation } } = shownList;
+    if (cursor === null || moreBusy.current === generation) return;
+    moreBusy.current = generation;
+    // 기다리는 동안 조건이 바뀌었으면 옛 조건의 응답이다 — 새 세대의 행·문구·버튼을 건드리지 않는다.
+    const settle = (update: (prev: ListState) => ListState) => setListState(prev => prev.rows.generation === generation ? update(prev) : prev);
+    settle(prev => ({ ...prev, more: "loading" }));
+    try {
+      const result = await loadMoreTranslationKeys({ slug, surfaceSlug: routeSurfaceSlug, query: serializeTranslationQuery(query), cursor });
+      if (result.ok) {
+        settle(prev => {
+          const known = new Set(prev.rows.rows.map(entry => entry.row.keyId));
+          const appended = result.rows.filter(row => !known.has(row.keyId)).map(row => ({ row, savedOut: false }));
+          return { ...prev, rows: { generation, rows: [...prev.rows.rows, ...appended] }, cursor: result.nextCursor, extended: true, more: "idle" };
+        });
+      } else {
+        /*
+          ⚠️ **상태 때문의 거부는 그 상태로 옮긴다** (POSTMORTEM 2026-09-24 — "그 화면이 그 상태를 알고 있나") — 보관·권한 상실·세션
+          만료를 "다시 시도"로 말하면 다시 눌러도 같은 거부다. 저장 거부와 같은 푸터 상태·편집 잠금을 쓴다.
+        */
+        const refusal: FooterStatus | null = result.error === "archived" ? { kind: "archived" }
+          : result.error === "forbidden" || result.error === "not-found" ? { kind: "lost-access" }
+          : result.error === "unauthorized" ? { kind: "session" }
+          : null;
+        if (refusal !== null) setStatus(refusal);
+        settle(prev => ({ ...prev, more: refusal === null ? "failed" : "idle" }));
+      }
+    } catch {
+      settle(prev => ({ ...prev, more: "failed" }));
+    } finally {
+      if (moreBusy.current === generation) moreBusy.current = null;
+    }
+  }
+
+  /*
+    ⚠️ **이동이 대기 중이면 상세가 읽기 전용이다** (audit-ux #1) — 확인창 판정은 클릭 시점의 draft로 끝나는데 응답 전까지 옛 키의
+    칸이 그대로 서 있어, 거기 친 입력이 새 상세가 오는 순간 확인 없이 교체됐다. 대기는 transition이 센다 — 응답이 커밋되거나
+    다음 이동이 앞 이동을 대신하면 풀리므로 해제 계기를 따로 두지 않는다.
+  */
+  const [navigating, startNavigation] = useTransition();
+  /*
+    ⚠️ **누른 것은 응답 전에 먼저 선다** (audit-ux #7) — 선택 행·필터 라벨·트리 선택은 `navigating` transition 안의 낙관값이고,
+    응답이 커밋되면(또는 다음 이동이 앞 이동을 대신하면) 서버 값으로 돌아간다. 목록의 제목·수·행은 응답이 와야 바뀐다 —
+    그쪽을 낙관적으로 먼저 바꾸면 새 제목 아래 옛 행이 선다(#29).
+  */
+  type View = { query: TranslationQuery; keyId: string | undefined; surface: string };
+  const [view, setView] = useOptimistic<View>({ query, keyId, surface: routeSurfaceSlug });
+  function navigate(href: string, how: "push" | "replace" = "push", optimistic?: Partial<View>) {
+    startNavigation(() => {
+      if (optimistic !== undefined) setView(prev => ({ ...prev, ...optimistic }));
+      router[how](href);
+    });
+  }
+
+  // ⚠️ 트리 이동의 첫 키는 서버가 같은 렌더에서 고른다 (audit-ux #18) — 주소에 남은 예약값만 그 키로 맞춘다(서버 왕복 없음).
+  // ⚠️ **대기 중에는 부르지 않는다** — Next 16.3의 `replaceState`는 ACTION_RESTORE로 대기 중인 이동을 버린다. 대기가 끝나는 커밋에 다시 돈다.
+  useEffect(() => {
+    if (!navigating && params.get("key") === FIRST_KEY) window.history.replaceState(null, "", translationsHref(slug, routeSurfaceSlug, query));
+  }); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 필터·검색은 선택이 결과 밖이면 상세를 비운다 — 다른 키를 자동 선택하지 않는다.
+  const pendingSelection = useRef<"filter" | null>(null);
   useEffect(() => {
     const reason = pendingSelection.current;
     pendingSelection.current = null;
-    if (reason === "tree" && query.key === undefined && list.rows[0] !== undefined) {
-      router.replace(translationsHref(slug, routeSurfaceSlug, { ...query, key: list.rows[0].keyId, keySurface: list.rows[0].surfaceSlug }));
-    } else if (reason === "filter" && query.key !== undefined && list.selectedInResult === false) {
+    if (reason === "filter" && query.key !== undefined && list.selectedInResult === false) {
       const next: TranslationQuery = { ...query };
       delete next.key;
       delete next.keySurface;
-      router.replace(translationsHref(slug, routeSurfaceSlug, next));
+      navigate(translationsHref(slug, routeSurfaceSlug, next), "replace");
     }
   }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -230,25 +345,32 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     else if (plan.action === "confirm" && plan.dialog === "discard") setDialog({ kind: "discard", locales: plan.locales, proceed: discardThen(proceed) });
     else if (plan.action === "confirm") setDialog({ kind: "publish", locales: plan.locales });
   }
-  const go = (href: string) => () => router.push(href);
-  const withQuery = (next: TranslationQuery, surface = routeSurfaceSlug) => translationsHref(slug, surface, next);
+  const withQuery = (next: TranslationQuery, surface = view.surface) => translationsHref(slug, surface, next);
   useLeaveGuard(dirty.length > 0, proceed => setDialog({ kind: "discard", locales: dirty, proceed: discardThen(proceed) }));
 
+  /*
+    ⚠️ **다음 주소는 낙관값(`view`) 위에 쌓는다** (U3 리뷰 r1) — 트리거가 누른 값으로 먼저 서서 사용자는 응답 전에 다음 축을 고른다.
+    서버 prop(`query`)으로 조립하면 첫 선택이 조용히 되돌아간다(POSTMORTEM 2026-09-12 — 이전 쿼리 재제출과 같은 부류).
+    ⚠️ **키 선택은 `replace`, 트리·필터·검색은 `push`다** (audit-ux #33 · D2) — 뒤로가기가 키 한 칸씩 거슬러 가면 화면을 떠나는 길이
+    사라진다. 키 퍼머링크는 `replace`로도 주소창에 남는다. 필터·트리는 "방금 조건으로 되돌아가기"가 뒤로가기의 쓸모다.
+  */
   function selectRow(row: TranslationListRow) {
-    attempt({ kind: "select-key", target: row.keyId }, go(withQuery({ ...query, key: row.keyId, keySurface: row.surfaceSlug })));
+    const next: TranslationQuery = { ...view.query, key: row.keyId, keySurface: row.surfaceSlug };
+    attempt({ kind: "select-key", target: row.keyId }, () => navigate(withQuery(next), "replace", { query: next, keyId: row.keyId }));
   }
   function selectTree(surface: string, ns: string) {
-    const next = treeQuery(query, ns);
-    attempt({ kind: "tree", target: `${surface}/${ns}` }, () => { pendingSelection.current = "tree"; router.push(withQuery(next, surface)); });
+    const next = treeQuery(view.query, ns);
+    attempt({ kind: "tree", target: `${surface}/${ns}` }, () => navigate(withQuery(next, surface), "push", { query: next, keyId: undefined, surface }));
   }
   function filter(patch: Partial<TranslationQuery>, kind: "filter" | "search" | "clear" = "filter") {
-    const next = kind === "clear" ? clearFilters(query) : nextQuery(query, patch);
-    attempt({ kind }, () => { pendingSelection.current = "filter"; router.push(withQuery(next)); });
+    const next = kind === "clear" ? clearFilters(view.query) : nextQuery(view.query, patch);
+    attempt({ kind }, () => { pendingSelection.current = "filter"; navigate(withQuery(next), "push", { query: next }); });
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
   async function save() {
-    if (detail === null || savingRef.current || dirty.length === 0) return;
+    // Publish가 도는 동안은 잠긴다 (audit-ux #10 · D3) — Action이 순서대로 실행돼 PR 생성 뒤에 줄을 선다. 단축키도 이 문을 지난다.
+    if (detail === null || savingRef.current || dirty.length === 0 || publish.pending) return;
     const requestId = `r${++requestSeq.current}`;
     const changes = dirty.map(code => ({ localeCode: code, value: draft.draft[code] ?? "" }));
     savingRef.current = true;
@@ -260,6 +382,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       if (result.ok) {
         dispatch({ type: "success", requestId, keyId: detail.key.id, cells: result.cells });
         setRevertedLocales(prev => new Set([...prev].filter(code => !result.cells.some(cell => cell.localeCode === code))));
+        setSavedLocales(prev => new Set([...prev, ...result.cells.map(cell => cell.localeCode)]));
         setStatus({ kind: "saved" });
         // 목록 행은 자리에 남기고 수만 최신 저장값으로 — 조건 이탈 여부는 재검증(`mergeServerRows`)이 정한다.
         const saved = { ...draft.saved, ...Object.fromEntries(result.cells.map(c => [c.localeCode, c.value])) };
@@ -299,11 +422,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   useLandAfter(saving, () => [saveRef.current, resultRef.current]);
 
   // ── Revert ────────────────────────────────────────────────────────────────
-  const pendingLocales = detail?.locales.filter(l => l.pending && !revertedLocales.has(l.code)).map(l => l.code) ?? [];
-  const revertBlocked: RevertReason | null = role === "EDITOR" ? "forbidden"
-    : dirty.length > 0 ? "unsaved"
-    : saving || revertBusy ? "busy"
-    : revertReason;
+  // 비활성 판정(`revertBlocked`)은 아래 Publish · Sync 뒤에 있다 — 두 진행 상태를 읽는다.
   async function openRevert() {
     if (detail === null || revertBlocked !== null) return;
     setRevertBusy(true);
@@ -325,6 +444,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     try {
       const result = await revertTranslationKey({ slug, surfaceSlug: detail.key.surfaceSlug, keyId: detail.key.id, confirmation });
       if (result.status === "reverted") {
+        revertCommit.wait();
         const values = { ...draft.saved, ...Object.fromEntries(result.cells.map(c => [c.localeCode, c.value])) };
         dispatch({ type: "server", keyId: detail.key.id, values });
         setRevertedLocales(new Set(result.cells.map(c => c.localeCode)));
@@ -332,7 +452,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         // 성공 뒤 Revert가 사라지고 Save는 꺼져 있다 — 포커스를 결과 영역으로 옮긴다(disabled 버튼은 포커스를 못 받는다).
         requestAnimationFrame(() => resultRef.current?.focus());
         queueMicrotask(() => resultRef.current?.focus());
-        router.refresh();
+        // ⚠️ `router.refresh()`를 부르지 않는다 (audit-ux #12) — `revertTranslationKey`가 `revalidateTranslationReaders`로 새 트리를
+        // 싣고 오고, 또 부르면 결과가 선 뒤 두 번째 전체 렌더가 표시 없이 돌았다.
       } else if (result.status === "reconfirm") {
         setDialog({ kind: "revert-changed" });
       } else if (result.status === "blocked") {
@@ -348,18 +469,39 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   }
 
   // ── Publish · Sync ────────────────────────────────────────────────────────
-  const publish = usePublish(slug);
+  const publish = usePublish(slug, server);
   const syncReasonId = useId();
   const publishButtonId = useId();
   const footerAlertId = useId();
-  const [syncOpen, setSyncOpen] = useState(false);
+  const [syncOpen, openSyncDialog] = useState(false);
+  /*
+    ⚠️ **Sync와 Publish는 서로를 잠근다** (audit-ux #2 — DESIGN §6 "진행 중 상호 잠금") — 각 버튼은 자기 연타만 막고 서로의
+    존재를 모르므로 판정은 호스트의 몫이다(Home은 `HomeActions`가 든다). ⚠️ **하나의 `busy`로 접지 않는다** — Sync가 자기
+    자신을 잠가 도는 [Sync] 트리거가 포커스 복귀 대상을 잃는다. ⚠️ **Publish가 도는 동안 확인 창을 "예약"하지 않는다** —
+    잠긴 `SyncButton`은 Dialog를 세우지 않으므로, 그때 연 상태가 Publish가 끝나는 순간 혼자 열린다.
+  */
+  const syncCommit = useCommitWait(server);
+  const [syncRunning, setSyncRunning] = useState(false);
+  const setSyncPending = setSyncRunning;
+  const syncPending = syncRunning || syncCommit.waiting;
+  const setSyncOpen = (open: boolean) => openSyncDialog(open && !publish.pending);
   /**
    * ⚠️ **[Sync]의 원결과를 이 화면이 든다** (audit #5 — POSTMORTEM 2026-09-08 재발) — 전엔 `onResult`가 결과를 버리고
-   * refresh만 불러 거부가 설명 없이 버튼만 복귀했다. refresh는 `SyncButton`이 성공에만 부른다.
+   * refresh만 불러 거부가 설명 없이 버튼만 복귀했다. 지금은 아무도 refresh하지 않는다 — Action의 재검증이 새 트리를 싣고 온다.
+   * 트리를 싣고 오는 결과만 새 트리를 기다린다 — `try` 안의 거부(`reconfirm`…)도 온다 (`importRevalidates`, malmoi#103 r1).
    */
-  const [syncOutcome, setSyncOutcome] = useState<RepositoryImportOutcome | null>(null);
+  const [syncOutcome, setSyncOutcomeState] = useState<RepositoryImportOutcome | null>(null);
+  const setSyncOutcome = (next: RepositoryImportOutcome | null) => { if (next !== null && importRevalidates(next)) syncCommit.wait(); setSyncOutcomeState(next); };
   /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
-  const openSync = () => attempt({ kind: "sync" }, () => setSyncOpen(true));
+  const openSync = () => { if (!publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
+
+  const isPending = (locale: { code: string; pending: boolean }) => (locale.pending || savedLocales.has(locale.code)) && !revertedLocales.has(locale.code);
+  const pendingLocales = detail?.locales.filter(isPending).map(l => l.code) ?? [];
+  // 사유 문장("…while a save, publish, or sync is running")이 말하는 넷을 그대로 본다 (audit-ux #3) — 전엔 저장·Revert뿐이라 서버의 `busy`로만 멈췄다.
+  const revertBlocked: RevertReason | null = role === "EDITOR" ? "forbidden"
+    : dirty.length > 0 ? "unsaved"
+    : saving || revertBusy || syncPending || publish.pending ? "busy"
+    : revertReason;
 
   // ── 폭 ────────────────────────────────────────────────────────────────────
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -385,11 +527,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   // ── 머리 ──────────────────────────────────────────────────────────────────
   const surfaceLocales = [...new Set(tree.surfaces.flatMap(s => s.locales))].sort();
   const noKeys = tree.projectKeyCount === 0;
-  const completionLabel = query.completion === "missing" && query.missingLocale !== undefined ? w.filters.completion.missingIn(query.missingLocale)
-    : w.filters.completion[query.completion === "missing" ? "all" : query.completion];
-  const stateLabel = query.state === undefined ? w.filters.state.any : w.filters.state[query.state];
-  const scopeLabel = w.filters.scope[query.scope];
-  const narrowed = query.completion !== "all" || query.state !== undefined || query.scope !== DEFAULT_TRANSLATION_QUERY.scope;
+  // 필터 트리거는 누른 값으로 먼저 선다(`view` — audit-ux #7). 목록 제목·빈 상태는 응답이 온 `query`다.
+  const shown = view.query;
+  const completionLabel = shown.completion === "missing" && shown.missingLocale !== undefined ? w.filters.completion.missingIn(shown.missingLocale)
+    : w.filters.completion[shown.completion === "missing" ? "all" : shown.completion];
+  const stateLabel = shown.state === undefined ? w.filters.state.any : w.filters.state[shown.state];
+  const scopeLabel = w.filters.scope[shown.scope];
+  const narrowed = shown.completion !== "all" || shown.state !== undefined || shown.scope !== DEFAULT_TRANSLATION_QUERY.scope;
   const substituted = list.effective.substituted && query.missingLocale !== undefined;
 
   const listTitle = query.completion === "incomplete" ? w.list.incompleteKeys : w.list.keys;
@@ -418,8 +562,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           <span className="ml-auto flex items-center gap-2">
             {role === "OWNER" ? (
               <span onClickCapture={event => { if (dirty.length > 0) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
-                <SyncButton slug={slug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
-                  open={syncOpen} onOpenChange={setSyncOpen} onResult={setSyncOutcome} fallbackFocusRef={titleRef} />
+                <SyncButton slug={slug} surfaceSlug={routeSurfaceSlug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
+                  paused={publish.pending} pausedReason={m.repositorySync.waitPublish} open={syncOpen} onOpenChange={setSyncOpen} onPendingChange={setSyncPending}
+                  onResult={setSyncOutcome} fallbackFocusRef={titleRef} />
               </span>
             ) : (
               <>
@@ -436,13 +581,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               const onPublish = event.target instanceof Element && event.target.closest(`[id="${publishButtonId}"]:not([aria-disabled="true"])`) !== null;
               if (onPublish && dirty.length > 0 && !publish.pending) { event.preventDefault(); event.stopPropagation(); setDialog({ kind: "publish", locales: dirty }); }
             }}>
-              <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} />
+              <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} disabled={syncPending} />
             </span>
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <FilterMenu axis={w.filters.completion.axis} label={completionLabel} on={query.completion !== "all"} size="md" disabled={noKeys}
-            value={query.completion === "missing" ? `missing:${query.missingLocale ?? ""}` : query.completion}
+          <FilterMenu axis={w.filters.completion.axis} label={completionLabel} on={shown.completion !== "all"} size="md" disabled={noKeys}
+            value={shown.completion === "missing" ? `missing:${shown.missingLocale ?? ""}` : shown.completion}
             options={[
               { value: "all", label: w.filters.completion.all },
               { value: "incomplete", label: w.filters.completion.incomplete },
@@ -451,8 +596,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             ]}
             onSelect={value => value.startsWith("missing:") ? filter({ completion: "missing", missingLocale: value.slice("missing:".length) }) : filter({ completion: value as TranslationQuery["completion"] })}
           />
-          <FilterMenu axis={w.filters.state.axis} label={stateLabel} on={query.state !== undefined} size="md" disabled={noKeys}
-            value={query.state ?? ""} hint={w.filters.state.newHint}
+          <FilterMenu axis={w.filters.state.axis} label={stateLabel} on={shown.state !== undefined} size="md" disabled={noKeys}
+            value={shown.state ?? ""} hint={w.filters.state.newHint}
             options={[
               { value: "", label: w.filters.state.any },
               { value: "unsent", label: w.filters.state.unsent },
@@ -461,8 +606,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             ]}
             onSelect={value => filter({ state: value === "" ? undefined : value as TranslationQuery["state"] })}
           />
-          <FilterMenu axis={w.filters.scope.axis} label={scopeLabel} on={query.scope !== "source"} size="md" disabled={noKeys}
-            value={query.scope}
+          <FilterMenu axis={w.filters.scope.axis} label={scopeLabel} on={shown.scope !== "source"} size="md" disabled={noKeys}
+            value={shown.scope}
             options={[
               { value: "namespace", label: w.filters.scope.namespace },
               { value: "source", label: w.filters.scope.source },
@@ -486,6 +631,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} />
           <SyncResult slug={slug} branch={props.sync.branch} outcome={syncOutcome} onDismiss={() => setSyncOutcome(null)}
             retryDisabled={publish.pending} onRetry={role === "OWNER" ? openSync : undefined} />
+          {/* 지연 문구는 실제로 도는 동안만이다 — 재검증 트리 대기(malmoi#103)는 넣지 않는다. */}
+          <SlowNotice active={syncRunning} />
         </div>
       </div>
 
@@ -493,7 +640,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         <div className="flex h-full min-h-0" style={layout?.scrollWidth ? { minWidth: layout.scrollWidth } : undefined}>
           <div className="border-border bg-background relative flex min-h-0 shrink-0 overflow-hidden rounded-lg border" style={layout ? { width: layout.left } : { width: PANEL.tree + PANEL.list }}>
             {!treeCollapsed && (
-              <TreePanel tree={tree} surfaceSlug={routeSurfaceSlug} ns={query.scope === "namespace" ? query.ns : ALL_NAMESPACES} onSelect={selectTree}
+              <TreePanel tree={tree} surfaceSlug={view.surface} ns={shown.scope === "namespace" ? shown.ns : ALL_NAMESPACES} onSelect={selectTree}
                 className="border-border shrink-0 border-r" width={layout?.tree ?? PANEL.tree} />
             )}
             <KeyList
@@ -501,23 +648,26 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               title={listTitle}
               count={list.matchedKeyCount}
               savedExtra={savedOutCount(rows)}
-              selectedKeyId={keyId}
+              selectedKeyId={view.keyId}
               showSource={query.scope === "project"}
               onSelect={selectRow}
-              onMore={list.nextCursor === null ? null : () => router.push(withQuery({ ...query, cursor: list.nextCursor ?? undefined }))}
+              onMore={shownList.cursor === null ? null : () => void loadMore()}
+              moreLoading={shownList.more === "loading"}
+              moreFailed={shownList.more === "failed"}
+              busy={navigating}
               treeButton={treeCollapsed ? { open: treeOverlay, controls: treeOverlayId, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span className="text-muted-foreground text-xs">{routeSurfaceSlug}</span> } : undefined}
               empty={listEmpty}
             />
             {treeCollapsed && treeOverlay && (
               <TreeOverlay id={treeOverlayId} onClose={() => setTreeOverlay(false)}>
-                <TreePanel tree={tree} surfaceSlug={routeSurfaceSlug} ns={query.scope === "namespace" ? query.ns : ALL_NAMESPACES}
+                <TreePanel tree={tree} surfaceSlug={view.surface} ns={shown.scope === "namespace" ? shown.ns : ALL_NAMESPACES}
                   // 선택한 항목이 오버레이와 함께 사라지므로 토글로 돌려준다 — 안 하면 이동이 있든 없든 body로 떨어진다(T19 실측).
                   onSelect={(surface, ns) => { focusController(treeOverlayId); setTreeOverlay(false); selectTree(surface, ns); }} />
               </TreeOverlay>
             )}
           </div>
           <ResizeHandle layout={layout} onChange={rememberLeft} />
-          <div className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
+          <div data-panel="detail" aria-busy={navigating || undefined} className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
             {detail === null ? (
               <div className="flex flex-1 items-center justify-center">
                 {props.detail !== null && "absent" in props.detail
@@ -526,15 +676,19 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               </div>
             ) : (
               <LocalePanel
-                detail={{ ...detail, locales: detail.locales.map(l => ({ ...l, pending: l.pending && !revertedLocales.has(l.code) })) }}
+                detail={{ ...detail, locales: detail.locales.map(l => ({ ...l, pending: isPending(l) })) }}
                 draft={draft}
-                language={query.language}
-                onLanguage={language => router.replace(withQuery(nextQuery(query, { language })))}
-                onEdit={(code, value) => dispatch({ type: "edit", locale: code, value })}
-                onReset={code => dispatch({ type: "reset", locale: code })}
+                language={language}
+                languageLocked={navigating}
+                onLanguage={next => {
+                  setLanguage(next);
+                  window.history.replaceState(null, "", withQuery(nextQuery(query, { language: next })));
+                }}
+                onEdit={(code, value) => edit({ type: "edit", locale: code, value })}
+                onReset={code => edit({ type: "reset", locale: code })}
                 onSave={() => void save()}
                 copyHref={withQuery({ ...DEFAULT_TRANSLATION_QUERY, ns: detail.key.namespace, scope: "namespace", key: detail.key.id, keySurface: detail.key.surfaceSlug }, detail.key.surfaceSlug)}
-                readOnly={status?.kind === "archived" || status?.kind === "lost-access"}
+                readOnly={navigating || status?.kind === "archived" || status?.kind === "lost-access"}
                 invalid={status?.kind === "cannot-clear" ? { locales: status.locales, describedBy: footerAlertId } : undefined}
                 footer={
                   <Footer
@@ -547,6 +701,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                     hasPending={pendingLocales.length > 0}
                     revertBlocked={revertBlocked}
                     revertBusy={revertBusy}
+                    publishing={publish.pending}
                     saveDisabled={dirty.length === 0 || status?.kind === "archived" || status?.kind === "lost-access"}
                     onSave={() => void save()}
                     onRevert={() => void openRevert()}
@@ -575,17 +730,23 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   );
 }
 
-function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending, revertBlocked, revertBusy, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
+function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending, revertBlocked, revertBusy, publishing, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
   alertId: string; dirty: number; status: FooterStatus | null; saving: boolean; resultRef: React.RefObject<HTMLSpanElement | null>; saveRef: React.RefObject<HTMLButtonElement | null>;
-  hasPending: boolean; revertBlocked: RevertReason | null; revertBusy: boolean; saveDisabled: boolean;
+  hasPending: boolean; revertBlocked: RevertReason | null; revertBusy: boolean; publishing: boolean; saveDisabled: boolean;
   onSave: () => void; onRevert: () => void; onCheck: () => void; slug: string; storageBlocked: boolean;
 }) {
   const w = m.translations.workspace;
   const reasonId = useId();
-  const text = dirty > 0 ? (status?.kind === "saved" ? w.footer.savedSince(dirty) : w.footer.unsaved(dirty))
+  const saveReasonId = useId();
+  /*
+    ⚠️ **Publish 중 [Save]는 `disabled`가 아니라 `aria-disabled` + 보이는 사유다** (audit-ux #10 · D3 — DESIGN §6.65). 저장할 것이
+    있을 때만 잠긴다 — 없으면 원래 꺼져 있고 사유가 할 말이 없다. 끝나면 같은 버튼이 풀리므로 포커스가 그대로 남는다.
+  */
+  const saveLocked = publishing && !saveDisabled;
+  // 복구 문구는 미저장이 남은 동안의 말이다 — 0이면 `edit`가 이미 지웠다 (malmoi#100).
+  const text = dirty > 0 ? (status?.kind === "saved" ? w.footer.savedSince(dirty) : status?.kind === "restored" ? w.footer.session.restored(status.count) : w.footer.unsaved(dirty))
     : status?.kind === "saved" ? (hasPending ? w.footer.savedNotSent : w.footer.saved)
     : status?.kind === "reverted" ? w.revert.reverted
-    : status?.kind === "restored" ? w.footer.session.restored(status.count)
     : "";
   return (
     <div className="border-border shrink-0 border-t">
@@ -601,6 +762,7 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
             {text}
           </span>
           {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{REVERT_REASONS[revertBlocked]()}</span>}
+          {saveLocked && <span id={saveReasonId} className="text-muted-foreground min-w-0 text-xs">{m.repositorySync.waitPublish}</span>}
         </span>
         <span className="ml-auto inline-flex items-center gap-2">
           {hasPending && (
@@ -612,7 +774,9 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
               {w.revert.button}
             </Button>
           )}
-          <Button ref={saveRef} variant="primary" loading={saving} disabled={saveDisabled} onClick={onSave}>{w.footer.save}</Button>
+          <Button ref={saveRef} variant="primary" loading={saving} disabled={saveDisabled}
+            aria-disabled={saveLocked ? "true" : undefined} aria-describedby={saveLocked ? saveReasonId : undefined}
+            onClick={() => { if (!saveLocked) onSave(); }}>{w.footer.save}</Button>
         </span>
       </div>
     </div>

@@ -61,7 +61,12 @@ export function PendingInvitations({
   /** Resend 뒤 포커스 착지점 — 행이 남으면 그 버튼, 교체되면 카드 제목. 잠금이 풀린 커밋에서 옮긴다. */
   const [landing, setLanding] = useState<{ kind: "resend"; id: string } | { kind: "heading" } | null>(null);
   const [announcement, setAnnouncement] = useState("");
-  const [, startTransition] = useTransition();
+  /**
+   * ⚠️ 철회 잠금은 `isPending`과 AND다 (audit-ux #13 — `member-list.tsx`와 같은 형). ⚠️ **Resend는 이 형이 아니다** — `isPending`은
+   * 진행 중인 async transition 전부에 얽혀(POSTMORTEM 2026-09-18) 두 행을 연달아 누르면 먼저 끝난 행도 나중 행이 끝날 때까지
+   * 잠긴다. 행마다 제 응답에 풀리는 계약(`resending` 집합)을 지킨다.
+   */
+  const [isPending, startTransition] = useTransition();
 
   /**
    * ⚠️ **거부되면 누른 Revoke로 포커스를 돌려준다** (malmoi#53). 그때 그 버튼은 `loading` 동안 `disabled`라
@@ -119,8 +124,9 @@ export function PendingInvitations({
       // ⚠️ 던져도 행을 풀고 그 자리에서 말한다 (audit #24) — 위 `resend`와 같은 형이다.
       let result: Awaited<ReturnType<typeof revokeInvitation>> | null;
       try { result = await revokeInvitation({ slug, invitationId }); } catch { result = null; }
-      setPendingId(null);
       if (result === null || !result.ok) {
+        // 행이 남는 갈래는 곧장 푼다 — 남겨 두면 다른 행의 Resend가 세운 `isPending`에 이 행의 Revoke가 따라 돈다.
+        setPendingId(null);
         setFailed({ id: invitationId, error: result === null ? null : result.error });
         return;
       }
@@ -211,7 +217,7 @@ export function PendingInvitations({
                               aria-label={m.members.pending.resendLabel(invitation.emailLabel)}
                               aria-busy={resending.has(invitation.id)}
                               loading={resending.has(invitation.id)}
-                              disabled={pendingId === invitation.id}
+                              disabled={isPending && pendingId === invitation.id}
                               onClick={() => resend(invitation.id, invitation.emailLabel)}
                             >
                               {m.members.pending.resend}
@@ -225,7 +231,7 @@ export function PendingInvitations({
                                   aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
                                   /* ⚠️ `loading`이 아니라 `busy`다 (audit #32b) — 확정하면 Dialog가 이 트리거로 포커스를 돌려주는데, 같은
                                      커밋에 진짜 `disabled`가 되면 그 포커스가 `body`로 빠졌다(`button.tsx`의 `busy`). */
-                                  busy={pendingId === invitation.id}
+                                  busy={isPending && pendingId === invitation.id}
                                   disabled={resending.has(invitation.id)}
                                 >
                                   {m.members.pending.revoke}

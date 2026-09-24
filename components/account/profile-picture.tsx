@@ -1,5 +1,6 @@
 "use client";
 
+import { unstable_rethrow } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
 import { deleteProfileImage, uploadProfileImage } from "@/app/(edit)/account/actions";
@@ -60,9 +61,13 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
             setRunning("upload");
             startTransition(async () => {
               // ⚠️ **`finally`다** — 던지면(`requireUser`의 redirect 등) 스피너가 영구히 돈다.
+              // ⚠️ **통신 실패는 제자리에서 말한다** (audit-ux #14) — 안 잡으면 error boundary가 `/account` 전체를 삼킨다. redirect만 되던진다.
               try {
                 const result = await uploadProfileImage(form);
                 setFailure(result.ok ? null : uploadRejectMessage(result.reason));
+              } catch (thrown) {
+                unstable_rethrow(thrown);
+                setFailure(uploadRejectMessage("unavailable"));
               } finally {
                 setRunning(null);
               }
@@ -89,6 +94,9 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
               try {
                 const result = await deleteProfileImage();
                 setFailure(result.ok ? null : uploadRejectMessage(result.reason));
+              } catch (thrown) {
+                unstable_rethrow(thrown);
+                setFailure(uploadRejectMessage("unavailable"));
               } finally {
                 setRunning(null);
               }

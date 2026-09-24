@@ -33,7 +33,7 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
 <tr><td class="mm-outer" align="center" style="padding:40px 16px;">
   <!--[if mso]><table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
-    <tr><td style="padding:0 0 16px 0;"><img src="{{LOGO_URL}}" width="32" height="32" alt="malmoi" style="display:block;width:32px;height:32px;border:0;outline:none;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:32px;font-weight:600;color:#0a0a0a;"></td></tr>
+    <tr><td style="padding:0 0 16px 0;"><img src="{{LOGO_URL}}" width="40" height="40" alt="malmoi" style="display:block;width:40px;height:40px;border:0;outline:none;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:40px;font-weight:600;color:#0a0a0a;"></td></tr>
     <tr><td style="background-color:#ffffff;border-bottom:1px solid #e5e5e5;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr><td class="mm-card-pad" style="padding:36px 0 32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">

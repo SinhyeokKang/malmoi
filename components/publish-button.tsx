@@ -2,10 +2,10 @@
 import { utcMinute } from "@/lib/utc-time";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
-import { Check, CircleCheck, FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { CircleCheck, FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useRef, useState, type RefObject, type ReactNode } from "react";
 import { triggerPullAction } from "@/app/(edit)/actions";
+import { useCommitWait } from "@/components/commit-wait";
 import { loadPublishPreview } from "@/app/(edit)/publish-actions";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -15,26 +15,32 @@ import { OnboardingModal } from "@/components/ui/modal";
 import { m } from "@/lib/i18n";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
-import type { PullOutcome } from "@/lib/pull/message";
+import { pullRevalidates, type PullOutcome } from "@/lib/pull/message";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { routes } from "@/lib/routes";
 import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
 import { planPublishButton, planPublishView, planWithheldLines } from "@/lib/publish/plan";
 import { summarizeWarnings } from "@/lib/publish/warnings";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { SlowNotice } from "@/components/slow-notice";
 
-/** 실행 결과에 **그때의 사실**을 붙여 둔다 — 결과를 다시 열 때 `count`는 이미 refresh로 줄어 있다. */
+/** 실행 결과에 **그때의 사실**을 붙여 둔다 — 결과를 다시 열 때 `count`는 이미 재검증으로 줄어 있다. */
 type PublishResultState = { outcome: PullOutcome; at: Date; total: number };
 
-/** 조건부 모달이 아니라 무조건 렌더되는 호스트가 든다 — 닫기·refresh가 실행 결과를 지우면 안 된다. */
-export function usePublish(slug: string) {
-  const router = useRouter();
+/**
+ * 조건부 모달이 아니라 무조건 렌더되는 호스트가 든다 — 닫기·재검증이 실행 결과를 지우면 안 된다.
+ * @param server 호스트가 서버에서 받은 prop 하나 — 재검증 트리가 커밋되면 새 객체가 된다(`useCommitWait`, malmoi#103).
+ */
+export function usePublish(slug: string, server?: unknown) {
+  const commit = useCommitWait(server);
   const [state, setState] = useState<PublishModalState>({ kind: "preview-loading" });
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<PublishResultState | null>(null);
   /** ⚠️ **진행 중인 실행의 건수는 `result`에서 못 읽는다** — 그 값은 아직 **직전** 실행의 것이다. */
   const [runTotal, setRunTotal] = useState(0);
+  /** 누른 확정 버튼의 라벨 — 진행 모달이 같은 자리에 그 라벨로 스피너를 세운다 (audit-ux D1: 도는 동안 라벨이 바뀌지 않는다). */
+  const [runLabel, setRunLabel] = useState("");
   const current = useRef(state); current.current = state;
   const running = useRef(false);
   const generation = useRef(0);
@@ -42,7 +48,7 @@ export function usePublish(slug: string) {
   const triggerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     host.current++; generation.current++; running.current = false;
-    setOpen(false); setPending(false); setResult(null); setRunTotal(0); setState({ kind: "preview-loading" });
+    setOpen(false); setPending(false); setResult(null); setRunTotal(0); setRunLabel(""); setState({ kind: "preview-loading" });
     return () => { host.current++; generation.current++; };
   }, [slug]);
   function close() { generation.current++; setOpen(false); }
@@ -65,23 +71,36 @@ export function usePublish(slug: string) {
       if (request === generation.current) { current.current = { kind: "preview-error" }; setState(current.current); }
     }
   }
-  async function confirm() {
+  async function confirm(label: string) {
     if (running.current || current.current.kind !== "preview-ready") return;
     const owner = host.current;
     // 진행 제목도 나가는 수로 말한다(#84) — 보류만 있으면 애초에 실행 버튼이 없다.
     const total = current.current.preview.sendable.total;
     if (total === 0) return;
-    running.current = true; generation.current++; setPending(true); setRunTotal(total);
+    running.current = true; generation.current++; setPending(true); setRunTotal(total); setRunLabel(label);
     current.current = { kind: "running" }; setState(current.current);
     const next: PullOutcome = await triggerPullAction(slug).catch(() => ({ status: "failed", error: "unavailable", retryable: true, delivery: "unknown" }));
     if (owner !== host.current) return;
     running.current = false; setPending(false); setResult({ outcome: next, at: new Date(), total });
     current.current = { kind: "result", outcome: next }; setState(current.current);
-    if (next.status !== "failed") router.refresh();
+    /*
+      ⚠️ **결과는 지금 서고 잠금은 새 트리까지 간다** (malmoi#103) — 트리는 promise가 풀린 뒤 0.3–1.5 s 늦게 커밋되고, 그 사이 풀면
+      Sync·Revert·이 버튼이 옛 건수로 켜진다. 트리를 싣고 오는 결과만 기다린다 — `runSync`를 지난 `failed`도 온다 (`pullRevalidates`).
+    */
+    if (pullRevalidates(next)) commit.wait();
+    /*
+      ⚠️ **`router.refresh()`를 부르지 않는다** (audit-ux #12) — `triggerPullAction`이 결과와 무관하게 `revalidatePath(…, "layout")`를
+      부르고 Next가 그 응답의 새 트리를 커밋한다. 또 부르면 결과가 선 뒤 두 번째 전체 렌더가 표시 없이 돌았다.
+      ⚠️ async transition으로 감싸지 않는다 — 긴 Publish 동안 내비게이션까지 얽힌다(`sync-button.tsx`).
+    */
   }
   function showResult() { if (result) { generation.current++; setState({ kind: "result", outcome: result.outcome }); setOpen(true); } }
-  function launch() { if (running.current) { setState({ kind: "running" }); setOpen(true); } else void preview(); }
-  return { state, open, pending, result, runTotal, triggerRef, close, preview, confirm, showResult, launch };
+  /*
+    ⚠️ **트리를 기다리는 동안 누르면 결과를 연다** (malmoi#103 r1) — 트리거는 아직 진행을 보이는데(`pending`) `running`은 이미 풀려,
+    새 미리보기가 열리고 옛 건수로 두 번째 Publish를 권했다.
+  */
+  function launch() { if (running.current) { setState({ kind: "running" }); setOpen(true); } else if (commit.waiting && result) showResult(); else void preview(); }
+  return { state, open, pending: pending || commit.waiting, result, runTotal, runLabel, triggerRef, close, preview, confirm, showResult, launch };
 }
 export type PublishController = ReturnType<typeof usePublish>;
 
@@ -91,12 +110,17 @@ export function PublishButton({ id, count, publish, disabled = false }: { id?: s
   const reasonId = useId();
   // ⚠️ **꺼진 Publish는 `aria-disabled`다** — 진짜 `disabled`면 사유가 hover `title`에만 남아 키보드·스크린리더로
   // 닿지 않는다 (DESIGN §6.65). 포커스를 받으므로 모달을 닫으면 이 버튼으로 돌아온다.
+  /*
+    ⚠️ **라벨은 도는 동안에도 `Publish`다** (audit-ux D1) — 스피너가 아이콘을 교체하고, 라벨이 접근 이름이라 진행 신호는 `aria-busy`가 든다.
+    ⚠️ **`loading`·`busy`를 쓰지 않는다** — 도는 동안에도 눌러서 진행 모달을 다시 연다(`launch`). 둘 다 클릭을 막는다.
+  */
   return <div className="flex items-center gap-2">
     <span title={plan.hint || undefined}>
       <Button id={id} variant="primary" aria-disabled={plan.disabled ? "true" : undefined} aria-describedby={plan.disabled && plan.hint ? reasonId : undefined}
+        aria-busy={publish.pending || undefined}
         onClick={event => { if (plan.disabled) return; publish.triggerRef.current = event.currentTarget; publish.launch(); }}>
         {publish.pending ? <LoaderCircle className="animate-spin" aria-hidden /> : <Send aria-hidden />}
-        {publish.pending ? m.translations.publish.publishing : m.translations.publish.button}
+        {m.translations.publish.button}
         {plan.badge !== null && <span className="bg-background/20 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-xs">{plan.badge.toLocaleString("en-US")}</span>}
       </Button>
       {plan.disabled && plan.hint && <span id={reasonId} className="sr-only">{plan.hint}</span>}
@@ -291,21 +315,20 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
 }
 
 /**
- * ⚠️ **시간 기반이고 사실을 주장하지 않는다** — 진행 이벤트를 내는 API가 없다(시안 §10-2).
- * 그래서 완료 표시가 **무색**이고 `done` 낱말이 없다.
+ * ⚠️ **진행 표시가 아니라 하는 일의 목록이다** (audit-ux #23) — 진행 이벤트를 내는 API가 없다(시안 §10-2). 전엔 2.5초·6.5초 타이머가
+ * 체크를 넘겨 일어나지 않은 단계를 주장한 뒤 마지막 단계에서 멈춘 채 돌았다. 도는 것은 스피너 하나이고(목록 전체의 것이다),
+ * 오래 걸리면 `SlowNotice`가 그 사실만 말한다.
  */
 function Progress({ branch }: { branch: string }) {
-  const [stage, setStage] = useState(0);
-  useEffect(() => { const a = setTimeout(() => setStage(1), 2500); const b = setTimeout(() => setStage(2), 6500); return () => { clearTimeout(a); clearTimeout(b); }; }, []);
-  return <ol className="border-border flex shrink-0 flex-col overflow-hidden rounded-lg border">
-    {p.progress(branch).map((text, i) => <li key={text} className={`flex items-center gap-3 px-4 py-3.5 ${i === 0 ? "" : "border-divider border-t"}`}>
-      <span className="flex size-4 shrink-0 items-center justify-center">
-        {i < stage && <Check className="size-4 text-neutral-400" aria-hidden />}
-        {i === stage && <LoaderCircle className="size-4 animate-spin" aria-hidden />}
-      </span>
-      <span className={`min-w-0 flex-1 text-sm ${i === stage ? "" : "text-muted-foreground"}`}>{text}</span>
-    </li>)}
-  </ol>;
+  return <>
+    <div className="border-border flex shrink-0 gap-3 rounded-lg border px-4 py-3.5">
+      <span className="flex h-5 shrink-0 items-center"><LoaderCircle className="size-4 animate-spin" aria-hidden /></span>
+      <ol className="flex min-w-0 flex-1 flex-col gap-1.5">
+        {p.progress(branch).map(text => <li key={text} className="text-muted-foreground text-sm">{text}</li>)}
+      </ol>
+    </div>
+    <SlowNotice active />
+  </>;
 }
 
 /** `1g` — 펼친 목록이다(불변식 9). 단위가 **파일**이고 키 이름이 없다 — 경고 문자열에 없다. */
@@ -427,7 +450,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         description = open === null ? p.same.nothingBody : p.same.closesBody(open.number, repo.branch);
         // ⚠️ **파일 수를 빼고 말한다** (#94) — `groups`는 편집이 사는 파일이지 바뀌는 파일이 아니다. 실행·Logs는 `0 files`다.
         footer = p.fileSummary(sending, sendingKeys);
-        actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm()}>{open === null ? p.same.action : p.same.closeAction(open.number)}</Button>;
+        const confirmLabel = open === null ? p.same.action : p.same.closeAction(open.number);
+        actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm(confirmLabel)}>{confirmLabel}</Button>;
         body = <PreviewTable preview={data} />;
         break;
       }
@@ -435,7 +459,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       description = `${partial ? p.previewIntroPartial(label) : p.previewIntro(label)} ${p.previewCounts(sending, sendingKeys)}`;
       // ⚠️ **상한을 넘으면 파일 수를 빼고 말한다** — `total`·`keys`는 미발송 전체인데 `groups`는 실린 200행뿐이라, 셋을 나란히 두면 한 줄 안에서 모집단이 갈린다.
       footer = data.truncated > 0 ? p.fileSummary(sending, sendingKeys) : p.previewSummary(sending, sendingKeys, data.groups.length);
-      actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm()}>{open ? p.replacePr(open.number) : p.openPr}</Button>;
+      const confirmLabel = open ? p.replacePr(open.number) : p.openPr;
+      actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm(confirmLabel)}>{confirmLabel}</Button>;
       body = <>
         {/* ⚠️ **삼상태를 `null`로 접지 않는다** — "없다"와 "모른다"는 다른 줄이다. 줄은 조회 전에도 선다. */}
         {open === undefined
@@ -450,7 +475,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
     case "running":
       panel = PANEL.running; inner = false;
       title = p.progressTitle(runTotal || count); description = p.progressDescription; footer = p.leave;
-      actions = <Button variant="primary" size="lg" disabled>{p.publishing}</Button>;
+      // D1 — 라벨은 누른 확정 버튼의 것 그대로이고 스피너만 선다. 닫았다 다시 연 모달도 같은 라벨이다.
+      actions = <Button variant="primary" size="lg" loading>{publish.runLabel || p.button}</Button>;
       body = <Progress branch={repo.syncBranch} />;
       break;
     case "result": {

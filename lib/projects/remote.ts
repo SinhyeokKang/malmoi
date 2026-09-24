@@ -3,6 +3,7 @@ import "server-only";
 import { isAdapterName } from "@/lib/adapters";
 import { AppError, logCaught } from "@/lib/failure";
 import { createGitClient } from "@/lib/github";
+import { GITHUB_WAIT_MS } from "@/lib/github-wait";
 import type { GitClient } from "@/lib/pull/client";
 import { changedLocaleFileCount, pullNumberFrom } from "./remote-plan";
 
@@ -53,8 +54,10 @@ const CONCURRENCY = 3;
  *
  * ⚠️ **넘긴 요청을 취소하지는 않는다** — octokit에 그 손잡이가 없다. 페이지가 안 기다릴 뿐이고,
  * 남은 작업은 자기 속도로 끝나며 그 결과는 버려진다.
+ *
+ * ⚠️ **값은 설정·Home의 연결 확인과 같은 상수다** (`GITHUB_WAIT_MS` — audit-ux D5). 사본 둘이면 다시 갈린다.
  */
-const DEADLINE_MS = 8_000;
+const DEADLINE_MS = GITHUB_WAIT_MS;
 
 export async function loadRemoteSignals(
   targets: readonly RemoteTarget[],

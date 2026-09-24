@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, LogOut } from "lucide-react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useFormStatus } from "react-dom";
 
@@ -74,15 +74,16 @@ export function Sidebar({
         >
           {/*
             ⚠️ **라벨 앞에 대상의 얼굴이 선다** (2026-09-24 사용자) — 사용자는 `Avatar`(원), 프로젝트는
-            `ProjectThumbnail`(라운드 사각). 모양이 대상을 말한다(DESIGN §6.4). 둘 다 24이고 `py-1`이라
-            머리 줄 높이는 옛 `py-1.5` + 20줄과 같은 32다. `px-0.5`는 24의 중심을 아래 항목 아이콘 16의
-            중심(6 + 8 = 14)에 맞춘다.
+            `ProjectThumbnail`(라운드 사각). 모양이 대상을 말한다(DESIGN §6.4).
+            ⚠️ **얼굴이 아래 항목 아이콘과 같은 규격이다** (2026-09-25 사용자 — 24 · `px-0.5 py-1`에서) —
+            16 · `p-1.5` · `gap-2`가 `Item`과 같아서 머리 라벨과 항목 라벨의 시작점이 한 세로선에 선다.
+            줄 높이도 항목과 같은 32다. 중심만 맞추던 옛 판정은 라벨 시작점이 4px 어긋났다.
           */}
-          <p data-zone-head className="text-foreground flex items-center gap-2 px-0.5 py-1 text-sm font-medium">
+          <p data-zone-head className="text-foreground flex items-center gap-2 p-1.5 text-sm font-medium">
             {zone.key === "work" ? (
-              <Avatar name={userName} src={userImage} size={24} />
+              <Avatar name={userName} src={userImage} size={16} />
             ) : (
-              <ProjectThumbnail name={zone.label} src={project?.image} size={24} />
+              <ProjectThumbnail name={zone.label} src={project?.image} size={16} />
             )}
             <span className="min-w-0 truncate">{zone.label}</span>
           </p>
@@ -138,8 +139,17 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
          * 보인다. `[0.03]`은 프로젝트 목록 행의 hover와 같은 값이라 임의값이 늘지 않는다.
          */
         active ? "bg-foreground/[0.07]" : "hover:bg-foreground/[0.03]",
+        /**
+         * ⚠️ **누른 항목은 응답 전에 선택 면을 든다** (audit-ux #6 · DESIGN §6.4 `Button loading`). `active`는 커밋 뒤의
+         * `usePathname`이라 느린 이동 동안 옛 항목에 남는다. `useLinkStatus`는 **링크의 자손에서만** 값을 내므로
+         * 자손이 표식을 내고 링크가 `has-[…]`로 읽는다 — 면을 자손으로 옮기면 hit 영역과 치수가 움직인다.
+         * ⚠️ **hover와 겹친 변형이 짝이다** — 누른 직후 커서는 그 항목 위이고, `:hover`와 `:has(…)`는 명시도가 같아
+         * 뒤에 나오는 hover 면(0.03)이 이길 수 있다. 둘을 겹치면 명시도로 이긴다.
+         */
+        "has-[[data-nav-pending]]:bg-foreground/[0.07] hover:has-[[data-nav-pending]]:bg-foreground/[0.07]",
       )}
     >
+      <PendingMark />
       <span className="flex size-4 shrink-0 items-center justify-center">
         <Icon className="size-4" aria-hidden />
       </span>
@@ -160,6 +170,12 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
       )}
     </Link>
   );
+}
+
+/** 이 링크의 이동이 진행 중이면 보이지 않는 표식 하나 — 면은 링크가 그린다(`Item`). */
+function PendingMark() {
+  const { pending } = useLinkStatus();
+  return pending ? <span data-nav-pending hidden /> : null;
 }
 
 /**

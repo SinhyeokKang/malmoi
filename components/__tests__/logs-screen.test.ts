@@ -238,3 +238,22 @@ describe("logs — 목록의 글자와 버튼이 토큰을 지난다", () => {
     expect(read(PAGE)).toMatch(/<ButtonLink[^>]*href=\{routes\.settings\(slug\)\}/);
   });
 });
+
+/**
+ * **서버가 조립하는 목록 링크도 닫힌 상세의 `event`를 싣지 않는다** (malmoi#102). 상세 닫기가
+ * `history.replaceState`라 이 렌더의 `filter.event`는 닫은 뒤에도 남는다 — [Older]·빈 상태의 [Clear filters]가
+ * 그것을 실으면 누르는 순간 닫은 상세가 되살아났다. 둘 다 모달 뒤라 상세가 열린 동안에는 누를 수 없다.
+ * 행 링크(`event: ref`)와 닫기(`event: undefined`)만 `event`를 정한다.
+ */
+describe("logs — 목록 링크가 닫힌 상세를 되살리지 않는다", () => {
+  const src = read(PAGE);
+
+  it("[Older]가 `event`를 비운다", () => {
+    expect(src).toMatch(/cursor: encodeCursor\(page\.nextCursor\),\s*event: undefined/);
+  });
+
+  it("빈 상태의 [Clear filters]가 `event`를 비운다", () => {
+    expect(src).toContain("clearedLogsQuery({ ...filter, event: null })");
+    expect(src).not.toContain("clearedLogsQuery(filter)");
+  });
+});

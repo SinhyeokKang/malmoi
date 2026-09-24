@@ -3,9 +3,8 @@ import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 
 /**
- * ⚠️ **본문이 아직 placeholder다** — 그릇만 §6.61로 섰고 내용은 launch-readiness L2.3이 쓴다.
- * `/privacy`와 같은 껍데기를 쓴다: 두 화면이 **지금은 같은 것이 사실**이라 사본을 만들지 않고,
- * 내용이 갈리는 시점에도 그릇은 공유한다.
+ * 도움말. 본문은 `m.publicDocs.docs`이고 수·이름은 정본 상수와 대조된다(`docs-content.test.tsx`).
+ * `/privacy`와 같은 껍데기(DESIGN §6.61)를 쓴다 — 내용이 갈려도 그릇은 공유한다.
  *
  * ⚠️ **인가를 지나지 않는다** — 공개 문서다 (`EXEMPT`에 등재). 세션은 복귀 링크 하나 때문에 읽는다.
  */

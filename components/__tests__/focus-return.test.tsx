@@ -127,11 +127,11 @@ describe("Dialog 트리거 — 진행 중에도 포커스를 지킨다 (#32·#32
   it("보관이 성공해 카드가 [Restore project]로 바뀌면 그 버튼으로 착지한다", async () => {
     const response = deferred<{ ok: true }>();
     mocks.archiveProject.mockReturnValue(response.promise);
-    const view = await render(<ArchiveCard slug="acme" name="Acme" archived={false} openPrUrl={null} />);
+    const view = await render(<ArchiveCard slug="acme" name="Acme" archived={false} openPrUrl={Promise.resolve(null)} />);
     await click(byText(m.archive.action));
     await click(byText(m.archive.action));
     // 서버 revalidate가 같은 커밋에 보관 상태를 싣는다.
-    await act(async () => { response.resolve({ ok: true }); await view.rerender(<ArchiveCard slug="acme" name="Acme" archived openPrUrl={null} />); });
+    await act(async () => { response.resolve({ ok: true }); await view.rerender(<ArchiveCard slug="acme" name="Acme" archived />); });
     expect(document.activeElement).toBe(byText(m.archive.restore));
   });
 

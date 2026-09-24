@@ -1,8 +1,8 @@
 "use client";
 
-import { ChevronDown, ChevronUp, RefreshCw, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useId, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
 
 import { SearchInput } from "@/components/search-input";
 import { Badge } from "@/components/ui/badge";
@@ -58,9 +58,14 @@ export function LogFilters({
 }) {
   const router = useRouter();
 
-  /** ⚠️ **좁히는 축이 바뀌면 커서를 뺀다** — `logsQuery`가 새 필터로 다시 조립한다. */
+  /**
+   * ⚠️ **좁히는 축이 바뀌면 커서를 뺀다** — `logsQuery`가 새 필터로 다시 조립한다.
+   * ⚠️ **`event`도 뺀다** (malmoi#102) — 상세 닫기가 `history.replaceState`라 이 `filter` prop의 `event`는 닫은 뒤에도
+   * 남는다. 그것을 실으면 필터를 바꾸는 순간 방금 닫은 상세가 되살아났다. 이 컨트롤들은 모달 뒤라 상세가 열린
+   * 동안에는 누를 수 없으므로, 여기서 나가는 주소에 `event`가 있을 자리가 없다.
+   */
   const go = (next: Partial<LogFilter>) => {
-    router.push(routes.logs(slug, logsQuery({ ...filter, ...next, cursor: null })));
+    router.push(routes.logs(slug, logsQuery({ ...filter, ...next, cursor: null, event: null })));
   };
 
   const toggle = (list: readonly string[], value: string): string[] =>
@@ -76,6 +81,15 @@ export function LogFilters({
    */
   const [customRun, setCustomRun] = useState(0);
   const dateTrigger = useRef<HTMLButtonElement>(null);
+  /**
+   * ⚠️ **[Refresh]·[Clear filters]가 transition을 하나씩 든다** (audit-ux #28). 전엔 둘 다 맨 `router` 호출이라
+   * 바뀐 게 없으면 눌렸는지조차 알 수 없었다 — pending이 새 서버 렌더의 커밋까지 이어진다. 둘을 나누는 것은
+   * 스피너가 **누른 버튼에만** 서야 해서다. 필터 메뉴의 `go`는 이 항목 밖이다.
+   * ⚠️ **`disabled`가 아니라 `aria-busy` + `aria-disabled` + 클릭 무시다** — 진짜 `disabled`는 누른 버튼의 포커스를
+   * `body`로 떨군다. 꺼진 겉모습은 `buttonClass`의 `aria-disabled:` 짝이 든다 (DESIGN §6, `new-project-button`과 같은 형).
+   */
+  const [refreshing, startRefresh] = useTransition();
+  const [clearing, startClear] = useTransition();
 
   return (
     <div className="flex flex-col gap-3">
@@ -90,8 +104,16 @@ export function LogFilters({
               ⚠️ **자동 갱신이 없다** — `Running…`이 조회 시점 스냅샷이라는 사실을 이 버튼 하나가 든다.
               폴링·스트리밍은 넣지 않는다(리포에 폴링 0건).
             */
-            <Button type="button" variant="default" onClick={() => router.refresh()} className="gap-1.5">
-              <RefreshCw className="size-4 shrink-0" aria-hidden />
+            <Button
+              type="button"
+              variant="default"
+              aria-busy={refreshing || undefined}
+              aria-disabled={refreshing || undefined}
+              onClick={() => { if (!refreshing) startRefresh(() => router.refresh()); }}
+              className="gap-1.5"
+            >
+              {/* 아이콘이 있는 버튼이라 스피너를 더하지 않고 교체한다 (DESIGN §6 `Button loading`). */}
+              {refreshing ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden /> : <RefreshCw className="size-4 shrink-0" aria-hidden />}
               {m.logs.refresh}
             </Button>
           )}
@@ -191,8 +213,14 @@ export function LogFilters({
         </Filter>
 
         {narrowed && (
-          <Button type="button" variant="ghost" onClick={() => router.push(routes.logs(slug, clearedLogsQuery(filter)))}>
-            <RotateCcw aria-hidden />
+          <Button
+            type="button"
+            variant="ghost"
+            aria-busy={clearing || undefined}
+            aria-disabled={clearing || undefined}
+            onClick={() => { if (!clearing) startClear(() => router.push(routes.logs(slug, clearedLogsQuery({ ...filter, event: null })))); }}
+          >
+            {clearing ? <Loader2 className="animate-spin" aria-hidden /> : <RotateCcw aria-hidden />}
             {m.logs.filters.clear}
           </Button>
         )}

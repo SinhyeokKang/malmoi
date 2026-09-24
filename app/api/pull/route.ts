@@ -6,7 +6,7 @@ import { getPrisma } from "@/lib/db";
 import { classifyFailure, fail } from "@/lib/failure";
 import { optionalEnv } from "@/lib/env";
 import { checkBearer, statusFor } from "@/lib/push/auth";
-import { PULL_BATCH_LIMIT, selectPullTargets, type PullItem } from "@/lib/pull/targets";
+import { PULL_BATCH_LIMIT, PULL_TIME_BUDGET_MS, selectPullTargets, type PullItem } from "@/lib/pull/targets";
 import { runSync } from "@/lib/sync/run";
 
 /**
@@ -45,6 +45,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   // ⚠️ **조회도 try 안이다.** 밖에 두면 DB 장애가 **본문 없는 500**으로 나가고 cron 로그에 원인이
   // 남지 않는다 — 2026-09-03 Vercel 첫 배포에서 실제로 그 상태였고, 무엇이 없는지 추측해야 했다.
+  const startedAt = Date.now();
   try {
     const prisma = getPrisma();
     // 순회 대상은 판정층이 고른다 (`lib/pull/targets.ts`) — 준비 안 된 프로젝트를 돌리면 던진다.
@@ -64,10 +65,17 @@ export async function GET(request: Request): Promise<NextResponse> {
     });
 
     // ⚠️ **상한이 붙었다** (2026-09-09, sec-audit 발견 26) — 못 돈 수가 응답과 로그에 실린다.
-    const { targets, unprocessed } = selectPullTargets(projects, PULL_BATCH_LIMIT);
+    const selected = selectPullTargets(projects, PULL_BATCH_LIMIT);
+    let unprocessed = selected.unprocessed;
     const byslug = new Map(projects.map((p) => [p.slug, p.id]));
     const results: PullItem[] = [];
-    for (const slug of targets) {
+    for (const [index, slug] of selected.targets.entries()) {
+      // ⚠️ **예산을 넘으면 나머지를 시작하지 않는다** (`PULL_TIME_BUDGET_MS`) — `maxDuration`에 죽으면 아래 요약이
+      // 통째로 사라진다. 시작 전 판정이라 첫 프로젝트는 항상 돈다.
+      if (index > 0 && Date.now() - startedAt > PULL_TIME_BUDGET_MS) {
+        unprocessed += selected.targets.length - index;
+        break;
+      }
       // ⚠️ **프로젝트마다 잡는다.** 한 프로젝트의 GitHub 장애가 나머지의 편집을 다음 밤까지 묶어두면
       // 안 된다. `lastPulledAt`은 성공한 프로젝트에만 쓰이므로 실패가 편집을 잃지 않는다.
       //
@@ -96,7 +104,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     // 버린다 — 요약이 없으면 "전 프로젝트가 매일 밤 실패한다"가 성공과 같은 관측값이 된다
     // (POSTMORTEM 2026-09-06의 형태). 로그 grep 하나로 잡히는 자리를 만든다.
     const failed = results.filter((r) => r.status === "failed").length;
-    console.log(`[pull] targets=${targets.length} failed=${failed} unprocessed=${unprocessed}`);
+    console.log(`[pull] targets=${results.length} failed=${failed} unprocessed=${unprocessed}`);
     // ⚠️ **미처리를 배열 밖에 싣는다** — 항목으로 섞으면 `PullItem` 계약이 흔들리고, 소비자가
     // 그것을 프로젝트 하나로 센다. 0이어도 필드를 뺀 적이 없어야 부재와 0이 구별된다.
     return NextResponse.json({ results, unprocessed });

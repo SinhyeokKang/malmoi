@@ -21,6 +21,7 @@ const ERRORS = [
   "no-repos",
   // ③ 탐지
   "no-candidates",
+  "single-locale",
   "tree-truncated",
   "base-branch-missing",
   "key-count-failed",
@@ -100,6 +101,15 @@ describe("onboardErrorMessage — 갈래마다 다른 문구", () => {
   });
 
   /**
+   * ⚠️ **거부만 말하면 사용자가 할 일이 없다** (launch-readiness L2.7). 로케일이 하나뿐인 리포는 붙일 수
+   * 없다고 정했고(ARCHITECTURE §3.1 "하나뿐이면 우연일 수 있다"), 그 리포 주인이 할 수 있는 유일한 일은
+   * 둘째 언어 파일을 만드는 것이다.
+   */
+  it("`no-candidates`는 다음 행동(둘째 언어 파일을 만들고 다시)을 말한다", () => {
+    expect(onboardErrorMessage("no-candidates")).toMatch(/second language/i);
+  });
+
+  /**
    * ⚠️ **`tree-truncated`는 수동 지정을 해결책으로 권하지 않는다** (2026-09-07 리뷰 🟡3). 전 문구는
    * "아래에서 경로를 직접 지정해 주세요"였는데 둘 다 거짓이었다: ① 탐지 실패면 화면이 리포 선택
    * 단계에 남아 그 "아래"가 존재하지 않고 ② 확정의 재검증이 **같은 잘린 스냅샷**을 읽어 같은 갈래를
@@ -109,6 +119,17 @@ describe("onboardErrorMessage — 갈래마다 다른 문구", () => {
     const text = onboardErrorMessage("tree-truncated");
     // 왜 막히는지를 말한다 — 사용자가 수동 지정을 시도하고 같은 벽을 만나지 않게 한다.
     expect(text).toMatch(/same limit/i);
+  });
+
+  it("`single-locale`은 파일이 없다고 하지 않고 둘째 언어 파일을 말한다 (malmoi#99)", () => {
+    const text = onboardErrorMessage("single-locale");
+    expect(text).toMatch(/second language/i);
+    expect(text).not.toMatch(/no files/i);
+  });
+
+  /** 같은 형 (L2.7) — 이 리포로 할 수 있는 다른 시도가 없다는 것까지 말해야 반복 시도가 멈춘다. */
+  it("`tree-truncated`는 이 리포가 지금은 연결되지 않는다고 끝맺는다", () => {
+    expect(onboardErrorMessage("tree-truncated")).toMatch(/can't connect/i);
   });
 
   it("`limit-reached`는 개수를 말한다", () => {

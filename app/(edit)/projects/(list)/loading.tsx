@@ -4,6 +4,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 /**
  * 목록이 서버에서 오는 동안의 스켈레톤 (2026-09-11 사용자).
  *
+ * ⚠️ **route group `(list)/`에 둔다** (audit-ux #21) — `projects/`에 바로 두면 이 경계가 `projects`의 자식 키가 바뀔 때
+ * (`__PAGE__` → `[slug]`) 다시 서서, 목록 행이나 온보딩 ④에서 프로젝트로 가는 동안 **목록 골격이 떴다가** 다른
+ * 화면으로 바뀌었다. malmoi#95가 `[slug]/(home)/`에서 고친 것과 같은 결함이 한 층 위에 있던 것이다.
+ *
  * ⚠️ **`ContentPanel`을 여기서도 든다** — 이 화면만 패널을 **페이지가** 들기 때문이다(형제 셋은
  * 레이아웃이 든다, `page.tsx` 주석). `loading.tsx`는 page를 대체하므로 패널을 빼면 로딩 동안
  * 흰 표면이 통째로 사라졌다가 돌아온다.

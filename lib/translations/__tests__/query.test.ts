@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   ALL_NAMESPACES,
   DEFAULT_TRANSLATION_QUERY,
+  FIRST_KEY,
   MISSING_LANGUAGES,
   Q_MAX_LENGTH,
   clearFilters,
+  landOnFirstKey,
   nextQuery,
   parseTranslationQuery,
   serializeTranslationQuery,
@@ -184,10 +186,30 @@ describe("treeQuery — 트리 클릭", () => {
     expect(treeQuery({ ...base, scope: "namespace", ns: "auth" }, ALL_NAMESPACES)).toMatchObject({ ns: ALL_NAMESPACES, scope: "source" });
   });
 
-  it("선택 키와 cursor를 비운다 — 첫 키는 새 목록에서 고른다", () => {
+  /*
+    ⚠️ **첫 키는 서버가 같은 렌더에서 고른다** (audit-ux #18) — 전엔 선택을 비운 주소로 한 번, 첫 키를 받은 effect가 `replace`로 또
+    한 번 왕복해 상세가 "Select a key"로 번쩍였다. 예약값 `@first`가 "새 목록의 첫 키"를 뜻한다.
+  */
+  it("선택 키 자리에 FIRST_KEY를 싣고 keySurface·cursor를 비운다", () => {
     const next = treeQuery(base, "auth");
-    expect(next.key).toBeUndefined();
+    expect(next.key).toBe(FIRST_KEY);
     expect(next.keySurface).toBeUndefined();
     expect(next.cursor).toBeUndefined();
+    expect(serializeTranslationQuery(next).key).toBe("@first");
+  });
+});
+
+describe("landOnFirstKey — 서버가 트리 이동의 첫 키를 고른다", () => {
+  const tree: TranslationQuery = { ...DEFAULT_TRANSLATION_QUERY, ns: "auth", scope: "namespace", key: FIRST_KEY };
+
+  it("첫 행이 있으면 그 키와 소스를 선택으로 싣는다", () => {
+    expect(landOnFirstKey(tree, { keyId: "k9", surfaceSlug: "app" })).toEqual({ ...tree, key: "k9", keySurface: "app" });
+  });
+
+  it("행이 없으면 선택을 비운다 — 예약값이 주소·상세로 새지 않는다", () => {
+    const next = landOnFirstKey({ ...tree, keySurface: "web" }, undefined);
+    expect(next.key).toBeUndefined();
+    expect(next.keySurface).toBeUndefined();
+    expect(next).toMatchObject({ ns: "auth", scope: "namespace" });
   });
 });

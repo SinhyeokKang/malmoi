@@ -18,9 +18,8 @@ import { toneFill } from "@/components/ui/tone";
  * (§6.4 — 그쪽은 2026-09-12에 12에서 8로 내려왔다). **세 화면을 한 값으로 모으는 쪽을 골랐다.**
  * DESIGN §6.63의 이탈 표가 그 판정의 정본이다.
  *
- * ⚠️ **테두리가 이미지·폴백 두 갈래에 똑같이 붙는다** (2026-09-20 사용자, `Avatar`와 같은 판정) —
- * 흰 배경 로고는 윤곽이 없으면 타일이 사라지고, 이미지에만 붙이면 폴백이 일어난 순간 같은 `size-7`이
- * 달라 보인다. `box-sizing: border-box`라 28px은 안 움직인다.
+ * ⚠️ **테두리가 없다** (2026-09-25 사용자 — 2026-09-20의 테두리를 `Avatar`와 함께 걷었다). 이미지·폴백
+ * 두 갈래가 함께 없어서 폴백이 일어나도 같은 크기로 보인다.
  *
  * ⚠️ **`object-contain`이다 — `avatar.tsx`의 `object-cover`와 다르다.** 프로젝트 이미지는 로고라
  * 잘리면 뜻이 사라지고, 사람 사진은 채워야 얼굴이 산다. 같은 유틸리티로 모으지 않는다.
@@ -29,19 +28,20 @@ import { toneFill } from "@/components/ui/tone";
  * 아니다. 폴백이 없으면 Blob이 사라진 프로젝트가 빈 테두리 상자로 남는다.
  */
 /**
- * ⚠️ **24는 사이드바 구역 머리 하나다** (2026-09-24 사용자) — 옆의 사용자 `Avatar` 24와 같은 크기여야
- * 두 구역 머리가 한 줄 높이로 선다. 글리프는 14로 내린다(28 안의 16과 같은 비율, DESIGN §5.1의 넷 안).
+ * ⚠️ **16은 사이드바 구역 머리 하나다** (2026-09-25 사용자 — 24에서 내렸다) — 아래 항목 아이콘과 같은
+ * 16이어야 머리 라벨과 항목 라벨의 시작점이 한 세로선에 선다. 옆의 사용자 `Avatar`도 16이다.
+ * 글리프는 12(`size-3`, DESIGN §6.8의 넷 안)다.
  */
 const SIZE = {
   28: { tile: "size-7", glyph: "size-4" },
-  24: { tile: "size-6", glyph: "size-3.5" },
+  16: { tile: "size-4", glyph: "size-3" },
 } as const;
 
 export function ProjectThumbnail({ name, src, size = 28 }: { name: string; src?: string | null; size?: keyof typeof SIZE }) {
   return (
     <ImageTile
       src={src}
-      className={`border-border flex ${SIZE[size].tile} shrink-0 items-center justify-center overflow-hidden rounded-sm border`}
+      className={`flex ${SIZE[size].tile} shrink-0 items-center justify-center overflow-hidden rounded-sm`}
       fallbackClassName={`text-white ${toneFill(name)}`}
     >
       <Box className={SIZE[size].glyph} />

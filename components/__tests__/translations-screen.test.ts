@@ -244,17 +244,20 @@ describe("보관 카드 (7단계)", () => {
  */
 describe("행 축 (8-4)", () => {
   /**
-   * ⚠️ **실패한 Publish 뒤에 `router.refresh()`를 부르면 안 된다** (POSTMORTEM 2026-09-08). 서버
+   * ⚠️ **실패한 Publish 뒤에 `router.refresh()`를 부르면 안 된다** (POSTMORTEM 2026-09-08) — 2026-09-25(audit-ux #12)부터는 성공에도
+   * 부르지 않는다: `triggerPullAction`의 `revalidatePath`가 새 트리를 싣고 오고, 또 부르면 두 번째 렌더가 표시 없이 돌았다. 서버
    * 상태가 안 바뀌었으니 갱신할 것이 없고, 사유가 `unauthorized`면 그 refresh가 미들웨어에 걸려
    * 로그인 화면으로 **네비게이션**해 방금 만든 danger Alert가 한 프레임도 안 보인다.
    *
    * ⚠️ **그 가드를 지키는 단언이 8-4 전까지 0건이었다** — 위 "성공 뒤 서버 렌더를 갱신한다"는
    * 호출이 **있는지만** 본다.
    */
-  it("`router.refresh()`가 실패 갈래 **밖**이다", () => {
-    const lines = read(PUBLISH).split("\n").filter((line) => line.includes("router.refresh()"));
-    expect(lines).toHaveLength(1);
-    expect(lines[0]).toMatch(/status !== "failed"/);
+  it("`router.refresh()`를 부르지 않는다 — 재검증은 Action이 싣고 온다 (audit-ux #12)", () => {
+    const src = read(PUBLISH);
+    expect(src).not.toMatch(/router\.refresh\(\)/);
+    expect(src).not.toMatch(/useRouter/);
+    // 짝: 결과는 여전히 실행 뒤에 선다.
+    expect(src).toMatch(/setResult\(\{ outcome: next/);
   });
 
   /**

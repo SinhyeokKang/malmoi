@@ -1,6 +1,7 @@
 "use client";
 
-import { Clock, FolderGit2, GitBranch, Link2, Search } from "lucide-react";
+import { Archive, Clock, FolderGit2, GitBranch, Link2, Search } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
@@ -16,7 +17,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 import type { BranchChoice } from "@/lib/onboarding/branch";
 import type { RepoOption } from "@/lib/onboarding/types";
+import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
 import { relativeTime } from "@/lib/relative-time";
+import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 import { failureText } from "../failure";
@@ -417,11 +420,34 @@ function Blocked({
    * 각자 들면 둘 다 눌려 state 쿠키가 덮이고, 먼저 떠난 왕복이 `state-mismatch`로 돌아온다.
    */
   const connect = useGithubConnect({ dest: "new", back });
+  /*
+    ⚠️ **스피너는 누른 쪽에만 선다** (audit-ux #27) — 보조 링크는 꺼지기만 하고 돌지 않았고, 링크를 누르면 주 버튼이 돌았다.
+    막는 것은 여전히 `pending` 하나다(위 경고).
+  */
+  const spinning = (via: "install" | "authorize") => connect.pending && connect.via === via;
   const link = (via: "install" | "authorize", label: string) => (
-    <Button variant="link" size="sm" className="px-0" disabled={connect.pending} onClick={() => connect.start(via)}>
+    <Button variant="link" size="sm" className="px-0" disabled={connect.pending} loading={spinning(via)} onClick={() => connect.start(via)}>
       {label}
     </Button>
   );
+
+  // ⚠️ **연결 상태보다 먼저다** — 상한이면 설치·연결을 권해도 끝에서 막힌다 (`listConnectableRepos`가 GitHub 전에 판정한다).
+  if (error === "limit-reached") {
+    return (
+      <BlockShell
+        icon={Archive}
+        title={m.newProject.empty.limit.title}
+        description={m.newProject.empty.limit.description(PROJECT_LIMIT)}
+        action={
+          <Link href={routes.projects()} className={cn(buttonClass({ variant: "primary" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none")}>
+            {m.newProject.empty.limit.action}
+          </Link>
+        }
+        secondary={null}
+        error={null}
+      />
+    );
+  }
 
   if ((error === "no-installations" || error === "no-repos") && pending) {
     return (
@@ -449,12 +475,12 @@ function Blocked({
         description={installUrl === null ? m.newProject.empty.noLink : m.newProject.empty.install.description}
         action={
           installUrl !== null ? (
-            <Button variant="primary" loading={connect.pending} onClick={() => connect.start("install")}>
+            <Button variant="primary" disabled={connect.pending} loading={spinning("install")} onClick={() => connect.start("install")}>
               {m.newProject.empty.install.action}
             </Button>
           ) : error === "not-connected" ? (
             // 슬러그가 없어도 연결은 된다 — 설치는 관리자가 GitHub에서 따로 한다.
-            <Button variant="primary" loading={connect.pending} onClick={() => connect.start("authorize")}>
+            <Button variant="primary" disabled={connect.pending} loading={spinning("authorize")} onClick={() => connect.start("authorize")}>
               <GithubIcon className="size-4" />
               {m.newProject.empty.connect.action}
             </Button>
@@ -500,7 +526,7 @@ function Blocked({
         title={m.newProject.empty.reconnect.title}
         description={m.newProject.empty.reconnect.description}
         action={
-          <Button variant="primary" loading={connect.pending} onClick={() => connect.start("authorize")}>
+          <Button variant="primary" disabled={connect.pending} loading={spinning("authorize")} onClick={() => connect.start("authorize")}>
             <GithubIcon className="size-4" />
             {m.newProject.empty.connect.reauthorize}
           </Button>

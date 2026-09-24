@@ -13,7 +13,7 @@ import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 import type { Raw } from "@/lib/search-params";
 import { requireSurfaceAccess } from "@/lib/surfaces/access";
-import { parseTranslationQuery, serializeTranslationQuery } from "@/lib/translations/query";
+import { FIRST_KEY, landOnFirstKey, parseTranslationQuery, serializeTranslationQuery } from "@/lib/translations/query";
 
 /**
  * 번역 화면 — **트리 · 요약 목록 · 선택 키 상세** 세 패널 (translation-rework — 핸드오프 `2a`, spec §3).
@@ -50,26 +50,49 @@ export default async function TranslationsPage({
   const { projectId, surfaceId, role, archived, userId } = await requireSurfaceAccess({ slug, surfaceSlug, permission: "translation:write" });
   if (archived) return <ProjectArchived slug={slug} role={role} />;
 
+  // 옛 링크(`state=untranslated` · `locales` · `focus` · `cursor`)는 새 요청값으로 옮겨 정규 주소로 보낸다 — 공유·새로고침이 같은 URL을 쓴다.
+  // ⚠️ `cursor`는 더 이상 주소에 싣지 않는다 (audit-ux #19 — More는 `loadMoreTranslationKeys`가 누적한다). 남은 옛 주소는 첫 페이지로 연다.
+  const parsed = parseTranslationQuery(raw);
+  const legacy = raw.locales !== undefined || raw.focus !== undefined || raw.state === "untranslated" || raw.cursor !== undefined;
+  if (legacy) {
+    const { cursor: _cursor, ...canonical } = parsed;
+    redirect(routes.surfaceTranslations(slug, surfaceSlug, serializeTranslationQuery(canonical)));
+  }
+
+  /*
+    ⚠️ **서로 의존하지 않는 조회는 함께 떠난다** (audit-ux #7) — 전엔 await 다섯 단계를 순서대로 돌아 조작마다 그만큼 멈췄다.
+    상세만 기다림이 남는다: 다른 소스의 키(`keySurface`)는 트리가 그 소스를 확인한 뒤, 트리 이동의 첫 키(`FIRST_KEY`)는 목록 뒤다.
+  */
   const prisma = getPrisma();
-  const project = await loadProject(prisma, projectId, surfaceId);
+  const firstKey = parsed.key === FIRST_KEY;
+  const { key: _selected, ...unselected } = parsed;
+  const readDetail = (surface: { id: string } | undefined, key: string | undefined) =>
+    key === undefined || surface === undefined ? null : loadTranslationDetail(prisma, { projectId, surfaceId: surface.id, keyId: key });
+  const onRoute = parsed.keySurface === undefined || parsed.keySurface === surfaceSlug;
+  const [project, tree, listed, unsentBySurface, early] = await Promise.all([
+    loadProject(prisma, projectId, surfaceId),
+    loadTranslationTree(prisma, projectId),
+    firstKey || parsed.key === undefined
+      ? loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: unselected })
+      : loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: parsed, selectedKeyId: parsed.key }),
+    countUnpublishedBySurface(prisma, projectId),
+    !firstKey && onRoute ? readDetail({ id: surfaceId }, parsed.key) : null,
+  ]);
   if (!project) redirect(routes.projects());
   const readiness = planProjectReadiness(project);
   if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} />;
 
-  // 옛 링크(`state=untranslated` · `locales` · `focus`)는 새 요청값으로 옮겨 정규 주소로 보낸다 — 공유·새로고침이 같은 URL을 쓴다.
-  const query = parseTranslationQuery(raw);
-  const legacy = raw.locales !== undefined || raw.focus !== undefined || raw.state === "untranslated";
-  if (legacy) redirect(routes.surfaceTranslations(slug, surfaceSlug, serializeTranslationQuery(query)));
-
-  const tree = await loadTranslationTree(prisma, projectId);
+  /*
+    ⚠️ **트리 이동의 첫 키를 같은 렌더가 싣는다** (audit-ux #18) — 전엔 선택 없는 응답이 상세를 "Select a key"로 비웠고, 클라이언트
+    effect가 첫 키로 `replace`를 한 번 더 했다. 다른 소스로 가면 화면이 새로 마운트되어 그 effect의 표식도 잃었다.
+    주소의 예약값은 화면이 `history.replaceState`로 첫 키로 맞춘다.
+  */
+  const first = firstKey ? listed.rows[0] : undefined;
+  const query = firstKey ? landOnFirstKey(parsed, first) : parsed;
+  const list = first === undefined ? listed : { ...listed, selectedInResult: true };
   // 상세의 소스는 `keySurface`가 정한다(전체 범위의 다른 소스 결과) — 인가된 프로젝트의 활성 표면 안에서만 고른다.
-  const detailSurface = query.keySurface === undefined ? { id: surfaceId, slug: surfaceSlug } : tree.surfaces.find(s => s.slug === query.keySurface);
-
-  const [list, detail, unsentBySurface] = await Promise.all([
-    loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query, ...(query.key === undefined ? {} : { selectedKeyId: query.key }) }),
-    query.key === undefined || detailSurface === undefined ? null : loadTranslationDetail(prisma, { projectId, surfaceId: detailSurface.id, keyId: query.key }),
-    countUnpublishedBySurface(prisma, projectId),
-  ]);
+  const detail = !firstKey && onRoute ? early
+    : await readDetail(query.keySurface === undefined || query.keySurface === surfaceSlug ? { id: surfaceId } : tree.surfaces.find(s => s.slug === query.keySurface), query.key);
   const actors = detail?.status === "ok" ? await loadActors(prisma, detail.locales.flatMap(l => l.updatedBy === null ? [] : [l.updatedBy])) : new Map();
   const detailView = detail === null
     ? (query.key === undefined ? null : { absent: true as const, surfaceSlug: query.keySurface ?? surfaceSlug })

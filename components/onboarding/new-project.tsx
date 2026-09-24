@@ -20,6 +20,7 @@ import { suggestAlternateSlug } from "@/lib/onboarding/slug";
 import type { AdapterChoice, RepoOption } from "@/lib/onboarding/types";
 import { routes } from "@/lib/routes";
 
+import { SlowNotice } from "@/components/slow-notice";
 import { Alert } from "@/components/ui/alert";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import type { CreateProjectResult } from "@/app/(edit)/projects/actions";
@@ -74,6 +75,8 @@ export function NewProject({
   const sampleGeneration = useRef(0);
   const [step, setStep] = useState<Step>(1);
   const [pending, startTransition] = useTransition();
+  /** ④ → 번역 화면 이동의 pending — 생성(`pending`)과 갈라 둔다: 합치면 ④에서 닫기(`closeDisabled`)까지 잠긴다. */
+  const [opening, startOpening] = useTransition();
   const [accessLost, setAccessLost] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(initialError ?? null);
   const [announce, setAnnounce] = useState<string | undefined>(undefined);
@@ -96,6 +99,11 @@ export function NewProject({
   const [locale, setLocale] = useState("");
   const [manualCandidate, setManualCandidate] = useState<CandidateSummary | undefined>(undefined);
   const [samples, setSamples] = useState<Record<string, PreviewState>>({});
+  /**
+   * 수동 확인의 거부 사유 (malmoi#99). ⚠️ **미리보기 상태에 접지 않는다** — 후보 0개 화면은 미리보기가 비어 있어
+   * `unavailable`이 그려지지 않고, 그러면 거부가 "Nothing to preview yet"과 꺼진 Next만 남긴다.
+   */
+  const [manualError, setManualError] = useState<string | undefined>(undefined);
   const [manual, setManual] = useState<ManualEntry>({
     adapter: adapters[0]?.adapter ?? "json-catalog",
     pathTemplate: "",
@@ -107,6 +115,17 @@ export function NewProject({
   const [slug, setSlug] = useState("");
   const [baseLocale, setBaseLocale] = useState("");
   const [slugTaken, setSlugTaken] = useState(false);
+  /**
+   * `slug-taken` 뒤 포커스를 주소 입력으로 (사전 "예외 G", launch-readiness L2.6). ⚠️ **잠금이 풀린 커밋에서 옮긴다** —
+   * 거부가 온 시점엔 아직 `pending`이라 입력이 `disabled`이고 `focus()`가 조용히 무시된다. 그 사이 포커스는
+   * 꺼진 [Create project]에서 `body`로 떨어져 있다.
+   */
+  const focusSlug = useRef(false);
+  useEffect(() => {
+    if (!focusSlug.current || pending || !slugTaken) return;
+    focusSlug.current = false;
+    document.getElementById("project-slug")?.focus();
+  }, [pending, slugTaken]);
 
   // ④ 결과
   const [created, setCreated] = useState<Extract<CreateProjectResult, { ok: true }> | undefined>(undefined);
@@ -327,6 +346,8 @@ export function NewProject({
 
   useEffect(() => {
     if (step !== 2 || !usingManual || repo === undefined) return;
+    // 이전 입력의 사유는 새 입력의 판정이 아니다 — 입력을 비운 경우에도 걷는다.
+    setManualError(undefined);
     const code = manual.baseLocale.trim();
     const template = manual.pathTemplate.trim();
     if (code === "" || template === "") return;
@@ -354,10 +375,13 @@ export function NewProject({
             ])));
           } else {
             setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } }));
+            if (!isAccessLost(result.error)) setManualError(result.error);
           }
         },
         () => {
-          if (active) setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } }));
+          if (!active) return;
+          setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } }));
+          setManualError("unavailable");
         },
       );
     }, 400);
@@ -396,6 +420,7 @@ export function NewProject({
       if (!result.ok) {
         if (isAccessLost(result.error)) setAccessLost(result.error);
         if (result.error === "slug-taken") {
+          focusSlug.current = true;
           setSlugTaken(true);
           return;
         }
@@ -445,7 +470,8 @@ export function NewProject({
       nextDisabled={!nextEnabled(step, state)}
       // ⚠️ **③→④만 [Next]가 로딩이다** — 예외 I가 ③에 머물러야 하므로 미리 넘어갈 수 없다.
       // 나머지 전이는 "다음 단계 안의 스켈레톤"이 규칙이다 (DESIGN §6.7).
-      nextPending={step === 3 && pending}
+      // ④의 [Start translating]도 이동이 커밋될 때까지 로딩이다 (audit-ux #22) — 전엔 transition 없는 `push`라 누른 뒤 무반응이었다.
+      nextPending={(step === 3 && pending) || (step === 4 && opening)}
       showBack={step === 2 || step === 3}
       bodyDirection={step === 2 ? "row" : "column"}
       bodyScroll={step === 2 || step === 4 ? "hidden" : "auto"}
@@ -464,7 +490,13 @@ export function NewProject({
         if (step === 1) detect();
         else if (step === 2) toNaming();
         else if (step === 3) create();
-        else router.push(routes.translations(created?.slug ?? ""));
+        /*
+          ⚠️ **`replace`다, `push`가 아니다** (audit-ux #22) — push면 뒤로가기가 가로챈 모달(`/projects/new`)을 다시 띄운다.
+          목적지는 기본 표면의 편집 주소다(#4) — 옛 `/translations`는 서버 redirect를 한 번 더 거친다.
+        */
+        else if (created !== undefined && !opening) {
+          startOpening(() => router.replace(routes.surfaceTranslations(created.slug, created.defaultSurfaceSlug)));
+        }
       }}
       // ⚠️ **생성 중에는 닫히지 않는다** (audit #13) — 닫아도 `createProject`는 계속 돌고, ④의 일회용 push 토큰을
       // 볼 자리가 경고 없이 사라진다 (DESIGN §6.4). ×·Esc·배경이 전부 이 한 값을 지난다.
@@ -510,6 +542,7 @@ export function NewProject({
             manual,
             manualCandidate,
             manualMatched,
+            manualError,
             adapters,
             repoLabel,
             branch: branchValue,
@@ -532,6 +565,8 @@ export function NewProject({
       {step === 3 && (
         <fieldset disabled={pending} className="contents">
           {pending && <p role="status" className="text-muted-foreground text-sm">{m.newProject.naming.creating}</p>}
+          {/* 생성은 선택한 파일 전부를 첫 적재한다 (audit-ux #23) — 큰 리포면 위 한 줄만으로 30초를 넘긴다. */}
+          <SlowNotice active={pending} />
           {creationFailure !== null && <Alert variant="danger">
             {creationFailure === "unknown" ? m.newProject.naming.resultUnknown : <>
               <p>{m.newProject.naming.nothingCreated} {creationFailure.error === "path-conflict" ? m.newProject.files.conflicts : failureText(creationFailure.error)}</p>

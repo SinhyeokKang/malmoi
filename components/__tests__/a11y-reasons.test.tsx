@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare, listRepoBranches: mocks.listRepoBranches, rotatePushToken: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ updateProjectName: mocks.updateProjectName, uploadProjectImage: vi.fn(), deleteProjectImage: vi.fn(), updateRepositorySettings: mocks.updateRepositorySettings }));
 vi.mock("@/app/(edit)/account/actions", () => ({ updateProfileName: mocks.updateProfileName, unlinkLoginMethod: mocks.unlinkLoginMethod, startLoginMethodConnect: mocks.startLoginMethodConnect }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: vi.fn(), replace: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));
 
 import { LoginMethods } from "@/components/account/login-methods";
 import { ProfileNameForm } from "@/components/account/profile-name-form";
@@ -100,7 +100,9 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
     expect(source).toContain("m.settings.sources.manualReason");
     // ⚠️ `loading`과 `aria-disabled`를 한 버튼에 겸하지 않는다 (DESIGN §6.65) — 진행 중은 `busy`다 (B5 리뷰 r1).
     expect(source).not.toMatch(/loading=\{pending\}[^>]*aria-disabled=/);
-    expect(source.match(/busy=\{pending\}/g) ?? []).toHaveLength(2);
+    // 스피너는 누른 쪽에만 선다 (audit-ux #26) — 둘 다 `busy`이되 갈래를 가른다.
+    expect(source.match(/busy=\{pending && operation === "(add|manual)"\}/g) ?? []).toHaveLength(2);
+    expect(source).not.toMatch(/busy=\{pending\}/);
   });
 
   it("보이는 사람에게도 사유가 보인다 — 워크플로 행·수동 확인은 글자로, 머리의 Sync·Try again은 title로 (§6.646의 Publish와 같다)", async () => {
@@ -108,7 +110,9 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
     const reason = [...document.querySelectorAll("p, span")].find(node => node.textContent === m.settings.ci.noSources);
     expect(reason?.classList.contains("sr-only")).toBe(false);
     expect(read("components/sources/add-sources-modal.tsx")).not.toMatch(/className="sr-only">\{m\.settings\.sources\.manualReason/);
-    expect(read("components/home/sync-button.tsx")).toMatch(/title=\{m\.repositorySync\.paused\}/);
+    // 멈춘 사유는 호스트가 원인을 넘긴다 (audit-ux #10) — 기본값은 `paused`, Publish 진행이면 `waitPublish`다.
+    expect(read("components/home/sync-button.tsx")).toMatch(/title=\{pausedReason\}/);
+    expect(read("components/home/sync-button.tsx")).toMatch(/pausedReason = m\.repositorySync\.paused/);
     expect(read("components/home/sync-result.tsx")).toMatch(/title=\{retryDisabled \? m\.repositorySync\.waitPublish/);
     expect(read("components/home/actions.tsx")).toMatch(/title=\{publishPending \? m\.repositorySync\.waitPublish/);
   });

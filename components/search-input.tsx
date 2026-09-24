@@ -1,7 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,18 @@ export function SearchInput({ value, onSearch, label, placeholder = label, disab
   inputClassName?: string;
 }) {
   const [text, setText] = useState(value ?? "");
-  useEffect(() => setText(value ?? ""), [value]);
+  /*
+    ⚠️ **제출한 값의 응답은 그 뒤에 친 글자를 덮지 않는다** (audit-ux #15) — Enter 뒤 응답을 기다리며 이어 친 입력이 응답 도착과
+    함께 되돌려졌다. 입력이 아직 제출한 값 그대로일 때만 맞춘다. 제출 기억은 응답 하나로 끝난다 — 남겨 두면 그 뒤의 바깥 변경
+    (검색 지우기·뒤로가기)까지 입력에 막힌다.
+  */
+  const submitted = useRef<string | null>(null);
+  useEffect(() => {
+    const next = value ?? "";
+    const sent = submitted.current;
+    submitted.current = null;
+    setText(prev => sent === null || prev.trim() === sent ? next : prev);
+  }, [value]);
 
   return (
     <div className={cn("relative", className)}>
@@ -41,7 +52,10 @@ export function SearchInput({ value, onSearch, label, placeholder = label, disab
         onKeyDown={(event) => {
           if (event.key !== "Enter" || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
           event.preventDefault();
-          onSearch(text.trim());
+          const query = text.trim();
+          // 지금 값과 같으면 URL이 안 바뀌어 응답이 없다 — 기억하면 다음 바깥 변경을 붙잡는다.
+          submitted.current = query === (value ?? "") ? null : query;
+          onSearch(query);
         }}
         placeholder={placeholder}
         aria-label={label}

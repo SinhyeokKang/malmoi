@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { find, render } from "./helpers/dom";
 
-// 머리의 검색이 `useRouter`를 문다 — 이 스위트가 재는 것은 그릇이고 라우터는 그 길목일 뿐이다.
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+// 검색어는 주소창(`useSearchParams`)에서 온다 (audit-ux #17) — 이 스위트가 재는 것은 그릇이고 주소는 그 길목일 뿐이다.
+const url = vi.hoisted(() => ({ params: new URLSearchParams() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => url.params }));
 
 import { ProjectList } from "@/components/projects/project-list";
 import { m } from "@/lib/i18n";
@@ -55,7 +56,8 @@ const THREE: ProjectListRow[] = [
 ];
 
 const draw = async (props: { all?: ProjectListRow[]; q?: string } = {}) => {
-  const { container } = await render(<ProjectList all={props.all ?? THREE} q={props.q} />);
+  url.params = new URLSearchParams(props.q === undefined ? {} : { q: props.q });
+  const { container } = await render(<ProjectList all={props.all ?? THREE} />);
   return container;
 };
 
@@ -223,7 +225,8 @@ describe("보관 행이 한 단계 더 물러난다", () => {
   const archivedRow = (container: HTMLElement) => find<HTMLElement>(cards(container)[2]!, "li");
   const activeRow = (container: HTMLElement) => find<HTMLElement>(cards(container)[1]!, "li");
   const nameOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-base");
-  const metaOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-sm.truncate");
+  // 메타 줄은 GitHub 마크 + 말줄임 글자의 flex 줄이다(2026-09-25) — 색은 그 바깥 줄이 든다.
+  const metaOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-sm.min-w-0");
 
   /**
    * ⚠️ **이름·메타·배지가 `#a3a3a3` 한 색이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).

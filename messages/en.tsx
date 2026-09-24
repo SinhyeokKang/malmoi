@@ -40,14 +40,13 @@ export const en = {
      * `Archive project`)이라 셀렉터가 모호해진 클릭이 확인 버튼을 눌러 프로젝트를 실제로 보관시켰다.
      */
     action: "Sync",
-    /** 진행 중 트리거 라벨 — 줄임표는 진행 중에만 쓰고 문자는 `…`(U+2026)다 (DESIGN §10). */
-    pending: "Syncing…",
     /**
-     * 멈춘 [Sync]의 사유 (audit #37) — `aria-describedby`로만 읽힌다. ⚠️ **원인을 가르지 않는다** — 미연결·보관은 같은 화면의
-     * 배너가, Publish 진행은 그 버튼의 `Publishing…`이 이미 말한다. `translations.publish.paused`와 같은 형이다.
+     * 멈춘 [Sync]의 사유 (audit #37) — `aria-describedby`로만 읽힌다. 미연결·보관은 같은 화면의 배너가 원인을 말한다.
+     * ⚠️ **Publish 진행은 이 문장이 아니라 `waitPublish`다** (audit-ux #10) — 옆 버튼의 `Publishing…` 라벨이 원인을 말하던 시절의
+     * 분담이었는데 D1이 그 라벨을 걷었다. `translations.publish.paused`와 같은 형이다.
      */
     paused: "Syncing is currently unavailable.",
-    /** Publish가 도는 동안 꺼진 [Try again]의 사유 (audit #37) — 두 방향이 겹치면 남는 값을 화면이 설명할 수 없다(§6.64). */
+    /** Publish가 도는 동안 꺼진 쓰기 트리거의 사유 (audit #37 · audit-ux #10) — [Sync]·[Try again]·번역 화면의 [Save]가 함께 쓴다(§6.64). */
     waitPublish: "Wait for Publish to finish.",
     confirm: "Sync from repository",
     /**
@@ -230,6 +229,11 @@ export const en = {
     /** 프리미티브의 아이콘 전용 컨트롤 둘 — 화면 문구는 사전을 지난다 (CLAUDE.md). */
     close: "Close",
     dismiss: "Dismiss",
+    /**
+     * 긴 원격 실행이 `SLOW_AFTER_MS`를 넘겼을 때의 한 줄 (audit-ux #23) — 탐지·첫 적재·Sync·Publish가 같은 문장을 쓴다.
+     * ⚠️ **단계를 말하지 않는다** — 진행 이벤트가 없어서 "어디까지 왔다"는 거짓이 된다.
+     */
+    slow: "Still working. Large repositories can take a minute or more.",
     /**
      * 셸의 패널 구분선 — 글자가 하나도 없는 컨트롤이라 이름이 여기서만 나온다.
      * ⚠️ `role="separator"`는 이름이 없으면 스크린리더에 "separator"로만 읽혀 좌우 어느 쪽을
@@ -549,10 +553,120 @@ export const en = {
      * (`lib/shell/nav.ts`). 2026-09-11까지 후자가 `nav.help: "Help"`로 갈려 있었는데,
      * 같은 라우트를 가리키는 라벨이 둘이면 하나가 낡는다.
      */
+    /**
+     * 도움말 (launch-readiness L2.3). ⚠️ **수·이름은 정본 상수와 대조된다** — `components/__tests__/docs-content.test.tsx`가
+     * 상한 넷(`PROJECT_LIMIT`·`MEMBER_LIMIT`·`INVITATION_HOURLY_LIMIT`·`PROJECT_SLUG_MAX`)·포맷 이름·실제 `uses:` 넷·
+     * `SKIP_MARKER`를 읽는다. 사전은 잎이라 그 상수를 import할 수 없어 리터럴로 적고 테스트가 묶는다.
+     * ⚠️ **`workflow` id는 설정 화면이 가리킨다** (`ci-card.tsx`의 hook 안내).
+     */
     docs: {
       title: "Docs",
-      intro: "We're still writing this. It will be here before launch.",
-      sections: [],
+      intro: "How to connect a repository to malmoi, what it can read, and the limits that apply.",
+      sections: [
+        {
+          id: "how-it-works",
+          heading: "How malmoi works",
+          blocks: [
+            {
+              p: "Your code decides which strings exist; malmoi holds the translations. A workflow in your repository sends the translation files to malmoi whenever the base branch changes. Translators edit in malmoi, and Publish sends their work back to the repository as one pull request.",
+            },
+            {
+              p: "While translators have edits that haven't been sent yet, malmoi holds new syncs from the repository so those edits aren't overwritten. Publish, then run the workflow again — or a project owner can discard the edits from Sync.",
+            },
+          ],
+        },
+        {
+          id: "workflow",
+          heading: "Set up the workflow",
+          blocks: [
+            {
+              ul: [
+                "Create the project in malmoi. The last step shows a push token and the workflow file.",
+                "Add the token to the repository as an Actions secret named PUSH_TOKEN.",
+                "Save the workflow as .github/workflows/malmoi-i18n.yml. The project's Settings show the same file again at any time, with every source.",
+                "If your code reads translations through a hook such as useTranslations(), add the wrapper input with the module and export (for example next-intl#useTranslations()), so malmoi can show where each key is used.",
+              ],
+            },
+            {
+              p: "Rotating the token in Settings stops the old one right away — update the secret at the same time. If you change the base branch or the base language in settings, change the workflow file to match.",
+            },
+          ],
+        },
+        {
+          id: "allowed-actions",
+          heading: "Organizations that allow only selected actions",
+          blocks: [
+            {
+              p: "The workflow uses four actions. If your organization allows only selected actions, add all four as name@* (for example actions/checkout@*), or the run stops at “Set up job” with “not allowed to be used”:",
+            },
+            {
+              ul: [
+                "SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push — malmoi's action",
+                "actions/checkout — in the workflow file",
+                "pnpm/action-setup — inside malmoi's action",
+                "actions/setup-node — inside malmoi's action",
+              ],
+            },
+            {
+              p: "The last two don't appear in your workflow file, so they are easy to miss.",
+            },
+          ],
+        },
+        {
+          id: "formats",
+          heading: "Supported file formats",
+          blocks: [
+            {
+              table: {
+                label: "Supported file formats",
+                head: ["Format", "Example path"],
+                rows: [
+                  ["JSON catalog", "src/locales/{locale}.json"],
+                  ["YAML catalog", "config/locales/{locale}.yml"],
+                  ["Chrome extension messages", "_locales/{locale}/messages.json"],
+                  ["Code dictionary (one file per language)", "src/locales/{locale}.ts"],
+                  ["Code dictionary (all languages in one file)", "src/i18n/namespaces/*.ts"],
+                ],
+              },
+            },
+            {
+              p: "A repository needs translation files in 2 or more languages. If it has only one, add a file for a second language before you connect it.",
+            },
+          ],
+        },
+        {
+          id: "limits",
+          heading: "Limits",
+          blocks: [
+            {
+              ul: [
+                "You can own up to 3 projects. Archiving one frees its place.",
+                "A project can have up to 10 members. Pending invitations don't count until they're accepted.",
+                "A project can send up to 20 invitations an hour.",
+                "A project address can be up to 40 characters. Addresses are shared by everyone on malmoi, so a common name such as web may already be taken.",
+              ],
+            },
+          ],
+        },
+        {
+          id: "merging",
+          heading: "Merging the translation pull request",
+          blocks: [
+            {
+              p: "Squash, rebase and a merge commit all work. Keep [skip-malmoi-i18n] in the pull request title: without it, merging runs the workflow again and can overwrite translations saved after the pull request was opened.",
+            },
+          ],
+        },
+        {
+          id: "nightly",
+          heading: "Every night",
+          blocks: [
+            {
+              p: "Once a night, malmoi publishes every project that has translations not yet sent. If a translation pull request is already open, it is updated instead of a new one being opened.",
+            },
+          ],
+        },
+      ],
     },
   },
 
@@ -1571,7 +1685,8 @@ export const en = {
          * 준다)을 말해야 한다 (핸드오프 3a).
          */
         emptyDescription: (repo: string, branch: string): string =>
-          `malmoi didn't find any on ${repo} · ${branch}. Set the path and it will check.`,
+          // ⚠️ **조건을 말한다** (malmoi#99) — 로케일 1개 리포에 "didn't find any"는 거짓이었다(파일은 있다).
+          `malmoi didn't find translation files in 2 or more languages on ${repo} · ${branch}. Set the path and it will check.`,
       },
       naming: {
         title: "Project details",
@@ -1579,7 +1694,12 @@ export const en = {
       },
       result: {
         title: "malmoi is ready",
-        description: "Add the push token to the repository so CI can send translations back.",
+        /**
+         * ⚠️ **둘째 문장이 야간 PR 공지다** (launch-readiness L2.9) — 전에는 온보딩 어디에도 없어 첫 PR이 예고 없이 왔다.
+         * "every night"는 참이다: `vercel.json` 하루 1회(Hobby) · 프로덕션 배포에서만 · 대상은 `selectPullTargets`가
+         * 고르고 GitHub에 닿는 것은 미전달 편집이 있는 프로젝트뿐이다(PRODUCT §7.6).
+         */
+        description: "Add the push token to the repository so CI can send translations back. Every night, translations not yet sent go to the repository as a pull request.",
       },
     },
 
@@ -1619,6 +1739,15 @@ export const en = {
         still: "Still waiting for approval.",
         /** 다른 설치로 리포가 이미 보일 때 목록 위 한 줄 — 위 설명과 같은 사실이다. */
         info: "An organization owner still has to approve your install request.",
+      },
+      /**
+       * 프로젝트 상한 (launch-readiness L2.6). ⚠️ **[New project]를 끄지 않고 여기서 말한다** — 사유 없는 `disabled`는
+       * 0건이어야 하고(DESIGN §6.646), 상한은 ③ 끝이 아니라 들어오는 순간 아는 값이다. 보관이 자리를 비운다.
+       */
+      limit: {
+        title: "Project limit reached",
+        description: (limit: number): string => `You own ${limit.toLocaleString("en-US")} projects, the most you can have. Archive one to make room.`,
+        action: "Open projects",
       },
       reconnect: {
         title: "Reconnect GitHub",
@@ -1816,6 +1945,8 @@ export const en = {
   },
 
   translations: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
+    loading: "Loading translations",
     /** 카운터 — ICU가 아니라 삼항 하나다 (PRODUCT §4.2). */
     keys: (n: number): string => (n === 1 ? "1 key" : `${n.toLocaleString("en-US")} keys`),
 
@@ -1848,6 +1979,7 @@ export const en = {
         needsReview: "Needs review",
         saved: "Saved",
         more: "Show more keys",
+        moreFailed: "Couldn't load more keys. Try again.",
       },
       detail: {
         languages: (filled: number, total: number): string => `${filled.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} languages`,
@@ -1856,6 +1988,8 @@ export const en = {
         languagesGroup: "Languages",
         source: "Source",
         notSaved: "Not saved",
+        /** ⚠️ **버튼 라벨이 아니라 셀의 상태 글자다** (audit-ux #20 · D4) — 보낸 셀에 "Not saved"가 계속 붙어 있었다. D1(버튼 문구 고정)의 대상이 아니다. */
+        saving: "Saving…",
         missing: "Missing",
         noDescription: "No description in the code",
         noCommit: "No commit to link to yet",
@@ -1995,7 +2129,6 @@ export const en = {
      */
     publish: {
       button: "Publish",
-      publishing: "Publishing\u2026",
       viewResult: "View result",
       viewLink: "View pull request",
       nothing: "Everything you've edited is already sent.",
@@ -2095,7 +2228,10 @@ export const en = {
       openPr: "Open pull request",
       replacePr: (n: number): string => `Replace pull request #${n}`,
 
-      /** `1c` — 단계 셋은 **시간 기반**이고 사실을 주장하지 않는다(진행 이벤트 API가 없다). */
+      /**
+       * `1c` — 단계 셋은 **하는 일의 목록**이고 진행 표시가 아니다 (audit-ux #23). 전엔 2.5초·6.5초 타이머가 체크를 넘겼는데,
+       * 진행 이벤트 API가 없어 일어나지 않은 단계를 주장했다. 오래 걸리면 `common.slow`가 선다.
+       */
       progressTitle: (n: number): string => `Publishing ${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`,
       progressDescription:
         "Writing the translation files and opening a pull request. This usually takes a few seconds.",
@@ -2277,6 +2413,8 @@ export const en = {
    * 없고, 묶으면 한 화면의 문구 변경이 다른 화면을 조용히 바꾼다.
    */
   sources: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
+    screenLoading: "Loading sources",
     title: "Sources",
     description: "The translation files malmoi reads from your repository.",
     /**
@@ -2375,6 +2513,8 @@ export const en = {
   },
 
   members: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
+    loading: "Loading members",
     /**
      * 패널 헤더 우측의 좌석 잔량 — 갈래는 `planSeatNotice`가 정한다.
      *
@@ -2473,7 +2613,11 @@ export const en = {
       open: "Invite member",
       /** ⚠️ **여러 명이다** (핸드오프 `1a`) — 한 폼이 여러 행을 보낸다. */
       title: "Invite members",
-      description: "Send invitations by email and choose a role for each person.",
+      /**
+       * ⚠️ **둘째 문장이 수락 조건이다** (launch-readiness L2.8) — 수락은 로그인 계정의 주소와 대조하고 GitHub은
+       * primary 주소 하나만 쓴다(`lib/auth/email.ts`). 거부 문구는 초대 주소를 일부러 안 밝히므로 행동할 수 있는 쪽은 초대자다.
+       */
+      description: "Send invitations by email and choose a role for each person. Use the address they sign in with — for GitHub, their primary email.",
       /** 열 머리 둘 — 빈 행 하나로 열리면 두 번째 컨트롤이 무엇인지 값만으로는 안 읽힌다. */
       columns: { email: "Email", role: "Role" },
       placeholder: "name@company.com",
@@ -2587,6 +2731,8 @@ export const en = {
 
   /** settings-block 넷 + 계정 (DESIGN §6.6). **블록이 각자 실패한다** — 문구도 블록별로 갈라져 있다. */
   settings: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
+    loading: "Loading settings",
     general: {
       title: "General", thumbnail: "Thumbnail", name: "Name", address: "Address",
       upload: "Upload", remove: "Remove",
@@ -2692,6 +2838,8 @@ export const en = {
       rotate: "Rotate token",
       warning: "You won't see this again after you leave this page. If you lose it, rotate it again.",
       failed: "We couldn't rotate the token. Try again in a moment.",
+      /** 호출이 끊겼다 — 옛 토큰이 이미 죽었을 수 있다 (audit-ux #14). 새 원문은 다시 발급해야만 받는다. */
+      unconfirmed: "We couldn't confirm the rotation. The current token may already be invalid — rotate again to get a new one.",
       /**
        * 확인 (audit #19) — 이전 토큰이 **즉시** 죽는다. 성공 직후의 재클릭도 여기를 지나 방금 받은 토큰을 지킨다.
        * 확정 라벨은 트리거(`Rotate token`)와 달라야 한다 (DESIGN §6.646).
@@ -2713,6 +2861,8 @@ export const en = {
           Repositories that read translations through a hook ({hook}) also need the {wrapper} input — see {doc}.
         </>
       ),
+      /** `hookHint`의 링크 라벨 — `/docs#workflow`로 간다(launch-readiness L2.3). 운영 문서 경로는 제3자에게 의미가 없다. */
+      hookDoc: "Set up the workflow",
     },
 
     account: {
@@ -2830,6 +2980,8 @@ export const en = {
       lastMethod: "This is your only way to sign in.",
       confirmDisconnect: (provider: string): string => `Disconnect ${provider}?`,
       confirmHint: "You won't be able to sign in with it until you sign in with it again at this address.",
+      /** 호출이 끊겨 해제됐는지 모른다 (audit-ux #14) — 사유를 지어내지 않고 새로고침으로 확인하게 한다. */
+      unlinkUnconfirmed: "We couldn't confirm that change. Refresh to see your sign-in methods.",
     },
   },
 
@@ -2960,13 +3112,17 @@ export const en = {
       "no-installations": "Your GitHub account is connected. Install the malmoi GitHub App on your personal account or organization to choose repositories.",
       "no-repos": "Your GitHub account is connected, but no repositories are available. Choose repositories the malmoi GitHub App can access in GitHub installation settings.",
       // 이유를 말한다 — 수동 지정으로 가는 근거다 (로케일이 하나뿐인 리포는 붙일 수 없다).
-      "no-candidates": "We couldn't find translation files. malmoi needs translation files in 2 or more languages.",
+      // ⚠️ **다음 행동까지 말한다** (launch-readiness L2.7) — 로케일 하나인 리포 주인이 할 수 있는 일은 둘째 파일뿐이다.
+      "no-candidates": "We couldn't find translation files. malmoi needs translation files in 2 or more languages — if this repository has only one, add a file for a second language and try again.",
       // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.
-      "tree-truncated": "This repository has too many files to search. Setting the path yourself hits the same limit.",
+      // ⚠️ **막다른 길임을 끝에 말한다** (L2.7) — 안 말하면 사용자가 같은 리포로 다시 시도한다.
+      "tree-truncated": "This repository has too many files to search, and setting the path yourself hits the same limit. malmoi can't connect repositories this large yet.",
       "base-branch-missing": "We can't read the default branch. Check that the repository has commits.",
       // ⚠️ **라벨이라 문장이 아니다** — 후보 줄의 "3 languages · 4 keys" 자리에 그대로 들어간다.
       "key-count-failed": "Key count unavailable",
       "manual-no-match": "No files of that format at that path. Check the path and the format.",
+      // ⚠️ **파일이 없다고 말하지 않는다** (malmoi#99) — 파일은 있고 언어가 하나다. 할 일은 경로가 아니라 둘째 파일이다.
+      "single-locale": "Only one language was found at that path. malmoi needs translation files in 2 or more languages — add a file for a second language and try again.",
       "slug-taken": "That address is taken. Pick another one.",
       "limit-reached": (limit: number): string => `You can create up to ${limit} projects.`,
       "invalid-slug": (max: number): string =>

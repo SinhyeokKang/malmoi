@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(), replace: vi.fn(), refresh: vi.fn(),
   save: vi.fn(), preview: vi.fn(), revert: vi.fn(), pull: vi.fn(), publishPreview: vi.fn(),
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }), useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/app/(edit)/actions", () => ({
   saveTranslationKey: mocks.save, previewTranslationRevert: mocks.preview, revertTranslationKey: mocks.revert, triggerPullAction: mocks.pull,
 }));
@@ -93,12 +93,13 @@ it("Ctrl/Cmd+Enter는 키 저장, Escape는 그 입력만 되돌린다", async (
   expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ changes: [{ localeCode: "ko", value: "비어 있음!" }] }));
 });
 
+// 키 선택은 `replace`다 (audit-ux #33 · D2) — 뒤로가기가 키 한 칸씩 거슬러 가지 않는다.
 it("미저장이 없으면 다른 키로 바로 간다", async () => {
   const user = userEvent.setup();
   const { container } = await render(<TranslationWorkspace {...props()} />);
   await user.click(row(container, "k2"));
-  expect(mocks.push).toHaveBeenCalledTimes(1);
-  expect(mocks.push.mock.calls[0]?.[0]).toContain("key=k2");
+  expect(mocks.replace).toHaveBeenCalledTimes(1);
+  expect(mocks.replace.mock.calls[0]?.[0]).toContain("key=k2");
 });
 
 it("미저장이 있으면 확인창이 서고, 취소는 URL·draft 불변, 확인은 한 번만 간다", async () => {
@@ -106,16 +107,16 @@ it("미저장이 있으면 확인창이 서고, 취소는 URL·draft 불변, 확
   const { container } = await render(<TranslationWorkspace {...props()} />);
   await user.type(area(container, "zh"), "空");
   await user.click(row(container, "k2"));
-  expect(mocks.push).not.toHaveBeenCalled();
+  expect(mocks.replace).not.toHaveBeenCalled();
   expect(document.body.textContent).toContain("Discard your changes?");
   expect(document.body.textContent).toContain("zh");
   await user.click(button("Keep editing"));
-  expect(mocks.push).not.toHaveBeenCalled();
+  expect(mocks.replace).not.toHaveBeenCalled();
   expect(area(container, "zh").value).toBe("空");
   await user.click(row(container, "k2"));
   await user.click(button("Discard changes"));
-  expect(mocks.push).toHaveBeenCalledTimes(1);
-  expect(mocks.push.mock.calls[0]?.[0]).toContain("key=k2");
+  expect(mocks.replace).toHaveBeenCalledTimes(1);
+  expect(mocks.replace.mock.calls[0]?.[0]).toContain("key=k2");
 });
 
 it("저장 중에는 Save를 다시 보내지 않고, 보낸 뒤 친 입력은 Not saved로 남는다", async () => {
@@ -164,6 +165,8 @@ it("OWNER의 Revert는 미리보기 확인창을 거쳐 발급된 지문으로 �
   expect(mocks.revert).toHaveBeenCalledWith({ slug: "acme", surfaceSlug: "web", keyId: "k1", confirmation: "f".repeat(64) });
   expect(area(container, "ko").value).toBe("없음");
   expect(document.activeElement?.getAttribute("data-footer-result")).toBe("true");
+  // 재검증은 `revertTranslationKey`가 싣고 온다 (audit-ux #12) — 또 refresh하면 두 번째 렌더가 표시 없이 돈다. 짝은 위의 값·착지다.
+  expect(mocks.refresh).not.toHaveBeenCalled();
 });
 
 /**
@@ -397,26 +400,7 @@ it("Revert 뒤 같은 셀을 저장하면 Not sent와 Revert가 다시 나타난
   expect(container.textContent).toContain("Not sent");
 });
 
-it("페이지를 추가했다가 첫 페이지로 돌아와도 페이지 밖 행을 Saved로 표시하지 않는다", async () => {
-  const initial = props();
-  const first = { ...initial.list, rows: [initial.list.rows[0]!], nextCursor: "page2" };
-  const second = { ...initial.list, rows: [initial.list.rows[1]!], nextCursor: null };
-  const { container, rerender } = await render(<TranslationWorkspace {...initial} list={first} />);
-  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, cursor: "page2" }} list={second} />);
-  expect(container.querySelectorAll("[data-key-row]")).toHaveLength(2);
-  await rerender(<TranslationWorkspace {...initial} list={{ ...first }} />);
-  expect(row(container, "k2").textContent).not.toContain("Saved");
-  expect(container.textContent).not.toContain("+1 saved");
-});
-
-it("두 번째 페이지 재검증도 행 요약을 갱신하고 선택 키의 조건 이탈만 Saved로 남긴다", async () => {
-  const initial = props();
-  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
-  const pageQuery = { ...initial.query, cursor: "page2" };
-  await rerender(<TranslationWorkspace {...initial} query={pageQuery} list={{ ...initial.list, rows: [{ ...initial.list.rows[1]!, missingCount: 2 }], selectedInResult: false }} />);
-  expect(row(container, "k1").textContent).toContain("Saved");
-  expect(row(container, "k2").textContent).toContain("2 missing");
-});
+// 페이지 추가·재검증의 두 회귀(POSTMORTEM 2026-09-23)는 cursor 없는 More로 옮겨 `translation-workspace-transition.test.tsx`가 든다 (audit-ux #19).
 
 /**
  * ⚠️ **세션 만료 Alert는 복구 사본이 실제로 쓰였을 때만 "이 탭에서 다시 로그인하라"고 말한다** (malmoi#76 —

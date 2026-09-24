@@ -9,7 +9,7 @@ vi.mock('@/app/(edit)/projects/[slug]/settings/actions', () => ({ connectReposit
 vi.mock('@/app/(edit)/projects/actions', () => ({ listRepoBranches: vi.fn(async () => ({ ok: true, names: ["main"], defaultBranch: "main", truncated: false })), rotatePushToken: vi.fn(async () => ({ ok: false, error: 'unavailable' })) }));
 it.each(['repository', 'token'])('%s failures use the full-width card notice', async kind => {
   const { container } = await render(kind === 'repository'
-    ? <RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={{ status: 'not-connected' }} account={{ status: 'ok', login: 'owner' }} />
+    ? <RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve({ status: 'not-connected' })} account={Promise.resolve({ status: 'ok', login: 'owner' })} />
     : <CiCard slug="acme" archived={false} stale={[]}>{null}</CiCard>);
   const label = kind === 'repository' ? 'Connect' : 'Rotate token';
   const button = [...container.querySelectorAll('button')].find(b => b.textContent === label)!;

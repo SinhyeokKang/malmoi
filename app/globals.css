@@ -276,8 +276,21 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /*
+   * ⚠️ **꺼지지 않은 버튼은 손가락 커서다** (2026-09-25 사용자). Tailwind v4 preflight가 `button`을 `cursor: default`로
+   * 되돌려서, `Button` 밖의 raw 버튼(`ListItemButton` · 필터 칩의 Radix 트리거)은 저마다 `cursor-pointer`를 기억해야 했고
+   * 셋이 빠져 있었다(번역 키 행 · 번역 필터 · Logs 필터). 꺼진 쪽(`disabled:`·`aria-disabled:cursor-not-allowed`)은 제외한다.
+   */
+  button:not(:disabled):not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    /*
+     * ⚠️ **`antialiased`(grayscale)가 전역이다** (2026-09-25 사용자). 없으면 macOS 브라우저가 획을 두껍게 그려
+     * 같은 500이 밝은 회색(보관 행의 이름·배지)에서 한 단계 무겁게 읽혔다. 켠 뒤 500이 가늘어 보이는 자리는
+     * weight를 올리는 것으로 푼다(DESIGN §4).
+     */
     font-family: var(--font-sans);
     /**
      * ⚠️ **300에서 400으로 올렸다** (2026-09-11 사용자 — 2026-09-10의 전면 변경을 한 단계 되돌린다).

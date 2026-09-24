@@ -21,7 +21,13 @@ import { routes } from "@/lib/routes";
  * prop은 필요한 것만이라야 초과 프로퍼티가 안 샌다 (sec-audit 발견 23).
  */
 /** `image`는 사이드바 구역 머리의 썸네일이다 (2026-09-24) — 없으면 이름 색 폴백 타일이다. */
-export type NavProject = { slug: string; name: string; role: Role; archived: boolean; image?: string | null; surfaceSlug?: string };
+/**
+ * `defaultSurfaceSlug`는 셸이 싣는 기본 표면이고 `surfaceSlug`는 pathname에서 읽은 **보고 있는** 표면이다 — 뒤가 앞선다.
+ * 둘 다 없으면 Translations가 옛 주소로 떨어진다 (audit-ux #4).
+ */
+export type NavProject = {
+  slug: string; name: string; role: Role; archived: boolean; image?: string | null; surfaceSlug?: string; defaultSurfaceSlug?: string | null;
+};
 
 /**
  * pathname → 지금 보고 있는 프로젝트.
@@ -177,12 +183,21 @@ export function navZones(
         key: section.key,
         label: section.label,
         icon: section.icon,
-        href: project.surfaceSlug && section.key === "translations" ? routes.surfaceTranslations(project.slug, project.surfaceSlug)
-          : section.href(project.slug),
+        href: section.key === "translations" ? translationsHref(project) : section.href(project.slug),
         exact: section.exact,
       })),
     },
   ];
+}
+
+/**
+ * **Translations는 표면 주소를 직접 가리킨다** (audit-ux #4). 옛 `/translations`는 누를 때마다 서버 redirect 한 번
+ * (인증 → 접근 → `defaultSurface` 조회 → redirect)을 더 거치고, 두 세그먼트 모두 경계가 없어 prefetch도 무의미했다.
+ * ⚠️ **옛 라우트는 지우지 않는다** — 외부 링크 호환이고, 기본 표면을 모를 때 판정을 맡는 자리다.
+ */
+function translationsHref(project: NavProject): string {
+  const surface = project.surfaceSlug ?? project.defaultSurfaceSlug;
+  return surface ? routes.surfaceTranslations(project.slug, surface) : routes.translations(project.slug);
 }
 
 /**

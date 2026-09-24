@@ -86,9 +86,9 @@ describe("buildInvitationEmail — html", () => {
     expect(Buffer.byteLength(buildInvitationEmail(base).html)).toBeLessThan(100 * 1024);
   });
 
-  it("로고 PNG가 public/email/에 64×64로 있다 — 표시 32×32의 @2x", () => {
+  it("로고 PNG가 public/email/에 80×80으로 있다 — 표시 40×40의 @2x", () => {
     const png = readFileSync("public/email/logo@2x.png");
     expect(png.subarray(1, 4).toString()).toBe("PNG");
-    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([64, 64]);
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([80, 80]);
   });
 });

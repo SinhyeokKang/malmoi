@@ -31,10 +31,15 @@ export type DetailView = {
   locales: { code: string; isBase: boolean; value: string | null; needsReview: boolean; pending: boolean; actorLabel: string | null }[];
 };
 
-export function LocalePanel({ detail, draft, language, onLanguage, onEdit, onReset, onSave, copyHref, readOnly, footer, invalid }: {
+export function LocalePanel({ detail, draft, language, languageLocked = false, onLanguage, onEdit, onReset, onSave, copyHref, readOnly, footer, invalid }: {
   detail: DetailView;
   draft: KeyDraftState;
   language: string | undefined;
+  /**
+   * 이동을 기다리는 동안 언어 메뉴를 잠근다 (U3 리뷰 r1) — 언어는 `history.replaceState`로 바뀌고 Next 16.3에서 그것이 대기 중인 이동을
+   * 버린다. 입력의 읽기 전용 잠금(`readOnly`)은 이 메뉴를 덮지 않는다.
+   */
+  languageLocked?: boolean;
   onLanguage: (value: string | undefined) => void;
   onEdit: (code: string, value: string) => void;
   onReset: (code: string) => void;
@@ -72,6 +77,7 @@ export function LocalePanel({ detail, draft, language, onLanguage, onEdit, onRes
             label={languageLabel}
             on={language !== undefined}
             size="sm"
+            disabled={languageLocked}
             value={language ?? ""}
             options={[
               { value: "", label: w.allLanguages },
@@ -113,6 +119,7 @@ export function LocalePanel({ detail, draft, language, onLanguage, onEdit, onRes
               first={index === 0}
               draft={draft.draft[locale.code] ?? ""}
               saved={draft.saved[locale.code] ?? ""}
+              sending={draft.inFlight !== undefined && Object.hasOwn(draft.inFlight.sent, locale.code) && draft.inFlight.sent[locale.code] === draft.draft[locale.code]}
               readOnly={readOnly}
               isBase={locale.code === base}
               sourceCode={base}
@@ -133,7 +140,7 @@ function lastSegment(path: string): string {
   return path.split("/").at(-1) ?? path;
 }
 
-function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, saved, readOnly, isBase, invalidBy, onEdit, onReset, onSave }: {
+function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, saved, sending, readOnly, isBase, invalidBy, onEdit, onReset, onSave }: {
   keyName: string;
   sourceText: string;
   /** 겹친 원문의 언어 — 셀이 아니라 base의 방향을 든다. */
@@ -142,6 +149,8 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
   first: boolean;
   draft: string;
   saved: string;
+  /** 이 셀의 지금 입력이 전송 중인 요청에 실려 있다 — 보낸 뒤 더 친 입력은 아니다(`draft`와 `inFlight.sent`가 같을 때만). */
+  sending: boolean;
   readOnly: boolean;
   isBase: boolean;
   invalidBy?: string;
@@ -191,7 +200,10 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
         <LocaleBadge code={locale.code} orphaned={false} />
         {isBase && <span className="text-muted-foreground text-xs">{w.source}</span>}
         <span className="ml-auto flex items-center gap-2">
-          {dirty
+          {/* ⚠️ 전송 중인 셀은 "Not saved"가 아니다 (audit-ux #20) — 버튼 스피너만으로는 어느 셀이 가는 중인지 모른다. */}
+          {dirty && sending
+            ? <span className="text-muted-foreground text-xs">{w.saving}</span>
+            : dirty
             ? <span className="text-xs text-amber-700">{w.notSaved}</span>
             : missing && <span className="text-xs text-amber-700">{w.missing}</span>}
           {locale.needsReview && !missing && <span className="text-xs text-amber-700">{m.translations.workspace.list.needsReview}</span>}

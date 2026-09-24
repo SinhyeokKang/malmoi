@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Dialog as Primitive } from "radix-ui";
 import type { ReactNode } from "react";
 
@@ -22,9 +22,21 @@ import { m } from "@/lib/i18n";
  * ⚠️ **닫으면 `event`만 뺀다** — 목록의 필터·검색·커서는 그대로다(결정 15). 스크롤은 라우터가
  * 같은 페이지 안의 이동으로 보존한다.
  *
+ * ⚠️ **열림은 주소의 `?event=` 하나가 정하고, 닫기는 `history.replaceState`다** (audit-ux #9). 전엔 `open`이
+ * 늘 true인 제어형이라 Esc·×가 `router.push`의 전체 재조회(Home이면 GitHub probe까지)를 기다렸고, `push`라
+ * 뒤로가기가 방금 닫은 상세를 다시 열었다. 닫을 결과를 서버에 물을 것이 없으니 주소만 바꾼다 — Next가
+ * `replaceState`를 `useSearchParams`에 반영하므로 서버 왕복 없이 닫힌다(프로젝트 검색과 같은 형).
+ * ⚠️ **로컬 불리언을 곁에 두지 않는다** — 한 번 그렇게 했더니 닫고 곧바로 같은 행을 누르면 상태가 "닫힘"에
+ * 남아 영영 안 열렸다. 원천이 둘이면 캐시된 히스토리 항목이 그중 하나만 되살린다.
+ * ⚠️ **대상 ref는 `returnFocusId`(`event-${ref}`)에서 읽는다** — 두 소비자(Home·Logs)가 이미 그 형으로 넘긴다.
+ * 주소가 다른 이벤트를 가리키면(다른 행을 눌러 서버 응답을 기다리는 중) 옛 상세를 열지 않는다.
+ *
  * ⚠️ **닫은 뒤 포커스가 눌렀던 행으로 돌아간다.** Radix의 기본 복귀 대상은 트리거인데 여기엔
  * 트리거가 없다(링크 내비게이션으로 열렸다) — 행이 남아 있으면 그 행, 없으면 화면 제목이다.
  */
+/** 행의 DOM id 접두 — Home(`logs-card`)·Logs 페이지가 `event-${ref}`로 id를 단다. */
+const ROW_ID_PREFIX = "event-";
+
 export function EventDialog({
   closeHref,
   returnFocusId,
@@ -35,12 +47,12 @@ export function EventDialog({
   returnFocusId: string;
   children: ReactNode;
 }) {
-  const router = useRouter();
+  const open = `${ROW_ID_PREFIX}${useSearchParams().get("event") ?? ""}` === returnFocusId;
   return (
     <Primitive.Root
-      open
+      open={open}
       onOpenChange={(next) => {
-        if (!next) router.push(closeHref, { scroll: false });
+        if (!next) window.history.replaceState(null, "", closeHref);
       }}
     >
       <Primitive.Portal>

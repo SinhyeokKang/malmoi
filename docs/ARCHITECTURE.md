@@ -602,6 +602,10 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 - **정렬은 `Incomplete first` 하나이고 URL에 `sort`가 없다** — 고를 것이 없는 파라미터는 만들지 않는다.
 - **`PAGE_SIZE` 100 + keyset cursor**(`lib/keys/translation-list.ts`). 안정 분할이 범위 전체 집계를 요구하므로 비용은 페이지 크기가
   아니라 `scope`에 좌우된다 — 페이지를 줄여 빨라지길 기대하지 않는다. 조건이 바뀌면 cursor를 푼다.
+  ⚠️ **다음 페이지는 주소가 아니라 `loadMoreTranslationKeys`(읽기 전용 Server Action)로 읽고 화면이 누적한다** (audit-ux #19, 2026-09-25) —
+  cursor가 주소에 있으면 새로고침·공유·뒤로가기가 그 페이지만 보였다. 대가: **저장 뒤 재검증은 첫 페이지만 다시 그린다** — 붙인 행은
+  `mergeServerRows`가 자리에 남기고, 요약이 바뀌는 길은 저장한 행의 `applySavedRow`와 선택 키의 `selectedInResult`뿐이다(남이 바꾼 뒤쪽
+  행의 배지는 재필터까지 낡을 수 있다). More의 행·cursor·대기 상태는 목록 세대에 묶여 조건이 바뀌면 버려진다.
 - **`q`는 200자**(`Q_MAX_LENGTH`) — trim 뒤 비면 검색 없음, LIKE 메타문자는 escape한다.
 - **Save는 `KEY_SAVE_LIMITS`**(`lib/keys/save.ts`) — 값당 10,000 · 로케일 200 · **변경값 합계 UTF-16 1,000,000 코드유닛**. 최악이
   UTF-8 약 3MB(CJK 1유닛=3바이트, 서로게이트 2유닛=4바이트)라 `serverActions.bodySizeLimit: "4mb"` 안에 든다. ⚠️ **둘 중 하나를
@@ -753,6 +757,8 @@ pull과 **같은 App 설치 토큰**을 쓰지만 방향이 반대다(읽기 전
 `lib/onboarding/*`는 스냅샷과 blob을 **값으로** 받고, 두 자격증명이 만나는 자리는 Server Action 하나다
 (`credential-separation.test.ts`가 상시로 센다).
 
+⚠️ **`createApp()`은 모듈 lazy 싱글턴이다** (2026-09-25, audit-ux #8) — 요청 사이에 App과 그 설치 토큰 캐시가 살아남아 웜 인스턴스에서 probe가 3홉→2홉이 된다. env는 매 호출 읽고 값이 바뀌면 새 App을 만든다(모듈 최상위 평가 없음). 그 대가로 캐시 토큰이 만료 직전일 수 있어, 정적 Octokit에 고정하는 `createGitClient`는 남은 시간이 5분 미만이면 `refresh: true`로 재발급한다(`TOKEN_MARGIN_MS`) — 60초 Publish가 중간에 401을 받지 않게 한다.
+
 **리더는 설치 토큰을 한 번만 발급한다** (`openRepoReader`). ⚠️ 읽기마다 `createApp()`을 부르면 토큰 캐시가
 인스턴스마다 새로 생겨 **`POST /app/installations/{id}/access_tokens`가 호출마다 하나씩 더 붙는다** — 예산이
 2배가 되고 50로케일 첫 적재는 `maxDuration=60`에서 잘린다 (code-review 2026-09-07 🔴). 스냅샷은 트리 항목의
@@ -872,9 +878,28 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
 
 ⚠️ **Server Action의 `maxDuration`은 호출한 페이지 세그먼트가 정한다.** `app/api/*`의 세그먼트 config가
 Action에 적용되지 않으므로 **페이지가 각자** `export const maxDuration = 60`을 든다 — 지금 **여덟 곳**이다(`app/api/push`·`app/api/pull`은 라우트라 별개다):
-`projects/page.tsx` · `projects/new/page.tsx` · `projects/@modal/(.)new/page.tsx` · `[slug]/(home)/page.tsx` · `[slug]/settings/page.tsx` ·
+`projects/(list)/page.tsx` · `projects/(list)/new/page.tsx` · `projects/@modal/(.)new/page.tsx` · `[slug]/(home)/page.tsx` · `[slug]/settings/page.tsx` ·
 `[slug]/sources/page.tsx` · `[slug]/translations/page.tsx` · **`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`**. **새 Action 화면을 만들 때마다 선언한다** — 안 하면 기본값에서
 첫 적재가 잘리고, 증상이 "큰 리포에서만 실패"라 재현이 어렵다. **세는 법은 grep 하나다**(`rg -n 'maxDuration' app`) — 이 목록을 손으로 늘리면 낡는다.
+
+⚠️ **오래 도는 Server Action 호출을 `startTransition(async …)`로 감싸지 않는다** (2026-09-25, audit-ux U6). React 19는 열린 async
+action 스코프에 **그 뒤의 모든 transition을 얽는다**(POSTMORTEM 2026-09-18) — Link 내비게이션도 transition이라, 감싸면 Publish·Sync·
+첫 적재가 끝날 때까지 화면 이동이 커밋되지 않는다. 그래서 그 셋은 수동 `pending` 상태다. ⚠️ **promise가 풀리는 것은 트리가 커밋된
+것이 아니다** (malmoi#103 실측, Slow 4G) — Action 응답은 머리에서 promise를 풀고 `revalidatePath`가 실은 RSC 트리를 그 뒤 스트리밍해
+**0.3–1.5 s 늦게** 커밋한다. 그 사이 잠금을 풀면 다른 트리거가 옛 수치로 켜진다(Sync가 버린 편집을 Publish가 보내자고 했다). 규칙:
+**트리를 싣고 오는 결과 뒤에는 교차 잠금을 새 서버 트리가 커밋될 때까지 잇는다** — `components/commit-wait.ts`의 `useCommitWait`가 결과를
+받은 **그 순간의** 서버 prop 하나(Home은 `HomeActions`의 `children`, 번역 화면은 상세·없으면 목록)의 **식별자**를 떠 두고 그것이 바뀌면
+푼다. 값이 아니라 식별자인 이유는 재검증이 같은 수치를 줄 수 있어서다. Action 전이 아니라 결과 시점에 뜨는 이유는 도는 동안의 키·필터
+이동이 prop을 바꾸기 때문이고, 그 시점에 재검증 트리가 이미 커밋돼 있을 수 없다(Next가 promise를 먼저 풀고 트리를 나중에 커밋한다).
+상한 `COMMIT_WAIT_MS`(10 s)가 트리가 끝내 안 오는 갈래를 푼다. ⚠️ **"거부는 트리가 없다"가 아니다** — 어느 결과가 트리를 싣고 오는지는
+Action의 `revalidatePath` 자리가 정하고, 그 분류를 순수 함수 둘이 든다: Sync는 `importRevalidates`(`runRepositoryImport`의 `try` 안 거부 —
+`reconfirm`·`already-running`·`not-ready`… — 도 `finally`를 지난다, `try` 앞의 거부만 없다), Publish는 `pullRevalidates`(`runSync`를
+지난 `failed`도 온다 — 표식은 실행 실패의 `code`와 게이트의 `already-running`·`too-soon`, `delivery`는 게이트 거부도 `not-started`라 못
+가른다). Revert는 `reverted`만 기다린다. 트리를 기다리는 동안 [Publish]를 누르면 새 미리보기가 아니라 결과가 열린다. 결과 문구는
+promise가 풀릴 때 서도 된다. 소비자는 Home Sync · 번역 화면
+Sync · `usePublish` · Revert 넷이다. 같은 이유로 그 뒤에 `router.refresh()`를 또 부르지 않는다(두 번째 전체 렌더가 표시 없이 돈다).
+**남은 예외 하나**: Add sources의 `run(async … addSurfaces)`(`add-sources-modal.tsx`)는 `useTransition` 안이라 그동안 이동이 얽힌다 —
+모달이 닫기를 막는 동안의 일이라 받았다. ⚠️ **알려진 예외 둘이 남아 있다** — `reconnect-button.tsx`·`add-sources-modal.tsx`(`run(async … addSurfaces)`)가 아직 이 형이다(후속 이슈).
 
 ⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Publish]가 사는 곳은
 **표면 경로**(`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`)이고 그 세그먼트를 쓴다.
@@ -2267,8 +2292,9 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
   `getInstallationOctokit`의 **토큰 발급**이 404로 죽는다.
 - **⚠️ `createApp()`은 `try` 밖이다** (2026-09-07). 환경변수 누락(`MissingEnvError`)은 GitHub 실패가 아니라
   우리 설정 오류인데, 값으로 접으면 화면이 `m.settings.repository.health.unknown`을 **영원히** 보이고 로그도
-  없다 — 2026-09-06 개인키 사고가 정확히 그 화면이었다. 그래서 던지고, **호출부(설정 화면 `loadHealth`·
-  `connectRepository`)도 그것을 잡지 않는다** — Server Action에서는 digest만 있는 일반 오류가 되지만
+  없다 — 2026-09-06 개인키 사고가 정확히 그 화면이었다. 그래서 던지고, **호출부(설정 화면의 `loadConnectionHealth`·
+  `connectRepository`)도 그것을 잡지 않는다** — 설정 화면은 그 promise를 await하지 않고 내려 보내므로(§6.5.2) 거부는
+  연결 카드의 `use`가 가장 가까운 오류 경계로 올린다. Server Action에서는 digest만 있는 일반 오류가 되지만
   사용자가 할 수 있는 일이 없는 오류라 §6.3("거부는 값으로")의 예외다. `state.ts`의 `requireSecret`이
   빈 키를 `state-mismatch`로 접지 않고 던지는 것과 같은 판단이다.
 - **⚠️ 예외를 삼켜 `not-installed`로 접지 않는다.** 분류는 `probeFromError` **한 곳**이고, **403·404만
@@ -2321,6 +2347,12 @@ GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" 
 조용히 받아들이면 "내가 모르는 사이에 다른 리포로 PR이 갔다"가 성립한다. 사람이 다시 연결한다.
 
 **GitHub App 개인키는 개행이 든 PEM이다.** Vercel env에 넣으면 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 **조용히** 실패한다.
+
+#### 6.5.2 GitHub 대기 마감은 8초 하나다 (2026-09-25, audit-ux D5)
+
+**화면을 그리는 동안 GitHub을 기다리는 자리는 전부 `lib/github-wait.ts`의 `GITHUB_WAIT_MS`(8초)를 읽는다** — 목록의 원격 신호(`loadRemoteSignals`)·연결 확인(`probeRepo`)·설정의 열린 PR(`loadOpenPrUrl`)·계정 조회(`loadAccountView` — 설정·`/account`). 넘기면 각자의 실패 갈래(신호 없음 · `error`→`unknown` · `undefined` · `unavailable`)로 접고 로그 한 줄을 남긴다. 같은 원격을 기다리는 두 화면의 마감이 다르면 한쪽은 "확인할 수 없음", 다른 쪽은 아직 매달린 채로 갈린다 — 그래서 사본을 두지 않는다. 설정 화면은 그 셋을 await하지 않고 Suspense로 스트리밍하며, **App 인스턴스는 요청 사이에 남는다**(설치 토큰 캐시가 인스턴스에 붙어 있다 — `createApp`). ⚠️ 그래서 캐시가 만료 직전 토큰을 줄 수 있고, 고정 토큰을 쥐는 `createGitClient`는 만료가 5분 안이면 `refresh: true`로 다시 받는다.
+
+⚠️ **`loadInstalledRepoCount`(`/account` — 설치 목록 + 설치별 리포)는 아직 이 마감 밖이다** (후속 이슈).
 
 ### 6.6 Credential 저장 경계 (2026-09-10, dev·prod 전환 완료)
 
@@ -2477,6 +2509,10 @@ PR 생성·머지·재push 및 60초 전체 예산 검증은 미완료다.
     안 돌았다.** 응답이 항상 200이라 cron 실행은 성공으로 표시되고 요약에도 그 사실이 없어 **관측값이
     정상과 같았다.** 지금은 `selectPullTargets`가 못 돈 수를 함께 내고 응답이 `{ results, unprocessed }`다 —
     **상한이 잘림을 없애지 않는다, 시끄럽게 만든다.** 거기 닿으면 그때 cron 분할을 본다.
+  - ⚠️ **시간 예산도 있다** (2026-09-24, launch-readiness L2.9 — `PULL_TIME_BUDGET_MS` 45초). 50개 상한 안에서도
+    `maxDuration`에 닿으면 함수가 통째로 죽어 **요약 로그와 응답이 하나도 안 남는다**(이미 돈 프로젝트의 결과까지).
+    루프 머리에서 예산을 넘었으면 나머지를 `unprocessed`에 더하고 멈춘다 — 시작 전 판정이라 첫 프로젝트는 항상 돈다.
+    예산이 지키는 것은 공정성이 아니라 **요약이 남는 것**이다(다음 밤 이월은 `selectPullTargets`의 정렬이 이미 보장한다).
 - **응답 보안 헤더는 `next.config.ts`의 `headers()`가 낸다** (2026-09-09, sec-audit 발견 9 → 2026-09-24 audit #75).
   값은 `lib/security-headers.ts`의 순수 함수(`cspEnvironment` · `buildCsp` · `securityHeaders`)가 정하고, 다섯이 전부
   enforce다: `X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·

@@ -2,7 +2,9 @@
 
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
+import { useCommitWait } from "@/components/commit-wait";
 import { SyncButton } from "@/components/home/sync-button";
+import { SlowNotice } from "@/components/slow-notice";
 import { SyncResult } from "@/components/home/sync-result";
 import { PublishButton, PublishModal, usePublish, type PublishController } from "@/components/publish-button";
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
@@ -13,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { landFocus } from "@/components/ui/focus";
 import { m } from "@/lib/i18n";
-import type { RepositoryImportOutcome } from "@/lib/import/result";
+import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
 import type { HomeState } from "@/lib/home/state";
 import { importFailureMessage } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
@@ -37,10 +39,12 @@ type HomeActionsValue = {
    * 겹치면 남는 값이 두 요청의 도착 순서에 달린다. 화면이 약속할 수 없는 근거라 **한쪽이 도는 동안
    * 다른 쪽을 잠근다.** 각 버튼은 자기 연타만 막고 서로의 존재를 모르므로 이 판정은 호스트의 몫이다.
    *
-   * ⚠️ **하나의 `busy`로 접지 않는다** — 그러면 Sync가 자기 자신을 잠가 `Syncing…` 트리거가 native
+   * ⚠️ **하나의 `busy`로 접지 않는다** — 그러면 Sync가 자기 자신을 잠가 도는 [Sync] 트리거가 native
    * `disabled`로 떨어지고, Dialog가 포커스를 되돌릴 대상이 사라진다 (DESIGN §6.64).
    */
   syncPending: boolean;
+  /** `syncPending`에서 재검증 트리 대기를 뺀 것 — 지연 문구는 실제로 도는 동안만이다 (malmoi#103). */
+  syncRunning: boolean;
   setSyncPending: (pending: boolean) => void;
   publishPending: boolean;
   publish: PublishController;
@@ -60,8 +64,15 @@ function useHomeActions(): HomeActionsValue {
 
 export function HomeActions({ children, slug }: { children: ReactNode; slug: string }) {
   const [syncOpen, openSync] = useState(false);
-  const [syncPending, setSyncPending] = useState(false);
-  const publish = usePublish(slug);
+  /*
+    ⚠️ **교차 잠금은 새 서버 트리까지 간다** (malmoi#103) — 신호는 `children`이다: 서버 페이지가 렌더할 때마다 새 객체가 되고, 수치
+    카드·배너가 전부 그 안에 산다. Action이 풀린 뒤 트리가 0.6–1.5 s 늦게 오는 동안 Publish가 Sync가 버린 편집을 보내자고 했다.
+  */
+  const syncCommit = useCommitWait(children);
+  const [syncRunning, setSyncRunning] = useState(false);
+  const setSyncPending = setSyncRunning;
+  const syncPending = syncRunning || syncCommit.waiting;
+  const publish = usePublish(slug, children);
   const publishPending = publish.pending;
   /*
     ⚠️ **Publish가 도는 동안은 확인 창이 "예약"되지 않는다** (2026-09-15 재리뷰 🟡4 — 상호 잠금 자체가
@@ -74,10 +85,12 @@ export function HomeActions({ children, slug }: { children: ReactNode; slug: str
     열린 채 Publish가 시작)은 Dialog가 modal이라 그 버튼에 클릭이 닿지 않는다.
   */
   const setSyncOpen = (open: boolean) => openSync(open && !publishPending);
-  const [outcome, setOutcome] = useState<RepositoryImportOutcome | null>(null);
+  const [outcome, setOutcomeState] = useState<RepositoryImportOutcome | null>(null);
+  // 트리를 싣고 오는 결과만 기다린다 — `try` 안의 거부(`reconfirm`…)도 온다, 그 앞의 거부는 안 온다 (`importRevalidates`).
+  const setOutcome = (next: RepositoryImportOutcome | null) => { if (next !== null && importRevalidates(next)) syncCommit.wait(); setOutcomeState(next); };
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   return (
-    <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, outcome, setOutcome, titleRef }}>
+    <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, syncRunning, setSyncPending, publishPending, publish, outcome, setOutcome, titleRef }}>
       {children}
     </Ctx.Provider>
   );
@@ -117,8 +130,10 @@ export function HomeTitle({ archived, children, image }: { archived: boolean; ch
  *
  * ⚠️ **`[Publish]`는 EDITOR도 누른다** — PRODUCT §3이 허용하고 `translation:write`에 들어 있다.
  */
-export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: {
+export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsent, paused }: {
   slug: string;
+  /** 기본 표면 — `[Sync]` Dialog의 `Publish first`가 가리킨다 (audit-ux #4b). */
+  surfaceSlug?: string;
   name: string;
   branch: string;
   role: "OWNER" | "EDITOR";
@@ -134,6 +149,7 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
     <div className="flex items-center gap-2">
       <SyncButton
         slug={slug}
+        surfaceSlug={surfaceSlug}
         name={name}
         branch={branch}
         role={role}
@@ -141,9 +157,11 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
         /*
           ⚠️ **Publish가 도는 동안도 멈춘 상태다** — 뜻이 `paused`와 같다(OWNER가 가진 동작이 지금
           멈춰 있다). 같은 뜻에 프롭을 하나 더 만들지 않는다. **자기 자신의 진행은 넣지 않는다**:
-          넣으면 `Syncing…` 트리거가 native `disabled`로 떨어져 포커스 복귀 대상이 사라진다.
+          넣으면 도는 [Sync] 트리거가 native `disabled`로 떨어져 포커스 복귀 대상이 사라진다.
         */
         paused={paused || publishPending}
+        /* 미연결·보관이 먼저다 — 그 원인은 배너가 말하고, Publish가 끝나도 풀리지 않는다 (audit-ux #10). */
+        pausedReason={!paused && publishPending ? m.repositorySync.waitPublish : undefined}
         open={syncOpen}
         onOpenChange={setSyncOpen}
         onPendingChange={setSyncPending}
@@ -183,7 +201,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
   lastSyncAt: Date | null;
   now: Date;
 }) {
-  const { outcome, setOutcome, publish, titleRef, setSyncOpen, publishPending } = useHomeActions();
+  const { outcome, setOutcome, publish, titleRef, setSyncOpen, publishPending, syncPending, syncRunning } = useHomeActions();
   const owner = role === "OWNER";
   /** 복원 거부 — 배너 `actions` 안이 아니라 **배너의 형제**로 선다 (audit #7 r1: 경고 속 경고가 됐다). */
   const [restoreError, setRestoreError] = useState<string | null>(null);
@@ -275,6 +293,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
         */
         onRetry={owner ? () => setSyncOpen(true) : undefined}
       />
+      <SlowNotice active={syncRunning} />
       <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unsent} repo={repo} role={role} />
     </div>
   );

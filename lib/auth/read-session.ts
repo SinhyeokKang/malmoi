@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { auth } from "@/auth";
 
 import { withOutageFlag } from "./outage";
@@ -21,10 +23,20 @@ export type SessionRead =
   /** 세션을 읽지 못했다 — 거부가 아니다. 호출부는 재시도를 권하고 로그인을 시키지 않는다. */
   | { status: "unavailable" };
 
-export async function readSession(): Promise<SessionRead> {
+/**
+ * ⚠️ **React `cache`로 감싼다** (audit-ux #32) — 셸 레이아웃·페이지·`@modal`의 `requireUser`가 각자 부르면 한 요청에서
+ * `auth()`(= 세션 DB 조회)가 여러 번 돌았다.
+ *
+ * ⚠️ **범위는 Flight 렌더 요청 하나다** — 캐시 저장소가 `request.cache`이고, 다음 요청은 새 요청이라 새로 읽는다. 그래서
+ * 세션 폐기(`lib/session-revocation/`)가 다음 요청까지 살아남지 않는다. **Server Action 본문·Route Handler는 렌더 밖이라
+ * 캐시되지 않는다** — dispatcher는 늘 있지만 `getCacheForType`이 `resolveRequest()`가 `null`이면 **매번 새 `Map`**을 돌려주므로
+ * 기억할 곳이 없다(`react-server-dom-webpack-server` 구현). action 뒤의 재렌더는 새 렌더 요청이라 새 범위다 — 같은 action
+ * 안에서 세션을 바꾸고 다시 읽는 경로도 옛 값을 보지 않는다.
+ */
+export const readSession = cache(async function readSession(): Promise<SessionRead> {
   const { value, outage } = await withOutageFlag(() => auth());
   if (outage) return { status: "unavailable" };
   const userId = value?.user?.id;
   if (typeof userId !== "string" || userId === "") return { status: "none" };
   return { status: "ok", userId, name: value?.user?.name ?? null, email: value?.user?.email ?? null, image: value?.user?.image ?? null };
-}
+});

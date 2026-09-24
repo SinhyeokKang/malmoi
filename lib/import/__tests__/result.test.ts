@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { summarizeImport, type SurfaceImportResult } from "../result";
+import { importRevalidates, summarizeImport, type SurfaceImportResult } from "../result";
 const row = (status: SurfaceImportResult["status"], over: Partial<SurfaceImportResult> = {}): SurfaceImportResult => ({ surfaceSlug: "default", status, count: 0, failed: 0, unmanaged: 0, reason: null, errors: [], ...over });
 
 describe("summarizeImport", () => {
@@ -20,4 +20,19 @@ describe("summarizeImport", () => {
     expect(summarizeImport(["z", "a", "A"].map(surfaceSlug => row("failed", { surfaceSlug }))).unreadable).toEqual(["A", "a", "z"]);
   });
   it("빈 결과를 전체 성공으로 접지 않는다", () => expect(summarizeImport([]).tone).toBe("danger"));
+});
+
+/**
+ * **어느 Sync 결과가 재검증 트리를 싣고 오나** (malmoi#103 r1). `runRepositoryImport`의 `finally`가 `revalidatePath`를 부르므로
+ * `try` 안의 거부(`reconfirm`·`already-running`·`not-ready`…)도 새 트리가 온다 — 그 트리를 기다려야 교차 잠금이 옛 수치로 안 풀린다.
+ * `try` 앞의 거부와 클라이언트가 접은 throw(`unavailable`)만 트리가 없다.
+ */
+describe("importRevalidates", () => {
+  it.each(["reconfirm", "already-running", "not-ready", "not-connected", "repo-replaced", "ingest-failed", "no-surfaces"] as const)("try 안의 거부 %s는 트리가 온다", error => {
+    expect(importRevalidates({ ok: false, error })).toBe(true);
+  });
+  it.each(["invalid input", "unauthorized", "forbidden", "unavailable", "not-found", "archived"] as const)("try 앞의 거부 %s는 트리가 없다", error => {
+    expect(importRevalidates({ ok: false, error })).toBe(false);
+  });
+  it("성공은 트리가 온다", () => { expect(importRevalidates({ ok: true, surfaces: [], remainingEdits: 0 })).toBe(true); });
 });

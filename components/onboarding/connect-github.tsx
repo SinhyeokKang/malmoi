@@ -1,5 +1,6 @@
 "use client";
 
+import { unstable_rethrow } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { startGithubConnectForUser, type ConnectVia, type UserConnectDest } from "@/app/(edit)/projects/actions";
@@ -75,19 +76,26 @@ export function useGithubConnect({
   dest: UserConnectDest;
   back?: { filter?: string; q?: string };
   onResult?: (message: string | null) => void;
-}): { pending: boolean; error: string | null; start: (via: ConnectVia) => void } {
+}): { pending: boolean; via: ConnectVia | null; error: string | null; start: (via: ConnectVia) => void } {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  /** 마지막으로 누른 갈래 — 막는 것은 `pending` 하나이고, 스피너 자리만 이것이 정한다 (audit-ux #27). */
+  const [via, setVia] = useState<ConnectVia | null>(null);
   const report = (message: string | null) => { if (onResult === undefined) setError(message); else onResult(message); };
 
   return {
     pending,
+    via,
     error,
-    start: (via) => {
+    start: (next) => {
       report(null);
+      setVia(next);
       startTransition(async () => {
-        const result = await startGithubConnectForUser(dest, back ?? {}, via);
         // 거부는 값으로 온다 — 성공은 redirect라 여기 도달하지 않는다 (ARCHITECTURE §6.3).
+        // ⚠️ 그 redirect는 reject로 오므로 되던지고, 그 밖의 throw만 거부와 같은 자리로 접는다 (audit-ux #14).
+        let result: Awaited<ReturnType<typeof startGithubConnectForUser>>;
+        try { result = await startGithubConnectForUser(dest, back ?? {}, next); }
+        catch (thrown) { unstable_rethrow(thrown); report(m.settings.repository.connectFailed); return; }
         if (!result.ok) report(messageFor(result.error));
       });
     },

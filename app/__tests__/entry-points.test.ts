@@ -189,7 +189,7 @@ function normalize(rel: string): string {
 
 it("인터셉트와 직접 진입을 같은 공개 경로로 판정한다", () => {
   expect(normalize("(edit)/projects/@modal/(.)new/page.tsx")).toBe("projects/new/page.tsx");
-  expect(normalize("(edit)/projects/new/page.tsx")).toBe("projects/new/page.tsx");
+  expect(normalize("(edit)/projects/(list)/new/page.tsx")).toBe("projects/new/page.tsx");
 });
 
 const ENTRY_POINTS = walk(APP).map((rel) => ({

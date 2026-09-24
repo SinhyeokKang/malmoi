@@ -79,6 +79,11 @@ export default async function LogsPage({
   const boundary = coverageBoundaryIndex(page.rows, project.activityCoverageStartedAt, filter.cursor);
   const href = (ref: string) => routes.logs(slug, { ...logsQuery(filter), event: ref });
   const closeHref = routes.logs(slug, { ...logsQuery(filter), event: undefined });
+  /**
+   * ⚠️ **`event`를 정하는 링크는 위 둘뿐이다** (malmoi#102). 상세 닫기가 `history.replaceState`라 이 렌더의
+   * `filter.event`는 닫은 뒤에도 남는다 — [Older]·빈 상태의 [Clear filters]가 그것을 실으면 누르는 순간 닫은
+   * 상세가 되살아났다. 둘 다 모달 뒤라 상세가 열린 동안에는 누를 수 없으니 `event`를 비운다.
+   */
   // ⚠️ **판정은 `hasNarrowing` 하나다** — 같은 규칙을 화면이 다시 조립하면 축이 늘 때 한쪽만 고쳐진다.
   const narrowed = hasNarrowing(filter);
 
@@ -107,7 +112,7 @@ export default async function LogsPage({
               description={m.logs.noMatch.description}
               action={
                 // ⚠️ 되돌리기는 primary가 아니다 (audit #50 — DESIGN §6.4) — 툴바의 같은 버튼과 글리프를 함께 든다.
-                <ButtonLink href={routes.logs(slug, clearedLogsQuery(filter))}>
+                <ButtonLink href={routes.logs(slug, clearedLogsQuery({ ...filter, event: null }))}>
                   <RotateCcw aria-hidden />
                   {m.logs.filters.clear}
                 </ButtonLink>
@@ -159,7 +164,7 @@ export default async function LogsPage({
         <div className="flex items-center gap-3">
           {page.nextCursor !== null && (
             <ButtonLink
-              href={routes.logs(slug, { ...logsQuery(filter), cursor: encodeCursor(page.nextCursor) })}
+              href={routes.logs(slug, { ...logsQuery(filter), cursor: encodeCursor(page.nextCursor), event: undefined })}
               variant="default"
             >
               {m.logs.older}

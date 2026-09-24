@@ -55,7 +55,8 @@ export function ReconnectButton({ slug, label, variant, onFailure }: {
           });
         }}
       >
-        <RefreshCw aria-hidden />
+        {/* 아이콘이 있는 버튼은 스피너를 더하지 않고 교체한다 (DESIGN §6.4 · audit-ux #25) — 더하면 글리프 하나만큼 넓어졌다 좁아진다. */}
+        {!pending && <RefreshCw aria-hidden />}
         {label}
       </Button>
       {error !== null && <Alert variant="danger">{messageFor(error)}</Alert>}

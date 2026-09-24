@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut, MonitorSmartphone } from "lucide-react";
+import { unstable_rethrow } from "next/navigation";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -35,7 +36,8 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
    */
   const [open, setOpen] = useState(false);
   const [failed, submit, pending] = useActionState(async () => {
-    await startSessionRevocation();
+    // ⚠️ 던지면 `useActionState`가 error boundary로 올린다 (audit-ux #14) — 통신 실패도 실패다. provider로 가는 redirect만 되던진다.
+    try { await startSessionRevocation(); } catch (thrown) { unstable_rethrow(thrown); }
     setOpen(false);
     return true;
   }, false);

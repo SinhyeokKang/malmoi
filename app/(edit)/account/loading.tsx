@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
  * 데이터가 도착할 때 본문이 튄다 (POSTMORTEM 2026-09-15 #3의 유령 띠와 같은 축).
  *
  * ⚠️ **`aria-hidden`은 `Skeleton`이 든다** — 호출부가 컨테이너마다 붙이면 하나가 빠지고, 그 순간
- * 스크린리더가 회색 블록을 읽는다 (`projects/loading.tsx`에서 실제로 둘로 갈렸다).
+ * 스크린리더가 회색 블록을 읽는다 (`projects/(list)/loading.tsx`에서 실제로 둘로 갈렸다).
  */
 export default function AccountLoading() {
   return (

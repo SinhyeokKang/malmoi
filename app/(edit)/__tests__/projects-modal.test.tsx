@@ -9,7 +9,7 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => ({}) }));
 vi.mock("@/lib/keys/query", () => ({ loadProjectList: mocks.loadProjectList }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ listConnectableRepos: mocks.listConnectableRepos }));
 
-import DirectPage from "../projects/new/page";
+import DirectPage from "../projects/(list)/new/page";
 import InterceptedPage from "../projects/@modal/(.)new/page";
 import EmptySlot from "../projects/@modal/[...rest]/page";
 import EmptyRoot from "../projects/@modal/page";
@@ -35,7 +35,10 @@ it("인터셉트는 인가 뒤 모달만 반환하고 배경 목록을 조회하
 it("직접 진입은 인가된 사용자의 목록과 목록 복귀 모달을 함께 반환한다", async () => {
   const tree = await DirectPage({ searchParams: Promise.resolve({ q: "format" }) });
   expect(mocks.loadProjectList).toHaveBeenCalledWith({}, "u1");
-  expect(tree.props.children[0].props).toMatchObject({ q: "format", all: [] });
+  // 뒤 목록은 검색어를 prop으로 받지 않는다 — 주소창(`useSearchParams`)에서 읽는다 (audit-ux #17).
+  expect(tree.props.children[0].props).toMatchObject({ all: [] });
+  expect(tree.props.children[0].props).not.toHaveProperty("q");
+  expect(tree.props.children[1].props.backQuery).toEqual({ q: "format" });
   expect(tree.props.children[1].type).toBe(NewProjectModal);
   expect(tree.props.children[1].props.closeMode).toBe("list");
 });

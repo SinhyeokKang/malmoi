@@ -215,6 +215,12 @@ export type MembershipRow = {
   archivedAt: Date | null;
   /** 프로젝트 표시용 공개 Blob URL — 사이드바 썸네일이 쓴다. */
   image: string | null;
+  /**
+   * 기본 표면의 slug — 사이드바 Translations가 옛 `/translations`의 redirect를 건너뛰고 직접 조립한다 (audit-ux #4).
+   * ⚠️ **보관·미설정이면 `null`이다** — 옛 라우트가 그 경우를 `notFound()`로 판정하므로, 보관 표면의 주소를 직접
+   * 조립하면 그 판정을 건너뛴다. 그때 사이드바는 옛 주소로 떨어진다.
+   */
+  defaultSurfaceSlug: string | null;
 };
 
 /**
@@ -229,7 +235,11 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     select: {
       role: true,
       project: {
-        select: { slug: true, name: true, image: true, installationId: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } }, archivedAt: true },
+        select: {
+          slug: true, name: true, image: true, installationId: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } }, archivedAt: true,
+          // 관계 select라 같은 쿼리의 JOIN이다 — 셸이 매 페이지 부르므로 왕복을 늘리지 않는다.
+          defaultSurface: { select: { slug: true, archivedAt: true } },
+        },
       },
     },
     // 결정적 순서 — 목록이 렌더마다 흔들리면 사용자가 항목을 근육 기억으로 못 찾는다.
@@ -243,6 +253,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     surfaces: r.project.surfaces,
     archivedAt: r.project.archivedAt,
     image: r.project.image,
+    defaultSurfaceSlug: r.project.defaultSurface && r.project.defaultSurface.archivedAt === null ? r.project.defaultSurface.slug : null,
   }));
 }
 
@@ -252,7 +263,11 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
  * ⚠️ **`Project.id`를 싣지 않는다** — 화면이 아는 식별자는 slug 하나로 남긴다. 내부 id는 집계를
  * 묶는 서버 안의 값이고, 그것을 RSC 페이로드에 흘리면 URL이 아닌 경로로 새는 식별자가 하나 는다.
  */
-export type ProjectListRow = MembershipRow &
+/*
+  ⚠️ **`defaultSurfaceSlug`를 뺀다** — 셸 사이드바만 쓰는 값이고(audit-ux #4), 목록 행은 표면 주소를 자기 필드
+  (`reviewSurfaceSlug`·`unsentSurfaceSlug`)로 든다. 여기 남기면 목록 조회가 쓰지 않을 관계를 하나 더 싣는다.
+*/
+export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug"> &
   /**
    * ⚠️ **사건을 중첩하지 않고 펼친다** — 판정 셋(`projectStatus`·`rowBanner`·`meterSlot`)이
    * `ProjectStatusInput & ProjectEvents`를 받으므로, 중첩하면 화면이 렌더마다 `{...row, ...row.events}`를

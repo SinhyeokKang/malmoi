@@ -110,6 +110,19 @@ describe("planConfirmedFormat — 입력 ↔ 재탐지 결과 대조", () => {
     expect(planConfirmedFormat(input, notCatalog)).toEqual({ status: "rejected", reason: "not-detected" });
   });
 
+  /**
+   * ⚠️ **로케일이 하나뿐인 경로는 "파일이 없다"가 아니다** (malmoi#99). 그 리포 주인이 할 일은 둘째 언어 파일을
+   * 만드는 것인데, `not-detected`로 접히면 호출부가 "그 경로에 파일이 없다"로 말해 경로를 계속 고치게 된다.
+   */
+  it("로케일별 어댑터에서 템플릿이 파일 하나만 가리키면 `single-locale`이다", () => {
+    expect(planConfirmedFormat(input, [f("src/locales/en.json", '{"a":"A"}')])).toEqual({ status: "rejected", reason: "single-locale" });
+  });
+
+  it("파일이 둘 이상인데 모양이 아니면 여전히 `not-detected`다 — 하나일 때만 갈린다", () => {
+    const notCatalog = [f("src/locales/en.json", "[1,2,3]"), f("src/locales/ko.json", "[4,5]")];
+    expect(planConfirmedFormat(input, notCatalog)).toEqual({ status: "rejected", reason: "not-detected" });
+  });
+
   it("반환된 `pathTemplate`이 입력과 다르면 거부다 — 입력 템플릿이 이 리포에서 성립하지 않는다", () => {
     const elsewhere = [f("other/en.json", '{"a":"A"}'), f("other/ko.json", '{"a":"에이"}')];
     expect(planConfirmedFormat(input, elsewhere)).toEqual({ status: "rejected", reason: "template-mismatch" });

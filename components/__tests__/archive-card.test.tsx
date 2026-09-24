@@ -26,7 +26,7 @@ beforeEach(() => { vi.clearAllMocks(); });
 
 it("보관 거부는 블록 안 danger Alert로 사유를 말한다", async () => {
   mocks.archive.mockResolvedValue({ ok: false, error: "forbidden" });
-  await render(<ArchiveCard slug="acme" name="Acme" archived={false} openPrUrl={null} />);
+  await render(<ArchiveCard slug="acme" name="Acme" archived={false} openPrUrl={Promise.resolve(null)} />);
   await click("Archive project");
   await click("Archive project");
   expect(mocks.archive).toHaveBeenCalledWith("acme");
@@ -43,4 +43,23 @@ it("복원 거부·통신 실패도 사유를 세우고, 다시 누르면 지운
   await click("Restore project");
   expect(mocks.unarchive).toHaveBeenCalledTimes(3);
   expect(document.querySelector('[role="alert"]')).toBeNull();
+});
+
+/**
+ * **PR 줄의 골격이 실물의 줄 수·글자 크기와 같다** (malmoi#104). 전엔 고정 `h-4` 한 줄이라, 대화상자 폭(406px 열)에서 두 줄로
+ * 접히는 `openPr` 문장(12px · line-height 17.33)이 도착하는 순간 Dialog가 18px 자라고 가운데 정렬이 9px 튀었다.
+ * ⚠️ **px 높이가 아니라 line box다** — `SkeletonLine`이 실물과 같은 `text-xs` 줄을 세운다.
+ */
+it("열린 PR 조회 중에는 실물 문장과 같은 `text-xs` 두 줄 골격이 서고, 도착하면 그 자리에 문장이 선다", async () => {
+  let resolve!: (url: string | null | undefined) => void;
+  await render(<ArchiveCard slug="acme" name="Acme" archived={false} openPrUrl={new Promise(r => { resolve = r; })} />);
+  await click("Archive project");
+  const dialog = document.querySelector('[role="dialog"]')!;
+  const lines = [...dialog.querySelectorAll("[data-skeleton-line]")];
+  expect(lines).toHaveLength(2);
+  for (const line of lines) expect(line.classList.contains("text-xs")).toBe(true);
+  await act(async () => { resolve("https://github.com/o/r/pull/3"); });
+  expect(dialog.querySelectorAll("[data-skeleton-line]")).toHaveLength(0);
+  const real = dialog.querySelector('a[href="https://github.com/o/r/pull/3"]')?.closest("p");
+  expect(real?.classList.contains("text-xs")).toBe(true);
 });

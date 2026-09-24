@@ -602,6 +602,16 @@ export async function disconnectGithub(): Promise<DisconnectResult> {
   return { ok: true };
 }
 
+/**
+ * 프로젝트 상한이 세는 행 — **①의 안내 · 생성 선조회 · 잠금 안 재집계가 같은 조건**이어야 한다. 하나만 좁히면
+ * 앞이 통과시킨 것을 뒤가 거부한다.
+ * ⚠️ **OWNER 행만 센다** — 멤버십 전체를 세면 EDITOR로 초대만 받은 사람이 하나도 못 만든다 (PRODUCT §4.2).
+ * ⚠️ **보관은 슬롯을 비운다** (ARCHITECTURE §5.6.4) — 삭제가 비범위라 그것이 슬롯을 되찾는 유일한 길이다.
+ */
+function ownedActiveProjects(userId: string) {
+  return { userId, role: "OWNER" as const, project: { archivedAt: null } };
+}
+
 /** ①의 리포 행. `pushedAt`은 "이 리포가 아직 살아 있는가"를 말한다 — 목록이 길수록 그 신호가 는다. */
 export type ConnectableRepo = { owner: string; repo: string; fullName: string; pushedAt: string | null };
 /**
@@ -632,6 +642,19 @@ export async function listConnectableRepos(): Promise<ConnectableReposResult> {
   const { userId } = await requireUser();
 
   const prisma = getPrisma();
+  /**
+   * ⚠️ **상한은 ① 진입에서 말한다** (launch-readiness L2.6) — 전에는 ③ 끝의 [Create project]에서야 거부돼, 리포·파일·
+   * 이름을 다 고른 뒤에 막혔다. 연결보다 먼저다: 상한이면 GitHub을 읽을 이유가 없다. 판정의 정본은 여전히
+   * `createProject`의 잠금 안 재집계이고, 이것은 안내다.
+   */
+  try {
+    if ((await prisma.projectMember.count({ where: ownedActiveProjects(userId) })) >= PROJECT_LIMIT) {
+      return { ok: false, error: "limit-reached" };
+    }
+  } catch (error) {
+    logFailure("onboard-repos", error);
+    return { ok: false, error: "unavailable" };
+  }
   const token = await ensureUserToken(prisma, userId, new Date());
   if (token.status !== "ok") return { ok: false, error: token.status };
 
@@ -923,7 +946,8 @@ export async function confirmManualFormat(raw: {
     const files = await readFiles(reader, snapshot, targets);
     if (files.length !== targets.length) return { ok: false, error: "unavailable" };
     const confirmed = planConfirmedFormat(input, files);
-    if (confirmed.status !== "ok") return { ok: false, error: "manual-no-match" };
+    // 언어가 하나인 경로는 "파일이 없다"와 할 일이 달라 사유를 가른다 (malmoi#99).
+    if (confirmed.status !== "ok") return { ok: false, error: confirmed.reason === "single-locale" ? "single-locale" : "manual-no-match" };
     const summary = summarizeCandidates([confirmed.format], new Map(files.map((file) => [file.path, file.content])))[0];
     if (summary === undefined) return { ok: false, error: "manual-no-match" };
     // 수동 기준 언어는 sampleOrder의 초기 셋 밖일 수 있다. 다운로드는 이미 끝났으므로 추가 blob은 없다.
@@ -954,7 +978,8 @@ export async function confirmManualFormat(raw: {
 
 export type CreatedSurface = { surfaceSlug: string; pathTemplate: string; adapter: AdapterName; baseLocale: string };
 export type CreateProjectResult =
-  | { ok: true; slug: string; pushToken: string; baseBranch: string; surfaces: CreatedSurface[]; count: number; yaml: string }
+  /** `defaultSurfaceSlug`는 ④의 [Start translating]이 옛 번역 라우트의 redirect를 건너뛰는 목적지다 (audit-ux #22). */
+  | { ok: true; slug: string; defaultSurfaceSlug: string; pushToken: string; baseBranch: string; surfaces: CreatedSurface[]; count: number; yaml: string }
   | { ok: false; error: OnboardFailure | "path-conflict";
       surface?: { pathTemplate: string; failed: number; errors: AdapterError[] };
       conflicts?: { path: string; surfaceSlugs: string[] }[] };
@@ -994,10 +1019,8 @@ export async function createProject(raw: {
   if (access.status === "rejected") return { ok: false, error: access.error };
 
   const [ownerCount, existing] = await Promise.all([
-    // ⚠️ **OWNER 행만 센다** — 멤버십 전체를 세면 EDITOR로 초대만 받은 사람이 하나도 못 만든다 (PRODUCT §4.2).
-    // ⚠️ **보관은 슬롯을 비운다** (7단계 — ARCHITECTURE §5.6.4) — 삭제가 비범위라 그것이 슬롯을 되찾는 유일한 길이다.
-    // 아래 재집계와 **같은 조건**이어야 한다: 하나만 좁히면 선조회를 지난 뒤 재집계가 거부한다.
-    prisma.projectMember.count({ where: { userId, role: "OWNER", project: { archivedAt: null } } }),
+    // 셈 조건은 `ownedActiveProjects` 하나다 — ①의 안내·아래 재집계와 갈리면 한쪽이 통과시킨 것을 다른 쪽이 거부한다.
+    prisma.projectMember.count({ where: ownedActiveProjects(userId) }),
     // ⚠️ **전역 조회다** — slug는 `@unique`이고 "이미 쓰는 주소인가"는 테넌트 안에서 답할 수 없는
     // 질문이다 (§7.7의 대가). 돌려주는 것은 존재 여부뿐이고 화면에는 `slug-taken` 한 줄만 간다 —
     // 남의 프로젝트 이름·리포는 새지 않는다.
@@ -1086,9 +1109,7 @@ export async function createProject(raw: {
        * 선조회를 남겨 두는 것은 거부될 요청이 GitHub을 읽지 않게 하기 위해서다.
        */
       await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
-      const owned = await tx.projectMember.count({
-        where: { userId, role: "OWNER", project: { archivedAt: null } },
-      });
+      const owned = await tx.projectMember.count({ where: ownedActiveProjects(userId) });
       if (owned >= PROJECT_LIMIT) throw new ProjectLimitRollback();
 
       const project = await tx.project.create({
@@ -1185,7 +1206,7 @@ export async function createProject(raw: {
   // ⚠️ **`/projects/new`도 지운다.** 모달 뒤에 목록이 있으므로 그 라우트도 같은 목록을 그리는데,
   // 위가 **접두가 아니라 경로 하나**라 여기를 안 덮는다 (POSTMORTEM 2026-09-09).
   revalidatePath("/projects/new");
-  return { ok: true, slug: input.slug, pushToken, baseBranch, surfaces: prepared.map(s => s.surface),
+  return { ok: true, slug: input.slug, defaultSurfaceSlug: defaultSurface.surface.surfaceSlug, pushToken, baseBranch, surfaces: prepared.map(s => s.surface),
     count: prepared.reduce((sum, s) => sum + s.payload.keys.length, 0), yaml };
 }
 

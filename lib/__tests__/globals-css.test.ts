@@ -125,3 +125,27 @@ describe("globals.css — 토큰 등록", () => {
     expect(CSS).not.toContain("--auth-canvas");
   });
 });
+
+/**
+ * **본문이 grayscale 안티앨리어싱으로 그려진다** (2026-09-25 사용자 — 보관 행의 회색 이름·배지가 굵어 보였다).
+ * 명시가 없으면 macOS 브라우저의 기본 렌더링이 획을 두껍게 그려, 같은 500이 밝은 회색에서 한 단계 무겁게 읽힌다.
+ */
+describe("globals.css — 글꼴 렌더링", () => {
+  const body = /\bbody\s*\{([^}]*)\}/.exec(CSS)?.[1] ?? "";
+
+  it("body가 antialiased를 든다", () => {
+    expect(body).not.toBe("");
+    expect(body).toMatch(/@apply[^;]*\bantialiased\b/);
+  });
+});
+
+/**
+ * **누를 수 있는 버튼은 손가락 커서다** (2026-09-25 사용자 — 번역 키 행·필터 칩에서 화살표였다).
+ * Tailwind v4 preflight가 `button`의 커서를 `default`로 되돌려서, `Button` 밖의 raw 버튼(`ListItemButton`·Radix 트리거)은
+ * 저마다 `cursor-pointer`를 기억해야 했고 셋이 빠져 있었다. 전역 한 줄이 그 기억을 대신한다.
+ */
+describe("globals.css — 버튼 커서", () => {
+  it("꺼지지 않은 button이 pointer다", () => {
+    expect(CSS).toMatch(/button:not\(:disabled\):not\(\[aria-disabled="true"\]\)[^{]*\{\s*cursor:\s*pointer;?\s*\}/);
+  });
+});

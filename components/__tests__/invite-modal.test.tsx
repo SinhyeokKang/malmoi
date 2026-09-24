@@ -110,6 +110,18 @@ describe("1a 입력 — 빈 행 하나", () => {
     expect(status().getAttribute("aria-live")).toBe("polite");
   });
 
+  /**
+   * ⚠️ **수락은 로그인 계정의 주소와 대조한다** — GitHub은 primary이면서 검증된 주소 하나만 쓴다
+   * (`lib/auth/email.ts`). 다른 주소로 초대받은 사람은 수락할 수 없고, 거부 문구는 초대 주소를 일부러
+   * 밝히지 않는다. 행동할 수 있는 쪽은 초대자라 힌트가 여기 선다 (launch-readiness L2.8).
+   */
+  it("설명이 로그인 주소(GitHub primary)로 초대하라고 말한다", async () => {
+    await open();
+    const dialog = find<HTMLElement>(document.body, '[role="dialog"]');
+    const describedBy = (dialog.getAttribute("aria-describedby") ?? "").split(" ").map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+    expect(describedBy).toMatch(/primary email/i);
+  });
+
   it("첫 이메일에 포커스가 선다", async () => {
     await open();
     expect(document.activeElement).toBe(email(0));

@@ -68,14 +68,22 @@ export function MemberList({
   /** `removal` — 거부된 것이 제거였나. 포커스를 돌려줄 컨트롤이 그것으로 갈린다. */
   /** `error: null`은 **확인 불가**다 — 호출이 던져 서버가 바꿨는지 모른다 (audit #24). */
   const [failed, setFailed] = useState<{ userId: string; error: string | null; removal: boolean } | null>(null);
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  /**
+   * 진행 중인 행과 **무엇을 하는지** (malmoi#106) — 행 하나의 대기가 Select `aria-busy`와 [Remove] `busy`를 함께 먹여, 역할 변경 중에
+   * 되돌릴 수 없는 [Remove]가 "제거 중"처럼 돌았다. 스피너는 쓴 컨트롤에만, 다른 쪽은 잠기기만 한다.
+   */
+  const [pendingOp, setPendingOp] = useState<{ userId: string; op: "role" | "remove" } | null>(null);
   const [announcement, setAnnouncement] = useState("");
   /**
    * 확인을 기다리는 역할 변경 (audit #20). ⚠️ **셀렉트 값은 그동안 그대로다** — `value`가 서버 값(`member.role`)에
    * 묶여 있어 취소가 되돌릴 것이 없다. 같은 화면의 Remove가 이미 확인을 받는데 강등(자기 강등 포함)만 한 번에 썼다.
    */
   const [roleChange, setRoleChange] = useState<{ userId: string; who: string; next: Role } | null>(null);
-  const [, startTransition] = useTransition();
+  /**
+   * ⚠️ **잠금은 `isPending`과 AND다** (audit-ux #13) — `await` 뒤 `setPendingId(null)`로 풀면 목록 커밋 전에 곧 사라질 행의
+   * [Remove]가 다시 켜지고 역할 Select가 옛 역할로 보였다. `isPending`은 Action의 재검증 커밋까지 참이다(`general-card.tsx`의 형).
+   */
+  const [isPending, startTransition] = useTransition();
 
   /**
    * ⚠️ **제거가 거부되면 그 행의 Remove로 포커스를 돌려준다** (malmoi#53). 그때는 트리거가 `loading` → `disabled`라
@@ -89,15 +97,14 @@ export function MemberList({
   function apply(targetUserId: string, nextRole: Role | null, who: string) {
     setFailed(null);
     setAnnouncement("");
-    setPendingId(targetUserId);
+    setPendingOp({ userId: targetUserId, op: nextRole === null ? "remove" : "role" });
     startTransition(async () => {
       /*
         ⚠️ **던져도 행을 풀고 그 자리에서 말한다** (audit #24) — try가 없으면 transition 안의 예외가 error boundary로
-        올라가 화면이 통째로 오류 화면이 되고 `pendingId`도 남는다.
+        올라가 화면이 통째로 오류 화면이 되고 행의 대기도 남는다.
       */
       let result: Awaited<ReturnType<typeof changeMember>> | null;
       try { result = await changeMember({ slug, targetUserId, nextRole }); } catch { result = null; }
-      setPendingId(null);
       if (result === null || !result.ok) {
         setFailed({ userId: targetUserId, error: result === null ? null : result.error, removal: nextRole === null });
         return;
@@ -153,7 +160,7 @@ export function MemberList({
               member.readable ? null : m.members.unreadableHint,
               blocked ? accessErrorMessage("last-owner") : null,
             ].filter((sentence): sentence is string => sentence !== null);
-            const pending = pendingId === member.userId;
+            const pending = isPending && pendingOp?.userId === member.userId ? pendingOp.op : null;
 
             return (
               <RowCardItem key={member.userId} first={index === 0}>
@@ -175,14 +182,16 @@ export function MemberList({
                         <RoleSelect
                           member={member}
                           who={who}
-                          pending={pending}
+                          pending={pending !== null}
+                          busy={pending === "role"}
                           describedBy={blocked ? describedBy : undefined}
                           onChange={(next) => setRoleChange({ userId: member.userId, who, next })}
                         />
                         <RemoveButton
                           id={`remove-${member.userId}`}
                           who={who}
-                          pending={pending}
+                          pending={pending !== null}
+                          busy={pending === "remove"}
                           describedBy={blocked ? describedBy : undefined}
                           onConfirm={() => apply(member.userId, null, who)}
                         />
@@ -261,12 +270,16 @@ function RoleSelect({
   member,
   who,
   pending,
+  busy,
   describedBy,
   onChange,
 }: {
   member: MemberView;
   who: string;
+  /** 이 행에 무엇이든 도는 중 — 잠근다. */
   pending: boolean;
+  /** 도는 것이 역할 변경이다 — 진행을 알린다. */
+  busy: boolean;
   describedBy: string | undefined;
   onChange: (next: Role) => void;
 }) {
@@ -282,7 +295,7 @@ function RoleSelect({
         id={`role-${member.userId}`}
         aria-labelledby={`role-${member.userId}-label role-${member.userId}`}
         aria-disabled={locked || undefined}
-        aria-busy={pending || undefined}
+        aria-busy={busy || undefined}
         aria-describedby={describedBy}
         onPointerDown={locked ? (event) => event.preventDefault() : undefined}
         onClick={locked ? (event) => event.preventDefault() : undefined}
@@ -315,12 +328,16 @@ function RemoveButton({
   id,
   who,
   pending,
+  busy,
   describedBy,
   onConfirm,
 }: {
   id: string;
   who: string;
+  /** 이 행에 무엇이든 도는 중 — 잠근다. */
   pending: boolean;
+  /** 도는 것이 제거다 — 스피너를 세운다. */
+  busy: boolean;
   describedBy: string | undefined;
   onConfirm: () => void;
 }) {
@@ -346,7 +363,9 @@ function RemoveButton({
     <Dialog>
       <DialogTrigger asChild>
         {/* ⚠️ `loading`이 아니라 `busy`다 (audit #32) — Dialog가 닫히며 이 트리거로 포커스를 돌려준다(Revoke와 같다). */}
-        <Button id={id} variant="danger" aria-label={m.members.removeLabel(who)} busy={pending}>
+        {/* 역할 변경 중에는 잠기기만 한다(malmoi#106) — `aria-disabled`라 포커스는 남고, 클릭은 막아 Dialog가 열리지 않는다. */}
+        <Button id={id} variant="danger" aria-label={m.members.removeLabel(who)} busy={busy}
+          aria-disabled={(pending && !busy) || undefined} onClick={pending && !busy ? (event) => event.preventDefault() : undefined}>
           {m.members.remove}
         </Button>
       </DialogTrigger>

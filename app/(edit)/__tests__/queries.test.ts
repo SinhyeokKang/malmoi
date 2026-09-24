@@ -96,8 +96,24 @@ describe("loadMemberships", () => {
         installationId: "1",
         surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
         archivedAt: null,
+        defaultSurfaceSlug: "default",
       },
     ]);
+  });
+
+  /**
+   * 사이드바 Translations가 옛 주소의 redirect를 건너뛰려면 기본 표면의 slug가 셸 데이터에 있어야 한다 (audit-ux #4).
+   * ⚠️ **보관된 기본 표면은 `null`이다** — 옛 라우트가 그 경우 `notFound()`로 판정하므로, 사이드바가 보관 표면의
+   * 주소를 직접 조립하면 그 판정을 건너뛴다.
+   */
+  it("기본 표면의 slug를 싣고, 보관됐으면 null이다", async () => {
+    const live = createHarness(seed());
+    expect((await loadMemberships(live.prisma, "u1"))[0]?.defaultSurfaceSlug).toBe("default");
+    const archived = createHarness({
+      ...seed(),
+      surfaces: [{ id: "surface-p1", projectId: "p1", slug: "default", archivedAt: new Date("2026-09-01T00:00:00Z") }],
+    });
+    expect((await loadMemberships(archived.prisma, "u1"))[0]?.defaultSurfaceSlug).toBeNull();
   });
 
   it("역할을 그대로 낸다 — 사이드바의 항목 노출이 이 값으로 갈린다", async () => {

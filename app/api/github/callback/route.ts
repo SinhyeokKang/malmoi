@@ -235,7 +235,9 @@ function landingPath(dest: StateDest | null): string {
     case "account":
       return routes.account();
     case "add-surface":
-      return routes.addSurface(dest.slug);
+      // ⚠️ **`/surfaces/new`를 지나지 않는다** (audit-ux #31) — 그 페이지는 Sources의 추가 모달로 redirect만 하므로
+      // 거기로 보내면 왕복이 둘이다. 권한은 Sources가 `?add=`를 OWNER에게만 열어 판정한다.
+      return routes.sources(dest.slug, { add: "sources" });
     case "settings":
       return routes.settings(dest.slug);
   }

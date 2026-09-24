@@ -10,7 +10,7 @@ import { render } from "./helpers/dom";
  * ⚠️ `PublishButton`을 버튼 둘로 바꿔 가로채기 범위만 잰다 — 실제 Publish 흐름은 `publish-button.test.tsx`가 든다.
  */
 const mocks = vi.hoisted(() => ({ launch: vi.fn(), showResult: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn() }));
 vi.mock("@/components/publish-button", () => ({

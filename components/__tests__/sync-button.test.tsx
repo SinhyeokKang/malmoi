@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), refresh: vi.fn(), p
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 const success: RepositoryImportOutcome = { ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "imported", count: 0, failed: 0, unmanaged: 0, reason: null, errors: [] }] };
-const props = { slug: "acme", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 0, onResult: vi.fn() };
+const props = { slug: "acme", surfaceSlug: "web", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 0, onResult: vi.fn() };
 function SyncButton(props: Omit<React.ComponentProps<typeof Control>, "open" | "onOpenChange">) {
   const [open, setOpen] = useState(false);
   return <Control {...props} open={open} onOpenChange={setOpen} />;
@@ -37,7 +37,8 @@ it("EDITOR에게는 없고 위험이 없는 OWNER도 별도 이름의 danger 확
   await click("Sync from repository");
   expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: "digest-1" });
   expect(props.onResult).toHaveBeenCalledWith(success);
-  expect(mocks.refresh).toHaveBeenCalledOnce();
+  // 재검증은 Action이 한다 (audit-ux #12) — 대기가 그 커밋을 덮는지는 `action-commit.test.tsx`가 본다.
+  expect(mocks.refresh).not.toHaveBeenCalled();
 });
 
 /**
@@ -82,13 +83,20 @@ it("확인 Dialog의 접근 가능한 설명이 경고 블록까지 든다", asy
 it("실행 중 트리거는 포커스를 받고 클릭과 Enter 연타를 막는다", async () => {
   const run = deferred<RepositoryImportOutcome>(); mocks.run.mockReturnValue(run.promise);
   await render(<SyncButton {...props} />); await click("Sync"); await click("Sync from repository");
-  const trigger = button("Syncing…");
+  // D1 (audit-ux #25) — 라벨은 `Sync` 그대로이고 스피너가 아이콘을 교체한다. 라벨이 접근 이름이라 진행 신호는 `aria-busy`가 든다.
+  const trigger = button("Sync");
   expect(trigger.disabled).toBe(false); expect(trigger.getAttribute("aria-disabled")).toBe("true");
+  expect(trigger.getAttribute("aria-busy")).toBe("true");
+  expect(trigger.querySelectorAll("svg")).toHaveLength(1);
+  expect(trigger.querySelector("svg")?.classList.contains("animate-spin")).toBe(true);
+  expect(document.body.textContent).not.toContain("Syncing");
   expect(document.activeElement).toBe(trigger);
-  await click("Syncing…"); await act(async () => userEvent.setup().keyboard("{Enter}{Enter}"));
+  await click("Sync"); await act(async () => userEvent.setup().keyboard("{Enter}{Enter}"));
   expect(dialog()).toBeNull(); expect(mocks.run).toHaveBeenCalledOnce();
   await act(async () => run.resolve(success));
   expect(trigger.getAttribute("aria-disabled")).toBe("false"); expect(document.activeElement).toBe(trigger);
+  expect(trigger.getAttribute("aria-busy")).toBeNull();
+  expect(trigger.querySelector("svg")?.classList.contains("animate-spin")).toBe(false);
   expect(trigger.textContent?.trim()).toBe("Sync");
 });
 
@@ -129,6 +137,14 @@ it("미발송과 열린 PR을 각각의 줄로 말하고 권유는 번역 화면
   expect(lines[0]).toContain("Sync will discard 7 unsent translation changes");
   expect(lines[1]).toContain("pull request #42 are not in main yet");
   // audit #28 — 링크가 도착 화면에 실제로 있는 버튼 이름(`Publish`)을 부른다 (POSTMORTEM 2026-09-14).
+  // audit-ux #4b — 공가 redirect를 거치지 않고 기본 표면으로 바로 간다.
+  expect(document.querySelector('a[href="/projects/acme/surfaces/web/translations"]')?.textContent).toBe("Publish first");
+});
+
+/** 번역 화면 안의 [Sync]는 표면을 넘기지 않는다 — 그때는 옛 경로(기본 표면 redirect)로 남는다. */
+it("표면을 모르면 권유 링크가 옛 번역 경로다", async () => {
+  const { surfaceSlug: _, ...rest } = props;
+  await render(<SyncButton {...rest} unsent={7} />); await click("Sync");
   expect(document.querySelector('a[href="/projects/acme/translations"]')?.textContent).toBe("Publish first");
 });
 
@@ -143,7 +159,7 @@ it("미발송 0이어도 열린 PR이 있으면 경고가 서고 권유가 외�
   expect(lines).toHaveLength(1);
   expect(lines[0]).toContain("pull request #42");
   expect(dialog()?.textContent).not.toContain("0 unsent");
-  expect(document.querySelector('a[href="/projects/acme/translations"]')).toBeNull();
+  expect(document.querySelector('a[href="/projects/acme/surfaces/web/translations"]')).toBeNull();
   const link = document.querySelector('a[href*="pull/42"]');
   expect(link?.textContent).toContain("See what's open");
   expect(link?.getAttribute("target")).toBe("_blank");
@@ -201,26 +217,25 @@ it.each(["unavailable", "ingest-failed"] as const)("요청이 못 간 거부(%s)
 });
 
 /**
- * ⚠️ **실패에는 `router.refresh()`를 부르지 않는다** (POSTMORTEM 2026-09-08 재발 — 2026-09-15 재리뷰
- * 🔴2). 그 항목의 증상은 *"버튼을 눌렀더니 로그아웃됐고 왜 실패했는지는 어디에도 없다"*였다:
- * `unauthorized`로 거부된 직후의 refresh가 미들웨어의 렌더 차단에 걸려 **네비게이션**이 되고, 방금
- * 세운 거부 Alert를 그대로 씻어 간다. 성공에만 필요하다 — 갱신할 값이 거기에만 있다.
+ * ⚠️ **어느 결과에도 `router.refresh()`를 부르지 않는다** (audit-ux #12). 실패 뒤의 refresh는 미들웨어의 렌더 차단에 걸려
+ * **네비게이션**이 되고 방금 세운 거부 Alert를 씻어 갔다(POSTMORTEM 2026-09-08 재발 — 2026-09-15 재리뷰 🔴2). 성공의 갱신도
+ * Action의 `revalidatePath`가 이미 싣고 온다 — 짝: 세 갈래 모두 결과는 호스트에 닿는다.
  */
-it("거부·실패 결과에는 refresh를 부르지 않고 성공에만 부른다", async () => {
+it("거부·실패·성공 어느 결과에도 refresh를 부르지 않고 결과는 호스트에 닿는다", async () => {
   mocks.run.mockResolvedValue({ ok: false, error: "unauthorized" });
   const view = await render(<SyncButton {...props} />);
   await click("Sync"); await click("Sync from repository");
   expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "unauthorized" });
-  expect(mocks.refresh).not.toHaveBeenCalled();
 
   mocks.run.mockRejectedValue(new Error("offline"));
   await click("Sync"); await click("Sync from repository");
-  expect(mocks.refresh).not.toHaveBeenCalled();
+  expect(props.onResult).toHaveBeenLastCalledWith({ ok: false, error: "unavailable" });
 
   mocks.run.mockResolvedValue(success);
   await view.rerender(<SyncButton {...props} />);
   await click("Sync"); await click("Sync from repository");
-  expect(mocks.refresh).toHaveBeenCalledOnce();
+  expect(props.onResult).toHaveBeenLastCalledWith(success);
+  expect(mocks.refresh).not.toHaveBeenCalled();
 });
 
 it("결과 재시도는 같은 확인 Dialog를 열고 확인 전에는 Action을 호출하지 않는다", async () => {
