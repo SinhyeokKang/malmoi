@@ -20,6 +20,34 @@ const memberships: NavProject[] = [
   { slug: "beta", name: "Beta", role: "EDITOR", archived: false },
 ];
 
+/**
+ * **사이드바 Translations는 기본 표면의 주소를 직접 가리킨다** (audit-ux #4). 옛 `/translations`는 누를 때마다
+ * 서버 redirect 한 번(인증 → 접근 → `defaultSurface` 조회 → redirect)을 더 거치고, 그 두 세그먼트 모두 경계가 없어
+ * prefetch도 무의미했다. 옛 라우트는 외부 링크 호환용으로 남는다 — 기본 표면을 모를 때만 거기로 간다.
+ */
+describe("Translations 링크 — 기본 표면으로 직접", () => {
+  const withDefault: NavProject[] = [{ slug: "acme", name: "Acme", role: "OWNER", archived: false, defaultSurfaceSlug: "app" }];
+  const translations = (pathname: string, list: NavProject[] = withDefault) =>
+    navZones(activeProject(pathname, list), { userName: "Shin", projectCount: 1 })[1]!.items.find((item) => item.key === "translations")!.href;
+
+  it("Home에서 기본 표면의 편집 주소다 — redirect를 거치지 않는다", () => {
+    expect(translations("/projects/acme")).toBe("/projects/acme/surfaces/app/translations");
+  });
+
+  it("다른 화면(Members·Add surface)에서도 같다", () => {
+    expect(translations("/projects/acme/members")).toBe("/projects/acme/surfaces/app/translations");
+    expect(translations("/projects/acme/surfaces/new")).toBe("/projects/acme/surfaces/app/translations");
+  });
+
+  it("보고 있는 표면이 기본보다 앞선다 — 표면 B에서 누르면 B에 머문다", () => {
+    expect(translations("/projects/acme/surfaces/web/translations")).toBe("/projects/acme/surfaces/web/translations");
+  });
+
+  it("기본 표면을 모르면(보관·미설정) 옛 주소로 떨어진다 — 그쪽이 판정한다", () => {
+    expect(translations("/projects/acme", [{ ...withDefault[0]!, defaultSurfaceSlug: null }])).toBe("/projects/acme/translations");
+  });
+});
+
 describe("activeProject — pathname에서 프로젝트 컨텍스트", () => {
   it("Add surface의 new를 표면으로 읽어 죽은 편집 링크를 만들지 않는다", () => {
     const current = activeProject("/projects/acme/surfaces/new", memberships);

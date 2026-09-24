@@ -205,6 +205,26 @@ describe("착지 갈래는 서명된 dest가 정한다 (ARCHITECTURE §6.4)", ()
    * 생성 경로에는 프로젝트가 없어 slug가 착지를 겸할 수 없다. **갈래가 서명 안에 있어야** 공격자가
    * 착지를 정할 수 없고, 그래서 open redirect 판정이 아예 필요 없다.
    */
+  /**
+   * **소스 추가는 한 홉에 착지한다** (audit-ux #31). 전엔 `/surfaces/new`를 지나 그 페이지가 다시 Sources로 redirect해
+   * 왕복이 둘이었다. 사유는 이미 쿼리가 있는 경로에 `&e=`로 붙는다.
+   */
+  it("dest가 add-surface면 Sources의 추가 모달로 바로 간다", async () => {
+    hoisted.cookieGet.mockReturnValue({ value: validState({ dest: { kind: "add-surface", slug: "acme" } }) });
+
+    const res = await GET(request({ code: "abc", state: "nonce-1" }));
+
+    expect(location(res)).toBe("/projects/acme/sources?add=sources");
+  });
+
+  it("dest가 add-surface인데 취소하면 같은 곳에 사유가 실린다", async () => {
+    hoisted.cookieGet.mockReturnValue({ value: validState({ dest: { kind: "add-surface", slug: "acme" } }) });
+
+    const res = await GET(request({ error: "access_denied", state: "nonce-1" }));
+
+    expect(location(res)).toBe("/projects/acme/sources?add=sources&e=denied");
+  });
+
   it("dest가 new면 /projects/new로 돌아간다", async () => {
     hoisted.cookieGet.mockReturnValue({ value: validState({ dest: { kind: "new" } }) });
 

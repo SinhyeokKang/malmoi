@@ -826,6 +826,15 @@ describe("loadCandidateSample — ②의 언어 샘플", () => {
 });
 
 describe("createProject — 재검증한 값만 저장한다 (ARCHITECTURE §3.1)", () => {
+  /** ④의 [Start translating]이 옛 `/translations` redirect를 건너뛰려면 기본 표면을 알아야 한다 (audit-ux #22). */
+  it("결과가 저장된 기본 표면의 slug를 든다", async () => {
+    const result = await createProject(createInput());
+    const row = db.projects.find((p) => p.slug === "acme-web");
+    const saved = db.surfaces.find((s) => s.id === row?.defaultSurfaceId);
+    expect(saved).toBeDefined();
+    expect(result).toMatchObject({ ok: true, defaultSurfaceSlug: saved?.slug });
+  });
+
   it("행·OWNER 멤버십·토큰 해시가 한 번에 생기고 원문이 반환된다", async () => {
     const result = await createProject(createInput());
     // `baseBranch`는 결과 화면의 워크플로 YAML이 `on.push.branches`에 박는 값이다 (T7).

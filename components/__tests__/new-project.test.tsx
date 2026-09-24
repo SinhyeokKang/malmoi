@@ -242,6 +242,19 @@ it("④는 모든 적재가 끝난 결과와 토큰을 보존하고 추가 적�
   expect(mocks.router.refresh).not.toHaveBeenCalled();
 });
 
+/**
+ * **④의 [Start translating]은 기본 표면의 편집 주소로 replace한다** (audit-ux #22 · #4). push면 뒤로가기가 가로챈
+ * 모달(`/projects/new`)을 다시 띄우고, 옛 `/translations`는 서버 redirect를 한 번 더 거친다.
+ */
+it("④의 [Start translating]은 기본 표면으로 replace한다 — push가 아니다", async () => {
+  mocks.createProject.mockResolvedValue({ ok: true, slug: "acme-web", defaultSurfaceSlug: "app", pushToken: "t", baseBranch: "main", count: 2, surfaces: [], yaml: "y" });
+  await naming();
+  await click(button("Create project"));
+  await click(button("Start translating"));
+  expect(mocks.router.replace).toHaveBeenCalledWith("/projects/acme-web/surfaces/app/translations");
+  expect(mocks.router.push).not.toHaveBeenCalled();
+});
+
 it("lazy 샘플을 받으면 언어 옵션과 다음 단계의 키 수도 갱신된다", async () => {
   await files();
   await select('[role="combobox"]', "fr");
