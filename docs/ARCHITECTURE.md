@@ -1819,6 +1819,40 @@ credential 리뷰에서 같은 위험(남의 라이브러리 메시지에 Prisma
 목록**을 든다. 실측으로는 Vercel 엣지가 `Host` 위조를 404로 막고 `X-Forwarded-Host`를 반영하지
 않지만(2026-09-09 프로덕션), 그 방어는 **플랫폼 설정의 성질이지 우리 코드의 성질이 아니다.**
 
+⚠️ **`requestOrigin`이 `null`이면 시작도 callback도 멈춘다** (2026-09-24, audit #78). 인증 왕복 셋(병합 확인 ·
+세션 회수 · 계정 연결)의 **시작**은 L7.6부터 그 조건에서 쿠키를 심지 않고 돌아갔는데, **callback**
+(`lib/{login-link,session-revocation,account-connect}/http.ts`)만 `url.protocol`로 떨어져 Auth.js를 돌렸다 —
+2026-09-14에 시작(`?? false`)과 콜백(`?? https`)이 갈려 state 쿠키 이름이 어긋난 것과 같은 모양이 남아 있던
+자리다. 지금은 허용 목록 밖의 호스트에서 intent 쿠키를 든 callback이 `run()`을 부르지 않고 각자의 실패
+착지(`failed` · `unavailable`)로 303하며 쿠키 두 변형을 지운다. 그 호스트에서 시작된 왕복은 우리가 시작한 것일
+수 없다. 세 가로채기가 사본으로 들던 원시 판정(callback 경로 · nonce 검사 · 쿠키 두 변형 만료)은
+`lib/auth/roundtrip.ts` 하나로 모였다 — **흐름은 공유하지 않는다**(`lib/__tests__/oauth-callback-contract.test.ts`).
+
+### 6.06 외부 진입점의 크기·빈도 상한 (2026-09-24, audit #76 · #77)
+
+**본문 크기는 읽기 전에 막는다.** `/api/push`는 `request.json()`이 크기와 무관하게 끝까지 버퍼링했고
+`/api/push/failure`는 `text()`로 다 읽은 뒤에 쟀다. 지금 둘 다 `lib/bounded-body.ts`의 `readBoundedText`를
+지난다 — 선언된 `content-length`는 읽기 전에, 선언이 없거나 거짓인 스트림은 누적 바이트로 도중에 끊는다.
+상한은 `/api/push` 4,500,000바이트(Vercel 함수 요청 본문 상한과 같은 값 — **플랫폼을 지나온 정상 페이로드가
+새로 걸리지 않는다**) · `/api/push/failure` 4096바이트이고, 초과는 둘 다 400 `body too large`다.
+⚠️ **순서는 인증 → 크기 → 파싱이다** — 무효 토큰 하나로 본문을 읽히지 않는다.
+
+**빈도 상한(레이트리밋)은 두지 않는다 — 받아들인 위험이다.** 감사가 짚은 자리는 업로드 · 토큰 회전 ·
+login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이유:
+
+- **범용 장치가 없다.** 이 리포의 유일한 빈도 제한은 초대 발급(`lib/invitation-email/plan.ts` — 주소별·프로젝트별
+  창)이고 **초대 행을 세는 도메인 판정**이라 다른 자리에 재사용할 수 없다. 공유 카운터는 Vercel 함수가 인스턴스
+  사이에 상태를 안 나눠 DB 테이블이나 외부 저장소가 필요하다 — 확장성을 위한 선반영이다.
+- **전부 인증 뒤다.** 업로드·토큰 회전·세션 회수는 세션(+ 역할)이, `/api/push`는 프로젝트 토큰이 먼저 선다.
+  남용의 주체가 이미 식별된 사람이고, 폐기(멤버 제거·토큰 회전·세션 회수)가 곧 차단이다.
+- **추측할 비밀이 짧지 않다.** 초대·병합 challenge·push 토큰은 32바이트 난수의 해시 조회라 빈도 제한이
+  추측 공격의 방어선이 아니다. 초대 **발송**(외부로 메일이 나가는 유일한 자리)은 이미 제한된다.
+- **비용이 드는 쓰기는 잠금이 줄 세운다** — 업로드는 크기·픽셀 상한(`limitInputPixels`)이, 적재·Sync는
+  `Project` 행 잠금이 한 번에 하나로 묶는다.
+
+⚠️ **다시 볼 조건**: 인증 없이 부를 수 있는 쓰기 진입점이 생기거나, 로그인이 조직 밖으로 열린 뒤(§6.00) 가입
+남용이 관측되면 그때 Vercel Firewall의 rate limit 규칙부터 본다(코드가 아니라 플랫폼 설정이다).
+
 ### 6.1 ⚠️ 차단은 미들웨어, **인가는 진입점** (2026-09-05 갈렸다)
 
 **레이아웃의 조건부 렌더는 차단이 아니다.** App Router는 레이아웃과 페이지를 병렬로 렌더하므로, 레이아웃이 `children`을 쓰지 않아도 페이지는 이미 실행돼 DB를 조회하고 RSC 페이로드를 응답에 싣는다. 실측으로 세션 없는 `/keys` 응답 **1.3MB에 1446키가 노출**됐다 — 화면엔 로그인 버튼만 보이므로 눈으로는 안 보인다 (`docs/POSTMORTEM.md` 2026-08-31).
@@ -2429,9 +2463,22 @@ PR 생성·머지·재push 및 60초 전체 예산 검증은 미완료다.
     안 돌았다.** 응답이 항상 200이라 cron 실행은 성공으로 표시되고 요약에도 그 사실이 없어 **관측값이
     정상과 같았다.** 지금은 `selectPullTargets`가 못 돈 수를 함께 내고 응답이 `{ results, unprocessed }`다 —
     **상한이 잘림을 없애지 않는다, 시끄럽게 만든다.** 거기 닿으면 그때 cron 분할을 본다.
-- **응답 보안 헤더는 `next.config.ts`의 `headers()`가 낸다** (2026-09-09, sec-audit 발견 9). enforce 셋
+- **응답 보안 헤더는 `next.config.ts`의 `headers()`가 낸다** (2026-09-09, sec-audit 발견 9). enforce 다섯
   (`X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·
-  `Content-Security-Policy: frame-ancestors 'none'`) + **CSP 본체는 Report-Only**다.
+  `Content-Security-Policy: frame-ancestors 'none'` · 2026-09-24 audit #75의 `Strict-Transport-Security: max-age=63072000` ·
+  `Permissions-Policy`(카메라·마이크·위치·결제·USB·topics 끔)) + **CSP 본체는 Report-Only**다.
+  - ⚠️ **HSTS에 `includeSubDomains`·`preload`가 없다** — preload 목록은 되돌리는 데 수개월이 걸리고 하위 도메인을
+    묶는 것은 도메인 운영 판단이다. 붙이려면 사용자 결정이 먼저다.
+  - ⚠️ **`form-action`에 `https://accounts.google.com`이 있어야 한다** — Google 로그인은 폼 POST → 302
+    `accounts.google.com`이고 `form-action`은 제출 뒤의 리다이렉트에도 걸린다. 빠진 채 enforce하면 Google 로그인만
+    조용히 멈춘다(2026-09-24 추가).
+  - **enforce로 올릴 때 깨질 자리** (정적 읽기 — 올리기 전에 브라우저 콘솔로 확인한다): ① `next dev`는
+    `'unsafe-eval'`이 없으면 React Refresh가 죽는다(개발 전용 — 정책을 환경별로 가르거나 dev에서는 헤더를 끈다)
+    ② preview의 Vercel Toolbar(`vercel.live` 스크립트·프레임·연결)가 `script-src`·`frame-src`·`connect-src`에
+    걸린다(preview 전용) ③ 앞으로 `'unsafe-inline'`을 빼고 nonce로 가면 Next의 인라인 부트스트랩
+    (`self.__next_f.push`)이 nonce를 요구해 정적 렌더가 동적 렌더로 바뀐다 ④ `img-src`는 공급자 아바타 호스트를
+    둘만 연다 — Google이 `lh3` 밖의 호스트를 주면 그 아바타가 깨진다. 지금 정책 그대로 프로덕션에서 enforce하면
+    ①~③ 중 걸리는 것은 없다고 읽힌다(실측 전).
   - ⚠️ **`Referrer-Policy`가 이 중 실질이 가장 크다** — `/invite/<token>`은 토큰이 **URL에** 있어, 그
     화면에 외부 링크가 하나 추가되는 순간 토큰이 `Referer`로 나간다.
   - ⚠️ **CSP를 바로 enforce하지 않는다** — Next가 인라인 스타일·스크립트를 넣고, 깨지면 **콘솔에만**
