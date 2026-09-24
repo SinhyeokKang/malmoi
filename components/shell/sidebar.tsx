@@ -74,15 +74,16 @@ export function Sidebar({
         >
           {/*
             ⚠️ **라벨 앞에 대상의 얼굴이 선다** (2026-09-24 사용자) — 사용자는 `Avatar`(원), 프로젝트는
-            `ProjectThumbnail`(라운드 사각). 모양이 대상을 말한다(DESIGN §6.4). 둘 다 24이고 `py-1`이라
-            머리 줄 높이는 옛 `py-1.5` + 20줄과 같은 32다. `px-0.5`는 24의 중심을 아래 항목 아이콘 16의
-            중심(6 + 8 = 14)에 맞춘다.
+            `ProjectThumbnail`(라운드 사각). 모양이 대상을 말한다(DESIGN §6.4).
+            ⚠️ **얼굴이 아래 항목 아이콘과 같은 규격이다** (2026-09-25 사용자 — 24 · `px-0.5 py-1`에서) —
+            16 · `p-1.5` · `gap-2`가 `Item`과 같아서 머리 라벨과 항목 라벨의 시작점이 한 세로선에 선다.
+            줄 높이도 항목과 같은 32다. 중심만 맞추던 옛 판정은 라벨 시작점이 4px 어긋났다.
           */}
-          <p data-zone-head className="text-foreground flex items-center gap-2 px-0.5 py-1 text-sm font-medium">
+          <p data-zone-head className="text-foreground flex items-center gap-2 p-1.5 text-sm font-medium">
             {zone.key === "work" ? (
-              <Avatar name={userName} src={userImage} size={24} />
+              <Avatar name={userName} src={userImage} size={16} />
             ) : (
-              <ProjectThumbnail name={zone.label} src={project?.image} size={24} />
+              <ProjectThumbnail name={zone.label} src={project?.image} size={16} />
             )}
             <span className="min-w-0 truncate">{zone.label}</span>
           </p>

@@ -27,12 +27,8 @@ export function Avatar({
   className?: string;
 }) {
   const shapeClass = shape === "circle" ? "rounded-full" : "rounded";
-  /**
-   * ⚠️ **사진과 이니셜이 같은 테두리를 쓴다** (2026-09-20 사용자) — 흰 배경에 가까운 사진은
-   * 윤곽이 없으면 경계가 사라지고, 둘이 다른 테두리를 가지면 폴백이 일어난 순간 크기가 달라 보인다.
-   * `box-sizing: border-box`라 `size`는 그대로고 안쪽만 1px 줄어든다.
-   */
-  const borderClass = "border border-border";
+  // ⚠️ **테두리가 없다** (2026-09-25 사용자 — 2026-09-20의 `border border-border`를 걷었다). 사진·이니셜 두
+  // 갈래가 함께 없어서 폴백이 일어나도 크기가 갈리지 않는다. 프로젝트 타일도 같은 판정이다.
   const style = { width: size, height: size };
   // 실패 기억은 `ImageTile`과 한 벌이다 (malmoi#50) — 마크업만 다르다(원형 · `object-cover` · 이니셜 폴백).
   const image = useImageFallback(src);
@@ -42,7 +38,7 @@ export function Avatar({
     // ⚠️ 공급자 사진은 핫링크라 공급자 쪽 일시 실패·만료가 그대로 여기 온다 — Blob을 지나는 것은 업로드뿐이다.
     // ⚠️ **`ref`가 한 번 더 본다** — 하이드레이션 전에 끝난 실패는 `onError`로 안 온다(서버가 그린 `/account`).
     return <img src={image.shown} alt="" style={style} onError={image.onError} ref={image.ref}
-      className={cn(shapeClass, borderClass, "shrink-0 object-cover", className)} />;
+      className={cn(shapeClass, "shrink-0 object-cover", className)} />;
   }
   return (
     <span
@@ -59,7 +55,6 @@ export function Avatar({
         size === 56 ? "text-xl" : "text-xs",
         toneFill(name),
         shapeClass,
-        borderClass,
         className,
       )}
     >

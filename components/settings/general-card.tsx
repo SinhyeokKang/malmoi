@@ -47,7 +47,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
         {/* 깨진 URL의 폴백은 목록·Home·초대와 같은 `ImageTile`이 든다 (malmoi#50). */}
         <ImageTile
           src={image}
-          className="border-border flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-sm border"
+          className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-sm"
           fallbackClassName={`text-white ${toneFill(name)}`}
         >
           <Box className="size-5" />
