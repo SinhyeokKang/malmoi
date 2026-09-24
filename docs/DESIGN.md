@@ -911,7 +911,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 거부 tone과 낭독 | ⚠️ **tone이 live politeness까지 정한다** — `Alert`가 `role`을 `danger`면 `"alert"`(assertive)로 덮는다(`alert.tsx`). 캔버스 `4f`는 **색**을 골랐는데 프리미티브가 그것을 **읽던 것을 끊는 결정**으로 번역한다 — "danger 시각 + `status`"라는 조합이 지금 구조에 **없다**. 일시적 실패(`ingest-failed`·`unavailable`)가 그 대가를 받는 자리이고, **알고 받는다**(2026-09-16 라운드 4). ⚠️ **거부의 tone은 캔버스 tone 표가 정하고 `dismissible`만 "다시 누르면 되나"로 갈린다** — 두 축의 소유자가 다르고, `lib/import/refusal.ts`의 주석이 근거다 |
 | 진행 중 상호 잠금 | ⚠️ **한쪽이 도는 동안 다른 쪽이 잠긴다** (sync-repository 캔버스 `4f`) — Sync는 리포로 DB를 덮고 Publish는 DB로 리포를 덮으므로, 겹치면 **남는 값이 두 요청의 도착 순서에 달린다**. 화면이 약속할 수 없는 근거다. ⚠️ **판정은 호스트(`components/home/actions.tsx`)의 몫이다** — 각 버튼은 자기 연타만 막고 서로의 존재를 모른다. ⚠️ **두 진행을 하나의 `busy`로 접지 않는다**: 접으면 Sync가 자기를 잠가 `Syncing…` 트리거가 native `disabled`로 떨어지고 Dialog의 포커스 복귀 대상이 사라진다. 2026-09-15 브라우저 실측이 `Syncing…` 중 `[Publish]`가 그대로 눌리는 것을 잡았다 |
 | 배너 | **머리와 본문 사이 · 전폭**. 본문 안에 두면 스크롤과 함께 밀려 올라가 "왜 안 눌리나"를 말하는 문장이 화면 밖으로 나간다. ⚠️ **danger는 본문이 muted이고 제목·글리프만 빨강이다** — 전체가 빨가면 "무엇이 안전한가"까지 경고로 읽혀 이 배너가 하는 일의 절반이 사라진다 |
-| 로딩 | `[slug]/loading.tsx`. 골격이 실물과 **같은 치수**여야 한다(머리 padding · 카드 테두리 · 행 높이 · 구분선). 개수를 모르는 자리는 가장 흔한 수(항목 3 · 로그 5 · 메타 9), 폭은 비율(`62%`·`72%`), `motion-safe:` |
+| 로딩 | `[slug]/(home)/loading.tsx`. ⚠️ **route group `(home)/`에 둔다** — `[slug]/`에 바로 두면 자기 `loading.tsx`가 없는 형제 화면(Members·Sources·Settings·Translations)으로 가는 동안에도 이 골격이 뜬다(malmoi#95). 골격이 실물과 **같은 치수**여야 한다(머리 padding · 카드 테두리 · 행 높이 · 구분선). 개수를 모르는 자리는 가장 흔한 수(항목 3 · 로그 5 · 메타 9), 폭은 비율(`62%`·`72%`), `motion-safe:` |
 
 **접근성 — CDP로 잰 값** (2026-09-15). ⚠️ **jsdom은 accname을 계산하지 않아 이 층을 못 본다.**
 
