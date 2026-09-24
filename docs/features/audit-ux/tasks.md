@@ -101,24 +101,29 @@
 - **D4 → 셀 단위 "Saving…" 표시만 하고, `revalidatePath(…, "layout")` 범위는 그대로 둔다** (#20). 범위를 줄이면 미전달 배지·Home 집계가 같은 요청에서 같이 움직인다는 보장이 깨질 수 있어 불변식 검토(ARCHITECTURE §5.8)가 먼저다 — 범위 축소는 이 감사의 범위 밖이다. "Saving…"은 버튼 라벨이 아니라 **셀의 상태 글자**라 D1(버튼 문구 고정)과 충돌하지 않는다.
 
 **항목**
-- [ ] **#7** 🔴 `workspace.tsx:233-247`, `:388-392`, `:444-475`, `:504` — 키·트리·필터·표면 조작이 표시 없이 멈췄다가 한꺼번에 바뀐다. 필터 메뉴는 닫히는데 트리거 라벨(`query`에서 파생)과 목록은 옛값이라 다시 누르게 된다. 선택 행 배경(`selectedKeyId = detail?.key.id`)도 응답이 와야 움직인다. 페이지는 await 다섯 단계를 순서대로 돈다(`surfaces/[surfaceSlug]/translations/page.tsx:50→54→64→68→73`).
+- [x] **#7** 🔴 `workspace.tsx:233-247`, `:388-392`, `:444-475`, `:504` — 키·트리·필터·표면 조작이 표시 없이 멈췄다가 한꺼번에 바뀐다. 필터 메뉴는 닫히는데 트리거 라벨(`query`에서 파생)과 목록은 옛값이라 다시 누르게 된다. 선택 행 배경(`selectedKeyId = detail?.key.id`)도 응답이 와야 움직인다. 페이지는 await 다섯 단계를 순서대로 돈다(`surfaces/[surfaceSlug]/translations/page.tsx:50→54→64→68→73`).
   - 방향: 이동 함수를 `startTransition`으로 감싸고, `isPending`을 목록·상세에 `aria-busy`로 건다. 선택 행과 필터 라벨은 낙관적 로컬 상태로 먼저 바꾼다. 서로 의존하지 않는 await는 병렬로 돌린다.
-- [ ] **#16** 🟡 `workspace.tsx:532` · `components/translations/workspace/locale-panel.tsx:53-57` — 상세의 언어 필터는 클라이언트에서 거르는데도 페이지 전체를 서버에서 다시 받는다. 방향: `window.history.replaceState`로 URL만 맞춘다(`useSearchParams`와 연동된다).
-- [ ] **#18** 🟡 `workspace.tsx:205-218`, `:240-243` · `lib/translations/query.ts:126-132` — 트리 전환이 서버 왕복 두 번이다. `treeQuery`가 `key`를 지워 첫 응답에서 상세가 "Select a key to translate" 빈 상태로 번쩍이고, effect가 첫 키로 `router.replace`를 한 번 더 한다. 다른 소스로 가면 `[surfaceSlug]`가 바뀌어 workspace가 새로 마운트되는데, `pendingSelection` ref는 옛 인스턴스에 남아 첫 키 자동 선택이 안 될 수 있다(추정).
+- [x] **#16** 🟡 `workspace.tsx:532` · `components/translations/workspace/locale-panel.tsx:53-57` — 상세의 언어 필터는 클라이언트에서 거르는데도 페이지 전체를 서버에서 다시 받는다. 방향: `window.history.replaceState`로 URL만 맞춘다(`useSearchParams`와 연동된다).
+- [x] **#18** 🟡 `workspace.tsx:205-218`, `:240-243` · `lib/translations/query.ts:126-132` — 트리 전환이 서버 왕복 두 번이다. `treeQuery`가 `key`를 지워 첫 응답에서 상세가 "Select a key to translate" 빈 상태로 번쩍이고, effect가 첫 키로 `router.replace`를 한 번 더 한다. 다른 소스로 가면 `[surfaceSlug]`가 바뀌어 workspace가 새로 마운트되는데, `pendingSelection` ref는 옛 인스턴스에 남아 첫 키 자동 선택이 안 될 수 있다(추정).
   - 방향: `key`가 없는 트리 이동이면 서버가 첫 키 상세를 같은 렌더에 싣는다.
-- [ ] **#19** 🟡 `workspace.tsx:197-199`, `:507` · `lib/keys/translation-list.ts:183-185` · `components/translations/workspace/key-list.tsx:80-84` — "더 보기"의 cursor가 URL에 남는다. 새로고침·공유·뒤로가기 때 cursor 이후 페이지만 보이고, 키 선택도 `{...query}`로 cursor를 달고 다닌다. 버튼에 로딩 표시가 없어 여러 번 누를 수 있다(중복은 걸러진다).
+- [x] **#19** 🟡 `workspace.tsx:197-199`, `:507` · `lib/keys/translation-list.ts:183-185` · `components/translations/workspace/key-list.tsx:80-84` — "더 보기"의 cursor가 URL에 남는다. 새로고침·공유·뒤로가기 때 cursor 이후 페이지만 보이고, 키 선택도 `{...query}`로 cursor를 달고 다닌다. 버튼에 로딩 표시가 없어 여러 번 누를 수 있다(중복은 걸러진다).
   - 방향: 클라이언트에서 누적하고 URL에는 cursor를 남기지 않는다. 버튼에 `loading`을 건다.
-- [ ] **#20** 🟡 `app/(edit)/actions.ts:53`, `:113-116` · `locale-panel.tsx:194-195` — Save 스피너가 쓰기 자체보다 오래 돈다. 액션 응답이 트리·목록·상세·미전달 수를 다시 렌더한 결과까지 싣고 돌아오기 때문이다. 셀 단위 표시는 없고, 전송 중인 셀에 계속 "Not saved"가 붙어 있다.
+- [x] **#20** 🟡 `app/(edit)/actions.ts:53`, `:113-116` · `locale-panel.tsx:194-195` — Save 스피너가 쓰기 자체보다 오래 돈다. 액션 응답이 트리·목록·상세·미전달 수를 다시 렌더한 결과까지 싣고 돌아오기 때문이다. 셀 단위 표시는 없고, 전송 중인 셀에 계속 "Not saved"가 붙어 있다.
   - 방향(D4): 전송 중인 셀(`inFlight.sent`)을 "Saving…"으로 표시한다. 재검증 범위는 건드리지 않는다.
   - 이미 되는 것(회귀 금지): 포커스·스크롤·다른 칸 입력 보존, 행 제자리 유지(`draft.ts`의 `server`/`success`, `saved-rows.ts`, `useLandAfter`).
-- [ ] **#29** ⚪ `workspace.tsx:185-203` · `key-list.tsx:53` — `rows`를 `useEffect`로 갱신해서, 조건이 바뀐 첫 커밋은 새 배지·라벨에 옛 행으로 그려진다. 결과가 0↔N으로 바뀔 때 빈 상태가 한 프레임 번쩍인다. 방향: `conditionKey`가 바뀌었는지 렌더 중에 판정해 상태를 리셋한다.
-- [ ] **#30** ⚪ `workspace.tsx:263`, `:302`, `:585-586` (추정) — 저장 직후 푸터가 "Saved" → "Saved · not sent"로 두 번 바뀌고 `aria-live`도 두 번 읽힐 수 있다. `hasPending`이 서버 prop(`detail.locales[].pending`)에서 오기 때문이다. 방향: 성공 결과의 셀로 `pendingLocales`를 낙관적으로 합친다(목록 행은 이미 이렇게 한다, `:266-273`).
-- [ ] **#33** ⚪ `workspace.tsx:233-236`, `:507` — 키 선택과 More가 `push`라 뒤로가기가 키 단위로 거슬러 간다. D2대로 고친다.
+- [x] **#29** ⚪ `workspace.tsx:185-203` · `key-list.tsx:53` — `rows`를 `useEffect`로 갱신해서, 조건이 바뀐 첫 커밋은 새 배지·라벨에 옛 행으로 그려진다. 결과가 0↔N으로 바뀔 때 빈 상태가 한 프레임 번쩍인다. 방향: `conditionKey`가 바뀌었는지 렌더 중에 판정해 상태를 리셋한다.
+- [x] **#30** ⚪ `workspace.tsx:263`, `:302`, `:585-586` (추정) — 저장 직후 푸터가 "Saved" → "Saved · not sent"로 두 번 바뀌고 `aria-live`도 두 번 읽힐 수 있다. `hasPending`이 서버 prop(`detail.locales[].pending`)에서 오기 때문이다. 방향: 성공 결과의 셀로 `pendingLocales`를 낙관적으로 합친다(목록 행은 이미 이렇게 한다, `:266-273`).
+- [x] **#33** ⚪ `workspace.tsx:233-236`, `:507` — 키 선택과 More가 `push`라 뒤로가기가 키 단위로 거슬러 간다. D2대로 고친다.
 
 **선행 배치에서 넘어온 것 (2026-09-25)**
 - **U1이 이동 잠금을 이미 transition으로 세웠다** — `workspace.tsx`의 `const [navigating, startNavigation] = useTransition()`와 `navigate(href, how)`. 이 배치는 새 transition을 만들지 않고 **그 `navigating`을 표시(#7의 `aria-busy`·흐림·낙관 선택)에 재사용**한다. 읽기 전용 잠금은 그대로 둔다.
 - **U2가 `surfaces/[surfaceSlug]/translations/loading.tsx`를 세웠다** — 트리에서 **다른 소스**를 누르면 `[surfaceSlug]` 세그먼트가 바뀌어 이 골격이 머리·트리·목록을 통째로 덮는다(같은 소스 안의 조작은 searchParams라 안 덮는다). #18을 설계할 때 이 동작을 전제로 한다 — 받아들일지, 소스 전환도 옛 화면 + pending으로 둘지 판정해 handoff에 적는다.
 - U5가 Home의 [Sync]→`Publish first` 링크에 `surfaceSlug`를 넘겼다. 번역 화면 안의 `SyncButton`은 넘기지 않아 옛 `/translations` 경로로 간다 — 현재 표면을 넘기는 한 줄을 이 배치가 든다.
+
+**진행 기록 (2026-09-25)**
+- #18은 URL 예약값 `key=@first`로 서버가 첫 키 상세를 같은 렌더에 싣는다(왕복 1회). 소스 전환의 전면 골격(U2)은 받아들였다 — 세그먼트가 바뀌는 이동이라 정직한 표시다.
+- #19는 읽기 전용 Server Action `loadMoreTranslationKeys`를 새로 두었다(CLAUDE.md 데이터 변경 표에 등재). 대가: 저장 뒤 재검증은 첫 페이지만 다시 그린다 — 붙인 행은 `applySavedRow`·`selectedInResult`로만 갱신된다(ARCHITECTURE).
+- 리뷰가 잡아 고친 것: 대기 중 연속 조작이 서버 prop의 옛 `query`로 주소를 만들어 앞 선택을 지웠다(POSTMORTEM 2026-09-12 부류 — 이제 낙관값 `view.query` 위에 쌓는다) · `replaceState`가 대기 중 이동을 버렸다(Next 16.3 `ACTION_RESTORE` — 대기 중 언어 메뉴 잠금).
 
 **경계**: `:335`의 `router.refresh()`(#12)는 **U6**, `:351`의 `usePublish`(#10)는 **U7**이다. `components/search-input.tsx`(#15)는 **U1**이다.
 
