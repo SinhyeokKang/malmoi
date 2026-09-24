@@ -111,3 +111,24 @@ it("저장 후 서버가 새 baseBranch를 보내도 성공 안내가 유지된�
   await rerender(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="dev" />);
   expect(container.querySelector('#base-branch-caption')?.textContent).toContain("Saved");
 });
+
+/**
+ * **`<label for>`는 라벨을 붙일 수 있는 컨트롤만 가리킨다** (audit #89). 보관·고정 갈래는 값이 `<p id="base-branch">`이고
+ * 조회 중엔 그 id가 아예 없어서, 라벨이 없는 대상이나 문단을 가리켰다. 짝: 편집 갈래는 컨트롤을 가리킨다.
+ */
+it("Base branch 라벨은 보관 갈래의 문단을 for로 가리키지 않는다", async () => {
+  const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="dev" disabled />);
+  expect(container.querySelector("#base-branch")!.tagName).toBe("P");
+  expect(container.querySelector("#base-branch-label")!.hasAttribute("for")).toBe(false);
+});
+it("Base branch 라벨은 조회 중 없는 대상을 가리키지 않는다", async () => {
+  branches.listRepoBranches.mockReturnValue(new Promise(() => {}));
+  const { container } = await render(<RepositoryForm owner="acme" repo="web" slug="acme" baseBranch="main" />);
+  expect(container.querySelector("#base-branch")).toBeNull();
+  expect(container.querySelector("#base-branch-label")!.hasAttribute("for")).toBe(false);
+});
+it("Base branch 라벨은 편집 컨트롤을 for로 가리킨다", async () => {
+  const { container } = await render(<RepositoryForm owner="acme" repo="web" slug="acme" baseBranch="main" />);
+  expect(container.querySelector("#base-branch-label")!.getAttribute("for")).toBe("base-branch");
+  expect(container.querySelector("#base-branch")!.tagName).toBe("BUTTON");
+});

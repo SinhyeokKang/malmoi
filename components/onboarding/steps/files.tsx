@@ -525,6 +525,7 @@ function ManualForm({
         <Input
           disabled={pending}
           id="manual-path"
+          aria-describedby="manual-path-help"
           value={manual.pathTemplate}
           onChange={(e) => onManual({ ...manual, pathTemplate: e.target.value })}
           placeholder={choice?.example ?? "src/locales/{locale}.json"}

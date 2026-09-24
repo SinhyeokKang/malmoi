@@ -71,7 +71,8 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
       ? <ButtonLink href={routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })); } }}>{m.sources.open}<ArrowRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>
       : detail ? <Button aria-disabled aria-describedby="source-open-reason" onClick={event => event.preventDefault()}>{m.sources.open}<ArrowRight className="text-muted-foreground size-3.5" aria-hidden /></Button> : undefined}
     actions={<Button size="lg" variant="primary" disabled={busy} onClick={() => leave()}>{m.common.close}</Button>} footer={<span id="source-open-reason" className="text-muted-foreground text-xs">{!canOpen && detail ? (busy ? importing ? m.settings.sources.importing : m.locales.field.saving : disabledReason) : m.sources.readOnlyNote}</span>}>
-    {state.status === "loading" && <div className="space-y-6" aria-label={m.sources.loading}>
+    {/* 골격은 장식이다 — 불러오는 중은 대화상자 설명(`description`)이 말한다. 역할 없는 div의 `aria-label`은 읽히지 않는다 (audit #89). */}
+    {state.status === "loading" && <div className="space-y-6" data-source-loading aria-hidden>
       {[1, 2, 3].map(n => <div key={n} className="space-y-3"><Skeleton className="h-4 w-32" /><Skeleton className="h-5 w-64" /></div>)}
       <div className="space-y-3"><Skeleton className="h-4 w-32" />{[1, 2, 3].map(n => <div key={n} data-language-skeleton><Skeleton className="h-10 w-full" /></div>)}</div>
     </div>}

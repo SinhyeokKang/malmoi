@@ -77,7 +77,8 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
     >
       {/* ⚠️ 이 행은 `bg-muted` 면이다 — 그 위의 `text-muted-foreground`는 4.35:1로 AA 하한을 깨서 캡션이 `text-foreground/60`이다 (온보딩 ①과 같은 판정). */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-[6px] px-4 py-3.5">
-        <label htmlFor="base-branch" className="text-foreground flex shrink-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap @max-[640px]:basis-full" id="base-branch-label"><GitBranch className="size-3.5 shrink-0" aria-hidden />{m.settings.repository.fields.branch}</label>
+        {/* `for`는 편집 컨트롤이 설 때만 — 보관·고정 갈래의 값은 문단이고 조회 중엔 대상이 없다 (audit #89). */}
+        <label htmlFor={disabled || choice === undefined || choice.mode === "fixed" ? undefined : "base-branch"} className="text-foreground flex shrink-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap @max-[640px]:basis-full" id="base-branch-label"><GitBranch className="size-3.5 shrink-0" aria-hidden />{m.settings.repository.fields.branch}</label>
         <div className="[&_.animate-spin]:size-3.5 flex min-w-0 flex-1 flex-wrap items-center gap-2">
           {disabled || choice?.mode === "fixed" ? <p id="base-branch" className="text-sm">{branch}</p>
             : choice === undefined ? <div aria-busy="true"><Skeleton className="h-9 w-60 rounded-md" /></div>

@@ -36,11 +36,13 @@ export function FormGroup({
   children: ReactNode;
 }) {
   /**
-   * 오류 문구의 id — **소비자가 `aria-describedby`로 잇는다**(DESIGN §6.4). `htmlFor`가 있으면 그것에서
-   * 파생해 호출부가 문자열을 그대로 적을 수 있고, 없을 때만 생성한다.
+   * 오류·도움말 문구의 id — **소비자가 `aria-describedby`로 잇는다**(DESIGN §6.4). `htmlFor`가 있으면 그것에서
+   * 파생해 호출부가 문자열을 그대로 적을 수 있고, 없을 때만 생성한다. ⚠️ 도움말에도 id가 있어야 한다 — 없으면 경로 형식
+   * 같은 안내가 보이기만 하고 입력에 포커스한 스크린리더 사용자에게 안 닿는다 (audit #89).
    */
   const generatedId = useId();
-  const id = htmlFor ? `${htmlFor}-error` : `${generatedId}-error`;
+  const base = htmlFor ?? generatedId;
+  const id = `${base}-error`;
   return (
     <div className="space-y-2">
       <label id={labelId} htmlFor={htmlFor} className="block text-sm font-medium">
@@ -51,7 +53,7 @@ export function FormGroup({
       {error !== undefined ? (
         <p id={id} role="alert" className="text-destructive flex items-start gap-1.5 text-xs leading-[1.7]"><CircleAlert className="mt-1 size-3.5 shrink-0" aria-hidden />{error}</p>
       ) : help !== undefined ? (
-        <p className="text-muted-foreground text-xs leading-[1.7]">{help}</p>
+        <p id={`${base}-help`} className="text-muted-foreground text-xs leading-[1.7]">{help}</p>
       ) : null}
     </div>
   );

@@ -102,10 +102,11 @@ export function NamingStep({
           /**
            * ⚠️ **두 속성이 같은 술어를 쓴다** — `FormGroup`은 `error`가 있을 때만 그 `<p>`를 그리므로,
            * 갈리면 오류가 없는 동안 **없는 id**를 가리킨다. 안정된 id는 프리미티브가 주고 잇는 것은
-           * 호출부다(DESIGN §6.4) — 안 이으면 포커스가 입력에 있는 사람에게 사유가 안 닿는다.
+           * 호출부다(DESIGN §6.4) — 안 이으면 포커스가 입력에 있는 사람에게 사유가 안 닿는다. 오류가 없는 동안은
+           * 그 자리에 선 도움말(`-help`)을 가리킨다 (audit #89).
            */
           aria-invalid={slugRejected ? true : undefined}
-          aria-describedby={slugRejected ? "project-slug-error" : undefined}
+          aria-describedby={slugRejected ? "project-slug-error" : "project-slug-help"}
           onChange={(e) => onChange({ slug: e.target.value, slugTaken: false })}
           className="w-full"
         />
@@ -191,6 +192,7 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
             <SelectTrigger
               id={`${selectId}`}
               aria-labelledby={`${id}-select-label ${selectId}`}
+              aria-describedby={`${selectId}-help`}
               className="w-full max-w-sm"
             >
               <SelectValue />

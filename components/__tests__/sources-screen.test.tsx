@@ -3,6 +3,7 @@ import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { SourcesScreen } from "@/components/sources/sources-screen";
+import { m } from "@/lib/i18n";
 import type { SourceDetail, SourcesData } from "@/lib/sources/query";
 import { render } from "./helpers/dom";
 vi.setConfig({ testTimeout: 20_000 });
@@ -49,6 +50,22 @@ it("늦게 도착한 이전 상세는 닫힌 모달을 다시 열지 않는다",
   await act(async () => { await userEvent.setup().click(button("Close")); });
   await act(async () => { resolve({ ok: true, detail }); });
   expect(document.querySelector('[role="dialog"]')).toBeNull();
+});
+/**
+ * **불러오는 중은 대화상자 설명이 말한다** (audit #89). 골격 묶음에 `aria-label`을 달았지만 역할 없는 `div`의 이름은
+ * 보조기기가 읽지 않는다(ARIA가 금지한다) — 이름 없는 골격은 장식으로 숨기고, 상태는 `aria-describedby`가 가리키는 설명이 든다.
+ */
+it("불러오는 중에는 설명이 로딩을 말하고 골격은 장식이다", async () => {
+  mocks.load.mockReturnValue(new Promise(() => {}));
+  await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
+  await open();
+  const dialog = document.querySelector('[role="dialog"]')!;
+  const described = (dialog.getAttribute("aria-describedby") ?? "").split(" ").map(id => document.getElementById(id)?.textContent ?? "").join(" ");
+  expect(described).toContain(m.sources.loading);
+  const skeleton = document.querySelector('[data-language-skeleton]')!.closest("[data-source-loading]");
+  expect(skeleton).not.toBeNull();
+  expect(skeleton?.getAttribute("aria-label")).toBeNull();
+  expect(skeleton?.getAttribute("aria-hidden")).toBe("true");
 });
 it("추가 결과는 refresh와 상세 열기/닫기 뒤에도 같은 소유자에 남는다", async () => {
   const ownerData = { ...data, repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } };
