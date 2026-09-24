@@ -2,6 +2,7 @@ import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { actorLabel } from "@/lib/keys/view";
 import { effectiveCompletion, type EffectiveCompletion } from "@/lib/translations/summary";
 import { ALL_NAMESPACES, DEFAULT_TRANSLATION_QUERY, translationsHref, type TranslationQuery } from "@/lib/translations/query";
+import { decodeUrlToken, encodeUrlToken } from "@/lib/url-token";
 
 /**
  * **번역 화면의 조회 셋** (translation-rework T9 — design §2 · §10.2). 트리 · 요약 목록 · 선택 키 상세.
@@ -76,14 +77,15 @@ export type TranslationList = {
 type Cursor = [rank: number, surfaceSlug: string, sortIndex: number, key: string, id: string];
 
 function encodeCursor(cursor: Cursor): string {
-  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+  return encodeUrlToken(JSON.stringify(cursor));
 }
 
 /** 모양이 맞지 않는 cursor는 **첫 페이지**다 — 조작된 값으로 범위를 넓히거나 오류를 내지 않는다. */
 function decodeCursor(raw: string | undefined): Cursor | null {
-  if (raw === undefined) return null;
+  const text = raw === undefined ? null : decodeUrlToken(raw);
+  if (text === null) return null;
   try {
-    const value: unknown = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+    const value: unknown = JSON.parse(text);
     if (!Array.isArray(value) || value.length !== 5) return null;
     const [rank, slug, sort, key, id] = value as unknown[];
     if ((rank !== 0 && rank !== 1) || typeof slug !== "string" || typeof sort !== "number" || !Number.isInteger(sort) || typeof key !== "string" || typeof id !== "string") return null;

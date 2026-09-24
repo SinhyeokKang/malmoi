@@ -159,6 +159,8 @@ const CLIENT_LIB_FILES = [
   "lib/translations/text-direction.ts",
   "lib/upload/image.ts",
   "lib/upload/message.ts",
+  // Logs 커서의 base64url 코덱 (audit #73) — import가 없는 잎이다.
+  "lib/url-token.ts",
   "lib/utc-time.ts",
   "lib/utils.ts",
 ];
@@ -381,6 +383,7 @@ describe("클라이언트 그래프", () => {
     expect([...filter.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
       "lib/events/filter.ts",
       "lib/events/payload.ts",
+      "lib/url-token.ts",
     ]);
     expect([...filter.packages].filter((name) => !allowed(name))).toEqual([]);
 
