@@ -41,9 +41,11 @@ app/
                         경로를 나열하면 다섯째가 조용히 빠진다
     publish-actions.ts  loadPublishPreview 하나. ⚠️ actions.ts와 갈라 둔다 — 모달이 열릴 때만 부르는
                         **읽기**라 쓰기 Action과 무효화 규칙이 다르다
-    projects/           new/(온보딩 딥링크) · actions.ts
-      (list)/           목록 전용 route group(URL 불변) — page.tsx(?q=) · loading.tsx 스켈레톤. ⚠️ projects/에 바로 두면
-                        목록 행·온보딩 ④에서 프로젝트로 가는 동안 목록 골격이 떴다가 바뀐다(audit-ux #21 — malmoi#95와 같은 결함)
+    projects/           actions.ts
+      (list)/           목록 전용 route group(URL 불변) — page.tsx(?q=) · loading.tsx 스켈레톤 · new/(온보딩 딥링크).
+                        ⚠️ projects/에 바로 두면 목록 행·온보딩 ④에서 프로젝트로 가는 동안 목록 골격이 떴다가 바뀐다
+                        (audit-ux #21 — malmoi#95와 같은 결함). ⚠️ new/도 여기다 — GitHub callback이 /projects/new로
+                        전체 로드 착지하고 그 페이지가 목록(원격 신호 최대 8초)을 기다리므로, 경계 밖이면 그동안 빈 화면이다
       layout.tsx        children·modal을 마크업 없이 나란히 렌더 — [slug] 하위 패널을 중첩하지 않는다
       new-project-modal.tsx  두 생성 진입점의 서버 공통 모달. 리포 조회는 Suspense 뒤이고 목록은 읽지 않는다
       @modal/(.)new/    클라이언트 네비게이션용 모달. requireUser 후 모달만, 닫기는 router.back()
