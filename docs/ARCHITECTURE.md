@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sources/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/protection/`·`lib/privacy/`·`lib/signin/`·`lib/translations/`·`lib/invitation-email/`·`lib/events/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/compare.ts`·`lib/relative-time.ts`·`lib/utc-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sources/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/protection/`·`lib/privacy/`·`lib/signin/`·`lib/translations/`·`lib/invitation-email/`·`lib/events/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/compare.ts`·`lib/cause.ts`·`lib/relative-time.ts`·`lib/utc-time.ts`·`lib/tone.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`tone.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
 
 > 이 문서는 **선 코드의 계약만** 적는다. 아직 서지 않은 것은 `docs/PRODUCT.md` §10(아직 안 정한 것)이나 진행 중인 `docs/features/<slug>/`가 든다 — 여기에 미래형을 섞으면 "불변식"이 지켜야 할 것과 지키고 싶은 것으로 갈린다.
 
@@ -96,17 +96,18 @@
 | `yaml-catalog` | `<dir>/{locale}.y(a)ml` | 문자열 스칼라 | per-locale | **surgical** | 오픈소스 17개 (mastodon·decidim·directus·redmine·misskey) |
 | `code-dict` | `<dir>/{locale}.{ts,tsx,js,mjs}` | 문자열 리터럴 | per-locale | **surgical** | 오픈소스 12개 (ant-design·element-plus·vuetify·payload) |
 
-### read 오류의 두 갈래 — 실패와 "관리하지 않는 항목" (2026-09-24, B2 r3 · QA5)
+### read 오류의 갈래 — 실패 · "관리하지 않는 항목" · 경고 (2026-09-24, B2 r3 · QA5 · B7a r1)
 
 서버 적재(첫 Sync·Add source·수동 Sync)는 read 오류가 하나라도 있으면 `partial-import`를 남겼다. 그런데 ts-dict의
 `"x": String(…)`처럼 **malmoi가 일부러 다루지 않는 항목**은 수술적 writer가 파일에 그대로 남기므로 번역을 하나도 잃지 않는다 —
 904키가 다 들어간 소스가 그것 하나로 "Last sync failed"·Home 위험 배너가 됐다. 판정은 **"다음 Publish에서 그 값이 살아남는가"**다.
-`adapterErrorKind`(`lib/adapters/types.ts`)가 코드마다 정하고, `prepareFirstSnapshot`이 `unmanaged`만 `failed`에서 빼서 따로 센다.
+`adapterErrorKind`(`lib/adapters/types.ts`)가 코드마다 정하고, `prepareFirstSnapshot`이 `unmanaged`만 `failed`에서 빼서 따로 센다. `warning`은 **어느 수에도 세지 않고**, CI(`push:local`·`ingest`)도 Publish 미리보기도 막지 않는다 — 찍기만 한다.
 
 | 갈래 | 코드 | 왜 |
 |---|---|---|
 | **unmanaged** — 안내만 | `value-not-string-literal`(ts-dict·code-dict) · `shorthand-property` · `not-property-assignment`(code-dict) · `value-not-string`(yaml 숫자·불린) | 전부 **surgical** writer라 파일에 그대로 남는다. 코드의 식·참조는 번역 대상이 아니다 |
 | **failure** — `partial-import` | 파일 층(`parse-failed`·`parse-crashed`·`root-not-object`·`no-default-export`) · `download-failed` · `duplicate-key` · chrome 엔트리(`invalid-chrome-key`·`missing-message-field`·`value-not-message-object`) · `value-not-string-or-container`(json 숫자·불린) | 못 읽었거나, **regenerate** writer가 DB에 없는 그 값을 다음 Publish에서 **지운다** |
+| **warning** — 알리기만 | `duplicate-property`(code-dict·ts-dict — 코드 객체의 같은 키, 점 키·중첩 충돌 포함) | read가 **write가 고칠 노드의 값**을 싣고(같은 이름이면 마지막 — JS 의미·push `lastWins`, 충돌이면 `locate`의 긴 리터럴 우선) write도 그 자리를 고친다 — 잃는 번역이 없다. **대상 리포 CI를 red로 만들지 않는다**(2026-09-24 사용자 결정 · ACTIONS §3). ⚠️ YAML·JSON의 같은 사건은 `duplicate-key`(failure)다 — 데이터 파일은 두 값 중 하나가 사라지는 파일이다 |
 | (write 코드) | `key-shadowed`·`write-*`·`original-file-missing` | 적재 판정에 오지 않는다 — failure로 둔다(fail-closed) |
 
 ⚠️ **같은 "숫자 값"이 어댑터에 따라 갈린다** — yaml은 남고 json은 지워진다. 코드를 합치면 이 구분이 사라진다.
@@ -369,7 +370,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 값 교체만 하면 **그 로케일 파일에 아직 없는 키**는 번역해도 리포에 도달하지 못한다. base에 100키가 있고 `ko.yml`에 60키만 있으면 나머지 40키는 치환할 대상이 없다 — 재생성 어댑터는 그냥 쓰므로, 이 격차가 "수술적이면 번역이 반영되지 않는다"로 읽힌다.
 
 - 없는 키는 **가장 깊은 기존 맵/객체의 끝에** 넣는다. 남은 경로는 리터럴 키 하나로 삽입하며 중간 맵을 새로 만들지 않는다.
-  - ⚠️ **조회와 삽입이 같은 걷기(`locate`)를 쓴다 — 각 깊이에서 가장 긴 리터럴 접두를 먼저 보고 컨테이너면 내려간다** (2026-09-17, launch-readiness L1.4). 전에는 조회가 "리터럴 전체 키 / 전부 split" 둘만 시도해 `errors: { "messages.blank": x }`(read가 `errors.messages.blank`로 낸다)를 **못 찾았고**, 없는 키로 판정한 삽입이 `errors` 아래에 `"messages.blank"`를 **또** 넣어 write마다 중복이 하나씩 늘었다 — 2026-09-02 "구분자가 데이터에도 있어서"의 재발이고, 조회와 삽입이 다른 규칙으로 걸으면 같은 중복이 다시 생긴다. `lib/adapters/__tests__/contract.ts`의 "깊은 점 키" 축이 삽입하는 수술적 어댑터 둘에 값 무변경 바이트 동일·리터럴 개수 불변을 검사하고, `contract.test.ts`의 가짜 어댑터가 옛 동작을 red로 낸다. 알려진 한계: 같은 깊이에 `messages: { blank }`와 `"messages.blank"`가 **리터럴이 앞에** 오도록 공존하면 read(last-wins)와 write(긴 리터럴 우선)가 다른 항목을 고른다. `code-dict` read는 2026-09-24부터 그 공존과 같은 이름 중복을 `duplicate-key`(실패 갈래)로 알리고, 같은 이름이면 write도 **마지막** 프로퍼티를 바꾼다 — JS 런타임이 읽는 자리이자 push `lastWins`가 적재하는 값이다(audit #51).
+  - ⚠️ **조회와 삽입이 같은 걷기(`locate`)를 쓴다 — 각 깊이에서 가장 긴 리터럴 접두를 먼저 보고 컨테이너면 내려간다** (2026-09-17, launch-readiness L1.4). 전에는 조회가 "리터럴 전체 키 / 전부 split" 둘만 시도해 `errors: { "messages.blank": x }`(read가 `errors.messages.blank`로 낸다)를 **못 찾았고**, 없는 키로 판정한 삽입이 `errors` 아래에 `"messages.blank"`를 **또** 넣어 write마다 중복이 하나씩 늘었다 — 2026-09-02 "구분자가 데이터에도 있어서"의 재발이고, 조회와 삽입이 다른 규칙으로 걸으면 같은 중복이 다시 생긴다. `lib/adapters/__tests__/contract.ts`의 "깊은 점 키" 축이 삽입하는 수술적 어댑터 둘에 값 무변경 바이트 동일·리터럴 개수 불변을 검사하고, `contract.test.ts`의 가짜 어댑터가 옛 동작을 red로 낸다. 알려진 한계: 같은 깊이에 `messages: { blank }`와 `"messages.blank"`가 **리터럴이 앞에** 오도록 공존하면 read(last-wins)와 write(긴 리터럴 우선)가 다른 항목을 고른다. **2026-09-24(audit #51 · B7a r1)부터 그 한계가 닫혔다** — read가 충돌한 평탄 키에 **write가 고칠 노드(`locate`)의 값**을 싣는다. 같은 이름 중복은 마지막(JS 런타임·push `lastWins`)이고 write도 마지막 자리를 고친다. 알림은 어댑터별이다: yaml은 `duplicate-key`(실패 — 평탄화 충돌도 이제 알린다, 전에는 조용히 접혔다), code-dict·ts-dict는 `duplicate-property`(경고 — CI green).
 - **결정성**: 추가되는 키를 코드 유닛 정렬 순서(`compareKeys`)로 넣으므로 `같은 DB 상태 + 같은 원본` → 같은 바이트다.
 - **`ts-dict`는 예외다.** bugshot-2가 세 로케일을 한 파일에 나란히 두어 키 격차가 구조적으로 생기지 않고, 삽입 지점을 고르는 규칙(어느 로케일 객체의 어디)이 파일 형태에 의존해 이득 없이 위험만 늘어난다.
 
@@ -427,6 +428,8 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 회차별 로그는 지웠고 — `git log`가 든다 — 여기 남는 것은 **판정과 그 근거**다.
 
 **최종 지표 (18차, 2026-09-14 — `ts-dict` 자동 탐지 복귀와 함께 다시 쟀다. 19차 2026-09-17, launch-readiness L1.4 뒤 재측정: 아래 표가 **한 칸도 안 바뀌었다** — 깊은 점 키 걷기 통일은 결함 케이스의 출력만 바꾸고 코퍼스에 그 모양이 없었다. ⚠️ 19차부터 "키 충돌" 지표가 read의 `duplicate-key` 보고도 세므로 그 수치(학습 454 · 홀드아웃 0)는 이전 회차와 비교하지 않는다)**
+
+⚠️ **2026-09-24(audit #54 · B7a)부터 지표 정의가 둘 바뀌었다 — 다음 회차의 `writeErrors`·`surgicalEditHunks`는 18·19차와 비교하지 않는다.** 측정이 pull의 `renderLocaleFiles`를 그대로 지나게 되면서 ① `writeErrors`가 렌더 오류(`original-file-missing` 포함)를 세고 multi-locale은 `format.locales` 전부를 돈다, ② 편집 탐침(`surgicalEditHunks`)이 비-base 로케일에도 DB 값을 싣는다(옛 탐침은 빈 입력이었다). 같은 날 `duplicate-property`(code-dict·ts-dict)가 "키 충돌"에 더해져 그 수치도 이어지지 않는다.
 
 | 지표 | 학습 109 | 홀드아웃 20 |
 |---|---|---|
