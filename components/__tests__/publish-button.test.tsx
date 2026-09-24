@@ -342,6 +342,14 @@ it("바뀌는 편집이 있으면 푸터가 파일 수를 센다 (짝)", async (
   await render(<Host />); await click("Publish1");
   expect(document.body.textContent).toContain(m.translations.publish.previewSummary(1, 1, 1));
 });
+/** #96 — 여러 줄 값의 줄바꿈이 공백으로 접히면 PR이 쓰는 개행과 공백을 미리보기가 구별하지 못한다. − 줄과 + 줄 둘 다다. */
+it("여러 줄 값의 −/+ 줄은 줄바꿈을 지킨다", async () => {
+  mocks.preview.mockResolvedValue(withRows([{ ...otherRow, before: "첫 줄\n둘째", after: "첫 줄\n셋째" }], null));
+  await render(<Host />); await click("Publish1");
+  const values = [...document.querySelectorAll('[role="dialog"] span.break-words')].filter(s => s.textContent?.includes("\n"));
+  expect(values).toHaveLength(2);
+  for (const value of values) expect(value.className).toContain("whitespace-pre-wrap");
+});
 it("미리보기 읽기 실패는 1k의 Retry다 (짝)", async () => {
   mocks.preview.mockResolvedValueOnce({ status: "failed" });
   await render(<Host />);

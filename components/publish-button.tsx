@@ -230,7 +230,7 @@ function DiffLine({ sign, parts, before }: { sign: string; parts: readonly { tex
     {/* 글리프는 장식이고 뜻은 `sr-only`가 든다 — 낭독에 "All … All actions"만 남으면 어느 쪽이 리포인지 모른다. */}
     <span className="sr-only">{before ? p.beforeLabel : p.afterLabel}</span>
     <span className={`w-2.5 shrink-0 text-xs leading-5 ${before ? "text-red-700" : "text-green-800"}`} aria-hidden>{sign}</span>
-    <span className={`min-w-0 flex-1 text-sm leading-5 break-words ${before ? "text-muted-foreground" : ""}`}>
+    <span className={`min-w-0 flex-1 text-sm leading-5 break-words whitespace-pre-wrap ${before ? "text-muted-foreground" : ""}`}>
       {parts.map((part, i) => <span key={i} className={!part.changed ? undefined : before ? "text-foreground rounded-[3px] bg-red-700/[0.14]" : "rounded-[3px] bg-green-800/[0.16]"}>{part.text}</span>)}
     </span>
   </span>;
