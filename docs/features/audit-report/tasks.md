@@ -185,16 +185,16 @@
 **왜 뒤인가**: 출시를 막지 않는다. 한 번에 돌리지 말고 **소배치로 쪼갠다** — 아래 네 묶음이 각각 한 `/ship`이다.
 
 ### B7a 어댑터·push/pull 잔여
-- [ ] **#12** 🟡 `lib/pull/run.ts:224-227` — no-changes 경로의 브랜치 되돌림이 PR base를 안 옮긴다(ARCHITECTURE §3 L3.7). 사람이 머지해야 해가 생겨 🟡.
-- [ ] **#51** 🟡 `lib/adapters/code-dict.ts:435-443` — 중복 키에서 write는 첫 항목, push `lastWins`(payload.ts:103)는 마지막. read가 `duplicate-key`를 안 낸다.
-- [ ] **#52** 🟡 `lib/pull/load.ts:105` × `lib/push/apply.ts:343` — chrome `"placeholders": null`이 왕복에서 사라진다.
-- [ ] **#53** 🟡 `scripts/ingest.ts:161→170` — 의미 손실 exit 1을 마지막 줄이 0으로 덮는다.
-- [ ] **#54** 🟡 `lib/survey/one.ts:151-170,506-586` — `renderLocaleFiles` 재구현, 동작 셋이 갈림(POSTMORTEM 2026-09-02 재발).
-- [ ] **#55** 🟡 `lib/pull/render.ts:129` — multi-locale 갈래가 `writeStrategy` 없이 원본 필수 판정(잠복).
-- [ ] **#56** 🟡 `lib/adapters/yaml-catalog.ts:302` — 삽입 키가 PLAIN(형제 스칼라 인용 타입을 안 따름).
-- [ ] **#57** 🟡 BOM 축 0 — `chrome-locales.ts:137` · `json-catalog.ts:156` · `json-style.ts:119` · `shared.ts:333`(`catalogVerdict`가 후보 0으로). CI push exit 1 · 온보딩 예외 E.
-- [ ] **#60** 🟡 `lib/pull/run.ts:82,226,242` — `invalidateDelivery?`가 선택 인자(불변식 9). 필수로.
-- [ ] ⚪ **#83** `json-style.ts:121` 들여쓰기 10칸 절단 · **#84** `pull/plan.ts:58` · `json-catalog.ts:148` `{}` 대입(POSTMORTEM 2026-09-09) · **#85** `contract.test.ts:33-40` writeStrategy 단언 둘뿐 · "코드포인트" 표기.
+- [x] **#12** 🟡 `lib/pull/run.ts:224-227` — no-changes 경로의 브랜치 되돌림이 PR base를 안 옮긴다(ARCHITECTURE §3 L3.7). 사람이 머지해야 해가 생겨 🟡. → **이미 닫힘**: B1 r3가 되돌리기 **전에** 열린 PR을 코멘트와 함께 닫는다(`run.ts` `closePr` — 머지할 PR이 남지 않는다).
+- [x] **#51** 🟡 `lib/adapters/code-dict.ts:435-443` — 중복 키에서 write는 첫 항목, push `lastWins`(payload.ts:103)는 마지막. read가 `duplicate-key`를 안 낸다.
+- [x] **#52** 🟡 `lib/pull/load.ts:105` × `lib/push/apply.ts:343` — chrome `"placeholders": null`이 왕복에서 사라진다.
+- [x] **#53** 🟡 `scripts/ingest.ts:161→170` — 의미 손실 exit 1을 마지막 줄이 0으로 덮는다.
+- [x] **#54** 🟡 `lib/survey/one.ts:151-170,506-586` — `renderLocaleFiles` 재구현, 동작 셋이 갈림(POSTMORTEM 2026-09-02 재발).
+- [x] **#55** 🟡 `lib/pull/render.ts:129` — multi-locale 갈래가 `writeStrategy` 없이 원본 필수 판정(잠복).
+- [x] **#56** 🟡 `lib/adapters/yaml-catalog.ts:302` — 삽입 키가 PLAIN(형제 스칼라 인용 타입을 안 따름).
+- [x] **#57** 🟡 BOM 축 0 — `chrome-locales.ts:137` · `json-catalog.ts:156` · `json-style.ts:119` · `shared.ts:333`(`catalogVerdict`가 후보 0으로). CI push exit 1 · 온보딩 예외 E.
+- [x] **#60** 🟡 `lib/pull/run.ts:82,226,242` — `invalidateDelivery?`가 선택 인자(불변식 9). 필수로.
+- [x] ⚪ **#83** `json-style.ts:121` 들여쓰기 10칸 절단 · **#84** `pull/plan.ts:58` · `json-catalog.ts:148` `{}` 대입(POSTMORTEM 2026-09-09) · **#85** `contract.test.ts:33-40` writeStrategy 단언 둘뿐 · "코드포인트" 표기.
 
 ### B7b 죽은 코드·중복
 - [x] **#64** 🟡 `lib/sync/query.ts` · `lib/sync/view.ts` · `SYNC_LOG_PAGE_SIZE` 고아 + `components/__tests__/logs-screen.test.ts:95` 이름만 참(POSTMORTEM 2026-09-03 재발).
@@ -205,6 +205,7 @@
   - B7b: `summary.ts`의 둘(`orderKeySummaries`·`keyMatches`)은 남겼다 — 파일 머리가 밝힌 SQL oracle이고 `translation-list.integration.ts`가 대조에 쓴다. 나머지 셋 삭제.
 - [ ] **#73** 🟡 중복 — 커서 코덱 3벌 · `validNonce` 2벌 · 쿠키 만료 루프 4벌 · 콜백 경로 정규식 3벌 · `survey/select.ts:13-23` 정규식 사본 · `(cause as Error).message` 8곳 · `scripts/ingest.ts` ↔ `push-local.ts` probe/`--adapter`.
   - B7b 몫 끝: 커서 코덱 → `lib/url-token.ts` 하나(`sync/view.ts`는 #64로 삭제) · `survey/select.ts` 정규식은 어댑터에서 import. 나머지(`validNonce`·쿠키·콜백 정규식 = B7e, cause·scripts = B7a)가 남아 체크하지 않는다.
+  - B7a 몫 끝: `scripts/ingest.ts` ↔ `push-local.ts` probe·`--adapter` → `scripts/format.ts` · `(cause as Error).message` 8곳 → `lib/cause.ts`의 `causeMessage`. B7e 몫이 남는다.
 - [x] ⚪ **#86** 미사용 메시지 키 약 60 · **#87** `IMPORT_STALE_AFTER_SECONDS` · `KeySaveInputType` · `ActorKind.UNKNOWN` · Account OAuth 컬럼 넷 · `_ownerId` · `confirmedAt`/`recordedAt` · **#90** `syncBranchFor` 위치.
   - B7b: #86 60키 삭제 · #87 `_ownerId` 제거, `IMPORT_STALE_AFTER_SECONDS`·`KeySaveInputType`는 이미 없었다 · #90 `lib/pull/sync-branch.ts`로 이동. **스키마 항목은 남았다**(2단계 스키마 변경 필요): `ActorKind.UNKNOWN`(코드가 아직 읽는다) · Account OAuth 컬럼 넷(`@auth/prisma-adapter` 모양) · `DeliveryConfirmation.confirmedAt`(NOT NULL, 기본값 없음)·`DeliveryBaseline.recordedAt` 쓰기 전용.
 - ⚠️ CLAUDE.md "기존 dead code는 언급만 하고 삭제하지 않는다" — 이 묶음은 **삭제를 명시로 요청받았을 때만** 지운다.
