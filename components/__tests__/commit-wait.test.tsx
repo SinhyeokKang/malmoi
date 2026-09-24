@@ -70,8 +70,22 @@ describe("Home", () => {
     expect(locked(publish())).toBe(false);
   });
 
-  it("Sync 거부는 재검증이 없으므로 곧장 Publish를 푼다 — 위의 짝", async () => {
-    mocks.run.mockResolvedValue({ ok: false, error: "already-running" });
+  /*
+    ⚠️ **거부라고 다 트리가 없지 않다** (malmoi#103 r1) — `runRepositoryImport`의 `try` 안 거부는 `finally`의 `revalidatePath`를 지난다.
+    특히 `reconfirm`은 미전달 수가 바뀐 뒤다. `try` 앞의 거부(`unauthorized`…)만 트리 없이 돌아온다.
+  */
+  it.each(["reconfirm", "already-running"])("try 안의 Sync 거부(%s)도 서버 트리가 올 때까지 Publish를 잠근다", async error => {
+    mocks.run.mockResolvedValue({ ok: false, error });
+    const view = await render(<Home unsent={1} revision={0} />);
+    await click(named("Sync"));
+    await click(named("Discard changes and sync"));
+    expect(locked(publish())).toBe(true);
+    await view.rerender(<Home unsent={1} revision={1} />);
+    expect(locked(publish())).toBe(false);
+  });
+
+  it("try 앞의 Sync 거부는 트리가 없으므로 곧장 Publish를 푼다 — 위의 짝", async () => {
+    mocks.run.mockResolvedValue({ ok: false, error: "unauthorized" });
     await render(<Home unsent={1} revision={0} />);
     await click(named("Sync"));
     await click(named("Discard changes and sync"));
@@ -123,6 +137,54 @@ describe("번역 화면", () => {
     expect(locked(named("Revert to last sent"))).toBe(true);
     await view.rerender(<TranslationWorkspace {...nextServer()} />);
     expect(named("Sync").getAttribute("aria-disabled")).not.toBe("true");
+    expect(locked(named("Revert to last sent"))).toBe(false);
+  });
+
+  /*
+    ⚠️ **Publish `failed`는 둘로 갈린다** (malmoi#103 r1) — `runSync`를 지난 실패는 `triggerPullAction`이 재검증한다. 표식은 `runSync`만
+    내는 코드다(`pullRevalidates`) — `delivery`는 게이트 거부도 `not-started`라 못 가른다.
+  */
+  it("runSync를 지난 Publish 실패는 새 트리까지 Sync를 잠그고, 그 앞의 거부는 곧장 푼다", async () => {
+    mocks.pull.mockResolvedValue({ status: "failed", error: "already-running", delivery: "not-started", retryable: false });
+    const view = await render(<TranslationWorkspace {...props()} />);
+    await click(named(/^Publish/));
+    await click(named("Open pull request"));
+    await click(named("Close"));
+    expect(named("Sync").getAttribute("aria-disabled")).toBe("true");
+    await view.rerender(<TranslationWorkspace {...nextServer()} />);
+    expect(named("Sync").getAttribute("aria-disabled")).not.toBe("true");
+
+    mocks.pull.mockResolvedValue({ status: "failed", error: "unauthorized", delivery: "not-started", retryable: false });
+    await click(named(/^Publish/));
+    await click(named("Open pull request"));
+    // 거부 결과 모달은 닫기 문구가 다르다 — 모달 뒤의 트리거를 그대로 잰다.
+    expect(named("Sync").getAttribute("aria-disabled")).not.toBe("true");
+  });
+
+  it("트리를 기다리는 동안 Publish를 누르면 새 미리보기가 아니라 결과를 연다", async () => {
+    mocks.pull.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    await render(<TranslationWorkspace {...props()} />);
+    await click(named(/^Publish/));
+    await click(named("Open pull request"));
+    await click(named("Close"));
+    expect(mocks.preview).toHaveBeenCalledTimes(1);
+    await click(named(/^Publish/));
+    expect(mocks.preview).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).toContain("Nothing changed in the files");
+  });
+
+  it("도는 동안 키를 옮겨 서버 prop이 바뀌어도 결과 뒤의 새 트리까지 기다린다", async () => {
+    let settle: (value: unknown) => void = () => {};
+    mocks.run.mockImplementation(() => new Promise(resolve => { settle = resolve; }));
+    const view = await render(<TranslationWorkspace {...props()} />);
+    await click(named("Sync"));
+    await click(named("Discard changes and sync"));
+    // 키·필터 이동 — 서버가 새 상세를 보냈다(재검증 트리가 아니다).
+    await view.rerender(<TranslationWorkspace {...nextServer()} />);
+    await act(async () => { settle(synced); });
+    expect(locked(named(/^Publish/))).toBe(true);
+    await view.rerender(<TranslationWorkspace {...nextServer()} />);
+    expect(locked(named(/^Publish/))).toBe(false);
   });
 
   it("Revert 성공 뒤 새 상세가 올 때까지 Revert가 잠겨 있다", async () => {
@@ -138,14 +200,21 @@ describe("번역 화면", () => {
     await view.rerender(<TranslationWorkspace {...twoPending()} />);
     expect(locked(named("Revert to last sent"))).toBe(false);
   });
+
+  it("Revert가 reverted가 아니면 곧장 푼다 — 위의 짝", async () => {
+    mocks.revertPreview.mockResolvedValue({ status: "ready", locales: [{ code: "ko", before: "a", after: "b" }], confirmation: "f".repeat(64) });
+    mocks.revert.mockResolvedValue({ status: "blocked", reason: "busy" });
+    await render(<TranslationWorkspace {...props()} />);
+    await click(named("Revert to last sent"));
+    await click(named("Revert"));
+    expect(named("Revert to last sent").getAttribute("aria-busy")).toBeNull();
+  });
 });
 
 describe("useCommitWait", () => {
   function Probe({ signal }: { signal: object }) {
-    const wait = useCommitWait(signal);
-    // 액션이 시작된 때의 서버 트리 — 첫 렌더의 값이다.
-    const [from] = useState(() => wait.snapshot());
-    return <button data-waiting={wait.waiting} onClick={() => wait.wait(from)}>wait</button>;
+    const commit = useCommitWait(signal);
+    return <button data-waiting={commit.waiting} onClick={() => commit.wait()}>wait</button>;
   }
   const waiting = () => document.querySelector("button")?.getAttribute("data-waiting");
 
@@ -161,10 +230,13 @@ describe("useCommitWait", () => {
     expect(waiting()).toBe("false");
   });
 
-  it("기다리기 전에 이미 새 트리가 커밋됐으면 기다리지 않는다", async () => {
-    const view = await render(<Probe signal={{}} />);
-    await view.rerender(<Probe signal={{}} />);
+  it("부른 뒤 서버 prop이 바뀌면 푼다 — 같은 객체로 다시 그려지면 그대로다", async () => {
+    const signal = {};
+    const view = await render(<Probe signal={signal} />);
     await act(async () => { document.querySelector("button")!.click(); });
+    await view.rerender(<Probe signal={signal} />);
+    expect(waiting()).toBe("true");
+    await view.rerender(<Probe signal={{}} />);
     expect(waiting()).toBe("false");
   });
 });

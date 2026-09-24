@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useLandAfter } from "@/components/ui/focus";
-import type { RepositoryImportOutcome } from "@/lib/import/result";
+import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
 import type { TranslationList, TranslationListRow, TranslationTree } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
@@ -441,11 +441,10 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     if (detail === null) return;
     setDialog(null);
     setRevertBusy(true);
-    const from = revertCommit.snapshot();
     try {
       const result = await revertTranslationKey({ slug, surfaceSlug: detail.key.surfaceSlug, keyId: detail.key.id, confirmation });
       if (result.status === "reverted") {
-        revertCommit.wait(from);
+        revertCommit.wait();
         const values = { ...draft.saved, ...Object.fromEntries(result.cells.map(c => [c.localeCode, c.value])) };
         dispatch({ type: "server", keyId: detail.key.id, values });
         setRevertedLocales(new Set(result.cells.map(c => c.localeCode)));
@@ -482,18 +481,17 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     잠긴 `SyncButton`은 Dialog를 세우지 않으므로, 그때 연 상태가 Publish가 끝나는 순간 혼자 열린다.
   */
   const syncCommit = useCommitWait(server);
-  const syncFrom = useRef<unknown>(null);
   const [syncRunning, setSyncRunning] = useState(false);
-  const setSyncPending = (pending: boolean) => { if (pending) syncFrom.current = syncCommit.snapshot(); setSyncRunning(pending); };
+  const setSyncPending = setSyncRunning;
   const syncPending = syncRunning || syncCommit.waiting;
   const setSyncOpen = (open: boolean) => openSyncDialog(open && !publish.pending);
   /**
    * ⚠️ **[Sync]의 원결과를 이 화면이 든다** (audit #5 — POSTMORTEM 2026-09-08 재발) — 전엔 `onResult`가 결과를 버리고
    * refresh만 불러 거부가 설명 없이 버튼만 복귀했다. 지금은 아무도 refresh하지 않는다 — Action의 재검증이 새 트리를 싣고 온다.
-   * 거부·실패는 재검증 전에 돌아오므로 성공만 새 트리를 기다린다 (malmoi#103).
+   * 트리를 싣고 오는 결과만 새 트리를 기다린다 — `try` 안의 거부(`reconfirm`…)도 온다 (`importRevalidates`, malmoi#103 r1).
    */
   const [syncOutcome, setSyncOutcomeState] = useState<RepositoryImportOutcome | null>(null);
-  const setSyncOutcome = (next: RepositoryImportOutcome | null) => { if (next?.ok) syncCommit.wait(syncFrom.current); setSyncOutcomeState(next); };
+  const setSyncOutcome = (next: RepositoryImportOutcome | null) => { if (next !== null && importRevalidates(next)) syncCommit.wait(); setSyncOutcomeState(next); };
   /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
   const openSync = () => { if (!publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
 

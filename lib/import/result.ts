@@ -18,6 +18,21 @@ export type RepositoryImportError = AccessError | OnboardError | ConnectError | 
  * @param remainingEdits 실행이 끝난 뒤 남은 미전달 편집 — 승인 뒤 저장됐거나 리포에 값이 없어 안 덮인 셀. 0이 아니면 리포 갱신은 계속 멈춘다.
  */
 export type RepositoryImportOutcome = { ok: true; surfaces: SurfaceImportResult[]; remainingEdits: number } | { ok: false; error: RepositoryImportError };
+
+/**
+ * `runRepositoryImport`의 `try` **앞**에서만 나오는 거부 — 이 넷과 입력·세션 거부는 `finally`의 `revalidatePath`를 지나지 않는다.
+ * ⚠️ `unavailable`·`not-found`·`archived`는 `try` 안에서도 나온다(저장소 접근·경합). 거기서는 데이터를 건드리기 전의 거부라
+ * 트리가 와도 수치가 같다 — 기다리지 않아도 옛 수치가 틀리지 않는다. `unavailable`은 클라이언트가 접은 throw이기도 하다.
+ */
+const BEFORE_TRY: ReadonlySet<RepositoryImportError> = new Set<RepositoryImportError>(["invalid input", "unauthorized", "forbidden", "unavailable", "not-found", "archived"]);
+
+/**
+ * 이 결과가 **재검증 트리를 싣고 오나** (malmoi#103 r1) — 교차 잠금이 그 트리를 기다릴지를 가른다. `try` 안의 거부(`reconfirm`·
+ * `already-running`·`not-ready`…)도 `finally`를 지나 트리가 온다 — 특히 `reconfirm`은 미전달 수가 바뀐 뒤다.
+ */
+export function importRevalidates(outcome: RepositoryImportOutcome): boolean {
+  return outcome.ok || !BEFORE_TRY.has(outcome.error);
+}
 export type ImportSummary = {
   tone: "success" | "warning" | "danger";
   keys: number; imported: number; partial: number;

@@ -15,11 +15,14 @@ export const COMMIT_WAIT_MS = 10_000;
  * 스코프가 그 뒤의 모든 transition(내비게이션 포함)을 얽는다(ARCHITECTURE §3 · POSTMORTEM 2026-09-18).
  *
  * `signal`은 **서버가 렌더할 때마다 새 객체가 되는 prop**이다(RSC 페이로드는 매번 새로 역직렬화된다). 값이 아니라 식별자를 보는
- * 이유: 재검증이 같은 수치를 줄 수도 있다. ⚠️ **스냅샷은 Action을 부르기 전에 뜬다** — 응답 뒤에 뜨면 이미 커밋된 새 트리를
- * "옛 것"으로 잡아 상한까지 잠긴다. ⚠️ 비교 기준은 **커밋된** 값이다(`useLayoutEffect`) — 렌더 중인(아직 커밋 전) 트리를 보면
- * 기다려야 할 창을 이미 지난 것으로 읽는다.
+ * 이유: 재검증이 같은 수치를 줄 수도 있다.
+ *
+ * ⚠️ **기준은 `wait()`를 부른 순간의 커밋된 값이다** (malmoi#103 r1) — Action 전에 떠 두면, 도는 동안 키·필터를 눌러 서버 prop이
+ * 바뀐 경우 결과 시점에 "이미 새 트리가 왔다"로 읽혀 곧장 풀렸다. 그 순간에 재검증 트리가 이미 커밋돼 있을 수는 없다: Next는
+ * Action의 promise를 **먼저** 풀고(`server-action-reducer`의 `resolve`) 트리는 그 뒤 라우터 transition으로 커밋하며, `await` 뒤의
+ * 호출은 그 사이의 microtask다. ⚠️ 비교 기준은 **커밋된** 값이다(`useLayoutEffect`) — 렌더 중인 트리를 보면 기다릴 창을 놓친다.
  */
-export function useCommitWait(signal: unknown): { waiting: boolean; snapshot: () => unknown; wait: (from: unknown) => void } {
+export function useCommitWait(signal: unknown): { waiting: boolean; wait: () => void } {
   const committed = useRef(signal);
   useLayoutEffect(() => { committed.current = signal; }, [signal]);
   const [from, setFrom] = useState<{ signal: unknown } | null>(null);
@@ -32,8 +35,6 @@ export function useCommitWait(signal: unknown): { waiting: boolean; snapshot: ()
   }, [from]);
   return {
     waiting: from !== null,
-    snapshot: () => committed.current,
-    // 이미 새 트리가 커밋됐으면 기다릴 것이 없다.
-    wait: (start) => { if (start === committed.current) setFrom({ signal: start }); },
+    wait: () => setFrom({ signal: committed.current }),
   };
 }

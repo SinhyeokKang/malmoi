@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { landFocus } from "@/components/ui/focus";
 import { m } from "@/lib/i18n";
-import type { RepositoryImportOutcome } from "@/lib/import/result";
+import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
 import type { HomeState } from "@/lib/home/state";
 import { importFailureMessage } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
@@ -69,9 +69,8 @@ export function HomeActions({ children, slug }: { children: ReactNode; slug: str
     카드·배너가 전부 그 안에 산다. Action이 풀린 뒤 트리가 0.6–1.5 s 늦게 오는 동안 Publish가 Sync가 버린 편집을 보내자고 했다.
   */
   const syncCommit = useCommitWait(children);
-  const syncFrom = useRef<unknown>(null);
   const [syncRunning, setSyncRunning] = useState(false);
-  const setSyncPending = (pending: boolean) => { if (pending) syncFrom.current = syncCommit.snapshot(); setSyncRunning(pending); };
+  const setSyncPending = setSyncRunning;
   const syncPending = syncRunning || syncCommit.waiting;
   const publish = usePublish(slug, children);
   const publishPending = publish.pending;
@@ -87,8 +86,8 @@ export function HomeActions({ children, slug }: { children: ReactNode; slug: str
   */
   const setSyncOpen = (open: boolean) => openSync(open && !publishPending);
   const [outcome, setOutcomeState] = useState<RepositoryImportOutcome | null>(null);
-  // 거부·실패는 재검증 전에 돌아온다 — 트리가 안 오므로 기다리지 않는다.
-  const setOutcome = (next: RepositoryImportOutcome | null) => { if (next?.ok) syncCommit.wait(syncFrom.current); setOutcomeState(next); };
+  // 트리를 싣고 오는 결과만 기다린다 — `try` 안의 거부(`reconfirm`…)도 온다, 그 앞의 거부는 안 온다 (`importRevalidates`).
+  const setOutcome = (next: RepositoryImportOutcome | null) => { if (next !== null && importRevalidates(next)) syncCommit.wait(); setOutcomeState(next); };
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   return (
     <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, syncRunning, setSyncPending, publishPending, publish, outcome, setOutcome, titleRef }}>

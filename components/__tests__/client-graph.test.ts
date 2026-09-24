@@ -138,6 +138,8 @@ const CLIENT_LIB_FILES = [
   "lib/publish/warnings.ts",
   "lib/publish/words.ts",
   "lib/pull/branch-name.ts",
+  // `usePublish`가 결과가 재검증 트리를 싣고 오는지 읽는다(`pullRevalidates`, malmoi#103 r1) — import가 타입뿐인 잎이다.
+  "lib/pull/message.ts",
   "lib/pull/ref-slug.ts",
   "lib/relative-time.ts",
   "lib/routes.ts",
