@@ -6,7 +6,7 @@
 옛 번역 URL은 기본 표면으로, 옛 Locales 두 URL은 Sources 목록으로 이동한다.
 OWNER는 Sources에서 소스를 추가하고 기준 언어를 선언한다. EDITOR는 연결 정보를 제외한 상태를 읽는다.
 LNB는 Home → Sources → Translations → Members → Logs → Project settings(OWNER) 순서다.
-동일 키·언어 코드가 표면마다 공존한다. Sources 변경은 구현 완료·프로덕션 배포 대기 상태다.
+동일 키·언어 코드가 표면마다 공존한다.
 
 사내 로컬라이제이션 관리 도구(TMS). 크롬 확장의 `_locales/<locale>/messages.json`에서 출발했고, 개발자가 코드에 심은 소스 문자열을 DB로 올리고(push), 비개발자가 웹 UI에서 번역하고, 그 결과를 고정 브랜치의 PR 하나로 되돌려보낸다(pull). **지금은 어댑터 5종을 읽고 쓴다** — 크롬 `_locales` · JSON 카탈로그 · YAML 카탈로그 · TS/JS 딕셔너리 둘. **리포를 연결하면 로케일 파일을 탐지해 프로젝트를 만들고 첫 적재까지 웹에서 끝낸다**(`/projects/new`) — 대상 리포는 복사용 워크플로 YAML과 그 프로젝트의 push 토큰만 붙인다.
 
@@ -57,7 +57,7 @@ pnpm dev
 | 마이그레이션 | dev: `pnpm db:migrate` / prod 반영: `pnpm db:deploy` / 상태: `pnpm db:status`·`pnpm db:status:prod` / 브라우저: `pnpm db:studio` (dev) |
 | 로컬 push | `pnpm push:local <디렉터리> --project <slug>` (⚠️ 인자 필수 — 토큰이 프로젝트를 정한다) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 check-only. 절차는 [docs/OPERATIONS.md](./docs/OPERATIONS.md) |
-| 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` · `pnpm test:projects:postgres` — ⚠️ 둘 다 `pnpm test`에 **없다**. 앞은 `lib/credentials/**`, 뒤는 표면 backfill·복합 FK·push 격리·미전달 술어 일치·편집 토큰의 조건부 쓰기(CI 보류·폐기 승인·Publish 전달 확인)를 검사하므로 `lib/keys/**`·`lib/surfaces/**`·`lib/push/**`·`lib/pull/**`·`lib/import/**`·`lib/protection/**`·`lib/publish/**`·`lib/events/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`를 건드렸을 때 손으로 돌린다 |
+| 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` · `pnpm test:projects:postgres` — ⚠️ 둘 다 `pnpm test`에 **없다**. 앞은 `lib/credentials/**`, 뒤는 표면 backfill·복합 FK·push 격리·미전달 술어 일치·편집 토큰의 조건부 쓰기(CI 보류·폐기 승인·Publish 전달 확인)·동시 CI push·초대 발급의 잠금과 경합을 검사하므로 `lib/invitation-email/issue.ts`·`lib/auth/lock.ts`·`lib/sync/run.ts`·`lib/keys/**`·`lib/events/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`를 건드렸을 때 손으로 돌린다 |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check` — CI `verify`의 마지막 스텝) |
 
 **브랜치는 `main` / `dev` 둘이다.** 작업은 `dev`에서 하고 **dev push = Vercel preview 배포**, **dev→main squash PR 머지 = 프로덕션 배포**(`https://mal-moi.com`)다. 그 아래 작업 브랜치는 두지 않는다.
