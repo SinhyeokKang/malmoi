@@ -2,7 +2,7 @@
 import { utcMinute } from "@/lib/utc-time";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
-import { Check, CircleCheck, FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
+import { CircleCheck, FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useRef, useState, type RefObject, type ReactNode } from "react";
 import { triggerPullAction } from "@/app/(edit)/actions";
 import { loadPublishPreview } from "@/app/(edit)/publish-actions";
@@ -21,6 +21,7 @@ import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
 import { planPublishButton, planPublishView, planWithheldLines } from "@/lib/publish/plan";
 import { summarizeWarnings } from "@/lib/publish/warnings";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { SlowNotice } from "@/components/slow-notice";
 
 /** 실행 결과에 **그때의 사실**을 붙여 둔다 — 결과를 다시 열 때 `count`는 이미 재검증으로 줄어 있다. */
 type PublishResultState = { outcome: PullOutcome; at: Date; total: number };
@@ -93,12 +94,17 @@ export function PublishButton({ id, count, publish, disabled = false }: { id?: s
   const reasonId = useId();
   // ⚠️ **꺼진 Publish는 `aria-disabled`다** — 진짜 `disabled`면 사유가 hover `title`에만 남아 키보드·스크린리더로
   // 닿지 않는다 (DESIGN §6.65). 포커스를 받으므로 모달을 닫으면 이 버튼으로 돌아온다.
+  /*
+    ⚠️ **라벨은 도는 동안에도 `Publish`다** (audit-ux D1) — 스피너가 아이콘을 교체하고, 라벨이 접근 이름이라 진행 신호는 `aria-busy`가 든다.
+    ⚠️ **`loading`·`busy`를 쓰지 않는다** — 도는 동안에도 눌러서 진행 모달을 다시 연다(`launch`). 둘 다 클릭을 막는다.
+  */
   return <div className="flex items-center gap-2">
     <span title={plan.hint || undefined}>
       <Button id={id} variant="primary" aria-disabled={plan.disabled ? "true" : undefined} aria-describedby={plan.disabled && plan.hint ? reasonId : undefined}
+        aria-busy={publish.pending || undefined}
         onClick={event => { if (plan.disabled) return; publish.triggerRef.current = event.currentTarget; publish.launch(); }}>
         {publish.pending ? <LoaderCircle className="animate-spin" aria-hidden /> : <Send aria-hidden />}
-        {publish.pending ? m.translations.publish.publishing : m.translations.publish.button}
+        {m.translations.publish.button}
         {plan.badge !== null && <span className="bg-background/20 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-xs">{plan.badge.toLocaleString("en-US")}</span>}
       </Button>
       {plan.disabled && plan.hint && <span id={reasonId} className="sr-only">{plan.hint}</span>}
@@ -293,21 +299,20 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
 }
 
 /**
- * ⚠️ **시간 기반이고 사실을 주장하지 않는다** — 진행 이벤트를 내는 API가 없다(시안 §10-2).
- * 그래서 완료 표시가 **무색**이고 `done` 낱말이 없다.
+ * ⚠️ **진행 표시가 아니라 하는 일의 목록이다** (audit-ux #23) — 진행 이벤트를 내는 API가 없다(시안 §10-2). 전엔 2.5초·6.5초 타이머가
+ * 체크를 넘겨 일어나지 않은 단계를 주장한 뒤 마지막 단계에서 멈춘 채 돌았다. 도는 것은 스피너 하나이고(목록 전체의 것이다),
+ * 오래 걸리면 `SlowNotice`가 그 사실만 말한다.
  */
 function Progress({ branch }: { branch: string }) {
-  const [stage, setStage] = useState(0);
-  useEffect(() => { const a = setTimeout(() => setStage(1), 2500); const b = setTimeout(() => setStage(2), 6500); return () => { clearTimeout(a); clearTimeout(b); }; }, []);
-  return <ol className="border-border flex shrink-0 flex-col overflow-hidden rounded-lg border">
-    {p.progress(branch).map((text, i) => <li key={text} className={`flex items-center gap-3 px-4 py-3.5 ${i === 0 ? "" : "border-divider border-t"}`}>
-      <span className="flex size-4 shrink-0 items-center justify-center">
-        {i < stage && <Check className="size-4 text-neutral-400" aria-hidden />}
-        {i === stage && <LoaderCircle className="size-4 animate-spin" aria-hidden />}
-      </span>
-      <span className={`min-w-0 flex-1 text-sm ${i === stage ? "" : "text-muted-foreground"}`}>{text}</span>
-    </li>)}
-  </ol>;
+  return <>
+    <div className="border-border flex shrink-0 gap-3 rounded-lg border px-4 py-3.5">
+      <span className="flex h-5 shrink-0 items-center"><LoaderCircle className="size-4 animate-spin" aria-hidden /></span>
+      <ol className="flex min-w-0 flex-1 flex-col gap-1.5">
+        {p.progress(branch).map(text => <li key={text} className="text-muted-foreground text-sm">{text}</li>)}
+      </ol>
+    </div>
+    <SlowNotice active />
+  </>;
 }
 
 /** `1g` — 펼친 목록이다(불변식 9). 단위가 **파일**이고 키 이름이 없다 — 경고 문자열에 없다. */
@@ -452,7 +457,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
     case "running":
       panel = PANEL.running; inner = false;
       title = p.progressTitle(runTotal || count); description = p.progressDescription; footer = p.leave;
-      actions = <Button variant="primary" size="lg" disabled>{p.publishing}</Button>;
+      // D1 — 라벨은 확정 버튼의 것 그대로이고 스피너만 선다.
+      actions = <Button variant="primary" size="lg" loading>{p.button}</Button>;
       body = <Progress branch={repo.syncBranch} />;
       break;
     case "result": {

@@ -40,14 +40,13 @@ export const en = {
      * `Archive project`)이라 셀렉터가 모호해진 클릭이 확인 버튼을 눌러 프로젝트를 실제로 보관시켰다.
      */
     action: "Sync",
-    /** 진행 중 트리거 라벨 — 줄임표는 진행 중에만 쓰고 문자는 `…`(U+2026)다 (DESIGN §10). */
-    pending: "Syncing…",
     /**
-     * 멈춘 [Sync]의 사유 (audit #37) — `aria-describedby`로만 읽힌다. ⚠️ **원인을 가르지 않는다** — 미연결·보관은 같은 화면의
-     * 배너가, Publish 진행은 그 버튼의 `Publishing…`이 이미 말한다. `translations.publish.paused`와 같은 형이다.
+     * 멈춘 [Sync]의 사유 (audit #37) — `aria-describedby`로만 읽힌다. 미연결·보관은 같은 화면의 배너가 원인을 말한다.
+     * ⚠️ **Publish 진행은 이 문장이 아니라 `waitPublish`다** (audit-ux #10) — 옆 버튼의 `Publishing…` 라벨이 원인을 말하던 시절의
+     * 분담이었는데 D1이 그 라벨을 걷었다. `translations.publish.paused`와 같은 형이다.
      */
     paused: "Syncing is currently unavailable.",
-    /** Publish가 도는 동안 꺼진 [Try again]의 사유 (audit #37) — 두 방향이 겹치면 남는 값을 화면이 설명할 수 없다(§6.64). */
+    /** Publish가 도는 동안 꺼진 쓰기 트리거의 사유 (audit #37 · audit-ux #10) — [Sync]·[Try again]·번역 화면의 [Save]가 함께 쓴다(§6.64). */
     waitPublish: "Wait for Publish to finish.",
     confirm: "Sync from repository",
     /**
@@ -230,6 +229,11 @@ export const en = {
     /** 프리미티브의 아이콘 전용 컨트롤 둘 — 화면 문구는 사전을 지난다 (CLAUDE.md). */
     close: "Close",
     dismiss: "Dismiss",
+    /**
+     * 긴 원격 실행이 `SLOW_AFTER_MS`를 넘겼을 때의 한 줄 (audit-ux #23) — 탐지·첫 적재·Sync·Publish가 같은 문장을 쓴다.
+     * ⚠️ **단계를 말하지 않는다** — 진행 이벤트가 없어서 "어디까지 왔다"는 거짓이 된다.
+     */
+    slow: "Still working. Large repositories can take a minute or more.",
     /**
      * 셸의 패널 구분선 — 글자가 하나도 없는 컨트롤이라 이름이 여기서만 나온다.
      * ⚠️ `role="separator"`는 이름이 없으면 스크린리더에 "separator"로만 읽혀 좌우 어느 쪽을
@@ -2125,7 +2129,6 @@ export const en = {
      */
     publish: {
       button: "Publish",
-      publishing: "Publishing\u2026",
       viewResult: "View result",
       viewLink: "View pull request",
       nothing: "Everything you've edited is already sent.",
@@ -2225,7 +2228,10 @@ export const en = {
       openPr: "Open pull request",
       replacePr: (n: number): string => `Replace pull request #${n}`,
 
-      /** `1c` — 단계 셋은 **시간 기반**이고 사실을 주장하지 않는다(진행 이벤트 API가 없다). */
+      /**
+       * `1c` — 단계 셋은 **하는 일의 목록**이고 진행 표시가 아니다 (audit-ux #23). 전엔 2.5초·6.5초 타이머가 체크를 넘겼는데,
+       * 진행 이벤트 API가 없어 일어나지 않은 단계를 주장했다. 오래 걸리면 `common.slow`가 선다.
+       */
       progressTitle: (n: number): string => `Publishing ${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`,
       progressDescription:
         "Writing the translation files and opening a pull request. This usually takes a few seconds.",

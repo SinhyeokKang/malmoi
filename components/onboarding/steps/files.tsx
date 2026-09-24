@@ -16,6 +16,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableHeader, TableRow, Td, Th, Tr } from "@/components/ui/table";
 import { LocaleFlag } from "@/components/translations/locale-badge";
+import { SlowNotice } from "@/components/slow-notice";
 import type { Adapter, AdapterName } from "@/lib/adapters/types";
 import { m } from "@/lib/i18n";
 import { panelConstraints } from "@/lib/shell/panel-size";
@@ -227,6 +228,7 @@ export function FilesStep({
         <div data-files-left className="-m-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-1">
         {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
         {detecting ? (
+          <>
           <ul className="border-border overflow-hidden rounded-md border" aria-hidden>
             {[0, 1].map((i) => (
               <li key={i} className={cn("flex items-center gap-3 p-3", i > 0 && "border-divider border-t")}>
@@ -239,6 +241,9 @@ export function FilesStep({
               </li>
             ))}
           </ul>
+          {/* 큰 리포의 탐지는 30초를 넘긴다 (audit-ux #23) — 스켈레톤만으로는 "멈췄다"와 구별되지 않는다. 아래에 둬 스켈레톤을 밀지 않는다. */}
+          <SlowNotice active />
+          </>
         ) : candidates.length === 0 ? (
           <ManualForm pending={pending} state={state} onManual={onManual} clearsSelection={false} />
         ) : (
@@ -465,6 +470,8 @@ function Preview({
           {m.newProject.files.preview.more(state.preview.total - state.preview.rows.length)}
         </p>
       )}
+      {/* 샘플 로드는 같은 Action 큐에서 탐지 뒤에 줄을 선다 (audit-ux #10 · D3) — 탐지 중에는 왼쪽 한 줄이 이미 말한다. */}
+      {!empty && <SlowNotice active={!state.detecting && state.preview.status === "loading"} className="border-border shrink-0 border-t px-4 py-3 text-center" />}
     </div>
   );
 }

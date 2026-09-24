@@ -22,7 +22,7 @@ import { routes } from "@/lib/routes";
  * ⚠️ **원결과와 확인 창 상태는 Home의 안정된 호스트가 소유한다** — Action의 재검증으로 이 컴포넌트가
  * 다시 그려져도 결과가 살아 있어야 한다 (POSTMORTEM 2026-09-07의 `FirstIngestRetry`).
  */
-export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paused = false, onResult, onPendingChange, open, onOpenChange, fallbackFocusRef }: {
+export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paused = false, pausedReason = m.repositorySync.paused, onResult, onPendingChange, open, onOpenChange, fallbackFocusRef }: {
   /** 트리거가 사라졌을 때(권한 변경) 포커스를 받을 Home 제목. */
   fallbackFocusRef?: RefObject<HTMLElement | null>;
   open: boolean; onOpenChange: (open: boolean) => void;
@@ -38,6 +38,10 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
    * 지금 멈춰 있다**는 뜻이라 그 사실을 화면에 남긴다.
    */
   paused?: boolean;
+  /**
+   * 멈춘 사유 — 호스트가 원인을 안다 (audit-ux #10). Publish 진행이면 `waitPublish`다: 옆 [Publish]의 라벨이 더는 진행을 말하지 않는다(D1).
+   */
+  pausedReason?: string;
   onResult: (outcome: RepositoryImportOutcome) => void;
   /**
    * ⚠️ **호스트가 `[Publish]`를 잠그려고 듣는다** (시안 `4f`) — 두 방향이 동시에 돌면 어느 쪽 값이
@@ -131,17 +135,17 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
   */
   /*
     ⚠️ **`disabled`가 아니라 `aria-disabled` + 사유다** (audit #37 — DESIGN §6.65). 진짜 `disabled`는 포커스를 못 받아
-    왜 멈췄는지 닿을 길이 없었다. 사유는 원인(미연결·보관·Publish 진행)을 가르지 않는다 — 원인은 같은 화면의 배너·
-    Publish 버튼이 이미 말한다. ⚠️ **보이는 사람에게는 `title`이다** — 머리에 문장을 세울 자리가 없고, 옆의 [Publish]가 같은 형이다
+    왜 멈췄는지 닿을 길이 없었다. 미연결·보관은 가르지 않는다 — 같은 화면의 배너가 원인을 말한다. Publish 진행만 호스트가
+    `pausedReason`으로 가른다 — [Publish] 라벨이 더는 진행을 말하지 않는다 (audit-ux #10 · D1). ⚠️ **보이는 사람에게는 `title`이다** — 머리에 문장을 세울 자리가 없고, 옆의 [Publish]가 같은 형이다
     (§6.646: `title`은 마우스용, sr-only는 describedby용).
   */
   if (paused) {
     return <>
-      <Button aria-disabled aria-describedby={pausedReasonId} title={m.repositorySync.paused} onClick={event => event.preventDefault()}>
+      <Button aria-disabled aria-describedby={pausedReasonId} title={pausedReason} onClick={event => event.preventDefault()}>
         <ArrowDownToLine className="size-3.5" aria-hidden />
         {m.repositorySync.action}
       </Button>
-      <span id={pausedReasonId} className="sr-only">{m.repositorySync.paused}</span>
+      <span id={pausedReasonId} className="sr-only">{pausedReason}</span>
     </>;
   }
   return <Dialog open={open && !pending} onOpenChange={changeOpen}>
@@ -153,12 +157,13 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
 
         ⚠️ **그 겉모습을 여기서 그리지 않는다** (2026-09-17) — `buttonClass`의 `aria-disabled:` 짝이
         든다. 전엔 이 자리가 자기 철자를 들고 있었고, 같은 pending이 로그인·New project와 달라 보였다.
+
+        ⚠️ **라벨은 도는 동안에도 `Sync`다** (audit-ux D1 — Button `loading` 규칙에 예외가 없다). 스피너가 아이콘을 **교체**하고
+        (`[&_.animate-spin]:size-3.5`가 글리프 폭을 맞춘다), 라벨이 접근 이름이라 진행 신호는 `busy`의 `aria-busy`가 든다.
       */}
-      <Button id={triggerId} aria-disabled={pending} onClick={event => { if (busy.current) event.preventDefault(); }}>
-        {pending
-          ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
-          : <ArrowDownToLine className="size-3.5 text-neutral-600" aria-hidden />}
-        {pending ? m.repositorySync.pending : m.repositorySync.action}
+      <Button id={triggerId} className="[&_.animate-spin]:size-3.5" busy={pending} aria-disabled={pending} onClick={event => { if (busy.current) event.preventDefault(); }}>
+        {!pending && <ArrowDownToLine className="size-3.5 text-neutral-600" aria-hidden />}
+        {m.repositorySync.action}
       </Button>
     </DialogTrigger>
     <DialogContent

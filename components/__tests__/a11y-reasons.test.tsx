@@ -110,7 +110,9 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
     const reason = [...document.querySelectorAll("p, span")].find(node => node.textContent === m.settings.ci.noSources);
     expect(reason?.classList.contains("sr-only")).toBe(false);
     expect(read("components/sources/add-sources-modal.tsx")).not.toMatch(/className="sr-only">\{m\.settings\.sources\.manualReason/);
-    expect(read("components/home/sync-button.tsx")).toMatch(/title=\{m\.repositorySync\.paused\}/);
+    // 멈춘 사유는 호스트가 원인을 넘긴다 (audit-ux #10) — 기본값은 `paused`, Publish 진행이면 `waitPublish`다.
+    expect(read("components/home/sync-button.tsx")).toMatch(/title=\{pausedReason\}/);
+    expect(read("components/home/sync-button.tsx")).toMatch(/pausedReason = m\.repositorySync\.paused/);
     expect(read("components/home/sync-result.tsx")).toMatch(/title=\{retryDisabled \? m\.repositorySync\.waitPublish/);
     expect(read("components/home/actions.tsx")).toMatch(/title=\{publishPending \? m\.repositorySync\.waitPublish/);
   });

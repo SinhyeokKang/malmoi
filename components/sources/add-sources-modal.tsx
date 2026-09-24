@@ -6,6 +6,7 @@ import { addSurfaces, confirmManualFormat, detectRepoFormats, loadCandidateSampl
 import { startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/actions";
 import { FilesStep, type ManualEntry, type PreviewState } from "@/components/onboarding/steps/files";
 import { failureText } from "@/components/onboarding/failure";
+import { SlowNotice } from "@/components/slow-notice";
 import { OnboardingModal } from "@/components/ui/modal";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -109,7 +110,9 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
           } catch { setUnknown(true); }
         });
       }}>{m.settings.sources.confirm}</Button>
-    </>} footer={addReason === null ? undefined : <span id="add-source-help" className="text-muted-foreground text-xs">{addReason}</span>}>
+    </>} footer={addReason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{addReason}</span>
+      /* 추가는 첫 적재까지 돈다 (audit-ux #23) — 큰 리포면 버튼 스피너 하나로 30초를 넘긴다. */
+      : pending && operation === "add" ? <SlowNotice active /> : undefined}>
     {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}</Alert>}
     {manualError && <Alert variant="danger">{failureText(manualError)}</Alert>}
     {unknown && <Alert variant="warning">{m.settings.sources.unknown}</Alert>}

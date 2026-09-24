@@ -20,6 +20,7 @@ import { suggestAlternateSlug } from "@/lib/onboarding/slug";
 import type { AdapterChoice, RepoOption } from "@/lib/onboarding/types";
 import { routes } from "@/lib/routes";
 
+import { SlowNotice } from "@/components/slow-notice";
 import { Alert } from "@/components/ui/alert";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import type { CreateProjectResult } from "@/app/(edit)/projects/actions";
@@ -564,6 +565,8 @@ export function NewProject({
       {step === 3 && (
         <fieldset disabled={pending} className="contents">
           {pending && <p role="status" className="text-muted-foreground text-sm">{m.newProject.naming.creating}</p>}
+          {/* 생성은 선택한 파일 전부를 첫 적재한다 (audit-ux #23) — 큰 리포면 위 한 줄만으로 30초를 넘긴다. */}
+          <SlowNotice active={pending} />
           {creationFailure !== null && <Alert variant="danger">
             {creationFailure === "unknown" ? m.newProject.naming.resultUnknown : <>
               <p>{m.newProject.naming.nothingCreated} {creationFailure.error === "path-conflict" ? m.newProject.files.conflicts : failureText(creationFailure.error)}</p>

@@ -9,6 +9,7 @@ import { PublishButton, PublishModal, usePublish } from "@/components/publish-bu
 import { SearchInput } from "@/components/search-input";
 import { SyncButton } from "@/components/home/sync-button";
 import { SyncResult } from "@/components/home/sync-result";
+import { SlowNotice } from "@/components/slow-notice";
 import { BasePendingBanner } from "@/components/translations/base-pending-banner";
 import { EditLossBanner } from "@/components/translations/edit-loss-banner";
 import { Alert } from "@/components/ui/alert";
@@ -347,7 +348,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
 
   // ── Save ──────────────────────────────────────────────────────────────────
   async function save() {
-    if (detail === null || savingRef.current || dirty.length === 0) return;
+    // Publish가 도는 동안은 잠긴다 (audit-ux #10 · D3) — Action이 순서대로 실행돼 PR 생성 뒤에 줄을 선다. 단축키도 이 문을 지난다.
+    if (detail === null || savingRef.current || dirty.length === 0 || publish.pending) return;
     const requestId = `r${++requestSeq.current}`;
     const changes = dirty.map(code => ({ localeCode: code, value: draft.draft[code] ?? "" }));
     savingRef.current = true;
@@ -453,7 +455,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   /*
     ⚠️ **Sync와 Publish는 서로를 잠근다** (audit-ux #2 — DESIGN §6 "진행 중 상호 잠금") — 각 버튼은 자기 연타만 막고 서로의
     존재를 모르므로 판정은 호스트의 몫이다(Home은 `HomeActions`가 든다). ⚠️ **하나의 `busy`로 접지 않는다** — Sync가 자기
-    자신을 잠가 `Syncing…` 트리거가 포커스 복귀 대상을 잃는다. ⚠️ **Publish가 도는 동안 확인 창을 "예약"하지 않는다** —
+    자신을 잠가 도는 [Sync] 트리거가 포커스 복귀 대상을 잃는다. ⚠️ **Publish가 도는 동안 확인 창을 "예약"하지 않는다** —
     잠긴 `SyncButton`은 Dialog를 세우지 않으므로, 그때 연 상태가 Publish가 끝나는 순간 혼자 열린다.
   */
   const [syncPending, setSyncPending] = useState(false);
@@ -534,7 +536,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             {role === "OWNER" ? (
               <span onClickCapture={event => { if (dirty.length > 0) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
                 <SyncButton slug={slug} surfaceSlug={routeSurfaceSlug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
-                  paused={publish.pending} open={syncOpen} onOpenChange={setSyncOpen} onPendingChange={setSyncPending}
+                  paused={publish.pending} pausedReason={m.repositorySync.waitPublish} open={syncOpen} onOpenChange={setSyncOpen} onPendingChange={setSyncPending}
                   onResult={setSyncOutcome} fallbackFocusRef={titleRef} />
               </span>
             ) : (
@@ -602,6 +604,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} />
           <SyncResult slug={slug} branch={props.sync.branch} outcome={syncOutcome} onDismiss={() => setSyncOutcome(null)}
             retryDisabled={publish.pending} onRetry={role === "OWNER" ? openSync : undefined} />
+          <SlowNotice active={syncPending} />
         </div>
       </div>
 
@@ -670,6 +673,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                     hasPending={pendingLocales.length > 0}
                     revertBlocked={revertBlocked}
                     revertBusy={revertBusy}
+                    publishing={publish.pending}
                     saveDisabled={dirty.length === 0 || status?.kind === "archived" || status?.kind === "lost-access"}
                     onSave={() => void save()}
                     onRevert={() => void openRevert()}
@@ -698,13 +702,19 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   );
 }
 
-function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending, revertBlocked, revertBusy, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
+function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending, revertBlocked, revertBusy, publishing, saveDisabled, onSave, onRevert, onCheck, slug, storageBlocked }: {
   alertId: string; dirty: number; status: FooterStatus | null; saving: boolean; resultRef: React.RefObject<HTMLSpanElement | null>; saveRef: React.RefObject<HTMLButtonElement | null>;
-  hasPending: boolean; revertBlocked: RevertReason | null; revertBusy: boolean; saveDisabled: boolean;
+  hasPending: boolean; revertBlocked: RevertReason | null; revertBusy: boolean; publishing: boolean; saveDisabled: boolean;
   onSave: () => void; onRevert: () => void; onCheck: () => void; slug: string; storageBlocked: boolean;
 }) {
   const w = m.translations.workspace;
   const reasonId = useId();
+  const saveReasonId = useId();
+  /*
+    ⚠️ **Publish 중 [Save]는 `disabled`가 아니라 `aria-disabled` + 보이는 사유다** (audit-ux #10 · D3 — DESIGN §6.65). 저장할 것이
+    있을 때만 잠긴다 — 없으면 원래 꺼져 있고 사유가 할 말이 없다. 끝나면 같은 버튼이 풀리므로 포커스가 그대로 남는다.
+  */
+  const saveLocked = publishing && !saveDisabled;
   const text = dirty > 0 ? (status?.kind === "saved" ? w.footer.savedSince(dirty) : w.footer.unsaved(dirty))
     : status?.kind === "saved" ? (hasPending ? w.footer.savedNotSent : w.footer.saved)
     : status?.kind === "reverted" ? w.revert.reverted
@@ -724,6 +734,7 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
             {text}
           </span>
           {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{REVERT_REASONS[revertBlocked]()}</span>}
+          {saveLocked && <span id={saveReasonId} className="text-muted-foreground min-w-0 text-xs">{m.repositorySync.waitPublish}</span>}
         </span>
         <span className="ml-auto inline-flex items-center gap-2">
           {hasPending && (
@@ -735,7 +746,9 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
               {w.revert.button}
             </Button>
           )}
-          <Button ref={saveRef} variant="primary" loading={saving} disabled={saveDisabled} onClick={onSave}>{w.footer.save}</Button>
+          <Button ref={saveRef} variant="primary" loading={saving} disabled={saveDisabled}
+            aria-disabled={saveLocked ? "true" : undefined} aria-describedby={saveLocked ? saveReasonId : undefined}
+            onClick={() => { if (!saveLocked) onSave(); }}>{w.footer.save}</Button>
         </span>
       </div>
     </div>

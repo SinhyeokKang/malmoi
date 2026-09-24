@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { SyncButton } from "@/components/home/sync-button";
+import { SlowNotice } from "@/components/slow-notice";
 import { SyncResult } from "@/components/home/sync-result";
 import { PublishButton, PublishModal, usePublish, type PublishController } from "@/components/publish-button";
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
@@ -37,7 +38,7 @@ type HomeActionsValue = {
    * 겹치면 남는 값이 두 요청의 도착 순서에 달린다. 화면이 약속할 수 없는 근거라 **한쪽이 도는 동안
    * 다른 쪽을 잠근다.** 각 버튼은 자기 연타만 막고 서로의 존재를 모르므로 이 판정은 호스트의 몫이다.
    *
-   * ⚠️ **하나의 `busy`로 접지 않는다** — 그러면 Sync가 자기 자신을 잠가 `Syncing…` 트리거가 native
+   * ⚠️ **하나의 `busy`로 접지 않는다** — 그러면 Sync가 자기 자신을 잠가 도는 [Sync] 트리거가 native
    * `disabled`로 떨어지고, Dialog가 포커스를 되돌릴 대상이 사라진다 (DESIGN §6.64).
    */
   syncPending: boolean;
@@ -144,9 +145,11 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
         /*
           ⚠️ **Publish가 도는 동안도 멈춘 상태다** — 뜻이 `paused`와 같다(OWNER가 가진 동작이 지금
           멈춰 있다). 같은 뜻에 프롭을 하나 더 만들지 않는다. **자기 자신의 진행은 넣지 않는다**:
-          넣으면 `Syncing…` 트리거가 native `disabled`로 떨어져 포커스 복귀 대상이 사라진다.
+          넣으면 도는 [Sync] 트리거가 native `disabled`로 떨어져 포커스 복귀 대상이 사라진다.
         */
         paused={paused || publishPending}
+        /* 미연결·보관이 먼저다 — 그 원인은 배너가 말하고, Publish가 끝나도 풀리지 않는다 (audit-ux #10). */
+        pausedReason={!paused && publishPending ? m.repositorySync.waitPublish : undefined}
         open={syncOpen}
         onOpenChange={setSyncOpen}
         onPendingChange={setSyncPending}
@@ -186,7 +189,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
   lastSyncAt: Date | null;
   now: Date;
 }) {
-  const { outcome, setOutcome, publish, titleRef, setSyncOpen, publishPending } = useHomeActions();
+  const { outcome, setOutcome, publish, titleRef, setSyncOpen, publishPending, syncPending } = useHomeActions();
   const owner = role === "OWNER";
   /** 복원 거부 — 배너 `actions` 안이 아니라 **배너의 형제**로 선다 (audit #7 r1: 경고 속 경고가 됐다). */
   const [restoreError, setRestoreError] = useState<string | null>(null);
@@ -278,6 +281,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
         */
         onRetry={owner ? () => setSyncOpen(true) : undefined}
       />
+      <SlowNotice active={syncPending} />
       <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unsent} repo={repo} role={role} />
     </div>
   );
