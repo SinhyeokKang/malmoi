@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare, listRepoBranches: mocks.listRepoBranches, rotatePushToken: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ updateProjectName: mocks.updateProjectName, uploadProjectImage: vi.fn(), deleteProjectImage: vi.fn(), updateRepositorySettings: mocks.updateRepositorySettings }));
 vi.mock("@/app/(edit)/account/actions", () => ({ updateProfileName: mocks.updateProfileName, unlinkLoginMethod: mocks.unlinkLoginMethod, startLoginMethodConnect: mocks.startLoginMethodConnect }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: vi.fn(), replace: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));
 
 import { LoginMethods } from "@/components/account/login-methods";
 import { ProfileNameForm } from "@/components/account/profile-name-form";

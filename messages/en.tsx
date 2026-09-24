@@ -1975,6 +1975,7 @@ export const en = {
         needsReview: "Needs review",
         saved: "Saved",
         more: "Show more keys",
+        moreFailed: "Couldn't load more keys. Try again.",
       },
       detail: {
         languages: (filled: number, total: number): string => `${filled.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} languages`,
@@ -1983,6 +1984,8 @@ export const en = {
         languagesGroup: "Languages",
         source: "Source",
         notSaved: "Not saved",
+        /** ⚠️ **버튼 라벨이 아니라 셀의 상태 글자다** (audit-ux #20 · D4) — 보낸 셀에 "Not saved"가 계속 붙어 있었다. D1(버튼 문구 고정)의 대상이 아니다. */
+        saving: "Saving…",
         missing: "Missing",
         noDescription: "No description in the code",
         noCommit: "No commit to link to yet",

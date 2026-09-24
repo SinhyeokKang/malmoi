@@ -18,6 +18,11 @@ export type Scope = (typeof SCOPES)[number];
 
 /** 상세 언어 필터의 예약값. `@`는 로케일 코드에 올 수 없어 실제 코드와 충돌하지 않는다. */
 export const MISSING_LANGUAGES = "@missing";
+/**
+ * 선택 키의 예약값 — "새 목록의 첫 키"다 (audit-ux #18). 트리 이동이 이 값을 싣고, 서버가 같은 렌더에서 첫 행으로 바꾼다
+ * (`landOnFirstKey`). 키 id(cuid)는 `@`로 시작하지 않아 실제 키와 충돌하지 않는다.
+ */
+export const FIRST_KEY = "@first";
 export const Q_MAX_LENGTH = 200;
 
 export type TranslationQuery = {
@@ -122,13 +127,23 @@ export function clearFilters(query: TranslationQuery): TranslationQuery {
   return next;
 }
 
-/** 트리 클릭 — 네임스페이스는 This namespace, 전체는 This source. 첫 키는 새 목록이 정하므로 선택을 비운다. */
+/**
+ * 트리 클릭 — 네임스페이스는 This namespace, 전체는 This source. 첫 키는 새 목록이 정하므로 선택 자리에 `FIRST_KEY`를 싣는다.
+ * ⚠️ **선택을 비우지 않는다** (audit-ux #18) — 비운 주소는 상세를 "Select a key"로 한 번 그리고, 첫 키를 고르는 두 번째 왕복이 따랐다.
+ */
 export function treeQuery(query: TranslationQuery, ns: string): TranslationQuery {
-  const next: TranslationQuery = { ...query, ns, scope: ns === ALL_NAMESPACES ? "source" : "namespace" };
+  const next: TranslationQuery = { ...query, ns, scope: ns === ALL_NAMESPACES ? "source" : "namespace", key: FIRST_KEY };
   delete next.cursor;
-  delete next.key;
   delete next.keySurface;
   return next;
+}
+
+/** 서버가 `FIRST_KEY`를 푼다 — 첫 행이 있으면 그 키, 없으면 선택 없음. 예약값이 상세 조회·주소로 새지 않는다. */
+export function landOnFirstKey(query: TranslationQuery, first: { keyId: string; surfaceSlug: string } | undefined): TranslationQuery {
+  const next: TranslationQuery = { ...query };
+  delete next.key;
+  delete next.keySurface;
+  return first === undefined ? next : { ...next, key: first.keyId, keySurface: first.surfaceSlug };
 }
 
 /** 작업 화면의 링크 — 경로 리터럴은 `lib/routes.ts`가 든다(`entry-points.test.ts`의 죽은 라우트·쿼리 수신자 검사). */

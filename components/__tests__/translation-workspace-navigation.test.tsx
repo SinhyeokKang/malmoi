@@ -14,7 +14,7 @@ import { render } from "./helpers/dom";
  * ⚠️ **gate는 테스트 끝에서 전부 푼다** (POSTMORTEM 2026-09-18 — 안 끝난 대기가 뒤 테스트의 transition을 붙잡았다).
  */
 const mocks = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }), useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn() }));
@@ -73,7 +73,7 @@ it("다른 키로 가는 동안 옛 키의 칸은 읽기 전용이고, 새 상�
   // 짝 단언 — 이동 전에는 쓸 수 있다.
   expect(area(container, "zh")?.readOnly).toBe(false);
   await user.click(row(container, "k2"));
-  expect(mocks.push).toHaveBeenCalledTimes(1);
+  expect(mocks.replace).toHaveBeenCalledTimes(1);
   // 옛 화면이 그대로 선다 — 폴백으로 치우지 않는다.
   expect(container.querySelector("[data-fallback]")).toBeNull();
   expect(area(container, "zh")?.readOnly).toBe(true);
@@ -112,19 +112,15 @@ it("트리 전환 중에도 옛 키의 칸은 읽기 전용이고, 첫 키가 �
   const user = userEvent.setup();
   const initial = props();
   const first = gate();
-  const second = gate();
-  respond = href => href.includes("key=")
-    ? { next: { ...initial, query: { ...initial.query, key: "k2" }, detail: detailOf("k2") }, gate: second }
-    // 목록은 응답마다 새 객체다(서버 렌더) — 같은 객체를 넘기면 후속 선택 effect가 안 돈다.
-    : { next: { ...initial, query: { ...initial.query, key: undefined, keySurface: undefined }, list: { ...initial.list }, detail: null }, gate: first };
+  // 첫 키는 서버가 같은 응답에 싣는다 (audit-ux #18) — 후속 `replace`가 없다.
+  respond = () => ({ next: { ...initial, query: { ...initial.query, key: "k2" }, list: { ...initial.list }, detail: detailOf("k2") }, gate: first });
   const { container } = await render(<Harness initial={initial} />);
   const node = [...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.includes("common") && !b.closest("[data-key-row]"));
   await user.click(node!);
   expect(mocks.push).toHaveBeenCalledTimes(1);
   expect(area(container, "zh")?.readOnly).toBe(true);
   await arrive(first);
-  expect(mocks.replace).toHaveBeenCalledTimes(1);
-  await arrive(second);
+  expect(mocks.replace).not.toHaveBeenCalled();
   expect(area(container, "zh")?.readOnly).toBe(false);
 });
 

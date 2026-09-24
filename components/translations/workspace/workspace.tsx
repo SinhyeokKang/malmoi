@@ -1,10 +1,10 @@
 "use client";
 
 import { ArrowDownToLine, Languages, Loader2, RotateCcw } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useId, useLayoutEffect, useMemo, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
 
-import { previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
+import { loadMoreTranslationKeys, previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
 import { SearchInput } from "@/components/search-input";
 import { SyncButton } from "@/components/home/sync-button";
@@ -24,7 +24,7 @@ import { routes } from "@/lib/routes";
 import { dirtyLocales, initKeyDraft, planDraftRecovery, reduceKeyDraft, type KeyDraftAction, type KeyDraftState } from "@/lib/translations/draft";
 import { planTranslationPanelLayout, stepPanelWidth, PANEL } from "@/lib/translations/layout";
 import { planEditorNavigation, type EditorIntent } from "@/lib/translations/navigation";
-import { ALL_NAMESPACES, clearFilters, DEFAULT_TRANSLATION_QUERY, nextQuery, translationsHref, treeQuery, type TranslationQuery } from "@/lib/translations/query";
+import { ALL_NAMESPACES, clearFilters, DEFAULT_TRANSLATION_QUERY, FIRST_KEY, nextQuery, serializeTranslationQuery, translationsHref, treeQuery, type TranslationQuery } from "@/lib/translations/query";
 import { applySavedRow, mergeServerRows, savedOutCount, startListGeneration, type ListGeneration } from "@/lib/translations/saved-rows";
 import { summarizeKey } from "@/lib/translations/summary";
 import { cn } from "@/lib/utils";
@@ -108,8 +108,23 @@ const storageKey = (userId: string, slug: string) => `malmoi.translation-draft.$
 const widthKey = (userId: string, slug: string) => `malmoi.translation-panels.${userId}.${slug}`;
 
 export function TranslationWorkspace(props: WorkspaceProps) {
-  const { slug, routeSurfaceSlug, role, userId, query, tree, list } = props;
+  const { slug, routeSurfaceSlug, role, userId, tree, list } = props;
   const router = useRouter();
+  /*
+    ⚠️ **상세의 언어 필터는 서버로 가지 않는다** (audit-ux #16) — 거르기는 받은 상세 위의 클라이언트 일이라 `history.replaceState`로
+    주소만 맞춘다(`useProjectQuery`와 같은 형). ⚠️ **원천은 서버 prop이 아니라 주소다** — `replaceState`는 prop을 못 바꾸므로 prop을
+    원천으로 두면 뒤로가기로 돌아온 화면이 캐시된 렌더의 옛 언어로 선다. 주소가 밖에서 바뀌면 렌더 중에 따라간다.
+    모든 이동 주소(`current`)가 이 값을 잇는다 — 서버 prop의 `language`로 조립하면 다음 키 이동이 필터를 잃는다.
+  */
+  const params = useSearchParams();
+  const languageFromUrl = params.get("language") || undefined;
+  const [language, setLanguage] = useState(languageFromUrl);
+  const [seenLanguage, setSeenLanguage] = useState(languageFromUrl);
+  if (seenLanguage !== languageFromUrl) {
+    setSeenLanguage(languageFromUrl);
+    setLanguage(languageFromUrl);
+  }
+  const query = nextQuery(props.query, { language });
   const w = m.translations.workspace;
   const detail = props.detail !== null && !("absent" in props.detail) ? props.detail : null;
   const keyId = detail?.key.id;
@@ -130,16 +145,22 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const requestSeq = useRef(0);
   const [status, setStatus] = useState<FooterStatus | null>(null);
   const [revertedLocales, setRevertedLocales] = useState<ReadonlySet<string>>(new Set());
+  /**
+   * 방금 저장한 셀 — 저장은 편집 토큰을 세우므로 곧 미전달이다 (audit-ux #30). 서버 상세(`pending`)를 기다리면 푸터가 "Saved" →
+   * "Saved · not sent yet"으로 두 번 바뀌고 `aria-live`가 두 번 읽는다. 목록 행은 이미 이렇게 한다. 다음 서버 상세까지만 유효하다.
+   */
+  const [savedLocales, setSavedLocales] = useState<ReadonlySet<string>>(new Set());
   const [revertReason, setRevertReason] = useState<RevertReason | null>(null);
   const [revertBusy, setRevertBusy] = useState(false);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const resultRef = useRef<HTMLSpanElement>(null);
   const saveRef = useRef<HTMLButtonElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => { setStatus(null); setRevertedLocales(new Set()); setRevertReason(null); }, [keyId]);
+  useEffect(() => { setStatus(null); setRevertedLocales(new Set()); setSavedLocales(new Set()); setRevertReason(null); }, [keyId]);
   useEffect(() => {
-    // Revert 응답의 낙관적 표시는 다음 서버 상세까지만 유효하다. 이후의 편집 토큰을 가리지 않는다.
+    // Revert·Save 응답의 낙관적 표시는 다음 서버 상세까지만 유효하다. 이후의 편집 토큰을 가리지 않는다.
     setRevertedLocales(new Set());
+    setSavedLocales(new Set());
     setRevertReason(null);
   }, [detail]);
 
@@ -189,26 +210,53 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   }, [draft, keyId, userId, slug, detailSurface]);
 
   // ── 목록 세대 — 조건이 바뀔 때만 새로 시작한다. 저장·재검증은 행을 자리에 남긴다 ────────────────────
+  /*
+    ⚠️ **새 목록은 렌더 중에 받는다, effect가 아니다** (audit-ux #29) — effect로 받으면 조건이 바뀐 첫 커밋이 새 제목·수 아래 옛 행을
+    그렸고, 결과가 0↔N으로 바뀔 때 빈 상태가 한 프레임 번쩍였다.
+    ⚠️ **More로 붙인 행은 이 화면이 든다** (audit-ux #19) — 재검증은 언제나 첫 페이지라 그 밖의 행은 `mergeServerRows`가 자리에 남기고,
+    다음 cursor도 붙인 페이지 뒤의 것을 지킨다(첫 페이지의 cursor로 되돌아가면 같은 행을 다시 붙인다).
+  */
   const conditionKey = JSON.stringify([routeSurfaceSlug, query.ns, query.scope, query.completion, query.missingLocale, query.state, query.q]);
-  const [rows, setRows] = useState<ListGeneration<TranslationListRow>>(() => startListGeneration(list.rows, 0));
-  const generation = useRef({ key: conditionKey, value: 0 });
-  useEffect(() => {
-    if (generation.current.key !== conditionKey) {
-      generation.current = { key: conditionKey, value: generation.current.value + 1 };
-      setRows(startListGeneration(list.rows, generation.current.value));
+  type ListState = { source: typeof list; key: string; rows: ListGeneration<TranslationListRow>; cursor: string | null; extended: boolean };
+  const [listState, setListState] = useState<ListState>(() => ({ source: list, key: conditionKey, rows: startListGeneration(list.rows, 0), cursor: list.nextCursor, extended: false }));
+  let shownList = listState;
+  if (listState.source !== list) {
+    if (listState.key !== conditionKey) {
+      shownList = { source: list, key: conditionKey, rows: startListGeneration(list.rows, listState.rows.generation + 1), cursor: list.nextCursor, extended: false };
     } else {
-      // 서버 응답은 한 페이지다. 페이지 밖의 행은 유지하고, 전체 조건 판정이 있는 선택 키만 이탈 여부를 갱신한다.
+      // 서버 응답은 첫 페이지다. 페이지 밖의 행은 유지하고, 전체 조건 판정이 있는 선택 키만 이탈 여부를 갱신한다.
       const membership = new Map<string, boolean>();
       if (query.key !== undefined && list.selectedInResult !== null) membership.set(query.key, list.selectedInResult);
-      setRows(prev => {
-        const merged = mergeServerRows(prev, list.rows, membership);
-        return query.cursor === undefined ? merged : {
-          generation: merged.generation,
-          rows: [...merged.rows, ...list.rows.filter(r => !merged.rows.some(p => p.row.keyId === r.keyId)).map(row => ({ row, savedOut: false }))],
-        };
-      });
+      shownList = { ...listState, source: list, rows: mergeServerRows(listState.rows, list.rows, membership), cursor: listState.extended ? listState.cursor : list.nextCursor };
     }
-  }, [list]); // eslint-disable-line react-hooks/exhaustive-deps
+    setListState(shownList);
+  }
+  const rows = shownList.rows;
+  const setRows = (update: (prev: ListGeneration<TranslationListRow>) => ListGeneration<TranslationListRow>) => setListState(prev => ({ ...prev, rows: update(prev.rows) }));
+
+  const [more, setMore] = useState<"idle" | "loading" | "failed">("idle");
+  const moreBusy = useRef(false);
+  async function loadMore() {
+    const { cursor, rows: { generation } } = shownList;
+    if (cursor === null || moreBusy.current) return;
+    moreBusy.current = true;
+    setMore("loading");
+    try {
+      const result = await loadMoreTranslationKeys({ slug, surfaceSlug: routeSurfaceSlug, query: serializeTranslationQuery(query), cursor });
+      // 기다리는 동안 조건이 바뀌었으면 옛 조건의 행이다 — 새 세대에 붙이지 않는다.
+      setListState(prev => {
+        if (!result.ok || prev.rows.generation !== generation) return prev;
+        const known = new Set(prev.rows.rows.map(entry => entry.row.keyId));
+        const appended = result.rows.filter(row => !known.has(row.keyId)).map(row => ({ row, savedOut: false }));
+        return { ...prev, rows: { generation, rows: [...prev.rows.rows, ...appended] }, cursor: result.nextCursor, extended: true };
+      });
+      setMore(result.ok ? "idle" : "failed");
+    } catch {
+      setMore("failed");
+    } finally {
+      moreBusy.current = false;
+    }
+  }
 
   /*
     ⚠️ **이동이 대기 중이면 상세가 읽기 전용이다** (audit-ux #1) — 확인창 판정은 클릭 시점의 draft로 끝나는데 응답 전까지 옛 키의
@@ -216,18 +264,31 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     다음 이동이 앞 이동을 대신하면 풀리므로 해제 계기를 따로 두지 않는다.
   */
   const [navigating, startNavigation] = useTransition();
-  function navigate(href: string, how: "push" | "replace" = "push") {
-    startNavigation(() => router[how](href));
+  /*
+    ⚠️ **누른 것은 응답 전에 먼저 선다** (audit-ux #7) — 선택 행·필터 라벨·트리 선택은 `navigating` transition 안의 낙관값이고,
+    응답이 커밋되면(또는 다음 이동이 앞 이동을 대신하면) 서버 값으로 돌아간다. 목록의 제목·수·행은 응답이 와야 바뀐다 —
+    그쪽을 낙관적으로 먼저 바꾸면 새 제목 아래 옛 행이 선다(#29).
+  */
+  type View = { query: TranslationQuery; keyId: string | undefined; surface: string };
+  const [view, setView] = useOptimistic<View>({ query, keyId, surface: routeSurfaceSlug });
+  function navigate(href: string, how: "push" | "replace" = "push", optimistic?: Partial<View>) {
+    startNavigation(() => {
+      if (optimistic !== undefined) setView(prev => ({ ...prev, ...optimistic }));
+      router[how](href);
+    });
   }
 
-  // 트리 전환은 새 목록의 첫 키를 연다. 필터·검색은 선택이 결과 밖이면 상세를 비운다 — 다른 키를 자동 선택하지 않는다.
-  const pendingSelection = useRef<"tree" | "filter" | null>(null);
+  // ⚠️ 트리 이동의 첫 키는 서버가 같은 렌더에서 고른다 (audit-ux #18) — 주소에 남은 예약값만 그 키로 맞춘다(서버 왕복 없음).
+  useEffect(() => {
+    if (params.get("key") === FIRST_KEY) window.history.replaceState(null, "", translationsHref(slug, routeSurfaceSlug, query));
+  }); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 필터·검색은 선택이 결과 밖이면 상세를 비운다 — 다른 키를 자동 선택하지 않는다.
+  const pendingSelection = useRef<"filter" | null>(null);
   useEffect(() => {
     const reason = pendingSelection.current;
     pendingSelection.current = null;
-    if (reason === "tree" && query.key === undefined && list.rows[0] !== undefined) {
-      navigate(translationsHref(slug, routeSurfaceSlug, { ...query, key: list.rows[0].keyId, keySurface: list.rows[0].surfaceSlug }), "replace");
-    } else if (reason === "filter" && query.key !== undefined && list.selectedInResult === false) {
+    if (reason === "filter" && query.key !== undefined && list.selectedInResult === false) {
       const next: TranslationQuery = { ...query };
       delete next.key;
       delete next.keySurface;
@@ -248,20 +309,23 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     else if (plan.action === "confirm" && plan.dialog === "discard") setDialog({ kind: "discard", locales: plan.locales, proceed: discardThen(proceed) });
     else if (plan.action === "confirm") setDialog({ kind: "publish", locales: plan.locales });
   }
-  const go = (href: string) => () => navigate(href);
   const withQuery = (next: TranslationQuery, surface = routeSurfaceSlug) => translationsHref(slug, surface, next);
   useLeaveGuard(dirty.length > 0, proceed => setDialog({ kind: "discard", locales: dirty, proceed: discardThen(proceed) }));
 
+  /*
+    ⚠️ **키 선택은 `replace`, 트리·필터·검색은 `push`다** (audit-ux #33 · D2) — 뒤로가기가 키 한 칸씩 거슬러 가면 화면을 떠나는 길이
+    사라진다. 키 퍼머링크는 `replace`로도 주소창에 남는다. 필터·트리는 "방금 조건으로 되돌아가기"가 뒤로가기의 쓸모다.
+  */
   function selectRow(row: TranslationListRow) {
-    attempt({ kind: "select-key", target: row.keyId }, go(withQuery({ ...query, key: row.keyId, keySurface: row.surfaceSlug })));
+    attempt({ kind: "select-key", target: row.keyId }, () => navigate(withQuery({ ...query, key: row.keyId, keySurface: row.surfaceSlug }), "replace", { keyId: row.keyId }));
   }
   function selectTree(surface: string, ns: string) {
     const next = treeQuery(query, ns);
-    attempt({ kind: "tree", target: `${surface}/${ns}` }, () => { pendingSelection.current = "tree"; navigate(withQuery(next, surface)); });
+    attempt({ kind: "tree", target: `${surface}/${ns}` }, () => navigate(withQuery(next, surface), "push", { query: next, keyId: undefined, surface }));
   }
   function filter(patch: Partial<TranslationQuery>, kind: "filter" | "search" | "clear" = "filter") {
     const next = kind === "clear" ? clearFilters(query) : nextQuery(query, patch);
-    attempt({ kind }, () => { pendingSelection.current = "filter"; navigate(withQuery(next)); });
+    attempt({ kind }, () => { pendingSelection.current = "filter"; navigate(withQuery(next), "push", { query: next }); });
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -278,6 +342,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       if (result.ok) {
         dispatch({ type: "success", requestId, keyId: detail.key.id, cells: result.cells });
         setRevertedLocales(prev => new Set([...prev].filter(code => !result.cells.some(cell => cell.localeCode === code))));
+        setSavedLocales(prev => new Set([...prev, ...result.cells.map(cell => cell.localeCode)]));
         setStatus({ kind: "saved" });
         // 목록 행은 자리에 남기고 수만 최신 저장값으로 — 조건 이탈 여부는 재검증(`mergeServerRows`)이 정한다.
         const saved = { ...draft.saved, ...Object.fromEntries(result.cells.map(c => [c.localeCode, c.value])) };
@@ -383,7 +448,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
   const openSync = () => { if (!publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
 
-  const pendingLocales = detail?.locales.filter(l => l.pending && !revertedLocales.has(l.code)).map(l => l.code) ?? [];
+  const isPending = (locale: { code: string; pending: boolean }) => (locale.pending || savedLocales.has(locale.code)) && !revertedLocales.has(locale.code);
+  const pendingLocales = detail?.locales.filter(isPending).map(l => l.code) ?? [];
   // 사유 문장("…while a save, publish, or sync is running")이 말하는 넷을 그대로 본다 (audit-ux #3) — 전엔 저장·Revert뿐이라 서버의 `busy`로만 멈췄다.
   const revertBlocked: RevertReason | null = role === "EDITOR" ? "forbidden"
     : dirty.length > 0 ? "unsaved"
@@ -414,11 +480,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   // ── 머리 ──────────────────────────────────────────────────────────────────
   const surfaceLocales = [...new Set(tree.surfaces.flatMap(s => s.locales))].sort();
   const noKeys = tree.projectKeyCount === 0;
-  const completionLabel = query.completion === "missing" && query.missingLocale !== undefined ? w.filters.completion.missingIn(query.missingLocale)
-    : w.filters.completion[query.completion === "missing" ? "all" : query.completion];
-  const stateLabel = query.state === undefined ? w.filters.state.any : w.filters.state[query.state];
-  const scopeLabel = w.filters.scope[query.scope];
-  const narrowed = query.completion !== "all" || query.state !== undefined || query.scope !== DEFAULT_TRANSLATION_QUERY.scope;
+  // 필터 트리거는 누른 값으로 먼저 선다(`view` — audit-ux #7). 목록 제목·빈 상태는 응답이 온 `query`다.
+  const shown = view.query;
+  const completionLabel = shown.completion === "missing" && shown.missingLocale !== undefined ? w.filters.completion.missingIn(shown.missingLocale)
+    : w.filters.completion[shown.completion === "missing" ? "all" : shown.completion];
+  const stateLabel = shown.state === undefined ? w.filters.state.any : w.filters.state[shown.state];
+  const scopeLabel = w.filters.scope[shown.scope];
+  const narrowed = shown.completion !== "all" || shown.state !== undefined || shown.scope !== DEFAULT_TRANSLATION_QUERY.scope;
   const substituted = list.effective.substituted && query.missingLocale !== undefined;
 
   const listTitle = query.completion === "incomplete" ? w.list.incompleteKeys : w.list.keys;
@@ -447,7 +515,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           <span className="ml-auto flex items-center gap-2">
             {role === "OWNER" ? (
               <span onClickCapture={event => { if (dirty.length > 0) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
-                <SyncButton slug={slug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
+                <SyncButton slug={slug} surfaceSlug={routeSurfaceSlug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
                   paused={publish.pending} open={syncOpen} onOpenChange={setSyncOpen} onPendingChange={setSyncPending}
                   onResult={setSyncOutcome} fallbackFocusRef={titleRef} />
               </span>
@@ -471,8 +539,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <FilterMenu axis={w.filters.completion.axis} label={completionLabel} on={query.completion !== "all"} size="md" disabled={noKeys}
-            value={query.completion === "missing" ? `missing:${query.missingLocale ?? ""}` : query.completion}
+          <FilterMenu axis={w.filters.completion.axis} label={completionLabel} on={shown.completion !== "all"} size="md" disabled={noKeys}
+            value={shown.completion === "missing" ? `missing:${shown.missingLocale ?? ""}` : shown.completion}
             options={[
               { value: "all", label: w.filters.completion.all },
               { value: "incomplete", label: w.filters.completion.incomplete },
@@ -481,8 +549,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             ]}
             onSelect={value => value.startsWith("missing:") ? filter({ completion: "missing", missingLocale: value.slice("missing:".length) }) : filter({ completion: value as TranslationQuery["completion"] })}
           />
-          <FilterMenu axis={w.filters.state.axis} label={stateLabel} on={query.state !== undefined} size="md" disabled={noKeys}
-            value={query.state ?? ""} hint={w.filters.state.newHint}
+          <FilterMenu axis={w.filters.state.axis} label={stateLabel} on={shown.state !== undefined} size="md" disabled={noKeys}
+            value={shown.state ?? ""} hint={w.filters.state.newHint}
             options={[
               { value: "", label: w.filters.state.any },
               { value: "unsent", label: w.filters.state.unsent },
@@ -491,8 +559,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             ]}
             onSelect={value => filter({ state: value === "" ? undefined : value as TranslationQuery["state"] })}
           />
-          <FilterMenu axis={w.filters.scope.axis} label={scopeLabel} on={query.scope !== "source"} size="md" disabled={noKeys}
-            value={query.scope}
+          <FilterMenu axis={w.filters.scope.axis} label={scopeLabel} on={shown.scope !== "source"} size="md" disabled={noKeys}
+            value={shown.scope}
             options={[
               { value: "namespace", label: w.filters.scope.namespace },
               { value: "source", label: w.filters.scope.source },
@@ -523,7 +591,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         <div className="flex h-full min-h-0" style={layout?.scrollWidth ? { minWidth: layout.scrollWidth } : undefined}>
           <div className="border-border bg-background relative flex min-h-0 shrink-0 overflow-hidden rounded-lg border" style={layout ? { width: layout.left } : { width: PANEL.tree + PANEL.list }}>
             {!treeCollapsed && (
-              <TreePanel tree={tree} surfaceSlug={routeSurfaceSlug} ns={query.scope === "namespace" ? query.ns : ALL_NAMESPACES} onSelect={selectTree}
+              <TreePanel tree={tree} surfaceSlug={view.surface} ns={shown.scope === "namespace" ? shown.ns : ALL_NAMESPACES} onSelect={selectTree}
                 className="border-border shrink-0 border-r" width={layout?.tree ?? PANEL.tree} />
             )}
             <KeyList
@@ -531,23 +599,26 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               title={listTitle}
               count={list.matchedKeyCount}
               savedExtra={savedOutCount(rows)}
-              selectedKeyId={keyId}
+              selectedKeyId={view.keyId}
               showSource={query.scope === "project"}
               onSelect={selectRow}
-              onMore={list.nextCursor === null ? null : () => router.push(withQuery({ ...query, cursor: list.nextCursor ?? undefined }))}
+              onMore={shownList.cursor === null ? null : () => void loadMore()}
+              moreLoading={more === "loading"}
+              moreFailed={more === "failed"}
+              busy={navigating}
               treeButton={treeCollapsed ? { open: treeOverlay, controls: treeOverlayId, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span className="text-muted-foreground text-xs">{routeSurfaceSlug}</span> } : undefined}
               empty={listEmpty}
             />
             {treeCollapsed && treeOverlay && (
               <TreeOverlay id={treeOverlayId} onClose={() => setTreeOverlay(false)}>
-                <TreePanel tree={tree} surfaceSlug={routeSurfaceSlug} ns={query.scope === "namespace" ? query.ns : ALL_NAMESPACES}
+                <TreePanel tree={tree} surfaceSlug={view.surface} ns={shown.scope === "namespace" ? shown.ns : ALL_NAMESPACES}
                   // 선택한 항목이 오버레이와 함께 사라지므로 토글로 돌려준다 — 안 하면 이동이 있든 없든 body로 떨어진다(T19 실측).
                   onSelect={(surface, ns) => { focusController(treeOverlayId); setTreeOverlay(false); selectTree(surface, ns); }} />
               </TreeOverlay>
             )}
           </div>
           <ResizeHandle layout={layout} onChange={rememberLeft} />
-          <div className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
+          <div data-panel="detail" aria-busy={navigating || undefined} className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
             {detail === null ? (
               <div className="flex flex-1 items-center justify-center">
                 {props.detail !== null && "absent" in props.detail
@@ -556,10 +627,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               </div>
             ) : (
               <LocalePanel
-                detail={{ ...detail, locales: detail.locales.map(l => ({ ...l, pending: l.pending && !revertedLocales.has(l.code) })) }}
+                detail={{ ...detail, locales: detail.locales.map(l => ({ ...l, pending: isPending(l) })) }}
                 draft={draft}
-                language={query.language}
-                onLanguage={language => router.replace(withQuery(nextQuery(query, { language })))}
+                language={language}
+                onLanguage={next => {
+                  setLanguage(next);
+                  window.history.replaceState(null, "", withQuery(nextQuery(query, { language: next })));
+                }}
                 onEdit={(code, value) => dispatch({ type: "edit", locale: code, value })}
                 onReset={code => dispatch({ type: "reset", locale: code })}
                 onSave={() => void save()}

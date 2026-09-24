@@ -10,10 +10,12 @@ import type { NotStartedReason } from "@/lib/events/payload";
 import { recordEvent } from "@/lib/events/record";
 import { executeKeyRevert, previewKeyRevert, type RevertPreview, type RevertResult } from "@/lib/keys/revert";
 import { KeySaveInput } from "@/lib/keys/save";
+import { loadTranslationList, type TranslationListRow } from "@/lib/keys/translation-list";
 import { applyKeySave, type KeySaveResult } from "@/lib/keys/save-key";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import type { PullOutcome } from "@/lib/pull/message";
 import { runSync } from "@/lib/sync/run";
+import { parseTranslationQuery } from "@/lib/translations/query";
 import { z } from "zod";
 
 /**
@@ -52,6 +54,30 @@ export async function saveTranslationKey(raw: unknown): Promise<KeySaveActionRes
   // no-op만 있던 저장은 아무것도 안 바꿨다 — 화면을 다시 그릴 이유가 없다.
   if (result.ok && result.cells.length > 0) revalidateTranslationReaders(slug);
   return result;
+}
+
+const MoreInput = z.object({ slug: z.string().min(1), surfaceSlug: z.string().min(1), query: z.record(z.string(), z.string()), cursor: z.string().min(1) });
+
+/**
+ * **키 목록의 다음 페이지** (audit-ux #19). 읽기 전용이다 — 그래서 `revalidatePath`가 없다(Revert 미리보기와 같다).
+ * ⚠️ **cursor를 주소에 싣지 않으려고 Action이다** — 전엔 `?cursor=`로 페이지를 이동해 새로고침·공유·뒤로가기가 그 페이지만 보였고,
+ * 키 선택이 cursor를 달고 다녔다. 행은 화면이 누적한다. 조건은 주소와 같은 해석(`parseTranslationQuery`)을 다시 지난다.
+ */
+export async function loadMoreTranslationKeys(raw: unknown): Promise<{ ok: true; rows: TranslationListRow[]; nextCursor: string | null } | { ok: false; error: string }> {
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const parsed = MoreInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const { slug, surfaceSlug, cursor } = parsed.data;
+
+  const prisma = getPrisma();
+  const access = await getSurfaceAccess(prisma, { userId: session.userId, slug, surfaceSlug, permission: "translation:write" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  // 선택 키·상세 언어는 페이지와 무관하다 — 목록 조건만 남긴다.
+  const { key: _key, keySurface: _keySurface, language: _language, ...conditions } = parseTranslationQuery(parsed.data.query);
+  const page = await loadTranslationList(prisma, { projectId: access.projectId, routeSurfaceId: access.surfaceId, query: { ...conditions, cursor } });
+  return { ok: true, rows: page.rows, nextCursor: page.nextCursor };
 }
 
 const RevertInput = z.object({ slug: z.string().min(1), surfaceSlug: z.string().min(1), keyId: z.string().min(1) });

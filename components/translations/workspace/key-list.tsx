@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
  * ⚠️ **저장으로 조건을 벗어난 행은 자리에 남는다**(취소선 + `Saved`) — 다른 키를 눌러도 그대로이고 재필터에서만 빠진다.
  * ⚠️ **선택은 배경만 바꾼다** — 굵기를 주지 않는다(`sidebar.tsx`).
  */
-export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSource, onSelect, onMore, treeButton, empty }: {
+export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSource, onSelect, onMore, moreLoading = false, moreFailed = false, busy = false, treeButton, empty }: {
   list: ListGeneration<TranslationListRow>;
   title: string;
   count: number;
@@ -27,6 +27,11 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
   showSource: boolean;
   onSelect: (row: TranslationListRow) => void;
   onMore: (() => void) | null;
+  /** More 응답을 기다린다 — 연타가 요청을 늘리지 않게 버튼이 `loading`이다 (audit-ux #19). */
+  moreLoading?: boolean;
+  moreFailed?: boolean;
+  /** 조작의 응답을 기다린다 (audit-ux #7) — 행은 응답이 와야 바뀌므로 목록이 busy다. 선택 행은 호출부가 낙관적으로 먼저 옮긴다. */
+  busy?: boolean;
   /** 트리가 접혔을 때 목록 머리에 들어가는 트리 버튼(README §7 — 아이콘 레일을 만들지 않는다). */
   treeButton?: { open: boolean; controls: string; onToggle: () => void; breadcrumb: ReactNode };
   empty: ReactNode;
@@ -34,7 +39,7 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
   const w = m.translations.workspace.list;
   const headingId = useId();
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <div data-panel="list" aria-busy={busy || undefined} className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-[53px] shrink-0 items-center gap-2 px-4">
         {treeButton !== undefined && (
           <Button size="sm" aria-label={m.translations.workspace.tree.open} aria-expanded={treeButton.open} aria-controls={treeButton.open ? treeButton.controls : undefined} onClick={treeButton.onToggle} className="size-7 p-0">
@@ -78,8 +83,9 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
           );
         })}</ul>}
         {onMore !== null && list.rows.length > 0 && (
-          <div className="border-border border-t px-4 py-3">
-            <Button variant="link" className="h-auto px-0" onClick={onMore}>{w.more}</Button>
+          <div className="border-border flex items-center gap-3 border-t px-4 py-3">
+            <Button variant="link" className="h-auto px-0" loading={moreLoading} onClick={onMore}>{w.more}</Button>
+            {moreFailed && <span role="alert" className="text-destructive text-xs">{w.moreFailed}</span>}
           </div>
         )}
       </div>
