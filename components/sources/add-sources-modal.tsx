@@ -10,6 +10,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { m } from "@/lib/i18n";
+import { planAddBlock } from "@/lib/sources/add-block";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import type { AdapterChoice } from "@/lib/onboarding/types";
 import { planSurfaceSelection } from "@/lib/onboarding/select-surfaces";
@@ -72,13 +73,15 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     사유(`selectHelp` · `manualReason`)가 닿을 길이 없었다. ⚠️ **진행 중은 `loading`이 아니라 `busy`다** (B5 리뷰 r1) — 한 버튼에
     `loading`(진짜 `disabled`)과 `aria-disabled`를 겸하지 않는다(DESIGN §6.65). 사유는 둘 다 **보이는 글자**다.
   */
-  const addBlocked = detecting || !!detectError || selection.formats.length === 0 || selection.conflicts.length > 0 || selection.formats.some(f => !f.baseLocale);
+  // ⚠️ 사유는 꺼진 동안만 서고, 막은 갈래를 말한다 (malmoi#93) — 켜진 버튼이 옛 문장을 describedby로 들고 있었다.
+  const addReason = planAddBlock({ detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length });
+  const addBlocked = addReason !== null;
   const manualBlocked = !manual.pathTemplate.trim() || !manual.baseLocale.trim();
   return <OnboardingModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}
     title={m.settings.sources.add} description={m.settings.sources.description} bodyScroll="hidden"
     panelClassName="[&_.animate-spin]:size-3.5 h-[min(680px,calc(100svh-96px))] min-h-0" actions={<>
       <Button size="lg" disabled={pending} onClick={onClose}>{m.surfaces.cancel}</Button>
-      <Button size="lg" data-add-sources variant="primary" busy={pending} aria-disabled={addBlocked || undefined} aria-describedby="add-source-help" onClick={() => {
+      <Button size="lg" data-add-sources variant="primary" busy={pending} aria-disabled={addBlocked || undefined} aria-describedby={addBlocked ? "add-source-help" : undefined} onClick={() => {
         if (addBlocked) return;
         const plan = planAddSources({ picked: candidates.filter((_, i) => checked.has(i)), existing });
         if (!plan.ok || plan.add.length === 0 || pending) return;
@@ -91,7 +94,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
           } catch { setUnknown(true); }
         });
       }}>{m.settings.sources.confirm}</Button>
-    </>} footer={<span id="add-source-help" className="text-muted-foreground text-xs">{m.settings.sources.selectHelp}</span>}>
+    </>} footer={addReason === null ? undefined : <span id="add-source-help" className="text-muted-foreground text-xs">{addReason}</span>}>
     {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}</Alert>}
     {manualError && <Alert variant="danger">{failureText(manualError)}</Alert>}
     {unknown && <Alert variant="warning">{m.settings.sources.unknown}</Alert>}

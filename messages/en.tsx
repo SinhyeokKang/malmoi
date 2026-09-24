@@ -2660,6 +2660,13 @@ export const en = {
        * "the project isn't created"라 이미 있는 프로젝트에서 거짓이다.
        */
       previewNone: "Set a path and malmoi will show the keys it finds. If no file matches, nothing is added.",
+      /** [Add selected sources]가 꺼진 갈래별 사유 (malmoi#93) — 고른 것이 없을 때는 위 `selectHelp`다. `planAddBlock`이 고른다. */
+      blocked: {
+        detecting: "Looking for translation files in the repository.",
+        detectFailed: "The file list couldn't be loaded. Try again above.",
+        conflict: "Some selected files already belong to another source.",
+        base: "Choose a base language for each selected source.",
+      },
       /** 꺼진 수동 확인([Check files])의 사유 (audit #37). */
       manualReason: "Enter a file path and a base language to check.",
     },

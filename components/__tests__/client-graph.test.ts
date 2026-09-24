@@ -143,6 +143,8 @@ const CLIENT_LIB_FILES = [
   "lib/shell/panel-size.ts",
   "lib/signin/dot-field.ts",
   "lib/sources/actions.ts",
+  // Add sources의 꺼진 사유 (malmoi#93) — `lib/i18n` 하나만 문다.
+  "lib/sources/add-block.ts",
   "lib/sources/base-language.ts",
   "lib/surfaces/plan.ts",
   "lib/tone.ts",
