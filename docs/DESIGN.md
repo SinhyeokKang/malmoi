@@ -998,6 +998,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 갈래 | 형 | 실측 |
 |---|---|---|
 | 전부 성공 / 정상 0키 | **한 줄** | `Synced 18 keys from dev` · `CircleCheck` 16 `text-foreground` · bg `#fff` · border `#e5e5e5` · Dismiss만 |
+| 전부 성공 + 관리하지 않는 항목 (2026-09-24, B2 r3 · QA5) | 헤드라인 + **안내 줄** · **success 톤 그대로** | `Synced 904 keys from main`(**브랜치가 남는다** — 성공이다) + `2 entries aren't plain text and stay in the code.` — ts-dict `String(…)`처럼 코드에 남는 항목이라 실패가 아니다(ARCHITECTURE §1 "read 오류의 두 갈래"). ⚠️ **"성공 = 한 줄" 규칙의 등재된 이탈이다** — 구별은 톤과 브랜치가 든다 |
 | 파일 일부 실패 | 헤드라인 + 파일 줄 | `Synced 18 keys`(브랜치 없음 — 붙이면 전부 성공과 **글자까지 같아진다**) + `1 item was not imported.` + `locales/ja.yml: The file couldn't be parsed.` |
 | CI 미적용 | **두 줄** | `Synced 9 keys, but 1 surface was not replaced` + `locales — New repository data arrived while syncing.`(slug는 sans, `[data-surface]`가 자리를 든다) · `[Try again]` 있음 |
 | 전 표면 실패 | 두 줄 | `Sync could not finish` — **`…, but …`을 쓰지 않는다**(앞 절이 거짓이 된다) |
