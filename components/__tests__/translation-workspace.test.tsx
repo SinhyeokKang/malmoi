@@ -509,3 +509,32 @@ it("활성 키가 없으면 빈 목록이 안내를 든다", async () => {
   expect(container.textContent).toContain(m.translations.workspace.empty.noActive);
   expect(container.textContent).toContain(m.translations.empty.noKeys.description);
 });
+
+/**
+ * malmoi#91 — RTL 로케일 셀이 페이지의 `ltr`·`lang="en"`을 상속해 `.(…` 가 반대 끝으로 튀었다. 셀이 자기 방향과 언어를 든다.
+ * 짝: LTR 셀은 `ltr` 그대로다(레이아웃 이동 없음). 빈 칸에 겹친 원문은 **base**의 방향·언어를 든다.
+ */
+it("RTL 로케일 셀은 dir=rtl·lang을 들고 LTR 셀은 ltr이다", async () => {
+  const base = props();
+  const { container } = await render(<TranslationWorkspace {...props({
+    tree: { ...base.tree, surfaces: base.tree.surfaces.map(surface => ({ ...surface, locales: ["en", "ar-SA", "ku-TR"] })) },
+    detail: base.detail && {
+      ...base.detail,
+      locales: [
+        { code: "en", isBase: true, value: "Nothing here", needsReview: false, pending: false, actorLabel: null },
+        { code: "ar-SA", isBase: false, value: "لا شيء هنا.", needsReview: false, pending: false, actorLabel: null },
+        { code: "ku-TR", isBase: false, value: null, needsReview: false, pending: false, actorLabel: null },
+      ],
+    },
+  })} />);
+  expect(area(container, "ar-SA").getAttribute("dir")).toBe("rtl");
+  expect(area(container, "ar-SA").getAttribute("lang")).toBe("ar-SA");
+  expect(area(container, "en").getAttribute("dir")).toBe("ltr");
+  expect(area(container, "en").getAttribute("lang")).toBe("en");
+  expect(area(container, "ku-TR").getAttribute("dir")).toBe("auto");
+  // 빈 ku-TR 칸에 겹친 원문은 en이다 — 셀의 방향을 따르면 영어 원문이 오른쪽에 붙는다.
+  const hint = area(container, "ku-TR").parentElement?.querySelector("span[id]");
+  expect(hint?.textContent).toBe("Nothing here");
+  expect(hint?.getAttribute("dir")).toBe("ltr");
+  expect(hint?.getAttribute("lang")).toBe("en");
+});
