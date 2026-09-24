@@ -91,7 +91,7 @@ it("Rotate token: 보관 거부는 Settings 문구로 말하고, 보관 상태�
 
 it("Reconnect: 보관 거부는 Settings 문구로 말하고, 보관 상태가 오면 카드의 옛 경고가 사라진다", async () => {
   actions.connectRepository.mockResolvedValue({ ok: false, error: "archived" });
-  const view = (archived: boolean) => <RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={archived} health={{ status: "not-connected" }} account={{ status: "reauthorize" }} />;
+  const view = (archived: boolean) => <RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={archived} health={Promise.resolve({ status: "not-connected" })} account={Promise.resolve({ status: "reauthorize" })} />;
   const { rerender } = await render(view(false));
   await click(button(m.settings.repository.connect));
   expect(document.body.textContent).toContain(m.settings.archivedReason);

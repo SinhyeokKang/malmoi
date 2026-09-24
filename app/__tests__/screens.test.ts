@@ -50,10 +50,14 @@ describe("설정 화면 — revalidate가 결과를 씻지 않는다 (POSTMORTEM
   /**
    * ⚠️ **블록 둘이 독립적으로 실패한다** (DESIGN §6.6). 건강성은 App 설치 토큰, 계정은 사용자 토큰이라
    * 하나로 묶으면 한쪽 GitHub 장애에 화면이 통째로 빈다 — 그래서 둘을 병렬로 읽고 각자 자기 오류를 낸다.
+   *
+   * ⚠️ **audit-ux #8부터 페이지가 둘을 await하지 않는다** — 각자 promise로 내려가 연결 카드 안의 서로 다른 Suspense가
+   * 푼다. 병렬은 "둘 다 await 없이 출발한다"로 선다. DOM 쪽은 `settings-streaming.test.tsx`가 잰다.
    */
   it("건강성과 계정을 병렬로 읽는다 — 한쪽 장애가 다른 쪽을 막지 않는다", () => {
-    expect(src).toMatch(/Promise\.all\(/);
-    expect(src).toMatch(/loadConnectionHealth\(/);
+    expect(src).toMatch(/const health = loadConnectionHealth\(/);
+    expect(src).toMatch(/const account = loadAccountView\(/);
+    expect(src).not.toMatch(/await (?:Promise\.all\(\[\s*)?load(?:ConnectionHealth|AccountView|OpenPrUrl)\(/);
     // ⚠️ **6b-4에서 이 로더가 `lib/github-connect/account-view.ts`로 내려갔다** — `/account`가 같은
     // 3갈래를 필요로 하고, 사본을 두면 두 화면이 갈린다. 이름을 고정해 사본이 돌아오는 것을 막는다.
     expect(src).toMatch(/loadAccountView\(/);

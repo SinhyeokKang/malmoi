@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { Suspense, use, useEffect, useRef, useState, useTransition } from "react";
 
 import { archiveProject, unarchiveProject, type ArchiveResult } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { landFocus, useLandAfter } from "@/components/ui/focus";
+import { Skeleton } from "@/components/ui/skeleton";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 
@@ -34,8 +35,9 @@ const HANDOFF_MS = 5_000;
  * 하나로 끝나면 안 되고, 되돌리기는 잃는 것이 없어 묻지 않는다.
  *
  * @param openPrUrl 열린 PR. **보관은 그것을 닫지 않으므로**(PRODUCT §7.9) 사람이 알고 판단해야 한다.
- *   `null`은 "없다", `undefined`는 **"확인하지 못했다"** — 조회 실패를 부재로 접으면 그 정보가 조용히
- *   사라진다 (POSTMORTEM 2026-09-03).
+ *   풀린 값의 `null`은 "없다", `undefined`는 **"확인하지 못했다"** — 조회 실패를 부재로 접으면 그 정보가 조용히
+ *   사라진다 (POSTMORTEM 2026-09-03). ⚠️ **promise다** (audit-ux #8) — GitHub 왕복이라 페이지가 await하면 설정 화면
+ *   전체가 늦는다. Dialog 안 한 줄만 기다린다. prop 자체가 없으면(보관된 쪽 — Dialog가 없다) "확인하지 못했다"와 같다.
  * @param onFailure 거부 문구를 **바깥이 든다** (r1) — 실패는 문자열, 다시 누르면 `null`. Home 배너의 `actions` 안에서
  *   자기 아래에 Alert를 세우면 warning 배너 속 danger Alert로 중첩된다. 안 주면 블록 안에 그린다(Settings 행).
  *   `ReconnectButton`·`DisconnectGithubButton`의 `onFailure`와 같은 계약이다.
@@ -50,7 +52,7 @@ export function ArchiveCard({
   slug: string;
   name: string;
   archived: boolean;
-  openPrUrl: string | null | undefined;
+  openPrUrl?: Promise<string | null | undefined>;
   onFailure?: (message: string | null) => void;
 }) {
   const [pending, startTransition] = useTransition();
@@ -132,24 +134,37 @@ export function ArchiveCard({
             </>
           }
         >
-          {openPrUrl === undefined ? (
-            <p className="text-muted-foreground text-xs">{m.archive.confirm.prUnknown}</p>
-          ) : openPrUrl !== null ? (
-            <p className="text-xs">
-              {m.archive.confirm.openPr}{" "}
-              <a
-                href={openPrUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
-              >
-                {m.archive.confirm.openPrLink}
-              </a>
-            </p>
-          ) : null}
+          {openPrUrl === undefined ? <PrLine url={undefined} /> : (
+            /* 조회가 안 끝났으면 한 줄 골격이다 — 버튼과 Dialog는 기다리지 않는다(audit-ux #8). */
+            <Suspense fallback={<span className="flex h-4 items-center"><Skeleton className="h-3 w-48 rounded-md" /></span>}>
+              <PendingPrLine url={openPrUrl} />
+            </Suspense>
+          )}
         </DialogContent>
       </Dialog>
       {alert}
     </div>
+  );
+}
+
+function PendingPrLine({ url }: { url: Promise<string | null | undefined> }) {
+  return <PrLine url={use(url)} />;
+}
+
+function PrLine({ url }: { url: string | null | undefined }) {
+  if (url === undefined) return <p className="text-muted-foreground text-xs">{m.archive.confirm.prUnknown}</p>;
+  if (url === null) return null;
+  return (
+    <p className="text-xs">
+      {m.archive.confirm.openPr}{" "}
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+      >
+        {m.archive.confirm.openPrLink}
+      </a>
+    </p>
   );
 }

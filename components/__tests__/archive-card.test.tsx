@@ -26,7 +26,7 @@ beforeEach(() => { vi.clearAllMocks(); });
 
 it("보관 거부는 블록 안 danger Alert로 사유를 말한다", async () => {
   mocks.archive.mockResolvedValue({ ok: false, error: "forbidden" });
-  await render(<ArchiveCard slug="acme" name="Acme" archived={false} openPrUrl={null} />);
+  await render(<ArchiveCard slug="acme" name="Acme" archived={false} openPrUrl={Promise.resolve(null)} />);
   await click("Archive project");
   await click("Archive project");
   expect(mocks.archive).toHaveBeenCalledWith("acme");

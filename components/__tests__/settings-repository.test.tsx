@@ -21,7 +21,7 @@ async function choose(container: HTMLElement, name: string) {
 }
 const healths: ConnectionHealth[] = [{ status: "ok" }, { status: "not-connected" }, { status: "app-uninstalled" }, { status: "installation-changed", installationId: "2" }, { status: "repo-moved", fullName: "new/repo" }, { status: "repo-replaced" }, { status: "unknown" }];
 it.each(healths)("건강성 $status를 보존하고 복구 가능한 갈래에만 재연결을 둔다", async health => {
-  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={health} account={{ status: "reauthorize" }} appSlug="malmoi" />);
+  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve(health)} account={Promise.resolve({ status: "reauthorize" })} appSlug="malmoi" />);
   const connect = [...container.querySelectorAll("button")].filter(b => ["Connect", "Reconnect"].includes(b.textContent ?? ""));
   expect(connect).toHaveLength(["not-connected", "app-uninstalled", "installation-changed", "repo-moved"].includes(health.status) ? 1 : 0);
   expect(container.querySelector('a[href="/account"]')).not.toBeNull();

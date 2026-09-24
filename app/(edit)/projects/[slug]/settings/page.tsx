@@ -35,9 +35,16 @@ export default async function SettingsPage({ params, searchParams }: { params: P
     surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" } }, baseBranch: true, archivedAt: true,
   } });
   if (project === null) redirect(`${routes.projects()}?e=not-found`);
-  const [health, account, openPrUrl] = await Promise.all([
-    loadConnectionHealth(project), loadAccountView(prisma, userId), loadOpenPrUrl(slug, project),
-  ]);
+  /*
+    ⚠️ **셋 다 await하지 않는다** (audit-ux #8) — 전부 GitHub 왕복이고(연결 확인은 설치 조회·토큰·리포 조회), 쓰는
+    자리는 연결 카드의 세 줄과 보관 Dialog의 한 줄뿐이다. promise로 내려 그 자리만 Suspense 뒤에서 도착하게 한다 —
+    이름·CI·보관 버튼은 DB 값만으로 먼저 선다. 셋은 여기서 **동시에 출발한다**(렌더가 기다리지 않을 뿐이다).
+    ⚠️ **거부를 삼키지 않는다** — `loadConnectionHealth`가 던지는 것은 환경변수 누락뿐이고 그것은 이 화면에서 500이
+    정직하다(`probeRepo` 주석). 풀린 promise의 거부는 `use`가 가장 가까운 오류 경계로 올린다.
+  */
+  const health = loadConnectionHealth(project);
+  const account = loadAccountView(prisma, userId);
+  const openPrUrl = loadOpenPrUrl(slug, project);
   const archived = project.archivedAt !== null;
   const archive = <PanelCard title={archived ? m.archive.restore : m.archive.title}>
     <div className="flex items-center justify-between gap-4 px-4 py-[13px] @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start @max-[640px]:[&>[data-archive-card]]:col-start-2 @max-[640px]:[&>[data-archive-card]]:justify-self-start">
