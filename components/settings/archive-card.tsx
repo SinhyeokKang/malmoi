@@ -7,7 +7,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { landFocus, useLandAfter } from "@/components/ui/focus";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@/components/ui/skeleton";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 
@@ -135,8 +135,14 @@ export function ArchiveCard({
           }
         >
           {openPrUrl === undefined ? <PrLine url={undefined} /> : (
-            /* 조회가 안 끝났으면 한 줄 골격이다 — 버튼과 Dialog는 기다리지 않는다(audit-ux #8). */
-            <Suspense fallback={<span className="flex h-4 items-center"><Skeleton className="h-3 w-48 rounded-md" /></span>}>
+            /*
+              조회가 안 끝났으면 골격이다 — 버튼과 Dialog는 기다리지 않는다(audit-ux #8).
+              ⚠️ **두 줄이다** (malmoi#104) — 가장 흔한 도착 모양은 열린 PR 문장이고, 그 문장은 Dialog 폭(406px 열)에서 두 줄로
+              접힌다. 한 줄 골격이면 도착하는 순간 Dialog가 18px 자라 가운데 정렬이 튄다. 줄 높이는 px가 아니라 `SkeletonLine`의
+              line box다(실물과 같은 `text-xs`). PR이 없는 프로젝트에서는 도착 때 두 줄만큼 줄어든다 — 보관 전에 확인해야 할
+              것이 있는 쪽(열린 PR)에서 안 튀는 것을 골랐다.
+            */
+            <Suspense fallback={<div className="flex flex-col"><SkeletonLine text="text-xs" className="w-full" /><SkeletonLine text="text-xs" className="w-2/5" /></div>}>
               <PendingPrLine url={openPrUrl} />
             </Suspense>
           )}
