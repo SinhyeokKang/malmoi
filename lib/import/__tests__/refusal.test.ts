@@ -58,9 +58,14 @@ describe("planImportRefusal", () => {
   });
 
   it("남은 갈래는 warning으로 떨어지고 닫기를 주지 않는다 — 모르는 값을 성공처럼 보이게 하지 않는다", () => {
-    for (const error of ["invalid input", "base-branch-missing"] as const) {
+    for (const error of ["invalid input", "tree-truncated"] as const) {
       expect(planImportRefusal(error)).toEqual({ tone: "warning", dismissible: false, action: null });
     }
+  });
+
+  /** malmoi#85 — 설정의 base branch가 사라진 것은 폴백이 아니다. 고칠 자리(Settings → Base branch)로 보낸다. */
+  it("base-branch-missing은 설정으로 보낸다", () => {
+    expect(planImportRefusal("base-branch-missing")).toEqual({ tone: "warning", dismissible: false, action: "settings" });
   });
 
   /**

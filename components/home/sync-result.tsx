@@ -43,10 +43,15 @@ function reasonMessage(reason: RepositoryImportError | SurfaceImportReason): str
  * ⚠️ **진행 표시를 여기 세우지 않는다** — 이 자리는 결과의 자리이고, 진행 Alert를 세웠다가 결과
  * Alert로 바꾸면 같은 자리에서 뜻이 두 번 바뀐다. 진행은 트리거가 든다 (`sync-button.tsx`).
  */
-export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = false, onDismiss }: {
+export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, retryDisabled = false, onDismiss }: {
   outcome: RepositoryImportOutcome | null;
   slug: string;
   branch: string;
+  /**
+   * ⚠️ **설정으로 보내는 액션은 OWNER에게만 선다** (malmoi#85) — Settings는 `project:settings` 뒤라 EDITOR가 누르면
+   * 거절당한다. 기본값이 OWNER인 이유: `[Sync]` 자체가 OWNER 전용이라 지금 EDITOR가 결과를 가질 경로가 없다.
+   */
+  role?: "OWNER" | "EDITOR";
   /** 읽기 실패·`superseded`에만 선다. Home의 실패 배너와 **같은 라벨·같은 Action**이다. */
   onRetry?: () => void;
   /** ⚠️ 그 Action이 지금 잠겨 있나 (Publish 진행 중) — 같은 자리 셋이 같이 움직여야 한다. */
@@ -57,16 +62,22 @@ export function SyncResult({ outcome, slug, branch, onRetry, retryDisabled = fal
   if (outcome === null) return null;
   if (!outcome.ok) {
     const refusal = planImportRefusal(outcome.error);
-    return <Alert variant={refusal.tone} role="status" title={reasonMessage(outcome.error)}
+    const owner = role === "OWNER";
+    // 온보딩 문장을 빌리지 않는다 (malmoi#85) — 없는 것은 리포의 기본 브랜치가 아니라 설정된 base branch다.
+    const title = outcome.error === "base-branch-missing"
+      ? (owner ? m.repositorySync.baseBranchMissing.owner(branch) : m.repositorySync.baseBranchMissing.editor(branch))
+      : reasonMessage(outcome.error);
+    const action = !owner && (refusal.action === "settings" || refusal.action === "reconnect") ? null : refusal.action;
+    return <Alert variant={refusal.tone} role="status" title={title}
       onDismiss={refusal.dismissible ? onDismiss : undefined}
-      actions={refusal.action === null ? undefined
+      actions={action === null ? undefined
         /*
           ⚠️ **로그인은 새 탭이다** (QA D2) — 같은 화면의 편집자 세션 Alert와 같은 형. 이 탭을 떠나면 번역 화면의 draft가
           함께 사라진다. `ButtonLink`는 `next/link`라 `target`을 안 받아 `<a>` + `buttonClass()`다(DESIGN §6.3).
         */
-        : refusal.action === "sign-in"
+        : action === "sign-in"
           ? <a href={routes.signIn()} target="_blank" rel="noreferrer" className={buttonClass()}>{m.repositorySync.signIn}</a>
-          : <ButtonLink href={routes.settings(slug)}>{refusal.action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;
+          : <ButtonLink href={routes.settings(slug)}>{action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;
   }
   const summary = summarizeImport(outcome.surfaces);
   /*

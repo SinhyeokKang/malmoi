@@ -59,6 +59,8 @@ const PLANS: Partial<Record<string, ImportRefusalPlan>> = {
    */
   "reconfirm": { tone: "warning", dismissible: true, action: null },
   "not-ready": { tone: "warning", dismissible: false, action: "settings" },
+  /** 설정의 base branch가 리포에서 사라졌다 (malmoi#85) — 고칠 자리는 Settings → Base branch다. 다시 눌러도 같다. */
+  "base-branch-missing": { tone: "warning", dismissible: false, action: "settings" },
   "not-connected": { tone: "warning", dismissible: false, action: "reconnect" },
   "no-surfaces": { tone: "warning", dismissible: false, action: null },
   /**

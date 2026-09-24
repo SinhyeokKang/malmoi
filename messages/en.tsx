@@ -181,6 +181,15 @@ export const en = {
        */
       "repo-replaced": "This connection points to a different repository",
     },
+    /**
+     * `base-branch-missing`의 Sync 갈래 (malmoi#85). ⚠️ **`onboarding["base-branch-missing"]`를 빌리지 않는다** — 그쪽은
+     * 새 프로젝트에서 리포의 **기본** 브랜치가 비었다는 말이고, Sync에서 없는 것은 **설정의 base branch**다.
+     * 제목 자리라 마침표가 없다(DESIGN §10). EDITOR에게는 설정 링크가 없으므로 할 수 있는 사람을 부른다.
+     */
+    baseBranchMissing: {
+      owner: (branch: string): string => `The base branch ${branch} isn't in the repository anymore — pick another base branch in Settings`,
+      editor: (branch: string): string => `The base branch ${branch} isn't in the repository anymore — ask a project owner to pick another base branch`,
+    },
   },
   /**
    * not-found 경계 문구 (audit #16·#17). ⚠️ **무엇을 잃었는지 단정하지 않는다** — 프로젝트 세그먼트와 루트가 함께 쓰고,
