@@ -246,8 +246,8 @@ components/
                         부르지 않는다 ⚠️ **usePublish를 무조건 렌더되는 호스트가 든다** — 번역 화면은
                         TranslationWorkspace, Home은 HomeNotices다. 조건부 자리에 두면 refresh가 방금
                         받은 결과를 언마운트한다 ⚠️ **리포 이름·base·sync 브랜치를 서버가 넘긴다** —
-                        syncBranchFor가 사는 모듈(lib/pull/trigger)은 octokit·ts-morph를 물어
-                        클라이언트 그래프에 오면 안 된다
+                        syncBranchFor가 사는 모듈(lib/pull/sync-branch — 2026-09-24에 trigger에서 뺐다)은
+                        lib/failure(node:crypto)를 물어 클라이언트 그래프에 오면 안 된다
   search-input.tsx      ⚠️ IME 조합 확정 Enter를 거른다(isComposing과 keyCode 229를 둘 다 본다 —
                         번역 입력의 keyEditCommand(lib/translations/draft.ts)가 같은 판정을 쓴다)
                         ⚠️ <form> 암시적 submit을 안 쓴다 — 제출 버튼 없는 폼은 Enter로 submit되지 않는다
@@ -326,9 +326,9 @@ lib/
                         **모든** 프로젝트라 이 연결에 의존하지 않는 것까지 들어갔다. 해제가 실제로
                         막는 것은 리포 (재)연결뿐이고 야간 pull·PR은 설치 토큰이 낸다
   push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · token /
-                        plan · run · render · load · client · targets · trigger · branch-name · ref-slug ·
+                        plan · run · render · load · client · targets · trigger · sync-branch · branch-name · ref-slug ·
                         message · payload /
-                        run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · query · view · plan
+                        run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · plan
                         ⚠️ **payload가 두 축에 각각 있다**(push/payload = `/api/push` 본문, pull/payload =
                         Git Data API 요청 본문). 둘 다 **외부 계약이라 반환 타입을 명시하는 것이 요지**이고
                         — 리터럴로 조립하면 필수 필드가 늘어도 컴파일러가 침묵한다(POSTMORTEM 2026-08-31).
