@@ -178,7 +178,7 @@
 
 **`orderBy: { key: "asc" }`는 이제 `lib/keys/query.ts` 한 곳이다** — 편집 UI의 **SQL 기준 순서**다. `lib/pull/load.ts`는 `[{ sortIndex: "asc" }, { key: "asc" }]`로 바뀌었고 `entry-order.test.ts`가 옛 형태의 부재를 단언한다. grep하면 둘 다 잡히므로 어느 쪽인지 이름으로 확인한다.
 
-⚠️ **그것이 화면 순서의 유일한 출처는 아니다** (2026-09-11, 8-4). 그 위에 층이 둘 더 있고 둘 다 `lib/keys/view.ts`에 있다 — `pendingFirst`(남은 일을 앞으로 내는 **안정 분할**이라 그룹 안 상대 순서는 보존된다) · `groupByNamespace`(섹션 배열). ⚠️ **뒤엣것은 `rows` 순서를 일부러 안 쓰고 `counts` 순서를 받는다**: `rows`의 출처는 `loadKeys`의 `orderBy`(**Postgres collation**)인데 집계·드롭다운이 쓰는 것은 `compareKeys`(**UTF-16 코드 유닛**)라 **둘이 같다는 보장이 없다** — `rows`로 섹션을 세우면 **섹션 헤딩 순서 ≠ 드롭다운 순서**가 된다. 이 절의 "`localeCompare` 금지"와 같은 축이다: 순서의 자가 둘이면 어느 쪽이 정본인지 코드가 말해야 한다.
+⚠️ **8-4가 그 위에 얹었던 두 층(`pendingFirst` · `groupByNamespace`, `lib/keys/view.ts`)은 2026-09-24에 지웠다** (audit #65) — translation-rework 뒤로 번역 화면의 순서는 목록 SQL(`lib/keys/translation-list.ts`)이 정하고 두 함수는 테스트만 불렀다. 남은 교훈은 그대로다: **순서의 자가 둘이면(Postgres collation vs `compareKeys`의 UTF-16 코드 유닛) 어느 쪽이 정본인지 코드가 말해야 한다** — 이 절의 "`localeCompare` 금지"와 같은 축이다.
 
 ```
 grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys/*.ts
@@ -2089,10 +2089,10 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - ⚠️ **"남이 정한 문자열을 객체 키로 쓰지 않는다"는 규칙은 살아 있고, 자리만 옮겼다.** 이 리포는 그것을 두 번 밟았다
   (POSTMORTEM 2026-09-08 조회 · 2026-09-09 대입). §1.1의 "키 대입" 규칙과 같은 계보인데 그쪽은 어댑터 축에만
   적혀 있어 여기 다시 적는다. **지금 그 규칙이 서 있는 자리는 둘이다**:
-  - `lib/keys/view.ts` — `parseLocaleSelection`이 `?locales=`를 **배열 `includes`**로 거르고(주소창 값이다),
-    `namespaceCountsFor`·`groupByNamespace`의 누산기가 **`Map`이다**. 평범한 `{}`에 `out["__proto__"] = v`를 하면
-    setter가 불려 own property가 안 생기고 **그 네임스페이스 그룹이 조용히 사라진다**(POSTMORTEM 2026-09-09).
-    네임스페이스는 로케일 파일의 키에서 파생되므로 **남이 정하는 문자열**이다.
+  - `lib/keys/query.ts`·`lib/pull/render.ts` — 로케일 코드로 셀 맵을 만들고 읽는 자리다. 대입은 **`Object.create(null)`**,
+    조회는 **`Object.hasOwn`**이다(`lib/keys/__tests__/view.test.ts`의 소스 스캔이 센다). 평범한 `{}`에 `out["__proto__"] = v`를
+    하면 setter가 불려 own property가 안 생기고 **그 열이 조용히 사라진다**(POSTMORTEM 2026-09-09). ⚠️ 옛 자리였던
+    `lib/keys/view.ts`의 `namespaceCountsFor`·`groupByNamespace`(누산기 `Map`)는 2026-09-24에 지웠다(audit #65).
   - `lib/search-params.ts` — `firstQueryValues`가 화면이 받은 쿼리 객체 전체를 접는 자리이고, 누산기가
     **`Object.create(null)`이다**. 키를 주소창이 정하므로 같은 부류이고, **모든 화면의 `searchParams`가 이 한 함수를
     지난다** — 여기가 뚫리면 위 갈래가 방어할 기회조차 없다.
