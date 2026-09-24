@@ -58,9 +58,14 @@ export function LogFilters({
 }) {
   const router = useRouter();
 
-  /** ⚠️ **좁히는 축이 바뀌면 커서를 뺀다** — `logsQuery`가 새 필터로 다시 조립한다. */
+  /**
+   * ⚠️ **좁히는 축이 바뀌면 커서를 뺀다** — `logsQuery`가 새 필터로 다시 조립한다.
+   * ⚠️ **`event`도 뺀다** (malmoi#102) — 상세 닫기가 `history.replaceState`라 이 `filter` prop의 `event`는 닫은 뒤에도
+   * 남는다. 그것을 실으면 필터를 바꾸는 순간 방금 닫은 상세가 되살아났다. 이 컨트롤들은 모달 뒤라 상세가 열린
+   * 동안에는 누를 수 없으므로, 여기서 나가는 주소에 `event`가 있을 자리가 없다.
+   */
   const go = (next: Partial<LogFilter>) => {
-    router.push(routes.logs(slug, logsQuery({ ...filter, ...next, cursor: null })));
+    router.push(routes.logs(slug, logsQuery({ ...filter, ...next, cursor: null, event: null })));
   };
 
   const toggle = (list: readonly string[], value: string): string[] =>
@@ -213,7 +218,7 @@ export function LogFilters({
             variant="ghost"
             aria-busy={clearing || undefined}
             aria-disabled={clearing || undefined}
-            onClick={() => { if (!clearing) startClear(() => router.push(routes.logs(slug, clearedLogsQuery(filter)))); }}
+            onClick={() => { if (!clearing) startClear(() => router.push(routes.logs(slug, clearedLogsQuery({ ...filter, event: null })))); }}
           >
             {clearing ? <Loader2 className="animate-spin" aria-hidden /> : <RotateCcw aria-hidden />}
             {m.logs.filters.clear}
