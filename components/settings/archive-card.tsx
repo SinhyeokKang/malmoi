@@ -1,14 +1,24 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { archiveProject, unarchiveProject, type ArchiveResult } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { useLandAfter } from "@/components/ui/focus";
+import { landFocus, useLandAfter } from "@/components/ui/focus";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
+
+/**
+ * ⚠️ **성공한 전환의 착지를 새 인스턴스에 넘긴다** (malmoi#82). Settings는 같은 카드를 **두 자리**(보관이면 General 위,
+ * 아니면 CI 아래)에 그려서 전환이 이 컴포넌트를 **재마운트**한다 — 기다리던 `useLandAfter`가 옛 인스턴스와 함께 사라졌다.
+ * 자리를 하나로 묶고 CSS `order`로 옮기는 길은 버렸다: 보이는 순서와 DOM(Tab·낭독) 순서가 갈린다(WCAG 1.3.2).
+ * ⚠️ **몇 초 안에만 유효하다** — Home 배너처럼 성공 뒤 카드가 아예 안 서는 자리에서는 넘긴 값이 남는데, 나중에 다른 화면이 이
+ * 카드를 세울 때 포커스를 훔치면 안 된다. `landFocus`도 포커스가 빠졌을 때만 옮긴다.
+ */
+let handoff: { slug: string; at: number } | null = null;
+const HANDOFF_MS = 5_000;
 
 /**
  * 보관 카드 — settings-block **여섯째, 맨 아래** (7단계 — PRODUCT §7.9 · DESIGN §6.6).
@@ -53,6 +63,12 @@ export function ArchiveCard({
    */
   const button = useRef<HTMLButtonElement>(null);
   useLandAfter(pending, () => button.current);
+  useEffect(() => {
+    const passed = handoff;
+    if (passed === null || passed.slug !== slug) return;
+    handoff = null;
+    if (Date.now() - passed.at < HANDOFF_MS) landFocus(button.current);
+  }, [slug]);
 
   /** ⚠️ **던져도 제자리로 돌아온다** — 통신이 끊기면 서버가 바꿨는지 모르므로 사유 대신 확인 불가를 말한다. */
   const report = (message: string | null) => { if (onFailure) onFailure(message); else setError(message); };
@@ -61,6 +77,7 @@ export function ArchiveCard({
     startTransition(async () => {
       let result: ArchiveResult | null;
       try { result = await action(slug); } catch { result = null; }
+      if (result?.ok) handoff = { slug, at: Date.now() };
       if (result === null) report(m.archive.failedUnknown);
       else if (!result.ok) report(isAccessError(result.error) ? accessErrorMessage(result.error) : m.archive.failed(result.error));
     });
