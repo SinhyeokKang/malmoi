@@ -210,20 +210,21 @@
 - ⚠️ CLAUDE.md "기존 dead code는 언급만 하고 삭제하지 않는다" — 이 묶음은 **삭제를 명시로 요청받았을 때만** 지운다.
 
 ### B7c 진단·테스트 공백
-- [ ] **#71** 🟡 삼킨 catch — `lib/projects/remote.ts:102,114,136` · `import-status-store.ts:36,64`(POSTMORTEM 2026-09-14 형태).
-- [ ] **#72** 🟡 오류 객체를 버리는 catch — `account/actions.ts:69,115,140,262` · `settings/actions.ts:359,368,414,449`.
-- [ ] **#74** 🟡 테스트 없는 순수 export — `lib/events/payload.ts:178 readPayload`(~40분기) · `events/filter.ts:100,125,134` · `projects/remote-plan.ts:57` · `events/view.ts:310,402`. 픽스처 편향 — 빈 파일이 YAML뿐 · 백틱 인용 0.
-- [ ] ⚪ **#80** `entry-points.test.ts:103` 줄 끝 주석 · **#81** `credential-separation.test.ts:91` 범위 누락 · **#90** 약한 테스트(`message.test.ts:99` · `conversion.test.ts:18`).
+- [x] **#71** 🟡 삼킨 catch — `lib/projects/remote.ts:102,114,136` · `import-status-store.ts:36,64`(POSTMORTEM 2026-09-14 형태).
+- [x] **#72** 🟡 오류 객체를 버리는 catch — `account/actions.ts:69,115,140,262` · `settings/actions.ts:359,368,414,449`.
+- [x] **#74** 🟡 테스트 없는 순수 export — `lib/events/payload.ts:178 readPayload`(~40분기) · `events/filter.ts:100,125,134` · `projects/remote-plan.ts:57` · `events/view.ts:310,402`. 픽스처 편향 — 빈 파일이 YAML뿐 · 백틱 인용 0.
+- [x] ⚪ **#80** `entry-points.test.ts:103` 줄 끝 주석 · **#81** `credential-separation.test.ts:91` 범위 누락 · **#90** 약한 테스트(`message.test.ts:99` · `conversion.test.ts:18`).
 
 ### B7d 문서 드리프트
-- [ ] **#61** 🟡 `lib/push/apply.ts:133` · ARCHITECTURE:1107 "저장 경로엔 잠금이 없다" 거짓(B1이 먼저 건드렸으면 닫힘).
-- [ ] **#62** 🟡 `prisma/schema.prisma:267` 쓰기 주체 서술 낡음.
-- [ ] **#63** 🟡 `lib/protection/where.ts:6-7` · CLAUDE.md "손 사본 둘" 목록 틀림 — 실제는 `translation-list.ts:156,274`. `list-aggregates.integration.ts:76,331,524`가 죽은 `loadKeys`를 잰다(POSTMORTEM 2026-09-15 재발).
-- [ ] **#68** 🟡 `lib/events/`가 ARCHITECTURE:3 · `.claude/commands/push.md:110` 코어 목록에 없다.
-- [ ] **#69** 🟡 DIRECTORY.md :503(14→16테이블) · :547(include 범위) · :21-22(`/privacy`) · :73(21→22).
-- [ ] **#70** 🟡 PRODUCT:795 §10 `AuditEvent`(결정됨) · README:9 · README:60.
-- [ ] ⚪ **#88** 거짓 주석 — `lib/compare.ts:2` · `auth/invite-label.ts:28` · `keys/query.ts:329-333`.
+- [x] **#61** 🟡 `lib/push/apply.ts:133` · ARCHITECTURE:1107 "저장 경로엔 잠금이 없다" 거짓(B1이 먼저 건드렸으면 닫힘).
+- [x] **#62** 🟡 `prisma/schema.prisma:267` 쓰기 주체 서술 낡음.
+- [x] **#63** 🟡 `lib/protection/where.ts:6-7` · CLAUDE.md "손 사본 둘" 목록 틀림 — 실제는 `translation-list.ts:156,274`. `list-aggregates.integration.ts:76,331,524`가 죽은 `loadKeys`를 잰다(POSTMORTEM 2026-09-15 재발).
+- [x] **#68** 🟡 `lib/events/`가 ARCHITECTURE:3 · `.claude/commands/push.md:110` 코어 목록에 없다.
+- [x] **#69** 🟡 DIRECTORY.md :503(14→16테이블) · :547(include 범위) · :21-22(`/privacy`) · :73(21→22).
+- [x] **#70** 🟡 PRODUCT:795 §10 `AuditEvent`(결정됨) · README:9 · README:60.
+- [x] ⚪ **#88** 거짓 주석 — `lib/compare.ts:2` · `auth/invite-label.ts:28` · `keys/query.ts:329-333`.
 - [ ] **#18** 🟡 `[slug]/loading.tsx` 골격 불일치(브라우저 확인 후).
+  - ⏳ B7c: 코드 미변경 — 브라우저 확인 대기. 가설: `[slug]/loading.tsx`가 자기 `loading.tsx`가 없는 하위 세그먼트(members·sources·settings·translations)의 fallback도 되어 Home 골격이 뜬다. 확인되면 Home의 `page.tsx`·`loading.tsx`를 `[slug]/(home)/`로 옮겨 경계를 Home에만 건다.
 
 ### B7e 보안 하드닝(⚪)
 - [ ] **#75** `next.config.ts` — CSP Report-Only · `unsafe-inline` · HSTS·Permissions-Policy 없음. **enforce 전에 `form-action`에 `accounts.google.com` 추가**(안 하면 Google 로그인이 막힌다).
@@ -232,7 +233,7 @@
 - [ ] **#78** `account-connect/http.ts:33` · `session-revocation/http.ts:33` origin null 시 `secure` 규칙 갈림.
 - [ ] **#79** `app/invite/actions.ts:85` 보관 프로젝트 초대 수락(접근은 막힘).
 - [ ] **#82** prod `pg_default_acl`의 `supabase_admin` 소유 3행 잔존 · prod만 anon `public` USAGE. CLAUDE.md "탐지" 상태 그대로 — 코드 조치 없음, `/db` 5단계 확인 유지.
-- [ ] **#89** 작은 a11y — `locale-meter.tsx:43` · `source-detail-modal.tsx:72` · `repository-form.tsx:74,76` · `form-group.tsx:52` · `event-detail.tsx:92`.
+- [x] **#89** 작은 a11y — `locale-meter.tsx:43` · `source-detail-modal.tsx:72` · `repository-form.tsx:74,76` · `form-group.tsx:52` · `event-detail.tsx:92`.
 
 ---
 
