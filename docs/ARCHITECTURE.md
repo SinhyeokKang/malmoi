@@ -986,7 +986,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   - `createdAt`은 **소스가 선언된 시각**이고, 첫 적재 전 화면이 "얼마나 기다렸나"에 답하는 유일한 값이다. ⚠️ **기존 행은 마이그레이션 시각으로 채워진다 — 진짜 시각이 아니다**(`Locale.createdAt`과 같은 사정). "정확히 언제 생겼나"의 답으로 믿는 코드를 만들지 않는다.
 - **⚠️ `Locale.createdAt`의 기존 값은 프로젝트 생성 시각이다 — 진짜 시각이 아니다** (같은 마이그레이션). `Locale`에 시각 컬럼이 하나도 없어(`code`·`name`·`isBase`·`orphaned`뿐) "한 번도 안 채워진 로케일"을 시간축에 못 세웠다. **`@default(now())`만 두면 마이그레이션이 거짓을 만든다** — 기존 로케일 전부가 "마이그레이션 시각"을 들고 배포 직후 그 항목들이 목록 맨 위를 점령하며, 그 거짓은 되돌릴 수 없다(진짜 시각이 어디에도 없다). 그래서 마이그레이션이 `UPDATE "Locale" … FROM "Project"`로 프로젝트 생성 시각을 넣었다: 로케일이 프로젝트보다 먼저 생길 수는 없고 "지금"보다 덜 틀리다. **이 값을 "로케일이 정확히 언제 생겼나"의 답으로 믿는 코드를 만들지 않는다** — 답할 수 있는 것은 **정렬에서의 상대 순서**뿐이고, 같은 프로젝트의 로케일 여럿이 동점이 되는 것을 읽는 쪽의 동점 규칙(`surfaceSlug` → 코드 유닛 비교)이 받는다.
 - **`orphaned`는 `StringKey`와 `Locale` 둘 다에, `needsReview`는 `Translation`에.** 키의 존재 여부도 로케일의 존재 여부도 코드(리포)가 정하고, 번역의 신선도는 값마다 판정되기 때문이다. 로케일 쪽은 §5.5.16이 든다.
-- **`projectId`를 가진 테이블의 조회용 인덱스는 전부 `projectId` 선두 복합이다.** 그 조회는 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스가 쓸모없다. ⚠️ **전부는 아니다** — 진입 키(`Project.slug`·`Project.pushTokenHash`·`User.emailLookup`·`Session.sessionToken`·`ProjectInvitation.tokenHash`)와 `Translation(keyId, localeCode)`·`KeyRef(keyId)`는 프로젝트를 모르는 상태에서 찾는 값이라 예외다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — 편집 UI 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록), **`(projectId, updatedAt)`**(소비자 **둘** — 1층의 캡처 `aggregate` · `loadRecentEdits`. ⚠️ **1층 판정과 미배포 집계는 2026-09-18에 `[projectId, pendingEditToken]`으로 옮겼다**, §2), **`(projectId, startedAt)`**(`SyncRun` — `loadSyncRuns`의 키셋 페이지네이션이 그 위에 선다). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
+- **`projectId`를 가진 테이블의 조회용 인덱스는 전부 `projectId` 선두 복합이다.** 그 조회는 프로젝트로 먼저 좁혀지므로 단독 컬럼 인덱스가 쓸모없다. ⚠️ **전부는 아니다** — 진입 키(`Project.slug`·`Project.pushTokenHash`·`User.emailLookup`·`Session.sessionToken`·`ProjectInvitation.tokenHash`)와 `Translation(keyId, localeCode)`·`KeyRef(keyId)`는 프로젝트를 모르는 상태에서 찾는 값이라 예외다. `(projectId, namespace)`(사이드바), `(projectId, orphaned)`(orphaned 필터), `(projectId, localeCode, needsReview)`(검토필요 필터 — 편집 UI 필터 3개를 떠받친다), `KeyRef_keyId_idx`(키 상세의 참조 목록), **`(projectId, updatedAt)`**(소비자 **둘** — 1층의 캡처 `aggregate` · `loadRecentEdits`. ⚠️ **1층 판정과 미배포 집계는 2026-09-18에 `[projectId, pendingEditToken]`으로 옮겼다**, §2), **`(projectId, startedAt)`**(`SyncRun` — Logs가 `ProjectEvent`로 옮겨 가며(2026-09-20) 키셋 조회 소비자는 사라졌다). `UNIQUE(keyId, localeCode)`가 키+로케일 단건 조회 인덱스를 겸한다.
   - ⚠️ **표면 스코프 판과 2컬럼 판이 병존한다.** 표면이 생기면서 `StringKey(projectId, surfaceId, namespace)`·`(projectId, surfaceId, orphaned)`·`Translation(projectId, surfaceId, localeCode, needsReview)`·`(projectId, surfaceId, updatedAt)` 넷이 붙었고, 같은 이름의 2컬럼 판은 **지우지 않았다**. **프로덕션 화면 조회는 전부 표면으로 좁히므로 3·4열 판이 그 경로다**(불변식 5 — `projectId` 다음에 `surfaceId`). 2컬럼 판이 남은 이유는 **표면을 모르는 프로젝트 단위 집계**다 — 1층의 `aggregate`가 `[projectId, updatedAt]`을, 목록 raw 집계가 프로젝트 전체를 훑는다. 어느 한쪽을 지우려면 **먼저 그 축의 쿼리가 어느 판을 타는지 EXPLAIN으로 본다** — 이름이 비슷해 "중복"으로 보이지만 스캔 경로가 다르다.
 
 ### 5.1 SaaS 인증·인가 테이블 (2026-09-05, `20260904182548_add_tenant_auth_tables`)
@@ -1343,7 +1343,7 @@ $transaction(tx):
 ⚠️ **`retryable`이 2026-09-16부터 화면까지 간다** (그전 등재는 "소비자 0"이었다). `classifySyncError`가
 `RETRYABLE` 표로 정한 값을 `failureOutcome`이 **`PullOutcome`에 그대로 싣고**(`code`·`retryable`·`delivery`
 셋), Publish 모달이 그 하나로 실패 화면 둘을 가른다 — `true`면 "다시 하면 된다", `false`면 "설정을
-고쳐야 한다"(DESIGN §6.646). **`SyncRun`에는 여전히 컬럼이 없고** `loadSyncRuns`도 안 읽는다: 이력
+고쳐야 한다"(DESIGN §6.646). **`SyncRun`에는 여전히 컬럼이 없고** Logs(`lib/events/query.ts`)도 안 읽는다: 이력
 화면이 그 구별을 하려면 컬럼이 먼저다.
 
 - ⚠️ **`delivery`는 `retryable`과 다른 축이다** — "다시 해도 되나"와 "나갔나"는 별개다. 실행 **전**
@@ -1857,7 +1857,7 @@ credential 리뷰에서 같은 위험(남의 라이브러리 메시지에 Prisma
 
 #### 6.1.15 ⚠️ 키 부재는 던지고 행 하나는 살린다 — **순서가 판정이다** (2026-09-10)
 
-암호화 전환 뒤 목록 로더 넷이 행마다 복호화한다: `loadMembers`·`loadPendingInvitations`(`lib/auth/query.ts`) · `loadSyncRuns`(`lib/sync/query.ts`) · `loadActors`(`lib/keys/query.ts`).
+암호화 전환 뒤 목록 로더들이 행마다 복호화한다: `loadMembers`·`loadPendingInvitations`(`lib/auth/query.ts`) · `loadEvents`·`loadEventActors`(`lib/events/query.ts` — 옛 `loadSyncRuns`의 자리, 2026-09-24 삭제) · `loadActors`(`lib/keys/query.ts`).
 
 - **한 행이 못 열려도 목록은 산다.** 전환 중에는 **부분 변환이 정상 상태**이고(backfill이 행 단위 CAS다) 키를 회전하고 옛 키를 폐기하면 옛 세대가 남는다. 던지면 멤버 아홉이 멀쩡한데 화면이 통째로 500이다. 못 읽은 행은 **자기 문구**(`m.common.unreadable` = "Unavailable")를 들고, 이름은 비운다 — 옛 값을 그럴듯하게 보여줄 자리가 없다. `loadActors`만 다르다: map에서 **빼면** `actorLabel`이 `updatedBy` 원문으로 폴백하므로 셀이 비지 않는다(옛 GitHub 핸들을 위해 이미 있던 갈래다).
 - ⚠️ **`null`(정보 없음)로 접지 않는다.** 그것이 POSTMORTEM 2026-09-03의 "실패한 조회를 '없음'으로 읽어 경고가 존재하지 않는 것과 구별되지 않았다"이고, 화면 층으로 내려온 같은 축이다 — 이력 표에서 `—`(부재)와 "Unavailable"(못 읽었다)이 **같은 열에서 갈린다**.
