@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 
-import { httpStatus } from "@/lib/failure";
+import { AppError, httpStatus } from "@/lib/failure";
+import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
 
 import { logFailure } from "./log";
 import { ensureUserToken } from "./token-store";
@@ -24,7 +25,21 @@ export type AccountView =
   | { status: "reauthorize" }
   | { status: "unavailable" };
 
+/**
+ * ⚠️ **마감이 probe와 같다** (`GITHUB_WAIT_MS` — ARCHITECTURE §6.5.2). 설정 화면이 이 값을 스트리밍하므로 `GET /user`가
+ * 멈추면 이미 다 그려진 페이지의 스트림이 `maxDuration`까지 열려 있다가 오류 경계로 뒤집힌다. 넘기면 `unavailable`
+ * ("잠시 뒤 다시")이다 — 모르는 것을 연결 없음·인가 철회로 말하지 않는다(§6.5.1).
+ * ⚠️ **넘긴 토큰 갱신은 취소되지 않는다** — 뒤에서 끝나 행을 쓴다. `/account`는 `unavailable`이면
+ * `loadInstalledRepoCount`를 안 부르므로 같은 요청에서 `ensureUserToken`이 둘이 되지 않는다(§6.5.1의 직렬화 규칙).
+ */
 export async function loadAccountView(prisma: PrismaClient, userId: string): Promise<AccountView> {
+  return withinGithubWait(readAccountView(prisma, userId), () => {
+    logFailure("viewer-deadline", new AppError(`no response within ${GITHUB_WAIT_MS}ms`));
+    return { status: "unavailable" };
+  });
+}
+
+async function readAccountView(prisma: PrismaClient, userId: string): Promise<AccountView> {
   const token = await ensureUserToken(prisma, userId, new Date());
   if (token.status === "not-connected") return { status: "ok", login: null };
   if (token.status === "reauthorize") return { status: "reauthorize" };

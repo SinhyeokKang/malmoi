@@ -56,3 +56,36 @@ describe("조회 실패", () => {
     expect(await loadAccountView(prisma, "u1")).toEqual({ status: "unavailable" });
   });
 });
+
+/**
+ * ⚠️ **마감이 probe와 같다** (audit-ux D5 — U5 리뷰). 설정 화면이 이 값을 스트리밍하므로 `GET /user`가 멈추면 다 그려진
+ * 페이지의 스트림이 `maxDuration`까지 열려 있다가 오류 경계로 뒤집힌다. 넘기면 "잠시 뒤 다시"(`unavailable`)다.
+ */
+describe("마감", () => {
+  it("GitHub이 응답하지 않으면 8초에서 unavailable이고 한 줄을 남긴다", async () => {
+    vi.useFakeTimers();
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      hoisted.getViewer.mockReturnValue(new Promise(() => {}));
+      const view = loadAccountView(prisma, "u1");
+      await vi.advanceTimersByTimeAsync(7_999);
+      expect(log).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(view).resolves.toEqual({ status: "unavailable" });
+      expect(log.mock.calls.map((c) => String(c[0]))).toEqual([expect.stringMatching(/^\[github-connect\] \w{8} viewer-deadline: AppError$/)]);
+    } finally {
+      log.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("마감 안의 응답은 그대로 흐른다 — 타이머를 남기지 않는다", async () => {
+    vi.useFakeTimers();
+    try {
+      await expect(loadAccountView(prisma, "u1")).resolves.toEqual({ status: "ok", login: "octocat" });
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
