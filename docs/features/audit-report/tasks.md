@@ -197,12 +197,16 @@
 - [ ] ⚪ **#83** `json-style.ts:121` 들여쓰기 10칸 절단 · **#84** `pull/plan.ts:58` · `json-catalog.ts:148` `{}` 대입(POSTMORTEM 2026-09-09) · **#85** `contract.test.ts:33-40` writeStrategy 단언 둘뿐 · "코드포인트" 표기.
 
 ### B7b 죽은 코드·중복
-- [ ] **#64** 🟡 `lib/sync/query.ts` · `lib/sync/view.ts` · `SYNC_LOG_PAGE_SIZE` 고아 + `components/__tests__/logs-screen.test.ts:95` 이름만 참(POSTMORTEM 2026-09-03 재발).
-- [ ] **#65** 🟡 `lib/keys/view.ts` 함수 13개 · `countUnpublished`(query.ts:185) 테스트끼리만.
-- [ ] **#66** 🟡 `components/onboarding/first-ingest-retry.tsx` importer 0 · 테스트 3곳이 고정 · 실제 경로 `sources-screen.tsx:134`는 검사 밖.
-- [ ] **#67** 🟡 테스트만 쓰는 export — `translations/selection.ts:14` · `summary.ts:30,57` · `protection/plan.ts:66` · `home/overview.ts:20`.
+- [x] **#64** 🟡 `lib/sync/query.ts` · `lib/sync/view.ts` · `SYNC_LOG_PAGE_SIZE` 고아 + `components/__tests__/logs-screen.test.ts:95` 이름만 참(POSTMORTEM 2026-09-03 재발).
+- [x] **#65** 🟡 `lib/keys/view.ts` 함수 13개 · `countUnpublished`(query.ts:185) 테스트끼리만.
+  - B7b: 12개 삭제. **`isUnpublished`·`countUnpublished`는 남겼다** — `list-aggregates`·`sync-edit-protection` 통합 테스트가 죽은 `loadKeys`와 함께 술어 대조에 쓴다. #63 재작성과 같이 지운다.
+- [x] **#66** 🟡 `components/onboarding/first-ingest-retry.tsx` importer 0 · 테스트 3곳이 고정 · 실제 경로 `sources-screen.tsx:134`는 검사 밖.
+- [x] **#67** 🟡 테스트만 쓰는 export — `translations/selection.ts:14` · `summary.ts:30,57` · `protection/plan.ts:66` · `home/overview.ts:20`.
+  - B7b: `summary.ts`의 둘(`orderKeySummaries`·`keyMatches`)은 남겼다 — 파일 머리가 밝힌 SQL oracle이고 `translation-list.integration.ts`가 대조에 쓴다. 나머지 셋 삭제.
 - [ ] **#73** 🟡 중복 — 커서 코덱 3벌 · `validNonce` 2벌 · 쿠키 만료 루프 4벌 · 콜백 경로 정규식 3벌 · `survey/select.ts:13-23` 정규식 사본 · `(cause as Error).message` 8곳 · `scripts/ingest.ts` ↔ `push-local.ts` probe/`--adapter`.
-- [ ] ⚪ **#86** 미사용 메시지 키 약 60 · **#87** `IMPORT_STALE_AFTER_SECONDS` · `KeySaveInputType` · `ActorKind.UNKNOWN` · Account OAuth 컬럼 넷 · `_ownerId` · `confirmedAt`/`recordedAt` · **#90** `syncBranchFor` 위치.
+  - B7b 몫 끝: 커서 코덱 → `lib/url-token.ts` 하나(`sync/view.ts`는 #64로 삭제) · `survey/select.ts` 정규식은 어댑터에서 import. 나머지(`validNonce`·쿠키·콜백 정규식 = B7e, cause·scripts = B7a)가 남아 체크하지 않는다.
+- [x] ⚪ **#86** 미사용 메시지 키 약 60 · **#87** `IMPORT_STALE_AFTER_SECONDS` · `KeySaveInputType` · `ActorKind.UNKNOWN` · Account OAuth 컬럼 넷 · `_ownerId` · `confirmedAt`/`recordedAt` · **#90** `syncBranchFor` 위치.
+  - B7b: #86 60키 삭제 · #87 `_ownerId` 제거, `IMPORT_STALE_AFTER_SECONDS`·`KeySaveInputType`는 이미 없었다 · #90 `lib/pull/sync-branch.ts`로 이동. **스키마 항목은 남았다**(2단계 스키마 변경 필요): `ActorKind.UNKNOWN`(코드가 아직 읽는다) · Account OAuth 컬럼 넷(`@auth/prisma-adapter` 모양) · `DeliveryConfirmation.confirmedAt`(NOT NULL, 기본값 없음)·`DeliveryBaseline.recordedAt` 쓰기 전용.
 - ⚠️ CLAUDE.md "기존 dead code는 언급만 하고 삭제하지 않는다" — 이 묶음은 **삭제를 명시로 요청받았을 때만** 지운다.
 
 ### B7c 진단·테스트 공백
