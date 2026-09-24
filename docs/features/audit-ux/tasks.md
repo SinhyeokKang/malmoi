@@ -66,22 +66,27 @@
 **진입 전 정본**: DESIGN §6 `Button loading` 행의 "라우트 이동의 pending은 `Link.onNavigate` + `useTransition`이 형이고 소비자는 [New project] 하나" 문장을 **`useLinkStatus` 형**으로 갱신한다(사이드바 `Item`). Home 로딩 행의 골격 규칙(같은 치수 · 개수는 가장 흔한 수 · `motion-safe:`)은 새 골격에도 그대로 적용한다.
 
 **항목**
-- [ ] **#4** 🔴 `lib/shell/nav.ts:82` → `app/(edit)/projects/[slug]/translations/page.tsx:18-23` — 사이드바 Translations가 옛 주소를 가리켜, 누를 때마다 서버 리다이렉트를 한 번 더 거친다(인증 → 접근 → `defaultSurface` 조회 → `redirect` → 표면 렌더). 두 세그먼트 모두 경계가 없어 prefetch도 무의미하고, 그동안 옛 화면이 멈춰 있다.
+- [x] **#4** 🔴 `lib/shell/nav.ts:82` → `app/(edit)/projects/[slug]/translations/page.tsx:18-23` — 사이드바 Translations가 옛 주소를 가리켜, 누를 때마다 서버 리다이렉트를 한 번 더 거친다(인증 → 접근 → `defaultSurface` 조회 → `redirect` → 표면 렌더). 두 세그먼트 모두 경계가 없어 prefetch도 무의미하고, 그동안 옛 화면이 멈춰 있다.
   - 같은 옛 링크: `components/home/count-cards.tsx:68` · `components/home/sync-button.tsx:228` · `components/onboarding/new-project.tsx:479`.
   - 방향: `defaultSurface`의 slug를 셸 데이터에 싣고 `routes.surfaceTranslations`로 직접 조립한다. 옛 라우트는 외부 링크 호환용으로 남긴다.
   - ⚠️ **Home의 두 링크(`count-cards.tsx:68` · `home/sync-button.tsx:228`)는 U5가 소유한다**(2026-09-25 orchestrate 인테이크) — 표면 slug를 `(home)/page.tsx`에서 내려야 하는데 그 파일은 U5가 고친다. U2는 사이드바(`nav.ts`)와 `new-project.tsx:479`만 고친다.
-- [ ] **#5** 🔴 `loading.tsx`가 없는 형제 화면들 — `surfaces/[surfaceSlug]/translations` · `surfaces/[surfaceSlug]/locales` · `members` · `sources` · `settings`. Home·Logs에서 이 화면들로, 또 이 화면들끼리 이동하면 옛 화면이 표시 없이 멈춘다(추정 — 스로틀로 확정).
+- [x] **#5** 🔴 `loading.tsx`가 없는 형제 화면들 — `surfaces/[surfaceSlug]/translations` · `surfaces/[surfaceSlug]/locales` · `members` · `sources` · `settings`. Home·Logs에서 이 화면들로, 또 이 화면들끼리 이동하면 옛 화면이 표시 없이 멈춘다(추정 — 스로틀로 확정).
   - 방향: 각 세그먼트에 실물 치수의 골격을 둔다(번역은 세 패널). `[slug]/`에 하나로 두지 않는다 — malmoi#95의 이유와 같다.
-- [ ] **#6** 🔴 `components/shell/sidebar.tsx:119-121` — 이동 pending 표시가 앱 전체에 [New project] 하나뿐이다(`useLinkStatus` 0곳). 사이드바 선택 표시가 커밋 뒤의 `usePathname`을 봐서 응답이 올 때까지 옛 항목에 남는다.
+- [x] **#6** 🔴 `components/shell/sidebar.tsx:119-121` — 이동 pending 표시가 앱 전체에 [New project] 하나뿐이다(`useLinkStatus` 0곳). 사이드바 선택 표시가 커밋 뒤의 `usePathname`을 봐서 응답이 올 때까지 옛 항목에 남는다.
   - 방향: 사이드바 `Item`에 `useLinkStatus`를 붙여 누른 항목에 즉시 pending 면을 세운다.
-- [ ] **#11** 🟡 `app/(edit)/error.tsx:7,13` · `app/(edit)/projects/[slug]/logs/error.tsx:21,24,31` — `reset`은 다시 그리기만 하고 다시 가져오지 않아, 재시도를 눌러도 같은 서버 오류가 다시 난다. `[slug]` 아래 Members·Sources·Settings·Translations의 실패가 전부 `(edit)/error`로 모인다. 루트 `app/error.tsx`는 이미 `retry`로 고쳐져 있다. `logs/error.tsx:21`의 주석("`reset()`은 현재 URL을 다시 조회한다")은 틀렸다.
+- [x] **#11** 🟡 `app/(edit)/error.tsx:7,13` · `app/(edit)/projects/[slug]/logs/error.tsx:21,24,31` — `reset`은 다시 그리기만 하고 다시 가져오지 않아, 재시도를 눌러도 같은 서버 오류가 다시 난다. `[slug]` 아래 Members·Sources·Settings·Translations의 실패가 전부 `(edit)/error`로 모인다. 루트 `app/error.tsx`는 이미 `retry`로 고쳐져 있다. `logs/error.tsx:21`의 주석("`reset()`은 현재 URL을 다시 조회한다")은 틀렸다.
   - 방향: 루트와 같은 `retry` 형으로 바꾸고 주석을 고친다.
-- [ ] **#21** 🟡 `app/(edit)/projects/loading.tsx` (추정) — 이 경계는 `projects`의 자식 키가 바뀌면(`__PAGE__` → `[slug]`) 다시 선다. prefetch가 끝나기 전에 누른 목록 행이나 온보딩 ④의 [Open translations]에서 **목록 골격이 떴다가** 다른 화면으로 바뀐다. malmoi#95와 같은 결함이 한 층 위에 남아 있는 셈이다.
+- [x] **#21** 🟡 `app/(edit)/projects/loading.tsx` (추정) — 이 경계는 `projects`의 자식 키가 바뀌면(`__PAGE__` → `[slug]`) 다시 선다. prefetch가 끝나기 전에 누른 목록 행이나 온보딩 ④의 [Open translations]에서 **목록 골격이 떴다가** 다른 화면으로 바뀐다. malmoi#95와 같은 결함이 한 층 위에 남아 있는 셈이다.
   - 방향: `projects/(list)/` 그룹으로 옮긴다.
-- [ ] **#22** 🟡 `components/onboarding/new-project.tsx:479` — 생성 완료 뒤 [Open translations]가 transition 없는 `router.push`다. 누른 뒤 무반응이고, 뒤로가기를 누르면 가로챈 모달(`/projects/new`)이 다시 뜬다. `nextPending`은 ③에서만 켜진다.
+- [x] **#22** 🟡 `components/onboarding/new-project.tsx:479` — 생성 완료 뒤 [Open translations]가 transition 없는 `router.push`다. 누른 뒤 무반응이고, 뒤로가기를 누르면 가로챈 모달(`/projects/new`)이 다시 뜬다. `nextPending`은 ③에서만 켜진다.
   - 방향: `router.replace` + transition pending(`new-project-button.tsx:28`의 형). 목적지는 #4의 직접 주소다.
-- [ ] **#31** ⚪ `app/api/github/callback/route.ts:238` → `app/(edit)/projects/[slug]/surfaces/new/page.tsx:16` — callback에서 소스 추가 화면까지 리다이렉트가 두 번이다. 방향: callback이 `routes.sources(slug, { add: "sources" })`로 바로 보낸다. ⚠️ callback은 `middleware.ts` matcher에 넣지 않는다(CLAUDE.md).
-- [ ] **#32** ⚪ `lib/auth/read-session.ts:24` — `readSession`이 React `cache`를 안 써서, 한 요청에서 `auth()`가 여러 번 돈다(`@modal/[...rest]/page.tsx`·`@modal/page.tsx`의 `requireUser` 포함). 병렬이라 지연은 작다. 방향: `cache()`로 감싼다. 세션 폐기(`lib/session-revocation/`)와의 상호작용을 먼저 확인한다.
+- [x] **#31** ⚪ `app/api/github/callback/route.ts:238` → `app/(edit)/projects/[slug]/surfaces/new/page.tsx:16` — callback에서 소스 추가 화면까지 리다이렉트가 두 번이다. 방향: callback이 `routes.sources(slug, { add: "sources" })`로 바로 보낸다. ⚠️ callback은 `middleware.ts` matcher에 넣지 않는다(CLAUDE.md).
+- [x] **#32** ⚪ `lib/auth/read-session.ts:24` — `readSession`이 React `cache`를 안 써서, 한 요청에서 `auth()`가 여러 번 돈다(`@modal/[...rest]/page.tsx`·`@modal/page.tsx`의 `requireUser` 포함). 병렬이라 지연은 작다. 방향: `cache()`로 감싼다. 세션 폐기(`lib/session-revocation/`)와의 상호작용을 먼저 확인한다.
+
+**진행 기록 (2026-09-25)**
+- #5의 Locales 골격은 두지 않았다 — `surfaces/[surfaceSlug]/locales`는 Sources로 redirect만 하는 라우트라 골격이 한 번 번쩍일 뿐이다. #31 뒤 소비자가 0이 된 `routes.addSurface`는 지웠다(`/surfaces/new` 페이지는 옛 링크 호환으로 남는다).
+- #21 이동이 `/projects/new`의 경계를 빼앗는 회귀를 리뷰가 잡았다 — `new/`도 `(list)/new/`로 옮겼다(GitHub callback의 전체 로드 착지가 최대 8초 빈 화면이었다).
+- 새 export `SkeletonLine`(`components/ui/skeleton.tsx`) — 글자 크기 클래스 + U+200B로 실물 line box를 세운다. 기존 골격(Home·Logs·목록·계정)은 px 형 그대로다.
 
 **경계**: `home/sync-button.tsx`는 `:228`의 링크만 이 배치다(`:120`은 U6, `:157`은 U7). `new-project.tsx`는 `:479`만 이 배치다(`:235`는 U7).
 
