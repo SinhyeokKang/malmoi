@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ChevronRight,
   CircleDashed,
@@ -13,7 +15,7 @@ import type { ReactNode } from "react";
 
 import { EmptyProjects, NoProjectsMatch } from "@/components/projects/empty-projects";
 import { LocaleMeter } from "@/components/locale-meter";
-import { ProjectSearch } from "@/components/projects/search-input";
+import { ProjectSearch, useProjectQuery } from "@/components/projects/search-input";
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { NewProjectButton } from "@/components/projects/new-project-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
@@ -23,7 +25,7 @@ import { BannerLine, RowCard, RowCardItem, RowCardList } from "@/components/ui/r
 import { canPerform } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
-import { importFailureMessage } from "@/lib/projects/import-status";
+import { importFailureMessage } from "@/lib/projects/import-failure";
 import {
   highlightName,
   listBody,
@@ -46,8 +48,9 @@ import { cn } from "@/lib/utils";
  * 그리는데, 공유 컴포넌트가 패널을 들면 `shell-layout.test.ts`의 "라우트마다 정확히 하나"가 두
  * 페이지 모두에서 **0**이 된다 — 패널은 페이지가 각자 든다.
  *
- * ⚠️ **서버 컴포넌트다.** 검색은 URL이고 클라이언트 상태가 아니라 `"use client"`가 없고, 그래야
- * 뒤로가기·공유·새로고침이 그냥 된다.
+ * ⚠️ **클라이언트 컴포넌트다** (audit-ux #17 — 전엔 서버 컴포넌트였다). 검색이 이미 받은 목록을
+ * 로컬에서 거르고 URL은 `replaceState`로만 따라가므로(`useProjectQuery`), 그 값을 읽는 본문 전체가
+ * 여기 산다. 주소창이 여전히 `?q=`를 들어 뒤로가기·공유·새로고침은 그대로 된다.
  *
  * ⚠️ **`<form>`을 만들지 않는다** — 검색은 `SearchInput` 프리미티브 그대로다. 제출 버튼이 없는
  * `<form>`이 Enter를 조용히 무효로 만든 전례가 있다 (POSTMORTEM 2026-09-08).
@@ -98,14 +101,23 @@ const GROUP_LABEL = {
 
 export function ProjectList({
   all,
-  q,
   message = null,
 }: {
   all: readonly ProjectListRow[];
-  q?: string;
   /** 페이지 수준 거부. 모달 라우트는 사유를 모달 안에서 말하므로 여기로 안 넘긴다. */
   message?: ReactNode;
 }) {
+  const [query, search] = useProjectQuery();
+  // `listBody`·`highlightName`·`routes.newProject`가 전부 빈 값을 "질의 없음"으로 읽는다.
+  const q = query === "" ? undefined : query;
+  /**
+   * 되돌리기 링크 둘의 가로채기 — `href`(`/projects`)는 새 탭·수정 키 클릭용으로 남기고, 같은 탭
+   * 클릭만 로컬로 되돌린다. Next는 같은 탭 이동에서만 `onNavigate`를 부른다.
+   */
+  const clear = (event: { preventDefault(): void }) => {
+    event.preventDefault();
+    search("");
+  };
   /**
    * ⚠️ **갈래 넷을 순수 함수가 정한다** (`lib/projects/list.ts`). 전에는 `hasProjects`·질의·건수가
    * 여기 JSX 안에서 섞여 판정됐고, 그러면 넷 중 하나를 바꿀 때 나머지 셋이 어떤 모양이 되는지를
@@ -141,7 +153,7 @@ export function ProjectList({
             <>
               {/* ⚠️ **`ml-auto`가 검색에 붙는다** — 제목과 컨트롤 사이의 빈 공간이 흔들리는 자리다. */}
               <div className="ml-auto">
-                <ProjectSearch q={q} />
+                <ProjectSearch q={query} onSearch={search} />
               </div>
               <NewProjectButton q={q} />
             </>
@@ -188,6 +200,7 @@ export function ProjectList({
             action={
               <Link
                 href={routes.projects()}
+                onNavigate={clear}
                 className="focus-visible:ring-ring ml-auto text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
               >
                 {m.projects.clearSearch}
@@ -199,7 +212,7 @@ export function ProjectList({
         ) : body.kind === "empty" ? (
           <EmptyProjects />
         ) : (
-          <NoProjectsMatch query={body.query} />
+          <NoProjectsMatch query={body.query} onReset={clear} />
         )}
       </PanelBody>
     </>

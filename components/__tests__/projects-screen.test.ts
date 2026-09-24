@@ -38,14 +38,20 @@ const PAGE = ["app/(edit)/projects/page.tsx", "components/projects/project-list.
 const ROW_CARD = "components/ui/row-card.tsx";
 const LIST_AND_CARD = [code("components/projects/project-list.tsx"), code(ROW_CARD)].join("\n");
 
-describe("프로젝트 목록 — 필터는 URL이고 클라이언트 상태가 아니다", () => {
+describe("프로젝트 목록 — 검색은 로컬로 거르고 주소가 그 값을 든다", () => {
   /**
-   * ⚠️ **세그먼트를 `useState`로 만들면 뒤로가기·공유·새로고침이 전부 깨진다.** `logs`의 `?cursor=`가
-   * 같은 판정이고(DESIGN §6.68), 서버가 이미 필터된 목록을 그리므로 클라이언트 상태가 0이어야 한다.
+   * ⚠️ **검색이 서버로 이동하지 않는다** (audit-ux #17). 거르기는 받은 목록 위의 순수 함수인데
+   * `router.push`가 원격 신호(최대 8초)까지 기다리는 전체 렌더를 불렀다. 그렇다고 주소를 버리지 않는다 —
+   * 값의 원천은 `useSearchParams`이고 쓰기는 `replaceState`라 뒤로가기·공유·새로고침이 그대로 된다.
+   * **페이지는 여전히 서버 컴포넌트다**(인가·데이터 로드가 거기 산다).
    */
-  it("페이지가 클라이언트 컴포넌트가 아니다", () => {
-    expect(PAGE.map(code).join("\n")).not.toContain('"use client"');
-    expect(PAGE.map(code).join("\n")).not.toContain("useState");
+  it("페이지는 서버 컴포넌트이고, 목록은 검색어를 주소에서 읽어 로컬로 거른다", () => {
+    expect(code("app/(edit)/projects/page.tsx")).not.toContain('"use client"');
+    const search = code("components/projects/search-input.tsx");
+    expect(search).toContain("useSearchParams()");
+    expect(search).toContain("window.history.replaceState(");
+    expect(search).not.toMatch(/router\.(push|replace)\(/);
+    expect(code("components/projects/project-list.tsx")).toContain("useProjectQuery()");
   });
 
   /**

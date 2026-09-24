@@ -124,6 +124,8 @@ const CLIENT_LIB_FILES = [
   "lib/onboarding/select-surfaces.ts",
   "lib/onboarding/slug.ts",
   "lib/projects/import-failure.ts",
+  // 프로젝트 목록이 검색을 로컬에서 거른다 (audit-ux #17) — 갈래·검색·하이라이트가 전부 I/O 없는 순수 함수다.
+  "lib/projects/list.ts",
   // Settings share these pure status/name/selection planners; no server dependencies.
   "lib/projects/plan.ts",
   "lib/import/surface-status.ts",

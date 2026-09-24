@@ -45,7 +45,11 @@ export function EmptyProjects() {
  * 등재된 예외였는데, 캔버스가 그 예외를 되돌렸다 — 머리의 [New project]가 이 화면에 이미 서 있으므로
  * 카드가 그것을 두 번 말할 이유가 없다.
  */
-export function NoProjectsMatch({ query }: { query: string }) {
+export function NoProjectsMatch({ query, onReset }: {
+  query: string;
+  /** 같은 탭 클릭을 가로채 로컬로 되돌린다 (audit-ux #17) — `href`는 새 탭용으로 남는다. */
+  onReset: (event: { preventDefault(): void }) => void;
+}) {
   return (
     <EmptyRowCard
       icon={SearchX}
@@ -59,6 +63,7 @@ export function NoProjectsMatch({ query }: { query: string }) {
       action={
         <Link
           href={routes.projects()}
+          onNavigate={onReset}
           className="focus-visible:ring-ring text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
         >
           {m.projects.narrowed.reset}

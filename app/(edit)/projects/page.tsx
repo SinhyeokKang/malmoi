@@ -46,7 +46,9 @@ export default async function ProjectsPage({
    */
   // ⚠️ **옛 `?filter=`는 읽지 않는다** — 그 키가 있어도 조용히 무시되고 전체 목록이 뜬다
   // (DESIGN §6.63). 리다이렉트를 만들지 않는 것이 옛 `?focus=`와 같은 관용구다.
-  const { e, q } = firstQueryValues(await searchParams);
+  // ⚠️ **`q`는 여기서 읽지 않는다** (audit-ux #17) — 목록이 주소창에서 직접 읽고 로컬로 거른다(`useProjectQuery`).
+  // 타입에 남는 것은 이 라우트가 여전히 `?q=`의 수신자이기 때문이다.
+  const { e } = firstQueryValues(await searchParams);
   const message = isAccessError(e)
     ? accessErrorMessage(e)
     : isConnectError(e)
@@ -60,7 +62,7 @@ export default async function ProjectsPage({
 
   return (
     <ContentPanel>
-      <ProjectList all={view.rows} q={q} message={message} />
+      <ProjectList all={view.rows} message={message} />
     </ContentPanel>
   );
 }

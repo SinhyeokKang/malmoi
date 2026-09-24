@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { find, render } from "./helpers/dom";
 
-// 머리의 검색이 `useRouter`를 문다 — 이 스위트가 재는 것은 그릇이고 라우터는 그 길목일 뿐이다.
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+// 검색어는 주소창(`useSearchParams`)에서 온다 (audit-ux #17) — 이 스위트가 재는 것은 그릇이고 주소는 그 길목일 뿐이다.
+const url = vi.hoisted(() => ({ params: new URLSearchParams() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => url.params }));
 
 import { ProjectList } from "@/components/projects/project-list";
 import { m } from "@/lib/i18n";
@@ -55,7 +56,8 @@ const THREE: ProjectListRow[] = [
 ];
 
 const draw = async (props: { all?: ProjectListRow[]; q?: string } = {}) => {
-  const { container } = await render(<ProjectList all={props.all ?? THREE} q={props.q} />);
+  url.params = new URLSearchParams(props.q === undefined ? {} : { q: props.q });
+  const { container } = await render(<ProjectList all={props.all ?? THREE} />);
   return container;
 };
 
