@@ -4,7 +4,9 @@ import type { Prisma } from "@/generated/prisma/client";
  * **토큰 술어** — 활성 표면 · 활성 키 · 활성 로케일에서 아직 전달 확인되지 않은 편집 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
  *
  * **미전달 술어의 주인은 여기 하나다** — `countUnpublished`·`countUnpublishedBySurface`·pull 1층·Publish 캡처·Publish 미리보기가 이 객체를 쓰고,
- * 손 사본은 셀 투영(`lib/keys/query.ts` `loadKeys`의 `pending`)과 목록 raw SQL ⑤뿐이다(`pnpm test:projects:postgres`가 대조한다).
+ * 손 사본은 셋이다 — 번역 목록의 키 단위 `bool_or`와 상세의 셀 투영(둘 다 `lib/keys/translation-list.ts`), 프로젝트 목록 raw SQL ⑤
+ * (`lib/keys/query.ts`). `pnpm test:projects:postgres`의 `list-aggregates.integration.ts`가 셋을 이 술어와 대조한다. `loadKeys`의
+ * `pending`은 화면이 더는 부르지 않는 옛 투영이다(테스트만 쓴다).
  *
  * ⚠️ **orphan 키·로케일을 뺀다.** 그 셀은 export에 안 나가므로 캡처해 해제하면 "보내지 않은 편집을 보냈다"가 된다 (완료 조건 9).
  * `stringKey`·`locale` 관계는 `projectId`·`surfaceId`를 공유하는 3열 복합 FK라 테넌트 경계를 넘지 않는다.

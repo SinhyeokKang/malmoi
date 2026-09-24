@@ -15,6 +15,8 @@ import { isUnpublished } from "@/lib/keys/view";
 import { reviewByLocale } from "@/lib/projects/list";
 import { countUnpublished, countUnpublishedBySurface, loadKeys, loadProjectListAggregates, loadReviewAttention } from "../query";
 import { loadPullState } from "@/lib/pull/load";
+import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
+import { loadTranslationDetail, loadTranslationList } from "../translation-list";
 import { addSurfacesFromSnapshot, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 
 /**
@@ -78,7 +80,25 @@ it("셀 미발송 판정의 표면 보관 시각은 실제 쿼리가 생산한�
   expect(cells.length).toBeGreaterThan(0);
   expect(cells.every(cell => "surfaceArchivedAt" in cell && cell.surfaceArchivedAt?.getTime() === AFTER.getTime())).toBe(true);
   expect(cells.some(cell => isUnpublished(cell))).toBe(false);
+  // 실제 화면 경로(`translation-list.ts`)는 보관 표면을 아예 안 싣는다 — 셀이 pending으로 설 자리가 없다 (audit #63).
+  expect((await loadTranslationList(prisma, { projectId: "archived-cell", routeSurfaceId: "surface-archived-cell", query: DEFAULT_TRANSLATION_QUERY })).rows).toEqual([]);
+  expect(await countUnpublished(prisma, "archived-cell")).toBe(0);
 });
+
+/**
+ * **번역 화면의 손 사본 둘** (audit #63). `loadKeys`는 화면이 더는 부르지 않는다 — 목록의 `bool_or` 투영과 상세의 셀 투영이
+ * `translation-list.ts`에 있고, 그 둘이 `pendingWhere`와 같은 행을 세는지는 여기서만 잰다. 목록은 **키 단위**라 키마다
+ * pending 셀이 여럿이면 셀 수보다 작다 — 그래서 상세를 키마다 읽어 셀로 센다.
+ */
+async function pendingViaTranslationList(projectId: string, surfaceId: string): Promise<{ keys: number; cells: number }> {
+  const list = await loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: DEFAULT_TRANSLATION_QUERY });
+  let cells = 0;
+  for (const row of list.rows) {
+    const detail = await loadTranslationDetail(prisma, { projectId, surfaceId, keyId: row.keyId });
+    if (detail.status === "ok") cells += detail.locales.filter(l => l.pending).length;
+  }
+  return { keys: list.rows.filter(r => r.hasPending).length, cells };
+}
 
 async function addFixture() {
   await seed({ id: "add", lastPulledAt: PULLED, archived: false });
@@ -335,6 +355,8 @@ it("⑤가 countUnpublished와, 그리고 행별 isUnpublished의 합과 같다 
   expect(unsent.get("p1")).toBe(2);
   expect(unsent.get("p1")).toBe(counted);
   expect(unsent.get("p1")).toBe(byRow);
+  // 이 픽스처는 키마다 셀 하나라 목록의 키 수와 상세의 셀 수가 둘 다 같아야 한다.
+  expect(await pendingViaTranslationList("p1", "surface-p1")).toEqual({ keys: 2, cells: 2 });
 });
 
 /**
@@ -526,6 +548,8 @@ it.each([PULLED, null])("미발송 세 술어의 토큰·빈 값·고아 키·�
   expect(cells.filter((cell) => isUnpublished(cell))).toHaveLength(expected);
   expect(await countUnpublished(prisma, "p1")).toBe(expected);
   expect((await loadProjectListAggregates(prisma, ["p1"])).unsent.get("p1")).toBe(expected);
+  // orphan 로케일(ko)의 토큰 셀·orphan 키 셀은 화면 경로에서도 빠진다 — `old`는 ko 토큰만 있어 pending 키가 아니다.
+  expect(await pendingViaTranslationList("p1", "surface-p1")).toEqual({ keys: expected, cells: expected });
 });
 
 it("단계 B 복합 인덱스는 표면 목록과 미발송 범위를 자연 계획으로 좁힌다", async () => {
