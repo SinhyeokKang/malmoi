@@ -21,6 +21,7 @@ const ERRORS = [
   "no-repos",
   // ③ 탐지
   "no-candidates",
+  "single-locale",
   "tree-truncated",
   "base-branch-missing",
   "key-count-failed",
@@ -118,6 +119,12 @@ describe("onboardErrorMessage — 갈래마다 다른 문구", () => {
     const text = onboardErrorMessage("tree-truncated");
     // 왜 막히는지를 말한다 — 사용자가 수동 지정을 시도하고 같은 벽을 만나지 않게 한다.
     expect(text).toMatch(/same limit/i);
+  });
+
+  it("`single-locale`은 파일이 없다고 하지 않고 둘째 언어 파일을 말한다 (malmoi#99)", () => {
+    const text = onboardErrorMessage("single-locale");
+    expect(text).toMatch(/second language/i);
+    expect(text).not.toMatch(/no files/i);
   });
 
   /** 같은 형 (L2.7) — 이 리포로 할 수 있는 다른 시도가 없다는 것까지 말해야 반복 시도가 멈춘다. */

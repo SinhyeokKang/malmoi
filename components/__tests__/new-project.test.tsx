@@ -352,6 +352,43 @@ it("slug-taken이 아닌 거부에서는 주소 입력으로 포커스를 옮기
 });
 
 /**
+ * **수동 확인의 거부는 사유를 그린다** (malmoi#99). 전에는 실패가 미리보기 상태 `unavailable`로만 접혀, 후보 0개
+ * 화면(빈 미리보기)에서는 "Nothing to preview yet"과 꺼진 Next만 남았다 — 무엇이 틀렸는지 말하는 것이 없었다.
+ */
+it.each([
+  ["manual-no-match", /No files of that format/],
+  ["single-locale", /second language/],
+])("수동 확인이 %s면 경로 필드 아래에 사유가 서고 입력이 그것을 가리킨다", async (error, pattern) => {
+  mocks.confirmManualFormat.mockResolvedValue({ ok: false, error });
+  await files(true);
+  await input(field("manual-path"), "src/locales/{locale}.json");
+  await input(field("manual-base"), "en");
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 450)); });
+  const reason = document.getElementById("manual-path-error");
+  expect(reason?.textContent).toMatch(pattern);
+  expect(field("manual-path").getAttribute("aria-describedby")).toBe("manual-path-error");
+  expect(button("Next").disabled).toBe(true);
+});
+
+it("수동 확인 사유는 입력을 바꾸면 걷힌다 — 새 입력의 판정이 아니다", async () => {
+  mocks.confirmManualFormat.mockResolvedValueOnce({ ok: false, error: "manual-no-match" });
+  await files(true);
+  await input(field("manual-path"), "wrong/{locale}.json");
+  await input(field("manual-base"), "en");
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 450)); });
+  expect(document.getElementById("manual-path-error")).not.toBeNull();
+  await input(field("manual-path"), "i18n/{locale}.json");
+  expect(document.getElementById("manual-path-error")).toBeNull();
+  expect(field("manual-path").getAttribute("aria-describedby")).toBe("manual-path-help");
+});
+
+/** ② 진입 설명이 연결 조건을 말한다 — 로케일 1개 리포에 "didn't find any"는 거짓이었다 (malmoi#99). */
+it("후보 0개 설명이 2개 이상 언어 조건을 말한다", async () => {
+  await files(true);
+  expect(document.body.textContent).toMatch(/2 or more languages/);
+});
+
+/**
  * **프로젝트 상한은 ① 진입에서 말한다** (launch-readiness L2.6). 전에는 ③ 끝 [Create project]에서야
  * `limit-reached`를 받아, 리포·파일·이름을 다 고른 뒤에 막혔다 — 상한은 모달을 열기 전에 아는 값이다.
  */
