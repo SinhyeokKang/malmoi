@@ -880,6 +880,13 @@ Action에 적용되지 않으므로 **페이지가 각자** `export const maxDur
 `[slug]/sources/page.tsx` · `[slug]/translations/page.tsx` · **`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`**. **새 Action 화면을 만들 때마다 선언한다** — 안 하면 기본값에서
 첫 적재가 잘리고, 증상이 "큰 리포에서만 실패"라 재현이 어렵다. **세는 법은 grep 하나다**(`rg -n 'maxDuration' app`) — 이 목록을 손으로 늘리면 낡는다.
 
+⚠️ **오래 도는 Server Action 호출을 `startTransition(async …)`로 감싸지 않는다** (2026-09-25, audit-ux U6). React 19는 열린 async
+action 스코프에 **그 뒤의 모든 transition을 얽는다**(POSTMORTEM 2026-09-18) — Link 내비게이션도 transition이라, 감싸면 Publish·Sync·
+첫 적재가 끝날 때까지 화면 이동이 커밋되지 않는다. 그래서 그 셋은 수동 `pending` 상태이고 promise가 풀리면 바로 내린다: Action의
+`revalidatePath`가 싣고 온 새 트리는 라우터가 그 **한 렌더 뒤에** 커밋한다 — 알고 받는 대가다. 같은 이유로 그 뒤에 `router.refresh()`를
+또 부르지 않는다(두 번째 전체 렌더가 표시 없이 돈다). **남은 예외 하나**: Add sources의 `run(async … addSurfaces)`(`add-sources-modal.tsx`)는
+`useTransition` 안이라 그동안 이동이 얽힌다 — 모달이 닫기를 막는 동안의 일이라 받았다.
+
 ⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Publish]가 사는 곳은
 **표면 경로**(`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`)이고 그 세그먼트를 쓴다.
 ⚠️ **옛 `[slug]/translations/page.tsx`는 지금 `defaultSurface`로 보내는 redirect 껍데기다** — 그쪽의 선언은
