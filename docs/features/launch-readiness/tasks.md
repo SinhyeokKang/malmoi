@@ -59,7 +59,7 @@
   - 결과 → L2.4 둘째 항목의 문구.
 - [x] L0.5 (2026-09-18 완료 — `test-sinhyeok`이 `malmoi-test-org` member(`gh api orgs/malmoi-test-org/members?role=admin` → `SinhyeokKang`뿐), Editor Google `ox501tube@gmail.com`. 이전 기록: 절반 — Editor Google 계정 `ox501tube@gmail.com` 확보·초대 수락 완료. **비관리자 GitHub 멤버는 아직 없다** — `sinhyeok-kang`을 `malmoi-test-org`에 member로 넣으면 닫힌다) **두 번째 GitHub 계정과 Google 계정을 확보한다.** 오너가 아닌 계정을 `malmoi-test-org`에 **비관리자 멤버**로 넣는다. 완료 판정·L0.1·L0.4·L2.3·L2.5·L2.8이 전부 이 계정을 전제한다 — 지금은 이 문서에만 있고 계정이 없다.
   - 검증(수동): 그 계정으로 `mal-moi.com` 로그인 → 프로젝트 0개 화면. `malmoi-test-org` 멤버 목록에 role=member로 보임.
-- [ ] L0.6 (2026-09-24 절반 — **리포 생성 완료, 설치 추가 남음**. `SinhyeokKang/i18n-single-locale`(private, **fork가 아니라 새 리포** — 파일 둘 `src/locales/en.json`·README, 트리 조회 즉시). `pnpm ingest`가 "로케일 포맷을 찾지 못했다 — 연동 불가"로 거부 확인. **남은 것**: App 설치의 Repository access에 추가(gh OAuth 토큰으로는 설치 API를 못 부른다 — 콘솔 전용). App 분리(L2.10) 전이라 지금은 `malmoi-prod` 하나에 넣는다) **로케일 1개 폐기용 리포 `i18n-single-locale`을 만든다**(작은 MIT 리포 포크, `i18n-none`과 같은 이유로 74KB급). L2.7의 "단일 로케일 거부" 화면을 브라우저로 밟을 리포가 없다 — 설치 목록 여섯은 0·3·59로케일뿐이다. 두 App(L2.10) 중 **dev App에만** 설치한다.
+- [x] L0.6 (2026-09-24 — `SinhyeokKang/i18n-single-locale`(private 새 리포, 파일 둘 `src/locales/en.json`·README). 설치 범위가 이미 전체라 추가 작업 없음. 실제 설치 토큰으로 온보딩 탐지 경로를 돌려 `no-candidates` 확인. 브라우저 도달은 L2.7 수동 검증이 든다) **로케일 1개 폐기용 리포 `i18n-single-locale`을 만든다**(작은 MIT 리포 포크, `i18n-none`과 같은 이유로 74KB급). L2.7의 "단일 로케일 거부" 화면을 브라우저로 밟을 리포가 없다 — 설치 목록 여섯은 0·3·59로케일뿐이다. 두 App(L2.10) 중 **dev App에만** 설치한다.
   - 검증(수동): 온보딩 ②에서 `no-candidates` 문구 도달. ⚠️ CLAUDE.md 게이트웨이의 설치 목록 줄은 **설치 목록에 실제로 든 뒤에** 갱신한다(그 절의 경고 그대로).
 
 ## R1 — 런칭 차단 (🔴)
