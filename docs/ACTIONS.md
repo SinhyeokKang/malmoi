@@ -169,7 +169,7 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 | 상황 | 결과 |
 |---|---|
 | 로케일 파일이 깨졌다·base 파일이 없다 | **red** — 연동이 성립하지 않는다 |
-| **YAML·JSON 카탈로그에서 같은 키가 두 번** — YAML의 중복 키, JSON의 중첩·점 키 충돌(`{ "a": { "b": … }, "a.b": … }`) | **red** — `duplicate-key`. 두 값 중 하나가 사라지는 파일이라 서버까지 가지 않는다. 처방은 둘 중 하나를 지우는 것. ⚠️ JSON 충돌은 2026-09-17까지 조용히 마지막 값으로 적재됐다(green) — 그 뒤로 red다. ⚠️ **`duplicate-key`를 내는 어댑터는 이 둘뿐이다** — `ts-dict`·`code-dict`·`chrome-locales`는 중복 감지가 없어 마지막 값만 남고(`buildPushPayload`의 `duplicateKeys`), CI 로그의 "중복으로 접힌 엔트리 N개" 경고 한 줄로 끝난다: **green이다** |
+| **YAML·JSON 카탈로그에서 같은 키가 두 번** — YAML의 중복 키, JSON의 중첩·점 키 충돌(`{ "a": { "b": … }, "a.b": … }`) | **red** — `duplicate-key`. 두 값 중 하나가 사라지는 파일이라 서버까지 가지 않는다. 처방은 둘 중 하나를 지우는 것. ⚠️ JSON 충돌은 2026-09-17까지 조용히 마지막 값으로 적재됐다(green) — 그 뒤로 red다. ⚠️ **`duplicate-key`를 내는 어댑터는 이 둘뿐이다.** YAML의 점 키·중첩 충돌(`a.b: …` + `a: { b: … }`)도 2026-09-24부터 같은 red다. `ts-dict`·`code-dict`는 코드 객체의 같은 키(점 키·중첩 충돌 포함)를 **`duplicate-property` 경고**로 알린다 — JS 의미대로 마지막 값이 적재되고 malmoi가 그 자리를 고치므로 잃는 값이 없다. CI 로그에 `적재 경고 N건 — CI는 계속한다:`와 키 목록이 찍히고 **green이다**. `chrome-locales`는 중복 감지가 없어(JSON 파서가 접는다) 마지막 값만 남는다: **green이다** |
 | `/api/push`가 4xx·5xx | **red** — **409가 다섯**(판정 순서대로 **보관** · 오배송 · **표면 불일치 `surface mismatch`** · **표면 교체 `format mismatch`** · 커밋 역행)·스키마 위반(400)이 여기 걸린다 |
 | **프로젝트가 보관됐다** | **red** — 409 `{"error":"archived"}`. ⚠️ **판정이 다섯 중 맨 앞이다**(`checkArchived`): 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니다. **처방이 다른 넷과 다르다** — `adapter`·`base-locale`을 아무리 고쳐도 안 풀린다. 할 일은 **이 워크플로를 떼는 것**이거나 설정 화면에서 보관을 되돌리는 것이다 |
 | `wrapper`·`adapter` 값이 형식·등록 목록에 안 맞는다 | **red** (exit 2 — 스캐너 규칙이 아니라 입력 형식이다) |
