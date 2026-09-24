@@ -80,7 +80,8 @@ describe("listBranches — 브랜치 목록 껍데기", () => {
 
     await listBranches("acme", "web", "77");
 
-    expect(hoisted.appCalls.count).toBe(1);
+    // App은 모듈 안에서 요청 사이에 남는다(audit-ux #8) — 앞선 테스트가 이미 만들었으면 0이다. 요지는 "둘 이상이 아니다".
+    expect(hoisted.appCalls.count).toBeLessThanOrEqual(1);
     expect(hoisted.getInstallationOctokit).toHaveBeenCalledWith(77);
   });
 

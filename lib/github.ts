@@ -3,7 +3,8 @@
 // (ARCHITECTURE §5.5.4). 클라이언트 유입은 `components/__tests__/client-graph.test.ts`의 허용 목록이 막는다 — 이 파일은
 // 목록 밖이고 `octokit`을 물므로 `"use client"` 그래프에 닿는 순간 red다.
 import { App, Octokit } from "octokit";
-import { fail, httpStatus } from "@/lib/failure";
+import { AppError, fail, httpStatus } from "@/lib/failure";
+import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
 import { requirePinnedRepositoryId, requireSameRepository } from "@/lib/github-connect/repository-id";
 
 import { parsePrivateKey, requireEnv } from "@/lib/env";
@@ -27,14 +28,27 @@ import type { CommitPayload, TreePayload } from "@/lib/pull/payload";
  * ⚠️ **지연 생성.** 모듈 최상위나 기본값 인자에서 환경변수를 읽지 않는다 — 그러면 "파일을 읽기만
  * 해도 죽는다"가 되고, `.env`가 없는 CI에서 import·빌드만으로 실패한다.
  * POSTMORTEM 2026-08-31에 **재발까지** 기록된 함정이다 (`f(x, requireEnv(...))`도 같은 부류).
+ *
+ * ⚠️ **첫 호출에 만들고 요청 사이에 남긴다** (audit-ux #8). `@octokit/auth-app`의 설치 토큰 캐시가 인스턴스에
+ * 붙어 있어, 호출마다 `new App`이면 설정·Home 진입마다 `POST /app/installations/{id}/access_tokens`가 다시 돈다
+ * (probe가 3홉이던 이유다). Fluid Compute가 인스턴스를 재사용하므로 웜 요청은 그 발급을 건너뛴다.
+ * ⚠️ **env는 매번 읽는다** — 누락은 여전히 첫 줄에서 던지고(`MissingEnvError`, POSTMORTEM 2026-09-06), 값이 바뀌면
+ * 옛 키로 서명하는 인스턴스를 버린다. 캐시되는 것은 App 자격증명(installation 토큰)뿐이다 — 사용자 토큰은 이 경로에
+ * 없다 (`credential-separation.test.ts`).
  */
+let cached: { appId: string; privateKey: string; app: App } | undefined;
 function createApp(): App {
-  return new App({
-    appId: requireEnv("GITHUB_APP_ID"),
+  const appId = requireEnv("GITHUB_APP_ID");
+  const privateKey = requireEnv("GITHUB_APP_PRIVATE_KEY");
+  if (cached?.appId === appId && cached.privateKey === privateKey) return cached.app;
+  const app = new App({
+    appId,
     // PEM 개행 복원. Vercel env는 개행을 `\n` 두 문자로 이스케이프하고, 그대로 서명에 쓰면
     // JWT가 **조용히** 실패한다 — 에러 메시지가 원인을 가리키지 않는다.
-    privateKey: parsePrivateKey(requireEnv("GITHUB_APP_PRIVATE_KEY")),
+    privateKey: parsePrivateKey(privateKey),
   });
+  cached = { appId, privateKey, app };
+  return app;
 }
 
 /** `null`을 주는 GitHub 404. 그 외 상태 코드는 그대로 던진다. */
@@ -66,6 +80,15 @@ export function isNotFound(error: unknown): boolean {
  */
 export async function probeRepo(owner: string, repo: string): Promise<ProbeResult> {
   const app = createApp();
+  // ⚠️ **마감이 목록의 원격 신호와 같다** (`GITHUB_WAIT_MS`) — 넘기면 `error`(→ `unknown`, "확인할 수 없어요")다.
+  // 그 갈래는 이미 "잠시 뒤 다시"를 말하므로 새 문구가 없다. `createApp()`의 던짐은 마감 밖이라 그대로 500이다.
+  return withinGithubWait(readProbe(app, owner, repo), () => {
+    logFailure("probe-deadline", new AppError(`no response within ${GITHUB_WAIT_MS}ms`));
+    return { status: "error" };
+  });
+}
+
+async function readProbe(app: App, owner: string, repo: string): Promise<ProbeResult> {
   try {
     const installation = await app.octokit.request("GET /repos/{owner}/{repo}/installation", {
       owner,

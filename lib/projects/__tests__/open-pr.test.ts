@@ -26,3 +26,20 @@ it("성공은 0줄", async () => {
   expect(await loadOpenPrUrl("alpha", project)).toBeNull();
   expect(log).not.toHaveBeenCalled();
 });
+
+/**
+ * ⚠️ **마감이 probe와 같다** (audit-ux D5) — 설정 화면의 보관 Dialog 안내 하나 때문에 GitHub이 멈춘 날 그 자리가
+ * `maxDuration`까지 매달리지 않는다. 마감은 실패와 같은 갈래(`undefined` — "확인하지 못했다")다.
+ */
+it("GitHub이 응답하지 않으면 마감에서 undefined이고 한 줄을 남긴다", async () => {
+  vi.useFakeTimers();
+  try {
+    client.mockReturnValue(new Promise(() => {}));
+    const result = loadOpenPrUrl("alpha", project);
+    await vi.advanceTimersByTimeAsync(8_000);
+    await expect(result).resolves.toBeUndefined();
+    expect(log.mock.calls.map((c) => String(c[0]))).toEqual([expect.stringMatching(/^\[open-pr\] \w{8} deadline: /)]);
+  } finally {
+    vi.useRealTimers();
+  }
+});
