@@ -1648,7 +1648,7 @@ Translations의 **패널 머리**에만 둔다. Sources는 선택기가 아니�
 - **포커스는 `body`로 빠지지 않는다** (2026-09-24, audit B5 — `components/ui/focus.ts`). 누른 컨트롤이 꺼지거나 사라지는 자리의 규칙이 넷이다:
   - **Dialog 트리거**는 진행 중에도 `busy`로 포커스를 지킨다(§6.4).
   - **폼의 [Save]**는 끝난 뒤 `useLandAfter`로 착지한다 — 다시 켜졌으면 그 버튼, 저장할 것이 없어 꺼진 채면 방금 고친 필드(General 이름 · Base branch · Base language)다. 번역 화면의 Save는 결과 줄(Revert와 같은 자리)이고, 단축키 저장은 입력의 포커스를 옮기지 않는다(**빠졌을 때만** 옮긴다).
-  - **성공하면 컨트롤이 바뀌는 행**(Archive ↔ Restore · 로그인 수단 · GitHub 연결)은 그 행의 새 컨트롤로, **통째로 사라지는 배너**(Home 보관 배너의 복원)는 Home 제목으로 착지한다.
+  - **성공하면 컨트롤이 바뀌는 행**(Archive ↔ Restore · 로그인 수단 · GitHub 연결)은 그 행의 새 컨트롤로(⚠️ Settings는 보관 카드가 두 자리에 그려져 전환이 **재마운트**다 — 착지를 새 인스턴스에 몇 초짜리 표식으로 넘긴다, malmoi#82. 한 자리 + CSS `order`는 DOM 순서가 갈려 버렸다), **통째로 사라지는 배너**(Home 보관 배너의 복원)는 Home 제목으로 착지한다.
   - **Alert·Sources 결과 행의 닫기**는 언마운트 전에 그 자리의 **다음** 포커스 가능 요소(없으면 앞)로 옮긴다.
 - **트리거 없는 Dialog도 연 자리로 돌아간다** — `DialogContent`가 최근 포커스·`pointerdown` 기록에서 아직 붙어 있는 가장 최근 요소로 돌려준다(미저장 확인 · Revert · 역할 변경 · Sources 상세 안의 중첩 확인). ⚠️ **트리거가 붙어 있으면 끼어들지 않는다** — Radix가 트리거로 돌려준다(`aria-controls`로 판정). Safari·macOS Firefox는 마우스 클릭으로 버튼에 포커스를 주지 않아 기록의 마지막이 더 오래된 요소였고, 가로채면 포커스와 스크롤이 그리로 튀었다(B5 리뷰 r1). 그래서 트리거 밖에서 연 같은 Dialog(Home 배너의 [Try again] → Sync 확인)도 머리의 [Sync]로 돌아온다. ⚠️ **"열 때의 `activeElement`"로는 못 잡는다** — 안쪽 `autoFocus`가 FocusScope의 mount 이벤트보다 먼저 돌고, Select 옵션에서 여는 Dialog는 그 순간 포커스가 사라질 옵션 위다. ⚠️ 그 요소가 꺼져 있으면 더 거슬러 가지 않는다(착지가 받는다). 호출부의 `onCloseAutoFocus`가 먼저다.
 - ⚠️ **꺼진 컨트롤의 사유를 보이는 글자로 세울 자리가 없으면 `title` + sr-only다** (B5 리뷰 r1 — §6.65의 등재된 이탈). 머리의 멈춘 [Sync]와 Publish가 도는 동안의 [Try again] 둘이 그렇고, 옆의 [Publish]가 먼저 쓴 형이다(§6.646). 행 안에 자리가 있는 사유(워크플로 행의 `Add a source…` · Add sources의 `Enter a file path…`)는 보이는 `text-xs` 글자다.
