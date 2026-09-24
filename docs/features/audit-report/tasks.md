@@ -205,7 +205,8 @@
   - B7b: `summary.ts`의 둘(`orderKeySummaries`·`keyMatches`)은 남겼다 — 파일 머리가 밝힌 SQL oracle이고 `translation-list.integration.ts`가 대조에 쓴다. 나머지 셋 삭제.
 - [ ] **#73** 🟡 중복 — 커서 코덱 3벌 · `validNonce` 2벌 · 쿠키 만료 루프 4벌 · 콜백 경로 정규식 3벌 · `survey/select.ts:13-23` 정규식 사본 · `(cause as Error).message` 8곳 · `scripts/ingest.ts` ↔ `push-local.ts` probe/`--adapter`.
   - B7b 몫 끝: 커서 코덱 → `lib/url-token.ts` 하나(`sync/view.ts`는 #64로 삭제) · `survey/select.ts` 정규식은 어댑터에서 import. 나머지(`validNonce`·쿠키·콜백 정규식 = B7e, cause·scripts = B7a)가 남아 체크하지 않는다.
-  - B7a 몫 끝: `scripts/ingest.ts` ↔ `push-local.ts` probe·`--adapter` → `scripts/format.ts` · `(cause as Error).message` 8곳 → `lib/cause.ts`의 `causeMessage`. B7e 몫이 남는다.
+  - B7a 몫 끝: `scripts/ingest.ts` ↔ `push-local.ts` probe·`--adapter` → `scripts/format.ts` · `(cause as Error).message` 8곳 → `lib/cause.ts`의 `causeMessage`.
+  - B7e 몫 끝: `validNonce` 2벌 · 쿠키 만료 루프 4벌 · 콜백 경로 정규식 3벌 → `lib/auth/roundtrip.ts`.
 - [x] ⚪ **#86** 미사용 메시지 키 약 60 · **#87** `IMPORT_STALE_AFTER_SECONDS` · `KeySaveInputType` · `ActorKind.UNKNOWN` · Account OAuth 컬럼 넷 · `_ownerId` · `confirmedAt`/`recordedAt` · **#90** `syncBranchFor` 위치.
   - B7b: #86 60키 삭제 · #87 `_ownerId` 제거, `IMPORT_STALE_AFTER_SECONDS`·`KeySaveInputType`는 이미 없었다 · #90 `lib/pull/sync-branch.ts`로 이동. **스키마 항목은 남았다**(2단계 스키마 변경 필요): `ActorKind.UNKNOWN`(코드가 아직 읽는다) · Account OAuth 컬럼 넷(`@auth/prisma-adapter` 모양) · `DeliveryConfirmation.confirmedAt`(NOT NULL, 기본값 없음)·`DeliveryBaseline.recordedAt` 쓰기 전용.
 - ⚠️ CLAUDE.md "기존 dead code는 언급만 하고 삭제하지 않는다" — 이 묶음은 **삭제를 명시로 요청받았을 때만** 지운다.
@@ -228,12 +229,12 @@
   - ⏳ B7c: 코드 미변경 — 브라우저 확인 대기. 가설: `[slug]/loading.tsx`가 자기 `loading.tsx`가 없는 하위 세그먼트(members·sources·settings·translations)의 fallback도 되어 Home 골격이 뜬다. 확인되면 Home의 `page.tsx`·`loading.tsx`를 `[slug]/(home)/`로 옮겨 경계를 Home에만 건다.
 
 ### B7e 보안 하드닝(⚪)
-- [ ] **#75** `next.config.ts` — CSP Report-Only · `unsafe-inline` · HSTS·Permissions-Policy 없음. **enforce 전에 `form-action`에 `accounts.google.com` 추가**(안 하면 Google 로그인이 막힌다).
-- [ ] **#76** `/api/push` 본문 크기 상한 없음 · `/api/push/failure`는 다 읽은 뒤 잰다.
-- [ ] **#77** 레이트리밋 없음(업로드·토큰 회전·login-link·session-revocation·acceptInvitation).
-- [ ] **#78** `account-connect/http.ts:33` · `session-revocation/http.ts:33` origin null 시 `secure` 규칙 갈림.
-- [ ] **#79** `app/invite/actions.ts:85` 보관 프로젝트 초대 수락(접근은 막힘).
-- [ ] **#82** prod `pg_default_acl`의 `supabase_admin` 소유 3행 잔존 · prod만 anon `public` USAGE. CLAUDE.md "탐지" 상태 그대로 — 코드 조치 없음, `/db` 5단계 확인 유지.
+- [x] **#75** `next.config.ts` — CSP Report-Only · `unsafe-inline` · HSTS·Permissions-Policy 없음. **enforce 전에 `form-action`에 `accounts.google.com` 추가**(안 하면 Google 로그인이 막힌다). ✅ B7e — `form-action`에 Google · HSTS(`max-age=63072000`, preload·includeSubDomains 없음) · Permissions-Policy 추가. **CSP는 Report-Only 그대로** — enforce 전환은 런타임 콘솔 확인 뒤 사용자 결정(깨질 자리는 ARCHITECTURE 보안 헤더 절).
+- [x] **#76** `/api/push` 본문 크기 상한 없음 · `/api/push/failure`는 다 읽은 뒤 잰다. ✅ B7e — `lib/bounded-body.ts`(선언 길이는 읽기 전, chunked는 도중에). 상한 4.5MB / 4096B, 둘 다 400 `body too large`.
+- [x] **#77** 레이트리밋 없음(업로드·토큰 회전·login-link·session-revocation·acceptInvitation). ✅ B7e — 범용 장치가 없어 코드 없음. 받아들인 위험과 재검토 조건을 ARCHITECTURE §6.06에 적었다.
+- [x] **#78** `account-connect/http.ts:33` · `session-revocation/http.ts:33` origin null 시 `secure` 규칙 갈림. ✅ B7e — callback 셋(login-link 포함)이 origin `null`이면 Auth.js를 안 부르고 실패 착지로 303(fail-closed).
+- [x] **#79** `app/invite/actions.ts:85` 보관 프로젝트 초대 수락(접근은 막힘). ✅ B7e — `archived`로 거부, 초대는 소비 안 함(복원 뒤 같은 링크가 산다). 초대 화면도 blocked.
+- [x] **#82** prod `pg_default_acl`의 `supabase_admin` 소유 3행 잔존 · prod만 anon `public` USAGE. CLAUDE.md "탐지" 상태 그대로 — 코드 조치 없음, `/db` 5단계 확인 유지. ✅ B7e — 코드 조치 없음. 이 워커는 prod 자격증명이 없어 재측정하지 않았다(handoff에 감사 시점 값 기록).
 - [x] **#89** 작은 a11y — `locale-meter.tsx:43` · `source-detail-modal.tsx:72` · `repository-form.tsx:74,76` · `form-group.tsx:52` · `event-detail.tsx:92`.
 
 ---
