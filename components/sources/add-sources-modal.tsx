@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useTransition, type RefObject } from "react";
+import { unstable_rethrow } from "next/navigation";
+import { startTransition, useEffect, useState, useTransition, type RefObject } from "react";
 import { addSurfaces, confirmManualFormat, detectRepoFormats, loadCandidateSample } from "@/app/(edit)/projects/actions";
 import { startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/actions";
 import { FilesStep, type ManualEntry, type PreviewState } from "@/components/onboarding/steps/files";
@@ -38,6 +39,20 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   const [conflicts, setConflicts] = useState<{ path: string; surfaceSlugs: string[] }[]>([]);
   const [manual, setManual] = useState<ManualEntry>({ adapter: adapters[0]?.adapter ?? "json-catalog", pathTemplate: "", baseLocale: "" });
   const [pending, run] = useTransition();
+  /**
+   * ⚠️ **대기 하나를 버튼 셋이 나눠 쓴다** — [Add]·수동 [Confirm]·GitHub 연결. 스피너는 누른 쪽에만 선다 (audit-ux #26 —
+   * `profile-picture.tsx`가 경고한 함정). 막는 것은 여전히 `pending` 하나다.
+   */
+  const [operation, setOperation] = useState<"add" | "manual" | "connect">("add");
+  /**
+   * 추가 결과 — **닫기와 결과 배너를 재검증 커밋 뒤로 미룬다** (audit-ux #12). `await` 직후 부르면 모달이 닫히고 배너가 선 뒤에야
+   * 목록이 바뀌었다. 콜백은 transition이 미룰 수 없으므로 커밋된 상태를 effect가 받아 부른다.
+   */
+  const [added, setAdded] = useState<SurfaceAdded[] | null>(null);
+  useEffect(() => {
+    if (added === null || pending) return;
+    setAdded(null); onAdded(added); onClose();
+  }, [added, pending, onAdded, onClose]);
   const [revision, setRevision] = useState(0);
   const candidate = picked === null ? undefined : candidates[picked];
   const locked = new Set(candidates.flatMap((c, index) => existing.some(s => s.pathTemplate === c.pathTemplate) ? [index] : []));
@@ -81,15 +96,15 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     title={m.settings.sources.add} description={m.settings.sources.description} bodyScroll="hidden"
     panelClassName="[&_.animate-spin]:size-3.5 h-[min(680px,calc(100svh-96px))] min-h-0" actions={<>
       <Button size="lg" disabled={pending} onClick={onClose}>{m.surfaces.cancel}</Button>
-      <Button size="lg" data-add-sources variant="primary" busy={pending} aria-disabled={addBlocked || undefined} aria-describedby={addBlocked ? "add-source-help" : undefined} onClick={() => {
+      <Button size="lg" data-add-sources variant="primary" busy={pending && operation === "add"} aria-disabled={addBlocked || pending || undefined} aria-describedby={addBlocked ? "add-source-help" : undefined} onClick={() => {
         if (addBlocked) return;
         const plan = planAddSources({ picked: candidates.filter((_, i) => checked.has(i)), existing });
         if (!plan.ok || plan.add.length === 0 || pending) return;
-        setError(undefined); setManualError(undefined); setUnknown(false); setConflicts([]);
+        setError(undefined); setManualError(undefined); setUnknown(false); setConflicts([]); setOperation("add");
         run(async () => {
           try {
             const result = await addSurfaces({ slug, picks: plan.add.map(c => ({ adapter: c.adapter, pathTemplate: c.pathTemplate, baseLocale: bases[candidates.indexOf(c)] ?? c.baseLocale })) });
-            if (result.ok) { onAdded(result.results); onClose(); }
+            if (result.ok) { const results = result.results; startTransition(() => setAdded(results)); }
             else { setError(result.error); setConflicts(result.conflicts ?? []); }
           } catch { setUnknown(true); }
         });
@@ -98,7 +113,11 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}</Alert>}
     {manualError && <Alert variant="danger">{failureText(manualError)}</Alert>}
     {unknown && <Alert variant="warning">{m.settings.sources.unknown}</Alert>}
-    {connect && <Button disabled={pending} onClick={() => run(async () => { const result = await startGithubConnect({ slug, returnTo: "add-surface" }); if (!result.ok) setError(result.error); })}>{connect === "reauthorize" ? m.newProject.empty.connect.reauthorize : m.newProject.empty.connect.action}</Button>}
+    {/* ⚠️ 성공은 GitHub으로 가는 redirect라 되던진다 (audit-ux #14) — 그 밖의 throw는 거부와 같은 자리로 접는다. */}
+    {connect && <Button disabled={pending && operation !== "connect"} loading={pending && operation === "connect"} onClick={() => { setOperation("connect"); run(async () => {
+      try { const result = await startGithubConnect({ slug, returnTo: "add-surface" }); if (!result.ok) setError(result.error); }
+      catch (thrown) { unstable_rethrow(thrown); setError("unavailable"); }
+    }); }}>{connect === "reauthorize" ? m.newProject.empty.connect.reauthorize : m.newProject.empty.connect.action}</Button>}
     <div className="flex min-h-0 flex-1">
       <FilesStep pending={pending} previewNone={m.settings.sources.previewNone} state={{ detecting, detectError, candidates, picked, locale, preview, manual, manualMatched: false, adapters, repoLabel: `${owner}/${repo}`, branch, banner: null }}
         selection={{ checked, locked, conflicts: selection.conflicts, onToggle: index => setChecked(previous => { const next = new Set(previous); if (next.has(index)) next.delete(index); else next.add(index); return next; }) }}
@@ -106,7 +125,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
         onManual={value => { setPicked(null); setManual(value); setManualError(undefined); }} onRetry={() => setRevision(v => v + 1)} />
     </div>
     <div className="flex shrink-0 items-center gap-3">
-      {picked === null && !detecting && <Button busy={pending} aria-disabled={manualBlocked || undefined} aria-describedby={manualBlocked ? "add-source-manual-reason" : undefined} onClick={() => { if (!manualBlocked) run(async () => {
+      {picked === null && !detecting && <Button busy={pending && operation === "manual"} aria-disabled={manualBlocked || pending || undefined} aria-describedby={manualBlocked ? "add-source-manual-reason" : undefined} onClick={() => { if (manualBlocked || pending) return; setOperation("manual"); run(async () => {
         setManualError(undefined);
         try {
           const result = await confirmManualFormat({ owner, repo, ref: branch, ...manual });

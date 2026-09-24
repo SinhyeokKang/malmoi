@@ -100,7 +100,9 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
     expect(source).toContain("m.settings.sources.manualReason");
     // ⚠️ `loading`과 `aria-disabled`를 한 버튼에 겸하지 않는다 (DESIGN §6.65) — 진행 중은 `busy`다 (B5 리뷰 r1).
     expect(source).not.toMatch(/loading=\{pending\}[^>]*aria-disabled=/);
-    expect(source.match(/busy=\{pending\}/g) ?? []).toHaveLength(2);
+    // 스피너는 누른 쪽에만 선다 (audit-ux #26) — 둘 다 `busy`이되 갈래를 가른다.
+    expect(source.match(/busy=\{pending && operation === "(add|manual)"\}/g) ?? []).toHaveLength(2);
+    expect(source).not.toMatch(/busy=\{pending\}/);
   });
 
   it("보이는 사람에게도 사유가 보인다 — 워크플로 행·수동 확인은 글자로, 머리의 Sync·Try again은 title로 (§6.646의 Publish와 같다)", async () => {

@@ -3,7 +3,6 @@ import { utcMinute } from "@/lib/utc-time";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
 import { Check, CircleCheck, FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject, type ReactNode } from "react";
 import { triggerPullAction } from "@/app/(edit)/actions";
 import { loadPublishPreview } from "@/app/(edit)/publish-actions";
@@ -23,12 +22,11 @@ import { planPublishButton, planPublishView, planWithheldLines } from "@/lib/pub
 import { summarizeWarnings } from "@/lib/publish/warnings";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
-/** 실행 결과에 **그때의 사실**을 붙여 둔다 — 결과를 다시 열 때 `count`는 이미 refresh로 줄어 있다. */
+/** 실행 결과에 **그때의 사실**을 붙여 둔다 — 결과를 다시 열 때 `count`는 이미 재검증으로 줄어 있다. */
 type PublishResultState = { outcome: PullOutcome; at: Date; total: number };
 
-/** 조건부 모달이 아니라 무조건 렌더되는 호스트가 든다 — 닫기·refresh가 실행 결과를 지우면 안 된다. */
+/** 조건부 모달이 아니라 무조건 렌더되는 호스트가 든다 — 닫기·재검증이 실행 결과를 지우면 안 된다. */
 export function usePublish(slug: string) {
-  const router = useRouter();
   const [state, setState] = useState<PublishModalState>({ kind: "preview-loading" });
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -77,7 +75,11 @@ export function usePublish(slug: string) {
     if (owner !== host.current) return;
     running.current = false; setPending(false); setResult({ outcome: next, at: new Date(), total });
     current.current = { kind: "result", outcome: next }; setState(current.current);
-    if (next.status !== "failed") router.refresh();
+    /*
+      ⚠️ **`router.refresh()`를 부르지 않는다** (audit-ux #12) — `triggerPullAction`이 결과와 무관하게 `revalidatePath(…, "layout")`를
+      부르고 Next가 그 응답의 새 트리를 커밋한다. 또 부르면 결과가 선 뒤 두 번째 전체 렌더가 표시 없이 돌았다.
+      ⚠️ async transition으로 감싸지 않는다 — 긴 Publish 동안 내비게이션까지 얽힌다(`sync-button.tsx`).
+    */
   }
   function showResult() { if (result) { generation.current++; setState({ kind: "result", outcome: result.outcome }); setOpen(true); } }
   function launch() { if (running.current) { setState({ kind: "running" }); setOpen(true); } else void preview(); }

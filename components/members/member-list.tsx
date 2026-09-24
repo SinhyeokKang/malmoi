@@ -75,7 +75,11 @@ export function MemberList({
    * 묶여 있어 취소가 되돌릴 것이 없다. 같은 화면의 Remove가 이미 확인을 받는데 강등(자기 강등 포함)만 한 번에 썼다.
    */
   const [roleChange, setRoleChange] = useState<{ userId: string; who: string; next: Role } | null>(null);
-  const [, startTransition] = useTransition();
+  /**
+   * ⚠️ **잠금은 `isPending`과 AND다** (audit-ux #13) — `await` 뒤 `setPendingId(null)`로 풀면 목록 커밋 전에 곧 사라질 행의
+   * [Remove]가 다시 켜지고 역할 Select가 옛 역할로 보였다. `isPending`은 Action의 재검증 커밋까지 참이다(`general-card.tsx`의 형).
+   */
+  const [isPending, startTransition] = useTransition();
 
   /**
    * ⚠️ **제거가 거부되면 그 행의 Remove로 포커스를 돌려준다** (malmoi#53). 그때는 트리거가 `loading` → `disabled`라
@@ -97,7 +101,6 @@ export function MemberList({
       */
       let result: Awaited<ReturnType<typeof changeMember>> | null;
       try { result = await changeMember({ slug, targetUserId, nextRole }); } catch { result = null; }
-      setPendingId(null);
       if (result === null || !result.ok) {
         setFailed({ userId: targetUserId, error: result === null ? null : result.error, removal: nextRole === null });
         return;
@@ -153,7 +156,7 @@ export function MemberList({
               member.readable ? null : m.members.unreadableHint,
               blocked ? accessErrorMessage("last-owner") : null,
             ].filter((sentence): sentence is string => sentence !== null);
-            const pending = pendingId === member.userId;
+            const pending = isPending && pendingId === member.userId;
 
             return (
               <RowCardItem key={member.userId} first={index === 0}>

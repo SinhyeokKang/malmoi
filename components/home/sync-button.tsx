@@ -2,7 +2,6 @@
 
 import { ArrowDownToLine, LoaderCircle, TriangleAlert } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 
 import { checkOpenPullRequest, prepareRepositorySync, runRepositoryImport } from "@/app/(edit)/projects/actions";
@@ -20,7 +19,7 @@ import { routes } from "@/lib/routes";
  * `"updatedBy" = NULL`로 저자까지 비운다). 되돌리기·부분 선택·"내 편집만 지키기"를 그리지 않는 것은
  * 그것이 곧 병합 로직이고 제품 원칙 위반이기 때문이다 (ARCHITECTURE §0 불변식 2).
  *
- * ⚠️ **원결과와 확인 창 상태는 Home의 안정된 호스트가 소유한다** — `router.refresh()`로 이 컴포넌트가
+ * ⚠️ **원결과와 확인 창 상태는 Home의 안정된 호스트가 소유한다** — Action의 재검증으로 이 컴포넌트가
  * 다시 그려져도 결과가 살아 있어야 한다 (POSTMORTEM 2026-09-07의 `FirstIngestRetry`).
  */
 export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paused = false, onResult, onPendingChange, open, onOpenChange, fallbackFocusRef }: {
@@ -46,7 +45,6 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
    */
   onPendingChange?: (pending: boolean) => void;
 }) {
-  const router = useRouter();
   const triggerId = useId();
   const cancelId = useId();
   const describedId = useId();
@@ -117,12 +115,13 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
     setPending(false);
     onResult(outcome);
     /*
-      ⚠️ **실패에는 부르지 않는다** (POSTMORTEM 2026-09-08 — 같은 부류가 Publish에서 한 번 터졌다).
-      `unauthorized`로 거부된 직후의 refresh는 미들웨어의 렌더 차단에 걸려 **네비게이션**이 되고,
-      한 줄 앞에서 세운 거부 Alert를 그대로 씻어 간다("왜 실패했는지가 어디에도 없다"). 갱신할 값은
-      성공에만 있다 — 실패는 DB를 바꾸지 않았으므로 화면이 낡지도 않는다.
+      ⚠️ **`router.refresh()`를 부르지 않는다** (audit-ux #12). Action이 `finally`에서 `revalidatePath(…, "layout")`를 부르고
+      Next가 그 응답에 새 트리를 실어 커밋한다 — 여기서 또 부르면 결과가 선 뒤 두 번째 전체 렌더가 표시 없이 돌았다.
+      실패 뒤의 refresh가 거부 Alert를 씻던 함정(POSTMORTEM 2026-09-08)도 호출이 없으니 생기지 않는다.
+
+      ⚠️ **이 실행을 async transition으로 감싸지 않는다** — React 19는 진행 중인 async transition을 전역으로 얽어
+      (POSTMORTEM 2026-09-18), 긴 Sync 동안 그 뒤의 모든 transition(내비게이션 포함)이 끝날 때까지 커밋되지 않는다.
     */
-    if (outcome.ok) router.refresh();
   }
   if (role !== "OWNER") return null;
   /*

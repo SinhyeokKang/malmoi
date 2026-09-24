@@ -86,6 +86,19 @@ export function InviteModal({
     setFocus(null);
   }, [focus, pending]);
 
+  /**
+   * 발송한 수 — **토스트·닫기를 목록 커밋 뒤로 미룬다** (audit-ux #13). `await` 직후 부르면 목록에 새 초대가 서기 전에 떴다.
+   * 위 `focus`와 같은 형이다: `pending`이 풀리는 커밋에서 돈다.
+   */
+  const [sent, setSent] = useState<number | null>(null);
+  useEffect(() => {
+    if (sent === null || pending) return;
+    setSent(null);
+    toast.success(m.members.invite.sentToast(sent));
+    reset();
+    onClose();
+  }, [sent, pending]); // onClose의 참조 변경은 트리거가 아니다.
+
   function reset() {
     setRows([blank()]);
     setRowErrors(new Map());
@@ -217,9 +230,7 @@ export function InviteModal({
         result = null;
       }
       if (result !== null && result.ok) {
-        toast.success(m.members.invite.sentToast(result.count));
-        reset();
-        onClose();
+        setSent(result.count);
         return;
       }
       if (result !== null && result.error === "invalid-rows" && "rowErrors" in result) {

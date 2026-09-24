@@ -37,7 +37,8 @@ it("EDITOR에게는 없고 위험이 없는 OWNER도 별도 이름의 danger 확
   await click("Sync from repository");
   expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: "digest-1" });
   expect(props.onResult).toHaveBeenCalledWith(success);
-  expect(mocks.refresh).toHaveBeenCalledOnce();
+  // 재검증은 Action이 한다 (audit-ux #12) — 대기가 그 커밋을 덮는지는 `action-commit.test.tsx`가 본다.
+  expect(mocks.refresh).not.toHaveBeenCalled();
 });
 
 /**
@@ -209,26 +210,25 @@ it.each(["unavailable", "ingest-failed"] as const)("요청이 못 간 거부(%s)
 });
 
 /**
- * ⚠️ **실패에는 `router.refresh()`를 부르지 않는다** (POSTMORTEM 2026-09-08 재발 — 2026-09-15 재리뷰
- * 🔴2). 그 항목의 증상은 *"버튼을 눌렀더니 로그아웃됐고 왜 실패했는지는 어디에도 없다"*였다:
- * `unauthorized`로 거부된 직후의 refresh가 미들웨어의 렌더 차단에 걸려 **네비게이션**이 되고, 방금
- * 세운 거부 Alert를 그대로 씻어 간다. 성공에만 필요하다 — 갱신할 값이 거기에만 있다.
+ * ⚠️ **어느 결과에도 `router.refresh()`를 부르지 않는다** (audit-ux #12). 실패 뒤의 refresh는 미들웨어의 렌더 차단에 걸려
+ * **네비게이션**이 되고 방금 세운 거부 Alert를 씻어 갔다(POSTMORTEM 2026-09-08 재발 — 2026-09-15 재리뷰 🔴2). 성공의 갱신도
+ * Action의 `revalidatePath`가 이미 싣고 온다 — 짝: 세 갈래 모두 결과는 호스트에 닿는다.
  */
-it("거부·실패 결과에는 refresh를 부르지 않고 성공에만 부른다", async () => {
+it("거부·실패·성공 어느 결과에도 refresh를 부르지 않고 결과는 호스트에 닿는다", async () => {
   mocks.run.mockResolvedValue({ ok: false, error: "unauthorized" });
   const view = await render(<SyncButton {...props} />);
   await click("Sync"); await click("Sync from repository");
   expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "unauthorized" });
-  expect(mocks.refresh).not.toHaveBeenCalled();
 
   mocks.run.mockRejectedValue(new Error("offline"));
   await click("Sync"); await click("Sync from repository");
-  expect(mocks.refresh).not.toHaveBeenCalled();
+  expect(props.onResult).toHaveBeenLastCalledWith({ ok: false, error: "unavailable" });
 
   mocks.run.mockResolvedValue(success);
   await view.rerender(<SyncButton {...props} />);
   await click("Sync"); await click("Sync from repository");
-  expect(mocks.refresh).toHaveBeenCalledOnce();
+  expect(props.onResult).toHaveBeenLastCalledWith(success);
+  expect(mocks.refresh).not.toHaveBeenCalled();
 });
 
 it("결과 재시도는 같은 확인 Dialog를 열고 확인 전에는 Action을 호출하지 않는다", async () => {

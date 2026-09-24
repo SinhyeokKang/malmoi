@@ -57,7 +57,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
       if (sequence === request.current && selection.current === surfaceSlug) setDetail(previous => preserve && previous.status === "ready" ? { ...previous, refreshFailed: true } : { status: "failed" });
     }
   }, [slug]);
-  // RSC refresh만으로 클라이언트 상세는 바뀌지 않는다. 화면 소유자는 유지하고 열린 상세만 다시 읽는다.
+  // 재검증 커밋만으로 클라이언트 상세는 바뀌지 않는다. 화면 소유자는 유지하고 열린 상세만 다시 읽는다 — 첫 적재 뒤의 유일한 재조회다.
   useEffect(() => { if (selection.current) void load(selection.current, true); }, [data, load]);
   useEffect(() => { if (initialOpen && canEdit) setAdding(true); }, [initialOpen, canEdit]);
   const reload = () => { if (selected) void load(selected, true); };
@@ -128,7 +128,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
         })}</ul>}
       </PanelCard>
     </PanelBody>
-    {canEdit && data.repository && <AddSourcesModal open={adding} onClose={closeAdd} onAdded={added => { const summary = summarizeAddResults(added); setResult({ tone: summary.tone, added }); router.refresh(); }} returnFocusRef={trigger} slug={slug} owner={data.repository.repoOwner} repo={data.repository.repoName} branch={data.repository.baseBranch} existing={data.sources.map(source => ({ pathTemplate: source.connection?.pathTemplate ?? null }))} adapters={adapters} />}
+    {canEdit && data.repository && <AddSourcesModal open={adding} onClose={closeAdd} onAdded={added => { const summary = summarizeAddResults(added); setResult({ tone: summary.tone, added }); }} returnFocusRef={trigger} slug={slug} owner={data.repository.repoOwner} repo={data.repository.repoName} branch={data.repository.baseBranch} existing={data.sources.map(source => ({ pathTemplate: source.connection?.pathTemplate ?? null }))} adapters={adapters} />}
     <SourceDetailModal slug={slug} sourceSlug={selected} role={role} state={detail} now={now} importResult={result?.source === selected && result?.text ? { text: result.text, tone: result.tone } : undefined} busy={busy} importing={importing} onBusy={setBusy} onClose={close} onReload={reload} onSaved={reload} returnFocusRef={returnFocus} fallbackFocusRef={heading} onImport={() => {
       if (!selected || busy) return;
       const surfaceSlug = selected; setBusy(true); setImporting(true);
@@ -136,15 +136,14 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
         try {
           const outcome = await runFirstIngest({ slug, surfaceSlug });
           setResult(outcome.ok ? { tone: outcome.failed > 0 ? "warning" : "success", text: ingestHeadline(outcome.count, outcome.failed, outcome.unmanaged), source: surfaceSlug } : { tone: "danger", text: failureText(outcome.error), source: surfaceSlug });
-          /*
-            ⚠️ **refresh는 성공에만 부른다** (audit #11 — POSTMORTEM 2026-09-08 재발). 세션이 끊긴 거부 직후의 refresh는
-            미들웨어에 걸려 로그인 이동이 되고 방금 세운 거부를 씻어 간다. 서버에 남은 실패 상태는 아래 재조회가 읽고,
-            목록은 Action의 `finally`가 부르는 `revalidatePath`가 갱신한다.
-          */
-          void load(surfaceSlug, true);
-          if (outcome.ok) router.refresh();
         } catch { setResult({ tone: "danger", text: m.settings.status.failed, source: surfaceSlug }); }
         finally { setBusy(false); setImporting(false); }
+        /*
+          ⚠️ **refresh도 직접 재조회도 부르지 않는다** (audit-ux #12). Action의 `finally`가 성공·거부 모두 `revalidatePath`를 부르고,
+          그 커밋이 바꾼 `data`를 위 effect가 받아 열린 상세를 **한 번** 다시 읽는다 — 셋을 다 부르면 `loadSourceDetail`이 세 번 돌았다.
+          실패 뒤 refresh가 거부를 씻던 함정(audit #11 — POSTMORTEM 2026-09-08 재발)은 호출이 없으니 생기지 않는다.
+          ⚠️ async transition으로 감싸지 않는다 — 적재가 긴 동안 내비게이션까지 얽힌다(`sync-button.tsx`).
+        */
       })();
     }} />
   </div>;
