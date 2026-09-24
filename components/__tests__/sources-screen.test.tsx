@@ -93,21 +93,37 @@ it("첫 적재 성공 뒤 상세 재조회 실패가 성공 결과를 뒤집지 
   expect(document.body.textContent).toContain("latest");
 });
 /**
- * ⚠️ **어느 결과에도 `router.refresh()`를 부르지 않고, 상세는 재검증된 `data`로 한 번만 다시 읽는다** (audit-ux #12). 거부 직후의
- * refresh는 미들웨어에 걸려 로그인 이동이 되고 방금 세운 거부 문구를 씻어 갔다(audit #11 — POSTMORTEM 2026-09-08 재발). 목록과
- * 서버에 남은 실패 상태는 Action의 `finally`가 부르는 `revalidatePath`가 싣고 오고, 직접 재조회·refresh·data effect를 다 부르면
- * `loadSourceDetail`이 세 번 돌았다.
+ * ⚠️ **어느 결과에도 `router.refresh()`를 부르지 않는다** (audit-ux #12). 거부 직후의 refresh는 미들웨어에 걸려 로그인 이동이 되고
+ * 방금 세운 거부 문구를 씻어 갔다(audit #11 — POSTMORTEM 2026-09-08 재발). 상세 재조회는 **갈래마다 한 경로**다:
+ * - 적재를 시작한 성공·실패 — Action의 `finally`가 `revalidatePath`를 부르고, 바뀐 `data`를 받는 effect가 한 번 읽는다.
+ * - 조기 거부 — `revalidatePath` 전에 반환하고 서버 상태도 안 바뀌었다. 읽을 것이 없다(0회).
+ * - `not-awaiting` — 조기 반환인데 다른 실행이 이미 적재해 상태가 바뀌었다. 직접 한 번 읽는다.
  */
-it.each([{ ok: false, error: "resource-limit" }, { ok: false, error: "unauthorized" }, { ok: true, count: 7, failed: 0 }])("첫 적재 결과(%j)는 refresh 없이 재검증된 data로 상세를 한 번 다시 읽는다", async outcome => {
-  const first = { ...detail, lastCommitSha: null, lastImportError: null };
-  mocks.load.mockResolvedValueOnce({ ok: true, detail: first }).mockResolvedValue({ ok: true, detail: { ...first, lastImportError: "partial-import" } });
+const first = { ...detail, lastCommitSha: null, lastImportError: null };
+async function runFirst(outcome: unknown) {
+  mocks.load.mockResolvedValue({ ok: true, detail: first });
   mocks.runFirstIngest.mockResolvedValue(outcome);
   const view = await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
   await open();
   await act(async () => { await userEvent.setup().click(button("Run first sync")); });
+  return view;
+}
+it.each(["unauthorized", "unavailable", "forbidden", "archived"])("조기 거부(%s)는 상세를 다시 읽지 않고 refresh하지 않는다", async error => {
+  await runFirst({ ok: false, error });
+  expect(mocks.load).toHaveBeenCalledTimes(1);
+  expect(mocks.refresh).not.toHaveBeenCalled();
+});
+it("첫 적재 성공은 재검증된 data로 상세를 정확히 한 번 다시 읽는다", async () => {
+  const view = await runFirst({ ok: true, count: 7, failed: 0 });
   expect(mocks.load).toHaveBeenCalledTimes(1);
   await view.rerender(<SourcesScreen slug="p" role="OWNER" data={{ ...data }} adapters={[]} now={new Date()} />);
   expect(mocks.load).toHaveBeenCalledTimes(2);
+  expect(mocks.refresh).not.toHaveBeenCalled();
+});
+it("not-awaiting은 재검증 없이도 상세를 한 번 직접 다시 읽는다 — 다른 실행이 이미 적재했다", async () => {
+  await runFirst({ ok: false, error: "not-awaiting" });
+  expect(mocks.load).toHaveBeenCalledTimes(2);
+  expect(mocks.load).toHaveBeenLastCalledWith({ slug: "p", surfaceSlug: "web" });
   expect(mocks.refresh).not.toHaveBeenCalled();
 });
 it("저장 중 닫기와 모든 번역 진입을 잠그고 거부 뒤 다시 연다", async () => {

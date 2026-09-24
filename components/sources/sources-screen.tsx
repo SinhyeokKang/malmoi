@@ -135,11 +135,14 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
       void (async () => {
         try {
           const outcome = await runFirstIngest({ slug, surfaceSlug });
+          // ⚠️ `not-awaiting`만 직접 다시 읽는다 — 다른 실행이 이미 적재한 갈래라 서버 상태는 바뀌었는데, Action이 `revalidatePath` 전에
+          // 반환해 `data`가 안 바뀌고 상세가 옛 [Run first sync]에 남는다. 다른 조기 거부는 바뀐 것이 없어 읽을 것도 없다.
+          if (!outcome.ok && outcome.error === "not-awaiting") void load(surfaceSlug, true);
           setResult(outcome.ok ? { tone: outcome.failed > 0 ? "warning" : "success", text: ingestHeadline(outcome.count, outcome.failed, outcome.unmanaged), source: surfaceSlug } : { tone: "danger", text: failureText(outcome.error), source: surfaceSlug });
         } catch { setResult({ tone: "danger", text: m.settings.status.failed, source: surfaceSlug }); }
         finally { setBusy(false); setImporting(false); }
         /*
-          ⚠️ **refresh도 직접 재조회도 부르지 않는다** (audit-ux #12). Action의 `finally`가 성공·거부 모두 `revalidatePath`를 부르고,
+          ⚠️ **refresh도 직접 재조회도 부르지 않는다** (audit-ux #12 — 위 `not-awaiting` 하나만 예외). 적재를 시작한 뒤의 성공·실패는 Action의 `finally`가 `revalidatePath`를 부르고,
           그 커밋이 바꾼 `data`를 위 effect가 받아 열린 상세를 **한 번** 다시 읽는다 — 셋을 다 부르면 `loadSourceDetail`이 세 번 돌았다.
           실패 뒤 refresh가 거부를 씻던 함정(audit #11 — POSTMORTEM 2026-09-08 재발)은 호출이 없으니 생기지 않는다.
           ⚠️ async transition으로 감싸지 않는다 — 적재가 긴 동안 내비게이션까지 얽힌다(`sync-button.tsx`).
