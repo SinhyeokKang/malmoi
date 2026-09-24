@@ -236,6 +236,8 @@ it("④는 모든 적재가 끝난 결과와 토큰을 보존하고 추가 적�
   expect(document.body.textContent).toContain("Synced 2 keys.");
   expect(document.body.textContent).toContain("server-workflow");
   expect(button("Start translating").disabled).toBe(false);
+  // 야간 자동 PR이 온보딩 어디에도 없었다 (launch-readiness L2.9) — 만든 사람이 PR을 처음 보는 날 놀라지 않게.
+  expect(document.body.textContent).toMatch(/every night/i);
   expect(mocks.runFirstIngest).not.toHaveBeenCalled();
   expect(mocks.router.refresh).not.toHaveBeenCalled();
 });
@@ -325,6 +327,50 @@ it("생성 중 입력을 바꿔 이전 제출의 거부를 새 입력에 붙이�
   expect(field("project-slug").matches(":disabled")).toBe(true);
   await act(async () => pending.resolve({ ok: false, error: "slug-taken" }));
   expect(field("project-slug").matches(":disabled")).toBe(false);
+});
+
+/**
+ * ⚠️ **제출 뒤 거부는 포커스를 그 필드로 옮긴다** (사전 "예외 G — 제출 뒤 그 필드에 선다", launch-readiness L2.6).
+ * 제출 버튼이 `loading`(=disabled)이 되는 순간 포커스가 `body`로 떨어지므로, 옮기지 않으면 스크린리더
+ * 사용자에게 사유가 안 닿는다.
+ */
+it("slug-taken 뒤 포커스가 주소 입력에 서고 그 오류를 가리킨다", async () => {
+  mocks.createProject.mockResolvedValue({ ok: false, error: "slug-taken" });
+  await naming();
+  await click(button("Create project"));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+  expect(document.activeElement).toBe(field("project-slug"));
+  expect(field("project-slug").getAttribute("aria-describedby")).toBe("project-slug-error");
+});
+
+it("slug-taken이 아닌 거부에서는 주소 입력으로 포커스를 옮기지 않는다", async () => {
+  mocks.createProject.mockResolvedValue({ ok: false, error: "unavailable" });
+  await naming();
+  await click(button("Create project"));
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+  expect(document.activeElement).not.toBe(field("project-slug"));
+});
+
+/**
+ * **프로젝트 상한은 ① 진입에서 말한다** (launch-readiness L2.6). 전에는 ③ 끝 [Create project]에서야
+ * `limit-reached`를 받아, 리포·파일·이름을 다 고른 뒤에 막혔다 — 상한은 모달을 열기 전에 아는 값이다.
+ */
+it("상한 도달이면 ①이 빈 상태로 서고 프로젝트 목록으로 보낸다", async () => {
+  await render(<NewProject repos={undefined} listError="limit-reached" installUrl="https://github.com/apps/x/installations/new" now="2026-09-13T00:00:00Z"
+    initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+  expect(document.body.textContent).toContain("Project limit reached");
+  expect(document.body.textContent).toMatch(/archive/i);
+  const link = [...document.body.querySelectorAll("a")].find((a) => a.textContent === "Open projects");
+  expect(link?.getAttribute("href")).toBe("/projects");
+  // 설치 안내와 섞이지 않는다 — 상한은 연결 상태와 무관한 막힘이다.
+  expect(document.body.textContent).not.toContain("Install GitHub App");
+});
+
+it("상한 미만(리포 없음)에서는 상한 안내가 없다", async () => {
+  await render(<NewProject repos={undefined} listError="no-repos" installUrl="https://github.com/apps/x/installations/new" now="2026-09-13T00:00:00Z"
+    initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+  expect(document.body.textContent).not.toContain("Project limit reached");
+  expect(document.body.textContent).toContain("Add a repository");
 });
 
 it("응답 유실은 미생성을 단정하지 않고 목록 확인을 안내한다", async () => {

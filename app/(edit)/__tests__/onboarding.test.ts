@@ -332,6 +332,38 @@ describe("startGithubConnectForUser — 프로젝트 없이 연결이 성립한�
   });
 });
 
+describe("listConnectableRepos — 상한은 ① 진입에서 말한다 (launch-readiness L2.6)", () => {
+  it("보관 안 된 OWNER 프로젝트가 상한이면 limit-reached이고 GitHub을 부르지 않는다", async () => {
+    db = createHarness({
+      projects: [
+        { id: "p1", slug: "acme", name: "Acme" },
+        { id: "p2", slug: "a2", name: "A2" },
+        { id: "p3", slug: "a3", name: "A3" },
+      ],
+      members: [
+        { projectId: "p1", userId: OWNER, role: "OWNER" },
+        { projectId: "p2", userId: OWNER, role: "OWNER" },
+        { projectId: "p3", userId: OWNER, role: "OWNER" },
+      ],
+      users: [{ id: OWNER, email: "o@a.com" }],
+      accounts: [{ userId: OWNER, provider: "github-app", providerAccountId: "gh-1" }],
+    });
+    hoisted.prisma = db.prisma;
+
+    expect(await listConnectableRepos()).toEqual({ ok: false, error: "limit-reached" });
+    expect(hoisted.listUserInstallationRecords).not.toHaveBeenCalled();
+    // `createProject`와 같은 집계 조건이다 — 갈리면 ①은 통과시키고 ③이 거부한다.
+    const owned = db.spies.countMembers.mock.calls.map((c) => (c[0] as { where: Record<string, unknown> }).where)
+      .find((w) => w["role"] === "OWNER" && w["userId"] === OWNER);
+    expect(owned?.["project"]).toEqual({ archivedAt: null });
+  });
+
+  it("상한 미만이면 목록을 준다", async () => {
+    // 기본 하네스는 OWNER 프로젝트 하나다.
+    expect(await listConnectableRepos()).toMatchObject({ ok: true });
+  });
+});
+
 describe("listConnectableRepos — 빈 상태 둘을 가른다", () => {
   it("설치와 리포를 전 페이지로 읽어 owner/repo로 준다", async () => {
     hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web"), repoRow("acme/ext")]);
