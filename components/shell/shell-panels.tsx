@@ -18,7 +18,7 @@ import { panelConstraints, panelLayout, type PanelPx } from "@/lib/shell/panel-s
  *
  * ⚠️ **그 폭을 카드 컨테이너 폭으로 바꿔 읽지 않는다** (2026-09-16 리뷰 🔴1 — 여기 그렇게 적었다가
  * 틀렸다). Home 카운트 카드의 `@container/cards`는 **콘텐츠 패널이 아니라 본문 grid의 왼쪽 열**에
- * 산다(`[slug]/page.tsx`의 `grid-cols-[minmax(0,1fr)_320px] gap-5`). 컨테이너는 패널 폭에서
+ * 산다(`[slug]/(home)/page.tsx`의 `grid-cols-[minmax(0,1fr)_320px] gap-5`). 컨테이너는 패널 폭에서
  * **374**(border 2 + `p-4` 32 + 메타 열 320 + gap 20)를 뺀 값이다 — 1280 실측 패널 1016 / 카드 642.
  * **최소 대응 폭 1280에서는 여전히 2열**이고 4열은 뷰포트 ~1310 위에서 시작한다(1502 실측 865 → 4열).
  * POSTMORTEM 2026-09-15가 적은 실패 모양이 정확히 이것이다 — **재는 지점이 임계값 아래**였다.

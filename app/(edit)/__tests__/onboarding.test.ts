@@ -1148,7 +1148,7 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (PRODUCT §7.5)
    * ⚠️ **무효화가 readiness를 읽는 화면 전부를 덮어야 한다** (2026-09-11 `/doc-check`).
    *
    * 첫 적재가 `lastCommitSha`를 세우는 순간 `planProjectReadiness`가 `ready`로 넘어가는데, 그 판정을
-   * 읽는 화면이 **넷**이다 — 설정 · **Home**(`[slug]/page.tsx`) · **번역**(`translations/page.tsx`) ·
+   * 읽는 화면이 **넷**이다 — 설정 · **Home**(`[slug]/(home)/page.tsx`) · **번역**(`translations/page.tsx`) ·
    * 목록(`lib/projects/list.ts`). `/projects/<slug>/settings`와 `/projects`만 지우면 앞의 둘이 캐시된
    * `ProjectNotReady`로 남아, **적재를 막 끝낸 사용자가 "아직 준비 안 됐다"를 본다.**
    *

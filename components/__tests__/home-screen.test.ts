@@ -24,7 +24,7 @@ const read = (path: string): string =>
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
 
-const HOME = "app/(edit)/projects/[slug]/page.tsx";
+const HOME = "app/(edit)/projects/[slug]/(home)/page.tsx";
 
 describe("Home — 개요가 일로 이어진다 (project-home)", () => {
   const src = read(HOME);
@@ -175,7 +175,7 @@ describe("프로젝트 루트 링크는 `routes.project`다 (6b-6)", () => {
  * 페이지가 그것을 넘겼는지는 안 본다**(공허하게 green인 부류다). 세는 것은 배선이다.
  */
 it("Home이 HomeActions를 프로젝트 단위로 분리한다", () => {
-  const source = read("app/(edit)/projects/[slug]/page.tsx");
+  const source = read("app/(edit)/projects/[slug]/(home)/page.tsx");
   expect(source).toMatch(/<HomeActions\s+key=\{/);
 });
 
@@ -190,7 +190,7 @@ it("Home이 HomeActions를 프로젝트 단위로 분리한다", () => {
  * `(edit)` 레이아웃이 shell을 잡고 있어 fallback 창이 안 열렸다(임시 지연 5초로도 안 떴다).
  */
 describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () => {
-  const skeleton = () => read("app/(edit)/projects/[slug]/loading.tsx");
+  const skeleton = () => read("app/(edit)/projects/[slug]/(home)/loading.tsx");
 
   it("메타 열은 구역이 둘이고 바닥에 링크가 있다", () => {
     const source = skeleton();
@@ -222,7 +222,7 @@ describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () =
  * 못 본다(둘을 같은 테스트에서 세우지 않는다). 조합 쿼리가 되살아나는 것도 마찬가지다.
  */
 describe("Home — 활동은 이벤트 스트림 하나다", () => {
-  const src = read("app/(edit)/projects/[slug]/page.tsx");
+  const src = read("app/(edit)/projects/[slug]/(home)/page.tsx");
 
   it("조합 쿼리와 7일 창이 소스에서 사라졌다", () => {
     for (const gone of ["recentActivity(", "ACTIVITY_WINDOW_DAYS", "ACTIVITY_LIMIT", "loadRecentEdits", "loadRecentPublishes", "loadLastSyncNewKeys"]) {

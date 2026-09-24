@@ -312,8 +312,8 @@ describe("패널 폭 등급을 화면이 고르고 있다", () => {
   /** 프로젝트·사용자 축의 **목록** 화면 — 카드가 패널을 채운다(시안 `1a`). */
   const FLUID = new Set([
     "app/(edit)/projects/loading.tsx",
-    "app/(edit)/projects/[slug]/loading.tsx",
-    "app/(edit)/projects/[slug]/page.tsx",
+    "app/(edit)/projects/[slug]/(home)/loading.tsx",
+    "app/(edit)/projects/[slug]/(home)/page.tsx",
     "app/(edit)/projects/[slug]/logs/error.tsx",
     "app/(edit)/projects/[slug]/logs/loading.tsx",
     "app/(edit)/projects/[slug]/logs/page.tsx",
@@ -389,5 +389,34 @@ describe("패널 폭 등급을 화면이 고르고 있다", () => {
     const found = consumers.find((file) => file.rel === rel)?.tags ?? [];
     expect(found.length).toBeGreaterThan(0);
     expect(found.filter((tag) => tag.includes('width="fluid"'))).toEqual([]);
+  });
+});
+
+/**
+ * **Home 골격은 Home만 감싼다** (malmoi#95 — audit #18).
+ *
+ * ⚠️ `loading.tsx`는 그 세그먼트의 **모든 하위 라우트**의 Suspense 경계다. Home 골격이 `[slug]/`에
+ * 바로 있을 때 자기 `loading.tsx`가 없는 Members·Sources·Settings·Translations로 가는 클라이언트
+ * 내비게이션이 **URL과 사이드바는 이미 도착 화면인데 Home의 카드 넷 골격**을 먼저 그렸다(느린 망
+ * 실측 ~1.6초). 그래서 Home의 `page.tsx`·`loading.tsx`를 route group `(home)/`에 둔다 — URL은 그대로다.
+ */
+describe("Home 로딩 경계가 형제 라우트를 감싸지 않는다", () => {
+  const SLUG = join(ROOT, "app/(edit)/projects/[slug]");
+  const exists = (rel: string): boolean => {
+    try {
+      return statSync(join(SLUG, rel)).isFile();
+    } catch {
+      return false;
+    }
+  };
+
+  it("`[slug]/` 바로 아래에 `loading.tsx`·`page.tsx`가 없다", () => {
+    expect(exists("loading.tsx")).toBe(false);
+    expect(exists("page.tsx")).toBe(false);
+  });
+
+  it("Home의 `page.tsx`·`loading.tsx`가 `(home)/`에 함께 있다", () => {
+    expect(exists("(home)/page.tsx")).toBe(true);
+    expect(exists("(home)/loading.tsx")).toBe(true);
   });
 });

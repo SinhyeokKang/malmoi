@@ -10,7 +10,7 @@ import { m } from "@/lib/i18n";
  * 같은 렌더에 있다** — 의도된 이탈이고, 대신 `aria-live` 한 줄이 진행을 말한다.
  *
  * ⚠️ **골격이 `aria-hidden`이라 접근성 트리가 통째로 빈다** — `role="status"` 한 줄이 그 자리를 메운다
- * (`projects/[slug]/loading.tsx`와 같은 형).
+ * (`projects/[slug]/(home)/loading.tsx`와 같은 형).
  */
 export default function LogsLoading() {
   return (

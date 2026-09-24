@@ -31,8 +31,8 @@ const bare = (source: string): string =>
  * 확인 Dialog 안의 링크 둘이라 이 화면의 다섯과 다른 규칙이다.
  */
 const HOME_GRAPH = [
-  "app/(edit)/projects/[slug]/page.tsx",
-  "app/(edit)/projects/[slug]/loading.tsx",
+  "app/(edit)/projects/[slug]/(home)/page.tsx",
+  "app/(edit)/projects/[slug]/(home)/loading.tsx",
   "components/home/actions.tsx",
   "components/home/count-cards.tsx",
   "components/home/attention-card.tsx",
@@ -141,7 +141,7 @@ describe("완료 조건 9 — 파랑이 정확히 네 자리다", () => {
   });
 
   it("나머지 그래프에는 파랑이 없다", () => {
-    for (const path of ["app/(edit)/projects/[slug]/page.tsx", "app/(edit)/projects/[slug]/loading.tsx", "components/home/actions.tsx", "components/home/attention-card.tsx"]) {
+    for (const path of ["app/(edit)/projects/[slug]/(home)/page.tsx", "app/(edit)/projects/[slug]/(home)/loading.tsx", "components/home/actions.tsx", "components/home/attention-card.tsx"]) {
       expect(count(path), path).toBe(0);
     }
   });

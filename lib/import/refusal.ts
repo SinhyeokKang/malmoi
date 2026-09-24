@@ -19,7 +19,7 @@ import type { RepositoryImportError } from "./result";
  *   대신 뜬다. 거기엔 `[Sync]`가 없다(`[Run first import]`뿐). `lastCommitSha`를 **null로 되돌리는
  *   코드가 없어서**(`lib/push/apply.ts`가 세우기만 한다) 한 번 `ready`가 된 프로젝트는 여기 못 온다.
  * - `not-connected`·`repo-replaced` — `planHomeState`가 둘을 `not_connected` 하나로 접고, Home의
- *   `paused`가 트리거를 native `disabled`로 만든다(`app/(edit)/projects/[slug]/page.tsx`).
+ *   `paused`가 트리거를 native `disabled`로 만든다(`app/(edit)/projects/[slug]/(home)/page.tsx`).
  *
  * **손실은 아니다** — 그 화면은 `not_connected` 배너가 `[Reconnect]`를 들어 아래 `action`이 하려던
  * 일을 이미 한다. **계획을 지우지도 않는다**: Action은 경합(렌더 후 상태가 바뀜)에서 여전히 이 코드를
