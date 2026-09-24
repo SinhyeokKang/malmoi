@@ -81,7 +81,9 @@ it.each([
 
 /** `RefreshCw` 옆에 스피너를 **더하지** 않고 **교체**한다 (audit-ux #25 — DESIGN §6.4 "아이콘이 있는 버튼"). */
 it("재연결 중에는 아이콘이 스피너로 바뀌고 글리프는 하나다 — 짝 단언: 전에는 스피너가 없다", async () => {
-  mocks.connect.mockImplementation(() => new Promise(() => {}));
+  // ⚠️ 끝에 풀어 준다 — 영원히 안 끝나는 async transition은 뒤 테스트의 transition을 pending으로 붙잡는다 (POSTMORTEM 2026-09-18).
+  let settle: (value: unknown) => void = () => {};
+  mocks.connect.mockImplementation(() => new Promise(resolve => { settle = resolve; }));
   const { container } = await render(<ReconnectButton slug="acme" label="Reconnect" />);
   const button = container.querySelector("button")!;
   expect(button.querySelectorAll("svg")).toHaveLength(1);
@@ -90,4 +92,5 @@ it("재연결 중에는 아이콘이 스피너로 바뀌고 글리프는 하나�
   expect(button.querySelectorAll("svg")).toHaveLength(1);
   expect(button.querySelector(".animate-spin")).not.toBeNull();
   expect(button.getAttribute("aria-busy")).toBe("true");
+  await act(async () => settle({ ok: true }));
 });

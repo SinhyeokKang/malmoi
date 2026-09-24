@@ -147,13 +147,16 @@ it("Publish가 도는 동안 Save가 aria-disabled로 잠기고 사유를 보이
   mocks.publishing.value = false;
   await rerender(<TranslationWorkspace {...initial} />);
   expect(button("Save").getAttribute("aria-disabled")).not.toBe("true");
-  await act(async () => user.click(button("Save")));
+  // 짝 단언 — 같은 단축키가 풀린 뒤에는 저장한다(`save()`의 `publish.pending` 문이 빠지면 위 단언이 red다).
+  await user.click(zh());
+  await act(async () => user.keyboard("{Control>}{Enter}{/Control}"));
   expect(mocks.save).toHaveBeenCalledOnce();
 });
 
 /** audit-ux #23 — 번역 화면의 [Sync]도 Home과 같은 지연 문구를 받는다. */
 it("번역 화면의 Sync가 8초를 넘기면 지연 문구가 선다", async () => {
-  mocks.run.mockImplementation(() => new Promise(() => {}));
+  let settle: (value: unknown) => void = () => {};
+  mocks.run.mockImplementation(() => new Promise(resolve => { settle = resolve; }));
   await render(<TranslationWorkspace {...props()} />);
   await act(async () => userEvent.setup().click(button("Sync")));
   vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -163,5 +166,6 @@ it("번역 화면의 Sync가 8초를 넘기면 지연 문구가 선다", async (
     expect(document.body.textContent).not.toContain(m.common.slow);
     await act(async () => { vi.advanceTimersByTime(1_000); });
     expect(document.body.textContent).toContain(m.common.slow);
+    await act(async () => { settle({ ok: false, error: "unavailable" }); });
   } finally { vi.useRealTimers(); }
 });
