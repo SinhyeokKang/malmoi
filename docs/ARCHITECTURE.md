@@ -882,10 +882,16 @@ Action에 적용되지 않으므로 **페이지가 각자** `export const maxDur
 
 ⚠️ **오래 도는 Server Action 호출을 `startTransition(async …)`로 감싸지 않는다** (2026-09-25, audit-ux U6). React 19는 열린 async
 action 스코프에 **그 뒤의 모든 transition을 얽는다**(POSTMORTEM 2026-09-18) — Link 내비게이션도 transition이라, 감싸면 Publish·Sync·
-첫 적재가 끝날 때까지 화면 이동이 커밋되지 않는다. 그래서 그 셋은 수동 `pending` 상태이고 promise가 풀리면 바로 내린다: Action의
-`revalidatePath`가 싣고 온 새 트리는 라우터가 그 **한 렌더 뒤에** 커밋한다 — 알고 받는 대가다. 같은 이유로 그 뒤에 `router.refresh()`를
-또 부르지 않는다(두 번째 전체 렌더가 표시 없이 돈다). **남은 예외 하나**: Add sources의 `run(async … addSurfaces)`(`add-sources-modal.tsx`)는
-`useTransition` 안이라 그동안 이동이 얽힌다 — 모달이 닫기를 막는 동안의 일이라 받았다.
+첫 적재가 끝날 때까지 화면 이동이 커밋되지 않는다. 그래서 그 셋은 수동 `pending` 상태다. ⚠️ **promise가 풀리는 것은 트리가 커밋된
+것이 아니다** (malmoi#103 실측, Slow 4G) — Action 응답은 머리에서 promise를 풀고 `revalidatePath`가 실은 RSC 트리를 그 뒤 스트리밍해
+**0.3–1.5 s 늦게** 커밋한다. 그 사이 잠금을 풀면 다른 트리거가 옛 수치로 켜진다(Sync가 버린 편집을 Publish가 보내자고 했다). 규칙:
+**성공 결과 뒤에는 교차 잠금을 새 서버 트리가 커밋될 때까지 잇는다** — `components/commit-wait.ts`의 `useCommitWait`가 Action 전에
+서버 prop 하나(Home은 `HomeActions`의 `children`, 번역 화면은 상세·없으면 목록)의 **식별자**를 떠 두고 그것이 바뀌면 푼다. 값이 아니라
+식별자인 이유는 재검증이 같은 수치를 줄 수 있어서다. 상한 `COMMIT_WAIT_MS`(10 s)가 트리가 끝내 안 오는 갈래를 푼다. **거부·실패는
+곧장 푼다** — 조기 거부는 재검증 전에 돌아와 트리가 안 온다. 결과 문구는 promise가 풀릴 때 서도 된다. 소비자는 Home Sync · 번역 화면
+Sync · `usePublish` · Revert 넷이다. 같은 이유로 그 뒤에 `router.refresh()`를 또 부르지 않는다(두 번째 전체 렌더가 표시 없이 돈다).
+**남은 예외 하나**: Add sources의 `run(async … addSurfaces)`(`add-sources-modal.tsx`)는 `useTransition` 안이라 그동안 이동이 얽힌다 —
+모달이 닫기를 막는 동안의 일이라 받았다.
 
 ⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Publish]가 사는 곳은
 **표면 경로**(`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`)이고 그 세그먼트를 쓴다.
