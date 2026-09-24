@@ -4,8 +4,8 @@ import type { AdapterErrorCode, AdapterFile, DetectedFormat, LocaleEntry, ReadLo
 import { changedHunks, roundtripDiffRatio, usedApproximation } from "./diff";
 import { jsonShape, sameCommonOrder, type JsonDiffCauses, type JsonShape } from "./json-shape";
 import { pickBaseLocale } from "../push/payload";
-import { buildWriteEntries } from "../pull/plan";
-import { rowsForLocale, type RenderKey } from "../pull/render";
+import { buildWriteEntries, type LocalePath } from "../pull/plan";
+import { renderLocaleFiles, rowsForLocale, type RenderKey } from "../pull/render";
 import { candidatesFor } from "./merge";
 import { median } from "./stats";
 import { tsShape } from "./ts-shape";
@@ -20,6 +20,7 @@ import {
   type SurveyCandidate,
   type SurveyInput,
 } from "./types";
+import { causeMessage } from "../cause";
 
 /**
  * 리포 하나의 판정 전체. **파일 내용을 인자로 받으므로 네트워크·디스크가 없다** — 픽스처로
@@ -85,7 +86,7 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
     read1 = adapter.read(chosen, adapterFiles);
   } catch (cause) {
     survey.errors["adapter-threw"] += 1;
-    survey.failure = `read가 던졌다: ${(cause as Error).message}`;
+    survey.failure = `read가 던졌다: ${causeMessage(cause)}`;
     survey.ms = Date.now() - started;
     return survey;
   }
@@ -131,7 +132,7 @@ export function surveyOne(input: SurveyInput): RepoSurvey {
   } catch (cause) {
     survey.errors["adapter-threw"] += 1;
     survey.roundtrip = { semantic: "not-run", byteFixpoint: "not-run" };
-    survey.failure = `write가 던졌다: ${(cause as Error).message}`;
+    survey.failure = `write가 던졌다: ${causeMessage(cause)}`;
   }
 
   survey.ms = Date.now() - started;
@@ -406,13 +407,23 @@ function applyRoundtrip(
   const entriesOf = (locale: string): readonly LocaleEntry[] =>
     buildWriteEntries(rowsForLocale(keys, locale, { isBase: locale === base }), { isBase: locale === base });
 
-  const reported = { count: 0 };
+  /**
+   * ⚠️ **렌더는 pull의 `renderLocaleFiles` 그대로다** (audit #54 — POSTMORTEM 2026-09-02). 여기 재구현(`writePerLocale`·
+   * `writeMultiLocale`)이 있던 동안 셋이 갈렸다 — multi-locale 로케일 목록, 원본 없는 수술적 파일의 보고, 편집 탐침의 비-base 입력.
+   * 경로 목록만 측정 층이 정한다: per-locale은 read가 본 로케일의 파일, multi-locale은 글롭이 고른 원본이다(`filesForFormat`).
+   */
+  const paths: LocalePath[] = layout === "multi-locale"
+    ? originals.map((f) => ({ path: f.path }))
+    : localeNames.map((locale) => ({ locale, path: fmt.pathTemplate.replaceAll("{locale}", locale) }));
+  const render = (renderKeys: readonly RenderKey[], current: ReadonlyMap<string, string>) =>
+    renderLocaleFiles(fmt, layout, paths, renderKeys, base ?? "", current);
+  const contents = (files: ReturnType<typeof render>): Map<string, string> =>
+    new Map(files.flatMap((file) => (file.content === null ? [] : [[file.path, file.content] as const])));
+
   const byPath = new Map(originals.map((f) => [f.path, f.content]));
-  const write1 =
-    layout === "multi-locale"
-      ? writeMultiLocale(fmt, originals, localeNames, base, entriesOf, reported)
-      : writePerLocale(fmt, localeNames, entriesOf, byPath, reported);
-  survey.writeErrors = reported.count;
+  const rendered1 = render(keys, byPath);
+  const write1 = contents(rendered1);
+  survey.writeErrors = rendered1.reduce((n, file) => n + (file.errors?.length ?? 0), 0);
   if (write1.size === 0) return;
 
   const asFiles = (m: ReadonlyMap<string, string>): AdapterFile[] =>
@@ -431,14 +442,8 @@ function applyRoundtrip(
   survey.roundtrip.semantic = keepsStoredValues(localeNames, entriesOf, read2, dropEmpty) ? "same" : "different";
 
   // 2차 write도 **다시 push → pull**이다 — read2로 DB 상태를 다시 만들어 같은 관문을 지난다.
-  const keys2 = renderKeysOf(read2, base);
-  const entries2 = (locale: string): readonly LocaleEntry[] =>
-    buildWriteEntries(rowsForLocale(keys2, locale, { isBase: locale === base }), { isBase: locale === base });
-  const write2 =
-    layout === "multi-locale"
-      ? writeMultiLocale(fmt, asFiles(write1), localeNames, base, entries2)
-      // 2차 write의 원본은 **1차 write의 결과**다 — 고정점을 재는 것이므로.
-      : writePerLocale(fmt, localeNames, entries2, write1);
+  // 2차 write의 원본은 **1차 write의 결과**다 — 고정점을 재는 것이므로.
+  const write2 = contents(render(renderKeysOf(read2, base), write1));
   survey.roundtrip.byteFixpoint = sameBytes(write1, write2) ? "same" : "different";
 
   // diff 비율은 **base 로케일 파일** 기준 — 첫 pull PR에서 사람이 제일 먼저 보는 파일이다.
@@ -460,13 +465,12 @@ function applyRoundtrip(
   if (adapter.writeStrategy === "surgical" && before !== undefined && basePath !== undefined && base !== undefined) {
     const first = [...entriesOf(base)].sort((a, b) => compareKeys(a.key, b.key)).find((e) => e.message !== "");
     if (first !== undefined) {
-      const edited: LocaleEntry = { ...first, message: `${first.message}·편집` };
-      const editedOf = (locale: string): readonly LocaleEntry[] => (locale === base ? [edited] : []);
-      const written =
-        layout === "multi-locale"
-          ? writeMultiLocale(fmt, originals, localeNames, base, editedOf).get(basePath)
-          : writePerLocale(fmt, [base], editedOf, byPath).get(basePath);
-      if (written !== undefined) survey.surgicalEditHunks = changedHunks(before, written);
+      // DB에서 그 셀 하나만 바뀐 상태 — 나머지 셀은 원본과 같은 값이라 수술적 치환이 건드리지 않는다.
+      const edited = keys.map((k) => (k.key !== first.key ? k : {
+        ...k, cells: Object.assign(Object.create(null) as RenderKey["cells"], k.cells, { [base]: { value: `${first.message}·편집` } }),
+      }));
+      const written = render(edited, byPath).find((file) => file.path === basePath)?.content;
+      if (written !== undefined && written !== null) survey.surgicalEditHunks = changedHunks(before, written);
     }
   }
 
@@ -484,91 +488,6 @@ function applyRoundtrip(
     survey.diffRatioNonBase = median(others);
   }
 }
-
-/**
- * @param originals 경로 → 원본 내용. **수술적 치환 어댑터에 필수다.**
- *
- * ⚠️ 안 넘기면 write가 매번 `null`을 내고 결과가 `not-run`으로 조용히 빠진다 — 실측 2회차에서
- * code-dict 리포 8개가 전부 그 상태였다. pull에서 같은 부류를 고치고(`writeStrategy` 분기)
- * 여기를 안 고친 것이다.
- */
-function writePerLocale(
-  fmt: DetectedFormat,
-  locales: readonly string[],
-  entriesOf: (locale: string) => readonly LocaleEntry[],
-  originals: ReadonlyMap<string, string>,
-  reportedErrors?: { count: number },
-): Map<string, string> {
-  const adapter = adapterFor(fmt);
-  const out = new Map<string, string>();
-  for (const locale of locales) {
-    const path = fmt.pathTemplate.replaceAll("{locale}", locale);
-    // **원본을 어댑터 종류와 무관하게 넘긴다** — 수술적은 write에 필수이고, 재생성은 표현
-    // (들여쓰기)을 거기서 읽는다. ⚠️ 이 홉이 빠지면 2차 write가 **1차 결과를 원본으로 받으면서**
-    // 기본값으로 떨어져 **바이트 고정점 지표가 구조적 거짓 음성**이 된다 — "측정이 개선을 못 본다"
-    // 보다 나쁘다 (POSTMORTEM 2026-09-02).
-    const original = originals.get(path);
-    // 원본이 없으면 수술적 치환은 파일을 안 만든다. 재생성은 기본값으로 계속 만든다.
-    if (original === undefined && adapter.writeStrategy === "surgical") continue;
-    const writeFormat =
-      original === undefined ? fmt : { ...fmt, currentFiles: [{ path, content: original }] };
-    // ⚠️ `isBase`를 넘기지 않는다 — `WriteInput` 계약에 없고, base description 폴백은 프로덕션에서
-    // `lib/pull/render.ts`가 든다. 여기서만 넘기면 지표와 프로덕션이 다른 입력으로 write를 부른다.
-    const input = { locale, entries: entriesOf(locale) };
-    // ⚠️ **`writeWithErrors`가 있으면 그걸 쓴다.** 없으면 write가 버린 항목이 조용히 사라져,
-    // 왕복이 "의미 불일치"만 보이고 **왜 잃었는지가 지표에 남지 않는다** — 실측에서 siyuan·
-    // musicblocks가 정확히 그 상태였다(에러 0, 손실 있음).
-    if (adapter.writeWithErrors !== undefined) {
-      const res = adapter.writeWithErrors(writeFormat, input);
-      if (reportedErrors) reportedErrors.count += res.errors.length;
-      if (res.content !== null) out.set(path, res.content);
-      continue;
-    }
-    const content = adapter.write(writeFormat, input);
-    if (content !== null) out.set(path, content);
-  }
-  return out;
-}
-
-/**
- * ⚠️ **파일 × 로케일 이중 루프다** (ARCHITECTURE §3 함정).
- *
- * `ts-dict.write`는 `currentFiles[0]`만 보고 `input.locale`로 로케일 객체 하나를 고르므로, 파일
- * 하나를 완성하려면 로케일마다 한 번씩 부르며 **직전 결과를 다음 호출의 원본으로 넘겨야** 한다.
- * 파일 축만 돌면 나머지 로케일이 조용히 원본으로 남아 왕복이 거짓 통과한다.
- */
-function writeMultiLocale(
-  fmt: DetectedFormat,
-  originals: readonly AdapterFile[],
-  locales: readonly string[],
-  base: string | undefined,
-  entriesOf: (locale: string) => readonly LocaleEntry[],
-  reportedErrors?: { count: number },
-): Map<string, string> {
-  const adapter = adapterFor(fmt);
-  const out = new Map<string, string>();
-  for (const file of originals) {
-    let content = file.content;
-    for (const locale of locales) {
-      const writeFormat = { ...fmt, currentFiles: [{ path: file.path, content }] };
-      const input = { locale, entries: entriesOf(locale) };
-      // ⚠️ `writePerLocale`과 같은 이유로 `writeWithErrors`를 쓴다 — `write`만 부르면 ts-dict가 버린 항목이
-      // 지표에 안 남아 `writeErrors`가 구조적으로 0이었다 (launch-readiness L4.6).
-      let next: string | null;
-      if (adapter.writeWithErrors !== undefined) {
-        const res = adapter.writeWithErrors(writeFormat, input);
-        if (reportedErrors) reportedErrors.count += res.errors.length;
-        next = res.content;
-      } else {
-        next = adapter.write(writeFormat, input);
-      }
-      if (next !== null) content = next;
-    }
-    out.set(file.path, content);
-  }
-  return out;
-}
-
 
 /**
  * read 결과 → push가 DB에 남겼을 키. **base 파일의 키만**이고(`buildPushPayload`), 빈 값은 셀이 없다(`apply.ts`가

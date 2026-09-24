@@ -1,4 +1,5 @@
 import { matchesGlob } from "./glob";
+import { stripBom } from "./json-style";
 import type { LocaleEntry, ReadResult } from "./types";
 import { compareCodeUnits } from "@/lib/compare";
 
@@ -330,7 +331,7 @@ export type CatalogVerdict = "yes" | "no" | "unknown";
 export function catalogVerdict(content: string): CatalogVerdict {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(content);
+    parsed = JSON.parse(stripBom(content));
   } catch {
     return "no";
   }

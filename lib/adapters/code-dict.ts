@@ -23,6 +23,7 @@ import type {
   WriteInput,
 } from "./types";
 import { localeFromPath } from "./chrome-locales";
+import { causeMessage } from "@/lib/cause";
 
 /**
  * 로케일당 파일 하나인 코드 딕셔너리 — `<dir>/{locale}.{ts,tsx,js,mjs}`.
@@ -218,7 +219,7 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
       }
       obj = defaultExportObject(sf);
     } catch (cause) {
-      errors.push({ path: file.path, code: "parse-crashed", detail: (cause as Error).message });
+      errors.push({ path: file.path, code: "parse-crashed", detail: causeMessage(cause) });
       continue;
     }
     if (obj === undefined) {
@@ -226,9 +227,16 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
       continue;
     }
 
-    const entries: LocaleEntry[] = [];
-    collect(obj, "", entries, errors, file.path);
-    entries.sort((a, b) => compareKeys(a.key, b.key));
+    const collected: LocaleEntry[] = [];
+    collect(obj, "", collected, errors, file.path);
+    // 같은 평탄 키가 둘이면 **마지막이 이긴다** — JS 객체 리터럴의 의미이자 push `lastWins`의 규칙이다(audit #51).
+    // write의 `propertyNamed`도 마지막 항목을 고른다. 사실은 알린다 — json-catalog·yaml-catalog의 `duplicate-key`와 같다.
+    const byKey = new Map<string, LocaleEntry>();
+    for (const e of collected) {
+      if (byKey.has(e.key)) errors.push({ path: file.path, code: "duplicate-key", key: e.key });
+      byKey.set(e.key, e);
+    }
+    const entries = [...byKey.values()].sort((a, b) => compareKeys(a.key, b.key));
     locales.push({ locale, entries });
   }
 
@@ -313,7 +321,7 @@ function writeWithErrors(
     }
     root = defaultExportObject(sf);
   } catch (cause) {
-    return { content: file.content, errors: [{ path: file.path, code: "write-parse-failed", detail: (cause as Error).message }] };
+    return { content: file.content, errors: [{ path: file.path, code: "write-parse-failed", detail: causeMessage(cause) }] };
   }
   if (root === undefined) {
     return { content: file.content, errors: [{ path: file.path, code: "write-no-default-export" }] };
@@ -432,14 +440,16 @@ function locate(obj: ObjectLiteralExpression, segments: readonly string[]): Loca
   }
 }
 
+/** 같은 이름이 둘이면 **마지막**이다 — 런타임이 읽는 자리이고 read가 싣는 값이다(audit #51). */
 function propertyNamed(obj: ObjectLiteralExpression, name: string): PropertyAssignment | undefined {
+  let found: PropertyAssignment | undefined;
   for (const prop of obj.getProperties()) {
     if (!prop.isKind(SyntaxKind.PropertyAssignment)) continue;
     const nameNode = prop.getNameNode();
     const got = nameNode.isKind(SyntaxKind.StringLiteral) ? nameNode.getLiteralValue() : nameNode.getText();
-    if (got === name) return prop;
+    if (got === name) found = prop;
   }
-  return undefined;
+  return found;
 }
 
 /**

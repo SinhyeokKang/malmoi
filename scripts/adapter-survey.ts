@@ -25,6 +25,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync, lstatSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { causeMessage } from "../lib/cause";
 import { findTarget, flagValue, hasFlag } from "../lib/cli/args";
 import { selectSurveyFiles } from "../lib/survey/select";
 import { DIFF_TARGET, summarize } from "../lib/survey/summarize";
@@ -123,7 +124,7 @@ function fetchRepo(repo: string): SurveyInput {
 }
 
 const short = (cause: unknown): string =>
-  String((cause as Error).message ?? cause).split("\n")[0]?.slice(0, 120) ?? "알 수 없음";
+  causeMessage(cause).split("\n")[0]?.slice(0, 120) ?? "알 수 없음";
 
 /** 리포 목록을 `jobs`개씩 겹쳐 처리한다. clone이 네트워크 대기라 직렬로 돌리면 훨씬 느리다. */
 async function run(): Promise<RepoSurvey[]> {

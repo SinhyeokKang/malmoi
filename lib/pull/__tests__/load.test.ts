@@ -54,6 +54,8 @@ it("로케일·값·완료 기준을 repeatable-read 스냅샷으로 읽는다",
   const tx = {
     project: { findUnique: vi.fn(async () => ({ id: "p1", slug: "a", surfaces: [] })) },
     stringKey: { findMany: vi.fn(async () => []) },
+    // JSON null placeholders 좌표 (audit #52) — 이 픽스처에는 없다.
+    $queryRaw: vi.fn(async () => []),
     translation: {
       aggregate: vi.fn(async () => ({ _max: { updatedAt: new Date(100) } })),
       count: vi.fn(async (_args: unknown) => 2),

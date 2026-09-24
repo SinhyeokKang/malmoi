@@ -58,6 +58,7 @@ async function pullFiles(prisma: PrismaClient, opts: { lastPulledAt?: Date } = {
     },
     createClient: async () => client,
     saveLastPulledAt: async () => {},
+    invalidateDelivery: async () => {},
     syncBranch: "malmoi-i18n/sync",
   });
   const tree = calls.find((c) => c.method === "createTree")?.args[0] as TreePayload | undefined;

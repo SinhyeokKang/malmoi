@@ -23,6 +23,7 @@ import type {
   WriteInput,
 } from "./types";
 import { localeFromPath } from "./chrome-locales";
+import { causeMessage } from "@/lib/cause";
 
 /**
  * YAML 카탈로그 — `<dir>/{locale}.y(a)ml`.
@@ -150,7 +151,7 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
     try {
       doc = parseDocument(file.content, PARSE_OPTS);
     } catch (cause) {
-      errors.push({ path: file.path, code: "parse-failed", detail: (cause as Error).message });
+      errors.push({ path: file.path, code: "parse-failed", detail: causeMessage(cause) });
       continue;
     }
     if (doc.errors.length > 0) {
@@ -295,11 +296,47 @@ function scalarReplacement(source: string, doc: Document, node: Scalar, value: s
   return { start, end, text };
 }
 
+type Quoted = "PLAIN" | "QUOTE_SINGLE" | "QUOTE_DOUBLE";
+
+/** 맵 항목들의 키·문자열 값 스칼라를 모은다 — 중첩 맵까지. 시퀀스·블록 스칼라는 인용 관례의 단서가 아니다. */
+function pairScalars(map: YAMLMap, out: { keys: Scalar[]; values: Scalar[] }, deep: boolean): void {
+  for (const item of map.items) {
+    if (isScalar(item.key)) out.keys.push(item.key);
+    if (isScalar(item.value) && typeof item.value.value === "string") out.values.push(item.value);
+    else if (deep && isMap(item.value)) pairScalars(item.value, out, deep);
+  }
+}
+
+/** 인용 타입 다수결. **동수·단서 없음은 PLAIN**(옛 동작) — 삽입이 다수를 늘리기만 하므로 2차 write가 같은 답을 낸다. */
+function dominantType(nodes: readonly Scalar[]): Quoted {
+  const votes = { PLAIN: 0, QUOTE_SINGLE: 0, QUOTE_DOUBLE: 0 };
+  for (const node of nodes) if (node.type === "PLAIN" || node.type === "QUOTE_SINGLE" || node.type === "QUOTE_DOUBLE") votes[node.type] += 1;
+  const top = Math.max(votes.QUOTE_SINGLE, votes.QUOTE_DOUBLE);
+  if (top <= votes.PLAIN || votes.QUOTE_SINGLE === votes.QUOTE_DOUBLE) return "PLAIN";
+  return votes.QUOTE_SINGLE > votes.QUOTE_DOUBLE ? "QUOTE_SINGLE" : "QUOTE_DOUBLE";
+}
+
+/**
+ * 삽입 항목의 키·값 인용 타입 (audit #56). **형제를 먼저 본다** — 치환(`scalarReplacement`)이 원래 노드의 타입을 따르는 것과
+ * 같은 취지다. 형제가 없으면(빈 맵·빈 문서) 파일 전체의 다수를 본다. code-dict의 `dominantQuote`처럼 키와 값을 따로 센다.
+ */
+function insertionTypes(doc: Document, map: YAMLMap | null): { key: Quoted; value: Quoted } {
+  const siblings = { keys: [] as Scalar[], values: [] as Scalar[] };
+  if (map !== null) pairScalars(map, siblings, false);
+  const file = { keys: [] as Scalar[], values: [] as Scalar[] };
+  if (siblings.keys.length === 0 && isMap(doc.contents)) pairScalars(doc.contents, file, true);
+  return {
+    key: dominantType(siblings.keys.length > 0 ? siblings.keys : file.keys),
+    value: dominantType(siblings.values.length > 0 ? siblings.values : file.values),
+  };
+}
+
 /** 기존 맵의 끝에만 새 항목을 더한다. 기존 노드는 직렬화하지 않는다. */
 function insertion(source: string, doc: Document, map: YAMLMap | null, entries: [string, string][]): Replacement {
   const token = map?.srcToken;
   const newline = source.includes("\r\n") ? "\r\n" : "\n";
-  const pairs = entries.map(([key, value]) => `${flowString(key, doc)}: ${flowString(value, doc)}`);
+  const types = insertionTypes(doc, map);
+  const pairs = entries.map(([key, value]) => `${flowString(key, doc, types.key)}: ${flowString(value, doc, types.value)}`);
   if (map?.flow) {
     const last = map.items.at(-1);
     const node = last?.value ?? last?.key;
@@ -339,7 +376,7 @@ function writeWithErrors(
   } catch (cause) {
     return {
       content: file.content,
-      errors: [{ path: file.path, code: "write-parse-failed", detail: (cause as Error).message }],
+      errors: [{ path: file.path, code: "write-parse-failed", detail: causeMessage(cause) }],
     };
   }
   if (doc.errors.length > 0) {

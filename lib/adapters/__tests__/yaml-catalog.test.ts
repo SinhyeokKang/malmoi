@@ -243,7 +243,8 @@ describe("yaml-catalog — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () 
       locale: "ko",
       entries: [{ key: "nested.added", message: "추가" }],
     })!;
-    expect(out).toContain("added: 추가");
+    // 형제 `deep: "깊은 값"`의 인용을 따른다 (audit #56).
+    expect(out).toContain('added: "추가"');
     expect(out).toContain("_lang_:");
   });
 });
@@ -550,7 +551,8 @@ describe("yaml-catalog — T12 편집 범위 밖 바이트 보존", () => {
   it("누락 키 삽입도 기존 folded scalar와 바이트를 바꾸지 않는다", () => {
     const input = { locale: "ko", entries: [{ key: "errors.added", message: "追加" }] };
     const output = yamlCatalog.write(withSource(source), input)!;
-    expect(output).toBe(source + "  added: 追加\n");
+    // 형제 `unknown: '古い値'`의 인용을 따른다 (audit #56).
+    expect(output).toBe(source + "  added: '追加'\n");
     expect(yamlCatalog.read(base(), [f("config/locales/ko.yml", output)]).locales[0]?.entries)
       .toContainEqual(input.entries[0]);
     expect(yamlCatalog.write(withSource(source), input)).toBe(output);

@@ -56,6 +56,7 @@ function depsFor(keys: readonly RenderKey[]): { deps: PullDeps; trees: TreePaylo
     }),
     createClient: async () => client,
     saveLastPulledAt: async () => {},
+    invalidateDelivery: async () => {},
     syncBranch: "malmoi-i18n/sync",
   };
   const trees: TreePayload[] = [];
@@ -122,6 +123,7 @@ function captureFindMany(): { prisma: PrismaClient; args: Record<string, unknown
       }),
     },
     stringKey: { findMany },
+    $queryRaw: async () => [],
     translation: { aggregate: async () => ({ _max: { updatedAt: null } }), count: async () => 0, findMany: async () => [] },
   } as unknown as PrismaClient;
   return { prisma, args };
@@ -206,6 +208,7 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
         }),
         createClient: async () => client,
         saveLastPulledAt: async () => {},
+        invalidateDelivery: async () => {},
         syncBranch: "malmoi-i18n/sync",
       },
       get trees() {
@@ -271,6 +274,7 @@ describe("L1 — runPull이 원본 들여쓰기를 지킨다", () => {
         }),
         createClient: async () => client,
         saveLastPulledAt: async () => {},
+        invalidateDelivery: async () => {},
         syncBranch: "malmoi-i18n/sync",
       },
       get trees() {

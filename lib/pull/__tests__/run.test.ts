@@ -66,6 +66,7 @@ function makeDeps(
     saveLastPulledAt: async (_projectId, at) => {
       writes.push(at);
     },
+    invalidateDelivery: async () => {},
     syncBranch: "malmoi-i18n/sync",
     ...over,
   };
@@ -84,6 +85,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
 
@@ -102,6 +104,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(calls).toEqual([]);
@@ -119,6 +122,7 @@ describe("runPull — 1층 DB 측 스킵", () => {
       }),
       createClient: async () => client,
       saveLastPulledAt: async (_p, at) => void writes.push(at),
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(writes).toEqual([]);
@@ -144,6 +148,7 @@ describe("runPull — 1층은 시각이 아니라 미발송 수로 판정한다 
       loadState: async () => pushedState(0),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(calls).toEqual([]);
@@ -156,6 +161,7 @@ describe("runPull — 1층은 시각이 아니라 미발송 수로 판정한다 
       loadState: async () => pushedState(1),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(calls.length).toBeGreaterThan(0);
@@ -537,6 +543,7 @@ describe("runPull — 실패 처리", () => {
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     };
     await expect(runPull(deps)).rejects.toThrow(/installationId/);
@@ -581,6 +588,7 @@ ko:
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(calls.filter((c) => c.method === "getBlobText")).toHaveLength(1);
@@ -601,6 +609,7 @@ ko:
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     const created = calls.find((c) => c.method === "createTree");
@@ -665,6 +674,7 @@ export const ns = { ko, en };
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
 
@@ -705,6 +715,7 @@ export const ns = { ko, en };
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
 
@@ -739,6 +750,7 @@ export const ns = { ko, en };
       }),
       createClient: async () => client,
       saveLastPulledAt: async () => {},
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
 
@@ -837,6 +849,7 @@ describe("runPull — 캡처한 편집 토큰을 성공·동등 경로에서만 
       }),
       createClient: async () => made.client,
       saveLastPulledAt: async (_id, _at, _published, edits) => void delivered.push(edits),
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(delivered).toEqual([]);
@@ -879,6 +892,7 @@ describe("runPull — 보류 셀 (per-locale 수술적 · 비-base 파일 부재
       }),
       createClient: async () => client,
       saveLastPulledAt: async (_id, _at, _published, delivered, contexts, withheld) => void saved.push({ delivered, contexts, withheld }),
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     return { promise, calls, saved };
@@ -947,6 +961,7 @@ describe("runPull — 보류 셀 (ts-dict · 로케일 객체에 자리가 없�
       }),
       createClient: async () => client,
       saveLastPulledAt: async (_id, _at, _published, delivered, _contexts, withheld) => void saved.push([delivered, withheld]),
+      invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
     expect(result).toMatchObject({ status: "committed", delivered: 1, withheld: { file: 0, key: 1 } });

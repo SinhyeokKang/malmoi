@@ -56,7 +56,8 @@ export type ProjectFormatColumns = {
  */
 function nestedByPathOf(raw: unknown): Record<string, boolean> | undefined {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-  const out: Record<string, boolean> = {};
+  // ⚠️ **프로토타입 없는 객체다** (audit #84) — 키가 리포가 정한 경로라 `{}`에 `__proto__`를 대입하면 조용히 사라진다.
+  const out: Record<string, boolean> = Object.create(null) as Record<string, boolean>;
   for (const [path, value] of Object.entries(raw as Record<string, unknown>)) {
     if (typeof value === "boolean") out[path] = value;
   }

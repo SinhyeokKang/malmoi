@@ -106,7 +106,7 @@ it("같은 픽스처에서 미리보기의 withoutFile과 실행의 withheld가 
         keys: [{ id: "k", key: "hello", sourceText: "old", orphaned: false, cells: { en: { value: "new" }, fr: { value: "neuf" }, ko: { value: "새" } } }] }],
       maxUpdatedAt: new Date(), unpublished: 3, pendingEdits: ["en", "fr", "ko"].map(edit),
     }),
-    createClient: async () => client, saveLastPulledAt: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
+    createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
   });
   expect(preview.withoutFile).toBe(2);
   expect(result).toMatchObject({ status: "committed", withheld: { file: preview.withoutFile, key: 0 } });
@@ -137,7 +137,7 @@ it("code-dict 구조 충돌(문자열 자리에 중첩 키)은 보류가 아니�
         keys: [{ id: "k", key: "a.b", sourceText: "B", orphaned: false, cells: { en: { value: "B" }, ko: { value: "비" } } }] }],
       maxUpdatedAt: new Date(), unpublished: 1, pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s", keyId: "k", localeCode: "ko", restoreValue: "" } }],
     }),
-    createClient: async () => client, saveLastPulledAt: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
+    createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
   });
   expect(preview?.withoutKey ?? 0).toBe(0);
   expect(result).toMatchObject({ status: "skipped", reason: "writer-warnings" });
@@ -189,7 +189,7 @@ it("같은 픽스처에서 미리보기의 same == sendable이면 실행은 no-c
       surfaces: [{ ...surface, ...cols, localeCodes: ["en"], keys: [{ id: "k", key: "hello", sourceText: "old", orphaned: false, cells: { en: { value: "old" } } }] }],
       maxUpdatedAt: new Date(), unpublished: 1, pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s", keyId: "k", localeCode: "en", restoreValue: "" } }],
     }),
-    createClient: async () => client, saveLastPulledAt: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
+    createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
   });
   expect(result).toMatchObject({ status: "skipped", reason: "no-changes", closedPr: { number: 9 } });
   expect(calls.map(c => c.method)).toContain("closePr");

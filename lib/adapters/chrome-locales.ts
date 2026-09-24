@@ -1,4 +1,4 @@
-import { observeJsonStyle, serializeJson } from "./json-style";
+import { observeJsonStyle, serializeJson, stripBom } from "./json-style";
 import {
   compareKeys,
   hasStrongLocale,
@@ -10,6 +10,7 @@ import {
 import type {
   Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult, WriteInput,
 } from "./types";
+import { causeMessage } from "@/lib/cause";
 
 /**
  * 크롬 확장 표준 포맷 — `<root>/_locales/<locale>/messages.json`.
@@ -45,7 +46,7 @@ export function dominantFieldOrder(text: string | undefined): readonly EntryFiel
   if (text === undefined || text === "") return DEFAULT_FIELD_ORDER;
   let parsed: unknown;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(stripBom(text));
   } catch {
     return DEFAULT_FIELD_ORDER;
   }
@@ -134,9 +135,9 @@ function read(format: DetectedFormat, files: readonly AdapterFileLike[]): ReadRe
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(file.content);
+      parsed = JSON.parse(stripBom(file.content));
     } catch (cause) {
-      errors.push({ path: file.path, code: "parse-failed", detail: (cause as Error).message });
+      errors.push({ path: file.path, code: "parse-failed", detail: causeMessage(cause) });
       continue;
     }
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {

@@ -66,6 +66,15 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     },
   });
 
+  /**
+   * ⚠️ **JSON `null`인 placeholders 좌표** (audit #52). Prisma는 Json 컬럼의 SQL NULL(부재)과 JSON null(`"placeholders": null`)을
+   * **둘 다 `null`로** 읽는다 — 구별하지 않으면 그 필드가 pull에서 빠져 값 편집 0건인 Publish가 줄을 지운다. 같은 스냅샷에서 센다.
+   */
+  const jsonNull = await prisma.$queryRaw<{ keyId: string; localeCode: string }[]>`
+    SELECT "keyId", "localeCode" FROM "Translation"
+    WHERE "projectId" = ${project.id} AND "surfaceId" = ANY(${surfaces.map(s => s.id)}::text[]) AND jsonb_typeof("placeholders") = 'null'`;
+  const nullPlaceholders = new Set(jsonNull.map(row => `${row.keyId}\u0000${row.localeCode}`));
+
   // `lastPulledAt`에 캡처될 값. **`projectId`로 좁힌다** — 안 좁히면 다른 프로젝트의 편집이 이 프로젝트의
   // pull을 깨우고, 그쪽 `updatedAt`이 이쪽 `lastPulledAt`에 박힌다.
   const agg = await prisma.translation.aggregate({
@@ -103,8 +112,9 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
           {
             value: t.value,
             ...(t.description === null ? {} : { description: t.description }),
-            // Prisma의 Json 컬럼은 비어 있으면 `null`을 준다 — 없는 것과 같게 다룬다.
-            ...(t.placeholders === null ? {} : { placeholders: t.placeholders }),
+            // Prisma의 Json 컬럼은 비어 있으면 `null`을 준다 — 없는 것과 같게 다루되, JSON null은 위에서 따로 센 좌표로 되살린다.
+            ...(t.placeholders !== null ? { placeholders: t.placeholders }
+              : nullPlaceholders.has(`${k.id}\u0000${t.localeCode}`) ? { placeholders: null } : {}),
           },
         ]),
       ),

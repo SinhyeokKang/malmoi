@@ -81,8 +81,9 @@ export type PullDeps = {
   /**
    * **첫 외부 쓰기 직전에** 이 프로젝트의 전달 확인을 무효화한다 (ARCHITECTURE §0 불변식 9 · §5.8). 던지면 GitHub에 아무것도 쓰지 않는다.
    * 쓰기 뒤 실패·결과 미확인이면 확인은 무효인 채 남고, 다음 성공 확정만 되살린다.
+   * ⚠️ **필수다** (audit #60) — 선택이면 새 호출부가 빠뜨려도 컴파일되고, 그 경로는 GitHub에 쓰면서 옛 확인을 살려 둔다.
    */
-  invalidateDelivery?(projectId: string): Promise<void>;
+  invalidateDelivery(projectId: string): Promise<void>;
   syncBranch: string;
 };
 
@@ -257,7 +258,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     let closedPr: { number: number; url: string } | undefined;
     if (staleHead !== null && staleHead !== baseHead) {
       // 되돌리기도 외부 쓰기다 — 그 결과를 모르는 채 옛 확인으로 복원하지 않게 먼저 무효화한다. 닫기가 첫 외부 쓰기라 그보다도 앞이다.
-      await deps.invalidateDelivery?.(project.id);
+      await deps.invalidateDelivery(project.id);
       /**
        * ⚠️ **열린 PR을 조용히 닫히게 두지 않는다** (B1 r3 — QA5). head가 base와 같아지면 GitHub이 그 PR을 스스로 닫는다(때로 "merged"로 표시한다).
        * 스냅샷 불변식은 그대로 지키고, **되돌리기 전에** 이유를 남겨 명시적으로 닫는다 — 먼저 되돌리면 자동 종료가 앞서 "merged"가 남을 수 있다.
@@ -283,7 +284,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
 
   const summary = `${changes.length} file${changes.length === 1 ? "" : "s"}`;
   // ⚠️ **createTree가 첫 외부 쓰기다** — 여기까지는 읽기뿐이라, 무효화가 실패하면 GitHub에 아무것도 남지 않는다.
-  await deps.invalidateDelivery?.(project.id);
+  await deps.invalidateDelivery(project.id);
   const treeSha = await client.createTree(buildTreePayload(changes, baseHead));
   const commitSha = await client.createCommit(buildCommitPayload(treeSha, baseHead, summary));
 

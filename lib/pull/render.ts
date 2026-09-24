@@ -129,25 +129,26 @@ export function renderLocaleFiles(
 
   return paths.map((p) => {
     const original = current.get(p.path);
-    // 원본이 없으면 치환할 대상이 없다. 파일을 새로 만들지 않는다 — 수술적 치환의 전제다.
-    if (original === undefined) return { path: p.path, content: null, errors: [missingOriginal(p.path)] };
+    // 원본이 없으면 치환할 대상이 없다 — **수술적 치환의 전제다.** per-locale 갈래와 같은 축(`writeStrategy`)으로 가른다(audit #55):
+    // `layout`만 보고 막으면 재생성 multi-locale 어댑터가 새 파일을 조용히 빠뜨린다.
+    if (original === undefined && adapter.writeStrategy === "surgical") return { path: p.path, content: null, errors: [missingOriginal(p.path)] };
 
     let content = original;
     const errors: RenderError[] = [];
     for (const locale of format.locales) {
       const isBase = locale === baseLocale;
       const next = write(
-        // 직전 결과를 원본으로 넘긴다 — 그래야 로케일 치환이 누적된다.
-        { ...format, currentFiles: [{ path: p.path, content }] },
+        // 직전 결과를 원본으로 넘긴다 — 그래야 로케일 치환이 누적된다. 원본 없는 재생성의 첫 호출만 `currentFiles`가 없다.
+        content === undefined ? format : { ...format, currentFiles: [{ path: p.path, content }] },
         {
           locale,
           entries: buildWriteEntries(rowsForLocale(keys, locale, { isBase }), { isBase }),
         },
       );
       errors.push(...tagged(next.errors, locale));
-      // `null`은 원본이 없을 때뿐이고 위에서 걸렀다. 방어적으로 직전 내용을 유지한다.
+      // 수술적 `null`은 원본이 없을 때뿐이고 위에서 걸렀다. 방어적으로 직전 내용을 유지한다.
       if (next.content !== null) content = next.content;
     }
-    return { path: p.path, content, ...(errors.length === 0 ? {} : { errors }) };
+    return { path: p.path, content: content ?? null, ...(errors.length === 0 ? {} : { errors }) };
   });
 }

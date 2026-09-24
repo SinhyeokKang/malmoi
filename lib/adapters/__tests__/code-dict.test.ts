@@ -735,7 +735,8 @@ describe("code-dict — 깊은 점 키는 중복 삽입하지 않는다 (L1.4)",
       const diff = out.split("\n").filter((line, i) => line !== source.split("\n")[i]);
       expect(diff).toHaveLength(1);
       const back = codeDict.read(base(), [f("src/locale/ko.ts", out)]);
-      expect(back.errors).toEqual([]);
+      // 혼재는 같은 평탄 키가 둘이라 read가 알린다(audit #51) — 마지막(리터럴)이 이기고, write가 바꾼 것도 그 자리다.
+      expect(back.errors).toEqual(name.startsWith("실제 중첩과 혼재") ? [{ path: "src/locale/ko.ts", code: "duplicate-key", key }] : []);
       expect(back.locales[0]?.entries).toContainEqual({ key, message: "new" });
       expect(codeDict.write(withSource(out), input)).toBe(out);
     });

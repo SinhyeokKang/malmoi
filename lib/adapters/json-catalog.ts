@@ -1,5 +1,5 @@
 import { localeFromPath, verify } from "./chrome-locales";
-import { observeJsonStyle, serializeJson, KEY_SEP } from "./json-style";
+import { observeJsonStyle, serializeJson, stripBom, KEY_SEP } from "./json-style";
 import {
   compareKeys,
   hasStrongLocale,
@@ -10,6 +10,7 @@ import {
   orderedEntries,
 } from "./shared";
 import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, ReadLocale, ReadResult, WriteInput } from "./types";
+import { causeMessage } from "@/lib/cause";
 
 /**
  * 범용 JSON 카탈로그 — `<dir>/<locale>.json`. 조사한 리포 중 둘을 덮는다:
@@ -145,7 +146,8 @@ function read(format: DetectedFormat, files: readonly { path: string; content: s
    * 파일까지 중첩으로 취급돼 **평평한 파일의 점 포함 키가 쪼개지고 값이 사라진다** — musicblocks
    * 84로케일 중 81개에서 각 4키가 그렇게 없어졌다 (ARCHITECTURE §1.35).
    */
-  const nestedByPath: Record<string, boolean> = {};
+  // 키가 리포 경로라 프로토타입을 끊는다 (audit #84 — `lib/pull/plan.ts`의 `nestedByPathOf`와 같다).
+  const nestedByPath: Record<string, boolean> = Object.create(null) as Record<string, boolean>;
 
   for (const file of files) {
     const locale = localeFromPath(format.pathTemplate, file.path);
@@ -153,9 +155,9 @@ function read(format: DetectedFormat, files: readonly { path: string; content: s
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(file.content);
+      parsed = JSON.parse(stripBom(file.content));
     } catch (cause) {
-      errors.push({ path: file.path, code: "parse-failed", detail: (cause as Error).message });
+      errors.push({ path: file.path, code: "parse-failed", detail: causeMessage(cause) });
       continue;
     }
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
