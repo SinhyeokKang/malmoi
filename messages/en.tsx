@@ -2898,6 +2898,8 @@ export const en = {
       // ⚠️ **"프로젝트 목록에서 열어라"가 아니다** (2026-09-12 실물 검증) — 그 목록으로 가는 길이
       // 이 화면에 없었고, 지금은 버튼이 **그 프로젝트로 바로** 간다(착지 클릭 하나를 갚는다).
       "already-member": "You're already a member of this project.",
+      // 초대는 소비되지 않는다 — 복원 뒤 만료 전이면 같은 링크가 산다. 그래서 "새 링크를 받아라"가 아니다.
+      archived: "This project is archived. Ask the person who invited you to restore it, then open this link again.",
       unavailable: "Something went wrong. Try again in a moment.",
       fallback: "We couldn't accept the invitation. Ask the person who invited you for a new link.",
     },
