@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -75,6 +75,31 @@ describe("줄 수 — 실물의 가장 흔한 모양", () => {
     for (const row of container.querySelectorAll("[data-skeleton-key]")) {
       expect(row.querySelectorAll("[data-skeleton-line]")).toHaveLength(2);
     }
+  });
+});
+
+/**
+ * **골격이 실물의 패널 폭 질의를 같이 든다** (malmoi#101). Sources는 콘텐츠 패널 1016 이하에서 머리 설명을 버리고
+ * 행 상태를 셋째 줄로 내리는데(`@max-[1016px]/panel:*`), 골격이 그 질의 없이 넓은 모양만 그려 1280(패널 1014)에서
+ * 도착 순간 설명 막대가 사라지고 행이 한 줄만큼 늘었다. jsdom은 컨테이너 질의를 계산하지 못하므로 **변형 철자를 센다**.
+ */
+describe("패널 폭 질의 — 실물과 같은 변형", () => {
+  const variants = (path: string) =>
+    new Set([...readFileSync(join(__dirname, "../../..", path), "utf8").matchAll(/@max-\[1016px\]\/panel:[^\s"`]+/g)].map((match) => match[0]));
+
+  it("Sources 골격은 실물이 쓰는 `/panel` 변형을 전부 든다", () => {
+    const real = variants("components/sources/sources-screen.tsx");
+    const skeleton = variants("app/(edit)/projects/[slug]/sources/loading.tsx");
+    // 짝 — 실물 쪽이 비어 있으면 이 검사는 아무것도 안 잰다.
+    expect(real.size).toBeGreaterThan(0);
+    expect([...real].filter((variant) => !skeleton.has(variant))).toEqual([]);
+  });
+
+  it("그 질의가 걸릴 이름 있는 컨테이너(`@container/panel`)를 골격 스스로 세운다", async () => {
+    const { container } = await render(<SourcesLoading />);
+    expect(container.querySelector('[class~="@container/panel"]')).not.toBeNull();
+    const description = container.querySelector("[data-skeleton-description]");
+    expect(description?.className).toContain("@max-[1016px]/panel:hidden");
   });
 });
 
