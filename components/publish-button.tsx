@@ -5,6 +5,7 @@ import { diffWords } from "@/lib/publish/words";
 import { CircleCheck, FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useRef, useState, type RefObject, type ReactNode } from "react";
 import { triggerPullAction } from "@/app/(edit)/actions";
+import { useCommitWait } from "@/components/commit-wait";
 import { loadPublishPreview } from "@/app/(edit)/publish-actions";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +27,12 @@ import { SlowNotice } from "@/components/slow-notice";
 /** 실행 결과에 **그때의 사실**을 붙여 둔다 — 결과를 다시 열 때 `count`는 이미 재검증으로 줄어 있다. */
 type PublishResultState = { outcome: PullOutcome; at: Date; total: number };
 
-/** 조건부 모달이 아니라 무조건 렌더되는 호스트가 든다 — 닫기·재검증이 실행 결과를 지우면 안 된다. */
-export function usePublish(slug: string) {
+/**
+ * 조건부 모달이 아니라 무조건 렌더되는 호스트가 든다 — 닫기·재검증이 실행 결과를 지우면 안 된다.
+ * @param server 호스트가 서버에서 받은 prop 하나 — 재검증 트리가 커밋되면 새 객체가 된다(`useCommitWait`, malmoi#103).
+ */
+export function usePublish(slug: string, server?: unknown) {
+  const commit = useCommitWait(server);
   const [state, setState] = useState<PublishModalState>({ kind: "preview-loading" });
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -74,10 +79,16 @@ export function usePublish(slug: string) {
     if (total === 0) return;
     running.current = true; generation.current++; setPending(true); setRunTotal(total); setRunLabel(label);
     current.current = { kind: "running" }; setState(current.current);
+    const from = commit.snapshot();
     const next: PullOutcome = await triggerPullAction(slug).catch(() => ({ status: "failed", error: "unavailable", retryable: true, delivery: "unknown" }));
     if (owner !== host.current) return;
     running.current = false; setPending(false); setResult({ outcome: next, at: new Date(), total });
     current.current = { kind: "result", outcome: next }; setState(current.current);
+    /*
+      ⚠️ **결과는 지금 서고 잠금은 새 트리까지 간다** (malmoi#103) — 트리는 promise가 풀린 뒤 0.6–1.5 s 늦게 커밋되고, 그 사이 풀면
+      Sync·Revert·이 버튼이 옛 건수로 켜진다. `failed`는 기다리지 않는다 — 조기 거부는 재검증 전에 돌아와 트리가 안 온다.
+    */
+    if (next.status !== "failed") commit.wait(from);
     /*
       ⚠️ **`router.refresh()`를 부르지 않는다** (audit-ux #12) — `triggerPullAction`이 결과와 무관하게 `revalidatePath(…, "layout")`를
       부르고 Next가 그 응답의 새 트리를 커밋한다. 또 부르면 결과가 선 뒤 두 번째 전체 렌더가 표시 없이 돌았다.
@@ -86,7 +97,7 @@ export function usePublish(slug: string) {
   }
   function showResult() { if (result) { generation.current++; setState({ kind: "result", outcome: result.outcome }); setOpen(true); } }
   function launch() { if (running.current) { setState({ kind: "running" }); setOpen(true); } else void preview(); }
-  return { state, open, pending, result, runTotal, runLabel, triggerRef, close, preview, confirm, showResult, launch };
+  return { state, open, pending: pending || commit.waiting, result, runTotal, runLabel, triggerRef, close, preview, confirm, showResult, launch };
 }
 export type PublishController = ReturnType<typeof usePublish>;
 

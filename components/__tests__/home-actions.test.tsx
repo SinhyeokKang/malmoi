@@ -67,7 +67,7 @@ beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.p
 it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", async () => {
   const run = deferred<{ ok: true; surfaces: []; remainingEdits: number }>();
   mocks.run.mockReturnValue(run.promise);
-  await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  const view = await render(<HomeActions slug="acme"><Host /></HomeActions>);
 
   expect(locked(button("Publish"))).toBe(false);
   await click("Sync");
@@ -83,6 +83,9 @@ it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", asyn
   expect(mocks.pull).not.toHaveBeenCalled();
 
   await act(async () => { run.resolve({ ok: true, surfaces: [], remainingEdits: 0 }); await run.promise; });
+  // 성공은 재검증 트리가 커밋될 때까지 잠긴 채다 (malmoi#103) — 새 `children`이 서버 렌더다.
+  expect(locked(button("Publish"))).toBe(true);
+  await view.rerender(<HomeActions slug="acme"><Host /></HomeActions>);
   expect(locked(button("Publish"))).toBe(false);
 });
 
@@ -107,7 +110,7 @@ it("Sync가 8초를 넘기면 지연 문구가 서고 끝나면 사라진다", a
 it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는다", async () => {
   const pull = deferred<{ status: "skipped"; reason: "no-edits" }>();
   mocks.pull.mockReturnValue(pull.promise);
-  await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  const view = await render(<HomeActions slug="acme"><Host /></HomeActions>);
 
   await click("Publish");
   expect(mocks.pull).not.toHaveBeenCalled();
@@ -123,6 +126,8 @@ it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는
   expect(mocks.run).not.toHaveBeenCalled();
 
   await act(async () => { pull.resolve({ status: "skipped", reason: "no-edits" }); await pull.promise; });
+  expect(locked(button("Sync"))).toBe(true);
+  await view.rerender(<HomeActions slug="acme"><Host /></HomeActions>);
   expect(locked(button("Sync"))).toBe(false);
 });
 

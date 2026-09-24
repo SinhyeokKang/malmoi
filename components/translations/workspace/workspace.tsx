@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { loadMoreTranslationKeys, previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
+import { useCommitWait } from "@/components/commit-wait";
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
 import { SearchInput } from "@/components/search-input";
 import { SyncButton } from "@/components/home/sync-button";
@@ -160,7 +161,14 @@ export function TranslationWorkspace(props: WorkspaceProps) {
    */
   const [savedLocales, setSavedLocales] = useState<ReadonlySet<string>>(new Set());
   const [revertReason, setRevertReason] = useState<RevertReason | null>(null);
-  const [revertBusy, setRevertBusy] = useState(false);
+  /*
+    ⚠️ **잠금은 새 서버 트리까지 간다** (malmoi#103) — Action이 풀린 뒤 재검증 트리가 0.3–1.5 s 늦게 커밋되는 동안 Sync·Publish·Revert가
+    옛 상세·건수로 켜졌다. 신호는 **상세, 없으면 목록**이다 — 둘 다 서버가 렌더할 때마다 새 객체가 되고, 상세는 키를 고르지 않으면 `null`이다.
+  */
+  const server = props.detail ?? props.list;
+  const revertCommit = useCommitWait(server);
+  const [revertRunning, setRevertBusy] = useState(false);
+  const revertBusy = revertRunning || revertCommit.waiting;
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const resultRef = useRef<HTMLSpanElement>(null);
   const saveRef = useRef<HTMLButtonElement>(null);
@@ -433,9 +441,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     if (detail === null) return;
     setDialog(null);
     setRevertBusy(true);
+    const from = revertCommit.snapshot();
     try {
       const result = await revertTranslationKey({ slug, surfaceSlug: detail.key.surfaceSlug, keyId: detail.key.id, confirmation });
       if (result.status === "reverted") {
+        revertCommit.wait(from);
         const values = { ...draft.saved, ...Object.fromEntries(result.cells.map(c => [c.localeCode, c.value])) };
         dispatch({ type: "server", keyId: detail.key.id, values });
         setRevertedLocales(new Set(result.cells.map(c => c.localeCode)));
@@ -460,7 +470,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   }
 
   // ── Publish · Sync ────────────────────────────────────────────────────────
-  const publish = usePublish(slug);
+  const publish = usePublish(slug, server);
   const syncReasonId = useId();
   const publishButtonId = useId();
   const footerAlertId = useId();
@@ -471,13 +481,19 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     자신을 잠가 도는 [Sync] 트리거가 포커스 복귀 대상을 잃는다. ⚠️ **Publish가 도는 동안 확인 창을 "예약"하지 않는다** —
     잠긴 `SyncButton`은 Dialog를 세우지 않으므로, 그때 연 상태가 Publish가 끝나는 순간 혼자 열린다.
   */
-  const [syncPending, setSyncPending] = useState(false);
+  const syncCommit = useCommitWait(server);
+  const syncFrom = useRef<unknown>(null);
+  const [syncRunning, setSyncRunning] = useState(false);
+  const setSyncPending = (pending: boolean) => { if (pending) syncFrom.current = syncCommit.snapshot(); setSyncRunning(pending); };
+  const syncPending = syncRunning || syncCommit.waiting;
   const setSyncOpen = (open: boolean) => openSyncDialog(open && !publish.pending);
   /**
    * ⚠️ **[Sync]의 원결과를 이 화면이 든다** (audit #5 — POSTMORTEM 2026-09-08 재발) — 전엔 `onResult`가 결과를 버리고
-   * refresh만 불러 거부가 설명 없이 버튼만 복귀했다. refresh는 `SyncButton`이 성공에만 부른다.
+   * refresh만 불러 거부가 설명 없이 버튼만 복귀했다. 지금은 아무도 refresh하지 않는다 — Action의 재검증이 새 트리를 싣고 온다.
+   * 거부·실패는 재검증 전에 돌아오므로 성공만 새 트리를 기다린다 (malmoi#103).
    */
-  const [syncOutcome, setSyncOutcome] = useState<RepositoryImportOutcome | null>(null);
+  const [syncOutcome, setSyncOutcomeState] = useState<RepositoryImportOutcome | null>(null);
+  const setSyncOutcome = (next: RepositoryImportOutcome | null) => { if (next?.ok) syncCommit.wait(syncFrom.current); setSyncOutcomeState(next); };
   /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
   const openSync = () => { if (!publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
 
@@ -617,7 +633,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} />
           <SyncResult slug={slug} branch={props.sync.branch} outcome={syncOutcome} onDismiss={() => setSyncOutcome(null)}
             retryDisabled={publish.pending} onRetry={role === "OWNER" ? openSync : undefined} />
-          <SlowNotice active={syncPending} />
+          {/* 지연 문구는 실제로 도는 동안만이다 — 재검증 트리 대기(malmoi#103)는 넣지 않는다. */}
+          <SlowNotice active={syncRunning} />
         </div>
       </div>
 

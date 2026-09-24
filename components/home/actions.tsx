@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
+import { useCommitWait } from "@/components/commit-wait";
 import { SyncButton } from "@/components/home/sync-button";
 import { SlowNotice } from "@/components/slow-notice";
 import { SyncResult } from "@/components/home/sync-result";
@@ -42,6 +43,8 @@ type HomeActionsValue = {
    * `disabled`로 떨어지고, Dialog가 포커스를 되돌릴 대상이 사라진다 (DESIGN §6.64).
    */
   syncPending: boolean;
+  /** `syncPending`에서 재검증 트리 대기를 뺀 것 — 지연 문구는 실제로 도는 동안만이다 (malmoi#103). */
+  syncRunning: boolean;
   setSyncPending: (pending: boolean) => void;
   publishPending: boolean;
   publish: PublishController;
@@ -61,8 +64,16 @@ function useHomeActions(): HomeActionsValue {
 
 export function HomeActions({ children, slug }: { children: ReactNode; slug: string }) {
   const [syncOpen, openSync] = useState(false);
-  const [syncPending, setSyncPending] = useState(false);
-  const publish = usePublish(slug);
+  /*
+    ⚠️ **교차 잠금은 새 서버 트리까지 간다** (malmoi#103) — 신호는 `children`이다: 서버 페이지가 렌더할 때마다 새 객체가 되고, 수치
+    카드·배너가 전부 그 안에 산다. Action이 풀린 뒤 트리가 0.6–1.5 s 늦게 오는 동안 Publish가 Sync가 버린 편집을 보내자고 했다.
+  */
+  const syncCommit = useCommitWait(children);
+  const syncFrom = useRef<unknown>(null);
+  const [syncRunning, setSyncRunning] = useState(false);
+  const setSyncPending = (pending: boolean) => { if (pending) syncFrom.current = syncCommit.snapshot(); setSyncRunning(pending); };
+  const syncPending = syncRunning || syncCommit.waiting;
+  const publish = usePublish(slug, children);
   const publishPending = publish.pending;
   /*
     ⚠️ **Publish가 도는 동안은 확인 창이 "예약"되지 않는다** (2026-09-15 재리뷰 🟡4 — 상호 잠금 자체가
@@ -75,10 +86,12 @@ export function HomeActions({ children, slug }: { children: ReactNode; slug: str
     열린 채 Publish가 시작)은 Dialog가 modal이라 그 버튼에 클릭이 닿지 않는다.
   */
   const setSyncOpen = (open: boolean) => openSync(open && !publishPending);
-  const [outcome, setOutcome] = useState<RepositoryImportOutcome | null>(null);
+  const [outcome, setOutcomeState] = useState<RepositoryImportOutcome | null>(null);
+  // 거부·실패는 재검증 전에 돌아온다 — 트리가 안 오므로 기다리지 않는다.
+  const setOutcome = (next: RepositoryImportOutcome | null) => { if (next?.ok) syncCommit.wait(syncFrom.current); setOutcomeState(next); };
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   return (
-    <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, outcome, setOutcome, titleRef }}>
+    <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, syncRunning, setSyncPending, publishPending, publish, outcome, setOutcome, titleRef }}>
       {children}
     </Ctx.Provider>
   );
@@ -189,7 +202,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
   lastSyncAt: Date | null;
   now: Date;
 }) {
-  const { outcome, setOutcome, publish, titleRef, setSyncOpen, publishPending, syncPending } = useHomeActions();
+  const { outcome, setOutcome, publish, titleRef, setSyncOpen, publishPending, syncPending, syncRunning } = useHomeActions();
   const owner = role === "OWNER";
   /** 복원 거부 — 배너 `actions` 안이 아니라 **배너의 형제**로 선다 (audit #7 r1: 경고 속 경고가 됐다). */
   const [restoreError, setRestoreError] = useState<string | null>(null);
@@ -281,7 +294,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
         */
         onRetry={owner ? () => setSyncOpen(true) : undefined}
       />
-      <SlowNotice active={syncPending} />
+      <SlowNotice active={syncRunning} />
       <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unsent} repo={repo} role={role} />
     </div>
   );
