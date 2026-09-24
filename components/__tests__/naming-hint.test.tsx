@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
 import { NamingStep } from "@/components/onboarding/steps/naming";
-import { syncBranchFor } from "@/lib/pull/trigger";
+import { syncBranchFor } from "@/lib/pull/sync-branch";
 import { render } from "./helpers/dom";
 
 /**

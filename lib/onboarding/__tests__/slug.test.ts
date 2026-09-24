@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { REF_SAFE_SLUG, syncBranchFor } from "@/lib/pull/trigger";
+import { REF_SAFE_SLUG } from "@/lib/pull/trigger";
+import { syncBranchFor } from "@/lib/pull/sync-branch";
 
 import { PROJECT_SLUG_MAX, normalizeProjectSlug, planSlug, suggestAlternateSlug } from "../slug";
 

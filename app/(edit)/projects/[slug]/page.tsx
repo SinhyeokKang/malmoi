@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { syncBranchFor } from "@/lib/pull/trigger";
+import { syncBranchFor } from "@/lib/pull/sync-branch";
 
 import { HomeActions, HomeHeaderActions, HomeNotices, HomeTitle } from "@/components/home/actions";
 import { AttentionCard } from "@/components/home/attention-card";
@@ -281,7 +281,7 @@ export default async function ProjectHomePage({
         state={state}
         role={role}
         branch={project.baseBranch}
-        /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 octokit·ts-morph를 물어 클라이언트가 물면 안 된다. */
+        /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
         repo={{ owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) }}
         unsent={counts.toSend}
         failedSurface={failed?.slug ?? null}

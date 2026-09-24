@@ -8,7 +8,7 @@ import { countUnpublishedBySurface, loadActors, loadProject } from "@/lib/keys/q
 import { loadTranslationDetail, loadTranslationList, loadTranslationTree, withActorLabels } from "@/lib/keys/translation-list";
 import { buildPermalink } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
-import { syncBranchFor } from "@/lib/pull/trigger";
+import { syncBranchFor } from "@/lib/pull/sync-branch";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 import type { Raw } from "@/lib/search-params";
@@ -97,7 +97,7 @@ export default async function TranslationsPage({
       detail={detailView}
       unpublished={[...unsentBySurface.values()].reduce((sum, n) => sum + n, 0)}
       publish={{
-        /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 octokit·ts-morph를 물어 클라이언트가 물면 안 된다. */
+        /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
         repo: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) },
         lastSentLabel: project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date()),
         lastPrUrl: project.lastPrUrl,

@@ -1,11 +1,11 @@
 // `server-only`를 붙이지 않는다 — `__tests__/trigger.test.ts`가 GitHub·DB만 바꿔 끼우고 이 조립을
 // 직접 지난다. 클라이언트 유입은 `lib/db.ts`·`lib/keys/query.ts`의 `server-only`가 막는다.
 import { fail } from "@/lib/failure";
-import { isRefSafeSlug, SYNC_BRANCH_PREFIX } from "./ref-slug";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createGitClient } from "@/lib/github";
 import { invalidateDeliveryConfirmations, loadPullState, saveLastPulledAt } from "./load";
 import { runPull, type PullResult } from "./run";
+import { syncBranchFor } from "./sync-branch";
 
 /**
  * pull 한 번. **진입점 둘이 같은 조립을 반복하지 않게** 여기 모은다 —
@@ -22,25 +22,6 @@ import { runPull, type PullResult } from "./run";
  * 들어간다 (2026-09-07). **호출부를 위해 그대로 재수출한다** — 기존 import 경로가 갈리지 않게.
  */
 export { REF_SAFE_SLUG, isRefSafeSlug } from "./ref-slug";
-
-/**
- * 프로젝트의 sync 브랜치 이름. **누적 히스토리가 아니라 "현재 DB 상태의 스냅샷"이라**
- * 매 pull마다 force update된다 (ARCHITECTURE §3).
- *
- * ⚠️ **slug가 이름에 들어가는 것이 요지다.** 예전에는 상수 `malmoi-i18n/sync` 하나였는데, 한 리포에
- * 번역 표면이 둘이면 Project가 둘이 되고(PRODUCT §7.1) **그 둘이 같은 브랜치를 force update로
- * 서로 덮는다.** 그때는 순차 실행으로 피해 갔고, bugshot-2가 정확히
- * 그 모양이다 (`_locales` 4키 + `ts-dict` 903키).
- *
- * `Project.slug`에는 형식 제약이 없으므로(`slug String @unique`) **여기가 유일한 방어선이다.**
- * 안 막으면 `createRef`가 422로 죽고 원인이 "GitHub이 거절함"으로만 보인다.
- */
-export function syncBranchFor(slug: string): string {
-  if (!isRefSafeSlug(slug)) {
-    fail(`project slug is not usable as a git branch name: ${JSON.stringify(slug)}`);
-  }
-  return `${SYNC_BRANCH_PREFIX}${slug}`;
-}
 
 /**
  * @param runId 이 실행의 `SyncRun.id`. 있으면 성공 확정이 그 실행권으로 전달 확인을 쓴다(translation-rework — ARCHITECTURE §5.8).
