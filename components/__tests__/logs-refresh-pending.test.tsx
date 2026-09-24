@@ -57,6 +57,7 @@ it("[Refresh]는 새로 그린 목록이 올 때까지 `RefreshCw`를 스피너�
   expect(refresh.querySelector(".lucide-refresh-cw")).toBeNull();
   expect(refresh.querySelector(".animate-spin")).not.toBeNull();
   expect(refresh.getAttribute("aria-busy")).toBe("true");
+  expect(refresh.getAttribute("aria-disabled")).toBe("true");
   // 라벨은 그대로다 — 문구를 바꾸지 않는다.
   expect(refresh.textContent?.trim()).toBe(m.logs.refresh);
   await act(async () => refresh.click());
@@ -66,6 +67,7 @@ it("[Refresh]는 새로 그린 목록이 올 때까지 `RefreshCw`를 스피너�
   expect(refresh.querySelector(".animate-spin")).toBeNull();
   expect(refresh.querySelector(".lucide-refresh-cw")).not.toBeNull();
   expect(refresh.getAttribute("aria-busy")).toBeNull();
+  expect(refresh.getAttribute("aria-disabled")).toBeNull();
 });
 
 it("[Clear filters]도 이동이 끝날 때까지 `RotateCcw`를 스피너로 바꾼다", async () => {
@@ -79,6 +81,7 @@ it("[Clear filters]도 이동이 끝날 때까지 `RotateCcw`를 스피너로 �
   expect(clear.querySelector(".lucide-rotate-ccw")).toBeNull();
   expect(clear.querySelector(".animate-spin")).not.toBeNull();
   expect(clear.getAttribute("aria-busy")).toBe("true");
+  expect(clear.getAttribute("aria-disabled")).toBe("true");
   await act(async () => clear.click());
   expect(mocks.push).toHaveBeenCalledExactlyOnceWith(routes.logs("alpha", {}));
   // 붙든 transition을 테스트 안에서 푼다 — 남기면 뒤 테스트의 pending이 얽힌다 (POSTMORTEM 2026-09-18).

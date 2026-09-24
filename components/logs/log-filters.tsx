@@ -80,8 +80,8 @@ export function LogFilters({
    * ⚠️ **[Refresh]·[Clear filters]가 transition을 하나씩 든다** (audit-ux #28). 전엔 둘 다 맨 `router` 호출이라
    * 바뀐 게 없으면 눌렸는지조차 알 수 없었다 — pending이 새 서버 렌더의 커밋까지 이어진다. 둘을 나누는 것은
    * 스피너가 **누른 버튼에만** 서야 해서다. 필터 메뉴의 `go`는 이 항목 밖이다.
-   * ⚠️ **`disabled`가 아니라 `aria-busy` + 클릭 무시다** — 진짜 `disabled`는 누른 버튼의 포커스를 `body`로 떨군다
-   * (DESIGN §6 `busy`와 같은 이유).
+   * ⚠️ **`disabled`가 아니라 `aria-busy` + `aria-disabled` + 클릭 무시다** — 진짜 `disabled`는 누른 버튼의 포커스를
+   * `body`로 떨군다. 꺼진 겉모습은 `buttonClass`의 `aria-disabled:` 짝이 든다 (DESIGN §6, `new-project-button`과 같은 형).
    */
   const [refreshing, startRefresh] = useTransition();
   const [clearing, startClear] = useTransition();
@@ -103,6 +103,7 @@ export function LogFilters({
               type="button"
               variant="default"
               aria-busy={refreshing || undefined}
+              aria-disabled={refreshing || undefined}
               onClick={() => { if (!refreshing) startRefresh(() => router.refresh()); }}
               className="gap-1.5"
             >
@@ -211,6 +212,7 @@ export function LogFilters({
             type="button"
             variant="ghost"
             aria-busy={clearing || undefined}
+            aria-disabled={clearing || undefined}
             onClick={() => { if (!clearing) startClear(() => router.push(routes.logs(slug, clearedLogsQuery(filter)))); }}
           >
             {clearing ? <Loader2 className="animate-spin" aria-hidden /> : <RotateCcw aria-hidden />}
