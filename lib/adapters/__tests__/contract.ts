@@ -27,7 +27,7 @@ import type { Adapter, DetectedFormat, LocaleEntry } from "../types";
  * "이 헬퍼가 실제로 잡는가"를 테스트할 수 있다 (`contract.test.ts`의 네거티브 블록).
  */
 
-/** 코드포인트 순서: 1 A B Z _x a b z ä  (localeCompare는 _x 1 a A ä b B z Z — 완전히 다르다) */
+/** UTF-16 코드 유닛 순서: 1 A B Z _x a b z ä  (localeCompare는 _x 1 a A ä b B z Z — 완전히 다르다) */
 export const CONTRACT_KEYS = ["a", "A", "ä", "_x", "B", "b", "z", "Z", "1"] as const;
 export const CODEPOINT_ORDER = ["1", "A", "B", "Z", "_x", "a", "b", "z", "ä"] as const;
 

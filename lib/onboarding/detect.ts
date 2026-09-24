@@ -24,7 +24,7 @@ export const PROBE_LIMITS = { jsonLike: 5, codeDict: 2 } as const;
  * 후보 → 내려받을 blob 경로.
  *
  * ⚠️ **여기서 고르는 파일은 재탐지가 읽을 파일과 바이트 단위로 같아야 한다.** `verifySamples`·`hasDictionary`가
- * `sampleOrder(locales)`(en 우선 → 코드포인트 순, 3개)를 읽는다. 다른 3개를 받으면 후보가 검증 실패가 아니라
+ * `sampleOrder(locales)`(en 우선 → 코드 유닛 순, 3개)를 읽는다. 다른 3개를 받으면 후보가 검증 실패가 아니라
  * **미검증으로 통째로 떨어진다** — 그래서 `sampleOrder`를 import해 쓴다.
  */
 export function probeTargets(

@@ -221,7 +221,7 @@ export type JsonScan = {
   indent: IndentStyle;
   /** 한 줄에 담긴 **비어 있지 않은** 컨테이너의 경로. 루트는 담지 않는다. */
   compactPaths: Set<string>;
-  /** 문자열 리터럴 **안에서** 코드포인트 > `0x7f`인 `\uXXXX`를 봤는가. */
+  /** 문자열 리터럴 **안에서** 값이 `0x7f`를 넘는 `\uXXXX`(UTF-16 코드 유닛)를 봤는가. */
   escapeNonAscii: boolean;
   /** 문자열 리터럴 **안에서** `\/`를 봤는가 — 선택적 이스케이프다. */
   escapeSlash: boolean;

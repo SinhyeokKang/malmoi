@@ -125,7 +125,7 @@ const TREE = [
 ];
 const CATALOG = `${JSON.stringify({ "a.greet": "Hello", "a.bye": "Bye" }, null, 2)}\n`;
 
-/** `probeTargets`가 고르는 셋 — en 우선 → 코드포인트 순. ②의 미리보기가 처음 드는 언어와 같다. */
+/** `probeTargets`가 고르는 셋 — en 우선 → 코드 유닛 순. ②의 미리보기가 처음 드는 언어와 같다. */
 const SAMPLED_LOCALES = ["en", "fr", "ko"];
 
 /** `listUserInstallationRecords`가 주는 행 — 전부 요청 기록(`REQUESTED_AT`)보다 **앞**에 생긴 설치다. */

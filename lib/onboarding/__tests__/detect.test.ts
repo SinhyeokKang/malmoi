@@ -22,7 +22,7 @@ import { keyGap } from "../key-gap";
  * 2패스 탐지의 순수 조각들 (ARCHITECTURE §3.1).
  *
  * ⚠️ **`probeTargets`가 고르는 파일은 5)의 검증이 읽을 파일과 바이트 단위로 같아야 한다.** `verifySamples`와
- * `hasDictionary`가 `sampleOrder(locales)`(en 우선 → 코드포인트 순, 3개)를 읽는다. 다른 3개를 받으면 후보가
+ * `hasDictionary`가 `sampleOrder(locales)`(en 우선 → 코드 유닛 순, 3개)를 읽는다. 다른 3개를 받으면 후보가
  * 검증 실패가 아니라 **미검증으로 통째로 떨어진다** — 그래서 아래가 `sampleOrder`를 import해 같은 파일인지 잰다.
  */
 
@@ -60,14 +60,14 @@ const TS_FORMAT: DetectedFormat = {
 };
 
 describe("probeTargets — 내려받을 blob 경로", () => {
-  it("후보마다 `sampleOrder(locales)`와 같은 파일을 고른다 — en 우선, 코드포인트 순, 3개", () => {
+  it("후보마다 `sampleOrder(locales)`와 같은 파일을 고른다 — en 우선, 코드 유닛 순, 3개", () => {
     const c = json("src/locales/{locale}.json", ["ko", "en", "ja", "fr"]);
     const targets = probeTargets([c], [], []);
     expect(targets).toEqual(sampleOrder(new Set(c.locales)).map((l) => `src/locales/${l}.json`));
     expect(targets).toEqual(["src/locales/en.json", "src/locales/fr.json", "src/locales/ja.json"]);
   });
 
-  it("en이 없으면 코드포인트 순 앞 3개다", () => {
+  it("en이 없으면 코드 유닛 순 앞 3개다", () => {
     expect(probeTargets([json("i18n/{locale}.json", ["zh", "ko", "ja", "de"])], [], [])).toEqual([
       "i18n/de.json",
       "i18n/ja.json",

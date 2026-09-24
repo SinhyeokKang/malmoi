@@ -371,7 +371,7 @@ export function verifySamples(
   return false;
 }
 
-/** `en`을 먼저, 그다음 코드포인트 순. 상한까지만. */
+/** `en`을 먼저, 그다음 코드 유닛 순(`compareKeys`). 상한까지만. */
 export function sampleOrder(locales: ReadonlySet<string>): string[] {
   const rest = [...locales].filter((l) => l !== "en").sort(compareKeys);
   const ordered = locales.has("en") ? ["en", ...rest] : rest;

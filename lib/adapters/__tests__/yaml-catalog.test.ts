@@ -234,7 +234,7 @@ describe("yaml-catalog — 없는 키를 삽입한다 (ARCHITECTURE §1.4)", () 
     const a = yamlCatalog.write(withSource(RAILS), { locale: "ko", entries })!;
     const b = yamlCatalog.write(withSource(RAILS), { locale: "ko", entries: [...entries].reverse() })!;
     expect(b).toBe(a);
-    // 코드포인트 순서로 들어간다
+    // 코드 유닛 순서로 들어간다 (`compareKeys`)
     expect(a.indexOf("alpha")).toBeLessThan(a.indexOf("zeta"));
   });
 
