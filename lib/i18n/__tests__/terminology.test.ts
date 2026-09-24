@@ -86,6 +86,8 @@ const ALLOWED: Readonly<Record<string, string>> = {
   "settings.ci.description": "push",
   // 개인정보 방침 — 문구를 고치면 개정 이력이 따라간다(policy-gate). 개발자가 하는 일을 말하는 문장이다.
   "publicDocs.privacy.intro": "push",
+  // 도움말의 허용 목록 — action의 **이름**(`…/malmoi-i18n-push`)이라 조직 관리자가 그대로 옮겨 적는 값이다 (launch-readiness L2.5).
+  "publicDocs.docs.sections[2].blocks[1].ul[0]": "push",
   // 역할 이름(Owner)이다 — "누가 할 수 있나"를 가리키는 호칭이 아니다. 핸드오프가 고정한 문장이다(members 결정 6).
   "errors.access.last-owner": "an owner",
 };

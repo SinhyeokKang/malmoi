@@ -549,10 +549,120 @@ export const en = {
      * (`lib/shell/nav.ts`). 2026-09-11까지 후자가 `nav.help: "Help"`로 갈려 있었는데,
      * 같은 라우트를 가리키는 라벨이 둘이면 하나가 낡는다.
      */
+    /**
+     * 도움말 (launch-readiness L2.3). ⚠️ **수·이름은 정본 상수와 대조된다** — `components/__tests__/docs-content.test.tsx`가
+     * 상한 넷(`PROJECT_LIMIT`·`MEMBER_LIMIT`·`INVITATION_HOURLY_LIMIT`·`PROJECT_SLUG_MAX`)·포맷 이름·실제 `uses:` 넷·
+     * `SKIP_MARKER`를 읽는다. 사전은 잎이라 그 상수를 import할 수 없어 리터럴로 적고 테스트가 묶는다.
+     * ⚠️ **`workflow` id는 설정 화면이 가리킨다** (`ci-card.tsx`의 hook 안내).
+     */
     docs: {
       title: "Docs",
-      intro: "We're still writing this. It will be here before launch.",
-      sections: [],
+      intro: "How to connect a repository to malmoi, what it can read, and the limits that apply.",
+      sections: [
+        {
+          id: "how-it-works",
+          heading: "How malmoi works",
+          blocks: [
+            {
+              p: "Your code decides which strings exist; malmoi holds the translations. A workflow in your repository sends the translation files to malmoi whenever the base branch changes. Translators edit in malmoi, and Publish sends their work back to the repository as one pull request.",
+            },
+            {
+              p: "While translators have edits that haven't been sent yet, malmoi holds new syncs from the repository so those edits aren't overwritten. Publish, then run the workflow again — or a project owner can discard the edits from Sync.",
+            },
+          ],
+        },
+        {
+          id: "workflow",
+          heading: "Set up the workflow",
+          blocks: [
+            {
+              ul: [
+                "Create the project in malmoi. The last step shows a push token and the workflow file.",
+                "Add the token to the repository as an Actions secret named PUSH_TOKEN.",
+                "Save the workflow as .github/workflows/malmoi-i18n.yml. The project's Settings show the same file again at any time, with every source.",
+                "If your code reads translations through a hook such as useTranslations(), add the wrapper input with the module and export (for example next-intl#useTranslations()), so malmoi can show where each key is used.",
+              ],
+            },
+            {
+              p: "Rotating the token in Settings stops the old one right away — update the secret at the same time. If you change the base branch or the base language in settings, change the workflow file to match.",
+            },
+          ],
+        },
+        {
+          id: "allowed-actions",
+          heading: "Organizations that allow only selected actions",
+          blocks: [
+            {
+              p: "The workflow uses four actions. If your organization allows only selected actions, add all four, or the run stops with “not allowed to be used”:",
+            },
+            {
+              ul: [
+                "SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push — malmoi's action",
+                "actions/checkout — in the workflow file",
+                "pnpm/action-setup — inside malmoi's action",
+                "actions/setup-node — inside malmoi's action",
+              ],
+            },
+            {
+              p: "The last two don't appear in your workflow file, so they are easy to miss.",
+            },
+          ],
+        },
+        {
+          id: "formats",
+          heading: "Supported file formats",
+          blocks: [
+            {
+              table: {
+                label: "Supported file formats",
+                head: ["Format", "Example path"],
+                rows: [
+                  ["JSON catalog", "src/locales/{locale}.json"],
+                  ["YAML catalog", "config/locales/{locale}.yml"],
+                  ["Chrome extension messages", "_locales/{locale}/messages.json"],
+                  ["Code dictionary (one file per language)", "src/locales/{locale}.ts"],
+                  ["Code dictionary (all languages in one file)", "src/i18n/namespaces/*.ts"],
+                ],
+              },
+            },
+            {
+              p: "A repository needs translation files in 2 or more languages. If it has only one, add a file for a second language before you connect it.",
+            },
+          ],
+        },
+        {
+          id: "limits",
+          heading: "Limits",
+          blocks: [
+            {
+              ul: [
+                "You can own up to 3 projects. Archiving one frees its place.",
+                "A project can have up to 10 members. Pending invitations don't count until they're accepted.",
+                "A project can send up to 20 invitations an hour.",
+                "A project address can be up to 40 characters. Addresses are shared by everyone on malmoi, so a common name such as web may already be taken.",
+              ],
+            },
+          ],
+        },
+        {
+          id: "merging",
+          heading: "Merging the translation pull request",
+          blocks: [
+            {
+              p: "Squash, rebase and a merge commit all work. Keep [skip-malmoi-i18n] in the pull request title: without it, merging runs the workflow again and can overwrite translations saved after the pull request was opened.",
+            },
+          ],
+        },
+        {
+          id: "nightly",
+          heading: "Every night",
+          blocks: [
+            {
+              p: "Once a night, malmoi publishes every project that has translations not yet sent. If a translation pull request is already open, it is updated instead of a new one being opened.",
+            },
+          ],
+        },
+      ],
     },
   },
 
@@ -2731,6 +2841,8 @@ export const en = {
           Repositories that read translations through a hook ({hook}) also need the {wrapper} input — see {doc}.
         </>
       ),
+      /** `hookHint`의 링크 라벨 — `/docs#workflow`로 간다(launch-readiness L2.3). 운영 문서 경로는 제3자에게 의미가 없다. */
+      hookDoc: "Set up the workflow",
     },
 
     account: {
