@@ -72,6 +72,10 @@ it("진행 모달의 단계 목록은 시간이 흘러도 바뀌지 않고, 8초
   try {
     const run = deferred<unknown>(); mocks.pull.mockReturnValue(run.promise);
     await render(<Host />); await click("Publish1"); await click("Open pull request");
+    // D1 — 누른 확정 버튼의 라벨이 진행 중에도 그대로다(스피너만 선다). 전엔 `Publishing…`으로 바뀌었다.
+    const confirm = button("Open pull request") as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    expect(confirm.querySelector(".animate-spin")).not.toBeNull();
     const steps = () => document.querySelector('[role="dialog"] ol')?.outerHTML;
     const before = steps();
     expect(before).toBeDefined();
