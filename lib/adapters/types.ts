@@ -168,6 +168,32 @@ export const ADAPTER_ERROR_CODES = [
 export type AdapterErrorCode = (typeof ADAPTER_ERROR_CODES)[number];
 
 /**
+ * **적재 판정의 두 갈래** (B2 r3, 2026-09-24 — ARCHITECTURE §1 "read 오류의 두 갈래"). `unmanaged`는 malmoi가 일부러
+ * 관리하지 않는 항목이고 **surgical writer가 파일에 그대로 남긴다** — 번역을 잃지 않으므로 `partial-import`가 아니다.
+ * 판정 질문은 "다음 Publish에서 그 값이 살아남는가"다. regenerate writer가 지우는 값(json 숫자·chrome 엔트리)은 실패다.
+ *
+ * ⚠️ `Record`라 **코드를 늘리면 여기서 컴파일 에러가 난다** — 새 코드가 조용히 어느 한쪽으로 떨어지지 않는다.
+ */
+const ERROR_KIND = {
+  "parse-failed": "failure", "parse-crashed": "failure", "root-not-object": "failure", "no-default-export": "failure",
+  "invalid-chrome-key": "failure", "missing-message-field": "failure", "value-not-message-object": "failure",
+  // yaml-catalog(surgical)만 낸다 — 숫자·불린 스칼라가 파일에 남는다.
+  "value-not-string": "unmanaged",
+  // json-catalog(regenerate)만 낸다 — DB에 없는 값이라 다음 Publish가 지운다.
+  "value-not-string-or-container": "failure",
+  // ts-dict·code-dict(surgical) — 코드의 식·참조·spread는 번역 대상이 아니고 파일에 남는다.
+  "value-not-string-literal": "unmanaged", "shorthand-property": "unmanaged", "not-property-assignment": "unmanaged",
+  "duplicate-key": "failure",
+  "key-shadowed": "failure", "write-parse-failed": "failure", "write-no-default-export": "failure", "write-locale-object-missing": "failure",
+  "write-slot-not-string-literal": "failure", "write-slot-not-scalar": "failure", "write-slot-missing": "failure", "original-file-missing": "failure",
+  "download-failed": "failure",
+} as const satisfies Record<AdapterErrorCode, "failure" | "unmanaged">;
+
+export function adapterErrorKind(code: AdapterErrorCode): "failure" | "unmanaged" {
+  return ERROR_KIND[code];
+}
+
+/**
  * `path:line`이 아니라 `path`만 든다 — JSON 파서가 줄 번호를 주지 않는다.
  *
  * - `key` — 어느 키에서 났는지. **903키 파일에서는 이것만이 행동 가능한 정보다.** 없는 갈래도 있다

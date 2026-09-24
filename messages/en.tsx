@@ -2349,6 +2349,11 @@ export const en = {
   sources: {
     title: "Sources",
     description: "The translation files malmoi reads from your repository.",
+    /**
+     * 관리하지 않는 항목 (B2 r3 · QA5 — ARCHITECTURE §1 "read 오류의 두 갈래"). **실패 문장이 아니다** — 코드의 식·참조라
+     * 파일에 그대로 남고 번역을 잃지 않는다. Sync 결과 문장 뒤에 안내로만 붙는다.
+     */
+    unmanaged: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "entry isn't" : "entries aren't"} plain text and ${n === 1 ? "stays" : "stay"} in the code.`,
     add: "Add sources",
     open: "Open translations",
     openLanguage: "Open",

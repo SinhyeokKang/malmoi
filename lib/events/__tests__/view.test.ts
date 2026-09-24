@@ -279,7 +279,7 @@ describe("coverageBoundaryIndex — 수집 공백 경계선", () => {
 
 describe("summarizeImportEvent — 소스별 결과 → 결과 어휘", () => {
   function result(status: SurfaceImportResult["status"], over: Partial<SurfaceImportResult> = {}): SurfaceImportResult {
-    return { surfaceSlug: "web", status, count: 0, failed: 0, reason: null, errors: [], ...over };
+    return { surfaceSlug: "web", status, count: 0, failed: 0, unmanaged: 0, reason: null, errors: [], ...over };
   }
 
   it("전 소스 성공은 Imported다", () => {

@@ -104,6 +104,8 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, ret
   // `invalid-format`에는 재시도가 없다 — 포맷을 고치기 전에는 다시 눌러도 결과가 같다.
   const retry = summary.unreadable.length + summary.superseded.length > 0;
   const partialFailures = outcome.surfaces.filter(surface => surface.status === "partial").reduce((sum, surface) => sum + surface.failed, 0);
+  // 관리하지 않는 항목은 사고가 아니다 — 톤·헤드라인을 안 바꾸고 안내 한 줄로만 선다 (B2 r3 · QA5).
+  const unmanaged = outcome.surfaces.filter(surface => surface.status !== "failed").reduce((sum, surface) => sum + surface.unmanaged, 0);
   /*
     ⚠️ **말할 것이 없는 사고는 자리를 만들지 않는다** — 중복 키만으로도 `partial`이 된다
     (`buildPushPayload`의 `duplicateKeys`는 어댑터 오류가 아니라 `lastWins`가 조용히 흡수한다).
@@ -117,10 +119,11 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, ret
    * `space-y-2`가 제목 아래에 **보이지 않는 8px**을 만든다(같은 부류를 확인 Dialog의 본문에서 한 번
    * 밟았다). 성공이 한 줄이라는 것이 이 화면의 방어이므로 그 8px이 곧 형의 차이를 깎는다.
    */
-  const details = incidents.length === 0 && partialFailures === 0 && kept === 0 ? undefined : <>
+  const details = incidents.length === 0 && partialFailures === 0 && kept === 0 && unmanaged === 0 ? undefined : <>
     {kept > 0 && <p>{m.repositorySync.kept(kept)}</p>}
     {summary.unreadable.length > 0 && notReplaced > 0 && <p>{m.repositorySync.notReplaced(notReplaced)}</p>}
     {partialFailures > 0 && <p>{m.repositorySync.partial(partialFailures)}</p>}
+    {unmanaged > 0 && <p>{m.sources.unmanaged(unmanaged)}</p>}
     {incidents.map(surface =>
       <div key={surface.surfaceSlug} data-reason={surface.reason ?? undefined}>
         {/*

@@ -6,7 +6,7 @@ import { render } from "./helpers/dom";
 
 const props = { slug: "acme", branch: "main" };
 const row = (surfaceSlug: string, status: SurfaceImportResult["status"], reason: SurfaceImportResult["reason"]): SurfaceImportResult =>
-  ({ surfaceSlug, status, reason, count: status === "imported" ? 4 : 0, failed: 0, errors: [] });
+  ({ surfaceSlug, status, reason, count: status === "imported" ? 4 : 0, failed: 0, unmanaged: 0, errors: [] });
 function alert(container: HTMLElement) { return container.querySelector('[role="status"], [role="alert"]'); }
 /** `Alert`의 본문 블록 — 있으면 두 줄 형이고 없으면 한 줄 형이다. */
 /**

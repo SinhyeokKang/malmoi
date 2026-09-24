@@ -1190,7 +1190,7 @@ export async function createProject(raw: {
 }
 
 export type FirstIngestResultView =
-  | { ok: true; count: number; failed: number; errors: AdapterError[] }
+  | { ok: true; count: number; failed: number; unmanaged: number; errors: AdapterError[] }
   | { ok: false; error: OnboardError | AccessError | "invalid input" };
 
 /**
@@ -1371,7 +1371,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
     if (result.count === 0) await failRun("partial-import");
 
     await closeRun(result.failed > 0 || result.count === 0 ? "partial" : "imported", { keys: result.count, errorCode: null });
-    return { ok: true, count: result.count, failed: result.failed, errors: [...result.errors] };
+    return { ok: true, count: result.count, failed: result.failed, unmanaged: result.unmanaged, errors: [...result.errors] };
   } catch (error) {
     // 스냅샷을 받는 동안 권한·보관이 바뀌었다 — 적재 실패가 아니라 거부다.
     if (error instanceof FirstIngestRefused) {

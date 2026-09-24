@@ -10,7 +10,7 @@ import { render } from "./helpers/dom";
 const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), refresh: vi.fn(), prepare: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
-const success: RepositoryImportOutcome = { ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "imported", count: 0, failed: 0, reason: null, errors: [] }] };
+const success: RepositoryImportOutcome = { ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "imported", count: 0, failed: 0, unmanaged: 0, reason: null, errors: [] }] };
 const props = { slug: "acme", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 0, onResult: vi.fn() };
 function SyncButton(props: Omit<React.ComponentProps<typeof Control>, "open" | "onOpenChange">) {
   const [open, setOpen] = useState(false);
@@ -226,7 +226,7 @@ it("거부·실패 결과에는 refresh를 부르지 않고 성공에만 부른�
 it("결과 재시도는 같은 확인 Dialog를 열고 확인 전에는 Action을 호출하지 않는다", async () => {
   function Host() {
     const [open, setOpen] = useState(false);
-    return <><Control {...props} open={open} onOpenChange={setOpen} /><SyncResult slug="acme" branch="main" onRetry={() => setOpen(true)} outcome={{ ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "superseded", count: 0, failed: 0, reason: "superseded", errors: [] }] }} /></>;
+    return <><Control {...props} open={open} onOpenChange={setOpen} /><SyncResult slug="acme" branch="main" onRetry={() => setOpen(true)} outcome={{ ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "superseded", count: 0, failed: 0, unmanaged: 0, reason: "superseded", errors: [] }] }} /></>;
   }
   await render(<Host />); await click("Try again");
   expect(dialog()).not.toBeNull();

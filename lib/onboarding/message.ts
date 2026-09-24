@@ -141,6 +141,8 @@ export function onboardErrorMessage(error: OnboardError): string {
  *
  * @param failed `read.errors.length + duplicateKeys`
  */
-export function ingestHeadline(count: number, failed: number): string {
-  return m.newProject.imported(count, failed);
+export function ingestHeadline(count: number, failed: number, unmanaged = 0): string {
+  // 관리하지 않는 항목은 실패 문장을 대신하지 않고 뒤에 안내로 붙는다 (B2 r3 · QA5).
+  const headline = m.newProject.imported(count, failed);
+  return unmanaged > 0 ? `${headline} ${m.sources.unmanaged(unmanaged)}` : headline;
 }

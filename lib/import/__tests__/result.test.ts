@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { summarizeImport, type SurfaceImportResult } from "../result";
-const row = (status: SurfaceImportResult["status"], over: Partial<SurfaceImportResult> = {}): SurfaceImportResult => ({ surfaceSlug: "default", status, count: 0, failed: 0, reason: null, errors: [], ...over });
+const row = (status: SurfaceImportResult["status"], over: Partial<SurfaceImportResult> = {}): SurfaceImportResult => ({ surfaceSlug: "default", status, count: 0, failed: 0, unmanaged: 0, reason: null, errors: [], ...over });
 
 describe("summarizeImport", () => {
   it("정상 0키도 성공 재적재다", () => {

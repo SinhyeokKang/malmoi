@@ -2,7 +2,7 @@ import "server-only";
 
 import { checkContentBudget } from "./budget";
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { AdapterError, DetectedFormat } from "@/lib/adapters/types";
+import { adapterErrorKind, type AdapterError, type DetectedFormat } from "@/lib/adapters/types";
 import type { LockedAccess } from "@/lib/auth/access";
 import { lockProjectAccess } from "@/lib/auth/lock";
 import { applyPushInTransaction } from "@/lib/push/apply";
@@ -33,8 +33,13 @@ import { makeProbe } from "./detect";
 export type FirstIngestResult = {
   /** 적재한 키 수(base 로케일 기준). 화면 헤드라인의 앞 숫자다 (`ingestHeadline`). */
   count: number;
-  /** 읽지 못한 항목 수 = read 에러 + 중복으로 접힌 키. **0이 아니면 성공 문구를 쓰지 않는다** (불변식 9). */
+  /** 읽지 못한 항목 수 = 실패 갈래 read 에러 + 중복으로 접힌 키. **0이 아니면 성공 문구를 쓰지 않는다** (불변식 9). */
   failed: number;
+  /**
+   * malmoi가 관리하지 않아 코드에 그대로 남는 항목 수(`adapterErrorKind` — ts-dict의 `String(…)` 등). **실패가 아니다** —
+   * `partial-import`를 만들지 않고 결과 화면에 안내로만 선다 (B2 r3 · QA5).
+   */
+  unmanaged: number;
   /** 상위 몇 건을 화면에 보이기 위해. 후보를 떨어뜨리지 않는다 (ARCHITECTURE §4의 연장). */
   errors: AdapterError[];
 };
@@ -124,14 +129,17 @@ export function prepareFirstSnapshot(input: FirstSnapshotInput) {
     scanRefs: [],
   });
 
-  if (payload.keys.length === 0) return { payload: null, result: { count: 0, failed: Math.max(1, read.errors.length + missing.length), errors: read.errors } };
+  // 관리하지 않는 항목은 실패 목록에서 빼고 개수만 든다 — 섞으면 그것 하나로 소스가 "Last sync failed"가 된다(QA5).
+  const failures = read.errors.filter(error => adapterErrorKind(error.code) === "failure");
+  const unmanaged = read.errors.length - failures.length;
+  if (payload.keys.length === 0) return { payload: null, result: { count: 0, failed: Math.max(1, failures.length + missing.length), unmanaged, errors: failures } };
   if (!PushPayload.safeParse(payload).success) fail("first ingest exceeds the push payload contract");
 
   const errors = [
-    ...read.errors,
+    ...failures,
     ...missing.map((path): AdapterError => ({ path, code: "download-failed" })),
   ];
   const failed = errors.length + duplicateKeys;
 
-  return { payload, result: { count: payload.keys.length, failed, errors } };
+  return { payload, result: { count: payload.keys.length, failed, unmanaged, errors } };
 }

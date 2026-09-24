@@ -8,6 +8,8 @@ export type SurfaceImportReason = ImportFailureCode | "resource-limit" | "invali
 export type SurfaceImportResult = {
   surfaceSlug: string; status: "imported" | "partial" | "failed" | "superseded";
   count: number; failed: number; reason: SurfaceImportReason | null;
+  /** 코드에 그대로 남아 관리하지 않는 항목 수 — 실패가 아니라 안내다 (`adapterErrorKind`, B2 r3). */
+  unmanaged: number;
   errors: readonly { path: string; code: AdapterError["code"] }[];
 };
 /** `reconfirm` — 폐기 승인 지문이 없거나 잠금 뒤 재계산과 달랐다(Dialog 뒤 편집·적용·설정 변경). sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인. */

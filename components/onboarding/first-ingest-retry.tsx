@@ -47,7 +47,7 @@ export function FirstIngestRetry({ slug, canRun }: { slug: string; canRun: boole
                   // 불변식 9 — 0건이 아니면 성공 문구를 그대로 쓰지 않는다.
                   ? {
                       ok: true,
-                      text: ingestHeadline(outcome.count, outcome.failed),
+                      text: ingestHeadline(outcome.count, outcome.failed, outcome.unmanaged),
                       // ⚠️ **tone도 `failed`가 정한다** — `errors.length`(상위 5건)로 고르면 진단 목록이
                       // 빈 부분 실패가 `success`로 그려진다 (code-review 2026-09-08 · 불변식 9).
                       failed: outcome.failed,

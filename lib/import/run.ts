@@ -37,7 +37,7 @@ function settings(project: Repository, surface: TranslationSurface): ImportSetti
     nested: surface.nested, nestedByPath: surface.nestedByPath };
 }
 function result(surface: TranslationSurface, status: SurfaceImportResult["status"], reason: SurfaceImportResult["reason"]): SurfaceImportResult {
-  return { surfaceSlug: surface.slug, status, reason, count: 0, failed: status === "failed" ? 1 : 0, errors: [] };
+  return { surfaceSlug: surface.slug, status, reason, count: 0, failed: status === "failed" ? 1 : 0, unmanaged: 0, errors: [] };
 }
 
 async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ ok: true; lease: Lease } | Extract<RepositoryImportOutcome, { ok: false }>> {
@@ -183,7 +183,7 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
     return { surfaceSlug: surface.slug,
       status: prepared.kind === "failed" ? "failed" : prepared.result.failed > 0 ? "partial" : "imported",
       reason: prepared.kind === "failed" ? prepared.error === "resource-limit" ? "resource-limit" : "import-failed" : null,
-      count: prepared.result.count, failed: prepared.result.failed,
+      count: prepared.result.count, failed: prepared.result.failed, unmanaged: prepared.result.unmanaged,
       errors: prepared.result.errors.map(({ path, code }) => ({ path, code })),
     };
   }, transactionOptions);
@@ -229,7 +229,7 @@ export async function runRepositoryImportFromReader(prisma: PrismaClient, input:
     }
     return outcome;
   };
-  const failure: PreparedSurfaceImport = { kind: "failed", error: "ingest-failed", result: { count: 0, failed: 1, errors: [] } };
+  const failure: PreparedSurfaceImport = { kind: "failed", error: "ingest-failed", result: { count: 0, failed: 1, unmanaged: 0, errors: [] } };
   const unchangedSnapshot = { headSha: "", headCommittedAt: lease.startedAt.toISOString() };
   try {
     if (lease.surfaces.every(surface => surface.adapterName === null || !isAdapterName(surface.adapterName) || !surface.pathTemplate || !surface.baseLocale)) {
