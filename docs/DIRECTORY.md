@@ -415,6 +415,8 @@ lib/
   import/locales.ts     localesToKeep — 다운로드 실패 로케일을 재탐지 목록에 되살린다(경로 → 로케일은 onboarding/confirm의
                         localeOfTemplatePath가 templatePaths와 같은 패턴으로 든다)
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
+  github-wait.ts        GitHub 대기 마감(GITHUB_WAIT_MS 8초) 하나 — 목록 원격 신호·probe·열린 PR·계정 조회가 같은 값을
+                        읽는다(ARCHITECTURE §6.5.2). octokit을 물지 않는 잎이라 lib/github를 mock한 테스트에서도 실물이 돈다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
                         account-view · connect-plan · health · token · token-store · user · repository-id ·
                         installed-repos · installation-url · callback-plan(callback 갈래 판정 — 쓰기는
