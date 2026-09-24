@@ -43,16 +43,16 @@
 **왜 한 배치인가**: 느린 게 아니라 **틀리는** 부류만 모았다 — 입력이 사라지거나, 서로 막아야 할 실행이 겹치거나, 비활성 문구가 거짓이다.
 
 **항목**
-- [ ] **#1** 🔴 `components/translations/workspace/workspace.tsx:120-125`, `:227-239` — 키 전환이 대기 중일 때 친 입력이 조용히 사라진다.
+- [x] **#1** 🔴 `components/translations/workspace/workspace.tsx:120-125`, `:227-239` — 키 전환이 대기 중일 때 친 입력이 조용히 사라진다.
   - 실패 시나리오: 키 A 상세 → 목록에서 B 클릭(`planEditorNavigation`이 클릭 시점의 `dirty = []`로 `go`) → 응답 전까지 A 패널이 그대로라 A 칸에 계속 입력 → B 도착 → effect가 `detail.key.id !== draft.keyId`로 `initKeyDraft` 교체 → A 입력이 확인창 없이 사라지고 세션 복구 사본도 지워진다(`:171-181`).
   - 방향: 이동이 대기 중이면 상세를 읽기 전용이나 흐림 처리한다. 교체 직전에 dirty를 다시 보고, 남아 있으면 discard 확인창을 띄운다.
   - 재현: jsdom에서 `router.push`를 보류시키고 입력 → `detail` prop 교체 → A 값이 사라지는지 단언한다.
-- [ ] **#2** 🔴 `workspace.tsx:421-422` · `components/publish-button.tsx:90` — 번역 화면에서 Sync와 Publish가 서로 안 잠긴다(DESIGN §6 "진행 중 상호 잠금" 위반).
+- [x] **#2** 🔴 `workspace.tsx:421-422` · `components/publish-button.tsx:90` — 번역 화면에서 Sync와 Publish가 서로 안 잠긴다(DESIGN §6 "진행 중 상호 잠금" 위반).
   - 원인: `SyncButton`에 `onPendingChange`가 안 넘어가고, `PublishButton`에 `disabled`가 없으며, `planPublishButton`에 `otherPending: false`가 하드코딩돼 있다. Home은 `components/home/actions.tsx:76,149,154`로 잠근다. 같은 화면의 Sync 결과 [Try again]만 `retryDisabled={publish.pending}`(`:488`)로 잠겨 있다.
   - 방향: Home의 `syncPending`/`publishPending` 호스트 배선을 workspace로 옮긴다. 판정은 호스트의 몫이다(DESIGN §6).
-- [ ] **#3** 🔴 `workspace.tsx:302-305` · `messages/en.tsx:2036` — Revert 비활성 문구("This stays off while a save, publish, or sync is running.")와 실제 조건(`saving || revertBusy`)이 다르다. Publish·Sync 중에도 눌리고, 서버의 `busy` 거부로만 멈춘다.
+- [x] **#3** 🔴 `workspace.tsx:302-305` · `messages/en.tsx:2036` — Revert 비활성 문구("This stays off while a save, publish, or sync is running.")와 실제 조건(`saving || revertBusy`)이 다르다. Publish·Sync 중에도 눌리고, 서버의 `busy` 거부로만 멈춘다.
   - 방향: #2에서 만든 두 pending을 `revertBlocked`에 더한다.
-- [ ] **#15** 🟡 `components/search-input.tsx:30-31` — Enter 뒤 이어 친 글자가 응답 도착과 함께 되돌려진다(`useEffect(() => setText(value))`). 번역 화면과 Logs 검색(`log-filters.tsx:201-204`)이 같은 컴포넌트다.
+- [x] **#15** 🟡 `components/search-input.tsx:30-31` — Enter 뒤 이어 친 글자가 응답 도착과 함께 되돌려진다(`useEffect(() => setText(value))`). 번역 화면과 Logs 검색(`log-filters.tsx:201-204`)이 같은 컴포넌트다.
   - 방향: 마지막으로 제출한 값을 ref에 두고, 현재 입력이 그 값과 같을 때만 URL 값으로 동기화한다.
 
 **경계**: `workspace.tsx`의 전환 pending(#7·#18·#19·#29·#30)은 **U3**, `:335`의 `router.refresh()`(#12)는 **U6**, Publish 직렬화(#10)는 **U7**이다. `publish-button.tsx:80`(#12)·`:99`(#25)·`:296`(#23)도 이 배치가 아니다.
@@ -110,6 +110,11 @@
 - [ ] **#30** ⚪ `workspace.tsx:263`, `:302`, `:585-586` (추정) — 저장 직후 푸터가 "Saved" → "Saved · not sent"로 두 번 바뀌고 `aria-live`도 두 번 읽힐 수 있다. `hasPending`이 서버 prop(`detail.locales[].pending`)에서 오기 때문이다. 방향: 성공 결과의 셀로 `pendingLocales`를 낙관적으로 합친다(목록 행은 이미 이렇게 한다, `:266-273`).
 - [ ] **#33** ⚪ `workspace.tsx:233-236`, `:507` — 키 선택과 More가 `push`라 뒤로가기가 키 단위로 거슬러 간다. D2대로 고친다.
 
+**선행 배치에서 넘어온 것 (2026-09-25)**
+- **U1이 이동 잠금을 이미 transition으로 세웠다** — `workspace.tsx`의 `const [navigating, startNavigation] = useTransition()`와 `navigate(href, how)`. 이 배치는 새 transition을 만들지 않고 **그 `navigating`을 표시(#7의 `aria-busy`·흐림·낙관 선택)에 재사용**한다. 읽기 전용 잠금은 그대로 둔다.
+- **U2가 `surfaces/[surfaceSlug]/translations/loading.tsx`를 세웠다** — 트리에서 **다른 소스**를 누르면 `[surfaceSlug]` 세그먼트가 바뀌어 이 골격이 머리·트리·목록을 통째로 덮는다(같은 소스 안의 조작은 searchParams라 안 덮는다). #18을 설계할 때 이 동작을 전제로 한다 — 받아들일지, 소스 전환도 옛 화면 + pending으로 둘지 판정해 handoff에 적는다.
+- U5가 Home의 [Sync]→`Publish first` 링크에 `surfaceSlug`를 넘겼다. 번역 화면 안의 `SyncButton`은 넘기지 않아 옛 `/translations` 경로로 간다 — 현재 표면을 넘기는 한 줄을 이 배치가 든다.
+
 **경계**: `:335`의 `router.refresh()`(#12)는 **U6**, `:351`의 `usePublish`(#10)는 **U7**이다. `components/search-input.tsx`(#15)는 **U1**이다.
 
 ---
@@ -119,13 +124,13 @@
 **왜 한 배치인가**: 번역 화면 밖에서 searchParams가 구동하는 자리들이다. 결과를 기다릴 필요가 없는 조작(닫기·클라이언트 필터)까지 서버 왕복을 기다린다.
 
 **항목**
-- [ ] **#9** 🔴 (클라이언트 쪽) `components/logs/event-dialog.tsx:40-44` · `components/home/logs-card.tsx:48` · `app/(edit)/projects/[slug]/logs/page.tsx:63-69` — 이벤트 상세 대화상자의 `open`이 늘 true인 제어형이다.
+- [x] **#9** 🔴 (클라이언트 쪽) `components/logs/event-dialog.tsx:40-44` · `components/home/logs-card.tsx:48` · `app/(edit)/projects/[slug]/logs/page.tsx:63-69` — 이벤트 상세 대화상자의 `open`이 늘 true인 제어형이다.
   - Esc·×를 눌러도 `router.push`의 전체 재조회가 끝날 때까지 떠 있다.
   - 로그 행을 누르면 표시 없이 기다렸다가 뜬다.
   - 닫기가 `push`라서 뒤로가기를 누르면 다시 열린다.
   - 방향: 로컬 `open`으로 먼저 닫고 URL은 `router.replace`로 뒤따르게 한다. 열 때는 transition pending을 행에 표시한다.
-- [ ] **#17** 🟡 `components/projects/search-input.tsx:27` · `components/projects/project-list.tsx:114`(`listBody(all, q)`) · `app/(edit)/projects/page.tsx:59` — 프로젝트 검색은 클라이언트 필터인데 서버 왕복을 타고, 원격 신호(최대 8초)를 기다리는 동안 목록이 굳어 있다. 방향: `q`를 로컬 state로 거르고, URL은 `history.replaceState`로만 맞춘다.
-- [ ] **#28** ⚪ `components/logs/log-filters.tsx:63`, `:93`, `:194` — [Refresh](`router.refresh()`만 부른다)와 필터 초기화에 pending이 없다. 바뀐 게 없으면 눌렸는지조차 알 수 없다. 방향: transition pending으로 아이콘을 교체한다(DESIGN §6 "아이콘이 있는 버튼은 교체"). 폴링이 없는 것은 설계대로다(`logs/page.tsx:38`).
+- [x] **#17** 🟡 `components/projects/search-input.tsx:27` · `components/projects/project-list.tsx:114`(`listBody(all, q)`) · `app/(edit)/projects/page.tsx:59` — 프로젝트 검색은 클라이언트 필터인데 서버 왕복을 타고, 원격 신호(최대 8초)를 기다리는 동안 목록이 굳어 있다. 방향: `q`를 로컬 state로 거르고, URL은 `history.replaceState`로만 맞춘다.
+- [x] **#28** ⚪ `components/logs/log-filters.tsx:63`, `:93`, `:194` — [Refresh](`router.refresh()`만 부른다)와 필터 초기화에 pending이 없다. 바뀐 게 없으면 눌렸는지조차 알 수 없다. 방향: transition pending으로 아이콘을 교체한다(DESIGN §6 "아이콘이 있는 버튼은 교체"). 폴링이 없는 것은 설계대로다(`logs/page.tsx:38`).
 
 **경계**: Home이 `?event=` 때문에 GitHub probe를 다시 도는 서버 쪽(#9 서버)은 **U5**다. `log-filters.tsx:201-204`가 쓰는 `components/search-input.tsx`는 **U1**이다.
 
@@ -139,15 +144,19 @@
 - **D5 → probe 마감은 목록의 `loadRemoteSignals`와 같은 8초**(`lib/projects/remote.ts:57`). 같은 원격을 기다리는 두 화면이 서로 다른 마감을 가지면 한쪽은 "연결 안 됨", 다른 쪽은 "연결됨"으로 갈린다. 값은 두 곳이 같은 상수를 읽게 한다(사본 둘이면 다시 갈린다). ARCHITECTURE에 "GitHub 대기 마감 8초" 한 줄을 올린다.
 
 **항목**
-- [ ] **#8** 🔴 `app/(edit)/projects/[slug]/settings/page.tsx:38-40` · `lib/github.ts:31-38`, `:55-75` — Settings가 GitHub을 동기로 기다리는데 로딩 경계가 없다(#5가 경계를 세워도 대기 시간은 그대로다).
+- [x] **#8** 🔴 `app/(edit)/projects/[slug]/settings/page.tsx:38-40` · `lib/github.ts:31-38`, `:55-75` — Settings가 GitHub을 동기로 기다리는데 로딩 경계가 없다(#5가 경계를 세워도 대기 시간은 그대로다).
   - `probeRepo`가 설치 조회 → 토큰 발급 → 리포 조회를 순서대로 부르고, `loadOpenPrUrl`이 토큰 발급 + PR 조회를 따로 또 한다.
   - `createApp()`이 호출마다 `new App`이라, 설치 토큰 캐시가 요청 사이에 살아남지 않는다.
   - `probeRepo`에 마감이 없어, GitHub이 멈추면 `maxDuration` 60초까지 끌려간다.
   - 방향: 연결 상태 카드를 `<Suspense>`로 떼어 스트리밍하고, probe에 D5 마감을 두고, `App`을 모듈 스코프 lazy 싱글턴으로 둔다. ⚠️ 모듈 최상위에서 env를 평가하지 않는다(CLAUDE.md) — 싱글턴은 첫 호출 때 만든다. ⚠️ installation 토큰 경계(`credential-separation.test.ts`)를 넘지 않는다.
-- [ ] **#24** 🟡 `app/(edit)/projects/[slug]/(home)/page.tsx:82→86→133→160→169` — 모든 Home 진입이 같은 probe(GitHub 3홉)를 기다린다. 골격은 있지만 그만큼 오래 서 있다. 방향: 연결 상태만 Suspense로 떼어, 카운트 카드와 메타 열이 먼저 뜨게 한다.
-- [ ] **#9** 🔴 (서버 쪽) `(home)/page.tsx:133-158` — `?event=`로 대화상자를 여닫을 때마다 Home 전체와 probe가 다시 돈다. 방향: #24의 Suspense 분리로 probe가 상세 여닫기의 임계 경로에서 빠지게 한다.
+- [ ] ⛔ **#24** 🟡 `app/(edit)/projects/[slug]/(home)/page.tsx:82→86→133→160→169` — 모든 Home 진입이 같은 probe(GitHub 3홉)를 기다린다. 골격은 있지만 그만큼 오래 서 있다. 방향: 연결 상태만 Suspense로 떼어, 카운트 카드와 메타 열이 먼저 뜨게 한다.
+- [ ] ⛔ **#9** 🔴 (서버 쪽) `(home)/page.tsx:133-158` — `?event=`로 대화상자를 여닫을 때마다 Home 전체와 probe가 다시 돈다. 방향: #24의 Suspense 분리로 probe가 상세 여닫기의 임계 경로에서 빠지게 한다.
 
-- [ ] **#4b** (U2에서 이관) `components/home/count-cards.tsx:68` · `components/home/sync-button.tsx:228` — Home의 번역 링크를 옛 `routes.translations`에서 `routes.surfaceTranslations`로 직접 조립한다. 카드의 `cardQuery`(`ns` 명시 — `count-cards.tsx:62-67` 주석)는 그대로 싣는다. `sync-button.tsx`는 `:228` 링크만 — `:120`은 U6, `:157`은 U7이다.
+- [x] **#4b** (U2에서 이관) `components/home/count-cards.tsx:68` · `components/home/sync-button.tsx:228` — Home의 번역 링크를 옛 `routes.translations`에서 `routes.surfaceTranslations`로 직접 조립한다. 카드의 `cardQuery`(`ns` 명시 — `count-cards.tsx:62-67` 주석)는 그대로 싣는다. `sync-button.tsx`는 `:228` 링크만 — `:120`은 U6, `:157`은 U7이다.
+
+**진행 기록 (2026-09-25)**
+- ⛔ **#24 · #9(서버)는 막힘으로 닫았다** — `health`가 `planHomeState`를 거쳐 카드·할 일·메타·배너·머리 `paused`를 전부 정해서, probe 전에 카드·메타를 그리면 DESIGN §6.64 상태 매트릭스가 뒤집힌다(App이 제거된 프로젝트에서 Publish가 잠깐 켜진다). `?event=` 열기는 transition이라 Suspense로도 probe를 못 비킨다(추정). 이 배치가 준 것은 App 싱글턴(웜 인스턴스에서 probe 3홉→2홉)과 8초 상한이다. 닫기는 U4가 `replaceState`로 서버 왕복을 없앴다. **남은 지연은 런타임 QA(Slow 4G)로 재고**, 여전히 느리면 probe 결과 TTL 메모를 검토한다 — 키에 `installationId`·`repositoryId`를 넣고 `error`는 캐시하지 않고 설정 화면은 건너뛰어야 한다(안 그러면 Reconnect 직후 거짓 `installation-changed`).
+- 리뷰가 잡아 같은 배치에서 고친 것: 캐시된 App의 설치 토큰이 만료 1분 전에 `createGitClient`의 고정 Octokit에 실릴 수 있었다(5분 미만이면 재발급) · `loadAccountView`에 마감이 없었다. 남은 후보: `loadInstalledRepoCount`(`/account`)에 마감 없음.
 
 **경계**: `event-dialog.tsx`·`logs-card.tsx`(#9 클라이언트)는 **U4**다. `lib/projects/remote.ts`는 읽기만 하고 고치지 않는다(D5의 기준값).
 
