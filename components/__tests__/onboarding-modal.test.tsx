@@ -215,3 +215,32 @@ it("actions null은 Next를 숨기고 명시 슬롯은 기본 버튼을 대체�
   expect(buttonNamed("Next")).toBeUndefined();
   expect(buttonNamed("Custom action")).toBeDefined();
 });
+
+/**
+ * malmoi#87 — 바닥은 **왼쪽 문장 + 오른쪽 버튼 한 무리**다. 소비자가 `actions`에 fragment를 넘기면 버튼 둘이 바닥의
+ * 직계 자식이 되어 `justify-between`이 [Cancel]을 가운데로 띄웠다(Add sources, 실측 238px 간격). 껍데기가 무리를 든다.
+ */
+describe("바닥의 액션 무리 (#87)", () => {
+  const footer = () => find<HTMLElement>(document.body, "footer");
+
+  it("fragment로 넘긴 버튼 둘도 한 무리(gap-2)에 든다", async () => {
+    await render(shell({ actions: <><Button>Cancel</Button><Button>Add</Button></>, footer: <span>hint</span> }));
+    expect(footer().children).toHaveLength(2);
+    const group = footer().children[1] as HTMLElement;
+    expect(group.className).toContain("gap-2");
+    expect([...group.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["Cancel", "Add"]);
+  });
+
+  it("버튼 하나도 같은 무리다 — 짝: 기본 [Next] 바닥과 같은 형", async () => {
+    await render(shell({ actions: <Button>Close</Button> }));
+    expect(footer().children).toHaveLength(2);
+    expect((footer().children[1] as HTMLElement).querySelector("button")?.textContent).toBe("Close");
+    await render(shell());
+    expect([...document.querySelectorAll("footer")].at(-1)!.children).toHaveLength(2);
+  });
+
+  it("액션이 null이면 빈 무리를 세우지 않는다 — Publish의 버튼 없는 갈래", async () => {
+    await render(shell({ actions: null }));
+    expect(footer().children).toHaveLength(1);
+  });
+});
