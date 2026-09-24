@@ -3022,6 +3022,7 @@ export const en = {
     "shorthand-property": "The property is shorthand, so its value can't be read — it looks like an imported reference.",
     "not-property-assignment": "This isn't a property assignment.",
     "duplicate-key": "The key appears twice, so one of the two values is lost.",
+    "duplicate-property": "The key is defined twice. malmoi uses the one it edits and leaves the other as it is.",
     "key-shadowed": "The key is the start of a longer key, so it has no slot of its own — this value wasn't written.",
     "write-parse-failed": "The file couldn't be parsed, so it was left untouched.",
     "write-no-default-export": "This file has no default-export object, so it was left untouched.",

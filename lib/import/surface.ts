@@ -76,7 +76,7 @@ export async function prepareSurfaceImport(reader: RepoReader, input: SurfaceImp
       // 관리하지 않는 항목은 실패로 세지 않는다 — `prepareFirstSnapshot`과 같은 판정이다 (`adapterErrorKind`).
       const failures = parsed.errors.filter(error => adapterErrorKind(error.code) === "failure");
       const errors = [...failures, ...read.targets.filter(path => !read.blobs.has(path)).map(path => ({ path, code: "download-failed" as const }))];
-      return { kind: "failed", error: "ingest-failed", result: { count: 0, failed: Math.max(1, errors.length), unmanaged: parsed.errors.length - failures.length, errors } };
+      return { kind: "failed", error: "ingest-failed", result: { count: 0, failed: Math.max(1, errors.length), unmanaged: parsed.errors.filter(error => adapterErrorKind(error.code) === "unmanaged").length, errors } };
     }
     const prepared = prepareFirstSnapshot({
       ...input, surfaceId: input.surface.id, surfaceSlug: input.surface.slug,

@@ -1,5 +1,6 @@
 import { adapterFor, compareKeys, matchGlobPaths } from "../adapters";
 import { dominantFieldOrder } from "../adapters/chrome-locales";
+import { stripBom } from "../adapters/json-style";
 import type { AdapterErrorCode, AdapterFile, DetectedFormat, LocaleEntry, ReadLocale, ReadResult } from "../adapters/types";
 import { changedHunks, roundtripDiffRatio, usedApproximation } from "./diff";
 import { jsonShape, sameCommonOrder, type JsonDiffCauses, type JsonShape } from "./json-shape";
@@ -199,6 +200,7 @@ const KIND_OF: Record<AdapterErrorCode, ReadErrorKind> = {
   "shorthand-property": "non-literal-value",
   "not-property-assignment": "non-literal-value",
   "duplicate-key": "key-collision",
+  "duplicate-property": "key-collision",
   // ── 아래는 write·적재 껍데기 층이라 여기까지 오지 않는다 (테스트의 `NON_READ`). ──
   "key-shadowed": "other",
   "write-parse-failed": "other",
@@ -358,7 +360,7 @@ function observeChrome(
     if (text === undefined) continue;
     let parsed: unknown;
     try {
-      parsed = JSON.parse(text);
+      parsed = JSON.parse(stripBom(text));
     } catch {
       // 관측 전용 카운터다 — 깨진 파일은 read 에러로 이미 세었고 여기서 다시 세면 이중이다.
       continue;

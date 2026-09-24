@@ -152,6 +152,7 @@ export const ADAPTER_ERROR_CODES = [
   "shorthand-property",
   "not-property-assignment",
   "duplicate-key",
+  "duplicate-property",
   // ── write ──
   "key-shadowed",
   "write-parse-failed",
@@ -184,12 +185,18 @@ const ERROR_KIND = {
   // ts-dict·code-dict(surgical) — 코드의 식·참조·spread는 번역 대상이 아니고 파일에 남는다.
   "value-not-string-literal": "unmanaged", "shorthand-property": "unmanaged", "not-property-assignment": "unmanaged",
   "duplicate-key": "failure",
+  // code-dict·ts-dict — 코드 객체의 같은 키. JS 의미대로 마지막이 적재되고 write도 그 자리를 고친다(B7a r1, 2026-09-24 사용자 결정):
+  // 잃는 번역이 없으므로 **대상 리포 CI를 red로 만들지 않는다**(docs/ACTIONS.md §3). 실패로도 unmanaged로도 세지 않는다.
+  "duplicate-property": "warning",
   "key-shadowed": "failure", "write-parse-failed": "failure", "write-no-default-export": "failure", "write-locale-object-missing": "failure",
   "write-slot-not-string-literal": "failure", "write-slot-not-scalar": "failure", "write-slot-missing": "failure", "original-file-missing": "failure",
   "download-failed": "failure",
-} as const satisfies Record<AdapterErrorCode, "failure" | "unmanaged">;
+} as const satisfies Record<AdapterErrorCode, AdapterErrorKind>;
 
-export function adapterErrorKind(code: AdapterErrorCode): "failure" | "unmanaged" {
+/** `warning`은 알리기만 한다 — 적재도 CI도 막지 않고 어느 수에도 세지 않는다(`duplicate-property` 하나). */
+export type AdapterErrorKind = "failure" | "unmanaged" | "warning";
+
+export function adapterErrorKind(code: AdapterErrorCode): AdapterErrorKind {
   return ERROR_KIND[code];
 }
 

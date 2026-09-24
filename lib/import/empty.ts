@@ -1,6 +1,7 @@
 import { Project, SyntaxKind } from "ts-morph";
 import { isMap, isScalar, isSeq, parseDocument } from "yaml";
 import { adapterFor } from "@/lib/adapters";
+import { stripBom } from "@/lib/adapters/json-style";
 import type { AdapterName, DetectedFormat } from "@/lib/adapters/types";
 import { templatePaths } from "@/lib/onboarding/confirm";
 import { checkContentBudget } from "@/lib/onboarding/budget";
@@ -29,7 +30,7 @@ export function verifyEmptyCatalog(input: {
     const read = adapter.read(format, [{ path, content }]);
     if (read.errors.length > 0 || read.locales.length === 0 || read.locales.some(locale => locale.entries.length > 0)) return false;
     // JSON null 잎은 미번역 키이지 카탈로그에 키가 없다는 증거가 아니다.
-    if (input.stored.adapter === "json-catalog" && !emptyJsonContainer(JSON.parse(content))) return false;
+    if (input.stored.adapter === "json-catalog" && !emptyJsonContainer(JSON.parse(stripBom(content)))) return false;
     if (input.stored.adapter === "ts-dict") {
       // ts-dict.read는 축약·spread를 일부러 무시한다. 빈 딕셔너리의 증거가 아니다.
       const project = new Project({ useInMemoryFileSystem: true, skipFileDependencyResolution: true, compilerOptions: { noLib: true } });

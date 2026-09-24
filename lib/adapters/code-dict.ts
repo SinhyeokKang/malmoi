@@ -229,11 +229,19 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
 
     const collected: LocaleEntry[] = [];
     collect(obj, "", collected, errors, file.path);
-    // 같은 평탄 키가 둘이면 **마지막이 이긴다** — JS 객체 리터럴의 의미이자 push `lastWins`의 규칙이다(audit #51).
-    // write의 `propertyNamed`도 마지막 항목을 고른다. 사실은 알린다 — json-catalog·yaml-catalog의 `duplicate-key`와 같다.
+    // 같은 평탄 키가 둘이면 **write가 고칠 노드의 값**을 싣는다(audit #51 · B7a r1) — 같은 이름이면 마지막(JS 의미, push `lastWins`),
+    // 점 키와 중첩이 충돌하면 `locate`의 긴 리터럴 우선이다. 그래야 적재된 값과 편집이 닿는 자리가 같다.
+    // 알림은 경고다(`duplicate-property`) — 잃는 번역이 없어 대상 리포 CI를 red로 만들지 않는다(2026-09-24 사용자 결정).
     const byKey = new Map<string, LocaleEntry>();
     for (const e of collected) {
-      if (byKey.has(e.key)) errors.push({ path: file.path, code: "duplicate-key", key: e.key });
+      if (byKey.has(e.key)) {
+        if (!errors.some((x) => x.path === file.path && x.code === "duplicate-property" && x.key === e.key)) {
+          errors.push({ path: file.path, code: "duplicate-property", key: e.key });
+        }
+        const target = findScalar(obj, e.key);
+        byKey.set(e.key, target !== undefined && target !== "not-a-literal" ? { key: e.key, message: target.getLiteralValue() } : e);
+        continue;
+      }
       byKey.set(e.key, e);
     }
     const entries = [...byKey.values()].sort((a, b) => compareKeys(a.key, b.key));

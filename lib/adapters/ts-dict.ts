@@ -235,7 +235,18 @@ function read(_format: DetectedFormat, files: readonly AdapterFile[]): ReadResul
     for (const [locale, obj] of localeObjects(sf)) {
       const list = byLocale.get(locale) ?? [];
       // description을 담을 곳이 없다 — 이 포맷엔 필드가 없다.
-      for (const { key, value } of pairs(obj, file.path, errors)) list.push({ key, message: value });
+      for (const { key, value } of pairs(obj, file.path, errors)) {
+        // 같은 로케일의 같은 키는 **마지막이 이긴다** — JS 의미이자 push `lastWins`이고, write도 마지막 자리만 고친다(B7a r1).
+        // 알림은 code-dict와 같은 경고다 — 잃는 번역이 없어 CI를 red로 만들지 않는다(2026-09-24 사용자 결정).
+        const at = list.findIndex((e) => e.key === key);
+        if (at !== -1) {
+          if (!errors.some((x) => x.path === file.path && x.code === "duplicate-property" && x.key === key)) {
+            errors.push({ path: file.path, code: "duplicate-property", key });
+          }
+          list.splice(at, 1);
+        }
+        list.push({ key, message: value });
+      }
       byLocale.set(locale, list);
     }
   }
@@ -323,7 +334,9 @@ function writeWithErrors(
   }
 
   let changed = false;
-  for (const { key, value, assignment } of present) {
+  // 같은 키가 둘이면 **마지막 자리만** 고친다 — read가 싣는 값이 그것이다(B7a r1). 다 고치면 편집 0건에도 앞자리가 바뀐다.
+  const last = new Map(present.map((p) => [p.key, p]));
+  for (const { key, value, assignment } of last.values()) {
     const next = wanted.get(key);
     if (next === undefined || next === value) continue;
     const init = assignment.asKindOrThrow(SyntaxKind.PropertyAssignment).getInitializerIfKindOrThrow(SyntaxKind.StringLiteral);

@@ -22,6 +22,7 @@ import { sourceKind, walkFiles } from "../lib/cli/walk";
 import { optionalEnv } from "../lib/env";
 import { AppError } from "../lib/failure";
 import { reportPushResponse } from "../lib/cli/push-response";
+import { adapterErrorKind } from "../lib/adapters/types";
 import { adapterErrorMessage } from "../lib/i18n/adapter-errors";
 import {
   representativeFailureCode,
@@ -180,12 +181,20 @@ try {
 }
 const { read, baseLocale } = assembled;
 
-if (read.errors.length) {
-  console.error(`적재 에러 ${read.errors.length}건 — CI를 실패시킨다:`);
-  for (const e of read.errors.slice(0, 10)) console.error(`  ${e.path}  ${adapterErrorMessage(e)}`);
+// ⚠️ **경고(`duplicate-property`)는 red가 아니다** (B7a r1, 2026-09-24 사용자 결정 · docs/ACTIONS.md §3) — code-dict·ts-dict의
+// 중복 프로퍼티는 JS 의미대로 마지막 값이 적재되고 잃는 번역이 없다. 찍고 계속한다.
+const warnings = read.errors.filter((e) => adapterErrorKind(e.code) === "warning");
+const blocking = read.errors.filter((e) => adapterErrorKind(e.code) !== "warning");
+if (blocking.length) {
+  console.error(`적재 에러 ${blocking.length}건 — CI를 실패시킨다:`);
+  for (const e of blocking.slice(0, 10)) console.error(`  ${e.path}  ${adapterErrorMessage(e)}`);
   // 섞인 오류에서 대표 코드 하나를 고른다 — 화면이 문장 하나를 그리므로 판정도 하나여야 한다.
-  await reportFailure(representativeFailureCode(read.errors));
+  await reportFailure(representativeFailureCode(blocking));
   process.exit(1);
+}
+if (warnings.length) {
+  console.error(`적재 경고 ${warnings.length}건 — CI는 계속한다:`);
+  for (const e of warnings.slice(0, 10)) console.error(`  ${e.path}  ${adapterErrorMessage(e)}`);
 }
 
 // ── 사용처 (컨텍스트) — 실패가 경고다 ──────────────────────────────────────

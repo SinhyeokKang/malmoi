@@ -194,3 +194,15 @@ it("같은 픽스처에서 미리보기의 same == sendable이면 실행은 no-c
   expect(result).toMatchObject({ status: "skipped", reason: "no-changes", closedPr: { number: 9 } });
   expect(calls.map(c => c.method)).toContain("closePr");
 });
+/** 경고(`duplicate-property`)는 미리보기를 막지 않는다 (B7a r1) — 실행이 그 값을 싣고 고치므로 화면이 열려야 한다. 대조: yaml의 duplicate-key는 막는다. */
+it("code-dict 중복 프로퍼티는 미리보기를 막지 않고 마지막 값을 이전 값으로 보인다 · yaml duplicate-key는 막는다 (짝)", async () => {
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "code-dict", pathTemplate: "{locale}.ts" }] });
+  mocks.client.getTree.mockResolvedValue([{ path: "en.ts", sha: "blob" }]);
+  mocks.client.getBlobText.mockResolvedValue("export default {\n  hello: 'first',\n  hello: 'old',\n}\n");
+  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(result.groups[0]?.rows[0]).toMatchObject({ before: "old", after: "new" });
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml" }] });
+  mocks.client.getTree.mockResolvedValue([{ path: "en.yml", sha: "blob" }]);
+  mocks.client.getBlobText.mockResolvedValue("hello: first\nhello: old\n");
+  await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow("Preview cannot read all values");
+});

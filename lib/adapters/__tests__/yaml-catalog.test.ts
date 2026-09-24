@@ -800,7 +800,8 @@ describe("yaml-catalog — 깊은 점 키는 중복 삽입하지 않는다 (L1.4
       const diff = out.split("\n").filter((line, i) => line !== source.split("\n")[i]);
       expect(diff).toHaveLength(1);
       const back = yamlCatalog.read(base(), [f("config/locales/ko.yml", out)]);
-      expect(back.errors).toEqual([]);
+      // 혼재는 평탄화 충돌이라 read가 알린다(B7a r1) — 싣는 값은 write가 고친 리터럴의 것이다.
+      expect(back.errors).toEqual(name.startsWith("실제 중첩과 혼재") ? [{ path: "config/locales/ko.yml", code: "duplicate-key", key }] : []);
       expect(back.locales[0]?.entries).toContainEqual({ key, message: "new" });
       expect(yamlCatalog.write(withSource(out), input)).toBe(out);
     });

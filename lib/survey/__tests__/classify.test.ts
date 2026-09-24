@@ -31,6 +31,8 @@ const LEGACY_MESSAGE: Record<AdapterErrorCode, string> = {
   "shorthand-property": "'k'이 shorthand라 값을 읽을 수 없다 (import 참조로 보인다)",
   "not-property-assignment": "'...spread'은 프로퍼티 대입이 아니다",
   "duplicate-key": "'a'가 중복 키다 — 값 하나가 사라진다",
+  // B7a r1에 생긴 코드라 옛 문구가 없다 — 같은 사건(키 충돌)이므로 옛 분류기가 같은 통에 넣을 문장으로 둔다.
+  "duplicate-property": "'a'가 중복 키다 — 마지막 값을 쓴다",
   // ── 아래는 write·껍데기 층이라 `read1.errors`에 들어가지 않는다 (`NON_READ`). ──
   "key-shadowed": "'a.b'가 더 깊은 키의 접두라 중첩 복원에서 자리를 잃는다 — 이 값은 파일에 나가지 않는다",
   "write-parse-failed": "구문 오류로 원본을 그대로 둔다: boom",
@@ -105,7 +107,8 @@ describe("classify(code) — 지표 ③의 분류가 문구 기반과 한 칸도
   });
 
   it("read 층이 비어 있지 않다 — 위 등식이 조용히 0건이 되지 않는다", () => {
-    expect(READ_CODES.length).toBe(13);
+    // 14 — B7a r1이 `duplicate-property`를 더했다.
+    expect(READ_CODES.length).toBe(14);
   });
 
   it("write·껍데기 층은 `other`다 — read 실패의 유형이 아니다", () => {

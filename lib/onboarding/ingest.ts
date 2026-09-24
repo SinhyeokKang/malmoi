@@ -131,7 +131,8 @@ export function prepareFirstSnapshot(input: FirstSnapshotInput) {
 
   // 관리하지 않는 항목은 실패 목록에서 빼고 개수만 든다 — 섞으면 그것 하나로 소스가 "Last sync failed"가 된다(QA5).
   const failures = read.errors.filter(error => adapterErrorKind(error.code) === "failure");
-  const unmanaged = read.errors.length - failures.length;
+  // 경고(`duplicate-property`)는 어느 수에도 세지 않는다 — 빼기로 세면 unmanaged에 섞인다(B7a r1).
+  const unmanaged = read.errors.filter(error => adapterErrorKind(error.code) === "unmanaged").length;
   if (payload.keys.length === 0) return { payload: null, result: { count: 0, failed: Math.max(1, failures.length + missing.length), unmanaged, errors: failures } };
   if (!PushPayload.safeParse(payload).success) fail("first ingest exceeds the push payload contract");
 

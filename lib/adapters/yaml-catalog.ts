@@ -172,10 +172,21 @@ function read(format: DetectedFormat, files: readonly AdapterFile[]): ReadResult
 
     const collected: LocaleEntry[] = [];
     collect(root, "", collected, errors, file.path);
-    // 중복 키는 **마지막이 이긴다** — YAML 로더의 의미와 같다. 위 `collect`가 사실을 이미
-    // 보고했으므로 여기서는 값만 정한다. 안 하면 같은 키가 두 번 실려 push 페이로드가 흔들린다.
+    // 같은 이름 중복은 **마지막이 이긴다** — YAML 로더의 의미와 같고 위 `collect`가 이미 알렸다. 점 키와 중첩이 같은 평탄 키를
+    // 내는 충돌(`a.b: x` + `a: {b: y}`)은 여기서 알린다(B7a r1 — 전에는 조용히 접혔다). 어느 쪽이든 **write가 고칠 노드의 값**을
+    // 싣는다(`locate` — 긴 리터럴 우선, 같은 이름은 마지막) — 적재된 값과 편집이 닿는 자리가 같아야 한다.
     const byKey = new Map<string, LocaleEntry>();
-    for (const e of collected) byKey.set(e.key, e);
+    for (const e of collected) {
+      if (!byKey.has(e.key)) {
+        byKey.set(e.key, e);
+        continue;
+      }
+      if (!errors.some((x) => x.path === file.path && x.code === "duplicate-key" && x.key === e.key)) {
+        errors.push({ path: file.path, code: "duplicate-key", key: e.key });
+      }
+      const hit = locate(root, e.key.split(SEP));
+      byKey.set(e.key, hit.kind === "found" && isScalar(hit.node) && typeof hit.node.value === "string" ? { key: e.key, message: hit.node.value } : e);
+    }
     const entries = [...byKey.values()].sort((a, b) => compareKeys(a.key, b.key));
     locales.push({ locale, entries });
   }
@@ -337,7 +348,8 @@ function insertion(source: string, doc: Document, map: YAMLMap | null, entries: 
   const token = map?.srcToken;
   const newline = source.includes("\r\n") ? "\r\n" : "\n";
   const types = insertionTypes(doc, map);
-  const pairs = entries.map(([key, value]) => `${flowString(key, doc, types.key)}: ${flowString(value, doc, types.value)}`);
+  // ⚠️ 개행 든 값은 형제 다수와 무관하게 큰따옴표다 — 작은따옴표 folded 스칼라가 공백만 있는 줄을 남긴다(yamllint trailing-spaces, B7a r1).
+  const pairs = entries.map(([key, value]) => `${flowString(key, doc, types.key)}: ${flowString(value, doc, value.includes("\n") ? "QUOTE_DOUBLE" : types.value)}`);
   if (map?.flow) {
     const last = map.items.at(-1);
     const node = last?.value ?? last?.key;

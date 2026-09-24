@@ -1,6 +1,7 @@
 import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor } from "@/lib/adapters";
+import { adapterErrorKind } from "@/lib/adapters/types";
 import { createGitClient } from "@/lib/github";
 import { loadActors } from "@/lib/keys/query";
 import { pendingWhere } from "@/lib/protection/where";
@@ -54,7 +55,8 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         // ⚠️ **편집과 무관한 비리터럴은 막지 않는다** — 실행(ts-dict write)이 wanted 키의 비리터럴만 경고하는 것과 같은 판정이다(delivery-invariants
         // D4). 전부 막으면 `{ hello: "hi", b: someFn }` 파일의 Publish가 화면에서 영영 열리지 않는다. 그 밖의 읽기 오류는 여전히 막는다.
         const edited = new Set(surfaceRows.map(r => r.stringKey.key));
-        if (read.errors.some(e => !(e.code === "value-not-string-literal" && e.key !== undefined && !edited.has(e.key)))) throw new Error("Preview cannot read all values");
+        // 경고(`duplicate-property`)도 막지 않는다 — 실행이 마지막 값을 싣고 그 자리를 고친다(B7a r1). `read.locales`가 이미 그 값이다.
+        if (read.errors.some(e => adapterErrorKind(e.code) !== "warning" && !(e.code === "value-not-string-literal" && e.key !== undefined && !edited.has(e.key)))) throw new Error("Preview cannot read all values");
         const file: BaseValues[string] = Object.create(null);
         for (const locale of read.locales) {
           const entries: Record<string, string> = Object.create(null);
