@@ -4,7 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { detectFormat } from "@/lib/adapters";
 import type { DetectedFormat } from "@/lib/adapters/types";
 
-import { ingestFirstSnapshot } from "../ingest";
+import { ingestFirstSnapshot, prepareFirstSnapshot } from "../ingest";
 
 /**
  * 서버측 첫 적재 (ARCHITECTURE §3.1). **기존 경로를 그대로 지난다** — `assemblePushInput` → `buildPushPayload` →
@@ -204,4 +204,43 @@ it("첫 적재도 API의 번역 길이 상한을 넘어 DB에 쓰지 않는다",
   const { stub, result } = run({ blobs: new Map([["src/locales/en.json", JSON.stringify({ hello: "x".repeat(10001) })], ["src/locales/ko.json", '{"hello":"안녕"}']]) });
   await expect(result).rejects.toThrow();
   expect(stub.captured).toHaveLength(0);
+});
+
+/**
+ * **관리하지 않는 항목은 실패가 아니다** (B2 r3 — QA5). ts-dict의 `String(…)` 값은 malmoi가 일부러 안 다루는 항목이고
+ * 수술적 writer가 파일에 그대로 남긴다 — 그것 하나로 적재가 `partial`이 되면 소스 전체가 "Last sync failed"다.
+ * 대조로 진짜 실패(재생성 어댑터가 잃는 값 · 다운로드 실패)는 그대로 `failed`에 센다 (POSTMORTEM 2026-09-14).
+ */
+describe("prepareFirstSnapshot — 관리하지 않는 항목과 실패를 가른다", () => {
+  const base = { projectId: "p1", surfaceId: "s1", surfaceSlug: "default", token: "t", startedAt: new Date("2026-09-13T00:00:00Z"),
+    projectSlug: "acme", headSha: HEAD_SHA, headCommittedAt: HEAD_AT };
+  const TS: Record<string, string> = {
+    "src/i18n/namespaces/common.ts": 'const ko = {\n  "a": "가",\n  "b": String(1),\n} as const;\n\nconst en = {\n  "a": "A",\n  "b": "B",\n} as const;\n\nexport const common = { ko, en };\n',
+  };
+  const tsFormat = (): DetectedFormat => {
+    const found = detectFormat(Object.keys(TS), p => TS[p]);
+    if (!found) throw new Error("ts-dict 픽스처가 탐지되지 않는다");
+    return found;
+  };
+
+  it("ts-dict의 비리터럴 값은 failed가 아니라 unmanaged로 센다", () => {
+    const { result } = prepareFirstSnapshot({ ...base, format: tsFormat(), baseLocale: "en", paths: Object.keys(TS), targets: Object.keys(TS), blobs: new Map(Object.entries(TS)) });
+    expect(result).toMatchObject({ count: 2, failed: 0, unmanaged: 1 });
+    expect(result.errors).toEqual([]);
+  });
+
+  it("대조: 같은 픽스처에서 파일 하나를 못 받으면 여전히 failed다", () => {
+    const paths = [...Object.keys(TS), "src/i18n/namespaces/other.ts"];
+    const { result } = prepareFirstSnapshot({ ...base, format: tsFormat(), baseLocale: "en", paths, targets: paths, blobs: new Map(Object.entries(TS)) });
+    expect(result.failed).toBe(1);
+    expect(result.unmanaged).toBe(1);
+    expect(result.errors.map(e => e.code)).toEqual(["download-failed"]);
+  });
+
+  it("대조: json-catalog의 숫자 값은 다음 Publish에서 지워지므로 failed다", () => {
+    const tree = { ...TREE, "src/locales/ko.json": '{\n  "a.greet": "안녕",\n  "a.bye": 3\n}\n' };
+    const { result } = prepareFirstSnapshot({ ...base, format: format(), baseLocale: "en", paths: PATHS, targets: PATHS.filter(p => p.startsWith("src/locales/")), blobs: new Map(Object.entries(tree)) });
+    expect(result.failed).toBe(1);
+    expect(result.unmanaged).toBe(0);
+  });
 });
