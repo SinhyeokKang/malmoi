@@ -425,7 +425,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       if (allSame) {
         title = open === null ? p.same.nothingTitle(repo.branch) : p.same.closesTitle(open.number);
         description = open === null ? p.same.nothingBody : p.same.closesBody(open.number, repo.branch);
-        footer = p.previewSummary(sending, sendingKeys, data.groups.length);
+        // ⚠️ **파일 수를 빼고 말한다** (#94) — `groups`는 편집이 사는 파일이지 바뀌는 파일이 아니다. 실행·Logs는 `0 files`다.
+        footer = p.fileSummary(sending, sendingKeys);
         actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm()}>{open === null ? p.same.action : p.same.closeAction(open.number)}</Button>;
         body = <PreviewTable preview={data} />;
         break;

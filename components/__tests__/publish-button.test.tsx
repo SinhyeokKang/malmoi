@@ -325,6 +325,23 @@ it("전부 base와 같고 PR이 없으면 파일이 바뀌지 않는다고 말�
   expect(document.body.textContent).toContain(s.already);
   expect([...document.querySelectorAll("button")].some(b => b.textContent === m.translations.publish.openPr)).toBe(false);
 });
+/**
+ * #94 — 전부 base와 같으면 실행이 파일을 하나도 안 쓴다(결과·Logs `0 files`). 푸터가 편집이 사는 파일(`groups`)을 세면 한 흐름 안에서 1과 0이 갈린다.
+ * 짝: 평소 갈래의 파일 수는 그대로다.
+ */
+it.each([[{ number: 9, url: "https://github.com/owner/repo/pull/9" }], [null]])("전부 base와 같으면 푸터가 파일 수를 세지 않는다 (PR %#)", async openPr => {
+  mocks.preview.mockResolvedValue(withRows([sameRow], openPr));
+  await render(<Host />); await click("Publish1");
+  const p = m.translations.publish;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(p.fileSummary(1, 1));
+  expect(text).not.toContain(p.previewSummary(1, 1, 1));
+});
+it("바뀌는 편집이 있으면 푸터가 파일 수를 센다 (짝)", async () => {
+  mocks.preview.mockResolvedValue(withRows([otherRow], null));
+  await render(<Host />); await click("Publish1");
+  expect(document.body.textContent).toContain(m.translations.publish.previewSummary(1, 1, 1));
+});
 it("미리보기 읽기 실패는 1k의 Retry다 (짝)", async () => {
   mocks.preview.mockResolvedValueOnce({ status: "failed" });
   await render(<Host />);
