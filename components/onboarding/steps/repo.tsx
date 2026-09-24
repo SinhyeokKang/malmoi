@@ -420,8 +420,13 @@ function Blocked({
    * 각자 들면 둘 다 눌려 state 쿠키가 덮이고, 먼저 떠난 왕복이 `state-mismatch`로 돌아온다.
    */
   const connect = useGithubConnect({ dest: "new", back });
+  /*
+    ⚠️ **스피너는 누른 쪽에만 선다** (audit-ux #27) — 보조 링크는 꺼지기만 하고 돌지 않았고, 링크를 누르면 주 버튼이 돌았다.
+    막는 것은 여전히 `pending` 하나다(위 경고).
+  */
+  const spinning = (via: "install" | "authorize") => connect.pending && connect.via === via;
   const link = (via: "install" | "authorize", label: string) => (
-    <Button variant="link" size="sm" className="px-0" disabled={connect.pending} onClick={() => connect.start(via)}>
+    <Button variant="link" size="sm" className="px-0" disabled={connect.pending} loading={spinning(via)} onClick={() => connect.start(via)}>
       {label}
     </Button>
   );
@@ -470,12 +475,12 @@ function Blocked({
         description={installUrl === null ? m.newProject.empty.noLink : m.newProject.empty.install.description}
         action={
           installUrl !== null ? (
-            <Button variant="primary" loading={connect.pending} onClick={() => connect.start("install")}>
+            <Button variant="primary" disabled={connect.pending} loading={spinning("install")} onClick={() => connect.start("install")}>
               {m.newProject.empty.install.action}
             </Button>
           ) : error === "not-connected" ? (
             // 슬러그가 없어도 연결은 된다 — 설치는 관리자가 GitHub에서 따로 한다.
-            <Button variant="primary" loading={connect.pending} onClick={() => connect.start("authorize")}>
+            <Button variant="primary" disabled={connect.pending} loading={spinning("authorize")} onClick={() => connect.start("authorize")}>
               <GithubIcon className="size-4" />
               {m.newProject.empty.connect.action}
             </Button>
@@ -521,7 +526,7 @@ function Blocked({
         title={m.newProject.empty.reconnect.title}
         description={m.newProject.empty.reconnect.description}
         action={
-          <Button variant="primary" loading={connect.pending} onClick={() => connect.start("authorize")}>
+          <Button variant="primary" disabled={connect.pending} loading={spinning("authorize")} onClick={() => connect.start("authorize")}>
             <GithubIcon className="size-4" />
             {m.newProject.empty.connect.reauthorize}
           </Button>

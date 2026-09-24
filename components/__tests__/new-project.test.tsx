@@ -908,6 +908,28 @@ it("① A: 주 버튼이 대기 중이면 보조 링크도 눌리지 않는다 �
   await act(async () => settle({ ok: false, error: "unavailable" }));
 });
 
+/**
+ * **스피너는 누른 쪽에 선다** (audit-ux #27) — 보조 링크는 꺼지기만 하고 돌지 않았고, 주 버튼은 링크를 눌러도 돌았다. 대기는
+ * 여전히 둘을 함께 막는다(위 테스트).
+ */
+it("① A: 보조 링크를 누르면 그 링크만 돌고 주 버튼은 잠기기만 한다 — 짝: 주 버튼을 누르면 주 버튼이 돈다", async () => {
+  let settle: (value: unknown) => void = () => {};
+  mocks.startGithubConnectForUser.mockImplementation(() => new Promise((resolve) => { settle = resolve; }));
+  await blocked("not-connected");
+  const spins = (el: HTMLElement) => el.querySelector(".animate-spin") !== null;
+
+  await click(button("Connect your account"));
+  expect(spins(button("Connect your account"))).toBe(true);
+  expect(spins(button("Install GitHub App"))).toBe(false);
+  expect(inert(button("Install GitHub App"))).toBe(true);
+  await act(async () => settle({ ok: false, error: "unavailable" }));
+
+  await click(button("Install GitHub App"));
+  expect(spins(button("Install GitHub App"))).toBe(true);
+  expect(spins(button("Connect your account"))).toBe(false);
+  await act(async () => settle({ ok: false, error: "unavailable" }));
+});
+
 it("① A: 실패하면 블록에 오류 Alert가 하나다", async () => {
   mocks.startGithubConnectForUser.mockResolvedValue({ ok: false, error: "unavailable" });
   await blocked("not-connected");
