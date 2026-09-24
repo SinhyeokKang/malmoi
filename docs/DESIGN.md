@@ -321,6 +321,7 @@ computed style로 잰 것이다.
 | 키 목록 | 392(⚠️ **카드 테두리 안쪽은 390**이다 — 캔버스는 260+392를 테두리 **바깥**에 두어 외곽이 654이고, 구현은 `layout.left` 652를 border-box에 준다. 2px를 맞추려면 폭 계약의 모든 하한이 함께 움직여서 두었다) · `<ul>`/`<li>` · 행 `px-4 py-3` · gap 12 · 행 사이 `border-t`(첫 행 `border-divider`, 나머지 `border-border`) · 선택 `bg-foreground/[0.07]`(`ListItemButton` — `sidebar.tsx`와 같은 규칙) | 캔버스 2a |
 | 검색 | **320**(`SearchInput`의 `inputClassName="w-80"`) · 36 높이 | 캔버스 2a. ⚠️ 프리미티브 기본 `w-64`는 그대로다 — 다른 화면의 검색을 이 루프가 안 봤다 |
 | 로케일 입력 | `w-full` — 행을 채운다 · `rounded-md`(10) · padding 10 · 14 / `leading-[1.55]` | ⚠️ `field-sizing-content`가 폭도 내용에 맞춰 줄여서, `w-full`이 없으면 빈 칸이 한 글자 폭으로 선다 |
+| 값의 방향 | 로케일 입력이 **자기 언어의 `dir`·`lang`**을 든다(`lib/translations/text-direction.ts` — script 서브태그 → `Intl.Locale#getTextInfo` → 표). 빈 칸에 겹친 원문은 **base**의 것을 든다. ⚠️ **`ku`(script 없음)는 `dir="auto"`다** — CLDR은 Latin인데 소라니를 같은 코드에 담는 리포가 있다. LTR은 `dir="ltr"`이라 레이아웃이 안 움직인다 | malmoi#91 (2026-09-24) — 셀이 페이지의 `lang="en"`·`ltr`을 상속해 ar-SA의 `.(…`가 반대 끝으로 튀었다 |
 | 빈 칸(Missing) | 점선 상자 `min-h-[62px]` · padding 10 · 입력이 상자 안쪽 전체(`min-h-[42px]`) · **원문이 입력 첫 줄 자리에 겹친다**(grid 한 칸 · `pointer-events-none` · `aria-describedby`) | ⚠️ **이탈이다** — 캔버스는 20px 입력줄 아래 형제로 원문을 두었고, 그대로 구현하니 "플레이스홀더가 아래에 붙었다"로 읽혔다(2026-09-23 사용자 지적). absolute가 아니라 grid라 원문이 여러 줄이면 상자가 따라 늘어난다(실측 두 줄 64) |
 
 **폭 계약은 `lib/translations/layout.ts`가 정본이다** — 로케일 ≥ 420을 마지막까지 지키고, 모자라면
