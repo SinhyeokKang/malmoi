@@ -1833,8 +1833,8 @@ credential 리뷰에서 같은 위험(남의 라이브러리 메시지에 Prisma
 **본문 크기는 읽기 전에 막는다.** `/api/push`는 `request.json()`이 크기와 무관하게 끝까지 버퍼링했고
 `/api/push/failure`는 `text()`로 다 읽은 뒤에 쟀다. 지금 둘 다 `lib/bounded-body.ts`의 `readBoundedText`를
 지난다 — 선언된 `content-length`는 읽기 전에, 선언이 없거나 거짓인 스트림은 누적 바이트로 도중에 끊는다.
-상한은 `/api/push` 4,500,000바이트(Vercel 함수 요청 본문 상한과 같은 값 — **플랫폼을 지나온 정상 페이로드가
-새로 걸리지 않는다**) · `/api/push/failure` 4096바이트이고, 초과는 둘 다 400 `body too large`다.
+상한은 `/api/push` 4,500,000바이트(**플랫폼 상한 이하의 값** — Vercel 문서의 "4.5 MB"가 10진인지 2진인지
+확인하지 않았다. 2진(4,718,592)이라면 그 사이의 페이로드는 여기서 새로 걸린다) · `/api/push/failure` 4096바이트이고, 초과는 둘 다 400 `body too large`다.
 ⚠️ **순서는 인증 → 크기 → 파싱이다** — 무효 토큰 하나로 본문을 읽히지 않는다.
 
 **빈도 상한(레이트리밋)은 두지 않는다 — 받아들인 위험이다.** 감사가 짚은 자리는 업로드 · 토큰 회전 ·
@@ -2463,28 +2463,37 @@ PR 생성·머지·재push 및 60초 전체 예산 검증은 미완료다.
     안 돌았다.** 응답이 항상 200이라 cron 실행은 성공으로 표시되고 요약에도 그 사실이 없어 **관측값이
     정상과 같았다.** 지금은 `selectPullTargets`가 못 돈 수를 함께 내고 응답이 `{ results, unprocessed }`다 —
     **상한이 잘림을 없애지 않는다, 시끄럽게 만든다.** 거기 닿으면 그때 cron 분할을 본다.
-- **응답 보안 헤더는 `next.config.ts`의 `headers()`가 낸다** (2026-09-09, sec-audit 발견 9). enforce 다섯
-  (`X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·
-  `Content-Security-Policy: frame-ancestors 'none'` · 2026-09-24 audit #75의 `Strict-Transport-Security: max-age=63072000` ·
-  `Permissions-Policy`(카메라·마이크·위치·결제·USB·topics 끔)) + **CSP 본체는 Report-Only**다.
-  - ⚠️ **HSTS에 `includeSubDomains`·`preload`가 없다** — preload 목록은 되돌리는 데 수개월이 걸리고 하위 도메인을
-    묶는 것은 도메인 운영 판단이다. 붙이려면 사용자 결정이 먼저다.
-  - ⚠️ **`form-action`에 `https://accounts.google.com`이 있어야 한다** — Google 로그인은 폼 POST → 302
-    `accounts.google.com`이고 `form-action`은 제출 뒤의 리다이렉트에도 걸린다. 빠진 채 enforce하면 Google 로그인만
-    조용히 멈춘다(2026-09-24 추가).
-  - **enforce로 올릴 때 깨질 자리** (정적 읽기 — 올리기 전에 브라우저 콘솔로 확인한다): ① `next dev`는
-    `'unsafe-eval'`이 없으면 React Refresh가 죽는다(개발 전용 — 정책을 환경별로 가르거나 dev에서는 헤더를 끈다)
-    ② preview의 Vercel Toolbar(`vercel.live` 스크립트·프레임·연결)가 `script-src`·`frame-src`·`connect-src`에
-    걸린다(preview 전용) ③ 앞으로 `'unsafe-inline'`을 빼고 nonce로 가면 Next의 인라인 부트스트랩
-    (`self.__next_f.push`)이 nonce를 요구해 정적 렌더가 동적 렌더로 바뀐다 ④ `img-src`는 공급자 아바타 호스트를
-    둘만 연다 — Google이 `lh3` 밖의 호스트를 주면 그 아바타가 깨진다. 지금 정책 그대로 프로덕션에서 enforce하면
-    ①~③ 중 걸리는 것은 없다고 읽힌다(실측 전).
-  - ⚠️ **`Referrer-Policy`가 이 중 실질이 가장 크다** — `/invite/<token>`은 토큰이 **URL에** 있어, 그
-    화면에 외부 링크가 하나 추가되는 순간 토큰이 `Referer`로 나간다.
-  - ⚠️ **CSP를 바로 enforce하지 않는다** — Next가 인라인 스타일·스크립트를 넣고, 깨지면 **콘솔에만**
-    난다. 이 리포엔 렌더 테스트가 없어 `pnpm build`로도 못 본다. 콘솔을 읽은 뒤에 올린다.
-  - ⚠️ **`tsc`는 이 함수를 못 본다** — 없어도, 헤더 이름 오타도 타입은 통과한다.
-    `app/__tests__/security-headers.test.ts`가 **설정을 불러서** 검사한다.
+- **응답 보안 헤더는 `next.config.ts`의 `headers()`가 낸다** (2026-09-09, sec-audit 발견 9 → 2026-09-24 audit #75).
+  값은 `lib/security-headers.ts`의 순수 함수(`cspEnvironment` · `buildCsp` · `securityHeaders`)가 정하고, 다섯이 전부
+  enforce다: `X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·
+  **`Content-Security-Policy`(하나)** · `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` ·
+  `Permissions-Policy`(카메라·마이크·위치·결제·USB·topics 끔).
+  - **CSP는 enforce이고 환경 셋으로 갈린다** (2026-09-24 사용자 판정 "보안 강하게" — 2026-09-09의 "Report-Only로
+    시작"을 뒤집었다). **프로덕션**(그리고 판정 못 한 모든 환경 — 가장 좁은 쪽으로 접는다): `default-src 'self'` ·
+    script·style `'self' 'unsafe-inline'` · `font-src 'self'` · `img-src`에 `data:`·GitHub/Google 아바타 호스트 둘·
+    Blob 공개 호스트 · `connect-src 'self'` · `form-action 'self' https://github.com https://accounts.google.com` ·
+    `object-src 'none'` · `base-uri 'self'` · `frame-ancestors 'none'`. **`next dev`**: + script `'unsafe-eval'`(React
+    Refresh) · connect `ws:`·`wss:`(HMR). **preview**(`VERCEL_ENV=preview`): + Vercel Toolbar 호스트(Vercel 문서
+    "Using a Content Security Policy"의 목록 그대로 — `vercel.live`·`ws-us3.pusher.com`·`vercel.com`·
+    `assets.vercel.com`·`blob:`, `frame-src 'self' https://vercel.live`).
+  - ⚠️ **CSP 헤더는 하나만 보낸다** — 둘이면 브라우저가 교집합을 적용해 한쪽의 완화가 조용히 무시된다.
+    `frame-ancestors`도 그 하나에 들어 있다.
+  - ⚠️ **`'unsafe-inline'`이 script·style에 남는다** — Next의 인라인 부트스트랩(`self.__next_f.push`)과 인라인
+    스타일 때문이고 nonce 배선은 범위 밖이다(nonce로 가면 전 페이지가 요청마다 렌더된다). 그래서 이 정책이 막는 것은
+    **외부 출처**의 스크립트·연결·폼 전송·플러그인·`<base>` 탈취다.
+  - ⚠️ **`form-action`은 폼 제출 뒤의 302에도 걸린다** — Google 로그인은 폼 POST → 302 `accounts.google.com`이라
+    그 호스트가 빠지면 Google 로그인만 **콘솔에만 남고** 멈춘다. 새 외부 왕복(공급자·설치 흐름)을 늘리면 여기부터 본다.
+  - ⚠️ **`img-src`는 공급자 아바타 호스트를 둘만 연다** — Google이 `lh3` 밖의 호스트를 주면 그 아바타가 깨진다.
+  - ⚠️ **깨지는 방식이 조용하다** — 위반은 브라우저 콘솔에만 나고 렌더 테스트가 없어 `pnpm build`로도 못 본다.
+    정책을 바꿨으면 로컬 프로덕션 빌드(`pnpm build && pnpm start`)에서 로그인 둘·계정 연결·App 설치 링크·초대 수락·
+    Publish·이미지 업로드·토스트를 한 바퀴 돌며 콘솔 위반 0을 확인한다.
+  - ⚠️ **HSTS의 `includeSubDomains`는 `*.mal-moi.com` 전부를 HTTPS에 묶는다**(`dev.mal-moi.com` 포함) — http로만 뜨는
+    하위 호스트를 만들 수 없다. **`preload`는 선언일 뿐이다** — hstspreload.org 제출은 오너의 수동 절차이고 되돌리는 데
+    수개월이 걸린다(docs/OPERATIONS.md).
+  - ⚠️ **`Referrer-Policy`의 실질이 크다** — `/invite/<token>`은 토큰이 **URL에** 있어, 그 화면에 외부 링크가
+    하나 추가되는 순간 토큰이 `Referer`로 나간다.
+  - ⚠️ **`tsc`는 `headers()`를 못 본다** — 없어도, 헤더 이름 오타도 타입은 통과한다.
+    `app/__tests__/security-headers.test.ts`가 **설정을 불러서** 배선을, `lib/__tests__/security-headers.test.ts`가 값을 검사한다.
 - **서버리스 함수 타임아웃**: **blob 읽기는 이미 `BLOB_CONCURRENCY`(8) 청크 제한 병렬이다** — 실측 최대 106로케일이고 직렬이면 그 한 리포가 cron을 넘긴다 (2026-09-04 audit #18). 남은 순차 구간은 ref·tree·commit이고 파일 수와 무관하다.
 
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
