@@ -96,6 +96,23 @@
 | `yaml-catalog` | `<dir>/{locale}.y(a)ml` | 문자열 스칼라 | per-locale | **surgical** | 오픈소스 17개 (mastodon·decidim·directus·redmine·misskey) |
 | `code-dict` | `<dir>/{locale}.{ts,tsx,js,mjs}` | 문자열 리터럴 | per-locale | **surgical** | 오픈소스 12개 (ant-design·element-plus·vuetify·payload) |
 
+### read 오류의 두 갈래 — 실패와 "관리하지 않는 항목" (2026-09-24, B2 r3 · QA5)
+
+서버 적재(첫 Sync·Add source·수동 Sync)는 read 오류가 하나라도 있으면 `partial-import`를 남겼다. 그런데 ts-dict의
+`"x": String(…)`처럼 **malmoi가 일부러 다루지 않는 항목**은 수술적 writer가 파일에 그대로 남기므로 번역을 하나도 잃지 않는다 —
+904키가 다 들어간 소스가 그것 하나로 "Last sync failed"·Home 위험 배너가 됐다. 판정은 **"다음 Publish에서 그 값이 살아남는가"**다.
+`adapterErrorKind`(`lib/adapters/types.ts`)가 코드마다 정하고, `prepareFirstSnapshot`이 `unmanaged`만 `failed`에서 빼서 따로 센다.
+
+| 갈래 | 코드 | 왜 |
+|---|---|---|
+| **unmanaged** — 안내만 | `value-not-string-literal`(ts-dict·code-dict) · `shorthand-property` · `not-property-assignment`(code-dict) · `value-not-string`(yaml 숫자·불린) | 전부 **surgical** writer라 파일에 그대로 남는다. 코드의 식·참조는 번역 대상이 아니다 |
+| **failure** — `partial-import` | 파일 층(`parse-failed`·`parse-crashed`·`root-not-object`·`no-default-export`) · `download-failed` · `duplicate-key` · chrome 엔트리(`invalid-chrome-key`·`missing-message-field`·`value-not-message-object`) · `value-not-string-or-container`(json 숫자·불린) | 못 읽었거나, **regenerate** writer가 DB에 없는 그 값을 다음 Publish에서 **지운다** |
+| (write 코드) | `key-shadowed`·`write-*`·`original-file-missing` | 적재 판정에 오지 않는다 — failure로 둔다(fail-closed) |
+
+⚠️ **같은 "숫자 값"이 어댑터에 따라 갈린다** — yaml은 남고 json은 지워진다. 코드를 합치면 이 구분이 사라진다.
+⚠️ **개수는 적재 결과(Sources 첫 Sync 결과 문장 · Home Sync 결과)에만 선다** — 소스에 영속하는 컬럼이 없고, CI push는 read 오류를
+페이로드에 싣지 않는다(외부 계약, ACTIONS). 소스 상세에 상시로 보이려면 컬럼이 필요하다(미결).
+
 ### ⚠️ `layout`과 `writeStrategy`는 별개 축이다 (2026-09-02 분리)
 
 전에는 `layout` 하나가 둘을 겸했다 — `multi-locale`이면 수술적, `per-locale`이면 재생성. `yaml-catalog`·`code-dict`가 **`per-locale` + 수술적**이라 그 겸용이 깨졌다.
