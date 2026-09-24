@@ -319,6 +319,10 @@ export async function loadProjectList(
           name: true,
           image: true,
           installationId: true,
+          /**
+           * 원격 경로 판정(`RemoteTarget.surfaces`)의 입력. ⚠️ **로케일은 orphaned도 포함한 전체 저장 로케일이다** — 탐지
+           * 정규식이 거르는 코드(`es-419`·`zh-Hant-TW`)의 파일을 그 코드로 만든 정확한 경로로 지킨다. 서브쿼리라 왕복이 +0이다.
+           */
           surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: { locales: { select: { code: true } } } },
           archivedAt: true,
           repoOwner: true,
@@ -326,12 +330,6 @@ export async function loadProjectList(
           repositoryId: true,
           baseBranch: true,
           lastPrUrl: true,
-          // 임포트 진행·결과 (PRODUCT §7.8) — 띠와 Meter 자리가 이 둘로 갈린다.
-          // 원격 경로 판정의 입력.
-          /**
-           * ⚠️ **orphaned도 포함한 전체 저장 로케일이다** — 탐지 정규식이 거르는 코드(`es-419`·
-           * `zh-Hant-TW`)의 파일을 그 코드로 만든 정확한 경로로 지킨다. 서브쿼리라 왕복이 +0이다.
-           */
           _count: { select: { members: true } },
         },
       },

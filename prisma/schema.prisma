@@ -264,7 +264,9 @@ model KeyRef {
 
 /// 번역 값. **push가 리포 값으로 덮는다** (strict — `INSERT … ON CONFLICT DO UPDATE`, ARCHITECTURE §5.5.2).
 /// push 사이에는 DB가 진실이고 pull이 리포로 되돌린다 — 어느 시점에도 두 쪽을 병합하지 않는다.
-/// 쓰기 주체는 둘뿐이다: 편집 UI의 `saveTranslation`과 push (ARCHITECTURE §5.5.2).
+/// **값**을 쓰는 주체는 셋이다: 편집 UI의 키 저장(`applyKeySave` — `saveTranslationKey`), push(`applyPushInTransaction`),
+/// OWNER의 Revert to last sent(`executeKeyRevert`, ARCHITECTURE §5.8). 나머지는 `pendingEditToken`만 만진다 —
+/// 전달 확인(`lib/pull/load.ts`)·승인 orphan 해제(`lib/import/run.ts`)·backfill(`lib/protection/backfill.ts`).
 model Translation {
   id String @id @default(cuid())
 

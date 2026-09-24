@@ -22,8 +22,8 @@ export function maskedEmailLabels(emails: readonly string[]): string[] {
 }
 
 /**
- * 옛 이름 — `docs/DESIGN.md` §6.65와 `CLAUDE.md`가 이것을 가리킨다. **얼은이다**: 규칙이 두 벌이면
- * 같은 주소가 표마다 다르게 보인다 (이 리포가 `matchGlobPaths`·`scanJson`으로 두 번 밟은 부류).
+ * 옛 이름 — **코드 소비자는 없고 테스트만 부른다**(DESIGN §6.65는 2026-09-19에 `maskedEmailLabels`로 옮겼다). **별칭이다**:
+ * 규칙이 두 벌이면 같은 주소가 표마다 다르게 보인다 (이 리포가 `matchGlobPaths`·`scanJson`으로 두 번 밟은 부류).
  */
 export const maskedInviteLabels = maskedEmailLabels;
 
