@@ -125,3 +125,16 @@ describe("globals.css — 토큰 등록", () => {
     expect(CSS).not.toContain("--auth-canvas");
   });
 });
+
+/**
+ * **본문이 grayscale 안티앨리어싱으로 그려진다** (2026-09-25 사용자 — 보관 행의 회색 이름·배지가 굵어 보였다).
+ * 명시가 없으면 macOS 브라우저의 기본 렌더링이 획을 두껍게 그려, 같은 500이 밝은 회색에서 한 단계 무겁게 읽힌다.
+ */
+describe("globals.css — 글꼴 렌더링", () => {
+  const body = /\bbody\s*\{([^}]*)\}/.exec(CSS)?.[1] ?? "";
+
+  it("body가 antialiased를 든다", () => {
+    expect(body).not.toBe("");
+    expect(body).toMatch(/@apply[^;]*\bantialiased\b/);
+  });
+});
