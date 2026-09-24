@@ -186,3 +186,17 @@ it.each(["list", "home", "invite"])("%s의 이미지 로드 실패는 이름 색
   const tile = container.querySelector("svg.lucide-box")?.parentElement;
   expect(tile?.classList.contains(toneFill("Acme"))).toBe(true);
 });
+
+/**
+ * **메타 줄의 리포 앞에 GitHub 마크가 선다** (2026-09-25 사용자 — Vercel 목록처럼). 마크는 이 리포의 유일한 브랜드 마크
+ * `GithubMark`(Sources 머리와 같은 14)이고, 글자와 같은 색을 상속한다(보관 행이면 함께 물러난다).
+ */
+it("메타 줄이 리포 앞에 GitHub 마크를 든다", async () => {
+  const container = await draw({});
+  const meta = [...container.querySelectorAll("span")].find((s) => s.textContent?.startsWith("o/r · "));
+  const mark = meta?.querySelector("svg");
+  expect(mark).not.toBeNull();
+  expect(mark?.getAttribute("aria-hidden")).toBe("true");
+  expect(mark?.getAttribute("class")).toContain("size-3.5");
+  expect(meta?.textContent).toBe(`o/r · ${m.projects.role.OWNER} · ${m.projects.memberCount(2)}`);
+});

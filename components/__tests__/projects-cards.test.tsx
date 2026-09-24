@@ -225,7 +225,8 @@ describe("보관 행이 한 단계 더 물러난다", () => {
   const archivedRow = (container: HTMLElement) => find<HTMLElement>(cards(container)[2]!, "li");
   const activeRow = (container: HTMLElement) => find<HTMLElement>(cards(container)[1]!, "li");
   const nameOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-base");
-  const metaOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-sm.truncate");
+  // 메타 줄은 GitHub 마크 + 말줄임 글자의 flex 줄이다(2026-09-25) — 색은 그 바깥 줄이 든다.
+  const metaOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-sm.min-w-0");
 
   /**
    * ⚠️ **이름·메타·배지가 `#a3a3a3` 한 색이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).
