@@ -100,3 +100,22 @@ it("미저장이 있을 때 Publish 진행 중 Sync를 눌러도 폐기 확인�
   await user.click(button("Sync"));
   expect(document.body.textContent).not.toContain("Discard your changes?");
 });
+
+it("Sync가 도는 동안 미저장이 생겨도 [Syncing…]을 누르면 폐기 확인창이 서지 않는다", async () => {
+  const user = userEvent.setup();
+  let settle: (value: unknown) => void = () => {};
+  mocks.run.mockImplementation(() => new Promise(resolve => { settle = resolve; }));
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  const zh = () => container.querySelector<HTMLTextAreaElement>('textarea[data-locale="zh"]')!;
+  await user.type(zh(), "空");
+  // 짝 단언 — Sync 전에는 같은 클릭이 확인창을 세운다.
+  await user.click(button("Sync"));
+  expect(document.body.textContent).toContain("Discard your changes?");
+  await act(async () => user.click(button("Discard changes")));
+  await act(async () => user.click(button("Discard changes and sync")));
+  expect(mocks.run).toHaveBeenCalledOnce();
+  await user.type(zh(), "空");
+  await user.click(button(/Syncing/));
+  expect(document.body.textContent).not.toContain("Discard your changes?");
+  await act(async () => { settle({ ok: false, error: "unavailable" }); });
+});
