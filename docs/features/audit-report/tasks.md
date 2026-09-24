@@ -203,8 +203,8 @@
 - [x] **#66** 🟡 `components/onboarding/first-ingest-retry.tsx` importer 0 · 테스트 3곳이 고정 · 실제 경로 `sources-screen.tsx:134`는 검사 밖.
 - [x] **#67** 🟡 테스트만 쓰는 export — `translations/selection.ts:14` · `summary.ts:30,57` · `protection/plan.ts:66` · `home/overview.ts:20`.
   - B7b: `summary.ts`의 둘(`orderKeySummaries`·`keyMatches`)은 남겼다 — 파일 머리가 밝힌 SQL oracle이고 `translation-list.integration.ts`가 대조에 쓴다. 나머지 셋 삭제.
-- [ ] **#73** 🟡 중복 — 커서 코덱 3벌 · `validNonce` 2벌 · 쿠키 만료 루프 4벌 · 콜백 경로 정규식 3벌 · `survey/select.ts:13-23` 정규식 사본 · `(cause as Error).message` 8곳 · `scripts/ingest.ts` ↔ `push-local.ts` probe/`--adapter`.
-  - B7b 몫 끝: 커서 코덱 → `lib/url-token.ts` 하나(`sync/view.ts`는 #64로 삭제) · `survey/select.ts` 정규식은 어댑터에서 import. 나머지(`validNonce`·쿠키·콜백 정규식 = B7e, cause·scripts = B7a)가 남아 체크하지 않는다.
+- [x] **#73** 🟡 중복 — 커서 코덱 3벌 · `validNonce` 2벌 · 쿠키 만료 루프 4벌 · 콜백 경로 정규식 3벌 · `survey/select.ts:13-23` 정규식 사본 · `(cause as Error).message` 8곳 · `scripts/ingest.ts` ↔ `push-local.ts` probe/`--adapter`.
+  - B7b 몫 끝: 커서 코덱 → `lib/url-token.ts` 하나(`sync/view.ts`는 #64로 삭제) · `survey/select.ts` 정규식은 어댑터에서 import. 나머지는 B7e·B7a가 닫았다(아래 두 줄).
   - B7a 몫 끝: `scripts/ingest.ts` ↔ `push-local.ts` probe·`--adapter` → `scripts/format.ts` · `(cause as Error).message` 8곳 → `lib/cause.ts`의 `causeMessage`.
   - B7e 몫 끝: `validNonce` 2벌 · 쿠키 만료 루프 4벌 · 콜백 경로 정규식 3벌 → `lib/auth/roundtrip.ts`.
 - [x] ⚪ **#86** 미사용 메시지 키 약 60 · **#87** `IMPORT_STALE_AFTER_SECONDS` · `KeySaveInputType` · `ActorKind.UNKNOWN` · Account OAuth 컬럼 넷 · `_ownerId` · `confirmedAt`/`recordedAt` · **#90** `syncBranchFor` 위치.
