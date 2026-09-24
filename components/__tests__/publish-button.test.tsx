@@ -291,6 +291,40 @@ it("닫은 PR이 없으면 그 줄이 없다 (짝)", async () => {
   expect(document.body.textContent).toContain(m.translations.publish.noChangesDescription);
   expect(document.body.textContent).not.toContain("was closed because");
 });
+/**
+ * B1 r3 — 열린 PR의 변경을 base 값으로 되돌린 행은 양쪽이 같은 "변경"으로 그리지 않는다(QA5). 전부 그렇다면 실행은 no-changes 경로라
+ * 열린 PR을 닫는다 — 미리보기가 그렇게 말하고 버튼도 그 일을 이름으로 든다.
+ */
+const sameRow = { keyId: "k", key: "common.ok", localeCode: "ko", before: "확인", after: "확인", author: "Kim", updatedAt: "", surface: "web", path: "ko.json", keySpan: 1, same: true };
+const otherRow = { ...sameRow, keyId: "k2", key: "common.no", before: "아니요", after: "아니", same: false };
+const withRows = (rows: object[], openPr: object | null) => ok({ ...preview, total: rows.length, keys: rows.length, sendable: { total: rows.length, keys: rows.length },
+  same: rows.filter(r => (r as { same: boolean }).same).length, openPr, groups: [{ surface: "web", path: "ko.json", changes: rows.length, keys: rows.length, rows }] });
+it("열린 PR의 변경을 되돌리는 행은 그렇다고 말한다 · PR이 없으면 이미 리포에 있다고 말한다", async () => {
+  mocks.preview.mockResolvedValue(withRows([sameRow, otherRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }));
+  await render(<Host count={2} />); await click("Publish2");
+  const s = m.translations.publish.same;
+  expect(document.body.textContent).toContain(s.undoes(9));
+  expect(document.body.textContent).toContain(m.translations.publish.replacePr(9));
+});
+it("전부 되돌린 편집이고 PR이 열려 있으면 미리보기가 그 PR을 닫는다고 말하고 버튼이 그 일을 든다", async () => {
+  mocks.preview.mockResolvedValue(withRows([sameRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }));
+  await render(<Host />); await click("Publish1");
+  const s = m.translations.publish.same;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(s.closesTitle(9));
+  expect(text).toContain(s.closesBody(9, "main"));
+  expect(text).not.toContain(m.translations.publish.prOpen.title(9));
+  await click(s.closeAction(9));
+  expect(mocks.pull).toHaveBeenCalledTimes(1);
+});
+it("전부 base와 같고 PR이 없으면 파일이 바뀌지 않는다고 말한다", async () => {
+  mocks.preview.mockResolvedValue(withRows([sameRow], null));
+  await render(<Host />); await click("Publish1");
+  const s = m.translations.publish.same;
+  expect(document.body.textContent).toContain(s.nothingTitle("main"));
+  expect(document.body.textContent).toContain(s.already);
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === m.translations.publish.openPr)).toBe(false);
+});
 it("미리보기 읽기 실패는 1k의 Retry다 (짝)", async () => {
   mocks.preview.mockResolvedValueOnce({ status: "failed" });
   await render(<Host />);

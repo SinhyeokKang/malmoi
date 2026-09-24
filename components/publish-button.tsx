@@ -269,8 +269,10 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
               <td className="border-divider border-t px-3.5 py-[11px] align-top">
                 <span className="flex items-start gap-2.5">
                   <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-                    {row.before !== null && <DiffLine sign="−" parts={diff.before} before />}
+                    {/* base와 같은 값은 "변경"이 아니다(B1 r3) — 양쪽이 같은 −/+ 두 줄을 그리지 않고 값 한 줄과 사유를 둔다. */}
+                    {row.before !== null && !row.same && <DiffLine sign="−" parts={diff.before} before />}
                     <DiffLine sign="+" parts={diff.after} />
+                    {row.same && <span className="text-muted-foreground text-xs">{preview.openPr ? p.same.undoes(preview.openPr.number) : p.same.already}</span>}
                   </span>
                   {/* ⚠️ 시안은 `#a3a3a3`이지만 그 색은 **본문 금지**다 — 흰 배경 2.6:1로 §7의 3:1 하한을 못 넘고, 저자 이름은 옆의 값이 뜻을 완성해 주지 않는다 (DESIGN §6.2). */}
                   <span className="text-muted-foreground shrink-0 text-xs leading-5">{row.author}</span>
@@ -412,6 +414,19 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         // 전부 보류면 PR을 만들거나 바꿀 것이 없다 — 그 버튼을 두지 않고 이유를 말한다. 표의 보류 줄이 사유별로 선다.
         title = p.nothingSendable.title; description = p.nothingSendable.body; footer = p.notStarted;
         actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
+        body = <PreviewTable preview={data} />;
+        break;
+      }
+      /**
+       * ⚠️ **전부 base와 같으면 파일이 안 바뀐다** (B1 r3). 실행은 no-changes 경로이고, 열린 PR이 있으면 그 PR을 닫는다 — 미리보기가 그렇게 말하고
+       * 버튼도 그 일을 이름으로 든다. PR 유무를 모르면(`undefined`) 약속하지 않고 평소 문장으로 둔다. ⚠️ 셀 단위 근사다 — 실행은 파일 SHA로 판정한다.
+       */
+      const allSame = data.truncated === 0 && data.same === sending && open !== undefined;
+      if (allSame) {
+        title = open === null ? p.same.nothingTitle(repo.branch) : p.same.closesTitle(open.number);
+        description = open === null ? p.same.nothingBody : p.same.closesBody(open.number, repo.branch);
+        footer = p.previewSummary(sending, sendingKeys, data.groups.length);
+        actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm()}>{open === null ? p.same.action : p.same.closeAction(open.number)}</Button>;
         body = <PreviewTable preview={data} />;
         break;
       }

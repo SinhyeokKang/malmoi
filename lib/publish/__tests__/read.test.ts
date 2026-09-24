@@ -164,3 +164,33 @@ it("#84 — 보류만 있으면 보낼 수 있는 편집·키가 0이다", async
   const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(result).toMatchObject({ total: 1, withoutFile: 1, sendable: { total: 0, keys: 0 } });
 });
+/**
+ * B1 r3 — 미리보기의 "전부 base와 같다"와 실행의 no-changes가 같은 판정이다(같은 픽스처). 열린 PR이 있으면 실행이 그 PR을 닫는다.
+ * ⚠️ 셀 단위 근사다 — 이 픽스처는 두 판정이 만나는 전형이고, 파일 표현만 다른 경우는 실행의 blob SHA가 정본이다.
+ */
+it("같은 픽스처에서 미리보기의 same == sendable이면 실행은 no-changes이고 열린 PR을 닫는다", async () => {
+  const { runPull } = await import("@/lib/pull/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  const EN = "en:\n  hello: old\n";
+  const cols = { adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", nested: null };
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, ...cols, locales: [{ code: "en" }] }] });
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], value: "old" }]);
+  mocks.client.getTree.mockResolvedValue([{ path: "en.yml", sha: "blob" }]);
+  mocks.client.getBlobText.mockResolvedValue(EN);
+  const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(preview.same).toBe(preview.sendable.total);
+  const { blobSha } = await import("@/lib/githash");
+  // 2층은 실제 blob SHA로 견준다 — 가짜 sha를 두면 늘 "바뀜"이 된다.
+  const { client, calls } = createFakeGitClient({ refSha: { "heads/main": "head", "heads/malmoi-i18n/sync-acme": "stale" }, tree: { head: [{ path: "en.yml", sha: blobSha(EN) }] }, blobs: { [blobSha(EN)]: EN },
+    openPr: { url: "https://github.com/o/r/pull/9", number: 9, title: "t", base: "main" } });
+  const result = await runPull({
+    loadState: async () => ({
+      project: { ...project, slug: "acme" },
+      surfaces: [{ ...surface, ...cols, localeCodes: ["en"], keys: [{ id: "k", key: "hello", sourceText: "old", orphaned: false, cells: { en: { value: "old" } } }] }],
+      maxUpdatedAt: new Date(), unpublished: 1, pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s", keyId: "k", localeCode: "en", restoreValue: "" } }],
+    }),
+    createClient: async () => client, saveLastPulledAt: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
+  });
+  expect(result).toMatchObject({ status: "skipped", reason: "no-changes", closedPr: { number: 9 } });
+  expect(calls.map(c => c.method)).toContain("closePr");
+});

@@ -2078,6 +2078,20 @@ export const en = {
       /** 보류가 섞인 미리보기 (#84) — "전부 간다"가 거짓이다. 빠지는 편집은 표 아래 줄이 사유별로 말한다. */
       previewIntroPartial: (repo: string): string =>
         `The edits that can be sent go to ${repo} as one pull request.`,
+      /**
+       * base와 같은 값의 편집 (B1 r3) — 파일을 바꾸지 않는다. 열린 PR이 있으면 그 PR의 변경을 되돌리는 것이고, 전부 그렇다면 실행이 그 PR을 닫는다.
+       */
+      same: {
+        undoes: (n: number): string => `Undoes the change in #${n}`,
+        already: "Already in the repository",
+        closesTitle: (n: number): string => `Publishing closes pull request #${n}`,
+        closesBody: (n: number, branch: string): string =>
+          `Every edit here matches ${branch} again, so #${n} has nothing left to merge. malmoi closes it with a comment saying why.`,
+        closeAction: (n: number): string => `Close pull request #${n}`,
+        nothingTitle: (branch: string): string => `Nothing differs from ${branch}`,
+        nothingBody: "Every edit here already matches the repository, so no pull request opens. Publishing marks them as sent.",
+        action: "Publish",
+      },
       /** 전부 보류 (#84) — 만들거나 바꿀 PR이 없으니 그 버튼을 두지 않는다. */
       nothingSendable: {
         title: "Nothing can be sent yet",

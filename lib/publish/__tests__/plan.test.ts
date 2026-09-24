@@ -86,3 +86,14 @@ it("바뀐 단어만 표시하고 공백·여러 줄을 보존한다", async () 
   expect(result.before.map(t => t.text).join("")).toBe("hello old\nworld");
   expect(diffWords("", "")).toEqual({ before: [], after: [] });
 });
+
+/**
+ * B1 r3 — 되돌린 편집(값이 base와 같다)은 "바뀐다"가 아니다. 행이 그 사실을 들고(`same`), 수가 그 행을 센다(`same` 합계).
+ * 열린 PR이 있으면 그 PR의 변경을 되돌리는 것이고, 전부 그렇다면 실행은 no-changes 경로다.
+ */
+it("base와 같은 값의 행은 same이고 diff가 그 수를 센다 · 다른 값은 아니다 (짝)", () => {
+  const diff = buildPublishDiff([cell({ after: "old" }), cell({ keyId: "k2", key: "bye", after: "new" })], { "ko.json": { ko: { hello: "old", bye: "old" } } });
+  const rows = diff.groups.flatMap(g => g.rows);
+  expect(rows.map(r => [r.key, r.same])).toEqual([["bye", false], ["hello", true]]);
+  expect(diff.same).toBe(1);
+});
