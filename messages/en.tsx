@@ -593,7 +593,7 @@ export const en = {
           heading: "Organizations that allow only selected actions",
           blocks: [
             {
-              p: "The workflow uses four actions. If your organization allows only selected actions, add all four, or the run stops with “not allowed to be used”:",
+              p: "The workflow uses four actions. If your organization allows only selected actions, add all four as name@* (for example actions/checkout@*), or the run stops at “Set up job” with “not allowed to be used”:",
             },
             {
               ul: [
