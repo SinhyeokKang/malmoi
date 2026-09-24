@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { logCaught } from "@/lib/failure";
 import { importOutcomeFields } from "./import-status";
 import type { ImportFailureCode, ReportedImportFailure } from "./import-status";
 
@@ -33,8 +34,9 @@ export async function abandonImportRun(prisma: PrismaClient, input: { projectId:
       where: { id: input.surfaceId, projectId: input.projectId, lastImportToken: input.token },
       data: { lastImportStartedAt: null, lastImportToken: null },
     });
-  } catch {
-    // 삼킨다 — 위 주석.
+  } catch (error) {
+    // 삼킨다 — 위 주석. 다만 무음이면 300초 "진행 중"만 남아 원인을 볼 곳이 없다 (POSTMORTEM 2026-09-14).
+    logCaught("import-status", "abandon", error);
   }
 }
 
@@ -61,8 +63,9 @@ export async function finishImportRun(
        */
       data: { ...importOutcomeFields(input.code, new Date()), lastImportToken: null },
     });
-  } catch {
-    // 삼킨다 — 위 주석.
+  } catch (error) {
+    // 삼킨다 — 위 주석. 원래 오류는 호출부가 남기고, 이 줄은 상태 기록 실패만 남긴다.
+    logCaught("import-status", "finish", error);
   }
 }
 
