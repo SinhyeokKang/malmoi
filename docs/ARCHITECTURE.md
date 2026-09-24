@@ -2477,6 +2477,10 @@ PR 생성·머지·재push 및 60초 전체 예산 검증은 미완료다.
     안 돌았다.** 응답이 항상 200이라 cron 실행은 성공으로 표시되고 요약에도 그 사실이 없어 **관측값이
     정상과 같았다.** 지금은 `selectPullTargets`가 못 돈 수를 함께 내고 응답이 `{ results, unprocessed }`다 —
     **상한이 잘림을 없애지 않는다, 시끄럽게 만든다.** 거기 닿으면 그때 cron 분할을 본다.
+  - ⚠️ **시간 예산도 있다** (2026-09-24, launch-readiness L2.9 — `PULL_TIME_BUDGET_MS` 45초). 50개 상한 안에서도
+    `maxDuration`에 닿으면 함수가 통째로 죽어 **요약 로그와 응답이 하나도 안 남는다**(이미 돈 프로젝트의 결과까지).
+    루프 머리에서 예산을 넘었으면 나머지를 `unprocessed`에 더하고 멈춘다 — 시작 전 판정이라 첫 프로젝트는 항상 돈다.
+    예산이 지키는 것은 공정성이 아니라 **요약이 남는 것**이다(다음 밤 이월은 `selectPullTargets`의 정렬이 이미 보장한다).
 - **응답 보안 헤더는 `next.config.ts`의 `headers()`가 낸다** (2026-09-09, sec-audit 발견 9 → 2026-09-24 audit #75).
   값은 `lib/security-headers.ts`의 순수 함수(`cspEnvironment` · `buildCsp` · `securityHeaders`)가 정하고, 다섯이 전부
   enforce다: `X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·
