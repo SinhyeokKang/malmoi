@@ -54,10 +54,11 @@ it.each(["already-running", "reconfirm", "unauthorized"] as const)("거부(%s)�
   expect(mocks.refresh).not.toHaveBeenCalled();
 });
 
-it("성공은 결과 한 줄을 세우고 refresh를 한 번 부른다 — 짝 단언", async () => {
+// 성공에도 refresh하지 않는다 (audit-ux #12) — `runRepositoryImport`의 `revalidatePath`가 새 트리를 싣고 온다. 짝은 결과 한 줄이다.
+it("성공은 결과 한 줄을 세우고 refresh하지 않는다 — 짝 단언", async () => {
   mocks.run.mockResolvedValue({ ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "imported", count: 3, failed: 0, reason: null, errors: [] }] });
   await render(<TranslationWorkspace {...props()} />);
   await sync();
   expect(document.querySelector('[role="status"]')?.textContent).toContain("from main");
-  expect(mocks.refresh).toHaveBeenCalledOnce();
+  expect(mocks.refresh).not.toHaveBeenCalled();
 });

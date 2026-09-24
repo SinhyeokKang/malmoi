@@ -428,7 +428,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         // 성공 뒤 Revert가 사라지고 Save는 꺼져 있다 — 포커스를 결과 영역으로 옮긴다(disabled 버튼은 포커스를 못 받는다).
         requestAnimationFrame(() => resultRef.current?.focus());
         queueMicrotask(() => resultRef.current?.focus());
-        router.refresh();
+        // ⚠️ `router.refresh()`를 부르지 않는다 (audit-ux #12) — `revertTranslationKey`가 `revalidateTranslationReaders`로 새 트리를
+        // 싣고 오고, 또 부르면 결과가 선 뒤 두 번째 전체 렌더가 표시 없이 돌았다.
       } else if (result.status === "reconfirm") {
         setDialog({ kind: "revert-changed" });
       } else if (result.status === "blocked") {

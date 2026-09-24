@@ -165,6 +165,8 @@ it("OWNER의 Revert는 미리보기 확인창을 거쳐 발급된 지문으로 �
   expect(mocks.revert).toHaveBeenCalledWith({ slug: "acme", surfaceSlug: "web", keyId: "k1", confirmation: "f".repeat(64) });
   expect(area(container, "ko").value).toBe("없음");
   expect(document.activeElement?.getAttribute("data-footer-result")).toBe("true");
+  // 재검증은 `revertTranslationKey`가 싣고 온다 (audit-ux #12) — 또 refresh하면 두 번째 렌더가 표시 없이 돈다. 짝은 위의 값·착지다.
+  expect(mocks.refresh).not.toHaveBeenCalled();
 });
 
 /**
