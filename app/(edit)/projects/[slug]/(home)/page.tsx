@@ -97,6 +97,8 @@ export default async function ProjectHomePage({
       archivedAt: true,
       lastPublishedAt: true,
       lastPrUrl: true,
+      // 번역 링크가 공가 redirect를 건너뛰고 기본 표면으로 바로 간다 (audit-ux #4b). 보관된 기본 표면은 옛 라우트처럼 없는 것으로 친다.
+      defaultSurface: { select: { slug: true, archivedAt: true } },
       surfaces: {
         where: { archivedAt: null },
         orderBy: { slug: "asc" },
@@ -234,6 +236,7 @@ export default async function ProjectHomePage({
   });
 
   const paused = state === "not_connected" || state === "archived";
+  const defaultSurface = project.defaultSurface?.archivedAt === null ? project.defaultSurface.slug : null;
 
   return (
     /*
@@ -253,6 +256,7 @@ export default async function ProjectHomePage({
           <HomeTitle image={project.image} archived={state === "archived"}>{project.name}</HomeTitle>
           <HomeHeaderActions
             slug={slug}
+            surfaceSlug={defaultSurface ?? undefined}
             name={project.name}
             branch={project.baseBranch}
             role={role}
@@ -308,6 +312,7 @@ export default async function ProjectHomePage({
               reviewByLocale: reviewByLocale(aggregates.locales, aggregates.cells).get(projectId) ?? [],
             })}
             slug={slug}
+            surfaceSlug={defaultSurface}
             now={now}
           />
           <AttentionCard items={items} slug={slug} role={role} state={state} now={now} />

@@ -23,11 +23,16 @@ import { routes } from "@/lib/routes";
  * ⚠️ **원결과와 확인 창 상태는 Home의 안정된 호스트가 소유한다** — `router.refresh()`로 이 컴포넌트가
  * 다시 그려져도 결과가 살아 있어야 한다 (POSTMORTEM 2026-09-07의 `FirstIngestRetry`).
  */
-export function SyncButton({ slug, name, branch, role, unsent, paused = false, onResult, onPendingChange, open, onOpenChange, fallbackFocusRef }: {
+export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paused = false, onResult, onPendingChange, open, onOpenChange, fallbackFocusRef }: {
   /** 트리거가 사라졌을 때(권한 변경) 포커스를 받을 Home 제목. */
   fallbackFocusRef?: RefObject<HTMLElement | null>;
   open: boolean; onOpenChange: (open: boolean) => void;
   slug: string; name: string; branch: string; role: "OWNER" | "EDITOR"; unsent: number;
+  /**
+   * 기본 표면 — `Publish first` 링크가 공가 redirect(`routes.translations`)를 건너뛰고 바로 간다 (audit-ux #4b).
+   * 없으면(번역 화면 안의 [Sync]) 옛 경로다.
+   */
+  surfaceSlug?: string;
   /**
    * 미연결·보관 — **비활성이고 부재가 아니다** (DESIGN §6.64의 `2c`·`2d`). 부재는 역할
    * 갈래의 규칙이고(EDITOR에게 누를 수 없는 버튼을 주지 않는다), 이쪽은 **OWNER가 가진 동작이
@@ -225,7 +230,7 @@ export function SyncButton({ slug, name, branch, role, unsent, paused = false, o
         */}
         {plan.recommendSend
           ? <p className="text-muted-foreground">{m.repositorySync.sendHint(
-              <Link href={routes.translations(slug)} className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">{m.repositorySync.sendFirst}</Link>,
+              <Link href={surfaceSlug === undefined ? routes.translations(slug) : routes.surfaceTranslations(slug, surfaceSlug)} className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">{m.repositorySync.sendFirst}</Link>,
             )}</p>
           : pr !== undefined && pr !== null
             ? <p className="text-muted-foreground">{m.repositorySync.nothingUnsent}{" "}

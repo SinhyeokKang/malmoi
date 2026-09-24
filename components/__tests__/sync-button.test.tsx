@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), refresh: vi.fn(), p
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 const success: RepositoryImportOutcome = { ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "imported", count: 0, failed: 0, unmanaged: 0, reason: null, errors: [] }] };
-const props = { slug: "acme", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 0, onResult: vi.fn() };
+const props = { slug: "acme", surfaceSlug: "web", name: "malmoi web", branch: "main", role: "OWNER" as const, unsent: 0, onResult: vi.fn() };
 function SyncButton(props: Omit<React.ComponentProps<typeof Control>, "open" | "onOpenChange">) {
   const [open, setOpen] = useState(false);
   return <Control {...props} open={open} onOpenChange={setOpen} />;
@@ -129,6 +129,14 @@ it("미발송과 열린 PR을 각각의 줄로 말하고 권유는 번역 화면
   expect(lines[0]).toContain("Sync will discard 7 unsent translation changes");
   expect(lines[1]).toContain("pull request #42 are not in main yet");
   // audit #28 — 링크가 도착 화면에 실제로 있는 버튼 이름(`Publish`)을 부른다 (POSTMORTEM 2026-09-14).
+  // audit-ux #4b — 공가 redirect를 거치지 않고 기본 표면으로 바로 간다.
+  expect(document.querySelector('a[href="/projects/acme/surfaces/web/translations"]')?.textContent).toBe("Publish first");
+});
+
+/** 번역 화면 안의 [Sync]는 표면을 넘기지 않는다 — 그때는 옛 경로(기본 표면 redirect)로 남는다. */
+it("표면을 모르면 권유 링크가 옛 번역 경로다", async () => {
+  const { surfaceSlug: _, ...rest } = props;
+  await render(<SyncButton {...rest} unsent={7} />); await click("Sync");
   expect(document.querySelector('a[href="/projects/acme/translations"]')?.textContent).toBe("Publish first");
 });
 
@@ -143,7 +151,7 @@ it("미발송 0이어도 열린 PR이 있으면 경고가 서고 권유가 외�
   expect(lines).toHaveLength(1);
   expect(lines[0]).toContain("pull request #42");
   expect(dialog()?.textContent).not.toContain("0 unsent");
-  expect(document.querySelector('a[href="/projects/acme/translations"]')).toBeNull();
+  expect(document.querySelector('a[href="/projects/acme/surfaces/web/translations"]')).toBeNull();
   const link = document.querySelector('a[href*="pull/42"]');
   expect(link?.textContent).toContain("See what's open");
   expect(link?.getAttribute("target")).toBe("_blank");

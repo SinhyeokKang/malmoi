@@ -25,7 +25,12 @@ const GLYPH: Record<HomeCard["key"], ComponentType<{ className?: string }>> = {
   toSend: GitPullRequestArrow,
 };
 
-export function CountCards({ cards, slug, now }: { cards: readonly HomeCard[]; slug: string; now: Date }) {
+/**
+ * @param surfaceSlug 기본 표면. ⚠️ **링크가 표면 경로를 직접 가리킨다** (audit-ux #4b) — 옛 `routes.translations`는
+ *   기본 표면으로 redirect하는 공가 라우트라 누를 때마다 서버 왕복이 하나 더 붙었다. `null`(기본 표면 없음)이면 옛
+ *   경로로 남는다 — 그 라우트가 "표면이 없다"를 말하는 자리다.
+ */
+export function CountCards({ cards, slug, surfaceSlug, now }: { cards: readonly HomeCard[]; slug: string; surfaceSlug: string | null; now: Date }) {
   return (
     /*
       카드 넷 사이만 8이다 — 블록 사이(20)보다 좁아야 넷이 **한 덩어리**로 읽힌다 (캔버스 `2a`).
@@ -65,7 +70,9 @@ export function CountCards({ cards, slug, now }: { cards: readonly HomeCard[]; s
                   상태를 안 본다 — `To review 12`를 눌렀는데 그 네임스페이스엔 미번역만 있어 **0건**이
                   나온다. 구간을 보러 온 사람에게 네임스페이스 좁힘은 교집합을 비우는 축이다.
                 */
-                href={routes.translations(slug, cardQuery(CARD_STATE[card.key]))}
+                href={surfaceSlug === null
+                  ? routes.translations(slug, cardQuery(CARD_STATE[card.key]))
+                  : routes.surfaceTranslations(slug, surfaceSlug, cardQuery(CARD_STATE[card.key]))}
                 className="focus-visible:ring-ring border-border hover:bg-foreground/[0.02] flex flex-col gap-3 rounded-lg border p-3.5 focus-visible:ring-2 focus-visible:outline-none"
               >
                 <span className="flex items-center gap-2">

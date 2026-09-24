@@ -117,8 +117,10 @@ export function HomeTitle({ archived, children, image }: { archived: boolean; ch
  *
  * ⚠️ **`[Publish]`는 EDITOR도 누른다** — PRODUCT §3이 허용하고 `translation:write`에 들어 있다.
  */
-export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: {
+export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsent, paused }: {
   slug: string;
+  /** 기본 표면 — `[Sync]` Dialog의 `Publish first`가 가리킨다 (audit-ux #4b). */
+  surfaceSlug?: string;
   name: string;
   branch: string;
   role: "OWNER" | "EDITOR";
@@ -134,6 +136,7 @@ export function HomeHeaderActions({ slug, name, branch, role, unsent, paused }: 
     <div className="flex items-center gap-2">
       <SyncButton
         slug={slug}
+        surfaceSlug={surfaceSlug}
         name={name}
         branch={branch}
         role={role}
