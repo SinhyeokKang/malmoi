@@ -276,6 +276,14 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /*
+   * ⚠️ **꺼지지 않은 버튼은 손가락 커서다** (2026-09-25 사용자). Tailwind v4 preflight가 `button`을 `cursor: default`로
+   * 되돌려서, `Button` 밖의 raw 버튼(`ListItemButton` · 필터 칩의 Radix 트리거)은 저마다 `cursor-pointer`를 기억해야 했고
+   * 셋이 빠져 있었다(번역 키 행 · 번역 필터 · Logs 필터). 꺼진 쪽(`disabled:`·`aria-disabled:cursor-not-allowed`)은 제외한다.
+   */
+  button:not(:disabled):not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
   body {
     @apply bg-background text-foreground antialiased;
     /*

@@ -138,3 +138,14 @@ describe("globals.css — 글꼴 렌더링", () => {
     expect(body).toMatch(/@apply[^;]*\bantialiased\b/);
   });
 });
+
+/**
+ * **누를 수 있는 버튼은 손가락 커서다** (2026-09-25 사용자 — 번역 키 행·필터 칩에서 화살표였다).
+ * Tailwind v4 preflight가 `button`의 커서를 `default`로 되돌려서, `Button` 밖의 raw 버튼(`ListItemButton`·Radix 트리거)은
+ * 저마다 `cursor-pointer`를 기억해야 했고 셋이 빠져 있었다. 전역 한 줄이 그 기억을 대신한다.
+ */
+describe("globals.css — 버튼 커서", () => {
+  it("꺼지지 않은 button이 pointer다", () => {
+    expect(CSS).toMatch(/button:not\(:disabled\):not\(\[aria-disabled="true"\]\)[^{]*\{\s*cursor:\s*pointer;?\s*\}/);
+  });
+});
