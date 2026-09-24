@@ -102,6 +102,8 @@ const CLIENT_LIB_FILES = [
   // Settings recovery now owns its card notice; this leaf only assembles public URLs.
   "lib/github-connect/installation-url.ts",
   "lib/github-connect/message.ts",
+  // `SlowNotice`가 지연 선으로 읽는 상수 하나 — import가 0개인 잎이다 (audit-ux U7 r1). octokit은 `lib/github.ts` 쪽이다.
+  "lib/github-wait.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
   "lib/import/confirm.ts",
