@@ -497,6 +497,7 @@ lib/
                         logCaught — 삼켜서 갈래 하나로 접는 자리의 서버 로그 한 줄(원문 금지).
                         httpStatus · isUniqueViolation — 흩어진 사본이 셋·넷이던 판정
   compare.ts            ⚠️ 잎. compareCodeUnits — 결정적 정렬 전부의 `<` 비교(localeCompare 금지)
+  cause.ts              ⚠️ 잎. causeMessage — 잡은 값의 메시지. `(cause as Error).message`는 Error 아닌 throw에서 undefined다
   utc-time.ts           ⚠️ 잎. 절대 시각의 UTC 표기 하나(`2026-09-10 12:00 UTC`) — Logs·Publish가 같이 쓴다
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
@@ -530,7 +531,9 @@ scripts/                adapter-survey · sync-agents · copy-fonts · scan · i
                         smoke-github · smoke-blob(⚠️ pnpm smoke:blob에 NODE_OPTIONS=--conditions=react-server가
                         붙는다 — PII 복호 모듈이 server-only라 그 조건 없이는 import에서 죽는다) ·
                         credentials · finalize-credentials · backfill-pending-edit-token ·
-                        local(loadLocalEnv · scriptPrisma — ⚠️ log: []. lib/db.ts는 server-only라 못 쓴다)
+                        local(loadLocalEnv · scriptPrisma — ⚠️ log: []. lib/db.ts는 server-only라 못 쓴다) ·
+                        format(fileProbe · requestedFormat — ingest·push-local의 probe·`--adapter`·탐지 갈래 하나.
+                        ⚠️ lib/가 아닌 이유는 문구가 한국어 CLI 출력이라서다 — lib은 no-korean-ui 범위다)
                         (⚠️ DATABASE_URL을 친다 — prod는 명령 한 줄에서 그 변수를 넘긴다, 0행 두 번이 수렴)
                         __tests__/workflow-pins가 .github/ 아래 uses:가 40자 SHA로 핀됐는지 센다.
                         __tests__/prisma-select-columns는 이 디렉터리의 select 키를 schema.prisma와
