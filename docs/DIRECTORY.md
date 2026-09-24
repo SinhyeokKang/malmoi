@@ -268,7 +268,7 @@ components/
                         이것을 감싸 useRouter로 ?q=를 미는 배선 래퍼이고, 여기는 라우터를 모르는 프리미티브다
   surface-selector.tsx · github-account.tsx · reconnect-button.tsx · submit-button.tsx ·
   project-archived.tsx · project-not-ready.tsx · root-fallback.tsx
-                        화면에 걸치는 조각들. surface-selector는 **표면 축의 유일한 전역 스위처**다
+                        화면에 걸치는 조각들. surface-selector는 **소비자가 0인 dead code**다(테스트 둘만 import — 소스 전환은 번역 트리가 든다, audit-ux #34). 지우지 않고 남겨 둔다
                         (표면이 둘 미만이면 스스로 null을 낸다 — 축이 안 보이는 프로젝트에 컨트롤을 세우지 않는다).
                         ⚠️ project-archived·project-not-ready는 **화면 대신 서는 안내 한 쌍**이고 정책과
                         문구를 각자 한 곳이 든다 — 같은 갈래를 만나는 화면이 다섯·둘이라 사본이 생기면
