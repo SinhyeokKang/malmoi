@@ -75,8 +75,8 @@ it("GitHub App 연결 카드와 제목이 갈린다", () => {
    * 제목**이다. 순서는 화면이 정하므로 그쪽에서 잰다.
    */
   expect(CARD).toContain("m.link.methods.title");
-  // ⚠️ **새 키다** (2026-09-16) — `m.settings.account.title`(`GitHub account`)은 프로젝트 설정
-  // 화면이 계속 쓰고, 이 카드의 축 이름만 `GitHub App`으로 갈렸다.
+  // ⚠️ **새 키다** (2026-09-16) — 이 카드의 축 이름은 `GitHub App`이다(옛 `m.settings.account.title`
+  // `GitHub account`는 소비자가 사라져 2026-09-24에 지웠다).
   expect(GITHUB_SECTION).toContain("m.account.github.title");
   expect(PAGE.indexOf("<LoginMethods")).toBeLessThan(PAGE.indexOf("<GithubSection"));
   expect(PAGE.indexOf("<LoginMethods")).toBeGreaterThan(-1);
