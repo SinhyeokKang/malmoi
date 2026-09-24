@@ -204,14 +204,19 @@
 - **D3 → 같은 화면의 다른 쓰기 트리거만 잠그고 사유를 보인다** (#10). `usePublish`를 `[slug]` 셸로 올리는 것은 하지 않는다 — 레이아웃이 클라이언트 상태를 들게 되는 구조 변경이다. 화면을 옮기면 진행 표시가 사라지는 것은 알고 받는 대가이고, 그때 다시 누르면 나오는 서버의 `already-running` 결과가 그 사실을 말한다. 조회 action을 Route Handler로 옮기는 안은 CLAUDE.md의 "내부 쓰기 = Server Action" 원칙과 충돌해 채택하지 않는다.
 
 **항목**
-- [ ] **#10** 🔴 `components/publish-button.tsx:76` · `messages/en.tsx:2231`("Leaving this page won't stop it.") · `components/home/actions.tsx:64` · `workspace.tsx:351` — Server Action이 순서대로 실행되므로, 긴 Publish(PR 생성) 뒤에 Save·Revert 미리보기·Sync 확인창이 줄을 서서 스피너만 돈다. 온보딩 ②의 샘플 로드(`loadCandidateSample`)도 30초 넘는 `detectRepoFormats` 뒤에 선다. `usePublish`가 화면마다 따로 있어, 다른 화면으로 가면 진행 상태와 결과가 사라지고 버튼이 다시 켜진다. 다시 누르면 서버의 `already-running` 거부가 결과로 뜬다.
+- [x] **#10** 🔴 `components/publish-button.tsx:76` · `messages/en.tsx:2231`("Leaving this page won't stop it.") · `components/home/actions.tsx:64` · `workspace.tsx:351` — Server Action이 순서대로 실행되므로, 긴 Publish(PR 생성) 뒤에 Save·Revert 미리보기·Sync 확인창이 줄을 서서 스피너만 돈다. 온보딩 ②의 샘플 로드(`loadCandidateSample`)도 30초 넘는 `detectRepoFormats` 뒤에 선다. `usePublish`가 화면마다 따로 있어, 다른 화면으로 가면 진행 상태와 결과가 사라지고 버튼이 다시 켜진다. 다시 누르면 서버의 `already-running` 거부가 결과로 뜬다.
   - 방향(D3): Publish가 도는 동안 같은 화면의 Save·Revert·Sync 확인창을 `aria-disabled`로 잠그고 사유 한 줄을 보인다. Sync↔Publish 상호 잠금은 U1 #2가 이미 세운 배선을 넓힌다. 온보딩 ②의 탐지 뒤 샘플 로드 대기는 #23의 지연 문구로 다룬다.
-- [ ] **#23** 🟡 긴 실행에 시간에 비례한 안내가 없다.
+- [x] **#23** 🟡 긴 실행에 시간에 비례한 안내가 없다.
   - 리포 탐지(`components/onboarding/new-project.tsx:235`, `components/onboarding/steps/files.tsx:227`, `add-sources-modal.tsx:50`)는 30초 이상 걸릴 수 있는데, 스켈레톤과 고정 문구 "Reading repo · branch…"뿐이다.
   - `addSurfaces`(첫 적재 포함)와 Sync도 버튼 스피너 하나뿐이다.
   - Publish의 `Progress`(`publish-button.tsx:296`)는 2.5초·6.5초 타이머로 가짜 단계를 넘긴 뒤, 마지막 단계에서 멈춘 채 돈다.
   - 방향: N초가 지나면 "큰 리포는 오래 걸린다"는 지연 문구 한 단계를 둔다. 가짜 단계는 실제 단계로 바꾸거나 걷어낸다.
-- [ ] **#25** ⚪ D1대로 정리한다: `sync-button.tsx:157` · `publish-button.tsx:99`의 "Syncing…"·"Publishing…" 라벨을 걷고 `loading`/`busy` 스피너로 바꾼다(죽는 문구는 `messages/en.tsx`에서 같이 지운다). DESIGN §6 "진행 중 상호 잠금" 행을 고친다. `components/reconnect-button.tsx:38`, `:58`은 `RefreshCw` 옆에 스피너를 **더한다** — "아이콘이 있는 버튼은 교체" 규칙대로 교체한다(`push-token-panel.tsx:49`가 맞는 형이다).
+- [x] **#25** ⚪ D1대로 정리한다: `sync-button.tsx:157` · `publish-button.tsx:99`의 "Syncing…"·"Publishing…" 라벨을 걷고 `loading`/`busy` 스피너로 바꾼다(죽는 문구는 `messages/en.tsx`에서 같이 지운다). DESIGN §6 "진행 중 상호 잠금" 행을 고친다. `components/reconnect-button.tsx:38`, `:58`은 `RefreshCw` 옆에 스피너를 **더한다** — "아이콘이 있는 버튼은 교체" 규칙대로 교체한다(`push-token-panel.tsx:49`가 맞는 형이다).
+
+**진행 기록 (2026-09-25)**
+- [Publish] 트리거는 `loading`/`busy`를 쓰지 않는다 — 도는 동안 누르면 진행 모달을 다시 연다(두 번 실행은 `running` 문이 막는다). 스피너 교체 + `aria-busy`만 건다. 진행 모달의 확정 버튼은 누른 확정 라벨을 유지한다.
+- 지연 문구 임계값은 `SLOW_AFTER_MS = GITHUB_WAIT_MS`(8초, import로 묶었다). 모달을 다시 열면 0부터 다시 잰다(늦을 뿐 거짓이 아니다).
+- 남은 후보: `reconnect-button.tsx`·`add-sources-modal.tsx`의 기존 `startTransition(async …)`가 ARCHITECTURE의 "긴 Action을 async transition으로 감싸지 않는다"와 어긋난다(범위 밖 — 후속).
 
 **경계**: 이 배치는 U6 뒤에 시작한다(`publish-button.tsx`·`add-sources-modal.tsx`·`sync-button.tsx`가 겹친다).
 
