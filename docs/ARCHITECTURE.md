@@ -757,6 +757,8 @@ pull과 **같은 App 설치 토큰**을 쓰지만 방향이 반대다(읽기 전
 `lib/onboarding/*`는 스냅샷과 blob을 **값으로** 받고, 두 자격증명이 만나는 자리는 Server Action 하나다
 (`credential-separation.test.ts`가 상시로 센다).
 
+⚠️ **`createApp()`은 모듈 lazy 싱글턴이다** (2026-09-25, audit-ux #8) — 요청 사이에 App과 그 설치 토큰 캐시가 살아남아 웜 인스턴스에서 probe가 3홉→2홉이 된다. env는 매 호출 읽고 값이 바뀌면 새 App을 만든다(모듈 최상위 평가 없음). 그 대가로 캐시 토큰이 만료 직전일 수 있어, 정적 Octokit에 고정하는 `createGitClient`는 남은 시간이 5분 미만이면 `refresh: true`로 재발급한다(`TOKEN_MARGIN_MS`) — 60초 Publish가 중간에 401을 받지 않게 한다.
+
 **리더는 설치 토큰을 한 번만 발급한다** (`openRepoReader`). ⚠️ 읽기마다 `createApp()`을 부르면 토큰 캐시가
 인스턴스마다 새로 생겨 **`POST /app/installations/{id}/access_tokens`가 호출마다 하나씩 더 붙는다** — 예산이
 2배가 되고 50로케일 첫 적재는 `maxDuration=60`에서 잘린다 (code-review 2026-09-07 🔴). 스냅샷은 트리 항목의
@@ -897,7 +899,7 @@ Action의 `revalidatePath` 자리가 정하고, 그 분류를 순수 함수 둘�
 promise가 풀릴 때 서도 된다. 소비자는 Home Sync · 번역 화면
 Sync · `usePublish` · Revert 넷이다. 같은 이유로 그 뒤에 `router.refresh()`를 또 부르지 않는다(두 번째 전체 렌더가 표시 없이 돈다).
 **남은 예외 하나**: Add sources의 `run(async … addSurfaces)`(`add-sources-modal.tsx`)는 `useTransition` 안이라 그동안 이동이 얽힌다 —
-모달이 닫기를 막는 동안의 일이라 받았다.
+모달이 닫기를 막는 동안의 일이라 받았다. ⚠️ **알려진 예외 둘이 남아 있다** — `reconnect-button.tsx`·`add-sources-modal.tsx`(`run(async … addSurfaces)`)가 아직 이 형이다(후속 이슈).
 
 ⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Publish]가 사는 곳은
 **표면 경로**(`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`)이고 그 세그먼트를 쓴다.
@@ -2349,6 +2351,8 @@ GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" 
 #### 6.5.2 GitHub 대기 마감은 8초 하나다 (2026-09-25, audit-ux D5)
 
 **화면을 그리는 동안 GitHub을 기다리는 자리는 전부 `lib/github-wait.ts`의 `GITHUB_WAIT_MS`(8초)를 읽는다** — 목록의 원격 신호(`loadRemoteSignals`)·연결 확인(`probeRepo`)·설정의 열린 PR(`loadOpenPrUrl`)·계정 조회(`loadAccountView` — 설정·`/account`). 넘기면 각자의 실패 갈래(신호 없음 · `error`→`unknown` · `undefined` · `unavailable`)로 접고 로그 한 줄을 남긴다. 같은 원격을 기다리는 두 화면의 마감이 다르면 한쪽은 "확인할 수 없음", 다른 쪽은 아직 매달린 채로 갈린다 — 그래서 사본을 두지 않는다. 설정 화면은 그 셋을 await하지 않고 Suspense로 스트리밍하며, **App 인스턴스는 요청 사이에 남는다**(설치 토큰 캐시가 인스턴스에 붙어 있다 — `createApp`). ⚠️ 그래서 캐시가 만료 직전 토큰을 줄 수 있고, 고정 토큰을 쥐는 `createGitClient`는 만료가 5분 안이면 `refresh: true`로 다시 받는다.
+
+⚠️ **`loadInstalledRepoCount`(`/account` — 설치 목록 + 설치별 리포)는 아직 이 마감 밖이다** (후속 이슈).
 
 ### 6.6 Credential 저장 경계 (2026-09-10, dev·prod 전환 완료)
 
