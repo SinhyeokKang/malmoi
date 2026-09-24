@@ -40,7 +40,7 @@ import { localeFromPath } from "./chrome-locales";
  */
 
 const SEP = KEY_SEP;
-const CODE_FILE = /^(.*\/)([^/]+)\.(tsx?|mjs|js)$/;
+export const CODE_FILE = /^(.*\/)([^/]+)\.(tsx?|mjs|js)$/;
 
 function newProject(): Project {
   // 타입 정보가 필요 없다 — 객체 리터럴 형태만 본다.

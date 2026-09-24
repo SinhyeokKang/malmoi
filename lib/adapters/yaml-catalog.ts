@@ -40,14 +40,14 @@ import { localeFromPath } from "./chrome-locales";
  */
 
 const SEP = KEY_SEP;
-const YAML_FILE = /^(.*\/)([^/]+)\.(ya?ml)$/;
+export const YAML_FILE = /^(.*\/)([^/]+)\.(ya?ml)$/;
 
 /**
  * ⚠️ **`.github/` 아래는 잡지 않는다.** CI 설정이 `{locale}.yml`처럼 보이는 일이 흔하다 — 실측에서
  * immich·bitwarden·Shopify가 `.github/workflows/{ko,en}.yml`로 후보를 냈다. probe가 `on: push`를
  * 카탈로그로 읽어버리므로 경로에서 막는 편이 확실하다.
  */
-const NEVER = /(^|\/)\.github\//;
+export const NEVER = /(^|\/)\.github\//;
 
 function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
   /**

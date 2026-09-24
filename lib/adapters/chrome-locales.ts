@@ -79,7 +79,7 @@ export function dominantFieldOrder(text: string | undefined): readonly EntryFiel
 
 /** `chrome.i18n`이 허용하는 메시지 이름. 밖의 문자는 크롬이 **조용히 무시**한다. */
 const CHROME_KEY = /^[A-Za-z0-9_@]+$/;
-const LOCALES_PATH = /^(.*)_locales\/([^/]+)\/messages\.json$/;
+export const LOCALES_PATH = /^(.*)_locales\/([^/]+)\/messages\.json$/;
 
 function detectCandidates(paths: readonly string[], probe?: FileProbe): DetectedFormat[] {
   /** root(접두 경로) → 로케일 코드 집합 */

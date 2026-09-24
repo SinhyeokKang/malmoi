@@ -33,9 +33,9 @@ import type { Adapter, AdapterError, DetectedFormat, FileProbe, LocaleEntry, Rea
  */
 
 const SEP = KEY_SEP;
-const JSON_FILE = /^(.*\/)([^/]+)\.json$/;
+export const JSON_FILE = /^(.*\/)([^/]+)\.json$/;
 /** `<dir>/<locale>/<name>.json` — 로케일이 디렉터리이고 파일명은 따로다. */
-const LOCALE_DIR_FILE = /^((?:[^/]+\/)*)([^/]+)\/([^/]+)\.json$/;
+export const LOCALE_DIR_FILE = /^((?:[^/]+\/)*)([^/]+)\/([^/]+)\.json$/;
 
 /**
  * 로케일 디렉터리에 파일이 여럿일 때 고르는 이름 순위. **앞이 이긴다.**
