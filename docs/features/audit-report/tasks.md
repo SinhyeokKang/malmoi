@@ -225,8 +225,8 @@
 - [x] **#69** 🟡 DIRECTORY.md :503(14→16테이블) · :547(include 범위) · :21-22(`/privacy`) · :73(21→22).
 - [x] **#70** 🟡 PRODUCT:795 §10 `AuditEvent`(결정됨) · README:9 · README:60.
 - [x] ⚪ **#88** 거짓 주석 — `lib/compare.ts:2` · `auth/invite-label.ts:28` · `keys/query.ts:329-333`.
-- [ ] **#18** 🟡 `[slug]/loading.tsx` 골격 불일치(브라우저 확인 후).
-  - ⏳ B7c: 코드 미변경 — 브라우저 확인 대기. 가설: `[slug]/loading.tsx`가 자기 `loading.tsx`가 없는 하위 세그먼트(members·sources·settings·translations)의 fallback도 되어 Home 골격이 뜬다. 확인되면 Home의 `page.tsx`·`loading.tsx`를 `[slug]/(home)/`로 옮겨 경계를 Home에만 건다.
+- [x] **#18** 🟡 `[slug]/loading.tsx` 골격 불일치(브라우저 확인 후).
+  - ✅ B7c(malmoi#95): 느린 망 실측으로 확인 — Home의 `page.tsx`·`loading.tsx`를 `[slug]/(home)/`로 옮겨 경계를 Home에만 건다(URL 불변). `shell-layout.test.ts`가 구조를 고정한다.
 
 ### B7e 보안 하드닝(⚪)
 - [x] **#75** `next.config.ts` — CSP Report-Only · `unsafe-inline` · HSTS·Permissions-Policy 없음. **enforce 전에 `form-action`에 `accounts.google.com` 추가**(안 하면 Google 로그인이 막힌다). ✅ B7e r1 — **CSP enforce**(사용자 판정 "보안 강하게"), 환경 셋(프로덕션 · preview=Vercel Toolbar · dev=eval·HMR)을 `lib/security-headers.ts`가 정한다 · `form-action`에 Google · HSTS `max-age=63072000; includeSubDomains; preload`(목록 제출은 오너 수동) · Permissions-Policy. ⏳ 런타임 콘솔 확인 대기.
