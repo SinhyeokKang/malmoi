@@ -92,6 +92,7 @@ describe("② 좌측 열 — 목록이 한 행 아래로 눌리지 않는다 (#8
     const floors = [...files.matchAll(/min-h-\[4\.5rem\]/g)];
     expect(floors.length).toBeGreaterThanOrEqual(2);
     expect(files).toMatch(/<ul className="[^"]*min-h-\[4\.5rem\][^"]*"[^>]*aria-label=\{m\.newProject\.files\.candidates\}/);
-    expect(files).toMatch(/<RadioGroup[^>]*className="[^"]*min-h-\[4\.5rem\]/s);
+    // ⚠️ `[^>]*`로 못 잇는다 — 그 여는 태그의 `onValueChange={value => …}`에 `>`가 있다.
+    expect(files).toMatch(/<RadioGroup\b[\s\S]*?className="[^"]*min-h-\[4\.5rem\][^"]*">\{candidateList\}/);
   });
 });

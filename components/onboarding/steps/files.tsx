@@ -135,7 +135,8 @@ export function FilesStep({
   const manualMode = !detecting && (candidates.length === 0 || candidate === undefined);
 
   const candidateList = (
-    <ul className="border-border min-h-0 overflow-y-auto rounded-md border" aria-label={m.newProject.files.candidates}>
+    // ⚠️ **바닥이 한 행이다** (malmoi#88) — 69px 행이 24px로 눌려 체크박스·글리프가 사라졌다. 그 아래로는 열이 스크롤한다.
+    <ul className="border-border min-h-[4.5rem] overflow-y-auto rounded-md border" aria-label={m.newProject.files.candidates}>
       {candidates.map((c, index) => {
         const active = picked === index;
         const locked = selection?.locked?.has(index) ?? false;
@@ -215,7 +216,13 @@ export function FilesStep({
         min-content(≈379)가 `flex-grow`를 이긴다 — `data-panel-size`는 33.3→44.4로 바뀌는데 폭은
         379에 붙박이고, 쉬는 폭도 240이 아니라 379다. 우측도 같은 이유로 함께 푼다.
       */}
-      <ResizablePanel {...FILES_LEFT} style={{ overflow: "visible" }} className="flex min-w-0 flex-col gap-3">
+      <ResizablePanel {...FILES_LEFT} style={{ overflow: "visible" }} className="flex min-w-0 flex-col">
+        {/*
+          ⚠️ **넘치는 몫은 이 래퍼가 스크롤한다** (malmoi#88) — 1280×720에서 수동 지정 폼이 열리면 후보 목록이 24px로 눌렸다.
+          패널이 아니라 안쪽이 스크롤하는 이유는 위 주석(가로 `auto` → 포커스 링 잘림)이다: `p-1`이 링 자리를 두고
+          `-m-1`이 그 자리를 되돌려 배치는 그대로다.
+        */}
+        <div data-files-left className="-m-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-1">
         {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
         {detecting ? (
           <ul className="border-border overflow-hidden rounded-md border" aria-hidden>
@@ -236,7 +243,7 @@ export function FilesStep({
           <>
             {selection ? candidateList : <RadioGroup disabled={pending} aria-label={m.newProject.files.candidates}
               value={picked === null ? "" : String(picked)} onValueChange={value => onPick(Number(value))}
-              className="min-h-0 overflow-y-auto">{candidateList}</RadioGroup>}
+              className="min-h-[4.5rem] overflow-y-auto">{candidateList}</RadioGroup>}
             {selection && selection.conflicts.length > 0 && <Alert variant="danger">
               <p>{m.newProject.files.conflicts}</p>
               {selection.conflicts.map(conflict => <p key={conflict.path}>{conflict.path}</p>)}
@@ -244,6 +251,7 @@ export function FilesStep({
             <ManualToggle pending={pending} state={state} onManual={onManual} />
           </>
         )}
+        </div>
       </ResizablePanel>
 
       <ResizableHandle aria-label={m.newProject.files.resize} className="w-2" />
