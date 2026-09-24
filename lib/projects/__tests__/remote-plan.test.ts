@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { changedLocaleFileCount } from "../remote-plan";
+import { changedLocaleFileCount, pullNumberFrom } from "../remote-plan";
 
 /**
  * **"base가 앞섰다"의 숫자는 키가 아니라 로케일 파일 수다**.
@@ -98,4 +98,32 @@ it("모르는 어댑터는 0이다 — 어느 파일도 가리키지 못한다",
 
 it("변경 목록이 비면 0이다", () => {
   expect(changedLocaleFileCount(JSON_CATALOG, [])).toBe(0);
+});
+
+/**
+ * `lastPrUrl` → PR 번호 (audit #74 — 테스트 없는 순수 export였다). **형태만 믿는다** — 번호가 없으면 PR 조회를
+ * 건너뛰고(요청 0), 추측한 번호로 남의 PR을 조회하지 않는다.
+ */
+describe("pullNumberFrom", () => {
+  it.each([
+    ["https://github.com/o/r/pull/142", 142],
+    ["https://github.com/o/r/pull/142/files", 142],
+    ["https://github.com/o/r/pull/7?w=1", 7],
+    ["https://github.com/o/r/pull/7#issuecomment-1", 7],
+  ])("%s → %d", (url, n) => {
+    expect(pullNumberFrom(url)).toBe(n);
+  });
+
+  it.each([
+    [null],
+    ["https://github.com/o/r"],
+    ["https://github.com/o/r/pull/"],
+    ["https://github.com/o/r/pull/142abc"],
+    ["https://github.com/o/r/pull/0"],
+    ["https://github.com/o/r/pull/-3"],
+    ["https://github.com/o/r/pull/99999999999999999999"],
+    ["https://github.com/o/r/issues/142"],
+  ])("%s → null", (url) => {
+    expect(pullNumberFrom(url)).toBeNull();
+  });
 });

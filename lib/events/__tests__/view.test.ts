@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import { m } from "@/lib/i18n";
 import type { SurfaceImportResult } from "@/lib/import/result";
+import { importFailureMessage } from "@/lib/projects/import-failure";
 
 import { EVENT_RESULTS } from "../payload";
 import {
   coverageBoundaryIndex,
   eventView,
   groupByDay,
+  importReasonMessage,
   planArchivedReason,
+  refusalMessage,
   summarizeImportEvent,
   valueState,
   type EventViewRow,
@@ -330,5 +333,30 @@ describe("eventView — 보류만 남은 Publish", () => {
     expect(view.label).toBe(m.logs.status.notSent);
     expect(view.label).not.toBe(m.logs.status.skipped);
     expect(view.tone).toBe("warning");
+  });
+});
+
+/**
+ * 거부·적재 실패 코드 → 문장 (audit #74 — 테스트 없는 export였다). 코드는 DB에서 읽은 남의 문자열이라
+ * **모르는 값과 프로토타입 이름이 폴백으로 떨어지는지**가 요지이고, 짝으로 알려진 값이 제 문장을 받는지 본다.
+ */
+describe("refusalMessage", () => {
+  it("거부 여섯은 제 문장, 모르는 코드·null·프로토타입 이름은 폴백이다", () => {
+    expect(refusalMessage("stale-commit")).toBe(m.logs.refusals["stale-commit"]);
+    expect(refusalMessage("archived")).toBe(m.logs.refusals.archived);
+    for (const code of [null, "too-soon", "constructor", "__proto__", "toString"]) {
+      expect(refusalMessage(code)).toBe(m.logs.refusals.fallback);
+    }
+  });
+});
+
+describe("importReasonMessage", () => {
+  it("적재 실패 코드 → 동기화 오류 코드 → 폴백 순으로 읽는다", () => {
+    expect(importReasonMessage("parse-failed")).toBe(importFailureMessage("parse-failed"));
+    expect(importFailureMessage("parse-failed")).not.toBe(m.projects.importFailure.importFailed);
+    expect(importReasonMessage("superseded")).toBe(m.repositorySync.errors.superseded);
+    for (const code of [null, "unknown-code", "constructor", "hasOwnProperty"]) {
+      expect(importReasonMessage(code)).toBe(m.projects.importFailure.importFailed);
+    }
   });
 });
