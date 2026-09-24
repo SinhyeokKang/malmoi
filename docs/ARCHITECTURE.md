@@ -602,6 +602,10 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 - **정렬은 `Incomplete first` 하나이고 URL에 `sort`가 없다** — 고를 것이 없는 파라미터는 만들지 않는다.
 - **`PAGE_SIZE` 100 + keyset cursor**(`lib/keys/translation-list.ts`). 안정 분할이 범위 전체 집계를 요구하므로 비용은 페이지 크기가
   아니라 `scope`에 좌우된다 — 페이지를 줄여 빨라지길 기대하지 않는다. 조건이 바뀌면 cursor를 푼다.
+  ⚠️ **다음 페이지는 주소가 아니라 `loadMoreTranslationKeys`(읽기 전용 Server Action)로 읽고 화면이 누적한다** (audit-ux #19, 2026-09-25) —
+  cursor가 주소에 있으면 새로고침·공유·뒤로가기가 그 페이지만 보였다. 대가: **저장 뒤 재검증은 첫 페이지만 다시 그린다** — 붙인 행은
+  `mergeServerRows`가 자리에 남기고, 요약이 바뀌는 길은 저장한 행의 `applySavedRow`와 선택 키의 `selectedInResult`뿐이다(남이 바꾼 뒤쪽
+  행의 배지는 재필터까지 낡을 수 있다). More의 행·cursor·대기 상태는 목록 세대에 묶여 조건이 바뀌면 버려진다.
 - **`q`는 200자**(`Q_MAX_LENGTH`) — trim 뒤 비면 검색 없음, LIKE 메타문자는 escape한다.
 - **Save는 `KEY_SAVE_LIMITS`**(`lib/keys/save.ts`) — 값당 10,000 · 로케일 200 · **변경값 합계 UTF-16 1,000,000 코드유닛**. 최악이
   UTF-8 약 3MB(CJK 1유닛=3바이트, 서로게이트 2유닛=4바이트)라 `serverActions.bodySizeLimit: "4mb"` 안에 든다. ⚠️ **둘 중 하나를
