@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { Dialog as Primitive } from "radix-ui";
-import { useRef, type ComponentProps, type ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -31,12 +31,13 @@ export const Dialog = Primitive.Root;
  * ⚠️ **호출부의 `onCloseAutoFocus`가 먼저다** — 그것이 `preventDefault`했으면 손대지 않는다. 후보가 없으면 Radix 기본
  * (트리거)으로 넘기고, 그래도 빠지면 호출부의 착지(`useLandAfter`)가 받는다.
  *
- * ⚠️ **트리거가 붙어 있으면 아예 끼어들지 않는다** (B5 리뷰 r1 🔴). Safari·macOS Firefox는 마우스 클릭으로 버튼에 포커스를 주지
- * 않아 트리거에 `focusin`이 안 오고, 기록의 마지막이 **더 오래된 요소**였다 — 가로채면 닫힐 때 포커스와 스크롤이 그리로 튀었다
- * (Settings: 이름 저장 → 스크롤 → Rotate token → Cancel → 이름 칸으로 점프). 트리거 판정은 Radix가 트리거에 거는
- * `aria-controls="<content id>"`다. ⚠️ **같은 이유로 `pointerdown`도 기록한다** — 트리거 없는 Dialog를 연 버튼도 그
- * 브라우저에서는 `focusin`을 안 낸다. 트리거로 연 Dialog에서 Radix 기본이 가는 곳은 트리거다 — 배너의 [Try again]처럼
- * 같은 Dialog를 트리거 밖에서 열었어도 그 트리거로 돌아간다.
+ * ⚠️ **`pointerdown`도 기록한다** (B5 리뷰 r1 🔴). Safari·macOS Firefox는 마우스 클릭으로 버튼에 포커스를 주지 않아 누른 버튼에
+ * `focusin`이 안 오고, 기록의 마지막이 **더 오래된 요소**였다 — 닫힐 때 포커스와 스크롤이 그리로 튀었다(Settings: 이름 저장 →
+ * 스크롤 → Rotate token → Cancel → 이름 칸으로 점프). 누른 것을 기록하면 트리거로 연 Dialog는 트리거로, 트리거 밖에서 연 같은
+ * Dialog(Home 배너의 [Try again] → Sync 확인)는 **누른 그 버튼**으로 돌아온다 — 후자가 의도다(malmoi#86): 배너를 읽다 눌렀는데
+ * 머리의 [Sync]로 튀면 그 문장을 다시 찾아 내려와야 한다.
+ * ⚠️ **"트리거가 붙어 있으면 비켜선다"를 r1에 넣었다가 걷었다** — Radix는 닫힌 트리거에서 `aria-controls`를 **지워서**
+ * (`context.open ? contentId : undefined`) 닫힐 때의 그 판정은 한 번도 참이 아니었다. 동작을 만든 것은 위의 기록이다.
  */
 const recent: HTMLElement[] = [];
 function remember(node: HTMLElement | null) {
@@ -76,8 +77,6 @@ export function DialogContent({
   description?: ReactNode;
   footer?: ReactNode;
 }) {
-  /** Content의 id — 트리거가 `aria-controls`로 이것을 가리킨다. 닫힐 땐 Content가 이미 떨어져 있어 열려 있을 때 잡는다. */
-  const contentId = useRef<string | null>(null);
   return (
     <Primitive.Portal>
       <Primitive.Overlay className="bg-foreground/40 fixed inset-0 z-50" />
@@ -96,12 +95,9 @@ export function DialogContent({
           className,
         )}
         {...props}
-        ref={(node: HTMLDivElement | null) => { if (node !== null) contentId.current = node.id; }}
         onCloseAutoFocus={(event) => {
           onCloseAutoFocus?.(event);
           if (event.defaultPrevented) return;
-          const id = contentId.current;
-          if (id !== null && id !== "" && [...document.querySelectorAll("[aria-controls]")].some(node => node.getAttribute("aria-controls") === id)) return;
           const target = returnTarget();
           if (target === null) return;
           event.preventDefault();
