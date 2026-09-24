@@ -872,7 +872,7 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
 
 ⚠️ **Server Action의 `maxDuration`은 호출한 페이지 세그먼트가 정한다.** `app/api/*`의 세그먼트 config가
 Action에 적용되지 않으므로 **페이지가 각자** `export const maxDuration = 60`을 든다 — 지금 **여덟 곳**이다(`app/api/push`·`app/api/pull`은 라우트라 별개다):
-`projects/page.tsx` · `projects/new/page.tsx` · `projects/@modal/(.)new/page.tsx` · `[slug]/page.tsx` · `[slug]/settings/page.tsx` ·
+`projects/page.tsx` · `projects/new/page.tsx` · `projects/@modal/(.)new/page.tsx` · `[slug]/(home)/page.tsx` · `[slug]/settings/page.tsx` ·
 `[slug]/sources/page.tsx` · `[slug]/translations/page.tsx` · **`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`**. **새 Action 화면을 만들 때마다 선언한다** — 안 하면 기본값에서
 첫 적재가 잘리고, 증상이 "큰 리포에서만 실패"라 재현이 어렵다. **세는 법은 grep 하나다**(`rg -n 'maxDuration' app`) — 이 목록을 손으로 늘리면 낡는다.
 
