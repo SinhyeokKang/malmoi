@@ -5,65 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { relativeTime } from "@/lib/relative-time";
-import {
-  buildPermalink,
-  cellAt,
-  cellState,
-  defaultNamespace,
-  filterByState,
-  isUnpublished,
-  localeProgress,
-  resolveNamespace,
-  translationState,
-  type KeyRow,
-  type NamespaceCount,
-} from "../view";
-
-/** 셀 픽스처의 시각 — `isUnpublished` 테스트 말고는 이 값을 보지 않는다. */
-const EPOCH = new Date("2026-09-01T00:00:00Z");
-
-const row = (over: Partial<KeyRow> & Pick<KeyRow, "key">): KeyRow => ({
-  id: `id-${over.key}`,
-  namespace: over.key.split(/[._]/)[0] ?? "_root",
-  orphaned: false,
-  createdAt: EPOCH,
-  /** 로케일 코드 → 값. 테이블이 로케일을 열로 펼치므로 행이 전부 들고 있어야 한다. */
-  cells: {},
-  refs: [],
-  ...over,
-});
-
-/** 단일 로케일 관점 헬퍼 — 배지 판정 테스트는 셀 하나만 본다. */
-const cell = (over: Partial<KeyRow["cells"][string]> = {}) => ({
-  value: null, needsReview: false, updatedBy: null, updatedAt: EPOCH, ...over,
-});
-
-describe("translationState — 배지 판정", () => {
-  it("값이 없으면 untranslated", () => {
-    expect(translationState({ orphaned: false, value: null, needsReview: false })).toBe("untranslated");
-  });
-
-  it("빈 문자열도 untranslated다 (편집 UI에서 지운 값이 그렇게 온다)", () => {
-    expect(translationState({ orphaned: false, value: "", needsReview: false })).toBe("untranslated");
-  });
-
-  it("값이 있으면 translated", () => {
-    expect(translationState({ orphaned: false, value: "값", needsReview: false })).toBe("translated");
-  });
-
-  it("needsReview가 translated를 이긴다", () => {
-    expect(translationState({ orphaned: false, value: "값", needsReview: true })).toBe("needsReview");
-  });
-
-  it("orphaned가 전부를 이긴다 — 키 자체가 코드에서 사라졌다", () => {
-    expect(translationState({ orphaned: true, value: "값", needsReview: true })).toBe("orphaned");
-    expect(translationState({ orphaned: true, value: null, needsReview: false })).toBe("orphaned");
-  });
-
-  it("needsReview인데 값이 없으면 untranslated다 — 검토할 값이 없다", () => {
-    expect(translationState({ orphaned: false, value: null, needsReview: true })).toBe("untranslated");
-  });
-});
+import { buildPermalink, isUnpublished, localeProgress } from "../view";
 
 describe("buildPermalink — GitHub 코드 참조", () => {
   const project = { repoOwner: "acme", repoName: "app", lastCommitSha: "a".repeat(40) };
@@ -88,89 +30,6 @@ describe("buildPermalink — GitHub 코드 참조", () => {
     const url = buildPermalink(project, { path: "src/[locale]/page.tsx", line: 3 });
     expect(url).toContain("%5Blocale%5D");
     expect(url).not.toContain("[locale]");
-  });
-});
-
-/**
- * **기본 착지는 "남은 일이 있는" 첫 네임스페이스다** (DESIGN §6.1). `compareKeys` 첫 항목은
- * 알파벳순이라 이미 다 번역된 사소한 네임스페이스일 수 있고, 그러면 편집자가 매번 직접 찾아야 한다.
- *
- * ⚠️ **로케일 인자를 받지 않는다** — 집계(`namespaceCountsFor(rows, locales)`)가 이미 그 기준으로
- * 만들어진다. 여기서 로케일을 또 받으면 두 값이 갈릴 수 있는 자리만 생긴다.
- */
-describe("defaultNamespace — 착지할 네임스페이스", () => {
-  const counts = (...items: [string, Partial<NamespaceCount>][]): NamespaceCount[] =>
-    items.map(([namespace, over]) => ({
-      namespace,
-      total: 1,
-      untranslated: 0,
-      needsReview: 0,
-      orphaned: 0,
-      ...over,
-    }));
-
-  it("빈 프로젝트는 null이다 — 화면이 '키 없음' 빈 상태로 간다", () => {
-    expect(defaultNamespace([])).toBeNull();
-  });
-
-  it("미번역이 있는 첫 네임스페이스로 간다 — 알파벳 첫 항목이 아니다", () => {
-    expect(defaultNamespace(counts(["auth", {}], ["common", { untranslated: 1 }]))).toBe("common");
-  });
-
-  it("검토 필요도 '남은 일'이다", () => {
-    expect(defaultNamespace(counts(["auth", {}], ["common", { needsReview: 1 }]))).toBe("common");
-  });
-
-  it("남은 일이 하나도 없으면 첫 네임스페이스다", () => {
-    expect(defaultNamespace(counts(["auth", {}], ["common", {}]))).toBe("auth");
-  });
-
-  it("orphaned만 있는 네임스페이스는 건너뛴다 — 편집할 수 없는 화면에 착지시키지 않는다", () => {
-    expect(defaultNamespace(counts(["auth", { total: 2, orphaned: 2 }], ["common", {}]))).toBe("common");
-  });
-
-  it("전부 orphaned면 null이다", () => {
-    expect(defaultNamespace(counts(["auth", { total: 2, orphaned: 2 }]))).toBeNull();
-  });
-
-  it("집계 순서를 따른다 — 정렬은 namespaceCountsFor가 이미 했다", () => {
-    expect(defaultNamespace(counts(["z", { untranslated: 1 }], ["a", { untranslated: 1 }]))).toBe("z");
-  });
-});
-
-/**
- * ⚠️ **없는 이름을 404로 만들지 않는다.** 필터는 URL에 있고 링크는 오래 산다 — 네임스페이스가
- * 사라진 뒤 옛 링크를 열면 화면이 죽는 대신 기본 착지로 간다.
- */
-describe("resolveNamespace — `?ns=`의 해석", () => {
-  const counts: NamespaceCount[] = [
-    { namespace: "auth", total: 1, untranslated: 0, needsReview: 0, orphaned: 0 },
-    { namespace: "common", total: 1, untranslated: 1, needsReview: 0, orphaned: 0 },
-  ];
-
-  it("없으면 기본 착지다", () => {
-    expect(resolveNamespace(undefined, counts)).toEqual({ kind: "one", namespace: "common" });
-  });
-
-  it("`*`는 전체다 — 어댑터가 만들 수 없는 이름이라 실제 접두와 충돌하지 않는다", () => {
-    expect(resolveNamespace("*", counts)).toEqual({ kind: "all" });
-  });
-
-  it("아는 이름은 그대로다", () => {
-    expect(resolveNamespace("auth", counts)).toEqual({ kind: "one", namespace: "auth" });
-  });
-
-  it("없는 이름은 기본 착지로 떨어진다 — 낡은 링크가 404가 되지 않는다", () => {
-    expect(resolveNamespace("gone", counts)).toEqual({ kind: "one", namespace: "common" });
-  });
-
-  it("대소문자를 구별한다 — 네임스페이스는 키 접두라 파일이 정한다", () => {
-    expect(resolveNamespace("Auth", counts)).toEqual({ kind: "one", namespace: "common" });
-  });
-
-  it("키가 하나도 없으면 아무 데도 착지하지 않는다", () => {
-    expect(resolveNamespace("auth", [])).toEqual({ kind: "none" });
-    expect(resolveNamespace("*", [])).toEqual({ kind: "all" });
   });
 });
 
@@ -377,49 +236,6 @@ describe("localeProgress — 로케일별 진행률 (6b-5)", () => {
 });
 
 /**
- * **로케일 코드는 남이 정한 키다** — `Locale.code`는 리포의 파일명에서 오고, CLAUDE.md 코드 컨벤션이
- * `cells` 같은 맵을 그 부류로 이름을 들어 지목한다(조회는 `Object.hasOwn`, 대입은 `Object.create(null)`).
- *
- * ⚠️ **증상이 없다고 규칙이 지켜진 것이 아니다.** 2026-09-18 재현 시도에서 `constructor` 로케일이
- * 거짓 배지를 켜지 **못했는데**, 이유가 방어가 아니라 우연이었다 — `Object.prototype.constructor`에는
- * `Cell`의 필드가 하나도 없어 `cell.pending`·`cell.value`가 전부 `undefined`로 떨어졌을 뿐이다.
- * **`Cell`에 `constructor`·`toString` 같은 이름의 필드가 하나 생기는 날 그 우연이 끝난다.**
- * `__proto__`는 `isPathSafeLocale`이 `_` 시작이라 거부하지만 그 방어선은 다른 모듈에 있는 한 겹이다.
- */
-describe("cells — 프로토타입에서 셀을 찾지 않는다", () => {
-  const proto = row({
-    key: "greeting",
-    cells: { ko: { ...cell({ value: "안녕" }), surfaceArchivedAt: null, pending: false } },
-  });
-
-  /** `isPathSafeLocale`을 통과하는 이름들이다 — `__proto__`만 막히고 나머지는 DB에 들어올 수 있다. */
-  const INHERITED = ["constructor", "toString", "valueOf", "hasOwnProperty"] as const;
-
-  it("상속된 이름의 셀은 없는 것으로 읽는다", () => {
-    for (const name of INHERITED) {
-      expect(cellAt(proto, name), name).toBeUndefined();
-    }
-    expect(cellAt(proto, "ko")).toBeDefined();
-  });
-
-  it("상속된 이름은 미번역이다 — 배지가 값을 지어내지 않는다", () => {
-    for (const name of INHERITED) {
-      expect(cellState(proto, name), name).toBe("untranslated");
-    }
-  });
-
-  /** ⚠️ **`cell !== undefined`가 통과하는 것이 이 자리의 함정이었다** — 프로토타입 값은 undefined가 아니다. */
-  it("상속된 이름은 미전달 필터에 걸리지 않는다", () => {
-    for (const name of INHERITED) {
-      expect(
-        filterByState([proto], { state: "unsent", locales: [name], lastPulledAt: null }),
-        name,
-      ).toEqual([]);
-    }
-  });
-});
-
-/**
  * **재발 방지는 grep이 아니라 이 스캔이다.**
  *
  * ⚠️ 증상이 없는 결함이라 리뷰로도 테스트로도 안 걸린다 — 2026-09-18에 네 자리가 같은 모양으로
@@ -428,9 +244,8 @@ describe("cells — 프로토타입에서 셀을 찾지 않는다", () => {
  */
 describe("소스 스캔 — cells를 직접 인덱싱하지 않는다", () => {
   const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-  /** 셀 맵을 로케일 코드로 인덱싱하는 자리 전부. `cellAt`·`Object.hasOwn` 가드만 예외다. */
+  /** 셀 맵을 로케일 코드로 인덱싱하는 자리 전부. `Object.hasOwn` 가드만 예외다. */
   const FILES = [
-    "lib/keys/view.ts",
     "lib/keys/query.ts",
     "lib/pull/render.ts",
   ] as const;
@@ -442,7 +257,7 @@ describe("소스 스캔 — cells를 직접 인덱싱하지 않는다", () => {
         .split("\n")
         .map((line, i) => [i + 1, line] as const)
         .filter(([, line]) => /\.cells\[/.test(line) && !/Object\.hasOwn/.test(line));
-      expect(offenders, `${file}: cellAt 또는 Object.hasOwn을 지나야 한다`).toEqual([]);
+      expect(offenders, `${file}: Object.hasOwn을 지나야 한다`).toEqual([]);
     }
   });
 

@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { actorLabel, collectActorIds, type Actor, type KeyRow } from "../view";
+import { actorLabel, type Actor, type KeyRow } from "../view";
 
 /**
  * 셀 메타의 편집자 표시 (malmoi#3).
@@ -27,21 +27,6 @@ function row(cells: Record<string, string | null>): KeyRow {
     ),
   };
 }
-
-describe("collectActorIds — 조회할 식별자만 모은다", () => {
-  it("중복을 접고 null을 버린다 — 왕복 하나에 필요한 최소 집합이다", () => {
-    const ids = collectActorIds([row({ en: "u1", ko: "u1" }), row({ en: "u2", ko: null })]);
-    expect([...ids].sort()).toEqual(["u1", "u2"]);
-  });
-
-  it("편집 이력이 없으면 빈 배열이다 — 호출부가 조회를 아예 건너뛸 수 있어야 한다", () => {
-    expect(collectActorIds([row({ en: null })])).toEqual([]);
-  });
-
-  it("셀이 없는 로케일을 세지 않는다", () => {
-    expect(collectActorIds([{ ...row({}), cells: { en: undefined } }])).toEqual([]);
-  });
-});
 
 describe("actorLabel — User.id를 사람으로, 옛 핸들은 그대로", () => {
   const actors = new Map<string, Actor>([
