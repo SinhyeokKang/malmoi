@@ -166,6 +166,39 @@ describe("#13 — 행 잠금과 토스트·닫기가 커밋 뒤다", () => {
     expect(spinning(byName("Remove Alice"))).toBe(false);
   });
 
+  /**
+   * **스피너는 쓴 컨트롤에만 선다** (malmoi#106) — 행의 대기 하나가 Select `aria-busy`와 [Remove] `busy`를 함께 먹여, 역할 변경 중에
+   * 되돌릴 수 없는 [Remove]가 "제거 중"처럼 돌았다. 다른 쪽은 잠기기만 한다. 잠금은 둘 다 커밋까지다(#13).
+   */
+  const pickRole = async (userId: string, label: string) => {
+    await click(document.getElementById(`role-${userId}`)!);
+    await click([...document.querySelectorAll<HTMLElement>('[role="option"]')].find(o => o.textContent?.trim() === label)!);
+  };
+  it("역할 변경: Select만 돌고 [Remove]는 잠기기만 한다 — 커밋까지", async () => {
+    mocks.changeMember.mockImplementation(revalidating({ ok: true }));
+    await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
+    await pickRole("u2", m.projects.role.OWNER);
+    await click(inDialog(m.members.confirmRoleAction));
+    const select = document.getElementById("role-u2")!;
+    expect(select.getAttribute("aria-busy")).toBe("true");
+    expect(spinning(byName("Remove Alice"))).toBe(false);
+    expect(byName("Remove Alice").getAttribute("aria-busy")).toBeNull();
+    expect(byName("Remove Alice").getAttribute("aria-disabled")).toBe("true");
+    await finishCommit();
+    expect(select.getAttribute("aria-busy")).toBeNull();
+    expect(byName("Remove Alice").getAttribute("aria-disabled")).toBeNull();
+  });
+  it("제거: [Remove]만 돌고 Select는 잠기기만 한다 — 위의 짝", async () => {
+    mocks.changeMember.mockImplementation(revalidating({ ok: true }));
+    await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
+    await click(byName("Remove Alice"));
+    await click(inDialog("Remove"));
+    const select = document.getElementById("role-u2")!;
+    expect(spinning(byName("Remove Alice"))).toBe(true);
+    expect(select.getAttribute("aria-busy")).toBeNull();
+    expect(select.getAttribute("aria-disabled")).toBe("true");
+  });
+
   it("초대 철회: 목록 커밋 전까지 그 행의 Revoke가 잠긴 채 돈다", async () => {
     mocks.revokeInvitation.mockImplementation(revalidating({ ok: true }));
     await render(<PendingInvitations slug="acme" invitations={[invite]} role="OWNER" now={now} headingId="h" />);
