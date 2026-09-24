@@ -139,7 +139,8 @@ export function onboardErrorMessage(error: OnboardError): string {
  * 첫 적재 결과의 헤드라인 — 불변식 9: **0건이 아니면 성공 문구를 그대로 쓰지 않는다.**
  * `pullMessage`의 "다만 N건은 반영되지 못했어요" 형이다.
  *
- * @param failed `read.errors.length + duplicateKeys`
+ * @param failed 실패 갈래 read 에러 + 다운로드 실패 + `duplicateKeys` (`adapterErrorKind`)
+ * @param unmanaged 코드에 남아 관리하지 않는 항목 수 — 실패 문장 뒤에 안내로 붙는다
  */
 export function ingestHeadline(count: number, failed: number, unmanaged = 0): string {
   // 관리하지 않는 항목은 실패 문장을 대신하지 않고 뒤에 안내로 붙는다 (B2 r3 · QA5).
