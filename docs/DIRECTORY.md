@@ -505,6 +505,10 @@ lib/
                         (Node는 "(Azərbaycan)"). ⚠️ 하위태그를 떼지 않는다 — zh-Hans/zh-Hant가
                         한 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다
   onboarding/types.ts   RepoOption·AdapterChoice. 타입만 산다 — 같은 번들 이유
+  landing/              랜딩(`/`) 스테이지의 수학 — stage(fitScale · growProgress · sceneAt · typedPrefix · frame).
+                        ⚠️ 잎(import 0) — 스테이지 클라이언트가 값으로 읽는다. 같은 스크롤 위치 → 같은 프레임이
+                        역방향 스크럽의 조건이라 이전 프레임을 입력으로 받지 않는다. `/`에 무엇을 그릴지는
+                        여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다
   routes.ts             앱 내부 링크의 단일 출처(잎, import 0). ⚠️ 쿼리는 withQuery를 지나야
                         entry-points의 "쿼리 수신자" 검사에 걸린다 — 문자열 연결은 그 검사를 회피한다
   search-params.ts      ⚠️ 잎. Next의 searchParams는 반복 파라미터를 배열로 주므로 화면 여덟이 전부
