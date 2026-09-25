@@ -133,8 +133,8 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
     expect(layout).toMatch(/min-w-\[1280px\]/);
   });
 
-  it("헤더가 전폭 48이고 로고와 사용자 메뉴 둘을 든다", () => {
-    expect(header).toMatch(/\bh-12\b/);
+  it("헤더가 전폭 40이고 로고와 사용자 메뉴 둘을 든다 — 32 컨트롤의 위아래가 4씩이다", () => {
+    expect(header).toMatch(/\bh-10\b/);
     expect(header).toContain("UserMenu");
     expect(header).toContain("routes.projects()");
   });
