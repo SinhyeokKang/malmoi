@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { rejectTarget, rootView } from "@/lib/auth/landing";
+import { publicCta, rejectTarget, rootView } from "@/lib/auth/landing";
 import { routes } from "@/lib/routes";
 
 /**
@@ -57,5 +57,23 @@ describe("rootView — 루트(`/`)가 무엇을 그리나 (랜딩)", () => {
   it("세션을 못 읽어도 랜딩을 그린다 — 장애 신호는 보호 라우트가 든다", () => {
     expect(rootView("unavailable")).toEqual({ landing: true });
     expect(rejectTarget("unavailable")).toBe(routes.signIn({ error: "Unavailable" }));
+  });
+});
+
+describe("publicCta — 공개 셸 헤더의 primary", () => {
+  /**
+   * ⚠️ **라벨은 사전 키다** — 이 모듈은 잎이라 `@/lib/i18n`을 물지 않는다. 헤더가 키로 사전을 읽는다.
+   */
+  it("세션이 있으면 앱으로 연다", () => {
+    expect(publicCta("ok")).toEqual({ href: routes.projects(), label: "openMalmoi" });
+  });
+
+  it("세션이 없으면 로그인으로 보낸다", () => {
+    expect(publicCta("none")).toEqual({ href: routes.signIn(), label: "getStarted" });
+  });
+
+  /** 장애는 비로그인 쪽이다 — 공개 화면에서 앱으로 보내 봐야 보호 라우트가 다시 튕긴다. */
+  it("세션을 못 읽으면 비로그인과 같다", () => {
+    expect(publicCta("unavailable")).toEqual(publicCta("none"));
   });
 });

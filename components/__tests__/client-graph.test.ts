@@ -370,6 +370,13 @@ describe("클라이언트 그래프", () => {
     expect([...stage.packages]).toEqual([]);
   });
 
+  /** `/privacy` TOC가 스크롤마다 값으로 읽는 판정 — 스테이지 수학과 같은 이유로 직접 건다. */
+  it("`lib/public-doc/toc.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const toc = walk([join(ROOT, "lib/public-doc/toc.ts")]);
+    expect([...toc.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/public-doc/toc.ts"]);
+    expect([...toc.packages]).toEqual([]);
+  });
+
   it("`lib/protection/plan.ts`는 잎이다 — `fingerprint.ts`(crypto)를 물지 않는다", () => {
     const plan = walk([join(ROOT, "lib/protection/plan.ts")]);
     expect([...plan.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/protection/plan.ts"]);

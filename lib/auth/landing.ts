@@ -62,3 +62,22 @@ const ROOT = {
 export function rootView(status: SessionRead["status"]): RootView {
   return ROOT[status];
 }
+
+/**
+ * 공개 셸(`/`·`/privacy`) 헤더의 primary. **로그인이면 앱으로 연다** — 공개 화면에 선 편집자가 로그인 화면으로
+ * 다시 가는 길밖에 없으면 안 된다. 랜딩은 `ok`에서 안 그려지므로 늘 `none` 쪽이다.
+ *
+ * ⚠️ **라벨은 사전 키다** — 이 모듈이 `@/lib/i18n`을 읽으면 위의 잎 주석이 거짓이 된다. 헤더가 키로 사전을 읽는다.
+ * ⚠️ **`unavailable`은 비로그인 쪽이다** — 앱으로 보내 봐야 보호 라우트가 다시 튕긴다. 맵 + `satisfies`는 `REJECT`와 같은 이유다.
+ */
+export type PublicCta = { href: string; label: "getStarted" | "openMalmoi" };
+
+const CTA = {
+  ok: { href: routes.projects(), label: "openMalmoi" },
+  none: { href: routes.signIn(), label: "getStarted" },
+  unavailable: { href: routes.signIn(), label: "getStarted" },
+} satisfies Record<SessionRead["status"], PublicCta>;
+
+export function publicCta(status: SessionRead["status"]): PublicCta {
+  return CTA[status];
+}
