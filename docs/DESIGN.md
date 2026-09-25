@@ -830,8 +830,8 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 표 | `DocTable`(§6.61의 행 규칙 그대로) · mt 24 · 래퍼 `border rounded-xl overflow-auto` · 셀 14/1.6 · 머리 13/500 muted(불투명 `--primary-foreground` 면) — 급은 래퍼의 `[&_th]:`·`[&_td]:` 변형이 누른다 |
 | 본문 링크 | `text-blue-600` · 밑줄 없음(§6.3) — 절 래퍼의 `[&_a]:` 변형 |
 | 목차 (`components/privacy/toc.tsx`) | `<nav aria-labelledby>`(제목 `On this page` — `m.publicDocs.privacy.toc`, **`sections` 밖**: 안이면 방침 해시가 바뀐다) · sticky top 48(스크롤러 기준) · 제목 13/500 · 목록 좌측 선 `--border` · 항목 13/1.5 · 6/0/6/12 · 현재 = 선·글자 foreground + `aria-current="location"`, 나머지 muted · hover foreground. 항목 라벨은 절 `heading` 그대로(시안의 축약은 안 받는다) |
-| 현재 절 | 윗변(스크롤러 좌표)이 `scrollTop + 96`을 넘지 않은 **마지막** 절, 없으면 첫 절 — `lib/public-doc/toc.ts`의 `currentSection`(잎). scroll(passive) → rAF, 값이 바뀔 때만 리렌더. 윗변은 스크롤러 `ResizeObserver`·`document.fonts.ready`에서 다시 잰다. ⚠️ **offsetTop이 아니라 rect 차로 잰다** — offsetParent에 매이면 셸 구조가 바뀔 때 조용히 틀린다(스테이지와 같은 판단) |
-| 클릭 | 링크는 실제 `href="#id"`(JS 없이도 이동). JS는 `preventDefault` → 스크롤러 `scrollTo(top − 48)`(모션 감소면 `auto`, 아니면 `smooth`) + `history.replaceState` + **절 `h2`로 `focus({ preventScroll: true })`** — preventDefault가 fragment 이동의 포커스 이동까지 막아서, 안 옮기면 키보드·스크린리더가 목차에 남는다 |
+| 현재 절 | 윗변(스크롤러 좌표)이 `scrollTop + 96`을 넘지 않은 **마지막** 절, 없으면 첫 절. ⚠️ **끝(`scrollHeight − clientHeight − 1` 이상)에 닿으면 마지막 절이다** — 마지막 절이 짧으면 윗변이 기준선에 못 닿아 1440×900에서 `Changes to this policy`가 끝까지 내려도 안 켜졌다 — `lib/public-doc/toc.ts`의 `currentSection`(잎). scroll(passive) → rAF, 값이 바뀔 때만 리렌더. 윗변은 스크롤러 `ResizeObserver`·`document.fonts.ready`에서 다시 잰다. ⚠️ **offsetTop이 아니라 rect 차로 잰다** — offsetParent에 매이면 셸 구조가 바뀔 때 조용히 틀린다(스테이지와 같은 판단) |
+| 클릭 | 링크는 실제 `href="#id"`(JS 없이도 이동). 수정 키(⌘·Ctrl·Shift·Alt)·가운데 클릭은 가로채지 않는다(새 탭·창은 브라우저 몫). 모션 감소는 **클릭 때** 읽는다(런타임 토글 반영). JS는 `preventDefault` → 스크롤러 `scrollTo(top − 48)`(모션 감소면 `auto`, 아니면 `smooth`) + `history.replaceState` + **절 `h2`로 `focus({ preventScroll: true })`** — preventDefault가 fragment 이동의 포커스 이동까지 막아서, 안 옮기면 키보드·스크린리더가 목차에 남는다 |
 | 새 색 | **0** — blue-600(등재)·토큰뿐 |
 
 ### 6.62 로그인·초대 수락 — 셸 밖 2열 (2026-09-10, 8-1)
