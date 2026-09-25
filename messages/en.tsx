@@ -336,6 +336,71 @@ export const en = {
       github: "GitHub",
       getStarted: "Get started",
     },
+    /** 히어로 — 버튼 둘은 헤더와 같은 말이라 `shell.docs`·`shell.getStarted`를 쓴다(같은 구역). */
+    hero: {
+      /** h1 두 줄 — 시안이 줄을 정한다(`<br>`). ⚠️ 둘째 줄은 Sentence case다(시안 열린 결정 3). */
+      title: ["Connect your projects,", "translate & ship together"] as const,
+      /** ⚠️ `locale files`가 아니다 — `terminology.test.ts`가 `locale`을 금지한다(spec 결정 3). */
+      body: "Malmoi finds the translation files already in your repo, lets teammates edit them in the browser, and sends every change back as one pull request.",
+    },
+    /** 스크롤 구동 목업 — 캡션 다섯은 씬 순서다. 보이는 캡션은 `aria-hidden`이고 visually-hidden `<ol>`이 늘 담는다. */
+    stage: {
+      label: "How Malmoi works",
+      captions: [
+        "Malmoi reads the translation files already in your repository.",
+        "Fill in the languages a key is missing.",
+        "Each saved edit adds to the count on Publish.",
+        "Review every change as a diff before it's sent.",
+        "Everything goes back as one pull request.",
+      ] as const,
+    },
+    closing: {
+      title: "Start from the files you already have",
+      body: "Connect a GitHub repository, invite your team, and send the first pull request when the translations are ready.",
+    },
+    /**
+     * 목업의 **가상 데이터** — 앱 라벨은 여기 없다. 라벨은 실제 사전 키를 읽는다(목업과 앱이 다른 말을 하면 랜딩이 거짓이다).
+     *
+     * ⚠️ **작게 유지한다.** 실명·실제 프로젝트명 금지. ⚠️ 타이핑되는 값은 `fr`이다(spec 결정 2) — 한글이면 `no-korean-ui`가,
+     * 일본어면 폰트(가나 없음)가 걸린다. NFC이고 결합 문자가 없다(`typedPrefix`가 코드포인트로 자른다).
+     */
+    mockup: {
+      project: "Acme web",
+      repo: "acme/web",
+      source: "web",
+      namespace: "checkout",
+      /** 선택된 키 — 씬 ②에서 `fr` 값이 비어 있다가 채워진다. */
+      selected: {
+        key: "checkout.submit",
+        text: "Place order",
+        values: [
+          { code: "en", value: "Place order" },
+          { code: "de", value: "Bestellung aufgeben" },
+          { code: "es", value: "Realizar pedido" },
+        ],
+        typedCode: "fr",
+        typed: "Passer la commande",
+      },
+      /** 키 목록 — `missing`은 빠진 언어 수, 0이면 Complete. 선택된 키가 둘째 행이다. */
+      rows: [
+        { key: "checkout.title", text: "Checkout", missing: 0 },
+        { key: "checkout.submit", text: "Place order", missing: 1 },
+        { key: "checkout.coupon", text: "Add a coupon", missing: 2 },
+        { key: "cart.empty", text: "Your cart is empty", missing: 0 },
+        { key: "cart.remove", text: "Remove", missing: 0 },
+      ],
+      keyCount: 248,
+      /** Publish 배지 — 씬 ③의 저장 전 → 후. */
+      unsentBefore: 2,
+      unsentAfter: 3,
+      /** 씬 ④의 diff — 파일당 한 줄. `before`가 null이면 새로 채운 값이다. */
+      diff: [
+        { file: "messages/de.json", key: "cart.empty", code: "de", before: "Ihr Warenkorb ist leer", after: "Dein Warenkorb ist leer" },
+        { file: "messages/es.json", key: "checkout.title", code: "es", before: "Pago", after: "Finalizar compra" },
+        { file: "messages/fr.json", key: "checkout.submit", code: "fr", before: null, after: "Passer la commande" },
+      ],
+      pullRequest: 128,
+    },
   },
 
   /**

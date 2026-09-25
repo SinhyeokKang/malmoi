@@ -104,6 +104,7 @@ const REGISTERED: Record<string, string[]> = {
   // 카운트 카드 글리프 + 번역 작업 화면의 상태 글자(B6 등재) + 활동 칩
   "text-amber-700": [
     "components/home/count-cards.tsx",
+    "components/landing/mockup/translations.tsx",
     "components/translations/workspace/key-list.tsx",
     "components/translations/workspace/locale-panel.tsx",
     "components/translations/workspace/workspace.tsx",
@@ -111,11 +112,11 @@ const REGISTERED: Record<string, string[]> = {
   ],
   // 초록 — `Active` 배지 · diff
   "bg-green-100/80": ["components/ui/badge.tsx"],
-  "text-green-800": ["components/publish-button.tsx", "components/ui/badge.tsx"],
-  "bg-green-800/[0.16]": ["components/publish-button.tsx"],
+  "text-green-800": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/ui/badge.tsx"],
+  "bg-green-800/[0.16]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
   // 빨강 — diff · missing 알약 · 사라짐 띠 · 임포트 실패 띠
-  "text-red-700": ["components/publish-button.tsx", "components/sources/source-detail-modal.tsx", "components/ui/badge.tsx", ...GLYPH],
-  "bg-red-700/[0.14]": ["components/publish-button.tsx"],
+  "text-red-700": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/sources/source-detail-modal.tsx", "components/ui/badge.tsx", ...GLYPH],
+  "bg-red-700/[0.14]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
   "bg-red-700/10": ["components/ui/badge.tsx"],
   "text-red-800": ["components/projects/project-list.tsx"],
   // blue-600 — 링크 색 (§6.3) · 검색 일치 구간
@@ -142,13 +143,14 @@ const REGISTERED: Record<string, string[]> = {
   ],
   "bg-blue-600/[0.14]": ["components/projects/project-list.tsx"],
   // neutral 계단 — 300 · 400 · 600 · 50 (§6.2)
-  "border-neutral-300": ["components/translations/workspace/locale-panel.tsx", "components/ui/checkbox.tsx", "components/ui/radio.tsx"],
+  "border-neutral-300": ["components/landing/mockup/translations.tsx", "components/translations/workspace/locale-panel.tsx", "components/ui/checkbox.tsx", "components/ui/radio.tsx"],
   "text-neutral-300": ["components/members/role-chip.tsx"],
   "text-neutral-400": [
     "app/(edit)/account/page.tsx",
     "components/home/attention-card.tsx",
     "components/home/count-cards.tsx",
     "components/home/meta-column.tsx",
+    "components/landing/mockup/translations.tsx",
     "components/logs/event-detail.tsx",
     "components/members/member-row.tsx",
     "components/projects/project-list.tsx",
@@ -160,6 +162,8 @@ const REGISTERED: Record<string, string[]> = {
   ],
   "text-neutral-600": [
     "components/home/sync-button.tsx",
+    // 랜딩 목업은 번역 작업 화면의 정적 복제라 그 화면의 색을 그대로 쓴다(새 값 0).
+    "components/landing/mockup/translations.tsx",
     "components/projects/project-list.tsx",
     "components/sources/source-detail-modal.tsx",
     "components/sources/sources-archived.tsx",
