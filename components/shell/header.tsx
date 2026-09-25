@@ -32,7 +32,7 @@ export function Header({
 }) {
   return (
     // 시안 좌표: 로고 x=4 · 아바타 오른쪽 여백 4 → 좌우 padding 4다.
-    <header className="flex h-12 shrink-0 items-center justify-between px-1">
+    <header className="flex h-10 shrink-0 items-center justify-between px-1">
       <Link
         href={routes.projects()}
         aria-label={m.common.nav.appHome}
