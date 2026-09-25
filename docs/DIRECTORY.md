@@ -178,6 +178,7 @@ components/
                         않는다 — 문서가 스크롤되지 않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다.
                         data-public-scroller가 랜딩 스테이지·privacy 목차의 스크롤 대상 표식이다. ⚠️ 헤더는 세션을 읽지
                         않는다 — primary는 페이지가 publicCta로 정해 넘긴다. route group 레이아웃으로 묶지 않는다(이동 때 스크롤러 재마운트)
+                        footer는 셸 밖 2열 골격(signin/auth-layout — /signin·초대·계정 병합)도 두 패널 아래에 그린다 — 푸터 렌더러가 하나다
   privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로) ·
                         toc(클라이언트 잎 — [data-public-scroller] 구독 → rAF → lib/public-doc/toc의 currentSection,
                         클릭은 scrollTo(top − 48) + 절 h2로 포커스)
