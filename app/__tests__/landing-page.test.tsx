@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 import type { SessionRead } from "@/lib/auth/read-session";
@@ -24,6 +24,7 @@ beforeEach(() => {
   mocks.redirect.mockClear();
   vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
 });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 async function page(status: SessionRead["status"]) {
   mocks.status = status;

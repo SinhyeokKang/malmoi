@@ -243,6 +243,32 @@ describe("Stage — 크기 변화", () => {
     expect(find<HTMLElement>(container, "[data-landing-root]").style.getPropertyValue("--landing-stage-h")).toBe("1342px");
   });
 
+  /**
+   * ⚠️ **드래그 리사이즈에서는 rAF가 관찰자 콜백보다 먼저 새 H를 본다** (L-stage 리뷰 r1). 관찰자는 레이아웃 뒤, rAF는
+   * 레이아웃 전에 돌아서 틱이 새 H를 먼저 읽고 `lastH`를 덮으면 콜백이 "바뀐 것 없음"으로 건너뛴다 — 702 → 902 드래그가
+   * q 2.3을 1.8(씬 ②)로 되감았다. 보존은 틱 안에서 한다.
+   */
+  it("크기가 연달아 바뀌어도(틱이 콜백보다 먼저 새 H를 읽어도) 직전 q를 보존한다", async () => {
+    const { scroller, size } = await mount();
+    await flush();
+    await scrollTo(scroller, STAGE_TOP + 2.3 * H);
+
+    size.h = 902;
+    await act(async () => { for (const { callback } of observers) callback([], {} as ResizeObserver); });
+    size.h = 1002; // 드래그가 이어져 다음 rAF 전에 한 번 더 바뀐다
+    await flush();
+    await act(async () => { for (const { callback } of observers) callback([], {} as ResizeObserver); });
+    await flush();
+    expect((scroller.scrollTop - STAGE_TOP) / 1002).toBeCloseTo(2.3, 6);
+
+    size.h = 1102; // 콜백 없이 스크롤 틱이 먼저 새 H를 읽는다
+    await act(async () => { scroller.dispatchEvent(new Event("scroll")); });
+    await flush();
+    await act(async () => { for (const { callback } of observers) callback([], {} as ResizeObserver); });
+    await flush();
+    expect((scroller.scrollTop - STAGE_TOP) / 1102).toBeCloseTo(2.3, 6);
+  });
+
   it("언마운트하면 예약된 rAF를 취소하고 리스너를 전부 푼다", async () => {
     const container = document.createElement("div");
     document.body.append(container);
@@ -279,6 +305,33 @@ describe("Stage — 접근성", () => {
     expect(frameNode.getAttribute("aria-hidden")).toBe("true");
     expect(frameNode.hasAttribute("inert")).toBe(true);
     expect(frameNode.querySelectorAll("button, a, input, textarea, select, [tabindex]")).toHaveLength(0);
+  });
+
+  /**
+   * ⚠️ **sticky 층은 투명하지만 positioned라** 음수 margin으로 끌어올린 CTA 위에 칠해져 클릭을 먹는다 — yPin이 120보다 큰
+   * 세로 긴 뷰포트(1440×2560에서 ≈836)에서 `Get started`가 안 눌렸다 (L-stage 리뷰 r1).
+   */
+  it("sticky 층이 포인터를 받지 않는다 — 끌어올린 CTA가 눌린다", async () => {
+    const { container } = await mount();
+    const sticky = find<HTMLElement>(container, "[data-landing-frame]").parentElement;
+    expect(sticky?.className).toContain("sticky");
+    expect(sticky?.className).toContain("pointer-events-none");
+  });
+
+  /**
+   * ⚠️ **준비 전엔 프레임이 보이지 않는다** (L-stage 리뷰 r1) — 배율이 없으면 베젤·그림자가 1304×744로 서서 1262폭 스크롤러를
+   * 넘치고, H < 732면 CTA까지 덮는다. 트랙은 패널 1개로 접힌 채이고 `data-ready`가 서야 프레임·크롬이 보인다.
+   */
+  it("`data-ready` 전엔 프레임과 크롬이 보이지 않고, 선 뒤에 보인다", async () => {
+    const { container } = await mount();
+    const track = find<HTMLElement>(container, "section[aria-label='How Malmoi works']");
+    const frameNode = find<HTMLElement>(container, "[data-landing-frame]");
+    const chrome = find<HTMLElement>(container, "[data-landing-caption]").parentElement;
+    expect(track.className).toContain("group/track");
+    for (const node of [frameNode, chrome]) {
+      expect(node?.className).toMatch(/(^|\s)invisible(\s|$)/);
+      expect(node?.className).toContain("group-data-[ready]/track:visible");
+    }
   });
 
   it("마무리 CTA는 스테이지 뒤에 서고 `−yPin`을 상쇄하는 자리에 들어간다", async () => {
