@@ -35,7 +35,7 @@ async function html(status: "ok" | "none", viewerEmail = "person@example.com") {
 
 /**
  * ⚠️ **320 컬럼의 제목 칸이 비어 있던 유일한 화면이었다** (DESIGN §6.62) — `docs/DESIGN.md`가
- * 셸 밖 폼 컬럼에 `h1 text-2xl font-medium`을 **이미 요구한다**. 새 결정이 아니라 규칙 위반의 교정이다.
+ * 셸 밖 폼 컬럼에 `h1 text-2xl font-semibold`(2026-09-26부터 600 — 24px 이상 규칙)을 **이미 요구한다**. 새 결정이 아니라 규칙 위반의 교정이다.
  */
 it("제목이 선다 — 설명이 제목을 겸하지 않는다", async () => {
   for (const status of ["ok", "none"] as const) {

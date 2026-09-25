@@ -32,7 +32,7 @@ export function PrivacyDoc() {
   return (
     <div className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 py-30">
       <article className="min-w-0">
-        <h1 className="m-0 text-4xl leading-[1.3] font-medium">{title}</h1>
+        <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{title}</h1>
         {/*
           메타 줄이라 보조 색이 맞다 — 본문의 muted 금지는 여기 안 걸린다(§6.61). 라벨 없이 날짜만 두면 무슨 날짜인지 모른다.
           사전의 `"YYYY-MM-DD"`를 그대로 보이고 `dateTime`에 넣는다 — 날짜만 든 `datetime`은 올바른 HTML이고
@@ -51,7 +51,7 @@ export function PrivacyDoc() {
               `scroll-mt-12` — 하드 해시 착지도 목차 클릭과 같은 48 아래에 선다.
               `tabIndex={-1}` — 목차가 누른 절로 포커스를 옮긴다(`toc.tsx`). 조작 대상이 아니라 링을 그리지 않는다.
             */}
-            <h2 id={section.id} tabIndex={-1} className="m-0 scroll-mt-12 text-2xl leading-[1.4] font-medium focus:outline-none">
+            <h2 id={section.id} tabIndex={-1} className="m-0 scroll-mt-12 text-2xl leading-[1.4] font-semibold focus:outline-none">
               {section.heading}
             </h2>
             {section.blocks.map((block, blockIndex) =>

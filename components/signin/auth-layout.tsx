@@ -102,11 +102,11 @@ function Decoration() {
     <div className="from-auth-hero-from to-auth-hero-to relative flex flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-b px-16 py-20">
       <DotField className="absolute inset-0 size-full" />
 
-      <p className="relative text-3xl font-medium">{m.signIn.hero.top}</p>
+      <p className="relative text-3xl font-semibold">{m.signIn.hero.top}</p>
 
       <KeyVisual />
 
-      <p className="relative text-3xl font-medium">{m.signIn.hero.bottom}</p>
+      <p className="relative text-3xl font-semibold">{m.signIn.hero.bottom}</p>
     </div>
   );
 }

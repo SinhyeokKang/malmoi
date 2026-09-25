@@ -25,13 +25,13 @@ export function AuthColumn({ children, className }: { children: ReactNode; class
  * ⚠️ **`description`이 선택이다** — `/signin`은 제목 한 줄뿐이다(제품 설명은 랜딩이 맡는다,
  * 8-1b). 없을 때 빈 문단을 그리지 않는다.
  *
- * ⚠️ **`h1`은 셋 다 든다** — `docs/DESIGN.md`가 셸 밖 폼 컬럼에 `text-2xl font-medium`을 요구하고,
+ * ⚠️ **`h1`은 셋 다 든다** — `docs/DESIGN.md`가 셸 밖 폼 컬럼에 `text-2xl font-semibold`를 요구하고(24px 이상은 600),
  * `/invite/[token]`은 2026-09-12까지 이 칸이 비어 있던 유일한 화면이었다.
  */
 export function AuthHeading({ title, description }: { title: ReactNode; description?: ReactNode }) {
   return (
     <div className="flex w-full flex-col items-center gap-2">
-      <h1 className="text-center text-2xl font-medium">{title}</h1>
+      <h1 className="text-center text-2xl font-semibold">{title}</h1>
       {description !== undefined && (
         <p className="text-muted-foreground text-center text-sm">{description}</p>
       )}

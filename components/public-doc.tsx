@@ -67,7 +67,7 @@ export function PublicDoc({
     // ⚠️ 세로 중앙 정렬을 쓰지 않는다 — 절이 여럿이면 첫 화면이 문서 중간부터 시작한다 (§6.61).
     <main className="mx-auto flex min-h-svh max-w-2xl flex-col gap-8 px-8 py-12">
       <div className="space-y-3">
-        <h1 className="text-2xl font-medium">{title}</h1>
+        <h1 className="text-2xl font-semibold">{title}</h1>
         {intro === undefined ? null : <p className="text-sm leading-6">{intro}</p>}
       </div>
       {sections.map((section) => (

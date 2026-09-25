@@ -11,7 +11,7 @@ export function RootFallback({ title, description, children }: { title: string; 
   return (
     <main className="bg-background flex min-h-svh items-center justify-center p-8">
       <div className="flex w-[320px] flex-col items-center gap-4 text-center">
-        <h1 className="text-2xl font-medium">{title}</h1>
+        <h1 className="text-2xl font-semibold">{title}</h1>
         <p className="text-muted-foreground text-sm">{description}</p>
         <div className="flex w-full flex-col gap-2">{children}</div>
       </div>

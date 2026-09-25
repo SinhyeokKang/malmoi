@@ -349,3 +349,34 @@ describe("같은 행동은 같은 variant다 (audit #50)", () => {
     }
   });
 });
+
+/**
+ * **24px(`text-2xl`) 이상은 weight 600이다** (2026-09-26 사용자 — DESIGN §4). 그 아래 제목·라벨은 500, 나머지 400.
+ *
+ * ⚠️ **클래스 문자열 하나 단위로 센다** — 크기와 weight가 같은 리터럴에 서야 한다(`cn("text-2xl font-medium", …)`도 한 리터럴이다).
+ * 역방향도 건다 — 600이 24px 아래로 번지면 "크면 600"이 "아무 데나 600"이 된다.
+ */
+describe("24px 이상은 600, 600은 24px 이상에만", () => {
+  const BIG = /(?<![\w-])(?:[a-z-]+:)*text-(?:[2-9]xl|\[(?:2[4-9]|[3-9]\d|\d{3,})px\])(?![\w-])/;
+  const SEMIBOLD = /(?<![\w-])(?:[a-z-]+:)*font-semibold(?![\w-])/;
+  const literals = (source: string): string[] =>
+    [...source.matchAll(/"([^"\n]*)"|`([^`]*)`/g)].map((match) => match[1] ?? match[2] ?? "");
+  const found = SOURCES.flatMap(({ path, source }) => literals(source).map((cls) => ({ path, cls })));
+
+  it("카나리아 — 두 방향이 실제로 잡힌다", () => {
+    expect(BIG.test("m-0 text-2xl font-medium") && !SEMIBOLD.test("m-0 text-2xl font-medium")).toBe(true);
+    expect(BIG.test("text-xl font-semibold")).toBe(false);
+    expect(BIG.test("md:text-[32px]")).toBe(true);
+    expect(found.filter(({ cls }) => BIG.test(cls)).length).toBeGreaterThan(5);
+  });
+
+  it("24px 이상 크기를 든 클래스 문자열은 `font-semibold`를 함께 든다", () => {
+    const stray = found.filter(({ cls }) => BIG.test(cls) && !SEMIBOLD.test(cls));
+    expect(stray.map(({ path, cls }) => `${path}: ${cls}`)).toEqual([]);
+  });
+
+  it("`font-semibold`는 24px 이상 크기와만 선다", () => {
+    const stray = found.filter(({ cls }) => SEMIBOLD.test(cls) && !BIG.test(cls));
+    expect(stray.map(({ path, cls }) => `${path}: ${cls}`)).toEqual([]);
+  });
+});
