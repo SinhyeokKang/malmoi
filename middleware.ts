@@ -31,7 +31,7 @@ export default function middleware(request: NextRequest): NextResponse | undefin
   });
   if (!redirectToLogin) return undefined;
 
-  // 로그인 화면은 `app/signin/page.tsx`가 그린다 — 루트는 랜딩 자리를 비워 둔 껍데기다 (8-1a).
+  // 로그인 화면은 `app/signin/page.tsx`가 그린다 — 루트(`/`)는 공개 랜딩이다 (8-1a에서 갈랐다).
   return NextResponse.redirect(new URL(routes.signIn(), request.nextUrl.origin));
 }
 

@@ -43,8 +43,8 @@ export default async function EditLayout({ children }: { children: React.ReactNo
   const name = displayName(session.name, session.email);
 
   // Server Action을 클라이언트 컴포넌트에 **참조로** 넘긴다 — 그래야 사이드바가 `@/auth`를 물지 않는다.
-  // ⚠️ **`/`가 맞다 — 이관 누락이 아니다** (2026-09-10 사용자). **로그아웃은 랜딩으로 간다**:
-  // 지금은 루트 껍데기가 `/signin`으로 한 홉 더 보내고, 랜딩이 서면 거기 착지한다.
+  // ⚠️ **`/`가 맞다 — 이관 누락이 아니다** (2026-09-10 사용자). **로그아웃은 랜딩에 착지한다**
+  // (2026-09-26부터 `/`가 랜딩이다 — 세션이 없으니 `rootView`가 랜딩을 그린다).
   // `routes.signIn()`으로 바꾸면 그 결정이 조용히 뒤집힌다.
   async function signOutAction() {
     "use server";
