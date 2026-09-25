@@ -151,7 +151,7 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
   `lib/__tests__/globals-css.test.ts`가 이 한 단어를 고정한다.
 - ⚠️ **자간은 크기 토큰이 든다 — `tracking-*` 유틸을 쓰지 않는다** (8-1b). `@theme`의
   `--text-*--letter-spacing`이 크기마다 값을 갖고(작을수록 넓게, 클수록 좁게), **호출부에
-  `tracking-tight`를 붙이면 그것을 덮는다.** 현재 임의 자간은 계정 라벨·공유 PanelCard·모달 제목의 **여덟**뿐이다.
+  `tracking-tight`를 붙이면 그것을 덮는다.** 현재 임의 자간은 계정 라벨·공유 PanelCard·모달 제목의 **여덟**과 `/privacy` 표의 **하나**(2026-09-26 — 시안이 그 표만 0.015em을 든다, §6.616 · malmoi#116)뿐이다.
   ⚠️ **번역 작업 화면(C4)의 스물하나를 2026-09-24에 걷었다** (audit #46). 대부분은 크기 토큰과 **같은 값을 되적은**
   것이었고(`text-xs tracking-[0.02em]` · `text-[15px] tracking-[0.015em]` → `text-base`), 셋(키 행 원문 · 로케일 입력 ·
   빈 칸의 원문)은 `text-sm`(0.02em) 위에 `0.015em`을 얹어 **토큰을 덮고** 있었다 — 14px에서 0.07px 차이라 토큰 쪽으로
@@ -826,10 +826,10 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 도입 | 16 · 1.75 · mt 24 · `text-pretty` |
 | 구분선 | `<hr>` 1px `--border` · mt 40 |
 | `h2` | `text-2xl`(24) · 1.4 · 500 · 첫 절 mt 48, 이후 56 · **`id` 필수**(§6.61) · `scroll-mt-12`(하드 해시 착지도 48 아래) · `tabIndex={-1}` + `focus:outline-none`(목차가 포커스를 옮긴다) |
-| 본문 · 목록 | **`text-prose`(16)** · 1.75 · mt 16 · foreground(muted 금지 — §6.61). 목록 `pl-[22px]` · 항목 간격 8. ⚠️ `text-prose`는 이 화면을 위해 늘린 단계다(§4 크기 관용) |
-| 표 | `DocTable`(§6.61의 행 규칙 그대로) · mt 24 · 래퍼 `border rounded-xl overflow-auto` · 셀 14/1.6 · 머리 13/500 muted(불투명 `--primary-foreground` 면) — 급은 래퍼의 `[&_th]:`·`[&_td]:` 변형이 누른다 |
+| 본문 · 목록 | **`text-prose`(16)** · 1.75 · mt 16 · foreground(muted 금지 — §6.61). 문단은 도입처럼 `text-pretty`(malmoi#118). 목록 `pl-[22px]` · 항목 간격 8. ⚠️ `text-prose`는 이 화면을 위해 늘린 단계다(§4 크기 관용) |
+| 표 | `DocTable`(§6.61의 행 규칙 그대로) · mt 24 · 래퍼 `border overflow-auto` **`rounded-lg`(12 — `rounded-xl`은 16이다, malmoi#115)** · 셀 14/1.6 · 머리 **10/16** · 13/500/**1.6** muted(행 ≈ 41, 불투명 `--primary-foreground` 면) · 셀·머리 자간 **0.015em**(⚠️ `tracking-*` 예외 하나 — §4. `:is(th,td)`에 건다: `--tw-tracking`은 상속되지 않아 표에 걸면 칸의 크기 유틸이 0.02em으로 되돌린다) · **3열 표의 열 폭 34% / 26% / 나머지**(열 수에서 온다 — 방침 문구를 보지 않는다, malmoi#116). 급은 전부 래퍼의 `[&_th]:`·`[&_td]:` 변형이 누른다 — `/docs`의 표는 그대로다 |
 | 본문 링크 | `text-blue-600` · 밑줄 없음(§6.3) — 절 래퍼의 `[&_a]:` 변형 |
-| 목차 (`components/privacy/toc.tsx`) | `<nav aria-labelledby>`(제목 `On this page` — `m.publicDocs.privacy.toc`, **`sections` 밖**: 안이면 방침 해시가 바뀐다) · sticky top 48(스크롤러 기준) · 제목 13/500 · 목록 좌측 선 `--border` · 항목 13/1.5 · 6/0/6/12 · 현재 = 선·글자 foreground + `aria-current="location"`, 나머지 muted · hover foreground. 항목 라벨은 절 `heading` 그대로(시안의 축약은 안 받는다) |
+| 목차 (`components/privacy/toc.tsx`) | `<nav aria-labelledby>`(제목 `On this page` — `m.publicDocs.privacy.toc`, **`sections` 밖**: 안이면 방침 해시가 바뀐다) · sticky top 48(스크롤러 기준) · 제목 13/500 · 목록 좌측 선 `--border` · 항목 13/1.5 · 6/0/6/12 · 현재 = 선·글자 foreground + `aria-current="location"`, 나머지 muted · hover foreground. 항목 라벨은 **`m.publicDocs.privacy.tocLabels[id]`(짧은 라벨) → 없으면 절 `heading`** — 지금 `deletion` 하나(`Deleting your data`, 2026-09-26 지휘자 판정 · malmoi#117 — 200px 칸에서 둘째 줄로 접히던 항목). ⚠️ **그 맵도 `sections` 밖이다**(방침 해시 불변). 키가 절 `id`라 `Object.hasOwn`으로 찾는다 |
 | 현재 절 | 윗변(스크롤러 좌표)이 `scrollTop + 96`을 넘지 않은 **마지막** 절, 없으면 첫 절. ⚠️ **끝(`scrollHeight − clientHeight − 1` 이상)에 닿으면 마지막 절이다** — 마지막 절이 짧으면 윗변이 기준선에 못 닿아 1440×900에서 `Changes to this policy`가 끝까지 내려도 안 켜졌다 — `lib/public-doc/toc.ts`의 `currentSection`(잎). scroll(passive) → rAF, 값이 바뀔 때만 리렌더. 윗변은 스크롤러 `ResizeObserver`·`document.fonts.ready`에서 다시 잰다. ⚠️ **offsetTop이 아니라 rect 차로 잰다** — offsetParent에 매이면 셸 구조가 바뀔 때 조용히 틀린다(스테이지와 같은 판단) |
 | 클릭 | 링크는 실제 `href="#id"`(JS 없이도 이동). 수정 키(⌘·Ctrl·Shift·Alt)·가운데 클릭은 가로채지 않는다(새 탭·창은 브라우저 몫). 모션 감소는 **클릭 때** 읽는다(런타임 토글 반영). JS는 `preventDefault` → 스크롤러 `scrollTo(top − 48)`(모션 감소면 `auto`, 아니면 `smooth`) + `history.replaceState` + **절 `h2`로 `focus({ preventScroll: true })`** — preventDefault가 fragment 이동의 포커스 이동까지 막아서, 안 옮기면 키보드·스크린리더가 목차에 남는다 |
 | 새 색 | **0** — blue-600(등재)·토큰뿐 |
@@ -1819,7 +1819,7 @@ design.gitlab.com `/product-foundations/layout` · `/components/{table,alert,car
 - [ ] `bg-destructive`를 쓰지 않았나 — 글자색 전용이다 (§2.3)
 - [ ] 새 raw 색을 늘리지 않았나 — §6.2의 등재 목록뿐이고 실물은 `visual-system.test.ts`의 `REGISTERED`다(값·파일 둘 다 센다). 예외는 **남의 자산**(브랜드 글리프 §6.8 · 국기 SVG §6.1)과 흑백 둘(`bg-white` 로그인 좌측 · `text-white` tone 위 글자)이다
 - [ ] **weight가 400과 500 둘뿐인가** — 500을 넘지 않고 `font-light`도 쓰지 않는다 (§0·§4)
-- [ ] **`tracking-*` 유틸을 쓰지 않았나** — 자간은 크기 토큰이 든다. 남은 자리는 **여덟**이고 예외는 §6.67뿐이다 (§4 — `visual-system.test.ts`가 파일별로 센다)
+- [ ] **`tracking-*` 유틸을 쓰지 않았나** — 자간은 크기 토큰이 든다. 남은 자리는 **아홉**이고 예외는 §6.67과 §6.616(`/privacy` 표)뿐이다 (§4 — `visual-system.test.ts`가 파일별로 센다)
 - [ ] **인라인 링크에 밑줄을 붙이지 않았나** (§0·§6.3)
 - [ ] **그림자가 `shadow-low`·`shadow-medium`인가** — Tailwind 기본은 검정 기반이라 탁하다 (§4.5)
 - [ ] 조건부 클래스가 `cn()`을 지나나 (§8)
