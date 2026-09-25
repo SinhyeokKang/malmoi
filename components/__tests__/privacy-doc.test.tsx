@@ -78,9 +78,8 @@ describe("PrivacyDoc — 구조", () => {
     const nav = find(container, "nav");
     expect(document.getElementById(nav.getAttribute("aria-labelledby") ?? "")?.textContent).toBe(privacy.toc);
     expect(privacy.toc).toBe("On this page");
-    expect([...nav.querySelectorAll("a")].map((a) => [a.textContent, a.getAttribute("href")])).toEqual(
-      privacy.sections.map((s) => [s.heading, `#${s.id}`]),
-    );
+    // 라벨은 짧은 라벨 → 제목 폴백이다(아래 #117). 여기서는 절마다 하나씩 선다는 것만 센다.
+    expect([...nav.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(privacy.sections.map((s) => `#${s.id}`));
   });
 
   it("`<main>`을 그리지 않는다 — 랜드마크는 공개 셸의 것 하나다", async () => {

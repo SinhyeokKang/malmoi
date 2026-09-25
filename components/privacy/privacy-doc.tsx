@@ -24,7 +24,10 @@ const TABLE =
 const TABLE_3COL = "[&_th:nth-child(1)]:w-[34%] [&_th:nth-child(2)]:w-[26%]";
 
 export function PrivacyDoc() {
-  const { title, effectiveDate, intro, sections } = m.publicDocs.privacy;
+  const { title, effectiveDate, intro, sections, tocLabels } = m.publicDocs.privacy;
+  // 키가 절 `id`(사전 데이터)라 프로토타입을 끊고 찾는다 — `constructor` 같은 id가 `Object.prototype`에서 값을 얻지 않게.
+  const labels: Readonly<Record<string, string>> = tocLabels;
+  const tocItems = sections.map(({ id, heading }) => ({ id, heading: Object.hasOwn(labels, id) ? (labels[id] ?? heading) : heading }));
 
   return (
     <div className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 py-30">
@@ -73,7 +76,7 @@ export function PrivacyDoc() {
           </section>
         ))}
       </article>
-      <Toc label={m.publicDocs.privacy.toc} items={sections.map(({ id, heading }) => ({ id, heading }))} />
+      <Toc label={m.publicDocs.privacy.toc} items={tocItems} />
     </div>
   );
 }
