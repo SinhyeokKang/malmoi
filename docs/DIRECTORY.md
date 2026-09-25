@@ -171,6 +171,10 @@ components/
   sources/ settings/ onboarding/ projects/ signin/ account/ invite/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
+  landing/              랜딩(`/`) 화면. shell/(LandingShell — 헤더 40 · 패널 · 푸터 40, 루트 h-svh min-w-[1280px]
+                        overflow-hidden. ⚠️ "use client"는 scroller 하나이고 lib/를 물지 않는다 — 문서가 스크롤되지
+                        않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다). 공용 공개 셸이 아니다 —
+                        /docs·/privacy는 아직 components/public-doc.tsx다
   members/              멤버 화면 조각 다섯 (2026-09-19 리워크). members-panel-header(좌석 라벨 +
                         [Invite] + 모달 소유) · invite-modal(다중 초대 폼 — 행 = 사람 하나, 성공이면 닫힘) ·
                         member-list · pending-invitations(Revoke · Resend — Resend 결과는 행이 아니라 카드 Alert) ·
@@ -509,6 +513,8 @@ lib/
                         ⚠️ 잎(import 0) — 스테이지 클라이언트가 값으로 읽는다. 같은 스크롤 위치 → 같은 프레임이
                         역방향 스크럽의 조건이라 이전 프레임을 입력으로 받지 않는다. `/`에 무엇을 그릴지는
                         여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다
+  links.ts              외부 링크(GitHub 리포 URL)와 푸터 링크 목록 — 랜딩·/signin 푸터가 같은 목록·순서를 읽는다.
+                        ⚠️ 외부 URL을 routes.ts에 넣지 않는 이유가 이 파일이다(죽은 라우트 검사가 앱 경로로 읽는다)
   routes.ts             앱 내부 링크의 단일 출처(잎, import 0). ⚠️ 쿼리는 withQuery를 지나야
                         entry-points의 "쿼리 수신자" 검사에 걸린다 — 문자열 연결은 그 검사를 회피한다
   search-params.ts      ⚠️ 잎. Next의 searchParams는 반복 파라미터를 배열로 주므로 화면 여덟이 전부
