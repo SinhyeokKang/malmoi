@@ -113,6 +113,8 @@ const CLIENT_LIB_FILES = [
   "lib/invitation-email/recipients.ts",
   "lib/invitation-email/retry-at.ts",
   "lib/keys/flag.ts",
+  // 랜딩 스테이지가 스크롤 위치마다 값으로 읽는 수학 — import 0인 잎이다(아래 잎 검사).
+  "lib/landing/stage.ts",
   "lib/login-link/message.ts",
   "lib/login-link/policy.ts",
   "lib/onboarding/base-pending.ts",
@@ -359,8 +361,8 @@ describe("클라이언트 그래프", () => {
    * 연결(T13) 전에도 검사가 공허하지 않도록 여기서 직접 걸고, **음성 대조로 fingerprint 쪽은 실제로 걸리는지** 센다.
    */
   /**
-   * ⚠️ **랜딩 스테이지 수학은 클라이언트가 값으로 읽는다**(docs/features/landing T6). 소비자가 붙기 전에도
-   * 잎인지를 여기서 직접 건다 — 소비자가 붙는 커밋에서 `CLIENT_LIB_FILES`에 등재한다.
+   * ⚠️ **랜딩 스테이지 수학은 클라이언트가 값으로 읽는다**(`components/landing/stage.tsx`). 목록 대조는
+   * 닿은 파일만 보므로, 그 모듈이 무언가를 물기 시작하는 순간을 여기서 직접 건다.
    */
   it("`lib/landing/stage.ts`는 잎이다 — 아무것도 물지 않는다", () => {
     const stage = walk([join(ROOT, "lib/landing/stage.ts")]);
