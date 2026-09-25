@@ -8,7 +8,7 @@
 
 ```
 app/
-  page.tsx              랜딩(`/`). rootView가 세션이 있으면 /projects로 redirect, 없거나 못 읽으면 LandingShell + 히어로 + Stage + 마무리 CTA.
+  page.tsx              랜딩(`/`). rootView가 세션이 있으면 /projects로 redirect, 없거나 못 읽으면 PublicShell(cta = publicCta("none"), current = home) + 히어로 + Stage + 마무리 CTA.
                         ⚠️ 로그인 상태면 /projects다 — 랜딩이 선 뒤에도 그렇다. 쿼리를 읽지 않는다
   signin/page.tsx       로그인(GitHub·Google). Auth.js의 pages.signIn·pages.error가 여기다.
                         ⚠️ middleware matcher에 넣으면 로그인이 통째로 죽는다 — 경로를 안 보므로
@@ -18,9 +18,11 @@ app/
                         authjs.callback-url 쿠키뿐이고, 갈래가 invite일 때만 세운다(open redirect)
   signin/link/[challenge]/   계정 병합 안내. 인가가 없고 challenge가 대신한다 → matcher 밖.
                         ⚠️ 만료를 이 화면으로 말하지 않는다 — /signin으로 되돌린다
-  privacy/ · docs/      공개 문서. 둘 다 components/public-doc.tsx(장문 그릇 — DESIGN §6.61). privacy 본문은
-                        messages/en.tsx의 publicDocs.privacy이고, docs 본문만 아직 placeholder(L2.3). ⚠️ 세션을 읽는 이유는 차단이 아니라 복귀 링크
-                        하나다 — 로그인 상태면 /projects, 아니면 /signin. 그래서 둘 다 동적이다
+  privacy/ · docs/      공개 문서. privacy는 공개 셸 안의 components/privacy/(DESIGN §6.616), docs는 셸 밖
+                        components/public-doc.tsx(장문 그릇 — §6.61). privacy 본문은 messages/en.tsx의 publicDocs.privacy이고,
+                        docs 본문만 아직 placeholder(L2.3). ⚠️ 세션을 읽는 이유는 차단이 아니다 — privacy는 헤더 primary
+                        (publicCta: 로그인이면 Open Malmoi → /projects, 아니면 Get started → /signin), docs는 복귀 링크 하나다.
+                        그래서 둘 다 동적이다
   layout.tsx            루트 레이아웃(Pretendard <link>). ⚠️ lang="en" — screens.test.ts가 고정한다
   not-found.tsx · error.tsx · global-error.tsx  셸 밖(/invite·/signin·오타 URL)의 경계. 앞 둘은 components/root-fallback.tsx를
                         쓰고, global-error는 루트 레이아웃을 대신하므로 html·body를 스스로 든 맨 HTML이다(전역 CSS 없음)
@@ -171,10 +173,18 @@ components/
   sources/ settings/ onboarding/ projects/ signin/ account/ invite/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
-  landing/              랜딩(`/`) 화면. shell/(LandingShell — 헤더 40 · 패널 · 푸터 40, 루트 h-svh min-w-[1280px]
-                        overflow-hidden. ⚠️ "use client"는 scroller 하나이고 lib/를 물지 않는다 — 문서가 스크롤되지
-                        않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다. data-landing-scroller가
-                        스테이지의 뷰포트 표식이다). 공용 공개 셸이 아니다 — /docs·/privacy는 아직 components/public-doc.tsx다.
+  public-shell/         공개 셸(`/` · `/privacy`) — PublicShell({ cta, current }) · header · footer · scroller. 헤더 40 · 패널 ·
+                        푸터 40, 루트 h-svh min-w-[1280px] overflow-hidden. ⚠️ "use client"는 scroller 하나이고 lib/를 물지
+                        않는다 — 문서가 스크롤되지 않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다.
+                        data-public-scroller가 랜딩 스테이지·privacy 목차의 스크롤 대상 표식이다. ⚠️ 헤더는 세션을 읽지
+                        않는다 — primary는 페이지가 publicCta로 정해 넘긴다. route group 레이아웃으로 묶지 않는다(이동 때 스크롤러 재마운트)
+  privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로) ·
+                        toc(클라이언트 잎 — [data-public-scroller] 구독 → rAF → lib/public-doc/toc의 currentSection,
+                        클릭은 scrollTo(top − 48) + 절 h2로 포커스)
+  public-doc.tsx · public-doc-table.tsx
+                        `/docs` 전용 셸 밖 1열 그릇(DESIGN §6.61) · 두 공개 문서가 공유하는 표 DocTable(role=region 스크롤
+                        래퍼 + scrollable={false} — POSTMORTEM 2026-09-19). 문단·목록은 그릇마다 급이 달라 각자 든다
+  landing/              랜딩(`/`) 화면. 셸은 components/public-shell/다.
                         stage.tsx(클라이언트 — 스크롤 → rAF → lib/landing/stage의 frame() → ref로 transform·opacity·data-*·
                         텍스트를 직접 쓴다. ⚠️ 프레임마다 setState하지 않는다) · mockup/(서버 컴포넌트 — 1280×720 씬 다섯의
                         정적 DOM. app-frame(앱 셸 복제) · translations(번역 화면 복제, phase로 ①②③) · publish(④ 미리보기 · ⑤ 결과).
@@ -516,7 +526,9 @@ lib/
   landing/              랜딩(`/`) 스테이지의 수학 — stage(fitScale · growProgress · sceneAt · typedPrefix · frame).
                         ⚠️ 잎(import 0) — 스테이지 클라이언트가 값으로 읽는다. 같은 스크롤 위치 → 같은 프레임이
                         역방향 스크럽의 조건이라 이전 프레임을 입력으로 받지 않는다. `/`에 무엇을 그릴지는
-                        여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다
+                        여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다. 공개 셸 헤더의
+                        primary(publicCta — 라벨을 사전 키로 준다, 그 모듈이 잎이라서)도 그 파일이다
+  public-doc/           `/privacy` 목차의 현재 절 판정 — toc(currentSection). ⚠️ 잎(import 0) — 목차 클라이언트가 값으로 읽는다
   links.ts              외부 링크(GitHub 리포 URL)와 푸터 링크 목록 — 랜딩·/signin 푸터가 같은 목록·순서를 읽는다.
                         ⚠️ 외부 URL을 routes.ts에 넣지 않는 이유가 이 파일이다(죽은 라우트 검사가 앱 경로로 읽는다)
   routes.ts             앱 내부 링크의 단일 출처(잎, import 0). ⚠️ 쿼리는 withQuery를 지나야
