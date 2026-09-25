@@ -799,7 +799,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 |---|---|
 | 셸 (`components/public-shell/` — `PublicShell({ cta, current })`) | ⚠️ **route group 레이아웃으로 만들지 않는다** — 페이지마다 셸을 그려야 이동 때 스크롤러가 다시 마운트되어 스크롤이 맨 위로 가고 포커스도 다시 받는다. 스크롤러 표식은 `data-public-scroller`(랜딩 스테이지와 `/privacy` 목차가 `closest`로 찾는다). 루트 `h-svh min-w-[1280px] overflow-hidden bg-canvas px-2 pt-2` · 헤더 40 + 8 · 패널 · 푸터 40. 패널 = `(vw − 16) × (vh − 96)` — 윗변 56이 앱 셸 `ContentPanel`과 같다. 패널은 두 겹(바깥 `<main>` 표면 `rounded-xl` 16 · 안쪽 스크롤러) · **문서는 스크롤되지 않는다** — 세로 스크롤은 스크롤러 하나다. `body`에 `--canvas`를 칠한다(오버스크롤 흰 띠) |
 | 헤더 | 로고 32 · `nav` `Home · Docs · GitHub`(14/400 · 6/10 · radius 8 · hover `foreground/[0.03]`) — **선택 상태를 그리지 않는다**, `aria-current="page"`만이고 **그것도 `current`를 받은 화면(랜딩 = `home`)에서만 선다** — `/privacy`는 셋 어디에도 없어 current 0이다. 우측 primary `md` — **페이지가 `publicCta`(`lib/auth/landing.ts`)로 정한다**: `ok` → `Open Malmoi`·`/projects`, `none`·`unavailable` → `Get started`·`/signin`. 랜딩은 `ok`에서 안 그려져 늘 `Get started`다. ⚠️ **헤더는 세션을 직접 읽지 않고, `publicCta`는 라벨을 사전 **키**로 준다**(그 모듈이 잎이라서). GitHub는 새 탭·글리프 없음(§6.3) |
-| 푸터 | `© 2026 Malmoi · GitHub · Privacy Policy · Docs` — **`/signin` 푸터와 한 상수**(`lib/links.ts`)에서 낸다. 시안의 `Docs · Privacy Policy` 순서는 피드백으로 넘겼다 |
+| 푸터 | `© 2026 Malmoi · GitHub · Privacy Policy · Docs` — **`/signin`·초대·계정 병합과 같은 컴포넌트다**(`PublicFooter` — 2026-09-26부터 셸 밖 2열도 두 패널 아래에 그린다, §6.62). 목록은 `lib/links.ts` 한 상수다. 시안의 `Docs · Privacy Policy` 순서는 피드백으로 넘겼다 |
 | 키보드 | 스크롤러가 `tabIndex={-1}` + 마운트 때 `focus({ preventScroll: true })`를 받는다 — 문서가 스크롤되지 않아 body 포커스로는 Space/PageDown이 아무것도 안 민다. ⚠️ **대가: 첫 Tab이 헤더를 건너뛴다**(포커스가 이미 패널 안이다) — 헤더는 Shift+Tab으로 닿는다. 2026-09-26 리뷰에서 수용했다 |
 | 히어로 · 마무리 CTA | h1·h2 **`text-5xl`(48) · 600** · 행간 1.1 · 자간 −0.015em(크기 토큰, §4) · 서브 `text-lg`(18) · 400 · 1.6 · `max-w-[44em]`(CTA `40em`) · 간격 20. 위 여백·섹션 간격·CTA 아래 여백이 전부 **120**. 버튼은 `lg`(셸 밖 전용, §6.4) — 히어로 `Docs`(default) + `Get started`(primary), CTA는 primary **하나** |
 | 목업 캔버스 | **고정 논리 1280×720**, 안은 실제 앱 px. transform 하나(`translate3d · scale`)로 맞춘다. `fit = min((W − 2m)/1280, (H − 2m − 44)/720, 1.5)`, `m = clamp(24, 0.04·H, 48)` — W·H는 스크롤러 `clientWidth/Height`. 수학은 `lib/landing/stage.ts`(잎) |
@@ -842,8 +842,13 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 ### 6.62 로그인·초대 수락 — 셸 밖 2열 (2026-09-10, 8-1)
 
 **골격을 `components/signin/auth-layout.tsx` 하나가 든다.** 캔버스(`--canvas`) 위에 패널 둘이
-`grid-cols-2 gap-2 p-2`로 앉고, 각 패널이 `rounded-xl` + `border-border-subtle` + `shadow-low`다
+`grid-cols-2 gap-2`로 앉고, 각 패널이 `rounded-xl` + `border-border-subtle` + `shadow-low`다
 (규약 3.5 — 셸과 같은 규칙이다, §5.1).
+
+⚠️ **푸터는 공개 셸의 `PublicFooter`이고 두 패널 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
+`absolute bottom-6`의 14px 줄이었다). 좌표가 공개 셸(§6.615)과 같다: 바깥 `px-2 pt-2` · 패널 줄(`flex-1`) · 푸터 40(13 muted)이 바닥 띠라
+아래 padding이 없다. ⚠️ **루트는 `h-svh`가 아니라 `min-h-svh`다** — 스크롤러가 없는 골격이라 좌측 내용이 길면 문서가 스크롤되어야 한다.
+`<footer>`는 하나이고 `<main>` 밖이다(`public-shell.test.tsx`).
 
 | 요소 | 규칙 |
 |---|---|
