@@ -134,6 +134,8 @@ const CLIENT_LIB_FILES = [
   "lib/projects/plan.ts",
   "lib/import/surface-status.ts",
   "lib/onboarding/readiness.ts",
+  // `/privacy` 목차가 스크롤마다 값으로 읽는 판정 — import 0인 잎이다(아래 잎 검사).
+  "lib/public-doc/toc.ts",
   "lib/surfaces/plan-add.ts",
   "lib/projects/pr-url.ts",
   "lib/publish/plan.ts",

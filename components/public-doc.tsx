@@ -6,7 +6,8 @@ import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
 /**
- * `/privacy`·`/docs`가 공유하는 **장문 읽기 그릇** (DESIGN §6.61, launch-readiness L2.0).
+ * `/docs`의 **장문 읽기 그릇** (DESIGN §6.61, launch-readiness L2.0). `/privacy`는 2026-09-26부터 공개 셸 안의
+ * `components/privacy/privacy-doc.tsx`가 그리고(§6.616), 여기와는 표(`DocTable`)와 블록 타입만 공유한다.
  *
  * ⚠️ **시안이 없고 DESIGN §6.61이 정본이다** — 이 파일의 옛 주석이 가리키던 "8-1b 시안"은 존재한
  * 적이 없다. 형을 바꾸려면 그 절을 먼저 고친다.
@@ -51,7 +52,8 @@ export function PublicDoc({
 }: {
   title: string;
   /**
-   * ⚠️ **`/privacy`만 쓴다** — 도움말에 시행일은 의미가 없다. 사전이 든 `"2026-09-19"`를 그대로
+   * ⚠️ **지금 소비자가 0이다** — 유일한 소비자였던 `/privacy`가 2026-09-26에 `PrivacyDoc`으로 옮겼고, 도움말에 시행일은
+   * 의미가 없다(prop과 그 테스트를 걷을지는 privacy-shell 후속 판정). 사전이 든 `"2026-09-19"`를 그대로
    * 보이고 같은 문자열을 `dateTime`에 넣는다: 날짜만 든 `datetime`은 올바른 HTML이고, 여기에
    * `lib/utc-time.ts`를 먹이면 분까지 붙는다.
    */

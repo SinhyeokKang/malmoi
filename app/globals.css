@@ -98,6 +98,13 @@
   --text-base: 15px;
 
   /**
+   * **`/privacy` 본문 16px 하나가 쓴다** (2026-09-26, 시안 `Landing.dc.html` 1e — DESIGN §6.616). `text-base`가 15라
+   * 스케일에 16이 없고, `text-[16px]`는 `visual-system.test.ts`가 막는다. 앱 화면으로 넓히지 않는다 — 앱 본문은 `text-sm`이다.
+   * 행간은 짝으로 안 준다(위 둘과 같은 이유) — 그릇이 `leading-[1.75]`를 든다.
+   */
+  --text-prose: 16px;
+
+  /**
    * **자간을 전역으로 넓혔다** (2026-09-10 사용자). 행간은 Tailwind 기본 그대로다.
    *
    * ⚠️ **본문 weight가 300이라 글자가 가늘다**(§4) — 자간이 좁으면 글자끼리 붙어 읽기 어렵다.
@@ -111,6 +118,7 @@
   --text-xs--letter-spacing: 0.02em;
   --text-sm--letter-spacing: 0.02em;
   --text-base--letter-spacing: 0.015em;
+  --text-prose--letter-spacing: 0.015em;
   --text-lg--letter-spacing: 0.01em;
   --text-xl--letter-spacing: 0.005em;
   --text-2xl--letter-spacing: 0;

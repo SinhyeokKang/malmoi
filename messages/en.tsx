@@ -453,6 +453,11 @@ export const en = {
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
       effectiveDate: "2026-09-26",
+      /**
+       * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
+       * 목차 항목은 절 `heading`을 그대로 쓴다(축약 라벨을 두지 않는다 — 두면 본문 해시가 바뀐다).
+       */
+      toc: "On this page",
       intro:
         "Malmoi is a localization tool: developers push the strings in their code to Malmoi, their teammates translate them here, and Malmoi opens a pull request back to the repository. This policy covers what Malmoi stores about the people who sign in, why it stores it, and how to have it removed.",
       sections: [

@@ -129,6 +129,7 @@ const REGISTERED: Record<string, string[]> = {
     "components/logs/event-row.tsx",
     "components/onboarding/steps/repo.tsx",
     "components/projects/empty-projects.tsx",
+    "components/privacy/privacy-doc.tsx",
     "components/projects/project-list.tsx",
     "components/public-doc.tsx",
     "components/publish-button.tsx",
