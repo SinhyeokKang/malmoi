@@ -79,10 +79,10 @@ export function PreviewModal() {
         {rows.map((row) => {
           const diff = diffWords(row.before ?? "", row.after);
           return (
-            <div key={row.file} className="flex flex-col">
-              <span className="border-border bg-primary-foreground flex items-center gap-2 border-b px-3.5 py-[9px] text-xs">
+            <div key={row.code} className="flex flex-col">
+              <span data-landing-file={fixture.file(row.code)} className="border-border bg-primary-foreground flex items-center gap-2 border-b px-3.5 py-[9px] text-xs">
                 <FileJson2 className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
-                {row.file}
+                {fixture.file(row.code)}
                 <span className="text-muted-foreground ml-auto">{p.fileSummary(1, 1)}</span>
               </span>
               <div className="border-border flex border-b last:border-b-0">

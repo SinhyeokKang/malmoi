@@ -393,13 +393,18 @@ export const en = {
       ],
       keyCount: 248,
       /** Publish 배지 — 씬 ③의 저장 전 → 후. */
-      unsentBefore: 2,
-      unsentAfter: 3,
-      /** 씬 ④의 diff — 파일당 한 줄. `before`가 null이면 새로 채운 값이다. */
+      unsentBefore: 1,
+      unsentAfter: 2,
+      /** 언어 → 파일 경로. diff가 파일 이름을 따로 들지 않는다 — 언어와 파일이 어긋날 자리를 없앤다. */
+      file: (code: string): string => `messages/${code}.json`,
+      /**
+       * 씬 ④의 diff — 파일당 한 줄. `before`가 null이면 새로 채운 값이다.
+       * ⚠️ **언어는 편집기에 있는 것만**(원문 `en` 밖의 `selected.values` + `fr`) — 편집기에 없는 언어를 보내면 두 씬이 다른
+       * 프로젝트를 말한다(#114). 선택 키의 편집은 ②③이 만든 `fr` 하나다.
+       */
       diff: [
-        { file: "messages/de.json", key: "cart.empty", code: "de", before: "Ihr Warenkorb ist leer", after: "Dein Warenkorb ist leer" },
-        { file: "messages/es.json", key: "checkout.title", code: "es", before: "Pago", after: "Finalizar compra" },
-        { file: "messages/fr.json", key: "checkout.submit", code: "fr", before: null, after: "Passer la commande" },
+        { key: "cart.empty", code: "de", before: "Ihr Warenkorb ist leer", after: "Dein Warenkorb ist leer" },
+        { key: "checkout.submit", code: "fr", before: null, after: "Passer la commande" },
       ],
       pullRequest: 128,
     },
