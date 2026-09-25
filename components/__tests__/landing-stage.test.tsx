@@ -334,6 +334,33 @@ describe("Stage — 접근성", () => {
     }
   });
 
+  /**
+   * ⚠️ **스테이지가 `style.transform`을 쓰는 요소에 Tailwind 변형 유틸을 두지 않는다** (#111). v4의 `scale-*`·`translate-*`·
+   * `rotate-*`는 개별 CSS 속성(`scale` 등)이라 인라인 `transform`과 **곱해진다** — `scale-x-0`이 채움을 늘 0으로 만들었다.
+   * jsdom은 합성을 안 하므로 클래스로 센다.
+   */
+  it("transform을 쓰는 요소에 `scale-*`·`translate-*`·`rotate-*` 유틸이 없다", async () => {
+    const { container } = await mount();
+    await flush();
+    const written = [...container.querySelectorAll<HTMLElement>("*")].filter((node) => node.style.transform !== "");
+    expect(written.length).toBeGreaterThanOrEqual(7); // 프레임 · 크롬 · 진행 칸 다섯
+    for (const node of written) expect(node.className).not.toMatch(/(^|\s)-?(scale|translate|rotate)-/);
+    // SSR 초깃값도 같은 메커니즘(인라인 transform)이다.
+    const segments = [...container.querySelectorAll<HTMLElement>("[data-landing-segment]")];
+    expect(segments).toHaveLength(5);
+  });
+
+  /**
+   * ⚠️ **CTA가 트랙 위에서 히트 테스트를 이겨야 한다** (#113). 트랙 `<section>`은 positioned라 음수 margin으로 끌어올린
+   * static CTA 위에 칠해졌고, yPin ≈ 836인 1440×2560에서 `Get started`가 안 눌렸다.
+   */
+  it("마무리 CTA 래퍼가 트랙보다 위 층이다", async () => {
+    const { container } = await mount();
+    const wrapper = find<HTMLElement>(container, "[aria-labelledby=cta]").parentElement;
+    expect(wrapper?.className).toMatch(/(^|\s)relative(\s|$)/);
+    expect(wrapper?.className).toMatch(/(^|\s)z-10(\s|$)/);
+  });
+
   it("마무리 CTA는 스테이지 뒤에 서고 `−yPin`을 상쇄하는 자리에 들어간다", async () => {
     const { container } = await mount();
     await flush();

@@ -95,6 +95,23 @@ describe("목업 — 씬이 이야기를 든다", () => {
   });
 });
 
+describe("목업 — 1280×720 안에 들어간다 (#112)", () => {
+  /**
+   * ⚠️ **jsdom은 레이아웃이 없어 높이를 못 잰다** — 실측(0.964 배율, 로케일 목록 358px)에서 행 넷(en·de·es·fr)이 약 400px라
+   * `fr` 칸이 푸터 밑으로 들어갔다. 예산을 행 수로 묶고, 목록이 넘쳐도 푸터 위로 칠하지 않게 자르는지 본다.
+   */
+  it("로케일 목록이 자기 칸에서 잘리고 행이 셋(원문 둘 + `fr`)을 넘지 않는다", async () => {
+    const container = await mount();
+    for (const k of [0, 1, 2]) {
+      const list = find<HTMLElement>(layer(container, k), "[data-landing-locales]");
+      expect(list.className).toContain("min-h-0");
+      expect(list.className).toContain("overflow-hidden");
+      expect(list.children.length).toBeLessThanOrEqual(3);
+    }
+    expect(fixture.selected.values.length + 1).toBeLessThanOrEqual(3);
+  });
+});
+
 describe("목업 픽스처", () => {
   it("타이핑 값은 NFC `fr`이고 ④의 diff가 같은 값을 보낸다", () => {
     const typed = fixture.selected.typed;
