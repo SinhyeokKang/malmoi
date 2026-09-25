@@ -15,7 +15,7 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
 <meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
-<title>You're invited to malmoi</title>
+<title>You're invited to Malmoi</title>
 <style>
   body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}
   table{border-collapse:collapse}
@@ -28,17 +28,17 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
 </style>
 </head>
 <body style="margin:0;padding:0;background-color:#ffffff;">
-<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#ffffff;">You've been invited to a project on malmoi. The link expires in 7 days.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#ffffff;">You've been invited to a project on Malmoi. The link expires in 7 days.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;">
 <tr><td class="mm-outer" align="center" style="padding:40px 16px;">
   <!--[if mso]><table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
-    <tr><td style="padding:0 0 16px 0;"><img src="{{LOGO_URL}}" width="40" height="40" alt="malmoi" style="display:block;width:40px;height:40px;border:0;outline:none;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:40px;font-weight:600;color:#0a0a0a;"></td></tr>
+    <tr><td style="padding:0 0 16px 0;"><img src="{{LOGO_URL}}" width="40" height="40" alt="Malmoi" style="display:block;width:40px;height:40px;border:0;outline:none;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:40px;font-weight:600;color:#0a0a0a;"></td></tr>
     <tr><td style="background-color:#ffffff;border-bottom:1px solid #e5e5e5;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr><td class="mm-card-pad" style="padding:36px 0 32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-          <h1 class="mm-h1" style="margin:0 0 12px 0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:#0a0a0a;">You're invited to malmoi</h1>
-          <p style="margin:0 0 28px 0;font-size:15px;line-height:24px;color:#0a0a0a;">Someone has invited you to join a project on malmoi. Accept the invitation to get started.</p>
+          <h1 class="mm-h1" style="margin:0 0 12px 0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:#0a0a0a;">You're invited to Malmoi</h1>
+          <p style="margin:0 0 28px 0;font-size:15px;line-height:24px;color:#0a0a0a;">Someone has invited you to join a project on Malmoi. Accept the invitation to get started.</p>
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px 0;">
             <tr><td align="center" bgcolor="#171717" style="background-color:#171717;border-radius:10px;border:1px solid #171717;">
               <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{INVITE_URL}}" style="height:40px;v-text-anchor:middle;width:160px;" arcsize="22%" fillcolor="#171717" strokecolor="#171717"><center style="color:#fafafa;font-family:Arial,sans-serif;font-size:14px;font-weight:500;">Accept invitation</center></v:roundrect><![endif]-->

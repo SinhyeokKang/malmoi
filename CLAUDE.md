@@ -16,7 +16,7 @@
 
 ## 이 프로젝트
 
-말모이(`malmoi`): 사내 로컬라이제이션 관리 도구(TMS). **이름은 1910년대 조선어사전 편찬 사업에서 왔다** — 흩어진 말을 여러 사람이 모아 하나로 만드는 일이 이 도구가 하는 일이다. 표기는 문서 본문 `말모이`, 코드·리포명·slug·도메인 `malmoi`.
+말모이(`malmoi`): 사내 로컬라이제이션 관리 도구(TMS). **이름은 1910년대 조선어사전 편찬 사업에서 왔다** — 흩어진 말을 여러 사람이 모아 하나로 만드는 일이 이 도구가 하는 일이다. 표기는 문서 본문 `말모이`, 화면 `Malmoi`, 코드·리포명·slug·도메인 `malmoi`.
 
 리포의 로케일 파일(JSON·YAML·TS/JS 딕셔너리)을 대상으로, 개발자가 코드에 심은 소스 문자열을 DB로 올리고(push), 비개발자 동료가 웹 UI에서 번역하고, 그 결과를 고정 브랜치의 PR 하나로 되돌려보낸다(pull). **무엇을 만들고 무엇을 안 만드는지는 [docs/PRODUCT.md](./docs/PRODUCT.md)가 정본이다** — 비범위는 §4.2이고, 요청받아도 먼저 그 목록을 근거로 되묻는다.
 
@@ -193,7 +193,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | `dev` | 상시 작업 브랜치. **push = Vercel preview 배포** (dev DB를 본다) | `/push` |
 | `main` | 프로덕션. **머지 = Vercel 프로덕션 배포** (`https://mal-moi.com`) | `/merge` (dev→main squash PR) |
 
-- **GitHub default branch는 `dev`다.** ⚠️ **대상 리포의 composite action 참조는 `@malmoi-i18n-push-v1`(불변 태그)이고 `@main`이 아니다** — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 태그를 옮기는 것이 릴리스다.
+- **GitHub default branch는 `main`이다** (2026-09-26 — 공개 리포라 방문자·기여자가 보는 브랜치가 프로덕션이어야 하고, `dev`는 `/sync`가 force push해 그 위에 뜬 fork·PR이 깨진다). ⚠️ **대상 리포의 composite action 참조는 `@malmoi-i18n-push-v1`(불변 태그)이고 `@main`이 아니다** — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 태그를 옮기는 것이 릴리스다.
 - **`main`에 직접 커밋·푸시하지 않는다.**
 - **preview는 dev DB를 본다.** dev 브랜치 고정 URL은 **`https://dev.mal-moi.com`**이다(2026-09-14, Vercel 도메인을 `dev` 브랜치에 묶었다 · 가비아 CNAME). ⚠️ **로그인은 이 URL에서만 된다** — Vercel 대시보드의 "Visit"이 주는 **배포별 URL(`malmoi-<hash>-…`)은 매 푸시마다 바뀌어** OAuth에 등록할 수 없고, Auth.js가 `AUTH_URL` 없이 요청 헤더로 origin을 만들기 때문에 그 URL이 그대로 `redirect_uri`로 나가 공급자가 거부한다. **GitHub과 Google이 동시에 거부하면 그건 자격증명이 아니라 URL 문제다**(두 공급자의 공통분모는 origin뿐이다). ⚠️ **새 호스트를 늘리면 `lib/github-connect/origin.ts`의 `ALLOWED_HOSTS`도 함께 늘린다**(지금 셋 — `mal-moi.com` · `dev.mal-moi.com` · Vercel 브랜치 별칭 `malmoi-git-dev-….vercel.app`, 후자는 CNAME이 가리키는 원 주소라 남긴다) — 빠뜨리면 `requestOrigin`이 `null`을 준다 — 2026-09-14엔 그 폴백이 시작(`?? false`)과 콜백(`?? https`)에서 갈려 state 쿠키 이름이 어긋났고 증상이 **계정 병합의 "Something went wrong"**(서버 로그엔 minify된 `[auth] k` 한 줄)였다. 2026-09-18부터 병합 확인 시작이 fail-closed라 **그 호스트에서는 `/signin?error=Unavailable`로 바로 돌아간다**(launch-readiness L7.6), 2026-09-24부터는 callback 셋도 그 호스트에서 Auth.js를 부르지 않고 실패 착지로 303한다(audit #78) — 그 증상을 보면 이 목록부터 본다. ⚠️ **preview는 Vercel SSO 뒤에 있다** — `curl`로 찌르면 앱 응답이 아니라 `vercel.com/sso-api`로 가는 302가 온다(앱이 깨진 것으로 오진하기 쉽다).
 - **되돌리는 유일한 방법은 다음 배포다.** revert 커밋을 dev에 얹어 같은 경로로 보낸다.
@@ -253,7 +253,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 - **커밋 메시지는 영문**, Conventional Commits (`feat:` `fix:` `test:` `refactor:` `docs(scope):` `chore:`).
 - **⚠️ 화면 문구는 `messages/en.tsx`를 지난다 — 소스에 한글 UI 리터럴 금지.** `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts`를 훑고 허용 목록은 하나뿐이다(`lib/push/apply.ts`의 서버 로그). **주석은 벗기고 세므로 아래 항목과 충돌하지 않는다.**
-- **⚠️ 제품 이름은 화면에서도 `malmoi`다 — 문장 첫 자리도 소문자다.** `lib/i18n/__tests__/brand-spelling.test.ts`가 같은 범위를 훑어 `malmoi` 아닌 표기(`Malmoi`·`MALMOI` …)를 0으로 고정한다. ⚠️ **2026-09-13에 한 화면에 둘이 같이 섰다** — 확인 Dialog가 `…from malmoi?`인데 바로 아래 Alert가 `…sign in to Malmoi…`였고, **둘 다 같은 사전에서 나온 값**이라 서로 다른 절에 살아 리뷰로는 안 걸렸다.
+- **⚠️ 제품 이름은 화면에서 `Malmoi`이고 식별자에서 `malmoi`다** (2026-09-26 — 그 전엔 화면도 소문자였다). `lib/i18n/__tests__/brand-spelling.test.ts`가 같은 범위를 훑어 **이웃 글자**(`-`·`/`·`.`·`_`·`:`·`@`)로 둘을 가르고 그 밖의 변형(`MALMOI` …)을 0으로 고정한다. ⚠️ **식별자를 대문자로 올리지 않는다** — 암호 문맥(`malmoi/pii` 등)이 바뀌면 저장된 봉투를 못 연다. ⚠️ **2026-09-13에 한 화면에 둘이 같이 섰다** — 확인 Dialog가 `…from malmoi?`인데 바로 아래 Alert가 `…sign in to Malmoi…`였고, **둘 다 같은 사전에서 나온 값**이라 서로 다른 절에 살아 리뷰로는 안 걸렸다.
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다.
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
 - **`any` 금지**, `noUncheckedIndexedAccess`가 켜져 있으니 인덱스 접근은 undefined를 처리한다.
@@ -278,7 +278,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **`prisma`의 npm `latest` 태그가 RC를 가리킨다.** stable은 `prev` 태그다. `pnpm add prisma`로 무심코 깔면 RC가 들어오므로 **버전을 명시해 깐다.**
 - **Supabase pooler와 Prisma**: `DATABASE_URL`에 `?pgbouncer=true`가 없으면 prepared statement 충돌로 간헐 실패한다. 증상이 "가끔 되고 가끔 안 됨"이라 진단이 오래 걸린다.
 - **Vercel Cron은 Hobby 플랜에서 하루 1회다.** **cron은 프로덕션 배포에서만 돈다** — preview가 야간 pull을 중복으로 돌려 대상 리포에 PR을 내지 않는다.
-- ⚠️ **GitHub App이 `Make public`이어야 한다 — 2026-09-17까지 private이었다.** private 앱은 **소유 계정(`SinhyeokKang`)에만 설치된다**: 그 사이 다른 계정·조직은 설치 링크에서 GitHub이 막아 **새 사용자의 프로젝트 생성이 통째로 불가능했다**(초대받은 번역자는 설치가 필요 없어 안 드러났다). 증상이 malmoi 쪽에 아무 로그도 안 남기고, 오너 계정으로 검증하면 항상 통과한다 — **"다른 계정에서 설치가 안 된다"를 들으면 앱 설정 Advanced부터 본다.** ⚠️ **앱은 로컬·dev·프로덕션이 `malmoi-prod` 하나를 공유한다**(로컬 설치 링크가 `apps/malmoi-prod`) — 제거·재설치는 **세 환경의 모든 프로젝트**의 `installationId`를 동시에 무효로 만들고, 각 프로젝트 설정의 [Reconnect]로만 복구된다(malmoi#52).
+- ⚠️ **GitHub App이 `Make public`이어야 한다 — 2026-09-17까지 private이었다.** private 앱은 **소유 계정(`SinhyeokKang`)에만 설치된다**: 그 사이 다른 계정·조직은 설치 링크에서 GitHub이 막아 **새 사용자의 프로젝트 생성이 통째로 불가능했다**(초대받은 번역자는 설치가 필요 없어 안 드러났다). 증상이 malmoi 쪽에 아무 로그도 안 남기고, 오너 계정으로 검증하면 항상 통과한다 — **"다른 계정에서 설치가 안 된다"를 들으면 앱 설정 Advanced부터 본다.** ⚠️ **앱은 로컬·dev·프로덕션이 `malmoi-sync` 하나를 공유한다**(로컬 설치 링크가 `apps/malmoi-sync`. 2026-09-26에 `malmoi-prod`에서 이름을 바꿨다 — slug가 따라 바뀌고 옛 slug는 404라 `GITHUB_APP_SLUG`를 세 곳 다 갈았다. 설치 ID·키는 그대로다) — 제거·재설치는 **세 환경의 모든 프로젝트**의 `installationId`를 동시에 무효로 만들고, 각 프로젝트 설정의 [Reconnect]로만 복구된다(malmoi#52).
 - ⚠️ **App 설치가 `Only select repositories`면** **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 설치 범위 자체는 여기 적지 않는다(자주 바뀐다 — 콘솔이 정본). 안 넣으면 `probeRepo`가 `not-installed`를 주고 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. ⚠️ **리포를 만들었다고 목록에 든 것이 아니다** — 둘은 다른 화면이고, 그 간극이 `not-installed`를 만난 사람을 엉뚱한 곳으로 보낸다. **`not-installed`를 보면 앱 설정의 Repository access를 먼저 연다.** ⚠️ **그 목록을 여기 적지 않는다** — GitHub 콘솔이 정본이고 문서 사본은 실물보다 앞서거나 뒤처지기만 했다(2026-09-23에 걷었다). 폐기용 리포 각각이 **왜 필요한지**는 위 워크플로우 절이 든다.
 - **GitHub App 개인키는 개행이 들어간 PEM이다.** Vercel env에서 개행이 `\n` 문자열로 이스케이프되므로 읽는 쪽에서 복원해야 한다. 안 하면 JWT 서명이 조용히 실패한다. **`.pem`은 `.gitignore`에 있다.**
 - ⚠️ **`pnpm-workspace.yaml`의 공급망 정책 둘이 "왜 이게 안 깔리지"를 만든다.** `minimumReleaseAge: 1440`은 **publish된 지 24시간이 안 된 버전을 제외**하므로 방금 나온 버전을 명시해도 직전 버전이 깔린다. `onlyBuiltDependencies`는 빌드 스크립트 화이트리스트이고 **목록은 셋뿐이다** — 스크립트가 **없는** 패키지를 넣으면 업스트림이 나중에 추가할 때 자동 승인되어 화이트리스트의 요지가 사라진다. **둘 다 증상이 원인을 안 가리킨다.**

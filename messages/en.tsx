@@ -58,7 +58,7 @@ export const en = {
     title: (name: string): string => `Sync ${name} from the repository?`,
     /** ⚠️ 브랜치는 **mono 표면**이다 — 호출부가 감싼다(사전은 잎이라 클래스를 들지 않는다). */
     body: (branch: ReactNode): ReactNode => (
-      <>malmoi will read the translation files on {branch} and replace what's in the app with them.</>
+      <>Malmoi will read the translation files on {branch} and replace what's in the app with them.</>
     ),
     /**
      * ⚠️ **수가 붙는 조각에만 weight 500이 붙는다** (시안 `4b`) — 강조가 둘이면 미발송과 열린 PR이
@@ -146,7 +146,7 @@ export const en = {
       // ⚠️ **원인을 단언하지 않는다** (r1) — lease 상실은 다른 실행만이 아니라 만료·권한 상실·보관·소스 삭제도 덮는다(`lib/import/apply-plan.ts`).
       "lease-lost": "This sync stopped before it could replace this source. Refresh to see the current state before trying again.",
       "not-ready": "This project hasn't finished its first sync yet",
-      "not-connected": "malmoi is not connected to this repository",
+      "not-connected": "Malmoi is not connected to this repository",
       "already-running": "A sync is already running",
       /** ⚠️ 제목 자리라 마침표가 없다(DESIGN §10). 아무것도 지워지지 않았다는 것이 요지다. */
       "reconfirm": "Translations changed after you opened Sync — nothing was discarded. Open Sync again to review",
@@ -216,7 +216,7 @@ export const en = {
   // 호출되는가"). 지금 있는 것은 T2~T4가 실제로 읽는 것뿐이고, 로그인·초대 문구는 T6·T8이 더한다.
   common: {
     retry: "Try again",
-    appName: "malmoi",
+    appName: "Malmoi",
     /** 루트 `metadata.description` — 검색 결과·링크 미리보기에 선다. */
     appDescription: "Localization management for your team",
     /**
@@ -285,7 +285,7 @@ export const en = {
       newProject: "New project",
       userMenu: "Account menu",
       /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다. */
-      appHome: "malmoi home",
+      appHome: "Malmoi home",
     },
     /** 복사 버튼의 **라벨 교체** 셋 (DESIGN §6.4) — 실패를 삼키면 사용자가 복사된 줄 알고 떠난다. */
     copy: "Copy",
@@ -307,13 +307,13 @@ export const en = {
    * 이 제품이 뭔지 알 수 있는 자리가 앱에 없다는 것이 받아들인 대가다.
    */
   signIn: {
-    title: "Sign in to malmoi",
+    title: "Sign in to Malmoi",
     backToInvitation: "Back to invitation",
     github: "Continue with GitHub",
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
-    consent: { before: "By clicking Continue through a third party you accept the malmoi ", link: "Privacy Policy" },
-    footer: { copyright: "© 2026 malmoi", github: "GitHub", privacy: "Privacy Policy", docs: "Docs" },
+    consent: { before: "By clicking Continue through a third party you accept the Malmoi ", link: "Privacy Policy" },
+    footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Privacy Policy", docs: "Docs" },
     /**
      * 우측 장식의 문구 둘. ⚠️ **키비주얼을 `alt=""`로 둘 수 있는 근거가 이 두 줄이다** — 이미지
      * 안에 구운 텍스트가 말하는 것을 여기가 이미 말하고 있어야 그것이 장식이 된다.
@@ -361,20 +361,20 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-09-24",
+      effectiveDate: "2026-09-26",
       intro:
-        "malmoi is a localization tool: developers push the strings in their code to malmoi, their teammates translate them here, and malmoi opens a pull request back to the repository. This policy covers what malmoi stores about the people who sign in, why it stores it, and how to have it removed.",
+        "Malmoi is a localization tool: developers push the strings in their code to Malmoi, their teammates translate them here, and Malmoi opens a pull request back to the repository. This policy covers what Malmoi stores about the people who sign in, why it stores it, and how to have it removed.",
       sections: [
         {
           id: "collected",
           heading: "What we collect",
           blocks: [
             {
-              p: "malmoi collects what it needs to sign you in, to decide what you can open, and to show your teammates who changed a translation. There is no analytics, advertising or tracking of any kind.",
+              p: "Malmoi collects what it needs to sign you in, to decide what you can open, and to show your teammates who changed a translation. There is no analytics, advertising or tracking of any kind.",
             },
             {
               table: {
-                label: "What malmoi stores about you",
+                label: "What Malmoi stores about you",
                 head: ["What", "Where it comes from", "Why"],
                 rows: [
                   [
@@ -390,7 +390,7 @@ export const en = {
                   [
                     "Which GitHub or Google account you signed in with, as the account id at that provider",
                     "GitHub or Google, when you sign in",
-                    "Recognizing you the next time. malmoi keeps no sign-in tokens — the id is all it stores",
+                    "Recognizing you the next time. Malmoi keeps no sign-in tokens — the id is all it stores",
                   ],
                   [
                     "A GitHub token for your own account, and when it expires",
@@ -399,7 +399,7 @@ export const en = {
                   ],
                   [
                     "Sign-in state: your session, and short-lived challenges for linking an account or signing other sessions out",
-                    "Created by malmoi",
+                    "Created by Malmoi",
                     "Keeping you signed in, and proving that a reply from GitHub or Google belongs to a round trip you started",
                   ],
                   [
@@ -435,7 +435,7 @@ export const en = {
               ],
             },
             {
-              p: "malmoi does not sell your data, does not share it for advertising, and does not use it to train anything. The repository coordinates a project is connected to are about the repository, not about you, and this policy does not treat them as personal data.",
+              p: "Malmoi does not sell your data, does not share it for advertising, and does not use it to train anything. The repository coordinates a project is connected to are about the repository, not about you, and this policy does not treat them as personal data.",
             },
           ],
         },
@@ -462,10 +462,10 @@ export const en = {
           id: "third-parties",
           heading: "Who else sees it",
           blocks: [
-            { p: "malmoi sends your data to five services and to no one else." },
+            { p: "Malmoi sends your data to five services and to no one else." },
             {
               ul: [
-                "GitHub — signing you in, and reading and writing the repository a project is connected to. Translations are committed and opened as a pull request by malmoi's GitHub App, not under your own account.",
+                "GitHub — signing you in, and reading and writing the repository a project is connected to. Translations are committed and opened as a pull request by Malmoi's GitHub App, not under your own account.",
                 "Google — signing you in, if you choose Google.",
                 "Supabase — the database, hosted in Tokyo.",
                 "Vercel — hosting for the app and storage for uploaded profile pictures. Vercel records requests to the service, including IP addresses, as part of running it.",
@@ -473,10 +473,10 @@ export const en = {
               ],
             },
             {
-              p: "A profile picture that comes from GitHub or Google is loaded by your browser directly from their servers, so those requests reach them even though malmoi sends them nothing.",
+              p: "A profile picture that comes from GitHub or Google is loaded by your browser directly from their servers, so those requests reach them even though Malmoi sends them nothing.",
             },
             {
-              p: "An invitation email shows a logo that your email app loads from mal-moi.com. It is the same image at the same address for everyone, so it does not tell malmoi who opened the email.",
+              p: "An invitation email shows a logo that your email app loads from mal-moi.com. It is the same image at the same address for everyone, so it does not tell Malmoi who opened the email.",
             },
           ],
         },
@@ -487,8 +487,8 @@ export const en = {
             {
               p: (
                 <>
-                  Write to <a href="mailto:ox501501@gmail.com">ox501501@gmail.com</a> to ask what malmoi holds about
-                  you, to correct it, or to have it deleted. We answer within 30 days. malmoi has no self-service
+                  Write to <a href="mailto:ox501501@gmail.com">ox501501@gmail.com</a> to ask what Malmoi holds about
+                  you, to correct it, or to have it deleted. We answer within 30 days. Malmoi has no self-service
                   delete screen, so the request goes through that address.
                 </>
               ),
@@ -506,11 +506,11 @@ export const en = {
           heading: "Cookies",
           blocks: [
             {
-              p: "Every cookie malmoi sets is needed to sign you in or to finish a round trip to GitHub or Google. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them are http-only, which means scripts cannot read them.",
+              p: "Every cookie Malmoi sets is needed to sign you in or to finish a round trip to GitHub or Google. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them are http-only, which means scripts cannot read them.",
             },
             {
               table: {
-                label: "Cookies malmoi sets",
+                label: "Cookies Malmoi sets",
                 head: ["Cookie", "How long it lasts", "What it does"],
                 rows: [
                   ["Session", "24 hours from your last activity", "Keeps you signed in"],
@@ -543,7 +543,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
@@ -561,17 +561,17 @@ export const en = {
      */
     docs: {
       title: "Docs",
-      intro: "How to connect a repository to malmoi, what it can read, and the limits that apply.",
+      intro: "How to connect a repository to Malmoi, what it can read, and the limits that apply.",
       sections: [
         {
           id: "how-it-works",
-          heading: "How malmoi works",
+          heading: "How Malmoi works",
           blocks: [
             {
-              p: "Your code decides which strings exist; malmoi holds the translations. A workflow in your repository sends the translation files to malmoi whenever the base branch changes. Translators edit in malmoi, and Publish sends their work back to the repository as one pull request.",
+              p: "Your code decides which strings exist; Malmoi holds the translations. A workflow in your repository sends the translation files to Malmoi whenever the base branch changes. Translators edit in Malmoi, and Publish sends their work back to the repository as one pull request.",
             },
             {
-              p: "While translators have edits that haven't been sent yet, malmoi holds new syncs from the repository so those edits aren't overwritten. Publish, then run the workflow again — or a project owner can discard the edits from Sync.",
+              p: "While translators have edits that haven't been sent yet, Malmoi holds new syncs from the repository so those edits aren't overwritten. Publish, then run the workflow again — or a project owner can discard the edits from Sync.",
             },
           ],
         },
@@ -581,10 +581,10 @@ export const en = {
           blocks: [
             {
               ul: [
-                "Create the project in malmoi. The last step shows a push token and the workflow file.",
+                "Create the project in Malmoi. The last step shows a push token and the workflow file.",
                 "Add the token to the repository as an Actions secret named PUSH_TOKEN.",
                 "Save the workflow as .github/workflows/malmoi-i18n.yml. The project's Settings show the same file again at any time, with every source.",
-                "If your code reads translations through a hook such as useTranslations(), add the wrapper input with the module and export (for example next-intl#useTranslations()), so malmoi can show where each key is used.",
+                "If your code reads translations through a hook such as useTranslations(), add the wrapper input with the module and export (for example next-intl#useTranslations()), so Malmoi can show where each key is used.",
               ],
             },
             {
@@ -601,10 +601,10 @@ export const en = {
             },
             {
               ul: [
-                "SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push — malmoi's action",
+                "SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push — Malmoi's action",
                 "actions/checkout — in the workflow file",
-                "pnpm/action-setup — inside malmoi's action",
-                "actions/setup-node — inside malmoi's action",
+                "pnpm/action-setup — inside Malmoi's action",
+                "actions/setup-node — inside Malmoi's action",
               ],
             },
             {
@@ -792,7 +792,7 @@ export const en = {
          * 폴백을 이미 가지고 있다. 여기서 사전을 직접 인덱싱하면 그 방어선을 우회한다.
          */
         body: (surface: string, branch: string, reason: string): string =>
-          `malmoi could not read ${surface} on ${branch}. ${reason}`,
+          `Malmoi could not read ${surface} on ${branch}. ${reason}`,
         /** 값이 사라진 것이 아니라는 사실이 이 배너의 절반이다. */
         safe: (when: string | null): string =>
           when === null
@@ -803,7 +803,7 @@ export const en = {
         editor: "Ask a project owner to run the sync again.",
       },
       notConnected: {
-        title: "malmoi is not connected to this repository",
+        title: "Malmoi is not connected to this repository",
         body: "The GitHub App installation is gone, so syncs and publishes are paused. Everything already translated is safe — reconnect and the next sync picks up where it left off.",
         action: "Reconnect",
         editor: "Ask a project owner to reconnect it.",
@@ -1077,10 +1077,10 @@ export const en = {
         closedPullRequest: "Closed pull request",
       },
       /** no-changes 실행이 닫은 PR (B1 r3 — 스킵 행의 `SyncRun.prUrl`). 보낸 PR로 읽히지 않게 따로 말한다. */
-      closedPullRequest: "Nothing in it differed from the base branch any more, so malmoi closed it.",
+      closedPullRequest: "Nothing in it differed from the base branch any more, so Malmoi closed it.",
       /** 결과 모달의 보류 줄과 같은 수·같은 약속이다 (delivery-invariants D7). */
       withheld: (n: number): string =>
-        `${n.toLocaleString("en-US")} ${n === 1 ? "edit" : "edits"} stayed in malmoi because the language file or key isn't in the repository yet.`,
+        `${n.toLocaleString("en-US")} ${n === 1 ? "edit" : "edits"} stayed in Malmoi because the language file or key isn't in the repository yet.`,
       actions: {
         copy: "Copy reference",
         openTranslation: "Open this translation",
@@ -1267,7 +1267,7 @@ export const en = {
        * 시작 버튼 옆에 있어야 한다.
        */
       description:
-        "Connect a repository and malmoi will find the translation files for you — it only writes back by opening a pull request. Invited to someone else's project? Open the link in your invitation email.",
+        "Connect a repository and Malmoi will find the translation files for you — it only writes back by opening a pull request. Invited to someone else's project? Open the link in your invitation email.",
     },
     /**
      * 큐 넷의 제목.
@@ -1540,7 +1540,7 @@ export const en = {
        * ⚠️ **카드 제목과 같은 말을 쓴다** (`title`, 2026-09-16). 전엔 `Disconnect GitHub from malmoi?`라
        * 카드가 무엇을 가리키는지와 Dialog가 무엇을 끊는지가 다른 이름이었다.
        */
-      confirmDisconnect: "Disconnect GitHub App from malmoi?",
+      confirmDisconnect: "Disconnect GitHub App from Malmoi?",
       /**
        * ⚠️ **이 문장이 해제 Dialog를 붙인 논거이고, 2026-09-14까지 거짓이었다** (리뷰 🔴1).
        * 전 문장은 *"won't be able to read your repositories or open pull requests"* 였는데 **PR은 계속
@@ -1607,7 +1607,7 @@ export const en = {
       failed: "We could not sign you out everywhere. Try again.",
       cancelled: "Confirmation was cancelled. You are still signed in. Try again when you are ready.",
       expired: "This confirmation expired. Start again to sign out everywhere.",
-      wrongAccount: "Choose the same account you use to sign in to malmoi, then try again.",
+      wrongAccount: "Choose the same account you use to sign in to Malmoi, then try again.",
     },
     signOut: {
       title: "Sign out",
@@ -1620,7 +1620,7 @@ export const en = {
        * ⚠️ **앞 문장이 신규다** — 되돌릴 수 없는 넷 중 이것만 잃는 것이 없다는 사실을 그 자리에서
        * 말한다. 편집 중에 눌릴 수 있는 버튼이라 "저장 안 한 것이 날아가나"가 첫 질문이다.
        */
-      confirmHint: "Unsent edits stay saved on malmoi. You'll need to sign in again to open your projects.",
+      confirmHint: "Unsent edits stay saved on Malmoi. You'll need to sign in again to open your projects.",
     },
     picture: {
       upload: "Image upload",
@@ -1670,7 +1670,7 @@ export const en = {
     steps: {
       repo: {
         title: "New project",
-        description: "Pick a repository and the branch malmoi should read.",
+        description: "Pick a repository and the branch Malmoi should read.",
       },
       files: {
         title: "Which files hold your strings?",
@@ -1686,14 +1686,14 @@ export const en = {
          */
         emptyDescription: (repo: string, branch: string): string =>
           // ⚠️ **조건을 말한다** (malmoi#99) — 로케일 1개 리포에 "didn't find any"는 거짓이었다(파일은 있다).
-          `malmoi didn't find translation files in 2 or more languages on ${repo} · ${branch}. Set the path and it will check.`,
+          `Malmoi didn't find translation files in 2 or more languages on ${repo} · ${branch}. Set the path and it will check.`,
       },
       naming: {
         title: "Project details",
         description: "The base language decides which keys exist. Name and address come from the repository.",
       },
       result: {
-        title: "malmoi is ready",
+        title: "Malmoi is ready",
         /**
          * ⚠️ **둘째 문장이 야간 PR 공지다** (launch-readiness L2.9) — 전에는 온보딩 어디에도 없어 첫 PR이 예고 없이 왔다.
          * "every night"는 참이다: `vercel.json` 하루 1회(Hobby) · 프로덕션 배포에서만 · 대상은 `selectPullTargets`가
@@ -1715,7 +1715,7 @@ export const en = {
       },
       install: {
         title: "Connect your repositories",
-        description: "Install the malmoi GitHub App on your account or organization to choose repositories.",
+        description: "Install the Malmoi GitHub App on your account or organization to choose repositories.",
         action: "Install GitHub App",
         /** A에만 선다 — 이미 조직에 설치돼 있어 연결만 필요한 사람의 길이다. */
         installed: "Already installed on your organization?",
@@ -1723,7 +1723,7 @@ export const en = {
       },
       repos: {
         title: "Add a repository",
-        description: "Choose which repositories the malmoi GitHub App can access.",
+        description: "Choose which repositories the Malmoi GitHub App can access.",
         action: "Choose repositories",
       },
       /**
@@ -1732,7 +1732,7 @@ export const en = {
        */
       waiting: {
         title: "Waiting for approval",
-        description: "An organization owner has to approve your request to install the malmoi GitHub App.",
+        description: "An organization owner has to approve your request to install the Malmoi GitHub App.",
         action: "Try again",
         otherAccount: "Install on a different account",
         /** [Try again] 뒤 아직이면 — live region이 읽는다. 승인됐으면 목록이 선다. */
@@ -1751,10 +1751,10 @@ export const en = {
       },
       reconnect: {
         title: "Reconnect GitHub",
-        description: "Authorize the malmoi GitHub App again to see your repositories.",
+        description: "Authorize the Malmoi GitHub App again to see your repositories.",
       },
       /** ⚠️ `GITHUB_APP_SLUG`가 없으면 설치 링크를 세울 수 없다 — 그때 할 수 있는 일을 말한다. */
-      noLink: "Ask your administrator to install the malmoi GitHub App and grant access to the repository.",
+      noLink: "Ask your administrator to install the Malmoi GitHub App and grant access to the repository.",
       listFailed: "We couldn't load your repositories.",
     },
 
@@ -1766,12 +1766,12 @@ export const en = {
       /** 상대 시각은 `lib/relative-time.ts`가 만든다 — 사전은 그것을 감쌀 뿐이다. */
       pushedAt: (rel: string): string => `Pushed ${rel}`,
       branch: "Branch",
-      branchHelp: "malmoi reads the translation files from this branch. You can change it later in Settings.",
+      branchHelp: "Malmoi reads the translation files from this branch. You can change it later in Settings.",
       /** 예외 D — 목록 조회만 실패했다. **"브랜치가 없다"가 아니다** (POSTMORTEM 2026-09-03). */
       branchDefault: "Using the repository's default branch.",
       branchTooMany: "This repository has too many branches to list — type the branch name.",
       notListed: "Don't see a repository?",
-      loading: "Looking for repositories with the malmoi app installed…",
+      loading: "Looking for repositories with the Malmoi app installed…",
       /**
        * 예외 B′ — **예외 B(설치에 리포 없음)와 가른다.** 요구하는 일이 다르다: 검색어를 지워라 /
        * 설치에 리포를 넣어라 (DESIGN §6.7).
@@ -1809,7 +1809,7 @@ export const en = {
          * 말하지 않았다. 뒷문장이 좌측 `manual.hint`와 겹쳤으므로 **그쪽에서 뺐다** — 같은 문장을
          * 화면에 두 번 두지 않는다.
          */
-        noneDescription: "Set a path and malmoi will show the keys it finds. If no file matches, the project isn't created.",
+        noneDescription: "Set a path and Malmoi will show the keys it finds. If no file matches, the project isn't created.",
         /** 키 행만 스크롤하는 영역의 이름 — 그 안에 포커스 가능한 것이 없어 컨테이너가 직접 받는다. */
         rows: "Preview rows",
         /**
@@ -1958,7 +1958,7 @@ export const en = {
     workspace: {
       filters: {
         completion: { axis: "Completeness", all: "All keys", incomplete: "Incomplete", missingIn: (locale: string): string => `Missing in ${locale}`, missingMenu: "Missing in…", complete: "Complete" },
-        state: { axis: "State", any: "Any state", unsent: "Not sent", review: "Needs review", new: "New from GitHub", newHint: "Keys that arrived after malmoi last confirmed your files." },
+        state: { axis: "State", any: "Any state", unsent: "Not sent", review: "Needs review", new: "New from GitHub", newHint: "Keys that arrived after Malmoi last confirmed your files." },
         scope: { axis: "Scope", namespace: "This namespace", source: "This source", project: "All sources" },
         clear: "Clear filters",
         search: "Search keys",
@@ -2149,7 +2149,7 @@ export const en = {
         already: "Already in the repository",
         closesTitle: (n: number): string => `Publishing closes pull request #${n}`,
         closesBody: (n: number, branch: string): string =>
-          `Every edit here matches ${branch} again, so #${n} has nothing left to merge. malmoi closes it with a comment saying why.`,
+          `Every edit here matches ${branch} again, so #${n} has nothing left to merge. Malmoi closes it with a comment saying why.`,
         closeAction: (n: number): string => `Close pull request #${n}`,
         nothingTitle: (branch: string): string => `Nothing differs from ${branch}`,
         nothingBody: "Every edit here already matches the repository, so no pull request opens. Publishing marks them as sent.",
@@ -2257,7 +2257,7 @@ export const en = {
       /** `1e` — 열려 있던 PR이 갱신됐다. 승인 무효는 말하지 않는다(그 설정을 읽지 않는다). */
       updated: "Your earlier pull request now holds this",
       updatedDescription: (n: number, changes: number): string =>
-        `#${n} was still open, so malmoi replaced its contents instead of opening a second one. It now holds everything unsent, not just ${changes === 1 ? "today's one" : `today's ${changes.toLocaleString("en-US")}`}.`,
+        `#${n} was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, not just ${changes === 1 ? "today's one" : `today's ${changes.toLocaleString("en-US")}`}.`,
       replacedTitle: "The branch was replaced, not added to",
       replacedBody: (branch: string, base: string): ReactNode => (
         <>
@@ -2275,7 +2275,7 @@ export const en = {
         "Your edits were already in the repository, so no pull request was needed.",
       noChangesBody: (branch: string): ReactNode => (
         <>
-          malmoi compared what it would write against{" "}
+          Malmoi compared what it would write against{" "}
           <span className="text-foreground">{branch}</span> and the two came out identical. This
           happens when the same values were synced from the repository, or when an edit was undone
           before sending.
@@ -2291,7 +2291,7 @@ export const en = {
        */
       notSent: "Not sent \u2014 some values can't be written to the files",
       notSentDescription:
-        "malmoi stopped before writing to the repository, because these values would have been left out. Your edits are still saved here.",
+        "Malmoi stopped before writing to the repository, because these values would have been left out. Your edits are still saved here.",
       /**
        * no-changes 실행이 닫은 열린 PR (B1 r3). 렌더가 base와 같아 그 PR에 남은 차이가 없다 — 조용히 닫히게 두지 않고 이유를 말한다.
        * 역할 갈림은 화면에 있는 컨트롤만 가리킨다(DESIGN §10.1): EDITOR에게는 되돌릴 컨트롤이 없으니 a project owner를 가리킨다.
@@ -2310,8 +2310,8 @@ export const en = {
       },
       notWritten: "Not written",
       warnings: (n: number): string =>
-        `${n.toLocaleString("en-US")} ${n === 1 ? "warning" : "warnings"} \u00b7 values still saved in malmoi`,
-      stillHere: "These values stay in malmoi and will go out once the files can hold them.",
+        `${n.toLocaleString("en-US")} ${n === 1 ? "warning" : "warnings"} \u00b7 values still saved in Malmoi`,
+      stillHere: "These values stay in Malmoi and will go out once the files can hold them.",
 
       /** `1h` — 다시 해도 같다. 제목·바닥 버튼·사실 표가 **사유에서 온다**. */
       configError: "Couldn't reach the repository",
@@ -2344,7 +2344,7 @@ export const en = {
         */
       transientErrorBody: (): ReactNode => (
         <>
-          This is usually temporary, and trying again is safe: malmoi{" "}
+          This is usually temporary, and trying again is safe: Malmoi{" "}
           <span className="font-medium">replaces the same branch</span> instead of adding to it, so
           a second attempt can&apos;t leave two copies behind.
         </>
@@ -2366,7 +2366,7 @@ export const en = {
       baseFileMissing: {
         title: "The base language file isn't in the repository",
         description: (path: string, branch: string): string =>
-          `malmoi looks for it at ${path} on ${branch}, and nothing was sent while it's missing.`,
+          `Malmoi looks for it at ${path} on ${branch}, and nothing was sent while it's missing.`,
         owner: "Restore the file on that branch, or change the path or branch in Settings.",
         editor: "Ask a project owner to restore the file or change the path in Settings.",
       },
@@ -2379,13 +2379,13 @@ export const en = {
       tooSoon: "Just a moment",
       /** ⚠️ **간격을 수로 말하지 않는다** — 남은 초는 버튼이 들고, 두 수가 한 화면에 서면 어긋나 보인다. */
       tooSoonBody:
-        "malmoi waits a moment between pull requests so the repository doesn't get two in a row.",
+        "Malmoi waits a moment between pull requests so the repository doesn't get two in a row.",
       wait: (seconds: number): string => `Try again in ${seconds.toLocaleString("en-US")}s`,
 
       /** `1k` — 판단할 재료를 못 얻었다. **실패로 말하지 않는다**(무색 블록 · `Try again`). */
       previewFailed: "Couldn't read what would go out",
       previewFailedDescription: (branch: string): string =>
-        `malmoi reads the translation files on ${branch} to show what your edits would change. That read didn't come back.`,
+        `Malmoi reads the translation files on ${branch} to show what your edits would change. That read didn't come back.`,
       previewFailedTitle: (branch: string): string => `The files on ${branch} couldn't be read`,
       previewFailedBody: (n: number): string =>
         `Your ${n.toLocaleString("en-US")} ${n === 1 ? "change is" : "changes are"} still here. Publishing stays off until this list can be shown \u2014 sending without it would skip the one step that says what a pull request replaces.`,
@@ -2416,7 +2416,7 @@ export const en = {
     /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
     screenLoading: "Loading sources",
     title: "Sources",
-    description: "The translation files malmoi reads from your repository.",
+    description: "The translation files Malmoi reads from your repository.",
     /**
      * 관리하지 않는 항목 (B2 r3 · QA5 — ARCHITECTURE §1 "read 오류의 두 갈래"). **실패 문장이 아니다** — 코드의 식·참조라
      * 파일에 그대로 남고 번역을 잃지 않는다. Sync 결과 문장 뒤에 안내로만 붙는다.
@@ -2440,7 +2440,7 @@ export const en = {
     rejected: "This source isn't available to you. Close this window and refresh the page.",
     latestFailed: "The change completed, but we couldn't load the latest state. Try loading the details again.",
     emptyTitle: "No sources yet",
-    emptyOwner: "Add the files that hold your strings, and malmoi will read them from your base branch. Keys and languages appear here after the first sync.",
+    emptyOwner: "Add the files that hold your strings, and Malmoi will read them from your base branch. Keys and languages appear here after the first sync.",
     emptyEditor: "A project owner adds the translation files. Nothing to translate until then — you will see the languages here once the first sync lands.",
     ownerOnly: "Only project owners can add sources.",
     askOwner: "Ask a project owner to run the first sync.",
@@ -2757,7 +2757,7 @@ export const en = {
        * 수동 지정의 빈 미리보기 설명 (malmoi#80). `newProject.files.preview.noneDescription`을 빌리지 않는다 — 그쪽은
        * "the project isn't created"라 이미 있는 프로젝트에서 거짓이다.
        */
-      previewNone: "Set a path and malmoi will show the keys it finds. If no file matches, nothing is added.",
+      previewNone: "Set a path and Malmoi will show the keys it finds. If no file matches, nothing is added.",
       /** [Add selected sources]가 꺼진 갈래별 사유 (malmoi#93) — 고른 것이 없을 때는 위 `selectHelp`다. `planAddBlock`이 고른다. */
       blocked: {
         detecting: "Looking for translation files in the repository.",
@@ -2768,13 +2768,13 @@ export const en = {
       /** 꺼진 수동 확인([Check files])의 사유 (audit #37). */
       manualReason: "Enter a file path and a base language to check.",
     },
-    ci: { description: "Your workflow pushes source strings into malmoi on every merge.", title: "CI integration", workflow: "Workflow file", sourcesLead: "One workflow covers every source. Add or change sources in", stale: "Some sources have not been synced yet. Check that the workflow includes them.",
+    ci: { description: "Your workflow pushes source strings into Malmoi on every merge.", title: "CI integration", workflow: "Workflow file", sourcesLead: "One workflow covers every source. Add or change sources in", stale: "Some sources have not been synced yet. Check that the workflow includes them.",
       /** 소스가 없어 꺼진 워크플로 행의 사유 (audit #37) — 워크플로는 소스 목록에서 만들어진다. */
       noSources: "Add a source to get the workflow." },
     archivedReason: "Restore this project to change its settings.",
     recovery: "Syncs keep running. Manage your GitHub authorization in account settings to reconnect this repository or add sources.",
     accountLink: "Account settings",
-    installed: "The malmoi app is installed on this repository.",
+    installed: "The Malmoi app is installed on this repository.",
     openRepo: "Open on GitHub",
 
     repository: {
@@ -3009,7 +3009,7 @@ export const en = {
       connected: "Sign-in method added. You can use it next time you sign in.",
       "email-mismatch": "The email doesn't match this account. Try an account with the same verified email.",
       "already-connected": "This sign-in method is already added. You can use it to sign in.",
-      "taken-by-other": "This sign-in method belongs to another malmoi account. Try a different account.",
+      "taken-by-other": "This sign-in method belongs to another Malmoi account. Try a different account.",
       expired: "This request expired or was replaced. Start again from the Sign-in methods list.",
       cancelled: "Adding the sign-in method was cancelled. Start again when you're ready.",
       unverified: "No verified email was provided. Verify your email with the provider before trying again.",
@@ -3092,7 +3092,7 @@ export const en = {
       "exchange-failed": "We couldn't finish connecting to GitHub. Start it again.",
       // 해제는 그 계정의 주인만 할 수 있다 — 무엇을 하면 되는지 말한다.
       "taken-by-other": "That GitHub account is already connected to another user. They can disconnect it to free it up.",
-      "not-connected": "Authorize the malmoi GitHub App first — use Authorize GitHub App below.",
+      "not-connected": "Authorize the Malmoi GitHub App first — use Authorize GitHub App below.",
       reauthorize: "Your GitHub App authorization expired. Use Reauthorize GitHub App.",
       "repo-not-installed": "The app isn't installed on this repository. Install it, then connect again.",
       "installation-forbidden": "This account can't reach that installation. Ask the repository owner for access.",
@@ -3109,20 +3109,20 @@ export const en = {
      * 연결 화면과 같은 거부라 `connect`의 문구를 그대로 쓴다. 같은 거부에 문구가 두 벌이면 안 된다.
      */
     onboarding: {
-      "no-installations": "Your GitHub account is connected. Install the malmoi GitHub App on your personal account or organization to choose repositories.",
-      "no-repos": "Your GitHub account is connected, but no repositories are available. Choose repositories the malmoi GitHub App can access in GitHub installation settings.",
+      "no-installations": "Your GitHub account is connected. Install the Malmoi GitHub App on your personal account or organization to choose repositories.",
+      "no-repos": "Your GitHub account is connected, but no repositories are available. Choose repositories the Malmoi GitHub App can access in GitHub installation settings.",
       // 이유를 말한다 — 수동 지정으로 가는 근거다 (로케일이 하나뿐인 리포는 붙일 수 없다).
       // ⚠️ **다음 행동까지 말한다** (launch-readiness L2.7) — 로케일 하나인 리포 주인이 할 수 있는 일은 둘째 파일뿐이다.
-      "no-candidates": "We couldn't find translation files. malmoi needs translation files in 2 or more languages — if this repository has only one, add a file for a second language and try again.",
+      "no-candidates": "We couldn't find translation files. Malmoi needs translation files in 2 or more languages — if this repository has only one, add a file for a second language and try again.",
       // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.
       // ⚠️ **막다른 길임을 끝에 말한다** (L2.7) — 안 말하면 사용자가 같은 리포로 다시 시도한다.
-      "tree-truncated": "This repository has too many files to search, and setting the path yourself hits the same limit. malmoi can't connect repositories this large yet.",
+      "tree-truncated": "This repository has too many files to search, and setting the path yourself hits the same limit. Malmoi can't connect repositories this large yet.",
       "base-branch-missing": "We can't read the default branch. Check that the repository has commits.",
       // ⚠️ **라벨이라 문장이 아니다** — 후보 줄의 "3 languages · 4 keys" 자리에 그대로 들어간다.
       "key-count-failed": "Key count unavailable",
       "manual-no-match": "No files of that format at that path. Check the path and the format.",
       // ⚠️ **파일이 없다고 말하지 않는다** (malmoi#99) — 파일은 있고 언어가 하나다. 할 일은 경로가 아니라 둘째 파일이다.
-      "single-locale": "Only one language was found at that path. malmoi needs translation files in 2 or more languages — add a file for a second language and try again.",
+      "single-locale": "Only one language was found at that path. Malmoi needs translation files in 2 or more languages — add a file for a second language and try again.",
       "slug-taken": "That address is taken. Pick another one.",
       "limit-reached": (limit: number): string => `You can create up to ${limit} projects.`,
       "invalid-slug": (max: number): string =>
@@ -3180,7 +3180,7 @@ export const en = {
     "shorthand-property": "The property is shorthand, so its value can't be read — it looks like an imported reference.",
     "not-property-assignment": "This isn't a property assignment.",
     "duplicate-key": "The key appears twice, so one of the two values is lost.",
-    "duplicate-property": "The key is defined twice. malmoi uses the one it edits and leaves the other as it is.",
+    "duplicate-property": "The key is defined twice. Malmoi uses the one it edits and leaves the other as it is.",
     "key-shadowed": "The key is the start of a longer key, so it has no slot of its own — this value wasn't written.",
     "write-parse-failed": "The file couldn't be parsed, so it was left untouched.",
     "write-no-default-export": "This file has no default-export object, so it was left untouched.",

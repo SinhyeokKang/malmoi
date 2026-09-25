@@ -129,7 +129,7 @@ export type PullResult =
  * 닫는 PR에 남기는 코멘트. 영문이다 — 대상 리포에 남는 문자열이다(PR title/body와 같은 규칙). 첫 줄의 HTML 주석이 malmoi가 쓴 것임을 표시한다.
  */
 export function closedPrComment(baseBranch: string): string {
-  return `<!-- malmoi-i18n -->\nClosed by malmoi: the translation DB now matches \`${baseBranch}\`, so this pull request has nothing left to merge.\n\nThe next Publish with changes opens a new pull request.`;
+  return `<!-- malmoi-i18n -->\nClosed by Malmoi: the translation DB now matches \`${baseBranch}\`, so this pull request has nothing left to merge.\n\nThe next Publish with changes opens a new pull request.`;
 }
 
 /** blob 동시 읽기 수. GitHub 2차 rate limit(동시 요청)을 피하면서 106파일을 60초 안에 든다. */

@@ -11,7 +11,7 @@ export function reportPushResponse(status: number, text: string): { exitCode: 0 
   const ok = status >= 200 && status < 300;
   const pendingCount = ok ? deferredCount(text) : null;
   if (pendingCount !== null) {
-    lines.push(`::warning title=malmoi import deferred::${pendingCount} unsent translation change${pendingCount === 1 ? "" : "s"} in malmoi — repository changes were not imported. Send them with Publish, then re-run this job.`);
+    lines.push(`::warning title=Malmoi import deferred::${pendingCount} unsent translation change${pendingCount === 1 ? "" : "s"} in Malmoi — repository changes were not imported. Send them with Publish, then re-run this job.`);
   }
   return { exitCode: ok ? 0 : 1, lines };
 }

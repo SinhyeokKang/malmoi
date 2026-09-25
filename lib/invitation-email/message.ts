@@ -7,7 +7,7 @@ import { INVITATION_EMAIL_HTML } from "./template";
  * 초대한 사람·추적을 넣지 않는다. 수신자는 언제나 한 명이라 배치 안에서도 다른 사람의 주소·링크가 섞이지 않는다.
  */
 
-export const INVITATION_EMAIL_SUBJECT = "You're invited to malmoi";
+export const INVITATION_EMAIL_SUBJECT = "You're invited to Malmoi";
 /**
  * ⚠️ **프로덕션 고정 URL이다** — dev·로컬 메일도 이 주소를 쓴다. preview 호스트는 Vercel SSO 뒤라 메일
  * 클라이언트가 이미지를 못 받는다. 파일이 프로덕션에 배포되기 전에는 alt 텍스트가 워드마크 자리를 채운다.

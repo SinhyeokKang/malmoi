@@ -731,7 +731,7 @@ it("② 후보 0개 빈 상태가 설명을 든다 — 그 문장이 좌측 힌�
   const body = find<HTMLElement>(document.body, "[data-onboarding-body]");
   const text = body.textContent ?? "";
 
-  expect(text).toContain("Set a path and malmoi will show the keys it finds.");
+  expect(text).toContain("Set a path and Malmoi will show the keys it finds.");
   // ⚠️ 후보 0개에는 위에 지울 선택이 없다 — 이 줄은 전에 그 문장의 **존재**를 단언해 버그를 고정했다 (malmoi#47).
   expect(text).not.toContain("Setting a path clears the selection above.");
   // 뒷문장은 우측에만 있다 — 좌측 힌트가 그것을 다시 들면 두 번 나온다.
@@ -1052,7 +1052,7 @@ it("① 목록 아래 힌트 링크도 같은 탭이다", async () => {
 });
 
 describe("① GITHUB_APP_SLUG 없음 — 항상 실패하는 설치 버튼을 세우지 않는다", () => {
-  const NO_LINK = "Ask your administrator to install the malmoi GitHub App";
+  const NO_LINK = "Ask your administrator to install the Malmoi GitHub App";
 
   it("A는 Authorize + 관리자 안내", async () => {
     await blocked("not-connected", { installUrl: null });
