@@ -3,8 +3,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { m } from "@/lib/i18n";
+import { FOOTER_LINKS } from "@/lib/links";
 import { cn } from "@/lib/utils";
-import { routes } from "@/lib/routes";
 import projectCard from "@/public/brand/malmoi-kv-1.png";
 import koreanCard from "@/public/brand/malmoi-kv-2.png";
 import englishCard from "@/public/brand/malmoi-kv-3.png";
@@ -61,17 +61,10 @@ function Footer() {
   return (
     <footer className="text-muted-foreground absolute bottom-6 flex gap-4 text-sm">
       <span>{m.signIn.footer.copyright}</span>
-      {/*
-        ⚠️ **외부 URL은 `lib/routes.ts`에 넣지 않는다** — 그 파일은 앱 **내부** 링크의 단일
-        출처이고, `entry-points.test.ts`의 "죽은 라우트 링크"가 거기 값들을 실재하는 `page.tsx`와
-        대조하므로 외부 URL을 섞으면 "없는 라우트"로 잡힌다.
-
-        ⚠️ **리포가 public이어야 이 링크가 산다** — private이면 로그아웃 방문자에게 404다
-        (2026-09-18 public 전환).
-      */}
-      <FooterLink href="https://github.com/SinhyeokKang/malmoi" label={m.signIn.footer.github} external />
-      <FooterLink href={routes.privacy()} label={m.signIn.footer.privacy} />
-      <FooterLink href={routes.docs()} label={m.signIn.footer.docs} />
+      {/* 목록은 랜딩 푸터와 공유한다 — `lib/links.ts`. */}
+      {FOOTER_LINKS.map((link) => (
+        <FooterLink key={link.href} {...link} />
+      ))}
     </footer>
   );
 }

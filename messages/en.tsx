@@ -322,6 +322,23 @@ export const en = {
   },
 
   /**
+   * 랜딩(`/`) — 비로그인 방문자만 본다(`ok`는 `/projects`로 간다).
+   *
+   * ⚠️ **셸의 `Docs`·`GitHub`는 푸터(`m.signIn.footer`)와 같은 낱말이지만 다른 자리다** — 헤더 내비의 이름이고,
+   * 푸터 목록은 `lib/links.ts`가 `/signin`과 함께 든다.
+   */
+  landing: {
+    shell: {
+      logo: "Malmoi home",
+      nav: "Main",
+      home: "Home",
+      docs: "Docs",
+      github: "GitHub",
+      getStarted: "Get started",
+    },
+  },
+
+  /**
    * Home(`/projects/:slug`) — 프로젝트 진입의 착지점 (6b-6).
    *
    * ⚠️ **다른 화면의 지표 문구를 복제하지 않는다** (PRODUCT §7.7 결정 2). 키 수·미배포 건수는 번역

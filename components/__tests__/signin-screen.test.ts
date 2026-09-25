@@ -102,10 +102,15 @@ describe("로그인 화면 — 레이아웃 계약", () => {
     expect(src).not.toMatch(/<Alert\b/);
   });
 
-  /** 경로 리터럴이 흩어지면 다음 이관에서 조용히 낡는다 (POSTMORTEM 2026-09-05). */
+  /**
+   * 경로 리터럴이 흩어지면 다음 이관에서 조용히 낡는다 (POSTMORTEM 2026-09-05).
+   * ⚠️ **푸터 목록은 `lib/links.ts`가 든다**(landing T3 — 랜딩 푸터와 공유) — 계약이 사는 자리를 따라간다.
+   */
   it("내부 링크가 `routes.*`를 지난다", () => {
-    expect(src).toMatch(/routes\.privacy\(\)/);
-    expect(src).toMatch(/routes\.docs\(\)/);
+    const links = read("lib/links.ts");
+    expect(src).toMatch(/\bFOOTER_LINKS\b/);
+    expect(links).toMatch(/routes\.privacy\(\)/);
+    expect(links).toMatch(/routes\.docs\(\)/);
   });
 });
 
