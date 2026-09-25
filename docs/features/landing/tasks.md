@@ -1,15 +1,12 @@
 # landing — 태스크
 
-순서: 순수 함수 → 셸 → 목업 → 스테이지 → 랜딩 → 대조 → 문서. `/docs`·`/privacy`는 범위 밖이다(spec 비목표). **T0 없이 T3 이후를 시작하지 않는다.**
-T1·T2는 T0 전에 착수할 수 있다 — 커밋 1은 소비자 0인 순수 함수를 dev에 쌓는 것을 허용한다.
+순서: 순수 함수 → 셸 → 목업 → 스테이지 → 랜딩 → 대조 → 문서. `/docs`·`/privacy`는 범위 밖이다(spec 비목표). 
 
 검증 줄의 표기: **자동** = `pnpm test`/`typecheck`가 판정 · **수동** = `pnpm dev` + ego-browser로 눈·DevTools 실측(e2e 프레임워크 없음) ·
 **sync** = `/design-sync`(computed style + CDP 접근성 트리). ⚠️ `pnpm build`를 `pnpm dev`와 겹쳐 돌리지 않는다 — build 뒤 브라우저 확인 전엔 dev를 재시작한다.
 
-## T0 — 시안 확정 (게이트)
-- Claude Design 핸드오프(`Landing.dc.html`·`Landing Prototype.dc.html` — design.md 선행 조건)의 확정본을 받아 design.md 수치를 덮는다.
-- 넘긴 피드백(`~/Desktop/malmoi-landing-design-feedback.md`)의 반영 여부를 본다: 푸터 순서 · 히어로 문구 · `will-change` · 목업 입력 `h` · 1c 로그인 변형 정리.
-- 검증(수동): 핸드오프에 네 뷰포트 수치표·상한 1.5가 있고, 피드백이 반영되거나 사유와 함께 기각됐다.
+## T0 — 시안 확정 (게이트) ✅ 2026-09-26
+- 피드백 여섯 전부 반영 확인, 현 판을 정본으로 동결(design.md 선행 조건). 추가 라운드 없음.
 
 ## T1 — `lib/landing/stage.ts` 순수 함수
 - `fitScale` · `growProgress` · `sceneAt` · `typedPrefix` · `frame`. 테스트 먼저(`/tdd interface`). 상수는 모듈 상수, `cap`만 인자.

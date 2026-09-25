@@ -7,8 +7,9 @@
 `Landing Prototype.dc.html`(실제 동작 프로토타입 · Tweaks). 요청 프롬프트는 `~/Desktop/malmoi-landing-design-prompt.md`.
 **Claude Design은 목업의 자리(스테이지)만 정한다** — 목업 내용(1280×720 안)은 구현이 그린다(시안의 줄무늬 플레이스홀더 자리).
 
-**2026-09-26 기준 시안은 작업 중이다** — 이 문서의 수치는 그 시점 프로토타입에서 옮겼고, T0이 확정본으로 덮는다.
-시안에 넘긴 피드백(푸터 순서 · 히어로 문구 · `will-change` · 목업 입력 `(i, t)` 부족)이 반영됐는지가 T0의 판정이다.
+**2026-09-26 확정·동결** — 피드백 여섯(푸터 순서 · 히어로 문구 · weight 600 · `will-change` · 목업 입력 `(i, t, h)` · JS 전 상태)이 전부 반영된 판을
+정본으로 동결했다(T0 통과). 추가 시안 라운드는 없다. 씬 안의 그림(1280×720 안)은 시안이 아니라 기존 핸드오프
+`design_handoff_translations`·`design_handoff_publish_modal`과 실제 컴포넌트를 참조해 구현이 그린다 — 그 부분은 `/design-sync` 대조 대상이 아니고 수동 확인이다.
 **시안의 `/docs`·`/privacy` 부분(1e, Prototype `isDocs`/`isPrivacy`)은 이번 과업이 읽지 않는다**(spec 비목표).
 
 ## 영향 받는 흐름
@@ -59,7 +60,7 @@ lib/links.ts                  GitHub 리포 URL 상수 · 푸터 링크 목록(`
   고정 그림자(`shadow-low`) opacity `e`, 씬 크롬 opacity `clamp((p − 0.7)/0.3, 0, 1)`. **radius·그림자 값은 트윈하지 않고 레이어 opacity 교차로** 모서리가
   24 → 12로 바뀌어 보이게 한다. p = 1인 위치가 곧 sticky 시작 — 이음매가 없다.
 - **transform·opacity만** 움직인다(width/height 애니메이션은 매 프레임 레이아웃). ⚠️ **`will-change: transform`을 상시로 걸지 않는다** —
-  Chrome이 레이어를 1× 래스터로 고정해 상한 1.5에서 글자가 번진다(시안 프로토타입은 상시로 걸었다 → 피드백). 트윈 구간에만 걸거나 안 건다.
+  Chrome이 레이어를 1× 래스터로 고정해 상한 1.5에서 글자가 번진다(시안 1b). 걸려면 트윈 구간(p < 1)에만.
 - **트랙**: 섹션 높이 `6H`(H = 스크롤러 높이), 안쪽 `position: sticky; top: 0; height: H`. `q = clamp((scrollTop − stageTop)/H, 0, 5)`,
   `i = min(4, ⌊q⌋)`, `f = q − i`(q ≥ 5면 i = 4, f = 0). 씬당 **정지 0.6 / 전환 0.4** — `t = f > 0.6 && i < 4 ? (f − 0.6)/0.4 : 0`. 마지막 씬은 1.0H 정지(전환이 넷뿐).
   씬 레이어 opacity `k === i ? 1 − ease(t) : k === i + 1 ? ease(t) : 0`, 진행 칸 `scaleX`, 캡션 opacity `|1 − 2t|`(t = 0.5에서 문장 교체 — 두 문장이 겹쳐 보이지 않는다).
@@ -80,8 +81,7 @@ lib/links.ts                  GitHub 리포 URL 상수 · 푸터 링크 목록(`
 - 캡션 접근성(시안 1c): 보이는 캡션 `<p>`는 `aria-hidden`, 트랙 섹션 첫머리에 다섯 문장을 담은 visually-hidden `<ol>`. `aria-live` 없음.
   섹션은 `aria-label="How Malmoi works"`, 히어로·CTA 섹션은 `aria-labelledby`(POSTMORTEM 2026-09-15).
 - CSP: `style-src 'self' 'unsafe-inline'`(`lib/security-headers.ts:45`)라 CSSOM 쓰기·`style` 속성 둘 다 막히지 않는다.
-- ⚠️ **목업 입력이 `(i, t)`만으로는 부족하다** — 시안의 교체 계약은 "정지 중인 씬 번호 + 다음 씬으로의 진행도"인데, ② 타이핑과 ③ 배지 증가는 **정지 구간 안에서** 일어난다.
-  `frame()`은 정지 진행도 `h = min(f/0.6, 1)`도 낸다(→ 피드백).
+- **목업 입력은 `(i, t, h)`다**(시안 1g 교체 계약) — ② 타이핑과 ③ 배지 증가는 **정지 구간 안에서** 일어나고 그동안 t = 0이라 정지 진행도 `h = min(f/0.6, 1)`가 필요하다.
 
 ### 목업 문구
 
