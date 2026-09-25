@@ -18,7 +18,11 @@ export function PrivacyDoc() {
     <div className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 py-30">
       <article className="min-w-0">
         <h1 className="m-0 text-4xl leading-[1.3] font-medium">{title}</h1>
-        {/* 메타 줄이라 보조 색이 맞다 — 본문의 muted 금지는 여기 안 걸린다(§6.61). */}
+        {/*
+          메타 줄이라 보조 색이 맞다 — 본문의 muted 금지는 여기 안 걸린다(§6.61). 라벨 없이 날짜만 두면 무슨 날짜인지 모른다.
+          사전의 `"YYYY-MM-DD"`를 그대로 보이고 `dateTime`에 넣는다 — 날짜만 든 `datetime`은 올바른 HTML이고
+          `lib/utc-time.ts`를 먹이면 분까지 붙는다.
+        */}
         <p className="text-muted-foreground mt-3 text-sm leading-[1.6]">
           {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{effectiveDate}</time>
         </p>

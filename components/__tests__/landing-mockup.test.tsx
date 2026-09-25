@@ -16,7 +16,7 @@ import { find, render } from "./helpers/dom";
  *
  * ⚠️ 앱 라벨은 실제 사전 키를 읽는다 — 목업과 앱이 다른 말을 하기 시작하면 랜딩이 거짓이다(DESIGN §6.615 "목업 문구").
  */
-// ⚠️ jsdom 환경에서는 `import.meta.url`이 file 스킴이 아니다 — `landing-shell.test.tsx`와 같이 cwd에서 잡는다.
+// ⚠️ jsdom 환경에서는 `import.meta.url`이 file 스킴이 아니다 — `public-shell.test.tsx`와 같이 cwd에서 잡는다.
 const DIR = join(process.cwd(), "components/landing/mockup");
 const fixture = m.landing.mockup;
 const p = m.translations.publish;

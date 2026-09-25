@@ -45,19 +45,11 @@ export type DocSection = {
 
 export function PublicDoc({
   title,
-  effectiveDate,
   intro,
   sections,
   signedIn,
 }: {
   title: string;
-  /**
-   * ⚠️ **지금 소비자가 0이다** — 유일한 소비자였던 `/privacy`가 2026-09-26에 `PrivacyDoc`으로 옮겼고, 도움말에 시행일은
-   * 의미가 없다(prop과 그 테스트를 걷을지는 privacy-shell 후속 판정). 사전이 든 `"2026-09-19"`를 그대로
-   * 보이고 같은 문자열을 `dateTime`에 넣는다: 날짜만 든 `datetime`은 올바른 HTML이고, 여기에
-   * `lib/utc-time.ts`를 먹이면 분까지 붙는다.
-   */
-  effectiveDate?: string;
   intro?: ReactNode;
   /** 사전이 `as const`라 읽기 전용으로 온다. */
   sections: readonly DocSection[];
@@ -76,12 +68,6 @@ export function PublicDoc({
     <main className="mx-auto flex min-h-svh max-w-2xl flex-col gap-8 px-8 py-12">
       <div className="space-y-3">
         <h1 className="text-2xl font-medium">{title}</h1>
-        {effectiveDate === undefined ? null : (
-          // 라벨 없이 날짜만 두면 무슨 날짜인지 알 수 없다. 이 줄은 `<section>` 밖이라 본문 링크 규칙이 안 걸린다.
-          <p className="text-muted-foreground text-sm">
-            {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{effectiveDate}</time>
-          </p>
-        )}
         {intro === undefined ? null : <p className="text-sm leading-6">{intro}</p>}
       </div>
       {sections.map((section) => (

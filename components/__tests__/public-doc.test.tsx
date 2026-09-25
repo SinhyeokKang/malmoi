@@ -110,31 +110,6 @@ it("도입 문단은 선택이다", async () => {
   expect(without.container.querySelector("h1 + p")).toBeNull();
 });
 
-/**
- * ⚠️ **법적 문서라 시행일이 제목 바로 아래다** (DESIGN §6.61) — 사전이 든 `"2026-09-19"`를 그대로
- * 보이고 같은 문자열을 `dateTime`에 넣는다. 날짜 포맷터를 새로 만들지 않는 것이 결정 4다.
- */
-it("시행일이 라벨과 함께 time으로 선다", async () => {
-  const { container } = await render(
-    <PublicDoc title="Privacy Policy" effectiveDate="2026-09-19" intro="What malmoi stores." sections={sections} signedIn={false} />,
-  );
-  const time = find<HTMLTimeElement>(container, "time");
-
-  expect(time.getAttribute("datetime")).toBe("2026-09-19");
-  expect(time.textContent).toBe("2026-09-19");
-  // 라벨이 없으면 날짜만 떠서 무슨 날짜인지 알 수 없다 — 존재만 보면 그 누락을 못 잡는다.
-  expect(find<HTMLElement>(container, "h1 + *").textContent).toBe("Effective date 2026-09-19");
-});
-
-/** 짝 — `/docs`는 시행일을 쓰지 않는다 (결정 2). 자리만 있고 아무것도 그리지 않는다. */
-it("시행일이 없으면 아무것도 그리지 않는다", async () => {
-  const { container } = await render(<PublicDoc title="Docs" intro="How malmoi works." sections={sections} signedIn={false} />);
-
-  expect(container.querySelector("time")).toBeNull();
-  expect(container.textContent).not.toContain("Effective date");
-  expect(find(container, "h1 + p").textContent).toBe("How malmoi works.");
-});
-
 const collected = {
   id: "collected",
   heading: "What we collect",
