@@ -81,6 +81,17 @@ describe("로그인 화면 — 레이아웃 계약", () => {
    * ⚠️ **`min-w-`가 없으면 "1280 미만에서 가로 스크롤"이 실제로 안 일어난다** (규약 3).
    * grid가 그냥 압축되고 우측 키비주얼만 잘린다 — 규약이 허용한 것은 스크롤이지 잘림이 아니다.
    */
+  /**
+   * ⚠️ **푸터는 공개 셸의 `PublicFooter` 하나다** (2026-09-26 사용자) — 골격이 자기 푸터를 다시 그리면 목록은 같아도
+   * 급(14 → 13)·자리·링크 속성이 두 벌이 된다.
+   */
+  it("골격이 자기 `<footer>`를 그리지 않고 `PublicFooter`를 쓴다", () => {
+    const shell = read(SHELL);
+    expect(shell).not.toMatch(/<footer\b/);
+    expect(shell).toContain('from "@/components/public-shell/footer"');
+    expect(shell).toContain("<PublicFooter />");
+  });
+
   it("최소 너비 1280px를 든다 — 그 아래에서 스크롤이 나야 한다", () => {
     expect(src).toMatch(/min-w-\[1280px\]/);
   });
@@ -105,10 +116,11 @@ describe("로그인 화면 — 레이아웃 계약", () => {
   /**
    * 경로 리터럴이 흩어지면 다음 이관에서 조용히 낡는다 (POSTMORTEM 2026-09-05).
    * ⚠️ **푸터 목록은 `lib/links.ts`가 든다**(DESIGN §6.615 — 랜딩 푸터와 공유) — 계약이 사는 자리를 따라간다.
+   * 2026-09-26부터 그 목록을 그리는 것은 공개 셸 푸터 하나다(위 `PublicFooter` 검사).
    */
   it("내부 링크가 `routes.*`를 지난다", () => {
     const links = read("lib/links.ts");
-    expect(src).toMatch(/\bFOOTER_LINKS\b/);
+    expect(read("components/public-shell/footer.tsx")).toMatch(/\bFOOTER_LINKS\b/);
     expect(links).toMatch(/routes\.privacy\(\)/);
     expect(links).toMatch(/routes\.docs\(\)/);
   });

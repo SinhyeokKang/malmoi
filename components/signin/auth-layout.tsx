@@ -1,9 +1,8 @@
 import Image from "next/image";
-import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { PublicFooter } from "@/components/public-shell/footer";
 import { m } from "@/lib/i18n";
-import { FOOTER_LINKS } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import projectCard from "@/public/brand/malmoi-kv-1.png";
 import koreanCard from "@/public/brand/malmoi-kv-2.png";
@@ -21,6 +20,9 @@ import { DotField } from "./dot-field";
  *
  * ⚠️ **`min-w-[1280px]`가 없으면 규약 3의 "1280 미만에서 가로 스크롤"이 실제로 일어나지 않는다** —
  * grid가 그냥 압축되고 우측 키비주얼만 잘린다. 규약이 허용한 것은 스크롤이지 잘림이 아니다.
+ *
+ * ⚠️ **푸터는 공개 셸의 `PublicFooter`이고 두 패널 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
+ * `absolute bottom-6`의 14px 줄이었다). 좌표도 공개 셸과 같다: 바깥 `px-2 pt-2` · 패널 줄 · 푸터 40이 바닥 띠다.
  */
 export function AuthLayout({ children }: { children: ReactNode }) {
   /**
@@ -40,46 +42,26 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       */}
       <style>{`body{background-color:var(--canvas)}`}</style>
 
-      <div className="bg-canvas grid min-h-svh min-w-[1280px] grid-cols-2 gap-2 p-2">
-        {/*
-          ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
-          ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.
-          ⚠️ **`border-subtle`이다** — 시안의 `#f5f6f7`은 배경과 거의 같은 톤이라, 패널을 떼어내는
-          것은 흰색 대비와 `shadow-low`이고 border는 가장자리를 정리할 뿐이다.
-        */}
-        <main className="border-border-subtle relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-low">
-          {children}
-          <Footer />
-        </main>
-        <Decoration />
+      {/*
+        ⚠️ **`h-svh`가 아니라 `min-h-svh`다** — 공개 셸과 달리 스크롤러가 없어서, 좌측 내용이 뷰포트보다 길면 문서가
+        스크롤되어야 한다(자르지 않는다). 패널 줄이 `flex-1`로 남은 높이를 채운다.
+      */}
+      <div className="bg-canvas flex min-h-svh min-w-[1280px] flex-col px-2 pt-2">
+        <div className="grid flex-1 grid-cols-2 gap-2">
+          {/*
+            ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
+            ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.
+            ⚠️ **`border-subtle`이다** — 시안의 `#f5f6f7`은 배경과 거의 같은 톤이라, 패널을 떼어내는
+            것은 흰색 대비와 `shadow-low`이고 border는 가장자리를 정리할 뿐이다.
+          */}
+          <main className="border-border-subtle relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-low">
+            {children}
+          </main>
+          <Decoration />
+        </div>
+        <PublicFooter />
       </div>
     </>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="text-muted-foreground absolute bottom-6 flex gap-4 text-sm">
-      <span>{m.signIn.footer.copyright}</span>
-      {/* 목록은 랜딩 푸터와 공유한다 — `lib/links.ts`. */}
-      {FOOTER_LINKS.map((link) => (
-        <FooterLink key={link.href} {...link} />
-      ))}
-    </footer>
-  );
-}
-
-function FooterLink({ href, label, external = false }: { href: string; label: string; external?: boolean }) {
-  const className =
-    "focus-visible:ring-ring hover:text-foreground focus-visible:ring-2 focus-visible:outline-none";
-  return external ? (
-    <a href={href} className={className} target="_blank" rel="noreferrer">
-      {label}
-    </a>
-  ) : (
-    <Link href={href} className={className}>
-      {label}
-    </Link>
   );
 }
 

@@ -6,6 +6,7 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+import { PublicFooter } from "@/components/public-shell/footer";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { AuthLayout } from "@/components/signin/auth-layout";
 import { publicCta } from "@/lib/auth/landing";
@@ -108,8 +109,8 @@ describe("공개 셸 — 헤더", () => {
 });
 
 /**
- * ⚠️ **외부 링크 렌더러가 셋이다**(랜딩 헤더 · 랜딩 푸터 · `/signin` 푸터) — 목록 동등성 검사는 href만 보므로
- * 한쪽이 `rel`·`target`을 잃어도 못 잡는다. 셋을 따로 센다.
+ * ⚠️ **외부 링크를 그리는 자리가 셋이다**(랜딩 헤더 · 공개 셸 푸터 · `/signin`) — 목록 동등성 검사는 href만 보므로
+ * 한쪽이 `rel`·`target`을 잃어도 못 잡는다. 셋을 따로 센다(`/signin`은 2026-09-26부터 같은 `PublicFooter`를 그린다).
  */
 describe("GitHub 링크 — 새 탭 + `noreferrer`", () => {
   const external = (links: Element[]) => {
@@ -133,6 +134,35 @@ describe("GitHub 링크 — 새 탭 + `noreferrer`", () => {
     const signin = document.createElement("div");
     signin.innerHTML = renderToStaticMarkup(h(AuthLayout, null, null));
     external([...signin.querySelectorAll("footer a")]);
+  });
+});
+
+describe("푸터 — `/signin`·초대·계정 병합도 공개 셸 푸터 하나다", () => {
+  const signin = () => {
+    const root = document.createElement("div");
+    root.innerHTML = renderToStaticMarkup(h(AuthLayout, null, h("p", null, "form")));
+    return root;
+  };
+
+  /** 옛 형은 좌측 패널 안의 `absolute` 푸터였다 — 이제 두 패널 아래 전폭 한 줄이다(2026-09-26 사용자). */
+  it("`<footer>`가 정확히 하나이고 `<main>` 밖이다", () => {
+    const root = signin();
+    const footers = root.querySelectorAll("footer");
+    expect(footers).toHaveLength(1);
+    expect(footers[0]?.closest("main")).toBeNull();
+    expect(root.querySelectorAll("main")).toHaveLength(1);
+  });
+
+  it("마크업이 `PublicFooter`와 바이트 단위로 같다", () => {
+    const own = renderToStaticMarkup(h(PublicFooter));
+    expect(signin().querySelector("footer")?.outerHTML).toBe(own);
+  });
+
+  it("공개 셸과 같은 좌표다 — 바깥 `px-2 pt-2`, 푸터가 바닥 40을 든다", () => {
+    const outer = signin().querySelector("footer")?.parentElement;
+    expect(outer?.className.split(/\s+/)).toEqual(expect.arrayContaining(["flex", "flex-col", "min-h-svh", "min-w-[1280px]", "px-2", "pt-2"]));
+    expect(outer?.className.split(/\s+/)).not.toContain("p-2");
+    expect(outer?.lastElementChild?.tagName).toBe("FOOTER");
   });
 });
 
