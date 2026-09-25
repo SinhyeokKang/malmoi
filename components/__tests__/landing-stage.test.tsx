@@ -77,13 +77,15 @@ function geometry(scroller: HTMLElement, size: { w: number; h: number }) {
   scroller.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
 }
 
+const scene = () => <div><span data-landing-typed="" /></div>;
+
 const stageUi = () => (
   <div data-testid="scroller" style={{ overflowY: "auto" }}>
     <Stage
       label="How Malmoi works"
       captions={CAPTIONS}
       typed={TYPED}
-      scenes={[...CAPTIONS.map((caption) => <div key={caption}><span data-landing-typed="" /></div>)] as Parameters<typeof Stage>[0]["scenes"]}
+      scenes={[scene(), scene(), scene(), scene(), scene()]}
       closing={<section aria-labelledby="cta"><h2 id="cta">Start</h2></section>}
     />
   </div>
