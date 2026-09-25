@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { LandingShell } from "@/components/landing/shell/landing-shell";
 import { AuthLayout } from "@/components/signin/auth-layout";
@@ -36,6 +36,19 @@ describe("랜딩 셸 — 구조", () => {
     expect(scroller).not.toBeNull();
     expect(document.activeElement).toBe(scroller);
     expect(scroller?.getAttribute("tabindex")).toBe("-1");
+  });
+
+  /** ⚠️ `preventScroll`이 빠지면 포커스가 스크롤 위치를 건드린다 — activeElement만으로는 안 보인다. */
+  it("마운트 때 `preventScroll`로 포커스한다", async () => {
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    try {
+      const { container } = await shell();
+      const scroller = container.querySelector("main > div");
+      const calls = focus.mock.contexts.flatMap((self, index) => (self === scroller ? [focus.mock.calls[index]] : []));
+      expect(calls).toEqual([[{ preventScroll: true }]]);
+    } finally {
+      focus.mockRestore();
+    }
   });
 
   it("body를 캔버스 색으로 칠한다 — 오버스크롤 때 흰 띠가 안 보인다", async () => {
@@ -73,6 +86,35 @@ describe("랜딩 셸 — 헤더", () => {
     expect(m.landing.shell.getStarted).toBe("Get started");
     expect(cta).toHaveLength(1);
     expect(cta[0]?.getAttribute("href")).toBe(routes.signIn());
+  });
+});
+
+/**
+ * ⚠️ **외부 링크 렌더러가 셋이다**(랜딩 헤더 · 랜딩 푸터 · `/signin` 푸터) — 목록 동등성 검사는 href만 보므로
+ * 한쪽이 `rel`·`target`을 잃어도 못 잡는다. 셋을 따로 센다.
+ */
+describe("GitHub 링크 — 새 탭 + `noreferrer`", () => {
+  const external = (links: Element[]) => {
+    const github = links.filter((a) => a.getAttribute("href") === GITHUB_REPO_URL);
+    expect(github).toHaveLength(1);
+    expect(github[0]?.getAttribute("target")).toBe("_blank");
+    expect(github[0]?.getAttribute("rel")?.split(/\s+/)).toContain("noreferrer");
+  };
+
+  it("랜딩 헤더", async () => {
+    const { container } = await shell();
+    external([...container.querySelectorAll("header a")]);
+  });
+
+  it("랜딩 푸터", async () => {
+    const { container } = await shell();
+    external([...container.querySelectorAll("footer a")]);
+  });
+
+  it("`/signin` 푸터", () => {
+    const signin = document.createElement("div");
+    signin.innerHTML = renderToStaticMarkup(h(AuthLayout, null, null));
+    external([...signin.querySelectorAll("footer a")]);
   });
 });
 
