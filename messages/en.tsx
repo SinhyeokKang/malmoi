@@ -369,14 +369,16 @@ export const en = {
       repo: "acme/web",
       source: "web",
       namespace: "checkout",
-      /** 선택된 키 — 씬 ②에서 `fr` 값이 비어 있다가 채워진다. */
+      /**
+       * 선택된 키 — 씬 ②에서 `fr` 값이 비어 있다가 채워진다. ⚠️ **원문 포함 값은 둘까지다** — 1280×720 안의 로케일 목록이
+       * 행 셋만 담는다(넷이면 `fr` 칸이 푸터 밑으로 들어갔다, #112).
+       */
       selected: {
         key: "checkout.submit",
         text: "Place order",
         values: [
           { code: "en", value: "Place order" },
           { code: "de", value: "Bestellung aufgeben" },
-          { code: "es", value: "Realizar pedido" },
         ],
         typedCode: "fr",
         typed: "Passer la commande",
