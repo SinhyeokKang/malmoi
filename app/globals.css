@@ -115,6 +115,8 @@
   --text-xl--letter-spacing: 0.005em;
   --text-2xl--letter-spacing: 0;
   --text-3xl--letter-spacing: -0.005em;
+  /** 랜딩 h1·CTA h2(48 · 600) 하나가 쓴다 — 시안 `Landing.dc.html` 1a의 −0.015em. 앱 화면은 `text-xl`이 상한이다. */
+  --text-5xl--letter-spacing: -0.015em;
 
   --shadow-low: 0 4px 12px 4px rgb(22 24 27 / 0.05);
   --shadow-medium: 0 6px 16px 2px rgb(22 24 27 / 0.15);

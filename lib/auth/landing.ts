@@ -42,16 +42,9 @@ export function rejectTarget(status: Exclude<SessionRead["status"], "ok">): stri
 }
 
 /**
- * 루트(`/`)의 착지. **랜딩이 `/`에 들어온 뒤에도 로그인 상태면 `/projects`다** — *"로그인 이후
- * 랜딩 못 가게"*가 2026-09-10 사용자 결정이고, 그 결정이 사라지면 다음 배송이 뒤집는다.
- */
-export function landingTarget(status: SessionRead["status"]): string {
-  return status === "ok" ? routes.projects() : rejectTarget(status);
-}
-
-/**
- * 루트(`/`)가 무엇을 그리나 — `landingTarget`의 후계(docs/features/landing — `app/page.tsx`가 옮겨 오는 T7에서
- * `landingTarget`이 지워진다).
+ * 루트(`/`)가 무엇을 그리나. **로그인 상태면 `/projects`다** — *"로그인 이후 랜딩 못 가게"*가 2026-09-10
+ * 사용자 결정이고, 그 결정이 사라지면 다음 배송이 뒤집는다. 2026-09-26에 `landingTarget`(주소 하나)을 대체했다 —
+ * 랜딩이 `/`에 서서 "어디로 보내나"가 "보내나, 그리나"가 됐다.
  *
  * ⚠️ **`unavailable`도 랜딩이다**(옛: `/signin?error=Unavailable`). 공개 화면이 세션 장애로 안 열리는 것이
  * 더 나쁘다(DESIGN §6.61과 같은 쪽). 일반 로그인은 `redirectTo: "/projects"`라 `/`를 지나지 않으므로
