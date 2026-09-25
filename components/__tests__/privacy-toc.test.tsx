@@ -20,6 +20,11 @@ const ITEMS = [
 ] as const;
 /** 절 윗변의 스크롤러 좌표. */
 const TOPS = [200, 800, 1400];
+/**
+ * 스크롤러 끝(`scrollHeight − clientHeight`). ⚠️ 마지막 절 윗변(1400 − 96 = 1304)이 여기 **못 닿게** 잡았다 —
+ * 짧은 마지막 절이 끝까지 내려도 강조되지 않던 실측(1440×900)을 재현한다.
+ */
+const MAX = 1200;
 
 let queue: FrameRequestCallback[] = [];
 let cancelled: number[] = [];
@@ -75,6 +80,8 @@ async function mount() {
     </div>,
   );
   const scroller = find<HTMLElement>(container, "[data-testid=scroller]");
+  Object.defineProperty(scroller, "clientHeight", { configurable: true, get: () => 600 });
+  Object.defineProperty(scroller, "scrollHeight", { configurable: true, get: () => MAX + 600 });
   // 스크롤러는 남기고 목차만 내린다 — 스크롤러에 건 구독을 걷는지 본다.
   const unmount = () => rerender(<div data-testid="scroller" data-public-scroller="" />);
   return { container, scroller, unmount };
@@ -106,16 +113,24 @@ describe("Toc — 현재 절", () => {
     const { container, scroller } = await mount();
     await flush();
     expect(currentIds(container)).toEqual(["#collected"]);
-    for (const top of [0, 800 - 96, 1000, 99_999]) {
+    for (const top of [0, 800 - 96, 1000, MAX]) {
       await scrollTo(scroller, top);
-      const expected = ITEMS[currentSection(TOPS, top, 96)]?.id;
+      const expected = ITEMS[currentSection(TOPS, top, 96, MAX)]?.id;
       expect(currentIds(container)).toEqual([`#${expected}`]);
     }
   });
 
+  it("끝까지 내리면 윗변이 기준선에 못 닿은 마지막 절이 현재다", async () => {
+    const { container, scroller } = await mount();
+    await scrollTo(scroller, MAX - 2);
+    expect(currentIds(container)).toEqual(["#purposes"]);
+    await scrollTo(scroller, MAX);
+    expect(currentIds(container)).toEqual(["#cookies"]);
+  });
+
   it("현재 항목만 선·글자가 foreground다", async () => {
     const { container, scroller } = await mount();
-    await scrollTo(scroller, 1400);
+    await scrollTo(scroller, MAX);
     const links = [...container.querySelectorAll<HTMLAnchorElement>("nav a")];
     expect(links.map((a) => a.className.includes("border-foreground"))).toEqual([false, false, true]);
     expect(links.map((a) => a.className.includes("text-muted-foreground"))).toEqual([true, true, false]);
@@ -160,6 +175,26 @@ describe("Toc — 클릭", () => {
     const { scrollToSpy, replace } = await click(true);
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 1400 - 48, behavior: "auto" });
     replace.mockRestore();
+  });
+});
+
+describe("Toc — 수정 키·가운데 클릭", () => {
+  /** 새 탭·새 창으로 여는 클릭은 브라우저 몫이다 — 가로채면 "새 탭에서 열기"가 현재 탭 스크롤이 된다. */
+  it.each([
+    ["meta", { metaKey: true }],
+    ["ctrl", { ctrlKey: true }],
+    ["shift", { shiftKey: true }],
+    ["alt", { altKey: true }],
+    ["middle", { button: 1 }],
+  ] as const)("%s 클릭은 가로채지 않는다", async (_, init) => {
+    const { container, scroller } = await mount();
+    const scrollToSpy = vi.fn();
+    scroller.scrollTo = scrollToSpy as unknown as HTMLElement["scrollTo"];
+    const link = find<HTMLAnchorElement>(container, 'nav a[href="#cookies"]');
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true, ...init });
+    await act(async () => { link.dispatchEvent(event); });
+    expect(event.defaultPrevented).toBe(false);
+    expect(scrollToSpy).not.toHaveBeenCalled();
   });
 });
 

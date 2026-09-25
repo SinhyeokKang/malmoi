@@ -41,7 +41,7 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
     };
     const update = () => {
       frame = 0;
-      setCurrent(currentSection(tops, scroller.scrollTop, ACTIVE_OFFSET));
+      setCurrent(currentSection(tops, scroller.scrollTop, ACTIVE_OFFSET, scroller.scrollHeight - scroller.clientHeight));
     };
     const schedule = () => {
       if (frame === 0) frame = requestAnimationFrame(update);
@@ -68,6 +68,8 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
   }, [items]);
 
   const onClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
+    // 수정 키·가운데 클릭은 새 탭·새 창이다 — 브라우저 몫이라 가로채지 않는다.
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     const scroller = ref.current?.closest<HTMLElement>("[data-public-scroller]");
     const target = document.getElementById(id);
     // 못 찾으면 브라우저 기본 이동에 맡긴다.

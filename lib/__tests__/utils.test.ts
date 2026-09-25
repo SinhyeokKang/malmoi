@@ -18,3 +18,14 @@ describe("cn — text-mono 등록", () => {
     expect(cn("a", false && "b", undefined, "c")).toBe("a c");
   });
 });
+
+/** `text-prose`(16px, `/privacy` 본문 — DESIGN §6.616)도 같은 함정이다 — 커스텀 `text-*` 크기는 전부 등록한다. */
+describe("cn — text-prose 등록", () => {
+  it("text-prose와 text-foreground가 공존한다", () => {
+    expect(cn("text-prose", "text-foreground").split(" ").sort()).toEqual(["text-foreground", "text-prose"]);
+  });
+
+  it("text-sm 뒤의 text-prose가 text-sm을 대체한다", () => {
+    expect(cn("text-sm", "text-prose")).toBe("text-prose");
+  });
+});
