@@ -113,3 +113,51 @@ describe("PrivacyDoc — 그릇 (시안 1e)", () => {
     expect(tops).toEqual(["mt-12", ...Array(6).fill("mt-14")]);
   });
 });
+
+/** QA 이슈 넷(#115–#118) — 시안 Prototype `isPrivacy`와의 차이. `/docs`의 표는 `DocTable` 그대로여야 한다. */
+describe("PrivacyDoc — 시안 대조 교정", () => {
+  const classes = (node: Element | null | undefined) => node?.className.split(/\s+/) ?? [];
+
+  it("#115 표 래퍼 radius가 12다(`rounded-lg`) — `rounded-xl`은 16이다", async () => {
+    const { container } = await doc();
+    for (const region of container.querySelectorAll('[role="region"]')) {
+      expect(classes(region)).toContain("rounded-lg");
+      expect(classes(region)).not.toContain("rounded-xl");
+    }
+  });
+
+  it("#116 머리 칸 10/16 · 행간 1.6, 셀·머리 자간 0.015em", async () => {
+    const { container } = await doc();
+    for (const region of container.querySelectorAll('[role="region"]')) {
+      expect(classes(region)).toEqual(
+        expect.arrayContaining(["[&_th]:py-2.5", "[&_th]:px-4", "[&_th]:leading-[1.6]", "[&_:is(th,td)]:tracking-[0.015em]"]),
+      );
+    }
+  });
+
+  /** 폭은 열 수에서 온다 — 방침 문구를 보지 않는다. 3열 표만 34% / 26% / 나머지다. */
+  it("#116 3열 표의 열 폭이 34% / 26% / 나머지다", async () => {
+    const { container } = await doc();
+    const regions = [...container.querySelectorAll('[role="region"]')];
+    expect(regions.map((r) => r.querySelectorAll("thead th").length)).toEqual([3, 3]);
+    for (const region of regions) {
+      expect(classes(region)).toEqual(expect.arrayContaining(["[&_th:nth-child(1)]:w-[34%]", "[&_th:nth-child(2)]:w-[26%]"]));
+    }
+  });
+
+  it("#117 목차는 짧은 라벨이 있으면 그것을, 없으면 절 제목을 쓴다", async () => {
+    const { container } = await doc();
+    const links = [...find(container, "nav").querySelectorAll("a")];
+    expect(links.map((a) => a.textContent)).toEqual(
+      privacy.sections.map((s) => (Object.hasOwn(privacy.tocLabels, s.id) ? privacy.tocLabels[s.id as keyof typeof privacy.tocLabels] : s.heading)),
+    );
+    expect(links.find((a) => a.getAttribute("href") === "#deletion")?.textContent).toBe("Deleting your data");
+    // 절 제목은 그대로다 — 본문(해시 대상)은 바뀌지 않는다.
+    expect(container.querySelector("h2#deletion")?.textContent).toBe(privacy.sections.find((s) => s.id === "deletion")?.heading);
+  });
+
+  it("#118 절 문단도 도입처럼 `text-pretty`다", async () => {
+    const { container } = await doc();
+    for (const p of container.querySelectorAll("section p")) expect(classes(p)).toContain("text-pretty");
+  });
+});
