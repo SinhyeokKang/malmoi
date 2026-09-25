@@ -8,7 +8,7 @@
 
 ```
 app/
-  page.tsx              랜딩 자리의 redirect 껍데기. 세션 상태만 보고 landingTarget이 정한 곳으로.
+  page.tsx              랜딩(`/`). rootView가 세션이 있으면 /projects로 redirect, 없거나 못 읽으면 LandingShell + 히어로 + Stage + 마무리 CTA.
                         ⚠️ 로그인 상태면 /projects다 — 랜딩이 선 뒤에도 그렇다. 쿼리를 읽지 않는다
   signin/page.tsx       로그인(GitHub·Google). Auth.js의 pages.signIn·pages.error가 여기다.
                         ⚠️ middleware matcher에 넣으면 로그인이 통째로 죽는다 — 경로를 안 보므로
@@ -173,8 +173,12 @@ components/
                         입력 상태만 든다
   landing/              랜딩(`/`) 화면. shell/(LandingShell — 헤더 40 · 패널 · 푸터 40, 루트 h-svh min-w-[1280px]
                         overflow-hidden. ⚠️ "use client"는 scroller 하나이고 lib/를 물지 않는다 — 문서가 스크롤되지
-                        않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다). 공용 공개 셸이 아니다 —
-                        /docs·/privacy는 아직 components/public-doc.tsx다
+                        않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다. data-landing-scroller가
+                        스테이지의 뷰포트 표식이다). 공용 공개 셸이 아니다 — /docs·/privacy는 아직 components/public-doc.tsx다.
+                        stage.tsx(클라이언트 — 스크롤 → rAF → lib/landing/stage의 frame() → ref로 transform·opacity·data-*·
+                        텍스트를 직접 쓴다. ⚠️ 프레임마다 setState하지 않는다) · mockup/(서버 컴포넌트 — 1280×720 씬 다섯의
+                        정적 DOM. app-frame(앱 셸 복제) · translations(번역 화면 복제, phase로 ①②③) · publish(④ 미리보기 · ⑤ 결과).
+                        ⚠️ 인터랙티브 태그 0 — 버튼 모양은 buttonClass를 span에. 앱 라벨은 실제 사전 키, 가상 데이터는 m.landing.mockup)
   members/              멤버 화면 조각 다섯 (2026-09-19 리워크). members-panel-header(좌석 라벨 +
                         [Invite] + 모달 소유) · invite-modal(다중 초대 폼 — 행 = 사람 하나, 성공이면 닫힘) ·
                         member-list · pending-invitations(Revoke · Resend — Resend 결과는 행이 아니라 카드 Alert) ·
