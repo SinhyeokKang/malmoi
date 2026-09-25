@@ -56,7 +56,7 @@ export function PrivacyDoc() {
             </h2>
             {section.blocks.map((block, blockIndex) =>
               "p" in block ? (
-                <p key={blockIndex} className="text-prose mt-4 leading-[1.75]">
+                <p key={blockIndex} className="text-prose mt-4 leading-[1.75] text-pretty">
                   {block.p}
                 </p>
               ) : "ul" in block ? (
