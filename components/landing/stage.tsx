@@ -221,7 +221,10 @@ export function Stage({
                       segmentRefs.current[k] = node;
                     }}
                     data-landing-segment={k}
-                    className="block h-[3px] origin-left scale-x-0 bg-foreground"
+                    className="block h-[3px] origin-left bg-foreground"
+                    // ⚠️ 초깃값도 인라인 transform이다 — `scale-x-0` 유틸은 v4에서 개별 `scale` 속성이라 틱이 쓰는 transform과 곱해져
+                    // 채움이 늘 0이었다(#111).
+                    style={{ transform: "scaleX(0)" }}
                   />
                 </span>
               ))}
@@ -238,7 +241,8 @@ export function Stage({
           </div>
         </div>
       </section>
-      <div className="mt-[calc(-1*var(--landing-y-pin,0px))]">{closing}</div>
+      {/* ⚠️ `relative z-10` — 트랙 `<section>`이 positioned라 끌어올린 static CTA 위에서 히트 테스트를 이겼다(#113, 1440×2560). */}
+      <div className="relative z-10 mt-[calc(-1*var(--landing-y-pin,0px))]">{closing}</div>
     </div>
   );
 }
