@@ -104,6 +104,16 @@ describe("routes.signIn — 쿼리 생성기", () => {
  * ⚠️ 둘 다 **출시 전에 채울 placeholder**다 — 라우트를 지금 따는 이유는 로그인 화면 푸터가
  * 그것을 가리키기 때문이다.
  */
+/**
+ * 랜딩(`/`). 헤더의 로고·Home이 가리킨다 — 리터럴 `"/"`로 쓰면 경로가 타입 밖으로 새는
+ * 자리가 하나 더 생긴다(POSTMORTEM 2026-09-05).
+ */
+describe("routes.home — 랜딩", () => {
+  it("루트다", () => {
+    expect(routes.home()).toBe("/");
+  });
+});
+
 describe("routes.privacy · routes.docs — 공개 문서", () => {
   it("정적 경로다", () => {
     expect(routes.privacy()).toBe("/privacy");

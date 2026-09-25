@@ -358,6 +358,16 @@ describe("클라이언트 그래프", () => {
    * 같은 디렉터리라 `plan.ts`가 `./fingerprint`를 한 줄만 물어도 `node:crypto`가 번들로 온다 — 소비자
    * 연결(T13) 전에도 검사가 공허하지 않도록 여기서 직접 걸고, **음성 대조로 fingerprint 쪽은 실제로 걸리는지** 센다.
    */
+  /**
+   * ⚠️ **랜딩 스테이지 수학은 클라이언트가 값으로 읽는다**(docs/features/landing T6). 소비자가 붙기 전에도
+   * 잎인지를 여기서 직접 건다 — 소비자가 붙는 커밋에서 `CLIENT_LIB_FILES`에 등재한다.
+   */
+  it("`lib/landing/stage.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const stage = walk([join(ROOT, "lib/landing/stage.ts")]);
+    expect([...stage.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/landing/stage.ts"]);
+    expect([...stage.packages]).toEqual([]);
+  });
+
   it("`lib/protection/plan.ts`는 잎이다 — `fingerprint.ts`(crypto)를 물지 않는다", () => {
     const plan = walk([join(ROOT, "lib/protection/plan.ts")]);
     expect([...plan.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/protection/plan.ts"]);

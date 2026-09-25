@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { landingTarget, rejectTarget } from "@/lib/auth/landing";
+import { landingTarget, rejectTarget, rootView } from "@/lib/auth/landing";
 import { routes } from "@/lib/routes";
 
 /**
@@ -57,5 +57,29 @@ describe("landingTarget — 루트(`/`)의 착지", () => {
   it("세 갈래가 전부 다른 주소다 — 하나로 접히면 구별이 사라진다", () => {
     const seen = new Set([landingTarget("ok"), landingTarget("none"), landingTarget("unavailable")]);
     expect(seen.size).toBe(3);
+  });
+});
+
+describe("rootView — 루트(`/`)가 무엇을 그리나 (랜딩)", () => {
+  /**
+   * ⚠️ **로그인 상태로 `/`에 오면 여전히 `/projects`다** (2026-09-10 사용자 결정 — *"로그인 이후
+   * 랜딩 못 가게"*). 랜딩이 `/`에 들어와도 유지한다 — 이 케이스가 그 결정의 기록이다.
+   */
+  it("세션이 있으면 프로젝트 목록으로 보낸다", () => {
+    expect(rootView("ok")).toEqual({ redirect: routes.projects() });
+  });
+
+  it("세션이 없으면 랜딩을 그린다", () => {
+    expect(rootView("none")).toEqual({ landing: true });
+  });
+
+  /**
+   * ⚠️ **장애도 랜딩이다** (2026-09-26 `/feature-review` — 옛: `/signin?error=Unavailable`). 공개 화면이
+   * 세션 장애로 안 열리는 것이 더 나쁘다(DESIGN §6.61과 같은 쪽). 일반 로그인은 `redirectTo: "/projects"`라
+   * `/`를 지나지 않으므로 "로그인 직후 조용히 랜딩"이 되는 흐름이 없고, 장애 신호는 `rejectTarget`이 계속 든다.
+   */
+  it("세션을 못 읽어도 랜딩을 그린다 — 장애 신호는 보호 라우트가 든다", () => {
+    expect(rootView("unavailable")).toEqual({ landing: true });
+    expect(rejectTarget("unavailable")).toBe(routes.signIn({ error: "Unavailable" }));
   });
 });
