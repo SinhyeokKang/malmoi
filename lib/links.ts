@@ -14,7 +14,7 @@ export const GITHUB_REPO_URL = "https://github.com/SinhyeokKang/malmoi";
 export type FooterLink = { href: string; label: string; external: boolean };
 
 /**
- * 셸 밖 화면의 푸터 링크 — **`/signin`과 랜딩이 이 목록 하나를 읽는다** (landing T3). 사본이 둘이면
+ * 셸 밖 화면의 푸터 링크 — **`/signin`과 랜딩이 이 목록 하나를 읽는다** (DESIGN §6.615). 사본이 둘이면
  * 순서가 갈린다 — 시안의 랜딩 푸터가 이미 `Docs · Privacy Policy`로 어긋나 있었다(2026-09-26 사용자가 이쪽 순서로 판정).
  */
 export const FOOTER_LINKS: readonly FooterLink[] = [

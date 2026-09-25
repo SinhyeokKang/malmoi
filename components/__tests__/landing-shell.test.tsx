@@ -15,10 +15,10 @@ import { routes } from "@/lib/routes";
 import { render } from "./helpers/dom";
 
 /**
- * 랜딩 셸 (landing T3) — 헤더 · 패널(표면 + 스크롤러) · 푸터.
+ * 랜딩 셸 (DESIGN §6.615) — 헤더 · 패널(표면 + 스크롤러) · 푸터.
  *
  * ⚠️ **문서가 스크롤되지 않는 셸이라 스크롤러가 포커스를 받아야 키보드 스크롤이 산다** — body에
- * 포커스가 있으면 Space/PageDown이 root scroller만 민다(design.md "키보드 스크롤").
+ * 포커스가 있으면 Space/PageDown이 root scroller만 민다(DESIGN §6.615 "키보드").
  */
 const shell = () => render(h(LandingShell, null, h("p", null, "landing body")));
 

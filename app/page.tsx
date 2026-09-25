@@ -30,7 +30,7 @@ export default async function Root() {
   return (
     <LandingShell>
       <section aria-labelledby="landing-hero" className="flex flex-col items-center px-8 pt-30 text-center">
-        {/* h1·CTA h2는 48/600 — DESIGN §4가 예고한 weight 600의 첫 소비자다(spec 결정 6). */}
+        {/* h1·CTA h2는 48/600 — DESIGN §4가 예고한 weight 600의 첫 소비자다(§6.615). */}
         <h1 id="landing-hero" className="m-0 text-5xl leading-[1.1] font-semibold">
           {hero.title[0]}
           <br />

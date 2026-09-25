@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 
 /**
- * 목업 안의 앱 셸 — 헤더 40 · LNB · `ContentPanel`을 **정적 복제**로 그린다(spec 비목표 — 실제 셸은 Server Action·세션에 묶여 있다).
+ * 목업 안의 앱 셸 — 헤더 40 · LNB · `ContentPanel`을 **정적 복제**로 그린다(DESIGN §6.615 — 실제 셸은 Server Action·세션에 묶여 있다).
  *
  * ⚠️ **인터랙티브 태그를 두지 않는다** — 프레임은 `aria-hidden` + `inert`이지만 jsdom이 `inert`를 모르므로 태그 수로 센다.
  * 라벨은 실제 사전(`m.common.nav`)을 읽는다 — 사이드바와 목업이 다른 말을 하면 랜딩이 거짓이다.

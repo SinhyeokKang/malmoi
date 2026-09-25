@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CAP, fitScale, frame, growProgress, sceneAt, typedPrefix } from "@/lib/landing/stage";
 
 /**
- * 랜딩 스테이지의 수학 (docs/features/landing — 시안 `Landing.dc.html` 1b·1c·1f·1g가 정본).
+ * 랜딩 스테이지의 수학 (DESIGN §6.615 — 시안 `Landing.dc.html` 1b·1c·1f·1g가 정본).
  *
  * **스크롤 위치 하나가 전부를 몬다** — 같은 위치면 언제나 같은 프레임이어야 역방향 스크럽이 성립한다.
  * 그래서 재생 상태는 전부 여기 순수 함수에 있고, 스테이지 컴포넌트는 결과를 DOM에 옮겨 적기만 한다.

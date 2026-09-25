@@ -340,7 +340,7 @@ export const en = {
     hero: {
       /** h1 두 줄 — 시안이 줄을 정한다(`<br>`). ⚠️ 둘째 줄은 Sentence case다(시안 열린 결정 3). */
       title: ["Connect your projects,", "translate & ship together"] as const,
-      /** ⚠️ `locale files`가 아니다 — `terminology.test.ts`가 `locale`을 금지한다(spec 결정 3). */
+      /** ⚠️ `locale files`가 아니다 — `terminology.test.ts`가 `locale`을 금지한다(DESIGN §10.1). */
       body: "Malmoi finds the translation files already in your repo, lets teammates edit them in the browser, and sends every change back as one pull request.",
     },
     /** 스크롤 구동 목업 — 캡션 다섯은 씬 순서다. 보이는 캡션은 `aria-hidden`이고 visually-hidden `<ol>`이 늘 담는다. */
@@ -361,7 +361,7 @@ export const en = {
     /**
      * 목업의 **가상 데이터** — 앱 라벨은 여기 없다. 라벨은 실제 사전 키를 읽는다(목업과 앱이 다른 말을 하면 랜딩이 거짓이다).
      *
-     * ⚠️ **작게 유지한다.** 실명·실제 프로젝트명 금지. ⚠️ 타이핑되는 값은 `fr`이다(spec 결정 2) — 한글이면 `no-korean-ui`가,
+     * ⚠️ **작게 유지한다.** 실명·실제 프로젝트명 금지. ⚠️ 타이핑되는 값은 `fr`이다(DESIGN §6.615) — 한글이면 `no-korean-ui`가,
      * 일본어면 폰트(가나 없음)가 걸린다. NFC이고 결합 문자가 없다(`typedPrefix`가 코드포인트로 자른다).
      */
     mockup: {

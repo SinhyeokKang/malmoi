@@ -9,7 +9,7 @@ import { frame, typedPrefix } from "@/lib/landing/stage";
 import { find, render } from "./helpers/dom";
 
 /**
- * **랜딩 스테이지의 배선** (landing T6). 수학은 `lib/landing/stage.ts`가 들고 여기서는 그 값이 DOM에
+ * **랜딩 스테이지의 배선** (DESIGN §6.615). 수학은 `lib/landing/stage.ts`가 들고 여기서는 그 값이 DOM에
  * 그대로 쓰이는지만 본다 — 기대값을 `frame()`에서 뽑아 식을 두 벌 두지 않는다.
  *
  * ⚠️ **스텁 없이는 분기가 안 돈다** (POSTMORTEM 2026-09-23) — `vitest.setup.ts`의 `ResizeObserver`는 콜백을

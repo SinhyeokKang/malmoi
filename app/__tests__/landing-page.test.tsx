@@ -7,7 +7,7 @@ import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
 /**
- * **루트(`/`)의 세 갈래** (landing T7) — `ok`는 여전히 `/projects`(2026-09-10 결정), `none`·`unavailable`은 랜딩이다.
+ * **루트(`/`)의 세 갈래** (ARCHITECTURE `rootView` 문단 · DESIGN §6.615) — `ok`는 여전히 `/projects`(2026-09-10 결정), `none`·`unavailable`은 랜딩이다.
  *
  * ⚠️ `unavailable`도 랜딩이다(옛: `/signin?error=Unavailable`) — 공개 화면이 세션 장애로 안 열리는 것이 더 나쁘다.
  * 장애 신호는 보호 라우트의 `rejectTarget`이 계속 든다(`lib/auth/__tests__/landing.test.ts`).

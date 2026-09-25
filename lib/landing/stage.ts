@@ -1,6 +1,6 @@
 /**
  * 랜딩 스테이지의 수학 — 스크롤 위치 하나가 목업의 배율·위치·씬·캡션을 전부 정한다.
- * 정본은 Claude Design `Landing.dc.html` 1b·1c·1f·1g다(docs/features/landing).
+ * 정본은 Claude Design `Landing.dc.html` 1b·1c·1f·1g이고 규칙은 DESIGN §6.615가 든다.
  *
  * ⚠️ **잎이다** — 스테이지 클라이언트 컴포넌트가 값으로 읽으므로 아무것도 import하지 않는다
  * (`components/__tests__/client-graph.test.ts`가 센다).

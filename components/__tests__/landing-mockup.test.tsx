@@ -11,10 +11,10 @@ import { m } from "@/lib/i18n";
 import { find, render } from "./helpers/dom";
 
 /**
- * **랜딩 목업의 씬 DOM** (landing T5). 목업은 서버가 그린 정적 복제라 조작 대상이 아니다 — 프레임은
+ * **랜딩 목업의 씬 DOM** (DESIGN §6.615). 목업은 서버가 그린 정적 복제라 조작 대상이 아니다 — 프레임은
  * `aria-hidden` + `inert`이고, **jsdom은 `inert`를 구현하지 않으므로** 인터랙티브 태그 자체가 0이어야 한다.
  *
- * ⚠️ 앱 라벨은 실제 사전 키를 읽는다 — 목업과 앱이 다른 말을 하기 시작하면 랜딩이 거짓이다(design.md "목업 문구").
+ * ⚠️ 앱 라벨은 실제 사전 키를 읽는다 — 목업과 앱이 다른 말을 하기 시작하면 랜딩이 거짓이다(DESIGN §6.615 "목업 문구").
  */
 // ⚠️ jsdom 환경에서는 `import.meta.url`이 file 스킴이 아니다 — `landing-shell.test.tsx`와 같이 cwd에서 잡는다.
 const DIR = join(process.cwd(), "components/landing/mockup");
