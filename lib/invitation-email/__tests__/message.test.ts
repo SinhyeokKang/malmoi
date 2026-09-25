@@ -30,7 +30,7 @@ describe("buildInvitationEmail", () => {
   it("제목과 발신자를 싣는다", () => {
     const email = buildInvitationEmail(base);
     expect(email.subject).toBe(INVITATION_EMAIL_SUBJECT);
-    expect(INVITATION_EMAIL_SUBJECT).toBe("You're invited to malmoi");
+    expect(INVITATION_EMAIL_SUBJECT).toBe("You're invited to Malmoi");
     expect(email.from).toBe(base.from);
   });
 
@@ -73,7 +73,7 @@ describe("buildInvitationEmail — html", () => {
     expect(INVITATION_EMAIL_LOGO_URL).toBe("https://mal-moi.com/email/logo@2x.png");
     expect(html).toContain(`src="${INVITATION_EMAIL_LOGO_URL}"`);
     expect(html).not.toMatch(/src="(?!https:\/\/mal-moi\.com\/email\/logo@2x\.png")/);
-    expect(html).toContain('alt="malmoi"');
+    expect(html).toContain('alt="Malmoi"');
   });
 
   it("프로젝트명·역할·수신 주소를 싣지 않는다", () => {

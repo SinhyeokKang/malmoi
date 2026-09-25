@@ -22,8 +22,8 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
   });
 
   it("Publish 카운터는 경고 행을 세고 쿨다운은 서버 초를 표시한다", () => {
-    expect(m.translations.publish.warnings(3)).toBe("3 warnings \u00b7 values still saved in malmoi");
-    expect(m.translations.publish.warnings(1)).toBe("1 warning \u00b7 values still saved in malmoi");
+    expect(m.translations.publish.warnings(3)).toBe("3 warnings \u00b7 values still saved in Malmoi");
+    expect(m.translations.publish.warnings(1)).toBe("1 warning \u00b7 values still saved in Malmoi");
     // ⚠️ **초가 버튼 라벨이고 서버 값 그대로다** — 화면이 대기 간격 상수를 따로 들면 둘이 갈린다.
     expect(m.translations.publish.wait(1)).toBe("Try again in 1s");
     expect(m.translations.publish.wait(18)).toBe("Try again in 18s");

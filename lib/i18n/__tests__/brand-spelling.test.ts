@@ -51,6 +51,15 @@ function sourceFiles(dir: string): string[] {
 const IDENT_NEIGHBOR = /[-/._:@]/;
 
 /**
+ * ⚠️ **뒤의 `.`·`:`는 그 뒤에 글자가 이어질 때만 식별자다** — `malmoi.translation-draft`·`malmoi:onboarding`과
+ * 문장 끝 `…on Malmoi. The link…`·`Closed by Malmoi: the…`가 같은 글자로 갈린다.
+ */
+function identAfter(next: string, nextNext: string): boolean {
+  if (next === "." || next === ":") return /[\w-]/.test(nextNext);
+  return IDENT_NEIGHBOR.test(next);
+}
+
+/**
  * 홀로 선 소문자인데 식별자로 남는 자리 — **화면에 안 닿는다.** GitHub API가 요구하는 `User-Agent` 값이라
  * 대소문자가 뜻이 없고, 바꿀 이유도 없다.
  */
@@ -63,8 +72,9 @@ function brandViolations(source: string): string[] {
     const i = m.index;
     const before = source[i - 1] ?? "";
     const after = source[i + m[0].length] ?? "";
+    const afterAfter = source[i + m[0].length + 1] ?? "";
     // ⚠️ `malmoi`를 대소문자 무시로 찾은 뒤 판정한다 — `MALMOI`·`MalMoi` 같은 변형도 같은 규칙을 어긴다.
-    const ident = IDENT_NEIGHBOR.test(before) || IDENT_NEIGHBOR.test(after);
+    const ident = IDENT_NEIGHBOR.test(before) || identAfter(after, afterAfter);
     if (ident ? m[0] === "malmoi" : m[0] === "Malmoi") continue;
     if (m[0] === "malmoi" && [...IDENT_EXCEPTIONS].some((e) => source.slice(Math.max(0, i - e.length), i + e.length).includes(e))) continue;
     wrong.push(JSON.stringify(source.slice(Math.max(0, i - 20), i + 26)));
@@ -97,6 +107,9 @@ describe("제품 이름 표기 — 화면은 Malmoi, 식별자는 malmoi", () =>
     expect(brandViolations('"malmoi is ready"')).toHaveLength(1);
     expect(brandViolations('"Sign in to malmoi"')).toHaveLength(1);
     expect(brandViolations("malmoi's action")).toHaveLength(1);
+    expect(brandViolations('"a project on malmoi. The link"')).toHaveLength(1);
+    expect(brandViolations('"Closed by malmoi: the DB"')).toHaveLength(1);
+    expect(brandViolations('"a project on Malmoi. The link" "Closed by Malmoi: the DB"')).toEqual([]);
     expect(brandViolations('"Malmoi is ready" "Sign in to Malmoi" Malmoi\'s')).toEqual([]);
   });
 
