@@ -55,7 +55,7 @@ export function PrivacyDoc() {
                 <DocTable
                   key={blockIndex}
                   table={block.table}
-                  className="border-border mt-6 min-w-0 overflow-auto rounded-xl border [&_td]:leading-[1.6] [&_th]:text-muted-foreground [&_th]:text-xs"
+                  className="border-border mt-6 min-w-0 overflow-auto rounded-lg border [&_td]:leading-[1.6] [&_th]:text-muted-foreground [&_th]:text-xs"
                 />
               ),
             )}
