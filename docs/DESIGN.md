@@ -194,7 +194,7 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 
 ### 4.2 ⚠ `text-mono`를 twMerge에 등록해야 한다
 
-`lib/utils.ts`의 `cn()`이 `extendTailwindMerge`로 `text-mono`를 **font-size 그룹**에 등록한다.
+`lib/utils.ts`의 `cn()`이 `extendTailwindMerge`로 `text-mono`를 **font-size 그룹**에 등록한다. ⚠️ **`text-prose`(16px, 2026-09-26 — §6.616)도 같은 목록에 있다** — `@theme`에 크기 토큰을 새로 늘리면 여기에도 같이 넣는다(`lib/__tests__/utils.test.ts`).
 
 **안 하면 twMerge가 커스텀 `text-*`를 text-color로 오분류한다.** `cn("text-mono", "text-foreground")`에서 `text-mono`가 조용히 제거되고, base `text-xs`와도 dedupe되지 않는다. bugshot-2가 액션 로그 값 칩에서 정확히 이 함정을 밟았다.
 
@@ -768,7 +768,6 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 |---|---|
 | 골격 | `main` 한 겹 · `mx-auto max-w-2xl px-8 py-12` · `min-h-svh`. ⚠️ **세로 중앙 정렬을 쓰지 않는다** — placeholder 시절의 `justify-center`는 한 문단짜리라 참이었고, 절이 여럿인 문서에서는 **첫 화면이 문서 중간부터 시작한다.** 위에서 시작한다 |
 | 제목(`h1`) | `text-2xl font-medium` — 셸 밖 제목 규칙(§4, §6.62의 `h1`과 같은 급). ⚠️ **`text-lg`에서 올라왔다**(2026-09-19) |
-| 시행일 | **선택 — 지금 소비자 0**(유일한 소비자였던 `/privacy`가 §6.616으로 갔다 — 같은 줄 규칙을 그쪽이 그대로 쓴다. `PublicDoc`의 prop은 남아 있다). `h1` 바로 아래·도입 문단 **위**에 `라벨 + <time dateTime="YYYY-MM-DD">` 한 줄, 라벨은 `Effective date`, 급은 `text-muted-foreground text-sm`. ⚠️ **본문의 muted 금지가 이 줄에는 안 걸린다** — 읽으라고 만든 글이 아니라 메타 줄이라 보조 색이 맞다. ⚠️ **날짜 포맷터를 새로 만들지 않는다** — 사전이 든 `"2026-09-19"`를 그대로 보이고 같은 문자열을 `dateTime`에 넣는다(`lib/utc-time.ts`의 `utcMinute`은 분까지 내므로 안 맞는다). ⚠️ **이 줄은 `<section>` 밖이라 본문 링크 규칙(`[&_a]:`)이 안 걸린다** — 색이 다르다고 고치지 않는다. 도움말(`/docs`)에 시행일은 의미가 없어 없으면 아무것도 그리지 않는다 |
 | 도입 문단 | `h1` 바로 아래 한 문단(선택). 절 제목 없이 문서 전체를 한 줄로 말한다 |
 | 절 제목(`h2`) | `text-base font-medium` + **`id`가 필수다** — `/docs#workflow`처럼 **다른 화면이 절을 직접 가리킨다**(L2.3의 설정 화면 링크). `id`는 사전의 데이터이지 제목에서 파생하지 않는다(문구를 고치면 남의 링크가 죽는다) |
 | 본문 | `text-sm leading-6 text-foreground`. ⚠️ **`text-muted-foreground`를 쓰지 않는다** — 그 색은 라벨·보조 줄의 색이고, 한 화면이 통째로 그 색이면 **읽으라고 만든 글이 부차적으로 보인다.** 장문에서만 `leading-6`을 쓴다(기본 행간은 표·라벨 기준이라 문단에는 좁다) |
@@ -823,7 +822,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 |---|---|
 | 컨테이너 | `mx-auto max-w-[1120px] px-10 py-30` · grid `minmax(0,720px) 200px` · `justify-between` · gap 64. `<main>`을 그리지 않는다 — 랜드마크는 셸의 것 하나다 |
 | `h1` | `text-4xl`(36) · 1.3 · 500 |
-| 시행일 | 14 · 1.6 · muted · mt 12 · `라벨 + <time dateTime>` — 규칙은 §6.61의 시행일 행 그대로(메타 줄이라 muted가 맞다, 포맷터를 새로 안 만든다) |
+| 시행일 | `h1` 바로 아래·도입 **위** 한 줄 · 14 · 1.6 · muted · mt 12 · `Effective date` + `<time dateTime="YYYY-MM-DD">`. ⚠️ **본문의 muted 금지가 이 줄에는 안 걸린다** — 메타 줄이다. ⚠️ **날짜 포맷터를 새로 만들지 않는다** — 사전의 문자열을 그대로 보이고 `dateTime`에 넣는다(`lib/utc-time.ts`의 `utcMinute`은 분까지 낸다). ⚠️ `<section>` 밖이라 본문 링크 규칙이 안 걸린다. 2026-09-26까지 §6.61(옛 1열 그릇)의 행이었고 `/docs`는 쓰지 않아 그 prop과 함께 걷었다 |
 | 도입 | 16 · 1.75 · mt 24 · `text-pretty` |
 | 구분선 | `<hr>` 1px `--border` · mt 40 |
 | `h2` | `text-2xl`(24) · 1.4 · 500 · 첫 절 mt 48, 이후 56 · **`id` 필수**(§6.61) · `scroll-mt-12`(하드 해시 착지도 48 아래) · `tabIndex={-1}` + `focus:outline-none`(목차가 포커스를 옮긴다) |
