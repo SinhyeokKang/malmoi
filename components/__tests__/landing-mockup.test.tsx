@@ -112,6 +112,30 @@ describe("목업 — 1280×720 안에 들어간다 (#112)", () => {
   });
 });
 
+describe("목업 — 편집기와 Publish가 같은 프로젝트다 (#114)", () => {
+  /**
+   * ⚠️ **Publish에 선 언어는 편집기에도 행으로 선다** — 실제 앱의 편집기는 `All languages`에서 프로젝트의 모든 언어를 보인다.
+   * #112에서 편집기의 `es` 행을 뺐는데 ④가 여전히 `messages/es.json`을 보내 두 씬이 다른 프로젝트를 말했다. 언어 목록을
+   * 손으로 두 벌 두지 않도록 **편집기가 실제로 그린 언어**(씬 ①의 DOM)에서 기대값을 뽑는다.
+   */
+  it("④가 보내는 언어·파일이 편집기의 언어에서 나오고, 선택 키의 편집은 ②③이 만든 `fr` 하나다", async () => {
+    const container = await mount();
+    const editor = [...find(layer(container, 0), "[data-landing-locales]").children].map((row) => row.querySelector("span")?.textContent?.trim() ?? "");
+    expect(editor).toEqual([...fixture.selected.values.map((value) => value.code), fixture.selected.typedCode]);
+
+    const files = [...layer(container, 3).querySelectorAll("[data-landing-file]")].map((node) => node.getAttribute("data-landing-file"));
+    expect(files).toEqual(fixture.diff.map((row) => fixture.file(row.code)));
+    expect(new Set(files).size).toBe(files.length);
+    for (const row of fixture.diff) expect(editor).toContain(row.code);
+
+    expect(fixture.diff.filter((row) => row.key === fixture.selected.key).map((row) => row.code)).toEqual([fixture.selected.typedCode]);
+    const keys = fixture.rows.map((row) => row.key);
+    for (const row of fixture.diff) expect(keys).toContain(row.key);
+    // ⑤의 파일 수도 같은 목록에서 나온다.
+    expect(layer(container, 4).textContent).toContain(p.prMeta(fixture.pullRequest, files.length));
+  });
+});
+
 describe("목업 픽스처", () => {
   it("타이핑 값은 NFC `fr`이고 ④의 diff가 같은 값을 보낸다", () => {
     const typed = fixture.selected.typed;
