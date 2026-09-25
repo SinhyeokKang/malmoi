@@ -28,6 +28,9 @@ describe("랜딩 셸 — 구조", () => {
     expect(container.querySelectorAll("main")).toHaveLength(1);
     const scroller = container.querySelector("main > div");
     expect(scroller?.textContent).toBe("landing body");
+    // 스테이지가 `closest("[data-landing-scroller]")`로 이 요소를 뷰포트로 찾는다.
+    expect(container.querySelectorAll("[data-landing-scroller]")).toHaveLength(1);
+    expect(scroller?.hasAttribute("data-landing-scroller")).toBe(true);
   });
 
   it("마운트 뒤 포커스가 스크롤러에 있다", async () => {

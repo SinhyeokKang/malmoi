@@ -15,6 +15,8 @@ import { useEffect, useRef, type ReactNode } from "react";
  * ⚠️ **`@/lib/**`를 import하지 않는다** — 읽는 순간 `client-graph.test.ts`의 번들 그래프가 늘어난다.
  * 그래서 `cn` 없이 클래스를 리터럴로 쓴다.
  *
+ * `data-landing-scroller`는 스테이지(`components/landing/stage.tsx`)가 자기 뷰포트를 찾는 표식이다.
+ *
  * 스크롤바 색은 `--foreground`의 알파다 — 시안의 `rgba(10,10,10,.2)`를 raw 색으로 들이지 않는다.
  */
 export function LandingScroller({ children }: { children: ReactNode }) {
@@ -28,6 +30,7 @@ export function LandingScroller({ children }: { children: ReactNode }) {
     <div
       ref={ref}
       tabIndex={-1}
+      data-landing-scroller=""
       className="relative min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:color-mix(in_srgb,var(--foreground)_20%,transparent)_transparent] focus:outline-none"
     >
       {children}

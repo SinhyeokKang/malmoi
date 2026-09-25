@@ -6,15 +6,6 @@ import { frame as frameAt, typedPrefix, type Frame } from "@/lib/landing/stage";
 
 type Five<T> = readonly [T, T, T, T, T];
 
-/** 스크롤러를 찾는다 — 셸이 무엇이든 가장 가까운 세로 스크롤 조상이 스테이지의 뷰포트다. */
-function scrollerOf(node: HTMLElement): HTMLElement | null {
-  for (let el = node.parentElement; el !== null; el = el.parentElement) {
-    const overflow = getComputedStyle(el).overflowY;
-    if (overflow === "auto" || overflow === "scroll") return el;
-  }
-  return null;
-}
-
 /**
  * 랜딩의 스크롤 구동 목업 (Claude Design `Landing.dc.html` 1a–1d · 1g).
  *
@@ -63,7 +54,8 @@ export function Stage({
     const chrome = chromeRef.current;
     const caption = captionRef.current;
     if (!root || !track || !frameNode || !bezel || !shadowIdle || !shadowPin || !chrome || !caption) return;
-    const scroller = scrollerOf(root);
+    // 셸의 스크롤러가 스테이지의 뷰포트다(`components/landing/shell/scroller.tsx`). 없으면 접힌 채로 둔다.
+    const scroller = root.closest<HTMLElement>("[data-landing-scroller]");
     if (scroller === null) return;
     const typedNodes = [...frameNode.querySelectorAll<HTMLElement>("[data-landing-typed]")];
 
