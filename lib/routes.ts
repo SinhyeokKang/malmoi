@@ -213,6 +213,8 @@ export const routes = {
    * 페이지 없이 넣으면 404를 가리키는 생성기가 되고, 죽은 링크 검사의 접두 규칙이 그것을
    * 통과시켜 못 잡는다 (6b-4·6b-6·7단계와 같은 판정).
    */
+  /** 랜딩. ⚠️ 로그인 상태면 `/projects`로 redirect된다(`rootView`, 2026-09-10 결정). */
+  home: (): string => "/",
   privacy: (): string => "/privacy",
   docs: (): string => "/docs",
 } as const;

@@ -48,3 +48,24 @@ export function rejectTarget(status: Exclude<SessionRead["status"], "ok">): stri
 export function landingTarget(status: SessionRead["status"]): string {
   return status === "ok" ? routes.projects() : rejectTarget(status);
 }
+
+/**
+ * 루트(`/`)가 무엇을 그리나 — `landingTarget`의 후계(docs/features/landing — `app/page.tsx`가 옮겨 오는 T7에서
+ * `landingTarget`이 지워진다).
+ *
+ * ⚠️ **`unavailable`도 랜딩이다**(옛: `/signin?error=Unavailable`). 공개 화면이 세션 장애로 안 열리는 것이
+ * 더 나쁘다(DESIGN §6.61과 같은 쪽). 일반 로그인은 `redirectTo: "/projects"`라 `/`를 지나지 않으므로
+ * "로그인 직후 조용히 랜딩"이 되는 흐름이 없고, 장애 신호는 보호 라우트의 `rejectTarget`이 계속 든다.
+ * 맵 + `satisfies`는 `REJECT`와 같은 이유다 — 갈래가 늘면 컴파일 에러가 난다.
+ */
+export type RootView = { redirect: string } | { landing: true };
+
+const ROOT = {
+  ok: { redirect: routes.projects() },
+  none: { landing: true },
+  unavailable: { landing: true },
+} satisfies Record<SessionRead["status"], RootView>;
+
+export function rootView(status: SessionRead["status"]): RootView {
+  return ROOT[status];
+}

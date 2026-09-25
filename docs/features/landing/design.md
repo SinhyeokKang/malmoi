@@ -99,24 +99,26 @@ lib/links.ts                  GitHub 리포 URL 상수 · 푸터 링크 목록(`
 |---|---|---|
 | `fitScale` | `lib/landing/stage.ts` | `{ W, H, cap }` → `{ m, fit, yPin }` (`fit ≤ 0`이 되는 작은 패널은 0으로 clamp) |
 | `growProgress` | 〃 | `scrollTop, stageTop` → `p` 0..1 (`stageTop ≤ 0`이면 1) |
-| `sceneAt` | 〃 | `scrollTop, stageTop, H` → `{ i, f, t, h }` (0 나누기·NaN 방어, q ≥ 5에서 i = 4) |
+| `sceneAt` | 〃 | `scrollTop, stageTop, H` → `{ i, f, t, h }` (0 나누기·NaN 방어, q ≥ 5에서 씬 ⑤의 끝) |
 | `typedPrefix` | 〃 | 문자열 · 0..1 → 앞 n 코드포인트(`Array.from` — 픽스처는 NFC `fr`이라 조합 문자가 없다. 결합 문자를 타이핑하게 되면 그때 `Intl.Segmenter`) |
 | `frame` | 〃 | `{ scrollTop, stageTop, W, H, reducedMotion }` → `Frame` — 한 위치에 한 프레임 |
 | `rootView` | `lib/auth/landing.ts` | 세션 status → `{ redirect: "/projects" } \| { landing: true }` |
 
 ```ts
 type Frame = {
-  scale: number; x: number; y: number;          // 프레임 transform
+  scale: number; x: number; y: number; yPin: number;              // 프레임 transform · CTA가 상쇄할 yPin
   bezel: number; shadowIdle: number; shadowPin: number; chrome: number; // 레이어 opacity 0..1
-  scene: { i: 0 | 1 | 2 | 3 | 4; t: number; h: number }; // t 전환 진행(eased 전), h 정지 진행
-  layers: [number, number, number, number, number];     // 씬 레이어 opacity
-  segments: [number, number, number, number, number];   // 진행 칸 scaleX
+  scene: { i: number; t: number; h: number };                     // t 전환 진행(ease 전, 모션 감소면 0|1), h 정지 진행
+  layers: [number, number, number, number, number];               // 씬 레이어 opacity
+  segments: [number, number, number, number, number];             // 진행 칸 scaleX
   caption: { index: number; opacity: number };
-  typed: number;   // 씬 ② 타이핑 코드포인트 수
-  badge: number;   // Publish 배지 숫자
-  modal: boolean;  // ④ 미리보기 열림
+  typed: number;   // 씬 ② 타이핑 진행도 0..1 — 목업이 typedPrefix(문자열, typed)로 쓴다
+  badge: 0 | 1;    // 씬 ③에서 저장한 편집이 배지에 더해졌는가 — 숫자는 목업 픽스처가 든다
 };
 ```
+
+- ④ 모달 열림은 필드가 아니다 — 씬마다 레이어가 따로라 씬 ④ 레이어가 그 화면이다. 모션 감소면 `typed`·`badge`는 그 씬에 들어서자마자 끝난 값이다.
+- q ≥ 5는 `{ i: 4, f: 1, t: 0, h: 1 }` — 시안 프로토타입의 `f = 0`과 다르다(정지 진행도가 끝에서 0으로 되돌아가지 않게).
 
 - 상수: `CANVAS = 1280×720` · `IDLE = 0.8` · `CAP = 1.5` · `CH = 44` · `HOLD = 0.6` · `SCENES = 5` — 모듈 상수다(씬 추가는 비목표). `fitScale`만 `cap`을 인자로 받는다(테스트가 상한 걸림을 따로 검사).
 - `rootView`가 `landingTarget`을 대체한다(**T7에서** — 커밋 1은 추가만 한다. 그 전에 교체하면 `app/page.tsx`가 컴파일 에러다).

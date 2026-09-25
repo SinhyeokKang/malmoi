@@ -181,10 +181,16 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
   it("전환 한가운데 — 두 씬이 반씩 · 캡션은 0에서 다음 문장으로 바뀐다", () => {
     const f = at(pinned(0.8));
     expect(f.scene.i).toBe(0);
-    expect(f.layers).toEqual([0.5, 0.5, 0, 0, 0]);
-    expect(f.segments).toEqual([1, 0.5, 0, 0, 0]);
-    expect(f.caption.index).toBe(1);
+    // 부동소수 — 0.8·H가 정확히 떨어지지 않아 t가 0.5에서 1e-16쯤 벗어난다.
+    [0.5, 0.5, 0, 0, 0].forEach((v, k) => expect(f.layers[k]).toBeCloseTo(v, 10));
+    [1, 0.5, 0, 0, 0].forEach((v, k) => expect(f.segments[k]).toBeCloseTo(v, 10));
     expect(f.caption.opacity).toBeCloseTo(0, 10);
+  });
+
+  it("전환 뒤 절반은 다음 문장이다", () => {
+    const f = at(pinned(0.85));
+    expect(f.caption.index).toBe(1);
+    expect(f.caption.opacity).toBeGreaterThan(0);
   });
 
   it("전환 앞 절반은 이전 문장이다", () => {
