@@ -801,7 +801,8 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 씬 다섯 | 트랙 `6H`, sticky `H`. 씬당 정지 0.6 / 전환 0.4(마지막은 1.0H 정지). ① 번역 화면 ② `fr` 타이핑 ③ 저장 → Publish 배지 2 → 3 ④ Publish 미리보기(diff) ⑤ PR 열림. 역방향 스크럽 — **같은 위치 → 같은 프레임**. 카메라(줌·팬) 없음 |
 | 씬 크롬 | 프레임 아래 16 · 한 줄 가운데: 진행 5칸(24×3 · 갭 6 · `scaleX`) + 캡션 `clamp(15px, 9px + 0.4375vw, 20px)`/1.4(자간은 `text-base`). 캡션은 t = 0.5에서 문장이 바뀐다(opacity `|1 − 2t|`) |
 | 모션 감소 | 배율 = 맞춤 고정 · y = yPin 고정 · 베젤 0 · 크롬 항상. 씬은 전환 한가운데(f = 0.8)에서 단절. **스크롤 길이는 같다.** `matchMedia` `change`를 구독해 런타임 토글도 반영한다 |
-| JS 전 · JS 없음 | 씬 레이어 opacity 0, 트랙은 **패널 1개 높이**로 접혀 있다(`data-ready`가 선 뒤에만 `6H`). 배율이 없는 SSR에서 1280 캔버스가 패널을 넘치기 때문이다 — 빈 베젤만 보인다 |
+| JS 전 · JS 없음 | **준비 전엔 프레임이 보이지 않는다** — 프레임·크롬이 `invisible`이고(`group-data-[ready]/track:visible`), 트랙은 **패널 1개 높이**로 접혀 있다(`data-ready`가 선 뒤에만 `6H`). 배율이 없는 SSR에서 베젤·그림자가 1304×744로 서서 패널을 넘치고 H < 732면 CTA까지 덮기 때문이다 |
+| sticky 층 | `pointer-events-none` — 투명하지만 positioned라 음수 margin으로 끌어올린 CTA 위에 칠해진다. yPin이 120보다 큰 세로 긴 뷰포트에서 `Get started`가 안 눌렸다. 프레임 자체는 `inert`라 잃는 것이 없다 |
 | 접근성 | 프레임 `aria-hidden` + `inert`, **안에 인터랙티브 태그 0**(jsdom은 `inert`를 모른다 — 버튼 모양은 `buttonClass`를 `<span>`에). 보이는 캡션도 `aria-hidden`이고 트랙 첫머리의 visually-hidden `<ol>`이 다섯 문장을 늘 담는다(`aria-live` 없음). 섹션 셋이 전부 이름을 갖는다 — 히어로·CTA `aria-labelledby`, 트랙 `aria-label="How Malmoi works"` |
 | 목업 문구 | 앱 라벨은 **실제 사전 키**(`m.common.nav` · `m.translations.workspace` · `m.translations.publish`)를 읽는다 — 목업과 앱이 다른 말을 하면 랜딩이 거짓이다. 가상 데이터(`Acme web` · `acme/web` · 키·값)는 `m.landing.mockup`. 타이핑 값은 `fr`(한글은 `no-korean-ui`, 일본어는 폰트가 걸린다). 목업 소스에 JSX 텍스트 리터럴 0(`landing-mockup.test.tsx`) |
 | 목업이 스크롤에 반응하는 자리 | 둘뿐이다 — `[data-landing-typed]`의 텍스트(스테이지가 `typedPrefix`로 쓴다)와 프레임의 `data-badge`(`group-data-[badge=1]/frame:`). ⚠️ **프레임마다 setState하지 않는다** — 스테이지가 ref로 DOM에 직접 쓴다 |
