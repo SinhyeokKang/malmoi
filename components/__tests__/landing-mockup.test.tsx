@@ -29,7 +29,7 @@ afterEach(() => { vi.unstubAllGlobals(); });
 
 async function mount() {
   const { container } = await render(
-    <div data-landing-scroller="">
+    <div data-public-scroller="">
       <Stage label={m.landing.stage.label} captions={m.landing.stage.captions} typed={fixture.selected.typed} scenes={mockupScenes()} closing={null} />
     </div>,
   );

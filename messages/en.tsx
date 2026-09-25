@@ -335,6 +335,8 @@ export const en = {
       docs: "Docs",
       github: "GitHub",
       getStarted: "Get started",
+      /** 공개 셸 primary의 로그인 갈래 — `/privacy`에만 선다(랜딩은 `ok`에서 안 그려진다). */
+      openMalmoi: "Open Malmoi",
     },
     /** 히어로 — 버튼 둘은 헤더와 같은 말이라 `shell.docs`·`shell.getStarted`를 쓴다(같은 구역). */
     hero: {

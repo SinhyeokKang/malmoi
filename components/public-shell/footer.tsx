@@ -6,12 +6,12 @@ import { FOOTER_LINKS } from "@/lib/links";
 const LINK = "hover:text-foreground focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
 /**
- * 랜딩 푸터 — 40 · 13 · muted (시안 1a).
+ * 공개 셸 푸터 — 40 · 13 · muted (시안 1a).
  *
  * ⚠️ **링크 목록은 `/signin` 푸터와 한 상수다**(`FOOTER_LINKS`) — 순서 `GitHub · Privacy Policy · Docs`.
  * 시안은 `Docs · Privacy Policy`였고 2026-09-26 사용자가 로그인 쪽 순서로 판정했다.
  */
-export function LandingFooter() {
+export function PublicFooter() {
   return (
     <footer className="text-muted-foreground flex h-10 shrink-0 items-center justify-center gap-4 text-xs">
       <span>{m.signIn.footer.copyright}</span>

@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 
-import { LandingShell } from "@/components/landing/shell/landing-shell";
 import { mockupScenes } from "@/components/landing/mockup";
 import { Stage } from "@/components/landing/stage";
+import { PublicShell } from "@/components/public-shell/public-shell";
 import { ButtonLink } from "@/components/ui/button";
-import { rootView } from "@/lib/auth/landing";
+import { publicCta, rootView } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
@@ -28,7 +28,7 @@ export default async function Root() {
 
   const { hero, stage, closing, mockup, shell } = m.landing;
   return (
-    <LandingShell>
+    <PublicShell cta={publicCta("none")} current="home">
       <section aria-labelledby="landing-hero" className="flex flex-col items-center px-8 pt-30 text-center">
         {/* h1·CTA h2는 48/600 — DESIGN §4가 예고한 weight 600의 첫 소비자다(§6.615). */}
         <h1 id="landing-hero" className="m-0 text-5xl leading-[1.1] font-semibold">
@@ -57,6 +57,6 @@ export default async function Root() {
           </section>
         }
       />
-    </LandingShell>
+    </PublicShell>
   );
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-import { Table, TableBody, TableHead, TableHeader, TableRow, Td } from "@/components/ui/table";
+import { DocTable } from "@/components/public-doc-table";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
@@ -105,48 +105,7 @@ export function PublicDoc({
                 ))}
               </ul>
             ) : (
-              /**
-               * ⚠️ **스크롤 컨테이너를 여기서 든다** (`scrollable={false}` + 이 `div`) — 온보딩 ②와 같은
-               * 형이다. 프리미티브의 래퍼는 `role`·`aria-label`을 받지 않고, 그 셋이 없으면 **키보드로
-               * 가로 스크롤할 길이 없다**(표 안에 포커스 가능한 것이 0이라 컨테이너가 직접 받는다).
-               * 컨테이너 자체를 없애면 3열 표가 페이지를 가로로 밀어 중앙 정렬 본문까지 어긋난다.
-               */
-              <div
-                key={index}
-                role="region"
-                tabIndex={0}
-                aria-label={block.table.label}
-                className="min-w-0 overflow-auto"
-              >
-                {/* 래퍼의 이름은 랜드마크의 이름이고, 표 목록은 `<table>` 자신의 이름을 읽는다 — 둘 다 준다. */}
-                <Table scrollable={false} aria-label={block.table.label}>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      {block.table.head.map((cell, cellIndex) => (
-                        // ⚠️ `Th`가 아니라 `TableHead`다 — `Th`의 `bg-muted/50`+`text-foreground/60`은 AA 미달이고
-                        // (DESIGN §2.2) sticky는 스크롤 컨테이너가 표 자신뿐이라 무의미하다.
-                        <TableHead
-                          key={cellIndex}
-                          scope="col"
-                          className="bg-primary-foreground h-auto px-4 py-2 whitespace-normal"
-                        >
-                          {cell}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {block.table.rows.map((row, rowIndex) => (
-                      // 읽는 화면이라 hover 강조를 주지 않는다 — 조작 어포던스다 (§6.61).
-                      <TableRow key={rowIndex} className="border-b-0 hover:bg-transparent">
-                        {row.map((cell, cellIndex) => (
-                          <Td key={cellIndex}>{cell}</Td>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <DocTable key={index} table={block.table} className="min-w-0 overflow-auto" />
             ),
           )}
         </section>

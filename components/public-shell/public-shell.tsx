@@ -1,11 +1,16 @@
 import type { ReactNode } from "react";
 
-import { LandingFooter } from "./footer";
-import { LandingHeader } from "./header";
-import { LandingScroller } from "./scroller";
+import type { PublicCta } from "@/lib/auth/landing";
+
+import { PublicFooter } from "./footer";
+import { PublicHeader } from "./header";
+import { PublicScroller } from "./scroller";
 
 /**
- * 랜딩 셸 — 헤더 40 + 8 · 패널 · 푸터 40이 뷰포트 높이를 **정확히** 채운다 (시안 1a).
+ * 공개 셸(`/` · `/privacy`) — 헤더 40 + 8 · 패널 · 푸터 40이 뷰포트 높이를 **정확히** 채운다 (시안 1a · 1e).
+ *
+ * ⚠️ **route group 레이아웃으로 만들지 않는다** — 페이지마다 셸을 렌더해야 이동 때 스크롤러가 다시 마운트되어
+ * 스크롤이 맨 위로 가고 포커스도 다시 받는다.
  *
  * ⚠️ **`h-svh`이고 `min-h-svh`가 아니다**(DESIGN §6.5, malmoi#13) — 최소 높이면 내용이 셸을 밀어 문서가
  * 스크롤되고 헤더가 딸려 올라간다. 스크롤은 패널 안 스크롤러 하나만 한다.
@@ -15,7 +20,17 @@ import { LandingScroller } from "./scroller";
  *
  * ⚠️ **`min-w-[1280px]`**: 그 아래는 가로 스크롤이 정상이다(DESIGN §5 — 앱 셸과 같다).
  */
-export function LandingShell({ children }: { children: ReactNode }) {
+export function PublicShell({
+  cta,
+  current,
+  children,
+}: {
+  /** 세션 판정은 페이지가 한다(`publicCta`) — 헤더는 세션을 직접 읽지 않는다. */
+  cta: PublicCta;
+  /** 헤더 링크 중 지금 서 있는 곳. `/privacy`처럼 헤더에 없는 화면이면 비운다. */
+  current?: "home";
+  children: ReactNode;
+}) {
   return (
     <>
       {/*
@@ -25,11 +40,11 @@ export function LandingShell({ children }: { children: ReactNode }) {
       <style>{`body{background-color:var(--canvas)}`}</style>
 
       <div className="bg-canvas flex h-svh min-w-[1280px] flex-col overflow-hidden px-2 pt-2">
-        <LandingHeader />
+        <PublicHeader cta={cta} current={current} />
         <main className="border-border-subtle bg-background shadow-low relative flex min-h-0 flex-1 overflow-hidden rounded-xl border">
-          <LandingScroller>{children}</LandingScroller>
+          <PublicScroller>{children}</PublicScroller>
         </main>
-        <LandingFooter />
+        <PublicFooter />
       </div>
     </>
   );

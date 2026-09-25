@@ -55,8 +55,8 @@ export function Stage({
     const chrome = chromeRef.current;
     const caption = captionRef.current;
     if (!root || !track || !frameNode || !bezel || !shadowIdle || !shadowPin || !chrome || !caption) return;
-    // 셸의 스크롤러가 스테이지의 뷰포트다(`components/landing/shell/scroller.tsx`). 없으면 접힌 채로 둔다.
-    const scroller = root.closest<HTMLElement>("[data-landing-scroller]");
+    // 셸의 스크롤러가 스테이지의 뷰포트다(`components/public-shell/scroller.tsx`). 없으면 접힌 채로 둔다.
+    const scroller = root.closest<HTMLElement>("[data-public-scroller]");
     if (scroller === null) return;
     const typedNodes = [...frameNode.querySelectorAll<HTMLElement>("[data-landing-typed]")];
 

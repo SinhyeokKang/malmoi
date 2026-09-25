@@ -80,7 +80,7 @@ function geometry(scroller: HTMLElement, size: { w: number; h: number }) {
 const scene = () => <div><span data-landing-typed="" /></div>;
 
 const stageUi = () => (
-  <div data-testid="scroller" data-landing-scroller="">
+  <div data-testid="scroller" data-public-scroller="">
     <Stage
       label="How Malmoi works"
       captions={CAPTIONS}

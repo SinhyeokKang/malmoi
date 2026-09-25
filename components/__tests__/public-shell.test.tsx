@@ -6,8 +6,9 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { LandingShell } from "@/components/landing/shell/landing-shell";
+import { PublicShell } from "@/components/public-shell/public-shell";
 import { AuthLayout } from "@/components/signin/auth-layout";
+import { publicCta } from "@/lib/auth/landing";
 import { m } from "@/lib/i18n";
 import { FOOTER_LINKS, GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
@@ -15,22 +16,23 @@ import { routes } from "@/lib/routes";
 import { render } from "./helpers/dom";
 
 /**
- * 랜딩 셸 (DESIGN §6.615) — 헤더 · 패널(표면 + 스크롤러) · 푸터.
+ * 공개 셸 (DESIGN §6.615) — 헤더 · 패널(표면 + 스크롤러) · 푸터. 랜딩(`/`)과 `/privacy`가 쓴다.
  *
  * ⚠️ **문서가 스크롤되지 않는 셸이라 스크롤러가 포커스를 받아야 키보드 스크롤이 산다** — body에
  * 포커스가 있으면 Space/PageDown이 root scroller만 민다(DESIGN §6.615 "키보드").
  */
-const shell = () => render(h(LandingShell, null, h("p", null, "landing body")));
+/** 랜딩이 넘기는 값 그대로 — `app/page.tsx`. */
+const shell = () => render(h(PublicShell, { cta: publicCta("none"), current: "home", children: h("p", null, "landing body") }));
 
-describe("랜딩 셸 — 구조", () => {
+describe("공개 셸 — 구조", () => {
   it("본문 랜드마크가 하나이고 페이지 내용은 스크롤러 안에 선다", async () => {
     const { container } = await shell();
     expect(container.querySelectorAll("main")).toHaveLength(1);
     const scroller = container.querySelector("main > div");
     expect(scroller?.textContent).toBe("landing body");
-    // 스테이지가 `closest("[data-landing-scroller]")`로 이 요소를 뷰포트로 찾는다.
-    expect(container.querySelectorAll("[data-landing-scroller]")).toHaveLength(1);
-    expect(scroller?.hasAttribute("data-landing-scroller")).toBe(true);
+    // 스테이지·목차가 `closest("[data-public-scroller]")`로 이 요소를 스크롤 대상으로 찾는다.
+    expect(container.querySelectorAll("[data-public-scroller]")).toHaveLength(1);
+    expect(scroller?.hasAttribute("data-public-scroller")).toBe(true);
   });
 
   it("마운트 뒤 포커스가 스크롤러에 있다", async () => {
@@ -61,7 +63,7 @@ describe("랜딩 셸 — 구조", () => {
   });
 });
 
-describe("랜딩 셸 — 헤더", () => {
+describe("공개 셸 — 헤더", () => {
   it("로고가 Home으로 가고 이름을 갖는다", async () => {
     const { container } = await shell();
     const logo = container.querySelector(`header a[aria-label="${m.landing.shell.logo}"]`);
@@ -89,6 +91,19 @@ describe("랜딩 셸 — 헤더", () => {
     expect(m.landing.shell.getStarted).toBe("Get started");
     expect(cta).toHaveLength(1);
     expect(cta[0]?.getAttribute("href")).toBe(routes.signIn());
+  });
+
+  /** `/privacy`는 헤더 링크 어디에도 없는 화면이다 — current를 안 넘기면 어느 링크도 current가 아니다. */
+  it("`current`가 없으면 헤더에 `aria-current`가 없다", async () => {
+    const { container } = await render(h(PublicShell, { cta: publicCta("none"), children: h("p", null, "body") }));
+    expect(container.querySelectorAll("header [aria-current]")).toHaveLength(0);
+  });
+
+  it("CTA는 받은 href·라벨 키 그대로 선다", async () => {
+    const { container } = await render(h(PublicShell, { cta: publicCta("ok"), children: h("p", null, "body") }));
+    const primary = container.querySelector("header > div a");
+    expect(m.landing.shell.openMalmoi).toBe("Open Malmoi");
+    expect([primary?.textContent, primary?.getAttribute("href")]).toEqual([m.landing.shell.openMalmoi, routes.projects()]);
   });
 });
 
@@ -142,8 +157,8 @@ describe("푸터 링크 — `/signin`과 한 목록", () => {
   });
 });
 
-describe("랜딩 셸 — 소스 계약", () => {
-  const DIR = join(process.cwd(), "components/landing/shell");
+describe("공개 셸 — 소스 계약", () => {
+  const DIR = join(process.cwd(), "components/public-shell");
   const files = readdirSync(DIR).filter((name) => name.endsWith(".tsx"));
   const read = (name: string) => readFileSync(join(DIR, name), "utf8");
   const all = files.map(read).join("\n");
