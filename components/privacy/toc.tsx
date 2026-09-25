@@ -76,6 +76,9 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     scroller.scrollTo({ top: topOf(target, scroller) - LAND_OFFSET, behavior: reduced ? "auto" : "smooth" });
     history.replaceState(null, "", `#${id}`);
+    // ⚠️ preventDefault가 fragment 이동의 포커스 이동까지 막는다 — 안 옮기면 키보드·스크린리더가 목차에 남는다.
+    // `preventScroll` — 포커스가 smooth 스크롤을 끊고 즉시 점프시키지 않게 한다.
+    target.focus({ preventScroll: true });
   };
 
   return (

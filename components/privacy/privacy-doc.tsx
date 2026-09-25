@@ -28,8 +28,11 @@ export function PrivacyDoc() {
           // 이름 없는 `<section>`을 두지 않는다 (POSTMORTEM 2026-09-15) — 이름은 `<h2 id>`가 댄다.
           // `[&_a]:`가 사전이 맨몸으로 내놓는 `<a>`에 색을 건다 (§6.3 — 셸 밖 링크는 파랑, 밑줄 없음).
           <section key={section.id} aria-labelledby={section.id} className={`${index === 0 ? "mt-12" : "mt-14"} [&_a]:text-blue-600`}>
-            {/* `scroll-mt-12` — 하드 해시 착지도 목차 클릭과 같은 48 아래에 선다. */}
-            <h2 id={section.id} className="m-0 scroll-mt-12 text-2xl leading-[1.4] font-medium">
+            {/*
+              `scroll-mt-12` — 하드 해시 착지도 목차 클릭과 같은 48 아래에 선다.
+              `tabIndex={-1}` — 목차가 누른 절로 포커스를 옮긴다(`toc.tsx`). 조작 대상이 아니라 링을 그리지 않는다.
+            */}
+            <h2 id={section.id} tabIndex={-1} className="m-0 scroll-mt-12 text-2xl leading-[1.4] font-medium focus:outline-none">
               {section.heading}
             </h2>
             {section.blocks.map((block, blockIndex) =>

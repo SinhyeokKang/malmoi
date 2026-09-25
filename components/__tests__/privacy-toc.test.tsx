@@ -70,7 +70,7 @@ afterEach(() => { HTMLElement.prototype.getBoundingClientRect = originalRect; })
 async function mount() {
   const { container, rerender } = await render(
     <div data-testid="scroller" data-public-scroller="">
-      {ITEMS.map((item) => <h2 key={item.id} id={item.id}>{item.heading}</h2>)}
+      {ITEMS.map((item) => <h2 key={item.id} id={item.id} tabIndex={-1}>{item.heading}</h2>)}
       <Toc label="On this page" items={ITEMS} />
     </div>,
   );
@@ -141,6 +141,18 @@ describe("Toc — 클릭", () => {
     expect(event.defaultPrevented).toBe(true);
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 1400 - 48, behavior: "smooth" });
     expect(replace).toHaveBeenCalledWith(null, "", "#cookies");
+    replace.mockRestore();
+  });
+
+  /** 네이티브 fragment 이동은 포커스 시작점도 옮긴다 — preventDefault가 그것까지 막으면 키보드가 목차에 남는다. */
+  it("포커스가 그 절 제목으로 옮겨 가고, 포커스가 스크롤을 건드리지 않는다", async () => {
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    const { replace } = await click(false);
+    expect(document.activeElement?.id).toBe("cookies");
+    const target = document.getElementById("cookies");
+    const calls = focus.mock.contexts.flatMap((self, index) => (self === target ? [focus.mock.calls[index]] : []));
+    expect(calls).toEqual([[{ preventScroll: true }]]);
+    focus.mockRestore();
     replace.mockRestore();
   });
 

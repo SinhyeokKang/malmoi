@@ -29,6 +29,15 @@ describe("PrivacyDoc — 구조", () => {
     expect(sections).toHaveLength(7);
   });
 
+  /** 목차가 누른 절로 포커스를 옮긴다(`toc.tsx`) — 제목이 포커스를 받을 수 있어야 하고 링을 그리지 않는다. */
+  it("절 제목이 프로그램 포커스를 받는다", async () => {
+    const { container } = await doc();
+    for (const h2 of container.querySelectorAll("h2")) {
+      expect(h2.getAttribute("tabindex")).toBe("-1");
+      expect(h2.className).toContain("focus:outline-none");
+    }
+  });
+
   it("시행일이 라벨과 함께 `<time dateTime>`으로 선다", async () => {
     const { container } = await doc();
     const time = find(container, "time");
