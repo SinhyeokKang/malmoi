@@ -12,8 +12,9 @@ type Five<T> = readonly [T, T, T, T, T];
  * ⚠️ **프레임마다 setState하지 않는다** — 씬 DOM이 수천 노드라 재조정이 스크롤을 먹는다. 스크롤 → rAF에서
  * `frame()`(순수) → ref로 transform·opacity·`data-*`·텍스트 노드를 직접 쓴다. 이 컴포넌트는 한 번 렌더된다.
  *
- * ⚠️ **SSR·JS 없음에서는 접혀 있다** — 배율이 없으면 1280 캔버스가 패널을 넘치므로 씬 레이어가 opacity 0이고,
- * 트랙은 `data-ready`가 선 뒤에만 `6H`를 갖는다(그 전엔 패널 1개 높이 — 빈 세로 구간이 남지 않는다).
+ * ⚠️ **SSR·JS 없음에서는 접혀 있고 프레임이 보이지 않는다** — 배율이 없으면 베젤·그림자가 1304×744로 서서 패널을 넘치고
+ * CTA까지 덮으므로 프레임·크롬이 `invisible`이다. 트랙은 `data-ready`가 선 뒤에만 `6H`를 갖는다(그 전엔 패널 1개 높이 —
+ * 빈 세로 구간이 남지 않는다). `data-ready`가 `group/track`으로 둘을 보이게 한다.
  *
  * 씬(`scenes`)은 서버 컴포넌트가 그린 정적 DOM이다. 목업이 스크롤에 반응하는 자리는 둘뿐이다 —
  * `[data-landing-typed]`의 텍스트(타이핑 접두)와 프레임의 `data-badge`(`group-data-[badge=1]/frame:`로 읽는다).
@@ -116,10 +117,22 @@ export function Stage({
       }
     };
 
+    /**
+     * ⚠️ **트랙 높이가 H에 비례하므로** 리사이즈 뒤 scrollTop을 그대로 두면 q가 튄다 — 씬 ③을 보던 사람이
+     * 창을 키우면 씬 ②로 되감긴다. 고정 구간 안이면 직전 q를 새 H로 되돌려 놓는다.
+     *
+     * ⚠️ **보존은 관찰자 콜백이 아니라 여기서 한다** — 콜백은 레이아웃 뒤, rAF는 레이아웃 전에 돌아서 드래그 리사이즈에서는
+     * 틱이 새 H를 먼저 읽는다. 콜백에서 하면 틱이 `lastH`를 덮은 뒤라 "바뀐 것 없음"으로 건너뛰었다(702 → 902가 q 2.3을 1.8로).
+     */
     const tick = () => {
       pending = 0;
       const W = scroller.clientWidth;
       const H = scroller.clientHeight;
+      if (ready && lastH > 0 && H !== lastH) {
+        const q = (scroller.scrollTop - lastStageTop) / lastH;
+        setStageH(H);
+        if (q > 0 && q <= 5) scroller.scrollTop = stageTopOf() + q * H;
+      }
       setStageH(H);
       const stageTop = stageTopOf();
       paint(frameAt({ scrollTop: scroller.scrollTop, stageTop, W, H, reducedMotion: reduced }));
@@ -136,20 +149,6 @@ export function Stage({
       pending = requestAnimationFrame(tick);
     };
 
-    /**
-     * ⚠️ **트랙 높이가 H에 비례하므로** 리사이즈 뒤 scrollTop을 그대로 두면 q가 튄다 — 씬 ③을 보던 사람이
-     * 창을 키우면 씬 ②로 되감긴다. 고정 구간 안이면 직전 q를 새 H로 되돌려 놓는다.
-     */
-    const onResize = () => {
-      const H = scroller.clientHeight;
-      if (ready && lastH > 0 && H !== lastH) {
-        const q = (scroller.scrollTop - lastStageTop) / lastH;
-        setStageH(H);
-        if (q > 0 && q <= 5) scroller.scrollTop = stageTopOf() + q * H;
-      }
-      schedule();
-    };
-
     const onMotion = () => {
       reduced = motion.matches;
       schedule();
@@ -157,7 +156,7 @@ export function Stage({
 
     scroller.addEventListener("scroll", schedule, { passive: true });
     motion.addEventListener("change", onMotion);
-    const observer = new ResizeObserver(onResize);
+    const observer = new ResizeObserver(schedule);
     observer.observe(scroller);
     // 웹폰트가 들어오면 히어로 높이(= stageTop)가 바뀐다 — 스크롤 없이도 한 번 다시 그린다.
     void document.fonts?.ready.then(schedule);
@@ -178,20 +177,21 @@ export function Stage({
       <section
         ref={trackRef}
         aria-label={label}
-        className="relative mt-30 h-[var(--landing-stage-h,calc(100svh-98px))] data-[ready]:h-[calc(6*var(--landing-stage-h))]"
+        className="group/track relative mt-30 h-[var(--landing-stage-h,calc(100svh-98px))] data-[ready]:h-[calc(6*var(--landing-stage-h))]"
       >
         <ol className="sr-only">
           {captions.map((text) => (
             <li key={text}>{text}</li>
           ))}
         </ol>
-        <div className="sticky top-0 h-[var(--landing-stage-h,calc(100svh-98px))]">
+        {/* ⚠️ 투명하지만 positioned라 음수 margin으로 끌어올린 CTA 위에 칠해진다 — 포인터를 통과시킨다(세로 긴 뷰포트에서 CTA가 안 눌렸다). */}
+        <div className="pointer-events-none sticky top-0 h-[var(--landing-stage-h,calc(100svh-98px))]">
           <div
             ref={frameRef}
             data-landing-frame=""
             aria-hidden="true"
             inert
-            className="group/frame absolute top-0 left-0 h-[720px] w-[1280px] origin-top-left"
+            className="group/frame invisible absolute top-0 left-0 h-[720px] w-[1280px] origin-top-left group-data-[ready]/track:visible"
           >
             {/* radius·그림자 값은 트윈하지 않는다 — 레이어 셋의 opacity 교차로 모서리가 24 → 12로 바뀌어 보인다(시안 1b). */}
             <div ref={shadowIdleRef} className="absolute -inset-3 rounded-3xl shadow-medium" />
@@ -212,7 +212,7 @@ export function Stage({
               ))}
             </div>
           </div>
-          <div ref={chromeRef} aria-hidden="true" className="absolute inset-x-0 top-0 flex h-7 items-center justify-center gap-4 opacity-0">
+          <div ref={chromeRef} aria-hidden="true" className="invisible absolute inset-x-0 top-0 flex h-7 items-center justify-center gap-4 opacity-0 group-data-[ready]/track:visible">
             <div className="flex gap-1.5">
               {captions.map((text, k) => (
                 <span key={text} className="block h-[3px] w-6 overflow-hidden rounded-full bg-foreground/10">
