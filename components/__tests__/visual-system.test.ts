@@ -220,14 +220,20 @@ describe("글자 크기·자간·radius는 스케일이 든다 (audit #45·#46·
   });
 
   /**
-   * ⚠️ **남은 여덟은 §6.67의 예외다** — 계정 라벨 셋 · 공유 `PanelCard` 넷 · 모달 제목 하나. 번역 작업 화면의
+   * ⚠️ **남은 여덟은 §6.67의 예외다** — 계정 라벨 셋 · 공유 `PanelCard` 넷 · 모달 제목 하나. 아홉째는 `/privacy` 표의
+   * 0.015em(2026-09-26, 시안 Prototype `isPrivacy` — DESIGN §6.616, malmoi#116)이다. 번역 작업 화면의
    * 스물하나는 크기 토큰과 같은 값을 되적거나(`text-xs tracking-[0.02em]`) 토큰 값을 덮었다(`text-sm tracking-[0.015em]`).
    */
-  it("`tracking-*`가 §6.67의 여덟뿐이다", () => {
+  it("`tracking-*`가 등재된 아홉뿐이다 — §6.67의 여덟 + `/privacy` 표", () => {
     const found = hits(/(?<![\w-])tracking-[\w[\].-]+/g);
     const byFile: Record<string, number> = {};
     for (const { path } of found) byFile[path] = (byFile[path] ?? 0) + 1;
-    expect(byFile).toEqual({ "app/(edit)/account/page.tsx": 3, "components/ui/panel-card.tsx": 4, "components/ui/modal.tsx": 1 });
+    expect(byFile).toEqual({
+      "app/(edit)/account/page.tsx": 3,
+      "components/ui/panel-card.tsx": 4,
+      "components/ui/modal.tsx": 1,
+      "components/privacy/privacy-doc.tsx": 1,
+    });
   });
 
   it("`rounded-[10px]`가 0이다 — `rounded-md`가 같은 값이다", () => {
