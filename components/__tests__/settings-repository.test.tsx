@@ -86,7 +86,7 @@ it.each(["unavailable", "unauthorized", "repo-forbidden"])("목록 조회 %s 실
 });
 it("조회 중에는 저장을 막고 완료 뒤에도 현재값을 유지한다", async () => {
   let finish!: (value: unknown) => void;
-  branches.listRepoBranches.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  branches.listProjectBranches.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
   const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="dev" />);
   expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
   expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
@@ -95,11 +95,11 @@ it("조회 중에는 저장을 막고 완료 뒤에도 현재값을 유지한다
 });
 it("보관된 프로젝트는 목록을 조회하지 않고 저장을 막는다", async () => {
   const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="dev" disabled />);
-  expect(branches.listRepoBranches).not.toHaveBeenCalled();
+  expect(branches.listProjectBranches).not.toHaveBeenCalled();
   expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
 });
 it("목록이 잘렸으면 생성 화면처럼 입력으로 전환한다", async () => {
-  branches.listRepoBranches.mockResolvedValueOnce({ ok: true, names: ["main"], defaultBranch: "main", truncated: true });
+  branches.listProjectBranches.mockResolvedValueOnce({ ok: true, names: ["main"], defaultBranch: "main", truncated: true });
   const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="release" />);
   const field = container.querySelector<HTMLInputElement>("#base-branch")!;
   expect(field.value).toBe("release");
@@ -128,7 +128,7 @@ it("Base branch 라벨은 보관 갈래의 문단을 for로 가리키지 않는�
   expect(container.querySelector("#base-branch-label")!.hasAttribute("for")).toBe(false);
 });
 it("Base branch 라벨은 조회 중 없는 대상을 가리키지 않는다", async () => {
-  branches.listRepoBranches.mockReturnValue(new Promise(() => {}));
+  branches.listProjectBranches.mockReturnValue(new Promise(() => {}));
   const { container } = await render(<RepositoryForm owner="acme" repo="web" slug="acme" baseBranch="main" />);
   expect(container.querySelector("#base-branch")).toBeNull();
   expect(container.querySelector("#base-branch-label")!.hasAttribute("for")).toBe(false);

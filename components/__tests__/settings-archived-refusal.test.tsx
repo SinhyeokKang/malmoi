@@ -20,13 +20,13 @@ import { input, render } from "./helpers/dom";
 const actions = vi.hoisted(() => ({
   updateProjectName: vi.fn(), uploadProjectImage: vi.fn(), deleteProjectImage: vi.fn(),
   updateRepositorySettings: vi.fn(), connectRepository: vi.fn(),
-  listRepoBranches: vi.fn(), rotatePushToken: vi.fn(),
+  listProjectBranches: vi.fn(), rotatePushToken: vi.fn(),
 }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => actions);
 vi.mock("@/app/(edit)/projects/actions", () => actions);
 beforeEach(() => {
   vi.resetAllMocks();
-  actions.listRepoBranches.mockResolvedValue({ ok: true, names: ["main", "dev"], defaultBranch: "main", truncated: false });
+  actions.listProjectBranches.mockResolvedValue({ ok: true, names: ["main", "dev"], defaultBranch: "main", truncated: false });
 });
 
 const button = (label: string) => [...document.querySelectorAll("button")].find(b => b.textContent?.includes(label))!;

@@ -17,7 +17,7 @@ import { render } from "./helpers/dom";
  */
 const mocks = vi.hoisted(() => ({
   updateProjectName: vi.fn(), uploadProjectImage: vi.fn(), deleteProjectImage: vi.fn(), updateRepositorySettings: vi.fn(), connectRepository: vi.fn(),
-  listRepoBranches: vi.fn(), rotatePushToken: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn(),
+  listProjectBranches: vi.fn(), rotatePushToken: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn(),
   changeMember: vi.fn(), revokeInvitation: vi.fn(), resendInvitation: vi.fn(), disconnectGithub: vi.fn(), startGithubConnectForUser: vi.fn(),
   unlinkLoginMethod: vi.fn(), startLoginMethodConnect: vi.fn(), updateProfileName: vi.fn(),
 }));
@@ -26,7 +26,7 @@ vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({
   updateRepositorySettings: mocks.updateRepositorySettings, connectRepository: mocks.connectRepository,
 }));
 vi.mock("@/app/(edit)/projects/actions", () => ({
-  listRepoBranches: mocks.listRepoBranches, rotatePushToken: mocks.rotatePushToken, archiveProject: mocks.archiveProject, unarchiveProject: mocks.unarchiveProject,
+  listProjectBranches: mocks.listProjectBranches, rotatePushToken: mocks.rotatePushToken, archiveProject: mocks.archiveProject, unarchiveProject: mocks.unarchiveProject,
   changeMember: mocks.changeMember, revokeInvitation: mocks.revokeInvitation, resendInvitation: mocks.resendInvitation,
   disconnectGithub: mocks.disconnectGithub, startGithubConnectForUser: mocks.startGithubConnectForUser,
 }));
@@ -98,7 +98,7 @@ describe("폼 [Save] — 끝난 뒤 착지 (#32)", () => {
   });
 
   it("Base branch 저장이 성공하면 브랜치 필드로 돌아온다", async () => {
-    mocks.listRepoBranches.mockResolvedValue({ ok: true, names: ["main", "dev"], defaultBranch: "main", truncated: false });
+    mocks.listProjectBranches.mockResolvedValue({ ok: true, names: ["main", "dev"], defaultBranch: "main", truncated: false });
     const ok = deferred<{ ok: true }>();
     mocks.updateRepositorySettings.mockReturnValue(ok.promise);
     const { container } = await render(<RepositoryForm owner="acme" repo="web" slug="acme" baseBranch="main" />);

@@ -857,6 +857,41 @@ export async function listRepoBranches(raw: { owner: string; repo: string }): Pr
   return { ok: true, names: list.names, defaultBranch: access.defaultBranch, truncated: list.truncated };
 }
 
+export type ProjectBranchesResult = BranchesResult | { ok: false; error: AccessError };
+
+/**
+ * **연결된 프로젝트 설정의 브랜치 목록** (malmoi#123). `listRepoBranches`는 온보딩 ①이라 리포 쓰기 권한을 요구하는데
+ * (토큰을 받을 사람이다 — sec-audit-3 1a), 설정의 Base branch 목록은 **읽기**다: 저장(`updateRepositorySettings`)도
+ * 쓰기 권한을 요구하지 않고 기존 프로젝트에는 소급하지 않는다. 그래서 `requirePush: false`로 부른다(Sync와 같은 예외).
+ *
+ * ⚠️ **클라이언트가 보낸 owner/repo·플래그로 가르지 않는다** — 그러면 ①이 같은 플래그로 쓰기 확인을 건너뛸 수 있다.
+ * 프로젝트 slug로 인가(`project:settings`)하고 리포는 **저장된 행**에서 읽으며, 확인한 리포 id를 고정된
+ * `Project.repositoryId`와 대조한다.
+ */
+export async function listProjectBranches(raw: { slug: string }): Promise<ProjectBranchesResult> {
+  const parsed = SlugOnlyInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug: parsed.data.slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  const project = await prisma.project.findUnique({
+    where: { id: access.projectId },
+    select: { repoOwner: true, repoName: true, installationId: true, repositoryId: true },
+  });
+  if (project === null) return { ok: false, error: "not-found" };
+  if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "repo-not-installed" };
+  const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName, false);
+  if (repo.status !== "ok") return { ok: false, error: repo.error };
+  if (repo.repositoryId !== project.repositoryId) return { ok: false, error: "repo-forbidden" };
+
+  const list = await listBranches(repo.repoOwner, repo.repoName, repo.installationId, repo.repositoryId);
+  if (list.status !== "ok") return { ok: false, error: "unavailable", defaultBranch: repo.defaultBranch };
+  return { ok: true, names: list.names, defaultBranch: repo.defaultBranch, truncated: list.truncated };
+}
+
 export type SampleResult =
   | { ok: true; rows: SampleRow[]; total: number }
   | { ok: false; error: OnboardFailure };
