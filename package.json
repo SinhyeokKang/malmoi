@@ -36,7 +36,8 @@
     "test:credentials:postgres": "vitest run --config vitest.credentials.config.ts",
     "test:projects:postgres": "vitest run --config vitest.projects.config.ts",
     "credentials:finalize:dev": "CREDENTIAL_TARGET=dev NODE_OPTIONS=--conditions=react-server tsx scripts/finalize-credentials.ts",
-    "credentials:finalize:prod": "CREDENTIAL_TARGET=prod NODE_OPTIONS=--conditions=react-server tsx scripts/finalize-credentials.ts"
+    "credentials:finalize:prod": "CREDENTIAL_TARGET=prod NODE_OPTIONS=--conditions=react-server tsx scripts/finalize-credentials.ts",
+    "release:plan": "tsx scripts/release-plan.ts"
   },
   "devDependencies": {
     "@testing-library/user-event": "14.6.1",
