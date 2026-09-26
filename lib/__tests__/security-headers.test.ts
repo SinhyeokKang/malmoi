@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCsp, cspEnvironment, securityHeaders } from "../security-headers";
+import { buildCsp, cspEnvironment, isBlobPublicHost, securityHeaders } from "../security-headers";
 
 /**
  * **CSP는 enforce다** (2026-09-24, audit #75 round 1 — 사용자 판정 "보안 강하게"). 정책은 환경 셋으로 갈린다:
@@ -19,15 +19,62 @@ describe("cspEnvironment", () => {
   });
 });
 
+/** 테스트용 스토어 호스트 — 모양만 맞으면 된다. */
+const BLOB = "abc123xyz.public.blob.vercel-storage.com";
+
+describe("isBlobPublicHost (sec-audit-3 #12)", () => {
+  it("Vercel Blob 공개 호스트 하나의 모양만 받는다", () => {
+    expect(isBlobPublicHost(BLOB)).toBe(true);
+    expect(isBlobPublicHost("0a.public.blob.vercel-storage.com")).toBe(true);
+  });
+
+  it.each([
+    ["와일드카드", "*.public.blob.vercel-storage.com"],
+    ["스킴 포함", "https://abc.public.blob.vercel-storage.com"],
+    ["경로 포함", "abc.public.blob.vercel-storage.com/x"],
+    ["대문자", "ABC.public.blob.vercel-storage.com"],
+    ["하위 라벨 둘", "a.b.public.blob.vercel-storage.com"],
+    ["다른 도메인 접미", "abc.public.blob.vercel-storage.com.evil.test"],
+    ["CSP 지시어 주입", "abc.public.blob.vercel-storage.com; script-src *"],
+    ["공백 주입", "abc.public.blob.vercel-storage.com https://evil.test"],
+    ["끝 개행", "abc.public.blob.vercel-storage.com\n"],
+    ["빈 라벨", ".public.blob.vercel-storage.com"],
+    ["빈 문자열", ""],
+  ])("%s는 거부한다", (_label, host) => {
+    expect(isBlobPublicHost(host)).toBe(false);
+  });
+});
+
+describe("buildCsp — Blob 호스트 (sec-audit-3 #12)", () => {
+  const imgSrc = (blobHost: string | undefined) => directive(buildCsp("production", { blobHost }), "img-src");
+
+  it("이 환경의 스토어 하나만 연다 — 와일드카드는 어느 환경에도 없다", () => {
+    expect(imgSrc(BLOB)).toContain(`https://${BLOB}`);
+    for (const env of ["production", "preview", "development"] as const) {
+      expect(buildCsp(env, { blobHost: BLOB })).not.toContain("*.public.blob.vercel-storage.com");
+    }
+  });
+
+  it("없으면 Blob 호스트를 넣지 않는다 — fail-closed", () => {
+    expect(imgSrc(undefined).some((s) => s.includes("blob.vercel-storage.com"))).toBe(false);
+  });
+
+  it("모양이 틀린 값은 없는 것으로 친다 — 정책에 한 글자도 새지 않는다", () => {
+    const csp = buildCsp("production", { blobHost: "abc.public.blob.vercel-storage.com; script-src *" });
+    expect(csp).not.toContain("blob.vercel-storage.com");
+    expect(csp).toBe(buildCsp("production", { blobHost: undefined }));
+  });
+});
+
 describe("buildCsp", () => {
-  const prod = buildCsp("production");
+  const prod = buildCsp("production", { blobHost: BLOB });
 
   it("프로덕션 기준 지시어 — 현재 흐름이 쓰는 호스트만 연다", () => {
     expect(directive(prod, "default-src")).toEqual(["'self'"]);
     expect(directive(prod, "script-src")).toEqual(["'self'", "'unsafe-inline'"]);
     expect(directive(prod, "style-src")).toEqual(["'self'", "'unsafe-inline'"]);
     expect(directive(prod, "font-src")).toEqual(["'self'"]);
-    expect(directive(prod, "img-src")).toEqual(["'self'", "data:", "https://avatars.githubusercontent.com", "https://lh3.googleusercontent.com", "https://*.public.blob.vercel-storage.com"]);
+    expect(directive(prod, "img-src")).toEqual(["'self'", "data:", "https://avatars.githubusercontent.com", "https://lh3.googleusercontent.com", `https://${BLOB}`]);
     expect(directive(prod, "connect-src")).toEqual(["'self'"]);
     // ⚠️ Google 로그인은 폼 POST → 302 `accounts.google.com`이다 — `form-action`은 그 리다이렉트에도 걸린다.
     expect(directive(prod, "form-action")).toEqual(["'self'", "https://github.com", "https://accounts.google.com"]);
@@ -44,7 +91,7 @@ describe("buildCsp", () => {
   });
 
   it("dev는 eval과 HMR 웹소켓만 더한다", () => {
-    const dev = buildCsp("development");
+    const dev = buildCsp("development", { blobHost: BLOB });
     expect(directive(dev, "script-src")).toEqual(["'self'", "'unsafe-inline'", "'unsafe-eval'"]);
     expect(directive(dev, "connect-src")).toEqual(["'self'", "ws:", "wss:"]);
     expect(dev).not.toContain("vercel.live");
@@ -52,7 +99,7 @@ describe("buildCsp", () => {
   });
 
   it("preview는 Vercel Toolbar 문서의 호스트를 더하고 eval은 없다", () => {
-    const preview = buildCsp("preview");
+    const preview = buildCsp("preview", { blobHost: BLOB });
     expect(preview).not.toContain("'unsafe-eval'");
     expect(directive(preview, "script-src")).toContain("https://vercel.live");
     expect(directive(preview, "connect-src")).toEqual(expect.arrayContaining(["https://vercel.live", "wss://ws-us3.pusher.com"]));
@@ -68,12 +115,12 @@ describe("buildCsp", () => {
 
 describe("securityHeaders", () => {
   it.each(["production", "preview", "development"] as const)("%s — CSP 헤더가 정확히 하나이고 Report-Only는 없다", (env) => {
-    const headers = securityHeaders(env);
-    expect(headers.filter((h) => h.key.toLowerCase() === "content-security-policy")).toEqual([{ key: "Content-Security-Policy", value: buildCsp(env) }]);
+    const headers = securityHeaders(env, { blobHost: BLOB });
+    expect(headers.filter((h) => h.key.toLowerCase() === "content-security-policy")).toEqual([{ key: "Content-Security-Policy", value: buildCsp(env, { blobHost: BLOB }) }]);
     expect(headers.some((h) => h.key.toLowerCase() === "content-security-policy-report-only")).toBe(false);
   });
 
   it("HSTS는 하위 도메인까지 묶고 preload를 선언한다 — 목록 제출은 사람의 몫이다", () => {
-    expect(securityHeaders("production").find((h) => h.key === "Strict-Transport-Security")?.value).toBe("max-age=63072000; includeSubDomains; preload");
+    expect(securityHeaders("production", { blobHost: undefined }).find((h) => h.key === "Strict-Transport-Security")?.value).toBe("max-age=63072000; includeSubDomains; preload");
   });
 });

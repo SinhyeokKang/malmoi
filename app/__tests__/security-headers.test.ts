@@ -54,7 +54,13 @@ describe("보안 응답 헤더 (sec-audit 9 · audit #75)", () => {
     vi.stubEnv("NODE_ENV", nodeEnv);
     if (vercelEnv === undefined) vi.stubEnv("VERCEL_ENV", "");
     else vi.stubEnv("VERCEL_ENV", vercelEnv);
-    expect(valueOf(await all(), "Content-Security-Policy")).toBe(buildCsp(expected));
+    vi.stubEnv("BLOB_PUBLIC_HOST", "abc123.public.blob.vercel-storage.com");
+    expect(valueOf(await all(), "Content-Security-Policy")).toBe(buildCsp(expected, { blobHost: "abc123.public.blob.vercel-storage.com" }));
+  });
+
+  it("`BLOB_PUBLIC_HOST`가 없으면 Blob 호스트가 정책에 없다 — fail-closed (sec-audit-3 #12)", async () => {
+    vi.stubEnv("BLOB_PUBLIC_HOST", "");
+    expect(valueOf(await all(), "Content-Security-Policy")).not.toContain("blob.vercel-storage.com");
   });
 });
 
@@ -64,7 +70,7 @@ describe("보안 응답 헤더 (sec-audit 9 · audit #75)", () => {
  */
 describe("`/docs` 원고 이미지 — 같은 origin", () => {
   it.each(["production", "preview", "development"] as const)("%s 정책의 img-src가 'self'를 든다", (env) => {
-    const imgSrc = buildCsp(env).split(";").map((part) => part.trim()).find((part) => part.startsWith("img-src "));
+    const imgSrc = buildCsp(env, { blobHost: undefined }).split(";").map((part) => part.trim()).find((part) => part.startsWith("img-src "));
     expect(imgSrc?.split(/\s+/)).toContain("'self'");
   });
 });
