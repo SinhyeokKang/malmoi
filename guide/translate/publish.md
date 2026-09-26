@@ -1,17 +1,30 @@
-# Publish
+# Publish your changes
 
-Preview saved translation changes and publish them to a pull request for your development team.
+Review saved translation changes and publish them for the development team to review in GitHub.
 
-Publish starts with a preview of the keys and languages that will be sent. The action uses saved values, shows an existing pull request when one is open, and reports the result in the same flow.
+Before you start: Save the values you want to publish. Publish includes all saved unpublished edits in the project, not only yours.
 
 ## Preview saved changes {#preview}
 
-Open Publish after saving. Review the key-by-language changes and the pull request state before the final action. If the list cannot be read, the Publish action is unavailable.
+1. Choose **Publish** in the project navigation. The header opens the preview.
+2. Review the keys and languages. The final button is **Open pull request**, or Replace pull request #N when one is already open.
+
+Malmoi puts the files into one change request (a *pull request* on GitHub). You do not need a GitHub account; the development team reviews and merges it.
 
 ## Publish the changes {#publish}
 
-Choose **Publish** to create or update the pull request. Editors can use **Publish**; repository review and merging remain with the development team. Unpublished edits are not silently discarded.
+Choose **Open pull request** or Replace pull request #N. If the files are already the same as the base branch, the action is Close pull request #N.
+
+If the action fails, your saved values are kept. Try again later or tell a project owner.
 
 ## Read the result {#result}
 
-The result tells you whether the pull request was created, updated, or could not start. A failure does not mark the values as sent. Return to the project list and open the project again when the message asks you to do so.
+The result can say **Nothing changed in the files**, **Not sent — some values can't be written to the files**, or N edits weren't sent. It can also say that an open pull request was closed, that GitHub did not answer, or **We couldn't confirm whether your changes were sent.** Check the project list before trying again.
+
+## Automatic publishing {#nightly}
+
+If you do not publish, saved changes are published automatically once a night. The same rules apply: new and removed keys wait while unpublished edits remain, and the next successful run updates the open pull request.
+
+## What happens next {#next}
+
+The development team reviews the pull request and merges it into the repository.

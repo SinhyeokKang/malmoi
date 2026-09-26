@@ -6,12 +6,18 @@ Project owners manage invitations and membership. An invited person accepts the 
 
 ## Choose a role {#roles}
 
-Choose Owner only for someone who should manage the repository connection, Sources, members, archive state, Sync, or Revert. Choose Editor for someone who needs to edit translations and Publish. The final Owner cannot be removed or demoted.
+Choose **Owner** only for someone who should manage the repository connection, Sources, members, archive state, Sync, or Revert. Choose **Editor** for someone who needs to edit translations and Publish. The final Owner cannot be removed or demoted.
 
 ## Send invitations {#invite}
 
-Enter one or more addresses and send the invitation email. The address and project limits are checked as one request. An email that fails to send still counts toward the hourly limit and can be sent again from Pending.
+1. Enter one or more addresses and choose the role.
+2. Send the invitation email. If any address would exceed a limit, no invitations are sent.
+3. A failed email still counts toward the hourly limit.
 
 ## Manage members {#members}
 
-Project owners can change a member's role, revoke a pending invitation, or resend it. Editors can read the project history but cannot manage members or project settings.
+Project owners can change a member's role, choose **Remove** for a member, revoke a **Pending** invitation, or resend it. A pending invitation's role cannot change; revoke it and invite the address again. See [Join a project](../translate/join.md) for the recipient's steps.
+
+## What happens next {#next}
+
+The recipient follows the invitation link and signs in with the invited address.

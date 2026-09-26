@@ -1,13 +1,19 @@
 # Undo and resync
 
-Project owners can restore the last sent translations or replace project values from the repository.
+Project owners can restore a saved value or replace project values from the repository.
 
-Revert and manual Sync are separate owner-only controls. Revert restores the selected key's last delivery-confirmed database value; Sync replaces project values with the repository. Neither compares the current repository value with the edited value to choose a winner.
+Before you start: Save or discard any open translation edit before using either owner-only control.
 
-## Revert to last sent {#revert}
+## Revert a value {#revert}
 
-Choose Revert to last sent for a selected key when its unsent cells should return to the last value included in a confirmed delivery. The server-issued confirmation is required, and the review flag remains until the value is reviewed again.
+Choose **Revert to last sent** for a key when its edited cells should return to the last value included in a published change. The current language values remain visible so you can review them.
 
 ## Sync from the repository {#resync}
 
-Use Sync only after confirming that editor work may be discarded. The server-issued approval fingerprint protects the action. Editors can see that this control is unavailable but cannot run it.
+Open **Sync** in the project settings. The confirmation dialog shows how many unpublished edits will be discarded. Choose **Sync from repository** to continue, or close the dialog to keep the edits. Editors can see this control but cannot use it.
+
+Sync replaces the project values with the repository values as one operation. If a base value is missing, the operation does not partially apply.
+
+## What happens next {#next}
+
+Run the workflow again after a manual Sync so the project reflects the current repository files.

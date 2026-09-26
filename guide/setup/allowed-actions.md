@@ -1,13 +1,24 @@
 # Allow the actions
 
-Allow the four required actions if your repository or organization restricts GitHub Actions.
+Allow the four actions used by the generated workflow when your repository or organization restricts GitHub Actions.
 
-The generated workflow invokes four actions. If the repository or organization allows only selected actions, allow each name with `@*`; an omission stops the run before the project can read its files.
+Before you start: Open the repository or organization Actions settings.
 
-## Required actions {#allowed-actions}
+## Allow the required actions {#allowed-actions}
 
-The list is `SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push`, `actions/checkout`, `pnpm/action-setup`, and `actions/setup-node`. The last two run inside Malmoi's action and therefore do not appear in your workflow file.
+1. Choose **Allow select actions** and add every action below with `@*`:
 
-## Check repository access {#repository-access}
+```text
+SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@*
+actions/checkout@*
+pnpm/action-setup@*
+actions/setup-node@*
+```
 
-If GitHub reports that an action is not allowed, update the repository or organization Actions policy and run the workflow again. The project token does not grant permission to change that policy.
+2. Save the policy and run the workflow again.
+
+When an action is blocked, the run stops at **Set up job** with “not allowed to be used.” The project token cannot change this GitHub policy.
+
+## What happens next {#next}
+
+The workflow can read the repository after all four actions are allowed. If the run still fails, read the reason in its GitHub Actions log.

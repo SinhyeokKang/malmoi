@@ -67,7 +67,17 @@ describe("실물 가이드 구조", () => {
     }
   });
 
-  it("작성 규약의 외부 라벨 표는 파싱 가능한 빈 허용 목록으로 시작한다", () => {
-    expect(parseMdTable(read("AUTHORING.md"), "external-labels")).toEqual([]);
+  it("작성 규약의 외부 라벨 표가 GitHub 라벨을 고정한다", () => {
+    expect(parseMdTable(read("AUTHORING.md"), "external-labels")).toEqual(expect.arrayContaining([
+      expect.objectContaining({ "라벨": "Settings" }),
+      expect.objectContaining({ "라벨": "Secrets and variables" }),
+      expect.objectContaining({ "라벨": "Actions" }),
+      expect.objectContaining({ "라벨": "New repository secret" }),
+      expect.objectContaining({ "라벨": "Allow select actions" }),
+      expect.objectContaining({ "라벨": "Set up job" }),
+      expect.objectContaining({ "라벨": "Repository access" }),
+      expect.objectContaining({ "라벨": "Choose repositories" }),
+      expect.objectContaining({ "라벨": "Only select repositories" }),
+    ]));
   });
 });

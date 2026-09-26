@@ -1,21 +1,25 @@
 # Edit translations
 
-Find a key, edit its translations, and save your changes before publishing.
+Open the translation screen, find a key, edit its language fields, and save the values before publishing.
 
-The translation screen shows the source text, the saved value for each language, and any review flag. Editors can search by key, source text, or the active language's saved value. A description is not part of the search.
+Before you start: Join a project and choose **Translations** in the project navigation.
 
 ## Find a key {#find-key}
 
-Start with This source. Choose a namespace to narrow the list to This namespace, then use the search field for a key or saved value. Clear filters resets completion, status, and scope while keeping the search and selected key.
+The table has one row per key. The first column shows the source text; the other columns show one language each. Use the search box to find a key by its name, its source text, or a translation.
+
+Choose **This source** to narrow the list, **This namespace** to narrow it further, or **Clear filters** to start over. The **State** filter includes **Not sent**, **Needs review**, and **New from GitHub**.
 
 ## Edit and save {#save}
 
-Edit the selected key and choose **Save**. Blur and Tab do not save a value; Escape restores the current input. Saving several languages sends them as one transaction, so a failed language leaves the whole edit unsaved.
+Type in the language fields and choose **Save**. Moving to another field does not save. Press Escape to undo what you typed. If any language fails to save, none of them are saved — try again. Press Ctrl+Enter or Cmd+Enter to save from a field.
 
-## Review flagged translations {#needs-review}
-
-Needs review marks a value whose source changed. It is a flag, not an approval stage. Read the updated source, edit the value when needed, and save it; saving does not claim that another person approved it.
+Saving clears **Needs review** for the languages you saved. Some non-base cells in YAML, TypeScript, and code-dictionary sources cannot be cleared; Malmoi keeps the existing value there.
 
 ## Leave unsaved changes {#unsaved-changes}
 
-If you change keys, filters, or pages with an unsaved edit, choose Keep editing or Discard changes. Publish uses saved changes only. Refreshing or closing the page can also ask the browser to confirm.
+If you change keys, filters, or pages with an unsaved edit, choose **Keep editing** or **Discard changes**. **Save** is locked while Publish is running. Refreshing or closing the page can also ask the browser to confirm.
+
+## What happens next {#next}
+
+Saved values appear in the Publish preview. Publish uses all saved unpublished edits in the project.

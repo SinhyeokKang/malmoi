@@ -6,7 +6,7 @@ The pull request contains the generated files from the project's base snapshot. 
 
 ## Merge the translation pull request {#merging}
 
-Squash, rebase, and merge commits are supported. The pull request is the review boundary; Malmoi does not merge competing translation values.
+Squash, rebase, and merge commits are supported. Malmoi adds `[skip-malmoi-i18n]` to the change. Keep it: removing it makes the workflow run again for no reason, and Malmoi adds it back if it is removed.
 
 ## Keep the loop marker {#skip-marker}
 

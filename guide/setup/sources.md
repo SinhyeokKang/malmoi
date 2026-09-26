@@ -1,17 +1,25 @@
 # Add sources
 
-Use **Sources** to add translation files and manage the base language for each source.
+Add more translation files later, or change a source's base language.
 
-Sources owns the files and the base language used for a project. Project owners can add a source and declare its base language; editors can read source status but cannot change project settings.
+Each source is one set of translation files in your repository. Project owners can add a source and declare its base language; translators (Editor role) can read source status but cannot change project settings.
 
 ## Open Sources {#sources}
 
-Open Sources from the project navigation. Each row shows whether the source has been read, whether its last sync failed, and which languages are available.
+Open **Sources** from the project navigation. Each row shows whether the source has been read, whether its last workflow failed, and which languages are available.
 
 ## Add sources {#add-sources}
 
-Choose detected files or enter a supported path. The entire selection is checked together, so a failed source does not leave a half-created project configuration.
+1. Choose detected files or enter a supported path.
+2. Add the source. A file can fail while the other files are added, so check each result.
+3. Update the workflow in **Settings** so it has a step for the new source; adding a source does not connect the workflow automatically.
 
 ## Change the base language {#base-language}
 
-Declare the language that supplies the source text. The change takes effect on the next repository sync. If unpublished edits are waiting, that sync waits until the edits are published or a project owner resolves them.
+1. Declare the language that supplies the source text.
+2. Edit the workflow's `base-locale:` value to match it.
+3. Run the workflow. If unpublished edits are waiting, the run waits until they are published or a project owner resolves them.
+
+## What happens next {#next}
+
+The next successful workflow run reads the source with its declared base language.
