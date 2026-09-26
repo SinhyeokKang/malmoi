@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 /**
  * shadcn/ui `new-york-v4` Table 기반 (2026-09-12).
  * 원본: https://ui.shadcn.com/r/styles/new-york-v4/table.json
+ * Portions Copyright (c) 2023 shadcn — MIT License (https://github.com/shadcn-ui/ui/blob/main/LICENSE.md)
  *
  * ⚠️ **프리셋이 둘이고 구현은 하나다.** 아래 `Th`·`Td`·`Tr`은 **별도 구현이 아니라** 이 파일의
  * `TableHead`·`TableCell`·`TableRow`를 감싼 프리셋이다 — 마크업·`data-slot`이 한 곳에서 나오므로
