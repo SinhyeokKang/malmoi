@@ -109,7 +109,7 @@ async function main(): Promise<void> {
     // ── 온보딩 경로: 스냅샷 + 2패스 탐지 (ARCHITECTURE §3.1) ──────────────────────────
     // ⚠️ **진입점으로 돈다** — 어댑터 API로만 검증하면 순위 픽스가 자기 단위 테스트만 통과하고 실제
     // 경로에서는 죽어 있을 수 있다 (POSTMORTEM 2026-09-02). 여기서 부르는 것은 `detectCandidatesAcross`다.
-    const reader = await openRepoReader(project.repoOwner, project.repoName, project.installationId);
+    const reader = await openRepoReader(project.repoOwner, project.repoName, project.installationId, project.repositoryId);
     const snapshot = await reader.snapshot(project.baseBranch);
     console.log(`\nreadRepoSnapshot: ${snapshot.status}`);
     if (snapshot.status === "ok") {

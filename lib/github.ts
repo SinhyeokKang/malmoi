@@ -58,6 +58,30 @@ function expiresSoon(auth: unknown): boolean {
   return Date.parse(auth.expiresAt) - Date.now() < TOKEN_MARGIN_MS;
 }
 
+/**
+ * 설치 토큰을 **그 리포 하나로 좁혀** 받아 고정 토큰 Octokit을 만든다. 쓰기(`createGitClient`)와 읽기(`openRepoReader`·
+ * `listBranches`)가 같은 조립을 지난다 — 읽기만 설치 전체 토큰이면 설치가 여러 리포를 덮을 때 저장된 이름이 가리키는
+ * 다른 리포를 읽을 수 있다 (sec-audit-3 #16). 이름이 옮겨가도 이 토큰으로는 pin 밖의 리포에 닿지 않는다 (sec-audit-2 발견 34).
+ *
+ * ⚠️ **App은 인자로 받는다** — 호출자가 `createApp()`을 한 번 부르고 넘긴다. 토큰 캐시가 App 인스턴스에 붙어 있어
+ * 여기서 새로 만들면 호출마다 발급 왕복이 는다 (POSTMORTEM 2026-09-16 · audit-ux #8).
+ */
+async function pinnedOctokit(app: App, installationId: string, repositoryId: string | null): Promise<{ octokit: Octokit; pinned: string }> {
+  const pinned = requirePinnedRepositoryId(repositoryId);
+  const scope = { type: "installation", installationId: Number(installationId), repositoryIds: [Number(pinned)] } as const;
+  let auth = await app.octokit.auth(scope);
+  /*
+    ⚠️ **토큰이 곧 만료되면 새로 받는다** (audit-ux #8 리뷰). App이 요청 사이에 남으면서 캐시(수명 59분)가 1분 남은
+    토큰을 줄 수 있고, 아래 Octokit은 그 토큰을 **고정으로** 들어 스스로 갱신하지 않는다 — 60초짜리 Publish·야간 pull이
+    도중에 401이면 브랜치만 밀리고 PR이 안 선다. 호출 하나의 수명(`maxDuration` 60초)보다 넉넉한 5분을 둔다.
+  */
+  if (expiresSoon(auth)) auth = await app.octokit.auth({ ...scope, refresh: true });
+  if (typeof auth !== "object" || auth === null || !("token" in auth) || typeof auth.token !== "string") {
+    fail("installation token unavailable");
+  }
+  return { octokit: new Octokit({ auth: auth.token }), pinned };
+}
+
 /** `null`을 주는 GitHub 404. 그 외 상태 코드는 그대로 던진다. */
 export function isNotFound(error: unknown): boolean {
   return httpStatus(error) === 404;
@@ -187,10 +211,10 @@ export type BranchList = { status: "ok"; names: string[]; truncated: boolean } |
 const BRANCH_PAGES = 3;
 const BRANCH_PER_PAGE = 100;
 
-export async function listBranches(owner: string, repo: string, installationId: string): Promise<BranchList> {
+export async function listBranches(owner: string, repo: string, installationId: string, repositoryId: string | null): Promise<BranchList> {
   const app = createApp();
   try {
-    const octokit = await app.getInstallationOctokit(Number(installationId));
+    const { octokit } = await pinnedOctokit(app, installationId, repositoryId);
     const names: string[] = [];
     for (let page = 1; page <= BRANCH_PAGES; page += 1) {
       const res = await octokit.request("GET /repos/{owner}/{repo}/branches", {
@@ -228,14 +252,16 @@ export async function openRepoReader(
   owner: string,
   repo: string,
   installationId: string,
+  repositoryId: string | null,
 ): Promise<RepoReader> {
   // ⚠️ **App을 한 번만 만든다.** `@octokit/auth-app`의 설치 토큰 캐시는 인스턴스마다 새로 생기므로,
   // 읽기마다 `createApp()`을 부르면 **매 호출에 `POST /app/installations/{id}/access_tokens`가 하나씩
   // 더 붙는다** — ARCHITECTURE §3.1의 예산(`ref 1 + tree 1 + blob ≤37`)이 2배가 되고, 50로케일 리포의 첫
   // 적재는 100회가 되어 `maxDuration=60`에서 잘린다 (code-review 2026-09-07 🔴2). `createGitClient`가
   // 클로저를 돌려주는 것과 같은 이유다.
+  // 토큰도 한 번만 받는다 — 리더 하나의 수명은 호출 하나라 만료 임박 갱신(`pinnedOctokit`) 한 번이면 충분하다.
   const app = createApp();
-  const octokit = await app.getInstallationOctokit(Number(installationId));
+  const { octokit } = await pinnedOctokit(app, installationId, repositoryId);
   const base = { owner, repo };
 
   return {
@@ -313,22 +339,7 @@ export async function createGitClient(
   installationId: string,
   repositoryId: string,
 ): Promise<GitClient> {
-  const app = createApp();
-  const pinned = requirePinnedRepositoryId(repositoryId);
-  // ⚠️ **토큰 범위도 그 리포 하나로 좁힌다.** 아래 대조는 `GET /repos`가 답한 시점의 사실이라,
-  // 그 뒤에 이름이 다시 옮겨가도 이 토큰으로는 다른 리포를 못 건드린다 (sec-audit-2 발견 34).
-  const scope = { type: "installation", installationId: Number(installationId), repositoryIds: [Number(pinned)] } as const;
-  let auth = await app.octokit.auth(scope);
-  /*
-    ⚠️ **토큰이 곧 만료되면 새로 받는다** (audit-ux #8 리뷰). App이 요청 사이에 남으면서 캐시(수명 59분)가 1분 남은
-    토큰을 줄 수 있고, 아래 Octokit은 그 토큰을 **고정으로** 들어 스스로 갱신하지 않는다 — 60초짜리 Publish·야간 pull이
-    도중에 401이면 브랜치만 밀리고 PR이 안 선다. 호출 하나의 수명(`maxDuration` 60초)보다 넉넉한 5분을 둔다.
-  */
-  if (expiresSoon(auth)) auth = await app.octokit.auth({ ...scope, refresh: true });
-  if (typeof auth !== "object" || auth === null || !("token" in auth) || typeof auth.token !== "string") {
-    fail("installation token unavailable");
-  }
-  const octokit = new Octokit({ auth: auth.token });
+  const { octokit, pinned } = await pinnedOctokit(createApp(), installationId, repositoryId);
   // 저장된 주소가 지금 무엇을 가리키는지 **쓰기 전에** 묻는다. 이름이 재사용됐으면 여기서 멈춘다.
   const identity = await octokit.request("GET /repos/{owner}/{repo}", { owner, repo });
   requireSameRepository(pinned, String(identity.data.id));

@@ -790,7 +790,7 @@ export async function detectRepoFormats(raw: {
   const access = await checkRepoAccess(prisma, userId, owner, repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
 
-  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
+  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
   const snapshot = await reader.snapshot(ref ?? access.defaultBranch);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
@@ -850,7 +850,7 @@ export async function listRepoBranches(raw: { owner: string; repo: string }): Pr
   const access = await checkRepoAccess(getPrisma(), userId, parsed.data.owner, parsed.data.repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
 
-  const list = await listBranches(access.repoOwner, access.repoName, access.installationId);
+  const list = await listBranches(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
   // 조회 실패는 ①을 막지 않는다 — 화면이 default branch 하나로 접고 그 사실을 말한다 (예외 D).
   if (list.status !== "ok") return { ok: false, error: "unavailable", defaultBranch: access.defaultBranch };
 
@@ -879,7 +879,7 @@ export async function loadCandidateSample(raw: {
   const { userId } = session;
   const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
-  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
+  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
@@ -937,7 +937,7 @@ export async function confirmManualFormat(raw: {
   const { userId } = session;
   const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
-  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
+  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
   const paths = snapshot.files.map((file) => file.path);
@@ -1041,7 +1041,7 @@ export async function createProject(raw: {
   });
   if (plan.status !== "ok") return { ok: false, error: plan.status };
 
-  const reader = await openRepoReader(plan.repoOwner, plan.repoName, plan.installationId);
+  const reader = await openRepoReader(plan.repoOwner, plan.repoName, plan.installationId, access.repositoryId);
   // ⚠️ **탐지와 저장이 같은 ref여야 한다** — 다른 트리로 재검증하면 통과한 포맷이 저장 브랜치에 없을 수 있다.
   const baseBranch = input.baseBranch;
   const snapshot = await reader.snapshot(baseBranch);
@@ -1247,6 +1247,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
       repoName: true,
       baseBranch: true,
       installationId: true,
+      repositoryId: true,
       archivedAt: true,
       defaultSurface: true,
     },
@@ -1332,7 +1333,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
   };
 
   try {
-    const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
+    const reader = await openRepoReader(project.repoOwner, project.repoName, installationId, project.repositoryId);
     const snapshot = await reader.snapshot(project.baseBranch);
     if (snapshot.status !== "ok") {
       await failRun();
@@ -1445,10 +1446,10 @@ export async function runRepositoryImport(raw: { slug: string; approval: string 
     const connected = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName, false);
     if (connected.status !== "ok") return await refuse(connected.error);
     if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return await refuse("repo-replaced");
-    const installationId = project.installationId;
+    const { installationId, repositoryId } = project;
     return await runRepositoryImportFromReader(prisma, { projectId: access.projectId, userId: session.userId, approval,
-      repository: { repositoryId: project.repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
-    }, () => openRepoReader(project.repoOwner, project.repoName, installationId));
+      repository: { repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
+    }, () => openRepoReader(project.repoOwner, project.repoName, installationId, repositoryId));
   } catch (error) {
     logFailure("repository-import-action", error);
     return { ok: false, error: "ingest-failed" };
@@ -1830,7 +1831,7 @@ export async function addSurfaces(raw: { slug: string; picks: { adapter: string;
     const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName, true);
     if (repo.status !== "ok") return { ok: false, error: repo.error };
     if (repo.repositoryId !== project.repositoryId || repo.installationId !== project.installationId) return { ok: false, error: "repo-replaced" };
-    const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId);
+    const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId, repo.repositoryId);
     const snapshot = await reader.snapshot(project.baseBranch);
     if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
     const paths = snapshot.files.map(file => file.path);
