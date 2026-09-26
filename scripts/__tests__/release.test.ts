@@ -119,13 +119,18 @@ describe("nextVersion", () => {
   });
 });
 
+type PlanInput = Parameters<typeof planRelease>[0];
+/** 평시엔 dev가 main을 품는다 — `/merge` 10단계(또는 `/sync`)가 매번 그렇게 만든다. */
+const plan = (input: Omit<PlanInput, "devContainsMain"> & { devContainsMain?: boolean }) =>
+  planRelease({ devContainsMain: true, ...input });
+
 describe("planRelease — design §4 표, 위에서부터 첫 일치", () => {
   const commits = [c("feat: a"), c("docs: b")];
   const COMPARE = "https://github.com/SinhyeokKang/malmoi/compare/";
 
   it("① main의 버전에 태그가 없으면 unreleased-on-main — 머지할 커밋이 0이어도 이것이 먼저다", () => {
     // 9단계(Release 생성)가 실패한 뒤의 모양: main이 1.0.0, 태그 없음, dev == main.
-    expect(planRelease({ pkgVersion: "1.0.0", mainVersion: "1.0.0", tags: [], commits: [] })).toEqual({
+    expect(plan({ pkgVersion: "1.0.0", mainVersion: "1.0.0", tags: [], commits: [] })).toEqual({
       action: "error",
       error: "unreleased-on-main",
       version: "1.0.0",
@@ -134,18 +139,18 @@ describe("planRelease — design §4 표, 위에서부터 첫 일치", () => {
     });
     // 태그가 있어도 main이 그보다 앞서 있으면 같다.
     expect(
-      planRelease({ pkgVersion: "1.1.0", mainVersion: "1.1.0", tags: ["v1.0.0"], commits: [] }),
+      plan({ pkgVersion: "1.1.0", mainVersion: "1.1.0", tags: ["v1.0.0"], commits: [] }),
     ).toMatchObject({ action: "error", error: "unreleased-on-main", version: "1.1.0", lastTag: "1.0.0" });
   });
 
   it("main의 버전에 태그가 있으면 ①을 지나간다", () => {
     expect(
-      planRelease({ pkgVersion: "1.0.0", mainVersion: "1.0.0", tags: ["v1.0.0"], commits: [] }),
+      plan({ pkgVersion: "1.0.0", mainVersion: "1.0.0", tags: ["v1.0.0"], commits: [] }),
     ).toMatchObject({ action: "error", error: "nothing-to-release" });
   });
 
   it("② 커밋이 없으면 nothing-to-release", () => {
-    expect(planRelease({ pkgVersion: null, mainVersion: null, tags: [], commits: [] })).toEqual({
+    expect(plan({ pkgVersion: null, mainVersion: null, tags: [], commits: [] })).toEqual({
       action: "error",
       error: "nothing-to-release",
       lastTag: null,
@@ -154,27 +159,27 @@ describe("planRelease — design §4 표, 위에서부터 첫 일치", () => {
   });
 
   it("③ dev의 version이 x.y.z가 아니면 invalid-version", () => {
-    expect(planRelease({ pkgVersion: "1.0", mainVersion: null, tags: [], commits })).toMatchObject({
+    expect(plan({ pkgVersion: "1.0", mainVersion: null, tags: [], commits })).toMatchObject({
       action: "error",
       error: "invalid-version",
     });
   });
 
   it("main의 version이 x.y.z가 아니어도 invalid-version — 조용히 ①을 건너뛰지 않는다", () => {
-    expect(planRelease({ pkgVersion: null, mainVersion: "latest", tags: [], commits })).toMatchObject({
+    expect(plan({ pkgVersion: null, mainVersion: "latest", tags: [], commits })).toMatchObject({
       action: "error",
       error: "invalid-version",
     });
   });
 
   it("④ 태그 없음 + version 없음 → seed: 1.0.0 고정, 질문 없음", () => {
-    const plan = planRelease({
+    const seed = plan({
       pkgVersion: null,
       mainVersion: null,
       tags: ["malmoi-i18n-push-v1", "l10n-push-v1"],
       commits,
     });
-    expect(plan).toEqual({
+    expect(seed).toEqual({
       action: "bump",
       seed: true,
       lastTag: null,
@@ -184,7 +189,7 @@ describe("planRelease — design §4 표, 위에서부터 첫 일치", () => {
   });
 
   it("⑤ 태그 없음 + version 있음 → none (seed bump가 이미 dev에 있다)", () => {
-    expect(planRelease({ pkgVersion: "1.0.0", mainVersion: null, tags: [], commits })).toEqual({
+    expect(plan({ pkgVersion: "1.0.0", mainVersion: null, tags: [], commits })).toEqual({
       action: "none",
       next: "1.0.0",
       lastTag: null,
@@ -194,12 +199,12 @@ describe("planRelease — design §4 표, 위에서부터 첫 일치", () => {
 
   it("⑥ version < 직전 태그 → behind-last-tag", () => {
     expect(
-      planRelease({ pkgVersion: "1.0.0", mainVersion: "1.2.0", tags: ["v1.2.0"], commits }),
+      plan({ pkgVersion: "1.0.0", mainVersion: "1.2.0", tags: ["v1.2.0"], commits }),
     ).toMatchObject({ action: "error", error: "behind-last-tag", lastTag: "1.2.0" });
   });
 
   it("⑦ version == 직전 태그 → bump, 후보 셋 + 추천", () => {
-    expect(planRelease({ pkgVersion: "1.0.0", mainVersion: "1.0.0", tags: ["v1.0.0"], commits })).toEqual({
+    expect(plan({ pkgVersion: "1.0.0", mainVersion: "1.0.0", tags: ["v1.0.0"], commits })).toEqual({
       action: "bump",
       seed: false,
       lastTag: "1.0.0",
@@ -211,7 +216,7 @@ describe("planRelease — design §4 표, 위에서부터 첫 일치", () => {
 
   it("⑦ version이 없는데 태그가 있으면 직전 태그에서 올린다", () => {
     expect(
-      planRelease({ pkgVersion: null, mainVersion: null, tags: ["v1.0.0"], commits: [c("fix: a")] }),
+      plan({ pkgVersion: null, mainVersion: null, tags: ["v1.0.0"], commits: [c("fix: a")] }),
     ).toMatchObject({
       action: "bump",
       seed: false,
@@ -221,7 +226,7 @@ describe("planRelease — design §4 표, 위에서부터 첫 일치", () => {
   });
 
   it("⑧ version > 직전 태그 → none (재실행 — 두 번 올리지 않는다)", () => {
-    expect(planRelease({ pkgVersion: "1.1.0", mainVersion: "1.0.0", tags: ["v1.0.0"], commits })).toEqual({
+    expect(plan({ pkgVersion: "1.1.0", mainVersion: "1.0.0", tags: ["v1.0.0"], commits })).toEqual({
       action: "none",
       next: "1.1.0",
       lastTag: "1.0.0",
@@ -231,7 +236,7 @@ describe("planRelease — design §4 표, 위에서부터 첫 일치", () => {
 
   it("직전 태그는 semver 최대이고 action 태그는 섞이지 않는다", () => {
     expect(
-      planRelease({
+      plan({
         pkgVersion: "1.10.0",
         mainVersion: "1.10.0",
         tags: ["v1.9.0", "malmoi-i18n-push-v1", "v1.10.0", "v1.2.3"],
@@ -240,8 +245,47 @@ describe("planRelease — design §4 표, 위에서부터 첫 일치", () => {
     ).toMatchObject({ action: "bump", lastTag: "1.10.0", candidates: { minor: "1.11.0" } });
   });
 
+  it("dev가 main을 품지 않으면 dev-not-synced — 이미 squash된 커밋이 다시 릴리스되지 않는다", () => {
+    // 10단계 lease가 거부된 뒤의 모양: main은 v1.0.0으로 태그됐고, dev엔 squash 전 커밋이 그대로다.
+    expect(
+      plan({ pkgVersion: "1.0.0", mainVersion: "1.0.0", tags: ["v1.0.0"], commits, devContainsMain: false }),
+    ).toEqual({ action: "error", error: "dev-not-synced", lastTag: "1.0.0", compareBase: `${COMPARE}v1.0.0...` });
+    // 커밋이 0이어도(= 판정 대상이 없어도) 같은 답이다 — 원인이 동기화이기 때문이다.
+    expect(
+      plan({ pkgVersion: null, mainVersion: null, tags: [], commits: [], devContainsMain: false }),
+    ).toMatchObject({ action: "error", error: "dev-not-synced" });
+  });
+
+  it("unreleased-on-main이 dev-not-synced보다 앞선다 — 9단계 재실행은 dev와 무관하게 먼저 할 일이다", () => {
+    expect(
+      plan({ pkgVersion: "1.0.0", mainVersion: "1.0.0", tags: [], commits, devContainsMain: false }),
+    ).toMatchObject({ action: "error", error: "unreleased-on-main" });
+  });
+
+  it.each([
+    ["5.0.0", ["v1.2.0"]],
+    ["1.2.2", ["v1.2.0"]],
+    ["1.3.1", ["v1.2.0"]],
+    ["2.0.1", ["v1.2.0"]],
+    ["0.1.0", []],
+    ["2.0.0", []],
+  ])("손으로 건너뛴 version %s (태그 %j) → unexpected-version", (pkgVersion, tags) => {
+    const mainVersion = tags.length > 0 ? "1.2.0" : null;
+    expect(plan({ pkgVersion, mainVersion, tags, commits })).toMatchObject({
+      action: "error",
+      error: "unexpected-version",
+    });
+  });
+
+  it.each(["1.2.1", "1.3.0", "2.0.0"])("직전 태그 1.2.0의 다음 후보 %s는 none(재실행)", (pkgVersion) => {
+    expect(plan({ pkgVersion, mainVersion: "1.2.0", tags: ["v1.2.0"], commits })).toMatchObject({
+      action: "none",
+      next: pkgVersion,
+    });
+  });
+
   it("결정적이다 — 같은 입력 두 번이 같은 판정", () => {
     const input = { pkgVersion: "1.0.0", mainVersion: "1.0.0", tags: ["v1.0.0"], commits };
-    expect(planRelease(input)).toStrictEqual(planRelease(input));
+    expect(plan(input)).toStrictEqual(plan(input));
   });
 });

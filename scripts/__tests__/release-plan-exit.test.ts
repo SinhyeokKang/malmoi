@@ -27,7 +27,16 @@ it("쓰지 않는다 — 버전 기록은 /merge 4단계의 npm pkg set이다", 
   expect(source).not.toMatch(/writeFileSync|"commit"|"push"|"tag"|"pkg", "set"|"version", "--"/);
 });
 
-it("exit code는 0·1·2 셋이다 — error 판정만 1", () => {
+it("exit code는 0·1·2 셋이다 — 1은 언제나 stdout에 error JSON이 있다", () => {
   const exits = [...source.matchAll(/process\.exit\(([^)]*)\)/g)].map((m) => m[1]!.trim());
-  expect(new Set(exits)).toEqual(new Set(["2", 'plan.action === "error" ? 1 : 0']));
+  expect(new Set(exits)).toEqual(new Set(["2", "1", 'plan.action === "error" ? 1 : 0']));
+});
+
+it("git·JSON 실패는 io 판정으로 접는다 — 스택 트레이스로 죽으면 /merge 3단계가 읽을 JSON이 없다", () => {
+  expect(source).toMatch(/catch \(error\)[\s\S]{0,300}action: "error", error: "io"[\s\S]{0,200}process\.exit\(1\)/);
+});
+
+it("dev가 main을 품는지를 판정에 넘긴다 — 동기화 안 된 dev의 가짜 릴리스를 막는 입력이다", () => {
+  expect(source).toContain('"merge-base", "--is-ancestor", "origin/main", "origin/dev"');
+  expect(source).toMatch(/devContainsMain/);
 });
