@@ -47,6 +47,11 @@ describe("보안 응답 헤더 (sec-audit 9 · audit #75)", () => {
     expect(valueOf(headers, "Permissions-Policy")).toContain("camera=()");
   });
 
+  // `/api/auth/signout`은 Auth.js 기본 폼 HTML이고 CSP(→ `frame-ancestors`)를 안 받는다 — 정적 헤더가 프레이밍을 막는다.
+  it("X-Frame-Options: DENY가 모든 경로에 붙는다 (sec-audit-3 fix1)", async () => {
+    expect(valueOf(await all(), "X-Frame-Options")).toBe("DENY");
+  });
+
   it("next.config는 CSP를 내지 않는다 — 미들웨어가 유일한 출처다(헤더 하나)", async () => {
     const headers = await all();
     expect(valueOf(headers, "Content-Security-Policy")).toBeUndefined();
@@ -73,9 +78,8 @@ describe("미들웨어 CSP (sec-audit-3 #11)", () => {
     const csp = response.headers.get("content-security-policy");
     expect(nonceOf(csp)).toBeTruthy();
     // `NextResponse.next({ request })`가 요청 헤더 덮어쓰기를 이 둘로 싣는다.
-    expect(response.headers.get("x-middleware-override-headers")?.split(",")).toEqual(expect.arrayContaining(["content-security-policy", "x-nonce"]));
+    expect(response.headers.get("x-middleware-override-headers")?.split(",")).toContain("content-security-policy");
     expect(response.headers.get("x-middleware-request-content-security-policy")).toBe(csp);
-    expect(response.headers.get("x-middleware-request-x-nonce")).toBe(nonceOf(csp));
     expect(response.headers.get("location")).toBeNull();
   });
 

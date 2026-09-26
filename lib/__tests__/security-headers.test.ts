@@ -151,7 +151,11 @@ describe("securityHeaders", () => {
     const keys = securityHeaders().map((h) => h.key.toLowerCase());
     expect(keys).not.toContain("content-security-policy");
     expect(keys).not.toContain("content-security-policy-report-only");
-    expect(keys).toEqual(["x-content-type-options", "referrer-policy", "strict-transport-security", "permissions-policy"]);
+    expect(keys).toEqual(["x-content-type-options", "x-frame-options", "referrer-policy", "strict-transport-security", "permissions-policy"]);
+  });
+
+  it("X-Frame-Options는 DENY다 — CSP를 안 받는 응답(`/api/auth/signout` 폼)도 프레이밍을 막는다", () => {
+    expect(securityHeaders().find((h) => h.key === "X-Frame-Options")?.value).toBe("DENY");
   });
 
   it("HSTS는 하위 도메인까지 묶고 preload를 선언한다 — 목록 제출은 사람의 몫이다", () => {

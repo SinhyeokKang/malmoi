@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 
 import { config as middlewareConfig } from "../../middleware";
 import { isProtectedPath } from "@/lib/auth/cookie";
+// @ts-expect-error — Next 내부 모듈이라 타입 선언이 없다. 옛 matcher의 컴파일 결과를 그대로 재현하려고 쓴다.
+import { getMiddlewareMatchers } from "next/dist/build/analysis/get-page-static-info";
 
 /**
  * **인가 없이 실행되는 서버 진입점이 0인지 소스에서 센다** (ARCHITECTURE §6.1).
@@ -774,6 +776,43 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
     expect(isProtectedPath("/projectsx")).toBe(false);
     expect(isProtectedPath("/invite/sample")).toBe(false);
   });
+
+  /**
+   * ⚠️ **옛 matcher와 같은 집합이어야 한다** (sec-audit-3 fix1). Next는 matcher 정규식을 **raw와 decode한 pathname 둘 다**에
+   * 대고(`resolve-routes.js` — decode 실패는 raw만), 컴파일된 정규식은 `.rsc`·`.segments/…segment.rsc`·`/_next/data/<id>` 변형도
+   * 받는다. `request.nextUrl.pathname`은 decode되지 않는다 — 문자열 접두 비교로는 `/%70rojects/…`가 1차 차단을 지나쳤다.
+   */
+  it("옛 matcher(`/projects/:path*` · `/account`)를 Next가 컴파일한 정규식과 판정이 같다", () => {
+    const old = getMiddlewareMatchers(["/projects/:path*", "/account"], {}).map((m: { regexp: string }) => new RegExp(m.regexp));
+    const decoded = (p: string) => {
+      try {
+        return decodeURIComponent(p);
+      } catch {
+        return p;
+      }
+    };
+    const oldProtects = (p: string) => old.some((re: RegExp) => re.test(p) || re.test(decoded(p)));
+    const TABLE = [
+      "/projects", "/projects/", "/projects/new", "/projects/sample/translations", "/account", "/account/",
+      "/%70rojects/sample/translations", "/%61ccount", "/account.rsc", "/projects.rsc", "/projects/a/keys.rsc",
+      "/projects/a/keys.segments/x.segment.rsc", "/_next/data/build/projects/a.json", "/account.json",
+      "/projects%2Fa", "/%E0%A4%A", "/projects/%E0%A4%A",
+      "/", "/signin", "/invite/sample", "/docs", "/privacy", "/projectsx", "/accounts", "/account/x", "/Projects",
+      "/api/github/callback", "/%E0%A4%A/account",
+    ];
+    const differs = TABLE.filter((p) => isProtectedPath(p) !== oldProtects(p));
+    expect(differs).toEqual([]);
+    // 공허하지 않다 — 표가 양쪽 판정을 다 밟는다.
+    expect(TABLE.filter(oldProtects).length).toBeGreaterThan(5);
+    expect(TABLE.filter((p) => !oldProtects(p)).length).toBeGreaterThan(5);
+  });
+
+  it.each(["/%70rojects/x", "/%61ccount", "/account.rsc", "/projects.rsc", "/projects/a/keys.segments/x.segment.rsc"])(
+    "인코딩·전송 변형 %s도 보호 경로다",
+    (path) => {
+      expect(isProtectedPath(path)).toBe(true);
+    },
+  );
 
   it("(edit) 아래 모든 페이지가 보호 경로다", () => {
     expect(PROTECTED.filter((path) => !isProtectedPath(path))).toEqual([]);
