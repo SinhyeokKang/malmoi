@@ -24,16 +24,16 @@
 
 ## 1. 🔴 #1 로케일 모양 + 리포 쓰기 권한
 
-- [ ] **T1.1** `/tdd`: `isLocaleShaped` 테스트 — 통과(`en`·`pt_BR`·`zh-Hant-TW`·`es-419`·`sr-Latn`·`fil`·`en-GB-oxendict`) / 거부(`package`·`index`·`README`·`config`·`action`·`e`·`abcd`·`en--US`). — 검증: red.
-- [ ] **T1.2** `isLocaleShaped` 구현(`lib/locale-code.ts`, 잎 유지). — 검증: T1.1 green, 파일 import 0.
-- [ ] **T1.3** push 스키마 `LocaleCode`가 `isPathSafeLocale && isLocaleShaped`를 요구. `locales[]`·`translations[].locale`·`baseLocale` 전부. — 검증: `lib/push/__tests__`에 `locales:["en","package"]` 400 케이스 green.
-- [ ] **T1.4** `resolveLocalePaths` per-locale 갈래가 `isLocaleShaped` 실패를 `fail`. 테스트는 **트리에 실재하는** `package.json` 형제를 둔 픽스처로(POSTMORTEM 2026-09-13). — 검증: green, `fail(` 분류 테스트(코드를 드는 자리/안 드는 자리 목록 — ARCHITECTURE §5.6)에 새 자리 등재.
+- [x] **T1.1** `/tdd`: `isLocaleShaped` 테스트 — 통과(`en`·`pt_BR`·`zh-Hant-TW`·`es-419`·`sr-Latn`·`fil`·`en-GB-oxendict`) / 거부(`package`·`index`·`README`·`config`·`action`·`e`·`abcd`·`en--US`). — 검증: red.
+- [x] **T1.2** `isLocaleShaped` 구현(`lib/locale-code.ts`, 잎 유지). — 검증: T1.1 green, 파일 import 0.
+- [x] **T1.3** push 스키마 `LocaleCode`가 `isPathSafeLocale && isLocaleShaped`를 요구. `locales[]`·`translations[].locale`·`baseLocale` 전부. — 검증: `lib/push/__tests__`에 `locales:["en","package"]` 400 케이스 green.
+- [x] **T1.4** `resolveLocalePaths` per-locale 갈래가 `isLocaleShaped` 실패를 `fail`. 테스트는 **트리에 실재하는** `package.json` 형제를 둔 픽스처로(POSTMORTEM 2026-09-13). — 검증: green, `fail(` 분류 테스트(코드를 드는 자리/안 드는 자리 목록 — ARCHITECTURE §5.6)에 새 자리 등재.
   `[C] fix(push): reject non-locale-shaped codes at push and pull boundaries`
-- [ ] **T1.5** `/tdd`: `planRepoConnect`에 `push:false → repo-read-only`, `push:null → unavailable`, `push:true → ok` 케이스. — 검증: red.
-- [ ] **T1.6** `lib/github-connect/user.ts`가 `{ fullName, push }`를 돌려주고 `planRepoConnect` 입력 확장 + 구현. — 검증: T1.5 green, `credential-separation.test.ts` green(GET만).
-- [ ] **T1.7** 호출처 전수(생성·Reconnect·Add surface·온보딩 확인)에 `repo-read-only` 갈래 배선 + `messages/en.tsx` 문구. — 검증: `rg planRepoConnect` 호출처마다 새 상태 처리, `no-korean-ui`·`brand-spelling` green, `pnpm test:projects:postgres` green.
+- [x] **T1.5** `/tdd`: `planRepoConnect`에 `push:false → repo-read-only`, `push:null → unavailable`, `push:true → ok` 케이스. — 검증: red.
+- [x] **T1.6** `lib/github-connect/user.ts`가 `{ fullName, push }`를 돌려주고 `planRepoConnect` 입력 확장 + 구현. — 검증: T1.5 green, `credential-separation.test.ts` green(GET만).
+- [x] **T1.7** 호출처 전수(생성·Reconnect·Add surface·온보딩 확인)에 `repo-read-only` 갈래 배선 + `messages/en.tsx` 문구. — 검증: `rg planRepoConnect` 호출처마다 새 상태 처리, `no-korean-ui`·`brand-spelling` green, `pnpm test:projects:postgres` green.
   `[C] fix(connect): require push permission on the repository to connect a project`
-- [ ] **T1.8** ARCHITECTURE §5.5.05(모양 규칙·2층·3글자 잔여)·§6(쓰기 권한 요구·초대 OWNER 잔여) 갱신. — 검증: 문서가 코드 판정과 같은 문장.
+- [x] **T1.8** ARCHITECTURE §5.5.05(모양 규칙·2층·3글자 잔여)·§6(쓰기 권한 요구·초대 OWNER 잔여) 갱신. — 검증: 문서가 코드 판정과 같은 문장.
   `[C] docs(ARCHITECTURE): record locale-shape boundary and repo write requirement`
 
 ## 2. 🟡 #2·#3 DB 스키마 USAGE
@@ -77,8 +77,8 @@
 - [x] **T6.3** (사람) `.env.local` 두 머신 + Vercel 3환경 `APP_SIGNING_SECRET` 등록, `vercel env ls` 시각 확인(CLAUDE.md `--force` 함정). — 검증: 목록에 3환경.
 - [ ] **T6.4** #16 `listBranches`·`openRepoReader`에 `repositoryId` 스코프. 온보딩 호출처는 probe id. — 검증: 단위 green, `pnpm smoke:github <slug>` 통과(읽기 전용, 사람이 실행).
   `[C] fix(github): pin read tokens to the repository id`
-- [ ] **T6.5** #17 push `refs.path` refine + `buildPermalink` 불량 행 null. — 검증: green.
-- [ ] **T6.6** #18 `/tdd` `jsonWithinBounds` → push `placeholders` refine. — 검증: 깊이 9 / 16KB 초과 400, 크롬 정상 블록 통과.
+- [x] **T6.5** #17 push `refs.path` refine + `buildPermalink` 불량 행 null. — 검증: green.
+- [x] **T6.6** #18 `/tdd` `jsonWithinBounds` → push `placeholders` refine. — 검증: 깊이 9 / 16KB 초과 400, 크롬 정상 블록 통과.
   `[C] fix(push): bound refs paths and placeholder payloads`
 - [ ] **T6.7** OPERATIONS(서명 키 회전)·CLAUDE.md(서명 키 한 줄)·ARCHITECTURE §6. — 검증: 문서 반영.
 
