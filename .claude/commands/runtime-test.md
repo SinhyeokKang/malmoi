@@ -128,7 +128,12 @@ await js(String.raw`(async () => {
 | **BugShot** 결함 | `gh issue create -R SinhyeokKang/bugshot-2` — BugShot이 자기 자신을 못 찍는 상황이 있다 |
 | **ego-browser** 결함 | 사용자에게 보고만 — 우리 리포가 아니다 |
 
-BugShot 제출이 막히면 말모이 결함도 `gh issue create` 폴백으로 낸다 — **관측 결과를 잃지 않는 것이 우선이다.** 폴백을 썼다는 사실을 리포트에 적는다.
+⚠️ **BugShot 제출은 생략할 수 없다** (2026-09-27 사용자 — "버그샷 실사용 테스트도 겸하는 게이트"). 이 게이트는 말모이 검증과 **BugShot 스토어 빌드의 실사용 테스트**를 겸한다 — 시간을 아끼려고, 이슈가 여러 건이라서, 워커가 브라우저 조작이 번거로워서 `gh issue create`로 바로 내면 **BugShot 쪽 검증이 통째로 빠진다.** 말모이 결함은 **한 건도 빠짐없이** §3–7의 BugShot 경로로 낸다.
+
+폴백은 **BugShot 자체가 막혔을 때만**이다(패널이 안 열림 · 캡처 실패 · 제출 오류). 그때 순서가 정해져 있다:
+1. **막힌 것 자체를 BugShot 결함으로 먼저 낸다** — `gh issue create -R SinhyeokKang/bugshot-2`(재현 절차 · 확장 ID · 화면). 이것이 이 게이트가 찾으려던 것이다.
+2. 그다음 말모이 결함을 `gh issue create -R SinhyeokKang/malmoi`로 낸다 — **관측 결과를 잃지 않는다.** 본문 첫 줄에 `Filed without BugShot — blocked by SinhyeokKang/bugshot-2#<n>`.
+3. 리포트의 "미완·폴백" 절에 두 번호를 짝으로 적는다. **bugshot-2 이슈 번호 없는 폴백은 규칙 위반이다.**
 
 **확신하지 못하는 것을 BugShot 결함으로 올리지 않는다.** 자동화의 헛클릭과 제품 버그는 증상이 같다 — DOM 속성처럼 직접 확인한 부분만 단언하고, 나머지는 이슈 본문에 `unverified`로 갈라 쓴다.
 
@@ -153,6 +158,7 @@ BugShot 제출이 막히면 말모이 결함도 `gh issue create` 폴백으로 �
 - **코드 수정 금지.** `lib/`·`app/`·`prisma/` 일체. 결함이 나와도 고치지 않는다.
 - **`.env.local` 편집·값 출력 금지** (CLAUDE.md 새 머신 셋업 3항).
 - **`?tabId=` 검증 생략 금지** (§4).
+- **BugShot 제출 생략 금지** (§8) — 말모이 결함을 `gh issue create`로 바로 내지 않는다. 폴백은 BugShot이 막혔을 때만이고, 그 막힘을 bugshot-2 이슈로 먼저 낸다.
 - **BugShot 설정 변경 금지** — 연결된 계정·선택된 리포·기본 라벨을 임의로 바꾸지 않는다.
 - **prod DB를 겨누지 않는다.** 이 스킬은 dev(`DIRECT_URL`)만 쓴다.
 - **스크린샷·녹화물을 저장소에 넣지 않는다.** 세션 스크래치패드에만.
