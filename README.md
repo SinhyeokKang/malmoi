@@ -25,11 +25,12 @@ LNB는 Home → Sources → Translations → Members → Logs → Project settin
 | [docs/OPERATIONS.md](./docs/OPERATIONS.md) | 키 회전·복구·전면 재발급 절차 |
 | [docs/ACTIONS.md](./docs/ACTIONS.md) | 대상 리포에 붙이는 워크플로 |
 | [docs/POSTMORTEM.md](./docs/POSTMORTEM.md) | 회귀·버그 회고 (append-only) |
+| [guide/AUTHORING.md](./guide/AUTHORING.md) · [guide/SHOOTING.md](./guide/SHOOTING.md) | 사용자 가이드(`/docs`) 작성·촬영 매뉴얼 (한국어, 서빙 안 함) |
 | [CLAUDE.md](./CLAUDE.md) | 작업 규칙·명령어·컨벤션 (Codex는 `AGENTS.md` 미러) |
 
 ## 스택
 
-Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js v5 DB 세션 (GitHub·Google 로그인 — 인가는 `ProjectMember`) · **저장 시 암호화**(세션은 SHA-256 digest, 회원 개인정보·GitHub App 토큰은 AES-256-GCM, 조회는 별도 HMAC 컬럼) · GitHub App · Tailwind 4 + **자체 프리미티브**(`components/ui/` 25개, Radix — DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select, `react-resizable-panels` — 패널 구분선) + `sonner` 토스트 + 앱 셸 + `messages/en.tsx` 단일 사전(**UI는 영어 단일**, `lang="en"`) (**라이트 단일, `dark:` 금지**) · Vercel
+Next.js 16 App Router · Supabase Postgres + Prisma 7 · Auth.js v5 DB 세션 (GitHub·Google 로그인 — 인가는 `ProjectMember`) · **저장 시 암호화**(세션은 SHA-256 digest, 회원 개인정보·GitHub App 토큰은 AES-256-GCM, 조회는 별도 HMAC 컬럼) · GitHub App · Tailwind 4 + **자체 프리미티브**(`components/ui/` 25개, Radix — DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select, `react-resizable-panels` — 패널 구분선) + `sonner` 토스트 + 앱 셸 + `messages/en.tsx` 단일 사전(**UI는 영어 단일**, `lang="en"`) (**라이트 단일, `dark:` 금지**) · 사용자 가이드는 `guide/**.md`(unified + remark → mdast) · Vercel
 
 ## 개발
 
@@ -51,6 +52,7 @@ pnpm dev
 | 테스트 | `pnpm test` |
 | 로케일 적재 | `pnpm ingest <디렉터리>` — 포맷 탐지 → 적재 **미리보기** → 왕복 검증 (DB에 쓰지 않는다) |
 | 사용처 스캔 | `pnpm scan <디렉터리>` — `refs` 수집 |
+| 가이드 스크린샷 stale | `pnpm guide:check` — `guide/SHOOTING.md`의 기록 SHA vs 작업 트리. 읽기 전용, 항상 exit 0 |
 | 어댑터 범용성 측정 | `pnpm adapter-survey docs/adapter-survey/repos.txt` — 읽기 전용, 네트워크 |
 | GitHub App 스모크 | `pnpm smoke:github <slug>` — 읽기만 |
 | Blob 저장소 스모크 | `pnpm smoke:blob` — 실 API. 고아 후보는 목록만 내고 지우지 않는다 |
