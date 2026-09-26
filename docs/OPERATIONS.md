@@ -122,6 +122,12 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
   `pnpm smoke:blob`은 `avatars/`·`projects/` 두 프리픽스를 모두 훑고 `planImageDelete`·
   `planProjectImageDelete` 둘로 고아 후보를 가른다.
   로컬에는 `BLOB_READ_WRITE_TOKEN`이 필요하며 환경별로 별도 공개 저장소를 쓴다.
+  ⚠️ **`BLOB_PUBLIC_HOST`도 환경마다 넣는다** (2026-09-27, sec-audit-3 #12) — 그 환경 스토어의 공개 호스트
+  (`<id>.public.blob.vercel-storage.com`, 스킴·경로 없이. Vercel 대시보드 Storage → 스토어 → 파일 하나의 URL 호스트)이고
+  CSP `img-src`에 이 하나만 들어간다. **비밀이 아니다**(Sensitive로 넣지 않는다 — 값을 다시 읽을 수 있어야 대조된다).
+  ⚠️ **없거나 모양이 틀리면 조용하다** — 부팅·업로드는 성공하고 **업로드한 사진·로고만 화면에서 안 보인다**(콘솔에 CSP 위반).
+  스토어를 새로 만들거나 바꾸면 이 값도 같이 간다. 확인: `vercel env ls <environment>`에 `BLOB_PUBLIC_HOST`가 있고, 업로드한
+  이미지가 뜬다.
 
 ## 2. 키 회전
 
