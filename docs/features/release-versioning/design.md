@@ -47,7 +47,7 @@ DB는 무관하다.
 | 1 | 스키마 게이트 (`db:status:prod` → 사용자 `db:deploy`) | 기존 | 변화 없음 |
 | 2 | dev CI 결론 (`origin/dev` HEAD SHA 일치 run) | 기존 | **bump 전에 둔다** — bump는 메타데이터 한 줄이라 여기서 본 green이 머지될 코드의 green이다(bugshot-2와 같은 논리). bump SHA는 6단계 PR CI가 본다 |
 | 3 | **버전 판정** `pnpm release:plan` → **레벨 질문** | 새 | exit≠0이면 중단. `action: "bump"`이고 seed가 아니면 `AskUserQuestion`으로 patch·minor·major를 묻는다 — 선택지 라벨에 각 다음 버전(`candidates`), `recommended`를 첫 선택지로 두고 "(Recommended)"와 근거(`feat 20 → minor`)를 붙인다. seed(`1.0.0`)·재실행(`action: "none"`)은 묻지 않는다. 고른 레벨과 추천이 달랐으면 리포트에 남긴다 |
-| 4 | **bump 커밋** (`action: "bump"`일 때만) | 새 | `npm pkg set version=<candidates[고른 레벨]>` → `git diff`가 `package.json`의 version 한 줄뿐인지 확인 → `git commit -m "chore(release): v<next>"` → `git push origin dev`. ⚠️ **`/push`를 거치지 않는 유일한 dev 커밋이다** — 로컬 게이트가 볼 코드가 없다. CLAUDE.md 브랜치 정책에 이 예외를 적는다 |
+| 4 | **bump 커밋** (`action: "bump"`일 때만) | 새 | `npm pkg set version=<candidates[고른 레벨]>` → `git diff --name-only`가 `package.json` 하나이고 **`version`을 뺀 JSON이 HEAD와 같은지** 확인(T3 실측: seed는 `version`을 **맨 끝 키로 덧붙여** 직전 줄에 쉼표가 생긴다 — diff가 두 줄이다. 이후 bump는 제자리 한 줄) → `git commit -m "chore(release): v<next>"` → `git push origin dev`. ⚠️ **`/push`를 거치지 않는 유일한 dev 커밋이다** — 로컬 게이트가 볼 코드가 없다. CLAUDE.md 브랜치 정책에 이 예외를 적는다 |
 | 5 | **노트 두 벌** `.scratch/pr-v<next>.md` · `.scratch/release-v<next>.md` | 새 | §6. 소스는 둘 다 3단계 출력의 커밋 목록. **Release 노트도 머지 전에 쓴다** — 머지 뒤 9단계를 명령 하나로 남겨 "머지는 됐는데 릴리스가 안 됨" 창을 줄인다 |
 | 6 | PR 생성/재사용 | 기존(바뀜) | 제목 `v<next>: <summary>`, `--body-file .scratch/pr-v<next>.md`(마이그레이션이면 그 안에 `Migration applied to production before merge.`). 재사용이면 `gh pr edit`으로 제목·본문을 덮는다 |
 | 7 | PR CI 대기 | 기존 | 변화 없음 |
