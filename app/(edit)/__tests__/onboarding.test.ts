@@ -105,6 +105,7 @@ const {
   addSurfaces,
   detectRepoFormats,
   listRepoBranches,
+  listProjectBranches,
   loadCandidateSample,
   confirmManualFormat,
   disconnectGithub,
@@ -1887,6 +1888,45 @@ describe("rotatePushToken — 리포 쓰기 권한 (sec-audit-3 결정 I)", () =
     hoisted.ensureUserToken.mockResolvedValue({ status: "not-connected" });
     expect(await rotatePushToken({ slug: "acme" })).toEqual({ ok: false, error: "not-connected" });
     expect(db.projects[0]!.pushTokenHash).toBe("old");
+  });
+});
+
+/**
+ * **연결된 프로젝트 설정의 브랜치 목록은 읽기다** (malmoi#123 — 지휘자 결정). 저장(`updateRepositorySettings`)이 쓰기
+ * 권한을 요구하지 않고 기존 프로젝트에는 소급하지 않는다고 했으므로, 읽기 권한만 가진 OWNER가 Settings에서 Base branch를
+ * 못 고르면 안 된다. 온보딩 ①의 `listRepoBranches`는 그대로 쓰기 권한을 요구한다 — 둘은 **다른 Action**이다.
+ */
+describe("listProjectBranches — 설정의 브랜치 목록 (#123)", () => {
+  beforeEach(() => {
+    Object.assign(db.projects[0]!, { repoOwner: "acme", repoName: "web", installationId: "77", repositoryId: "1035512" });
+  });
+
+  it("읽기 권한만 있는 OWNER도 목록을 받는다", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web", undefined, false)]);
+    expect(await listProjectBranches({ slug: "acme" })).toEqual({ ok: true, names: ["main", "develop"], defaultBranch: "develop", truncated: false });
+  });
+
+  it("대조: 같은 사용자의 온보딩 ①은 여전히 repo-read-only다", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web", undefined, false)]);
+    expect(await listRepoBranches({ owner: "acme", repo: "web" })).toEqual({ ok: false, error: "repo-read-only" });
+  });
+
+  it("EDITOR는 설정 권한이 없어 GitHub을 부르지 않는다", async () => {
+    hoisted.session = sessionFor(EDITOR);
+    expect(await listProjectBranches({ slug: "acme" })).toEqual({ ok: false, error: "forbidden" });
+    expect(hoisted.listBranches).not.toHaveBeenCalled();
+  });
+
+  it("같은 이름의 다른 리포면 repo-forbidden이고 브랜치를 읽지 않는다", async () => {
+    hoisted.probeRepo.mockResolvedValue({ ...PROBE_OK, repositoryId: "other" });
+    expect(await listProjectBranches({ slug: "acme" })).toEqual({ ok: false, error: "repo-forbidden" });
+    expect(hoisted.listBranches).not.toHaveBeenCalled();
+  });
+
+  it("연결이 없으면 repo-not-installed다", async () => {
+    Object.assign(db.projects[0]!, { installationId: null, repositoryId: null });
+    expect(await listProjectBranches({ slug: "acme" })).toEqual({ ok: false, error: "repo-not-installed" });
+    expect(hoisted.probeRepo).not.toHaveBeenCalled();
   });
 });
 

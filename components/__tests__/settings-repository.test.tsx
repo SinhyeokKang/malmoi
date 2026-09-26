@@ -8,10 +8,11 @@ import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { input, render } from "./helpers/dom";
 const actions = vi.hoisted(() => ({ connectRepository: vi.fn(), updateRepositorySettings: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => actions);
-const branches = vi.hoisted(() => ({ listRepoBranches: vi.fn() }));
+const branches = vi.hoisted(() => ({ listRepoBranches: vi.fn(), listProjectBranches: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => branches);
 beforeEach(() => {
-  branches.listRepoBranches.mockReset().mockResolvedValue({ ok: true, names: ["main", "dev"], defaultBranch: "main", truncated: false });
+  branches.listRepoBranches.mockReset();
+  branches.listProjectBranches.mockReset().mockResolvedValue({ ok: true, names: ["main", "dev"], defaultBranch: "main", truncated: false });
   actions.updateRepositorySettings.mockReset();
 });
 async function choose(container: HTMLElement, name: string) {
@@ -64,7 +65,12 @@ it.each([[{ ok: true }, true], [{ ok: false, error: "unavailable" }, false]] as 
 
 it("현재 브랜치가 목록에 없어도 초기 선택을 보존하고 목록에서 다른 브랜치를 고른다", async () => {
   const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="deleted" />);
-  expect(branches.listRepoBranches).toHaveBeenCalledWith({ owner: "acme", repo: "web" });
+  /**
+   * 연결된 프로젝트의 브랜치 목록은 **읽기**다 (malmoi#123 — 지휘자 결정). 온보딩 ①의 `listRepoBranches`(쓰기 권한 요구)가
+   * 아니라 프로젝트 slug로 인가하는 `listProjectBranches`를 부른다 — 읽기 권한만 가진 OWNER가 Settings에서 막히면 안 된다.
+   */
+  expect(branches.listProjectBranches).toHaveBeenCalledWith({ slug: "acme" });
+  expect(branches.listRepoBranches).not.toHaveBeenCalled();
   expect(container.querySelector('[role="combobox"]')?.textContent).toContain("deleted");
   await choose(container, "dev");
   actions.updateRepositorySettings.mockResolvedValueOnce({ ok: true });
@@ -72,7 +78,7 @@ it("현재 브랜치가 목록에 없어도 초기 선택을 보존하고 목록
   expect(actions.updateRepositorySettings).toHaveBeenCalledWith({ slug: "acme", baseBranch: "dev" });
 });
 it.each(["unavailable", "unauthorized", "repo-forbidden"])("목록 조회 %s 실패는 현재값을 유지하고 저장을 막는다", async error => {
-  branches.listRepoBranches.mockResolvedValueOnce({ ok: false, error, defaultBranch: "main" });
+  branches.listProjectBranches.mockResolvedValueOnce({ ok: false, error, defaultBranch: "main" });
   const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="release" />);
   expect(container.textContent).toContain("release");
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
