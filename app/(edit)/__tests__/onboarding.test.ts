@@ -1886,6 +1886,7 @@ describe("rotatePushToken — 리포 쓰기 권한 (sec-audit-3 결정 I)", () =
   it("GitHub 계정이 연결돼 있지 않으면 그 사유가 값으로 나간다", async () => {
     hoisted.ensureUserToken.mockResolvedValue({ status: "not-connected" });
     expect(await rotatePushToken({ slug: "acme" })).toEqual({ ok: false, error: "not-connected" });
+    expect(db.projects[0]!.pushTokenHash).toBe("old");
   });
 });
 

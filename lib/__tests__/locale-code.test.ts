@@ -129,8 +129,11 @@ describe("isLocaleShaped — BCP 47·POSIX 모양의 로케일 코드인가", ()
  * 떨어지면 온보딩이 탐지를 지나 첫 적재의 `PushPayload.safeParse`에서 엉뚱한 문구로 죽고, 저장된 행은 야간 pull을
  * `unknown`으로 멈춘다 — naive-ui의 `koKR`(2026-09-02)이 정확히 그 모양이었다.
  *
- * ⚠️ **손으로 고른 목록이 아니라 규칙에서 생성한다** — 두 규칙의 각 자리(길이·대소문자·구분자)를 경계 글자로 전수로
- * 돌리고, `looksLikeLocale`이 받는 것만 남겨 포함 관계를 잰다. 탐지 규칙이 넓어지면 이 테스트가 먼저 red가 된다.
+ * ⚠️ **손으로 고른 목록이 아니라 규칙에서 생성한다** — 지금 `looksLikeLocale`의 갈래(첫 서브태그 소문자 2~3자 ×
+ * 없음|`[-_]`+2~4자 꼬리, camelCase `[a-z]{2}[A-Z]{2}`)를 경계 글자로 전수로 돌리고, 여기에 `a Z - _ 0`로 만든 **5자 이하
+ * 문자열 전부**를 더한 뒤 `looksLikeLocale`이 받는 것만 남겨 포함 관계를 잰다.
+ * ⚠️ **생성 공간이 그만큼이다** — 탐지 규칙이 넓어져도 새 모양이 이 생성기(현재 규칙의 꼬리 길이 이하 · 5자 이하 전수)
+ * 안에 들지 않으면 여기서 red가 나지 않는다. 탐지 규칙을 넓히면 이 생성기도 같이 넓힌다.
  */
 describe("isLocaleShaped ⊇ looksLikeLocale — 탐지가 받는 이름을 적재가 거부하지 않는다", () => {
   const product = (alphabet: readonly string[], length: number): string[] =>

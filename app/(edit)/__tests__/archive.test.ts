@@ -39,7 +39,6 @@ vi.mock("@/lib/github", async (orig) => ({
   probeRepo: async () => ({ status: "ok", installationId: "1", repositoryId: "100", fullName: "o/r", defaultBranch: "main" }),
 }));
 
-
 const { archiveProject, unarchiveProject, runFirstIngest } = await import("../projects/actions");
 const { saveTranslationKey, triggerPullAction } = await import("../actions");
 const { rotatePushToken } = await import("../projects/actions");
