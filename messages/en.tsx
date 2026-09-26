@@ -3085,7 +3085,7 @@ export const en = {
       fallback: "Sign-in failed. Try again in a moment.",
     },
 
-    /** `connectErrorMessage` — `ConnectError` 열둘 + 폴백. */
+    /** `connectErrorMessage` — `ConnectError` 열셋 + 폴백. */
     connect: {
       "state-mismatch": "We couldn't verify that connection request. Start it again from settings.",
       "state-expired": "That connection request expired. Start it again from settings.",
@@ -3099,6 +3099,8 @@ export const en = {
       "repo-not-installed": "The app isn't installed on this repository. Install it, then connect again.",
       "installation-forbidden": "This account can't reach that installation. Ask the repository owner for access.",
       "repo-forbidden": "This account can't reach that repository. Ask the repository owner for access.",
+      // 다음 행동이 사람이다 — 쓰기 권한을 가진 사람이 만들거나 권한을 받아야 한다(sec-audit-3 1a).
+      "repo-read-only": "This account can only read that repository. Connecting it needs write access — ask the repository owner.",
       // 원인이 고정된 거부에 "잠시 뒤 다시"를 보이면 사용자가 같은 버튼을 반복해서 누른다.
       unavailable: "Something went wrong. Try again in a moment.",
       fallback: "The GitHub connection failed. Try again from settings.",
@@ -3107,7 +3109,7 @@ export const en = {
     /**
      * `onboardErrorMessage` — `OnboardError` 열여덟 + 폴백.
      *
-     * ⚠️ **넷이 없다**(`installation-forbidden`·`repo-forbidden`·`repo-not-installed`·`unavailable`) —
+     * ⚠️ **다섯이 없다**(`installation-forbidden`·`repo-forbidden`·`repo-read-only`·`repo-not-installed`·`unavailable`) —
      * 연결 화면과 같은 거부라 `connect`의 문구를 그대로 쓴다. 같은 거부에 문구가 두 벌이면 안 된다.
      */
     onboarding: {

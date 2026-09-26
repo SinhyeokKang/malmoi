@@ -47,6 +47,7 @@ export type OnboardError =
   // ── ④ 생성 — planRepoConnect 그대로 ──────────────────────────────────────
   | "installation-forbidden"
   | "repo-forbidden"
+  | "repo-read-only"
   | "repo-not-installed"
   // ── ④ 생성 — 이쪽 고유 ───────────────────────────────────────────────────
   | "slug-taken"
@@ -88,6 +89,7 @@ const ONBOARD_ERRORS: ReadonlySet<string> = new Set<OnboardError>([
   "single-locale",
   "installation-forbidden",
   "repo-forbidden",
+  "repo-read-only",
   "repo-not-installed",
   "slug-taken",
   "limit-reached",
@@ -106,13 +108,13 @@ export function isOnboardError(value: unknown): value is OnboardError {
 }
 
 /**
- * ⚠️ **넷은 사전에 없다** — `installation-forbidden`·`repo-forbidden`·`repo-not-installed`·`unavailable`은
+ * ⚠️ **다섯은 사전에 없다** — `installation-forbidden`·`repo-forbidden`·`repo-read-only`·`repo-not-installed`·`unavailable`은
  * 연결 화면과 같은 거부라 `connectErrorMessage`가 그대로 낸다. 같은 거부에 문구가 두 벌이면 안 된다.
  *
  * ⚠️ **둘은 함수 값이다** — 상수를 보간해야 하는데 사전은 잎이라 `PROJECT_LIMIT`·`PROJECT_SLUG_MAX`를
  * import할 수 없다. 그래서 값은 여기서 넘긴다.
  */
-type SharedWithConnect = "installation-forbidden" | "repo-forbidden" | "repo-not-installed" | "unavailable";
+type SharedWithConnect = "installation-forbidden" | "repo-forbidden" | "repo-read-only" | "repo-not-installed" | "unavailable";
 type Interpolated = "limit-reached" | "invalid-slug";
 
 const ONBOARD = m.errors.onboarding satisfies Record<
@@ -125,6 +127,7 @@ export function onboardErrorMessage(error: OnboardError): string {
   switch (error) {
     case "installation-forbidden":
     case "repo-forbidden":
+    case "repo-read-only":
     case "repo-not-installed":
     case "unavailable":
       return connectErrorMessage(error);

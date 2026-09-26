@@ -35,6 +35,7 @@ const ERRORS = [
   "repo-not-installed",
   "installation-forbidden",
   "repo-forbidden",
+  "repo-read-only",
   // 양쪽 공통
   "unavailable",
 ] as const satisfies readonly ConnectError[];

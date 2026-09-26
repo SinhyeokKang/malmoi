@@ -40,7 +40,7 @@ import { finishRun, recordEvent, recordImportRefusal, recordRun } from "@/lib/ev
 import { optionalEnv, requireEnv } from "@/lib/env";
 import { listBranches, openRepoReader, probeRepo } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
-import { planRepoConnect, type RepoConnect } from "@/lib/github-connect/connect-plan";
+import { planRepoConnect, type RepoConnect, type UserRepo } from "@/lib/github-connect/connect-plan";
 import { httpStatus } from "@/lib/failure";
 import { installWithStateUrl } from "@/lib/github-connect/installation-url";
 import { logFailure } from "@/lib/github-connect/log";
@@ -1699,7 +1699,7 @@ async function checkRepoAccess(
    * ⚠️ **`planRepoConnect`의 3중 검증은 그대로다** — 순서만 바뀐다.
    */
   let userInstallationIds: readonly string[];
-  let userRepoFullNames: readonly string[] = [];
+  let userRepos: readonly UserRepo[] = [];
   try {
     userInstallationIds = await listUserInstallations(token.accessToken);
     const wanted = `${owner}/${repo}`.toLowerCase();
@@ -1737,7 +1737,7 @@ async function checkRepoAccess(
       // 곧 오라클이다. 화면 문구도 하나로 간다 (`lib/onboarding/message.ts`).
       return { status: "rejected", error: "repo-not-installed" };
     }
-    userRepoFullNames = holder.repos.map((row) => row.fullName);
+    userRepos = holder.repos;
   } catch (error) {
     if (httpStatus(error) === 401) return { status: "rejected", error: "reauthorize" };
     logFailure("onboard-access", error);
@@ -1748,7 +1748,7 @@ async function checkRepoAccess(
   // 오류)뿐이다 — 그것을 아래 catch가 `unavailable`로 접으면 "잠시 뒤 다시"가 영원히 뜬다.
   const probe = await probeRepo(owner, repo);
 
-  const connect = planRepoConnect({ probe, userInstallationIds, userRepoFullNames });
+  const connect = planRepoConnect({ probe, userInstallationIds, userRepos });
   // ⚠️ **`unavailable`을 거부로 접지 않는다** — `planProjectCreate`가 그것을 그대로 흘리도록
   // 설계됐고, 여기서 접으면 사용자가 있는 권한을 없다고 믿는다 (POSTMORTEM 2026-09-03).
   if (connect.status !== "ok" || probe.status !== "ok") {

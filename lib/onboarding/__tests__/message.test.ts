@@ -29,6 +29,7 @@ const ERRORS = [
   // ④ 생성 — planRepoConnect 그대로
   "installation-forbidden",
   "repo-forbidden",
+  "repo-read-only",
   "repo-not-installed",
   // ④ 생성 — 이쪽 고유
   "slug-taken",
@@ -79,8 +80,8 @@ describe("onboardErrorMessage — 갈래마다 다른 문구", () => {
     expect(onboardErrorMessage("무엇이든" as OnboardError).trim().length).toBeGreaterThan(0);
   });
 
-  it("`planRepoConnect` 셋은 `connectErrorMessage`를 그대로 쓴다 — 같은 거부에 문구가 두 벌이면 안 된다", () => {
-    for (const error of ["installation-forbidden", "repo-forbidden", "repo-not-installed"] as const) {
+  it("`planRepoConnect` 넷은 `connectErrorMessage`를 그대로 쓴다 — 같은 거부에 문구가 두 벌이면 안 된다", () => {
+    for (const error of ["installation-forbidden", "repo-forbidden", "repo-read-only", "repo-not-installed"] as const) {
       expect(onboardErrorMessage(error)).toBe(connectErrorMessage(error));
     }
   });
@@ -174,9 +175,9 @@ describe("다른 union과 겹치는 값", () => {
     expect(isOnboardError("unauthorized")).toBe(true);
   });
 
-  it("ConnectError와 겹치는 것은 넷이고, 나머지는 `isConnectError`가 걸러내지 못한다 — 그래서 `/projects/new`가 둘을 다 읽는다", () => {
+  it("ConnectError와 겹치는 것은 다섯이고, 나머지는 `isConnectError`가 걸러내지 못한다 — 그래서 `/projects/new`가 둘을 다 읽는다", () => {
     const overlap = ERRORS.filter((e) => isConnectError(e));
-    expect(overlap.slice().sort()).toEqual(["installation-forbidden", "repo-forbidden", "repo-not-installed", "unavailable"]);
+    expect(overlap.slice().sort()).toEqual(["installation-forbidden", "repo-forbidden", "repo-not-installed", "repo-read-only", "unavailable"]);
   });
 });
 

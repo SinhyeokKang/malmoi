@@ -592,7 +592,7 @@ async function creationFixture() {
   vi.doMock("next/cache", () => ({ revalidatePath: () => {} }));
   vi.doMock("@/lib/github-connect/token-store", () => ({ ensureUserToken: async () => ({ status: "ok", accessToken: "fixture" }) }));
   vi.doMock("@/lib/github-connect/user", () => ({ listUserInstallations: async () => ["77"],
-    listInstallationRepos: async () => [{ fullName: "acme/web" }] }));
+    listInstallationRepos: async () => [{ fullName: "acme/web", pushedAt: null, push: true }] }));
   const paths = ["i18n/en.json", "i18n/ko.json", "second/en.json", "second/ko.json"];
   const blobs = new Map(paths.map(path => [path, '{"hello":"Hello"}']));
   const snapshot = vi.fn(async () => ({ status: "ok", headSha: "a".repeat(40), headCommittedAt: AFTER.toISOString(),

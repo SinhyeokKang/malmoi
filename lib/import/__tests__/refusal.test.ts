@@ -103,7 +103,7 @@ describe("planImportRefusal", () => {
       // 인가 — 다시 눌러도 같다(세션 만료는 아래 transient — 다시 로그인하면 풀린다)
       "forbidden", "not-found", "archived", "last-owner", "not-member",
       // 연결·설치 — 사람이 GitHub에서 손대야 풀린다
-      "reauthorize", "repo-not-installed", "installation-forbidden", "repo-forbidden",
+      "reauthorize", "repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only",
       "no-installations", "no-repos", "no-candidates",
       // 온보딩 판정 — 리포나 설정이 바뀌어야 답이 달라진다
       "base-branch-missing", "invalid-branch", "invalid-slug", "slug-taken", "limit-reached",

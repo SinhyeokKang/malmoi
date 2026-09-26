@@ -22,7 +22,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { recordEvent } from "@/lib/events/record";
 import { requireEnv } from "@/lib/env";
-import { planRepoConnect } from "@/lib/github-connect/connect-plan";
+import { planRepoConnect, type UserRepo } from "@/lib/github-connect/connect-plan";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
 import { describeFailure, httpStatus } from "@/lib/failure";
 import { logFailure } from "@/lib/github-connect/log";
@@ -160,7 +160,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   const probe = await probeRepo(project.repoOwner, project.repoName);
 
   let userInstallationIds: readonly string[];
-  let userRepoFullNames: readonly string[];
+  let userRepos: readonly UserRepo[];
   try {
     userInstallationIds = await listUserInstallations(token.accessToken);
     /**
@@ -171,9 +171,9 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
      * ⚠️ 이 `includes`는 `planRepoConnect`의 같은 검사와 **비교 방식이 같아야 한다** — 갈리면
      * 정당한 설치인데 리포 목록을 안 불러 `repo-forbidden`이 난다.
      */
-    userRepoFullNames =
+    userRepos =
       probe.status === "ok" && userInstallationIds.includes(probe.installationId)
-        ? (await listInstallationRepos(token.accessToken, probe.installationId)).map((r) => r.fullName)
+        ? await listInstallationRepos(token.accessToken, probe.installationId)
         : [];
   } catch (error) {
     /**
@@ -188,7 +188,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
     return { ok: false, error: "unavailable" };
   }
 
-  const plan = planRepoConnect({ probe, userInstallationIds, userRepoFullNames });
+  const plan = planRepoConnect({ probe, userInstallationIds, userRepos });
   if (plan.status !== "ok") return { ok: false, error: plan.status };
 
   if (probe.status !== "ok" || !probe.repositoryId || (project.repositoryId && project.repositoryId !== probe.repositoryId)) return { ok: false, error: "repo-forbidden" };

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProbeResult } from "@/lib/github-connect/health";
+import type { InstallationRepo } from "@/lib/github-connect/user";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { signSampleConfirmation } from "@/lib/onboarding/sample-confirmation";
 import { renderProjectWorkflowYaml, workflowSurfaceOf, type WorkflowSurface } from "@/lib/onboarding/workflow";
@@ -132,8 +133,9 @@ const SAMPLED_LOCALES = ["en", "fr", "ko"];
 const records = (...ids: string[]) => ids.map((id) => ({ id, createdAt: new Date("2026-01-01T00:00:00Z") }));
 const REQUESTED_AT = new Date("2026-09-18T10:00:00Z");
 
-/** `listInstallationRepos`가 주는 행. `pushed_at`은 같은 응답에 이미 있다 — 추가 호출 0. */
-const repoRow = (fullName: string, pushedAt = "2026-09-01T00:00:00Z") => ({ fullName, pushedAt });
+/** `listInstallationRepos`가 주는 행. `pushed_at`·`permissions`는 같은 응답에 이미 있다 — 추가 호출 0. */
+const repoRow = (fullName: string, pushedAt = "2026-09-01T00:00:00Z", push: boolean | null = true) =>
+  ({ fullName, pushedAt, push }) satisfies InstallationRepo;
 
 const HEAD_SHA = "c".repeat(40);
 const HEAD_AT = "2026-09-07T00:00:00Z";
@@ -703,6 +705,13 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
     expect(hoisted.openRepoReader).not.toHaveBeenCalled();
   });
 
+  it("리포를 읽기만 할 수 있으면 탐지 단계에서 repo-read-only다 — 트리를 열지 않는다 (sec-audit-3 1a)", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web", undefined, false)]);
+
+    expect(await detectRepoFormats({ owner: "acme", repo: "web" })).toEqual({ ok: false, error: "repo-read-only" });
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled();
+  });
+
   it("probe 장애는 unavailable로 그대로 나간다 — 거부로 접으면 있는 권한을 없다고 믿는다", async () => {
     hoisted.probeRepo.mockResolvedValue({ status: "error" });
 
@@ -826,6 +835,25 @@ describe("loadCandidateSample — ②의 언어 샘플", () => {
 });
 
 describe("createProject — 재검증한 값만 저장한다 (ARCHITECTURE §3.1)", () => {
+  /**
+   * sec-audit-3 1a — 생성자가 push 토큰을 받는다. 읽기 전용 협력자가 만들면 그 토큰의 페이로드가 **설치 토큰의
+   * 커밋**을 정하므로 가진 적 없는 쓰기 권한을 빌린다. 탐지·샘플에서 이미 걸리지만 제출 시점에 **다시 부른 목록**으로
+   * 한 번 더 판정한다 (렌더 때 본 목록을 믿지 않는다 — ARCHITECTURE §6.00 ③).
+   */
+  it("리포에 쓰기 권한이 없으면 repo-read-only이고 아무것도 만들지 않는다", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web", undefined, false)]);
+
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "repo-read-only" });
+    expect(db.projects.find((p) => p.slug === "acme-web")).toBeUndefined();
+  });
+
+  it("권한 필드가 응답에 없으면 unavailable이다 — 거부로 접지 않는다", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web", undefined, null)]);
+
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "unavailable" });
+    expect(db.projects.find((p) => p.slug === "acme-web")).toBeUndefined();
+  });
+
   /** ④의 [Start translating]이 옛 `/translations` redirect를 건너뛰려면 기본 표면을 알아야 한다 (audit-ux #22). */
   it("결과가 저장된 기본 표면의 slug를 든다", async () => {
     const result = await createProject(createInput());

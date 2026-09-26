@@ -120,8 +120,13 @@ export async function listUserInstallationRecords(accessToken: string): Promise<
   return items.map((installation) => ({ id: String(installation.id), createdAt: new Date(installation.created_at) }));
 }
 
-/** 그 설치에서 볼 수 있는 리포 하나. `pushedAt`은 같은 응답에 이미 있다 — **추가 호출이 0이다.** */
-export type InstallationRepo = { fullName: string; pushedAt: string | null };
+/**
+ * 그 설치에서 볼 수 있는 리포 하나. `pushedAt`·`push`는 같은 응답에 이미 있다 — **추가 호출이 0이다.**
+ *
+ * `push`는 **로그인 사용자 기준** 쓰기 권한이다(sec-audit-3 1a — `planRepoConnect`의 `repo-read-only`).
+ * 응답에 `permissions`가 없으면 `null`로 두고 거부로 접지 않는다 — 판정층이 `unavailable`로 읽는다.
+ */
+export type InstallationRepo = { fullName: string; pushedAt: string | null; push: boolean | null };
 
 export async function listInstallationRepos(
   accessToken: string,
@@ -131,5 +136,9 @@ export async function listInstallationRepos(
     "GET /user/installations/{installation_id}/repositories",
     { installation_id: Number(installationId) },
   );
-  return items.map((repo) => ({ fullName: repo.full_name, pushedAt: repo.pushed_at ?? null }));
+  return items.map((repo) => ({
+    fullName: repo.full_name,
+    pushedAt: repo.pushed_at ?? null,
+    push: typeof repo.permissions?.push === "boolean" ? repo.permissions.push : null,
+  }));
 }

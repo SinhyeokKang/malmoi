@@ -22,5 +22,5 @@ export function failureText(error: string, created = false): string {
  */
 export function isAccessLost(error: string): boolean {
   return ["unauthorized", "forbidden", "not-found", "not-connected", "reauthorize",
-    "repo-not-installed", "installation-forbidden", "repo-forbidden"].includes(error);
+    "repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only"].includes(error);
 }
