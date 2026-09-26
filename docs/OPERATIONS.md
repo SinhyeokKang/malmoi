@@ -316,6 +316,28 @@ CLAUDE.md) ④ 재배포 ⑤ 초대 한 통을 지정 수신자로 보내 접수
 빠지기까지 **수개월**이 걸린다. ⚠️ **`includeSubDomains`가 `*.mal-moi.com` 전부를 HTTPS에 묶는다**(`dev.mal-moi.com` 포함) —
 제출 전에 http로만 뜨는 하위 호스트가 없는지, 앞으로도 만들지 않을지 확인한다.
 
+## Supabase 데이터 API 롤 — 스키마 USAGE 확인 (2026-09-27, sec-audit-3 #2·#3)
+
+**언제**: 마이그레이션을 dev에 적용한 뒤(`/db` 5단계)와 **prod에 `db:deploy`한 뒤(`/merge` 1단계)**, 그리고 대시보드에서 테이블을 만든 뒤.
+dev만 보고 끝내지 않는다 — 두 DB의 권한 이력이 달라 dev 결과가 prod를 증명하지 않는다(ARCHITECTURE §7).
+
+```sql
+-- ① 방어층: 네 칸 전부 false여야 한다.
+SELECT r, has_schema_privilege(r, 'public', 'USAGE') AS usage, has_schema_privilege(r, 'public', 'CREATE') AS create
+FROM unnest(ARRAY['anon','authenticated']) AS r;
+-- ② 탐지 신호: 0건이 정상. 대시보드로 테이블을 만들었다면 0이 아닌 것이 정상이다(아래 ③이 그렇게 만든다) — ①이 false면 열리지는 않는다.
+SELECT grantee, table_name FROM information_schema.role_table_grants
+WHERE table_schema = 'public' AND grantee IN ('anon','authenticated');
+-- ③ 남는 것: supabase_admin 소유 3행은 postgres로 못 지운다(permission denied). 있다는 것만 확인한다.
+SELECT pg_get_userbyid(defaclrole) AS owner, defaclobjtype, defaclacl FROM pg_default_acl
+WHERE defaclnamespace = 'public'::regnamespace;
+```
+
+**①이 `true`로 남으면** `PUBLIC` 상속부터 본다 — `SELECT nspacl FROM pg_namespace WHERE nspname = 'public'`에 `=U/…`가 있으면 두 롤이
+그것을 물려받는다(마이그레이션은 `PUBLIC`을 건드리지 않는다). `REVOKE USAGE ON SCHEMA public FROM PUBLIC`은 `postgres`·`service_role` 밖
+롤 전체에 걸리므로, 런타임 롤 `postgres`가 스키마 소유자라 영향이 없음을 확인하고 새 마이그레이션으로 넣는다 — 콘솔에서 손으로 치지 않는다
+(dev·prod가 다시 갈린다). 대시보드 **Advisors → Security**가 0 errors인지도 같이 본다.
+
 ## 호스팅 플랜과 한도 (2026-09-19 확인)
 
 | 무엇 | 플랜 | 따라오는 제약 |
