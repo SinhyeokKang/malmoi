@@ -40,7 +40,7 @@ describe("dictionaryStrings — 굵게 라벨이 대조할 사전 문자열", ()
   it("실제 사전에서 화면 라벨을 찾는다", () => {
     const strings = dictionaryStrings(m);
     expect(strings.has(m.translations.publish.button)).toBe(true);
-    expect(strings.has(m.publicDocs.back.app)).toBe(true);
+    expect(strings.has(m.publicDocs.docs.toc)).toBe(true);
     expect(strings.has(m.publicDocs.privacy.title)).toBe(true);
     expect(strings.has(m.publicDocs.docs.title)).toBe(true);
     expect(strings.size).toBeGreaterThan(500);

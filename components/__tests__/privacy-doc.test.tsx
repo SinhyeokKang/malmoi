@@ -89,8 +89,8 @@ describe("PrivacyDoc — 구조", () => {
   it("복귀 링크가 없다", async () => {
     const { container } = await doc();
     const labels = [...container.querySelectorAll("a")].map((a) => a.textContent);
-    expect(labels).not.toContain(m.publicDocs.back.app);
-    expect(labels).not.toContain(m.publicDocs.back.signIn);
+    expect(labels).not.toContain("Back to projects");
+    expect(labels).not.toContain("Back to sign in");
   });
 
   it("오른쪽 칸이 절마다 항목을 둔 `On this page` 목차다", async () => {

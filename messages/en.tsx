@@ -421,27 +421,16 @@ export const en = {
   /**
    * 공개 문서 둘 — 공통 푸터(`PublicFooter`)가 가리킨다 (8-1a).
    *
-   * `/privacy`는 공개 셸 **안**이라 헤더가 나가는 길을 들고(DESIGN §6.616), `/docs`는 셸 **밖** 1열이다(§6.61).
-   *
-   * ⚠️ **`back`이 없으면 `/docs`에서 사용자가 갇힌다** — 셸 밖이라 사이드바도 헤더도 없고
-   * 뒤로가기 말고 돌아올 길이 없다.
+   * 둘 다 공개 셸 **안**이라 헤더가 나가는 길을 든다(DESIGN §6.616 · §6.61) — 복귀 링크가 없다.
+   * `/privacy`는 본문이 여기 있고, `/docs`는 본문이 `guide/**.md`이고 셸 라벨만 여기 있다.
    */
   publicDocs: {
-    /**
-     * ⚠️ **복귀 링크가 세션으로 갈린다** (DESIGN §6.61) — 셸 사이드바의 `CircleHelp`로 들어온
-     * 사람에게 "Back to sign in"만 주면 나가는 길이 로그아웃처럼 보인다.
-     */
-    back: {
-      app: "Back to projects",
-      signIn: "Back to sign in",
-    },
     /** 시행일 줄의 라벨 — 날짜 자체는 각 문서가 든다. `/privacy`만 쓴다 (DESIGN §6.616). */
     effectiveDate: "Effective date",
     /**
-     * ⚠️ **`sections`의 `id`는 URL 조각이다** — 다른 화면이 `/docs#workflow`처럼 절을 직접
-     * 가리키므로(launch-readiness L2.3), 제목 문구를 고칠 때 **`id`는 따라 고치지 않는다.**
-     * 블록은 문단(`p`)·목록(`ul`)·표(`table`) 셋이고, 클래스는 그릇이 든다 — `/privacy`는 `components/privacy/privacy-doc.tsx`,
-     * `/docs`는 `components/public-doc.tsx`, 표는 둘 다 `components/public-doc-table.tsx`.
+     * ⚠️ **`sections`의 `id`는 URL 조각이다** — 목차가 `#id`로 절을 가리키므로 제목 문구를 고칠 때 **`id`는 따라 고치지 않는다.**
+     * 블록은 문단(`p`)·목록(`ul`)·표(`table`) 셋이고(`lib/privacy/doc-text.ts`의 `DocBlock`), 클래스는 그릇이 든다 —
+     * `components/privacy/privacy-doc.tsx`, 표는 `components/public-doc-table.tsx`.
      */
     privacy: {
       title: "Privacy Policy",
@@ -653,12 +642,6 @@ export const en = {
      * (`lib/shell/nav.ts`). 2026-09-11까지 후자가 `nav.help: "Help"`로 갈려 있었는데,
      * 같은 라우트를 가리키는 라벨이 둘이면 하나가 낡는다.
      */
-    /**
-     * 도움말 (launch-readiness L2.3). ⚠️ **수·이름은 정본 상수와 대조된다** — `components/__tests__/docs-content.test.tsx`가
-     * 상한 넷(`PROJECT_LIMIT`·`MEMBER_LIMIT`·`INVITATION_HOURLY_LIMIT`·`PROJECT_SLUG_MAX`)·포맷 이름·실제 `uses:` 넷·
-     * `SKIP_MARKER`를 읽는다. 사전은 잎이라 그 상수를 import할 수 없어 리터럴로 적고 테스트가 묶는다.
-     * ⚠️ **`workflow` id는 설정 화면이 가리킨다** (`ci-card.tsx`의 hook 안내).
-     */
     docs: {
       title: "Docs",
       /**
@@ -682,112 +665,6 @@ export const en = {
         missing: (path: ReactNode): ReactNode => <>Nothing is published at {path}.</>,
         overview: "Go to the docs overview",
       },
-      intro: "How to connect a repository to Malmoi, what it can read, and the limits that apply.",
-      sections: [
-        {
-          id: "how-it-works",
-          heading: "How Malmoi works",
-          blocks: [
-            {
-              p: "Your code decides which strings exist; Malmoi holds the translations. A workflow in your repository sends the translation files to Malmoi whenever the base branch changes. Translators edit in Malmoi, and Publish sends their work back to the repository as one pull request.",
-            },
-            {
-              p: "While translators have edits that haven't been sent yet, Malmoi holds new syncs from the repository so those edits aren't overwritten. Publish, then run the workflow again — or a project owner can discard the edits from Sync.",
-            },
-          ],
-        },
-        {
-          id: "workflow",
-          heading: "Set up the workflow",
-          blocks: [
-            {
-              ul: [
-                "Create the project in Malmoi. The last step shows a push token and the workflow file.",
-                "Add the token to the repository as an Actions secret named PUSH_TOKEN.",
-                "Save the workflow as .github/workflows/malmoi-i18n.yml. The project's Settings show the same file again at any time, with every source.",
-                "If your code reads translations through a hook such as useTranslations(), add the wrapper input with the module and export (for example next-intl#useTranslations()), so Malmoi can show where each key is used.",
-              ],
-            },
-            {
-              p: "Rotating the token in Settings stops the old one right away — update the secret at the same time. If you change the base branch or the base language in settings, change the workflow file to match.",
-            },
-          ],
-        },
-        {
-          id: "allowed-actions",
-          heading: "Organizations that allow only selected actions",
-          blocks: [
-            {
-              p: "The workflow uses four actions. If your organization allows only selected actions, add all four as name@* (for example actions/checkout@*), or the run stops at “Set up job” with “not allowed to be used”:",
-            },
-            {
-              ul: [
-                "SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push — Malmoi's action",
-                "actions/checkout — in the workflow file",
-                "pnpm/action-setup — inside Malmoi's action",
-                "actions/setup-node — inside Malmoi's action",
-              ],
-            },
-            {
-              p: "The last two don't appear in your workflow file, so they are easy to miss.",
-            },
-          ],
-        },
-        {
-          id: "formats",
-          heading: "Supported file formats",
-          blocks: [
-            {
-              table: {
-                label: "Supported file formats",
-                head: ["Format", "Example path"],
-                rows: [
-                  ["JSON catalog", "src/locales/{locale}.json"],
-                  ["YAML catalog", "config/locales/{locale}.yml"],
-                  ["Chrome extension messages", "_locales/{locale}/messages.json"],
-                  ["Code dictionary (one file per language)", "src/locales/{locale}.ts"],
-                  ["Code dictionary (all languages in one file)", "src/i18n/namespaces/*.ts"],
-                ],
-              },
-            },
-            {
-              p: "A repository needs translation files in 2 or more languages. If it has only one, add a file for a second language before you connect it.",
-            },
-          ],
-        },
-        {
-          id: "limits",
-          heading: "Limits",
-          blocks: [
-            {
-              ul: [
-                "You can own up to 3 projects. Archiving one frees its place.",
-                "A project can have up to 10 members. Pending invitations don't count until they're accepted.",
-                "A project can send up to 20 invitations an hour.",
-                "A project address can be up to 40 characters. Addresses are shared by everyone on malmoi, so a common name such as web may already be taken.",
-              ],
-            },
-          ],
-        },
-        {
-          id: "merging",
-          heading: "Merging the translation pull request",
-          blocks: [
-            {
-              p: "Squash, rebase and a merge commit all work. Keep [skip-malmoi-i18n] in the pull request title: without it, merging runs the workflow again and can overwrite translations saved after the pull request was opened.",
-            },
-          ],
-        },
-        {
-          id: "nightly",
-          heading: "Every night",
-          blocks: [
-            {
-              p: "Once a night, malmoi publishes every project that has translations not yet sent. If a translation pull request is already open, it is updated instead of a new one being opened.",
-            },
-          ],
-        },
-      ],
     },
   },
 
