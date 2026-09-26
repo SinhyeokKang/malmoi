@@ -57,3 +57,24 @@ describe("보안 응답 헤더 (sec-audit 9 · audit #75)", () => {
     expect(valueOf(await all(), "Content-Security-Policy")).toBe(buildCsp(expected));
   });
 });
+
+/**
+ * `/docs` 원고의 스크린샷은 `public/guide/`의 같은 origin 파일이다(DESIGN §6.61) — 새 외부 호스트가 없으므로
+ * `img-src 'self'`로 충분하다는 것을 여기서 고정한다. 원고 이미지가 외부 URL을 가리키면 G1의 이미지 게이트가 먼저 막는다.
+ */
+describe("`/docs` 원고 이미지 — 같은 origin", () => {
+  it.each(["production", "preview", "development"] as const)("%s 정책의 img-src가 'self'를 든다", (env) => {
+    const imgSrc = buildCsp(env).split(";").map((part) => part.trim()).find((part) => part.startsWith("img-src "));
+    expect(imgSrc?.split(/\s+/)).toContain("'self'");
+  });
+});
+
+/**
+ * ⚠️ **동적 라우트가 `fs`로 원고를 읽으므로 Vercel 함수 번들에 md가 안 들어갈 수 있다** — 로컬 `next start`는 그것을 못 잡는다.
+ * 판정의 정본은 빌드 산출 `.nft.json`이고(수동), 여기는 설정이 그 줄을 드는지만 본다.
+ */
+describe("`/docs` 원고 트레이스", () => {
+  it("`outputFileTracingIncludes`가 `/docs` 라우트에 `guide/**/*.md`를 싣는다", () => {
+    expect(nextConfig.outputFileTracingIncludes?.["/docs/[[...slug]]"]).toContain("./guide/**/*.md");
+  });
+});
