@@ -41,7 +41,8 @@ beforeAll(() => {
 
 beforeEach(async () => {
   await pool.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public");
-  for (const role of ROLES) await pool.query(`DROP ROLE IF EXISTS ${role}`);
+  // 스키마를 먼저 지워 권한 의존이 사라진 뒤라 롤을 바로 지울 수 있다.
+  for (const role of [...ROLES, "app_runtime"]) await pool.query(`DROP ROLE IF EXISTS ${role}`);
 });
 
 afterAll(async () => {
@@ -68,13 +69,28 @@ it("두 롤의 직접 GRANT(USAGE·CREATE)를 걷는다", async () => {
   }
 });
 
-it("PUBLIC의 USAGE는 건드리지 않는다 — 그 상속은 적용 뒤 재조회로 판정한다", async () => {
-  // prod가 이 모양이면 마이그레이션만으로 false가 되지 않는다(design 2·3 "확인 필요", T2.3).
+it("PUBLIC의 USAGE도 걷는다 — 두 롤이 상속으로 되찾지 못하고, 직접 GRANT를 가진 앱 롤은 그대로 쓴다", async () => {
+  // prod 모양(2026-09-27 카탈로그): nspacl에 =U(PUBLIC)와 롤별 직접 U가 함께 있다. 런타임 롤은 직접 U를 든다.
   await pool.query("GRANT USAGE ON SCHEMA public TO PUBLIC");
   for (const role of ROLES) {
     await pool.query(`CREATE ROLE ${role} NOLOGIN`);
     await pool.query(`GRANT USAGE ON SCHEMA public TO ${role}`);
   }
+  await pool.query("CREATE ROLE app_runtime NOLOGIN");
+  await pool.query("GRANT USAGE ON SCHEMA public TO app_runtime");
+  await pool.query('CREATE TABLE public."Probe" (id int); INSERT INTO public."Probe" VALUES (1); GRANT SELECT ON public."Probe" TO app_runtime');
+
   await pool.query(MIGRATION);
-  for (const role of ROLES) expect(await privilege(role, "USAGE")).toBe(true);
+
+  for (const role of ROLES) expect(await privilege(role, "USAGE")).toBe(false);
+  expect(await privilege("app_runtime", "USAGE")).toBe(true);
+  const client = await pool.connect();
+  try {
+    await client.query("SET ROLE app_runtime");
+    const { rows } = await client.query<{ id: number }>('SELECT id FROM public."Probe"');
+    expect(rows).toEqual([{ id: 1 }]);
+  } finally {
+    await client.query("RESET ROLE");
+    client.release();
+  }
 });

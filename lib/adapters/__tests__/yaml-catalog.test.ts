@@ -903,7 +903,9 @@ describe("yaml-catalog — 개행 값 삽입은 큰따옴표다 (B7a r1)", () =>
  */
 describe("yaml-catalog — YAML 1.1이 문자열로 안 읽는 값은 인용한다 (sec-audit-3 #4)", () => {
   const AMBIGUOUS = ["No", "yes", "on", "off", "y", "n", "~", "null", "12:30", "0x1F", "1_000", ".inf", "2026-09-27", "0b101", "190:20:30"];
-  const PLAIN_SAFE = ["hello", "No way", "yes please", "12:30 PM", "=", "<<"];
+  /** `yaml` 1.1 스키마가 문자열로 읽지만 Psych(쉼표 숫자·`:` Symbol)·PyYAML safe_load(`=`·`<<` — 파일 전체 ConstructorError)가 아닌 것. */
+  const CONSUMER_ONLY = ["1,000", "1,000.5", "-1,234", ":)", ":foo", "=", "<<"];
+  const PLAIN_SAFE = ["hello", "No way", "yes please", "12:30 PM", "a:b", "1.5.2", "x=y"];
 
   /** 출력을 1.1·1.2 양쪽으로 다시 읽는다 — 값만이 아니라 표현이 두 파서에서 같은 문자열이어야 한다(POSTMORTEM 2026-09-03). */
   const readBoth = (out: string, path: string[]) =>
@@ -912,6 +914,17 @@ describe("yaml-catalog — YAML 1.1이 문자열로 안 읽는 값은 인용한�
   it.each(AMBIGUOUS)("판정: %s는 모호하다", (value) => {
     expect(isYaml11Ambiguous(value)).toBe(true);
     expect(typeof parse(value, { version: "1.1" })).not.toBe("string");
+  });
+
+  it.each(CONSUMER_ONLY)("판정: %s는 1.1 스키마 밖이지만 소비자 파서가 달리 읽어 모호하다", (value) => {
+    expect(typeof parse(value, { version: "1.1" })).toBe("string");
+    expect(isYaml11Ambiguous(value)).toBe(true);
+  });
+
+  it.each(CONSUMER_ONLY)("치환: %s를 큰따옴표로 쓴다", (value) => {
+    const out = yamlCatalog.write(withSource("ko:\n  a: old\n"), { locale: "ko", entries: [{ key: "a", message: value }] })!;
+    expect(out).toBe(`ko:\n  a: ${JSON.stringify(value)}\n`);
+    expect(readBoth(out, ["ko", "a"])).toEqual([value, value]);
   });
 
   it.each(PLAIN_SAFE)("판정: %s는 모호하지 않다", (value) => {
