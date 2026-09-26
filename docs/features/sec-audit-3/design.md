@@ -1,6 +1,11 @@
 # sec-audit-3 — 설계 (design)
 
-번호는 spec의 감사 연번이다. 영향 흐름: **push**(1b·17·18) · **pull/Publish**(1b·4·16) · **온보딩·설정**(1a·6·7·13·14) ·
+번호는 spec의 감사 연번이다.
+
+**결정 (2026-09-27 사용자)**: A (a)+(b) 둘 다 · B `script-src`만 nonce, `style-src 'unsafe-inline'` 유지 · C 새 env `APP_SIGNING_SECRET` ·
+D 새 env `BLOB_PUBLIC_HOST` · E 사용자 합산 30/h · F 샘플 확인 TTL 30분 · G placeholders 깊이 8 · 16KB.
+남은 확인은 2번의 PUBLIC 상속 하나이고 prod 반영 뒤 재조회로 판정한다(T2.3).
+ 영향 흐름: **push**(1b·17·18) · **pull/Publish**(1b·4·16) · **온보딩·설정**(1a·6·7·13·14) ·
 **초대**(8·15) · **런타임 경계**(11·12) · **DB·운영**(2·3) · **문서·CLI**(5·9·10).
 
 ## 과거 함정 (POSTMORTEM)
@@ -35,7 +40,7 @@
 
 **심층 방어 (b)**: `lib/locale-code.ts`에 `isLocaleShaped(code)`를 더한다(잎 유지, import 0).
 
-- 규칙(확인 필요 A): 첫 서브태그 **ASCII 영문자 2~3자**, 이후 서브태그 `[_-][A-Za-z0-9]{1,8}` 0개 이상, 전체 길이 ≤ 35.
+- 규칙(결정 A — (a)+(b) 둘 다): 첫 서브태그 **ASCII 영문자 2~3자**, 이후 서브태그 `[_-][A-Za-z0-9]{1,8}` 0개 이상, 전체 길이 ≤ 35.
   `package`·`index`·`README`·`config`·`action`은 거부, `en`·`pt_BR`·`zh-Hant-TW`·`es-419`·`sr-Latn`·`fil`·`en-GB-oxendict`는 통과.
 - `isPathSafeLocale`과 **별개 함수**로 둔다 — 축이 다르다("경로에 넣어도 되나" vs "로케일인가"). push 스키마의 `LocaleCode`는
   둘을 모두 요구하고, `resolveLocalePaths`의 per-locale 갈래도 둘을 모두 요구한다(2층).
@@ -100,7 +105,7 @@
   `scripts/push-local.ts`가 부르고 위반이면 exit 2. `lib/cli/`에 두고 테스트한다.
 - `docs/ACTIONS.md`의 `api-url` 입력 설명에 https 요구를 적는다(외부 계약).
 
-## 11 CSP `'unsafe-inline'` (확인 필요 B)
+## 11 CSP `'unsafe-inline'` (결정 B — script만 nonce)
 
 - ARCHITECTURE §8이 "nonce 배선은 범위 밖 — 전 페이지가 요청마다 렌더된다"로 **명시적으로 받아들인** 트레이드오프다. 이번에 뒤집는다.
 - 설계: `middleware.ts`가 요청마다 `randomBytes(16)` nonce를 만들어 요청 헤더 `x-nonce`와 응답 CSP에 싣는다.
@@ -131,14 +136,14 @@
   - 전환 창: 배포 순간 진행 중인 GitHub 연결(10분 state)·샘플 확인이 한 번 실패한다. 재시도로 복구되므로 이중 키 검증은 두지 않는다
     (요청 없는 유연성 금지).
   - `.env.example`, OPERATIONS 키 목록·회전 절차, CLAUDE.md "암호화 키" 절이 아니라 **서명 키**라 그 옆에 한 줄.
-- 13: `Confirmation`에 `issuedAt: number`(ms)를 더하고 검증이 `now - issuedAt > TTL`이면 실패. TTL 30분(확인 필요).
+- 13: `Confirmation`에 `issuedAt: number`(ms)를 더하고 검증이 `now - issuedAt > TTL`이면 실패. TTL 30분(결정 F).
   `verify`는 `now`를 인자로 받는다(순수). 라벨을 `…:v2`로 올려 옛 토큰을 구조적으로 거부한다.
 
 ## 15 사용자 단위 초대 한도
 
 - `ProjectInvitation.invitedBy`가 이미 있다 — **스키마 변경 없음**. `readLimits`가 `invitedBy = userId AND createdAt > now-1h`
   건수를 더 읽고, 순수 판정(`lib/invitation-email/limits.ts`)에 `userRecentCount`·`USER_WINDOW_LIMIT`을 넣는다.
-  - 값: 30/h(확인 필요). 프로젝트 20/h보다 크고 3프로젝트 × 20보다 작다.
+  - 값: 30/h(결정 E). 프로젝트 20/h보다 크고 3프로젝트 × 20보다 작다.
   - 인덱스: `(invitedBy, createdAt)`가 없다 — 사용자당 행 수가 작아 스캔 비용이 무시할 수준이므로 **인덱스를 더하지 않는다**.
   - 잠금: 프로젝트 잠금 안에서 읽으므로 **다른 프로젝트 동시 발급**은 경합한다(한도를 조금 넘을 수 있다). 사용자 잠금을
     더하지 않는다 — 한도의 목적이 스팸 억제라 근사로 충분하다. ARCHITECTURE에 그 근사를 적는다.
@@ -158,7 +163,7 @@
 
 ## 18 placeholders 상한
 
-- 순수 함수 `jsonWithinBounds(value, { maxDepth: 4, maxBytes: 4096 })`(확인 필요) — 깊이는 반복(스택 없는 순회)으로 잰다.
+- 순수 함수 `jsonWithinBounds(value, { maxDepth: 8, maxBytes: 16384 })`(결정 G) — 깊이는 반복(스택 없는 순회)으로 잰다.
   `z.unknown().refine(...)`. "모양을 검사하지 않는다" 계약과 충돌하지 않는다 — 크롬 `placeholders`는 깊이 2(`{name:{content,example}}`)라
   상한은 모양이 아니라 자원이다. 주석에 그 구분을 남긴다.
 

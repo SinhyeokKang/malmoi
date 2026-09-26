@@ -6,7 +6,7 @@
 
 ## 0. 착수 전
 
-- [ ] **T0.1** 확인 필요 A~G 결정 반영(아래 목록). — 검증: design.md의 "(확인 필요)" 표시가 전부 값으로 바뀜.
+- [x] **T0.1** 결정 A~G 반영(design.md 머리). — 검증: design.md에 남은 "확인 필요"는 2번 PUBLIC 상속(T2.3) 하나.
 - [ ] **T0.2** prod `SELECT DISTINCT code FROM "Locale"`를 받아 `isLocaleShaped` 후보 규칙에 돌린다(읽기 전용). — 검증: 거부 0건. 1건 이상이면 규칙 조정 후 재실행.
 
 ## 1. 🔴 #1 로케일 모양 + 리포 쓰기 권한
@@ -65,7 +65,7 @@
 - [ ] **T6.4** #16 `listBranches`·`openRepoReader`에 `repositoryId` 스코프. 온보딩 호출처는 probe id. — 검증: 단위 green, `pnpm smoke:github <slug>` 통과(읽기 전용, 사람이 실행).
   `[C] fix(github): pin read tokens to the repository id`
 - [ ] **T6.5** #17 push `refs.path` refine + `buildPermalink` 불량 행 null. — 검증: green.
-- [ ] **T6.6** #18 `/tdd` `jsonWithinBounds` → push `placeholders` refine. — 검증: 깊이 5 / 5KB 400, 크롬 정상 블록 통과.
+- [ ] **T6.6** #18 `/tdd` `jsonWithinBounds` → push `placeholders` refine. — 검증: 깊이 9 / 16KB 초과 400, 크롬 정상 블록 통과.
   `[C] fix(push): bound refs paths and placeholder payloads`
 - [ ] **T6.7** OPERATIONS(서명 키 회전)·CLAUDE.md(서명 키 한 줄)·ARCHITECTURE §6. — 검증: 문서 반영.
 

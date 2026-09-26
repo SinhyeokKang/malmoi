@@ -55,7 +55,7 @@
 8. **8번** 같은 사용자의 동시 수락 둘 중 진 쪽이 `already-member`를 받는다.
 9. **9번** `action.yml` 주석에 private 전제가 없다.
 10. **10번** `push-local`이 `localhost`·`127.0.0.1`·`[::1]` 밖의 `http:` URL을 exit 2로 거부한다.
-11. **11번** 프로덕션 응답의 CSP `script-src`에 `'unsafe-inline'`이 없다(확인 필요 B의 결정에 따름).
+11. **11번** 프로덕션 응답의 CSP `script-src`에 `'unsafe-inline'`이 없다(결정 B — `style-src`의 `'unsafe-inline'`은 잔여로 남긴다).
 12. **12번** `img-src`가 그 환경의 Blob 스토어 호스트 하나만 연다.
 13. **13번** 샘플 확인 토큰이 발급 후 TTL을 넘으면 검증에 실패한다.
 14. **14번** GitHub 연결 state·샘플 확인이 `AUTH_SECRET`이 아닌 별도 키로 서명된다 — `AUTH_SECRET` 회전이 그 둘을 무효로 만들지 않는다.
