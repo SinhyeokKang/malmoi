@@ -245,11 +245,23 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
 
 type Replacement = { start: number; end: number; text: string; indent?: number };
 
+/**
+ * 이 값을 맨 문자열로 두면 **YAML 1.1 파서가 같은 문자열로 읽지 못하는가** (sec-audit-3 #4).
+ * ⚠️ 1.2 판정만으로 PLAIN을 고르면 `No`·`on`·`12:30`이 인용 없이 나가 Psych·PyYAML(1.1)에서 bool·정수가 된다 —
+ * 로케일 파일의 소비자는 대개 Rails·Python이다. 규칙을 재구현하지 않고 같은 라이브러리의 1.1 스키마에 묻는다.
+ */
+export function isYaml11Ambiguous(value: string): boolean {
+  const doc = parseDocument(value, { version: "1.1" });
+  return doc.errors.length > 0 || doc.toJS() !== value;
+}
+
 /** CST는 문자열 타입 판정을 하지 않으므로 스키마 판정은 serializer에 맡긴다. */
 function flowString(value: string, doc: Document, type?: Scalar.Type): string {
+  const plain = type !== "QUOTE_SINGLE" && type !== "QUOTE_DOUBLE" && !value.includes("\n");
   return stringify(value, {
     version: doc.directives?.yaml.version ?? "1.2",
-    defaultStringType: type === "QUOTE_SINGLE" ? "QUOTE_SINGLE" : type === "QUOTE_DOUBLE" || value.includes("\n") ? "QUOTE_DOUBLE" : "PLAIN",
+    // 원본 `%YAML 1.2` 지시자가 있어도 인용한다 — 소비자 파서가 지시자를 따른다는 보장이 없다.
+    defaultStringType: type === "QUOTE_SINGLE" ? "QUOTE_SINGLE" : plain && !isYaml11Ambiguous(value) ? "PLAIN" : "QUOTE_DOUBLE",
     blockQuote: false,
     doubleQuotedAsJSON: true,
     collectionStyle: "flow",
