@@ -13,9 +13,9 @@ describe("routes — 정적 경로", () => {
   });
 
   /**
-   * ⚠️ **사용자 축이다** (PRODUCT §7.7 — 6b-4). slug를 받지 않고, `middleware.ts`의 matcher가
-   * `/projects/:path*` 하나였으므로 이 경로는 **1차 차단 밖에서 태어난다** —
-   * `entry-points.test.ts`의 "보호 라우트가 미들웨어 matcher에 있다"가 그것을 잡는다.
+   * ⚠️ **사용자 축이다** (PRODUCT §7.7 — 6b-4). slug를 받지 않고, 1차 차단이 `/projects` 접두
+   * 하나였으므로 이 경로는 **1차 차단 밖에서 태어난다** —
+   * `entry-points.test.ts`의 "보호 라우트가 1차 차단에 걸린다"가 그것을 잡는다.
    */
   it("계정 화면은 프로젝트 축이 아니다 — slug가 없다", () => {
     expect(routes.account()).toBe("/account");

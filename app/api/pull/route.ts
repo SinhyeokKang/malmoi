@@ -13,9 +13,9 @@ import { runSync } from "@/lib/sync/run";
  * DB → `malmoi-i18n/sync` PR. **cron 전용 진입점이다** — 편집 UI는 Server Action이 `triggerPull`을
  * 직접 부른다 (CLAUDE.md "데이터 변경 경로", 내부 쓰기에 Route Handler를 새로 만들지 않는다).
  *
- * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다.** cron 요청엔 세션이 없다. 현재 matcher는
- * `/projects/:path*`뿐이라 기본값이 안전하지만, 보호 라우트를 넓힐 때 이 경로를 함께 넣으면
- * 야간 pull이 조용히 리다이렉트된다.
+ * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다.** cron 요청엔 세션이 없다. 지금 matcher는 `/api/*`를
+ * 통째로 빼고 보호 경로(`isProtectedPath`)도 `/projects`·`/account`뿐이라 안전하지만, 둘 중 하나에 이 경로가
+ * 들면 야간 pull이 조용히 리다이렉트된다.
  *
  * ⚠️ **준비된 프로젝트 전부를 순회한다** (2026-09-07, ARCHITECTURE §3.05). 전에는 서버 env 하나가 대상을
  * 정해서 프로젝트가 둘 이상이면 나머지가 영영 안 돌았다. **한 프로젝트의 실패가 나머지를 막지 않는다** —

@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
-import { optionalEnv } from "./lib/env";
-import { cspEnvironment, securityHeaders } from "./lib/security-headers";
+import { securityHeaders } from "./lib/security-headers";
 
 const nextConfig: NextConfig = {
   // Leave multipart overhead above the 3 MB image limit.
@@ -29,14 +28,13 @@ const nextConfig: NextConfig = {
   /**
    * **보안 응답 헤더** (2026-09-09, sec-audit 발견 9 → audit #75). 값은 `lib/security-headers.ts`의 순수 함수가 정한다.
    *
-   * ⚠️ **env는 이 함수 안에서만 읽는다** — next.config는 빌드·기동 시점에 평가되고, `next build`의
-   * `NODE_ENV`와 Vercel의 `VERCEL_ENV`가 그때 정해져 있다. 모듈 최상위로 올리지 않는다.
+   * ⚠️ **CSP는 여기 없다** (sec-audit-3 #11) — 요청마다 nonce가 바뀌어 `middleware.ts`가 유일한 출처다. 여기 다시 넣으면
+   * 헤더가 둘이 되고 브라우저는 교집합을 적용한다.
    *
    * ⚠️ **`tsc`는 이 함수의 형태를 못 본다** — `app/__tests__/security-headers.test.ts`가 설정을 **불러서** 검사한다.
    */
   async headers() {
-    const env = cspEnvironment({ nodeEnv: process.env.NODE_ENV, vercelEnv: process.env.VERCEL_ENV });
-    return [{ source: "/(.*)", headers: securityHeaders(env, { blobHost: optionalEnv("BLOB_PUBLIC_HOST") }) }];
+    return [{ source: "/(.*)", headers: securityHeaders() }];
   },
 };
 

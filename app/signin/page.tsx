@@ -26,8 +26,8 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * `lib/routes.ts`의 `signIn()` 하나이고**, 나중에 옮기면 아홉 자리가 동시에 움직인다
  * (POSTMORTEM 2026-09-05 — 경로 문자열은 타입이 못 본다).
  *
- * ⚠️ **matcher에 넣지 않는다.** `shouldRedirectToLogin`도 `middleware()`도 경로를 보지 않으므로,
- * 여기가 matcher에 걸리면 쿠키 없는 모든 요청이 **자기 자신으로 307을 돈다.**
+ * ⚠️ **보호 경로(`isProtectedPath`)에 넣지 않는다.** `shouldRedirectToLogin`은 목적지를 보지 않으므로,
+ * 여기가 보호 경로에 들면 쿠키 없는 모든 요청이 **자기 자신으로 307을 돈다.**
  *
  * 이미 로그인돼 있으면 바로 `/projects`로 — 로그인 화면을 두 번 보여줄 이유가 없다.
  *

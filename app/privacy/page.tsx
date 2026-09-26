@@ -14,7 +14,7 @@ import { readSession } from "@/lib/auth/read-session";
  * 못 잡는다.
  *
  * ⚠️ **인가를 지나지 않는다** — 공개 문서라 로그인 없이 읽혀야 한다(`entry-points.test.ts`의
- * `EXEMPT`에 이름으로 등재). 같은 이유로 middleware matcher에도 없다. 세션을 읽는 것은 **헤더 primary
+ * `EXEMPT`에 이름으로 등재). 같은 이유로 1차 차단의 보호 경로에도 없다. 세션을 읽는 것은 **헤더 primary
  * 하나 때문이고 차단이 아니다** — 로그인이면 `Open Malmoi`, 아니면(장애 포함) `Get started`(`publicCta`).
  */
 export default async function Privacy() {

@@ -159,7 +159,7 @@ export const routes = {
    * ⚠️ **쿼리를 받는다** — 확인 실패가 `Alert` 문구를 이 화면에 전달해야 하고, 문자열 연결로
    * 만들면 `entry-points.test.ts`의 "쿼리 수신자" 검사를 통째로 회피한다 (`signIn` 주석과 같은 이유).
    *
-   * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다** — 비로그인이 봐야 하는 화면이라 넣으면 그
+   * ⚠️ **1차 차단의 보호 경로(`isProtectedPath`)에 넣지 않는다** — 비로그인이 봐야 하는 화면이라 넣으면 그
    * 순간 challenge가 사라진다 (`/invite/[token]`과 같은 판단).
    */
   signInLink: (challenge: string, query: { e?: string } = {}): string =>

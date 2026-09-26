@@ -1,5 +1,6 @@
 /**
- * **보안 응답 헤더의 값** (sec-audit 발견 9 → 2026-09-24 audit #75). `next.config.ts`의 `headers()`가 부른다.
+ * **보안 응답 헤더의 값** (sec-audit 발견 9 → 2026-09-24 audit #75 → sec-audit-3 #11). CSP는 `middleware.ts`가
+ * 요청마다(nonce), 나머지 넷은 `next.config.ts`의 `headers()`가 정적으로 낸다.
  *
  * ⚠️ **잎이다 — import 0.** next.config가 빌드·기동 시점에 이 파일을 읽으므로 경로 별칭·서버 모듈을 물면
  * 설정 로드가 죽는다. 환경은 호출자가 넘긴다(모듈 최상위에서 env를 읽지 않는다 — CLAUDE.md 코드 컨벤션).
@@ -42,21 +43,37 @@ export function isBlobPublicHost(host: string): boolean {
 }
 
 /**
+ * 요청마다 새 script nonce — 16바이트 base64. Web Crypto만 쓴다(미들웨어가 어느 런타임에서 돌든 같다).
+ */
+export function createNonce(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return btoa(String.fromCharCode(...bytes));
+}
+
+/** Next가 요청 CSP에서 nonce를 뽑는 모양과 같다(`get-script-nonce-from-header`) — 어긋나면 조용히 nonce 없이 렌더한다. */
+const NONCE = /^[A-Za-z0-9+/_-]+={0,2}$/;
+
+/**
  * **enforce 정책** (2026-09-24 — 2026-09-09의 "Report-Only로 시작"을 뒤집었다, 사용자 판정 "보안 강하게").
  *
- * ⚠️ **`'unsafe-inline'`이 script·style에 남는다** — Next는 인라인 부트스트랩(`self.__next_f.push`)과 인라인
- * 스타일을 넣고, 이 리포엔 nonce 배선이 없다. nonce로 가면 모든 페이지가 요청마다 렌더돼야 해서 범위 밖이다.
- * 그래서 이 정책이 막는 것은 **외부 출처**의 스크립트·연결·폼 전송·플러그인·`<base>` 탈취다.
+ * **script는 nonce다** (sec-audit-3 #11 — 결정 B). Next가 요청 CSP의 nonce를 자기 부트스트랩(`self.__next_f.push`)과
+ * 청크 `<script>`에 붙이고, `'strict-dynamic'`이 그 스크립트가 불러오는 청크로 신뢰를 잇는다 — 주입된 인라인 스크립트는
+ * nonce를 모르니 막힌다. ⚠️ **대가는 전 페이지 동적 렌더다**(`app/layout.tsx`의 `connection()`).
+ *
+ * ⚠️ **`style-src`에는 `'unsafe-inline'`이 남는다** — React `style` 속성·sonner·radix가 인라인 스타일을 쓰고 nonce는
+ * 속성에 안 붙는다(ARCHITECTURE §8 잔여).
  */
-export function buildCsp(env: CspEnvironment, options: { blobHost: string | undefined }): string {
+export function buildCsp(env: CspEnvironment, options: { nonce: string; blobHost: string | undefined }): string {
+  // 정책 문자열에 그대로 이어 붙으므로 따옴표·`;`가 새면 지시어를 주입한다 — 호출자가 `createNonce`여도 여기서 막는다.
+  if (!NONCE.test(options.nonce)) throw new Error("buildCsp: malformed nonce");
   // ⚠️ 모양이 틀린 값은 없는 것으로 친다 — 없으면 업로드 이미지가 안 보일 뿐이고(fail-closed), 남의 스토어는 안 열린다.
   const blob = options.blobHost !== undefined && isBlobPublicHost(options.blobHost) ? [`https://${options.blobHost}`] : [];
   const directives: [string, string[]][] = [
     ["default-src", ["'self'"]],
     // Next는 스타일을 인라인으로 넣는다.
     ["style-src", ["'self'", "'unsafe-inline'"]],
-    // React Refresh가 eval을 쓴다 — `next dev` 전용이다.
-    ["script-src", ["'self'", "'unsafe-inline'", ...(env === "development" ? ["'unsafe-eval'"] : [])]],
+    // `'self'`는 `'strict-dynamic'`을 모르는 옛 브라우저용이다(CSP3 브라우저는 무시한다). React가 dev에서 eval을 쓴다.
+    ["script-src", ["'self'", `'nonce-${options.nonce}'`, "'strict-dynamic'", ...(env === "development" ? ["'unsafe-eval'"] : [])]],
     // 폰트는 자사 호스트다 (`public/fonts/` — CLAUDE.md 폰트 절).
     ["font-src", ["'self'"]],
     // 공급자 아바타 둘 + 업로드한 프로필·프로젝트 이미지(Vercel Blob 공개 읽기). ⚠️ Blob은 **이 환경의 스토어 하나**다 —
@@ -82,7 +99,11 @@ export function buildCsp(env: CspEnvironment, options: { blobHost: string | unde
   return directives.map(([name, sources]) => `${name} ${sources.join(" ")}`).join("; ");
 }
 
-export function securityHeaders(env: CspEnvironment, options: { blobHost: string | undefined }): { key: string; value: string }[] {
+/**
+ * **CSP를 뺀 넷** — 경로와 무관한 정적 값이라 `next.config.ts`가 `/(.*)` 전부(API·정적 자산 포함)에 싣는다.
+ * ⚠️ **CSP는 하나만** 보낸다 — 둘이면 브라우저가 교집합을 적용해 한쪽 완화가 조용히 무시된다. 그 하나는 미들웨어다.
+ */
+export function securityHeaders(): { key: string; value: string }[] {
   return [
     { key: "X-Content-Type-Options", value: "nosniff" },
     /**
@@ -90,8 +111,6 @@ export function securityHeaders(env: CspEnvironment, options: { blobHost: string
      * 추가되는 순간 토큰이 `Referer`로 나간다.
      */
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-    /** CSP는 **하나만** 보낸다 — 둘이면 브라우저가 교집합을 적용해 한쪽 완화가 조용히 무시된다. */
-    { key: "Content-Security-Policy", value: buildCsp(env, options) },
     /**
      * ⚠️ **`includeSubDomains`가 `*.mal-moi.com` 전부를 HTTPS에 묶는다**(`dev.mal-moi.com` 포함) — http로만 뜨는
      * 하위 호스트를 만들 수 없게 된다. **`preload`는 선언일 뿐이고 hstspreload.org 제출은 사람의 몫이다**

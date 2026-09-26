@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Toaster } from "sonner";
 
 import { m } from "@/lib/i18n";
@@ -10,7 +11,13 @@ export const metadata: Metadata = {
   description: m.common.appDescription,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  /*
+    ⚠️ **전 페이지를 요청마다 렌더한다** (sec-audit-3 #11). CSP nonce는 요청마다 새로 나오고 Next는 렌더 중에 그것을
+    스크립트에 붙인다 — 빌드 시점에 굳은 페이지는 nonce가 없어 스크립트가 **전부** 막힌다(화면은 뜨고 버튼만 죽는다).
+    지우면 랜딩·`/privacy`처럼 요청을 안 읽는 페이지가 조용히 정적으로 돌아간다.
+  */
+  await connection();
   return (
     /*
       ⚠️ **`lang="en"`이다** (2026-09-08 ship 4). 화면 문구가 전부 영어가 된 커밋이 이것이므로 여기서

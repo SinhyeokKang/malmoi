@@ -41,3 +41,17 @@ export function shouldRedirectToLogin(input: { method: string; cookieNames: read
   if (method !== "GET" && method !== "HEAD") return false;
   return !hasSessionCookie(input.cookieNames);
 }
+
+/**
+ * 1차 차단이 로그인으로 돌려보내는 경로 (sec-audit-3 #11 — 전에는 미들웨어 matcher 자체였다).
+ *
+ * matcher가 CSP nonce 때문에 **전 페이지**로 넓어져서 판정을 여기로 옮겼다. **새 보호 라우트를 추가하면 여기도 추가한다** —
+ * 빠뜨리면 그 라우트가 무방비다(`entry-points.test.ts`가 `(edit)` 아래 페이지를 센다).
+ *
+ * ⚠️ **`/invite`·`/signin`·`/privacy`·`/docs`·`/`는 넣지 않는다** — `shouldRedirectToLogin`이 목적지를 안 보므로
+ * `/signin`이 들면 자기 자신으로 307을 돌고, `/invite`가 들면 토큰이 사라진다(같은 테스트의 부정 단언).
+ * ⚠️ **`/account`는 `/projects` 접두가 덮지 않는다** (6b-4) — 사용자 축이다.
+ */
+export function isProtectedPath(pathname: string): boolean {
+  return pathname === "/projects" || pathname.startsWith("/projects/") || pathname === "/account";
+}
