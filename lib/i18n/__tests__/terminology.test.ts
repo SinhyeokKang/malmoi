@@ -1,8 +1,15 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { visit } from "unist-util-visit";
 
 import { describe, expect, it } from "vitest";
 
+import { parseHeadingAnchor, parseMd, toText } from "@/lib/guide/parse";
+import { servedGuideFiles } from "@/lib/guide/served";
 import { m } from "@/lib/i18n";
 
 /**
@@ -41,6 +48,27 @@ const strings = (): Found[] => {
   walk(m, "", out);
   return out;
 };
+
+/**
+ * **서빙되는 원고**의 문장 — 문단·헤딩·표 셀 하나가 한 문장이다. 경로는 `guide/<file>`이라 `ALLOWED`는
+ * 파일 단위로 건다.
+ *
+ * ⚠️ **코드는 뺀다**(`toText(…, false)`) — action 이름(`…/malmoi-i18n-push`)·파일 경로는 사용자가 옮겨 적는
+ * 식별자라 코드로 쓰고, 그러면 표의 개념이 아니다. 헤딩의 `{#id}` 표식도 뗀다.
+ */
+function guideStrings(root: string): Found[] {
+  const dir = join(root, "guide");
+  return servedGuideFiles(dir).flatMap((file) => {
+    const out: Found[] = [];
+    visit(parseMd(readFileSync(join(dir, file), "utf8")), (node) => {
+      if (node.type === "heading") out.push({ path: `guide/${file}`, text: parseHeadingAnchor(toText(node, false)).text });
+      else if (node.type === "paragraph" || node.type === "tableCell") out.push({ path: `guide/${file}`, text: toText(node, false) });
+    });
+    return out;
+  });
+}
+
+const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
 /**
  * 표의 "쓰지 않는 말" + git 어휘. **대소문자를 가리지 않는다** — 문장 첫 자리에서 대문자가 된다.
@@ -109,6 +137,16 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
 
   it("쓰지 않는 말이 화면 문장에 없다", () => {
     expect(violations(strings())).toEqual([]);
+  });
+
+  it("쓰지 않는 말이 서빙되는 원고에 없다", () => {
+    expect(violations(guideStrings(ROOT))).toEqual([]);
+  });
+
+  it("원고 스캔은 SUMMARY에 오른 md의 문장을 보고 코드는 뺀다 (픽스처)", () => {
+    const found = guideStrings(fileURLToPath(new URL("../../guide/__tests__/fixtures/scan", import.meta.url)));
+    expect(new Set(found.map(({ path }) => path))).toEqual(new Set(["guide/SUMMARY.md", "guide/formats.md"]));
+    expect(violations(found)).toEqual(["guide/formats.md — \"push\" in: Every push runs the workflow."]);
   });
 
   it("같은 규칙이 금지된 문장을 잡고 예외는 통과시킨다", () => {

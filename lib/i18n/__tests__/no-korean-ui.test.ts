@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { servedGuideFiles } from "@/lib/guide/served";
+
 /**
  * **화면에 닿는 소스에 한글 리터럴이 없다** (CLAUDE.md 코드 컨벤션).
  *
@@ -91,14 +93,28 @@ function sourceFiles(dir: string): string[] {
   return out;
 }
 
+const countKorean = (text: string): number => (text.match(/[가-힣]/g) ?? []).length;
+
+/**
+ * **서빙되는 원고** — `guide/SUMMARY.md`와 거기 오른 md(`servedGuideFiles`). AUTHORING·SHOOTING은 한국어
+ * 매뉴얼이고 서빙되지 않아 빠진다.
+ *
+ * ⚠️ **md에서는 `stripComments`를 건너뛴다** — md에는 JS 주석이 없고, 그 정규식이 `packages/*\/locales/*.json`
+ * 같은 글롭의 `/*`를 블록 주석 시작으로 먹어 **그 뒤 본문이 통째로 사라진다**(거짓 음성).
+ */
+function guideScanned(root: string): { path: string; korean: number }[] {
+  const dir = join(root, "guide");
+  return servedGuideFiles(dir).map((file) => ({ path: relative(root, join(dir, file)), korean: countKorean(readFileSync(join(dir, file), "utf8")) }));
+}
+
 function scanned(): { path: string; korean: number }[] {
-  return [...ROOTS.flatMap((root) => sourceFiles(join(ROOT, root))), ...ROOT_FILES.map((f) => join(ROOT, f))]
-    .map((file) => relative(ROOT, file))
-    .filter((path) => !EXCLUDED_PREFIX.some((prefix) => path.startsWith(prefix)))
-    .map((path) => ({
-      path,
-      korean: (stripComments(readFileSync(join(ROOT, path), "utf8")).match(/[가-힣]/g) ?? []).length,
-    }));
+  return [
+    ...[...ROOTS.flatMap((root) => sourceFiles(join(ROOT, root))), ...ROOT_FILES.map((f) => join(ROOT, f))]
+      .map((file) => relative(ROOT, file))
+      .filter((path) => !EXCLUDED_PREFIX.some((prefix) => path.startsWith(prefix)))
+      .map((path) => ({ path, korean: countKorean(stripComments(readFileSync(join(ROOT, path), "utf8"))) })),
+    ...guideScanned(ROOT),
+  ];
 }
 
 describe("UI 문자열은 사전에서 온다 — 소스에 한글 리터럴이 없다", () => {
@@ -150,5 +166,24 @@ describe("스캐너 메타 — 주석 셋을 벗기고 코드 안 한글은 잡�
     expect(stripComments('const label = "저장";')).toMatch(/[가-힣]/);
     expect(stripComments("const label = `저장 ${n}건`;")).toMatch(/[가-힣]/);
     expect(stripComments("<p>저장됨</p>")).toMatch(/[가-힣]/);
+  });
+});
+
+/**
+ * 원고 스캔을 픽스처로 고정한다 — 실물 `guide/`는 원고가 선 뒤에야 한글을 들 수 있어 실물만으로는 스캐너가
+ * md를 실제로 보는지 증명할 수 없다.
+ */
+describe("원고 스캔 — 서빙되는 md만, 주석 벗기기 없이", () => {
+  const FIXTURE = fileURLToPath(new URL("../../guide/__tests__/fixtures/scan", import.meta.url));
+
+  it("SUMMARY에 오른 md만 훑는다 — AUTHORING·SHOOTING·미등재 파일은 빠진다", () => {
+    expect(guideScanned(FIXTURE).map(({ path }) => path)).toEqual(["guide/SUMMARY.md", "guide/formats.md"]);
+  });
+
+  it("글롭 `/*` 뒤의 한글이 잡힌다 — 벗기기를 건너뛰었다는 증거", () => {
+    const source = readFileSync(join(FIXTURE, "guide/formats.md"), "utf8");
+    // 같은 본문을 벗기면 한글이 사라진다 — md에 벗기기를 걸면 이 검사가 조용해진다
+    expect(countKorean(stripComments(source))).toBe(0);
+    expect(guideScanned(FIXTURE).find(({ path }) => path === "guide/formats.md")?.korean).toBeGreaterThan(0);
   });
 });

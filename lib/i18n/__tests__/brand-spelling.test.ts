@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { servedGuideFiles } from "@/lib/guide/served";
+
 /**
  * **화면에 닿는 문구에서 제품 이름은 `Malmoi`이고, 식별자에서는 `malmoi`다** (2026-09-26 사용자 결정 —
  * 그 전까지는 화면도 소문자 `malmoi` 하나였다).
@@ -82,10 +84,22 @@ function brandViolations(source: string): string[] {
   return wrong;
 }
 
+/**
+ * **서빙되는 원고**(`servedGuideFiles`) — ⚠️ md에서는 `stripComments`를 건너뛴다. 글롭의 `/*`가 블록 주석
+ * 시작으로 먹혀 그 뒤 본문이 사라진다(`no-korean-ui.test.ts`와 같은 이유).
+ */
+function guideScanned(root: string): { path: string; wrong: string[] }[] {
+  const dir = join(root, "guide");
+  return servedGuideFiles(dir).map((file) => ({ path: relative(root, join(dir, file)), wrong: brandViolations(readFileSync(join(dir, file), "utf8")) }));
+}
+
 function scanned(): { path: string; wrong: string[] }[] {
-  return [...ROOTS.flatMap((root) => sourceFiles(join(ROOT, root))), ...ROOT_FILES.map((f) => join(ROOT, f))]
-    .map((file) => relative(ROOT, file))
-    .map((path) => ({ path, wrong: brandViolations(stripComments(readFileSync(join(ROOT, path), "utf8"))) }));
+  return [
+    ...[...ROOTS.flatMap((root) => sourceFiles(join(ROOT, root))), ...ROOT_FILES.map((f) => join(ROOT, f))]
+      .map((file) => relative(ROOT, file))
+      .map((path) => ({ path, wrong: brandViolations(stripComments(readFileSync(join(ROOT, path), "utf8"))) })),
+    ...guideScanned(ROOT),
+  ];
 }
 
 describe("제품 이름 표기 — 화면은 Malmoi, 식별자는 malmoi", () => {
@@ -130,5 +144,24 @@ describe("제품 이름 표기 — 화면은 Malmoi, 식별자는 malmoi", () =>
   it("소스 어디에도 규칙을 어긴 표기가 없다", () => {
     const offenders = scanned().filter(({ wrong }) => wrong.length > 0).map(({ path, wrong }) => `${path}: ${wrong.join(", ")}`);
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("원고 스캔 — 서빙되는 md만, 주석 벗기기 없이", () => {
+  const FIXTURE = fileURLToPath(new URL("../../guide/__tests__/fixtures/scan", import.meta.url));
+  const formats = () => guideScanned(FIXTURE).find(({ path }) => path === "guide/formats.md")?.wrong ?? [];
+
+  it("SUMMARY에 오른 md만 훑는다 — 한국어 AUTHORING·SHOOTING은 틀린 표기를 들어도 무시된다", () => {
+    expect(guideScanned(FIXTURE).map(({ path }) => path)).toEqual(["guide/SUMMARY.md", "guide/formats.md"]);
+  });
+
+  it("글롭 `/*` 뒤의 `MALMOI`가 잡힌다 — 벗기기를 건너뛰었다는 증거", () => {
+    const source = readFileSync(join(FIXTURE, "guide/formats.md"), "utf8");
+    expect(brandViolations(stripComments(source)).some((hit) => hit.includes("MALMOI"))).toBe(false);
+    expect(formats().some((hit) => hit.includes("MALMOI"))).toBe(true);
+  });
+
+  it("`https://…` 뒤의 홀로 선 소문자도 잡힌다", () => {
+    expect(formats().some((hit) => hit.includes("then malmoi"))).toBe(true);
   });
 });
