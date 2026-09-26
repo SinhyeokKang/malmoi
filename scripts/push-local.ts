@@ -22,6 +22,7 @@ import { sourceKind, walkFiles } from "../lib/cli/walk";
 import { optionalEnv } from "../lib/env";
 import { AppError } from "../lib/failure";
 import { reportPushResponse } from "../lib/cli/push-response";
+import { isAllowedPushUrl } from "../lib/cli/push-url";
 import { adapterErrorKind } from "../lib/adapters/types";
 import { adapterErrorMessage } from "../lib/i18n/adapter-errors";
 import {
@@ -56,6 +57,11 @@ if (!target) {
   process.exit(2);
 }
 const baseUrl = flagValue(argv, "--url") ?? "http://localhost:3000";
+// 이 요청이 `PUSH_TOKEN` 원문을 싣는다 — 평문 http는 루프백에서만 받는다(sec-audit-3 #10).
+if (!isAllowedPushUrl(baseUrl)) {
+  console.error(`--url은 https여야 한다(http는 localhost·127.0.0.1·[::1]만): ${baseUrl}`);
+  process.exit(2);
+}
 const specs = flagValues(argv, "--wrapper");
 const wrappers: readonly WrapperId[] = specs.length === 0 ? DEFAULT_WRAPPERS : specs.map((raw) => {
   const parsed = parseWrapperSpec(raw);
