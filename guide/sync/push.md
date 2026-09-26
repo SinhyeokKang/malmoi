@@ -6,7 +6,7 @@ The workflow updates the project from the repository's source files. A valid req
 
 ## Sync from the repository {#repository-changes}
 
-Run the generated workflow on the base branch. The request checks the project token, commit, files, and configured Sources. A stale commit or invalid payload is rejected without advancing the last successful commit.
+Run the generated workflow on the base branch. The workflow checks the token, the commit, and the files. If the commit is older than the last one Malmoi read, or the files do not match the project's Sources, the run fails and nothing changes.
 
 ## Keep unpublished edits {#deferred}
 
@@ -15,3 +15,7 @@ If any translation has an unpublished edit, the workflow succeeds and reports `d
 ## Keep removed keys {#removed-keys}
 
 A key missing from the repository is kept rather than deleted. Its translations remain available if the key returns in a later workflow run.
+
+## What happens next {#next}
+
+Read the workflow result in GitHub Actions. A successful update makes the repository's keys available in Malmoi.

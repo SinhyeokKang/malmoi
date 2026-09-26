@@ -5,11 +5,11 @@
 ## 운영 방식 {#workflow}
 
 - `guide/SUMMARY.md`가 페이지·순서·계층의 정본이다. 페이지를 추가하거나 옮기면 SUMMARY와 내부 링크를 함께 고친다.
-- `guide/README.md`는 개요이고 `<chapter>/README.md`는 장 개요다. 각 페이지는 H1 하나와 바로 다음 독립 도입 문단(1–2문장)으로 시작한다. 도입에는 굵은 글씨나 링크를 넣지 않으며 카드 설명으로도 쓴다. 그 뒤에는 필요한 사전 조건, 사용자가 고르는 것과 화면에 보이는 것을 함께 쓰는 번호 단계, `What happens next` 절을 둔다.
+- `guide/README.md`는 개요이고 `<chapter>/README.md`는 장 개요다. 각 페이지는 H1 하나와 바로 다음 독립 도입 문단(1–2문장)으로 시작한다. 도입에는 굵은 글씨나 링크를 넣지 않으며 카드 설명으로도 쓴다. 작업 페이지에는 필요한 사전 조건, 사용자가 고르는 것과 화면에 보이는 것을 함께 쓰는 번호 단계, `What happens next` 절을 둔다. 설명·참조 페이지에는 번호 단계가 없어도 된다.
 - 개요의 두 갈래 카드와 나머지 장 목록, 장 개요의 하위 목록은 SUMMARY와 각 페이지의 도입 문단에서 생성한다. 원고에 카드·목록을 중복 작성하지 않는다. 개요는 H1과 도입만, 장 개요는 H1과 도입에 필요한 본문만 둔다.
 - 두 갈래의 선택은 `lib/guide/overview.ts`가 소유한다(렌더링 단계에서 추가). 제목은 SUMMARY, 설명은 도입 문단에서 가져온다.
 - `AUTHORING.md`와 `SHOOTING.md`는 SUMMARY에 올리지 않고 공개 페이지로 제공하지 않는다. SUMMARY 자신도 페이지가 아니라 내비 데이터다.
-- 실제 화면은 스크린샷으로 기록하며 촬영 규약은 `SHOOTING.md`가 소유한다. 이미지 게이트와 촬영 매뉴얼이 서기 전에는 이미지 참조를 넣지 않는다. 이미지 alt는 보이는 것을, Markdown 이미지 title 캡션은 사용자가 할 일을 설명한다.
+- 실제 화면은 스크린샷으로 기록하며 촬영 규약은 `SHOOTING.md`가 소유한다. 이미지 게이트와 촬영 매뉴얼이 서기 전에는 이미지 참조를 넣지 않는다.
 
 ## 페이지별 독자 {#audiences}
 
@@ -28,13 +28,13 @@
 | `translate/README.md` | Translate | 편집자 |
 | `translate/join.md` | Join a project | 편집자 |
 | `translate/edit.md` | Edit translations | 편집자 |
-| `translate/publish.md` | Publish | 편집자 |
+| `translate/publish.md` | Publish your changes | 편집자 |
 | `sync/README.md` | How syncing works | 공통 |
 | `sync/push.md` | When code changes | 개발자 |
 | `sync/merging.md` | Merging the pull request | 개발자 |
 | `sync/nightly.md` | Every night | 공통 |
 | `sync/revert.md` | Undo and resync | 개발자 |
-| `sync/logs.md` | Logs | 공통 |
+| `sync/logs.md` | Check activity in Logs | 공통 |
 | `account.md` | Your account | 공통 |
 | `reference/README.md` | Reference | 공통 |
 | `reference/formats.md` | Supported file formats | 개발자 |
@@ -44,10 +44,24 @@
 ## 라벨과 화면 문구 {#labels}
 
 - 굵게는 UI 라벨에만, 기울임은 강조에 쓴다. 각 절에서 화면 라벨을 처음 언급할 때 사전의 문자열을 대소문자·구두점·말줄임표까지 정확히 굵게 쓴다.
+- 사전 대조 통과만으로 충분하지 않다. 그 라벨이 해당 절에서 안내하는 실제 화면의 문구인지도 확인하고 검증 결과를 기록한다.
 - 라벨은 `dictionaryStrings(m)`에 포함된 문자열 또는 아래 외부 라벨 표에 있어야 한다. 옛 `publicDocs.docs.sections` 본문은 제거됐고, 라벨 게이트는 전체 사전을 대상으로 한다. 함수·JSX 값은 제외한다.
 - `Publish 3 changes` 같은 보간 라벨과 `hookHint` 같은 함수형 문구는 굵게 쓰지 않는다. 숫자 예시를 사전에 있는 고정 라벨처럼 취급하지 않는다.
 - GitHub 등 외부 화면의 라벨도 굵게 쓰되 아래 표에 정확한 문구·화면·근거를 먼저 기록한다. 사전에 이미 있는 라벨이라도 그 화면에 실제로 있는지는 원고 검토에서 확인한다.
-- 사용자가 보는 이름으로 쓴다. `surface` 대신 `Sources`·`Add sources`, `locale` 대신 화면의 `language`, 전송 버튼은 `Publish`다. 저장소에서 Malmoi로 들어오는 것은 update, 소유자가 누르는 버튼은 Sync, Malmoi에서 GitHub로 가는 것은 Publish라고 한다. 값은 published라고만 쓰고 sent/delivered/delivery-confirmed는 쓰지 않는다. 역할은 `Owner`·`Editor`로 쓰고 처음에는 translators (Editor role)라고 설명한다. address는 프로젝트 URL의 이름이라고 한 번 설명한다. 코드를 설명할 때만 식별자를 인라인 코드로 쓴다. `__x__`도 Markdown에서 굵게이므로 식별자라면 반드시 코드로 감싼다.
+- 사용자가 보는 이름으로 쓴다. 아래 표의 내부 단어는 오른쪽 표현으로 바꾼다. 화면 문구를 그대로 인용할 때는 `Not sent` 같은 라벨을 예외로 쓸 수 있다.
+
+| 내부 단어 | 가이드 표현 |
+| --- | --- |
+| surface | Sources |
+| locale | language |
+| repository → Malmoi | update |
+| owner control | Sync |
+| Malmoi → GitHub | Publish |
+| sent / delivered / delivery-confirmed | published |
+| project role | Owner / Editor; first mention: translators (Editor role) |
+| address | the name in the project URL |
+
+코드를 설명할 때만 식별자를 인라인 코드로 쓴다. `__x__`도 Markdown에서 굵게이므로 식별자라면 반드시 코드로 감싼다.
 - 제품 이름은 문장에서 `Malmoi`다. 리포 경로·브랜치·action 이름 같은 식별자는 원래 철자를 보존한다. 소문자 제품 이름을 코드로 감싸는 것으로 브랜드 검사를 피할 수 없다.
 - 번역 편집자 장은 EDITOR가 보는 화면만 안내한다. GitHub PR 조회나 OWNER 전용 동작을 편집자의 다음 단계로 약속하지 않는다. `Revert to last sent`는 EDITOR에게 비활성 버튼과 사유가 보일 수 있으나 실행은 OWNER 전용이다.
 - `Needs review`는 원문 변경에 따른 플래그 하나다. 승인 워크플로·검토 단계·승인권으로 설명하지 않는다. 저장·복원 시 플래그 동작은 코드와 대조한다.
@@ -62,11 +76,13 @@
 | Secrets and variables | GitHub repository settings | GitHub Actions documentation and current repository UI |
 | Actions | GitHub repository settings | GitHub Actions documentation and current repository UI |
 | New repository secret | GitHub repository Actions secrets | GitHub Actions documentation and current repository UI |
-| Allow select actions | GitHub repository Actions policy | GitHub Actions documentation and current repository UI |
 | Set up job | GitHub Actions run summary | GitHub Actions run summary wording |
 | Repository access | GitHub App installation | GitHub App installation settings |
-| Choose repositories | GitHub App installation | GitHub App installation settings |
 | Only select repositories | GitHub App installation | GitHub App installation settings |
+| Run workflow | GitHub Actions workflow page | GitHub Actions workflow page |
+| Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows | GitHub Actions policy | GitHub Actions documentation; verify in G5 shooting |
+| Connect your account | Malmoi project setup | `components/onboarding/steps/repo.tsx` |
+| Try again | Malmoi project setup | `components/onboarding/steps/repo.tsx` |
 
 ## 앵커와 링크 {#anchors}
 
@@ -82,10 +98,10 @@
 ## 영어 원고의 톤 {#tone}
 
 - 짧은 문장으로 지금 할 일과 그 결과를 설명한다. 절차는 사용자가 실행하는 순서로 쓴다.
-- 독자를 `you`로 부르고, 역할을 제한할 때는 `project owners`라고 쓴다. 편집자에게 내부 DB·어댑터·토큰 구조를 설명하지 않는다. 화면에 없는 pull request, transaction, token, namespace, cron, OAuth, challenge, database는 같은 문장에서 뜻을 풀지 않으면 쓰지 않는다.
+- 독자를 `you`로 부르고, 역할을 제한할 때는 `project owners`라고 쓴다. 편집자에게 내부 DB·어댑터·토큰 구조를 설명하지 않는다. 화면에 없는 pull request, transaction, token, namespace, cron, OAuth, challenge, database는 같은 문장에서 뜻을 풀지 않으면 쓰지 않는다. Editor 원고의 key도 처음 뜻을 풀지 않으면 쓰지 않으며, base branch, payload, request도 내부 용어로 쓰지 않는다. 자동 검사는 금지어 전체를 보장하지 않는다.
 - 성공·실패·확인 불가를 구별한다. 확인하지 못한 PR을 없다고 쓰거나, 저장만 된 변경을 전달됐다고 쓰지 않는다.
 - `TODO`·`TBD`·`lorem` 같은 자리표시자를 원고에 남기지 않는다. 검증하지 않은 동작을 약속하지 않는다.
-- 이미지 alt는 보이는 상태, Markdown 이미지 title 캡션은 할 일을 설명한다. 이미지 경로는 `/guide/<kebab-name>.webp`이고 하위 디렉터리를 만들지 않는다.
+- 이미지 alt는 보이는 상태, Markdown 이미지 title 캡션은 할 일을 설명한다. 이미지 경로는 `/guide/<kebab-name>.webp`이고 하위 디렉터리를 만들지 않는다. authoring 규약이나 예시 placeholder를 guide 페이지에 넣지 않는다.
 
 ## 사실 대조 소스 {#fact-sources}
 

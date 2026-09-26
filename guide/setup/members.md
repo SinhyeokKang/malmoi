@@ -10,13 +10,15 @@ Choose **Owner** only for someone who should manage the repository connection, S
 
 ## Send invitations {#invite}
 
-1. Enter one or more addresses and choose the role.
-2. Send the invitation email. If any address would exceed a limit, no invitations are sent.
-3. A failed email still counts toward the hourly limit.
+1. Open **Members**.
+2. Enter addresses and choose a role for each row.
+3. Send the invitation email.
+
+If any address would exceed a limit, no invitations are sent. A failed email still counts toward the hourly limit.
 
 ## Manage members {#members}
 
-Project owners can change a member's role, choose **Remove** for a member, revoke a **Pending** invitation, or resend it. A pending invitation's role cannot change; revoke it and invite the address again. See [Join a project](../translate/join.md) for the recipient's steps.
+Project owners can change a member's role, choose **Remove** for a member, or manage **Pending invitations** with **Revoke** and **Resend**. A pending invitation's role cannot change; revoke it and invite the address again. See [Join a project](../translate/join.md) for the recipient's steps.
 
 ## What happens next {#next}
 

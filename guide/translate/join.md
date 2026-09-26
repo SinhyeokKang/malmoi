@@ -6,8 +6,16 @@ An invitation is tied to the address that received it. GitHub matches the accoun
 
 ## Accept an invitation {#join}
 
-Follow the email link and sign in. After the invitation is accepted, open the project from your project list. Invitations to archived projects cannot be accepted. The link stops working once you accept it, after seven days, or if a project owner cancels or resends it. Do not forward it: it works only for the invited address.
+1. Open the email link.
+2. Sign in with the invited address. For GitHub, the invited address must be your GitHub primary email.
+3. Choose **Accept invitation**. Malmoi opens the project.
+
+Invitations to archived projects cannot be accepted. The link stops working once you accept it, after seven days, or if a project owner cancels or resends it. Do not forward it: it works only for the invited address.
 
 ## Resolve invitation problems {#invitation-problems}
 
 If the link is expired or the signed-in address differs, ask a project owner to resend the invitation to the correct address. Do not forward a link after it has been accepted or revoked.
+
+## What happens next {#next}
+
+Choose [Edit translations](edit.md) to start working.

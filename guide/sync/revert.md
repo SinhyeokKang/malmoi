@@ -6,14 +6,16 @@ Before you start: Save or discard any open translation edit before using either 
 
 ## Revert a value {#revert}
 
-Choose **Revert to last sent** for a key when its edited cells should return to the last value included in a published change. The current language values remain visible so you can review them.
+In the translation screen, select a key and choose **Revert to last sent** when its edited cells should return to the last value included in a published change. The current language values remain visible so you can review them.
 
 ## Sync from the repository {#resync}
 
-Open **Sync** in the project settings. The confirmation dialog shows how many unpublished edits will be discarded. Choose **Sync from repository** to continue, or close the dialog to keep the edits. Editors can see this control but cannot use it.
+1. Choose **Sync** at the top of Home or Translations.
+2. The dialog shows how many unsent changes will be discarded.
+3. Choose **Discard changes and sync** when unsent changes exist, or **Sync from repository** when there are none. Close the dialog to keep the changes. Only project owners see this control.
 
-Sync replaces the project values with the repository values as one operation. If a base value is missing, the operation does not partially apply.
+Sync reads the files on the base branch directly. A source can fail on its own; the screen says “This source was not replaced” when that happens.
 
 ## What happens next {#next}
 
-Run the workflow again after a manual Sync so the project reflects the current repository files.
+After Sync, the project matches the files on the base branch. You do not need to run the workflow.

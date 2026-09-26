@@ -2,11 +2,11 @@
 
 Allow the four actions used by the generated workflow when your repository or organization restricts GitHub Actions.
 
-Before you start: Open the repository or organization Actions settings.
+Before you start: Open the repository or organization **Settings**, then **Actions** → **General**.
 
 ## Allow the required actions {#allowed-actions}
 
-1. Choose **Allow select actions** and add every action below with `@*`:
+1. Choose “Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows,” then add every action below with `@*`:
 
 ```text
 SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@*

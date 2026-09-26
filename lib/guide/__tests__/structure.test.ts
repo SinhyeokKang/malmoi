@@ -73,11 +73,12 @@ describe("실물 가이드 구조", () => {
       expect.objectContaining({ "라벨": "Secrets and variables" }),
       expect.objectContaining({ "라벨": "Actions" }),
       expect.objectContaining({ "라벨": "New repository secret" }),
-      expect.objectContaining({ "라벨": "Allow select actions" }),
       expect.objectContaining({ "라벨": "Set up job" }),
       expect.objectContaining({ "라벨": "Repository access" }),
-      expect.objectContaining({ "라벨": "Choose repositories" }),
       expect.objectContaining({ "라벨": "Only select repositories" }),
+      expect.objectContaining({ "라벨": "Run workflow" }),
+      expect.objectContaining({ "라벨": "Connect your account" }),
+      expect.objectContaining({ "라벨": "Try again" }),
     ]));
   });
 });

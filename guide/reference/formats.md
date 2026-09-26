@@ -16,4 +16,4 @@ The supported formats are JSON catalogs, YAML catalogs, Chrome extension message
 
 ## Preserve file structure {#file-structure}
 
-The surgical writers preserve comments, blank lines, and key order where the format supports it. Regenerating writers preserve indentation, one-line containers, escapes, and field order. `{locale}` stands for a language name; `*` stands for any matching path segment. Values come from Malmoi; the existing file supplies the structure or representation.
+JSON and YAML catalogs keep comments, blank lines, and key order where the format supports it. Chrome messages and code dictionaries preserve their file representation, including indentation, one-line containers, escapes, and field order. `{locale}` stands for a language name; `*` stands for any matching path segment. Values come from Malmoi; the existing file supplies the structure or representation.

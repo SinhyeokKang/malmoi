@@ -8,15 +8,18 @@ Change the name teammates see and upload a PNG or JPEG profile picture up to 3 M
 
 ## Manage sign-in methods {#sign-in-methods}
 
-Add another sign-in method by signing in with that provider using the same email address. The last method cannot be removed; Account says **This is your only way to sign in.**
+Choose **Connect** for another provider and sign in with the same email address. The last method cannot be removed; Account says **This is your only way to sign in.**
 
 ## Manage the GitHub connection {#github-connection}
 
-The **GitHub App** connection lets you choose installations and repositories. Its description is: “Write access to the repositories you selected for the app, not a way to sign in.” Translators can ignore this section.
+The **GitHub App** connection lets you choose installations and repositories. Its description is: “Write access to the repositories you selected for the app, not a way to sign in.” Project owners use this to let Malmoi write to repositories. Translators can skip this section.
 
 ## Sign out of sessions {#sessions}
 
-Choose **Sign out everywhere**. Confirm by signing in with the provider when it shows Continue to GitHub or Continue to Google. This also signs out the device you are using.
+1. Choose **Sign out everywhere**.
+2. Sign in with the provider when it shows Continue to GitHub or Continue to Google.
+
+This also signs out the device you are using.
 
 ## What happens next {#next}
 

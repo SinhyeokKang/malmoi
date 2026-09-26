@@ -2,13 +2,13 @@
 
 Create a project by connecting a repository and choosing the translation files Malmoi should manage.
 
-Before you start: Sign in with a verified account and make sure the repository is available to the Malmoi GitHub App.
+Before you start: Sign in with a verified email. You can own up to three active projects.
 
 ## Connect GitHub {#connect-github}
 
-1. Choose **Install GitHub App**. If the app is already installed, choose **Authorize GitHub App**.
-2. In GitHub, choose **Choose repositories** and select the repository. With **Only select repositories**, add this repository to the installation.
-3. If GitHub shows **Waiting for approval**, ask the organization administrator to approve the request, then return to Malmoi.
+1. Choose **Install GitHub App**. If no installation link exists, choose **Authorize GitHub App**. If the app is already installed, choose **Connect your account**.
+2. In Malmoi, choose **Choose repositories** to open the app's installation on GitHub. Under **Repository access**, choose **Only select repositories**, add the repository, and save.
+3. If Malmoi shows **Waiting for approval**, ask an organization owner to approve it, then choose **Try again**.
 
 Malmoi shows the repository and its default branch. Choose the branch that contains the files you want to read.
 

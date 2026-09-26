@@ -2,7 +2,7 @@
 
 Use Logs to see project activity, inspect changes, and check the outcome of syncing and publishing.
 
-Logs records project events with the actor, time, event type, and before-and-after details where the event provides them. The list is a snapshot; use Refresh to read again.
+Logs records project events with the actor, time, event type, and before-and-after details where the event provides them. The list is a snapshot; choose **Refresh** to read it again.
 
 ## Find an event {#logs}
 
@@ -10,7 +10,7 @@ Filter by **Kind**, **Date**, **Actor**, **Source**, or **Result**, and use **Se
 
 ## Read event details {#event-details}
 
-Open an event to inspect its details without changing the list filters. Translation events identify the key and source; sync and Publish events show their observed result. Choose **Refresh** to read the list again.
+Open an event to inspect its details without changing the list filters. Translation events identify the key and source; sync and Publish events show their observed result.
 
 ## Read archived history {#archived-history}
 

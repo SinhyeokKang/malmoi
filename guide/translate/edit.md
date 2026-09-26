@@ -6,15 +6,15 @@ Before you start: Join a project and choose **Translations** in the project navi
 
 ## Find a key {#find-key}
 
-The table has one row per key. The first column shows the source text; the other columns show one language each. Use the search box to find a key by its name, its source text, or a translation.
+The key list is on the left. Each row is one piece of text in the app — a *key* — and shows its source text followed by its key name. Select a row to open its translations in every language on the right. Use the search box to find a key by its name, its source text, or a translation.
 
-Choose **This source** to narrow the list, **This namespace** to narrow it further, or **Clear filters** to start over. The **State** filter includes **Not sent**, **Needs review**, and **New from GitHub**.
+Choose **This source** to set the scope to the current source, **This namespace** to narrow it to the group the key belongs to, or **Clear filters** to start over. The **State** filter includes **Not sent**, **Needs review**, and **New from GitHub**.
 
 ## Edit and save {#save}
 
-Type in the language fields and choose **Save**. Moving to another field does not save. Press Escape to undo what you typed. If any language fails to save, none of them are saved — try again. Press Ctrl+Enter or Cmd+Enter to save from a field.
+Type in the language fields and choose **Save**. Press Ctrl+Enter or Cmd+Enter to save from a field. Moving to another field does not save. Press Escape to undo what you typed. If any language fails to save, none of them are saved — try again.
 
-Saving clears **Needs review** for the languages you saved. Some non-base cells in YAML, TypeScript, and code-dictionary sources cannot be cleared; Malmoi keeps the existing value there.
+Saving clears **Needs review** for the languages you saved. In YAML catalogs and code dictionaries, a non-base language cannot be left empty. Enter a value or choose **Discard changes**; nothing is saved until you do.
 
 ## Leave unsaved changes {#unsaved-changes}
 

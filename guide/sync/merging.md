@@ -6,8 +6,12 @@ The pull request contains the generated files from the project's base snapshot. 
 
 ## Merge the translation pull request {#merging}
 
-Squash, rebase, and merge commits are supported. Malmoi adds `[skip-malmoi-i18n]` to the change. Keep it: removing it makes the workflow run again for no reason, and Malmoi adds it back if it is removed.
+Squash, rebase, and merge commits are supported. Malmoi adds `[skip-malmoi-i18n]` to the change. Keep it: removing it makes the workflow run again for no reason. The next Publish adds it back if it was removed.
 
 ## Keep the loop marker {#skip-marker}
 
-Keep `[skip-malmoi-i18n]` in the pull request title. Without the marker, merging can trigger the workflow again and replace values after the pull request was opened.
+Keep `[skip-malmoi-i18n]` in the pull request title.
+
+## What happens next {#next}
+
+After the pull request is merged, the repository contains the published translations.
