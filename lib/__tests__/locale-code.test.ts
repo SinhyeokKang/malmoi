@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { looksLikeLocale } from "@/lib/adapters/shared";
+
 import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath } from "../locale-code";
 
 /**
@@ -91,7 +93,7 @@ describe("isPathSafeRepoPath — 리포 안에 머무는 경로인가", () => {
  */
 describe("isLocaleShaped — BCP 47·POSIX 모양의 로케일 코드인가", () => {
   it("실측 로케일을 통과시킨다", () => {
-    for (const code of ["en", "ko", "EN", "pt_BR", "pt-BR", "zh-Hant-TW", "zh_Hans", "es-419", "sr-Latn", "fil", "en-GB-oxendict"]) {
+    for (const code of ["en", "ko", "EN", "pt_BR", "pt-BR", "zh-Hant-TW", "zh_Hans", "es-419", "sr-Latn", "fil", "en-GB-oxendict", "koKR", "enUS", "zhCN", "ptBR"]) {
       expect(isLocaleShaped(code)).toBe(true);
     }
   });
@@ -119,5 +121,49 @@ describe("isLocaleShaped — BCP 47·POSIX 모양의 로케일 코드인가", ()
     for (const code of ["", "en/US", "en.US", "en\n", "en US", "../en", `en${"-abcdefgh".repeat(4)}`]) {
       expect(isLocaleShaped(code)).toBe(false);
     }
+  });
+});
+
+/**
+ * **탐지가 받는 이름은 적재도 받는다** (sec-audit-3 fix r1). `looksLikeLocale`이 로케일로 본 파일명이 `isLocaleShaped`에서
+ * 떨어지면 온보딩이 탐지를 지나 첫 적재의 `PushPayload.safeParse`에서 엉뚱한 문구로 죽고, 저장된 행은 야간 pull을
+ * `unknown`으로 멈춘다 — naive-ui의 `koKR`(2026-09-02)이 정확히 그 모양이었다.
+ *
+ * ⚠️ **손으로 고른 목록이 아니라 규칙에서 생성한다** — 두 규칙의 각 자리(길이·대소문자·구분자)를 경계 글자로 전수로
+ * 돌리고, `looksLikeLocale`이 받는 것만 남겨 포함 관계를 잰다. 탐지 규칙이 넓어지면 이 테스트가 먼저 red가 된다.
+ */
+describe("isLocaleShaped ⊇ looksLikeLocale — 탐지가 받는 이름을 적재가 거부하지 않는다", () => {
+  const product = (alphabet: readonly string[], length: number): string[] =>
+    length === 0 ? [""] : product(alphabet, length - 1).flatMap((head) => alphabet.map((c) => head + c));
+  const LOWER = ["a", "m", "z"];
+  const ANY_CASE = ["a", "z", "A", "Z"];
+  const UPPER = ["A", "Z"];
+
+  const generated = new Set<string>();
+  // 첫 서브태그 [a-z]{2,3} × (없음 | [-_] + [A-Za-z]{2,4})
+  for (const firstLength of [2, 3]) {
+    for (const first of product(LOWER, firstLength)) {
+      generated.add(first);
+      for (const sep of ["-", "_"]) {
+        for (const tailLength of [2, 3, 4]) for (const tail of product(ANY_CASE, tailLength)) generated.add(first + sep + tail);
+      }
+    }
+  }
+  // camelCase [a-z]{2}[A-Z]{2}
+  for (const first of product(LOWER, 2)) for (const tail of product(UPPER, 2)) generated.add(first + tail);
+  // 규칙 밖을 섞어 두 방향의 경계를 한 번 더 훑는다 — 짧은 문자열 전수.
+  for (let length = 1; length <= 5; length++) for (const s of product(["a", "Z", "-", "_", "0"], length)) generated.add(s);
+
+  const accepted = [...generated].filter(looksLikeLocale);
+
+  it("생성 공간이 규칙의 모든 갈래를 밟는다 — 공허한 검사가 아니다", () => {
+    expect(accepted).toContain("amAZ");
+    expect(accepted.some((n) => /^[a-z]{2}[A-Z]{2}$/.test(n))).toBe(true);
+    expect(accepted.some((n) => /^[a-z]{3}_[A-Za-z]{4}$/.test(n))).toBe(true);
+    expect(accepted.length).toBeGreaterThan(1_000);
+  });
+
+  it("탐지가 받는 이름은 전부 로케일 모양이다", () => {
+    expect(accepted.filter((n) => !isLocaleShaped(n))).toEqual([]);
   });
 });

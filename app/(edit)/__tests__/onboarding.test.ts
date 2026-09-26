@@ -819,6 +819,11 @@ describe("loadCandidateSample — ②의 언어 샘플", () => {
     expect(hoisted.openRepoReader).not.toHaveBeenCalled();
   });
 
+  it("로케일 모양이 아닌 `locale`은 입력 오류다 — 나중 적재 실패로 미루지 않는다 (sec-audit-3 1b)", async () => {
+    expect(await loadCandidateSample({ ...input, locale: "package" })).toEqual({ ok: false, error: "invalid input" });
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled();
+  });
+
   it("형식이 깨진 `ref`는 GitHub에 나가지 않는다 — 잎 함수라 비용이 0이다", async () => {
     expect(await loadCandidateSample({ ...input, ref: "bad ref" })).toEqual({
       ok: false,
@@ -1662,6 +1667,12 @@ it("수동 기준 언어가 초기 세 언어 밖이어도 그 언어의 샘플�
   expect(result.candidate.samples.some((sample) => sample.locale === "ko")).toBe(true);
 });
 
+it("수동 확정의 로케일 모양이 아닌 기준 로케일은 입력 오류다 — GitHub을 안 부른다 (sec-audit-3 1b)", async () => {
+  expect(await confirmManualFormat({ owner: "acme", repo: "web", ref: "develop", adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "package" }))
+    .toEqual({ ok: false, error: "invalid input" });
+  expect(hoisted.openRepoReader).not.toHaveBeenCalled();
+});
+
 it.each([
   { ref: "bad ref" }, { baseLocale: "../en" }, { adapter: "unknown" }, { pathTemplate: "README.md" },
 ])("수동 확정은 잘못된 입력을 확인값으로 승격하지 않는다 %#", async (over) => {
@@ -1806,6 +1817,54 @@ it.each([false, true])("생성 결과와 설정 YAML은 비기본 base와 확정
   expect(settingsYaml).toBe(result.yaml);
 });
 
+/**
+ * **결정 I (2026-09-27 사용자) — 토큰 회전도 리포 쓰기 권한을 요구한다.** push 토큰은 페이로드로 로케일을 정하고, 그 로케일이
+ * 설치 토큰의 커밋 경로가 된다(`locales:["en","app"]` → `app.json`). 쓰기 권한 없이 초대된 OWNER가 토큰을 발급받으면 1a가
+ * 막은 격차가 이 경로로 다시 열린다 — 전에는 "위임"으로 받아들인 잔여였다.
+ */
+describe("rotatePushToken — 리포 쓰기 권한 (sec-audit-3 결정 I)", () => {
+  beforeEach(() => {
+    Object.assign(db.projects[0]!, { repoOwner: "acme", repoName: "web", installationId: "77", repositoryId: "1035512", pushTokenHash: "old" });
+  });
+
+  it("쓰기 권한이 있으면 회전한다", async () => {
+    const result = await rotatePushToken({ slug: "acme" });
+    expect(result.ok).toBe(true);
+    expect(db.projects[0]!.pushTokenHash).toBe(hashPushToken((result as { pushToken: string }).pushToken));
+  });
+
+  it("읽기만 할 수 있으면 repo-read-only이고 토큰도 사건도 안 바뀐다", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web", undefined, false)]);
+    expect(await rotatePushToken({ slug: "acme" })).toEqual({ ok: false, error: "repo-read-only" });
+    expect(db.projects[0]!.pushTokenHash).toBe("old");
+    expect(db.projectEvents).toEqual([]);
+  });
+
+  it("권한을 모르면 unavailable이다 — 500도 거부도 아니다", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web", undefined, null)]);
+    expect(await rotatePushToken({ slug: "acme" })).toEqual({ ok: false, error: "unavailable" });
+    expect(db.projects[0]!.pushTokenHash).toBe("old");
+  });
+
+  it("리포 연결이 없으면 repo-not-installed다 — 쓰기 권한을 확인할 리포가 없다", async () => {
+    Object.assign(db.projects[0]!, { installationId: null, repositoryId: null });
+    expect(await rotatePushToken({ slug: "acme" })).toEqual({ ok: false, error: "repo-not-installed" });
+    expect(hoisted.probeRepo).not.toHaveBeenCalled();
+    expect(db.projects[0]!.pushTokenHash).toBe("old");
+  });
+
+  it("같은 이름의 다른 리포에 쓸 수 있는 것은 근거가 아니다 — repo-forbidden", async () => {
+    hoisted.probeRepo.mockResolvedValue({ ...PROBE_OK, repositoryId: "other" });
+    expect(await rotatePushToken({ slug: "acme" })).toEqual({ ok: false, error: "repo-forbidden" });
+    expect(db.projects[0]!.pushTokenHash).toBe("old");
+  });
+
+  it("GitHub 계정이 연결돼 있지 않으면 그 사유가 값으로 나간다", async () => {
+    hoisted.ensureUserToken.mockResolvedValue({ status: "not-connected" });
+    expect(await rotatePushToken({ slug: "acme" })).toEqual({ ok: false, error: "not-connected" });
+  });
+});
+
 describe("repository import Actions", () => {
   beforeEach(() => {
     Object.assign(db.projects[0]!, { repoOwner: "acme", repoName: "web", installationId: "77", repositoryId: "1035512", baseBranch: "develop" });
@@ -1889,6 +1948,10 @@ describe("설정의 다중 소스 추가와 소스별 첫 적재", () => {
     hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web", undefined, false)]);
     expect(await addSurfaces({ slug: "acme", picks })).toEqual({ ok: false, error: "repo-read-only" });
     expect(hoisted.openRepoReader).not.toHaveBeenCalled(); expect(hoisted.addSurfacesFromSnapshot).not.toHaveBeenCalled();
+  });
+  it("로케일 모양이 아닌 기준 로케일은 입력 오류다 (sec-audit-3 1b)", async () => {
+    expect(await addSurfaces({ slug: "acme", picks: [{ ...picks[0]!, baseLocale: "package" }] })).toEqual({ ok: false, error: "invalid input" });
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled();
   });
   it("선택 안의 중복 템플릿은 다운로드와 쓰기 전에 거부한다", async () => {
     expect(await addSurfaces({ slug: "acme", picks: [picks[0]!, picks[0]!] })).toEqual({ ok: false, error: "invalid input" });

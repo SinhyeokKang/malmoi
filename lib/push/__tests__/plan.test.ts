@@ -393,12 +393,19 @@ describe("PushPayload — 크기 상한 (sec-audit 10)", () => {
     expect(PushPayload.safeParse({ ...base, keys: [{ key: "k".repeat(1_001), sourceText: "V", namespace: "n" }] }).success).toBe(false);
   });
 
-  /** sec-audit-3 발견 17 — permalink가 `refs[].path`로 github.com의 다른 경로를 가리킬 수 있었다. */
-  it("리포 밖으로 나가는 `refs[].path`를 거부한다 (sec-audit-3 17)", () => {
-    for (const path of ["../../other/repo", "src/../../x.ts", "/etc/passwd", "a//b.ts"]) {
-      expect(PushPayload.safeParse({ ...base, refs: [{ key: "a.b", path, line: 1 }] }).success).toBe(false);
-    }
-    expect(PushPayload.safeParse({ ...base, refs: [{ key: "a.b", path: "src/[locale]/page.tsx", line: 1 }] }).success).toBe(true);
+  /**
+   * sec-audit-3 발견 17 — permalink가 `refs[].path`로 github.com의 다른 경로를 가리킬 수 있었다.
+   *
+   * ⚠️ **거부가 아니라 버린다** (fix r1 — 지휘자 결정). refs는 스캔 결과라 **스캔 실패로 적재를 막지 않는다**(CLAUDE.md):
+   * 200자 넘는 경로·Windows 경로 하나로 push 전체가 400이면 남의 리포 CI를 우리 규칙으로 실패시킨다.
+   */
+  it("리포 밖으로 나가는 `refs[].path`는 버리고 push는 통과한다 (sec-audit-3 17)", () => {
+    const good = { key: "a.b", path: "src/[locale]/page.tsx", line: 1 };
+    const bad = ["../../other/repo", "src/../../x.ts", "/etc/passwd", "a//b.ts", "src\\a.ts", `d/${"a".repeat(199)}`]
+      .map((path) => ({ key: "a.b", path, line: 1 }));
+    const parsed = PushPayload.safeParse({ ...base, refs: [...bad, good] });
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.refs).toEqual([good]);
   });
 
   /**
