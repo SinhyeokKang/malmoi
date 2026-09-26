@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { routes } from "@/lib/routes";
+
 import { collectLinks, collectUiLabels, resolveDocLink } from "../collect";
 import { parseMd } from "../parse";
 
@@ -36,6 +38,13 @@ describe("resolveDocLink — 상대 `.md` 링크 → `/docs/<slug>#anchor`", () 
     expect(resolveDocLink("setup/workflow.md", "README.md")).toMatchObject({ file: "setup/README.md", href: "/docs/setup" });
     expect(resolveDocLink("setup/workflow.md", "../README.md")).toMatchObject({ file: "README.md", href: "/docs" });
     expect(resolveDocLink("README.md", "account.md")).toMatchObject({ href: "/docs/account" });
+  });
+
+  it("`/docs` 접두는 `routes.docs()`에서 온다 — 두 번째 출처가 아니다", () => {
+    const root = resolveDocLink("setup/workflow.md", "../README.md");
+    expect(root.kind === "doc" && root.href).toBe(routes.docs());
+    const page = resolveDocLink("README.md", "setup/workflow.md#workflow");
+    expect(page.kind === "doc" && page.href).toBe(`${routes.docs()}/setup/workflow#workflow`);
   });
 
   it("같은 페이지 앵커만 있으면 자기 파일이다", () => {
