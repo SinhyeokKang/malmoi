@@ -21,6 +21,7 @@
     "smoke:blob": "NODE_OPTIONS=--conditions=react-server tsx scripts/smoke-blob.ts",
     "smoke:github": "tsx scripts/smoke-github.ts",
     "adapter-survey": "tsx scripts/adapter-survey.ts",
+    "guide:check": "tsx scripts/guide-check.ts",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "PRISMA_TARGET=prod prisma migrate deploy",
     "db:status": "prisma migrate status",
