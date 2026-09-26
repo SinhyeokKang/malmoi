@@ -3,7 +3,7 @@
 import { maskEmail } from "@/lib/auth/email";
 import { decodeUser, decodeInvitation } from "@/lib/credentials/records";
 import { recordEvent } from "@/lib/events/record";
-import { logCaught } from "@/lib/failure";
+import { isUniqueViolation, logCaught } from "@/lib/failure";
 
 import { hashInviteToken, planInvitationAccept } from "@/lib/auth/invitation";
 import type { InviteError } from "@/lib/auth/message";
@@ -74,16 +74,18 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
      */
     if (project.archivedAt !== null) return { ok: false, error: "archived" };
 
-    // ⚠️ **이미 멤버인지 먼저 본다.** `createInvitations`이 그 조합을 막지만 **막혀 있다는 것이 코드가
-    // 아니라 추론에 있으면** 다음 변경에서 열린다 — 그때 `projectMember.create`가 unique 위반으로
-    // 던지고, 초대 링크를 연 외부인에게는 digest만 남는다.
-    const already = await prisma.projectMember.findUnique({
-      where: { projectId_userId: { projectId: invitation.projectId, userId } },
-      select: { userId: true },
-    });
-    if (already !== null) return { ok: false, error: "already-member" };
+    const accepted = await prisma.$transaction(async (tx): Promise<"ok" | "lost" | "already-member"> => {
+      // ⚠️ **이미 멤버인지 먼저 본다.** `createInvitations`이 그 조합을 막지만 **막혀 있다는 것이 코드가
+      // 아니라 추론에 있으면** 다음 변경에서 열린다 — 그때 `projectMember.create`가 unique 위반으로
+      // 던지고, 초대 링크를 연 외부인에게는 digest만 남는다.
+      // ⚠️ **트랜잭션 안에 있어도 경합은 못 막는다**(read committed는 상대의 미확정 행을 안 보인다) — 같은
+      // 사용자의 동시 수락은 아래 create의 P2002로 끝나고, 그것을 같은 사유로 접는다(sec-audit-3 #8).
+      const already = await tx.projectMember.findUnique({
+        where: { projectId_userId: { projectId: invitation.projectId, userId } },
+        select: { userId: true },
+      });
+      if (already !== null) return "already-member";
 
-    const accepted = await prisma.$transaction(async (tx) => {
       // ⚠️ **단일 사용을 조건부 갱신으로 강제한다.** 두 요청이 동시에 들어와도 `acceptedAt: null`이
       // 한쪽만 통과시킨다 — count를 안 읽고 그냥 update하면 둘 다 성공해 멤버십이 두 번 생긴다.
       // ⚠️ **만료도 소비 조건에 넣는다.** 위 판정은 조회 시점의 행을 봤다 — 그 뒤 OWNER가 재초대로 이 행을
@@ -92,7 +94,7 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
         where: { id: invitation.id, acceptedAt: null, expiresAt: { equals: invitation.expiresAt, gt: new Date() } },
         data: { acceptedAt: new Date() },
       });
-      if (claimed.count === 0) return false;
+      if (claimed.count === 0) return "lost";
 
       await tx.projectMember.create({
         data: { projectId: invitation.projectId, userId, role: invitation.role },
@@ -110,10 +112,15 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
         scope: "project-wide",
         payload: { kind: "MEMBER", targetLabel: maskEmail(user.email), role: { before: null, after: invitation.role } },
       });
-      return true;
+      return "ok";
+    }).catch((error: unknown) => {
+      // 콜백이 던졌으므로 소비(`acceptedAt`)도 함께 되돌아갔다 — 진 쪽의 초대는 살아 있다.
+      if (isUniqueViolation(error)) return "already-member" as const;
+      throw error;
     });
 
-    if (!accepted) {
+    if (accepted === "already-member") return { ok: false, error: "already-member" };
+    if (accepted === "lost") {
       // 경합에서 진 쪽 — 왜 졌는지는 행을 다시 봐야 안다. 수락됨이 만료보다 앞이다 (`planInvitationAccept`와 같은 순서).
       const after = await prisma.projectInvitation.findUnique({
         where: { id: invitation.id },
