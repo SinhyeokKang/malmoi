@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { createElement as h } from "react";
+import { act, createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -55,6 +55,26 @@ describe("공개 셸 — 구조", () => {
     } finally {
       focus.mockRestore();
     }
+  });
+
+  /**
+   * 헤더·푸터의 빈 곳을 누르면 포커스가 `body`로 빠지고, 그 뒤 Space/PageDown이 아무것도 안 민다(POSTMORTEM 2026-09-24
+   * "포커스가 body로 빠지는 자리"). jsdom에는 클릭의 포커스 이동이 없어 `blur()`로 같은 상태를 만든다.
+   */
+  it("포커스가 body로 빠지면 스크롤러가 되찾는다 — 다른 요소로 옮긴 포커스는 건드리지 않는다", async () => {
+    const { container } = await shell();
+    const scroller = container.querySelector<HTMLElement>("main > div");
+    const link = container.querySelector<HTMLAnchorElement>("header nav a");
+    expect(scroller && link).toBeTruthy();
+    const settle = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+
+    await act(async () => { link?.focus(); });
+    await settle();
+    expect(document.activeElement).toBe(link);
+
+    await act(async () => { link?.blur(); });
+    await settle();
+    expect(document.activeElement).toBe(scroller);
   });
 
   it("body를 캔버스 색으로 칠한다 — 오버스크롤 때 흰 띠가 안 보인다", async () => {
