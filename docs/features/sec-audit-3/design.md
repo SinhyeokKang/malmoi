@@ -4,7 +4,7 @@
 
 **결정 (2026-09-27 사용자)**: A (a)+(b) 둘 다 · B `script-src`만 nonce, `style-src 'unsafe-inline'` 유지 · C 새 env `APP_SIGNING_SECRET` ·
 D 새 env `BLOB_PUBLIC_HOST` · E 사용자 합산 30/h · F 샘플 확인 TTL 30분 · G placeholders 깊이 8 · 16KB.
-남은 확인은 2번의 PUBLIC 상속 하나이고 prod 반영 뒤 재조회로 판정한다(T2.3).
+**결정 H (2026-09-27 사용자)**: prod `public` nspacl에 `=U`(PUBLIC USAGE)가 실재한다(읽기 전용 조회 — dev는 NULL이라 이미 없다) → 같은 마이그레이션에 `REVOKE USAGE ON SCHEMA public FROM PUBLIC`을 더한다. 근거: dev가 그 상태로 앱이 돈다(런타임 롤 `postgres`는 소유자 경유).
  영향 흐름: **push**(1b·17·18) · **pull/Publish**(1b·4·16) · **온보딩·설정**(1a·6·7·13·14) ·
 **초대**(8·15) · **런타임 경계**(11·12) · **DB·운영**(2·3) · **문서·CLI**(5·9·10).
 
