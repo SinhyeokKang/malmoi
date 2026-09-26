@@ -2341,9 +2341,19 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - 걸리는 자리: `checkRepoAccess`(온보딩 탐지·브랜치·샘플·수동 확정·**생성** · **Add surface**)와
   설정의 `connectRepository`(**Reconnect**), 설정의 **`rotatePushToken`**(결정 I — 아래). 온보딩의 첫 거부는
   ① 리포 선택 직후의 브랜치 목록(`listRepoBranches`)에서 난다 — 탐지보다 앞이다.
-- ⚠️ **재적재(Sync)는 걸지 않는다** — `planRepoConnect`의 `requirePush`가 **기본값 없는 필수 인자**이고
-  Sync만 `false`다. 리포를 읽어 DB에 넣을 뿐이라 쓰기 권한의 상승이 아니고, 쓰기 권한 없이 초대된 OWNER가
-  거기서 막히면 회귀다.
+- ⚠️ **읽기인 두 자리는 걸지 않는다** — `planRepoConnect`의 `requirePush`는 **기본값 없는 필수 인자**이고
+  `false`는 둘뿐이다: **재적재(Sync)**와 **연결된 프로젝트 설정의 브랜치 목록**(`listProjectBranches` — malmoi#123).
+  둘 다 리포를 읽을 뿐이라 쓰기 권한이 올라가지 않는다. 쓰기 권한 없이 초대된 OWNER가 거기서 막히면 회귀다(#123이
+  실제로 그랬다 — Settings의 Base branch가 "쓰기 권한이 필요하다"로 굳었는데 저장 Action은 쓰기 권한을 요구하지 않는다).
+  ⚠️ **①의 `listRepoBranches`와는 다른 Action이다** — 클라이언트 플래그로 가르면 ①이 같은 플래그로 확인을 건너뛴다.
+  `listProjectBranches`는 slug로 인가(`project:settings`)하고 리포를 **저장된 행**에서 읽으며 확인한 리포 id를
+  `Project.repositoryId`와 대조한다.
+
+  | 호출처 | `requirePush` |
+  |---|:---:|
+  | 온보딩 ① `listRepoBranches` · 탐지 · 샘플 · 수동 확정 · 생성 | true |
+  | Add surface · Reconnect(`connectRepository`) · 토큰 회전(`rotatePushToken`) | true |
+  | 재적재(`runRepositoryImport`) · 설정 브랜치 목록(`listProjectBranches`) | **false** |
 - **소급하지 않는다** — 생성 당시 권한을 알 수 없다. 기존 프로젝트는 다음 Reconnect부터 걸린다(로케일
   모양 검사가 기존 행을 덮는다).
 - **토큰 회전도 쓰기 권한을 요구한다** (결정 I, 2026-09-27 사용자). 처음엔 "쓰기 권한자가 OWNER로 초대해
