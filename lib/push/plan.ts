@@ -159,14 +159,18 @@ export const PushPayload = z
         message: "placeholders must nest at most 8 levels and serialize to at most 16 KB",
       }),
     })).max(MAX_ROWS),
+    /**
+     * permalink 경로가 된다 — `..`가 github.com의 다른 경로를 가리키지 않게 (sec-audit-3 발견 17).
+     *
+     * ⚠️ **거부하지 않고 버린다.** refs는 스캔 결과이고 스캔 실패로 적재를 막지 않는다(CLAUDE.md) — 200자를 넘는
+     * 경로·Windows 경로 하나로 push 전체가 400이면 남의 리포 CI를 우리 규칙으로 실패시킨다. 저장된 불량 행은
+     * `buildPermalink`가 둘째 층으로 막는다.
+     */
     refs: z.array(z.object({
       key: z.string().min(1).max(MAX_NAME),
-      // permalink 경로가 된다 — `..`가 github.com의 다른 경로를 가리키지 않게 (sec-audit-3 발견 17).
-      path: z.string().min(1).max(MAX_NAME).refine(isPathSafeRepoPath, {
-        message: "refs path must stay inside the repository",
-      }),
+      path: z.string().min(1).max(MAX_NAME),
       line: z.number().int().positive(),
-    })).max(MAX_ROWS),
+    })).max(MAX_ROWS).transform((refs) => refs.filter((ref) => isPathSafeRepoPath(ref.path))),
   })
   .refine((p) => p.locales.includes(p.format.baseLocale), {
     message: "baseLocale is not in locales",
