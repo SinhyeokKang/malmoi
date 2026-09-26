@@ -310,6 +310,22 @@ describe("PushPayload — 로케일·템플릿 charset (sec-audit 2)", () => {
     }
   });
 
+  it("로케일 모양이 아닌 코드를 거부한다 — `package`는 경로로 안전해도 `package.json`을 겨눈다 (sec-audit-3 1b)", () => {
+    for (const locale of ["package", "index", "README", "config"]) {
+      const bad = { ...valid, locales: ["en", locale], translations: [{ locale: "en", key: "a.b", value: "v" }] };
+      expect(PushPayload.safeParse(bad).success).toBe(false);
+    }
+    const inTranslations = { ...valid, locales: ["en", "package"], translations: [{ locale: "package", key: "a.b", value: "v" }] };
+    expect(PushPayload.safeParse(inTranslations).success).toBe(false);
+    const asBase = { ...valid, locales: ["package"], format: { ...valid.format, baseLocale: "package" }, translations: [] };
+    expect(PushPayload.safeParse(asBase).success).toBe(false);
+  });
+
+  it("실측 로케일 모양은 통과한다", () => {
+    const locales = ["en", "pt_BR", "zh-Hant-TW", "es-419", "sr-Latn", "fil"];
+    expect(PushPayload.safeParse({ ...valid, locales, translations: [] }).success).toBe(true);
+  });
+
   it("`baseLocale`도 같은 규칙을 지난다 — 그것도 로케일 코드다", () => {
     const bad = { ...valid, locales: ["../x"], format: { ...valid.format, baseLocale: "../x" },
       translations: [] };
@@ -361,7 +377,8 @@ describe("PushPayload — 크기 상한 (sec-audit 10)", () => {
   });
 
   it("로케일 200개를 넘으면 거부한다", () => {
-    const locales = Array.from({ length: 201 }, (_, i) => `l${i}`);
+    // 모양 규칙(첫 서브태그 영문자 2~3자)을 지나는 코드로 채워야 **개수** 상한을 잰다.
+    const locales = Array.from({ length: 201 }, (_, i) => `en-x${i}`);
     expect(PushPayload.safeParse({ ...base, locales: ["en", ...locales] }).success).toBe(false);
   });
 

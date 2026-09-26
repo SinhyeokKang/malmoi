@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isPathSafeLocale, isPathSafeRepoPath } from "../locale-code";
+import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath } from "../locale-code";
 
 /**
  * **로케일 코드가 리포 쓰기 경로에 보간된다** (sec-audit 발견 2).
@@ -81,5 +81,43 @@ describe("isPathSafeRepoPath — 리포 안에 머무는 경로인가", () => {
     expect(isPathSafeRepoPath("")).toBe(false);
     expect(isPathSafeRepoPath(`d/${"a".repeat(197)}`)).toBe(true);
     expect(isPathSafeRepoPath(`d/${"a".repeat(199)}`)).toBe(false);
+  });
+});
+
+/**
+ * **로케일처럼 생겼는가** (sec-audit-3 발견 1b). `isPathSafeLocale`은 "경로에 넣어도 되나"만 보므로
+ * `package`가 통과했고, `{locale}.json` 템플릿과 만나면 설치 토큰이 **리포에 실재하는** `package.json`을
+ * 재생성했다. 축이 달라 함수를 합치지 않는다 — 두 경계(push 스키마·`resolveLocalePaths`)가 둘 다 요구한다.
+ */
+describe("isLocaleShaped — BCP 47·POSIX 모양의 로케일 코드인가", () => {
+  it("실측 로케일을 통과시킨다", () => {
+    for (const code of ["en", "ko", "EN", "pt_BR", "pt-BR", "zh-Hant-TW", "zh_Hans", "es-419", "sr-Latn", "fil", "en-GB-oxendict"]) {
+      expect(isLocaleShaped(code)).toBe(true);
+    }
+  });
+
+  it("리포에 흔한 파일명 단어를 거부한다", () => {
+    for (const code of ["package", "index", "README", "config", "action", "tsconfig", "messages"]) {
+      expect(isLocaleShaped(code)).toBe(false);
+    }
+  });
+
+  it("첫 서브태그는 영문자 2~3자다", () => {
+    for (const code of ["e", "abcd", "e1", "12", "419", "l0"]) {
+      expect(isLocaleShaped(code)).toBe(false);
+    }
+  });
+
+  it("빈 서브태그·9자 넘는 서브태그·끝 구분자를 거부한다", () => {
+    for (const code of ["en--US", "en__US", "en-", "en_", "-en", "en-abcdefghi"]) {
+      expect(isLocaleShaped(code)).toBe(false);
+    }
+    expect(isLocaleShaped("en-abcdefgh")).toBe(true);
+  });
+
+  it("경로·제어 문자와 길이 초과를 거부한다 — 단독으로도 안전하다", () => {
+    for (const code of ["", "en/US", "en.US", "en\n", "en US", "../en", `en${"-abcdefgh".repeat(4)}`]) {
+      expect(isLocaleShaped(code)).toBe(false);
+    }
   });
 });
