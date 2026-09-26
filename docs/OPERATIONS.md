@@ -104,6 +104,10 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
 | 검색 | `EMAIL_LOOKUP_KEY`·`_KEY_ID` | 정확 일치 조회용 HMAC (**복호화가 아니다** — 되돌릴 수 없다) |
 
 - **세션은 키가 없다** — `sha256:v1:` digest는 도메인 분리 해시라 대조만 한다.
+- **서명 키 `APP_SIGNING_SECRET`은 이 셋에 들지 않는다** (2026-09-27, sec-audit-3 #14) — 저장된 것을 여는 키가
+  아니라 **GitHub 연결 state 쿠키(10분)와 온보딩 샘플 확인값(30분)**에 HMAC을 거는 키이고, `AUTH_SECRET`(Auth.js
+  전용)과도 갈라져 있다. 32바이트 base64url 한 개(`.env.example`에 생성 명령). 셋·`AUTH_SECRET`과 **다른 값**이어야
+  한다 — 검사하는 코드는 없다. 회전은 아래 §2 끝.
 - ⚠️ **형식이 갈린다**: `*_ENCRYPTION_KEYS`는 keyring JSON, `EMAIL_LOOKUP_KEY`는 **원시 base64 하나**.
   섞으면 base64 디코드가 조용히 깨진다.
 - ⚠️ **dev와 prod가 다른 키다** — dev 키가 새도 프로덕션 회원 데이터가 안 열려야 한다. 도구는
@@ -174,6 +178,21 @@ pnpm credentials:dev --mode=verify
 
 **둘 다 실제 회전이 필요해지기 전에 한 번 밟아 본다.** 처음 밟는 자리가 운영 사고 한가운데면
 "차단됐는지 모르는 채로 `--apply`를 누르는" 상태가 된다.
+
+### 서명 키 회전 (`APP_SIGNING_SECRET`)
+
+**차단·drain이 필요 없다** — 이 키로 만든 것은 DB에 없고 쿠키·모달 상태로만 산다(최장 30분). 새 값을 넣고
+재배포하면 끝이고, 그 순간 진행 중이던 GitHub 연결 왕복과 열린 새 프로젝트 모달의 확인값이 **한 번** 실패한다
+(연결은 다시 누르고, 모달은 다시 탐지하면 새 확인값을 받는다). 이중 키 검증은 두지 않았다.
+
+1. 새 값 생성: `node -e 'console.log(require("crypto").randomBytes(32).toString("base64url"))'` — 환경마다 다른 값.
+2. `.env.local`(머신 둘)과 Vercel Production · Preview · Development에 넣는다. ⚠️ **`vercel env add`는 환경을 하나씩만
+   받고 `--force`의 성공 메시지를 믿지 않는다** — `vercel env ls <environment>`의 시각 열로 확인한다(CLAUDE.md).
+3. 재배포. **값이 없으면 연결 시작·callback·온보딩 탐지가 `requireEnv`로 500**이다(fail-closed) — 로그인은
+   `AUTH_SECRET`만 쓰므로 그대로 된다. 증상이 "연결만 죽었다"이면 이 키부터 본다.
+
+- **`AUTH_SECRET` 회전은 이 키와 무관하다** — 진행 중 로그인 왕복만 깨고 DB 세션도, 연결 state도, 샘플 확인값도
+  건드리지 않는다.
 
 ## 3. 복구
 
