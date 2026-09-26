@@ -986,7 +986,7 @@ describe("runPull — 로케일 모양이 아닌 저장된 행 (sec-audit-3 1b)"
     const surface = { ...PROJECT, pathTemplate: "{locale}.json", id: "s1", slug: "default", localeCodes: ["en", "package"], keys };
     const { deps, writes } = makeDeps({
       loadState: async (): Promise<PullState> => ({
-        project: { ...PROJECT, pathTemplate: "{locale}.json" },
+        project: { ...PROJECT },
         surfaces: [surface],
         maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
       }),

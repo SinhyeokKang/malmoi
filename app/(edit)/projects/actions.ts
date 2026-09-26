@@ -84,7 +84,7 @@ import type { OnboardError } from "@/lib/onboarding/message";
 import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { planSurfaceReadiness, planProjectReadiness } from "@/lib/onboarding/readiness";
 import { planSlug } from "@/lib/onboarding/slug";
-import { isPathSafeLocale } from "@/lib/locale-code";
+import { isLocaleShaped, isPathSafeLocale } from "@/lib/locale-code";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { generatePushToken, hashPushToken } from "@/lib/push/token";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -872,7 +872,7 @@ export async function loadCandidateSample(raw: {
   const parsed = SampleInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
-  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.locale)) return { ok: false, error: "invalid input" };
+  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.locale) || !isLocaleShaped(input.locale)) return { ok: false, error: "invalid input" };
   const session = await readSession();
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
@@ -928,7 +928,7 @@ export async function confirmManualFormat(raw: {
   const parsed = ManualFormatInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
-  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.baseLocale) || !isAdapterName(input.adapter)) {
+  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.baseLocale) || !isLocaleShaped(input.baseLocale) || !isAdapterName(input.adapter)) {
     return { ok: false, error: "invalid input" };
   }
   const session = await readSession();
@@ -1503,7 +1503,7 @@ export async function checkOpenPullRequest(raw: { slug: string }): Promise<OpenI
 
 export type RotateTokenResult =
   | { ok: true; pushToken: string }
-  | { ok: false; error: OnboardError | AccessError | "invalid input" };
+  | { ok: false; error: OnboardFailure | AccessError };
 
 /**
  * push 토큰 재발급 (설정 화면). **원문은 이 반환값에만 있다** — 잃으면 다시 재발급이다.
@@ -1524,6 +1524,25 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
   const prisma = getPrisma();
   const access = await getProjectAccess(prisma, { userId, slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
+  // 보관 = Restore만 — 거부될 요청이 GitHub을 부르지 않게 먼저 막는다. 경합 창은 잠금 안 판정이 닫는다.
+  if (access.archived) return redrawIfArchived(slug, "archived", { ok: false, error: "archived" });
+
+  /**
+   * ⚠️ **토큰을 받는 사람이 리포에 쓸 수 있어야 한다** (sec-audit-3 결정 I). push 토큰의 페이로드가 로케일을 정하고 그
+   * 로케일이 설치 토큰의 커밋 경로가 된다(`locales:["en","app"]` → `app.json` — 3글자라 모양 검사가 못 막는다).
+   * 쓰기 권한 없이 초대된 OWNER가 여기서 토큰을 받으면 생성 경로(1a)가 닫은 격차가 다시 열린다.
+   */
+  const project = await prisma.project.findUnique({
+    where: { id: access.projectId },
+    select: { repoOwner: true, repoName: true, installationId: true, repositoryId: true },
+  });
+  if (project === null) return { ok: false, error: "not-found" };
+  // 확인할 리포가 없다 — 쓰기 권한을 증명할 수단이 없으므로 발급하지 않는다.
+  if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "repo-not-installed" };
+  const repo = await checkRepoAccess(prisma, userId, project.repoOwner, project.repoName, true);
+  if (repo.status !== "ok") return { ok: false, error: repo.error };
+  // 같은 이름의 **다른** 리포에 쓸 수 있는 것은 근거가 아니다 — 고정된 신원으로 대조한다.
+  if (repo.repositoryId !== project.repositoryId) return { ok: false, error: "repo-forbidden" };
 
   const pushToken = generatePushToken();
   // ⚠️ `where`가 **인가가 돌려준 projectId**다.
@@ -1796,7 +1815,7 @@ export async function addSurfaces(raw: { slug: string; picks: { adapter: string;
   const parsed = z.object({ slug: z.string().min(1).max(40), picks: z.array(z.object({ adapter: z.string(), pathTemplate: z.string().min(1).max(500), baseLocale: z.string().min(1) })).min(1).max(200) }).safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
-  if (new Set(input.picks.map(pick => pick.pathTemplate)).size !== input.picks.length || input.picks.some(pick => !isAdapterName(pick.adapter) || !isPathSafeLocale(pick.baseLocale))) return { ok: false, error: "invalid input" };
+  if (new Set(input.picks.map(pick => pick.pathTemplate)).size !== input.picks.length || input.picks.some(pick => !isAdapterName(pick.adapter) || !isPathSafeLocale(pick.baseLocale) || !isLocaleShaped(pick.baseLocale))) return { ok: false, error: "invalid input" };
   const session = await readSession();
   if (session.status !== "ok") return { ok: false, error: session.status === "none" ? "unauthorized" : "unavailable" };
   const prisma = getPrisma();

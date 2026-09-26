@@ -1363,6 +1363,10 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (PRODUCT §7.5)
 });
 
 describe("rotatePushToken — 원문은 한 번만 돌아온다", () => {
+  // 회전은 쓰기 권한 확인을 지난다(결정 I) — 연결된 프로젝트여야 한다.
+  beforeEach(() => {
+    Object.assign(db.projects[0]!, { repoOwner: "acme", repoName: "web", installationId: "77", repositoryId: "1035512" });
+  });
   it("회전하면 옛 해시로는 행을 찾을 수 없다", async () => {
     const first = await rotatePushToken({ slug: "acme" });
     expect(first).toMatchObject({ ok: true });
