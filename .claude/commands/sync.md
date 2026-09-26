@@ -26,7 +26,7 @@ squash 머지는 main에 **새 해시**의 커밋을 만든다. `dev`가 옛 해
 ⚠️ **커밋 목록이 아니라 tree를 비교한다.** 전에는 `git log origin/main..origin/dev`가 비었는지 봤는데, squash 머지는 **새 해시**를 만들므로 정상적으로 머지된 뒤에도 그 목록이 비지 않는다 — 즉 **이 스킬이 선언한 주 용도(다른 머신이 머지한 뒤)에서 항상 걸리는 false positive**였다. tree가 같으면 내용이 main에 다 있다는 직접 증거이고, 그때 사라지는 것은 커밋 이력뿐인데 그 이력을 접는 것이 squash 머지의 의도다.
 
 - 참고용으로 `git log origin/main..origin/dev --oneline`도 함께 찍어 **무엇이 접히는지** 보여준다. 검사에는 쓰지 않는다.
-- **bump 커밋(`chore(release): v<x.y.z>`)이 dev에만 있고 머지 전이면 tree 비교가 걸린다** — 정상이다(`/merge`가 7단계 뒤에 멈춘 모양). 이 스킬로 풀지 않고 `/merge`를 다시 부른다.
+- **bump 커밋(`chore(release): v<x.y.z>`)이 dev에만 있고 머지 전이면 tree 비교가 걸린다** — 정상이다(`/merge`가 4단계 bump push 뒤·8단계 머지 전에 멈춘 모양). 이 스킬로 풀지 않고 `/merge`를 다시 부른다.
 - 중단 시 무엇이 날아갈 뻔했는지 목록으로 보여주고 사용자 판단을 기다린다.
 
 ### 3. 검사한 SHA를 기억한다

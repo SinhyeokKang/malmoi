@@ -20,6 +20,7 @@ description: dev → main PR 생성 + 버전 bump + CI 대기 + squash 머지 + 
 - `git branch --show-current`가 `dev`인지 확인. 아니면 중단.
 - `git status --porcelain`이 비었는지 확인. 미커밋 변경이 있으면 **중단** — `/push`로 먼저 정리한다.
 - `git log origin/dev..HEAD`가 비었는지 확인. 로컬에만 있는 커밋이 있으면 **중단** — `/push` 먼저.
+- `git merge-base --is-ancestor origin/main origin/dev`가 exit 0인지 확인. 아니면 **중단 — `/sync` 먼저.** 직전 `/merge`의 10단계 lease가 거부돼 dev가 squash 전 커밋을 그대로 들고 있다는 뜻이고, 그대로 가면 이미 나간 커밋이 다시 릴리스된다(bump 한 줄만으로도 PR이 비지 않는다). 3단계 스크립트도 같은 판정을 `dev-not-synced`로 낸다 — 여기서 먼저 보는 것은 1·2단계를 헛돌지 않으려는 것이다.
 
 ### 1. 스키마 게이트 (⚠️ 이 프로젝트 특화 — additive-first가 여기서 일어난다)
 
@@ -43,7 +44,7 @@ gh run list --branch dev --workflow ci.yml --limit 5 --json headSha,conclusion,u
 ```
 
 - `origin/dev`의 HEAD SHA와 일치하는 run을 찾는다. **최신 run을 그냥 집지 않는다.**
-- 이 run은 `/push`가 dev에 푸시할 때 돈 것이다. 없으면 `/push`를 거치지 않은 커밋이 dev에 있다는 뜻이므로 왜인지 확인한다.
+- 이 run은 `/push`가 dev에 푸시할 때 돈 것이다. 없으면 `/push`를 거치지 않은 커밋이 dev에 있다는 뜻이므로 왜인지 확인한다. **예외는 bump 커밋(`chore(release): v<x.y.z>`)이다** — 직전 `/merge`가 4단계 뒤·8단계 전에 멈춘 재실행이면 dev HEAD가 그것이고, 그 SHA의 run(dev push로 돈다)이 아직 없거나 진행 중일 수 있다. 그때는 바로 아래 커밋의 run을 보고, bump SHA는 7단계 PR CI에 맡긴다.
 - `conclusion`이 `success`가 아니면 **중단 + 리포트**. 실패한 걸 main에 넣지 않는다.
 - 아직 진행 중이면 대기할지 사용자에게 확인 (`gh run watch <id>`).
 - **bump 전에 둔다** — bump는 메타데이터 한 줄이라 여기서 본 green이 머지될 코드의 green이다.
@@ -58,12 +59,14 @@ stdout은 JSON 한 개다(`scripts/release-plan.ts` — 판정은 `scripts/relea
 
 | 출력 | 할 일 |
 |---|---|
-| exit 1 · `error: "unreleased-on-main"` | **중단.** 직전 `/merge`의 9단계가 실패해 main의 `version`에 태그가 없다. 그 Release를 먼저 만든다(9단계 명령. `--target`은 그 버전의 squash SHA — `git log origin/main --format=%H --grep "^v<version>: " -1`). 같은 번호를 다시 쓰지 않으려는 판정이다 |
+| exit 1 · `error: "unreleased-on-main"` | **중단.** 직전 `/merge`의 9단계가 실패해 main의 `version`에 태그가 없다. 그 Release를 먼저 만든다(9단계 명령. `--target`은 그 버전을 main에 넣은 커밋 — `git log -S'"version": "<version>"' origin/main --format=%H -1 -- package.json`. 제목(`--grep "^v<version>: "`)으로 찾지 않는다 — 웹 UI로 머지하면 제목에 버전이 없다). 같은 번호를 다시 쓰지 않으려는 판정이다 |
+| exit 1 · `dev-not-synced` | **중단 — `/sync` 먼저.** 0단계와 같은 판정이다 |
 | exit 1 · `nothing-to-release` | **중단.** 머지할 커밋이 없다 |
-| exit 1 · `invalid-version` · `behind-last-tag` | **중단 + 리포트.** 누군가 `version`을 손으로 바꿨다 — 4단계 밖에서 바뀌면 안 되는 값이다 |
+| exit 1 · `invalid-version` · `behind-last-tag` · `unexpected-version` | **중단 + 리포트.** 누군가 `version`을 손으로 바꿨다 — 4단계 밖에서 바뀌면 안 되는 값이다. `unexpected-version`은 직전 태그보다 크지만 **한 레벨 올린 후보(태그가 없으면 `1.0.0`)가 아닌 값**이다(`v1.2.0` 위의 `5.0.0`, seed 전의 `0.1.0`) — 재실행으로 받으면 그 번호가 조용히 릴리스된다 |
+| exit 1 · `io` | **중단 + 리포트.** git·네트워크·`package.json` 파싱이 실패했다 — `message`를 그대로 옮긴다 |
 | `action: "bump"` · `seed: true` | **묻지 않는다.** 첫 릴리스이고 `candidates`가 셋 다 `1.0.0`이다 |
 | `action: "bump"` · `seed: false` | **`AskUserQuestion`으로 patch·minor·major를 묻는다** (아래) |
-| `action: "none"` | **묻지 않고 4단계를 건너뛴다.** bump가 이미 dev에 있다(직전 `/merge`가 4단계 뒤에 멈췄다). `next`가 이번 버전이다 — 버전이 두 번 오르지 않는다 |
+| `action: "none"` | **묻지 않고 4단계를 건너뛴다.** bump가 이미 dev에 있다(직전 `/merge`가 4단계 뒤·8단계 전에 멈췄다 — `next`가 직전 태그의 다음 후보 중 하나일 때만 이 판정이 나온다). `next`가 이번 버전이다 — 버전이 두 번 오르지 않는다 |
 
 질문 모양:
 
@@ -146,6 +149,8 @@ gh pr list --head dev --base main --state open --json number,url
 
 PR에 붙은 `verify` 체크가 green이 되기를 기다린다 (`gh pr checks <n> --watch`). 실패면 중단 + 리포트. 4단계의 bump 커밋이 여기서 처음 CI를 지난다.
 
+- ⚠️ **push·PR 생성 직후엔 `no checks reported`가 나올 수 있다** — 체크가 아직 등록되지 않은 것이지 통과가 아니다. 잠시 뒤 다시 부르고, `verify`가 **새 HEAD SHA로** 뜬 뒤에 `--watch`를 건다.
+
 - 여기서 중단하면 dev에 bump가 남는다. 고친 뒤 다시 `/merge`를 부르면 3단계가 `action: "none"`으로 4단계를 건너뛴다. 그 사이 `/sync`를 손으로 돌리면 tree 비교가 걸려 멈춘다 — 올바른 동작이다.
 
 ### 8. squash 머지
@@ -227,7 +232,7 @@ dev 동기화: fetch→검사→reset→lease push 완료 / ⚠️ 보류(<사�
 - **마이그레이션이 미적용인 채 머지 금지.**
 - **CI 실패·진행 중 상태에서 머지 금지.**
 - **merge commit·rebase 머지 금지** — squash만.
-- **`version`을 4단계 밖에서 바꾸지 않는다** — 다음 버전 계산은 `pnpm release:plan` 한 곳이고, 손으로 바꾸면 3단계가 `invalid-version`·`behind-last-tag`로 멈춘다.
+- **`version`을 4단계 밖에서 바꾸지 않는다** — 다음 버전 계산은 `pnpm release:plan` 한 곳이고, 손으로 바꾸면 3단계가 `invalid-version`·`behind-last-tag`·`unexpected-version`으로 멈춘다.
 - **Release `--draft` 금지** — 머지 = 배포다. **`--generate-notes` 금지** — 노트는 5단계가 직접 쓴다.
 - **태그 강제 이동·삭제 금지** — 잘못 만든 릴리스는 다음 버전으로 고친다. 같은 번호를 다시 쓰지 않는다.
 - **10단계에서 인자 없는 `--force-with-lease` 금지** — `=dev:<SHA>` 형태만. 이유는 `/sync` 4단계.
