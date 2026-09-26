@@ -232,7 +232,7 @@ describe("글자 크기·자간·radius는 스케일이 든다 (audit #45·#46·
       "app/(edit)/account/page.tsx": 3,
       "components/ui/panel-card.tsx": 4,
       "components/ui/modal.tsx": 1,
-      "components/privacy/privacy-doc.tsx": 1,
+      "components/public-doc-table.tsx": 1,
     });
   });
 

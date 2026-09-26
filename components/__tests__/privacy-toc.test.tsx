@@ -2,7 +2,7 @@
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Toc } from "@/components/privacy/toc";
+import { Toc } from "@/components/public-doc-toc";
 import { currentSection } from "@/lib/public-doc/toc";
 
 import { find, render } from "./helpers/dom";

@@ -184,7 +184,7 @@ describe("공개 화면 소스 — 문구는 사전을 지난다", () => {
     "components/landing/stage.tsx",
     "components/public-doc-table.tsx",
     "components/privacy/privacy-doc.tsx",
-    "components/privacy/toc.tsx",
+    "components/public-doc-toc.tsx",
     ...readdirSync(join(process.cwd(), "components/public-shell"))
       .filter((name) => name.endsWith(".tsx"))
       .map((name) => `components/public-shell/${name}`),

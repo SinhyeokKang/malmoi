@@ -57,6 +57,36 @@ describe("공개 셸 — 구조", () => {
     }
   });
 
+  /** `/docs/x#workflow`로 들어오면 대상 h2가 포커스를 받는다 — 스크롤러가 가져가면 Tab이 문서 첫머리에서 다시 시작한다(DESIGN §6.61). */
+  it("해시가 `tabIndex`를 든 요소를 가리키면 그 요소가 포커스를 받는다", async () => {
+    history.replaceState(null, "", "#workflow");
+    try {
+      await render(h(PublicShell, { cta: publicCta("none"), children: h("h2", { id: "workflow", tabIndex: -1 }, "Workflow") }));
+      expect(document.activeElement?.id).toBe("workflow");
+    } finally {
+      history.replaceState(null, "", window.location.pathname);
+    }
+  });
+
+  it("해시 대상이 포커스를 못 받는 요소거나 깨진 인코딩이면 스크롤러가 받는다", async () => {
+    for (const hash of ["#plain", "#%E0"]) {
+      history.replaceState(null, "", hash);
+      try {
+        const { container } = await render(h(PublicShell, { cta: publicCta("none"), children: h("p", { id: "plain" }, "body") }));
+        expect(document.activeElement).toBe(container.querySelector("[data-public-scroller]"));
+      } finally {
+        history.replaceState(null, "", window.location.pathname);
+      }
+    }
+  });
+
+  /** `/docs`는 레이아웃이 셸을 들고 본문 스크롤러는 페이지가 든다(DESIGN §6.61) — 셸이 스크롤러를 하나 더 만들면 중첩된다. */
+  it("`bare`면 패널 안을 스크롤러로 감싸지 않는다", async () => {
+    const { container } = await render(h(PublicShell, { cta: publicCta("none"), current: "docs", bare: true, children: h("p", null, "body") }));
+    expect(container.querySelectorAll("[data-public-scroller]")).toHaveLength(0);
+    expect(container.querySelector("main > p")?.textContent).toBe("body");
+  });
+
   /**
    * 헤더·푸터의 빈 곳을 누르면 포커스가 `body`로 빠지고, 그 뒤 Space/PageDown이 아무것도 안 민다(POSTMORTEM 2026-09-24
    * "포커스가 body로 빠지는 자리"). jsdom에는 클릭의 포커스 이동이 없어 `blur()`로 같은 상태를 만든다.
@@ -112,6 +142,12 @@ describe("공개 셸 — 헤더", () => {
     expect(m.landing.shell.getStarted).toBe("Get started");
     expect(cta).toHaveLength(1);
     expect(cta[0]?.getAttribute("href")).toBe(routes.signIn());
+  });
+
+  it("`/docs/*`는 Docs만 aria-current다", async () => {
+    const { container } = await render(h(PublicShell, { cta: publicCta("none"), current: "docs", children: h("p", null, "body") }));
+    const links = [...container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] a`)];
+    expect(links.map((a) => a.getAttribute("aria-current"))).toEqual([null, "page", null]);
   });
 
   /** `/privacy`는 헤더 링크 어디에도 없는 화면이다 — current를 안 넘기면 어느 링크도 current가 아니다. */

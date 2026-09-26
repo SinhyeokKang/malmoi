@@ -1,26 +1,16 @@
-import { DocTable } from "@/components/public-doc-table";
+import { DOC_TABLE, DocTable } from "@/components/public-doc-table";
+import { Toc } from "@/components/public-doc-toc";
 import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-import { Toc } from "./toc";
-
 /**
  * `/privacy`의 읽기 그릇 — 공개 셸 패널 안에 선다 (시안 `Landing.dc.html` 1e · `Landing Prototype.dc.html` `isPrivacy`,
- * DESIGN §6.616). `/docs`는 셸 밖 1열(`components/public-doc.tsx`, §6.61)이고 표(`DocTable`)만 공유한다.
+ * DESIGN §6.616). `/docs`(`components/docs/`, §6.61)와 표(`DocTable`)·목차(`Toc`)를 공유한다.
  *
  * ⚠️ **`<main>`을 그리지 않는다** — 랜드마크는 셸의 `<main>` 하나다.
  * ⚠️ **복귀 링크가 없다** — 헤더(로고 · Home · primary)가 나가는 길을 든다.
  * ⚠️ **본문은 사전 그대로다** (`m.publicDocs.privacy`) — 고치면 `effectiveDate`와 개정 이력이 따라와야 한다.
  */
-/**
- * 표 급 — `/docs`의 `DocTable`과 형은 같고 급만 이 그릇이 누른다(시안 Prototype `isPrivacy`). 셀 14/1.6 · 머리 10/16 ·
- * 13/500/1.6 muted(행 ≈ 41) · radius 12(`rounded-lg` — `rounded-xl`은 16이다).
- *
- * ⚠️ **자간 0.015em은 `tracking-*` 예외다**(DESIGN §4 · `visual-system.test.ts`) — 크기 토큰 `text-sm`·`text-xs`의 짝은 0.02em인데
- * 시안이 이 표만 0.015em을 든다. `:is(th,td)` 하나로 건다 — `--tw-tracking`은 상속되지 않아 표에 걸면 칸의 크기 유틸이 0.02em으로 되돌린다.
- */
-const TABLE =
-  "border-border mt-6 min-w-0 overflow-auto rounded-lg border [&_td]:leading-[1.6] [&_th]:text-muted-foreground [&_th]:text-xs [&_th]:px-4 [&_th]:py-2.5 [&_th]:leading-[1.6] [&_:is(th,td)]:tracking-[0.015em]";
 /** 3열 표의 열 폭 — 방침 문구가 아니라 열 수에서 온다. 셋째 열은 나머지다. */
 const TABLE_3COL = "[&_th:nth-child(1)]:w-[34%] [&_th:nth-child(2)]:w-[26%]";
 
@@ -77,7 +67,7 @@ export function PrivacyDoc() {
                 <DocTable
                   key={blockIndex}
                   table={block.table}
-                  className={cn(TABLE, block.table.head.length === 3 && TABLE_3COL)}
+                  className={cn(DOC_TABLE, block.table.head.length === 3 && TABLE_3COL)}
                 />
               ),
             )}

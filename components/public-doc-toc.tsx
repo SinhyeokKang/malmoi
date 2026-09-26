@@ -18,11 +18,12 @@ const topOf = (node: HTMLElement, scroller: HTMLElement) =>
   node.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
 
 /**
- * `/privacy`의 `On this page` 목차 — 스크롤러의 위치로 현재 절을 강조하고, 누르면 그 절로 스크롤한다 (DESIGN §6.616).
+ * 공개 문서의 `On this page` 목차 — 스크롤러의 위치로 현재 절을 강조하고, 누르면 그 절로 스크롤한다 (DESIGN §6.616).
+ * **`/privacy`와 `/docs`가 한 벌을 쓴다**(§6.61) — 제목·항목은 그릇이 넘긴다.
  *
  * ⚠️ **링크가 실제 `href="#id"`다** — JS 전·없이도 fragment 이동이 된다. JS는 그 위에 착지 위치(48)와 모션만 얹는다.
- * ⚠️ **스크롤러는 공개 셸의 것이다**(`[data-public-scroller]`) — 문서는 스크롤되지 않으므로 `window`를 구독하면 아무것도 안 온다.
- * ⚠️ **setState는 값이 바뀔 때만 리렌더한다** — 항목이 일곱이라 스테이지처럼 DOM에 직접 쓸 이유가 없다.
+ * ⚠️ **스크롤러는 공개 셸의 것이다**(`[data-public-scroller]` — `/docs`는 페이지가 그 스크롤러를 든다) — 문서는 스크롤되지 않으므로 `window`를 구독하면 아무것도 안 온다.
+ * ⚠️ **setState는 값이 바뀔 때만 리렌더한다** — 항목이 열 안팎이라 스테이지처럼 DOM에 직접 쓸 이유가 없다.
  * ⚠️ **`@/lib/**`는 잎 `lib/public-doc/toc.ts`와 `cn`만 읽는다** — 둘 다 `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 있다.
  */
 export function Toc({ label, items }: { label: string; items: readonly { id: string; heading: string }[] }) {
