@@ -56,7 +56,7 @@ async function readLimits(tx: Tx, input: { projectId: string; userId: string; em
     select: { emailLookup: true, createdAt: true },
   });
   /**
-   * ⚠️ **`projectId`로 좁히지 않는 유일한 조회다** — 발급자 한도(sec-audit-3 #15)가 전 프로젝트 합산이라서다.
+   * ⚠️ **발급 판정 입력 중 `projectId`로 좁히지 않는 유일한 조회다** — 발급자 한도(sec-audit-3 #15)가 전 프로젝트 합산이라서다.
    * 발급자 **자신의** 행만, 시각만 읽는다(테넌트 데이터가 판정 밖으로 나가지 않는다).
    * ⚠️ **근사다**: 잠금은 이 프로젝트 행 하나라 다른 프로젝트의 동시 발급과는 직렬화되지 않는다 — 한도를
    * 조금 넘을 수 있다. 목적이 스팸 억제라 사용자 잠금을 더하지 않았다. `(invitedBy, createdAt)` 인덱스도

@@ -113,10 +113,19 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
         payload: { kind: "MEMBER", targetLabel: maskEmail(user.email), role: { before: null, after: invitation.role } },
       });
       return "ok";
-    }).catch((error: unknown) => {
-      // 콜백이 던졌으므로 소비(`acceptedAt`)도 함께 되돌아갔다 — 진 쪽의 초대는 살아 있다.
-      if (isUniqueViolation(error)) return "already-member" as const;
-      throw error;
+    }).catch(async (error: unknown) => {
+      /**
+       * 콜백이 던졌으므로 소비(`acceptedAt`)도 함께 되돌아갔다 — 진 쪽의 초대는 살아 있다.
+       * ⚠️ **P2002만으로 접지 않는다** — 콜백 안에는 `recordEvent`(`ProjectEvent`의 unique)도 있어 어느 제약이
+       * 걸렸는지 모른다. 멤버 행이 실제로 있을 때만 `already-member`다(`account-link`의 "P2002 → 재조회"와 같은 형).
+       */
+      if (!isUniqueViolation(error)) throw error;
+      const member = await prisma.projectMember.findUnique({
+        where: { projectId_userId: { projectId: invitation.projectId, userId } },
+        select: { userId: true },
+      });
+      if (member === null) throw error;
+      return "already-member" as const;
     });
 
     if (accepted === "already-member") return { ok: false, error: "already-member" };
