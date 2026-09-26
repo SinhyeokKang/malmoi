@@ -11,6 +11,7 @@ import type { ProbeResult } from "../health";
  * User에 GitHub Account가 연결됨            ← 껍데기가 먼저 본다 (not-connected)
  *   AND 로그인 사용자가 그 installation에 접근 가능   ← installation-forbidden
  *   AND installation이 선택한 repository에 접근 가능  ← repo-forbidden
+ *   AND 그 사람이 그 repository에 쓸 수 있음         ← repo-read-only (sec-audit-3 1a)
  * ```
  *
  * ⚠️ **`installationId`는 클라이언트에서 오지 않는다.** `probe`가 App JWT 조회 결과이고, 사용자 쪽
@@ -27,7 +28,7 @@ function plan(over: Partial<Parameters<typeof planRepoConnect>[0]> = {}) {
   return planRepoConnect({
     probe: installed,
     userInstallationIds: ["158107153"],
-    userRepoFullNames: ["acme/web"],
+    userRepos: [{ fullName: "acme/web", push: true }],
     ...over,
   });
 }
@@ -43,7 +44,7 @@ describe("planRepoConnect — probe가 먼저다", () => {
 
   it("probe 실패가 사용자 목록 검사보다 앞이다 — 목록이 비어 있어도 사유는 probe 쪽이다", () => {
     expect(
-      plan({ probe: { status: "not-installed" }, userInstallationIds: [], userRepoFullNames: [] }),
+      plan({ probe: { status: "not-installed" }, userInstallationIds: [], userRepos: [] }),
     ).toEqual({ status: "repo-not-installed" });
   });
 });
@@ -58,7 +59,7 @@ describe("planRepoConnect — 사용자 ↔ 설치 (ARCHITECTURE §6 둘째 조�
   });
 
   it("설치 검사가 리포 검사보다 앞이다 — 볼 수 없는 설치의 리포 목록을 근거로 쓰지 않는다", () => {
-    expect(plan({ userInstallationIds: ["99"], userRepoFullNames: [] })).toEqual({
+    expect(plan({ userInstallationIds: ["99"], userRepos: [] })).toEqual({
       status: "installation-forbidden",
     });
   });
@@ -66,15 +67,15 @@ describe("planRepoConnect — 사용자 ↔ 설치 (ARCHITECTURE §6 둘째 조�
 
 describe("planRepoConnect — 설치 ↔ 리포 (ARCHITECTURE §6 셋째 조건)", () => {
   it("그 리포가 사용자 리포 목록에 없으면 repo-forbidden이다", () => {
-    expect(plan({ userRepoFullNames: ["acme/other"] })).toEqual({ status: "repo-forbidden" });
+    expect(plan({ userRepos: [{ fullName: "acme/other", push: true }] })).toEqual({ status: "repo-forbidden" });
   });
 
   it("리포 목록이 비어 있으면 repo-forbidden이다 — fail-closed", () => {
-    expect(plan({ userRepoFullNames: [] })).toEqual({ status: "repo-forbidden" });
+    expect(plan({ userRepos: [] })).toEqual({ status: "repo-forbidden" });
   });
 
   it("대소문자만 다른 이름을 거짓 거부하지 않는다 — 정당한 재연결이 막히면 안 된다", () => {
-    expect(plan({ userRepoFullNames: ["Acme/Web"] })).toEqual({
+    expect(plan({ userRepos: [{ fullName: "Acme/Web", push: true }] })).toEqual({
       status: "ok",
       installationId: "158107153",
       repoOwner: "acme",
@@ -97,7 +98,7 @@ describe("planRepoConnect — 통과", () => {
     expect(
       plan({
         probe: { ...installed, fullName: "newco/website" },
-        userRepoFullNames: ["newco/website"],
+        userRepos: [{ fullName: "newco/website", push: true }],
       }),
     ).toEqual({
       status: "ok",
@@ -123,9 +124,41 @@ describe("planRepoConnect — 모양이 이상한 full_name", () => {
       expect(
         plan({
           probe: { ...installed, fullName },
-          userRepoFullNames: [fullName],
+          userRepos: [{ fullName, push: true }],
         }),
       ).toEqual({ status: "unavailable" });
     }
+  });
+});
+
+/**
+ * **토큰을 받는 사람이 리포에 이미 쓸 수 있어야 한다** (sec-audit-3 발견 1a). 생성자는 push 토큰을 받고,
+ * 그 토큰이 페이로드로 정한 로케일·경로가 **설치 토큰의 커밋**이 된다 — 읽기 전용 협력자가 만들면 그 사람이
+ * 가진 적 없는 쓰기 권한을 빌리는 것이다. 이미 쓸 수 있는 사람이면 sync 브랜치에 무엇이 커밋되든 상승이 아니다.
+ *
+ * ⚠️ **`permissions`가 응답에 없으면 거부가 아니라 `unavailable`이다** — 모르는 것을 "권한 없음"으로 말하지
+ * 않는다 (POSTMORTEM 2026-09-03).
+ */
+describe("planRepoConnect — 리포 쓰기 권한 (sec-audit-3 1a)", () => {
+  it("push가 false면 repo-read-only다", () => {
+    expect(plan({ userRepos: [{ fullName: "acme/web", push: false }] })).toEqual({ status: "repo-read-only" });
+  });
+
+  it("push를 모르면(null) unavailable이다 — 거부로 접지 않는다", () => {
+    expect(plan({ userRepos: [{ fullName: "acme/web", push: null }] })).toEqual({ status: "unavailable" });
+  });
+
+  it("push가 true면 ok다", () => {
+    expect(plan({ userRepos: [{ fullName: "acme/web", push: true }] })).toMatchObject({ status: "ok" });
+  });
+
+  it("권한은 **그 리포 행**의 것만 본다 — 다른 리포의 쓰기 권한이 빌려지지 않는다", () => {
+    expect(
+      plan({ userRepos: [{ fullName: "acme/other", push: true }, { fullName: "acme/web", push: false }] }),
+    ).toEqual({ status: "repo-read-only" });
+  });
+
+  it("목록에 없는 리포는 권한 판정 전에 repo-forbidden이다", () => {
+    expect(plan({ userRepos: [{ fullName: "acme/other", push: false }] })).toEqual({ status: "repo-forbidden" });
   });
 });
