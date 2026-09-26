@@ -15,6 +15,10 @@ describe("shotSources", () => {
     expect(shotSources([home, other])).toEqual(["app/page.tsx", "components/home.tsx", "lib/x.ts"]);
   });
 
+  it.each(["/etc/passwd", "../outside.ts", "app/../../x.ts", "C:\\x.ts", "app\\x.ts"])("리포 밖·비정규 경로 %s는 주지 않는다 — 스크립트가 해시하지 않는다", (path) => {
+    expect(shotSources([row({ 에셋: "/guide/x.webp", 소스: `app/page.tsx, ${path}`, blob: "a, b", 치수: "" })])).toEqual(["app/page.tsx"]);
+  });
+
   it("빈 소스 셀은 경로를 만들지 않는다", () => {
     expect(shotSources([row({ 에셋: "/guide/x.webp", 소스: "", blob: "", 치수: "" })])).toEqual([]);
   });
@@ -40,6 +44,11 @@ describe("staleShots", () => {
   it("현재 SHA가 없는 소스(삭제·이동)는 deleted다", () => {
     const current = new Map([["app/page.tsx", "aaa"]]);
     expect(staleShots([home], current)).toEqual([{ asset: "/guide/home.webp", reason: "deleted", source: "components/home.tsx" }]);
+  });
+
+  it("리포 밖 경로는 invalid다 — 작업 트리 밖을 해시하지 않고 신선하다고도 말하지 않는다", () => {
+    const outside = row({ 에셋: "/guide/x.webp", 소스: "app/a.tsx, ../secret.ts", blob: "aaa, bbb", 치수: "" });
+    expect(staleShots([outside], new Map([["app/a.tsx", "aaa"]]))).toEqual([{ asset: "/guide/x.webp", reason: "invalid", source: "../secret.ts" }]);
   });
 
   it("blob 셀이 비었으면 unrecorded 하나다 — 소스별로 쪼개지 않는다", () => {

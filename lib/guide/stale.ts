@@ -12,7 +12,7 @@
  * 로컬뿐이다. 소비자는 `pnpm guide:check` 하나다.
  */
 
-export type StaleReason = "changed" | "deleted" | "unrecorded" | "count-mismatch";
+export type StaleReason = "changed" | "deleted" | "invalid" | "unrecorded" | "count-mismatch";
 
 export type ShotRecord = { asset: string; sources: string; blobs: string };
 
@@ -24,9 +24,18 @@ const split = (cell: string): string[] =>
     .map((part) => part.trim())
     .filter((part) => part !== "");
 
-/** 모든 행의 소스 경로 — 중복 없이 처음 나온 순서. 호출자가 이 경로들의 현재 SHA를 잰다. */
+/**
+ * 리포 루트 기준 상대 경로인가. 절대경로·`..` 세그먼트·백슬래시를 거른다 — 표의 경로를 그대로 `join`하면
+ * 작업 트리 밖 파일을 해시하게 되고, 그 SHA가 우연히 같으면 신선하다고 말한다.
+ */
+function isRepoPath(path: string): boolean {
+  if (path.startsWith("/") || path.includes("\\") || /^[A-Za-z]:/.test(path)) return false;
+  return !path.split("/").some((segment) => segment === "..");
+}
+
+/** 모든 행의 리포 안 소스 경로 — 중복 없이 처음 나온 순서. 호출자가 이 경로들의 현재 SHA를 잰다. */
 export function shotSources(rows: readonly ShotRecord[]): string[] {
-  return [...new Set(rows.flatMap((row) => split(row.sources)))];
+  return [...new Set(rows.flatMap((row) => split(row.sources).filter(isRepoPath)))];
 }
 
 /**
@@ -41,6 +50,7 @@ export function staleShots(rows: readonly ShotRecord[], currentBlobs: ReadonlyMa
     // 순서로 짝짓는 계약이라 개수가 어긋나면 어느 SHA가 어느 소스인지 모른다
     if (sources.length !== blobs.length) return [{ asset, reason: "count-mismatch", source: null }];
     return sources.flatMap((source, i): StaleShot[] => {
+      if (!isRepoPath(source)) return [{ asset, reason: "invalid", source }];
       const current = currentBlobs.get(source);
       if (current === undefined) return [{ asset, reason: "deleted", source }];
       return current === blobs[i] ? [] : [{ asset, reason: "changed", source }];

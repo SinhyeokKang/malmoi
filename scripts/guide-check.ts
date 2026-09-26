@@ -61,7 +61,8 @@ function main() {
   // 열 이름은 SHOOTING.md의 계약이다(G2 이미지 게이트와 같은 표). 없는 열은 빈 셀 → unrecorded로 드러난다
   const rows: ShotRecord[] = table.map((row) => ({ asset: row["에셋"] ?? "", sources: row["소스"] ?? "", blobs: row["blob"] ?? "" }));
 
-  // 파일이 아닌 경로(삭제·이동·디렉터리)는 hash-object가 던지므로 먼저 거른다 → staleShots가 deleted로 본다
+  // 리포 밖 경로는 shotSources가 이미 뺐다(→ invalid). 파일이 아닌 경로(삭제·이동·디렉터리)는 hash-object가
+  // 던지므로 먼저 거른다 → staleShots가 deleted로 본다
   const present = shotSources(rows).filter((path) => existsSync(join(root, path)) && statSync(join(root, path)).isFile());
   const shas = present.length === 0 ? [] : execFileSync("git", ["hash-object", "--", ...present], { cwd: root, encoding: "utf8" }).trim().split("\n");
   const current = new Map(present.map((path, i) => [path, shas[i] ?? ""]));
