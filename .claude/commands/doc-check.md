@@ -43,7 +43,7 @@ description: 저장소 문서(CLAUDE/PRODUCT/ARCHITECTURE/DIRECTORY/DESIGN/OPERA
 | `design` | **docs/DESIGN.md** | 토큰 값(`app/globals.css` `@theme`)·라이트 단일 강제 장치(`@custom-variant dark`)·mono 표면 불변식·배지 3종·raw 색 등재(§6.2)·`components/ui/` 사용 상태·§9 레퍼런스 서술이 `app/globals.css`·`lib/utils.ts`·`components/`·`app/**/*.tsx`의 실제 클래스 사용과 일치하는가 |
 | `operations` | **docs/OPERATIONS.md** | 키 이름·명령 이름·플래그가 `.env.example`·`package.json` scripts·`scripts/credentials.ts`와 맞는가. **절차의 순서를 코드로 검증할 수는 없으므로** 이름과 존재만 대조하고, 순서가 의심되면 리포트에만 올린다 |
 | `actions` | **docs/ACTIONS.md** | 대상 리포 워크플로 예시·`inputs` 표·red 조건 표·경고 조건(열린 번역 PR — 브랜치 이름이 `lib/pull/sync-branch.ts`의 `syncBranchFor`와 같은가)이 `.github/actions/malmoi-i18n-push/action.yml`과 일치하는가 |
-| `readme` | **README.md** | 스택 한 줄·명령어 표·브랜치 정책·게이트 서술이 CLAUDE.md의 요약 미러로서 같은 사실을 말하는가 (CLAUDE.md가 정본이다 — 둘이 다르면 README가 틀렸다) |
+| `readme` | **README.md** | 방문자용 서비스 소개가 말하는 기능·포맷·한도·역할표·비범위·전송처·UI 라벨이 PRODUCT.md·`guide/**`·`messages/en.tsx`(`/privacy` 포함)와 같은 사실을 말하는가, 링크한 `/docs` 경로가 `guide/`에 실재하는가 (정본은 그쪽이다 — 둘이 다르면 README가 틀렸다) |
 | `env` | **.env.example** | 코드가 읽는 변수(`lib/env.ts`의 `requireEnv`/`optionalEnv` 호출 + `prisma.config.ts`)가 전부 있는가, 반대로 아무 코드도 읽지 않는 변수가 남았는가(미구현 기능용 선등록은 잉여가 아니다 — 주석으로 그 사실이 적혀 있어야 한다), 주석의 배선 설명(포트·스코프·OAuth 앱 수)이 CLAUDE.md와 같은가 |
 
 ## 절차

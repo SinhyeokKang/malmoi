@@ -117,7 +117,7 @@ pnpm db:status     # dev를 본다
 - `.github/workflows/*.yml`·`.npmrc`·`postcss.config.mjs`·`components.json` 변경 → **CLAUDE.md의 해당 섹션**
 - **`lib/adapters/**`·`lib/survey/**` 변경 → docs/ARCHITECTURE.md §1.9 + `pnpm adapter-survey` 재실행** (아래 4d)
 - `app/globals.css` 토큰 변경, 새 raw 색 도입, `components/ui/` 추가, `lib/utils.ts` 변경 → **docs/DESIGN.md**
-- 기술 선택·버전 변경, 개발 명령 변경, 브랜치·배포 방식 변경 → **README.md** (CLAUDE.md의 요약 미러라 같은 트리거에 같이 걸린다)
+- 사용자에게 보이는 기능·지원 포맷·한도·역할 권한·개인정보 전송처 변경, `guide/` 페이지 경로 변경, `public/guide/translation-editor.webp`·`publish-preview.webp`·`workflow-file.webp` 파일명 변경 → **README.md** (방문자용 서비스 소개라 제품 사실을 요약해 들고, 세 가이드 이미지를 참조한다)
 - **`lib/credentials/**`·`lib/session-revocation/**`·`lib/login-link/**` 변경, 암호화 키 env 추가·의미 변경, `pnpm credentials:*`·`test:credentials:postgres`의 동작 변경 → docs/OPERATIONS.md** (⚠️ **"나중에 다시 실행할 절차"의 정본이다.** 절차가 낡으면 그걸 발견하는 시점이 **키를 잃은 뒤**다 — 그때 PII 키면 회원 이메일·이름을 복구할 수 없다)
 - **`.github/actions/**` 변경, `lib/onboarding/workflow.ts`가 만드는 YAML 변경, action `inputs`·red 조건 변경, 태그(`malmoi-i18n-push-v1`) 릴리스 → docs/ACTIONS.md** (⚠️ **외부 계약이다** — 남의 리포가 이 문서를 보고 붙인다. 이 스텝에 대상 리포의 `secrets.PUSH_TOKEN`이 들어가므로 참조·권한 서술이 틀리면 남의 리포의 보안 경계가 틀어진다)
 
@@ -133,7 +133,7 @@ pnpm db:status     # dev를 본다
 - **docs/DIRECTORY.md** — 트리가 실제 파일과 맞는지(없는 파일·새 파일·옮긴 파일). prefix `docs(DIRECTORY): ...`
 - **CLAUDE.md** — 명령어 표, 스택 버전, 브랜치·배포, 스킬 라인업, 문서 지도. prefix `docs(CLAUDE): ...`
 - **.env.example** — 코드가 읽는 변수가 전부 있는지(미구현 기능용 선등록 변수는 잉여가 아니다). 주석으로 무엇에 쓰는지·틀리면 어떻게 죽는지 남긴다. prefix `chore(env): ...`
-- **README.md** — 스택 한 줄·명령어 표·브랜치 정책이 CLAUDE.md와 맞는지. prefix `docs(README): ...`
+- **README.md** — 기능·포맷·한도·역할표·전송처가 PRODUCT·가이드·`/privacy`와 맞는지, `/docs` 링크가 `guide/`에 실재하는지. prefix `docs(README): ...`
 - **docs/OPERATIONS.md** — 키 목록·회전·복구·전면 재발급 절차가 `lib/credentials/`·`.env.example`과 맞는지. **절차의 명령을 실제로 돌리지는 않는다**(프로덕션 자격증명을 건드린다) — 명령 이름·인자·순서·전제만 대조한다. prefix `docs(OPERATIONS): ...`
 - **docs/ACTIONS.md** — 워크플로 예시가 `.github/actions/malmoi-i18n-push`의 실제 `inputs`·red 조건과 맞는지, **참조가 불변 태그인지**, `permissions` 서술이 맞는지(`pull-requests: read`가 없으면 열린 PR 경고가 조용히 죽는다). `lib/onboarding/workflow.ts`가 만드는 YAML과 문서 예시가 **같은 것을 말하는지** 대조한다. prefix `docs(ACTIONS): ...`
 
