@@ -1594,12 +1594,12 @@ it("브랜치 목록 실패에도 이미 확인한 기본 브랜치를 보존한
   });
 });
 
-function sampleProof(over: Partial<{ userId: string; repositoryId: string; installationId: string; ref: string; headSha: string }> = {}) {
+function sampleProof(over: Partial<{ userId: string; repositoryId: string; installationId: string; ref: string; headSha: string }> = {}, issuedAt = new Date()) {
   return signSampleConfirmation({
     userId: OWNER, repositoryId: PROBE_OK.repositoryId, installationId: PROBE_OK.installationId,
     ref: "develop", headSha: HEAD_SHA, ...over,
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", locales: ["en", "fr", "ko"] },
-  }, "test-secret-0123456789abcdef", new Date());
+  }, "test-secret-0123456789abcdef", issuedAt);
 }
 
 const sampleRequest = () => ({ owner: "acme", repo: "web", ref: "develop", adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", locale: "ko", confirmation: sampleProof() });
@@ -1622,6 +1622,22 @@ it.each([
     const opened = await call.value;
     expect(opened.blob).not.toHaveBeenCalled();
   }
+});
+
+/*
+  sec-audit-3 fix1 — 확인값을 못 믿는 갈래(만료·위조·키 회전·옛 라벨·낡은 스냅샷)는 "경로를 다시 보라"가 아니라
+  "다시 탐지하라"다. TTL 30분 뒤로 모달을 열어 둔 사용자가 흔히 밟는다. 확인값은 맞는데 요청한 포맷이 다르면 그대로 no-match다.
+*/
+it.each([
+  { confirmation: sampleProof({}, new Date(Date.now() - 31 * 60 * 1000)) },
+  { confirmation: "forged" },
+  { confirmation: sampleProof({ headSha: "old" }) },
+])("믿을 수 없는 확인값은 sample-expired다 %#", async (over) => {
+  expect(await loadCandidateSample({ ...sampleRequest(), ...over })).toEqual({ ok: false, error: "sample-expired" });
+});
+
+it.each([{ pathTemplate: "{locale}" }, { locale: "de" }])("확인값과 다른 포맷 요청은 manual-no-match로 남는다 %#", async (over) => {
+  expect(await loadCandidateSample({ ...sampleRequest(), ...over })).toEqual({ ok: false, error: "manual-no-match" });
 });
 
 it("탐지된 후보가 발급한 확인값으로 lazy 샘플을 읽을 수 있다", async () => {

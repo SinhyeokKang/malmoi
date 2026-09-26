@@ -363,6 +363,15 @@ it.each(["reauthorize", "repo-not-installed", "forbidden"])("미리보기 인가
   expect(button("Next").disabled).toBe(true);
 });
 
+// sec-audit-3 fix1 — 만료된 확인값은 "못 읽었다"가 아니라 "다시 탐지하라"를 말한다.
+it("샘플 확인값이 만료되면 다시 탐지하라고 말한다", async () => {
+  mocks.loadCandidateSample.mockResolvedValue({ ok: false, error: "sample-expired" });
+  await files();
+  await select('[role="combobox"]', "fr");
+  expect(document.body.textContent).toContain(m.errors.onboarding["sample-expired"]);
+  expect(document.body.textContent).not.toContain(m.newProject.files.preview.unavailable);
+});
+
 it("검색 결과에서 선택한 리포가 사라지면 Next를 막는다", async () => {
   await mount();
   await click(find(document.body, '[role="radio"]'));

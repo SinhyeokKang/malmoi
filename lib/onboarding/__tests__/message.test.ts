@@ -26,6 +26,7 @@ const ERRORS = [
   "base-branch-missing",
   "key-count-failed",
   "manual-no-match",
+  "sample-expired",
   // ④ 생성 — planRepoConnect 그대로
   "installation-forbidden",
   "repo-forbidden",

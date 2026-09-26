@@ -64,6 +64,20 @@ it("추가 결과는 새 토큰 없이 기존 workflow step과 부분 실패를 
   expect(container.querySelector('[role="dialog"]')).toBeNull();
 });
 
+// sec-audit-3 fix1 — 추가 모달의 미리보기도 같은 갈래다(`failedPreview` 한 벌).
+it("샘플 확인값이 만료되면 다시 탐지하라고 말한다", async () => {
+  mocks.sample.mockResolvedValue({ ok: false, error: "sample-expired" });
+  const user = userEvent.setup();
+  await draw();
+  // 언어가 다섯 미만이라 미리보기 언어는 세그먼트(radio)다 — combobox는 기준 언어 선택이다.
+  const option = [...document.querySelectorAll('[role="radio"]')].find((o) => o.textContent?.trim() === "ko");
+  if (!option) throw new Error("Missing option: ko");
+  await act(async () => { await user.click(option); });
+  expect(mocks.sample).toHaveBeenCalled();
+  expect(document.body.textContent).toContain(m.errors.onboarding["sample-expired"]);
+  expect(document.body.textContent).not.toContain(m.newProject.files.preview.unavailable);
+});
+
 it("없는 표면의 404는 제품 안내와 돌아갈 링크를 제공한다", async () => {
   const { container } = await render(<NotFound />);
   expect(container.textContent).toContain("Source unavailable");
