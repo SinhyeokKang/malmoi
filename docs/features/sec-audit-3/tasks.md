@@ -74,7 +74,7 @@
 - [ ] **T6.1** #13 `/tdd` 샘플 확인 `issuedAt`·TTL·`v2` 라벨(만료·미래 시각·옛 라벨 거부). → 구현 → 호출처 `now` 전달. — 검증: green.
 - [ ] **T6.2** #14 `APP_SIGNING_SECRET`: `lib/env.ts` 경유, 호출처 5곳 교체, `.env.example`. — 검증: `rg 'requireEnv\("AUTH_SECRET"\)' app lib` 0건(Auth.js 자체 제외), 최상위 평가 0.
   `[C] feat(auth): sign connect state and sample confirmation with a dedicated key`
-- [ ] **T6.3** (사람) `.env.local` 두 머신 + Vercel 3환경 `APP_SIGNING_SECRET` 등록, `vercel env ls` 시각 확인(CLAUDE.md `--force` 함정). — 검증: 목록에 3환경.
+- [x] **T6.3** (사람) `.env.local` 두 머신 + Vercel 3환경 `APP_SIGNING_SECRET` 등록, `vercel env ls` 시각 확인(CLAUDE.md `--force` 함정). — 검증: 목록에 3환경.
 - [ ] **T6.4** #16 `listBranches`·`openRepoReader`에 `repositoryId` 스코프. 온보딩 호출처는 probe id. — 검증: 단위 green, `pnpm smoke:github <slug>` 통과(읽기 전용, 사람이 실행).
   `[C] fix(github): pin read tokens to the repository id`
 - [ ] **T6.5** #17 push `refs.path` refine + `buildPermalink` 불량 행 null. — 검증: green.
@@ -89,14 +89,14 @@
 
 ## 8. ⚪ 런타임 헤더 (#11·#12)
 
-- [ ] **T8.1** #12 `/tdd` `isBlobPublicHost` + `buildCsp`가 단일 Blob 호스트 / 없으면 미포함. `BLOB_PUBLIC_HOST` `.env.example`. — 검증: green.
+- [x] **T8.1** #12 `/tdd` `isBlobPublicHost` + `buildCsp`가 단일 Blob 호스트 / 없으면 미포함. `BLOB_PUBLIC_HOST` `.env.example`. — 검증: green.
   `[C] fix(csp): allow only this environment's Blob host`
-- [ ] **T8.2** (사람) Vercel 3환경 `BLOB_PUBLIC_HOST` 등록 + `.env.local`. — 검증: `vercel env ls`.
-- [ ] **T8.3** #11 `/tdd` `buildCsp(env, { nonce })` — prod `script-src`에 `'unsafe-inline'` 없음, `'nonce-…' 'strict-dynamic'`. — 검증: red→green.
-- [ ] **T8.4** 미들웨어 nonce 발급·헤더 주입, `next.config.ts` 정적 CSP 제거(헤더 1개), matcher 재구성 + `entry-points.test.ts` 갱신. — 검증: 단위 green, `pnpm build` green.
+- [x] **T8.2** (사람) Vercel 3환경 `BLOB_PUBLIC_HOST` 등록 + `.env.local`. — 검증: `vercel env ls`.
+- [x] **T8.3** #11 `/tdd` `buildCsp(env, { nonce })` — prod `script-src`에 `'unsafe-inline'` 없음, `'nonce-…' 'strict-dynamic'`. — 검증: red→green.
+- [x] **T8.4** 미들웨어 nonce 발급·헤더 주입, `next.config.ts` 정적 CSP 제거(헤더 1개), matcher 재구성 + `entry-points.test.ts` 갱신. — 검증: 단위 green, `pnpm build` green.
 - [ ] **T8.5** 로컬 `pnpm build && pnpm start` 수동 한 바퀴(ARCHITECTURE §8 목록), 콘솔 CSP 위반 0. dev 서버 재시작 주의(메모리: build during dev → stale). — 검증: 위반 0 스크린샷/기록.
   `[C] feat(csp): nonce-based script-src`
-- [ ] **T8.6** ARCHITECTURE §8(nonce·style 잔여·Blob 호스트·동적 렌더 대가) 갱신. — 검증: 문서 반영.
+- [x] **T8.6** ARCHITECTURE §8(nonce·style 잔여·Blob 호스트·동적 렌더 대가) 갱신. — 검증: 문서 반영.
 
 ## 9. 마무리
 
