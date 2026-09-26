@@ -1,7 +1,4 @@
 // @vitest-environment jsdom
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { expect, it } from "vitest";
 
 import { PublicDoc } from "@/components/public-doc";
@@ -11,8 +8,8 @@ import { m } from "@/lib/i18n";
 import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
 import { PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
-import { renderProjectWorkflowYaml } from "@/lib/onboarding/workflow";
 import { SKIP_MARKER } from "@/lib/pull/payload";
+import { allowedActions } from "@/lib/guide/__tests__/helpers/allowed-actions";
 
 import { render } from "./helpers/dom";
 
@@ -43,13 +40,11 @@ it("설정 화면이 가리키는 `#workflow` 절이 있고 토큰 secret 이름
 
 /**
  * ⚠️ **허용 목록은 넷이다** (audit #5) — 워크플로의 두 줄(`checkout`·malmoi action)과 malmoi action **안의**
- * 두 줄. 안쪽 둘은 대상 리포 파일에 안 보여서 빠뜨리기 쉽다. 목록은 실제 `uses:`에서 읽는다.
+ * 두 줄. 안쪽 둘은 대상 리포 파일에 안 보여서 빠뜨리기 쉽다. 목록은 실제 `uses:`에서 읽는다(공유 헬퍼).
  */
 it("`#allowed-actions`가 실행에 쓰이는 action 넷을 전부 적는다", async () => {
   const text = await sectionText("allowed-actions");
-  const yaml = renderProjectWorkflowYaml({ slug: "acme", baseBranch: "main", surfaces: [{ surfaceSlug: "default", adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" }] });
-  const action = readFileSync(join(process.cwd(), ".github/actions/malmoi-i18n-push/action.yml"), "utf8");
-  const uses = [...`${yaml}\n${action}`.matchAll(/uses:\s*([^@\s]+)@/g)].map((match) => match[1]!);
+  const uses = allowedActions();
   expect(new Set(uses).size).toBe(4);
   for (const name of uses) expect(text).toContain(name);
 });
