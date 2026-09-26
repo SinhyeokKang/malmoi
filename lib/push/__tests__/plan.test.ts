@@ -393,6 +393,31 @@ describe("PushPayload — 크기 상한 (sec-audit 10)", () => {
     expect(PushPayload.safeParse({ ...base, keys: [{ key: "k".repeat(1_001), sourceText: "V", namespace: "n" }] }).success).toBe(false);
   });
 
+  /** sec-audit-3 발견 17 — permalink가 `refs[].path`로 github.com의 다른 경로를 가리킬 수 있었다. */
+  it("리포 밖으로 나가는 `refs[].path`를 거부한다 (sec-audit-3 17)", () => {
+    for (const path of ["../../other/repo", "src/../../x.ts", "/etc/passwd", "a//b.ts"]) {
+      expect(PushPayload.safeParse({ ...base, refs: [{ key: "a.b", path, line: 1 }] }).success).toBe(false);
+    }
+    expect(PushPayload.safeParse({ ...base, refs: [{ key: "a.b", path: "src/[locale]/page.tsx", line: 1 }] }).success).toBe(true);
+  });
+
+  /**
+   * sec-audit-3 발견 18 — `placeholders: z.unknown()`이라 깊게 중첩된 JSON이 저장·렌더 재귀를 넘길 수 있었다.
+   * 상한은 **자원**이지 모양이 아니다 — 크롬 블록은 깊이 2라 그대로 지난다.
+   */
+  it("`placeholders`의 깊이·크기 상한 — 깊이 8·16KB (sec-audit-3 18)", () => {
+    const row = (placeholders: unknown) => ({ ...base, translations: [{ locale: "en", key: "a.b", value: "v", placeholders }] });
+    const nest = (depth: number): unknown => {
+      let v: unknown = "x";
+      for (let i = 0; i < depth; i++) v = { a: v };
+      return v;
+    };
+    expect(PushPayload.safeParse(row({ name: { content: "$1", example: "Kim" } })).success).toBe(true);
+    expect(PushPayload.safeParse(row(nest(8))).success).toBe(true);
+    expect(PushPayload.safeParse(row(nest(9))).success).toBe(false);
+    expect(PushPayload.safeParse(row({ big: "x".repeat(16_384) })).success).toBe(false);
+  });
+
   it("`refs`와 `translations` 배열에도 상한이 있다", () => {
     const refs = Array.from({ length: 200_001 }, () => ({ key: "a.b", path: "src/a.ts", line: 1 }));
     expect(PushPayload.safeParse({ ...base, refs }).success).toBe(false);
