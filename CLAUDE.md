@@ -238,7 +238,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 문서 지도
 
-**정기 갱신 대상이 여섯이고, 그 아래 갱신 규칙이 다른 넷이 더 있다** — `POSTMORTEM.md`(append-only, `/postmortem` 전담), `README.md`(요약 미러), `guide/AUTHORING.md`·`guide/SHOOTING.md`(`/guide`·`/guide-shots`가 작업하며 같이 고친다). 갱신은 문서별 별도 커밋(`docs(PRODUCT): ...` 꼴).
+**정기 갱신 대상이 여섯이고, 그 아래 갱신 규칙이 다른 넷이 더 있다** — `POSTMORTEM.md`(append-only, `/postmortem` 전담), `README.md`(방문자용 서비스 소개, en), `guide/AUTHORING.md`·`guide/SHOOTING.md`(`/guide`·`/guide-shots`가 작업하며 같이 고친다). 갱신은 문서별 별도 커밋(`docs(PRODUCT): ...` 꼴).
 
 | 문서 | 무엇 | 언제 갱신하나 |
 |---|---|---|
@@ -249,7 +249,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | [docs/OPERATIONS.md](./docs/OPERATIONS.md) | 키 회전·복구·전면 재발급 — **나중에 다시 실행할 절차만** | 그 절차가 바뀌었을 때 |
 | [docs/ACTIONS.md](./docs/ACTIONS.md) | **대상 리포**에 붙이는 워크플로 (외부 계약) | `inputs`나 red 조건을 바꿨을 때 |
 | [docs/POSTMORTEM.md](./docs/POSTMORTEM.md) | 회고 누적 (append-only, `/postmortem` 전담) | — |
-| [README.md](./README.md) | CLAUDE.md의 요약 미러 | 스택·명령·브랜치가 바뀌면 같이 |
+| [README.md](./README.md) | **방문자용 서비스 소개**(en 단일) — 기능·포맷·한도·비범위·설계 요지·개인정보 요약. 개발 절차는 이 파일(CLAUDE.md)로 보낸다. 이미지는 `docs/assets/readme/` + `public/guide/` 세 장 | 사용자에게 보이는 기능·포맷·한도·역할·전송처가 바뀌면 같이 — 사실의 정본은 PRODUCT·가이드·`/privacy`이고 README가 틀린 쪽이다 |
 | [guide/AUTHORING.md](./guide/AUTHORING.md) | 사용자 가이드 작성 매뉴얼(한국어, **서빙 안 함**) — IA 표·표기 규약·사실 대조 소스·외부 라벨 허용 목록 | `/guide`가 작성 기준 자체를 바꿨을 때(새 페이지·새 사실 소스·새 외부 라벨) |
 | [guide/SHOOTING.md](./guide/SHOOTING.md) | 촬영 매뉴얼(한국어, **서빙 안 함**) — 규격·마스킹 표·**에셋 매핑 표**(소스·blob SHA·치수 — `pnpm guide:check`의 기준값)·벽·진행 상태 | `/guide-shots`가 컷을 찍을 때마다(매핑 행·진행 상태) |
 
