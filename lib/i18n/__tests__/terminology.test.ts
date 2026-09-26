@@ -8,7 +8,7 @@ import { visit } from "unist-util-visit";
 
 import { describe, expect, it } from "vitest";
 
-import { parseMd, toText } from "@/lib/guide/parse";
+import { parseMd, stripHeadingMarker, toText } from "@/lib/guide/parse";
 import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
 import { m } from "@/lib/i18n";
 
@@ -64,7 +64,7 @@ function guideStrings(root: string): Found[] {
       if (node.type === "paragraph" || node.type === "heading" || node.type === "tableCell") {
         // 코드를 뺀 텍스트라 헤딩 끝에 남은 `{#…}`는 표식뿐이다
         const text = toText(node, false);
-        out.push({ path: `guide/${file}`, text: node.type === "heading" ? text.replace(/\s*\{#[^{}]*\}\s*$/, "") : text });
+        out.push({ path: `guide/${file}`, text: node.type === "heading" ? stripHeadingMarker(text) : text });
       }
     });
     return out;

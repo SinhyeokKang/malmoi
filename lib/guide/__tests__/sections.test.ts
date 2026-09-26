@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { parseMd } from "../parse";
+import { GuideError, parseMd } from "../parse";
 import { leadParagraph, parseMdTable, sectionByAnchor } from "../sections";
 
 const fixture = (name: string) => parseMd(readFileSync(new URL(`./fixtures/collect/${name}`, import.meta.url), "utf8"));
@@ -30,6 +30,12 @@ describe("sectionByAnchor — 앵커 헤딩부터 다음 같은 급 헤딩 전�
 
   it("없는 앵커는 null이다", () => {
     expect(sectionByAnchor(fixture("sections.md"), "missing")).toBeNull();
+  });
+
+  it("제목의 `{#id}` 표식은 텍스트에 싣지 않는다", () => {
+    const text = sectionByAnchor(fixture("sections.md"), "projects") ?? "";
+    expect(text.startsWith("Projects\n")).toBe(true);
+    expect(text).not.toContain("{#");
   });
 });
 
@@ -59,6 +65,16 @@ describe("parseMdTable — 앵커 절의 첫 표 → 행 배열", () => {
     expect(rows![0]!["__proto__"]).toBe("x");
   });
 
+  it("머리 셀이 겹치면 오류다 — 열 하나가 조용히 사라지지 않는다", () => {
+    expect.assertions(2);
+    try {
+      parseMdTable(parseMd("## T {#t}\n\n| a | a |\n|---|---|\n| x | y |\n"), "t");
+    } catch (error) {
+      expect(error).toBeInstanceOf(GuideError);
+      expect((error as GuideError).code).toBe("table-header");
+    }
+  });
+
   it("빠진 셀은 빈 문자열이다", () => {
     expect(parseMdTable(parseMd("## T {#t}\n\n| a | b |\n|---|---|\n| x |\n"), "t")).toEqual([{ a: "x", b: "" }]);
   });
@@ -72,6 +88,7 @@ describe("leadParagraph — H1 바로 다음 첫 문단", () => {
   it.each([
     ["이미지가 먼저", "# Title\n\n![Screen](/guide/x.webp)\n\nText."],
     ["이미지로 시작하는 문단", "# Title\n\n![Screen](/guide/x.webp) then text.\n"],
+    ["링크 걸린 이미지로 시작하는 문단", "# Title\n\n[![Screen](/guide/x.webp)](setup/workflow.md) then text.\n"],
     ["인용이 먼저", "# Title\n\n> Note\n\nText."],
     ["코드가 먼저", "# Title\n\n```\ncode\n```\n\nText."],
     ["헤딩이 먼저", "# Title\n\n## Section {#s}\n\nText."],

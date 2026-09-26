@@ -22,7 +22,8 @@ export type GuideErrorCode =
   | "summary-path"
   | "summary-reserved"
   | "summary-duplicate-path"
-  | "summary-duplicate-slug";
+  | "summary-duplicate-slug"
+  | "table-header";
 
 export class GuideError extends Error {
   constructor(
@@ -71,6 +72,15 @@ export function parseHeadingAnchor(text: string): { text: string; id: string | n
   const id = match[1] ?? "";
   if (!ANCHOR_ID.test(id)) throw new GuideError("anchor-id", text);
   return { text: text.slice(0, match.index).trim(), id };
+}
+
+/**
+ * 끝의 `{#…}` 표식을 뗀 글자 — id를 검증하지 않는다. 코드를 뺀 텍스트(`toText(…, false)`)처럼 표식이
+ * 코드일 수 없는 자리에서 쓴다. 노드가 있으면 `headingAnchor`다.
+ */
+export function stripHeadingMarker(text: string): string {
+  const match = MARKER.exec(text);
+  return (match ? text.slice(0, match.index) : text).trim();
 }
 
 /**

@@ -1,6 +1,6 @@
-import type { Root, RootContent, Table } from "mdast";
+import type { PhrasingContent, Root, RootContent, Table } from "mdast";
 
-import { headingAnchor, toText } from "./parse";
+import { GuideError, headingAnchor, toText } from "./parse";
 
 /**
  * 앵커 헤딩의 루트 위치부터 다음 같은(또는 윗) 급 헤딩 전까지의 노드. 원고의 헤딩은 루트에만 선다 —
@@ -15,9 +15,12 @@ function sectionNodes(tree: Root, id: string): RootContent[] | null {
   return [heading, ...(end === -1 ? rest : rest.slice(0, end))];
 }
 
-/** 절 텍스트 — 정본 상수 대조용(옛 `docs-content.test.tsx`의 `closest("section")` 대응). 제목을 포함한다. */
+/**
+ * 절 텍스트 — 정본 상수 대조용(옛 `docs-content.test.tsx`의 `closest("section")` 대응). 제목을 포함하되
+ * `{#id}` 표식은 뗀다 — 화면에 안 보이는 글자가 대조를 통과시키면 안 된다.
+ */
 export function sectionByAnchor(tree: Root, id: string): string | null {
-  return sectionNodes(tree, id)?.map((node) => toText(node)).join("\n") ?? null;
+  return sectionNodes(tree, id)?.map((node) => (node.type === "heading" ? headingAnchor(node).text : toText(node))).join("\n") ?? null;
 }
 
 /**
@@ -31,6 +34,9 @@ export function parseMdTable(tree: Root, headingId: string): Record<string, stri
   if (!table) return null;
   const [head, ...body] = table.children;
   const keys = head?.children.map((cell) => toText(cell).trim()) ?? [];
+  // 겹친 머리 셀은 뒤 열이 앞 열을 덮어 한 열이 조용히 사라진다 — 표를 고치게 던진다
+  const duplicate = keys.find((key, i) => keys.indexOf(key) !== i);
+  if (duplicate !== undefined) throw new GuideError("table-header", `${headingId}: ${duplicate}`);
   return body.map((row) => {
     const out: Record<string, string> = Object.create(null);
     keys.forEach((key, i) => {
@@ -49,7 +55,13 @@ export function leadParagraph(tree: Root): string | null {
   const h1 = tree.children.findIndex((node) => node.type === "heading" && node.depth === 1);
   if (h1 === -1) return null;
   const next = tree.children[h1 + 1];
-  if (next?.type !== "paragraph" || next.children[0]?.type === "image" || next.children[0]?.type === "imageReference") return null;
+  if (next?.type !== "paragraph" || startsWithImage(next.children[0])) return null;
   const text = toText(next).trim();
   return text === "" ? null : text;
+}
+
+/** 이미지 또는 이미지를 감싼 링크(`[![x](…)](…)`)로 시작하는가. */
+function startsWithImage(node: PhrasingContent | undefined): boolean {
+  if (node?.type === "image" || node?.type === "imageReference") return true;
+  return (node?.type === "link" || node?.type === "linkReference") && startsWithImage(node.children[0]);
 }

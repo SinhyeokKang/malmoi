@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { GuideError, headings, parseHeadingAnchor, parseMd, toText } from "../parse";
+import { GuideError, headings, parseHeadingAnchor, parseMd, stripHeadingMarker, toText } from "../parse";
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
 
@@ -41,12 +41,20 @@ describe("parseHeadingAnchor — `{#id}`는 데이터다", () => {
   });
 
   it("오류가 코드를 든다", () => {
+    expect.assertions(2);
     try {
       parseHeadingAnchor("Bad {#X}");
     } catch (error) {
       expect(error).toBeInstanceOf(GuideError);
       expect((error as GuideError).code).toBe("anchor-id");
     }
+  });
+
+  it("stripHeadingMarker는 끝의 표식만 뗀다 — id를 검증하지 않는다", () => {
+    expect(stripHeadingMarker("Where files go {#push}")).toBe("Where files go");
+    expect(stripHeadingMarker("Bad {#X}")).toBe("Bad");
+    expect(stripHeadingMarker("Use {#a} inline then text")).toBe("Use {#a} inline then text");
+    expect(stripHeadingMarker("No marker")).toBe("No marker");
   });
 });
 
