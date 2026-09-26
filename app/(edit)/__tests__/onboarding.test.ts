@@ -630,7 +630,8 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
   it("리더는 probe가 준 설치·이름과 프로젝트의 default branch로 연다", async () => {
     await detectRepoFormats({ owner: "acme", repo: "web" });
 
-    expect(hoisted.openRepoReader).toHaveBeenCalledWith("acme", "web", "77");
+    // 온보딩엔 Project 행이 없어 probe가 준 저장소 ID로 읽기 토큰을 좁힌다 (sec-audit-3 #16).
+    expect(hoisted.openRepoReader).toHaveBeenCalledWith("acme", "web", "77", "1035512");
     const created = await hoisted.openRepoReader.mock.results[0]?.value;
     expect(created.snapshot).toHaveBeenCalledWith("develop");
   });
@@ -733,6 +734,7 @@ describe("listRepoBranches — ①의 브랜치 목록 (DESIGN §6.7)", () => {
       truncated: false,
     });
     expect(hoisted.listBranches).toHaveBeenCalledTimes(1);
+    expect(hoisted.listBranches).toHaveBeenCalledWith("acme", "web", "77", "1035512");
   });
 
   it("`checkRepoAccess`를 그대로 지난다 — 내 설치에 없으면 브랜치를 읽지도 않는다", async () => {
