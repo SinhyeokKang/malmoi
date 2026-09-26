@@ -38,6 +38,11 @@ export function isPathSafeLocale(code: string): boolean {
 
 /** 첫 서브태그 — ISO 639 언어 코드는 영문자 2~3자다. `package`·`README` 같은 파일명 단어가 여기서 걸린다. */
 const LANGUAGE_SUBTAG = /^[A-Za-z]{2,3}$/;
+/**
+ * 구분자 없는 camelCase(`koKR`·`enUS`·`zhCN`) — 탐지(`looksLikeLocale`)가 naive-ui 때문에 받는 모양이다(2026-09-02).
+ * 여기서 떨어뜨리면 탐지를 지난 리포가 첫 적재에서 죽는다 — `locale-code.test.ts`가 포함 관계를 생성해 잰다.
+ */
+const CAMEL_LOCALE = /^[a-z]{2}[A-Z]{2}$/;
 /** 이후 서브태그 — BCP 47의 스크립트·지역·변이(`Hant`·`419`·`oxendict`)는 8자를 넘지 않는다. */
 const LATER_SUBTAG = /^[A-Za-z0-9]{1,8}$/;
 
@@ -57,7 +62,7 @@ export function isLocaleShaped(code: string): boolean {
   if (code.length === 0 || code.length > MAX_LOCALE_CODE_LENGTH) return false;
   if (UNSAFE_LOCALE_CHAR.test(code)) return false;
   const [language, ...rest] = code.split(/[-_]/);
-  if (language === undefined || !LANGUAGE_SUBTAG.test(language)) return false;
+  if (language === undefined || !(LANGUAGE_SUBTAG.test(language) || CAMEL_LOCALE.test(language))) return false;
   return rest.every((subtag) => LATER_SUBTAG.test(subtag));
 }
 
