@@ -510,7 +510,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 **추론**하는데(`activeProject`), 구역이 명시되면 "내가 어느 스코프에 있나"가 추론이 아니라 표시가 된다.
 
 ```
-── 비로그인 (인가 없음 — matcher 밖) ─────────────────────────────
+── 비로그인 (인가 없음 — 보호 경로 밖) ─────────────────────────────
 /                              ✅ 랜딩 (로그인 상태면 /projects로)  ← landing (2026-09-26)
 /signin                        ✅ 로그인                          ← 8-1a
 /signin/link/:challenge        ✅ 계정 병합 안내 (challenge가 인가를 대신한다) ← account-linking (2026-09-12)
@@ -566,8 +566,8 @@ GitHub · Get started) · 히어로 · 스크롤 구동 목업(편집 → Publis
 - 목적지를 만드는 자리는 **`lib/routes.ts`의 `signIn()` 하나**다. 쿼리를 `withQuery`로 만드는 것이
   계약의 절반이다 — 문자열 연결로 만들면 `entry-points.test.ts`의 "쿼리 파라미터 수신자" 검사를
   **통째로 회피한다**(그 검사는 생성기 호출을 `routes.foo(...)}?key=` 모양으로 찾는다).
-- ⚠️ **`/signin`을 middleware matcher에 넣지 않는다.** `shouldRedirectToLogin`도 `middleware()`도
-  **경로를 보지 않으므로** 걸리는 순간 쿠키 없는 모든 요청이 자기 자신으로 307을 돈다.
+- ⚠️ **`/signin`을 1차 차단의 보호 경로(`isProtectedPath`)에 넣지 않는다.** `shouldRedirectToLogin`은
+  **목적지를 보지 않으므로** 걸리는 순간 쿠키 없는 모든 요청이 자기 자신으로 307을 돈다.
   `entry-points.test.ts`가 **부정 단언**으로 상시 고정한다.
 - ⚠️ **로그아웃은 `/`(랜딩)에 착지한다** — 로그인 폼이 아니라 랜딩이다(2026-09-26부터). `signOut({ redirectTo: "/" })`
   둘은 이관 대상이 아니고, 그 사실이 각 자리에 주석으로 있다.
