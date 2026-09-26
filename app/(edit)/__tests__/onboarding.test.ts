@@ -1834,6 +1834,14 @@ describe("repository import Actions", () => {
     expect(db.projectEvents).toEqual([expect.objectContaining({ result: "notStarted", payload: expect.objectContaining({ refusal: "not-ready" }) })]);
     expect(hoisted.ensureUserToken).not.toHaveBeenCalled();
   });
+  /**
+   * sec-audit-3 1a의 **범위 밖**이다 — Sync는 리포를 **읽어** DB에 넣을 뿐이라 쓰기 권한을 빌리는 경로가 아니다.
+   * 쓰기 권한 없이 초대된 OWNER(설계가 받아들인 잔여)가 Sync에서 막히면 회귀다.
+   */
+  it("리포를 읽기만 할 수 있는 OWNER도 재적재는 한다 — 리포에 쓰지 않는 경로다", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web", undefined, false)]);
+    expect(await runRepositoryImport({ slug: "acme", approval: null })).toMatchObject({ ok: true });
+  });
   it("같은 이름의 다른 리포를 blob 읽기 전에 거부한다", async () => {
     hoisted.probeRepo.mockResolvedValue({ ...PROBE_OK, repositoryId: "other" });
     expect(await runRepositoryImport({ slug: "acme", approval: null })).toEqual({ ok: false, error: "repo-replaced" });
@@ -1876,6 +1884,11 @@ describe("설정의 다중 소스 추가와 소스별 첫 적재", () => {
     hoisted.openRepoReader.mockResolvedValue(reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs: new Map(files.map(f => [f.sha, CATALOG])) }));
     hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache failure"); });
     expect(await addSurfaces({ slug: "acme", picks })).toMatchObject({ ok: true });
+  });
+  it("리포를 읽기만 할 수 있으면 repo-read-only이고 리포를 열지 않는다 (sec-audit-3 1a)", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("acme/web", undefined, false)]);
+    expect(await addSurfaces({ slug: "acme", picks })).toEqual({ ok: false, error: "repo-read-only" });
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled(); expect(hoisted.addSurfacesFromSnapshot).not.toHaveBeenCalled();
   });
   it("선택 안의 중복 템플릿은 다운로드와 쓰기 전에 거부한다", async () => {
     expect(await addSurfaces({ slug: "acme", picks: [picks[0]!, picks[0]!] })).toEqual({ ok: false, error: "invalid input" });

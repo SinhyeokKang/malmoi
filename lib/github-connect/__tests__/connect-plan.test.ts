@@ -29,6 +29,7 @@ function plan(over: Partial<Parameters<typeof planRepoConnect>[0]> = {}) {
     probe: installed,
     userInstallationIds: ["158107153"],
     userRepos: [{ fullName: "acme/web", push: true }],
+    requirePush: true,
     ...over,
   });
 }
@@ -156,6 +157,13 @@ describe("planRepoConnect — 리포 쓰기 권한 (sec-audit-3 1a)", () => {
     expect(
       plan({ userRepos: [{ fullName: "acme/other", push: true }, { fullName: "acme/web", push: false }] }),
     ).toEqual({ status: "repo-read-only" });
+  });
+
+  it("쓰기를 요구하지 않는 호출(재적재)은 push를 보지 않는다 — false도 null도 ok다", () => {
+    for (const push of [false, null]) {
+      expect(plan({ requirePush: false, userRepos: [{ fullName: "acme/web", push }] })).toMatchObject({ status: "ok" });
+    }
+    expect(plan({ requirePush: false, userRepos: [] })).toEqual({ status: "repo-forbidden" });
   });
 
   it("목록에 없는 리포는 권한 판정 전에 repo-forbidden이다", () => {
