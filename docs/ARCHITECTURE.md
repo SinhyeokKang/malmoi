@@ -1904,13 +1904,13 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 | **본판정: 페이지·Server Action** | `requireProjectAccess`(`lib/auth/session.ts` — 거부는 redirect) / `getProjectAccess`(`lib/auth/query.ts` — union 반환) → 둘 다 `planProjectAccess`(`lib/auth/access.ts`). 표면 스코프는 `requireSurfaceAccess`·`getSurfaceAccess`(`lib/surfaces/access.ts`)가 그 뒤에 선다 | ⚠️ **`archived`는 못 막는다 — 막으라고 있는 갈래가 아니다.** 페이지 래퍼도 그 갈래만 redirect하지 않고 `{ …, archived: true }`를 **값으로** 돌려준다(§5.6.4) — 되돌릴 수 있는 상태이고 OWNER가 갈 곳이 설정 안의 카드 하나라, 목록으로 튕기면 자기가 왜 거기 왔는지 모른다. **대가는 호출부가 빠뜨릴 수 있다는 것**이고 `app/__tests__/screens.test.ts`가 그 갈래를 만나는 화면 다섯을 전수로 센다 |
 
 - ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
-- **새 보호 라우트를 추가하면 `isProtectedPath`(`lib/auth/cookie.ts`)에 추가한다.** ⚠️ **2026-09-27(sec-audit-3 #11)까지는 `matcher` 자체였다** — CSP nonce 때문에 matcher가 전 페이지로 넓어져(§8) 보호 판정이 그 함수로 옮겨 갔다. 아래 "matcher에 넣지 않는다"는 전부 **"보호 경로에 넣지 않는다"**로 읽는다(`/api/*`는 matcher에서도 빠진다). ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — 로그인 화면으로 302되면 쿼리의 `code`·`state`·`setup_action`이 사라져 연결·착지가 성립하지 않는다(`entry-points.test.ts`가 부정 단언으로 고정한다). 설치·인가·리포 선택 변경이 전부 이 한 지점으로 돌아온다(§6.4 — 옛 Setup URL 라우트는 2026-09-18에 지웠다). ⚠️ **`/signin`·`/privacy`·`/docs`도 넣지 않는다** (8-1a): 앞의 것은 넣으면 **로그인이 통째로 죽는다** — `shouldRedirectToLogin`도 `middleware()`도 **경로를 한 번도 보지 않으므로**(목적지 제외 규칙이 한 줄도 없다) 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을 돈다. 바로 위 "새 보호 라우트를 추가하면 matcher에 추가한다"가 그 함정을 부르는 문장이라, `app/__tests__/entry-points.test.ts`가 **부정 단언**으로 상시 고정한다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
+- **새 보호 라우트를 추가하면 `isProtectedPath`(`lib/auth/cookie.ts`)에 추가한다.** ⚠️ **2026-09-27(sec-audit-3 #11)까지는 `matcher` 자체였다** — CSP nonce 때문에 matcher가 전 페이지로 넓어져(§8) 보호 판정이 그 함수로 옮겨 갔다. 아래 "matcher에 넣지 않는다"는 전부 **"보호 경로에 넣지 않는다"**로 읽는다(`/api/*`는 matcher에서도 빠진다). ⚠️ **그 함수는 옛 matcher를 Next가 컴파일한 정규식 그대로이고 raw·decode 경로를 둘 다 본다** (fix1) — Next가 matcher를 raw와 `decodeURIComponent` 결과 양쪽에 대고, 컴파일된 정규식은 `.rsc`·`.segments/…segment.rsc`·`/_next/data/<id>` 변형도 받는다. 문자열 접두 비교였던 첫 판은 쿠키 없는 `/%70rojects/…`·`/%61ccount`·`/account.rsc`를 307 없이 통과시켰다(`request.nextUrl.pathname`은 decode되지 않는다). decode 실패는 raw만 본다(Next와 같다). `entry-points.test.ts`가 `getMiddlewareMatchers(["/projects/:path*", "/account"])`로 옛 정규식을 다시 만들어 판정 표를 대조한다. ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — 로그인 화면으로 302되면 쿼리의 `code`·`state`·`setup_action`이 사라져 연결·착지가 성립하지 않는다(`entry-points.test.ts`가 부정 단언으로 고정한다). 설치·인가·리포 선택 변경이 전부 이 한 지점으로 돌아온다(§6.4 — 옛 Setup URL 라우트는 2026-09-18에 지웠다). ⚠️ **`/signin`·`/privacy`·`/docs`도 넣지 않는다** (8-1a): 앞의 것은 넣으면 **로그인이 통째로 죽는다** — `shouldRedirectToLogin`도 `middleware()`도 **경로를 한 번도 보지 않으므로**(목적지 제외 규칙이 한 줄도 없다) 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을 돈다. 바로 위 "새 보호 라우트를 추가하면 matcher에 추가한다"가 그 함정을 부르는 문장이라, `app/__tests__/entry-points.test.ts`가 **부정 단언**으로 상시 고정한다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
 - ⚠️ **`/account`는 matcher를 늘려야 했다** (2026-09-09, 6b-4). 그때까지 패턴이 `/projects/:path*`
   **하나**였고 `(edit)` 아래 모든 페이지가 **우연히** 그 접두를 갖고 있었다 — 사용자 축이 생기면서 그
   우연이 끝났다(PRODUCT §7.7). 그 한 줄을 빼면 `entry-points.test.ts`의 "(edit) 아래 모든 페이지가 어느
   패턴에든 걸린다"가 red다(실측으로 확인했다 — 검사가 공허하지 않다).
 - ✅ **`/projects/:slug/members`는 matcher를 안 늘렸다** (2026-09-09, 6b-2). 패턴이 `/projects/:path*`라
-  이미 덮는다 — `entry-points.test.ts`가 그것을 실제로 대조한다(패턴을 정규식으로 바꿔 보호 페이지 전수에 먹인다).
+  이미 덮는다 — `entry-points.test.ts`가 그것을 실제로 대조한다(지금은 `(edit)` 아래 보호 페이지 전수를 `isProtectedPath`에 먹인다 — 2026-09-27 전에는 matcher 패턴을 정규식으로 바꿔 먹였다).
   ⚠️ **그 화면의 게이트가 `translation:write`다** — 멤버 관리 Action은 `member:manage`인데 **페이지는 아니다.**
   EDITOR도 "누가 이 프로젝트에 있나"를 봐야 하고(user-stories §5), 컨트롤 노출은 role로 갈리되 **판정은
   Action**이 한다. 즉 **한 화면 안에서 페이지 permission과 Action permission이 다른 첫 사례**다 — 노출을
@@ -2522,8 +2522,8 @@ PR 생성·머지·재push 및 60초 전체 예산 검증은 미완료다.
     예산이 지키는 것은 공정성이 아니라 **요약이 남는 것**이다(다음 밤 이월은 `selectPullTargets`의 정렬이 이미 보장한다).
 - **응답 보안 헤더는 출처가 둘이다** (2026-09-09, sec-audit 발견 9 → 2026-09-24 audit #75 → 2026-09-27 sec-audit-3 #11·#12).
   값은 `lib/security-headers.ts`의 순수 함수(`cspEnvironment` · `buildCsp` · `createNonce` · `isBlobPublicHost` · `securityHeaders`)가
-  정하고, 다섯이 전부 enforce다. **정적 넷은 `next.config.ts`의 `headers()`가 `/(.*)` 전부**(API·정적 자산 포함)에 싣는다:
-  `X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·
+  정하고, 여섯이 전부 enforce다. **정적 다섯은 `next.config.ts`의 `headers()`가 `/(.*)` 전부**(API·정적 자산 포함)에 싣는다:
+  `X-Content-Type-Options: nosniff` · **`X-Frame-Options: DENY`** · `Referrer-Policy: strict-origin-when-cross-origin` ·
   `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` · `Permissions-Policy`(카메라·마이크·위치·결제·USB·topics 끔).
   **`Content-Security-Policy`(하나)는 `middleware.ts`만** 낸다 — nonce가 요청마다 바뀌어 정적 헤더에 둘 수 없다.
   - **CSP를 받는 응답이 바뀌었다** (2026-09-27). 전: `/(.*)` 전부(페이지·`/api/*`·`_next/static`·`public/`). 지금: **미들웨어
@@ -2540,9 +2540,12 @@ PR 생성·머지·재push 및 60초 전체 예산 검증은 미완료다.
     **preview**(`VERCEL_ENV=preview`): + Vercel Toolbar 호스트(Vercel 문서 "Using a Content Security Policy"의 목록 그대로 —
     `vercel.live`·`ws-us3.pusher.com`·`vercel.com`·`assets.vercel.com`·`blob:`, `frame-src 'self' https://vercel.live`).
     ⚠️ **`'strict-dynamic'`이 있으면 CSP3 브라우저는 script-src의 호스트 목록을 무시한다** — preview의 `https://vercel.live`가
-    Toolbar 스크립트를 살리는지는 실물로만 판정된다.
+    Toolbar 스크립트를 살리는지는 실물로만 판정된다. **막혀도 받아들인다** (2026-09-27 사용자 결정 — 잔여) — 프로덕션과 무관하고,
+    결정 B를 환경별 정책으로 쪼개지 않는다(preview만 `'strict-dynamic'`을 빼는 안을 버렸다).
   - ⚠️ **CSP 헤더는 하나만 보낸다** — 둘이면 브라우저가 교집합을 적용해 한쪽의 완화가 조용히 무시된다.
     `frame-ancestors`도 그 하나에 들어 있다. **`next.config.ts`에 CSP를 되살리면 그 순간 둘이다.**
+  - ⚠️ **`X-Frame-Options: DENY`가 CSP 밖의 프레이밍을 막는다** (fix1). `frame-ancestors`는 CSP를 받는 페이지에만 있는데,
+    `/api/auth/signout`은 Auth.js 기본 확인 폼 HTML(`pages.signOut` 없음)이라 그 밖이다 — 없으면 로그아웃 클릭재킹이 열린다.
   - **script는 nonce다** (2026-09-27, sec-audit-3 #11 — 결정 B. 2026-09-24의 "nonce 배선은 범위 밖"을 뒤집었다).
     미들웨어가 `createNonce()`(16바이트 base64, Web Crypto)로 만들어 **응답과 요청 양쪽**에 싣는다 — ⚠️ **Next는 렌더 중
     *요청* 헤더의 CSP에서 nonce를 뽑아**(`get-script-nonce-from-header` — 모양이 `[A-Za-z0-9+/_-]+={0,2}`가 아니면 조용히 nonce
