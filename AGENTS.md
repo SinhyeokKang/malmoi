@@ -94,6 +94,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 | `zod` 4.5.4 |
 | YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`). ⚠️ **고정 이유가 둘이다**: `lib/onboarding/budget.ts`가 **`Parser`의 내부 `stack`을 읽는다** — 공개 API가 아니라 버전이 올라가면 조용히 모양이 바뀌고, 그때 red를 내는 것은 `budget.test.ts`뿐이다 | `yaml` 2.9.0 |
 | 사용처 수집 | `ts-morph` AST + 정규식 — **`refs` 전담, 실패는 경고** | `ts-morph` 28.0.0 |
+| 가이드 파싱 | `unified` + `remark-parse` + `remark-gfm` → **mdast 한 벌**(`lib/guide/parse.ts`의 `parseMd`) — 게이트·목차·렌더러가 같은 트리를 본다. 코드 스팬·펜스 안의 `{#id}`·`**x**`·링크가 코드 노드가 되어 원리적으로 안 잡힌다(정규식으로 훑으면 잡힌다). ⚠️ **`parse`만 부르고 `run`은 부르지 않는다** — `remark-gfm`은 micromark 확장이라 파싱 단계에서 이미 걸린다 | `unified` 11.0.5 · `remark-parse` 11.0.0 · `remark-gfm` 4.0.1 · `unist-util-visit` 5.1.0 · `@types/mdast` 4.0.4 |
 | 테스트 | Vitest — **순수 함수 단위 + DOM**(파일 머리의 `// @vitest-environment jsdom`. ⚠️ **기본은 그대로 `node`다** — 전역으로 켜면 순수 모듈 수백 개가 이유 없이 jsdom을 세운다) | `vitest` 4.1.11 · `jsdom` 27.4.0 · `@testing-library/user-event` 14.6.1 |
 | Node | `.nvmrc` **24**. **정본은 Vercel 프로젝트의 Node.js Version이다** — 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 | `@types/node` 24.13.3 |
 | DB 접속 | Supabase 리전 `ap-northeast-1`(도쿄). 직결은 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다. ⚠️ **Vercel 함수도 같은 리전에 둔다**(`vercel.json`의 `regions: ["hnd1"]`) — 기본 `iad1`에서는 홉당 ~375ms였다 | — |
@@ -162,6 +163,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | Prisma 재생성 / DB 브라우저 | `pnpm db:generate` · `pnpm db:studio` |
 | 로케일 적재 | `pnpm ingest <디렉터리> [--json] [--base <locale>] [--adapter <name>]` |
 | 사용처 스캔 | `pnpm scan <디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (**스캔 결과가 어떻든 exit 0** — 인자 오류만 2) |
+| 가이드 스크린샷 stale | `pnpm guide:check [--json]` — `guide/SHOOTING.md` 매핑 표의 기록 blob SHA를 작업 트리의 `git hash-object`와 견준다(히스토리를 안 본다 — 미커밋 수정도 stale이다). 읽기 전용, **결과가 어떻든 exit 0** — 인자 오류만 2. ⚠️ **`pnpm test`의 게이트가 아니다** — 찍을 수 있는 런타임이 로컬뿐이다. `/guide`·`/guide-shots`·`/push` 4단계가 이 출력을 인용한다(판정을 복제하지 않는다) |
 | 로컬 push | `pnpm push:local <디렉터리> --project <slug> [--surface <slug>] [--path-template <template>] [--url ...] [--wrapper ...] [--adapter ...] [--base <locale>]` |
 | 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--verdicts <파일>] [--json] [--out <파일>] [--limit N] [--jobs N]` (읽기 전용, **측정 결과는 어떤 값이어도 exit 0** — 인자 오류만 2) |
 | GitHub App 스모크 | `pnpm smoke:github <project-slug>` (**읽기만** — 실 API라 `pnpm test` 밖이다) |
@@ -231,11 +233,13 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **19개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/runtime-test`·`/design-sync`·`/orchestrate` 여섯은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, 뒤의 셋은 Codex에 런타임이 없다: `/runtime-test`는 ego-browser, `/design-sync`는 그 위에 **`DesignSync` 도구**까지 쓰고, `/orchestrate`는 Orca 워커 세션을 띄워 push까지 지휘한다).
+스킬 **21개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/runtime-test`·`/design-sync`·`/orchestrate`·`/guide-shots` 일곱은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, 뒤의 넷은 Codex에 런타임이 없다: `/runtime-test`는 ego-browser, `/design-sync`는 그 위에 **`DesignSync` 도구**까지 쓰고, `/orchestrate`는 Orca 워커 세션을 띄워 push까지 지휘하고, `/guide-shots`는 ego-browser로 가이드 스크린샷을 찍는다 — 그 stale 목록만은 `pnpm guide:check`로 어디서든 받는다).
 
-`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/doc-check` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/orchestrate` · `/l10n-roundtrip` · `/runtime-test` · `/design-sync`
+`/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/doc-check` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/orchestrate` · `/l10n-roundtrip` · `/runtime-test` · `/design-sync` · `/guide` · `/guide-shots`
 
 **권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/design-sync`) → (`/db`) → `/push`(dev) → `/merge`(프로덕션). ⚠️ **`/design-sync`는 시안이 있는 화면을 건드렸을 때만** 끼고, `/ship`도 6.5단계에서 같은 조건으로 부른다. 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
+
+- **사용자 가이드(`/docs`)는 흐름 옆에 붙는다** — 사용자 노출 변경이면 `/implement` 보고의 **"가이드 영향"** 플래그나 `/push` 4단계의 **"가이드 stale 후보"** 경고(둘 다 차단 아님)를 받아 `/guide`(본문, en 단일)와 `/guide-shots`(스크린샷, ego-browser)를 부른다. 작성 규칙은 `guide/AUTHORING.md`, 촬영 규칙·매핑 표는 `guide/SHOOTING.md`가 정본이고 스킬은 그것을 로드해 실행하는 손이다.
 
 - **`/feature`가 기능의 시작점이다.** 산출물은 `docs/features/<name>/`에 `spec`·`design`·`tasks`로 남고, **기능이 끝나면 결론을 정본(PRODUCT — 제품 판정 / ARCHITECTURE — 불변식·함정 / DESIGN — 시각 규칙)으로 올리고 그 디렉터리는 지운다.** 근거 기록을 쌓아 두지 않는다 — 2026-09-13에 그렇게 쌓인 15디렉터리 14,929줄을 걷어냈고, 되살릴 일이 생기면 `git log`가 답한다.
 - **`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고 `docs/POSTMORTEM.md` 전 항목의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. 리포트 전용이라 배포 경로와 무관하다.
@@ -253,7 +257,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 문서 지도
 
-**정기 갱신 대상이 여섯이고, 그 아래 갱신 규칙이 다른 둘이 더 있다** — `POSTMORTEM.md`(append-only, `/postmortem` 전담)와 `README.md`(요약 미러). 갱신은 문서별 별도 커밋(`docs(PRODUCT): ...` 꼴).
+**정기 갱신 대상이 여섯이고, 그 아래 갱신 규칙이 다른 넷이 더 있다** — `POSTMORTEM.md`(append-only, `/postmortem` 전담), `README.md`(요약 미러), `guide/AUTHORING.md`·`guide/SHOOTING.md`(`/guide`·`/guide-shots`가 작업하며 같이 고친다). 갱신은 문서별 별도 커밋(`docs(PRODUCT): ...` 꼴).
 
 | 문서 | 무엇 | 언제 갱신하나 |
 |---|---|---|
@@ -265,6 +269,8 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | [docs/ACTIONS.md](./docs/ACTIONS.md) | **대상 리포**에 붙이는 워크플로 (외부 계약) | `inputs`나 red 조건을 바꿨을 때 |
 | [docs/POSTMORTEM.md](./docs/POSTMORTEM.md) | 회고 누적 (append-only, `/postmortem` 전담) | — |
 | [README.md](./README.md) | CLAUDE.md의 요약 미러 | 스택·명령·브랜치가 바뀌면 같이 |
+| [guide/AUTHORING.md](./guide/AUTHORING.md) | 사용자 가이드 작성 매뉴얼(한국어, **서빙 안 함**) — IA 표·표기 규약·사실 대조 소스·외부 라벨 허용 목록 | `/guide`가 작성 기준 자체를 바꿨을 때(새 페이지·새 사실 소스·새 외부 라벨) |
+| [guide/SHOOTING.md](./guide/SHOOTING.md) | 촬영 매뉴얼(한국어, **서빙 안 함**) — 규격·마스킹 표·**에셋 매핑 표**(소스·blob SHA·치수 — `pnpm guide:check`의 기준값)·벽·진행 상태 | `/guide-shots`가 컷을 찍을 때마다(매핑 행·진행 상태) |
 
 `docs/adapter-survey/`는 문서가 아니라 **`pnpm adapter-survey`가 읽는 살아 있는 입력**이다. `.env.example`도 문서로 취급한다 — **새 환경변수를 코드에서 읽었으면 같은 커밋에서 추가**한다.
 
