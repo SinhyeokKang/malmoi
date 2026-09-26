@@ -8,7 +8,7 @@ import { visit } from "unist-util-visit";
 
 import { describe, expect, it } from "vitest";
 
-import { parseHeadingAnchor, parseMd, toText } from "@/lib/guide/parse";
+import { parseMd, toText } from "@/lib/guide/parse";
 import { servedGuideFiles } from "@/lib/guide/served";
 import { m } from "@/lib/i18n";
 
@@ -54,15 +54,18 @@ const strings = (): Found[] => {
  * 파일 단위로 건다.
  *
  * ⚠️ **코드는 뺀다**(`toText(…, false)`) — action 이름(`…/malmoi-i18n-push`)·파일 경로는 사용자가 옮겨 적는
- * 식별자라 코드로 쓰고, 그러면 표의 개념이 아니다. 헤딩의 `{#id}` 표식도 뗀다.
+ * 식별자라 코드로 쓰고, 그러면 표의 개념이 아니다. 헤딩의 `{#id}` 표식도 뗀다(`{#push}` 같은 id가 걸리지 않게).
  */
 function guideStrings(root: string): Found[] {
   const dir = join(root, "guide");
   return servedGuideFiles(dir).flatMap((file) => {
     const out: Found[] = [];
     visit(parseMd(readFileSync(join(dir, file), "utf8")), (node) => {
-      if (node.type === "heading") out.push({ path: `guide/${file}`, text: parseHeadingAnchor(toText(node, false)).text });
-      else if (node.type === "paragraph" || node.type === "tableCell") out.push({ path: `guide/${file}`, text: toText(node, false) });
+      if (node.type === "paragraph" || node.type === "heading" || node.type === "tableCell") {
+        // 코드를 뺀 텍스트라 헤딩 끝에 남은 `{#…}`는 표식뿐이다
+        const text = toText(node, false);
+        out.push({ path: `guide/${file}`, text: node.type === "heading" ? text.replace(/\s*\{#[^{}]*\}\s*$/, "") : text });
+      }
     });
     return out;
   });

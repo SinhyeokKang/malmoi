@@ -1,13 +1,13 @@
 import type { Root, RootContent, Table } from "mdast";
 
-import { parseHeadingAnchor, toText } from "./parse";
+import { headingAnchor, toText } from "./parse";
 
 /**
  * 앵커 헤딩의 루트 위치부터 다음 같은(또는 윗) 급 헤딩 전까지의 노드. 원고의 헤딩은 루트에만 선다 —
  * 목록·인용 속 헤딩은 절을 나누지 않는다.
  */
 function sectionNodes(tree: Root, id: string): RootContent[] | null {
-  const start = tree.children.findIndex((node) => node.type === "heading" && parseHeadingAnchor(toText(node)).id === id);
+  const start = tree.children.findIndex((node) => node.type === "heading" && headingAnchor(node).id === id);
   const heading = tree.children[start];
   if (heading?.type !== "heading") return null;
   const rest = tree.children.slice(start + 1);

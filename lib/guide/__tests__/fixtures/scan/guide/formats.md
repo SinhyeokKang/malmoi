@@ -7,3 +7,5 @@ Open https://github.com/settings — then malmoi should be capitalized.
 Every push runs the workflow.
 
 Allow `acme/malmoi-i18n-push` in Actions settings.
+
+## Where files go {#push}

@@ -4,12 +4,12 @@ import { expect, it } from "vitest";
 import { PublicDoc } from "@/components/public-doc";
 import { CiCard } from "@/components/settings/ci-card";
 import { MEMBER_LIMIT } from "@/lib/auth/invitation";
+import { allowedActions } from "@/lib/guide/__tests__/helpers/allowed-actions";
 import { m } from "@/lib/i18n";
 import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
 import { PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
 import { SKIP_MARKER } from "@/lib/pull/payload";
-import { allowedActions } from "@/lib/guide/__tests__/helpers/allowed-actions";
 
 import { render } from "./helpers/dom";
 

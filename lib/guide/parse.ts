@@ -73,13 +73,23 @@ export function parseHeadingAnchor(text: string): { text: string; id: string | n
   return { text: text.slice(0, match.index).trim(), id };
 }
 
+/**
+ * 헤딩 노드의 `{ text, id }`. ⚠️ **표식은 마지막 자식이 글자 노드일 때만 찾는다** — `` ## Anchors `{#id}` ``처럼
+ * 표식 문법을 코드로 설명하는 헤딩을 앵커로 읽으면 안 된다(`toText`는 인라인 코드 값을 싣는다).
+ */
+export function headingAnchor(node: Heading): { text: string; id: string | null } {
+  const last = node.children[node.children.length - 1];
+  if (last?.type !== "text" || !MARKER.test(last.value)) return { text: toText(node).trim(), id: null };
+  return parseHeadingAnchor(toText(node));
+}
+
 export type HeadingInfo = { depth: Heading["depth"]; text: string; id: string | null; node: Heading };
 
 /** 문서의 모든 헤딩(문서 순). 펜스 속 `## …`는 `code` 노드라 여기 오지 않는다. */
 export function headings(tree: Root): HeadingInfo[] {
   const out: HeadingInfo[] = [];
   visit(tree, "heading", (node) => {
-    out.push({ depth: node.depth, ...parseHeadingAnchor(toText(node)), node });
+    out.push({ depth: node.depth, ...headingAnchor(node), node });
   });
   return out;
 }

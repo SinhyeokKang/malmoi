@@ -72,6 +72,8 @@ export function parseSummary(tree: Root): NavNode[] {
 export type FlatNavItem = { title: string; file: string; slug: string[]; parent: string | null };
 
 /** 선위 순회 — 이전/다음 순서이고 장 경계를 넘는다. `parent`는 SUMMARY의 부모 제목(h1 위 줄). */
-export function flattenNav(nav: readonly NavNode[], parent: string | null = null): FlatNavItem[] {
-  return nav.flatMap(({ title, file, slug, children }) => [{ title, file, slug, parent }, ...flattenNav(children, title)]);
+export function flattenNav(nav: readonly NavNode[]): FlatNavItem[] {
+  const walk = (nodes: readonly NavNode[], parent: string | null): FlatNavItem[] =>
+    nodes.flatMap(({ title, file, slug, children }) => [{ title, file, slug, parent }, ...walk(children, title)]);
+  return walk(nav, null);
 }

@@ -63,3 +63,20 @@ describe("headings — 코드 펜스 안의 `{#id}`는 헤딩이 아니다", () 
     expect(headings(parseMd("## The `PUSH_TOKEN` secret {#token}"))[0]).toMatchObject({ text: "The PUSH_TOKEN secret", id: "token" });
   });
 });
+
+describe("headingAnchor — 표식은 헤딩 끝의 글자에서만", () => {
+  it("인라인 코드로 쓴 `{#id}`는 앵커가 아니다 — 표식 문법을 설명하는 헤딩", () => {
+    const [heading] = headings(parseMd("## Anchors look like `{#id}`"));
+    expect(heading).toMatchObject({ text: "Anchors look like {#id}", id: null });
+  });
+
+  it("코드 뒤에 붙은 표식은 앵커다", () => {
+    const [heading] = headings(parseMd("## The `PUSH_TOKEN` {#token}"));
+    expect(heading).toMatchObject({ text: "The PUSH_TOKEN", id: "token" });
+  });
+
+  it("같은 규칙이 절 자르기에도 걸린다", async () => {
+    const { sectionByAnchor } = await import("../sections");
+    expect(sectionByAnchor(parseMd("## Anchors `{#id}`\n\nbody"), "id")).toBeNull();
+  });
+});
