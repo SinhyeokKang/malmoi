@@ -185,7 +185,7 @@ components/
                         footer는 셸 밖 2열 골격(signin/auth-layout — /signin·초대·계정 병합)도 두 패널 아래에 그린다 — 푸터 렌더러가 하나다
   privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로)
   docs/                 `/docs/*` 조각 — guide-markdown(서버 — react-markdown에 로더 트리 사본을 꽂고 요소를 매핑한다.
-                        ⚠️ urlTransform을 덮지 않는다 · rehype-raw 없음) · doc-frame(그릇 · 이전/다음 · 장 개요 행 · 개요 두 갈래) ·
+                        ⚠️ urlTransform을 덮지 않는다 · rehype-raw 없음 — raw HTML은 글자로 나가므로 원고에서 게이트가 막는다) · doc-frame(그릇 · 이전/다음 · 장 개요 행 · 개요 두 갈래) ·
                         code-block(클라이언트 — Copy + visually-hidden live region) · nav-link(클라이언트 — usePathname 정확 일치) ·
                         legacy-hash(클라이언트 — 옛 /docs#id → router.replace, 표는 서버가 넘긴다) · requested-path(404 주소) ·
                         classes.ts(서버·클라이언트가 같이 쓰는 클래스 — "use client" 모듈에 두면 값이 아니라 참조가 온다)
@@ -541,7 +541,7 @@ lib/
   public-doc/           공개 문서 목차의 현재 절 판정 — toc(currentSection). ⚠️ 잎(import 0) — 목차 클라이언트가 값으로 읽는다
   guide/                `/docs` 원고의 순수 함수 + 로더. parse(mdast 한 벌 — 게이트·목차·렌더러가 같은 트리) · summary(SUMMARY →
                         내비, slug ↔ 파일) · collect(링크·라벨·이미지 수집, resolveDocLink) · sections(절·표·도입 문단) ·
-                        toc(extractToc — H2만, 둘 미만이면 빈 목록 · tableLabel) · remark(렌더 직전 손질 — {#id} → id · 링크 해소 ·
+                        toc(extractToc — H2만, 둘 미만이면 빈 목록 · tableLabel) · rules(렌더러가 약속하지 않는 원고 문법 — raw HTML · 섞인/링크 이미지 · 각주 · SUMMARY 셋째 단) · remark(렌더 직전 손질 — {#id} → id · 링크 해소 ·
                         표 이름 · 코드 파일명) · href(docHref — SUMMARY slug → 경로) · overview(개요 두 갈래 상수) · legacy(옛 해시 —
                         ⚠️ 잎, 클라이언트가 읽는다) · legacy-anchors(옛 id 일곱의 표) · load(server-only — ⚠️ 모듈 최상위에서 읽지 않는다,
                         함수 안 + React cache). ⚠️ routes.docs(page, anchor)의 인자는 리터럴이어야 한다(docs-links.test가 원고와 대조) —

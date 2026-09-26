@@ -22,7 +22,10 @@ function hastText(node: HastNode | HastNode["children"][number]): string {
   return "children" in node ? node.children.map(hastText).join("") : "";
 }
 
-/** 문단의 유일한 자식이 이미지인가 — 그 문단은 `<p>` 없이 `<figure>`로 선다(`<p>` 안 `<figure>`는 잘못된 HTML이다). */
+/**
+ * 문단의 유일한 자식이 이미지인가 — 그 문단은 `<p>` 없이 `<figure>`로 선다(`<p>` 안 `<figure>`는 잘못된 HTML이다).
+ * 이미지는 늘 혼자 선다(게이트 `renderProblems`의 `image-inline`) — 섞인 경우를 여기서 따로 그리지 않는다.
+ */
 function isFigure(node: HastNode | undefined): boolean {
   const children = node?.children.filter((child) => !(child.type === "text" && child.value.trim() === "")) ?? [];
   return children.length === 1 && children[0]?.type === "element" && children[0].tagName === "img";
@@ -111,7 +114,9 @@ function Figure({ src, alt, caption, width, height }: { src: ComponentProps<"img
  * 그 자리에 로더의 트리 **사본**을 꽂는다(remarkGuide가 트리를 바꾸므로 `cache`가 든 원본을 넘기지 않는다).
  *
  * ⚠️ **`urlTransform`을 덮지 않는다** — 기본값이 `javascript:` 같은 위험 스킴을 걷는다(리포가 public이라 원고 PR이 신뢰 경계다).
- * ⚠️ **`rehype-raw`가 없다** — 원고의 HTML은 글자로도 안 나가고 버려진다.
+ * ⚠️ **`rehype-raw`가 없다** — 원고의 raw HTML은 **실행되지 않고 글자로** 나간다(`<b>`가 화면에 그대로 선다). 그래서
+ * 원고에 HTML이 0이어야 하고 게이트가 막는다(`lib/guide/rules.ts`). `skipHtml`로 조용히 버리지 않는다 — 원고의 잘못이 가려진다.
+ * 이미지가 문단에 혼자 서는 것·링크로 안 감싸는 것·각주 없음도 같은 게이트가 보장한다 — 이 렌더러는 그 경우를 모른다.
  */
 export function GuideMarkdown({ tree, file }: { tree: Root; file: string }): ReactNode {
   const copy = structuredClone(tree);
