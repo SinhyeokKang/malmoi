@@ -206,6 +206,6 @@ function translationsHref(project: NavProject): string {
  * ⚠️ **Help가 `/docs`(개요)를 가리킨다** (8-3 사용자 결정). 셸은 역할을 읽지 않는다 — 개발자·편집자 갈래는 개요가 준다.
  */
 export function navFooterItems(): NavItem[] {
-  // `exact: false` — `/docs/*` 하위 페이지에서도 현재다(DESIGN §6.61).
-  return [{ key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: false }];
+  // `exact`는 효과가 없다 — 사이드바는 앱 셸(`app/(edit)/layout.tsx`)에만 서고 `/docs/*`는 공개 셸이라 둘이 한 화면에 안 선다.
+  return [{ key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: true }];
 }
