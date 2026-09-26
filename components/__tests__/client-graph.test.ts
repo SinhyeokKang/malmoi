@@ -104,6 +104,8 @@ const CLIENT_LIB_FILES = [
   "lib/github-connect/message.ts",
   // `SlowNotice`가 지연 선으로 읽는 상수 하나 — import가 0개인 잎이다 (audit-ux U7 r1). octokit은 `lib/github.ts` 쪽이다.
   "lib/github-wait.ts",
+  // `/docs` 개요의 옛 해시 잎이 값으로 읽는다 — import 0인 잎이고, 표는 서버가 prop으로 넘긴다.
+  "lib/guide/legacy.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
   "lib/import/confirm.ts",

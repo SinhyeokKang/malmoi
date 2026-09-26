@@ -122,6 +122,8 @@ const REGISTERED: Record<string, string[]> = {
   // blue-600 — 링크 색 (§6.3) · 검색 일치 구간
   "text-blue-600": [
     "app/signin/page.tsx",
+    // `/docs` 원고 본문 링크 · 404 복귀 링크 (§6.61)
+    "components/docs/classes.ts",
     "components/home/count-cards.tsx",
     "components/home/meta-column.tsx",
     "components/home/sync-button.tsx",

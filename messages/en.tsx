@@ -661,6 +661,27 @@ export const en = {
      */
     docs: {
       title: "Docs",
+      /**
+       * `/docs/*`의 셸 라벨 (DESIGN §6.61). ⚠️ **본문은 여기 없다** — `guide/**.md`가 정본이고, 개요의 대상 라벨·
+       * `More in the docs`만 사전이 든다(어느 장을 앞에 세우는지는 `lib/guide/overview.ts`의 상수다).
+       */
+      nav: "Documentation",
+      toc: "On this page",
+      /** 이전/다음 카드 묶음의 `nav` 이름 — 목차·문서 내비와 랜드마크가 갈려야 한다. */
+      pages: "Previous and next pages",
+      previous: "Previous",
+      next: "Next",
+      /** 파일명 바가 없는 코드 블록의 region 이름 — 이름이 있으면 파일명이 대신한다. */
+      code: "Code",
+      forDevelopers: "For developers",
+      forTranslators: "For translators",
+      more: "More in the docs",
+      notFound: {
+        eyebrow: "404",
+        title: "This page doesn't exist",
+        missing: (path: ReactNode): ReactNode => <>Nothing is published at {path}.</>,
+        overview: "Go to the docs overview",
+      },
       intro: "How to connect a repository to Malmoi, what it can read, and the limits that apply.",
       sections: [
         {
