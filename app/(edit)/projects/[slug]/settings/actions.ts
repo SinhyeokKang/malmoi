@@ -100,7 +100,7 @@ export async function startGithubConnect(raw: { slug: string; returnTo?: "add-su
       dest: { kind: parsed.data.returnTo ?? "settings", slug },
       nonce,
       expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
-      secret: requireEnv("AUTH_SECRET"),
+      secret: requireEnv("APP_SIGNING_SECRET"),
     }),
     {
       httpOnly: true,

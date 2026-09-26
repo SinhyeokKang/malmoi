@@ -3,7 +3,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 /**
  * OAuth state 서명·검증 (ARCHITECTURE §6.4). **I/O가 없다** — nonce 생성과 쿠키 쓰기·읽기는 껍데기가 한다.
  *
- * ⚠️ **`secret`을 인자로 받는다.** 함수 안에서 `requireEnv("AUTH_SECRET")`을 부르면 순수가 아니고,
+ * ⚠️ **`secret`을 인자로 받는다.** 함수 안에서 `requireEnv("APP_SIGNING_SECRET")`을 부르면 순수가 아니고,
  * 단위 테스트가 환경변수를 요구하게 된다 (CLAUDE.md — 환경변수는 함수 안에서, 그리고 이 판정층은
  * 그 함수조차 아니다).
  *
@@ -52,8 +52,9 @@ export type StateCheck =
   | { status: "wrong-user" };
 
 /**
- * `AUTH_SECRET`을 세션 서명과 공유하므로 용도 라벨로 도메인을 가른다 — 같은 키로 만든 다른 용도의
- * 서명이 이 자리에 재사용되지 못하게 한다.
+ * `APP_SIGNING_SECRET`을 샘플 확인값과 공유하므로 용도 라벨로 도메인을 가른다 — 같은 키로 만든 다른 용도의
+ * 서명이 이 자리에 재사용되지 못하게 한다. Auth.js의 `AUTH_SECRET`과는 키부터 갈라 회전이 서로를 무효로
+ * 만들지 않는다 (sec-audit-3 #14).
  */
 const LABEL = "malmoi-github-state";
 
@@ -152,7 +153,7 @@ export function verifyState(input: {
  * 사용자가 할 수 있는 일이 없는 프로그래밍 오류라 500이 정직하다.
  */
 function requireSecret(secret: string): void {
-  if (secret === "") throw new Error("the state signing key is empty — check AUTH_SECRET.");
+  if (secret === "") throw new Error("the state signing key is empty — check APP_SIGNING_SECRET.");
 }
 
 function sign(encoded: string, secret: string): string {

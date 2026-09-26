@@ -538,7 +538,7 @@ export async function startGithubConnectForUser(
       dest: dest === "new" ? { kind: "new", ...(back.success ? back.data : {}) } : { kind: "account" },
       nonce,
       expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
-      secret: requireEnv("AUTH_SECRET"),
+      secret: requireEnv("APP_SIGNING_SECRET"),
     }),
     {
       httpOnly: true,
@@ -819,7 +819,7 @@ export async function detectRepoFormats(raw: {
       ref: ref ?? access.defaultBranch, headSha: snapshot.headSha,
       // 전 언어의 경로는 전체 트리 탐지가 확인했다. 내용을 받은 셋으로 줄이면 lazy 언어가 사라진다.
       format: { ...confirmed.format, locales: summary.locales },
-    }, requireEnv("AUTH_SECRET")) }];
+    }, requireEnv("APP_SIGNING_SECRET"), new Date()) }];
   });
   return candidates.length === 0 ? { ok: false, error: "no-candidates" } : { ok: true, candidates };
 }
@@ -886,7 +886,7 @@ export async function loadCandidateSample(raw: {
   const verified = verifySampleConfirmation(input.confirmation ?? "", {
     userId, repositoryId: access.repositoryId, installationId: access.installationId,
     ref: input.ref, headSha: snapshot.headSha,
-  }, requireEnv("AUTH_SECRET"));
+  }, requireEnv("APP_SIGNING_SECRET"), new Date());
   if (verified === null || !isAdapterName(verified.adapter) || verified.adapter !== input.adapter ||
       verified.pathTemplate !== input.pathTemplate || !verified.locales.includes(input.locale)) {
     return { ok: false, error: "manual-no-match" };
@@ -967,7 +967,7 @@ export async function confirmManualFormat(raw: {
       confirmation: signSampleConfirmation({
         userId, repositoryId: access.repositoryId, installationId: access.installationId,
         ref: input.ref, headSha: snapshot.headSha, format: confirmed.format,
-      }, requireEnv("AUTH_SECRET")),
+      }, requireEnv("APP_SIGNING_SECRET"), new Date()),
     } };
   } catch (error) {
     if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
