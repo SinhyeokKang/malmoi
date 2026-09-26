@@ -35,6 +35,13 @@ it("보관 중에는 이름·이미지 쓰기를 거부하고 올린 객체를 �
   // QA D1 — 보관 거부가 설정 화면을 보관 상태로 다시 그린다.
   expect(h.revalidate).toHaveBeenCalledWith("/projects/alpha", "layout");
 });
+// sec-audit-3 #6 — Server Action 인자는 클라이언트가 정한다. 스키마를 안 지나면 비문자열 slug가 쿼리까지 가 500이 됐다.
+// 하네스는 비문자열 slug를 "없는 프로젝트"로 관대하게 읽으므로 DB에 닿는 것 자체를 실패로 만든다 — 실제 Prisma는 던진다.
+it.each([42, null, "", { slug: "alpha" }])("slug가 %j이면 거부 값을 돌려주고 DB·Blob에 닿지 않는다", async slug => {
+  h.prisma = new Proxy({}, { get: () => { throw new Error("DB must not be reached"); } });
+  expect(await actions.deleteProjectImage(slug as unknown as string)).toEqual({ ok: false, reason: "not-found" });
+  expect(db.projects[0]?.image).toBe(old); expect(h.del).not.toHaveBeenCalled();
+});
 it.each(["editor", "stranger", null])("%s는 메타데이터와 Blob에 쓰지 못한다", async user => {
   h.session = sessionFor(user);
   expect((await actions.updateProjectName({ slug: "alpha", name: "After" })).ok).toBe(false);

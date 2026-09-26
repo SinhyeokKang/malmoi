@@ -401,6 +401,16 @@ describe("startGithubConnect — 나가는 쪽 (malmoi#7)", () => {
     expect(hoisted.redirect).not.toHaveBeenCalled();
   });
 
+  // sec-audit-3 #7 — 보관 = Restore만 (PRODUCT §7.9). 연결 왕복이 끝나도 거부될 쓰기를 시작시키지 않는다.
+  it("보관된 프로젝트면 archived이고 쿠키도 redirect도 없다", async () => {
+    Object.assign(db.projects[0]!, { archivedAt: new Date(0) });
+
+    expect(await startGithubConnect({ slug: "acme" })).toEqual({ ok: false, error: "archived" });
+    expect(hoisted.cookieSet).not.toHaveBeenCalled();
+    expect(hoisted.redirect).not.toHaveBeenCalled();
+    expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/acme", "layout");
+  });
+
   it("Host 헤더가 없으면 unavailable — 추측한 origin으로 사용자를 보내지 않는다", async () => {
     hoisted.headerGet.mockReturnValue(null);
 
