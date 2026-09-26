@@ -2657,6 +2657,9 @@ export const en = {
         project: (limit: number, used: number, n: number, time: string): string =>
           `A project can create ${limit.toLocaleString("en-US")} invitations an hour, and ${used.toLocaleString("en-US")} ${used === 1 ? "was" : "were"} created in the last hour. You can send ${n === 1 ? "this one" : `these ${n.toLocaleString("en-US")}`} after ${time}.`,
         address: (email: string, time: string): string => `${email} was invited less than a minute ago. You can send again after ${time}.`,
+        /** 발급자 기준 — 전 프로젝트 합산이라 "this project"라고 쓰지 않는다. 한도는 `USER_HOURLY_LIMIT`을 받는다. */
+        user: (limit: number, used: number, n: number, time: string): string =>
+          `You can create ${limit.toLocaleString("en-US")} invitations an hour across all projects, and you created ${used.toLocaleString("en-US")} in the last hour. You can send ${n === 1 ? "this one" : `these ${n.toLocaleString("en-US")}`} after ${time}.`,
       },
       tooMany: (limit: number): string => `You can invite up to ${limit.toLocaleString("en-US")} people at a time.`,
       /** 결과 미확인은 모드가 아니라 문구다 — 일부가 갔을 수 있다는 사실을 숨기지 않고, 사람별 결과를 복원하지 않는다. */
@@ -2701,6 +2704,8 @@ export const en = {
       resendLimited: (who: string, time: string): string => `${who} was invited less than a minute ago. You can resend after ${time}.`,
       resendProjectLimited: (who: string, limit: number, time: string): string =>
         `Couldn't resend to ${who}: this project has created ${limit.toLocaleString("en-US")} invitations in the last hour. You can resend after ${time}.`,
+      resendUserLimited: (who: string, limit: number, time: string): string =>
+        `Couldn't resend to ${who}: you have created ${limit.toLocaleString("en-US")} invitations across all projects in the last hour. You can resend after ${time}.`,
       resendUnconfirmed: (who: string): string => `We couldn't confirm the email to ${who}. It may have been sent — Resend again replaces that link.`,
       resendUnavailable: (who: string): string => `Couldn't resend to ${who}. Email is unavailable right now. Try again later.`,
       /**

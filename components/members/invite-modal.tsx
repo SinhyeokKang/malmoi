@@ -15,7 +15,7 @@ import type { Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import { parseRecipients, splitPastedEmails, type RecipientRowError } from "@/lib/invitation-email/recipients";
 import type { IssueRowError } from "@/lib/invitation-email/plan";
-import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
+import { INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 
 /**
@@ -403,9 +403,11 @@ function formAlertFor(result: Exclude<InvitationsResult, { ok: true }> | null, e
   if (result.error === "rate-limited" && "limit" in result) {
     const time = retryAtLabel(result.retryAt);
     const body =
-      result.limit === "project"
-        ? m.members.invite.limit.project(INVITATION_HOURLY_LIMIT, result.used, count, time)
-        : m.members.invite.limit.address(emailAt(result.index), time);
+      result.limit === "address"
+        ? m.members.invite.limit.address(emailAt(result.index), time)
+        : result.limit === "user"
+          ? m.members.invite.limit.user(USER_HOURLY_LIMIT, result.used, count, time)
+          : m.members.invite.limit.project(INVITATION_HOURLY_LIMIT, result.used, count, time);
     return { variant: "warning", title: m.members.invite.limit.title, body };
   }
   if (result.error === "email-rejected") return { variant: "danger", body: m.members.invite.sendFailed };

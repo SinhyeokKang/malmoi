@@ -128,7 +128,7 @@ export type InvitationsResult =
   | { ok: true; count: number }
   | { ok: false; error: "invalid-rows"; rowErrors: (RecipientRowError | IssueRowError)[] }
   | { ok: false; error: "rate-limited"; retryAt: string; limit: "address"; index: number }
-  | { ok: false; error: "rate-limited"; retryAt: string; limit: "project"; used: number }
+  | { ok: false; error: "rate-limited"; retryAt: string; limit: "project" | "user"; used: number }
   | { ok: false; error: "email-rejected" | "email-unknown"; retryAt: string }
   | { ok: false; error: string };
 
@@ -178,7 +178,7 @@ const ResendInput = z.object({ slug: z.string().min(1), invitationId: z.string()
 export type ResendResult =
   | { ok: true; label: string }
   | { ok: false; error: "rate-limited"; retryAt: string; limit: "address" }
-  | { ok: false; error: "rate-limited"; retryAt: string; limit: "project"; used: number }
+  | { ok: false; error: "rate-limited"; retryAt: string; limit: "project" | "user"; used: number }
   | { ok: false; error: "email-rejected" | "email-unknown"; label: string; retryAt: string }
   | { ok: false; error: string };
 
@@ -215,7 +215,7 @@ export async function resendInvitation(raw: { slug: string; invitationId: string
   if (issued.status === "rate-limited") {
     // 재발급은 한 주소라 막힌 행을 가리킬 필요가 없다 — 화면은 누른 행의 라벨로 말한다.
     const retryAt = issued.retryAt.toISOString();
-    return issued.limit === "project" ? { ok: false, error: "rate-limited", retryAt, limit: "project", used: issued.used } : { ok: false, error: "rate-limited", retryAt, limit: "address" };
+    return issued.limit === "address" ? { ok: false, error: "rate-limited", retryAt, limit: "address" } : { ok: false, error: "rate-limited", retryAt, limit: issued.limit, used: issued.used };
   }
   if (issued.status !== "issued") return { ok: false, error: issued.status };
 
@@ -229,9 +229,9 @@ export async function resendInvitation(raw: { slug: string; invitationId: string
 
 function rateLimited(plan: Extract<IssuePlan, { status: "rate-limited" }>): InvitationsResult {
   const retryAt = plan.retryAt.toISOString();
-  return plan.limit === "project"
-    ? { ok: false, error: "rate-limited", retryAt, limit: "project", used: plan.used }
-    : { ok: false, error: "rate-limited", retryAt, limit: "address", index: plan.index };
+  return plan.limit === "address"
+    ? { ok: false, error: "rate-limited", retryAt, limit: "address", index: plan.index }
+    : { ok: false, error: "rate-limited", retryAt, limit: plan.limit, used: plan.used };
 }
 
 function toMessages(invitations: readonly IssuedInvitation[]) {

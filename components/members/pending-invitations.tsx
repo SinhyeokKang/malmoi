@@ -16,7 +16,7 @@ import { canPerform, type Role } from "@/lib/auth/permission";
 import { planMemberIdentity } from "@/lib/auth/member-identity";
 import type { PendingInvitation } from "@/lib/auth/query";
 import { m } from "@/lib/i18n";
-import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
+import { INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 import { relativeTime } from "@/lib/relative-time";
 
@@ -289,7 +289,13 @@ function resendAlert(result: Exclude<ResendResult, { ok: true }> | null, who: st
   if (result === null || result.error === "email-unknown") return { variant: "warning", text: p.resendUnconfirmed(who) };
   if (result.error === "rate-limited" && "limit" in result) {
     const time = retryAtLabel(result.retryAt);
-    return { variant: "warning", text: result.limit === "project" ? p.resendProjectLimited(who, INVITATION_HOURLY_LIMIT, time) : p.resendLimited(who, time) };
+    const text =
+      result.limit === "project"
+        ? p.resendProjectLimited(who, INVITATION_HOURLY_LIMIT, time)
+        : result.limit === "user"
+          ? p.resendUserLimited(who, USER_HOURLY_LIMIT, time)
+          : p.resendLimited(who, time);
+    return { variant: "warning", text };
   }
   if (result.error === "email-rejected" && "retryAt" in result) return { variant: "danger", text: p.resendFailed(who, retryAtLabel(result.retryAt)) };
   if (result.error === "email-unavailable") return { variant: "danger", text: p.resendUnavailable(who) };
