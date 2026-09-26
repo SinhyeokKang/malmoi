@@ -317,6 +317,18 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
     expect(db.members.filter((m) => m.userId === "u-guest")).toHaveLength(1);
   });
 
+  it("P2002인데 멤버 행이 없으면 already-member로 접지 않는다 — 다른 제약의 위반이다", async () => {
+    invite();
+    db.spies.createMember.mockImplementationOnce(async () => {
+      throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+    });
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: false, error: "unavailable" });
+    quiet.mockRestore();
+    expect(db.invitations[0]?.acceptedAt).toBeNull();
+    expect(db.members.some((m) => m.userId === "u-guest")).toBe(false);
+  });
+
   it("이미 멤버면 already-member이고 초대는 소비되지 않는다", async () => {
     invite();
     db.members.push({ projectId: "pA", userId: "u-guest", role: "EDITOR", createdAt: new Date() });

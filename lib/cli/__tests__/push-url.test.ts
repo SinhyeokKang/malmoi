@@ -19,6 +19,16 @@ describe("isAllowedPushUrl", () => {
     expect(isAllowedPushUrl("http://[::1]:3000")).toBe(true);
   });
 
+  it("URL이 루프백으로 정규화하는 IPv4 표기는 통과한다", () => {
+    expect(isAllowedPushUrl("http://127.1:3000")).toBe(true);
+    expect(isAllowedPushUrl("http://0x7f.0.0.1:3000")).toBe(true);
+  });
+
+  it("끝 점 호스트·IPv4 매핑 IPv6는 거부한다 — 정규화된 값이 셋과 정확히 같아야 한다", () => {
+    expect(isAllowedPushUrl("http://localhost.:3000")).toBe(false);
+    expect(isAllowedPushUrl("http://[::ffff:127.0.0.1]:3000")).toBe(false);
+  });
+
   it("그 밖의 http는 거부한다 — 루프백 이름을 앞에 붙인 호스트도", () => {
     expect(isAllowedPushUrl("http://example.com")).toBe(false);
     expect(isAllowedPushUrl("http://mal-moi.com")).toBe(false);

@@ -412,8 +412,15 @@ describe("acceptInvitation — 동시 수락", () => {
       await client.query("BEGIN");
       await client.query(`INSERT INTO "ProjectMember" ("projectId", "userId", "role", "updatedAt") VALUES ('p', 'u3', 'EDITOR', now())`);
       const accept = acceptInvitation({ token: "tok-inv" });
-      // 수락이 조회를 지나 unique 인덱스에서 막힐 때까지 기다린 뒤 상대를 확정한다.
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      /**
+       * ⚠️ **고정 sleep으로 기다리지 않는다** — 느린 러너에서는 수락이 COMMIT 뒤에 조회에 닿아 "이미 멤버" 조회
+       * 갈래로 끝나고, P2002 접기를 지워도 green이 된다. 수락 쪽 연결이 멤버 INSERT에서 **잠금 대기**에 들어간
+       * 것을 확인한 뒤에 확정한다 — 그 시점에는 조회가 이미 지나갔으므로 결과는 P2002 갈래에서만 나온다.
+       */
+      const blocker = (client as unknown as { processID: number }).processID;
+      await expect
+        .poll(async () => (await pool.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%ProjectMember%' AND pid <> $1`, [blocker])).rows[0].n, { timeout: 10_000 })
+        .toBeGreaterThan(0);
       await client.query("COMMIT");
       expect(await accept).toEqual({ ok: false, error: "already-member" });
     } finally {
