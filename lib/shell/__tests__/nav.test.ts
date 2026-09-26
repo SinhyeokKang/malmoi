@@ -297,6 +297,11 @@ describe("navFooterItems", () => {
     ]);
   });
 
+  /** `/docs/*` 하위 페이지(원고)에서도 Docs가 현재다 — 정확히 일치면 개요에서만 켜진다(DESIGN §6.61). */
+  it("Docs는 접두로 판정한다 — `exact: false`", () => {
+    expect(navFooterItems().find((i) => i.key === "docs")?.exact).toBe(false);
+  });
+
   it("Sign out은 여기 없다 — 링크가 아니라 폼 제출이라 화면이 직접 든다", () => {
     expect(navFooterItems().some((i) => i.key === "signOut")).toBe(false);
   });

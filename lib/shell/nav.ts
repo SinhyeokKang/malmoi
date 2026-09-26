@@ -203,9 +203,9 @@ function translationsHref(project: NavProject): string {
 /**
  * 사이드바 하단의 전역 항목. **라우트가 아니라 "앱을 벗어나는 것"들이라 구역 밖이다.**
  *
- * ⚠️ **Help가 `/docs`를 가리킨다** (8-3 사용자 결정). 그 화면은 아직 placeholder이지만 **라우트는
- * 실재한다**(8-1a가 땄다) — 없는 곳을 가리키는 항목이 아니다. 내용은 출시 전에 채운다.
+ * ⚠️ **Help가 `/docs`(개요)를 가리킨다** (8-3 사용자 결정). 셸은 역할을 읽지 않는다 — 개발자·편집자 갈래는 개요가 준다.
  */
 export function navFooterItems(): NavItem[] {
-  return [{ key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: true }];
+  // `exact: false` — `/docs/*` 하위 페이지에서도 현재다(DESIGN §6.61).
+  return [{ key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: false }];
 }
