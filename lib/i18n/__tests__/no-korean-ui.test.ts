@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { servedGuideFiles } from "@/lib/guide/served";
+import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
 
 /**
  * **화면에 닿는 소스에 한글 리터럴이 없다** (CLAUDE.md 코드 컨벤션).

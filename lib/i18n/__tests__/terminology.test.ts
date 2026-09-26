@@ -9,7 +9,7 @@ import { visit } from "unist-util-visit";
 import { describe, expect, it } from "vitest";
 
 import { parseMd, toText } from "@/lib/guide/parse";
-import { servedGuideFiles } from "@/lib/guide/served";
+import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
 import { m } from "@/lib/i18n";
 
 /**

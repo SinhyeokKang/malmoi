@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { servedGuideFiles } from "@/lib/guide/served";
+import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
 
 /**
  * **화면에 닿는 문구에서 제품 이름은 `Malmoi`이고, 식별자에서는 `malmoi`다** (2026-09-26 사용자 결정 —
@@ -161,7 +161,9 @@ describe("원고 스캔 — 서빙되는 md만, 주석 벗기기 없이", () => 
     expect(formats().some((hit) => hit.includes("MALMOI"))).toBe(true);
   });
 
-  it("`https://…` 뒤의 홀로 선 소문자도 잡힌다", () => {
+  it("`//…` 뒤의 홀로 선 소문자도 잡힌다 — 줄 주석 벗기기를 건너뛰었다는 증거", () => {
+    const source = readFileSync(join(FIXTURE, "guide/formats.md"), "utf8");
+    expect(brandViolations(stripComments(source)).some((hit) => hit.includes("then malmoi"))).toBe(false);
     expect(formats().some((hit) => hit.includes("then malmoi"))).toBe(true);
   });
 });
