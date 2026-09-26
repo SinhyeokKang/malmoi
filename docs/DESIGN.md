@@ -489,7 +489,7 @@ computed style로 잰 것이다.
 
 - **`bg-white`** — 셸 밖 좌측 패널의 **true white** 하나뿐이다(`components/signin/auth-layout.tsx`). `--background`가 아닌 이유는 §6.62에 있다: 캔버스와의 대비가 그 화면의 골격이라 토큰이 움직여도 이 자리는 순백이어야 한다.
 - **`text-white`** — `toneFill` 위의 글자·글리프 전용이다(아바타 이니셜·목록 행 타일). tone 여덟의 짝이라 별도 색이 아니다.
-- **국기 SVG 253개**(`public/flags/`) — **우리가 고른 색이 아니다.** Google 4색(§6.8)과 같은 부류라 토큰으로 접지 않고, 인라인 `style`의 `background-image`로만 들어온다(§6.1). 이 예외를 다른 자산으로 넓히지 않는다.
+- **국기 SVG 253개**(`public/flags/` — `country-flag-icons@1.6.20` 3x2, MIT) — **우리가 고른 색이 아니다.** Google 4색(§6.8)과 같은 부류라 토큰으로 접지 않고, 인라인 `style`의 `background-image`로만 들어온다(§6.1). 이 예외를 다른 자산으로 넓히지 않는다.
 
 ### 6.25 토스트 — 피드백의 두 번째 표면 (8-1b, 2026-09-10)
 
