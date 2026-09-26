@@ -209,6 +209,7 @@ Vercel: preview 배포 진행 중 — <확인 경로>
 - **`pnpm db:deploy` 실행 금지 — 이 스킬의 일이 아니다.** 프로덕션 스키마는 `/merge` 1단계에서 사용자가 넓힌다.
 - **dev DB에 마이그레이션이 미적용인 채 푸시 금지** (preview가 없는 컬럼을 조회한다).
 - **`main`으로 푸시 금지.** 프로덕션은 `/merge`의 PR CI를 지나야 한다.
+- **`package.json`의 `version`을 바꾸지 않는다** — `/merge` 4단계 몫이다.
 - `git push --force` / `--force-with-lease`는 **사용자가 명시 요청**한 경우에만. dev는 `/sync`가 정기적으로 force update하는 브랜치라 main만큼 절대적이진 않지만, 여기서는 요청받으면 무엇이 사라지는지 보여주고 재확인한다.
 - `--no-verify`로 hook 스킵 금지.
 - `.env`·`*.pem`·크레덴셜이 staged면 경고하고 멈춤.
