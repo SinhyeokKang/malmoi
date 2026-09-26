@@ -64,7 +64,7 @@ function expiresSoon(auth: unknown): boolean {
  * 다른 리포를 읽을 수 있다 (sec-audit-3 #16). 이름이 옮겨가도 이 토큰으로는 pin 밖의 리포에 닿지 않는다 (sec-audit-2 발견 34).
  *
  * ⚠️ **App은 인자로 받는다** — 호출자가 `createApp()`을 한 번 부르고 넘긴다. 토큰 캐시가 App 인스턴스에 붙어 있어
- * 여기서 새로 만들면 호출마다 발급 왕복이 는다 (POSTMORTEM 2026-09-16 · audit-ux #8).
+ * 여기서 새로 만들면 호출마다 발급 왕복이 는다 (code-review 2026-09-07 🔴2 · audit-ux #8).
  */
 async function pinnedOctokit(app: App, installationId: string, repositoryId: string | null): Promise<{ octokit: Octokit; pinned: string }> {
   const pinned = requirePinnedRepositoryId(repositoryId);
