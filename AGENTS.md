@@ -29,7 +29,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 - **길이 상한**: 단순 질문·확인 → 3줄 이내. 작업 완료 보고엔 줄 수 상한이 없다 — 필요한 정보를 줄이면서까지 짧게 만들지 않는다. 대신 위의 재진술·꾸밈말 금지로 군더더기만 덜어낸다.
 - **미완·실패를 먼저**: 못 한 것·실패한 테스트·건너뛴 범위를 성공 요약보다 앞에 쓴다.
 - **선택지 나열 금지**: 추천 하나를 고르고 그 이유 한 줄. 사용자 결정이 필요한 지점(작업 원칙의 "가정을 명시")만 예외.
-- **예외**: 코드·커밋 메시지·PR title/body는 영문.
+- **예외**: 코드·커밋 메시지·PR title/body·GitHub Release notes는 영문.
 
 강제 장치는 2단이다: 이 섹션(두 런타임 공통 — Codex는 `AGENTS.md` 미러로 받는다)과, `.claude/settings.json`의 `UserPromptSubmit` 훅이 매 턴 **이 절의 요약**을 컨텍스트에 재주입하는 것(긴 세션에서 문서 앞쪽이 희석되는 걸 막는다). **훅은 Claude Code 전용이라 Codex 세션에선 이 섹션만 남는다.** ⚠️ **`next.config.ts`의 `agentRules: false`가 Next의 `AGENTS.md` 덧쓰기를 막는다** — 그 파일은 `scripts/sync-agents.mjs`가 소유하는 순수 생성물이라, Next가 자기 블록을 붙이면 `next dev`를 돌릴 때마다 미러 게이트(`pnpm sync:agents:check`)가 드리프트로 잡고 지우면 Next가 다시 만든다.
 
@@ -168,6 +168,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--verdicts <파일>] [--json] [--out <파일>] [--limit N] [--jobs N]` (읽기 전용, **측정 결과는 어떤 값이어도 exit 0** — 인자 오류만 2) |
 | GitHub App 스모크 | `pnpm smoke:github <project-slug>` (**읽기만** — 실 API라 `pnpm test` 밖이다) |
 | Blob 저장소 스모크 | `pnpm smoke:blob` (실 API라 `pnpm test` 밖이다. 업로드·다운로드·삭제·404를 한 바퀴 돌고 **고아 후보를 삭제 없이 목록으로만** 낸다. ⚠️ `NODE_OPTIONS=--conditions=react-server`가 붙어 있다 — PII 복호 모듈이 `server-only`라서다) |
+| 릴리스 버전 판정 | `pnpm release:plan` — **`/merge` 3단계 전용, 읽기 전용**(원격 태그·`origin/dev`·`origin/main`을 읽는다). 인자 없음. stdout JSON 한 개, exit 0 판정(`bump`/`none`) · 1 `error` 판정 · 2 인자가 주어짐 |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
 | 자격증명 cutover 마무리 | `pnpm credentials:finalize:dev` / `credentials:finalize:prod` — 봉투 재검증 + 마이그레이션 SQL 바이트 대조 + `_prisma_migrations` 체크섬 재계산. 기본 **verify-only**이고 `--apply`를 줘야 `prisma migrate deploy`까지 간다. ⚠️ **`db:deploy` 말고 prod 마이그레이션 상태를 움직일 수 있는 명령이 이것 하나 더 있다** — 실패하면 트래픽을 막은 채로 둔다 |
@@ -203,7 +204,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | pull_request `[main]` | **프로덕션 머지 게이트.** `/merge`가 이 결론을 본다 |
 | push `[main]` | 머지 뒤 확인 |
 
-**`main`에 브랜치 프로텍션이 있다**(2026-09-18 — 리포가 public이 되어 Free에서도 열렸다): required check `verify` 하나, **`enforce_admins` 켬**, strict·리뷰 요구 없음. 오너도 main을 직접 칠 수 없다 — 새 커밋은 push 시점에 `verify`가 없으므로 PR 머지만 통과한다. 관리자를 빼면 유일한 사람인 오너가 우회하므로 켜 둔 것이 요지다. `/sync`는 dev를 밀고 태그는 대상이 아니라 걸리지 않는다. **CI에서 `next build`를 돌리지 않는다** — 로컬 게이트가 이미 돌고 Vercel이 배포에서 다시 돈다.
+**`main`에 브랜치 프로텍션이 있다**(2026-09-18 — 리포가 public이 되어 Free에서도 열렸다): required check `verify` 하나, **`enforce_admins` 켬**, strict·리뷰 요구 없음. 오너도 main을 직접 칠 수 없다 — 새 커밋은 push 시점에 `verify`가 없으므로 PR 머지만 통과한다. 관리자를 빼면 유일한 사람인 오너가 우회하므로 켜 둔 것이 요지다. `/sync`는 dev를 밀고 태그는 대상이 아니라 걸리지 않는다. **태그 push는 어떤 job도 안 돌린다** — `on.push`가 `branches`만 가져 태그에 발화하지 않고 `release:` 트리거도 없다(`/merge` 9단계의 릴리스 태그가 여기 해당한다). **CI에서 `next build`를 돌리지 않는다** — 로컬 게이트가 이미 돌고 Vercel이 배포에서 다시 돈다.
 
 ## 브랜치 정책 & 배포
 
@@ -212,20 +213,29 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 브랜치 | 무엇 | 어떻게 들어가나 |
 |---|---|---|
 | `dev` | 상시 작업 브랜치. **push = Vercel preview 배포** (dev DB를 본다) | `/push` |
-| `main` | 프로덕션. **머지 = Vercel 프로덕션 배포** (`https://mal-moi.com`) | `/merge` (dev→main squash PR) |
+| `main` | 프로덕션. **머지 = Vercel 프로덕션 배포** (`https://mal-moi.com`) | `/merge` (dev→main squash PR) → `v<x.y.z>` 태그 + GitHub Release |
 
-- **GitHub default branch는 `main`이다** (2026-09-26 — 공개 리포라 방문자·기여자가 보는 브랜치가 프로덕션이어야 하고, `dev`는 `/sync`가 force push해 그 위에 뜬 fork·PR이 깨진다). ⚠️ **대상 리포의 composite action 참조는 `@malmoi-i18n-push-v1`(불변 태그)이고 `@main`이 아니다** — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 태그를 옮기는 것이 릴리스다.
+- **GitHub default branch는 `main`이다** (2026-09-26 — 공개 리포라 방문자·기여자가 보는 브랜치가 프로덕션이어야 하고, `dev`는 `/sync`가 force push해 그 위에 뜬 fork·PR이 깨진다). ⚠️ **대상 리포의 composite action 참조는 `@malmoi-i18n-push-v1`(불변 태그)이고 `@main`이 아니다** — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 그 태그를 옮기는 것이 action 릴리스다(앱 릴리스와 별개 — 아래 "릴리스 & 버전").
 - **`main`에 직접 커밋·푸시하지 않는다.**
 - **preview는 dev DB를 본다.** dev 브랜치 고정 URL은 **`https://dev.mal-moi.com`**이다(2026-09-14, Vercel 도메인을 `dev` 브랜치에 묶었다 · 가비아 CNAME). ⚠️ **로그인은 이 URL에서만 된다** — Vercel 대시보드의 "Visit"이 주는 **배포별 URL(`malmoi-<hash>-…`)은 매 푸시마다 바뀌어** OAuth에 등록할 수 없고, Auth.js가 `AUTH_URL` 없이 요청 헤더로 origin을 만들기 때문에 그 URL이 그대로 `redirect_uri`로 나가 공급자가 거부한다. **GitHub과 Google이 동시에 거부하면 그건 자격증명이 아니라 URL 문제다**(두 공급자의 공통분모는 origin뿐이다). ⚠️ **새 호스트를 늘리면 `lib/github-connect/origin.ts`의 `ALLOWED_HOSTS`도 함께 늘린다**(지금 셋 — `mal-moi.com` · `dev.mal-moi.com` · Vercel 브랜치 별칭 `malmoi-git-dev-….vercel.app`, 후자는 CNAME이 가리키는 원 주소라 남긴다) — 빠뜨리면 `requestOrigin`이 `null`을 준다 — 2026-09-14엔 그 폴백이 시작(`?? false`)과 콜백(`?? https`)에서 갈려 state 쿠키 이름이 어긋났고 증상이 **계정 병합의 "Something went wrong"**(서버 로그엔 minify된 `[auth] k` 한 줄)였다. 2026-09-18부터 병합 확인 시작이 fail-closed라 **그 호스트에서는 `/signin?error=Unavailable`로 바로 돌아간다**(launch-readiness L7.6), 2026-09-24부터는 callback 셋도 그 호스트에서 Auth.js를 부르지 않고 실패 착지로 303한다(audit #78) — 그 증상을 보면 이 목록부터 본다. ⚠️ **preview는 Vercel SSO 뒤에 있다** — `curl`로 찌르면 앱 응답이 아니라 `vercel.com/sso-api`로 가는 302가 온다(앱이 깨진 것으로 오진하기 쉽다).
 - **되돌리는 유일한 방법은 다음 배포다.** revert 커밋을 dev에 얹어 같은 경로로 보낸다.
 - **`git push --force`는 main에 금지.** dev는 `/sync`가 머지 후 force update하지만 그 스킬의 안전 검사 3개를 지나야 한다.
+
+### 릴리스 & 버전
+
+**머지마다 semver를 올린다** (2026-09-27). 정본은 `package.json`의 `version`과 원격 태그 `v<x.y.z>`다 — main 커밋 제목(`v<x.y.z>: …`)은 읽기 편의다. 절차·근거는 `.claude/commands/merge.md`가 정본이다.
+
+- **레벨은 `/merge` 3단계가 매번 묻는다** — `pnpm release:plan`의 커밋 타입 판정(`!:`·`BREAKING CHANGE` → major, `feat` → minor, 그 밖 patch)이 추천 선택지다. `skip`은 없다(머지 = 배포). 첫 릴리스는 **1.0.0 고정**(질문 없음).
+- **`version`은 `/merge` 4단계만 바꾼다.** 그 bump 커밋(`chore(release): v<x.y.z>`)이 **`/push`를 거치지 않는 유일한 dev 커밋**이다 — 볼 코드가 없고 PR CI가 그 SHA를 막는다.
+- **태그는 `gh release create --target <squash SHA>`가 서버에서 Release와 함께 만든다** — 로컬 `git tag`·draft·`--generate-notes`를 쓰지 않는다. 노트는 둘이다: PR body = 개발자용 변경 목록, Release = 사용자 체감 변화만.
+- ⚠️ **앱 태그 `v<x.y.z>`와 action 태그 `malmoi-i18n-push-vN`은 별개 축이다** — 앱 버전이 올라도 action 태그는 안 움직인다. `git describe --tags`는 action 태그를 주므로 직전 릴리스를 찾는 데 쓰지 않는다.
 
 ### 게이트가 어디에 서 있나
 
 | 게이트 | 어디 | 무엇을 막나 |
 |---|---|---|
 | `pnpm typecheck` + `test` + `build` | `/push` 1단계 (로컬) | dev·preview에 red가 나가는 것 |
-| PR `verify` 체크 | `/merge` 4단계 (GitHub) | **프로덕션에 red가 나가는 것** |
+| PR `verify` 체크 | `/merge` 7단계 (GitHub) | **프로덕션에 red가 나가는 것** |
 
 - **로컬 게이트를 "PR CI가 잡아줄 것"이라며 건너뛰지 않는다.** 그 CI는 커밋 여러 개가 쌓인 뒤에 돌아서, red가 나오면 무엇이 깼는지 특정하는 비용이 지금의 3분보다 크다.
 - **로컬 게이트가 `pnpm build`를 포함한다.** `tsc`는 RSC 경계를 못 본다 — `"use client"` 누락, 서버 컴포넌트의 클라이언트 훅, Server Action 직렬화 위반은 `next build`만 잡는다.
@@ -237,13 +247,13 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 `/feature` · `/feature-review` · `/tdd` · `/implement` · `/code-review` · `/refactor` · `/audit` · `/doc-check` · `/db` · `/push` · `/merge` · `/sync` · `/pull` · `/postmortem` · `/ship` · `/orchestrate` · `/l10n-roundtrip` · `/runtime-test` · `/design-sync` · `/guide` · `/guide-shots`
 
-**권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/design-sync`) → (`/db`) → `/push`(dev) → `/merge`(프로덕션). ⚠️ **`/design-sync`는 시안이 있는 화면을 건드렸을 때만** 끼고, `/ship`도 6.5단계에서 같은 조건으로 부른다. 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
+**권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/design-sync`) → (`/db`) → `/push`(dev) → `/merge`(프로덕션 + 릴리스). ⚠️ **`/design-sync`는 시안이 있는 화면을 건드렸을 때만** 끼고, `/ship`도 6.5단계에서 같은 조건으로 부른다. 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
 
 - **사용자 가이드(`/docs`)는 흐름 옆에 붙는다** — 사용자 노출 변경이면 `/implement` 보고의 **"가이드 영향"** 플래그나 `/push` 4단계의 **"가이드 stale 후보"** 경고(둘 다 차단 아님)를 받아 `/guide`(본문, en 단일)와 `/guide-shots`(스크린샷, ego-browser)를 부른다. 작성 규칙은 `guide/AUTHORING.md`, 촬영 규칙·매핑 표는 `guide/SHOOTING.md`가 정본이고 스킬은 그것을 로드해 실행하는 손이다.
 
 - **`/feature`가 기능의 시작점이다.** 산출물은 `docs/features/<name>/`에 `spec`·`design`·`tasks`로 남고, **기능이 끝나면 결론을 정본(PRODUCT — 제품 판정 / ARCHITECTURE — 불변식·함정 / DESIGN — 시각 규칙)으로 올리고 그 디렉터리는 지운다.** 근거 기록을 쌓아 두지 않는다 — 2026-09-13에 그렇게 쌓인 15디렉터리 14,929줄을 걷어냈고, 되살릴 일이 생기면 `git log`가 답한다.
 - **`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고 `docs/POSTMORTEM.md` 전 항목의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. 리포트 전용이라 배포 경로와 무관하다.
-- **`/sync`는 파괴적이다** — dev를 `origin/main`으로 hard reset + force push한다. 미커밋·미푸시·미머지 세 검사를 전부 통과해야 실행한다. `/merge`가 6단계에서 자동으로 하므로, 손으로 부르는 것은 그게 실패했거나 **다른 머신·창구가 머지한 뒤**다.
+- **`/sync`는 파괴적이다** — dev를 `origin/main`으로 hard reset + force push한다. 미커밋·미푸시·미머지 세 검사를 전부 통과해야 실행한다. `/merge`가 10단계에서 자동으로 하므로, 손으로 부르는 것은 그게 실패했거나 **다른 머신·창구가 머지한 뒤**다.
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정도 거기서 한다. **프로덕션 반영은 `/merge` 1단계다.**
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`.** 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
 - **`/doc-check`은 문서 전수 대조다.** `/push` 4단계가 **푸시될 diff에 걸린 문서만** 보는 것과 반대로, diff와 무관하게 문서 전문 ↔ 코드베이스를 양방향(틀린 단언 + 누락)으로 대조한다. `POSTMORTEM.md`(append-only)는 대상이 아니다.
