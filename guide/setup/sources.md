@@ -6,19 +6,21 @@ Each source is one set of translation files in your repository. Project owners c
 
 ## Open Sources {#sources}
 
-Open **Sources** from the project navigation. Each row shows whether the source has been read, whether its last workflow failed, and which languages are available.
+Open **Sources** from the project navigation. Each row shows whether the source has been read, whether its status is **Last sync failed** or **First sync failed**, and which languages are available.
 
 ## Add sources {#add-sources}
 
-1. Choose detected files or enter a supported path.
+1. Choose **Add sources**, then choose detected files or enter a supported path.
 2. Add the source. A file can fail while the other files are added, so check each result.
-3. Update the workflow in **Settings** so it has a step for the new source; adding a source does not connect the workflow automatically.
+3. Copy the new step from the result or from **Settings** into the repository's workflow file; adding a source does not edit that file automatically.
 
 ## Change the base language {#base-language}
 
-1. Declare the language that supplies the source text.
+1. Choose **Base language** and declare the language that supplies the source text.
 2. Edit the workflow's `base-locale:` value to match it.
 3. Run the workflow. If unpublished edits are waiting, the run waits until they are published or a project owner resolves them.
+
+For a manual replacement, see [Sync from the repository](../sync/revert.md#resync).
 
 ## What happens next {#next}
 

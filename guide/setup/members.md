@@ -6,15 +6,18 @@ Project owners manage invitations and membership. An invited person accepts the 
 
 ## Choose a role {#roles}
 
-Choose **Owner** only for someone who should manage the repository connection, Sources, members, archive state, Sync, or Revert. Choose **Editor** for someone who needs to edit translations and Publish. The final Owner cannot be removed or demoted.
+Choose **Owner** only for someone who should manage the repository connection, Sources, members, archive state, Sync, or **Revert to last sent**. Choose **Editor** for someone who needs to edit translations and Publish. The final Owner cannot be removed or demoted.
 
 ## Send invitations {#invite}
 
 1. Open **Members**.
-2. Enter addresses and choose a role for each row.
-3. Send the invitation email.
+2. Choose **Invite member**.
+3. Enter addresses and choose a role for each row.
+4. Send the invitations.
 
 If any address would exceed a limit, no invitations are sent. A failed email still counts toward the hourly limit.
+
+Each address appears under Pending invitations after the invitation is created.
 
 ## Manage members {#members}
 

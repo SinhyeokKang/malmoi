@@ -20,10 +20,10 @@
 | `README.md` | Malmoi | 공통 |
 | `setup/README.md` | Set up a project | 개발자 |
 | `setup/create-project.md` | Create a project | 개발자 |
-| `setup/sources.md` | Add sources | 개발자 |
 | `setup/workflow.md` | Add the workflow | 개발자 |
 | `setup/allowed-actions.md` | Allow the actions | 개발자 |
 | `setup/members.md` | Invite translators | 개발자 |
+| `setup/sources.md` | Add sources | 개발자 |
 | `setup/archive.md` | Archive a project | 개발자 |
 | `translate/README.md` | Translate | 편집자 |
 | `translate/join.md` | Join a project | 편집자 |

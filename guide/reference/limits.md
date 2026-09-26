@@ -12,4 +12,4 @@ A project can send up to 20 invitations in one hour, with no more than 20 addres
 
 ## File and translation limits {#files}
 
-Initial setup accepts up to 200 files, 2 MB per file, and 10 MB total. A repository request accepts up to 20,000 keys, 200 languages, 10,000 characters per value, and 200,000 rows. A key name can be up to 1,000 characters. A profile picture must be PNG or JPEG and no larger than 3 MB. A project name can be up to 200 characters.
+Initial setup accepts up to 200 files, 2 MB per file, and 10 MB total. A workflow run can send up to 20,000 keys, 200 languages, 10,000 characters per value, and 200,000 translations in total (keys × languages). A key name can be up to 1,000 characters. A profile picture must be PNG or JPEG and no larger than 3 MB. A project name can be up to 200 characters.

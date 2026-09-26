@@ -2,6 +2,8 @@
 
 Manage your profile, sign-in methods, GitHub connection, and active sessions in Account.
 
+Before you start: Open **Account** from the account menu.
+
 ## Update your profile {#profile}
 
 Change the name teammates see and upload a PNG or JPEG profile picture up to 3 MB. The picture is resized automatically and the original file is not kept.
@@ -17,7 +19,7 @@ The **GitHub App** connection lets you choose installations and repositories. It
 ## Sign out of sessions {#sessions}
 
 1. Choose **Sign out everywhere**.
-2. Sign in with the provider when it shows Continue to GitHub or Continue to Google.
+2. In the dialog, choose Continue to GitHub or Continue to Google, or **Confirm and sign out everywhere**, then confirm with that provider.
 
 This also signs out the device you are using.
 

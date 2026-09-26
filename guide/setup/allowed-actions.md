@@ -6,18 +6,18 @@ Before you start: Open the repository or organization **Settings**, then **Actio
 
 ## Allow the required actions {#allowed-actions}
 
-1. Choose “Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows,” then add every action below with `@*`:
+1. Choose **Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows**. GitHub shows your account or organization name in place of OWNER. Add every action below with `@*`:
 
-```text
-SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@*
-actions/checkout@*
-pnpm/action-setup@*
-actions/setup-node@*
-```
+   ```text
+   SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@*
+   actions/checkout@*
+   pnpm/action-setup@*
+   actions/setup-node@*
+   ```
 
 2. Save the policy and run the workflow again.
 
-When an action is blocked, the run stops at **Set up job** with “not allowed to be used.” The project token cannot change this GitHub policy.
+When an action is blocked, the run stops at **Set up job** with “not allowed to be used.” The push token cannot change this GitHub policy.
 
 ## What happens next {#next}
 

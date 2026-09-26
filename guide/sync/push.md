@@ -2,11 +2,11 @@
 
 Repository updates refresh your project, while unpublished edits keep automatic syncing on hold.
 
-The workflow updates the project from the repository's source files. A valid request replaces the project's translated values with the repository values. Keys that disappear from code remain stored so a later code change can bring them back.
+The workflow updates the project from the repository's source files. A successful workflow run replaces the project's translated values with the repository values. Keys that disappear from code remain stored so a later code change can bring them back.
 
-## Sync from the repository {#repository-changes}
+## Update from the repository {#repository-changes}
 
-Run the generated workflow on the base branch. The workflow checks the token, the commit, and the files. If the commit is older than the last one Malmoi read, or the files do not match the project's Sources, the run fails and nothing changes.
+Run the generated workflow on the base branch. The workflow checks the push token, the commit, and the files. If the commit is older than the last one Malmoi read, or the files do not match the project's Sources, the run fails and nothing changes.
 
 ## Keep unpublished edits {#deferred}
 
