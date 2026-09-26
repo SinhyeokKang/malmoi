@@ -2498,6 +2498,28 @@ PR 생성·머지·재push 및 60초 전체 예산 검증은 미완료다.
 - **마이그레이션 `DIRECT_URL`은 session 모드 pooler(5432).** transaction 모드 pooler(6543)는 advisory lock·DDL 세션을 못 잡아 마이그레이션이 실패한다. 직결 `db.<ref>.supabase.co`는 IPv6 전용이라 쓰지 않는다 (CLAUDE.md 스택 표).
 - **배포 순서는 additive-first.** 스키마를 먼저 넓히고(`db:deploy`) 코드를 배포한다. 컬럼 삭제·타입 변경은 코드 배포 후 별도 마이그레이션. 순서를 어기면 배포 순간 프로덕션이 없는 컬럼을 조회한다.
 
+### 데이터 API 롤 — 스키마 USAGE로 닫는다, default ACL은 남는다 (2026-09-27, sec-audit-3 #2·#3)
+
+**Supabase 데이터 API 롤(`anon`·`authenticated`)의 `public` USAGE·CREATE를 마이그레이션이 걷는다**
+(`20260926175555_revoke_public_schema_usage_from_api_roles`). 2026-09-09 조치(§0 불변식 5 · CLAUDE.md)는 테이블 GRANT와 `postgres` 소유
+default ACL을 지웠지만 **`supabase_admin` 소유 default ACL 3행(테이블·시퀀스·함수 → 두 롤 전 권한)은 `postgres`로 못 지워 남는다** —
+대시보드로 만든 테이블은 두 롤에 열린 채 태어난다. 스키마 USAGE가 없으면 그 GRANT가 있어도 **이름 해석 단계에서 막힌다.**
+default ACL을 지우지 않고 닫는 층이라, 테이블 GRANT 0건 검사는 탐지 신호로 남고 방어는 USAGE가 든다.
+
+- **롤 존재를 조건으로 건다(DO 블록).** 격리 PostgreSQL(`test:projects:postgres`)과 Prisma shadow DB에는 Supabase 롤이 없다 —
+  `lib/__tests__/schema-usage.integration.ts`가 롤 없는 DB의 적용 성공과 롤 있는 DB의 직접 GRANT 회수를 둘 다 잰다.
+- ⚠️ **`PUBLIC`의 USAGE는 건드리지 않는다 — 두 롤은 그것도 상속한다.** `public`의 `nspacl`에 `=U/…`가 있으면 마이그레이션 뒤에도
+  `has_schema_privilege`가 `true`다(같은 테스트가 이 갈래를 고정한다). 그때 `REVOKE USAGE ON SCHEMA public FROM PUBLIC`은 `postgres`·`service_role`
+  밖 롤 전체에 걸리므로, 런타임 롤 `postgres`가 스키마 소유자라 무관함을 확인하고 **따로** 정한다 — 판정 입력은 prod 반영 뒤 재조회다.
+- ⚠️ **dev와 prod의 권한 이력이 다르다.** 감사 시점에 dev는 USAGE부터 없었고 prod는 있었다 — dev 확인은 prod에 대해 아무것도 증명하지 않는다.
+  그래서 `/db` 5단계가 **두 DB 모두** 아래를 요구한다(네 칸 전부 `false`):
+
+  ```sql
+  SELECT r, has_schema_privilege(r, 'public', 'USAGE') AS usage, has_schema_privilege(r, 'public', 'CREATE') AS create
+  FROM unnest(ARRAY['anon','authenticated']) AS r;
+  ```
+- 스키마 모양은 안 바뀐다(권한만) — additive로 분류하고 코드와 배포 순서 제약이 없다. RLS·최소권한 런타임 롤 이관은 이 조치의 범위가 아니다(CLAUDE.md).
+
 ## 8. Vercel
 
 - ⚠️ **함수는 DB 옆(`hnd1`)에서 돈다 — 기본값이 아니라 `vercel.json`이 정한다** (2026-09-09). `regions`를
