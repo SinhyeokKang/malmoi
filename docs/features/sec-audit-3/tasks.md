@@ -61,8 +61,8 @@
 
 ## 5. ⚪ Server Action·CLI 경계 (#6·#7·#8·#10)
 
-- [ ] **T5.1** #6 `deleteProjectImage` slug 스키마 검증 + 테스트(비문자열 → `{ok:false}`). — 검증: green.
-- [ ] **T5.2** #7 `startGithubConnect` 보관 거부 + 테스트. — 검증: green.
+- [x] **T5.1** #6 `deleteProjectImage` slug 스키마 검증 + 테스트(비문자열 → `{ok:false}`). — 검증: green.
+- [x] **T5.2** #7 `startGithubConnect` 보관 거부 + 테스트. — 검증: green.
   `[C] fix(settings): validate slug and refuse GitHub connect on archived projects`
 - [ ] **T5.3** #8 초대 수락: 멤버 조회를 트랜잭션 안으로, P2002 → `already-member`. — 검증: 단위 green + `pnpm test:projects:postgres`에 동시 수락 케이스 추가 green.
   `[C] fix(invite): report already-member for concurrent acceptance`
@@ -71,16 +71,16 @@
 
 ## 6. ⚪ 서명·토큰 (#13·#14·#16·#17·#18)
 
-- [ ] **T6.1** #13 `/tdd` 샘플 확인 `issuedAt`·TTL·`v2` 라벨(만료·미래 시각·옛 라벨 거부). → 구현 → 호출처 `now` 전달. — 검증: green.
-- [ ] **T6.2** #14 `APP_SIGNING_SECRET`: `lib/env.ts` 경유, 호출처 5곳 교체, `.env.example`. — 검증: `rg 'requireEnv\("AUTH_SECRET"\)' app lib` 0건(Auth.js 자체 제외), 최상위 평가 0.
+- [x] **T6.1** #13 `/tdd` 샘플 확인 `issuedAt`·TTL·`v2` 라벨(만료·미래 시각·옛 라벨 거부). → 구현 → 호출처 `now` 전달. — 검증: green.
+- [x] **T6.2** #14 `APP_SIGNING_SECRET`: `lib/env.ts` 경유, 호출처 5곳 교체, `.env.example`. — 검증: `rg 'requireEnv\("AUTH_SECRET"\)' app lib` 0건(Auth.js 자체 제외), 최상위 평가 0.
   `[C] feat(auth): sign connect state and sample confirmation with a dedicated key`
 - [x] **T6.3** (사람) `.env.local` 두 머신 + Vercel 3환경 `APP_SIGNING_SECRET` 등록, `vercel env ls` 시각 확인(CLAUDE.md `--force` 함정). — 검증: 목록에 3환경.
-- [ ] **T6.4** #16 `listBranches`·`openRepoReader`에 `repositoryId` 스코프. 온보딩 호출처는 probe id. — 검증: 단위 green, `pnpm smoke:github <slug>` 통과(읽기 전용, 사람이 실행).
+- [x] **T6.4** #16 `listBranches`·`openRepoReader`에 `repositoryId` 스코프. 온보딩 호출처는 probe id. — 검증: 단위 green, `pnpm smoke:github <slug>` 통과(읽기 전용, 사람이 실행).
   `[C] fix(github): pin read tokens to the repository id`
 - [x] **T6.5** #17 push `refs.path` refine + `buildPermalink` 불량 행 null. — 검증: green.
 - [x] **T6.6** #18 `/tdd` `jsonWithinBounds` → push `placeholders` refine. — 검증: 깊이 9 / 16KB 초과 400, 크롬 정상 블록 통과.
   `[C] fix(push): bound refs paths and placeholder payloads`
-- [ ] **T6.7** OPERATIONS(서명 키 회전)·CLAUDE.md(서명 키 한 줄)·ARCHITECTURE §6. — 검증: 문서 반영.
+- [x] **T6.7** OPERATIONS(서명 키 회전)·CLAUDE.md(서명 키 한 줄)·ARCHITECTURE §6. — 검증: 문서 반영.
 
 ## 7. ⚪ 초대 한도 (#15)
 
