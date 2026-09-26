@@ -1122,9 +1122,14 @@ push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙
 통과했고, `pathTemplate: "{locale}.json"`과 만나면 설치 토큰이 **리포에 실재하는** `package.json`을
 재생성해 sync 브랜치에 커밋했다(`..`도 새 파일도 필요 없다). 그래서 로케일 코드는 `isPathSafeLocale`
 **과** `isLocaleShaped`를 둘 다 지난다 — 같은 잎의 **별개 함수**다(축이 "경로에 넣어도 되나" vs
-"로케일인가"로 다르다). 규칙: 첫 서브태그 **ASCII 영문자 2~3자**, 이후 `[-_]` + 영숫자 1~8자 0개 이상,
-전체 ≤ 35. `en`·`pt_BR`·`zh-Hant-TW`·`es-419`·`sr-Latn`·`fil`·`en-GB-oxendict`는 지나고 `package`·
-`index`·`README`·`config`·`action`·`en--US`는 거부된다. prod `Locale.code` distinct(`en fr ko`)는 전부
+"로케일인가"로 다르다). 규칙: 첫 서브태그가 **ASCII 영문자 2~3자** 또는 **camelCase `[a-z]{2}[A-Z]{2}`**
+(`koKR`·`enUS` — 탐지가 naive-ui 때문에 받는 모양, 2026-09-02), 이후 `[-_]` + 영숫자 1~8자 0개 이상, 전체 ≤ 35.
+`en`·`pt_BR`·`zh-Hant-TW`·`es-419`·`sr-Latn`·`fil`·`en-GB-oxendict`·`koKR`는 지나고 `package`·
+`index`·`README`·`config`·`action`·`en--US`는 거부된다. ⚠️ **탐지가 받는 이름은 전부 이 규칙을 지나야 한다** —
+안 그러면 탐지를 지난 리포가 첫 적재의 `PushPayload.safeParse`에서 엉뚱한 문구로 죽고 저장된 행은 야간 pull을
+`unknown`으로 멈춘다. `lib/__tests__/locale-code.test.ts`가 `looksLikeLocale`의 규칙에서 이름을 **생성해**
+`looksLikeLocale ⊂ isLocaleShaped`를 잰다(손으로 고른 목록이 아니다). 온보딩·Add surface Action의 로케일 입력
+(`loadCandidateSample`·`confirmManualFormat`·`addSurfaces`)도 같은 둘을 요구해 **입력 오류**로 거부한다. prod `Locale.code` distinct(`en fr ko`)는 전부
 통과했다(배포 전 확인, 2026-09-27).
 - ⚠️ **3글자 단어는 못 막는다** — `app.json`·`api.yml`은 모양이 로케일과 같다. (b)는 심층 방어이고
   근본은 토큰을 받는 사람이 이미 리포에 쓸 수 있어야 한다는 §6.4의 넷째 조건이다.
@@ -1134,8 +1139,10 @@ push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙
 
 **`refs[].path`도 같은 부류다** (sec-audit-3 발견 17) — 저장된 값이 permalink가 되고, `..`는
 `encodeURIComponent`를 그대로 지나 브라우저가 정규화하므로 github.com의 **다른 경로**를 가리킨다. push
-스키마가 `isPathSafeRepoPath`로 거부하고, `buildPermalink`(`lib/keys/view.ts`)는 경계 전에 저장된 행에
-`null`을 돌려준다(링크 없이 경로만 보인다).
+스키마가 `isPathSafeRepoPath`를 못 지나는 ref를 **버리고**(거부가 아니다), `buildPermalink`(`lib/keys/view.ts`)는
+경계 전에 저장된 행에 `null`을 돌려준다(링크 없이 경로만 보인다).
+- ⚠️ **400이 아니라 버리는 이유**: refs는 스캔 결과이고 **스캔 실패로 적재를 막지 않는다** — 200자를 넘는 경로나
+  Windows 경로 하나로 push 전체가 400이면 남의 리포 CI를 우리 규칙으로 실패시킨다(fix r1 — 지휘자 결정).
 
 **방어가 두 층인 것이 요지다.** 스키마 경계(`lib/push/plan.ts`)는 새 값이 저장되는 것을 막고,
 `resolveLocalePaths`(`lib/pull/plan.ts`)는 **경계가 서기 전에 저장된 행**을 막는다 — 야간 cron이 읽는
@@ -2318,15 +2325,19 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - ⚠️ **`permissions`가 응답에 없으면(`push: null`) 거부가 아니라 `unavailable`이다** — 모르는 것을
   "권한 없음"으로 말하지 않는다(POSTMORTEM 2026-09-03).
 - 걸리는 자리: `checkRepoAccess`(온보딩 탐지·브랜치·샘플·수동 확정·**생성** · **Add surface**)와
-  설정의 `connectRepository`(**Reconnect**). 온보딩은 첫 단계(탐지)에서 이미 거부된다.
+  설정의 `connectRepository`(**Reconnect**), 설정의 **`rotatePushToken`**(결정 I — 아래). 온보딩의 첫 거부는
+  ① 리포 선택 직후의 브랜치 목록(`listRepoBranches`)에서 난다 — 탐지보다 앞이다.
 - ⚠️ **재적재(Sync)는 걸지 않는다** — `planRepoConnect`의 `requirePush`가 **기본값 없는 필수 인자**이고
-  Sync만 `false`다. 리포를 읽어 DB에 넣을 뿐이라 쓰기 권한의 상승이 아니고, 쓰기 권한 없이 초대된 OWNER
-  (아래 잔여)가 거기서 막히면 회귀다.
+  Sync만 `false`다. 리포를 읽어 DB에 넣을 뿐이라 쓰기 권한의 상승이 아니고, 쓰기 권한 없이 초대된 OWNER가
+  거기서 막히면 회귀다.
 - **소급하지 않는다** — 생성 당시 권한을 알 수 없다. 기존 프로젝트는 다음 Reconnect부터 걸린다(로케일
   모양 검사가 기존 행을 덮는다).
-- ⚠️ **잔여: 초대된 OWNER.** OWNER로 초대된 사람은 리포 쓰기 권한 없이 push 토큰을 회전할 수 있다
-  (`rotatePushToken`은 `project:settings`만 본다). 쓰기 권한자가 OWNER로 초대해 **위임한 것**으로 보고
-  받아들인다.
+- **토큰 회전도 쓰기 권한을 요구한다** (결정 I, 2026-09-27 사용자). 처음엔 "쓰기 권한자가 OWNER로 초대해
+  위임한 것"으로 잔여를 받아들였는데, 그러면 읽기 전용 OWNER가 토큰을 받아 `locales:["en","app"]`으로
+  `app.json`을 재생성할 수 있다(3글자라 모양 검사가 못 막는다) — 1a가 닫은 격차가 이 경로로 다시 열린다.
+  `rotatePushToken`은 보관 판정 뒤 `checkRepoAccess(…, true)`를 지나고, 확인한 리포 id가 고정된
+  `Project.repositoryId`와 다르면 `repo-forbidden`, 연결이 없으면(`installationId`·`repositoryId` null)
+  `repo-not-installed`다 — 전부 값이고 500이 아니다. 설정 패널이 `ConnectError` 문구도 읽는다.
 - ⚠️ 연결 가능한 리포 목록(`listConnectableRepos`)은 읽기 전용 리포를 **거르지 않는다** — 고르면 탐지가
   `repo-read-only` 문구로 답한다.
 
