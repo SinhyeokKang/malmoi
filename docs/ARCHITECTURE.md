@@ -1108,14 +1108,34 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 
 ⚠️ **`..`가 필요 없다.** `pathTemplate: "{locale}"` + `locales: [".github/workflows/pwn"]`이면 그 경로가
 그대로 나가고, `malmoi-i18n/sync-<slug>` 브랜치 push가 그 워크플로를 **대상 리포의 secret과 함께** 실행시킨다
-(`[skip-malmoi-i18n]`은 우리 push 루프만 막는다). 권한 격차가 이 항목의 무게다 — `planRepoConnect`는 설치
-목록에 리포가 보이는 것만 요구하므로 **읽기 전용 협력자**가 프로젝트를 만들어 토큰을 받는다.
+(`[skip-malmoi-i18n]`은 우리 push 루프만 막는다). 권한 격차가 이 항목의 무게다 — 2026-09-27까지
+`planRepoConnect`는 설치 목록에 리포가 보이는 것만 요구해서 **읽기 전용 협력자**가 프로젝트를 만들어 토큰을
+받았다. 지금은 **리포 쓰기 권한**을 요구한다(§6.4 `repo-read-only` — sec-audit-3 발견 1a).
 
 판정은 `lib/locale-code.ts`의 `isPathSafeLocale`·`isPathSafeRepoPath`이고 **import가 0인 잎**이다 —
 push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙을 쓴다. ⚠️ **`looksLikeLocale`을
 재사용하지 않는다**: 그것은 *탐지* 규칙이라 "우연히 로케일로 보이는 디렉터리인가"를 묻고 2~3자
 소문자를 받는데, 여기 축은 "경로에 넣어도 되는가"다. 그 함수가 `lib/adapters/**`에 있어 재측정
 트리거가 붙는 것도 이유의 하나다.
+
+**경로 안전만으로는 모자랐다** (2026-09-27, sec-audit-3 발견 1b). `package`는 안전한 경로 조각이라
+통과했고, `pathTemplate: "{locale}.json"`과 만나면 설치 토큰이 **리포에 실재하는** `package.json`을
+재생성해 sync 브랜치에 커밋했다(`..`도 새 파일도 필요 없다). 그래서 로케일 코드는 `isPathSafeLocale`
+**과** `isLocaleShaped`를 둘 다 지난다 — 같은 잎의 **별개 함수**다(축이 "경로에 넣어도 되나" vs
+"로케일인가"로 다르다). 규칙: 첫 서브태그 **ASCII 영문자 2~3자**, 이후 `[-_]` + 영숫자 1~8자 0개 이상,
+전체 ≤ 35. `en`·`pt_BR`·`zh-Hant-TW`·`es-419`·`sr-Latn`·`fil`·`en-GB-oxendict`는 지나고 `package`·
+`index`·`README`·`config`·`action`·`en--US`는 거부된다. prod `Locale.code` distinct(`en fr ko`)는 전부
+통과했다(배포 전 확인, 2026-09-27).
+- ⚠️ **3글자 단어는 못 막는다** — `app.json`·`api.yml`은 모양이 로케일과 같다. (b)는 심층 방어이고
+  근본은 토큰을 받는 사람이 이미 리포에 쓸 수 있어야 한다는 §6.4의 넷째 조건이다.
+- 거는 자리는 아래 두 층과 같다: push 스키마 `LocaleCode`(`locales[]`·`translations[].locale`·
+  `baseLocale` 전부)와 `resolveLocalePaths`의 per-locale 갈래(`stored locale code is not locale-shaped`
+  — 코드를 안 드는 `fail(` 자리, `lib/pull/__tests__/error-codes.test.ts`에 등재).
+
+**`refs[].path`도 같은 부류다** (sec-audit-3 발견 17) — 저장된 값이 permalink가 되고, `..`는
+`encodeURIComponent`를 그대로 지나 브라우저가 정규화하므로 github.com의 **다른 경로**를 가리킨다. push
+스키마가 `isPathSafeRepoPath`로 거부하고, `buildPermalink`(`lib/keys/view.ts`)는 경계 전에 저장된 행에
+`null`을 돌려준다(링크 없이 경로만 보인다).
 
 **방어가 두 층인 것이 요지다.** 스키마 경계(`lib/push/plan.ts`)는 새 값이 저장되는 것을 막고,
 `resolveLocalePaths`(`lib/pull/plan.ts`)는 **경계가 서기 전에 저장된 행**을 막는다 — 야간 cron이 읽는
@@ -1131,8 +1151,11 @@ push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙
 코드 구문 검사는 완전한 CPU 격리가 아니다. Action은 예산 초과를 `resource-limit`으로 표시한다.
 
 크기 상한(발견 10)은 같은 자리에 있다 — 키 20,000 · 로케일 200 · 문자열 10,000자 · 행 200,000이고
-근거는 실측이다(prod 최대 903키 · `Translation` 12,783행 — **20배 여유**). ⚠️ **`placeholders`엔 안
-건다**: `z.unknown()`으로 두는 것이 계약이고, 상한은 개수·길이 축에서만 건다.
+근거는 실측이다(prod 최대 903키 · `Translation` 12,783행 — **20배 여유**). ⚠️ **`placeholders`는 모양을
+검사하지 않는다**: `z.unknown()`이 계약이다. 대신 **자원 상한**만 건다(2026-09-27, sec-audit-3 발견 18 —
+`lib/push/json-bounds.ts`의 `jsonWithinBounds`, 깊이 8 · 직렬화 16KB). 크롬 블록은 깊이 2라 상한과 멀고,
+상한이 없던 동안 깊게 중첩된 JSON이 저장·렌더 재귀를 넘길 수 있었다. 깊이는 **반복으로** 잰다 —
+재귀로 재면 재려는 값이 곧 스택을 넘기는 입력이다.
 
 ### 5.5.1 pooler가 구현을 규정한다
 
@@ -2278,11 +2301,31 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 "이 사용자가 이 리포로 무엇을 해도 되는가"를 **한 함수가** 답한다. 4단계가 만들고 **5단계의 프로젝트
 생성 경로가 그대로 재사용한다** — 재사용이 목적이라 애초에 `Project` 행을 모르는 순수 함수다.
 
-셋을 각각 다른 갈래로 낸다: 사용자가 그 **설치**를 못 보면 `installation-forbidden`, 그 **리포**를 못
-보면 `repo-forbidden`, App이 그 리포에 **설치되지 않았으면** `repo-not-installed`. HTTP 실패는
+각각 다른 갈래로 낸다: 사용자가 그 **설치**를 못 보면 `installation-forbidden`, 그 **리포**를 못
+보면 `repo-forbidden`, App이 그 리포에 **설치되지 않았으면** `repo-not-installed`, 리포는 보이는데 **쓰기
+권한이 없으면** `repo-read-only`. HTTP 실패는
 `unavailable`로 접고 로그에는 고정 단계·ref·HTTP 상태만 남긴다. ⚠️ **세 갈래를 하나로 접지 않는 이유는 화면 문구가
 아니라 판정이다** — "권한이 없다"와 "설치가 없다"는 사용자가 할 일이 다르다(관리자에게 요청 vs 설치
 목록에 리포 추가).
+
+**넷째 조건 — 리포 쓰기 권한** (2026-09-27, sec-audit-3 발견 1a). 생성자는 push 토큰을 받고, 그 토큰의
+페이로드가 정한 로케일·경로가 **설치 토큰의 커밋**이 된다(§5.5.05). 읽기 전용 협력자가 만들면 가진 적 없는
+쓰기 권한을 빌리는 것이고, 이미 쓸 수 있는 사람이면 sync 브랜치에 무엇이 커밋되든 상승이 아니다 — 그래서
+이것이 근본 방어이고 로케일 모양 검사는 심층 방어다.
+- 근거는 `GET /user/installations/{id}/repositories` 각 항목의 `permissions.push`(**로그인 사용자 기준**)다 —
+  리포 목록과 같은 응답이라 **추가 호출이 0**이고 여전히 GET만이다(`credential-separation.test.ts` 불변).
+  `listInstallationRepos`가 `{ fullName, pushedAt, push }`를 준다.
+- ⚠️ **`permissions`가 응답에 없으면(`push: null`) 거부가 아니라 `unavailable`이다** — 모르는 것을
+  "권한 없음"으로 말하지 않는다(POSTMORTEM 2026-09-03).
+- 걸리는 자리: `checkRepoAccess`(온보딩 탐지·브랜치·샘플·수동 확정·**생성** · 재적재 · **Add surface**)와
+  설정의 `connectRepository`(**Reconnect**). 온보딩은 첫 단계(탐지)에서 이미 거부된다.
+- **소급하지 않는다** — 생성 당시 권한을 알 수 없다. 기존 프로젝트는 다음 Reconnect부터 걸린다(로케일
+  모양 검사가 기존 행을 덮는다).
+- ⚠️ **잔여: 초대된 OWNER.** OWNER로 초대된 사람은 리포 쓰기 권한 없이 push 토큰을 회전할 수 있다
+  (`rotatePushToken`은 `project:settings`만 본다). 쓰기 권한자가 OWNER로 초대해 **위임한 것**으로 보고
+  받아들인다.
+- ⚠️ 연결 가능한 리포 목록(`listConnectableRepos`)은 읽기 전용 리포를 **거르지 않는다** — 고르면 탐지가
+  `repo-read-only` 문구로 답한다.
 
 #### 사용자 토큰 회전은 **조건부 쓰기**다 (`token-store.ts`)
 
