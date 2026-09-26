@@ -2,7 +2,7 @@ import { fail } from "@/lib/failure";
 import { compareKeys, isAdapterName, matchGlobPaths } from "@/lib/adapters";
 import type { Adapter, AdapterError, DetectedFormat, LocaleEntry } from "@/lib/adapters";
 import { blobSha } from "@/lib/githash";
-import { isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
+import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
 
 /**
  * pull의 판정 전부. **I/O가 없다** — GitHub 호출과 DB 조회는 껍데기(`lib/pull/run.ts`)가 맡고
@@ -131,6 +131,10 @@ export function resolveLocalePaths(
       // 야간 cron은 그 행을 읽어 **설치 토큰으로** 커밋한다. 경계 하나로는 이 경로가 안 닫힌다.
       if (!isPathSafeLocale(locale)) {
         fail(`unsafe locale code for a repo path: ${locale}`);
+      }
+      // 경로로 안전해도 로케일이 아니면 리포의 기존 파일을 겨눈다(`package` → `package.json`, sec-audit-3 1b).
+      if (!isLocaleShaped(locale)) {
+        fail(`stored locale code is not locale-shaped: ${locale}`);
       }
       const path = format.pathTemplate.replaceAll("{locale}", locale);
       // 트리에 없는 파일을 만드는 것은 유지하고, **템플릿의 디렉터리 밖으로 나가는 것만** 막는다.

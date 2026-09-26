@@ -36,6 +36,31 @@ export function isPathSafeLocale(code: string): boolean {
   return LOCALE_HEAD.test(code.slice(0, 1));
 }
 
+/** 첫 서브태그 — ISO 639 언어 코드는 영문자 2~3자다. `package`·`README` 같은 파일명 단어가 여기서 걸린다. */
+const LANGUAGE_SUBTAG = /^[A-Za-z]{2,3}$/;
+/** 이후 서브태그 — BCP 47의 스크립트·지역·변이(`Hant`·`419`·`oxendict`)는 8자를 넘지 않는다. */
+const LATER_SUBTAG = /^[A-Za-z0-9]{1,8}$/;
+
+/**
+ * 이 코드가 **로케일처럼 생겼는가** (sec-audit-3 발견 1b).
+ *
+ * `isPathSafeLocale`은 "경로에 넣어도 되나"만 봐서 `package`가 통과했고, `{locale}.json` 템플릿과 만나면
+ * 설치 토큰이 **리포에 실재하는** `package.json`을 재생성했다. 축이 다르므로 합치지 않고, 두 경계(push
+ * 스키마·`resolveLocalePaths`)가 **둘 다** 요구한다.
+ *
+ * ⚠️ **심층 방어다, 근본이 아니다** — 3글자 단어(`app`·`api`)는 모양이 로케일과 같아 못 막는다. 근본은
+ * 토큰을 받는 사람이 리포 쓰기 권한을 가졌는가(`planRepoConnect`의 `repo-read-only`)다.
+ *
+ * 문자 검사를 먼저 해서 서브태그 안에 개행이 없음을 보장한다 — 그래서 아래 앵커가 엔진에 무관하다.
+ */
+export function isLocaleShaped(code: string): boolean {
+  if (code.length === 0 || code.length > MAX_LOCALE_CODE_LENGTH) return false;
+  if (UNSAFE_LOCALE_CHAR.test(code)) return false;
+  const [language, ...rest] = code.split(/[-_]/);
+  if (language === undefined || !LANGUAGE_SUBTAG.test(language)) return false;
+  return rest.every((subtag) => LATER_SUBTAG.test(subtag));
+}
+
 /**
  * 이 경로가 리포 안에 머무는가 — 템플릿(`{locale}`·`*` 포함)과 치환 결과 **둘 다**에 건다.
  *

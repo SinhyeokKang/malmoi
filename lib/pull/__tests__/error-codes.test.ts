@@ -38,7 +38,7 @@ const CODED: ReadonlyArray<readonly [needle: string, code: string]> = [
  * - `unreachable:` — 불변식 위반이라 사용자에게 보일 원인이 없다. `unknown`이 정직하다.
  * - `Project.*은 비어 있다`·`unknown adapter`·`no locales` — 첫 적재 전 상태이고 readiness 게이트가
  *   이미 막는다(`planProjectReadiness`). 여기 닿으면 그것 자체가 결함이다.
- * - 경로 안전 셋 — `lib/locale-code.ts`가 경계에서 이미 거른 값이 DB에 있다는 뜻이라 같은 부류다.
+ * - 경로 안전 넷 — `lib/locale-code.ts`가 경계에서 이미 거른 값이 DB에 있다는 뜻이라 같은 부류다.
  * - `git branch name` — slug는 프로젝트 생성 때 `isRefSafeSlug`를 지난다.
  */
 const UNCODED: readonly string[] = [
@@ -51,6 +51,7 @@ const UNCODED: readonly string[] = [
   "no locales (there are no files to write)",
   "per-locale layout but pathTemplate has no",
   "unsafe locale code for a repo path",
+  "stored locale code is not locale-shaped",
   "the resolved path leaves the repository",
   "project slug is not usable as a git branch name",
 ];

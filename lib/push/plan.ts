@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { compareKeys, exceedsGlobBudget } from "@/lib/adapters/shared";
-import { isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
+import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
 
 import { ADAPTERS, namespaceOf } from "@/lib/adapters/index";
 import type { AdapterName } from "@/lib/adapters/types";
@@ -47,10 +47,18 @@ const MAX_ROWS = 200_000;
  * 로케일 코드는 **파일명 한 조각**이다 (sec-audit 발견 2). `applyPush`가 이 값을 그대로 저장하고
  * 야간 pull이 `pathTemplate`에 보간해 **설치 토큰으로** 커밋하므로, 검증이 없으면 push 토큰 하나가
  * 리포의 임의 파일에 쓰는 원시체가 된다 — `.github/workflows/pwn`은 `..` 없이도 성립한다.
+ *
+ * 경로 안전만으로는 모자랐다 (sec-audit-3 1b) — `package`는 안전한 조각이고 `{locale}.json`과 만나면
+ * 리포에 **실재하는** `package.json`을 덮는다. 그래서 로케일 모양도 함께 요구한다.
  */
-const LocaleCode = z.string().refine(isPathSafeLocale, {
-  message: "locale code must be a safe path segment (letters, digits, - and _)",
-});
+const LocaleCode = z
+  .string()
+  .refine(isPathSafeLocale, {
+    message: "locale code must be a safe path segment (letters, digits, - and _)",
+  })
+  .refine(isLocaleShaped, {
+    message: "locale code must look like a locale (2-3 letter language subtag, then - or _ subtags of up to 8 characters)",
+  });
 
 const Format = z.object({
   adapter: z.enum(ADAPTER_NAMES),
