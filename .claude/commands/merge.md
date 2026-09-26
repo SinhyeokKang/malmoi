@@ -58,7 +58,7 @@ stdout은 JSON 한 개다(`scripts/release-plan.ts` — 판정은 `scripts/relea
 
 | 출력 | 할 일 |
 |---|---|
-| exit 1 · `error: "unreleased-on-main"` | **중단.** 직전 `/merge`의 9단계가 실패해 main의 `version`에 태그가 없다. 그 Release를 먼저 만든다(9단계 명령, `--target`은 그 버전의 squash SHA). 같은 번호를 다시 쓰지 않으려는 판정이다 |
+| exit 1 · `error: "unreleased-on-main"` | **중단.** 직전 `/merge`의 9단계가 실패해 main의 `version`에 태그가 없다. 그 Release를 먼저 만든다(9단계 명령. `--target`은 그 버전의 squash SHA — `git log origin/main --format=%H --grep "^v<version>: " -1`). 같은 번호를 다시 쓰지 않으려는 판정이다 |
 | exit 1 · `nothing-to-release` | **중단.** 머지할 커밋이 없다 |
 | exit 1 · `invalid-version` · `behind-last-tag` | **중단 + 리포트.** 누군가 `version`을 손으로 바꿨다 — 4단계 밖에서 바뀌면 안 되는 값이다 |
 | `action: "bump"` · `seed: true` | **묻지 않는다.** 첫 릴리스이고 `candidates`가 셋 다 `1.0.0`이다 |
