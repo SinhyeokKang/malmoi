@@ -179,3 +179,8 @@ by one person, and that's the language it was thought in.
 *Malmoi* (말모이, "gathering words") was the 1910s project to
 compile the first Korean dictionary — many people collecting scattered words
 into one book.
+
+## License
+
+[MIT](LICENSE). Country flags in `public/flags/` are from
+[country-flag-icons](https://gitlab.com/catamphetamine/country-flag-icons) (MIT).
