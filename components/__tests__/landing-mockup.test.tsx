@@ -171,3 +171,44 @@ describe("목업 소스 — 문구는 사전을 지난다", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * ⚠️ **위 그물은 목업 디렉터리만 본다** — 스테이지·랜딩 페이지·공개 셸·`/privacy` 그릇은 `no-korean-ui`(한글)만 걸려,
+ * 영문 리터럴이 사전을 건너뛰어도 green이었다(POSTMORTEM 2026-09-20 "규칙의 그물이 원래 화면에만 있었다").
+ * prop은 **문구를 싣는 이름**만 본다 — `target`·`rel`·`variant` 같은 코드 값은 목업 쪽 열거형 목록보다 넓다.
+ */
+describe("공개 화면 소스 — 문구는 사전을 지난다", () => {
+  const FILES = [
+    "app/page.tsx",
+    "app/privacy/page.tsx",
+    "components/landing/stage.tsx",
+    "components/public-doc-table.tsx",
+    "components/privacy/privacy-doc.tsx",
+    "components/privacy/toc.tsx",
+    ...readdirSync(join(process.cwd(), "components/public-shell"))
+      .filter((name) => name.endsWith(".tsx"))
+      .map((name) => `components/public-shell/${name}`),
+  ];
+  const bare = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+  const read = (file: string) => bare(readFileSync(join(process.cwd(), file), "utf8"));
+  const TEXT_PROPS = ["aria-label", "aria-description", "aria-valuetext", "title", "alt", "placeholder"];
+
+  it("파일을 실제로 읽었다", () => {
+    expect(FILES.filter((file) => file.startsWith("components/public-shell/")).length).toBeGreaterThan(1);
+    expect(FILES.every((file) => read(file).length > 0)).toBe(true);
+  });
+
+  it("JSX 텍스트 노드에 글자가 없다", () => {
+    const offenders = FILES.flatMap((file) => [...read(file).matchAll(/(?<![=-])>\s*[A-Za-z][^<{]*</g)].map((match) => `${file}: ${match[0]}`));
+    expect(offenders).toEqual([]);
+  });
+
+  it("문구를 싣는 prop에 리터럴이 없다", () => {
+    const offenders = FILES.flatMap((file) =>
+      [...read(file).matchAll(/\s([a-zA-Z][\w-]*)="[^"]*[A-Za-z][^"]*"/g)]
+        .filter((match) => TEXT_PROPS.includes(match[1] ?? ""))
+        .map((match) => `${file}: ${match[0].trim()}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+});

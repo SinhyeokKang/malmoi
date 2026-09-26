@@ -51,7 +51,10 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     expect(container.querySelector("[aria-label='How Malmoi works']")).not.toBeNull();
 
     // 섹션마다 이름이 있다(POSTMORTEM 2026-09-15) — 히어로·CTA는 자기 제목으로.
-    for (const section of container.querySelectorAll("section")) {
+    // ⚠️ 개수를 먼저 센다 — 섹션이 `<div>`로 바뀌면 아래 루프가 0번 돌고 green이다(POSTMORTEM 2026-09-14).
+    const sections = container.querySelectorAll("section");
+    expect(sections).toHaveLength(3);
+    for (const section of sections) {
       const named = section.hasAttribute("aria-label") || (section.getAttribute("aria-labelledby") ?? "") !== "";
       expect(named).toBe(true);
       const labelledBy = section.getAttribute("aria-labelledby");
