@@ -98,3 +98,4 @@
 - **파일 소유**: CLAUDE.md·README = G4만 · DESIGN·PRODUCT·DIRECTORY = G3만(G4 몫 DIRECTORY 줄은 지휘자가 얹는다) · `messages/en.tsx` = G3만 · `guide/**` = G2 → G5 직렬.
 - **G5는 main 체크아웃에서 로컬 커밋**(push 없음) — 그동안 지휘자는 cherry-pick·build를 멈춘다.
 - **G2(본문)는 Codex 워커**(2026-09-26 사용자) — 미러 `.agents/skills/source-command-ship`을 따르고 커밋 단계에서 멈춘다. 나머지 배치는 Claude Code.
+- **본문은 리뷰 → 보완 루프를 여러 바퀴 돈다**(2026-09-26 사용자). G2 Phase 2 인계마다 본문 리뷰(코드 사실 대조 · EDITOR 범위 · 비개발자 가독성 · 톤 · 게이트 규약)를 돌리고 🔴·🟡가 0이 될 때까지 같은 Codex 워커에 수정 라운드를 보낸다(최소 2바퀴).
