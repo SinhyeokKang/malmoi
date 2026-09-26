@@ -333,10 +333,12 @@ SELECT pg_get_userbyid(defaclrole) AS owner, defaclobjtype, defaclacl FROM pg_de
 WHERE defaclnamespace = 'public'::regnamespace;
 ```
 
-**①이 `true`로 남으면** `PUBLIC` 상속부터 본다 — `SELECT nspacl FROM pg_namespace WHERE nspname = 'public'`에 `=U/…`가 있으면 두 롤이
-그것을 물려받는다(마이그레이션은 `PUBLIC`을 건드리지 않는다). `REVOKE USAGE ON SCHEMA public FROM PUBLIC`은 `postgres`·`service_role` 밖
-롤 전체에 걸리므로, 런타임 롤 `postgres`가 스키마 소유자라 영향이 없음을 확인하고 새 마이그레이션으로 넣는다 — 콘솔에서 손으로 치지 않는다
-(dev·prod가 다시 갈린다). 대시보드 **Advisors → Security**가 0 errors인지도 같이 본다.
+**①이 `true`로 남으면** 상속부터 본다 — `SELECT nspacl FROM pg_namespace WHERE nspname = 'public'`. 마이그레이션은 두 롤의 직접 GRANT와
+`PUBLIC`(`=U`)을 **둘 다** 걷으므로, 적용 뒤에도 `true`면 누군가 다시 GRANT했거나 두 롤이 USAGE를 가진 다른 롤의 멤버다. 걷는 것은
+**새 마이그레이션으로** 한다 — 콘솔에서 손으로 치지 않는다(dev·prod가 다시 갈린다). ⚠️ **스키마 소유자는 `postgres`가 아니라
+`pg_database_owner`다** — 런타임 롤 `postgres`는 직접 `U`와 `pg_database_owner` 멤버십(CREATE)으로 쓰므로 `PUBLIC`·두 롤 회수와 무관하다.
+회수 전에 `nspacl`에 `postgres=U/…`(직접 GRANT)가 있는지 확인한다 — 없으면 앱이 이름 해석에서 막힌다. 대시보드 **Advisors → Security**가
+0 errors인지도 같이 본다.
 
 ## 호스팅 플랜과 한도 (2026-09-19 확인)
 
