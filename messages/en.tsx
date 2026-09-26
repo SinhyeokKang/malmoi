@@ -2860,8 +2860,11 @@ export const en = {
           Repositories that read translations through a hook ({hook}) also need the {wrapper} input — see {doc}.
         </>
       ),
-      /** `hookHint`의 링크 라벨 — `/docs#workflow`로 간다(launch-readiness L2.3). 운영 문서 경로는 제3자에게 의미가 없다. */
-      hookDoc: "Set up the workflow",
+      /**
+       * `hookHint`의 링크 라벨 — `/docs/setup/workflow#workflow`로 간다. ⚠️ **대상 페이지의 h1과 같은 글자다**(#121 —
+       * `docs-content.test.tsx`가 원고와 대조한다). 운영 문서 경로는 제3자에게 의미가 없다.
+       */
+      hookDoc: "Add the workflow",
     },
 
     account: {
