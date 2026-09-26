@@ -245,12 +245,21 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
 
 type Replacement = { start: number; end: number; text: string; indent?: number };
 
+/*
+  `yaml` 1.1 스키마가 문자열로 읽지만 실제 소비자는 달리 읽는 것 — 판정의 보충 목록이고 전수가 아니다.
+  쉼표 숫자(`1,000` — Psych 정수·실수) · 앞 `:`(`:)`·`:foo` — Psych Symbol, safe_load는 DisallowedClass) ·
+  정확히 `=`·`<<`(PyYAML safe_load가 value·merge 태그로 읽어 파일 전체가 ConstructorError).
+*/
+const CONSUMER_ONLY = /^(?:[-+]?(?=[\d_,.]*\d)[\d_]*,[\d_,]*(?:\.\d*)?|:.*|=|<<)$/;
+
 /**
  * 이 값을 맨 문자열로 두면 **YAML 1.1 파서가 같은 문자열로 읽지 못하는가** (sec-audit-3 #4).
  * ⚠️ 1.2 판정만으로 PLAIN을 고르면 `No`·`on`·`12:30`이 인용 없이 나가 Psych·PyYAML(1.1)에서 bool·정수가 된다 —
- * 로케일 파일의 소비자는 대개 Rails·Python이다. 규칙을 재구현하지 않고 같은 라이브러리의 1.1 스키마에 묻는다.
+ * 로케일 파일의 소비자는 대개 Rails·Python이다. 규칙을 재구현하지 않고 같은 라이브러리의 1.1 스키마에 묻고,
+ * 그 스키마가 못 보는 소비자 판독만 `CONSUMER_ONLY`로 더한다.
  */
 export function isYaml11Ambiguous(value: string): boolean {
+  if (CONSUMER_ONLY.test(value)) return true;
   // ⚠️ 값을 문서로 읽으므로 `*Required`(미정의 앨리어스)·앨리어스 폭탄에서 `toJS`가 던진다 — 던지면 인용 쪽으로 닫는다.
   try {
     const doc = parseDocument(value, { version: "1.1" });
