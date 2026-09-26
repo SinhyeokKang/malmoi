@@ -11,6 +11,8 @@ Malmoi puts the files into one change request (a *pull request* on GitHub). You 
 1. Choose **Publish** at the top of **Home** or **Translations**.
 2. Review the pieces of text (keys) and languages in the preview, then use the action described below.
 
+![The Publish preview listing one changed value, the language, and a button that replaces the open pull request](/guide/publish-preview.webp "Review each change before you publish.")
+
 ## Publish the changes {#publish}
 
 Choose **Open pull request** or Replace pull request #N. If your changes already match the files and no pull request is open, the button is **Publish**. When a pull request is open and the files match, the action is Close pull request #N.

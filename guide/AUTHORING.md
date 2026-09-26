@@ -81,7 +81,7 @@
 | Repository access | GitHub App installation | GitHub App installation settings |
 | Only select repositories | GitHub App installation | GitHub App installation settings |
 | Run workflow | GitHub Actions workflow page | GitHub Actions workflow page |
-| Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows | GitHub Actions policy | [GitHub Actions policy documentation](https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization); 문서 대조 2026-09-26, G5 촬영에서 계정별 실물 문구 확인 |
+| Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows | GitHub Actions policy | [GitHub Actions policy documentation](https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization); 문서 대조 2026-09-26, 실물 대조 2026-09-27(조직 소유 리포 설정 화면 — 문구 일치) |
 
 ## 앵커와 링크 {#anchors}
 

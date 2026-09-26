@@ -8,6 +8,8 @@ Before you start: Join a project and choose **Translations** in the project navi
 
 The key list is on the left. Each row is one piece of text in the app — a *key* — and shows its source text followed by its key name. Select a row to open its translations in every language on the right. Use the search box to find a key by its name, its source text, or a translation.
 
+![The translation screen with a key selected in the list and its text in three languages](/guide/translation-editor.webp "Select a row to edit its text in every language.")
+
 **Scope** starts at **This source**, which shows only keys from the same set of translation files; choose **All sources** to widen it. Choose **This namespace** to narrow the list to the selected group of keys. **Clear filters** resets the scope, completion, and state filters; it keeps your search text. The **State** filter includes **Not sent**, **Needs review**, and **New from GitHub**. Needs review marks translations whose source text changed; it is not an approval step.
 
 ## Edit and save {#save}
