@@ -251,22 +251,31 @@ type Replacement = { start: number; end: number; text: string; indent?: number }
  * 로케일 파일의 소비자는 대개 Rails·Python이다. 규칙을 재구현하지 않고 같은 라이브러리의 1.1 스키마에 묻는다.
  */
 export function isYaml11Ambiguous(value: string): boolean {
-  const doc = parseDocument(value, { version: "1.1" });
-  return doc.errors.length > 0 || doc.toJS() !== value;
+  // ⚠️ 값을 문서로 읽으므로 `*Required`(미정의 앨리어스)·앨리어스 폭탄에서 `toJS`가 던진다 — 던지면 인용 쪽으로 닫는다.
+  try {
+    const doc = parseDocument(value, { version: "1.1" });
+    return doc.errors.length > 0 || doc.toJS() !== value;
+  } catch {
+    return true;
+  }
 }
 
 /** CST는 문자열 타입 판정을 하지 않으므로 스키마 판정은 serializer에 맡긴다. */
 function flowString(value: string, doc: Document, type?: Scalar.Type): string {
-  const plain = type !== "QUOTE_SINGLE" && type !== "QUOTE_DOUBLE" && !value.includes("\n");
-  return stringify(value, {
+  const render = (defaultStringType: Quoted) => stringify(value, {
     version: doc.directives?.yaml.version ?? "1.2",
-    // 원본 `%YAML 1.2` 지시자가 있어도 인용한다 — 소비자 파서가 지시자를 따른다는 보장이 없다.
-    defaultStringType: type === "QUOTE_SINGLE" ? "QUOTE_SINGLE" : plain && !isYaml11Ambiguous(value) ? "PLAIN" : "QUOTE_DOUBLE",
+    defaultStringType,
     blockQuote: false,
     doubleQuotedAsJSON: true,
     collectionStyle: "flow",
     lineWidth: 0,
   }).slice(0, -1);
+  if (type === "QUOTE_SINGLE") return render("QUOTE_SINGLE");
+  if (type === "QUOTE_DOUBLE" || value.includes("\n")) return render("QUOTE_DOUBLE");
+  const plain = render("PLAIN");
+  // 1.2 serializer가 이미 인용했으면 1.1 판정이 필요 없다 — 판정은 맨 문자열로 나갈 값만 파싱한다(구조로 읽히는 값을 문서로 읽지 않는다).
+  // 원본 `%YAML 1.2` 지시자가 있어도 인용한다 — 소비자 파서가 지시자를 따른다는 보장이 없다.
+  return plain === value && isYaml11Ambiguous(value) ? render("QUOTE_DOUBLE") : plain;
 }
 
 function scalarReplacement(source: string, doc: Document, node: Scalar, value: string): Replacement {
