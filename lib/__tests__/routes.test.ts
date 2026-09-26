@@ -120,6 +120,13 @@ describe("routes.privacy · routes.docs — 공개 문서", () => {
     expect(routes.docs()).toBe("/docs");
   });
 
+  it("`routes.docs(page, anchor)` — 페이지·앵커를 잇고, 비면 붙이지 않는다", () => {
+    expect(routes.docs("setup/workflow")).toBe("/docs/setup/workflow");
+    expect(routes.docs("setup/workflow", "workflow")).toBe("/docs/setup/workflow#workflow");
+    expect(routes.docs(undefined, "top")).toBe("/docs#top");
+    expect(routes.docs("")).toBe("/docs");
+  });
+
   /**
    * ⚠️ **외부 URL은 이 파일에 넣지 않는다** (8-1b). 로그인 푸터의 GitHub 링크가 그것인데,
    * 이 모듈은 **앱 내부 링크**의 단일 출처이고 `entry-points.test.ts`의 "죽은 라우트 링크"가

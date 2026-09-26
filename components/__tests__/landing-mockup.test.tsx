@@ -185,6 +185,13 @@ describe("공개 화면 소스 — 문구는 사전을 지난다", () => {
     "components/public-doc-table.tsx",
     "components/privacy/privacy-doc.tsx",
     "components/public-doc-toc.tsx",
+    // `/docs/*` 셸·내비·원고 렌더러 — 본문은 md지만 그릇의 문구는 사전을 지난다(DESIGN §6.61).
+    "app/docs/layout.tsx",
+    "app/docs/not-found.tsx",
+    "app/docs/[[...slug]]/page.tsx",
+    ...readdirSync(join(process.cwd(), "components/docs"))
+      .filter((name) => name.endsWith(".tsx"))
+      .map((name) => `components/docs/${name}`),
     ...readdirSync(join(process.cwd(), "components/public-shell"))
       .filter((name) => name.endsWith(".tsx"))
       .map((name) => `components/public-shell/${name}`),

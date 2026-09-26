@@ -50,7 +50,7 @@ const EXEMPT = new Set([
   "page.tsx",
   "signin/page.tsx",
   "privacy/page.tsx",
-  "docs/page.tsx",
+  "docs/[[...slug]]/page.tsx",
   "invite/[token]/page.tsx",
   /**
    * 병합 안내 (account-linking T2). **인가가 없고 challenge가 대신한다** — 비로그인이 봐야 하는
@@ -349,8 +349,23 @@ describe("차단 규칙", () => {
  */
 /** `/invite/${token}` · `/projects/[slug]` → `/invite/*` · `/projects/*`. 두 표기를 같은 모양으로 만든다. */
 function shape(path: string): string {
-  return path.replace(/\$\{[^}]*\}/g, "*").replace(/\[[^\]]*\]/g, "*");
+  // ⚠️ **optional catch-all(`/[[...slug]]`)은 앞 `/`까지 `*` 하나다** — 세그먼트가 0개여도 선다(`/docs`). 그냥 두면 아래
+  // `\[[^\]]*\]`가 `[[...slug]`만 먹어 `/docs/*]`가 됐다. 연달은 `*`는 하나로 접는다 — 생성기의 `${page}${anchor}`가 `**`다.
+  return path
+    .replace(/\/\[\[\.\.\.[^\]]*\]\]/g, "*")
+    .replace(/\$\{[^}]*\}/g, "*")
+    .replace(/\[[^\]]*\]/g, "*")
+    .replace(/\*+/g, "*");
 }
+
+describe("shape — 두 표기를 같은 모양으로", () => {
+  it("optional catch-all은 세그먼트 0개도 덮는 `*` 하나다 — `/docs/*]`가 되지 않는다", () => {
+    expect(shape("/docs/[[...slug]]")).toBe("/docs*");
+    expect(shape("/docs${docPage(page)}${docAnchor(anchor)}")).toBe("/docs*");
+    expect(shape("/projects/[slug]/logs")).toBe("/projects/*/logs");
+    expect(shape("/invite/${token}")).toBe("/invite/*");
+  });
+});
 
 describe("죽은 라우트 링크", () => {
   const ROUTES = new Set(ENTRY_POINTS.filter((e) => e.path.endsWith("page.tsx")).map((e) =>
@@ -790,7 +805,7 @@ describe("보호 라우트가 미들웨어 matcher에 있다", () => {
   it("비로그인 진입점은 matcher 밖이다 — 넣으면 자기 자신으로 307을 돈다", () => {
     // ⚠️ **하드코딩이다** — `PROTECTED`는 `(edit)/` 아래에서만 만들어지므로, 여기 등재하지 않으면
     // "matcher에 없다"를 재는 대상이 아예 없다 (POSTMORTEM 2026-09-07).
-    const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/privacy", "/docs"];
+    const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/privacy", "/docs", "/docs/setup/workflow"];
     const covered = PUBLIC.filter((path) => PATTERNS.some((pattern) => covers(pattern, path)));
     expect(covered).toEqual([]);
   });

@@ -80,6 +80,10 @@ export type KeyState = (typeof KEY_STATES)[number];
  * `undefined`인 파라미터를 **지운다** — `?ns=undefined`가 URL에 실리면 서버가 그것을 이름으로 읽어
  * 없는 네임스페이스로 떨어진다.
  */
+/** `routes.docs`의 조각 — 비면 빈 문자열. ⚠️ 생성기 본문에 따옴표를 두지 않으려고 뺐다(아래 `docs` 주석). */
+const docPage = (page?: string): string => (page ? `/${page}` : ``);
+const docAnchor = (anchor?: string): string => (anchor ? `#${anchor}` : ``);
+
 function withQuery(path: string, query: Record<string, string | undefined>): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
@@ -209,12 +213,20 @@ export const routes = {
   /**
    * 공개 문서 둘 — **로그인 화면 푸터가 가리킨다.**
    *
-   * ⚠️ **아직 placeholder다**(출시 전에 채운다). 그래도 **페이지와 같은 커밋에 등재한다** —
+   * 그래도 **페이지와 같은 커밋에 등재한다** —
    * 페이지 없이 넣으면 404를 가리키는 생성기가 되고, 죽은 링크 검사의 접두 규칙이 그것을
    * 통과시켜 못 잡는다 (6b-4·6b-6·7단계와 같은 판정).
    */
   /** 랜딩. ⚠️ 로그인 상태면 `/projects`로 redirect된다(`rootView`, 2026-09-10 결정). */
   home: (): string => "/",
   privacy: (): string => "/privacy",
-  docs: (): string => "/docs",
+  /**
+   * 문서 — `page`는 SUMMARY slug(`"setup/workflow"`), `anchor`는 그 페이지의 H2 `{#id}`.
+   * ⚠️ **호출의 인자는 리터럴이어야 한다** — `lib/guide/__tests__/docs-links.test.ts`가 `app`·`components`·`lib`의 호출을
+   * 전수로 읽어 대상 페이지·앵커가 원고에 있는지 본다(경로 문자열은 타입이 못 본다 — POSTMORTEM 2026-09-05).
+   * SUMMARY에서 온 slug를 잇는 자리는 `lib/guide/href.ts`의 `docHref`다.
+   * ⚠️ **본문은 템플릿 하나이고 따옴표가 없다** — `entry-points.test.ts`의 `routeShapes`·`TEMPLATE_PATH`가 화살표 뒤 첫
+   * 리터럴을 읽어 `/docs*`(optional catch-all)와 대조한다.
+   */
+  docs: (page?: string, anchor?: string): string => `/docs${docPage(page)}${docAnchor(anchor)}`,
 } as const;

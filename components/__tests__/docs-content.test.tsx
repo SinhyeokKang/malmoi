@@ -10,6 +10,7 @@ import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
 import { PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
 import { SKIP_MARKER } from "@/lib/pull/payload";
+import { routes } from "@/lib/routes";
 
 import { render } from "./helpers/dom";
 
@@ -73,14 +74,14 @@ it("`#nightly`가 있다", async () => {
 
 /**
  * 설정 화면 워크플로 모달의 hook 안내가 누를 수 없는 `docs/ACTIONS.md` 글자였다 — 운영 문서 경로라 제3자에게
- * 의미가 없다. 셸 안 링크 규칙(밑줄·아이콘 없음, DESIGN §6.3)으로 `/docs#workflow`를 가리킨다.
+ * 의미가 없다. 셸 안 링크 규칙(밑줄·아이콘 없음, DESIGN §6.3)으로 원고의 워크플로 절을 가리킨다 — 경로는 생성기가 든다.
  */
-it("설정 화면의 hook 안내가 `/docs#workflow`로 이어진다", async () => {
+it("설정 화면의 hook 안내가 `setup/workflow#workflow`로 이어진다", async () => {
   await render(<CiCard slug="acme" archived={false} stale={[]}><p>yaml</p></CiCard>);
   const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(m.settings.ci.workflow))!;
   trigger.click();
   await new Promise((resolve) => setTimeout(resolve, 0));
-  const link = document.querySelector<HTMLAnchorElement>('a[href="/docs#workflow"]');
+  const link = document.querySelector<HTMLAnchorElement>(`a[href="${routes.docs("setup/workflow", "workflow")}"]`);
   expect(link).not.toBeNull();
   expect(document.body.textContent).not.toContain("docs/ACTIONS.md");
 });
