@@ -602,6 +602,9 @@ scripts/                adapter-survey · sync-agents · copy-fonts · scan · i
                         format(fileProbe · requestedFormat — ingest·push-local의 probe·`--adapter`·탐지 갈래 하나.
                         ⚠️ lib/가 아닌 이유는 문구가 한국어 CLI 출력이라서다 — lib은 no-korean-ui 범위다)
                         (⚠️ DATABASE_URL을 친다 — prod는 명령 한 줄에서 그 변수를 넘긴다, 0행 두 번이 수렴)
+                        release(순수 버전 판정 — planRelease·recommendLevel·latestReleaseTag. ⚠️ lib/가 아닌 이유는 앱 런타임이 안 쓰는 하네스 로직이라서다) ·
+                        release-plan(pnpm release:plan — /merge 3단계 전용. 원격 태그(ls-remote)·origin/dev·origin/main을 읽는다. 읽기 전용,
+                        exit 0 판정 / 1 error / 2 인자가 주어짐)
                         __tests__/workflow-pins가 .github/ 아래 uses:가 40자 SHA로 핀됐는지 센다.
                         __tests__/prisma-select-columns는 이 디렉터리의 select 키를 schema.prisma와
                         대조한다 — ⚠️ tsc가 Prisma select 키를 안 보고 scripts/는 pnpm test 밖이다
