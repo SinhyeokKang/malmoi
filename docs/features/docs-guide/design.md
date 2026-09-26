@@ -86,12 +86,13 @@ lib/guide/            # 순수 함수 + server-only 로더
 | `collectLinks` / `collectImages` / `collectUiLabels` | mdast → 참조 목록(굵게 = `strong` 노드) |
 | `dictionaryStrings(m)` | 사전 → 문자열 집합. **`publicDocs` 서브트리 제외**(자기 참조로 늘 green이 된다) · 함수 값 제외 · JSX 값 제외(`isValidElement`) |
 | `parseMdTable(tree, headingId)` | AUTHORING·SHOOTING의 표(외부 라벨 허용 목록 · 에셋 매핑 · 마스킹) → 행 배열 — 표 셋이 파서 하나를 쓴다 |
+| `leadParagraph(tree)` | H1 바로 다음 첫 문단의 텍스트 또는 null — 개요·장 개요의 설명 |
 | `legacyAnchorTarget(hash)` | `"formats"` → `/docs/reference/formats#formats` 또는 null — 옛 해시 일곱 |
 | `staleShots(shots, currentBlobs)` | 매핑 표의 기록 SHA vs 현재 SHA → stale 목록 |
 
 **라벨 게이트 규약**(AUTHORING에 박는다): 굵게 = UI 라벨, 기울임 = 강조. 대조는 **정확 일치**(대소문자·`…` 포함). **보간·함수형 라벨**(`Publish 3 changes`, `hookHint`)은 굵게 쓰지 않는다. 외부 라벨(GitHub 등)은 AUTHORING 허용 목록 표에 올린다. 못 잡는 것: 사전에 여전히 있지만 다른 화면으로 옮겨간 라벨 — 사람의 몫이다.
 
-## 5. 렌더러 (④ — 시안 수신 후)
+## 5. 렌더러 (④ — 시안 확정: 2026-09-26)
 
 - 라우트 `app/docs/[[...slug]]/page.tsx`가 `app/docs/page.tsx`를 대체한다. **동적이다** — 지금의 `/docs`(`app/docs/page.tsx:13`)와 `/privacy`(`publicCta`)가 이미 세션을 읽는다. 404는 `slugToFile`이 null이면 `notFound()` 한 줄이다(`generateStaticParams` 없음).
 - **`next.config.ts`의 `outputFileTracingIncludes`에 `guide/**/*.md`를 넣는 것은 필수다** — 동적 라우트가 `fs`로 읽으므로 Vercel 함수 번들에 안 들어갈 수 있고, 로컬 `next start`는 그것을 못 잡는다. 판정은 빌드 산출 `.nft.json`이다.
@@ -112,20 +113,40 @@ lib/guide/            # 순수 함수 + server-only 로더
 - **링크 생성기** `routes.docs(page?: string, anchor?: string)` — 식 본문의 템플릿 하나로 쓴다(`entry-points.test.ts:476`의 `routeShapes`가 화살표 뒤 첫 리터럴만 잡는다). 앱 소스(`app`·`components`·`lib`)의 모든 호출을 찾아 **인자가 리터럴이 아니면 red**, 대상 페이지·앵커가 없으면 red. ci-card의 `` `${routes.docs()}#workflow` `` 연결을 생성기로 옮긴다(경로 문자열은 타입이 못 본다 — POSTMORTEM 2026-09-05).
 - **`entry-points.test.ts`**: `shape()`(`:351-353`)가 `[[...slug]]`를 `/docs/*]`로 만든다 — optional catch-all 처리와 회귀 단언이 필요하다. `EXEMPT`(`:53`)의 `docs/page.tsx`를 `docs/[[...slug]]/page.tsx`로 **같은 커밋에서** 교체한다(`:207-211`이 실재를 강제한다). `PUBLIC`(`:793`)에 `/docs/setup/workflow` 샘플을 더한다.
 
-### 시안에 넘길 목록 (Claude Design 브리프의 재료)
+### 시안 — 정본 확정 (2026-09-26 사용자)
 
-- 공개 셸 안 배치: 좌측 문서 내비(SUMMARY 2단) · 본문 칼럼 폭 · 우측 목차(H2만인가 H3까지인가) · 이전/다음.
-- 개요 첫 화면의 독자 두 갈래(Set up / Translate).
-- 페이지 이동 때 내비가 스크롤러 밖에 있어 재마운트를 피하는가(내비 스크롤 위치·Tab 위치 유지).
-- 폰 폭 — 반응형을 줄 것인가(안 주면 `min-w-[1280px]` 수용).
-- 본문 급: h1·h2·h3·본문(16?)·목록·인용·hr·코드 블록·표.
-- 이미지: 액자(랜딩 목업 프레임 토큰과 맞출지) · 확대 보기 필요 여부 · 로드 실패 모양.
-- 404가 공개 셸 안(내비와 함께)에 착지하는가.
+**Claude Design `Docs.dc.html` 1a–1d가 정본이다**(프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`, 피드백 1회 반영본). 1a 개요 · 1b 일반 문서(`/docs/setup/workflow`) · 1c 섹션 개요(`/docs/translate`) · 1d 404. 값은 시안이 들고, 아래는 구현이 따르는 결정만 옮긴다.
 
-## 6. 이미지 촬영 (③b — 4.0 뒤)
+| 요소 | 결정 |
+|---|---|
+| 셸 | 공개 셸 그대로(§6.615). 헤더 Docs는 `aria-current="page"`만. CTA는 `publicCta` |
+| 패널 | 내비 264(p16 · 오른쪽 선 `--border` · 제 안에서 스크롤) + 본문 스크롤러. 스크롤러 안은 Privacy 그릇 그대로 — 본문 720 + 목차 200 · 사이 64 · 최대 1064 가운데 · 위 64 아래 120. **내비는 `app/docs/layout.tsx`가 들고 본문 스크롤러는 페이지가 든다** — 페이지 이동에 내비의 스크롤·포커스가 남고, 본문 스크롤러는 재마운트되어 맨 위에서 시작한다(§6.615 규칙과 양립) |
+| 내비 | SUMMARY 2단 · 전부 펼침. 장 이름은 링크(14/500 foreground), 하위는 들여쓰기 20(14/400 muted). 현재 페이지 = **면**(`--muted` · 500 · `aria-current="page"`). 행 min-h 32 · radius 8 · 장 사이 12 |
+| 목차 | **H2만**, 평탄. 현재 절 = **선**(왼쪽 1px foreground + 글자 foreground — Privacy와 같다). `lib/public-doc/toc.ts`의 `currentSection` 재사용. **H2가 둘 미만이면 숨기고 열만 비운다** |
+| h1 위 줄 | 장 이름(13 muted, 링크 아님) — SUMMARY의 부모. 장 개요·개요 페이지엔 없다 |
+| 본문 급 | h1 36/1.3/600 · h2 24/1.4/600 위 56 · h3 18/1.5/500 위 32 · 본문 `text-prose` 16/1.75 · 목록 gap 8 · 굵게 500 · hr 1px `--border` 위아래 40 · 인라인 코드 mono 0.875em `--muted` radius 6 · 링크 `blue-600` 밑줄 없음 |
+| 코드 블록 | 카드(선 · radius 12). **파일명이 있으면** 바 40(흰 면 · 아래 `--divider`) + Copy 28, **없으면 바 없이** Copy가 본문 오른쪽 위(top 8 · right 8)에 늘 뜬다(본문 오른쪽 여백 88). 본문 mono 13/1.7 · 가로 스크롤 · 문법 강조 없음. Copy → 2초간 `Copied`, 최소 폭 66. 토스트 없음. ⚠️ 알림은 버튼의 `aria-live`가 아니라 **옆의 visually-hidden live region**으로 한다(버튼 이름이 바뀌는 것만으로는 안정적으로 읽히지 않는다) |
+| 주의 | md `>` → `Alert` info 한 형(선 · radius 12 · p16 · info 16 · 14/1.6). 경고형 없음 |
+| 표 | Privacy 표 그대로(`DocTable` — 머리 흰 면 10/16 · 13/500 muted · 셀 14/1.6) |
+| 스크린샷 | 액자 = 랜딩 목업 고정 상태(`--border-subtle` · radius 12 · `shadow-low`) · 본문 720 가득. **원본 크롭 폭 ≤ 850 CSS px**(2x = 1700px — 앱 13px가 720 칸에서 11px 이상). 확대 보기 없음 · 로드 실패 상태 없음(브라우저 기본). **캡션은 선택**(13 muted · 위 12) — alt는 보이는 상태, 캡션은 할 일 |
+| 이전/다음 | 본문 끝 위 64 · 선 뒤 반반 카드(p16 · 라벨 13 muted · 제목 15/500). SUMMARY 선위 순서, 장 경계를 넘는다 |
+| 개요(1a) | h1 + 도입 + **두 갈래 카드**(대상 13 muted `For developers`/`For translators` · 제목 18/500 · 설명 14 muted → 장 개요로 / 아래 행 셋 44 → 그 장의 첫 할 일) + `More in the docs` h2 + 나머지 장 목록 카드(제목 15/500 · 설명 14 muted). 목차 열은 비운다 |
+| 장 개요(1c) | h1 + 도입 + 하위 페이지 목록 카드(행 = 제목 15/500 · 설명 14 muted · 화살표) + 이전/다음. 목차 없음 |
+| 404(1d) | 셸·내비 안. 내비 현재 표시 없음 · 목차·이전/다음 없음. 위 줄 `404` · h1 `This page doesn't exist` · 요청 주소를 인라인 코드로 되비침 · 본문 링크 하나로 개요. `/docs` 밖 404는 이 화면을 쓰지 않는다 |
+| hover | 행·카드 `rgba(10,10,10,.03)`(헤더와 같다) · 내비는 글자색만 |
+| 폰 폭 | 반응형 없음 — 셸 `min-w-[1280px]`, 가로 스크롤(Privacy와 같다) |
+| 새 색 | **0** — `#404040`·`#fafafa`는 1차 피드백으로 걷었다 |
+
+**개요·장 개요의 데이터 규칙** — 카드와 행은 md 본문이 아니라 **SUMMARY + 각 페이지의 도입 문단**에서 생성한다(시안 문구는 자리값).
+- 페이지의 **도입 문단** = H1 바로 다음의 첫 문단(`leadParagraph(tree)` — 순수 함수). 장 개요의 행 설명, 개요의 카드·목록 설명이 그 값이다. 도입이 없는 페이지는 `pnpm test`가 red.
+- 장 개요 페이지(`<section>/README.md`)는 H1 + 도입 + (선택) 본문이고, 하위 목록은 렌더러가 SUMMARY 자식으로 붙인다.
+- 개요의 두 갈래는 `lib/guide/overview.ts`의 **상수 하나**(`{ audience, chapter, pages: [셋] }` × 2)다 — 어느 장·어느 셋을 앞에 세우는지는 편집 판단이라 SUMMARY에서 파생하지 않는다. 대상 라벨(`For developers`·`For translators`)·`More in the docs`는 사전(`m.publicDocs.docs`)에 둔다. 나머지 목록 = 두 갈래에 들지 않은 최상위 장 전부(개요 자신 제외). 상수의 모든 slug가 SUMMARY에 있는지 `pnpm test`가 본다.
+- 404의 요청 주소 되비침은 `app/docs/not-found.tsx` 안의 작은 클라이언트 잎(`usePathname`)이 한다 — `not-found`는 params를 받지 않는다.
+
+## 6. 이미지 촬영 (③b — 시안 확정으로 착수 가능)
 
 - **환경**: 로컬 `pnpm dev` + dev DB + 상주 QA 프로젝트 `bugshot-i18n-test-qa`. **편집자 장은 EDITOR 계정 화면으로 찍고 쓴다**(EDITOR는 열린 PR 조회·Revert가 안 보인다 — PRODUCT §3·:839). GitHub 화면은 github.com에서 찍는다.
-- **규격**(SHOOTING §1): 조작 영역 중심의 **부분 크롭** · DPR 2 · **표시 폭 기준 최소 글자 11px**(칼럼 폭은 시안이 준다 — 720 칼럼에 1280 전체 화면이면 앱 14px이 약 7.9px가 된다) · 액자는 시안 또는 랜딩 목업 프레임 토큰.
+- **규격**(SHOOTING §1, 시안 확정값): 조작 영역 중심의 **부분 크롭 · 원본 폭 ≤ 850 CSS px** · DPR 2(파일 폭 ≤ 1700px) · 표시 폭 720 · 표시 기준 최소 글자 11px · 액자는 CSS가 그린다(`--border-subtle` · radius 12 · `shadow-low`) — **이미지 파일에는 액자·배경을 굽지 않는다**(bugshot의 그라데이션 합성은 버린다).
 - **실행체**: ego-browser. ⚠️ GitHub App 설치 왕복은 로컬에서 못 밟는다 — 그 컷은 SHOOTING §벽에 적고 수동 촬영한다.
 - **마스킹**: DOM 텍스트 치환. 가상 데이터는 랜딩 목업과 같은 이름(`m.landing.mockup` — `Acme web`·`acme/web`).
 - **기록**: 촬영한 컷마다 매핑 소스의 `git hash-object`를 SHOOTING 표에 적는다 — `guide:check`의 기준값이다.

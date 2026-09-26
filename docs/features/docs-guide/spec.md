@@ -26,8 +26,8 @@
 
 - **본문은 리포 안 Markdown** — `guide/**.md` + `guide/SUMMARY.md`(IA 정본). 작성·촬영 매뉴얼(`guide/AUTHORING.md`·`SHOOTING.md`)은 **한국어**이고 서빙되지 않는다.
 - **en 단일** — UI·`/privacy`와 같다.
-- **이미지는 실제 화면 스크린샷** — ego-browser로 찍고 마스킹한다. **촬영은 시안 수신 뒤**다(칼럼 폭이 치수를 정한다).
-- **디자인 정본은 Claude Design 시안(예정)** — ④는 시안을 받은 뒤 `/design-sync`로 한다.
+- **이미지는 실제 화면 스크린샷** — ego-browser로 찍고 마스킹한다. **촬영은 시안 확정 뒤**다(칼럼 폭이 치수를 정한다 — 2026-09-26 확정: 원본 크롭 폭 ≤ 850 CSS px).
+- **디자인 정본은 Claude Design `Docs.dc.html` 1a–1d다**(2026-09-26 확정) — ④는 `/design-sync`로 대조한다. 개요·장 개요의 카드와 행은 SUMMARY + 각 페이지 도입 문단에서 생성한다(design §5).
 - **md 파서는 mdast 한 벌** — 게이트와 렌더러가 같은 AST를 본다.
 - **이미지 stale은 blob SHA 비교** — 촬영 때 매핑 소스의 SHA를 기록하고 현재 값과 다르면 stale.
 - **외부 화면(GitHub) 라벨도 굵게** — 게이트는 사전 ∪ AUTHORING 허용 목록을 읽는다.
@@ -57,7 +57,7 @@
 - [ ] 마스킹 표의 원본 문자열이 md 본문·alt에 0이다(`pnpm test`). 픽셀 속 문자열은 촬영 때 사람이 확인한다(수동).
 - [ ] 표시 폭 기준 이미지 속 글자가 SHOOTING §1의 최소 크기 이상이다(수동 — 촬영 때 확인).
 
-**④ 라우팅·렌더링** (시안 수신 후)
+**④ 라우팅·렌더링** (시안 확정 — Claude Design `Docs.dc.html` 1a–1d)
 - [ ] `/docs`는 개요, `/docs/<slug>`가 각 페이지, 없는 slug·`AUTHORING`·`SHOOTING`은 404다(`pnpm test` 단위 + 로컬 수동).
 - [ ] 옛 해시 `/docs#<old>`가 새 페이지로 간다(로컬 수동 · 매핑 표는 `pnpm test`).
 - [ ] 앱 안 문서 링크 다섯이 생성기 `routes.docs(page?, anchor?)`를 지나고, 인자가 리터럴이며 대상 페이지·앵커가 존재한다(`pnpm test`).

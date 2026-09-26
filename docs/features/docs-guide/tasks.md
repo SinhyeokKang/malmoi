@@ -2,7 +2,7 @@
 
 사용자가 정한 다섯 단계 순서를 따르되 두 가지를 옮겼다.
 - **⑤의 자동 게이트(순수 함수 + `pnpm test`)를 ①·②로 당긴다** — 게이트 없이 원고가 쌓이지 않게.
-- **③의 촬영(3.3·3.4)을 4.0(시안 수신) 뒤로 민다** — 칼럼 폭이 치수와 글자 크기를 정한다.
+- **③의 촬영(3.3·3.4)을 4.0(시안 확정) 뒤로 민다** — 칼럼 폭이 치수와 글자 크기를 정한다. ✅ 2026-09-26 시안 확정(`Docs.dc.html` 1a–1d)으로 ③b·④ 모두 착수 가능하다.
 
 **커밋 규칙**: 함수 단위 테스트는 픽스처(`lib/guide/__tests__/fixtures/`)로 단독 green이다. 실물 `guide/`에 거는 게이트는 **그것을 green으로 만드는 원고와 같은 커밋**에 넣는다. 그래서 모든 `[C]`가 단독 green이다.
 
@@ -26,11 +26,11 @@
 
 ## ② 본문
 
-- [ ] **2.1** `collectLinks`·`resolveDocLink`·`collectUiLabels`·`dictionaryStrings`·`sectionByAnchor`·`parseMdTable` 테스트 먼저(픽스처) → 구현. action 넷 추출(`renderProjectWorkflowYaml` + `action.yml`의 `uses:`)을 공유 헬퍼로 뺀다 — `docs-content.test.tsx:48-55`와 md 게이트가 같은 목록을 본다.
-  검증: `pnpm test` green. 케이스 — 상대 `../setup/workflow.md#workflow` 해소 · 외부 URL 무시 · **코드 스팬·펜스 안 `**x**`는 라벨이 아니다** · `**[Settings](..)**`(링크 안 굵게) · `__x__` · 표 셀 안 굵게 · `dictionaryStrings`가 **`publicDocs` 서브트리·함수 값·JSX 값을 뺀다** · `sectionByAnchor`가 다음 같은 급 헤딩에서 멈춘다.
+- [ ] **2.1** `collectLinks`·`resolveDocLink`·`collectUiLabels`·`dictionaryStrings`·`sectionByAnchor`·`parseMdTable`·`leadParagraph` 테스트 먼저(픽스처) → 구현. action 넷 추출(`renderProjectWorkflowYaml` + `action.yml`의 `uses:`)을 공유 헬퍼로 뺀다 — `docs-content.test.tsx:48-55`와 md 게이트가 같은 목록을 본다.
+  검증: `pnpm test` green. 케이스 — 상대 `../setup/workflow.md#workflow` 해소 · 외부 URL 무시 · **코드 스팬·펜스 안 `**x**`는 라벨이 아니다** · `**[Settings](..)**`(링크 안 굵게) · `__x__` · 표 셀 안 굵게 · `dictionaryStrings`가 **`publicDocs` 서브트리·함수 값·JSX 값을 뺀다** · `sectionByAnchor`가 다음 같은 급 헤딩에서 멈춘다 · `leadParagraph`가 H1 뒤 첫 문단만(이미지·인용·코드가 먼저 오면 null).
 - [ ] **2.2** `no-korean-ui`·`brand-spelling`·`terminology`를 서빙 md로 확장 — `sourceFiles`에 `.md` 분기 · **md에서는 `stripComments`를 건너뛴다** · SUMMARY 밖 md(AUTHORING·SHOOTING) 제외.
   검증: `pnpm test` green. 픽스처 — md 속 `packages/*/locales/*.json` 뒤의 한글이 잡힌다(벗기기를 건너뛰었다는 증거) · `https://…` 뒤의 `MALMOI`가 잡힌다 · 한국어 AUTHORING 픽스처는 무시된다.
-- [ ] **2.3** 본문 작성 — 사전의 문장을 이관처로 옮기고(이후 사전 동결), 편집자 장·새 장을 AUTHORING 사실 대조 표대로 쓴다. 개요에 독자 두 갈래 링크. 이미지는 아직 넣지 않는다. **같은 커밋에** 실물 내용 게이트 — 링크·앵커 해소 · 플레이스홀더 0(`TODO`·`TBD`·`lorem`) · 라벨 ⊂ 사전 ∪ 허용 목록 · 표 이름 중복 0 · **이미지 참조 0**(③ 게이트가 서기 전까지) · 정본 상수 대조(`PROJECT_LIMIT`·`MEMBER_LIMIT`·`PROJECT_SLUG_MAX`·`INVITATION_HOURLY_LIMIT`·action 넷·포맷 다섯·`SKIP_MARKER`·`PUSH_TOKEN`·워크플로 경로 — `sectionByAnchor`로 절을 잘라 대조).
+- [ ] **2.3** 본문 작성 — 사전의 문장을 이관처로 옮기고(이후 사전 동결), 편집자 장·새 장을 AUTHORING 사실 대조 표대로 쓴다. 개요에 독자 두 갈래 링크. 이미지는 아직 넣지 않는다. **같은 커밋에** 실물 내용 게이트 — 링크·앵커 해소 · 플레이스홀더 0(`TODO`·`TBD`·`lorem`) · 라벨 ⊂ 사전 ∪ 허용 목록 · 표 이름 중복 0 · **모든 페이지에 도입 문단** · **이미지 참조 0**(③ 게이트가 서기 전까지) · 정본 상수 대조(`PROJECT_LIMIT`·`MEMBER_LIMIT`·`PROJECT_SLUG_MAX`·`INVITATION_HOURLY_LIMIT`·action 넷·포맷 다섯·`SKIP_MARKER`·`PUSH_TOKEN`·워크플로 경로 — `sectionByAnchor`로 절을 잘라 대조).
   검증: `pnpm test` green · (수동) 사용자 원고 검토.
 - [ ] **[C]** `feat(guide): add link, label, and section collectors` · `test(i18n): scan served guide markdown` · `docs(guide): write user guide pages`(2.3 게이트 포함)
 
@@ -42,17 +42,18 @@
   검증: `pnpm test` green(실물은 에셋 0·참조 0) · 픽스처 — 참조만 있고 파일 없음 red · 파일만 있고 참조 없음 red · 치수 불일치 red.
 - [ ] **[C]** `test(guide): gate image references and shot mapping`
 
-## ④ 라우팅·렌더링 — ⚠️ 시안 수신 후
+## ④ 라우팅·렌더링 — 시안 확정됨(design §5 "시안 — 정본 확정")
 
-- [ ] **4.0** Claude Design 브리프 전달(design §5 "시안에 넘길 목록") → 핸드오프 수신 → DESIGN §6.61을 시안 기준으로 다시 쓴다(`docs(DESIGN): …` — §6.61:766 반전 기록 포함).
-  검증: (수동) 핸드오프 파일 존재 · 사용자 확인.
+- [x] **4.0a** 시안 수신·피드백 1회·정본 확정(2026-09-26 — `Docs.dc.html` 1a–1d, design §5 표).
+- [ ] **4.0b** DESIGN §6.61을 시안 기준으로 다시 쓴다(`docs(DESIGN): …` — §6.61:766 반전 기록 · 새 색 0 · `text-prose` 소비자). 4.4와 같은 배치에서.
+  검증: (수동) design §5 표의 행이 전부 DESIGN에 있다.
 - [ ] **4.1** `extractToc`·`tableLabel` 테스트 먼저 → 구현. remark 플러그인(`{#id}` → `id` 속성, 텍스트에서 표식 제거) 테스트 → 구현.
   검증: `pnpm test` green.
 - [ ] **4.2** `react-markdown` 설치(버전 명시 · `minimumReleaseAge` · lockfile) → CLAUDE.md 스택 표(의존성 여섯).
   검증: lockfile에 명시 버전 · `pnpm typecheck` green.
 - [ ] **4.3** `routes.docs(page?, anchor?)` 테스트 먼저 → 구현(식 본문 템플릿 하나). 호출 스캔 테스트(`app`·`components`·`lib` — 비리터럴 인자 red · 대상 페이지·앵커 부재 red). ci-card 연결을 생성기로. **`docs-content.test.tsx:83-88`의 `a[href="/docs#workflow"]`를 `routes.docs("setup/workflow","workflow")`로 교체.** `routes.test.ts:120`·`:124-133` 갱신.
   검증: `pnpm test` green.
-- [ ] **4.4** `app/docs/[[...slug]]/page.tsx`(동적, `notFound()`) + 문서 셸(시안대로) + 요소 매핑(design §5) + 옛 해시 클라이언트 잎 + 헤더 `current: "docs"` + 사이드바 `exact` 판정. 옛 `app/docs/page.tsx` 제거. `entry-points.test.ts` — `shape()` optional catch-all 처리 + 회귀 단언, `EXEMPT` 교체(같은 커밋), `PUBLIC`에 하위 경로 샘플. `security-headers.test.ts`로 `img-src 'self'` 확인.
+- [ ] **4.4** `app/docs/[[...slug]]/page.tsx`(동적, `notFound()`) + `app/docs/layout.tsx`(셸 + 내비) · 페이지(본문 스크롤러) · 개요 두 갈래(`lib/guide/overview.ts` 상수 — slug 전부 SUMMARY에 있음을 테스트) · 장 개요 하위 목록 · `app/docs/not-found.tsx`(요청 주소 클라이언트 잎) · 요소 매핑(design §5 표 — 코드 블록 Copy + visually-hidden live region 포함) + 옛 해시 클라이언트 잎 + 헤더 `current: "docs"` + 사이드바 `exact` 판정. 옛 `app/docs/page.tsx` 제거. `entry-points.test.ts` — `shape()` optional catch-all 처리 + 회귀 단언, `EXEMPT` 교체(같은 커밋), `PUBLIC`에 하위 경로 샘플. `security-headers.test.ts`로 `img-src 'self'` 확인.
   검증: `pnpm test` · `pnpm typecheck` · `pnpm build` green · **`pnpm dev`를 다시 띄운 뒤** (수동) `/docs`·`/docs/setup/workflow`·`/docs#formats`(→ 새 페이지)·없는 slug 404·`/docs/AUTHORING` 404 · 키보드로 페이지 이동·해시 착지 포커스.
 - [ ] **4.5** 고아 정리 — `m.publicDocs.docs.sections`·`m.publicDocs.back`(고아면) 제거. **`DocBlock`·`DocSection` 타입을 먼저 옮기고**(`lib/privacy/doc-text.ts:6`이 `@/components/public-doc`에서 import한다) `components/public-doc.tsx`·`public-doc.test.tsx` 제거. `docs-content.test.tsx`의 사전 대상 단언 제거(md 게이트가 대신한다). **`terminology.test.ts:88,90`의 `publicDocs.docs.sections[…]` 경로 제거**(2.2가 md를 대신 본다). `m.publicDocs.docs.title`은 남긴다(`nav.ts:210` · `nav.test.ts:294-297`).
   검증: `pnpm test` green · `git grep "publicDocs.docs.sections"` 0 · `git grep "components/public-doc\""` 0.
@@ -64,9 +65,9 @@
   검증: (수동) `/doc-check` 또는 `/push` 4단계.
 - [ ] **[C]** `feat(guide): add toc and anchor plugin` · `feat(routes): route docs links through one generator` · `feat(docs): render the guide from markdown` · `refactor(docs): remove dictionary-backed docs` · `docs(PRODUCT|DESIGN|DIRECTORY): …`
 
-## ③b 촬영 — ⚠️ 4.0 뒤
+## ③b 촬영 — 시안 확정됨
 
-- [ ] **3.3** `guide/SHOOTING.md` 초판(한국어) — 상수(DPR 2 · 부분 크롭 · 표시 폭 기준 최소 글자 11px — 칼럼 폭은 시안 값) · 환경(로컬 dev + `bugshot-i18n-test-qa` + OWNER/EDITOR) · 액자(시안 또는 랜딩 목업 프레임 토큰) · **마스킹 표**(`Acme web`·`acme/web`) · **에셋 매핑 표**(에셋 · 소스 경로 · blob SHA · 치수) · 알려진 벽(App 설치 왕복) · **진행 상태**.
+- [ ] **3.3** `guide/SHOOTING.md` 초판(한국어) — 상수(DPR 2 · 부분 크롭 원본 폭 ≤ 850 CSS px · 파일 폭 ≤ 1700px · 표시 폭 720 · 최소 글자 11px · **액자·배경을 파일에 굽지 않는다** — CSS가 그린다) · 환경(로컬 dev + `bugshot-i18n-test-qa` + OWNER/EDITOR) · **마스킹 표**(`Acme web`·`acme/web`) · **에셋 매핑 표**(에셋 · 소스 경로 · blob SHA · 치수) · 알려진 벽(App 설치 왕복) · **진행 상태**.
   검증: (수동) 사용자 확인.
 - [ ] **3.4** 촬영 — ego-browser. `pnpm dev`를 다시 띄운 뒤. 스크래치패드에 모아 확인 → `public/guide/`에 반영 → md에 참조 → SHOOTING 표에 소스 blob SHA(`git hash-object`)·치수 기록.
   검증: `pnpm test` green(3.2 게이트) · (수동) 컷마다 마스킹·잘림·글자 크기 확인.
