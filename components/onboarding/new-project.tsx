@@ -24,7 +24,7 @@ import { SlowNotice } from "@/components/slow-notice";
 import { Alert } from "@/components/ui/alert";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import type { CreateProjectResult } from "@/app/(edit)/projects/actions";
-import { failureText, isAccessLost } from "./failure";
+import { failureText, isAccessLost, isRepoScopedRefusal } from "./failure";
 import { OnboardingModal } from "./modal";
 import { FilesStep, failedPreview, previewFailureText, type ManualEntry, type PreviewState } from "./steps/files";
 import { NamingStep } from "./steps/naming";
@@ -191,7 +191,8 @@ export function NewProject({
             setBranchValue(fallback.selected);
             return;
           }
-          if (isAccessLost(result.error)) setAccessLost(result.error);
+          // 리포 단위 거부는 행 아래(BranchRow)에만 선다 — 배너로도 올리면 같은 문장이 두 번이다 (#122).
+          if (isAccessLost(result.error) && !isRepoScopedRefusal(result.error)) setAccessLost(result.error);
           setAccessError(result.error);
           return;
         }

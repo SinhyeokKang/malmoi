@@ -24,3 +24,11 @@ export function isAccessLost(error: string): boolean {
   return ["unauthorized", "forbidden", "not-found", "not-connected", "reauthorize",
     "repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only"].includes(error);
 }
+
+/**
+ * `isAccessLost` 중 **리포 한 곳의** 거부 — 다른 리포를 고르면 풀린다. ①에서는 고른 행 아래에만 서고 모달 상단
+ * 배너로 올리지 않는다(malmoi#122 — 둘 다 세우면 같은 문장이 한 화면에 두 번이다).
+ */
+export function isRepoScopedRefusal(error: string): boolean {
+  return ["repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only"].includes(error);
+}

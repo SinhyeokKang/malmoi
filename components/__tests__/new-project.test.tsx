@@ -509,7 +509,7 @@ it.each([
 ])("① 브랜치 조회 거부 %s는 대화상자 안에 한 번만 선다 (#122)", async (error, text) => {
   mocks.listRepoBranches.mockResolvedValueOnce({ ok: false, error });
   await mount();
-  const radio = find(document.body, '[role="radio"]');
+  const radio = find<HTMLElement>(document.body, '[role="radio"]');
   await click(radio);
   const dialog = find(document.body, '[role="dialog"]');
   const alerts = [...dialog.querySelectorAll('[role="alert"]')].filter((a) => a.textContent?.includes(text));
