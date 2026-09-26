@@ -38,6 +38,7 @@
   },
   "devDependencies": {
     "@testing-library/user-event": "14.6.1",
+    "@types/mdast": "4.0.4",
     "@types/node": "^24.13.3",
     "@types/pg": "^8.23.1",
     "@types/react": "^19.2.18",
@@ -68,12 +69,16 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-resizable-panels": "2.1.9",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
     "server-only": "^0.0.1",
     "sharp": "0.35.4",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.3",
     "ts-morph": "^28.0.0",
+    "unified": "11.0.5",
+    "unist-util-visit": "5.1.0",
     "yaml": "2.9.0",
     "zod": "^4.5.4"
   }
