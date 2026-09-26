@@ -94,12 +94,12 @@
 - [x] **T8.2** (사람) Vercel 3환경 `BLOB_PUBLIC_HOST` 등록 + `.env.local`. — 검증: `vercel env ls`.
 - [x] **T8.3** #11 `/tdd` `buildCsp(env, { nonce })` — prod `script-src`에 `'unsafe-inline'` 없음, `'nonce-…' 'strict-dynamic'`. — 검증: red→green.
 - [x] **T8.4** 미들웨어 nonce 발급·헤더 주입, `next.config.ts` 정적 CSP 제거(헤더 1개), matcher 재구성 + `entry-points.test.ts` 갱신. — 검증: 단위 green, `pnpm build` green.
-- [ ] **T8.5** 로컬 `pnpm build && pnpm start` 수동 한 바퀴(ARCHITECTURE §8 목록), 콘솔 CSP 위반 0. dev 서버 재시작 주의(메모리: build during dev → stale). — 검증: 위반 0 스크린샷/기록.
+- [x] **T8.5** 로컬 `pnpm build && pnpm start` 수동 한 바퀴(ARCHITECTURE §8 목록), 콘솔 CSP 위반 0. dev 서버 재시작 주의(메모리: build during dev → stale). — 검증: 위반 0 스크린샷/기록.
   `[C] feat(csp): nonce-based script-src`
 - [x] **T8.6** ARCHITECTURE §8(nonce·style 잔여·Blob 호스트·동적 렌더 대가) 갱신. — 검증: 문서 반영.
 
 ## 9. 마무리
 
-- [ ] **T9.1** `/code-review` → `/refactor` → `/push`(dev). `/push` 4단계에서 개인정보 방침 영향 확인(새 쿠키·전송처 없음 — 판정 기록).
+- [x] **T9.1** `/code-review` → `/refactor` → `/push`(dev). `/push` 4단계에서 개인정보 방침 영향 확인(새 쿠키·전송처 없음 — 판정 기록).
 - [ ] **T9.2** `/merge` 1단계에서 prod `db:deploy` + T2.3.
 - [ ] **T9.3** 이 디렉터리 삭제(결론은 정본으로 올라갔는지 확인 후). `/postmortem`은 1번에 대해 작성(🔴 — 2026-09-09 경로 항목의 인접 축을 놓친 사례).
