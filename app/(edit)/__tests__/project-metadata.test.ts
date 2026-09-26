@@ -40,7 +40,7 @@ it("보관 중에는 이름·이미지 쓰기를 거부하고 올린 객체를 �
 it.each([42, null, "", { slug: "alpha" }])("slug가 %j이면 거부 값을 돌려주고 DB·Blob에 닿지 않는다", async slug => {
   h.prisma = new Proxy({}, { get: () => { throw new Error("DB must not be reached"); } });
   expect(await actions.deleteProjectImage(slug as unknown as string)).toEqual({ ok: false, reason: "not-found" });
-  expect(db.projects[0]?.image).toBe(old); expect(h.del).not.toHaveBeenCalled();
+  expect(db.projects[0]).toMatchObject({ image: old }); expect(h.del).not.toHaveBeenCalled();
 });
 it.each(["editor", "stranger", null])("%s는 메타데이터와 Blob에 쓰지 못한다", async user => {
   h.session = sessionFor(user);

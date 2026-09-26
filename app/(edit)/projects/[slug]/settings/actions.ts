@@ -71,6 +71,8 @@ export async function startGithubConnect(raw: { slug: string; returnTo?: "add-su
     permission: "project:settings",
   });
   if (access.status !== "ok") return { ok: false, error: access.status };
+  // 보관 = Restore만 (PRODUCT §7.9). 쓰기가 없어 잠금 없이 진입 판정만 한다 — 왕복 뒤의 쓰기는 각자 잠금 안에서 다시 본다.
+  if (access.archived) return redrawIfArchived(slug, "archived", { ok: false, error: "archived" });
 
   /**
    * ⚠️ **origin과 쿠키 `secure`를 한 판정에서 얻는다** (malmoi#7). 따로 읽으면 쿠키를 심은 이름과
@@ -444,7 +446,11 @@ export async function uploadProjectImage(form: FormData): Promise<ProjectImageRe
   return { ok: true };
 }
 
-export async function deleteProjectImage(slug: string): Promise<{ ok: true } | { ok: false; reason: AccessError }> {
+export async function deleteProjectImage(raw: string): Promise<{ ok: true } | { ok: false; reason: AccessError }> {
+  // 인자는 클라이언트가 정한다 — 비문자열이 쿼리까지 가면 거부 값 대신 500이 된다. 거부 이유는 업로드와 같은 not-found다.
+  const parsed = Input.safeParse({ slug: raw });
+  if (!parsed.success) return { ok: false, reason: "not-found" };
+  const { slug } = parsed.data;
   const session = await readSession();
   if (session.status !== "ok") return { ok: false, reason: session.status === "none" ? "unauthorized" : "unavailable" };
   const prisma = getPrisma();
