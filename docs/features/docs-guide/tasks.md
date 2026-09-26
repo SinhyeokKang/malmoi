@@ -91,3 +91,9 @@
 
 - [ ] 결론을 정본으로 올리고 `docs/features/docs-guide/`를 지운다.
   검증: `git grep "docs/features/docs-guide"` 0.
+
+## 결정 기록 (/orchestrate 2026-09-26)
+
+- **배치**: G1 core(1.0·1.1·2.1·2.2·3.1) → G2 content(1.2·1.3·2.3·3.2) ∥ G3 render(4.0b·4.1–4.8, 4.3 전 `WAITING FOR G2-IA`) ∥ G4 harness(5.1–5.5 + CLAUDE.md 스택 표) → G5 shots(3.3·3.4).
+- **파일 소유**: CLAUDE.md·README = G4만 · DESIGN·PRODUCT·DIRECTORY = G3만(G4 몫 DIRECTORY 줄은 지휘자가 얹는다) · `messages/en.tsx` = G3만 · `guide/**` = G2 → G5 직렬.
+- **G5는 main 체크아웃에서 로컬 커밋**(push 없음) — 그동안 지휘자는 cherry-pick·build를 멈춘다.
