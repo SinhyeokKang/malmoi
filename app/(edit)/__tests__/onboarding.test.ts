@@ -196,7 +196,9 @@ beforeEach(() => {
   );
   hoisted.listBranches.mockResolvedValue({ status: "ok", names: ["main", "develop"], truncated: false });
   hoisted.ingestFirstSnapshot.mockResolvedValue({ count: 2, failed: 0, errors: [] });
-  vi.stubEnv("AUTH_SECRET", "test-secret-0123456789abcdef");
+  // sec-audit-3 #14 — 연결 state·샘플 확인은 전용 키로 서명한다. AUTH_SECRET을 다른 값으로 두어 그 키를 안 쓰는 것까지 고정한다.
+  vi.stubEnv("APP_SIGNING_SECRET", "test-secret-0123456789abcdef");
+  vi.stubEnv("AUTH_SECRET", "auth-js-only-secret-not-for-app-signing");
 });
 
 describe("비로그인은 어느 Action도 지나지 못한다", () => {
@@ -1595,7 +1597,7 @@ function sampleProof(over: Partial<{ userId: string; repositoryId: string; insta
     userId: OWNER, repositoryId: PROBE_OK.repositoryId, installationId: PROBE_OK.installationId,
     ref: "develop", headSha: HEAD_SHA, ...over,
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", locales: ["en", "fr", "ko"] },
-  }, "test-secret-0123456789abcdef");
+  }, "test-secret-0123456789abcdef", new Date());
 }
 
 const sampleRequest = () => ({ owner: "acme", repo: "web", ref: "develop", adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", locale: "ko", confirmation: sampleProof() });

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProbeResult } from "@/lib/github-connect/health";
+import { verifyState } from "@/lib/github-connect/state";
 
 import { createHarness, sessionFor } from "./harness";
 
@@ -98,7 +99,9 @@ beforeEach(() => {
     name.toLowerCase() === "host" ? "localhost:3000" : null,
   );
   vi.unstubAllEnvs();
-  vi.stubEnv("AUTH_SECRET", "test-secret-0123456789abcdef");
+  // sec-audit-3 #14 — 연결 state·샘플 확인은 전용 키로 서명한다. AUTH_SECRET을 다른 값으로 두어 그 키를 안 쓰는 것까지 고정한다.
+  vi.stubEnv("APP_SIGNING_SECRET", "test-secret-0123456789abcdef");
+  vi.stubEnv("AUTH_SECRET", "auth-js-only-secret-not-for-app-signing");
 });
 
 describe("connectRepository — 인가", () => {
@@ -391,6 +394,16 @@ describe("startGithubConnect — 나가는 쪽 (malmoi#7)", () => {
     expect(name).toBe("__Host-malmoi-gh-state");
     expect(options.secure).toBe(true);
     expect(hoisted.authorizeUrl.mock.calls[0]?.[1]).toBe("https://mal-moi.com/api/github/callback");
+  });
+
+  it("state 쿠키를 AUTH_SECRET이 아니라 APP_SIGNING_SECRET으로 서명한다 (sec-audit-3 #14)", async () => {
+    await expect(startGithubConnect({ slug: "acme" })).rejects.toThrow(/NEXT_REDIRECT/);
+
+    const cookie = hoisted.cookieSet.mock.calls[0]?.[1] as string;
+    const [nonce] = hoisted.authorizeUrl.mock.calls[0] ?? [];
+    const check = (secret: string) => verifyState({ cookie, query: nonce as string, userId: "u-owner", now: new Date(), secret }).status;
+    expect(check("test-secret-0123456789abcdef")).toBe("ok");
+    expect(check("auth-js-only-secret-not-for-app-signing")).toBe("state-mismatch");
   });
 
   it("EDITOR는 forbidden이고 쿠키도 redirect도 없다", async () => {
