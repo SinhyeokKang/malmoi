@@ -33,7 +33,7 @@ export function Table({
    *
    * ⚠️ **끄는 곳이 셋이다** — 번역 화면(`PanelBody`가 스크롤을 소유한다) · 온보딩 ②의 파일 표
    * (`steps/files.tsx`가 바깥 `div`로 스크롤을 들어야 `Th`의 `sticky`가 거기 붙는다) · 공개 문서
-   * (`public-doc.tsx`가 그 `div`에 `role="region"`을 걸어야 키보드로 가로 스크롤된다). 여기서
+   * (`public-doc-table.tsx`가 그 `div`에 `role="region"`을 걸어야 키보드로 가로 스크롤된다). 여기서
    * 컨테이너를 하나 더 만들면 스크롤이 중첩된다.
    */
   return scrollable ? <div className="h-full min-w-0 overflow-auto">{table}</div> : table;

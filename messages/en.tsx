@@ -419,12 +419,11 @@ export const en = {
    * 화면 툴바(`m.translations`)의 것이고, 적재 상태는 설정(`m.settings.status`)의 것이다.
    */
   /**
-   * 공개 문서 둘 — 로그인 화면 푸터가 가리킨다 (8-1a).
+   * 공개 문서 둘 — 공통 푸터(`PublicFooter`)가 가리킨다 (8-1a).
    *
-   * ⚠️ **`/privacy`는 본문이 섰고 `/docs`는 아직 placeholder다** (launch-readiness L2.3). 라우트를 먼저 딴 이유는 시안 푸터가 그것을
-   * 가리키기 때문이고, 링크가 죽어 있는 것보다 "준비 중"이 낫다는 판정이다.
+   * `/privacy`는 공개 셸 **안**이라 헤더가 나가는 길을 들고(DESIGN §6.616), `/docs`는 셸 **밖** 1열이다(§6.61).
    *
-   * ⚠️ **`back`이 없으면 사용자가 갇힌다** — 이 둘은 셸 **밖**이라 사이드바도 푸터도 없고
+   * ⚠️ **`back`이 없으면 `/docs`에서 사용자가 갇힌다** — 셸 밖이라 사이드바도 헤더도 없고
    * 뒤로가기 말고 돌아올 길이 없다.
    */
   publicDocs: {
@@ -436,12 +435,13 @@ export const en = {
       app: "Back to projects",
       signIn: "Back to sign in",
     },
-    /** 시행일 줄의 라벨 — 날짜 자체는 각 문서가 든다. `/privacy`만 쓴다 (DESIGN §6.61). */
+    /** 시행일 줄의 라벨 — 날짜 자체는 각 문서가 든다. `/privacy`만 쓴다 (DESIGN §6.616). */
     effectiveDate: "Effective date",
     /**
      * ⚠️ **`sections`의 `id`는 URL 조각이다** — 다른 화면이 `/docs#workflow`처럼 절을 직접
      * 가리키므로(launch-readiness L2.3), 제목 문구를 고칠 때 **`id`는 따라 고치지 않는다.**
-     * 블록은 문단(`p`)·목록(`ul`)·표(`table`) 셋이고, 클래스는 `components/public-doc.tsx`가 든다.
+     * 블록은 문단(`p`)·목록(`ul`)·표(`table`) 셋이고, 클래스는 그릇이 든다 — `/privacy`는 `components/privacy/privacy-doc.tsx`,
+     * `/docs`는 `components/public-doc.tsx`, 표는 둘 다 `components/public-doc-table.tsx`.
      */
     privacy: {
       title: "Privacy Policy",

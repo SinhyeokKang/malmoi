@@ -185,6 +185,7 @@ export function Stage({
           ))}
         </ol>
         {/* ⚠️ 투명하지만 positioned라 음수 margin으로 끌어올린 CTA 위에 칠해진다 — 포인터를 통과시킨다(세로 긴 뷰포트에서 CTA가 안 눌렸다). */}
+        {/* `98px` = 공개 셸의 윗 여백 8 · 헤더 40 + 8 · 푸터 40 · 패널 테두리 2(`public-shell.tsx`) — 셸 치수가 바뀌면 트랙과 함께 고친다. JS 전 폴백일 뿐이고 준비 뒤엔 `--landing-stage-h`가 잰 값이다. */}
         <div className="pointer-events-none sticky top-0 h-[var(--landing-stage-h,calc(100svh-98px))]">
           <div
             ref={frameRef}
