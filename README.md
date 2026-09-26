@@ -52,7 +52,7 @@ pnpm dev
 | 테스트 | `pnpm test` |
 | 로케일 적재 | `pnpm ingest <디렉터리>` — 포맷 탐지 → 적재 **미리보기** → 왕복 검증 (DB에 쓰지 않는다) |
 | 사용처 스캔 | `pnpm scan <디렉터리>` — `refs` 수집 |
-| 가이드 스크린샷 stale | `pnpm guide:check` — `guide/SHOOTING.md`의 기록 SHA vs 작업 트리. 읽기 전용, 항상 exit 0 |
+| 가이드 스크린샷 stale | `pnpm guide:check` — `guide/SHOOTING.md`의 기록 SHA vs 작업 트리. 읽기 전용, 결과가 어떻든 exit 0(인자 오류만 2) |
 | 어댑터 범용성 측정 | `pnpm adapter-survey docs/adapter-survey/repos.txt` — 읽기 전용, 네트워크 |
 | GitHub App 스모크 | `pnpm smoke:github <slug>` — 읽기만 |
 | Blob 저장소 스모크 | `pnpm smoke:blob` — 실 API. 고아 후보는 목록만 내고 지우지 않는다 |
