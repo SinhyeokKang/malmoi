@@ -19,8 +19,8 @@ app/
   signin/link/[challenge]/   계정 병합 안내. 인가가 없고 challenge가 대신한다 → matcher 밖.
                         ⚠️ 만료를 이 화면으로 말하지 않는다 — /signin으로 되돌린다
   privacy/ · docs/      공개 문서. privacy는 공개 셸 안의 components/privacy/(DESIGN §6.616), docs는 셸 밖
-                        components/public-doc.tsx(장문 그릇 — §6.61). privacy 본문은 messages/en.tsx의 publicDocs.privacy이고,
-                        docs 본문만 아직 placeholder(L2.3). ⚠️ 세션을 읽는 이유는 차단이 아니다 — privacy는 헤더 primary
+                        components/public-doc.tsx(장문 그릇 — §6.61). 본문은 messages/en.tsx의
+                        publicDocs.privacy · publicDocs.docs다. ⚠️ 세션을 읽는 이유는 차단이 아니다 — privacy는 헤더 primary
                         (publicCta: 로그인이면 Open Malmoi → /projects, 아니면 Get started → /signin), docs는 복귀 링크 하나다.
                         그래서 둘 다 동적이다
   layout.tsx            루트 레이아웃(Pretendard <link>). ⚠️ lang="en" — screens.test.ts가 고정한다
