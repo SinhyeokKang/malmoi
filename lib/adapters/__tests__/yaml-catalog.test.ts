@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { parseDocument } from "yaml";
+import { parse, parseDocument } from "yaml";
 import { detectFormat, yamlCatalog } from "../index";
+import { isYaml11Ambiguous } from "../yaml-catalog";
 import type { AdapterFile, DetectedFormat } from "../types";
 
 /**
@@ -892,5 +893,70 @@ describe("yaml-catalog — 개행 값 삽입은 큰따옴표다 (B7a r1)", () =>
     expect(out).toBe('a:\n  x: \'old\'\n  y: \'two\'\n  z: "line\\n\\nnext"\n');
     expect(out.split("\n").some((line) => /^\s+$/.test(line))).toBe(false);
     expect(parseDocument(out).getIn(["a", "z"])).toBe("line\n\nnext");
+  });
+});
+
+/**
+ * **YAML 1.1 소비자(Psych·PyYAML)가 문자열로 읽지 않는 값은 인용한다** (sec-audit-3 #4). 1.2 판정만으로 PLAIN을 고르면
+ * `No`·`on`·`12:30`이 인용 없이 나가 Rails·Python 런타임에서 bool·정수가 된다. 판정은 같은 라이브러리의 1.1 스키마에
+ * 맡긴다(규칙 재구현 금지) — `yaml` 2.9.0에서 동작을 여기서 고정한다.
+ */
+describe("yaml-catalog — YAML 1.1이 문자열로 안 읽는 값은 인용한다 (sec-audit-3 #4)", () => {
+  const AMBIGUOUS = ["No", "yes", "on", "off", "y", "n", "~", "null", "12:30", "0x1F", "1_000", ".inf", "2026-09-27", "0b101", "190:20:30"];
+  const PLAIN_SAFE = ["hello", "No way", "yes please", "12:30 PM", "=", "<<"];
+
+  /** 출력을 1.1·1.2 양쪽으로 다시 읽는다 — 값만이 아니라 표현이 두 파서에서 같은 문자열이어야 한다(POSTMORTEM 2026-09-03). */
+  const readBoth = (out: string, path: string[]) =>
+    (["1.1", "1.2"] as const).map((version) => parseDocument(out, { version }).getIn(path));
+
+  it.each(AMBIGUOUS)("판정: %s는 모호하다", (value) => {
+    expect(isYaml11Ambiguous(value)).toBe(true);
+    expect(typeof parse(value, { version: "1.1" })).not.toBe("string");
+  });
+
+  it.each(PLAIN_SAFE)("판정: %s는 모호하지 않다", (value) => {
+    expect(isYaml11Ambiguous(value)).toBe(false);
+  });
+
+  it.each(AMBIGUOUS)("치환: 맨 문자열 원본에서 %s를 큰따옴표로 쓴다", (value) => {
+    const out = yamlCatalog.write(withSource("ko:\n  a: old\n  b: keep\n"), { locale: "ko", entries: [{ key: "a", message: value }] })!;
+    expect(out).toBe(`ko:\n  a: ${JSON.stringify(value)}\n  b: keep\n`);
+    expect(readBoth(out, ["ko", "a"])).toEqual([value, value]);
+  });
+
+  it.each(AMBIGUOUS)("삽입: 맨 문자열 형제 아래에 %s를 큰따옴표로 넣는다", (value) => {
+    const out = yamlCatalog.write(withSource("ko:\n  a: old\n  b: two\n"), { locale: "ko", entries: [{ key: "z", message: value }] })!;
+    expect(out).toBe(`ko:\n  a: old\n  b: two\n  z: ${JSON.stringify(value)}\n`);
+    expect(readBoth(out, ["ko", "z"])).toEqual([value, value]);
+  });
+
+  it.each(PLAIN_SAFE)("모호하지 않은 %s는 원본 PLAIN 표현을 유지한다 (§1.4)", (value) => {
+    const out = yamlCatalog.write(withSource("ko:\n  a: old\n"), { locale: "ko", entries: [{ key: "a", message: value }] })!;
+    expect(out).toBe(`ko:\n  a: ${value}\n`);
+    expect(readBoth(out, ["ko", "a"])).toEqual([value, value]);
+  });
+
+  it("작은따옴표 원본이면 작은따옴표로 인용한다", () => {
+    const out = yamlCatalog.write(withSource("ko:\n  a: 'old'\n"), { locale: "ko", entries: [{ key: "a", message: "No" }] })!;
+    expect(out).toBe("ko:\n  a: 'No'\n");
+    expect(readBoth(out, ["ko", "a"])).toEqual(["No", "No"]);
+  });
+
+  it("플로우 맵 안에서도 인용한다", () => {
+    const out = yamlCatalog.write(withSource("ko: {a: old, b: keep}\n"), { locale: "ko", entries: [{ key: "a", message: "on" }] })!;
+    expect(out).toBe('ko: {a: "on", b: keep}\n');
+    expect(readBoth(out, ["ko", "a"])).toEqual(["on", "on"]);
+  });
+
+  it("값이 안 바뀐 모호 값 행은 원본 바이트 그대로다 — 치환 대상이 아니다", () => {
+    const out = yamlCatalog.write(withSource("ko:\n  a: No\n  b: old\n"), { locale: "ko", entries: [{ key: "a", message: "No" }, { key: "b", message: "new" }] })!;
+    expect(out).toBe("ko:\n  a: No\n  b: new\n");
+  });
+
+  it("결정적이다 — 같은 입력은 같은 바이트, 두 번째 write는 무변경", () => {
+    const input = { locale: "ko", entries: [{ key: "a", message: "yes" }] };
+    const once = yamlCatalog.write(withSource("ko:\n  a: old\n"), input)!;
+    expect(yamlCatalog.write(withSource("ko:\n  a: old\n"), input)).toBe(once);
+    expect(yamlCatalog.write(withSource(once), input)).toBe(once);
   });
 });
