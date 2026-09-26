@@ -127,6 +127,14 @@
   - 따라오는 것: `GITHUB_APP_ID`·`PRIVATE_KEY`·`GITHUB_APP_CLIENT_*`·`GITHUB_APP_SLUG` App별 · `lib/github-connect/origin.ts:38-47` 호스트별 callback 등록 · L0.2 설정을 둘 다에 · OPERATIONS "키를 든 곳"(POSTMORTEM 2026-09-06 `:504`) 재계수 · **`d759d39`가 오늘 적은 CLAUDE.md:266 "셋이 하나를 공유"를 되돌림** · dev DB 프로젝트 여섯 [Reconnect].
   - 검증(수동): `pnpm smoke:github <slug>`가 로컬(dev App)·프로덕션(prod App) 각각 통과. dev App 개인키로 prod 설치 ID 토큰 발급 시도 → 실패(짝: dev 설치 ID → 성공).
 
+- [ ] L2.11 **공개 직전 prod·dev DB 데이터를 비운다(결정됨, 2026-09-27 사용자)**: prod에 테스트 흔적(`bugshot-i18n-test` 프로젝트 · 노출된 push 토큰)이 남아 있고, 실사용자가 없는 지금이 비용 0인 마지막 시점이다.
+  - **순서**: L2.10(App 분리 — 설치 ID가 바뀌어 기존 프로젝트는 어차피 [Reconnect]) 뒤 · sec-audit-3 `/merge`(v1.0.0 · prod `db:deploy` · T2.3 USAGE 재조회) 뒤 · 공개 전.
+  - **방법**: `migrate reset`이 아니라 앱 테이블 `TRUNCATE … CASCADE` — 스키마·`_prisma_migrations`·스키마 권한(USAGE 회수·anon GRANT 0)을 그대로 둔다. 실행 전 prod `pg_dump` 백업(로컬 보관 — PII 봉투라 키와 쌍으로). prod 쓰기라 **명령을 보이고 사용자 승인 뒤** 실행한다.
+  - **같이 치운다**: Vercel Blob 두 스토어(`pnpm smoke:blob` 고아 목록 → 삭제) · 테스트 대상 리포의 `PUSH_TOKEN` secret·워크플로(토큰 무효로 CI 401) · 로그인 세션은 전부 끊긴다(오너 재가입).
+  - **dev**: 같은 방식으로 비우고 `bugshot-i18n-test-qa`(OWNER+EDITOR)를 정상 온보딩으로 다시 만든다(메모리 dev-db-qa-state 갱신).
+  - ⚠️ "사건은 지우지 않는다"(ProjectEvent, 불변식 3 확장)는 앱의 동작 규칙이라 출시 전 운영자 초기화와 충돌하지 않는다.
+  - 검증(수동): 두 DB에서 앱 테이블 행 0 · `pnpm db:status`/`db:status:prod` 최신 · anon·authenticated USAGE false 유지 · Blob 스토어 객체 0 · 오너 로그인 → 새 프로젝트 생성 한 바퀴.
+
 ## R3 — 동작 결함 (🟡)
 
 - [x] L3.1 (2026-09-18 — **증상은 재현되지 않았고 그 이유가 우연이었다**: `constructor` 로케일로 찾아지는 `Object.prototype.constructor`에 `Cell`의 필드가 하나도 없어 `cell.pending`·`cell.value`가 전부 `undefined`로 떨어졌을 뿐이다 — `Cell`에 그 이름의 필드가 하나 생기면 끝나는 우연이라 고쳤다. `__proto__`는 `isPathSafeLocale`이 `_` 시작으로 막지만 그 방어선은 다른 모듈에 있는 한 겹이었다. 읽기는 `cellAt`(`Object.hasOwn`) 하나로 모으고 대입은 `Object.create(null)`. **감사 목록에 없던 `lib/pull/render.ts:41`도 같은 부류라 함께 닫았다** — 파일로 나가는 경로다. 재발 방지는 POSTMORTEM grep 대신 소스 스캔 테스트로 박았다(`view.test.ts` — `.cells[`가 hasOwn 밖에 0건 · 대입이 `Object.create(null)`)) `lib/keys/query.ts:120` — 평범한 `{}`에 `Locale.code`를 대입하고 `lib/keys/view.ts:112,334`·`components/translations/key-group.tsx:96`이 `hasOwn` 없이 읽는다. `constructor` 로케일(`isValidLocaleCode` 통과)이면 "Not sent" 배지·필터가 거짓으로 켜진다. `lib/pull/plan.ts:58`·`json-catalog.ts:148`은 **경로** 키 맵이라 부류가 다르다(전자는 `typeof === "boolean"` 가드 있음) — 대상에서 뺀다. POSTMORTEM 2026-09-09의 grep 패턴에 `t.localeCode` 모양을 더한다. (audit #17)
