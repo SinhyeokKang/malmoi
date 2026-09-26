@@ -38,19 +38,19 @@
 
 ## 2. 🟡 #2·#3 DB 스키마 USAGE
 
-- [ ] **T2.1** `/db`: 마이그레이션 `revoke_public_schema_usage_from_api_roles`(롤 존재 조건 DO 블록) 생성 → dev 적용. — 검증: dev `has_schema_privilege('anon','public','USAGE') = false`, `pnpm test:projects:postgres` green(롤 없는 DB에서 적용 성공).
-- [ ] **T2.2** `.claude/commands/db.md` 5단계: prod 필수 + 스키마 USAGE SQL. `pnpm sync:agents`. — 검증: `pnpm sync:agents:check` green.
+- [x] **T2.1** `/db`: 마이그레이션 `revoke_public_schema_usage_from_api_roles`(롤 존재 조건 DO 블록) 생성 → dev 적용. — 검증: dev `has_schema_privilege('anon','public','USAGE') = false`, `pnpm test:projects:postgres` green(롤 없는 DB에서 적용 성공).
+- [x] **T2.2** `.claude/commands/db.md` 5단계: prod 필수 + 스키마 USAGE SQL. `pnpm sync:agents`. — 검증: `pnpm sync:agents:check` green.
   `[C] chore(db): revoke public schema usage from Supabase API roles`
 - [ ] **T2.3** (운영, `/merge` 1단계) prod `db:deploy` 뒤 USAGE·GRANT·default ACL 재조회, PUBLIC 상속으로 여전히 true면 design의 후속 판단. Supabase Advisors → Security와 `realtime` RLS를 눈으로 확인해 기록. — 검증: prod `has_schema_privilege` false 두 롤.
-- [ ] **T2.4** ARCHITECTURE §7·OPERATIONS에 "USAGE로 닫는다, default ACL은 남는다" + 확인 SQL. — 검증: CLAUDE.md Supabase 절의 "예방이 아니라 탐지" 문장이 새 사실과 모순 없음(CLAUDE.md 갱신 포함).
+- [x] **T2.4** ARCHITECTURE §7·OPERATIONS에 "USAGE로 닫는다, default ACL은 남는다" + 확인 SQL. — 검증: CLAUDE.md Supabase 절의 "예방이 아니라 탐지" 문장이 새 사실과 모순 없음(CLAUDE.md 갱신 포함).
   `[C] docs(ARCHITECTURE): close API-role access at schema usage`
 
 ## 3. 🟡 #4 YAML 1.1 모호 값
 
-- [ ] **T3.1** `/tdd`: `isYaml11Ambiguous` + yaml-catalog write 케이스 — `No`·`yes`·`on`·`off`·`y`·`~`·`null`·`12:30`·`0x1F`·`1_000`·`.inf`·`2026-09-27` 인용, `hello`·`No way` PLAIN 유지, 원본 `QUOTE_SINGLE`이면 단일 인용. 출력을 `yaml` 1.1·1.2 파서 양쪽으로 다시 읽어 문자열인지 단언(값만이 아니라 표현도 — POSTMORTEM 2026-09-03 "값이 맞으면 통과하는 검증"). — 검증: red.
-- [ ] **T3.2** 구현(`flowString`). — 검증: T3.1 green, `lib/adapters/__tests__/contract.ts` green, 값 무변경 행 바이트 동일 테스트 green.
+- [x] **T3.1** `/tdd`: `isYaml11Ambiguous` + yaml-catalog write 케이스 — `No`·`yes`·`on`·`off`·`y`·`~`·`null`·`12:30`·`0x1F`·`1_000`·`.inf`·`2026-09-27` 인용, `hello`·`No way` PLAIN 유지, 원본 `QUOTE_SINGLE`이면 단일 인용. 출력을 `yaml` 1.1·1.2 파서 양쪽으로 다시 읽어 문자열인지 단언(값만이 아니라 표현도 — POSTMORTEM 2026-09-03 "값이 맞으면 통과하는 검증"). — 검증: red.
+- [x] **T3.2** 구현(`flowString`). — 검증: T3.1 green, `lib/adapters/__tests__/contract.ts` green, 값 무변경 행 바이트 동일 테스트 green.
   `[C] fix(yaml-catalog): quote values YAML 1.1 would not read as strings`
-- [ ] **T3.3** ARCHITECTURE §1.4에 규칙과 "기존 프로젝트의 1회 변경 PR" 기록. `/push` 4d 재측정 판정 근거(writer만 변경) 메모. — 검증: 문서 반영.
+- [x] **T3.3** ARCHITECTURE §1.4에 규칙과 "기존 프로젝트의 1회 변경 PR" 기록. `/push` 4d 재측정 판정 근거(writer만 변경) 메모. — 검증: 문서 반영.
 
 ## 4. 🟡 #5 · ⚪ #9 문서 사실 정정
 
