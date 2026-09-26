@@ -18,11 +18,13 @@ export default function DocsNotFound() {
       <DocFrame toc={[]}>
         <DocEyebrow>{t.eyebrow}</DocEyebrow>
         <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{t.title}</h1>
-        <p className="text-prose mt-4 leading-[1.75] text-pretty">{t.missing(<RequestedPath />)}</p>
-        <p className="text-prose mt-4 leading-[1.75]">
-          <Link href={routes.docs()} className={DOC_LINK}>
-            {t.overview}
-          </Link>
+        <p className="text-prose mt-5 leading-[1.75] text-pretty">
+          {t.body(
+            <RequestedPath />,
+            <Link href={routes.docs()} className={DOC_LINK}>
+              {t.overview}
+            </Link>,
+          )}
         </p>
       </DocFrame>
     </PublicScroller>

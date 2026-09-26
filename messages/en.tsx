@@ -648,7 +648,7 @@ export const en = {
        * `/docs/*`의 셸 라벨 (DESIGN §6.61). ⚠️ **본문은 여기 없다** — `guide/**.md`가 정본이고, 개요의 대상 라벨·
        * `More in the docs`만 사전이 든다(어느 장을 앞에 세우는지는 `lib/guide/overview.ts`의 상수다).
        */
-      nav: "Documentation",
+      nav: "Docs",
       toc: "On this page",
       /** 이전/다음 카드 묶음의 `nav` 이름 — 목차·문서 내비와 랜드마크가 갈려야 한다. */
       pages: "Previous and next pages",
@@ -662,8 +662,9 @@ export const en = {
       notFound: {
         eyebrow: "404",
         title: "This page doesn't exist",
-        missing: (path: ReactNode): ReactNode => <>Nothing is published at {path}.</>,
-        overview: "Go to the docs overview",
+        /** 한 문단이다(시안 1d, #119) — 주소와 개요 링크가 같은 문장에 선다. */
+        body: (path: ReactNode, overview: ReactNode): ReactNode => <>There&apos;s no page at {path}. Pick a page from the list, or start from the {overview}.</>,
+        overview: "docs overview",
       },
     },
   },

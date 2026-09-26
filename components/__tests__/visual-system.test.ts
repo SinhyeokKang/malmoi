@@ -149,6 +149,8 @@ const REGISTERED: Record<string, string[]> = {
   "text-neutral-300": ["components/members/role-chip.tsx"],
   "text-neutral-400": [
     "app/(edit)/account/page.tsx",
+    // `/docs` 행 화살표 `→` (§6.61, #119)
+    "components/docs/doc-frame.tsx",
     "components/home/attention-card.tsx",
     "components/home/count-cards.tsx",
     "components/home/meta-column.tsx",

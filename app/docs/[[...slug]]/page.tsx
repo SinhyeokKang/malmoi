@@ -64,7 +64,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
           <GuideMarkdown tree={page.tree} file={page.file} />
           <DocTracks tracks={tracks} />
           <h2 className="m-0 mt-14 text-2xl leading-[1.4] font-semibold">{m.publicDocs.docs.more}</h2>
-          <DocRows rows={rest} className="mt-6" />
+          <DocRows rows={rest} arrow={false} className="mt-4" />
         </DocFrame>
       </PublicScroller>
     );
@@ -79,7 +79,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
       <DocFrame toc={chapterIndex ? [] : extractToc(page.tree)}>
         {!chapterIndex && self?.parent ? <DocEyebrow>{self.parent}</DocEyebrow> : null}
         <GuideMarkdown tree={page.tree} file={page.file} />
-        {chapterIndex ? <DocRows rows={children.map(row)} className="mt-10" /> : null}
+        {chapterIndex ? <DocRows rows={children.map(row)} arrow className="mt-10" /> : null}
         <DocNeighbours previous={neighbour(flat[index - 1])} next={neighbour(flat[index + 1])} />
       </DocFrame>
     </PublicScroller>

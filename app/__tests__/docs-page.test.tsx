@@ -36,7 +36,31 @@ async function page(slug: string[] | undefined) {
   return render(await Layout({ children: await Docs({ params: Promise.resolve(slug === undefined ? {} : { slug }) }) }));
 }
 
+describe("`/docs/*` — 셸 (#119)", () => {
+  it("문서 내비의 이름은 `Docs`다(시안 1a)", () => {
+    expect(m.publicDocs.docs.nav).toBe("Docs");
+  });
+
+  /** 시안: h1 뒤 도입 문단 위 20 — 본문 문단의 16과 다르다. 원고 문단은 react-markdown이 그려 그릇이 `h1 + p`로 누른다. */
+  it("도입 문단(h1 바로 뒤)은 그릇이 mt 20으로 누른다", async () => {
+    const { container } = await page(["setup", "workflow"]);
+    const article = container.querySelector("article");
+    expect(article?.className).toContain("[&>h1+p]:mt-5");
+    expect(article?.querySelector(":scope > h1 + p")).not.toBeNull();
+  });
+});
+
 describe("`/docs` — 개요(1a)", () => {
+  /** 시안 1a — 갈래 행은 `→`, `More in the docs` 행은 화살표 없음(#119). 장 개요(1c) 행은 아래에서 본다. */
+  it("화살표 — 갈래 행만 `→`이고 `More` 행엔 없다", async () => {
+    const { container } = await page(undefined);
+    const more = [...container.querySelectorAll("h2")].find((h) => h.textContent === m.publicDocs.docs.more)?.nextElementSibling;
+    expect(more?.tagName).toBe("UL");
+    expect(more?.querySelectorAll("[data-arrow]")).toHaveLength(0);
+    const trackRows = [...container.querySelectorAll("article a")].filter((a) => a.getAttribute("href") === routes.docs("setup/workflow"));
+    expect(trackRows[0]?.querySelector("[data-arrow]")?.textContent).toBe("→");
+  });
+
   it("두 갈래 카드와 `More in the docs` — 목차·이전/다음이 없다", async () => {
     const { container } = await page(undefined);
     expect(container.textContent).toContain(m.publicDocs.docs.forDevelopers);
@@ -97,6 +121,7 @@ describe("`/docs/translate` — 장 개요(1c)", () => {
     const { container } = await page(["translate"]);
     const hrefs = [...container.querySelectorAll("article ul a")].map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual([routes.docs("translate/join"), routes.docs("translate/edit"), routes.docs("translate/publish")]);
+    for (const a of container.querySelectorAll("article ul a")) expect(a.querySelector("[data-arrow]")?.textContent).toBe("→");
     expect(container.querySelector(`nav[aria-labelledby]`)).toBeNull();
     expect(container.querySelector("article h1")?.previousElementSibling).toBeNull();
   });
@@ -117,5 +142,17 @@ describe("`/docs/*` — 404", () => {
     expect(container.querySelector("article code")?.textContent).toBe("/docs/nope");
     expect([...container.querySelectorAll("article a")].map((a) => a.getAttribute("href"))).toEqual([routes.docs()]);
     expect(container.querySelectorAll(`nav[aria-label="${m.publicDocs.docs.nav}"] [aria-current]`)).toHaveLength(0);
+  });
+
+  /** 시안 1d — 주소와 복귀 링크가 **한 문단**이다(#119). 링크는 문장 안의 `docs overview`다. */
+  it("404 본문은 h1 뒤 한 문단 — 주소 · 안내 · 문장 안 링크", async () => {
+    mocks.path = "/docs/nope";
+    const { default: NotFound } = await import("@/app/docs/not-found");
+    const { default: Layout } = await import("@/app/docs/layout");
+    const { container } = await render(await Layout({ children: NotFound() }));
+    const paragraphs = [...container.querySelectorAll("article h1 ~ p")];
+    expect(paragraphs).toHaveLength(1);
+    expect(paragraphs[0]?.textContent).toBe("There's no page at /docs/nope. Pick a page from the list, or start from the docs overview.");
+    expect(paragraphs[0]?.querySelector("a")?.textContent).toBe("docs overview");
   });
 });

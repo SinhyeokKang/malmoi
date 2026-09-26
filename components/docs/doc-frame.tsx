@@ -1,4 +1,3 @@
-import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -10,13 +9,26 @@ import { cn } from "@/lib/utils";
 const ROW_HOVER = "hover:bg-foreground/3 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
 /**
+ * 행 화살표 — 시안이 글리프 `→`를 `neutral-400`으로 든다(#119, lucide가 아니다 — 굵기·크기가 글자를 따른다).
+ * `data-arrow`는 테스트 표식이다.
+ */
+function Arrow() {
+  return (
+    <span data-arrow="" aria-hidden className="shrink-0 text-neutral-400">
+      →
+    </span>
+  );
+}
+
+/**
  * 본문 스크롤러 안의 그릇 — **Privacy 그릇 그대로**(DESIGN §6.61 · 시안 `Docs.dc.html` 1b): 본문 720 + 목차 200 · 사이 64 ·
  * 최대 1064 가운데 · 위 64 아래 120. 목차가 없으면(H2 둘 미만 · 개요 · 장 개요) **열만 비운다** — 본문 폭이 페이지마다 흔들리지 않는다.
  */
 export function DocFrame({ toc, children }: { toc: readonly TocItem[]; children: ReactNode }) {
   return (
     <div className="mx-auto grid max-w-[1064px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 pt-16 pb-30">
-      <article className="min-w-0">{children}</article>
+      {/* 도입 문단(h1 바로 뒤)은 위 20 — 본문 문단의 16과 다르다(시안 1a–1d, #119). 원고 문단은 react-markdown이 그려 그릇이 누른다. */}
+      <article className="min-w-0 [&>h1+p]:mt-5">{children}</article>
       {toc.length === 0 ? <div /> : <Toc label={m.publicDocs.docs.toc} items={toc.map(({ id, text }) => ({ id, heading: text }))} />}
     </div>
   );
@@ -29,18 +41,21 @@ export function DocEyebrow({ children }: { children: ReactNode }) {
 
 export type DocLinkRow = { href: string; title: string; description: string | null };
 
-/** 장 개요의 하위 목록 · 개요의 `More in the docs` — 카드 한 장 안의 행(제목 15/500 · 설명 14 muted · 화살표). */
-export function DocRows({ rows, className }: { rows: readonly DocLinkRow[]; className?: string }) {
+/**
+ * 장 개요의 하위 목록 · 개요의 `More in the docs` — 카드 한 장 안의 행(p16 · 제목 15/500 · 설명 14 muted).
+ * 화살표는 장 개요(1c)에만 있다 — 개요의 `More` 행(1a)엔 없다(#119).
+ */
+export function DocRows({ rows, arrow, className }: { rows: readonly DocLinkRow[]; arrow: boolean; className?: string }) {
   return (
     <ul className={cn("border-border divide-border m-0 list-none divide-y overflow-hidden rounded-lg border p-0", className)}>
       {rows.map((row) => (
         <li key={row.href}>
-          <Link href={row.href} className={cn("flex items-center gap-4 px-4 py-3", ROW_HOVER)}>
+          <Link href={row.href} className={cn("flex items-center gap-4 p-4", ROW_HOVER)}>
             <span className="min-w-0 flex-1">
               <span className="block text-base font-medium">{row.title}</span>
               {row.description === null ? null : <span className="text-muted-foreground mt-0.5 block text-sm leading-[1.6]">{row.description}</span>}
             </span>
-            <ArrowRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
+            {arrow ? <Arrow /> : null}
           </Link>
         </li>
       ))}
@@ -66,12 +81,13 @@ export function DocTracks({ tracks }: { tracks: readonly DocTrack[] }) {
               <span className="text-muted-foreground mt-1 block text-sm leading-[1.6]">{track.chapter.description}</span>
             )}
           </Link>
-          <ul className="divide-border border-border m-0 list-none divide-y border-t p-0">
+          {/* 머리 ↔ 첫 행은 `--divider`, 행 ↔ 행은 `--border`(시안 1a, #119) */}
+          <ul className="divide-border border-divider m-0 list-none divide-y border-t p-0">
             {track.pages.map((page) => (
               <li key={page.href}>
                 <Link href={page.href} className={cn("flex h-11 items-center justify-between gap-3 px-4 text-sm", ROW_HOVER)}>
                   {page.title}
-                  <ArrowRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
+                  <Arrow />
                 </Link>
               </li>
             ))}
