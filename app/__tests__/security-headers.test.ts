@@ -11,7 +11,7 @@ import { buildCsp } from "@/lib/security-headers";
 
 /**
  * **보안 응답 헤더의 배선** (sec-audit 발견 9 → audit #75 → sec-audit-3 #11). 값의 판정은
- * `lib/__tests__/security-headers.test.ts`가 들고, 여기는 **CSP는 미들웨어가, 나머지 넷은 `next.config.ts`가**
+ * `lib/__tests__/security-headers.test.ts`가 들고, 여기는 **CSP는 미들웨어가, 나머지 다섯은 `next.config.ts`가**
  * 실제로 내는지만 본다.
  *
  * ⚠️ **`tsc`는 이 파일의 형태를 못 본다** — `headers()`가 없어도, 오타가 나도 타입은 통과한다.

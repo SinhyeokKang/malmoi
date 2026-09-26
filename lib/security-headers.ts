@@ -1,6 +1,6 @@
 /**
  * **보안 응답 헤더의 값** (sec-audit 발견 9 → 2026-09-24 audit #75 → sec-audit-3 #11). CSP는 `middleware.ts`가
- * 요청마다(nonce), 나머지 넷은 `next.config.ts`의 `headers()`가 정적으로 낸다.
+ * 요청마다(nonce), 나머지 다섯은 `next.config.ts`의 `headers()`가 정적으로 낸다.
  *
  * ⚠️ **잎이다 — import 0.** next.config가 빌드·기동 시점에 이 파일을 읽으므로 경로 별칭·서버 모듈을 물면
  * 설정 로드가 죽는다. 환경은 호출자가 넘긴다(모듈 최상위에서 env를 읽지 않는다 — CLAUDE.md 코드 컨벤션).
@@ -100,12 +100,17 @@ export function buildCsp(env: CspEnvironment, options: { nonce: string; blobHost
 }
 
 /**
- * **CSP를 뺀 넷** — 경로와 무관한 정적 값이라 `next.config.ts`가 `/(.*)` 전부(API·정적 자산 포함)에 싣는다.
+ * **CSP를 뺀 다섯** — 경로와 무관한 정적 값이라 `next.config.ts`가 `/(.*)` 전부(API·정적 자산 포함)에 싣는다.
  * ⚠️ **CSP는 하나만** 보낸다 — 둘이면 브라우저가 교집합을 적용해 한쪽 완화가 조용히 무시된다. 그 하나는 미들웨어다.
  */
 export function securityHeaders(): { key: string; value: string }[] {
   return [
     { key: "X-Content-Type-Options", value: "nosniff" },
+    /**
+     * CSP의 `frame-ancestors`는 미들웨어가 내는 **페이지에만** 있다 — `/api/auth/signout`은 Auth.js 기본 확인 폼 HTML이라
+     * 그 밖에서 프레이밍(로그아웃 클릭재킹)이 열린다. 정적 헤더로 `/(.*)` 전부를 막는다(sec-audit-3 fix1).
+     */
+    { key: "X-Frame-Options", value: "DENY" },
     /**
      * ⚠️ **실질이 가장 큰 헤더다.** `/invite/<token>`은 토큰이 **URL에** 있어, 그 화면에 외부 링크가 하나
      * 추가되는 순간 토큰이 `Referer`로 나간다.

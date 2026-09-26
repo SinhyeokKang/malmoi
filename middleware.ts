@@ -48,7 +48,6 @@ export default function middleware(request: NextRequest): NextResponse {
   // ⚠️ **요청 쪽에도 싣는다** — Next는 렌더 중 **요청** 헤더의 CSP에서 nonce를 뽑아 자기 스크립트에 붙인다.
   // 응답에만 실으면 모든 스크립트가 nonce 없이 나가 이 정책에 막힌다.
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", csp);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", csp);
