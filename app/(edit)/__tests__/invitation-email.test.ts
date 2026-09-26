@@ -192,6 +192,17 @@ describe("createInvitations — 발급 판정의 거부는 발송 0", () => {
     });
   });
 
+  it("발급자 한도면 재시도 시각과 발급자의 최근 1시간 발급 수를 돌려준다", async () => {
+    hoisted.issueInvitations.mockResolvedValueOnce({ status: "rate-limited", retryAt: RETRY, limit: "user", used: 30 });
+    await expect(createInvitations({ slug: "alpha", recipients: two })).resolves.toEqual({
+      ok: false,
+      error: "rate-limited",
+      retryAt: RETRY.toISOString(),
+      limit: "user",
+      used: 30,
+    });
+  });
+
   it("좌석이 없으면 member-limit이다", async () => {
     hoisted.issueInvitations.mockResolvedValueOnce({ status: "member-limit", limit: 10 });
     await expect(createInvitations({ slug: "alpha", recipients: two })).resolves.toEqual({ ok: false, error: "member-limit" });
@@ -278,6 +289,7 @@ describe("resendInvitation — 저장된 주소로 재발급 후 발송", () => 
     [{ status: "member-limit", limit: 10 }, { ok: false, error: "member-limit" }],
     [{ status: "rate-limited", retryAt: RETRY, limit: "address", index: 0 }, { ok: false, error: "rate-limited", retryAt: RETRY.toISOString(), limit: "address" }],
     [{ status: "rate-limited", retryAt: RETRY, limit: "project", used: 20 }, { ok: false, error: "rate-limited", retryAt: RETRY.toISOString(), limit: "project", used: 20 }],
+    [{ status: "rate-limited", retryAt: RETRY, limit: "user", used: 30 }, { ok: false, error: "rate-limited", retryAt: RETRY.toISOString(), limit: "user", used: 30 }],
   ])("재발급 거부 %j는 발송 0이다", async (outcome, expected) => {
     hoisted.reissueInvitation.mockResolvedValueOnce(outcome);
     await expect(resendInvitation({ slug: "alpha", invitationId: "inv" })).resolves.toEqual(expected);

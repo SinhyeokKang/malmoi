@@ -14,7 +14,7 @@ import { encodeInvitationEmail, encodeUserFields } from "@/lib/credentials/recor
 import { lookupEmail } from "@/lib/credentials/storage";
 import { optionalEnv } from "@/lib/env";
 import { issueInvitations, reissueInvitation } from "@/lib/invitation-email/issue";
-import { ADDRESS_INTERVAL_MS, INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
+import { ADDRESS_INTERVAL_MS, INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 
 /**
  * **초대 발급·재발급의 실제 PostgreSQL 검증** (invitation-email T2.4 · design §3).
@@ -81,6 +81,7 @@ async function seedInvitation(over: {
   expiresAt?: Date;
   acceptedAt?: Date | null;
   token?: string;
+  invitedBy?: string;
 }) {
   const projectId = over.projectId ?? "p";
   await prisma.projectInvitation.create({
@@ -92,7 +93,7 @@ async function seedInvitation(over: {
       tokenHash: hashInviteToken(over.token ?? `tok-${over.id}`),
       expiresAt: over.expiresAt ?? future(),
       acceptedAt: over.acceptedAt ?? null,
-      invitedBy: "u1",
+      invitedBy: over.invitedBy ?? "u1",
       createdAt: over.createdAt ?? new Date(Date.now() - 2 * 60 * 60 * 1000),
     },
   });
@@ -222,6 +223,35 @@ describe("issueInvitations — 하나라도 거부면 전체 쓰기 0건", () =>
     expect(await invitations()).toHaveLength(1);
     expect((await prisma.projectInvitation.findUniqueOrThrow({ where: { id: "pending-a" } })).expiresAt).toEqual(before.expiresAt);
     expect(await invitedEvents()).toHaveLength(0);
+  });
+});
+
+/**
+ * **발급자 합산 한도는 전 프로젝트에 걸친다** (sec-audit-3 #15). 프로젝트 한도(20)에 안 걸리는 두 프로젝트에
+ * 나눠 보내도 발급자의 최근 1시간이 30건이면 막힌다. 대조로 **다른 발급자의 기록은 세지 않는다**.
+ */
+describe("issueInvitations — 발급자 최근 1시간 합산", () => {
+  const seedBy = async (projectId: string, invitedBy: string, n: number, prefix: string) => {
+    for (let i = 0; i < n; i++) {
+      await seedInvitation({ id: `${prefix}-${i}`, email: `${prefix}${i}@x.com`, projectId, invitedBy, createdAt: new Date(Date.now() - 30 * 60 * 1000 + i * 1000) });
+    }
+  };
+
+  it("두 프로젝트 합이 30건이면 어느 프로젝트에도 발급하지 않는다 — 쓰기 0건", async () => {
+    await seedBy("p", "u1", 15, "p");
+    await seedBy("q", "u1", USER_HOURLY_LIMIT - 15, "q");
+    const result = await issueInvitations(prisma, { projectId: "q", userId: "u1", recipients: [{ email: "new@x.com", role: "EDITOR" }] });
+    expect(result).toMatchObject({ status: "rate-limited", limit: "user", used: USER_HOURLY_LIMIT });
+    expect(await invitations("q")).toHaveLength(USER_HOURLY_LIMIT - 15);
+    expect(await invitedEvents("q")).toHaveLength(0);
+  });
+
+  it("다른 발급자의 기록은 세지 않는다 — 같은 수라도 발급된다", async () => {
+    await seedBy("p", "u1", 15, "p");
+    await seedBy("q", "u1", USER_HOURLY_LIMIT - 16, "q");
+    await seedBy("q", "u2", 4, "other");
+    const result = await issueInvitations(prisma, { projectId: "q", userId: "u1", recipients: [{ email: "new@x.com", role: "EDITOR" }] });
+    expect(result.status).toBe("issued");
   });
 });
 

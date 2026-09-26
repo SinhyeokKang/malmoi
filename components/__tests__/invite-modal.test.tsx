@@ -395,6 +395,18 @@ describe("1f 서버 거부 — 그 행 아래", () => {
 describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
   const RETRY = "2026-09-23T12:00:30.000Z";
 
+  it("발급자 한도는 warning이고 발급자 기준 수·시각을 문장으로 적는다", async () => {
+    mocks.createInvitations.mockResolvedValueOnce({ ok: false, error: "rate-limited", retryAt: RETRY, limit: "user", used: 29 });
+    await open();
+    await fill(["a@x.com", "b@x.com"]);
+    await click(submit());
+    await settle();
+    const alert = formAlert();
+    expect(alert?.textContent).toContain(m.members.invite.limit.title);
+    expect(alert?.textContent).toContain(m.members.invite.limit.user(30, 29, 2, "2026-09-23 12:01 UTC"));
+    expect(alert?.className).toContain("amber");
+  });
+
   it("프로젝트 한도는 warning이고 서버 수·시각을 문장으로 적는다", async () => {
     mocks.createInvitations.mockResolvedValueOnce({ ok: false, error: "rate-limited", retryAt: RETRY, limit: "project", used: 18 });
     await open();

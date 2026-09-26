@@ -6,6 +6,7 @@ import {
   ADDRESS_INTERVAL_MS,
   INVITATION_HOURLY_LIMIT,
   PROJECT_WINDOW_MS,
+  USER_HOURLY_LIMIT,
   planInvitationIssue,
   type IssueTarget,
 } from "../plan";
@@ -22,7 +23,7 @@ const ago = (ms: number) => new Date(NOW.getTime() - ms);
 const target = (over: Partial<IssueTarget> = {}): IssueTarget => ({ alreadyMember: false, lastIssuedAt: null, ...over });
 
 function plan(over: Partial<Parameters<typeof planInvitationIssue>[0]> = {}) {
-  return planInvitationIssue({ now: NOW, memberCount: 1, targets: [target()], recentIssues: [], ...over });
+  return planInvitationIssue({ now: NOW, memberCount: 1, targets: [target()], recentIssues: [], userRecentIssues: [], ...over });
 }
 
 describe("planInvitationIssue — 정상", () => {
@@ -34,6 +35,7 @@ describe("planInvitationIssue — 정상", () => {
     expect(ADDRESS_INTERVAL_MS).toBe(60_000);
     expect(PROJECT_WINDOW_MS).toBe(60 * 60 * 1000);
     expect(INVITATION_HOURLY_LIMIT).toBe(20);
+    expect(USER_HOURLY_LIMIT).toBe(30);
   });
 });
 
@@ -176,5 +178,63 @@ describe("planInvitationIssue — 프로젝트 최근 1시간 20건", () => {
   it("한 요청이 시간당 상한 자체를 넘으면 too-many다 — 기다려도 풀리지 않는다", () => {
     const targets = Array.from({ length: INVITATION_HOURLY_LIMIT + 1 }, () => target());
     expect(plan({ targets })).toEqual({ status: "too-many", limit: INVITATION_HOURLY_LIMIT });
+  });
+});
+
+/**
+ * **발급자 한 사람의 최근 1시간 30건** (sec-audit-3 #15 · 결정 E). 프로젝트 한도만 있으면 프로젝트를 여럿 만든
+ * 사람이 20 × N으로 메일을 보낸다 — 발급자 기준 합산은 전 프로젝트에 걸친다. 창·정각 규칙은 프로젝트 한도와 같다.
+ */
+describe("planInvitationIssue — 발급자 최근 1시간 30건(전 프로젝트 합산)", () => {
+  const issues = (n: number, spacingMs = 60_000) =>
+    Array.from({ length: n }, (_, i) => ago(PROJECT_WINDOW_MS - 1 - i * spacingMs));
+
+  it("29건 상태의 1명은 30번째라 통과한다", () => {
+    expect(plan({ userRecentIssues: issues(29) })).toEqual({ status: "ok" });
+  });
+
+  it("30건 상태의 1명은 막히고 사유는 user다 — 이 프로젝트 기록이 0건이어도", () => {
+    const mine = issues(30);
+    expect(plan({ recentIssues: [], userRecentIssues: mine })).toEqual({
+      status: "rate-limited",
+      retryAt: new Date((mine[0] as Date).getTime() + PROJECT_WINDOW_MS),
+      limit: "user",
+      used: 30,
+    });
+  });
+
+  it("29건 상태의 3명 요청은 전체가 거부된다 — 가장 오래된 2건이 빠지는 시각까지", () => {
+    const mine = issues(29);
+    expect(plan({ userRecentIssues: mine, targets: [target(), target(), target()] })).toEqual({
+      status: "rate-limited",
+      retryAt: new Date((mine[1] as Date).getTime() + PROJECT_WINDOW_MS),
+      limit: "user",
+      used: 29,
+    });
+  });
+
+  it("정확히 1시간 전 기록은 창 밖이다", () => {
+    expect(plan({ userRecentIssues: [ago(PROJECT_WINDOW_MS), ...issues(29)] })).toEqual({ status: "ok" });
+  });
+
+  it("프로젝트 한도와 둘 다 막으면 더 늦은 쪽이 사유다", () => {
+    // 프로젝트 창은 곧 풀리고(가장 오래된 기록이 1ms 뒤 빠짐) 발급자 창은 한참 뒤에 풀린다.
+    const project = issues(20);
+    const late = Array.from({ length: 30 }, (_, i) => ago(10_000 + i));
+    expect(plan({ recentIssues: project, userRecentIssues: late })).toEqual({
+      status: "rate-limited",
+      retryAt: new Date(ago(10_000 + 29).getTime() + PROJECT_WINDOW_MS),
+      limit: "user",
+      used: 30,
+    });
+    // 반대면 프로젝트가 사유다.
+    const early = issues(30);
+    const projectLate = Array.from({ length: 20 }, (_, i) => ago(10_000 + i));
+    expect(plan({ recentIssues: projectLate, userRecentIssues: early })).toEqual({
+      status: "rate-limited",
+      retryAt: new Date(ago(10_000 + 19).getTime() + PROJECT_WINDOW_MS),
+      limit: "project",
+      used: 20,
+    });
   });
 });
