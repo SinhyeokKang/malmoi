@@ -2488,3 +2488,19 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 셋이 겹쳤다. (1) ②는 `no-candidates`를 받으면 **배너를 일부러 세우지 않고** 수동 폼으로 넘어간다(오류 둘로 읽힌다는 2026-09-07 판단) — 그래서 `no-candidates` 문구는 온보딩에서 **한 번도 렌더되지 않는** 사전 값이었다. (2) 수동 확인의 실패는 미리보기 상태 `unavailable` 하나로 접혔는데, 후보 0개 화면은 미리보기 본문을 비워 두므로(`empty`) 그 상태가 그려질 자리가 없었다. (3) 서버는 단일 로케일을 `not-detected` → `manual-no-match`("그 경로에 파일이 없다")로 접어, 떴더라도 틀린 안내였다.
 - **그물**: 놓친 것 — `message.test.ts`는 문구 **값**을 보고(같은 날 L2.7이 `no-candidates`에 다음 행동 문장을 더했고 green이었다) 그 값이 **어느 화면에 닿는지**는 안 본다 · `new-project.test.tsx`의 수동 지정 테스트는 전부 성공 mock이라 실패 갈래 렌더가 0이었다. 잡은 것 — 같은 날 `/runtime-test`(폐기용 로케일 1개 리포로 ② 실물). 재현: `new-project.test.tsx`(수동 확인 `manual-no-match`·`single-locale`이면 `#manual-path-error`가 서고 입력이 그것을 가리킨다 · 입력을 바꾸면 걷힌다 · ② 설명이 "2 or more languages") · `confirm.test.ts`(로케일별 어댑터 파일 하나 → `single-locale`, 둘 이상이면 여전히 `not-detected`).
 - **재발 방지**: **사전 문구를 고치는 태스크는 그 키의 소비처를 먼저 센다** — `rg -n '"<key>"' components app lib -g '!**/__tests__/**'`에서 렌더하는 자리가 0이면 문구 수정은 아무것도 고치지 않는다(L2.7이 정확히 그랬다). 서버 거부를 **다른 상태 필드에 접어** 전달하면 "그 필드가 이 화면에서 그려지는가"를 묻는다 — 빈 상태 화면은 대개 그리지 않는다.
+
+### 2026-09-27 — 경로 **안전**만 검사해 경로가 **옳은지**를 안 봤고, 토큰을 받는 사람이 리포에 쓸 수 있는지도 안 봤다 (sec-audit-3 발견 1)
+
+- **영역**: `lib/locale-code.ts`(`isLocaleShaped` 신규) · `lib/push/plan.ts`(`LocaleCode`) · `lib/pull/plan.ts`(`resolveLocalePaths`) · `lib/github-connect/connect-plan.ts`(`planRepoConnect` 넷째 조건 `repo-read-only`) · `lib/github-connect/user.ts`(`permissions.push`)
+- **증상**: 없다 — 프로덕션에 나타난 적이 없고 prod `Locale.code` distinct는 `en fr ko`뿐이었다(배포 전 읽기 전용 실측). 발현하면 push 토큰 보유자가 `locales: ["en", "package"]`를 보내고, 표면의 `pathTemplate`이 `{locale}.json`이면 야간 pull·Publish가 **설치 토큰으로** 리포에 **실재하는** `package.json`을 DB 키로 재생성해 sync 브랜치에 커밋한다(`scripts`를 심을 수 있다). `..`도, 새 파일도, 워크플로 디렉터리도 필요 없다. 그리고 그 토큰은 **리포를 읽기만 할 수 있는 협력자**도 받을 수 있었다 — `planRepoConnect`는 설치 목록에 리포가 **보이는 것**만 요구했다.
+- **근본 원인**: 2026-09-09 항목("검증이 탐지 경로에만 있었다")을 닫으면서 **질문을 "이 문자열이 리포 밖으로 나가는가"로 좁혔다.** `isPathSafeLocale`은 그 질문에 정확히 답하고, 테스트도 전부 그 축(`..`·슬래시·NUL·퍼센트 인코딩)만 공격했다. 그런데 공격자에게 필요한 것은 리포 **밖**이 아니라 리포 **안의 다른 파일**이다 — 로케일 코드는 파일명 한 조각이라, 안전한 조각이면서 로케일이 아닌 값(`package`·`index`·`config`)이 곧 기존 파일을 겨누는 값이다.
+  - 같은 항목이 ARCHITECTURE §5.5.05에 "읽기 전용 협력자가 토큰을 받는다"를 **이미 적어 두었다** — 권한 격차를 무게로 인정하고, 방어는 경로 축에만 걸었다. **근본 방어(토큰을 받는 사람이 이미 쓸 수 있는가)는 인가 축이라 경로 검증을 고치는 작업의 범위에 안 들어왔다.**
+- **그물**:
+  - 잡은 것: 2026-09-27 `/audit` 보안 감사(입력·인젝션 축) — "안전한 값 중 무엇이 해로운가"를 물었다.
+  - 놓친 것: 2026-09-09 수정의 테스트(없는 경로 `.github/workflows/pwn`만 공격해 "새 파일 생성" 갈래만 밟았다 — POSTMORTEM 2026-09-13과 같은 모양) · `/code-review`·`/audit` 이후 회차 · `credential-separation.test.ts`(자격증명 **종류**를 세지 **누가 받는지**는 안 본다).
+- **재발 방지**:
+  - **경로 조각 검증에 "안전한가"와 "그 자리에 맞는 값인가"를 따로 둔다.** `isPathSafeLocale`(경로 축)과 `isLocaleShaped`(값 축)는 같은 잎의 **별개 함수**이고 두 층(push 스키마 · `resolveLocalePaths`)이 **둘 다** 요구한다. 새 보간 자리를 만들면 두 질문을 각각 답한다.
+  - **경로 공격 테스트는 트리에 실재하는 형제를 겨눈다** — `lib/pull/__tests__/plan.test.ts`의 `package.json` 픽스처가 형이다. 없는 경로만 공격하는 테스트는 덮어쓰기 갈래를 영영 안 밟는다.
+  - **외부 페이로드가 설치 토큰의 커밋을 정하는 경로에서는 "토큰 수령자가 이미 그 리포에 쓸 수 있는가"를 먼저 묻는다** — 그러면 페이로드 검증은 심층 방어로 내려가고 3글자 단어(`app`·`api`) 같은 잔여를 감당할 수 있다. `planRepoConnect({ requirePush })`는 **기본값 없는 필수 인자**라 새 호출처가 그 질문을 건너뛸 수 없다.
+  - grep: `rg -n 'isPathSafe(Locale|RepoPath)\(' lib app -g '!**/__tests__/**'` → 경로 안전 판정만 서 있는 자리를 세고, 각각 "그 값이 기존 파일을 겨눌 수 있나"를 답한다. 2026-09-27 실행 결과: 스키마·pull·permalink 넷 외에 Server Action 셋(`app/(edit)/projects/actions.ts`의 `loadCandidateSample`·`confirmManualFormat`·`addSurfaces`)이 `isPathSafeLocale`만 본다 — 셋 다 리포에 쓰지 않고(샘플은 트리 조회, `baseLocale`은 첫 적재의 `PushPayload.safeParse`가 다시 거른다) 후속 정리 후보다.
+  - 확인한 인접 경로: `pathTemplate` 자체는 모양 검사가 없지만(`.github/workflows/pwn.yml` + 로케일 하나가 스키마·`resolveLocalePaths`를 지난다) **기존 표면의 템플릿은 `lib/push/guard.ts`가 저장값과 같을 것을 요구해** push로 바꿀 수 없다. 템플릿을 정하는 것은 온보딩(실재 파일 매칭)이고, 그 생성자가 이제 쓰기 권한을 요구받는다.
