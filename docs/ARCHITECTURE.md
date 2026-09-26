@@ -1904,7 +1904,7 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 | **본판정: 페이지·Server Action** | `requireProjectAccess`(`lib/auth/session.ts` — 거부는 redirect) / `getProjectAccess`(`lib/auth/query.ts` — union 반환) → 둘 다 `planProjectAccess`(`lib/auth/access.ts`). 표면 스코프는 `requireSurfaceAccess`·`getSurfaceAccess`(`lib/surfaces/access.ts`)가 그 뒤에 선다 | ⚠️ **`archived`는 못 막는다 — 막으라고 있는 갈래가 아니다.** 페이지 래퍼도 그 갈래만 redirect하지 않고 `{ …, archived: true }`를 **값으로** 돌려준다(§5.6.4) — 되돌릴 수 있는 상태이고 OWNER가 갈 곳이 설정 안의 카드 하나라, 목록으로 튕기면 자기가 왜 거기 왔는지 모른다. **대가는 호출부가 빠뜨릴 수 있다는 것**이고 `app/__tests__/screens.test.ts`가 그 갈래를 만나는 화면 다섯을 전수로 센다 |
 
 - ⚠️ **미들웨어에서 `auth()` 래퍼를 쓰지 않는다.** `strategy: "database"`에서 그 래퍼는 `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다(`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`) — 미들웨어가 Prisma·pg를 물게 되고 "값싼 1차 차단"이 거짓이 된다.
-- **새 보호 라우트를 추가하면 `matcher`에 추가한다.** ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — 로그인 화면으로 302되면 쿼리의 `code`·`state`·`setup_action`이 사라져 연결·착지가 성립하지 않는다(`entry-points.test.ts`가 부정 단언으로 고정한다). 설치·인가·리포 선택 변경이 전부 이 한 지점으로 돌아온다(§6.4 — 옛 Setup URL 라우트는 2026-09-18에 지웠다). ⚠️ **`/signin`·`/privacy`·`/docs`도 넣지 않는다** (8-1a): 앞의 것은 넣으면 **로그인이 통째로 죽는다** — `shouldRedirectToLogin`도 `middleware()`도 **경로를 한 번도 보지 않으므로**(목적지 제외 규칙이 한 줄도 없다) 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을 돈다. 바로 위 "새 보호 라우트를 추가하면 matcher에 추가한다"가 그 함정을 부르는 문장이라, `app/__tests__/entry-points.test.ts`가 **부정 단언**으로 상시 고정한다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
+- **새 보호 라우트를 추가하면 `isProtectedPath`(`lib/auth/cookie.ts`)에 추가한다.** ⚠️ **2026-09-27(sec-audit-3 #11)까지는 `matcher` 자체였다** — CSP nonce 때문에 matcher가 전 페이지로 넓어져(§8) 보호 판정이 그 함수로 옮겨 갔다. 아래 "matcher에 넣지 않는다"는 전부 **"보호 경로에 넣지 않는다"**로 읽는다(`/api/*`는 matcher에서도 빠진다). ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — 로그인 화면으로 302되면 쿼리의 `code`·`state`·`setup_action`이 사라져 연결·착지가 성립하지 않는다(`entry-points.test.ts`가 부정 단언으로 고정한다). 설치·인가·리포 선택 변경이 전부 이 한 지점으로 돌아온다(§6.4 — 옛 Setup URL 라우트는 2026-09-18에 지웠다). ⚠️ **`/signin`·`/privacy`·`/docs`도 넣지 않는다** (8-1a): 앞의 것은 넣으면 **로그인이 통째로 죽는다** — `shouldRedirectToLogin`도 `middleware()`도 **경로를 한 번도 보지 않으므로**(목적지 제외 규칙이 한 줄도 없다) 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을 돈다. 바로 위 "새 보호 라우트를 추가하면 matcher에 추가한다"가 그 함정을 부르는 문장이라, `app/__tests__/entry-points.test.ts`가 **부정 단언**으로 상시 고정한다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
 - ⚠️ **`/account`는 matcher를 늘려야 했다** (2026-09-09, 6b-4). 그때까지 패턴이 `/projects/:path*`
   **하나**였고 `(edit)` 아래 모든 페이지가 **우연히** 그 접두를 갖고 있었다 — 사용자 축이 생기면서 그
   우연이 끝났다(PRODUCT §7.7). 그 한 줄을 빼면 `entry-points.test.ts`의 "(edit) 아래 모든 페이지가 어느
@@ -2520,37 +2520,63 @@ PR 생성·머지·재push 및 60초 전체 예산 검증은 미완료다.
     `maxDuration`에 닿으면 함수가 통째로 죽어 **요약 로그와 응답이 하나도 안 남는다**(이미 돈 프로젝트의 결과까지).
     루프 머리에서 예산을 넘었으면 나머지를 `unprocessed`에 더하고 멈춘다 — 시작 전 판정이라 첫 프로젝트는 항상 돈다.
     예산이 지키는 것은 공정성이 아니라 **요약이 남는 것**이다(다음 밤 이월은 `selectPullTargets`의 정렬이 이미 보장한다).
-- **응답 보안 헤더는 `next.config.ts`의 `headers()`가 낸다** (2026-09-09, sec-audit 발견 9 → 2026-09-24 audit #75).
-  값은 `lib/security-headers.ts`의 순수 함수(`cspEnvironment` · `buildCsp` · `securityHeaders`)가 정하고, 다섯이 전부
-  enforce다: `X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·
-  **`Content-Security-Policy`(하나)** · `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` ·
-  `Permissions-Policy`(카메라·마이크·위치·결제·USB·topics 끔).
+- **응답 보안 헤더는 출처가 둘이다** (2026-09-09, sec-audit 발견 9 → 2026-09-24 audit #75 → 2026-09-27 sec-audit-3 #11·#12).
+  값은 `lib/security-headers.ts`의 순수 함수(`cspEnvironment` · `buildCsp` · `createNonce` · `isBlobPublicHost` · `securityHeaders`)가
+  정하고, 다섯이 전부 enforce다. **정적 넷은 `next.config.ts`의 `headers()`가 `/(.*)` 전부**(API·정적 자산 포함)에 싣는다:
+  `X-Content-Type-Options: nosniff` · `Referrer-Policy: strict-origin-when-cross-origin` ·
+  `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload` · `Permissions-Policy`(카메라·마이크·위치·결제·USB·topics 끔).
+  **`Content-Security-Policy`(하나)는 `middleware.ts`만** 낸다 — nonce가 요청마다 바뀌어 정적 헤더에 둘 수 없다.
+  - **CSP를 받는 응답이 바뀌었다** (2026-09-27). 전: `/(.*)` 전부(페이지·`/api/*`·`_next/static`·`public/`). 지금: **미들웨어
+    matcher에 걸리는 응답 = 모든 페이지**(RSC 요청 포함). 빠지는 것은 `/api/*`(JSON·리다이렉트 — 문서가 아니다. `/api/github/callback`은
+    302되면 `code`가 사라지므로 matcher에 넣지 않는다는 규칙이 그대로 참이다)와 정적 자산(`_next/static`·`_next/image`·`public/`의
+    최상위 디렉터리·`icon.svg`). ⚠️ **그 접두 아래의 없는 경로가 그리는 404도 CSP 없이 나간다** — 정적 문구뿐이라 받아들였다.
+    로그인으로 돌려보낼지는 matcher가 아니라 **`isProtectedPath`**(`lib/auth/cookie.ts`)가 정한다(§6.1).
   - **CSP는 enforce이고 환경 셋으로 갈린다** (2026-09-24 사용자 판정 "보안 강하게" — 2026-09-09의 "Report-Only로
     시작"을 뒤집었다). **프로덕션**(그리고 판정 못 한 모든 환경 — 가장 좁은 쪽으로 접는다): `default-src 'self'` ·
-    script·style `'self' 'unsafe-inline'` · `font-src 'self'` · `img-src`에 `data:`·GitHub/Google 아바타 호스트 둘·
-    Blob 공개 호스트 · `connect-src 'self'` · `form-action 'self' https://github.com https://accounts.google.com` ·
-    `object-src 'none'` · `base-uri 'self'` · `frame-ancestors 'none'`. **`next dev`**: + script `'unsafe-eval'`(React
-    Refresh) · connect `ws:`·`wss:`(HMR). **preview**(`VERCEL_ENV=preview`): + Vercel Toolbar 호스트(Vercel 문서
-    "Using a Content Security Policy"의 목록 그대로 — `vercel.live`·`ws-us3.pusher.com`·`vercel.com`·
-    `assets.vercel.com`·`blob:`, `frame-src 'self' https://vercel.live`).
+    **`script-src 'self' 'nonce-<요청마다>' 'strict-dynamic'`** · `style-src 'self' 'unsafe-inline'` · `font-src 'self'` ·
+    `img-src`에 `data:`·GitHub/Google 아바타 호스트 둘·**이 환경의 Blob 공개 호스트 하나** · `connect-src 'self'` ·
+    `form-action 'self' https://github.com https://accounts.google.com` · `object-src 'none'` · `base-uri 'self'` ·
+    `frame-ancestors 'none'`. **`next dev`**: + script `'unsafe-eval'`(React 디버깅) · connect `ws:`·`wss:`(HMR).
+    **preview**(`VERCEL_ENV=preview`): + Vercel Toolbar 호스트(Vercel 문서 "Using a Content Security Policy"의 목록 그대로 —
+    `vercel.live`·`ws-us3.pusher.com`·`vercel.com`·`assets.vercel.com`·`blob:`, `frame-src 'self' https://vercel.live`).
+    ⚠️ **`'strict-dynamic'`이 있으면 CSP3 브라우저는 script-src의 호스트 목록을 무시한다** — preview의 `https://vercel.live`가
+    Toolbar 스크립트를 살리는지는 실물로만 판정된다.
   - ⚠️ **CSP 헤더는 하나만 보낸다** — 둘이면 브라우저가 교집합을 적용해 한쪽의 완화가 조용히 무시된다.
-    `frame-ancestors`도 그 하나에 들어 있다.
-  - ⚠️ **`'unsafe-inline'`이 script·style에 남는다** — Next의 인라인 부트스트랩(`self.__next_f.push`)과 인라인
-    스타일 때문이고 nonce 배선은 범위 밖이다(nonce로 가면 전 페이지가 요청마다 렌더된다). 그래서 이 정책이 막는 것은
-    **외부 출처**의 스크립트·연결·폼 전송·플러그인·`<base>` 탈취다.
+    `frame-ancestors`도 그 하나에 들어 있다. **`next.config.ts`에 CSP를 되살리면 그 순간 둘이다.**
+  - **script는 nonce다** (2026-09-27, sec-audit-3 #11 — 결정 B. 2026-09-24의 "nonce 배선은 범위 밖"을 뒤집었다).
+    미들웨어가 `createNonce()`(16바이트 base64, Web Crypto)로 만들어 **응답과 요청 양쪽**에 싣는다 — ⚠️ **Next는 렌더 중
+    *요청* 헤더의 CSP에서 nonce를 뽑아**(`get-script-nonce-from-header` — 모양이 `[A-Za-z0-9+/_-]+={0,2}`가 아니면 조용히 nonce
+    없이 렌더한다) 부트스트랩(`self.__next_f.push`)과 청크 `<script>`에 붙인다. 응답에만 실으면 모든 스크립트가 막힌다.
+    `'strict-dynamic'`이 그 스크립트가 불러오는 청크로 신뢰를 잇고, 주입된 인라인 스크립트는 nonce를 모르니 막힌다.
+    `buildCsp`는 모양이 틀린 nonce를 **던진다**(정책 문자열에 이어 붙이므로 따옴표·`;`가 새면 지시어 주입이다).
+  - ⚠️ **대가: 전 페이지가 동적이다.** 빌드 시점에 굳은 페이지는 nonce가 없어 스크립트가 **전부** 막힌다(화면은 뜨고 버튼만
+    죽는다) — 루트 레이아웃이 `await connection()`으로 요청을 기다린다. 랜딩·`/privacy`처럼 요청을 안 읽던 페이지가 요청마다
+    렌더되고, 함수가 `hnd1`이라 지연은 홉 하나다. 판정은 `pnpm build`의 라우트 표에서 `○`가 `icon.svg`뿐인 것이다.
+  - ⚠️ **`style-src 'unsafe-inline'`은 잔여다** (결정 B) — React `style` 속성·sonner·radix가 인라인 스타일을 쓰고 nonce는
+    `style` **속성**에 붙지 않는다. CSS 주입(속성 선택자로 값 빼내기 등)은 이 정책이 막지 않는다.
+  - ⚠️ **미들웨어는 `lib/env.ts`를 import하지 않는다** — 그 모듈이 `lib/failure.ts`를 거쳐 `node:crypto`를 물고, `middleware.ts`는
+    Edge 런타임이라 빌드가 경고하고 배포에서 모듈 로드가 죽을 수 있다(그러면 전 페이지 500). 선택값 셋(`NODE_ENV`·`VERCEL_ENV`·
+    `BLOB_PUBLIC_HOST`)을 함수 안에서 `process.env`로 읽고 빈 문자열을 없음으로 친다(`optionalEnv`와 같은 규칙).
+  - **Blob은 이 환경의 스토어 하나다** (2026-09-27, sec-audit-3 #12). 전에는 `https://*.public.blob.vercel-storage.com` —
+    **아무 Vercel 고객의 공개 스토어**가 이미지 출처로 열려 있었다. 이제 `BLOB_PUBLIC_HOST`(선택, 스토어 id 한 라벨
+    `<id>.public.blob.vercel-storage.com`)를 `isBlobPublicHost`(`^[a-z0-9]+\.public\.blob\.vercel-storage\.com$`)로 검증해 그 하나만
+    넣는다. ⚠️ **없거나 모양이 틀리면 Blob 호스트를 넣지 않는다(fail-closed)** — 부팅·업로드는 살고 **업로드 이미지만 화면에서
+    안 보인다.** 토큰(`BLOB_READ_WRITE_TOKEN`)에서 스토어 id를 파싱하지 않는다 — 문서화되지 않은 형식이다. 등록 절차는 OPERATIONS.
   - ⚠️ **`form-action`은 폼 제출 뒤의 302에도 걸린다** — Google 로그인은 폼 POST → 302 `accounts.google.com`이라
     그 호스트가 빠지면 Google 로그인만 **콘솔에만 남고** 멈춘다. 새 외부 왕복(공급자·설치 흐름)을 늘리면 여기부터 본다.
   - ⚠️ **`img-src`는 공급자 아바타 호스트를 둘만 연다** — Google이 `lh3` 밖의 호스트를 주면 그 아바타가 깨진다.
   - ⚠️ **깨지는 방식이 조용하다** — 위반은 브라우저 콘솔에만 나고 렌더 테스트가 없어 `pnpm build`로도 못 본다.
-    정책을 바꿨으면 로컬 프로덕션 빌드(`pnpm build && pnpm start`)에서 로그인 둘·계정 연결·App 설치 링크·초대 수락·
-    Publish·이미지 업로드·토스트를 한 바퀴 돌며 콘솔 위반 0을 확인한다.
+    정책을 바꿨으면 로컬 프로덕션 빌드(`pnpm build && pnpm start` — ⚠️ `pnpm dev`가 떠 있으면 먼저 내린다)에서 로그인 둘·계정 연결·
+    App 설치 링크·초대 수락·Publish·이미지 업로드(업로드한 사진이 **보이는지**)·토스트·모달(새 프로젝트)·`/docs`·랜딩을 한 바퀴 돌며
+    콘솔 위반 0을 확인한다. 스크립트가 막히면 **화면은 뜨고 클릭만 죽는다** — 눈으로 "떴다"를 통과로 적지 않는다.
   - ⚠️ **HSTS의 `includeSubDomains`는 `*.mal-moi.com` 전부를 HTTPS에 묶는다**(`dev.mal-moi.com` 포함) — http로만 뜨는
     하위 호스트를 만들 수 없다. **`preload`는 선언일 뿐이다** — hstspreload.org 제출은 오너의 수동 절차이고 되돌리는 데
     수개월이 걸린다(docs/OPERATIONS.md).
   - ⚠️ **`Referrer-Policy`의 실질이 크다** — `/invite/<token>`은 토큰이 **URL에** 있어, 그 화면에 외부 링크가
     하나 추가되는 순간 토큰이 `Referer`로 나간다.
-  - ⚠️ **`tsc`는 `headers()`를 못 본다** — 없어도, 헤더 이름 오타도 타입은 통과한다.
-    `app/__tests__/security-headers.test.ts`가 **설정을 불러서** 배선을, `lib/__tests__/security-headers.test.ts`가 값을 검사한다.
+  - ⚠️ **`tsc`는 `headers()`도 미들웨어의 헤더도 못 본다** — 없어도, 헤더 이름 오타도 타입은 통과한다.
+    `app/__tests__/security-headers.test.ts`가 **설정과 미들웨어를 불러서** 배선(응답·요청 CSP의 nonce 일치, `connection()`)을,
+    `lib/__tests__/security-headers.test.ts`가 값을, `entry-points.test.ts`가 matcher(전 페이지 · `/api`·자산 제외)를 검사한다.
 - **서버리스 함수 타임아웃**: **blob 읽기는 이미 `BLOB_CONCURRENCY`(8) 청크 제한 병렬이다** — 실측 최대 106로케일이고 직렬이면 그 한 리포가 cron을 넘긴다 (2026-09-04 audit #18). 남은 순차 구간은 ref·tree·commit이고 파일 수와 무관하다.
 
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
