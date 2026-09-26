@@ -312,7 +312,7 @@ export const en = {
     github: "Continue with GitHub",
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
-    consent: { before: "By clicking Continue through a third party you accept the Malmoi ", link: "Privacy Policy" },
+    consent: { before: "By clicking Continue through a third party you accept the Malmoi ", link: "Privacy Policy", after: "." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Privacy Policy", docs: "Docs" },
     /**
      * 우측 장식의 문구 둘. ⚠️ **키비주얼을 `alt=""`로 둘 수 있는 근거가 이 두 줄이다** — 이미지

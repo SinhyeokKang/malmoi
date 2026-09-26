@@ -75,6 +75,7 @@ export default async function SignIn({
             >
               {m.signIn.consent.link}
             </Link>
+            {m.signIn.consent.after}
           </p>
         </div>
       </AuthColumn>
