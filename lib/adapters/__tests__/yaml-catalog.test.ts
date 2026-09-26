@@ -953,6 +953,17 @@ describe("yaml-catalog — YAML 1.1이 문자열로 안 읽는 값은 인용한�
     expect(out).toBe("ko:\n  a: No\n  b: new\n");
   });
 
+  /** 판정이 값을 YAML 문서로 읽으므로 구조로 읽히는 값이 예외를 던지면 pull write 전체가 죽는다(POSTMORTEM 2026-09-10과 같은 축). */
+  it.each([
+    ["미정의 앨리어스", "*Required"],
+    ["한 줄 앨리어스 폭탄", `{a: &a [x,x,x,x,x,x,x,x,x], b: &b [${"*a,".repeat(9)}*a], c: &c [${"*b,".repeat(9)}*b], d: [${"*c,".repeat(12)}*c]}`],
+    ["깊은 중첩", "[".repeat(5000)],
+  ])("구조로 읽히는 값에서 던지지 않고 인용한다 — %s", (_name, value) => {
+    expect(isYaml11Ambiguous(value)).toBe(true);
+    const out = yamlCatalog.write(withSource("ko:\n  a: old\n"), { locale: "ko", entries: [{ key: "a", message: value }] })!;
+    expect(readBoth(out, ["ko", "a"])).toEqual([value, value]);
+  });
+
   it("결정적이다 — 같은 입력은 같은 바이트, 두 번째 write는 무변경", () => {
     const input = { locale: "ko", entries: [{ key: "a", message: "yes" }] };
     const once = yamlCatalog.write(withSource("ko:\n  a: old\n"), input)!;
