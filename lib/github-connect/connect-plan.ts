@@ -40,13 +40,17 @@ export type UserRepo = { fullName: string; push: boolean | null };
  * @param userInstallationIds `GET /user/installations`의 전 페이지. **잘라서 넘기면 안 된다** —
  *   표시용이 아니라 인가 판정용이라 31번째가 빠지면 정당한 재연결이 거짓 거부된다.
  * @param userRepos `GET /user/installations/{id}/repositories`의 전 페이지.
+ * @param requirePush 넷째 조건을 걸지. **기본값이 없다** — 호출처가 그 경로가 리포 쓰기를 빌리는지 스스로
+ *   말하게 한다. `false`는 재적재(Sync)뿐이다: 리포를 읽어 DB에 넣을 뿐이라 쓰기 권한의 상승이 아니고,
+ *   쓰기 권한 없이 초대된 OWNER(설계가 받아들인 잔여)가 거기서 막히면 회귀다.
  */
 export function planRepoConnect(input: {
   probe: ProbeResult;
   userInstallationIds: readonly string[];
   userRepos: readonly UserRepo[];
+  requirePush: boolean;
 }): RepoConnect {
-  const { probe, userInstallationIds, userRepos } = input;
+  const { probe, userInstallationIds, userRepos, requirePush } = input;
 
   if (probe.status === "error") return { status: "unavailable" };
   if (probe.status === "not-installed") return { status: "repo-not-installed" };
@@ -61,8 +65,8 @@ export function planRepoConnect(input: {
   const repo = userRepos.find((row) => row.fullName.toLowerCase() === wanted);
   if (repo === undefined) return { status: "repo-forbidden" };
   // ⚠️ `null`(응답에 `permissions` 없음)은 거부가 아니다 — 모르는 것을 "권한 없음"으로 말하지 않는다.
-  if (repo.push === null) return { status: "unavailable" };
-  if (!repo.push) return { status: "repo-read-only" };
+  if (requirePush && repo.push === null) return { status: "unavailable" };
+  if (requirePush && !repo.push) return { status: "repo-read-only" };
 
   const ref = splitFullName(probe.fullName);
   // GitHub이 준 이름이 `owner/name`이 아니면 응답을 이해하지 못한 것이다 — 모르는 것을 "권한 없음"으로

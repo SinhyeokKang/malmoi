@@ -188,7 +188,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
     return { ok: false, error: "unavailable" };
   }
 
-  const plan = planRepoConnect({ probe, userInstallationIds, userRepos });
+  const plan = planRepoConnect({ probe, userInstallationIds, userRepos, requirePush: true });
   if (plan.status !== "ok") return { ok: false, error: plan.status };
 
   if (probe.status !== "ok" || !probe.repositoryId || (project.repositoryId && project.repositoryId !== probe.repositoryId)) return { ok: false, error: "repo-forbidden" };

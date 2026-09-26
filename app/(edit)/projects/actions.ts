@@ -787,7 +787,7 @@ export async function detectRepoFormats(raw: {
   const { userId } = session;
 
   const prisma = getPrisma();
-  const access = await checkRepoAccess(prisma, userId, owner, repo);
+  const access = await checkRepoAccess(prisma, userId, owner, repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
 
   const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
@@ -847,7 +847,7 @@ export async function listRepoBranches(raw: { owner: string; repo: string }): Pr
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
-  const access = await checkRepoAccess(getPrisma(), userId, parsed.data.owner, parsed.data.repo);
+  const access = await checkRepoAccess(getPrisma(), userId, parsed.data.owner, parsed.data.repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
 
   const list = await listBranches(access.repoOwner, access.repoName, access.installationId);
@@ -877,7 +877,7 @@ export async function loadCandidateSample(raw: {
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
-  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo);
+  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
   const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
   const snapshot = await reader.snapshot(input.ref);
@@ -935,7 +935,7 @@ export async function confirmManualFormat(raw: {
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
-  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo);
+  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
   const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
   const snapshot = await reader.snapshot(input.ref);
@@ -1015,7 +1015,7 @@ export async function createProject(raw: {
   }
 
   const prisma = getPrisma();
-  const access = await checkRepoAccess(prisma, userId, input.owner, input.repo);
+  const access = await checkRepoAccess(prisma, userId, input.owner, input.repo, true);
   if (access.status === "rejected") return { ok: false, error: access.error };
 
   const [ownerCount, existing] = await Promise.all([
@@ -1441,7 +1441,8 @@ export async function runRepositoryImport(raw: { slug: string; approval: string 
     if (project.archivedAt !== null) return await refuse("archived");
     if (planProjectReadiness(project) !== "ready") return await refuse("not-ready");
     if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "not-connected" };
-    const connected = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
+    // 재적재는 리포를 읽기만 한다 — 쓰기 권한 없이 초대된 OWNER도 여기선 통과한다 (sec-audit-3 1a 범위 밖).
+    const connected = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName, false);
     if (connected.status !== "ok") return await refuse(connected.error);
     if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return await refuse("repo-replaced");
     const installationId = project.installationId;
@@ -1681,6 +1682,8 @@ async function checkRepoAccess(
   userId: string,
   owner: string,
   repo: string,
+  /** `planRepoConnect`의 넷째 조건(리포 쓰기 권한). 기본값이 없다 — `false`는 재적재뿐이다. */
+  requirePush: boolean,
 ): Promise<
   | { status: "ok"; connect: RepoConnect; repositoryId: string; installationId: string; repoOwner: string; repoName: string; defaultBranch: string }
   | { status: "rejected"; error: OnboardFailure }
@@ -1748,7 +1751,7 @@ async function checkRepoAccess(
   // 오류)뿐이다 — 그것을 아래 catch가 `unavailable`로 접으면 "잠시 뒤 다시"가 영원히 뜬다.
   const probe = await probeRepo(owner, repo);
 
-  const connect = planRepoConnect({ probe, userInstallationIds, userRepos });
+  const connect = planRepoConnect({ probe, userInstallationIds, userRepos, requirePush });
   // ⚠️ **`unavailable`을 거부로 접지 않는다** — `planProjectCreate`가 그것을 그대로 흘리도록
   // 설계됐고, 여기서 접으면 사용자가 있는 권한을 없다고 믿는다 (POSTMORTEM 2026-09-03).
   if (connect.status !== "ok" || probe.status !== "ok") {
@@ -1805,7 +1808,7 @@ export async function addSurfaces(raw: { slug: string; picks: { adapter: string;
   const inputs: AddSurfaceSnapshot[] = [];
   let results: import("@/lib/surfaces/plan-add").SurfaceAdded[];
   try {
-    const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
+    const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName, true);
     if (repo.status !== "ok") return { ok: false, error: repo.error };
     if (repo.repositoryId !== project.repositoryId || repo.installationId !== project.installationId) return { ok: false, error: "repo-replaced" };
     const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId);
