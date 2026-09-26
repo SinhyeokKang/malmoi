@@ -105,6 +105,7 @@ function scanned(): { path: string; wrong: string[] }[] {
 describe("제품 이름 표기 — 화면은 Malmoi, 식별자는 malmoi", () => {
   it("스캐너가 실제로 파일을 걸었다 — 조용히 0건이 되지 않는다", () => {
     expect(scanned().length).toBeGreaterThan(50);
+    expect(scanned().filter(({ path }) => path.startsWith("guide/") && path.endsWith(".md")).length).toBeGreaterThanOrEqual(1);
   });
 
   it("이름을 실제로 든 파일이 있다 — 패턴이 아무것도 안 맞으면 이 검사는 장식이다", () => {

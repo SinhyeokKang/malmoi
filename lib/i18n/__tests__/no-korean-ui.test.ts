@@ -120,6 +120,7 @@ function scanned(): { path: string; korean: number }[] {
 describe("UI 문자열은 사전에서 온다 — 소스에 한글 리터럴이 없다", () => {
   it("스캐너가 실제로 파일을 걸었다 — 조용히 0건이 되지 않는다", () => {
     expect(scanned().length).toBeGreaterThan(50);
+    expect(scanned().filter(({ path }) => path.startsWith("guide/") && path.endsWith(".md")).length).toBeGreaterThanOrEqual(1);
   });
 
   it("리포 루트 파일도 스캔 대상이다 — 그 자리가 비면 검사가 조용해진다", () => {

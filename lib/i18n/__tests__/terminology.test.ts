@@ -143,7 +143,9 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
   });
 
   it("쓰지 않는 말이 서빙되는 원고에 없다", () => {
-    expect(violations(guideStrings(ROOT))).toEqual([]);
+    const found = guideStrings(ROOT);
+    expect(new Set(found.filter(({ path }) => path.startsWith("guide/") && path.endsWith(".md")).map(({ path }) => path)).size).toBeGreaterThanOrEqual(1);
+    expect(violations(found)).toEqual([]);
   });
 
   it("원고 스캔은 SUMMARY에 오른 md의 문장을 보고 코드는 뺀다 (픽스처)", () => {
