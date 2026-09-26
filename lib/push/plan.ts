@@ -5,6 +5,7 @@ import { compareKeys, exceedsGlobBudget } from "@/lib/adapters/shared";
 import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
 
 import { ADAPTERS, namespaceOf } from "@/lib/adapters/index";
+import { jsonWithinBounds } from "@/lib/push/json-bounds";
 import type { AdapterName } from "@/lib/adapters/types";
 
 /**
@@ -31,8 +32,8 @@ const ADAPTER_NAMES = ADAPTERS.map((a) => a.name) as [AdapterName, ...AdapterNam
  * 아래는 **20배 여유**다. 넘으면 400이고 그 이유가 응답에 실린다(대상 리포 Actions 로그로 간다 —
  * `lib/failure.ts`의 판정대로 우리 메시지는 본문에 그대로 나간다).
  *
- * ⚠️ **`placeholders`는 여기 없다.** `z.unknown()`으로 두는 것이 계약이고("모양을 검사하지 않는다"),
- * 검증을 시작하면 크롬 스펙을 따라다녀야 한다. 상한은 **개수·길이** 축에서만 건다.
+ * ⚠️ **`placeholders`는 모양을 검사하지 않는다.** `z.unknown()`이 계약이고, 검증을 시작하면 크롬 스펙을
+ * 따라다녀야 한다. 거는 것은 **자원** 상한(깊이·직렬화 크기 — `PLACEHOLDER_BOUNDS`)뿐이다.
  */
 const MAX_KEYS = 20_000;
 const MAX_LOCALES = 200;
@@ -42,6 +43,11 @@ const MAX_TEXT = 10_000;
 const MAX_NAME = 1_000;
 /** `translations`·`refs` 행 수 — 20,000키 × 10로케일이 이 안이다. */
 const MAX_ROWS = 200_000;
+/**
+ * `placeholders` 한 건의 깊이·크기 (sec-audit-3 발견 18 · 결정 G). 크롬 블록은 깊이 2다 — 모양이 아니라
+ * 저장·렌더 재귀가 넘치지 않게 하는 자원 상한이다.
+ */
+const PLACEHOLDER_BOUNDS = { maxDepth: 8, maxBytes: 16_384 };
 
 /**
  * 로케일 코드는 **파일명 한 조각**이다 (sec-audit 발견 2). `applyPush`가 이 값을 그대로 저장하고
@@ -149,11 +155,16 @@ export const PushPayload = z
        * chrome `placeholders` 블록. **모양을 검사하지 않는다** — 요구는 "잃지 않는다"뿐이고,
        * 스키마를 검증하기 시작하면 크롬 스펙을 따라다녀야 한다 (`LocaleEntry.placeholders`와 같은 계약).
        */
-      placeholders: z.unknown().optional(),
+      placeholders: z.unknown().optional().refine((v) => jsonWithinBounds(v, PLACEHOLDER_BOUNDS), {
+        message: "placeholders must nest at most 8 levels and serialize to at most 16 KB",
+      }),
     })).max(MAX_ROWS),
     refs: z.array(z.object({
       key: z.string().min(1).max(MAX_NAME),
-      path: z.string().min(1).max(MAX_NAME),
+      // permalink 경로가 된다 — `..`가 github.com의 다른 경로를 가리키지 않게 (sec-audit-3 발견 17).
+      path: z.string().min(1).max(MAX_NAME).refine(isPathSafeRepoPath, {
+        message: "refs path must stay inside the repository",
+      }),
       line: z.number().int().positive(),
     })).max(MAX_ROWS),
   })
