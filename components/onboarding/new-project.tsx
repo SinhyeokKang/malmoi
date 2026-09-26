@@ -26,7 +26,7 @@ import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import type { CreateProjectResult } from "@/app/(edit)/projects/actions";
 import { failureText, isAccessLost } from "./failure";
 import { OnboardingModal } from "./modal";
-import { FilesStep, type ManualEntry, type PreviewState } from "./steps/files";
+import { FilesStep, failedPreview, previewFailureText, type ManualEntry, type PreviewState } from "./steps/files";
 import { NamingStep } from "./steps/naming";
 import { RepoStep } from "./steps/repo";
 import { ResultStep } from "./steps/result";
@@ -315,11 +315,11 @@ export function NewProject({
           if (detail === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
           else setCandidates((prev) => prev.map((item, index) => index === detail ? update(item) : item));
         }
-        setAnnounce(result.ok ? undefined : m.newProject.files.preview.unavailable);
+        setAnnounce(result.ok ? undefined : previewFailureText(failedPreview(result.error)));
         setSamples((prev) => ({
           ...prev,
           // ⚠️ **실패를 빈 결과로 위장하지 않는다** — 빈 언어(빈 칸)와 화면에서 갈린다.
-          [key]: result.ok ? { status: "ready", rows: result.rows, total: result.total } : { status: "unavailable" },
+          [key]: result.ok ? { status: "ready", rows: result.rows, total: result.total } : failedPreview(result.error),
         }));
       },
       () => {

@@ -115,6 +115,8 @@ describe("planImportRefusal", () => {
         의미상으로는 transient에 가깝지만 **도달 불가라 `PLANS`에 근거 없는 항목을 늘리지 않는다.**
       */
       "tree-truncated", "resource-limit", "key-count-failed",
+      // 온보딩 샘플 조회(`loadCandidateSample`) 전용 — 이 경로에 생산자가 없어 폴백(warning·닫기 없음)에 둔다.
+      "sample-expired",
       /*
         ⚠️ **아래 여섯은 이 경로에 생산자가 없다** — `RepositoryImportError`가 `ConnectError`를 통째로
         합집합에 넣어서 분류를 강요받을 뿐, `runRepositoryImport`가 낼 수 있는 값이 아니다. 배정은

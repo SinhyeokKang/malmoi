@@ -887,7 +887,9 @@ export async function loadCandidateSample(raw: {
     userId, repositoryId: access.repositoryId, installationId: access.installationId,
     ref: input.ref, headSha: snapshot.headSha,
   }, requireEnv("APP_SIGNING_SECRET"), new Date());
-  if (verified === null || !isAdapterName(verified.adapter) || verified.adapter !== input.adapter ||
+  // 확인값을 못 믿으면 입력이 아니라 확인값이 낡은 것이다 — 만료·키 회전·낡은 스냅샷 전부 재탐지로 풀린다.
+  if (verified === null) return { ok: false, error: "sample-expired" };
+  if (!isAdapterName(verified.adapter) || verified.adapter !== input.adapter ||
       verified.pathTemplate !== input.pathTemplate || !verified.locales.includes(input.locale)) {
     return { ok: false, error: "manual-no-match" };
   }

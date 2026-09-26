@@ -44,6 +44,11 @@ export type OnboardError =
   | "manual-no-match"
   /** 수동 지정 템플릿이 로케일 **하나**만 가리킨다 — 파일은 있다 (malmoi#99). 할 일이 다르다: 둘째 언어 파일. */
   | "single-locale"
+  /**
+   * 샘플 확인값을 믿을 수 없다 — 만료(30분)·서명 키 회전·옛 라벨·위조·낡은 스냅샷. 경로가 틀린 것이 아니라
+   * **다시 탐지하면 풀린다**. `manual-no-match`로 접으면 "경로와 형식을 확인하라"가 되어 멀쩡한 입력을 의심하게 만든다.
+   */
+  | "sample-expired"
   // ── ④ 생성 — planRepoConnect 그대로 ──────────────────────────────────────
   | "installation-forbidden"
   | "repo-forbidden"
@@ -87,6 +92,7 @@ const ONBOARD_ERRORS: ReadonlySet<string> = new Set<OnboardError>([
   "key-count-failed",
   "manual-no-match",
   "single-locale",
+  "sample-expired",
   "installation-forbidden",
   "repo-forbidden",
   "repo-read-only",

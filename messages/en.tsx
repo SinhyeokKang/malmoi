@@ -3125,6 +3125,8 @@ export const en = {
       // ⚠️ **라벨이라 문장이 아니다** — 후보 줄의 "3 languages · 4 keys" 자리에 그대로 들어간다.
       "key-count-failed": "Key count unavailable",
       "manual-no-match": "No files of that format at that path. Check the path and the format.",
+      // ⚠️ **경로를 의심하게 하지 않는다** — 입력은 멀쩡하고 확인값이 낡았다. 할 일은 재탐지 하나다.
+      "sample-expired": "This preview has expired. Detect the files again to see it.",
       // ⚠️ **파일이 없다고 말하지 않는다** (malmoi#99) — 파일은 있고 언어가 하나다. 할 일은 경로가 아니라 둘째 파일이다.
       "single-locale": "Only one language was found at that path. Malmoi needs translation files in 2 or more languages — add a file for a second language and try again.",
       "slug-taken": "That address is taken. Pick another one.",

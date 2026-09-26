@@ -61,7 +61,21 @@ const FILES_LEFT = panelConstraints(FILES_PANEL_WIDTH, { min: 200, default: 240,
 export type PreviewState =
   | { status: "loading" }
   | { status: "ready"; rows: SampleRow[]; total: number }
-  | { status: "unavailable" };
+  | { status: "unavailable" }
+  /** 확인값이 낡았다(만료·키 회전·스냅샷 변경) — 못 읽은 것과 할 일이 달라 문장도 다르다: 다시 탐지. */
+  | { status: "expired" };
+
+type FailedPreview = Extract<PreviewState, { status: "unavailable" | "expired" }>;
+
+/** 샘플 조회 실패를 미리보기 상태로 — 새 프로젝트 모달과 추가 모달이 이 한 벌을 쓴다. */
+export function failedPreview(error: string): FailedPreview {
+  return error === "sample-expired" ? { status: "expired" } : { status: "unavailable" };
+}
+
+/** 실패 미리보기의 문장. 알림(`aria-live`)과 표 칸이 같은 문장을 쓴다. */
+export function previewFailureText(preview: FailedPreview): string {
+  return preview.status === "expired" ? m.errors.onboarding["sample-expired"] : m.newProject.files.preview.unavailable;
+}
 
 export type FilesStepState = {
   detecting: boolean;
@@ -425,10 +439,10 @@ function Preview({
                   </Td>
                 </Tr>
               ))
-            ) : state.preview.status === "unavailable" ? (
+            ) : state.preview.status === "unavailable" || state.preview.status === "expired" ? (
               <Tr className="hover:bg-transparent">
                 <Td colSpan={2} className="border-border text-muted-foreground py-3">
-                  {m.newProject.files.preview.unavailable}
+                  {previewFailureText(state.preview)}
                 </Td>
               </Tr>
             ) : (
