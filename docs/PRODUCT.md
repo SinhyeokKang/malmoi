@@ -174,7 +174,7 @@ Publish는 미저장을 **버리지 않는다** — 확인창에서 저장된 �
   현재 멤버 수로만 판정하므로(대기 초대를 예약으로 세지 않는다) 9명일 때 3명을 초대해 모두 수락하면 12명이 될 수 있다.
   방침이 전송처(Resend)·보존 30일을 공표한다(2026-09-24 개정, `third-parties`·`retention` 절).
 - **야간 자동 Publish** (2026-09-24 공지 — launch-readiness L2.9) — 하루 한 번(`vercel.json`, 프로덕션 배포에서만) 미전달 편집이 있는
-  프로젝트를 PR로 보낸다(§7.6). 온보딩 ④ 설명 둘째 문장과 `/docs#nightly`가 그 약속을 말한다 — 전에는 어디에도 없어 첫 PR이 예고 없이 왔다.
+  프로젝트를 PR로 보낸다(§7.6). 온보딩 ④ 설명 둘째 문장과 `/docs/sync/nightly`가 그 약속을 말한다 — 전에는 어디에도 없어 첫 PR이 예고 없이 왔다.
 - **GitHub 설치 연결** — OAuth 계정 ↔ installation ↔ repository 3중 검증
 - **탐지 기반 프로젝트 생성** — 후보를 보여주고 사용자가 확정
 - **프로젝트 단위 번역 UI** — 동결을 풀고 인가 경계 위에서 다시 만든다
@@ -515,8 +515,10 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /signin                        ✅ 로그인                          ← 8-1a
 /signin/link/:challenge        ✅ 계정 병합 안내 (challenge가 인가를 대신한다) ← account-linking (2026-09-12)
 /invite/:token                 초대 수락 (토큰이 인가를 대신한다)
-/privacy · /docs               ✅ 공개 문서 (둘 다 본문 완료 — /docs는 2026-09-24) ← 8-1a
-                               /privacy는 랜딩과 같은 공개 셸 안 (헤더 primary가 세션으로 갈린다) ← privacy-shell (2026-09-26)
+/privacy                       ✅ 방침 — 랜딩과 같은 공개 셸 안 (헤더 primary가 세션으로 갈린다) ← privacy-shell (2026-09-26)
+/docs · /docs/:slug*           ✅ 사용 가이드 — 원고 guide/**.md · 순서 guide/SUMMARY.md · 공개 셸 + 문서 내비 ← docs-guide (2026-09-26)
+                               /docs = 개요(독자 두 갈래 Set up / Translate) · 없는 slug·AUTHORING·SHOOTING은 404
+                               옛 /docs#<id> 일곱은 개요가 새 페이지로 보낸다 · 앱 안 링크는 routes.docs(page?, anchor?)
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
@@ -571,9 +573,9 @@ GitHub · Get started) · 히어로 · 스크롤 구동 목업(편집 → Publis
   둘은 이관 대상이 아니고, 그 사실이 각 자리에 주석으로 있다.
 - **두 라우트가 갈렸다.** `/privacy`는 **본문이 섰다**(2026-09-19 — 절 일곱 · 시행일 · 수집 항목과
   쿠키 표 둘. 사전이 들고 `lib/privacy/collected.ts`의 전수 등재와 절 id로 묶인다). `/docs`도 본문이
-  섰다(2026-09-24, launch-readiness L2.3 — 절 일곱. 상한·포맷·action 넷·마커를 `docs-content.test.tsx`가 정본 상수와 대조한다). 라우트를 먼저 딴 이유는 로그인 화면 푸터가 그것을 가리키기
+  섰다(2026-09-24, launch-readiness L2.3 — 절 일곱) — ⚠️ **2026-09-26에 사전 본문을 걷고 리포 안 Markdown(`guide/**.md`)으로 옮겼다**(docs-guide — 편집자 장이 생기고 페이지가 늘었다. 상한·포맷·action 넷·마커의 정본 상수 대조는 원고 게이트 `lib/guide/__tests__/`가 든다). 라우트를 먼저 딴 이유는 로그인 화면 푸터가 그것을 가리키기
   때문이다. **`/privacy`는 2026-09-26에 공개 셸 안으로 들어갔다**(privacy-shell — 랜딩 푸터에서 누르면 셸 밖으로 떨어지던 것을 막는다.
-  폭은 셸의 1280이고 폰에서는 가로 스크롤을 수용했다 · 사용자 판정). `/docs`는 셸 밖 1열 그대로다. **Terms of Service는 만들지 않는다** — 돈을 받고 파는 서비스가 아니라 Privacy Policy
+  폭은 셸의 1280이고 폰에서는 가로 스크롤을 수용했다 · 사용자 판정). `/docs`도 같은 날 공개 셸 안으로 들어갔다(docs-guide — 문서 내비를 더한 형, DESIGN §6.61). **Terms of Service는 만들지 않는다** — 돈을 받고 파는 서비스가 아니라 Privacy Policy
   하나로 퉁친다(2026-09-10 사용자). **방침은 en 단일이다**(2026-09-19 privacy) — ko를 열면 본문 두 벌의 신선도를
   각각 게이트해야 하고 §10(ko 여는 시점)을 선행해 정하게 된다. 대가: 동의를 받는 문서를 한국어 화자 동료가 en으로 읽는다.
   **쿠키 동의 배너는 없다** — 쿠키가 로그인·왕복 state뿐이라 고지로 충분하다.
