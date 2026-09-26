@@ -37,6 +37,7 @@ it("git·JSON 실패는 io 판정으로 접는다 — 스택 트레이스로 죽
 });
 
 it("dev가 main을 품는지를 판정에 넘긴다 — 동기화 안 된 dev의 가짜 릴리스를 막는 입력이다", () => {
-  expect(source).toContain('"merge-base", "--is-ancestor", "origin/main", "origin/dev"');
+  expect(source).toContain('"merge-base", "--is-ancestor"');
+  expect(source).toContain('devContainsMain: isAncestor("origin/main", "origin/dev")');
   expect(source).toMatch(/devContainsMain/);
 });

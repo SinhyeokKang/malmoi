@@ -21,10 +21,14 @@ export type Plan =
   | ({ action: "bump"; seed: false; candidates: Candidates; recommended: Recommendation } & Context)
   | ({ action: "none"; next: string } & Context)
   | ({ action: "error"; error: "unreleased-on-main"; version: string } & Context)
-  | ({ action: "error"; error: "nothing-to-release" | "invalid-version" | "behind-last-tag" } & Context);
+  | ({
+      action: "error";
+      error: "dev-not-synced" | "nothing-to-release" | "invalid-version" | "behind-last-tag" | "unexpected-version";
+    } & Context);
 
 const COMPARE_URL = "https://github.com/SinhyeokKang/malmoi/compare/";
 const SEED = "1.0.0";
+const SEED_CANDIDATES: Candidates = { patch: SEED, minor: SEED, major: SEED };
 
 // 앞자리 0은 semver가 금지한다 — "01.2.3"을 받으면 "1.2.3"과 같은 버전이 두 표기로 선다
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
@@ -82,6 +86,8 @@ export function nextVersion(v: Semver, level: Level): Semver {
 /**
  * design §4 표를 **위에서부터 첫 일치**로 판정한다. ⚠️ `unreleased-on-main`이 `nothing-to-release`보다 앞선다 —
  * 9단계(Release 생성)가 실패한 뒤엔 머지할 커밋이 0이라, 순서가 반대면 진짜 원인이 가려진다.
+ * ⚠️ `dev-not-synced`가 커밋 판정보다 앞선다 — 10단계 lease가 거부돼 dev가 squash 전 커밋을 그대로 들고 있으면
+ * `origin/main..origin/dev`에 이미 나간 커밋이 다시 잡히고, bump 한 줄만으로도 PR이 비지 않아 빈 릴리스가 나간다.
  * 후보 셋을 한 번에 내므로 레벨을 고른 뒤 다시 부르지 않는다.
  */
 export function planRelease(input: {
@@ -89,6 +95,7 @@ export function planRelease(input: {
   mainVersion: string | null;
   tags: string[];
   commits: Commit[];
+  devContainsMain: boolean; // origin/main이 origin/dev의 조상인가
 }): Plan {
   const last = latestReleaseTag(input.tags);
   const context: Context = {
@@ -103,32 +110,48 @@ export function planRelease(input: {
     return { action: "error", error: "unreleased-on-main", version: formatVersion(main), ...context };
   }
 
+  if (!input.devContainsMain) return { action: "error", error: "dev-not-synced", ...context };
+
   if (input.commits.length === 0) return { action: "error", error: "nothing-to-release", ...context };
 
   const pkg = input.pkgVersion === null ? null : parseVersion(input.pkgVersion);
   if (input.pkgVersion !== null && pkg === null) return { action: "error", error: "invalid-version", ...context };
 
   if (last === null) {
-    if (pkg === null) return { action: "bump", seed: true, candidates: { patch: SEED, minor: SEED, major: SEED }, ...context };
-    return { action: "none", next: formatVersion(pkg), ...context };
+    if (pkg === null) return { action: "bump", seed: true, candidates: SEED_CANDIDATES, ...context };
+    return noneIfCandidate(pkg, SEED_CANDIDATES, context);
   }
 
   // version이 없는데 태그가 있으면 직전 태그와 같은 것으로 본다 — 거기서 올린다
   if (pkg !== null) {
     const order = compareVersion(pkg, last);
     if (order < 0) return { action: "error", error: "behind-last-tag", ...context };
-    if (order > 0) return { action: "none", next: formatVersion(pkg), ...context };
+    if (order > 0) return noneIfCandidate(pkg, candidatesFrom(last), context);
   }
 
   return {
     action: "bump",
     seed: false,
-    candidates: {
-      patch: formatVersion(nextVersion(last, "patch")),
-      minor: formatVersion(nextVersion(last, "minor")),
-      major: formatVersion(nextVersion(last, "major")),
-    },
+    candidates: candidatesFrom(last),
     recommended: recommendLevel(input.commits),
     ...context,
   };
+}
+
+function candidatesFrom(last: Semver): Candidates {
+  return {
+    patch: formatVersion(nextVersion(last, "patch")),
+    minor: formatVersion(nextVersion(last, "minor")),
+    major: formatVersion(nextVersion(last, "major")),
+  };
+}
+
+/**
+ * 재실행(`none`)은 **4단계가 쓸 수 있었던 값**일 때만이다 — 직전 태그에서 한 레벨 올린 셋(태그가 없으면 1.0.0) 중 하나.
+ * 손으로 건너뛴 값(`v1.2.0` 위의 `5.0.0`, seed 전의 `0.1.0`)을 재실행으로 받으면 그 번호가 조용히 릴리스된다.
+ */
+function noneIfCandidate(pkg: Semver, candidates: Candidates, context: Context): Plan {
+  const next = formatVersion(pkg);
+  if (!Object.values(candidates).includes(next)) return { action: "error", error: "unexpected-version", ...context };
+  return { action: "none", next, ...context };
 }
