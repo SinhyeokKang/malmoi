@@ -11,12 +11,12 @@ app/
   page.tsx              랜딩(`/`). rootView가 세션이 있으면 /projects로 redirect, 없거나 못 읽으면 PublicShell(cta = publicCta("none"), current = home) + 히어로 + Stage + 마무리 CTA.
                         ⚠️ 로그인 상태면 /projects다 — 랜딩이 선 뒤에도 그렇다. 쿼리를 읽지 않는다
   signin/page.tsx       로그인(GitHub·Google). Auth.js의 pages.signIn·pages.error가 여기다.
-                        ⚠️ middleware matcher에 넣으면 로그인이 통째로 죽는다 — 경로를 안 보므로
+                        ⚠️ 보호 경로(isProtectedPath)에 넣으면 로그인이 통째로 죽는다 — 목적지를 안 보므로
                         쿠키 없는 모든 요청이 자기 자신으로 307을 돈다(entry-points가 부정 단언으로 고정)
                         ⚠️ ?error= 없이도 세션이 unavailable이면 문구를 띄운다
                         ⚠️ 초대에서 온 왕복이 여기서 끝나면 돌아가는 링크를 든다 — 자리를 아는 것은
                         authjs.callback-url 쿠키뿐이고, 갈래가 invite일 때만 세운다(open redirect)
-  signin/link/[challenge]/   계정 병합 안내. 인가가 없고 challenge가 대신한다 → matcher 밖.
+  signin/link/[challenge]/   계정 병합 안내. 인가가 없고 challenge가 대신한다 → 보호 경로 밖.
                         ⚠️ 만료를 이 화면으로 말하지 않는다 — /signin으로 되돌린다
   privacy/              방침. 공개 셸 안의 components/privacy/(DESIGN §6.616) · 본문은 messages/en.tsx의 publicDocs.privacy.
                         ⚠️ 세션을 읽는 이유는 차단이 아니다 — 헤더 primary(publicCta: 로그인이면 Open Malmoi → /projects,
@@ -93,7 +93,7 @@ app/
                         연결 · 게시실패 · 게시미리보기 · 온보딩 · 조회 · 목록질의 · 셸레이아웃 · 오류경계 둘(화면 · 재시도) · 형제골격 ·
                         모달 · 보관 · 리포설정 · sync · 활동사건 · 표면추가로그 · 프로젝트메타데이터 ·
                         소스Action · 소스페이지 · 초대메일 · 없는화면
-  invite/[token]/       ⚠️ (edit) 밖이고 matcher 밖이다 — 비로그인으로 열려야 토큰이 보존된다.
+  invite/[token]/       ⚠️ (edit) 밖이고 보호 경로 밖이다 — 비로그인으로 열려야 토큰이 보존된다.
                         갈래는 planInviteView가 고른다(화면이 조건을 다시 적지 않는다)
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
                         entry-points의 면제가 파일이 아니라 **export 단위**(EXEMPT_ACTIONS)다 — 파일 단위면
@@ -107,8 +107,9 @@ app/
                         당연해서 entry-points의 면제 목록에 이름으로 든다
   api/github/callback/  ⚠️ matcher에 넣지 않는다 — 로그인 화면으로 302되면 code가 사라진다.
                         설치·인가·리포 선택 변경이 전부 여기로 온다(state 없는 설치 계열 복귀는 착지만)
-middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/projects/:path* · /account).
-                        렌더 요청(GET·HEAD)만 막고 Action POST는 통과시킨다
+middleware.ts           인증 차단의 유일한 1차 지점 + CSP의 유일한 출처(요청마다 nonce).
+                        matcher는 전 페이지(/api·정적 자산 제외), 차단 대상은 isProtectedPath
+                        (/projects/** · /account). 렌더 요청(GET·HEAD)만 막고 Action POST는 통과시킨다
 ```
 
 ## components/
