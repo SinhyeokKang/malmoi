@@ -168,6 +168,19 @@ npx prisma migrate diff \
   authenticated`를 치고 `pg_default_acl`도 다시 본다. ⚠️ **대시보드에서 테이블을 만들었다면 이 검사가
   0건이 아닌 것이 정상 결과다** — 위 `supabase_admin` 항목이 그렇게 만든다. Supabase 대시보드 **Advisors → Security**가
   0 errors인지도 같은 신호다.
+- ⚠️ **스키마 USAGE도 본다 — 이것이 위 default ACL을 실제로 닫는 층이다** (2026-09-27 sec-audit-3 #2·#3). 마이그레이션
+  `revoke_public_schema_usage_from_api_roles`가 두 롤의 `public` USAGE·CREATE를 걷었다 — USAGE가 없으면 `supabase_admin`의
+  default ACL이 새 테이블에 GRANT를 줘도 이름 해석 단계에서 막힌다. 테이블을 안 만든 마이그레이션에도 **매번** 돌린다:
+
+  ```sql
+  SELECT r, has_schema_privilege(r, 'public', 'USAGE') AS usage, has_schema_privilege(r, 'public', 'CREATE') AS create
+  FROM unnest(ARRAY['anon','authenticated']) AS r;
+  ```
+
+  **dev·prod 둘 다** 네 칸이 전부 `false`여야 한다. ⚠️ **prod 확인은 필수다 — dev만 보면 prod에 대해 아무것도 증명하지 않는다**:
+  2026-09-27 감사 시점에 dev는 USAGE부터 없었고 prod는 있었다(두 DB의 권한 이력이 다르다). `true`가 남으면 `PUBLIC` 상속을 의심한다 —
+  `SELECT nspacl FROM pg_namespace WHERE nspname = 'public'`에 `=U/…`가 있으면 두 롤이 그것을 물려받는 것이다(마이그레이션은
+  `PUBLIC`을 건드리지 않는다. 걷으려면 앱 런타임 롤 `postgres`가 스키마 소유자라 무관함을 확인하고 따로 정한다).
 
 ### 6. 커밋
 
@@ -189,6 +202,7 @@ npx prisma migrate diff \
 SQL 확인: <DROP/ALTER 유무와 내용>
 generate + typecheck: OK / test: <n> passed
 anon 권한: dev 0건 / prod 0건  ← 새 테이블을 만들었으면 필수
+스키마 USAGE·CREATE: dev false×4 / prod false×4  ← 매번 필수
 커밋: <해시> (스키마+마이그레이션만)
 
 배포 순서:
