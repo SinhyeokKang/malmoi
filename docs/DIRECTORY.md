@@ -616,7 +616,10 @@ guide/                  **사용 가이드 원고**(en) — SUMMARY.md(IA 정본
                         AUTHORING.md·SHOOTING.md는 한국어 매뉴얼이고 SUMMARY 밖이라 서빙되지 않는다(`/docs/AUTHORING`은 404).
                         ⚠️ docs/(내부 문서)와 이름을 가르려고 guide/다 — 라우트만 /docs다. ⚠️ x.md와 x/README.md가 둘 다 있으면 red
 public/guide/           원고 이미지(WebP) — 커밋된 원본이고 복사 단계가 없다(2026-09-26 기준 아직 0장 — 촬영 배치가 연다). md는 /guide/<name>.webp 절대경로로만 참조한다.
-                        치수·매핑 소스·blob SHA는 guide/SHOOTING.md 표가 정본이다
+                        치수·매핑 소스·blob SHA는 guide/SHOOTING.md 표가 정본이다.
+                        ⚠️ README가 translation-editor·publish-preview·workflow-file 세 장을 상대 경로로 참조한다 — 이름을 바꾸면 README 이미지가 깨진다
+docs/assets/readme/     README 이미지(WebP) — 서빙되지 않고 GitHub가 렌더한다. ego로 찍고 마스킹은 guide/SHOOTING.md 표를 따른다
+                        (가이드 게이트·guide:check 밖이라 stale을 아무도 안 센다 — 화면이 크게 바뀌면 손으로 다시 찍는다)
 generated/prisma/ public/fonts/   ⚠️ 생성물(gitignore)
 vercel.json             Cron(야간 1회) + ⚠️ regions: ["hnd1"] — 함수를 DB 옆에 붙인다. 기본 iad1에서는
                         홉당 ~375ms였고 이 앱의 비용은 페이로드가 아니라 홉 개수다(요청당 일곱)
