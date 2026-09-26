@@ -54,9 +54,9 @@
 
 ## 4. 🟡 #5 · ⚪ #9 문서 사실 정정
 
-- [ ] **T4.1** PRODUCT §7.1 보관 문장을 §7.9와 일치. — 검증: `rg "보관 후에도 허용" docs/PRODUCT.md` 0건.
+- [x] **T4.1** PRODUCT §7.1 보관 문장을 §7.9와 일치. — 검증: `rg "보관 후에도 허용" docs/PRODUCT.md` 0건.
   `[C] docs(PRODUCT): align archived-project metadata rule with §7.9`
-- [ ] **T4.2** `action.yml` private 주석 제거. — 검증: `rg -n private .github/actions/malmoi-i18n-push/action.yml` 0건.
+- [x] **T4.2** `action.yml` private 주석 제거. — 검증: `rg -n private .github/actions/malmoi-i18n-push/action.yml` 0건.
   (T5.4와 한 커밋 가능)
 
 ## 5. ⚪ Server Action·CLI 경계 (#6·#7·#8·#10)
@@ -64,9 +64,9 @@
 - [x] **T5.1** #6 `deleteProjectImage` slug 스키마 검증 + 테스트(비문자열 → `{ok:false}`). — 검증: green.
 - [x] **T5.2** #7 `startGithubConnect` 보관 거부 + 테스트. — 검증: green.
   `[C] fix(settings): validate slug and refuse GitHub connect on archived projects`
-- [ ] **T5.3** #8 초대 수락: 멤버 조회를 트랜잭션 안으로, P2002 → `already-member`. — 검증: 단위 green + `pnpm test:projects:postgres`에 동시 수락 케이스 추가 green.
+- [x] **T5.3** #8 초대 수락: 멤버 조회를 트랜잭션 안으로, P2002 → `already-member`. — 검증: 단위 green + `pnpm test:projects:postgres`에 동시 수락 케이스 추가 green.
   `[C] fix(invite): report already-member for concurrent acceptance`
-- [ ] **T5.4** #10 `/tdd` `isAllowedPushUrl` → 구현 → `push-local` 배선(exit 2). ACTIONS `api-url` https 명시. — 검증: green, `http://example.com` exit 2 / `http://localhost:3000` 통과.
+- [x] **T5.4** #10 `/tdd` `isAllowedPushUrl` → 구현 → `push-local` 배선(exit 2). ACTIONS `api-url` https 명시. — 검증: green, `http://example.com` exit 2 / `http://localhost:3000` 통과.
   `[C] fix(cli): refuse plain-http push URLs outside loopback` (+ T4.2)
 
 ## 6. ⚪ 서명·토큰 (#13·#14·#16·#17·#18)
@@ -84,7 +84,7 @@
 
 ## 7. ⚪ 초대 한도 (#15)
 
-- [ ] **T7.1** `/tdd` 한도 판정에 사용자 합산 케이스 → 구현 → `readLimits`가 `invitedBy` 건수 읽기 + 거부 문구. — 검증: 단위 green, `pnpm test:projects:postgres` green.
+- [x] **T7.1** `/tdd` 한도 판정에 사용자 합산 케이스 → 구현 → `readLimits`가 `invitedBy` 건수 읽기 + 거부 문구. — 검증: 단위 green, `pnpm test:projects:postgres` green.
   `[C] fix(invite): add a per-user hourly issuance limit`
 
 ## 8. ⚪ 런타임 헤더 (#11·#12)
