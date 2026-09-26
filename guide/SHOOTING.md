@@ -63,7 +63,7 @@
 | 에셋 | 소스 | blob | 치수 |
 | --- | --- | --- | --- |
 | /guide/push-token-secret.webp | lib/onboarding/workflow.ts | 83a27a21602a5499990ed7d0a0149c9bd4391eb4 | 1672x876 |
-| /guide/workflow-file.webp | components/settings/ci-card.tsx, components/onboarding/workflow-block.tsx, lib/onboarding/workflow.ts | a2a262f34608ceefb15e81d9f1fa7748337c9cf0, e099fcb70b6fca21b04b07c69217a0b2a0018f9e, 83a27a21602a5499990ed7d0a0149c9bd4391eb4 | 1496x1036 |
+| /guide/workflow-file.webp | components/settings/ci-card.tsx, components/onboarding/workflow-block.tsx, lib/onboarding/workflow.ts | a51dd7329e19754536eec21e9165a067174e61c2, e099fcb70b6fca21b04b07c69217a0b2a0018f9e, 83a27a21602a5499990ed7d0a0149c9bd4391eb4 | 1496x1036 |
 | /guide/actions-policy.webp | lib/onboarding/workflow.ts, .github/actions/malmoi-i18n-push/action.yml | 83a27a21602a5499990ed7d0a0149c9bd4391eb4, 53c5d7d7e9b47a639698cddb6e35c83c88888915 | 1672x1044 |
 | /guide/translation-editor.webp | components/translations/workspace/key-list.tsx, components/translations/workspace/locale-panel.tsx | 2b76bc12d1bef23dc6db41b0877ce19bd6f4c52b, 017cfe5e337051262ffdd18f1c9bcc14962c1169 | 1700x1616 |
 | /guide/publish-preview.webp | components/publish-button.tsx, lib/publish/preview.ts | 0b34325ec125423306f9a2bd15c71a02d8e0c389, 53a5195bd22c62e1f778cca4f7c3bb46d5f0515c | 1496x1160 |
@@ -81,3 +81,4 @@
 - ④ `Malmoi is ready`는 벽(위)이라 Settings 모달로 대신했다.
 - Publish 미리보기 촬영에 쓴 편집(`common.cancel` fr)은 값을 원래대로 다시 저장했지만 **Revert to last sent**가 꺼져 있어 미전달 표시가 남았다 — 그 뒤 미리보기가 "Close pull request #8"을 제안한다. 실행하지 않았다.
 - GitHub 정책 컷의 옵션 문구 `Allow OWNER, and select non-OWNER, actions and reusable workflows`를 실물(조직 소유 리포)에서 확인했다.
+- 2026-09-27 `/guide/workflow-file.webp` 재촬영 — #120이 모달의 중복 문장(`Save this in your repository as …`)을 지우고 힌트 링크를 `Add the workflow`로 바꿨다.
