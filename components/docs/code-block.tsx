@@ -22,18 +22,31 @@ const COPIED_MS = 2000;
  */
 export function CodeBlock({ code, filename }: { code: string; filename: string | null }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  /**
+   * live region의 글자 — 상태와 따로 둔다. ⚠️ **다시 누르면 먼저 비운다** — 2초 안에 다시 누르면 `Copied` → `Copied`라
+   * 글자가 안 바뀌고, 안 바뀐 live region은 다시 읽히지 않는다.
+   */
+  const [announcement, setAnnouncement] = useState("");
   const timer = useRef(0);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
+  const fail = () => {
+    setState("failed");
+    setAnnouncement(m.common.copyFailed);
+  };
   const copy = () => {
     window.clearTimeout(timer.current);
-    void navigator.clipboard.writeText(code).then(
-      () => {
-        setState("copied");
-        timer.current = window.setTimeout(() => setState("idle"), COPIED_MS);
-      },
-      () => setState("failed"),
-    );
+    setAnnouncement("");
+    // ⚠️ 비보안 컨텍스트에는 `navigator.clipboard`가 없다 — `writeText` 호출이 동기로 던진다(locale-panel과 같은 가드).
+    if (navigator.clipboard === undefined) return fail();
+    void navigator.clipboard.writeText(code).then(() => {
+      setState("copied");
+      setAnnouncement(m.common.copied);
+      timer.current = window.setTimeout(() => {
+        setState("idle");
+        setAnnouncement("");
+      }, COPIED_MS);
+    }, fail);
   };
 
   const button = (
@@ -65,7 +78,7 @@ export function CodeBlock({ code, filename }: { code: string; filename: string |
         <code className="text-mono">{code}</code>
       </pre>
       <span role="status" aria-live="polite" className="sr-only">
-        {state === "copied" ? m.common.copied : state === "failed" ? m.common.copyFailed : ""}
+        {announcement}
       </span>
     </div>
   );
