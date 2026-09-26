@@ -276,7 +276,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **⚠️ "원본 내용이 필요한가"는 `writeStrategy`로 판단한다, `layout`이 아니다.**
 - **⚠️ 모든 DB 쿼리는 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이고, 더 중요하게는 **테넌트 간 데이터가 새는 경로가 된다.**
   - ⚠️ **"애플리케이션이 유일한 방어선"은 2026-09-09까지 거짓이었다.** Supabase는 PostgREST·GraphQL 데이터 API를 기본으로 켜 두고 `public` 스키마의 `pg_default_acl`이 **`anon`·`authenticated`에 새 테이블 전 권한을 자동으로 준다** — 실측으로 **anon key 하나로 `Account.access_token`·`Session.sessionToken`까지 읽고 지울 수 있었다.** 조치는 두 롤의 `public` 권한 REVOKE + `ALTER DEFAULT PRIVILEGES`에서 제거다(후자가 없으면 **다음 마이그레이션이 만드는 테이블이 다시 열린다**).
-  - ⚠️ **그 조치는 절반만 닫는다** — `ALTER DEFAULT PRIVILEGES`는 객체를 만드는 롤별이라 `supabase_admin` 소유 항목은 `postgres`로 지울 수 없다(`permission denied`). Prisma가 만드는 테이블은 안 열리고 **대시보드로 만드는 경로**가 열린다. 그래서 여기는 **예방이 아니라 탐지**다 — **새 마이그레이션 뒤에는 `anon` 권한이 0인지 확인한다**(`/db` 5단계).
+  - ⚠️ **그 조치는 절반만 닫는다** — `ALTER DEFAULT PRIVILEGES`는 객체를 만드는 롤별이라 `supabase_admin` 소유 항목은 `postgres`로 지울 수 없다(`permission denied`). Prisma가 만드는 테이블은 안 열리고 **대시보드로 만드는 경로**가 열린다. ⚠️ **2026-09-27부터 그 경로를 스키마 USAGE가 막는다** — 마이그레이션 `revoke_public_schema_usage_from_api_roles`가 두 롤의 `public` USAGE·CREATE를 걷어, default ACL이 GRANT를 줘도 이름 해석에서 막힌다(ARCHITECTURE §7). default ACL은 그대로 남으므로 테이블 GRANT 0건은 **탐지 신호**이고 방어는 USAGE다 — 단 **`PUBLIC`이 USAGE를 가지면 두 롤이 상속해 막히지 않는다.** 그래서 **새 마이그레이션 뒤에는 dev·prod 둘 다 `has_schema_privilege`가 `false`인지 확인한다**(`/db` 5단계 · OPERATIONS).
   - ⚠️ **런타임 롤이 `postgres`이고 `rolbypassrls=true`다** — 지금 RLS를 켜도 앱 연결에는 안 걸린다. **최소권한 롤로 옮기는 것은 RLS를 실제로 켜는 시점에 한다**(`DATABASE_URL` 교체가 넷을 동시에 건드리고, GRANT가 이미 0이라 인터넷 노출은 닫혀 있다).
 
 ## 게이트웨이 (알아두면 유용)
