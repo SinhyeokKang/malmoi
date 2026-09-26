@@ -481,7 +481,8 @@ lib/
                         ⚠️ account-connect는 VerificationToken의 **세 번째 접두**이고 plan(판정) ·
                         policy(쿠키) · http(가로채기) · store(challenge·Account 쓰기)로 갈린다
   onboarding/ survey/ scan/ projects/ shell/ settings/ signin/ i18n/ cli/
-                        (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄)
+                        (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄 ·
+                        cli/push-url — `push-local --url` 판정. 토큰 원문을 싣는 요청이라 http는 루프백 셋만, 위반은 exit 2)
                         각 기능의 순수 판정층
   home/                 Home의 순수 판정 다섯 (2026-09-15 재편). state(여섯 아트보드 → 값 하나 —
                         ⚠️ 로딩은 갈래가 아니다: 라우트의 loading.tsx이고 union에 넣으면 생산자 없는
