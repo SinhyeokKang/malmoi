@@ -8,13 +8,14 @@ Before you start: Save the values you want to publish. Publish includes all save
 
 Malmoi puts the files into one change request (a *pull request* on GitHub). You do not need a GitHub account; the development team reviews and merges it.
 
-1. Choose **Publish** at the top of Home or Translations.
-2. A preview opens; review the keys and languages.
-3. Choose **Open pull request**, or Replace pull request #N when one is already open.
+1. Choose **Publish** at the top of **Home** or **Translations**.
+2. Review the pieces of text (keys) and languages in the preview, then use the action described below.
 
 ## Publish the changes {#publish}
 
 Choose **Open pull request** or Replace pull request #N. If your changes already match the files and no pull request is open, the button is **Publish**. When a pull request is open and the files match, the action is Close pull request #N.
+
+If Publish is turned off, there may be no unpublished edits, or publishing may be temporarily unavailable. Wait for an ongoing sync to finish; ask a project owner if it stays unavailable.
 
 If the action fails, your saved values are kept. Try again later or tell a project owner.
 

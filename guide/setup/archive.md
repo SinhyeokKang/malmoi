@@ -6,8 +6,12 @@ Archiving is a project-owner action. It stops project writes and automatic repos
 
 ## Archive the project {#archive}
 
-1. Open the **Archive project** card in project settings.
-2. Confirm the action. Members can still open **Logs**; other project pages are unavailable while archived, although project owners may open **Settings**. Merge or close an open translation pull request first if you do not want it left open.
+Before archiving, merge or close any open translation pull request if you do not want it left open.
+
+1. Open **Settings** and choose **Archive project**.
+2. Read the confirmation, then choose Archive project again. The button changes to **Restore project**.
+
+Members can still open **Logs**; other project pages are unavailable while archived, although project owners may open Settings.
 
 While archived, a workflow run gets a 409 response and the repository workflow turns red. Remove the workflow or restore the project.
 

@@ -77,8 +77,8 @@ describe("실물 가이드 구조", () => {
       expect.objectContaining({ "라벨": "Repository access" }),
       expect.objectContaining({ "라벨": "Only select repositories" }),
       expect.objectContaining({ "라벨": "Run workflow" }),
-      expect.objectContaining({ "라벨": "Connect your account" }),
-      expect.objectContaining({ "라벨": "Try again" }),
+      expect.objectContaining({ "라벨": "General" }),
+      expect.objectContaining({ "라벨": "Allow OWNER, and select non-OWNER, actions and reusable workflows" }),
     ]));
   });
 });

@@ -68,21 +68,20 @@
 
 ## 외부 라벨 허용 목록 {#external-labels}
 
-외부 화면의 문구는 실제 현재 라벨을 확인한 뒤 행을 추가한다.
+외부 화면의 문구는 실제 현재 라벨을 확인한 뒤 행을 추가한다. 이 표는 외부 화면 전용이다. Malmoi 라벨은 사전을 근거로 삼고 여기에 중복 등록하지 않는다.
 
 | 라벨 | 화면 | 근거 |
 | --- | --- | --- |
 | Settings | GitHub repository settings | GitHub Actions documentation and current repository UI |
 | Secrets and variables | GitHub repository settings | GitHub Actions documentation and current repository UI |
 | Actions | GitHub repository settings | GitHub Actions documentation and current repository UI |
+| General | GitHub repository or organization Actions settings | [GitHub Actions policy documentation](https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization) |
 | New repository secret | GitHub repository Actions secrets | GitHub Actions documentation and current repository UI |
 | Set up job | GitHub Actions run summary | GitHub Actions run summary wording |
 | Repository access | GitHub App installation | GitHub App installation settings |
 | Only select repositories | GitHub App installation | GitHub App installation settings |
 | Run workflow | GitHub Actions workflow page | GitHub Actions workflow page |
-| Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows | GitHub Actions policy | GitHub Actions documentation; verify in G5 shooting |
-| Connect your account | Malmoi project setup | `components/onboarding/steps/repo.tsx` |
-| Try again | Malmoi project setup | `components/onboarding/steps/repo.tsx` |
+| Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows | GitHub Actions policy | [GitHub Actions policy documentation](https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization); 문서 대조 2026-09-26, G5 촬영에서 계정별 실물 문구 확인 |
 
 ## 앵커와 링크 {#anchors}
 
@@ -101,6 +100,7 @@
 - 독자를 `you`로 부르고, 역할을 제한할 때는 `project owners`라고 쓴다. 편집자에게 내부 DB·어댑터·토큰 구조를 설명하지 않는다. 화면에 없는 pull request, transaction, token, namespace, cron, OAuth, challenge, database는 같은 문장에서 뜻을 풀지 않으면 쓰지 않는다. Editor 원고의 key도 처음 뜻을 풀지 않으면 쓰지 않으며, base branch, payload, request도 내부 용어로 쓰지 않는다. 자동 검사는 금지어 전체를 보장하지 않는다.
 - 성공·실패·확인 불가를 구별한다. 확인하지 못한 PR을 없다고 쓰거나, 저장만 된 변경을 전달됐다고 쓰지 않는다.
 - `TODO`·`TBD`·`lorem` 같은 자리표시자를 원고에 남기지 않는다. 검증하지 않은 동작을 약속하지 않는다.
+- 독자가 파일로 저장할 코드 블록에는 `title=".github/workflows/malmoi-i18n.yml"`처럼 파일명 메타를 붙인다. 설정 필드에 붙이는 목록이나 코드 조각은 파일명이 없어도 된다.
 - 이미지 alt는 보이는 상태, Markdown 이미지 title 캡션은 할 일을 설명한다. 이미지 경로는 `/guide/<kebab-name>.webp`이고 하위 디렉터리를 만들지 않는다. authoring 규약이나 예시 placeholder를 guide 페이지에 넣지 않는다.
 
 ## 사실 대조 소스 {#fact-sources}

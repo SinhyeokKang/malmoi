@@ -6,13 +6,10 @@ Before you start: Open the repository or organization **Settings**, then **Actio
 
 ## Allow the required actions {#allowed-actions}
 
-1. Choose **Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows**. GitHub shows your account or organization name in place of OWNER. Add every action below with `@*`:
+1. Choose **Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows**. GitHub shows your account or organization name in place of OWNER. Add the four comma-separated patterns below:
 
    ```text
-   SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@*
-   actions/checkout@*
-   pnpm/action-setup@*
-   actions/setup-node@*
+   SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@*, actions/checkout@*, pnpm/action-setup@*, actions/setup-node@*
    ```
 
 2. Save the policy and run the workflow again.

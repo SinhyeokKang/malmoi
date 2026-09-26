@@ -2,11 +2,12 @@
 
 Review the generated pull request in GitHub and merge it to return translations to your repository.
 
-The pull request contains the translation files generated from Malmoi. Review the diff in GitHub, then merge it using the repository's normal policy.
+Before you start: You need permission to merge pull requests in the repository. The pull request contains the translation files generated from Malmoi.
 
 ## Merge the translation pull request {#merging}
 
-Squash, rebase, and merge commits are supported.
+1. Open the translation pull request in GitHub and review its changed files.
+2. Merge it using your repository's normal policy. Squash, rebase, and merge commits are supported.
 
 ## Keep the loop marker {#skip-marker}
 

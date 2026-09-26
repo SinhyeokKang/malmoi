@@ -4,13 +4,13 @@ Find the next step when GitHub access, setup, or repository syncing fails.
 
 ## Restore GitHub access {#github-access}
 
-If the GitHub App installation or user connection is unavailable, choose **Reconnect** from Account or the project settings. A sign-in method and the GitHub App connection are separate, so fixing one does not silently replace the other.
+If your GitHub authorization expired, open **Account** and choose **Reauthorize GitHub App**. If the project's repository connection needs repair, use **Reconnect** in project **Settings**. If the connection merely could not be checked, reopen the page before changing it. Sign-in methods and repository access are separate.
 
 If the repository is not listed, in Malmoi choose **Choose repositories**, then in GitHub open **Repository access** for the Malmoi App. If the app was removed, choose **Install the app**. If the repository was replaced, create a new project for the new repository.
 
 ## Resolve workflow failures {#workflow-failures}
 
-Check the Actions log for the generated workflow path, `PUSH_TOKEN`, allowed actions, and the selected base branch. A missing installation or action policy can stop a run before the request reaches the project. A 401 means the token is wrong or was rotated: choose **Rotate token** in Settings, then save the new value as `PUSH_TOKEN`.
+Check the Actions log for the generated workflow path, `PUSH_TOKEN`, allowed actions, and the selected base branch. A missing installation or action policy can stop a run before the request reaches the project. A 401 means the token is wrong or was rotated: choose **Rotate token** in **Settings**, confirm with **Rotate and show new token**, then copy the value into `PUSH_TOKEN`. It is shown only once, and the old push token stops working immediately.
 
 ## Resolve rejected updates {#rejected-updates}
 

@@ -11,14 +11,14 @@ Open **Sources** from the project navigation. Each row shows whether the source 
 ## Add sources {#add-sources}
 
 1. Choose **Add sources**, then choose detected files or enter a supported path.
-2. Add the source. A file can fail while the other files are added, so check each result.
-3. Copy the new step from the result or from **Settings** into the repository's workflow file; adding a source does not edit that file automatically.
+2. Choose the **Base language** for each selection, then choose **Add selected sources**. A file can fail while the other files are added, so check each result.
+3. Follow the result's **Settings** link and copy the new source steps from the generated workflow into your repository's workflow file. Adding sources does not edit that file automatically.
 
 ## Change the base language {#base-language}
 
-1. Choose **Base language** and declare the language that supplies the source text.
+1. Open the source's details from **Sources**. Under **Base language**, choose the language that supplies the source text, then choose **Save**. The change waits for the next update from the repository.
 2. Edit the workflow's `base-locale:` value to match it.
-3. Run the workflow. If unpublished edits are waiting, the run waits until they are published or a project owner resolves them.
+3. Run the workflow. If unpublished edits are waiting, the run is deferred. Publish or resolve those edits, then run the workflow again.
 
 For a manual replacement, see [Sync from the repository](../sync/revert.md#resync).
 
