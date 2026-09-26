@@ -4,10 +4,23 @@
 공통 검증: 각 커밋 전 `pnpm typecheck && pnpm test` green. `test:projects:postgres` 대상 경로(CLAUDE.md 명령어 표)를 건드린
 커밋은 그것도 green.
 
+## 배치 (orchestrate, 2026-09-27)
+
+| 배치 | 항목 | 태스크 | 코드 겹침 → 대기 |
+|---|---|---|---|
+| `sec-connect` | 1·17·18 | T1.*·T6.5·T6.6 | 선행(🔴) |
+| `sec-signing` | 6·7·13·14·16 | T5.1·T5.2·T6.1·T6.2·T6.4·T6.7 | `projects/actions.ts`·`settings/actions.ts` → `sec-connect` 뒤 rebase |
+| `sec-yaml-db` | 2·3·4 | T2.1·T2.2·T2.4·T3.* | 없음 |
+| `sec-invite-cli` | 5·8·9·10·15 | T4.*·T5.3·T5.4·T7.1 | `messages/en.tsx` → `sec-connect` 뒤 rebase |
+| `sec-csp` | 11·12 | T8.1·T8.3~T8.6 | 없음 |
+
+사람 몫: T6.3·T8.2(env 등록 — dev push 전), T2.3·T9.2(`/merge`). 정본 문서(ARCHITECTURE·OPERATIONS·CLAUDE.md·`.env.example`)는
+배치마다 다른 절을 고치므로 인계 직전 `git rebase dev`로 맞춘다.
+
 ## 0. 착수 전
 
 - [x] **T0.1** 결정 A~G 반영(design.md 머리). — 검증: design.md에 남은 "확인 필요"는 2번 PUBLIC 상속(T2.3) 하나.
-- [ ] **T0.2** prod `SELECT DISTINCT code FROM "Locale"`를 받아 `isLocaleShaped` 후보 규칙에 돌린다(읽기 전용). — 검증: 거부 0건. 1건 이상이면 규칙 조정 후 재실행.
+- [x] **T0.2** prod `SELECT DISTINCT code FROM "Locale"`를 받아 `isLocaleShaped` 후보 규칙에 돌린다(읽기 전용). — 검증: 거부 0건. 1건 이상이면 규칙 조정 후 재실행. → 2026-09-27: distinct 3(`en fr ko`), 거부 0. `/merge` 1단계에서 한 번 더 본다.
 
 ## 1. 🔴 #1 로케일 모양 + 리포 쓰기 권한
 
