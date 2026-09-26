@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+import { optionalEnv } from "./lib/env";
 import { cspEnvironment, securityHeaders } from "./lib/security-headers";
 
 const nextConfig: NextConfig = {
@@ -35,7 +36,7 @@ const nextConfig: NextConfig = {
    */
   async headers() {
     const env = cspEnvironment({ nodeEnv: process.env.NODE_ENV, vercelEnv: process.env.VERCEL_ENV });
-    return [{ source: "/(.*)", headers: securityHeaders(env) }];
+    return [{ source: "/(.*)", headers: securityHeaders(env, { blobHost: optionalEnv("BLOB_PUBLIC_HOST") }) }];
   },
 };
 
