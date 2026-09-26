@@ -1,5 +1,6 @@
 import { DocTable } from "@/components/public-doc-table";
 import { m } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 import { Toc } from "./toc";
 
@@ -45,8 +46,15 @@ export function PrivacyDoc() {
         <hr className="border-border mt-10" />
         {sections.map((section, index) => (
           // 이름 없는 `<section>`을 두지 않는다 (POSTMORTEM 2026-09-15) — 이름은 `<h2 id>`가 댄다.
-          // `[&_a]:`가 사전이 맨몸으로 내놓는 `<a>`에 색을 건다 (§6.3 — 셸 밖 링크는 파랑, 밑줄 없음).
-          <section key={section.id} aria-labelledby={section.id} className={`${index === 0 ? "mt-12" : "mt-14"} [&_a]:text-blue-600`}>
+          // `[&_a]:`가 사전이 맨몸으로 내놓는 `<a>`에 색과 링을 건다 (§6.3 — 셸 밖 링크는 파랑, 밑줄 없음 · §7).
+          <section
+            key={section.id}
+            aria-labelledby={section.id}
+            className={cn(
+              index === 0 ? "mt-12" : "mt-14",
+              "[&_a]:text-blue-600 [&_a]:focus-visible:ring-ring [&_a]:focus-visible:ring-2 [&_a]:focus-visible:outline-none",
+            )}
+          >
             {/*
               `scroll-mt-12` — 하드 해시 착지도 목차 클릭과 같은 48 아래에 선다.
               `tabIndex={-1}` — 목차가 누른 절로 포커스를 옮긴다(`toc.tsx`). 조작 대상이 아니라 링을 그리지 않는다.
@@ -69,7 +77,7 @@ export function PrivacyDoc() {
                 <DocTable
                   key={blockIndex}
                   table={block.table}
-                  className={`${TABLE} ${block.table.head.length === 3 ? TABLE_3COL : ""}`}
+                  className={cn(TABLE, block.table.head.length === 3 && TABLE_3COL)}
                 />
               ),
             )}

@@ -11,6 +11,8 @@ import { find, render } from "./helpers/dom";
  */
 const privacy = m.publicDocs.privacy;
 const doc = () => render(<PrivacyDoc />);
+/** DESIGN §7의 링 셋 — 하나라도 빠지면 브라우저 기본 outline이 그려진다. */
+const RING = ["focus-visible:ring-ring", "focus-visible:ring-2", "focus-visible:outline-none"];
 
 describe("PrivacyDoc — 구조", () => {
   it("h1이 하나이고 방침 제목이다", async () => {
@@ -55,6 +57,24 @@ describe("PrivacyDoc — 구조", () => {
       expect(region.getAttribute("aria-label")).toBeTruthy();
       expect(region.querySelector("table")?.getAttribute("aria-label")).toBe(region.getAttribute("aria-label"));
       expect(region.className).toContain("overflow-auto");
+    }
+  });
+
+  /** 표 안에 포커스 가능한 것이 없어 region 자신이 Tab을 받는다 — 링이 없으면 기본 outline이 선다(DESIGN §7). */
+  it("표 region이 포커스 링 셋을 든다", async () => {
+    const { container } = await doc();
+    const regions = [...container.querySelectorAll('[role="region"]')];
+    expect(regions).toHaveLength(2);
+    for (const region of regions) expect(region.className.split(/\s+/)).toEqual(expect.arrayContaining(RING));
+  });
+
+  /** 사전이 맨몸으로 내놓는 `<a>`(mailto)라 링도 절 래퍼의 `[&_a]:` 변형이 건다. */
+  it("본문 링크가 포커스 링 셋을 든다", async () => {
+    const { container } = await doc();
+    const sections = [...container.querySelectorAll("section")];
+    expect(sections.some((section) => section.querySelector("a") !== null)).toBe(true);
+    for (const section of sections) {
+      expect(section.className.split(/\s+/)).toEqual(expect.arrayContaining(RING.map((cls) => `[&_a]:${cls}`)));
     }
   });
 
@@ -114,6 +134,48 @@ describe("PrivacyDoc — 그릇 (시안 1e)", () => {
 });
 
 /** QA 이슈 넷(#115–#118) — 시안 Prototype `isPrivacy`와의 차이. `/docs`의 표는 `DocTable` 그대로여야 한다. */
+describe("PrivacyDoc — 급 (DESIGN §6.616)", () => {
+  const classes = (node: Element | null | undefined) => node?.className.split(/\s+/) ?? [];
+
+  it("h1 36/1.3/600 · h2 24/1.4/600", async () => {
+    const { container } = await doc();
+    expect(classes(container.querySelector("h1"))).toEqual(expect.arrayContaining(["text-4xl", "leading-[1.3]", "font-semibold"]));
+    const headings = [...container.querySelectorAll("h2")];
+    expect(headings).toHaveLength(privacy.sections.length);
+    for (const h2 of headings) expect(classes(h2)).toEqual(expect.arrayContaining(["text-2xl", "leading-[1.4]", "font-semibold"]));
+  });
+
+  /** 하드 해시 착지(`scroll-mt-12`)와 목차 클릭 착지(`privacy-toc.test.tsx`의 `top − 48`)가 같은 48이어야 한다. */
+  it("절 제목이 스크롤러 윗변 48 아래에 착지한다(`scroll-mt-12`)", async () => {
+    const { container } = await doc();
+    for (const h2 of container.querySelectorAll("h2")) expect(classes(h2)).toContain("scroll-mt-12");
+  });
+
+  it("구분선이 도입 아래 40이다", async () => {
+    const { container } = await doc();
+    expect(classes(container.querySelector("hr"))).toEqual(expect.arrayContaining(["border-border", "mt-10"]));
+  });
+
+  it("표 머리 13 muted · 셀 행간 1.6", async () => {
+    const { container } = await doc();
+    const regions = [...container.querySelectorAll('[role="region"]')];
+    expect(regions).toHaveLength(2);
+    for (const region of regions) {
+      expect(classes(region)).toEqual(expect.arrayContaining(["[&_th]:text-xs", "[&_th]:text-muted-foreground", "[&_td]:leading-[1.6]"]));
+    }
+  });
+
+  it("목차 — sticky 48 · 제목 13/500 · 항목 13/1.5 · 6/0/6/12", async () => {
+    const { container } = await doc();
+    const nav = find(container, "nav");
+    expect(classes(nav)).toEqual(expect.arrayContaining(["sticky", "top-12", "self-start"]));
+    expect(classes(document.getElementById(nav.getAttribute("aria-labelledby") ?? ""))).toEqual(expect.arrayContaining(["text-xs", "font-medium"]));
+    const links = [...nav.querySelectorAll("a")];
+    expect(links.length).toBe(privacy.sections.length);
+    for (const a of links) expect(classes(a)).toEqual(expect.arrayContaining(["text-xs", "leading-[1.5]", "py-1.5", "pr-0", "pl-3"]));
+  });
+});
+
 describe("PrivacyDoc — 시안 대조 교정", () => {
   const classes = (node: Element | null | undefined) => node?.className.split(/\s+/) ?? [];
 

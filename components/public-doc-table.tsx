@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { cn } from "@/lib/utils";
 import { Table, TableBody, TableHead, TableHeader, TableRow, Td } from "@/components/ui/table";
 
 /**
@@ -21,7 +22,13 @@ export function DocTable({
   className: string;
 }) {
   return (
-    <div role="region" tabIndex={0} aria-label={table.label} className={className}>
+    // Tab을 받는 것이 이 래퍼라 링도 여기서 든다(DESIGN §7) — 없으면 브라우저 기본 outline이 선다.
+    <div
+      role="region"
+      tabIndex={0}
+      aria-label={table.label}
+      className={cn("focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)}
+    >
       {/* 래퍼의 이름은 랜드마크의 이름이고, 표 목록은 `<table>` 자신의 이름을 읽는다 — 둘 다 준다. */}
       <Table scrollable={false} aria-label={table.label}>
         <TableHeader>

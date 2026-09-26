@@ -208,6 +208,22 @@ describe("포커스 링 (DESIGN §7)", () => {
     expect(radixImporters.filter((file) => !accounted.includes(file))).toEqual([]);
   });
 
+  /**
+   * ⚠️ **`tabIndex={0}`으로 Tab을 받는 비컨트롤도 링을 든다** (2026-09-26 디자인 감사). 위 스캔은 네 태그만 봐서
+   * 표 스크롤 region(`public-doc-table.tsx`)이 링 없이 브라우저 기본 outline을 그리는 것을 못 봤다. 화면에서 직접
+   * 쓰는 자리라 프리미티브 픽스처가 아니라 여는 태그 안의 링 셋을 센다.
+   */
+  it("`tabIndex={0}`을 든 여는 태그가 링 셋을 든다", () => {
+    const tags = FILES.flatMap((file) => {
+      const src = stripComments(readFileSync(file, "utf8"));
+      return [...src.matchAll(/tabIndex=\{0\}/g)].map((match) => ({ file: rel(file), tag: openingTag(src, src.lastIndexOf("<", match.index)) }));
+    });
+    // 0건이면 이 검사가 장식이 된다 — 지금 표 region과 온보딩 ② 미리보기 둘이다.
+    expect(tags.length).toBeGreaterThan(1);
+    const offenders = tags.filter(({ tag }) => !RING.every((cls) => tag.includes(cls))).map(({ file }) => file);
+    expect(offenders).toEqual([]);
+  });
+
   it("네 태그 전부가 렌더된 포커스 링 셋을 든다", async () => {
     for (const [file, fixture] of Object.entries({ ...FIXTURES, ...RADIX_FIXTURES })) {
       const { container } = await render(fixture);
