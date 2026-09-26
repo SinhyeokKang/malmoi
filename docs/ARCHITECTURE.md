@@ -2317,8 +2317,11 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   `listInstallationRepos`가 `{ fullName, pushedAt, push }`를 준다.
 - ⚠️ **`permissions`가 응답에 없으면(`push: null`) 거부가 아니라 `unavailable`이다** — 모르는 것을
   "권한 없음"으로 말하지 않는다(POSTMORTEM 2026-09-03).
-- 걸리는 자리: `checkRepoAccess`(온보딩 탐지·브랜치·샘플·수동 확정·**생성** · 재적재 · **Add surface**)와
+- 걸리는 자리: `checkRepoAccess`(온보딩 탐지·브랜치·샘플·수동 확정·**생성** · **Add surface**)와
   설정의 `connectRepository`(**Reconnect**). 온보딩은 첫 단계(탐지)에서 이미 거부된다.
+- ⚠️ **재적재(Sync)는 걸지 않는다** — `planRepoConnect`의 `requirePush`가 **기본값 없는 필수 인자**이고
+  Sync만 `false`다. 리포를 읽어 DB에 넣을 뿐이라 쓰기 권한의 상승이 아니고, 쓰기 권한 없이 초대된 OWNER
+  (아래 잔여)가 거기서 막히면 회귀다.
 - **소급하지 않는다** — 생성 당시 권한을 알 수 없다. 기존 프로젝트는 다음 Reconnect부터 걸린다(로케일
   모양 검사가 기존 행을 덮는다).
 - ⚠️ **잔여: 초대된 OWNER.** OWNER로 초대된 사람은 리포 쓰기 권한 없이 push 토큰을 회전할 수 있다
