@@ -8,7 +8,7 @@ You can own up to 3 active projects. New invitations and resends are blocked onc
 
 ## Invitation limits {#invitations}
 
-A project can send up to 20 invitations in one hour, with no more than 20 addresses in one invitation request. The same address has a 60-second cooldown; both limits apply to the initial invitation and **Resend**. If any address would exceed a limit, no invitations are sent.
+A project can send up to 20 invitations in one hour, and one person can send up to 30 in one hour across all their projects, with no more than 20 addresses in one invitation request. The same address has a 60-second cooldown; all of these limits apply to the initial invitation and **Resend**. If any address would exceed a limit, no invitations are sent.
 
 ## File and translation limits {#files}
 
