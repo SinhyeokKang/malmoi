@@ -3,11 +3,15 @@
 import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 
 import { currentSection } from "@/lib/public-doc/toc";
+import { cn } from "@/lib/utils";
 
 /** 절 윗변이 이만큼 아래를 지나면 그 절이 현재다(시안 Prototype `isPrivacy`). */
 const ACTIVE_OFFSET = 96;
 /** 클릭한 절이 서는 자리 — 스크롤러 윗변에서 48. h2의 `scroll-mt-12`와 같은 값이다. */
 const LAND_OFFSET = 48;
+
+/** 사용자가 스스로 스크롤하는 입력 — 누른 절의 고정을 푼다. */
+const RELEASE = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
 
 /** 절 윗변의 스크롤러 좌표. ⚠️ offsetTop은 offsetParent에 매여 셸 구조가 바뀌면 조용히 틀린다(스테이지와 같은 판단). */
 const topOf = (node: HTMLElement, scroller: HTMLElement) =>
@@ -19,12 +23,18 @@ const topOf = (node: HTMLElement, scroller: HTMLElement) =>
  * ⚠️ **링크가 실제 `href="#id"`다** — JS 전·없이도 fragment 이동이 된다. JS는 그 위에 착지 위치(48)와 모션만 얹는다.
  * ⚠️ **스크롤러는 공개 셸의 것이다**(`[data-public-scroller]`) — 문서는 스크롤되지 않으므로 `window`를 구독하면 아무것도 안 온다.
  * ⚠️ **setState는 값이 바뀔 때만 리렌더한다** — 항목이 일곱이라 스테이지처럼 DOM에 직접 쓸 이유가 없다.
- * ⚠️ **`@/lib/**`는 잎 하나만 읽는다**(`lib/public-doc/toc.ts` — `client-graph.test.ts`의 `CLIENT_LIB_FILES`).
+ * ⚠️ **`@/lib/**`는 잎 `lib/public-doc/toc.ts`와 `cn`만 읽는다** — 둘 다 `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 있다.
  */
 export function Toc({ label, items }: { label: string; items: readonly { id: string; heading: string }[] }) {
   const titleId = useId();
   const ref = useRef<HTMLElement>(null);
   const [current, setCurrent] = useState(0);
+  /**
+   * 누른 절 — 사용자가 스스로 스크롤할 때까지 위치 판정을 이긴다. 뒤쪽 짧은 절은 48 자리까지 못 올라와 스크롤이
+   * 끝에서 멈추고, 그러면 끝 규칙이 마지막 절을 켜서 누른 항목이 아닌 것이 강조됐다. `scrollend`가 아니라 입력으로
+   * 푼다 — 끝난 스크롤 위치는 여전히 끝이라 풀리는 순간 같은 오판으로 돌아간다.
+   */
+  const pinned = useRef<number | null>(null);
 
   useEffect(() => {
     const scroller = ref.current?.closest<HTMLElement>("[data-public-scroller]");
@@ -41,7 +51,7 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
     };
     const update = () => {
       frame = 0;
-      setCurrent(currentSection(tops, scroller.scrollTop, ACTIVE_OFFSET, scroller.scrollHeight - scroller.clientHeight));
+      setCurrent(pinned.current ?? currentSection(tops, scroller.scrollTop, ACTIVE_OFFSET, scroller.scrollHeight - scroller.clientHeight));
     };
     const schedule = () => {
       if (frame === 0) frame = requestAnimationFrame(update);
@@ -52,8 +62,16 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
       schedule();
     };
 
+    const release = () => {
+      if (pinned.current === null) return;
+      pinned.current = null;
+      schedule();
+    };
+
     remeasure();
     scroller.addEventListener("scroll", schedule, { passive: true });
+    // 목차 링크의 pointerdown·Enter도 여기를 지나지만 click이 곧바로 다시 고정한다.
+    for (const type of RELEASE) scroller.addEventListener(type, release, { passive: true });
     // 폭이 바뀌면 줄바꿈이, 폰트가 오면 글자 높이가 절 윗변을 옮긴다.
     const observer = new ResizeObserver(remeasure);
     observer.observe(scroller);
@@ -62,12 +80,13 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
     return () => {
       alive = false;
       scroller.removeEventListener("scroll", schedule);
+      for (const type of RELEASE) scroller.removeEventListener(type, release);
       observer.disconnect();
       if (frame !== 0) cancelAnimationFrame(frame);
     };
   }, [items]);
 
-  const onClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
+  const onClick = (event: MouseEvent<HTMLAnchorElement>, id: string, index: number) => {
     // 수정 키·가운데 클릭은 새 탭·새 창이다 — 브라우저 몫이라 가로채지 않는다.
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     const scroller = ref.current?.closest<HTMLElement>("[data-public-scroller]");
@@ -75,6 +94,8 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
     // 못 찾으면 브라우저 기본 이동에 맡긴다.
     if (!scroller || !target) return;
     event.preventDefault();
+    pinned.current = index;
+    setCurrent(index);
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     scroller.scrollTo({ top: topOf(target, scroller) - LAND_OFFSET, behavior: reduced ? "auto" : "smooth" });
     history.replaceState(null, "", `#${id}`);
@@ -93,11 +114,12 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
           <li key={id}>
             <a
               href={`#${id}`}
-              onClick={(event) => onClick(event, id)}
+              onClick={(event) => onClick(event, id, index)}
               aria-current={index === current ? "location" : undefined}
-              className={`-ml-px block border-l py-1.5 pr-0 pl-3 text-xs leading-[1.5] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none ${
-                index === current ? "border-foreground text-foreground" : "text-muted-foreground hover:text-foreground border-transparent"
-              }`}
+              className={cn(
+                "-ml-px block border-l py-1.5 pr-0 pl-3 text-xs leading-[1.5] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+                index === current ? "border-foreground text-foreground" : "text-muted-foreground hover:text-foreground border-transparent",
+              )}
             >
               {heading}
             </a>

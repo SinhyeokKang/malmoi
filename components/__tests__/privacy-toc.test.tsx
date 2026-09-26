@@ -171,6 +171,28 @@ describe("Toc — 클릭", () => {
     replace.mockRestore();
   });
 
+  /**
+   * 누른 절이 48 자리까지 못 올라오면 스크롤이 끝에서 멈추고, 끝 규칙이 마지막 절을 켠다 — 누른 항목이 아니라
+   * `Changes to this policy`가 강조됐다(높은 뷰포트의 뒤쪽 짧은 절). 누른 id는 사용자가 스스로 스크롤할 때까지 이긴다.
+   */
+  it("착지가 끝에서 멈춰도 누른 절이 현재이고, 사용자가 스크롤하면 위치 판정으로 돌아간다", async () => {
+    const { container, scroller } = await mount();
+    // 끝 = 700 — `purposes`의 착지(800 − 48 = 752)가 끝 너머다.
+    Object.defineProperty(scroller, "scrollHeight", { configurable: true, get: () => 700 + 600 });
+    scroller.scrollTo = vi.fn() as unknown as HTMLElement["scrollTo"];
+    const replace = vi.spyOn(history, "replaceState");
+    const link = find<HTMLAnchorElement>(container, 'nav a[href="#purposes"]');
+    await act(async () => { link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })); });
+    expect(currentIds(container)).toEqual(["#purposes"]);
+    await scrollTo(scroller, 700);
+    expect(currentIds(container)).toEqual(["#purposes"]);
+
+    await act(async () => { scroller.dispatchEvent(new Event("wheel")); });
+    await scrollTo(scroller, 700);
+    expect(currentIds(container)).toEqual(["#cookies"]);
+    replace.mockRestore();
+  });
+
   it("모션 감소면 smooth가 아니다", async () => {
     const { scrollToSpy, replace } = await click(true);
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 1400 - 48, behavior: "auto" });
