@@ -26,6 +26,20 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/upload/store", () => ({ putImage: h.put, deleteImage: h.del }));
 vi.mock("@/lib/upload/normalize", () => ({ normalizeImage: h.normalize }));
 vi.mock("@/lib/pull/trigger", () => ({ triggerPull: h.pull }));
+/**
+ * 토큰 회전은 잠금 전에 리포 쓰기 권한을 확인한다(sec-audit-3 결정 I) — 이 파일이 재는 것은 그 뒤의 잠금 안 재판정이라,
+ * GitHub 쪽은 쓸 수 있는 사용자로 고정한다. 권한 갈래 자체는 `app/(edit)/__tests__/onboarding.test.ts`가 잰다.
+ */
+vi.mock("@/lib/github-connect/token-store", () => ({ ensureUserToken: async () => ({ status: "ok", accessToken: "user-token" }) }));
+vi.mock("@/lib/github-connect/user", async (orig) => ({
+  ...(await orig<typeof import("@/lib/github-connect/user")>()),
+  listUserInstallations: async () => ["1"],
+  listInstallationRepos: async () => [{ fullName: "o/r", pushedAt: null, push: true }],
+}));
+vi.mock("@/lib/github", async (orig) => ({
+  ...(await orig<typeof import("@/lib/github")>()),
+  probeRepo: async () => ({ status: "ok", installationId: "1", repositoryId: "100", fullName: "o/r", defaultBranch: "main" }),
+}));
 
 const projects = await import("@/app/(edit)/projects/actions");
 const settings = await import("@/app/(edit)/projects/[slug]/settings/actions");
