@@ -58,7 +58,8 @@
     (2026-09-10 추가, sec-audit-2 발견 34). 리포를 리네임하고 같은 조직이 옛 이름으로 새 리포를
     만들면 GitHub의 redirect가 사라지고, 저장된 `repoOwner/repoName`이 **남의 리포**를 가리킨다 —
     그 리포가 public이면 이 프로젝트의 번역이 그대로 공개된다. ⚠️ **판정이 세 층에 걸린다**:
-    installation 토큰을 그 id 하나로 좁히고(`createGitClient`), 쓰기 직전 `GET /repos`의 id를
+    installation 토큰을 그 id 하나로 좁히고(`createGitClient` — 2026-09-27부터 읽기 `openRepoReader`·`listBranches`도,
+    sec-audit-3 #16), 쓰기 직전 `GET /repos`의 id를
     재대조하고, **화면도 이름보다 id를 먼저 본다**(`planConnectionHealth`의 `repo-replaced`).
     쓰기 층에만 두면 설정 화면이 초록인 채 Publish만 죽는다.
 
@@ -763,7 +764,8 @@ pull과 **같은 App 설치 토큰**을 쓰지만 방향이 반대다(읽기 전
 
 ⚠️ **`createApp()`은 모듈 lazy 싱글턴이다** (2026-09-25, audit-ux #8) — 요청 사이에 App과 그 설치 토큰 캐시가 살아남아 웜 인스턴스에서 probe가 3홉→2홉이 된다. env는 매 호출 읽고 값이 바뀌면 새 App을 만든다(모듈 최상위 평가 없음). 그 대가로 캐시 토큰이 만료 직전일 수 있어, 정적 Octokit에 고정하는 `createGitClient`는 남은 시간이 5분 미만이면 `refresh: true`로 재발급한다(`TOKEN_MARGIN_MS`) — 60초 Publish가 중간에 401을 받지 않게 한다.
 
-**리더는 설치 토큰을 한 번만 발급한다** (`openRepoReader`). ⚠️ 읽기마다 `createApp()`을 부르면 토큰 캐시가
+**리더는 설치 토큰을 한 번만 발급한다** (`openRepoReader`). 그 토큰도 쓰기와 같은 조립(`pinnedOctokit`)으로
+**`repositoryId` 하나에 좁힌다** — 온보딩엔 `Project` 행이 없어 probe가 준 id를 넘긴다. ⚠️ 읽기마다 `createApp()`을 부르면 토큰 캐시가
 인스턴스마다 새로 생겨 **`POST /app/installations/{id}/access_tokens`가 호출마다 하나씩 더 붙는다** — 예산이
 2배가 되고 50로케일 첫 적재는 `maxDuration=60`에서 잘린다 (code-review 2026-09-07 🔴). 스냅샷은 트리 항목의
 **`sha`를 함께 든다** — 경로만 들면 blob을 contents API로 읽어야 하고 그쪽은 **1MB에서 잘려 조용히 빈 내용**을
@@ -853,9 +855,10 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
   재검증한다.** 이건 편의가 아니라 **보안 통제다**: 그 값이 그대로 저장되면 pull이 임의 경로를 겨눈다.
   저장하는 것은 `detectFormatWith`의 **반환값**이고 사용자가 보낸 문자열이 아니다.
   - 온보딩 미리보기는 **확정과 조회를 분리**한다. `planConfirmedFormat`은 blob 내용이 필요하므로
-    다운로드 전 검증으로 쓸 수 없다. 탐지·`confirmManualFormat`이 재검증한 포맷에 `AUTH_SECRET`으로
-    용도를 구분한 HMAC 확인값을 발급한다. 확인값은 사용자·repositoryId·installationId·ref·headSha에
-    묶이고 파일 내용은 담지 않는다. `loadCandidateSample`은 현재 인가와 스냅샷을 다시 확인하고 서명을
+    다운로드 전 검증으로 쓸 수 없다. 탐지·`confirmManualFormat`이 재검증한 포맷에 `APP_SIGNING_SECRET`으로
+    용도를 구분한 HMAC 확인값을 발급한다(§6.4의 서명 키 분리). 확인값은 사용자·repositoryId·installationId·ref·headSha에
+    묶이고 파일 내용은 담지 않는다. **발급 시각을 싣고 30분 뒤 만료된다**(라벨 `…:v2` — 수명 없던 v1은 서명에서 거부된다,
+    sec-audit-3 #13). `loadCandidateSample`은 현재 인가와 스냅샷을 다시 확인하고 서명을
     대조한 뒤 경로를 트리와 교차한다. per-locale은 요청 언어의 blob **하나만** 읽는다.
     확인값은 인가를 대신하지 않으며, 브랜치 head가 바뀌면 재탐지해야 한다. 서버 캐시는 없다.
   - 직접 소비자는 `createProject`·`runFirstIngest`·`detectRepoFormats`·`confirmManualFormat`이다.
@@ -2243,8 +2246,13 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   연결이 프로덕션에 착지하고**, state 쿠키는 시작한 origin에 있으니 그 왕복은 **영원히**
   `state-mismatch`다. **origin과 쿠키의 `secure`가 한 판정에서 나오는 것**이 그 파일의 요지다 — 따로
   읽으면 한쪽만 바뀌어도 심은 이름과 찾는 이름이 갈린다.
-- **state는 HMAC-SHA256 over `AUTH_SECRET`** + 용도 라벨. ⚠️ 세션 서명과 **키를 공유**하므로 회전하면
-  진행 중인 연결이 전부 죽는다. 10분 만료 · nonce 대조 · 고정 길이 SHA-256 digest의 `timingSafeEqual` 비교.
+- **state는 HMAC-SHA256 over `APP_SIGNING_SECRET`** + 용도 라벨. 10분 만료 · nonce 대조 · 고정 길이 SHA-256
+  digest의 `timingSafeEqual` 비교.
+  - **⚠️ 서명 키가 Auth.js와 갈려 있다** (2026-09-27, sec-audit-3 #14). 전에는 `AUTH_SECRET` 하나가 Auth.js·연결
+    state·샘플 확인값(§3.1 온보딩)을 겸해 **한 회전이 셋을 함께 무효로** 만들었다. 지금 `AUTH_SECRET`은 Auth.js
+    전용이고, 앱이 직접 만드는 서명 둘이 `APP_SIGNING_SECRET`을 **용도 라벨로 도메인을 갈라** 나눠 쓴다. 저장된
+    서명이 없어 회전 비용은 진행 중 왕복 한 번의 실패뿐이고, 그래서 **이중 키 검증을 두지 않는다**(OPERATIONS §2).
+    읽기는 `requireEnv`로 **함수 안에서**만 한다(POSTMORTEM 2026-08-31).
 - **판정 순서는 서명 → nonce → 만료 → 사용자다.** 만료를 사용자보다 **앞**에 둬 만료된 state가 누구
   것이었는지 말하지 않는다 — `planInvitationAccept`와 같은 축이다.
 - **목적지를 서명 payload에 싣는다.** 그래서 `safeNext` 같은 open redirect 판정이 아예 없다.
@@ -2260,7 +2268,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
     것은 갈래 **이름**뿐이고(`"new" | "account"`, zod enum) payload는 서버가 만든다 — 클라이언트가
     `{kind:"settings", slug}`를 통째로 보낼 수 있으면 남의 설정 화면으로 착지를 정할 수 있고, 그러면
     이 자리에 open redirect 판정이 생긴다. 그 판정이 없는 것이 "목적지를 서명에 싣는" 설계의 값이다.
-- **⚠️ 빈 `AUTH_SECRET`은 `state-mismatch`로 접지 않고 던진다.** `createHmac("sha256", "")`이 던지지
+- **⚠️ 빈 서명 키(`APP_SIGNING_SECRET`)는 `state-mismatch`로 접지 않고 던진다.** `createHmac("sha256", "")`이 던지지
   않으므로, 이 층이 `requireEnv`에만 기대면 호출부의 실수 하나로 **누구나 재현 가능한 서명**이 통과한다
   (`checkBearer`가 `expected === ""`를 `not-configured`로 가른 것과 같은 판단). 설정 오류를 "다시 눌러
   주세요"로 위장하지 않는다.
