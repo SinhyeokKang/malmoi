@@ -495,6 +495,29 @@ it("수동 지정 후 브랜치를 바꾸면 재검증한 기준 언어로 진�
   expect(find(document.body, '[role="radio"]').getAttribute("aria-checked")).toBe("true");
 });
 
+/**
+ * **①의 거부는 한 자리에 한 번이다** (malmoi#122). 브랜치 조회 거부가 모달 상단 배너(`accessLost`)와 고른 행 아래
+ * BranchRow에 **같은 문장으로 둘 다** 섰다 — `isAccessLost`가 리포 단위 거부까지 담고 있어서다. 리포 단위 거부는 행
+ * 아래에만, 계정·세션 단위 거부는 배너에만 선다. 거부 자체(모달 유지·선택 유지·Next 비활성)는 그대로다.
+ */
+it.each([
+  ["repo-read-only", "can only read that repository"],
+  ["repo-forbidden", "can't reach that repository"],
+  ["repo-not-installed", "isn't installed on this repository"],
+  ["installation-forbidden", "can't reach that installation"],
+  ["reauthorize", "authorization expired"],
+])("① 브랜치 조회 거부 %s는 대화상자 안에 한 번만 선다 (#122)", async (error, text) => {
+  mocks.listRepoBranches.mockResolvedValueOnce({ ok: false, error });
+  await mount();
+  const radio = find(document.body, '[role="radio"]');
+  await click(radio);
+  const dialog = find(document.body, '[role="dialog"]');
+  const alerts = [...dialog.querySelectorAll('[role="alert"]')].filter((a) => a.textContent?.includes(text));
+  expect(alerts).toHaveLength(1);
+  expect(radio.getAttribute("aria-checked")).toBe("true");
+  expect(button("Next").disabled).toBe(true);
+});
+
 it("리포 접근 거부 뒤 다른 리포를 고르면 그 리포의 인가로 진행한다", async () => {
   mocks.listRepoBranches.mockResolvedValueOnce({ ok: false, error: "repo-not-installed" });
   await mount();
