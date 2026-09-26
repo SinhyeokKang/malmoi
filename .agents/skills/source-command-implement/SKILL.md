@@ -68,6 +68,7 @@ POSTMORTEM 소환: <인용 항목 또는 없음>
 - 스키마 영향: 없음 / additive / destructive  ← 있으면 /db
 - 문서 영향: 없음 / PRODUCT.md·ARCHITECTURE.md·DIRECTORY.md·.env.example 중 <목록>
 - postmortem 후보: 없음 / <구현 중 밟은 비자명 함정>
+- 가이드 영향: 없음 / <화면 문구·동작·한도가 바뀐 사용자 노출 변경 — guide/ 페이지 또는 촬영 매핑 소스>  ← 있으면 /guide·/guide-shots
 - 미해소: 없음 / <목록>
 ```
 
