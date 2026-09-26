@@ -302,6 +302,28 @@ describe("acceptInvitation — 토큰이 인가를 대신한다", () => {
     expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: true, slug: "alpha" });
   });
 
+  /**
+   * **동시 수락의 진 쪽은 `already-member`다** (sec-audit-3 #8). 같은 사용자가 같은 프로젝트의 초대 둘을 동시에
+   * 수락하면 "이미 멤버인가" 조회는 둘 다 통과하고 진 쪽의 `projectMember.create`가 P2002를 던진다 — 전에는
+   * 그것이 `unavailable`이었다. 조회를 트랜잭션 안에 둬도 read committed는 경합을 못 막으므로 최종 판정은
+   * unique 제약이고, 메모리 DB는 조회만 비껴가게 해 그 갈래를 밟는다.
+   */
+  it("조회를 지난 뒤 멤버 생성이 P2002면 already-member이고 초대는 소비되지 않는다", async () => {
+    invite();
+    db.members.push({ projectId: "pA", userId: "u-guest", role: "EDITOR", createdAt: new Date() });
+    db.spies.findMember.mockImplementationOnce(async () => null);
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: false, error: "already-member" });
+    expect(db.invitations[0]?.acceptedAt).toBeNull();
+    expect(db.members.filter((m) => m.userId === "u-guest")).toHaveLength(1);
+  });
+
+  it("이미 멤버면 already-member이고 초대는 소비되지 않는다", async () => {
+    invite();
+    db.members.push({ projectId: "pA", userId: "u-guest", role: "EDITOR", createdAt: new Date() });
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: false, error: "already-member" });
+    expect(db.invitations[0]?.acceptedAt).toBeNull();
+  });
+
   it("토큰 원문이 아니라 해시로 조회한다", async () => {
     invite();
     await acceptInvitation({ token: "tok" });
