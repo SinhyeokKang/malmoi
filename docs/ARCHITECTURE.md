@@ -379,7 +379,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 - **`yaml` 패키지의 `parseDocument`로 CST를 들고 스칼라만 갈아끼운다.** 실측으로 주석(독립·줄끝)·빈 줄·앵커·인용 스타일·`---` 문서 마커가 전부 보존된다.
 - **편집 스칼라의 `range`만 뒤에서 치환한다** (2026-09-16 T12 수정). 문서 전체를 `toString()`으로 재직렬화하지 않는다. 앵커·태그·주석·정렬 공백·미편집 folded scalar는 원본 바이트로 남는다. 블록 헤더의 들여쓰기·주석과 CRLF를 보존하며, chomping은 요청값에 맞춘다. 공백만 있는 값이나 keep chomping(`+`)이 range 밖 원본 빈 줄까지 흡수하는 경우는 인용 표현으로 낸다. 인용으로 바꿔도 헤더 주석과 주변 빈 줄은 남긴다.
 - **삽입도 기존 맵 끝에 문자열만 추가한다.** block/flow·중복 마지막 맵·빈 문서·문서 끝 마커를 구분하고 새 키만 정렬한다. 부모·자식 맵이 같은 위치에서 끝나면 자식 삽입이 앞에 남아야 한다. 문자열 직렬화의 타입 판정은 원본 문서의 YAML 버전을 따르고, **지시자와 무관하게 1.1 판정도 지난다**(아래) (`%YAML 1.1`의 `yes`는 인용하지 않으면 불리언이다).
-- **YAML 1.1이 문자열로 안 읽는 값은 맨 문자열로 쓰지 않는다** (2026-09-27, sec-audit-3 #4). 1.2 판정만으로 PLAIN을 고르면 `No`·`yes`·`on`·`off`·`y`·`n`·`12:30`(60진수)·`1_000`·`0b101`·`2026-09-27`(timestamp)이 인용 없이 나가 **Psych(Rails)·PyYAML(1.1)에서 bool·정수·날짜가 된다** — 로케일 파일의 소비자가 대개 그쪽이다. 판정은 `isYaml11Ambiguous`(`lib/adapters/yaml-catalog.ts`)이고 **규칙을 재구현하지 않는다** — 같은 `yaml` 패키지의 1.1 스키마로 값을 다시 읽어 **같은 문자열이 아니면**(파싱 오류·예외 포함) 모호하다. ⚠️ **1.2 serializer가 이미 인용한 값은 판정하지 않는다** — 판정은 값을 문서로 읽으므로 `*Required`(미정의 앨리어스)·한 줄 앨리어스 폭탄에서 `toJS`가 던졌다(리뷰에서 잡음, POSTMORTEM 2026-09-10과 같은 축). 맨 문자열로 나갈 값만 파싱하고, 그래도 던지면 인용으로 닫는다. 고정 버전(2.9.0)에서의 동작은 `yaml-catalog.test.ts`가 출력을 **1.1·1.2 두 파서로 다시 읽어** 고정한다(값만 맞는 검증 금지 — POSTMORTEM 2026-09-03).
+- **YAML 1.1이 문자열로 안 읽는 값은 맨 문자열로 쓰지 않는다** (2026-09-27, sec-audit-3 #4). 1.2 판정만으로 PLAIN을 고르면 `No`·`yes`·`on`·`off`·`y`·`n`·`12:30`(60진수)·`1_000`·`0b101`·`2026-09-27`(timestamp)이 인용 없이 나가 **Psych(Rails)·PyYAML(1.1)에서 bool·정수·날짜가 된다** — 로케일 파일의 소비자가 대개 그쪽이다. 판정은 `isYaml11Ambiguous`(`lib/adapters/yaml-catalog.ts`)이고 **규칙을 재구현하지 않는다** — 같은 `yaml` 패키지의 1.1 스키마로 값을 다시 읽어 **같은 문자열이 아니면**(파싱 오류·예외 포함) 모호하다. ⚠️ **그 스키마는 Psych·PyYAML의 판독 전부가 아니다** — `yaml`의 1.1 스키마가 문자열로 읽는데 소비자는 달리 읽는 것을 보충 목록(`CONSUMER_ONLY`)으로 더했다: 쉼표 숫자(`1,000`·`1,000.5` — Psych 숫자), 앞 `:`(`:)`·`:foo` — Psych Symbol, `safe_load`는 DisallowedClass), 정확히 `=`·`<<`(PyYAML `safe_load`가 value·merge 태그로 읽어 **파일 전체**가 ConstructorError). **판정의 범위는 `yaml` 1.1 스키마 + 이 목록이고, 두 파서의 모든 판독을 덮는다고 주장하지 않는다** — 새 판독을 발견하면 목록에 더한다. ⚠️ **1.2 serializer가 이미 인용한 값은 판정하지 않는다** — 판정은 값을 문서로 읽으므로 `*Required`(미정의 앨리어스)·한 줄 앨리어스 폭탄에서 `toJS`가 던졌다(리뷰에서 잡음, POSTMORTEM 2026-09-10과 같은 축). 맨 문자열로 나갈 값만 파싱하고, 그래도 던지면 인용으로 닫는다. 고정 버전(2.9.0)에서의 동작은 `yaml-catalog.test.ts`가 출력을 **1.1·1.2 두 파서로 다시 읽어** 고정한다(값만 맞는 검증 금지 — POSTMORTEM 2026-09-03).
   - **바뀐 것은 serializer의 스타일 선택 하나다** — `flowString`의 `defaultStringType`. 모호하면 원본이 `'…'`일 때 그대로, 아니면 `"…"`(개행 갈래와 같은 선택). CST 치환 범위·블록 스칼라 갈래는 안 건드린다(POSTMORTEM 2026-09-10 · 2026-09-16). 치환과 삽입(키 이름 포함 — Rails `no:` 로케일 키가 같은 부류다)이 같은 함수를 지난다. 모호하지 않은 값은 §1.4 "표현은 원본에서"가 그대로다.
   - **결정성 유지, 기존 프로젝트에 일괄 변경 PR은 나지 않는다** (design의 "1회 변경 PR" 예측 정정). 같은 값 → 같은 출력이고, 치환은 **원본을 읽은 값과 DB 값이 다른 셀에만** 일어난다 — 리포에 이미 PLAIN `No`가 있고 DB도 `No`면 그 행은 원본 바이트 그대로다. 그래서 이 규칙은 **새로 쓰이는 값**(편집·삽입)에만 걸리고, 원본에 이미 있던 모호 PLAIN 값은 1.1 소비자에서 계속 bool이다 — 그 표현의 소유자는 리포 원본이고, 일괄 인용은 값 비교 없는 재직렬화라 수술적 치환의 반대다.
   - `/push` 4d(§1.9 재측정 트리거) 판정: **재측정 불요** — writer의 스타일 선택만 바뀌었고 detect·read·경로 판정은 무변경이라 `adapter-survey`가 재는 축(탐지·파싱 성공률)에 영향이 없다.
@@ -2504,17 +2504,20 @@ PR 생성·머지·재push 및 60초 전체 예산 검증은 미완료다.
 
 ### 데이터 API 롤 — 스키마 USAGE로 닫는다, default ACL은 남는다 (2026-09-27, sec-audit-3 #2·#3)
 
-**Supabase 데이터 API 롤(`anon`·`authenticated`)의 `public` USAGE·CREATE를 마이그레이션이 걷는다**
-(`20260926175555_revoke_public_schema_usage_from_api_roles`). 2026-09-09 조치(§0 불변식 5 · CLAUDE.md)는 테이블 GRANT와 `postgres` 소유
+**Supabase 데이터 API 롤(`anon`·`authenticated`)의 `public` USAGE를 마이그레이션이 걷는다 — 직접 GRANT와 `PUBLIC` 상속 둘 다**
+(`20260926175555_revoke_public_schema_usage_from_api_roles`). ⚠️ **prod가 닫혔다는 확정은 `/merge` 1단계의 `db:deploy` 뒤 재조회(T2.3)다** —
+마이그레이션 파일이 있다는 것은 prod 카탈로그가 그렇다는 뜻이 아니다. 2026-09-09 조치(§0 불변식 5 · CLAUDE.md)는 테이블 GRANT와 `postgres` 소유
 default ACL을 지웠지만 **`supabase_admin` 소유 default ACL 3행(테이블·시퀀스·함수 → 두 롤 전 권한)은 `postgres`로 못 지워 남는다** —
 대시보드로 만든 테이블은 두 롤에 열린 채 태어난다. 스키마 USAGE가 없으면 그 GRANT가 있어도 **이름 해석 단계에서 막힌다.**
-default ACL을 지우지 않고 닫는 층이라, 테이블 GRANT 0건 검사는 탐지 신호로 남고 방어는 USAGE가 든다.
+default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 테이블 GRANT 0건 검사는 탐지 신호로 남고 방어는 USAGE가 든다.
 
 - **롤 존재를 조건으로 건다(DO 블록).** 격리 PostgreSQL(`test:projects:postgres`)과 Prisma shadow DB에는 Supabase 롤이 없다 —
-  `lib/__tests__/schema-usage.integration.ts`가 롤 없는 DB의 적용 성공과 롤 있는 DB의 직접 GRANT 회수를 둘 다 잰다.
-- ⚠️ **`PUBLIC`의 USAGE는 건드리지 않는다 — 두 롤은 그것도 상속한다.** `public`의 `nspacl`에 `=U/…`가 있으면 마이그레이션 뒤에도
-  `has_schema_privilege`가 `true`다(같은 테스트가 이 갈래를 고정한다). 그때 `REVOKE USAGE ON SCHEMA public FROM PUBLIC`은 `postgres`·`service_role`
-  밖 롤 전체에 걸리므로, 런타임 롤 `postgres`가 스키마 소유자라 무관함을 확인하고 **따로** 정한다 — 판정 입력은 prod 반영 뒤 재조회다.
+  `lib/__tests__/schema-usage.integration.ts`가 롤 없는 DB의 적용 성공·직접 GRANT 회수·`PUBLIC` 상속 회수(직접 GRANT를 가진 앱 롤은 계속 읽는다)를 잰다.
+- ⚠️ **`PUBLIC`의 USAGE도 걷는다 (결정 H)** — prod `public`의 `nspacl`이 `{pg_database_owner=UC/…,=U/…,postgres=U/…,anon=U/…,authenticated=U/…,service_role=U/…}`였다
+  (2026-09-27 읽기 전용 조회). `=U`가 있으면 두 롤은 직접 GRANT를 걷어도 **상속으로** USAGE를 되찾는다. 걷어도 되는 이유:
+  **스키마 소유자는 `postgres`가 아니라 `pg_database_owner`다** — 런타임 롤 `postgres`는 **직접 `U`**를 갖고 CREATE는 `pg_database_owner`
+  멤버십(DB 소유자)으로 받으므로 `PUBLIC`과 무관하다. `service_role`도 직접 `U`다. 상속 USAGE를 잃는 것은 이 앱이 쓰지 않는 Supabase Auth·Storage·Realtime
+  내부 롤뿐이고, dev는 이미 `nspacl` NULL(소유자만 — `PUBLIC` USAGE 없음)로 돌고 있었다.
 - ⚠️ **dev와 prod의 권한 이력이 다르다.** 감사 시점에 dev는 USAGE부터 없었고 prod는 있었다 — dev 확인은 prod에 대해 아무것도 증명하지 않는다.
   그래서 `/db` 5단계가 **두 DB 모두** 아래를 요구한다(네 칸 전부 `false`):
 
