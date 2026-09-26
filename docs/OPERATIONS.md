@@ -185,6 +185,9 @@ pnpm credentials:dev --mode=verify
 재배포하면 끝이고, 그 순간 진행 중이던 GitHub 연결 왕복과 열린 새 프로젝트 모달의 확인값이 **한 번** 실패한다
 (연결은 다시 누르고, 모달은 다시 탐지하면 새 확인값을 받는다). 이중 키 검증은 두지 않았다.
 
+최초 등록은 2026-09-27 — Vercel Development · Preview · Production과 메인 체크아웃의 `.env.local`. **두 번째 머신의
+`.env.local`은 확인되지 않았다** — 그 머신에서 연결·탐지가 500이면 이 키부터 본다.
+
 1. 새 값 생성: `node -e 'console.log(require("crypto").randomBytes(32).toString("base64url"))'` — 환경마다 다른 값.
 2. `.env.local`(머신 둘)과 Vercel Production · Preview · Development에 넣는다. ⚠️ **`vercel env add`는 환경을 하나씩만
    받고 `--force`의 성공 메시지를 믿지 않는다** — `vercel env ls <environment>`의 시각 열로 확인한다(CLAUDE.md).
