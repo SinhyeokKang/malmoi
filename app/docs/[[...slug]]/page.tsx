@@ -6,7 +6,7 @@ import { LegacyHashRedirect } from "@/components/docs/legacy-hash";
 import { PublicScroller } from "@/components/public-shell/scroller";
 import { docHref } from "@/lib/guide/href";
 import { LEGACY_ANCHORS } from "@/lib/guide/legacy-anchors";
-import { loadPage, loadPageBySlug, loadSummary } from "@/lib/guide/load";
+import { loadPage, loadPageBySlug, loadShotSizes, loadSummary } from "@/lib/guide/load";
 import { OVERVIEW_TRACKS } from "@/lib/guide/overview";
 import { leadParagraph } from "@/lib/guide/sections";
 import { flattenNav, type NavNode } from "@/lib/guide/summary";
@@ -61,7 +61,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
       <PublicScroller key="">
         <LegacyHashRedirect table={LEGACY_ANCHORS} />
         <DocFrame toc={[]}>
-          <GuideMarkdown tree={page.tree} file={page.file} />
+          <GuideMarkdown tree={page.tree} file={page.file} sizes={loadShotSizes()} />
           <DocTracks tracks={tracks} />
           <h2 className="m-0 mt-14 text-2xl leading-[1.4] font-semibold">{m.publicDocs.docs.more}</h2>
           <DocRows rows={rest} arrow={false} className="mt-4" />
@@ -78,7 +78,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
     <PublicScroller key={slug.join("/")}>
       <DocFrame toc={chapterIndex ? [] : extractToc(page.tree)}>
         {!chapterIndex && self?.parent ? <DocEyebrow>{self.parent}</DocEyebrow> : null}
-        <GuideMarkdown tree={page.tree} file={page.file} />
+        <GuideMarkdown tree={page.tree} file={page.file} sizes={loadShotSizes()} />
         {chapterIndex ? <DocRows rows={children.map(row)} arrow className="mt-10" /> : null}
         <DocNeighbours previous={neighbour(flat[index - 1])} next={neighbour(flat[index + 1])} />
       </DocFrame>

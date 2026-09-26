@@ -113,6 +113,21 @@ describe("GuideMarkdown — 요소 매핑 (DESIGN §6.61)", () => {
     expect(figure?.querySelector("figcaption")?.textContent).toBe("Open Settings first");
   });
 
+  it("SHOOTING 치수가 있으면 `<img>`가 고유 크기를 든다 — CLS", async () => {
+    const sizes = Object.assign(Object.create(null), { "/guide/settings.webp": { width: 1600, height: 900 } });
+    const { container } = await render(<GuideMarkdown tree={parseMd(MD)} file="setup/workflow.md" sizes={sizes} />);
+    const img = container.querySelector("figure img");
+    expect(img?.getAttribute("width")).toBe("1600");
+    expect(img?.getAttribute("height")).toBe("900");
+  });
+
+  it("치수가 없는 이미지는 크기 속성 없이 그린다", async () => {
+    const { container } = await renderGuide();
+    const img = container.querySelector("figure img");
+    expect(img?.hasAttribute("width")).toBe(false);
+    expect(img?.hasAttribute("height")).toBe(false);
+  });
+
   it("같은 트리를 두 번 렌더해도 같다 — 로더의 `cache`가 든 트리를 바꾸지 않는다", async () => {
     const tree = parseMd(MD);
     await render(<GuideMarkdown tree={tree} file="setup/workflow.md" />);
