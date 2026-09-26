@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
 
+import { WorkflowBlock } from "@/components/onboarding/workflow-block";
 import { CiCard } from "@/components/settings/ci-card";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
@@ -26,3 +27,19 @@ it("설정 화면의 hook 안내가 `setup/workflow#workflow`로 이어진다", 
   expect(link).not.toBeNull();
   expect(document.body.textContent).not.toContain("docs/ACTIONS.md");
 });
+
+/**
+ * 워크플로 모달에 "Save this in your repository as …"가 **두 번** 섰다(#120) — 모달 설명과 `WorkflowBlock` 머리. 온보딩 ④와
+ * 같은 형으로 **블록 머리(Copy 옆) 하나만** 남긴다. 실제 설정 화면처럼 `WorkflowBlock`을 children으로 넣어 센다.
+ */
+it("워크플로 모달에 저장 경로 문장이 한 번만 선다", async () => {
+  await render(<CiCard slug="acme" archived={false} stale={[]}><WorkflowBlock yaml="on: push" /></CiCard>);
+  const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(m.settings.ci.workflow))!;
+  trigger.click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog).not.toBeNull();
+  const count = (dialog?.textContent ?? "").split("Save this in your repository as").length - 1;
+  expect(count).toBe(1);
+});
+

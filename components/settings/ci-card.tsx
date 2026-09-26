@@ -35,7 +35,8 @@ export function CiCard({ slug, archived, stale, children }: { slug: string; arch
     {archived && <p id={archivedId} className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.archivedReason}</p>}
     {!archived && !children && <p id={noSourcesId} className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.ci.noSources}</p>}
     {stale.length > 0 && <p className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.ci.stale} {stale.join(", ")}</p>}
-    <OnboardingModal open={open && !archived} onClose={() => setOpen(false)} returnFocusRef={trigger} bodyScroll="hidden" title={m.settings.ci.workflow} description={m.settings.workflow.saveAs(".github/workflows/malmoi-i18n.yml")} panelClassName="h-[min(640px,calc(100svh-96px))] min-h-0" actions={<Button size="lg" onClick={() => setOpen(false)}>{m.common.dismiss}</Button>}>
+    {/* ⚠️ 모달 `description`을 두지 않는다 — 저장 경로 문장은 `WorkflowBlock` 머리(Copy 옆)가 든다. 온보딩 ④와 같은 형이다(#120). */}
+    <OnboardingModal open={open && !archived} onClose={() => setOpen(false)} returnFocusRef={trigger} bodyScroll="hidden" title={m.settings.ci.workflow} panelClassName="h-[min(640px,calc(100svh-96px))] min-h-0" actions={<Button size="lg" onClick={() => setOpen(false)}>{m.common.dismiss}</Button>}>
       {children}
       <p className="text-muted-foreground text-xs leading-[1.6]">{m.settings.workflow.hookHint("useTranslations()", "wrapper", <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.docs("setup/workflow", "workflow")}>{m.settings.workflow.hookDoc}</Link>)}</p>
     </OnboardingModal>
