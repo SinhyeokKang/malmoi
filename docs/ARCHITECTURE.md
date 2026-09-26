@@ -2346,6 +2346,12 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   `rotatePushToken`은 보관 판정 뒤 `checkRepoAccess(…, true)`를 지나고, 확인한 리포 id가 고정된
   `Project.repositoryId`와 다르면 `repo-forbidden`, 연결이 없으면(`installationId`·`repositoryId` null)
   `repo-not-installed`다 — 전부 값이고 500이 아니다. 설정 패널이 `ConnectError` 문구도 읽는다.
+  - ⚠️ **대가: GitHub이 안 될 때 토큰을 즉시 끊을 수 없다** (결정 J, 2026-09-27 사용자). 회전이 GitHub 확인을
+    지나므로 GitHub 장애·설치 제거·사용자 토큰 만료 중에는 유출된 토큰을 회전으로 무효화하지 못한다. **긴급 차단은
+    보관이다** — `archiveProject`는 GitHub을 부르지 않고(`project:settings`만), 보관된 프로젝트의 토큰은 `/api/push`가
+    `checkArchived`(`app/api/push/route.ts`)와 잠금 안 재판정(`lib/push/apply.ts`의 `ApplyGuardError("archived")`)으로
+    409 거부하고 **`/api/push/failure`도 같은 `checkArchived`로 409 거부한다**(쓰기 전에 — 실패 기록도 안 남는다).
+    GitHub이 돌아오면 **복원 → 회전** 순서다: 복원만 하면 옛 토큰이 다시 통한다. 새 UI는 없다.
 - ⚠️ 연결 가능한 리포 목록(`listConnectableRepos`)은 읽기 전용 리포를 **거르지 않는다** — 고르면 탐지가
   `repo-read-only` 문구로 답한다.
 
