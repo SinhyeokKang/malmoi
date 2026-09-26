@@ -544,7 +544,7 @@ lib/
                         toc(extractToc — H2만, 둘 미만이면 빈 목록 · tableLabel) · rules(렌더러가 약속하지 않는 원고 문법 — raw HTML · 섞인/링크 이미지 · 각주 · SUMMARY 셋째 단) · remark(렌더 직전 손질 — {#id} → id · 링크 해소 ·
                         표 이름 · 코드 파일명) · href(docHref — SUMMARY slug → 경로) · overview(개요 두 갈래 상수) · legacy(옛 해시 —
                         ⚠️ 잎, 클라이언트가 읽는다) · legacy-anchors(옛 id 일곱의 표) · load(server-only — ⚠️ 모듈 최상위에서 읽지 않는다,
-                        함수 안 + React cache). ⚠️ routes.docs(page, anchor)의 인자는 리터럴이어야 한다(docs-links.test가 원고와 대조) —
+                        함수 안 + React cache) · stale(staleShots — SHOOTING 매핑 표의 기록 blob SHA vs 현재 SHA. 한국어 열 이름은 읽지 않는다 — lib/는 no-korean-ui 범위라 열→필드 매핑은 scripts/guide-check 몫). ⚠️ routes.docs(page, anchor)의 인자는 리터럴이어야 한다(docs-links.test가 원고와 대조) —
                         SUMMARY에서 온 slug는 docHref가 잇는다
   links.ts              외부 링크(GitHub 리포 URL)와 푸터 링크 목록 — 랜딩·/signin 푸터가 같은 목록·순서를 읽는다.
                         ⚠️ 외부 URL을 routes.ts에 넣지 않는 이유가 이 파일이다(죽은 라우트 검사가 앱 경로로 읽는다)
@@ -593,6 +593,7 @@ prisma/maintenance/     backfill-surfaces.sql. ⚠️ 마이그레이션이 아�
                         옛 writer를 멈춘 배포 1 창에서만 유효하고, 표면 편집이 시작된 뒤에는 돌리면 안 된다.
                         credential-cutover와 같은 함정(Prisma가 이 디렉터리를 안 봐서 상태 조회에 안 잡힌다)
 scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local ·
+                        guide-check(pnpm guide:check — SHOOTING #shots 표 vs 작업 트리 git hash-object. 읽기 전용, exit 0 · 인자 오류만 2) ·
                         smoke-github · smoke-blob(⚠️ pnpm smoke:blob에 NODE_OPTIONS=--conditions=react-server가
                         붙는다 — PII 복호 모듈이 server-only라 그 조건 없이는 import에서 죽는다) ·
                         credentials · finalize-credentials · backfill-pending-edit-token ·
