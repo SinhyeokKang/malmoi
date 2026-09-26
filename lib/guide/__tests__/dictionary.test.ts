@@ -11,8 +11,7 @@ describe("dictionaryStrings — 굵게 라벨이 대조할 사전 문자열", ()
     publish: { button: "Publish", count: (n: number) => `Publish ${n} changes` },
     sources: { title: "Sources", body: createElement("p", null, "JSX text") },
     tabs: ["Home", "Logs"],
-    publicDocs: { back: { app: "Back to projects" }, docs: { title: "Docs", intro: "Docs intro", sections: [{ title: "Only in docs" }] } },
-    nested: { docs: { sections: ["Kept — only the path from the root is excluded"] } },
+    publicDocs: { docs: { title: "Docs", toc: "On this page" }, privacy: { title: "Privacy Policy" } },
   };
 
   it("문자열 잎을 전부 모은다 — 배열 포함", () => {
@@ -20,15 +19,10 @@ describe("dictionaryStrings — 굵게 라벨이 대조할 사전 문자열", ()
     for (const text of ["Publish", "Sources", "Home", "Logs"]) expect(strings.has(text)).toBe(true);
   });
 
-  it("`publicDocs.docs.sections`만 뺀다 — 옛 본문이 자기 자신을 근거로 늘 green이 된다", () => {
+  /** 문서 본문이 원고(md)로 옮겨 사전의 `publicDocs`는 셸 라벨과 방침뿐이다 — 뺄 서브트리가 없다(2026-09-26). */
+  it("`publicDocs`도 화면 라벨이라 다른 구역과 같이 모인다", () => {
     const strings = dictionaryStrings(dict);
-    expect(strings.has("Only in docs")).toBe(false);
-    expect(strings.has("Kept — only the path from the root is excluded")).toBe(true);
-  });
-
-  it("`publicDocs`의 나머지는 화면 라벨이라 남는다 — 복귀 링크·셸 라벨", () => {
-    const strings = dictionaryStrings(dict);
-    for (const text of ["Back to projects", "Docs", "Docs intro"]) expect(strings.has(text)).toBe(true);
+    for (const text of ["Docs", "On this page", "Privacy Policy"]) expect(strings.has(text)).toBe(true);
   });
 
   it("함수 값과 JSX 값을 뺀다 — 보간·조각은 굵게 쓰지 않는다", () => {

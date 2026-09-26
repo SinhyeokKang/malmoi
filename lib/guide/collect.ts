@@ -3,8 +3,7 @@ import { posix } from "node:path";
 import type { Root } from "mdast";
 import { visit } from "unist-util-visit";
 
-import { routes } from "@/lib/routes";
-
+import { docHref } from "./href";
 import { toText } from "./parse";
 import { pathToSlug } from "./summary";
 
@@ -48,8 +47,8 @@ export function resolveDocLink(fromFile: string, href: string): DocLink {
   }
   const slug = pathToSlug(file);
   if (!slug) return { kind: "invalid", reason: "bad-path" };
-  // 접두는 `routes.docs()`가 정본이다 — 여기 `/docs`를 다시 쓰면 라우트가 옮겨갈 때 원고 링크만 남는다
-  return { kind: "doc", file, anchor, href: `${routes.docs()}${slug.map((part) => `/${part}`).join("")}${anchor ? `#${anchor}` : ""}` };
+  // 경로는 `docHref`(접두는 `routes.docs()`)가 정본이다 — 여기서 다시 조립하면 라우트가 옮겨갈 때 원고 링크만 남는다
+  return { kind: "doc", file, anchor, href: `${docHref(slug)}${anchor ? `#${anchor}` : ""}` };
 }
 
 export type UiLabel = { text: string; line: number | null };
