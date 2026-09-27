@@ -70,3 +70,47 @@ it("저장 성공 뒤 꺼진 Save 대신 언어 셀렉트로 착지한다", asyn
   expect(save().disabled).toBe(true);
   expect(document.activeElement).toBe(document.querySelector('[role="combobox"]'));
 });
+/**
+ * ⚠️ **잠긴 셀렉트가 Tab을 삼키지 않는다** (audit #18) — 포커스는 받아야 사유가 낭독되고, 막을 것은 이 컨트롤의 동작뿐이다
+ * (`member-list.tsx`의 형, POSTMORTEM 2026-09-19). 로케일 없음·잠금(저장 대기)·적재 대기 세 상태 모두 앞뒤로 빠져나간다.
+ */
+async function tabsThrough(select: HTMLElement) {
+  const user = userEvent.setup();
+  const before = document.createElement("button"); before.textContent = "before";
+  const after = document.createElement("button"); after.textContent = "after";
+  select.closest("form")!.before(before); select.closest("form")!.after(after);
+  await act(async () => { select.focus(); await user.keyboard("[ArrowDown][Enter]"); });
+  expect(document.querySelector('[role="listbox"]')).toBeNull();
+  await act(async () => { select.focus(); await user.tab({ shift: true }); });
+  expect(document.activeElement).toBe(before);
+  await act(async () => { select.focus(); await user.tab(); });
+  expect(document.activeElement).not.toBe(select);
+  before.remove(); after.remove();
+}
+it("로케일이 없어 잠긴 셀렉트에서 Tab·Shift+Tab으로 빠져나간다", async () => {
+  await render(<BaseLanguageForm {...props} baseLocale={null} declaredBaseLocale={null} locales={[]} awaiting={false} />);
+  await tabsThrough(document.querySelector<HTMLElement>('[role="combobox"]')!);
+});
+it("저장 대기로 잠긴 셀렉트에서 Tab·Shift+Tab으로 빠져나가고 값은 그대로다", async () => {
+  let resolve!: (r: unknown) => void;
+  mocks.save.mockReturnValue(new Promise(r => { resolve = r; }));
+  await render(<BaseLanguageForm {...props} />);
+  await pick("en");
+  await act(async () => { await userEvent.setup().click(save()); });
+  const select = document.querySelector<HTMLElement>('[role="combobox"]')!;
+  expect(select.getAttribute("aria-disabled")).toBe("true");
+  await tabsThrough(select);
+  expect(select.textContent).toBe("en");
+  await act(async () => { resolve({ ok: true }); });
+});
+it("적재 대기(잠기지 않음) 셀렉트도 Tab·Shift+Tab으로 빠져나간다", async () => {
+  await render(<BaseLanguageForm {...props} />);
+  const select = document.querySelector<HTMLElement>('[role="combobox"]')!;
+  const user = userEvent.setup();
+  const before = document.createElement("button"); select.closest("form")!.before(before);
+  await act(async () => { select.focus(); await user.tab({ shift: true }); });
+  expect(document.activeElement).toBe(before);
+  await act(async () => { select.focus(); await user.tab(); });
+  expect(document.activeElement).not.toBe(select);
+  before.remove();
+});
