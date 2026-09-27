@@ -80,3 +80,6 @@
 - **T1.3(a) yarn 갈래는 포크 픽스처(`i18n-many-locales`)가 아니라 `i18n-order-check` 일회용 브랜치의 `package.json`에 `packageManager: yarn@4…`를 넣어 밟는다** — 포크는 쓰기 검증에 쓰지 않는다(runtime-test §7.1).
 - 순서: 코드 워커(T0.1·T0.2·T2·T3·T4, 캐시 켬) → 스파이크 SHA로 T1 → B 판정 → 같은 코드 워커가 B 반영 + T5 문서 → dev 통합·push. **T6~T8은 `/merge` 몫이다**(이 오케스트레이션 밖).
 - **T1 대상 교체**(사용자, 같은 날): prod App `malmoi-sync`가 `i18n-order-check`에 설치돼 있지 않아 **`SinhyeokKang/bugshot-i18n-test`(폐기용, 기본 브랜치 `dev`, 기존 `CI` 워크플로 있음)**로 바꾼다. 위의 외부 쓰기 승인·yarn 갈래 대체가 이 리포에 그대로 적용된다. 기존 prod 프로젝트가 있으면 그것을 쓴다.
+- **B 판정: 캐시를 끄고 A만 출하한다**(T1 실측, spec "미달이면 캐시 입력만 끄고 A를 출하"). setup+install 3회 평균 — v1 15.7s · v2 캐시 끔 19.9s(v6 self-installer +~3.3s) · 캐시 미스 19.2s(post 저장 +5.1s) · 적중 15.0s(install 3.5s지만 292MB 복원이 pnpm 스텝을 10~13s로 늘림). 적중 이득이 v1 대비 ~0.7s라 제안 목표(v1 콜드 50%)에 못 미친다. 표면 둘 job은 둘째 셋업이 store를 지워 **빈 캐시(9.66KiB)가 저장되고 다음 run이 거기 "적중"해 콜드 설치**하는 결함까지 있다. 스파이크 run id·표 전체는 T1 인계(`.scratch/handoff-T1.md`)에서 ACTIONS로 옮긴다.
+- **T1이 찾은 v2 차단 결함**: HEAD `push:local`이 `scripts/local.ts`를 거쳐 `generated/prisma/client`를 import해 러너에서 `ERR_MODULE_NOT_FOUND`(516a396c 이후). C1 r2가 고쳤다(`scripts/local-env.ts` + import 그래프 테스트).
+- **v1부터 있던 문제(범위 밖, 후속)**: 대상 리포가 자기 job에서 먼저 pnpm을 깔고 캐시를 쓰면, 우리 `pnpm/action-setup`이 다시 깔며 PNPM_HOME store를 지우고 대상 리포 자기 캐시 키에 말모이 store가 저장된다(v1 태그 대조 run에서도 같다).
