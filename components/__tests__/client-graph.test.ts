@@ -69,7 +69,7 @@ const ALLOWED = [
   "react-resizable-panels",
   /**
    * ⚠️ **`components/analytics.tsx`가 쓴다** (seo-geo T10). Vercel Web Analytics 페이지뷰 하나이고, 전송은 `beforeSend`의 허용 목록
-   * (`lib/seo/analytics.ts`)이 거른다. 스크립트 본체는 동일 출처 `/_vercel/insights/script.js`라 번들에 드는 것은 로더뿐이다.
+   * (`lib/seo/analytics.ts`)이 거른다. 스크립트 본체는 Vercel이 동일 출처 경로로 서빙하고 번들에 드는 것은 로더뿐이다.
    */
   "@vercel/analytics",
 ];
