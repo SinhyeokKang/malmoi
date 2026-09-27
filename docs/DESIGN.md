@@ -1172,7 +1172,7 @@ diff 표가 **키 220 + 로케일 84 + 값**의 3열이라는 것이다 — 작�
 **알림은 한 곳이다.** danger 갈래는 `Alert`의 `role="alert"` 하나이고 그때 껍데기의 live는 `off`다 —
 같은 결과를 두 번 읽지 않는다(시안의 블록별 `aria-live="polite"`를 이 규칙으로 정정했다).
 **`1i`의 응답 유실 형** (malmoi#135 — Sync의 `unconfirmed`와 같은 부류, §6 Sync 결과 표): `triggerPullAction` 호출이 throw하면
-(클라이언트만 낸다) 제목·설명이 `The response didn't come back` · `Malmoi may have opened the pull request anyway. …`로 바뀌고
+(클라이언트만 낸다) 제목·설명이 `The response didn't come back` · `Malmoi may have sent your changes anyway. …`로 바뀌고
 바닥 한 줄은 `unknownDelivery`(`We couldn't confirm whether your changes were sent.`)다. 틀·높이·Alert·`Try again`(새 미리보기)은
 `1i` 그대로다. ⚠️ **`GitHub didn't answer`·`failed partway`를 쓰지 않는다** — 끊긴 것은 Malmoi의 응답이고 PR은 나갔을 수 있다.
 무엇이 됐는지는 refresh로 다시 읽은 건수·PR 링크가 말한다(오프라인이면 다시 읽지 않는다 — ARCHITECTURE). Sources 상세의 첫 적재도
