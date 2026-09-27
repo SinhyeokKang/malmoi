@@ -61,7 +61,7 @@ describe("목업 — 제품과 같은 구조다", () => {
     { userName: fixture.user, projectCount: fixture.projectCount },
   );
 
-  it("LNB가 사이드바와 같은 구역·항목·배지다 — 사용자 구역(Projects · Account) · 프로젝트 구역 · 하단 목록", async () => {
+  it("LNB가 사이드바와 같은 구역·항목·배지다 — 사용자 구역(Projects · New project · Account) · 프로젝트 구역 · 하단 목록", async () => {
     const scene = layer(await mount(), 0);
     const zoneText = (key: string) => find(scene, `[data-landing-zone="${key}"]`);
     const items = (key: string) => [...zoneText(key).querySelectorAll("[data-landing-nav]")].map((node) => node.textContent);
@@ -70,7 +70,7 @@ describe("목업 — 제품과 같은 구조다", () => {
       expect(zoneText(zone.key).querySelector("p > span.truncate")?.textContent).toBe(zone.label);
       expect(items(zone.key)).toEqual(zone.items.map((item) => `${item.label}${item.badge ?? ""}`));
     }
-    expect(items("work")).toEqual([`${m.common.nav.projects}${fixture.projectCount}`, m.common.nav.account]);
+    expect(items("work")).toEqual([`${m.common.nav.projects}${fixture.projectCount}`, m.common.nav.newProject, m.common.nav.account]);
     expect(items("footer")).toEqual(navFooterItems().map((item) => item.label));
     // Sign out은 하단이 아니라 아바타 메뉴의 것이다(MISC 배치) — 목업 LNB에 따로 서지 않는다.
     expect(scene.querySelector("[data-landing-lnb]")?.textContent).not.toContain(m.common.nav.signOut);

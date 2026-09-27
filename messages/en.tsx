@@ -244,7 +244,7 @@ export const en = {
        * ⚠️ **라벨과 순서는 Figma 시안(`212:944`)이 정본이다** (8-3). 2026-09-09의 IA(PRODUCT §7.7)에서
        * 바뀐 것: `Your work` 구역 라벨이 **사용자 이름**으로, `All projects`→`Projects`,
        * `Your account`→`Settings`, `Overview`→`Home`, `Languages`→`Locales`,
-       * `Settings`(프로젝트)→`Project settings`. `New project`는 사이드바에서 빠졌다.
+       * `Settings`(프로젝트)→`Project settings`. `New project`는 그때 사이드바에서 빠졌다가 2026-09-27에 `Projects` 아래로 돌아왔다(사용자).
        */
       projects: "Projects",
       /**
@@ -284,7 +284,7 @@ export const en = {
        * 사이드바 하단이 같은 키를 쓴다.
        */
       releaseNotes: "Release notes",
-      /** ⚠️ **사이드바에는 없다** (8-3) — 목록 화면의 버튼과 빈 상태만 쓴다. */
+      /** 사이드바 사용자 구역의 `Projects` 바로 아래 항목 (2026-09-27 사용자 — 8-3의 "사이드바에는 없다"를 뒤집었다). 목록 화면의 버튼·빈 상태도 쓴다. */
       newProject: "New project",
       userMenu: "Account menu",
       /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다. */

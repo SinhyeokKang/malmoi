@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { CircleHelp, ScrollText } from "lucide-react";
+import { CircleHelp, Plus, ScrollText } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
 import type { Role } from "@/lib/auth/permission";
+import { m } from "@/lib/i18n";
 import { GITHUB_RELEASES_URL } from "@/lib/links";
 
 import { activeProject, navFooterItems, navZones, projectSections, type NavProject } from "../nav";
@@ -216,11 +217,20 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
   });
 
   /**
-   * ⚠️ **`New project`가 빠졌다** (8-3, 시안). 새 프로젝트로 가는 길은 목록의 버튼 하나이고,
-   * 그래야 "만들기"가 목록의 맥락 안에서 일어난다 — 라우트는 그대로라 URL로는 열린다.
+   * ⚠️ **`New project`가 `Projects` 바로 아래에 선다** (2026-09-27 사용자 — 8-3의 "사이드바에 없다"를 뒤집었다).
+   * 아이콘은 [New project] 버튼과 같은 `Plus`, 배지는 없다.
    */
-  it("사용자 축은 목록·설정 **둘**이다", () => {
-    expect(navZones(null, ctx)[0]?.items.map((i) => i.href)).toEqual(["/projects", "/account"]);
+  it("사용자 축은 Projects · New project · Account 순이다", () => {
+    const items = navZones(null, ctx)[0]?.items ?? [];
+    expect(items.map((i) => [i.key, i.href])).toEqual([
+      ["projects", "/projects"],
+      ["newProject", "/projects/new"],
+      ["account", "/account"],
+    ]);
+    const created = items.find((i) => i.key === "newProject");
+    expect(created?.label).toBe(m.common.nav.newProject);
+    expect(created?.icon).toBe(Plus);
+    expect(created?.badge).toBeUndefined();
   });
 
   /** ⚠️ **구역 라벨이 이름 그대로다** — 사용자 축은 사용자 이름(옛 `Your work`를 대체했다). */
@@ -238,7 +248,7 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
    */
   it("`Projects`에만 개수 배지가 붙고, 0도 값이다", () => {
     const items = navZones(null, { userName: "Shin", projectCount: 0 })[0]?.items ?? [];
-    expect(items.map((i) => i.badge)).toEqual([0, undefined]);
+    expect(items.map((i) => i.badge)).toEqual([0, undefined, undefined]);
     expect(navZones(null, ctx)[0]?.items[0]?.badge).toBe(3);
   });
 

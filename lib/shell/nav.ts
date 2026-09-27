@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { Box, CircleHelp, CircleUser, Files, History, House, Languages, ScrollText, Settings, Users } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Files, History, House, Languages, Plus, ScrollText, Settings, Users } from "lucide-react";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -141,9 +141,9 @@ export type NavZone = { key: "work" | "project"; label: string; items: NavItem[]
  * ⚠️ **순서가 정보구조다** — 사용자 축이 먼저다. 프로젝트는 "내 일 안의 하나"이고, 뒤집으면
  * 프로젝트가 없는 사용자에게 빈 자리가 위에 남는다.
  *
- * ⚠️ **`New project`가 사이드바에 없다** (8-3 사용자 결정 — 시안). 새 프로젝트로 가는 길은
- * `Projects` 목록의 버튼 하나이고, 그래야 "만들기"가 목록의 맥락 안에서 일어난다. `/projects/new`
- * 라우트는 그대로 있고 **직접 URL로도 열린다** — 없앤 것은 링크이지 라우트가 아니다.
+ * ⚠️ **`New project`가 `Projects` 바로 아래에 선다** (2026-09-27 사용자 — 8-3의 "사이드바에 없다"를 뒤집었다).
+ * 목록의 [New project] 버튼과 같은 `/projects/new`(목록 위 모달 딥링크)로 가고 같은 `Plus` 글리프를 든다 — 한 행동을
+ * 두 글리프로 가리키지 않는다. 배지는 없다.
  *
  * ⚠️ **프로젝트 구역은 `projectSections`를 그대로 든다.** 여기서 역할을 다시 보면 권한표가 두 벌이
  * 되고 그중 하나가 낡는다 — 판정은 `canPerform` 한 곳이다.
@@ -172,6 +172,8 @@ export function navZones(
         exact: true,
         badge: context.projectCount,
       },
+      // `exact`여야 `/projects/new`에서 이 항목만 선택된다 — Projects도 exact라 둘이 함께 켜지지 않는다.
+      { key: "newProject", label: m.common.nav.newProject, icon: Plus, href: routes.newProject(), exact: true },
       /**
        * ⚠️ **아이콘이 `CircleUser`다** (2026-09-11 사용자) — 헤더 우상단 서랍 **안**의 같은 항목과
        * 같은 글리프라야 "내 계정"이 한 어휘로 읽힌다. `Settings`(톱니)는 프로젝트 설정이 쓰므로,
