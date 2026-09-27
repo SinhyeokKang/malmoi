@@ -267,7 +267,30 @@ function collect(
   errors: AdapterError[],
   path: string,
 ): void {
-  for (const prop of obj.getProperties()) {
+  // ⚠️ **같은 이름이 둘이면 마지막만 걷는다** (audit #4) — 런타임이 읽는 자리이고 write의 `propertyNamed`가 보는 자리다. 앞의 것까지 걸으면
+  // 가려진 컨테이너의 키(`{ a: { x }, a: { y } }`의 `a.x`)가 적재되고, 무관한 편집의 write가 그 키를 마지막 `a`에 **삽입**해 런타임에 없던
+  // 값을 만든다. 앞의 것은 경고만 낸다 — 잃는 번역이 없다(평탄 키 중복과 같은 `duplicate-property`).
+  const props = obj.getProperties();
+  const nameOf = (prop: (typeof props)[number]): string | undefined => {
+    if (prop.isKind(SyntaxKind.ShorthandPropertyAssignment)) return prop.getName();
+    if (!prop.isKind(SyntaxKind.PropertyAssignment)) return undefined;
+    const nameNode = prop.getNameNode();
+    return nameNode.isKind(SyntaxKind.StringLiteral) ? nameNode.getLiteralValue() : nameNode.getText();
+  };
+  const last = new Map<string, number>();
+  props.forEach((prop, i) => {
+    const name = nameOf(prop);
+    if (name !== undefined) last.set(name, i);
+  });
+  for (const [i, prop] of props.entries()) {
+    const shadowed = nameOf(prop);
+    if (shadowed !== undefined && last.get(shadowed) !== i) {
+      const key = prefix === "" ? shadowed : `${prefix}${SEP}${shadowed}`;
+      if (!errors.some((x) => x.path === path && x.code === "duplicate-property" && x.key === key)) {
+        errors.push({ path, code: "duplicate-property", key });
+      }
+      continue;
+    }
     if (prop.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
       errors.push({ path, code: "shorthand-property", key: prop.getName() });
       continue;
