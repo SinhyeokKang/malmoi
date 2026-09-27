@@ -172,7 +172,7 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
   - 근거: [structure.test.tsx](../../../app/(edit)/account/__tests__/structure.test.tsx), 590·613행.
   - 완료 조건: 업로드·삭제 대기를 검증한 뒤 Promise를 정리하여 transition이 남지 않는다. 같은 파일의 후속 테스트까지 실행해 격리를 확인한다. 감사에서 실제 실패를 관측한 것으로 기록하지 않는다.
 
-- [ ] **B6.4 · 🟡 audit #20 — OG 이미지 제공과 메타데이터 검증**
+- [x] **B6.4 · 🟡 audit #20 — OG 이미지 제공과 메타데이터 검증**
   - 근거: [site.ts](../../../lib/seo/site.ts), 25행; `public/og.png` 부재.
   - 작업: 기존 문서가 사용자 제공으로 남겨 둔 이미지 자산을 준비하고 연결한다. 임의의 이미지 제작 완료로 간주하지 않는다.
   - 완료 조건: 실제 자산이 존재하고 선언한 크기·경로와 일치한다. 배포 뒤 메타데이터의 이미지 URL이 정상 응답하는지 확인한다.
@@ -218,5 +218,5 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 | B3 | 코드 완료 · 실 리포 왕복 미검증 | 재생성 비-base 0개→`{}`, 자리 없는 셀 보류(cron·미리보기 같은 `keySlot`), code-dict 마지막 프로퍼티만, unmanaged 이웃 면제, **B3.4 base 키 집합=원본**(원본 base 파싱 불가면 차단 — 계획과 다름, 수용) | test 6986 · projects PG 314 · build | base 삭제 키의 보류 편집은 Revert·폐기 Sync·키 복구 전까지 CI 보류를 유지 · 비-base는 보류 중 지운 키의 번역이 되살아남(strict 범위) |
 | B4 | 코드 완료 · 브라우저 미검증 | 불완전 적재(다운로드·파싱)면 그 실행 orphan 끔 · push:local 로케일 읽기 실패=red(`prepare-failed`) · ts-dict 확장자별 템플릿 · 실패 샘플=unavailable · 소스 파일 읽기 실패=경고 | test 7002 · projects PG 317 · build | **CI 쪽은 action 태그(`malmoi-i18n-push-v1`)를 옮겨야 대상 리포에 닿는다** — `/merge` 뒤 action 릴리스 |
 | B5 | 코드 완료 · 브라우저 미검증 | Revert busy/unsettled를 공통 창으로, 복원 기준=돌아온 키, Sync 시작 시점 스냅샷으로 새 세대(계획의 epoch 대신 — 커밋 순서 둘 다 덮음) | test 6944 · projects PG 314 | 필터를 바꾼 채 Sync 결과가 먼저 오면 재필터 전까지 새 키 미표시 · `publishInFlight` 무경계(범위 밖) |
-| B6 | 6.1–6.3 코드 완료 · 6.4는 L2.12 | 행별 pending Map/Set, Tab 통과, 테스트 resolver 정리 | test 6944 | B6.2 실 키보드 확인 미수행 · 같은 grep 8건 기록만 |
+| B6 | 코드 완료 · 6.4 OG 반영(`public/og.png` 1200×630, 사용자 제공) — 배포 뒤 URL 응답 미확인 | 행별 pending Map/Set, Tab 통과, 테스트 resolver 정리 | test 6944 | B6.2 실 키보드 확인 미수행 · 같은 grep 8건 기록만 |
 | B7 | 7.1–7.3 완료 · 7.4 미착수 | 안쪽 allSettled(POSTMORTEM 09-13 재발), classify 기준 충돌 집계, survey async + 인덱스 순서 | test 6944 | 7.3 스크립트의 async 러너 줄은 테스트 밖(주석이 방어) |
