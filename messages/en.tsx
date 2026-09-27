@@ -300,6 +300,22 @@ export const en = {
   },
 
   /**
+   * 검색·링크 미리보기 전용 문구 (seo-geo). ⚠️ **나머지 머리 문구는 기존 값을 재사용한다** — 설명은 `landing.hero.body`,
+   * docs 라벨은 `publicDocs.docs.title`, 방침 제목은 `publicDocs.privacy.title`. 사본을 만들면 화면과 검색 결과가 따로 낡는다.
+   */
+  seo: {
+    /** 랜딩 `<title>` — absolute라 템플릿(`%s · Malmoi`)을 안 지나므로 브랜드를 스스로 담는다. */
+    homeTitle: "Malmoi — Localization for GitHub repositories",
+    /**
+     * `public/og.png`의 대체 텍스트 — 제목 반복이 아니라 이미지 내용 묘사다. ⚠️ 이미지는 사용자가 만든다(seo-geo U1) —
+     * 그림이 바뀌면 이 문장도 같이 고친다.
+     */
+    ogImageAlt: "The Malmoi logo above the line Connect your projects, translate & ship together",
+    /** `/signin` 탭 제목 — `signIn.title`("Sign in to Malmoi")을 쓰면 템플릿과 브랜드가 두 번 선다. */
+    signInTitle: "Sign in",
+  },
+
+  /**
    * 로그인 화면 (8-1b — Figma 시안).
    *
    * ⚠️ **tagline과 모형 카드 문구 넷이 사라졌다.** 시안이 제목 한 줄이고 우측 장식이 키비주얼

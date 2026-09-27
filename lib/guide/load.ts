@@ -25,6 +25,11 @@ export const loadSummary = cache((): NavNode[] => parseSummary(parseMd(readFileS
 export const loadPage = cache((file: string): Root => parseMd(readFileSync(join(guideDir(), file), "utf8")));
 
 /**
+ * 원고 원문 — `/llms-full.txt`가 파싱 없이 그대로 싣는다(seo-geo spec D5). 인자는 `loadPage`와 같이 SUMMARY 등재 파일이다.
+ */
+export const loadSource = cache((file: string): string => readFileSync(join(guideDir(), file), "utf8"));
+
+/**
  * 에셋 → 치수(렌더러의 `<img width height>`). SHOOTING이 없으면 빈 표다 — 이미지 없는 가이드는 촬영 매뉴얼 없이 선다
  * (있는 이미지에 매뉴얼이 없는 것은 이미지 게이트가 막는다).
  *

@@ -60,6 +60,13 @@ describe("load — 얇은 로더", () => {
     expect(Object.keys(sizes)).toHaveLength(rows.length);
   });
 
+  it("원고 원문을 그대로 읽는다 — `llms-full.txt`가 싣는 바이트다", async () => {
+    const { loadSource, loadSummary } = await load(SITE);
+    for (const { file } of loadSummary()) {
+      expect(loadSource(file)).toBe(readFileSync(join(SITE, "guide", file), "utf8"));
+    }
+  });
+
   it("import만으로는 아무것도 읽지 않는다 — SUMMARY가 없어도 import가 산다", async () => {
     const mod = await load("/nonexistent-guide-root");
     expect(() => mod.loadSummary()).toThrow(/ENOENT/);
