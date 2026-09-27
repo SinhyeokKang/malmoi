@@ -61,7 +61,7 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 
 ## B1 — 로그인 수단 해제 경계
 
-- [ ] **B1.1 · 🟡 audit #5 — 이메일 갱신 전에 공급자 연결을 잠금 뒤 재검**
+- [x] **B1.1 · 🟡 audit #5 — 이메일 갱신 전에 공급자 연결을 잠금 뒤 재검**
   - 근거: [access.ts](../../../lib/credentials/access.ts), 31–44행; [account/actions.ts](../../../app/(edit)/account/actions.ts), `unlinkLoginMethod`.
   - 재현: Google·GitHub가 연결된 사용자의 GitHub 콜백이 Account를 읽은 뒤, 해제가 User 잠금 안에서 커밋되도록 순서를 제어한다. 이후 콜백이 해제된 GitHub의 새 주소로 User 이메일을 바꾸는지 확인한다.
   - 영향: 저장 이메일과 초대 이메일 대조가 바뀐다. 계정 탈취가 입증된 항목은 아니다. Auth.js의 후속 로그인 거절은 앞선 이메일 갱신 커밋을 롤백하지 않는다.
@@ -71,12 +71,12 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 
 ## B2 — Sync 폐기 승인
 
-- [ ] **B2.1 · 🔴 audit #2 — 최신 미전달 건수와 승인 지문을 함께 사용**
+- [x] **B2.1 · 🔴 audit #2 — 최신 미전달 건수와 승인 지문을 함께 사용**
   - 근거: [sync-button.tsx](../../../components/home/sync-button.tsx), 81·97·194·221행.
   - 재현: 화면의 미전달 건수는 0인 채로 동료가 편집한 뒤 Sync 확인창을 연다. 서버 응답에는 새 편집의 건수·지문이 있지만 UI가 옛 0건으로 일반 Sync 확인을 표시하는지 확인한다.
   - 완료 조건: 서버가 발급한 승인이 가리키는 편집 건수로 폐기 경고·버튼·설명을 표시한다. 승인 조회 중·실패·확인창 재열기에도 다른 응답의 건수와 지문을 섞지 않는다.
 
-- [ ] **B2.2 · 🔴 audit #3 — 승인 이후 기준 브랜치 변경 시 재확인**
+- [x] **B2.2 · 🔴 audit #3 — 승인 이후 기준 브랜치 변경 시 재확인**
   - 근거: [approval.ts](../../../lib/import/approval.ts), 20행; [fingerprint.ts](../../../lib/protection/fingerprint.ts); [settings/actions.ts](../../../app/(edit)/projects/[slug]/settings/actions.ts), `updateBaseBranch` 관련 경로.
   - 재현: `main` 기준 폐기 승인을 발급한 뒤, 실행 시작 전에 다른 OWNER가 `release`로 바꾼다. 기존 승인으로 새 브랜치의 값을 덮어쓰는지 확인한다.
   - 완료 조건: 승인한 리포·브랜치 설정과 실행 대상이 달라지면 적재 전에 거부하고 재확인을 요구한다. 실행 시작 이후 설정 변경을 막는 기존 방어도 유지한다.
@@ -130,17 +130,17 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 
 ## B5 — 번역 화면의 복구·갱신
 
-- [ ] **B5.1 · 🟡 audit #9 — 만료된 실행 흔적이 Revert를 영구 차단하지 않기**
+- [x] **B5.1 · 🟡 audit #9 — 만료된 실행 흔적이 Revert를 영구 차단하지 않기**
   - 근거: [revert.ts](../../../lib/keys/revert.ts), 44·64행.
   - 재현: 전달 기준선이 있는 상태에서 실행이 강제 종료되어 `RUNNING` 또는 import token이 남는다. 기존 활성 시간 경계가 지난 뒤에도 busy인지 확인한다.
   - 완료 조건: 활성 실행은 계속 차단하고, 만료된 흔적은 공통 실행 유효성 기준으로 판정한다. 확인되지 않은 전달 기준선을 유효하게 만드는 방식으로 풀지 않는다.
 
-- [ ] **B5.2 · 🟡 audit #10 — 다른 언어 구성으로 이동한 뒤 초안 복구**
+- [x] **B5.2 · 🟡 audit #10 — 다른 언어 구성으로 이동한 뒤 초안 복구**
   - 근거: [workspace.tsx](../../../components/translations/workspace/workspace.tsx), 203·226행.
   - 재현: all scope에서 A(en/ko)의 `ko` 초안이 미보호 교체로 사본에 남고 B(en/fr)로 바뀐 뒤 A로 복귀한다. 이전 B의 언어 목록 때문에 `ko`를 건너뛰고 사본을 삭제하는지 확인한다.
   - 완료 조건: 복귀 대상 키의 언어 구성을 기준으로 복원한다. 일반 폐기 확인으로 버린 초안은 다시 살아나지 않고, 다른 사용자·소스의 사본을 복원하지 않는다.
 
-- [ ] **B5.3 · 🟡 audit #11 — Sync 이후 목록에 새 서버 키 반영**
+- [x] **B5.3 · 🟡 audit #11 — Sync 이후 목록에 새 서버 키 반영**
   - 근거: [workspace.tsx](../../../components/translations/workspace/workspace.tsx), 241행; [saved-rows.ts](../../../lib/translations/saved-rows.ts).
   - 재현: 같은 필터에서 Sync로 키를 추가한다. 집계·트리는 바뀌지만 기존 행 병합 때문에 새 키가 빠지는지 확인한다. 처음 목록이 빈 경우도 포함한다.
   - 완료 조건: Sync 결과가 목록 구성에 반영된다. 일반 저장 시 행 위치 보존, 페이지 추가 로딩, 선택·필터·초안 보호는 유지한다.
@@ -149,15 +149,15 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 
 ## B6 — UI 진행 상태·키보드·출시 자산
 
-- [ ] **B6.1 · 🟡 audit #12 — 행별 진행 상태 보존**
+- [x] **B6.1 · 🟡 audit #12 — 행별 진행 상태 보존**
   - 근거: [member-list.tsx](../../../components/members/member-list.tsx), 75행; [pending-invitations.tsx](../../../components/members/pending-invitations.tsx), 57행.
   - 완료 조건: A 요청 대기 중 B 요청을 시작해도 A의 잠금·진행 표시가 풀리지 않는다. 성공·실패 응답 순서를 뒤집어도 다른 행의 pending을 지우지 않는다. 권한 우회나 데이터 손상이 입증된 항목은 아니다.
 
-- [ ] **B6.2 · 🟡 audit #18 — 잠긴 기준 언어 선택기에서 Tab 이동 허용**
+- [x] **B6.2 · 🟡 audit #18 — 잠긴 기준 언어 선택기에서 Tab 이동 허용**
   - 근거: [base-language-form.tsx](../../../components/sources/base-language-form.tsx), 51행.
   - 완료 조건: 로케일 없음·잠금·저장 대기 상태에서 Tab/Shift+Tab으로 이동할 수 있고, 값 변경은 계속 차단된다. 실제 브라우저 키보드 확인을 포함한다.
 
-- [ ] **B6.3 · 🟡 audit #19 — async transition 테스트의 대기 정리**
+- [x] **B6.3 · 🟡 audit #19 — async transition 테스트의 대기 정리**
   - 근거: [structure.test.tsx](../../../app/(edit)/account/__tests__/structure.test.tsx), 590·613행.
   - 완료 조건: 업로드·삭제 대기를 검증한 뒤 Promise를 정리하여 transition이 남지 않는다. 같은 파일의 후속 테스트까지 실행해 격리를 확인한다. 감사에서 실제 실패를 관측한 것으로 기록하지 않는다.
 
@@ -170,15 +170,15 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 
 ## B7 — 동시성·측정·문서 부채
 
-- [ ] **B7.1 · 🟡 audit #15 — 하위 요청 종료 전 동시성 슬롯 반환 방지**
+- [x] **B7.1 · 🟡 audit #15 — 하위 요청 종료 전 동시성 슬롯 반환 방지**
   - 근거: [remote.ts](../../../lib/projects/remote.ts), 104행.
   - 완료 조건: 한 소스 비교가 거절되고 다른 비교가 대기 중일 때 프로젝트 작업은 아직 끝나지 않는다. 프로젝트별 복수 소스를 사용해 실제 진행 중인 프로젝트 수가 제한을 넘지 않음을 확인한다. POSTMORTEM 동일 원인 재발 항목이다.
 
-- [ ] **B7.2 · 🟡 audit #17 — 중복 프로퍼티 충돌 지표 포함**
+- [x] **B7.2 · 🟡 audit #17 — 중복 프로퍼티 충돌 지표 포함**
   - 근거: [survey/one.ts](../../../lib/survey/one.ts), 99행.
   - 완료 조건: `duplicate-property`가 오류 분류와 `keyCollisions` 집계에서 일치한다. 중복 제거된 entries 개수만으로 충돌을 재추론하지 않는다. 충돌 없는 입력의 0건도 함께 확인한다.
 
-- [ ] **B7.3 · ⚪ audit #21 — survey jobs의 실제 동시 실행 보장**
+- [x] **B7.3 · ⚪ audit #21 — survey jobs의 실제 동시 실행 보장**
   - 근거: [adapter-survey.ts](../../../scripts/adapter-survey.ts), 67·139행.
   - 완료 조건: 동기 작업을 Promise로 감싼 형태를 해소해 문서화된 `--jobs`가 실제 병렬 작업 수를 제어한다. 동시 수 상한·실패 후 슬롯 반환·결과 순서를 검증한다. 실 코퍼스 네트워크 재측정은 이 테스트와 분리한다.
 
@@ -202,10 +202,10 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 | 배치 | 상태 | 변경/반증 근거 | 검증 결과 | 남은 제한 |
 |---|---|---|---|---|
 | B0 | 미착수 | — | — | — |
-| B1 | 미착수 | — | — | — |
-| B2 | 미착수 | — | — | — |
+| B1 | 코드 완료 · 브라우저 미검증 | c9ad7f41·efebc706 — 잠금 뒤 Account 재조회, 사라짐=unlinked·소유자 변경=keep | test 6944 · credentials PG 65 | — |
+| B2 | 코드 완료 · 브라우저 미검증 | 지문·건수를 한 응답 state로(`sync-button`), 지문에 리포 5필드 | test 6917 · projects PG 312 | reconfirm 문구가 원인 중립이 아님(⚪, 후속) |
 | B3 | 미착수 | — | — | — |
 | B4 | 미착수 | — | — | — |
-| B5 | 미착수 | — | — | — |
-| B6 | 미착수 | — | — | — |
-| B7 | 미착수 | — | — | — |
+| B5 | 코드 완료 · 브라우저 미검증 | Revert busy/unsettled를 공통 창으로, 복원 기준=돌아온 키, Sync 시작 시점 스냅샷으로 새 세대(계획의 epoch 대신 — 커밋 순서 둘 다 덮음) | test 6944 · projects PG 314 | 필터를 바꾼 채 Sync 결과가 먼저 오면 재필터 전까지 새 키 미표시 · `publishInFlight` 무경계(범위 밖) |
+| B6 | 6.1–6.3 코드 완료 · 6.4는 L2.12 | 행별 pending Map/Set, Tab 통과, 테스트 resolver 정리 | test 6944 | B6.2 실 키보드 확인 미수행 · 같은 grep 8건 기록만 |
+| B7 | 7.1–7.3 완료 · 7.4 미착수 | 안쪽 allSettled(POSTMORTEM 09-13 재발), classify 기준 충돌 집계, survey async + 인덱스 순서 | test 6944 | 7.3 스크립트의 async 러너 줄은 테스트 밖(주석이 방어) |
