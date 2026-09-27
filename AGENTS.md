@@ -85,6 +85,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰**. ⚠️ `octokit`이 재수출하는 `OAuthApp`으로는 안 된다(`clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접힌다) | `@octokit/oauth-app` 8.0.4 |
 | 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**(서명 URL을 안 쓰는 대신 열거를 막고, 교체마다 URL이 바뀌어 CDN 무효화가 필요 없다). 소비자는 프로필 사진 하나로 **확정**이다 | `@vercel/blob` 2.8.0 |
+| 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키 없음, 커스텀 이벤트 없음). `components/analytics.tsx`가 루트 레이아웃 끝에서 렌더한다. ⚠️ **`beforeSend`의 추적 경로 허용 목록(`lib/seo/analytics.ts`)이 유일한 거름망이다** — 스크립트가 앱 화면에서도 로드되고 앱 URL엔 초대 토큰·slug·검색어가 실린다. 토큰 페이지 둘의 `no-referrer`가 짝이다(ARCHITECTURE §8.1). ⚠️ 개발 서버에서는 렌더하지 않는다 — dev 디버그 스크립트를 CSP가 막고 CSP를 넓히지 않는다 | `@vercel/analytics` 2.0.1 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(EXIF 방향 적용 후 192px 이내 WebP 재인코딩, 메타데이터는 그때 사라진다). ⚠️ **버전을 Next의 전이 의존성과 같은 값에 고정한다** — 갈리면 네이티브 바이너리가 두 벌 깔린다. ⚠️ **파일 크기 상한이 디코더 메모리를 묶지 못해** `limitInputPixels`가 따로 선다 | `sharp` 0.35.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
 | UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 25개 + `radix-ui`에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select 여섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) | `radix-ui` 1.6.7 (단일 통합 패키지) · `class-variance-authority` |
