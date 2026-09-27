@@ -1226,7 +1226,8 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 재지 않았다.** 미리보기 표 아래 `withoutKey` 한 줄(ts-dict 자리 없는 키)도 같다.
 **미리보기 base 파일 부재는 전용 거부다** (2026-09-24 사용자 결정 — **미실측**): `configError` 패널을 쓰고 제목 `The base language file isn't in the
 repository` · 설명에 경로와 브랜치 · `Trying again won't help` Alert에 역할별 다음 행동 · 액션은 OWNER에게만 `Settings`다. **Try again이 없다** — 다시
-눌러도 같은 거부다(L3.3). **Logs에는 `Not sent`**(결과 어휘 `notSent` — warning 톤 · 글리프 amber)가 보류만 남은 Publish에 선다.
+눌러도 같은 거부다(L3.3). **base 파일을 읽을 수 없을 때도 같은 틀이다** (2026-09-27, B3 r3 — **미실측**): 제목 `The base language file can't be read` ·
+설명에 경로·브랜치와 "어느 키가 있는지 알 수 없다" · 역할별 다음 행동은 "파일을 고친다"다. **Logs에는 `Not sent`**(결과 어휘 `notSent` — warning 톤 · 글리프 amber)가 보류만 남은 Publish에 선다.
 **전부 보류인 미리보기**(#84 — **미실측**): 제목 `Nothing can be sent yet` · 액션 `Close` 하나 · PR 줄 없음 · 표와 보류 줄은 그대로다. 보류가 섞이면 제목·요약이 나가는 수이고
 도입 문장이 `The edits that can be sent go to …`로 갈린다. `no-changes` + 보류 결과는 `Not sent` 틀(#83)이고 설명이 보류 사유 문장이다.
 **PR을 닫는 no-changes** (B1 r3 — **미실측**): 미리보기 제목 `Publishing closes pull request #N` · 버튼 `Close pull request #N`, PR이 없으면
