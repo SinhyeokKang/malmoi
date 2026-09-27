@@ -71,3 +71,11 @@
   - 검증: `git ls-remote --tags origin malmoi-i18n-push-v2`가 squash SHA · 배포 뒤 온보딩 ④의 YAML이 v2 · 폐기용 리포 하나를 `@malmoi-i18n-push-v2`로 돌려 green(v2 첫 run은 미스 — 시간은 T1.1 미스 수준).
   - **롤백**: v2 소비자가 생기기 전(배포 직후)이면 생성기를 v1로 되돌리는 revert를 다음 배포로 보내고 v2는 그대로 둔다(태그 삭제·강제 이동 없이). 소비자가 생긴 뒤의 결함은 v1과 같은 규칙으로 **수정 커밋에 v2를 옮긴다**(이동 전 SHA를 기록). 판단 기준: 폐기용 리포 red · 사용자 제보.
 - [ ] 결론(캐시 설계·함정 셋·실측·v1↔v2)을 ACTIONS·ARCHITECTURE로 올리고 이 디렉터리를 지운다(spec "지우는 조건").
+
+## 결정 기록 (2026-09-27, /orchestrate 인테이크)
+
+- **T0.3 결과: `dev.mal-moi.com`은 Vercel SSO 302다.** 사용자 결정 — T1은 **prod API(`https://mal-moi.com`) + prod 폐기용 프로젝트로 green까지** 잰다(T7을 기다리지 않는다). 스파이크 ref는 dev HEAD의 스크립트를 prod v1.0.0 서버에 보낸다(그 사이 코드 변경 없음).
+- prod 폐기용 프로젝트·push 토큰은 **스파이크 워커가 prod UI(ego-browser)로** 만든다 — 대상 `SinhyeokKang/i18n-order-check`(prod App 설치 전제, 먼저 확인). 표면 둘(T1.2)용 표면도 같은 프로젝트에 더한다. 끝에 토큰 회전 또는 프로젝트 보관을 리포트에 남긴다.
+- 외부 쓰기 승인: ① 이 리포 원격 일회용 브랜치 `spike/action-cache`(지휘자가 push) ② `i18n-order-check`의 일회용 브랜치·워크플로·secret(T1 끝에 삭제, 캐시도 삭제).
+- **T1.3(a) yarn 갈래는 포크 픽스처(`i18n-many-locales`)가 아니라 `i18n-order-check` 일회용 브랜치의 `package.json`에 `packageManager: yarn@4…`를 넣어 밟는다** — 포크는 쓰기 검증에 쓰지 않는다(runtime-test §7.1).
+- 순서: 코드 워커(T0.1·T0.2·T2·T3·T4, 캐시 켬) → 스파이크 SHA로 T1 → B 판정 → 같은 코드 워커가 B 반영 + T5 문서 → dev 통합·push. **T6~T8은 `/merge` 몫이다**(이 오케스트레이션 밖).
