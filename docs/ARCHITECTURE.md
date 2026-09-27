@@ -20,6 +20,9 @@
 2. push 시점 외에는 리포 값과 DB 값을 비교해 **승자를 고르지 않는다**.
    ⚠️ **Revert도 이 불변식 안에 선다 (§5.8)** — 복원값은 전달 확인 시점의 **DB export 입력**에서 유도한 스냅샷이고,
    현재 리포를 읽어 고르지 않는다. "옛 DB 값과 새 리포 값 중 고르는" Sync 되돌리기는 여전히 만들지 않는다(PRODUCT §3).
+   ⚠️ **pull 시점 base 파일의 키 집합은 원본 base 파일이 정한다** (2026-09-27, launch-audit B3.4) — CI 적재가 보류된 동안 DB 키 집합이
+   리포보다 뒤처지므로, DB 키로 base를 쓰면 코드가 더한 키를 지우고 지운 키를 되살렸다. 원본과 DB(활성)에 다 있는 키는 DB 값, 원본에만 있는
+   키는 원본 값, DB에만 있는 키는 쓰지 않는다 — **키마다 출처가 하나라 이 불변식 안이다**(두 값을 견주지 않는다). §3 "base 키 집합".
 3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다. **코드에서 번역을 지우는 방법은 없다** — 지우려면
    UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
    ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
@@ -150,7 +153,7 @@
 | 끝 개행 | 정확히 1개 | `JSON.stringify`는 개행을 안 붙인다. 2개면 SHA가 달라진다 |
 | `orphaned` | 제외 | DB엔 남는다 — export에서만 빠진다. **`orderedEntries`가 유일한 관문이라 모든 재생성 writer가 이걸 지나야 불변식에 주인이 생긴다** |
 | 미번역 | 제외 (빈 문자열 포함) — ⚠️ **단 `LocaleEntry.writeEmpty`가 붙은 빈 값은 `""`로 쓴다** | 남기면 크롬이 빈 값을 그대로 렌더한다. 빼면 폴백한다. **예외는 base 파일에 `""`로 있던 키 하나다** (2026-09-18, launch-readiness L4.10): 원문(sourceText)까지 빈 base 키를 빼면 머지 뒤 push가 그 키를 **전 로케일에서 orphan**하고 다음 pull이 비-base 번역을 지운다(20차 실측 7개 리포). 판정은 `buildWriteEntries`가 하고(`WriteInput`엔 `isBase`가 없다) `orderedEntries`는 표시만 본다. 비-base의 빈 값은 여전히 미번역이다 |
-| 낼 것 0개 | **원본이 없으면** `null` — 파일을 내지 않는다. **원본이 있으면** 원본 표현의 `{}` (`emptyCatalog`) | 빈 새 파일은 "이 로케일 지원함"으로 읽혀 빈 UI를 보인다. ⚠️ **원본이 있을 때 `null`이면 옛 값이 파일에 남는다** (2026-09-27, audit #1) — 그 로케일의 마지막 번역을 비운 편집이 전달로 세어져 토큰이 풀리고 다음 CI가 옛 값을 DB로 되돌렸다. 원본 파일은 이미 그 로케일을 지원하므로 `{}`가 새 의미를 만들지 않는다. ⚠️ **base 파일은 예외다 — `renderLocaleFiles`가 `null`로 접는다** (B3 r1): base의 키 집합은 코드가 진실이라, DB 키가 전부 orphaned인 동안(CI 적재 보류 중 리포 base에 키가 늘었을 때) `{}`를 내면 그 PR이 코드 소유 키를 지운다. writer는 `isBase`를 모르므로 판정은 렌더에 있다 |
+| 낼 것 0개 | **원본이 없으면** `null` — 파일을 내지 않는다. **원본이 있으면** 원본 표현의 `{}` (`emptyCatalog`) | 빈 새 파일은 "이 로케일 지원함"으로 읽혀 빈 UI를 보인다. ⚠️ **원본이 있을 때 `null`이면 옛 값이 파일에 남는다** (2026-09-27, audit #1) — 그 로케일의 마지막 번역을 비운 편집이 전달로 세어져 토큰이 풀리고 다음 CI가 옛 값을 DB로 되돌렸다. 원본 파일은 이미 그 로케일을 지원하므로 `{}`가 새 의미를 만들지 않는다. ⚠️ **base 파일은 이 행으로 비지 않는다** — base 키 집합은 원본이 정하므로(§3 "base 키 집합", B3.4) 원본 키가 원본 값으로 남는다. 원본이 `{}`일 때만 `{}`다 |
 | 키 대입 | **프로토타입 없는 객체**(`Object.create(null)`)에만 대입한다 | 2026-09-09 추가 (sec-audit 발견 1·17). 로케일 파일의 키는 남이 쓰므로 `__proto__`가 온다. 평범한 `{}`에서 `out["__proto__"] = v`는 setter를 불러 own property를 안 만들고 **그 키가 조용히 사라지고**, 중첩 복원의 `node[head]` 조회는 `Object.prototype`을 돌려줘 다음 세그먼트가 **거기에 앉는다** — 프로세스 전역이라 같은 인스턴스가 서비스하는 **다른 테넌트**의 pull까지 바꾼다. ⚠️ **재조립 자리도 같다** — `normalizeArrays`가 평범한 `{}`로 되돌리면 `setDeep`이 지킨 키가 한 줄 뒤에 사라진다. 검사는 `prototypeKeyViolations`(`ADAPTERS` 전수) |
 
 **⚠️ 정렬 지점보다 먼저 볼 것은 값이 흐르는 경로 넷이다** (2026-09-03). `StringKey.sortIndex`가
@@ -720,6 +723,17 @@ per-locale code-dict의 같은 코드는 "문자열 자리를 객체로 덮는" 
 `unmanaged` 항목(비리터럴·shorthand·YAML 숫자·불린) 전부를 막지 않는다(audit #8) — writer가 파일에 그대로 두고 성공하는 값이다. **보류 수는 `SyncRun.withheld`에 산다** — 결과 모달과 Logs가 같은 수를 말하고(Logs는 조인으로 읽는다),
 Publish 사건 payload에는 복제하지 않는다(logs-rework 결정 1). 보류만 남은 `SKIPPED` 실행은 Logs에서 `notSent`("Not sent")다 — "Nothing to send"가
 아니다. **대가**: 보류가 남으면 1층이 매 실행 트리를 읽고 CI 적재가 계속 `deferred`다.
+
+⚠️ **base 키 집합 — pull 시점 base 파일의 키는 원본 base 파일이 정한다** (2026-09-27, launch-audit B3.4 — `lib/pull/render.ts` `baseOwnedByOriginal`).
+미전달 편집으로 CI 적재가 `deferred`인 동안 코드가 base 파일을 바꾸면 DB 키 집합이 뒤처진다. 전에는 base도 DB 키로 썼다 — 재생성(json-catalog·
+chrome-locales)은 코드가 **더한** 키를 PR에서 지웠고(머지하면 코드에서 사라지고 다음 push도 못 본다), 재생성과 삽입하는 수술적(yaml-catalog·
+code-dict)은 코드가 **지운** 키를 되살렸다. 규칙은 키마다 출처가 하나다: 원본과 DB(활성 키)에 다 있으면 DB 엔트리, 원본에만 있으면(orphaned DB
+키 포함 — 미전달 술어가 orphaned를 안 세므로 편집이 걸리지 않는다) 원본 엔트리, DB에만 있으면 쓰지 않는다. 재생성은 **원본 순서**로 조립하고
+(`order` = 원본 read 순서), 수술적은 원본에 없는 DB 키를 entries에서 빼 삽입을 막는다. ts-dict는 삽입하지 않아 영향이 없다. **DB에만 있는 키의
+base 편집은 보류다** — 실행(`runPull`)이 per-locale 표면의 base 원본을 `readSlotFiles`로 읽어 `keySlot`이 `absent`인 셀을 `withheldCoordinates`에
+더하고, 미리보기가 같은 판정으로 `withoutKey`를 센다. ⚠️ **재생성의 원본 base를 못 읽으면(`read`가 base 로케일을 못 냄) 쓰지 않고
+`write-parse-failed`로 막는다** — 키 집합을 모르는 채 DB로 덮으면 코드 소유 키를 지운다. 원본 base가 없으면(첫 쓰기) 지금처럼 DB 키로 만든다.
+비-base 로케일은 바뀌지 않는다(pull 사이 값·키는 DB가 진실 — strict 정책). 계약: `contract.ts` `baseKeySetViolations`(전 어댑터, 렌더 단위).
 
 ⚠️ **2층 동등(`no-changes`)의 전달 확인은 기존 no-op 탐지의 토큰판이다** — 값을 고르지 않고 "렌더 결과가 base와 같다"만 본다(§0 불변식 2 안). 원복한 편집이 이 경로로 끝나므로 이것을 없애면 그 편집이 영영 pending이라 CI가 영구 보류된다.
 
