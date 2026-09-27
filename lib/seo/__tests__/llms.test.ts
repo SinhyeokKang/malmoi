@@ -46,6 +46,11 @@ describe("llmsIndex", () => {
     );
   });
 
+  it("여러 줄 도입 문단은 한 줄 요약이 된다 — soft break가 목록 항목을 끊지 않는다", () => {
+    const leads = new Map<string, string | null>([["setup/workflow.md", "Add the\n  generated   workflow."]]);
+    expect(llmsIndex(nav, leads)).toContain("- [Add the workflow](https://mal-moi.com/docs/setup/workflow): Add the generated workflow.\n");
+  });
+
   it("실물 SUMMARY — 링크 수가 항목 수이고 두 번 생성해도 바이트가 같다", () => {
     const real = loadSummary();
     const flat = flattenNav(real);

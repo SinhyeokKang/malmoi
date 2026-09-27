@@ -16,7 +16,8 @@ const linkText = (title: string) => title.replace(/[\\[\]]/g, (c) => `\\${c}`);
 /** llmstxt.org 형 목차 — `# Malmoi` · `> 요약` · 장마다 `## 장` + 장 자신과 하위 페이지 목록. 요약이 없으면 `: …` 없이 끝난다. */
 export function llmsIndex(nav: readonly NavNode[], leads: ReadonlyMap<string, string | null>): string {
   const item = ({ title, slug, file }: NavNode) => {
-    const lead = leads.get(file) ?? null;
+    // `leadParagraph`는 soft break를 `\n`으로 남긴다 — 그대로 실으면 목록 항목이 끊긴다.
+    const lead = leads.get(file)?.replace(/\s+/g, " ").trim() || null;
     return `- [${linkText(title)}](${url(slug)})${lead === null ? "" : `: ${lead}`}`;
   };
   const chapters = nav.map((chapter) => [`## ${chapter.title}`, "", item(chapter), ...chapter.children.map(item)].join("\n"));
