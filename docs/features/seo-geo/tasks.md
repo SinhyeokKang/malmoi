@@ -101,7 +101,7 @@ stale이 된다(메모 build-while-dev).
 
 ## 수동 (프로덕션 `/merge` 뒤)
 
-⚠️ dev 통합 2026-09-27. 남은 것: U1(`public/og.png` — `/merge` 전 선행) · preview 런타임 검증(워커 인계 목록 11항) · 아래 M1–M7.
+⚠️ dev 통합 2026-09-27(`4406be33`). ✅ preview 런타임 검증 10항 + head 태그 통과(CSP 위반 0 · intake 동일 출처 `/<seed>/script.js`·`/<seed>/view` 200 · 추적 밖 경로 view 0 · 쿼리·해시 제거 · 같은 출처 이동에 `r` 없음 · 쿠키·저장소 증가 0 · robots `Disallow: /` · sitemap 25). 남은 것: U1(`public/og.png` — `/merge` 전 선행, 그 뒤 `m.seo.ogImageAlt`를 이미지에 맞춘다) · 아래 M1–M7.
 
 - **M1.** `curl -s https://mal-moi.com/robots.txt` 허용 규칙 + `Sitemap:` · `sitemap.xml` 항목 25 · `llms.txt`·`llms-full.txt` 200.
 - **M2.** Search Console에 `https://mal-moi.com/sitemap.xml` 제출 → Sitemaps 상태 Success · 발견 URL 25. URL 검사로 `/`·`/docs` 색인 요청.
