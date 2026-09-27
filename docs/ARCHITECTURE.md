@@ -611,6 +611,8 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
   cursor가 주소에 있으면 새로고침·공유·뒤로가기가 그 페이지만 보였다. 대가: **저장 뒤 재검증은 첫 페이지만 다시 그린다** — 붙인 행은
   `mergeServerRows`가 자리에 남기고, 요약이 바뀌는 길은 저장한 행의 `applySavedRow`와 선택 키의 `selectedInResult`뿐이다(남이 바꾼 뒤쪽
   행의 배지는 재필터까지 낡을 수 있다). More의 행·cursor·대기 상태는 목록 세대에 묶여 조건이 바뀌면 버려진다.
+  ⚠️ **Sync 성공도 새 세대다** (2026-09-27, 감사 #11) — 같은 조건의 재검증은 행을 끼워 넣지 않아 들여온 키가 목록에 안 섰다. 기준은 Sync를
+  시작한 순간의 목록이고, 결과와 새 트리 중 어느 쪽이 먼저 커밋돼도 그 목록과 다른 첫 목록에서 새 세대를 시작한다(`workspace.tsx`).
 - **`q`는 200자**(`Q_MAX_LENGTH`) — trim 뒤 비면 검색 없음, LIKE 메타문자는 escape한다.
 - **Save는 `KEY_SAVE_LIMITS`**(`lib/keys/save.ts`) — 값당 10,000 · 로케일 200 · **변경값 합계 UTF-16 1,000,000 코드유닛**. 최악이
   UTF-8 약 3MB(CJK 1유닛=3바이트, 서로게이트 2유닛=4바이트)라 `serverActions.bodySizeLimit: "4mb"` 안에 든다. ⚠️ **둘 중 하나를
