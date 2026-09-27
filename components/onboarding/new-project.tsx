@@ -341,6 +341,8 @@ export function NewProject({
     setSlug("");
     setSlugTaken(false);
     setDetail(null);
+    // 힌트("Setting a path clears the selection above")와 제출이 같은 사실을 말하게 한다 (malmoi#125).
+    setChecked(new Set());
     setLocale(next.baseLocale.trim());
     setBaseLocale(next.baseLocale.trim());
   }
@@ -550,6 +552,8 @@ export function NewProject({
             banner: accessLost ?? banner,
           }}
           selection={{ checked, conflicts: selection.conflicts, onToggle: index => {
+            // 수동 지정 중 체크는 후보로 돌아오는 것이다 — 안 그러면 체크가 선 채 수동 경로가 제출된다 (malmoi#125).
+            if (usingManual) applyCandidate(candidates, index);
             setChecked(previous => {
               const next = new Set(previous);
               if (next.has(index)) next.delete(index); else next.add(index);
