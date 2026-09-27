@@ -136,6 +136,39 @@ export type NavItem = {
 export type NavZone = { key: "work" | "project"; label: string; items: NavItem[] };
 
 /**
+ * 사용자 축 항목 — **사이드바 사용자 구역과 헤더 사용자 메뉴의 첫 묶음이 이 목록 하나를 읽는다** (2026-09-27 사용자). 두 벌이면
+ * 한쪽에만 항목이 늘어 순서가 갈린다. `projectCount`를 주면 `Projects`가 개수 배지를 든다(사이드바만 준다 — 메뉴엔 배지가 없다).
+ */
+export function navWorkItems(projectCount?: number): NavItem[] {
+  return [
+  /**
+   * ⚠️ **사용자 축은 전부 정확히 일치다.** `/projects`가 `/projects/new`의 접두라, 접두로 재면
+   * 새 프로젝트 화면에서 `Projects`도 함께 선택돼 보인다.
+   */
+  {
+    key: "projects",
+    label: m.common.nav.projects,
+    /**
+     * ⚠️ **목록 행의 글리프와 같다** (2026-09-11 사용자) — 사이드바 항목과 그 항목이 데려가는
+     * 화면의 행이 다른 글리프를 쓰면 "프로젝트"의 시각 어휘가 둘이 된다.
+     */
+    icon: Box,
+    href: routes.projects(),
+    exact: true,
+    ...(projectCount === undefined ? {} : { badge: projectCount }),
+  },
+  // `exact`여야 `/projects/new`에서 이 항목만 선택된다 — Projects도 exact라 둘이 함께 켜지지 않는다.
+  { key: "newProject", label: m.common.nav.newProject, icon: Plus, href: routes.newProject(), exact: true },
+  /**
+   * ⚠️ **아이콘이 `CircleUser`다** (2026-09-11 사용자) — 헤더 우상단 서랍 **안**의 같은 항목과
+   * 같은 글리프라야 "내 계정"이 한 어휘로 읽힌다. `Settings`(톱니)는 프로젝트 설정이 쓰므로,
+   * 여기에 같이 쓰면 사용자 축과 프로젝트 축이 같은 모양으로 섞인다.
+   */
+  { key: "account", label: m.common.nav.account, icon: CircleUser, href: routes.account(), exact: true },
+  ];
+}
+
+/**
  * **축이 둘이고 구역이 그것을 드러낸다** (PRODUCT §7.7 — IA 확정 2026-09-09, 8-3이 시안에 맞춰 조정).
  *
  * ⚠️ **순서가 정보구조다** — 사용자 축이 먼저다. 프로젝트는 "내 일 안의 하나"이고, 뒤집으면
@@ -155,32 +188,7 @@ export function navZones(
   const work: NavZone = {
     key: "work",
     label: context.userName,
-    items: [
-      /**
-       * ⚠️ **사용자 축은 전부 정확히 일치다.** `/projects`가 `/projects/new`의 접두라, 접두로 재면
-       * 새 프로젝트 화면에서 `Projects`도 함께 선택돼 보인다.
-       */
-      {
-        key: "projects",
-        label: m.common.nav.projects,
-        /**
-         * ⚠️ **목록 행의 글리프와 같다** (2026-09-11 사용자) — 사이드바 항목과 그 항목이 데려가는
-         * 화면의 행이 다른 글리프를 쓰면 "프로젝트"의 시각 어휘가 둘이 된다.
-         */
-        icon: Box,
-        href: routes.projects(),
-        exact: true,
-        badge: context.projectCount,
-      },
-      // `exact`여야 `/projects/new`에서 이 항목만 선택된다 — Projects도 exact라 둘이 함께 켜지지 않는다.
-      { key: "newProject", label: m.common.nav.newProject, icon: Plus, href: routes.newProject(), exact: true },
-      /**
-       * ⚠️ **아이콘이 `CircleUser`다** (2026-09-11 사용자) — 헤더 우상단 서랍 **안**의 같은 항목과
-       * 같은 글리프라야 "내 계정"이 한 어휘로 읽힌다. `Settings`(톱니)는 프로젝트 설정이 쓰므로,
-       * 여기에 같이 쓰면 사용자 축과 프로젝트 축이 같은 모양으로 섞인다.
-       */
-      { key: "account", label: m.common.nav.account, icon: CircleUser, href: routes.account(), exact: true },
-    ],
+    items: navWorkItems(context.projectCount),
   };
   if (project === null) return [work];
 

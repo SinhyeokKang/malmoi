@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, CircleHelp, CircleUser, Loader2, LogOut, ScrollText, ShieldCheck } from "lucide-react";
+import { CircleHelp, Loader2, LogOut, ScrollText, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
 
@@ -17,13 +17,14 @@ import {
 import { m } from "@/lib/i18n";
 import { GITHUB_RELEASES_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
+import { navWorkItems, type NavItem } from "@/lib/shell/nav";
 
 /**
- * top bar 우측. **항목이 여섯이고 순서가 사용자 결정이다** (2026-09-27):
- * `Projects · Account | Release notes · Docs · Privacy Policy | Sign out`. LNB와 겹치는 항목(Projects·Account·
- * Release notes·Docs)은 의도다. **모든 줄이 필터 메뉴와 같은 `DropdownMenuItem` 모양이고 앞 아이콘 하나를 든다** —
- * 아이콘은 같은 목적지를 가리키는 다른 자리와 같은 글리프다(Projects `Box` · Account `CircleUser` · Docs `CircleHelp`는
- * LNB, Release notes `ScrollText`는 LNB 하단과 공유). Release notes만 외부(GitHub Releases, 새 탭)이고 외부 링크 글리프를
+ * top bar 우측. **항목이 일곱이고 순서가 사용자 결정이다** (2026-09-27):
+ * `Projects · New project · Account | Release notes · Docs · Privacy Policy | Sign out`. 첫 묶음은 사이드바 사용자 구역과
+ * **같은 목록**(`navWorkItems`)이고, LNB와 겹치는 항목은 의도다. **모든 줄이 필터 메뉴와 같은 `DropdownMenuItem` 모양이고 앞 아이콘 하나를 든다** —
+ * 아이콘은 같은 목적지를 가리키는 다른 자리와 같은 글리프다(Projects `Box` · New project `Plus` · Account `CircleUser` ·
+ * Docs `CircleHelp`는 LNB, Release notes `ScrollText`는 LNB 하단과 공유). Release notes만 외부(GitHub Releases, 새 탭)이고 외부 링크 글리프를
  * 달지 않는다(DESIGN §6.3).
  *
  * ⚠️ **아바타가 사진을 싣는다** (2026-09-13). 그 전엔 `SessionRead`가 `name`·`email`만 들어
@@ -68,8 +69,10 @@ export function UserMenu({
           {email !== null && <span className="block">{email}</span>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <MenuLink href={routes.projects()} icon={Box} label={m.common.nav.projects} />
-        <MenuLink href={routes.account()} icon={CircleUser} label={m.common.nav.account} />
+        {/* 첫 묶음은 사이드바 사용자 구역과 같은 목록이다(`navWorkItems`) — 두 벌이면 한쪽에만 항목이 는다. */}
+        {navWorkItems().map((item) => (
+          <MenuLink key={item.key} href={item.href} icon={item.icon} label={item.label} />
+        ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <a href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
@@ -115,7 +118,7 @@ function SignOutItem() {
   );
 }
 
-function MenuLink({ href, icon: Icon, label }: { href: string; icon: typeof Box; label: string }) {
+function MenuLink({ href, icon: Icon, label }: { href: string; icon: NavItem["icon"]; label: string }) {
   return (
     <DropdownMenuItem asChild>
       <Link href={href}>
