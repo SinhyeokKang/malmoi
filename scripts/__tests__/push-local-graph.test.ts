@@ -21,7 +21,12 @@ import { describe, expect, it } from "vitest";
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const ENTRY = join(ROOT, "scripts", "push-local.ts");
 
+/**
+ * ⚠️ `server-only`도 막는다 — Next의 `react-server` 조건 밖(tsx)에서는 import만으로 던진다(`scripts/local.ts`가
+ * `lib/db.ts`를 못 쓰는 이유와 같다, ARCHITECTURE §5.5.4). 러너의 `push:local`이 그 조건 없이 돈다.
+ */
 const FORBIDDEN = (specifier: string, resolved: string | undefined) =>
+  specifier === "server-only" ||
   specifier.startsWith("@prisma/") ||
   specifier === "prisma" ||
   (resolved !== undefined && relative(ROOT, resolved).split(/[\\/]/)[0] === "generated");
@@ -80,11 +85,12 @@ describe("push:local import 그래프 — 대상 리포 러너에서 돈다", ()
 
   it("전제: 판정이 금지 대상을 실제로 집는다", () => {
     expect(FORBIDDEN("@prisma/adapter-pg", undefined)).toBe(true);
+    expect(FORBIDDEN("server-only", undefined)).toBe(true);
     expect(FORBIDDEN("../generated/prisma/client", resolveLocal(join(ROOT, "scripts", "local.ts"), "../generated/prisma/client"))).toBe(true);
     expect(specifiers('import type { A } from "../x";\nimport { b } from "../y";\nexport { c } from "./z";')).toEqual(["../y", "./z"]);
   });
 
-  it("`generated/prisma`·`@prisma/*`를 import하지 않는다 — 러너에 `prisma generate`가 없다", () => {
+  it("`generated/prisma`·`@prisma/*`·`server-only`를 import하지 않는다 — 러너에 `prisma generate`도 react-server 조건도 없다", () => {
     expect(hits).toEqual([]);
   });
 });
