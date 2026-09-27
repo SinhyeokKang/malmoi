@@ -796,13 +796,14 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 폰 폭 | 반응형 없음 — 셸 `min-w-[1280px]`, 가로 스크롤(§6.616과 같다). 옛 1열의 320px 규칙은 사라졌다 |
 | 새 색 | **0** — 등재된 `blue-600`(§6.3)과 토큰뿐. `#404040`·`#fafafa`는 시안 1차 피드백으로 걷었다 |
 
-### 6.615 랜딩 (`/`) — 공개 셸 + 스크롤 구동 목업 (2026-09-26, 시안 `Landing.dc.html` 1a–1g)
+### 6.615 랜딩 (`/`) — 공개 셸 + 스크롤 구동 목업 (2026-09-26, 시안 `Landing.dc.html` 1a–1g · 2026-09-27 목업 재작업)
 
 ⚠️ **공개 셸은 랜딩과 `/privacy`(§6.616)·`/docs/*`(§6.61)가 공유한다** — 아래 셸·헤더·푸터·키보드 행이 세 화면의 규칙이고, 나머지 행은 랜딩 전용이다.
 
-**Claude Design 핸드오프가 정본이다**(`Landing.dc.html` · `Landing Prototype.dc.html`, 2026-09-26 동결). 시안은 **스테이지(목업의 자리)**만
-정하고, 1280×720 안의 씬 그림은 구현이 기존 핸드오프(`design_handoff_translations` · `design_handoff_publish_modal`)와 실제 컴포넌트를
-보고 그린다 — 그 안쪽은 `/design-sync` 대조 대상이 아니다. 보는 사람은 **늘 비로그인**이다(`ok`는 `/projects`로 redirect — 2026-09-10 결정).
+**구현된 화면이라 코드(+ 이 절)가 정본이다** — Claude Design 핸드오프(`Landing.dc.html` · `Landing Prototype.dc.html`, 2026-09-26 동결)는 첫 구현
+동안만 정본이었다. ⚠️ **목업의 정본은 제품이다**(2026-09-27 사용자 — *"목업의 모든 씬은 제품과 1:1"*): 캔버스 안의 씬은 실제 셸·번역 작업
+화면·Publish 모달의 **정적 복제**이고, 둘이 다르면 목업이 틀린 쪽이다(목업과 앱이 다른 말을 하면 랜딩이 거짓이다). 옛 목업엔 LNB의 계정 구역과
+번역 화면의 소스 트리가 없었다. 보는 사람은 **늘 비로그인**이다(`ok`는 `/projects`로 redirect — 2026-09-10 결정).
 
 | 요소 | 규칙 |
 |---|---|
@@ -810,18 +811,19 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 헤더 | 로고 32 · `nav` `Home · Docs · GitHub`(14/400 · 6/10 · radius 8 · hover `foreground/[0.03]`) — **선택 상태를 그리지 않는다**, `aria-current="page"`만이고 **그것도 `current`를 받은 화면(랜딩 = `home`)에서만 선다** — `/privacy`는 셋 어디에도 없어 current 0이다. 우측 primary `md` — **페이지가 `publicCta`(`lib/auth/landing.ts`)로 정한다**: `ok` → `Open Malmoi`·`/projects`, `none`·`unavailable` → `Get started`·`/signin`. 랜딩은 `ok`에서 안 그려져 늘 `Get started`다. ⚠️ **헤더는 세션을 직접 읽지 않고, `publicCta`는 라벨을 사전 **키**로 준다**(그 모듈이 잎이라서). GitHub는 새 탭·글리프 없음(§6.3) |
 | 푸터 | `© 2026 Malmoi · GitHub · Privacy Policy · Docs` — **`/signin`·초대·계정 병합과 같은 컴포넌트다**(`PublicFooter` — 2026-09-26부터 셸 밖 2열도 두 패널 아래에 그린다, §6.62). 목록은 `lib/links.ts` 한 상수다. 시안의 `Docs · Privacy Policy` 순서는 피드백으로 넘겼다 |
 | 키보드 | 스크롤러가 `tabIndex={-1}` + 마운트 때 `focus({ preventScroll: true })`를 받는다 — 문서가 스크롤되지 않아 body 포커스로는 Space/PageDown이 아무것도 안 민다. ⚠️ **대가: 첫 Tab이 헤더를 건너뛴다**(포커스가 이미 패널 안이다) — 헤더는 Shift+Tab으로 닿는다. 2026-09-26 리뷰에서 수용했다. ⚠️ **body로 빠진 포커스를 되찾는다** — 헤더·푸터의 빈 곳을 누르면 포커스가 body로 가 키보드 스크롤이 다시 죽었다(2026-09-26 디자인 감사). 문서 `focusout`에서 `relatedTarget`이 없고 이동이 끝난 뒤 `activeElement`가 body면 스크롤러가 `preventScroll`로 되받는다 — 다른 요소로 옮긴 포커스는 건드리지 않는다 |
-| 히어로 · 마무리 CTA | h1·h2 **`text-5xl`(48) · 600** · 행간 1.1 · 자간 −0.015em(크기 토큰, §4) · 서브 `text-lg`(18) · 400 · 1.6 · `max-w-[44em]`(CTA `40em`) · 간격 20. 위 여백·섹션 간격·CTA 아래 여백이 전부 **120**. 버튼은 `lg`(셸 밖 전용, §6.4) — 히어로 `Docs`(default) + `Get started`(primary), CTA는 primary **하나** |
-| 목업 캔버스 | **고정 논리 1280×720**, 안은 실제 앱 px. transform 하나(`translate3d · scale`)로 맞춘다. `fit = min((W − 2m)/1280, (H − 2m − 44)/720, 1.5)`, `m = clamp(24, 0.04·H, 48)` — W·H는 스크롤러 `clientWidth/Height`. 수학은 `lib/landing/stage.ts`(잎) |
-| 배율 표 | 1280×800 → **0.836** · 1440×900 → **0.964** · 1920×1080 → **1.194** · 2560×1440 → **1.5**(상한, 맞춤 1.669). 네 뷰포트 모두 세로가 제한 축. 1280×800의 목업 글자 11.7px를 받는다 — 읽혀야 할 문장은 캡션이 든다 |
-| 대기 → 고정 | 대기는 맞춤의 **0.8배**로 뜬 "물건"(베젤 12 · radius 24 · **`bg-background`**(흰 두꺼운 테두리 — 2026-09-27 사용자, 시안. `bg-canvas`면 회색 판으로 읽혔다) · `border-border`(얇은 회색 외곽선) · `shadow-medium`). 스크롤 `p = scrollTop / stageTop`(easeInOut)로 맞춤까지 커지고 p = 1이 곧 sticky 시작이다. 고정되면 "화면"(radius 12 · `border-border-subtle` · `shadow-low` — border·그림자가 `ContentPanel`과 같고 **radius는 아니다**: `ContentPanel`은 `rounded-xl` 16이다). ⚠️ **radius·그림자 값을 트윈하지 않는다** — 레이어 셋의 opacity 교차로 24 → 12가 바뀌어 보인다. **transform·opacity만** 움직인다 |
-| `will-change` | ⚠️ **상시로 걸지 않는다** — Chrome이 레이어를 1× 래스터로 고정해 상한 1.5에서 글자가 번진다. 트윈 구간(베젤이 보이는 동안)에만 선다 |
-| 씬 다섯 | 트랙 `6H`, sticky `H`. 씬당 정지 0.6 / 전환 0.4(마지막은 1.0H 정지). ① 번역 화면 ② `fr` 타이핑 ③ 저장 → Publish 배지 1 → 2 ④ Publish 미리보기(diff) ⑤ PR 열림. 역방향 스크럽 — **같은 위치 → 같은 프레임**. 카메라(줌·팬) 없음 |
+| 히어로 · 마무리 CTA | h1·h2 **`text-5xl`(48) · 600** · 행간 1.1 · 자간 −0.015em(크기 토큰, §4) · 서브 `text-lg`(18) · 400 · 1.6 · `max-w-[44em]`(CTA `40em`) · 간격 20. 히어로 위 여백과 히어로 → 트랙 간격이 **120**. ⚠️ **마무리 CTA는 섹션 자신의 padding-block 240**(`py-60` — 2026-09-27 사용자, 120의 두 배. 이웃의 margin으로 만들지 않는다). 버튼은 전부 `lg`(셸 밖 전용, §6.4) — 히어로 `Docs`(default) + `Get started`(primary), 마무리 CTA **`GitHub`(default) + `Get started`(primary)**(2026-09-27). GitHub는 `<a>` + `buttonClass` · `GITHUB_REPO_URL` · 새 탭 · `rel="noreferrer"` · 외부 링크 글리프 없음(§6.3) — `ButtonLink`는 `next/link`라 쓰지 않는다 |
+| CTA 선행 아이콘 | **랜딩 CTA 버튼마다 하나**(2026-09-27 사용자) — `Docs` `BookOpen` · `Get started` `LogIn`(행선지가 `/signin`) · `GitHub` `GithubMark`(`components/sources/github-mark.tsx` — lucide 1.37엔 브랜드 글리프가 없고 그 파일이 리포의 유일한 GitHub 마크다) · 공개 헤더 primary `Get started` `LogIn` / `Open Malmoi` `Box`(행선지 `/projects` — 사이드바 `Projects`와 같은 글리프). 크기·간격은 `Button`의 svg 슬롯(16 · gap 8)이 정하고 아이콘에 `size-*`를 주지 않는다. 전부 `aria-hidden`. ⚠️ **헤더 내비 링크 셋(Home · Docs · GitHub)은 글자만이다** |
+| 목업 캔버스 | **고정 논리 1440×810**(2026-09-27 사용자 — **1440 폭 창에서 본 제품**이다. 810은 1440×900 화면에서 브라우저 크롬을 뺀 뷰포트 ≈16:9), 안은 실제 앱 px. transform 하나(`translate3d · scale`)로 맞춘다. `scale = min((W − 2·side)/1464, (H − 2v − 44)/834, 1)` — 1464·834는 베젤 12를 두른 크기, `side = clamp(24, 0.04·W, 64)`(좌우 여백), `v = clamp(16, 0.02·H, 32)`, W·H는 스크롤러 `clientWidth/Height`. **배율은 폭이 정하고 1을 넘지 않는다**(1440 창에서 ≈0.9 — 공개 셸·여백만큼 실제 앱보다 작은 것이 의도다). 세로가 모자라면 세로가 정한다 — 고정 재생 동안 스테이지가 뷰포트를 가지므로 넘치면 목업 아래가 잘린다. 수학은 `lib/landing/stage.ts`(잎) |
+| 배율 표 | 1280×800 → **0.751**(세로) · 1440×900 → **0.870**(세로 — 폭 기준은 0.894) · 1920×1080 → **1**(상한) · 2560×1440 → **1**. 1280×800의 목업 글자 ≈10.5px를 받는다 — 읽혀야 할 문장은 캡션이 든다 |
+| 베젤 · 화면 | ⚠️ **스크롤 구동 확대가 없다**(2026-09-27 사용자 — 옛 대기 0.8배 → 맞춤 트윈과 베젤 → 화면 교차를 걷었다). 베젤은 **옛 대기 모양 그대로 상시다**: 두께 12(`-inset-3`) · radius 24(`rounded-3xl`) · **`bg-background`**(흰 두꺼운 테두리 — `bg-canvas`면 회색 판으로 읽힌다) · `border-border`(얇은 회색 외곽선) · `shadow-medium`. 그 안의 화면은 radius 8 · `border-border-subtle`. 레이어에 opacity를 쓰지 않는다. `will-change`도 걸지 않는다 — 움직이는 transform이 없고 크기가 바뀔 때만 다시 쓴다 |
+| 씬 다섯 · 고정 재생 | ⚠️ **재생 동안 스테이지가 뷰포트를 가진다**(2026-09-27 사용자) — 트랙 윗변이 스크롤러 윗변에 닿으면 sticky `H` 한 장이 화면 전부이고 목업은 그 안의 세로 가운데에 선다. 씬은 **그 고정 구간 안에서만** 움직이므로 위 히어로·아래 CTA가 재생 동안 보이지 않는다(CTA를 음수 margin으로 끌어올리지 않는다 — 트랙 뒤의 형제다). 트랙 = `H·(1 + lead + 5·perScene)`(`--landing-track-h`, JS가 쓴다). **타이밍 조정은 `lib/landing/stage.ts`의 `PLAY = { lead, perScene }` 한 줄**이다 — `lead`는 고정 시작 뒤 씬 ①까지의 여유, `perScene`은 씬 하나의 스크롤 길이(H 단위, 기본 0 · 1). 씬당 정지 0.6 / 전환 0.4(마지막은 전부 정지 — 고정이 풀릴 때 재생이 끝나 있다). ① 번역 화면 ② `fr` 타이핑 ③ 저장 → Publish 배지 1 → 2 ④ Publish 미리보기(diff) ⑤ PR 열림. 역방향 스크럽 — **같은 위치 → 같은 프레임**. 카메라(줌·팬) 없음 |
 | 씬 크롬 | 프레임 아래 16 · 한 줄 가운데: 진행 5칸(24×3 · 갭 6 · `scaleX`) + 캡션 `clamp(15px, 9px + 0.4375vw, 20px)`/1.4(자간은 `text-base`). 캡션은 t = 0.5에서 문장이 바뀐다(opacity `|1 − 2t|`) |
-| 모션 감소 | 배율 = 맞춤 고정 · y = yPin 고정 · 베젤 0 · 크롬 항상. 씬은 전환 한가운데(f = 0.8)에서 단절. **스크롤 길이는 같다.** `matchMedia` `change`를 구독해 런타임 토글도 반영한다 |
-| JS 전 · JS 없음 | **준비 전엔 프레임이 보이지 않는다** — 프레임·크롬이 `invisible`이고(`group-data-[ready]/track:visible`), 트랙은 **패널 1개 높이**로 접혀 있다(`data-ready`가 선 뒤에만 `6H`). 배율이 없는 SSR에서 베젤·그림자가 1304×744로 서서 패널을 넘치고 H < 732면 CTA까지 덮기 때문이다 |
-| sticky 층 | `pointer-events-none` — 투명하지만 positioned라 음수 margin으로 끌어올린 CTA 위에 칠해진다. yPin이 120보다 큰 세로 긴 뷰포트에서 `Get started`가 안 눌렸다. 프레임 자체는 `inert`라 잃는 것이 없다 |
+| 모션 감소 | 배율·위치는 원래 움직이지 않는다. 씬은 전환 한가운데(f = 0.8)에서 단절 · 캡션 opacity 1 · 타이핑·배지는 정지 구간 맨 앞에서 끝나 있다. **스크롤 길이는 같다.** `matchMedia` `change`를 구독해 런타임 토글도 반영한다 |
+| JS 전 · JS 없음 | **준비 전엔 프레임이 보이지 않는다** — 프레임·크롬이 `invisible`이고(`group-data-[ready]/track:visible`), 트랙은 **패널 1개 높이**로 접혀 있다(`data-ready`가 선 뒤에만 `--landing-track-h`). 배율이 없는 SSR에서 1464×834 베젤이 패널을 넘치기 때문이다 |
+| sticky 층 | `pointer-events-none` — 투명하지만 positioned라 겹친 형제의 클릭을 먹는다(옛 구조에서 끌어올린 CTA의 `Get started`가 안 눌렸다). 지금 CTA는 겹치지 않지만 프레임이 `inert`라 잃는 것이 없어 그대로 둔다 |
 | 접근성 | 프레임 `aria-hidden` + `inert`, **안에 인터랙티브 태그 0**(jsdom은 `inert`를 모른다 — 버튼 모양은 `buttonClass`를 `<span>`에). 보이는 캡션도 `aria-hidden`이고 트랙 첫머리의 visually-hidden `<ol>`이 다섯 문장을 늘 담는다(`aria-live` 없음). 섹션 셋이 전부 이름을 갖는다 — 히어로·CTA `aria-labelledby`, 트랙 `aria-label="How Malmoi works"` |
-| 목업 문구 | 앱 라벨은 **실제 사전 키**(`m.common.nav` · `m.translations.workspace` · `m.translations.publish` · `m.repositorySync.action` · `m.common.cancel`)를 읽는다 — 목업과 앱이 다른 말을 하면 랜딩이 거짓이다. 가상 데이터(`Acme web` · `acme/web` · 키·값)는 `m.landing.mockup`. 타이핑 값은 `fr`(한글은 `no-korean-ui`, 일본어는 폰트가 걸린다). 목업 소스에 JSX 텍스트 리터럴 0(`landing-mockup.test.tsx`) |
+| 목업 씬 구조 | 제품의 1440×810 화면 그대로다. **셸** — 헤더 40(로고 32 · 아바타 32) · LNB 240(`SHELL_SIDEBAR_PX.default`) · 핸들 8 · `ContentPanel`. ⚠️ **LNB의 구역·항목·배지는 실제 판정(`navZones` · `navFooterItems`)에서 뽑는다** — 사용자 구역(이름 · `Projects` 배지 · `Account`) · 프로젝트 구역(썸네일 · Home · Sources · Translations · Members · Logs · Settings, 배지 셋) · 하단 목록(`navFooterItems` 한 곳 — `app-frame.tsx`의 `FOOTER_ITEMS`). Sign out은 하단에 그리지 않는다(아바타 메뉴의 것). **번역 화면** — 머리(제목·배지 · Sync · Publish / 필터 셋 `All keys · Any state · This source` · 검색 320) · 본문 `p-4`: 왼쪽 카드 = **소스 트리 260**(보고 있는 소스만 펼침 · `All namespaces` 선택) + 키 목록 392(**미완 먼저**) · 핸들 16 · 오른쪽 로케일 상세(경로 머리 · 키 · N of M · 복사 · 설명 · 행 셋 · 푸터 — 저장 뒤 `Revert to last sent`가 서고 Save가 꺼진다). **Publish** — `OnboardingModal` 치수(폭 1024 · 미리보기 620 / 결과 420 · dim `bg-foreground/32` + blur 6), 미리보기는 열린 PR 없음 `Notice` + 표(저자 열) + 확정 버튼 **`Open pull request` 하나**(Cancel 없음), 결과는 PR 카드 + 안내 + `View pull request`. 모달 제목의 자간 `0.005em`은 목업에서 뺐다(`tracking-*` 등재 밖, 20px에서 0.1px) |
+| 목업 문구 | 앱 라벨은 **실제 사전 키**(`m.common.nav` · `m.translations.workspace` · `m.translations.publish` · `m.repositorySync.action`)와 실제 판정(`navZones`)을 읽는다 — 목업과 앱이 다른 말을 하면 랜딩이 거짓이다. 가상 데이터(`Acme web` · `acme/web` · 키·값)는 `m.landing.mockup`. 타이핑 값은 `fr`(한글은 `no-korean-ui`, 일본어는 폰트가 걸린다). 목업 소스에 JSX 텍스트 리터럴 0(`landing-mockup.test.tsx`) |
 | 목업이 스크롤에 반응하는 자리 | 둘뿐이다 — `[data-landing-typed]`의 텍스트(스테이지가 `typedPrefix`로 쓴다)와 프레임의 `data-badge`(`group-data-[badge=1]/frame:`). ⚠️ **프레임마다 setState하지 않는다** — 스테이지가 ref로 DOM에 직접 쓴다 |
 | 새 색 | **0** — 셸은 토큰만, 목업은 번역 화면·Publish 모달의 등재 값을 같은 자리에 쓴다(§6.2) |
 
@@ -1845,7 +1847,7 @@ design.gitlab.com `/product-foundations/layout` · `/components/{table,alert,car
 - [ ] **인라인 링크에 밑줄을 붙이지 않았나** (§0·§6.3)
 - [ ] **그림자가 `shadow-low`·`shadow-medium`인가** — Tailwind 기본은 검정 기반이라 탁하다 (§4.5)
 - [ ] 조건부 클래스가 `cn()`을 지나나 (§8)
-- [ ] 임의값(`text-[Npx]`·`size-[Npx]`·`rounded-[10px]`) 대신 스케일을 썼나 (§4·§5·§6.8) — 셋 다 전수 0건이다. ⚠️ **`rounded-[4px]`(목록 스켈레톤의 타일)·`rounded-[3px]`(검색 일치 `<mark>`·Publish diff 낱말)는 남는다** — 이 리포의 스케일에 4·3이 없다(bare `rounded`는 `var(--radius)` = 12다). ⚠️ **`rounded-3xl`(24)도 하나 남는다** — 랜딩 대기 상태의 베젤·그림자 층(§6.615 "대기 → 고정")이고 스케일(8·10·12·16) 밖의 유일한 큰 값이다
+- [ ] 임의값(`text-[Npx]`·`size-[Npx]`·`rounded-[10px]`) 대신 스케일을 썼나 (§4·§5·§6.8) — 셋 다 전수 0건이다. ⚠️ **`rounded-[4px]`(목록 스켈레톤의 타일)·`rounded-[3px]`(검색 일치 `<mark>`·Publish diff 낱말)는 남는다** — 이 리포의 스케일에 4·3이 없다(bare `rounded`는 `var(--radius)` = 12다). ⚠️ **`rounded-3xl`(24)도 하나 남는다** — 랜딩 목업의 베젤·그림자 층(§6.615 "베젤 · 화면")이고 스케일(8·10·12·16) 밖의 유일한 큰 값이다
 - [ ] 문자열이 `messages/en.tsx`에서 오고 §10의 문체인가
 - [ ] 외부 링크가 색 + `target="_blank" rel="noreferrer"`만 드나 — 글리프를 달지 않는다 (§6.3)
 - [ ] 사이드바 항목·주 행동 버튼·Alert에 §6.8의 아이콘이 붙었나 — 16px, 색은 상속, 라벨 있으면 `aria-hidden`
