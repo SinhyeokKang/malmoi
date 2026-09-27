@@ -25,8 +25,13 @@ import { routes } from "@/lib/routes";
  * `defaultSurfaceSlug`는 셸이 싣는 기본 표면이고 `surfaceSlug`는 pathname에서 읽은 **보고 있는** 표면이다 — 뒤가 앞선다.
  * 둘 다 없으면 Translations가 옛 주소로 떨어진다 (audit-ux #4).
  */
+/**
+ * `counts`는 프로젝트 항목의 개수 배지다 (2026-09-27 사용자) — 셸이 이미 부르는 `loadMemberships`에 얹혀 온다.
+ * 없으면 배지가 없다.
+ */
 export type NavProject = {
   slug: string; name: string; role: Role; archived: boolean; image?: string | null; surfaceSlug?: string; defaultSurfaceSlug?: string | null;
+  counts?: { sources: number; members: number; keys: number };
 };
 
 /**
@@ -115,9 +120,9 @@ export type NavItem = {
   /**
    * 우측 개수 배지 (8-3, 시안).
    *
-   * ⚠️ **여기 있는 것은 `Projects` 하나다.** 그 값은 셸이 **이미 조회한** 멤버십 배열의 길이라
-   * 왕복이 0이다. 시안의 나머지 셋(Locales·Translations·Members)은 프로젝트별 집계라 **모든
-   * 페이지에 왕복을 더한다** — PRODUCT §7.7 결정 5가 거절했고 §8이 🔒로 다시 열어 둔 항목이다.
+   * `Projects`는 멤버십 배열의 길이, 프로젝트 축의 셋(Sources·Translations·Members)은 같은 멤버십 조회의
+   * 관계 `_count`다 — **둘 다 왕복이 0이다.** ⚠️ 셋은 2026-09-27에 열렸다(사용자 — "`Projects` 하나"를 뒤집었다 — DESIGN 개수 배지 행).
+   * 거절 근거가 "매 페이지 왕복"이었고, 셸이 이미 부르는 조회에 얹으면 그 근거가 서지 않는다.
    */
   badge?: number;
 };
@@ -185,9 +190,21 @@ export function navZones(
         icon: section.icon,
         href: section.key === "translations" ? translationsHref(project) : section.href(project.slug),
         exact: section.exact,
+        badge: sectionBadge(section.key, project.counts),
       })),
     },
   ];
+}
+
+/**
+ * ⚠️ **Translations는 프로젝트 전체 키 수다** (2026-09-27 사용자) — 보고 있는 표면을 따라 바뀌지 않는다.
+ */
+function sectionBadge(key: NavSection["key"], counts: NavProject["counts"]): number | undefined {
+  if (counts === undefined) return undefined;
+  if (key === "sources") return counts.sources;
+  if (key === "translations") return counts.keys;
+  if (key === "members") return counts.members;
+  return undefined;
 }
 
 /**

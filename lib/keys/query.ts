@@ -221,6 +221,14 @@ export type MembershipRow = {
    * 조립하면 그 판정을 건너뛴다. 그때 사이드바는 옛 주소로 떨어진다.
    */
   defaultSurfaceSlug: string | null;
+  /**
+   * 사이드바 프로젝트 항목의 개수 배지 (2026-09-27 사용자 — "`Projects` 하나"를 뒤집었다 — DESIGN 개수 배지 행). **같은 조회의 관계 `_count`라
+   * 왕복이 늘지 않는다.** ⚠️ 숫자가 각 화면과 같아야 한다 — 멤버는 목록 행의 `memberCount`, 소스는 보관 안 된 것
+   * (Sources 목록), 키는 그 소스들의 orphaned가 아닌 것의 합(`loadSurfaceCounts`의 합)이다.
+   */
+  memberCount: number;
+  sourceCount: number;
+  keyCount: number;
 };
 
 /**
@@ -236,7 +244,9 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
       role: true,
       project: {
         select: {
-          slug: true, name: true, image: true, installationId: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } }, archivedAt: true,
+          slug: true, name: true, image: true, installationId: true, archivedAt: true,
+          surfaces: { select: { archivedAt: true, lastCommitSha: true, _count: { select: { keys: { where: { orphaned: false } } } } } },
+          _count: { select: { members: true } },
           // 관계 select라 같은 쿼리의 JOIN이다 — 셸이 매 페이지 부르므로 왕복을 늘리지 않는다.
           defaultSurface: { select: { slug: true, archivedAt: true } },
         },
@@ -250,10 +260,13 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     name: r.project.name,
     role: r.role,
     installationId: r.project.installationId,
-    surfaces: r.project.surfaces,
+    surfaces: r.project.surfaces.map(({ archivedAt, lastCommitSha }) => ({ archivedAt, lastCommitSha })),
     archivedAt: r.project.archivedAt,
     image: r.project.image,
     defaultSurfaceSlug: r.project.defaultSurface && r.project.defaultSurface.archivedAt === null ? r.project.defaultSurface.slug : null,
+    memberCount: r.project._count.members,
+    sourceCount: r.project.surfaces.filter((s) => s.archivedAt === null).length,
+    keyCount: r.project.surfaces.reduce((sum, s) => (s.archivedAt === null ? sum + s._count.keys : sum), 0),
   }));
 }
 
@@ -267,7 +280,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
   ⚠️ **`defaultSurfaceSlug`를 뺀다** — 셸 사이드바만 쓰는 값이고(audit-ux #4), 목록 행은 표면 주소를 자기 필드
   (`reviewSurfaceSlug`·`unsentSurfaceSlug`)로 든다. 여기 남기면 목록 조회가 쓰지 않을 관계를 하나 더 싣는다.
 */
-export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug"> &
+export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceCount" | "keyCount"> &
   /**
    * ⚠️ **사건을 중첩하지 않고 펼친다** — 판정 셋(`projectStatus`·`rowBanner`·`meterSlot`)이
    * `ProjectStatusInput & ProjectEvents`를 받으므로, 중첩하면 화면이 렌더마다 `{...row, ...row.events}`를
