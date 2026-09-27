@@ -2729,6 +2729,9 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   허용한다. 동일 출처인지는 preview Network 탭이 판정이다.
   ⚠️ **`identify`·`track`을 부르지 않는다** — 수집 스크립트(`va.vercel-scripts.com/v1/script.js`, 2026-09-27 확인)는 쿠키가 없고 `localStorage`를
   userId/groupId를 줄 때만 쓴다. `/privacy`의 "stores nothing in your browser"가 그 위에 선다(`lib/seo/__tests__/analytics-imports.test.ts`).
+  **같은 호스트 referrer는 수집 스크립트가 버린다**(`script.debug.js` 2026-09-27 확인 — `document.referrer.includes(location.host)`면 `r`을 안 싣는다) —
+  앱 → Help 새 탭·`/signin?callbackUrl=…`의 slug·쿼리는 안 나가고, 실리는 것은 타 사이트 referrer뿐이다. 토큰 페이지의 `no-referrer`는
+  배포 스크립트가 그 판정을 바꿔도 전체 URL referrer가 생기지 않게 하는 방어다. 그래서 Referrer-Policy는 바꾸지 않았다.
 
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
 
