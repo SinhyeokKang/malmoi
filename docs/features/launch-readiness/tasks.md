@@ -135,6 +135,11 @@
   - ⚠️ "사건은 지우지 않는다"(ProjectEvent, 불변식 3 확장)는 앱의 동작 규칙이라 출시 전 운영자 초기화와 충돌하지 않는다.
   - 검증(수동): 두 DB에서 앱 테이블 행 0 · `pnpm db:status`/`db:status:prod` 최신 · anon·authenticated USAGE false 유지 · Blob 스토어 객체 0 · 오너 로그인 → 새 프로젝트 생성 한 바퀴.
 
+- [ ] L2.12 **OG 이미지 `public/og.png`를 만든다(사용자 몫, 2026-09-27 seo-geo에서 이관)**: 코드는 이미 `OG_IMAGE`(`lib/seo/`)로 모든 공개 페이지의 `og:image`·`twitter:image`에 `https://mal-moi.com/og.png`를 싣는다 — 파일이 없는 동안 그 URL은 404다(빌드는 통과, 공유 카드에 이미지가 안 뜬다).
+  - 규격: 1200×630 PNG, 8MB 이하. 텍스트는 가운데 약 1000×520 안(슬랙·X·카톡이 가장자리를 자른다). 표기 `Malmoi`.
+  - 같이 고친다: `messages/en.tsx`의 `m.seo.ogImageAlt`(아직 없는 이미지를 묘사한 초안) → 실제 이미지 내용 한 문장 · `docs/DIRECTORY.md`의 `public/og.png` 행("아직 리포에 없음" 문구를 걷는다).
+  - 검증: 로컬 `curl -sI localhost:3000/og.png` 200 · `/merge` 뒤 `curl -sI https://mal-moi.com/og.png` 200 · 슬랙/X 카드 미리보기에 이미지.
+
 ## R3 — 동작 결함 (🟡)
 
 - [x] L3.1 (2026-09-18 — **증상은 재현되지 않았고 그 이유가 우연이었다**: `constructor` 로케일로 찾아지는 `Object.prototype.constructor`에 `Cell`의 필드가 하나도 없어 `cell.pending`·`cell.value`가 전부 `undefined`로 떨어졌을 뿐이다 — `Cell`에 그 이름의 필드가 하나 생기면 끝나는 우연이라 고쳤다. `__proto__`는 `isPathSafeLocale`이 `_` 시작으로 막지만 그 방어선은 다른 모듈에 있는 한 겹이었다. 읽기는 `cellAt`(`Object.hasOwn`) 하나로 모으고 대입은 `Object.create(null)`. **감사 목록에 없던 `lib/pull/render.ts:41`도 같은 부류라 함께 닫았다** — 파일로 나가는 경로다. 재발 방지는 POSTMORTEM grep 대신 소스 스캔 테스트로 박았다(`view.test.ts` — `.cells[`가 hasOwn 밖에 0건 · 대입이 `Object.create(null)`)) `lib/keys/query.ts:120` — 평범한 `{}`에 `Locale.code`를 대입하고 `lib/keys/view.ts:112,334`·`components/translations/key-group.tsx:96`이 `hasOwn` 없이 읽는다. `constructor` 로케일(`isValidLocaleCode` 통과)이면 "Not sent" 배지·필터가 거짓으로 켜진다. `lib/pull/plan.ts:58`·`json-catalog.ts:148`은 **경로** 키 맵이라 부류가 다르다(전자는 `typeof === "boolean"` 가드 있음) — 대상에서 뺀다. POSTMORTEM 2026-09-09의 grep 패턴에 `t.localeCode` 모양을 더한다. (audit #17)
