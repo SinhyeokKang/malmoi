@@ -11,7 +11,7 @@ import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
 import { keySlot } from "@/lib/pull/undeliverable";
 import { buildPublishDiff, PREVIEW_LIMIT, type BaseValues, type PublishCell } from "./diff";
-import { PreviewBaseFileMissing, type PublishPreview } from "./preview";
+import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, type PublishPreview } from "./preview";
 
 /** 이전 값은 표시 전용이다 — export·커밋·PR 판정의 입력으로 넘기지 않는다. */
 export async function readPublishPreview(prisma: PrismaClient, projectId: string, slug: string): Promise<PublishPreview> {
@@ -46,20 +46,27 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     const format = formatFromProject(surface, surface.locales.map(l => l.code));
     const adapter = adapterFor(format);
     const paths = resolveLocalePaths(format, adapter.layout, tree.map(t => t.path));
-    const needed = paths.filter(p => adapter.layout === "multi-locale" || surfaceRows.some(r => r.localeCode === p.locale));
+    // ⚠️ **재생성 per-locale은 base 파일을 늘 읽는다** (B3 r3) — 실행이 base 원본으로 base 키 집합을 정하고(B3.4) 못 읽으면 비-base 편집만 있어도 거부한다.
+    const regeneratePerLocale = adapter.layout === "per-locale" && adapter.writeStrategy === "regenerate";
+    const isBasePath = (p: (typeof paths)[number]) => regeneratePerLocale && p.locale === surface.baseLocale;
+    const needed = paths.filter(p => adapter.layout === "multi-locale" || isBasePath(p) || surfaceRows.some(r => r.localeCode === p.locale));
     for (let offset = 0; offset < needed.length; offset += 8) {
       await Promise.all(needed.slice(offset, offset + 8).map(async p => {
         const sha = shas.get(p.path);
         if (!sha) return;
         const content = await client.getBlobText(sha);
         const read = adapter.read(format, [{ path: p.path, content }]);
+        // 실행과 같은 판정이다(`render.ts` `baseOwnedByOriginal`) — read가 base 로케일을 못 내면 키 집합을 모른다.
+        if (isBasePath(p) && !read.locales.some(l => l.locale === surface.baseLocale)) throw new PreviewBaseFileUnreadable(p.path, project.baseBranch);
+        // base 행이 없어 판정만을 위해 읽은 파일은 아래 읽기 오류로 막지 않는다 — 실행은 base의 비문자열 값이 있어도 그 편집들을 싣는다.
+        const onlyForKeySet = isBasePath(p) && !surfaceRows.some(r => r.localeCode === p.locale);
         // ⚠️ **편집과 무관한 비관리 항목은 막지 않는다** — 수술적 writer가 파일에 그대로 두는 값(코드의 식·참조·shorthand, YAML 숫자·불리언 —
         // `adapterErrorKind === "unmanaged"`)이고, 실행은 wanted 키의 그런 자리만 경고한다(delivery-invariants D4 · audit #8). 전부 막으면
         // `{ hello: "hi", b: someFn }`·`precision: 3` 파일의 Publish가 화면에서 영영 열리지 않는다. 편집 대상 키가 그 자리이거나 그 밖의 읽기 오류는 막는다.
         const edited = new Set(surfaceRows.map(r => r.stringKey.key));
         // 경고(`duplicate-property`)도 막지 않는다 — 실행이 마지막 값을 싣고 그 자리를 고친다(B7a r1). `read.locales`가 이미 그 값이다.
         const preserved = (e: (typeof read.errors)[number]) => adapterErrorKind(e.code) === "unmanaged" && !(e.key !== undefined && edited.has(e.key));
-        if (read.errors.some(e => adapterErrorKind(e.code) !== "warning" && !preserved(e))) throw new Error("Preview cannot read all values");
+        if (!onlyForKeySet && read.errors.some(e => adapterErrorKind(e.code) !== "warning" && !preserved(e))) throw new Error("Preview cannot read all values");
         const file: BaseValues[string] = Object.create(null);
         for (const locale of read.locales) {
           const entries: Record<string, string> = Object.create(null);

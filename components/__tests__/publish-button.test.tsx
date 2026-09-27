@@ -236,6 +236,8 @@ it("OWNER의 보류 줄은 파일 추가나 Revert to last sent를 가리킨다"
   mocks.pull.mockResolvedValueOnce(committedWith({ file: 0, key: 1 }));
   await render(<Host role="OWNER" />); await click("Publish1"); await click("Open pull request");
   expect(document.body.textContent).toContain(`${m.translations.publish.withheld.key(1)} ${m.translations.publish.withheld.owner.key}`);
+  // 코드에서 지운 키(B3.4)도 같은 줄이다 — Revert를 먼저 가리키고, 키를 "다시" 넣는 것을 둘째로 둔다(B3 r3).
+  expect(m.translations.publish.withheld.owner.key).toBe("Use Revert to last sent, or add the keys back to the language file.");
 });
 it("미리보기가 키 자리 없는 셀을 따로 말한다", async () => {
   mocks.preview.mockResolvedValue(ok({ ...preview, total: 2, withoutFile: 0, withoutKey: 1, sendable: { total: 1, keys: 1 } }));
@@ -258,6 +260,20 @@ it.each(["OWNER", "EDITOR"] as const)("미리보기 base 파일 부재(%s)는 �
   expect([...document.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(false);
   const settings = [...document.querySelectorAll('[role="dialog"] a')].filter(a => a.getAttribute("href") === "/projects/acme/settings");
   expect(settings).toHaveLength(role === "OWNER" ? 1 : 0);
+  expect(mocks.pull).not.toHaveBeenCalled();
+});
+/** **base 원본을 못 읽는 것도 전용 거부다** (B3 r3) — 실행이 `write-parse-failed`로 막는 상태라 N건을 약속하지 않는다. Try again이 없다. */
+it.each(["OWNER", "EDITOR"] as const)("미리보기 base 파일 읽기 불가(%s)는 경로를 말하는 거부이고 Try again이 없다", async role => {
+  mocks.preview.mockResolvedValue({ status: "refused", reason: "base-file-unreadable", path: "en.json", branch: "main" });
+  await render(<Host role={role} />);
+  await click("Publish1");
+  const text = document.body.textContent ?? "";
+  const r = m.translations.publish.baseFileUnreadable;
+  expect(text).toContain(r.title);
+  expect(text).toContain(r.description("en.json", "main"));
+  expect(text).toContain(role === "OWNER" ? r.owner : r.editor);
+  expect(text).not.toContain(m.translations.publish.baseFileMissing.title);
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(false);
   expect(mocks.pull).not.toHaveBeenCalled();
 });
 /**

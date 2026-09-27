@@ -27,15 +27,23 @@ export class PreviewBaseFileMissing extends Error {
   override readonly name = "PreviewBaseFileMissing";
   constructor(readonly path: string, readonly branch: string) { super("Preview base file missing"); }
 }
+/**
+ * **base 언어 파일을 읽을 수 없다** (B3 r3 — B3.4). 재생성 per-locale 표면은 base 원본으로 base 키 집합을 정하므로 실행이 `write-parse-failed`로
+ * 거부한다 — 비-base 편집만 있어도 그렇다. 부재와 같은 "이유가 있는 거부"이고 고칠 곳이 다르다(파일을 고친다).
+ */
+export class PreviewBaseFileUnreadable extends Error {
+  override readonly name = "PreviewBaseFileUnreadable";
+  constructor(readonly path: string, readonly branch: string) { super("Preview base file unreadable"); }
+}
 export type PublishPreviewResult =
   | { status: "ok"; preview: PublishPreview }
-  | { status: "refused"; reason: "base-file-missing"; path: string; branch: string }
+  | { status: "refused"; reason: "base-file-missing" | "base-file-unreadable"; path: string; branch: string }
   | { status: "rejected"; error: "unauthorized" | "forbidden" | "not-found" | "archived" | "invalid input" }
   | { status: "failed" };
 export type PublishModalState =
   | { kind: "preview-loading" }
   | { kind: "preview-ready"; preview: PublishPreview }
   | { kind: "preview-error" }
-  | { kind: "preview-refused"; path: string; branch: string }
+  | { kind: "preview-refused"; reason: "base-file-missing" | "base-file-unreadable"; path: string; branch: string }
   | { kind: "running" }
   | { kind: "result"; outcome: import("@/lib/pull/message").PullOutcome };

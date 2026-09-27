@@ -309,3 +309,39 @@ it.each([
   expect(preview).toMatchObject({ withoutFile: 0, withoutKey: 1, sendable: { total: 1, keys: 1 } });
   expect(result).toMatchObject({ status: "committed", delivered: preview.sendable.total, withheld: { file: 0, key: preview.withoutKey } });
 });
+/**
+ * **per-locale 재생성 표면은 비-base 편집만 있어도 base 파일을 읽는다** (B3 r3 Y4). 실행은 base 원본으로 base 키 집합을 정하므로(B3.4) 원본 base를
+ * 못 읽으면 `write-parse-failed`로 막는다 — 미리보기가 base 행이 없다고 그 파일을 안 읽으면 N건을 약속하고 실행이 거부한다.
+ */
+it("재생성 per-locale: 읽을 수 없는 base 원본 + 비-base 편집만 → 미리보기는 이유 있는 거부, 실행은 writer-warnings (같은 픽스처)", async () => {
+  const { runPull } = await import("@/lib/pull/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  const { PreviewBaseFileUnreadable } = await import("../preview");
+  const EN = "{ not json";
+  const FR = '{\n  "hello": "Salut"\n}\n';
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, locales: [{ code: "en" }, { code: "fr" }] }] });
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "fr", value: "Bonjour" }]);
+  mocks.client.getTree.mockResolvedValue([{ path: "en.json", sha: "en" }, { path: "fr.json", sha: "fr" }]);
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => (sha === "en" ? EN : FR));
+  const refused = await readPublishPreview(db as unknown as PrismaClient, "p", "acme").catch((e: unknown) => e);
+  expect(refused).toBeInstanceOf(PreviewBaseFileUnreadable);
+  expect(refused).toMatchObject({ path: "en.json", branch: "main" });
+  const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: [{ path: "en.json", sha: "en" }, { path: "fr.json", sha: "fr" }] }, blobs: { en: EN, fr: FR } });
+  const result = await runPull({
+    loadState: async () => ({
+      project: { ...project, slug: "acme" },
+      surfaces: [{ ...surface, localeCodes: ["en", "fr"], keys: [{ id: "k", key: "hello", sourceText: "Hi", orphaned: false, cells: { en: { value: "Hi" }, fr: { value: "Bonjour" } } }] }],
+      maxUpdatedAt: new Date(), unpublished: 1, pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s", keyId: "k", localeCode: "fr", restoreValue: "" } }],
+    }),
+    createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
+  });
+  expect(result).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+});
+it("재생성 per-locale: 읽을 수 있는 base(숫자 값 포함) + 비-base 편집만 → 미리보기가 열린다 (짝 — base 행이 없으면 읽기 오류로 막지 않는다)", async () => {
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, locales: [{ code: "en" }, { code: "fr" }] }] });
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "fr", value: "Bonjour" }]);
+  mocks.client.getTree.mockResolvedValue([{ path: "en.json", sha: "en" }, { path: "fr.json", sha: "fr" }]);
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => (sha === "en" ? '{"hello":"Hi","n":3}' : '{"hello":"Salut"}'));
+  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(result.groups.flatMap(g => g.rows.map(r => `${r.localeCode}:${r.before}`))).toEqual(["fr:Salut"]);
+});

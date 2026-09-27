@@ -2226,7 +2226,8 @@ export const en = {
         editor: "Ask a project owner.",
         owner: {
           file: "Add the file to the repository, or use Revert to last sent.",
-          key: "Add the keys to the language file, or use Revert to last sent.",
+          // 코드에서 지운 키(B3.4)도 이 줄이다 — 되돌리기가 먼저이고, 키를 "다시" 넣는 것은 둘째다(B3 r3).
+          key: "Use Revert to last sent, or add the keys back to the language file.",
         },
       },
 
@@ -2397,6 +2398,14 @@ export const en = {
           `Malmoi looks for it at ${path} on ${branch}, and nothing was sent while it's missing.`,
         owner: "Restore the file on that branch, or change the path or branch in Settings.",
         editor: "Ask a project owner to restore the file or change the path in Settings.",
+      },
+      /** base 언어 파일을 읽을 수 없다 (B3 r3 — 실행이 base 키 집합을 못 정해 막는다). 부재와 같은 거부 모양이고 고칠 곳이 파일 내용이다. */
+      baseFileUnreadable: {
+        title: "The base language file can't be read",
+        description: (path: string, branch: string): string =>
+          `Malmoi couldn't parse ${path} on ${branch}, so it can't tell which keys the file has. Nothing was sent.`,
+        owner: "Fix the file on that branch, or change the path or branch in Settings.",
+        editor: "Ask a project owner to fix the file or change the path in Settings.",
       },
       unknownDelivery: "We couldn't confirm whether your changes were sent.",
 

@@ -64,7 +64,7 @@ export function usePublish(slug: string, server?: unknown) {
       const next: PublishModalState =
         data.status === "ok" ? { kind: "preview-ready", preview: data.preview }
         : data.status === "rejected" ? { kind: "result", outcome: { status: "failed", error: data.error, delivery: "not-started", retryable: false } }
-        : data.status === "refused" ? { kind: "preview-refused", path: data.path, branch: data.branch }
+        : data.status === "refused" ? { kind: "preview-refused", reason: data.reason, path: data.path, branch: data.branch }
         : { kind: "preview-error" };
       current.current = next; setState(next);
     } catch {
@@ -404,7 +404,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
     case "preview-refused": {
       // ⚠️ **Try again이 없다** — 파일이 생기거나 경로가 고쳐질 때까지 같은 거부다(L3.3). 고칠 곳은 역할이 가른다: Settings는 OWNER에게만 열린다.
       panel = PANEL.configError; inner = false; quiet = true;
-      const r = p.baseFileMissing;
+      const r = state.reason === "base-file-unreadable" ? p.baseFileUnreadable : p.baseFileMissing;
       title = r.title; description = r.description(state.path, state.branch); footer = p.notStarted;
       actions = role === "OWNER" ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.settings(slug)}>{p.settings}</a> : null;
       body = <Stack><Alert variant="danger" title={p.wontHelp}>{role === "OWNER" ? r.owner : r.editor}</Alert></Stack>;
