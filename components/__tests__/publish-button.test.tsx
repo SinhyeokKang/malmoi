@@ -121,6 +121,8 @@ it("응답을 잃은 Publish는 확인 못 함을 말하고 한 번 다시 읽�
   // "GitHub didn't answer"는 사실이 아니다 — 끊긴 것은 Malmoi 응답이고, GitHub 쓰기는 끝났을 수 있다.
   expect(document.body.textContent).not.toContain("GitHub didn't answer");
   expect(document.body.textContent).not.toContain("failed partway");
+  // 열린 PR이 있으면 새로 열지 않고 갱신한다 — "opened the pull request"는 그 갈래에서 거짓이다.
+  expect(document.body.textContent).toContain("Malmoi may have sent your changes anyway.");
   await click("Close");
   expect(button("Publish").getAttribute("aria-busy")).toBe("true");
   // refresh 트리 — 서버가 보냈다면 건수가 0이다.

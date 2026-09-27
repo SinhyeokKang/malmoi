@@ -144,6 +144,8 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
             ⚠️ **"didn't finish"로 접지 않는다** (malmoi#135 — Sync의 #132와 같은 부류) — throw는 요청이 나간 뒤 응답을 잃은 것일 수 있고,
             그때 서버는 적재를 끝냈는데 재검증 트리가 응답과 함께 사라져 상세가 옛 [Run first sync]에 남았다. 다시 실행하지 않는다 —
             서버 상태만 다시 읽는다: refresh가 바꾼 `data`를 아래 effect가 받아 상세를 한 번 읽는다.
+            ⚠️ 다시 눌러도 서버가 거부하는 것은 **끝난** 적재뿐이다(`not-awaiting`) — 아직 도는 적재는 `finally`가 `busy`를 refresh 트리보다
+            먼저 내려 두 번째 첫 적재와 겹칠 수 있다(둘 다 리포 값만 싣고 아직 편집이 없다).
             ⚠️ **오프라인이면 부르지 않는다** — RSC fetch 실패는 Next의 브라우저 내비게이션(MPA 폴백)이 되어 오류 페이지가 결과를 덮는다.
             온라인의 남은 폴백 갈래(5xx · 세션 만료 302 · 배포 스큐)는 리로드된 화면이 서버 상태를 말하므로 받는다(`sync-button.tsx`).
           */
