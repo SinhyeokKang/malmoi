@@ -354,10 +354,17 @@ export const en = {
     },
     /** 히어로 — 버튼 둘은 헤더와 같은 말이라 `shell.docs`·`shell.getStarted`를 쓴다(같은 구역). */
     hero: {
-      /** h1 두 줄 — 시안이 줄을 정한다(`<br>`). ⚠️ 둘째 줄은 Sentence case다(시안 열린 결정 3). */
+      /**
+       * h1 두 줄 — 줄은 `<br>`가 가른다. ⚠️ 둘째 줄은 Sentence case다(시안 열린 결정 3).
+       * ⚠️ **구현된 화면이라 코드가 정본이다** — Claude Design 시안은 첫 구현 동안만 정본이었다. 문구를 바꿀 때 시안을 따라가지 않는다.
+       */
       title: ["Connect your projects,", "translate & ship together"] as const,
-      /** ⚠️ `locale files`가 아니다 — `terminology.test.ts`가 `locale`을 금지한다(DESIGN §10.1). */
-      body: "Malmoi finds the translation files already in your repo, lets teammates edit them in the browser, and sends every change back as one pull request.",
+      /**
+       * ⚠️ `locale files`가 아니다 — `terminology.test.ts`가 `locale`을 금지한다(DESIGN §10.1).
+       * ⚠️ **첫 문장이 정의다**(seo-geo T12a) — 이 값이 홈 description·`og:description`·`llms.txt` 머리·JSON-LD 설명으로도 나간다.
+       * 분량을 늘리지 않는다(히어로 줄 수).
+       */
+      body: "Malmoi is a localization tool for GitHub repos: it finds your translation files, lets teammates edit them in the browser, and sends every change back as one pull request.",
     },
     /** 스크롤 구동 목업 — 캡션 다섯은 씬 순서다. 보이는 캡션은 `aria-hidden`이고 visually-hidden `<ol>`이 늘 담는다. */
     stage: {
@@ -372,7 +379,8 @@ export const en = {
     },
     closing: {
       title: "Start from the files you already have",
-      body: "Connect a GitHub repository, invite your team, and send the first pull request when the translations are ready.",
+      /** 지원 포맷을 문장으로 선다(seo-geo T12a) — 목록은 `guide/reference/formats.md`와 같다. 분량을 늘리지 않는다. */
+      body: "Connect a GitHub repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and send the first pull request.",
     },
     /**
      * 목업의 **가상 데이터** — 앱 라벨은 여기 없다. 라벨은 실제 사전 키를 읽는다(목업과 앱이 다른 말을 하면 랜딩이 거짓이다).
