@@ -139,10 +139,20 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           // 반환해 `data`가 안 바뀌고 상세가 옛 [Run first sync]에 남는다. 다른 조기 거부는 바뀐 것이 없어 읽을 것도 없다.
           if (!outcome.ok && outcome.error === "not-awaiting") void load(surfaceSlug, true);
           setResult(outcome.ok ? { tone: outcome.failed > 0 ? "warning" : "success", text: ingestHeadline(outcome.count, outcome.failed, outcome.unmanaged), source: surfaceSlug } : { tone: "danger", text: failureText(outcome.error), source: surfaceSlug });
-        } catch { setResult({ tone: "danger", text: m.settings.status.failed, source: surfaceSlug }); }
+        } catch {
+          /*
+            ⚠️ **"didn't finish"로 접지 않는다** (malmoi#135 — Sync의 #132와 같은 부류) — throw는 요청이 나간 뒤 응답을 잃은 것일 수 있고,
+            그때 서버는 적재를 끝냈는데 재검증 트리가 응답과 함께 사라져 상세가 옛 [Run first sync]에 남았다. 다시 실행하지 않는다 —
+            서버 상태만 다시 읽는다: refresh가 바꾼 `data`를 아래 effect가 받아 상세를 한 번 읽는다.
+            ⚠️ **오프라인이면 부르지 않는다** — RSC fetch 실패는 Next의 브라우저 내비게이션(MPA 폴백)이 되어 오류 페이지가 결과를 덮는다.
+            온라인의 남은 폴백 갈래(5xx · 세션 만료 302 · 배포 스큐)는 리로드된 화면이 서버 상태를 말하므로 받는다(`sync-button.tsx`).
+          */
+          setResult({ tone: "warning", text: m.settings.status.unconfirmed, source: surfaceSlug });
+          if (navigator.onLine !== false) router.refresh();
+        }
         finally { setBusy(false); setImporting(false); }
         /*
-          ⚠️ **refresh도 직접 재조회도 부르지 않는다** (audit-ux #12 — 위 `not-awaiting` 하나만 예외). 적재를 시작한 뒤의 성공·실패는 Action의 `finally`가 `revalidatePath`를 부르고,
+          ⚠️ **응답이 온 결과에는 refresh도 직접 재조회도 부르지 않는다** (audit-ux #12 — 위 `not-awaiting`과 응답 유실만 예외). 적재를 시작한 뒤의 성공·실패는 Action의 `finally`가 `revalidatePath`를 부르고,
           그 커밋이 바꾼 `data`를 위 effect가 받아 열린 상세를 **한 번** 다시 읽는다 — 셋을 다 부르면 `loadSourceDetail`이 세 번 돌았다.
           실패 뒤 refresh가 거부를 씻던 함정(audit #11 — POSTMORTEM 2026-09-08 재발)은 호출이 없으니 생기지 않는다.
           ⚠️ async transition으로 감싸지 않는다 — 적재가 긴 동안 내비게이션까지 얽힌다(`sync-button.tsx`).

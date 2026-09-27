@@ -4,6 +4,7 @@ import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
 import { CircleCheck, FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useRef, useState, type RefObject, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { triggerPullAction } from "@/app/(edit)/actions";
 import { useCommitWait } from "@/components/commit-wait";
 import { loadPublishPreview } from "@/app/(edit)/publish-actions";
@@ -15,7 +16,7 @@ import { OnboardingModal } from "@/components/ui/modal";
 import { m } from "@/lib/i18n";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
-import { pullRevalidates, type PullOutcome } from "@/lib/pull/message";
+import { pullRevalidates, UNCONFIRMED_PULL, type PullOutcome } from "@/lib/pull/message";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { routes } from "@/lib/routes";
 import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
@@ -33,6 +34,7 @@ type PublishResultState = { outcome: PullOutcome; at: Date; total: number };
  */
 export function usePublish(slug: string, server?: unknown) {
   const commit = useCommitWait(server);
+  const router = useRouter();
   const [state, setState] = useState<PublishModalState>({ kind: "preview-loading" });
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -79,7 +81,8 @@ export function usePublish(slug: string, server?: unknown) {
     if (total === 0) return;
     running.current = true; generation.current++; setPending(true); setRunTotal(total); setRunLabel(label);
     current.current = { kind: "running" }; setState(current.current);
-    const next: PullOutcome = await triggerPullAction(slug).catch(() => ({ status: "failed", error: "unavailable", retryable: true, delivery: "unknown" }));
+    // ⚠️ **다시 실행하지 않는다** (malmoi#135) — throw는 요청이 나간 뒤 응답을 잃은 것일 수 있고, 그때 서버는 PR을 냈다. 두 번 나갈 수 있다.
+    const next: PullOutcome = await triggerPullAction(slug).catch(() => UNCONFIRMED_PULL);
     if (owner !== host.current) return;
     running.current = false; setPending(false); setResult({ outcome: next, at: new Date(), total });
     current.current = { kind: "result", outcome: next }; setState(current.current);
@@ -89,7 +92,14 @@ export function usePublish(slug: string, server?: unknown) {
     */
     if (pullRevalidates(next)) commit.wait();
     /*
-      ⚠️ **`router.refresh()`를 부르지 않는다** (audit-ux #12) — `triggerPullAction`이 결과와 무관하게 `revalidatePath(…, "layout")`를
+      ⚠️ **응답을 잃은 실행만 refresh한다** (malmoi#135 — Sync의 #132와 같은 예외) — 재검증 트리가 응답과 함께 사라져 화면이 Publish 전
+      `To send`·PR 링크로 남는다. `wait()`가 옛 트리를 기준으로 먼저 떠야 refresh 트리까지 교차 잠금이 선다.
+      ⚠️ **오프라인이면 부르지 않는다** — RSC fetch가 실패하면 Next가 브라우저 내비게이션(MPA 폴백)으로 떨어져 오류 페이지가 결과를 덮는다.
+      ⚠️ 온라인이어도 그 폴백 갈래(5xx · 세션 만료 302 · 배포 스큐)는 남는다 — 리로드된 화면이 서버 상태를 말하므로 받는다(`sync-button.tsx`).
+    */
+    if (next === UNCONFIRMED_PULL && navigator.onLine !== false) router.refresh();
+    /*
+      ⚠️ **응답이 온 결과에는 `router.refresh()`를 부르지 않는다** (audit-ux #12) — `triggerPullAction`이 결과와 무관하게 `revalidatePath(…, "layout")`를
       부르고 Next가 그 응답의 새 트리를 커밋한다. 또 부르면 결과가 선 뒤 두 번째 전체 렌더가 표시 없이 돌았다.
       ⚠️ async transition으로 감싸지 않는다 — 긴 Publish 동안 내비게이션까지 얽힌다(`sync-button.tsx`).
     */
@@ -602,7 +612,9 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         case "transient-error": {
           panel = PANEL.transientError; inner = false;
           const failed = outcome.status === "failed" ? outcome : null;
-          title = p.transientError; description = p.transientErrorDescription;
+          // 응답을 잃은 실행은 GitHub가 아니라 Malmoi 응답이 끊긴 것이다 (malmoi#135) — "GitHub didn't answer"·"failed partway"가 거짓이 된다.
+          const lost = failed?.error === UNCONFIRMED_PULL.error;
+          title = lost ? p.lostResponse : p.transientError; description = lost ? p.lostResponseDescription : p.transientErrorDescription;
           footer = failed?.delivery === "unknown" ? p.unknownDelivery : p.notStarted;
           quiet = true;
           actions = <Button variant="primary" size="lg" onClick={() => void publish.preview()}>{p.retry}</Button>;

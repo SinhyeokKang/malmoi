@@ -2452,6 +2452,13 @@ export const en = {
         </>
       ),
       retry: "Try again",
+      /**
+       * `1i`의 응답 유실 형 — 클라이언트만 낸다 (malmoi#135). 끊긴 것은 Malmoi의 응답이라 `transientError`의 "GitHub"·"partway"가 거짓이다.
+       * ⚠️ **"화면이 최신이다"를 덧붙이지 않는다** — 오프라인이면 다시 읽지 않는다(`usePublish`). 무엇이 됐는지는 다시 읽은 화면이 말한다.
+       */
+      lostResponse: "The response didn't come back",
+      lostResponseDescription:
+        "Malmoi may have opened the pull request anyway. Your edits are still saved here.",
 
       /** 실행 전 명시적 거부만 미전송을 단정한다 (spec C10). */
       notStarted: "Nothing was sent. Your edits are safe.",
@@ -2941,7 +2948,11 @@ export const en = {
     },
 
     status: {
-      failed: "The sync didn't finish. Try again in a moment.",
+      /**
+       * 응답을 잃은 첫 적재 — 클라이언트만 낸다 (malmoi#135). ⚠️ **"didn't finish"를 쓰지 않는다**(옛 `failed`) — 서버가 적재를 끝냈을 수 있다.
+       * 무엇이 됐는지는 다시 읽은 상세가 말한다. 다시 눌러도 안전하다 — 끝났으면 서버가 `not-awaiting`으로 거부한다.
+       */
+      unconfirmed: "We couldn't confirm whether the sync finished.",
     },
 
     token: {

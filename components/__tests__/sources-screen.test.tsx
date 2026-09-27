@@ -113,6 +113,34 @@ it.each(["unauthorized", "unavailable", "forbidden", "archived"])("조기 거부
   expect(mocks.load).toHaveBeenCalledTimes(1);
   expect(mocks.refresh).not.toHaveBeenCalled();
 });
+/**
+ * ⚠️ **응답을 잃은 첫 적재는 서버가 끝냈을 수 있다** (malmoi#135 — Sync의 #132와 같은 부류). 전엔 *"The sync didn't finish"*를
+ * 단언하고 재검증 트리 없이 옛 [Run first sync]에 남았다. 확인 못 함을 말하고 **한 번** refresh한다 — 바뀐 `data`를 받는 effect가
+ * 상세를 다시 읽는다. 다시 실행하지 않는다.
+ */
+it("응답을 잃은 첫 적재는 끝나지 않았다고 단언하지 않고 한 번 refresh한다 (malmoi#135)", async () => {
+  mocks.load.mockResolvedValue({ ok: true, detail: first });
+  mocks.runFirstIngest.mockRejectedValue(new Error("lost"));
+  await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
+  await open();
+  await act(async () => { await userEvent.setup().click(button("Run first sync")); });
+  expect(mocks.runFirstIngest).toHaveBeenCalledTimes(1);
+  expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  expect(document.body.textContent).toContain(m.settings.status.unconfirmed);
+  expect(document.body.textContent).not.toContain("didn't finish");
+});
+it("오프라인에서 응답을 잃은 첫 적재는 refresh를 부르지 않는다", async () => {
+  mocks.load.mockResolvedValue({ ok: true, detail: first });
+  mocks.runFirstIngest.mockRejectedValue(new Error("offline"));
+  const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+  try {
+    await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
+    await open();
+    await act(async () => { await userEvent.setup().click(button("Run first sync")); });
+    expect(document.body.textContent).toContain(m.settings.status.unconfirmed);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  } finally { online.mockRestore(); }
+});
 it("첫 적재 성공은 재검증된 data로 상세를 정확히 한 번 다시 읽는다", async () => {
   const view = await runFirst({ ok: true, count: 7, failed: 0 });
   expect(mocks.load).toHaveBeenCalledTimes(1);
