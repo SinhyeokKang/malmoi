@@ -39,7 +39,7 @@ it("사이드바 하단에 Sign out이 없고 Release notes(새 탭) · Docs 순
   const { container } = await render(<Sidebar memberships={[]} userName="Kim" userImage={null} />);
   expect(container.querySelector("form")).toBeNull();
   expect([...container.querySelectorAll("button")].some(b => b.textContent?.trim() === m.common.nav.signOut)).toBe(false);
-  const footer = [...container.querySelectorAll<HTMLAnchorElement>("aside > div:last-child a")];
+  const footer = [...container.querySelectorAll<HTMLAnchorElement>('[data-sidebar-zone="footer"] a')];
   expect(footer.map(a => [a.textContent?.trim(), a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")])).toEqual([
     [m.common.nav.releaseNotes, GITHUB_RELEASES_URL, "_blank", "noreferrer"],
     [m.publicDocs.docs.title, routes.docs(), null, null],

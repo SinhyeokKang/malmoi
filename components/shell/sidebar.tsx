@@ -91,7 +91,7 @@ export function Sidebar({
         하단 전역 — 라우트가 아니라 "앱을 벗어나는 것"이라 구역 밖이다. Release notes(GitHub, 새 탭) · Docs(`/docs`) 둘이다.
         ⚠️ **Sign out이 없다** (2026-09-27 사용자) — 로그아웃은 헤더 사용자 메뉴 하나에만 있다.
       */}
-      <div className="mt-auto flex flex-col gap-0.5 pt-2">
+      <div data-sidebar-zone="footer" className="mt-auto flex flex-col gap-0.5 pt-2">
         {navFooterItems().map((item) => (
           <Item key={item.key} item={item} active={isActive(pathname, item)} />
         ))}
