@@ -294,6 +294,20 @@ describe("Stage — 크기 변화", () => {
   });
 });
 
+/**
+ * **베젤은 흰 두꺼운 테두리 + 얇은 회색 외곽선이다** (2026-09-27 사용자 — 시안). `bg-canvas`면 회색 판 위에 화면이 얹힌
+ * 모양이 되어 "기기 테두리"로 읽히지 않는다. 두께 12는 `-inset-3`이 든다.
+ */
+describe("Stage — 베젤", () => {
+  it("대기 베젤이 흰 채움과 얇은 회색 외곽선이다", async () => {
+    const { container } = await mount();
+    const bezel = find<HTMLElement>(container, "[data-landing-frame] > .rounded-3xl.border");
+    const classes = bezel.className.split(" ");
+    expect(classes).toEqual(expect.arrayContaining(["-inset-3", "border", "border-border", "bg-background"]));
+    expect(classes).not.toContain("bg-canvas");
+  });
+});
+
 describe("Stage — 접근성", () => {
   it("캡션 다섯은 visually-hidden `<ol>`이 늘 담고, 보이는 캡션과 프레임은 `aria-hidden`이다", async () => {
     const { container } = await mount();
