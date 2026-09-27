@@ -90,7 +90,7 @@ jobs:
 **새 온보딩과 워크플로를 다시 복사한 리포만 v2다.** `malmoi-i18n-push-v1`(8511d37, 2026-09-14)은 옮기지 않았다 —
 v2에는 그 뒤의 `scripts/push-local.ts`가 같이 나가고, 그 안에 v1 소비자에게 **새 red**가 되는 판정이 있어서다(아래 표).
 v1 리포는 아무것도 안 바뀐다. **v2로 옮기는 법**: 말모이 프로젝트 Settings → Workflow file의 파일 전체를 다시 복사해
-`.github/workflows/malmoi-i18n.yml`을 덮는다(표면이 둘 이상이면 그 파일이 step을 전부 담는다). v1 run 로그의
+`.github/workflows/malmoi-i18n.yml`을 덮는다(표면이 둘 이상이면 그 파일이 step을 전부 담는다). ⚠️ **손으로 더한 입력은 붙여넣은 뒤 다시 넣는다** — 생성 파일은 `wrapper`를 내지 않고(`renderSurfaceWorkflowStep`), 고친 `api-url`·트리거(`branches:` 등)도 생성값으로 돌아간다. `wrapper`가 빠지면 run은 green인 채 사용처(`refs`)만 조용히 빈다. v1 run 로그의
 Node 20 사용 중단 경고는 옮기기 전까지 남는다.
 
 | 무엇 | v1 | v2 |
@@ -137,9 +137,9 @@ action 안의 두 판은 `workflow-pins.test.ts`가 기대 SHA로 박는다 — 
 
 ⚠️ **토큰은 프로젝트를 만들 때 한 번, 그리고 설정 화면의 [토큰 재발급]으로 나온다** — 원문은 그 화면을 벗어나면 다시 볼 수 없고 서버는 해시만 갖는다. 재발급하면 **옛 토큰이 즉시 무효**이므로 이 리포의 secret을 같은 세션에 바꾼다.
 
-대상 리포는 Node·pnpm 셋업이 필요 없다 — action이 말모이를 clone해 `.nvmrc`·`packageManager` 기준으로 세우고 `pnpm install`한다(`ubuntu-latest` 전제, run 시간의 대부분이 이 install이다). **v1은 run당 30~50초다**(2026-09-27 실측 — 표면 하나 31초 중 action 21초, 표면 둘 49초 = action 26초 + 14초). ⚠️ **v2는 셋업이 ~4초 느리다** — 셋업+install 3회 평균이 v1 15.7초 → v2 19.9초다(2026-09-27, `SinhyeokKang/bugshot-i18n-test` 표면 하나). `pnpm/action-setup` v6이 bootstrap pnpm을 깐 뒤 `self-update`하는 설치 경로라 그 스텝만 1.5초 → 4.4~5.7초가 됐다. **pnpm store 캐시는 재서 버렸다** — 적중해도 292 MB 복원이 pnpm 스텝을 10~13초로 늘려 셋업+install이 15.0초(v1 대비 −0.7초)였고, 한 job에서 action을 두 번 부르면(표면 둘) 둘째 호출이 store를 지운 뒤 빈 store(9.66 KiB)가 저장돼 그 뒤 run은 "적중"인데 콜드 설치였다. 다시 시도하려면 그 두 결함부터 푼다.
+대상 리포는 Node·pnpm 셋업이 필요 없다 — action이 말모이를 clone해 `.nvmrc`·`packageManager` 기준으로 세우고 `pnpm install`한다(`ubuntu-latest` 전제, run 시간의 대부분이 이 install이다). **v1은 run당 30~50초다**(2026-09-27 실측 — 표면 하나 31초 중 action 21초, 표면 둘 49초 = action 26초 + 14초). ⚠️ **v2는 셋업이 ~4초 느리다** — 셋업+install 3회 평균이 v1 15.7초 → v2 19.9초다(2026-09-27, `SinhyeokKang/bugshot-i18n-test` 표면 하나). `pnpm/action-setup` v6이 bootstrap pnpm을 깐 뒤 `self-update`하는 설치 경로라 그 스텝만 1.5초 → 4.4~5.7초가 됐다. **pnpm store 캐시는 재서 버렸다** — 적중해도 292 MB 복원이 pnpm 스텝을 10~13초로 늘려 셋업+install이 15.0초(v1 대비 −0.7초)였고, 한 job에서 action을 두 번 부르면(표면 둘) 둘째 호출이 store를 지운 뒤 빈 store(9.66 KiB)가 저장돼 그 뒤 run은 "적중"인데 콜드 설치였다. 다시 시도하려면 그 두 결함부터 푼다. ⚠️ `--ignore-scripts`로는 줄지 않는다 — 로컬 콜드 설치(새 store·빈 Prisma 캐시)에서 454패키지 27·29초 대 27·25초로 오차 안이었다(Prisma 엔진 24MB 다운로드가 몫이 아니다). `--prod`는 `tsx`가 devDependency라 `push:local`이 안 돈다. 줄이려면 설치 자체를 없애는 번들이다(launch-readiness L7.7).
 
-⚠️ **알려진 한계 — 같은 job에서 이 action 앞에 pnpm을 설치하면 그 store가 지워진다**(v1부터 같다). `pnpm/action-setup`이 매번 `~/setup-pnpm`을 새로 깔고 기본 store가 그 아래(`PNPM_HOME`)에 있어서다 — 대상 리포가 같은 job에서 자기 `pnpm/action-setup`(`cache: true`)+install을 먼저 돌면 그 설치가 사라지고, 그 job의 post가 말모이 store를 대상 리포 캐시 키에 저장한다(2026-09-27 실측, v1 태그로도 재현). 이 action은 **별도 job**에 둔다(생성 워크플로가 그 모양이다). ⚠️ `--ignore-scripts`로는 줄지 않는다 — 로컬 콜드 설치(새 store·빈 Prisma 캐시)에서 454패키지 27·29초 대 27·25초로 오차 안이었다(Prisma 엔진 24MB 다운로드가 몫이 아니다). `--prod`는 `tsx`가 devDependency라 `push:local`이 안 돈다. 줄이려면 설치 자체를 없애는 번들이다(launch-readiness L7.7).
+⚠️ **알려진 한계 — 같은 job에서 이 action 앞에 pnpm을 설치하면 그 store가 지워진다**(v1부터 같다). `pnpm/action-setup`이 매번 `~/setup-pnpm`을 새로 깔고 기본 store가 그 아래(`PNPM_HOME`)에 있어서다 — 대상 리포가 같은 job에서 자기 `pnpm/action-setup`(`cache: true`)+install을 먼저 돌면 그 설치가 사라지고, 그 job의 post가 말모이 store를 대상 리포 캐시 키에 저장한다(2026-09-27 실측, v1 태그로도 재현). 이 action은 **별도 job**에 둔다(생성 워크플로가 그 모양이다).
 
 ### 표면별 입력과 추가 step
 
