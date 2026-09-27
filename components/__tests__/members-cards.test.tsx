@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MemberList } from "@/components/members/member-list";
 import { MembersPanelHeader } from "@/components/members/members-panel-header";
@@ -390,5 +390,106 @@ describe("캔버스 대조로 되돌린 자리", () => {
     const glyph = find<HTMLElement>(container, "[data-avatar]");
     expect(glyph.querySelector("svg")).not.toBeNull();
     expect(glyph.textContent).toBe("");
+  });
+});
+
+/**
+ * **행별 진행 상태** (audit #12) — 대기가 값 하나면 A 요청 중 B를 누를 때 A의 잠금·스피너가 사라지고, A의 실패 응답이
+ * B의 잠금까지 풀었다. 응답 순서를 뒤집어도 다른 행의 대기를 지우지 않는다.
+ *
+ * ⚠️ 테스트 끝에 모든 응답을 푼다 — 안 풀면 async transition이 다음 테스트로 샌다(POSTMORTEM 2026-09-18).
+ */
+describe("행별 진행 상태 — 동시 요청", () => {
+  const settle: (() => void)[] = [];
+  function deferredCalls(mock: ReturnType<typeof vi.fn>) {
+    const calls: ((value: unknown) => void)[] = [];
+    mock.mockImplementation(() => new Promise(resolve => { calls.push(resolve); settle.push(() => resolve({ ok: true })); }));
+    return calls;
+  }
+  const clickEl = async (node: Element) => { await act(async () => { await userEvent.setup().click(node); }); };
+  const dialogButton = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(b => b.textContent?.trim() === text)!;
+  const spinning = (id: string) => document.getElementById(id)!.querySelector(".animate-spin") !== null;
+  const locked = (id: string) => document.getElementById(id)!.getAttribute("aria-disabled") === "true";
+  async function settleAll() { await act(async () => { for (const done of settle.splice(0)) done(); }); }
+  // 단언이 먼저 실패해도 풀린다.
+  afterEach(settleAll);
+
+  const alice = member({ userId: "u2", name: "Alice" });
+  const bob = member({ userId: "u3", name: "Bob" });
+  async function removeBoth() {
+    const calls = deferredCalls(changeMember);
+    await draw([owner, alice, bob]);
+    for (const who of ["Alice", "Bob"]) {
+      await clickEl(document.querySelector(`[aria-label="Remove ${who}"]`)!);
+      await clickEl(dialogButton("Remove"));
+    }
+    return calls;
+  }
+
+  it("B를 시작해도 A의 [Remove]가 계속 돈다", async () => {
+    await removeBoth();
+    expect(spinning("remove-u2")).toBe(true);
+    expect(spinning("remove-u3")).toBe(true);
+    await settleAll();
+  });
+
+  it("A가 먼저 실패하면 A만 풀리고 B는 대기 그대로다", async () => {
+    const calls = await removeBoth();
+    await act(async () => { calls[0]!({ ok: false, error: "forbidden" }); });
+    expect(spinning("remove-u2")).toBe(false);
+    expect(locked("role-u2")).toBe(false);
+    expect(spinning("remove-u3")).toBe(true);
+    expect(locked("role-u3")).toBe(true);
+    await settleAll();
+  });
+
+  it("순서를 뒤집어 B가 먼저 실패해도 A의 대기를 지우지 않는다", async () => {
+    const calls = await removeBoth();
+    await act(async () => { calls[1]!({ ok: false, error: "forbidden" }); });
+    expect(spinning("remove-u3")).toBe(false);
+    expect(spinning("remove-u2")).toBe(true);
+    expect(locked("role-u2")).toBe(true);
+    await settleAll();
+  });
+
+  it("먼저 성공한 행은 목록 커밋 전까지 잠긴 채다 — 다른 행이 아직 돌고 있어도", async () => {
+    const calls = await removeBoth();
+    await act(async () => { calls[0]!({ ok: true }); });
+    expect(spinning("remove-u2")).toBe(true);
+    expect(spinning("remove-u3")).toBe(true);
+    await settleAll();
+    expect(spinning("remove-u2")).toBe(false);
+    expect(spinning("remove-u3")).toBe(false);
+  });
+
+  const inviteA = invitation({ id: "i1" });
+  const inviteB = invitation({ id: "i2" });
+  async function revokeBoth() {
+    const calls = deferredCalls(mocks.revokeInvitation);
+    await drawPending([inviteA, inviteB]);
+    for (const id of ["i1", "i2"]) {
+      await clickEl(document.getElementById(`revoke-${id}`)!);
+      await clickEl(dialogButton(m.members.pending.confirmRevokeAction));
+    }
+    return calls;
+  }
+
+  it("철회: A가 먼저 실패해도 B의 [Revoke]는 계속 돈다", async () => {
+    const calls = await revokeBoth();
+    expect(spinning("revoke-i1")).toBe(true);
+    expect(spinning("revoke-i2")).toBe(true);
+    await act(async () => { calls[0]!({ ok: false, error: "forbidden" }); });
+    expect(spinning("revoke-i1")).toBe(false);
+    expect(spinning("revoke-i2")).toBe(true);
+    await settleAll();
+  });
+
+  it("철회: 순서를 뒤집어 B가 먼저 실패해도 A의 대기를 지우지 않는다", async () => {
+    const calls = await revokeBoth();
+    await act(async () => { calls[1]!({ ok: false, error: "forbidden" }); });
+    expect(spinning("revoke-i2")).toBe(false);
+    expect(spinning("revoke-i1")).toBe(true);
+    await settleAll();
+    expect(spinning("revoke-i1")).toBe(false);
   });
 });
