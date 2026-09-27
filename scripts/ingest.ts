@@ -16,7 +16,7 @@ import { matchGlobPaths } from "../lib/adapters/index";
 import { sameMeaning } from "../lib/adapters/shared";
 import { AppError } from "../lib/failure";
 import { assemblePushInput } from "../lib/push/assemble";
-import { fileProbe, requestedFormat } from "./format";
+import { fileProbe, requestedFormat, unreadableLocaleFiles } from "./format";
 
 
 const argv = process.argv.slice(2);
@@ -33,7 +33,8 @@ const paths = walkFiles(target);
 
 // probe를 준다 — 경로 신호만으로는 검색 인덱스 같은 무관한 JSON 묶음을 잡는다.
 // 포맷 결정은 `push:local`과 같은 함수다(`scripts/format.ts`) — 미리 본 것과 올리는 것이 갈리지 않는다.
-const probe = fileProbe(target);
+const probeFailures = new Set<string>();
+const probe = fileProbe(target, probeFailures);
 const requested = requestedFormat(paths, probe, { adapterName: flagValue(argv, "--adapter") });
 if (!requested.ok) {
   console.error(requested.message);
@@ -57,6 +58,13 @@ try {
   process.exit(1);
 }
 const { read: result, files, baseLocale: base } = assembled;
+// push:local과 같은 판정이다 — 미리보기가 읽지 못한 파일을 빈 파일로 보여 주면 올리는 쪽과 갈린다 (audit #7).
+const unreadable = unreadableLocaleFiles(files, probeFailures);
+if (unreadable.length) {
+  console.error(`로케일 파일 ${unreadable.length}개를 읽지 못했다:`);
+  for (const path of unreadable.slice(0, 10)) console.error(`  ${path}`);
+  process.exit(1);
+}
 // detect는 경로만 보므로 nested를 모른다 — read가 관측한 값을 write에 실어준다.
 // **파일별 관측값도 함께 넘긴다** — 포맷 단위 boolean만 넘기면 평평한 파일의 점 키가 쪼개진다.
 // **원본 내용도 넘긴다** — 수술적 어댑터는 write에 필수이고, 재생성은 표현(들여쓰기)을 거기서

@@ -39,7 +39,7 @@ import {
   type SourceFileInput,
   type WrapperId,
 } from "../lib/scan/index";
-import { fileProbe, requestedFormat } from "./format";
+import { fileProbe, requestedFormat, unreadableLocaleFiles } from "./format";
 import { loadLocalEnv } from "./local";
 
 loadLocalEnv();
@@ -149,7 +149,8 @@ const sources: SourceFileInput[] = paths.flatMap((path) => {
   return kind ? [{ path, code: readFileSync(join(target, path), "utf8"), kind }] : [];
 });
 
-const probe = fileProbe(target);
+const probeFailures = new Set<string>();
+const probe = fileProbe(target, probeFailures);
 
 // ── 적재 (키의 진실) ────────────────────────────────────────────────────────
 // 포맷 결정은 `pnpm ingest`와 같은 함수다(`scripts/format.ts`) — `--adapter`·`--path-template`·탐지 갈래를 거기서 가른다.
@@ -186,6 +187,16 @@ try {
   process.exit(1);
 }
 const { read, baseLocale } = assembled;
+
+// ⚠️ **로케일 파일을 못 읽었으면 여기서 멈춘다** (audit #7) — 빈 내용으로 읽힌 파일의 키가 페이로드에서 빠지면 서버가 그 키를
+// "코드에서 사라졌다"로 orphan시킨다. 부분 페이로드를 보내지 않고 적재 실패로 보고한다(docs/ACTIONS.md §3).
+const unreadable = unreadableLocaleFiles(assembled.files, probeFailures);
+if (unreadable.length) {
+  console.error(`로케일 파일 ${unreadable.length}개를 읽지 못했다 — CI를 실패시킨다:`);
+  for (const path of unreadable.slice(0, 10)) console.error(`  ${path}`);
+  await reportFailure("prepare-failed");
+  process.exit(1);
+}
 
 // ⚠️ **경고(`duplicate-property`)는 red가 아니다** (B7a r1, 2026-09-24 사용자 결정 · docs/ACTIONS.md §3) — code-dict·ts-dict의
 // 중복 프로퍼티는 JS 의미대로 마지막 값이 적재되고 잃는 번역이 없다. 찍고 계속한다.
