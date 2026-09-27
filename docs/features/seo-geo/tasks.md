@@ -15,21 +15,21 @@ stale이 된다(메모 build-while-dev).
 
 ## 순수 함수 (`lib/seo/` — 테스트 먼저)
 
-- **T1. `SITE_ORIGIN` · `robotsFor` · `sitemapEntries`**
+- ✅ **T1. `SITE_ORIGIN` · `robotsFor` · `sitemapEntries`**
   검증(`pnpm test`): `robotsFor("production")`만 허용 규칙, `"preview"`·`"development"`·`undefined`·`"weird"`는 `Disallow: /`.
   sitemap 항목 수 = `flattenNav(loadSummary()).length + 2`, 중첩 장이 SUMMARY 순서, 개요 URL이 `https://mal-moi.com/docs`(끝 `/` 없음),
   `/signin` 없음, 두 번 호출이 `toStrictEqual`.
-- **T2. `m.seo` 절 · `OG_IMAGE` · `pageMetadata`**
+- ✅ **T2. `m.seo` 절 · `OG_IMAGE` · `pageMetadata`**
   검증(`pnpm test`): 반환에 `alternates.canonical`·`openGraph.{title,description,url,siteName,type,images}`·`twitter.{card,images}`가 **전부**
   있다(얕은 병합 회귀). `openGraph.title`에 `· Malmoi`가 없다. `openGraph.images[0].url === "/og.png"`. brand-spelling·no-korean-ui green.
-- **T3. `jsonLdHtml` · `LANDING_LD` · `docLd`**
+- ✅ **T3. `jsonLdHtml` · `LANDING_LD` · `docLd`**
   검증(`pnpm test`): `</script><script>alert(1)</script>`·U+2028을 담은 값의 출력에 `<`·원문 U+2028이 0개. `LANDING_LD`에
   `aggregateRating`·`review` 없음, `offers.priceCurrency === "USD"`. `docLd`의 breadcrumb `position`이 1부터 연속, 장 URL이 `docHref([slug[0]])`.
-- **T4. `llmsIndex` · `llmsFull` + `lib/guide/load.ts`의 `loadSource`**
+- ✅ **T4. `llmsIndex` · `llmsFull` + `lib/guide/load.ts`의 `loadSource`**
   검증(`pnpm test`): **형식은 fixture로 정확한 문자열을 고정한다** — 요약 null 항목(`: …` 없이 끝남), 제목에 `]`·`&`·`*`가 든 항목, 끝 개행 1개.
   **실제 원고로는 파생값만 단언한다** — 항목 수 = `flat.length`, 두 번 호출 바이트 동일(원고가 바뀌어도 안 깨진다). `loadSource(file)`이
   SUMMARY 등재 파일의 `readFileSync` 결과와 같다(`lib/guide/__tests__/load.test.ts`).
-- **T5. `redactAnalyticsEvent`**
+- ✅ **T5. `redactAnalyticsEvent`**
   검증(`pnpm test`): `null` — `/invite/abc` · `/signin/link/x` · `/projects/p?q=secret` · `/account` · `/docsx` · `/privacyx` · `/Docs` ·
   `/docs/` · `/privacy/` · `/docs/..%2Finvite%2Ftok` · `/docs/a_b`. 통과 — `/docs/setup?utm=1#a` → `https://dev.mal-moi.com/docs/setup`
   (**origin 유지**), `/?q=x` → `/`, `/signin?error=x` → `/signin`, `type: "event"` 이벤트도 같은 규칙.
@@ -39,7 +39,7 @@ stale이 된다(메모 build-while-dev).
 
 ## 호출부 배선
 
-- **T6. 메타데이터 + 스트리밍 끄기** (← T2) — 루트 `metadataBase`·title·openGraph·twitter(**canonical 없음**) · `/`(absolute) · `/privacy` ·
+- ✅ **T6. 메타데이터 + 스트리밍 끄기** (← T2) — 루트 `metadataBase`·title·openGraph·twitter(**canonical 없음**) · `/`(absolute) · `/privacy` ·
   `app/docs/layout.tsx` 템플릿 · docs `generateMetadata` · `app/not-found.tsx` · noindex 셋(+ 토큰 둘의 `referrer`) · `next.config.ts`
   `htmlLimitedBots: /.*/`.
   검증 — 자동(`pnpm test`): 토큰·로그인 페이지 셋의 `metadata.robots`가 `{ index: false, follow: false }`, 토큰 둘의 `referrer === "no-referrer"`.
@@ -49,26 +49,26 @@ stale이 된다(메모 build-while-dev).
   `htmlLimitedBots` 존재를 단언한다.
   검증 — 수동(로컬 build/start): `curl -s -A GPTBot localhost:3000/docs/setup/create-project`에서 `<title>Create a project · Malmoi Docs</title>`과
   canonical이 **`</head>` 앞**. `/privacy`·깊은 slug에 `og:image`·`twitter:image`가 선다.
-- **T7. JSON-LD 렌더** (← T3, T6)
+- ✅ **T7. JSON-LD 렌더** (← T3, T6)
   검증(`pnpm test`): `landing-page.test.tsx`와 `docs-page.test.tsx`에서 `script[type="application/ld+json"]`을 `JSON.parse`해 `@type` 확인 —
   랜딩 1장(`SoftwareApplication`·`Organization`), docs 하위 1장(`TechArticle`·`BreadcrumbList`), docs 개요 0개. 배포 뒤 validator는 M3.
-- **T8. `app/robots.ts`(force-dynamic) · `app/sitemap.ts`** (← T1)
+- ✅ **T8. `app/robots.ts`(force-dynamic) · `app/sitemap.ts`** (← T1)
   검증: `pnpm build` 라우트 표에서 `/robots.txt`가 ƒ(Dynamic), `/sitemap.xml`이 ○(Static). 로컬 `curl localhost:3000/robots.txt`가
   `Disallow: /`, `VERCEL_ENV=production pnpm start`(빌드 재실행 불필요 — 요청 시점 판정)에서 허용 규칙 + `Sitemap:`.
-- **T9. `/llms.txt` · `/llms-full.txt`** (← T4) — Route Handler 둘 + `entry-points.test.ts` `EXEMPT`에 `llms.txt/route.ts`·`llms-full.txt/route.ts`
+- ✅ **T9. `/llms.txt` · `/llms-full.txt`** (← T4) — Route Handler 둘 + `entry-points.test.ts` `EXEMPT`에 `llms.txt/route.ts`·`llms-full.txt/route.ts`
   (이유 주석) + 파일 트레이싱 전제 주석.
   검증: `pnpm test`(entry-points) green · `pnpm build` 라우트 표에서 둘이 ○(Static) · `curl -sI localhost:3000/llms.txt`가 200 `text/plain; charset=utf-8`.
 
 — 커밋 ②: `feat(seo): wire metadata, JSON-LD, robots, sitemap and llms.txt`
 
-- **T10. Vercel Web Analytics** (← T5) — `pnpm add @vercel/analytics@<정확한 버전>` → **설치 직후 `node_modules`에서 `beforeSend`·`BeforeSendEvent`
+- ✅ **T10. Vercel Web Analytics** (← T5) — `pnpm add @vercel/analytics@<정확한 버전>` → **설치 직후 `node_modules`에서 `beforeSend`·`BeforeSendEvent`
   시그니처와 dev 동작을 대조**(T5 타입과 어긋나면 T5부터 고친다) · `components/analytics.tsx`(`"use client"`, dev에서 `null`) · 루트 레이아웃 body 끝 ·
   `client-graph.test.ts`의 `ALLOWED`에 `@vercel/analytics`(이유 주석), `CLIENT_LIB_FILES`에 `lib/seo/analytics.ts`, 잎 단언.
   검증 — 자동: `pnpm typecheck && pnpm test`(client-graph) · **`pnpm build`**(RSC 경계 — 함수 prop 위반은 여기서만 잡힌다).
   검증 — 로컬 수동: `pnpm dev` HTML에 `va.vercel-scripts.com`·`_vercel/insights` 요청 0건(렌더 안 함).
   검증 — preview 수동: 콘솔 CSP 위반 0 · DevTools Network에서 `/_vercel/insights/view`가 `/`·`/signin`·`/docs/**`·`/privacy`에서만 나가고
   `/projects`에서는 안 나감 · 초대 페이지 → 푸터 Docs를 cmd-click → 새 탭 pageview 페이로드의 referrer에 토큰 경로 없음 · Application 탭 쿠키 증가 0.
-- **T11. 개인정보 방침 개정** (↔ T10 같은 `/push`) — `messages/en.tsx` :455 적용 범위 · :462 "no analytics" · :516–523 목적 목록 · :560 Vercel 수탁 항목
+- ✅ **T11. 개인정보 방침 개정** (↔ T10 같은 `/push`) — `messages/en.tsx` :455 적용 범위 · :462 "no analytics" · :516–523 목적 목록 · :560 Vercel 수탁 항목
   · `effectiveDate` · 개정 이력. :598 쿠키 절은 **유지**(쿠키 0).
   ⚠️ **문안을 커밋 전에 사용자에게 보인다**(spec D4) — :598과 수집 절이 서로 다른 말처럼 읽히지 않는지도 같이. 승인 없이 커밋하지 않는다.
   검증: 사용자 승인 · `pnpm test`(`policy-gate.test.tsx`) green · T10 preview의 쿠키 0.
@@ -78,12 +78,12 @@ stale이 된다(메모 build-while-dev).
 
 ## 점검 리포트 (코드 안 고침)
 
-- **T12. 인용 가능 문장 점검** — 랜딩 hero·closing과 docs 개요(`guide/README.md` 첫 문단 — 지금은 "Set up a project…"로 Malmoi가 무엇인지 안 말한다)에
+- ✅ **T12. 인용 가능 문장 점검** — 랜딩 hero·closing과 docs 개요(`guide/README.md` 첫 문단 — 지금은 "Set up a project…"로 Malmoi가 무엇인지 안 말한다)에
   "Malmoi는 무엇이고 누구를 위한 것인가"를 한 문단으로 정의하는 문장이 있는지, 지원 포맷·동작 방식(push/pull·PR)이 문장으로 서 있는지 본다.
   산출은 **넘기는 것까지다** — 랜딩 몫은 Claude Design 시안 수정 제안(사용자에게 전달), 가이드 몫은 `/guide` 입력. 이 디렉터리에 파일로 남기지 않는다
   (기능 종료 때 지워진다). 검증: 사용자 확인.
 
-- **T12a. (T12 결과 반영, 사용자 2026-09-27)** — `messages/en.tsx`의 `landing.hero.body`·`landing.closing.body`를 아래로 교체(분량 유지, 새 문장·섹션 없음)하고,
+- ✅ **T12a. (T12 결과 반영, 사용자 2026-09-27)** — `messages/en.tsx`의 `landing.hero.body`·`landing.closing.body`를 아래로 교체(분량 유지, 새 문장·섹션 없음)하고,
   `guide/README.md` 첫 문단 + `guide/translate/README.md:3` · `guide/setup/README.md:3`에 정의 문장을 더한다(`/guide` 규칙 — `guide/AUTHORING.md`).
   - hero.body: "Malmoi is a localization tool for GitHub repos: it finds your translation files, lets teammates edit them in the browser, and sends every change back as one pull request."
   - closing.body: "Connect a GitHub repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and send the first pull request."
@@ -96,10 +96,12 @@ stale이 된다(메모 build-while-dev).
 
 ## 정본 문서 (`/push` 4단계 신선도에서)
 
-- **T13.** PRODUCT IA · DIRECTORY · ARCHITECTURE 절 · CLAUDE.md 스택 표 + README — 문서별 커밋(`docs(PRODUCT): …` 꼴).
+- ✅ **T13.** PRODUCT IA · DIRECTORY · ARCHITECTURE 절 · CLAUDE.md 스택 표 + README — 문서별 커밋(`docs(PRODUCT): …` 꼴).
   검증: `pnpm sync:agents:check` green(CLAUDE.md를 고쳤으므로 미러 재생성).
 
 ## 수동 (프로덕션 `/merge` 뒤)
+
+⚠️ dev 통합 2026-09-27. 남은 것: U1(`public/og.png` — `/merge` 전 선행) · preview 런타임 검증(워커 인계 목록 11항) · 아래 M1–M7.
 
 - **M1.** `curl -s https://mal-moi.com/robots.txt` 허용 규칙 + `Sitemap:` · `sitemap.xml` 항목 25 · `llms.txt`·`llms-full.txt` 200.
 - **M2.** Search Console에 `https://mal-moi.com/sitemap.xml` 제출 → Sitemaps 상태 Success · 발견 URL 25. URL 검사로 `/`·`/docs` 색인 요청.
