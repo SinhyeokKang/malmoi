@@ -10,6 +10,7 @@ import { discardFingerprint, sameFingerprint, type DiscardFingerprintInput } fro
 const BASE: DiscardFingerprintInput = {
   userId: "owner",
   projectId: "p1",
+  repository: { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" },
   surfaces: [
     { id: "s1", importRevision: 3, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" },
     { id: "s2", importRevision: 0, adapterName: "yaml-catalog", pathTemplate: "config/{locale}.yml", baseLocale: "en" },
@@ -58,6 +59,23 @@ describe("discardFingerprint", () => {
   it("[C4] 적용 뒤(importRevision 증가) → 다른 지문 — 성공한 승인은 재사용되지 않는다", () => {
     const [first, second] = BASE.surfaces;
     expect(discardFingerprint({ ...BASE, surfaces: [{ ...first!, importRevision: 4 }, second!] })).not.toBe(discardFingerprint(BASE));
+  });
+
+  /**
+   * [audit #3] **승인은 어느 리포·브랜치를 덮는지까지 가리킨다.** `main` 기준으로 받은 승인이 그 뒤 `release`로 바뀐 설정에서 통과하면
+   * OWNER가 본 적 없는 브랜치의 값으로 편집을 덮는다 — 표면 설정만 넣었던 지문은 이 변경을 못 봤다.
+   */
+  it("[audit #3] 리포 연결·기준 브랜치가 바뀌면 다른 지문", () => {
+    for (const changed of [
+      { baseBranch: "release" },
+      { repoOwner: "other" },
+      { repoName: "r2" },
+      { repositoryId: "999" },
+      { installationId: "789" },
+    ]) {
+      expect(discardFingerprint({ ...BASE, repository: { ...BASE.repository, ...changed } })).not.toBe(discardFingerprint(BASE));
+    }
+    expect(discardFingerprint({ ...BASE, repository: { ...BASE.repository, repositoryId: null, installationId: null } })).not.toBe(discardFingerprint(BASE));
   });
 
   it("사용자·프로젝트가 다르면 다른 지문", () => {

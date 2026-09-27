@@ -15,10 +15,14 @@ export async function readDiscardApproval(
   db: Prisma.TransactionClient,
   input: { projectId: string; userId: string },
 ): Promise<{ fingerprint: string; pending: { id: string; token: string }[] }> {
+  const repository = await db.project.findUniqueOrThrow({
+    where: { id: input.projectId },
+    select: { repositoryId: true, installationId: true, repoOwner: true, repoName: true, baseBranch: true },
+  });
   const surfaces = await db.translationSurface.findMany({
     where: { projectId: input.projectId, archivedAt: null },
     select: { id: true, importRevision: true, adapterName: true, pathTemplate: true, baseLocale: true },
   });
   const pending = await loadPendingEdits(db, input.projectId);
-  return { fingerprint: discardFingerprint({ userId: input.userId, projectId: input.projectId, surfaces, pending }), pending };
+  return { fingerprint: discardFingerprint({ userId: input.userId, projectId: input.projectId, repository, surfaces, pending }), pending };
 }
