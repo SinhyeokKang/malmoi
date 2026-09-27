@@ -29,6 +29,11 @@ describe("`/robots.txt` — 요청 시점 판정", () => {
 });
 
 describe("`/sitemap.xml`", () => {
+  it("`force-static`이다 — `guide/`를 읽는데 트레이싱이 이 라우트에 싣지 않는다", async () => {
+    const mod = await import("@/app/sitemap");
+    expect(mod.dynamic).toBe("force-static");
+  });
+
   it("SUMMARY 전부 + `/` + `/privacy`", async () => {
     const { default: sitemap } = await import("@/app/sitemap");
     expect(sitemap()).toHaveLength(flattenNav(loadSummary()).length + 2);
