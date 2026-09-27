@@ -66,6 +66,7 @@
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` | `octokit` 5.0.5 |
 | 계정 연결 | 같은 App의 **user-to-server 토큰**. ⚠️ `octokit`이 재수출하는 `OAuthApp`으로는 안 된다(`clientType: "oauth-app"`으로 고정된 클래스라 github-app 모드가 타입상 `never`로 접힌다) | `@octokit/oauth-app` 8.0.4 |
 | 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**(서명 URL을 안 쓰는 대신 열거를 막고, 교체마다 URL이 바뀌어 CDN 무효화가 필요 없다). 소비자는 프로필 사진 하나로 **확정**이다 | `@vercel/blob` 2.8.0 |
+| 초대 메일 | Resend REST API — **SDK 없이 `fetch`**(`lib/invitation-email/send.ts`). 환경변수 셋(`RESEND_API_KEY`·`INVITATION_EMAIL_FROM`·`INVITATION_EMAIL_ORIGIN`)이 전부 `optionalEnv`라 **비거나 틀려도 부팅·로그인·멤버 화면은 살고 발급·발송만 막힌다**(`lib/invitation-email/config.ts`). ⚠️ 메일 링크의 origin은 요청 Host가 아니라 `INVITATION_EMAIL_ORIGIN`이고 배포 환경(`VERCEL_ENV`)과 대조한다 | — |
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키 없음, 커스텀 이벤트 없음). `components/analytics.tsx`가 루트 레이아웃 끝에서 렌더한다. ⚠️ **`beforeSend`의 추적 경로 허용 목록(`lib/seo/analytics.ts`)이 유일한 거름망이다** — 스크립트가 앱 화면에서도 로드되고 앱 URL엔 초대 토큰·slug·검색어가 실린다. 토큰 페이지 둘의 `no-referrer`가 짝이다(ARCHITECTURE §8.1). ⚠️ 개발 서버에서는 렌더하지 않는다 — dev 디버그 스크립트를 CSP가 막고 CSP를 넓히지 않는다 | `@vercel/analytics` 2.0.1 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(EXIF 방향 적용 후 192px 이내 WebP 재인코딩, 메타데이터는 그때 사라진다). ⚠️ **버전을 Next의 전이 의존성과 같은 값에 고정한다** — 갈리면 네이티브 바이너리가 두 벌 깔린다. ⚠️ **파일 크기 상한이 디코더 메모리를 묶지 못해** `limitInputPixels`가 따로 선다 | `sharp` 0.35.4 |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` | `tailwindcss`·`@tailwindcss/postcss` 4.3.3 |
@@ -165,7 +166,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 1. **Node를 `.nvmrc`에 맞춘다**(24). **어긋났을 때 맞추는 방향은 Vercel 쪽이다** — 프로덕션이 진실이고 `.nvmrc`가 따라간다.
 2. `pnpm install`
-3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **암호화 키 셋(환경변수 여섯)이 비면 로그인·초대·멤버 조회가 통째로 죽는다** — TOKEN·PII는 `*_ENCRYPTION_KEYS`와 `*_ACTIVE_KEY_ID` 쌍이고 EMAIL_LOOKUP만 `EMAIL_LOOKUP_KEY`·`_KEY_ID`다. ⚠️ **서명 키 `APP_SIGNING_SECRET`도 비면 GitHub 연결(시작·callback)과 온보딩 탐지·샘플이 500이다** — 로그인은 된다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다** — 전부 Vercel의 **Sensitive**라 CLI도 대시보드도 값을 못 읽는다. **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**다.
+3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **암호화 키 셋(환경변수 여섯)이 비면 로그인·초대·멤버 조회가 통째로 죽는다** — TOKEN·PII는 `*_ENCRYPTION_KEYS`와 `*_ACTIVE_KEY_ID` 쌍이고 EMAIL_LOOKUP만 `EMAIL_LOOKUP_KEY`·`_KEY_ID`다. ⚠️ **서명 키 `APP_SIGNING_SECRET`도 비면 GitHub 연결(시작·callback)과 온보딩 탐지·샘플이 500이다** — 로그인은 된다. 초대 메일 셋(`RESEND_API_KEY` 등)은 비어도 되고 그때 초대 발급만 막힌다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다** — 전부 Vercel의 **Sensitive**라 CLI도 대시보드도 값을 못 읽는다. **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**다.
    - **GitHub OAuth 앱은 하나(`malmoi`)이고 세 환경이 같은 값을 쓴다** — Google과 같은 모양이다. ⚠️ **2026-09-14 이전 기록에 "앱이 셋"이 나오면 그건 낡았다**: GitHub이 OAuth App에 **Add redirect URI**를 열어 "callback URL은 앱당 하나"가 거짓이 됐고, 그래서 `malmoi-dev`·`malmoi-local`을 접었다.
    - ⚠️ **Google은 반대로 클라이언트가 하나다** — redirect URI를 여러 개 등록할 수 있어 로컬·preview·프로덕션 셋을 한 클라이언트에 넣고 같은 값을 세 곳에 둔다.
 4. `pnpm db:status`(dev) · `pnpm db:status:prod`(prod)로 접속을 확인한다. ⚠️ 두 출력이 **같아 보인다**(pooler 호스트가 같고 ref는 사용자명에 있다) — 구별 신호는 **적용된 마이그레이션 개수**다.
@@ -271,7 +272,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 ## 코드 컨벤션
 
 - **커밋 메시지는 영문**, Conventional Commits (`feat:` `fix:` `test:` `refactor:` `docs(scope):` `chore:`).
-- **⚠️ 화면 문구는 `messages/en.tsx`를 지난다 — 소스에 한글 UI 리터럴 금지.** `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts`를 훑고 허용 목록은 하나뿐이다(`lib/push/apply.ts`의 서버 로그). **주석은 벗기고 세므로 아래 항목과 충돌하지 않는다.**
+- **⚠️ 화면 문구는 `messages/en.tsx`를 지난다 — 소스에 한글 UI 리터럴 금지.** `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts`를 훑고 허용 목록은 하나뿐이다(`lib/push/apply.ts`의 `$queryRaw` 안 SQL 주석 — 스캐너가 JS 주석만 벗긴다). **주석은 벗기고 세므로 아래 항목과 충돌하지 않는다.**
 - **⚠️ 제품 이름은 화면에서 `Malmoi`이고 식별자에서 `malmoi`다** (2026-09-26 — 그 전엔 화면도 소문자였다). `lib/i18n/__tests__/brand-spelling.test.ts`가 같은 범위를 훑어 **이웃 글자**(`-`·`/`·`.`·`_`·`:`·`@`)로 둘을 가르고 그 밖의 변형(`MALMOI` …)을 0으로 고정한다. ⚠️ **식별자를 대문자로 올리지 않는다** — 암호 문맥(`malmoi/pii` 등)이 바뀌면 저장된 봉투를 못 연다. ⚠️ **2026-09-13에 한 화면에 둘이 같이 섰다** — 확인 Dialog가 `…from malmoi?`인데 바로 아래 Alert가 `…sign in to Malmoi…`였고, **둘 다 같은 사전에서 나온 값**이라 서로 다른 절에 살아 리뷰로는 안 걸렸다.
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다.
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
