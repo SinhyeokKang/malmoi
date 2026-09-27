@@ -60,7 +60,7 @@ PRODUCT §0이 "낯선 사람"을 출시 목표로 삼으므로 그 사람이 �
 | D4 | 방침 문안은 `/implement`가 쓰고 **커밋 전에 사용자 확인**을 받는다 | 법적 문서다 |
 | D5 | `llms-full.txt`는 원고를 **그대로** 싣고 페이지마다 `Source: <절대 URL>` 줄을 단다 — 상대 `.md` 링크는 바꾸지 않는다 | 링크 재작성엔 `remark-stringify` 새 의존성이 필요하다 |
 | D6 | `/signin`도 `noindex` | 로그인 폼은 검색 가치가 없고, 브랜드 검색은 랜딩이 받는다 |
-| D7 | 랜딩 문구는 이 기능에서 **고치지 않는다** — 점검 리포트만 | Claude Design 시안이 정본이다 |
+| D7 | ~~랜딩 문구는 고치지 않는다~~ → **(2026-09-27 개정) T12 결과로 hero.body·closing.body 두 문장을 같은 분량으로 교체한다** — 문장·섹션을 늘리지 않는다 | 구현된 화면은 코드가 정본이다(Claude Design은 신규 페이지 초기 구현 동안만 SoT). 사용자: 텍스트량이 늘지 않을 것 |
 | D8 | 스트리밍 metadata를 **전 UA에서 끈다**(`htmlLimitedBots: /.*/`) | D1이 겨냥한 AI 봇이 Next의 HTML-limited 목록 밖이다. `generateMetadata`가 `cache`된 fs 읽기라 TTFB 비용이 거의 없다 |
 | D9 | 제목: 루트 기본 `Malmoi` 유지 · 랜딩만 absolute · docs는 `· Malmoi Docs` | 루트 default를 바꾸면 앱 탭 22개가 마케팅 문구가 된다. `Every night · Malmoi`만으로는 무슨 페이지인지 모른다 |
 | D10 | 추적 경로에 `/signin` 포함 · `/docs` 하위는 `[A-Za-z0-9-]+` 세그먼트만 | 랜딩→가입 전환이 보인다(쿼리를 벗기면 토큰 없음). 임의 문자열·`%2F` 인코딩 경로를 거른다 |

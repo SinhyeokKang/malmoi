@@ -83,6 +83,17 @@ stale이 된다(메모 build-while-dev).
   산출은 **넘기는 것까지다** — 랜딩 몫은 Claude Design 시안 수정 제안(사용자에게 전달), 가이드 몫은 `/guide` 입력. 이 디렉터리에 파일로 남기지 않는다
   (기능 종료 때 지워진다). 검증: 사용자 확인.
 
+- **T12a. (T12 결과 반영, 사용자 2026-09-27)** — `messages/en.tsx`의 `landing.hero.body`·`landing.closing.body`를 아래로 교체(분량 유지, 새 문장·섹션 없음)하고,
+  `guide/README.md` 첫 문단 + `guide/translate/README.md:3` · `guide/setup/README.md:3`에 정의 문장을 더한다(`/guide` 규칙 — `guide/AUTHORING.md`).
+  - hero.body: "Malmoi is a localization tool for GitHub repos: it finds your translation files, lets teammates edit them in the browser, and sends every change back as one pull request."
+  - closing.body: "Connect a GitHub repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and send the first pull request."
+  - guide/README.md 첫 문단: "Malmoi is a free localization tool for GitHub repositories. It finds the translation files already in a repository, lets teammates edit translations in the browser without using Git, and sends saved changes back as one pull request for the development team to review." + 기존 첫 문장 유지. ("free"는 AUTHORING 사실 소스에 근거가 없으면 뺀다)
+  - guide/translate/README.md: "You don't need Git: sign in with GitHub or Google and edit in the browser."
+  - guide/setup/README.md: "Creating a project requires write access to the repository."
+  ⚠️ `terminology.test.ts`가 `push`·`pull`(pull request 허용)·`locale`·`import`를 금지한다. hero.body는 D12로 og·`llms.txt`·홈 description에 재사용되고,
+  guide/README 첫 문단은 `/docs` meta description(`leadParagraph`)이 된다.
+  검증: `pnpm test`(terminology·no-korean-ui·brand-spelling·guide 게이트) green · 랜딩 1280 폭에서 hero·closing 줄 수가 늘지 않음(런타임 목록).
+
 ## 정본 문서 (`/push` 4단계 신선도에서)
 
 - **T13.** PRODUCT IA · DIRECTORY · ARCHITECTURE 절 · CLAUDE.md 스택 표 + README — 문서별 커밋(`docs(PRODUCT): …` 꼴).
