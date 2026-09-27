@@ -741,6 +741,14 @@ base 편집은 보류다** — 실행(`runPull`)이 per-locale 표면의 base �
 안 읽으면 N건을 약속하고 실행이 `write-parse-failed`로 막힌다. 못 읽으면 `PreviewBaseFileUnreadable` → `refused/base-file-unreadable`(부재와 같은 이유 있는
 거부, Try again 없음). 판정만을 위해 읽은 base 파일은 다른 읽기 오류(비문자열 값 등)로 미리보기를 막지 않는다 — 실행도 그 편집들을 싣는다.
 
+⚠️ **미리보기의 "바뀌는 파일"은 실행의 읽기 단계 그대로다** (2026-09-27, #128 — `renderProject` in `lib/pull/run.ts`). 편집 셀의 파일만 세면 토큰 없이
+바뀌는 파일(지난 적재가 orphan한 키의 비-base 줄 제거, 머지되지 않고 닫힌 PR에 실렸던 DB 값의 재전송)이 빠지고 결과에서야 "N files changed"가 나왔다.
+`readPublishPreview`가 `loadPullState` 스냅샷으로 `renderProject`를 돌려 `changedFiles`를 싣고(blob은 캐시로 한 번만 읽는다), 푸터의 파일 수가 그 수다.
+편집 없는 파일은 표에 따로 선다 — 단 상한 밖 행이 있으면(`truncated`) 그 파일에 편집이 있는지 모르므로 단정하지 않는다.
+**보류 안내의 Revert** (#129): 결과의 OWNER 줄은 보류 셀 **전부**에 기준 행(`TranslationBaseline`)이 있을 때만 `Revert to last sent`를 가리킨다
+(`withheldRevertable` → `Withheld.revertable`). 기준이 없는 셀의 Revert는 꺼져 있다. CI의 `deferred` 경고는 서버가 보류 여부를 모르므로(렌더 시점 판정)
+Publish·Revert·폐기 Sync를 함께 말한다 — 응답 계약은 그대로다.
+
 ⚠️ **2층 동등(`no-changes`)의 전달 확인은 기존 no-op 탐지의 토큰판이다** — 값을 고르지 않고 "렌더 결과가 base와 같다"만 본다(§0 불변식 2 안). 원복한 편집이 이 경로로 끝나므로 이것을 없애면 그 편집이 영영 pending이라 CI가 영구 보류된다.
 
 ### 함정
