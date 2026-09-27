@@ -241,11 +241,18 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
   });
 
   /**
-   * ⚠️ **나머지 셋(Locales·Translations·Members)에는 배지가 없다.** 시안에는 있지만 그 숫자는
-   * 프로젝트별 집계라 **모든 페이지에 왕복을 더한다** — PRODUCT §7.7 결정 5가 거절했고 §8이 🔒로
-   * 다시 열어 둔 항목이다. `Projects`만 공짜인 것은 셸이 이미 그 배열을 들고 있어서다.
+   * **프로젝트 축의 개수 배지 셋** (2026-09-27 사용자 — "`Projects` 하나"를 뒤집었다 — DESIGN 개수 배지 행). 값은 셸이 이미 부르는
+   * `loadMemberships`에 얹혀 와서 왕복이 늘지 않는다. ⚠️ **Translations는 프로젝트 전체 키 수다**(사용자) — 보고 있는
+   * 표면을 따라 바뀌지 않는다.
    */
-  it("프로젝트 축에는 배지가 없다 — 그 숫자는 매 페이지 왕복이다", () => {
+  it("Sources·Translations·Members에 개수 배지가 붙고, Translations는 표면과 무관하게 프로젝트 전체 키 수다", () => {
+    const counted: NavProject = { ...project("OWNER"), defaultSurfaceSlug: "app", counts: { sources: 2, members: 0, keys: 31 } };
+    const badges = (p: NavProject) => Object.fromEntries((navZones(p, ctx)[1]?.items ?? []).map((i) => [i.key, i.badge]));
+    expect(badges(counted)).toEqual({ home: undefined, sources: 2, translations: 31, members: 0, logs: undefined, settings: undefined });
+    expect(badges({ ...counted, surfaceSlug: "web" }).translations).toBe(31);
+  });
+
+  it("개수가 없으면 프로젝트 축에 배지가 없다", () => {
     const items = navZones(project("OWNER"), ctx)[1]?.items ?? [];
     expect(items.every((i) => i.badge === undefined)).toBe(true);
   });
