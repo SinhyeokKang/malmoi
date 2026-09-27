@@ -103,60 +103,15 @@ runs:
         echo "node=$(tr -d '[:space:]' < "$root/.nvmrc")" >> "$GITHUB_OUTPUT"
         echo "pnpm=$(node -p "require('$root/package.json').packageManager.split('@')[1]")" >> "$GITHUB_OUTPUT"
 
-    # ⚠️ **pnpm store 캐시의 키 파일을 워크스페이스 안으로 복사한다.** `pnpm/action-setup`은 키를
-    # `hashFiles(cache_dependency_path)`로 만들고 빈 해시면 던지는데, `hashFiles`는 `GITHUB_WORKSPACE` 밖 파일을
-    # **조용히 무시한다** — 말모이 lockfile(`action_path/../../..`)을 그대로 주면 스텝이 red다(위 "버전 읽기"와 같은 뿌리).
-    # 해시는 경로가 아니라 **내용**이라 `mktemp`의 랜덤 경로여도 키가 안정하고, 대상 리포 파일과 부딪히지 않는다.
-    #
-    # ⚠️ **대상 리포에 따라 캐시를 끈다.** 복원이 `pnpm store path`를 **대상 리포 워크스페이스에서** 돈다 —
-    # `packageManager`가 pnpm이 아니면(yarn·npm) pnpm이 exit 1로 거부하고, `storeDir`/`store-dir`가 있으면 우리 install이
-    # 쓰는 store와 다른 경로가 캐시 경로가 돼 post 저장이 `Path Validation Error`로 던진다. 둘 다 v1(캐시 없음)에서는
-    # green이던 리포라 감지해서 캐시 없이 간다 — 느릴 뿐 결과는 같다.
-    #
-    # ⚠️ **`path`는 끌 때도 비우지 않는다** — `cache_dependency_path`를 action-setup이 `required: true`로 읽어서 빈
-    # 값이면 캐시와 무관하게 던진다. 지울 대상은 `dir` 하나로 따로 낸다.
-    #
-    # ⚠️ 캐시 복원 키 접두사(`pnpm-cache-<OS>-<arch>-`)가 고정이라 대상 리포가 자기 job에서 같은 action의 캐시를 쓰면
-    # 이름공간을 나눠 쓴다 — 정확 키는 lockfile 내용이라 적중은 안 섞이지만, 미스 때 그쪽 store가 풀릴 수 있다(docs/ACTIONS.md).
-    - name: 캐시 준비
-      if: steps.guard.outputs.skip != 'true'
-      id: cache
-      shell: bash
-      run: |
-        set -euo pipefail
-        root="${{ github.action_path }}/../../.."
-        ws="$GITHUB_WORKSPACE"
-        # 판정은 옆 파일이 든다(`detect-cache.cjs` — 단위 테스트가 본다). 출력은 끌 이유 한 줄이고, 켜면 비어 있다.
-        skip="$(node "${{ github.action_path }}/detect-cache.cjs" "$ws")"
-        if [ -n "$skip" ]; then
-          echo "::warning title=Malmoi dependency cache skipped::This repository uses $skip, so Malmoi installs its dependencies without cache. Results are unchanged, only slower."
-          { echo "cache=false"; echo "path=pnpm-lock.yaml"; echo "dir="; } >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
-        dir="$(mktemp -d "$ws/.malmoi-i18n-cache.XXXXXX")"
-        cp "$root/pnpm-lock.yaml" "$dir/pnpm-lock.yaml"
-        { echo "cache=true"; echo "path=$dir/pnpm-lock.yaml"; echo "dir=$dir"; } >> "$GITHUB_OUTPUT"
-
+    # ⚠️ **store 캐시를 켜지 않는다** (2026-09-27 실측, docs/ACTIONS.md "실행 시간"). 적중해도 292 MB 복원이 이 스텝을
+    # 늘려 v1 대비 ~0.7초였고, 표면 둘 job(이 action 두 번)은 둘째 호출의 self-installer가 `PNPM_HOME` 아래 store를 지워
+    # 빈 store가 저장·고정됐다. 켜려면 그 두 결함과 `hashFiles`의 워크스페이스 밖 무시(위 "버전 읽기"와 같은 뿌리)부터 푼다.
     - name: pnpm
       if: steps.guard.outputs.skip != 'true'
       uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       with:
         version: ${{ steps.v.outputs.pnpm }}
-        cache: ${{ steps.cache.outputs.cache }}
-        cache_dependency_path: ${{ steps.cache.outputs.path }}
-
-    # 복사본은 셋업 직후에 지운다 — post 저장은 복원 때 남긴 상태(`cache_primary_key`·`cache_path`)만 읽고 해시를
-    # 다시 계산하지 않는다. `always()`인 이유: 셋업이 실패해도 대상 리포 워크스페이스에 말모이 파일을 남기지 않는다.
-    # **준비가 만든 디렉터리만** 지운다(접두사 확인) — 출력이 비었거나 예상 밖이면 아무것도 안 한다.
-    - name: 캐시 준비 정리
-      if: always() && steps.guard.outputs.skip != 'true' && steps.cache.outputs.dir != ''
-      shell: bash
-      env:
-        CACHE_DIR: ${{ steps.cache.outputs.dir }}
-      run: |
-        case "$CACHE_DIR" in
-          "$GITHUB_WORKSPACE"/.malmoi-i18n-cache.*) rm -rf -- "$CACHE_DIR" ;;
-        esac
+        cache: false
 
     # ⚠️ **자동 캐시를 끈다.** v5부터 `package-manager-cache`(기본 true)가 **대상 리포의 `package.json`**을 읽어
     # npm이면 npm 캐시를 켜고 대상 리포 `package-lock.json`을 해시한다 — 없으면 던진다. 우리 install은 pnpm이다.
