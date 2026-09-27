@@ -400,7 +400,7 @@ computed style로 잰 것이다.
 |---|---|---|
 | `info` | `border-border bg-muted/40` + `Info` 아이콘 `text-muted-foreground` | **번역 화면의 리포 갱신 보류 배너** (2026-09-18 — 소비자 0에서 1로 부활했다). `Repository updates are paused until N unsent changes are sent.` · **닫기 없음**(상시 조건) · 액션 `Send with Publish ↑`는 헤더 Publish 버튼으로 **포커스만** 옮긴다(둘째 트리거를 만들지 않는다). 새 색·토큰은 없다. ⚠️ 꺼진 Publish의 사유(`Everything you've edited is already sent.` 등)는 **`aria-disabled` + `aria-describedby`**다(2026-09-23 — 그 전엔 진짜 `disabled` 버튼을 감싼 span의 hover `title`뿐이라 키보드·스크린리더로 닿지 않았다, §6.65). `title`은 마우스용으로 남는다(§6.646) |
 | `success` | `border-border bg-background` + `CircleCheck` 아이콘 `text-foreground` | ⚠️ **소비자가 0이다** (2026-09-16) — Publish 성공 둘이 모달의 무색 블록으로 내려갔다(§6.646). **초록을 쓰지 않는다**는 근거는 그대로 산다. ⚠️ **로그인 화면의 전체 로그아웃 완료(`?sessions=revoked`)는 8-1b가 토스트로 옮겼다** — 아래 §6.25 |
-| `warning` | `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert` | `repo-moved` · 수동 Sync 결과의 `reconfirm` 거부와 "남은 편집" 결과 (⚠️ **편집 손실 배너가 2026-09-18에 여기서 빠져 `info`로 갔다** — 보호가 켜진 뒤 안전한 상태에 amber를 띄우면 "가장 흔한 상태가 가장 조용하다"(§6.1) 위반이다) |
+| `warning` | `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert` | `repo-moved` · 수동 Sync 결과의 `reconfirm` 거부·응답 확인 못 함(`unconfirmed`)과 "남은 편집" 결과 (⚠️ **편집 손실 배너가 2026-09-18에 여기서 빠져 `info`로 갔다** — 보호가 켜진 뒤 안전한 상태에 amber를 띄우면 "가장 흔한 상태가 가장 조용하다"(§6.1) 위반이다) |
 | `danger` | `border-destructive/40 bg-background text-destructive` + `CircleX` | Publish 실패 **둘**(모달 안 — §6.646) · 페이지 수준 거부(`?e=`) · 블록 안 컨트롤 실패 |
 
 ⚠️ **내부 이름을 화면에 쓰지 않는다** — `awaiting_first_sync`는 번역자에게 아무것도 알려주지 않는다 (PRODUCT §3). 문구는 `messages/en.tsx`이 든다.
@@ -1089,6 +1089,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | CI 미적용 | **두 줄** | `Synced 9 keys, but 1 surface was not replaced` + `locales — New repository data arrived while syncing.`(slug는 sans, `[data-surface]`가 자리를 든다) · `[Try again]` 있음 |
 | 전 표면 실패 | 두 줄 | `Sync could not finish` — **`…, but …`을 쓰지 않는다**(앞 절이 거짓이 된다) |
 | 승인 뒤 남은 편집 | 헤드라인 + 원인 줄 · **warning** (2026-09-18) | `Synced 18 keys`(브랜치 없음) + `2 unsent changes were kept. Repository updates stay paused until they are sent.` — 폐기를 승인했는데 편집이 남은 것은 성공 한 줄에 숨기지 않는다 |
+| 응답 확인 못 함 (malmoi#132) | **한 줄** · **warning** · 닫기만(액션 없음) | `We couldn't confirm whether the sync finished` — Action 호출이 throw했다(클라이언트만 낸다). ⚠️ **`didn't go through`(danger)를 쓰지 않는다** — 서버가 Sync를 끝내 편집을 버렸을 수 있다. 무엇이 됐는지는 이 문장이 아니라 refresh로 다시 읽은 수치·배너가 말한다(오프라인이면 다시 읽지 않는다 — ARCHITECTURE). Publish의 `unknownDelivery`와 같은 형 |
 
 ⚠️ **`partial` 표면에는 사유가 없다** (2026-09-16 실측이 잡은 결함). `lib/import/run.ts`의 `finishSurface`는
 `prepared.kind === "failed"`에만 `reason`을 달아 **`partial`은 언제나 `null`**이다. 폴백을 쓰면
@@ -1320,6 +1321,11 @@ repository` · 설명에 경로와 브랜치 · `Trying again won't help` Alert�
 `Select.Trigger`는 셋(`onPointerDown`·`onClick`·`onKeyDown`)이고 셋 다 막아야 한다 — 포인터만 막으면
 **우리가 건너뛴 핸들러가 라이브러리의 포인터 종류 감지를 무력화해 클릭이 도리어 열어 준다**
 (POSTMORTEM 2026-09-19). 키 가드는 `Tab` 외 전부를 막는 **화이트리스트**다(블랙리스트는 타이프어헤드를 못 덮는다).
+
+⚠️ **열린 Select의 Enter는 프리미티브가 `preventDefault`한다** (malmoi#133 — `SelectContent`의 Viewport). Radix `SelectItem`은 Enter·Space를
+keydown에서 고르고 **Space만** 막아서, 막히지 않은 Enter의 활성화가 `onValueChange`가 방금 연 Dialog의 첫 포커스(X)에 떨어져 역할 변경
+확인이 같은 키 입력에 닫혔다. 항목의 핸들러는 Radix 것보다 먼저 돌아 거기서 막으면 선택이 건너뛰어지므로 **버블 단계의 Viewport**에서 막는다.
+jsdom의 user-event는 keydown·keypress를 한 동기 호출에서 보내 이 경로를 재현하지 못한다 — `members-cards.test.tsx`가 브라우저 순서를 흉내 낸다.
 
 ⚠️ **사전 차단은 편의이고 차단이 아니다.** 다른 탭이 그 사이 좌석을 채우거나 오너를 바꾼다 — 서버 거부
 셋이 전부 남는다. 그래서 **화면과 서버가 같은 판정 함수를 부른다**(`planMemberChange` ·
