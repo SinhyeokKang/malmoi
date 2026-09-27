@@ -628,7 +628,7 @@ types/next-auth.d.ts    session.user.id를 싣는 모듈 확장. ⚠️ `login`(
 .github/actions/malmoi-i18n-push/action.yml
                         **대상 리포가 참조하는 composite action**(외부 계약, 정본은 ACTIONS.md).
                         ⚠️ 참조는 불변 태그 @malmoi-i18n-push-v1이다 — 태그를 옮기는 것이 릴리스다
-public/og.png           링크 미리보기 이미지 1장(1200×630). ⚠️ **아직 리포에 없다** — 사용자가 만들어 넣는다(seo-geo U1). 그 전까지 og:image가 404를 가리킨다. 코드는 lib/seo/site.ts의 OG_IMAGE로 **항상** 싣는다 —
+public/og.png           링크 미리보기 이미지 1장 — 1200×630 PNG(사용자 제공 2400×1260 원본을 축소, 원본은 커밋하지 않는다). ⚠️ 치수는 OG_IMAGE 선언과 같아야 한다(site.test.ts가 IHDR로 잰다). 코드는 lib/seo/site.ts의 OG_IMAGE로 **항상** 싣는다 —
                         파일 규약(app/opengraph-image.png)이 아닌 이유는 얕은 병합이다. 대체 텍스트는 m.seo.ogImageAlt
 public/brand/ flags/    ⚠️ 커밋된 원본이다(fonts/는 반대로 생성물). flags 253개는 lib/keys/flag.ts의
                         FLAG_INVENTORY와 정확히 같아야 한다(flag-assets.test.ts가 양방향으로 센다).
