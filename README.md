@@ -103,12 +103,16 @@ brings new keys into Malmoi and marks translations whose source text changed as
 </table>
 
 - **Unsent edits hold back syncing** — while any saved edit is unpublished, a
-  workflow run loads nothing (its log says `deferred`). Publishing ends that
-  hold, even before the pull request is merged. Only a project owner can
+  workflow run loads nothing (its log says `deferred`). Publishing releases the
+  hold for the edits it sent, even before the pull request is merged — merge it
+  before the next push to keep those values. Only a project owner can
   discard unsent edits (Sync or Revert).
 - **Removed keys are kept** — bring the code back and its translations return.
 - **Nightly publishing** — saved changes nobody published go out once a night
-  (18:00 UTC) for active, connected projects.
+  (18:00 UTC) for active, connected projects whose first sync has succeeded
+  ([details](https://mal-moi.com/docs/sync/nightly)).
+- **Two roles** — owners manage the repository, settings, and members; editors
+  translate and publish. Invite teammates by email and pick a role per invite.
 
 ## Supported file formats
 
@@ -123,7 +127,8 @@ brings new keys into Malmoi and marks translations whose source text changed as
 YAML catalogs and code dictionaries keep comments, blank lines, and key order;
 JSON catalogs and Chrome messages keep indentation, one-line containers,
 escapes, and field order. Values come from Malmoi. Detection needs at least two
-languages.
+languages. One project can hold several sources, in any mix of formats; Publish
+sends them in one pull request.
 [Limits →](https://mal-moi.com/docs/reference/limits)
 
 ## What Malmoi doesn't do
