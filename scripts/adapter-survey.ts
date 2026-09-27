@@ -61,7 +61,11 @@ const verdicts: Verdict[] =
   verdictsPath && existsSync(verdictsPath) ? (JSON.parse(readFileSync(verdictsPath, "utf8")) as Verdict[]) : [];
 
 const execFileAsync = promisify(execFile);
-/** ⚠️ **async다** (audit #21) — `execFileSync`면 워커가 몇 개든 clone이 이벤트 루프를 막아 하나씩만 돈다. */
+/**
+ * ⚠️ **async로 남겨야 한다** (audit #21) — `execFileSync`로 되돌리면 워커가 몇 개든 clone이 이벤트 루프를 막아
+ * `--jobs`가 거짓이 되고 git은 하나씩만 돈다. 이 줄은 최상위 실행 스크립트 안이라 **어떤 테스트도 덮지 않는다** —
+ * `lib/survey/__tests__/run.test.ts`는 주입된 러너가 async일 때의 풀만 잰다.
+ */
 const git: GitRunner = async (cwd, args) =>
   (await execFileAsync("git", [...args], { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 })).stdout;
 
