@@ -586,8 +586,12 @@ it("사진 업로드가 도는 동안 삭제를 누를 수 없다", async () => 
    * ⚠️ **`Once`다** — `beforeEach`의 `clearAllMocks`는 호출 기록만 지우고 구현은 되돌리지 않아서,
    * 영영 안 풀리는 promise를 `mockReturnValue`로 두면 뒤따르는 테스트가 그것을 물려받아 **실패가
    * 아니라 행으로** 멈춘다 (2026-09-14 2차 리뷰 R6).
+   *
+   * ⚠️ **끝에 푼다** (audit #19) — 안 풀면 async transition이 남아 뒤 테스트의 transition을 pending으로 붙잡는다
+   * (POSTMORTEM 2026-09-18).
    */
-  accountActions.uploadProfileImage.mockReturnValueOnce(new Promise(() => {}));
+  let finish!: (result: { ok: true }) => void;
+  accountActions.uploadProfileImage.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
   // 사진이 있어야 [Delete]가 애초에 활성이다 — 없으면 `hasPicture`만으로 비활성이라 검사가 공회전한다.
   const container = await screen({}, undefined, undefined, "https://images.example/a.png");
   const file = container.querySelector<HTMLInputElement>("input[type='file']")!;
@@ -603,6 +607,8 @@ it("사진 업로드가 도는 동안 삭제를 누를 수 없다", async () => 
    */
   const reason = container.ownerDocument.getElementById(remove.getAttribute("aria-describedby")!);
   expect(reason?.textContent).toBe(m.account.picture.busy);
+  await act(async () => { finish({ ok: true }); });
+  expect(remove.hasAttribute("disabled")).toBe(false);
 });
 
 /**
@@ -610,7 +616,8 @@ it("사진 업로드가 도는 동안 삭제를 누를 수 없다", async () => 
  * 리팩터가 한쪽을 되돌려도 green이다 (2026-09-14 2차 리뷰 R5).
  */
 it("사진 삭제가 도는 동안 업로드를 누를 수 없다", async () => {
-  accountActions.deleteProfileImage.mockReturnValueOnce(new Promise(() => {}));
+  let finish!: (result: { ok: true }) => void;
+  accountActions.deleteProfileImage.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
   const container = await screen({}, undefined, undefined, "https://images.example/a.png");
   const remove = [...container.querySelectorAll("button")]
     .find((button) => (button.textContent ?? "").trim() === m.account.picture.delete)!;
@@ -621,6 +628,8 @@ it("사진 삭제가 도는 동안 업로드를 누를 수 없다", async () => 
   expect(upload.hasAttribute("disabled")).toBe(true);
   // 숨은 `<input>`도 함께 막힌다 — 버튼만 막으면 키보드로 파일 대화상자가 열린다.
   expect(container.querySelector("input[type='file']")!.hasAttribute("disabled")).toBe(true);
+  await act(async () => { finish({ ok: true }); });
+  expect(upload.hasAttribute("disabled")).toBe(false);
 });
 
 
