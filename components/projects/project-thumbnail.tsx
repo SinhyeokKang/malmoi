@@ -31,17 +31,20 @@ import { toneFill } from "@/components/ui/tone";
  * ⚠️ **16은 사이드바 구역 머리 하나다** (2026-09-25 사용자 — 24에서 내렸다) — 아래 항목 아이콘과 같은
  * 16이어야 머리 라벨과 항목 라벨의 시작점이 한 세로선에 선다. 옆의 사용자 `Avatar`도 16이다.
  * 글리프는 12(`size-3`, DESIGN §6.8의 넷 안)다.
+ *
+ * ⚠️ **16의 radius는 4(`rounded`)다** (2026-09-27 사용자) — 8이면 반지름이 변의 절반이라 사각이 원으로
+ * 보이고, 옆의 사용자 원과 구별되지 않아 "모양이 대상을 말한다"(§6.4)가 깨진다. 28의 8과 비율이 비슷하다.
  */
 const SIZE = {
-  28: { tile: "size-7", glyph: "size-4" },
-  16: { tile: "size-4", glyph: "size-3" },
+  28: { tile: "size-7", glyph: "size-4", radius: "rounded-sm" },
+  16: { tile: "size-4", glyph: "size-3", radius: "rounded" },
 } as const;
 
 export function ProjectThumbnail({ name, src, size = 28 }: { name: string; src?: string | null; size?: keyof typeof SIZE }) {
   return (
     <ImageTile
       src={src}
-      className={`flex ${SIZE[size].tile} shrink-0 items-center justify-center overflow-hidden rounded-sm`}
+      className={`flex ${SIZE[size].tile} shrink-0 items-center justify-center overflow-hidden ${SIZE[size].radius}`}
       fallbackClassName={`text-white ${toneFill(name)}`}
     >
       <Box className={SIZE[size].glyph} />
