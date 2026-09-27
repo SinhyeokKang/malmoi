@@ -48,3 +48,39 @@ it("재로그인의 이메일 갱신은 이름·사진을 함께 쓰지 않는�
   expect(await refreshVerifiedEmail(db, "github", "gh1", "new@x.com")).toBe("update");
   expect(Object.keys(update.mock.calls[0]![0].data).sort()).toEqual(["email", "emailLookup"]);
 });
+
+/**
+ * ⚠️ **연결은 잠금 뒤에 다시 읽는다** (audit #5) — 콜백이 Account를 읽은 뒤 해제(`unlinkLoginMethod`)가
+ * 같은 User 잠금 안에서 커밋되면, 잠금 앞에서 본 연결은 이미 거짓이다. 잠금이 풀리는 순간(= `$executeRaw`)
+ * 해제가 커밋된 것으로 순서를 고정한다.
+ */
+function raceDb(afterLock: { userId: string } | null, loginMethods: number) {
+  const row = { id: "u1", ...encodeUserFields("u1", { email: "old@x.com" }) };
+  let linked: { userId: string } | null = { userId: "u1" };
+  const update = vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ ...row, ...data }));
+  const tx = {
+    $executeRaw: vi.fn(async () => { linked = afterLock; }),
+    account: { findUnique: vi.fn(async () => linked), count: vi.fn().mockResolvedValue(loginMethods) },
+    user: { findUnique: vi.fn().mockResolvedValueOnce(row).mockResolvedValueOnce(null), update },
+  };
+  const db = { account: tx.account, $transaction: async (fn: (v: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient;
+  return { db, update };
+}
+it("잠금을 기다리는 사이 해제된 공급자의 새 주소로 이메일을 바꾸지 않는다", async () => {
+  const { db, update } = raceDb(null, 1);
+  expect(await refreshVerifiedEmail(db, "github", "gh1", "new@x.com")).toBe("keep");
+  expect(update).not.toHaveBeenCalled();
+});
+it("잠금 뒤 그 Account의 소유자가 바뀌었으면 쓰지 않는다", async () => {
+  const { db, update } = raceDb({ userId: "u2" }, 1);
+  expect(await refreshVerifiedEmail(db, "github", "gh1", "new@x.com")).toBe("keep");
+  expect(update).not.toHaveBeenCalled();
+});
+it("잠금 뒤에도 연결이 그대로면 단일 수단은 갱신하고 복수 수단은 고정한다", async () => {
+  const single = raceDb({ userId: "u1" }, 1);
+  expect(await refreshVerifiedEmail(single.db, "github", "gh1", "new@x.com")).toBe("update");
+  expect(single.update).toHaveBeenCalledTimes(1);
+  const pinned = raceDb({ userId: "u1" }, 2);
+  expect(await refreshVerifiedEmail(pinned.db, "github", "gh1", "new@x.com")).toBe("keep");
+  expect(pinned.update).not.toHaveBeenCalled();
+});
