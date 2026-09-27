@@ -18,6 +18,10 @@ v1을 옮기면 HEAD 스크립트의 새 red(ACTIONS §3의 다섯: JSON 중첩�
 
 v2가 새 태그라 `actions/cache`를 써도 v1 소비자는 안 깨지지만, 새로 붙이거나 재복사하는 조직의 허용 목록은 늘어난다 — 넷 유지 판단은 그대로다.
 
+## ⚠️ B 판정 (2026-09-27, T1): 캐시를 끄고 A만 출하한다
+
+아래 "캐시" 절들은 **채택하지 않은 설계의 기록**이다(재시도할 때의 출발점). 근거 — T1 셋업+install 3회 평균(`SinhyeokKang/bugshot-i18n-test`, 표면 하나): v1 15.7초 · v2 캐시 끔 19.9초 · 미스 19.2초(+post 저장 5.1초) · 적중 15.0초. 적중 install은 3.5초지만 292 MB 복원이 pnpm 스텝을 9.9~12.8초로 늘려 **v1 대비 −0.7초**다. 표면 둘 job은 둘째 호출의 self-installer가 `PNPM_HOME` 아래 store를 지워 **9.66 KiB 빈 store가 저장·고정**됐다. 292 MB/키가 대상 리포 10 GB 한도를 나눠 쓰고 `PUSH_TOKEN` 스텝의 공급 경로가 는다 — 얻는 것에 비해 크다. 그래서 캐시 준비·정리 스텝·`detect-cache.cjs`를 지우고 `pnpm/action-setup`에 `cache: false`를 명시했다(r3). 남긴 것: node24 판, `package-manager-cache: false`, 가드, `--frozen-lockfile`. v6 self-installer 때문에 v2 셋업이 v1보다 ~4초 느린 것은 판 교체(A)의 대가로 받아들인다. 같은 job에서 대상 리포가 먼저 pnpm을 설치하면 그 store가 지워지는 것은 **v1부터 있던 기전**(T1.3(c) v1 대조)이라 ACTIONS "알려진 한계"로만 적었다.
+
 ## 결정: 캐시는 `pnpm/action-setup`의 내장 `cache`
 
 | 후보 | 허용 목록 | 판정 |
