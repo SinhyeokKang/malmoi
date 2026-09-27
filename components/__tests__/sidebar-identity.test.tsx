@@ -64,6 +64,22 @@ describe("사이드바 구역 머리의 아바타·썸네일", () => {
     }
   });
 
+  /**
+   * ⚠️ **모양·글자가 크기를 따라간다** (2026-09-27 사용자) — 16 상자에 radius 8(`rounded-sm`)이면 반지름이
+   * 변의 절반이라 사각이 원이 되고, 13px 이니셜은 상자를 거의 채운다.
+   */
+  it("16 썸네일은 radius 4라 원으로 안 보이고, 16 이니셜은 `text-2xs`다", async () => {
+    pathname = "/projects/beta";
+    const { container } = await render(<Sidebar memberships={memberships} userName="Kim" userImage={null} signOut={() => {}} />);
+    const tile = container.querySelector('nav[aria-label="Beta"] [data-zone-head] > :first-child');
+    expect(tile?.className.split(" ")).toContain("rounded");
+    expect(tile?.className.split(" ")).not.toContain("rounded-sm");
+    const initial = container.querySelector('nav[aria-label="Kim"] [data-zone-head] > :first-child');
+    expect(initial?.textContent).toBe("K");
+    expect(initial?.className.split(" ")).toContain("text-2xs");
+    expect(initial?.className.split(" ")).not.toContain("text-xs");
+  });
+
   it("아바타·썸네일에 테두리가 없다", async () => {
     pathname = "/projects/beta";
     const { container } = await sidebar();
