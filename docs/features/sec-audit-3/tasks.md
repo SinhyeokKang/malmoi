@@ -41,7 +41,7 @@
 - [x] **T2.1** `/db`: 마이그레이션 `revoke_public_schema_usage_from_api_roles`(롤 존재 조건 DO 블록) 생성 → dev 적용. — 검증: dev `has_schema_privilege('anon','public','USAGE') = false`, `pnpm test:projects:postgres` green(롤 없는 DB에서 적용 성공).
 - [x] **T2.2** `.claude/commands/db.md` 5단계: prod 필수 + 스키마 USAGE SQL. `pnpm sync:agents`. — 검증: `pnpm sync:agents:check` green.
   `[C] chore(db): revoke public schema usage from Supabase API roles`
-- [ ] **T2.3** (운영, `/merge` 1단계) prod `db:deploy` 뒤 USAGE·GRANT·default ACL 재조회, PUBLIC 상속으로 여전히 true면 design의 후속 판단. Supabase Advisors → Security와 `realtime` RLS를 눈으로 확인해 기록. — 검증: prod `has_schema_privilege` false 두 롤.
+- [x] **T2.3** (2026-09-27 v1.0.0 — prod `has_schema_privilege` anon·authenticated USAGE/CREATE false, 테이블 GRANT 0, `nspacl`에 `=U` 없음. Supabase Advisors 눈 확인은 대시보드라 미실시 — `realtime` RLS 켜진 테이블 1개는 쿼리로 확인) (운영, `/merge` 1단계) prod `db:deploy` 뒤 USAGE·GRANT·default ACL 재조회, PUBLIC 상속으로 여전히 true면 design의 후속 판단. Supabase Advisors → Security와 `realtime` RLS를 눈으로 확인해 기록. — 검증: prod `has_schema_privilege` false 두 롤.
 - [x] **T2.4** ARCHITECTURE §7·OPERATIONS에 "USAGE로 닫는다, default ACL은 남는다" + 확인 SQL. — 검증: CLAUDE.md Supabase 절의 "예방이 아니라 탐지" 문장이 새 사실과 모순 없음(CLAUDE.md 갱신 포함).
   `[C] docs(ARCHITECTURE): close API-role access at schema usage`
 
@@ -101,5 +101,5 @@
 ## 9. 마무리
 
 - [x] **T9.1** `/code-review` → `/refactor` → `/push`(dev). `/push` 4단계에서 개인정보 방침 영향 확인(새 쿠키·전송처 없음 — 판정 기록).
-- [ ] **T9.2** `/merge` 1단계에서 prod `db:deploy` + T2.3.
+- [x] **T9.2** (2026-09-27 v1.0.0) `/merge` 1단계에서 prod `db:deploy` + T2.3.
 - [ ] **T9.3** 이 디렉터리 삭제(결론은 정본으로 올라갔는지 확인 후). `/postmortem`은 1번에 대해 작성(🔴 — 2026-09-09 경로 항목의 인접 축을 놓친 사례).
