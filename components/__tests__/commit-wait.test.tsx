@@ -119,11 +119,26 @@ describe("번역 화면", () => {
     expect(locked(named("Revert to last sent"))).toBe(false);
   });
 
-  it("Sync 실패는 곧장 푼다", async () => {
-    mocks.run.mockRejectedValue(new Error("offline"));
+  it("트리 없는 Sync 거부(try 앞)는 곧장 푼다", async () => {
+    mocks.run.mockResolvedValue({ ok: false, error: "forbidden" });
     await render(<TranslationWorkspace {...props()} />);
     await click(named("Sync"));
     await click(named("Discard changes and sync"));
+    expect(locked(named(/^Publish/))).toBe(false);
+  });
+
+  /**
+   * ⚠️ **응답을 잃은 Sync는 refresh 트리까지 잠근다** (malmoi#132) — 서버가 편집을 버렸을 수 있다. 전엔 곧장 풀려 옛 건수의
+   * Publish가 이미 버려진 편집을 보내자고 했다.
+   */
+  it("응답을 잃은 Sync는 refresh 트리가 올 때까지 Publish를 잠근다", async () => {
+    mocks.run.mockRejectedValue(new Error("offline"));
+    const view = await render(<TranslationWorkspace {...props()} />);
+    await click(named("Sync"));
+    await click(named("Discard changes and sync"));
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+    expect(locked(named(/^Publish/))).toBe(true);
+    await view.rerender(<TranslationWorkspace {...nextServer()} />);
     expect(locked(named(/^Publish/))).toBe(false);
   });
 

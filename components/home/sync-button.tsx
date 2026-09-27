@@ -2,6 +2,7 @@
 
 import { ArrowDownToLine, LoaderCircle, TriangleAlert } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 
 import { checkOpenPullRequest, prepareRepositorySync, runRepositoryImport } from "@/app/(edit)/projects/actions";
@@ -72,6 +73,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
   const [issued, setIssued] = useState<{ approval: string | null; unsent: number } | null>(null);
   const approvalPending = issued === null;
   const shownUnsent = issued === null || issued.approval === null ? unsent : issued.unsent;
+  const router = useRouter();
   const request = useRef(0);
   const busy = useRef(false);
   useEffect(() => {
@@ -118,12 +120,23 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
       `awaiting_first_sync`에서만 서므로 **존재하지 않는 버튼**을 가리킨다. 캔버스 §6 `4f`의 tone 표가
       이 부류(요청이 못 갔다)에 배정한 것은 `unavailable`이다.
     */
-    catch { outcome = { ok: false, error: "unavailable" }; }
+    /*
+      ⚠️ **`unavailable`로 접지 않는다** (malmoi#132) — throw는 요청이 나간 뒤 응답을 잃은 것일 수 있고, 그때 서버는 Sync를 끝냈다
+      (편집 폐기 포함). "didn't go through"와 옛 `To send`가 되돌릴 수 없는 폐기를 안 일어난 일로 말했다. **다시 실행하지 않는다** —
+      두 번 돌 수 있다. 서버 상태만 다시 읽는다(아래 refresh).
+    */
+    catch { outcome = { ok: false, error: "unconfirmed" }; }
     busy.current = false;
     setPending(false);
     onResult(outcome);
     /*
-      ⚠️ **`router.refresh()`를 부르지 않는다** (audit-ux #12). Action이 `finally`에서 `revalidatePath(…, "layout")`를 부르고
+      ⚠️ **응답을 잃은 실행만 refresh한다** — 아래 규칙의 유일한 예외다. Action의 재검증 트리가 응답과 함께 사라져 화면이 Sync 전
+      트리로 남는다. 결과를 먼저 넘기는 것이 순서다: 호스트의 `wait()`가 옛 트리를 기준으로 떠야 refresh 트리까지 교차 잠금이 선다.
+      ⚠️ **오프라인이면 부르지 않는다** — RSC fetch가 실패하면 Next가 브라우저 내비게이션으로 떨어져 오류 페이지가 결과를 덮는다.
+    */
+    if (!outcome.ok && outcome.error === "unconfirmed" && navigator.onLine !== false) router.refresh();
+    /*
+      ⚠️ **응답이 온 결과에는 `router.refresh()`를 부르지 않는다** (audit-ux #12). Action이 `finally`에서 `revalidatePath(…, "layout")`를 부르고
       Next가 그 응답에 새 트리를 실어 커밋한다 — 여기서 또 부르면 결과가 선 뒤 두 번째 전체 렌더가 표시 없이 돌았다.
       실패 뒤의 refresh가 거부 Alert를 씻던 함정(POSTMORTEM 2026-09-08)도 호출이 없으니 생기지 않는다.
 
