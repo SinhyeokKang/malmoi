@@ -204,8 +204,8 @@ components/
                         급은 DOC_TABLE 한 상수). /docs는 칸을 react-markdown이 그리므로 틀(DocTableFrame)만 쓴다
   landing/              랜딩(`/`) 화면. 셸은 components/public-shell/다.
                         stage.tsx(클라이언트 — 스크롤 → rAF → lib/landing/stage의 frame() → ref로 transform·opacity·data-*·
-                        텍스트를 직접 쓴다. ⚠️ 프레임마다 setState하지 않는다) · mockup/(서버 컴포넌트 — 1280×720 씬 다섯의
-                        정적 DOM. app-frame(앱 셸 복제) · translations(번역 화면 복제, phase로 ①②③) · publish(④ 미리보기 · ⑤ 결과).
+                        텍스트를 직접 쓴다. ⚠️ 프레임마다 setState하지 않는다) · mockup/(서버 컴포넌트 — 1440×810 씬 다섯의
+                        정적 DOM. app-frame(앱 셸 복제 — LNB는 navZones·navFooterItems에서) · translations(번역 화면 복제 — 소스 트리 포함, phase로 ①②③) · publish(④ 미리보기 · ⑤ 결과).
                         ⚠️ 인터랙티브 태그 0 — 버튼 모양은 buttonClass를 span에. 앱 라벨은 실제 사전 키, 가상 데이터는 m.landing.mockup)
   members/              멤버 화면 조각 다섯 (2026-09-19 리워크). members-panel-header(좌석 라벨 +
                         [Invite] + 모달 소유) · invite-modal(다중 초대 폼 — 행 = 사람 하나, 성공이면 닫힘) ·
@@ -542,7 +542,7 @@ lib/
                         (Node는 "(Azərbaycan)"). ⚠️ 하위태그를 떼지 않는다 — zh-Hans/zh-Hant가
                         한 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다
   onboarding/types.ts   RepoOption·AdapterChoice. 타입만 산다 — 같은 번들 이유
-  landing/              랜딩(`/`) 스테이지의 수학 — stage(fitScale · growProgress · sceneAt · typedPrefix · frame).
+  landing/              랜딩(`/`) 스테이지의 수학 — stage(fitScale · PLAY · pinnedSpan · trackHeight · sceneAt · typedPrefix · frame).
                         ⚠️ 잎(import 0) — 스테이지 클라이언트가 값으로 읽는다. 같은 스크롤 위치 → 같은 프레임이
                         역방향 스크럽의 조건이라 이전 프레임을 입력으로 받지 않는다. `/`에 무엇을 그릴지는
                         여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다. 공개 셸 헤더의
