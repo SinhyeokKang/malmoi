@@ -118,6 +118,31 @@ describe("previewKeyRevert", () => {
     expect(await previewKeyRevert(prisma, target)).toEqual({ status: "blocked", reason: "busy" });
   });
 
+  it("활성 시간(300초)이 지난 RUNNING·import 흔적은 busy가 아니다 (경계 안이면 busy — 감사 #9)", async () => {
+    const now = Date.now();
+    await confirm(new Date(now - 500_000));
+    await save([{ localeCode: "ko", value: "x" }]);
+    await prisma.syncRun.create({ data: { id: "dead", projectId: "p", status: "RUNNING", trigger: "MANUAL", startedAt: new Date(now - 400_000) } });
+    await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: "dead-import", repositoryImportStartedAt: new Date(now - 400_000) } });
+    expect((await previewKeyRevert(prisma, target)).status).toBe("ready");
+    await prisma.project.update({ where: { id: "p" }, data: { repositoryImportStartedAt: new Date(now - 100_000) } });
+    expect(await previewKeyRevert(prisma, target)).toEqual({ status: "blocked", reason: "busy" });
+    await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: null, repositoryImportStartedAt: null } });
+    await prisma.syncRun.update({ where: { id: "dead" }, data: { startedAt: new Date(now - 100_000) } });
+    expect(await previewKeyRevert(prisma, target)).toEqual({ status: "blocked", reason: "busy" });
+  });
+
+  it("확인보다 먼저 시작해 만료된 RUNNING은 실패처럼 종료 미확인이다 — 흔적 만료가 확인을 유효하게 만들지 않는다", async () => {
+    const now = Date.now();
+    await confirm(new Date(now - 350_000));
+    await save([{ localeCode: "ko", value: "x" }]);
+    // 저장 뒤에 심는다 — 저장의 기준 기록은 시간 경계 없는 `publishInFlight`를 본다(범위 밖, 감사 #9 언급).
+    await prisma.syncRun.create({ data: { id: "dead", projectId: "p", status: "RUNNING", trigger: "MANUAL", startedAt: new Date(now - 400_000) } });
+    expect(await previewKeyRevert(prisma, target)).toEqual({ status: "blocked", reason: "unsettled" });
+    await prisma.syncRun.update({ where: { id: "dead" }, data: { startedAt: new Date(now - 700_000) } });
+    expect((await previewKeyRevert(prisma, target)).status).toBe("ready");
+  });
+
   it("확인 직전 300초 안에 시작해 실패한 실행이 있으면 종료 미확인으로 막는다 (그보다 오래되면 연다)", async () => {
     const now = Date.now();
     await prisma.syncRun.create({ data: { id: "failed", projectId: "p", status: "FAILED", trigger: "MANUAL", startedAt: new Date(now - 100_000), finishedAt: new Date(now - 90_000) } });
