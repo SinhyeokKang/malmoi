@@ -463,7 +463,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-09-26",
+      effectiveDate: "2026-09-27",
       /**
        * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
        */
@@ -474,14 +474,14 @@ export const en = {
        */
       tocLabels: { deletion: "Deleting your data" },
       intro:
-        "Malmoi is a localization tool: developers push the strings in their code to Malmoi, their teammates translate them here, and Malmoi opens a pull request back to the repository. This policy covers what Malmoi stores about the people who sign in, why it stores it, and how to have it removed.",
+        "Malmoi is a localization tool: developers push the strings in their code to Malmoi, their teammates translate them here, and Malmoi opens a pull request back to the repository. This policy covers what Malmoi stores about the people who sign in, how it counts visits to its public pages, why, and how to have your data removed.",
       sections: [
         {
           id: "collected",
           heading: "What we collect",
           blocks: [
             {
-              p: "Malmoi collects what it needs to sign you in, to decide what you can open, and to show your teammates who changed a translation. There is no analytics, advertising or tracking of any kind.",
+              p: "Malmoi collects what it needs to sign you in, to decide what you can open, and to show your teammates who changed a translation. Separately, it counts visits to its public pages — the home page, sign-in, the docs and this policy — without cookies. Pages inside the app are not counted, and there is no advertising or cross-site tracking.",
             },
             {
               table: {
@@ -529,6 +529,9 @@ export const en = {
             {
               p: "Names, email addresses and connection tokens are stored encrypted, and the keys are held outside the database. A profile picture you upload is re-encoded before it is stored, which drops the original file and the metadata in it; a picture that comes from GitHub or Google stays on their servers.",
             },
+            {
+              p: "Visits to the public pages are counted by Vercel Web Analytics. For each page view it records the time, the page address with any query and fragment removed, the page you came from, your approximate location (country, region and city), and your device type, operating system and browser with their versions. It sets no cookies and stores nothing in your browser. Instead of an identifier, Vercel uses a hash created from the request, and that visitor session is discarded after 24 hours; the records are not tied to a person or an IP address. Malmoi sees only totals.",
+            },
           ],
         },
         {
@@ -543,6 +546,7 @@ export const en = {
                 "Writing translations back to the repository a project is connected to, as a pull request.",
                 "Emailing an invitation link to an address a project owner enters. The email holds the link and nothing else — no project name, no role and no tracking.",
                 "Keeping the service running, which includes looking at error logs when something fails.",
+                "Counting visits to the public pages, to see whether people find Malmoi and which docs they read. Only totals are looked at.",
               ],
             },
             {
@@ -579,7 +583,7 @@ export const en = {
                 "GitHub — signing you in, and reading and writing the repository a project is connected to. Translations are committed and opened as a pull request by Malmoi's GitHub App, not under your own account.",
                 "Google — signing you in, if you choose Google.",
                 "Supabase — the database, hosted in Tokyo.",
-                "Vercel — hosting for the app and storage for uploaded profile pictures. Vercel records requests to the service, including IP addresses, as part of running it.",
+                "Vercel — hosting for the app, storage for uploaded profile pictures, and counting visits to the public pages (Web Analytics, described under What we collect). Vercel records requests to the service, including IP addresses, as part of running it.",
                 "Resend — sending invitation emails, from Tokyo. It receives the invited address and the message with the invitation link. Open and click tracking are off.",
               ],
             },
@@ -654,7 +658,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
