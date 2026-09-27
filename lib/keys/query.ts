@@ -222,7 +222,7 @@ export type MembershipRow = {
    */
   defaultSurfaceSlug: string | null;
   /**
-   * 사이드바 프로젝트 항목의 개수 배지 (2026-09-27 사용자 — "`Projects` 하나"를 뒤집었다 — DESIGN 개수 배지 행). **같은 조회의 관계 `_count`라
+   * 사이드바 프로젝트 항목의 개수 배지 (2026-09-27 사용자 — PRODUCT §7.7 결정 5를 뒤집었다). **같은 조회의 관계 `_count`라
    * 왕복이 늘지 않는다.** ⚠️ 숫자가 각 화면과 같아야 한다 — 멤버는 목록 행의 `memberCount`, 소스는 보관 안 된 것
    * (Sources 목록), 키는 그 소스들의 orphaned가 아닌 것의 합(`loadSurfaceCounts`의 합)이다.
    */
