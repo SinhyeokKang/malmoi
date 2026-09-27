@@ -893,6 +893,9 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
 - **`ref`는 네 온보딩 진입점 전부 `isValidBranchName`을 지난다** — `detectRepoFormats` ·
   `loadCandidateSample` · `confirmManualFormat` · `createProject`. 샘플의 `locale`과 수동 지정의
   `baseLocale`은 `isPathSafeLocale`도 지난다.
+- **base 브랜치는 Malmoi의 sync 브랜치(`malmoi-i18n/sync-` 접두 전체)일 수 없다** (malmoi#126) — `isSyncBranchName`(`lib/pull/ref-slug.ts`) 하나를
+  목록 필터(`planBranchChoice` — 설정·①)와 거부 넷(`detectRepoFormats` · `createProject` · `updateRepositorySettings` · 설정 폼의 자유 입력)이 쓴다.
+  목록에서 빼는 것만으로는 부족하다 — 300개 초과의 자유 입력·직접 호출이 같은 이름을 보낸다. 되면 Sync가 미머지 산출물을 읽고 Publish가 자기 자신으로 PR을 낸다.
 - **`workflow.ts`의 `renderProjectWorkflowYaml`** — 사용자에게 보이는 Actions YAML. ⚠️ **정본은
   `docs/ACTIONS.md`의 첫 ```yaml 블록**이고 `lib/onboarding/__tests__/workflow.test.ts`가 그 블록을 읽어
   줄 단위로 대조한다 — 한쪽만 고치면 문서를 보고 붙인 리포와 화면을 보고 붙인 리포가 다르게 동작한다.
