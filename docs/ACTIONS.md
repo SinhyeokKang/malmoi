@@ -85,6 +85,10 @@ jobs:
 옮긴다 — 소비자는 아무것도 안 고친다. 호환이 깨지는 변경이면 `-v2`를 새로 끊고 이 문서의 예시를
 바꾼다(옛 태그는 그대로 두어 기존 소비자가 안 깨진다).
 
+⚠️ **앱 릴리스 태그(`v<x.y.z>`)는 action 계약이 아니다 — `@malmoi-i18n-push-vN`을 쓴다** (2026-09-27). `/merge`가
+머지마다 `v1.0.0` 같은 태그를 만들고 그것도 `uses:`가 받는 유효한 ref지만, 앱 릴리스마다 움직이는 축이라
+action 호환을 약속하지 않는다. 앱 버전이 올라도 action 태그는 안 움직인다.
+
 ⚠️ **action 안의 `uses:`도 전부 40자 SHA로 핀돼 있다** — 업스트림 태그 재지정(2025년
 `tj-actions/changed-files`)이 같은 경로로 들어온다. `scripts/__tests__/workflow-pins.test.ts`가
 `.github/` 전체를 훑어 가변 태그가 0건인지 상시로 센다(핀 옆의 버전 주석과 `ci.yml`의
@@ -100,7 +104,7 @@ jobs:
 job 안에 있으므로 **핀한다** — 고칠 자리가 셋(이 문서 · `workflow.ts` · 줄 대조하는
 `lib/onboarding/__tests__/workflow.test.ts`)이고 한 커밋에 함께 움직여야 한다.
 
-✅ **배포 하나가 프로젝트 여럿의 push를 받고, 야간 pull도 준비된·보관되지 않은 프로젝트를 한 번에 50개까지 돈다** (2026-09-07 — push는 토큰이 프로젝트를 정하고, cron은 `lib/pull/targets.ts`가 고른 목록을 순회한다). 필터는 넷(`installationId`·**`repositoryId`**·`lastCommitSha`·`archivedAt`)이고 상한은 `PULL_BATCH_LIMIT` 50이다. ⚠️ **`repositoryId`는 2026-09-10에 붙었다** — 그 이전에 만들어진 행은 null이라 **OWNER가 재연결할 때까지 순회에서 빠진다**. 아래 예시들을 동시에 붙여도 서로 섞이지 않는다.
+✅ **배포 하나가 프로젝트 여럿의 push를 받고, 야간 pull도 준비된·보관되지 않은 프로젝트를 한 번에 50개까지 돈다** (2026-09-07 — push는 토큰이 프로젝트를 정하고, cron은 `lib/pull/targets.ts`가 고른 목록을 순회한다). 필터는 넷(`installationId`·**`repositoryId`**·`lastCommitSha` — 보관되지 않은 표면 중 하나라도(`planProjectReadiness`) ·`archivedAt`)이고 상한은 `PULL_BATCH_LIMIT` 50이다. ⚠️ **`repositoryId`는 2026-09-10에 붙었다** — 그 이전에 만들어진 행은 null이라 **OWNER가 재연결할 때까지 순회에서 빠진다**. 아래 예시들을 동시에 붙여도 서로 섞이지 않는다.
 
 ⚠️ **토큰은 프로젝트를 만들 때 한 번, 그리고 설정 화면의 [토큰 재발급]으로 나온다** — 원문은 그 화면을 벗어나면 다시 볼 수 없고 서버는 해시만 갖는다. 재발급하면 **옛 토큰이 즉시 무효**이므로 이 리포의 secret을 같은 세션에 바꾼다.
 
@@ -117,7 +121,6 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 (`renderProjectWorkflowYaml`) — slug·path-template을 손으로 조립하지 않는다. 토큰이 프로젝트 단위라
 틀린 `surface:`는 409가 아니라 다른 표면을 덮어쓴다.
 현재 `malmoi-i18n-push-v1`(8511d37)은 surfaceSlug를 생산한다. 삭제된 옛 `l10n-push-v1`은 생산하지 않았다.
-[배포 1 writer 전환](./OPERATIONS.md#다중-표면-배포-1--additive-migration과-writer-전환) 뒤에만 이 예시를 실행한다.
 
 <!-- additional-surface-step -->
 ```yaml
@@ -140,10 +143,10 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 | `project` | **항상.** `push-token`이 정한 프로젝트의 slug와 다르면 409다 (오배송 거부 — ARCHITECTURE §5.5.5). 토큰이 먼저 프로젝트를 정하고 이 값은 그 뒤에 대조된다 |
 | `target` | 로케일·소스가 **하위 디렉터리**에만 있을 때(모노레포). 기본은 `github.workspace`. `git rev-parse`도 이 경로에서 돈다 |
 | `github-token` | **항상 권장.** 없으면 열린 번역 PR 경고 스텝이 통째로 빠진다 — 실패도 경고도 없이 조용히 |
-| `adapter` | **말모이가 생성하는 YAML은 확정한 어댑터를 항상 명시한다.** 자동 탐지·수동 지정 여부와 무관하게 결과 화면과 설정 화면이 같은 값을 내므로, 복사 후 CI의 탐지 순위가 저장된 포맷을 바꾸지 않는다. **한 리포에 포맷이 둘이면 필수.** `ts-dict`는 **자동 탐지에 아예 참여하지 않으므로**(`detectCandidates`가 항상 빈 배열) 명시 지정이 유일한 경로다 — bugshot-2가 그렇다: `_locales` 4키가 탐지되고 `ts-dict` 903키는 후보에 오르지도 않는다 → `adapter: ts-dict`. 그 밖의 공존은 `detectCandidatesAcross`의 후보 순위가 다른 쪽을 골라 큰 쪽 키가 orphan된다 |
+| `adapter` | **말모이가 생성하는 YAML은 확정한 어댑터를 항상 명시한다.** 자동 탐지·수동 지정 여부와 무관하게 결과 화면과 설정 화면이 같은 값을 내므로, 복사 후 CI의 탐지 순위가 저장된 포맷을 바꾸지 않는다. **한 리포에 포맷이 둘이면 필수.** `ts-dict`도 2026-09-14부터 자동 탐지 후보에 오르지만(ARCHITECTURE §1.9 판정 ③) **1순위는 `detectCandidatesAcross`의 순위가 정한다** — bugshot-2는 `_locales` 4키가 크롬 버킷이라 `ts-dict` 903키보다 언제나 앞선다 → `adapter: ts-dict`. 명시가 없으면 순위가 다른 쪽을 골라 큰 쪽 키가 orphan된다 |
 | `base-locale` | **`en`이 없는 리포는 필수.** 없으면 사전순 첫 로케일을 base로 추정하고, 틀리면 진짜 base에만 있는 키가 적재에서 빠져 orphaned로 떨어진다 — 키 집합은 base 파일이 정한다 (2026-09-04). ⚠️ **말모이 설정 화면에서 기준 언어를 바꾸면 이 값도 함께 고쳐야 한다** (6b-3): 화면은 "선언"만 저장하고 실제 전환은 **이 값을 든 다음 push**가 한다 — 안 고치면 CI는 계속 옛 base를 보내 통과하고(409가 아니다) 변경이 **영영 일어나지 않는다.** 그래서 대기 중에는 설정 화면의 워크플로 YAML이 이 줄을 무조건 박아 낸다. ⚠️ **2026-09-14부터 말모이가 내는 YAML은 대기가 아닐 때도 이 줄을 든다** — 온보딩 ③에서 탐지 1순위가 아닌 기준 언어를 고를 수 있고, 그때 이 줄이 없으면 CI가 1순위를 보내 `format mismatch` 409가 된다. 결과 화면과 설정 화면이 같은 값을 낸다 |
 | `wrapper` | 기본값(`@/i18n#t`)이 아닐 때. 여러 개면 줄바꿈으로 나눈다 |
-| `api-url` | 기본값이 `https://mal-moi.com`이라 보통 생략. ⚠️ **`.vercel.app`을 쓰지 않는다** — 프로젝트 리네임에 404가 되고 Deployment Protection이 Bearer를 무시해 302로 튕긴다(2026-09-04 실측) |
+| `api-url` | 기본값이 `https://mal-moi.com`이라 보통 생략. ⚠️ **`.vercel.app`을 쓰지 않는다** — 프로젝트 리네임에 404가 되고 Deployment Protection이 Bearer를 무시해 302로 튕긴다(2026-09-04 실측). ⚠️ **https여야 한다** — 요청이 push 토큰 원문을 싣는다. `http:`는 루프백(`localhost`·`127.0.0.1`·`[::1]`)만 받고 그 밖이면 스텝이 exit 2로 red다 |
 
 훅 기반 리포의 예 (실측 형태 — ARCHITECTURE §4.0):
 
@@ -166,17 +169,21 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 
 ## 3. 무엇이 red를 만드는가
 
+⚠️ **아래 표는 HEAD 스크립트 기준이다.** 대상 리포가 쓰는 `@malmoi-i18n-push-v1`(8511d37, 2026-09-14)에는 **JSON 중첩·점 키 충돌 red · YAML 점 키 충돌 red · `api-url` https 거부 · 읽기 실패 red(`prepare-failed`) · 실패 보고의 `executionId`** 가 없다 — action이 그 태그의 스크립트를 clone해 돌리므로 태그를 옮기기(action 릴리스) 전까지 대상 리포에서 이 다섯은 green이거나 식별자 없이 동작한다.
+
 **적재 실패만 red다.** 스캔 실패는 경고이고 exit 0이다 — 키의 진실은 로케일 파일이고 스캔은 `refs` 전담이라, 남의 리포 CI를 우리 스캐너 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
 
 | 상황 | 결과 |
 |---|---|
 | 로케일 파일이 깨졌다·base 파일이 없다 | **red** — 연동이 성립하지 않는다 |
+| **로케일 파일을 읽지 못했다**(권한·I/O 오류) | **red** (exit 1 — **서버까지 가지 않는다**, `prepare-failed`로 보고). 빈 파일로 읽으면 그 파일의 키가 페이로드에서 빠져 말모이가 삭제로 읽는다 — 부분 페이로드를 보내지 않는다 (2026-09-27, audit #7). ⚠️ **구 태그 `@malmoi-i18n-push-v1`에는 이 판정이 없다** — action이 그 태그의 `scripts/push-local.ts`를 clone해 돌리므로, 태그를 옮기기(`/merge` 뒤 action 릴리스) 전까지 대상 리포는 여전히 부분 페이로드를 보낸다 |
 | **YAML·JSON 카탈로그에서 같은 키가 두 번** — YAML의 중복 키, JSON의 중첩·점 키 충돌(`{ "a": { "b": … }, "a.b": … }`) | **red** — `duplicate-key`. 두 값 중 하나가 사라지는 파일이라 서버까지 가지 않는다. 처방은 둘 중 하나를 지우는 것. ⚠️ JSON 충돌은 2026-09-17까지 조용히 마지막 값으로 적재됐다(green) — 그 뒤로 red다. ⚠️ **`duplicate-key`를 내는 어댑터는 이 둘뿐이다.** YAML의 점 키·중첩 충돌(`a.b: …` + `a: { b: … }`)도 2026-09-24부터 같은 red다. `ts-dict`·`code-dict`는 코드 객체의 같은 키(점 키·중첩 충돌 포함)를 **`duplicate-property` 경고**로 알린다 — JS 의미대로 마지막 값이 적재되고 malmoi가 그 자리를 고치므로 잃는 값이 없다. CI 로그에 `적재 경고 N건 — CI는 계속한다:`와 키 목록이 찍히고 **green이다**. `chrome-locales`는 중복 감지가 없어(JSON 파서가 접는다) 마지막 값만 남는다: **green이다** |
 | `/api/push`가 4xx·5xx | **red** — **409가 다섯**(판정 순서대로 **보관** · 오배송 · **표면 불일치 `surface mismatch`** · **표면 교체 `format mismatch`** · 커밋 역행)·스키마 위반(400)이 여기 걸린다 |
 | **프로젝트가 보관됐다** | **red** — 409 `{"error":"archived"}`. ⚠️ **판정이 다섯 중 맨 앞이다**(`checkArchived`): 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니다. **처방이 다른 넷과 다르다** — `adapter`·`base-locale`을 아무리 고쳐도 안 풀린다. 할 일은 **이 워크플로를 떼는 것**이거나 설정 화면에서 보관을 되돌리는 것이다 |
 | `wrapper`·`adapter` 값이 형식·등록 목록에 안 맞는다 | **red** (exit 2 — 스캐너 규칙이 아니라 입력 형식이다) |
+| `api-url`이 https가 아니다(루프백 `http:` 제외) | **red** (exit 2 — 토큰을 평문으로 보내기 전에 멈춘다) |
 | **박아 둔 `adapter`·`base-locale`이 그 리포의 실제 탐지 결과와 안 맞는다** | **red** (exit 1 — **서버까지 가지 않는다**). 정확히 이 문서가 "박아라"라고 권하는 두 input의 실패 경로다 |
-| **말모이에 아직 안 보낸 번역 편집이 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"pending-edits","pendingCount":N,…}` (2026-09-18, sync-edit-protection). 미전달 편집이 하나라도 있으면 **프로젝트 전체 적재를 보류**해 편집이 리포 값에 덮이지 않게 한다. 이 run의 새 키·삭제·로케일 변경도 앱에 **안 들어갔다**. 풀리는 길은 둘이다: 번역자가 Publish해 PR로 보낸 뒤 이 job을 **다시 돌리기**(다음 push도 된다), 또는 OWNER가 앱의 `[Sync]`에서 편집 폐기를 승인하기. ⚠️ **red가 아니다** — 남의 리포 CI를 앱 상태로 실패시키지 않는다. 새 CLI는 `::warning title=Malmoi import deferred::…` 한 줄을 더 낸다(구 태그 `@malmoi-i18n-push-v1`은 본문만 찍는다 — 그래도 exit 0이라 안전하다. 성공 본문은 `"status":"applied"`로 시작한다) |
+| **말모이에 아직 안 보낸 번역 편집이 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"pending-edits","pendingCount":N,…}` (2026-09-18, sync-edit-protection). 미전달 편집이 하나라도 있으면 **프로젝트 전체 적재를 보류**해 편집이 리포 값에 덮이지 않게 한다. 이 run의 새 키·삭제·로케일 변경도 앱에 **안 들어갔다**. 풀리는 길: 번역자가 Publish해 PR로 보낸 뒤 이 job을 **다시 돌리기**(다음 push도 된다), 또는 OWNER가 앱의 `[Sync]`에서 편집 폐기를 승인하기. ⚠️ **Publish로 안 나가는 편집이 있다** (#129) — 언어 파일이나 키 자리가 리포에 없으면(코드에서 지운 base 키 포함) 그 편집은 보류되어 Publish 뒤에도 `deferred`가 이어진다. 그때 주된 해법은 **파일·키를 리포에 되돌려 놓기**이고, 아니면 폐기 승인 Sync, 되돌릴 기준이 있는 셀이면 OWNER의 `Revert to last sent`다. 경고 줄이 이 순서로 함께 말한다(응답 필드는 그대로다 — 서버는 어느 편집이 보류인지 모른다). ⚠️ **red가 아니다** — 남의 리포 CI를 앱 상태로 실패시키지 않는다. 새 CLI는 `::warning title=Malmoi import deferred::…` 한 줄을 더 낸다(구 태그 `@malmoi-i18n-push-v1`은 본문만 찍는다 — 그래도 exit 0이라 안전하다. 성공 본문은 `"status":"applied"`로 시작한다) |
 | `head_commit.message`에 `[skip-malmoi-i18n]` | **green + `::notice`, 적재 없음** — pull이 만든 커밋이 머지될 때 무한 루프를 막는 가드다. 마커는 **커밋 메시지와 PR 제목 둘 다**에 있어 squash·rebase·merge commit 어느 방식이든 잡힌다(아래 "머지 방식"). "적재가 안 됐다"의 흔한 원인이라 여기 적는다 |
 | 동적 키만 있어 `refs`가 0건 | green + 로그 한 줄 |
 | 로케일 파일에 없는 키를 코드가 참조 | green + 로그 한 줄 |

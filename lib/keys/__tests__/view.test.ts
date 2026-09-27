@@ -31,6 +31,17 @@ describe("buildPermalink — GitHub 코드 참조", () => {
     expect(url).toContain("%5Blocale%5D");
     expect(url).not.toContain("[locale]");
   });
+
+  /**
+   * sec-audit-3 발견 17 — `path`는 push `refs`에서 온 값이다. `..`는 `encodeURIComponent`를 그대로 지나고 브라우저가
+   * 정규화해 **github.com의 다른 경로**(`/acme/other`)를 가리킨다. 경계(push 스키마)가 막지만, 그 전에 저장된 행이
+   * 남아 있으므로 여기가 둘째 층이다.
+   */
+  it("리포 밖으로 나가는 저장된 경로에는 링크를 만들지 않는다 (sec-audit-3 17)", () => {
+    for (const path of ["../../other/repo", "src/../../../x", "/abs.ts", "a//b.ts", "a\\b.ts"]) {
+      expect(buildPermalink(project, { path, line: 1 })).toBeNull();
+    }
+  });
 });
 
 describe("isUnpublished — 아직 전달 확인되지 않은 편집인가 (sync-edit-protection T8)", () => {

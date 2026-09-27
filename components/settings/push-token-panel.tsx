@@ -11,6 +11,7 @@ import { isAccessError } from "@/lib/auth/message";
 import { settingsAccessMessage } from "@/lib/settings/message";
 import { m } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
+import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 
 import { CopyButton } from "@/components/onboarding/copy-button";
 
@@ -111,6 +112,8 @@ const UNCONFIRMED = "unconfirmed";
 function messageFor(error: string): string {
   if (error === UNCONFIRMED) return m.settings.token.unconfirmed;
   if (isOnboardError(error)) return onboardErrorMessage(error);
+  // 쓰기 권한 확인(sec-audit-3 결정 I)이 `reauthorize`·`not-connected` 같은 연결 사유를 낸다.
+  if (isConnectError(error)) return connectErrorMessage(error);
   if (isAccessError(error)) return settingsAccessMessage(error);
   return m.settings.token.failed;
 }

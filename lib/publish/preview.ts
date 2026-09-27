@@ -11,6 +11,11 @@ import type { PublishDiff } from "./diff";
  */
 export type PublishPreview = PublishDiff & {
   openPr: OpenImportPr; keys: number; withoutFile: number; withoutKey: number;
+  /**
+   * **이 Publish가 바꾸는 파일** (#128) — 실행과 같은 렌더·blob 비교(`renderProject`)의 결과라 결과 화면의 "N files changed"와 같다. `groups`는 편집이
+   * 사는 파일이라 이보다 적을 수 있다 — 토큰 없이 바뀌는 파일(orphan 줄 제거, 앞서 닫힌 PR에 실렸던 값)이 여기에만 있다.
+   */
+  changedFiles: string[];
   /** 실제로 나가는 편집·키 수 (#84). 제목·요약·PR 줄·실행 진행 제목이 이 수로 말한다 — `total`·`keys`는 보류를 포함한 미발송 전체다. */
   sendable: { total: number; keys: number };
 };
@@ -27,15 +32,23 @@ export class PreviewBaseFileMissing extends Error {
   override readonly name = "PreviewBaseFileMissing";
   constructor(readonly path: string, readonly branch: string) { super("Preview base file missing"); }
 }
+/**
+ * **base 언어 파일을 읽을 수 없다** (B3 r3 — B3.4). 재생성 per-locale 표면은 base 원본으로 base 키 집합을 정하므로 실행이 `write-parse-failed`로
+ * 거부한다 — 비-base 편집만 있어도 그렇다. 부재와 같은 "이유가 있는 거부"이고 고칠 곳이 다르다(파일을 고친다).
+ */
+export class PreviewBaseFileUnreadable extends Error {
+  override readonly name = "PreviewBaseFileUnreadable";
+  constructor(readonly path: string, readonly branch: string) { super("Preview base file unreadable"); }
+}
 export type PublishPreviewResult =
   | { status: "ok"; preview: PublishPreview }
-  | { status: "refused"; reason: "base-file-missing"; path: string; branch: string }
+  | { status: "refused"; reason: "base-file-missing" | "base-file-unreadable"; path: string; branch: string }
   | { status: "rejected"; error: "unauthorized" | "forbidden" | "not-found" | "archived" | "invalid input" }
   | { status: "failed" };
 export type PublishModalState =
   | { kind: "preview-loading" }
   | { kind: "preview-ready"; preview: PublishPreview }
   | { kind: "preview-error" }
-  | { kind: "preview-refused"; path: string; branch: string }
+  | { kind: "preview-refused"; reason: "base-file-missing" | "base-file-unreadable"; path: string; branch: string }
   | { kind: "running" }
   | { kind: "result"; outcome: import("@/lib/pull/message").PullOutcome };

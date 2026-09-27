@@ -1,9 +1,26 @@
 import { createHash } from "node:crypto";
 
-import { createElement, Fragment } from "react";
+import { createElement, Fragment, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import type { DocBlock, DocSection } from "@/components/public-doc";
+/**
+ * 방침 본문의 블록 — 문단·목록·표 셋(`m.publicDocs.privacy.sections`). 법적 문서의 열거는 문단으로 접지 않고,
+ * 수집 항목과 쿠키는 표가 아니면 읽을 수 없다(DESIGN §6.616).
+ *
+ * ⚠️ **`label`은 표의 접근 이름이고 선택이 아니다** — 한 문서에 표가 둘이라 없으면 스크린리더 목록에 "table"만 둘 뜬다.
+ * 2026-09-26까지 `components/public-doc.tsx`(옛 `/docs` 그릇)에 있었고, `/docs`가 원고로 옮기면서 소비자가 방침 하나가 됐다.
+ */
+export type DocBlock =
+  | { p: ReactNode }
+  | { ul: readonly ReactNode[] }
+  | { table: { label: string; head: readonly ReactNode[]; rows: readonly (readonly ReactNode[])[] } };
+
+export type DocSection = {
+  /** ⚠️ **URL 조각이다** — 제목 문구를 고쳐도 따라 고치지 않는다(목차·외부 링크가 가리킨다). */
+  id: string;
+  heading: string;
+  blocks: readonly DocBlock[];
+};
 
 /**
  * 방침 본문 → 비교용 텍스트와 해시 (privacy design §2.2 (C)). 본문 해시가 바뀌면 개정 이력에 행을 하나 더

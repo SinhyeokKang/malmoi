@@ -23,6 +23,7 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string }[] = [
   { effectiveDate: "2026-09-19" },
   { effectiveDate: "2026-09-24", digest: "4343d4fa724798db81c134a167f85b963f598199bb1fab0569d9dda6794b6963" },
   { effectiveDate: "2026-09-26", digest: "440e6802bea1828929a8f70aa81d2aed8e0a0a73f063ecdc95265e0671edb097" },
+  { effectiveDate: "2026-09-27", digest: "d84367948c5659f424ca71196fde9be6762eeb6f235943e58429bb800930d008" },
 ];
 
 const privacy = m.publicDocs.privacy;

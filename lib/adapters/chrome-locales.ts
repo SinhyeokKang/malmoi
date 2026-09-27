@@ -1,4 +1,4 @@
-import { observeJsonStyle, serializeJson, stripBom } from "./json-style";
+import { emptyCatalog, observeJsonStyle, serializeJson, stripBom } from "./json-style";
 import {
   compareKeys,
   hasStrongLocale,
@@ -185,11 +185,11 @@ function read(format: DetectedFormat, files: readonly AdapterFileLike[]): ReadRe
 
 function write(format: DetectedFormat, input: WriteInput): string | null {
   const usable = orderedEntries(input.entries);
-  if (usable.length === 0) return null;
-
   // **표현은 원본에서** — 없으면 기본값(2칸)이다. 경로로 조회하는 이유는 json-catalog와 같다.
   const path = format.pathTemplate.replaceAll("{locale}", input.locale);
   const original = format.currentFiles?.find((c) => c.path === path)?.content;
+  // 원본이 있으면 `{}`다 — json-catalog와 같은 이유다(audit #1).
+  if (usable.length === 0) return emptyCatalog(original);
   const style = observeJsonStyle(original);
 
   // `orderedEntries`가 낸 순서로 재조립한다 — `JSON.stringify`는 삽입 순서를 따른다(정규 정수

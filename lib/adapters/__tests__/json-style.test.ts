@@ -335,3 +335,22 @@ describe("serializeJson — 10칸 넘는 들여쓰기 (audit #83)", () => {
     expect(serializeJson({ a: "b" }, observeJsonStyle(text))).toBe(text);
   });
 });
+
+/**
+ * **원본 있는 0개 출력 `{}`는 다시 읽어도 깨끗하다** (B3 r1 Y2) — 오류 0, 그 로케일 항목 0. read가 `{}`를 오류로 보면 다음 CI 적재가
+ * 우리가 낸 파일 때문에 red가 된다.
+ */
+describe("emptyCatalog 왕복 — write `{}` → read", () => {
+  it.each([
+    ["json-catalog", jsonCatalog, "locales/{locale}.json", '{\n    "hello": "Salut"\n}\n'],
+    ["chrome-locales", chromeLocales, "_locales/{locale}/messages.json", '{\n    "hello": { "message": "Salut" }\n}\n'],
+  ] as const)("%s", (_name, adapter, pathTemplate, original) => {
+    const path = pathTemplate.replace("{locale}", "fr");
+    const format = { adapter: adapter.name, pathTemplate, locales: ["en", "fr"], currentFiles: [{ path, content: original }] };
+    const out = adapter.write(format, { locale: "fr", entries: [{ key: "hello", message: "" }] });
+    expect(out).toBe("{}\n");
+    const back = adapter.read(format, [{ path, content: out! }]);
+    expect(back.errors).toEqual([]);
+    expect(back.locales.find((l) => l.locale === "fr")?.entries ?? []).toEqual([]);
+  });
+});

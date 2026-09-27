@@ -111,6 +111,11 @@ export type LocaleSample = {
   rows: SampleRow[];
   /** 그 로케일의 전체 엔트리 수. 표 바닥의 "N more keys"와 `Select` 옵션 라벨이 쓴다. */
   total: number;
+  /**
+   * 내려받았는데 **못 읽었다** — 어댑터가 그 로케일을 안 냈거나 read가 던졌다. 지연 조회(`loadCandidateSample`)의 `unavailable`과
+   * 같은 기준이다. ⚠️ 없으면 화면이 `rows: []`를 "정말 비었다"로 캐시하고 재조회도 안 한다 (audit #14). 정상 빈 파일에는 없다.
+   */
+  failed?: true;
 };
 
 /** 표가 언어당 보이는 행 수. 화면은 `total - rows.length`로 "N more keys"를 만든다. */
@@ -170,7 +175,7 @@ export function summarizeCandidates(
  * 전부를 준다. 로케일 수만큼 부르면 903키 파일을 50번 파싱하고 `maxDuration`(60초)을 넘긴다.
  *
  * **내려받지 않은 로케일은 `samples`에 아예 넣지 않는다** — 빈 행으로 넣으면 화면이 "정말 비었다"와
- * 구별할 수 없다. 내려받았는데 못 읽은 것만 `rows: []`로 남는다 (DESIGN §6.7).
+ * 구별할 수 없다. 내려받았는데 못 읽은 것은 `rows: []` + `failed`로 남는다 (DESIGN §6.7 · audit #14).
  */
 function sampleCandidate(
   adapter: Adapter,
@@ -185,7 +190,7 @@ function sampleCandidate(
   if (adapter.layout === "multi-locale") {
     const read = readLocales(adapter, format, blobs, baseLocale);
     if (read !== undefined) {
-      for (const locale of locales) samples.push({ locale, ...rowsOf(entriesOf(read, locale), SAMPLE_ROWS) });
+      for (const locale of locales) samples.push(sampleOf(locale, entriesOf(read, locale)));
       baseEntries = entriesOf(read, baseLocale);
     }
   } else {
@@ -193,7 +198,7 @@ function sampleCandidate(
       const read = readLocales(adapter, format, blobs, locale);
       if (read === undefined) continue;
       const entries = entriesOf(read, locale);
-      samples.push({ locale, ...rowsOf(entries, SAMPLE_ROWS) });
+      samples.push(sampleOf(locale, entries));
       if (locale === baseLocale) baseEntries = entries;
     }
   }
@@ -226,6 +231,11 @@ function readLocales(
     // read가 던지는 파일도 후보를 떨어뜨리지 않는다 — 남의 리포를 우리 파서 규칙으로 탈락시키지 않는다.
     return [];
   }
+}
+
+/** 내려받은 로케일 하나의 샘플. 어댑터가 그 로케일을 안 냈으면(`undefined`) 못 읽은 것이다 — `loadCandidateSample`과 같은 신호다. */
+function sampleOf(locale: string, entries: readonly LocaleEntry[] | undefined): LocaleSample {
+  return { locale, ...rowsOf(entries, SAMPLE_ROWS), ...(entries === undefined ? { failed: true as const } : {}) };
 }
 
 function entriesOf(read: readonly ReadLocale[] | undefined, locale: string): LocaleEntry[] | undefined {

@@ -16,7 +16,7 @@ import { canPerform, type Role } from "@/lib/auth/permission";
 import { planMemberIdentity } from "@/lib/auth/member-identity";
 import type { PendingInvitation } from "@/lib/auth/query";
 import { m } from "@/lib/i18n";
-import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
+import { INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 import { relativeTime } from "@/lib/relative-time";
 
@@ -54,7 +54,11 @@ export function PendingInvitations({
   const manage = canPerform(role, "member:manage");
   /** `error: null`은 **확인 불가**다 — 호출이 던져 서버가 철회했는지 모른다 (audit #24). */
   const [failed, setFailed] = useState<{ id: string; error: string | null } | null>(null);
-  const [pendingId, setPendingId] = useState<string | null>(null);
+  /**
+   * ⚠️ **집합이다** (audit #12) — 값 하나면 A의 실패가 B의 잠금을 풀었다. 성공한 행은 빼지 않고 모든 transition이 끝난 커밋에서
+   * 비운다 — `await` 뒤의 setState는 transition 밖이라 빼면 목록 커밋 전에 곧 사라질 행이 다시 켜진다(audit-ux #13).
+   */
+  const [revoking, setRevoking] = useState<ReadonlySet<string>>(new Set());
   /** ⚠️ **집합이다** — 값 하나면 두 행을 연달아 누를 때 먼저 끝난 응답이 다른 행의 잠금까지 푼다. */
   const [resending, setResending] = useState<ReadonlySet<string>>(new Set());
   const [cardAlert, setCardAlert] = useState<{ variant: "warning" | "danger"; text: string } | null>(null);
@@ -67,6 +71,9 @@ export function PendingInvitations({
    * 잠긴다. 행마다 제 응답에 풀리는 계약(`resending` 집합)을 지킨다.
    */
   const [isPending, startTransition] = useTransition();
+  useEffect(() => {
+    if (!isPending) setRevoking((current) => (current.size === 0 ? current : new Set()));
+  }, [isPending]);
 
   /**
    * ⚠️ **거부되면 누른 Revoke로 포커스를 돌려준다** (malmoi#53). 그때 그 버튼은 `loading` 동안 `disabled`라
@@ -119,14 +126,18 @@ export function PendingInvitations({
     setFailed(null);
     setCardAlert(null);
     setAnnouncement("");
-    setPendingId(invitationId);
+    setRevoking((current) => new Set(current).add(invitationId));
     startTransition(async () => {
       // ⚠️ 던져도 행을 풀고 그 자리에서 말한다 (audit #24) — 위 `resend`와 같은 형이다.
       let result: Awaited<ReturnType<typeof revokeInvitation>> | null;
       try { result = await revokeInvitation({ slug, invitationId }); } catch { result = null; }
       if (result === null || !result.ok) {
         // 행이 남는 갈래는 곧장 푼다 — 남겨 두면 다른 행의 Resend가 세운 `isPending`에 이 행의 Revoke가 따라 돈다.
-        setPendingId(null);
+        setRevoking((current) => {
+          const next = new Set(current);
+          next.delete(invitationId);
+          return next;
+        });
         setFailed({ id: invitationId, error: result === null ? null : result.error });
         return;
       }
@@ -217,7 +228,7 @@ export function PendingInvitations({
                               aria-label={m.members.pending.resendLabel(invitation.emailLabel)}
                               aria-busy={resending.has(invitation.id)}
                               loading={resending.has(invitation.id)}
-                              disabled={isPending && pendingId === invitation.id}
+                              disabled={isPending && revoking.has(invitation.id)}
                               onClick={() => resend(invitation.id, invitation.emailLabel)}
                             >
                               {m.members.pending.resend}
@@ -231,7 +242,7 @@ export function PendingInvitations({
                                   aria-label={m.members.pending.revokeLabel(invitation.emailLabel)}
                                   /* ⚠️ `loading`이 아니라 `busy`다 (audit #32b) — 확정하면 Dialog가 이 트리거로 포커스를 돌려주는데, 같은
                                      커밋에 진짜 `disabled`가 되면 그 포커스가 `body`로 빠졌다(`button.tsx`의 `busy`). */
-                                  busy={isPending && pendingId === invitation.id}
+                                  busy={isPending && revoking.has(invitation.id)}
                                   disabled={resending.has(invitation.id)}
                                 >
                                   {m.members.pending.revoke}
@@ -289,7 +300,13 @@ function resendAlert(result: Exclude<ResendResult, { ok: true }> | null, who: st
   if (result === null || result.error === "email-unknown") return { variant: "warning", text: p.resendUnconfirmed(who) };
   if (result.error === "rate-limited" && "limit" in result) {
     const time = retryAtLabel(result.retryAt);
-    return { variant: "warning", text: result.limit === "project" ? p.resendProjectLimited(who, INVITATION_HOURLY_LIMIT, time) : p.resendLimited(who, time) };
+    const text =
+      result.limit === "project"
+        ? p.resendProjectLimited(who, INVITATION_HOURLY_LIMIT, time)
+        : result.limit === "user"
+          ? p.resendUserLimited(who, USER_HOURLY_LIMIT, time)
+          : p.resendLimited(who, time);
+    return { variant: "warning", text };
   }
   if (result.error === "email-rejected" && "retryAt" in result) return { variant: "danger", text: p.resendFailed(who, retryAtLabel(result.retryAt)) };
   if (result.error === "email-unavailable") return { variant: "danger", text: p.resendUnavailable(who) };

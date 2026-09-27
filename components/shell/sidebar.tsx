@@ -1,15 +1,12 @@
 "use client";
 
-import { Loader2, LogOut } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { useFormStatus } from "react-dom";
 
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectSwitcher } from "@/components/shell/project-switcher";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { m } from "@/lib/i18n";
 import { activeProject, navFooterItems, navZones, type NavItem, type NavProject } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
 
@@ -39,12 +36,10 @@ export function Sidebar({
   memberships,
   userName,
   userImage,
-  signOut,
 }: {
   memberships: NavProject[];
   userName: string;
   userImage: string | null;
-  signOut: () => void;
 }) {
   const pathname = usePathname();
   const project = activeProject(pathname, memberships);
@@ -60,9 +55,9 @@ export function Sidebar({
     >
       {/*
         **구역 둘** (PRODUCT §7.7). ⚠️ **라벨이 이름 그대로다** — 사용자 축은 사용자 이름, 프로젝트 축은
-        프로젝트 이름(8-3, 시안). 6b-4의 `Your work` 라벨과 6a의 프로젝트 스위처를 함께 대체했다:
-        스위처가 사라지면서 **프로젝트를 옮기는 길이 목록 하나로 통일됐다**(`New project`를 뺀 것과
-        같은 방향이다 — 진입점이 하나면 "어디서 눌렀나"에 따라 다른 곳에 착지할 수 없다).
+        프로젝트 이름(8-3, 시안). 6b-4의 `Your work` 라벨을 대체했다.
+        ⚠️ **2026-09-27에 8-3의 두 결정이 뒤집혔다** (사용자): 사용자 축에 `New project`가 돌아왔고(`navWorkItems`),
+        프로젝트 머리에 **전환 메뉴**(`ProjectSwitcher`)가 섰다 — 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었다.
       */}
       {zones.map((zone, index) => (
         <nav
@@ -86,6 +81,11 @@ export function Sidebar({
               <ProjectThumbnail name={zone.label} src={project?.image} size={16} />
             )}
             <span className="min-w-0 truncate">{zone.label}</span>
+            {/*
+              ⚠️ **전환 메뉴는 프로젝트 머리의 오른쪽 끝이다** (2026-09-27 사용자 — 8-3이 지운 스위처가 메뉴 트리거로 돌아왔다).
+              목록은 이미 받은 멤버십이다 — 조회를 더하지 않는다.
+            */}
+            {zone.key === "project" && <ProjectSwitcher projects={memberships} current={project?.slug ?? null} />}
           </p>
           {zone.items.map((item) => (
             <Item key={item.key} item={item} active={isActive(pathname, item)} />
@@ -94,16 +94,13 @@ export function Sidebar({
       ))}
 
       {/*
-        하단 전역 — 라우트가 아니라 "앱을 벗어나는 것"이라 구역 밖이다. Help는 `/docs`로 간다.
-        ⚠️ **`<nav>`가 아니다** — 두 항목의 성격이 갈려(문서 링크 / 폼 제출) 하나로 묶을 이름이 없다.
+        하단 전역 — 라우트가 아니라 "앱을 벗어나는 것"이라 구역 밖이다. Release notes(GitHub, 새 탭) · Docs(`/docs`) 둘이다.
+        ⚠️ **Sign out이 없다** (2026-09-27 사용자) — 로그아웃은 헤더 사용자 메뉴 하나에만 있다.
       */}
-      <div className="mt-auto flex flex-col gap-0.5 pt-2">
+      <div data-sidebar-zone="footer" className="mt-auto flex flex-col gap-0.5 pt-2">
         {navFooterItems().map((item) => (
           <Item key={item.key} item={item} active={isActive(pathname, item)} />
         ))}
-        <form action={signOut}>
-          <SignOutSubmit />
-        </form>
       </div>
     </aside>
   );
@@ -127,6 +124,7 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
+      {...(item.external ? { target: "_blank", rel: "noreferrer" } : {})}
       aria-current={active ? "page" : undefined}
       className={cn(
         "text-foreground flex items-center gap-2 rounded-sm p-1.5 text-sm",
@@ -176,28 +174,4 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
 function PendingMark() {
   const { pending } = useLinkStatus();
   return pending ? <span data-nav-pending hidden /> : null;
-}
-
-/**
- * ⚠️ **제출 중에는 disabled + 스피너다** (audit #25) — `/account`의 Sign out과 같은 `useFormStatus` 형. 없으면 느린
- * 응답 동안 눌린 것이 먹혔는지 몰라 다시 누른다. 스피너는 **아이콘 자리를 대신한다** — `Button`의 `loading`은 글자 앞에
- * 하나를 더 세워 아이콘이 둘이 된다.
- */
-function SignOutSubmit() {
-  const { pending } = useFormStatus();
-  return (
-    <Button
-      type="submit"
-      variant="ghost"
-      disabled={pending}
-      aria-busy={pending}
-      // ⚠️ hover 알파가 위 링크 항목과 같아야 한다 — 하단 둘 중 하나만 진하면 그 차이가 상태로 읽힌다.
-      className="text-foreground hover:bg-foreground/[0.03] h-auto w-full justify-start gap-2 rounded-sm p-1.5"
-    >
-      <span className="flex size-4 shrink-0 items-center justify-center">
-        {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <LogOut className="size-4" aria-hidden />}
-      </span>
-      <span className="truncate">{m.common.nav.signOut}</span>
-    </Button>
-  );
 }

@@ -226,3 +226,16 @@ it("EDITOR에게는 설정 링크 대신 project owner를 부른다 (#85) — �
   const owner = await render(<SyncResult slug="acme" branch="qa3-missing-branch" role="OWNER" outcome={{ ok: false, error: "base-branch-missing" }} />);
   expect(owner.container.textContent).not.toMatch(/ask a project owner/i);
 });
+
+/**
+ * ⚠️ **reconfirm은 편집만의 결과가 아니다** (audit #3 후속) — 폐기 승인 지문이 리포 연결·기준 브랜치까지 들므로 설정 변경도 이 거부를 낸다.
+ * "Translations changed"라고 말하면 편집이 없던 사람이 원인을 엉뚱한 곳에서 찾는다. 지운 것이 없다는 사실과 다시 열라는 지시는 남긴다.
+ */
+it("reconfirm은 원인을 가리지 않는 문장으로 말하고 지운 것이 없다고 알린다", async () => {
+  const { container } = await render(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "reconfirm" }} />);
+  const text = alert(container)?.textContent ?? "";
+  expect(text).toContain("The project changed after you opened Sync");
+  expect(text).not.toContain("Translations changed");
+  expect(text).toContain("nothing was discarded");
+  expect(text).toContain("Open Sync again to review");
+});

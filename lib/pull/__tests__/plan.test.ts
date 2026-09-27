@@ -464,6 +464,23 @@ describe("resolveLocalePaths — 보간 결과가 리포를 벗어나지 않는�
     ).toThrow(/path/i);
   });
 
+  /**
+   * sec-audit-3 1b. ⚠️ **트리에 실재하는 형제를 공격한다** (POSTMORTEM 2026-09-13) — 없는 경로만 쓰면
+   * "새 파일 생성" 갈래만 밟고, 실제 피해(기존 `package.json` 재생성)는 한 번도 재현되지 않는다.
+   */
+  it("로케일 모양이 아닌 저장된 코드를 던진다 — 트리에 실재하는 `package.json`을 겨누는 행", () => {
+    const tree = ["package.json", "en.json", "ko.json"];
+    expect(() => resolveLocalePaths(fmt("{locale}.json", ["en", "package"]), "per-locale", tree)).toThrow(/locale/i);
+  });
+
+  it("같은 트리에서 로케일 행만 있으면 그대로 만든다", () => {
+    const tree = ["package.json", "en.json", "ko.json"];
+    expect(resolveLocalePaths(fmt("{locale}.json", ["en", "ko"]), "per-locale", tree)).toEqual([
+      { locale: "en", path: "en.json" },
+      { locale: "ko", path: "ko.json" },
+    ]);
+  });
+
   it("저장된 `pathTemplate` 자체가 리포를 벗어나도 던진다", () => {
     expect(() => resolveLocalePaths(fmt("../{locale}.json", ["en"]), "per-locale", [])).toThrow(/path/i);
   });

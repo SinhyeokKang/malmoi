@@ -13,9 +13,9 @@ describe("routes — 정적 경로", () => {
   });
 
   /**
-   * ⚠️ **사용자 축이다** (PRODUCT §7.7 — 6b-4). slug를 받지 않고, `middleware.ts`의 matcher가
-   * `/projects/:path*` 하나였으므로 이 경로는 **1차 차단 밖에서 태어난다** —
-   * `entry-points.test.ts`의 "보호 라우트가 미들웨어 matcher에 있다"가 그것을 잡는다.
+   * ⚠️ **사용자 축이다** (PRODUCT §7.7 — 6b-4). slug를 받지 않고, 1차 차단이 `/projects` 접두
+   * 하나였으므로 이 경로는 **1차 차단 밖에서 태어난다** —
+   * `entry-points.test.ts`의 "보호 라우트가 1차 차단에 걸린다"가 그것을 잡는다.
    */
   it("계정 화면은 프로젝트 축이 아니다 — slug가 없다", () => {
     expect(routes.account()).toBe("/account");
@@ -104,10 +104,27 @@ describe("routes.signIn — 쿼리 생성기", () => {
  * ⚠️ 둘 다 **출시 전에 채울 placeholder**다 — 라우트를 지금 따는 이유는 로그인 화면 푸터가
  * 그것을 가리키기 때문이다.
  */
+/**
+ * 랜딩(`/`). 헤더의 로고·Home이 가리킨다 — 리터럴 `"/"`로 쓰면 경로가 타입 밖으로 새는
+ * 자리가 하나 더 생긴다(POSTMORTEM 2026-09-05).
+ */
+describe("routes.home — 랜딩", () => {
+  it("루트다", () => {
+    expect(routes.home()).toBe("/");
+  });
+});
+
 describe("routes.privacy · routes.docs — 공개 문서", () => {
   it("정적 경로다", () => {
     expect(routes.privacy()).toBe("/privacy");
     expect(routes.docs()).toBe("/docs");
+  });
+
+  it("`routes.docs(page, anchor)` — 페이지·앵커를 잇고, 비면 붙이지 않는다", () => {
+    expect(routes.docs("setup/workflow")).toBe("/docs/setup/workflow");
+    expect(routes.docs("setup/workflow", "workflow")).toBe("/docs/setup/workflow#workflow");
+    expect(routes.docs(undefined, "top")).toBe("/docs#top");
+    expect(routes.docs("")).toBe("/docs");
   });
 
   /**

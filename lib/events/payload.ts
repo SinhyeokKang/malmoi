@@ -29,7 +29,7 @@ export const EVENT_RESULTS = [
   "running",
   "sent",
   "nothingToSend",
-  /** Publish 전용 — 실린 편집 0 + 보류 > 0 (delivery-invariants D7). `SKIPPED`인데 `SyncRun.withheld > 0`인 행이다. */
+  /** Publish 전용 — 실린 편집 0 + 보류 > 0 (delivery-invariants D7), 또는 writer 경고로 쓰기 전에 멈춘 실행. `SKIPPED`인데 `SyncRun.withheld > 0` 또는 `warnings > 0`인 행이다. */
   "notSent",
   "imported",
   "deferred",

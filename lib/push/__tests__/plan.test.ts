@@ -119,6 +119,17 @@ describe("planPush — orphaned", () => {
     const p = planPush([existing({ key: "k", sourceHash: sourceHash("V") })], [incoming("k", "V")], { baseChanged: false });
     expect(p.toUnorphan).toEqual([]);
   });
+
+  it("불완전 적재(suppressOrphan)는 빠진 키를 orphan시키지 않고 갱신·unorphan은 그대로다 (audit #7)", () => {
+    const p = planPush(
+      [existing({ key: "gone" }), existing({ key: "back", orphaned: true, sourceHash: sourceHash("B") })],
+      [incoming("back", "B"), incoming("fresh", "F")],
+      { baseChanged: false, suppressOrphan: true },
+    );
+    expect(p.toOrphan).toEqual([]);
+    expect(p.toUnorphan).toEqual(["id-back"]);
+    expect(p.toInsert.map((k) => k.key)).toEqual(["fresh"]);
+  });
 });
 
 describe("planPush — 결정성", () => {
@@ -310,6 +321,22 @@ describe("PushPayload — 로케일·템플릿 charset (sec-audit 2)", () => {
     }
   });
 
+  it("로케일 모양이 아닌 코드를 거부한다 — `package`는 경로로 안전해도 `package.json`을 겨눈다 (sec-audit-3 1b)", () => {
+    for (const locale of ["package", "index", "README", "config"]) {
+      const bad = { ...valid, locales: ["en", locale], translations: [{ locale: "en", key: "a.b", value: "v" }] };
+      expect(PushPayload.safeParse(bad).success).toBe(false);
+    }
+    const inTranslations = { ...valid, locales: ["en", "package"], translations: [{ locale: "package", key: "a.b", value: "v" }] };
+    expect(PushPayload.safeParse(inTranslations).success).toBe(false);
+    const asBase = { ...valid, locales: ["package"], format: { ...valid.format, baseLocale: "package" }, translations: [] };
+    expect(PushPayload.safeParse(asBase).success).toBe(false);
+  });
+
+  it("실측 로케일 모양은 통과한다", () => {
+    const locales = ["en", "pt_BR", "zh-Hant-TW", "es-419", "sr-Latn", "fil"];
+    expect(PushPayload.safeParse({ ...valid, locales, translations: [] }).success).toBe(true);
+  });
+
   it("`baseLocale`도 같은 규칙을 지난다 — 그것도 로케일 코드다", () => {
     const bad = { ...valid, locales: ["../x"], format: { ...valid.format, baseLocale: "../x" },
       translations: [] };
@@ -361,7 +388,8 @@ describe("PushPayload — 크기 상한 (sec-audit 10)", () => {
   });
 
   it("로케일 200개를 넘으면 거부한다", () => {
-    const locales = Array.from({ length: 201 }, (_, i) => `l${i}`);
+    // 모양 규칙(첫 서브태그 영문자 2~3자)을 지나는 코드로 채워야 **개수** 상한을 잰다.
+    const locales = Array.from({ length: 201 }, (_, i) => `en-x${i}`);
     expect(PushPayload.safeParse({ ...base, locales: ["en", ...locales] }).success).toBe(false);
   });
 
@@ -374,6 +402,38 @@ describe("PushPayload — 크기 상한 (sec-audit 10)", () => {
   it("`sourceText`·`key`·`namespace`도 상한을 갖는다", () => {
     expect(PushPayload.safeParse({ ...base, keys: [{ key: "a", sourceText: "x".repeat(10_001), namespace: "n" }] }).success).toBe(false);
     expect(PushPayload.safeParse({ ...base, keys: [{ key: "k".repeat(1_001), sourceText: "V", namespace: "n" }] }).success).toBe(false);
+  });
+
+  /**
+   * sec-audit-3 발견 17 — permalink가 `refs[].path`로 github.com의 다른 경로를 가리킬 수 있었다.
+   *
+   * ⚠️ **거부가 아니라 버린다** (fix r1 — 지휘자 결정). refs는 스캔 결과라 **스캔 실패로 적재를 막지 않는다**(CLAUDE.md):
+   * 200자 넘는 경로·Windows 경로 하나로 push 전체가 400이면 남의 리포 CI를 우리 규칙으로 실패시킨다.
+   */
+  it("리포 밖으로 나가는 `refs[].path`는 버리고 push는 통과한다 (sec-audit-3 17)", () => {
+    const good = { key: "a.b", path: "src/[locale]/page.tsx", line: 1 };
+    const bad = ["../../other/repo", "src/../../x.ts", "/etc/passwd", "a//b.ts", "src\\a.ts", `d/${"a".repeat(199)}`]
+      .map((path) => ({ key: "a.b", path, line: 1 }));
+    const parsed = PushPayload.safeParse({ ...base, refs: [...bad, good] });
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.refs).toEqual([good]);
+  });
+
+  /**
+   * sec-audit-3 발견 18 — `placeholders: z.unknown()`이라 깊게 중첩된 JSON이 저장·렌더 재귀를 넘길 수 있었다.
+   * 상한은 **자원**이지 모양이 아니다 — 크롬 블록은 깊이 2라 그대로 지난다.
+   */
+  it("`placeholders`의 깊이·크기 상한 — 깊이 8·16KB (sec-audit-3 18)", () => {
+    const row = (placeholders: unknown) => ({ ...base, translations: [{ locale: "en", key: "a.b", value: "v", placeholders }] });
+    const nest = (depth: number): unknown => {
+      let v: unknown = "x";
+      for (let i = 0; i < depth; i++) v = { a: v };
+      return v;
+    };
+    expect(PushPayload.safeParse(row({ name: { content: "$1", example: "Kim" } })).success).toBe(true);
+    expect(PushPayload.safeParse(row(nest(8))).success).toBe(true);
+    expect(PushPayload.safeParse(row(nest(9))).success).toBe(false);
+    expect(PushPayload.safeParse(row({ big: "x".repeat(16_384) })).success).toBe(false);
   });
 
   it("`refs`와 `translations` 배열에도 상한이 있다", () => {

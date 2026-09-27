@@ -46,9 +46,10 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
   }}>
     <label id="base-locale-label" htmlFor="base-locale" className="sr-only">{m.locales.field.label}</label>
       <div className="flex flex-wrap items-center gap-3">
+        {/* ⚠️ 잠겨도 Tab만 통과시킨다 (audit #18 · `member-list.tsx`의 형) — 포커스가 갇히면 키보드 사용자가 폼을 떠날 수 없다. */}
         <Select value={state.draft} onValueChange={value => { if (!locked) setState(s => planBaseLanguageForm(s, { type: "change", value })); }}>
           <SelectTrigger id="base-locale" aria-labelledby="base-locale-label base-locale" aria-disabled={locked || undefined} aria-describedby={unavailable ? "base-unavailable" : undefined} data-base-pending={awaiting || undefined} className={cn("w-40", error !== null ? "border-destructive/50" : awaiting && "border-amber-500/50")}
-            onPointerDown={event => { if (locked) event.preventDefault(); }} onClick={event => { if (locked) event.preventDefault(); }} onKeyDown={event => { if (locked) event.preventDefault(); }}><SelectValue /></SelectTrigger>
+            onPointerDown={event => { if (locked) event.preventDefault(); }} onClick={event => { if (locked) event.preventDefault(); }} onKeyDown={event => { if (locked && event.key !== "Tab") event.preventDefault(); }}><SelectValue /></SelectTrigger>
           <SelectContent>{locales.map(code => <SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent>
         </Select>
         <Button ref={submit} type="submit" loading={state.pending} disabled={unavailable || state.draft === state.baseline}>{m.locales.field.save}</Button>

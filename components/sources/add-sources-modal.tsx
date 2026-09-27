@@ -4,7 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { startTransition, useEffect, useState, useTransition, type RefObject } from "react";
 import { addSurfaces, confirmManualFormat, detectRepoFormats, loadCandidateSample } from "@/app/(edit)/projects/actions";
 import { startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/actions";
-import { FilesStep, type ManualEntry, type PreviewState } from "@/components/onboarding/steps/files";
+import { FilesStep, failedPreview, samplePreview, type ManualEntry, type PreviewState } from "@/components/onboarding/steps/files";
 import { failureText } from "@/components/onboarding/failure";
 import { SlowNotice } from "@/components/slow-notice";
 import { OnboardingModal } from "@/components/ui/modal";
@@ -75,10 +75,10 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   useEffect(() => {
     if (!open || !candidate || !locale) return;
     const cached = candidate.samples.find(s => s.locale === locale);
-    if (cached) { setPreview({ status: "ready", rows: cached.rows, total: cached.total }); return; }
+    if (cached) { setPreview(samplePreview(cached)); return; }
     let active = true; setPreview({ status: "loading" });
     void loadCandidateSample({ owner, repo, ref: branch, ...candidate, locale }).then(result => {
-      if (active) setPreview(result.ok ? { status: "ready", rows: result.rows, total: result.total } : { status: "unavailable" });
+      if (active) setPreview(result.ok ? { status: "ready", rows: result.rows, total: result.total } : failedPreview(result.error));
     }).catch(() => { if (active) setPreview({ status: "unavailable" }); });
     return () => { active = false; };
   }, [open, candidate, locale, owner, repo, branch]);

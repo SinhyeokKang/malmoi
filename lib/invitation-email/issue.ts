@@ -47,11 +47,24 @@ export type ReissueOutcome =
 type Tx = Prisma.TransactionClient;
 
 /** 잠금 안에서 판정 입력을 읽는다. 최근 1시간 발급은 수락·철회·만료를 가리지 않는다 — 철회로 우회되지 않게. */
-async function readLimits(tx: Tx, projectId: string, emails: readonly string[], now: Date) {
+async function readLimits(tx: Tx, input: { projectId: string; userId: string; emails: readonly string[]; now: Date }) {
+  const { projectId, userId, emails, now } = input;
+  const since = new Date(now.getTime() - PROJECT_WINDOW_MS);
   const memberCount = await tx.projectMember.count({ where: { projectId } });
   const recent = await tx.projectInvitation.findMany({
-    where: { projectId, createdAt: { gt: new Date(now.getTime() - PROJECT_WINDOW_MS) } },
+    where: { projectId, createdAt: { gt: since } },
     select: { emailLookup: true, createdAt: true },
+  });
+  /**
+   * ⚠️ **발급 판정 입력 중 `projectId`로 좁히지 않는 유일한 조회다** — 발급자 한도(sec-audit-3 #15)가 전 프로젝트 합산이라서다.
+   * 발급자 **자신의** 행만, 시각만 읽는다(테넌트 데이터가 판정 밖으로 나가지 않는다).
+   * ⚠️ **근사다**: 잠금은 이 프로젝트 행 하나라 다른 프로젝트의 동시 발급과는 직렬화되지 않는다 — 한도를
+   * 조금 넘을 수 있다. 목적이 스팸 억제라 사용자 잠금을 더하지 않았다. `(invitedBy, createdAt)` 인덱스도
+   * 없다 — 사용자당 행이 적다(ARCHITECTURE 초대 절).
+   */
+  const mine = await tx.projectInvitation.findMany({
+    where: { invitedBy: userId, createdAt: { gt: since } },
+    select: { createdAt: true },
   });
   const targets: IssueTarget[] = [];
   for (const email of emails) {
@@ -67,7 +80,7 @@ async function readLimits(tx: Tx, projectId: string, emails: readonly string[], 
         : await tx.projectMember.findUnique({ where: { projectId_userId: { projectId, userId: user.id } }, select: { userId: true } });
     targets.push({ alreadyMember: member !== null, lastIssuedAt });
   }
-  return { memberCount, recentIssues: recent.map((r) => r.createdAt), targets };
+  return { memberCount, recentIssues: recent.map((r) => r.createdAt), userRecentIssues: mine.map((r) => r.createdAt), targets };
 }
 
 /** 회전(미수락 행 만료) → 새 행 → 사건. 원문 토큰은 반환값에만 있다. */
@@ -113,6 +126,7 @@ function retryAfterIssue(limits: Awaited<ReturnType<typeof readLimits>>, count: 
     memberCount: 0,
     targets: limits.targets.map(() => ({ alreadyMember: false, lastIssuedAt: now })),
     recentIssues: [...limits.recentIssues, ...Array.from({ length: count }, () => now)],
+    userRecentIssues: [...limits.userRecentIssues, ...Array.from({ length: count }, () => now)],
   });
   return plan.status === "rate-limited" ? plan.retryAt : now;
 }
@@ -126,7 +140,7 @@ export async function issueInvitations(
     const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage" });
     if (locked.status !== "ok") return locked;
     const now = new Date();
-    const limits = await readLimits(tx, projectId, recipients.map((r) => r.email), now);
+    const limits = await readLimits(tx, { projectId, userId, emails: recipients.map((r) => r.email), now });
     const plan = planInvitationIssue({ now, ...limits });
     if (plan.status !== "ok") return plan;
 
@@ -156,7 +170,7 @@ export async function reissueInvitation(
     if (decoded === null) return { status: "unreadable" as const };
     const recipient: IssueRecipient = { email: decoded.email, role: row.role };
 
-    const limits = await readLimits(tx, projectId, [recipient.email], now);
+    const limits = await readLimits(tx, { projectId, userId, emails: [recipient.email], now });
     const plan = planInvitationIssue({ now, ...limits });
     if (plan.status !== "ok") return plan;
 

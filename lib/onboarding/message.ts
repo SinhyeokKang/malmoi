@@ -44,9 +44,15 @@ export type OnboardError =
   | "manual-no-match"
   /** 수동 지정 템플릿이 로케일 **하나**만 가리킨다 — 파일은 있다 (malmoi#99). 할 일이 다르다: 둘째 언어 파일. */
   | "single-locale"
+  /**
+   * 샘플 확인값을 믿을 수 없다 — 만료(30분)·서명 키 회전·옛 라벨·위조·낡은 스냅샷. 경로가 틀린 것이 아니라
+   * **다시 탐지하면 풀린다**. `manual-no-match`로 접으면 "경로와 형식을 확인하라"가 되어 멀쩡한 입력을 의심하게 만든다.
+   */
+  | "sample-expired"
   // ── ④ 생성 — planRepoConnect 그대로 ──────────────────────────────────────
   | "installation-forbidden"
   | "repo-forbidden"
+  | "repo-read-only"
   | "repo-not-installed"
   // ── ④ 생성 — 이쪽 고유 ───────────────────────────────────────────────────
   | "slug-taken"
@@ -60,6 +66,8 @@ export type OnboardError =
    * 문구는 사전에 따로 있다(이 화면은 "고른 값"이고 저쪽은 "고친 값"이라 안내가 다르다).
    */
   | "invalid-branch"
+  /** ①에서 고른 브랜치가 Malmoi의 sync 브랜치다 (malmoi#126) — 형식은 맞지만 base가 될 수 없다. `isSyncBranchName`. */
+  | "sync-branch"
   // ── 다시 시도 · 첫 적재 ──────────────────────────────────────────────────
   /** `ready`에서 다시 적재하려 했다 — strict push라 번역자 편집을 덮으므로 막는다 (PRODUCT §7.5). */
   | "not-awaiting"
@@ -86,13 +94,16 @@ const ONBOARD_ERRORS: ReadonlySet<string> = new Set<OnboardError>([
   "key-count-failed",
   "manual-no-match",
   "single-locale",
+  "sample-expired",
   "installation-forbidden",
   "repo-forbidden",
+  "repo-read-only",
   "repo-not-installed",
   "slug-taken",
   "limit-reached",
   "invalid-slug",
   "invalid-branch",
+  "sync-branch",
   "not-awaiting",
   "ingest-failed",
   "resource-limit",
@@ -106,13 +117,13 @@ export function isOnboardError(value: unknown): value is OnboardError {
 }
 
 /**
- * ⚠️ **넷은 사전에 없다** — `installation-forbidden`·`repo-forbidden`·`repo-not-installed`·`unavailable`은
+ * ⚠️ **다섯은 사전에 없다** — `installation-forbidden`·`repo-forbidden`·`repo-read-only`·`repo-not-installed`·`unavailable`은
  * 연결 화면과 같은 거부라 `connectErrorMessage`가 그대로 낸다. 같은 거부에 문구가 두 벌이면 안 된다.
  *
  * ⚠️ **둘은 함수 값이다** — 상수를 보간해야 하는데 사전은 잎이라 `PROJECT_LIMIT`·`PROJECT_SLUG_MAX`를
  * import할 수 없다. 그래서 값은 여기서 넘긴다.
  */
-type SharedWithConnect = "installation-forbidden" | "repo-forbidden" | "repo-not-installed" | "unavailable";
+type SharedWithConnect = "installation-forbidden" | "repo-forbidden" | "repo-read-only" | "repo-not-installed" | "unavailable";
 type Interpolated = "limit-reached" | "invalid-slug";
 
 const ONBOARD = m.errors.onboarding satisfies Record<
@@ -125,6 +136,7 @@ export function onboardErrorMessage(error: OnboardError): string {
   switch (error) {
     case "installation-forbidden":
     case "repo-forbidden":
+    case "repo-read-only":
     case "repo-not-installed":
     case "unavailable":
       return connectErrorMessage(error);

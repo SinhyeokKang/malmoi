@@ -419,9 +419,16 @@ export function createHarness(seed: Seed = {}) {
           const inner = (args.select.project as { select?: Record<string, unknown> }).select ?? {};
           const p: Record<string, unknown> = {};
           if (inner["surfaces"] !== undefined) {
-            const spec = inner["surfaces"] as { select?: Record<string, true>; where?: { archivedAt?: null } };
-            p["surfaces"] = surfaces.filter(s => s.projectId === m.projectId && (spec.where?.archivedAt !== null || s.archivedAt === null))
-              .map(s => spec.select ? Object.fromEntries(Object.keys(spec.select).map(k => [k, (s as Record<string, unknown>)[k]])) : surfaceRow(s));
+            const spec = inner["surfaces"] as { select?: Record<string, unknown>; where?: { archivedAt?: null } };
+            const rows = surfaces.filter(s => s.projectId === m.projectId && (spec.where?.archivedAt !== null || s.archivedAt === null));
+            /**
+             * ⚠️ **`_count.keys`는 `keys` 배열에서 센다** — 위 멤버 `_count`와 같은 이유. `where.orphaned`만 흉내낸다.
+             */
+            p["surfaces"] = rows.map(s => spec.select ? Object.fromEntries(Object.keys(spec.select).map(k => {
+              if (k !== "_count") return [k, (s as Record<string, unknown>)[k]];
+              const keySpec = (spec.select?.["_count"] as { select?: { keys?: { where?: { orphaned?: boolean } } } }).select?.keys;
+              return [k, { keys: keys.filter(key => key.projectId === m.projectId && key.surfaceId === s.id && (keySpec?.where?.orphaned === undefined || key.orphaned === keySpec.where.orphaned)).length }];
+            })) : surfaceRow(s));
           }
           if (inner["defaultSurface"] !== undefined) {
             const spec = inner["defaultSurface"] as { select?: Record<string, true> };

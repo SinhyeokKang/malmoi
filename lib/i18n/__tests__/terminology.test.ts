@@ -1,8 +1,15 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { visit } from "unist-util-visit";
 
 import { describe, expect, it } from "vitest";
 
+import { parseMd, stripHeadingMarker, toText } from "@/lib/guide/parse";
+import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
 import { m } from "@/lib/i18n";
 
 /**
@@ -41,6 +48,30 @@ const strings = (): Found[] => {
   walk(m, "", out);
   return out;
 };
+
+/**
+ * **서빙되는 원고**의 문장 — 문단·헤딩·표 셀 하나가 한 문장이다. 경로는 `guide/<file>`이라 `ALLOWED`는
+ * 파일 단위로 건다.
+ *
+ * ⚠️ **코드는 뺀다**(`toText(…, false)`) — action 이름(`…/malmoi-i18n-push`)·파일 경로는 사용자가 옮겨 적는
+ * 식별자라 코드로 쓰고, 그러면 표의 개념이 아니다. 헤딩의 `{#id}` 표식도 뗀다(`{#push}` 같은 id가 걸리지 않게).
+ */
+function guideStrings(root: string): Found[] {
+  const dir = join(root, "guide");
+  return servedGuideFiles(dir).flatMap((file) => {
+    const out: Found[] = [];
+    visit(parseMd(readFileSync(join(dir, file), "utf8")), (node) => {
+      if (node.type === "paragraph" || node.type === "heading" || node.type === "tableCell") {
+        // 코드를 뺀 텍스트라 헤딩 끝에 남은 `{#…}`는 표식뿐이다
+        const text = toText(node, false);
+        out.push({ path: `guide/${file}`, text: node.type === "heading" ? stripHeadingMarker(text) : text });
+      }
+    });
+    return out;
+  });
+}
+
+const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
 /**
  * 표의 "쓰지 않는 말" + git 어휘. **대소문자를 가리지 않는다** — 문장 첫 자리에서 대문자가 된다.
@@ -86,10 +117,12 @@ const ALLOWED: Readonly<Record<string, string>> = {
   "settings.ci.description": "push",
   // 개인정보 방침 — 문구를 고치면 개정 이력이 따라간다(policy-gate). 개발자가 하는 일을 말하는 문장이다.
   "publicDocs.privacy.intro": "push",
-  // 도움말의 허용 목록 — action의 **이름**(`…/malmoi-i18n-push`)이라 조직 관리자가 그대로 옮겨 적는 값이다 (launch-readiness L2.5).
-  "publicDocs.docs.sections[2].blocks[1].ul[0]": "push",
   // 역할 이름(Owner)이다 — "누가 할 수 있나"를 가리키는 호칭이 아니다. 핸드오프가 고정한 문장이다(members 결정 6).
   "errors.access.last-owner": "an owner",
+  // 워크플로 입력 이름(`base-locale:`)을 그대로 댄다 — OWNER가 YAML에서 고칠 글자라 표의 개념이 아니다 (malmoi#127 r4).
+  "locales.field.help": "locale",
+  // OG 이미지에 그려진 파일 경로(`src/i18n/locales.json`)를 그대로 묘사한다 — 화면 용어가 아니라 그림 속 글자다.
+  "seo.ogImageAlt": "locale",
 };
 
 function violations(found: readonly Found[]): string[] {
@@ -109,6 +142,18 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
 
   it("쓰지 않는 말이 화면 문장에 없다", () => {
     expect(violations(strings())).toEqual([]);
+  });
+
+  it("쓰지 않는 말이 서빙되는 원고에 없다", () => {
+    const found = guideStrings(ROOT);
+    expect(new Set(found.filter(({ path }) => path.startsWith("guide/") && path.endsWith(".md")).map(({ path }) => path)).size).toBeGreaterThanOrEqual(1);
+    expect(violations(found)).toEqual([]);
+  });
+
+  it("원고 스캔은 SUMMARY에 오른 md의 문장을 보고 코드는 뺀다 (픽스처)", () => {
+    const found = guideStrings(fileURLToPath(new URL("../../guide/__tests__/fixtures/scan", import.meta.url)));
+    expect(new Set(found.map(({ path }) => path))).toEqual(new Set(["guide/SUMMARY.md", "guide/formats.md"]));
+    expect(violations(found)).toEqual(["guide/formats.md — \"push\" in: Every push runs the workflow."]);
   });
 
   it("같은 규칙이 금지된 문장을 잡고 예외는 통과시킨다", () => {
@@ -180,7 +225,8 @@ it("프로젝트 0건 문장이 초대받은 사람의 길도 말한다 (audit #
 describe("사실을 단언하는 문장 (B4 r1)", () => {
   it("기준 언어 교체 배너는 덮어쓰기를 예고하지 않는다 — 미전달 편집이 있으면 Sync가 기다린다 (ARCHITECTURE §0-1)", () => {
     const text = m.translations.banner.basePending("ja");
-    expect(text).toBe("The base language is changing to ja. It switches on the next sync from the repository — syncs wait while changes are unpublished, so publish them first.");
+    // malmoi#127 — 트리거를 댄다: 앱의 [Sync]는 선언을 적용하지 않고, 워크플로의 Sync는 미전달 편집이 있으면 기다린다.
+    expect(text).toBe("The base language is changing to ja. It switches on the next sync from your repository's GitHub Actions workflow — the Sync button doesn't apply it. That sync waits while changes are unpublished, so publish them first.");
     expect(text).not.toMatch(/overwrite/i);
   });
   it("프로젝트 0건은 '발행 전엔 안 쓴다'고 하지 않는다 — 야간 cron이 발행한다 (PRODUCT)", () => {

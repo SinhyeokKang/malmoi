@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render } from "./helpers/dom";
 
@@ -19,7 +19,8 @@ vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTra
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare }));
 
-import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
+import { COMMIT_WAIT_MS } from "@/components/commit-wait";
+import { TranslationWorkspace, type WorkspaceProps } from "@/components/translations/workspace/workspace";
 import { m } from "@/lib/i18n";
 
 import { props } from "./helpers/workspace-props";
@@ -61,4 +62,102 @@ it("성공은 결과 한 줄을 세우고 refresh하지 않는다 — 짝 단언
   await sync();
   expect(document.querySelector('[role="status"]')?.textContent).toContain("from main");
   expect(mocks.refresh).not.toHaveBeenCalled();
+});
+
+/*
+  **Sync가 들여온 키는 목록에 선다** (감사 #11) — 같은 조건의 재검증은 `mergeServerRows`로 행을 자리에 남기고 끼워 넣지 않는다
+  (저장 뒤 행 위치 보존). Sync 성공은 새 세대다. ⚠️ 결과와 새 트리의 커밋 순서가 어느 쪽이어도 같다 — 실제 서버 props 교체로 잰다.
+*/
+describe("Sync 뒤 목록", () => {
+  const imported = { ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "imported", count: 1, failed: 0, unmanaged: 0, reason: null, errors: [] }] } as const;
+  const newRow = { keyId: "k3", surfaceSlug: "web", namespace: "common", key: "common.cancel", sourceText: "Cancel", missingCount: 2, totalLocales: 3, hasPending: false, hasReview: false, isNew: true };
+  const listText = (container: HTMLElement) => container.querySelector("ul")?.textContent ?? "";
+  function withRow(base: WorkspaceProps, rows = [...base.list.rows, newRow]): WorkspaceProps {
+    return { ...base, list: { ...base.list, rows, matchedKeyCount: rows.length } };
+  }
+
+  it("결과가 먼저 오고 새 트리가 뒤에 와도 새 키가 목록에 선다", async () => {
+    mocks.run.mockResolvedValue(imported);
+    const initial = props();
+    const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+    await sync();
+    await rerender(<TranslationWorkspace {...withRow(initial)} />);
+    expect(listText(container)).toContain("Cancel");
+  });
+
+  it("새 트리가 결과보다 먼저 커밋돼도 새 키가 목록에 선다", async () => {
+    let resolve!: (value: typeof imported) => void;
+    mocks.run.mockReturnValue(new Promise(r => { resolve = r; }));
+    const initial = props();
+    const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+    await sync();
+    await rerender(<TranslationWorkspace {...withRow(initial)} />);
+    await act(async () => resolve(imported));
+    expect(listText(container)).toContain("Cancel");
+  });
+
+  it("처음 목록이 비어 있어도 Sync가 들여온 키가 선다", async () => {
+    mocks.run.mockResolvedValue(imported);
+    const empty = withRow(props(), []);
+    const { container, rerender } = await render(<TranslationWorkspace {...empty} />);
+    await sync();
+    await rerender(<TranslationWorkspace {...withRow(empty, [newRow])} />);
+    expect(listText(container)).toContain("Cancel");
+  });
+
+  // 새 세대 뒤의 일반 저장 재검증은 다시 병합이다 — `resync`가 풀렸다는 유일한 그물이다.
+  const later = { ...newRow, keyId: "k4", key: "common.later", sourceText: "Later" };
+  function afterSave(base: WorkspaceProps): WorkspaceProps {
+    return withRow(base, [base.list.rows[0]!, newRow, later]);
+  }
+  function expectMerged(container: HTMLElement) {
+    // k2(Save)는 서버 첫 페이지에서 빠졌지만 자리에 남아 savedOut이다. k4는 끼워 넣지 않는다.
+    expect(listText(container)).toContain("Save");
+    expect(listText(container)).not.toContain("Later");
+  }
+
+  it("Sync 세대 뒤 같은 조건의 재검증은 병합이다 — 행 위치·savedOut 보존", async () => {
+    mocks.run.mockResolvedValue(imported);
+    const initial = props();
+    const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+    await sync();
+    const synced = withRow(initial);
+    await rerender(<TranslationWorkspace {...synced} />);
+    expect(listText(container)).toContain("Cancel");
+    await rerender(<TranslationWorkspace {...afterSave(synced)} />);
+    expect(listText(container)).toContain("Cancel");
+    expectMerged(container);
+  });
+
+  it("실패한 Sync 결과는 새 세대를 시작하지 않는다", async () => {
+    mocks.run.mockResolvedValue({ ok: false, error: "already-running" });
+    const initial = props();
+    const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+    await sync();
+    await rerender(<TranslationWorkspace {...withRow(initial)} />);
+    expect(listText(container)).not.toContain("Cancel");
+  });
+
+  it("새 트리가 끝내 안 오면 대기 상한 뒤 resync를 버린다 — 다음 저장 재검증은 병합이다", async () => {
+    mocks.run.mockResolvedValue(imported);
+    const initial = props();
+    const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+    await act(async () => userEvent.setup().click(button("Sync")));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await act(async () => userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(button("Discard changes and sync")));
+      expect(document.querySelector('[role="status"]')?.textContent).toContain("from main");
+      await act(async () => { vi.advanceTimersByTime(COMMIT_WAIT_MS); });
+    } finally { vi.useRealTimers(); }
+    await rerender(<TranslationWorkspace {...afterSave(initial)} />);
+    expectMerged(container);
+  });
+
+  it("Sync 없는 같은 조건의 재검증은 행을 끼워 넣지 않는다 — 짝 단언(저장 뒤 행 위치 보존)", async () => {
+    const initial = props();
+    const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+    await rerender(<TranslationWorkspace {...withRow(initial)} />);
+    expect(listText(container)).toContain("Save");
+    expect(listText(container)).not.toContain("Cancel");
+  });
 });

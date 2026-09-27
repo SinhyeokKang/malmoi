@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { detectCandidatesAcross, detectFormat, detectFormatWith, isAdapterName } from "../lib/adapters/index";
-import type { DetectedFormat, FileProbe } from "../lib/adapters/types";
+import type { AdapterFile, DetectedFormat, FileProbe } from "../lib/adapters/types";
 
 /**
  * **`pnpm ingest`와 `pnpm push:local`의 포맷 결정** (audit #73). 두 스크립트가 probe·`--adapter` 검증·탐지 갈래를 각자 들고
@@ -12,15 +12,27 @@ import type { DetectedFormat, FileProbe } from "../lib/adapters/types";
  * ⚠️ `lib/`가 아니라 여기인 이유: 문구가 한국어 CLI 출력이다(`lib`은 `no-korean-ui` 게이트 범위다).
  */
 
-/** 대상 디렉터리 아래 파일을 읽는다. 없거나 못 읽으면 `undefined` — 탐지가 그 샘플을 건너뛴다. */
-export function fileProbe(root: string): FileProbe {
+/**
+ * 대상 디렉터리 아래 파일을 읽는다. 없거나 못 읽으면 `undefined` — 탐지가 그 샘플을 건너뛴다.
+ *
+ * @param failures 읽기에 실패한 경로를 모은다. ⚠️ **적재는 `undefined`를 삼키면 안 된다** (audit #7) — `selectLocaleFiles`가 빈 내용을
+ *   먹이고 어댑터에 따라(ts-dict) 오류 없이 그 파일의 키가 빠져, 서버가 부분 페이로드를 받아 그 키를 orphan시킨다. 판정은
+ *   `unreadableLocaleFiles`가 한다 — 탐지가 훑는 무관한 파일의 실패까지 red로 만들지 않으려고 여기서 거르지 않는다.
+ */
+export function fileProbe(root: string, failures?: Set<string>): FileProbe {
   return (path) => {
     try {
       return readFileSync(join(root, path), "utf8");
     } catch {
+      failures?.add(path);
       return undefined;
     }
   };
+}
+
+/** 적재가 고른 로케일 파일 중 읽지 못한 것. 비어 있지 않으면 호출부가 적재를 실패시킨다 — 부분 페이로드를 보내지 않는다 (audit #7). */
+export function unreadableLocaleFiles(files: readonly AdapterFile[], failures: ReadonlySet<string>): string[] {
+  return files.filter((file) => failures.has(file.path)).map((file) => file.path);
 }
 
 export type RequestedFormat =

@@ -97,6 +97,14 @@ describe("updateRepositorySettings — 기준 브랜치만 받는다 (6b-5에서
     expect(alpha().baseBranch).toBe("main");
   });
 
+  /** [malmoi#126] 목록에서 빼는 것만으로는 부족하다 — 300개 초과의 자유 입력·직접 호출이 같은 이름을 보낸다. */
+  it("Malmoi의 sync 브랜치는 sync-branch로 거부하고 아무것도 쓰지 않는다", async () => {
+    for (const baseBranch of ["malmoi-i18n/sync-alpha", "malmoi-i18n/sync-other"]) {
+      expect(await updateRepositorySettings({ slug: "alpha", baseBranch })).toEqual({ ok: false, error: "sync-branch" });
+    }
+    expect(alpha().baseBranch).toBe("main");
+  });
+
   /** 트림하면 화면의 값과 저장값이 갈리고 그 차이가 `checkFormat`의 조용한 409가 된다. */
   it("앞뒤 공백도 거부다 — 조용히 트림하지 않는다", async () => {
     expect(await updateRepositorySettings({ slug: "alpha", baseBranch: " dev" })).toEqual({

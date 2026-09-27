@@ -5,7 +5,8 @@ import { ADAPTERS } from "../index";
 import { observeJsonStyle } from "../json-style";
 import { orderedEntries } from "../shared";
 import type { Adapter, DetectedFormat, LocaleEntry, WriteInput } from "../types";
-import { CONTRACT_KEYS, formatFor, prototypeKeyViolations, writerContractViolations } from "./contract";
+import { BASE_DELETED_VALUE, CONTRACT_KEYS, baseKeySetViolations, formatFor, prototypeKeyViolations, writerContractViolations, type BaseRender } from "./contract";
+import { renderLocaleFiles, type RenderKey } from "@/lib/pull/render";
 
 /**
  * writer 계약을 **`ADAPTERS` 순회로** 검사한다. 어댑터를 추가하면 이 블록이 자동으로 늘어난다 —
@@ -66,6 +67,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     respectInputOrder?: boolean;
     ignoreOrder?: boolean;
     firstFile?: boolean;
+    nullWithOriginal?: boolean;
   };
 
   const fakeRegenerating = (b: Break): Adapter => ({
@@ -95,15 +97,16 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
           return byKey(x, y);
         });
       }
-      if (list.length === 0 && !b.neverNull) return null;
-      const out: Record<string, string> = {};
-      for (const e of list) out[e.key] = e.message;
       // **규칙을 다 지키는 fake는 표현도 원본에서 읽는다** — 계약이 그만큼 넓어졌다
       // (원본 포맷 보존, 2026-09-04). `b.indent`를 준 위반 케이스만 그 관측을 무시한다.
       // 원본은 **자기 경로로** 고른다. `b.firstFile`만 위치(`[0]`)로 고른다 — L3.6의 옛 동작이다.
       const own = b.firstFile
         ? _f.currentFiles?.[0]
         : _f.currentFiles?.find((c) => c.path === _f.pathTemplate.replaceAll("{locale}", input.locale));
+      // 원본이 있으면 빈 객체, 없으면 null이다(audit #1). `b.nullWithOriginal`이 고치기 전의 동작이다.
+      if (list.length === 0 && !b.neverNull) return own === undefined || b.nullWithOriginal ? null : "{}\n";
+      const out: Record<string, string> = {};
+      for (const e of list) out[e.key] = e.message;
       const observed = observeJsonStyle(own?.content).indent;
       const space = b.indent === undefined ? observed : b.indent;
       return JSON.stringify(out, null, space) + (b.noTrailingNewline ? "" : "\n");
@@ -118,6 +121,7 @@ describe("네거티브 — 규칙을 어기는 가짜 어댑터를 잡아낸다"
     ["빈 값을 남김", { keepEmpty: true }, /빈 문자열/],
     ["writeEmpty 표시를 무시하고 뺌", { dropMarkedEmpty: true }, /writeEmpty/],
     ["0개인데 null을 안 냄", { neverNull: true }, /null을 내지 않았다/],
+    ["원본이 있는데 0개라고 null을 냄", { nullWithOriginal: true }, /원본이 있는데 낼 항목이 0개라고 null/],
     ["입력 순서를 그대로 따름", { respectInputOrder: true }, /입력 순서 무관|정렬/],
     ["order를 무시하고 늘 코드 유닛 순", { ignoreOrder: true }, /order: LocaleEntry\.order 순서를 따르지 않는다/],
     ["원본을 경로가 아니라 [0]으로 고름", { firstFile: true }, /원본 파일 둘/],
@@ -271,5 +275,28 @@ describe("프로토타입 키 계약 — ADAPTERS 전수 (sec-audit 1·17)", () 
     expect(found).toMatch(/Object\.prototype에 "polluted"이 생겼다/);
     // 검사기가 오염을 되돌렸는지 — 안 되돌리면 뒤의 테스트가 오염 위에서 돈다
     expect(Object.getOwnPropertyNames(Object.prototype)).not.toContain("polluted");
+  });
+});
+
+describe("base 키 집합은 원본 base 파일이 정한다 (B3.4) — 전 어댑터", () => {
+  const keys: RenderKey[] = [
+    { id: "k1", key: "keep", sourceText: "S_keep", orphaned: false, cells: { en: { value: "DB_keep" }, fr: { value: "DB_fr_keep" } } },
+    { id: "k2", key: "deleted", sourceText: "S_deleted", orphaned: false, cells: { en: { value: BASE_DELETED_VALUE }, fr: { value: "DB_fr_deleted" } } },
+  ];
+  const render: BaseRender = (format, paths, current) =>
+    renderLocaleFiles(format, ADAPTERS.find((a) => a.name === format.adapter)!.layout, paths, keys, "en", current);
+  for (const adapter of ADAPTERS) {
+    it(`${adapter.name} (${adapter.writeStrategy})`, () => {
+      expect(baseKeySetViolations(adapter, render)).toEqual([]);
+    });
+  }
+  it("검사기가 옛 동작(DB 키로 재조립)을 잡는다", () => {
+    const naive: BaseRender = (format, paths, current) => {
+      const adapter = ADAPTERS.find((a) => a.name === format.adapter)!;
+      return paths.map((p) => ({ ...p, content: adapter.write({ ...format, currentFiles: [{ path: p.path, content: current.get(p.path)! }] }, {
+        locale: p.locale ?? "en", entries: [{ key: "keep", message: "DB_keep" }, { key: "deleted", message: BASE_DELETED_VALUE }] }) }));
+    };
+    const json = ADAPTERS.find((a) => a.name === "json-catalog")!;
+    expect(baseKeySetViolations(json, naive).join("\n")).toMatch(/되살아났다[\s\S]*사라졌다/);
   });
 });

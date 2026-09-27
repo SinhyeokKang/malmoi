@@ -303,6 +303,8 @@ function InstallHint({ installUrl }: { installUrl: string | null }) {
  */
 function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value: string) => void }) {
   if (state.accessError !== undefined) {
+    // 계정·세션 거부는 이미 상단 배너가 같은 문장으로 말한다 — 한 화면에 두 번 세우지 않는다 (#122).
+    if (state.banner === state.accessError) return null;
     return (
       <BranchShell>
         <Alert variant="danger">{failureText(state.accessError)}</Alert>

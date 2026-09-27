@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { landingTarget, rejectTarget } from "@/lib/auth/landing";
+import { publicCta, rejectTarget, rootView } from "@/lib/auth/landing";
 import { routes } from "@/lib/routes";
 
 /**
@@ -9,7 +9,8 @@ import { routes } from "@/lib/routes";
  * **축이 둘이고, 그것을 가르는 것이 이 모듈의 존재 이유다.** 실물 확인 결과 `lib/auth/session.ts`와
  * `app/(edit)/layout.tsx`는 **`unavailable`·`none` 2갈래뿐**이고 `ok` 갈래가 아예 없다 —
  * `app/page.tsx`만 `ok → /projects`를 든다. 한 함수로 접으면 `ok`를 반환하는 것이 `requireUser`
- * 자리에 꽂혀 의미가 안 맞는다.
+ * 자리에 꽂혀 의미가 안 맞는다. 루트의 판정은 2026-09-26에 `landingTarget`(주소)에서 `rootView`(무엇을 그리나)로
+ * 바뀌었다 — 랜딩이 `/`에 섰기 때문이다.
  *
  * ⚠️ **문자열 리터럴을 여기에 박지 않는다** — `routes.*`와 대조한다. 그래야 `lib/routes.ts`가
  * 바뀔 때 이 테스트가 따라 움직인다. 경로 문자열은 타입이 못 보는 부류라(POSTMORTEM 2026-09-05)
@@ -35,27 +36,44 @@ describe("rejectTarget — 거부·장애를 어디로 튕기나", () => {
   });
 });
 
-describe("landingTarget — 루트(`/`)의 착지", () => {
+describe("rootView — 루트(`/`)가 무엇을 그리나 (랜딩)", () => {
   /**
-   * ⚠️ **로그인 상태로 `/`에 오면 `/projects`다** (2026-09-10 사용자 결정 — *"로그인 이후 랜딩
-   * 못 가게"*). **랜딩이 `/`에 들어온 뒤에도 유지한다** — 이 케이스가 그 결정의 기록이고, 없으면
-   * 다음 배송이 "로그인해도 랜딩을 볼 수 있어야 한다"로 뒤집는다.
+   * ⚠️ **로그인 상태로 `/`에 오면 여전히 `/projects`다** (2026-09-10 사용자 결정 — *"로그인 이후
+   * 랜딩 못 가게"*). 랜딩이 `/`에 들어와도 유지한다 — 이 케이스가 그 결정의 기록이다.
    */
-  it("세션이 있으면 프로젝트 목록으로 — 로그인 화면을 두 번 보여줄 이유가 없다", () => {
-    expect(landingTarget("ok")).toBe(routes.projects());
+  it("세션이 있으면 프로젝트 목록으로 보낸다", () => {
+    expect(rootView("ok")).toEqual({ redirect: routes.projects() });
+  });
+
+  it("세션이 없으면 랜딩을 그린다", () => {
+    expect(rootView("none")).toEqual({ landing: true });
   });
 
   /**
-   * **위임을 값으로 고정한다.** 두 함수가 각자 갈래를 적으면 목적지가 바뀔 때 하나만 고쳐지고,
-   * 그 어긋남은 화면이 정상으로 보이므로 눈에 안 띈다.
+   * ⚠️ **장애도 랜딩이다** (2026-09-26 `/feature-review` — 옛: `/signin?error=Unavailable`). 공개 화면이
+   * 세션 장애로 안 열리는 것이 더 나쁘다(DESIGN §6.61과 같은 쪽). 일반 로그인은 `redirectTo: "/projects"`라
+   * `/`를 지나지 않으므로 "로그인 직후 조용히 랜딩"이 되는 흐름이 없고, 장애 신호는 `rejectTarget`이 계속 든다.
    */
-  it("세션이 없거나 못 읽으면 rejectTarget과 같은 곳으로 간다", () => {
-    expect(landingTarget("none")).toBe(rejectTarget("none"));
-    expect(landingTarget("unavailable")).toBe(rejectTarget("unavailable"));
+  it("세션을 못 읽어도 랜딩을 그린다 — 장애 신호는 보호 라우트가 든다", () => {
+    expect(rootView("unavailable")).toEqual({ landing: true });
+    expect(rejectTarget("unavailable")).toBe(routes.signIn({ error: "Unavailable" }));
+  });
+});
+
+describe("publicCta — 공개 셸 헤더의 primary", () => {
+  /**
+   * ⚠️ **라벨은 사전 키다** — 이 모듈은 잎이라 `@/lib/i18n`을 물지 않는다. 헤더가 키로 사전을 읽는다.
+   */
+  it("세션이 있으면 앱으로 연다", () => {
+    expect(publicCta("ok")).toEqual({ href: routes.projects(), label: "openMalmoi" });
   });
 
-  it("세 갈래가 전부 다른 주소다 — 하나로 접히면 구별이 사라진다", () => {
-    const seen = new Set([landingTarget("ok"), landingTarget("none"), landingTarget("unavailable")]);
-    expect(seen.size).toBe(3);
+  it("세션이 없으면 로그인으로 보낸다", () => {
+    expect(publicCta("none")).toEqual({ href: routes.signIn(), label: "getStarted" });
+  });
+
+  /** 장애는 비로그인 쪽이다 — 공개 화면에서 앱으로 보내 봐야 보호 라우트가 다시 튕긴다. */
+  it("세션을 못 읽으면 비로그인과 같다", () => {
+    expect(publicCta("unavailable")).toEqual(publicCta("none"));
   });
 });

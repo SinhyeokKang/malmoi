@@ -58,28 +58,31 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
   /** ⚠️ **`"checking"`을 `undefined`(실패)로 접지 않는다** (malmoi#75) — 조회 중과 조회 실패는 다른 줄이다. */
   const [openPr, setOpenPr] = useState<OpenImportPr | "checking">("checking");
   /**
-   * 폐기 승인 지문 — Dialog가 열릴 때마다 새로 받는다 (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). 서버가 잠금 뒤 재계산해 대조하므로
-   * 여기서 낡아도 편집이 사라지지 않고 reconfirm이 된다. 받기 전이거나 실패면 `null`로 보낸다.
+   * 폐기 승인 — **지문과 그 지문이 가리키는 건수를 한 값으로 든다** (audit #2). Dialog가 열릴 때마다 새로 받는다
+   * (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). 서버가 잠금 뒤 재계산해 대조하므로 여기서 낡아도 편집이 사라지지 않고
+   * reconfirm이 된다. 발급 실패면 `approval: null`로 보낸다.
+   *
+   * ⚠️ **화면의 `unsent`로 문구를 세우지 않는다** — 전엔 지문만 받아 두고 라벨·경고를 호출부의 건수로 그려서, 동료가 방금 만든 3건의
+   * 지문을 "지울 것이 없다"는 창으로 승인시켰다. 서버는 그 지문을 정상 승인으로 받는다. 그래서 건수는 지문과 같은 응답에서만 온다.
+   *
+   * ⚠️ **`null`은 "아직 모른다"다** (audit #14) — 그 전에 누르면 `null`이 나가 서버가 reconfirm을 내고, 화면은
+   * *"Translations changed after you opened Sync"* 라는 사실과 다른 문장을 띄웠다. **실패는 끝난 것이다** — 그때는 풀어서 `null`을
+   * 보내고 서버가 재확인을 요구한다. 그동안의 건수는 호출부 값을 잠정으로 쓴다(확정이 막혀 있어 그 값으로 승인되는 일이 없다).
    */
-  const approval = useRef<string | null>(null);
-  /**
-   * ⚠️ **지문 발급이 끝나기 전에는 확정할 수 없다** (audit #14) — 그 전에 누르면 `null`이 나가 서버가 reconfirm을 내고,
-   * 화면은 *"Translations changed after you opened Sync"* 라는 사실과 다른 문장을 띄웠다. **실패는 끝난 것이다** —
-   * 그때는 풀어서 `null`을 보내고 서버가 재확인을 요구한다(위 계약). 기다리는 것은 "아직 모른다" 하나다.
-   */
-  const [approvalPending, setApprovalPending] = useState(true);
+  const [issued, setIssued] = useState<{ approval: string | null; unsent: number } | null>(null);
+  const approvalPending = issued === null;
+  const shownUnsent = issued === null || issued.approval === null ? unsent : issued.unsent;
   const request = useRef(0);
   const busy = useRef(false);
   useEffect(() => {
     const id = ++request.current;
     setOpenPr("checking");
-    setApprovalPending(true);
+    setIssued(null);
     if (!open || role !== "OWNER" || paused) return;
     if (busy.current) { onOpenChange(false); return; }
-    approval.current = null;
     void prepareRepositorySync({ slug }).then(
-      value => { if (request.current === id) { approval.current = value?.approval ?? null; setApprovalPending(false); } },
-      () => { if (request.current === id) { approval.current = null; setApprovalPending(false); } },
+      value => { if (request.current === id) setIssued(value === undefined ? { approval: null, unsent } : value); },
+      () => { if (request.current === id) setIssued({ approval: null, unsent }); },
     );
     void checkOpenPullRequest({ slug }).then(
       value => { if (request.current === id) setOpenPr(value); },
@@ -94,19 +97,20 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
   */
   useEffect(() => { onPendingChange?.(pending); }, [pending]); // onPendingChange의 참조 변경은 트리거가 아니다.
   // 조회 중은 계획에서 미확인과 같다 — 둘 다 "열린 PR이 없다"를 모르므로 블록이 선다.
-  const plan = planImportConfirmation({ unsent, openPr: openPr === "checking" ? undefined : openPr });
+  const plan = planImportConfirmation({ unsent: shownUnsent, openPr: openPr === "checking" ? undefined : openPr });
   const pr = plan.openPr;
   function changeOpen(next: boolean) {
     if (next && busy.current) return;
     onOpenChange(next);
   }
   async function confirm() {
-    if (busy.current || approvalPending) return;
+    if (busy.current || issued === null) return;
+    const approval = issued.approval;
     busy.current = true;
     setPending(true);
     changeOpen(false);
     let outcome: RepositoryImportOutcome;
-    try { outcome = await runRepositoryImport({ slug, approval: approval.current }); }
+    try { outcome = await runRepositoryImport({ slug, approval }); }
     /*
       ⚠️ **온보딩 코드를 쓰지 않는다** — `ingest-failed`는 `PLANS`에도 `m.repositorySync.errors`에도
       없어 **두 폴백을 동시에 타서**, 닫을 수도 갈 곳도 없는 amber가 *"The first import failed. You can
@@ -191,7 +195,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
         {/* ⚠️ `disabled`가 아니라 `aria-disabled`다 — 지문이 도착하면 같은 버튼이 풀리므로 포커스·Tab 순서가 그대로 남아야 한다. */}
         <Button variant="danger" aria-disabled={approvalPending} onClick={() => void confirm()}>
           {approvalPending && <LoaderCircle className="size-3.5 animate-spin" aria-hidden />}
-          {unsent > 0 ? m.repositorySync.confirmDiscard : m.repositorySync.confirm}
+          {shownUnsent > 0 ? m.repositorySync.confirmDiscard : m.repositorySync.confirm}
         </Button>
       </>}>
       {/*
@@ -218,7 +222,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
             반대로 두면(늘어나는 블록) 못 본 경고가 생긴다.
           */}
           <div aria-live="polite" className="min-w-0 flex-1 space-y-1.5">
-            {plan.recommendSend && <p>{m.repositorySync.unsent(unsent, <span className="font-medium">{m.repositorySync.unsentCount(unsent)}</span>)}</p>}
+            {plan.recommendSend && <p>{m.repositorySync.unsent(shownUnsent, <span className="font-medium">{m.repositorySync.unsentCount(shownUnsent)}</span>)}</p>}
             {openPr === "checking"
               ? <p>{m.repositorySync.prChecking}</p>
               : pr === undefined

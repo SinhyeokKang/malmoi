@@ -12,16 +12,14 @@
  * 파일시스템·네트워크를 아는 층이다. 어댑터·스캐너·계획은 전부 순수 함수다.
  */
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
-
 
 import { findTarget, flagValue, flagValues } from "../lib/cli/args";
-import { sourceKind, walkFiles } from "../lib/cli/walk";
+import { readSourceFiles, walkFiles } from "../lib/cli/walk";
 import { optionalEnv } from "../lib/env";
 import { AppError } from "../lib/failure";
 import { reportPushResponse } from "../lib/cli/push-response";
+import { isAllowedPushUrl } from "../lib/cli/push-url";
 import { adapterErrorKind } from "../lib/adapters/types";
 import { adapterErrorMessage } from "../lib/i18n/adapter-errors";
 import {
@@ -35,10 +33,9 @@ import {
   DEFAULT_WRAPPERS,
   parseWrapperSpec,
   scanSources,
-  type SourceFileInput,
   type WrapperId,
 } from "../lib/scan/index";
-import { fileProbe, requestedFormat } from "./format";
+import { fileProbe, requestedFormat, unreadableLocaleFiles } from "./format";
 import { loadLocalEnv } from "./local";
 
 loadLocalEnv();
@@ -56,6 +53,11 @@ if (!target) {
   process.exit(2);
 }
 const baseUrl = flagValue(argv, "--url") ?? "http://localhost:3000";
+// 이 요청이 `PUSH_TOKEN` 원문을 싣는다 — 평문 http는 루프백에서만 받는다(sec-audit-3 #10).
+if (!isAllowedPushUrl(baseUrl)) {
+  console.error(`--url은 https여야 한다(http는 localhost·127.0.0.1·[::1]만): ${baseUrl}`);
+  process.exit(2);
+}
 const specs = flagValues(argv, "--wrapper");
 const wrappers: readonly WrapperId[] = specs.length === 0 ? DEFAULT_WRAPPERS : specs.map((raw) => {
   const parsed = parseWrapperSpec(raw);
@@ -138,12 +140,11 @@ async function reportFailure(code: ReportedImportFailure): Promise<void> {
 }
 
 const paths = walkFiles(target);
-const sources: SourceFileInput[] = paths.flatMap((path) => {
-  const kind = sourceKind(path);
-  return kind ? [{ path, code: readFileSync(join(target, path), "utf8"), kind }] : [];
-});
+// 사용처 소스를 못 읽으면 경고로 건너뛴다(audit #16) — 로케일 적재를 멈추지 않는다. 로케일 파일 읽기 실패는 아래에서 따로 red다.
+const { files: sources, unreadable: unreadableSources } = readSourceFiles(target, paths);
 
-const probe = fileProbe(target);
+const probeFailures = new Set<string>();
+const probe = fileProbe(target, probeFailures);
 
 // ── 적재 (키의 진실) ────────────────────────────────────────────────────────
 // 포맷 결정은 `pnpm ingest`와 같은 함수다(`scripts/format.ts`) — `--adapter`·`--path-template`·탐지 갈래를 거기서 가른다.
@@ -181,6 +182,16 @@ try {
 }
 const { read, baseLocale } = assembled;
 
+// ⚠️ **로케일 파일을 못 읽었으면 여기서 멈춘다** (audit #7) — 빈 내용으로 읽힌 파일의 키가 페이로드에서 빠지면 서버가 그 키를
+// "코드에서 사라졌다"로 orphan시킨다. 부분 페이로드를 보내지 않고 적재 실패로 보고한다(docs/ACTIONS.md §3).
+const unreadable = unreadableLocaleFiles(assembled.files, probeFailures);
+if (unreadable.length) {
+  console.error(`로케일 파일 ${unreadable.length}개를 읽지 못했다 — CI를 실패시킨다:`);
+  for (const path of unreadable.slice(0, 10)) console.error(`  ${path}`);
+  await reportFailure("prepare-failed");
+  process.exit(1);
+}
+
 // ⚠️ **경고(`duplicate-property`)는 red가 아니다** (B7a r1, 2026-09-24 사용자 결정 · docs/ACTIONS.md §3) — code-dict·ts-dict의
 // 중복 프로퍼티는 JS 의미대로 마지막 값이 적재되고 잃는 번역이 없다. 찍고 계속한다.
 const warnings = read.errors.filter((e) => adapterErrorKind(e.code) === "warning");
@@ -199,6 +210,10 @@ if (warnings.length) {
 
 // ── 사용처 (컨텍스트) — 실패가 경고다 ──────────────────────────────────────
 const scan = scanSources(sources, wrappers);
+if (unreadableSources.length) {
+  console.error(`사용처 소스 ${unreadableSources.length}개를 읽지 못해 건너뛰었다 — CI는 계속한다:`);
+  for (const path of unreadableSources.slice(0, 10)) console.error(`  ${path}`);
+}
 
 // **생산자는 `lib/push/payload.ts` 하나다.** 리터럴로 조립하던 시절엔 계약이 넓어져도
 // 컴파일러가 붙잡을 지점이 없었고, 이 스크립트만 400을 받는 상태로 남았다

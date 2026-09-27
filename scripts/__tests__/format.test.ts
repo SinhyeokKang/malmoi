@@ -1,10 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import { fileProbe, requestedFormat } from "../format";
+import { assemblePushInput } from "../../lib/push/assemble";
+import { fileProbe, requestedFormat, unreadableLocaleFiles } from "../format";
 
 /**
  * **`pnpm ingest`와 `pnpm push:local`의 포맷 결정은 한 함수다** (audit #73). 두 스크립트가 probe·`--adapter` 검증·탐지 갈래를
@@ -23,6 +24,41 @@ describe("fileProbe", () => {
     const probe = fileProbe(repo);
     expect(probe("locales/en.json")).toContain("Hello");
     expect(probe("locales/fr.json")).toBeUndefined();
+  });
+});
+
+/**
+ * **로케일 파일을 못 읽으면 부분 페이로드를 만들지 않는다** (audit #7). probe가 `undefined`를 주면 `selectLocaleFiles`가 빈 내용을
+ * 먹이고, ts-dict는 빈 파일을 "로케일 객체 없음"으로 조용히 읽는다 — 그 파일의 키가 페이로드에서 빠져 서버가 orphan시킨다.
+ */
+describe.skipIf(process.getuid?.() === 0)("unreadableLocaleFiles", () => {
+  const dict = mkdtempSync(join(tmpdir(), "malmoi-cli-unreadable-"));
+  mkdirSync(join(dict, "src/i18n"), { recursive: true });
+  const body = (key: string) => `const en = { "${key}": "A" };\nconst ko = { "${key}": "B" };\nexport const ns = { en, ko };\n`;
+  writeFileSync(join(dict, "src/i18n/a.ts"), body("a.one"));
+  writeFileSync(join(dict, "src/i18n/b.ts"), body("b.two"));
+  writeFileSync(join(dict, "README.md"), "x");
+  afterAll(() => { chmodSync(join(dict, "src/i18n/b.ts"), 0o644); chmodSync(join(dict, "README.md"), 0o644); rmSync(dict, { recursive: true, force: true }); });
+  const paths = ["README.md", "src/i18n/a.ts", "src/i18n/b.ts"];
+  const format = { adapter: "ts-dict" as const, pathTemplate: "src/i18n/*.ts", locales: ["en", "ko"] };
+
+  it("적재가 고른 파일 중 읽기에 실패한 것만 낸다 — 탐지가 훑다 실패한 무관한 파일은 세지 않는다", () => {
+    chmodSync(join(dict, "src/i18n/b.ts"), 0o000);
+    chmodSync(join(dict, "README.md"), 0o000);
+    const failures = new Set<string>();
+    const probe = fileProbe(dict, failures);
+    expect(probe("README.md")).toBeUndefined();
+    const { files, read } = assemblePushInput({ paths, probe, format });
+    // 이것이 결함의 모양이다 — 읽기 실패가 어댑터 오류 없이 키 하나를 잃는다.
+    expect(read.errors).toEqual([]);
+    expect(unreadableLocaleFiles(files, failures)).toEqual(["src/i18n/b.ts"]);
+  });
+
+  it("짝: 전부 읽히면 빈 목록이다", () => {
+    chmodSync(join(dict, "src/i18n/b.ts"), 0o644);
+    const failures = new Set<string>();
+    const { files } = assemblePushInput({ paths, probe: fileProbe(dict, failures), format });
+    expect(unreadableLocaleFiles(files, failures)).toEqual([]);
   });
 });
 

@@ -793,3 +793,44 @@ describe("code-dict — 중복 키 (audit #51)", () => {
     expect(r.locales[0]?.entries).toHaveLength(2);
   });
 });
+
+/**
+ * **가려진 중복 컨테이너는 런타임에 없다** (audit #4 · launch-audit B3.2). `{ a: { x }, a: { y } }`에서 JS가 읽는 `a`는 마지막 하나뿐인데
+ * `collect`가 앞 `a`까지 걸어 `a.x`를 적재했고, write의 `propertyNamed`는 마지막 `a`만 봐서 **무관한 편집 하나에** `a.x`를 거기 삽입했다
+ * — 경고 0건으로 런타임에 없던 키가 생겼다. read가 write와 같은 의미(마지막만)를 따르면 `a.x`는 DB에 없고, 삽입될 일도 없다.
+ */
+describe("code-dict — 가려진 중복 컨테이너 (audit #4)", () => {
+  const SHADOW = "export default {\n  a: { x: 'old' },\n  a: { y: 'Y' },\n  hello: 'Hi',\n}\n";
+  const warning = (key: string) => ({ path: "src/locale/ko.ts", code: "duplicate-property", key });
+
+  it("read는 마지막 컨테이너만 걷고 앞의 것은 경고만 낸다", () => {
+    const r = codeDict.read(base(), [f("src/locale/ko.ts", SHADOW)]);
+    expect(r.errors).toEqual([warning("a")]);
+    expect(r.locales[0]?.entries).toEqual([{ key: "a.y", message: "Y" }, { key: "hello", message: "Hi" }]);
+  });
+
+  it("read 결과로 무관한 키만 편집해 write하면 가려진 키를 되살리지 않는다", () => {
+    const r = codeDict.read(base(), [f("src/locale/ko.ts", SHADOW)]);
+    const entries = r.locales[0]!.entries.map((e) => (e.key === "hello" ? { ...e, message: "Hello" } : e));
+    const out = codeDict.writeWithErrors!(withSource(SHADOW), { locale: "ko", entries });
+    expect(out).toEqual({ content: "export default {\n  a: { x: 'old' },\n  a: { y: 'Y' },\n  hello: 'Hello',\n}\n", errors: [] });
+  });
+
+  it("가려진 쪽이 비리터럴이어도 적재 실패가 아니다 — 런타임에 없는 값이다 · 마지막이 비리터럴이면 그대로 알린다 (짝)", () => {
+    expect(codeDict.read(base(), [f("src/locale/ko.ts", "export default {\n  a: someFn,\n  a: 'A',\n}\n")]).errors).toEqual([warning("a")]);
+    expect(codeDict.read(base(), [f("src/locale/ko.ts", "export default {\n  a: 'A',\n  a: someFn,\n}\n")]).errors)
+      .toEqual([warning("a"), { path: "src/locale/ko.ts", code: "value-not-string-literal", key: "a", detail: "Identifier" }]);
+  });
+
+  it("중첩 안의 중복도 같다 — 마지막만", () => {
+    const r = codeDict.read(base(), [f("src/locale/ko.ts", "export default {\n  el: { b: { x: '1' }, b: { z: '2' } },\n}\n")]);
+    expect(r.errors).toEqual([warning("el.b")]);
+    expect(r.locales[0]?.entries).toEqual([{ key: "el.b.z", message: "2" }]);
+  });
+});
+
+/** 중첩 shorthand의 키는 전체 경로다 (B3 r1 Y1) — 이름만 내면 편집 키 `a.hello`와 안 맞아 미리보기가 편집된 자리를 면제했다. */
+it("code-dict — 중첩 shorthand는 전체 경로 키로 알린다", () => {
+  const r = codeDict.read(base(), [f("src/locale/ko.ts", "export default { a: { hello }, hi: 'Hi' };\n")]);
+  expect(r.errors).toEqual([{ path: "src/locale/ko.ts", code: "shorthand-property", key: "a.hello" }]);
+});

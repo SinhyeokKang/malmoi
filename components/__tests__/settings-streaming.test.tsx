@@ -25,7 +25,7 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => ({ project: { findUnique: async ()
 vi.mock("@/lib/github", () => ({ loadConnectionHealth: () => state.health }));
 vi.mock("@/lib/github-connect/account-view", () => ({ loadAccountView: () => state.account }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: () => state.pr }));
-vi.mock("@/app/(edit)/projects/actions", () => ({ listRepoBranches: vi.fn(async () => ({ ok: true, names: ["main"], defaultBranch: "main", truncated: false })), rotatePushToken: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => ({ listProjectBranches: vi.fn(async () => ({ ok: true, names: ["main"], defaultBranch: "main", truncated: false })), rotatePushToken: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ startGithubConnect: vi.fn(), connectRepository: vi.fn(), updateProjectName: vi.fn(), updateRepositorySettings: vi.fn(), uploadProjectImage: vi.fn(), deleteProjectImage: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replace: vi.fn() }), redirect: vi.fn() }));
 import SettingsPage from "@/app/(edit)/projects/[slug]/settings/page";

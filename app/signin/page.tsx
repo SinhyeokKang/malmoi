@@ -1,4 +1,5 @@
 import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -18,16 +19,19 @@ import { destFromCallbackUrl } from "@/lib/login-link/policy";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
+/** 로그인 폼은 검색 가치가 없다 — 브랜드 검색은 랜딩이 받는다(seo-geo spec D6). robots.txt로는 막지 않는다(`/invite`와 같은 이유). */
+export const metadata: Metadata = { title: m.seo.signInTitle, robots: { index: false, follow: false } };
+
 /**
  * 로그인 진입점. 미들웨어가 세션 없는 보호 라우트 요청을 여기로 보낸다.
  *
- * ⚠️ **`/`가 아니라 `/signin`이다** (8-1a). 랜딩 페이지가 `/`에 들어올 예정이라 미리 갈랐고,
- * `/`는 `landingTarget`으로 여기 또는 `/projects`로 보내는 껍데기다. **목적지를 만드는 자리는
+ * ⚠️ **`/`가 아니라 `/signin`이다** (8-1a). 랜딩이 `/`에 설 자리라 미리 갈랐다.
+ * 지금 `/`는 랜딩이고 로그인 상태면 `/projects`로 보낸다(`rootView`). **목적지를 만드는 자리는
  * `lib/routes.ts`의 `signIn()` 하나이고**, 나중에 옮기면 아홉 자리가 동시에 움직인다
  * (POSTMORTEM 2026-09-05 — 경로 문자열은 타입이 못 본다).
  *
- * ⚠️ **matcher에 넣지 않는다.** `shouldRedirectToLogin`도 `middleware()`도 경로를 보지 않으므로,
- * 여기가 matcher에 걸리면 쿠키 없는 모든 요청이 **자기 자신으로 307을 돈다.**
+ * ⚠️ **보호 경로(`isProtectedPath`)에 넣지 않는다.** `shouldRedirectToLogin`은 목적지를 보지 않으므로,
+ * 여기가 보호 경로에 들면 쿠키 없는 모든 요청이 **자기 자신으로 307을 돈다.**
  *
  * 이미 로그인돼 있으면 바로 `/projects`로 — 로그인 화면을 두 번 보여줄 이유가 없다.
  *
@@ -75,6 +79,7 @@ export default async function SignIn({
             >
               {m.signIn.consent.link}
             </Link>
+            {m.signIn.consent.after}
           </p>
         </div>
       </AuthColumn>

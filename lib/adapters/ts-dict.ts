@@ -21,7 +21,19 @@ import type { Adapter, AdapterError, AdapterFile, DetectedFormat, LocaleEntry, R
  */
 
 /** 로케일 파일이 모인 디렉터리 패턴. `{locale}`이 경로에 없어 다른 어댑터와 규칙이 다르다. */
-const NS_DIR = /^(.*\/)[^/]+\.tsx?$/;
+const NS_DIR = /^(.*\/)[^/]+\.(tsx?)$/;
+
+/**
+ * 경로 → 그 파일이 속할 후보 템플릿(`dir/*.ts` 또는 `dir/*.tsx`). 딕셔너리 파일이 아니면 `undefined`.
+ *
+ * ⚠️ **확장자가 템플릿의 일부다** (audit #13). 전에는 디렉터리로만 묶고 템플릿을 `*.ts`로 고정해, `.tsx`만 있는 디렉터리가 탐지에
+ * 성공하고도 확인·적재에서 0개를 골랐다. 혼합 폴더는 **후보 둘**이다 — glob 문법을 넓히지 않는다(`matchesGlob`의 와일드카드는
+ * `*` 하나고, 확장자의 진실은 `pathTemplate`이다 — `shared.ts`).
+ */
+function templateOf(path: string): string | undefined {
+  const m = NS_DIR.exec(path);
+  return m?.[1] === undefined || m[2] === undefined ? undefined : `${m[1]}*.${m[2]}`;
+}
 
 function newProject(): Project {
   // 타입 정보가 필요 없다(객체 리터럴 형태만 본다) — 컴파일러 옵션·lib을 로드하지 않는다.
@@ -125,17 +137,17 @@ const SEED_DIRS = 2;
  * 신호 없이 고르면 blob이 수십 개가 된다. 곁가지(`__tests__`·`examples`)는 `aside`가 걷어낸다.
  */
 export function tsDictProbePaths(paths: readonly string[]): string[] {
-  const byDir = new Map<string, string[]>();
+  // 탐지(`detectByContent`)와 **같은 묶음**이어야 한다 — 씨앗이 내려받은 파일을 탐지가 그대로 읽는다.
+  const byTemplate = new Map<string, string[]>();
   for (const path of paths) {
-    const m = NS_DIR.exec(path);
-    const dir = m?.[1];
-    if (dir === undefined) continue;
+    const template = templateOf(path);
+    if (template === undefined) continue;
     const { hint, aside } = pathSignals(path);
     if (!hint || aside) continue;
-    (byDir.get(dir) ?? byDir.set(dir, []).get(dir)!).push(path);
+    (byTemplate.get(template) ?? byTemplate.set(template, []).get(template)!).push(path);
   }
 
-  const dirs = [...byDir.entries()]
+  const dirs = [...byTemplate.entries()]
     // 파일이 하나뿐이면 딕셔너리가 아니다 — `detectByContent`도 로케일 객체 2개 이상을 요구한다.
     .filter(([, files]) => files.length >= 2)
     /**
@@ -163,19 +175,19 @@ function detectCandidates(paths: readonly string[], probe?: (p: string) => strin
 }
 
 function detectByContent(paths: readonly string[], probe?: (p: string) => string | undefined): DetectedFormat[] {
-  const byDir = new Map<string, string[]>();
+  const byTemplate = new Map<string, string[]>();
   for (const path of paths) {
-    const m = NS_DIR.exec(path);
-    if (!m?.[1]) continue;
-    (byDir.get(m[1]) ?? byDir.set(m[1], []).get(m[1])!).push(path);
+    const template = templateOf(path);
+    if (template === undefined) continue;
+    (byTemplate.get(template) ?? byTemplate.set(template, []).get(template)!).push(path);
   }
 
   // 경로만으로는 판단할 수 없다 — .ts 디렉터리는 어디에나 있다. **내용을 봐야 한다.**
   if (!probe) return [];
 
-  const dirs = [...byDir.entries()].sort(([a], [b]) => compareKeys(a, b));
+  const templates = [...byTemplate.entries()].sort(([a], [b]) => compareKeys(a, b));
   const found: DetectedFormat[] = [];
-  for (const [dir, files] of dirs) {
+  for (const [pathTemplate, files] of templates) {
     const locales = new Set<string>();
     let matched = 0;
     // ⚠️ **씨앗이 내려받은 것과 같은 파일을 읽어야 한다**(`SEED_FILES`개, 같은 정렬) — 다른 것을
@@ -198,7 +210,7 @@ function detectByContent(paths: readonly string[], probe?: (p: string) => string
      * 전용이던 동안에는 사람이 경로를 보고 골라서 이 어댑터만 밖에 있어도 무해했다.
      */
     if (matched === 0 || locales.size < 2 || !hasStrongLocale(locales)) continue;
-    found.push({ adapter: "ts-dict", pathTemplate: `${dir}*.ts`, locales: [...locales] });
+    found.push({ adapter: "ts-dict", pathTemplate, locales: [...locales] });
   }
   return found;
 }

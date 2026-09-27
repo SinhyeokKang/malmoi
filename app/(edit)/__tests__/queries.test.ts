@@ -97,7 +97,39 @@ describe("loadMemberships", () => {
         surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
         archivedAt: null,
         defaultSurfaceSlug: "default",
+        memberCount: 1,
+        sourceCount: 1,
+        keyCount: 1,
       },
+    ]);
+  });
+
+  /**
+   * **사이드바 프로젝트 항목의 개수 배지 입력** (2026-09-27 사용자 — PRODUCT §7.7 결정 5를 뒤집었다). 셸이 이미
+   * 부르는 이 조회에 얹는다 — 왕복을 늘리지 않는다. ⚠️ **숫자가 각 화면과 같아야 한다**: Sources는 보관 안 된
+   * 소스 수(Sources 목록), 키는 orphaned가 아닌 것(`loadSurfaceCounts`), 멤버는 목록 행의 `memberCount`와 같은 `_count`다.
+   */
+  it("멤버 수·보관 안 된 소스 수·그 소스들의 orphaned 아닌 키 합을 싣는다", async () => {
+    const { prisma } = createHarness({
+      ...seed(),
+      members: [...seed().members!, { projectId: "p1", userId: "u2", role: "EDITOR" }],
+      surfaces: [
+        { id: "s-app", projectId: "p1", slug: "app", archivedAt: null },
+        { id: "s-web", projectId: "p1", slug: "web", archivedAt: null },
+        { id: "s-old", projectId: "p1", slug: "old", archivedAt: new Date("2026-09-01T00:00:00Z") },
+        { id: "s-p2", projectId: "p2", slug: "app", archivedAt: null },
+      ],
+      keys: [
+        { id: "k1", projectId: "p1", surfaceId: "s-app", key: "a", sourceText: "A", description: null, sortIndex: 0, orphaned: false },
+        { id: "k2", projectId: "p1", surfaceId: "s-app", key: "b", sourceText: "B", description: null, sortIndex: 1, orphaned: false },
+        { id: "k3", projectId: "p1", surfaceId: "s-app", key: "c", sourceText: "C", description: null, sortIndex: 2, orphaned: true },
+        { id: "k4", projectId: "p1", surfaceId: "s-old", key: "a", sourceText: "A", description: null, sortIndex: 0, orphaned: false },
+        { id: "k5", projectId: "p2", surfaceId: "s-p2", key: "a", sourceText: "A", description: null, sortIndex: 0, orphaned: false },
+      ],
+      translations: [],
+    });
+    expect(await loadMemberships(prisma, "u1")).toMatchObject([
+      { slug: "acme", memberCount: 2, sourceCount: 2, keyCount: 2 },
     ]);
   });
 
@@ -451,7 +483,7 @@ describe("loadProjectList", () => {
   it("`loadMemberships`는 목록 전용 필드를 내지 않는다", async () => {
     const h = createHarness(seed());
     const [row] = await loadMemberships(h.prisma, "u1");
-    expect(row).not.toHaveProperty("memberCount");
+    // `memberCount`는 2026-09-27부터 셸 필드다 — 사이드바 Members 배지가 같은 조회의 `_count`로 든다(왕복 0).
     expect(row).not.toHaveProperty("repoOwner");
   });
 });

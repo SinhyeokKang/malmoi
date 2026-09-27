@@ -22,7 +22,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { recordEvent } from "@/lib/events/record";
 import { requireEnv } from "@/lib/env";
-import { planRepoConnect } from "@/lib/github-connect/connect-plan";
+import { planRepoConnect, type UserRepo } from "@/lib/github-connect/connect-plan";
 import { callbackUrl, requestOrigin } from "@/lib/github-connect/origin";
 import { describeFailure, httpStatus } from "@/lib/failure";
 import { logFailure } from "@/lib/github-connect/log";
@@ -32,6 +32,7 @@ import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { authorizeUrl, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
 import { probeRepo } from "@/lib/github";
 import { isValidBranchName } from "@/lib/pull/branch-name";
+import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { invalidateDeliveryConfirmations } from "@/lib/pull/load";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 
@@ -71,6 +72,8 @@ export async function startGithubConnect(raw: { slug: string; returnTo?: "add-su
     permission: "project:settings",
   });
   if (access.status !== "ok") return { ok: false, error: access.status };
+  // 보관 = Restore만 (PRODUCT §7.9). 쓰기가 없어 잠금 없이 진입 판정만 한다 — 왕복 뒤의 쓰기는 각자 잠금 안에서 다시 본다.
+  if (access.archived) return redrawIfArchived(slug, "archived", { ok: false, error: "archived" });
 
   /**
    * ⚠️ **origin과 쿠키 `secure`를 한 판정에서 얻는다** (malmoi#7). 따로 읽으면 쿠키를 심은 이름과
@@ -98,7 +101,7 @@ export async function startGithubConnect(raw: { slug: string; returnTo?: "add-su
       dest: { kind: parsed.data.returnTo ?? "settings", slug },
       nonce,
       expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
-      secret: requireEnv("AUTH_SECRET"),
+      secret: requireEnv("APP_SIGNING_SECRET"),
     }),
     {
       httpOnly: true,
@@ -160,7 +163,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   const probe = await probeRepo(project.repoOwner, project.repoName);
 
   let userInstallationIds: readonly string[];
-  let userRepoFullNames: readonly string[];
+  let userRepos: readonly UserRepo[];
   try {
     userInstallationIds = await listUserInstallations(token.accessToken);
     /**
@@ -171,9 +174,9 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
      * ⚠️ 이 `includes`는 `planRepoConnect`의 같은 검사와 **비교 방식이 같아야 한다** — 갈리면
      * 정당한 설치인데 리포 목록을 안 불러 `repo-forbidden`이 난다.
      */
-    userRepoFullNames =
+    userRepos =
       probe.status === "ok" && userInstallationIds.includes(probe.installationId)
-        ? (await listInstallationRepos(token.accessToken, probe.installationId)).map((r) => r.fullName)
+        ? await listInstallationRepos(token.accessToken, probe.installationId)
         : [];
   } catch (error) {
     /**
@@ -188,7 +191,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
     return { ok: false, error: "unavailable" };
   }
 
-  const plan = planRepoConnect({ probe, userInstallationIds, userRepoFullNames });
+  const plan = planRepoConnect({ probe, userInstallationIds, userRepos, requirePush: true });
   if (plan.status !== "ok") return { ok: false, error: plan.status };
 
   if (probe.status !== "ok" || !probe.repositoryId || (project.repositoryId && project.repositoryId !== probe.repositoryId)) return { ok: false, error: "repo-forbidden" };
@@ -298,6 +301,8 @@ export async function updateRepositorySettings(raw: {
    * 설정이 거부한다.
    */
   if (!isValidBranchName(baseBranch)) return { ok: false, error: "invalid-branch" };
+  // 목록에서 빠져도 자유 입력(300개 초과)·직접 호출이 같은 이름을 보낸다 (malmoi#126).
+  if (isSyncBranchName(baseBranch)) return { ok: false, error: "sync-branch" };
 
   const outcome = await prisma.$transaction(async (tx) => {
     // 잠금 뒤 읽어야 동시 변경의 before와 no-op 판정이 실제 저장 직전 상태를 가리킨다.
@@ -444,7 +449,11 @@ export async function uploadProjectImage(form: FormData): Promise<ProjectImageRe
   return { ok: true };
 }
 
-export async function deleteProjectImage(slug: string): Promise<{ ok: true } | { ok: false; reason: AccessError }> {
+export async function deleteProjectImage(raw: string): Promise<{ ok: true } | { ok: false; reason: AccessError }> {
+  // 인자는 클라이언트가 정한다 — 비문자열이 쿼리까지 가면 거부 값 대신 500이 된다. 거부 이유는 업로드와 같은 not-found다.
+  const parsed = Input.safeParse({ slug: raw });
+  if (!parsed.success) return { ok: false, reason: "not-found" };
+  const { slug } = parsed.data;
   const session = await readSession();
   if (session.status !== "ok") return { ok: false, reason: session.status === "none" ? "unauthorized" : "unavailable" };
   const prisma = getPrisma();

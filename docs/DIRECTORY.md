@@ -8,20 +8,30 @@
 
 ```
 app/
-  page.tsx              랜딩 자리의 redirect 껍데기. 세션 상태만 보고 landingTarget이 정한 곳으로.
+  page.tsx              랜딩(`/`). rootView가 세션이 있으면 /projects로 redirect, 없거나 못 읽으면 PublicShell(cta = publicCta("none"), current = home) + 히어로 + Stage + 마무리 CTA.
                         ⚠️ 로그인 상태면 /projects다 — 랜딩이 선 뒤에도 그렇다. 쿼리를 읽지 않는다
   signin/page.tsx       로그인(GitHub·Google). Auth.js의 pages.signIn·pages.error가 여기다.
-                        ⚠️ middleware matcher에 넣으면 로그인이 통째로 죽는다 — 경로를 안 보므로
+                        ⚠️ 보호 경로(isProtectedPath)에 넣으면 로그인이 통째로 죽는다 — 목적지를 안 보므로
                         쿠키 없는 모든 요청이 자기 자신으로 307을 돈다(entry-points가 부정 단언으로 고정)
                         ⚠️ ?error= 없이도 세션이 unavailable이면 문구를 띄운다
                         ⚠️ 초대에서 온 왕복이 여기서 끝나면 돌아가는 링크를 든다 — 자리를 아는 것은
                         authjs.callback-url 쿠키뿐이고, 갈래가 invite일 때만 세운다(open redirect)
-  signin/link/[challenge]/   계정 병합 안내. 인가가 없고 challenge가 대신한다 → matcher 밖.
+  signin/link/[challenge]/   계정 병합 안내. 인가가 없고 challenge가 대신한다 → 보호 경로 밖.
                         ⚠️ 만료를 이 화면으로 말하지 않는다 — /signin으로 되돌린다
-  privacy/ · docs/      공개 문서. 둘 다 components/public-doc.tsx(장문 그릇 — DESIGN §6.61). privacy 본문은
-                        messages/en.tsx의 publicDocs.privacy이고, docs 본문만 아직 placeholder(L2.3). ⚠️ 세션을 읽는 이유는 차단이 아니라 복귀 링크
-                        하나다 — 로그인 상태면 /projects, 아니면 /signin. 그래서 둘 다 동적이다
-  layout.tsx            루트 레이아웃(Pretendard <link>). ⚠️ lang="en" — screens.test.ts가 고정한다
+  privacy/              방침. 공개 셸 안의 components/privacy/(DESIGN §6.616) · 본문은 messages/en.tsx의 publicDocs.privacy.
+                        ⚠️ 세션을 읽는 이유는 차단이 아니다 — 헤더 primary(publicCta: 로그인이면 Open Malmoi → /projects,
+                        아니면 Get started → /signin). 그래서 동적이다
+  docs/                 사용 가이드(DESIGN §6.61). layout(공개 셸 bare + 문서 내비 — SUMMARY를 읽는다) ·
+                        [[...slug]]/page(개요·장 개요·일반 문서 — 본문 스크롤러를 페이지가 key={slug}로 든다, 없는 slug는
+                        notFound()) · not-found(셸·내비 안 404). 원고는 guide/**.md. ⚠️ 셸이 레이아웃에 있는 유일한 공개 화면이다 —
+                        내비가 페이지 이동에 스크롤·포커스를 남겨야 해서다. ⚠️ fs로 읽으므로 next.config.ts의
+                        outputFileTracingIncludes가 guide/**/*.md를 싣는다(빠지면 Vercel에서 /docs/* 전부 500)
+  layout.tsx            루트 레이아웃(Pretendard <link> · 머리 기본값 · components/analytics). ⚠️ lang="en" — screens.test.ts가 고정한다.
+                        ⚠️ metadata에 canonical·og:url이 없다 — 얕은 병합으로 앱·/signin·/invite·404 전부에 홈 canonical이 번진다
+  robots.ts · sitemap.ts  크롤러용 파일 둘(lib/seo/crawl). robots는 force-dynamic(요청 시점 VERCEL_ENV), sitemap은 빌드 prerender.
+                        ⚠️ sitemap이 guide/를 읽는데 트레이싱은 /docs 함수에만 싣는다 — 동적으로 바꾸면 Vercel에서만 500
+  llms.txt/ · llms-full.txt/  route.ts — 가이드 목차·원고 전문(text/plain). force-static이 전제인 이유는 sitemap과 같다.
+                        인가가 없다(entry-points의 EXEMPT에 이름으로 등재)
   not-found.tsx · error.tsx · global-error.tsx  셸 밖(/invite·/signin·오타 URL)의 경계. 앞 둘은 components/root-fallback.tsx를
                         쓰고, global-error는 루트 레이아웃을 대신하므로 html·body를 스스로 든 맨 HTML이다(전역 CSS 없음)
   globals.css           Tailwind 4 @theme. ⚠️ @custom-variant dark 한 줄이 라이트를 고정한다
@@ -31,12 +41,15 @@ app/
                         · screens(lang·revalidate 안전·보관 갈래 다섯) · security-headers(next.config를 불러서)
                         · api/__tests__/pull-budget(야간 cron 시간 예산 — 가짜 시계로 넘긴 수가 unprocessed에 실리는지)
                         · locked-access(잠금 재판정 16자리를 AST로 센다 — `$transaction` 콜백 안의 호출만, 주석 제외)
+                        · root-boundaries · seo-metadata · crawl-files · landing-page · docs-page · privacy-page
+                        · api/__tests__/ github-callback · push-failure · route-diagnostics · surface-boundary
   (edit)/               인증 필요. 1차 차단은 middleware, 본판정은 각 진입점
     layout.tsx          셸. ⚠️ {children}을 흰 패널로 감싸지 않는다 — 감싸면 흰 패널이 겹쳐 padding이 두 배다.
                         ContentPanel은 각 갈래의 레이아웃이 든다(shell-layout.test.ts가 라우트마다
                         정확히 하나인지 센다)
     error.tsx           오류 경계. ⚠️ 예외 메시지를 그대로 뿌리지 않는다
-    actions.ts          saveTranslationKey · previewTranslationRevert · revertTranslationKey · triggerPullAction.
+    actions.ts          saveTranslationKey · previewTranslationRevert · revertTranslationKey · triggerPullAction ·
+                        loadMoreTranslationKeys(키 목록 다음 페이지 — 읽기 전용이라 revalidatePath를 안 부른다).
                         ⚠️ 무효화는 /projects/<slug> 서브트리 + 목록 둘이다 — 그 행을 읽는 화면이 넷이라
                         경로를 나열하면 다섯째가 조용히 빠진다
     publish-actions.ts  loadPublishPreview 하나. ⚠️ actions.ts와 갈라 둔다 — 모달이 열릴 때만 부르는
@@ -52,7 +65,8 @@ app/
       @modal/default.tsx · @modal/page.tsx · @modal/[...rest]/page.tsx
                         기본 복원·목록 복귀·다른 프로젝트 경로에서 null. 활성 슬롯이 이동 후 남는 것을 막는다
                         ⚠️ actions.ts의 인가가 export마다 따로다 — 공용 헬퍼로 빼면 entry-points가 못 센다
-                        ⚠️ 온보딩 다섯은 requireUser뿐이다(인가할 프로젝트가 없다)
+                        ⚠️ 온보딩(생성 경로)은 사용자 수준 인증뿐이다(인가할 프로젝트가 없다) — 모달이라
+                        readSession으로 거부를 값으로 돌려받고 checkRepoAccess를 지난다
     account/            사용자 축의 유일한 화면. requireUser만 지난다 · layout.tsx · loading.tsx 스켈레톤 ·
                         actions.ts(프로필 이름·사진 둘 · 전체 세션 회수 · 로그인 수단 연결/해제 — 여섯 다
                         requireUser만 지난다. 인가할 프로젝트가 없는 축이다)
@@ -84,11 +98,11 @@ app/
                         ⚠️ 넷 다 게이트가 translation:write다(settings만 project:settings) — EDITOR도
                         목록을 보고 컨트롤만 role로 갈린다. 판정은 Action이 한다
                         ⚠️ logs에 try가 없다 — 조회 실패는 던져야 "없음"과 다른 화면이 된다
-    __tests__/          harness(메모리 DB) + 테스트 스물다섯 — harness 자기검사 · 흐름 · 인가 · 멤버십 ·
+    __tests__/          harness(메모리 DB) + 테스트 스물여섯 — harness 자기검사 · 흐름 · 인가 · 멤버십 ·
                         연결 · 게시실패 · 게시미리보기 · 온보딩 · 조회 · 목록질의 · 셸레이아웃 · 오류경계 둘(화면 · 재시도) · 형제골격 ·
                         모달 · 보관 · 리포설정 · sync · 활동사건 · 표면추가로그 · 프로젝트메타데이터 ·
-                        소스Action · 소스페이지 · 초대메일 · 없는화면
-  invite/[token]/       ⚠️ (edit) 밖이고 matcher 밖이다 — 비로그인으로 열려야 토큰이 보존된다.
+                        소스Action · 소스페이지 · 초대메일 · 없는화면 · 번역More
+  invite/[token]/       ⚠️ (edit) 밖이고 보호 경로 밖이다 — 비로그인으로 열려야 토큰이 보존된다.
                         갈래는 planInviteView가 고른다(화면이 조건을 다시 적지 않는다)
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
                         entry-points의 면제가 파일이 아니라 **export 단위**(EXEMPT_ACTIONS)다 — 파일 단위면
@@ -102,8 +116,9 @@ app/
                         당연해서 entry-points의 면제 목록에 이름으로 든다
   api/github/callback/  ⚠️ matcher에 넣지 않는다 — 로그인 화면으로 302되면 code가 사라진다.
                         설치·인가·리포 선택 변경이 전부 여기로 온다(state 없는 설치 계열 복귀는 착지만)
-middleware.ts           인증 차단의 유일한 1차 지점. matcher 둘(/projects/:path* · /account).
-                        렌더 요청(GET·HEAD)만 막고 Action POST는 통과시킨다
+middleware.ts           인증 차단의 유일한 1차 지점 + CSP의 유일한 출처(요청마다 nonce).
+                        matcher는 전 페이지(/api·정적 자산 제외), 차단 대상은 isProtectedPath
+                        (/projects/** · /account). 렌더 요청(GET·HEAD)만 막고 Action POST는 통과시킨다
 ```
 
 ## components/
@@ -171,7 +186,32 @@ components/
   sources/ settings/ onboarding/ projects/ signin/ account/ invite/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
-  members/              멤버 화면 조각 다섯 (2026-09-19 리워크). members-panel-header(좌석 라벨 +
+  analytics.tsx         Vercel Web Analytics 래퍼("use client") — 루트 레이아웃이 서버 컴포넌트라 beforeSend(함수)를 못 넘겨서 선다.
+                        ⚠️ 개발 서버에서는 null(dev 디버그 스크립트를 CSP가 막는다 — CSP를 넓히지 않는다)
+  public-shell/         공개 셸(`/` · `/privacy` · `/docs/*`) — PublicShell({ cta, current, bare }) · header · footer · scroller. 헤더 40 · 패널 ·
+                        푸터 40, 루트 h-svh min-w-[1280px] overflow-hidden. ⚠️ "use client"는 scroller 하나이고 lib/를 물지
+                        않는다 — 문서가 스크롤되지 않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다.
+                        data-public-scroller가 랜딩 스테이지·공개 문서 목차의 스크롤 대상 표식이다. 해시가 tabindex 든 헤딩을
+                        가리키면 마운트 때 그 헤딩이 포커스를 받는다. bare는 스크롤러를 안 만든다(/docs는 페이지가 든다). ⚠️ 헤더는 세션을 읽지
+                        않는다 — primary는 페이지가 publicCta로 정해 넘긴다. route group 레이아웃으로 묶지 않는다(이동 때 스크롤러 재마운트)
+                        footer는 셸 밖 2열 골격(signin/auth-layout — /signin·초대·계정 병합)도 두 패널 아래에 그린다 — 푸터 렌더러가 하나다
+  privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로)
+  docs/                 `/docs/*` 조각 — guide-markdown(서버 — react-markdown에 로더 트리 사본을 꽂고 요소를 매핑한다.
+                        ⚠️ urlTransform을 덮지 않는다 · rehype-raw 없음 — raw HTML은 글자로 나가므로 원고에서 게이트가 막는다) · doc-frame(그릇 · 이전/다음 · 장 개요 행 · 개요 두 갈래) ·
+                        code-block(클라이언트 — Copy + visually-hidden live region) · nav-link(클라이언트 — usePathname 정확 일치) ·
+                        legacy-hash(클라이언트 — 옛 /docs#id → router.replace, 표는 서버가 넘긴다) · requested-path(404 주소) ·
+                        classes.ts(서버·클라이언트가 같이 쓰는 클래스 — "use client" 모듈에 두면 값이 아니라 참조가 온다)
+  public-doc-toc.tsx · public-doc-table.tsx
+                        두 공개 문서가 한 벌씩 쓰는 목차 Toc(클라이언트 잎 — [data-public-scroller] 구독 → rAF →
+                        lib/public-doc/toc의 currentSection, 클릭은 scrollTo(top − 48) + 절 h2로 포커스)와 표
+                        DocTable/DocTableFrame(role=region 스크롤 래퍼 + scrollable={false} — POSTMORTEM 2026-09-19 ·
+                        급은 DOC_TABLE 한 상수). /docs는 칸을 react-markdown이 그리므로 틀(DocTableFrame)만 쓴다
+  landing/              랜딩(`/`) 화면. 셸은 components/public-shell/다.
+                        stage.tsx(클라이언트 — 스크롤 → rAF → lib/landing/stage의 frame() → ref로 transform·opacity·data-*·
+                        텍스트를 직접 쓴다. ⚠️ 프레임마다 setState하지 않는다) · mockup/(서버 컴포넌트 — 1440×810 씬 다섯의
+                        정적 DOM. app-frame(앱 셸 복제 — LNB는 navZones·navFooterItems에서) · translations(번역 화면 복제 — 소스 트리 포함, phase로 ①②③) · publish(④ 미리보기 · ⑤ 결과).
+                        ⚠️ 인터랙티브 태그 0 — 버튼 모양은 buttonClass를 span에. 앱 라벨은 실제 사전 키, 가상 데이터는 m.landing.mockup)
+  members/              멤버 화면 조각 여섯 (2026-09-19 리워크). members-panel-header(좌석 라벨 +
                         [Invite] + 모달 소유) · invite-modal(다중 초대 폼 — 행 = 사람 하나, 성공이면 닫힘) ·
                         member-list · pending-invitations(Revoke · Resend — Resend 결과는 행이 아니라 카드 Alert) ·
                         member-row (두 카드가 공유하는 행 껍데기 + 사유 띠) · role-chip
@@ -192,7 +232,8 @@ components/
                         결과를 콜백으로 바깥에 넘긴다(onResult · onFailure)
   logs/                 **활동 스트림의 화면 조각** (2026-09-20, logs-rework — DESIGN §6.68)
                         glyph(칩 28 · 팔레트 일곱) · event-row(행 다섯 칸) · log-filters(`"use client"` —
-                        드롭다운 다섯 + 검색 + [Refresh]) · event-detail(640 본문) · event-dialog(껍데기)
+                        드롭다운 다섯 + 검색 + [Refresh]) · event-detail(640 본문) · event-dialog(껍데기) ·
+                        row-chevron(`"use client"` — useLinkStatus로 누른 행을 스피너로, 행이 서버 컴포넌트라 이것만 뗐다)
                         ⚠️ **Home의 Recent logs가 `event-row`를 그대로 쓴다** — 같은 사건이 두 화면에서
                         같은 모양이어야 한다. 그래서 파랑 한 자리도 이 파일에 있다(home-vocabulary가 센다)
                         ⚠️ **상세 본문은 서버가 그린다** — 클라이언트는 열림·닫힘·포커스만 든다
@@ -219,12 +260,12 @@ components/
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
   projects/project-thumbnail.tsx
-                        프로젝트를 가리키는 28 타일. 소비자가 **둘**이다 — 목록 행과 Home 머리.
+                        프로젝트를 가리키는 28 타일. 소비자가 **넷**이다 — 목록 행 · Home 머리 · LNB 프로젝트 구역(16) · 랜딩 목업(16, src 없음).
                         ⚠️ **2026-09-17까지 화면마다 따로 구현돼 있었고 Home만 고정 bg-foreground였다**
                         (POSTMORTEM 2026-09-17). ⚠️ radius가 rounded-sm(8)이고 캔버스의 4가 아니다
                         — 초대 카드(components/invite/project-card.tsx)까지 세 화면을 한 값으로
                         모은 판정이다 (DESIGN §6.63의 이탈 줄이 정본)
-                        ⚠️ optional src는 아직 소비자가 없다 — 프로젝트 이미지가 생길 자리다
+                        src(프로젝트 이미지)는 앱 셋이 넘긴다 — 없으면 이름 tone 타일로 떨어진다
   projects/new-project-button.tsx
                         [New project] 전용 client 버튼. 소비자가 **둘**이다 — 목록 머리와 EmptyProjects.
                         Link.onNavigate를 가로채 useTransition + router.push로 옮기고 그동안 Plus를
@@ -267,14 +308,15 @@ components/
                         ⚠️ **이름이 같은 파일이 components/projects/에도 있다** — 그쪽(ProjectSearch)은
                         이것을 감싸 useRouter로 ?q=를 미는 배선 래퍼이고, 여기는 라우터를 모르는 프리미티브다
   surface-selector.tsx · github-account.tsx · reconnect-button.tsx · submit-button.tsx ·
-  project-archived.tsx · project-not-ready.tsx · root-fallback.tsx
+  project-archived.tsx · project-not-ready.tsx · root-fallback.tsx · slow-notice.tsx
                         화면에 걸치는 조각들. surface-selector는 **소비자가 0인 dead code**다(테스트 둘만 import — 소스 전환은 번역 트리가 든다, audit-ux #34). 지우지 않고 남겨 둔다
                         (표면이 둘 미만이면 스스로 null을 낸다 — 축이 안 보이는 프로젝트에 컨트롤을 세우지 않는다).
                         ⚠️ project-archived·project-not-ready는 **화면 대신 서는 안내 한 쌍**이고 정책과
                         문구를 각자 한 곳이 든다 — 같은 갈래를 만나는 화면이 다섯·둘이라 사본이 생기면
                         그중 하나가 낡는다. github-account(연결/해제 Dialog)·reconnect-button은 결과를
                         인라인 Alert로 내고 redirect하지 않는다. submit-button은 useFormStatus 하나를
-                        감싸 로그인·초대 폼이 같은 pending을 쓰게 한다
+                        감싸 로그인·초대 폼이 같은 pending을 쓰게 한다. slow-notice(useSlow)는 긴 원격 실행(탐지·첫 적재·Sync·
+                        Publish)에 지연 문구 한 줄을 띄운다 — ⚠️ SLOW_AFTER_MS = GITHUB_WAIT_MS로 값이 한 벌이다, 사본을 두지 않는다
   __tests__/            focus-ring(소스 스캔 — 탭으로 지나가야 보이는 결함이라 눈으로 두 번 놓쳤다) ·
                         docs-content(`/docs`의 상한·포맷·action 넷·마커를 정본 상수와 실제 `uses:`에 대조) ·
                         disabled-pairing(⚠️ buttonClass의 disabled: 유틸리티마다 aria-disabled: 짝이
@@ -300,7 +342,7 @@ lib/
   adapters/             양방향 로케일 어댑터. ⚠️ layout(경로 모양)과 writeStrategy(write 기계)는 별개 축이다 —
                         yaml-catalog·code-dict가 per-locale인데 수술적이다. layout으로 가르는 코드가
                         남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다
-                        index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 22) ·
+                        index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 23) ·
                         glob(역추적 없는 DP 매처) · shared(결정성 규칙) · quote-style · json-style ·
                         chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
                         __tests__/contract.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다
@@ -341,7 +383,7 @@ lib/
                         `N projects use this connection.`을 그리던 조회인데, 세던 것이 내가 OWNER인
                         **모든** 프로젝트라 이 연결에 의존하지 않는 것까지 들어갔다. 해제가 실제로
                         막는 것은 리포 (재)연결뿐이고 야간 pull·PR은 설치 토큰이 낸다
-  push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · token /
+  push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · token · json-bounds(placeholders 자원 상한) /
                         plan · run · render · load · client · targets · trigger · sync-branch · branch-name · ref-slug ·
                         message · payload /
                         run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · plan
@@ -378,7 +420,7 @@ lib/
                         미리보기·실행) · delivery(전달 확인 상태 — 저장과 Revert가 같은 판정을 쓴다). 넷 다 `server-only`가 없다(격리 PG가 직접 부른다)
   translations/         **번역 화면 리워크의 순수 계약** (2026-09-23, translation-rework C1 — 소비자는 C3/C4에서 붙었다).
                         query(URL 계약 — 요청값을 들고 옛 `state=untranslated`·`locales`를 받는다, `sort` 없음) ·
-                        summary(키 집계 oracle · Incomplete first 안정 분할 · effectiveCompletion) · selection ·
+                        summary(키 집계 oracle · Incomplete first 안정 분할 · effectiveCompletion) · text-direction(값 셀 dir·lang — RTL 값이 페이지 ltr을 상속하지 않게, malmoi#91) ·
                         draft(saved/draft/inFlight 세 층 reducer + 세션 복구 사본) · saved-rows · navigation ·
                         baseline(미전달 셀 delta 기준 — ARCHITECTURE §5.8) · layout(세 패널 폭 계약 — 로케일 ≥420을 마지막까지 지킨다) · context(전달 확인의 context 지문 — ⚠️ **이것만 잎이 아니다**:
                         `node:crypto`를 물어 서버 전용이고 `lib/pull/load.ts`·Save가 쓴다). 나머지는 잎이다 — import는 서로와
@@ -437,9 +479,9 @@ lib/
                         (countInstalledRepos)이 순수 함수이고 껍데기는 실패를 logFailure로 남기고
                         던지지 않는다. null("못 읽었다")과 0("고른 것이 없다")이 다른 값이다 —
                         실패한 조회를 0으로 읽으면 사용자가 멀쩡한 설치를 다시 만든다
-                        ⚠️ installation-url은 apps/<slug>/installations/new 하나를 만든다. 기존 세
-                        자리(new-project-modal · 프로젝트 설정 · 온보딩 ②)는 아직 각자 조립한다 —
-                        중복 넷을 헬퍼로 모으는 것은 후속이다
+                        ⚠️ installation-url이 설치 링크의 유일한 조립처다 — installationSettingsUrl(설치 설정)·
+                        installWithStateUrl(state를 실은 설치). 호출부 넷(new-project-modal · projects/actions ·
+                        account · settings/repository-card)이 전부 이것을 import한다
   credentials/ session-revocation/ login-link/ account-connect/
                         저장 시 암호화 / 전체 세션 회수 / 계정 병합 / 로그인 수단 추가.
                         credentials/log는 삼킨 실패의 한 줄(`[credentials]`) — 원인이 CredentialError로
@@ -452,14 +494,15 @@ lib/
                         ⚠️ account-connect는 VerificationToken의 **세 번째 접두**이고 plan(판정) ·
                         policy(쿠키) · http(가로채기) · store(challenge·Account 쓰기)로 갈린다
   onboarding/ survey/ scan/ projects/ shell/ settings/ signin/ i18n/ cli/
-                        (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄)
+                        (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄 ·
+                        cli/push-url — `push-local --url` 판정. 토큰 원문을 싣는 요청이라 http는 루프백 셋만, 위반은 exit 2)
                         각 기능의 순수 판정층
   home/                 Home의 순수 판정 다섯 (2026-09-15 재편). state(여섯 아트보드 → 값 하나 —
                         ⚠️ 로딩은 갈래가 아니다: 라우트의 loading.tsx이고 union에 넣으면 생산자 없는
                         갈래가 남는다) · cards(보조 줄과 0 갈래 — ⚠️ 상태의 보조 줄이 0 갈래를 이긴다) ·
                         attention(세 종을 한 시간축에 · 상한 5 · ⚠️ 폴백은 actors 맵의 키 존재로 판정한다,
                         actorLabel의 null이 아니다) · meta(행이 상태에 따라 사라지거나 는다) ·
-                        overview(recentActivity — ⚠️ 상한이 건수가 아니라 7일 창이다)
+                        sync-time(lastSyncTime — lastImportedAt의 최댓값, 시각 컬럼 이전 적재는 "unrecorded"로 null과 가른다)
                         ⚠️ **전부 I/O가 없고 server-only를 안 붙인다** — 테스트가 직접 import한다
   shell/panel-size.ts   px 치수 → 리사이즈 패널의 % 제약. ⚠️ 분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다
                         — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
@@ -505,18 +548,39 @@ lib/
                         (Node는 "(Azərbaycan)"). ⚠️ 하위태그를 떼지 않는다 — zh-Hans/zh-Hant가
                         한 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다
   onboarding/types.ts   RepoOption·AdapterChoice. 타입만 산다 — 같은 번들 이유
+  landing/              랜딩(`/`) 스테이지의 수학 — stage(fitScale · PLAY · pinnedSpan · trackHeight · sceneAt · typedPrefix · frame).
+                        ⚠️ 잎(import 0) — 스테이지 클라이언트가 값으로 읽는다. 같은 스크롤 위치 → 같은 프레임이
+                        역방향 스크럽의 조건이라 이전 프레임을 입력으로 받지 않는다. `/`에 무엇을 그릴지는
+                        여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다. 공개 셸 헤더의
+                        primary(publicCta — 라벨을 사전 키로 준다, 그 모듈이 잎이라서)도 그 파일이다
+  public-doc/           공개 문서 목차의 현재 절 판정 — toc(currentSection). ⚠️ 잎(import 0) — 목차 클라이언트가 값으로 읽는다
+  guide/                `/docs` 원고의 순수 함수 + 로더. parse(mdast 한 벌 — 게이트·목차·렌더러가 같은 트리) · summary(SUMMARY →
+                        내비, slug ↔ 파일) · collect(링크·라벨·이미지 수집, resolveDocLink) · sections(절·표·도입 문단) ·
+                        toc(extractToc — H2만, 둘 미만이면 빈 목록 · tableLabel) · rules(렌더러가 약속하지 않는 원고 문법 — raw HTML · 섞인/링크 이미지 · 각주 · SUMMARY 셋째 단) · dictionary(dictionaryStrings — 사전의 문자열 잎, 굵은 라벨 게이트) · remark(렌더 직전 손질 — {#id} → id · 링크 해소 ·
+                        표 이름 · 코드 파일명) · href(docHref — SUMMARY slug → 경로) · overview(개요 두 갈래 상수) · legacy(옛 해시 —
+                        ⚠️ 잎, 클라이언트가 읽는다) · legacy-anchors(옛 id 일곱의 표) · load(server-only — ⚠️ 모듈 최상위에서 읽지 않는다,
+                        함수 안 + React cache) · shots(parseShotSize·shotSizes — SHOOTING 표의 치수를 <img width height>로. 한국어 열 이름 대신 **순서**로 읽는다 — load.test가 실물 표로 순서 읽기 = 이름 읽기를 잰다) · stale(staleShots — SHOOTING 매핑 표의 기록 blob SHA vs 현재 SHA. 한국어 열 이름은 읽지 않는다 — lib/는 no-korean-ui 범위라 열→필드 매핑은 scripts/guide-check 몫). ⚠️ routes.docs(page, anchor)의 인자는 리터럴이어야 한다(docs-links.test가 원고와 대조) —
+                        SUMMARY에서 온 slug는 docHref가 잇는다
+  seo/                  공개 페이지 머리·크롤러 파일의 순수 함수. site(SITE_ORIGIN — canonical·sitemap·llms·JSON-LD의 유일한 절대 기준,
+                        환경별로 안 바뀐다 · OG_IMAGE · DOCS_TITLE · pageMetadata — 매번 완전한 객체, Next 병합이 얕다) · crawl(robotsFor —
+                        production만 허용, 모르면 숨긴다 · sitemapEntries) · json-ld(jsonLdHtml — dangerouslySetInnerHTML의 유일한 입력 ·
+                        LANDING_LD · docLd) · llms(llmsIndex · llmsFull — 결정적) · analytics(redactAnalyticsEvent — 추적 경로 허용 목록.
+                        ⚠️ 잎, 전 페이지 클라이언트 번들에 든다)
+  links.ts              외부 링크(GitHub 리포 URL)와 푸터 링크 목록 — 랜딩·/signin 푸터가 같은 목록·순서를 읽는다.
+                        ⚠️ 외부 URL을 routes.ts에 넣지 않는 이유가 이 파일이다(죽은 라우트 검사가 앱 경로로 읽는다)
   routes.ts             앱 내부 링크의 단일 출처(잎, import 0). ⚠️ 쿼리는 withQuery를 지나야
                         entry-points의 "쿼리 수신자" 검사에 걸린다 — 문자열 연결은 그 검사를 회피한다
-  search-params.ts      ⚠️ 잎. Next의 searchParams는 반복 파라미터를 배열로 주므로 화면 여덟이 전부
+  search-params.ts      ⚠️ 잎. Next의 searchParams는 반복 파라미터를 배열로 주므로 searchParams를 읽는 화면(지금 열둘)이 전부
                         이것을 지난다. Object.create(null)로 만든다(키를 주소창이 정한다)
-  locale-code.ts        ⚠️ 잎. 로케일 코드와 pathTemplate이 리포 경로 조각이라 값이 아니라 경로로 검증한다
+  locale-code.ts        ⚠️ 잎. 로케일 코드와 pathTemplate이 리포 경로 조각이라 값이 아니라 경로로 검증한다.
+                        isLocaleShaped는 별개 축(로케일인가) — `package`가 `package.json`을 겨누지 않게
   failure.ts            500 본문 판정 — 우리 메시지는 그대로, 남의 라이브러리 메시지는 ref만.
                         응답이 대상 리포 Actions 로그로 흘러가고 그 리포가 public일 수 있다.
                         logCaught — 삼켜서 갈래 하나로 접는 자리의 서버 로그 한 줄(원문 금지).
                         httpStatus · isUniqueViolation — 흩어진 사본이 셋·넷이던 판정
   compare.ts            ⚠️ 잎. compareCodeUnits — 결정적 정렬 전부의 `<` 비교(localeCompare 금지)
-  security-headers.ts   ⚠️ 잎(import 0 — next.config가 읽는다). 보안 응답 헤더 값 + 환경별 enforce CSP
-                        (프로덕션 · preview=Vercel Toolbar 호스트 · next dev=eval·HMR). CSP 헤더는 하나다
+  security-headers.ts   ⚠️ 잎(import 0). CSP 밖 보안 응답 헤더 값(next.config가 읽는다) + 환경별 CSP 조립 buildCsp
+                        (middleware가 요청마다 nonce로 부른다 · 프로덕션 · preview=Vercel Toolbar 호스트 · next dev=eval·HMR). CSP 헤더는 하나다
   bounded-body.ts       ⚠️ 잎. 외부 진입점 본문을 상한 안에서만 읽는다(`/api/push`·`/api/push/failure`) —
                         선언된 길이는 읽기 전에, chunked는 읽는 도중에 끊는다. json()·text()를 먼저 부르면 다 읽은 뒤다
   cause.ts              ⚠️ 잎. causeMessage — 잡은 값의 메시지. `(cause as Error).message`는 Error 아닌 throw에서 undefined다
@@ -550,6 +614,7 @@ prisma/maintenance/     backfill-surfaces.sql. ⚠️ 마이그레이션이 아�
                         옛 writer를 멈춘 배포 1 창에서만 유효하고, 표면 편집이 시작된 뒤에는 돌리면 안 된다.
                         credential-cutover와 같은 함정(Prisma가 이 디렉터리를 안 봐서 상태 조회에 안 잡힌다)
 scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local ·
+                        guide-check(pnpm guide:check — SHOOTING #shots 표 vs 작업 트리 git hash-object. 읽기 전용, exit 0 · 인자 오류만 2) ·
                         smoke-github · smoke-blob(⚠️ pnpm smoke:blob에 NODE_OPTIONS=--conditions=react-server가
                         붙는다 — PII 복호 모듈이 server-only라 그 조건 없이는 import에서 죽는다) ·
                         credentials · finalize-credentials · backfill-pending-edit-token ·
@@ -557,6 +622,9 @@ scripts/                adapter-survey · sync-agents · copy-fonts · scan · i
                         format(fileProbe · requestedFormat — ingest·push-local의 probe·`--adapter`·탐지 갈래 하나.
                         ⚠️ lib/가 아닌 이유는 문구가 한국어 CLI 출력이라서다 — lib은 no-korean-ui 범위다)
                         (⚠️ DATABASE_URL을 친다 — prod는 명령 한 줄에서 그 변수를 넘긴다, 0행 두 번이 수렴)
+                        release(순수 버전 판정 — planRelease·recommendLevel·latestReleaseTag. ⚠️ lib/가 아닌 이유는 앱 런타임이 안 쓰는 하네스 로직이라서다) ·
+                        release-plan(pnpm release:plan — /merge 3단계 전용. 원격 태그(ls-remote)·origin/dev·origin/main을 읽는다. 읽기 전용,
+                        exit 0 판정 / 1 error / 2 인자가 주어짐)
                         __tests__/workflow-pins가 .github/ 아래 uses:가 40자 SHA로 핀됐는지 센다.
                         __tests__/prisma-select-columns는 이 디렉터리의 select 키를 schema.prisma와
                         대조한다 — ⚠️ tsc가 Prisma select 키를 안 보고 scripts/는 pnpm test 밖이다
@@ -566,13 +634,28 @@ types/next-auth.d.ts    session.user.id를 싣는 모듈 확장. ⚠️ `login`(
 .github/actions/malmoi-i18n-push/action.yml
                         **대상 리포가 참조하는 composite action**(외부 계약, 정본은 ACTIONS.md).
                         ⚠️ 참조는 불변 태그 @malmoi-i18n-push-v1이다 — 태그를 옮기는 것이 릴리스다
-public/brand/ flags/    ⚠️ 커밋된 원본이다(fonts/는 반대로 생성물). flags 253개는 lib/keys/flag.ts의
-                        FLAG_INVENTORY와 정확히 같아야 한다(flag-assets.test.ts가 양방향으로 센다)
+public/og.png           링크 미리보기 이미지 1장 — 1200×630 PNG(사용자 제공 2400×1260 원본을 축소, 원본은 커밋하지 않는다). ⚠️ 치수는 OG_IMAGE 선언과 같아야 한다(site.test.ts가 IHDR로 잰다). 코드는 lib/seo/site.ts의 OG_IMAGE로 **항상** 싣는다 —
+                        파일 규약(app/opengraph-image.png)이 아닌 이유는 얕은 병합이다. 대체 텍스트는 m.seo.ogImageAlt
+public/brand/ flags/ email/
+                        ⚠️ 커밋된 원본이다(fonts/는 반대로 생성물). email/logo@2x.png는 초대 메일이 절대 URL
+                        (INVITATION_EMAIL_LOGO_URL)로 참조한다 — 옮기면 이미 보낸 메일의 로고가 깨진다(middleware matcher 제외). flags 253개는 lib/keys/flag.ts의
+                        FLAG_INVENTORY와 정확히 같아야 한다(flag-assets.test.ts가 양방향으로 센다).
+                        flags 원본은 country-flag-icons@1.6.20 3x2(MIT) — flags/LICENSE가 그 원문이다
+LICENSE                 MIT. ⚠️ 전문에 문장을 더하지 않는다 — GitHub가 유사도로 판정해 한 줄만 붙여도 인식이 풀린다
+guide/                  **사용 가이드 원고**(en) — SUMMARY.md(IA 정본 · 내비 순서) + README.md(개요) + <장>/README.md + <장>/<페이지>.md.
+                        AUTHORING.md·SHOOTING.md는 한국어 매뉴얼이고 SUMMARY 밖이라 서빙되지 않는다(`/docs/AUTHORING`은 404).
+                        ⚠️ docs/(내부 문서)와 이름을 가르려고 guide/다 — 라우트만 /docs다. ⚠️ x.md와 x/README.md가 둘 다 있으면 red
+public/guide/           원고 이미지(WebP) — 커밋된 원본이고 복사 단계가 없다(2026-09-27 기준 5장 — 목록은 guide/SHOOTING.md 매핑 표가 정본). md는 /guide/<name>.webp 절대경로로만 참조한다.
+                        치수·매핑 소스·blob SHA는 guide/SHOOTING.md 표가 정본이다.
+                        ⚠️ README가 translation-editor·publish-preview·workflow-file 세 장을 상대 경로로 참조한다 — 이름을 바꾸면 README 이미지가 깨진다
+docs/assets/readme/     README 이미지(WebP) — 서빙되지 않고 GitHub가 렌더한다. ego로 찍고 마스킹은 guide/SHOOTING.md 표를 따른다
+                        (가이드 게이트·guide:check 밖이라 stale을 아무도 안 센다 — 화면이 크게 바뀌면 손으로 다시 찍는다)
 generated/prisma/ public/fonts/   ⚠️ 생성물(gitignore)
 vercel.json             Cron(야간 1회) + ⚠️ regions: ["hnd1"] — 함수를 DB 옆에 붙인다. 기본 iad1에서는
                         홉당 ~375ms였고 이 앱의 비용은 페이로드가 아니라 홉 개수다(요청당 일곱)
-next.config.ts          ⚠️ 보안 응답 헤더를 여기서 낸다 — 값은 lib/security-headers.ts(환경별 enforce CSP).
+next.config.ts          ⚠️ CSP 밖 보안 응답 헤더를 여기서 낸다 — 값은 lib/security-headers.ts. **CSP는 여기 없다**(요청마다 nonce라 middleware.ts가 유일한 출처).
                         ⚠️ agentRules: false — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다
+                        ⚠️ outputFileTracingIncludes — /docs 함수 번들에 guide/**/*.md를 싣는다(fs로 읽어 트레이서가 못 따라간다)
 vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암호화 키 셋을 세운다.
                         ⚠️ 셋째가 있다 — 리사이즈 핸들의 getBoundingClientRect를 화면 밖으로 민다.
                         jsdom은 모든 rect가 0×0@(0,0)이라 react-resizable-panels의 히트 판정이
@@ -584,7 +667,7 @@ vitest.projects.config.ts
                         건드렸으면 손으로 돌린다. 편집 토큰의 조건부 쓰기(적재 정리·Publish CAS·backfill)와
                         동시 CI push의 결과 표시(concurrent-import — barrier로 두 요청을 교차시킨다)와 전달 층 불변식
                         (delivery-invariants — 승인 Sync의 orphan 토큰 해제 · orphan 셀 적재 제외 · 로케일 재시도 · 보류 뒤 Revert)도
-                        여기서만 잰다 — include가 `lib/keys`·`lib/events`·`lib/invitation-email`의 `__tests__/*.integration.ts`로
+                        여기서만 잰다 — include가 `lib`(루트)·`lib/keys`·`lib/events`·`lib/invitation-email`의 `__tests__/*.integration.ts`로
                         박혀 있어 그 밖에 만든 통합 테스트는 조용히 0건 수집된다
 vitest.credentials.config.ts
                         같은 형의 둘째다 — 자격증명 암·복호의 **격리 PostgreSQL** 검증

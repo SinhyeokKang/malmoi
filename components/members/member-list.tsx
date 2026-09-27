@@ -71,8 +71,12 @@ export function MemberList({
   /**
    * 진행 중인 행과 **무엇을 하는지** (malmoi#106) — 행 하나의 대기가 Select `aria-busy`와 [Remove] `busy`를 함께 먹여, 역할 변경 중에
    * 되돌릴 수 없는 [Remove]가 "제거 중"처럼 돌았다. 스피너는 쓴 컨트롤에만, 다른 쪽은 잠기기만 한다.
+   *
+   * ⚠️ **행마다 따로다** (audit #12) — 값 하나면 A 대기 중 B를 누를 때 A의 잠금이 사라졌다. ⚠️ **성공한 행은 여기서 빼지 않는다** —
+   * `await` 뒤의 setState는 transition 밖에서 커밋되므로, 빼면 목록 커밋 전에 곧 사라질 행이 다시 켜진다(audit-ux #13).
+   * 모든 transition이 끝난(`isPending` false) 커밋에서 통째로 비운다.
    */
-  const [pendingOp, setPendingOp] = useState<{ userId: string; op: "role" | "remove" } | null>(null);
+  const [pendingOps, setPendingOps] = useState<ReadonlyMap<string, "role" | "remove">>(new Map());
   const [announcement, setAnnouncement] = useState("");
   /**
    * 확인을 기다리는 역할 변경 (audit #20). ⚠️ **셀렉트 값은 그동안 그대로다** — `value`가 서버 값(`member.role`)에
@@ -84,6 +88,9 @@ export function MemberList({
    * [Remove]가 다시 켜지고 역할 Select가 옛 역할로 보였다. `isPending`은 Action의 재검증 커밋까지 참이다(`general-card.tsx`의 형).
    */
   const [isPending, startTransition] = useTransition();
+  useEffect(() => {
+    if (!isPending) setPendingOps((current) => (current.size === 0 ? current : new Map()));
+  }, [isPending]);
 
   /**
    * ⚠️ **제거가 거부되면 그 행의 Remove로 포커스를 돌려준다** (malmoi#53). 그때는 트리거가 `loading` → `disabled`라
@@ -97,7 +104,7 @@ export function MemberList({
   function apply(targetUserId: string, nextRole: Role | null, who: string) {
     setFailed(null);
     setAnnouncement("");
-    setPendingOp({ userId: targetUserId, op: nextRole === null ? "remove" : "role" });
+    setPendingOps((current) => new Map(current).set(targetUserId, nextRole === null ? "remove" : "role"));
     startTransition(async () => {
       /*
         ⚠️ **던져도 행을 풀고 그 자리에서 말한다** (audit #24) — try가 없으면 transition 안의 예외가 error boundary로
@@ -106,6 +113,12 @@ export function MemberList({
       let result: Awaited<ReturnType<typeof changeMember>> | null;
       try { result = await changeMember({ slug, targetUserId, nextRole }); } catch { result = null; }
       if (result === null || !result.ok) {
+        // 행이 남는 갈래는 곧장 푼다 — 남겨 두면 다른 행이 세운 `isPending`에 이 행이 따라 돈다.
+        setPendingOps((current) => {
+          const next = new Map(current);
+          next.delete(targetUserId);
+          return next;
+        });
         setFailed({ userId: targetUserId, error: result === null ? null : result.error, removal: nextRole === null });
         return;
       }
@@ -160,7 +173,7 @@ export function MemberList({
               member.readable ? null : m.members.unreadableHint,
               blocked ? accessErrorMessage("last-owner") : null,
             ].filter((sentence): sentence is string => sentence !== null);
-            const pending = isPending && pendingOp?.userId === member.userId ? pendingOp.op : null;
+            const pending = isPending ? (pendingOps.get(member.userId) ?? null) : null;
 
             return (
               <RowCardItem key={member.userId} first={index === 0}>

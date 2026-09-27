@@ -24,9 +24,9 @@ import { SlowNotice } from "@/components/slow-notice";
 import { Alert } from "@/components/ui/alert";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import type { CreateProjectResult } from "@/app/(edit)/projects/actions";
-import { failureText, isAccessLost } from "./failure";
+import { failureText, isAccessLost, isRepoScopedRefusal } from "./failure";
 import { OnboardingModal } from "./modal";
-import { FilesStep, type ManualEntry, type PreviewState } from "./steps/files";
+import { FilesStep, failedPreview, previewFailureText, samplePreview, type ManualEntry, type PreviewState } from "./steps/files";
 import { NamingStep } from "./steps/naming";
 import { RepoStep } from "./steps/repo";
 import { ResultStep } from "./steps/result";
@@ -191,7 +191,8 @@ export function NewProject({
             setBranchValue(fallback.selected);
             return;
           }
-          if (isAccessLost(result.error)) setAccessLost(result.error);
+          // 리포 단위 거부는 행 아래(BranchRow)에만 선다 — 배너로도 올리면 같은 문장이 두 번이다 (#122).
+          if (isAccessLost(result.error) && !isRepoScopedRefusal(result.error)) setAccessLost(result.error);
           setAccessError(result.error);
           return;
         }
@@ -279,7 +280,7 @@ export function NewProject({
       Object.fromEntries(
         chosen.samples.map((s) => [
           JSON.stringify([repo?.fullName, branchValue, index, chosen.adapter, chosen.pathTemplate, s.locale]),
-          { status: "ready", rows: s.rows, total: s.total } as PreviewState,
+          samplePreview(s),
         ]),
       ),
     );
@@ -315,11 +316,11 @@ export function NewProject({
           if (detail === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
           else setCandidates((prev) => prev.map((item, index) => index === detail ? update(item) : item));
         }
-        setAnnounce(result.ok ? undefined : m.newProject.files.preview.unavailable);
+        setAnnounce(result.ok ? undefined : previewFailureText(failedPreview(result.error)));
         setSamples((prev) => ({
           ...prev,
           // ⚠️ **실패를 빈 결과로 위장하지 않는다** — 빈 언어(빈 칸)와 화면에서 갈린다.
-          [key]: result.ok ? { status: "ready", rows: result.rows, total: result.total } : { status: "unavailable" },
+          [key]: result.ok ? { status: "ready", rows: result.rows, total: result.total } : failedPreview(result.error),
         }));
       },
       () => {
@@ -340,6 +341,8 @@ export function NewProject({
     setSlug("");
     setSlugTaken(false);
     setDetail(null);
+    // 힌트("Setting a path clears the selection above")와 제출이 같은 사실을 말하게 한다 (malmoi#125).
+    setChecked(new Set());
     setLocale(next.baseLocale.trim());
     setBaseLocale(next.baseLocale.trim());
   }
@@ -371,7 +374,7 @@ export function NewProject({
             setLocale((prev) => prev || code);
             setSamples(Object.fromEntries(result.candidate.samples.map((sample) => [
               JSON.stringify([repo.fullName, branchValue, null, manual.adapter, template, sample.locale]),
-              { status: "ready", rows: sample.rows, total: sample.total } as PreviewState,
+              samplePreview(sample),
             ])));
           } else {
             setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } }));
@@ -549,6 +552,8 @@ export function NewProject({
             banner: accessLost ?? banner,
           }}
           selection={{ checked, conflicts: selection.conflicts, onToggle: index => {
+            // 수동 지정 중 체크는 후보로 돌아오는 것이다 — 안 그러면 체크가 선 채 수동 경로가 제출된다 (malmoi#125).
+            if (usingManual) applyCandidate(candidates, index);
             setChecked(previous => {
               const next = new Set(previous);
               if (next.has(index)) next.delete(index); else next.add(index);

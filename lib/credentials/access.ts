@@ -33,6 +33,12 @@ export async function refreshVerifiedEmail(prisma: PrismaClient, provider: strin
     if (fresh === null) return "keep";
     return await prisma.$transaction(async tx => {
       await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${linked.userId} FOR UPDATE`;
+      // ⚠️ **잠금 앞에서 본 연결은 잠금 뒤에 거짓일 수 있다** (audit #5) — 해제(`unlinkLoginMethod`)가
+      // 같은 User 잠금 안에서 Account를 지우고 커밋하면, 해제된 공급자의 주소가 User로 들어간다.
+      // 사라졌으면 처음부터 없던 것과 같은 `"unlinked"`다 — 호출부가 병합 안내를 그 갈래에서만 조회한다.
+      const current = await tx.account.findUnique({ where: { provider_providerAccountId: { provider, providerAccountId } }, select: { userId: true } });
+      if (current === null) return "unlinked" as const;
+      if (current.userId !== linked.userId) return "keep";
       const row = await tx.user.findUnique({ where: { id: linked.userId }, select: { id: true, email: true, emailLookup: true } });
       if (row === null) throw new CredentialError();
       const user = decodeUser(row);

@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { recordEvent } from "@/lib/events/record";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
+import { hasActiveImport } from "@/lib/import/plan";
 import { pendingWhere } from "@/lib/protection/where";
 import { STALE_AFTER_SECONDS } from "@/lib/sync/plan";
 import { planKeyRevert, revertSettled, type RevertPlan } from "@/lib/translations/baseline";
@@ -41,11 +42,20 @@ async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): 
   });
   const baselines = await tx.translationBaseline.findMany({ where: { projectId, surfaceId, keyId }, select: { localeCode: true, restoreValue: true, revision: true } });
   const delivery = await readDeliveryState(tx, projectId, surfaceId);
-  const running = await tx.syncRun.count({ where: { projectId, status: "RUNNING" } });
-  const importing = await tx.project.findUnique({ where: { id: projectId }, select: { repositoryImportToken: true } });
+  // 실행 흔적은 공통 활성 경계(`isRunActive`)로만 busy다 — 강제 종료가 남긴 RUNNING·import 토큰이 Revert를 영구히 막지 않는다(감사 #9).
+  const now = new Date();
+  // `isRunActive`와 같은 창이다(같은 `STALE_AFTER_SECONDS`, 경계 정각은 활성) — 쿼리에 싣느라 인라인으로 풀었다.
+  const activeSince = new Date(now.getTime() - STALE_AFTER_SECONDS * 1000);
+  const running = await tx.syncRun.count({ where: { projectId, status: "RUNNING", startedAt: { gte: activeSince } } });
+  const importing = await tx.project.findUnique({ where: { id: projectId }, select: { repositoryImportToken: true, repositoryImportStartedAt: true } });
   // 확인을 세운 실행보다 먼저 시작해 실패한 실행 중 가장 늦은 것 — 그보다 이른 실행은 더 일찍 끝났다.
+  // ⚠️ 만료된 RUNNING도 실패와 같이 센다 — busy에서 빠진 흔적이 확인되지 않은 기준을 유효하게 만들면 안 된다.
   const unsettled = delivery === null ? null : await tx.syncRun.findFirst({
-    where: { projectId, status: "FAILED", startedAt: { lte: delivery.runStartedAt } },
+    where: {
+      projectId,
+      startedAt: { lte: delivery.runStartedAt },
+      OR: [{ status: "FAILED" }, { status: "RUNNING", startedAt: { lt: activeSince } }],
+    },
     orderBy: { startedAt: "desc" },
     select: { startedAt: true },
   });
@@ -61,7 +71,7 @@ async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): 
     },
     canRevert: true,
     draftDirty: false,
-    busy: running > 0 || importing?.repositoryImportToken != null,
+    busy: running > 0 || (importing?.repositoryImportToken != null && hasActiveImport(importing.repositoryImportStartedAt, now)),
   });
   if (!plan.ok) {
     const blocked: Blocked = { status: "blocked", reason: plan.reason };

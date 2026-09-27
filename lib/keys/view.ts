@@ -1,5 +1,6 @@
 import { compareKeys } from "@/lib/adapters/shared";
 import { maskEmail } from "@/lib/auth/email";
+import { isPathSafeRepoPath } from "@/lib/locale-code";
 
 /**
  * 번역 화면·Home·Sources가 함께 쓰는 순수 판정 — 편집자 라벨·permalink·로케일 진행률.
@@ -91,6 +92,9 @@ export type PermalinkProject = {
  */
 export function buildPermalink(project: PermalinkProject, ref: KeyRefRow): string | null {
   if (!project.lastCommitSha) return null;
+  // ⚠️ **2층이다** (sec-audit-3 발견 17) — push 스키마가 같은 규칙을 걸지만 그 전에 저장된 행이 있다. `..`는
+  // `encodeURIComponent`를 그대로 지나 브라우저가 정규화하므로 github.com의 다른 경로를 가리킨다.
+  if (!isPathSafeRepoPath(ref.path)) return null;
   // 경로의 `/`는 디렉터리 구분자라 살리고, `[locale]` 같은 특수문자만 인코딩한다.
   const path = ref.path.split("/").map(encodeURIComponent).join("/");
   return `https://github.com/${project.repoOwner}/${project.repoName}/blob/${project.lastCommitSha}/${path}#L${ref.line}`;

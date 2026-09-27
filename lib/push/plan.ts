@@ -2,9 +2,10 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { compareKeys, exceedsGlobBudget } from "@/lib/adapters/shared";
-import { isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
+import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
 
 import { ADAPTERS, namespaceOf } from "@/lib/adapters/index";
+import { jsonWithinBounds } from "@/lib/push/json-bounds";
 import type { AdapterName } from "@/lib/adapters/types";
 
 /**
@@ -31,8 +32,8 @@ const ADAPTER_NAMES = ADAPTERS.map((a) => a.name) as [AdapterName, ...AdapterNam
  * 아래는 **20배 여유**다. 넘으면 400이고 그 이유가 응답에 실린다(대상 리포 Actions 로그로 간다 —
  * `lib/failure.ts`의 판정대로 우리 메시지는 본문에 그대로 나간다).
  *
- * ⚠️ **`placeholders`는 여기 없다.** `z.unknown()`으로 두는 것이 계약이고("모양을 검사하지 않는다"),
- * 검증을 시작하면 크롬 스펙을 따라다녀야 한다. 상한은 **개수·길이** 축에서만 건다.
+ * ⚠️ **`placeholders`는 모양을 검사하지 않는다.** `z.unknown()`이 계약이고, 검증을 시작하면 크롬 스펙을
+ * 따라다녀야 한다. 거는 것은 **자원** 상한(깊이·직렬화 크기 — `PLACEHOLDER_BOUNDS`)뿐이다.
  */
 const MAX_KEYS = 20_000;
 const MAX_LOCALES = 200;
@@ -42,15 +43,28 @@ const MAX_TEXT = 10_000;
 const MAX_NAME = 1_000;
 /** `translations`·`refs` 행 수 — 20,000키 × 10로케일이 이 안이다. */
 const MAX_ROWS = 200_000;
+/**
+ * `placeholders` 한 건의 깊이·크기 (sec-audit-3 발견 18 · 결정 G). 크롬 블록은 깊이 2다 — 모양이 아니라
+ * 저장·렌더 재귀가 넘치지 않게 하는 자원 상한이다.
+ */
+const PLACEHOLDER_BOUNDS = { maxDepth: 8, maxBytes: 16_384 };
 
 /**
  * 로케일 코드는 **파일명 한 조각**이다 (sec-audit 발견 2). `applyPush`가 이 값을 그대로 저장하고
  * 야간 pull이 `pathTemplate`에 보간해 **설치 토큰으로** 커밋하므로, 검증이 없으면 push 토큰 하나가
  * 리포의 임의 파일에 쓰는 원시체가 된다 — `.github/workflows/pwn`은 `..` 없이도 성립한다.
+ *
+ * 경로 안전만으로는 모자랐다 (sec-audit-3 1b) — `package`는 안전한 조각이고 `{locale}.json`과 만나면
+ * 리포에 **실재하는** `package.json`을 덮는다. 그래서 로케일 모양도 함께 요구한다.
  */
-const LocaleCode = z.string().refine(isPathSafeLocale, {
-  message: "locale code must be a safe path segment (letters, digits, - and _)",
-});
+const LocaleCode = z
+  .string()
+  .refine(isPathSafeLocale, {
+    message: "locale code must be a safe path segment (letters, digits, - and _)",
+  })
+  .refine(isLocaleShaped, {
+    message: "locale code must look like a locale (2-3 letter language subtag, then - or _ subtags of up to 8 characters)",
+  });
 
 const Format = z.object({
   adapter: z.enum(ADAPTER_NAMES),
@@ -141,13 +155,22 @@ export const PushPayload = z
        * chrome `placeholders` 블록. **모양을 검사하지 않는다** — 요구는 "잃지 않는다"뿐이고,
        * 스키마를 검증하기 시작하면 크롬 스펙을 따라다녀야 한다 (`LocaleEntry.placeholders`와 같은 계약).
        */
-      placeholders: z.unknown().optional(),
+      placeholders: z.unknown().optional().refine((v) => jsonWithinBounds(v, PLACEHOLDER_BOUNDS), {
+        message: "placeholders must nest at most 8 levels and serialize to at most 16 KB",
+      }),
     })).max(MAX_ROWS),
+    /**
+     * permalink 경로가 된다 — `..`가 github.com의 다른 경로를 가리키지 않게 (sec-audit-3 발견 17).
+     *
+     * ⚠️ **거부하지 않고 버린다.** refs는 스캔 결과이고 스캔 실패로 적재를 막지 않는다(CLAUDE.md) — 200자를 넘는
+     * 경로·Windows 경로 하나로 push 전체가 400이면 남의 리포 CI를 우리 규칙으로 실패시킨다. 저장된 불량 행은
+     * `buildPermalink`가 둘째 층으로 막는다.
+     */
     refs: z.array(z.object({
       key: z.string().min(1).max(MAX_NAME),
       path: z.string().min(1).max(MAX_NAME),
       line: z.number().int().positive(),
-    })).max(MAX_ROWS),
+    })).max(MAX_ROWS).transform((refs) => refs.filter((ref) => isPathSafeRepoPath(ref.path))),
   })
   .refine((p) => p.locales.includes(p.format.baseLocale), {
     message: "baseLocale is not in locales",
@@ -215,6 +238,14 @@ export type PlanOptions = {
    * 프로젝트에서 `needsReview` 필터가 통째로 죽는다(6a T7이 만든 값 하나가 사라진다).
    */
   baseChanged: boolean;
+  /**
+   * 이 적재가 **불완전한가**(다운로드·파싱 실패로 파일이 빠졌다). `true`면 **orphan 판정만 끈다** (audit #7).
+   *
+   * ⚠️ 빠진 파일의 키는 페이로드에 없다 — 그것을 "코드에서 사라졌다"로 읽으면 orphan과 함께 승인 편집 토큰까지
+   * 풀린다(`releaseOrphanedApproved`). 어느 키가 어느 파일에서 왔는지는 귀속하지 않는다 — 한 파일이라도 빠지면 그 실행의
+   * 삭제 판정 전체를 미루고, 실제 삭제는 다음 깨끗한 적재가 확정한다. 기본(생략)은 지금까지의 동작이다.
+   */
+  suppressOrphan?: boolean;
 };
 
 export function planPush(
@@ -257,7 +288,7 @@ export function planPush(
   }
 
   const toOrphan: string[] = [];
-  for (const prev of existingKeys) {
+  for (const prev of options.suppressOrphan ? [] : existingKeys) {
     if (incoming.has(prev.key)) continue;
     // 이미 orphaned면 건드리지 않는다.
     if (prev.orphaned) continue;

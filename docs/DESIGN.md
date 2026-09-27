@@ -6,6 +6,10 @@
 
 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md)(화면별 구성은 §7.7), 불변식은 [ARCHITECTURE.md](./ARCHITECTURE.md).
 
+⚠️ **Claude Design 핸드오프는 정본이 아니다 — 신규 페이지의 초기 구현 동안만 정본이다** (2026-09-27 사용자). 구현된 화면의 정본은
+**코드베이스와 이 문서**다. 아래 절들의 "핸드오프가 정본이다"·"SoT는 캔버스다"는 **그 화면의 초기 구현 당시 기준**으로 읽는다 —
+지금 시안과 코드가 어긋나면 코드가 이기고, 새 시안은 변경 요청이다(`/design-sync` 머리).
+
 ## 0. ⚠️ 8단계 UI 재작성으로 바뀐 것 (2026-09-10)
 
 **Figma 시안을 화면에 입히면서 전역 규칙 열일곱이 바뀌었다.** 이 문서의 나머지가 그 이전을 서술하고
@@ -14,7 +18,7 @@
 | 무엇 | 전 | 후 | 상세 |
 |---|---|---|---|
 | **팔레트** | slate (푸른 틴트) | **neutral** | §2 |
-| **font-weight** | 최대 600, 기본 400 | **500과 400 둘뿐이다** — 제목·라벨 500, 나머지 400 (⚠️ 2026-09-11에 기본을 300에서 400으로 올렸다: 상한 500은 그대로이고 **하한이 사라졌다**. `font-light`는 소비자 0) | §4 |
+| **font-weight** | 최대 600, 기본 400 | **24px(`text-2xl`) 이상은 600, 그 아래 제목·라벨 500, 나머지 400** (2026-09-26 사용자 — 크기가 weight를 정한다. ⚠️ 2026-09-11에 기본을 300에서 400으로 올렸다 · `font-light`는 소비자 0 · 700 이상은 쓰지 않는다. `visual-system.test.ts`가 두 방향을 센다) | §4 |
 | **자간** | 유틸(`tracking-tight`)로 그때그때 | **크기 토큰이 든다** (`--text-*--letter-spacing`) | §4 |
 | **radius** | `--radius` 10px | **12px** — 파생 전부 상승(md 10 · lg 12 · xl 16), 버튼 base `rounded-lg` | §5 |
 | **elevation** | Tailwind `shadow-sm`·`shadow-md` | **`shadow-low`·`shadow-medium`** (Figma 색 + spread 확대) | §4.5 |
@@ -25,7 +29,7 @@
 | **캔버스 토큰** (8-2) | `--auth-canvas` | **`--canvas`** — 셸과 셸 밖 화면이 같은 값을 쓴다 | §2 |
 | **Badge 모양** (8-3) | `rounded` (4px) | **알약** `rounded-full px-2` + `neutral` variant | §6.4 |
 | **EmptyState** (8-3) | 맨 아이콘 24 | **48 원형 칩 + 아이콘 16** | §6.4·§6.8 |
-| **사이드바** (8-3) | 접기 레일 · 프로젝트 스위처 · `Your work` 라벨 | **접기 없음 · 스위처 없음 · 라벨이 이름 그대로 · 하단에 Docs** | §6.5 |
+| **사이드바** (8-3) | 접기 레일 · 프로젝트 스위처 · `Your work` 라벨 | **접기 없음 · 라벨이 이름 그대로 · 하단에 Release notes·Docs** — 스위처는 2026-09-27에 프로젝트 머리의 메뉴 트리거로 돌아왔다 | §6.5 |
 | **번역 표의 축** (8-4) | 로케일이 **열** (`\| Key \| en \| ko \|`) | **로케일이 행** — 키 셀 320 + 그 아래 로케일 행들, shadcn 기반 `<table>` | §6.1 |
 | **번역 필터** (8-4) | 왼쪽 `w-52` 네임스페이스 패널 + 상태 `Select` + 기준 로케일 `Select` | **툴바 셋**(네임스페이스 드롭다운 · 로케일 다중 선택 · 검색) + **칩 행**, 상태 필터 없음 | §6.1 |
 | **breadcrumb** (8-4) | 프로젝트 하위 화면 다섯의 첫 줄 | **없다** — 위로 가는 길은 사이드바가 든다(프리미티브는 `/projects/new`가 계속 쓴다) | §6.1 |
@@ -120,12 +124,17 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 ## 4. 타이포그래피
 
 - **`font-sans`**: Pretendard Variable → 시스템 한/영 폴백. 폰트 파일은 **동적 서브셋 생성물**이라 `public/fonts/`가 gitignore돼 있다 (CLAUDE.md 폰트 절). GitLab Sans(Inter 기반)를 들이지 않는다 — Pretendard의 라틴 글리프도 Inter에서 왔다.
-- 크기 관용: **`text-xs`·`text-sm`이 지배적**(라벨·필드·보조 텍스트·표 셀·버튼). `text-base`=본문·섹션 제목(⚠️ **셸 안 페이지 제목이 2026-09-11에 `text-xl`로 빠져나갔다** — 사용자, 8단계 리워크 기준: `/projects`·번역만 20px이던 것을 나머지 일곱이 따라갔다. 남은 소비자는 프로젝트 목록 **행 이름**과 `Dialog` 제목이다. ⚠️ **그리고 2026-09-15에 18로 되돌아왔다** — 규격이 `PanelHeader`로 올라가면서 셸 안 `h1` **아홉이 전부 `text-lg font-medium`**이다(§5.15). 20은 카드 헤더·모달 제목이 들고, 남은 `text-xl` 소비자는 **온보딩/Publish 모달 제목**과 **56 아바타의 이니셜**뿐이다), `text-lg`=**셸 밖 카드의 제목 전용**이었다 — ⚠️ **8-1b가 그 둘을 `text-2xl`로 올렸다**(Figma 시안). 지금 `text-lg`의 소비자는 **`EmptyState` 제목**(2026-09-11)과 **셸 안 페이지 제목 아홉**이다(2026-09-15) — ⚠️ **`/privacy`·`/docs`는 2026-09-19에 `text-2xl`로 올라가 이 목록에서 빠졌다**(§6.61: 셸 밖 제목이라 §6.62와 같은 급이 맞다). ⚠️ **`@theme`이 덮는 단계는 둘이다 — `text-base` 15px와 `text-xs` 13px**(뒤는 2026-09-12, §4.1). 남은 소비자가 둘 다 제목이고 본문은 `text-sm`(14)이라, 이 토큰이 정하는 것은 본문 크기가 아니라 **제목과 본문의 간격**이다(15/14면 한 단계, 16/14면 두 단계). `EmptyState` 제목이 `text-lg`로 올라간 것도 그 1px 차이 때문이다.
+- 크기 관용: **`text-xs`·`text-sm`이 지배적**(라벨·필드·보조 텍스트·표 셀·버튼). `text-base`=본문·섹션 제목(⚠️ **셸 안 페이지 제목이 2026-09-11에 `text-xl`로 빠져나갔다** — 사용자, 8단계 리워크 기준: `/projects`·번역만 20px이던 것을 나머지 일곱이 따라갔다. 남은 소비자는 프로젝트 목록 **행 이름**과 `Dialog` 제목이다. ⚠️ **그리고 2026-09-15에 18로 되돌아왔다** — 규격이 `PanelHeader`로 올라가면서 셸 안 `h1` **아홉이 전부 `text-lg font-medium`**이다(§5.15). 20은 카드 헤더·모달 제목이 들고, 남은 `text-xl` 소비자는 **온보딩/Publish 모달 제목**과 **56 아바타의 이니셜**뿐이다), `text-lg`=**셸 밖 카드의 제목 전용**이었다 — ⚠️ **8-1b가 그 둘을 `text-2xl`로 올렸다**(Figma 시안). 지금 `text-lg`의 소비자는 **`EmptyState` 제목**(2026-09-11)과 **셸 안 페이지 제목 아홉**이다(2026-09-15) — ⚠️ **`/privacy`·`/docs`는 2026-09-19에 `text-2xl`로 올라가 이 목록에서 빠졌다**(셸 밖 제목이라 §6.62와 같은 급이 맞다) — ⚠️ **2026-09-26에 둘 다 공개 셸의 읽기 그릇으로 옮겨 `h1` `text-4xl`(36) · 본문 16이다**(§6.616 · §6.61). ⚠️ **`@theme`이 덮는 단계는 둘이다 — `text-base` 15px와 `text-xs` 13px**(뒤는 2026-09-12, §4.1). 남은 소비자가 둘 다 제목이고 본문은 `text-sm`(14)이라, 이 토큰이 정하는 것은 본문 크기가 아니라 **제목과 본문의 간격**이다(15/14면 한 단계, 16/14면 두 단계). `EmptyState` 제목이 `text-lg`로 올라간 것도 그 1px 차이 때문이다. ⚠️ **스케일에 없는 16을 위해 `text-prose`(16px, 2026-09-26)가 하나 늘었다** — 덮는 단계가 아니라 새 단계이고 소비자는 **공개 문서 본문 둘**이다 — `/privacy`(§6.616)와 `/docs` 원고(§6.61). `text-[16px]`는 `visual-system.test.ts`가 막는다. 앱 화면으로 넓히지 않는다. ⚠️ **`text-2xs`(10px, 2026-09-27)도 새 단계다** — 소비자는 **16 아바타의 이니셜 하나**(`components/ui/avatar.tsx`, 사이드바 머리)이고 다른 자리로 넓히지 않는다.
 - **임의값(`text-[…]`)은 스케일에 대응값이 없을 때만.** 13px은 `text-xs`(코드 블록이면 `text-mono` — §4.1), 14px은 `text-sm`이 있으므로 임의값으로 쓰지 않는다. ⚠️ **12px은 2026-09-12부터 스케일에 없다** — `text-xs`가 한 단계 올라가며 대응값이 사라졌다. 12px이 필요해 보이면 임의값을 박기 전에 **왜 `xs` 아래가 필요한지**를 먼저 묻는다(스케일에 단계를 더하는 것이 답일 수 있다).
   ⚠️ **2026-09-24에 그 질문의 답이 "필요 없다"였다** (audit #45) — 시안이 12를 지정한 셋(`Not sent` 알약 · Publish 표의 키 칸 ·
   저자 이름)이 전부 `text-xs`(13)로 올라갔다. 단계를 더할 만큼 소비자가 없고, 셋 다 13에서 넘치지 않는다. `text-[15px]` 셋은
   `text-base`, `text-[13px]` 셋(초대 모달)은 `text-xs`로 접혀 **`text-[Npx]`가 전수 0건**이다(`visual-system.test.ts`).
-- ⚠️ **weight 규칙이 2026-09-10에 전면 교체됐고 2026-09-11에 하한이 되돌아갔다** — **가장 두꺼운 서체가 500이고, 쓰는 단계는 400과 500 둘뿐이다.**
+- ⚠️ **weight는 크기가 정한다 — 24px(`text-2xl`) 이상은 600, 그 아래 제목·라벨 500, 나머지 400** (2026-09-26 사용자, 앱 전역).
+  24px 이상 크기 유틸을 든 클래스 문자열은 `font-semibold`를 **같은 문자열에** 든다(`cn("text-2xl font-semibold", …)`도 한 문자열이다).
+  역방향도 막는다 — **600은 24px 이상에만 선다**. 둘 다 `visual-system.test.ts`가 소스 전수로 센다. 소비자(2026-09-26): 랜딩 h1·CTA h2(48) ·
+  `/privacy`·`/docs` h1(36)·h2(24) · 로그인·초대·병합의 `h1`(`auth-column`) · 로그인 장식 문구 둘(30) · 루트 폴백 h1 · Home 카운트 카드 수치(24).
+  ⚠️ **Pretendard가 가변 폰트라 600이 추가 요청 없이 나온다**(자사 호스트 동적 서브셋의 `font-weight: 45 920`).
+- 옛 판정 — **weight 규칙이 2026-09-10에 전면 교체됐고 2026-09-11에 하한이 되돌아갔다**(당시: 가장 두꺼운 서체가 500이고 쓰는 단계는 400과 500 둘뿐. 셸 밖 제목도 500이었다 — 2026-09-26에 위 규칙으로 대체).
 
   | 전 | 후 | 쓰는 곳 |
   |---|---|---|
@@ -135,37 +144,43 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
   | 400 (기본·`font-normal`) | ~~300~~ → **400** (`body`의 기본값) | 나머지 전부 — ⚠️ **2026-09-11에 300을 도로 400으로 올렸다**(사용자). **쓰는 weight가 400과 500 둘뿐**이고 `font-light`는 소비자가 0이 됐다 |
 
   **`body`에 `font-weight: 400`이 있고 그것이 기본이다** (2026-09-11 — 전날의 300을 한 단계
-  되돌렸다). **600 이상은 쓰지 않는다.**
+  되돌렸다). **600은 24px 이상에만 선다**(2026-09-26 — 첫 소비자는 랜딩 h1·CTA h2, 같은 날 앱 전역으로 넓혔다. 위 규칙).
+  큰 크기에서 500이 가늘게 읽혀서다(아래 안티앨리어싱 줄). **700 이상은 쓰지 않는다.**
   ⚠️ 상위에서 500을 상속받는 자리를 되돌릴 때는 **`font-normal`**을 명시한다(기본과 같아 보여도
   그 의도가 코드에 남아야 한다) — 소비자는 `FormGroup`의 "(optional)"과 `Button` base 둘이다.
   ⚠️ **`font-light`를 쓰지 않는다** — 300이 없으므로 가리킬 단계가 없다. 2026-09-11에 넷을 걷었고
   (`FormGroup`·사이드바 Sign out·로케일 배지의 `(base)`·`Badge` 주석), 그중 둘은 **클래스를 지우는
   것으로 끝났다**(기본이 이미 400이라 되누를 것이 없다).
-  ⚠️ **크기는 8-1b부터 `text-2xl`**(로그인·초대 수락) — 시안 24px에 맞췄다.
+  ⚠️ **크기는 8-1b부터 `text-2xl`**(로그인·초대 수락) — 시안 24px에 맞췄다. weight는 2026-09-26부터 600이다(24px 이상 규칙).
 
 - ⚠️ **본문이 grayscale 안티앨리어싱이다** (2026-09-25 사용자) — `body`의 `@apply … antialiased`(`app/globals.css`).
   명시가 없으면 macOS 브라우저가 획을 두껍게 그려 **같은 500이 밝은 회색에서 한 단계 무겁게** 읽혔다(보관 프로젝트 행의
   `neutral-400` 이름·배지). 켜면 글자가 전반적으로 가늘어진다 — 그 결과 500이 약해 보이는 자리는 **그 자리의 weight를
-  600으로 올리는 것**으로 푼다(사용자 예고, 아직 소비자 0 — 올리면 위 "600 이상은 쓰지 않는다"를 함께 고친다).
+  600으로 올리는 것**으로 푼다(사용자 예고 — 첫 소비자가 2026-09-26 랜딩 h1·CTA h2다, 위 weight 규칙).
   `lib/__tests__/globals-css.test.ts`가 이 한 단어를 고정한다.
 - ⚠️ **자간은 크기 토큰이 든다 — `tracking-*` 유틸을 쓰지 않는다** (8-1b). `@theme`의
   `--text-*--letter-spacing`이 크기마다 값을 갖고(작을수록 넓게, 클수록 좁게), **호출부에
-  `tracking-tight`를 붙이면 그것을 덮는다.** 현재 임의 자간은 계정 라벨·공유 PanelCard·모달 제목의 **여덟**뿐이다.
+  `tracking-tight`를 붙이면 그것을 덮는다.** 현재 임의 자간은 계정 라벨·공유 PanelCard·모달 제목의 **여덟**과 공개 문서 표의 **하나**(2026-09-26 — 시안이 그 표만 0.015em을 든다, §6.616 · malmoi#116. `/privacy`와 `/docs`가 `components/public-doc-table.tsx`의 `DOC_TABLE` 한 상수를 쓴다)뿐이다.
   ⚠️ **번역 작업 화면(C4)의 스물하나를 2026-09-24에 걷었다** (audit #46). 대부분은 크기 토큰과 **같은 값을 되적은**
   것이었고(`text-xs tracking-[0.02em]` · `text-[15px] tracking-[0.015em]` → `text-base`), 셋(키 행 원문 · 로케일 입력 ·
   빈 칸의 원문)은 `text-sm`(0.02em) 위에 `0.015em`을 얹어 **토큰을 덮고** 있었다 — 14px에서 0.07px 차이라 토큰 쪽으로
   접었다(캔버스와 갈리는 값이 그 0.07px이다).
   `[0.02em]`은 `--text-xs`, `[0.015em]`은 `--text-base`, `[0.005em]`은 `--text-xl`과 같다.
+  ⚠️ **`--text-5xl--letter-spacing`(−0.015em)은 랜딩 h1·CTA h2 하나가 쓴다**(2026-09-26 — 시안 1a). 크기 토큰의 짝으로 둔 것은
+  같은 규칙(`tracking-*` 금지) 때문이고, Tailwind 기본 `text-5xl`(48 · 행간 1)은 호출부의 `leading-[1.1]`이 덮는다.
   계정 핸드오프에서 승격한 공통 규격의 예외다(§6.67). 새 설정 행은 같은 토큰값을 그대로 쓴다. 전역 자간 변경 시
   `rg -n 'tracking-' app components`로 함께 확인한다. 새 화면은 토큰을 우선한다.
 
 ### 4.1 mono는 코드 블록 전용이다 — 13px / 18px
 
-⚠️ **2026-09-23에 화면에서 mono를 통째로 걷었다** (사용자 — "YAML 같은 코드 블록 제외하고 전부 sans"). 살아 있는 자리는 **하나뿐**이다:
+⚠️ **2026-09-23에 화면에서 mono를 통째로 걷었다** (사용자 — "YAML 같은 코드 블록 제외하고 전부 sans"). 살아 있는 자리는 **둘**이다(2026-09-26 — `/docs`의 코드 블록이 하나 늘렸다):
 
 | 자리 | 왜 남았나 |
 |---|---|
 | `components/onboarding/workflow-block.tsx` `<pre>` | 워크플로 YAML — 원본 줄바꿈과 들여쓰기가 값의 일부다 |
+| `components/docs/code-block.tsx` `<pre>` | `/docs` 원고의 코드 펜스 — 같은 이유다(§6.61) |
+
+⚠️ **`/docs` 원고의 인라인 코드도 mono다**(시안 1b — §6.61) — 이 표 밖의 **예외 하나**다. 크기가 `text-mono`(13 고정)가 아니라 0.875em이라 문장 크기를 따르고, 클래스는 `components/docs/classes.ts`의 `INLINE_CODE` 한 상수다(`font-mono` — `surface-rules.test.ts`가 그 상수를 따로 고정한다). 앱 화면의 `<code>` 값 칩은 여전히 sans다.
 
 ⚠️ **셋이었다가 하나가 됐다** — 옛 로케일 화면의 대기 Alert `<pre>`가 사라졌고(2026-09-22 Sources 리워크로 `locales/page.tsx` 둘이 전부 리다이렉트가 됐다. 같은 값 `base-locale:` 한 줄은 Sources 상세가 **sans `<code>`**로 낸다), importer가 0이던 `first-ingest-retry.tsx`(어댑터 오류의 캐럿 다이어그램)를 2026-09-24에 지웠다(audit #66).
 
@@ -191,7 +206,7 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 
 ### 4.2 ⚠ `text-mono`를 twMerge에 등록해야 한다
 
-`lib/utils.ts`의 `cn()`이 `extendTailwindMerge`로 `text-mono`를 **font-size 그룹**에 등록한다.
+`lib/utils.ts`의 `cn()`이 `extendTailwindMerge`로 `text-mono`를 **font-size 그룹**에 등록한다. ⚠️ **`text-prose`(16px, 2026-09-26 — §6.616)도 같은 목록에 있다** — `@theme`에 크기 토큰을 새로 늘리면 여기에도 같이 넣는다(`lib/__tests__/utils.test.ts`). ⚠️ **`text-2xs`는 목록에 없다** — tailwind-merge가 t-shirt 이름(`2xs`)을 font-size로 이미 알아보므로 등록이 필요 없다(추정 — 충돌이 보이면 목록에 넣는다).
 
 **안 하면 twMerge가 커스텀 `text-*`를 text-color로 오분류한다.** `cn("text-mono", "text-foreground")`에서 `text-mono`가 조용히 제거되고, base `text-xs`와도 dedupe되지 않는다. bugshot-2가 액션 로그 값 칩에서 정확히 이 함정을 밟았다.
 
@@ -213,7 +228,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 
 - ⚠️ **spread를 키운 것이 의도다** (2026-09-10 사용자) — 패널이 아주 연한 회색 배경 위에 떠 있는
   구조라 좁은 그림자는 **경계선처럼** 보이고 떠 있는 느낌이 안 난다.
-- ⚠️ **패널·카드 표면에는 Tailwind 기본 `shadow-sm`·`shadow-md`를 쓰지 않는다** — 검정 기반이라 이 팔레트에서 탁해진다. **팝오버 계열은 예외다**: `DropdownMenu`가 `shadow-md`, `Dialog`가 `shadow-lg`, 토스트가 `shadow-sm`을 그대로 쓴다(§6.4 표) — 배경 위에 **잠깐 뜨는 것**이라 짙은 그림자가 층을 만든다.
+- ⚠️ **패널·카드 표면에는 Tailwind 기본 `shadow-sm`·`shadow-md`를 쓰지 않는다** — 검정 기반이라 이 팔레트에서 탁해진다. **팝오버 계열은 예외다**: `DropdownMenu`·`Select`가 `shadow-md`, 토스트가 `shadow-sm`을 그대로 쓴다(§6.4 표 — `Dialog`는 `shadow-medium`으로 교정돼 이 예외 밖이다) — 배경 위에 **잠깐 뜨는 것**이라 짙은 그림자가 층을 만든다.
 - ⚠️ **`--shadow-*`는 `:root`에 안 나온다** — Tailwind가 유틸로만 소비하므로 `getComputedStyle`로
   읽으면 빈 문자열이다. 확인은 `boxShadow` 실효값으로 한다.
 
@@ -239,7 +254,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | 사이드바 항목 높이 | `p-1.5` + `text-sm` = 32px, 아이콘 16 (8-2 시안 치수: `p-6`·`gap-8`·`radius-8`) | nav item ≈ 32px |
 | **패널 여백** | 바깥 padding 8(`p-2`) · 패널 간 간격 8(LNB↔콘텐츠는 8px 리사이저, 나머지는 `gap-2`) — 규약 3.5, 예외 없음 | — |
 | **콘텐츠 최대 폭 (limited)** | `max-w-4xl` (896px) — ⚠️ **2026-09-20부터 설정 축 둘뿐이다**(사용자 판정): **프로젝트 설정** · **`/account`**(+ 그 스켈레톤). 멤버·Sources(옛 언어)·이력은 그날 fluid로 갔고, 프로젝트 목록(8-3)·Home도 이미 갔다. ⚠️ **초대 수락은 8-1b에 셸 밖 2열로 갔다** — 폼 컬럼이 `w-[320px]`다(§6.62). 그 밖에 **본문 전용 셋**(`error`·`ProjectArchived`·`ProjectNotReady`)이 기본값으로 limited다 | `$limited-layout-width: 1006px` (우리 스케일 대응값) |
-| 콘텐츠 fluid | **아홉이다** (2026-09-20, 2026-09-22 갱신) — 번역 표 · 프로젝트 목록(+ 그 스켈레톤) · **Home(+ 그 스켈레톤)** · **멤버 · Sources(목록 + 보관 안내) · 이력**. ⚠️ **`surfaces/new`가 이 목록에서 빠졌다** — 그 라우트는 이제 `/sources?add=sources`로 보내는 리다이렉트라 패널을 아예 렌더하지 않는다(§6.6). 남은 폭을 쓰되 **`max-w-7xl`(1280) 상한**이고, 표만 자기 컨테이너 안에서 가로 스크롤한다. 등급은 §5.15의 `width` prop이 든다 | 표 화면은 fluid |
+| 콘텐츠 fluid | **열둘이다** (2026-09-20, 2026-09-27 갱신) — 프로젝트 목록(+ 그 스켈레톤) · **Home(+ 그 스켈레톤)** · **멤버 · Sources(목록 + 보관 안내) · 이력(+ 오류 경계)** + 멤버·이력·Sources의 스켈레톤. ⚠️ **번역 작업 화면은 빠졌다** — `PanelHeader`·`PanelBody`를 쓰지 않고 세 패널이 본문 전체를 든다(§6.1a). ⚠️ **`surfaces/new`가 이 목록에서 빠졌다** — 그 라우트는 이제 `/sources?add=sources`로 보내는 리다이렉트라 패널을 아예 렌더하지 않는다(§6.6). 남은 폭을 쓰되 **`max-w-7xl`(1280) 상한**이고, 표만 자기 컨테이너 안에서 가로 스크롤한다. 등급은 §5.15의 `width` prop이 든다 | 표 화면은 fluid |
 | **콘텐츠 상한 (공통)** | ⚠️ **등급 둘을 `PanelHeader`·`PanelBody`의 `width` prop이 든다** (2026-09-15 — projects-panel-rework. 그 전에는 프리미티브가 `max-w-7xl` 하나를 들고 limited 일곱이 **안쪽 래퍼**로 `max-w-4xl`을 다시 씌웠다). `fluid` = 1280 · `limited` = 896이고 **기본값이 `limited`다**. ⚠️ **2026-09-20부터 그쪽이 소수다** — `PanelHeader` 소비자 열둘 중 **fluid 아홉 · limited 셋**. 그래도 뒤집지 않는 근거는 "다수"가 아니라 **빠뜨렸을 때의 증상**이다: 좁아지는 쪽이 넘치는 쪽보다 눈에 띄고, fluid를 기본으로 돌리면 본문 전용 셋이 아무도 안 본 채 1280으로 넓어진다. ⚠️ **등급을 셋으로 늘린 것이 아니다** — 화면이 고르던 둘을 한 층 위로 올렸을 뿐이다. ⚠️ **폭과 여백은 같이 결정된다**: 여백만 프리미티브로 올리면 안쪽 래퍼가 살아 있는 limited 일곱이 `16 + 24 = 40`이 된다. ⚠️ **1440을 안 고른 이유**: 뷰포트 2032px부터 걸려 1920 디스플레이(패널 1328)에서는 아무 일도 안 한다. ⚠️ **스크롤 컨테이너에 직접 주지 않는다** — 좁히면 **스크롤바가 콘텐츠 옆에** 생긴다 | — |
 | **패널 머리 (라우트 아홉 공통)** | ⚠️ **2026-09-15에 규격이 프리미티브로 올라갔다** — 아래 §5.15가 정본이다. 그 전 이력: 2026-09-11에 `px-6 pt-6 pb-3` + `h1 text-xl`(20)로 통일했는데(그 전에는 `/projects`·번역만 20이고 나머지 일곱이 15였다) **값을 열한 곳이 각자 적었고 그중 하나가 이미 어긋나 있었다**(`add-surface`의 `px-6 py-5`) | — |
 | ~~사이드바 접힘~~ | ⚠️ **없다** — 8-2가 반응형 분기를(최소 대응 너비가 1280이라 `xl` 미만 오버레이·햄버거는 도달 불가였다), **8-3이 아이콘 레일과 `localStorage`까지** 걷었다(시안에 없다). 레일에서만 렌더되던 툴팁이 함께 사라져 `Tooltip` 프리미티브도 없다 (§6.5) | 1200px |
@@ -275,7 +290,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | PageTitle | `h1 text-lg font-medium` (18/500/0.01em) | `18px`·`500`·`0.18px`. ⚠️ **`tracking-[0.01em]`을 손으로 쓰지 않는다** — `--text-lg--letter-spacing`이 이미 그 값이다 |
 | 설명 한 줄 | `description` **prop** — `text-xs text-muted-foreground`(13) | `13px`·`#737373`. 소비자는 설명 prop을 쓰는 패널이다(⚠️ `logs`는 2026-09-24부터 **보관 안내만** 이 자리를 쓴다 — 평소 설명문은 종류 필터와 같은 목록이라 지웠다) **전에는 12와 14 두 벌로 갈려 있었다** |
 | 본문 여백 | `p-4` (16) | 같음 |
-| 폭 등급 | `width` prop — `fluid` 1280 / `limited` 896 (기본) | **fluid 아홉**(목록 · 그 스켈레톤 · 번역 · Home · 그 스켈레톤 · **멤버 · Sources 목록 · Sources 보관 안내 · 이력**) / **limited 셋**(프로젝트 설정 · `/account` · 그 스켈레톤) + 본문 전용 셋 |
+| 폭 등급 | `width` prop — `fluid` 1280 / `limited` 896 (기본) | **fluid 열둘**(목록 · 그 스켈레톤 · Home · 그 스켈레톤 · **멤버 · Sources 목록 · Sources 보관 안내 · 이력 · 이력 오류 경계** + 멤버·이력·Sources 스켈레톤) / **limited 넷**(프로젝트 설정 · 그 스켈레톤 · `/account` · 그 스켈레톤) + 본문 전용 셋 — 정본은 `shell-layout.test.ts`의 `FLUID`·`LIMITED` |
 
 ⚠️ **설명 슬롯이 prop인 이유는 POSTMORTEM 2026-09-14다** — *"프리미티브의 여백 하나가 그 슬롯을 안
 쓰는 소비자에게만 깨졌다"*. 여백 16의 전제는 **"제목 줄 하나"**이고, 설명이 붙는 화면은 머리가 세로로
@@ -284,8 +299,8 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 ⚠️ **소비자를 세는 명령** (적을 때 실제로 돌려 본문과 맞춘다):
 
 ```
-grep -rn "<PanelHeader" components app | grep -v __tests__   # 13 (+ 정의 파일 주석의 자기참조 1)
-grep -rn "<PanelBody"   components app | grep -v __tests__   # 17 (+ 같은 자기참조 1)
+grep -rn "<PanelHeader" components app | grep -v __tests__   # 15 (+ 정의 파일 주석의 자기참조 1)
+grep -rn "<PanelBody"   components app | grep -v __tests__   # 19 (+ 같은 자기참조 1)
 ```
 
 ⚠️ **둘의 수가 다르다.** `PanelHeader`로만 세면 **본문 전용 소비자 셋**(`project-archived` ·
@@ -373,11 +388,11 @@ computed style로 잰 것이다.
 
 **sync 실행 4종** (`logs` 화면, 2026-09-10 7단계 — 옛 `syncRunView`. 지금 판정은 `lib/events/view.ts`의 `eventView`가 들고 결과 어휘가 늘었다): `SUCCEEDED`("Sent")·`SKIPPED`("Nothing to send")·`RUNNING`("Running…") → **무색 `Badge muted`** / `FAILED`("Failed") → **`Badge danger`**. ⚠️ **색이 셋뿐이라 구별은 라벨이 든다** — 새 raw 색을 만들지 않는 것이 §6.2의 규칙이고, 성공·스킵·진행 중을 색으로 가르려 들면 그 규칙이 첫날에 깨진다. **판정 함수가 tone을 `Badge` variant와 같은 이름으로 낸다** — 화면이 매핑 표를 또 들지 않는다(⚠️ 선례로 적혀 있던 `PublishTone`은 2026-09-16에 사라졌다 — Publish는 tone이 아니라 **갈래 이름**을 내는 쪽으로 갔다, §6.646). ⚠️ 버린 값이 있는 실행에는 `Badge warning` "N dropped"가 **성공한 행에도** 붙는다 (PRODUCT 불변식 9).
 
-**보관** (2026-09-10): 목록 행의 상태 배지가 `Badge neutral` "Archived"다(8-3 — 배지가 **항상 하나**이고 갈래는 `projectStatus`가 정한다, §6.63). ⚠️ **숨기지 않는다** — 숨기면 OWNER가 되돌릴 링크에 도달할 길이 없다. ⚠️ **프로젝트 스위처는 8-3에 사라졌다** — 프로젝트를 옮기는 길이 목록 하나로 통일됐다(§6.5).
+**보관** (2026-09-10): 목록 행의 상태 배지가 `Badge neutral` "Archived"다(8-3 — 배지가 **항상 하나**이고 갈래는 `projectStatus`가 정한다, §6.63). ⚠️ **숨기지 않는다** — 숨기면 OWNER가 되돌릴 링크에 도달할 길이 없다. ⚠️ **LNB 스위처에도 같은 배지로 남는다** (2026-09-27 사용자) — 목록 행 칩과 같은 형(`neutral` `px-2 text-neutral-400`)·같은 키(`m.projects.status.archived`)이고, 목록처럼 맨 뒤다(§6.5).
 
 **목록 행 상태 5종** (`/projects`, 2026-09-11 사용자 — `projectStatus`): `Active` → **`Badge success`**(초록) / `Archived`·`Setup`·`Pending` → **무색 `Badge neutral`** / `Disconnected` → **`Badge warning`**(amber). ⚠️ **`Active`가 초록인 것은 §6.1("가장 흔한 상태가 가장 조용하다")의 예외다** — 근거는 이 목록이 **훑어보는 화면**이라는 것이고, 손볼 프로젝트가 튀어나오려면 정상인 것도 색을 들어야 대비가 생긴다. ⚠️ **amber가 `Disconnected` 하나뿐이다** — 축이 "덜 됐나"가 아니라 **"깨졌나"**다: `Setup`·`Pending`은 새 프로젝트가 지나가는 정상 경로라 저절로 `Active`가 되지만, `Disconnected`는 한때 돌던 것이 멈춘 것이라 사람이 손대야 풀린다. ⚠️ **라벨이 전부 한 낱말이고 동사가 없다** — 배지는 행 우측의 좁은 칸이라 문장이 이름·리포 URL과 폭을 다투고, 좁은 칸의 동사는 누를 수 있는 것처럼 읽힌다(할 일은 설정 화면의 `Alert`가 말한다). **새 raw 색은 green 하나**이고 amber와 같은 형이다(`bg-green-100/80 text-green-800`).
 
-**이름에서 뽑는 색 8종** (2026-09-11 사용자 — `lib/tone.ts`의 `toneOf` + `components/ui/tone.ts`의 `toneFill`): **소비자가 둘이고 형이 같다** — 사용자 아바타 폴백과 **프로젝트 목록 행의 아이콘**이 모두 채운 배경 + 흰 글리프(`toneFill`)다. 그 배경이 곧 **프로젝트 이미지가 들어올 자리**이므로 지금 색을 채워 두면 이미지가 붙는 날 표면이 바뀌지 않는다. 이름을 해시해 `rose`·`orange`·`amber`·`emerald`·`teal`·`sky`·`indigo`·`fuchsia`의 **`-600` 배경 + 흰 글자**를 고른다. **같은 이름은 언제나 같은 색**이다(`Math.random`이 아니다 — 렌더마다 바뀌면 색이 사람을 못 가리킨다). ⚠️ **`-600`으로 통일한다**: `-500`이 더 밝지만 amber·lime 계열에서 흰 글자가 안 읽혀, 색마다 단계를 다르게 두면 여덟이 같은 계열로 안 보인다. ⚠️ **클래스를 문자열 리터럴 맵으로 든다** — `bg-${tone}-600`으로 조립하면 Tailwind가 정적 추출을 못 해 배경이 통째로 빠진다. ⚠️ **판정은 `lib/`, 클래스는 컴포넌트**다(`STATUS_VARIANT`와 같은 형) — `lib/`가 Tailwind 클래스를 알면 규칙이 두 층에 걸린다.
+**이름에서 뽑는 색 8종** (2026-09-11 사용자 — `lib/tone.ts`의 `toneOf` + `components/ui/tone.ts`의 `toneFill`): **소비자가 둘이고 형이 같다** — 사용자 아바타 폴백과 **프로젝트 타일**(`ProjectThumbnail`·`ImageTile`의 폴백 — 목록 행·사이드바·스위처·Home 머리·초대 카드·설정 General)이 모두 채운 배경 + 흰 글리프(`toneFill`)다. 그 배경이 곧 **프로젝트 이미지가 들어올 자리**이므로 지금 색을 채워 두면 이미지가 붙는 날 표면이 바뀌지 않는다. 이름을 해시해 `rose`·`orange`·`amber`·`emerald`·`teal`·`sky`·`indigo`·`fuchsia`의 **`-600` 배경 + 흰 글자**를 고른다. **같은 이름은 언제나 같은 색**이다(`Math.random`이 아니다 — 렌더마다 바뀌면 색이 사람을 못 가리킨다). ⚠️ **`-600`으로 통일한다**: `-500`이 더 밝지만 amber·lime 계열에서 흰 글자가 안 읽혀, 색마다 단계를 다르게 두면 여덟이 같은 계열로 안 보인다. ⚠️ **클래스를 문자열 리터럴 맵으로 든다** — `bg-${tone}-600`으로 조립하면 Tailwind가 정적 추출을 못 해 배경이 통째로 빠진다. ⚠️ **판정은 `lib/`, 클래스는 컴포넌트**다(`STATUS_VARIANT`와 같은 형) — `lib/`가 Tailwind 클래스를 알면 규칙이 두 층에 걸린다.
 
 **Alert 4종** (§6.4 — Publish 결과·리포 갱신 보류 배너·페이지 수준 거부):
 
@@ -390,7 +405,7 @@ computed style로 잰 것이다.
 
 ⚠️ **내부 이름을 화면에 쓰지 않는다** — `awaiting_first_sync`는 번역자에게 아무것도 알려주지 않는다 (PRODUCT §3). 문구는 `messages/en.tsx`이 든다.
 
-**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800`, Alert용 `50`·`200`·`900`, **면으로 칠하는 `500`** — Meter의 검토 구간(§6.63)과 셀 상태 표시의 **`needsReview` 마름모**(§6.1), 그리고 카운트 카드 글리프의 `700`)·**destructive** · §6.3의 외부 링크 **blue-600**(`--signin-dot`이 같은 값이다) · **포커스 링의 blue-400**(2026-09-11에 하나 늘었다 — `--ring`, §7) · 목록 행 `Active`의 **green**(`100/80`·`800`) · 이름에서 뽑는 **tone 여덟**(`-600`) · **`--divider`**(`#f0f0f0`, 2026-09-13 — 바로 아래) · **neutral-300**(`#d4d4d4`) — 라디오·**체크박스** 지시자의 비선택 테두리(16px 원·사각에서 `--input`(#e5e5e5)은 안 보인다) · 번역 작업 화면 빈 칸의 **점선 상자** · 멤버 역할 칩의 **자물쇠**(캔버스 값 — 사유는 `sr-only`가 진다, §6.65). ⚠️ 옛 소비자였던 Home 로그 레일의 점은 사라졌다(2026-09-24 실측 0) · **neutral-400**(`#a3a3a3`, 2026-09-16 등재 — **전부터 쓰이던 것을 이제 센다**: Home의 메타 열·개수 카드·로그 카드 글리프, `/account` Profile 사실 블록의 라벨 열, **logs 상세의 필드·블록 라벨**(2026-09-22 — 그 전엔 `--muted-foreground`와 합쳐져 있었다), **그리고 2026-09-20부터 `/projects` 보관 행의 이름·메타·배지**(§6.63의 등재된 이탈). 캔버스가 라벨·보조 글리프에 그 값을 직접 지정하고 `--muted-foreground`(#737373)보다 한 단계 연하다). · **neutral-600**(`#525252`, 2026-09-22 등재 — **전부터 쓰이던 것을 이제 센다**: `row-card`의 글리프 칩 · Home sync 버튼 · `/projects` 행, 그리고 Sources 행의 글리프 칩. 캔버스가 칩 안 글리프에 그 값을 직접 지정하고 `--muted-foreground`(#737373)보다 한 단계 진하다) · **red-700**(`#b91c1c`, 2026-09-22 — `Badge` `missing` · Sources 상세의 사라짐 띠 문장 · Publish diff(아래 표) · 활동 칩(아래 일곱).  ⚠️ **`destructive`(#dc2626)와 다른 값이다**: 시안이 실패 **글자**와 사라짐 **알약**을 두 색으로 갈랐고, 채운 알약이 같은 밝기면 amber `warning`과 무게가 안 맞는다) · **활동 글리프 칩의 팔레트 일곱**(2026-09-20 등재, logs-rework §6.68 — `emerald-50/700` · `amber-50/700` · `red-50/700` · `slate-100/600` · `blue-50/700` · `teal-50/700` · `violet-50/700`). ⚠️ **배지 톤 셋과 별도 축이다** — 칩은 **훑기용 보조**이고 뜻은 결과 열의 낱말과 문장이 든다(색만으로 구별되는 정보는 칩에 싣지 않았다). 규칙이 둘이다: **실행은 결과의 색**(성공 emerald · 보류/부분/거부 amber · 실패 red · 진행 중과 `Nothing to send`는 slate — 보낸 것이 없는 것은 성공이 아니다), **그 외는 종류의 색**(번역 blue · 소스/로케일 teal · 멤버 violet · 설정 slate). ⚠️ **시안의 hex 일곱 쌍이 Tailwind 기본 팔레트와 정확히 같은 값이라 임의 hex를 쓰지 않는다** — 그래서 `app/globals.css`에 토큰이 늘지 않았고, 이 줄이 그 등재다. · **neutral-50**(`#fafafa`, 2026-09-22 — logs 상세의 `Before` 면과 값이 아닌 상태의 점선 블록 **둘뿐**이다. ⚠️ **`--muted`(#f5f5f5)로 대신하지 않는다**: 이 블록은 **흰 `After`와 나란히** 서고 두 면의 차이가 "같은 값의 두 시점"을 말하는 유일한 신호라, 한 단계 더 연한 값이 시안의 판정이다. 새 자리에 번지게 하지 않는다 — 리포의 회색 면은 여전히 `--muted`다). 그 밖은 없다.
+**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800`, Alert용 `50`·`200`·`900`, **면으로 칠하는 `500`** — Meter의 검토 구간(§6.63)과 **Sources 상세 언어 행의 검토 막대**(`source-detail-modal.tsx`), 그리고 카운트 카드 글리프의 `700`)·**destructive** · §6.3의 외부 링크 **blue-600**(`--signin-dot`이 같은 값이다) · **포커스 링의 blue-400**(2026-09-11에 하나 늘었다 — `--ring`, §7) · 목록 행 `Active`의 **green**(`100/80`·`800`) · 이름에서 뽑는 **tone 여덟**(`-600`) · **`--divider`**(`#f0f0f0`, 2026-09-13 — 바로 아래) · **neutral-300**(`#d4d4d4`) — 라디오·**체크박스** 지시자의 비선택 테두리(16px 원·사각에서 `--input`(#e5e5e5)은 안 보인다) · 번역 작업 화면 빈 칸의 **점선 상자** · 멤버 역할 칩의 **자물쇠**(캔버스 값 — 사유는 `sr-only`가 진다, §6.65). ⚠️ 옛 소비자였던 Home 로그 레일의 점은 사라졌다(2026-09-24 실측 0) · **neutral-400**(`#a3a3a3`, 2026-09-16 등재 — **전부터 쓰이던 것을 이제 센다**: `/docs` 행 화살표 `→`(2026-09-26, §6.61), Home의 메타 열·개수 카드·로그 카드 글리프, `/account` Profile 사실 블록의 라벨 열, **logs 상세의 필드·블록 라벨**(2026-09-22 — 그 전엔 `--muted-foreground`와 합쳐져 있었다), **그리고 2026-09-20부터 `/projects` 보관 행의 이름·메타·배지**(§6.63의 등재된 이탈 — 2026-09-27부터 LNB 스위처의 같은 `Archived` 배지도, §6.5). 캔버스가 라벨·보조 글리프에 그 값을 직접 지정하고 `--muted-foreground`(#737373)보다 한 단계 연하다). · **neutral-600**(`#525252`, 2026-09-22 등재 — **전부터 쓰이던 것을 이제 센다**: `row-card`의 글리프 칩 · Home sync 버튼 · `/projects` 행, 그리고 Sources 행의 글리프 칩. 캔버스가 칩 안 글리프에 그 값을 직접 지정하고 `--muted-foreground`(#737373)보다 한 단계 진하다) · **red-700**(`#b91c1c`, 2026-09-22 — `Badge` `missing` · Sources 상세의 사라짐 띠 문장 · Publish diff(아래 표) · 활동 칩(아래 일곱).  ⚠️ **`destructive`(#dc2626)와 다른 값이다**: 시안이 실패 **글자**와 사라짐 **알약**을 두 색으로 갈랐고, 채운 알약이 같은 밝기면 amber `warning`과 무게가 안 맞는다) · **활동 글리프 칩의 팔레트 일곱**(2026-09-20 등재, logs-rework §6.68 — `emerald-50/700` · `amber-50/700` · `red-50/700` · `slate-100/600` · `blue-50/700` · `teal-50/700` · `violet-50/700`). ⚠️ **배지 톤 셋과 별도 축이다** — 칩은 **훑기용 보조**이고 뜻은 결과 열의 낱말과 문장이 든다(색만으로 구별되는 정보는 칩에 싣지 않았다). 규칙이 둘이다: **실행은 결과의 색**(성공 emerald · 보류/부분/거부 amber · 실패 red · 진행 중과 `Nothing to send`는 slate — 보낸 것이 없는 것은 성공이 아니다), **그 외는 종류의 색**(번역 blue · 소스/로케일 teal · 멤버 violet · 설정 slate). ⚠️ **시안의 hex 일곱 쌍이 Tailwind 기본 팔레트와 정확히 같은 값이라 임의 hex를 쓰지 않는다** — 그래서 `app/globals.css`에 토큰이 늘지 않았고, 이 줄이 그 등재다. · **neutral-50**(`#fafafa`, 2026-09-22 — logs 상세의 `Before` 면과 값이 아닌 상태의 점선 블록 **둘뿐**이다. ⚠️ **`--muted`(#f5f5f5)로 대신하지 않는다**: 이 블록은 **흰 `After`와 나란히** 서고 두 면의 차이가 "같은 값의 두 시점"을 말하는 유일한 신호라, 한 단계 더 연한 값이 시안의 판정이다. 새 자리에 번지게 하지 않는다 — 리포의 회색 면은 여전히 `--muted`다). 그 밖은 없다. ⚠️ **랜딩 목업(§6.615)은 번역 작업 화면·Publish 모달의 정적 복제라** 그 두 화면의 값(amber-700 · neutral-300/400/600 · red-700 · green-800과 diff 면 둘)을 **같은 자리에** 쓴다 — 새 값은 0이고 `visual-system.test.ts`의 목록에 파일만 더했다.
 
 **B6 등재·접기 (2026-09-24, audit #43·#44)** — 번역 작업 화면(C4) 분량이 위 목록에서 통째로 빠져 있었다. **값마다 판정했고 새 값은 하나다**:
 
@@ -427,8 +442,7 @@ computed style로 잰 것이다.
 지만 그것은 흰 패널 위 **한 겹**으로 그린 값이고, 여기 헤더는 `sticky`라 **뒤로 키 행이 지나간다** —
 98% 투과면 글자가 비친다. 흰 위 2%에 해당하는 불투명 값이 정확히 `#fafafa`다. ⚠️ **불투명 값은 흰
 면 위를 전제한다** — muted·canvas 면 위에 표가 서면 헤더가 배경과 어긋난다(지금 `Table` 소비자는
-전부 흰 면이다). ⚠️ **`Th` 프리셋의 기본값 `bg-muted/50`은 아직 반투명이라 번역 화면이 같은
-결함을 든다** — 값 차이는 2/255라 옮겨도 눈에 안 보이지만, 그 화면을 실물로 확인하는 작업에서 함께 옮긴다.
+전부 흰 면이다). ⚠️ **`Th` 프리셋의 기본값 `bg-muted/50`은 아직 반투명이다** — 값 차이는 2/255라 옮겨도 눈에 안 보이고, 소비자가 전부 흰 면 위라 결함이 드러나는 자리는 지금 없다.
 
 나머지 raw 셋은 그대로 기존 토큰으로 접힌다: dim `rgba(10,10,10,0.32)` → **`bg-foreground/32`**
 (기존 `Dialog`의 `/40`과 값이 갈리는 것이 의도다 — 이 모달은 뒤의 목록이 읽혀야 한다) · 스켈레톤
@@ -464,7 +478,7 @@ computed style로 잰 것이다.
 
 | 색 | 자리 | 왜 기존 토큰이 아닌가 |
 |---|---|---|
-| `red-700` (`#b91c1c`) + `red-700/[0.14]` | diff의 `−` 글리프 · 제거된 낱말의 배경 | **diff의 만국 공용 어휘**라 이 제품의 상태색 축(§2.3의 "destructive는 글자색 전용")과 별개다. `--destructive`(#dc2626)보다 한 단계 내린 것은 배경 위에 얹는 글자라서이고, 알파 0.14는 **배지로 안 보이게** 하는 값이다 — 줄 전체가 아니라 바뀐 낱말만 칠한다 |
+| `red-700` (`#b91c1c`) + `red-700/[0.14]` + `red-700/10` | diff의 `−` 글리프 · 제거된 낱말의 배경 · **`Badge missing`의 알약 면**(`/10` — Sources, §6.4) | **diff의 만국 공용 어휘**라 이 제품의 상태색 축(§2.3의 "destructive는 글자색 전용")과 별개다. `--destructive`(#dc2626)보다 한 단계 내린 것은 배경 위에 얹는 글자라서이고, 알파 0.14는 **배지로 안 보이게** 하는 값이다 — 줄 전체가 아니라 바뀐 낱말만 칠한다 |
 | `green-800` (`#166534`) + `green-800/[0.16]` | diff의 `+` 글리프 · PR 카드의 `GitPullRequestArrow` · 추가된 낱말의 배경 | 같은 축이다. `Badge success`가 이미 `text-green-800`을 들고 있어 **색 자체는 새 값이 아니고**, 배경 없이 홀로 서는 쓰임과 알파 변형이 새로 등재된다 |
 
 ⚠️ **초록·빨강을 이 두 자리 밖으로 넓히지 않는다.** 여기서만 예외인 근거가 "diff"이고, 상태·결과에
@@ -478,7 +492,7 @@ computed style로 잰 것이다.
 
 - **`bg-white`** — 셸 밖 좌측 패널의 **true white** 하나뿐이다(`components/signin/auth-layout.tsx`). `--background`가 아닌 이유는 §6.62에 있다: 캔버스와의 대비가 그 화면의 골격이라 토큰이 움직여도 이 자리는 순백이어야 한다.
 - **`text-white`** — `toneFill` 위의 글자·글리프 전용이다(아바타 이니셜·목록 행 타일). tone 여덟의 짝이라 별도 색이 아니다.
-- **국기 SVG 253개**(`public/flags/`) — **우리가 고른 색이 아니다.** Google 4색(§6.8)과 같은 부류라 토큰으로 접지 않고, 인라인 `style`의 `background-image`로만 들어온다(§6.1). 이 예외를 다른 자산으로 넓히지 않는다.
+- **국기 SVG 253개**(`public/flags/` — `country-flag-icons@1.6.20` 3x2, MIT) — **우리가 고른 색이 아니다.** Google 4색(§6.8)과 같은 부류라 토큰으로 접지 않고, 인라인 `style`의 `background-image`로만 들어온다(§6.1). 이 예외를 다른 자산으로 넓히지 않는다.
 
 ### 6.25 토스트 — 피드백의 두 번째 표면 (8-1b, 2026-09-10)
 
@@ -531,7 +545,7 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 주소는 안 드는 **비대칭이 의도**이고, `components/__tests__/home-landmarks.test.tsx`가 둘을 **한 검사**로
 센다 — 한쪽만 고치면 red다.
 
-**내부 링크는 표면이 두 갈래다.** 셸 **안**의 내부 링크(사이드바·목록 행·진행률 행·활동 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다 — 행 전체가 눌리는 자리라 색이 아니라 hover가 그것을 말한다. ⚠️ **셸 밖 화면의 텍스트 링크는 `text-blue-600`이다**(로그인 푸터의 Privacy·Docs, `/privacy`·`/docs`의 돌아가는 링크) — 그 화면들엔 사이드바도 행도 없어서 **링크가 문단 안의 글자 하나**이고, 색이 없으면 눌리는 것인지 알 수단이 밑줄뿐인데 그것을 8-1b가 전역으로 걷었다. 아이콘은 안 붙는다(리포 밖으로 안 나간다).
+**내부 링크는 표면이 두 갈래다.** 셸 **안**의 내부 링크(사이드바·목록 행·진행률 행·활동 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다 — 행 전체가 눌리는 자리라 색이 아니라 hover가 그것을 말한다. ⚠️ **셸 밖 화면의 텍스트 링크는 `text-blue-600`이다**(`/signin`의 동의 문구 속 Privacy Policy, `/privacy`·`/docs`의 본문 링크 — 공개 셸 안이지만 문단 안 글자라 같은 규칙이다, §6.616 · §6.61) — 그 화면들엔 사이드바도 행도 없어서 **링크가 문단 안의 글자 하나**이고, 색이 없으면 눌리는 것인지 알 수단이 밑줄뿐인데 그것을 8-1b가 전역으로 걷었다. 아이콘은 안 붙는다(리포 밖으로 안 나간다). ⚠️ **공통 푸터(`PublicFooter`)는 이 규칙 밖이다** — 2026-09-26부터 `/signin`·초대·계정 병합도 그 푸터를 쓰고, 링크 목록 줄이라 muted + `hover:text-foreground`다(§6.615).
 
 ### 6.4 공통 형 — 프리미티브가 든다 (2026-09-08)
 
@@ -550,26 +564,26 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 | **ButtonLink** | 같은 variant·size를 입은 `<Link>` — 주 행동이 **라우트 이동**인 자리("New project"·"Open translations"). ⚠️ **`Button`에 `asChild`를 두지 않는 것의 짝이다**: Slot 한 겹이 `<button>` 태그를 지워 `focus-ring` 스캐너가 그 파일을 못 보게 된다(§7). 형의 단일 출처는 `buttonClass()` |
 | **Input·Select** | `h-9 px-2.5 text-sm border border-input bg-background rounded-md` · invalid `border-destructive` · disabled `bg-muted text-muted-foreground` — 옛 "입력(페이지·툴바)"을 하나로 |
 | **Textarea** | 같은 형이지만 **높이 클래스(`h-9`)를 안 든다** — `rows=1` + `field-sizing-content py-1`이라 높이는 내용이 정한다 (§6.1) |
-| **SearchInput** | ⚠️ **`components/ui/` 밖에 산다**(`components/search-input.tsx`) — `Input`을 조립한 **공유 화면 컨트롤**이고 Radix도 variant도 없다. `Input` + `Search` 글리프(`absolute top-2.5 left-2` 16) · ⚠️ **폭 `w-64 pl-8`을 파일이 소유한다**(`className`은 바깥 자리잡기용이다 — 폭을 인자로 열면 툴바마다 검색창이 달라지고 그 차이는 두 화면을 나란히 놓기 전에는 안 보인다) · **Enter 제출형**이고 IME 조합 확정 Enter는 거른다(`isComposing`과 `keyCode === 229`를 **둘 다** 본다 — 브라우저마다 하나씩만 주는 경우가 있다). 소비자 **둘**(`projects/search-input` · `translations/workspace/workspace` — 후자는 `inputClassName="w-80"`으로 폭만 바꾼다, §6.1a). ⚠️ **온보딩 ①의 리포 검색은 이것을 안 쓴다** — 입력 중 즉시 거르는 폭 100% 필드라 계약이 다르고, 글리프 자리잡기 관용구만 빌린다 |
+| **SearchInput** | ⚠️ **`components/ui/` 밖에 산다**(`components/search-input.tsx`) — `Input`을 조립한 **공유 화면 컨트롤**이고 Radix도 variant도 없다. `Input` + `Search` 글리프(`absolute top-2.5 left-2` 16) · ⚠️ **폭 `w-64 pl-8`을 파일이 소유한다**(`className`은 바깥 자리잡기용이다 — 폭을 인자로 열면 툴바마다 검색창이 달라지고 그 차이는 두 화면을 나란히 놓기 전에는 안 보인다) · **Enter 제출형**이고 IME 조합 확정 Enter는 거른다(`isComposing`과 `keyCode === 229`를 **둘 다** 본다 — 브라우저마다 하나씩만 주는 경우가 있다). 소비자 **셋**(`projects/search-input` · `translations/workspace/workspace` · `logs/log-filters` — 뒤의 둘은 `inputClassName="w-80"`으로 폭만 바꾼다, §6.1a·§6.69). ⚠️ **온보딩 ①의 리포 검색은 이것을 안 쓴다** — 입력 중 즉시 거르는 폭 100% 필드라 계약이 다르고, 글리프 자리잡기 관용구만 빌린다 |
 | **FileInput** | account-settings 신설 (2026-09-13) — **프리미티브 19**. 보이는 것은 `Button`(`default` `md`)이고 `<input type="file">`은 `sr-only` + **`tabIndex={-1}` + `aria-hidden`**이다. ⚠️ **`sr-only` + `<label>` 관용구를 쓰지 않는다** — 그 형은 포커스를 **숨은 input**이 받아 보이는 것에 아무 표시가 없고, 링을 `peer-focus-visible`로 옮겨 붙이면 **포커스 링 검사가 보는 자리(여는 태그)와 링이 사는 자리가 갈린다.** 대신 input을 포커스 대상에서 통째로 빼고 링은 `Button`이 든다(§7). ⚠️ **`focus-ring.test.ts`의 면제가 그래서 넓어졌다** — `type="hidden"`이 될 수 없는 태그라 **`tabIndex={-1}`와 `aria-hidden`을 함께** 든 것만 면제하고, 하나만으로는 안 빠지는 것을 메타 테스트가 센다. ⚠️ **`change` 뒤 `value`를 비운다** — 거부된 파일을 고쳐 같은 이름으로 다시 고르는 것이 흔한 경로인데, 안 비우면 같은 파일에서 이벤트가 안 난다. ⚠️ **`accept`는 대화상자 필터이고 방어선이 아니다**(사용자가 "모든 파일"을 고를 수 있다) — 판정은 `planImagePick`(클라이언트)과 `planImageUpload`(서버 시그니처)가 든다. ⚠️ **`disabled`가 `loading`과 갈라져 있다** (2026-09-14) — 짝이 되는 컨트롤([Delete])이 도는 동안 이 자리를 막되 **스피너는 그쪽에 세워야** 하기 때문이다. 하나로 합치면 도는 쪽이 둘로 보이고, 안 막으면 둘이 동시에 돌아 먼저 끝난 쪽이 남의 스피너를 끈다 |
 | **캡션 강조** | ⚠️ **필드 아래 캡션(help·hint·경고 한 줄)에서 굵게 쓰지 않는다** (2026-09-13 사용자). 13px 한 덩어리에 굵기를 섞으면 그 조각이 **제목처럼** 읽혀 바로 위 라벨과 경쟁한다 — **보이는** 강조는 `text-foreground`까지다(바탕이 `text-muted-foreground`라 그것만으로 충분히 뜬다). ⚠️ **`<strong>`은 지우지 않는다 — `font-normal`로 되누른다**: 되돌릴 수 없음을 말하는 문장(주소 확정·토큰 1회 노출)이 색만 남으면 스크린리더가 평평하게 읽고 고대비 모드에서도 사라진다. 색에 시맨틱을 딸려 보내는 것은 `LocaleBadge`의 `sr-only`와 같은 규칙이다(§7). `(optional)`이 `font-normal`로 라벨의 500을 되누르는 관용구가 이미 있다 |
 | **FormGroup** | label `text-sm font-medium` · help `text-xs text-muted-foreground **leading-[1.7]**` · error `text-xs text-destructive **leading-[1.7]**` (2026-09-13 — 시안. 필드 아래 설명은 두세 줄이 되는 자리라 기본 행간 1.33이면 줄이 붙어 한 덩어리로 읽힌다. ⚠️ **`text-xs`에 `line-height`를 짝으로 안 주는 것이 `@theme`의 결정**이라 이 값은 소비자가 든다) · `labelId`(Radix `Select` 트리거가 `aria-labelledby="{labelId} {triggerId}"`로 라벨+값을 잇는다) · "(optional)" `text-muted-foreground font-normal`(⚠️ label이 500이라 **되눌러야 한다** — §4의 기본 400) 오류는 14px 장식 아이콘·role=alert·안정된 ID(`{htmlFor}-error`)를, help도 안정된 ID(`{htmlFor}-help`)를 제공한다. 필드의 aria-invalid/aria-describedby는 소비자가 잇는다 — ⚠️ **help도 잇는다**(2026-09-24, audit #89 — 전엔 help에 id가 없어 경로 형식·slug·기준 언어 안내가 입력에 포커스한 스크린리더 사용자에게 안 닿았다). 오류가 help를 대신하는 동안은 오류를 가리킨다. |
 | **Radio** | **Radix `RadioGroup.Item`이다** (2026-09-13 — 그 전엔 native `<input type="radio">`였다). 16 원 · 비선택 테두리 **`neutral-300`**(#d4d4d4) · 선택 테두리 `foreground` + 안쪽 점 **8**(`Indicator`) · label `text-sm`. ⚠️ **`Radio`는 `RadioGroup` 안에서만 선다** — Radix `Item`이 Root 컨텍스트를 읽으므로 홀로 쓰면 던진다. 목록을 그리는 쪽이 `RadioGroup`을 감싸고 `aria-label`로 그룹 이름을 준다. ⚠️ **`asChild`로 `<ul>`에 얹지 않는다** (2026-09-13 실측) — Radix가 그 태그의 role을 `radiogroup`으로 덮어써 `<li>`가 부모 list를 잃은 고아가 된다. Root의 div 한 겹을 받아들이면 리스트와 radiogroup이 둘 다 산다. ⚠️ **`fieldset`/`legend`와 겹쳐 쓰지 않는다** — 그룹이 둘이 되어 이름이 두 번 읽힌다. ⚠️ **`labelClassName`이 행의 gap을 연다** — 온보딩 행이 "라디오 16 + 칩 40 + 텍스트"이고 셋 사이가 전부 12인데, `className`은 지시자로 가므로 그 자리로는 바깥 `<label>`의 `gap-2`를 못 덮는다. **`Checkbox`는 아래 별도 행이다**<br>⚠️ **`RadioGroupItem`(맨 재수출)의 소비자는 `SegmentedControl` 하나다** (2026-09-23 — 초대 모달의 Role 카드가 행마다의 `Select`로 가며 빠졌다, §6.65). Radix의 선택·roving focus만 쓰고 **형은 자기가 얹으며**, 그래서 **포커스 링도 자기가 든다** — `Radio`와 달리 지시자 원이 없어 링이 빠지면 키보드로 어디 있는지 알 수 없다 (§7) |
 | **Checkbox** | Radix `Checkbox.Root` · 16 사각 · 비선택 `neutral-300`, 선택 `foreground` + 체크 12. Radio와 같은 포커스 링·disabled. 시각 label은 필수가 아니며 `aria-label` 또는 `aria-labelledby`로 이름을 준다. 포함 체크와 상세 버튼은 형제다 |
 | **SegmentedControl / SegmentedLinks** | 8-2 신설 · 8-3이 링크판을 더했다. 트랙 `bg-canvas rounded-lg p-1 gap-1` · 세그먼트 `rounded-md px-2 py-1 text-sm gap-1.5`(`min-w-11`은 **링크판만**) · 선택 `bg-background shadow-low font-medium` / 비선택 `text-muted-foreground hover:text-foreground`. ⚠️ **칸의 radius가 `md` 버튼과 같다** (2026-09-11) — 선택된 칸이 흰 배경 + `shadow-low`로 떠올라 버튼처럼 보이고 툴바에서 실제 `Button`과 나란히 선다. 트랙은 칸이 `p-1`만큼 안쪽이라 **한 단계 크다**(동심이 되는 14가 스케일에 없어 12). ⚠️ **`SegmentContent`가 `icon`·`badge`를 받는다**(라벨 왼쪽 `size-4 aria-hidden` / 오른쪽 `Badge neutral`, **0도 보인다**) — **지금 그 두 축의 소비자는 0이다**. 치수를 프리미티브가 드는 이유는 bugshot-2가 children으로 넘기다 배지 크기가 두 벌로 갈렸기 때문이다. ⚠️ **형이 둘인 것이 요지다**: 상태를 클라이언트가 들면 `SegmentedControl`(버튼 · `role=radiogroup`), **URL이 들면 `SegmentedLinks`**(`<nav>` + `aria-current="page"`). 필터·탭은 뒤엣것이다 — 뒤로가기·공유·새로고침이 그냥 돼야 한다. ⚠️ **`role="tablist"`가 아니다**: ARIA 탭은 `aria-controls`와 패널 연결이 계약인데 이 컨트롤은 그걸 안 든다. ⚠️ **대신 라디오의 키보드 계약은 든다** — 2026-09-12부터 **Radix `RadioGroup`이** 방향키·roving tabindex·`loop`를 들고, **Home/End만 프리미티브가 얹는다**(Radix가 안 준다). 2026-09-11의 손수 구현(`nextRovingIndex` + `tabIndex={selected ? 0 : -1}`)을 대체했고, 링 검사가 `button[role="radio"]`를 보므로 Radix가 곁들이는 숨은 `<input>`이 보이지 않는 링으로 green을 만들지 않는다 |
-| **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). **레이블은 `font-medium`(500)으로 전역 통일한다** (2026-09-12 사용자). variants **다섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
+| **Badge** | ⚠️ **알약이고 한 글자면 정원이다** (8-3 · 2026-09-11): `text-xs rounded-full px-1.5 py-0.5 min-w-5 justify-center`. `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와 같아 개수 배지가 원이 되고, **padding이 `px-1.5`여야** 한 글자에서 그것이 이긴다(`px-2`면 8+7+8=23으로 20을 넘는다). **레이블은 `font-medium`(500)으로 전역 통일한다** (2026-09-12 사용자). variants **여섯**: `muted`(`text-muted-foreground`, 배경 없음)·`warning`(amber)·`danger`(`text-destructive`)·**`neutral`**(`bg-foreground/5 text-foreground` — 8-3, `--foreground`의 알파)·**`success`**(`bg-green-100/80 text-green-800` — 2026-09-11, 목록 행의 `Active`)·**`missing`**(`bg-red-700/10 text-red-700` — 채운 붉은 알약, Sources) — §6.2. ⚠️ **검정 채움(`solid`)은 없다** — 시안 개정이 역할을 배지에서 메타 평문으로 내리며 소비자가 0이 됐다 |
 | **Alert** | `rounded-lg border p-4` · 좌측 아이콘 16 · 제목 `text-sm font-medium` · 본문 `text-sm` ≤ 2문장 + 다음 행동 · 액션 최대 2 · 닫기 우상단 **`ghost` + `size-9 rounded-md p-0`**(36 정방 · 음수 마진 `-mt-2 -mr-2`). ⚠️ **`ghost sm`(28 / radius 8)이었다** (2026-09-13 — 계정 화면 핸드오프): `size="icon"`을 만들지 않고 `md`의 높이·radius를 그대로 쓰고 정사각 유틸로 폭만 맞춘다. 라벨은 `m.common.dismiss`다. variant 넷은 §6.2. **배치 셋** — global(페이지 콘텐츠 맨 위 전폭 — `?e=` 거부) · page-level(제목 아래 — 리포 갱신 보류 배너·Publish 결과) · in-block(설정 블록 안 — 컨트롤 실패) **`inset`**은 radius·사방 테두리 없이 상단 divider와 padding 13/16으로 카드 전폭에 붙는다. 페이지형의 역할·색은 유지한다. |
 | **PanelCard** | 계정 구역에서 승격한 공유 카드. PanelCard/Rows/Row/Facts 넷이며 제목 없는 사용도 지원한다. 설정·계정·Sources에서 사용한다. radius 12 · header padding 16 · title 15/500 · container query 640. 옛 Card는 삭제했다 (§6.6·§6.67) |
-| **Table** | 번역·언어·이력 **셋** + 공개 문서(§6.61) **넷**이 쓴다 (⚠️ **2026-09-19에 멤버가 빠졌다** — 그 화면이 카드 + `<ul>`로 갔다, §6.65. 온보딩 ②의 파일 표는 이 수 밖이다 — §6.643. 세는 명령: `grep -rln 'from "@/components/ui/table"' components app | grep -v __tests__ | grep -v ui/table` → **파일 여섯**, 화면 다섯). shadcn `new-york-v4` 기반이고 `TableHeader`·`TableBody`·`TableRow`·`TableHead`·`TableCell` 다섯을 낸다(⚠️ **`TableFooter`·`TableCaption`은 안 들인다** — 소비자 0). ⚠️ **`Th`·`Td`·`Tr`은 별도 구현이 아니라 그 위의 프리셋이다** (2026-09-12) — 번역 화면이 프리미티브를 직접 들고, 공개 문서는 **섞어 쓴다**(열 머리는 `TableHead`, 셀은 `Td` — §6.61이 그 이유를 든다). 나머지 셋은 프리셋만 쓴다. 프리셋이 **되눌러야 하는 기본값**(`whitespace-nowrap`·`align-middle`·`border-b`·`h-10`·`px-2`)은 각 함수 위에 적혀 있고 `components/__tests__/table-presets.test.ts`가 렌더해서 센다 — 하나가 안 지워지면 긴 사유가 한 줄로 늘어나고 마지막 행 아래에 선이 하나 더 선다. ⚠️ **`scrollable` 기본이 참이고 끄는 곳이 셋이다** — 번역 화면(`PanelBody`가 스크롤을 소유한다, §6.1) · 온보딩 ②의 파일 표(그 `div`가 스크롤을 들어야 `Th`의 `sticky`가 붙는다, §6.643) · 공개 문서(그 `div`가 `role="region"`을 들어야 키보드로 가로 스크롤된다, §6.61). 컨테이너를 하나 더 만들면 스크롤이 중첩된다 |
+| **Table** | 이력 상세 · 온보딩 ② · 공개 문서 둘(§6.61) — **파일 넷**이 쓴다 (⚠️ **2026-09-19에 멤버가 빠졌다** — 그 화면이 카드 + `<ul>`로 갔다, §6.65. 온보딩 ②의 파일 표는 이 수 밖이다 — §6.643. 세는 명령: `grep -rln 'from "@/components/ui/table"' components app | grep -v __tests__ | grep -v ui/table` → **파일 넷**(2026-09-26 실측 — `public-doc-table` · `docs/guide-markdown` · `logs/event-detail` · `onboarding/steps/files`)). shadcn `new-york-v4` 기반이고 `TableHeader`·`TableBody`·`TableRow`·`TableHead`·`TableCell` 다섯을 낸다(⚠️ **`TableFooter`·`TableCaption`은 안 들인다** — 소비자 0). ⚠️ **`Th`·`Td`·`Tr`은 별도 구현이 아니라 그 위의 프리셋이다** (2026-09-12) — 공개 문서는 **섞어 쓴다**(열 머리는 `TableHead`, 셀은 `Td` — §6.61이 그 이유를 든다. `/privacy`는 `components/public-doc-table.tsx`의 `DocTable`, `/docs` 원고 표는 같은 파일의 틀 `DocTableFrame` + 같은 칸 상수를 react-markdown 칸 매핑에 쓴다 — `components/docs/guide-markdown.tsx`). 나머지 셋은 프리셋만 쓴다. 프리셋이 **되눌러야 하는 기본값**(`whitespace-nowrap`·`align-middle`·`border-b`·`h-10`·`px-2`)은 각 함수 위에 적혀 있고 `components/__tests__/table-presets.test.ts`가 렌더해서 센다 — 하나가 안 지워지면 긴 사유가 한 줄로 늘어나고 마지막 행 아래에 선이 하나 더 선다. ⚠️ **`scrollable` 기본이 참이고 끄는 곳이 셋이다** — 이력 상세(`logs/event-detail`) · 온보딩 ②의 파일 표(그 `div`가 스크롤을 들어야 `Th`의 `sticky`가 붙는다, §6.643) · 공개 문서(그 `div`가 `role="region"`을 들어야 키보드로 가로 스크롤된다, §6.61). 컨테이너를 하나 더 만들면 스크롤이 중첩된다 |
 | **Breadcrumb** | `text-xs` · 항목 `text-muted-foreground hover:text-foreground` · 마지막 `text-foreground font-medium` `aria-current="page"` · 구분자 `/` `text-muted-foreground/60 px-2` |
 | **DropdownMenu** | `min-w-60 rounded-lg border bg-popover shadow-md py-1` · 항목 `mx-1 px-2 py-1.5 rounded text-sm hover:bg-accent` · selected `bg-muted` + `Check` 16 |
 | **Dialog** | **`max-w-110`(440 — 2026-09-18, 옛 360)** `rounded-lg border bg-background` **`shadow-medium`** · 헤더 `p-4 pb-2` · 제목 `text-base font-medium`(15/500) · 설명 `px-4 text-xs leading-[1.6]`(13/1.6) · 푸터 **`p-4`** `gap-2` 버튼 최대 3(primary·default·ghost cancel) · 배경 `bg-foreground/40` · Overlay·Content 모두 `z-50` · Esc·배경·X·Cancel 넷으로 닫힌다. 닫기는 위 Alert와 **같은 36 정방**(음수 마진만 `-mt-1.5 -mr-2`), 라벨은 `m.common.close`<br>⚠️ **넷이 2026-09-13에 움직였다**(계정 화면 핸드오프 — 폭 512→360 · `shadow-lg`→`shadow-medium` · 설명 14→13/1.6 · 푸터 위 24→16). **`shadow-lg`는 Tailwind 기본 그림자라 §4.5가 금지한 값이었다** — 이건 이탈이 아니라 기존 위반의 교정이다. 소비자 **열둘**이 함께 움직인다(archive-card · member-list · login-methods · github-account · sessions-section · home/sync-button · publish-button · sources/source-detail-modal · logs/log-filters · translations/workspace · **members/pending-invitations** · **settings/push-token-panel** — 뒤의 둘은 2026-09-24 audit #19·#20의 확인창이다. 2026-09-24에 아래 명령으로 다시 셌다) — ⚠️ **이 수가 네 번 틀렸다**(넷 → 다섯 → 여섯 → 일곱 → **그때 실제로는 여덟**). 2026-09-19에 아래 명령을 다시 돌려 보니 그 시점 소비자가 **여덟**이었고 **`publish-button`이 목록에서 빠져 있었다** — 이 줄이 *"프리미티브를 만질 때마다 소비자를 다시 센다"*고 적어 두고 스스로 그것을 안 한 것이다. 그날 일곱이 된 이유는 같은 날 `invite-dialog`가 사라졌기 때문이다(초대가 `OnboardingModal`로 갔다, §6.65). *"프리미티브를 만질 때마다 소비자를 다시 센다"*의 입력이 이 숫자이고, 빠졌던 하나가 하필 **푸터 유무로 본문 형이 갈리는** 변경의 소비자였다. 세는 명령은 `grep -rln "import .*DialogContent" components app | grep -v __tests__ | grep -v ui/dialog`다 — ⚠️ **프리미티브 자신을 빼야 한다**, 그리고 **`import` 없이 세면 주석에서 그 이름을 부른 파일까지 든다**(2026-09-15에 실제로 한 건 더 셌다). 이 줄을 처음 적었을 때 그것이 빠져 **명령과 본문이 서로 다른 수를 냈다**<br>⚠️ **본문의 형이 푸터 유무를 따라간다** — 확인 Dialog의 "검은 줄"은 `p-4 pb-0 text-xs leading-[1.6]`(*지금 참인 값*을 말하는 한 줄이고 푸터가 자기 16을 갖는다), **푸터 없는 소비자**(초대 폼)는 본문이 곧 폼이라 `p-4 text-sm`이다. 구별 없이 `pb-0`을 주면 그 폼이 바닥에 붙고 `FormGroup` help까지 13으로 내려간다(2026-09-13 실측)<br>⚠️ **본문이 없으면 그 `<div>`를 그리지 않는다** — 확인 Dialog는 대부분 본문이 없어서 빈 블록의 `p-4`가 설명문과 푸터 사이에 **죽은 32px**을 만들고 있었다<br>⚠️ **Dialog 안의 경고는 `Alert`가 아니라 전용 블록이다** (2026-09-15 — sync 핸드오프 §7 · 실측): `border-amber-200 bg-amber-50 text-amber-900` + `TriangleAlert`로 **색은 `Alert warning` 그대로**이고 **치수만 한 단계 줄인다**(radius **10** · padding **12** · 글자 **13** · 글리프 **14** · 줄 사이 **6**). 360 Dialog에서 `p-4` Alert는 본문 폭을 296으로 떨어뜨려 두 줄 문장이 네 줄이 된다. **프리미티브로 올리지 않는다 — 소비자가 `home/sync-button` 하나다**(올리면 안 본 화면 넷이 함께 움직인다). 글리프는 **블록 머리에 하나**이고 줄마다 주지 않는다: 글리프가 둘이면 경고가 둘인 화면이 되는데 실제로는 한 경고의 근거가 둘이다 |
-| **Modal** | **큰 모달 껍데기** — 정의는 `components/ui/modal.tsx`의 `OnboardingModal`이다(⚠️ **`components/onboarding/modal.tsx`는 2줄 re-export shim이다** — 경로를 그쪽으로 적지 않는다). ⚠️ **위 `Dialog`를 쓰지 않고 Radix `Dialog.*`를 직접 조립한다**: Overlay 색이 고정이고 머리·본문·바닥 padding이 박혀 있고 바닥이 `justify-end`라 왼쪽 `Step n of 4`가 안 들어가는데, 그것을 고치면 440 Dialog 소비자 **여덟이 함께 움직인다**. 폭 **1024**(2026-09-18 사용자, 옛 800 — `w-[calc(100%-96px)] max-w-[1024px]`. 온보딩·Publish 공통이다 — Publish가 736으로 덮던 것을 지웠다) · `rounded-xl` · `shadow-medium` · dim **`bg-foreground/32` + `backdrop-blur-[6px]`**(360 Dialog의 `bg-foreground/40`과 다르다 — 이쪽은 흐린다) · 머리 `px-8 pt-8 pb-5` 제목 `text-xl font-medium` · 닫기 `ghost` `size-9 rounded-full` 안의 `X` 20 · 바닥 버튼 `size="lg"`(§5의 "셸 밖 카드 전용"에 이 모달을 예외로 넣었다 — dim 위에 뜬 표면이라 셸 안이 아니다). 소비자 **여섯**(`onboarding/new-project` · `publish-button` · **`members/invite-modal`** — 2026-09-19에 440 `Dialog`에서 옮겨 왔고 2026-09-23에 다중 초대 폼 하나가 됐다, §6.65 · **`sources/source-detail-modal`** — 2026-09-22) + settings Add sources·Workflow (§6.6). 선택적 closeDisabled는 X·Esc·backdrop을 함께 막는다. 선택적 `initialFocusRef`는 **Radix 열림 자동 포커스 자리에서** 그 요소로 옮긴다(2026-09-23 — 소비자 effect로는 Radix가 뒤에 돌아 진다) |
+| **Modal** | **큰 모달 껍데기** — 정의는 `components/ui/modal.tsx`의 `OnboardingModal`이다(⚠️ **`components/onboarding/modal.tsx`는 2줄 re-export shim이다** — 경로를 그쪽으로 적지 않는다). ⚠️ **위 `Dialog`를 쓰지 않고 Radix `Dialog.*`를 직접 조립한다**: Overlay 색이 고정이고 머리·본문·바닥 padding이 박혀 있고 바닥이 `justify-end`라 왼쪽 `Step n of 4`가 안 들어가는데, 그것을 고치면 440 Dialog 소비자 **여덟이 함께 움직인다**. 폭 **1024**(2026-09-18 사용자, 옛 800 — `w-[calc(100%-96px)] max-w-[1024px]`. 온보딩·Publish 공통이다 — Publish가 736으로 덮던 것을 지웠다) · `rounded-xl` · `shadow-medium` · dim **`bg-foreground/32` + `backdrop-blur-[6px]`**(360 Dialog의 `bg-foreground/40`과 다르다 — 이쪽은 흐린다) · 머리 `px-8 pt-8 pb-5` 제목 `text-xl font-medium` · 닫기 `ghost` `size-9 rounded-full` 안의 `X` 20 · 바닥 버튼 `size="lg"`(§5의 "셸 밖 카드 전용"에 이 모달을 예외로 넣었다 — dim 위에 뜬 표면이라 셸 안이 아니다). 소비자 **여섯**(`onboarding/new-project` · `publish-button` · **`members/invite-modal`** — 2026-09-19에 440 `Dialog`에서 옮겨 왔고 2026-09-23에 다중 초대 폼 하나가 됐다, §6.65 · **`sources/source-detail-modal`** — 2026-09-22) · **`sources/add-sources-modal`**(§6.6) · `settings/ci-card`(Workflow). 선택적 closeDisabled는 X·Esc·backdrop을 함께 막는다. 선택적 `initialFocusRef`는 **Radix 열림 자동 포커스 자리에서** 그 요소로 옮긴다(2026-09-23 — 소비자 effect로는 Radix가 뒤에 돌아 진다) |
 | **DropdownMenu** | ⚠️ **`DropdownMenuItem`은 `{children}`을 `Slot.Slottable`로 감싼다** (2026-09-09). 호출부가 `asChild`를 주면 Radix Slot이 그 자식에 props를 얹는데 **자식이 정확히 하나여야 한다** — `selected`의 `Check`가 형제로 붙는 순간 던지고, 그 트리(= 앱 셸)가 통째로 죽는다. 실측: 프로젝트 스위처를 **한 번 열면** "This page couldn't load"였고 `add099a`부터 프로덕션에 있었다(POSTMORTEM 2026-09-09 — 툴팁 provider와 같은 계보). `components/__tests__/slottable-item.test.ts`가 `asChild`가 닿는 프리미티브 전수 + 이 이름을 고정한다 |
 | **RowCard** | members-rework 신설 (2026-09-19) — **프리미티브 23**. **행 목록 카드**: `RowCard`(헤더 = 제목 · 카운트 배지 · 설명 한 줄) / `RowCardList`(`<ul>` + `@container`) / `RowCardItem`(선의 급 둘) / `BannerLine`(행 아래 사유 띠) / `EmptyRowCard`(칩 36 · padding `48 24` · `inset`이면 카드 안). 소비자 **다섯**(`projects/project-list` · `projects/empty-projects` · `members/member-list` · `members/pending-invitations` · `members/member-row`). 카드 `border-border rounded-lg shrink-0 overflow-hidden` · 헤더 `p-4` 제목 `text-base font-medium` · 헤더↔첫 행 `border-foreground/[0.06]` · 행↔행 `border-border`. ⚠️ **`Card`가 아닌 이유**: 제목이 `text-sm`, 헤더 선이 전폭 `border-border`, 본문 `space-y-2 p-4`라 행 목록에 padding이 두 벌, 카운트 배지 슬롯도 `overflow-hidden`·`shrink-0`도 없다. ⚠️ **`EntityCard`도 아니다** — 형은 가깝지만 **개별 카드이고 목록 카드가 아니다.** ⚠️ **`divide-y` 금지** — 띠가 행의 형제라 그 규칙이 띠와 행 사이에도 `#e5e5e5`를 넣는데 시안은 거기가 `#f0f0f0`이다. ⚠️ **`countLabel`에 기본값이 없다** — 전에는 `m.projects.count`가 박혀 있었고, 그대로 공유했으면 멤버 카드가 "3 projects"를 낭독했다. ⚠️ **`description`은 `/projects`가 안 쓰는 슬롯이라 조건을 코드에 조건으로 쓴다**(POSTMORTEM 2026-09-14) — 설명이 없으면 헤더가 예전과 글자 하나까지 같은 한 줄이다. ⚠️ **hover·`ring-inset`·전체-링크 형은 올리지 않는다** — 소비자에 남는다(헤더에 hover가 붙으면 누를 수 없는 것이 눌릴 것처럼 보이고 `projects-cards.test.tsx`가 그것을 0으로 고정한다). ⚠️ **`titleId`가 있으면 `tabIndex={-1}`도 같이 붙는다** — 그 id가 붙는 유일한 이유가 포커스 착지점이라(malmoi#51) 둘이 갈리면 `focus()`가 조용히 무시된다 |
 | **EntityCard** | account-linking 신설 (2026-09-12) — **프리미티브 17**. "지금 다루는 대상 하나"를 보이는 자리이고 소비자는 **병합 화면 하나**다. 박스 `flex items-center gap-3 rounded-lg border p-3 w-full`(radius **12** — ⚠️ `rounded-xl`은 16이라 같은 화면의 `Card`·`Alert`·`Dialog`(전부 12) 사이에서 **작은 카드 하나만 더 둥글어진다**) · 본문 `min-w-0 flex-1 flex-col gap-px`, 1행 `text-sm truncate`, 2행 `text-xs text-muted-foreground` · 우측 슬롯(provider 마크 16, ⚠️ **브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를 그대로 받는다**). ⚠️ **아바타 소스가 1행 텍스트와 갈라져 있다**(`avatarName`·`image`, 2026-09-12) — 병합 화면의 1행은 **마스킹한 이메일**이라 이니셜이 주소의 첫 글자가 되는데 셸 아바타는 표시 이름에서 온다. 같은 계정이 화면마다 다른 글자·다른 색으로 보이면 아바타가 사람을 가리키지 못하고 소음이 된다. ⚠️ **`kind` prop이 없다** — 초대의 프로젝트 카드는 **같은 박스 규격**을 쓰지만 `components/invite/project-card.tsx`의 화면 조각이다: 아바타 폴백이 이니셜이 아니라 **흰 `Box` 글리프**이고 §6.63이 이미 그 대체를 거부해 뒀다(`Avatar`는 한 줄도 안 건드린다). ⚠️ **그 글리프 박스의 radius는 `rounded-sm`(8)로 §6.63의 목록 행과 같다** (2026-09-12 실측 — 12로 나가 있었다. ⚠️ **그 사이 목록 행만 4로 내려가 이 문장이 한동안 거짓이었고, 2026-09-17에 목록·Home을 8로 올려 다시 참이 됐다** — 이 줄을 읽고 8을 고른 사람이 실제로는 어긋난 값을 보고 있었다): 같은 대상을 가리키는 표식이 화면마다 다른 모서리를 가지면 같은 것이라는 신호가 죽는다. 크기는 카드 규격을 따라 32이고 목록 행은 28이다. ⚠️ **테두리가 없는 것도 셋이 같다** (2026-09-25 사용자 — `Avatar`·`ProjectThumbnail`·이 글리프 박스. 2026-09-20의 `border border-border`를 셋이 함께 걷었다). ⚠️ **`LocaleFlag`를 물지 않는다** — 프리미티브가 `components/translations/`를 import하면 `ui/`가 잎에 가깝다는 성질이 깨진다 |
 | **DropdownMenuCheckboxItem** | 8-4 신설 — 번역 화면의 `Select locales`가 유일한 소비자다. ⚠️ **`dropdown-menu.tsx`의 export이지 새 프리미티브가 아니다** — 이 리포는 **파일 단위로** 센다(`SegmentedControl`/`SegmentedLinks`가 한 행인 것이 그 근거다). 그래서 **프리미티브는 16 그대로였다** (2026-09-12에 `EntityCard`가 붙어 **17**이다 — 아래 행). 형은 `DropdownMenuItem`과 같고 다른 것이 셋이다: `role="menuitemcheckbox"` + `aria-checked`를 **Radix가 준다**(옛 `selected`는 `bg-muted` + `Check`라는 시각 표시뿐이라 접근성 트리에 상태가 없었다) · **`onSelect`의 `preventDefault()`를 프리미티브가 든다**(Radix `Item`은 선택 시 메뉴를 닫아서, 소비자가 그것을 기억하게 하면 하나가 빠진다) · 체크가 `Primitive.ItemIndicator`라 켜질 때만 그려진다. ⚠️ `{children}`은 여기서도 `Slot.Slottable`을 지난다(위 줄과 같은 이유) |
-| **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32/**56** — ⚠️ **56은 `/account` 머리 하나다** (2026-09-13) 그리고 **글자 크기가 `size`를 따라간다**(56은 `text-xl` = 20/500, 나머지는 `text-xs` = 13). 56짜리 원 안의 13은 점처럼 보인다. 소비자 둘(`entity-card`·`user-menu`)은 32라 안 움직인다. ⚠️ **사진 렌더는 이 유니온과 무관하다** — `src`를 받으면 raw `<img>`다(`next/image`가 아니다 — POSTMORTEM 2026-09-11) · 이니셜 폴백이 **`toneFill(name)` 배경 + `text-white font-medium`**이다 (2026-09-11 — 전엔 `bg-muted text-foreground/60` 하나라 사람이 여럿인 화면에서 아바타가 전부 같은 회색이었다). 색 판정은 §6.2 · **테두리가 없다** (2026-09-25 사용자 — 2026-09-20에 사진·이니셜 두 갈래에 붙였던 `border border-border`를 걷었다). 두 갈래가 함께 없어서 폴백이 일어나도 같은 `size`로 보인다. 16은 사이드바 사용자 구역 머리다 |
+| **Avatar** | 사람 = `rounded-full`, 프로젝트 = `rounded`(라운드 사각) · 16/24/32/**56** — ⚠️ **56은 `/account` 머리 하나다** (2026-09-13) 그리고 **글자 크기가 `size`를 따라간다**(56은 `text-xl` = 20/500, **16은 `text-2xs` = 10** — 2026-09-27 사용자, 13이면 16 원을 거의 채운다 · 나머지는 `text-xs` = 13). 56짜리 원 안의 13은 점처럼 보인다. 소비자 둘(`entity-card`·`user-menu`)은 32라 안 움직인다. ⚠️ **사진 렌더는 이 유니온과 무관하다** — `src`를 받으면 raw `<img>`다(`next/image`가 아니다 — POSTMORTEM 2026-09-11) · 이니셜 폴백이 **`toneFill(name)` 배경 + `text-white font-medium`**이다 (2026-09-11 — 전엔 `bg-muted text-foreground/60` 하나라 사람이 여럿인 화면에서 아바타가 전부 같은 회색이었다). 색 판정은 §6.2 · **테두리가 없다** (2026-09-25 사용자 — 2026-09-20에 사진·이니셜 두 갈래에 붙였던 `border border-border`를 걷었다). 두 갈래가 함께 없어서 폴백이 일어나도 같은 `size`로 보인다. 16은 사이드바 사용자 구역 머리다 |
 | **ImageTile** | project-settings-rework 신설 (2026-09-20) — **프리미티브 24**. 프로젝트 타일의 **이미지 한 장과 그 폴백**을 같은 정사각 상자에서 바꾼다. 소비자 **셋**(`projects/project-thumbnail` · `invite/project-card` · `settings/general-card`)이고 치수·radius·폴백 배경은 전부 호출부가 준다 — 이 잎이 드는 것은 **실패 판정**과 `object-contain` 둘이다(후자는 셋이 같은 값이라 prop으로 열지 않는다). ⚠️ **`Avatar`를 흡수하지 않는다** — 그쪽은 사람이라 `object-cover`에 폴백이 이니셜 글자이고, 공유하는 것은 `useImageFallback` 훅뿐이다(마크업을 합치면 §6.63이 거부해 둔 "이니셜 폴백"이 프로젝트 타일로 새어 든다). ⚠️ **실패를 불리언이 아니라 그 `src`로 기억하고 `ref`가 한 번 더 본다** (malmoi#50) — 하이드레이션 전에 끝난 실패는 `onError`로 안 오고(`complete = true`·`naturalWidth = 0`), 불리언이면 사진 교체 때 새 URL이 한 박자 늦는다. ⚠️ **`fallbackClassName`이 폴백에만 붙는다** — `toneFill`이 이미지 뒤에 깔리면 투명 PNG의 배경이 프로젝트마다 달라진다. ⚠️ **소비자가 `"use client"`가 되지 않는다** — 상태를 이 잎이 들어 `ProjectThumbnail`·초대 카드가 서버 컴포넌트로 남는다 |
 | **ListItemButton** | translation-rework C4 신설 (2026-09-23) — **프리미티브 25**. 목록 행 전체가 누를 수 있는 `<button>`: `w-full text-left` · 선택 `bg-foreground/[0.07]` · hover `[0.03]`(`sidebar.tsx`와 같은 규칙) · `ring-inset` 포커스 링. 소비자 **둘**(`translations/workspace/tree-panel` · `key-list`). ⚠️ **선택은 배경만 바꾸고 굵기를 주지 않는다** — 굵기가 바뀌면 행 폭이 흔들린다. ⚠️ **이 파일이 생긴 이유는 `focus-ring.test.ts`다** — `components/ui` 밖의 raw `<button>`을 금지하므로 행 버튼도 프리미티브를 지나야 한다. 목록 의미(`<ul>`/`<li>`)는 소비자가 든다(§6.1a) |
 | **Button `loading`** | **`Loader2` 스피너를 라벨 앞에** 세우고 disabled. ⚠️ **문구를 바꾸지 않는다** (2026-09-10 규칙 변경) — 전에는 `loadingLabel`로 `"Saving…"` 류를 넣었는데 폭이 흔들리고 화면마다 문구를 따로 들어야 했다(제거하며 죽은 문구 16개가 나왔다). 어느 버튼이 도는지는 스피너 위치가 말한다. ⚠️ **아이콘이 있는 버튼은 스피너를 *더하지* 않고 그 아이콘을 *교체*한다** (2026-09-17 — `NewProjectButton`의 `Plus` → `Loader2`, 둘 다 16): 더하면 라벨 폭이 그대로여도 버튼이 글리프 하나만큼 넓어졌다 좁아진다. **`Button`의 `loading`은 여전히 더하는 쪽이다** — 그쪽 소비자는 아이콘 없는 확정 버튼이라 교체할 대상이 없다. ⚠️ **라우트 이동의 pending은 `Button`이 못 든다**(`<a>`가 아니다). **형이 둘이다** (2026-09-25, audit-ux U2): 링크 **안**에서 그 링크의 이동을 재는 자리는 `useLinkStatus`다 — 사이드바 `Item`이 누른 항목에 즉시 선택과 같은 면을 세운다 — 자손이 표식 하나를 내고 링크가 `has-[…]`로 그것을 읽으므로 치수가 안 움직인다(선택 표시가 커밋 뒤의 `usePathname`을 봐서 응답이 올 때까지 옛 항목에 남던 자리다). 링크 밖의 코드가 이동을 시작하거나(온보딩 ④의 [Open translations] — `router.replace`) 이동 동안 되누름을 막아야 하는 버튼([New project] — `Link.onNavigate`를 가로챈다)은 `useTransition`의 `isPending`이 형이다. ⚠️ **`useLinkStatus`는 `<Link>`의 자손에서만 값을 낸다** — 링크 밖에서 부르면 늘 `pending: false`다<br>⚠️ **`disabled`를 못 쓰는 자리는 `aria-disabled` 속성만 세운다** (2026-09-17 사용자 — 전역 규칙): `buttonClass`의 모든 `disabled:` 유틸리티가 `aria-disabled:` 짝을 들고 있어 **겉모습은 같은 한 곳에서 나온다.** 소비자가 그 모양을 직접 그리면 `disabled-pairing.test.ts`가 red다 — 전엔 `sync-button`과 `new-project-button`이 각자 철자를 들어 같은 pending이 세 화면에서 달랐다. ⚠️ **`hover:`만 두 접두사의 값이 다르다**: 브라우저가 진짜 `disabled`에 hover를 안 태워 `disabled:hover:*`는 죽은 규칙이고, 그것을 복제하면 `default`·`danger`의 배경이 흰색에서 **투명**으로 떨어진다(2026-09-17 computed style 실측)<br>⚠️ **`busy`는 Dialog 트리거 전용 pending이다** (2026-09-24, audit B5): 같은 스피너에 `disabled` 대신 `aria-disabled` + `aria-busy`를 걸고 클릭을 막는다. 확정과 같은 커밋에 트리거가 `loading`(진짜 `disabled`)이 되면 Radix가 돌려주는 포커스가 `body`로 빠졌다 — Rotate token · Archive · Remove · Revoke · 두 Disconnect가 이것을 쓴다. **폼의 [Save]는 `busy`가 아니다** — 저장 중 `loading`이 규칙(§6.6)이고 끝난 뒤 착지한다(§7) |
@@ -627,17 +641,17 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 | 요소 | 규칙 |
 |---|---|
 | **셸 루트** | ⚠️ **`flex h-svh overflow-hidden`이고 `min-h-svh`가 아니다** (malmoi#13). `min-`은 "최소 한 화면"이라 콘텐츠가 길면 컨테이너가 함께 자라고, 그러면 `aside`가 stretch로 **문서 높이만큼** 늘어 Sign out·Collapse sidebar가 화면 밖으로 나간다 — 24키 화면에서도 그랬다(`scrollHeight` 1483 / 뷰포트 775). 여기에 **`bg-canvas p-2 gap-2 min-w-[1280px]`**가 붙는다 — ⚠️ `min-w-`가 없으면 1280 미만에서 **스크롤이 아니라 flex가 압축돼 콘텐츠가 잘린다**(실측: 1100 뷰포트에서 문서 폭 1280, 가로 스크롤 발생). `app/(edit)/__tests__/shell-layout.test.ts`가 소스로 고정한다 |
-| **헤더** | `h-10 px-1`(40 — 옛 48), **배경도 border도 없다**(캔버스 위에 얹힌다). 드는 것은 **로고 32 좌측**(`public/brand/malmoi-icon-black.svg`, `/projects` 링크) **+ 사용자 메뉴 32 우측**(아바타 `ghost` 버튼 → DropdownMenu: 이름·이메일 → **Account** → Sign out) **둘뿐이다.** ⚠️ 항목 문구가 사이드바 사용자 구역의 `Account`와 **같은 키**다 — 한 곳(`/account`)을 가리키는 이름이 둘이면 그중 하나가 낡는다. ⚠️ 버튼이 아바타와 같은 32여야 한다 — `size="sm"`(28)이면 아바타가 위아래로 삐져나온다(실측). ⚠️ **breadcrumb은 여기에도, 어디에도 없다** — 8-4가 프로젝트 하위 화면 다섯에서 통째로 걷었고(§0) 위로 가는 길은 사이드바가 든다. 셸로 옮길 것이 남아 있지 않다 |
+| **헤더** | `h-10 px-1`(40 — 옛 48), **배경도 border도 없다**(캔버스 위에 얹힌다). 드는 것은 **로고 32 좌측**(`public/brand/malmoi-icon-black.svg`, `/projects` 링크) **+ 사용자 메뉴 32 우측**(아바타 `ghost` 버튼 → DropdownMenu) **둘뿐이다.** ⚠️ **메뉴 항목이 2026-09-27에 바뀌었다**(사용자): 이름·이메일 머리 → `Projects`(`Box`) · `New project`(`Plus`) · `Account`(`CircleUser`) — **사이드바 사용자 구역과 같은 목록(`navWorkItems`)을 읽는다**, 배지만 없다 / 구분선 / `Release notes`(`Compass`, GitHub Releases 새 탭 — 외부 글리프 없음, §6.3) · `Docs`(`CircleHelp`) · `Privacy Policy`(`ShieldCheck`) / 구분선 / `Sign out`(`LogOut`). LNB와 겹치는 항목은 의도다. ⚠️ **모든 줄이 필터 메뉴와 같은 `DropdownMenuItem` 모양이다** — Sign out도 ghost `Button`(h-9·muted·`rounded-md`)을 들지 않고 **항목 자체가 감싼 폼을 `requestSubmit()`한다**(raw `<button>`은 `ui/` 밖 raw 태그 0 게이트에 걸린다). 제출 중엔 메뉴가 열린 채 disabled + 스피너다(audit #25). ⚠️ 아이콘은 **같은 목적지의 다른 자리와 같은 글리프**다(LNB · 사이드바 하단). ⚠️ 항목 문구가 사이드바의 같은 항목과 **같은 키**다 — 한 곳을 가리키는 이름이 둘이면 그중 하나가 낡는다. ⚠️ 버튼이 아바타와 같은 32여야 한다 — `size="sm"`(28)이면 아바타가 위아래로 삐져나온다(실측). ⚠️ **breadcrumb은 여기에도, 어디에도 없다** — 8-4가 프로젝트 하위 화면 다섯에서 통째로 걷었고(§0) 위로 가는 길은 사이드바가 든다. 셸로 옮길 것이 남아 있지 않다 |
 | 사이드바 | `w-60 shrink-0 p-1 gap-2 overflow-y-auto`, **배경도 border도 없다.** ⚠️ **접기가 없다** (8-3 — 시안에 없다): 아이콘 레일과 함께 **레일에서만 렌더되던 툴팁도 사라졌다**(2026-09-08에 셸을 죽였던 그 자리다). 소비자가 0이 되어 **2026-09-11에 `Tooltip` 프리미티브 자체를 걷었다** — 조상 provider를 요구하는 Radix 컴포넌트는 프리미티브가 자기 provider를 든다는 교훈은 POSTMORTEM 2026-09-08에 남아 있고, 다음에 그런 컴포넌트를 들일 때 그 확인을 한 번 한다. ⚠️ **반응형 분기가 0개다**(규약 3 — 최소 대응 너비 1280) |
 | **항목 hover·선택** | ⚠️ **배경 알파다** — 선택 `bg-foreground/[0.07]`, 비활성 hover `hover:bg-foreground/[0.03]` — 2026-09-11에 **둘 다 한 단계 내렸다**(사이드바는 배경 없이 캔버스 위에 얹혀 같은 알파도 흰 패널 위보다 진하다). ⚠️ **선택에 weight가 없다 — 면 하나로만 표현한다** (2026-09-20 사용자 — 옛 판정 *"선택의 weight는 라벨 `<span>`이 든다"*의 철회. 그 판정은 **굵기를 `<Link>`가 아니라 라벨에 두는** 자리 문제를 푼 것이고, 굵기가 필요한가는 묻지 않았다). 굵기가 면과 함께 움직이면 선택을 옮길 때마다 **라벨 폭이 바뀌어 글자가 흔들리고**, 신호가 둘이라 면의 알파를 조정할 근거도 흐려진다. `components/__tests__/sidebar-selection.test.ts`가 소스에서 `font-medium` 개수를 **1**(구역 라벨 `<p>`)로 고정한다 — 사이드바에 렌더 테스트가 없어 스캔이 든다. Badge는 자체 `font-medium`(500)을 쓰므로 상속 문제도 함께 사라졌다. `--accent == --muted`(§2.1)라 캔버스 위에서 `hover:bg-accent`가 **보이지 않고**, 6단계의 "흰 알약"(`bg-background`)도 배경이 흰색이 아니게 되면서 근거가 사라졌다. **hover와 선택은 한 단계 벌린다** — 같은 알파면 포인터 아래 항목이 선택된 것처럼 보인다 |
 | 섹션 항목 | `flex items-center gap-2 rounded-sm p-1.5 text-sm` · 아이콘 16(**전 항목 표는 §6.8**) · 글자는 `text-foreground`(캔버스가 거의 흰색이라 §2.2의 muted 표면 문제가 없다) |
-| **개수 배지** | ⚠️ **`Projects` 하나에만 붙는다** (8-3). 그 값은 셸이 **이미 조회한** 멤버십 배열의 길이라 왕복이 0이다. 시안의 나머지 셋(Sources·Translations·Members)은 프로젝트별 집계라 **모든 페이지에 왕복을 더한다** — PRODUCT §7.7 결정 5가 거절했고 §8이 🔒로 다시 열어 둔 항목이다. ⚠️ **`0`도 보인다** — `undefined`와 다르다: 프로젝트가 없다는 사실이 정보이고, 화면이 `badge && …`로 쓰면 0이 falsy라 조용히 사라진다 |
-| **구역 둘** | ⚠️ **축이 둘이라 구역이 둘이다** (PRODUCT §7.7). 순서는 **사용자 축 먼저**(`Projects`·`Account`) → **프로젝트 축**. ⚠️ **라벨이 이름 그대로다** (8-3 — 시안): 사용자 축은 **사용자 이름**, 프로젝트 축은 **프로젝트 이름**. 6b-4의 `Your work` 라벨과 6a의 프로젝트 스위처를 **함께** 대체했다. 라벨은 `<p data-zone-head>` `text-foreground flex items-center gap-2 p-1.5 text-sm font-medium`이고, 둘째 구역만 `border-t border-border pt-2`. ⚠️ **라벨 앞에 대상의 얼굴이 선다** (2026-09-24 사용자): 사용자 구역은 `Avatar` 16(원, 세션 사진 → 이니셜 폴백), 프로젝트 구역은 `ProjectThumbnail` `size={16}`(라운드 사각 radius 8, 글리프 12 — 이미지 없으면 이름 색 폴백). 모양이 대상을 말한다(§6.4). ⚠️ **얼굴이 아래 항목 아이콘과 같은 규격이다** (2026-09-25 사용자 — 24 · `px-0.5 py-1`에서 내렸다): 16 · `p-1.5` · `gap-2`가 항목과 같아서 **머리 라벨과 항목 라벨의 시작점이 한 세로선**에 서고 줄 높이도 같은 32다. 중심만 맞추던 옛 판정은 라벨 시작점이 4px 어긋났다. `sidebar-identity.test.tsx`가 그 규격을 고정한다. 썸네일 값은 `loadMemberships`의 `image`가 레이아웃을 지나 `NavProject.image`로 온다. ⚠️ **`<nav>` 둘이 `aria-label`을 든다** — 라벨이 `<p>`라 접근성 트리에서 이름이 아니다 |
-| **스위처가 없다** | ⚠️ 8-3이 지웠다 (시안). 프로젝트를 옮기는 길이 **목록 하나**로 통일됐고, `New project`를 사이드바에서 뺀 것과 같은 방향이다 — 진입점이 하나면 "어디서 눌렀나"에 따라 다른 곳에 착지할 수 없다. 그와 함께 `DropdownMenuItem asChild`의 실사용이 셸에서 사라졌다(규칙과 그 테스트는 그대로다) |
-| 사용자 축 항목 | **Projects**(`Box`, 개수 배지) · **Account**(`CircleUser` → `/account`). ⚠️ **라벨이 2026-09-23에 `Settings`에서 바뀌었다**(사용자) — 시안(8-3)은 `Settings`였으나 같은 사이드바의 `Project settings`와 축만 다른 동의어라 어느 설정인지 되묻게 했고, `Account`는 라우트·아이콘과 같은 낱말이다. ⚠️ **아이콘 둘이 2026-09-11에 바뀌었다**: Projects는 **목록 행 타일과 같은 글리프**(같은 대상을 두 글리프로 가리키지 않는다), 계정 항목은 **헤더 서랍 안 같은 항목과 같은 글리프**(`Settings` 톱니는 프로젝트 설정이 쓰므로 사용자 축과 섞인다). ⚠️ **`New project`가 없다** (8-3) — 라우트는 그대로라 URL로는 열린다. ⚠️ **유저 메뉴도 같은 `Account` 문구를 쓴다** — 한 곳을 가리키는 이름이 둘이면 그중 하나가 낡는다 |
+| **개수 배지** | **넷이다 — `Projects` + 프로젝트 축의 Sources·Translations·Members** (2026-09-27 사용자 — 8-3부터 `Projects` 하나였다. PRODUCT §7.7 결정 5를 뒤집었다). `Projects`는 셸이 이미 조회한 멤버십 배열의 길이이고, 나머지 셋은 **같은 `loadMemberships` 조회의 관계 `_count`**라 둘 다 왕복이 0이다. 거절 근거가 "프로젝트별 집계는 매 페이지 왕복"이었는데 셸 조회에 얹으면 그 근거가 서지 않는다. 값: Sources = 보관 안 된 소스 수 · Translations = **그 소스 전체의** orphaned 아닌 키 합(보고 있는 표면을 따라 바뀌지 않는다 — 사용자) · Members = 목록 행 `memberCount`와 같은 `_count.members`(대기 초대는 안 센다). ⚠️ **`0`도 보인다** — `undefined`와 다르다: 프로젝트가 없다는 사실이 정보이고, 화면이 `badge && …`로 쓰면 0이 falsy라 조용히 사라진다 |
+| **구역 둘** | ⚠️ **축이 둘이라 구역이 둘이다** (PRODUCT §7.7). 순서는 **사용자 축 먼저**(`Projects`·`New project`·`Account` — 2026-09-27에 `New project`가 돌아왔다) → **프로젝트 축**. ⚠️ **라벨이 이름 그대로다** (8-3 — 시안): 사용자 축은 **사용자 이름**, 프로젝트 축은 **프로젝트 이름**. 6b-4의 `Your work` 라벨을 대체했다(8-3은 6a의 프로젝트 스위처도 함께 지웠으나 **2026-09-27에 프로젝트 머리의 메뉴로 돌아왔다** — 아래 "프로젝트 스위처"). 라벨은 `<p data-zone-head>` `text-foreground flex items-center gap-2 p-1.5 text-sm font-medium`이고, 둘째 구역만 `border-t border-border pt-2`. ⚠️ **라벨 앞에 대상의 얼굴이 선다** (2026-09-24 사용자): 사용자 구역은 `Avatar` 16(원, 세션 사진 → 이니셜 폴백), 프로젝트 구역은 `ProjectThumbnail` `size={16}`(라운드 사각 radius **4** — 2026-09-27 사용자, 8이면 반지름이 변의 절반이라 원으로 보여 옆의 사용자 원과 안 갈렸다 · 글리프 12 — 이미지 없으면 이름 색 폴백). 모양이 대상을 말한다(§6.4). ⚠️ **얼굴이 아래 항목 아이콘과 같은 규격이다** (2026-09-25 사용자 — 24 · `px-0.5 py-1`에서 내렸다): 16 · `p-1.5` · `gap-2`가 항목과 같아서 **머리 라벨과 항목 라벨의 시작점이 한 세로선**에 서고 줄 높이도 같은 32다. 중심만 맞추던 옛 판정은 라벨 시작점이 4px 어긋났다. `sidebar-identity.test.tsx`가 그 규격을 고정한다. 썸네일 값은 `loadMemberships`의 `image`가 레이아웃을 지나 `NavProject.image`로 온다. ⚠️ **`<nav>` 둘이 `aria-label`을 든다** — 라벨이 `<p>`라 접근성 트리에서 이름이 아니다 |
+| **프로젝트 스위처** | ⚠️ **2026-09-27에 돌아왔다** (사용자 — 8-3이 "목록 하나로 통일"하며 지웠던 것을 뒤집었다). 프로젝트 구역 머리(`data-zone-head`) **오른쪽 끝**의 `ghost` 정사각 트리거 24(`ChevronsUpDown` 16, `-my-0.5`로 머리 줄 32 유지, 이름 `Switch project`) → **필터 메뉴와 같은 `DropdownMenu`**(새 Popover·combobox 프리미티브 없음 — 사용자), 폭 256. 위에서부터: 테두리 없는 `Input` h-8 `Find project…` + 오른쪽 `Esc` 키 칩(`kbd` `rounded border px-1.5 text-xs` muted) / 구분선 / 프로젝트 행(`ProjectThumbnail` 16 + 이름(`flex-1`) + 보관이면 `/projects` 행 칩과 같은 `Archived` 배지, 지금 프로젝트는 `selected` = `menuitemradio` + **배지 다음** `Check`) — 맞는 것이 없으면 muted 문장 `No projects found` 한 줄 / 구분선 / `Plus` + **`New project`**(LNB 항목·목록 버튼과 같은 사전 키 — 시안의 `Create Project`를 쓰지 않는다). 목록은 **이미 받은 멤버십**이고 조회를 더하지 않는다. **보관도 싣는다**(2026-09-27 사용자) — 순서는 `/projects` 기본 순서를 따라 **보관이 맨 뒤**이고, 나머지는 멤버십 순서(slug 오름차순)다(목록의 `Needs attention`/`All set` 구분은 원격 신호가 필요해 셸이 모른다). 대조는 `/projects` 검색과 같은 trim + 소문자 부분 일치(`lib/shell/switcher.ts`). 행을 고르면 **그 프로젝트의 Home**이다(보던 하위 화면은 역할·구획이 달라 따라가지 않는다). ⚠️ **키보드가 메뉴와 부딪히는 자리다**: 입력의 키는 Esc 말고 메뉴로 올리지 않고(typeahead가 글자를 먹는다), ArrowDown은 첫 항목, Enter는 첫 맞는 프로젝트다. 항목에서 친 글자·Backspace는 입력으로 돌아가 질의를 고치고, 첫 항목의 ArrowUp은 입력으로 간다. Esc는 닫고 트리거로 돌아가며 질의를 비운다. ⚠️ 열리면 포커스가 입력이다 — 입력의 `autoFocus`가 커밋 때 포커스를 두면 Radix `FocusScope`가 이미 안에 포커스가 있는 것을 보고 자기 자동 포커스를 건너뛴다(`project-switcher.test.tsx`가 그 경로를 잰다). ⚠️ 입력의 포커스 링을 끈다(`focus-visible:ring-0`) — 메뉴 머리 안의 테두리 없는 필드라 캐럿이 포커스를 말한다(`locale-panel`의 빈 칸 입력과 같은 형). ⚠️ **포인터가 항목을 지나도 포커스는 입력에 남는다**(항목의 pointermove·pointerleave를 preventDefault — Radix가 포커스 이동을 건너뛴다) — 옮기면 한글 조합의 첫 글자가 `Process` 키로 항목에 떨어진다. hover 면은 `hover:bg-accent`가 그린다. **조합 중 Esc는 조합 취소**이고 메뉴를 닫지 않는다(`onEscapeKeyDown`). 항목이 처리한 Space·Enter는 질의로 옮기지 않는다. ⚠️ **알려진 접근성 한계(수용)**: 검색 입력이 `role="menu"` 안에 있고(메뉴 패턴에 없는 자식), 결과 수를 알리는 live 영역이 없다 — 사용자가 새 combobox 프리미티브 대신 `DropdownMenu` 재사용을 골랐다(2026-09-27). 항목 이름·체크 상태는 menuitemradio가 낭독한다 |
+| 사용자 축 항목 | **Projects**(`Box`, 개수 배지) · **New project**(`Plus` → `/projects/new`, 배지 없음) · **Account**(`CircleUser` → `/account`). ⚠️ **셋 다 `exact`다** — `/projects`가 `/projects/new`의 접두라 접두로 재면 새 프로젝트 화면에서 둘이 함께 선택된다. ⚠️ **라벨이 2026-09-23에 `Settings`에서 바뀌었다**(사용자) — 시안(8-3)은 `Settings`였으나 같은 사이드바의 `Project settings`와 축만 다른 동의어라 어느 설정인지 되묻게 했고, `Account`는 라우트·아이콘과 같은 낱말이다. ⚠️ **아이콘 둘이 2026-09-11에 바뀌었다**: Projects는 **목록 행 타일과 같은 글리프**(같은 대상을 두 글리프로 가리키지 않는다), 계정 항목은 **헤더 서랍 안 같은 항목과 같은 글리프**(`Settings` 톱니는 프로젝트 설정이 쓰므로 사용자 축과 섞인다). ⚠️ **`New project`가 `Projects` 바로 아래에 선다** (2026-09-27 사용자 — 8-3의 "사이드바에 없다"를 뒤집었다). 글리프는 목록의 [New project] 버튼과 같은 `Plus`다 — 한 행동을 두 글리프로 가리키지 않는다. ⚠️ **유저 메뉴도 같은 `Account` 문구를 쓴다** — 한 곳을 가리키는 이름이 둘이면 그중 하나가 낡는다 |
 | 프로젝트 축 항목 | **Home**(`House`) · **Sources**(`Files`) · **Translations**(`Languages`) · **Members**(`Users`) · **Logs**(`History`) · **Project settings**(`Settings`, `project:settings` 역할만). Sources가 Translations 앞이다 — 소스 구성·언어 상태를 확인한 뒤 번역으로 간다. |
 | 활성 판정 | ⚠️ **규칙이 축이 아니라 항목에 붙는다** (6b-6 — `NavItem.exact`). **접두인 것 셋**: Sources·Translations·Members·Project settings 중 하위 경로가 있는 것들. **정확히 일치인 것**: Home(`/projects/<slug>`는 그 프로젝트 **모든** 하위 라우트의 접두다) · **Logs**(하위 라우트가 없다 — `?cursor=`는 쿼리다) · Projects(`/projects`가 `/projects/new`의 접두다) · Account |
-| 하단 전역 | **Docs**(`CircleHelp` → `/docs`) · **Sign out**(`LogOut`). 라우트가 아니라 "앱을 벗어나는 것"이라 구역 밖 `mt-auto`다. ⚠️ **`<nav>`가 아니다** — 둘의 성격이 갈려(문서 링크 / 폼 제출) 하나로 묶을 이름이 없다. ⚠️ **라벨이 그 화면의 제목과 같은 키다**(`m.publicDocs.docs.title`) — 2026-09-11까지 `nav.help: "Help"`로 갈려 있었고, 같은 라우트를 가리키는 라벨이 둘이면 하나가 낡는다. 그 화면의 본문은 2026-09-24에 섰다(L2.3). ⚠️ **Collapse는 사라졌다** |
+| 하단 전역 | **Release notes**(`Compass` → GitHub Releases, 새 탭) · **Docs**(`CircleHelp` → `/docs`). 라우트가 아니라 "앱을 벗어나는 것"이라 구역 밖 `mt-auto`다. ⚠️ **Sign out이 없다** (2026-09-27 사용자) — 로그아웃은 헤더 사용자 메뉴 하나에만 있다. ⚠️ 아이콘 둘이 사용자 메뉴의 같은 항목과 같다(Docs는 LNB의 기존 `CircleHelp`로 두 곳을 맞췄다). ⚠️ **`<nav>`가 아니다** — 구역 밖 전역 링크라 이름 붙은 landmark를 하나 더 세우지 않는다. ⚠️ **라벨이 그 화면의 제목과 같은 키다**(`m.publicDocs.docs.title`) — 2026-09-11까지 `nav.help: "Help"`로 갈려 있었고, 같은 라우트를 가리키는 라벨이 둘이면 하나가 낡는다. 그 화면의 본문은 2026-09-24에 섰다(L2.3). ⚠️ **Collapse는 사라졌다** |
 | 콘텐츠 패널 | `components/shell/content-panel.tsx` — **`<main>`**이고 `flex min-w-0 flex-1 flex-col **overflow-hidden** rounded-xl border border-border-subtle bg-background shadow-low`. ⚠️ **스크롤이 패널이 아니라 본문에 있다** (2026-09-11) — 패널이 통째로 스크롤하면 제목·툴바가 콘텐츠와 함께 올라가는데 그 둘은 "지금 보고 있는 것이 무엇인지"를 말한다. 형제 둘이 그것을 가른다: **`PanelHeader`**(`shrink-0`) · **`PanelBody`**(`min-h-0 flex-1 overflow-y-auto`). `head` prop이 아닌 이유는 라우트 넷 중 셋이 패널을 **레이아웃**에서 드는데 레이아웃은 페이지 props를 못 받아서다. 여백과 폭 상한은 **§5.15가 정본이다** — 둘 다 그 프리미티브가 들고 화면이 적지 않는다(⚠️ **폭 상한은 안쪽 래퍼가 든다** — 스크롤 컨테이너에 직접 주면 좁아져 스크롤바가 콘텐츠 옆에 생긴다). ⚠️ **본문 랜드마크를 이것이 든다 — 화면은 자기 `<main>`을 만들지 않는다**(라우트당 하나가 구조로 보장된다. 8-2에서 `/projects`가 실제로 그것을 잃었다). ⚠️ **넷이 함께 있어야 패널이 뜬다**(흰 배경·radius·border·그림자) — 8-1b가 그중 몇을 한꺼번에 잃고도 "그럭저럭" 보여서 못 알아챘다 |
 
 **스크롤은 사이드바와 콘텐츠 패널이 각자 자기 안에서 든다**(둘 다 `overflow-y-auto`), 콘텐츠 패널엔
@@ -700,7 +714,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | **시각 바** | `::after` **4px**(`after:w-1`), 스트립 한가운데(`after:left-1/2 after:-translate-x-1/2`), 위아래 끝이 페이드(`after:bg-gradient-to-b after:from-transparent after:via-ring after:to-transparent`) |
 | **색** | ⚠️ **`via-ring`이다 — 원본의 `via-blue-300`이 아니다.** blue-300은 리포 전수 0건의 **미등재 raw 색**이고, `app/globals.css`가 그것을 **흰 배경 1.80:1이라 목측 뒤 버린** 색으로 기록하고 있다. 같은 색을 뒷문으로 들이지 않는다. `--ring`(blue-400)은 이미 등재된 토큰이라 **§6.2에 색이 늘지 않는다** |
 | **표시 트리거** | ⚠️ **React state가 아니라 `data-*`다.** 라이브러리가 DOM에 쓰는 `data-resize-handle-state`(`inactive`/`hover`/`drag`)를 CSS가 직접 읽는다: `after:opacity-0 data-[resize-handle-state=hover]:after:opacity-100 data-[resize-handle-state=drag]:after:opacity-100` |
-| **폭** | ⚠️ **핸들이 부모의 `gap-*`을 흡수한다.** flex `gap` **안에** 핸들을 형제로 끼우면 간격이 `gap + 핸들 + gap`으로 늘어난다. 그래서 부모의 `gap`을 떼고 핸들이 그 폭의 투명 스트립이 된다. **둘 다 `w-2`(8)다** — 셸은 옛 `gap-2`와 같아 간격이 그대로이고, **모달 ②는 옛 `gap-4`(16)에서 8로 좁혔다**(2026-09-14 사용자 확정). ⚠️ **`files.tsx`의 `FILES_PANEL_WIDTH = 736 − 8`이 이 값을 따라간다** — 16으로 두면 좌측 기본이 240이 아니라 242로 서고, 그 3px은 화면에서 안 보인다 |
+| **폭** | ⚠️ **핸들이 부모의 `gap-*`을 흡수한다.** flex `gap` **안에** 핸들을 형제로 끼우면 간격이 `gap + 핸들 + gap`으로 늘어난다. 그래서 부모의 `gap`을 떼고 핸들이 그 폭의 투명 스트립이 된다. **둘 다 `w-2`(8)다** — 셸은 옛 `gap-2`와 같아 간격이 그대로이고, **모달 ②는 옛 `gap-4`(16)에서 8로 좁혔다**(2026-09-14 사용자 확정). ⚠️ **`files.tsx`의 `FILES_PANEL_WIDTH = 960 − 8`이 이 값을 따라간다** — 16으로 두면 좌측 기본이 240이 아니라 242로 서고, 그 3px은 화면에서 안 보인다 |
 | **히트 영역** | ⚠️ **CSS가 아니다.** 라이브러리가 document의 pointermove에서 핸들 rect에 마진을 얹어 판정한다(기본 `fine: 5px` / `coarse: 15px`). 그래서 시각 4px이어도 잡히고, `hitAreaMargins`를 **덮지 않는다** |
 | **커서** | ⚠️ **핸들에 `cursor-*`를 쓰지 않는다.** 드래그가 시작되면 라이브러리가 `document.head`에 `<style>`을 꽂아 `*{cursor: ew-resize !important}`를 건다 — 포인터가 핸들을 벗어나도 커서가 유지되는 이유가 이것이고, 클래스는 먹지도 않으면서 "여기가 커서의 출처"라는 거짓 단서만 남긴다 |
 | **포커스** | 핸들은 `role="separator" tabindex="0"`이라 포커스를 받는다 — §7의 링 셋을 그대로 든다. ⚠️ **접근 이름을 붙인다**(`m.common.resizeSidebar` · `m.newProject.files.resize`) — 라이브러리는 이름을 만들어 주지 않아 스크린리더가 "separator"로만 읽는다 |
@@ -709,8 +723,8 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 
 ⚠️ **`minSize`·`defaultSize`·`maxSize`는 % 전용이다** (v2에 px 짝이 없다). 셸은 그룹 폭이 뷰포트를
 따르므로 **`ResizeObserver`로 재고 px→%로 환산한다**(`lib/shell/panel-size.ts` — 순수 함수) —
-고정 %를 박으면 2560 디스플레이에서 LNB가 486px이 된다. 모달 ②는 **그룹 폭이 항상 728**이라
-(`max-w-[800px]` − `px-8` 64 − 핸들 8) 재지 않고 모듈 상수로 굳힌다.
+고정 %를 박으면 2560 디스플레이에서 LNB가 486px이 된다. 모달 ②는 **그룹 폭이 항상 952**라
+(`max-w-[1024px]` − `px-8` 64 − 핸들 8) 재지 않고 모듈 상수로 굳힌다.
 
 ⚠️ **분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다** — 라이브러리는 패널에 `flex-basis: 0` +
 `flex-grow: <size>`를 걸고 핸들은 **자기 폭을 가진 별도 flex 항목**이다.
@@ -745,49 +759,112 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 카드 폭 **640 미만**에서 라벨은 값 위(간격 6), 필드는 남는 폭, 보조 문구는 아래, 사실 행 버튼은 본문
 아래로 옮긴다. 머리 설명도 제목 아래로 내려간다. 뷰포트 분기는 추가하지 않는다.
 
-### 6.61 공개 장문 문서 (`/privacy`·`/docs`) — 셸 밖 1열 (2026-09-19, launch-readiness L2.0)
+### 6.61 문서 (`/docs/*`) — 공개 셸 + 문서 내비 + 읽기 그릇 (2026-09-26, 시안 `Docs.dc.html` 1a–1d)
 
-**시안이 없다.** `public-doc.tsx`의 옛 주석이 가리키던 "8-1b 시안"은 존재한 적이 없고, 그래서
-**이 절이 그 화면의 정본이다** — 여기 표를 고치는 것이 시안을 고치는 것이고 구현이 따라간다
-(POSTMORTEM 2026-09-15 "시안 없이 만든 화면이 네 곳에서 어긋났고 4,039개가 green").
+**Claude Design 핸드오프가 정본이다**(`Docs.dc.html` 1a 개요 · 1b 일반 문서 `/docs/setup/workflow` · 1c 장 개요 `/docs/translate` · 1d 404,
+피드백 1회 반영본). 셸은 §6.615의 공개 셸 그대로이고, 읽기 그릇은 §6.616(`/privacy`)과 같다 — 이 절은 **내비·원고 요소·개요**만 정한다.
+2026-09-19~26의 셸 밖 1열(`components/public-doc.tsx` · 복귀 링크 · 사전 본문)은 이 절이 대체했다.
 
-⚠️ **본문은 사전(`messages/en.tsx`)이 든다 — 마크다운 파일로 빼지 않는다.** 클라이언트 번들에 실리는 대가가 있지만, 빼면
-`no-korean-ui`·`brand-spelling` 스캔과 방침 게이트(ARCHITECTURE §6.035)의 대상 밖으로 나간다.
-
-**읽는 화면이지 조작하는 화면이 아니다.** 셸 밖이고 패널도 카드도 없다 — §6.62의 2열 골격을
-가져오지 않는다(그쪽은 폼이 주인공이고 우측이 장식이다). 골격은 본문 한 컬럼과 나가는 링크
-하나이고, **그 컬럼 안에 서는 표면은 표 하나뿐이다**(2026-09-19 privacy — 수집 항목과 쿠키를 문단으로
-접을 수 없다). 조작 어포던스는 여전히 0이다 — 표에도 hover 강조를 주지 않는다.
+⚠️ **본문은 `guide/**.md`다 — 2026-09-19의 "마크다운 파일로 빼지 않는다"를 뒤집었다**(2026-09-26 사용자). 그때의 근거는 둘이었고 둘 다 해소됐다:
+① `no-korean-ui`·`brand-spelling`·`terminology` 스캔의 대상 밖으로 나간다 → 세 게이트가 **SUMMARY에 오른 md**를 훑는다(`ROOTS` 확장 — `lib/guide/__tests__/helpers/served.ts`).
+② 클라이언트 번들에 실리는 대가 → 원고는 **서버에서** 렌더한다(react-markdown은 서버 컴포넌트 안이고 클라이언트 잎은 Copy·내비 현재 표시·옛 해시·404 주소 넷뿐이다).
+방침(`/privacy`)은 그대로 사전에 산다 — 개정 이력 게이트(ARCHITECTURE §6.035)가 사전을 해시한다.
 
 | 요소 | 규칙 |
 |---|---|
-| 골격 | `main` 한 겹 · `mx-auto max-w-2xl px-8 py-12` · `min-h-svh`. ⚠️ **세로 중앙 정렬을 쓰지 않는다** — placeholder 시절의 `justify-center`는 한 문단짜리라 참이었고, 절이 여럿인 문서에서는 **첫 화면이 문서 중간부터 시작한다.** 위에서 시작한다 |
-| 제목(`h1`) | `text-2xl font-medium` — 셸 밖 제목 규칙(§4, §6.62의 `h1`과 같은 급). ⚠️ **`text-lg`에서 올라왔다**(2026-09-19) |
-| 시행일 | **선택 — `/privacy`만 쓴다.** `h1` 바로 아래·도입 문단 **위**에 `라벨 + <time dateTime="YYYY-MM-DD">` 한 줄, 라벨은 `Effective date`, 급은 `text-muted-foreground text-sm`. ⚠️ **본문의 muted 금지가 이 줄에는 안 걸린다** — 읽으라고 만든 글이 아니라 메타 줄이라 보조 색이 맞다. ⚠️ **날짜 포맷터를 새로 만들지 않는다** — 사전이 든 `"2026-09-19"`를 그대로 보이고 같은 문자열을 `dateTime`에 넣는다(`lib/utc-time.ts`의 `utcMinute`은 분까지 내므로 안 맞는다). ⚠️ **이 줄은 `<section>` 밖이라 본문 링크 규칙(`[&_a]:`)이 안 걸린다** — 색이 다르다고 고치지 않는다. 도움말(`/docs`)에 시행일은 의미가 없어 없으면 아무것도 그리지 않는다 |
-| 도입 문단 | `h1` 바로 아래 한 문단(선택). 절 제목 없이 문서 전체를 한 줄로 말한다 |
-| 절 제목(`h2`) | `text-base font-medium` + **`id`가 필수다** — `/docs#workflow`처럼 **다른 화면이 절을 직접 가리킨다**(L2.3의 설정 화면 링크). `id`는 사전의 데이터이지 제목에서 파생하지 않는다(문구를 고치면 남의 링크가 죽는다) |
-| 본문 | `text-sm leading-6 text-foreground`. ⚠️ **`text-muted-foreground`를 쓰지 않는다** — 그 색은 라벨·보조 줄의 색이고, 한 화면이 통째로 그 색이면 **읽으라고 만든 글이 부차적으로 보인다.** 장문에서만 `leading-6`을 쓴다(기본 행간은 표·라벨 기준이라 문단에는 좁다) |
-| 문단 사이 | `space-y-3`, 절 사이 `space-y-8` — 절의 경계가 제목 굵기가 아니라 **빈 자리**로 읽혀야 한다(쓰는 weight가 400·500 둘뿐이라 §4) |
-| 목록 | `<ul>` `list-disc pl-5` + 항목 사이 `space-y-1`. 법적 문서의 열거는 문단으로 접지 않는다 |
-| 표 | `components/ui/table.tsx` 재사용 + **`scrollable={false}` + 그릇이 스크롤 `div`를 직접 든다**(온보딩 ②와 같은 형, §6.643) — ⚠️ **컨테이너 자체는 필수다**: 바깥에 스크롤을 받을 것이 없는 유일한 화면이라 없으면 3열 표가 페이지를 가로로 밀고 중앙 정렬 본문까지 어긋난다. **프리미티브의 래퍼를 안 쓰는 이유는 그것이 `role`·`aria-label`을 안 받아서다** — 한 소비자를 위해 프리미티브의 API를 넓히지 않는다. 그 `div`에 `role="region" tabIndex={0} aria-label`(표 안에 포커스 가능한 것이 없어 컨테이너가 직접 받는다 — 키보드로 가로 스크롤할 길이 그것뿐이다). ⚠️ **같은 이름을 `<table>`에도 준다** — 래퍼의 이름은 랜드마크의 이름이고 **스크린리더의 표 목록은 `<table>` 자신의 이름을 읽는다**(2026-09-19 CDP 실측: 래퍼에만 걸었을 때 `role=table, name=""`이었다). 열 머리는 **`Th`가 아니라 `TableHead`** + `scope="col"`을 그릇이 직접 박는다: `Th`의 `sticky`는 스크롤 컨테이너가 표 자신뿐이라 무의미하고, `bg-muted/50` + `text-foreground/60`은 **§2.2·§7에 AA 미달로 등재된 조합**이라 법적 고지에 심을 자리가 아니다. 배경은 불투명 `bg-primary-foreground`. **`TableRow`의 hover 강조는 되누른다.** ⚠️ **좁은 폭에서는 표가 자기 컨테이너 안에서 가로 스크롤한다** — 1차 독자가 초대 링크를 폰에서 여는 비개발자이고 320px에서 본문 폭이 256px다(§5의 "최소 1280"은 셸의 `min-w-[1280px]`에 걸린 규칙이라 이 화면에는 없다) |
-| 본문 안 링크 | `text-blue-600`, **밑줄·글리프 없음**(§6.3 셸 밖 규칙). ⚠️ **클래스는 래퍼의 `[&_a]:` 변형이 건다** — 사전(`messages/en.tsx`)은 잎이라 컴포넌트를 import할 수 없어 `<a>`를 맨몸으로 내놓는다. 리포 밖으로 나가는 링크는 사전이 `target`·`rel`을 직접 단다 |
-| 복귀 링크 | 본문 **아래** 한 줄, `text-blue-600`. ⚠️ **세션으로 갈린다** — 로그인 상태면 `/projects`("Back to projects"), 아니면 `/signin`("Back to sign in"). 사이드바 `CircleHelp`→`/docs`(§6.5)로 들어온 사람에게 "Back to sign in"만 주면 **나가는 길이 로그아웃처럼 보인다.** 세션을 못 읽는 장애(`unavailable`)는 `/signin` 쪽이다 — 공개 문서가 세션 장애로 안 열리는 것이 더 나쁘다 |
-| 새 색 | **0이어야 한다** — 이 화면이 §6.2에 더하는 raw 색은 없다 |
+| 셸 | 공개 셸 그대로(§6.615). 헤더 Docs는 `aria-current="page"`만(`current: "docs"`) · CTA는 `publicCta`. ⚠️ **셸이 레이아웃(`app/docs/layout.tsx`)에 있는 유일한 공개 화면이다** — 내비가 페이지 이동에 스크롤·포커스를 남겨야 해서다. 대신 **본문 스크롤러는 페이지가 든다**(`PublicShell`의 `bare` + 페이지의 `PublicScroller key={slug}`) — 페이지마다 재마운트되어 맨 위에서 시작하고 포커스를 받는 §6.615 규칙이 그대로 선다 |
+| 패널 | 내비 264(p16 · 오른쪽 선 `--border` · 제 안에서 스크롤) + 본문 스크롤러. 스크롤러 안은 **Privacy 그릇 그대로** — 본문 720 + 목차 200 · 사이 64 · 최대 1064 가운데 · 위 64 아래 120(`components/docs/doc-frame.tsx`) |
+| 내비 | `nav` 이름 `Docs` · SUMMARY 2단 · 전부 펼침. 장 이름은 링크(14/500 foreground), 하위는 들여쓰기 20(14/400 muted). 현재 페이지 = **면**(`--muted` · 500 · `aria-current="page"`). 행 min-h 32 · radius 8 · 장 사이 12 · hover는 **글자색만**. ⚠️ **현재 판정은 클라이언트 잎(`nav-link.tsx`, `usePathname`)이 정확히 일치로 한다** — 레이아웃은 하위 params를 못 받고, 접두로 켜면 개요가 모든 페이지에서 켜진다. 404는 어느 행과도 같지 않아 현재 표시가 저절로 없다 |
+| 목차 | **H2만**, 평탄(`extractToc`). 현재 절 = **선**(왼쪽 1px foreground + 글자 foreground). 컴포넌트는 `/privacy`와 **한 벌**이다(`components/public-doc-toc.tsx` — 제목·항목을 prop으로 받는다, 판정은 `lib/public-doc/toc.ts`의 `currentSection`). **H2가 둘 미만이면 숨기고 열만 비운다** — 본문 폭이 페이지마다 흔들리지 않는다 |
+| h1 위 줄 | 장 이름(13 muted, 링크 아님) — SUMMARY의 부모(`flattenNav`의 `parent`). 장 개요·개요 페이지엔 없다 |
+| 본문 급 | h1 36/1.3/600 · h2 24/1.4/600 위 56 · h3 18/1.5/500 위 32 · 본문 `text-prose` 16/1.75 · 목록 gap 8 · 굵게 **500**(`strong` → `font-medium` — 브라우저 기본 700은 §4 굵기 규칙 밖이다) · hr 1px `--border` 위아래 40 · 인라인 코드 mono 0.875em `--muted` radius 6 · 패딩 2/6(§4.1의 예외 — 아래) · **도입 문단(h1 바로 뒤)은 위 20**(본문 문단 16과 다르다 — 그릇 `article`의 `[&>h1+p]:mt-5`가 누른다, 404 포함) · 본문 muted 금지(§6.616과 같다) |
+| 앵커 | 원고의 `## Heading {#id}`가 `id`가 된다(remark 플러그인 `lib/guide/remark.ts` — 표식은 글자에서 뗀다). **모든 H2에 필수**(구조 게이트) · 문자 집합 `[a-z0-9-]`. h2는 `scroll-mt-12` + `tabIndex={-1}` — **해시 착지는 대상 h2가 포커스를 받는다**(`PublicScroller`가 마운트 때 해시 대상이 `tabindex`를 들면 그것을, 아니면 자기를 포커스한다) · 목차 클릭은 §6.616과 같다 |
+| 링크 | 본문 링크는 내부든 외부든 `text-blue-600` · 밑줄 없음 · **포커스 링 셋**(§7 — 옛 1열 그릇의 `[&_a]:`는 링이 없었다). 원고의 상대 `.md`는 `/docs/<slug>#anchor`로 바뀌고(`resolveDocLink`) `next/link`로 선다. 외부는 `target="_blank" rel="noreferrer"`. ⚠️ **`urlTransform`을 덮지 않는다** — 기본값이 `javascript:`를 걷는다(리포가 public이라 원고 PR이 신뢰 경계다). **`rehype-raw` 없음** — 원고의 raw HTML은 실행되지 않고 **글자로** 나간다(react-markdown 10). 그래서 원고의 HTML·섞인 이미지·링크 이미지·각주·SUMMARY 셋째 단은 게이트(`lib/guide/rules.ts`)가 red로 막는다 — `skipHtml`로 조용히 버리지 않는다 |
+| 코드 블록 | 카드(선 · radius 12). **파일명이 있으면**(펜스 메타 `title="…"`) 바 40(흰 면 · 아래 `--divider`) + Copy 28, **없으면 바 없이** Copy가 본문 오른쪽 위(top 8 · right 8)에 늘 뜬다(본문 오른쪽 여백 88). 본문 mono 13/1.7(`text-mono`) · 가로 스크롤 · 문법 강조 없음. `<pre>`가 `tabIndex={0}` + region 이름(파일명 또는 `Code`) + 링 — 표와 같은 이유다. Copy → 2초간 `Copied`, 최소 폭 66. 토스트 없음. ⚠️ **알림은 버튼의 `aria-live`가 아니라 옆의 visually-hidden live region이다**(처음부터 DOM에 선다 — 버튼 이름이 바뀌는 것만으로는 안정적으로 읽히지 않는다). `CopyButton`(온보딩)을 쓰지 않는 것은 되돌림·live region 때문이다 |
+| 주의 | md `>` → `Alert` info 한 형(선 · radius 12 · p16 · info 16 · 14/1.6). 경고형 없음 |
+| 표 | Privacy 표 그대로 — `DocTableFrame` + 같은 급(`DOC_TABLE` — 머리 흰 면 10/16 · 13/500 muted · 셀 14/1.6 · 자간 0.015em). region과 `<table>` **양쪽에** 이름 = **가장 가까운 앞선 헤딩**(`tableLabel` — 한 페이지 안 중복 0은 게이트). 칸은 react-markdown이 그리고 틀만 공유한다. ⚠️ `TableRow`의 hover 강조는 되누른다(읽는 화면) |
+| 스크린샷 | 액자 = 랜딩 목업 고정 상태(`--border-subtle` · radius 12 · `shadow-low`) · 본문 720 가득 · `loading="lazy"`. **원본 크롭 폭 ≤ 850 CSS px**(2x = 1700px — 앱 13px가 720 칸에서 11px 이상). 확대 보기 없음 · 로드 실패 상태 없음(브라우저 기본). **캡션은 선택**(md 이미지 제목 → 13 muted · 위 12) — alt는 보이는 상태, 캡션은 할 일. 이미지만 든 문단은 `<p>` 없이 `<figure>`로 선다(`<p>` 안 `<figure>`는 잘못된 HTML이다). 치수는 SHOOTING 에셋 표가 정본이다 |
+| 이전/다음 | 본문 끝 위 64 · 선 뒤 반반 카드(p16 · 라벨 13 muted · 제목 15/500) · `nav` 이름 `Previous and next pages`. SUMMARY 선위 순서, 장 경계를 넘는다. 개요엔 없다 |
+| 개요(1a) | h1 + 도입 + **두 갈래 카드**(대상 13 muted `For developers`/`For translators` · 제목 18/500 · 설명 14 muted → 장 개요로 / 아래 행 셋 44 → 그 장의 첫 할 일 · 머리 ↔ 첫 행 선 `--divider`, 행 ↔ 행 `--border` · 행 끝 `→`) + `More in the docs` h2 + 아래 16에 나머지 장 목록 카드(행 p16 · 제목 15/500 · 설명 14 muted · **화살표 없음**). 목차 열은 비운다. **갈래는 `lib/guide/overview.ts`의 상수**(편집 판단이라 SUMMARY에서 파생하지 않는다) · 나머지 = 갈래에 없는 최상위 장 전부 |
+| 장 개요(1c) | h1 + 도입 + (선택) 본문 + 하위 페이지 목록 카드(행 p16 = 제목 15/500 · 설명 14 muted · `→`) + 이전/다음. 목차 없음. **하위 목록은 원고가 아니라 SUMMARY 자식에서 붙는다** |
+| 설명의 출처 | 카드·행의 설명 = 그 페이지의 **도입 문단**(H1 바로 다음 첫 문단 — `leadParagraph`). 시안 문구는 자리값이다 |
+| 옛 해시 | `/docs#<old>`(사전 본문 시절의 절 일곱)는 개요의 클라이언트 잎(`legacy-hash.tsx`)이 `legacyAnchorTarget`으로 새 페이지에 `router.replace`한다 — 해시는 서버에 오지 않는다 |
+| 404(1d) | 셸·내비 안(`app/docs/not-found.tsx`). 내비 현재 표시 없음 · 목차·이전/다음 없음. 위 줄 `404` · h1 `This page doesn't exist` · **한 문단** `There's no page at <주소>. Pick a page from the list, or start from the docs overview.` — 주소는 인라인 코드(클라이언트 잎 `usePathname` — `not-found`는 params를 못 받는다), `docs overview`가 문장 안 링크다. 없는 slug · `AUTHORING` · `SHOOTING`이 여기로 온다. `/docs` 밖 404는 이 화면을 쓰지 않는다 |
+| 화살표 | 행 끝 글리프 `→` · `neutral-400`(등재 값 — lucide 아이콘이 아니다) · `aria-hidden` |
+| hover | 행·카드 `foreground/3`(헤더와 같다) · 내비는 글자색만 |
+| 폰 폭 | 반응형 없음 — 셸 `min-w-[1280px]`, 가로 스크롤(§6.616과 같다). 옛 1열의 320px 규칙은 사라졌다 |
+| 새 색 | **0** — 등재된 `blue-600`(§6.3)과 토큰뿐. `#404040`·`#fafafa`는 시안 1차 피드백으로 걷었다 |
 
-⚠️ **내용은 사전이 데이터로 든다** — `{ id, heading, blocks }`이고 `blocks`는 문단·목록·표 셋이다.
-그릇이 마크업과 클래스를 전부 들므로 **사전에 클래스가 새지 않는다**(§10과 같은 경계: 사전은 문구,
-그릇은 형).
+### 6.615 랜딩 (`/`) — 공개 셸 + 스크롤 구동 목업 (2026-09-26, 시안 `Landing.dc.html` 1a–1g · 2026-09-27 목업 재작업)
+
+⚠️ **공개 셸은 랜딩과 `/privacy`(§6.616)·`/docs/*`(§6.61)가 공유한다** — 아래 셸·헤더·푸터·키보드 행이 세 화면의 규칙이고, 나머지 행은 랜딩 전용이다.
+
+**구현된 화면이라 코드(+ 이 절)가 정본이다** — Claude Design 핸드오프(`Landing.dc.html` · `Landing Prototype.dc.html`, 2026-09-26 동결)는 첫 구현
+동안만 정본이었다. ⚠️ **목업의 정본은 제품이다**(2026-09-27 사용자 — *"목업의 모든 씬은 제품과 1:1"*): 캔버스 안의 씬은 실제 셸·번역 작업
+화면·Publish 모달의 **정적 복제**이고, 둘이 다르면 목업이 틀린 쪽이다(목업과 앱이 다른 말을 하면 랜딩이 거짓이다). 옛 목업엔 LNB의 계정 구역과
+번역 화면의 소스 트리가 없었다. 보는 사람은 **늘 비로그인**이다(`ok`는 `/projects`로 redirect — 2026-09-10 결정).
+
+| 요소 | 규칙 |
+|---|---|
+| 셸 (`components/public-shell/` — `PublicShell({ cta, current })`) | ⚠️ **route group 레이아웃으로 만들지 않는다** — 페이지마다 셸을 그려야 이동 때 스크롤러가 다시 마운트되어 스크롤이 맨 위로 가고 포커스도 다시 받는다. 스크롤러 표식은 `data-public-scroller`(랜딩 스테이지와 `/privacy` 목차가 `closest`로 찾는다). 루트 `h-svh min-w-[1280px] overflow-hidden bg-canvas px-2 pt-2` · 헤더 40 + 8 · 패널 · 푸터 40. 패널 = `(vw − 16) × (vh − 96)` — 윗변 56이 앱 셸 `ContentPanel`과 같다. 패널은 두 겹(바깥 `<main>` 표면 `rounded-xl` 16 · 안쪽 스크롤러) · **문서는 스크롤되지 않는다** — 세로 스크롤은 스크롤러 하나다. `body`에 `--canvas`를 칠한다(오버스크롤 흰 띠) |
+| 헤더 | 로고 32 · `nav` `Home · Docs · GitHub`(14/400 · 6/10 · radius 8 · hover `foreground/[0.03]`) — **선택 상태를 그리지 않는다**, `aria-current="page"`만이고 **그것도 `current`를 받은 화면(랜딩 = `home`)에서만 선다** — `/privacy`는 셋 어디에도 없어 current 0이다. 우측 primary `md` — **페이지가 `publicCta`(`lib/auth/landing.ts`)로 정한다**: `ok` → `Open Malmoi`·`/projects`, `none`·`unavailable` → `Get started`·`/signin`. 랜딩은 `ok`에서 안 그려져 늘 `Get started`다. ⚠️ **헤더는 세션을 직접 읽지 않고, `publicCta`는 라벨을 사전 **키**로 준다**(그 모듈이 잎이라서). GitHub는 새 탭·글리프 없음(§6.3) |
+| 푸터 | `© 2026 Malmoi · GitHub · Privacy Policy · Docs` — **`/signin`·초대·계정 병합과 같은 컴포넌트다**(`PublicFooter` — 2026-09-26부터 셸 밖 2열도 두 패널 아래에 그린다, §6.62). 목록은 `lib/links.ts` 한 상수다. 시안의 `Docs · Privacy Policy` 순서는 피드백으로 넘겼다 |
+| 키보드 | 스크롤러가 `tabIndex={-1}` + 마운트 때 `focus({ preventScroll: true })`를 받는다 — 문서가 스크롤되지 않아 body 포커스로는 Space/PageDown이 아무것도 안 민다. ⚠️ **대가: 첫 Tab이 헤더를 건너뛴다**(포커스가 이미 패널 안이다) — 헤더는 Shift+Tab으로 닿는다. 2026-09-26 리뷰에서 수용했다. ⚠️ **body로 빠진 포커스를 되찾는다** — 헤더·푸터의 빈 곳을 누르면 포커스가 body로 가 키보드 스크롤이 다시 죽었다(2026-09-26 디자인 감사). 문서 `focusout`에서 `relatedTarget`이 없고 이동이 끝난 뒤 `activeElement`가 body면 스크롤러가 `preventScroll`로 되받는다 — 다른 요소로 옮긴 포커스는 건드리지 않는다 |
+| 히어로 · 마무리 CTA | h1·h2 **`text-5xl`(48) · 600** · 행간 1.1 · 자간 −0.015em(크기 토큰, §4) · 서브 `text-lg`(18) · 400 · 1.6 · `max-w-[44em]`(CTA `40em`) · 간격 20. 히어로 위 여백과 히어로 → 트랙 간격이 **120**. ⚠️ **마무리 CTA는 섹션 자신의 padding-block 240**(`py-60` — 2026-09-27 사용자, 120의 두 배. 이웃의 margin으로 만들지 않는다). 버튼은 전부 `lg`(셸 밖 전용, §6.4) — 히어로 `Docs`(default) + `Get started`(primary), 마무리 CTA **`GitHub`(default) + `Get started`(primary)**(2026-09-27). GitHub는 `<a>` + `buttonClass` · `GITHUB_REPO_URL` · 새 탭 · `rel="noreferrer"` · 외부 링크 글리프 없음(§6.3) — `ButtonLink`는 `next/link`라 쓰지 않는다 |
+| CTA 선행 아이콘 | **랜딩 CTA 버튼마다 하나**(2026-09-27 사용자) — `Docs`는 **앱 셸 `Docs` 항목과 같은 글리프**(`navFooterItems`의 `docs` 아이콘을 읽는다 — 지금 `CircleHelp`. LNB·아바타 메뉴와 한 어휘다) · `Get started` `LogIn`(행선지가 `/signin`) · `GitHub` `GithubMark`(`components/sources/github-mark.tsx` — lucide 1.37엔 브랜드 글리프가 없고 그 파일이 리포의 유일한 GitHub 마크다) · 공개 헤더 primary `Get started` `LogIn` / `Open Malmoi` `Box`(행선지 `/projects` — 사이드바 `Projects`와 같은 글리프). 크기·간격은 `Button`의 svg 슬롯(16 · gap 8)이 정하고 아이콘에 `size-*`를 주지 않는다. 전부 `aria-hidden`. ⚠️ **헤더 내비 링크 셋(Home · Docs · GitHub)은 글자만이다** |
+| 목업 캔버스 | **고정 논리 1440×810**(2026-09-27 사용자 — **1440 폭 창에서 본 제품**이다. 810은 1440×900 화면에서 브라우저 크롬을 뺀 뷰포트 ≈16:9), 안은 실제 앱 px. transform 하나(`translate3d · scale`)로 맞춘다. `scale = min((W − 2·side)/1464, (H − 2v − 44)/834, 1)` — 1464·834는 베젤 12를 두른 크기, `side = clamp(24, 0.04·W, 64)`(좌우 여백), `v = clamp(16, 0.02·H, 32)`, W·H는 스크롤러 `clientWidth/Height`. **배율은 폭이 정하고 1을 넘지 않는다**(1440 창에서 ≈0.9 — 공개 셸·여백만큼 실제 앱보다 작은 것이 의도다). 세로가 모자라면 세로가 정한다 — 고정 재생 동안 스테이지가 뷰포트를 가지므로 넘치면 목업 아래가 잘린다. 수학은 `lib/landing/stage.ts`(잎) |
+| 배율 표 | 1280×800 → **0.751**(세로) · 1440×900 → **0.870**(세로 — 폭 기준은 0.894) · 1920×1080 → **1**(상한) · 2560×1440 → **1**. 1280×800의 목업 글자 ≈10.5px를 받는다 — 읽혀야 할 문장은 캡션이 든다 |
+| 베젤 · 화면 | ⚠️ **스크롤 구동 확대가 없다**(2026-09-27 사용자 — 옛 대기 0.8배 → 맞춤 트윈과 베젤 → 화면 교차를 걷었다). 베젤은 **옛 대기 모양 그대로 상시다**: 두께 12(`-inset-3`) · radius 24(`rounded-3xl`) · **`bg-background`**(흰 두꺼운 테두리 — `bg-canvas`면 회색 판으로 읽힌다) · `border-border`(얇은 회색 외곽선) · `shadow-medium`. 그 안의 화면은 radius 8 · `border-border-subtle`. 레이어에 opacity를 쓰지 않는다. `will-change`도 걸지 않는다 — 움직이는 transform이 없고 크기가 바뀔 때만 다시 쓴다 |
+| 씬 다섯 · 고정 재생 | ⚠️ **재생 동안 스테이지가 뷰포트를 가진다**(2026-09-27 사용자) — 트랙 윗변이 스크롤러 윗변에 닿으면 sticky `H` 한 장이 화면 전부이고 목업은 그 안의 세로 가운데에 선다. 씬은 **그 고정 구간 안에서만** 움직이므로 위 히어로·아래 CTA가 재생 동안 보이지 않는다(CTA를 음수 margin으로 끌어올리지 않는다 — 트랙 뒤의 형제다). 트랙 = `H·(1 + lead + 5·perScene)`(`--landing-track-h`, JS가 쓴다). **타이밍 조정은 `lib/landing/stage.ts`의 `PLAY = { lead, perScene }` 한 줄**이다 — `lead`는 고정 시작 뒤 씬 ①까지의 여유, `perScene`은 씬 하나의 스크롤 길이(H 단위, 기본 0 · 1). 씬당 정지 0.6 / 전환 0.4(마지막은 전부 정지 — 고정이 풀릴 때 재생이 끝나 있다). ① 번역 화면 ② `fr` 타이핑 ③ 저장 → Publish 배지 1 → 2 ④ Publish 미리보기(diff) ⑤ PR 열림. 역방향 스크럽 — **같은 위치 → 같은 프레임**. 카메라(줌·팬) 없음 |
+| 씬 크롬 | 프레임 아래 16 · 한 줄 가운데: 진행 5칸(24×3 · 갭 6 · `scaleX`) + 캡션 `clamp(15px, 9px + 0.4375vw, 20px)`/1.4(자간은 `text-base`). 캡션은 t = 0.5에서 문장이 바뀐다(opacity `|1 − 2t|`) |
+| 모션 감소 | 배율·위치는 원래 움직이지 않는다. 씬은 전환 한가운데(f = 0.8)에서 단절 · 캡션 opacity 1 · 타이핑·배지는 정지 구간 맨 앞에서 끝나 있다. **스크롤 길이는 같다.** `matchMedia` `change`를 구독해 런타임 토글도 반영한다 |
+| JS 전 · JS 없음 | **준비 전엔 프레임이 보이지 않는다** — 프레임·크롬이 `invisible`이고(`group-data-[ready]/track:visible`), 트랙은 **패널 1개 높이**로 접혀 있다(`data-ready`가 선 뒤에만 `--landing-track-h`). 배율이 없는 SSR에서 1464×834 베젤이 패널을 넘치기 때문이다 |
+| sticky 층 | `pointer-events-none` — 투명하지만 positioned라 겹친 형제의 클릭을 먹는다(옛 구조에서 끌어올린 CTA의 `Get started`가 안 눌렸다). 지금 CTA는 겹치지 않지만 프레임이 `inert`라 잃는 것이 없어 그대로 둔다 |
+| 접근성 | 프레임 `aria-hidden` + `inert`, **안에 인터랙티브 태그 0**(jsdom은 `inert`를 모른다 — 버튼 모양은 `buttonClass`를 `<span>`에). 보이는 캡션도 `aria-hidden`이고 트랙 첫머리의 visually-hidden `<ol>`이 다섯 문장을 늘 담는다(`aria-live` 없음). 섹션 셋이 전부 이름을 갖는다 — 히어로·CTA `aria-labelledby`, 트랙 `aria-label="How Malmoi works"` |
+| 목업 씬 구조 | 제품의 1440×810 화면 그대로다. **셸** — 헤더 40(로고 32 · 아바타 32) · LNB 240(`SHELL_SIDEBAR_PX.default`) · 핸들 8 · `ContentPanel`. ⚠️ **LNB의 구역·항목·배지는 실제 판정(`navZones` · `navFooterItems`)에서 뽑는다** — 사용자 구역(이름 · `Projects` 배지 · `New project` · `Account` — `navZones`가 주는 대로) · 프로젝트 구역(썸네일 · 이름 · **머리 오른쪽 끝 전환 트리거 글리프**(`project-switcher.tsx`의 ghost 24 · `ChevronsUpDown` 16, 메뉴는 그리지 않는다) · Home · Sources · Translations · Members · Logs · Settings, 배지 셋) · 하단 목록(`navFooterItems` 한 곳 — `app-frame.tsx`의 `FOOTER_ITEMS`). Sign out은 하단에 그리지 않는다(아바타 메뉴의 것). **번역 화면** — 머리(제목·배지 · Sync · Publish / 필터 셋 `All keys · Any state · This source` · 검색 320) · 본문 `p-4`: 왼쪽 카드 = **소스 트리 260**(보고 있는 소스만 펼침 · `All namespaces` 선택) + 키 목록 392(**미완 먼저**) · 핸들 16 · 오른쪽 로케일 상세(경로 머리 · 키 · N of M · 복사 · 설명 · 행 셋 · 푸터 — 저장 뒤 `Revert to last sent`가 서고 Save가 꺼진다). **Publish** — `OnboardingModal` 치수(폭 1024 · 미리보기 620 / 결과 420 · dim `bg-foreground/32` + blur 6), 미리보기는 열린 PR 없음 `Notice` + 표(저자 열) + 확정 버튼 **`Open pull request` 하나**(Cancel 없음), 결과는 PR 카드 + 안내 + `View pull request`. 모달 제목의 자간 `0.005em`은 목업에서 뺐다(`tracking-*` 등재 밖, 20px에서 0.1px) |
+| 목업 문구 | 앱 라벨은 **실제 사전 키**(`m.common.nav` · `m.translations.workspace` · `m.translations.publish` · `m.repositorySync.action`)와 실제 판정(`navZones`)을 읽는다 — 목업과 앱이 다른 말을 하면 랜딩이 거짓이다. 가상 데이터(`Acme web` · `acme/web` · 키·값)는 `m.landing.mockup`. 타이핑 값은 `fr`(한글은 `no-korean-ui`, 일본어는 폰트가 걸린다). 목업 소스에 JSX 텍스트 리터럴 0(`landing-mockup.test.tsx`) |
+| 목업이 스크롤에 반응하는 자리 | 둘뿐이다 — `[data-landing-typed]`의 텍스트(스테이지가 `typedPrefix`로 쓴다)와 프레임의 `data-badge`(`group-data-[badge=1]/frame:`). ⚠️ **프레임마다 setState하지 않는다** — 스테이지가 ref로 DOM에 직접 쓴다 |
+| 새 색 | **0** — 셸은 토큰만, 목업은 번역 화면·Publish 모달의 등재 값을 같은 자리에 쓴다(§6.2) |
+
+### 6.616 방침 (`/privacy`) — 공개 셸 안의 읽기 그릇 + 목차 (2026-09-26, 시안 `Landing.dc.html` 1e · Prototype `isPrivacy`)
+
+**Claude Design 핸드오프가 정본이다**(§6.615와 같은 동결본). 셸은 §6.615의 공개 셸 그대로이고 이 절은 **패널 안**만 정한다.
+랜딩 푸터의 `Privacy Policy`를 눌러도 셸 밖으로 떨어지지 않는 것이 요지다 — 옛 1열(§6.61)은 헤더가 없어 나가는 길이 문서 끝 링크 한 줄이었다.
+⚠️ **폭은 셸의 `min-w-[1280px]`다**(2026-09-26 사용자 — 폰에서 가로 스크롤 수용). `/docs`(§6.61)도 같다.
+⚠️ **본문은 사전 그대로다**(`m.publicDocs.privacy.sections`) — 그릇만 바뀌어 방침 게이트(`policy-gate.test.tsx`)가 개정을 요구하지 않는다.
+
+| 요소 | 규칙 |
+|---|---|
+| 컨테이너 | `mx-auto max-w-[1120px] px-10 py-30` · grid `minmax(0,720px) 200px` · `justify-between` · gap 64. `<main>`을 그리지 않는다 — 랜드마크는 셸의 것 하나다 |
+| `h1` | `text-4xl`(36) · 1.3 · **600**(§4 — 24px 이상) |
+| 시행일 | `h1` 바로 아래·도입 **위** 한 줄 · 14 · 1.6 · muted · mt 12 · `Effective date` + `<time dateTime="YYYY-MM-DD">`. ⚠️ **본문의 muted 금지가 이 줄에는 안 걸린다** — 메타 줄이다. ⚠️ **날짜 포맷터를 새로 만들지 않는다** — 사전의 문자열을 그대로 보이고 `dateTime`에 넣는다(`lib/utc-time.ts`의 `utcMinute`은 분까지 낸다). ⚠️ `<section>` 밖이라 본문 링크 규칙이 안 걸린다. 2026-09-26까지 §6.61(옛 1열 그릇)의 행이었고 `/docs`는 쓰지 않아 그 prop과 함께 걷었다 |
+| 도입 | 16 · 1.75 · mt 24 · `text-pretty` |
+| 구분선 | `<hr>` 1px `--border` · mt 40 |
+| `h2` | `text-2xl`(24) · 1.4 · **600**(§4) · 첫 절 mt 48, 이후 56 · **`id` 필수**(§6.61) · `scroll-mt-12`(하드 해시 착지도 48 아래) · `tabIndex={-1}` + `focus:outline-none`(목차가 포커스를 옮긴다) |
+| 본문 · 목록 | **`text-prose`(16)** · 1.75 · mt 16 · foreground(muted 금지 — §6.61). 문단은 도입처럼 `text-pretty`(malmoi#118). 목록 `pl-[22px]` · 항목 간격 8. ⚠️ `text-prose`는 이 화면을 위해 늘린 단계다(§4 크기 관용) |
+| 표 | `DocTable`(`components/public-doc-table.tsx` — region·`<table>` 양쪽 이름 · `TableHead` + `scope="col"` · 불투명 머리 면 · hover 되누름) · mt 24 · 래퍼 `border overflow-auto` **`rounded-lg`(12 — `rounded-xl`은 16이다, malmoi#115)** · 셀 14/1.6 · 머리 **10/16** · 13/500/**1.6** muted(행 ≈ 41, 불투명 `--primary-foreground` 면) · 셀·머리 자간 **0.015em**(⚠️ `tracking-*` 예외 하나 — §4. `:is(th,td)`에 건다: `--tw-tracking`은 상속되지 않아 표에 걸면 칸의 크기 유틸이 0.02em으로 되돌린다) · **3열 표의 열 폭 34% / 26% / 나머지**(열 수에서 온다 — 방침 문구를 보지 않는다, malmoi#116). 급은 전부 래퍼의 `[&_th]:`·`[&_td]:` 변형이 누른다 — `/docs`의 표는 그대로다. region 래퍼가 Tab을 받으므로 **포커스 링 셋을 `DocTable`이 든다**(§7 — `/docs`도 같다) |
+| 본문 링크 | `text-blue-600` · 밑줄 없음(§6.3) · 포커스 링 셋(§7) — 절 래퍼의 `[&_a]:` 변형(사전이 `<a>`를 맨몸으로 내놓는다) |
+| 해시 착지 | 하드 해시(`/privacy#deletion`)로 들어오면 **그 `h2`가 포커스를 받는다**(2026-09-26 — `/docs`와 같이 `PublicScroller`가 마운트 때 해시 대상이 `tabindex`를 들면 그것을, 아니면 자기를 포커스한다). 전에는 스크롤러가 가져가 Tab이 문서 첫머리에서 다시 시작했다 |
+| 목차 (`components/public-doc-toc.tsx` — `/docs`와 한 벌) | `<nav aria-labelledby>`(제목 `On this page` — `m.publicDocs.privacy.toc`, **`sections` 밖**: 안이면 방침 해시가 바뀐다) · sticky top 48(스크롤러 기준) · 제목 13/500 · 목록 좌측 선 `--border` · 항목 13/1.5 · 6/0/6/12 · 현재 = 선·글자 foreground + `aria-current="location"`, 나머지 muted · hover foreground. 항목 라벨은 **`m.publicDocs.privacy.tocLabels[id]`(짧은 라벨) → 없으면 절 `heading`** — 지금 `deletion` 하나(`Deleting your data`, 2026-09-26 지휘자 판정 · malmoi#117 — 200px 칸에서 둘째 줄로 접히던 항목). ⚠️ **그 맵도 `sections` 밖이다**(방침 해시 불변). 키가 절 `id`라 `Object.hasOwn`으로 찾는다 |
+| 현재 절 | 윗변(스크롤러 좌표)이 `scrollTop + 96`을 넘지 않은 **마지막** 절, 없으면 첫 절. ⚠️ **끝(`scrollHeight − clientHeight − 1` 이상)에 닿으면 마지막 절이다** — 마지막 절이 짧으면 윗변이 기준선에 못 닿아 1440×900에서 `Changes to this policy`가 끝까지 내려도 안 켜졌다 — `lib/public-doc/toc.ts`의 `currentSection`(잎). scroll(passive) → rAF, 값이 바뀔 때만 리렌더. 윗변은 스크롤러 `ResizeObserver`·`document.fonts.ready`에서 다시 잰다. ⚠️ **offsetTop이 아니라 rect 차로 잰다** — offsetParent에 매이면 셸 구조가 바뀔 때 조용히 틀린다(스테이지와 같은 판단) |
+| 클릭 | 링크는 실제 `href="#id"`(JS 없이도 이동). 수정 키(⌘·Ctrl·Shift·Alt)·가운데 클릭은 가로채지 않는다(새 탭·창은 브라우저 몫). 모션 감소는 **클릭 때** 읽는다(런타임 토글 반영). JS는 `preventDefault` → 스크롤러 `scrollTo(top − 48)`(모션 감소면 `auto`, 아니면 `smooth`) + `history.replaceState` + **절 `h2`로 `focus({ preventScroll: true })`** — preventDefault가 fragment 이동의 포커스 이동까지 막아서, 안 옮기면 키보드·스크린리더가 목차에 남는다. ⚠️ **누른 항목이 현재 절을 이긴다 — 사용자가 스스로 스크롤할 때까지**(스크롤러의 `wheel`·`touchstart`·`keydown`·`pointerdown`이 푼다). 뒤쪽 짧은 절은 48 자리까지 못 올라와 스크롤이 끝에서 멈추고, 그러면 끝 규칙이 마지막 절을 켜서 누른 것이 아닌 항목이 강조됐다(2026-09-26 디자인 감사). `scrollend`로 풀지 않는다 — 멈춘 자리가 여전히 끝이라 같은 오판으로 돌아간다 |
+| 새 색 | **0** — blue-600(등재)·토큰뿐 |
 
 ### 6.62 로그인·초대 수락 — 셸 밖 2열 (2026-09-10, 8-1)
 
 **골격을 `components/signin/auth-layout.tsx` 하나가 든다.** 캔버스(`--canvas`) 위에 패널 둘이
-`grid-cols-2 gap-2 p-2`로 앉고, 각 패널이 `rounded-xl` + `border-border-subtle` + `shadow-low`다
+`grid-cols-2 gap-2`로 앉고, 각 패널이 `rounded-xl` + `border-border-subtle` + `shadow-low`다
 (규약 3.5 — 셸과 같은 규칙이다, §5.1).
+
+⚠️ **푸터는 공개 셸의 `PublicFooter`이고 두 패널 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
+`absolute bottom-6`의 14px 줄이었다). 좌표가 공개 셸(§6.615)과 같다: 바깥 `px-2 pt-2` · 패널 줄(`flex-1`) · 푸터 40(13 muted)이 바닥 띠라
+아래 padding이 없다. ⚠️ **루트는 `h-svh`가 아니라 `min-h-svh`다** — 스크롤러가 없는 골격이라 좌측 내용이 길면 문서가 스크롤되어야 한다.
+`<footer>`는 하나이고 `<main>` 밖이다(`public-shell.test.tsx`).
 
 | 요소 | 규칙 |
 |---|---|
-| 좌측(폼) | **true white** · 폼 컬럼 `w-[320px]` · 로고 48 · `h1` `text-2xl font-medium` · provider 버튼 둘(`size="lg"` — **셸 밖 전용**, §6.4). ⚠️ **`h1`이 셋 다 있다** — `/invite/[token]`은 2026-09-12까지 이 칸이 비어 있던 유일한 화면이었고(설명 한 줄이 제목을 겸했다), account-linking이 그 규칙 위반을 교정했다 |
-| 우측(장식) | base가 **페이지 배경색**이고 아래로 갈수록 파랑이 든다(`--auth-hero-from` = `--canvas`, `bg-gradient-to-b`). ⚠️ **그라데이션이 없으면 배경과 구분되지 않아 "로그인 패널만 떠 있는 그림"이 된다** — 그것이 의도이므로 위쪽에서 배경으로 수렴한다. 위·아래 문구가 **`text-3xl font-medium`**이고 그 사이가 키비주얼(`max-w-[768px]`)이다 — ⚠️ **리포에서 `text-3xl`을 쓰는 유일한 자리이고 셸 안으로 넓히지 않는다**(§4의 크기 관용은 `text-2xl`에서 멈춘다: 이 화면만 장식 면적이 있다) |
+| 좌측(폼) | **true white** · 폼 컬럼 `w-[320px]` · 로고 48 · `h1` `text-2xl font-semibold`(24/600 — §4) · provider 버튼 둘(`size="lg"` — **셸 밖 전용**, §6.4). ⚠️ **`h1`이 셋 다 있다** — `/invite/[token]`은 2026-09-12까지 이 칸이 비어 있던 유일한 화면이었고(설명 한 줄이 제목을 겸했다), account-linking이 그 규칙 위반을 교정했다 |
+| 우측(장식) | base가 **페이지 배경색**이고 아래로 갈수록 파랑이 든다(`--auth-hero-from` = `--canvas`, `bg-gradient-to-b`). ⚠️ **그라데이션이 없으면 배경과 구분되지 않아 "로그인 패널만 떠 있는 그림"이 된다** — 그것이 의도이므로 위쪽에서 배경으로 수렴한다. 위·아래 문구가 **`text-3xl font-semibold`**(30/600 — §4)이고 그 사이가 키비주얼(`max-w-[768px]`)이다 — ⚠️ **리포에서 `text-3xl`을 쓰는 유일한 자리이고 셸 안으로 넓히지 않는다**(§4의 크기 관용은 `text-2xl`에서 멈춘다: 이 화면만 장식 면적이 있다) |
 | 도트 필드 | Canvas 2D (`components/signin/dot-field.tsx` + 잎 `lib/signin/dot-field.ts`). ⚠️ **hex를 tsx에 박지 않는다** — `--signin-dot`을 `getComputedStyle`로 읽는다(§6.2). ⚠️ 커서가 없으면 `autoCursor`가 ㄹ자로 순회하고 `prefers-reduced-motion`이면 1회 렌더 |
 | 브랜드 아이콘 | GitHub·Google 인라인 SVG (`components/signin/brand-icons.tsx`) — ⚠️ `lucide-react`에 브랜드 글리프가 없고 **Google 4색은 §6.2의 예외다**(남의 브랜드 자산이라 토큰으로 접을 수 없다) |
 | 피드백 | `?error=`·`?sessions=` → **토스트** (§6.25). ⚠️ **`auth-toast`는 아무것도 렌더하지 않는다** — 자리를 차지하면 그것이 곧 인라인 Alert의 자리가 된다 |
@@ -881,8 +958,8 @@ padding을 뺀 값이고 **LNB가 200~320으로 리사이즈되므로 같은 뷰
 **전 화면 축**이라 이 화면만 바꾸면 포커스 색이 화면마다 갈린다 — 고친다면 토큰을 옮기는 별도 판단이다.
 
 ⚠️ **셸의 `loadMemberships`와 다른 로더를 쓴다**(`loadProjectList`). 집계 다섯과 GitHub 조회가 거기
-붙으므로, 셸의 로더에 얹으면 `(edit)` 아래 **모든** 페이지가 목록 하나를 위한 왕복을 문다 —
-PRODUCT §7.7 결정 5가 사이드바 카운트를 거절한 것과 같은 축이다.
+붙으므로, 셸의 로더에 얹으면 `(edit)` 아래 **모든** 페이지가 목록 하나를 위한 왕복을 문다
+(사이드바 배지 넷은 2026-09-27에 `loadMemberships`의 `_count`로 들어갔다 — 싼 집계만 셸에 싣는다, §6.5).
 
 ### 6.64 Home (`/projects/[slug]`) — 카운트 카드 넷 + 할 일 + 로그 + 메타 열 (2026-09-15 재편)
 
@@ -906,15 +983,14 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 |---|---|
 | 머리 | 타일 28(radius 8, **이름 기반 `toneFill`** — 목록 행과 같은 `ProjectThumbnail`이다) + `h1` 18/500 + (보관이면) `Archived` pill + 우측 `[Sync]`·`[Publish]`. **리포·브랜치·멤버 수를 머리에 안 적는다** — 메타 열이 그 사실의 소유자다 |
 | 카드 넷 | `repeat(4,1fr)` **gap 8** · 카드 padding 14 · 내부 gap 12 · **radius 12**(`rounded-lg` — ⚠️ `rounded-xl`은 16이다) · border `#e5e5e5` · hover `bg-foreground/[0.02]` · **전체가 링크** |
-| 카드 내용 | 1행 제목 14/500 + `ml-auto` 글리프 16 / 2행 수치 24/500 + 보조 줄 13 `#737373`. 순서가 **파이프라인**이다. ⚠️ **`To send`가 0이 아니면 보조 줄은 `repository updates paused`다** (2026-09-18 — 마지막 Publish 시각 줄을 대체했다). OWNER가 CI 적재 보류를 아는 화면 자리이고, 넷째 전폭 배너를 두지 않는다(상시 상태에 배너를 두면 배너 0개 전제가 깨진다) |
+| 카드 내용 | 1행 제목 14/500 + `ml-auto` 글리프 16 / 2행 수치 **24/600**(§4 — 24px 이상, 2026-09-26) + 보조 줄 13 `#737373`. 순서가 **파이프라인**이다. ⚠️ **`To send`가 0이 아니면 보조 줄은 `repository updates paused`다** (2026-09-18 — 마지막 Publish 시각 줄을 대체했다). OWNER가 CI 적재 보류를 아는 화면 자리이고, 넷째 전폭 배너를 두지 않는다(상시 상태에 배너를 두면 배너 0개 전제가 깨진다) |
 | 카드 색 | 첫 칸만 **글리프와 수치 둘 다** `blue-600`(들어온 것) · `To review` 글리프만 `amber-700` · 나머지 글리프 `neutral-400`. **값이 0이면 수치·글리프가 `neutral-400`이고 색이 빠진다**(값은 안 지운다 — 0이 곧 정보다) |
 | 유입 수치 | **`+n` 접두**(늘어난 양이라서다). 나머지 셋은 남아 있는 양이라 부호가 뜻을 바꾼다. 천단위 구분자는 **`en-US` 고정**이다 — 서버 로케일을 따르면 같은 DB 상태가 다른 화면을 낸다 |
 | 블록 카드 | 머리 `h2` 15/500 padding 16 · 카드 안 구분선은 **`--divider`(#f0f0f0)**이고 테두리(`#e5e5e5`)보다 연하다 |
 | 할 일 행 | 타일 28(radius 4) + 글리프 16 / 첫 줄 13 `#737373` **truncate**(표면 · 로케일) / 둘째 줄 15 — **굵은 조각 + 문장**(색이 아니라 무게로 가른다) / 시각 13 `neutral-400` / chevron 16. 행 전체가 링크이고 **버튼도 바닥 링크도 없다** |
 | 할 일 pill | 머리의 카운트. **0에서는 안 그린다** — `0` 배지가 하나의 항목처럼 읽힌다 |
 | `+n more` | `<details>`/`<summary>` — **클라이언트 상태 0**. 기본 marker를 `list-none` + `[&::-webkit-details-marker]:hidden`으로 지우고 chevron 회전은 `group-open:rotate-90` |
-| 로그 레일 | 점 10(**border 2**, 채움 아님) + 1px 세로선 `--divider`, **마지막 줄만 선이 없다**(있으면 `All logs`가 타임라인에 붙는다). 본문 padding `14px 16px 0` · 줄 15 · 시각 13 `neutral-400` |
-| 로그 파랑 | sync 줄의 **점 테두리**와 **키 수 조각**, publish 줄의 **PR 번호**. 셋 다 **링크가 아니다** — 이 카드는 요약이고 목적지는 바닥의 `All logs`다 |
+| 로그 행 | ⚠️ **옛 레일(점 10 + 세로선)과 파랑 조각은 사라졌다** — 행은 §6.68의 `event-row`를 그대로 쓰고 행 사이는 `border-divider`뿐이다(`components/home/logs-card.tsx`). 목적지는 바닥의 `All logs`다 |
 | 바닥 링크 | `All logs ›` · `Project settings ›` 둘 다 **중앙 정렬** padding `12px 16px` 14 + chevron. 화면 **안**으로 가는 이동은 전부 chevron이다 |
 | 메타 열 | radius 12 · **구역 둘**(리포의 모양 6행 / 시각 3~4행) · 구역 padding `14px 16px` gap 10 · **라벨 width 96** 13 `neutral-400` + 값 14. `Last publish`는 **`Pull request #127 · 2d ago`**(무엇을 보냈나가 먼저) |
 | EmptyState | 프리미티브 그대로 + `px-4 py-8`(칩 48 · 글리프 16 · 제목 18/500 · 설명 14). **액션 없음** |
@@ -971,7 +1047,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 
 ⚠️ **`?e=` 슬롯이 없다** — 보내는 자리가 0이다. ⚠️ **첫 적재 전 화면은 `ProjectNotReady`가 든다** —
 번역 화면과 **같은 컴포넌트**다. ⚠️ **보관은 전면 교체가 아니라 배너다** — `ProjectArchived`의
-소비자가 넷으로 줄었고 **그 컴포넌트를 지우지 않는다**(번역·로케일·멤버·이력이 계속 쓴다).
+소비자가 둘로 줄었고 **그 컴포넌트를 지우지 않는다**(번역·멤버가 계속 쓴다 — 로케일은 redirect, 이력은 읽기 통과, Sources는 자기 카드다).
 
 ### 6.644 Sync — 확인 Dialog와 결과 Alert (2026-09-16 실측)
 
@@ -988,7 +1064,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 위험 블록 | amber radius 10 · padding 12 · 13px · 글리프 14 mt 2 · **줄 사이 6** · `#fffbeb`/`#fde68a`/`#78350f` · **수에만 weight 500** |
 | 푸터 | padding 16 · gap 8 · flex-end · 버튼 36/radius 10/px 12/14px |
 | 확정 버튼 | **위험 집계가 0이어도 danger다** — 글자 `#dc2626` · bg `#fff` · border `destructive/40` |
-| 포커스 | 열릴 때 `Cancel`. 접근 이름 `Sync` ≠ 확정 라벨 — **확정 라벨이 건수로 갈린다** (2026-09-18): 미발송 0이면 `Sync from repository`, N이면 `Discard changes and sync`(무엇을 버리는지를 동사가 먼저 말한다). 둘 다 트리거와 이름이 다르다 |
+| 포커스 | 열릴 때 `Cancel`. 접근 이름 `Sync` ≠ 확정 라벨 — **확정 라벨이 건수로 갈린다** (2026-09-18): 미발송 0이면 `Sync from repository`, N이면 `Discard changes and sync`(무엇을 버리는지를 동사가 먼저 말한다). ⚠️ **N은 폐기 승인 지문과 같은 응답의 건수다** (audit #2) — 화면 건수는 발급 전 잠정값이고, 그동안 확정은 `aria-disabled`라 잠정값으로 승인되지 않는다. 둘 다 트리거와 이름이 다르다 |
 | `aria-describedby` | ⚠️ **Radix는 설명문 하나에만 건다** — 경고 블록 id를 함께 넘겨 넓힌다. 안 넓히면 열릴 때 읽히는 것이 "덮는다"까지이고 **무엇이 지워지는지는 안 읽힌다** |
 
 **위험 블록은 네 갈래이고 권유 줄이 갈래마다 다르다.** ⚠️ **블록이 줄어드는 방향으로 움직인다** —
@@ -1130,7 +1206,7 @@ diff 표가 **키 220 + 로케일 84 + 값**의 3열이라는 것이다 — 작�
   `lastPrUrl`은 마지막으로 **만든** PR이지 현재 상태가 아니고, 열림 여부를 알려면 0건 화면에서도
   GitHub 왕복을 상시로 돌려야 한다.
 
-**`1g`의 실측** (2026-09-16 `/l10n-roundtrip` — `yaml-catalog`가 맵 자리에 스칼라를 못 써서 경고
+**`1g`의 실측** (2026-09-16 `/roundtrip` — `yaml-catalog`가 맵 자리에 스칼라를 못 써서 경고
 셋이 났다): 높이 599(`created`) / 600(`updated`) · `Not written` 목록 radius **8**(경고 블록 12와
 갈라 둔 값) · 머리·행 padding **11 16** · 경로 칸 **210** · 행 사이 `--divider` · `<details>` **0**.
 ⚠️ **목록이 자체 스크롤러를 든다** — 경고가 몇 줄이든 PR 블록을 밀어내지 않는다는 것이 "다섯까지만
@@ -1148,13 +1224,14 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 `withoutFile`과 같은 `text-xs muted` 문단이 사유별 한 줄로 선다(새 raw 색·블록 없음). 문장은 미리보기와 같은 명사·같은 약속이고 역할별로
 끝이 갈린다(EDITOR `Ask a project owner.` / OWNER 파일 추가 또는 `Revert to last sent`). ⚠️ **갈래마다 고정한 패널 높이에 이 줄이 들어가는지
 재지 않았다.** 미리보기 표 아래 `withoutKey` 한 줄(ts-dict 자리 없는 키)도 같다.
-**미리보기 base 파일 부재는 전용 거부다** (2026-09-24 사용자 결정 — **미실측**): `configError` 패널을 쓰고 제목 `The base language file isn't in the
+**미리보기 base 파일 부재는 전용 거부다** (2026-09-24 사용자 결정 — 2026-09-27 OWNER 실측, `i18n-format-check`(yaml-catalog). EDITOR 끝맺음은 미실측. ⚠️ **수술적 per-locale 어댑터 전용이다**(`lib/publish/read.ts` `surgicalPerLocale`) — 재생성 어댑터(chrome-locales 실측)는 거부하지 않고 base 파일을 다시 쓰는 PR을 약속한다): `configError` 패널을 쓰고 제목 `The base language file isn't in the
 repository` · 설명에 경로와 브랜치 · `Trying again won't help` Alert에 역할별 다음 행동 · 액션은 OWNER에게만 `Settings`다. **Try again이 없다** — 다시
-눌러도 같은 거부다(L3.3). **Logs에는 `Not sent`**(결과 어휘 `notSent` — warning 톤 · 글리프 amber)가 보류만 남은 Publish에 선다.
+눌러도 같은 거부다(L3.3). **base 파일을 읽을 수 없을 때도 같은 틀이다** (2026-09-27, B3 r3 — 같은 날 OWNER 실측): 제목 `The base language file can't be read` ·
+설명에 경로·브랜치와 "어느 키가 있는지 알 수 없다" · 역할별 다음 행동은 "파일을 고친다"다. **Logs에는 `Not sent`**(결과 어휘 `notSent` — warning 톤 · 글리프 amber)가 보류만 남은 Publish에 선다 — writer 경고로 쓰기 전에 멈춘 실행(이 거부의 야간 실행이 그것이다)도 같다(2026-09-27 실측으로 "Nothing to send"였던 것을 고쳤다).
 **전부 보류인 미리보기**(#84 — **미실측**): 제목 `Nothing can be sent yet` · 액션 `Close` 하나 · PR 줄 없음 · 표와 보류 줄은 그대로다. 보류가 섞이면 제목·요약이 나가는 수이고
 도입 문장이 `The edits that can be sent go to …`로 갈린다. `no-changes` + 보류 결과는 `Not sent` 틀(#83)이고 설명이 보류 사유 문장이다.
-**PR을 닫는 no-changes** (B1 r3 — **미실측**): 미리보기 제목 `Publishing closes pull request #N` · 버튼 `Close pull request #N`, PR이 없으면
-`Nothing differs from <base>` · 버튼 `Publish`. 푸터는 파일 수를 빼고 `N changes · K keys`다(#94 — 실행·Logs가 `0 files`라 편집이 사는 파일을 세면 한 흐름 안에서 수가 갈린다). base와 같은 행은 −/+ 두 줄 대신 값 한 줄 + `text-xs muted` 사유(`Undoes the change in #N` /
+**PR을 닫는 no-changes** (B1 r3 — PR이 없는 갈래 `Nothing differs from <base>` → 결과 `Nothing changed in the files`만 2026-09-27 실측, PR을 닫는 갈래는 **미실측**): 미리보기 제목 `Publishing closes pull request #N` · 버튼 `Close pull request #N`, PR이 없으면
+`Nothing differs from <base>` · 버튼 `Publish`. 푸터는 파일 수를 빼고 `N changes · K keys`다(#94 — 실행·Logs가 `0 files`라 편집이 사는 파일을 세면 한 흐름 안에서 수가 갈린다). ⚠️ **평소 갈래의 파일 수는 실행이 바꾸는 파일 수다**(#128 — `changedFiles`, 상한과 무관). "PR을 닫는다/바뀌는 것 없음" 갈래도 셀 근사가 아니라 `changedFiles`가 비었을 때만이다(#128 r5). 편집 없이 바뀌는 파일은 표에 편집 그룹과 같은 머리행(경로 + 우측 `No unsent edits`) + `text-xs muted` 설명 한 줄로 선다(**미실측**). base와 같은 행은 −/+ 두 줄 대신 값 한 줄 + `text-xs muted` 사유(`Undoes the change in #N` /
 `Already in the repository`). 결과에는 `text-xs muted` 한 줄(역할별 끝맺음) + `View #N` 링크(`text-blue-600`, §6.3 외부 링크), Logs 상세는
 `Closed pull request` 필드다.
 
@@ -1189,7 +1266,7 @@ repository` · 설명에 경로와 브랜치 · `Trying again won't help` Alert�
 | 역할 — 읽기전용 | **점선 테두리 + 자물쇠 칩**(`role-chip.tsx` · 132 · 자물쇠 12 `#d4d4d4`). ⚠️ **자물쇠는 보조 신호다** — 캔버스가 정한 그 색은 칩 배경(`bg-foreground/[0.02]`) 위에서 대비가 약 1.5:1이라 **형만으로 사유가 전달되지 않는다.** 사유를 지는 것은 아래 `sr-only` 문장이고, 눈으로 "잠겼다"를 말하는 것은 **점선 테두리** 쪽이다. 대기 초대는 **전원** 이 칩이다(발급 후 변경 불가). ⚠️ **접근 이름이 둘이다** — 잠긴 까닭이 다르다: 대기 초대 `{role}, set when the invitation was created. Revoke and invite again to change it.` / EDITOR `{role}, only project owners can change roles.` 한 문장으로 접으면 **복구 경로**("Revoke하고 다시 초대")가 사라진다. 자물쇠는 `aria-hidden`이고 칩이 `aria-label`을 드는데, **그 라벨이 역할 낱말로 시작**하므로 보이는 글자가 이름에서 사라지지 않는다(WCAG 2.5.3) |
 | 제거·철회 | 둘 다 **`danger` variant**(붉은 테두리 · 흰 면). ⚠️ **`ghost`를 기각했다** — *"행 위를 지나야 존재가 드러나 «누를 수 있는 것인지 라벨인지» 모호했다."* 면을 채우지 않는 이유는 그러면 이 화면이 통째로 제거하는 화면처럼 보이기 때문이고, 대개 이 화면을 여는 이유는 **보는 것**이다. [Remove]·[Revoke] 둘 다 Dialog 확인 한 번(되돌릴 수 없다 — audit #20, 2026-09-24. 옛 판정 "Revoke 확인 없음"(malmoi#18)의 반전이고, 식별 수정은 그대로다) |
 | 대기 초대 행의 글리프 | **mail 칩**(32 원 · `bg-foreground/[0.05]` · `Mail` 14). ⚠️ **아바타가 아니다** — 아직 사람이 아니라 보낸 링크이고, 이니셜 원을 그리면 멤버 카드의 행과 구별되지 않는다 |
-| 대기 0건 | `EmptyRowCard`를 **카드 안에**(`inset`) 세운다 — 칩 **40 원** · 글리프 16(`size-4` — 캔버스 18은 §6.8 스케일 밖이다) · padding **32** · gap 10, **버튼이 없다**(할 일은 헤더의 [Invite]다). ⚠️ **`/projects`의 서 있는 빈 카드와 규격이 다르다**(칩 36 라운드 사각 · 글리프 16 · padding `48 24`) — 앞은 화면의 착지점이고 이쪽은 카드 하나가 비었다는 보조 신호라 무게가 다르다. 갈래를 `inset`에 묶어 `/projects` 값을 안 건드린다. ⚠️ `components/ui/empty-state.tsx`를 쓰지 않는다 — 그쪽은 칩 48 + `py-12`이고 맞추면 소비자 아홉이 함께 움직인다 |
+| 대기 0건 | `EmptyRowCard`를 **카드 안에**(`inset`) 세운다 — 칩 **40 원** · 글리프 16(`size-4` — 캔버스 18은 §6.8 스케일 밖이다) · padding **32** · gap 10, **버튼이 없다**(할 일은 헤더의 [Invite]다). ⚠️ **`/projects`의 서 있는 빈 카드와 규격이 다르다**(칩 36 라운드 사각 · 글리프 16 · padding `48 24`) — 앞은 화면의 착지점이고 이쪽은 카드 하나가 비었다는 보조 신호라 무게가 다르다. 갈래를 `inset`에 묶어 `/projects` 값을 안 건드린다. ⚠️ `components/ui/empty-state.tsx`를 쓰지 않는다 — 그쪽은 칩 48 + `py-12`이고 맞추면 소비자 열하나가 함께 움직인다 |
 | 사유 띠 | 들여쓰기 **60** · `text-xs` · 배경 `bg-foreground/[0.02]` · 위 선 `border-foreground/[0.06]` · **언제나 `text-muted-foreground`**. ⚠️ **색이 사유에 따라 갈리지 않는다** (2026-09-20 사용자 — *"alert 계열 말고 그냥 일반 계열"* · 옛 판정 *"막힌 동작은 `text-destructive`"*의 철회). 마지막 오너는 **막힌 예외가 아니라 상시 상태**다: 오너가 하나인 프로젝트에서 그 행은 **언제나** 참이라(`planMemberChange`), 붉게 두면 경고가 배경이 되고 **진짜 거부인 사후 `Alert`의 무게를 깎는다**. 문장은 그대로 보인다 — 잠깐 가려 봤다가(sr-only) 같은 날 되돌렸다: 꺼진 컨트롤만 남으면 *왜* 꺼졌는지가 화면에서 사라진다. ⚠️ **톤 슬롯 자체를 지웠다** — `MemberRow`의 `bandTone`은 제거했고 `BannerLine`의 `tone="danger"`는 **소비자가 0**이다(호출부가 되살릴 자리를 없애는 것이 요지다). ⚠️ **검정(`text-foreground`) 띠는 없다** — 13px 캡션이 검정이면 바로 위 행 이름과 같은 급이 된다 |
 | 헤더 우측 사유 | `text-xs`(13) — 카드 헤더 설명·행 메타와 같은 급이다. ⚠️ **`text-sm`(14)이면 제목 옆에서 한 단계 무거워져** [Invite]와 제목 사이의 위계가 흐려진다(2026-09-19 실측에서 14로 나가 있었다) |
 
@@ -1265,7 +1342,7 @@ repository` · 설명에 경로와 브랜치 · `Trying again won't help` Alert�
 | 행 안 컨트롤 높이 | 32 | **36**(`h-9`) | `Button`·`SelectTrigger`의 기본값이다. 32를 만들면 `size`가 넷이 되고 *"어느 걸 쓰나"*가 매 화면 판단이 된다(§6.4). **대가**: 아바타 32와 컨트롤 36이 어긋나 캔버스가 노린 *"행의 세로 리듬이 하나"*가 깨진다 |
 | 초대 모달의 Email `Input` | 40 | **36**(`fieldClass`) | 같은 이유. `Input`·`Textarea`·`SelectTrigger`가 한 값을 공유한다 |
 | 꺼진 [Invite]의 면 | 흰 면 + 테두리 + `#a3a3a3` | **`bg-muted`**(`buttonClass`의 `aria-disabled:` 짝) | 2026-09-17에 *"같은 pending이 화면마다 다르게 보였다"*를 고치며 세운 전역 규칙이고, `disabled-pairing.test.ts`가 호출부의 철자 발명을 0으로 고정한다 |
-| 아바타 이니셜 글자 | 12 | **13**(`Avatar`의 `text-xs`) | 프리미티브가 `size === 56 ? text-xl : text-xs` 둘로만 가른다. 한 자리를 위해 분기를 늘리면 다음 크기마다 같은 판단이 생긴다 |
+| 아바타 이니셜 글자 | 12 | **13**(`Avatar`의 `text-xs`) | 프리미티브가 `56 → text-xl · 16 → text-2xs · 그 밖 text-xs` 셋으로 가른다(16은 2026-09-27 — 13이 상자를 거의 채웠다). 이 자리를 위해 분기를 더 늘리면 다음 크기마다 같은 판단이 생긴다 |
 | 발급 링크의 letter-spacing | 0.01em | **0.02em**(`--text-sm--letter-spacing`) | 타입 스케일이 크기와 자간을 **짝으로** 든다(§4). 한 자리만 덮으면 같은 `text-sm`이 화면마다 다른 자간을 갖는다 — 실측 차이는 0.14px다 |
 | 자물쇠 글리프 | 13 | **12**(`size-3`) | §6.8이 아이콘 크기를 넷(16·14·12·20)으로 고정한다. 13을 쓰면 **리포 최초의 임의 아이콘 치수**가 생기고, §6.63의 등재된 이탈 2번(*"빈 상태 글리프 16 — 18은 다섯째 값이 된다"*)의 근거가 죽는다 |
 | 카드 안 빈 상태 글리프 | 18 | **16**(`size-4`) | 같은 이유. `/projects`의 서 있는 빈 카드가 이미 같은 판단을 내려 뒀다(§6.63 이탈 2번) — 두 자리가 같은 값이다 |
@@ -1373,13 +1450,12 @@ min/max 규칙, 내용이 많으면 상한까지 자란다).
 래퍼가 없다. 실측 1440→1174 · 1920→1280 · 1280→1014). ⚠️ **옛 Locales가 들던 이 prop이 이관에서
 빠져 한 배포 동안 기본값 `limited`(896)로 좁았다** (2026-09-22) — `typecheck`도 5,008건의 테스트도
 green이었고, 증상이 "내용이 안 보인다"가 아니라 **"여백이 넓다"**라 화면을 봐도 결함으로 안 읽힌다.
-`shell-layout.test.ts`가 그 뒤로 **소비자별 등급**을 센다(fluid 여섯 · limited 둘).
+`shell-layout.test.ts`가 그 뒤로 **소비자별 등급**을 센다(`FLUID`·`LIMITED` 목록).
 
 옛 Locales 두 주소는 인가 뒤 이 목록으로 보낸다. orphaned 언어의 사유·복구 안내를 유지하며,
 로케일 코드도 **경로도 sans**다(§4.1). ⚠️ **2026-09-23에 한 번 더 뒤집혔다** — 이 절이 처음 쓰인
 2026-09-22에는 "경로에만 mono를 쓴다"였는데, 다음 날 §4.1이 **mono를 `<pre>` 코드 블록 전용**으로
-못 박으면서 경로도 그 밖이 됐다. 구현은 아직 `text-mono`를 세 자리에 들고 있다(`sources-screen.tsx` ·
-`source-detail-modal.tsx` 둘) — **문서가 정본이고 코드가 따라간다**(/refactor 대기).
+못 박으면서 경로도 그 밖이 됐다. 코드가 따라갔다 — Sources의 경로는 sans이고 `text-mono`는 `<pre>` 표면 둘(`workflow-block`·`docs/code-block`)에만 남는다.
 로컬 정본은 `design_handoff_sources/Sources.dc.html`이다. 확정 spec이 덮는 동작은
 미저장 이탈 확인창 없음·Open translations의 바닥 배치·절대 UTC 시각이다.
 
@@ -1410,10 +1486,9 @@ Logs 필터 **Sources & locales**는 사건 범주이므로 유지한다.
 행 13/16 + 경로 13 — 전부 핸드오프와 일치했다(⚠️ **그때 경로는 mono였다** — 2026-09-23에 §4.1이
 sans로 뒤집었고 치수 13은 그대로다).
 
-⚠️ **핸드오프와 의도적으로 다른 자리 셋**: ① 경로 줄바꿈이 `overflow-wrap:anywhere`가 아니라
-`break-all`이다(리포 관용구 — `naming.tsx`·`repository-card`가 같다). ② 언어 행의 열 구성은
-시안의 4열이 아니라 spec §6이 정한 **6열**이고 행의 `Open`은 공용 `size="sm"`이다. ③ 모달 본문 위
-패딩 2px는 공용 `modal.tsx`가 다섯 모달과 공유하는 값이다. **셋 다 프리미티브·확정 spec이 이긴
+⚠️ **핸드오프와 의도적으로 다른 자리 둘**: ① 언어 행의 열 구성은
+시안의 4열이 아니라 spec §6이 정한 **6열**이고 행의 `Open`은 공용 `size="sm"`이다. ② 모달 본문 위
+패딩 2px는 공용 `modal.tsx`가 다섯 모달과 공유하는 값이다(경로 줄바꿈은 시안대로 `[overflow-wrap:anywhere]`다 — malmoi#89). **둘 다 프리미티브·확정 spec이 이긴
 자리이고, 고치면 이 화면만 다른 폼이 된다.**
 
 ⚠️ **넷이었다가 셋이 됐다** (2026-09-23) — 빠진 것은 "연결 판의 경로가 14가 아니라 13이다"였다.
@@ -1562,12 +1637,12 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 
 ⚠️ **이력(`/logs`)이 2026-09-20에 이 목록에서 빠졌다** (logs-rework) — 보관 사건과 그 직전 기록을 확인하려고 **복원해야 하는 순환**이었다. 그 화면만 읽기로 통과하고(인가 변경 — ARCHITECTURE §5.6.4), 읽기 전용 신호가 셋이다: 제목 옆 `Archived` 배지 · 설명 한 줄 · **[Refresh] 없음**(진행 중 실행이 생길 수 없다). 필터·검색은 남는다 — 읽기가 그 화면의 전부이므로 읽는 도구를 뺄 이유가 없다. ⚠️ **검색은 필터 줄 끝의 공용 `SearchInput`(`w-80`)이다** (2026-09-24 사용자) — 번역 화면 툴바(§6.1a)와 같은 형이다: 제목 줄은 제목·배지·[Refresh]뿐이고 좁히는 도구가 한 줄에 모인다. 바닥 안내는 **`Alert info`**(닫기 없음 — 2026-09-24, audit #49. 그 전엔 손으로 그린 상자였다)이고 복원 링크는 **OWNER에게만** 그린다. 제목 옆 `Archived`는 `Badge neutral`이다.
 
-`translation:write` 화면 **셋**(번역·언어·멤버)이 같은 `EmptyState`를 낸다 — `components/project-archived.tsx`가 정책과 문구를 한 곳에서 든다. ⚠️ **패널 세로 중앙이다**(2026-09-13 — readiness(`project-not-ready.tsx`)와 함께 §6.4의 형으로 맞췄다: `PanelBody className="flex flex-col"` + 안쪽 래퍼 `flex-1 items-center justify-center`). 이 갈래엔 `PanelHeader`가 없어 화면에 그 블록 하나뿐인데, 위에 붙여 두면 1080에서 한 줄만 뜨고 그 아래가 통째로 빈다. OWNER에게만 [Open settings] `primary`가 붙는다(EDITOR는 그 화면에 못 들어가므로 누를 수 없는 버튼을 주지 않는다). ⚠️ **설정 화면은 이 갈래를 안 만난다** — `project:settings`가 보관을 통과하는 유일한 permission이고 그것이 되돌리는 길이다.
+`translation:write` 화면 **둘**(번역·멤버)이 같은 `EmptyState`를 낸다 — `components/project-archived.tsx`가 정책과 문구를 한 곳에서 든다. ⚠️ **패널 세로 중앙이다**(2026-09-13 — readiness(`project-not-ready.tsx`)와 함께 §6.4의 형으로 맞췄다: `PanelBody className="flex flex-col"` + 안쪽 래퍼 `flex-1 items-center justify-center`). 이 갈래엔 `PanelHeader`가 없어 화면에 그 블록 하나뿐인데, 위에 붙여 두면 1080에서 한 줄만 뜨고 그 아래가 통째로 빈다. OWNER에게만 [Open settings] `primary`가 붙는다(EDITOR는 그 화면에 못 들어가므로 누를 수 없는 버튼을 주지 않는다). ⚠️ **설정 화면은 이 갈래를 안 만난다** — `project:settings`가 보관을 통과하는 유일한 permission이고 그것이 되돌리는 길이다.
 
 ### 6.7 새 프로젝트 (`/projects/new`) — **`/projects` 위의 모달 네 단계** (2026-09-13)
 
 ⚠️ **라우트 하나를 대신하는 급의 모달이다** — 단계가 넷이고 실패 갈래가 열이라 "확인 대화상자"가
-아니다: 제목 20/500(페이지 제목과 같은 급) · 폭 **800** · 높이가 뷰포트와 **800**에 물린 고정 · 본문만 스크롤.
+아니다: 제목 20/500(페이지 제목과 같은 급) · 폭 **1024** · 높이가 뷰포트와 **800**에 물린 고정 · 본문만 스크롤.
 **뒤에 프로젝트 목록이 그대로 있고**, 닫으면 열기 직전의 `?q=`·`?filter=`를 들고 `/projects`로 간다.
 
 ⚠️ **`components/ui/dialog.tsx`를 쓰지도 고치지도 않는다.** 그 프리미티브는 Overlay가 고정
@@ -1590,7 +1665,7 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 | ② 후보 행 형 | ①과 **같은 행 형**이다 — `padding:12` · gap 12 · 체크박스 16 + **글리프 칩 40 r10**(`file-json-2`/`file-code-2` 20, ⚠️ **경로의 확장자로 가른다** — 어댑터 이름을 화면에 쓰지 않는다) + 텍스트열 `gap-0.5`(이름=**경로** 15/500 · 보조 14). 상세 대상 행 `bg-muted` + **칩만 흰색** + 보조 `text-foreground/60`. 체크는 포함 여부만 표시하고 버튼은 미리보기만 바꾼다. 접근 이름은 `Include {path}` / `Preview {path}`이며 `<ul>`의 list role을 보존한다 |
 | ② 표 | `Table` 프리미티브다 — `scrollable={false}` + 바깥 `role="region" tabIndex={0}`(안에 포커스 가능한 것이 없어 컨테이너가 직접 받는다)가 스크롤을 들고, 그래야 `Th`의 `sticky`가 거기 붙는다. `Th` 배경은 **불투명 `bg-primary-foreground`**(§6.2) · 열 `1fr 2fr`(`table-fixed`) · `Td` 12/16 + **`whitespace-nowrap` 명시**(프리셋의 `whitespace-normal`과 twMerge 그룹이 달라 둘 다 살아남는다) · `Tr`에 `hover:bg-transparent`(읽기 전용이라 hover 신호를 주지 않는다) |
 | ② 예외 E | ⚠️ **수동 확인의 거부는 경로 필드의 `FormGroup` 오류로 선다**(2026-09-24, malmoi#99 — `manual-no-match` "No files of that format…" / `single-locale` "Only one language was found…"; 입력이 `aria-invalid` + `aria-describedby="manual-path-error"`, 입력을 바꾸면 걷힌다). 전에는 미리보기 상태에 접혀 빈 미리보기에서 **그려질 자리가 없었다.** 설명은 "didn't find translation files in 2 or more languages on …"로 연결 조건을 말한다. 후보 0개에도 **표 껍데기를 버리지 않는다** — 헤더는 서 있고 `TableBody`만 빠진다(매칭 순간 레이아웃이 안 튄다). ⚠️ **툴바는 통째로 없다** — 고를 로케일이 없는데 트랙 자리를 남기면 탐지 중 화면과 픽셀 단위로 같아 "멈췄다"로 읽힌다. ⚠️ **빈 상태는 제목 + 설명 둘 다 든다**(시안 3a — 2026-09-13까지 제목만이었다. 겹치던 뒷문장은 좌측 수동 지정 힌트에서 뺐다: 같은 문장을 한 화면에 두 번 두지 않는다). ⚠️ **표 헤더 *아래* 남은 높이의 중앙이다**(핸드오프 3a): 중앙을 잡는 것이 **스크롤 컨테이너**(`flex flex-col` + 자식 `flex-1`)여야 하고, 바깥 박스가 잡으면 헤더까지 포함한 중앙이 되어 블록이 위로 밀린다. 그 전환의 대가로 **표에 `shrink-0`이 붙는다** — flex 아이템의 기본 `shrink:1`이 행 많은 표를 누른다 |
-| ② 후보 행 | 상세 대상 행 `bg-muted`, 포함 여부는 체크박스다. 초기 체크·상세는 탐지 1순위 하나. 체크 0개 또는 출력 충돌이면 Next를 막는다. 수동 지정은 검증된 후보 하나만 제출한다. ⚠️ **경로 템플릿이 sans다**(mono가 아니다) — 240px 열이라 mono가 줄을 더 잘라 먹는다 |
+| ② 후보 행 | 상세 대상 행 `bg-muted`, 포함 여부는 체크박스다. 초기 체크·상세는 탐지 1순위 하나. 체크 0개 또는 출력 충돌이면 Next를 막는다. 수동 지정은 검증된 후보 하나만 제출한다 — **경로를 치면 체크가 비워지고, 수동 중 체크하면 그 후보로 돌아온다**(malmoi#125 — 체크가 선 채 수동 경로가 제출됐다). ⚠️ **경로 템플릿이 sans다**(mono가 아니다) — 240px 열이라 mono가 줄을 더 잘라 먹는다 |
 | ② 세그먼트 | 후보의 **로케일 전부**. **다섯 이상이면 `Select`로 접힌다** |
 | ② 값 셀 | 정말 비었으면 **빈 칸**, 못 읽었으면 **"We couldn't read this file."** ⚠️ **둘을 가른다** — 이 화면의 목적이 "ko 열이 비어 있다"를 보이는 것이라 그 구별이 기능 자체에 걸린다 |
 | ③ 주소 오류 | 형식 넷(`empty`·`format`·`too-long`·`reserved`)은 **입력 중** 필드 아래 help, 중복은 **제출 뒤** 같은 자리에 `aria-invalid` + destructive. ⚠️ **배너를 세우지 않는다** |
@@ -1610,16 +1685,17 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 세트는 `lucide-react` **하나**다 (§1). ⚠️ **예외가 하나 있다** — provider 브랜드 로고(GitHub·Google)는
 그 라이브러리에 **없다**(브랜드 글리프를 제외한다). `components/signin/brand-icons.tsx`가 인라인 SVG로
 들고, **Google의 4색은 §6.2의 "새 raw 색을 늘리지 않는다"와 아래 "색은 상속"의 예외다** — 브랜드 색은
-우리가 고르는 값이 아니라 남의 자산이라 토큰으로 접을 수 없다 (8-1b). 크기는 **넷이다**: **16**(기본 — 사이드바·버튼·Alert·인라인·`EmptyState` 칩 안) · **14**(`size-3.5` — 버튼·행 안의 작은 인라인 글리프와 경고 블록: Publish·Sync·주의 카드·필터 칩의 ⓧ·복사·프로젝트 행 상태) · **12**(`size-3` — **`Checkbox`의 체크 표시와 사이드바 프로젝트 구역 머리의 16 타일 안 글리프 둘이다.** 외부 링크가 2026-09-18에 글리프를 버려 소비자가 하나로 줄었다가(§6.3) 2026-09-25에 타일이 16으로 내려오며 둘이 됐다) · **20**(`size-5` — **40 글리프 칩 안**(온보딩 ①②의 리포·파일 행, §6.7)과 **원형 ghost 버튼 안**(모달 닫기 36 · 칩 전체 초기화 28), Publish 모달의 빈 상태 글리프도 같은 값이다). ⚠️ **24는 8-3에 소비자가 0이 됐고 되살아나지 않았다** — `EmptyState`의 아이콘이 48 원형 칩 **안의 16**으로 갔다(§6.4). 그 넷 밖의 크기를 만들지 않는다 — ⚠️ **2026-09-24에 임의 크기 일곱을 접었다** (audit #48): 15 넷 → 16(logs 상세의 이동 글리프 · 번역 로케일 머리의 파일 · 필터 트리거 chevron), 13 → 14(`missing` 알약 안), 18 → 20(Sources 빈 상태의 36 칩 안), 26 → 20(설정 General의 56 썸네일 폴백). `size-[Npx]`는 전수 0건이다. 사이드바 항목이 `p-1.5 text-sm`이고 아이콘 박스가 `size-4`라 20 이상은 **그 줄에서** 넘친다(그래서 20은 칩 안에만 산다, §5.1).
+우리가 고르는 값이 아니라 남의 자산이라 토큰으로 접을 수 없다 (8-1b). 크기는 **넷이다**: **16**(기본 — 사이드바·버튼·Alert·인라인·`EmptyState` 칩 안) · **14**(`size-3.5` — 버튼·행 안의 작은 인라인 글리프와 경고 블록: Publish·Sync·주의 카드·필터 칩의 ⓧ·복사·프로젝트 행 상태) · **12**(`size-3` — **`Checkbox`의 체크 표시 · 사이드바 프로젝트 구역 머리의 16 타일 안 글리프 · 멤버 역할 칩의 자물쇠(§6.65) 셋이다.** 외부 링크가 2026-09-18에 글리프를 버려 소비자가 하나로 줄었다가(§6.3) 2026-09-25에 타일이 16으로 내려오며 늘었다) · **20**(`size-5` — **40 글리프 칩 안**(온보딩 ①②의 리포·파일 행, §6.7)과 **원형 ghost 버튼 안**(모달 닫기 36 · 칩 전체 초기화 28), Publish 모달의 빈 상태 글리프도 같은 값이다). ⚠️ **24는 8-3에 소비자가 0이 됐고 되살아나지 않았다** — `EmptyState`의 아이콘이 48 원형 칩 **안의 16**으로 갔다(§6.4). 그 넷 밖의 크기를 만들지 않는다 — ⚠️ **2026-09-24에 임의 크기 일곱을 접었다** (audit #48): 15 넷 → 16(logs 상세의 이동 글리프 · 번역 로케일 머리의 파일 · 필터 트리거 chevron), 13 → 14(`missing` 알약 안), 18 → 20(Sources 빈 상태의 36 칩 안), 26 → 20(설정 General의 56 썸네일 폴백). `size-[Npx]`는 전수 0건이다. 사이드바 항목이 `p-1.5 text-sm`이고 아이콘 박스가 `size-4`라 20 이상은 **그 줄에서** 넘친다(그래서 20은 칩 안에만 산다, §5.1).
 
 **아이콘이 없으면 미완인 자리** (LNB가 대표다 — ⚠️ 옛 근거였던 "접힌 레일에서 아이콘이 유일한 라벨"은 8-3이 접기를 지우며 사라졌다. 남은 근거는 **줄의 정렬**이다: 항목 하나가 아이콘을 빼면 그 라벨만 왼쪽으로 밀려 목록이 두 겹으로 읽힌다):
 
 | 자리 | 아이콘 |
 |---|---|
-| 사이드바 — 사용자 구역 | Projects `Box` · Account `CircleUser` (2026-09-11 — 라벨은 2026-09-23에 `Settings`에서 바뀌었다) |
+| 사이드바 — 사용자 구역 | Projects `Box` · New project `Plus`(2026-09-27 — [New project] 버튼과 같은 글리프) · Account `CircleUser` (2026-09-11 — 라벨은 2026-09-23에 `Settings`에서 바뀌었다) |
 | 사이드바 — 프로젝트 구역 | Home `House` · Sources `Files` · Translations `Languages` · Members `Users` · Logs `History` · Project settings `Settings` (8-3이 이름과 순서를 시안에 맞췄다) |
-| 사이드바 하단 전역 | **Docs `CircleHelp` · Sign out `LogOut`** — 둘뿐이다 (8-3). ⚠️ `LayoutGrid`·`PanelLeft`는 소비자가 0이 됐다(`Plus`·`CircleUser`는 아래 두 자리에서 다시 쓰인다) |
-| ~~프로젝트 컨텍스트~~ | ⚠️ **스위처가 8-3에 사라졌다** — `ChevronsUpDown`도 함께 소비자 0이다 (§6.5) |
+| 사이드바 하단 전역 | **Release notes `Compass` · Docs `CircleHelp`** — 둘뿐이다 (2026-09-27 사용자 — Sign out `LogOut`은 사용자 메뉴로만 갔다). ⚠️ `LayoutGrid`·`PanelLeft`는 소비자가 0이 됐다(`Plus`·`CircleUser`는 아래 두 자리에서 다시 쓰인다) |
+| 헤더 사용자 메뉴 | Projects `Box` · New project `Plus` · Account `CircleUser` · Release notes `Compass` · Docs `CircleHelp` · Privacy Policy `ShieldCheck` · Sign out `LogOut`(제출 중 `Loader2`) — 같은 목적지는 사이드바와 같은 글리프다 (2026-09-27 사용자) |
+| 프로젝트 스위처 | 트리거 `ChevronsUpDown` · 행 `ProjectThumbnail` 16 + 지금 프로젝트 `Check` · 맨 아래 `Plus` New project (2026-09-27 — 8-3에 사라졌다가 돌아왔다, §6.5) |
 | 헤더 | **로고와 사용자 메뉴 아바타뿐이다** (8-2) — ⚠️ 햄버거 `Menu`는 **없어졌다**(반응형 분기 0). breadcrumb 구분자는 아이콘이 아니라 텍스트 `/`다(§6.4) |
 | 아이콘 전용 버튼 | 닫기 `X` · 복사 `Copy` → 성공 `Check` · **칩 하나 제거 `X` 14(`size-6` 원형 안) · 칩 전체 초기화 `RotateCcw` 20(`size-7` 원형 안)**(§6.1) |
 | 주 행동 버튼 | Publish `Send` · 리포 재연결 `RefreshCw` · 첫 적재 `Play` · 초대 `UserPlus` · GitHub 연결 `Link2` · Home의 [Open translations] `Languages` · **[New project] `Plus`**(제목 줄과 빈 상태 둘, §6.63) · **[Clear filters] `RotateCcw`**(⚠️ `FilterX`가 아니다 — 필터와 검색을 **둘 다** 되돌리므로 깔때기 글리프면 지워지는 것이 절반이라고 말하게 된다) |
@@ -1639,16 +1715,11 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 
 ## 7. 접근성
 
-### 표면 선택기
+### 소스 전환
 
-Translations의 **패널 머리**에만 둔다. Sources는 선택기가 아니라 전체 소스 목록이다. Home·Settings·사이드바에는 두지 않는다.
-활성 표면이 하나면 렌더하지 않고, 둘 이상이면 빈 표면에서도 남겨 전환할 수 있게 한다.
-표시는 경로의 마지막 고정 디렉터리 조각을 **sans**로 낸다(`default`·충돌 suffix는 라벨이 아니다).
-닫힌 선택기는 짧은 라벨과 tooltip을, 열린 목록은 전체 path template 보조 줄을 함께 낸다.
-같은 이름의 `apps/*/locales`도 경로로 구별한다. 항목별 미발송 수는 배지다. 접근 이름은 `Source`(§10.1).
-선택기는 번역 툴바·칩과 같은 pending·이동 함수를 공유한다. 유효한 ns/locales/q는 보존하고
-유효하지 않은 필터는 URL에서도 제거한다. Publish는 표면과 무관한 **프로젝트 전체**이고 라벨은
-2026-09-16부터 Home과 같은 `Publish` + 배지다(§6.646).
+소스(표면) 전환은 선택기가 아니라 번역 작업 화면 **트리 패널의 소스 행**이 든다(§6.1a). Sources는 전체 소스 목록이고 Home·Settings·사이드바에는 전환 컨트롤을 두지 않는다.
+Publish는 표면과 무관한 **프로젝트 전체**이고 라벨은 Home과 같은 `Publish` + 배지다(§6.646).
+⚠️ `components/surface-selector.tsx`는 소비자가 0인 채 남아 있다(테스트만 import한다 — audit-ux #34). 이 절의 규칙을 그 파일에서 읽지 않는다.
 
 - **대비 하한 AA(4.5:1)**. §2.2가 가장 흔한 위반 경로다 — 남은 자리는 **표 헤더**(`bg-muted/50`)·**값 칩**·**코드 블록**이다(사이드바는 8-2부터 캔버스 위라 이 목록에 없다).
 - **포커스 링 셋** — `focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none`. ⚠️ **폭이 2026-09-11에 3px에서 2px로 내려갔다**(사용자) — `ring-2`가 Tailwind 스케일 값이라 **리포의 임의 치수가 그 교체로 0이 됐다**(그전엔 `ring-[3px]`가 유일했고 DESIGN §6.5(규약 6)·`h-10` 판정이 그것을 근거로 들고 있었다). **셋은 `components/ui/` 안에 있다.** `components/__tests__/focus-ring.test.ts`가 (1) **스캔 대상 전체**의 네 태그가 셋을 드는지(허용 목록 파일의 raw 태그도 링은 들어야 한다), (2) `ui/` **밖에 raw 태그를 쓰는 파일이 0개인지** 둘을 센다. ✅ **축소형 허용 목록은 2026-09-08 ship 4에서 비었다** — (2)가 전면 방어선이고, 새 컨트롤은 `components/ui/`에 프리미티브로 만든다(목록을 다시 채우지 않는다).
@@ -1690,7 +1761,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 | 축 | 무엇 | 어디 |
 |---|---|---|
 | **super sidebar** | 브랜드 → 프로젝트 컨텍스트(전환 메뉴) → 섹션 항목 → 하단 전역 항목 · 접힘 | §6.5 |
-| **헤더** | 사용자 메뉴 우 · 48px. ⚠️ 8-2가 로고를 왼쪽에 더하고 전폭으로 넓혔고, **8-4가 breadcrumb을 통째로 걷었다**(GitLab에서 가져온 그 축은 이제 사이드바가 든다 — §0·§6.5) | §6.5 |
+| **헤더** | 사용자 메뉴 우 · 40px(`h-10`, 2026-09-26 — §5.1). ⚠️ 8-2가 로고를 왼쪽에 더하고 전폭으로 넓혔고, **8-4가 breadcrumb을 통째로 걷었다**(GitLab에서 가져온 그 축은 이제 사이드바가 든다 — §0·§6.5) | §6.5 |
 | **콘텐츠 폭 둘** | 폼·설정은 limited, 표는 fluid | §5.1 |
 | **settings-block** | 제목 + 설명 + 본문 카드가 세로로 쌓인다 | §6.6 |
 | **표 구성** | 헤더 sticky · 행 hover · 세로선 없음 · 마지막 행에도 하단선 | §6.66·§6.68 (⚠️ 번역 화면은 8-4에 `<table>`을 떠났다 — §6.1) |
@@ -1741,7 +1812,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 | 재시도 | **Try again** | Retry, Check again |
 
 - **`pull request`는 예외다** — GitHub의 고유명사이고 링크가 실제로 그리 간다(위 git 어휘 규칙과 같은 근거). 금지하는 것은 **방향 동사**다.
-- **`push`는 토큰 이름(`Push token`·`PUSH_TOKEN`)과 개발자 화면 둘(①의 `Pushed 3d ago` · 설정의 CI 설명)에만 선다.** 번역자가 읽는 문장에 "the next CI push"를 쓰지 않는다 — "the next sync from the repository"다.
+- **`push`는 토큰 이름(`Push token`·`PUSH_TOKEN`)과 개발자 화면 둘(①의 `Pushed 3d ago` · 설정의 CI 설명)에만 선다.** 번역자가 읽는 문장에 "the next CI push"를 쓰지 않는다 — "the next sync from the repository"다. ⚠️ **단, 앱의 [Sync]가 하지 않는 일이면 "the next sync from the repository"로 말하지 않는다** (malmoi#127) — 옆의 버튼으로 읽힌다. 기준 언어 선언은 워크플로의 Sync만 적용하므로 "the next sync from your repository's GitHub Actions workflow" + "the Sync button doesn't apply it"이다(`translations.banner.basePending` · `locales.field.help`).
 - **설정의 브랜치는 "base branch"다** (malmoi#85) — "default branch"는 **GitHub 리포의 기본 브랜치**이고 새 프로젝트 ①에서만 뜻이 맞는다. 이미 있는 프로젝트의 Sync·Publish가 그 브랜치를 못 읽으면 **설정된 이름**을 대고 Settings → Base branch로 보낸다(OWNER는 설정 링크, EDITOR는 "ask a project owner"). 온보딩 문장(`onboarding["base-branch-missing"]`)을 빌리지 않는다.
 - **파일은 "translation files"다** — `locale files`는 표의 `locale` 금지에 걸린다. 한 언어의 파일을 가리킬 때만 "language file"이다. 경로 예시의 `{locale}` 자리표시는 **사용자가 칠 값**이라 예외다.
 - **남을 가리키는 문구는 그 화면·그 역할에 실제로 있는 컨트롤만 부른다** (POSTMORTEM 2026-09-14). 번역 화면으로 데려가는 링크는 "Go to Publish"이고 "Send changes"가 아니다 — 도착한 화면의 버튼이 `Publish`다.
@@ -1762,12 +1833,12 @@ design.gitlab.com `/product-foundations/layout` · `/components/{table,alert,car
 - [ ] `muted` 표면(사이드바·표 헤더·칩) 위에 `text-muted-foreground`·`hover:bg-accent`를 쓰지 않았나 (§2.1·§2.2)
 - [ ] `bg-destructive`를 쓰지 않았나 — 글자색 전용이다 (§2.3)
 - [ ] 새 raw 색을 늘리지 않았나 — §6.2의 등재 목록뿐이고 실물은 `visual-system.test.ts`의 `REGISTERED`다(값·파일 둘 다 센다). 예외는 **남의 자산**(브랜드 글리프 §6.8 · 국기 SVG §6.1)과 흑백 둘(`bg-white` 로그인 좌측 · `text-white` tone 위 글자)이다
-- [ ] **weight가 400과 500 둘뿐인가** — 500을 넘지 않고 `font-light`도 쓰지 않는다 (§0·§4)
-- [ ] **`tracking-*` 유틸을 쓰지 않았나** — 자간은 크기 토큰이 든다. 남은 자리는 **여덟**이고 예외는 §6.67뿐이다 (§4 — `visual-system.test.ts`가 파일별로 센다)
+- [ ] **weight가 크기를 따르나** — 24px 이상 600 · 그 아래 제목·라벨 500 · 나머지 400, `font-light`·700 이상 없음 (§0·§4)
+- [ ] **`tracking-*` 유틸을 쓰지 않았나** — 자간은 크기 토큰이 든다. 남은 자리는 **아홉**이고 예외는 §6.67과 §6.616(공개 문서 표 — `/privacy`·`/docs`가 한 상수)뿐이다 (§4 — `visual-system.test.ts`가 파일별로 센다)
 - [ ] **인라인 링크에 밑줄을 붙이지 않았나** (§0·§6.3)
 - [ ] **그림자가 `shadow-low`·`shadow-medium`인가** — Tailwind 기본은 검정 기반이라 탁하다 (§4.5)
 - [ ] 조건부 클래스가 `cn()`을 지나나 (§8)
-- [ ] 임의값(`text-[Npx]`·`size-[Npx]`·`rounded-[10px]`) 대신 스케일을 썼나 (§4·§5·§6.8) — 셋 다 전수 0건이다. ⚠️ **`rounded-[4px]`(목록 스켈레톤의 타일)·`rounded-[3px]`(검색 일치 `<mark>`·Publish diff 낱말)는 남는다** — 이 리포의 스케일에 4·3이 없다(bare `rounded`는 `var(--radius)` = 12다)
+- [ ] 임의값(`text-[Npx]`·`size-[Npx]`·`rounded-[10px]`) 대신 스케일을 썼나 (§4·§5·§6.8) — 셋 다 전수 0건이다. ⚠️ **`rounded-[4px]`(목록 스켈레톤의 타일)·`rounded-[3px]`(검색 일치 `<mark>`·Publish diff 낱말)·`rounded-[6px]`(`/docs` 인라인 코드 — `components/docs/classes.ts`의 `INLINE_CODE`)는 남는다** — 이 리포의 스케일에 6·4·3이 없다(bare `rounded`는 `var(--radius)` = 12다). `/signin` 목업의 퍼센트 radius 둘(`auth-layout.tsx` — 이미지 비율에 물린 값)도 스케일 밖이다. ⚠️ **`rounded-3xl`(24)도 하나 남는다** — 랜딩 목업의 베젤·그림자 층(§6.615 "베젤 · 화면")이고 스케일(8·10·12·16) 밖의 유일한 큰 값이다
 - [ ] 문자열이 `messages/en.tsx`에서 오고 §10의 문체인가
 - [ ] 외부 링크가 색 + `target="_blank" rel="noreferrer"`만 드나 — 글리프를 달지 않는다 (§6.3)
 - [ ] 사이드바 항목·주 행동 버튼·Alert에 §6.8의 아이콘이 붙었나 — 16px, 색은 상속, 라벨 있으면 `aria-hidden`

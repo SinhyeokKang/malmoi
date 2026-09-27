@@ -1,19 +1,22 @@
 import type { ComponentType } from "react";
 
-import { Box, CircleHelp, CircleUser, Files, History, House, Languages, Settings, Users } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages, Plus, Settings, Users } from "lucide-react";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
+import { GITHUB_RELEASES_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
 /**
  * 셸 사이드바의 순수 판정. **클라이언트 컴포넌트가 읽으므로 무게가 붙는 것을 여기서 막는다** —
  * `permission`·`routes`·`i18n`은 잎이고 `lucide-react`는 허용 목록에 있다 (ARCHITECTURE §6.35).
  *
- * ⚠️ **구조·라벨·순서는 Figma 시안(`212:944`)이 정본이다** (8-3). 2026-09-09의 IA(PRODUCT §7.7)에서
+ * ⚠️ **구조·라벨·순서는 Figma 시안(`212:944`)에서 시작했다** (8-3). 2026-09-09의 IA(PRODUCT §7.7)에서
  * 바뀐 것 넷: 사용자 축이 **둘로** 줄었고(`Projects`·`Settings` — `New project`가 빠졌다),
  * 구역 라벨이 **이름 그대로**이며(`Your work` → 사용자 이름), 프로젝트 축 순서에서 **Locales가
  * Translations보다 앞**이고, 하단에 **Help**가 붙었다.
+ * ⚠️ **그 뒤 사용자 결정이 시안을 넘었다** (2026-09-27): 사용자 축은 `Projects · New project · Account` 셋이고
+ * (`navWorkItems` — 헤더 사용자 메뉴의 첫 묶음도 이 목록이다), 하단은 `Release notes · Docs`다.
  */
 
 /**
@@ -25,8 +28,13 @@ import { routes } from "@/lib/routes";
  * `defaultSurfaceSlug`는 셸이 싣는 기본 표면이고 `surfaceSlug`는 pathname에서 읽은 **보고 있는** 표면이다 — 뒤가 앞선다.
  * 둘 다 없으면 Translations가 옛 주소로 떨어진다 (audit-ux #4).
  */
+/**
+ * `counts`는 프로젝트 항목의 개수 배지다 (2026-09-27 사용자) — 셸이 이미 부르는 `loadMemberships`에 얹혀 온다.
+ * 없으면 배지가 없다.
+ */
 export type NavProject = {
   slug: string; name: string; role: Role; archived: boolean; image?: string | null; surfaceSlug?: string; defaultSurfaceSlug?: string | null;
+  counts?: { sources: number; members: number; keys: number };
 };
 
 /**
@@ -112,12 +120,14 @@ export type NavItem = {
   href: string;
   /** `NavSection.exact`와 같은 뜻 — 활성 판정이 정확히 일치인가. */
   exact: boolean;
+  /** 앱 밖(GitHub)으로 나가는 링크 — 새 탭으로 연다. 외부 링크 글리프는 달지 않는다(DESIGN §6.3). */
+  external?: boolean;
   /**
    * 우측 개수 배지 (8-3, 시안).
    *
-   * ⚠️ **여기 있는 것은 `Projects` 하나다.** 그 값은 셸이 **이미 조회한** 멤버십 배열의 길이라
-   * 왕복이 0이다. 시안의 나머지 셋(Locales·Translations·Members)은 프로젝트별 집계라 **모든
-   * 페이지에 왕복을 더한다** — PRODUCT §7.7 결정 5가 거절했고 §8이 🔒로 다시 열어 둔 항목이다.
+   * `Projects`는 멤버십 배열의 길이, 프로젝트 축의 셋(Sources·Translations·Members)은 같은 멤버십 조회의
+   * 관계 `_count`다 — **둘 다 왕복이 0이다.** ⚠️ 셋은 2026-09-27에 열렸다(사용자 — PRODUCT §7.7 결정 5를 뒤집었다).
+   * 거절 근거가 "매 페이지 왕복"이었고, 셸이 이미 부르는 조회에 얹으면 그 근거가 서지 않는다.
    */
   badge?: number;
 };
@@ -128,14 +138,47 @@ export type NavItem = {
 export type NavZone = { key: "work" | "project"; label: string; items: NavItem[] };
 
 /**
+ * 사용자 축 항목 — **사이드바 사용자 구역과 헤더 사용자 메뉴의 첫 묶음이 이 목록 하나를 읽는다** (2026-09-27 사용자). 두 벌이면
+ * 한쪽에만 항목이 늘어 순서가 갈린다. `projectCount`를 주면 `Projects`가 개수 배지를 든다(사이드바만 준다 — 메뉴엔 배지가 없다).
+ */
+export function navWorkItems(projectCount?: number): NavItem[] {
+  return [
+  /**
+   * ⚠️ **사용자 축은 전부 정확히 일치다.** `/projects`가 `/projects/new`의 접두라, 접두로 재면
+   * 새 프로젝트 화면에서 `Projects`도 함께 선택돼 보인다.
+   */
+  {
+    key: "projects",
+    label: m.common.nav.projects,
+    /**
+     * ⚠️ **목록 행의 글리프와 같다** (2026-09-11 사용자) — 사이드바 항목과 그 항목이 데려가는
+     * 화면의 행이 다른 글리프를 쓰면 "프로젝트"의 시각 어휘가 둘이 된다.
+     */
+    icon: Box,
+    href: routes.projects(),
+    exact: true,
+    ...(projectCount === undefined ? {} : { badge: projectCount }),
+  },
+  // `exact`여야 `/projects/new`에서 이 항목만 선택된다 — Projects도 exact라 둘이 함께 켜지지 않는다.
+  { key: "newProject", label: m.common.nav.newProject, icon: Plus, href: routes.newProject(), exact: true },
+  /**
+   * ⚠️ **아이콘이 `CircleUser`다** (2026-09-11 사용자) — 헤더 우상단 서랍 **안**의 같은 항목과
+   * 같은 글리프라야 "내 계정"이 한 어휘로 읽힌다. `Settings`(톱니)는 프로젝트 설정이 쓰므로,
+   * 여기에 같이 쓰면 사용자 축과 프로젝트 축이 같은 모양으로 섞인다.
+   */
+  { key: "account", label: m.common.nav.account, icon: CircleUser, href: routes.account(), exact: true },
+  ];
+}
+
+/**
  * **축이 둘이고 구역이 그것을 드러낸다** (PRODUCT §7.7 — IA 확정 2026-09-09, 8-3이 시안에 맞춰 조정).
  *
  * ⚠️ **순서가 정보구조다** — 사용자 축이 먼저다. 프로젝트는 "내 일 안의 하나"이고, 뒤집으면
  * 프로젝트가 없는 사용자에게 빈 자리가 위에 남는다.
  *
- * ⚠️ **`New project`가 사이드바에 없다** (8-3 사용자 결정 — 시안). 새 프로젝트로 가는 길은
- * `Projects` 목록의 버튼 하나이고, 그래야 "만들기"가 목록의 맥락 안에서 일어난다. `/projects/new`
- * 라우트는 그대로 있고 **직접 URL로도 열린다** — 없앤 것은 링크이지 라우트가 아니다.
+ * ⚠️ **`New project`가 `Projects` 바로 아래에 선다** (2026-09-27 사용자 — 8-3의 "사이드바에 없다"를 뒤집었다).
+ * 목록의 [New project] 버튼과 같은 `/projects/new`(목록 위 모달 딥링크)로 가고 같은 `Plus` 글리프를 든다 — 한 행동을
+ * 두 글리프로 가리키지 않는다. 배지는 없다.
  *
  * ⚠️ **프로젝트 구역은 `projectSections`를 그대로 든다.** 여기서 역할을 다시 보면 권한표가 두 벌이
  * 되고 그중 하나가 낡는다 — 판정은 `canPerform` 한 곳이다.
@@ -147,30 +190,7 @@ export function navZones(
   const work: NavZone = {
     key: "work",
     label: context.userName,
-    items: [
-      /**
-       * ⚠️ **사용자 축은 전부 정확히 일치다.** `/projects`가 `/projects/new`의 접두라, 접두로 재면
-       * 새 프로젝트 화면에서 `Projects`도 함께 선택돼 보인다.
-       */
-      {
-        key: "projects",
-        label: m.common.nav.projects,
-        /**
-         * ⚠️ **목록 행의 글리프와 같다** (2026-09-11 사용자) — 사이드바 항목과 그 항목이 데려가는
-         * 화면의 행이 다른 글리프를 쓰면 "프로젝트"의 시각 어휘가 둘이 된다.
-         */
-        icon: Box,
-        href: routes.projects(),
-        exact: true,
-        badge: context.projectCount,
-      },
-      /**
-       * ⚠️ **아이콘이 `CircleUser`다** (2026-09-11 사용자) — 헤더 우상단 서랍 **안**의 같은 항목과
-       * 같은 글리프라야 "내 계정"이 한 어휘로 읽힌다. `Settings`(톱니)는 프로젝트 설정이 쓰므로,
-       * 여기에 같이 쓰면 사용자 축과 프로젝트 축이 같은 모양으로 섞인다.
-       */
-      { key: "account", label: m.common.nav.account, icon: CircleUser, href: routes.account(), exact: true },
-    ],
+    items: navWorkItems(context.projectCount),
   };
   if (project === null) return [work];
 
@@ -185,9 +205,21 @@ export function navZones(
         icon: section.icon,
         href: section.key === "translations" ? translationsHref(project) : section.href(project.slug),
         exact: section.exact,
+        badge: sectionBadge(section.key, project.counts),
       })),
     },
   ];
+}
+
+/**
+ * ⚠️ **Translations는 프로젝트 전체 키 수다** (2026-09-27 사용자) — 보고 있는 표면을 따라 바뀌지 않는다.
+ */
+function sectionBadge(key: NavSection["key"], counts: NavProject["counts"]): number | undefined {
+  if (counts === undefined) return undefined;
+  if (key === "sources") return counts.sources;
+  if (key === "translations") return counts.keys;
+  if (key === "members") return counts.members;
+  return undefined;
 }
 
 /**
@@ -203,9 +235,14 @@ function translationsHref(project: NavProject): string {
 /**
  * 사이드바 하단의 전역 항목. **라우트가 아니라 "앱을 벗어나는 것"들이라 구역 밖이다.**
  *
- * ⚠️ **Help가 `/docs`를 가리킨다** (8-3 사용자 결정). 그 화면은 아직 placeholder이지만 **라우트는
- * 실재한다**(8-1a가 땄다) — 없는 곳을 가리키는 항목이 아니다. 내용은 출시 전에 채운다.
+ * ⚠️ **Release notes → Docs 둘이다** (2026-09-27 사용자). Sign out은 여기서 빠져 사용자 메뉴에만 있다.
+ * ⚠️ **아이콘이 사용자 메뉴의 같은 항목과 같다**(`Compass` · `CircleHelp`) — 같은 곳을 두 글리프로 가리키지 않는다.
+ * ⚠️ **Docs가 `/docs`(개요)를 가리킨다** (8-3 사용자 결정). 셸은 역할을 읽지 않는다 — 개발자·편집자 갈래는 개요가 준다.
  */
 export function navFooterItems(): NavItem[] {
-  return [{ key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: true }];
+  // `exact`는 효과가 없다 — 사이드바는 앱 셸(`app/(edit)/layout.tsx`)에만 서고 `/docs/*`는 공개 셸이라 둘이 한 화면에 안 선다.
+  return [
+    { key: "releaseNotes", label: m.common.nav.releaseNotes, icon: Compass, href: GITHUB_RELEASES_URL, exact: true, external: true },
+    { key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: true },
+  ];
 }

@@ -236,6 +236,50 @@ it("한 신호가 거부돼도 다른 신호가 끝날 때까지 워커 자리�
 });
 
 /**
+ * ⚠️ **프로젝트 안의 compare도 전부 끝나야 자리를 돌려준다** (audit #15 — POSTMORTEM 2026-09-13 재발). 바깥이 `allSettled`여도
+ * 안쪽이 `Promise.all`이면 한 소스의 거부가 곧장 끝을 알려, 다른 소스의 compare가 아직 떠 있는데 다음 프로젝트를 당겼다.
+ */
+it("한 소스의 compare가 거부돼도 같은 프로젝트의 다른 compare가 끝날 때까지 자리를 유지한다", async () => {
+  const gates: (() => void)[] = [];
+  let inFlight = 0;
+  let peak = 0;
+  const createClient = vi.fn(async () => {
+    // 이 프로젝트의 대기 중인 compare 수 — 0이 되기 전까지 진행 중인 프로젝트다.
+    let open = 0;
+    const enter = () => { if (open++ === 0) { inFlight += 1; peak = Math.max(peak, inFlight); } };
+    const leave = () => { if (--open === 0) inFlight -= 1; };
+    return {
+      async compareToBase(sha: string) {
+        enter();
+        try {
+          if (sha === "b".repeat(40)) throw new Error("compare unavailable");
+          await new Promise<void>((resolve) => gates.push(resolve));
+          return { ahead: true, files: [{ filename: "i18n/ko.json" }] };
+        } finally { leave(); }
+      },
+      async isPullRequestOpen() { return true; },
+    } as unknown as GitClient;
+  });
+  const surfaces = [
+    { lastCommitSha: "a".repeat(40), adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", storedLocales: ["en", "ko"] },
+    { lastCommitSha: "b".repeat(40), adapterName: "json-catalog", pathTemplate: "web/{locale}.json", storedLocales: ["en", "ko"] },
+  ];
+  const pending = loadRemoteSignals(
+    Array.from({ length: 7 }, (_, i) => target({ projectId: `p${i}`, lastPrUrl: null, surfaces })),
+    { createClient },
+  );
+  const settle = async () => { for (let i = 0; i < 40; i += 1) await Promise.resolve(); };
+  await settle();
+  expect(createClient).toHaveBeenCalledTimes(3);
+  while (gates.length > 0) { gates.shift()?.(); await settle(); }
+  const signals = await pending;
+  expect(createClient).toHaveBeenCalledTimes(7);
+  expect(peak).toBe(3);
+  // 하나라도 거부됐으면 남은 compare가 성공해도 띠를 만들지 않는다.
+  for (const value of signals.values()) expect(value).toEqual({ openPr: null, repoAheadFiles: 0 });
+});
+
+/**
  * ⚠️ **try/catch는 에러만 값으로 접고 지연은 못 접는다** (2026-09-13 리뷰). GitHub이 응답을 영영
  * 안 주면 `signalsFor`의 catch에 닿지 않아 페이지가 그대로 매달리고, 이 화면은 로그인 직후의
  * 착지점이라 그 매달림이 곧 빈 화면이다.

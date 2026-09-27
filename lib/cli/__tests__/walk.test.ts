@@ -1,8 +1,8 @@
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
+import { chmodSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { SKIP_DIR, sourceKind, walkFiles } from "../walk";
+import { SKIP_DIR, readSourceFiles, sourceKind, walkFiles } from "../walk";
 
 /**
  * 세 CLI가 공유하는 리포 훑기인데 테스트가 0이었다 (2026-09-04 audit #26). `scan.ts`가
@@ -65,5 +65,35 @@ describe("walkFiles — 심링크 (sec-audit 12)", () => {
 
   it("자기 자신을 가리키는 심링크에서 종료한다 — 던지지도 않는다", () => {
     expect(() => walkFiles(sroot)).not.toThrow();
+  });
+});
+
+/**
+ * **부가 스캔의 파일 읽기 실패는 경고다** (audit #16). `scan`·`push:local`이 `readFileSync`를 그대로 불러 한 파일의 `EACCES`가
+ * CLI 전체를 죽였다 — scan의 "항상 exit 0"이 거짓이 되고, push:local은 정상 로케일 적재까지 멈췄다. 디렉터리 읽기 실패는 대상이
+ * 아니다(`walkFiles`가 그대로 던진다 — 로케일 파일이 그 안에 있을 수 있다).
+ */
+describe.skipIf(process.getuid?.() === 0)("readSourceFiles", () => {
+  const repo = mkdtempSync(join(tmpdir(), "walk-sources-"));
+  mkdirSync(join(repo, "src"));
+  writeFileSync(join(repo, "src/a.ts"), "t('a')");
+  writeFileSync(join(repo, "src/locked.ts"), "t('b')");
+  writeFileSync(join(repo, "README.md"), "x");
+  afterAll(() => { chmodSync(join(repo, "src/locked.ts"), 0o644); rmSync(repo, { recursive: true, force: true }); });
+
+  it("못 읽은 소스 파일은 건너뛰고 경로로 돌려주며, 나머지는 읽는다", () => {
+    chmodSync(join(repo, "src/locked.ts"), 0o000);
+    expect(readSourceFiles(repo, walkFiles(repo))).toEqual({
+      files: [{ path: "src/a.ts", code: "t('a')", kind: "ts" }],
+      unreadable: ["src/locked.ts"],
+    });
+  });
+
+  it("짝: 전부 읽히면 unreadable이 비고, 스캔 대상이 아닌 파일은 읽지 않는다", () => {
+    chmodSync(join(repo, "src/locked.ts"), 0o644);
+    expect(readSourceFiles(repo, walkFiles(repo))).toEqual({
+      files: [{ path: "src/a.ts", code: "t('a')", kind: "ts" }, { path: "src/locked.ts", code: "t('b')", kind: "ts" }],
+      unreadable: [],
+    });
   });
 });

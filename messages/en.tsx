@@ -149,7 +149,7 @@ export const en = {
       "not-connected": "Malmoi is not connected to this repository",
       "already-running": "A sync is already running",
       /** ⚠️ 제목 자리라 마침표가 없다(DESIGN §10). 아무것도 지워지지 않았다는 것이 요지다. */
-      "reconfirm": "Translations changed after you opened Sync — nothing was discarded. Open Sync again to review",
+      "reconfirm": "The project changed after you opened Sync — nothing was discarded. Open Sync again to review",
       "no-surfaces": "There's nothing to sync — this project has no active sources",
       "invalid input": "The project could not be identified. Refresh the page and try again.",
       /**
@@ -217,8 +217,6 @@ export const en = {
   common: {
     retry: "Try again",
     appName: "Malmoi",
-    /** 루트 `metadata.description` — 검색 결과·링크 미리보기에 선다. */
-    appDescription: "Localization management for your team",
     /**
      * ⚠️ **구역이 다른 문구를 가져다 쓰지 않는다** (2026-09-13 리뷰). Sessions·GitHub 구역이
      * `link.methods.cancel`을 빌려 쓰고 있었고, 그러면 Sign-in methods를 고칠 때 나머지 둘이
@@ -246,7 +244,7 @@ export const en = {
        * ⚠️ **라벨과 순서는 Figma 시안(`212:944`)이 정본이다** (8-3). 2026-09-09의 IA(PRODUCT §7.7)에서
        * 바뀐 것: `Your work` 구역 라벨이 **사용자 이름**으로, `All projects`→`Projects`,
        * `Your account`→`Settings`, `Overview`→`Home`, `Languages`→`Locales`,
-       * `Settings`(프로젝트)→`Project settings`. `New project`는 사이드바에서 빠졌다.
+       * `Settings`(프로젝트)→`Project settings`. `New project`는 그때 사이드바에서 빠졌다가 2026-09-27에 `Projects` 아래로 돌아왔다(사용자).
        */
       projects: "Projects",
       /**
@@ -281,9 +279,25 @@ export const en = {
        */
       projectSettings: "Settings",
       signOut: "Sign out",
-      /** ⚠️ **사이드바에는 없다** (8-3) — 목록 화면의 버튼과 빈 상태만 쓴다. */
+      /**
+       * GitHub Releases로 가는 외부 링크 (2026-09-27 사용자 — 복수형 `notes`가 사용자 결정이다) — 사용자 메뉴와
+       * 사이드바 하단이 같은 키를 쓴다.
+       */
+      releaseNotes: "Release notes",
+      /** 사이드바 사용자 구역의 `Projects` 바로 아래 항목 (2026-09-27 사용자 — 8-3의 "사이드바에는 없다"를 뒤집었다). 목록 화면의 버튼·빈 상태도 쓴다. */
       newProject: "New project",
       userMenu: "Account menu",
+      /**
+       * LNB 프로젝트 구역 머리의 전환 메뉴 (2026-09-27 사용자). ⚠️ **맨 아래 행은 `newProject`를 그대로 쓴다** — 같은 행동을
+       * LNB 항목·목록 버튼과 다른 이름(`Create project`)으로 부르면 그중 하나가 낡는다.
+       */
+      projectSwitcher: {
+        label: "Switch project",
+        search: "Find project…",
+        empty: "No projects found",
+        /** 입력 오른쪽 키 칩 — 닫는 키 이름이다. */
+        escHint: "Esc",
+      },
       /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다. */
       appHome: "Malmoi home",
     },
@@ -300,6 +314,23 @@ export const en = {
   },
 
   /**
+   * 검색·링크 미리보기 전용 문구 (seo-geo). ⚠️ **나머지 머리 문구는 기존 값을 재사용한다** — 설명은 `landing.hero.body`,
+   * docs 라벨은 `publicDocs.docs.title`, 방침 제목은 `publicDocs.privacy.title`. 사본을 만들면 화면과 검색 결과가 따로 낡는다.
+   */
+  seo: {
+    /** 랜딩 `<title>` — absolute라 템플릿(`%s · Malmoi`)을 안 지나므로 브랜드를 스스로 담는다. */
+    homeTitle: "Malmoi: Localization for GitHub repositories",
+    /**
+     * `public/og.png`의 대체 텍스트 — 제목 반복이 아니라 이미지 내용 묘사다. ⚠️ 이미지는 사용자가 준 자산이다(launch-readiness L2.12) —
+     * 그림이 바뀌면 이 문장도 같이 고친다.
+     */
+    ogImageAlt:
+      "The headline Connect your projects, Translate & ship together above a synced GitHub project card for your-project (src/i18n/locales.json) and three translation key cards, welcome.title, team.invite and common.save, each with Korean, English and Japanese values",
+    /** `/signin` 탭 제목 — `signIn.title`("Sign in to Malmoi")을 쓰면 템플릿과 브랜드가 두 번 선다. */
+    signInTitle: "Sign in",
+  },
+
+  /**
    * 로그인 화면 (8-1b — Figma 시안).
    *
    * ⚠️ **tagline과 모형 카드 문구 넷이 사라졌다.** 시안이 제목 한 줄이고 우측 장식이 키비주얼
@@ -312,7 +343,7 @@ export const en = {
     github: "Continue with GitHub",
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
-    consent: { before: "By clicking Continue through a third party you accept the Malmoi ", link: "Privacy Policy" },
+    consent: { before: "By clicking Continue through a third party you accept the Malmoi ", link: "Privacy Policy", after: "." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Privacy Policy", docs: "Docs" },
     /**
      * 우측 장식의 문구 둘. ⚠️ **키비주얼을 `alt=""`로 둘 수 있는 근거가 이 두 줄이다** — 이미지
@@ -322,35 +353,153 @@ export const en = {
   },
 
   /**
+   * 랜딩(`/`) — 비로그인 방문자만 본다(`ok`는 `/projects`로 간다).
+   *
+   * ⚠️ **셸의 `Docs`·`GitHub`는 푸터(`m.signIn.footer`)와 같은 낱말이지만 다른 자리다** — 헤더 내비의 이름이고,
+   * 푸터 목록은 `lib/links.ts`가 `/signin`과 함께 든다.
+   */
+  landing: {
+    shell: {
+      logo: "Malmoi home",
+      nav: "Main",
+      home: "Home",
+      docs: "Docs",
+      github: "GitHub",
+      getStarted: "Get started",
+      /** 공개 셸 primary의 로그인 갈래 — `/privacy`에만 선다(랜딩은 `ok`에서 안 그려진다). */
+      openMalmoi: "Open Malmoi",
+    },
+    /** 히어로 — 버튼 둘은 헤더와 같은 말이라 `shell.docs`·`shell.getStarted`를 쓴다(같은 구역). */
+    hero: {
+      /**
+       * h1 두 줄 — 줄은 `<br>`가 가른다. ⚠️ 둘째 줄은 Sentence case다(시안 열린 결정 3).
+       * ⚠️ **구현된 화면이라 코드가 정본이다** — Claude Design 시안은 첫 구현 동안만 정본이었다. 문구를 바꿀 때 시안을 따라가지 않는다.
+       */
+      title: ["Connect your projects,", "translate & ship together"] as const,
+      /**
+       * ⚠️ `locale files`가 아니다 — `terminology.test.ts`가 `locale`을 금지한다(DESIGN §10.1).
+       * ⚠️ **첫 문장이 정의다**(seo-geo T12a) — 이 값이 홈 description·`og:description`·`llms.txt` 머리·JSON-LD 설명으로도 나간다.
+       * 분량을 늘리지 않는다(히어로 줄 수).
+       */
+      body: "Malmoi is a localization tool for GitHub repos: it finds your translation files, lets teammates edit them in the browser, and sends every change back as one pull request.",
+    },
+    /** 스크롤 구동 목업 — 캡션 다섯은 씬 순서다. 보이는 캡션은 `aria-hidden`이고 visually-hidden `<ol>`이 늘 담는다. */
+    stage: {
+      label: "How Malmoi works",
+      captions: [
+        "Malmoi reads the translation files already in your repository.",
+        "Fill in the languages a key is missing.",
+        "Each saved edit adds to the count on Publish.",
+        "Review every change as a diff before it's sent.",
+        "Everything goes back as one pull request.",
+      ] as const,
+    },
+    closing: {
+      title: "Start from the files you already have",
+      /** 지원 포맷을 문장으로 선다(seo-geo T12a) — 목록은 `guide/reference/formats.md`와 같다. 분량을 늘리지 않는다. */
+      body: "Connect a GitHub repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and send the first pull request.",
+    },
+    /**
+     * 목업의 **가상 데이터** — 앱 라벨은 여기 없다. 라벨은 실제 사전 키를 읽는다(목업과 앱이 다른 말을 하면 랜딩이 거짓이다).
+     *
+     * ⚠️ **작게 유지한다.** 실명·실제 프로젝트명 금지. ⚠️ 타이핑되는 값은 `fr`이다(DESIGN §6.615) — 한글이면 `no-korean-ui`가,
+     * 일본어면 폰트(가나 없음)가 걸린다. NFC이고 결합 문자가 없다(`typedPrefix`가 코드포인트로 자른다).
+     */
+    mockup: {
+      project: "Acme web",
+      repo: "acme/web",
+      source: "web",
+      namespace: "checkout",
+      /** 셸의 사용자 구역 머리 · Publish diff의 저자 — 보는 사람이다. `teammate`는 다른 편집자다. */
+      user: "Alex",
+      teammate: "Sam",
+      /** 사이드바 배지 — `Projects`는 멤버십 수, 프로젝트 항목은 소스·멤버·키 수(키는 `keyCount`). */
+      projectCount: 3,
+      memberCount: 4,
+      /**
+       * 소스 트리 — 첫째가 보고 있는 소스(`source`)라 펼쳐져 있고 나머지는 접힌다(실제 `TreePanel`). 네임스페이스 합이 소스의 키 수다.
+       * 프로젝트 키 수(`keyCount`)는 소스 키 수의 합이다.
+       */
+      sources: [
+        {
+          slug: "web",
+          keyCount: 248,
+          namespaces: [
+            { name: "cart", keyCount: 36 },
+            { name: "checkout", keyCount: 52 },
+            { name: "common", keyCount: 104 },
+            { name: "product", keyCount: 56 },
+          ],
+        },
+        { slug: "emails", keyCount: 40, namespaces: [] },
+      ],
+      /**
+       * 선택된 키 — 씬 ②에서 `fr` 값이 비어 있다가 채워진다. ⚠️ **원문 포함 값은 둘까지다** — 1440×810 안의 로케일 목록이
+       * 행 셋만 담는다(넷이면 `fr` 칸이 푸터 밑으로 들어간다, #112).
+       */
+      selected: {
+        key: "checkout.submit",
+        text: "Place order",
+        description: "Primary button on the payment step",
+        values: [
+          { code: "en", value: "Place order" },
+          { code: "de", value: "Bestellung aufgeben" },
+        ],
+        typedCode: "fr",
+        typed: "Passer la commande",
+      },
+      /**
+       * 키 목록 — `missing`은 빠진 언어 수, 0이면 Complete. ⚠️ **미완이 먼저다** — 실제 목록이 `Incomplete first`로 정렬한다
+       * (`lib/keys/translation-list.ts`의 `rank`). 선택된 키가 첫 행이다.
+       */
+      rows: [
+        { key: "checkout.submit", text: "Place order", missing: 1 },
+        { key: "checkout.coupon", text: "Add a coupon", missing: 2 },
+        { key: "checkout.shipping", text: "Shipping address", missing: 1 },
+        { key: "cart.title", text: "Your cart", missing: 0 },
+        { key: "cart.empty", text: "Your cart is empty", missing: 0 },
+        { key: "cart.remove", text: "Remove", missing: 0 },
+        { key: "checkout.title", text: "Checkout", missing: 0 },
+        { key: "checkout.total", text: "Order total", missing: 0 },
+      ],
+      keyCount: 288,
+      /** Publish 배지 — 씬 ③의 저장 전 → 후. */
+      unsentBefore: 1,
+      unsentAfter: 2,
+      /** 언어 → 파일 경로. diff가 파일 이름을 따로 들지 않는다 — 언어와 파일이 어긋날 자리를 없앤다. */
+      file: (code: string): string => `messages/${code}.json`,
+      /**
+       * 씬 ④의 diff — 파일당 한 줄. `before`가 null이면 새로 채운 값이다.
+       * ⚠️ **언어는 편집기에 있는 것만**(원문 `en` 밖의 `selected.values` + `fr`) — 편집기에 없는 언어를 보내면 두 씬이 다른
+       * 프로젝트를 말한다(#114). 선택 키의 편집은 ②③이 만든 `fr` 하나다.
+       */
+      diff: [
+        { key: "cart.empty", code: "de", before: "Ihr Warenkorb ist leer", after: "Dein Warenkorb ist leer" },
+        { key: "checkout.submit", code: "fr", before: null, after: "Passer la commande" },
+      ],
+      pullRequest: 128,
+    },
+  },
+
+  /**
    * Home(`/projects/:slug`) — 프로젝트 진입의 착지점 (6b-6).
    *
    * ⚠️ **다른 화면의 지표 문구를 복제하지 않는다** (PRODUCT §7.7 결정 2). 키 수·미배포 건수는 번역
    * 화면 툴바(`m.translations`)의 것이고, 적재 상태는 설정(`m.settings.status`)의 것이다.
    */
   /**
-   * 공개 문서 둘 — 로그인 화면 푸터가 가리킨다 (8-1a).
+   * 공개 문서 둘 — 공통 푸터(`PublicFooter`)가 가리킨다 (8-1a).
    *
-   * ⚠️ **`/privacy`는 본문이 섰고 `/docs`는 아직 placeholder다** (launch-readiness L2.3). 라우트를 먼저 딴 이유는 시안 푸터가 그것을
-   * 가리키기 때문이고, 링크가 죽어 있는 것보다 "준비 중"이 낫다는 판정이다.
-   *
-   * ⚠️ **`back`이 없으면 사용자가 갇힌다** — 이 둘은 셸 **밖**이라 사이드바도 푸터도 없고
-   * 뒤로가기 말고 돌아올 길이 없다.
+   * 둘 다 공개 셸 **안**이라 헤더가 나가는 길을 든다(DESIGN §6.616 · §6.61) — 복귀 링크가 없다.
+   * `/privacy`는 본문이 여기 있고, `/docs`는 본문이 `guide/**.md`이고 셸 라벨만 여기 있다.
    */
   publicDocs: {
-    /**
-     * ⚠️ **복귀 링크가 세션으로 갈린다** (DESIGN §6.61) — 셸 사이드바의 `CircleHelp`로 들어온
-     * 사람에게 "Back to sign in"만 주면 나가는 길이 로그아웃처럼 보인다.
-     */
-    back: {
-      app: "Back to projects",
-      signIn: "Back to sign in",
-    },
-    /** 시행일 줄의 라벨 — 날짜 자체는 각 문서가 든다. `/privacy`만 쓴다 (DESIGN §6.61). */
+    /** 시행일 줄의 라벨 — 날짜 자체는 각 문서가 든다. `/privacy`만 쓴다 (DESIGN §6.616). */
     effectiveDate: "Effective date",
     /**
-     * ⚠️ **`sections`의 `id`는 URL 조각이다** — 다른 화면이 `/docs#workflow`처럼 절을 직접
-     * 가리키므로(launch-readiness L2.3), 제목 문구를 고칠 때 **`id`는 따라 고치지 않는다.**
-     * 블록은 문단(`p`)·목록(`ul`)·표(`table`) 셋이고, 클래스는 `components/public-doc.tsx`가 든다.
+     * ⚠️ **`sections`의 `id`는 URL 조각이다** — 목차가 `#id`로 절을 가리키므로 제목 문구를 고칠 때 **`id`는 따라 고치지 않는다.**
+     * 블록은 문단(`p`)·목록(`ul`)·표(`table`) 셋이고(`lib/privacy/doc-text.ts`의 `DocBlock`), 클래스는 그릇이 든다 —
+     * `components/privacy/privacy-doc.tsx`, 표는 `components/public-doc-table.tsx`.
      */
     privacy: {
       title: "Privacy Policy",
@@ -361,16 +510,25 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-09-26",
+      effectiveDate: "2026-09-27",
+      /**
+       * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
+       */
+      toc: "On this page",
+      /**
+       * 목차 전용 짧은 라벨 — 없으면 절 `heading`을 쓴다(시안 Prototype `isPrivacy`, malmoi#117 — 200px 칸에서 두 줄로 접히던 항목).
+       * ⚠️ **`sections` 밖에 둔다** — 안에 넣으면 방침 본문 해시가 바뀌어 개정 이력이 요구된다. 키는 절 `id`다.
+       */
+      tocLabels: { deletion: "Deleting your data" },
       intro:
-        "Malmoi is a localization tool: developers push the strings in their code to Malmoi, their teammates translate them here, and Malmoi opens a pull request back to the repository. This policy covers what Malmoi stores about the people who sign in, why it stores it, and how to have it removed.",
+        "Malmoi is a localization tool: developers push the strings in their code to Malmoi, their teammates translate them here, and Malmoi opens a pull request back to the repository. This policy covers what Malmoi stores about the people who sign in, how it counts visits to its public pages, why, and how to have your data removed.",
       sections: [
         {
           id: "collected",
           heading: "What we collect",
           blocks: [
             {
-              p: "Malmoi collects what it needs to sign you in, to decide what you can open, and to show your teammates who changed a translation. There is no analytics, advertising or tracking of any kind.",
+              p: "Malmoi collects what it needs to sign you in, to decide what you can open, and to show your teammates who changed a translation. Separately, it counts visits to its public pages — the home page, sign-in, the docs and this policy — without cookies. Pages inside the app are not counted, and there is no advertising or cross-site tracking.",
             },
             {
               table: {
@@ -418,6 +576,9 @@ export const en = {
             {
               p: "Names, email addresses and connection tokens are stored encrypted, and the keys are held outside the database. A profile picture you upload is re-encoded before it is stored, which drops the original file and the metadata in it; a picture that comes from GitHub or Google stays on their servers.",
             },
+            {
+              p: "Visits to the public pages are counted by Vercel Web Analytics. For each page view it records the time, the page address with any query and fragment removed, the page you came from, your approximate location (country, region and city), and your device type, operating system and browser with their versions. It sets no cookies and stores nothing in your browser. Instead of an identifier, Vercel uses a hash created from the request, and that visitor session is discarded after 24 hours; the records are not tied to a person or an IP address. Malmoi sees only totals.",
+            },
           ],
         },
         {
@@ -432,6 +593,7 @@ export const en = {
                 "Writing translations back to the repository a project is connected to, as a pull request.",
                 "Emailing an invitation link to an address a project owner enters. The email holds the link and nothing else — no project name, no role and no tracking.",
                 "Keeping the service running, which includes looking at error logs when something fails.",
+                "Counting visits to the public pages, to see whether people find Malmoi and which docs they read. Only totals are looked at.",
               ],
             },
             {
@@ -468,7 +630,7 @@ export const en = {
                 "GitHub — signing you in, and reading and writing the repository a project is connected to. Translations are committed and opened as a pull request by Malmoi's GitHub App, not under your own account.",
                 "Google — signing you in, if you choose Google.",
                 "Supabase — the database, hosted in Tokyo.",
-                "Vercel — hosting for the app and storage for uploaded profile pictures. Vercel records requests to the service, including IP addresses, as part of running it.",
+                "Vercel — hosting for the app, storage for uploaded profile pictures, and counting visits to the public pages (Web Analytics, described under What we collect). Vercel records requests to the service, including IP addresses, as part of running it.",
                 "Resend — sending invitation emails, from Tokyo. It receives the invited address and the message with the invitation link. Open and click tracking are off.",
               ],
             },
@@ -543,7 +705,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
@@ -553,120 +715,30 @@ export const en = {
      * (`lib/shell/nav.ts`). 2026-09-11까지 후자가 `nav.help: "Help"`로 갈려 있었는데,
      * 같은 라우트를 가리키는 라벨이 둘이면 하나가 낡는다.
      */
-    /**
-     * 도움말 (launch-readiness L2.3). ⚠️ **수·이름은 정본 상수와 대조된다** — `components/__tests__/docs-content.test.tsx`가
-     * 상한 넷(`PROJECT_LIMIT`·`MEMBER_LIMIT`·`INVITATION_HOURLY_LIMIT`·`PROJECT_SLUG_MAX`)·포맷 이름·실제 `uses:` 넷·
-     * `SKIP_MARKER`를 읽는다. 사전은 잎이라 그 상수를 import할 수 없어 리터럴로 적고 테스트가 묶는다.
-     * ⚠️ **`workflow` id는 설정 화면이 가리킨다** (`ci-card.tsx`의 hook 안내).
-     */
     docs: {
       title: "Docs",
-      intro: "How to connect a repository to Malmoi, what it can read, and the limits that apply.",
-      sections: [
-        {
-          id: "how-it-works",
-          heading: "How Malmoi works",
-          blocks: [
-            {
-              p: "Your code decides which strings exist; Malmoi holds the translations. A workflow in your repository sends the translation files to Malmoi whenever the base branch changes. Translators edit in Malmoi, and Publish sends their work back to the repository as one pull request.",
-            },
-            {
-              p: "While translators have edits that haven't been sent yet, Malmoi holds new syncs from the repository so those edits aren't overwritten. Publish, then run the workflow again — or a project owner can discard the edits from Sync.",
-            },
-          ],
-        },
-        {
-          id: "workflow",
-          heading: "Set up the workflow",
-          blocks: [
-            {
-              ul: [
-                "Create the project in Malmoi. The last step shows a push token and the workflow file.",
-                "Add the token to the repository as an Actions secret named PUSH_TOKEN.",
-                "Save the workflow as .github/workflows/malmoi-i18n.yml. The project's Settings show the same file again at any time, with every source.",
-                "If your code reads translations through a hook such as useTranslations(), add the wrapper input with the module and export (for example next-intl#useTranslations()), so Malmoi can show where each key is used.",
-              ],
-            },
-            {
-              p: "Rotating the token in Settings stops the old one right away — update the secret at the same time. If you change the base branch or the base language in settings, change the workflow file to match.",
-            },
-          ],
-        },
-        {
-          id: "allowed-actions",
-          heading: "Organizations that allow only selected actions",
-          blocks: [
-            {
-              p: "The workflow uses four actions. If your organization allows only selected actions, add all four as name@* (for example actions/checkout@*), or the run stops at “Set up job” with “not allowed to be used”:",
-            },
-            {
-              ul: [
-                "SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push — Malmoi's action",
-                "actions/checkout — in the workflow file",
-                "pnpm/action-setup — inside Malmoi's action",
-                "actions/setup-node — inside Malmoi's action",
-              ],
-            },
-            {
-              p: "The last two don't appear in your workflow file, so they are easy to miss.",
-            },
-          ],
-        },
-        {
-          id: "formats",
-          heading: "Supported file formats",
-          blocks: [
-            {
-              table: {
-                label: "Supported file formats",
-                head: ["Format", "Example path"],
-                rows: [
-                  ["JSON catalog", "src/locales/{locale}.json"],
-                  ["YAML catalog", "config/locales/{locale}.yml"],
-                  ["Chrome extension messages", "_locales/{locale}/messages.json"],
-                  ["Code dictionary (one file per language)", "src/locales/{locale}.ts"],
-                  ["Code dictionary (all languages in one file)", "src/i18n/namespaces/*.ts"],
-                ],
-              },
-            },
-            {
-              p: "A repository needs translation files in 2 or more languages. If it has only one, add a file for a second language before you connect it.",
-            },
-          ],
-        },
-        {
-          id: "limits",
-          heading: "Limits",
-          blocks: [
-            {
-              ul: [
-                "You can own up to 3 projects. Archiving one frees its place.",
-                "A project can have up to 10 members. Pending invitations don't count until they're accepted.",
-                "A project can send up to 20 invitations an hour.",
-                "A project address can be up to 40 characters. Addresses are shared by everyone on malmoi, so a common name such as web may already be taken.",
-              ],
-            },
-          ],
-        },
-        {
-          id: "merging",
-          heading: "Merging the translation pull request",
-          blocks: [
-            {
-              p: "Squash, rebase and a merge commit all work. Keep [skip-malmoi-i18n] in the pull request title: without it, merging runs the workflow again and can overwrite translations saved after the pull request was opened.",
-            },
-          ],
-        },
-        {
-          id: "nightly",
-          heading: "Every night",
-          blocks: [
-            {
-              p: "Once a night, malmoi publishes every project that has translations not yet sent. If a translation pull request is already open, it is updated instead of a new one being opened.",
-            },
-          ],
-        },
-      ],
+      /**
+       * `/docs/*`의 셸 라벨 (DESIGN §6.61). ⚠️ **본문은 여기 없다** — `guide/**.md`가 정본이고, 개요의 대상 라벨·
+       * `More in the docs`만 사전이 든다(어느 장을 앞에 세우는지는 `lib/guide/overview.ts`의 상수다).
+       */
+      nav: "Docs",
+      toc: "On this page",
+      /** 이전/다음 카드 묶음의 `nav` 이름 — 목차·문서 내비와 랜드마크가 갈려야 한다. */
+      pages: "Previous and next pages",
+      previous: "Previous",
+      next: "Next",
+      /** 파일명 바가 없는 코드 블록의 region 이름 — 이름이 있으면 파일명이 대신한다. */
+      code: "Code",
+      forDevelopers: "For developers",
+      forTranslators: "For translators",
+      more: "More in the docs",
+      notFound: {
+        eyebrow: "404",
+        title: "This page doesn't exist",
+        /** 한 문단이다(시안 1d, #119) — 주소와 개요 링크가 같은 문장에 선다. */
+        body: (path: ReactNode, overview: ReactNode): ReactNode => <>There&apos;s no page at {path}. Pick a page from the list, or start from the {overview}.</>,
+        overview: "docs overview",
+      },
     },
   },
 
@@ -1038,6 +1110,7 @@ export const en = {
         repository: (who: ReactNode): ReactNode => <>{who} reconnected the repository</>,
         pushToken: (who: ReactNode): ReactNode => <>{who} rotated the push token</>,
         image: (who: ReactNode): ReactNode => <>{who} changed the project image</>,
+        imageRemoved: (who: ReactNode): ReactNode => <>{who} removed the project image</>,
         archived: (who: ReactNode): ReactNode => <>{who} archived this project</>,
         restored: (who: ReactNode): ReactNode => <>{who} restored this project</>,
       },
@@ -2097,12 +2170,16 @@ export const en = {
        * ⚠️ **검토 표시를 예고하지 않는다** — `planPush`가 base 교체 push에서 전파를 건너뛰므로 그
        * 일이 안 일어난다. 둘을 말하면 무엇을 해야 하는지가 흐려진다.
        *
+       * ⚠️ **트리거를 이름으로 댄다** (malmoi#127) — "the next sync from the repository"는 옆의 [Sync]로 읽혔고, 그 버튼은 저장된 기준
+       * 언어로 읽어 선언을 적용하지 않는다. "push"는 번역자 문구에 쓰지 않으므로(DESIGN §10.1) 워크플로의 Sync라고 말한다.
+       *
        * ⚠️ **로케일 코드를 그대로 보인다** — 사람이 읽는 이름이 없다(`Locale.name`이 코드와 같게
        * 심긴다). 지어내면 리포의 파일명과 갈린다.
        */
       basePending: (locale: string): string =>
         `The base language is changing to ${locale}. ` +
-        "It switches on the next sync from the repository — syncs wait while changes are unpublished, so publish them first.",
+        "It switches on the next sync from your repository's GitHub Actions workflow — the Sync button doesn't apply it. " +
+        "That sync waits while changes are unpublished, so publish them first.",
     },
 
     empty: {
@@ -2165,6 +2242,14 @@ export const en = {
       previewSummary: (n: number, keys: number, files: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} \u00b7 ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"} \u00b7 ${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"}`,
       changes: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`,
+      /**
+       * 편집 없이 바뀌는 파일 (#128) — 실행이 DB의 현재 상태로 다시 쓰는 파일이다. 원인 둘(코드에서 지운 키의 줄이 빠진다 · 머지되지 않은 앞선 PR의
+       * 값이 다시 나간다)을 말하고 줄 단위 diff는 약속하지 않는다 — 셀 단위 표에 그 줄이 없다.
+       */
+      otherFile: {
+        label: "No unsent edits",
+        body: "This file is rewritten from Malmoi's current translations. Keys removed from the code drop out, and values from an earlier pull request that wasn't merged go out again.",
+      },
       fileSummary: (n: number, keys: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} \u00b7 ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}`,
       key: "Key",
@@ -2183,9 +2268,12 @@ export const en = {
       /** 수술적 어댑터의 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐다 (launch-readiness L3.7). 편집은 DB에 남는다. */
       withoutFile: (n: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "edit isn't" : "edits aren't"} listed because the language file isn't in the repository yet. ${n === 1 ? "It stays" : "They stay"} here until the file exists.`,
-      /** ts-dict 로케일 객체에 자리가 없는 키의 셀 — pull이 그 셀만 보류한다 (delivery-invariants D3). `withoutFile`과 같은 약속이다. */
+      /**
+       * ts-dict 로케일 객체에 자리가 없는 키의 셀 — pull이 그 셀만 보류한다 (delivery-invariants D3 · audit #1). `withoutFile`과 같은 약속이다.
+       * ⚠️ **원인을 말하지 않는다**("yet") — 아직 안 생긴 키와 코드에서 지워진 키가 같은 판정(`keySlot`)을 지난다(B3 r1).
+       */
       withoutKey: (n: number): string =>
-        `${n.toLocaleString("en-US")} ${n === 1 ? "edit isn't" : "edits aren't"} listed because ${n === 1 ? "its key isn't" : "their keys aren't"} in the language file yet. ${n === 1 ? "It stays" : "They stay"} here until the ${n === 1 ? "key exists" : "keys exist"}.`,
+        `${n.toLocaleString("en-US")} ${n === 1 ? "edit isn't" : "edits aren't"} listed because ${n === 1 ? "its key isn't" : "their keys aren't"} in the language file. ${n === 1 ? "It stays" : "They stay"} here until the file has ${n === 1 ? "the key" : "those keys"}.`,
       /**
        * 결과의 보류 줄 (delivery-invariants D7) — 미리보기 `withoutFile`·`withoutKey`와 **같은 명사·같은 약속**이다. 역할 갈림은 화면에 있는
        * 컨트롤만 가리킨다: EDITOR에게는 `Revert to last sent`가 없다.
@@ -2194,11 +2282,15 @@ export const en = {
         file: (n: number): string =>
           `${n.toLocaleString("en-US")} ${n === 1 ? "edit wasn't" : "edits weren't"} sent because the language file isn't in the repository. ${n === 1 ? "It stays" : "They stay"} here until the file exists.`,
         key: (n: number): string =>
-          `${n.toLocaleString("en-US")} ${n === 1 ? "edit wasn't" : "edits weren't"} sent because ${n === 1 ? "its key isn't" : "their keys aren't"} in the language file yet. ${n === 1 ? "It stays" : "They stay"} here until the ${n === 1 ? "key exists" : "keys exist"}.`,
+          `${n.toLocaleString("en-US")} ${n === 1 ? "edit wasn't" : "edits weren't"} sent because ${n === 1 ? "its key isn't" : "their keys aren't"} in the language file. ${n === 1 ? "It stays" : "They stay"} here until the file has ${n === 1 ? "the key" : "those keys"}.`,
         editor: "Ask a project owner.",
         owner: {
           file: "Add the file to the repository, or use Revert to last sent.",
-          key: "Add the keys to the language file, or use Revert to last sent.",
+          // 코드에서 지운 키(B3.4)도 이 줄이다 — 되돌리기가 먼저이고, 키를 "다시" 넣는 것은 둘째다(B3 r3).
+          key: "Use Revert to last sent, or add the keys back to the language file.",
+          /** 보류 셀 중 되돌릴 기준이 없는 것이 있다(#129) — 그 셀의 Revert는 꺼져 있으므로 가리키지 않는다. 폐기는 Home의 Sync 승인이다. */
+          fileNoRevert: "Add the file to the repository, or discard the edits with Sync.",
+          keyNoRevert: "Add the keys back to the language file, or discard the edits with Sync.",
         },
       },
 
@@ -2370,6 +2462,14 @@ export const en = {
         owner: "Restore the file on that branch, or change the path or branch in Settings.",
         editor: "Ask a project owner to restore the file or change the path in Settings.",
       },
+      /** base 언어 파일을 읽을 수 없다 (B3 r3 — 실행이 base 키 집합을 못 정해 막는다). 부재와 같은 거부 모양이고 고칠 곳이 파일 내용이다. */
+      baseFileUnreadable: {
+        title: "The base language file can't be read",
+        description: (path: string, branch: string): string =>
+          `Malmoi couldn't parse ${path} on ${branch}, so it can't tell which keys the file has. Nothing was sent.`,
+        owner: "Fix the file on that branch, or change the path or branch in Settings.",
+        editor: "Ask a project owner to fix the file or change the path in Settings.",
+      },
       unknownDelivery: "We couldn't confirm whether your changes were sent.",
 
       /** `1j` — 행조차 생기지 않는 거부 둘. 폭 512이고 danger가 아니다. */
@@ -2498,7 +2598,9 @@ export const en = {
     /** 기준 언어 폼. **선언만 저장한다** — 현실은 push가 소유한다 (PRODUCT §3). */
     field: {
       label: "Base language",
-      help: "The language your source strings are written in. Changing it takes effect on the next sync from the repository.",
+      // malmoi#127 — 옆의 [Sync]가 적용하지 않는다는 것까지 말한다(`translations.banner.basePending`과 같은 근거).
+      // r4 — 워크플로가 `base-locale:`을 박는다(`lib/onboarding/workflow.ts`). 옛 값을 보내는 CI push는 선언을 적용하지 않는다(가이드 `setup/sources.md` 2단계).
+      help: "The language your source strings are written in. Changing it takes effect on the next sync from your repository's GitHub Actions workflow, not the Sync button — update the workflow's base-locale: value to match.",
       save: "Save",
       /** ⚠️ **버튼 로딩과 다른 축이다** — 셀 인라인 상태줄이라 `loadingLabel` 제거 대상이 아니다. */
       saving: "Saving…",
@@ -2658,6 +2760,9 @@ export const en = {
         project: (limit: number, used: number, n: number, time: string): string =>
           `A project can create ${limit.toLocaleString("en-US")} invitations an hour, and ${used.toLocaleString("en-US")} ${used === 1 ? "was" : "were"} created in the last hour. You can send ${n === 1 ? "this one" : `these ${n.toLocaleString("en-US")}`} after ${time}.`,
         address: (email: string, time: string): string => `${email} was invited less than a minute ago. You can send again after ${time}.`,
+        /** 발급자 기준 — 전 프로젝트 합산이라 "this project"라고 쓰지 않는다. 한도는 `USER_HOURLY_LIMIT`을 받는다. */
+        user: (limit: number, used: number, n: number, time: string): string =>
+          `You can create ${limit.toLocaleString("en-US")} invitations an hour across all projects, and you created ${used.toLocaleString("en-US")} in the last hour. You can send ${n === 1 ? "this one" : `these ${n.toLocaleString("en-US")}`} after ${time}.`,
       },
       tooMany: (limit: number): string => `You can invite up to ${limit.toLocaleString("en-US")} people at a time.`,
       /** 결과 미확인은 모드가 아니라 문구다 — 일부가 갔을 수 있다는 사실을 숨기지 않고, 사람별 결과를 복원하지 않는다. */
@@ -2702,6 +2807,8 @@ export const en = {
       resendLimited: (who: string, time: string): string => `${who} was invited less than a minute ago. You can resend after ${time}.`,
       resendProjectLimited: (who: string, limit: number, time: string): string =>
         `Couldn't resend to ${who}: this project has created ${limit.toLocaleString("en-US")} invitations in the last hour. You can resend after ${time}.`,
+      resendUserLimited: (who: string, limit: number, time: string): string =>
+        `Couldn't resend to ${who}: you have created ${limit.toLocaleString("en-US")} invitations across all projects in the last hour. You can resend after ${time}.`,
       resendUnconfirmed: (who: string): string => `We couldn't confirm the email to ${who}. It may have been sent — Resend again replaces that link.`,
       resendUnavailable: (who: string): string => `Couldn't resend to ${who}. Email is unavailable right now. Try again later.`,
       /**
@@ -2861,8 +2968,11 @@ export const en = {
           Repositories that read translations through a hook ({hook}) also need the {wrapper} input — see {doc}.
         </>
       ),
-      /** `hookHint`의 링크 라벨 — `/docs#workflow`로 간다(launch-readiness L2.3). 운영 문서 경로는 제3자에게 의미가 없다. */
-      hookDoc: "Set up the workflow",
+      /**
+       * `hookHint`의 링크 라벨 — `/docs/setup/workflow#workflow`로 간다. ⚠️ **대상 페이지의 h1과 같은 글자다**(#121 —
+       * `docs-content.test.tsx`가 원고와 대조한다). 운영 문서 경로는 제3자에게 의미가 없다.
+       */
+      hookDoc: "Add the workflow",
     },
 
     account: {
@@ -3083,7 +3193,7 @@ export const en = {
       fallback: "Sign-in failed. Try again in a moment.",
     },
 
-    /** `connectErrorMessage` — `ConnectError` 열둘 + 폴백. */
+    /** `connectErrorMessage` — `ConnectError` 열셋 + 폴백. */
     connect: {
       "state-mismatch": "We couldn't verify that connection request. Start it again from settings.",
       "state-expired": "That connection request expired. Start it again from settings.",
@@ -3097,6 +3207,8 @@ export const en = {
       "repo-not-installed": "The app isn't installed on this repository. Install it, then connect again.",
       "installation-forbidden": "This account can't reach that installation. Ask the repository owner for access.",
       "repo-forbidden": "This account can't reach that repository. Ask the repository owner for access.",
+      // 다음 행동이 사람이다 — 쓰기 권한을 가진 사람이 만들거나 권한을 받아야 한다(sec-audit-3 1a).
+      "repo-read-only": "This account can only read that repository. Connecting it needs write access — ask the repository owner.",
       // 원인이 고정된 거부에 "잠시 뒤 다시"를 보이면 사용자가 같은 버튼을 반복해서 누른다.
       unavailable: "Something went wrong. Try again in a moment.",
       fallback: "The GitHub connection failed. Try again from settings.",
@@ -3105,7 +3217,7 @@ export const en = {
     /**
      * `onboardErrorMessage` — `OnboardError` 열여덟 + 폴백.
      *
-     * ⚠️ **넷이 없다**(`installation-forbidden`·`repo-forbidden`·`repo-not-installed`·`unavailable`) —
+     * ⚠️ **다섯이 없다**(`installation-forbidden`·`repo-forbidden`·`repo-read-only`·`repo-not-installed`·`unavailable`) —
      * 연결 화면과 같은 거부라 `connect`의 문구를 그대로 쓴다. 같은 거부에 문구가 두 벌이면 안 된다.
      */
     onboarding: {
@@ -3121,6 +3233,8 @@ export const en = {
       // ⚠️ **라벨이라 문장이 아니다** — 후보 줄의 "3 languages · 4 keys" 자리에 그대로 들어간다.
       "key-count-failed": "Key count unavailable",
       "manual-no-match": "No files of that format at that path. Check the path and the format.",
+      // ⚠️ **경로를 의심하게 하지 않는다** — 입력은 멀쩡하고 확인값이 낡았다. 할 일은 재탐지 하나다.
+      "sample-expired": "This preview has expired. Detect the files again to see it.",
       // ⚠️ **파일이 없다고 말하지 않는다** (malmoi#99) — 파일은 있고 언어가 하나다. 할 일은 경로가 아니라 둘째 파일이다.
       "single-locale": "Only one language was found at that path. Malmoi needs translation files in 2 or more languages — add a file for a second language and try again.",
       "slug-taken": "That address is taken. Pick another one.",
@@ -3129,6 +3243,8 @@ export const en = {
         `An address can use lowercase letters, numbers, '-', '.' and '_', up to ${max} characters. 'new' is reserved.`,
       // 온보딩은 브랜치를 **고르는** 자리다 — 설정 화면(고치는 자리)과 안내가 갈린다.
       "invalid-branch": "That branch name isn't valid. Pick another branch.",
+      // malmoi#126 — 형식은 맞다. 왜 안 되는지(Malmoi가 쓰는 브랜치)를 말해야 사용자가 다른 이름을 고른다.
+      "sync-branch": "Malmoi publishes translations from that branch, so it can't be the base branch. Pick another branch.",
       "not-awaiting": "The first sync already finished. Running it again here would overwrite edited translations, so it's blocked.",
       "resource-limit": "These translation files are too large or too deeply nested to sync. Reduce their size and try again.",
       // ⚠️ **재시도는 Sources에 있다** (audit #6) — 전엔 "from settings"였고 설정 화면에 그 버튼이 없었다.
@@ -3146,6 +3262,7 @@ export const en = {
      */
     repositorySettings: {
       "invalid-branch": "That's not a valid branch name. Spaces and the characters ~^:?*[ aren't allowed.",
+      "sync-branch": "Malmoi publishes translations from that branch, so it can't be the base branch. Pick another branch.",
       // 왜 없는지를 말한다 — 목록은 리포의 로케일 파일에서 온다.
       "unknown-locale": "This repository has no translation file for that language.",
       // 되돌릴 수 있는 상태이므로 무엇을 해야 하는지 말한다.

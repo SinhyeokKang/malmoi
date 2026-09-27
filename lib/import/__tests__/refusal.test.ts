@@ -103,10 +103,10 @@ describe("planImportRefusal", () => {
       // 인가 — 다시 눌러도 같다(세션 만료는 아래 transient — 다시 로그인하면 풀린다)
       "forbidden", "not-found", "archived", "last-owner", "not-member",
       // 연결·설치 — 사람이 GitHub에서 손대야 풀린다
-      "reauthorize", "repo-not-installed", "installation-forbidden", "repo-forbidden",
+      "reauthorize", "repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only",
       "no-installations", "no-repos", "no-candidates",
       // 온보딩 판정 — 리포나 설정이 바뀌어야 답이 달라진다
-      "base-branch-missing", "invalid-branch", "invalid-slug", "slug-taken", "limit-reached",
+      "base-branch-missing", "invalid-branch", "sync-branch", "invalid-slug", "slug-taken", "limit-reached",
       "manual-no-match", "single-locale", "not-awaiting",
       /*
         규모 — 같은 리포에 같은 상한이라 다시 눌러도 같다. ⚠️ **`tree-truncated`만 생산자가 있다**
@@ -115,6 +115,8 @@ describe("planImportRefusal", () => {
         의미상으로는 transient에 가깝지만 **도달 불가라 `PLANS`에 근거 없는 항목을 늘리지 않는다.**
       */
       "tree-truncated", "resource-limit", "key-count-failed",
+      // 온보딩 샘플 조회(`loadCandidateSample`) 전용 — 이 경로에 생산자가 없어 폴백(warning·닫기 없음)에 둔다.
+      "sample-expired",
       /*
         ⚠️ **아래 여섯은 이 경로에 생산자가 없다** — `RepositoryImportError`가 `ConnectError`를 통째로
         합집합에 넣어서 분류를 강요받을 뿐, `runRepositoryImport`가 낼 수 있는 값이 아니다. 배정은

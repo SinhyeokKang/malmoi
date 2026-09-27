@@ -8,10 +8,11 @@ import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { input, render } from "./helpers/dom";
 const actions = vi.hoisted(() => ({ connectRepository: vi.fn(), updateRepositorySettings: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => actions);
-const branches = vi.hoisted(() => ({ listRepoBranches: vi.fn() }));
+const branches = vi.hoisted(() => ({ listRepoBranches: vi.fn(), listProjectBranches: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => branches);
 beforeEach(() => {
-  branches.listRepoBranches.mockReset().mockResolvedValue({ ok: true, names: ["main", "dev"], defaultBranch: "main", truncated: false });
+  branches.listRepoBranches.mockReset();
+  branches.listProjectBranches.mockReset().mockResolvedValue({ ok: true, names: ["main", "dev"], defaultBranch: "main", truncated: false });
   actions.updateRepositorySettings.mockReset();
 });
 async function choose(container: HTMLElement, name: string) {
@@ -64,7 +65,12 @@ it.each([[{ ok: true }, true], [{ ok: false, error: "unavailable" }, false]] as 
 
 it("현재 브랜치가 목록에 없어도 초기 선택을 보존하고 목록에서 다른 브랜치를 고른다", async () => {
   const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="deleted" />);
-  expect(branches.listRepoBranches).toHaveBeenCalledWith({ owner: "acme", repo: "web" });
+  /**
+   * 연결된 프로젝트의 브랜치 목록은 **읽기**다 (malmoi#123 — 지휘자 결정). 온보딩 ①의 `listRepoBranches`(쓰기 권한 요구)가
+   * 아니라 프로젝트 slug로 인가하는 `listProjectBranches`를 부른다 — 읽기 권한만 가진 OWNER가 Settings에서 막히면 안 된다.
+   */
+  expect(branches.listProjectBranches).toHaveBeenCalledWith({ slug: "acme" });
+  expect(branches.listRepoBranches).not.toHaveBeenCalled();
   expect(container.querySelector('[role="combobox"]')?.textContent).toContain("deleted");
   await choose(container, "dev");
   actions.updateRepositorySettings.mockResolvedValueOnce({ ok: true });
@@ -72,7 +78,7 @@ it("현재 브랜치가 목록에 없어도 초기 선택을 보존하고 목록
   expect(actions.updateRepositorySettings).toHaveBeenCalledWith({ slug: "acme", baseBranch: "dev" });
 });
 it.each(["unavailable", "unauthorized", "repo-forbidden"])("목록 조회 %s 실패는 현재값을 유지하고 저장을 막는다", async error => {
-  branches.listRepoBranches.mockResolvedValueOnce({ ok: false, error, defaultBranch: "main" });
+  branches.listProjectBranches.mockResolvedValueOnce({ ok: false, error, defaultBranch: "main" });
   const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="release" />);
   expect(container.textContent).toContain("release");
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
@@ -80,7 +86,7 @@ it.each(["unavailable", "unauthorized", "repo-forbidden"])("목록 조회 %s 실
 });
 it("조회 중에는 저장을 막고 완료 뒤에도 현재값을 유지한다", async () => {
   let finish!: (value: unknown) => void;
-  branches.listRepoBranches.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  branches.listProjectBranches.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
   const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="dev" />);
   expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
   expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
@@ -89,11 +95,11 @@ it("조회 중에는 저장을 막고 완료 뒤에도 현재값을 유지한다
 });
 it("보관된 프로젝트는 목록을 조회하지 않고 저장을 막는다", async () => {
   const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="dev" disabled />);
-  expect(branches.listRepoBranches).not.toHaveBeenCalled();
+  expect(branches.listProjectBranches).not.toHaveBeenCalled();
   expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
 });
 it("목록이 잘렸으면 생성 화면처럼 입력으로 전환한다", async () => {
-  branches.listRepoBranches.mockResolvedValueOnce({ ok: true, names: ["main"], defaultBranch: "main", truncated: true });
+  branches.listProjectBranches.mockResolvedValueOnce({ ok: true, names: ["main"], defaultBranch: "main", truncated: true });
   const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="release" />);
   const field = container.querySelector<HTMLInputElement>("#base-branch")!;
   expect(field.value).toBe("release");
@@ -101,6 +107,16 @@ it("목록이 잘렸으면 생성 화면처럼 입력으로 전환한다", async
   await act(async () => { await userEvent.setup().click(container.querySelector('button[type="submit"]')!); });
   expect(actions.updateRepositorySettings).not.toHaveBeenCalled();
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
+});
+
+/** [malmoi#126] 300개 초과의 자유 입력도 sync 브랜치를 보내기 전에 막고, 왜 안 되는지 말한다. */
+it("자유 입력의 sync 브랜치는 저장하지 않고 이유를 말한다", async () => {
+  branches.listProjectBranches.mockResolvedValueOnce({ ok: true, names: ["main"], defaultBranch: "main", truncated: true });
+  const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="release" />);
+  await input(container.querySelector<HTMLInputElement>("#base-branch")!, "malmoi-i18n/sync-acme");
+  await act(async () => { await userEvent.setup().click(container.querySelector('button[type="submit"]')!); });
+  expect(actions.updateRepositorySettings).not.toHaveBeenCalled();
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("can't be the base branch");
 });
 
 it("저장 후 서버가 새 baseBranch를 보내도 성공 안내가 유지된다", async () => {
@@ -122,7 +138,7 @@ it("Base branch 라벨은 보관 갈래의 문단을 for로 가리키지 않는�
   expect(container.querySelector("#base-branch-label")!.hasAttribute("for")).toBe(false);
 });
 it("Base branch 라벨은 조회 중 없는 대상을 가리키지 않는다", async () => {
-  branches.listRepoBranches.mockReturnValue(new Promise(() => {}));
+  branches.listProjectBranches.mockReturnValue(new Promise(() => {}));
   const { container } = await render(<RepositoryForm owner="acme" repo="web" slug="acme" baseBranch="main" />);
   expect(container.querySelector("#base-branch")).toBeNull();
   expect(container.querySelector("#base-branch-label")!.hasAttribute("for")).toBe(false);

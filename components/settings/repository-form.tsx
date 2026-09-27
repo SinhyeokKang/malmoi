@@ -6,7 +6,7 @@ import { updateRepositorySettings } from "@/app/(edit)/projects/[slug]/settings/
 import { Check, CircleAlert, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLandAfter } from "@/components/ui/focus";
-import { listRepoBranches } from "@/app/(edit)/projects/actions";
+import { listProjectBranches } from "@/app/(edit)/projects/actions";
 import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
 import { failureText } from "@/components/onboarding/failure";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 import { isValidBranchName } from "@/lib/pull/branch-name";
+import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { isRepositorySettingsError, repositorySettingsErrorMessage, settingsAccessMessage } from "@/lib/settings/message";
 
 export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false }: { slug: string; owner: string; repo: string; baseBranch: string; disabled?: boolean }) {
@@ -34,7 +35,8 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
     setCurrent(baseBranch);
     // 저장 후 새 props가 와도 성공 안내는 다음 사용자 선택까지 유지한다.
     if (disabled) return;
-    void listRepoBranches({ owner, repo }).then(response => {
+    // 연결된 프로젝트의 목록은 읽기다 — 온보딩 ①의 `listRepoBranches`(쓰기 권한 요구)가 아니다 (#123).
+    void listProjectBranches({ slug }).then(response => {
       if (!active) return;
       // 설정은 리포 기본값이 아니라 저장된 값을 보존한다. 삭제된 브랜치도 조용히 바꾸지 않는다.
       setChoice(planBranchChoice({
@@ -49,7 +51,7 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
       setLookupError("unavailable");
     });
     return () => { active = false; };
-  }, [owner, repo, baseBranch, disabled]);
+  }, [slug, owner, repo, baseBranch, disabled]);
   const saveRef = useRef<HTMLButtonElement>(null);
   // ⚠️ 저장이 끝나면 착지한다 (audit #32) — `GeneralCard`의 이름 행과 같은 형이다. 필드는 셀렉트·입력 둘 중 하나라 id로 찾는다.
   useLandAfter(pending, () => [saveRef.current, document.getElementById("base-branch")]);
@@ -67,6 +69,10 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
         // 같은 갈래 이름을 쓴다 — 문구가 두 벌이면 서버가 거부할 때와 다른 말을 한다.
         if (!isValidBranchName(branch)) {
           setResult({ error: "invalid-branch" });
+          return;
+        }
+        if (isSyncBranchName(branch)) {
+          setResult({ error: "sync-branch" });
           return;
         }
         startTransition(async () => {

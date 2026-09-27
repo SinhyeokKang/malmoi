@@ -49,7 +49,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     query: stateParam,
     userId,
     now: new Date(),
-    secret: requireEnv("AUTH_SECRET"),
+    secret: requireEnv("APP_SIGNING_SECRET"),
   });
 
   /**

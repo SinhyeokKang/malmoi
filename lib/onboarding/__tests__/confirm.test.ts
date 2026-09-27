@@ -163,6 +163,24 @@ describe("planConfirmedFormat — 입력 ↔ 재탐지 결과 대조", () => {
     expect(out.format.locales.slice().sort()).toEqual(["en", "ko"]);
   });
 
+  it("`.tsx` 딕셔너리: 탐지 템플릿이 확인·적재가 고르는 파일과 같은 집합을 가리킨다 (audit #13)", () => {
+    const tree = ["src/i18n/common.tsx", "src/i18n/editor.tsx", "src/i18n/util.ts", "README.md"];
+    const [detected] = [detectFormatWith("ts-dict", tree, (p) => (p.endsWith(".tsx") ? TS_NS(p) : undefined))];
+    expect(detected?.pathTemplate).toBe("src/i18n/*.tsx");
+    const selected = templatePaths("ts-dict", detected!.pathTemplate, tree);
+    expect(selected).toEqual(["src/i18n/common.tsx", "src/i18n/editor.tsx"]);
+    const out = planConfirmedFormat({ adapter: "ts-dict", pathTemplate: "src/i18n/*.tsx", baseLocale: "en" }, selected.map((p) => f(p, TS_NS(p))));
+    expect(out).toMatchObject({ status: "ok", format: { pathTemplate: "src/i18n/*.tsx" } });
+  });
+
+  it("혼합 폴더의 `*.ts` 수동 지정은 `.ts`만 고르고 통과한다 — `.tsx`는 별도 표면이다", () => {
+    const tree = ["src/i18n/a.ts", "src/i18n/b.ts", "src/i18n/c.tsx", "src/i18n/d.tsx"];
+    const selected = templatePaths("ts-dict", "src/i18n/*.ts", tree);
+    expect(selected).toEqual(["src/i18n/a.ts", "src/i18n/b.ts"]);
+    expect(planConfirmedFormat({ adapter: "ts-dict", pathTemplate: "src/i18n/*.ts", baseLocale: "en" }, selected.map((p) => f(p, TS_NS(p)))))
+      .toMatchObject({ status: "ok", format: { pathTemplate: "src/i18n/*.ts" } });
+  });
+
   it("`code-dict` 수동 지정도 같은 경로다", () => {
     const files = [
       f("src/locale/en.ts", 'export default { ok: "OK" }'),

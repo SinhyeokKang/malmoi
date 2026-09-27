@@ -165,6 +165,8 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
         importOutcome: prepared.result.failed > 0 ? "partial-import" : null,
         // 승인 뒤에 저장된 셀은 토큰이 달라 여기서 안 덮인다 — 결과의 `remainingEdits`가 그 수를 말한다.
         approvedTokens: lease.approvedTokens,
+        // 다운로드·파싱 실패가 하나라도 있으면 빠진 파일의 키를 삭제로 읽지 않는다(audit #7) — 중복 키는 잃는 키가 없어 `errors`에 없다.
+        suppressOrphan: prepared.result.errors.length > 0,
       });
       await releaseOrphanedApproved(tx, scope, lease.approvedTokens);
     } else if (prepared.kind === "empty") {

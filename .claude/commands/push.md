@@ -96,12 +96,12 @@ pnpm db:status     # dev를 본다
 | 트랙 | 무엇 | 언제 |
 |---|---|---|
 | **조건부** — 4a → 4b → 4d | 문서 신선도. diff에 걸린 문서만 읽는다 | 트라이아지 후보가 있을 때만 |
-| **상시** — 4c | `pnpm sync:agents:check` (기계 검사) | **항상.** 트라이아지 결과와 무관하다 |
+| **상시** — 4a-2 · 4c | 가이드 stale 경고(`pnpm guide:check` 인용, 차단 안 함) · `pnpm sync:agents:check` (기계 검사) | **항상.** 트라이아지 결과와 무관하다 |
 
 전에는 4a의 탈출구가 "바로 5단계"라 **문서 후보가 0개인 대부분의 푸시에서 4c를 건너뛰는 것으로 읽혔다** — 그런데 4c 본문은 "트라이아지와 무관하게 항상"이라고 적혀 있었다. 둘 중 하나는 반드시 틀린 지시였다.
 
 **4a. 트라이아지 (1회, 가볍게).** `git diff @{u}..HEAD`를 **한 번** 훑어 트리거에 걸리는 문서를 후보로 매핑한다. 이 단계에서 문서를 읽지 않는다.
-- **후보 0개면 4b·4d를 건너뛰고 4c로.** 대부분의 푸시가 여기서 통과한다. **4c는 건너뛰지 않는다.**
+- **후보 0개면 4b·4d를 건너뛰고 4a-2 · 4c로.** 대부분의 푸시가 여기서 통과한다. **4a-2·4c는 건너뛰지 않는다.**
 
 트리거:
 - **기능 추가/삭제, 역할·권한표 변경, 비범위 항목을 범위로 끌어들임, 설계 결정이 뒤집힘, `docs/PRODUCT.md` §10이 결정됨 → docs/PRODUCT.md** (제품 판정의 정본이다 — `lib/auth/`·`app/`·`prisma/schema.prisma`의 변경이면 자주 걸린다)
@@ -117,18 +117,23 @@ pnpm db:status     # dev를 본다
 - `.github/workflows/*.yml`·`.npmrc`·`postcss.config.mjs`·`components.json` 변경 → **CLAUDE.md의 해당 섹션**
 - **`lib/adapters/**`·`lib/survey/**` 변경 → docs/ARCHITECTURE.md §1.9 + `pnpm adapter-survey` 재실행** (아래 4d)
 - `app/globals.css` 토큰 변경, 새 raw 색 도입, `components/ui/` 추가, `lib/utils.ts` 변경 → **docs/DESIGN.md**
-- 기술 선택·버전 변경, 개발 명령 변경, 브랜치·배포 방식 변경 → **README.md** (CLAUDE.md의 요약 미러라 같은 트리거에 같이 걸린다)
+- 사용자에게 보이는 기능·지원 포맷·한도·역할 권한·개인정보 전송처 변경, `guide/` 페이지 경로 변경, `public/guide/translation-editor.webp`·`publish-preview.webp`·`workflow-file.webp` 파일명 변경 → **README.md** (방문자용 서비스 소개라 제품 사실을 요약해 들고, 세 가이드 이미지를 참조한다)
 - **`lib/credentials/**`·`lib/session-revocation/**`·`lib/login-link/**` 변경, 암호화 키 env 추가·의미 변경, `pnpm credentials:*`·`test:credentials:postgres`의 동작 변경 → docs/OPERATIONS.md** (⚠️ **"나중에 다시 실행할 절차"의 정본이다.** 절차가 낡으면 그걸 발견하는 시점이 **키를 잃은 뒤**다 — 그때 PII 키면 회원 이메일·이름을 복구할 수 없다)
 - **`.github/actions/**` 변경, `lib/onboarding/workflow.ts`가 만드는 YAML 변경, action `inputs`·red 조건 변경, 태그(`malmoi-i18n-push-v1`) 릴리스 → docs/ACTIONS.md** (⚠️ **외부 계약이다** — 남의 리포가 이 문서를 보고 붙인다. 이 스텝에 대상 리포의 `secrets.PUSH_TOKEN`이 들어가므로 참조·권한 서술이 틀리면 남의 리포의 보안 경계가 틀어진다)
+
+**4a-2. 가이드 stale 후보 (경고만 — 차단하지 않는다).** 4a 후보 수와 무관하게 돈다. 트라이아지와 같은 diff로 두 가지를 본다:
+- **촬영 매핑 소스** — `pnpm guide:check`를 돌려 출력을 그대로 인용한다. 판정을 여기서 다시 짜지 않는다(정본은 그 명령이고, 작업 트리 SHA를 `guide/SHOOTING.md`의 기록과 견준다). `guide/SHOOTING.md`가 없으면 `no shots`가 나온다 — 그대로 적는다.
+- **사실 대조 소스** — diff 경로가 `guide/AUTHORING.md` "사실 대조 소스" 표의 경로(`messages/en.tsx` 등)에 걸리면 그 표가 가리키는 페이지를 후보로 적는다.
+- 리포트에 **"가이드 stale 후보: <목록> → `/guide`·`/guide-shots`"**로 남기고 **계속 진행한다.** 화면이 바뀌었으니 다시 찍으라는 신호는 red로 막을 일이 아니다 — 찍을 수 있는 런타임이 로컬뿐이다. 걸린 것이 없으면 "없음" 한 줄.
 
 **4b. 후보 정밀 검사.** 걸린 문서만 실제로 읽고 대조한다.
 - **docs/DESIGN.md** — 토큰 값·대비 함정·mono 표면·라이트 단일 강제 장치가 `app/globals.css`·`lib/utils.ts`와 맞는지. 새 raw 색을 늘렸으면 §6.2에 등재한다. prefix `docs(DESIGN): ...`
 - **docs/PRODUCT.md** — 역할·권한표·범위·비범위·설계 결정이 코드와 맞는지. §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. prefix `docs(PRODUCT): ...`
 - **docs/ARCHITECTURE.md** — §0 불변식 열하나가 코드와 맞는지, 함정·계약이 실제 구현과 맞는지. `(미구현)` 표시가 남아 있는데 구현됐으면 제거하고 실제 동작으로 갱신. prefix `docs(ARCHITECTURE): ...`
 - **docs/DIRECTORY.md** — 트리가 실제 파일과 맞는지(없는 파일·새 파일·옮긴 파일). prefix `docs(DIRECTORY): ...`
-- **CLAUDE.md** — 명령어 표, 스택 버전, 브랜치·배포, 스킬 라인업, 문서 지도. prefix `docs(CLAUDE): ...`
+- **CLAUDE.md** — 명령어 표, 스택 표(버전 자체는 `package.json`이 정본 — 고정 이유가 있는 것만), 브랜치·배포, 스킬 라인업, 문서 지도. prefix `docs(CLAUDE): ...`
 - **.env.example** — 코드가 읽는 변수가 전부 있는지(미구현 기능용 선등록 변수는 잉여가 아니다). 주석으로 무엇에 쓰는지·틀리면 어떻게 죽는지 남긴다. prefix `chore(env): ...`
-- **README.md** — 스택 한 줄·명령어 표·브랜치 정책이 CLAUDE.md와 맞는지. prefix `docs(README): ...`
+- **README.md** — 기능·포맷·한도·역할표·전송처가 PRODUCT·가이드·`/privacy`와 맞는지, `/docs` 링크가 `guide/`에 실재하는지. prefix `docs(README): ...`
 - **docs/OPERATIONS.md** — 키 목록·회전·복구·전면 재발급 절차가 `lib/credentials/`·`.env.example`과 맞는지. **절차의 명령을 실제로 돌리지는 않는다**(프로덕션 자격증명을 건드린다) — 명령 이름·인자·순서·전제만 대조한다. prefix `docs(OPERATIONS): ...`
 - **docs/ACTIONS.md** — 워크플로 예시가 `.github/actions/malmoi-i18n-push`의 실제 `inputs`·red 조건과 맞는지, **참조가 불변 태그인지**, `permissions` 서술이 맞는지(`pull-requests: read`가 없으면 열린 PR 경고가 조용히 죽는다). `lib/onboarding/workflow.ts`가 만드는 YAML과 문서 예시가 **같은 것을 말하는지** 대조한다. prefix `docs(ACTIONS): ...`
 
@@ -188,6 +193,7 @@ dev 푸시로 **Vercel preview 배포가 시작된다.** 확인 경로만 한 �
 로컬 게이트: typecheck OK / test <n> passed / build OK
 마이그레이션: 없음 / dev 적용됨(<이름>) — ⚠️ /merge에서 db:deploy 필요
 문서 신선도: 후보 없음 / <문서> 갱신(<커밋>)
+가이드 stale 후보: 없음 / <guide:check 인용 · 사실 대조 페이지> → /guide·/guide-shots (차단 아님)
 Codex 미러: 최신 / 재생성(<커밋>)
 푸시: <옛 해시>..<새 해시>
 CI run: <url> (결과 미확정)
@@ -203,6 +209,7 @@ Vercel: preview 배포 진행 중 — <확인 경로>
 - **`pnpm db:deploy` 실행 금지 — 이 스킬의 일이 아니다.** 프로덕션 스키마는 `/merge` 1단계에서 사용자가 넓힌다.
 - **dev DB에 마이그레이션이 미적용인 채 푸시 금지** (preview가 없는 컬럼을 조회한다).
 - **`main`으로 푸시 금지.** 프로덕션은 `/merge`의 PR CI를 지나야 한다.
+- **`package.json`의 `version`을 바꾸지 않는다** — `/merge` 4단계 몫이다.
 - `git push --force` / `--force-with-lease`는 **사용자가 명시 요청**한 경우에만. dev는 `/sync`가 정기적으로 force update하는 브랜치라 main만큼 절대적이진 않지만, 여기서는 요청받으면 무엇이 사라지는지 보여주고 재확인한다.
 - `--no-verify`로 hook 스킵 금지.
 - `.env`·`*.pem`·크레덴셜이 staged면 경고하고 멈춤.

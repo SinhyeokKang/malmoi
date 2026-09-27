@@ -100,6 +100,8 @@ export type ApplyOptions = {
    * (`importOutcome`과 같은 근거). 반대로 기본을 "전부 덮기"로 두면 새 호출부 하나가 조용히 편집을 지운다.
    */
   approvedTokens?: readonly string[];
+  /** 불완전 적재라 키 orphan 판정을 끈다 — `PlanOptions.suppressOrphan` (audit #7). 생략이면 평소대로 판정한다. */
+  suppressOrphan?: boolean;
 };
 
 type PushScope = { projectId: string; surfaceId: string };
@@ -194,7 +196,7 @@ async function applyWith(
     select: { id: true, key: true, sourceHash: true, orphaned: true },
   });
   const baseChanged = isBaseLocaleChange(payload.format.baseLocale, options.previousBaseLocale);
-  const plan = planPush(existing, lastWins(payload.keys, (k) => k.key), { baseChanged });
+  const plan = planPush(existing, lastWins(payload.keys, (k) => k.key), { baseChanged, suppressOrphan: options.suppressOrphan ?? false });
 
   // **삽입 id를 여기서 만들어 들고 있는다.** 문장 안에서 만들어 버리면 키 id를 다시 조회해야 하고,
   // 그 조회 때문에 트랜잭션이 둘로 갈렸다.

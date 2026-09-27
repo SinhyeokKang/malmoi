@@ -1,16 +1,34 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Toaster } from "sonner";
 
+import { SiteAnalytics } from "@/components/analytics";
 import { m } from "@/lib/i18n";
+import { OG_IMAGE, SITE_ORIGIN } from "@/lib/seo/site";
 
 import "./globals.css";
 
+/**
+ * 전 페이지의 머리 기본값. 앱 화면 탭은 그대로 `Malmoi`이고, 공개 페이지는 각자 `pageMetadata`로 덮는다(seo-geo spec D9).
+ *
+ * ⚠️ **canonical·`og:url`을 두지 않는다** — metadata 병합이 얕아서 자기 `alternates`가 없는 페이지(앱·`/signin`·`/invite`·404)
+ * 전부에 홈 canonical이 번진다(noindex + 홈 canonical 모순, 404의 soft-404 신호).
+ */
 export const metadata: Metadata = {
-  title: m.common.appName,
-  description: m.common.appDescription,
+  metadataBase: new URL(SITE_ORIGIN),
+  title: { default: m.common.appName, template: `%s · ${m.common.appName}` },
+  description: m.landing.hero.body,
+  openGraph: { siteName: m.common.appName, type: "website", images: [OG_IMAGE] },
+  twitter: { card: "summary_large_image", images: [OG_IMAGE.url] },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  /*
+    ⚠️ **전 페이지를 요청마다 렌더한다** (sec-audit-3 #11). CSP nonce는 요청마다 새로 나오고 Next는 렌더 중에 그것을
+    스크립트에 붙인다 — 빌드 시점에 굳은 페이지는 nonce가 없어 스크립트가 **전부** 막힌다(화면은 뜨고 버튼만 죽는다).
+    지우면 랜딩·`/privacy`처럼 요청을 안 읽는 페이지가 조용히 정적으로 돌아간다.
+  */
+  await connection();
   return (
     /*
       ⚠️ **`lang="en"`이다** (2026-09-08 ship 4). 화면 문구가 전부 영어가 된 커밋이 이것이므로 여기서
@@ -55,6 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             },
           }}
         />
+        <SiteAnalytics />
       </body>
     </html>
   );

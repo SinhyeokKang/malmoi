@@ -13,10 +13,10 @@ import { input, render } from "./helpers/dom";
  */
 const mocks = vi.hoisted(() => ({
   run: vi.fn(), pr: vi.fn(), prepare: vi.fn(), refresh: vi.fn(),
-  updateProjectName: vi.fn(), updateRepositorySettings: vi.fn(), listRepoBranches: vi.fn(), updateProfileName: vi.fn(),
+  updateProjectName: vi.fn(), updateRepositorySettings: vi.fn(), listProjectBranches: vi.fn(), updateProfileName: vi.fn(),
   unlinkLoginMethod: vi.fn(), startLoginMethodConnect: vi.fn(),
 }));
-vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare, listRepoBranches: mocks.listRepoBranches, rotatePushToken: vi.fn() }));
+vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare, listProjectBranches: mocks.listProjectBranches, rotatePushToken: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ updateProjectName: mocks.updateProjectName, uploadProjectImage: vi.fn(), deleteProjectImage: vi.fn(), updateRepositorySettings: mocks.updateRepositorySettings }));
 vi.mock("@/app/(edit)/account/actions", () => ({ updateProfileName: mocks.updateProfileName, unlinkLoginMethod: mocks.unlinkLoginMethod, startLoginMethodConnect: mocks.startLoginMethodConnect }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));

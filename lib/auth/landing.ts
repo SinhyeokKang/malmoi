@@ -42,9 +42,42 @@ export function rejectTarget(status: Exclude<SessionRead["status"], "ok">): stri
 }
 
 /**
- * 루트(`/`)의 착지. **랜딩이 `/`에 들어온 뒤에도 로그인 상태면 `/projects`다** — *"로그인 이후
- * 랜딩 못 가게"*가 2026-09-10 사용자 결정이고, 그 결정이 사라지면 다음 배송이 뒤집는다.
+ * 루트(`/`)가 무엇을 그리나. **로그인 상태면 `/projects`다** — *"로그인 이후 랜딩 못 가게"*가 2026-09-10
+ * 사용자 결정이고, 그 결정이 사라지면 다음 배송이 뒤집는다. 2026-09-26에 `landingTarget`(주소 하나)을 대체했다 —
+ * 랜딩이 `/`에 서서 "어디로 보내나"가 "보내나, 그리나"가 됐다.
+ *
+ * ⚠️ **`unavailable`도 랜딩이다**(옛: `/signin?error=Unavailable`). 공개 화면이 세션 장애로 안 열리는 것이
+ * 더 나쁘다(DESIGN §6.61과 같은 쪽). 일반 로그인은 `redirectTo: "/projects"`라 `/`를 지나지 않으므로
+ * "로그인 직후 조용히 랜딩"이 되는 흐름이 없고, 장애 신호는 보호 라우트의 `rejectTarget`이 계속 든다.
+ * 맵 + `satisfies`는 `REJECT`와 같은 이유다 — 갈래가 늘면 컴파일 에러가 난다.
  */
-export function landingTarget(status: SessionRead["status"]): string {
-  return status === "ok" ? routes.projects() : rejectTarget(status);
+export type RootView = { redirect: string } | { landing: true };
+
+const ROOT = {
+  ok: { redirect: routes.projects() },
+  none: { landing: true },
+  unavailable: { landing: true },
+} satisfies Record<SessionRead["status"], RootView>;
+
+export function rootView(status: SessionRead["status"]): RootView {
+  return ROOT[status];
+}
+
+/**
+ * 공개 셸(`/`·`/privacy`) 헤더의 primary. **로그인이면 앱으로 연다** — 공개 화면에 선 편집자가 로그인 화면으로
+ * 다시 가는 길밖에 없으면 안 된다. 랜딩은 `ok`에서 안 그려지므로 늘 `none` 쪽이다.
+ *
+ * ⚠️ **라벨은 사전 키다** — 이 모듈이 `@/lib/i18n`을 읽으면 위의 잎 주석이 거짓이 된다. 헤더가 키로 사전을 읽는다.
+ * ⚠️ **`unavailable`은 비로그인 쪽이다** — 앱으로 보내 봐야 보호 라우트가 다시 튕긴다. 맵 + `satisfies`는 `REJECT`와 같은 이유다.
+ */
+export type PublicCta = { href: string; label: "getStarted" | "openMalmoi" };
+
+const CTA = {
+  ok: { href: routes.projects(), label: "openMalmoi" },
+  none: { href: routes.signIn(), label: "getStarted" },
+  unavailable: { href: routes.signIn(), label: "getStarted" },
+} satisfies Record<SessionRead["status"], PublicCta>;
+
+export function publicCta(status: SessionRead["status"]): PublicCta {
+  return CTA[status];
 }

@@ -9,8 +9,11 @@ import { actorLabel } from "@/lib/keys/view";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
+import { keySlot } from "@/lib/pull/undeliverable";
+import { loadPullState } from "@/lib/pull/load";
+import { projectFormats, renderProject } from "@/lib/pull/run";
 import { buildPublishDiff, PREVIEW_LIMIT, type BaseValues, type PublishCell } from "./diff";
-import { PreviewBaseFileMissing, type PublishPreview } from "./preview";
+import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, type PublishPreview } from "./preview";
 
 /** 이전 값은 표시 전용이다 — export·커밋·PR 판정의 입력으로 넘기지 않는다. */
 export async function readPublishPreview(prisma: PrismaClient, projectId: string, slug: string): Promise<PublishPreview> {
@@ -25,7 +28,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     prisma.translation.count({ where }),
     // 바닥 요약의 "키 수"는 **미발송 전체**를 세야 한다 — 표에 실린 200행만 세면 상한 아래에서만 참이다.
     prisma.translation.groupBy({ by: ["keyId"], where }),
-    createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId),
+    createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId).then(cachedBlobs),
     loadOpenPrUrl(slug, project),
   ]);
   const head = await client.getRefSha(`heads/${project.baseBranch}`);
@@ -45,18 +48,27 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     const format = formatFromProject(surface, surface.locales.map(l => l.code));
     const adapter = adapterFor(format);
     const paths = resolveLocalePaths(format, adapter.layout, tree.map(t => t.path));
-    const needed = paths.filter(p => adapter.layout === "multi-locale" || surfaceRows.some(r => r.localeCode === p.locale));
+    // ⚠️ **재생성 per-locale은 base 파일을 늘 읽는다** (B3 r3) — 실행이 base 원본으로 base 키 집합을 정하고(B3.4) 못 읽으면 비-base 편집만 있어도 거부한다.
+    const regeneratePerLocale = adapter.layout === "per-locale" && adapter.writeStrategy === "regenerate";
+    const isBasePath = (p: (typeof paths)[number]) => regeneratePerLocale && p.locale === surface.baseLocale;
+    const needed = paths.filter(p => adapter.layout === "multi-locale" || isBasePath(p) || surfaceRows.some(r => r.localeCode === p.locale));
     for (let offset = 0; offset < needed.length; offset += 8) {
       await Promise.all(needed.slice(offset, offset + 8).map(async p => {
         const sha = shas.get(p.path);
         if (!sha) return;
         const content = await client.getBlobText(sha);
         const read = adapter.read(format, [{ path: p.path, content }]);
-        // ⚠️ **편집과 무관한 비리터럴은 막지 않는다** — 실행(ts-dict write)이 wanted 키의 비리터럴만 경고하는 것과 같은 판정이다(delivery-invariants
-        // D4). 전부 막으면 `{ hello: "hi", b: someFn }` 파일의 Publish가 화면에서 영영 열리지 않는다. 그 밖의 읽기 오류는 여전히 막는다.
+        // 실행과 같은 판정이다(`render.ts` `baseOwnedByOriginal`) — read가 base 로케일을 못 내면 키 집합을 모른다.
+        if (isBasePath(p) && !read.locales.some(l => l.locale === surface.baseLocale)) throw new PreviewBaseFileUnreadable(p.path, project.baseBranch);
+        // base 행이 없어 판정만을 위해 읽은 파일은 아래 읽기 오류로 막지 않는다 — 실행은 base의 비문자열 값이 있어도 그 편집들을 싣는다.
+        const onlyForKeySet = isBasePath(p) && !surfaceRows.some(r => r.localeCode === p.locale);
+        // ⚠️ **편집과 무관한 비관리 항목은 막지 않는다** — 수술적 writer가 파일에 그대로 두는 값(코드의 식·참조·shorthand, YAML 숫자·불리언 —
+        // `adapterErrorKind === "unmanaged"`)이고, 실행은 wanted 키의 그런 자리만 경고한다(delivery-invariants D4 · audit #8). 전부 막으면
+        // `{ hello: "hi", b: someFn }`·`precision: 3` 파일의 Publish가 화면에서 영영 열리지 않는다. 편집 대상 키가 그 자리이거나 그 밖의 읽기 오류는 막는다.
         const edited = new Set(surfaceRows.map(r => r.stringKey.key));
         // 경고(`duplicate-property`)도 막지 않는다 — 실행이 마지막 값을 싣고 그 자리를 고친다(B7a r1). `read.locales`가 이미 그 값이다.
-        if (read.errors.some(e => adapterErrorKind(e.code) !== "warning" && !(e.code === "value-not-string-literal" && e.key !== undefined && !edited.has(e.key)))) throw new Error("Preview cannot read all values");
+        const preserved = (e: (typeof read.errors)[number]) => adapterErrorKind(e.code) === "unmanaged" && !(e.key !== undefined && edited.has(e.key));
+        if (!onlyForKeySet && read.errors.some(e => adapterErrorKind(e.code) !== "warning" && !preserved(e))) throw new Error("Preview cannot read all values");
         const file: BaseValues[string] = Object.create(null);
         for (const locale of read.locales) {
           const entries: Record<string, string> = Object.create(null);
@@ -80,17 +92,20 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         const target = paths.find(p => p.locale === row.localeCode);
         if (target !== undefined && !shas.has(target.path)) { withoutFile++; heldKeys.add(row.keyId); continue; }
       }
+      // per-locale base 셀: 원본 base 파일에 키 자리가 없으면(코드가 지웠다) 실행은 그 셀을 보류한다 — base 키 집합은 원본이 정한다(B3.4). 같은 `keySlot`이다.
+      if (adapter.layout === "per-locale" && row.localeCode === surface.baseLocale) {
+        const basePath = paths.find(p => p.locale === surface.baseLocale)?.path;
+        const file = basePath === undefined ? undefined : base[basePath];
+        if (basePath !== undefined && file !== undefined && keySlot({ [basePath]: file }, row.localeCode, row.stringKey.key).kind === "absent") {
+          withoutKey++; heldKeys.add(row.keyId); continue;
+        }
+      }
       const matches = paths.filter(p => adapter.layout === "per-locale" ? p.locale === row.localeCode :
         Object.hasOwn(base[p.path] ?? {}, row.localeCode) && Object.hasOwn(base[p.path]![row.localeCode]!, row.stringKey.key));
-      // ts-dict: 그 로케일 객체에 자리가 없고 같은 파일의 다른 로케일이 그 키를 가지면 실행은 `write-slot-missing`으로 그 셀만 보류한다.
-      if (adapter.layout === "multi-locale" && adapter.writeStrategy === "surgical" && matches.length === 0) {
-        const owners = paths.filter(p => {
-          const file = base[p.path];
-          return file !== undefined && Object.hasOwn(file, row.localeCode)
-            && Object.keys(file).some(locale => locale !== row.localeCode && Object.hasOwn(file[locale]!, row.stringKey.key));
-        });
-        if (owners.length > 0) { withoutKey++; heldKeys.add(row.keyId); continue; }
-      }
+      // ts-dict: 그 로케일 객체는 있는데 어느 파일에도 키 자리가 없으면 실행은 그 셀만 보류한다 — **같은 `keySlot` 판정이다**(audit #1 B).
+      // 같은 파일의 다른 로케일이 키를 가질 때(`write-slot-missing`)만 세면 키가 모든 로케일에서 사라진 셀은 화면이 막고 실행은 전달로 셌다.
+      if (adapter.layout === "multi-locale" && adapter.writeStrategy === "surgical" && matches.length === 0
+        && keySlot(base, row.localeCode, row.stringKey.key).kind === "absent") { withoutKey++; heldKeys.add(row.keyId); continue; }
       // 대상을 확정하지 못했는데 첫 파일을 고르면 무엇을 덮는지 거짓으로 안내한다.
       const path = matches.length === 1 ? matches[0]?.path : undefined;
       if (!path) throw new Error("Preview path unavailable");
@@ -98,10 +113,38 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         after: row.value, author: actorLabel(row.updatedBy, actors) ?? "", updatedAt: row.updatedAt.toISOString() });
     }
   }
+  // ⚠️ **바뀌는 파일은 실행과 같은 렌더·blob 비교에서 온다** (#128) — 편집 셀의 파일만 세면 토큰 없이 바뀌는 파일(orphan 줄 제거, 닫힌 PR에 실렸던 값의
+  // 재전송)이 빠지고 결과에서야 "N files changed"가 나온다. blob은 위에서 읽은 것을 다시 쓴다(`cachedBlobs`).
+  // ⚠️ **읽은 head·트리를 넘긴다** (#128 r5) — 한 번 열 때 ref 1·트리 1이고, 셀과 파일 목록이 같은 head를 본다. blob은 실행 한 번과 같다(전 표면 전 로케일 파일).
+  const { changes, rendered } = await renderProject(project, projectFormats((await loadPullState(prisma, slug)).surfaces), client, { baseHead: head, tree });
+  /**
+   * ⚠️ **편집이 없는 표면도 실행은 렌더하고, 그 표면의 base 파일 문제로 `writer-warnings` 거부한다** (#128 r5). 위 루프는 편집 있는 표면만 보므로 여기서
+   * 같은 전용 거부로 옮긴다 — 일반 실패(Retry)는 다시 눌러도 같다. 그 밖의 writer 오류는 옛 동작 그대로다(미리보기는 writer 경고를 약속하지 않는다).
+   */
+  for (const surface of rendered) {
+    for (const file of surface.files) for (const error of file.errors ?? []) {
+      if (error.locale !== surface.baseLocale) continue;
+      if (error.code === "original-file-missing") throw new PreviewBaseFileMissing(error.path, project.baseBranch);
+      if (error.code === "write-parse-failed" && file.locale === surface.baseLocale) throw new PreviewBaseFileUnreadable(error.path, project.baseBranch);
+    }
+  }
   // `truncated`는 상한 때문에 **조회하지 않은** 행만이다 — 뺀 셀은 `withoutFile`·`withoutKey`가 따로 말한다.
   return { ...buildPublishDiff(cells, base), total, keys: keyIds.length, truncated: Math.max(0, total - rows.length), withoutFile, withoutKey,
     // ⚠️ **화면이 말하는 수는 나가는 수다** (#84 — POSTMORTEM 2026-09-17). 결과의 `delivered`·Logs와 같은 모집단이어야 한다. 상한(200행) 밖 행은
     // 판정하지 않았으므로 나가는 쪽으로 센다 — `truncated`와 같이 읽힌다.
+    changedFiles: changes.map(c => c.path),
     sendable: { total: total - withoutFile - withoutKey, keys: keyIds.length - [...heldKeys].filter(id => !cells.some(c => c.keyId === id)).length },
     openPr: parseGithubPrUrl(rawPr, project) };
+}
+
+/** 같은 blob을 두 번 받지 않는다 — 미리보기 조회와 실행 렌더(`renderProject`)가 같은 트리의 같은 파일을 읽는다. */
+function cachedBlobs<C extends { getBlobText(sha: string): Promise<string> }>(client: C): C {
+  const seen = new Map<string, Promise<string>>();
+  return { ...client, getBlobText: (sha: string) => {
+    const hit = seen.get(sha);
+    if (hit !== undefined) return hit;
+    const next = client.getBlobText(sha);
+    seen.set(sha, next);
+    return next;
+  } };
 }

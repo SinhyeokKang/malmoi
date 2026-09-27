@@ -1,9 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { CircleHelp, Compass, Plus } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
 import type { Role } from "@/lib/auth/permission";
+import { m } from "@/lib/i18n";
+import { GITHUB_RELEASES_URL } from "@/lib/links";
 
 import { activeProject, navFooterItems, navZones, projectSections, type NavProject } from "../nav";
 
@@ -214,11 +217,20 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
   });
 
   /**
-   * ⚠️ **`New project`가 빠졌다** (8-3, 시안). 새 프로젝트로 가는 길은 목록의 버튼 하나이고,
-   * 그래야 "만들기"가 목록의 맥락 안에서 일어난다 — 라우트는 그대로라 URL로는 열린다.
+   * ⚠️ **`New project`가 `Projects` 바로 아래에 선다** (2026-09-27 사용자 — 8-3의 "사이드바에 없다"를 뒤집었다).
+   * 아이콘은 [New project] 버튼과 같은 `Plus`, 배지는 없다.
    */
-  it("사용자 축은 목록·설정 **둘**이다", () => {
-    expect(navZones(null, ctx)[0]?.items.map((i) => i.href)).toEqual(["/projects", "/account"]);
+  it("사용자 축은 Projects · New project · Account 순이다", () => {
+    const items = navZones(null, ctx)[0]?.items ?? [];
+    expect(items.map((i) => [i.key, i.href])).toEqual([
+      ["projects", "/projects"],
+      ["newProject", "/projects/new"],
+      ["account", "/account"],
+    ]);
+    const created = items.find((i) => i.key === "newProject");
+    expect(created?.label).toBe(m.common.nav.newProject);
+    expect(created?.icon).toBe(Plus);
+    expect(created?.badge).toBeUndefined();
   });
 
   /** ⚠️ **구역 라벨이 이름 그대로다** — 사용자 축은 사용자 이름(옛 `Your work`를 대체했다). */
@@ -236,16 +248,23 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
    */
   it("`Projects`에만 개수 배지가 붙고, 0도 값이다", () => {
     const items = navZones(null, { userName: "Shin", projectCount: 0 })[0]?.items ?? [];
-    expect(items.map((i) => i.badge)).toEqual([0, undefined]);
+    expect(items.map((i) => i.badge)).toEqual([0, undefined, undefined]);
     expect(navZones(null, ctx)[0]?.items[0]?.badge).toBe(3);
   });
 
   /**
-   * ⚠️ **나머지 셋(Locales·Translations·Members)에는 배지가 없다.** 시안에는 있지만 그 숫자는
-   * 프로젝트별 집계라 **모든 페이지에 왕복을 더한다** — PRODUCT §7.7 결정 5가 거절했고 §8이 🔒로
-   * 다시 열어 둔 항목이다. `Projects`만 공짜인 것은 셸이 이미 그 배열을 들고 있어서다.
+   * **프로젝트 축의 개수 배지 셋** (2026-09-27 사용자 — PRODUCT §7.7 결정 5를 뒤집었다). 값은 셸이 이미 부르는
+   * `loadMemberships`에 얹혀 와서 왕복이 늘지 않는다. ⚠️ **Translations는 프로젝트 전체 키 수다**(사용자) — 보고 있는
+   * 표면을 따라 바뀌지 않는다.
    */
-  it("프로젝트 축에는 배지가 없다 — 그 숫자는 매 페이지 왕복이다", () => {
+  it("Sources·Translations·Members에 개수 배지가 붙고, Translations는 표면과 무관하게 프로젝트 전체 키 수다", () => {
+    const counted: NavProject = { ...project("OWNER"), defaultSurfaceSlug: "app", counts: { sources: 2, members: 0, keys: 31 } };
+    const badges = (p: NavProject) => Object.fromEntries((navZones(p, ctx)[1]?.items ?? []).map((i) => [i.key, i.badge]));
+    expect(badges(counted)).toEqual({ home: undefined, sources: 2, translations: 31, members: 0, logs: undefined, settings: undefined });
+    expect(badges({ ...counted, surfaceSlug: "web" }).translations).toBe(31);
+  });
+
+  it("개수가 없으면 프로젝트 축에 배지가 없다", () => {
     const items = navZones(project("OWNER"), ctx)[1]?.items ?? [];
     expect(items.every((i) => i.badge === undefined)).toBe(true);
   });
@@ -291,13 +310,19 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
  * 하단 전역 항목 (8-3). **라우트가 아니라 "앱을 벗어나는 것"이라 구역 밖이다.**
  */
 describe("navFooterItems", () => {
-  it("Help가 `/docs`를 가리킨다 — 그 라우트는 실재한다 (8-1a)", () => {
-    expect(navFooterItems().map((i) => ({ key: i.key, href: i.href }))).toEqual([
-      { key: "docs", href: "/docs" },
+  /**
+   * ⚠️ **Release notes → Docs 순서다** (2026-09-27 사용자). Release note만 외부(GitHub Releases, 새 탭)이고,
+   * 아이콘은 사용자 메뉴의 같은 항목과 같은 글리프다 — 같은 곳을 두 글리프로 가리키지 않는다.
+   */
+  it("Release notes(GitHub Releases, 새 탭) 다음 Docs(`/docs`)다", () => {
+    expect(navFooterItems().map((i) => ({ key: i.key, href: i.href, external: i.external ?? false }))).toEqual([
+      { key: "releaseNotes", href: GITHUB_RELEASES_URL, external: true },
+      { key: "docs", href: "/docs", external: false },
     ]);
+    expect(navFooterItems().map((i) => i.icon)).toEqual([Compass, CircleHelp]);
   });
 
-  it("Sign out은 여기 없다 — 링크가 아니라 폼 제출이라 화면이 직접 든다", () => {
+  it("Sign out은 LNB에 없다 — 사용자 메뉴에만 있다 (2026-09-27 사용자)", () => {
     expect(navFooterItems().some((i) => i.key === "signOut")).toBe(false);
   });
 });

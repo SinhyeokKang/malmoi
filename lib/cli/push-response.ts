@@ -4,6 +4,8 @@
  * ⚠️ **보류는 200이고 exit 0이다** — 오류가 아니라 "앱에 미전달 편집이 있어 적재를 미뤘다"는 정상 결과이고, 대상 리포의 CI를
  * 우리 규칙으로 실패시키지 않는다(CLAUDE.md). 대신 Actions `::warning` 한 줄이 "적재됐다"는 오인을 막는다.
  * ⚠️ **`::warning` 줄에 서버 문자열을 싣지 않는다** — 정수 하나만 쓴다. 문자열을 실으면 개행·`::`로 워크플로 명령을 주입할 수 있다.
+ * ⚠️ **Publish만 가리키지 않는다** (#129) — 파일·키 자리가 없어 보류된 편집은 Publish로 안 나가고(B3.1·B3.4), 서버는 어느 편집이 보류인지 모른다(렌더 시점
+ * 판정이다). 응답 계약(`pendingCount`)을 늘리지 않고 두 길을 다 말한다.
  * 구 action 태그(`@malmoi-i18n-push-v1`)의 CLI도 본문을 그대로 찍고 `res.ok`로 exit 0이라 보류가 안전하다 — 이 줄만 없다.
  */
 export function reportPushResponse(status: number, text: string): { exitCode: 0 | 1; lines: string[] } {
@@ -11,7 +13,7 @@ export function reportPushResponse(status: number, text: string): { exitCode: 0 
   const ok = status >= 200 && status < 300;
   const pendingCount = ok ? deferredCount(text) : null;
   if (pendingCount !== null) {
-    lines.push(`::warning title=Malmoi import deferred::${pendingCount} unsent translation change${pendingCount === 1 ? "" : "s"} in Malmoi — repository changes were not imported. Send them with Publish, then re-run this job.`);
+    lines.push(`::warning title=Malmoi import deferred::${pendingCount} unsent translation change${pendingCount === 1 ? "" : "s"} in Malmoi — repository changes were not imported. Send them with Publish in Malmoi. For edits Publish can't send (their file or key is missing from the repository), add the file or key back to the repository, or discard them with Sync (or Revert to last sent where available). Then re-run this job.`);
   }
   return { exitCode: ok ? 0 : 1, lines };
 }

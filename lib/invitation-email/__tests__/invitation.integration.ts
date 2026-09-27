@@ -5,15 +5,16 @@ import { join } from "node:path";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { acceptInvitation } from "@/app/invite/actions";
 import { PrismaClient } from "@/generated/prisma/client";
 import { hashInviteToken } from "@/lib/auth/invitation";
 import { encodeInvitationEmail, encodeUserFields } from "@/lib/credentials/records";
 import { lookupEmail } from "@/lib/credentials/storage";
 import { optionalEnv } from "@/lib/env";
 import { issueInvitations, reissueInvitation } from "@/lib/invitation-email/issue";
-import { ADDRESS_INTERVAL_MS, INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
+import { ADDRESS_INTERVAL_MS, INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 
 /**
  * **초대 발급·재발급의 실제 PostgreSQL 검증** (invitation-email T2.4 · design §3).
@@ -24,6 +25,10 @@ import { ADDRESS_INTERVAL_MS, INVITATION_HOURLY_LIMIT } from "@/lib/invitation-e
  *   둘 다 이기지 않는다.
  * ⚠️ "쓰지 않는다" 단언마다 같은 픽스처의 쓰는 경로를 대조로 둔다 (POSTMORTEM 2026-09-14).
  */
+// 수락 Action을 실제 DB로 돌린다 — 세션만 고정한다(`lib/events/__tests__/record.integration.ts`와 같은 형).
+vi.mock("@/lib/db", () => ({ getPrisma: () => prisma }));
+vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: "ok", userId: "u3" }) }));
+
 const directory = mkdtempSync(join(tmpdir(), "malmoi-invitation-email-"));
 let binaries: string;
 const PORT = 55521;
@@ -76,6 +81,7 @@ async function seedInvitation(over: {
   expiresAt?: Date;
   acceptedAt?: Date | null;
   token?: string;
+  invitedBy?: string;
 }) {
   const projectId = over.projectId ?? "p";
   await prisma.projectInvitation.create({
@@ -87,7 +93,7 @@ async function seedInvitation(over: {
       tokenHash: hashInviteToken(over.token ?? `tok-${over.id}`),
       expiresAt: over.expiresAt ?? future(),
       acceptedAt: over.acceptedAt ?? null,
-      invitedBy: "u1",
+      invitedBy: over.invitedBy ?? "u1",
       createdAt: over.createdAt ?? new Date(Date.now() - 2 * 60 * 60 * 1000),
     },
   });
@@ -217,6 +223,35 @@ describe("issueInvitations — 하나라도 거부면 전체 쓰기 0건", () =>
     expect(await invitations()).toHaveLength(1);
     expect((await prisma.projectInvitation.findUniqueOrThrow({ where: { id: "pending-a" } })).expiresAt).toEqual(before.expiresAt);
     expect(await invitedEvents()).toHaveLength(0);
+  });
+});
+
+/**
+ * **발급자 합산 한도는 전 프로젝트에 걸친다** (sec-audit-3 #15). 프로젝트 한도(20)에 안 걸리는 두 프로젝트에
+ * 나눠 보내도 발급자의 최근 1시간이 30건이면 막힌다. 대조로 **다른 발급자의 기록은 세지 않는다**.
+ */
+describe("issueInvitations — 발급자 최근 1시간 합산", () => {
+  const seedBy = async (projectId: string, invitedBy: string, n: number, prefix: string) => {
+    for (let i = 0; i < n; i++) {
+      await seedInvitation({ id: `${prefix}-${i}`, email: `${prefix}${i}@x.com`, projectId, invitedBy, createdAt: new Date(Date.now() - 30 * 60 * 1000 + i * 1000) });
+    }
+  };
+
+  it("두 프로젝트 합이 30건이면 어느 프로젝트에도 발급하지 않는다 — 쓰기 0건", async () => {
+    await seedBy("p", "u1", 15, "p");
+    await seedBy("q", "u1", USER_HOURLY_LIMIT - 15, "q");
+    const result = await issueInvitations(prisma, { projectId: "q", userId: "u1", recipients: [{ email: "new@x.com", role: "EDITOR" }] });
+    expect(result).toMatchObject({ status: "rate-limited", limit: "user", used: USER_HOURLY_LIMIT });
+    expect(await invitations("q")).toHaveLength(USER_HOURLY_LIMIT - 15);
+    expect(await invitedEvents("q")).toHaveLength(0);
+  });
+
+  it("다른 발급자의 기록은 세지 않는다 — 같은 수라도 발급된다", async () => {
+    await seedBy("p", "u1", 15, "p");
+    await seedBy("q", "u1", USER_HOURLY_LIMIT - 16, "q");
+    await seedBy("q", "u2", 4, "other");
+    const result = await issueInvitations(prisma, { projectId: "q", userId: "u1", recipients: [{ email: "new@x.com", role: "EDITOR" }] });
+    expect(result.status).toBe("issued");
   });
 });
 
@@ -362,5 +397,48 @@ describe("reissueInvitation — 수락·철회와의 교차", () => {
     } finally {
       client.release();
     }
+  });
+});
+
+/**
+ * **동시 수락의 진 쪽은 `already-member`다** (sec-audit-3 #8). read committed에서는 트랜잭션 안 조회도 상대의
+ * 미확정 멤버 행을 못 본다 — 최종 판정은 `ProjectMember`의 unique 제약이고, 진 쪽은 그 P2002를 받는다.
+ */
+describe("acceptInvitation — 동시 수락", () => {
+  it("상대 수락의 멤버 행이 미확정인 채 조회를 지나면 P2002를 already-member로 접고 초대를 소비하지 않는다", async () => {
+    await seedInvitation({ id: "inv", email: "joiner@x.com", token: "tok-inv" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(`INSERT INTO "ProjectMember" ("projectId", "userId", "role", "updatedAt") VALUES ('p', 'u3', 'EDITOR', now())`);
+      const accept = acceptInvitation({ token: "tok-inv" });
+      /**
+       * ⚠️ **고정 sleep으로 기다리지 않는다** — 느린 러너에서는 수락이 COMMIT 뒤에 조회에 닿아 "이미 멤버" 조회
+       * 갈래로 끝나고, P2002 접기를 지워도 green이 된다. 수락 쪽 연결이 멤버 INSERT에서 **잠금 대기**에 들어간
+       * 것을 확인한 뒤에 확정한다 — 그 시점에는 조회가 이미 지나갔으므로 결과는 P2002 갈래에서만 나온다.
+       */
+      const blocker = (client as unknown as { processID: number }).processID;
+      await expect
+        .poll(async () => (await pool.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%ProjectMember%' AND pid <> $1`, [blocker])).rows[0].n, { timeout: 10_000 })
+        .toBeGreaterThan(0);
+      await client.query("COMMIT");
+      expect(await accept).toEqual({ ok: false, error: "already-member" });
+    } finally {
+      client.release();
+    }
+    const row = await prisma.projectInvitation.findUniqueOrThrow({ where: { id: "inv" } });
+    expect(row.acceptedAt).toBeNull();
+    expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "member.joined" } })).toBe(0);
+  });
+
+  it("같은 사용자의 초대 둘을 동시에 수락하면 하나만 멤버가 되고 다른 하나는 already-member다", async () => {
+    await seedInvitation({ id: "inv-a", email: "joiner@x.com", token: "tok-a" });
+    await seedInvitation({ id: "inv-b", email: "joiner@x.com", token: "tok-b", role: "OWNER" });
+    const results = await Promise.all([acceptInvitation({ token: "tok-a" }), acceptInvitation({ token: "tok-b" })]);
+    expect(results.filter((r) => r.ok)).toHaveLength(1);
+    expect(results.filter((r) => !r.ok)).toEqual([{ ok: false, error: "already-member" }]);
+    expect(await prisma.projectMember.count({ where: { projectId: "p", userId: "u3" } })).toBe(1);
+    // 진 쪽의 초대는 소비되지 않는다 — 수락 표시가 멤버십과 같은 수다.
+    expect(await prisma.projectInvitation.count({ where: { projectId: "p", acceptedAt: { not: null } } })).toBe(1);
   });
 });

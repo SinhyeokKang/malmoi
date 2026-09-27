@@ -4,6 +4,11 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { config as middlewareConfig } from "../../middleware";
+import { isProtectedPath } from "@/lib/auth/cookie";
+// @ts-expect-error — Next 내부 모듈이라 타입 선언이 없다. 옛 matcher의 컴파일 결과를 그대로 재현하려고 쓴다.
+import { getMiddlewareMatchers } from "next/dist/build/analysis/get-page-static-info";
+
 /**
  * **인가 없이 실행되는 서버 진입점이 0인지 소스에서 센다** (ARCHITECTURE §6.1).
  *
@@ -15,7 +20,7 @@ import { describe, expect, it } from "vitest";
  * - `/api/push` — Bearer `PUSH_TOKEN` (CI가 부른다. 사람이 아니다)
  * - `/api/pull` — `CRON_SECRET` (Vercel Cron)
  * - `/api/auth/[...nextauth]` — Auth.js 핸들러 자체
- * - `/` — **랜딩 자리의 껍데기다** (8-1a). 세션 상태만 보고 `/projects`나 `/signin`으로 보낸다
+ * - `/` — **공개 랜딩이다**. 세션이 있으면 `/projects`로 보내고, 없거나 못 읽으면 랜딩을 그린다(`rootView`)
  * - `/signin` — 로그인 화면. 세션이 없는 사람이 보는 화면이고, 여기가 막히면 아무도 못 들어온다
  * - `/privacy`·`/docs` — 공개 문서. 로그인 없이 읽혀야 하고, 로그인 화면 푸터가 가리킨다
  * - `/invite/[token]` — **수락 전엔 멤버가 아니다.** 토큰이 인가를 대신한다 (membership.test.ts)
@@ -50,13 +55,18 @@ const EXEMPT = new Set([
   "page.tsx",
   "signin/page.tsx",
   "privacy/page.tsx",
-  "docs/page.tsx",
+  "docs/[[...slug]]/page.tsx",
   "invite/[token]/page.tsx",
   /**
    * 병합 안내 (account-linking T2). **인가가 없고 challenge가 대신한다** — 비로그인이 봐야 하는
-   * 화면이라 `middleware.ts`의 matcher에도 없다(아래 `PUBLIC` 부정 단언).
+   * 화면이라 1차 차단의 보호 경로에도 없다(아래 `PUBLIC` 부정 단언).
    */
   "signin/link/[challenge]/page.tsx",
+  /**
+   * 크롤러용 가이드 목차·전문 (seo-geo). **인가가 없다** — 이미 공개된 `/docs` 원고만 내고, 빌드 때 prerender된다.
+   */
+  "llms.txt/route.ts",
+  "llms-full.txt/route.ts",
 ]);
 
 /** 인가를 지났다고 인정하는 호출. 둘 다 결국 `planProjectAccess`로 간다. */
@@ -349,8 +359,23 @@ describe("차단 규칙", () => {
  */
 /** `/invite/${token}` · `/projects/[slug]` → `/invite/*` · `/projects/*`. 두 표기를 같은 모양으로 만든다. */
 function shape(path: string): string {
-  return path.replace(/\$\{[^}]*\}/g, "*").replace(/\[[^\]]*\]/g, "*");
+  // ⚠️ **optional catch-all(`/[[...slug]]`)은 앞 `/`까지 `*` 하나다** — 세그먼트가 0개여도 선다(`/docs`). 그냥 두면 아래
+  // `\[[^\]]*\]`가 `[[...slug]`만 먹어 `/docs/*]`가 됐다. 연달은 `*`는 하나로 접는다 — 생성기의 `${page}${anchor}`가 `**`다.
+  return path
+    .replace(/\/\[\[\.\.\.[^\]]*\]\]/g, "*")
+    .replace(/\$\{[^}]*\}/g, "*")
+    .replace(/\[[^\]]*\]/g, "*")
+    .replace(/\*+/g, "*");
 }
+
+describe("shape — 두 표기를 같은 모양으로", () => {
+  it("optional catch-all은 세그먼트 0개도 덮는 `*` 하나다 — `/docs/*]`가 되지 않는다", () => {
+    expect(shape("/docs/[[...slug]]")).toBe("/docs*");
+    expect(shape("/docs${docPage(page)}${docAnchor(anchor)}")).toBe("/docs*");
+    expect(shape("/projects/[slug]/logs")).toBe("/projects/*/logs");
+    expect(shape("/invite/${token}")).toBe("/invite/*");
+  });
+});
 
 describe("죽은 라우트 링크", () => {
   const ROUTES = new Set(ENTRY_POINTS.filter((e) => e.path.endsWith("page.tsx")).map((e) =>
@@ -713,97 +738,127 @@ describe("세션 읽기 단일 진입점", () => {
 
 
 /**
- * **`(edit)` 아래 새 페이지가 `middleware.ts`의 `matcher`에 덮인다.**
+ * **`(edit)` 아래 새 페이지가 1차 차단의 보호 경로에 든다.**
  *
- * 1차 차단은 미들웨어 하나이고(ARCHITECTURE §6.1), matcher에 없는 라우트는 **쿠키 검사를 아예
+ * 1차 차단은 미들웨어 하나이고(ARCHITECTURE §6.1), 보호 경로에 없는 라우트는 **쿠키 검사를 아예
  * 지나지 않는다.** 본판정이 진입점에 있으니 데이터가 새지는 않지만, 비로그인 사용자가 로그인
- * 화면 대신 `requireUser`의 redirect에 도달하는 경로가 하나 더 늘고 그 차이는 눈에 안 보인다 —
- * CLAUDE.md·middleware.ts 주석이 **"새 보호 라우트를 추가하면 여기도 추가한다"**를 규칙으로만
- * 두고 있었다 (2026-09-07, T7이 `/projects/new`를 더하면서 자동 검사가 없다는 것이 드러났다).
+ * 화면 대신 `requireUser`의 redirect에 도달하는 경로가 하나 더 늘고 그 차이는 눈에 안 보인다
+ * (2026-09-07, T7이 `/projects/new`를 더하면서 자동 검사가 없다는 것이 드러났다).
  *
- * ⚠️ **`(edit)` 밖은 대상이 아니다** — `/`(로그인)와 `/invite/[token]`은 **일부러** matcher 밖이고,
- * 후자는 넣으면 초대 토큰이 `/`로 302되며 사라진다.
+ * ⚠️ **matcher와 보호 경로가 갈렸다** (sec-audit-3 #11). CSP nonce를 미들웨어가 발급하므로 matcher는
+ * **모든 페이지**를 덮고, 로그인으로 돌려보낼지는 `isProtectedPath`가 정한다. 옛 규칙 "보호 라우트는
+ * matcher에 추가한다"는 이제 **`isProtectedPath`에 추가한다**이다.
+ *
+ * ⚠️ **`(edit)` 밖은 대상이 아니다** — `/`(랜딩)와 `/invite/[token]`은 **일부러** 보호 경로 밖이고,
+ * 후자는 넣으면 초대 토큰이 로그인 화면으로 302되며 사라진다.
  */
-describe("보호 라우트가 미들웨어 matcher에 있다", () => {
-  const ROOT = fileURLToPath(new URL("../..", import.meta.url));
-  const MIDDLEWARE = readFileSync(join(ROOT, "middleware.ts"), "utf8");
-
-  /** `matcher: [...]` 안의 문자열 리터럴. 배열이 사라지면 아래 "하나 이상" 검사가 잡는다. */
-  const PATTERNS = (() => {
-    const at = MIDDLEWARE.indexOf("matcher:");
-    if (at === -1) return [];
-    const open = MIDDLEWARE.indexOf("[", at);
-    const close = MIDDLEWARE.indexOf("]", open);
-    if (open === -1 || close === -1) return [];
-    return [...MIDDLEWARE.slice(open, close).matchAll(/["'`]([^"'`]+)["'`]/g)].map((m) => m[1] ?? "");
-  })();
-
-  /**
-   * Next matcher 문법 → 정규식. `:path*`는 **세그먼트 0개 이상**이라 `/projects` 자신도 덮고,
-   * `:param`은 한 세그먼트다. 이 변환이 틀리면 아래 자기검사가 red가 된다.
-   */
-  function covers(pattern: string, path: string): boolean {
-    const source = pattern
-      .replace(/\/:[A-Za-z]+\*/g, "(?:/[^]*)?")
-      .replace(/\/:[A-Za-z]+/g, "/[^/]+");
-    return new RegExp(`^${source}$`).test(path);
-  }
-
+describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이지다", () => {
   /** `[slug]` 같은 동적 세그먼트는 구체 값으로 바꿔 대조한다 — 패턴 대 패턴은 비교할 수 없다. */
   const PROTECTED = ENTRY_POINTS.filter((e) => e.rel.startsWith("(edit)/") && e.rel.endsWith("page.tsx")).map(
     (e) => "/" + e.path.replace(/\/?page\.tsx$/, "").replace(/\[[^\]]*\]/g, "sample"),
   );
+  /**
+   * ⚠️ **하드코딩이다** — `PROTECTED`는 `(edit)/` 아래에서만 만들어지므로, 여기 등재하지 않으면
+   * "보호 경로가 아니다"를 재는 대상이 아예 없다 (POSTMORTEM 2026-09-07).
+   */
+  const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/privacy", "/docs", "/docs/setup/workflow"];
 
-  it("matcher 패턴과 보호 페이지를 실제로 읽었다 — 파싱이 조용히 0건이 되지 않는다", () => {
-    expect(PATTERNS.length).toBeGreaterThan(0);
+  /** Next matcher의 `source` — 이 모양(정규식 그룹 하나)은 path-to-regexp와 JS 정규식이 같게 읽는다. */
+  const MATCHERS = (middlewareConfig.matcher as readonly string[]).map((source) => new RegExp(`^${source}$`));
+  const matched = (path: string) => MATCHERS.some((re) => re.test(path));
+
+  it("보호 페이지를 실제로 읽었다 — 파싱이 조용히 0건이 되지 않는다", () => {
+    expect(MATCHERS.length).toBeGreaterThan(0);
     expect(PROTECTED.length).toBeGreaterThan(1);
   });
 
-  it("변환이 실제로 판정한다 — 공허하게 통과하지 않는다", () => {
-    expect(covers("/projects/:path*", "/projects")).toBe(true);
-    expect(covers("/projects/:path*", "/projects/new")).toBe(true);
-    expect(covers("/projects/:path*", "/projects/sample/settings")).toBe(true);
-    // 좁은 패턴은 하위 라우트를 덮지 못한다 — 이 줄이 위 셋을 의미 있게 만든다.
-    expect(covers("/projects", "/projects/new")).toBe(false);
-    expect(covers("/projects/:path*", "/invite/sample")).toBe(false);
-  });
-
-  it("(edit) 아래 모든 페이지가 어느 패턴에든 걸린다", () => {
-    const uncovered = PROTECTED.filter((path) => !PATTERNS.some((pattern) => covers(pattern, path)));
-    expect(uncovered).toEqual([]);
+  it("판정이 실제로 가른다 — 공허하게 통과하지 않는다", () => {
+    expect(isProtectedPath("/projects")).toBe(true);
+    expect(isProtectedPath("/projects/new")).toBe(true);
+    expect(isProtectedPath("/projects/sample/settings")).toBe(true);
+    expect(isProtectedPath("/account")).toBe(true);
+    // 접두 문자열만 같은 경로는 보호 대상이 아니다 — 이 줄이 위 넷을 의미 있게 만든다.
+    expect(isProtectedPath("/projectsx")).toBe(false);
+    expect(isProtectedPath("/invite/sample")).toBe(false);
   });
 
   /**
-   * ⚠️ **로그인 화면을 matcher에 넣으면 로그인이 통째로 죽는다** (8-1a).
+   * ⚠️ **옛 matcher와 같은 집합이어야 한다** (sec-audit-3 fix1). Next는 matcher 정규식을 **raw와 decode한 pathname 둘 다**에
+   * 대고(`resolve-routes.js` — decode 실패는 raw만), 컴파일된 정규식은 `.rsc`·`.segments/…segment.rsc`·`/_next/data/<id>` 변형도
+   * 받는다. `request.nextUrl.pathname`은 decode되지 않는다 — 문자열 접두 비교로는 `/%70rojects/…`가 1차 차단을 지나쳤다.
+   */
+  it("옛 matcher(`/projects/:path*` · `/account`)를 Next가 컴파일한 정규식과 판정이 같다", () => {
+    const old = getMiddlewareMatchers(["/projects/:path*", "/account"], {}).map((m: { regexp: string }) => new RegExp(m.regexp));
+    const decoded = (p: string) => {
+      try {
+        return decodeURIComponent(p);
+      } catch {
+        return p;
+      }
+    };
+    const oldProtects = (p: string) => old.some((re: RegExp) => re.test(p) || re.test(decoded(p)));
+    const TABLE = [
+      "/projects", "/projects/", "/projects/new", "/projects/sample/translations", "/account", "/account/",
+      "/%70rojects/sample/translations", "/%61ccount", "/account.rsc", "/projects.rsc", "/projects/a/keys.rsc",
+      "/projects/a/keys.segments/x.segment.rsc", "/_next/data/build/projects/a.json", "/account.json",
+      "/projects%2Fa", "/%E0%A4%A", "/projects/%E0%A4%A",
+      "/", "/signin", "/invite/sample", "/docs", "/privacy", "/projectsx", "/accounts", "/account/x", "/Projects",
+      "/api/github/callback", "/%E0%A4%A/account",
+    ];
+    const differs = TABLE.filter((p) => isProtectedPath(p) !== oldProtects(p));
+    expect(differs).toEqual([]);
+    // 공허하지 않다 — 표가 양쪽 판정을 다 밟는다.
+    expect(TABLE.filter(oldProtects).length).toBeGreaterThan(5);
+    expect(TABLE.filter((p) => !oldProtects(p)).length).toBeGreaterThan(5);
+  });
+
+  it.each(["/%70rojects/x", "/%61ccount", "/account.rsc", "/projects.rsc", "/projects/a/keys.segments/x.segment.rsc"])(
+    "인코딩·전송 변형 %s도 보호 경로다",
+    (path) => {
+      expect(isProtectedPath(path)).toBe(true);
+    },
+  );
+
+  it("(edit) 아래 모든 페이지가 보호 경로다", () => {
+    expect(PROTECTED.filter((path) => !isProtectedPath(path))).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **로그인 화면을 보호 경로에 넣으면 로그인이 통째로 죽는다** (8-1a).
    *
-   * `shouldRedirectToLogin`과 `middleware()`는 **경로를 한 번도 보지 않는다** — 목적지 제외 규칙이
-   * 한 줄도 없으므로, `/signin`이 matcher에 걸리면 쿠키 없는 모든 `GET /signin`이 **자기 자신으로
-   * 307을 돈다**(`ERR_TOO_MANY_REDIRECTS`).
-   *
-   * 이 단언이 필요한 이유는 **반대 방향의 압력이 규칙으로 박혀 있어서다**: `middleware.ts`의
-   * *"새 보호 라우트를 추가하면 여기도 추가한다"*와 POSTMORTEM 2026-08-31이 그것이다. 그 규칙을
+   * `shouldRedirectToLogin`은 경로를 보지 않는다 — 목적지 제외 규칙이 한 줄도 없으므로, `/signin`이
+   * 보호 경로에 들면 쿠키 없는 모든 `GET /signin`이 **자기 자신으로 307을 돈다**(`ERR_TOO_MANY_REDIRECTS`).
+   * 이 단언이 필요한 이유는 **반대 방향의 압력이 규칙으로 박혀 있어서다** — "새 보호 라우트를 추가한다"를
    * 그대로 따르는 사람이 정확히 이 함정을 밟는다.
    *
-   * ⚠️ **비로그인으로 열려야 하는 라우트 전부가 대상이다** — `/`(랜딩 자리)·`/signin`·`/invite`
-   * (토큰이 `/`로 302되며 사라진다, ARCHITECTURE §6.1)·공개 문서 둘.
+   * ⚠️ **비로그인으로 열려야 하는 라우트 전부가 대상이다** — `/`(랜딩)·`/signin`·`/invite`
+   * (토큰이 302되며 사라진다, ARCHITECTURE §6.1)·공개 문서 둘.
    */
-  it("비로그인 진입점은 matcher 밖이다 — 넣으면 자기 자신으로 307을 돈다", () => {
-    // ⚠️ **하드코딩이다** — `PROTECTED`는 `(edit)/` 아래에서만 만들어지므로, 여기 등재하지 않으면
-    // "matcher에 없다"를 재는 대상이 아예 없다 (POSTMORTEM 2026-09-07).
-    const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/privacy", "/docs"];
-    const covered = PUBLIC.filter((path) => PATTERNS.some((pattern) => covers(pattern, path)));
-    expect(covered).toEqual([]);
+  it("비로그인 진입점은 보호 경로 밖이다 — 넣으면 자기 자신으로 307을 돈다", () => {
+    expect(PUBLIC.filter((path) => isProtectedPath(path))).toEqual([]);
+  });
+
+  /** CSP는 미들웨어만 낸다(§8 — 헤더 하나) — matcher 밖의 페이지는 **정책 없이** 나간다. */
+  it("모든 페이지가 matcher에 걸린다 — 보호든 공개든 CSP를 받는다", () => {
+    expect([...PROTECTED, ...PUBLIC].filter((path) => !matched(path))).toEqual([]);
+  });
+
+  it("정적 자산은 matcher 밖이다 — 폰트·청크마다 미들웨어를 타지 않는다", () => {
+    const ASSETS = ["/_next/static/chunks/app.js", "/_next/image", "/fonts/pretendard/x.woff2", "/guide/setup.png", "/brand/logo.svg", "/email/logo.png", "/flags/fr.svg", "/icon.svg"];
+    expect(ASSETS.filter(matched)).toEqual([]);
   });
 
   /**
-   * GitHub이 브라우저를 되돌리는 지점(설치·인가·리포 선택 변경이 전부 callback으로 온다). 로그인은 필요하지만(`requireUser`) matcher에 넣으면
-   * 로그인 화면으로 302되며 쿼리(`code`·`setup_action`)가 사라진다 (POSTMORTEM 2026-09-06 "쿼리 수신자").
+   * GitHub이 브라우저를 되돌리는 지점(설치·인가·리포 선택 변경이 전부 callback으로 온다). 로그인은 필요하지만(`requireUser`)
+   * 로그인 화면으로 302되면 쿼리(`code`·`setup_action`)가 사라진다 (POSTMORTEM 2026-09-06 "쿼리 수신자").
+   * ⚠️ **`/api/*`는 matcher 자체에서 빠진다** — CLAUDE.md "`middleware.ts` matcher에 넣지 않는다"가 그대로 참이다.
    */
   it("GitHub 복귀 지점은 matcher 밖이다 — 302되면 쿼리가 사라진다", () => {
-    const RETURNS = ["/api/github/callback"];
-    expect(RETURNS.filter((path) => PATTERNS.some((pattern) => covers(pattern, path)))).toEqual([]);
+    const RETURNS = ["/api/github/callback", "/api/auth/callback/github"];
+    expect(RETURNS.filter(matched)).toEqual([]);
+    expect(RETURNS.filter((path) => isProtectedPath(path))).toEqual([]);
     // 대조군: 같은 판정이 보호 경로는 덮는다고 말한다 — 0건이 판정 고장이 아니다.
-    expect(PATTERNS.some((pattern) => covers(pattern, "/projects/new"))).toBe(true);
+    expect(matched("/projects/new") && isProtectedPath("/projects/new")).toBe(true);
   });
 });
 

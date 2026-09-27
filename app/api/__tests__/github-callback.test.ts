@@ -74,7 +74,9 @@ function location(res: Response): string {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();
-  vi.stubEnv("AUTH_SECRET", SECRET);
+  // sec-audit-3 #14 — 연결 state·샘플 확인은 전용 키로 서명한다. AUTH_SECRET을 다른 값으로 두어 그 키를 안 쓰는 것까지 고정한다.
+  vi.stubEnv("APP_SIGNING_SECRET", SECRET);
+  vi.stubEnv("AUTH_SECRET", "auth-js-only-secret-not-for-app-signing");
   vi.stubEnv("GITHUB_APP_CLIENT_ID", "Iv23liTEST");
   vi.stubEnv("GITHUB_APP_CLIENT_SECRET", "client-secret");
   vi.setSystemTime(NOW);

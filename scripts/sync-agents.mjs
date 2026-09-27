@@ -21,9 +21,10 @@ const CHECK = process.argv.includes("--check");
 //   merge : main 머지 = Vercel 프로덕션 배포
 //   sync  : dev를 force update한다 — 두 창구가 겹치면 한쪽 작업이 사라진다
 // orchestrate : Orca 워커 세션을 띄워 리뷰·통합·push까지 지휘한다 — 지휘자는 Claude Code 단독이다(워커는 Codex일 수 있다).
+// guide-shots : ego-browser로 촬영한다 — Codex에는 런타임이 없다(stale 목록은 `pnpm guide:check`가 어디서든 준다).
 // (`ship`은 미러한다 — push 이전 단계가 전부 로컬이고, Codex는 10단계 커밋에서 멈춘다는
 //  규칙이 스킬 본문과 PREAMBLE에 박혀 있다.)
-const EXCLUDE = new Set(["push", "merge", "sync", "runtime-test", "design-sync", "orchestrate"]);
+const EXCLUDE = new Set(["push", "merge", "sync", "runtime-test", "design-sync", "orchestrate", "guide-shots"]);
 
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 

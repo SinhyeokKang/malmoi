@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 /**
  * shadcn/ui `new-york-v4` Table 기반 (2026-09-12).
  * 원본: https://ui.shadcn.com/r/styles/new-york-v4/table.json
+ * Portions Copyright (c) 2023 shadcn — MIT License (https://github.com/shadcn-ui/ui/blob/main/LICENSE.md)
  *
  * ⚠️ **프리셋이 둘이고 구현은 하나다.** 아래 `Th`·`Td`·`Tr`은 **별도 구현이 아니라** 이 파일의
  * `TableHead`·`TableCell`·`TableRow`를 감싼 프리셋이다 — 마크업·`data-slot`이 한 곳에서 나오므로
@@ -33,7 +34,7 @@ export function Table({
    *
    * ⚠️ **끄는 곳이 셋이다** — 번역 화면(`PanelBody`가 스크롤을 소유한다) · 온보딩 ②의 파일 표
    * (`steps/files.tsx`가 바깥 `div`로 스크롤을 들어야 `Th`의 `sticky`가 거기 붙는다) · 공개 문서
-   * (`public-doc.tsx`가 그 `div`에 `role="region"`을 걸어야 키보드로 가로 스크롤된다). 여기서
+   * (`public-doc-table.tsx`가 그 `div`에 `role="region"`을 걸어야 키보드로 가로 스크롤된다). 여기서
    * 컨테이너를 하나 더 만들면 스크롤이 중첩된다.
    */
   return scrollable ? <div className="h-full min-w-0 overflow-auto">{table}</div> : table;

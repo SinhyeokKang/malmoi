@@ -67,6 +67,11 @@ const ALLOWED = [
    * 부류(7.2MB `ts-morph`)와 다르지만, **그 판단을 여기서 한 번 한다**는 것이 이 목록의 요지다.
    */
   "react-resizable-panels",
+  /**
+   * ⚠️ **`components/analytics.tsx`가 쓴다** (seo-geo T10). Vercel Web Analytics 페이지뷰 하나이고, 전송은 `beforeSend`의 허용 목록
+   * (`lib/seo/analytics.ts`)이 거른다. 스크립트 본체는 Vercel이 동일 출처 경로로 서빙하고 번들에 드는 것은 로더뿐이다.
+   */
+  "@vercel/analytics",
 ];
 
 function allowed(specifier: string, list: readonly string[] = ALLOWED): boolean {
@@ -104,6 +109,8 @@ const CLIENT_LIB_FILES = [
   "lib/github-connect/message.ts",
   // `SlowNotice`가 지연 선으로 읽는 상수 하나 — import가 0개인 잎이다 (audit-ux U7 r1). octokit은 `lib/github.ts` 쪽이다.
   "lib/github-wait.ts",
+  // `/docs` 개요의 옛 해시 잎이 값으로 읽는다 — import 0인 잎이고, 표는 서버가 prop으로 넘긴다.
+  "lib/guide/legacy.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
   "lib/import/confirm.ts",
@@ -113,6 +120,12 @@ const CLIENT_LIB_FILES = [
   "lib/invitation-email/recipients.ts",
   "lib/invitation-email/retry-at.ts",
   "lib/keys/flag.ts",
+  // 랜딩 스테이지가 스크롤 위치마다 값으로 읽는 수학 — import 0인 잎이다(아래 잎 검사).
+  "lib/landing/stage.ts",
+  // 외부 링크 상수(GitHub·Releases) — 사용자 메뉴와 사이드바 하단이 읽는다. `i18n`·`routes`만 문다.
+  "lib/links.ts",
+  // LNB 프로젝트 스위처의 목록 필터 — import 0인 잎이다.
+  "lib/shell/switcher.ts",
   "lib/login-link/message.ts",
   "lib/login-link/policy.ts",
   "lib/onboarding/base-pending.ts",
@@ -132,6 +145,10 @@ const CLIENT_LIB_FILES = [
   "lib/projects/plan.ts",
   "lib/import/surface-status.ts",
   "lib/onboarding/readiness.ts",
+  // `/privacy` 목차가 스크롤마다 값으로 읽는 판정 — import 0인 잎이다(아래 잎 검사).
+  "lib/public-doc/toc.ts",
+  // Analytics `beforeSend` 허용 목록 — 값 import 0인 잎이다(아래 잎 검사). `SITE_ORIGIN`·`m`도 물지 않는다.
+  "lib/seo/analytics.ts",
   "lib/surfaces/plan-add.ts",
   "lib/projects/pr-url.ts",
   "lib/publish/plan.ts",
@@ -358,6 +375,30 @@ describe("클라이언트 그래프", () => {
    * 같은 디렉터리라 `plan.ts`가 `./fingerprint`를 한 줄만 물어도 `node:crypto`가 번들로 온다 — 소비자
    * 연결(T13) 전에도 검사가 공허하지 않도록 여기서 직접 걸고, **음성 대조로 fingerprint 쪽은 실제로 걸리는지** 센다.
    */
+  /**
+   * ⚠️ **랜딩 스테이지 수학은 클라이언트가 값으로 읽는다**(`components/landing/stage.tsx`). 목록 대조는
+   * 닿은 파일만 보므로, 그 모듈이 무언가를 물기 시작하는 순간을 여기서 직접 건다.
+   */
+  it("`lib/landing/stage.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const stage = walk([join(ROOT, "lib/landing/stage.ts")]);
+    expect([...stage.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/landing/stage.ts"]);
+    expect([...stage.packages]).toEqual([]);
+  });
+
+  /** `/privacy` TOC가 스크롤마다 값으로 읽는 판정 — 스테이지 수학과 같은 이유로 직접 건다. */
+  it("`lib/public-doc/toc.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const toc = walk([join(ROOT, "lib/public-doc/toc.ts")]);
+    expect([...toc.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/public-doc/toc.ts"]);
+    expect([...toc.packages]).toEqual([]);
+  });
+
+  /** Analytics 허용 목록 — 전 페이지 클라이언트 번들에 든다. 무언가를 물기 시작하는 순간을 여기서 직접 건다. */
+  it("`lib/seo/analytics.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const redact = walk([join(ROOT, "lib/seo/analytics.ts")]);
+    expect([...redact.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/seo/analytics.ts"]);
+    expect([...redact.packages]).toEqual([]);
+  });
+
   it("`lib/protection/plan.ts`는 잎이다 — `fingerprint.ts`(crypto)를 물지 않는다", () => {
     const plan = walk([join(ROOT, "lib/protection/plan.ts")]);
     expect([...plan.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/protection/plan.ts"]);

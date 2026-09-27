@@ -14,7 +14,7 @@ import { renderLocaleFiles, type RenderKey } from "./render";
 import { compareSurfaces, surfaceOwnership } from "@/lib/surfaces/plan";
 import { planMultiSurfacePull } from "./surfaces";
 import { planProtectedPublish } from "@/lib/protection/plan";
-import { blockingErrors, splitEdits, withheldCoordinates } from "./undeliverable";
+import { blockingErrors, readSlotFiles, slotlessCells, splitEdits, withheldCoordinates } from "./undeliverable";
 
 /**
  * pull 오케스트레이션. **판정은 전부 `plan.ts`·`payload.ts`·`render.ts`에 있고** 여기는 순서와
@@ -84,6 +84,11 @@ export type PullDeps = {
    * ⚠️ **필수다** (audit #60) — 선택이면 새 호출부가 빠뜨려도 컴파일되고, 그 경로는 GitHub에 쓰면서 옛 확인을 살려 둔다.
    */
   invalidateDelivery(projectId: string): Promise<void>;
+  /**
+   * 보류된 셀 **전부에** 되돌릴 기준(`TranslationBaseline`)이 있는가 (#129). 결과의 OWNER 안내가 `Revert to last sent`를 가리키는 조건이다 — 기준이 없는
+   * 셀의 Revert는 꺼져 있다("The last sent version isn't available…"). 선택이다: 없거나 false면 안내가 Revert를 말하지 않는다(모르는 것을 약속하지 않는다).
+   */
+  withheldRevertable?(projectId: string, withheld: readonly PendingEdit[]): Promise<boolean>;
   syncBranch: string;
 };
 
@@ -99,7 +104,12 @@ export type PullDeps = {
  * 수**다 — T10이 막은 것은 "버린 값의 토큰을 성공으로 비우는 것"이었고 보류는 토큰을 안 비운다. 사유별로 센다(`file`·`key`) —
  * 결과 문구가 둘을 다르게 말한다. 0이면 필드가 없다.
  */
-export type Withheld = { file: number; key: number };
+export type Withheld = {
+  file: number;
+  key: number;
+  /** 보류 셀 전부가 Revert로 풀린다(#129 — `withheldRevertable`). 그럴 때만 있다 — 없으면 안내가 Revert를 가리키지 않는다. `SyncRun.withheld`(수)에는 안 실린다. */
+  revertable?: true;
+};
 export type PullResult =
   | { status: "skipped"; reason: "no-edits" }
   /**
@@ -135,33 +145,32 @@ export function closedPrComment(baseBranch: string): string {
 /** blob 동시 읽기 수. GitHub 2차 rate limit(동시 요청)을 피하면서 106파일을 60초 안에 든다. */
 const BLOB_CONCURRENCY = 8;
 
-export async function runPull(deps: PullDeps): Promise<PullResult> {
-  const { project, surfaces, maxUpdatedAt, unpublished, pendingEdits, deliveryContexts = [] } = await deps.loadState();
+/**
+ * **실행의 읽기 단계** — base head·트리·원본 blob·렌더·2층 blob 비교까지. GitHub에 쓰지 않는다. `runPull`과 Publish 미리보기(`lib/publish/read.ts`)가
+ * **같은 함수로** "PR이 바꾸는 파일"을 얻는다(#128) — 미리보기가 편집 셀만 세면 orphan 제거·앞선 PR의 재전송처럼 토큰 없이 바뀌는 파일이 화면에서 빠진다.
+ */
+export type ProjectFormats = ReturnType<typeof projectFormats>;
 
-  // ── 1층: DB 측 스킵. 여기서 끝나면 GitHub을 한 번도 부르지 않는다 ────────────
-  if (shouldSkipPull(unpublished)) {
-    return { status: "skipped", reason: "no-edits" };
-  }
-  // 미발송 행이 하나라도 있으면 `Translation` 행이 있으므로 최대값도 있다. 조용한 폴백(`?? new Date(0)`)을
-  // 두지 않는다 — 그 값이 DB에 들어가면 1층이 영구히 무력해진다.
-  if (maxUpdatedAt === null) fail("unreachable: passed the layer-1 check but maxUpdatedAt is null");
-  // 이 값이 `lastPulledAt`에 들어간다 — `now()`를 쓰면 export 스냅샷과 갱신 사이에 들어온
-  // 편집이 다음 실행에서 영영 스킵된다.
-  const captured = maxUpdatedAt;
-
-  // GitHub을 부르기 전에 막는다 — 설치가 안 됐으면 조용히 빈 PR을 내는 대신 즉시 알린다.
-  if (project.installationId === null) {
-    fail(`Project.installationId is empty (${project.slug}) — install the app`, "not-installed");
-  }
-
-  const formats = [...surfaces].sort((a, b) => compareSurfaces(a.slug, b.slug)).map(surface => {
+/** 표면별 포맷. GitHub을 부르기 전에 판정한다 — 설정 오류로 토큰을 발급받지 않는다. */
+export function projectFormats(surfaces: PullState["surfaces"]) {
+  return [...surfaces].sort((a, b) => compareSurfaces(a.slug, b.slug)).map(surface => {
     const format = formatFromProject(surface, surface.localeCodes);
     if (surface.baseLocale === null) fail("surface base locale is empty");
     return { surface, format, baseLocale: surface.baseLocale, layout: adapterFor(format).layout };
   });
-  const client = await deps.createClient(project);
+}
 
-  const baseHead = await client.getRefSha(`heads/${project.baseBranch}`);
+/**
+ * @param read 이미 읽은 base head·트리 — 미리보기가 셀 조회에 쓴 것을 넘긴다(#128 r5). 다시 읽으면 한 번 열 때 ref·트리를 두 번 부르고, 셀과 파일 목록이
+ *   서로 다른 head를 볼 수 있다.
+ */
+export async function renderProject(
+  project: Pick<PullProject, "slug" | "baseBranch">,
+  formats: ProjectFormats,
+  client: Pick<GitClient, "getRefSha" | "getTree" | "getBlobText">,
+  read?: { baseHead: string; tree: Awaited<ReturnType<GitClient["getTree"]>> },
+) {
+  const baseHead = read?.baseHead ?? await client.getRefSha(`heads/${project.baseBranch}`);
   // ⚠️ **`null`을 "브랜치 없음"으로 읽고 진행하지 않는다.** GitHub은 권한 없는 리소스에 404를
   // 주므로 설치 취소·권한 누락도 `null`로 온다. base가 없으면 그 자체로 진행 불가다
   // (`malmoi-i18n/sync`의 `null`만 정상 입력이다 — 첫 실행 경로).
@@ -173,7 +182,7 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     );
   }
 
-  const tree = await client.getTree(baseHead);
+  const tree = read?.tree ?? await client.getTree(baseHead);
   const resolved = formats.map(item => ({ ...item,
     paths: resolveLocalePaths(item.format, item.layout, tree.map(t => t.path)),
   }));
@@ -207,6 +216,32 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current),
   }));
   const local = planMultiSurfacePull(rendered);
+  const changes = planPullChanges(local, tree.map((t) => ({ path: t.path, sha: t.sha })));
+  return { baseHead, tree, resolved, current, rendered, local, changes };
+}
+
+export async function runPull(deps: PullDeps): Promise<PullResult> {
+  const { project, surfaces, maxUpdatedAt, unpublished, pendingEdits, deliveryContexts = [] } = await deps.loadState();
+
+  // ── 1층: DB 측 스킵. 여기서 끝나면 GitHub을 한 번도 부르지 않는다 ────────────
+  if (shouldSkipPull(unpublished)) {
+    return { status: "skipped", reason: "no-edits" };
+  }
+  // 미발송 행이 하나라도 있으면 `Translation` 행이 있으므로 최대값도 있다. 조용한 폴백(`?? new Date(0)`)을
+  // 두지 않는다 — 그 값이 DB에 들어가면 1층이 영구히 무력해진다.
+  if (maxUpdatedAt === null) fail("unreachable: passed the layer-1 check but maxUpdatedAt is null");
+  // 이 값이 `lastPulledAt`에 들어간다 — `now()`를 쓰면 export 스냅샷과 갱신 사이에 들어온
+  // 편집이 다음 실행에서 영영 스킵된다.
+  const captured = maxUpdatedAt;
+
+  // GitHub을 부르기 전에 막는다 — 설치가 안 됐으면 조용히 빈 PR을 내는 대신 즉시 알린다.
+  if (project.installationId === null) {
+    fail(`Project.installationId is empty (${project.slug}) — install the app`, "not-installed");
+  }
+
+  const formats = projectFormats(surfaces);
+  const client = await deps.createClient(project);
+  const { baseHead, tree, resolved, current, rendered, local, changes } = await renderProject(project, formats, client);
   const warnings = blockingErrors(rendered).map(({ surfaceSlug, error }) => `${surfaceSlug}: ${error.path}: ${adapterErrorMessage(error)}`);
   /**
    * ⚠️ **2층 비교·브랜치 되돌림보다 앞이다** — 경고가 있는 렌더는 무엇을 쓰든 값 일부가 빠진 파일이다. 1층을 지났으므로
@@ -220,15 +255,30 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // ⚠️ **보류 셀은 전달 확인에 싣지 않는다** — 불변식 9. `deliveryContexts`는 좁히지 않는다: 좁히면 그 표면의 확인이 무효로 남아
   // 표면 안 모든 키의 Revert가 막힌다(delivery-invariants D3). 1층은 그대로 전체 pending 수라 보류가 남으면 매 실행 트리를 읽는다.
   const keyById = new Map(surfaces.flatMap(surface => surface.keys.flatMap(k => (k.id === undefined ? [] : [[k.id, k.key] as const]))));
-  const split = splitEdits(pendingEdits, withheldCoordinates(rendered), keyId => keyById.get(keyId));
-  const withheld = split.withheld.length === 0 ? {} : { withheld: split.withheldBy };
-  if (split.delivered.length === 0 && split.withheld.length > 0) return { status: "skipped", reason: "withheld", withheld: split.withheldBy };
+  const coordinates = withheldCoordinates(rendered);
+  // ⚠️ **키 자리가 원본에 없는 셀은 보류다** — 미리보기(`publish/read.ts`)가 같은 `keySlot`으로 판정한다. 원본만 읽는다 — 이 셀들의 자리는 렌더가 만들지 않는다.
+  //   - ts-dict(multi-locale 수술적): 표면의 어느 파일에도 자리가 없다(audit #1 B). writer는 삽입하지 않고 같은 파일의 다른 로케일이 가질 때만 경고한다
+  //   - per-locale: **base 파일**에 자리가 없다(B3.4). base의 키 집합은 원본이 정하므로 코드가 지운 키의 base 편집은 파일에 닿지 않는다.
+  //     base 파일만 읽는다 — `keySlot`이 그 밖의 로케일을 `no-locale`로 흘려 비-base 동작이 그대로다
+  for (const item of resolved) {
+    const adapter = adapterFor(item.format);
+    const multi = adapter.layout === "multi-locale";
+    if (multi && adapter.writeStrategy !== "surgical") continue;
+    const scope = multi ? item.paths : item.paths.filter(p => p.locale === item.baseLocale);
+    const files = readSlotFiles(adapter, item.format, scope.flatMap(p => {
+      const content = current.get(p.path);
+      return content === undefined ? [] : [{ path: p.path, content }];
+    }));
+    for (const cell of slotlessCells(item.surface.id, files, pendingEdits, keyId => keyById.get(keyId))) coordinates.cells.add(cell);
+  }
+  const split = splitEdits(pendingEdits, coordinates, keyId => keyById.get(keyId));
+  // 기준의 유무는 이 실행의 확정과 무관하다 — 보류 셀은 토큰을 지키고 기준 행의 revision만 다시 찍힌다(`saveLastPulledAt`). 그래서 쓰기 전에 묻는다.
+  const revertable = split.withheld.length > 0 && deps.withheldRevertable !== undefined && await deps.withheldRevertable(project.id, split.withheld);
+  const withheldBy: Withheld = revertable ? { ...split.withheldBy, revertable: true } : split.withheldBy;
+  const withheld = split.withheld.length === 0 ? {} : { withheld: withheldBy };
+  if (split.delivered.length === 0 && split.withheld.length > 0) return { status: "skipped", reason: "withheld", withheld: withheldBy };
 
   // ── 2층: blob SHA 비교 ──────────────────────────────────────────────────────
-  const changes = planPullChanges(
-    local,
-    tree.map((t) => ({ path: t.path, sha: t.sha })),
-  );
   if (changes.length === 0) {
     /**
      * ⚠️ **sync 브랜치가 base보다 앞서 있으면 되돌린다** (2026-09-09, T6 실측 발견 B).

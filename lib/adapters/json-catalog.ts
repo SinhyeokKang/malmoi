@@ -1,5 +1,5 @@
 import { localeFromPath, verify } from "./chrome-locales";
-import { observeJsonStyle, serializeJson, stripBom, KEY_SEP } from "./json-style";
+import { emptyCatalog, observeJsonStyle, serializeJson, stripBom, KEY_SEP } from "./json-style";
 import {
   compareKeys,
   hasStrongLocale,
@@ -243,10 +243,13 @@ function writeWithErrors(
 ): { content: string | null; errors: AdapterError[] } {
   const usable = orderedEntries(input.entries);
   const errors: AdapterError[] = [];
-  if (usable.length === 0) return { content: null, errors };
-
   // 파일별 관측값이 우선이다 — `nested`는 형제 파일 때문에 true가 될 수 있다.
   const path = format.pathTemplate.replaceAll("{locale}", input.locale);
+  const original = format.currentFiles?.find((c) => c.path === path)?.content;
+  // ⚠️ **원본이 있으면 `null`이 아니라 `{}`다** (audit #1 · launch-audit B3.1 A). `null`은 "이 파일을 안 낸다"라 원본이 그대로 남는데,
+  // 호출부는 그 로케일의 마지막 번역을 비운 편집을 전달로 셌다 — 다음 CI가 옛 값을 DB로 되돌린다. 원본이 없으면 여전히 `null`이다(§1.1).
+  if (usable.length === 0) return { content: emptyCatalog(original), errors };
+
   // ⚠️ **`?.[path] ?? …`를 쓰지 않는다** (POSTMORTEM 2026-09-08 감사 후속). `nestedByPath`는 `Project`의
   // Json 컬럼에서 온 평범한 객체라 `path`가 프로토타입 키(`constructor`·`toString`)와 같으면
   // `Object.prototype`에서 **값이 찾아져** `??`가 안 걸리고 `nested`가 함수가 된다 — truthy로 읽혀
@@ -258,7 +261,7 @@ function writeWithErrors(
   // **표현은 원본에서 읽는다** (ARCHITECTURE §1.4를 재생성으로 옮긴 것). 원본이 없으면 기본값이다 —
   // 재생성은 원본 없이도 파일을 만들어야 한다(신규 로케일). ⚠️ `currentFiles?.[0]`가 아니라
   // **경로로 조회한다**: 호출부가 여러 파일을 실으면 다른 로케일의 스타일을 읽게 된다.
-  const style = observeJsonStyle(format.currentFiles?.find((c) => c.path === path)?.content);
+  const style = observeJsonStyle(original);
 
   if (!nested) {
     // flat 포맷 — 키를 그대로 쓴다. 정렬한 순서로 재조립한다. 충돌이 성립하지 않는다.

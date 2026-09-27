@@ -285,6 +285,26 @@ describe("surveyOne — 리포 하나의 판정 전체", () => {
     expect(s.roundtrip.semantic).toBe("same");
   });
 
+  /**
+   * ⚠️ **`duplicate-property`도 키 충돌이다** (audit #17) — `classify`는 그것을 `key-collision`으로 분류하는데 집계는
+   * `duplicate-key`만 셌다. code-dict는 중복을 하나로 싣기 때문에 엔트리 쪽 `duplicateCount`로는 되살아나지 않는다.
+   */
+  it("code-dict의 중복 프로퍼티가 오류 분류와 keyCollisions에서 같은 수다", () => {
+    const source = `export default {\n  "common.ok": "OK",\n  "common.ok": "Okay",\n  "common.close": "Close",\n}\n`;
+    const s = surveyOne(input("acme/dup-prop", { "src/i18n/ko.ts": source, "src/i18n/en.ts": source }));
+    expect(s.chosen?.adapter).toBe("code-dict");
+    expect(s.errors["key-collision"]).toBe(2);
+    expect(s.keyCollisions).toBe(2);
+  });
+
+  it("충돌 없는 code-dict 입력은 0이다", () => {
+    const source = `export default {\n  "common.ok": "OK",\n  "common.close": "Close",\n}\n`;
+    const s = surveyOne(input("acme/no-dup", { "src/i18n/ko.ts": source, "src/i18n/en.ts": source }));
+    expect(s.chosen?.adapter).toBe("code-dict");
+    expect(s.errors["key-collision"]).toBe(0);
+    expect(s.keyCollisions).toBe(0);
+  });
+
   it("clone 실패는 전체를 멈추지 않고 결과에 남는다", () => {
     const s = surveyOne({ repo: "acme/gone", paths: [], files: new Map(), configFiles: [], failure: "clone 실패" });
     expect(s.failure).toBe("clone 실패");

@@ -7,7 +7,7 @@ import { signState, stateCookieName, stateCookieNames, verifyState } from "../st
 /**
  * OAuth state 서명·검증 (ARCHITECTURE §6.4). **I/O가 없다** — nonce 생성과 쿠키 쓰기는 껍데기가 하고,
  * 여기서는 서명·대조·만료만 판정한다. `secret`을 인자로 받는 것이 그 조건이다: 함수 안에서
- * `requireEnv("AUTH_SECRET")`을 부르면 순수가 아니고 이 테스트가 환경변수를 요구하게 된다.
+ * `requireEnv("APP_SIGNING_SECRET")`을 부르면 순수가 아니고 이 테스트가 환경변수를 요구하게 된다.
  *
  * ⚠️ **state는 쿠키와 쿼리 양쪽에 있어야 한다.** 쿼리만 보면 CSRF이고, 쿠키만 보면 GitHub이
  * 돌려주는 값과 대조할 것이 없다. 그래서 쿠키가 서명된 payload를 들고 쿼리가 nonce만 든다.

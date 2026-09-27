@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProbeResult } from "@/lib/github-connect/health";
+import { verifyState } from "@/lib/github-connect/state";
 
 import { createHarness, sessionFor } from "./harness";
 
@@ -92,13 +93,15 @@ beforeEach(() => {
   hoisted.ensureUserToken.mockResolvedValue({ status: "ok", accessToken: "user-token" });
   hoisted.probeRepo.mockResolvedValue(PROBE_OK);
   hoisted.listUserInstallations.mockResolvedValue(["1"]);
-  hoisted.listInstallationRepos.mockResolvedValue([{ fullName: "o/r", pushedAt: "2026-09-01T00:00:00Z" }]);
+  hoisted.listInstallationRepos.mockResolvedValue([{ fullName: "o/r", pushedAt: "2026-09-01T00:00:00Z", push: true }]);
   hoisted.authorizeUrl.mockReturnValue("https://github.com/login/oauth/authorize?client_id=x");
   hoisted.headerGet.mockImplementation((name: string) =>
     name.toLowerCase() === "host" ? "localhost:3000" : null,
   );
   vi.unstubAllEnvs();
-  vi.stubEnv("AUTH_SECRET", "test-secret-0123456789abcdef");
+  // sec-audit-3 #14 — 연결 state·샘플 확인은 전용 키로 서명한다. AUTH_SECRET을 다른 값으로 두어 그 키를 안 쓰는 것까지 고정한다.
+  vi.stubEnv("APP_SIGNING_SECRET", "test-secret-0123456789abcdef");
+  vi.stubEnv("AUTH_SECRET", "auth-js-only-secret-not-for-app-signing");
 });
 
 describe("connectRepository — 인가", () => {
@@ -168,9 +171,16 @@ describe("connectRepository — 3중 검증 (ARCHITECTURE §6)", () => {
   });
 
   it("설치는 보이는데 그 리포를 못 보면 repo-forbidden이고 저장하지 않는다", async () => {
-    hoisted.listInstallationRepos.mockResolvedValue([{ fullName: "o/other", pushedAt: "2026-09-01T00:00:00Z" }]);
+    hoisted.listInstallationRepos.mockResolvedValue([{ fullName: "o/other", pushedAt: "2026-09-01T00:00:00Z", push: true }]);
 
     expect(await connectRepository({ slug: "acme" })).toEqual({ ok: false, error: "repo-forbidden" });
+    expect(db.spies.updateProject).not.toHaveBeenCalled();
+  });
+
+  it("그 리포를 읽기만 할 수 있으면 repo-read-only이고 저장하지 않는다 (sec-audit-3 1a)", async () => {
+    hoisted.listInstallationRepos.mockResolvedValue([{ fullName: "o/r", pushedAt: "2026-09-01T00:00:00Z", push: false }]);
+
+    expect(await connectRepository({ slug: "acme" })).toEqual({ ok: false, error: "repo-read-only" });
     expect(db.spies.updateProject).not.toHaveBeenCalled();
   });
 
@@ -307,7 +317,7 @@ describe("connectRepository — 저장", () => {
 
   it("리네임된 리포면 새 owner/name도 함께 저장한다 — 이름이 갱신되는 유일한 경로다", async () => {
     hoisted.probeRepo.mockResolvedValue({ status: "ok", installationId: "1", fullName: "newco/website", defaultBranch: "main", repositoryId: "100" } satisfies ProbeResult);
-    hoisted.listInstallationRepos.mockResolvedValue([{ fullName: "newco/website", pushedAt: "2026-09-01T00:00:00Z" }]);
+    hoisted.listInstallationRepos.mockResolvedValue([{ fullName: "newco/website", pushedAt: "2026-09-01T00:00:00Z", push: true }]);
 
     await connectRepository({ slug: "acme" });
 
@@ -386,12 +396,32 @@ describe("startGithubConnect — 나가는 쪽 (malmoi#7)", () => {
     expect(hoisted.authorizeUrl.mock.calls[0]?.[1]).toBe("https://mal-moi.com/api/github/callback");
   });
 
+  it("state 쿠키를 AUTH_SECRET이 아니라 APP_SIGNING_SECRET으로 서명한다 (sec-audit-3 #14)", async () => {
+    await expect(startGithubConnect({ slug: "acme" })).rejects.toThrow(/NEXT_REDIRECT/);
+
+    const cookie = hoisted.cookieSet.mock.calls[0]?.[1] as string;
+    const [nonce] = hoisted.authorizeUrl.mock.calls[0] ?? [];
+    const check = (secret: string) => verifyState({ cookie, query: nonce as string, userId: "u-owner", now: new Date(), secret }).status;
+    expect(check("test-secret-0123456789abcdef")).toBe("ok");
+    expect(check("auth-js-only-secret-not-for-app-signing")).toBe("state-mismatch");
+  });
+
   it("EDITOR는 forbidden이고 쿠키도 redirect도 없다", async () => {
     hoisted.session = sessionFor("u-editor");
 
     expect(await startGithubConnect({ slug: "acme" })).toEqual({ ok: false, error: "forbidden" });
     expect(hoisted.cookieSet).not.toHaveBeenCalled();
     expect(hoisted.redirect).not.toHaveBeenCalled();
+  });
+
+  // sec-audit-3 #7 — 보관 = Restore만 (PRODUCT §7.9). 연결 왕복이 끝나도 거부될 쓰기를 시작시키지 않는다.
+  it("보관된 프로젝트면 archived이고 쿠키도 redirect도 없다", async () => {
+    Object.assign(db.projects[0]!, { archivedAt: new Date(0) });
+
+    expect(await startGithubConnect({ slug: "acme" })).toEqual({ ok: false, error: "archived" });
+    expect(hoisted.cookieSet).not.toHaveBeenCalled();
+    expect(hoisted.redirect).not.toHaveBeenCalled();
+    expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/acme", "layout");
   });
 
   it("Host 헤더가 없으면 unavailable — 추측한 origin으로 사용자를 보내지 않는다", async () => {

@@ -104,6 +104,7 @@ const REGISTERED: Record<string, string[]> = {
   // 카운트 카드 글리프 + 번역 작업 화면의 상태 글자(B6 등재) + 활동 칩
   "text-amber-700": [
     "components/home/count-cards.tsx",
+    "components/landing/mockup/translations.tsx",
     "components/translations/workspace/key-list.tsx",
     "components/translations/workspace/locale-panel.tsx",
     "components/translations/workspace/workspace.tsx",
@@ -111,25 +112,27 @@ const REGISTERED: Record<string, string[]> = {
   ],
   // 초록 — `Active` 배지 · diff
   "bg-green-100/80": ["components/ui/badge.tsx"],
-  "text-green-800": ["components/publish-button.tsx", "components/ui/badge.tsx"],
-  "bg-green-800/[0.16]": ["components/publish-button.tsx"],
+  "text-green-800": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/ui/badge.tsx"],
+  "bg-green-800/[0.16]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
   // 빨강 — diff · missing 알약 · 사라짐 띠 · 임포트 실패 띠
-  "text-red-700": ["components/publish-button.tsx", "components/sources/source-detail-modal.tsx", "components/ui/badge.tsx", ...GLYPH],
-  "bg-red-700/[0.14]": ["components/publish-button.tsx"],
+  "text-red-700": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/sources/source-detail-modal.tsx", "components/ui/badge.tsx", ...GLYPH],
+  "bg-red-700/[0.14]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
   "bg-red-700/10": ["components/ui/badge.tsx"],
   "text-red-800": ["components/projects/project-list.tsx"],
   // blue-600 — 링크 색 (§6.3) · 검색 일치 구간
   "text-blue-600": [
     "app/signin/page.tsx",
+    // `/docs` 원고 본문 링크 · 404 복귀 링크 (§6.61)
+    "components/docs/classes.ts",
     "components/home/count-cards.tsx",
     "components/home/meta-column.tsx",
     "components/home/sync-button.tsx",
     "components/logs/event-detail.tsx",
     "components/logs/event-row.tsx",
     "components/onboarding/steps/repo.tsx",
+    "components/privacy/privacy-doc.tsx",
     "components/projects/empty-projects.tsx",
     "components/projects/project-list.tsx",
-    "components/public-doc.tsx",
     "components/publish-button.tsx",
     "components/settings/archive-card.tsx",
     "components/settings/ci-card.tsx",
@@ -142,17 +145,22 @@ const REGISTERED: Record<string, string[]> = {
   ],
   "bg-blue-600/[0.14]": ["components/projects/project-list.tsx"],
   // neutral 계단 — 300 · 400 · 600 · 50 (§6.2)
-  "border-neutral-300": ["components/translations/workspace/locale-panel.tsx", "components/ui/checkbox.tsx", "components/ui/radio.tsx"],
+  "border-neutral-300": ["components/landing/mockup/translations.tsx", "components/translations/workspace/locale-panel.tsx", "components/ui/checkbox.tsx", "components/ui/radio.tsx"],
   "text-neutral-300": ["components/members/role-chip.tsx"],
   "text-neutral-400": [
     "app/(edit)/account/page.tsx",
+    // `/docs` 행 화살표 `→` (§6.61, #119)
+    "components/docs/doc-frame.tsx",
     "components/home/attention-card.tsx",
     "components/home/count-cards.tsx",
     "components/home/meta-column.tsx",
+    "components/landing/mockup/translations.tsx",
     "components/logs/event-detail.tsx",
     "components/members/member-row.tsx",
     "components/projects/project-list.tsx",
     "components/settings/general-card.tsx",
+    // LNB 스위처의 보관 배지 — `/projects` 행 칩과 같은 형 (§6.5)
+    "components/shell/project-switcher.tsx",
     "components/sources/source-detail-modal.tsx",
     "components/sources/sources-screen.tsx",
     "components/translations/workspace/locale-panel.tsx",
@@ -160,6 +168,8 @@ const REGISTERED: Record<string, string[]> = {
   ],
   "text-neutral-600": [
     "components/home/sync-button.tsx",
+    // 랜딩 목업은 번역 작업 화면의 정적 복제라 그 화면의 색을 그대로 쓴다(새 값 0).
+    "components/landing/mockup/translations.tsx",
     "components/projects/project-list.tsx",
     "components/sources/source-detail-modal.tsx",
     "components/sources/sources-archived.tsx",
@@ -215,14 +225,20 @@ describe("글자 크기·자간·radius는 스케일이 든다 (audit #45·#46·
   });
 
   /**
-   * ⚠️ **남은 여덟은 §6.67의 예외다** — 계정 라벨 셋 · 공유 `PanelCard` 넷 · 모달 제목 하나. 번역 작업 화면의
+   * ⚠️ **남은 여덟은 §6.67의 예외다** — 계정 라벨 셋 · 공유 `PanelCard` 넷 · 모달 제목 하나. 아홉째는 `/privacy` 표의
+   * 0.015em(2026-09-26, 시안 Prototype `isPrivacy` — DESIGN §6.616, malmoi#116)이다. 번역 작업 화면의
    * 스물하나는 크기 토큰과 같은 값을 되적거나(`text-xs tracking-[0.02em]`) 토큰 값을 덮었다(`text-sm tracking-[0.015em]`).
    */
-  it("`tracking-*`가 §6.67의 여덟뿐이다", () => {
+  it("`tracking-*`가 등재된 아홉뿐이다 — §6.67의 여덟 + `/privacy` 표", () => {
     const found = hits(/(?<![\w-])tracking-[\w[\].-]+/g);
     const byFile: Record<string, number> = {};
     for (const { path } of found) byFile[path] = (byFile[path] ?? 0) + 1;
-    expect(byFile).toEqual({ "app/(edit)/account/page.tsx": 3, "components/ui/panel-card.tsx": 4, "components/ui/modal.tsx": 1 });
+    expect(byFile).toEqual({
+      "app/(edit)/account/page.tsx": 3,
+      "components/ui/panel-card.tsx": 4,
+      "components/ui/modal.tsx": 1,
+      "components/public-doc-table.tsx": 1,
+    });
   });
 
   it("`rounded-[10px]`가 0이다 — `rounded-md`가 같은 값이다", () => {
@@ -336,5 +352,36 @@ describe("같은 행동은 같은 variant다 (audit #50)", () => {
       expect(opening, path).not.toContain('variant="primary"');
       expect(source.slice(at - 200, at + 120), path).toContain("<RotateCcw");
     }
+  });
+});
+
+/**
+ * **24px(`text-2xl`) 이상은 weight 600이다** (2026-09-26 사용자 — DESIGN §4). 그 아래 제목·라벨은 500, 나머지 400.
+ *
+ * ⚠️ **클래스 문자열 하나 단위로 센다** — 크기와 weight가 같은 리터럴에 서야 한다(`cn("text-2xl font-medium", …)`도 한 리터럴이다).
+ * 역방향도 건다 — 600이 24px 아래로 번지면 "크면 600"이 "아무 데나 600"이 된다.
+ */
+describe("24px 이상은 600, 600은 24px 이상에만", () => {
+  const BIG = /(?<![\w-])(?:[a-z-]+:)*text-(?:[2-9]xl|\[(?:2[4-9]|[3-9]\d|\d{3,})px\])(?![\w-])/;
+  const SEMIBOLD = /(?<![\w-])(?:[a-z-]+:)*font-semibold(?![\w-])/;
+  const literals = (source: string): string[] =>
+    [...source.matchAll(/"([^"\n]*)"|`([^`]*)`/g)].map((match) => match[1] ?? match[2] ?? "");
+  const found = SOURCES.flatMap(({ path, source }) => literals(source).map((cls) => ({ path, cls })));
+
+  it("카나리아 — 두 방향이 실제로 잡힌다", () => {
+    expect(BIG.test("m-0 text-2xl font-medium") && !SEMIBOLD.test("m-0 text-2xl font-medium")).toBe(true);
+    expect(BIG.test("text-xl font-semibold")).toBe(false);
+    expect(BIG.test("md:text-[32px]")).toBe(true);
+    expect(found.filter(({ cls }) => BIG.test(cls)).length).toBeGreaterThan(5);
+  });
+
+  it("24px 이상 크기를 든 클래스 문자열은 `font-semibold`를 함께 든다", () => {
+    const stray = found.filter(({ cls }) => BIG.test(cls) && !SEMIBOLD.test(cls));
+    expect(stray.map(({ path, cls }) => `${path}: ${cls}`)).toEqual([]);
+  });
+
+  it("`font-semibold`는 24px 이상 크기와만 선다", () => {
+    const stray = found.filter(({ cls }) => SEMIBOLD.test(cls) && !BIG.test(cls));
+    expect(stray.map(({ path, cls }) => `${path}: ${cls}`)).toEqual([]);
   });
 });

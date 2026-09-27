@@ -38,6 +38,8 @@ export type ConnectError =
   | "installation-forbidden"
   /** 설치는 보이는데 그 안에서 이 리포를 볼 수 없다 (셋째 조건). */
   | "repo-forbidden"
+  /** 리포는 보이는데 쓰기(push) 권한이 없다 (넷째 조건 — sec-audit-3 1a). */
+  | "repo-read-only"
   // ── 양쪽 공통 ───────────────────────────────────────────────────────────
   /** 조회·네트워크 실패. **거부가 아니다** — 유일하게 재시도가 맞는 사유다. */
   | "unavailable";
@@ -54,6 +56,7 @@ const CONNECT_ERRORS: ReadonlySet<string> = new Set<ConnectError>([
   "repo-not-installed",
   "installation-forbidden",
   "repo-forbidden",
+  "repo-read-only",
   "unavailable",
 ]);
 

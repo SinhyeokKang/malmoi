@@ -31,8 +31,8 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * 연결 해제 버튼이 `/projects` 목록에 얹혀 있었는데(2026-09-07 리뷰 🟡9) 그건 목록 화면의 일이 아니고,
  * 프로젝트를 하나도 안 만든 사용자에게 도달 가능한 자리가 그것뿐이었기 때문에 그렇게 됐다.
  *
- * ⚠️ **`middleware.ts`의 matcher에 `/account`를 따로 넣어야 했다** — 패턴이 `/projects/:path*` 하나라
- * 사용자 축은 1차 차단 밖에서 태어난다 (`entry-points.test.ts`가 그것을 센다).
+ * ⚠️ **1차 차단에 `/account`를 따로 넣어야 했다**(지금은 `isProtectedPath`) — `/projects` 접두 하나로는
+ * 사용자 축이 1차 차단 밖에서 태어난다 (`entry-points.test.ts`가 그것을 센다).
  *
  * ⚠️ **머리 하나 + 리스트 셋이다** (2026-09-13). 그 전엔 `Card` 다섯이 `space-y-6`으로 평평하게
  * 쌓여 축이 안 보였고, **같은 화면에 "GitHub"이 세 군데** 나오는데 그 구별을 카드 설명문 두 줄에

@@ -407,6 +407,16 @@ export function writerContractViolations(adapter: Adapter): string[] {
         bad.push("원본의 **값**이 출력에 새어 나왔다 — 원본에서 읽는 것은 표현뿐이다 (병합 없음)");
       }
     }
+    // **원본이 있는데 낼 것이 0개면 `{}`다** (audit #1 · launch-audit B3.1 A). `null`이면 호출부가 파일을 안 내 옛 값이 남는데,
+    // 그 로케일의 마지막 번역을 비운 편집은 전달로 셌다. 원본의 값이 새지 않아야 하는 것은 위와 같다.
+    // ⚠️ **writer 계약이지 파일 결과가 아니다** — writer는 `isBase`를 모르고, **base 파일은 `renderLocaleFiles`가 `null`로 접는다**(B3 r1 —
+    // base 키 집합은 코드가 진실이라 `{}`가 코드 소유 키를 지운다). 짝은 `lib/pull/__tests__/delivery-verified.test.ts`.
+    const emptied = adapter.write(donor, { locale, entries: [{ key: "only", message: "" }] });
+    if (emptied === null) {
+      bad.push("원본이 있는데 낼 항목이 0개라고 null을 냈다 — 파일에 옛 값이 남는다 (빈 객체를 내야 한다)");
+    } else if (emptied.includes(STYLE_DONOR_VALUE) || emptied.replace(/\s/g, "") !== "{}") {
+      bad.push(`원본이 있는데 낼 항목이 0개일 때 빈 객체가 아니다: ${JSON.stringify(emptied)}`);
+    }
   }
   if (!plain.endsWith("\n")) bad.push("파일 끝 개행이 없다");
   if (plain.endsWith("\n\n")) bad.push("파일 끝 개행이 2개 이상이다");
@@ -424,7 +434,7 @@ export function writerContractViolations(adapter: Adapter): string[] {
     bad.push("writeEmpty 표시가 있는 빈 값을 뺐다 — base 파일에서 키가 사라진다");
   }
   if (write([{ key: "only", message: "", orphaned: false }]) !== null) {
-    bad.push("낼 항목이 0개인데 null을 내지 않았다 — 빈 파일은 '이 로케일 지원함'으로 읽힌다");
+    bad.push("원본이 없는데 낼 항목이 0개인데 null을 내지 않았다 — 빈 새 파일은 '이 로케일 지원함'으로 읽힌다");
   }
   if (write([{ key: "only", message: "V", orphaned: true }]) !== null) {
     bad.push("남은 키가 orphaned뿐인데 null을 내지 않았다");
@@ -492,5 +502,63 @@ export function prototypeKeyViolations(adapter: Adapter): string[] {
       if (!out.includes(sentinel.get(key)!)) bad.push(`${label}: "${key}"의 값이 출력에서 사라졌다`);
     }
   }
+  return bad;
+}
+
+/**
+ * **pull 시점 base 파일의 키 집합은 원본 base 파일이 정한다** (launch-audit B3.4). CI 적재가 보류된 동안 코드가 base에 더한 키(`added` — DB에 없다)는
+ * 원본 값 그대로 남고, 코드가 지운 키(`deleted` — DB에는 남았다)는 base 파일에 되살아나지 않는다. 원본과 DB 둘 다에 있는 키는 DB 값이다 — 키마다
+ * 출처가 하나라 병합이 아니다(§0 불변식 2). ⚠️ writer 하나가 아니라 **렌더**(`renderLocaleFiles`)의 계약이다 — writer는 `isBase`를 모른다.
+ * 렌더를 인자로 받는다: 이 파일은 `lib/pull`을 import하지 않는다(판정 헬퍼가 어댑터 층에 머문다).
+ */
+export const BASE_ADDED_VALUE = "ORIGINAL_ADDED_STAYS";
+export const BASE_DELETED_VALUE = "DELETED_KEY_MUST_NOT_RETURN";
+export type BaseRender = (format: DetectedFormat, paths: { path: string; locale?: string }[], current: ReadonlyMap<string, string>) =>
+  { path: string; locale?: string; content: string | null }[];
+
+function baseFixture(adapter: Adapter): { format: DetectedFormat; basePath: string; files: Map<string, string>; paths: { path: string; locale?: string }[] } {
+  const perLocale = (pathTemplate: string, body: (locale: string, keep: string, added?: string) => string) => {
+    const at = (l: string) => pathTemplate.replace("{locale}", l);
+    return {
+      format: { adapter: adapter.name, pathTemplate, locales: ["en", "fr"] },
+      basePath: at("en"),
+      files: new Map([[at("en"), body("en", "S_keep", BASE_ADDED_VALUE)], [at("fr"), body("fr", "S_fr_keep")]]),
+      paths: [{ path: at("en"), locale: "en" }, { path: at("fr"), locale: "fr" }],
+    };
+  };
+  switch (adapter.name) {
+    case "json-catalog":
+      return perLocale("i18n/{locale}.json", (_l, keep, added) => `${JSON.stringify({ keep, ...(added ? { added } : {}) }, null, 2)}\n`);
+    case "chrome-locales":
+      return perLocale("public/_locales/{locale}/messages.json", (_l, keep, added) =>
+        `${JSON.stringify({ keep: { message: keep }, ...(added ? { added: { message: added } } : {}) }, null, 2)}\n`);
+    case "yaml-catalog":
+      return perLocale("config/locales/{locale}.yml", (l, keep, added) => `${l}:\n  keep: ${keep}\n${added ? `  added: ${added}\n` : ""}`);
+    case "code-dict":
+      return perLocale("src/locale/{locale}.ts", (_l, keep, added) => `export default {\n  keep: '${keep}',\n${added ? `  added: '${added}',\n` : ""}}\n`);
+    case "ts-dict": {
+      const path = "src/i18n/ns/a.ts";
+      return {
+        format: { adapter: adapter.name, pathTemplate: "src/i18n/ns/*.ts", locales: ["en", "fr"] },
+        basePath: path,
+        files: new Map([[path, `const en = {\n  keep: "S_keep",\n  added: "${BASE_ADDED_VALUE}",\n};\nconst fr = {\n  keep: "S_fr_keep",\n};\n`]]),
+        paths: [{ path }],
+      };
+    }
+  }
+}
+
+export function baseKeySetViolations(adapter: Adapter, render: BaseRender): string[] {
+  const { format, basePath, files, paths } = baseFixture(adapter);
+  const out = render(format, paths, files).find((f) => f.path === basePath);
+  if (out === undefined) return ["base 파일 출력이 없다"];
+  const content = out.content ?? files.get(basePath)!;
+  const bad: string[] = [];
+  if (content.includes(BASE_DELETED_VALUE)) bad.push("코드가 지운 키가 base 파일에 되살아났다 — 원본에 없는 DB 키를 썼다");
+  if (!content.includes(BASE_ADDED_VALUE)) bad.push("코드가 더한 키가 base 파일에서 사라졌다 — DB에 없는 원본 키를 지웠다");
+  if (!content.includes("DB_keep")) bad.push("원본과 DB 둘 다에 있는 키가 DB 값이 아니다");
+  const read = adapter.read({ ...format, currentFiles: [{ path: basePath, content }] }, [{ path: basePath, content }]);
+  const keys = read.locales.find((l) => l.locale === "en")?.entries.map((e) => e.key).sort();
+  if (JSON.stringify(keys) !== JSON.stringify(["added", "keep"])) bad.push(`base 파일의 키 집합이 원본과 다르다: ${JSON.stringify(keys)}`);
   return bad;
 }

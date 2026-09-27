@@ -363,6 +363,29 @@ it.each(["reauthorize", "repo-not-installed", "forbidden"])("미리보기 인가
   expect(button("Next").disabled).toBe(true);
 });
 
+// sec-audit-3 fix1 — 만료된 확인값은 "못 읽었다"가 아니라 "다시 탐지하라"를 말한다.
+it("샘플 확인값이 만료되면 다시 탐지하라고 말한다", async () => {
+  mocks.loadCandidateSample.mockResolvedValue({ ok: false, error: "sample-expired" });
+  await files();
+  await select('[role="combobox"]', "fr");
+  expect(document.body.textContent).toContain(m.errors.onboarding["sample-expired"]);
+  expect(document.body.textContent).not.toContain(m.newProject.files.preview.unavailable);
+});
+
+// audit #14 — 초기 샘플의 읽기 실패는 지연 조회 실패와 같은 갈래다. 0키 ready로 캐시하면 "정말 비었다"로 보인다.
+it("초기 샘플에서 못 읽은 언어는 빈 표가 아니라 읽지 못했다고 말한다", async () => {
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(), samples: [
+    ...candidate().samples, { locale: "fr", rows: [], total: 0, failed: true }, { locale: "ko", rows: [], total: 0 },
+  ] }] });
+  await files();
+  await select('[role="combobox"]', "fr");
+  expect(document.body.textContent).toContain(m.newProject.files.preview.unavailable);
+  // 짝: 정상 빈 언어는 실패 문장이 아니다.
+  await select('[role="combobox"]', "ko");
+  expect(document.body.textContent).not.toContain(m.newProject.files.preview.unavailable);
+  expect(mocks.loadCandidateSample).not.toHaveBeenCalled();
+});
+
 it("검색 결과에서 선택한 리포가 사라지면 Next를 막는다", async () => {
   await mount();
   await click(find(document.body, '[role="radio"]'));
@@ -484,6 +507,29 @@ it("수동 지정 후 브랜치를 바꾸면 재검증한 기준 언어로 진�
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 450)); });
   await click(button("Next"));
   expect(find(document.body, '[role="radio"]').getAttribute("aria-checked")).toBe("true");
+});
+
+/**
+ * **①의 거부는 한 자리에 한 번이다** (malmoi#122). 브랜치 조회 거부가 모달 상단 배너(`accessLost`)와 고른 행 아래
+ * BranchRow에 **같은 문장으로 둘 다** 섰다 — `isAccessLost`가 리포 단위 거부까지 담고 있어서다. 리포 단위 거부는 행
+ * 아래에만, 계정·세션 단위 거부는 배너에만 선다. 거부 자체(모달 유지·선택 유지·Next 비활성)는 그대로다.
+ */
+it.each([
+  ["repo-read-only", "can only read that repository"],
+  ["repo-forbidden", "can't reach that repository"],
+  ["repo-not-installed", "isn't installed on this repository"],
+  ["installation-forbidden", "can't reach that installation"],
+  ["reauthorize", "authorization expired"],
+])("① 브랜치 조회 거부 %s는 대화상자 안에 한 번만 선다 (#122)", async (error, text) => {
+  mocks.listRepoBranches.mockResolvedValueOnce({ ok: false, error });
+  await mount();
+  const radio = find<HTMLElement>(document.body, '[role="radio"]');
+  await click(radio);
+  const dialog = find(document.body, '[role="dialog"]');
+  const alerts = [...dialog.querySelectorAll('[role="alert"]')].filter((a) => a.textContent?.includes(text));
+  expect(alerts).toHaveLength(1);
+  expect(radio.getAttribute("aria-checked")).toBe("true");
+  expect(button("Next").disabled).toBe(true);
 });
 
 it("리포 접근 거부 뒤 다른 리포를 고르면 그 리포의 인가로 진행한다", async () => {
@@ -827,6 +873,29 @@ it("수동 지정은 이전 탐지 체크를 섞지 않고 선택 언어를 보�
   ] }));
 });
 
+/**
+ * ⚠️ **힌트·체크박스·제출이 같은 사실을 말한다** (malmoi#125). 힌트는 "경로를 치면 위 선택이 비워진다"인데
+ * 체크가 남아 화면은 후보를 포함한다고 말하고, 제출은 수동 경로 하나였다.
+ */
+it("수동 경로를 치면 후보 체크가 비워진다", async () => {
+  await files(); await click(include("other/{locale}.json"));
+  await click(button("Set the path yourself"));
+  await input(field("manual-path"), "manual/{locale}.json");
+  expect(include("i18n/{locale}.json").getAttribute("aria-checked")).toBe("false");
+  expect(include("other/{locale}.json").getAttribute("aria-checked")).toBe("false");
+});
+it("수동 지정 중 후보를 체크하면 그 후보로 돌아와 제출한다", async () => {
+  await files();
+  await click(button("Set the path yourself"));
+  await input(field("manual-path"), "manual/{locale}.json"); await input(field("manual-base"), "ko");
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 450)); });
+  await click(include("other/{locale}.json"));
+  expect(include("other/{locale}.json").getAttribute("aria-checked")).toBe("true");
+  await click(button("Next")); await click(button("Create project"));
+  expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ manual: false, surfaces: [
+    expect.objectContaining({ pathTemplate: "other/{locale}.json" }),
+  ] }));
+});
 it("생성 중 Portal 언어 선택도 열리지 않는다", async () => {
   const locales = ["en", "fr", "ko", "de", "ja", "es", "pt", "it", "nl", "sv", "da"];
   mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(), locales }] });

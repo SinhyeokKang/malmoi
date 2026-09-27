@@ -197,3 +197,29 @@ export const dict = { en, ko };
     expect(found[0]?.pathTemplate).toBe("src/i18n/locales/{locale}.json");
   });
 });
+
+/**
+ * **`.tsx` 딕셔너리는 `*.tsx` 템플릿으로 탐지된다** (audit #13). `NS_DIR`가 `.tsx`를 받는데 템플릿이 `*.ts`로 고정이라, 탐지에
+ * 성공한 `.tsx`-only 디렉터리가 확인·적재에서 **0개**를 골랐다. 확장자별로 후보를 가르고, 혼합 폴더는 후보 둘이다 — glob 문법을
+ * 넓히지 않는다(`{ts,tsx}` 없음 — `matchesGlob`의 와일드카드는 `*` 하나다).
+ */
+describe("ts-dict — 확장자별 후보 (audit #13)", () => {
+  const DICT = `const en = { "a": "A" };\nconst ko = { "a": "가" };\nexport const d = { en, ko };\n`;
+
+  it("`.tsx`만 있는 디렉터리는 `*.tsx` 템플릿이다", () => {
+    const paths = ["src/i18n/a.tsx", "src/i18n/b.tsx"];
+    expect(tsDictProbePaths(paths)).toEqual(paths);
+    const found = detectCandidatesAcross(paths, () => DICT).filter((c) => c.adapter === "ts-dict");
+    expect(found.map((c) => c.pathTemplate)).toEqual(["src/i18n/*.tsx"]);
+  });
+
+  it("`.ts`·`.tsx` 혼합 폴더는 확장자별 후보 둘이다", () => {
+    const paths = ["src/i18n/a.ts", "src/i18n/b.ts", "src/i18n/c.tsx", "src/i18n/d.tsx"];
+    const found = detectCandidatesAcross(paths, () => DICT).filter((c) => c.adapter === "ts-dict");
+    expect(found.map((c) => c.pathTemplate).sort()).toEqual(["src/i18n/*.ts", "src/i18n/*.tsx"]);
+  });
+
+  it("씨앗도 확장자별로 센다 — 파일 하나짜리 확장자는 딕셔너리 디렉터리로 안 친다", () => {
+    expect(tsDictProbePaths(["src/i18n/a.ts", "src/i18n/b.tsx"])).toEqual([]);
+  });
+});

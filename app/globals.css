@@ -80,6 +80,12 @@
   --text-xs: 13px;
 
   /**
+   * **16 아바타의 이니셜 하나가 쓴다** (2026-09-27 사용자 — 사이드바 사용자 구역 머리). 13이면 16 원을 거의
+   * 채우고 `text-[10px]`는 `visual-system.test.ts`가 막는다. 본문·라벨로 넓히지 않는다 — 10은 읽는 글자가 아니라 표식이다.
+   */
+  --text-2xs: 10px;
+
+  /**
    * **`text-base`는 15px다** (2026-09-11 사용자). Tailwind 기본은 16px이고, 덮어쓰는 단계는 위 `xs`와
    * 이것 **둘뿐**이다.
    *
@@ -98,6 +104,13 @@
   --text-base: 15px;
 
   /**
+   * **`/privacy` 본문 16px 하나가 쓴다** (2026-09-26, 시안 `Landing.dc.html` 1e — DESIGN §6.616). `text-base`가 15라
+   * 스케일에 16이 없고, `text-[16px]`는 `visual-system.test.ts`가 막는다. 앱 화면으로 넓히지 않는다 — 앱 본문은 `text-sm`이다.
+   * 행간은 짝으로 안 준다(위 둘과 같은 이유) — 그릇이 `leading-[1.75]`를 든다.
+   */
+  --text-prose: 16px;
+
+  /**
    * **자간을 전역으로 넓혔다** (2026-09-10 사용자). 행간은 Tailwind 기본 그대로다.
    *
    * ⚠️ **본문 weight가 300이라 글자가 가늘다**(§4) — 자간이 좁으면 글자끼리 붙어 읽기 어렵다.
@@ -111,10 +124,13 @@
   --text-xs--letter-spacing: 0.02em;
   --text-sm--letter-spacing: 0.02em;
   --text-base--letter-spacing: 0.015em;
+  --text-prose--letter-spacing: 0.015em;
   --text-lg--letter-spacing: 0.01em;
   --text-xl--letter-spacing: 0.005em;
   --text-2xl--letter-spacing: 0;
   --text-3xl--letter-spacing: -0.005em;
+  /** 랜딩 h1·CTA h2(48 · 600) 하나가 쓴다 — 시안 `Landing.dc.html` 1a의 −0.015em. 앱 화면에서 이 크기를 쓰는 곳은 없다. */
+  --text-5xl--letter-spacing: -0.015em;
 
   --shadow-low: 0 4px 12px 4px rgb(22 24 27 / 0.05);
   --shadow-medium: 0 6px 16px 2px rgb(22 24 27 / 0.15);
@@ -294,7 +310,7 @@
     font-family: var(--font-sans);
     /**
      * ⚠️ **300에서 400으로 올렸다** (2026-09-11 사용자 — 2026-09-10의 전면 변경을 한 단계 되돌린다).
-     * **쓰는 weight가 400과 500 둘뿐이다**: 본문이 400, 제목·라벨이 500이고 600 이상은 여전히 안 쓴다.
+     * **기본 weight는 400과 500이다**: 본문이 400, 제목·라벨이 500이다. ⚠️ **24px 이상은 600이다**(2026-09-26 — DESIGN §4).
      *
      * ⚠️ **`font-light`가 화면에서 사라졌다** — 300이 없으므로 그 클래스가 가리킬 단계가 없다.
      * 상위에서 500을 상속받는 자리를 되돌릴 때는 이제 **`font-normal`**을 명시한다(§4).

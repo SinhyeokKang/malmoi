@@ -90,6 +90,21 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
 - ⚠️ 대량 적재 직후 첫 렌더가 서버에서 2.0분이었다(57언어 · 619키, 둘째 요청 1.6초). 낡은 통계로 계획이 섰다고 **추정**만 했고
   재현하지 않았다 — 프로덕션의 새 대형 프로젝트 첫 화면에 같은 창이 열리는지 미확인이다.
 
+## 새 머신 셋업 (체크아웃 3개 산출물이 전부 gitignore다)
+
+**두 대에서 작업한다.** 새 체크아웃은 `node_modules`·`generated/prisma`·`public/fonts`·`.env.local`이 전부 없고, 앞의 셋은 명령으로 복구되지만 **`.env.local`만 사람이 채운다.**
+
+1. **Node를 `.nvmrc`에 맞춘다**(24). **어긋났을 때 맞추는 방향은 Vercel 쪽이다** — 프로덕션이 진실이고 `.nvmrc`가 따라간다.
+2. `pnpm install`
+3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **암호화 키 셋(환경변수 여섯)이 비면 로그인·초대·멤버 조회가 통째로 죽는다** — TOKEN·PII는 `*_ENCRYPTION_KEYS`와 `*_ACTIVE_KEY_ID` 쌍이고 EMAIL_LOOKUP만 `EMAIL_LOOKUP_KEY`·`_KEY_ID`다. ⚠️ **서명 키 `APP_SIGNING_SECRET`도 비면 GitHub 연결(시작·callback)과 온보딩 탐지·샘플이 500이다** — 로그인은 된다. 초대 메일 셋(`RESEND_API_KEY` 등)은 비어도 되고 그때 초대 발급만 막힌다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다** — 전부 Vercel의 **Sensitive**라 CLI도 대시보드도 값을 못 읽는다. **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**다.
+   - **GitHub OAuth 앱은 하나(`malmoi`)이고 세 환경이 같은 값을 쓴다** — Google과 같은 모양이다. ⚠️ **2026-09-14 이전 기록에 "앱이 셋"이 나오면 그건 낡았다**: GitHub이 OAuth App에 **Add redirect URI**를 열어 "callback URL은 앱당 하나"가 거짓이 됐고, 그래서 `malmoi-dev`·`malmoi-local`을 접었다.
+   - ⚠️ **Google은 반대로 클라이언트가 하나다** — redirect URI를 여러 개 등록할 수 있어 로컬·preview·프로덕션 셋을 한 클라이언트에 넣고 같은 값을 세 곳에 둔다.
+4. `pnpm db:status`(dev) · `pnpm db:status:prod`(prod)로 접속을 확인한다. ⚠️ 두 출력이 **같아 보인다**(pooler 호스트가 같고 ref는 사용자명에 있다) — 구별 신호는 **적용된 마이그레이션 개수**다.
+5. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다.
+6. `pnpm typecheck && pnpm test`로 셋업 확인. 폰트는 `predev`가 복사한다.
+
+⚠️ **`vercel env add`는 환경을 하나씩만 받고, `--force`를 믿지 말고 목록으로 확인한다** (CLI 59.11 실측). Preview에서 `--force`가 `✓ Overrode`를 출력하고도 값이 그대로였다. 갱신 뒤 `vercel env ls <environment>`의 시각 열을 보고, 안 바뀌었으면 `vercel env rm … --yes` 후 다시 넣는다. **성공 메시지가 근거가 아니다.** 값은 stdin으로 넘긴다 — `--value`는 `ps`에 노출된다.
+
 ## 1. 암호화 키 셋 — 섞지 않는다
 
 **저장된 것은 전부 봉투·해시이고 원문은 쿠키와 프로세스 메모리에만 있다.** 키가 셋인 이유는 용도가
@@ -104,6 +119,10 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
 | 검색 | `EMAIL_LOOKUP_KEY`·`_KEY_ID` | 정확 일치 조회용 HMAC (**복호화가 아니다** — 되돌릴 수 없다) |
 
 - **세션은 키가 없다** — `sha256:v1:` digest는 도메인 분리 해시라 대조만 한다.
+- **서명 키 `APP_SIGNING_SECRET`은 이 셋에 들지 않는다** (2026-09-27, sec-audit-3 #14) — 저장된 것을 여는 키가
+  아니라 **GitHub 연결 state 쿠키(10분)와 온보딩 샘플 확인값(30분)**에 HMAC을 거는 키이고, `AUTH_SECRET`(Auth.js
+  전용)과도 갈라져 있다. 32바이트 base64url 한 개(`.env.example`에 생성 명령). 셋·`AUTH_SECRET`과 **다른 값**이어야
+  한다 — 검사하는 코드는 없다. 회전은 아래 §2 끝.
 - ⚠️ **형식이 갈린다**: `*_ENCRYPTION_KEYS`는 keyring JSON, `EMAIL_LOOKUP_KEY`는 **원시 base64 하나**.
   섞으면 base64 디코드가 조용히 깨진다.
 - ⚠️ **dev와 prod가 다른 키다** — dev 키가 새도 프로덕션 회원 데이터가 안 열려야 한다. 도구는
@@ -122,6 +141,12 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
   `pnpm smoke:blob`은 `avatars/`·`projects/` 두 프리픽스를 모두 훑고 `planImageDelete`·
   `planProjectImageDelete` 둘로 고아 후보를 가른다.
   로컬에는 `BLOB_READ_WRITE_TOKEN`이 필요하며 환경별로 별도 공개 저장소를 쓴다.
+  ⚠️ **`BLOB_PUBLIC_HOST`도 환경마다 넣는다** (2026-09-27, sec-audit-3 #12) — 그 환경 스토어의 공개 호스트
+  (`<id>.public.blob.vercel-storage.com`, 스킴·경로 없이. Vercel 대시보드 Storage → 스토어 → 파일 하나의 URL 호스트)이고
+  CSP `img-src`에 이 하나만 들어간다. **비밀이 아니다**(Sensitive로 넣지 않는다 — 값을 다시 읽을 수 있어야 대조된다).
+  ⚠️ **없거나 모양이 틀리면 조용하다** — 부팅·업로드는 성공하고 **업로드한 사진·로고만 화면에서 안 보인다**(콘솔에 CSP 위반).
+  스토어를 새로 만들거나 바꾸면 이 값도 같이 간다. 확인: `vercel env ls <environment>`에 `BLOB_PUBLIC_HOST`가 있고, 업로드한
+  이미지가 뜬다.
 
 ## 2. 키 회전
 
@@ -140,8 +165,11 @@ pnpm credentials:dev --mode=verify
   각각 0인지 확인한다.
 - ⚠️ **active kid 환경변수가 비어 있으면 도구가 멈춘다** (2026-09-14). 전에는 `process.env`를 직접 읽어
   `undefined`와 비교했고, 그러면 **모든 행이 "옛 키"로 읽혀 전건이 재암호화**됐다. 지금은
-  `requireEnv`라 던지는데, `convertCredentials` 안에서는 그것이 `CredentialError` 한 줄로 접혀 나오므로
-  **원인이 메시지에 안 나온다** — 그 한 줄을 보면 먼저 `*_ENCRYPTION_ACTIVE_KEY_ID` 둘을 확인한다.
+  `requireEnv`라 던지고, `convertCredentials`가 맨 먼저 부르는 `validateCredentialKeys`가 그 자리에서
+  `[credentials] <ref> credential-env: missing environment variable <이름>` 한 줄을 stderr에 찍는다 — **원인은
+  그 줄이 말한다.** CLI 마지막 줄 `credential-conversion-failed: keep traffic blocked; no values logged`만 보고
+  판단하지 않는다. ⚠️ 변수는 있는데 kid가 키링에 없으면 그 줄 없이 마지막 줄만 나온다 — 그때는 active kid와
+  `*_ENCRYPTION_KEYS`의 키 이름이 맞는지 본다.
 - **운영 DB뿐 아니라 보존된 백업이 요구하는 키도 폐기하면 안 된다.**
 - prod는 명령 이름만 `credentials:prod`로 바꾼다. ⚠️ **그 명령은 prod DB를 직접 겨눈다**(`db:deploy`와
   같은 부류). 도구는 dev/prod 각각 고정 Supabase ref·5432·DB 이름을 검증하고, DB URL을 CLI 인자로
@@ -168,6 +196,24 @@ pnpm credentials:dev --mode=verify
 
 **둘 다 실제 회전이 필요해지기 전에 한 번 밟아 본다.** 처음 밟는 자리가 운영 사고 한가운데면
 "차단됐는지 모르는 채로 `--apply`를 누르는" 상태가 된다.
+
+### 서명 키 회전 (`APP_SIGNING_SECRET`)
+
+**차단·drain이 필요 없다** — 이 키로 만든 것은 DB에 없고 쿠키·모달 상태로만 산다(최장 30분). 새 값을 넣고
+재배포하면 끝이고, 그 순간 진행 중이던 GitHub 연결 왕복과 열린 새 프로젝트 모달의 확인값이 **한 번** 실패한다
+(연결은 다시 누르고, 모달은 다시 탐지하면 새 확인값을 받는다). 이중 키 검증은 두지 않았다.
+
+최초 등록은 2026-09-27 — Vercel Development · Preview · Production과 메인 체크아웃의 `.env.local`. **두 번째 머신의
+`.env.local`은 확인되지 않았다** — 그 머신에서 연결·탐지가 500이면 이 키부터 본다.
+
+1. 새 값 생성: `node -e 'console.log(require("crypto").randomBytes(32).toString("base64url"))'` — 환경마다 다른 값.
+2. `.env.local`(머신 둘)과 Vercel Production · Preview · Development에 넣는다. ⚠️ **`vercel env add`는 환경을 하나씩만
+   받고 `--force`의 성공 메시지를 믿지 않는다** — `vercel env ls <environment>`의 시각 열로 확인한다(CLAUDE.md).
+3. 재배포. **값이 없으면 연결 시작·callback·온보딩 탐지가 `requireEnv`로 500**이다(fail-closed) — 로그인은
+   `AUTH_SECRET`만 쓰므로 그대로 된다. 증상이 "연결만 죽었다"이면 이 키부터 본다.
+
+- **`AUTH_SECRET` 회전은 이 키와 무관하다** — 진행 중 로그인 왕복만 깨고 DB 세션도, 연결 state도, 샘플 확인값도
+  건드리지 않는다.
 
 ## 3. 복구
 
@@ -204,6 +250,7 @@ pnpm credentials:dev --mode=verify
   `DIRECT_URL_PROD`(5432)도 쓸 수 있다(한 문장 UPDATE라 세션 모드면 된다).
 - **precondition이 실패하면 편집을 버리거나 토큰을 손으로 채워 통과시키지 않는다.**
   `precondition failed: unsent edits without pendingEditToken remain`이면 롤백 → backfill → 재적용이다:
+  `migrate resolve`에는 래퍼 스크립트가 없어 **여기서만 예외로 `PRISMA_TARGET`을 손으로 넘긴다**(CLAUDE.md의 "사람이 넘기지 않는다"는 래퍼가 있는 명령 기준이다):
   ```
   PRISMA_TARGET=prod pnpm exec prisma migrate resolve --rolled-back 20260917170000_pending_edit_token_precondition   # dev는 PRISMA_TARGET 없이
   # backfill을 그 DB에 다시 돌린다
@@ -237,7 +284,12 @@ App 설정 > General (2026-09-18, install-and-connect):
 - **Setup URL**은 **비운다** — 옵션이 켜져 있으면 쓰이지 않는다(GitHub이 callback으로 보낸다). 남겨 두면 누가 옵션을 끄는 순간 지운 라우트(`/api/github/setup`)로 가서 404다.
 - **Redirect on update** 켬 — 리포 선택을 바꾸고 Save하면 callback으로 state 없이 돌아오고, callback이 `/projects/new`에 쓰기 없이 착지시킨다.
 
-⚠️ **설치 URL은 `redirect_uri`를 받지 않는다** — 세 환경이 `malmoi-sync` 하나를 공유하는 동안 로컬·preview에서 시작한 설치도 프로덕션 callback으로 간다(쿠키가 없어 교환 0회로 거부된다). 로컬에서는 보조 링크(Authorize, `redirect_uri`가 로컬)로 연결하고 GitHub에서 직접 설치한 뒤 [Try again]으로 본다. 요청 대기(D)·목록 위 info는 dev DB의 `Account.installRequestedAt`을 직접 심어 본다. 설치 왕복 자체(1클릭·요청 복귀·승인 복귀)는 **프로덕션에서만** 실측한다. ⚠️ **L2.10에서 App을 나누면 dev App에도 같은 옵션을 켠다.**
+⚠️ **App이 둘이다**(2026-09-27): 프로덕션 `malmoi-sync`, 로컬·preview `malmoi-sync-dev`(폐기용 리포에만 설치). **위 세 설정을 두 App에 똑같이 둔다.** dev App의 callback은 `https://dev.mal-moi.com/api/github/callback`(첫째)·`http://localhost:3000/api/github/callback`, prod App은 `https://mal-moi.com/api/github/callback` 하나다. ⚠️ **설치 URL은 `redirect_uri`를 받지 않는다** — App의 **첫** callback으로 간다. 그래서 로컬에서 시작한 설치는 `dev.mal-moi.com`에 착지한다(쿠키가 없어 교환 0회로 거부된다). 로컬에서는 보조 링크(Authorize, `redirect_uri`가 로컬)로 연결하고 GitHub에서 직접 설치한 뒤 [Try again]으로 본다. 요청 대기(D)·목록 위 info는 dev DB의 `Account.installRequestedAt`을 직접 심어 본다. 설치 왕복 자체(1클릭·요청 복귀·승인 복귀)는 **preview(`dev.mal-moi.com`, dev App)와 프로덕션**에서 실측한다. ⚠️ **사용자 인가(user-to-server 토큰)도 App별이다** — App을 바꾸면 그 환경 DB에 남은 옛 App의 인가가 `/account`에 "Connected"로 보이는데 설치 목록이 비어, 연결·push 토큰 교체가 `repo-not-installed`로 거부된다. 그 사용자가 `/account`에서 Disconnect → Authorize GitHub App으로 새 App을 인가하면 풀린다(2026-09-27 dev DB에서 밟음).
+
+### 설치가 안 되거나 `not-installed`일 때
+
+- ⚠️ **GitHub App이 `Make public`이어야 한다 — 2026-09-17까지 private이었다.** private 앱은 **소유 계정(`SinhyeokKang`)에만 설치된다**: 그 사이 다른 계정·조직은 설치 링크에서 GitHub이 막아 **새 사용자의 프로젝트 생성이 통째로 불가능했다**(초대받은 번역자는 설치가 필요 없어 안 드러났다). 증상이 malmoi 쪽에 아무 로그도 안 남기고, 오너 계정으로 검증하면 항상 통과한다 — **"다른 계정에서 설치가 안 된다"를 들으면 앱 설정 Advanced부터 본다.** ⚠️ **앱이 둘이다** (2026-09-27, launch-readiness L2.10): 프로덕션은 `malmoi-sync`(개인키는 Vercel **Production**에만), 로컬·preview는 `malmoi-sync-dev`(`.env.local` + Vercel **Preview**, **폐기용 리포에만 설치**). 두 앱의 권한·설정(설치 중 인가 켬 · Setup URL 비움 · Redirect on update · public)은 같게 유지한다. 앱을 바꾸면 설치 ID가 달라 그 환경의 모든 프로젝트 `installationId`가 무효가 되고 [Reconnect]로 복구된다(malmoi#52). ⚠️ **Vercel의 `GITHUB_APP_*`는 환경별 변수여야 한다** — Production·Preview를 한 변수로 묶어 두면 `vercel env rm <name> preview`가 **Production까지 지운다**(2026-09-27 실측, 곧바로 복구했다).
+- ⚠️ **App 설치가 `Only select repositories`면** **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 설치 범위 자체는 여기 적지 않는다(자주 바뀐다 — 콘솔이 정본). 안 넣으면 `probeRepo`가 `not-installed`를 주고 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. ⚠️ **리포를 만들었다고 목록에 든 것이 아니다** — 둘은 다른 화면이고, 그 간극이 `not-installed`를 만난 사람을 엉뚱한 곳으로 보낸다. **`not-installed`를 보면 앱 설정의 Repository access를 먼저 연다.** ⚠️ **그 목록을 여기 적지 않는다** — GitHub 콘솔이 정본이고 문서 사본은 실물보다 앞서거나 뒤처지기만 했다(2026-09-23에 걷었다). 폐기용 리포 각각이 **왜 필요한지**는 `.claude/commands/roundtrip.md` 전제 조건 1과 `runtime-test.md` §7.1이 든다.
 
 ## Google OAuth 동의 화면 — 게시와 도메인 소유권 (2026-09-19)
 
@@ -273,7 +325,7 @@ dig +short TXT mal-moi.com | tr -d '"' | sed 's/.*=//' | awk '{print length($0)}
 
 ## 초대 메일 — Resend (2026-09-24)
 
-**구성**: 도메인 `notify.mal-moi.com`(Resend 리전 **Tokyo** `ap-northeast-1`, 2026-09-23 Verified) · 발신 `malmoi <invite@notify.mal-moi.com>` ·
+**구성**: 도메인 `notify.mal-moi.com`(Resend 리전 **Tokyo** `ap-northeast-1`, 2026-09-23 Verified) · 발신 `Malmoi <invite@notify.mal-moi.com>`(`INVITATION_EMAIL_FROM` — Vercel 값도 이 표기인지 대시보드에서 확인한다) ·
 open/click tracking **꺼짐**(추적 서브도메인을 구성하지 않았다 — 켜면 초대 URL이 추적 링크로 바뀌고 방침의 "no tracking"이 거짓이 된다) ·
 TLS **Enforced**(2026-09-24 — Opportunistic이던 첫 발송 한 통이 SES→Gmail 구간을 평문 `ESMTP`로 가서 Gmail이 "암호화하지 않았습니다" 경고를 달았다.
 같은 설정의 다른 발송은 `ESMTPS TLS1_3`이었다 — 발송마다 갈린다. Enforced는 TLS를 못 하는 수신 서버로의 발송을 실패시키고, 그것은 앱에 `email-rejected`/`unknown`으로 보인다).
@@ -310,6 +362,30 @@ CLAUDE.md) ④ 재배포 ⑤ 초대 한 통을 지정 수신자로 보내 접수
 빠지기까지 **수개월**이 걸린다. ⚠️ **`includeSubDomains`가 `*.mal-moi.com` 전부를 HTTPS에 묶는다**(`dev.mal-moi.com` 포함) —
 제출 전에 http로만 뜨는 하위 호스트가 없는지, 앞으로도 만들지 않을지 확인한다.
 
+## Supabase 데이터 API 롤 — 스키마 USAGE 확인 (2026-09-27, sec-audit-3 #2·#3)
+
+**언제**: 마이그레이션을 dev에 적용한 뒤(`/db` 5단계)와 **prod에 `db:deploy`한 뒤(`/merge` 1단계)**, 그리고 대시보드에서 테이블을 만든 뒤.
+dev만 보고 끝내지 않는다 — 두 DB의 권한 이력이 달라 dev 결과가 prod를 증명하지 않는다(ARCHITECTURE §7).
+
+```sql
+-- ① 방어층: 네 칸 전부 false여야 한다.
+SELECT r, has_schema_privilege(r, 'public', 'USAGE') AS usage, has_schema_privilege(r, 'public', 'CREATE') AS create
+FROM unnest(ARRAY['anon','authenticated']) AS r;
+-- ② 탐지 신호: 0건이 정상. 대시보드로 테이블을 만들었다면 0이 아닌 것이 정상이다(아래 ③이 그렇게 만든다) — ①이 false면 열리지는 않는다.
+SELECT grantee, table_name FROM information_schema.role_table_grants
+WHERE table_schema = 'public' AND grantee IN ('anon','authenticated');
+-- ③ 남는 것: supabase_admin 소유 3행은 postgres로 못 지운다(permission denied). 있다는 것만 확인한다.
+SELECT pg_get_userbyid(defaclrole) AS owner, defaclobjtype, defaclacl FROM pg_default_acl
+WHERE defaclnamespace = 'public'::regnamespace;
+```
+
+**①이 `true`로 남으면** 상속부터 본다 — `SELECT nspacl FROM pg_namespace WHERE nspname = 'public'`. 마이그레이션은 두 롤의 직접 GRANT와
+`PUBLIC`(`=U`)을 **둘 다** 걷으므로, 적용 뒤에도 `true`면 누군가 다시 GRANT했거나 두 롤이 USAGE를 가진 다른 롤의 멤버다. 걷는 것은
+**새 마이그레이션으로** 한다 — 콘솔에서 손으로 치지 않는다(dev·prod가 다시 갈린다). ⚠️ **스키마 소유자는 `postgres`가 아니라
+`pg_database_owner`다** — 런타임 롤 `postgres`는 직접 `U`와 `pg_database_owner` 멤버십(CREATE)으로 쓰므로 `PUBLIC`·두 롤 회수와 무관하다.
+회수 전에 `nspacl`에 `postgres=U/…`(직접 GRANT)가 있는지 확인한다 — 없으면 앱이 이름 해석에서 막힌다. 대시보드 **Advisors → Security**가
+0 errors인지도 같이 본다.
+
 ## 호스팅 플랜과 한도 (2026-09-19 확인)
 
 | 무엇 | 플랜 | 따라오는 제약 |
@@ -324,7 +400,7 @@ CLAUDE.md) ④ 재배포 ⑤ 초대 한 통을 지정 수신자로 보내 접수
 ## 5. 자격증명 전면 재발급
 
 순서가 있다 (2026-09-03 실행). Supabase 비번 재설정 → `.env.local` → Vercel env → 재배포
-(`vercel redeploy <최근 prod URL>`). 상세와 함정은 [CLAUDE.md](../CLAUDE.md)의 "새 머신 셋업" 절이다.
+(`vercel redeploy <최근 prod URL>`). 상세와 함정은 위 "새 머신 셋업" 절이다.
 
 ⚠️ **GitHub App 개인키는 여러 개를 동시에 가질 수 있지만, 지우면 그 키를 쓰던 네 곳이 동시에 끊긴다** —
 로컬 `.env.local` · Vercel Production · Vercel Preview · 다른 머신. 2026-09-06에 옛 키 하나를 지웠다가

@@ -9,7 +9,8 @@ import { extendTailwindMerge } from "tailwind-merge";
  * dedupe되지 않는다 — bugshot-2가 액션 로그 값 칩에서 정확히 이 함정을 밟았다.
  */
 const twMerge = extendTailwindMerge({
-  extend: { classGroups: { "font-size": ["text-mono"] } },
+  // `text-prose`(16px, `/privacy` 본문 — DESIGN §6.616)도 같은 이유로 등록한다 — 커스텀 크기 토큰은 전부 여기 선다.
+  extend: { classGroups: { "font-size": ["text-mono", "text-prose"] } },
 });
 
 /** shadcn 표준 헬퍼. 조건부 클래스는 항상 이걸 지난다 (DESIGN.md §8). */

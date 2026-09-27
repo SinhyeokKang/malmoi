@@ -74,7 +74,7 @@ const PLANS: Partial<Record<string, ImportRefusalPlan>> = {
    * **설정 화면의 컨트롤을 이름으로 가리킨다**("use Reauthorize GitHub App" · "Install it, then connect
    * again") — Home에는 그 버튼이 없다. 액션 없이 두면 **닫을 수도 없고 갈 곳도 없는 amber**가
    * 존재하지 않는 컨트롤을 가리킨 채 고정된다.
-   * ⚠️ `installation-forbidden`·`repo-forbidden`은 일부러 뺀다 — 그 문장의 다음 행동이 화면이 아니라
+   * ⚠️ `installation-forbidden`·`repo-forbidden`·`repo-read-only`는 일부러 뺀다 — 그 문장의 다음 행동이 화면이 아니라
    * **사람**이다("Ask the repository owner"). 보낼 곳이 없는데 버튼을 세우면 거기서 또 막힌다.
    */
   "reauthorize": { tone: "warning", dismissible: false, action: "settings" },

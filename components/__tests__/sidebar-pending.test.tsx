@@ -27,7 +27,7 @@ vi.mock("next/link", () => {
 });
 
 const memberships = [{ slug: "acme", name: "Acme", role: "OWNER" as const, archived: false, defaultSurfaceSlug: "app" }];
-const sidebar = () => render(<Sidebar memberships={memberships} userName="Kim" userImage={null} signOut={() => {}} />);
+const sidebar = () => render(<Sidebar memberships={memberships} userName="Kim" userImage={null} />);
 const link = (container: HTMLElement, href: string) => container.querySelector<HTMLAnchorElement>(`a[href="${href}"]`)!;
 
 describe("사이드바 이동 pending", () => {

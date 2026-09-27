@@ -134,6 +134,35 @@ it("real unique index admits only one concurrent signup and one email refresh wi
   expect(results.sort()).toEqual(["conflict", "update"]);
   expect(await prisma.user.count({ where: { emailLookup: lookupEmail("fresh@example.com") } })).toBe(1);
 });
+it("email refresh waiting on the User lock does not adopt a provider unlinked meanwhile (audit #5)", async () => {
+  await prisma.user.create({ data: { id: ids.u1, ...encodeUserFields(ids.u1, { email: "old@example.com" }), email: encodeUserFields(ids.u1, { email: "old@example.com" }).email! } });
+  await prisma.account.createMany({ data: [{ userId: ids.u1, provider: "github", providerAccountId: "gh1", type: "oauth" }, { userId: ids.u1, provider: "google", providerAccountId: "go1", type: "oauth" }] });
+  const holder = await pool.connect();
+  try {
+    // 해제(unlinkLoginMethod)와 같은 모양: User 잠금 → Account 삭제 → 커밋.
+    await holder.query("BEGIN");
+    await holder.query(`SELECT "id" FROM "User" WHERE "id" = $1 FOR UPDATE`, [ids.u1]);
+    const refresh = refreshVerifiedEmail(prisma, "github", "gh1", "moved@example.com");
+    // 콜백이 Account를 읽고 잠금에서 기다리는 순간까지 진행시킨다 — 그 전에 지우면 "unlinked"로 빠져 이 경로를 못 잰다.
+    for (let i = 0; ; i++) {
+      const { rows } = await pool.query(`SELECT 1 FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%'`);
+      if (rows.length > 0) break;
+      if (i > 200) throw new Error("refresh never reached the User lock");
+      await new Promise(r => setTimeout(r, 10));
+    }
+    await holder.query(`DELETE FROM "Account" WHERE "userId" = $1 AND "provider" = 'github'`, [ids.u1]);
+    await holder.query("COMMIT");
+    // 처음부터 없던 연결과 같은 갈래 — 호출부가 병합 안내를 조회한다.
+    expect(await refresh).toBe("unlinked");
+  } finally { holder.release(); }
+  const user = decodeUser(await prisma.user.findUniqueOrThrow({ where: { id: ids.u1 }, select: { id: true, email: true, emailLookup: true } }));
+  expect(user.email).toBe("old@example.com");
+  // 성공 경로 짝: 연결이 그대로인 단일 수단은 검증된 새 주소로 옮긴다.
+  await prisma.account.deleteMany({ where: { userId: ids.u1, provider: "google" } });
+  await prisma.account.create({ data: { userId: ids.u1, provider: "github", providerAccountId: "gh1", type: "oauth" } });
+  expect(await refreshVerifiedEmail(prisma, "github", "gh1", "moved@example.com")).toBe("update");
+  expect(await prisma.user.count({ where: { emailLookup: lookupEmail("moved@example.com") } })).toBe(1);
+});
 it("User row lock blocks concurrent additional account linking", async () => {
   const adapter = credentialAdapter(prisma);
   const user = await adapter.createUser!({ id: "ignored-provider-id", email: "u@example.com", emailVerified: null });

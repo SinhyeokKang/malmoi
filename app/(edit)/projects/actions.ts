@@ -40,7 +40,7 @@ import { finishRun, recordEvent, recordImportRefusal, recordRun } from "@/lib/ev
 import { optionalEnv, requireEnv } from "@/lib/env";
 import { listBranches, openRepoReader, probeRepo } from "@/lib/github";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
-import { planRepoConnect, type RepoConnect } from "@/lib/github-connect/connect-plan";
+import { planRepoConnect, type RepoConnect, type UserRepo } from "@/lib/github-connect/connect-plan";
 import { httpStatus } from "@/lib/failure";
 import { installWithStateUrl } from "@/lib/github-connect/installation-url";
 import { logFailure } from "@/lib/github-connect/log";
@@ -84,8 +84,9 @@ import type { OnboardError } from "@/lib/onboarding/message";
 import { finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { planSurfaceReadiness, planProjectReadiness } from "@/lib/onboarding/readiness";
 import { planSlug } from "@/lib/onboarding/slug";
-import { isPathSafeLocale } from "@/lib/locale-code";
+import { isLocaleShaped, isPathSafeLocale } from "@/lib/locale-code";
 import { isValidBranchName } from "@/lib/pull/branch-name";
+import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { generatePushToken, hashPushToken } from "@/lib/push/token";
 import type { PrismaClient } from "@/generated/prisma/client";
 
@@ -128,7 +129,7 @@ export type InvitationsResult =
   | { ok: true; count: number }
   | { ok: false; error: "invalid-rows"; rowErrors: (RecipientRowError | IssueRowError)[] }
   | { ok: false; error: "rate-limited"; retryAt: string; limit: "address"; index: number }
-  | { ok: false; error: "rate-limited"; retryAt: string; limit: "project"; used: number }
+  | { ok: false; error: "rate-limited"; retryAt: string; limit: "project" | "user"; used: number }
   | { ok: false; error: "email-rejected" | "email-unknown"; retryAt: string }
   | { ok: false; error: string };
 
@@ -178,7 +179,7 @@ const ResendInput = z.object({ slug: z.string().min(1), invitationId: z.string()
 export type ResendResult =
   | { ok: true; label: string }
   | { ok: false; error: "rate-limited"; retryAt: string; limit: "address" }
-  | { ok: false; error: "rate-limited"; retryAt: string; limit: "project"; used: number }
+  | { ok: false; error: "rate-limited"; retryAt: string; limit: "project" | "user"; used: number }
   | { ok: false; error: "email-rejected" | "email-unknown"; label: string; retryAt: string }
   | { ok: false; error: string };
 
@@ -215,7 +216,7 @@ export async function resendInvitation(raw: { slug: string; invitationId: string
   if (issued.status === "rate-limited") {
     // 재발급은 한 주소라 막힌 행을 가리킬 필요가 없다 — 화면은 누른 행의 라벨로 말한다.
     const retryAt = issued.retryAt.toISOString();
-    return issued.limit === "project" ? { ok: false, error: "rate-limited", retryAt, limit: "project", used: issued.used } : { ok: false, error: "rate-limited", retryAt, limit: "address" };
+    return issued.limit === "address" ? { ok: false, error: "rate-limited", retryAt, limit: "address" } : { ok: false, error: "rate-limited", retryAt, limit: issued.limit, used: issued.used };
   }
   if (issued.status !== "issued") return { ok: false, error: issued.status };
 
@@ -229,9 +230,9 @@ export async function resendInvitation(raw: { slug: string; invitationId: string
 
 function rateLimited(plan: Extract<IssuePlan, { status: "rate-limited" }>): InvitationsResult {
   const retryAt = plan.retryAt.toISOString();
-  return plan.limit === "project"
-    ? { ok: false, error: "rate-limited", retryAt, limit: "project", used: plan.used }
-    : { ok: false, error: "rate-limited", retryAt, limit: "address", index: plan.index };
+  return plan.limit === "address"
+    ? { ok: false, error: "rate-limited", retryAt, limit: "address", index: plan.index }
+    : { ok: false, error: "rate-limited", retryAt, limit: plan.limit, used: plan.used };
 }
 
 function toMessages(invitations: readonly IssuedInvitation[]) {
@@ -538,7 +539,7 @@ export async function startGithubConnectForUser(
       dest: dest === "new" ? { kind: "new", ...(back.success ? back.data : {}) } : { kind: "account" },
       nonce,
       expiresAt: new Date(Date.now() + STATE_TTL_MINUTES * 60 * 1000),
-      secret: requireEnv("AUTH_SECRET"),
+      secret: requireEnv("APP_SIGNING_SECRET"),
     }),
     {
       httpOnly: true,
@@ -779,6 +780,8 @@ export async function detectRepoFormats(raw: {
   const { owner, repo, ref } = parsed.data;
   // 잎 판정이라 비용이 0이다 — 맨값을 GitHub URL에 넣기 전에 여기서 막는다.
   if (ref !== undefined && !isValidBranchName(ref)) return { ok: false, error: "invalid input" };
+  // ③까지 가서 생성이 거부되지 않게 여기서 막는다 (malmoi#126).
+  if (ref !== undefined && isSyncBranchName(ref)) return { ok: false, error: "sync-branch" };
 
   // 모달 입력을 보존한다 — 세션 거부는 redirect가 아니라 값이다 (예외 J).
   const session = await readSession();
@@ -787,10 +790,10 @@ export async function detectRepoFormats(raw: {
   const { userId } = session;
 
   const prisma = getPrisma();
-  const access = await checkRepoAccess(prisma, userId, owner, repo);
+  const access = await checkRepoAccess(prisma, userId, owner, repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
 
-  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
+  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
   const snapshot = await reader.snapshot(ref ?? access.defaultBranch);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
@@ -819,7 +822,7 @@ export async function detectRepoFormats(raw: {
       ref: ref ?? access.defaultBranch, headSha: snapshot.headSha,
       // 전 언어의 경로는 전체 트리 탐지가 확인했다. 내용을 받은 셋으로 줄이면 lazy 언어가 사라진다.
       format: { ...confirmed.format, locales: summary.locales },
-    }, requireEnv("AUTH_SECRET")) }];
+    }, requireEnv("APP_SIGNING_SECRET"), new Date()) }];
   });
   return candidates.length === 0 ? { ok: false, error: "no-candidates" } : { ok: true, candidates };
 }
@@ -847,14 +850,49 @@ export async function listRepoBranches(raw: { owner: string; repo: string }): Pr
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
-  const access = await checkRepoAccess(getPrisma(), userId, parsed.data.owner, parsed.data.repo);
+  const access = await checkRepoAccess(getPrisma(), userId, parsed.data.owner, parsed.data.repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
 
-  const list = await listBranches(access.repoOwner, access.repoName, access.installationId);
+  const list = await listBranches(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
   // 조회 실패는 ①을 막지 않는다 — 화면이 default branch 하나로 접고 그 사실을 말한다 (예외 D).
   if (list.status !== "ok") return { ok: false, error: "unavailable", defaultBranch: access.defaultBranch };
 
   return { ok: true, names: list.names, defaultBranch: access.defaultBranch, truncated: list.truncated };
+}
+
+export type ProjectBranchesResult = BranchesResult | { ok: false; error: AccessError };
+
+/**
+ * **연결된 프로젝트 설정의 브랜치 목록** (malmoi#123). `listRepoBranches`는 온보딩 ①이라 리포 쓰기 권한을 요구하는데
+ * (토큰을 받을 사람이다 — sec-audit-3 1a), 설정의 Base branch 목록은 **읽기**다: 저장(`updateRepositorySettings`)도
+ * 쓰기 권한을 요구하지 않고 기존 프로젝트에는 소급하지 않는다. 그래서 `requirePush: false`로 부른다(Sync와 같은 예외).
+ *
+ * ⚠️ **클라이언트가 보낸 owner/repo·플래그로 가르지 않는다** — 그러면 ①이 같은 플래그로 쓰기 확인을 건너뛸 수 있다.
+ * 프로젝트 slug로 인가(`project:settings`)하고 리포는 **저장된 행**에서 읽으며, 확인한 리포 id를 고정된
+ * `Project.repositoryId`와 대조한다.
+ */
+export async function listProjectBranches(raw: { slug: string }): Promise<ProjectBranchesResult> {
+  const parsed = SlugOnlyInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const prisma = getPrisma();
+  const access = await getProjectAccess(prisma, { userId: session.userId, slug: parsed.data.slug, permission: "project:settings" });
+  if (access.status !== "ok") return { ok: false, error: access.status };
+  const project = await prisma.project.findUnique({
+    where: { id: access.projectId },
+    select: { repoOwner: true, repoName: true, installationId: true, repositoryId: true },
+  });
+  if (project === null) return { ok: false, error: "not-found" };
+  if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "repo-not-installed" };
+  const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName, false);
+  if (repo.status !== "ok") return { ok: false, error: repo.error };
+  if (repo.repositoryId !== project.repositoryId) return { ok: false, error: "repo-forbidden" };
+
+  const list = await listBranches(repo.repoOwner, repo.repoName, repo.installationId, repo.repositoryId);
+  if (list.status !== "ok") return { ok: false, error: "unavailable", defaultBranch: repo.defaultBranch };
+  return { ok: true, names: list.names, defaultBranch: repo.defaultBranch, truncated: list.truncated };
 }
 
 export type SampleResult =
@@ -872,22 +910,24 @@ export async function loadCandidateSample(raw: {
   const parsed = SampleInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
-  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.locale)) return { ok: false, error: "invalid input" };
+  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.locale) || !isLocaleShaped(input.locale)) return { ok: false, error: "invalid input" };
   const session = await readSession();
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
-  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo);
+  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
-  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
+  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
   const verified = verifySampleConfirmation(input.confirmation ?? "", {
     userId, repositoryId: access.repositoryId, installationId: access.installationId,
     ref: input.ref, headSha: snapshot.headSha,
-  }, requireEnv("AUTH_SECRET"));
-  if (verified === null || !isAdapterName(verified.adapter) || verified.adapter !== input.adapter ||
+  }, requireEnv("APP_SIGNING_SECRET"), new Date());
+  // 확인값을 못 믿으면 입력이 아니라 확인값이 낡은 것이다 — 만료·키 회전·낡은 스냅샷 전부 재탐지로 풀린다.
+  if (verified === null) return { ok: false, error: "sample-expired" };
+  if (!isAdapterName(verified.adapter) || verified.adapter !== input.adapter ||
       verified.pathTemplate !== input.pathTemplate || !verified.locales.includes(input.locale)) {
     return { ok: false, error: "manual-no-match" };
   }
@@ -928,16 +968,16 @@ export async function confirmManualFormat(raw: {
   const parsed = ManualFormatInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
-  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.baseLocale) || !isAdapterName(input.adapter)) {
+  if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.baseLocale) || !isLocaleShaped(input.baseLocale) || !isAdapterName(input.adapter)) {
     return { ok: false, error: "invalid input" };
   }
   const session = await readSession();
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
-  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo);
+  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
-  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId);
+  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
   const paths = snapshot.files.map((file) => file.path);
@@ -967,7 +1007,7 @@ export async function confirmManualFormat(raw: {
       confirmation: signSampleConfirmation({
         userId, repositoryId: access.repositoryId, installationId: access.installationId,
         ref: input.ref, headSha: snapshot.headSha, format: confirmed.format,
-      }, requireEnv("AUTH_SECRET")),
+      }, requireEnv("APP_SIGNING_SECRET"), new Date()),
     } };
   } catch (error) {
     if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
@@ -1013,9 +1053,11 @@ export async function createProject(raw: {
   if (!isValidBranchName(input.baseBranch)) {
     return { ok: false, error: "invalid-branch" };
   }
+  // 자유 입력(300개 초과)·직접 호출도 막는다 — 목록 필터는 안내일 뿐이다 (malmoi#126).
+  if (isSyncBranchName(input.baseBranch)) return { ok: false, error: "sync-branch" };
 
   const prisma = getPrisma();
-  const access = await checkRepoAccess(prisma, userId, input.owner, input.repo);
+  const access = await checkRepoAccess(prisma, userId, input.owner, input.repo, true);
   if (access.status === "rejected") return { ok: false, error: access.error };
 
   const [ownerCount, existing] = await Promise.all([
@@ -1041,7 +1083,7 @@ export async function createProject(raw: {
   });
   if (plan.status !== "ok") return { ok: false, error: plan.status };
 
-  const reader = await openRepoReader(plan.repoOwner, plan.repoName, plan.installationId);
+  const reader = await openRepoReader(plan.repoOwner, plan.repoName, plan.installationId, access.repositoryId);
   // ⚠️ **탐지와 저장이 같은 ref여야 한다** — 다른 트리로 재검증하면 통과한 포맷이 저장 브랜치에 없을 수 있다.
   const baseBranch = input.baseBranch;
   const snapshot = await reader.snapshot(baseBranch);
@@ -1247,6 +1289,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
       repoName: true,
       baseBranch: true,
       installationId: true,
+      repositoryId: true,
       archivedAt: true,
       defaultSurface: true,
     },
@@ -1332,7 +1375,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
   };
 
   try {
-    const reader = await openRepoReader(project.repoOwner, project.repoName, installationId);
+    const reader = await openRepoReader(project.repoOwner, project.repoName, installationId, project.repositoryId);
     const snapshot = await reader.snapshot(project.baseBranch);
     if (snapshot.status !== "ok") {
       await failRun();
@@ -1441,13 +1484,14 @@ export async function runRepositoryImport(raw: { slug: string; approval: string 
     if (project.archivedAt !== null) return await refuse("archived");
     if (planProjectReadiness(project) !== "ready") return await refuse("not-ready");
     if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "not-connected" };
-    const connected = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
+    // 재적재는 리포를 읽기만 한다 — 쓰기 권한 없이 초대된 OWNER도 여기선 통과한다 (sec-audit-3 1a 범위 밖).
+    const connected = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName, false);
     if (connected.status !== "ok") return await refuse(connected.error);
     if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return await refuse("repo-replaced");
-    const installationId = project.installationId;
+    const { installationId, repositoryId } = project;
     return await runRepositoryImportFromReader(prisma, { projectId: access.projectId, userId: session.userId, approval,
-      repository: { repositoryId: project.repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
-    }, () => openRepoReader(project.repoOwner, project.repoName, installationId));
+      repository: { repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
+    }, () => openRepoReader(project.repoOwner, project.repoName, installationId, repositoryId));
   } catch (error) {
     logFailure("repository-import-action", error);
     return { ok: false, error: "ingest-failed" };
@@ -1502,7 +1546,7 @@ export async function checkOpenPullRequest(raw: { slug: string }): Promise<OpenI
 
 export type RotateTokenResult =
   | { ok: true; pushToken: string }
-  | { ok: false; error: OnboardError | AccessError | "invalid input" };
+  | { ok: false; error: OnboardFailure | AccessError };
 
 /**
  * push 토큰 재발급 (설정 화면). **원문은 이 반환값에만 있다** — 잃으면 다시 재발급이다.
@@ -1523,6 +1567,25 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
   const prisma = getPrisma();
   const access = await getProjectAccess(prisma, { userId, slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
+  // 보관 = Restore만 — 거부될 요청이 GitHub을 부르지 않게 먼저 막는다. 경합 창은 잠금 안 판정이 닫는다.
+  if (access.archived) return redrawIfArchived(slug, "archived", { ok: false, error: "archived" });
+
+  /**
+   * ⚠️ **토큰을 받는 사람이 리포에 쓸 수 있어야 한다** (sec-audit-3 결정 I). push 토큰의 페이로드가 로케일을 정하고 그
+   * 로케일이 설치 토큰의 커밋 경로가 된다(`locales:["en","app"]` → `app.json` — 3글자라 모양 검사가 못 막는다).
+   * 쓰기 권한 없이 초대된 OWNER가 여기서 토큰을 받으면 생성 경로(1a)가 닫은 격차가 다시 열린다.
+   */
+  const project = await prisma.project.findUnique({
+    where: { id: access.projectId },
+    select: { repoOwner: true, repoName: true, installationId: true, repositoryId: true },
+  });
+  if (project === null) return { ok: false, error: "not-found" };
+  // 확인할 리포가 없다 — 쓰기 권한을 증명할 수단이 없으므로 발급하지 않는다.
+  if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "repo-not-installed" };
+  const repo = await checkRepoAccess(prisma, userId, project.repoOwner, project.repoName, true);
+  if (repo.status !== "ok") return { ok: false, error: repo.error };
+  // 같은 이름의 **다른** 리포에 쓸 수 있는 것은 근거가 아니다 — 고정된 신원으로 대조한다.
+  if (repo.repositoryId !== project.repositoryId) return { ok: false, error: "repo-forbidden" };
 
   const pushToken = generatePushToken();
   // ⚠️ `where`가 **인가가 돌려준 projectId**다.
@@ -1681,6 +1744,8 @@ async function checkRepoAccess(
   userId: string,
   owner: string,
   repo: string,
+  /** `planRepoConnect`의 넷째 조건(리포 쓰기 권한). 기본값이 없다 — `false`는 재적재뿐이다. */
+  requirePush: boolean,
 ): Promise<
   | { status: "ok"; connect: RepoConnect; repositoryId: string; installationId: string; repoOwner: string; repoName: string; defaultBranch: string }
   | { status: "rejected"; error: OnboardFailure }
@@ -1699,7 +1764,7 @@ async function checkRepoAccess(
    * ⚠️ **`planRepoConnect`의 3중 검증은 그대로다** — 순서만 바뀐다.
    */
   let userInstallationIds: readonly string[];
-  let userRepoFullNames: readonly string[] = [];
+  let userRepos: readonly UserRepo[] = [];
   try {
     userInstallationIds = await listUserInstallations(token.accessToken);
     const wanted = `${owner}/${repo}`.toLowerCase();
@@ -1737,7 +1802,7 @@ async function checkRepoAccess(
       // 곧 오라클이다. 화면 문구도 하나로 간다 (`lib/onboarding/message.ts`).
       return { status: "rejected", error: "repo-not-installed" };
     }
-    userRepoFullNames = holder.repos.map((row) => row.fullName);
+    userRepos = holder.repos;
   } catch (error) {
     if (httpStatus(error) === 401) return { status: "rejected", error: "reauthorize" };
     logFailure("onboard-access", error);
@@ -1748,7 +1813,7 @@ async function checkRepoAccess(
   // 오류)뿐이다 — 그것을 아래 catch가 `unavailable`로 접으면 "잠시 뒤 다시"가 영원히 뜬다.
   const probe = await probeRepo(owner, repo);
 
-  const connect = planRepoConnect({ probe, userInstallationIds, userRepoFullNames });
+  const connect = planRepoConnect({ probe, userInstallationIds, userRepos, requirePush });
   // ⚠️ **`unavailable`을 거부로 접지 않는다** — `planProjectCreate`가 그것을 그대로 흘리도록
   // 설계됐고, 여기서 접으면 사용자가 있는 권한을 없다고 믿는다 (POSTMORTEM 2026-09-03).
   if (connect.status !== "ok" || probe.status !== "ok") {
@@ -1793,7 +1858,7 @@ export async function addSurfaces(raw: { slug: string; picks: { adapter: string;
   const parsed = z.object({ slug: z.string().min(1).max(40), picks: z.array(z.object({ adapter: z.string(), pathTemplate: z.string().min(1).max(500), baseLocale: z.string().min(1) })).min(1).max(200) }).safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
-  if (new Set(input.picks.map(pick => pick.pathTemplate)).size !== input.picks.length || input.picks.some(pick => !isAdapterName(pick.adapter) || !isPathSafeLocale(pick.baseLocale))) return { ok: false, error: "invalid input" };
+  if (new Set(input.picks.map(pick => pick.pathTemplate)).size !== input.picks.length || input.picks.some(pick => !isAdapterName(pick.adapter) || !isPathSafeLocale(pick.baseLocale) || !isLocaleShaped(pick.baseLocale))) return { ok: false, error: "invalid input" };
   const session = await readSession();
   if (session.status !== "ok") return { ok: false, error: session.status === "none" ? "unauthorized" : "unavailable" };
   const prisma = getPrisma();
@@ -1805,10 +1870,10 @@ export async function addSurfaces(raw: { slug: string; picks: { adapter: string;
   const inputs: AddSurfaceSnapshot[] = [];
   let results: import("@/lib/surfaces/plan-add").SurfaceAdded[];
   try {
-    const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName);
+    const repo = await checkRepoAccess(prisma, session.userId, project.repoOwner, project.repoName, true);
     if (repo.status !== "ok") return { ok: false, error: repo.error };
     if (repo.repositoryId !== project.repositoryId || repo.installationId !== project.installationId) return { ok: false, error: "repo-replaced" };
-    const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId);
+    const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId, repo.repositoryId);
     const snapshot = await reader.snapshot(project.baseBranch);
     if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
     const paths = snapshot.files.map(file => file.path);

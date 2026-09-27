@@ -13,7 +13,7 @@ vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull, saveTran
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectRepository: vi.fn() }));
-const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, sendable: { total: 1, keys: 1 } };
+const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, changedFiles: ["ko.json"] as string[], sendable: { total: 1, keys: 1 } };
 const PUBLISH_LIVE = '[aria-live="polite"]:not([data-footer-result])';
 const ok = (data: unknown) => ({ status: "ok", preview: data });
 function button(name: string) {
@@ -155,7 +155,7 @@ it("꺼진 Publish는 aria-disabled이고 사유를 describedby로 든다", asyn
  *    말하는 것은 `sr-only` 두 줄뿐이고, 지우면 화면은 그대로인 채 뜻만 사라진다.
  */
 it("키 병합은 rowSpan이 들고 diff 두 줄은 낭독될 이름을 든다", async () => {
-  mocks.preview.mockResolvedValue(ok({ total: 2, keys: 1, truncated: 0, openPr: null, withoutFile: 0, withoutKey: 0, sendable: { total: 2, keys: 1 }, groups: [{ surface: "web", path: "en.json", changes: 2, keys: 1, rows: [
+  mocks.preview.mockResolvedValue(ok({ total: 2, keys: 1, truncated: 0, openPr: null, withoutFile: 0, withoutKey: 0, changedFiles: ["en.json"], sendable: { total: 2, keys: 1 }, groups: [{ surface: "web", path: "en.json", changes: 2, keys: 1, rows: [
     { keyId: "k", key: "onboarding.title", localeCode: "en", before: "Welcome", after: "Welcome to malmoi", author: "Jiwon", updatedAt: "", surface: "web", path: "en.json", keySpan: 2 },
     { keyId: "k", key: "onboarding.title", localeCode: "ja", before: null, after: "malmoi へようこそ", author: "Mina", updatedAt: "", surface: "web", path: "en.json", keySpan: 0 },
   ] }] }));
@@ -210,7 +210,7 @@ it.each([[2, true], [0, false]] as const)("파일이 없어 빠진 셀 %i개를 
  * **결과는 실린 수로 말하고 보류는 한 줄이다** (delivery-invariants D7). 미리보기 `total`(보류를 안 뺀 미발송 전체)로 말하면
  * "3 changes are in a pull request" 아래 "1 wasn't sent"가 서는 모순이 된다. 실린 0 + 보류만이면 No changes가 아니다.
  */
-const committedWith = (withheld?: { file: number; key: number }) => ({ status: "committed", delivered: 2, pr: "created", commitSha: "c", changed: ["ko.yml"],
+const committedWith = (withheld?: { file: number; key: number; revertable?: true }) => ({ status: "committed", delivered: 2, pr: "created", commitSha: "c", changed: ["ko.yml"],
   prUrl: "https://github.com/owner/repo/pull/7", ...(withheld === undefined ? {} : { withheld }) });
 it.each([
   ["created", committedWith({ file: 1, key: 0 }), m.translations.publish.createdDescription(2)],
@@ -233,9 +233,18 @@ it("보류가 없으면 결과에 보류 줄이 없다 (짝) · OWNER에게는 R
   expect(document.body.textContent).toContain(m.translations.publish.createdDescription(2));
 });
 it("OWNER의 보류 줄은 파일 추가나 Revert to last sent를 가리킨다", async () => {
-  mocks.pull.mockResolvedValueOnce(committedWith({ file: 0, key: 1 }));
+  mocks.pull.mockResolvedValueOnce(committedWith({ file: 0, key: 1, revertable: true }));
   await render(<Host role="OWNER" />); await click("Publish1"); await click("Open pull request");
   expect(document.body.textContent).toContain(`${m.translations.publish.withheld.key(1)} ${m.translations.publish.withheld.owner.key}`);
+  // 코드에서 지운 키(B3.4)도 같은 줄이다 — Revert를 먼저 가리키고, 키를 "다시" 넣는 것을 둘째로 둔다(B3 r3).
+  expect(m.translations.publish.withheld.owner.key).toBe("Use Revert to last sent, or add the keys back to the language file.");
+});
+it("#129 — 보류된 셀에 되돌릴 기준이 없으면 OWNER 줄이 Revert를 가리키지 않는다", async () => {
+  mocks.pull.mockResolvedValueOnce(committedWith({ file: 0, key: 1 }));
+  await render(<Host role="OWNER" />); await click("Publish1"); await click("Open pull request");
+  const w = m.translations.publish.withheld;
+  expect(document.body.textContent).toContain(`${w.key(1)} ${w.owner.keyNoRevert}`);
+  expect(document.body.textContent).not.toContain(w.owner.key);
 });
 it("미리보기가 키 자리 없는 셀을 따로 말한다", async () => {
   mocks.preview.mockResolvedValue(ok({ ...preview, total: 2, withoutFile: 0, withoutKey: 1, sendable: { total: 1, keys: 1 } }));
@@ -258,6 +267,20 @@ it.each(["OWNER", "EDITOR"] as const)("미리보기 base 파일 부재(%s)는 �
   expect([...document.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(false);
   const settings = [...document.querySelectorAll('[role="dialog"] a')].filter(a => a.getAttribute("href") === "/projects/acme/settings");
   expect(settings).toHaveLength(role === "OWNER" ? 1 : 0);
+  expect(mocks.pull).not.toHaveBeenCalled();
+});
+/** **base 원본을 못 읽는 것도 전용 거부다** (B3 r3) — 실행이 `write-parse-failed`로 막는 상태라 N건을 약속하지 않는다. Try again이 없다. */
+it.each(["OWNER", "EDITOR"] as const)("미리보기 base 파일 읽기 불가(%s)는 경로를 말하는 거부이고 Try again이 없다", async role => {
+  mocks.preview.mockResolvedValue({ status: "refused", reason: "base-file-unreadable", path: "en.json", branch: "main" });
+  await render(<Host role={role} />);
+  await click("Publish1");
+  const text = document.body.textContent ?? "";
+  const r = m.translations.publish.baseFileUnreadable;
+  expect(text).toContain(r.title);
+  expect(text).toContain(r.description("en.json", "main"));
+  expect(text).toContain(role === "OWNER" ? r.owner : r.editor);
+  expect(text).not.toContain(m.translations.publish.baseFileMissing.title);
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(false);
   expect(mocks.pull).not.toHaveBeenCalled();
 });
 /**
@@ -331,7 +354,8 @@ it("닫은 PR이 없으면 그 줄이 없다 (짝)", async () => {
  */
 const sameRow = { keyId: "k", key: "common.ok", localeCode: "ko", before: "확인", after: "확인", author: "Kim", updatedAt: "", surface: "web", path: "ko.json", keySpan: 1, same: true };
 const otherRow = { ...sameRow, keyId: "k2", key: "common.no", before: "아니요", after: "아니", same: false };
-const withRows = (rows: object[], openPr: object | null) => ok({ ...preview, total: rows.length, keys: rows.length, sendable: { total: rows.length, keys: rows.length },
+// 전부 base와 같으면 실행이 파일을 안 바꾼다 — 그 fixture의 `changedFiles`는 비어 있다(#128 r5: `allSame`이 이 목록으로 판정한다).
+const withRows = (rows: object[], openPr: object | null, changedFiles = rows.every(r => (r as { same: boolean }).same) ? [] : ["ko.json"]) => ok({ ...preview, changedFiles, total: rows.length, keys: rows.length, sendable: { total: rows.length, keys: rows.length },
   same: rows.filter(r => (r as { same: boolean }).same).length, openPr, groups: [{ surface: "web", path: "ko.json", changes: rows.length, keys: rows.length, rows }] });
 it("열린 PR의 변경을 되돌리는 행은 그렇다고 말한다 · PR이 없으면 이미 리포에 있다고 말한다", async () => {
   mocks.preview.mockResolvedValue(withRows([sameRow, otherRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }));
@@ -350,6 +374,28 @@ it("전부 되돌린 편집이고 PR이 열려 있으면 미리보기가 그 PR�
   expect(text).not.toContain(m.translations.publish.prOpen.title(9));
   await click(s.closeAction(9));
   expect(mocks.pull).toHaveBeenCalledTimes(1);
+});
+/**
+ * #128 r5 — 편집이 전부 base와 같아도 편집 없는 파일(orphan 줄 제거)이 바뀌면 실행은 커밋하고 PR을 연다. 미리보기가 셀 근사로 "PR을 닫는다"를
+ * 말하면 결과와 정반대다(POSTMORTEM #84). 판정은 실행과 같은 `changedFiles`다.
+ */
+it("#128 r5 — 편집은 전부 base와 같지만 다른 파일이 바뀌면 PR을 닫는다고 말하지 않는다", async () => {
+  mocks.preview.mockResolvedValue(withRows([sameRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }, ["ja.json"]));
+  await render(<Host />); await click("Publish1");
+  const p = m.translations.publish;
+  const text = document.body.textContent ?? "";
+  expect(text).not.toContain(p.same.closesTitle(9));
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === p.same.closeAction(9))).toBe(false);
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === p.replacePr(9))).toBe(true);
+  expect(text).toContain("ja.json");
+});
+it("#128 r5 — 전부 보류면 실행이 아무 파일도 안 바꾸므로 편집 없는 파일 행도 없다", async () => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, total: 1, keys: 1, withoutKey: 1, changedFiles: ["ja.json"], sendable: { total: 0, keys: 0 } }));
+  await render(<Host count={1} />); await click("Publish1");
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(m.translations.publish.nothingSendable.title);
+  expect(text).not.toContain(m.translations.publish.otherFile.label);
+  expect(text).not.toContain("ja.json");
 });
 it("전부 base와 같고 PR이 없으면 파일이 바뀌지 않는다고 말한다", async () => {
   mocks.preview.mockResolvedValue(withRows([sameRow], null));
@@ -375,6 +421,28 @@ it("바뀌는 편집이 있으면 푸터가 파일 수를 센다 (짝)", async (
   mocks.preview.mockResolvedValue(withRows([otherRow], null));
   await render(<Host />); await click("Publish1");
   expect(document.body.textContent).toContain(m.translations.publish.previewSummary(1, 1, 1));
+});
+/**
+ * #128 — PR이 바꾸는 파일은 편집이 사는 파일보다 많을 수 있다(orphan 줄 제거, 닫힌 PR에 실렸던 값의 재전송). 미리보기가 그 파일을 이름으로 세우고
+ * 푸터의 파일 수가 실행(`changedFiles` — 결과의 "N files changed")과 같다.
+ */
+it("#128 — 편집 없이 바뀌는 파일도 표에 서고, 푸터가 실행의 파일 수를 센다", async () => {
+  mocks.preview.mockResolvedValue(withRows([otherRow], null, ["ja.json", "ko.json"]));
+  await render(<Host />); await click("Publish1");
+  const p = m.translations.publish;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(p.previewSummary(1, 1, 2));
+  expect(text).toContain("ja.json");
+  expect(text).toContain(p.otherFile.label);
+  expect(text).toContain(p.otherFile.body);
+});
+it("#128 — 상한 밖 행이 있으면 편집 없는 파일로 단정하지 않는다 · 파일 수는 그대로 실행의 수다 (짝)", async () => {
+  mocks.preview.mockResolvedValue(ok({ ...(withRows([otherRow], null, ["ja.json", "ko.json"]).preview as object), total: 3, truncated: 2, sendable: { total: 3, keys: 1 } }));
+  await render(<Host count={3} />); await click("Publish3");
+  const p = m.translations.publish;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(p.previewSummary(3, 1, 2));
+  expect(text).not.toContain(p.otherFile.label);
 });
 /** #96 — 여러 줄 값의 줄바꿈이 공백으로 접히면 PR이 쓰는 개행과 공백을 미리보기가 구별하지 못한다. − 줄과 + 줄 둘 다다. */
 it("여러 줄 값의 −/+ 줄은 줄바꿈을 지킨다", async () => {

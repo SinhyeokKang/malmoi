@@ -240,6 +240,18 @@ describe("Publish 결과는 조인이 든다 (결정 1)", () => {
     expect((await loadEvents(prisma, "p1", base({ results: ["nothingToSend"] }))).rows.map((r) => r.ref)).toEqual([nothing]);
   });
 
+  /**
+   * writer 경고로 쓰기 전에 멈춘 실행(`skipped/writer-warnings` → SKIPPED + warnings > 0)도 편집을 못 보냈다 — base 파일을 못 읽은 야간 실행이
+   * Logs에 "Nothing to send"로 섰다(2026-09-27 L8.1 실측). 결과 모달은 같은 실행을 `Not sent`로 말한다.
+   */
+  it("SKIPPED + warnings > 0도 notSent다 · 필터가 nothingToSend와 가른다", async () => {
+    const refused = await publishRun("run-x", "SKIPPED", { warnings: 1, changed: 0, occurredAt: new Date(AT.getTime() + 1000) });
+    const nothing = await publishRun("run-n", "SKIPPED", { changed: 0 });
+    expect((await loadEvents(prisma, "p1", base())).rows.map((r) => [r.ref, r.result])).toEqual([[refused, "notSent"], [nothing, "nothingToSend"]]);
+    expect((await loadEvents(prisma, "p1", base({ results: ["notSent"] }))).rows.map((r) => r.ref)).toEqual([refused]);
+    expect((await loadEvents(prisma, "p1", base({ results: ["nothingToSend"] }))).rows.map((r) => r.ref)).toEqual([nothing]);
+  });
+
   it("실행이 나중에 닫혀도 이벤트 쪽 값이 갈리지 않는다", async () => {
     await publishRun("run-1", "RUNNING");
     await prisma.syncRun.update({ where: { id: "run-1" }, data: { status: "SUCCEEDED", changed: 3, warnings: 2, prUrl: "https://x/1" } });

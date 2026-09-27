@@ -4,7 +4,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
  * 수동 Sync 폐기 승인 지문 (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인).
  *
  * **HMAC·만료가 없다.** 토큰 원문이 서버 밖으로 나가지 않으므로(§2) 클라이언트는 지문을 위조할 수 없고, 재사용은
- * 상태 변화(새 편집·적용·설정 변경)가 지문을 바꿔 막는다. 서버는 잠금 **뒤** 같은 입력으로 재계산해 대조한다
+ * 상태 변화(새 편집·적용·설정 변경·리포/브랜치 변경)가 지문을 바꿔 막는다. 서버는 잠금 **뒤** 같은 입력으로 재계산해 대조한다
  * (POSTMORTEM 2026-09-13 "일회용 연결 요청을 락 전에 읽었다").
  *
  * ⚠️ `./plan`과 분리한 이유는 `node:crypto`다 — 판정 모듈은 화면이 값으로 읽는다.
@@ -13,6 +13,11 @@ import { createHash, timingSafeEqual } from "node:crypto";
 export type DiscardFingerprintInput = {
   userId: string;
   projectId: string;
+  /**
+   * ⚠️ **승인이 덮을 리포·브랜치다** (audit #3) — 표면 설정만 넣으면 `main` 기준으로 받은 승인이 기준 브랜치를 `release`로 바꾼 뒤에도
+   * 통과해, OWNER가 본 적 없는 브랜치 값으로 편집을 덮는다. 연결·설정 변경은 revision을 올리지 않으므로 값 자체를 싣는다.
+   */
+  repository: { repositoryId: string | null; installationId: string | null; repoOwner: string; repoName: string; baseBranch: string };
   surfaces: readonly { id: string; importRevision: number; adapterName: string | null; pathTemplate: string | null; baseLocale: string | null }[];
   pending: readonly { id: string; token: string }[];
 };
@@ -23,6 +28,7 @@ export function discardFingerprint(input: DiscardFingerprintInput): string {
   const canonical = JSON.stringify([
     input.userId,
     input.projectId,
+    [input.repository.repositoryId, input.repository.installationId, input.repository.repoOwner, input.repository.repoName, input.repository.baseBranch],
     [...input.surfaces].sort(byId).map(s => [s.id, s.importRevision, s.adapterName, s.pathTemplate, s.baseLocale]),
     [...input.pending].sort(byId).map(p => [p.id, p.token]),
   ]);

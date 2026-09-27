@@ -2,18 +2,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
   request: vi.fn(),
-  getInstallationOctokit: vi.fn(),
+  auth: vi.fn(),
   appCalls: { count: 0 },
 }));
 
+// 토큰은 저장소 ID로 좁혀 받는다(sec-audit-3 #16) — 스코프 단언은 `repository-client.test.ts`가 한다.
 vi.mock("octokit", () => ({
   App: class {
     constructor() {
       hoisted.appCalls.count += 1;
     }
-    getInstallationOctokit = hoisted.getInstallationOctokit;
+    octokit = { auth: hoisted.auth };
   },
-  Octokit: class {},
+  Octokit: class {
+    request = hoisted.request;
+  },
 }));
 
 const { listBranches } = await import("@/lib/github");
@@ -35,8 +38,8 @@ beforeEach(() => {
   vi.stubEnv("GITHUB_APP_PRIVATE_KEY", "-----BEGIN RSA PRIVATE KEY-----\nx\n-----END RSA PRIVATE KEY-----");
   hoisted.appCalls.count = 0;
   hoisted.request.mockReset();
-  hoisted.getInstallationOctokit.mockReset();
-  hoisted.getInstallationOctokit.mockResolvedValue({ request: hoisted.request });
+  hoisted.auth.mockReset();
+  hoisted.auth.mockResolvedValue({ token: "scoped-token" });
 });
 
 afterEach(() => {
@@ -47,7 +50,7 @@ describe("listBranches — 브랜치 목록 껍데기", () => {
   it("한 페이지면 그대로 낸다", async () => {
     hoisted.request.mockResolvedValueOnce(page(["main", "develop"]));
 
-    expect(await listBranches("acme", "web", "77")).toEqual({
+    expect(await listBranches("acme", "web", "77", "1035512")).toEqual({
       status: "ok",
       names: ["main", "develop"],
       truncated: false,
@@ -58,7 +61,7 @@ describe("listBranches — 브랜치 목록 껍데기", () => {
     const first = Array.from({ length: 100 }, (_, i) => `b${i}`);
     hoisted.request.mockResolvedValueOnce(page(first)).mockResolvedValueOnce(page(["tail"]));
 
-    const result = await listBranches("acme", "web", "77");
+    const result = await listBranches("acme", "web", "77", "1035512");
 
     expect(result).toEqual({ status: "ok", names: [...first, "tail"], truncated: false });
     expect(hoisted.request).toHaveBeenCalledTimes(2);
@@ -69,7 +72,7 @@ describe("listBranches — 브랜치 목록 껍데기", () => {
     const full = Array.from({ length: 100 }, (_, i) => `b${i}`);
     hoisted.request.mockResolvedValue(page(full));
 
-    const result = await listBranches("acme", "web", "77");
+    const result = await listBranches("acme", "web", "77", "1035512");
 
     expect(hoisted.request).toHaveBeenCalledTimes(3);
     expect(result).toEqual({ status: "ok", names: Array.from({ length: 300 }, (_, i) => `b${i % 100}`), truncated: true });
@@ -78,36 +81,36 @@ describe("listBranches — 브랜치 목록 껍데기", () => {
   it("`createApp()`을 한 번만 부른다 — 호출마다 부르면 설치 토큰 발급이 그만큼 는다", async () => {
     hoisted.request.mockResolvedValueOnce(page(["main"]));
 
-    await listBranches("acme", "web", "77");
+    await listBranches("acme", "web", "77", "1035512");
 
     // App은 모듈 안에서 요청 사이에 남는다(audit-ux #8) — 앞선 테스트가 이미 만들었으면 0이다. 요지는 "둘 이상이 아니다".
     expect(hoisted.appCalls.count).toBeLessThanOrEqual(1);
-    expect(hoisted.getInstallationOctokit).toHaveBeenCalledWith(77);
+    expect(hoisted.auth).toHaveBeenCalledWith({ type: "installation", installationId: 77, repositoryIds: [1035512] });
   });
 
   it("GitHub 실패는 값이다 — ①을 막지 않는다 (예외 D)", async () => {
     hoisted.request.mockRejectedValueOnce(Object.assign(new Error("boom"), { status: 500 }));
 
-    expect(await listBranches("acme", "web", "77")).toEqual({ status: "unavailable" });
+    expect(await listBranches("acme", "web", "77", "1035512")).toEqual({ status: "unavailable" });
   });
 
   it("404도 값이다 — 권한 없는 리소스에도 404가 오므로 '브랜치가 없다'로 단정하지 않는다", async () => {
     hoisted.request.mockRejectedValueOnce(Object.assign(new Error("nope"), { status: 404 }));
 
-    expect(await listBranches("acme", "web", "77")).toEqual({ status: "unavailable" });
+    expect(await listBranches("acme", "web", "77", "1035512")).toEqual({ status: "unavailable" });
   });
 
   it("환경변수 누락은 **던진다** — 설정 오류를 '잠시 뒤 다시'로 위장하지 않는다", async () => {
     vi.stubEnv("GITHUB_APP_ID", "");
     vi.stubEnv("GITHUB_APP_PRIVATE_KEY", "");
 
-    await expect(listBranches("acme", "web", "77")).rejects.toBeInstanceOf(MissingEnvError);
+    await expect(listBranches("acme", "web", "77", "1035512")).rejects.toBeInstanceOf(MissingEnvError);
   });
 
   it("`/`가 든 이름을 이중 인코딩 없이 그대로 낸다 (POSTMORTEM 2026-09-01)", async () => {
     hoisted.request.mockResolvedValueOnce(page(["release/2.0"]));
 
-    const result = await listBranches("acme", "web", "77");
+    const result = await listBranches("acme", "web", "77", "1035512");
 
     expect(result).toEqual({ status: "ok", names: ["release/2.0"], truncated: false });
   });

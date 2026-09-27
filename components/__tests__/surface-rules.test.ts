@@ -64,6 +64,8 @@ describe("DESIGN §4.1 — mono는 코드 블록 전용이다", () => {
   const ALLOWED = [
     // 워크플로 YAML — 원본 줄바꿈과 들여쓰기가 값의 일부다.
     "components/onboarding/workflow-block.tsx",
+    // `/docs` 원고의 코드 블록 — 펜스의 줄바꿈과 들여쓰기가 값의 일부다(DESIGN §6.61).
+    "components/docs/code-block.tsx",
   ];
 
   it("허용 목록 밖에서 `text-mono`를 쓰지 않는다", () => {
@@ -87,7 +89,16 @@ describe("DESIGN §4.1 — mono는 코드 블록 전용이다", () => {
   it("`<code>`는 `font-sans`나 `text-mono` 중 하나를 명시한다", () => {
     // ⚠️ 매칭이 0인 스캐너는 장식이다 — 먼저 `<code>` 자리가 실재하는지 센다.
     expect(lines((text) => /<code\b/.test(text)).length).toBeGreaterThan(0);
-    expect(lines((text) => /<code\b/.test(text) && !/font-sans|text-mono/.test(text))).toEqual([]);
+    expect(lines((text) => /<code\b/.test(text) && !/font-sans|text-mono|INLINE_CODE/.test(text))).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **`/docs` 원고의 인라인 코드는 mono다**(시안 `Docs.dc.html` 1b — 0.875em, DESIGN §6.61) — 본문 16 안에서 13 고정인
+   * `text-mono`가 아니라 글꼴만 mono로 두고 크기는 문장을 따른다. 그 상수 하나가 `font-mono`를 드는지 여기서 고정한다.
+   */
+  it("`INLINE_CODE`(원고 인라인 코드)는 `font-mono`를 명시한다", async () => {
+    const { INLINE_CODE } = await import("@/components/docs/classes");
+    expect(INLINE_CODE.split(" ")).toContain("font-mono");
   });
 });
 

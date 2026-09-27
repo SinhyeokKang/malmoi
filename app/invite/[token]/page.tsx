@@ -1,6 +1,7 @@
 import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import { decodeInvitation, decodeUser } from "@/lib/credentials/records";
 import { credentialIO } from "@/lib/credentials/access";
+import type { Metadata } from "next";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -31,7 +32,7 @@ import { acceptInvitation } from "../actions";
 /**
  * 초대 수락 화면 — **셸 밖 카드다** (DESIGN §6.62 · §5.1).
  *
- * ⚠️ **미들웨어 matcher 밖이다** (ARCHITECTURE §6.1). 비로그인으로 열려야 토큰이 보존된다 — matcher에
+ * ⚠️ **1차 차단의 보호 경로(`isProtectedPath`) 밖이다** (ARCHITECTURE §6.1). 비로그인으로 열려야 토큰이 보존된다 — 거기
  * 넣으면 세션 없는 요청이 로그인 화면(`/signin`)으로 302되고 그 순간 링크의 토큰이 사라진다.
  *
  * ⚠️ **비로그인에게 보이는 것은 마스킹한 이메일·프로젝트 이름·역할뿐이다.** 조건부 렌더이지만
@@ -40,6 +41,13 @@ import { acceptInvitation } from "../actions";
  * 실패는 이 초대의 지속되는 조건이므로 모두 인라인이다(DESIGN §6.25).
  * planInviteView가 알림과 CTA를 함께 고른다. 인가 경계는 여전히 수락 Action이다.
  */
+
+/**
+ * ⚠️ **색인 거부 + referrer 없음** (seo-geo). robots.txt로 막지 **않는다** — 막으면 크롤러가 이 noindex를 못 보고 외부 링크만으로
+ * 토큰 URL이 색인된다. `no-referrer`는 Analytics 방어다 — 푸터 링크를 새 탭으로 열면 같은 출처 referrer가 전체 URL이고
+ * Vercel 스크립트가 그것을 싣는데 `beforeSend`는 `url`만 바꿀 수 있다.
+ */
+export const metadata: Metadata = { title: m.invite.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 export default async function InvitePage({
   params,

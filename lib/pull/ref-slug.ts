@@ -16,6 +16,15 @@
  */
 export const SYNC_BRANCH_PREFIX = "malmoi-i18n/sync-";
 
+/**
+ * **base 브랜치가 될 수 없는 이름** (malmoi#126) — Malmoi가 force update하는 산출물이다. base가 되면 Sync는 미머지 산출물을 읽고
+ * Publish는 그 브랜치에서 자기 자신으로 PR을 낸다. ⚠️ **이 프로젝트 것만이 아니라 접두 전체다** — 같은 리포의 다른 프로젝트 sync
+ * 브랜치도 같은 산출물이다. 목록 필터(`planBranchChoice`)와 저장 거부(설정·온보딩 Action)가 이 하나를 쓴다.
+ */
+export function isSyncBranchName(name: string): boolean {
+  return name.startsWith(SYNC_BRANCH_PREFIX);
+}
+
 /** `git check-ref-format`이 받아주는 문자만. 슬래시를 빼는 것은 `malmoi-i18n/sync-<slug>`의 세그먼트를 하나로 두려는 것이다. */
 export const REF_SAFE_SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 

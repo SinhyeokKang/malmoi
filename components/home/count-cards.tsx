@@ -99,7 +99,7 @@ export function CountCards({ cards, slug, surfaceSlug, now }: { cards: readonly 
                   */}
                   <span
                     className={cn(
-                      "text-2xl font-medium",
+                      "text-2xl font-semibold",
                       card.muted ? "text-neutral-400" : card.tone === "accent" ? "text-blue-600" : undefined,
                     )}
                   >

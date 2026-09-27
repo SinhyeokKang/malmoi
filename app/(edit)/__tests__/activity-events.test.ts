@@ -25,6 +25,20 @@ vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/pull/trigger", () => ({ triggerPull: hoisted.triggerPull }));
+vi.mock("@/lib/github-connect/token-store", () => ({ ensureUserToken: async () => ({ status: "ok", accessToken: "user-token" }) }));
+/**
+ * 토큰 회전은 리포 쓰기 권한 확인을 지난다(sec-audit-3 결정 I) — 연결된 리포 하나에 쓸 수 있는 사용자로 고정한다.
+ * 권한 갈래 자체는 `onboarding.test.ts`의 `rotatePushToken — 리포 쓰기 권한`이 잰다.
+ */
+vi.mock("@/lib/github-connect/user", async (orig) => ({
+  ...(await orig<typeof import("@/lib/github-connect/user")>()),
+  listUserInstallations: async () => ["1"],
+  listInstallationRepos: async () => [{ fullName: "o/r", pushedAt: null, push: true }],
+}));
+vi.mock("@/lib/github", async (orig) => ({
+  ...(await orig<typeof import("@/lib/github")>()),
+  probeRepo: async () => ({ status: "ok", installationId: "1", repositoryId: "100", fullName: "o/r", defaultBranch: "main" }),
+}));
 vi.mock("@/lib/invitation-email/send", () => ({
   readInvitationEmailConfigFromEnv: () => ({ status: "ready", apiKey: "k", from: "invite@notify.mal-moi.com", origin: "http://localhost:3000" }),
   sendInvitationEmails: hoisted.send,
@@ -39,7 +53,7 @@ const ARCHIVED_AT = new Date("2026-09-10T00:00:00Z");
 let db: ReturnType<typeof createHarness>;
 
 function seeded(over: Seed = {}) {
-  return createHarness({
+  const harness = createHarness({
     projects: [
       { id: "pA", slug: "alpha", lastCommitSha: "a".repeat(40), installationId: "1" },
       { id: "pB", slug: "beta", archivedAt: ARCHIVED_AT, lastCommitSha: "b".repeat(40), installationId: "1" },
@@ -57,6 +71,9 @@ function seeded(over: Seed = {}) {
     locales: [{ projectId: "pA", code: "ko", isBase: false, orphaned: false }],
     ...over,
   });
+  // 회전의 쓰기 권한 확인(결정 I)이 고정된 리포 신원과 대조한다 — 시드 타입에 없는 컬럼이라 뒤에 싣는다.
+  Object.assign(harness.projects.find((p) => p.id === "pA")!, { repositoryId: "100" });
+  return harness;
 }
 
 beforeEach(() => {

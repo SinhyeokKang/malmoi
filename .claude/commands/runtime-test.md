@@ -2,7 +2,7 @@
 description: ego-browser 태스크 스페이스에서 앱을 수동 검증하고, 발견한 결함을 BugShot 확장으로 GitHub 이슈로 제출한다. 리포트+이슈 전용 — 코드 수정·빌드·커밋 안 함.
 ---
 
-**실물 브라우저로 편집 UI를 훑어 결함을 찾고, BugShot으로 이슈를 낸다.** `pnpm test`가 값은 보지만 화면은 못 본다 — 라우트 이관·권한 UI 노출·거부 문구·입력값 유지처럼 **렌더 결과가 판정인 축**이 이 스킬의 자리다. `/l10n-roundtrip`이 어댑터 표현 층에 대해 하는 일을 편집 UI에 대해 한다.
+**실물 브라우저로 편집 UI를 훑어 결함을 찾고, BugShot으로 이슈를 낸다.** `pnpm test`가 값은 보지만 화면은 못 본다 — 라우트 이관·권한 UI 노출·거부 문구·입력값 유지처럼 **렌더 결과가 판정인 축**이 이 스킬의 자리다. `/roundtrip`이 어댑터 표현 층에 대해 하는 일을 편집 UI에 대해 한다.
 
 **전 경로가 실측으로 통과했다** (2026-09-06, tenant-auth 라운드 — malmoi#3·bugshot-2#228 제출). 아래 규칙은 전부 그 라운드에서 **틀려본 뒤** 고친 것이다.
 
@@ -120,6 +120,14 @@ await js(String.raw`(async () => {
 10. **정리.** `completeTaskSpace(id, { keep: false })` + dev 서버 정지 + 워킹 트리 clean 확인.
 11. **리포트.** 대화 응답으로. **실패·skip·못 밟은 시나리오를 성공 요약보다 먼저.** 제출한 이슈 URL을 목록으로. 실패가 나오면 `docs/POSTMORTEM.md`를 해당 영역으로 grep해 과거 함정과 대조한 뒤 리포트에 포함한다.
 
+### 7.1 픽스처 — 특정 갈래는 특정 리포·상주 프로젝트로만 밟힌다
+
+- ⚠️ **로케일이 많은 리포가 하나 필요하다 — `i18n-many-locales`다** (2026-09-13, excalidraw 포크 · `packages/excalidraw/locales/{locale}.json` **59로케일** · json-catalog). 폐기용 셋은 전부 **로케일이 3개**라 `sampleOrder`가 처음부터 전부 실어서, 온보딩 ②의 **lazy load**(누른 언어만 받는 경로)와 **세그먼트→`Select` 접힘**(다섯 이상)이 **한 번도 안 밟힌다**. 그 둘을 보려면 이 리포다. ⚠️ **쓰기 검증에는 쓰지 않는다** — 포크라 PR 흔적이 남고, `/roundtrip`의 "폐기용 리포만" 규칙은 그대로다.
+- ⚠️ **로케일이 하나도 없는 리포도 하나 필요하다 — `i18n-none`이다** (2026-09-13, `sindresorhus/p-map` 포크 · 74KB · MIT). 온보딩 ②의 **후보 0개**(예외 E — 좌측이 수동 지정 폼이 되고 우측이 "Nothing to preview yet"인 갈래)는 **설치된 다른 다섯이 전부 로케일 리포라 브라우저로 영영 못 밟는다.** 그 갈래는 되돌릴 수 없는 결정 직전의 화면인데 단위 테스트로만 고정돼 있었다. **74KB를 고른 이유는 트리 조회가 즉시 끝나서다** — `i18n-many-locales`는 탐지에 30초가 넘는다. ⚠️ **쓰기 검증에는 쓰지 않는다**(포크라 PR 흔적이 남는다).
+- ⚠️ **dev DB의 `bugshot-i18n-test-qa`는 지우지 않는다** (2026-09-13 사용자 — **프로젝트 생성 검증용 상주**). ⚠️ **2026-09-18 사용자 요청으로 dev DB를 통째로 초기화하면서 이 프로젝트도 지웠다**(install-and-connect를 처음 상태에서 검증하려고) — 지금은 없다. ④를 다시 볼 때 정상 온보딩으로 한 번 만들고 그때부터 다시 상주다. ④(결과 화면)는 **프로젝트를 실제로 만들어야만** 도달하므로, 그 화면을 볼 때마다 새로 만들면 dev DB에 일회용 프로젝트가 쌓인다. 리포는 폐기용(`bugshot-i18n-test`)이고 **생성은 리포에 아무것도 쓰지 않는다**(③의 info가 그 사실을 말한다) — 남겨도 외부 흔적이 없다.
+  - **단계 B의 상주 QA 보존**: `bugshot-i18n-test-qa`는 정상 온보딩으로 재생성한 dev 검증 프로젝트다. 초기화 절차를 재실행하지 않는다. 같은 이름의 key/locale 공존·교차 FK·Add surface 원자성·실제 Project 생성은 `pnpm test:projects:postgres`가 검증한다. 빈 prod DB의 precondition 0건은 그 방어의 근거가 아니다.
+- ⚠️ **GitHub App 설치 왕복(①의 1클릭 설치·요청 복귀·승인 복귀)은 로컬에서 못 밟는다** — 설치 URL이 `redirect_uri`를 안 받아 dev App의 첫 callback(`dev.mal-moi.com`)으로 간다. 왕복은 preview에서 본다. 로컬에서는 보조 링크(Authorize)로 연결하고, 승인 대기 화면은 dev DB의 `Account.installRequestedAt`을 직접 심어 본다(OPERATIONS "설치 중 인가").
+
 ## 8. 어느 리포에 내는가
 
 | 결함 | 어디로 |
@@ -128,7 +136,12 @@ await js(String.raw`(async () => {
 | **BugShot** 결함 | `gh issue create -R SinhyeokKang/bugshot-2` — BugShot이 자기 자신을 못 찍는 상황이 있다 |
 | **ego-browser** 결함 | 사용자에게 보고만 — 우리 리포가 아니다 |
 
-BugShot 제출이 막히면 말모이 결함도 `gh issue create` 폴백으로 낸다 — **관측 결과를 잃지 않는 것이 우선이다.** 폴백을 썼다는 사실을 리포트에 적는다.
+⚠️ **BugShot 제출은 생략할 수 없다** (2026-09-27 사용자 — "버그샷 실사용 테스트도 겸하는 게이트"). 이 게이트는 말모이 검증과 **BugShot 스토어 빌드의 실사용 테스트**를 겸한다 — 시간을 아끼려고, 이슈가 여러 건이라서, 워커가 브라우저 조작이 번거로워서 `gh issue create`로 바로 내면 **BugShot 쪽 검증이 통째로 빠진다.** 말모이 결함은 **한 건도 빠짐없이** §3–7의 BugShot 경로로 낸다.
+
+폴백은 **BugShot 자체가 막혔을 때만**이다(패널이 안 열림 · 캡처 실패 · 제출 오류). 그때 순서가 정해져 있다:
+1. **막힌 것 자체를 BugShot 결함으로 먼저 낸다** — `gh issue create -R SinhyeokKang/bugshot-2`(재현 절차 · 확장 ID · 화면). 이것이 이 게이트가 찾으려던 것이다.
+2. 그다음 말모이 결함을 `gh issue create -R SinhyeokKang/malmoi`로 낸다 — **관측 결과를 잃지 않는다.** 본문 첫 줄에 `Filed without BugShot — blocked by SinhyeokKang/bugshot-2#<n>`.
+3. 리포트의 "미완·폴백" 절에 두 번호를 짝으로 적는다. **bugshot-2 이슈 번호 없는 폴백은 규칙 위반이다.**
 
 **확신하지 못하는 것을 BugShot 결함으로 올리지 않는다.** 자동화의 헛클릭과 제품 버그는 증상이 같다 — DOM 속성처럼 직접 확인한 부분만 단언하고, 나머지는 이슈 본문에 `unverified`로 갈라 쓴다.
 
@@ -151,8 +164,9 @@ BugShot 제출이 막히면 말모이 결함도 `gh issue create` 폴백으로 �
 
 - **§7 9단계의 제출 게이트를 건너뛰지 않는다.**
 - **코드 수정 금지.** `lib/`·`app/`·`prisma/` 일체. 결함이 나와도 고치지 않는다.
-- **`.env.local` 편집·값 출력 금지** (CLAUDE.md 새 머신 셋업 3항).
+- **`.env.local` 편집·값 출력 금지** (CLAUDE.md 새 머신 셋업).
 - **`?tabId=` 검증 생략 금지** (§4).
+- **BugShot 제출 생략 금지** (§8) — 말모이 결함을 `gh issue create`로 바로 내지 않는다. 폴백은 BugShot이 막혔을 때만이고, 그 막힘을 bugshot-2 이슈로 먼저 낸다.
 - **BugShot 설정 변경 금지** — 연결된 계정·선택된 리포·기본 라벨을 임의로 바꾸지 않는다.
 - **prod DB를 겨누지 않는다.** 이 스킬은 dev(`DIRECT_URL`)만 쓴다.
 - **스크린샷·녹화물을 저장소에 넣지 않는다.** 세션 스크래치패드에만.
