@@ -117,22 +117,22 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 
 ## B4 — 적재 완전성·온보딩·스캔
 
-- [ ] **B4.1 · 🟡 audit #7 — 파일 다운로드 실패를 소스 삭제로 취급하지 않기**
+- [x] **B4.1 · 🟡 audit #7 — 파일 다운로드 실패를 소스 삭제로 취급하지 않기**
   - 근거: [ingest.ts](../../../lib/onboarding/ingest.ts), 110·136행; [push/plan.ts](../../../lib/push/plan.ts), 282행.
   - 재현: Git 트리에 `a.ts`·`b.ts`가 있으나 `b.ts` 다운로드가 재시도까지 실패하고 `a.ts`만 성공한다. 부분 payload 때문에 기존 `b.ts` 키가 orphan 처리되는지 확인한다.
   - 완료 조건: 불완전한 스냅샷으로 해당 키의 삭제를 확정하지 않는다. 성공한 재Sync와 실제 파일 삭제는 정상 처리한다. DB 값 보존뿐 아니라 편집·Publish 대상 유지도 검증한다.
 
-- [ ] **B4.2 · 🟡 audit #13 — ts-dict 탐지 결과와 `.tsx` 파일 선택 일치**
+- [x] **B4.2 · 🟡 audit #13 — ts-dict 탐지 결과와 `.tsx` 파일 선택 일치**
   - 근거: [ts-dict.ts](../../../lib/adapters/ts-dict.ts), 24·201행; [confirm.ts](../../../lib/onboarding/confirm.ts).
   - 재현: `.tsx` 딕셔너리만 있는 리포를 탐지하고 확인·적재까지 진행한다. 탐지 성공 뒤 `*.ts`로 0개 선택되는 경로를 확인한다.
   - 완료 조건: 자동 탐지와 수동 확인이 실제 확장자에 맞는 같은 파일 집합을 선택한다. `.ts`·`.tsx` 혼합의 지원/거부도 명시적으로 검증한다.
 
-- [ ] **B4.3 · 🟡 audit #14 — 파싱 실패한 초기 샘플을 빈 로케일로 캐시하지 않기**
+- [x] **B4.3 · 🟡 audit #14 — 파싱 실패한 초기 샘플을 빈 로케일로 캐시하지 않기**
   - 근거: [detect.ts](../../../lib/onboarding/detect.ts), 191행; [new-project.tsx](../../../components/onboarding/new-project.tsx), 샘플 ready 캐시 경로.
   - 재현: 정상 `en`과 깨진 `ko`에서 후보를 선택한다. 초기 샘플의 `ko`가 0키 ready로 표시되고 재조회도 생략되는지 확인한다.
   - 완료 조건: 초기·지연 샘플 조회가 실패와 정상 빈 로케일을 같은 기준으로 구분한다. 정상 빈 파일은 오류로 바꾸지 않는다.
 
-- [ ] **B4.4 · 🟡 audit #16 — 부가 사용처 파일 읽기 실패를 경고로 처리**
+- [x] **B4.4 · 🟡 audit #16 — 부가 사용처 파일 읽기 실패를 경고로 처리**
   - 근거: [push-local.ts](../../../scripts/push-local.ts), 149행; [scan.ts](../../../scripts/scan.ts), 55행.
   - 재현: 로케일 파일은 정상인 상태에서 무관한 소스 파일 읽기에 `EACCES`를 발생시킨다. refs 수집이 적재 전체를 중단하는지 확인한다.
   - 완료 조건: 부가 스캔 실패는 경고로 남기고 정상 로케일 적재를 진행한다. 필수 로케일 파일 실패와 인자 오류는 기존 실패 계약을 유지한다.
@@ -216,7 +216,7 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 | B1 | 코드 완료 · 브라우저 미검증 | c9ad7f41·efebc706 — 잠금 뒤 Account 재조회, 사라짐=unlinked·소유자 변경=keep | test 6944 · credentials PG 65 | — |
 | B2 | 코드 완료 · 브라우저 미검증 | 지문·건수를 한 응답 state로(`sync-button`), 지문에 리포 5필드 | test 6917 · projects PG 312 | reconfirm 문구가 원인 중립이 아님(⚪, 후속) |
 | B3 | 코드 완료 · 실 리포 왕복 미검증 | 재생성 비-base 0개→`{}`, 자리 없는 셀 보류(cron·미리보기 같은 `keySlot`), code-dict 마지막 프로퍼티만, unmanaged 이웃 면제, **B3.4 base 키 집합=원본**(원본 base 파싱 불가면 차단 — 계획과 다름, 수용) | test 6986 · projects PG 314 · build | base 삭제 키의 보류 편집은 Revert·폐기 Sync·키 복구 전까지 CI 보류를 유지 · 비-base는 보류 중 지운 키의 번역이 되살아남(strict 범위) |
-| B4 | 미착수 | — | — | — |
+| B4 | 코드 완료 · 브라우저 미검증 | 불완전 적재(다운로드·파싱)면 그 실행 orphan 끔 · push:local 로케일 읽기 실패=red(`prepare-failed`) · ts-dict 확장자별 템플릿 · 실패 샘플=unavailable · 소스 파일 읽기 실패=경고 | test 7002 · projects PG 317 · build | **CI 쪽은 action 태그(`malmoi-i18n-push-v1`)를 옮겨야 대상 리포에 닿는다** — `/merge` 뒤 action 릴리스 |
 | B5 | 코드 완료 · 브라우저 미검증 | Revert busy/unsettled를 공통 창으로, 복원 기준=돌아온 키, Sync 시작 시점 스냅샷으로 새 세대(계획의 epoch 대신 — 커밋 순서 둘 다 덮음) | test 6944 · projects PG 314 | 필터를 바꾼 채 Sync 결과가 먼저 오면 재필터 전까지 새 키 미표시 · `publishInFlight` 무경계(범위 밖) |
 | B6 | 6.1–6.3 코드 완료 · 6.4는 L2.12 | 행별 pending Map/Set, Tab 통과, 테스트 resolver 정리 | test 6944 | B6.2 실 키보드 확인 미수행 · 같은 grep 8건 기록만 |
 | B7 | 7.1–7.3 완료 · 7.4 미착수 | 안쪽 allSettled(POSTMORTEM 09-13 재발), classify 기준 충돌 집계, survey async + 인덱스 순서 | test 6944 | 7.3 스크립트의 async 러너 줄은 테스트 밖(주석이 방어) |
