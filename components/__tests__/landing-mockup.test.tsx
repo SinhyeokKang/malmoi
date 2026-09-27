@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockupScenes } from "@/components/landing/mockup";
 import { Stage } from "@/components/landing/stage";
 import { m } from "@/lib/i18n";
+import { navFooterItems, navZones } from "@/lib/shell/nav";
 
 import { find, render } from "./helpers/dom";
 
@@ -47,6 +48,89 @@ describe("목업 — 조작 대상이 아니다", () => {
     expect(frame.querySelectorAll("button, a, input, textarea, select, [tabindex], [contenteditable]")).toHaveLength(0);
     // 씬 다섯이 전부 무언가를 그렸다 — 빈 레이어로 통과하지 않는다.
     for (let k = 0; k < 5; k += 1) expect(layer(container, k).textContent?.length ?? 0).toBeGreaterThan(20);
+  });
+});
+
+/**
+ * **목업은 제품과 1:1이다** (2026-09-27 사용자 — "LNB에 계정 페이지가 없고, 번역 화면에 소스 패널이 없다"). 구조를 실제 판정·실제
+ * 컴포넌트의 구획에서 뽑아 견준다 — 손으로 목록을 두 벌 두면 사이드바가 바뀔 때 목업만 낡는다.
+ */
+describe("목업 — 제품과 같은 구조다", () => {
+  const zones = navZones(
+    { slug: "acme-web", name: fixture.project, role: "OWNER", archived: false, counts: { sources: fixture.sources.length, members: fixture.memberCount, keys: fixture.keyCount } },
+    { userName: fixture.user, projectCount: fixture.projectCount },
+  );
+
+  it("LNB가 사이드바와 같은 구역·항목·배지다 — 사용자 구역(Projects · Account) · 프로젝트 구역 · 하단 목록", async () => {
+    const scene = layer(await mount(), 0);
+    const zoneText = (key: string) => find(scene, `[data-landing-zone="${key}"]`);
+    const items = (key: string) => [...zoneText(key).querySelectorAll("[data-landing-nav]")].map((node) => node.textContent);
+    expect(zones.map((zone) => zone.key)).toEqual(["work", "project"]);
+    for (const zone of zones) {
+      expect(zoneText(zone.key).querySelector("p > span.truncate")?.textContent).toBe(zone.label);
+      expect(items(zone.key)).toEqual(zone.items.map((item) => `${item.label}${item.badge ?? ""}`));
+    }
+    expect(items("work")).toEqual([`${m.common.nav.projects}${fixture.projectCount}`, m.common.nav.account]);
+    expect(items("footer")).toEqual(navFooterItems().map((item) => item.label));
+    // Sign out은 하단이 아니라 아바타 메뉴의 것이다(MISC 배치) — 목업 LNB에 따로 서지 않는다.
+    expect(scene.querySelector("[data-landing-lnb]")?.textContent).not.toContain(m.common.nav.signOut);
+    // 선택은 Translations 하나다.
+    expect([...scene.querySelectorAll("[data-landing-nav]")].filter((node) => node.className.includes("bg-foreground/[0.07]")).map((node) => node.getAttribute("data-landing-nav"))).toEqual(["translations"]);
+  });
+
+  it("LNB 폭이 실제 셸의 기본 240이다", async () => {
+    expect(find(layer(await mount(), 0), "[data-landing-lnb]").className).toContain("w-[240px]");
+  });
+
+  it("번역 화면에 소스 트리가 있다 — 보고 있는 소스가 펼쳐지고 `All namespaces`가 선택, 나머지는 접힌다", async () => {
+    const scene = layer(await mount(), 0);
+    const tree = find<HTMLElement>(scene, "[data-landing-tree]");
+    expect(tree.className).toContain("w-[260px]");
+    expect(tree.textContent).toContain(m.translations.workspace.tree.title);
+    const [current, ...rest] = fixture.sources;
+    const open = find(tree, `[data-landing-source="${current?.slug}"]`);
+    expect(open.textContent).toContain(m.translations.workspace.tree.allNamespaces);
+    for (const namespace of current?.namespaces ?? []) expect(open.textContent).toContain(namespace.name);
+    // 네임스페이스 합이 소스의 키 수이고, 소스 합이 프로젝트 키 수다.
+    expect((current?.namespaces ?? []).reduce((sum, n) => sum + n.keyCount, 0)).toBe(current?.keyCount);
+    expect(fixture.sources.reduce((sum, source) => sum + source.keyCount, 0)).toBe(fixture.keyCount);
+    for (const source of rest) expect(find(tree, `[data-landing-source="${source.slug}"]`).children).toHaveLength(1);
+    // 선택된 네임스페이스 칸은 보고 있는 소스 안의 `All namespaces` 하나다.
+    expect([...tree.querySelectorAll(".bg-foreground\\/\\[0\\.04\\]")].map((node) => node.textContent)).toEqual([`${m.translations.workspace.tree.allNamespaces}${current?.keyCount}`]);
+  });
+
+  it("머리에 필터 셋(완성도 · 상태 · 범위)과 검색이 있다", async () => {
+    const scene = layer(await mount(), 0);
+    const f = m.translations.workspace.filters;
+    for (const label of [f.completion.all, f.state.any, f.scope.source]) expect(scene.textContent).toContain(label);
+    expect(find(scene, "[data-landing-search]").textContent).toBe(f.search);
+  });
+
+  /** 실제 목록은 미완을 먼저 둔다(`Incomplete first` — `rank`). 목업이 완료 행을 앞에 두면 머리 문구가 거짓이다. */
+  it("키 목록이 미완 먼저다", () => {
+    const ranks = fixture.rows.map((row) => (row.missing > 0 ? 0 : 1));
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  });
+
+  it("④ 확정 버튼은 `Open pull request` 하나이고 Cancel이 없다 · 열린 PR 없음 안내 · 저자 열", async () => {
+    const scene = layer(await mount(), 3);
+    const text = scene.textContent ?? "";
+    expect(text).toContain(p.openPr);
+    expect(text).not.toContain(m.common.cancel);
+    expect(text).toContain(p.prNone.title(fixture.repo));
+    expect([...scene.querySelectorAll("[data-landing-author]")].map((node) => node.textContent)).toEqual(
+      fixture.diff.map((row) => (row.key === fixture.selected.key ? fixture.user : fixture.teammate)),
+    );
+  });
+
+  it("⑤ 확정 버튼은 `View pull request`다", async () => {
+    expect(layer(await mount(), 4).textContent).toContain(p.viewLink);
+  });
+
+  it("③ 저장 뒤 푸터에 `Revert to last sent`가 선다 — 이 키에 미전달 편집이 생긴다", async () => {
+    const container = await mount();
+    expect(layer(container, 1).textContent).not.toContain(m.translations.workspace.revert.button);
+    expect(layer(container, 3).textContent).toContain(m.translations.workspace.revert.button);
   });
 });
 
@@ -95,9 +179,9 @@ describe("목업 — 씬이 이야기를 든다", () => {
   });
 });
 
-describe("목업 — 1280×720 안에 들어간다 (#112)", () => {
+describe("목업 — 1440×810 안에 들어간다 (#112)", () => {
   /**
-   * ⚠️ **jsdom은 레이아웃이 없어 높이를 못 잰다** — 실측(0.964 배율, 로케일 목록 358px)에서 행 넷(en·de·es·fr)이 약 400px라
+   * ⚠️ **jsdom은 레이아웃이 없어 높이를 못 잰다** — 1280×720 시절 실측(0.964 배율, 로케일 목록 358px)에서 행 넷(en·de·es·fr)이 약 400px라
    * `fr` 칸이 푸터 밑으로 들어갔다. 예산을 행 수로 묶고, 목록이 넘쳐도 푸터 위로 칠하지 않게 자르는지 본다.
    */
   it("로케일 목록이 자기 칸에서 잘리고 행이 셋(원문 둘 + `fr`)을 넘지 않는다", async () => {
@@ -159,8 +243,8 @@ describe("목업 소스 — 문구는 사전을 지난다", () => {
     expect(offenders).toEqual([]);
   });
 
-  /** 열거형 prop(`phase`·`variant`)은 문구가 아니라 코드 값이다. */
-  const CODE_PROPS = new Set(["className", "phase", "variant"]);
+  /** 열거형 prop(`phase`·`variant`·`size`)은 문구가 아니라 코드 값이다. */
+  const CODE_PROPS = new Set(["className", "phase", "variant", "size"]);
 
   it("문자열 prop 리터럴이 className·data-*·열거형 말고 없다", () => {
     const offenders = files.flatMap((name) =>

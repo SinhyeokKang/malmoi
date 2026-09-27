@@ -399,13 +399,37 @@ export const en = {
       repo: "acme/web",
       source: "web",
       namespace: "checkout",
+      /** 셸의 사용자 구역 머리 · Publish diff의 저자 — 보는 사람이다. `teammate`는 다른 편집자다. */
+      user: "Alex",
+      teammate: "Sam",
+      /** 사이드바 배지 — `Projects`는 멤버십 수, 프로젝트 항목은 소스·멤버·키 수(키는 `keyCount`). */
+      projectCount: 3,
+      memberCount: 4,
       /**
-       * 선택된 키 — 씬 ②에서 `fr` 값이 비어 있다가 채워진다. ⚠️ **원문 포함 값은 둘까지다** — 1280×720 안의 로케일 목록이
-       * 행 셋만 담는다(넷이면 `fr` 칸이 푸터 밑으로 들어갔다, #112).
+       * 소스 트리 — 첫째가 보고 있는 소스(`source`)라 펼쳐져 있고 나머지는 접힌다(실제 `TreePanel`). 네임스페이스 합이 소스의 키 수다.
+       * 프로젝트 키 수(`keyCount`)는 소스 키 수의 합이다.
+       */
+      sources: [
+        {
+          slug: "web",
+          keyCount: 248,
+          namespaces: [
+            { name: "cart", keyCount: 36 },
+            { name: "checkout", keyCount: 52 },
+            { name: "common", keyCount: 104 },
+            { name: "product", keyCount: 56 },
+          ],
+        },
+        { slug: "emails", keyCount: 40, namespaces: [] },
+      ],
+      /**
+       * 선택된 키 — 씬 ②에서 `fr` 값이 비어 있다가 채워진다. ⚠️ **원문 포함 값은 둘까지다** — 1440×810 안의 로케일 목록이
+       * 행 셋만 담는다(넷이면 `fr` 칸이 푸터 밑으로 들어간다, #112).
        */
       selected: {
         key: "checkout.submit",
         text: "Place order",
+        description: "Primary button on the payment step",
         values: [
           { code: "en", value: "Place order" },
           { code: "de", value: "Bestellung aufgeben" },
@@ -413,15 +437,21 @@ export const en = {
         typedCode: "fr",
         typed: "Passer la commande",
       },
-      /** 키 목록 — `missing`은 빠진 언어 수, 0이면 Complete. 선택된 키가 둘째 행이다. */
+      /**
+       * 키 목록 — `missing`은 빠진 언어 수, 0이면 Complete. ⚠️ **미완이 먼저다** — 실제 목록이 `Incomplete first`로 정렬한다
+       * (`lib/keys/translation-list.ts`의 `rank`). 선택된 키가 첫 행이다.
+       */
       rows: [
-        { key: "checkout.title", text: "Checkout", missing: 0 },
         { key: "checkout.submit", text: "Place order", missing: 1 },
         { key: "checkout.coupon", text: "Add a coupon", missing: 2 },
+        { key: "checkout.shipping", text: "Shipping address", missing: 1 },
+        { key: "cart.title", text: "Your cart", missing: 0 },
         { key: "cart.empty", text: "Your cart is empty", missing: 0 },
         { key: "cart.remove", text: "Remove", missing: 0 },
+        { key: "checkout.title", text: "Checkout", missing: 0 },
+        { key: "checkout.total", text: "Order total", missing: 0 },
       ],
-      keyCount: 248,
+      keyCount: 288,
       /** Publish 배지 — 씬 ③의 저장 전 → 후. */
       unsentBefore: 1,
       unsentAfter: 2,
