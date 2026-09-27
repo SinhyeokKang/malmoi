@@ -31,7 +31,9 @@ export function planWithheldLines(outcome: PullOutcome, role: "OWNER" | "EDITOR"
   if (withheld === undefined) return [];
   const w = m.translations.publish.withheld;
   const lines: string[] = [];
-  if (withheld.file > 0) lines.push(`${w.file(withheld.file)} ${role === "OWNER" ? w.owner.file : w.editor}`);
-  if (withheld.key > 0) lines.push(`${w.key(withheld.key)} ${role === "OWNER" ? w.owner.key : w.editor}`);
+  // ⚠️ **Revert는 보류 셀 전부에 기준이 있을 때만 가리킨다** (#129) — 없으면 그 키의 Revert가 꺼져 있다. 그때는 파일·키 복구와 폐기 승인 Sync뿐이다.
+  const revert = withheld.revertable === true;
+  if (withheld.file > 0) lines.push(`${w.file(withheld.file)} ${role === "OWNER" ? (revert ? w.owner.file : w.owner.fileNoRevert) : w.editor}`);
+  if (withheld.key > 0) lines.push(`${w.key(withheld.key)} ${role === "OWNER" ? (revert ? w.owner.key : w.owner.keyNoRevert) : w.editor}`);
   return lines;
 }

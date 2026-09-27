@@ -175,3 +175,39 @@ describe("B3.4 — base 파일의 키 집합은 원본이 정한다", () => {
     expect(written.size).toBe(0);
   });
 });
+
+/**
+ * **보류 안내가 가리키는 Revert는 실제로 열려야 한다** (#129). 실행이 보류 셀의 기준 유무를 묻고(`withheldRevertable`), 전부 있을 때만 `revertable`을 싣는다.
+ * 의존성이 없거나 false면 필드가 없다 — 안내는 Revert 없는 쪽이다(모르는 것을 약속하지 않는다).
+ */
+describe("#129 — 보류 셀의 Revert 가능 여부", () => {
+  const surface = { nestedByPath: {}, adapterName: "ts-dict", pathTemplate: "*.ts", nested: null, baseLocale: "en", localeCodes: ["en", "fr"] };
+  const files = { "a.ts": 'const en = { hello: "Hi" };\nconst fr = { hello: "Salut" };\n' };
+  const keys: RenderKey[] = [
+    { id: "k1", key: "hello", sourceText: "Hi", orphaned: false, cells: { en: { value: "Hi" }, fr: { value: "Bonjour" } } },
+    { id: "k2", key: "gone", sourceText: "Gone", orphaned: false, cells: { en: { value: "Gone" }, fr: { value: "Parti" } } },
+  ];
+  async function withDep(answer: boolean | undefined) {
+    const tree = Object.entries(files).map(([path, content]) => ({ path, sha: blobSha(content) }));
+    const blobs = Object.fromEntries(Object.values(files).map((content) => [blobSha(content), content]));
+    const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: tree }, blobs });
+    const asked: string[][] = [];
+    const result = await runPull({
+      loadState: async () => ({ project, surfaces: [{ ...surface, id: "s", slug: "web", keys }], maxUpdatedAt: new Date(), unpublished: 2,
+        pendingEdits: [edit("hello", "k1", "fr"), edit("gone", "k2", "fr")] }),
+      createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
+      ...(answer === undefined ? {} : { withheldRevertable: async (_projectId: string, withheld: readonly PendingEdit[]) => { asked.push(withheld.map((e) => e.id)); return answer; } }),
+    });
+    return { result, asked };
+  }
+  it("전부 기준이 있으면 revertable: true — 보류 셀만 묻는다", async () => {
+    const { result, asked } = await withDep(true);
+    expect(result).toMatchObject({ status: "committed", withheld: { file: 0, key: 1, revertable: true } });
+    expect(asked).toEqual([["gone"]]);
+  });
+  it.each([[false], [undefined]])("기준이 없거나 모르면(%s) 필드가 없다", async (answer) => {
+    const { result } = await withDep(answer);
+    expect(result).toMatchObject({ status: "committed", withheld: { file: 0, key: 1 } });
+    expect(result.status === "committed" ? result.withheld : undefined).toEqual({ file: 0, key: 1 });
+  });
+});

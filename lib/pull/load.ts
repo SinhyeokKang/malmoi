@@ -133,6 +133,19 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
   };
 }
 
+/**
+ * **보류 셀 전부에 되돌릴 기준이 있는가** (#129 — `PullDeps.withheldRevertable`). 기준 행(`TranslationBaseline`)이 없는 셀의 Revert는 꺼져 있으므로
+ * 결과의 OWNER 안내가 그것을 가리키면 안 된다. 기준의 revision·실행 중 여부처럼 **일시적인** 막힘은 보지 않는다 — 방금 성공한 실행 직후의 안내라
+ * 확인이 유효하고 settled다. 좌표 없는 편집은 증명할 수 없어 false다.
+ */
+export async function withheldRevertable(prisma: PrismaClient, projectId: string, withheld: readonly PendingEdit[]): Promise<boolean> {
+  if (withheld.length === 0 || withheld.some(e => e.cell === undefined)) return false;
+  const cells = withheld.map(e => ({ surfaceId: e.cell!.surfaceId, keyId: e.cell!.keyId, localeCode: e.cell!.localeCode }));
+  const found = await prisma.translationBaseline.findMany({ where: { projectId, OR: cells }, select: { surfaceId: true, keyId: true, localeCode: true } });
+  const have = new Set(found.map(b => `${b.surfaceId}\0${b.keyId}\0${b.localeCode}`));
+  return cells.every(c => have.has(`${c.surfaceId}\0${c.keyId}\0${c.localeCode}`));
+}
+
 function contextOf(
   project: { repositoryId: string | null; baseBranch: string },
   surface: { id: string; importRevision: number; adapterName: string | null; pathTemplate: string | null; nested: boolean | null; nestedByPath: unknown; baseLocale: string | null },

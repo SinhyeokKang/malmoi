@@ -210,7 +210,7 @@ it.each([[2, true], [0, false]] as const)("파일이 없어 빠진 셀 %i개를 
  * **결과는 실린 수로 말하고 보류는 한 줄이다** (delivery-invariants D7). 미리보기 `total`(보류를 안 뺀 미발송 전체)로 말하면
  * "3 changes are in a pull request" 아래 "1 wasn't sent"가 서는 모순이 된다. 실린 0 + 보류만이면 No changes가 아니다.
  */
-const committedWith = (withheld?: { file: number; key: number }) => ({ status: "committed", delivered: 2, pr: "created", commitSha: "c", changed: ["ko.yml"],
+const committedWith = (withheld?: { file: number; key: number; revertable?: true }) => ({ status: "committed", delivered: 2, pr: "created", commitSha: "c", changed: ["ko.yml"],
   prUrl: "https://github.com/owner/repo/pull/7", ...(withheld === undefined ? {} : { withheld }) });
 it.each([
   ["created", committedWith({ file: 1, key: 0 }), m.translations.publish.createdDescription(2)],
@@ -233,11 +233,18 @@ it("보류가 없으면 결과에 보류 줄이 없다 (짝) · OWNER에게는 R
   expect(document.body.textContent).toContain(m.translations.publish.createdDescription(2));
 });
 it("OWNER의 보류 줄은 파일 추가나 Revert to last sent를 가리킨다", async () => {
-  mocks.pull.mockResolvedValueOnce(committedWith({ file: 0, key: 1 }));
+  mocks.pull.mockResolvedValueOnce(committedWith({ file: 0, key: 1, revertable: true }));
   await render(<Host role="OWNER" />); await click("Publish1"); await click("Open pull request");
   expect(document.body.textContent).toContain(`${m.translations.publish.withheld.key(1)} ${m.translations.publish.withheld.owner.key}`);
   // 코드에서 지운 키(B3.4)도 같은 줄이다 — Revert를 먼저 가리키고, 키를 "다시" 넣는 것을 둘째로 둔다(B3 r3).
   expect(m.translations.publish.withheld.owner.key).toBe("Use Revert to last sent, or add the keys back to the language file.");
+});
+it("#129 — 보류된 셀에 되돌릴 기준이 없으면 OWNER 줄이 Revert를 가리키지 않는다", async () => {
+  mocks.pull.mockResolvedValueOnce(committedWith({ file: 0, key: 1 }));
+  await render(<Host role="OWNER" />); await click("Publish1"); await click("Open pull request");
+  const w = m.translations.publish.withheld;
+  expect(document.body.textContent).toContain(`${w.key(1)} ${w.owner.keyNoRevert}`);
+  expect(document.body.textContent).not.toContain(w.owner.key);
 });
 it("미리보기가 키 자리 없는 셀을 따로 말한다", async () => {
   mocks.preview.mockResolvedValue(ok({ ...preview, total: 2, withoutFile: 0, withoutKey: 1, sendable: { total: 1, keys: 1 } }));

@@ -17,6 +17,11 @@ describe("reportPushResponse", () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("3 unsent translation changes");
     expect(warnings[0]).toMatch(/not imported/);
+    // #129 — 보류된 편집은 Publish로 안 나간다(파일에 자리가 없다). "Publish하면 풀린다"만 말하면 그 상태의 CI가 영영 deferred다 —
+    // 서버는 어느 편집이 보류인지 모르므로(렌더 시점 판정) 두 길을 다 말한다.
+    expect(warnings[0]).toContain("Revert to last sent");
+    expect(warnings[0]).toContain("discard");
+    expect(warnings[0]).not.toContain("Send them with Publish, then");
   });
 
   it("[C8] applied → exit 0 + ::warning 0줄 (deferred 1줄 대조)", () => {

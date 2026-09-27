@@ -11,12 +11,14 @@ const hoisted = vi.hoisted(() => ({
   loadPullState: vi.fn(),
   saveLastPulledAt: vi.fn(),
   invalidateDeliveryConfirmations: vi.fn(),
+  withheldRevertable: vi.fn(async () => false),
 }));
 vi.mock("@/lib/github", () => ({ createGitClient: hoisted.createGitClient }));
 vi.mock("../load", () => ({
   loadPullState: hoisted.loadPullState,
   saveLastPulledAt: hoisted.saveLastPulledAt,
   invalidateDeliveryConfirmations: hoisted.invalidateDeliveryConfirmations,
+  withheldRevertable: hoisted.withheldRevertable,
 }));
 
 import { createFakeGitClient } from "./fake-client";
@@ -131,6 +133,8 @@ describe("triggerPull — 조립", () => {
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(await triggerPull({} as never, "fmt", null)).toMatchObject({ status: "skipped", reason: "withheld" });
     expect(spy.mock.calls.map(c => String(c[0]))).toEqual(["[pull:fmt] withheld edits: 1 missing file, 0 missing key"]);
+    // #129 — 보류가 있으면 Revert 가능 여부를 DB에 묻는다(결과의 OWNER 안내가 그것으로 갈린다).
+    expect(hoisted.withheldRevertable).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
 

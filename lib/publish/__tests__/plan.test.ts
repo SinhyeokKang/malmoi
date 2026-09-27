@@ -35,9 +35,16 @@ it("skipped/withheld는 Not sent 틀이다 — No changes가 아니다", () => {
 it("보류 줄 — 사유별 한 줄 + 역할별 다음 행동 · 보류 0이면 줄이 없다 (짝)", () => {
   const p = m.translations.publish;
   expect(planWithheldLines({ ...committed, withheld: { file: 2, key: 0 } }, "EDITOR")).toEqual([`${p.withheld.file(2)} ${p.withheld.editor}`]);
-  expect(planWithheldLines({ ...committed, withheld: { file: 0, key: 1 } }, "OWNER")).toEqual([`${p.withheld.key(1)} ${p.withheld.owner.key}`]);
+  // #129 — Revert를 가리키는 것은 보류된 셀 전부에 기준이 있을 때뿐이다(`revertable`). 모르면 Revert 없는 안내다 — 화면에서 꺼진 버튼을 가리키지 않는다.
+  expect(planWithheldLines({ ...committed, withheld: { file: 0, key: 1 } }, "OWNER")).toEqual([`${p.withheld.key(1)} ${p.withheld.owner.keyNoRevert}`]);
+  expect(planWithheldLines({ ...committed, withheld: { file: 0, key: 1, revertable: true } }, "OWNER")).toEqual([`${p.withheld.key(1)} ${p.withheld.owner.key}`]);
   expect(planWithheldLines({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 1 } }, "OWNER"))
+    .toEqual([`${p.withheld.file(1)} ${p.withheld.owner.fileNoRevert}`, `${p.withheld.key(1)} ${p.withheld.owner.keyNoRevert}`]);
+  expect(planWithheldLines({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 1, revertable: true } }, "OWNER"))
     .toEqual([`${p.withheld.file(1)} ${p.withheld.owner.file}`, `${p.withheld.key(1)} ${p.withheld.owner.key}`]);
+  // Revert 없는 안내는 Revert를 말하지 않는다.
+  expect(p.withheld.owner.keyNoRevert).not.toContain("Revert");
+  expect(p.withheld.owner.fileNoRevert).not.toContain("Revert");
   expect(planWithheldLines(committed, "OWNER")).toEqual([]);
   expect(planWithheldLines({ status: "skipped", reason: "writer-warnings", warnings: ["x"] }, "OWNER")).toEqual([]);
 });

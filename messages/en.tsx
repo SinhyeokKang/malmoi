@@ -2287,6 +2287,9 @@ export const en = {
           file: "Add the file to the repository, or use Revert to last sent.",
           // 코드에서 지운 키(B3.4)도 이 줄이다 — 되돌리기가 먼저이고, 키를 "다시" 넣는 것은 둘째다(B3 r3).
           key: "Use Revert to last sent, or add the keys back to the language file.",
+          /** 보류 셀 중 되돌릴 기준이 없는 것이 있다(#129) — 그 셀의 Revert는 꺼져 있으므로 가리키지 않는다. 폐기는 Home의 Sync 승인이다. */
+          fileNoRevert: "Add the file to the repository, or discard the edits with Sync.",
+          keyNoRevert: "Add the keys back to the language file, or discard the edits with Sync.",
         },
       },
 

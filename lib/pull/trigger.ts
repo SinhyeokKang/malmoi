@@ -3,7 +3,7 @@
 import { fail } from "@/lib/failure";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createGitClient } from "@/lib/github";
-import { invalidateDeliveryConfirmations, loadPullState, saveLastPulledAt } from "./load";
+import { invalidateDeliveryConfirmations, loadPullState, saveLastPulledAt, withheldRevertable } from "./load";
 import { runPull, type PullResult } from "./run";
 import { syncBranchFor } from "./sync-branch";
 
@@ -39,6 +39,7 @@ export async function triggerPull(prisma: PrismaClient, slug: string, runId: str
     saveLastPulledAt: (projectId, at, published, delivered, contexts, withheld) =>
       saveLastPulledAt(prisma, projectId, at, published, delivered, runId === null ? undefined : { runId, contexts, withheld }),
     invalidateDelivery: (projectId) => invalidateDeliveryConfirmations(prisma, projectId),
+    withheldRevertable: (projectId, withheld) => withheldRevertable(prisma, projectId, withheld),
     syncBranch: syncBranchFor(slug),
   });
 

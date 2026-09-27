@@ -84,6 +84,11 @@ export type PullDeps = {
    * ⚠️ **필수다** (audit #60) — 선택이면 새 호출부가 빠뜨려도 컴파일되고, 그 경로는 GitHub에 쓰면서 옛 확인을 살려 둔다.
    */
   invalidateDelivery(projectId: string): Promise<void>;
+  /**
+   * 보류된 셀 **전부에** 되돌릴 기준(`TranslationBaseline`)이 있는가 (#129). 결과의 OWNER 안내가 `Revert to last sent`를 가리키는 조건이다 — 기준이 없는
+   * 셀의 Revert는 꺼져 있다("The last sent version isn't available…"). 선택이다: 없거나 false면 안내가 Revert를 말하지 않는다(모르는 것을 약속하지 않는다).
+   */
+  withheldRevertable?(projectId: string, withheld: readonly PendingEdit[]): Promise<boolean>;
   syncBranch: string;
 };
 
@@ -99,7 +104,12 @@ export type PullDeps = {
  * 수**다 — T10이 막은 것은 "버린 값의 토큰을 성공으로 비우는 것"이었고 보류는 토큰을 안 비운다. 사유별로 센다(`file`·`key`) —
  * 결과 문구가 둘을 다르게 말한다. 0이면 필드가 없다.
  */
-export type Withheld = { file: number; key: number };
+export type Withheld = {
+  file: number;
+  key: number;
+  /** 보류 셀 전부가 Revert로 풀린다(#129 — `withheldRevertable`). 그럴 때만 있다 — 없으면 안내가 Revert를 가리키지 않는다. `SyncRun.withheld`(수)에는 안 실린다. */
+  revertable?: true;
+};
 export type PullResult =
   | { status: "skipped"; reason: "no-edits" }
   /**
@@ -247,8 +257,11 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     for (const cell of slotlessCells(item.surface.id, files, pendingEdits, keyId => keyById.get(keyId))) coordinates.cells.add(cell);
   }
   const split = splitEdits(pendingEdits, coordinates, keyId => keyById.get(keyId));
-  const withheld = split.withheld.length === 0 ? {} : { withheld: split.withheldBy };
-  if (split.delivered.length === 0 && split.withheld.length > 0) return { status: "skipped", reason: "withheld", withheld: split.withheldBy };
+  // 기준의 유무는 이 실행의 확정과 무관하다 — 보류 셀은 토큰을 지키고 기준 행의 revision만 다시 찍힌다(`saveLastPulledAt`). 그래서 쓰기 전에 묻는다.
+  const revertable = split.withheld.length > 0 && deps.withheldRevertable !== undefined && await deps.withheldRevertable(project.id, split.withheld);
+  const withheldBy: Withheld = revertable ? { ...split.withheldBy, revertable: true } : split.withheldBy;
+  const withheld = split.withheld.length === 0 ? {} : { withheld: withheldBy };
+  if (split.delivered.length === 0 && split.withheld.length > 0) return { status: "skipped", reason: "withheld", withheld: withheldBy };
 
   // ── 2층: blob SHA 비교 ──────────────────────────────────────────────────────
   if (changes.length === 0) {
