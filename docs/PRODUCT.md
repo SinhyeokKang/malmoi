@@ -493,7 +493,8 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 
 결과 상태가 서로 달라야 한다: 배포할 변경 없음 / 새 PR 생성 / 기존 PR 갱신 / **값 일부를 파일에 쓸 수 없어 보내지 않음**
 (`skipped/writer-warnings` — 2026-09-18부터 writer 경고가 있으면 GitHub에 쓰기 전에 멈춘다. 전에는 PR을 열고 버린 값을 알렸다) / 실패.
-**부분 전달** (2026-09-24, delivery-invariants): 비-base 언어 파일이 base에 없거나 ts-dict 파일에 그 키의 자리가 없으면 **그 셀만 보류**하고
+**부분 전달** (2026-09-24, delivery-invariants · 2026-09-27 B3.4): 비-base 언어 파일이 base에 없거나 ts-dict 파일에 그 키의 자리가 없거나
+**코드가 base 언어 파일에서 그 키를 지웠으면**(base 셀 — base 파일의 키 집합은 리포가 정한다) **그 셀만 보류**하고
 나머지를 보낸다 — 결과는 **실린 수**로 말하고 보류 한 줄(`N edits weren't sent because …`)을 붙이며, 실린 것이 0이면 `Not sent` 틀이다.
 보류된 편집은 malmoi에 남아 CI 적재를 계속 멈춘다. Logs는 그 실행을 같은 수로 보이고, 실린 것이 0이면 `Not sent`다(`Nothing to send`가 아니다).
 **미리보기도 나가는 수로 말한다**(#84) — 보류를 뺀 수가 제목·요약·PR 줄에 서고, 전부 보류면 PR 버튼 대신 이유를 말한다.
