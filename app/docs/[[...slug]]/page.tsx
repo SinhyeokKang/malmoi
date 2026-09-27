@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { DocEyebrow, DocFrame, DocNeighbours, DocRows, DocTracks, type DocLinkRow } from "@/components/docs/doc-frame";
@@ -12,6 +13,24 @@ import { leadParagraph } from "@/lib/guide/sections";
 import { flattenNav, type NavNode } from "@/lib/guide/summary";
 import { extractToc } from "@/lib/guide/toc";
 import { m } from "@/lib/i18n";
+import { docLd, jsonLdHtml } from "@/lib/seo/json-ld";
+import { DOCS_TITLE, pageMetadata, SITE_ORIGIN } from "@/lib/seo/site";
+
+/**
+ * 제목은 SUMMARY 제목(레이아웃 템플릿이 `· Malmoi Docs`를 붙인다), 설명은 첫 문단 — 없으면 제품 한 줄.
+ *
+ * ⚠️ **없는 slug에는 canonical을 싣지 않는다** — 본문이 `notFound()`하고 Next가 noindex를 붙인다. 404에 canonical이 서면
+ * soft-404 신호다.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ slug?: string[] }> }): Promise<Metadata> {
+  const { slug = [] } = await params;
+  const page = loadPageBySlug(slug);
+  if (page === null) return { title: m.publicDocs.docs.notFound.title };
+  const description = leadParagraph(page.tree) ?? m.landing.hero.body;
+  if (slug.length === 0) return { ...pageMetadata({ title: DOCS_TITLE, description, path: docHref(slug) }), title: { absolute: DOCS_TITLE } };
+  const title = flattenNav(loadSummary()).find((item) => item.file === page.file)?.title ?? DOCS_TITLE;
+  return pageMetadata({ title, description, path: docHref(slug) });
+}
 
 /**
  * `/docs`(개요) · `/docs/<slug>`(각 페이지) — 원고는 `guide/**.md`, 순서·계층은 `guide/SUMMARY.md` (DESIGN §6.61).
@@ -73,9 +92,17 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   const children = node?.children ?? [];
   // 장 개요(1c) — 하위 목록은 원고가 아니라 SUMMARY 자식에서 붙인다. 목차가 없다.
   const chapterIndex = children.length > 0;
+  // ⚠️ 장 URL이 `slug[0]`인 것은 SUMMARY가 2단이라는 전제다 — `FlatNavItem.parent`는 제목 문자열뿐이다.
+  const ld = docLd({
+    title: self?.title ?? "",
+    description: leadParagraph(page.tree) ?? m.landing.hero.body,
+    url: `${SITE_ORIGIN}${docHref(slug)}`,
+    chapter: self?.parent ? { title: self.parent, url: `${SITE_ORIGIN}${docHref(slug.slice(0, 1))}` } : null,
+  });
 
   return (
     <PublicScroller key={slug.join("/")}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(ld) }} />
       <DocFrame toc={chapterIndex ? [] : extractToc(page.tree)}>
         {!chapterIndex && self?.parent ? <DocEyebrow>{self.parent}</DocEyebrow> : null}
         <GuideMarkdown tree={page.tree} file={page.file} sizes={loadShotSizes()} />

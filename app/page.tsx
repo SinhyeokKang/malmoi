@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { mockupScenes } from "@/components/landing/mockup";
@@ -8,6 +9,14 @@ import { publicCta, rootView } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
+import { jsonLdHtml, LANDING_LD } from "@/lib/seo/json-ld";
+import { pageMetadata } from "@/lib/seo/site";
+
+/** 제목만 absolute다 — 템플릿(`%s · Malmoi`)을 지나면 브랜드가 두 번 선다. */
+export const metadata: Metadata = {
+  ...pageMetadata({ title: m.seo.homeTitle, description: m.landing.hero.body, path: "/" }),
+  title: { absolute: m.seo.homeTitle },
+};
 
 /**
  * **루트는 랜딩이다** (Claude Design `Landing.dc.html` 1a–1d). 로그인 화면은 `/signin`이 그린다.
@@ -29,6 +38,7 @@ export default async function Root() {
   const { hero, stage, closing, mockup, shell } = m.landing;
   return (
     <PublicShell cta={publicCta("none")} current="home">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(LANDING_LD) }} />
       <section aria-labelledby="landing-hero" className="flex flex-col items-center px-8 pt-30 text-center">
         {/* h1·CTA h2는 48/600 — DESIGN §4가 예고한 weight 600의 첫 소비자다(§6.615). */}
         <h1 id="landing-hero" className="m-0 text-5xl leading-[1.1] font-semibold">

@@ -156,3 +156,34 @@ describe("`/docs/*` — 404", () => {
     expect(paragraphs[0]?.querySelector("a")?.textContent).toBe("docs overview");
   });
 });
+
+/** 구조화 데이터 (seo-geo T7) — 하위 페이지 1장, 개요 0장. 장 URL은 `docHref([slug[0]])`다(SUMMARY가 2단이라는 전제). */
+describe("`/docs/*` — JSON-LD", () => {
+  type Crumb = { position: number; name: string; item: string };
+  const ld = (container: HTMLElement) =>
+    [...container.querySelectorAll('script[type="application/ld+json"]')].map(
+      (script) => JSON.parse(script.textContent ?? "null") as { "@type": string; itemListElement?: Crumb[] }[],
+    );
+
+  it("개요에는 없다 — 1항목 breadcrumb는 무의미하다", async () => {
+    const { container } = await page(undefined);
+    expect(ld(container)).toHaveLength(0);
+  });
+
+  it("깊은 페이지 — TechArticle + Docs › 장 › 페이지", async () => {
+    const { container } = await page(["setup", "create-project"]);
+    const scripts = ld(container);
+    expect(scripts).toHaveLength(1);
+    expect(scripts[0]?.map((item) => item["@type"])).toEqual(["TechArticle", "BreadcrumbList"]);
+    expect(scripts[0]?.[1]?.itemListElement).toEqual([
+      expect.objectContaining({ position: 1, name: m.publicDocs.docs.title, item: "https://mal-moi.com/docs" }),
+      expect.objectContaining({ position: 2, name: "Set up a project", item: "https://mal-moi.com/docs/setup" }),
+      expect.objectContaining({ position: 3, name: "Create a project", item: "https://mal-moi.com/docs/setup/create-project" }),
+    ]);
+  });
+
+  it("장 개요 — 2항목", async () => {
+    const { container } = await page(["translate"]);
+    expect(ld(container)[0]?.[1]?.itemListElement?.map((crumb) => crumb.position)).toEqual([1, 2]);
+  });
+});

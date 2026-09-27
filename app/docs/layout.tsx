@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { DocsNavLink } from "@/components/docs/nav-link";
@@ -7,6 +8,9 @@ import { readSession } from "@/lib/auth/read-session";
 import { docHref } from "@/lib/guide/href";
 import { loadSummary } from "@/lib/guide/load";
 import { m } from "@/lib/i18n";
+import { DOCS_TITLE } from "@/lib/seo/site";
+
+export const metadata: Metadata = { title: { template: `%s · ${DOCS_TITLE}`, default: DOCS_TITLE } };
 
 /**
  * `/docs/*`의 공개 셸 + 문서 내비 (DESIGN §6.61 · 시안 `Docs.dc.html` 1a–1d).

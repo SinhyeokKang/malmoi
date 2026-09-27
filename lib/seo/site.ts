@@ -11,6 +11,12 @@ import { m } from "@/lib/i18n";
 export const SITE_ORIGIN = "https://mal-moi.com";
 
 /**
+ * docs 제목 접미 — `Every night · Malmoi`만으로는 무슨 페이지인지 모른다(seo-geo spec D9). 라벨은 헤더·사이드바와 같은
+ * `publicDocs.docs.title`이다(같은 라우트 라벨이 둘이면 하나가 낡는다).
+ */
+export const DOCS_TITLE = `${m.common.appName} ${m.publicDocs.docs.title}`;
+
+/**
  * 링크 미리보기 이미지 — 정적 1장이고 사용자가 만든다(seo-geo spec D2). 상대 경로는 루트의 `metadataBase`가 절대 URL로 만든다.
  *
  * ⚠️ **파일 규약(`app/opengraph-image.png`)으로 두지 않는다** — 정적 파일 메타는 파일이 있는 세그먼트에서만 합쳐지고, 자식이

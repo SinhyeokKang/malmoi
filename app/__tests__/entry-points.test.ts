@@ -62,6 +62,11 @@ const EXEMPT = new Set([
    * 화면이라 1차 차단의 보호 경로에도 없다(아래 `PUBLIC` 부정 단언).
    */
   "signin/link/[challenge]/page.tsx",
+  /**
+   * 크롤러용 가이드 목차·전문 (seo-geo). **인가가 없다** — 이미 공개된 `/docs` 원고만 내고, 빌드 때 prerender된다.
+   */
+  "llms.txt/route.ts",
+  "llms-full.txt/route.ts",
 ]);
 
 /** 인가를 지났다고 인정하는 호출. 둘 다 결국 `planProjectAccess`로 간다. */

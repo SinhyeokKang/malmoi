@@ -1,4 +1,5 @@
 import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
+import type { Metadata } from "next";
 import Image from "next/image";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -22,6 +23,9 @@ import { loadChallengeView } from "@/lib/login-link/view";
 import { routes } from "@/lib/routes";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 import logo from "@/public/brand/malmoi-icon-black.svg";
+
+/** ⚠️ **색인 거부 + referrer 없음** — `/invite/<token>`과 같은 이유다(challenge가 경로에 실린다). */
+export const metadata: Metadata = { title: m.link.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 /**
  * 병합 안내 화면 — **거부를 안내로 바꾸는 자리다** (PRODUCT §4.3 ④).

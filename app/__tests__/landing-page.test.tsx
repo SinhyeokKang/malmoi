@@ -78,3 +78,14 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     expect([...container.querySelectorAll("ol li")].map((li) => li.textContent)).toEqual([...m.landing.stage.captions]);
   });
 });
+
+/** 구조화 데이터 (seo-geo T7) — 랜딩 1장. validator 대조는 배포 뒤 수동(M3)이다. */
+describe("`/` — JSON-LD", () => {
+  it("`SoftwareApplication`·`Organization` 한 장", async () => {
+    const { container } = await render(await page("none"));
+    const scripts = container.querySelectorAll('script[type="application/ld+json"]');
+    expect(scripts).toHaveLength(1);
+    const ld = JSON.parse(scripts[0]?.textContent ?? "null") as { "@type": string }[];
+    expect(ld.map((item) => item["@type"])).toEqual(["SoftwareApplication", "Organization"]);
+  });
+});

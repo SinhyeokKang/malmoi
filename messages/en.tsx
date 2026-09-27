@@ -217,8 +217,6 @@ export const en = {
   common: {
     retry: "Try again",
     appName: "Malmoi",
-    /** 루트 `metadata.description` — 검색 결과·링크 미리보기에 선다. */
-    appDescription: "Localization management for your team",
     /**
      * ⚠️ **구역이 다른 문구를 가져다 쓰지 않는다** (2026-09-13 리뷰). Sessions·GitHub 구역이
      * `link.methods.cancel`을 빌려 쓰고 있었고, 그러면 Sign-in methods를 고칠 때 나머지 둘이

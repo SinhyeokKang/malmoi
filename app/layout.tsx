@@ -3,12 +3,22 @@ import { connection } from "next/server";
 import { Toaster } from "sonner";
 
 import { m } from "@/lib/i18n";
+import { OG_IMAGE, SITE_ORIGIN } from "@/lib/seo/site";
 
 import "./globals.css";
 
+/**
+ * 전 페이지의 머리 기본값. 앱 화면 탭은 그대로 `Malmoi`이고, 공개 페이지는 각자 `pageMetadata`로 덮는다(seo-geo spec D9).
+ *
+ * ⚠️ **canonical·`og:url`을 두지 않는다** — metadata 병합이 얕아서 자기 `alternates`가 없는 페이지(앱·`/signin`·`/invite`·404)
+ * 전부에 홈 canonical이 번진다(noindex + 홈 canonical 모순, 404의 soft-404 신호).
+ */
 export const metadata: Metadata = {
-  title: m.common.appName,
-  description: m.common.appDescription,
+  metadataBase: new URL(SITE_ORIGIN),
+  title: { default: m.common.appName, template: `%s · ${m.common.appName}` },
+  description: m.landing.hero.body,
+  openGraph: { siteName: m.common.appName, type: "website", images: [OG_IMAGE] },
+  twitter: { card: "summary_large_image", images: [OG_IMAGE.url] },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

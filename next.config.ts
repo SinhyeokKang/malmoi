@@ -26,6 +26,13 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: { "/docs/[[...slug]]": ["./guide/**/*.md"] },
 
   /**
+   * ⚠️ **스트리밍 metadata를 전 UA에서 끈다** (seo-geo spec D8). `/`·`/docs/**`가 세션을 읽어 동적이라 Next는 metadata를
+   * 스트리밍하고, HTML-limited 봇 목록 밖의 UA(GPTBot·ClaudeBot·PerplexityBot 포함)는 `<title>`·canonical을 `<head>`가 아니라
+   * `<body>` 끝에서 받는다. 정적 `metadata` export도 동적 페이지에서는 스트리밍되므로 페이지별로는 못 막는다.
+   */
+  htmlLimitedBots: /.*/,
+
+  /**
    * **보안 응답 헤더** (2026-09-09, sec-audit 발견 9 → audit #75). 값은 `lib/security-headers.ts`의 순수 함수가 정한다.
    *
    * ⚠️ **CSP는 여기 없다** (sec-audit-3 #11) — 요청마다 nonce가 바뀌어 `middleware.ts`가 유일한 출처다. 여기 다시 넣으면
