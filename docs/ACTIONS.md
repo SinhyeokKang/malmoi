@@ -111,7 +111,7 @@ Node 20 사용 중단 경고는 옮기기 전까지 남는다.
 ⚠️ **v2를 끊기 직전에 잡은 결함이 하나 있다** — main의 `push:local`이 `.env.local` 로더를 통해 Prisma 클라이언트를 물었고
 (`generated/`는 gitignore된 산출물이라 action의 clone에 없다), 그대로 끊었으면 **모든 v2 run이 `ERR_MODULE_NOT_FOUND`로 red**였다.
 v2는 그 수정(`scripts/local-env.ts`) 뒤의 커밋이다 — `scripts/__tests__/push-local-graph.test.ts`가 그 그래프를 상시로 센다.
-판정의 근거·파일:줄은 `docs/features/action-run-cache/design.md` "v2가 v1과 다른 것"이다(그 디렉터리가 지워진 뒤엔 git log).
+판정의 근거·파일:줄은 `docs/features/action-run-cache/design.md` "v2가 v1과 다른 것"에 있었다 — 2026-09-28 v1.0.1 뒤 지웠으므로 `git log -- docs/features/action-run-cache`로 본다.
 
 ⚠️ **앱 릴리스 태그(`v<x.y.z>`)는 action 계약이 아니다 — `@malmoi-i18n-push-vN`을 쓴다** (2026-09-27). `/merge`가
 머지마다 `v1.0.0` 같은 태그를 만들고 그것도 `uses:`가 받는 유효한 ref지만, 앱 릴리스마다 움직이는 축이라
