@@ -11,6 +11,11 @@ import type { PublishDiff } from "./diff";
  */
 export type PublishPreview = PublishDiff & {
   openPr: OpenImportPr; keys: number; withoutFile: number; withoutKey: number;
+  /**
+   * **이 Publish가 바꾸는 파일** (#128) — 실행과 같은 렌더·blob 비교(`renderProject`)의 결과라 결과 화면의 "N files changed"와 같다. `groups`는 편집이
+   * 사는 파일이라 이보다 적을 수 있다 — 토큰 없이 바뀌는 파일(orphan 줄 제거, 앞서 닫힌 PR에 실렸던 값)이 여기에만 있다.
+   */
+  changedFiles: string[];
   /** 실제로 나가는 편집·키 수 (#84). 제목·요약·PR 줄·실행 진행 제목이 이 수로 말한다 — `total`·`keys`는 보류를 포함한 미발송 전체다. */
   sendable: { total: number; keys: number };
 };

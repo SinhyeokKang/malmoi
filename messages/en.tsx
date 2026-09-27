@@ -2241,6 +2241,14 @@ export const en = {
       previewSummary: (n: number, keys: number, files: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} \u00b7 ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"} \u00b7 ${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"}`,
       changes: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`,
+      /**
+       * 편집 없이 바뀌는 파일 (#128) — 실행이 DB의 현재 상태로 다시 쓰는 파일이다. 원인 둘(코드에서 지운 키의 줄이 빠진다 · 머지되지 않은 앞선 PR의
+       * 값이 다시 나간다)을 말하고 줄 단위 diff는 약속하지 않는다 — 셀 단위 표에 그 줄이 없다.
+       */
+      otherFile: {
+        label: "No unsent edits",
+        body: "This file is rewritten from Malmoi's current translations. Keys removed from the code drop out, and values from an earlier pull request that wasn't merged go out again.",
+      },
       fileSummary: (n: number, keys: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} \u00b7 ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}`,
       key: "Key",

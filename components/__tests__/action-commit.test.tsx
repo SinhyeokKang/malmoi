@@ -99,7 +99,7 @@ describe("#12 — 중복 refresh를 지우고 대기가 커밋을 덮는다", ()
   });
 
   it("Publish: refresh를 부르지 않고 결과를 보인다", async () => {
-    const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, sendable: { total: 1, keys: 1 } };
+    const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, changedFiles: [], sendable: { total: 1, keys: 1 } };
     mocks.loadPublishPreview.mockResolvedValue({ status: "ok", preview });
     mocks.triggerPullAction.mockResolvedValue({ status: "skipped", reason: "no-edits" });
     function Host() {

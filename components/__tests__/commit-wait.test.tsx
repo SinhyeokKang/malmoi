@@ -28,7 +28,7 @@ import { TranslationWorkspace } from "@/components/translations/workspace/worksp
 import { props } from "./helpers/workspace-props";
 
 const synced = { ok: true, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "imported", count: 3, failed: 0, unmanaged: 0, reason: null, errors: [] }] };
-const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, sendable: { total: 1, keys: 1 } };
+const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, changedFiles: [], sendable: { total: 1, keys: 1 } };
 const buttons = () => [...document.querySelectorAll<HTMLButtonElement>("button")];
 const named = (label: string | RegExp) => {
   const found = buttons().find(b => typeof label === "string" ? b.textContent?.trim() === label : label.test(b.textContent?.trim() ?? ""));

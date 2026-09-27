@@ -305,6 +305,19 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
             </tr>;
           })}
         </tbody>)}
+        {/* #128 — 편집 없이 바뀌는 파일. 상한 밖 행이 있으면 그 파일에 편집이 있는지 모르므로 단정하지 않는다(푸터의 파일 수는 그대로 실행의 수다). */}
+        {preview.truncated === 0 && preview.changedFiles.filter(path => !preview.groups.some(group => group.path === path)).map(path => <tbody key={`other:${path}`}>
+          <tr>
+            <th scope="colgroup" colSpan={3} className="border-border bg-primary-foreground border-b px-3.5 py-[9px] text-left text-xs font-normal">
+              <span className="flex items-center gap-2">
+                <FileJson2 className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{path}</span>
+                <span className="text-muted-foreground ml-auto shrink-0">{p.otherFile.label}</span>
+              </span>
+            </th>
+          </tr>
+          <tr><td colSpan={3} className="border-divider text-muted-foreground border-t px-3.5 py-[11px] text-xs leading-5">{p.otherFile.body}</td></tr>
+        </tbody>)}
       </table>
       {preview.truncated > 0 && <p className="text-muted-foreground px-3.5 py-[11px] text-xs">{p.truncated(preview.truncated)}</p>}
       {/* 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐으니 수를 말한다 (launch-readiness L3.7). */}
@@ -457,8 +470,9 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       }
       title = p.previewTitle(sending);
       description = `${partial ? p.previewIntroPartial(label) : p.previewIntro(label)} ${p.previewCounts(sending, sendingKeys)}`;
-      // ⚠️ **상한을 넘으면 파일 수를 빼고 말한다** — `total`·`keys`는 미발송 전체인데 `groups`는 실린 200행뿐이라, 셋을 나란히 두면 한 줄 안에서 모집단이 갈린다.
-      footer = data.truncated > 0 ? p.fileSummary(sending, sendingKeys) : p.previewSummary(sending, sendingKeys, data.groups.length);
+      // ⚠️ **파일 수는 실행이 바꾸는 파일이다** (#128) — `groups`(편집이 사는 파일)를 세면 토큰 없이 바뀌는 파일이 빠지고 결과의 "N files changed"와 갈린다.
+      // 실행과 같은 렌더·blob 비교에서 오므로 상한(`truncated`)과 무관하다.
+      footer = p.previewSummary(sending, sendingKeys, data.changedFiles.length);
       const confirmLabel = open ? p.replacePr(open.number) : p.openPr;
       actions = <Button variant="primary" size="lg" onClick={() => void publish.confirm(confirmLabel)}>{confirmLabel}</Button>;
       body = <>

@@ -10,6 +10,8 @@ import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
 import { keySlot } from "@/lib/pull/undeliverable";
+import { loadPullState } from "@/lib/pull/load";
+import { renderProject } from "@/lib/pull/run";
 import { buildPublishDiff, PREVIEW_LIMIT, type BaseValues, type PublishCell } from "./diff";
 import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, type PublishPreview } from "./preview";
 
@@ -26,7 +28,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     prisma.translation.count({ where }),
     // 바닥 요약의 "키 수"는 **미발송 전체**를 세야 한다 — 표에 실린 200행만 세면 상한 아래에서만 참이다.
     prisma.translation.groupBy({ by: ["keyId"], where }),
-    createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId),
+    createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId).then(cachedBlobs),
     loadOpenPrUrl(slug, project),
   ]);
   const head = await client.getRefSha(`heads/${project.baseBranch}`);
@@ -111,10 +113,26 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         after: row.value, author: actorLabel(row.updatedBy, actors) ?? "", updatedAt: row.updatedAt.toISOString() });
     }
   }
+  // ⚠️ **바뀌는 파일은 실행과 같은 렌더·blob 비교에서 온다** (#128) — 편집 셀의 파일만 세면 토큰 없이 바뀌는 파일(orphan 줄 제거, 닫힌 PR에 실렸던 값의
+  // 재전송)이 빠지고 결과에서야 "N files changed"가 나온다. blob은 위에서 읽은 것을 다시 쓴다(`cachedBlobs`).
+  const { changes } = await renderProject(project, (await loadPullState(prisma, slug)).surfaces, client);
   // `truncated`는 상한 때문에 **조회하지 않은** 행만이다 — 뺀 셀은 `withoutFile`·`withoutKey`가 따로 말한다.
   return { ...buildPublishDiff(cells, base), total, keys: keyIds.length, truncated: Math.max(0, total - rows.length), withoutFile, withoutKey,
     // ⚠️ **화면이 말하는 수는 나가는 수다** (#84 — POSTMORTEM 2026-09-17). 결과의 `delivered`·Logs와 같은 모집단이어야 한다. 상한(200행) 밖 행은
     // 판정하지 않았으므로 나가는 쪽으로 센다 — `truncated`와 같이 읽힌다.
+    changedFiles: changes.map(c => c.path),
     sendable: { total: total - withoutFile - withoutKey, keys: keyIds.length - [...heldKeys].filter(id => !cells.some(c => c.keyId === id)).length },
     openPr: parseGithubPrUrl(rawPr, project) };
+}
+
+/** 같은 blob을 두 번 받지 않는다 — 미리보기 조회와 실행 렌더(`renderProject`)가 같은 트리의 같은 파일을 읽는다. */
+function cachedBlobs<C extends { getBlobText(sha: string): Promise<string> }>(client: C): C {
+  const seen = new Map<string, Promise<string>>();
+  return { ...client, getBlobText: (sha: string) => {
+    const hit = seen.get(sha);
+    if (hit !== undefined) return hit;
+    const next = client.getBlobText(sha);
+    seen.set(sha, next);
+    return next;
+  } };
 }

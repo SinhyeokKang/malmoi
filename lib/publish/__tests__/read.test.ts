@@ -1,6 +1,8 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
-const mocks = vi.hoisted(() => ({ client: { getRefSha: vi.fn(), getTree: vi.fn(), getBlobText: vi.fn() }, open: vi.fn() }));
+const mocks = vi.hoisted(() => ({ client: { getRefSha: vi.fn(), getTree: vi.fn(), getBlobText: vi.fn() }, open: vi.fn(), load: vi.fn() }));
+// 실행과 같은 렌더에 넣을 스냅샷(#128). 기본은 표면 없음 — 바뀌는 파일 목록이 빈다. 그 목록을 재는 테스트만 실제 상태를 준다.
+vi.mock("@/lib/pull/load", () => ({ loadPullState: mocks.load }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/github", () => ({ createGitClient: async () => mocks.client }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: mocks.open }));
@@ -10,7 +12,7 @@ const surface = { id: "s", slug: "web", adapterName: "json-catalog", pathTemplat
 const project = { id: "p", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", repositoryId: "2", lastPulledAt: null, archivedAt: null, surfaces: [surface] };
 const rows = [{ surfaceId: "s", keyId: "k", localeCode: "en", value: "new", updatedBy: "editor", updatedAt: new Date(), stringKey: { key: "hello" } }];
 const db = { project: { findUniqueOrThrow: vi.fn() }, translation: { findMany: vi.fn(), count: vi.fn(), groupBy: vi.fn() } };
-beforeEach(() => { vi.clearAllMocks(); db.project.findUniqueOrThrow.mockResolvedValue(project); db.translation.findMany.mockResolvedValue(rows); db.translation.count.mockResolvedValue(1); db.translation.groupBy.mockResolvedValue([{ keyId: "k" }]); mocks.client.getRefSha.mockResolvedValue("head"); mocks.client.getTree.mockResolvedValue([{ path: "en.json", sha: "blob" }]); mocks.client.getBlobText.mockResolvedValue('{"hello":"old"}'); mocks.open.mockResolvedValue("https://github.com/o/r/pull/12"); });
+beforeEach(() => { vi.clearAllMocks(); db.project.findUniqueOrThrow.mockResolvedValue(project); db.translation.findMany.mockResolvedValue(rows); db.translation.count.mockResolvedValue(1); db.translation.groupBy.mockResolvedValue([{ keyId: "k" }]); mocks.client.getRefSha.mockResolvedValue("head"); mocks.client.getTree.mockResolvedValue([{ path: "en.json", sha: "blob" }]); mocks.client.getBlobText.mockResolvedValue('{"hello":"old"}'); mocks.open.mockResolvedValue("https://github.com/o/r/pull/12"); mocks.load.mockResolvedValue({ project: { ...project, slug: "acme" }, surfaces: [], maxUpdatedAt: null, unpublished: 0, pendingEdits: [] }); });
 it("쓰기 메서드 없는 클라이언트로 base 이전 값과 DB 값을 함께 읽는다", async () => {
  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
  expect(result.groups[0]?.rows[0]).toMatchObject({ before: "old", after: "new" });
@@ -344,4 +346,43 @@ it("재생성 per-locale: 읽을 수 있는 base(숫자 값 포함) + 비-base �
   mocks.client.getBlobText.mockImplementation(async (sha: string) => (sha === "en" ? '{"hello":"Hi","n":3}' : '{"hello":"Salut"}'));
   const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
   expect(result.groups.flatMap(g => g.rows.map(r => `${r.localeCode}:${r.before}`))).toEqual(["fr:Salut"]);
+});
+/**
+ * **미리보기의 파일 목록은 실행이 바꾸는 파일이다** (#128). 편집 셀만 세면 토큰 없이 바뀌는 파일 — 지난 적재가 orphan한 키가 비-base 파일에서 빠지는
+ * 경우, 닫힌 PR에 실렸던 DB 값이 다시 나가는 경우 — 가 화면에서 빠지고 결과에서야 "3 files changed"가 나온다. 같은 렌더·blob 비교(`renderProject`)를 쓴다.
+ */
+it("#128 — 편집 없는 파일이 바뀌면 미리보기의 바뀌는 파일 목록이 실행의 changed와 같다 (같은 픽스처)", async () => {
+  const { runPull } = await import("@/lib/pull/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  const { blobSha } = await import("@/lib/githash");
+  const files: Record<string, string> = {
+    "en.json": '{\n  "hello": "Hi"\n}\n',
+    "fr.json": '{\n  "hello": "Salut"\n}\n',
+    // 지난 적재가 `gone`을 orphan했다(en에서 지워졌다) — ja 파일엔 남아 있고, 재생성이 그 줄을 뺀다.
+    "ja.json": '{\n  "gone": "消えた",\n  "hello": "こんにちは"\n}\n',
+  };
+  const tree = Object.entries(files).map(([path, content]) => ({ path, sha: blobSha(content) }));
+  const blobs = Object.fromEntries(Object.values(files).map(c => [blobSha(c), c]));
+  const cols = { adapterName: "json-catalog", pathTemplate: "{locale}.json", nested: false, nestedByPath: {} };
+  const locales = ["en", "fr", "ja"];
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, ...cols, locales: locales.map(code => ({ code })) }] });
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "fr", value: "Bonjour" }]);
+  mocks.client.getTree.mockResolvedValue(tree);
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => blobs[sha]);
+  const state = {
+    project: { ...project, slug: "acme" },
+    surfaces: [{ ...surface, ...cols, localeCodes: locales, keys: [
+      { id: "k", key: "hello", sourceText: "Hi", orphaned: false, cells: { en: { value: "Hi" }, fr: { value: "Bonjour" }, ja: { value: "こんにちは" } } },
+      { id: "g", key: "gone", sourceText: "Gone", orphaned: true, cells: { ja: { value: "消えた" } } },
+    ] }],
+    maxUpdatedAt: new Date(), unpublished: 1, pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s", keyId: "k", localeCode: "fr", restoreValue: "" } }],
+  };
+  mocks.load.mockResolvedValue(state);
+  const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: tree }, blobs });
+  const result = await runPull({ loadState: async () => state, createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme" });
+  expect(result).toMatchObject({ status: "committed", changed: ["fr.json", "ja.json"] });
+  expect(preview.changedFiles).toEqual(result.status === "committed" ? result.changed : []);
+  expect(preview.groups.map(g => g.path)).toEqual(["fr.json"]);
+  expect(mocks.load).toHaveBeenCalledWith(db, "acme");
 });

@@ -135,31 +135,16 @@ export function closedPrComment(baseBranch: string): string {
 /** blob 동시 읽기 수. GitHub 2차 rate limit(동시 요청)을 피하면서 106파일을 60초 안에 든다. */
 const BLOB_CONCURRENCY = 8;
 
-export async function runPull(deps: PullDeps): Promise<PullResult> {
-  const { project, surfaces, maxUpdatedAt, unpublished, pendingEdits, deliveryContexts = [] } = await deps.loadState();
-
-  // ── 1층: DB 측 스킵. 여기서 끝나면 GitHub을 한 번도 부르지 않는다 ────────────
-  if (shouldSkipPull(unpublished)) {
-    return { status: "skipped", reason: "no-edits" };
-  }
-  // 미발송 행이 하나라도 있으면 `Translation` 행이 있으므로 최대값도 있다. 조용한 폴백(`?? new Date(0)`)을
-  // 두지 않는다 — 그 값이 DB에 들어가면 1층이 영구히 무력해진다.
-  if (maxUpdatedAt === null) fail("unreachable: passed the layer-1 check but maxUpdatedAt is null");
-  // 이 값이 `lastPulledAt`에 들어간다 — `now()`를 쓰면 export 스냅샷과 갱신 사이에 들어온
-  // 편집이 다음 실행에서 영영 스킵된다.
-  const captured = maxUpdatedAt;
-
-  // GitHub을 부르기 전에 막는다 — 설치가 안 됐으면 조용히 빈 PR을 내는 대신 즉시 알린다.
-  if (project.installationId === null) {
-    fail(`Project.installationId is empty (${project.slug}) — install the app`, "not-installed");
-  }
-
+/**
+ * **실행의 읽기 단계** — base head·트리·원본 blob·렌더·2층 blob 비교까지. GitHub에 쓰지 않는다. `runPull`과 Publish 미리보기(`lib/publish/read.ts`)가
+ * **같은 함수로** "PR이 바꾸는 파일"을 얻는다(#128) — 미리보기가 편집 셀만 세면 orphan 제거·앞선 PR의 재전송처럼 토큰 없이 바뀌는 파일이 화면에서 빠진다.
+ */
+export async function renderProject(project: Pick<PullProject, "slug" | "baseBranch">, surfaces: PullState["surfaces"], client: Pick<GitClient, "getRefSha" | "getTree" | "getBlobText">) {
   const formats = [...surfaces].sort((a, b) => compareSurfaces(a.slug, b.slug)).map(surface => {
     const format = formatFromProject(surface, surface.localeCodes);
     if (surface.baseLocale === null) fail("surface base locale is empty");
     return { surface, format, baseLocale: surface.baseLocale, layout: adapterFor(format).layout };
   });
-  const client = await deps.createClient(project);
 
   const baseHead = await client.getRefSha(`heads/${project.baseBranch}`);
   // ⚠️ **`null`을 "브랜치 없음"으로 읽고 진행하지 않는다.** GitHub은 권한 없는 리소스에 404를
@@ -207,6 +192,31 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current),
   }));
   const local = planMultiSurfacePull(rendered);
+  const changes = planPullChanges(local, tree.map((t) => ({ path: t.path, sha: t.sha })));
+  return { baseHead, tree, resolved, current, rendered, local, changes };
+}
+
+export async function runPull(deps: PullDeps): Promise<PullResult> {
+  const { project, surfaces, maxUpdatedAt, unpublished, pendingEdits, deliveryContexts = [] } = await deps.loadState();
+
+  // ── 1층: DB 측 스킵. 여기서 끝나면 GitHub을 한 번도 부르지 않는다 ────────────
+  if (shouldSkipPull(unpublished)) {
+    return { status: "skipped", reason: "no-edits" };
+  }
+  // 미발송 행이 하나라도 있으면 `Translation` 행이 있으므로 최대값도 있다. 조용한 폴백(`?? new Date(0)`)을
+  // 두지 않는다 — 그 값이 DB에 들어가면 1층이 영구히 무력해진다.
+  if (maxUpdatedAt === null) fail("unreachable: passed the layer-1 check but maxUpdatedAt is null");
+  // 이 값이 `lastPulledAt`에 들어간다 — `now()`를 쓰면 export 스냅샷과 갱신 사이에 들어온
+  // 편집이 다음 실행에서 영영 스킵된다.
+  const captured = maxUpdatedAt;
+
+  // GitHub을 부르기 전에 막는다 — 설치가 안 됐으면 조용히 빈 PR을 내는 대신 즉시 알린다.
+  if (project.installationId === null) {
+    fail(`Project.installationId is empty (${project.slug}) — install the app`, "not-installed");
+  }
+
+  const client = await deps.createClient(project);
+  const { baseHead, tree, resolved, current, rendered, local, changes } = await renderProject(project, surfaces, client);
   const warnings = blockingErrors(rendered).map(({ surfaceSlug, error }) => `${surfaceSlug}: ${error.path}: ${adapterErrorMessage(error)}`);
   /**
    * ⚠️ **2층 비교·브랜치 되돌림보다 앞이다** — 경고가 있는 렌더는 무엇을 쓰든 값 일부가 빠진 파일이다. 1층을 지났으므로
@@ -241,10 +251,6 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   if (split.delivered.length === 0 && split.withheld.length > 0) return { status: "skipped", reason: "withheld", withheld: split.withheldBy };
 
   // ── 2층: blob SHA 비교 ──────────────────────────────────────────────────────
-  const changes = planPullChanges(
-    local,
-    tree.map((t) => ({ path: t.path, sha: t.sha })),
-  );
   if (changes.length === 0) {
     /**
      * ⚠️ **sync 브랜치가 base보다 앞서 있으면 되돌린다** (2026-09-09, T6 실측 발견 B).

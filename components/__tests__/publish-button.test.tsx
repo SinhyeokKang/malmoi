@@ -13,7 +13,7 @@ vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull, saveTran
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectRepository: vi.fn() }));
-const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, sendable: { total: 1, keys: 1 } };
+const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, changedFiles: [] as string[], sendable: { total: 1, keys: 1 } };
 const PUBLISH_LIVE = '[aria-live="polite"]:not([data-footer-result])';
 const ok = (data: unknown) => ({ status: "ok", preview: data });
 function button(name: string) {
@@ -155,7 +155,7 @@ it("꺼진 Publish는 aria-disabled이고 사유를 describedby로 든다", asyn
  *    말하는 것은 `sr-only` 두 줄뿐이고, 지우면 화면은 그대로인 채 뜻만 사라진다.
  */
 it("키 병합은 rowSpan이 들고 diff 두 줄은 낭독될 이름을 든다", async () => {
-  mocks.preview.mockResolvedValue(ok({ total: 2, keys: 1, truncated: 0, openPr: null, withoutFile: 0, withoutKey: 0, sendable: { total: 2, keys: 1 }, groups: [{ surface: "web", path: "en.json", changes: 2, keys: 1, rows: [
+  mocks.preview.mockResolvedValue(ok({ total: 2, keys: 1, truncated: 0, openPr: null, withoutFile: 0, withoutKey: 0, changedFiles: ["en.json"], sendable: { total: 2, keys: 1 }, groups: [{ surface: "web", path: "en.json", changes: 2, keys: 1, rows: [
     { keyId: "k", key: "onboarding.title", localeCode: "en", before: "Welcome", after: "Welcome to malmoi", author: "Jiwon", updatedAt: "", surface: "web", path: "en.json", keySpan: 2 },
     { keyId: "k", key: "onboarding.title", localeCode: "ja", before: null, after: "malmoi へようこそ", author: "Mina", updatedAt: "", surface: "web", path: "en.json", keySpan: 0 },
   ] }] }));
@@ -347,7 +347,7 @@ it("닫은 PR이 없으면 그 줄이 없다 (짝)", async () => {
  */
 const sameRow = { keyId: "k", key: "common.ok", localeCode: "ko", before: "확인", after: "확인", author: "Kim", updatedAt: "", surface: "web", path: "ko.json", keySpan: 1, same: true };
 const otherRow = { ...sameRow, keyId: "k2", key: "common.no", before: "아니요", after: "아니", same: false };
-const withRows = (rows: object[], openPr: object | null) => ok({ ...preview, total: rows.length, keys: rows.length, sendable: { total: rows.length, keys: rows.length },
+const withRows = (rows: object[], openPr: object | null, changedFiles = ["ko.json"]) => ok({ ...preview, changedFiles, total: rows.length, keys: rows.length, sendable: { total: rows.length, keys: rows.length },
   same: rows.filter(r => (r as { same: boolean }).same).length, openPr, groups: [{ surface: "web", path: "ko.json", changes: rows.length, keys: rows.length, rows }] });
 it("열린 PR의 변경을 되돌리는 행은 그렇다고 말한다 · PR이 없으면 이미 리포에 있다고 말한다", async () => {
   mocks.preview.mockResolvedValue(withRows([sameRow, otherRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }));
@@ -391,6 +391,28 @@ it("바뀌는 편집이 있으면 푸터가 파일 수를 센다 (짝)", async (
   mocks.preview.mockResolvedValue(withRows([otherRow], null));
   await render(<Host />); await click("Publish1");
   expect(document.body.textContent).toContain(m.translations.publish.previewSummary(1, 1, 1));
+});
+/**
+ * #128 — PR이 바꾸는 파일은 편집이 사는 파일보다 많을 수 있다(orphan 줄 제거, 닫힌 PR에 실렸던 값의 재전송). 미리보기가 그 파일을 이름으로 세우고
+ * 푸터의 파일 수가 실행(`changedFiles` — 결과의 "N files changed")과 같다.
+ */
+it("#128 — 편집 없이 바뀌는 파일도 표에 서고, 푸터가 실행의 파일 수를 센다", async () => {
+  mocks.preview.mockResolvedValue(withRows([otherRow], null, ["ja.json", "ko.json"]));
+  await render(<Host />); await click("Publish1");
+  const p = m.translations.publish;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(p.previewSummary(1, 1, 2));
+  expect(text).toContain("ja.json");
+  expect(text).toContain(p.otherFile.label);
+  expect(text).toContain(p.otherFile.body);
+});
+it("#128 — 상한 밖 행이 있으면 편집 없는 파일로 단정하지 않는다 · 파일 수는 그대로 실행의 수다 (짝)", async () => {
+  mocks.preview.mockResolvedValue(ok({ ...(withRows([otherRow], null, ["ja.json", "ko.json"]).preview as object), total: 3, truncated: 2, sendable: { total: 3, keys: 1 } }));
+  await render(<Host count={3} />); await click("Publish3");
+  const p = m.translations.publish;
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(p.previewSummary(3, 1, 2));
+  expect(text).not.toContain(p.otherFile.label);
 });
 /** #96 — 여러 줄 값의 줄바꿈이 공백으로 접히면 PR이 쓰는 개행과 공백을 미리보기가 구별하지 못한다. − 줄과 + 줄 둘 다다. */
 it("여러 줄 값의 −/+ 줄은 줄바꿈을 지킨다", async () => {
