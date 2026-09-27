@@ -1,5 +1,5 @@
 import { execFile, execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -106,6 +106,26 @@ it("pins a lower-ranked surface and carries its identity through both producers"
   const broken = fixtureRepo({ "b/en.json": GOOD, "b/ko.json": BROKEN });
   expect((await push(broken, url, ["--surface", "web", "--path-template", "b/{locale}.json"])).code).toBe(1);
   expect(JSON.parse(received[0]!.body)).toMatchObject({ surfaceSlug: "web", code: "parse-failed" });
+}, 60000);
+
+/**
+ * **읽지 못한 로케일 파일은 부분 페이로드가 아니라 실패다** (audit #7). 빈 내용으로 읽힌 ts-dict 파일은 어댑터 오류 없이 키를 잃고,
+ * 서버가 그 부재를 삭제로 읽는다 — `/api/push`를 부르지 않고 `prepare-failed`로 보고한 뒤 exit 1이어야 한다.
+ */
+it.skipIf(process.getuid?.() === 0)("reports prepare-failed for an unreadable locale file, without calling /api/push", async () => {
+  const url = await fakeServer(204);
+  const dict = (key: string) => `const en = { "${key}": "A" };\nconst ko = { "${key}": "B" };\nexport const ns = { en, ko };\n`;
+  const dir = fixtureRepo({ "src/i18n/a.ts": dict("a.one"), "src/i18n/b.ts": dict("b.two") });
+  chmodSync(join(dir, "src/i18n/b.ts"), 0o000);
+  try {
+    const { code, out } = await push(dir, url, ["--adapter", "ts-dict"]);
+    expect(code, out).toBe(1);
+    expect(out).toContain("src/i18n/b.ts");
+    expect(received.map((r) => r.path)).toEqual(["/api/push/failure"]);
+    expect(JSON.parse(received[0]!.body)).toMatchObject({ projectSlug: "acme", code: "prepare-failed" });
+  } finally {
+    chmodSync(join(dir, "src/i18n/b.ts"), 0o644);
+  }
 }, 60000);
 
 /** 깨진 파일 하나뿐이면 탐지가 후보를 못 만든다 — 그 갈래가 무음이던 자리다. */
