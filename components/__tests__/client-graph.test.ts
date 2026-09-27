@@ -124,6 +124,8 @@ const CLIENT_LIB_FILES = [
   "lib/landing/stage.ts",
   // 외부 링크 상수(GitHub·Releases) — 사용자 메뉴와 사이드바 하단이 읽는다. `i18n`·`routes`만 문다.
   "lib/links.ts",
+  // LNB 프로젝트 스위처의 목록 필터 — import 0인 잎이다.
+  "lib/shell/switcher.ts",
   "lib/login-link/message.ts",
   "lib/login-link/policy.ts",
   "lib/onboarding/base-pending.ts",

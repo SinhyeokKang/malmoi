@@ -4,6 +4,7 @@ import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectSwitcher } from "@/components/shell/project-switcher";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { activeProject, navFooterItems, navZones, type NavItem, type NavProject } from "@/lib/shell/nav";
@@ -80,6 +81,11 @@ export function Sidebar({
               <ProjectThumbnail name={zone.label} src={project?.image} size={16} />
             )}
             <span className="min-w-0 truncate">{zone.label}</span>
+            {/*
+              ⚠️ **전환 메뉴는 프로젝트 머리의 오른쪽 끝이다** (2026-09-27 사용자 — 8-3이 지운 스위처가 메뉴 트리거로 돌아왔다).
+              목록은 이미 받은 멤버십이다 — 조회를 더하지 않는다.
+            */}
+            {zone.key === "project" && <ProjectSwitcher projects={memberships} current={project?.slug ?? null} />}
           </p>
           {zone.items.map((item) => (
             <Item key={item.key} item={item} active={isActive(pathname, item)} />
