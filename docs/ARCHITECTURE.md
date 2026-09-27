@@ -2353,8 +2353,9 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
     union에 넣으면 `?e=`를 지나 ① danger 배너 후보가 된다(POSTMORTEM 2026-09-06). 만료·거절 감지는 없다
     (GitHub이 요청자에게 알리지 않는다 — 웹훅은 PRODUCT §4.3 ②와 같은 이유로 안 만든다).
   - ⚠️ **설치 URL은 `redirect_uri`를 받지 않는다** — 로컬·preview에서 시작한 설치도 App의 첫
-    callback(프로덕션)으로 간다. 그쪽엔 쿠키가 없어 교환 0회로 거부되므로 환경을 넘는 연결은 안 생긴다.
-    그래서 설치 왕복은 **프로덕션에서만** 실측된다(L2.10이 App을 나누면 풀린다).
+    callback으로 간다(dev App은 `dev.mal-moi.com`, prod App은 `mal-moi.com` — 2026-09-27 L2.10 분리). 시작한
+    환경과 착지 환경이 다르면 쿠키가 없어 교환 0회로 거부되므로 환경을 넘는 연결은 안 생긴다. 설치 왕복은
+    preview와 프로덕션에서 실측하고, 로컬에서는 못 밟는다.
 
 #### `planRepoConnect` — 3중 검증이 판정 자리 하나에 모여 있다 (`connect-plan.ts`)
 
