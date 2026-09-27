@@ -1,70 +1,79 @@
 import { describe, expect, it } from "vitest";
 
-import { CAP, fitScale, frame, growProgress, sceneAt, typedPrefix } from "@/lib/landing/stage";
+import { BEZEL, CANVAS_H, CANVAS_W, PLAY, fitScale, frame, pinnedSpan, sceneAt, trackHeight, typedPrefix } from "@/lib/landing/stage";
 
 /**
- * 랜딩 스테이지의 수학 (DESIGN §6.615 — 시안 `Landing.dc.html` 1b·1c·1f·1g가 정본).
+ * 랜딩 스테이지의 수학 (DESIGN §6.615).
  *
- * **스크롤 위치 하나가 전부를 몬다** — 같은 위치면 언제나 같은 프레임이어야 역방향 스크럽이 성립한다.
- * 그래서 재생 상태는 전부 여기 순수 함수에 있고, 스테이지 컴포넌트는 결과를 DOM에 옮겨 적기만 한다.
+ * **스크롤 위치 하나가 씬을 몬다** — 같은 위치면 언제나 같은 프레임이어야 역방향 스크럽이 성립한다.
+ * **배율·위치는 스크롤과 무관하다**(2026-09-27 사용자 — 스크롤 구동 확대를 걷었다). 크기만이 그것을 정한다.
  */
 
-/** 시안 1f 수치표의 스크롤러 W×H(= 패널 − 선 2). */
+/** 스크롤러 W×H(= 뷰포트 − 공개 셸 가로 18 · 세로 98). */
 const VIEWPORTS = [
-  { name: "1280×800", W: 1262, H: 702, fit: 0.836 },
-  { name: "1440×900", W: 1422, H: 802, fit: 0.964 },
-  { name: "1920×1080", W: 1902, H: 982, fit: 1.194 },
-  { name: "2560×1440", W: 2542, H: 1342, fit: 1.5 },
+  { name: "1280×800", W: 1262, H: 702, scale: 0.7506 },
+  { name: "1440×900", W: 1422, H: 802, scale: 0.8704 },
+  { name: "1920×1080", W: 1902, H: 982, scale: 1 },
+  { name: "2560×1440", W: 2542, H: 1342, scale: 1 },
 ] as const;
 
-describe("fitScale — 맞춤 배율", () => {
-  it.each(VIEWPORTS)("$name에서 시안 수치표와 같다", ({ W, H, fit }) => {
-    expect(fitScale({ W, H, cap: CAP }).fit).toBeCloseTo(fit, 3);
-  });
-
-  it("상한은 2560×1440에서만 걸린다 — 맞춤 1.669를 1.5로 자른다", () => {
-    expect(fitScale({ W: 2542, H: 1342, cap: 99 }).fit).toBeCloseTo(1.669, 3);
-    expect(fitScale({ W: 2542, H: 1342, cap: CAP }).fit).toBe(1.5);
-  });
-
-  it("상한은 확정값 1.5다(시안 열린 결정 5)", () => {
-    expect(CAP).toBe(1.5);
-  });
-
-  /** `m = clamp(24, 0.04·H, 48)` — 양끝이 실제로 걸리는지. */
-  it("여백 m은 24와 48 사이로 묶인다", () => {
-    expect(fitScale({ W: 1262, H: 702, cap: CAP }).m).toBeCloseTo(28.08, 2);
-    expect(fitScale({ W: 1262, H: 400, cap: CAP }).m).toBe(24);
-    expect(fitScale({ W: 2542, H: 1342, cap: CAP }).m).toBe(48);
-  });
-
-  /** 프레임 + 캡션 줄(44)을 세로 가운데에 둔다 — 상한에 걸린 2560에서 y 109(시안 1f). */
-  it("yPin은 프레임과 캡션 줄 블록을 세로 가운데에 둔다", () => {
-    expect(fitScale({ W: 2542, H: 1342, cap: CAP }).yPin).toBeCloseTo(109, 5);
-    const { m, yPin } = fitScale({ W: 1422, H: 802, cap: CAP });
-    expect(yPin).toBeCloseTo(m, 5);
-  });
-
-  it("패널이 여백보다 작으면 배율은 0이다 — 음수 배율이 거울상을 그리지 않는다", () => {
-    expect(fitScale({ W: 40, H: 40, cap: CAP }).fit).toBe(0);
+describe("캔버스", () => {
+  /** 1440 폭 창에서 본 제품이다(2026-09-27 사용자). 세로 810은 1440×900 화면의 브라우저 뷰포트(≈16:9)다. */
+  it("논리 캔버스는 1440×810이고 베젤은 12다", () => {
+    expect([CANVAS_W, CANVAS_H, BEZEL]).toEqual([1440, 810, 12]);
   });
 });
 
-describe("growProgress — 대기 → 고정 트윈의 진행도", () => {
-  it("스크롤 0이 대기, stageTop이 고정 시작이다", () => {
-    expect(growProgress(0, 420)).toBe(0);
-    expect(growProgress(210, 420)).toBe(0.5);
-    expect(growProgress(420, 420)).toBe(1);
+describe("fitScale — 크기만이 배율을 정한다", () => {
+  it.each(VIEWPORTS)("$name → $scale", ({ W, H, scale }) => {
+    expect(fitScale({ W, H }).scale).toBeCloseTo(scale, 4);
   });
 
-  it("범위 밖은 0..1로 묶인다", () => {
-    expect(growProgress(-50, 420)).toBe(0);
-    expect(growProgress(9999, 420)).toBe(1);
+  it("배율은 1을 넘지 않는다 — 캔버스 안은 실제 앱 px다", () => {
+    expect(fitScale({ W: 4000, H: 3000 }).scale).toBe(1);
   });
 
-  it("stageTop이 0 이하면 이미 고정이다 — 0으로 나누지 않는다", () => {
-    expect(growProgress(0, 0)).toBe(1);
-    expect(growProgress(0, -10)).toBe(1);
+  it("좌우 여백은 clamp(24, 4%·W, 64)다", () => {
+    expect(fitScale({ W: 500, H: 2000 }).side).toBe(24);
+    expect(fitScale({ W: 1422, H: 802 }).side).toBeCloseTo(56.88, 5);
+    expect(fitScale({ W: 1902, H: 982 }).side).toBe(64);
+  });
+
+  /** 세로가 모자라면 폭이 아니라 세로가 배율을 정한다 — 고정 재생 동안 목업이 뷰포트를 넘으면 아래가 잘린다. */
+  it("폭이 넉넉해도 베젤 + 캔버스 + 캡션 줄이 세로에 들어간다", () => {
+    for (const { W, H } of [...VIEWPORTS, { W: 2542, H: 600 }]) {
+      const f = fitScale({ W, H });
+      const top = f.y - BEZEL * f.scale;
+      const bottom = f.chromeY + 28;
+      expect(top).toBeGreaterThanOrEqual(0);
+      expect(bottom).toBeLessThanOrEqual(H + 1e-9);
+      expect(f.x - BEZEL * f.scale).toBeGreaterThanOrEqual(f.side - 1e-9);
+    }
+  });
+
+  it("가로 가운데 · 베젤과 캡션 줄을 합친 블록이 세로 가운데다", () => {
+    const { scale, x, y, chromeY } = fitScale({ W: 1902, H: 982 });
+    expect(x).toBeCloseTo((1902 - CANVAS_W * scale) / 2, 10);
+    const top = y - BEZEL * scale;
+    const bottom = chromeY + 28;
+    expect(top).toBeCloseTo(982 - bottom, 10);
+    // 캡션 줄은 베젤 아래 16이다.
+    expect(chromeY).toBeCloseTo(y + (CANVAS_H + BEZEL) * scale + 16, 10);
+  });
+
+  it("패널이 여백보다 작으면 배율은 0이다 — 음수 배율이 거울상을 그리지 않는다", () => {
+    expect(fitScale({ W: 40, H: 40 }).scale).toBe(0);
+  });
+});
+
+describe("재생 구간 — 스테이지가 뷰포트를 가진 동안만 씬이 움직인다", () => {
+  it("고정 구간은 lead + 씬 다섯 × perScene(H 단위)이고, 트랙은 거기에 H 하나를 더한다", () => {
+    expect(pinnedSpan()).toBe(PLAY.lead + 5 * PLAY.perScene);
+    expect(trackHeight(800)).toBe(800 * (1 + pinnedSpan()));
+  });
+
+  it("기본값은 lead 0 · 씬당 1H다 — 조정은 이 두 값이다", () => {
+    expect(PLAY).toEqual({ lead: 0, perScene: 1 });
   });
 });
 
@@ -76,11 +85,11 @@ describe("sceneAt — 씬 번호와 진행도", () => {
     expect(sceneAt(T, T, H)).toEqual({ i: 0, f: 0, t: 0, h: 0 });
   });
 
-  it("고정 전(커지는 중)에도 씬 ①이다", () => {
+  it("고정 전(목업이 올라오는 중)에도 씬 ①이다", () => {
     expect(sceneAt(0, T, H)).toEqual({ i: 0, f: 0, t: 0, h: 0 });
   });
 
-  /** 정지 0.6 / 전환 0.4 (시안 1g). */
+  /** 정지 0.6 / 전환 0.4. */
   it("정지·전환 경계 — f 0.6 직전은 정지, 직후는 전환", () => {
     const before = sceneAt(T + 599, T, H);
     expect(before.t).toBe(0);
@@ -97,16 +106,15 @@ describe("sceneAt — 씬 번호와 진행도", () => {
     expect(sceneAt(T + 1000, T, H)).toEqual({ i: 1, f: 0, t: 0, h: 0 });
   });
 
-  /** 전환이 넷뿐이라 마지막 씬은 1.0H 정지다(시안 1g). */
   it("마지막 씬은 전환하지 않는다", () => {
     const last = sceneAt(T + 4500, T, H);
     expect(last.i).toBe(4);
     expect(last.t).toBe(0);
   });
 
-  /** q = 5에서 i가 5가 되면 layers[5]를 찾다 빈 화면이 된다. */
-  it("q = 5와 그 너머는 씬 ⑤의 끝에 머문다 — 인덱스가 5로 넘치지 않는다", () => {
-    expect(sceneAt(T + 5000, T, H)).toEqual({ i: 4, f: 1, t: 0, h: 1 });
+  /** 고정이 풀리는 순간(u = 5)에 씬 ⑤가 끝나 있어야 CTA가 올라올 때 재생이 멈춰 있다. */
+  it("고정 구간 끝과 그 너머는 씬 ⑤의 끝에 머문다 — 인덱스가 5로 넘치지 않는다", () => {
+    expect(sceneAt(T + pinnedSpan() * H, T, H)).toEqual({ i: 4, f: 1, t: 0, h: 1 });
     expect(sceneAt(T + 99999, T, H)).toEqual({ i: 4, f: 1, t: 0, h: 1 });
   });
 
@@ -132,7 +140,6 @@ describe("typedPrefix — 타이핑되는 앞부분", () => {
     expect(typedPrefix("", 0.5)).toBe("");
   });
 
-  /** UTF-16 단위로 자르면 서로게이트 쌍이 반쪽으로 남아 깨진 글자가 한 프레임 보인다. */
   it("코드포인트 단위로 자른다 — 서로게이트 쌍을 반쪽으로 남기지 않는다", () => {
     expect(typedPrefix("a😀b", 2 / 3)).toBe("a😀");
   });
@@ -142,61 +149,40 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
   const W = 1422;
   const H = 802;
   const stageTop = 420;
-  const { fit, yPin } = fitScale({ W, H, cap: CAP });
+  const fit = fitScale({ W, H });
   const at = (scrollTop: number, reducedMotion = false) => frame({ scrollTop, stageTop, W, H, reducedMotion });
-  /** 고정 뒤 q에 해당하는 scrollTop. */
   const pinned = (q: number) => stageTop + q * H;
 
-  it("대기 — 맞춤의 0.8배 · 베젤과 대기 그림자 · 크롬 숨김 · 가운데 정렬", () => {
+  /** 스크롤 구동 확대가 없다 — 올라오는 중에도, 고정 중에도, 끝에서도 같은 배율·같은 위치다. */
+  it("배율·위치가 스크롤 위치와 무관하다", () => {
+    for (const top of [0, stageTop / 2, stageTop, pinned(2.5), pinned(99)]) {
+      const f = at(top);
+      expect([f.scale, f.x, f.y, f.chromeY]).toEqual([fit.scale, fit.x, fit.y, fit.chromeY]);
+    }
+  });
+
+  it("모션 감소도 같은 배율·위치다 — 움직이는 것이 원래 없다", () => {
+    const f = at(0, true);
+    expect([f.scale, f.x, f.y]).toEqual([fit.scale, fit.x, fit.y]);
+  });
+
+  it("시작 — 씬 ① · 첫 캡션", () => {
     const f = at(0);
-    expect(f.scale).toBeCloseTo(0.8 * fit, 10);
-    expect(f.y).toBe(0);
-    expect(f.x).toBeCloseTo((W - 1280 * f.scale) / 2, 10);
-    expect(f.bezel).toBe(1);
-    expect(f.shadowIdle).toBe(1);
-    expect(f.shadowPin).toBe(0);
-    expect(f.chrome).toBe(0);
     expect(f.layers).toEqual([1, 0, 0, 0, 0]);
     expect(f.caption).toEqual({ index: 0, opacity: 1 });
   });
 
-  it("커지는 중간 — easeInOut 한가운데는 배율도 한가운데다 · 크롬은 p 0.7부터", () => {
-    const f = at(stageTop / 2);
-    expect(f.scale).toBeCloseTo(0.9 * fit, 10);
-    expect(f.bezel).toBeCloseTo(0.5, 10);
-    expect(f.chrome).toBe(0);
-  });
-
-  it("고정 — 맞춤 배율 · yPin · 베젤 0 · 고정 그림자 · 크롬 보임", () => {
-    const f = at(stageTop);
-    expect(f.scale).toBeCloseTo(fit, 10);
-    expect(f.y).toBeCloseTo(yPin, 10);
-    expect(f.yPin).toBeCloseTo(yPin, 10);
-    expect(f.bezel).toBe(0);
-    expect(f.shadowPin).toBe(1);
-    expect(f.chrome).toBe(1);
-  });
-
-  /** 캡션 opacity = |1 − 2t| — 두 문장이 한순간도 겹쳐 보이지 않는다(시안 1g). */
   it("전환 한가운데 — 두 씬이 반씩 · 캡션은 0에서 다음 문장으로 바뀐다", () => {
     const f = at(pinned(0.8));
     expect(f.scene.i).toBe(0);
-    // 부동소수 — 0.8·H가 정확히 떨어지지 않아 t가 0.5에서 1e-16쯤 벗어난다.
     [0.5, 0.5, 0, 0, 0].forEach((v, k) => expect(f.layers[k]).toBeCloseTo(v, 10));
     [1, 0.5, 0, 0, 0].forEach((v, k) => expect(f.segments[k]).toBeCloseTo(v, 10));
     expect(f.caption.opacity).toBeCloseTo(0, 10);
   });
 
-  it("전환 뒤 절반은 다음 문장이다", () => {
-    const f = at(pinned(0.85));
-    expect(f.caption.index).toBe(1);
-    expect(f.caption.opacity).toBeGreaterThan(0);
-  });
-
-  it("전환 앞 절반은 이전 문장이다", () => {
-    const f = at(pinned(0.7));
-    expect(f.caption.index).toBe(0);
-    expect(f.caption.opacity).toBeGreaterThan(0);
+  it("전환 뒤 절반은 다음 문장, 앞 절반은 이전 문장이다", () => {
+    expect(at(pinned(0.85)).caption.index).toBe(1);
+    expect(at(pinned(0.7)).caption.index).toBe(0);
   });
 
   it("끝 — 씬 ⑤ · 진행 칸 전부 참", () => {
@@ -206,7 +192,6 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
     expect(f.caption.index).toBe(4);
   });
 
-  /** 역방향 스크럽 — 경로와 무관하게 위치만이 프레임을 정한다. */
   it("같은 위치는 같은 프레임이다 — 내려갔다 돌아와도 같다", () => {
     const first = at(pinned(1.3));
     at(pinned(3.9));
@@ -222,7 +207,6 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
     });
 
     it("씬 ③ 배지는 정지 구간 한가운데에서 오르고, 지나간 뒤엔 오른 채다", () => {
-      expect(at(pinned(1.9)).badge).toBe(0);
       expect(at(pinned(2.1)).badge).toBe(0);
       expect(at(pinned(2.4)).badge).toBe(1);
       expect(at(pinned(3.2)).badge).toBe(1);
@@ -230,16 +214,6 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
   });
 
   describe("prefers-reduced-motion", () => {
-    it("대기에서도 맞춤 배율 · yPin · 베젤 0 · 크롬 보임 — 트윈이 없다", () => {
-      const f = at(0, true);
-      expect(f.scale).toBeCloseTo(fit, 10);
-      expect(f.y).toBeCloseTo(yPin, 10);
-      expect(f.bezel).toBe(0);
-      expect(f.shadowPin).toBe(1);
-      expect(f.chrome).toBe(1);
-    });
-
-    /** 전환 구간 한가운데(f = 0.8, t = 0.5)에서 단절 전환(시안 1g). */
     it("씬은 전환 한가운데에서 끊어 바뀐다 — 중간 opacity가 없다", () => {
       expect(at(pinned(0.7), true).layers).toEqual([1, 0, 0, 0, 0]);
       expect(at(pinned(0.9), true).layers).toEqual([0, 1, 0, 0, 0]);

@@ -2,19 +2,25 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
-import { frame as frameAt, typedPrefix, type Frame } from "@/lib/landing/stage";
+import { CANVAS_H, CANVAS_W, frame as frameAt, pinnedSpan, trackHeight, typedPrefix, type Frame } from "@/lib/landing/stage";
 
 type Five<T> = readonly [T, T, T, T, T];
 
 /**
- * 랜딩의 스크롤 구동 목업 (Claude Design `Landing.dc.html` 1a–1d · 1g).
+ * 랜딩의 스크롤 구동 목업 (DESIGN §6.615).
+ *
+ * ⚠️ **스테이지가 재생 동안 뷰포트를 가진다** (2026-09-27 사용자) — 트랙 윗변이 스크롤러 윗변에 닿으면 sticky 한 장이 화면
+ * 전부이고, 씬은 그 고정 구간 안에서만 움직인다. 위 히어로·아래 CTA는 재생 동안 보이지 않는다 — 그래서 CTA를 음수
+ * margin으로 끌어올리지 않는다(옛 `--landing-y-pin`).
+ *
+ * ⚠️ **배율은 크기만의 함수다** — 스크롤 구동 확대(대기 0.8배 → 맞춤)를 걷었다. 베젤은 그 대기 모양 그대로 상시다
+ * (흰 링 + 얇은 회색 외곽선 + `shadow-medium`, 2026-09-27 사용자).
  *
  * ⚠️ **프레임마다 setState하지 않는다** — 씬 DOM이 수천 노드라 재조정이 스크롤을 먹는다. 스크롤 → rAF에서
  * `frame()`(순수) → ref로 transform·opacity·`data-*`·텍스트 노드를 직접 쓴다. 이 컴포넌트는 한 번 렌더된다.
  *
- * ⚠️ **SSR·JS 없음에서는 접혀 있고 프레임이 보이지 않는다** — 배율이 없으면 베젤·그림자가 1304×744로 서서 패널을 넘치고
- * CTA까지 덮으므로 프레임·크롬이 `invisible`이다. 트랙은 `data-ready`가 선 뒤에만 `6H`를 갖는다(그 전엔 패널 1개 높이 —
- * 빈 세로 구간이 남지 않는다). `data-ready`가 `group/track`으로 둘을 보이게 한다.
+ * ⚠️ **SSR·JS 없음에서는 접혀 있고 프레임이 보이지 않는다** — 배율이 없으면 1464 폭 베젤이 패널을 넘치므로 프레임·크롬이
+ * `invisible`이다. 트랙은 `data-ready`가 선 뒤에만 고정 구간 길이를 갖는다(그 전엔 패널 1개 높이 — 빈 세로 구간이 남지 않는다).
  *
  * 씬(`scenes`)은 서버 컴포넌트가 그린 정적 DOM이다. 목업이 스크롤에 반응하는 자리는 둘뿐이다 —
  * `[data-landing-typed]`의 텍스트(타이핑 접두)와 프레임의 `data-badge`(`group-data-[badge=1]/frame:`로 읽는다).
@@ -31,15 +37,12 @@ export function Stage({
   /** 씬 ②에서 타이핑되는 값 — 사전 전체를 클라이언트 청크에 싣지 않으려고 문자열 하나만 받는다. */
   typed: string;
   scenes: Five<ReactNode>;
-  /** 마무리 CTA — 스테이지 아래 남는 yPin을 음수 margin-top으로 상쇄하는 자리에 선다. */
+  /** 마무리 CTA — 트랙이 끝난 뒤에 선다(재생 동안 보이지 않는다). */
   closing: ReactNode;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
-  const bezelRef = useRef<HTMLDivElement | null>(null);
-  const shadowIdleRef = useRef<HTMLDivElement | null>(null);
-  const shadowPinRef = useRef<HTMLDivElement | null>(null);
   const chromeRef = useRef<HTMLDivElement | null>(null);
   const captionRef = useRef<HTMLParagraphElement | null>(null);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -49,12 +52,9 @@ export function Stage({
     const root = rootRef.current;
     const track = trackRef.current;
     const frameNode = frameRef.current;
-    const bezel = bezelRef.current;
-    const shadowIdle = shadowIdleRef.current;
-    const shadowPin = shadowPinRef.current;
     const chrome = chromeRef.current;
     const caption = captionRef.current;
-    if (!root || !track || !frameNode || !bezel || !shadowIdle || !shadowPin || !chrome || !caption) return;
+    if (!root || !track || !frameNode || !chrome || !caption) return;
     // 셸의 스크롤러가 스테이지의 뷰포트다(`components/public-shell/scroller.tsx`). 없으면 접힌 채로 둔다.
     const scroller = root.closest<HTMLElement>("[data-public-scroller]");
     if (scroller === null) return;
@@ -65,11 +65,11 @@ export function Stage({
     let reduced = motion.matches;
     let pending = 0;
     let ready = false;
-    /** 직전 프레임의 H·stageTop — 리사이즈 때 q를 보존하는 데 쓴다. */
+    /** 직전 프레임의 H·stageTop — 리사이즈 때 재생 위치를 보존하는 데 쓴다. */
     let lastH = 0;
     let lastStageTop = 0;
     /** 같은 값을 다시 쓰지 않는다 — 루트 CSS 변수는 서브트리 전체의 스타일을 무효화한다. */
-    let written = { stageH: "", yPin: "", caption: -1, typed: "" };
+    let written = { stageH: "", transform: "", caption: -1, typed: "" };
 
     /** 트랙 윗변의 스크롤러 좌표. offsetTop은 offsetParent에 매여 셸 구조가 바뀌면 조용히 틀린다. */
     const stageTopOf = () => track.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
@@ -78,20 +78,20 @@ export function Stage({
       const value = `${H}px`;
       if (value === written.stageH) return;
       root.style.setProperty("--landing-stage-h", value);
+      root.style.setProperty("--landing-track-h", `${trackHeight(H)}px`);
       written = { ...written, stageH: value };
     };
 
     const paint = (f: Frame) => {
-      frameNode.style.transform = `translate3d(${f.x}px, ${f.y}px, 0px) scale(${f.scale})`;
-      // ⚠️ 상시로 걸면 Chrome이 레이어를 1× 래스터로 고정해 상한 1.5에서 목업 글자가 번진다(시안 1b).
-      frameNode.style.willChange = f.bezel > 0 ? "transform" : "";
+      // 배율·위치는 크기에서만 바뀐다 — 스크롤 틱마다 같은 문자열을 다시 쓰지 않는다.
+      const transform = `translate3d(${f.x}px, ${f.y}px, 0px) scale(${f.scale})`;
+      if (transform !== written.transform) {
+        frameNode.style.transform = transform;
+        chrome.style.transform = `translate3d(0px, ${f.chromeY}px, 0px)`;
+        written = { ...written, transform };
+      }
       frameNode.dataset.scene = String(f.scene.i);
       frameNode.dataset.badge = String(f.badge);
-      bezel.style.opacity = String(f.bezel);
-      shadowIdle.style.opacity = String(f.shadowIdle);
-      shadowPin.style.opacity = String(f.shadowPin);
-      chrome.style.transform = `translate3d(0px, ${f.y + 720 * f.scale + 16}px, 0px)`;
-      chrome.style.opacity = String(f.chrome);
       f.layers.forEach((opacity, k) => {
         const layer = layerRefs.current[k];
         if (layer) layer.style.opacity = String(opacity);
@@ -110,16 +110,11 @@ export function Stage({
         for (const node of typedNodes) node.textContent = text;
         written = { ...written, typed: text };
       }
-      const yPin = `${f.yPin}px`;
-      if (yPin !== written.yPin) {
-        root.style.setProperty("--landing-y-pin", yPin);
-        written = { ...written, yPin };
-      }
     };
 
     /**
-     * ⚠️ **트랙 높이가 H에 비례하므로** 리사이즈 뒤 scrollTop을 그대로 두면 q가 튄다 — 씬 ③을 보던 사람이
-     * 창을 키우면 씬 ②로 되감긴다. 고정 구간 안이면 직전 q를 새 H로 되돌려 놓는다.
+     * ⚠️ **트랙 높이가 H에 비례하므로** 리사이즈 뒤 scrollTop을 그대로 두면 재생 위치가 튄다 — 씬 ③을 보던 사람이
+     * 창을 키우면 씬 ②로 되감긴다. 고정 구간 안이면 직전 위치(H 단위)를 새 H로 되돌려 놓는다.
      *
      * ⚠️ **보존은 관찰자 콜백이 아니라 여기서 한다** — 콜백은 레이아웃 뒤, rAF는 레이아웃 전에 돌아서 드래그 리사이즈에서는
      * 틱이 새 H를 먼저 읽는다. 콜백에서 하면 틱이 `lastH`를 덮은 뒤라 "바뀐 것 없음"으로 건너뛰었다(702 → 902가 q 2.3을 1.8로).
@@ -129,9 +124,9 @@ export function Stage({
       const W = scroller.clientWidth;
       const H = scroller.clientHeight;
       if (ready && lastH > 0 && H !== lastH) {
-        const q = (scroller.scrollTop - lastStageTop) / lastH;
+        const u = (scroller.scrollTop - lastStageTop) / lastH;
         setStageH(H);
-        if (q > 0 && q <= 5) scroller.scrollTop = stageTopOf() + q * H;
+        if (u > 0 && u <= pinnedSpan()) scroller.scrollTop = stageTopOf() + u * H;
       }
       setStageH(H);
       const stageTop = stageTopOf();
@@ -177,14 +172,13 @@ export function Stage({
       <section
         ref={trackRef}
         aria-label={label}
-        className="group/track relative mt-30 h-[var(--landing-stage-h,calc(100svh-98px))] data-[ready]:h-[calc(6*var(--landing-stage-h))]"
+        className="group/track relative mt-30 h-[var(--landing-stage-h,calc(100svh-98px))] data-[ready]:h-[var(--landing-track-h)]"
       >
         <ol className="sr-only">
           {captions.map((text) => (
             <li key={text}>{text}</li>
           ))}
         </ol>
-        {/* ⚠️ 투명하지만 positioned라 음수 margin으로 끌어올린 CTA 위에 칠해진다 — 포인터를 통과시킨다(세로 긴 뷰포트에서 CTA가 안 눌렸다). */}
         {/* `98px` = 공개 셸의 윗 여백 8 · 헤더 40 + 8 · 푸터 40 · 패널 테두리 2(`public-shell.tsx`) — 셸 치수가 바뀌면 트랙과 함께 고친다. JS 전 폴백일 뿐이고 준비 뒤엔 `--landing-stage-h`가 잰 값이다. */}
         <div className="pointer-events-none sticky top-0 h-[var(--landing-stage-h,calc(100svh-98px))]">
           <div
@@ -192,13 +186,12 @@ export function Stage({
             data-landing-frame=""
             aria-hidden="true"
             inert
-            className="group/frame invisible absolute top-0 left-0 h-[720px] w-[1280px] origin-top-left group-data-[ready]/track:visible"
+            className="group/frame invisible absolute top-0 left-0 origin-top-left group-data-[ready]/track:visible"
+            style={{ width: CANVAS_W, height: CANVAS_H }}
           >
-            {/* radius·그림자 값은 트윈하지 않는다 — 레이어 셋의 opacity 교차로 모서리가 24 → 12로 바뀌어 보인다(시안 1b). */}
-            <div ref={shadowIdleRef} className="absolute -inset-3 rounded-3xl shadow-medium" />
-            <div ref={shadowPinRef} className="absolute inset-0 rounded-lg opacity-0 shadow-low" />
-            {/* 베젤은 흰 두꺼운 테두리(12) + 얇은 회색 외곽선이다 (2026-09-27 사용자 — 시안). `bg-canvas`면 회색 판으로 읽힌다. */}
-            <div ref={bezelRef} className="absolute -inset-3 rounded-3xl border border-border bg-background" />
+            {/* 베젤은 흰 두꺼운 테두리(12) + 얇은 회색 외곽선이다 (2026-09-27 사용자 — 시안). `bg-canvas`면 회색 판으로 읽힌다. 상시다. */}
+            <div className="absolute -inset-3 rounded-3xl shadow-medium" />
+            <div className="absolute -inset-3 rounded-3xl border border-border bg-background" />
             <div className="absolute inset-0 overflow-hidden rounded-lg border border-border-subtle bg-background">
               {scenes.map((scene, k) => (
                 <div
@@ -214,7 +207,7 @@ export function Stage({
               ))}
             </div>
           </div>
-          <div ref={chromeRef} aria-hidden="true" className="invisible absolute inset-x-0 top-0 flex h-7 items-center justify-center gap-4 opacity-0 group-data-[ready]/track:visible">
+          <div ref={chromeRef} aria-hidden="true" className="invisible absolute inset-x-0 top-0 flex h-7 items-center justify-center gap-4 group-data-[ready]/track:visible">
             <div className="flex gap-1.5">
               {captions.map((text, k) => (
                 <span key={text} className="block h-[3px] w-6 overflow-hidden rounded-full bg-foreground/10">
@@ -243,8 +236,7 @@ export function Stage({
           </div>
         </div>
       </section>
-      {/* ⚠️ `relative z-10` — 트랙 `<section>`이 positioned라 끌어올린 static CTA 위에서 히트 테스트를 이겼다(#113, 1440×2560). */}
-      <div className="relative z-10 mt-[calc(-1*var(--landing-y-pin,0px))]">{closing}</div>
+      {closing}
     </div>
   );
 }

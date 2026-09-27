@@ -1,45 +1,75 @@
 /**
- * 랜딩 스테이지의 수학 — 스크롤 위치 하나가 목업의 배율·위치·씬·캡션을 전부 정한다.
- * 정본은 Claude Design `Landing.dc.html` 1b·1c·1f·1g이고 규칙은 DESIGN §6.615가 든다.
+ * 랜딩 스테이지의 수학 — **크기가 목업의 배율·위치를 정하고, 스크롤 위치가 씬·캡션을 정한다.** 규칙은 DESIGN §6.615가 든다.
  *
  * ⚠️ **잎이다** — 스테이지 클라이언트 컴포넌트가 값으로 읽으므로 아무것도 import하지 않는다
  * (`components/__tests__/client-graph.test.ts`가 센다).
  *
  * ⚠️ **같은 위치 → 같은 프레임.** 역방향 스크럽이 성립하는 유일한 조건이다 — 이전 프레임이나
  * 스크롤 방향을 입력으로 받는 순간 올렸다 내린 화면이 달라진다.
+ *
+ * ⚠️ **스크롤 구동 확대가 없다** (2026-09-27 사용자 — 대기 0.8배 → 맞춤 트윈을 걷었다). 배율은 폭·높이의 함수이고
+ * 스크롤로 움직이는 것은 씬 교차·캡션·진행 칸·타이핑·배지뿐이다.
  */
 
-/** 목업의 논리 캔버스. 안쪽은 실제 앱 px이라 뷰포트마다 줄바꿈이 달라지지 않는다. */
-const CANVAS_W = 1280;
-const CANVAS_H = 720;
-/** 대기 상태의 배율 — 맞춤의 0.8배로 떠 있는 "물건"이다. */
-const IDLE = 0.8;
-/** 배율 상한(시안 열린 결정 5 — 2560×1440에서만 걸린다). */
-export const CAP = 1.5;
-/** 프레임 아래 캡션 줄(간격 16 + 줄 28). 세로 예산에서 먼저 빠져야 캡션이 프레임을 가리지 않는다. */
-const CHROME_H = 44;
+/**
+ * 목업의 논리 캔버스 — **1440 폭 창에서 본 제품이다**(2026-09-27 사용자). 안은 실제 앱 px라 뷰포트마다 줄바꿈이 달라지지 않는다.
+ * 세로 810은 1440×900 화면에서 브라우저 크롬을 뺀 뷰포트(≈16:9)이고, 1440×900 뷰포트의 스테이지(H 802)에 캡션 줄과 함께 들어간다.
+ */
+export const CANVAS_W = 1440;
+export const CANVAS_H = 810;
+/** 흰 베젤 두께(`-inset-3`) — 프레임과 함께 배율을 받으므로 맞춤 예산에서 빠진다. */
+export const BEZEL = 12;
+/** 베젤 아래 캡션 줄(간격 16 + 줄 28). 세로 예산에서 먼저 빠져야 캡션이 뷰포트 밖으로 안 나간다. */
+const CHROME_GAP = 16;
+const CHROME_H = CHROME_GAP + 28;
 /** 씬마다 정지 0.6 / 전환 0.4. */
 const HOLD = 0.6;
 const SCENES = 5;
 
+/**
+ * **재생 타이밍 — 눈으로 맞출 때 이 두 값만 고친다** (H = 스테이지 높이 단위).
+ * - `lead`: 고정이 시작된 뒤 씬 ①이 정지 구간을 시작하기까지의 여유. 0이면 목업이 가운데에 서는 순간 시작한다.
+ * - `perScene`: 씬 하나에 드는 스크롤 길이.
+ * 트랙 높이가 두 값을 따라가므로(`trackHeight`) 고정 구간과 재생 구간이 어긋나지 않는다.
+ */
+export const PLAY = { lead: 0, perScene: 1 } as const;
+
 const clamp = (lo: number, v: number, hi: number): number => Math.min(hi, Math.max(lo, v));
-const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 const ease = (t: number): number => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
-export type Fit = { m: number; fit: number; yPin: number };
+export type Fit = {
+  scale: number;
+  /** 캔버스(베젤 안쪽) 왼쪽 위의 스크롤러 좌표 */
+  x: number;
+  y: number;
+  /** 캡션 줄 윗변 */
+  chromeY: number;
+  /** 좌우 여백 */
+  side: number;
+};
 
-/** `W·H`는 스크롤러의 clientWidth/Height다. */
-export function fitScale({ W, H, cap }: { W: number; H: number; cap: number }): Fit {
-  const m = clamp(24, 0.04 * H, 48);
+/**
+ * `W·H`는 스크롤러의 clientWidth/Height다. 배율은 **폭이 정하고 1을 넘지 않는다** — 1440 창에서 ≈0.9(공개 셸·여백만큼 작다).
+ * 세로가 모자라면 세로가 정한다: 고정 재생 동안 스테이지가 뷰포트를 가지므로 넘치면 목업 아래가 잘린다.
+ */
+export function fitScale({ W, H }: { W: number; H: number }): Fit {
+  const side = clamp(24, 0.04 * W, 64);
+  const v = clamp(16, 0.02 * H, 32);
   // 패널이 여백보다 작으면 음수 배율이 거울상을 그린다 — 0으로 묶는다.
-  const fit = Math.max(0, Math.min((W - 2 * m) / CANVAS_W, (H - 2 * m - CHROME_H) / CANVAS_H, cap));
-  return { m, fit, yPin: (H - CANVAS_H * fit - CHROME_H) / 2 };
+  const scale = Math.max(0, Math.min((W - 2 * side) / (CANVAS_W + 2 * BEZEL), (H - 2 * v - CHROME_H) / (CANVAS_H + 2 * BEZEL), 1));
+  const top = (H - (CANVAS_H + 2 * BEZEL) * scale - CHROME_H) / 2;
+  const y = top + BEZEL * scale;
+  return { scale, x: (W - CANVAS_W * scale) / 2, y, chromeY: y + (CANVAS_H + BEZEL) * scale + CHROME_GAP, side };
 }
 
-/** 대기 → 고정 트윈의 진행도. `stageTop`은 트랙 섹션의 offsetTop이고, p = 1이 곧 sticky 시작이다. */
-export function growProgress(scrollTop: number, stageTop: number): number {
-  if (!(stageTop > 0)) return 1;
-  return clamp(0, scrollTop / stageTop, 1);
+/** 고정 구간 길이(H 단위). 씬 ⑤의 정지는 이 구간 끝까지다 — 고정이 풀릴 때 재생이 끝나 있다. */
+export function pinnedSpan(): number {
+  return PLAY.lead + SCENES * PLAY.perScene;
+}
+
+/** 트랙 높이 — sticky 한 장(H) + 고정 구간. */
+export function trackHeight(H: number): number {
+  return H * (1 + pinnedSpan());
 }
 
 export type SceneAt = {
@@ -53,15 +83,16 @@ export type SceneAt = {
   h: number;
 };
 
+/** `stageTop`은 트랙 윗변의 스크롤러 좌표 — 그 위치가 곧 sticky 시작이다. */
 export function sceneAt(scrollTop: number, stageTop: number, H: number): SceneAt {
-  const raw = (scrollTop - stageTop) / H;
+  const raw = ((scrollTop - stageTop) / H - PLAY.lead) / PLAY.perScene;
   if (!(H > 0) || Number.isNaN(raw)) return { i: 0, f: 0, t: 0, h: 0 };
   const q = clamp(0, raw, SCENES);
   // q = 5에서 i가 5로 넘치면 없는 씬을 찾는다 — 씬 ⑤의 끝에 머문다.
   if (q >= SCENES) return { i: SCENES - 1, f: 1, t: 0, h: 1 };
   const i = Math.floor(q);
   const f = q - i;
-  // 마지막 씬은 전환할 다음이 없어 1.0H 전부가 정지다.
+  // 마지막 씬은 전환할 다음이 없어 전부가 정지다.
   const t = i < SCENES - 1 && f > HOLD ? (f - HOLD) / (1 - HOLD) : 0;
   return { i, f, t, h: Math.min(f / HOLD, 1) };
 }
@@ -75,18 +106,13 @@ export function typedPrefix(text: string, progress: number): string {
 type Five = [number, number, number, number, number];
 
 export type Frame = {
-  /** 프레임 transform */
+  /** 프레임 transform — 크기만의 함수다 */
   scale: number;
   x: number;
   y: number;
-  /** 고정 상태의 y — 마무리 CTA가 음수 margin-top으로 상쇄한다 */
-  yPin: number;
-  /** 레이어 opacity 0..1 — radius·그림자 값을 트윈하지 않고 레이어를 교차시킨다 */
-  bezel: number;
-  shadowIdle: number;
-  shadowPin: number;
-  chrome: number;
+  chromeY: number;
   scene: { i: number; t: number; h: number };
+  /** 레이어 opacity 0..1 */
   layers: Five;
   segments: Five;
   caption: { index: number; opacity: number };
@@ -104,11 +130,7 @@ export function frame(input: {
   reducedMotion: boolean;
 }): Frame {
   const { scrollTop, stageTop, W, H, reducedMotion: reduced } = input;
-  const { fit, yPin } = fitScale({ W, H, cap: CAP });
-
-  const p = growProgress(scrollTop, stageTop);
-  const e = reduced ? 1 : ease(p);
-  const scale = reduced ? fit : lerp(IDLE * fit, fit, e);
+  const { scale, x, y, chromeY } = fitScale({ W, H });
 
   const { i, t: rawT, h } = sceneAt(scrollTop, stageTop, H);
   // 모션 감소는 전환 한가운데(f = 0.8)에서 끊어 바꾼다 — 스크롤 길이는 그대로다.
@@ -118,13 +140,9 @@ export function frame(input: {
 
   return {
     scale,
-    x: (W - CANVAS_W * scale) / 2,
-    y: reduced ? yPin : lerp(0, yPin, e),
-    yPin,
-    bezel: 1 - e,
-    shadowIdle: 1 - e,
-    shadowPin: e,
-    chrome: reduced ? 1 : clamp(0, (p - 0.7) / 0.3, 1),
+    x,
+    y,
+    chromeY,
     scene: { i, t, h },
     layers: five((k) => (k === i ? 1 - te : k === i + 1 ? te : 0)),
     segments: five((k) => (k <= i ? 1 : k === i + 1 ? te : 0)),
