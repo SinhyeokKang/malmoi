@@ -244,9 +244,17 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   /** `more`도 세대에 묶는다 — 새 조건에서 옛 조건의 실패 문구가 남거나, 옛 조건의 늦은 응답이 새 목록의 버튼을 잠그지 않게. */
   type ListState = { source: typeof list; key: string; rows: ListGeneration<TranslationListRow>; cursor: string | null; extended: boolean; more: "idle" | "loading" | "failed" };
   const [listState, setListState] = useState<ListState>(() => ({ source: list, key: conditionKey, rows: startListGeneration(list.rows, 0), cursor: list.nextCursor, extended: false, more: "idle" }));
+  /*
+    ⚠️ **Sync 성공은 새 세대다** (감사 #11) — 같은 조건의 재검증은 행을 끼워 넣지 않으므로, 들여온 키가 목록에 영영 안 섰다(처음 목록이
+    비었으면 계속 비었다). 기준은 **Sync를 시작한 순간의 목록**이다 — 결과와 새 트리 중 어느 쪽이 먼저 커밋돼도 그 뒤에 온 목록에서 시작한다.
+  */
+  const syncListFrom = useRef<typeof list | null>(null);
+  const [resync, setResync] = useState<{ from: typeof list } | null>(null);
+  const resyncDue = resync !== null && resync.from !== list;
   let shownList = listState;
-  if (listState.source !== list) {
-    if (listState.key !== conditionKey) {
+  if (listState.source !== list || resyncDue) {
+    if (resyncDue) setResync(null);
+    if (listState.key !== conditionKey || resyncDue) {
       shownList = { source: list, key: conditionKey, rows: startListGeneration(list.rows, listState.rows.generation + 1), cursor: list.nextCursor, extended: false, more: "idle" };
     } else {
       // 서버 응답은 첫 페이지다. 페이지 밖의 행은 유지하고, 전체 조건 판정이 있는 선택 키만 이탈 여부를 갱신한다.
@@ -484,7 +492,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   */
   const syncCommit = useCommitWait(server);
   const [syncRunning, setSyncRunning] = useState(false);
-  const setSyncPending = setSyncRunning;
+  const setSyncPending = (pending: boolean) => { if (pending) syncListFrom.current = list; setSyncRunning(pending); };
   const syncPending = syncRunning || syncCommit.waiting;
   const setSyncOpen = (open: boolean) => openSyncDialog(open && !publish.pending);
   /**
@@ -493,7 +501,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
    * 트리를 싣고 오는 결과만 새 트리를 기다린다 — `try` 안의 거부(`reconfirm`…)도 온다 (`importRevalidates`, malmoi#103 r1).
    */
   const [syncOutcome, setSyncOutcomeState] = useState<RepositoryImportOutcome | null>(null);
-  const setSyncOutcome = (next: RepositoryImportOutcome | null) => { if (next !== null && importRevalidates(next)) syncCommit.wait(); setSyncOutcomeState(next); };
+  const setSyncOutcome = (next: RepositoryImportOutcome | null) => {
+    if (next !== null && importRevalidates(next)) syncCommit.wait();
+    if (next?.ok === true && syncListFrom.current !== null) setResync({ from: syncListFrom.current });
+    setSyncOutcomeState(next);
+  };
   /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
   const openSync = () => { if (!publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
 
