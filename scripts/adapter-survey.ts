@@ -11,8 +11,8 @@
  * **읽기 전용이다.** 남의 리포에 아무것도 쓰지 않는다 — clone만 하고, PR·커밋을 만드는 코드가
  * 이 파일에 없다.
  *
- * 이 파일이 파일시스템·git을 아는 유일한 층이다. 판정은 전부 `lib/survey/`의 순수 함수가 한다
- * (`selectSurveyFiles` → `surveyOne` → `summarize`).
+ * 파일시스템·git을 아는 층은 이 파일과 `lib/survey/run.ts`(git 러너를 주입받는다) 둘이다. 판정은 전부
+ * `lib/survey/`의 순수 함수가 한다 (`selectSurveyFiles` → `surveyOne` → `summarize`).
  *
  * ## blobless partial clone
  *
@@ -20,17 +20,14 @@
  * 내용은 `selectSurveyFiles`가 고른 것만 sparse-checkout으로 **한 번에** 받는다 — blob마다
  * `git cat-file`을 부르면 partial clone이 blob당 네트워크 왕복을 해서 리포 하나에 수 분이 든다.
  */
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync, lstatSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { execFile } from "node:child_process";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { promisify } from "node:util";
 
-import { causeMessage } from "../lib/cause";
 import { findTarget, flagValue, hasFlag } from "../lib/cli/args";
-import { selectSurveyFiles } from "../lib/survey/select";
+import { fetchRepo, runSurveys, type GitRunner } from "../lib/survey/run";
 import { DIFF_TARGET, summarize } from "../lib/survey/summarize";
-import { surveyOne } from "../lib/survey/one";
-import type { RepoSurvey, SurveyInput, Verdict } from "../lib/survey/types";
+import type { RepoSurvey, Verdict } from "../lib/survey/types";
 
 const argv = process.argv.slice(2);
 // 값 플래그의 값 자리를 대상으로 오인하지 않는다 — `--limit 5 repos.txt`에서 `5`를 목록 파일로 읽었다.
@@ -63,93 +60,17 @@ const repos = readFileSync(listPath, "utf8")
 const verdicts: Verdict[] =
   verdictsPath && existsSync(verdictsPath) ? (JSON.parse(readFileSync(verdictsPath, "utf8")) as Verdict[]) : [];
 
-const git = (cwd: string, args: readonly string[]): string =>
-  execFileSync("git", [...args], { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+const execFileAsync = promisify(execFile);
+/** ⚠️ **async다** (audit #21) — `execFileSync`면 워커가 몇 개든 clone이 이벤트 루프를 막아 하나씩만 돈다. */
+const git: GitRunner = async (cwd, args) =>
+  (await execFileAsync("git", [...args], { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 })).stdout;
 
-/**
- * 리포 하나를 받아 `surveyOne`에 넘길 입력을 만든다. **여기가 유일한 I/O다.**
- *
- * 실패는 던지지 않고 `failure`로 담는다 — 리포 하나가 전체를 멈추면 50개짜리 실행이 첫 사설
- * 리포에서 죽는다 (tasks.md 6).
- */
-function fetchRepo(repo: string): SurveyInput {
-  const dir = mkdtempSync(join(tmpdir(), "adapter-survey-"));
-  try {
-    git(dir, ["clone", "--depth", "1", "--filter=blob:none", "--no-checkout", "--quiet", `https://github.com/${repo}.git`, "r"]);
-  } catch (cause) {
-    rmSync(dir, { recursive: true, force: true });
-    return { repo, paths: [], files: new Map(), configFiles: [], failure: `clone 실패: ${short(cause)}` };
-  }
-  const work = join(dir, "r");
-  try {
-    const paths = git(work, ["ls-tree", "-r", "HEAD", "--name-only"]).split("\n").filter(Boolean);
-    if (paths.length === 0) {
-      return { repo, paths: [], files: new Map(), configFiles: [], failure: "빈 트리" };
-    }
-    const { paths: wanted, configFiles, truncated } = selectSurveyFiles(paths);
-    const files = new Map<string, string>();
-    if (wanted.length > 0) {
-      try {
-        // 한 번에 받는다. 개별 blob fetch는 네트워크 왕복이 파일 수만큼 든다.
-        // ⚠️ **`--`가 있어야 한다** (sec-audit 발견 20). `wanted`는 **신뢰할 수 없는 리포의 경로**라
-        // `-`로 시작하면 argv에서 옵션으로 읽힌다. 이 서브커맨드에 실행 옵션이 없어 RCE 경로는 못
-        // 찾았지만, 그것은 지금 git 버전의 성질이지 우리 계약이 아니다.
-        git(work, ["sparse-checkout", "set", "--no-cone", "--", ...wanted]);
-        git(work, ["checkout", "--quiet", "HEAD"]);
-      } catch {
-        // 부분 실패해도 받은 것만으로 진행한다 — 아래 읽기가 없는 파일을 건너뛴다.
-      }
-      for (const p of wanted) {
-        try {
-          const full = join(work, p);
-          // ⚠️ **심링크는 `catch`가 안 잡는다** (sec-audit 발견 12). 옛 주석이 "심볼릭 링크는 없는
-          // 파일로 취급한다"였는데 `catch`는 **오류일 때만** 돌고, 링크가 유효하면 `readFileSync`가
-          // 링크를 **따라가** 그 대상을 읽는다 — 측정 대상이 아닌 파일이 코퍼스에 섞인다.
-          if (lstatSync(full).isSymbolicLink()) continue;
-          const buf = readFileSync(full);
-          // 비UTF-8·바이너리는 건너뛴다. 로케일 카탈로그가 그런 경우는 그 자체가 관측치다.
-          if (buf.includes(0)) continue;
-          files.set(p, buf.toString("utf8"));
-        } catch {
-          // 서브모듈(gitlink)·체크아웃 실패 — 없는 파일로 취급한다.
-        }
-      }
-    }
-    return { repo, paths, files, configFiles, truncated };
-  } catch (cause) {
-    return { repo, paths: [], files: new Map(), configFiles: [], failure: `트리 읽기 실패: ${short(cause)}` };
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
-
-const short = (cause: unknown): string =>
-  causeMessage(cause).split("\n")[0]?.slice(0, 120) ?? "알 수 없음";
-
-/** 리포 목록을 `jobs`개씩 겹쳐 처리한다. clone이 네트워크 대기라 직렬로 돌리면 훨씬 느리다. */
-async function run(): Promise<RepoSurvey[]> {
-  const out: RepoSurvey[] = [];
-  let next = 0;
-  let done = 0;
-  const worker = async (): Promise<void> => {
-    for (;;) {
-      const i = next++;
-      const repo = repos[i];
-      if (repo === undefined) return;
-      const survey = surveyOne(fetchRepo(repo));
-      out.push(survey);
-      done += 1;
-      if (!asJson) {
-        const tag = survey.failure ? "실패" : (survey.chosen?.adapter ?? "탐지 실패");
-        console.error(`  [${String(done).padStart(3)}/${repos.length}] ${repo.padEnd(45)} ${tag}`);
-      }
-      // clone이 동기라 이벤트 루프를 놓아준다.
-      await Promise.resolve();
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(jobs, repos.length) }, worker));
-  return out;
-}
+const run = (): Promise<RepoSurvey[]> =>
+  runSurveys(repos, jobs, (repo) => fetchRepo(repo, git), (survey, done) => {
+    if (asJson) return;
+    const tag = survey.failure ? "실패" : (survey.chosen?.adapter ?? "탐지 실패");
+    console.error(`  [${String(done).padStart(3)}/${repos.length}] ${survey.repo.padEnd(45)} ${tag}`);
+  });
 
 if (!asJson) console.error(`리포 ${repos.length}개, 동시 ${jobs}개\n`);
 
