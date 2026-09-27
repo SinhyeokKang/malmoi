@@ -13,7 +13,7 @@ export function reportPushResponse(status: number, text: string): { exitCode: 0 
   const ok = status >= 200 && status < 300;
   const pendingCount = ok ? deferredCount(text) : null;
   if (pendingCount !== null) {
-    lines.push(`::warning title=Malmoi import deferred::${pendingCount} unsent translation change${pendingCount === 1 ? "" : "s"} in Malmoi — repository changes were not imported. Send them with Publish in Malmoi; edits Publish can't send (their file or key is missing from the repository) need Revert to last sent or a discard Sync. Then re-run this job.`);
+    lines.push(`::warning title=Malmoi import deferred::${pendingCount} unsent translation change${pendingCount === 1 ? "" : "s"} in Malmoi — repository changes were not imported. Send them with Publish in Malmoi. For edits Publish can't send (their file or key is missing from the repository), add the file or key back to the repository, or discard them with Sync (or Revert to last sent where available). Then re-run this job.`);
   }
   return { exitCode: ok ? 0 : 1, lines };
 }
