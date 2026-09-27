@@ -2727,6 +2727,8 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   (`NEXT_PUBLIC_VERCEL_OBSERVABILITY_BASEPATH` → `<basePath>/insights/script.js`·`<basePath>/insights`)를 쓰고, 없을 때만
   `/_vercel/insights/*`로 떨어진다. 상대 경로면 동일 출처라 `connect-src 'self'`로 충분하고, 스크립트 주입은 `'strict-dynamic'`이
   허용한다. 동일 출처인지는 preview Network 탭이 판정이다.
+  ⚠️ **`identify`·`track`을 부르지 않는다** — 수집 스크립트(`va.vercel-scripts.com/v1/script.js`, 2026-09-27 확인)는 쿠키가 없고 `localStorage`를
+  userId/groupId를 줄 때만 쓴다. `/privacy`의 "stores nothing in your browser"가 그 위에 선다(`lib/seo/__tests__/analytics-imports.test.ts`).
 
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
 
