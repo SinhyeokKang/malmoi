@@ -56,6 +56,8 @@ it("내부 항목은 앱 라우트를, Release notes는 GitHub Releases를 새 �
   expect(release.getAttribute("href")).toBe(GITHUB_RELEASES_URL);
   expect(release.getAttribute("target")).toBe("_blank");
   expect(release.getAttribute("rel")).toBe("noreferrer");
+  // 아이콘은 사이드바 하단의 같은 항목과 같은 `Compass`다 (2026-09-27 사용자).
+  expect(release.querySelector("svg")?.getAttribute("class")).toContain("lucide-compass");
   for (const label of [m.common.nav.projects, m.common.nav.account, m.publicDocs.docs.title, m.publicDocs.privacy.title]) {
     expect(item(menu, label).hasAttribute("target")).toBe(false);
   }

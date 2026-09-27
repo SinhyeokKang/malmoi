@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleHelp, Loader2, LogOut, ScrollText, ShieldCheck } from "lucide-react";
+import { CircleHelp, Compass, Loader2, LogOut, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
 
@@ -24,7 +24,7 @@ import { navWorkItems, type NavItem } from "@/lib/shell/nav";
  * `Projects · New project · Account | Release notes · Docs · Privacy Policy | Sign out`. 첫 묶음은 사이드바 사용자 구역과
  * **같은 목록**(`navWorkItems`)이고, LNB와 겹치는 항목은 의도다. **모든 줄이 필터 메뉴와 같은 `DropdownMenuItem` 모양이고 앞 아이콘 하나를 든다** —
  * 아이콘은 같은 목적지를 가리키는 다른 자리와 같은 글리프다(Projects `Box` · New project `Plus` · Account `CircleUser` ·
- * Docs `CircleHelp`는 LNB, Release notes `ScrollText`는 LNB 하단과 공유). Release notes만 외부(GitHub Releases, 새 탭)이고 외부 링크 글리프를
+ * Docs `CircleHelp`는 LNB, Release notes `Compass`는 LNB 하단과 공유). Release notes만 외부(GitHub Releases, 새 탭)이고 외부 링크 글리프를
  * 달지 않는다(DESIGN §6.3).
  *
  * ⚠️ **아바타가 사진을 싣는다** (2026-09-13). 그 전엔 `SessionRead`가 `name`·`email`만 들어
@@ -76,7 +76,7 @@ export function UserMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <a href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
-            <ScrollText className="size-4" aria-hidden />
+            <Compass className="size-4" aria-hidden />
             {m.common.nav.releaseNotes}
           </a>
         </DropdownMenuItem>

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { CircleHelp, Plus, ScrollText } from "lucide-react";
+import { CircleHelp, Compass, Plus } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
 import type { Role } from "@/lib/auth/permission";
@@ -319,7 +319,7 @@ describe("navFooterItems", () => {
       { key: "releaseNotes", href: GITHUB_RELEASES_URL, external: true },
       { key: "docs", href: "/docs", external: false },
     ]);
-    expect(navFooterItems().map((i) => i.icon)).toEqual([ScrollText, CircleHelp]);
+    expect(navFooterItems().map((i) => i.icon)).toEqual([Compass, CircleHelp]);
   });
 
   it("Sign out은 LNB에 없다 — 사용자 메뉴에만 있다 (2026-09-27 사용자)", () => {

@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { Box, CircleHelp, CircleUser, Files, History, House, Languages, Plus, ScrollText, Settings, Users } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages, Plus, Settings, Users } from "lucide-react";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -236,13 +236,13 @@ function translationsHref(project: NavProject): string {
  * 사이드바 하단의 전역 항목. **라우트가 아니라 "앱을 벗어나는 것"들이라 구역 밖이다.**
  *
  * ⚠️ **Release notes → Docs 둘이다** (2026-09-27 사용자). Sign out은 여기서 빠져 사용자 메뉴에만 있다.
- * ⚠️ **아이콘이 사용자 메뉴의 같은 항목과 같다**(`ScrollText` · `CircleHelp`) — 같은 곳을 두 글리프로 가리키지 않는다.
+ * ⚠️ **아이콘이 사용자 메뉴의 같은 항목과 같다**(`Compass` · `CircleHelp`) — 같은 곳을 두 글리프로 가리키지 않는다.
  * ⚠️ **Docs가 `/docs`(개요)를 가리킨다** (8-3 사용자 결정). 셸은 역할을 읽지 않는다 — 개발자·편집자 갈래는 개요가 준다.
  */
 export function navFooterItems(): NavItem[] {
   // `exact`는 효과가 없다 — 사이드바는 앱 셸(`app/(edit)/layout.tsx`)에만 서고 `/docs/*`는 공개 셸이라 둘이 한 화면에 안 선다.
   return [
-    { key: "releaseNotes", label: m.common.nav.releaseNotes, icon: ScrollText, href: GITHUB_RELEASES_URL, exact: true, external: true },
+    { key: "releaseNotes", label: m.common.nav.releaseNotes, icon: Compass, href: GITHUB_RELEASES_URL, exact: true, external: true },
     { key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: true },
   ];
 }
