@@ -150,8 +150,11 @@ pnpm credentials:dev --mode=verify
   각각 0인지 확인한다.
 - ⚠️ **active kid 환경변수가 비어 있으면 도구가 멈춘다** (2026-09-14). 전에는 `process.env`를 직접 읽어
   `undefined`와 비교했고, 그러면 **모든 행이 "옛 키"로 읽혀 전건이 재암호화**됐다. 지금은
-  `requireEnv`라 던지는데, `convertCredentials` 안에서는 그것이 `CredentialError` 한 줄로 접혀 나오므로
-  **원인이 메시지에 안 나온다** — 그 한 줄을 보면 먼저 `*_ENCRYPTION_ACTIVE_KEY_ID` 둘을 확인한다.
+  `requireEnv`라 던지고, `convertCredentials`가 맨 먼저 부르는 `validateCredentialKeys`가 그 자리에서
+  `[credentials] <ref> credential-env: missing environment variable <이름>` 한 줄을 stderr에 찍는다 — **원인은
+  그 줄이 말한다.** CLI 마지막 줄 `credential-conversion-failed: keep traffic blocked; no values logged`만 보고
+  판단하지 않는다. ⚠️ 변수는 있는데 kid가 키링에 없으면 그 줄 없이 마지막 줄만 나온다 — 그때는 active kid와
+  `*_ENCRYPTION_KEYS`의 키 이름이 맞는지 본다.
 - **운영 DB뿐 아니라 보존된 백업이 요구하는 키도 폐기하면 안 된다.**
 - prod는 명령 이름만 `credentials:prod`로 바꾼다. ⚠️ **그 명령은 prod DB를 직접 겨눈다**(`db:deploy`와
   같은 부류). 도구는 dev/prod 각각 고정 Supabase ref·5432·DB 이름을 검증하고, DB URL을 CLI 인자로
@@ -232,6 +235,7 @@ pnpm credentials:dev --mode=verify
   `DIRECT_URL_PROD`(5432)도 쓸 수 있다(한 문장 UPDATE라 세션 모드면 된다).
 - **precondition이 실패하면 편집을 버리거나 토큰을 손으로 채워 통과시키지 않는다.**
   `precondition failed: unsent edits without pendingEditToken remain`이면 롤백 → backfill → 재적용이다:
+  `migrate resolve`에는 래퍼 스크립트가 없어 **여기서만 예외로 `PRISMA_TARGET`을 손으로 넘긴다**(CLAUDE.md의 "사람이 넘기지 않는다"는 래퍼가 있는 명령 기준이다):
   ```
   PRISMA_TARGET=prod pnpm exec prisma migrate resolve --rolled-back 20260917170000_pending_edit_token_precondition   # dev는 PRISMA_TARGET 없이
   # backfill을 그 DB에 다시 돌린다
@@ -301,7 +305,7 @@ dig +short TXT mal-moi.com | tr -d '"' | sed 's/.*=//' | awk '{print length($0)}
 
 ## 초대 메일 — Resend (2026-09-24)
 
-**구성**: 도메인 `notify.mal-moi.com`(Resend 리전 **Tokyo** `ap-northeast-1`, 2026-09-23 Verified) · 발신 `malmoi <invite@notify.mal-moi.com>` ·
+**구성**: 도메인 `notify.mal-moi.com`(Resend 리전 **Tokyo** `ap-northeast-1`, 2026-09-23 Verified) · 발신 `Malmoi <invite@notify.mal-moi.com>`(`INVITATION_EMAIL_FROM` — Vercel 값도 이 표기인지 대시보드에서 확인한다) ·
 open/click tracking **꺼짐**(추적 서브도메인을 구성하지 않았다 — 켜면 초대 URL이 추적 링크로 바뀌고 방침의 "no tracking"이 거짓이 된다) ·
 TLS **Enforced**(2026-09-24 — Opportunistic이던 첫 발송 한 통이 SES→Gmail 구간을 평문 `ESMTP`로 가서 Gmail이 "암호화하지 않았습니다" 경고를 달았다.
 같은 설정의 다른 발송은 `ESMTPS TLS1_3`이었다 — 발송마다 갈린다. Enforced는 TLS를 못 하는 수신 서버로의 발송을 실패시키고, 그것은 앱에 `email-rejected`/`unknown`으로 보인다).
