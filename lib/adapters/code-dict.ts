@@ -292,7 +292,8 @@ function collect(
       continue;
     }
     if (prop.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
-      errors.push({ path, code: "shorthand-property", key: prop.getName() });
+      // 전체 경로다 — 이름만 내면 중첩(`a: { hello }`)의 편집 키 `a.hello`와 안 맞아 미리보기가 편집된 자리를 면제한다(B3 r1).
+      errors.push({ path, code: "shorthand-property", key: prefix === "" ? prop.getName() : `${prefix}${SEP}${prop.getName()}` });
       continue;
     }
     if (!prop.isKind(SyntaxKind.PropertyAssignment)) {

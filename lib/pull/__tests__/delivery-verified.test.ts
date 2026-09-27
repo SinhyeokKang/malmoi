@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { blobSha } from "@/lib/githash";
 import { runPull, type PendingEdit, type PullState } from "../run";
-import type { RenderKey } from "../render";
+import { renderLocaleFiles, type RenderKey } from "../render";
+import { adapterFor } from "@/lib/adapters";
+import { formatFromProject } from "../plan";
 import { createFakeGitClient } from "./fake-client";
 
 /**
@@ -106,5 +108,25 @@ describe("B3.1 B — ts-dict: 편집 키의 자리가 표면의 어느 파일에
     expect(result).toMatchObject({ status: "committed", delivered: 1 });
     expect(result).not.toHaveProperty("withheld");
     expect(written.get("b.ts")).toContain('"Parti"');
+  });
+});
+
+/**
+ * **base 파일은 0개여도 `{}`로 쓰지 않는다** (B3 r1 R1). base 파일의 키 집합은 코드가 진실이다 — DB 키가 전부 orphaned인 표면(CI 적재가 다른
+ * 표면의 미전달 편집으로 보류된 동안 리포 base에 키가 늘어난 경우)에서 `{}`를 쓰면 그 PR 머지가 코드 소유 키를 지운다. 비-base만 `{}`다.
+ */
+describe("B3.1 A 짝 — base + 원본 + 0개 → null", () => {
+  it.each([
+    ["json-catalog", "{locale}.json", "en.json", '{\n  "hello": "Hi",\n  "added": "New"\n}\n'],
+    ["chrome-locales", "_locales/{locale}/messages.json", "_locales/en/messages.json", '{\n  "hello": { "message": "Hi" }\n}\n'],
+  ])("%s", (adapterName, pathTemplate, basePath, original) => {
+    const cols = { adapterName, pathTemplate, nested: false, nestedByPath: {}, baseLocale: "en" };
+    const format = formatFromProject(cols, ["en", "fr"]);
+    const frPath = pathTemplate.replace("{locale}", "fr");
+    const keys: RenderKey[] = [{ id: "k", key: "hello", sourceText: "Hi", orphaned: true, cells: { en: { value: "Hi" }, fr: { value: "Salut" } } }];
+    const out = renderLocaleFiles(format, adapterFor(format).layout,
+      [{ path: basePath, locale: "en" }, { path: frPath, locale: "fr" }], keys, "en", new Map([[basePath, original], [frPath, original]]));
+    expect(out.find((f) => f.locale === "en")?.content).toBeNull();
+    expect(out.find((f) => f.locale === "fr")?.content?.replace(/\s/g, "")).toBe("{}");
   });
 });

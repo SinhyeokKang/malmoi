@@ -2208,9 +2208,12 @@ export const en = {
       /** 수술적 어댑터의 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐다 (launch-readiness L3.7). 편집은 DB에 남는다. */
       withoutFile: (n: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "edit isn't" : "edits aren't"} listed because the language file isn't in the repository yet. ${n === 1 ? "It stays" : "They stay"} here until the file exists.`,
-      /** ts-dict 로케일 객체에 자리가 없는 키의 셀 — pull이 그 셀만 보류한다 (delivery-invariants D3). `withoutFile`과 같은 약속이다. */
+      /**
+       * ts-dict 로케일 객체에 자리가 없는 키의 셀 — pull이 그 셀만 보류한다 (delivery-invariants D3 · audit #1). `withoutFile`과 같은 약속이다.
+       * ⚠️ **원인을 말하지 않는다**("yet") — 아직 안 생긴 키와 코드에서 지워진 키가 같은 판정(`keySlot`)을 지난다(B3 r1).
+       */
       withoutKey: (n: number): string =>
-        `${n.toLocaleString("en-US")} ${n === 1 ? "edit isn't" : "edits aren't"} listed because ${n === 1 ? "its key isn't" : "their keys aren't"} in the language file yet. ${n === 1 ? "It stays" : "They stay"} here until the ${n === 1 ? "key exists" : "keys exist"}.`,
+        `${n.toLocaleString("en-US")} ${n === 1 ? "edit isn't" : "edits aren't"} listed because ${n === 1 ? "its key isn't" : "their keys aren't"} in the language file. ${n === 1 ? "It stays" : "They stay"} here until the file has ${n === 1 ? "the key" : "those keys"}.`,
       /**
        * 결과의 보류 줄 (delivery-invariants D7) — 미리보기 `withoutFile`·`withoutKey`와 **같은 명사·같은 약속**이다. 역할 갈림은 화면에 있는
        * 컨트롤만 가리킨다: EDITOR에게는 `Revert to last sent`가 없다.
@@ -2219,7 +2222,7 @@ export const en = {
         file: (n: number): string =>
           `${n.toLocaleString("en-US")} ${n === 1 ? "edit wasn't" : "edits weren't"} sent because the language file isn't in the repository. ${n === 1 ? "It stays" : "They stay"} here until the file exists.`,
         key: (n: number): string =>
-          `${n.toLocaleString("en-US")} ${n === 1 ? "edit wasn't" : "edits weren't"} sent because ${n === 1 ? "its key isn't" : "their keys aren't"} in the language file yet. ${n === 1 ? "It stays" : "They stay"} here until the ${n === 1 ? "key exists" : "keys exist"}.`,
+          `${n.toLocaleString("en-US")} ${n === 1 ? "edit wasn't" : "edits weren't"} sent because ${n === 1 ? "its key isn't" : "their keys aren't"} in the language file. ${n === 1 ? "It stays" : "They stay"} here until the file has ${n === 1 ? "the key" : "those keys"}.`,
         editor: "Ask a project owner.",
         owner: {
           file: "Add the file to the repository, or use Revert to last sent.",

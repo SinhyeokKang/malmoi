@@ -828,3 +828,9 @@ describe("code-dict — 가려진 중복 컨테이너 (audit #4)", () => {
     expect(r.locales[0]?.entries).toEqual([{ key: "el.b.z", message: "2" }]);
   });
 });
+
+/** 중첩 shorthand의 키는 전체 경로다 (B3 r1 Y1) — 이름만 내면 편집 키 `a.hello`와 안 맞아 미리보기가 편집된 자리를 면제했다. */
+it("code-dict — 중첩 shorthand는 전체 경로 키로 알린다", () => {
+  const r = codeDict.read(base(), [f("src/locale/ko.ts", "export default { a: { hello }, hi: 'Hi' };\n")]);
+  expect(r.errors).toEqual([{ path: "src/locale/ko.ts", code: "shorthand-property", key: "a.hello" }]);
+});

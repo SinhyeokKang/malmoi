@@ -1,5 +1,6 @@
 import { fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
+import { orderedEntries } from "@/lib/adapters/shared";
 import type { Adapter, AdapterError, DetectedFormat, WriteInput } from "@/lib/adapters";
 import { buildWriteEntries, type LocalFile, type LocalePath, type PullRow, type RenderError } from "./plan";
 
@@ -119,10 +120,14 @@ export function renderLocaleFiles(
       const isBase = locale === baseLocale;
       // ⚠️ `rowsForLocale`에도 `isBase`를 넘긴다 — 여기서 빠지면 base description 폴백(위 주석)이
       // 단위 테스트에서만 켜지고 프로덕션에서는 절대 켜지지 않는다 (2026-09-04 audit #2).
-      const { content, errors } = write(writeFormat, {
-        locale,
-        entries: buildWriteEntries(rowsForLocale(keys, locale, { isBase }), { isBase }),
-      });
+      const entries = buildWriteEntries(rowsForLocale(keys, locale, { isBase }), { isBase });
+      // ⚠️ **base 파일은 0개여도 `{}`로 쓰지 않는다** (B3 r1). 재생성 writer는 원본이 있으면 `{}`를 내지만(비운 비-base 편집이 전달되게 — audit #1),
+      // base 파일의 키 집합은 코드가 진실이다: DB 키가 전부 orphaned인 동안(CI 적재 보류 중 리포에 키가 늘었을 때) `{}`를 내면 그 PR이 코드 소유
+      // 키를 지운다. 여기서 `null`로 접으면 base 파일은 그대로 남는다 — writer는 `isBase`를 모른다(`WriteInput` 계약).
+      if (isBase && original !== undefined && adapter.writeStrategy === "regenerate" && orderedEntries(entries).length === 0) {
+        return { path: p.path, locale, content: null };
+      }
+      const { content, errors } = write(writeFormat, { locale, entries });
       return { path: p.path, locale, content, ...(errors.length === 0 ? {} : { errors: tagged(errors, locale) }) };
     });
   }

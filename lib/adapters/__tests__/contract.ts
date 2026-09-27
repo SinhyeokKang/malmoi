@@ -409,6 +409,8 @@ export function writerContractViolations(adapter: Adapter): string[] {
     }
     // **원본이 있는데 낼 것이 0개면 `{}`다** (audit #1 · launch-audit B3.1 A). `null`이면 호출부가 파일을 안 내 옛 값이 남는데,
     // 그 로케일의 마지막 번역을 비운 편집은 전달로 셌다. 원본의 값이 새지 않아야 하는 것은 위와 같다.
+    // ⚠️ **writer 계약이지 파일 결과가 아니다** — writer는 `isBase`를 모르고, **base 파일은 `renderLocaleFiles`가 `null`로 접는다**(B3 r1 —
+    // base 키 집합은 코드가 진실이라 `{}`가 코드 소유 키를 지운다). 짝은 `lib/pull/__tests__/delivery-verified.test.ts`.
     const emptied = adapter.write(donor, { locale, entries: [{ key: "only", message: "" }] });
     if (emptied === null) {
       bad.push("원본이 있는데 낼 항목이 0개라고 null을 냈다 — 파일에 옛 값이 남는다 (빈 객체를 내야 한다)");
