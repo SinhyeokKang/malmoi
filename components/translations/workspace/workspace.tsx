@@ -199,9 +199,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       const copy = JSON.parse(raw) as { surfaceSlug?: unknown; keyId?: unknown; saved?: unknown; draft?: unknown };
       if (copy.keyId !== keyId || copy.surfaceSlug !== detailSurface || typeof copy.draft !== "object" || copy.draft === null || typeof copy.saved !== "object" || copy.saved === null) return;
       const saved = copy.saved as Record<string, unknown>;
+      // ⚠️ 언어 구성은 돌아온 키의 상세로 잰다 — 이 커밋의 `draft`는 아직 거쳐 간 키의 것이라 그 키에 없던 언어를 건너뛴다(감사 #10).
+      const locales = valuesOf(detail);
       let count = 0;
       for (const [code, value] of Object.entries(copy.draft as Record<string, unknown>)) {
-        if (typeof value !== "string" || !Object.hasOwn(draft.saved, code) || value === saved[code]) continue;
+        if (typeof value !== "string" || !Object.hasOwn(locales, code) || value === saved[code]) continue;
         dispatch({ type: "edit", locale: code, value });
         count += 1;
       }

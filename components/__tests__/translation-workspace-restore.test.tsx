@@ -23,9 +23,10 @@ const area = (container: HTMLElement, code: string) => container.querySelector<H
 const footer = (container: HTMLElement) => container.querySelector<HTMLElement>("[data-footer-result]")?.textContent ?? "";
 const SESSION = m.translations.workspace.footer.session.restored(1);
 
-function detailOf(keyId: string): NonNullable<WorkspaceProps["detail"]> {
+function detailOf(keyId: string, codes?: readonly string[]): NonNullable<WorkspaceProps["detail"]> {
   const base = props().detail as Exclude<WorkspaceProps["detail"], null | { absent: true }>;
-  return { ...base, key: { ...base.key, id: keyId, key: `common.${keyId}` }, locales: base.locales.map(l => ({ ...l })) };
+  const locales = base.locales.filter(l => codes === undefined || codes.includes(l.code)).map(l => ({ ...l }));
+  return { ...base, key: { ...base.key, id: keyId, key: `common.${keyId}` }, locales };
 }
 
 beforeEach(() => window.sessionStorage.clear());
@@ -58,4 +59,16 @@ it("같은 화면에서 보호 없이 교체된 키로 돌아온 복구는 세�
   expect(footer(container)).not.toContain("Signed back in");
   await user.clear(area(container, "zh"));
   expect(footer(container)).toBe("");
+});
+
+it("언어 구성이 다른 키를 거쳐 돌아와도 돌아온 키의 언어로 복구한다 — 거쳐 간 키에 없던 언어를 건너뛰고 사본을 지우지 않는다 (감사 #10)", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  await user.type(area(container, "zh"), "空");
+  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, key: "k2" }} detail={detailOf("k2", ["en"])} />);
+  await rerender(<TranslationWorkspace {...initial} detail={detailOf("k1")} />);
+  expect(area(container, "zh").value).toBe("空");
+  expect(footer(container)).toContain("1 unsaved change");
+  expect(JSON.parse(window.sessionStorage.getItem("malmoi.translation-draft.u1.acme") ?? "null")).toMatchObject({ keyId: "k1", draft: { zh: "空" } });
 });
