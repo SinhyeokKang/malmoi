@@ -223,6 +223,13 @@ describe("summarizeCandidates — 후보 + blob → 사용자 언어 요약", ()
     expect(s?.keys).toEqual({ status: "key-count-failed" });
   });
 
+  it("내려받았는데 못 읽은 로케일은 `failed`이고, 정상 빈 파일은 아니다 (audit #14)", () => {
+    const c = json("src/locales/{locale}.json", ["en", "ko", "fr"]);
+    const [s] = summarizeCandidates([c], new Map([["src/locales/en.json", EN], ["src/locales/ko.json", "{ broken"], ["src/locales/fr.json", "{}"]]));
+    expect(s?.samples.find((x) => x.locale === "ko")).toEqual({ locale: "ko", rows: [], total: 0, failed: true });
+    expect(s?.samples.find((x) => x.locale === "fr")).toEqual({ locale: "fr", rows: [], total: 0 });
+  });
+
   it("순서를 바꾸지 않는다 — 후보 순위는 탐지기 순위다 (PRODUCT §7.3)", () => {
     const out = summarizeCandidates([c2, c1], new Map());
     expect(out.map((s) => s.pathTemplate)).toEqual([c2.pathTemplate, c1.pathTemplate]);
@@ -421,7 +428,8 @@ describe("summarizeCandidates — `samples` 확장 (ARCHITECTURE §3.1)", () => 
     blobs.set("src/locales/fr.json", "{ not json");
     const [s] = summarizeCandidates([c], blobs);
     expect(s?.samples).toHaveLength(3);
-    expect(s?.samples.find((x) => x.locale === "fr")).toEqual({ locale: "fr", rows: [], total: 0 });
+    // 못 읽은 것은 `failed`로 가른다 — 빈 로케일과 같은 값이면 화면이 0키 ready로 캐시한다 (audit #14).
+    expect(s?.samples.find((x) => x.locale === "fr")).toEqual({ locale: "fr", rows: [], total: 0, failed: true });
     expect(s?.keys).toEqual({ status: "counted", count: 2 });
   });
 

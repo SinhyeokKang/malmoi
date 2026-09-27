@@ -26,7 +26,7 @@ import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import type { CreateProjectResult } from "@/app/(edit)/projects/actions";
 import { failureText, isAccessLost, isRepoScopedRefusal } from "./failure";
 import { OnboardingModal } from "./modal";
-import { FilesStep, failedPreview, previewFailureText, type ManualEntry, type PreviewState } from "./steps/files";
+import { FilesStep, failedPreview, previewFailureText, samplePreview, type ManualEntry, type PreviewState } from "./steps/files";
 import { NamingStep } from "./steps/naming";
 import { RepoStep } from "./steps/repo";
 import { ResultStep } from "./steps/result";
@@ -280,7 +280,7 @@ export function NewProject({
       Object.fromEntries(
         chosen.samples.map((s) => [
           JSON.stringify([repo?.fullName, branchValue, index, chosen.adapter, chosen.pathTemplate, s.locale]),
-          { status: "ready", rows: s.rows, total: s.total } as PreviewState,
+          samplePreview(s),
         ]),
       ),
     );
@@ -372,7 +372,7 @@ export function NewProject({
             setLocale((prev) => prev || code);
             setSamples(Object.fromEntries(result.candidate.samples.map((sample) => [
               JSON.stringify([repo.fullName, branchValue, null, manual.adapter, template, sample.locale]),
-              { status: "ready", rows: sample.rows, total: sample.total } as PreviewState,
+              samplePreview(sample),
             ])));
           } else {
             setSamples((prev) => ({ ...prev, [key]: { status: "unavailable" } }));

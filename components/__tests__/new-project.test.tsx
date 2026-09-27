@@ -372,6 +372,20 @@ it("샘플 확인값이 만료되면 다시 탐지하라고 말한다", async ()
   expect(document.body.textContent).not.toContain(m.newProject.files.preview.unavailable);
 });
 
+// audit #14 — 초기 샘플의 읽기 실패는 지연 조회 실패와 같은 갈래다. 0키 ready로 캐시하면 "정말 비었다"로 보인다.
+it("초기 샘플에서 못 읽은 언어는 빈 표가 아니라 읽지 못했다고 말한다", async () => {
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(), samples: [
+    ...candidate().samples, { locale: "fr", rows: [], total: 0, failed: true }, { locale: "ko", rows: [], total: 0 },
+  ] }] });
+  await files();
+  await select('[role="combobox"]', "fr");
+  expect(document.body.textContent).toContain(m.newProject.files.preview.unavailable);
+  // 짝: 정상 빈 언어는 실패 문장이 아니다.
+  await select('[role="combobox"]', "ko");
+  expect(document.body.textContent).not.toContain(m.newProject.files.preview.unavailable);
+  expect(mocks.loadCandidateSample).not.toHaveBeenCalled();
+});
+
 it("검색 결과에서 선택한 리포가 사라지면 Next를 막는다", async () => {
   await mount();
   await click(find(document.body, '[role="radio"]'));

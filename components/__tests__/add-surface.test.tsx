@@ -78,6 +78,19 @@ it("샘플 확인값이 만료되면 다시 탐지하라고 말한다", async ()
   expect(document.body.textContent).not.toContain(m.newProject.files.preview.unavailable);
 });
 
+// audit #14 — 탐지가 미리 든 샘플이 "못 읽음"이면 0키 표가 아니라 실패 문장이다(새 프로젝트 모달과 같은 `samplePreview`).
+it("탐지 샘플에서 못 읽은 언어는 빈 표가 아니라 읽지 못했다고 말한다", async () => {
+  const [base] = props.initial.candidates;
+  mocks.detect.mockResolvedValue({ ok: true, candidates: [{ ...base, samples: [...base!.samples, { locale: "ko", rows: [], total: 0, failed: true }] }] });
+  const user = userEvent.setup();
+  await draw();
+  const option = [...document.querySelectorAll('[role="radio"]')].find((o) => o.textContent?.trim() === "ko");
+  if (!option) throw new Error("Missing option: ko");
+  await act(async () => { await user.click(option); });
+  expect(mocks.sample).not.toHaveBeenCalled();
+  expect(document.body.textContent).toContain(m.newProject.files.preview.unavailable);
+});
+
 it("없는 표면의 404는 제품 안내와 돌아갈 링크를 제공한다", async () => {
   const { container } = await render(<NotFound />);
   expect(container.textContent).toContain("Source unavailable");

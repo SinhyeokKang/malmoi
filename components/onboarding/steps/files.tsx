@@ -20,7 +20,7 @@ import { SlowNotice } from "@/components/slow-notice";
 import type { Adapter, AdapterName } from "@/lib/adapters/types";
 import { m } from "@/lib/i18n";
 import { panelConstraints } from "@/lib/shell/panel-size";
-import type { CandidateSummary, SampleRow } from "@/lib/onboarding/detect";
+import type { CandidateSummary, LocaleSample, SampleRow } from "@/lib/onboarding/detect";
 import { onboardErrorMessage } from "@/lib/onboarding/message";
 import { LOCALE_SEGMENT_MAX, collapseLocalePicker } from "@/lib/onboarding/locale-picker";
 import type { AdapterChoice } from "@/lib/onboarding/types";
@@ -70,6 +70,11 @@ type FailedPreview = Extract<PreviewState, { status: "unavailable" | "expired" }
 /** 샘플 조회 실패를 미리보기 상태로 — 새 프로젝트 모달과 추가 모달이 이 한 벌을 쓴다. */
 export function failedPreview(error: string): FailedPreview {
   return error === "sample-expired" ? { status: "expired" } : { status: "unavailable" };
+}
+
+/** 탐지가 미리 든 샘플 → 미리보기 상태. 못 읽은 샘플(`failed`)은 지연 조회 실패와 같은 갈래다 — 0키 ready로 캐시하지 않는다 (audit #14). */
+export function samplePreview(sample: LocaleSample): PreviewState {
+  return sample.failed ? failedPreview("unavailable") : { status: "ready", rows: sample.rows, total: sample.total };
 }
 
 /** 실패 미리보기의 문장. 알림(`aria-live`)과 표 칸이 같은 문장을 쓴다. */
@@ -321,7 +326,8 @@ function Preview({
   const collapsed = collapseLocalePicker(locales.length, LOCALE_SEGMENT_MAX);
   const keysFor = (code: string): string | undefined => {
     const sample = candidate?.samples.find((s) => s.locale === code);
-    return sample === undefined ? undefined : m.newProject.files.keys(sample.total);
+    // 못 읽은 언어에 "0 keys"를 붙이지 않는다 — 모르는 수다 (audit #14).
+    return sample === undefined || sample.failed ? undefined : m.newProject.files.keys(sample.total);
   };
 
   return (
