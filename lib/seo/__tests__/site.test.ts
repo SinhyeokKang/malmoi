@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { m } from "@/lib/i18n";
 
@@ -53,6 +55,14 @@ describe("pageMetadata", () => {
 describe("OG_IMAGE", () => {
   it("정적 1장 `/og.png` 1200×630 — 대체 텍스트는 사전에서", () => {
     expect(OG_IMAGE).toEqual({ url: "/og.png", width: 1200, height: 630, alt: m.seo.ogImageAlt });
+  });
+
+  /** ⚠️ **선언만 맞고 파일이 없으면 og:image가 404다** — 실제 PNG의 IHDR 치수를 선언과 견준다. */
+  it("public/og.png가 있고 IHDR 치수가 선언과 같다", () => {
+    const png = readFileSync(join(process.cwd(), "public", OG_IMAGE.url));
+    expect(png.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    expect(png.subarray(12, 16).toString("ascii")).toBe("IHDR");
+    expect({ width: png.readUInt32BE(16), height: png.readUInt32BE(20) }).toEqual({ width: OG_IMAGE.width, height: OG_IMAGE.height });
   });
 });
 

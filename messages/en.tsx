@@ -305,10 +305,11 @@ export const en = {
     /** 랜딩 `<title>` — absolute라 템플릿(`%s · Malmoi`)을 안 지나므로 브랜드를 스스로 담는다. */
     homeTitle: "Malmoi: Localization for GitHub repositories",
     /**
-     * `public/og.png`의 대체 텍스트 — 제목 반복이 아니라 이미지 내용 묘사다. ⚠️ 이미지는 사용자가 만든다(seo-geo U1) —
+     * `public/og.png`의 대체 텍스트 — 제목 반복이 아니라 이미지 내용 묘사다. ⚠️ 이미지는 사용자가 준 자산이다(launch-readiness L2.12) —
      * 그림이 바뀌면 이 문장도 같이 고친다.
      */
-    ogImageAlt: "The Malmoi logo above the line Connect your projects, translate & ship together",
+    ogImageAlt:
+      "The headline Connect your projects, Translate & ship together above a synced GitHub project card for your-project (src/i18n/locales.json) and three translation key cards, welcome.title, team.invite and common.save, each with Korean, English and Japanese values",
     /** `/signin` 탭 제목 — `signIn.title`("Sign in to Malmoi")을 쓰면 템플릿과 브랜드가 두 번 선다. */
     signInTitle: "Sign in",
   },
