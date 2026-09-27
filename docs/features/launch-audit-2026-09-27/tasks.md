@@ -193,7 +193,7 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
   - 근거: [adapter-survey.ts](../../../scripts/adapter-survey.ts), 67·139행.
   - 완료 조건: 동기 작업을 Promise로 감싼 형태를 해소해 문서화된 `--jobs`가 실제 병렬 작업 수를 제어한다. 동시 수 상한·실패 후 슬롯 반환·결과 순서를 검증한다. 실 코퍼스 네트워크 재측정은 이 테스트와 분리한다.
 
-- [ ] **B7.4 · ⚪ audit #22 — DIRECTORY 사실 대조**
+- [x] **B7.4 · ⚪ audit #22 — DIRECTORY 사실 대조**
   - 근거: [DIRECTORY.md](../../DIRECTORY.md), 263·640·648행 부근.
   - 완료 조건: 썸네일 `src` 소비자, 가이드 WebP 개수, CSP 소유자를 최종 코드와 대조해 고친다. 다른 배치로 바뀐 설명도 해당 범위에서 확인한다.
 
@@ -219,4 +219,4 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 | B4 | 코드 완료 · 브라우저 미검증 | 불완전 적재(다운로드·파싱)면 그 실행 orphan 끔 · push:local 로케일 읽기 실패=red(`prepare-failed`) · ts-dict 확장자별 템플릿 · 실패 샘플=unavailable · 소스 파일 읽기 실패=경고 | test 7002 · projects PG 317 · build | **CI 쪽은 action 태그(`malmoi-i18n-push-v1`)를 옮겨야 대상 리포에 닿는다** — `/merge` 뒤 action 릴리스 |
 | B5 | 코드 완료 · 브라우저 미검증 | Revert busy/unsettled를 공통 창으로, 복원 기준=돌아온 키, Sync 시작 시점 스냅샷으로 새 세대(계획의 epoch 대신 — 커밋 순서 둘 다 덮음) | test 6944 · projects PG 314 | 필터를 바꾼 채 Sync 결과가 먼저 오면 재필터 전까지 새 키 미표시 · `publishInFlight` 무경계(범위 밖) |
 | B6 | 코드 완료 · 6.4 OG 반영(`public/og.png` 1200×630, 사용자 제공) — 배포 뒤 URL 응답 미확인 | 행별 pending Map/Set, Tab 통과, 테스트 resolver 정리 | test 6944 | B6.2 실 키보드 확인 미수행 · 같은 grep 8건 기록만 |
-| B7 | 7.1–7.3 완료 · 7.4 미착수 | 안쪽 allSettled(POSTMORTEM 09-13 재발), classify 기준 충돌 집계, survey async + 인덱스 순서 | test 6944 | 7.3 스크립트의 async 러너 줄은 테스트 밖(주석이 방어) |
+| B7 | 완료(7.4 DIRECTORY 문서 커밋) | 안쪽 allSettled(POSTMORTEM 09-13 재발), classify 기준 충돌 집계, survey async + 인덱스 순서 | test 6944 | 7.3 스크립트의 async 러너 줄은 테스트 밖(주석이 방어) |
