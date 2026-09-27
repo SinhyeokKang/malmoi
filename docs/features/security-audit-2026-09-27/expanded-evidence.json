@@ -1,0 +1,141 @@
+{
+  "auditedApplicationCommit": "2cebd052ea931d463b60b5ad557a6a9f495b374f",
+  "roundOneCommit": "f7ac300f",
+  "executedAt": "2026-09-27T07:37:58.594308+00:00",
+  "runtime": "Node 24.21.0",
+  "productionBuild": "passed",
+  "typecheck": "passed",
+  "newAdversarialTests": {
+    "passed": 14,
+    "failed": 0
+  },
+  "additionalExistingCliTests": {
+    "passed": 21,
+    "failed": 0
+  },
+  "traces": {
+    "traceFiles": 36,
+    "dependencyTraceMatches": {
+      "mysql2": [],
+      "deepmerge-ts": []
+    }
+  },
+  "http": [
+    {
+      "case": "production-csp:/privacy",
+      "status": 200,
+      "executableScripts": 15,
+      "allScriptNoncesMatch": true,
+      "pass": true
+    },
+    {
+      "case": "production-csp:/privacy",
+      "status": 200,
+      "executableScripts": 15,
+      "allScriptNoncesMatch": true,
+      "pass": true
+    },
+    {
+      "case": "production-csp:/signin",
+      "status": 200,
+      "executableScripts": 16,
+      "allScriptNoncesMatch": true,
+      "pass": true
+    },
+    {
+      "case": "production-csp:/docs",
+      "status": 200,
+      "executableScripts": 17,
+      "allScriptNoncesMatch": true,
+      "pass": true
+    },
+    {
+      "case": "nonce-uniqueness",
+      "pass": true
+    },
+    {
+      "case": "private-file:/.env.local",
+      "status": 404,
+      "pass": true
+    },
+    {
+      "case": "private-file:/.git/config",
+      "status": 404,
+      "pass": true
+    },
+    {
+      "case": "private-file:/prisma/schema.prisma",
+      "status": 404,
+      "pass": true
+    },
+    {
+      "case": "private-file:/docs/%2e%2e/%2e%2e/.env.local",
+      "status": 404,
+      "pass": true
+    },
+    {
+      "case": "loadPublishPreview anonymous",
+      "status": 200,
+      "expectedRejection": "unauthorized",
+      "pass": true
+    },
+    {
+      "case": "loadPublishPreview foreign project",
+      "status": 200,
+      "expectedRejection": "not-found",
+      "pass": true
+    },
+    {
+      "case": "loadSourceDetail anonymous",
+      "status": 200,
+      "expectedRejection": "unauthorized",
+      "pass": true
+    },
+    {
+      "case": "loadSourceDetail foreign project",
+      "status": 200,
+      "expectedRejection": "not-found",
+      "pass": true
+    },
+    {
+      "case": "loadMoreTranslationKeys anonymous",
+      "status": 200,
+      "expectedRejection": "unauthorized",
+      "pass": true
+    },
+    {
+      "case": "loadMoreTranslationKeys foreign project",
+      "status": 200,
+      "expectedRejection": "not-found",
+      "pass": true
+    },
+    {
+      "case": "previewTranslationRevert anonymous",
+      "status": 200,
+      "expectedRejection": "unauthorized",
+      "pass": true
+    },
+    {
+      "case": "previewTranslationRevert foreign project",
+      "status": 200,
+      "expectedRejection": "not-found",
+      "pass": true
+    },
+    {
+      "case": "acceptInvitation anonymous",
+      "status": 200,
+      "expectedRejection": "unauthorized",
+      "pass": true
+    },
+    {
+      "case": "source-detail-own-project-positive-control",
+      "status": 200,
+      "pass": true
+    }
+  ],
+  "limitations": [
+    "Local production build, not a downloaded Vercel deployment artifact",
+    "Synthetic accounts and socket-only PostgreSQL; no external provider, mail or Blob mutations",
+    "No browser execution, load testing, production exploitation, or re-audit of concurrently modified dev"
+  ]
+}
