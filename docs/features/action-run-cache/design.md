@@ -72,9 +72,55 @@ upstream 확인(2026-09-27, CTO 검수): `src/index.ts`가 `installPnpm` → `ad
 - **수용 근거**: 폭발 반경이 그 프로젝트의 push 토큰 하나다(토큰이 곧 프로젝트, ACTIONS.md) — 그 토큰은 그 프로젝트의 소스 키 적재만 한다. 대상 리포의 다른 워크플로를 쓸 수 있는 공격자는 이미 그 리포의 secret(`PUSH_TOKEN` 포함)을 자기 워크플로에서 읽을 수 있다 — 권한이 새로 는 것이 아니라 경로가 하나 는다.
 - ARCHITECTURE §8·ACTIONS.md에 이 위협과 근거를 적는다(T5).
 
+## T0.1 조회 결과 (2026-09-27, `gh api` GET)
+
+| action | 태그 | 태그 객체 | **커밋 SHA (핀)** | `runs.using` | post |
+|---|---|---|---|---|---|
+| `pnpm/action-setup` | v6.1.0 | 주석 태그 `d9184bf1…` → 벗김 | `ea17c68df8912ef543352723c149a84f56e3d413` (2026-09-04) | `node24` | `dist/index.js`(같은 번들, `is_post` 상태로 분기) |
+| `actions/setup-node` | v7.0.0 | 경량 태그 | `820762786026740c76f36085b0efc47a31fe5020` (2026-07-14) | `'node24'` | `dist/cache-save/index.js` |
+| `actions/checkout` | v7.0.1 | 경량 태그 | `3d3c42e5aac5ba805825da76410c181273ba90b1` (2026-07-17) | `node24` | `dist/index.js` |
+
+세 SHA 모두 `repos/<r>/commits/<sha>`로 해석되고 `action.yml`을 그 SHA에서 읽었다.
+
+**입력 이름 확인** — setup-node v7.0.0 `action.yml`: `package-manager-cache`(기본 `true`, "caching is enabled when either `devEngines.packageManager` or the top-level `packageManager` field in package.json specifies **npm**") · `cache` · `cache-dependency-path`. pnpm/action-setup v6.1.0: `version` · `cache`(기본 `'false'`) · `cache_dependency_path`(기본 `pnpm-lock.yaml`, 줄바꿈으로 여럿) · `package_json_file`("must be relative to the repository root (GITHUB_WORKSPACE)") · `run_install`(기본 `'null'`) · `standalone` · `dest`.
+
+**v4 → v6/v7 깨지는 변경 중 우리 사용에 걸리는 것**
+
+| action | 변경 | 우리 영향 |
+|---|---|---|
+| pnpm/action-setup v5.0.0 | Node 24 런타임 | 목적 그 자체 |
+| pnpm/action-setup v6.0.0 | pnpm v11 지원 — 설치가 **bootstrap pnpm(`npm ci`, 커밋된 lockfile) → `pnpm self-update <version>`** 경로로 바뀜. 시스템 Node가 22.13 미만이면 `@pnpm/exe`(standalone) bootstrap | 동작 동등. ubuntu-latest의 시스템 Node가 22.13 미만이면 standalone 경로를 탄다 — T1 로그에서 확인 |
+| pnpm/action-setup v6.0.10 | 캐시에 `restoreKeys`(prefix `pnpm-cache-<OS>-<arch>-`) 도입 | design "키 이름공간" 위험의 원인. 캐시를 켤 때만 걸린다 |
+| pnpm/action-setup (전 판) | `version`과 워크스페이스 `package.json`의 `packageManager: pnpm@X`가 다르면 `Multiple versions of pnpm specified` throw | **v4와 같다** — spec 비목표의 기존 버그 그대로(회귀 아님) |
+| setup-node v5.0.0 | Node 24 런타임 · **`packageManager`가 가리키는 매니저로 자동 캐시** 도입(`package-manager-cache`) · 러너 v2.327.1+ | 함정 3 — `package-manager-cache: false` |
+| setup-node v6.0.0 | 자동 캐시를 **npm으로 한정** | 대상 리포가 npm이면 여전히 켜진다 → 끄는 이유 유지 |
+| setup-node v7.0.0 | `NODE_AUTH_TOKEN` 더미 export 제거 · `@actions/cache` 5.1.0 | 우리는 `registry-url`을 안 쓴다 — 영향 없음 |
+| checkout v5.0.0 | Node 24 런타임 · 러너 v2.327.1+ | GitHub 호스트 러너는 충족 |
+| checkout v6.0.0 | `persist-credentials` 자격증명을 `.git/config` 대신 별도 파일에 저장 | 생성 워크플로 이후 스텝이 git 자격증명을 안 쓴다 — 영향 없음 |
+| checkout v7.0.0 | `pull_request_target`·`workflow_run`에서 fork PR checkout 차단(`allow-unsafe-pr-checkout`) · ESM 전환 | 생성 워크플로 트리거는 `push`·`workflow_dispatch`뿐 — 영향 없음 |
+
 ## v2가 v1과 다른 것 (T0.2가 확정)
 
-`git diff malmoi-i18n-push-v1..HEAD -- scripts/ lib/cli/ lib/push/ lib/adapters/ .github/actions/`로 소비자 체감 변화를 전수로 뽑아 ACTIONS.md에 표로 둔다. 지금 아는 것: §3의 다섯 + `requestedFormat` exit 코드 분기 + lockfile 575→673.
+`git diff malmoi-i18n-push-v1..origin/main -- scripts/ lib/cli/ lib/push/ lib/adapters/ .github/actions/` (v1 = `8511d37`, origin/main = `3f91639c` v1.0.0). **소비자 러너에서 도는 층만** 센다 — `lib/push/plan.ts`의 Zod 스키마(로케일 모양 `isLocaleShaped`·`placeholders` 상한·refs 경로 필터)와 `lib/push/apply.ts`는 **서버**라 v1 소비자도 이미 받는다. 줄 번호는 origin/main 기준.
+
+| # | 무엇 | v1 | v2 | 파일:줄 |
+|---|---|---|---|---|
+| 1 | **JSON 카탈로그 중첩·점 키 충돌**(`{"a":{"b":…},"a.b":…}`) | green, 마지막 값 적재 | **red** exit 1 `duplicate-key` + `/api/push/failure` 보고 | `lib/adapters/json-catalog.ts:180` · `scripts/push-local.ts:198` |
+| 2 | **YAML 점 키·중첩 충돌**(`a.b: x` + `a: {b: y}`) | green, 조용히 접힘 | **red** exit 1 `duplicate-key` (같은 이름 중복은 v1도 red — `:219`) | `lib/adapters/yaml-catalog.ts:184` |
+| 3 | **`api-url`이 https가 아니다**(루프백 http 제외) | 평문으로 토큰 전송 | **red** exit 2, 요청 전 종료(실패 보고도 없음) | `scripts/push-local.ts:57` · `lib/cli/push-url.ts:11` |
+| 4 | **로케일 파일 읽기 실패**(권한·I/O) | 빈 내용으로 읽어 부분 페이로드 전송 | **red** exit 1 `prepare-failed` 보고, 서버 호출 없음 | `scripts/push-local.ts:187` · `scripts/format.ts:24` |
+| 5 | **실패 보고·push 페이로드의 `executionId`** | 없음(서버가 요청별 식별자) | 실행당 UUID 하나 — 활동 이력에서 재전달이 한 줄 | `scripts/push-local.ts:107` |
+| 6 | `requestedFormat`의 exit 1/2 분기 | 오타 어댑터 exit 2(보고 없음) · 미탐지 exit 1(보고) | **같다** — 함수로 옮겼을 뿐 분기 동등(아래 "계획과 다른 점") | `scripts/format.ts:55-64` · `scripts/push-local.ts:159` |
+| 7 | **`duplicate-property`(ts-dict·code-dict의 같은 키)** | 오류 없음(페이로드 `lastWins`가 접음) | green + `적재 경고 N건 — CI는 계속한다:` 로그. code-dict는 가려진 앞 컨테이너의 키를 **더 이상 적재하지 않는다**(audit #4) — 그 키는 다음 적재에서 orphan | `lib/adapters/code-dict.ts:238,289` · `lib/adapters/ts-dict.ts:255` · `scripts/push-local.ts:206` |
+| 8 | **BOM으로 시작하는 JSON**(json-catalog·chrome-locales) | red `parse-failed` | **green** (BOM을 벗겨 읽는다) | `lib/adapters/json-catalog.ts:158` · `lib/adapters/chrome-locales.ts:138` |
+| 9 | **사용처 소스 읽기 실패** | `readFileSync` throw → 적재까지 red | green + 경고 로그, 그 파일만 스캔에서 빠짐 | `lib/cli/walk.ts:79` · `scripts/push-local.ts:213` |
+| 10 | **`deferred` 응답** | 본문만 찍고 exit 0 | exit 0 + `::warning title=Malmoi import deferred::…` | `lib/cli/push-response.ts:16` · `scripts/push-local.ts:251` |
+| 11 | **ts-dict `.tsx` 템플릿** | `.tsx` 파일도 템플릿이 `<dir>*.ts` | 확장자별 `<dir>*.tsx` — 옛 템플릿(`…*.ts`)을 `path-template:`에 박은 `.tsx` 표면은 후보를 못 찾아 exit 1일 수 있다(실사례 미확인 — 코드 근거만) | `lib/adapters/ts-dict.ts:33-36` |
+| 12 | CLI 플래그 값이 `--`로 시작 | 그 값을 그대로 씀 | 값 없음으로 본다 — action이 모든 값을 채워 넘기고 입력이 `--…`일 일이 없어 실사용 영향 없음 | `lib/cli/args.ts:29` |
+| 13 | 설치 lockfile | 575 패키지 | 673 패키지 — 콜드 설치 기준선이 바뀐다(T1.1) | `pnpm-lock.yaml` |
+| 14 | `action.yml` | — | 주석만(`api-url` https 설명·private 안내 삭제·경로 정정). 동작 변화 없음 | `.github/actions/malmoi-i18n-push/action.yml` |
+
+ACTIONS §3의 다섯 = #1·#2·#3·#4·#5. #7·#8·#9·#10·#11은 §3 문단에 없던 것이다 — T5.1의 v1↔v2 표에 이 표를 옮긴다.
 
 ## 순수 함수로 분리 가능한 부분
 
