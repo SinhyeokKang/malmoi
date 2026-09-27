@@ -2,7 +2,7 @@
 
 import { ChevronsUpDown, Plus } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { Badge } from "@/components/ui/badge";
@@ -44,11 +44,14 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
   const shown = switcherProjects(projects, q);
   const firstItem = () => content.current?.querySelector<HTMLElement>(ITEM) ?? null;
   /*
-    ⚠️ **열리면 포커스는 입력이다** — Radix 메뉴는 열 때 콘텐츠(포인터)나 첫 항목(키보드)에 포커스를 둔다. `onOpenAutoFocus`는
-    `Menu.Content`가 받는 prop인데 `DropdownMenuContent`의 **타입만** 그것을 빼 두어 형으로 넘긴다(런타임은 그대로 전달된다).
-    radix-ui 버전을 올려 이 경로가 사라지면 `project-switcher.test.tsx`의 "열면 검색 입력에 포커스"가 red다.
+    ⚠️ **포인터가 항목 위를 지나도 포커스를 옮기지 않는다** — Radix는 pointermove에 항목으로, pointerleave에 콘텐츠로 포커스를
+    옮기는데(defaultPrevented면 건너뛴다) 그러면 입력에서 치던 한글 조합의 첫 글자가 `Process` 키로 항목에 떨어져 사라진다.
+    hover 면은 `DropdownMenuItem`의 `hover:bg-accent`가 그대로 그린다. 키보드 이동은 Arrow가 든다.
   */
-  const openFocus = { onOpenAutoFocus: (event: Event) => { event.preventDefault(); input.current?.focus(); } } as Record<string, unknown>;
+  const keepInputFocus = {
+    onPointerMove: (event: PointerEvent<HTMLElement>) => event.preventDefault(),
+    onPointerLeave: (event: PointerEvent<HTMLElement>) => event.preventDefault(),
+  };
 
   function onInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") return;
@@ -65,14 +68,19 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
 
   function onContentKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.target === input.current) return;
-    const typing = event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
+    // ArrowUp은 항목의 roving 처리가 이미 preventDefault한 뒤에 온다 — 아래 거름보다 먼저 본다.
+    if (event.key === "ArrowUp" && event.target === firstItem()) {
+      event.preventDefault();
+      input.current?.focus();
+      return;
+    }
+    // ⚠️ 항목이 이미 처리한 키(Space·Enter = 선택)는 질의로 옮기지 않는다 — 안 거르면 다음에 열 때 입력에 공백이 남는다.
+    if (event.defaultPrevented) return;
+    const typing = event.key.length === 1 && event.key !== " " && !event.ctrlKey && !event.metaKey && !event.altKey;
     if (typing || event.key === "Backspace") {
       // preventDefault가 Radix의 typeahead를 건너뛰게 한다(composeEventHandlers).
       event.preventDefault();
       setQ((prev) => (typing ? prev + event.key : prev.slice(0, -1)));
-      input.current?.focus();
-    } else if (event.key === "ArrowUp" && event.target === firstItem()) {
-      event.preventDefault();
       input.current?.focus();
     }
   }
@@ -89,12 +97,18 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
         ref={content}
         align="start"
         className="w-64"
-        {...openFocus}
         onKeyDown={onContentKeyDown}
+        // ⚠️ 한글 조합 중 Esc는 조합을 취소하는 키다 — 메뉴를 닫지 않는다(Radix는 document capture에서 들어 stopPropagation이 안 닿는다).
+        onEscapeKeyDown={(event) => { if (event.isComposing || event.keyCode === 229) event.preventDefault(); }}
       >
         <div className="flex items-center gap-2 px-2 pb-1">
+          {/*
+            ⚠️ **열리면 포커스는 입력이다** — `autoFocus`가 커밋 때 입력에 포커스를 두면, Radix `FocusScope`는 이미 안에 포커스가
+            있는 것을 보고 자기 자동 포커스(콘텐츠·첫 항목)를 건너뛴다. "열면 검색 입력에 포커스" 테스트가 그 경로를 잰다.
+          */}
           <Input
             ref={input}
+            autoFocus
             value={q}
             onChange={(event) => setQ(event.target.value)}
             onKeyDown={onInputKeyDown}
@@ -111,7 +125,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
           <p className="text-muted-foreground px-3 py-1.5 text-sm">{m.common.nav.projectSwitcher.empty}</p>
         ) : (
           shown.map((project) => (
-            <DropdownMenuItem key={project.slug} asChild selected={project.slug === current}>
+            <DropdownMenuItem key={project.slug} asChild selected={project.slug === current} {...keepInputFocus}>
               <Link href={routes.project(project.slug)}>
                 <ProjectThumbnail name={project.name} src={project.image} size={16} />
                 {/* ⚠️ 이름이 남는 폭을 먹는다(`flex-1`) — 그래야 배지 뒤의 `Check`(`ml-auto`)가 배지에 붙는다. 둘 다 `ml-auto`면 빈 폭을 나눠 갖는다. */}
@@ -127,7 +141,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
           ))
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild {...keepInputFocus}>
           <Link href={routes.newProject()}>
             <Plus className="size-4" aria-hidden />
             {m.common.nav.newProject}

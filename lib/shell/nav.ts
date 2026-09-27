@@ -11,10 +11,12 @@ import { routes } from "@/lib/routes";
  * 셸 사이드바의 순수 판정. **클라이언트 컴포넌트가 읽으므로 무게가 붙는 것을 여기서 막는다** —
  * `permission`·`routes`·`i18n`은 잎이고 `lucide-react`는 허용 목록에 있다 (ARCHITECTURE §6.35).
  *
- * ⚠️ **구조·라벨·순서는 Figma 시안(`212:944`)이 정본이다** (8-3). 2026-09-09의 IA(PRODUCT §7.7)에서
+ * ⚠️ **구조·라벨·순서는 Figma 시안(`212:944`)에서 시작했다** (8-3). 2026-09-09의 IA(PRODUCT §7.7)에서
  * 바뀐 것 넷: 사용자 축이 **둘로** 줄었고(`Projects`·`Settings` — `New project`가 빠졌다),
  * 구역 라벨이 **이름 그대로**이며(`Your work` → 사용자 이름), 프로젝트 축 순서에서 **Locales가
  * Translations보다 앞**이고, 하단에 **Help**가 붙었다.
+ * ⚠️ **그 뒤 사용자 결정이 시안을 넘었다** (2026-09-27): 사용자 축은 `Projects · New project · Account` 셋이고
+ * (`navWorkItems` — 헤더 사용자 메뉴의 첫 묶음도 이 목록이다), 하단은 `Release notes · Docs`다.
  */
 
 /**

@@ -147,4 +147,52 @@ describe("ProjectSwitcher", () => {
     const active = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((r) => r.getAttribute("href") === routes.project("malmoi"))!;
     expect(active.textContent).not.toContain(m.projects.status.archived);
   });
+
+  /** ⚠️ 항목이 처리한 Space(선택)가 질의로 새지 않는다 — 새면 다음에 열 때 입력에 공백이 남는다. */
+  it("항목의 Space는 그 항목을 고르고 질의에 공백을 남기지 않는다", async () => {
+    const user = await open();
+    await act(async () => user.keyboard("{ArrowDown}"));
+    await act(async () => user.keyboard(" "));
+    expect(clicked.hrefs).toEqual([routes.project("bugshot-web")]);
+    if (document.querySelector('[role="menu"]') === null) await act(async () => user.click(trigger()));
+    expect(input().value).toBe("");
+  });
+
+  it("맞는 프로젝트가 없으면 입력의 Enter는 아무 데도 가지 않는다 — New project로도", async () => {
+    const user = await open();
+    await act(async () => user.keyboard("zzz{Enter}"));
+    expect(clicked.hrefs).toEqual([]);
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
+  });
+
+  /** ⚠️ 포인터가 항목 위를 지나도 포커스가 입력에 남는다 — 옮겨 가면 한글 조합의 첫 글자가 `Process`로 항목에 떨어진다. */
+  it("포인터가 항목 위를 지나도 포커스는 입력에 남는다", async () => {
+    await open();
+    // 모달 메뉴가 body에 `pointer-events: none`을 건다 — jsdom엔 콘텐츠 쪽 `auto` 계산이 없어 검사만 끈다.
+    const pointer = userEvent.setup({ pointerEventsCheck: 0 });
+    await act(async () => pointer.hover(items()[1]!));
+    await act(async () => pointer.unhover(items()[1]!));
+    expect(document.activeElement).toBe(input());
+  });
+
+  it("조합 중(Process·compositionstart) 키는 질의를 망가뜨리지 않고, 조합 중 Esc는 메뉴를 닫지 않는다", async () => {
+    await open();
+    const field = input();
+    await act(async () => {
+      field.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true }));
+      field.dispatchEvent(new KeyboardEvent("keydown", { key: "Process", keyCode: 229, bubbles: true, cancelable: true }));
+    });
+    expect(document.activeElement).toBe(field);
+    expect(field.value).toBe("");
+    await act(async () => {
+      document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", keyCode: 229, isComposing: true, bubbles: true, cancelable: true }));
+    });
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
+    // 조합이 끝난 뒤의 Esc는 평소처럼 닫는다.
+    await act(async () => {
+      field.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true }));
+      document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+  });
 });
