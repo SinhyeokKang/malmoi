@@ -44,6 +44,7 @@ async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): 
   const delivery = await readDeliveryState(tx, projectId, surfaceId);
   // 실행 흔적은 공통 활성 경계(`isRunActive`)로만 busy다 — 강제 종료가 남긴 RUNNING·import 토큰이 Revert를 영구히 막지 않는다(감사 #9).
   const now = new Date();
+  // `isRunActive`와 같은 창이다(같은 `STALE_AFTER_SECONDS`, 경계 정각은 활성) — 쿼리에 싣느라 인라인으로 풀었다.
   const activeSince = new Date(now.getTime() - STALE_AFTER_SECONDS * 1000);
   const running = await tx.syncRun.count({ where: { projectId, status: "RUNNING", startedAt: { gte: activeSince } } });
   const importing = await tx.project.findUnique({ where: { id: projectId }, select: { repositoryImportToken: true, repositoryImportStartedAt: true } });
