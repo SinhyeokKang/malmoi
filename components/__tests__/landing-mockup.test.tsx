@@ -78,6 +78,21 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect([...scene.querySelectorAll("[data-landing-nav]")].filter((node) => node.className.includes("bg-foreground/[0.07]")).map((node) => node.getAttribute("data-landing-nav"))).toEqual(["translations"]);
   });
 
+  /** 사이드바 프로젝트 머리의 전환 트리거(`project-switcher.tsx` — ghost `size-6` · `ChevronsUpDown` 16)를 그림으로 둔다. */
+  it("프로젝트 구역 머리 오른쪽 끝에 전환 트리거 글리프가 하나 선다 — 사용자 구역엔 없다", async () => {
+    const scene = layer(await mount(), 0);
+    const head = find(scene, '[data-landing-zone="project"] > p');
+    const switcher = find<HTMLElement>(head, "[data-landing-switcher]");
+    expect(head.lastElementChild).toBe(switcher);
+    expect(switcher.tagName.toLowerCase()).toBe("span");
+    for (const cls of ["ml-auto", "size-6", "rounded-sm", "p-0"]) expect(switcher.className.split(" ")).toContain(cls);
+    const glyph = switcher.querySelector("svg");
+    expect(glyph?.getAttribute("class")).toContain("lucide-chevrons-up-down");
+    expect(glyph?.getAttribute("class")).toContain("size-4");
+    expect(scene.querySelectorAll("[data-landing-switcher]")).toHaveLength(1);
+    expect(find(scene, '[data-landing-zone="work"]').querySelector("[data-landing-switcher]")).toBeNull();
+  });
+
   it("LNB 폭이 실제 셸의 기본 240이다", async () => {
     expect(find(layer(await mount(), 0), "[data-landing-lnb]").className).toContain("w-[240px]");
   });

@@ -1,9 +1,11 @@
+import { ChevronsUpDown } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { buttonClass } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
 import { navFooterItems, navZones, type NavItem } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
@@ -55,6 +57,12 @@ export function AppFrame({ children, overlay }: { children: ReactNode; overlay?:
               <p className="text-foreground flex items-center gap-2 p-1.5 text-sm font-medium">
                 {zone.key === "work" ? <Avatar name={fixture.user} size={16} /> : <ProjectThumbnail name={zone.label} size={16} />}
                 <span className="min-w-0 truncate">{zone.label}</span>
+                {/* 프로젝트 전환 트리거(`components/shell/project-switcher.tsx`) — 같은 ghost 24 · 글리프 16 · 머리 오른쪽 끝. 메뉴는 그리지 않는다. */}
+                {zone.key === "project" && (
+                  <span data-landing-switcher="" className={cn(buttonClass({ variant: "ghost" }), "-my-0.5 ml-auto size-6 shrink-0 rounded-sm p-0")}>
+                    <ChevronsUpDown className="size-4" aria-hidden />
+                  </span>
+                )}
               </p>
               {zone.items.map((item) => (
                 <Item key={item.key} item={item} active={item.key === "translations"} />
