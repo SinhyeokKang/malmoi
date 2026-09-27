@@ -118,6 +118,7 @@ upstream 확인(2026-09-27, CTO 검수): `src/index.ts`가 `installPnpm` → `ad
 | 11 | **ts-dict `.tsx` 템플릿** | `.tsx` 파일도 템플릿이 `<dir>*.ts` | 확장자별 `<dir>*.tsx` — 옛 템플릿(`…*.ts`)을 `path-template:`에 박은 `.tsx` 표면은 후보를 못 찾아 exit 1일 수 있다(실사례 미확인 — 코드 근거만) | `lib/adapters/ts-dict.ts:33-36` |
 | 12 | CLI 플래그 값이 `--`로 시작 | 그 값을 그대로 씀 | 값 없음으로 본다 — action이 모든 값을 채워 넘기고 입력이 `--…`일 일이 없어 실사용 영향 없음 | `lib/cli/args.ts:29` |
 | 13 | 설치 lockfile | 575 패키지 | 673 패키지 — 콜드 설치 기준선이 바뀐다(T1.1) | `pnpm-lock.yaml` |
+| 14a | **대상 리포 `packageManager: pnpm@10.33.0+sha512…`**(무결성 접미사) | `pnpm/action-setup` v4.4.0이 접미사째 `version`과 비교해 `Multiple versions of pnpm specified` **red** | **green** — v6.1.0이 `+` 뒤를 벗겨 비교한다. 다른 버전(`pnpm@9…`)은 여전히 red(spec 비목표) | upstream `pnpm/action-setup` v4.4.0 `src/install-pnpm/run.ts:78-81` · v6.1.0 `:158` |
 | 14 | `action.yml` | — | 주석만(`api-url` https 설명·private 안내 삭제·경로 정정). 동작 변화 없음 | `.github/actions/malmoi-i18n-push/action.yml` |
 
 ACTIONS §3의 다섯 = #1·#2·#3·#4·#5. #7·#8·#9·#10·#11은 §3 문단에 없던 것이다 — T5.1의 v1↔v2 표에 이 표를 옮긴다.
