@@ -79,3 +79,4 @@
 - 외부 쓰기 승인: ① 이 리포 원격 일회용 브랜치 `spike/action-cache`(지휘자가 push) ② `i18n-order-check`의 일회용 브랜치·워크플로·secret(T1 끝에 삭제, 캐시도 삭제).
 - **T1.3(a) yarn 갈래는 포크 픽스처(`i18n-many-locales`)가 아니라 `i18n-order-check` 일회용 브랜치의 `package.json`에 `packageManager: yarn@4…`를 넣어 밟는다** — 포크는 쓰기 검증에 쓰지 않는다(runtime-test §7.1).
 - 순서: 코드 워커(T0.1·T0.2·T2·T3·T4, 캐시 켬) → 스파이크 SHA로 T1 → B 판정 → 같은 코드 워커가 B 반영 + T5 문서 → dev 통합·push. **T6~T8은 `/merge` 몫이다**(이 오케스트레이션 밖).
+- **T1 대상 교체**(사용자, 같은 날): prod App `malmoi-sync`가 `i18n-order-check`에 설치돼 있지 않아 **`SinhyeokKang/bugshot-i18n-test`(폐기용, 기본 브랜치 `dev`, 기존 `CI` 워크플로 있음)**로 바꾼다. 위의 외부 쓰기 승인·yarn 갈래 대체가 이 리포에 그대로 적용된다. 기존 prod 프로젝트가 있으면 그것을 쓴다.
