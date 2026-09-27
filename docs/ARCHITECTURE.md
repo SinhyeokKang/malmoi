@@ -909,6 +909,8 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
 - **`ref`는 네 온보딩 진입점 전부 `isValidBranchName`을 지난다** — `detectRepoFormats` ·
   `loadCandidateSample` · `confirmManualFormat` · `createProject`. 샘플의 `locale`과 수동 지정의
   `baseLocale`은 `isPathSafeLocale`도 지난다.
+- **못 읽은 로케일은 `unavailable`이고 0키 ready가 아니다** (2026-09-27, launch-audit #14) — 초기·지연 샘플 둘 다다. 실패를 빈 로케일로 캐시하면
+  재조회가 생략된다. 정상 빈 파일은 오류로 바꾸지 않는다.
 - **base 브랜치는 Malmoi의 sync 브랜치(`malmoi-i18n/sync-` 접두 전체)일 수 없다** (malmoi#126) — `isSyncBranchName`(`lib/pull/ref-slug.ts`) 하나를
   목록 필터(`planBranchChoice` — 설정·①)와 거부 넷(`detectRepoFormats` · `createProject` · `updateRepositorySettings` · 설정 폼의 자유 입력)이 쓴다.
   목록에서 빼는 것만으로는 부족하다 — 300개 초과의 자유 입력·직접 호출이 같은 이름을 보낸다. 되면 Sync가 미머지 산출물을 읽고 Publish가 자기 자신으로 PR을 낸다.
@@ -2524,6 +2526,8 @@ GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" 
 
 `refreshVerifiedEmail`은 기존 User 잠금 아래 HMAC 조회·복호화 이메일 대조 후 암호문과 lookup을 함께 갱신한다. 이미 사용 중인 주소 또는 동시 unique 충돌이면 옛 이메일·userId로 로그인을 허용하며 병합하지 않는다. 새 가입의 unique 충돌은 거부한다.
 
+⚠️ **잠금 앞에서 읽은 Account는 잠금 뒤에 거짓일 수 있다** (2026-09-27, launch-audit #5). 해제(`unlinkLoginMethod`)가 같은 User 잠금 안에서 Account를 지우고 커밋하면, 해제된 공급자의 주소가 User로 들어갔다. 잠금 뒤 다시 읽어 사라졌으면 `unlinked`, 소유자가 바뀌었으면 `keep`이다(`postgres.integration.ts`).
+
 GitHub refresh는 외부 일회용 토큰 소비 전에 쓰기 키를 확인한다. CAS 비교값은 **조회한 refresh 암호문 원본 + userId + providerAccountId**이며, 새 access/refresh 쌍은 각기 난수 nonce로 암호화해 함께 저장한다. 키/복호화 오류는 reauthorize와 구별되는 unavailable이다.
 
 `credentialIO`는 Prisma/crypto 예외를 원인 객체 없는 고정 오류로 바꾼다. `auth.ts`는 오류 타입만, `logFailure`는 HTTP 상태 또는 **오류 생성자 이름**만 기록한다(§6.5.1). 메시지·cause·암호문·lookup·키를 로그에 남기지 않는다. Auth.js SessionTokenError를 통한 readSession 장애 판정은 유지한다.
@@ -2592,6 +2596,9 @@ projects를 각각 조회해 User.image/Project.image 참조와 대조하며 고
 `postgres.integration.ts`의 `relogin` 경로뿐이고 그것은 `pnpm test` 밖이다.**
 
 ## 7. Supabase / Prisma
+
+⚠️ **`pnpm audit`의 `prisma` 경유 경고(`deepmerge-ts` GHSA-ggr8, `mysql2` GHSA-3f6p·rgwj)는 런타임에 닿지 않는다** (2026-09-27 보안 감사) —
+빌드 추적(`.next/**/*.nft.json`)에 경로가 0이다. 버전 고정 규칙대로 override·업그레이드하지 않고, Prisma stable 패치가 고치면 그때 올린다.
 
 ### Multi-surface 단계 B (T17–T19)
 
@@ -2800,6 +2807,10 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   **같은 호스트 referrer는 수집 스크립트가 버린다**(`script.debug.js` 2026-09-27 확인 — `document.referrer.includes(location.host)`면 `r`을 안 싣는다) —
   앱 → Help 새 탭·`/signin?callbackUrl=…`의 slug·쿼리는 안 나가고, 실리는 것은 타 사이트 referrer뿐이다. 토큰 페이지의 `no-referrer`는
   배포 스크립트가 그 판정을 바꿔도 전체 URL referrer가 생기지 않게 하는 방어다. 그래서 Referrer-Policy는 바꾸지 않았다.
+- **AI 크롤러(GPTBot·Google-Extended·ClaudeBot 등)를 따로 막지 않는다** — 공개 제품 문서이고 목표가 노출이다.
+- **제목 규약** — 루트 기본값 `Malmoi`(앱 탭), 랜딩만 absolute, docs는 `<제목> · Malmoi Docs`, `og:title`엔 브랜드를 넣지 않고
+  `og:site_name`이 든다. 루트 기본값을 바꾸면 앱 탭이 전부 마케팅 문구가 된다.
+- **JSON-LD에 평점·리뷰를 넣지 않는다** — 없는 데이터다.
 
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
 
