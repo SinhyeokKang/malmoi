@@ -1110,6 +1110,7 @@ export const en = {
         repository: (who: ReactNode): ReactNode => <>{who} reconnected the repository</>,
         pushToken: (who: ReactNode): ReactNode => <>{who} rotated the push token</>,
         image: (who: ReactNode): ReactNode => <>{who} changed the project image</>,
+        imageRemoved: (who: ReactNode): ReactNode => <>{who} removed the project image</>,
         archived: (who: ReactNode): ReactNode => <>{who} archived this project</>,
         restored: (who: ReactNode): ReactNode => <>{who} restored this project</>,
       },

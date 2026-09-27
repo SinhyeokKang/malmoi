@@ -303,7 +303,7 @@ const SETTINGS_SENTENCE: Record<string, (who: ReactNode) => ReactNode> = {
   "settings.repositoryConnected": m.logs.sentence.settings.repository,
   "settings.pushTokenRotated": m.logs.sentence.settings.pushToken,
   "settings.imageChanged": m.logs.sentence.settings.image,
-  "settings.imageRemoved": m.logs.sentence.settings.image,
+  "settings.imageRemoved": m.logs.sentence.settings.imageRemoved,
   "settings.archived": m.logs.sentence.settings.archived,
   "settings.restored": m.logs.sentence.settings.restored,
 };
