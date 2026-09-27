@@ -1147,6 +1147,17 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 - `scripts/ingest.ts`도 **`assemblePushInput`을 지난다** (2026-09-18, launch-readiness L7.3 — 전엔 `selectLocaleFiles`·`pickBaseLocale`을 각자 불러 단일 입구를 우회했고, 그래서 **`--base` 검증이 그 CLI에서만 빠져** 탐지되지 않은 로케일을 base로 받았다). 원본이 필요한 왕복 검증을 위해 그 함수가 읽은 `files`를 함께 돌려준다. 검증은 `scripts/__tests__/ingest-base.test.ts`가 스크립트를 실제로 띄워서 한다. ⚠️ **`lib/survey/select.ts`엔 같은 층이 따로 있다** — survey가 측정 전용이고 요구가 다르기 때문이다. 새 어댑터를 추가하면 **둘 다** 고친다.
 - **`multi-locale` 파일 선택은 `shared.matchGlobPaths` 하나다** (2026-09-04 통일). 전에는 셋이 각자 규칙을 들었다 — push·ingest가 `startsWith(dir) && /\.tsx?$/`(하위 디렉터리·`.tsx` 포함), pull의 글롭은 둘 다 제외, survey는 하위 제외·`.tsx` 포함. **그 차이에 걸린 파일은 키가 DB에 적재되고 편집 UI에 뜨는데 pull이 영영 쓰지 않았고 에러도 없었다.** 정본은 `pathTemplate`이다: `*.ts`는 `.ts`만 잡고 `*`는 `/`를 먹지 않는다 — `.tsx`를 담아야 하면 `detect`가 `*.tsx`를 내야 한다(선택 층에서 확장자를 넓히면 그 층만 아는 규칙이 다시 생긴다). `lib/adapters/__tests__/multi-locale-paths.test.ts`가 push·pull의 결과를 같은 집합인지 대조한다.
 
+### 5.5.01 그 생산자는 **남의 러너에서 말모이 clone으로** 돈다 (composite action, 2026-09-27 v2)
+
+`push:local`은 대상 리포 워크스페이스가 아니라 action이 clone한 말모이 트리(`action_path/../../..`) 위에서 `pnpm install`만 거친 채
+돈다 — 그래서 셋업이 밟은 함정이 셋이고 전부 "대상 리포와 말모이 clone 중 누구의 파일을 보나"다. ① 셋업 action의 파일 경로 입력(`package_json_file`·`node-version-file`·캐시 키의
+`hashFiles`)은 **워크스페이스 기준**이라 clone의 파일을 못 본다 — 버전은 값으로 넘긴다(`action.yml` "버전 읽기"). ② `setup-node` v5+의
+자동 캐시(`package-manager-cache`, 기본 true)가 **대상 리포의 `package.json`**을 읽어 npm이면 대상 리포 lockfile을 해시하다 던진다 — 명시로 끈다.
+③ ⚠️ **clone에는 `prisma generate`가 없다**(`generated/`는 gitignore된 산출물) — `push:local`의 import 그래프가 Prisma에 닿으면 모든 run이
+`ERR_MODULE_NOT_FOUND`다(v2 직전에 실제로 그랬다: `.env.local` 로더가 `PrismaClient`와 한 파일에 있었다). 그 그래프를 action에
+`prisma generate`를 더해 푸는 것이 아니라 **Prisma 없이 유지**하고, `scripts/__tests__/push-local-graph.test.ts`가 상시로 센다. 셋업 판·캐시 불채택의
+실측은 docs/ACTIONS.md, 계약은 `scripts/__tests__/action-setup.test.ts`·`workflow-pins.test.ts`다.
+
 ### 5.5.05 외부 페이로드가 **경로와 크기**를 정하지 못한다 (2026-09-09, sec-audit 발견 2·10)
 
 `locales[]`와 `format.pathTemplate`은 `applyPush`가 **그대로** 저장하고, 야간 pull이 그것을 보간해
