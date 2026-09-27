@@ -133,12 +133,16 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
       ⚠️ **응답을 잃은 실행만 refresh한다** — 아래 규칙의 유일한 예외다. Action의 재검증 트리가 응답과 함께 사라져 화면이 Sync 전
       트리로 남는다. 결과를 먼저 넘기는 것이 순서다: 호스트의 `wait()`가 옛 트리를 기준으로 떠야 refresh 트리까지 교차 잠금이 선다.
       ⚠️ **오프라인이면 부르지 않는다** — RSC fetch가 실패하면 Next가 브라우저 내비게이션으로 떨어져 오류 페이지가 결과를 덮는다.
+      ⚠️ **온라인이어도 그 폴백은 남는다 — 알고 받는 대가다** (Next 16.3 `fetch-server-response`: `!res.ok || !isFlightResponse`면 같은
+      MPA 폴백). 5xx면 브라우저 오류 페이지, 세션이 끝났으면 미들웨어 302로 `/signin`, 배포 스큐면 전체 리로드가 이 Alert를 덮는다.
+      셋 다 리로드된 화면이 서버 상태를 말하므로 거짓 "안 됐다"보다 낫다 — `navigator.onLine`은 그중 명백한 하나만 거른다.
     */
     if (!outcome.ok && outcome.error === "unconfirmed" && navigator.onLine !== false) router.refresh();
     /*
       ⚠️ **응답이 온 결과에는 `router.refresh()`를 부르지 않는다** (audit-ux #12). Action이 `finally`에서 `revalidatePath(…, "layout")`를 부르고
       Next가 그 응답에 새 트리를 실어 커밋한다 — 여기서 또 부르면 결과가 선 뒤 두 번째 전체 렌더가 표시 없이 돌았다.
-      실패 뒤의 refresh가 거부 Alert를 씻던 함정(POSTMORTEM 2026-09-08)도 호출이 없으니 생기지 않는다.
+      실패 뒤의 refresh가 거부 Alert를 씻던 함정(POSTMORTEM 2026-09-08)은 응답이 온 거부에서는 호출이 없어 생기지 않는다 —
+      `unconfirmed`의 refresh만 위의 MPA 폴백 갈래로 그 Alert를 덮을 수 있다.
 
       ⚠️ **이 실행을 async transition으로 감싸지 않는다** — React 19는 진행 중인 async transition을 전역으로 얽어
       (POSTMORTEM 2026-09-18), 긴 Sync 동안 그 뒤의 모든 transition(내비게이션 포함)이 끝날 때까지 커밋되지 않는다.

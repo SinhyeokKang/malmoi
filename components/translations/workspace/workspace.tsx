@@ -500,13 +500,17 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const setSyncOpen = (open: boolean) => openSyncDialog(open && !publish.pending);
   /**
    * ⚠️ **[Sync]의 원결과를 이 화면이 든다** (audit #5 — POSTMORTEM 2026-09-08 재발) — 전엔 `onResult`가 결과를 버리고
-   * refresh만 불러 거부가 설명 없이 버튼만 복귀했다. 지금은 아무도 refresh하지 않는다 — Action의 재검증이 새 트리를 싣고 온다.
-   * 트리를 싣고 오는 결과만 새 트리를 기다린다 — `try` 안의 거부(`reconfirm`…)도 온다 (`importRevalidates`, malmoi#103 r1).
+   * refresh만 불러 거부가 설명 없이 버튼만 복귀했다. 지금은 Action의 재검증이 새 트리를 싣고 오고, **응답을 잃은 실행(`unconfirmed`)만**
+   * `SyncButton`이 refresh로 트리를 부른다(malmoi#132). 트리를 싣고 오는 결과만 새 트리를 기다린다 — `try` 안의 거부(`reconfirm`…)도
+   * 온다 (`importRevalidates`, malmoi#103 r1).
+   * ⚠️ **`unconfirmed`도 새 세대다** (malmoi#132 r1) — 서버가 끝냈다면 refresh 트리에 Sync가 들여온 키가 있고, 병합하면 끼워 넣지 않아
+   * 목록에 안 선다(감사 #11). 끝내지 않았으면 트리가 같아 새 세대가 곧 병합과 같은 목록이다. 트리가 안 오면(오프라인) 위 effect가 상한 뒤 버린다.
    */
   const [syncOutcome, setSyncOutcomeState] = useState<RepositoryImportOutcome | null>(null);
   const setSyncOutcome = (next: RepositoryImportOutcome | null) => {
     if (next !== null && importRevalidates(next)) syncCommit.wait();
-    if (next?.ok === true && syncListFrom.current !== null) setResync({ from: syncListFrom.current });
+    const replaced = next !== null && (next.ok || next.error === "unconfirmed");
+    if (replaced && syncListFrom.current !== null) setResync({ from: syncListFrom.current });
     setSyncOutcomeState(next);
   };
   /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */

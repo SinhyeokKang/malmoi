@@ -129,6 +129,20 @@ describe("Sync 뒤 목록", () => {
     expectMerged(container);
   });
 
+  /**
+   * ⚠️ **응답을 잃은 Sync도 새 세대다** (malmoi#132 r1) — 서버가 실제로 끝냈으면 refresh 트리에 새 키가 있는데, 병합만 하면
+   * `mergeServerRows`가 끼워 넣지 않아 목록에 안 섰다(감사 #11 재발).
+   */
+  it("응답을 잃은 Sync의 refresh 트리에 온 새 키가 목록에 선다", async () => {
+    mocks.run.mockRejectedValue(new Error("connection reset"));
+    const initial = props();
+    const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+    await sync();
+    expect(mocks.refresh).toHaveBeenCalledOnce();
+    await rerender(<TranslationWorkspace {...withRow(initial)} />);
+    expect(listText(container)).toContain("Cancel");
+  });
+
   it("실패한 Sync 결과는 새 세대를 시작하지 않는다", async () => {
     mocks.run.mockResolvedValue({ ok: false, error: "already-running" });
     const initial = props();
