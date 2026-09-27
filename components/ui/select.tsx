@@ -68,6 +68,11 @@ export function SelectTrigger({ className, children, ...props }: ComponentProps<
 /**
  * ⚠️ **`position="popper"` + `--radix-select-trigger-width`가 짝이다.** 기본값(`item-aligned`)은
  * 고른 항목을 트리거 위에 겹쳐 띄워 목록 행 안에서 열면 행을 가린다.
+ *
+ * ⚠️ **Enter의 기본 동작을 Viewport에서 막는다** (malmoi#133). Radix `SelectItem`은 Enter·Space를 keydown에서 고르고 **Space만**
+ * `preventDefault`한다 — 막히지 않은 Enter는 브라우저가 이어서 keypress(버튼 활성화)를 보내고, 그 사이 `onValueChange`가 연
+ * Dialog의 첫 포커스(X)가 그것을 받아 **같은 키 입력에 닫혔다**(역할 변경 확인). 항목의 핸들러는 Radix 것보다 **먼저** 돌아
+ * 거기서 막으면 선택 자체가 건너뛰어지므로, 선택이 끝난 뒤 버블되는 Viewport에서 막는다. 목록 안의 Enter에 다른 기본 동작은 없다.
  */
 export function SelectContent({
   className,
@@ -87,7 +92,7 @@ export function SelectContent({
         )}
         {...props}
       >
-        <Primitive.Viewport>{children}</Primitive.Viewport>
+        <Primitive.Viewport onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }}>{children}</Primitive.Viewport>
       </Primitive.Content>
     </Primitive.Portal>
   );
