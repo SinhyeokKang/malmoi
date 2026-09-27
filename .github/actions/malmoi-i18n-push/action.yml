@@ -126,29 +126,8 @@ runs:
         set -euo pipefail
         root="${{ github.action_path }}/../../.."
         ws="$GITHUB_WORKSPACE"
-        skip=""
-        # `devEngines.packageManager`가 `packageManager`보다 앞선다 — pnpm의 판정 순서와 같다.
-        # ⚠️ **이름을 모양으로 거른다** — 대상 리포 파일의 문자열이 아래 `::warning`에 실리므로 개행·`::`가 워크플로 명령이 된다.
-        # 깨진 `package.json`도 끈다 — `pnpm store path`가 그 파일을 파싱하다 exit 1이다(로컬 실측). v1에서는 green이던 리포다.
-        pm="$(node -e '
-          const fs = require("fs");
-          if (!fs.existsSync(process.argv[1])) process.exit(0);
-          let p;
-          try { p = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); } catch { process.stdout.write("?unreadable"); process.exit(0); }
-          const d = [].concat(p?.devEngines?.packageManager ?? [])[0];
-          const name = String(d?.name ?? String(p?.packageManager ?? "").split("@")[0]);
-          process.stdout.write(/^[a-z][a-z0-9-]{0,39}$/.test(name) || name === "" ? name : "?other");
-        ' "$ws/package.json")"
-        if [ "$pm" = "?unreadable" ]; then
-          skip="a package.json pnpm cannot read"
-        elif [ "$pm" = "?other" ]; then
-          skip="a package manager other than pnpm"
-        elif [ -n "$pm" ] && [ "$pm" != "pnpm" ]; then
-          skip="$pm"
-        elif grep -qsE '^[[:space:]]*storeDir[[:space:]]*:' "$ws/pnpm-workspace.yaml" \
-          || grep -qsE '^[[:space:]]*store-dir[[:space:]]*=' "$ws/.npmrc"; then
-          skip="a custom pnpm store dir"
-        fi
+        # 판정은 옆 파일이 든다(`detect-cache.cjs` — 단위 테스트가 본다). 출력은 끌 이유 한 줄이고, 켜면 비어 있다.
+        skip="$(node "${{ github.action_path }}/detect-cache.cjs" "$ws")"
         if [ -n "$skip" ]; then
           echo "::warning title=Malmoi dependency cache skipped::This repository uses $skip, so Malmoi installs its dependencies without cache. Results are unchanged, only slower."
           { echo "cache=false"; echo "path=pnpm-lock.yaml"; echo "dir="; } >> "$GITHUB_OUTPUT"
