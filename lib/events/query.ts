@@ -213,8 +213,9 @@ function eventResult(row: Pick<Selected, "kind" | "result" | "syncRun" | "finish
     case "SUCCEEDED":
       return "sent";
     // ⚠️ **보류만 남은 실행은 "보낼 것이 없었다"가 아니다** (delivery-invariants D7) — 편집은 있었고 못 실었다.
+    // writer 경고로 쓰기 전에 멈춘 실행(`warnings > 0`)도 같다 — 결과 모달이 같은 실행을 `Not sent`로 말한다(2026-09-27 L8.1).
     case "SKIPPED":
-      return row.syncRun.withheld > 0 ? "notSent" : "nothingToSend";
+      return row.syncRun.withheld > 0 || row.syncRun.warnings > 0 ? "notSent" : "nothingToSend";
     case "FAILED":
       return "failed";
     default:
@@ -323,7 +324,8 @@ function resultWhere(result: EventResult): Prisma.ProjectEventWhereInput {
   const status = PUBLISH_STATUS[result];
   if (status === undefined) return { result };
   // SKIPPED 하나가 두 어휘로 갈린다 — 조회(`eventResult`)와 같은 술어여야 필터와 행 라벨이 갈리지 않는다.
-  const run: Prisma.SyncRunWhereInput = result === "notSent" ? { status, withheld: { gt: 0 } } : result === "nothingToSend" ? { status, withheld: 0 } : { status };
+  const run: Prisma.SyncRunWhereInput = result === "notSent" ? { status, OR: [{ withheld: { gt: 0 } }, { warnings: { gt: 0 } }] }
+    : result === "nothingToSend" ? { status, withheld: 0, warnings: 0 } : { status };
   return { OR: [{ result }, { syncRun: run },
     ...(result === "running" ? [{ kind: "IMPORT" as const, result: null, finishedAt: null }] : []),
   ] };
