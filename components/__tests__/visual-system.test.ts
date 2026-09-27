@@ -159,6 +159,8 @@ const REGISTERED: Record<string, string[]> = {
     "components/members/member-row.tsx",
     "components/projects/project-list.tsx",
     "components/settings/general-card.tsx",
+    // LNB 스위처의 보관 배지 — `/projects` 행 칩과 같은 형 (§6.5)
+    "components/shell/project-switcher.tsx",
     "components/sources/source-detail-modal.tsx",
     "components/sources/sources-screen.tsx",
     "components/translations/workspace/locale-panel.tsx",

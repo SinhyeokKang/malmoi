@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRef, useState, type KeyboardEvent } from "react";
 
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -27,7 +28,8 @@ const ITEM = '[role="menuitem"], [role="menuitemradio"]';
  *
  * ⚠️ **새 Popover·combobox 프리미티브가 아니라 필터 메뉴와 같은 `DropdownMenu`다** (사용자) — 행 모양·hover·체크가 한 벌이다.
  * 지금 프로젝트는 `selected`(`menuitemradio` + `aria-checked`)이고, 행을 고르면 그 프로젝트의 **Home**으로 간다 — 보던 하위 화면은
- * 역할·구획이 다를 수 있어 따라가지 않는다.
+ * 역할·구획이 다를 수 있어 따라가지 않는다. 보관 프로젝트도 싣고 행 오른쪽에 `/projects` 목록과 같은 `Archived` 배지를 단다
+ * (지금 프로젝트면 배지 다음에 체크).
  *
  * ⚠️ **머리의 입력과 Radix 메뉴의 키보드가 부딪힌다** — 메뉴는 글자 키를 typeahead로 먹고 Tab을 막는다. 그래서:
  * - 입력의 키는 Esc(닫기 — Radix가 document에서 듣는다)를 빼고 **메뉴까지 올리지 않는다**. ArrowDown은 첫 항목으로, Enter는 첫 맞는 행이다.
@@ -39,7 +41,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
   const [q, setQ] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const content = useRef<HTMLDivElement>(null);
-  const shown = switcherProjects(projects, current, q);
+  const shown = switcherProjects(projects, q);
   const firstItem = () => content.current?.querySelector<HTMLElement>(ITEM) ?? null;
   /*
     ⚠️ **열리면 포커스는 입력이다** — Radix 메뉴는 열 때 콘텐츠(포인터)나 첫 항목(키보드)에 포커스를 둔다. `onOpenAutoFocus`는
@@ -112,7 +114,14 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
             <DropdownMenuItem key={project.slug} asChild selected={project.slug === current}>
               <Link href={routes.project(project.slug)}>
                 <ProjectThumbnail name={project.name} src={project.image} size={16} />
-                <span className="min-w-0 truncate">{project.name}</span>
+                {/* ⚠️ 이름이 남는 폭을 먹는다(`flex-1`) — 그래야 배지 뒤의 `Check`(`ml-auto`)가 배지에 붙는다. 둘 다 `ml-auto`면 빈 폭을 나눠 갖는다. */}
+                <span className="min-w-0 flex-1 truncate">{project.name}</span>
+                {project.archived && (
+                  // ⚠️ `/projects` 행 칩과 같은 형·같은 키다(`project-list.tsx`의 `archived` 칩) — 두 벌이면 하나가 낡는다.
+                  <Badge variant="neutral" className="shrink-0 px-2 text-neutral-400">
+                    {m.projects.status.archived}
+                  </Badge>
+                )}
               </Link>
             </DropdownMenuItem>
           ))

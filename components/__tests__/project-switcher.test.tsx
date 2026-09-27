@@ -33,6 +33,7 @@ const projects = [
   { slug: "old", name: "old-site", archived: true, image: null },
   { slug: "course-chatbot", name: "course-chatbot", archived: false, image: null },
 ];
+const OLD = `old-site${m.projects.status.archived}`;
 
 const trigger = () => document.querySelector<HTMLButtonElement>(`button[aria-label="${m.common.nav.projectSwitcher.label}"]`)!;
 const input = () => document.querySelector<HTMLInputElement>('[role="menu"] input')!;
@@ -57,14 +58,15 @@ describe("ProjectSwitcher", () => {
     expect(document.querySelector('[role="menu"] kbd')?.textContent).toBe(m.common.nav.projectSwitcher.escHint);
   });
 
-  it("보관을 뺀 프로젝트 셋 + New project이고, 지금 프로젝트만 체크다", async () => {
+  it("보관까지 전부이고 보관은 맨 뒤(`/projects` 기본 순서), 지금 프로젝트만 체크다", async () => {
     await open();
-    expect(names()).toEqual(["bugshot-web", "malmoi", "course-chatbot", m.common.nav.newProject]);
+    expect(names()).toEqual(["bugshot-web", "malmoi", "course-chatbot", OLD, m.common.nav.newProject]);
     const radios = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')];
     expect(radios.map((r) => [r.textContent?.trim(), r.getAttribute("aria-checked")])).toEqual([
       ["bugshot-web", "false"],
       ["malmoi", "true"],
       ["course-chatbot", "false"],
+      [OLD, "false"],
     ]);
     // 지금 프로젝트의 행만 뒤 체크를 든다(썸네일 이미지는 있어도 svg가 아니다).
     expect(radios[1]!.querySelectorAll("svg")).toHaveLength(1);
@@ -74,7 +76,7 @@ describe("ProjectSwitcher", () => {
   it("각 행은 그 프로젝트의 Home으로, 마지막 행은 New project로 간다", async () => {
     await open();
     const links = items().map((node) => node.getAttribute("href"));
-    expect(links).toEqual([routes.project("bugshot-web"), routes.project("malmoi"), routes.project("course-chatbot"), routes.newProject()]);
+    expect(links).toEqual([routes.project("bugshot-web"), routes.project("malmoi"), routes.project("course-chatbot"), routes.project("old"), routes.newProject()]);
     // 구분선이 New project 앞에 선다.
     const last = items().at(-1)!;
     expect(last.previousElementSibling?.getAttribute("role")).toBe("separator");
@@ -124,6 +126,25 @@ describe("ProjectSwitcher", () => {
     expect(document.activeElement).toBe(trigger());
     await act(async () => user.click(trigger()));
     expect(input().value).toBe("");
-    expect(names()).toHaveLength(4);
+    expect(names()).toHaveLength(5);
+  });
+
+  /** ⚠️ 보관 행의 배지는 `/projects` 행 칩과 같은 형·같은 키다. 지금 프로젝트가 보관이면 배지 다음에 체크다. */
+  it("보관 행은 오른쪽에 Archived 배지를 들고, 지금 프로젝트면 배지 다음에 체크가 선다", async () => {
+    clicked.hrefs = [];
+    const user = userEvent.setup();
+    await render(<ProjectSwitcher projects={projects} current="old" />);
+    await act(async () => user.click(trigger()));
+    const row = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((r) => r.getAttribute("href") === routes.project("old"))!;
+    expect(row.getAttribute("aria-checked")).toBe("true");
+    const badge = [...row.children].find((node) => node.textContent === m.projects.status.archived) as HTMLElement;
+    expect(badge.className).toContain("px-2");
+    expect(badge.className).toContain("text-neutral-400");
+    // 배지 → 체크 순서, 체크가 마지막 자식이다.
+    expect(badge.nextElementSibling?.tagName.toLowerCase()).toBe("svg");
+    expect(row.lastElementChild).toBe(badge.nextElementSibling);
+    // 보관 아닌 행엔 배지가 없다.
+    const active = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((r) => r.getAttribute("href") === routes.project("malmoi"))!;
+    expect(active.textContent).not.toContain(m.projects.status.archived);
   });
 });
