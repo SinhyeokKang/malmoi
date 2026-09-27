@@ -12,7 +12,7 @@ const memberships = [
   { slug: "beta", name: "Beta", role: "EDITOR" as const, archived: false, image: null },
 ];
 
-const sidebar = () => render(<Sidebar memberships={memberships} userName="Kim" userImage="https://avatars.example/kim.png" signOut={() => {}} />);
+const sidebar = () => render(<Sidebar memberships={memberships} userName="Kim" userImage="https://avatars.example/kim.png" />);
 
 /**
  * **구역 라벨 앞에 대상의 얼굴이 선다** (2026-09-24 사용자) — 사용자 축은 아바타(원), 프로젝트 축은
@@ -70,7 +70,7 @@ describe("사이드바 구역 머리의 아바타·썸네일", () => {
    */
   it("16 썸네일은 radius 4라 원으로 안 보이고, 16 이니셜은 `text-2xs`다", async () => {
     pathname = "/projects/beta";
-    const { container } = await render(<Sidebar memberships={memberships} userName="Kim" userImage={null} signOut={() => {}} />);
+    const { container } = await render(<Sidebar memberships={memberships} userName="Kim" userImage={null} />);
     const tile = container.querySelector('nav[aria-label="Beta"] [data-zone-head] > :first-child');
     expect(tile?.className.split(" ")).toContain("rounded");
     expect(tile?.className.split(" ")).not.toContain("rounded-sm");

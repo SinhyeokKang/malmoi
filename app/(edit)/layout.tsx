@@ -42,7 +42,7 @@ export default async function EditLayout({ children }: { children: React.ReactNo
   // ⚠️ **`/account`의 아바타 56과 같은 함수를 지난다** — 규칙이 갈리면 같은 계정이 두 얼굴이 된다.
   const name = displayName(session.name, session.email);
 
-  // Server Action을 클라이언트 컴포넌트에 **참조로** 넘긴다 — 그래야 사이드바가 `@/auth`를 물지 않는다.
+  // Server Action을 클라이언트 컴포넌트에 **참조로** 넘긴다 — 그래야 사용자 메뉴가 `@/auth`를 물지 않는다(2026-09-27부터 로그아웃은 그 메뉴 하나다).
   // ⚠️ **`/`가 맞다 — 이관 누락이 아니다** (2026-09-10 사용자). **로그아웃은 랜딩에 착지한다**
   // (2026-09-26부터 `/`가 랜딩이다 — 세션이 없으니 `rootView`가 랜딩을 그린다).
   // `routes.signIn()`으로 바꾸면 그 결정이 조용히 뒤집힌다.
@@ -87,7 +87,6 @@ export default async function EditLayout({ children }: { children: React.ReactNo
             }))}
             userName={name}
             userImage={session.image}
-            signOut={signOutAction}
           />
         }
       >

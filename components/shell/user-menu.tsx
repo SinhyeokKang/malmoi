@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleUser, Loader2, LogOut } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Loader2, LogOut, ScrollText, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
 
@@ -15,11 +15,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { m } from "@/lib/i18n";
+import { GITHUB_RELEASES_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
 /**
- * top bar 우측. **항목 둘이다** — 계정과 로그아웃. 앞의 것은 6b-4가 `/account`를 만들면서 붙었다
- * (6a 시점에는 갈 곳이 없어 로그아웃 하나였다).
+ * top bar 우측. **항목이 여섯이고 순서가 사용자 결정이다** (2026-09-27):
+ * `Projects · Account | Release notes · Docs · Privacy Policy | Sign out`. LNB와 겹치는 항목(Projects·Account·
+ * Release notes·Docs)은 의도다. **모든 줄이 필터 메뉴와 같은 `DropdownMenuItem` 모양이고 앞 아이콘 하나를 든다** —
+ * 아이콘은 같은 목적지를 가리키는 다른 자리와 같은 글리프다(Projects `Box` · Account `CircleUser` · Docs `CircleHelp`는
+ * LNB, Release notes `ScrollText`는 LNB 하단과 공유). Release notes만 외부(GitHub Releases, 새 탭)이고 외부 링크 글리프를
+ * 달지 않는다(DESIGN §6.3).
  *
  * ⚠️ **아바타가 사진을 싣는다** (2026-09-13). 그 전엔 `SessionRead`가 `name`·`email`만 들어
  * 이니셜뿐이었고, **여기 적혀 있던 근거의 뒷문장이 거짓이었다**: *"`publicSession`이 필드를 하나 더
@@ -63,13 +68,19 @@ export function UserMenu({
           {email !== null && <span className="block">{email}</span>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <MenuLink href={routes.projects()} icon={Box} label={m.common.nav.projects} />
+        <MenuLink href={routes.account()} icon={CircleUser} label={m.common.nav.account} />
+        <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href={routes.account()} className="flex w-full items-center gap-2 px-2">
-            <CircleUser className="size-4" aria-hidden />
-            {m.common.nav.account}
-          </Link>
+          <a href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
+            <ScrollText className="size-4" aria-hidden />
+            {m.common.nav.releaseNotes}
+          </a>
         </DropdownMenuItem>
-        {/* 폼이 항목을 감싼다 — Radix Item은 기본이 `div`라 그 안에 submit을 두어야 한다. */}
+        <MenuLink href={routes.docs()} icon={CircleHelp} label={m.publicDocs.docs.title} />
+        <MenuLink href={routes.privacy()} icon={ShieldCheck} label={m.publicDocs.privacy.title} />
+        <DropdownMenuSeparator />
+        {/* 폼이 항목을 감싼다 — 항목이 가장 가까운 폼을 제출한다(`SignOutItem`). */}
         <form action={signOut}>
           <SignOutItem />
         </form>
@@ -85,11 +96,32 @@ export function UserMenu({
 function SignOutItem() {
   const { pending } = useFormStatus();
   return (
-    <DropdownMenuItem asChild onSelect={event => event.preventDefault()}>
-      <Button type="submit" variant="ghost" disabled={pending} aria-busy={pending} className="w-full justify-start gap-2 px-2">
-        {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <LogOut className="size-4" aria-hidden />}
-        {m.common.nav.signOut}
-      </Button>
+    /*
+      ⚠️ **`Button`도 raw `<button>`도 아니다** (2026-09-27 사용자) — ghost `Button`은 h-9·muted 글자·`rounded-md`를 들어 이 줄만
+      필터 메뉴 항목과 달랐고, raw `<button>`은 `ui/` 밖 raw 태그 0 게이트(focus-ring.test)에 걸린다. 항목 자체가 감싼 폼을
+      `requestSubmit()`으로 제출한다 — 그래야 `action`·`useFormStatus`가 그대로 돌고 Enter·클릭이 같은 길을 지난다.
+    */
+    <DropdownMenuItem
+      disabled={pending}
+      aria-busy={pending}
+      onSelect={(event) => {
+        event.preventDefault();
+        (event.currentTarget as HTMLElement).closest("form")?.requestSubmit();
+      }}
+    >
+      {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <LogOut className="size-4" aria-hidden />}
+      {m.common.nav.signOut}
+    </DropdownMenuItem>
+  );
+}
+
+function MenuLink({ href, icon: Icon, label }: { href: string; icon: typeof Box; label: string }) {
+  return (
+    <DropdownMenuItem asChild>
+      <Link href={href}>
+        <Icon className="size-4" aria-hidden />
+        {label}
+      </Link>
     </DropdownMenuItem>
   );
 }

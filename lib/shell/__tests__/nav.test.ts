@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { CircleHelp, ScrollText } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
 import type { Role } from "@/lib/auth/permission";
+import { GITHUB_RELEASES_URL } from "@/lib/links";
 
 import { activeProject, navFooterItems, navZones, projectSections, type NavProject } from "../nav";
 
@@ -298,13 +300,19 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
  * 하단 전역 항목 (8-3). **라우트가 아니라 "앱을 벗어나는 것"이라 구역 밖이다.**
  */
 describe("navFooterItems", () => {
-  it("Help가 `/docs`를 가리킨다 — 그 라우트는 실재한다 (8-1a)", () => {
-    expect(navFooterItems().map((i) => ({ key: i.key, href: i.href }))).toEqual([
-      { key: "docs", href: "/docs" },
+  /**
+   * ⚠️ **Release notes → Docs 순서다** (2026-09-27 사용자). Release note만 외부(GitHub Releases, 새 탭)이고,
+   * 아이콘은 사용자 메뉴의 같은 항목과 같은 글리프다 — 같은 곳을 두 글리프로 가리키지 않는다.
+   */
+  it("Release notes(GitHub Releases, 새 탭) 다음 Docs(`/docs`)다", () => {
+    expect(navFooterItems().map((i) => ({ key: i.key, href: i.href, external: i.external ?? false }))).toEqual([
+      { key: "releaseNotes", href: GITHUB_RELEASES_URL, external: true },
+      { key: "docs", href: "/docs", external: false },
     ]);
+    expect(navFooterItems().map((i) => i.icon)).toEqual([ScrollText, CircleHelp]);
   });
 
-  it("Sign out은 여기 없다 — 링크가 아니라 폼 제출이라 화면이 직접 든다", () => {
+  it("Sign out은 LNB에 없다 — 사용자 메뉴에만 있다 (2026-09-27 사용자)", () => {
     expect(navFooterItems().some((i) => i.key === "signOut")).toBe(false);
   });
 });

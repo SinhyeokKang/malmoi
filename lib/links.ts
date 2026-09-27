@@ -11,6 +11,9 @@ import { routes } from "@/lib/routes";
  */
 export const GITHUB_REPO_URL = "https://github.com/SinhyeokKang/malmoi";
 
+/** 릴리스 노트 — `/merge`가 머지마다 만드는 GitHub Release 목록이다. 사용자 메뉴와 사이드바 하단이 같이 읽는다. */
+export const GITHUB_RELEASES_URL = `${GITHUB_REPO_URL}/releases`;
+
 export type FooterLink = { href: string; label: string; external: boolean };
 
 /**

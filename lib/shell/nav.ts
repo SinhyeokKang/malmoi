@@ -1,9 +1,10 @@
 import type { ComponentType } from "react";
 
-import { Box, CircleHelp, CircleUser, Files, History, House, Languages, Settings, Users } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Files, History, House, Languages, ScrollText, Settings, Users } from "lucide-react";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
+import { GITHUB_RELEASES_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
 /**
@@ -117,6 +118,8 @@ export type NavItem = {
   href: string;
   /** `NavSection.exact`와 같은 뜻 — 활성 판정이 정확히 일치인가. */
   exact: boolean;
+  /** 앱 밖(GitHub)으로 나가는 링크 — 새 탭으로 연다. 외부 링크 글리프는 달지 않는다(DESIGN §6.3). */
+  external?: boolean;
   /**
    * 우측 개수 배지 (8-3, 시안).
    *
@@ -220,9 +223,14 @@ function translationsHref(project: NavProject): string {
 /**
  * 사이드바 하단의 전역 항목. **라우트가 아니라 "앱을 벗어나는 것"들이라 구역 밖이다.**
  *
- * ⚠️ **Help가 `/docs`(개요)를 가리킨다** (8-3 사용자 결정). 셸은 역할을 읽지 않는다 — 개발자·편집자 갈래는 개요가 준다.
+ * ⚠️ **Release notes → Docs 둘이다** (2026-09-27 사용자). Sign out은 여기서 빠져 사용자 메뉴에만 있다.
+ * ⚠️ **아이콘이 사용자 메뉴의 같은 항목과 같다**(`ScrollText` · `CircleHelp`) — 같은 곳을 두 글리프로 가리키지 않는다.
+ * ⚠️ **Docs가 `/docs`(개요)를 가리킨다** (8-3 사용자 결정). 셸은 역할을 읽지 않는다 — 개발자·편집자 갈래는 개요가 준다.
  */
 export function navFooterItems(): NavItem[] {
   // `exact`는 효과가 없다 — 사이드바는 앱 셸(`app/(edit)/layout.tsx`)에만 서고 `/docs/*`는 공개 셸이라 둘이 한 화면에 안 선다.
-  return [{ key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: true }];
+  return [
+    { key: "releaseNotes", label: m.common.nav.releaseNotes, icon: ScrollText, href: GITHUB_RELEASES_URL, exact: true, external: true },
+    { key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: true },
+  ];
 }

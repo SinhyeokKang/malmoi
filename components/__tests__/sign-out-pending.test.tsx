@@ -6,14 +6,16 @@ import { expect, it, vi } from "vitest";
 import { render } from "./helpers/dom";
 
 /**
- * **Sign out에도 진행 표시가 있다** (audit #25). `/account`의 것은 `useFormStatus`로 스피너·disabled를 드는데 셸의 두
- * 자리(사이드바 하단 · 헤더 사용자 메뉴)는 없어서, 느린 응답 동안 누른 것이 먹혔는지 모르고 다시 누르게 됐다.
+ * **Sign out에도 진행 표시가 있다** (audit #25). `/account`의 것은 `useFormStatus`로 스피너·disabled를 드는데 셸의
+ * 자리(2026-09-27부터 헤더 사용자 메뉴 하나 — 사이드바 하단의 것은 지웠다)는 없어서, 느린 응답 동안 누른 것이 먹혔는지 모르고 다시 누르게 됐다.
  */
 vi.mock("next/navigation", () => ({ usePathname: () => "/projects" }));
 
 import { Sidebar } from "@/components/shell/sidebar";
 import { UserMenu } from "@/components/shell/user-menu";
 import { m } from "@/lib/i18n";
+import { GITHUB_RELEASES_URL } from "@/lib/links";
+import { routes } from "@/lib/routes";
 
 /**
  * ⚠️ **끝에서 푼다** (POSTMORTEM 2026-09-18) — 영원히 안 끝나는 form action은 React의 전역 async action 스코프를 붙잡아
@@ -24,20 +26,24 @@ function held() {
   const promise = new Promise<void>(resolve => { settle = resolve; });
   return { run: vi.fn(() => promise), settle: () => act(async () => settle()) };
 }
-const signOutButton = () => {
-  const node = [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === m.common.nav.signOut);
+const signOutItem = () => {
+  const node = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(b => b.textContent?.trim() === m.common.nav.signOut);
   if (!node) throw new Error("no sign out");
   return node;
 };
 
-it("사이드바 Sign out은 제출 중 disabled + 스피너다", async () => {
-  const { run: signOut, settle } = held();
-  await render(<Sidebar memberships={[]} userName="Kim" userImage={null} signOut={signOut} />);
-  await act(async () => userEvent.setup().click(signOutButton()));
-  expect(signOut).toHaveBeenCalledOnce();
-  expect(signOutButton().disabled).toBe(true);
-  expect(signOutButton().querySelector(".animate-spin")).not.toBeNull();
-  await settle();
+/**
+ * ⚠️ **사이드바에는 Sign out이 없다** (2026-09-27 사용자) — 로그아웃은 사용자 메뉴 하나에만 있다. 하단은 Release notes · Docs 둘이다.
+ */
+it("사이드바 하단에 Sign out이 없고 Release notes(새 탭) · Docs 순이다", async () => {
+  const { container } = await render(<Sidebar memberships={[]} userName="Kim" userImage={null} />);
+  expect(container.querySelector("form")).toBeNull();
+  expect([...container.querySelectorAll("button")].some(b => b.textContent?.trim() === m.common.nav.signOut)).toBe(false);
+  const footer = [...container.querySelectorAll<HTMLAnchorElement>("aside > div:last-child a")];
+  expect(footer.map(a => [a.textContent?.trim(), a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")])).toEqual([
+    [m.common.nav.releaseNotes, GITHUB_RELEASES_URL, "_blank", "noreferrer"],
+    [m.publicDocs.docs.title, routes.docs(), null, null],
+  ]);
 });
 
 it("사용자 메뉴 Sign out은 제출 중에도 메뉴가 열린 채 disabled + 스피너다", async () => {
@@ -45,9 +51,12 @@ it("사용자 메뉴 Sign out은 제출 중에도 메뉴가 열린 채 disabled 
   const user = userEvent.setup();
   await render(<UserMenu name="Kim" email="k***@acme.com" image={null} signOut={signOut} />);
   await act(async () => user.click(document.querySelector<HTMLButtonElement>(`button[aria-label="${m.common.nav.userMenu}"]`)!));
-  await act(async () => user.click(signOutButton()));
+  await act(async () => user.click(signOutItem()));
   expect(signOut).toHaveBeenCalledOnce();
-  expect(signOutButton().disabled).toBe(true);
-  expect(signOutButton().querySelector(".animate-spin")).not.toBeNull();
+  // 메뉴가 열린 채다 — 닫히면 진행 표시를 세울 자리가 사라진다.
+  expect(document.querySelector('[role="menu"]')).not.toBeNull();
+  expect(signOutItem().getAttribute("aria-disabled")).toBe("true");
+  expect(signOutItem().getAttribute("aria-busy")).toBe("true");
+  expect(signOutItem().querySelector(".animate-spin")).not.toBeNull();
   await settle();
 });
