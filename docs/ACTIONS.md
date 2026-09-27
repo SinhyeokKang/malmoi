@@ -16,7 +16,7 @@
 
 ⚠️ **한 리포에 프로젝트가 둘이면 secret 하나로 둘을 먹일 수 없다.** 토큰이 프로젝트를 정하므로 **스텝 둘 + secret 둘**이 필요하고(`PUSH_TOKEN_CODE`·`PUSH_TOKEN_YAML` 식), 각 스텝의 `project`와 `adapter`가 다르다. prod에 그 모양이 실재한다 — `i18n-format-check` 하나가 `format-check-code`(code-dict)·`format-check-yaml`(yaml-catalog) 둘을 먹인다. **secret 이름은 자유다** — 위는 예시이고 서버는 값만 본다(PRODUCT §10, 2026-09-14 확정).
 
-**조직이 action 허용 목록을 쓰면 넷을 전부 넣는다** (2026-09-24, launch-readiness L2.5): `SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push` · `actions/checkout`(워크플로 파일) · `pnpm/action-setup` · `actions/setup-node`(**malmoi action 안** — `action.yml`). 하나라도 빠지면 run이 `not allowed to be used`로 멈춘다. ⚠️ **안쪽 둘은 대상 리포 파일에 안 보여서 빠뜨리기 쉽다.** 공개 도움말(`/docs#allowed-actions`)이 같은 넷을 들고, `components/__tests__/docs-content.test.tsx`가 실제 `uses:`에서 읽어 대조한다 — action에 `uses:`를 더하면 그 테스트가 red다. **실측(2026-09-24, `malmoi-test-org/i18n-workflow-check`의 리포 단위 허용 목록 — org 단위와 같은 매칭이다)**: 넷을 `<이름>@*`(`SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@*` · `actions/checkout@*` · `pnpm/action-setup@*` · `actions/setup-node@*`)로 넣고 "GitHub 제작 action 허용"을 끈 상태에서 run green, `pnpm/action-setup`만 빼면 **"Set up job" 단계**에서 `The action pnpm/action-setup@… is not allowed …`로 red — 안쪽 action도 job 시작 때 전부 해석되므로 적재 단계까지 가지 않는다. ⚠️ `actions/*` 둘은 "Allow actions created by GitHub"를 켜면 목록 없이도 통과한다.
+**조직이 action 허용 목록을 쓰면 넷을 전부 넣는다** (2026-09-24, launch-readiness L2.5): `SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push` · `actions/checkout`(워크플로 파일) · `pnpm/action-setup` · `actions/setup-node`(**malmoi action 안** — `action.yml`). 하나라도 빠지면 run이 `not allowed to be used`로 멈춘다. ⚠️ **안쪽 둘은 대상 리포 파일에 안 보여서 빠뜨리기 쉽다.** 공개 도움말(`/docs#allowed-actions`)이 같은 넷을 들고, `lib/guide/__tests__/content.test.ts`(헬퍼 `lib/guide/__tests__/helpers/allowed-actions.ts`)가 실제 `uses:`에서 읽어 대조한다 — action에 `uses:`를 더하면 그 테스트가 red다. **실측(2026-09-24, `malmoi-test-org/i18n-workflow-check`의 리포 단위 허용 목록 — org 단위와 같은 매칭이다)**: 넷을 `<이름>@*`(`SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@*` · `actions/checkout@*` · `pnpm/action-setup@*` · `actions/setup-node@*`)로 넣고 "GitHub 제작 action 허용"을 끈 상태에서 run green, `pnpm/action-setup`만 빼면 **"Set up job" 단계**에서 `The action pnpm/action-setup@… is not allowed …`로 red — 안쪽 action도 job 시작 때 전부 해석되므로 적재 단계까지 가지 않는다. ⚠️ `actions/*` 둘은 "Allow actions created by GitHub"를 켜면 목록 없이도 통과한다.
 
 **워크플로** `.github/workflows/malmoi-i18n.yml`:
 
@@ -58,9 +58,9 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip-malmoi-i18n]')"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v2
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -71,7 +71,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
 ```
 
-⚠️ **참조는 `@malmoi-i18n-push-v1`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3). 이 스텝에는
+⚠️ **참조는 `@malmoi-i18n-push-v2`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3 · v2는 2026-09-27 — 아래 "v1과 v2"). 이 스텝에는
 `secrets.PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어가므로, 참조가 움직이면 **말모이 `main`의 커밋 하나가
 대상 리포의 러너에서 즉시 실행된다** — 소비자 측 리뷰도 롤백 창도 없다. `main`에는 이제 브랜치
 프로텍션(required check `verify`, 2026-09-18)이 있지만 그것이 보는 것은 **테스트 green**이지 action이
@@ -81,9 +81,37 @@ jobs:
 "action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓴다"는 참이지만 축이 다르다. 묻는 것은
 **가변성**이고, `main`에 닿는 커밋은 그 순간 전 소비자에게 나간다.
 
-**태그를 옮기는 것은 릴리스다.** action을 고쳤으면 `main`에 머지한 뒤 `malmoi-i18n-push-v1`을 그 커밋으로
-옮긴다 — 소비자는 아무것도 안 고친다. 호환이 깨지는 변경이면 `-v2`를 새로 끊고 이 문서의 예시를
-바꾼다(옛 태그는 그대로 두어 기존 소비자가 안 깨진다).
+**태그를 옮기는 것은 릴리스다.** action을 고쳤으면 `main`에 머지한 뒤 현재 태그(`malmoi-i18n-push-v2`)를 그 커밋으로
+옮긴다 — 소비자는 아무것도 안 고친다. 호환이 깨지는 변경이면 `-v3`를 새로 끊고 이 문서의 예시를
+바꾼다(옛 태그는 그대로 두어 기존 소비자가 안 깨진다 — v1이 그렇게 남았다).
+
+### v1과 v2 (2026-09-27)
+
+**새 온보딩과 워크플로를 다시 복사한 리포만 v2다.** `malmoi-i18n-push-v1`(8511d37, 2026-09-14)은 옮기지 않았다 —
+v2에는 그 뒤의 `scripts/push-local.ts`가 같이 나가고, 그 안에 v1 소비자에게 **새 red**가 되는 판정이 있어서다(아래 표).
+v1 리포는 아무것도 안 바뀐다. **v2로 옮기는 법**: 말모이 프로젝트 Settings → Workflow file의 파일 전체를 다시 복사해
+`.github/workflows/malmoi-i18n.yml`을 덮는다(표면이 둘 이상이면 그 파일이 step을 전부 담는다). ⚠️ **손으로 더한 입력은 붙여넣은 뒤 다시 넣는다** — 생성 파일은 `wrapper`를 내지 않고(`renderSurfaceWorkflowStep`), 고친 `api-url`·트리거(`branches:` 등)도 생성값으로 돌아간다. `wrapper`가 빠지면 run은 green인 채 사용처(`refs`)만 조용히 빈다. v1 run 로그의
+Node 20 사용 중단 경고는 옮기기 전까지 남는다.
+
+| 무엇 | v1 | v2 |
+|---|---|---|
+| 셋업 action 판 | checkout v4 · `pnpm/action-setup` v4.4.0 · `setup-node` v4.4.0 (node20 — run마다 경고 1줄) | checkout v7.0.1 · `pnpm/action-setup` v6.1.0 · `setup-node` v7.0.0 (node24 — 경고 0) |
+| JSON 카탈로그의 중첩·점 키 충돌 | green, 마지막 값 적재 | **red** `duplicate-key` |
+| YAML의 점 키·중첩 충돌(`a.b:` + `a: {b:}`) | green, 조용히 접힘 | **red** `duplicate-key` |
+| `api-url`이 https가 아니다(루프백 제외) | 평문으로 토큰 전송 | **red** exit 2, 요청 전 종료 |
+| 로케일 파일 읽기 실패 | 빈 내용으로 부분 페이로드 | **red** exit 1 `prepare-failed` |
+| ts-dict·code-dict의 같은 키 | 조용히 마지막 값 | green + `적재 경고 N건` 로그. code-dict는 가려진 앞 컨테이너의 키를 더는 적재하지 않는다(다음 적재에서 orphan) |
+| BOM으로 시작하는 JSON | red `parse-failed` | green |
+| 사용처 소스 파일 읽기 실패 | red | green + 경고, 그 파일만 스캔에서 빠진다 |
+| `deferred` 응답 | 본문만 찍고 exit 0 | exit 0 + `::warning title=Malmoi import deferred::…` |
+| 실행 식별자 `executionId` | 없음 | 실행당 UUID |
+| `packageManager: pnpm@<같은 버전>+sha512…`인 대상 리포 | `pnpm/action-setup`이 `Multiple versions of pnpm specified`로 **red** | green(v6이 무결성 접미사를 벗겨 비교한다) |
+| ts-dict `.tsx` 네임스페이스의 `path-template` | `…*.ts` | `…*.tsx` — 옛 값을 박은 워크플로는 후보를 못 찾을 수 있다 |
+
+⚠️ **v2를 끊기 직전에 잡은 결함이 하나 있다** — main의 `push:local`이 `.env.local` 로더를 통해 Prisma 클라이언트를 물었고
+(`generated/`는 gitignore된 산출물이라 action의 clone에 없다), 그대로 끊었으면 **모든 v2 run이 `ERR_MODULE_NOT_FOUND`로 red**였다.
+v2는 그 수정(`scripts/local-env.ts`) 뒤의 커밋이다 — `scripts/__tests__/push-local-graph.test.ts`가 그 그래프를 상시로 센다.
+판정의 근거·파일:줄은 `docs/features/action-run-cache/design.md` "v2가 v1과 다른 것"이다(그 디렉터리가 지워진 뒤엔 git log).
 
 ⚠️ **앱 릴리스 태그(`v<x.y.z>`)는 action 계약이 아니다 — `@malmoi-i18n-push-vN`을 쓴다** (2026-09-27). `/merge`가
 머지마다 `v1.0.0` 같은 태그를 만들고 그것도 `uses:`가 받는 유효한 ref지만, 앱 릴리스마다 움직이는 축이라
@@ -95,20 +123,23 @@ action 호환을 약속하지 않는다. 앱 버전이 올라도 action 태그�
 `permissions: contents: read`도 같은 파일이 센다).
 
 ⚠️ **그 테스트가 이 문서도 읽는다** — 이 문서가 action을 `main`으로 참조하도록 안내하지 않는지, 그리고
-`@malmoi-i18n-push-v1` 문자열이 실제로 있는지 검사한다(그 정규식이 문장의 산문에도 걸리므로 여기서
+`@malmoi-i18n-push-v2` 문자열이 실제로 있는지 검사한다(그 정규식이 문장의 산문에도 걸리므로 여기서
 가변 참조를 예시로 쓰지 않는다). 위 스니펫의 태그를 고칠 때 그 두 조건이 함께 움직인다.
 
-⚠️ **그 스캐너는 `.github/`만 본다 — 위 스니펫의 `actions/checkout@v4`는 그 방어선 밖이다.**
+⚠️ **그 스캐너는 `.github/`만 본다 — 위 스니펫의 `actions/checkout` 줄은 그 방어선 밖이다.**
 이 문서의 복붙 블록과 그것을 만드는 `lib/onboarding/workflow.ts`는 우리 리포의 워크플로가 아니라
 **남의 리포로 나가는 텍스트**라 파일 경로로 걸러지지 않는다. 그 스텝은 `secrets.PUSH_TOKEN`을 든
 job 안에 있으므로 **핀한다** — 고칠 자리가 셋(이 문서 · `workflow.ts` · 줄 대조하는
-`lib/onboarding/__tests__/workflow.test.ts`)이고 한 커밋에 함께 움직여야 한다.
+`lib/onboarding/__tests__/workflow.test.ts`)이고 한 커밋에 함께 움직여야 한다. 판(node24 SHA)은 그 테스트가 직접 박고,
+action 안의 두 판은 `workflow-pins.test.ts`가 기대 SHA로 박는다 — 40자 SHA만 보면 node20 판으로 되돌려도 green이다.
 
 ✅ **배포 하나가 프로젝트 여럿의 push를 받고, 야간 pull도 준비된·보관되지 않은 프로젝트를 한 번에 50개까지 돈다** (2026-09-07 — push는 토큰이 프로젝트를 정하고, cron은 `lib/pull/targets.ts`가 고른 목록을 순회한다). 필터는 넷(`installationId`·**`repositoryId`**·`lastCommitSha` — 보관되지 않은 표면 중 하나라도(`planProjectReadiness`) ·`archivedAt`)이고 상한은 `PULL_BATCH_LIMIT` 50이다. ⚠️ **`repositoryId`는 2026-09-10에 붙었다** — 그 이전에 만들어진 행은 null이라 **OWNER가 재연결할 때까지 순회에서 빠진다**. 아래 예시들을 동시에 붙여도 서로 섞이지 않는다.
 
 ⚠️ **토큰은 프로젝트를 만들 때 한 번, 그리고 설정 화면의 [토큰 재발급]으로 나온다** — 원문은 그 화면을 벗어나면 다시 볼 수 없고 서버는 해시만 갖는다. 재발급하면 **옛 토큰이 즉시 무효**이므로 이 리포의 secret을 같은 세션에 바꾼다.
 
-대상 리포는 Node·pnpm 셋업이 필요 없다 — action이 말모이를 clone해 `.nvmrc`·`packageManager` 기준으로 세우고 `pnpm install`한다(`ubuntu-latest` 전제, run 시간의 대부분이 이 install이다).
+대상 리포는 Node·pnpm 셋업이 필요 없다 — action이 말모이를 clone해 `.nvmrc`·`packageManager` 기준으로 세우고 `pnpm install`한다(`ubuntu-latest` 전제, run 시간의 대부분이 이 install이다). **v1은 run당 30~50초다**(2026-09-27 실측 — 표면 하나 31초 중 action 21초, 표면 둘 49초 = action 26초 + 14초). ⚠️ **v2는 셋업이 ~4초 느리다** — 셋업+install 3회 평균이 v1 15.7초 → v2 19.9초다(2026-09-27, `SinhyeokKang/bugshot-i18n-test` 표면 하나). `pnpm/action-setup` v6이 bootstrap pnpm을 깐 뒤 `self-update`하는 설치 경로라 그 스텝만 1.5초 → 4.4~5.7초가 됐다. **pnpm store 캐시는 재서 버렸다** — 적중해도 292 MB 복원이 pnpm 스텝을 10~13초로 늘려 셋업+install이 15.0초(v1 대비 −0.7초)였고, 한 job에서 action을 두 번 부르면(표면 둘) 둘째 호출이 store를 지운 뒤 빈 store(9.66 KiB)가 저장돼 그 뒤 run은 "적중"인데 콜드 설치였다. 다시 시도하려면 그 두 결함부터 푼다. ⚠️ `--ignore-scripts`로는 줄지 않는다 — 로컬 콜드 설치(새 store·빈 Prisma 캐시)에서 454패키지 27·29초 대 27·25초로 오차 안이었다(Prisma 엔진 24MB 다운로드가 몫이 아니다). `--prod`는 `tsx`가 devDependency라 `push:local`이 안 돈다. 줄이려면 설치 자체를 없애는 번들이다(launch-readiness L7.7).
+
+⚠️ **알려진 한계 — 같은 job에서 이 action 앞에 pnpm을 설치하면 그 store가 지워진다**(v1부터 같다). `pnpm/action-setup`이 매번 `~/setup-pnpm`을 새로 깔고 기본 store가 그 아래(`PNPM_HOME`)에 있어서다 — 대상 리포가 같은 job에서 자기 `pnpm/action-setup`(`cache: true`)+install을 먼저 돌면 그 설치가 사라지고, 그 job의 post가 말모이 store를 대상 리포 캐시 키에 저장한다(2026-09-27 실측, v1 태그로도 재현). 이 action은 **별도 job**에 둔다(생성 워크플로가 그 모양이다).
 
 ### 표면별 입력과 추가 step
 
@@ -120,11 +151,11 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 그 화면을 벗어났으면 **Settings의 워크플로 블록이 활성 표면 전부의 step을 담은 파일 전체를 낸다**
 (`renderProjectWorkflowYaml`) — slug·path-template을 손으로 조립하지 않는다. 토큰이 프로젝트 단위라
 틀린 `surface:`는 409가 아니라 다른 표면을 덮어쓴다.
-현재 `malmoi-i18n-push-v1`(8511d37)은 surfaceSlug를 생산한다. 삭제된 옛 `l10n-push-v1`은 생산하지 않았다.
+`malmoi-i18n-push-v1`(8511d37)·`-v2` 둘 다 surfaceSlug를 생산한다. 삭제된 옛 `l10n-push-v1`은 생산하지 않았다.
 
 <!-- additional-surface-step -->
 ```yaml
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v2
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -169,14 +200,14 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 
 ## 3. 무엇이 red를 만드는가
 
-⚠️ **아래 표는 HEAD 스크립트 기준이다.** 대상 리포가 쓰는 `@malmoi-i18n-push-v1`(8511d37, 2026-09-14)에는 **JSON 중첩·점 키 충돌 red · YAML 점 키 충돌 red · `api-url` https 거부 · 읽기 실패 red(`prepare-failed`) · 실패 보고의 `executionId`** 가 없다 — action이 그 태그의 스크립트를 clone해 돌리므로 태그를 옮기기(action 릴리스) 전까지 대상 리포에서 이 다섯은 green이거나 식별자 없이 동작한다.
+⚠️ **아래 표는 `@malmoi-i18n-push-v2` 기준이다.** 워크플로를 다시 복사하지 않은 리포가 쓰는 `@malmoi-i18n-push-v1`(8511d37, 2026-09-14)과 다른 판정은 §2 "v1과 v2" 표에 있다 — action이 그 태그의 스크립트를 clone해 돌리므로 v1 리포에서는 그 표의 v1 열대로 동작한다.
 
 **적재 실패만 red다.** 스캔 실패는 경고이고 exit 0이다 — 키의 진실은 로케일 파일이고 스캔은 `refs` 전담이라, 남의 리포 CI를 우리 스캐너 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
 
 | 상황 | 결과 |
 |---|---|
 | 로케일 파일이 깨졌다·base 파일이 없다 | **red** — 연동이 성립하지 않는다 |
-| **로케일 파일을 읽지 못했다**(권한·I/O 오류) | **red** (exit 1 — **서버까지 가지 않는다**, `prepare-failed`로 보고). 빈 파일로 읽으면 그 파일의 키가 페이로드에서 빠져 말모이가 삭제로 읽는다 — 부분 페이로드를 보내지 않는다 (2026-09-27, audit #7). ⚠️ **구 태그 `@malmoi-i18n-push-v1`에는 이 판정이 없다** — action이 그 태그의 `scripts/push-local.ts`를 clone해 돌리므로, 태그를 옮기기(`/merge` 뒤 action 릴리스) 전까지 대상 리포는 여전히 부분 페이로드를 보낸다 |
+| **로케일 파일을 읽지 못했다**(권한·I/O 오류) | **red** (exit 1 — **서버까지 가지 않는다**, `prepare-failed`로 보고). 빈 파일로 읽으면 그 파일의 키가 페이로드에서 빠져 말모이가 삭제로 읽는다 — 부분 페이로드를 보내지 않는다 (2026-09-27, audit #7). ⚠️ **구 태그 `@malmoi-i18n-push-v1`에는 이 판정이 없다** — action이 그 태그의 `scripts/push-local.ts`를 clone해 돌리므로, v2로 옮기기(워크플로 재복사) 전까지 그 리포는 여전히 부분 페이로드를 보낸다 |
 | **YAML·JSON 카탈로그에서 같은 키가 두 번** — YAML의 중복 키, JSON의 중첩·점 키 충돌(`{ "a": { "b": … }, "a.b": … }`) | **red** — `duplicate-key`. 두 값 중 하나가 사라지는 파일이라 서버까지 가지 않는다. 처방은 둘 중 하나를 지우는 것. ⚠️ JSON 충돌은 2026-09-17까지 조용히 마지막 값으로 적재됐다(green) — 그 뒤로 red다. ⚠️ **`duplicate-key`를 내는 어댑터는 이 둘뿐이다.** YAML의 점 키·중첩 충돌(`a.b: …` + `a: { b: … }`)도 2026-09-24부터 같은 red다. `ts-dict`·`code-dict`는 코드 객체의 같은 키(점 키·중첩 충돌 포함)를 **`duplicate-property` 경고**로 알린다 — JS 의미대로 마지막 값이 적재되고 malmoi가 그 자리를 고치므로 잃는 값이 없다. CI 로그에 `적재 경고 N건 — CI는 계속한다:`와 키 목록이 찍히고 **green이다**. `chrome-locales`는 중복 감지가 없어(JSON 파서가 접는다) 마지막 값만 남는다: **green이다** |
 | `/api/push`가 4xx·5xx | **red** — **409가 다섯**(판정 순서대로 **보관** · 오배송 · **표면 불일치 `surface mismatch`** · **표면 교체 `format mismatch`** · 커밋 역행)·스키마 위반(400)이 여기 걸린다 |
 | **프로젝트가 보관됐다** | **red** — 409 `{"error":"archived"}`. ⚠️ **판정이 다섯 중 맨 앞이다**(`checkArchived`): 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니다. **처방이 다른 넷과 다르다** — `adapter`·`base-locale`을 아무리 고쳐도 안 풀린다. 할 일은 **이 워크플로를 떼는 것**이거나 설정 화면에서 보관을 되돌리는 것이다 |
@@ -209,8 +240,8 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 보고는 부가 신호이고, 그것이 CI의 판정을 바꾸면 "말모이가 조용하면 괜찮은 것"이라는 잘못된 신호가 된다.
 
 ⚠️ **서버를 먼저 릴리스한다.** 기존 Action은 이 endpoint를 몰라도 정상 push가 계속되고, 새 스크립트가
-옛 서버의 404를 받으면 위 규칙대로 경고만 남긴다. **대상 리포가 쓰는 `@malmoi-i18n-push-v1`은 서버 배포만으로
-새 스크립트를 받지 않는다** — 그 태그를 옮기는 것이 릴리스다(CLAUDE.md).
+옛 서버의 404를 받으면 위 규칙대로 경고만 남긴다. **대상 리포가 쓰는 action 태그는 서버 배포만으로
+새 스크립트를 받지 않는다** — 그 태그를 옮기는 것이 릴리스다(CLAUDE.md). v1은 옮기지 않으므로 v1 리포는 워크플로를 다시 복사해야 받는다.
 
 **red일 때 어디를 보나.**
 
@@ -237,8 +268,8 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 ⚠️ **새 생산자를 구 서버에 먼저 연결하지 않는다.** 실패 보고의 스키마가 **닫혀 있어**(`strictObject`)
 모르는 필드를 400 `invalid report`로 거부한다 — 그러면 원래 실패가 보고 실패로 바뀐다.
 
-⚠️ **대상 리포가 쓰는 `@malmoi-i18n-push-v1`은 서버 배포만으로 새 스크립트를 받지 않는다** — 그 태그를
-옮기는 것이 릴리스다(CLAUDE.md). 순서: **서버 배포 → 태그 릴리스 → 사용 리포 전환.**
+⚠️ **대상 리포가 쓰는 action 태그는 서버 배포만으로 새 스크립트를 받지 않는다** — 그 태그를
+옮기는 것이 릴리스다(CLAUDE.md). 순서: **서버 배포 → 태그 릴리스 → 사용 리포 전환.** `executionId`를 내는 생산자는 v2부터다.
 
 ### 열린 PR 경고는 차단이 아니다
 

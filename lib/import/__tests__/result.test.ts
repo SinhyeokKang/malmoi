@@ -25,7 +25,8 @@ describe("summarizeImport", () => {
 /**
  * **어느 Sync 결과가 재검증 트리를 싣고 오나** (malmoi#103 r1). `runRepositoryImport`의 `finally`가 `revalidatePath`를 부르므로
  * `try` 안의 거부(`reconfirm`·`already-running`·`not-ready`…)도 새 트리가 온다 — 그 트리를 기다려야 교차 잠금이 옛 수치로 안 풀린다.
- * `try` 앞의 거부와 클라이언트가 접은 throw(`unavailable`)만 트리가 없다.
+ * `try` 앞의 거부만 트리가 없다. 클라이언트가 접은 throw(`unconfirmed`)는 서버가 끝냈는지 모르므로 `SyncButton`이 refresh로 트리를
+ * 부른다 — 그 트리를 기다려야 Publish가 Sync가 버렸을지 모를 편집으로 켜지지 않는다 (malmoi#132).
  */
 describe("importRevalidates", () => {
   it.each(["reconfirm", "already-running", "not-ready", "not-connected", "repo-replaced", "ingest-failed", "no-surfaces"] as const)("try 안의 거부 %s는 트리가 온다", error => {
@@ -34,5 +35,6 @@ describe("importRevalidates", () => {
   it.each(["invalid input", "unauthorized", "forbidden", "unavailable", "not-found", "archived"] as const)("try 앞의 거부 %s는 트리가 없다", error => {
     expect(importRevalidates({ ok: false, error })).toBe(false);
   });
+  it("응답을 잃은 실행(unconfirmed)은 refresh 트리를 기다린다 (malmoi#132)", () => { expect(importRevalidates({ ok: false, error: "unconfirmed" })).toBe(true); });
   it("성공은 트리가 온다", () => { expect(importRevalidates({ ok: true, surfaces: [], remainingEdits: 0 })).toBe(true); });
 });

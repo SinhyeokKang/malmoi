@@ -31,6 +31,14 @@ describe("planImportRefusal", () => {
     expect(planImportRefusal("repo-replaced")).toEqual({ tone: "danger", dismissible: false, action: null });
   });
 
+  /**
+   * ⚠️ **응답을 잃은 실행은 실패가 아니다** (malmoi#132) — 서버가 Sync를 끝냈을 수 있어 danger("didn't go through")면 되돌릴 수 없는
+   * 폐기를 안 일어난 일로 말한다. 모른다는 사실만 warning으로 말하고, 다음 행동은 갱신된 화면이 든다.
+   */
+  it("unconfirmed는 warning이고 닫을 수 있으며 액션이 없다", () => {
+    expect(planImportRefusal("unconfirmed")).toEqual({ tone: "warning", dismissible: true, action: null });
+  });
+
   it("세션·인가 갈래는 danger다", () => {
     for (const error of ["unauthorized", "unavailable", "forbidden", "not-found", "archived"] as const) {
       expect(planImportRefusal(error).tone).toBe("danger");
@@ -126,7 +134,7 @@ describe("planImportRefusal", () => {
       "state-mismatch", "state-expired", "wrong-user", "denied", "exchange-failed", "taken-by-other",
     ] as const satisfies readonly RepositoryImportError[];
     /** 기다리거나 다시 누르면 답이 달라진다. */
-    const transient = ["already-running", "ingest-failed", "unavailable", "reconfirm", "unauthorized"] as const satisfies readonly RepositoryImportError[];
+    const transient = ["already-running", "ingest-failed", "unavailable", "unconfirmed", "reconfirm", "unauthorized"] as const satisfies readonly RepositoryImportError[];
     type Classified = (typeof repeats)[number] | (typeof transient)[number];
     type Unclassified = Exclude<RepositoryImportError, Classified>;
     // 남은 코드가 있으면 `never`가 아니게 되어 이 별칭이 컴파일 에러다.

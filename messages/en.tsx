@@ -174,6 +174,12 @@ export const en = {
       "unauthorized": "Your session ended — nothing was synced. Sign in, then sync again",
       "unavailable": "The sync didn't go through",
       /**
+       * 응답을 잃은 실행 — 클라이언트만 낸다 (malmoi#132). ⚠️ **"didn't go through"를 쓰지 않는다** — 서버가 Sync를 끝냈을 수 있다.
+       * Publish의 `unknownDelivery`와 같은 형이고, 무엇이 됐는지는 이 문장이 아니라 다시 읽은 화면이 말한다.
+       * ⚠️ **"화면이 최신이다"를 덧붙이지 않는다** — 오프라인이면 다시 읽지 않으므로(`SyncButton`) 그 절이 거짓이 된다.
+       */
+      "unconfirmed": "We couldn't confirm whether the sync finished",
+      /**
        * ⚠️ **[Reconnect]를 붙이지 않는다** (DESIGN §6.2 · 2026-09-10 sec-audit-2 발견 34) — 리포는
        * 생성 시점 고정이라 `connectRepository`가 재고정을 거부한다. 눌러도 실패할 버튼이므로
        * tone도 warning이 아니라 **danger**다: 이 거부는 이 화면에서 풀리지 않는다.
@@ -807,10 +813,14 @@ export const en = {
          */
         tail: (who: string): string => ` — last edited in this language by ${who}.`,
       },
+      /**
+       * ⚠️ **이력을 말하지 않는다** (malmoi#134) — 술어는 "지금 값이 있는 셀이 없다"이고 채웠다가 비운 로케일도 여기 선다.
+       * `never`·`yet`은 그 술어가 모르는 과거를 단언한다. 키 이름(`neverFilled`)은 식별자라 그대로 둔다.
+       */
       neverFilled: {
         title: (surface: string, locale: string): string => `${surface} · ${locale}`,
-        body: (locale: string): string => `${locale} has never been filled here`,
-        tail: (n: number): string => ` — ${n.toLocaleString("en-US")} keys, none translated.`,
+        body: (locale: string): string => `${locale} has no translations here`,
+        tail: (n: number): string => ` — ${n.toLocaleString("en-US")} ${n === 1 ? "key" : "keys"} to translate.`,
       },
       empty: {
         title: "Nothing needs you",

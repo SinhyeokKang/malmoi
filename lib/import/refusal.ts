@@ -95,6 +95,11 @@ const PLANS: Partial<Record<string, ImportRefusalPlan>> = {
    */
   "unauthorized": { tone: "danger", dismissible: true, action: "sign-in" },
   "unavailable": { tone: "danger", dismissible: true, action: null },
+  /**
+   * ⚠️ **실패가 아니라 모름이다** (malmoi#132) — 응답을 잃은 실행은 서버가 끝냈을 수 있다. danger는 "안 됐다"로 읽히고 그것이
+   * 거짓이면 OWNER가 이미 버려진 편집을 아직 남아 있다고 믿는다. 다음 행동은 refresh로 갱신된 화면(수치·배너·Logs)이 든다.
+   */
+  "unconfirmed": { tone: "warning", dismissible: true, action: null },
 };
 
 /**

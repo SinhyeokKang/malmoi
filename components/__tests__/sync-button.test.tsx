@@ -185,13 +185,40 @@ it("Home 호스트는 원결과를 소유해 refresh 후 재렌더에서도 보�
  * 없음}`이고 문구는 `onboardErrorMessage`의 *"The first import failed. You can try again from
  * settings."*가 된다 — 첫 적재가 아닌데 그렇게 말하고, **존재하지 않는 버튼**(설정 화면의 옛 재시도 컨트롤,
  * 2026-09-24 삭제)을 가리킨 채 굳는다.
- * 캔버스 §6 `4f`의 tone 표가 이 부류에 `unavailable`을 배정했다(danger · 기존 `errors.access.*`).
+ * 캔버스 §6 `4f`의 tone 표가 이 부류에 `unavailable`을 배정했었다 — 응답을 잃은 실행은 서버가 끝냈을 수 있어 `unconfirmed`로
+ * 갈랐다 (malmoi#132, 아래).
  */
-it("Action 통신 실패는 렌더 가능한 거부로 떨어지고 다시 실행할 수 있다", async () => {
+it("Action 통신 실패는 확인 못 한 결과로 떨어지고 화면을 다시 읽으며 다시 실행할 수 있다", async () => {
   mocks.run.mockRejectedValue(new Error("offline"));
   await render(<SyncButton {...props} />); await click("Sync"); await click("Sync from repository");
-  expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "unavailable" });
+  expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "unconfirmed" });
+  expect(mocks.refresh).toHaveBeenCalledTimes(1);
   expect(button("Sync").getAttribute("aria-disabled")).toBe("false");
+});
+
+/**
+ * ⚠️ **응답을 잃으면 서버가 끝냈는지 모른다** (malmoi#132) — 요청이 나간 뒤 연결이 끊기면 서버는 Sync를 끝내고(편집 폐기 포함)
+ * `revalidatePath`를 불렀는데, 그 트리가 응답과 함께 사라진다. 전엔 이것을 `unavailable`로 접어 *"The sync didn't go through"*와
+ * 옛 `To send`를 그대로 두었다 — OWNER에게 되돌릴 수 없는 폐기가 안 일어났다고 말했다. 재실행하지 않는다: 두 번 돌 수 있다.
+ */
+it("응답을 잃은 Sync는 실패를 단언하지 않는다 (malmoi#132)", async () => {
+  await render(<SyncResult slug="acme" branch="main" outcome={{ ok: false, error: "unconfirmed" }} onDismiss={() => {}} />);
+  const alert = document.querySelector('[role="status"]');
+  expect(alert?.textContent).toContain("We couldn't confirm whether the sync finished");
+  expect(alert?.textContent).not.toContain("didn't go through");
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+  expect(alert?.querySelector('button[aria-label="Dismiss"]')).not.toBeNull();
+});
+
+/** ⚠️ **오프라인이면 다시 읽지 않는다** — Next는 RSC fetch가 실패하면 브라우저 내비게이션으로 떨어져 오프라인 오류 페이지가 이 화면을 덮는다. */
+it("오프라인에서 응답을 잃으면 refresh를 부르지 않는다", async () => {
+  mocks.run.mockRejectedValue(new Error("offline"));
+  const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+  try {
+    await render(<SyncButton {...props} />); await click("Sync"); await click("Sync from repository");
+    expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "unconfirmed" });
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  } finally { online.mockRestore(); }
 });
 
 /**
@@ -221,25 +248,27 @@ it.each(["unavailable", "ingest-failed"] as const)("요청이 못 간 거부(%s)
 });
 
 /**
- * ⚠️ **어느 결과에도 `router.refresh()`를 부르지 않는다** (audit-ux #12). 실패 뒤의 refresh는 미들웨어의 렌더 차단에 걸려
+ * ⚠️ **응답이 온 결과에는 `router.refresh()`를 부르지 않는다** (audit-ux #12). 실패 뒤의 refresh는 미들웨어의 렌더 차단에 걸려
  * **네비게이션**이 되고 방금 세운 거부 Alert를 씻어 갔다(POSTMORTEM 2026-09-08 재발 — 2026-09-15 재리뷰 🔴2). 성공의 갱신도
- * Action의 `revalidatePath`가 이미 싣고 온다 — 짝: 세 갈래 모두 결과는 호스트에 닿는다.
+ * Action의 `revalidatePath`가 이미 싣고 온다. **예외는 응답을 잃은 실행 하나다**(malmoi#132) — 실은 트리가 없고 서버 상태를 모른다.
  */
-it("거부·실패·성공 어느 결과에도 refresh를 부르지 않고 결과는 호스트에 닿는다", async () => {
+it("응답이 온 거부·성공에는 refresh를 부르지 않고 응답을 잃은 실행에만 한 번 부른다", async () => {
   mocks.run.mockResolvedValue({ ok: false, error: "unauthorized" });
   const view = await render(<SyncButton {...props} />);
   await click("Sync"); await click("Sync from repository");
   expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "unauthorized" });
+  expect(mocks.refresh).not.toHaveBeenCalled();
 
   mocks.run.mockRejectedValue(new Error("offline"));
   await click("Sync"); await click("Sync from repository");
-  expect(props.onResult).toHaveBeenLastCalledWith({ ok: false, error: "unavailable" });
+  expect(props.onResult).toHaveBeenLastCalledWith({ ok: false, error: "unconfirmed" });
+  expect(mocks.refresh).toHaveBeenCalledTimes(1);
 
   mocks.run.mockResolvedValue(success);
   await view.rerender(<SyncButton {...props} />);
   await click("Sync"); await click("Sync from repository");
   expect(props.onResult).toHaveBeenLastCalledWith(success);
-  expect(mocks.refresh).not.toHaveBeenCalled();
+  expect(mocks.refresh).toHaveBeenCalledTimes(1);
 });
 
 it("결과 재시도는 같은 확인 Dialog를 열고 확인 전에는 Action을 호출하지 않는다", async () => {

@@ -284,3 +284,18 @@ it("면제 목록의 경로가 전부 실재한다", () => {
   const known = new Set(topLevelDictionaries().flatMap((top) => [...numberTakers(top).keys()]));
   expect(Object.keys(NOT_A_COUNT).filter((path) => !known.has(path))).toEqual([]);
 });
+
+/**
+ * ⚠️ **빈 로케일 항목은 술어가 아는 것만 말한다** (malmoi#134). 술어는 "지금 값이 있는 셀이 없다"이고(`(home)/page.tsx`의 `neverFilled`)
+ * 이력을 보지 않는다 — 다 채웠다가 비운 로케일에 *"has never been filled"*가 섰다.
+ */
+describe("빈 로케일 항목 문구 (malmoi#134)", () => {
+  const { body, tail } = m.home.attention.neverFilled;
+  it("이력을 단언하지 않는다", () => {
+    const text = `${body("ko")}${tail(4)}`;
+    expect(text).not.toMatch(/\bnever\b|\byet\b|\bever\b/i);
+    expect(text).toBe("ko has no translations here — 4 keys to translate.");
+  });
+  it("키 하나는 단수다", () => { expect(tail(1)).toBe(" — 1 key to translate."); });
+  it("큰 수는 자리 구분을 쓴다", () => { expect(tail(1234)).toBe(" — 1,234 keys to translate."); });
+});

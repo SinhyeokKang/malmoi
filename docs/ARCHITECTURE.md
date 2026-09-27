@@ -909,6 +909,8 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
 - **`ref`는 네 온보딩 진입점 전부 `isValidBranchName`을 지난다** — `detectRepoFormats` ·
   `loadCandidateSample` · `confirmManualFormat` · `createProject`. 샘플의 `locale`과 수동 지정의
   `baseLocale`은 `isPathSafeLocale`도 지난다.
+- **못 읽은 로케일은 `unavailable`이고 0키 ready가 아니다** (2026-09-27, launch-audit #14) — 초기·지연 샘플 둘 다다. 실패를 빈 로케일로 캐시하면
+  재조회가 생략된다. 정상 빈 파일은 오류로 바꾸지 않는다.
 - **base 브랜치는 Malmoi의 sync 브랜치(`malmoi-i18n/sync-` 접두 전체)일 수 없다** (malmoi#126) — `isSyncBranchName`(`lib/pull/ref-slug.ts`) 하나를
   목록 필터(`planBranchChoice` — 설정·①)와 거부 넷(`detectRepoFormats` · `createProject` · `updateRepositorySettings` · 설정 폼의 자유 입력)이 쓴다.
   목록에서 빼는 것만으로는 부족하다 — 300개 초과의 자유 입력·직접 호출이 같은 이름을 보낸다. 되면 Sync가 미머지 산출물을 읽고 Publish가 자기 자신으로 PR을 낸다.
@@ -945,11 +947,17 @@ action 스코프에 **그 뒤의 모든 transition을 얽는다**(POSTMORTEM 202
 이동이 prop을 바꾸기 때문이고, 그 시점에 재검증 트리가 이미 커밋돼 있을 수 없다(Next가 promise를 먼저 풀고 트리를 나중에 커밋한다).
 상한 `COMMIT_WAIT_MS`(10 s)가 트리가 끝내 안 오는 갈래를 푼다. ⚠️ **"거부는 트리가 없다"가 아니다** — 어느 결과가 트리를 싣고 오는지는
 Action의 `revalidatePath` 자리가 정하고, 그 분류를 순수 함수 둘이 든다: Sync는 `importRevalidates`(`runRepositoryImport`의 `try` 안 거부 —
-`reconfirm`·`already-running`·`not-ready`… — 도 `finally`를 지난다, `try` 앞의 거부만 없다), Publish는 `pullRevalidates`(`runSync`를
+`reconfirm`·`already-running`·`not-ready`… — 도 `finally`를 지난다, `try` 앞의 거부만 없다. ⚠️ 클라이언트가 접은 throw `unconfirmed`는 예외로 `true`다 — 아래), Publish는 `pullRevalidates`(`runSync`를
 지난 `failed`도 온다 — 표식은 실행 실패의 `code`와 게이트의 `already-running`·`too-soon`, `delivery`는 게이트 거부도 `not-started`라 못
 가른다). Revert는 `reverted`만 기다린다. 트리를 기다리는 동안 [Publish]를 누르면 새 미리보기가 아니라 결과가 열린다. 결과 문구는
 promise가 풀릴 때 서도 된다. 소비자는 Home Sync · 번역 화면
-Sync · `usePublish` · Revert 넷이다. 같은 이유로 그 뒤에 `router.refresh()`를 또 부르지 않는다(두 번째 전체 렌더가 표시 없이 돈다).
+Sync · `usePublish` · Revert 넷이다. 같은 이유로 그 뒤에 `router.refresh()`를 또 부르지 않는다(두 번째 전체 렌더가 표시 없이 돈다)
+— **예외 하나**: 응답을 잃은 Sync(`runRepositoryImport` 호출이 throw — `unconfirmed`, malmoi#132)는 재검증 트리가 응답과 함께 사라지고
+서버가 Sync를 끝냈는지(편집 폐기 포함) 모르므로 `SyncButton`이 **한 번** refresh하고(재실행은 안 한다 — 두 번 돌 수 있다) 호스트는 그
+트리까지 잠금을 잇는다. 번역 화면은 그 트리를 **새 세대**로 받는다(끝났다면 들여온 키가 목록에 서야 한다). `navigator.onLine === false`면
+부르지 않는다 — Next 16.3의 `fetchServerResponse`는 RSC fetch 실패를 브라우저 내비게이션(MPA 폴백)으로 떨어뜨린다. ⚠️ **온라인이어도 그
+폴백 갈래는 남는다**(`!res.ok || !isFlightResponse` — 5xx 오류 페이지 · 세션 만료의 `/signin` 302 · 배포 스큐 리로드) — 리로드된 화면이
+서버 상태를 말하므로 거짓 "안 됐다"보다 낫다고 받았다. Publish의 throw(`delivery: "unknown"`)는 아직 이 예외를 안 든다.
 ⚠️ **알려진 예외 둘이 남아 있다** — `reconnect-button.tsx`의 `startTransition(async …)`와 Add sources의 `run(async … addSurfaces)`(`add-sources-modal.tsx`, `useTransition` 안이라 그동안 이동이 얽힌다 — 모달이 닫기를 막는 동안의 일이라 받았다)가 아직 이 형이다(후속 이슈).
 
 ⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Publish]가 사는 곳은
@@ -1146,6 +1154,17 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   지난다**(셋을 직접 부르지 않는다). 생산자가 하나인 이유와 같은 이유로 그 입구도 하나여야 한다.
 - `scripts/ingest.ts`도 **`assemblePushInput`을 지난다** (2026-09-18, launch-readiness L7.3 — 전엔 `selectLocaleFiles`·`pickBaseLocale`을 각자 불러 단일 입구를 우회했고, 그래서 **`--base` 검증이 그 CLI에서만 빠져** 탐지되지 않은 로케일을 base로 받았다). 원본이 필요한 왕복 검증을 위해 그 함수가 읽은 `files`를 함께 돌려준다. 검증은 `scripts/__tests__/ingest-base.test.ts`가 스크립트를 실제로 띄워서 한다. ⚠️ **`lib/survey/select.ts`엔 같은 층이 따로 있다** — survey가 측정 전용이고 요구가 다르기 때문이다. 새 어댑터를 추가하면 **둘 다** 고친다.
 - **`multi-locale` 파일 선택은 `shared.matchGlobPaths` 하나다** (2026-09-04 통일). 전에는 셋이 각자 규칙을 들었다 — push·ingest가 `startsWith(dir) && /\.tsx?$/`(하위 디렉터리·`.tsx` 포함), pull의 글롭은 둘 다 제외, survey는 하위 제외·`.tsx` 포함. **그 차이에 걸린 파일은 키가 DB에 적재되고 편집 UI에 뜨는데 pull이 영영 쓰지 않았고 에러도 없었다.** 정본은 `pathTemplate`이다: `*.ts`는 `.ts`만 잡고 `*`는 `/`를 먹지 않는다 — `.tsx`를 담아야 하면 `detect`가 `*.tsx`를 내야 한다(선택 층에서 확장자를 넓히면 그 층만 아는 규칙이 다시 생긴다). `lib/adapters/__tests__/multi-locale-paths.test.ts`가 push·pull의 결과를 같은 집합인지 대조한다.
+
+### 5.5.01 그 생산자는 **남의 러너에서 말모이 clone으로** 돈다 (composite action, 2026-09-27 v2)
+
+`push:local`은 대상 리포 워크스페이스가 아니라 action이 clone한 말모이 트리(`action_path/../../..`) 위에서 `pnpm install`만 거친 채
+돈다 — 그래서 셋업이 밟은 함정이 셋이고 전부 "대상 리포와 말모이 clone 중 누구의 파일을 보나"다. ① 셋업 action의 파일 경로 입력(`package_json_file`·`node-version-file`·캐시 키의
+`hashFiles`)은 **워크스페이스 기준**이라 clone의 파일을 못 본다 — 버전은 값으로 넘긴다(`action.yml` "버전 읽기"). ② `setup-node` v5+의
+자동 캐시(`package-manager-cache`, 기본 true)가 **대상 리포의 `package.json`**을 읽어 npm이면 대상 리포 lockfile을 해시하다 던진다 — 명시로 끈다.
+③ ⚠️ **clone에는 `prisma generate`가 없다**(`generated/`는 gitignore된 산출물) — `push:local`의 import 그래프가 Prisma에 닿으면 모든 run이
+`ERR_MODULE_NOT_FOUND`다(v2 직전에 실제로 그랬다: `.env.local` 로더가 `PrismaClient`와 한 파일에 있었다). 그 그래프를 action에
+`prisma generate`를 더해 푸는 것이 아니라 **Prisma 없이 유지**하고, `scripts/__tests__/push-local-graph.test.ts`가 상시로 센다. 셋업 판·캐시 불채택의
+실측은 docs/ACTIONS.md, 계약은 `scripts/__tests__/action-setup.test.ts`·`workflow-pins.test.ts`다.
 
 ### 5.5.05 외부 페이로드가 **경로와 크기**를 정하지 못한다 (2026-09-09, sec-audit 발견 2·10)
 
@@ -2513,6 +2532,8 @@ GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" 
 
 `refreshVerifiedEmail`은 기존 User 잠금 아래 HMAC 조회·복호화 이메일 대조 후 암호문과 lookup을 함께 갱신한다. 이미 사용 중인 주소 또는 동시 unique 충돌이면 옛 이메일·userId로 로그인을 허용하며 병합하지 않는다. 새 가입의 unique 충돌은 거부한다.
 
+⚠️ **잠금 앞에서 읽은 Account는 잠금 뒤에 거짓일 수 있다** (2026-09-27, launch-audit #5). 해제(`unlinkLoginMethod`)가 같은 User 잠금 안에서 Account를 지우고 커밋하면, 해제된 공급자의 주소가 User로 들어갔다. 잠금 뒤 다시 읽어 사라졌으면 `unlinked`, 소유자가 바뀌었으면 `keep`이다(`postgres.integration.ts`).
+
 GitHub refresh는 외부 일회용 토큰 소비 전에 쓰기 키를 확인한다. CAS 비교값은 **조회한 refresh 암호문 원본 + userId + providerAccountId**이며, 새 access/refresh 쌍은 각기 난수 nonce로 암호화해 함께 저장한다. 키/복호화 오류는 reauthorize와 구별되는 unavailable이다.
 
 `credentialIO`는 Prisma/crypto 예외를 원인 객체 없는 고정 오류로 바꾼다. `auth.ts`는 오류 타입만, `logFailure`는 HTTP 상태 또는 **오류 생성자 이름**만 기록한다(§6.5.1). 메시지·cause·암호문·lookup·키를 로그에 남기지 않는다. Auth.js SessionTokenError를 통한 readSession 장애 판정은 유지한다.
@@ -2581,6 +2602,9 @@ projects를 각각 조회해 User.image/Project.image 참조와 대조하며 고
 `postgres.integration.ts`의 `relogin` 경로뿐이고 그것은 `pnpm test` 밖이다.**
 
 ## 7. Supabase / Prisma
+
+⚠️ **`pnpm audit`의 `prisma` 경유 경고(`deepmerge-ts` GHSA-ggr8, `mysql2` GHSA-3f6p·rgwj)는 런타임에 닿지 않는다** (2026-09-27 보안 감사) —
+빌드 추적(`.next/**/*.nft.json`)에 경로가 0이다. 버전 고정 규칙대로 override·업그레이드하지 않고, Prisma stable 패치가 고치면 그때 올린다.
 
 ### Multi-surface 단계 B (T17–T19)
 
@@ -2789,6 +2813,10 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   **같은 호스트 referrer는 수집 스크립트가 버린다**(`script.debug.js` 2026-09-27 확인 — `document.referrer.includes(location.host)`면 `r`을 안 싣는다) —
   앱 → Help 새 탭·`/signin?callbackUrl=…`의 slug·쿼리는 안 나가고, 실리는 것은 타 사이트 referrer뿐이다. 토큰 페이지의 `no-referrer`는
   배포 스크립트가 그 판정을 바꿔도 전체 URL referrer가 생기지 않게 하는 방어다. 그래서 Referrer-Policy는 바꾸지 않았다.
+- **AI 크롤러(GPTBot·Google-Extended·ClaudeBot 등)를 따로 막지 않는다** — 공개 제품 문서이고 목표가 노출이다.
+- **제목 규약** — 루트 기본값 `Malmoi`(앱 탭), 랜딩만 absolute, docs는 `<제목> · Malmoi Docs`, `og:title`엔 브랜드를 넣지 않고
+  `og:site_name`이 든다. 루트 기본값을 바꾸면 앱 탭이 전부 마케팅 문구가 된다.
+- **JSON-LD에 평점·리뷰를 넣지 않는다** — 없는 데이터다.
 
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
 

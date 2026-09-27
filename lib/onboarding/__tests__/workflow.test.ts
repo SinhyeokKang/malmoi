@@ -105,7 +105,17 @@ describe("renderProjectWorkflowYaml — 표면 하나", () => {
     expect(yml).toContain("${{ secrets.PUSH_TOKEN }}");
     // ⚠️ **불변 태그다** (2026-09-09, sec-audit 발견 3) — `@main`이면 말모이 main의 커밋 하나가
     // `secrets.PUSH_TOKEN`을 든 대상 리포 러너에서 즉시 돈다.
-    expect(yml).toContain("SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1");
+    expect(yml).toContain("SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v2");
+  });
+
+  /**
+   * ⚠️ **판을 여기서 본다** (action-run-cache). `workflow-pins.test.ts`는 `.github/`만 훑고, 위 문서 대조는 주석을 벗겨
+   * `# v4`를 안 본다 — SHA만 옛것으로 돌아가도 두 방어선이 다 green이었다. v7.0.1이 node24 판이다(T0.1).
+   */
+  it("checkout이 v7.0.1 SHA로 핀돼 있다 — node20 판이면 대상 리포 run에 사용 중단 경고가 난다", () => {
+    const yml = renderOneSurface({ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", slug: "x", baseBranch: "main" });
+    expect(yml).toMatch(/^\s+- uses: actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\.0\.1$/m);
+    expect(yml).not.toContain("malmoi-i18n-push-v1");
   });
 
   it("docs/ACTIONS.md의 예시와 같은 모양이다 — 주석·빈 줄을 빼면 줄 단위로 같다", () => {
@@ -192,7 +202,7 @@ describe("renderProjectWorkflowYaml — 표면마다 step 하나", () => {
 
   it("표면 둘이면 push step이 둘이고 checkout은 하나다", () => {
     const yml = render([one, two]);
-    expect(yml.split("malmoi-i18n-push@malmoi-i18n-push-v1").length - 1).toBe(2);
+    expect(yml.split("malmoi-i18n-push@malmoi-i18n-push-v2").length - 1).toBe(2);
     expect(yml.split("actions/checkout@").length - 1).toBe(1);
   });
 

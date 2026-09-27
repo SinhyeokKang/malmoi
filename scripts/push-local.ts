@@ -36,7 +36,7 @@ import {
   type WrapperId,
 } from "../lib/scan/index";
 import { fileProbe, requestedFormat, unreadableLocaleFiles } from "./format";
-import { loadLocalEnv } from "./local";
+import { loadLocalEnv } from "./local-env";
 
 loadLocalEnv();
 

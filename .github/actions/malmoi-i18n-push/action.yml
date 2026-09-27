@@ -103,17 +103,24 @@ runs:
         echo "node=$(tr -d '[:space:]' < "$root/.nvmrc")" >> "$GITHUB_OUTPUT"
         echo "pnpm=$(node -p "require('$root/package.json').packageManager.split('@')[1]")" >> "$GITHUB_OUTPUT"
 
+    # ⚠️ **store 캐시를 켜지 않는다** (2026-09-27 실측, docs/ACTIONS.md "실행 시간"). 적중해도 292 MB 복원이 이 스텝을
+    # 늘려 v1 대비 ~0.7초였고, 표면 둘 job(이 action 두 번)은 둘째 호출의 self-installer가 `PNPM_HOME` 아래 store를 지워
+    # 빈 store가 저장·고정됐다. 켜려면 그 두 결함과 `hashFiles`의 워크스페이스 밖 무시(위 "버전 읽기"와 같은 뿌리)부터 푼다.
     - name: pnpm
       if: steps.guard.outputs.skip != 'true'
-      uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       with:
         version: ${{ steps.v.outputs.pnpm }}
+        cache: false
 
+    # ⚠️ **자동 캐시를 끈다.** v5부터 `package-manager-cache`(기본 true)가 **대상 리포의 `package.json`**을 읽어
+    # npm이면 npm 캐시를 켜고 대상 리포 `package-lock.json`을 해시한다 — 없으면 던진다. 우리 install은 pnpm이다.
     - name: Node
       if: steps.guard.outputs.skip != 'true'
-      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         node-version: ${{ steps.v.outputs.node }}
+        package-manager-cache: false
 
     - name: 말모이 의존성
       if: steps.guard.outputs.skip != 'true'

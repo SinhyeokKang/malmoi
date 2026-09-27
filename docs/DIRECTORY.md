@@ -618,7 +618,9 @@ scripts/                adapter-survey · sync-agents · copy-fonts · scan · i
                         smoke-github · smoke-blob(⚠️ pnpm smoke:blob에 NODE_OPTIONS=--conditions=react-server가
                         붙는다 — PII 복호 모듈이 server-only라 그 조건 없이는 import에서 죽는다) ·
                         credentials · finalize-credentials · backfill-pending-edit-token ·
-                        local(loadLocalEnv · scriptPrisma — ⚠️ log: []. lib/db.ts는 server-only라 못 쓴다) ·
+                        local(loadLocalEnv 재수출 · scriptPrisma — ⚠️ log: []. lib/db.ts는 server-only라 못 쓴다) ·
+                        local-env(loadLocalEnv — ⚠️ **Prisma 없는 잎**이다: push-local이 이것만 문다. action의 clone엔
+                        prisma generate가 없어 local.ts를 물면 모든 run이 ERR_MODULE_NOT_FOUND다 — __tests__/push-local-graph가 센다) ·
                         format(fileProbe · requestedFormat — ingest·push-local의 probe·`--adapter`·탐지 갈래 하나.
                         ⚠️ lib/가 아닌 이유는 문구가 한국어 CLI 출력이라서다 — lib은 no-korean-ui 범위다)
                         (⚠️ DATABASE_URL을 친다 — prod는 명령 한 줄에서 그 변수를 넘긴다, 0행 두 번이 수렴)
@@ -633,7 +635,8 @@ types/next-auth.d.ts    session.user.id를 싣는 모듈 확장. ⚠️ `login`(
                         DB 세션의 session 콜백에는 token이 아니라 user가 와서 실을 곳이 없다
 .github/actions/malmoi-i18n-push/action.yml
                         **대상 리포가 참조하는 composite action**(외부 계약, 정본은 ACTIONS.md).
-                        ⚠️ 참조는 불변 태그 @malmoi-i18n-push-v1이다 — 태그를 옮기는 것이 릴리스다
+                        ⚠️ 참조는 불변 태그 @malmoi-i18n-push-v2다(v1은 기존 소비자용으로 고정) — 태그를 옮기는 것이 릴리스다.
+                        셋업 계약은 scripts/__tests__/action-setup이 센다(store 캐시 없음 · setup-node 자동 캐시 끔)
 public/og.png           링크 미리보기 이미지 1장 — 1200×630 PNG(사용자 제공 2400×1260 원본을 축소, 원본은 커밋하지 않는다). ⚠️ 치수는 OG_IMAGE 선언과 같아야 한다(site.test.ts가 IHDR로 잰다). 코드는 lib/seo/site.ts의 OG_IMAGE로 **항상** 싣는다 —
                         파일 규약(app/opengraph-image.png)이 아닌 이유는 얕은 병합이다. 대체 텍스트는 m.seo.ogImageAlt
 public/brand/ flags/ email/

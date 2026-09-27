@@ -493,3 +493,35 @@ describe("행별 진행 상태 — 동시 요청", () => {
     expect(spinning("revoke-i1")).toBe(false);
   });
 });
+
+/**
+ * ⚠️ **Enter로 고른 역할의 확인 Dialog가 같은 키 입력에 닫혔다** (malmoi#133). Radix `SelectItem`은 Enter를 keydown에서 처리하고
+ * Space만 `preventDefault`한다 — 막히지 않은 Enter의 활성화(keypress → click)가 그 사이 열린 Dialog의 첫 포커스(X)에 떨어졌다.
+ *
+ * ⚠️ **user-event로는 재현되지 않는다** — keydown과 keypress를 한 동기 호출에서 보내 React가 그 사이에 커밋하지 못한다(Dialog가
+ * 아직 없다). 브라우저는 둘이 다른 태스크라 그 사이에 Dialog가 서고 포커스를 옮긴다. 그래서 keydown을 직접 보내고, 커밋을 흘린
+ * 뒤, 막히지 않았으면 **그때 포커스된 버튼을 활성화**하는 브라우저 순서를 흉내 낸다.
+ */
+describe("역할 셀렉트 키보드 선택 (malmoi#133)", () => {
+  async function press(key: "Enter" | " ") {
+    const down = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+    await act(async () => { document.activeElement?.dispatchEvent(down); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const active = document.activeElement;
+    if (!down.defaultPrevented && active instanceof HTMLButtonElement) await act(async () => { active.click(); });
+  }
+
+  it.each(["Enter", " "] as const)("%j로 고른 역할의 확인 Dialog가 열린 채 남는다", async (key) => {
+    const container = await draw([owner, editor]);
+    const trigger = find<HTMLElement>(rows(container)[1]!, '[role="combobox"]');
+    trigger.focus();
+    const user = userEvent.setup();
+    await act(async () => { await user.keyboard("{Enter}"); });
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("option"));
+    await act(async () => { await user.keyboard("{ArrowUp}"); });
+    await vi.waitFor(() => expect(document.activeElement?.textContent).toContain(m.projects.role.OWNER));
+    await press(key);
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(m.members.confirmRole("Name u3", m.projects.role.OWNER));
+    expect(changeMember).not.toHaveBeenCalled();
+  });
+});

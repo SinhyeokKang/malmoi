@@ -77,7 +77,7 @@ PUSH_TOKEN='<대상 프로젝트의 토큰 원문>' pnpm push:local <리포 경�
 curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/pull
 ```
 
-**게이트**: 응답이 **배열**이고 그 안에서 대상 프로젝트 항목이 `{"slug":"<slug>","status":"skipped","reason":"no-changes"}`다. 다른 프로젝트 항목이 함께 오는 것은 정상이다 — cron이 준비된 전 프로젝트를 돈다.
+**게이트**: 응답이 **배열**이고 그 안에서 대상 프로젝트 항목이 `{"slug":"<slug>","status":"skipped","reason":"no-edits"}`다. 다른 프로젝트 항목이 함께 오는 것은 정상이다 — cron이 준비된 전 프로젝트를 돈다. ⚠️ **push 직후에는 `no-changes`가 나오지 않는다** (2026-09-28 RT1 실측) — strict push가 미발송 행을 0으로 두고 1층(`shouldSkipPull(unpublished)`, `lib/pull/run.ts`)이 먼저 끊는다. **그래서 값 고정점의 판정은 아래 드라이런(파일별 `=`)이다.**
 
 - `no-changes`는 **2층(blob 비교)까지 가서 전 파일이 동일했다**는 뜻이다. DB 상태와 리포가 일치한다는 증거다.
 - ⚠️ **이것은 값 고정점이지 바이트 고정점이 아니다** (2026-09-16 실측 정정). 수술적 어댑터는 바꿀 값이
@@ -123,7 +123,7 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 - `dev` head의 커밋 메시지에 **`[skip-malmoi-i18n]`** 이 있다 (없으면 대상 리포 CI가 다시 push를 돌려 무한 루프다). `--merge`면 그 메시지의 **둘째 문단(PR 제목)**에 있고, `--squash`·`--rebase`면 첫 줄에 있다 — 어느 자리든 가드는 부분 문자열만 본다
 - `malmoi-i18n/sync-<project-slug>` 브랜치가 삭제됐다
 - checkout을 merge head로 갱신하고 두 표면을 각각 다시 push해 편집 값·구조·표현이 유지되는지 확인한다
-- 값 불변 재push 뒤 첫 pull은 `no-changes`(2층), 즉시 재pull은 **`no-edits`** — 1층 스킵이고, **GitHub API를 한 번도 안 부른다.** 야간 cron이 변경 없는 날 도는 기본 경로가 이것이다
+- 값 불변 재push 뒤 pull은 **`no-edits`** — 1층 스킵이고, **GitHub API를 한 번도 안 부른다.** 야간 cron이 변경 없는 날 도는 기본 경로가 이것이다. 값 고정점은 드라이런으로 본다(2단계)
 
 ### 5. (선택) CI 방향 — 대상 리포에 워크플로가 붙어 있을 때만
 
@@ -150,7 +150,7 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 🔄 roundtrip: <slug> (<adapter>, <키>키 <로케일>로케일)
 전제: 폐기용 리포 <repo> / Project·Surface·경로 소유권 확인 / smoke:github OK
 1 push:       200 — <n>키 / <n>번역 / <n>refs
-2 값 고정점:   no-changes ✅ / ❌ (committed — 중단) · ⚠️ 표현 보존은 여기서 안 보인다
+2 값 고정점:   드라이런 전 파일 = ✅ / ≠ ❌ (중단) · ⚠️ 표현 보존은 여기서 안 보인다
 3 편집 <n>건:  PR #<n> +<a> -<b> / <n>파일, hunk <n>
    보존:      주석 · 빈 줄 · 키 순서 · 인용 부호 · <포맷별 항목>
 4 머지 후:    --<방식> · PR 제목 마커 ✅ · dev head [skip-malmoi-i18n] ✅ / 재pull no-edits ✅

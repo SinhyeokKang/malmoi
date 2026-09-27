@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
  *
  * ⚠️ **말모이 `main`도 같은 축이다.** Free + private에서 브랜치 프로텍션이 거부되므로(403 실측)
  * `main` 직접 푸시를 막는 것은 `/merge` 관행뿐이다 — 소비자가 `@main`을 참조하면 그 관행이
- * 남의 리포의 보안 경계가 된다. 그래서 참조는 **불변 태그**(`malmoi-i18n-push-v1`)다.
+ * 남의 리포의 보안 경계가 된다. 그래서 참조는 **불변 태그**(`malmoi-i18n-push-v2` — v1은 기존 소비자용)다.
  *
  * ⚠️ **렌더가 아니라 소스 스캔인 이유**: 이 결함은 CI가 green인 채로 열려 있고, 실행해서는
  * 관측되지 않는다. 같은 이유로 `focus-ring`·`credential-separation`이 소스를 센다.
@@ -67,6 +67,22 @@ describe("워크플로 참조 — 전부 40자 SHA로 핀 (sec-audit 3 · 13)", 
   });
 });
 
+/**
+ * **action 안의 두 판은 Node 24 판이다** (action-run-cache). 위 스캐너는 "40자 SHA"만 봐서 v4(node20)로 되돌려도
+ * green이다 — 기대 SHA를 박는다. 올릴 때는 upstream `action.yml`의 `runs.using`을 그 SHA에서 확인하고 이 값을 고친다.
+ */
+describe("malmoi action의 셋업 판 — node24 판 SHA (action-run-cache)", () => {
+  const action = readFileSync(join(GITHUB_DIR, "actions", "malmoi-i18n-push", "action.yml"), "utf8");
+
+  it("`pnpm/action-setup`이 v6.1.0이다", () => {
+    expect(action).toMatch(/uses: pnpm\/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6\.1\.0$/m);
+  });
+
+  it("`actions/setup-node`가 v7.0.0이다", () => {
+    expect(action).toMatch(/uses: actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7\.0\.0$/m);
+  });
+});
+
 describe("ci.yml — 권한을 트리 안에서 선언한다 (sec-audit 13)", () => {
   const ci = readFileSync(join(GITHUB_DIR, "workflows", "ci.yml"), "utf8");
 
@@ -83,6 +99,6 @@ describe("소비자가 참조하는 ref — 불변 태그다 (sec-audit 3)", () 
   it("`docs/ACTIONS.md`가 `@main`을 안내하지 않는다", () => {
     const doc = readFileSync(join("docs", "ACTIONS.md"), "utf8");
     expect(doc).not.toMatch(/malmoi-i18n-push@main/);
-    expect(doc).toMatch(/malmoi-i18n-push@malmoi-i18n-push-v1/);
+    expect(doc).toMatch(/malmoi-i18n-push@malmoi-i18n-push-v2/);
   });
 });
