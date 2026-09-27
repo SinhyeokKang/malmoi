@@ -12,13 +12,10 @@
  * 파일시스템·네트워크를 아는 층이다. 어댑터·스캐너·계획은 전부 순수 함수다.
  */
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
-
 
 import { findTarget, flagValue, flagValues } from "../lib/cli/args";
-import { sourceKind, walkFiles } from "../lib/cli/walk";
+import { readSourceFiles, walkFiles } from "../lib/cli/walk";
 import { optionalEnv } from "../lib/env";
 import { AppError } from "../lib/failure";
 import { reportPushResponse } from "../lib/cli/push-response";
@@ -36,7 +33,6 @@ import {
   DEFAULT_WRAPPERS,
   parseWrapperSpec,
   scanSources,
-  type SourceFileInput,
   type WrapperId,
 } from "../lib/scan/index";
 import { fileProbe, requestedFormat, unreadableLocaleFiles } from "./format";
@@ -144,10 +140,8 @@ async function reportFailure(code: ReportedImportFailure): Promise<void> {
 }
 
 const paths = walkFiles(target);
-const sources: SourceFileInput[] = paths.flatMap((path) => {
-  const kind = sourceKind(path);
-  return kind ? [{ path, code: readFileSync(join(target, path), "utf8"), kind }] : [];
-});
+// 사용처 소스를 못 읽으면 경고로 건너뛴다(audit #16) — 로케일 적재를 멈추지 않는다. 로케일 파일 읽기 실패는 아래에서 따로 red다.
+const { files: sources, unreadable: unreadableSources } = readSourceFiles(target, paths);
 
 const probeFailures = new Set<string>();
 const probe = fileProbe(target, probeFailures);
@@ -216,6 +210,10 @@ if (warnings.length) {
 
 // ── 사용처 (컨텍스트) — 실패가 경고다 ──────────────────────────────────────
 const scan = scanSources(sources, wrappers);
+if (unreadableSources.length) {
+  console.error(`사용처 소스 ${unreadableSources.length}개를 읽지 못해 건너뛰었다 — CI는 계속한다:`);
+  for (const path of unreadableSources.slice(0, 10)) console.error(`  ${path}`);
+}
 
 // **생산자는 `lib/push/payload.ts` 하나다.** 리터럴로 조립하던 시절엔 계약이 넓어져도
 // 컴파일러가 붙잡을 지점이 없었고, 이 스크립트만 400을 받는 상태로 남았다

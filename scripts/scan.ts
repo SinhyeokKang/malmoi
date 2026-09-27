@@ -13,17 +13,13 @@
  * **항상 exit 0이다.** 사용처를 못 찾은 것은 경고일 뿐이고, 키가 존재하는지는 로케일 파일이
  * 정한다 (`pnpm ingest`). CI를 실패시킬 수 있는 건 적재 층뿐이다 (ARCHITECTURE §4).
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { findTarget, flagValues, hasFlag } from "../lib/cli/args";
-import { sourceKind, walkFiles } from "../lib/cli/walk";
+import { readSourceFiles, walkFiles } from "../lib/cli/walk";
 import {
   DEFAULT_WRAPPERS,
   formatWrapperSpec,
   parseWrapperSpec,
   scanSources,
-  type SourceFileInput,
   type WrapperId,
 } from "../lib/scan/index";
 
@@ -50,14 +46,12 @@ const wrappers: readonly WrapperId[] = specs.length === 0 ? DEFAULT_WRAPPERS : s
 });
 
 // 경로는 리포 기준 상대경로다 — GitHub permalink가 이 값을 그대로 쓴다.
-const files: SourceFileInput[] = walkFiles(target).flatMap((path) => {
-  const kind = sourceKind(path);
-  return kind ? [{ path, code: readFileSync(join(target, path), "utf8"), kind }] : [];
-});
+// 못 읽은 파일은 경고다(audit #16) — 이 CLI는 결과가 어떻든 exit 0이다.
+const { files, unreadable } = readSourceFiles(target, walkFiles(target));
 const { refs, warnings } = scanSources(files, wrappers);
 
 if (json) {
-  console.log(JSON.stringify({ wrappers, refs, warnings }, null, 2));
+  console.log(JSON.stringify({ wrappers, refs, warnings, unreadable }, null, 2));
 } else {
   console.log(`래퍼: ${wrappers.map(formatWrapperSpec).join(", ")}`);
   console.log(`스캔: ${files.length}파일 (ts ${files.filter((f) => f.kind === "ts").length} / raw ${files.filter((f) => f.kind === "raw").length})`);
@@ -67,6 +61,12 @@ if (json) {
   for (const r of refs.slice(0, 10)) {
     const first = r.refs[0];
     console.log(`  ${r.key}  ${first ? `${first.path}:${first.line}` : ""}${r.refs.length > 1 ? ` +${r.refs.length - 1}` : ""}`);
+  }
+
+  if (unreadable.length) {
+    console.log(`\n읽지 못해 건너뛴 파일 ${unreadable.length}개 (실패가 아니다 — 그 파일의 사용처만 빠진다):`);
+    for (const path of unreadable.slice(0, 15)) console.log(`  ${path}`);
+    if (unreadable.length > 15) console.log(`  ... ${unreadable.length - 15}개 더`);
   }
 
   if (warnings.length) {

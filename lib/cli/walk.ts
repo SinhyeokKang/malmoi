@@ -1,5 +1,7 @@
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+
+import type { SourceFileInput } from "../scan/types";
 
 /**
  * 대상 리포 훑기 — 세 CLI가 각자 들고 있던 `SKIP_DIR`·`walk`를 한 곳에 둔다. 셋이 갈리면 같은
@@ -65,4 +67,26 @@ export function walkFiles(root: string): string[] {
   };
   visit(root);
   return acc;
+}
+
+/**
+ * 스캔 대상 소스를 읽는다. **못 읽은 파일은 건너뛰고 `unreadable`로 돌려준다** (audit #16) — 호출부가 경고로 찍는다.
+ *
+ * ⚠️ 사용처 스캔은 `refs` 전담이라 실패가 경고다(ARCHITECTURE §4). 전에는 `readFileSync`가 그대로 던져 파일 하나의 `EACCES`가
+ * `scan`의 "항상 exit 0"을 깨고 `push:local`의 정상 로케일 적재까지 멈췄다. **디렉터리 읽기 실패는 여기 오지 않는다** —
+ * `walkFiles`가 그대로 던진다: 로케일 파일이 그 안에 있을 수 있어 조용히 건너뛰면 적재가 부분 페이로드가 된다.
+ */
+export function readSourceFiles(root: string, paths: readonly string[]): { files: SourceFileInput[]; unreadable: string[] } {
+  const files: SourceFileInput[] = [];
+  const unreadable: string[] = [];
+  for (const path of paths) {
+    const kind = sourceKind(path);
+    if (kind === undefined) continue;
+    try {
+      files.push({ path, code: readFileSync(join(root, path), "utf8"), kind });
+    } catch {
+      unreadable.push(path);
+    }
+  }
+  return { files, unreadable };
 }
