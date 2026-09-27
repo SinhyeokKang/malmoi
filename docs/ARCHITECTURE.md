@@ -743,8 +743,12 @@ base 편집은 보류다** — 실행(`runPull`)이 per-locale 표면의 base �
 
 ⚠️ **미리보기의 "바뀌는 파일"은 실행의 읽기 단계 그대로다** (2026-09-27, #128 — `renderProject` in `lib/pull/run.ts`). 편집 셀의 파일만 세면 토큰 없이
 바뀌는 파일(지난 적재가 orphan한 키의 비-base 줄 제거, 머지되지 않고 닫힌 PR에 실렸던 DB 값의 재전송)이 빠지고 결과에서야 "N files changed"가 나왔다.
-`readPublishPreview`가 `loadPullState` 스냅샷으로 `renderProject`를 돌려 `changedFiles`를 싣고(blob은 캐시로 한 번만 읽는다), 푸터의 파일 수가 그 수다.
-편집 없는 파일은 표에 따로 선다 — 단 상한 밖 행이 있으면(`truncated`) 그 파일에 편집이 있는지 모르므로 단정하지 않는다.
+`readPublishPreview`가 `loadPullState` 스냅샷으로 `renderProject`를 돌려 `changedFiles`를 싣고, 푸터의 파일 수와 "PR을 닫는다"(`allSame`) 판정이 그 목록이다.
+**비용: 한 번 열 때 실행 한 번과 같은 GitHub 비용이다** — ref 1·트리 1(셀 조회에 읽은 것을 넘긴다 — 셀과 파일 목록이 같은 head를 본다)에 **전 표면의
+전 로케일 파일 blob**(예: 59로케일 리포는 59회. 셀 조회와 겹치는 blob은 캐시로 한 번). 편집 없는 파일은 표에 따로 선다 — 단 상한 밖 행이 있으면
+(`truncated`) 그 파일에 편집이 있는지 모르므로 단정하지 않고, 전부 보류면(실행이 `skipped/withheld`) 아무 파일도 약속하지 않는다.
+**편집 없는 표면도 렌더한다** — 그 표면의 base 파일이 없거나(수술적 `original-file-missing`) 못 읽으면(`write-parse-failed`) 실행은 `writer-warnings`로 거부하므로
+미리보기도 같은 전용 거부(`base-file-missing`·`base-file-unreadable`)다. null baseLocale·표면 경로 충돌은 실행과 미리보기가 같은 일반 실패(`unknown`)다.
 **보류 안내의 Revert** (#129): 결과의 OWNER 줄은 보류 셀 **전부**에 기준 행(`TranslationBaseline`)이 있을 때만 `Revert to last sent`를 가리킨다
 (`withheldRevertable` → `Withheld.revertable`). 기준이 없는 셀의 Revert는 꺼져 있다. CI의 `deferred` 경고는 서버가 보류 여부를 모르므로(렌더 시점 판정)
 Publish·Revert·폐기 Sync를 함께 말한다 — 응답 계약은 그대로다.
