@@ -90,6 +90,21 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
 - ⚠️ 대량 적재 직후 첫 렌더가 서버에서 2.0분이었다(57언어 · 619키, 둘째 요청 1.6초). 낡은 통계로 계획이 섰다고 **추정**만 했고
   재현하지 않았다 — 프로덕션의 새 대형 프로젝트 첫 화면에 같은 창이 열리는지 미확인이다.
 
+## 새 머신 셋업 (체크아웃 3개 산출물이 전부 gitignore다)
+
+**두 대에서 작업한다.** 새 체크아웃은 `node_modules`·`generated/prisma`·`public/fonts`·`.env.local`이 전부 없고, 앞의 셋은 명령으로 복구되지만 **`.env.local`만 사람이 채운다.**
+
+1. **Node를 `.nvmrc`에 맞춘다**(24). **어긋났을 때 맞추는 방향은 Vercel 쪽이다** — 프로덕션이 진실이고 `.nvmrc`가 따라간다.
+2. `pnpm install`
+3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **암호화 키 셋(환경변수 여섯)이 비면 로그인·초대·멤버 조회가 통째로 죽는다** — TOKEN·PII는 `*_ENCRYPTION_KEYS`와 `*_ACTIVE_KEY_ID` 쌍이고 EMAIL_LOOKUP만 `EMAIL_LOOKUP_KEY`·`_KEY_ID`다. ⚠️ **서명 키 `APP_SIGNING_SECRET`도 비면 GitHub 연결(시작·callback)과 온보딩 탐지·샘플이 500이다** — 로그인은 된다. 초대 메일 셋(`RESEND_API_KEY` 등)은 비어도 되고 그때 초대 발급만 막힌다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다** — 전부 Vercel의 **Sensitive**라 CLI도 대시보드도 값을 못 읽는다. **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**다.
+   - **GitHub OAuth 앱은 하나(`malmoi`)이고 세 환경이 같은 값을 쓴다** — Google과 같은 모양이다. ⚠️ **2026-09-14 이전 기록에 "앱이 셋"이 나오면 그건 낡았다**: GitHub이 OAuth App에 **Add redirect URI**를 열어 "callback URL은 앱당 하나"가 거짓이 됐고, 그래서 `malmoi-dev`·`malmoi-local`을 접었다.
+   - ⚠️ **Google은 반대로 클라이언트가 하나다** — redirect URI를 여러 개 등록할 수 있어 로컬·preview·프로덕션 셋을 한 클라이언트에 넣고 같은 값을 세 곳에 둔다.
+4. `pnpm db:status`(dev) · `pnpm db:status:prod`(prod)로 접속을 확인한다. ⚠️ 두 출력이 **같아 보인다**(pooler 호스트가 같고 ref는 사용자명에 있다) — 구별 신호는 **적용된 마이그레이션 개수**다.
+5. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다.
+6. `pnpm typecheck && pnpm test`로 셋업 확인. 폰트는 `predev`가 복사한다.
+
+⚠️ **`vercel env add`는 환경을 하나씩만 받고, `--force`를 믿지 말고 목록으로 확인한다** (CLI 59.11 실측). Preview에서 `--force`가 `✓ Overrode`를 출력하고도 값이 그대로였다. 갱신 뒤 `vercel env ls <environment>`의 시각 열을 보고, 안 바뀌었으면 `vercel env rm … --yes` 후 다시 넣는다. **성공 메시지가 근거가 아니다.** 값은 stdin으로 넘긴다 — `--value`는 `ps`에 노출된다.
+
 ## 1. 암호화 키 셋 — 섞지 않는다
 
 **저장된 것은 전부 봉투·해시이고 원문은 쿠키와 프로세스 메모리에만 있다.** 키가 셋인 이유는 용도가
@@ -271,6 +286,11 @@ App 설정 > General (2026-09-18, install-and-connect):
 
 ⚠️ **App이 둘이다**(2026-09-27): 프로덕션 `malmoi-sync`, 로컬·preview `malmoi-sync-dev`(폐기용 리포에만 설치). **위 세 설정을 두 App에 똑같이 둔다.** dev App의 callback은 `https://dev.mal-moi.com/api/github/callback`(첫째)·`http://localhost:3000/api/github/callback`, prod App은 `https://mal-moi.com/api/github/callback` 하나다. ⚠️ **설치 URL은 `redirect_uri`를 받지 않는다** — App의 **첫** callback으로 간다. 그래서 로컬에서 시작한 설치는 `dev.mal-moi.com`에 착지한다(쿠키가 없어 교환 0회로 거부된다). 로컬에서는 보조 링크(Authorize, `redirect_uri`가 로컬)로 연결하고 GitHub에서 직접 설치한 뒤 [Try again]으로 본다. 요청 대기(D)·목록 위 info는 dev DB의 `Account.installRequestedAt`을 직접 심어 본다. 설치 왕복 자체(1클릭·요청 복귀·승인 복귀)는 **preview(`dev.mal-moi.com`, dev App)와 프로덕션**에서 실측한다. ⚠️ **사용자 인가(user-to-server 토큰)도 App별이다** — App을 바꾸면 그 환경 DB에 남은 옛 App의 인가가 `/account`에 "Connected"로 보이는데 설치 목록이 비어, 연결·push 토큰 교체가 `repo-not-installed`로 거부된다. 그 사용자가 `/account`에서 Disconnect → Authorize GitHub App으로 새 App을 인가하면 풀린다(2026-09-27 dev DB에서 밟음).
 
+### 설치가 안 되거나 `not-installed`일 때
+
+- ⚠️ **GitHub App이 `Make public`이어야 한다 — 2026-09-17까지 private이었다.** private 앱은 **소유 계정(`SinhyeokKang`)에만 설치된다**: 그 사이 다른 계정·조직은 설치 링크에서 GitHub이 막아 **새 사용자의 프로젝트 생성이 통째로 불가능했다**(초대받은 번역자는 설치가 필요 없어 안 드러났다). 증상이 malmoi 쪽에 아무 로그도 안 남기고, 오너 계정으로 검증하면 항상 통과한다 — **"다른 계정에서 설치가 안 된다"를 들으면 앱 설정 Advanced부터 본다.** ⚠️ **앱이 둘이다** (2026-09-27, launch-readiness L2.10): 프로덕션은 `malmoi-sync`(개인키는 Vercel **Production**에만), 로컬·preview는 `malmoi-sync-dev`(`.env.local` + Vercel **Preview**, **폐기용 리포에만 설치**). 두 앱의 권한·설정(설치 중 인가 켬 · Setup URL 비움 · Redirect on update · public)은 같게 유지한다. 앱을 바꾸면 설치 ID가 달라 그 환경의 모든 프로젝트 `installationId`가 무효가 되고 [Reconnect]로 복구된다(malmoi#52). ⚠️ **Vercel의 `GITHUB_APP_*`는 환경별 변수여야 한다** — Production·Preview를 한 변수로 묶어 두면 `vercel env rm <name> preview`가 **Production까지 지운다**(2026-09-27 실측, 곧바로 복구했다).
+- ⚠️ **App 설치가 `Only select repositories`면** **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 설치 범위 자체는 여기 적지 않는다(자주 바뀐다 — 콘솔이 정본). 안 넣으면 `probeRepo`가 `not-installed`를 주고 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. ⚠️ **리포를 만들었다고 목록에 든 것이 아니다** — 둘은 다른 화면이고, 그 간극이 `not-installed`를 만난 사람을 엉뚱한 곳으로 보낸다. **`not-installed`를 보면 앱 설정의 Repository access를 먼저 연다.** ⚠️ **그 목록을 여기 적지 않는다** — GitHub 콘솔이 정본이고 문서 사본은 실물보다 앞서거나 뒤처지기만 했다(2026-09-23에 걷었다). 폐기용 리포 각각이 **왜 필요한지**는 `.claude/commands/roundtrip.md` 전제 조건 1과 `runtime-test.md` §7.1이 든다.
+
 ## Google OAuth 동의 화면 — 게시와 도메인 소유권 (2026-09-19)
 
 **상태: External + 게시(In production).** 그 전까지 테스트 모드였고 **등록된 테스트 사용자만** 로그인됐다 — 초대받은 비개발자 동료가 목록에 없으면 막혔다는 뜻이다. ⚠️ **Internal로 바꾸지 않는다** — 조직 밖 계정이 `403 org_internal`로 막혀 초대 경로가 통째로 죽는다.
@@ -380,7 +400,7 @@ WHERE defaclnamespace = 'public'::regnamespace;
 ## 5. 자격증명 전면 재발급
 
 순서가 있다 (2026-09-03 실행). Supabase 비번 재설정 → `.env.local` → Vercel env → 재배포
-(`vercel redeploy <최근 prod URL>`). 상세와 함정은 [CLAUDE.md](../CLAUDE.md)의 "새 머신 셋업" 절이다.
+(`vercel redeploy <최근 prod URL>`). 상세와 함정은 위 "새 머신 셋업" 절이다.
 
 ⚠️ **GitHub App 개인키는 여러 개를 동시에 가질 수 있지만, 지우면 그 키를 쓰던 네 곳이 동시에 끊긴다** —
 로컬 `.env.local` · Vercel Production · Vercel Preview · 다른 머신. 2026-09-06에 옛 키 하나를 지웠다가
