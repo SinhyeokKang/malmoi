@@ -494,6 +494,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const [syncRunning, setSyncRunning] = useState(false);
   const setSyncPending = (pending: boolean) => { if (pending) syncListFrom.current = list; setSyncRunning(pending); };
   const syncPending = syncRunning || syncCommit.waiting;
+  // 새 트리가 대기 상한(`COMMIT_WAIT_MS`) 안에 안 왔다 — 남은 `resync`가 다음 저장의 재검증을 새 세대로 만들지 않게 버린다(감사 #11 r1).
+  // 결과가 먼저면 `wait()`가 같은 배치에 서고 트리가 먼저면 `resyncDue`가 같은 렌더에 풀므로, 이 조건은 상한이 지난 뒤에만 참이다.
+  useEffect(() => { if (!syncPending && resync !== null && resync.from === list) setResync(null); }, [syncPending, resync, list]);
   const setSyncOpen = (open: boolean) => openSyncDialog(open && !publish.pending);
   /**
    * ⚠️ **[Sync]의 원결과를 이 화면이 든다** (audit #5 — POSTMORTEM 2026-09-08 재발) — 전엔 `onResult`가 결과를 버리고
