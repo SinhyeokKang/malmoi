@@ -25,7 +25,7 @@ The `github-token` input is read-only and is used only to warn about an open pul
 
 ### Update an older workflow {#update-workflow}
 
-A workflow that uses `malmoi-i18n-push-v1` keeps working unchanged. To move to `malmoi-i18n-push-v2`, open **Settings** in Malmoi, choose **Workflow file**, copy the whole file, and replace `.github/workflows/malmoi-i18n.yml` with it. Version 2 runs on Node 24, so the Node 20 deprecation warning leaves the run log. It also fails some runs that version 1 let through, such as a key defined twice in a JSON or YAML file, an `api-url` that is not HTTPS, or a language file that cannot be read.
+A workflow that uses `malmoi-i18n-push-v1` keeps working unchanged. To move to `malmoi-i18n-push-v2`, open **Settings** in Malmoi, choose **Workflow file**, copy the whole file, and replace `.github/workflows/malmoi-i18n.yml` with it. Then add back anything you changed by hand, such as a `wrapper` input, a custom `api-url`, or edited triggers. The generated file doesn't include them, and a missing `wrapper` leaves the run green while code references stop appearing. Version 2 runs on Node 24, so the Node 20 deprecation warning leaves the run log. It also fails some runs that version 1 let through, such as a key defined twice in a JSON or YAML file, an `api-url` that is not HTTPS, or a language file that cannot be read.
 
 ## Run and check it {#first-run}
 
