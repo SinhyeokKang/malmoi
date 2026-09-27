@@ -947,11 +947,17 @@ action 스코프에 **그 뒤의 모든 transition을 얽는다**(POSTMORTEM 202
 이동이 prop을 바꾸기 때문이고, 그 시점에 재검증 트리가 이미 커밋돼 있을 수 없다(Next가 promise를 먼저 풀고 트리를 나중에 커밋한다).
 상한 `COMMIT_WAIT_MS`(10 s)가 트리가 끝내 안 오는 갈래를 푼다. ⚠️ **"거부는 트리가 없다"가 아니다** — 어느 결과가 트리를 싣고 오는지는
 Action의 `revalidatePath` 자리가 정하고, 그 분류를 순수 함수 둘이 든다: Sync는 `importRevalidates`(`runRepositoryImport`의 `try` 안 거부 —
-`reconfirm`·`already-running`·`not-ready`… — 도 `finally`를 지난다, `try` 앞의 거부만 없다), Publish는 `pullRevalidates`(`runSync`를
+`reconfirm`·`already-running`·`not-ready`… — 도 `finally`를 지난다, `try` 앞의 거부만 없다. ⚠️ 클라이언트가 접은 throw `unconfirmed`는 예외로 `true`다 — 아래), Publish는 `pullRevalidates`(`runSync`를
 지난 `failed`도 온다 — 표식은 실행 실패의 `code`와 게이트의 `already-running`·`too-soon`, `delivery`는 게이트 거부도 `not-started`라 못
 가른다). Revert는 `reverted`만 기다린다. 트리를 기다리는 동안 [Publish]를 누르면 새 미리보기가 아니라 결과가 열린다. 결과 문구는
 promise가 풀릴 때 서도 된다. 소비자는 Home Sync · 번역 화면
-Sync · `usePublish` · Revert 넷이다. 같은 이유로 그 뒤에 `router.refresh()`를 또 부르지 않는다(두 번째 전체 렌더가 표시 없이 돈다).
+Sync · `usePublish` · Revert 넷이다. 같은 이유로 그 뒤에 `router.refresh()`를 또 부르지 않는다(두 번째 전체 렌더가 표시 없이 돈다)
+— **예외 하나**: 응답을 잃은 Sync(`runRepositoryImport` 호출이 throw — `unconfirmed`, malmoi#132)는 재검증 트리가 응답과 함께 사라지고
+서버가 Sync를 끝냈는지(편집 폐기 포함) 모르므로 `SyncButton`이 **한 번** refresh하고(재실행은 안 한다 — 두 번 돌 수 있다) 호스트는 그
+트리까지 잠금을 잇는다. 번역 화면은 그 트리를 **새 세대**로 받는다(끝났다면 들여온 키가 목록에 서야 한다). `navigator.onLine === false`면
+부르지 않는다 — Next 16.3의 `fetchServerResponse`는 RSC fetch 실패를 브라우저 내비게이션(MPA 폴백)으로 떨어뜨린다. ⚠️ **온라인이어도 그
+폴백 갈래는 남는다**(`!res.ok || !isFlightResponse` — 5xx 오류 페이지 · 세션 만료의 `/signin` 302 · 배포 스큐 리로드) — 리로드된 화면이
+서버 상태를 말하므로 거짓 "안 됐다"보다 낫다고 받았다. Publish의 throw(`delivery: "unknown"`)는 아직 이 예외를 안 든다.
 ⚠️ **알려진 예외 둘이 남아 있다** — `reconnect-button.tsx`의 `startTransition(async …)`와 Add sources의 `run(async … addSurfaces)`(`add-sources-modal.tsx`, `useTransition` 안이라 그동안 이동이 얽힌다 — 모달이 닫기를 막는 동안의 일이라 받았다)가 아직 이 형이다(후속 이슈).
 
 ⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Publish]가 사는 곳은
