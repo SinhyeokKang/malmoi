@@ -813,10 +813,14 @@ export const en = {
          */
         tail: (who: string): string => ` — last edited in this language by ${who}.`,
       },
+      /**
+       * ⚠️ **이력을 말하지 않는다** (malmoi#134) — 술어는 "지금 값이 있는 셀이 없다"이고 채웠다가 비운 로케일도 여기 선다.
+       * `never`·`yet`은 그 술어가 모르는 과거를 단언한다. 키 이름(`neverFilled`)은 식별자라 그대로 둔다.
+       */
       neverFilled: {
         title: (surface: string, locale: string): string => `${surface} · ${locale}`,
-        body: (locale: string): string => `${locale} has never been filled here`,
-        tail: (n: number): string => ` — ${n.toLocaleString("en-US")} keys, none translated.`,
+        body: (locale: string): string => `${locale} has no translations here`,
+        tail: (n: number): string => ` — ${n.toLocaleString("en-US")} ${n === 1 ? "key" : "keys"} to translate.`,
       },
       empty: {
         title: "Nothing needs you",
