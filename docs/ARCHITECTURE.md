@@ -99,7 +99,7 @@
 |---|---|---|---|---|---|
 | `chrome-locales` | `<root>/_locales/{locale}/messages.json` | `{message, description?}` | per-locale | regenerate | bugshot-2 (4키 × ko/en/fr), 오픈소스 34개 |
 | `json-catalog` | `<dir>/{locale}.json` (flat 또는 중첩) | `string` | per-locale | regenerate | bugshot-web (104키 × 2, 중첩·배열), skillflo (**1446키 × 6**), 오픈소스 38개 |
-| `ts-dict` | `<dir>/*.ts` (글롭 — 한 파일에 로케일 여러 개) | 문자열 리터럴 | **multi-locale** | surgical | bugshot-2 (**903키 × ko/en/fr**). ⚠️ **자동 탐지는 내용을 봐야 한다** — 경로만으로는 후보가 0이고 씨앗(`tsDictProbePaths`)이 파일을 내려받게 한다 (§1.9 판정 ③) |
+| `ts-dict` | `<dir>/*.ts` · `<dir>/*.tsx` (글롭 — 한 파일에 로케일 여러 개) | 문자열 리터럴 | **multi-locale** | surgical | bugshot-2 (**903키 × ko/en/fr**). ⚠️ **자동 탐지는 내용을 봐야 한다** — 경로만으로는 후보가 0이고 씨앗(`tsDictProbePaths`)이 파일을 내려받게 한다 (§1.9 판정 ③). ⚠️ **확장자가 템플릿의 일부다** (2026-09-27, audit #13) — 탐지·씨앗이 `디렉터리+확장자`로 묶어 `.tsx` 디렉터리는 `*.tsx`를 내고, 혼합 폴더는 후보 둘이다(glob을 `{ts,tsx}`로 넓히지 않는다) |
 | `yaml-catalog` | `<dir>/{locale}.y(a)ml` | 문자열 스칼라 | per-locale | **surgical** | 오픈소스 17개 (mastodon·decidim·directus·redmine·misskey) |
 | `code-dict` | `<dir>/{locale}.{ts,tsx,js,mjs}` | 문자열 리터럴 | per-locale | **surgical** | 오픈소스 12개 (ant-design·element-plus·vuetify·payload) |
 
