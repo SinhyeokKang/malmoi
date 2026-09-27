@@ -152,7 +152,8 @@ it("email refresh waiting on the User lock does not adopt a provider unlinked me
     }
     await holder.query(`DELETE FROM "Account" WHERE "userId" = $1 AND "provider" = 'github'`, [ids.u1]);
     await holder.query("COMMIT");
-    expect(await refresh).toBe("keep");
+    // 처음부터 없던 연결과 같은 갈래 — 호출부가 병합 안내를 조회한다.
+    expect(await refresh).toBe("unlinked");
   } finally { holder.release(); }
   const user = decodeUser(await prisma.user.findUniqueOrThrow({ where: { id: ids.u1 }, select: { id: true, email: true, emailLookup: true } }));
   expect(user.email).toBe("old@example.com");

@@ -66,9 +66,10 @@ function raceDb(afterLock: { userId: string } | null, loginMethods: number) {
   const db = { account: tx.account, $transaction: async (fn: (v: typeof tx) => unknown) => fn(tx) } as unknown as PrismaClient;
   return { db, update };
 }
-it("잠금을 기다리는 사이 해제된 공급자의 새 주소로 이메일을 바꾸지 않는다", async () => {
+it("잠금을 기다리는 사이 해제된 공급자는 처음부터 없던 연결과 같은 갈래다 — 이메일을 바꾸지 않는다", async () => {
   const { db, update } = raceDb(null, 1);
-  expect(await refreshVerifiedEmail(db, "github", "gh1", "new@x.com")).toBe("keep");
+  // `"unlinked"`여야 호출부(`auth.ts`의 signIn)가 평소처럼 병합 안내를 조회한다.
+  expect(await refreshVerifiedEmail(db, "github", "gh1", "new@x.com")).toBe("unlinked");
   expect(update).not.toHaveBeenCalled();
 });
 it("잠금 뒤 그 Account의 소유자가 바뀌었으면 쓰지 않는다", async () => {
