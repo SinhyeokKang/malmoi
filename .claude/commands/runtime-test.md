@@ -120,6 +120,14 @@ await js(String.raw`(async () => {
 10. **정리.** `completeTaskSpace(id, { keep: false })` + dev 서버 정지 + 워킹 트리 clean 확인.
 11. **리포트.** 대화 응답으로. **실패·skip·못 밟은 시나리오를 성공 요약보다 먼저.** 제출한 이슈 URL을 목록으로. 실패가 나오면 `docs/POSTMORTEM.md`를 해당 영역으로 grep해 과거 함정과 대조한 뒤 리포트에 포함한다.
 
+### 7.1 픽스처 — 특정 갈래는 특정 리포·상주 프로젝트로만 밟힌다
+
+- ⚠️ **로케일이 많은 리포가 하나 필요하다 — `i18n-many-locales`다** (2026-09-13, excalidraw 포크 · `packages/excalidraw/locales/{locale}.json` **59로케일** · json-catalog). 폐기용 셋은 전부 **로케일이 3개**라 `sampleOrder`가 처음부터 전부 실어서, 온보딩 ②의 **lazy load**(누른 언어만 받는 경로)와 **세그먼트→`Select` 접힘**(다섯 이상)이 **한 번도 안 밟힌다**. 그 둘을 보려면 이 리포다. ⚠️ **쓰기 검증에는 쓰지 않는다** — 포크라 PR 흔적이 남고, `/roundtrip`의 "폐기용 리포만" 규칙은 그대로다.
+- ⚠️ **로케일이 하나도 없는 리포도 하나 필요하다 — `i18n-none`이다** (2026-09-13, `sindresorhus/p-map` 포크 · 74KB · MIT). 온보딩 ②의 **후보 0개**(예외 E — 좌측이 수동 지정 폼이 되고 우측이 "Nothing to preview yet"인 갈래)는 **설치된 다른 다섯이 전부 로케일 리포라 브라우저로 영영 못 밟는다.** 그 갈래는 되돌릴 수 없는 결정 직전의 화면인데 단위 테스트로만 고정돼 있었다. **74KB를 고른 이유는 트리 조회가 즉시 끝나서다** — `i18n-many-locales`는 탐지에 30초가 넘는다. ⚠️ **쓰기 검증에는 쓰지 않는다**(포크라 PR 흔적이 남는다).
+- ⚠️ **dev DB의 `bugshot-i18n-test-qa`는 지우지 않는다** (2026-09-13 사용자 — **프로젝트 생성 검증용 상주**). ⚠️ **2026-09-18 사용자 요청으로 dev DB를 통째로 초기화하면서 이 프로젝트도 지웠다**(install-and-connect를 처음 상태에서 검증하려고) — 지금은 없다. ④를 다시 볼 때 정상 온보딩으로 한 번 만들고 그때부터 다시 상주다. ④(결과 화면)는 **프로젝트를 실제로 만들어야만** 도달하므로, 그 화면을 볼 때마다 새로 만들면 dev DB에 일회용 프로젝트가 쌓인다. 리포는 폐기용(`bugshot-i18n-test`)이고 **생성은 리포에 아무것도 쓰지 않는다**(③의 info가 그 사실을 말한다) — 남겨도 외부 흔적이 없다.
+  - **단계 B의 상주 QA 보존**: `bugshot-i18n-test-qa`는 정상 온보딩으로 재생성한 dev 검증 프로젝트다. 초기화 절차를 재실행하지 않는다. 같은 이름의 key/locale 공존·교차 FK·Add surface 원자성·실제 Project 생성은 `pnpm test:projects:postgres`가 검증한다. 빈 prod DB의 precondition 0건은 그 방어의 근거가 아니다.
+- ⚠️ **GitHub App 설치 왕복(①의 1클릭 설치·요청 복귀·승인 복귀)은 로컬에서 못 밟는다** — 설치 URL이 `redirect_uri`를 안 받아 dev App의 첫 callback(`dev.mal-moi.com`)으로 간다. 왕복은 preview에서 본다. 로컬에서는 보조 링크(Authorize)로 연결하고, 승인 대기 화면은 dev DB의 `Account.installRequestedAt`을 직접 심어 본다(OPERATIONS "설치 중 인가").
+
 ## 8. 어느 리포에 내는가
 
 | 결함 | 어디로 |
@@ -156,7 +164,7 @@ await js(String.raw`(async () => {
 
 - **§7 9단계의 제출 게이트를 건너뛰지 않는다.**
 - **코드 수정 금지.** `lib/`·`app/`·`prisma/` 일체. 결함이 나와도 고치지 않는다.
-- **`.env.local` 편집·값 출력 금지** (CLAUDE.md 새 머신 셋업 3항).
+- **`.env.local` 편집·값 출력 금지** (CLAUDE.md 새 머신 셋업).
 - **`?tabId=` 검증 생략 금지** (§4).
 - **BugShot 제출 생략 금지** (§8) — 말모이 결함을 `gh issue create`로 바로 내지 않는다. 폴백은 BugShot이 막혔을 때만이고, 그 막힘을 bugshot-2 이슈로 먼저 낸다.
 - **BugShot 설정 변경 금지** — 연결된 계정·선택된 리포·기본 라벨을 임의로 바꾸지 않는다.

@@ -131,7 +131,7 @@ pnpm db:status     # dev를 본다
 - **docs/PRODUCT.md** — 역할·권한표·범위·비범위·설계 결정이 코드와 맞는지. §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. prefix `docs(PRODUCT): ...`
 - **docs/ARCHITECTURE.md** — §0 불변식 열하나가 코드와 맞는지, 함정·계약이 실제 구현과 맞는지. `(미구현)` 표시가 남아 있는데 구현됐으면 제거하고 실제 동작으로 갱신. prefix `docs(ARCHITECTURE): ...`
 - **docs/DIRECTORY.md** — 트리가 실제 파일과 맞는지(없는 파일·새 파일·옮긴 파일). prefix `docs(DIRECTORY): ...`
-- **CLAUDE.md** — 명령어 표, 스택 버전, 브랜치·배포, 스킬 라인업, 문서 지도. prefix `docs(CLAUDE): ...`
+- **CLAUDE.md** — 명령어 표, 스택 표(버전 자체는 `package.json`이 정본 — 고정 이유가 있는 것만), 브랜치·배포, 스킬 라인업, 문서 지도. prefix `docs(CLAUDE): ...`
 - **.env.example** — 코드가 읽는 변수가 전부 있는지(미구현 기능용 선등록 변수는 잉여가 아니다). 주석으로 무엇에 쓰는지·틀리면 어떻게 죽는지 남긴다. prefix `chore(env): ...`
 - **README.md** — 기능·포맷·한도·역할표·전송처가 PRODUCT·가이드·`/privacy`와 맞는지, `/docs` 링크가 `guide/`에 실재하는지. prefix `docs(README): ...`
 - **docs/OPERATIONS.md** — 키 목록·회전·복구·전면 재발급 절차가 `lib/credentials/`·`.env.example`과 맞는지. **절차의 명령을 실제로 돌리지는 않는다**(프로덕션 자격증명을 건드린다) — 명령 이름·인자·순서·전제만 대조한다. prefix `docs(OPERATIONS): ...`
