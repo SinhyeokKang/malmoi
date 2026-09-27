@@ -149,7 +149,7 @@ export const en = {
       "not-connected": "Malmoi is not connected to this repository",
       "already-running": "A sync is already running",
       /** ⚠️ 제목 자리라 마침표가 없다(DESIGN §10). 아무것도 지워지지 않았다는 것이 요지다. */
-      "reconfirm": "Translations changed after you opened Sync — nothing was discarded. Open Sync again to review",
+      "reconfirm": "The project changed after you opened Sync — nothing was discarded. Open Sync again to review",
       "no-surfaces": "There's nothing to sync — this project has no active sources",
       "invalid input": "The project could not be identified. Refresh the page and try again.",
       /**
