@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Toaster } from "sonner";
 
+import { SiteAnalytics } from "@/components/analytics";
 import { m } from "@/lib/i18n";
 import { OG_IMAGE, SITE_ORIGIN } from "@/lib/seo/site";
 
@@ -72,6 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             },
           }}
         />
+        <SiteAnalytics />
       </body>
     </html>
   );

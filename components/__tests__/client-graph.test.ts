@@ -67,6 +67,11 @@ const ALLOWED = [
    * 부류(7.2MB `ts-morph`)와 다르지만, **그 판단을 여기서 한 번 한다**는 것이 이 목록의 요지다.
    */
   "react-resizable-panels",
+  /**
+   * ⚠️ **`components/analytics.tsx`가 쓴다** (seo-geo T10). Vercel Web Analytics 페이지뷰 하나이고, 전송은 `beforeSend`의 허용 목록
+   * (`lib/seo/analytics.ts`)이 거른다. 스크립트 본체는 동일 출처 `/_vercel/insights/script.js`라 번들에 드는 것은 로더뿐이다.
+   */
+  "@vercel/analytics",
 ];
 
 function allowed(specifier: string, list: readonly string[] = ALLOWED): boolean {
@@ -138,6 +143,8 @@ const CLIENT_LIB_FILES = [
   "lib/onboarding/readiness.ts",
   // `/privacy` 목차가 스크롤마다 값으로 읽는 판정 — import 0인 잎이다(아래 잎 검사).
   "lib/public-doc/toc.ts",
+  // Analytics `beforeSend` 허용 목록 — 값 import 0인 잎이다(아래 잎 검사). `SITE_ORIGIN`·`m`도 물지 않는다.
+  "lib/seo/analytics.ts",
   "lib/surfaces/plan-add.ts",
   "lib/projects/pr-url.ts",
   "lib/publish/plan.ts",
@@ -379,6 +386,13 @@ describe("클라이언트 그래프", () => {
     const toc = walk([join(ROOT, "lib/public-doc/toc.ts")]);
     expect([...toc.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/public-doc/toc.ts"]);
     expect([...toc.packages]).toEqual([]);
+  });
+
+  /** Analytics 허용 목록 — 전 페이지 클라이언트 번들에 든다. 무언가를 물기 시작하는 순간을 여기서 직접 건다. */
+  it("`lib/seo/analytics.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const redact = walk([join(ROOT, "lib/seo/analytics.ts")]);
+    expect([...redact.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/seo/analytics.ts"]);
+    expect([...redact.packages]).toEqual([]);
   });
 
   it("`lib/protection/plan.ts`는 잎이다 — `fingerprint.ts`(crypto)를 물지 않는다", () => {
