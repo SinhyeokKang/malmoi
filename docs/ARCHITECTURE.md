@@ -108,7 +108,7 @@
 |---|---|---|
 | **unmanaged** — 안내만 | `value-not-string-literal`(ts-dict·code-dict) · `shorthand-property` · `not-property-assignment`(code-dict) · `value-not-string`(yaml 숫자·불린) | 전부 **surgical** writer라 파일에 그대로 남는다. 코드의 식·참조는 번역 대상이 아니다 |
 | **failure** — `partial-import` | 파일 층(`parse-failed`·`parse-crashed`·`root-not-object`·`no-default-export`) · `download-failed` · `duplicate-key` · chrome 엔트리(`invalid-chrome-key`·`missing-message-field`·`value-not-message-object`) · `value-not-string-or-container`(json 숫자·불린) | 못 읽었거나, **regenerate** writer가 DB에 없는 그 값을 다음 Publish에서 **지운다** |
-| **warning** — 알리기만 | `duplicate-property`(code-dict·ts-dict — 코드 객체의 같은 키, 점 키·중첩 충돌 포함) | read가 **write가 고칠 노드의 값**을 싣고(같은 이름이면 마지막 — JS 의미·push `lastWins`, 충돌이면 `locate`의 긴 리터럴 우선) write도 그 자리를 고친다 — 잃는 번역이 없다. **대상 리포 CI를 red로 만들지 않는다**(2026-09-24 사용자 결정 · ACTIONS §3). ⚠️ YAML·JSON의 같은 사건은 `duplicate-key`(failure)다 — 데이터 파일은 두 값 중 하나가 사라지는 파일이다 |
+| **warning** — 알리기만 | `duplicate-property`(code-dict·ts-dict — 코드 객체의 같은 키, 점 키·중첩 충돌 포함) | read가 **write가 고칠 노드의 값**을 싣고(같은 이름이면 마지막 — JS 의미·push `lastWins`, 충돌이면 `locate`의 긴 리터럴 우선) write도 그 자리를 고친다 — 잃는 번역이 없다. ⚠️ **같은 이름의 컨테이너도 마지막만 걷는다** (2026-09-27, audit #4 — code-dict `collect`) — 앞의 것까지 걸으면 `{ a: { x }, a: { y } }`의 `a.x`(런타임에 없다)가 적재되고, 무관한 편집의 write가 그것을 마지막 `a`에 삽입했다. **대상 리포 CI를 red로 만들지 않는다**(2026-09-24 사용자 결정 · ACTIONS §3). ⚠️ YAML·JSON의 같은 사건은 `duplicate-key`(failure)다 — 데이터 파일은 두 값 중 하나가 사라지는 파일이다 |
 | (write 코드) | `key-shadowed`·`write-*`·`original-file-missing` | 적재 판정에 오지 않는다 — failure로 둔다(fail-closed) |
 
 ⚠️ **같은 "숫자 값"이 어댑터에 따라 갈린다** — yaml은 남고 json은 지워진다. 코드를 합치면 이 구분이 사라진다.
@@ -150,7 +150,7 @@
 | 끝 개행 | 정확히 1개 | `JSON.stringify`는 개행을 안 붙인다. 2개면 SHA가 달라진다 |
 | `orphaned` | 제외 | DB엔 남는다 — export에서만 빠진다. **`orderedEntries`가 유일한 관문이라 모든 재생성 writer가 이걸 지나야 불변식에 주인이 생긴다** |
 | 미번역 | 제외 (빈 문자열 포함) — ⚠️ **단 `LocaleEntry.writeEmpty`가 붙은 빈 값은 `""`로 쓴다** | 남기면 크롬이 빈 값을 그대로 렌더한다. 빼면 폴백한다. **예외는 base 파일에 `""`로 있던 키 하나다** (2026-09-18, launch-readiness L4.10): 원문(sourceText)까지 빈 base 키를 빼면 머지 뒤 push가 그 키를 **전 로케일에서 orphan**하고 다음 pull이 비-base 번역을 지운다(20차 실측 7개 리포). 판정은 `buildWriteEntries`가 하고(`WriteInput`엔 `isBase`가 없다) `orderedEntries`는 표시만 본다. 비-base의 빈 값은 여전히 미번역이다 |
-| 낼 것 0개 | `null` — 파일을 내지 않는다 | 빈 `{}`는 "이 로케일 지원함"으로 읽혀 빈 UI를 보인다 |
+| 낼 것 0개 | **원본이 없으면** `null` — 파일을 내지 않는다. **원본이 있으면** 원본 표현의 `{}` (`emptyCatalog`) | 빈 새 파일은 "이 로케일 지원함"으로 읽혀 빈 UI를 보인다. ⚠️ **원본이 있을 때 `null`이면 옛 값이 파일에 남는다** (2026-09-27, audit #1) — 그 로케일의 마지막 번역을 비운 편집이 전달로 세어져 토큰이 풀리고 다음 CI가 옛 값을 DB로 되돌렸다. 원본 파일은 이미 그 로케일을 지원하므로 `{}`가 새 의미를 만들지 않는다 |
 | 키 대입 | **프로토타입 없는 객체**(`Object.create(null)`)에만 대입한다 | 2026-09-09 추가 (sec-audit 발견 1·17). 로케일 파일의 키는 남이 쓰므로 `__proto__`가 온다. 평범한 `{}`에서 `out["__proto__"] = v`는 setter를 불러 own property를 안 만들고 **그 키가 조용히 사라지고**, 중첩 복원의 `node[head]` 조회는 `Object.prototype`을 돌려줘 다음 세그먼트가 **거기에 앉는다** — 프로세스 전역이라 같은 인스턴스가 서비스하는 **다른 테넌트**의 pull까지 바꾼다. ⚠️ **재조립 자리도 같다** — `normalizeArrays`가 평범한 `{}`로 되돌리면 `setDeep`이 지킨 키가 한 줄 뒤에 사라진다. 검사는 `prototypeKeyViolations`(`ADAPTERS` 전수) |
 
 **⚠️ 정렬 지점보다 먼저 볼 것은 값이 흐르는 경로 넷이다** (2026-09-03). `StringKey.sortIndex`가
@@ -713,7 +713,11 @@ backfill은 토큰을 더하기만 하므로 못 지운다. ⚠️ 해제 UPDATE
 보고도 wanted 키로 좁힌다(감사 #4 — 무관한 `b: someFn` 하나가 파일 전체 Publish를 막았다). 미리보기도 편집 대상이 아닌 키의 비리터럴은 막지
 않는다 — 막으면 그 파일의 Publish가 화면에서 열리지 않는다. ⚠️ **셀 보류는 multi-locale(ts-dict) 파일의 `write-slot-missing`만이다** —
 per-locale code-dict의 같은 코드는 "문자열 자리를 객체로 덮는" 구조 충돌이라 파일을 고쳐야 풀리고 결과 문구("키가 아직 파일에 없다")가 거짓이
-된다. 거부로 남는다(2026-09-24 리뷰). **보류 수는 `SyncRun.withheld`에 산다** — 결과 모달과 Logs가 같은 수를 말하고(Logs는 조인으로 읽는다),
+된다. 거부로 남는다(2026-09-24 리뷰). ⚠️ **키 자리가 표면의 어느 파일에도 없는 ts-dict 셀도 보류다** (2026-09-27, audit #1) — writer는
+삽입하지 않고 `write-slot-missing`은 같은 파일의 다른 로케일이 키를 가질 때만 나서, 키가 모든 로케일 객체에서 사라지면 경고 없이 전달로 셌다.
+판정은 `keySlot`(`lib/pull/undeliverable.ts` — 원본을 파일마다 읽은 자리 맵, 값은 안 본다) 하나이고 실행(`runPull`)과 미리보기(`publish/read.ts`)가
+같이 쓴다. 그 로케일 객체가 어느 파일에도 없으면 보류가 아니다 — 실행이 `write-locale-object-missing`으로 거부한다. 미리보기는 편집 대상이 아닌
+`unmanaged` 항목(비리터럴·shorthand·YAML 숫자·불린) 전부를 막지 않는다(audit #8) — writer가 파일에 그대로 두고 성공하는 값이다. **보류 수는 `SyncRun.withheld`에 산다** — 결과 모달과 Logs가 같은 수를 말하고(Logs는 조인으로 읽는다),
 Publish 사건 payload에는 복제하지 않는다(logs-rework 결정 1). 보류만 남은 `SKIPPED` 실행은 Logs에서 `notSent`("Not sent")다 — "Nothing to send"가
 아니다. **대가**: 보류가 남으면 1층이 매 실행 트리를 읽고 CI 적재가 계속 `deferred`다.
 
