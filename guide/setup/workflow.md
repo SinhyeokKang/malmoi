@@ -23,6 +23,10 @@ If your code reads translations through a wrapper function other than the defaul
 
 The `github-token` input is read-only and is used only to warn about an open pull request.
 
+### Update an older workflow {#update-workflow}
+
+A workflow that uses `malmoi-i18n-push-v1` keeps working unchanged. To move to `malmoi-i18n-push-v2`, open **Settings** in Malmoi, choose **Workflow file**, copy the whole file, and replace `.github/workflows/malmoi-i18n.yml` with it. Version 2 runs on Node 24, so the Node 20 deprecation warning leaves the run log. It also fails some runs that version 1 let through, such as a key defined twice in a JSON or YAML file, an `api-url` that is not HTTPS, or a language file that cannot be read.
+
 ## Run and check it {#first-run}
 
 Committing the workflow on the base branch starts it. To run it again, open GitHub **Actions**, choose the workflow, and choose **Run workflow**. Check the run log: `applied` means the files were loaded and **Sources** is updated in Malmoi. A green run can also report `deferred` when unpublished edits are waiting; see [When code changes](../sync/push.md#deferred). A failed run shows its reason in the log.
