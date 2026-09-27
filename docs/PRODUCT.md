@@ -524,6 +524,10 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /docs · /docs/:slug*           ✅ 사용 가이드 — 원고 guide/**.md · 순서 guide/SUMMARY.md · 공개 셸 + 문서 내비 ← docs-guide (2026-09-26)
                                /docs = 개요(독자 두 갈래 Set up / Translate) · 없는 slug·AUTHORING·SHOOTING은 404
                                옛 /docs#<id> 일곱은 개요가 새 페이지로 보낸다 · 앱 안 링크는 routes.docs(page?, anchor?)
+/robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
+/sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /privacy — /signin은 noindex라 없다 ← seo-geo
+/llms.txt · /llms-full.txt     ✅ 가이드 목차(제목·절대 URL·첫 문단) · 원고 전문(페이지마다 Source 줄) — text/plain ← seo-geo
+                               색인: 공개 넷(/·/docs·/docs/:slug·/privacy)만 canonical · /signin·/invite·/signin/link는 noindex(robots.txt로는 안 막는다)
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
