@@ -873,6 +873,29 @@ it("수동 지정은 이전 탐지 체크를 섞지 않고 선택 언어를 보�
   ] }));
 });
 
+/**
+ * ⚠️ **힌트·체크박스·제출이 같은 사실을 말한다** (malmoi#125). 힌트는 "경로를 치면 위 선택이 비워진다"인데
+ * 체크가 남아 화면은 후보를 포함한다고 말하고, 제출은 수동 경로 하나였다.
+ */
+it("수동 경로를 치면 후보 체크가 비워진다", async () => {
+  await files(); await click(include("other/{locale}.json"));
+  await click(button("Set the path yourself"));
+  await input(field("manual-path"), "manual/{locale}.json");
+  expect(include("i18n/{locale}.json").getAttribute("aria-checked")).toBe("false");
+  expect(include("other/{locale}.json").getAttribute("aria-checked")).toBe("false");
+});
+it("수동 지정 중 후보를 체크하면 그 후보로 돌아와 제출한다", async () => {
+  await files();
+  await click(button("Set the path yourself"));
+  await input(field("manual-path"), "manual/{locale}.json"); await input(field("manual-base"), "ko");
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 450)); });
+  await click(include("other/{locale}.json"));
+  expect(include("other/{locale}.json").getAttribute("aria-checked")).toBe("true");
+  await click(button("Next")); await click(button("Create project"));
+  expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({ manual: false, surfaces: [
+    expect.objectContaining({ pathTemplate: "other/{locale}.json" }),
+  ] }));
+});
 it("생성 중 Portal 언어 선택도 열리지 않는다", async () => {
   const locales = ["en", "fr", "ko", "de", "ja", "es", "pt", "it", "nl", "sv", "da"];
   mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [{ ...candidate(), locales }] });
