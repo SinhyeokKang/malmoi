@@ -16,11 +16,11 @@ Open **Sources** from the project navigation. Each row shows whether the source 
 
 ## Change the base language {#base-language}
 
-1. Open the source's details from **Sources**. Under **Base language**, choose the language that supplies the source text, then choose **Save**. The change waits for the next update from the repository.
+1. Open the source's details from **Sources**. Under **Base language**, choose the language that supplies the source text, then choose **Save**. The change applies on the next update from your repository's GitHub Actions workflow. Choosing **Sync** does not apply it.
 2. Edit the workflow's `base-locale:` value to match it.
 3. Run the workflow. If unpublished edits are waiting, the run is deferred. Publish or resolve those edits, then run the workflow again.
 
-For a manual replacement, see [Sync from the repository](../sync/revert.md#resync).
+[Sync from the repository](../sync/revert.md#resync) replaces values but keeps the current base language.
 
 ## What happens next {#next}
 
