@@ -197,7 +197,8 @@ export function Stage({
             {/* radius·그림자 값은 트윈하지 않는다 — 레이어 셋의 opacity 교차로 모서리가 24 → 12로 바뀌어 보인다(시안 1b). */}
             <div ref={shadowIdleRef} className="absolute -inset-3 rounded-3xl shadow-medium" />
             <div ref={shadowPinRef} className="absolute inset-0 rounded-lg opacity-0 shadow-low" />
-            <div ref={bezelRef} className="absolute -inset-3 rounded-3xl border border-border bg-canvas" />
+            {/* 베젤은 흰 두꺼운 테두리(12) + 얇은 회색 외곽선이다 (2026-09-27 사용자 — 시안). `bg-canvas`면 회색 판으로 읽힌다. */}
+            <div ref={bezelRef} className="absolute -inset-3 rounded-3xl border border-border bg-background" />
             <div className="absolute inset-0 overflow-hidden rounded-lg border border-border-subtle bg-background">
               {scenes.map((scene, k) => (
                 <div
