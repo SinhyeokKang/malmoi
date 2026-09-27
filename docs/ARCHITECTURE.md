@@ -725,7 +725,8 @@ per-locale code-dict의 같은 코드는 "문자열 자리를 객체로 덮는" 
 같이 쓴다. 그 로케일 객체가 어느 파일에도 없으면 보류가 아니다 — 실행이 `write-locale-object-missing`으로 거부한다. 미리보기는 편집 대상이 아닌
 `unmanaged` 항목(비리터럴·shorthand·YAML 숫자·불린) 전부를 막지 않는다(audit #8) — writer가 파일에 그대로 두고 성공하는 값이다. **보류 수는 `SyncRun.withheld`에 산다** — 결과 모달과 Logs가 같은 수를 말하고(Logs는 조인으로 읽는다),
 Publish 사건 payload에는 복제하지 않는다(logs-rework 결정 1). 보류만 남은 `SKIPPED` 실행은 Logs에서 `notSent`("Not sent")다 — "Nothing to send"가
-아니다. **대가**: 보류가 남으면 1층이 매 실행 트리를 읽고 CI 적재가 계속 `deferred`다.
+아니다. writer 경고로 쓰기 전에 멈춘 `SKIPPED`(`warnings > 0` — base 파일을 못 읽은 야간 실행 등)도 같다(2026-09-27 L8.1 실측: 결과 모달은 `Not sent`인데
+Logs만 "Nothing to send"였다) — 판정은 `lib/events/query.ts`의 `eventResult`와 결과 필터 `resultWhere`가 같은 술어로 든다. **대가**: 보류가 남으면 1층이 매 실행 트리를 읽고 CI 적재가 계속 `deferred`다.
 
 ⚠️ **base 키 집합 — pull 시점 base 파일의 키는 원본 base 파일이 정한다** (2026-09-27, launch-audit B3.4 — `lib/pull/render.ts` `baseOwnedByOriginal`).
 미전달 편집으로 CI 적재가 `deferred`인 동안 코드가 base 파일을 바꾸면 DB 키 집합이 뒤처진다. 전에는 base도 DB 키로 썼다 — 재생성(json-catalog·
