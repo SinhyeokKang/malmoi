@@ -2158,12 +2158,16 @@ export const en = {
        * ⚠️ **검토 표시를 예고하지 않는다** — `planPush`가 base 교체 push에서 전파를 건너뛰므로 그
        * 일이 안 일어난다. 둘을 말하면 무엇을 해야 하는지가 흐려진다.
        *
+       * ⚠️ **트리거를 이름으로 댄다** (malmoi#127) — "the next sync from the repository"는 옆의 [Sync]로 읽혔고, 그 버튼은 저장된 기준
+       * 언어로 읽어 선언을 적용하지 않는다. "push"는 번역자 문구에 쓰지 않으므로(DESIGN §10.1) 워크플로의 Sync라고 말한다.
+       *
        * ⚠️ **로케일 코드를 그대로 보인다** — 사람이 읽는 이름이 없다(`Locale.name`이 코드와 같게
        * 심긴다). 지어내면 리포의 파일명과 갈린다.
        */
       basePending: (locale: string): string =>
         `The base language is changing to ${locale}. ` +
-        "It switches on the next sync from the repository — syncs wait while changes are unpublished, so publish them first.",
+        "It switches on the next sync from your repository's GitHub Actions workflow — the Sync button doesn't apply it. " +
+        "That sync waits while changes are unpublished, so publish them first.",
     },
 
     empty: {
@@ -2571,7 +2575,8 @@ export const en = {
     /** 기준 언어 폼. **선언만 저장한다** — 현실은 push가 소유한다 (PRODUCT §3). */
     field: {
       label: "Base language",
-      help: "The language your source strings are written in. Changing it takes effect on the next sync from the repository.",
+      // malmoi#127 — 옆의 [Sync]가 적용하지 않는다는 것까지 말한다(`translations.banner.basePending`과 같은 근거).
+      help: "The language your source strings are written in. Changing it takes effect on the next sync from your repository's GitHub Actions workflow, not the Sync button.",
       save: "Save",
       /** ⚠️ **버튼 로딩과 다른 축이다** — 셀 인라인 상태줄이라 `loadingLabel` 제거 대상이 아니다. */
       saving: "Saving…",

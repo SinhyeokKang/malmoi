@@ -114,3 +114,14 @@ it("적재 대기(잠기지 않음) 셀렉트도 Tab·Shift+Tab으로 빠져나�
   expect(document.activeElement).not.toBe(select);
   before.remove();
 });
+/**
+ * [malmoi#127] **도움말이 실제 트리거를 댄다** — 선언은 리포 GitHub Actions 워크플로의 다음 Sync에서만 현실이 되고, 앱의 [Sync]는
+ * 저장된 기준 언어로 읽는다(`lib/import/run.ts`). "the next sync from the repository"는 바로 옆의 [Sync] 버튼으로 읽혀 네 번 눌러도 안 풀렸다.
+ */
+it("도움말은 GitHub Actions 워크플로를 트리거로 대고 Sync 버튼이 적용하지 않는다고 말한다", async () => {
+  await render(<BaseLanguageForm {...props} />);
+  const text = document.body.textContent ?? "";
+  expect(text).toContain("GitHub Actions workflow");
+  expect(text).toContain("not the Sync button");
+  expect(text).not.toContain("next sync from the repository");
+});

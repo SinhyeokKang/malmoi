@@ -223,7 +223,8 @@ it("프로젝트 0건 문장이 초대받은 사람의 길도 말한다 (audit #
 describe("사실을 단언하는 문장 (B4 r1)", () => {
   it("기준 언어 교체 배너는 덮어쓰기를 예고하지 않는다 — 미전달 편집이 있으면 Sync가 기다린다 (ARCHITECTURE §0-1)", () => {
     const text = m.translations.banner.basePending("ja");
-    expect(text).toBe("The base language is changing to ja. It switches on the next sync from the repository — syncs wait while changes are unpublished, so publish them first.");
+    // malmoi#127 — 트리거를 댄다: 앱의 [Sync]는 선언을 적용하지 않고, 워크플로의 Sync는 미전달 편집이 있으면 기다린다.
+    expect(text).toBe("The base language is changing to ja. It switches on the next sync from your repository's GitHub Actions workflow — the Sync button doesn't apply it. That sync waits while changes are unpublished, so publish them first.");
     expect(text).not.toMatch(/overwrite/i);
   });
   it("프로젝트 0건은 '발행 전엔 안 쓴다'고 하지 않는다 — 야간 cron이 발행한다 (PRODUCT)", () => {
