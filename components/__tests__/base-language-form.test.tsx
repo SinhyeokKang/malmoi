@@ -125,3 +125,11 @@ it("도움말은 GitHub Actions 워크플로를 트리거로 대고 Sync 버튼�
   expect(text).toContain("not the Sync button");
   expect(text).not.toContain("next sync from the repository");
 });
+/**
+ * r4 — **OWNER에게는 워크플로 줄도 말한다.** 워크플로가 `base-locale:`을 박으므로(`lib/onboarding/workflow.ts`) 옛 값을 보내는 CI push는
+ * 선언을 적용하지 않는다. 가이드 `setup/sources.md#base-language` 2단계와 같은 할 일이다. 번역자 배너는 이 줄을 싣지 않는다.
+ */
+it("도움말은 워크플로의 base-locale: 값도 바꾸라고 말한다", async () => {
+  await render(<BaseLanguageForm {...props} />);
+  expect(document.body.textContent).toContain("update the workflow's base-locale: value to match");
+});

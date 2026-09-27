@@ -119,6 +119,8 @@ const ALLOWED: Readonly<Record<string, string>> = {
   "publicDocs.privacy.intro": "push",
   // 역할 이름(Owner)이다 — "누가 할 수 있나"를 가리키는 호칭이 아니다. 핸드오프가 고정한 문장이다(members 결정 6).
   "errors.access.last-owner": "an owner",
+  // 워크플로 입력 이름(`base-locale:`)을 그대로 댄다 — OWNER가 YAML에서 고칠 글자라 표의 개념이 아니다 (malmoi#127 r4).
+  "locales.field.help": "locale",
   // OG 이미지에 그려진 파일 경로(`src/i18n/locales.json`)를 그대로 묘사한다 — 화면 용어가 아니라 그림 속 글자다.
   "seo.ogImageAlt": "locale",
 };

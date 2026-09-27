@@ -2576,7 +2576,8 @@ export const en = {
     field: {
       label: "Base language",
       // malmoi#127 — 옆의 [Sync]가 적용하지 않는다는 것까지 말한다(`translations.banner.basePending`과 같은 근거).
-      help: "The language your source strings are written in. Changing it takes effect on the next sync from your repository's GitHub Actions workflow, not the Sync button.",
+      // r4 — 워크플로가 `base-locale:`을 박는다(`lib/onboarding/workflow.ts`). 옛 값을 보내는 CI push는 선언을 적용하지 않는다(가이드 `setup/sources.md` 2단계).
+      help: "The language your source strings are written in. Changing it takes effect on the next sync from your repository's GitHub Actions workflow, not the Sync button — update the workflow's base-locale: value to match.",
       save: "Save",
       /** ⚠️ **버튼 로딩과 다른 축이다** — 셀 인라인 상태줄이라 `loadingLabel` 제거 대상이 아니다. */
       saving: "Saving…",
