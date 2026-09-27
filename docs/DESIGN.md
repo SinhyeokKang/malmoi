@@ -1171,6 +1171,13 @@ diff 표가 **키 220 + 로케일 84 + 값**의 3열이라는 것이다 — 작�
 
 **알림은 한 곳이다.** danger 갈래는 `Alert`의 `role="alert"` 하나이고 그때 껍데기의 live는 `off`다 —
 같은 결과를 두 번 읽지 않는다(시안의 블록별 `aria-live="polite"`를 이 규칙으로 정정했다).
+**`1i`의 응답 유실 형** (malmoi#135 — Sync의 `unconfirmed`와 같은 부류, §6 Sync 결과 표): `triggerPullAction` 호출이 throw하면
+(클라이언트만 낸다) 제목·설명이 `The response didn't come back` · `Malmoi may have opened the pull request anyway. …`로 바뀌고
+바닥 한 줄은 `unknownDelivery`(`We couldn't confirm whether your changes were sent.`)다. 틀·높이·Alert·`Try again`(새 미리보기)은
+`1i` 그대로다. ⚠️ **`GitHub didn't answer`·`failed partway`를 쓰지 않는다** — 끊긴 것은 Malmoi의 응답이고 PR은 나갔을 수 있다.
+무엇이 됐는지는 refresh로 다시 읽은 건수·PR 링크가 말한다(오프라인이면 다시 읽지 않는다 — ARCHITECTURE). Sources 상세의 첫 적재도
+같다 — 응답을 잃으면 `We couldn't confirm whether the sync finished.`이고 `didn't finish`를 단언하지 않는다.
+
 **포커스**는 열릴 때 컨테이너, 목록·결과로 전이하면 본문, 닫으면 호출 버튼(사라졌으면 호스트 제목). ⚠️ **꺼진 Publish도 호출 버튼이다** (2026-09-23) — `aria-disabled`라 포커스를 받으므로 닫힌 뒤 그 버튼으로 돌아와 사유를 읽힌다. 번역 화면의 미저장 가로채기는 `aria-disabled` 버튼을 건너뛴다(꺼진 버튼의 클릭도 이벤트는 오므로).
 
 **⚠️ `bodyScroll`은 안쪽 스크롤러가 있는 갈래만 `hidden`이다**(`1a`·`1k`·`1g`, 그리고 경고가 붙은
