@@ -5,7 +5,8 @@ import { ADAPTERS } from "../index";
 import { observeJsonStyle } from "../json-style";
 import { orderedEntries } from "../shared";
 import type { Adapter, DetectedFormat, LocaleEntry, WriteInput } from "../types";
-import { CONTRACT_KEYS, formatFor, prototypeKeyViolations, writerContractViolations } from "./contract";
+import { BASE_DELETED_VALUE, CONTRACT_KEYS, baseKeySetViolations, formatFor, prototypeKeyViolations, writerContractViolations, type BaseRender } from "./contract";
+import { renderLocaleFiles, type RenderKey } from "@/lib/pull/render";
 
 /**
  * writer 계약을 **`ADAPTERS` 순회로** 검사한다. 어댑터를 추가하면 이 블록이 자동으로 늘어난다 —
@@ -274,5 +275,28 @@ describe("프로토타입 키 계약 — ADAPTERS 전수 (sec-audit 1·17)", () 
     expect(found).toMatch(/Object\.prototype에 "polluted"이 생겼다/);
     // 검사기가 오염을 되돌렸는지 — 안 되돌리면 뒤의 테스트가 오염 위에서 돈다
     expect(Object.getOwnPropertyNames(Object.prototype)).not.toContain("polluted");
+  });
+});
+
+describe("base 키 집합은 원본 base 파일이 정한다 (B3.4) — 전 어댑터", () => {
+  const keys: RenderKey[] = [
+    { id: "k1", key: "keep", sourceText: "S_keep", orphaned: false, cells: { en: { value: "DB_keep" }, fr: { value: "DB_fr_keep" } } },
+    { id: "k2", key: "deleted", sourceText: "S_deleted", orphaned: false, cells: { en: { value: BASE_DELETED_VALUE }, fr: { value: "DB_fr_deleted" } } },
+  ];
+  const render: BaseRender = (format, paths, current) =>
+    renderLocaleFiles(format, ADAPTERS.find((a) => a.name === format.adapter)!.layout, paths, keys, "en", current);
+  for (const adapter of ADAPTERS) {
+    it(`${adapter.name} (${adapter.writeStrategy})`, () => {
+      expect(baseKeySetViolations(adapter, render)).toEqual([]);
+    });
+  }
+  it("검사기가 옛 동작(DB 키로 재조립)을 잡는다", () => {
+    const naive: BaseRender = (format, paths, current) => {
+      const adapter = ADAPTERS.find((a) => a.name === format.adapter)!;
+      return paths.map((p) => ({ ...p, content: adapter.write({ ...format, currentFiles: [{ path: p.path, content: current.get(p.path)! }] }, {
+        locale: p.locale ?? "en", entries: [{ key: "keep", message: "DB_keep" }, { key: "deleted", message: BASE_DELETED_VALUE }] }) }));
+    };
+    const json = ADAPTERS.find((a) => a.name === "json-catalog")!;
+    expect(baseKeySetViolations(json, naive).join("\n")).toMatch(/되살아났다[\s\S]*사라졌다/);
   });
 });

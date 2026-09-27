@@ -83,6 +83,14 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         const target = paths.find(p => p.locale === row.localeCode);
         if (target !== undefined && !shas.has(target.path)) { withoutFile++; heldKeys.add(row.keyId); continue; }
       }
+      // per-locale base 셀: 원본 base 파일에 키 자리가 없으면(코드가 지웠다) 실행은 그 셀을 보류한다 — base 키 집합은 원본이 정한다(B3.4). 같은 `keySlot`이다.
+      if (adapter.layout === "per-locale" && row.localeCode === surface.baseLocale) {
+        const basePath = paths.find(p => p.locale === surface.baseLocale)?.path;
+        const file = basePath === undefined ? undefined : base[basePath];
+        if (basePath !== undefined && file !== undefined && keySlot({ [basePath]: file }, row.localeCode, row.stringKey.key).kind === "absent") {
+          withoutKey++; heldKeys.add(row.keyId); continue;
+        }
+      }
       const matches = paths.filter(p => adapter.layout === "per-locale" ? p.locale === row.localeCode :
         Object.hasOwn(base[p.path] ?? {}, row.localeCode) && Object.hasOwn(base[p.path]![row.localeCode]!, row.stringKey.key));
       // ts-dict: 그 로케일 객체는 있는데 어느 파일에도 키 자리가 없으면 실행은 그 셀만 보류한다 — **같은 `keySlot` 판정이다**(audit #1 B).

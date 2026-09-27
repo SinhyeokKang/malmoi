@@ -221,12 +221,16 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // 표면 안 모든 키의 Revert가 막힌다(delivery-invariants D3). 1층은 그대로 전체 pending 수라 보류가 남으면 매 실행 트리를 읽는다.
   const keyById = new Map(surfaces.flatMap(surface => surface.keys.flatMap(k => (k.id === undefined ? [] : [[k.id, k.key] as const]))));
   const coordinates = withheldCoordinates(rendered);
-  // ⚠️ **키 자리가 표면의 어느 파일에도 없는 ts-dict 셀도 보류다** (audit #1 B) — writer는 삽입하지 않고, 같은 파일의 다른 로케일이 그 키를
-  // 가질 때만 경고한다. 미리보기(`publish/read.ts`)가 같은 `keySlot`으로 판정한다. 원본만 읽는다 — 이 어댑터의 렌더는 자리를 만들지 않는다.
+  // ⚠️ **키 자리가 원본에 없는 셀은 보류다** — 미리보기(`publish/read.ts`)가 같은 `keySlot`으로 판정한다. 원본만 읽는다 — 이 셀들의 자리는 렌더가 만들지 않는다.
+  //   - ts-dict(multi-locale 수술적): 표면의 어느 파일에도 자리가 없다(audit #1 B). writer는 삽입하지 않고 같은 파일의 다른 로케일이 가질 때만 경고한다
+  //   - per-locale: **base 파일**에 자리가 없다(B3.4). base의 키 집합은 원본이 정하므로 코드가 지운 키의 base 편집은 파일에 닿지 않는다.
+  //     base 파일만 읽는다 — `keySlot`이 그 밖의 로케일을 `no-locale`로 흘려 비-base 동작이 그대로다
   for (const item of resolved) {
     const adapter = adapterFor(item.format);
-    if (adapter.layout !== "multi-locale" || adapter.writeStrategy !== "surgical") continue;
-    const files = readSlotFiles(adapter, item.format, item.paths.flatMap(p => {
+    const multi = adapter.layout === "multi-locale";
+    if (multi && adapter.writeStrategy !== "surgical") continue;
+    const scope = multi ? item.paths : item.paths.filter(p => p.locale === item.baseLocale);
+    const files = readSlotFiles(adapter, item.format, scope.flatMap(p => {
       const content = current.get(p.path);
       return content === undefined ? [] : [{ path: p.path, content }];
     }));

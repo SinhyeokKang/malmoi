@@ -25,14 +25,14 @@ const edit = (id: string, keyId: string, localeCode: string): PendingEdit => ({
   id, token: `tok-${id}`, cell: { surfaceId: "s", keyId, localeCode, restoreValue: "" },
 });
 
-async function run(surface: Omit<Surface, "id" | "slug" | "keys">, keys: RenderKey[], files: Record<string, string>, pendingEdits: PendingEdit[]) {
+async function run(surface: Omit<Surface, "id" | "slug" | "keys" | "localeCodes"> & { localeCodes: readonly string[] }, keys: RenderKey[], files: Record<string, string>, pendingEdits: PendingEdit[]) {
   const tree = Object.entries(files).map(([path, content]) => ({ path, sha: blobSha(content) }));
   const blobs = Object.fromEntries(Object.values(files).map((content) => [blobSha(content), content]));
   const { client, calls } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: tree }, blobs });
   const saved: { delivered: readonly PendingEdit[]; withheld: readonly PendingEdit[] }[] = [];
   const result = await runPull({
     loadState: async () => ({
-      project, surfaces: [{ ...surface, id: "s", slug: "web", keys }],
+      project, surfaces: [{ ...surface, localeCodes: [...surface.localeCodes], id: "s", slug: "web", keys }],
       maxUpdatedAt: new Date(), unpublished: pendingEdits.length, pendingEdits,
     }),
     createClient: async () => client,
@@ -112,10 +112,10 @@ describe("B3.1 B — ts-dict: 편집 키의 자리가 표면의 어느 파일에
 });
 
 /**
- * **base 파일은 0개여도 `{}`로 쓰지 않는다** (B3 r1 R1). base 파일의 키 집합은 코드가 진실이다 — DB 키가 전부 orphaned인 표면(CI 적재가 다른
- * 표면의 미전달 편집으로 보류된 동안 리포 base에 키가 늘어난 경우)에서 `{}`를 쓰면 그 PR 머지가 코드 소유 키를 지운다. 비-base만 `{}`다.
+ * **base 파일은 0개여도 `{}`로 쓰지 않는다** (B3 r1 R1 → B3.4에 흡수). base 파일의 키 집합은 원본이 정하므로, DB 키가 전부 orphaned여도 원본 키가
+ * 원본 값으로 남아 파일이 그대로다. 전에는 `{}`가 나가 그 PR 머지가 코드 소유 키를 지웠다. 비-base는 `{}`다(비운 편집이 전달되게 — audit #1).
  */
-describe("B3.1 A 짝 — base + 원본 + 0개 → null", () => {
+describe("B3.1 A 짝 — base + 원본 + 활성 DB 키 0개 → 파일 그대로", () => {
   it.each([
     ["json-catalog", "{locale}.json", "en.json", '{\n  "hello": "Hi",\n  "added": "New"\n}\n'],
     ["chrome-locales", "_locales/{locale}/messages.json", "_locales/en/messages.json", '{\n  "hello": { "message": "Hi" }\n}\n'],
@@ -126,7 +126,52 @@ describe("B3.1 A 짝 — base + 원본 + 0개 → null", () => {
     const keys: RenderKey[] = [{ id: "k", key: "hello", sourceText: "Hi", orphaned: true, cells: { en: { value: "Hi" }, fr: { value: "Salut" } } }];
     const out = renderLocaleFiles(format, adapterFor(format).layout,
       [{ path: basePath, locale: "en" }, { path: frPath, locale: "fr" }], keys, "en", new Map([[basePath, original], [frPath, original]]));
-    expect(out.find((f) => f.locale === "en")?.content).toBeNull();
+    const baseOut = out.find((f) => f.locale === "en")?.content;
+    expect(baseOut === null || baseOut === original).toBe(true);
     expect(out.find((f) => f.locale === "fr")?.content?.replace(/\s/g, "")).toBe("{}");
+  });
+});
+
+/**
+ * **CI 적재 보류 중 코드가 base를 바꿔도 Publish가 되돌리지 않는다** (launch-audit B3.4 — `.scratch` 재현에서 승격). DB에는 `hello`·`deleted`가 있고
+ * (편집 있음), 리포 base 파일은 그 뒤 `added`를 더하고 `deleted`를 지웠다. pull 시점 base 파일의 키 집합은 원본이 정한다 — `added`는 원본 값,
+ * `deleted`는 쓰지 않는다. 비-base 로케일은 그대로다. `deleted`의 base 편집은 파일에 닿지 않으므로 보류다(`keySlot`과 같은 판정).
+ */
+describe("B3.4 — base 파일의 키 집합은 원본이 정한다", () => {
+  const keys: RenderKey[] = [
+    { id: "k1", key: "hello", sourceText: "Hi", orphaned: false, cells: { en: { value: "Hello" }, fr: { value: "Bonjour" } } },
+    { id: "k2", key: "deleted", sourceText: "Gone", orphaned: false, cells: { en: { value: "Gone!" }, fr: { value: "Parti" } } },
+  ];
+  const families = [
+    ["json-catalog (재생성)", { nestedByPath: {}, adapterName: "json-catalog", pathTemplate: "{locale}.json", nested: false, baseLocale: "en", localeCodes: ["en", "fr"] },
+      "en.json", '{\n  "hello": "Hi",\n  "added": "New"\n}\n', "fr.json", '{\n  "hello": "Salut",\n  "deleted": "Parti"\n}\n', '"added": "New"', '"Hello"'],
+    ["yaml-catalog (수술적)", { nestedByPath: {}, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", nested: null, baseLocale: "en", localeCodes: ["en", "fr"] },
+      "en.yml", "en:\n  hello: Hi\n  added: New\n", "fr.yml", "fr:\n  hello: Salut\n  deleted: Parti\n", "added: New", "hello: Hello"],
+  ] as const;
+
+  it.each(families)("%s — 더한 키는 남고 지운 키는 돌아오지 않는다 · 그 base 편집은 보류", async (_n, surface, enPath, en, frPath, fr, addedLine, editedLine) => {
+    const { result, saved, written } = await run(surface, keys, { [enPath]: en, [frPath]: fr },
+      [edit("hello-en", "k1", "en"), edit("deleted-en", "k2", "en"), edit("hello-fr", "k1", "fr")]);
+    const base = written.get(enPath)!;
+    expect(base).toContain(addedLine);
+    expect(base).toContain(editedLine);
+    expect(base).not.toContain("Gone");
+    // 비-base는 그대로다 — 이 규칙은 base만이다.
+    expect(written.get(frPath)).toContain("Bonjour");
+    expect(result).toMatchObject({ status: "committed", delivered: 2, withheld: { file: 0, key: 1 } });
+    expect(saved[0]?.withheld.map((e) => e.id)).toEqual(["deleted-en"]);
+  });
+
+  it("원본 base 파일이 없으면(첫 쓰기) 지금처럼 DB 키로 만든다 (짝)", async () => {
+    const surface = families[0][1];
+    const { written } = await run(surface, keys, { "fr.json": '{\n  "hello": "Salut"\n}\n' }, [edit("hello-fr", "k1", "fr")]);
+    expect(written.get("en.json")).toBe('{\n  "deleted": "Gone!",\n  "hello": "Hello"\n}\n');
+  });
+
+  it("읽을 수 없는 원본 base(재생성)는 덮어쓰지 않고 막는다 — 키 집합을 알 수 없다", async () => {
+    const surface = families[0][1];
+    const { result, written } = await run(surface, keys, { "en.json": "{ not json", "fr.json": '{\n  "hello": "Salut"\n}\n' }, [edit("hello-fr", "k1", "fr")]);
+    expect(result).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+    expect(written.size).toBe(0);
   });
 });

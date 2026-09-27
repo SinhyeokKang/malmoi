@@ -272,3 +272,40 @@ it.each([
   mocks.client.getBlobText.mockResolvedValue(pairSource);
   await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow();
 });
+/**
+ * **코드가 base에서 지운 키의 base 편집은 미리보기도 보류로 센다** (launch-audit B3.4). pull 시점 base 파일의 키 집합은 원본이 정하므로 그 편집은
+ * 파일에 닿지 않는다 — 실행이 보류하는 셀을 화면이 "나간다"고 약속하지 않는다. 비-base 편집은 그대로다.
+ */
+it.each([
+  ["json-catalog", { adapterName: "json-catalog", pathTemplate: "{locale}.json", nested: false }, "en.json", '{\n  "hello": "old",\n  "added": "New"\n}\n', "fr.json", '{\n  "hello": "Salut"\n}\n'],
+  ["yaml-catalog", { adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", nested: null }, "en.yml", "en:\n  hello: old\n  added: New\n", "fr.yml", "fr:\n  hello: Salut\n"],
+])("%s — base에서 지운 키의 base 편집: 미리보기 withoutKey와 실행 withheld가 같다 (같은 픽스처)", async (_n, cols, enPath, EN, frPath, FR) => {
+  const { runPull } = await import("@/lib/pull/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, ...cols, locales: [{ code: "en" }, { code: "fr" }] }] });
+  db.translation.findMany.mockResolvedValue([
+    { ...rows[0], keyId: "k2", localeCode: "en", value: "Gone!", stringKey: { key: "deleted" } },
+    { ...rows[0], localeCode: "fr", value: "Bonjour" },
+  ]);
+  db.translation.count.mockResolvedValue(2);
+  db.translation.groupBy.mockResolvedValue([{ keyId: "k" }, { keyId: "k2" }]);
+  mocks.client.getTree.mockResolvedValue([{ path: enPath, sha: "en" }, { path: frPath, sha: "fr" }]);
+  mocks.client.getBlobText.mockImplementation(async (sha: string) => (sha === "en" ? EN : FR));
+  const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: [{ path: enPath, sha: "en" }, { path: frPath, sha: "fr" }] }, blobs: { en: EN, fr: FR } });
+  const edit = (id: string, keyId: string, localeCode: string) => ({ id, token: id, cell: { surfaceId: "s", keyId, localeCode, restoreValue: "" } });
+  const result = await runPull({
+    loadState: async () => ({
+      project: { ...project, slug: "acme" },
+      surfaces: [{ ...surface, ...cols, localeCodes: ["en", "fr"], keys: [
+        { id: "k", key: "hello", sourceText: "old", orphaned: false, cells: { en: { value: "old" }, fr: { value: "Bonjour" } } },
+        { id: "k2", key: "deleted", sourceText: "Gone", orphaned: false, cells: { en: { value: "Gone!" }, fr: { value: "" } } },
+      ] }],
+      maxUpdatedAt: new Date(), unpublished: 2, pendingEdits: [edit("t1", "k2", "en"), edit("t2", "k", "fr")],
+    }),
+    createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
+  });
+  expect(preview.groups.flatMap(g => g.rows.map(r => `${r.localeCode}:${r.key}`))).toEqual(["fr:hello"]);
+  expect(preview).toMatchObject({ withoutFile: 0, withoutKey: 1, sendable: { total: 1, keys: 1 } });
+  expect(result).toMatchObject({ status: "committed", delivered: preview.sendable.total, withheld: { file: 0, key: preview.withoutKey } });
+});

@@ -1,7 +1,6 @@
 import { fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
-import { orderedEntries } from "@/lib/adapters/shared";
-import type { Adapter, AdapterError, DetectedFormat, WriteInput } from "@/lib/adapters";
+import type { Adapter, AdapterError, DetectedFormat, LocaleEntry, WriteInput } from "@/lib/adapters";
 import { buildWriteEntries, type LocalFile, type LocalePath, type PullRow, type RenderError } from "./plan";
 
 /**
@@ -79,6 +78,47 @@ const missingOriginal = (path: string, locale?: string): RenderError => ({ path,
 /** 오류에 그 write 호출의 로케일을 붙인다 — 어댑터 오류는 파일 좌표만 들고, 로케일은 렌더만 안다. */
 const tagged = (errors: readonly AdapterError[], locale: string): RenderError[] => errors.map((e) => ({ ...e, locale }));
 
+/**
+ * **pull 시점 base 파일의 키 집합은 원본 base 파일이 정한다** (launch-audit B3.4 · ARCHITECTURE §0 불변식 2·§1.1). CI 적재가 보류된 동안(미전달 편집 —
+ * sync-edit-protection) 코드가 base를 바꾸면 DB 키 집합이 리포보다 뒤처진다. DB 키로 base를 쓰면 코드가 더한 키가 PR에서 **지워지고**(재생성), 코드가
+ * 지운 키가 **되살아난다**(재생성·삽입하는 수술적). 규칙은 키마다 출처가 하나다 — 값을 견줘 고르지 않는다:
+ * - 원본에도 DB(활성 키)에도 있다 → DB 엔트리
+ * - 원본에만 있다 → 원본 엔트리 그대로(재생성은 다시 쓰고, 수술적은 건드리지 않는다). orphaned DB 키도 여기다 — DB가 활성으로 보지 않는다
+ * - DB에만 있다 → 쓰지 않는다. 그 셀의 편집은 보류된다(`lib/pull/undeliverable.ts` `keySlot` — 미리보기와 같은 판정)
+ *
+ * 재생성은 **원본 순서**(`order`)로 조립한다 — 코드가 순서를 바꿨어도 따른다. 같은 DB·같은 원본 → 같은 바이트(불변식 4)는 그대로다.
+ * ⚠️ **재생성의 원본을 못 읽으면 쓰지 않고 막는다** — 키 집합을 알 수 없는데 DB로 덮으면 코드 소유 키를 지운다. 수술적은 writer가 같은 원본을 못 읽어
+ * `write-parse-failed`를 스스로 낸다. multi-locale(ts-dict)은 삽입하지 않아 이 규칙이 필요 없다.
+ */
+function baseOwnedByOriginal(
+  adapter: Adapter,
+  format: DetectedFormat,
+  path: string,
+  original: string,
+  locale: string,
+  fromDb: readonly LocaleEntry[],
+): { entries: LocaleEntry[] } | { error: RenderError } {
+  const read = adapter.read(format, [{ path, content: original }]);
+  const own = read.locales.find((l) => l.locale === locale);
+  if (own === undefined) {
+    if (adapter.writeStrategy === "surgical") return { entries: [...fromDb] };
+    const cause = read.errors[0];
+    return { error: { path, code: "write-parse-failed", locale, ...(cause === undefined ? {} : { detail: cause.detail ?? cause.code }) } };
+  }
+  const originalKeys = new Set(own.entries.map((e) => e.key));
+  if (adapter.writeStrategy === "surgical") return { entries: fromDb.filter((e) => originalKeys.has(e.key)) };
+  const byKey = new Map(fromDb.map((e) => [e.key, e]));
+  return {
+    entries: own.entries.map((o, i) => {
+      const order = o.order ?? i;
+      const db = byKey.get(o.key);
+      if (db !== undefined) return { ...db, order };
+      // 원본 엔트리 그대로 — base의 빈 값도 파일에 남아야 한다(L4.10의 `writeEmpty`와 같은 이유).
+      return { ...o, order, ...(o.message === "" ? { writeEmpty: true as const } : {}) };
+    }),
+  };
+}
+
 export function renderLocaleFiles(
   format: DetectedFormat,
   layout: Adapter["layout"],
@@ -120,13 +160,10 @@ export function renderLocaleFiles(
       const isBase = locale === baseLocale;
       // ⚠️ `rowsForLocale`에도 `isBase`를 넘긴다 — 여기서 빠지면 base description 폴백(위 주석)이
       // 단위 테스트에서만 켜지고 프로덕션에서는 절대 켜지지 않는다 (2026-09-04 audit #2).
-      const entries = buildWriteEntries(rowsForLocale(keys, locale, { isBase }), { isBase });
-      // ⚠️ **base 파일은 0개여도 `{}`로 쓰지 않는다** (B3 r1). 재생성 writer는 원본이 있으면 `{}`를 내지만(비운 비-base 편집이 전달되게 — audit #1),
-      // base 파일의 키 집합은 코드가 진실이다: DB 키가 전부 orphaned인 동안(CI 적재 보류 중 리포에 키가 늘었을 때) `{}`를 내면 그 PR이 코드 소유
-      // 키를 지운다. 여기서 `null`로 접으면 base 파일은 그대로 남는다 — writer는 `isBase`를 모른다(`WriteInput` 계약).
-      if (isBase && original !== undefined && adapter.writeStrategy === "regenerate" && orderedEntries(entries).length === 0) {
-        return { path: p.path, locale, content: null };
-      }
+      const fromDb = buildWriteEntries(rowsForLocale(keys, locale, { isBase }), { isBase });
+      const owned = isBase && original !== undefined ? baseOwnedByOriginal(adapter, writeFormat, p.path, original, locale, fromDb) : { entries: fromDb };
+      if ("error" in owned) return { path: p.path, locale, content: null, errors: [owned.error] };
+      const { entries } = owned;
       const { content, errors } = write(writeFormat, { locale, entries });
       return { path: p.path, locale, content, ...(errors.length === 0 ? {} : { errors: tagged(errors, locale) }) };
     });
