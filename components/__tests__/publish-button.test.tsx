@@ -13,7 +13,7 @@ vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull, saveTran
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectRepository: vi.fn() }));
-const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, changedFiles: [] as string[], sendable: { total: 1, keys: 1 } };
+const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, changedFiles: ["ko.json"] as string[], sendable: { total: 1, keys: 1 } };
 const PUBLISH_LIVE = '[aria-live="polite"]:not([data-footer-result])';
 const ok = (data: unknown) => ({ status: "ok", preview: data });
 function button(name: string) {
@@ -354,7 +354,8 @@ it("닫은 PR이 없으면 그 줄이 없다 (짝)", async () => {
  */
 const sameRow = { keyId: "k", key: "common.ok", localeCode: "ko", before: "확인", after: "확인", author: "Kim", updatedAt: "", surface: "web", path: "ko.json", keySpan: 1, same: true };
 const otherRow = { ...sameRow, keyId: "k2", key: "common.no", before: "아니요", after: "아니", same: false };
-const withRows = (rows: object[], openPr: object | null, changedFiles = ["ko.json"]) => ok({ ...preview, changedFiles, total: rows.length, keys: rows.length, sendable: { total: rows.length, keys: rows.length },
+// 전부 base와 같으면 실행이 파일을 안 바꾼다 — 그 fixture의 `changedFiles`는 비어 있다(#128 r5: `allSame`이 이 목록으로 판정한다).
+const withRows = (rows: object[], openPr: object | null, changedFiles = rows.every(r => (r as { same: boolean }).same) ? [] : ["ko.json"]) => ok({ ...preview, changedFiles, total: rows.length, keys: rows.length, sendable: { total: rows.length, keys: rows.length },
   same: rows.filter(r => (r as { same: boolean }).same).length, openPr, groups: [{ surface: "web", path: "ko.json", changes: rows.length, keys: rows.length, rows }] });
 it("열린 PR의 변경을 되돌리는 행은 그렇다고 말한다 · PR이 없으면 이미 리포에 있다고 말한다", async () => {
   mocks.preview.mockResolvedValue(withRows([sameRow, otherRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }));
@@ -373,6 +374,28 @@ it("전부 되돌린 편집이고 PR이 열려 있으면 미리보기가 그 PR�
   expect(text).not.toContain(m.translations.publish.prOpen.title(9));
   await click(s.closeAction(9));
   expect(mocks.pull).toHaveBeenCalledTimes(1);
+});
+/**
+ * #128 r5 — 편집이 전부 base와 같아도 편집 없는 파일(orphan 줄 제거)이 바뀌면 실행은 커밋하고 PR을 연다. 미리보기가 셀 근사로 "PR을 닫는다"를
+ * 말하면 결과와 정반대다(POSTMORTEM #84). 판정은 실행과 같은 `changedFiles`다.
+ */
+it("#128 r5 — 편집은 전부 base와 같지만 다른 파일이 바뀌면 PR을 닫는다고 말하지 않는다", async () => {
+  mocks.preview.mockResolvedValue(withRows([sameRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }, ["ja.json"]));
+  await render(<Host />); await click("Publish1");
+  const p = m.translations.publish;
+  const text = document.body.textContent ?? "";
+  expect(text).not.toContain(p.same.closesTitle(9));
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === p.same.closeAction(9))).toBe(false);
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === p.replacePr(9))).toBe(true);
+  expect(text).toContain("ja.json");
+});
+it("#128 r5 — 전부 보류면 실행이 아무 파일도 안 바꾸므로 편집 없는 파일 행도 없다", async () => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, total: 1, keys: 1, withoutKey: 1, changedFiles: ["ja.json"], sendable: { total: 0, keys: 0 } }));
+  await render(<Host count={1} />); await click("Publish1");
+  const text = document.body.textContent ?? "";
+  expect(text).toContain(m.translations.publish.nothingSendable.title);
+  expect(text).not.toContain(m.translations.publish.otherFile.label);
+  expect(text).not.toContain("ja.json");
 });
 it("전부 base와 같고 PR이 없으면 파일이 바뀌지 않는다고 말한다", async () => {
   mocks.preview.mockResolvedValue(withRows([sameRow], null));

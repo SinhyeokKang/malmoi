@@ -306,7 +306,8 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
           })}
         </tbody>)}
         {/* #128 — 편집 없이 바뀌는 파일. 상한 밖 행이 있으면 그 파일에 편집이 있는지 모르므로 단정하지 않는다(푸터의 파일 수는 그대로 실행의 수다). */}
-        {preview.truncated === 0 && preview.changedFiles.filter(path => !preview.groups.some(group => group.path === path)).map(path => <tbody key={`other:${path}`}>
+        {/* 전부 보류면(`sending === 0`) 실행은 `skipped/withheld`라 아무 파일도 안 바꾼다 — 그 파일들을 약속하지 않는다(#128 r5). */}
+        {preview.truncated === 0 && preview.sendable.total > 0 && preview.changedFiles.filter(path => !preview.groups.some(group => group.path === path)).map(path => <tbody key={`other:${path}`}>
           <tr>
             <th scope="colgroup" colSpan={3} className="border-border bg-primary-foreground border-b px-3.5 py-[9px] text-left text-xs font-normal">
               <span className="flex items-center gap-2">
@@ -454,10 +455,11 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         break;
       }
       /**
-       * ⚠️ **전부 base와 같으면 파일이 안 바뀐다** (B1 r3). 실행은 no-changes 경로이고, 열린 PR이 있으면 그 PR을 닫는다 — 미리보기가 그렇게 말하고
-       * 버튼도 그 일을 이름으로 든다. PR 유무를 모르면(`undefined`) 약속하지 않고 평소 문장으로 둔다. ⚠️ 셀 단위 근사다 — 실행은 파일 SHA로 판정한다.
+       * ⚠️ **바뀌는 파일이 없으면 실행은 no-changes 경로다** (B1 r3) — 열린 PR이 있으면 그 PR을 닫는다. 미리보기가 그렇게 말하고 버튼도 그 일을 이름으로 든다.
+       * PR 유무를 모르면(`undefined`) 약속하지 않고 평소 문장으로 둔다. ⚠️ **판정은 실행과 같은 `changedFiles`다** (#128 r5) — 편집이 전부 base와 같아도
+       * 편집 없는 파일(orphan 줄 제거)이 바뀌면 실행은 커밋하고 PR을 연다(POSTMORTEM #84).
        */
-      const allSame = data.truncated === 0 && data.same === sending && open !== undefined;
+      const allSame = data.changedFiles.length === 0 && open !== undefined;
       if (allSame) {
         title = open === null ? p.same.nothingTitle(repo.branch) : p.same.closesTitle(open.number);
         description = open === null ? p.same.nothingBody : p.same.closesBody(open.number, repo.branch);

@@ -149,14 +149,28 @@ const BLOB_CONCURRENCY = 8;
  * **실행의 읽기 단계** — base head·트리·원본 blob·렌더·2층 blob 비교까지. GitHub에 쓰지 않는다. `runPull`과 Publish 미리보기(`lib/publish/read.ts`)가
  * **같은 함수로** "PR이 바꾸는 파일"을 얻는다(#128) — 미리보기가 편집 셀만 세면 orphan 제거·앞선 PR의 재전송처럼 토큰 없이 바뀌는 파일이 화면에서 빠진다.
  */
-export async function renderProject(project: Pick<PullProject, "slug" | "baseBranch">, surfaces: PullState["surfaces"], client: Pick<GitClient, "getRefSha" | "getTree" | "getBlobText">) {
-  const formats = [...surfaces].sort((a, b) => compareSurfaces(a.slug, b.slug)).map(surface => {
+export type ProjectFormats = ReturnType<typeof projectFormats>;
+
+/** 표면별 포맷. GitHub을 부르기 전에 판정한다 — 설정 오류로 토큰을 발급받지 않는다. */
+export function projectFormats(surfaces: PullState["surfaces"]) {
+  return [...surfaces].sort((a, b) => compareSurfaces(a.slug, b.slug)).map(surface => {
     const format = formatFromProject(surface, surface.localeCodes);
     if (surface.baseLocale === null) fail("surface base locale is empty");
     return { surface, format, baseLocale: surface.baseLocale, layout: adapterFor(format).layout };
   });
+}
 
-  const baseHead = await client.getRefSha(`heads/${project.baseBranch}`);
+/**
+ * @param read 이미 읽은 base head·트리 — 미리보기가 셀 조회에 쓴 것을 넘긴다(#128 r5). 다시 읽으면 한 번 열 때 ref·트리를 두 번 부르고, 셀과 파일 목록이
+ *   서로 다른 head를 볼 수 있다.
+ */
+export async function renderProject(
+  project: Pick<PullProject, "slug" | "baseBranch">,
+  formats: ProjectFormats,
+  client: Pick<GitClient, "getRefSha" | "getTree" | "getBlobText">,
+  read?: { baseHead: string; tree: Awaited<ReturnType<GitClient["getTree"]>> },
+) {
+  const baseHead = read?.baseHead ?? await client.getRefSha(`heads/${project.baseBranch}`);
   // ⚠️ **`null`을 "브랜치 없음"으로 읽고 진행하지 않는다.** GitHub은 권한 없는 리소스에 404를
   // 주므로 설치 취소·권한 누락도 `null`로 온다. base가 없으면 그 자체로 진행 불가다
   // (`malmoi-i18n/sync`의 `null`만 정상 입력이다 — 첫 실행 경로).
@@ -168,7 +182,7 @@ export async function renderProject(project: Pick<PullProject, "slug" | "baseBra
     );
   }
 
-  const tree = await client.getTree(baseHead);
+  const tree = read?.tree ?? await client.getTree(baseHead);
   const resolved = formats.map(item => ({ ...item,
     paths: resolveLocalePaths(item.format, item.layout, tree.map(t => t.path)),
   }));
@@ -225,8 +239,9 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
     fail(`Project.installationId is empty (${project.slug}) — install the app`, "not-installed");
   }
 
+  const formats = projectFormats(surfaces);
   const client = await deps.createClient(project);
-  const { baseHead, tree, resolved, current, rendered, local, changes } = await renderProject(project, surfaces, client);
+  const { baseHead, tree, resolved, current, rendered, local, changes } = await renderProject(project, formats, client);
   const warnings = blockingErrors(rendered).map(({ surfaceSlug, error }) => `${surfaceSlug}: ${error.path}: ${adapterErrorMessage(error)}`);
   /**
    * ⚠️ **2층 비교·브랜치 되돌림보다 앞이다** — 경고가 있는 렌더는 무엇을 쓰든 값 일부가 빠진 파일이다. 1층을 지났으므로

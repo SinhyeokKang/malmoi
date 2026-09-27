@@ -11,7 +11,7 @@ import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
 import { keySlot } from "@/lib/pull/undeliverable";
 import { loadPullState } from "@/lib/pull/load";
-import { renderProject } from "@/lib/pull/run";
+import { projectFormats, renderProject } from "@/lib/pull/run";
 import { buildPublishDiff, PREVIEW_LIMIT, type BaseValues, type PublishCell } from "./diff";
 import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, type PublishPreview } from "./preview";
 
@@ -115,7 +115,19 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   }
   // ⚠️ **바뀌는 파일은 실행과 같은 렌더·blob 비교에서 온다** (#128) — 편집 셀의 파일만 세면 토큰 없이 바뀌는 파일(orphan 줄 제거, 닫힌 PR에 실렸던 값의
   // 재전송)이 빠지고 결과에서야 "N files changed"가 나온다. blob은 위에서 읽은 것을 다시 쓴다(`cachedBlobs`).
-  const { changes } = await renderProject(project, (await loadPullState(prisma, slug)).surfaces, client);
+  // ⚠️ **읽은 head·트리를 넘긴다** (#128 r5) — 한 번 열 때 ref 1·트리 1이고, 셀과 파일 목록이 같은 head를 본다. blob은 실행 한 번과 같다(전 표면 전 로케일 파일).
+  const { changes, rendered } = await renderProject(project, projectFormats((await loadPullState(prisma, slug)).surfaces), client, { baseHead: head, tree });
+  /**
+   * ⚠️ **편집이 없는 표면도 실행은 렌더하고, 그 표면의 base 파일 문제로 `writer-warnings` 거부한다** (#128 r5). 위 루프는 편집 있는 표면만 보므로 여기서
+   * 같은 전용 거부로 옮긴다 — 일반 실패(Retry)는 다시 눌러도 같다. 그 밖의 writer 오류는 옛 동작 그대로다(미리보기는 writer 경고를 약속하지 않는다).
+   */
+  for (const surface of rendered) {
+    for (const file of surface.files) for (const error of file.errors ?? []) {
+      if (error.locale !== surface.baseLocale) continue;
+      if (error.code === "original-file-missing") throw new PreviewBaseFileMissing(error.path, project.baseBranch);
+      if (error.code === "write-parse-failed" && file.locale === surface.baseLocale) throw new PreviewBaseFileUnreadable(error.path, project.baseBranch);
+    }
+  }
   // `truncated`는 상한 때문에 **조회하지 않은** 행만이다 — 뺀 셀은 `withoutFile`·`withoutKey`가 따로 말한다.
   return { ...buildPublishDiff(cells, base), total, keys: keyIds.length, truncated: Math.max(0, total - rows.length), withoutFile, withoutKey,
     // ⚠️ **화면이 말하는 수는 나가는 수다** (#84 — POSTMORTEM 2026-09-17). 결과의 `delivered`·Logs와 같은 모집단이어야 한다. 상한(200행) 밖 행은
