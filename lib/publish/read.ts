@@ -53,11 +53,13 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         if (!sha) return;
         const content = await client.getBlobText(sha);
         const read = adapter.read(format, [{ path: p.path, content }]);
-        // ⚠️ **편집과 무관한 비리터럴은 막지 않는다** — 실행(ts-dict write)이 wanted 키의 비리터럴만 경고하는 것과 같은 판정이다(delivery-invariants
-        // D4). 전부 막으면 `{ hello: "hi", b: someFn }` 파일의 Publish가 화면에서 영영 열리지 않는다. 그 밖의 읽기 오류는 여전히 막는다.
+        // ⚠️ **편집과 무관한 비관리 항목은 막지 않는다** — 수술적 writer가 파일에 그대로 두는 값(코드의 식·참조·shorthand, YAML 숫자·불리언 —
+        // `adapterErrorKind === "unmanaged"`)이고, 실행은 wanted 키의 그런 자리만 경고한다(delivery-invariants D4 · audit #8). 전부 막으면
+        // `{ hello: "hi", b: someFn }`·`precision: 3` 파일의 Publish가 화면에서 영영 열리지 않는다. 편집 대상 키가 그 자리이거나 그 밖의 읽기 오류는 막는다.
         const edited = new Set(surfaceRows.map(r => r.stringKey.key));
         // 경고(`duplicate-property`)도 막지 않는다 — 실행이 마지막 값을 싣고 그 자리를 고친다(B7a r1). `read.locales`가 이미 그 값이다.
-        if (read.errors.some(e => adapterErrorKind(e.code) !== "warning" && !(e.code === "value-not-string-literal" && e.key !== undefined && !edited.has(e.key)))) throw new Error("Preview cannot read all values");
+        const preserved = (e: (typeof read.errors)[number]) => adapterErrorKind(e.code) === "unmanaged" && !(e.key !== undefined && edited.has(e.key));
+        if (read.errors.some(e => adapterErrorKind(e.code) !== "warning" && !preserved(e))) throw new Error("Preview cannot read all values");
         const file: BaseValues[string] = Object.create(null);
         for (const locale of read.locales) {
           const entries: Record<string, string> = Object.create(null);

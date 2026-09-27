@@ -239,3 +239,36 @@ it("ts-dict 키가 모든 로케일 객체에서 사라지면 미리보기 witho
   expect(preview).toMatchObject({ withoutFile: 0, withoutKey: 1, sendable: { total: 1, keys: 1 } });
   expect(result).toMatchObject({ status: "committed", delivered: preview.sendable.total, withheld: { file: 0, key: preview.withoutKey } });
 });
+/**
+ * **보존되는 비관리 이웃은 미리보기를 막지 않는다** (audit #8 · launch-audit B3.3). writer는 YAML 숫자·불리언과 code-dict shorthand를 파일에
+ * 그대로 두고 성공하는데, 미리보기는 `value-not-string-literal`만 면제해 이 파일들의 Publish가 화면에서 열리지 않았다. 판정은
+ * `adapterErrorKind === "unmanaged"`이고, 편집 대상 키가 그 자리이면 여전히 막는다(writer도 그 셀을 못 싣는다).
+ */
+it.each([
+  ["yaml 숫자·불리언", { adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", nested: null }, "en.yml", "en:\n  hello: old\n  precision: 3\n  strip: true\n", "en:\n  hello: old\n  precision: 3\n", "precision"],
+  ["code-dict shorthand", { adapterName: "code-dict", pathTemplate: "{locale}.ts", nested: null }, "en.ts", "export default { x, hello: 'old' };\n", "export default { x, hello: 'old' };\n", "x"],
+])("%s — 편집과 무관하면 미리보기가 열리고, 편집 키가 그 자리면 막는다 (짝)", async (_name, cols, path, source, pairSource, pairKey) => {
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, ...cols }] });
+  mocks.client.getTree.mockResolvedValue([{ path, sha: "blob" }]);
+  mocks.client.getBlobText.mockResolvedValue(source);
+  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(result.groups[0]).toMatchObject({ path, rows: [{ key: "hello", before: "old", after: "new" }] });
+  // 실행(cron·Publish)도 같은 파일을 싣고 이웃을 그대로 둔다 — 미리보기가 약속한 것이 나간다.
+  const { runPull } = await import("@/lib/pull/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  const { client, calls } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: [{ path, sha: "blob" }] }, blobs: { blob: source } });
+  const pulled = await runPull({
+    loadState: async () => ({
+      project: { ...project, slug: "acme" },
+      surfaces: [{ ...surface, ...cols, localeCodes: ["en"], keys: [{ id: "k", key: "hello", sourceText: "old", orphaned: false, cells: { en: { value: "new" } } }] }],
+      maxUpdatedAt: new Date(), unpublished: 1, pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s", keyId: "k", localeCode: "en", restoreValue: "" } }],
+    }),
+    createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
+  });
+  expect(pulled).toMatchObject({ status: "committed", delivered: 1 });
+  const written = (calls.find(c => c.method === "createTree")?.args[0] as { tree: { content: string }[] }).tree[0]?.content;
+  expect(written).toBe(source.replace("old", "new"));
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], stringKey: { key: pairKey } }]);
+  mocks.client.getBlobText.mockResolvedValue(pairSource);
+  await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow();
+});
