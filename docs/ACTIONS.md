@@ -108,7 +108,7 @@ job 안에 있으므로 **핀한다** — 고칠 자리가 셋(이 문서 · `wo
 
 ⚠️ **토큰은 프로젝트를 만들 때 한 번, 그리고 설정 화면의 [토큰 재발급]으로 나온다** — 원문은 그 화면을 벗어나면 다시 볼 수 없고 서버는 해시만 갖는다. 재발급하면 **옛 토큰이 즉시 무효**이므로 이 리포의 secret을 같은 세션에 바꾼다.
 
-대상 리포는 Node·pnpm 셋업이 필요 없다 — action이 말모이를 clone해 `.nvmrc`·`packageManager` 기준으로 세우고 `pnpm install`한다(`ubuntu-latest` 전제, run 시간의 대부분이 이 install이다).
+대상 리포는 Node·pnpm 셋업이 필요 없다 — action이 말모이를 clone해 `.nvmrc`·`packageManager` 기준으로 세우고 `pnpm install`한다(`ubuntu-latest` 전제, run 시간의 대부분이 이 install이다). **run당 30~50초다**(2026-09-27 실측 — 표면 하나 31초 중 action 21초, 표면 둘 49초 = action 26초 + 14초). ⚠️ `--ignore-scripts`로는 줄지 않는다 — 로컬 콜드 설치(새 store·빈 Prisma 캐시)에서 454패키지 27·29초 대 27·25초로 오차 안이었다(Prisma 엔진 24MB 다운로드가 몫이 아니다). `--prod`는 `tsx`가 devDependency라 `push:local`이 안 돈다. 줄이려면 설치 자체를 없애는 번들이다(launch-readiness L7.7).
 
 ### 표면별 입력과 추가 step
 
