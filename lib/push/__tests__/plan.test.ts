@@ -119,6 +119,17 @@ describe("planPush — orphaned", () => {
     const p = planPush([existing({ key: "k", sourceHash: sourceHash("V") })], [incoming("k", "V")], { baseChanged: false });
     expect(p.toUnorphan).toEqual([]);
   });
+
+  it("불완전 적재(suppressOrphan)는 빠진 키를 orphan시키지 않고 갱신·unorphan은 그대로다 (audit #7)", () => {
+    const p = planPush(
+      [existing({ key: "gone" }), existing({ key: "back", orphaned: true, sourceHash: sourceHash("B") })],
+      [incoming("back", "B"), incoming("fresh", "F")],
+      { baseChanged: false, suppressOrphan: true },
+    );
+    expect(p.toOrphan).toEqual([]);
+    expect(p.toUnorphan).toEqual(["id-back"]);
+    expect(p.toInsert.map((k) => k.key)).toEqual(["fresh"]);
+  });
 });
 
 describe("planPush — 결정성", () => {

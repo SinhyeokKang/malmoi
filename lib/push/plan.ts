@@ -238,6 +238,14 @@ export type PlanOptions = {
    * 프로젝트에서 `needsReview` 필터가 통째로 죽는다(6a T7이 만든 값 하나가 사라진다).
    */
   baseChanged: boolean;
+  /**
+   * 이 적재가 **불완전한가**(다운로드·파싱 실패로 파일이 빠졌다). `true`면 **orphan 판정만 끈다** (audit #7).
+   *
+   * ⚠️ 빠진 파일의 키는 페이로드에 없다 — 그것을 "코드에서 사라졌다"로 읽으면 orphan과 함께 승인 편집 토큰까지
+   * 풀린다(`releaseOrphanedApproved`). 어느 키가 어느 파일에서 왔는지는 귀속하지 않는다 — 한 파일이라도 빠지면 그 실행의
+   * 삭제 판정 전체를 미루고, 실제 삭제는 다음 깨끗한 적재가 확정한다. 기본(생략)은 지금까지의 동작이다.
+   */
+  suppressOrphan?: boolean;
 };
 
 export function planPush(
@@ -280,7 +288,7 @@ export function planPush(
   }
 
   const toOrphan: string[] = [];
-  for (const prev of existingKeys) {
+  for (const prev of options.suppressOrphan ? [] : existingKeys) {
     if (incoming.has(prev.key)) continue;
     // 이미 orphaned면 건드리지 않는다.
     if (prev.orphaned) continue;
