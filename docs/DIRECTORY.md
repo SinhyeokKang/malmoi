@@ -255,12 +255,12 @@ components/
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
   projects/project-thumbnail.tsx
-                        프로젝트를 가리키는 28 타일. 소비자가 **둘**이다 — 목록 행과 Home 머리.
+                        프로젝트를 가리키는 28 타일. 소비자가 **넷**이다 — 목록 행 · Home 머리 · LNB 프로젝트 구역(16) · 랜딩 목업(16, src 없음).
                         ⚠️ **2026-09-17까지 화면마다 따로 구현돼 있었고 Home만 고정 bg-foreground였다**
                         (POSTMORTEM 2026-09-17). ⚠️ radius가 rounded-sm(8)이고 캔버스의 4가 아니다
                         — 초대 카드(components/invite/project-card.tsx)까지 세 화면을 한 값으로
                         모은 판정이다 (DESIGN §6.63의 이탈 줄이 정본)
-                        ⚠️ optional src는 아직 소비자가 없다 — 프로젝트 이미지가 생길 자리다
+                        src(프로젝트 이미지)는 앱 셋이 넘긴다 — 없으면 이름 tone 타일로 떨어진다
   projects/new-project-button.tsx
                         [New project] 전용 client 버튼. 소비자가 **둘**이다 — 목록 머리와 EmptyProjects.
                         Link.onNavigate를 가로채 useTransition + router.push로 옮기고 그동안 Plus를
@@ -573,8 +573,8 @@ lib/
                         logCaught — 삼켜서 갈래 하나로 접는 자리의 서버 로그 한 줄(원문 금지).
                         httpStatus · isUniqueViolation — 흩어진 사본이 셋·넷이던 판정
   compare.ts            ⚠️ 잎. compareCodeUnits — 결정적 정렬 전부의 `<` 비교(localeCompare 금지)
-  security-headers.ts   ⚠️ 잎(import 0 — next.config가 읽는다). 보안 응답 헤더 값 + 환경별 enforce CSP
-                        (프로덕션 · preview=Vercel Toolbar 호스트 · next dev=eval·HMR). CSP 헤더는 하나다
+  security-headers.ts   ⚠️ 잎(import 0). CSP 밖 보안 응답 헤더 값(next.config가 읽는다) + 환경별 CSP 조립 buildCsp
+                        (middleware가 요청마다 nonce로 부른다 · 프로덕션 · preview=Vercel Toolbar 호스트 · next dev=eval·HMR). CSP 헤더는 하나다
   bounded-body.ts       ⚠️ 잎. 외부 진입점 본문을 상한 안에서만 읽는다(`/api/push`·`/api/push/failure`) —
                         선언된 길이는 읽기 전에, chunked는 읽는 도중에 끊는다. json()·text()를 먼저 부르면 다 읽은 뒤다
   cause.ts              ⚠️ 잎. causeMessage — 잡은 값의 메시지. `(cause as Error).message`는 Error 아닌 throw에서 undefined다
@@ -637,7 +637,7 @@ LICENSE                 MIT. ⚠️ 전문에 문장을 더하지 않는다 — 
 guide/                  **사용 가이드 원고**(en) — SUMMARY.md(IA 정본 · 내비 순서) + README.md(개요) + <장>/README.md + <장>/<페이지>.md.
                         AUTHORING.md·SHOOTING.md는 한국어 매뉴얼이고 SUMMARY 밖이라 서빙되지 않는다(`/docs/AUTHORING`은 404).
                         ⚠️ docs/(내부 문서)와 이름을 가르려고 guide/다 — 라우트만 /docs다. ⚠️ x.md와 x/README.md가 둘 다 있으면 red
-public/guide/           원고 이미지(WebP) — 커밋된 원본이고 복사 단계가 없다(2026-09-26 기준 아직 0장 — 촬영 배치가 연다). md는 /guide/<name>.webp 절대경로로만 참조한다.
+public/guide/           원고 이미지(WebP) — 커밋된 원본이고 복사 단계가 없다(2026-09-27 기준 5장 — 목록은 guide/SHOOTING.md 매핑 표가 정본). md는 /guide/<name>.webp 절대경로로만 참조한다.
                         치수·매핑 소스·blob SHA는 guide/SHOOTING.md 표가 정본이다.
                         ⚠️ README가 translation-editor·publish-preview·workflow-file 세 장을 상대 경로로 참조한다 — 이름을 바꾸면 README 이미지가 깨진다
 docs/assets/readme/     README 이미지(WebP) — 서빙되지 않고 GitHub가 렌더한다. ego로 찍고 마스킹은 guide/SHOOTING.md 표를 따른다
@@ -645,7 +645,7 @@ docs/assets/readme/     README 이미지(WebP) — 서빙되지 않고 GitHub가
 generated/prisma/ public/fonts/   ⚠️ 생성물(gitignore)
 vercel.json             Cron(야간 1회) + ⚠️ regions: ["hnd1"] — 함수를 DB 옆에 붙인다. 기본 iad1에서는
                         홉당 ~375ms였고 이 앱의 비용은 페이로드가 아니라 홉 개수다(요청당 일곱)
-next.config.ts          ⚠️ 보안 응답 헤더를 여기서 낸다 — 값은 lib/security-headers.ts(환경별 enforce CSP).
+next.config.ts          ⚠️ CSP 밖 보안 응답 헤더를 여기서 낸다 — 값은 lib/security-headers.ts. **CSP는 여기 없다**(요청마다 nonce라 middleware.ts가 유일한 출처).
                         ⚠️ agentRules: false — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다
                         ⚠️ outputFileTracingIncludes — /docs 함수 번들에 guide/**/*.md를 싣는다(fs로 읽어 트레이서가 못 따라간다)
 vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암호화 키 셋을 세운다.
