@@ -91,24 +91,24 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 
 ## B3 — export와 전달 판정
 
-- [ ] **B3.1 · 🔴 audit #1 — 실제로 싣지 못한 셀의 전달 토큰 보존**
+- [x] **B3.1 · 🔴 audit #1 — 실제로 싣지 못한 셀의 전달 토큰 보존**
   - 근거: [json-catalog.ts](../../../lib/adapters/json-catalog.ts), 246행; [chrome-locales.ts](../../../lib/adapters/chrome-locales.ts), 188행; [undeliverable.ts](../../../lib/pull/undeliverable.ts), 68행; [ts-dict.ts](../../../lib/adapters/ts-dict.ts), 333행.
   - 재현 A: 기존 non-base 파일의 마지막 번역을 비운다. writer의 `content: null`로 파일은 그대로인데 Publish가 토큰을 해제하고 다음 CI가 옛 값을 복원하는 연결을 검증한다.
   - 재현 B: 미전달 편집 때문에 CI가 보류된 상태에서 ts-dict의 해당 키 자리가 모든 로케일에서 사라진다. 다른 파일·키는 남겨 둔다. cron이 출력하지 못한 편집의 토큰을 해제하는지 검증한다.
   - 제외: 글롭 전체가 사라진 경우는 이미 차단된다. 기존 타깃 파일이 없는 경우를 A의 파일 잔존 실패로 취급하지 않는다.
   - 완료 조건: 파일 바이트에 의도한 결과가 반영되었음을 확인한 셀만 전달 처리한다. 지원할 수 없는 출력은 이유와 함께 보류한다. 어댑터의 `null`·삽입 불가 계약을 바꾸는 것만으로 토큰 문제를 덮지 않는다.
 
-- [ ] **B3.2 · 🔴 audit #4 — code-dict 중복 컨테이너의 런타임 의미 보존**
+- [x] **B3.2 · 🔴 audit #4 — code-dict 중복 컨테이너의 런타임 의미 보존**
   - 근거: [code-dict.ts](../../../lib/adapters/code-dict.ts), `collect` 270행·`propertyNamed`·삽입 경로.
   - 재현: JS 파일의 `{ a: { x: 'old' }, a: { y: 'Y' }, hello: 'Hi' }`를 읽고 `hello`만 편집해 export한다. 런타임에 없던 `a.x`가 마지막 `a`에 생기는지 확인한다.
   - 완료 조건: read와 write가 같은 중복 프로퍼티 의미를 따른다. 무관한 번역 편집이 가려진 키를 되살리지 않고, 관리하지 않는 구조·값을 유지한다. 기존 동일 문자열 키·평탄 키 중복 처리도 유지한다.
 
-- [ ] **B3.3 · 🟡 audit #8 — 보존 가능한 비관리 값과 Publish 실패 구분**
+- [x] **B3.3 · 🟡 audit #8 — 보존 가능한 비관리 값과 Publish 실패 구분**
   - 근거: [publish/read.ts](../../../lib/publish/read.ts), 59행.
   - 재현: YAML 숫자·불리언 또는 code-dict shorthand가 정상 문자열과 공존하는 파일에서 문자열만 편집한다. writer가 보존 가능한 영역 때문에 미리보기 전체가 실패하는지 확인한다.
   - 완료 조건: 보존 가능한 이웃 값은 Publish를 막지 않는다. 실제 파싱 실패나 전달할 키의 비문자열 슬롯은 정상 값으로 위장하지 않고 기존 차단·보류 의미를 유지한다.
 
-- [ ] **B3.4 · 🔴 (착수 전 리뷰 추가) — base 파일의 키 집합을 원본이 정한다**
+- [x] **B3.4 · 🔴 (착수 전 리뷰 추가) — base 파일의 키 집합을 원본이 정한다**
   - 근거: `lib/pull/render.ts` `renderLocaleFiles`(base) → `buildWriteEntries`(DB 키만) → 재생성 writer가 entries로만 조립. 수술적 writer는 원본에 없는 DB 키를 삽입한다.
   - 재현: CI 보류 중 base 파일에 키 K 추가(DB엔 없음) → Publish PR이 K를 지운다(json-catalog·chrome-locales). 보류 중 base에서 키 D 삭제(DB엔 남음) → PR이 D를 되살린다(전 어댑터).
   - 완료 조건: base 파일 출력의 키 집합 = 원본 base 파일의 키 집합. DB에 있는 키는 DB 값, 없는 키는 원본 값. 비-base 로케일 동작과 결정성은 그대로. B3.1 R1 분기는 이 규칙에 흡수한다.
@@ -215,7 +215,7 @@ B0·B1·B6은 코어 수정과 독립적으로 진행할 수 있다. B3·B4는 �
 | B0 | 미착수 | — | — | — |
 | B1 | 코드 완료 · 브라우저 미검증 | c9ad7f41·efebc706 — 잠금 뒤 Account 재조회, 사라짐=unlinked·소유자 변경=keep | test 6944 · credentials PG 65 | — |
 | B2 | 코드 완료 · 브라우저 미검증 | 지문·건수를 한 응답 state로(`sync-button`), 지문에 리포 5필드 | test 6917 · projects PG 312 | reconfirm 문구가 원인 중립이 아님(⚪, 후속) |
-| B3 | 미착수 | — | — | — |
+| B3 | 코드 완료 · 실 리포 왕복 미검증 | 재생성 비-base 0개→`{}`, 자리 없는 셀 보류(cron·미리보기 같은 `keySlot`), code-dict 마지막 프로퍼티만, unmanaged 이웃 면제, **B3.4 base 키 집합=원본**(원본 base 파싱 불가면 차단 — 계획과 다름, 수용) | test 6986 · projects PG 314 · build | base 삭제 키의 보류 편집은 Revert·폐기 Sync·키 복구 전까지 CI 보류를 유지 · 비-base는 보류 중 지운 키의 번역이 되살아남(strict 범위) |
 | B4 | 미착수 | — | — | — |
 | B5 | 코드 완료 · 브라우저 미검증 | Revert busy/unsettled를 공통 창으로, 복원 기준=돌아온 키, Sync 시작 시점 스냅샷으로 새 세대(계획의 epoch 대신 — 커밋 순서 둘 다 덮음) | test 6944 · projects PG 314 | 필터를 바꾼 채 Sync 결과가 먼저 오면 재필터 전까지 새 키 미표시 · `publishInFlight` 무경계(범위 밖) |
 | B6 | 6.1–6.3 코드 완료 · 6.4는 L2.12 | 행별 pending Map/Set, Tab 통과, 테스트 resolver 정리 | test 6944 | B6.2 실 키보드 확인 미수행 · 같은 grep 8건 기록만 |
