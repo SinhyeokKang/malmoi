@@ -21,7 +21,7 @@ export function renderSurfaceWorkflowStep(input: {
   slug: string; surfaceSlug: string; pathTemplate: string; adapter?: AdapterName; baseLocale?: string;
 }): string {
   return [
-    "      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1",
+    "      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v2",
     "        with:",
     "          push-token: ${{ secrets.PUSH_TOKEN }}",
     `          project: ${input.slug}`,
@@ -136,8 +136,9 @@ function header(slug: string, baseBranch: string): string[] {
     "    steps:",
     // ⚠️ **가변 태그를 쓰지 않는다** — 이 스텝은 대상 리포에서 `secrets.PUSH_TOKEN`을 든 job 안에
     // 돌므로 태그가 옮겨지면 남의 커밋이 그 토큰 옆에서 즉시 실행된다. `workflow-pins.test.ts`는
-    // `.github/`만 훑어 **이 줄을 못 본다**(docs/ACTIONS.md의 핀 문단이 그 구멍을 적는다).
-    "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4",
+    // `.github/`만 훑어 **이 줄을 못 본다**(docs/ACTIONS.md의 핀 문단이 그 구멍을 적는다) — 판(node24 SHA)은
+    // `__tests__/workflow.test.ts`가 박는다.
+    "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
   ];
 }
 

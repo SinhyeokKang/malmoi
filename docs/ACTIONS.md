@@ -58,9 +58,9 @@ jobs:
     if: "!contains(github.event.head_commit.message, '[skip-malmoi-i18n]')"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v2
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -124,7 +124,7 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 
 <!-- additional-surface-step -->
 ```yaml
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v1
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v2
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
