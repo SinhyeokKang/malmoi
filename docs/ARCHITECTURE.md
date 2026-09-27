@@ -17,6 +17,9 @@
    지문을 되돌려 받을 때만 열린다. Revert가 풀어 준 셀도 미전달이 아니게 되므로 CI 보류를 푸는 셋째 경로가 된다. §5.8.
    ⚠️ **Publish가 보내지 못한 셀도 유예를 잇는다** (2026-09-24, delivery-invariants) — 비-base 로케일 파일이 base에 없거나 ts-dict
    로케일 객체에 그 키의 자리가 없으면 그 셀은 **보류**되어 토큰이 남는다(§3). 풀리는 길은 파일 복구 뒤 Publish · Revert · 폐기 승인 Sync다.
+   ⚠️ **셋째 경우: per-locale base 원본에 그 키가 없다** (2026-09-27, B3.4 — 코드에서 지웠다). base 키 집합은 원본이 정하므로 그 셀은 보류되고
+   토큰이 남는다. 풀리는 길은 키 복구 · Revert · 폐기 승인 Sync다. **대가**: 그 토큰이 미전달 수를 0 위에 붙들어 CI 적재가 계속 `deferred`라
+   DB가 그 키의 orphan을 배우지 못한다 — 위 둘과 같은 모양의 감수다(OWNER 안내는 Revert를 먼저 가리킨다).
 2. push 시점 외에는 리포 값과 DB 값을 비교해 **승자를 고르지 않는다**.
    ⚠️ **Revert도 이 불변식 안에 선다 (§5.8)** — 복원값은 전달 확인 시점의 **DB export 입력**에서 유도한 스냅샷이고,
    현재 리포를 읽어 고르지 않는다. "옛 DB 값과 새 리포 값 중 고르는" Sync 되돌리기는 여전히 만들지 않는다(PRODUCT §3).
@@ -27,7 +30,7 @@
    UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
    ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
    저장이 `cannot-clear`로 거부한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
-4. 같은 DB 상태와 같은 원본 구조는 **같은 바이트**를 만든다.
+4. 같은 DB 상태와 **같은 원본 파일**은 **같은 바이트**를 만든다 — 원본은 구조·표현과 **base 키 집합**(B3.4)을 준다.
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
    표면 데이터는 그 뒤 **`surfaceId`로도 제한**한다. 역할·리포·push 토큰·SyncRun·Publish는 Project가,
    포맷·base 선언·적재 상태·키·로케일·번역은 TranslationSurface가 소유한다. 표면별 역할은 없다.
@@ -734,6 +737,9 @@ base 편집은 보류다** — 실행(`runPull`)이 per-locale 표면의 base �
 더하고, 미리보기가 같은 판정으로 `withoutKey`를 센다. ⚠️ **재생성의 원본 base를 못 읽으면(`read`가 base 로케일을 못 냄) 쓰지 않고
 `write-parse-failed`로 막는다** — 키 집합을 모르는 채 DB로 덮으면 코드 소유 키를 지운다. 원본 base가 없으면(첫 쓰기) 지금처럼 DB 키로 만든다.
 비-base 로케일은 바뀌지 않는다(pull 사이 값·키는 DB가 진실 — strict 정책). 계약: `contract.ts` `baseKeySetViolations`(전 어댑터, 렌더 단위).
+⚠️ **미리보기는 재생성 per-locale 표면의 base 파일을 늘 읽는다** (B3 r3) — base 행이 없어도 실행은 base 원본으로 키 집합을 정하고 못 읽으면 거부하므로,
+안 읽으면 N건을 약속하고 실행이 `write-parse-failed`로 막힌다. 못 읽으면 `PreviewBaseFileUnreadable` → `refused/base-file-unreadable`(부재와 같은 이유 있는
+거부, Try again 없음). 판정만을 위해 읽은 base 파일은 다른 읽기 오류(비문자열 값 등)로 미리보기를 막지 않는다 — 실행도 그 편집들을 싣는다.
 
 ⚠️ **2층 동등(`no-changes`)의 전달 확인은 기존 no-op 탐지의 토큰판이다** — 값을 고르지 않고 "렌더 결과가 base와 같다"만 본다(§0 불변식 2 안). 원복한 편집이 이 경로로 끝나므로 이것을 없애면 그 편집이 영영 pending이라 CI가 영구 보류된다.
 
