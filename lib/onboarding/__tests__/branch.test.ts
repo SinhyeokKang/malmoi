@@ -70,3 +70,11 @@ describe("planBranchChoice — 브랜치 칸의 갈래와 기본 선택", () => 
     expect(isValidBranchName(c.selected)).toBe(true);
   });
 });
+
+/** [malmoi#126] 목록이 Malmoi의 sync 브랜치를 base 후보로 내지 않는다 — 설정과 온보딩 ①이 이 함수 하나를 쓴다. */
+describe("planBranchChoice — sync 브랜치 제외", () => {
+  it("malmoi-i18n/sync- 접두 브랜치는 목록에서 빠진다", () => {
+    const c = planBranchChoice({ names: ["main", "malmoi-i18n/sync-web", "dev", "malmoi-i18n/sync-other"], defaultBranch: "main" });
+    expect(c.mode === "select" && c.names).toEqual(["main", "dev"]);
+  });
+});

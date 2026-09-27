@@ -66,6 +66,8 @@ export type OnboardError =
    * 문구는 사전에 따로 있다(이 화면은 "고른 값"이고 저쪽은 "고친 값"이라 안내가 다르다).
    */
   | "invalid-branch"
+  /** ①에서 고른 브랜치가 Malmoi의 sync 브랜치다 (malmoi#126) — 형식은 맞지만 base가 될 수 없다. `isSyncBranchName`. */
+  | "sync-branch"
   // ── 다시 시도 · 첫 적재 ──────────────────────────────────────────────────
   /** `ready`에서 다시 적재하려 했다 — strict push라 번역자 편집을 덮으므로 막는다 (PRODUCT §7.5). */
   | "not-awaiting"
@@ -101,6 +103,7 @@ const ONBOARD_ERRORS: ReadonlySet<string> = new Set<OnboardError>([
   "limit-reached",
   "invalid-slug",
   "invalid-branch",
+  "sync-branch",
   "not-awaiting",
   "ingest-failed",
   "resource-limit",

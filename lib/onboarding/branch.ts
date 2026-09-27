@@ -1,3 +1,5 @@
+import { isSyncBranchName } from "@/lib/pull/ref-slug";
+
 /**
  * ①의 브랜치 칸이 무엇으로 서는지 (DESIGN §6.7). I/O가 없다 — `listRepoBranches`가 값을 준다.
  *
@@ -24,5 +26,9 @@ export function planBranchChoice(input: {
   if (truncated) return { mode: "input", selected: defaultBranch };
   // default branch가 앞이다 — 300개 중에서 기본값을 찾아 스크롤하게 두지 않는다. 나머지는 GitHub이 준
   // 순서 그대로다(이미 이름순이고, 우리가 다시 정렬하면 그쪽이 바뀔 때 조용히 갈린다).
-  return { mode: "select", names: [...new Set([defaultBranch, ...names])], selected: defaultBranch };
+  /*
+    ⚠️ **sync 브랜치는 후보가 아니다** (malmoi#126) — 설정과 ①이 이 함수 하나로 목록을 세운다. 저장 Action도 따로 거부한다(자유
+    입력·직접 호출). default branch는 거르지 않는다 — 리포의 실제 기본값이고, 그것이 sync 브랜치면 저장이 거부로 말한다.
+  */
+  return { mode: "select", names: [...new Set([defaultBranch, ...names.filter(name => !isSyncBranchName(name))])], selected: defaultBranch };
 }

@@ -109,6 +109,16 @@ it("목록이 잘렸으면 생성 화면처럼 입력으로 전환한다", async
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
 });
 
+/** [malmoi#126] 300개 초과의 자유 입력도 sync 브랜치를 보내기 전에 막고, 왜 안 되는지 말한다. */
+it("자유 입력의 sync 브랜치는 저장하지 않고 이유를 말한다", async () => {
+  branches.listProjectBranches.mockResolvedValueOnce({ ok: true, names: ["main"], defaultBranch: "main", truncated: true });
+  const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="release" />);
+  await input(container.querySelector<HTMLInputElement>("#base-branch")!, "malmoi-i18n/sync-acme");
+  await act(async () => { await userEvent.setup().click(container.querySelector('button[type="submit"]')!); });
+  expect(actions.updateRepositorySettings).not.toHaveBeenCalled();
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("can't be the base branch");
+});
+
 it("저장 후 서버가 새 baseBranch를 보내도 성공 안내가 유지된다", async () => {
   actions.updateRepositorySettings.mockResolvedValueOnce({ ok: true });
   const { container, rerender } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="main" />);

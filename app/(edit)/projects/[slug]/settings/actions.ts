@@ -32,6 +32,7 @@ import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { authorizeUrl, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
 import { probeRepo } from "@/lib/github";
 import { isValidBranchName } from "@/lib/pull/branch-name";
+import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { invalidateDeliveryConfirmations } from "@/lib/pull/load";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 
@@ -300,6 +301,8 @@ export async function updateRepositorySettings(raw: {
    * 설정이 거부한다.
    */
   if (!isValidBranchName(baseBranch)) return { ok: false, error: "invalid-branch" };
+  // 목록에서 빠져도 자유 입력(300개 초과)·직접 호출이 같은 이름을 보낸다 (malmoi#126).
+  if (isSyncBranchName(baseBranch)) return { ok: false, error: "sync-branch" };
 
   const outcome = await prisma.$transaction(async (tx) => {
     // 잠금 뒤 읽어야 동시 변경의 before와 no-op 판정이 실제 저장 직전 상태를 가리킨다.

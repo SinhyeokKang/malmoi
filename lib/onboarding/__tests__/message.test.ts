@@ -37,6 +37,7 @@ const ERRORS = [
   "limit-reached",
   "invalid-slug",
   "invalid-branch",
+  "sync-branch",
   // 다시 시도 · 첫 적재
   "not-awaiting",
   "ingest-failed",

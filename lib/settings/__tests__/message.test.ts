@@ -21,3 +21,10 @@ describe("isRepositorySettingsError", () => {
     expect(isRepositorySettingsError(value)).toBe(false);
   });
 });
+
+describe("sync-branch (malmoi#126)", () => {
+  it("갈래이고 sync 브랜치라서 안 된다고 말한다", () => {
+    expect(isRepositorySettingsError("sync-branch")).toBe(true);
+    expect(repositorySettingsErrorMessage("sync-branch")).toContain("Malmoi");
+  });
+});

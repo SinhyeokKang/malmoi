@@ -86,6 +86,7 @@ import { planSurfaceReadiness, planProjectReadiness } from "@/lib/onboarding/rea
 import { planSlug } from "@/lib/onboarding/slug";
 import { isLocaleShaped, isPathSafeLocale } from "@/lib/locale-code";
 import { isValidBranchName } from "@/lib/pull/branch-name";
+import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { generatePushToken, hashPushToken } from "@/lib/push/token";
 import type { PrismaClient } from "@/generated/prisma/client";
 
@@ -779,6 +780,8 @@ export async function detectRepoFormats(raw: {
   const { owner, repo, ref } = parsed.data;
   // 잎 판정이라 비용이 0이다 — 맨값을 GitHub URL에 넣기 전에 여기서 막는다.
   if (ref !== undefined && !isValidBranchName(ref)) return { ok: false, error: "invalid input" };
+  // ③까지 가서 생성이 거부되지 않게 여기서 막는다 (malmoi#126).
+  if (ref !== undefined && isSyncBranchName(ref)) return { ok: false, error: "sync-branch" };
 
   // 모달 입력을 보존한다 — 세션 거부는 redirect가 아니라 값이다 (예외 J).
   const session = await readSession();
@@ -1050,6 +1053,8 @@ export async function createProject(raw: {
   if (!isValidBranchName(input.baseBranch)) {
     return { ok: false, error: "invalid-branch" };
   }
+  // 자유 입력(300개 초과)·직접 호출도 막는다 — 목록 필터는 안내일 뿐이다 (malmoi#126).
+  if (isSyncBranchName(input.baseBranch)) return { ok: false, error: "sync-branch" };
 
   const prisma = getPrisma();
   const access = await checkRepoAccess(prisma, userId, input.owner, input.repo, true);

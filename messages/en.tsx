@@ -3214,6 +3214,8 @@ export const en = {
         `An address can use lowercase letters, numbers, '-', '.' and '_', up to ${max} characters. 'new' is reserved.`,
       // 온보딩은 브랜치를 **고르는** 자리다 — 설정 화면(고치는 자리)과 안내가 갈린다.
       "invalid-branch": "That branch name isn't valid. Pick another branch.",
+      // malmoi#126 — 형식은 맞다. 왜 안 되는지(Malmoi가 쓰는 브랜치)를 말해야 사용자가 다른 이름을 고른다.
+      "sync-branch": "Malmoi publishes translations from that branch, so it can't be the base branch. Pick another branch.",
       "not-awaiting": "The first sync already finished. Running it again here would overwrite edited translations, so it's blocked.",
       "resource-limit": "These translation files are too large or too deeply nested to sync. Reduce their size and try again.",
       // ⚠️ **재시도는 Sources에 있다** (audit #6) — 전엔 "from settings"였고 설정 화면에 그 버튼이 없었다.
@@ -3231,6 +3233,7 @@ export const en = {
      */
     repositorySettings: {
       "invalid-branch": "That's not a valid branch name. Spaces and the characters ~^:?*[ aren't allowed.",
+      "sync-branch": "Malmoi publishes translations from that branch, so it can't be the base branch. Pick another branch.",
       // 왜 없는지를 말한다 — 목록은 리포의 로케일 파일에서 온다.
       "unknown-locale": "This repository has no translation file for that language.",
       // 되돌릴 수 있는 상태이므로 무엇을 해야 하는지 말한다.

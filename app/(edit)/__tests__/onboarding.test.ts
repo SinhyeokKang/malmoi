@@ -953,6 +953,23 @@ describe("createProject — 재검증한 값만 저장한다 (ARCHITECTURE §3.1
     expect(hoisted.openRepoReader).not.toHaveBeenCalled();
   });
 
+  /** [malmoi#126] 자유 입력(300개 초과)으로 sync 브랜치를 넣어도 생성이 거부한다 — GitHub을 부르기 전이다. */
+  it("Malmoi의 sync 브랜치는 `sync-branch`이고 GitHub을 부르지 않는다", async () => {
+    expect(await createProject(createInput({ baseBranch: "malmoi-i18n/sync-web" }))).toEqual({ ok: false, error: "sync-branch" });
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled();
+  });
+
+  /** [malmoi#126] ①에서 고른 ref로 탐지하기 전에 막는다 — 안 막으면 ③까지 가서야 생성이 거부된다. */
+  it("탐지도 sync 브랜치 ref를 `sync-branch`로 거부하고 GitHub을 부르지 않는다", async () => {
+    expect(await detectRepoFormats({ owner: "acme", repo: "web", ref: "malmoi-i18n/sync-web" })).toEqual({ ok: false, error: "sync-branch" });
+    expect(hoisted.probeRepo).not.toHaveBeenCalled();
+  });
+
+  it("`sync-branch`가 온보딩 사전에 문구를 갖는다", () => {
+    expect(isOnboardError("sync-branch")).toBe(true);
+    expect(onboardErrorMessage("sync-branch")).toContain("Malmoi");
+  });
+
   it("`invalid-branch`가 온보딩 사전에 문구를 갖는다 — 판정만 있고 문구가 없으면 화면이 침묵한다", () => {
     expect(isOnboardError("invalid-branch")).toBe(true);
     expect(onboardErrorMessage("invalid-branch").length).toBeGreaterThan(0);

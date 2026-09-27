@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 import { isValidBranchName } from "@/lib/pull/branch-name";
+import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { isRepositorySettingsError, repositorySettingsErrorMessage, settingsAccessMessage } from "@/lib/settings/message";
 
 export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false }: { slug: string; owner: string; repo: string; baseBranch: string; disabled?: boolean }) {
@@ -68,6 +69,10 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
         // 같은 갈래 이름을 쓴다 — 문구가 두 벌이면 서버가 거부할 때와 다른 말을 한다.
         if (!isValidBranchName(branch)) {
           setResult({ error: "invalid-branch" });
+          return;
+        }
+        if (isSyncBranchName(branch)) {
+          setResult({ error: "sync-branch" });
           return;
         }
         startTransition(async () => {
