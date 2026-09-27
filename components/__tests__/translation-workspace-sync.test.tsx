@@ -19,6 +19,7 @@ vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTra
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare }));
 
+import { COMMIT_WAIT_MS } from "@/components/commit-wait";
 import { TranslationWorkspace, type WorkspaceProps } from "@/components/translations/workspace/workspace";
 import { m } from "@/lib/i18n";
 
@@ -102,6 +103,54 @@ describe("Sync 뒤 목록", () => {
     await sync();
     await rerender(<TranslationWorkspace {...withRow(empty, [newRow])} />);
     expect(listText(container)).toContain("Cancel");
+  });
+
+  // 새 세대 뒤의 일반 저장 재검증은 다시 병합이다 — `resync`가 풀렸다는 유일한 그물이다.
+  const later = { ...newRow, keyId: "k4", key: "common.later", sourceText: "Later" };
+  function afterSave(base: WorkspaceProps): WorkspaceProps {
+    return withRow(base, [base.list.rows[0]!, newRow, later]);
+  }
+  function expectMerged(container: HTMLElement) {
+    // k2(Save)는 서버 첫 페이지에서 빠졌지만 자리에 남아 savedOut이다. k4는 끼워 넣지 않는다.
+    expect(listText(container)).toContain("Save");
+    expect(listText(container)).not.toContain("Later");
+  }
+
+  it("Sync 세대 뒤 같은 조건의 재검증은 병합이다 — 행 위치·savedOut 보존", async () => {
+    mocks.run.mockResolvedValue(imported);
+    const initial = props();
+    const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+    await sync();
+    const synced = withRow(initial);
+    await rerender(<TranslationWorkspace {...synced} />);
+    expect(listText(container)).toContain("Cancel");
+    await rerender(<TranslationWorkspace {...afterSave(synced)} />);
+    expect(listText(container)).toContain("Cancel");
+    expectMerged(container);
+  });
+
+  it("실패한 Sync 결과는 새 세대를 시작하지 않는다", async () => {
+    mocks.run.mockResolvedValue({ ok: false, error: "already-running" });
+    const initial = props();
+    const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+    await sync();
+    await rerender(<TranslationWorkspace {...withRow(initial)} />);
+    expect(listText(container)).not.toContain("Cancel");
+  });
+
+  it("새 트리가 끝내 안 오면 대기 상한 뒤 resync를 버린다 — 다음 저장 재검증은 병합이다", async () => {
+    mocks.run.mockResolvedValue(imported);
+    const initial = props();
+    const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+    await act(async () => userEvent.setup().click(button("Sync")));
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await act(async () => userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(button("Discard changes and sync")));
+      expect(document.querySelector('[role="status"]')?.textContent).toContain("from main");
+      await act(async () => { vi.advanceTimersByTime(COMMIT_WAIT_MS); });
+    } finally { vi.useRealTimers(); }
+    await rerender(<TranslationWorkspace {...afterSave(initial)} />);
+    expectMerged(container);
   });
 
   it("Sync 없는 같은 조건의 재검증은 행을 끼워 넣지 않는다 — 짝 단언(저장 뒤 행 위치 보존)", async () => {
