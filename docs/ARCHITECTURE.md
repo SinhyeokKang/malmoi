@@ -1286,6 +1286,7 @@ CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복�
 풀었다. `prepared.result.errors`(failure 갈래 + `download-failed` — 중복 키는 잃는 키가 없어 없다)가 하나라도 있으면 `suppressOrphan`으로 **그 실행의
 키 orphan 판정 전체를 끈다** — 파일별 귀속은 만들지 않는다. 실제 삭제는 다음 깨끗한 Sync가 확정한다. CI는 반대로 읽지 못한 로케일 파일이 있으면
 `push:local`이 페이로드를 보내지 않고 `prepare-failed`로 실패한다(`unreadableLocaleFiles` · ACTIONS §3).
+⚠️ **어느 로케일 파일 하나의 실패든 그 실행 전체의 판정을 미룬다** — 키가 base에서 오는 per-locale 표면(예: chrome-locales의 비-base `fr` 하나)이라도 마찬가지라, 그 실행에서는 **base에서 실제로 지운 키도** orphan되지 않고 다음 깨끗한 Sync를 기다린다.
 
 **따라서 `Translation.value`의 쓰기 주체는 둘이다**: 편집 UI(키 단위 저장 `saveTranslationKey`, 그리고 같은 편집 UI의 명시적 복원 명령 `revertTranslationKey` — 스냅샷이 지정한 값을 쓰는 것이지 판정이 아니다, §5.8)와 push. 셋째가 생기면 어느 쪽이 이기는지 다시 판정해야 하므로 늘리지 않는다.
 
