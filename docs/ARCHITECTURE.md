@@ -2723,7 +2723,10 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   받아들인 손실). 앱 URL엔 초대 토큰·프로젝트 slug·검색어가 실리므로 차단 목록이 아니다. ⚠️ **`beforeSend`는 `url`만 바꿀 수 있다** —
   referrer는 못 건드리므로 토큰 페이지 둘(`/invite/**`·`/signin/link/**`)이 `referrer: "no-referrer"`를 낸다(`strict-origin-when-cross-origin`
   아래 같은 출처 referrer는 전체 URL이다). 개발 서버에서는 렌더하지 않는다 — dev 디버그 스크립트(`va.vercel-scripts.com`)를 CSP가 막고,
-  CSP를 넓히지 않는다(프로덕션·preview는 동일 출처 `/_vercel/insights/*`).
+  CSP를 넓히지 않는다. ⚠️ **배포에서의 스크립트·intake 경로는 코드에 없다** — v2 로더는 Vercel이 빌드 때 주입하는 시드 경로
+  (`NEXT_PUBLIC_VERCEL_OBSERVABILITY_BASEPATH` → `<basePath>/insights/script.js`·`<basePath>/insights`)를 쓰고, 없을 때만
+  `/_vercel/insights/*`로 떨어진다. 상대 경로면 동일 출처라 `connect-src 'self'`로 충분하고, 스크립트 주입은 `'strict-dynamic'`이
+  허용한다. 동일 출처인지는 preview Network 탭이 판정이다.
 
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
 
