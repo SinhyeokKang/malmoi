@@ -148,8 +148,11 @@ export const en = {
       "not-ready": "This project hasn't finished its first sync yet",
       "not-connected": "Malmoi is not connected to this repository",
       "already-running": "A sync is already running",
-      /** ⚠️ 제목 자리라 마침표가 없다(DESIGN §10). 아무것도 지워지지 않았다는 것이 요지다. */
-      "reconfirm": "The project changed after you opened Sync — nothing was discarded. Open Sync again to review",
+      /**
+       * ⚠️ 제목 자리라 마침표가 없다(DESIGN §10). 아무것도 지워지지 않았다는 것이 요지다.
+       * ⚠️ **원인을 말하지 않는다** (malmoi#137) — 지문의 어떤 변화(새 미전달 편집·기준 브랜치…)에도, 지문 발급 실패(`approval: null`)에도 선다.
+       */
+      "reconfirm": "Sync couldn't confirm that what you reviewed is still current — nothing was discarded. Open Sync again to review and confirm",
       "no-surfaces": "There's nothing to sync — this project has no active sources",
       "invalid input": "The project could not be identified. Refresh the page and try again.",
       /**
