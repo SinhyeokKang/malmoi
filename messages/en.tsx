@@ -303,7 +303,7 @@ export const en = {
    */
   seo: {
     /** 랜딩 `<title>` — absolute라 템플릿(`%s · Malmoi`)을 안 지나므로 브랜드를 스스로 담는다. */
-    homeTitle: "Malmoi — Localization for GitHub repositories",
+    homeTitle: "Malmoi: Localization for GitHub repositories",
     /**
      * `public/og.png`의 대체 텍스트 — 제목 반복이 아니라 이미지 내용 묘사다. ⚠️ 이미지는 사용자가 만든다(seo-geo U1) —
      * 그림이 바뀌면 이 문장도 같이 고친다.
