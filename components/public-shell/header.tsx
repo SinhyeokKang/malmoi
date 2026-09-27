@@ -1,3 +1,4 @@
+import { Box, LogIn } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -13,6 +14,12 @@ const NAV_LINK =
   "rounded-sm px-2.5 py-1.5 text-sm hover:bg-foreground/3 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
 /**
+ * primary의 선행 아이콘 — 라벨 키가 곧 행선지다(`publicCta`). `Get started`는 `/signin`이라 `LogIn`, `Open Malmoi`는
+ * `/projects`라 사이드바 `Projects`와 같은 `Box`다(DESIGN §6.615). 내비 링크 셋은 글자만이다.
+ */
+const CTA_ICON = { getStarted: LogIn, openMalmoi: Box } as const;
+
+/**
  * 공개 셸 헤더 — 로고 · `Main` 내비 · 우측 primary (시안 1a · 1e).
  *
  * ⚠️ **선택 상태를 그리지 않는다** — 현재 화면(`current`)은 `aria-current="page"`만 든다. 헤더에 서는 항목이 셋뿐이라
@@ -24,6 +31,7 @@ const NAV_LINK =
  * ⚠️ **GitHub에 외부 링크 글리프를 붙이지 않는다**(DESIGN §6.3) — 새 탭으로만 연다.
  */
 export function PublicHeader({ cta, current }: { cta: PublicCta; current?: "home" | "docs" }) {
+  const Icon = CTA_ICON[cta.label];
   return (
     <header className="mb-2 flex h-10 shrink-0 items-center gap-5 px-1">
       <Link
@@ -46,6 +54,7 @@ export function PublicHeader({ cta, current }: { cta: PublicCta; current?: "home
       </nav>
       <div className="ml-auto flex">
         <ButtonLink href={cta.href} variant="primary" size="md">
+          <Icon aria-hidden />
           {m.landing.shell[cta.label]}
         </ButtonLink>
       </div>

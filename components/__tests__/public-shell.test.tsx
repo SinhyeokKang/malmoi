@@ -156,6 +156,18 @@ describe("공개 셸 — 헤더", () => {
     expect(container.querySelectorAll("header [aria-current]")).toHaveLength(0);
   });
 
+  /** 헤더 primary는 선행 아이콘을 든다 — 라벨 키가 행선지라 아이콘도 그것을 따른다(DESIGN §6.615). 내비 링크 셋은 글자만이다. */
+  it("primary의 선행 아이콘 — Get started `LogIn` · Open Malmoi `Box`, 내비엔 아이콘이 없다", async () => {
+    for (const [status, glyph] of [["none", "lucide-log-in"], ["ok", "lucide-box"]] as const) {
+      const { container } = await render(h(PublicShell, { cta: publicCta(status), children: h("p", null, "body") }));
+      const first = container.querySelector("header > div a")?.firstElementChild;
+      expect(first?.tagName.toLowerCase()).toBe("svg");
+      expect(first?.getAttribute("aria-hidden")).toBe("true");
+      expect(first?.getAttribute("class")).toContain(glyph);
+      expect(container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] svg`)).toHaveLength(0);
+    }
+  });
+
   it("CTA는 받은 href·라벨 키 그대로 선다", async () => {
     const { container } = await render(h(PublicShell, { cta: publicCta("ok"), children: h("p", null, "body") }));
     const primary = container.querySelector("header > div a");

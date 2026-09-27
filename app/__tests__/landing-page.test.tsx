@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@/components/__tests__/helpers/dom";
 import type { SessionRead } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
+import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
 /**
@@ -70,6 +71,53 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     for (const a of starts) expect(a.getAttribute("href")).toBe(routes.signIn());
     const docs = [...container.querySelectorAll("main a")].filter((a) => a.textContent === m.landing.shell.docs);
     expect(docs.map((a) => a.getAttribute("href"))).toEqual([routes.docs()]);
+  });
+
+  /**
+   * **마무리 CTA** (2026-09-27 사용자) — 위아래 여백은 섹션 자신의 padding-block 240(히어로 간격 120의 두 배)이고,
+   * primary 옆에 GitHub(default · 같은 `lg`)가 선다. 새 탭 · 외부 링크 글리프 없음(DESIGN §6.3).
+   */
+  it("마무리 CTA — padding-block 240 · GitHub(default lg, 새 탭) + Get started", async () => {
+    const { container } = await render(await page(status));
+    const closing = container.querySelector<HTMLElement>("section[aria-labelledby=landing-closing]");
+    expect(closing?.className).toMatch(/(^|\s)py-60(\s|$)/);
+    const links = [...(closing?.querySelectorAll("a") ?? [])];
+    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+      [m.landing.shell.github, GITHUB_REPO_URL],
+      [m.landing.shell.getStarted, routes.signIn()],
+    ]);
+    const [github, start] = links;
+    expect([github?.getAttribute("target"), github?.getAttribute("rel")]).toEqual(["_blank", "noreferrer"]);
+    // 같은 크기 — `lg`(h-10 · rounded-lg). 변형은 default(테두리)와 primary다.
+    for (const a of links) expect(a.className).toContain("h-10");
+    expect(github?.className).toContain("border-input");
+    expect(start?.className).toContain("bg-primary");
+    expect(github?.querySelector("svg.lucide-external-link, svg.lucide-arrow-up-right")).toBeNull();
+  });
+
+  /**
+   * **CTA 버튼마다 선행 아이콘 하나** (2026-09-27 사용자, DESIGN §6.615) — Docs `BookOpen` · Get started `LogIn` · GitHub는
+   * 리포의 유일한 브랜드 마크(`components/sources/github-mark.tsx` — lucide 1.37에 `github`가 없다). 전부 장식이라 `aria-hidden`이고,
+   * 크기는 `Button`의 svg 슬롯(16)이 정한다 — 첫 자식이 svg여야 "선행"이다.
+   */
+  it("CTA 버튼 넷이 선행 아이콘을 `aria-hidden`으로 든다", async () => {
+    const { container } = await render(await page(status));
+    const hero = container.querySelector("section[aria-labelledby=landing-hero]");
+    const closing = container.querySelector("section[aria-labelledby=landing-closing]");
+    const buttons = [...(hero?.querySelectorAll("a") ?? []), ...(closing?.querySelectorAll("a") ?? [])];
+    expect(buttons).toHaveLength(4);
+    for (const a of buttons) {
+      const first = a.firstElementChild;
+      expect(first?.tagName.toLowerCase()).toBe("svg");
+      expect(first?.getAttribute("aria-hidden")).toBe("true");
+      expect(first?.getAttribute("class") ?? "").not.toMatch(/size-/);
+    }
+    const icon = (a: Element | undefined) => a?.firstElementChild?.getAttribute("class") ?? "";
+    expect(icon(buttons[0])).toContain("lucide-book-open");
+    expect(icon(buttons[1])).toContain("lucide-log-in");
+    expect(icon(buttons[3])).toContain("lucide-log-in");
+    // GitHub 마크는 lucide 클래스가 없는 리포 자산이다 — 경로 둘(얼굴 · 꼬리)이 그것을 가린다.
+    expect(buttons[2]?.firstElementChild?.querySelectorAll("path")).toHaveLength(2);
   });
 
   it("목업 프레임은 `aria-hidden`이고 캡션 다섯은 숨은 `<ol>`이 든다", async () => {
