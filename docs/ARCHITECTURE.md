@@ -2698,6 +2698,33 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
     `lib/__tests__/security-headers.test.ts`가 값을, `entry-points.test.ts`가 matcher(전 페이지 · `/api`·자산 제외)를 검사한다.
 - **서버리스 함수 타임아웃**: **blob 읽기는 이미 `BLOB_CONCURRENCY`(8) 청크 제한 병렬이다** — 실측 최대 106로케일이고 직렬이면 그 한 리포가 cron을 넘긴다 (2026-09-04 audit #18). 남은 순차 구간은 ref·tree·commit이고 파일 수와 무관하다.
 
+### 8.1 공개 페이지의 머리·크롤러·Analytics (2026-09-27, seo-geo — `lib/seo/`)
+
+- **절대 기준은 `SITE_ORIGIN`(`https://mal-moi.com`) 하나다** — canonical·sitemap·llms·JSON-LD가 전부 이것을 쓰고 **환경별로 바뀌지
+  않는다.** 비프로덕션은 robots가 통째로 막으니 canonical이 프로덕션을 가리키는 것이 맞다. `lib/invitation-email/config.ts`의 환경별
+  origin(“지금 이 배포”)과 합치지 않는다.
+- ⚠️ **Next metadata 병합이 얕다** — 자식이 `openGraph`·`alternates`를 주면 부모 것이 통째로 갈린다. 그래서 둘이 따라온다:
+  **루트에 canonical·`og:url`을 두지 않는다**(자기 `alternates`가 없는 앱·`/signin`·`/invite`·404 전부에 홈 canonical이 번진다 —
+  noindex와 모순, 404의 soft-404 신호). **OG 이미지는 파일 규약(`app/opengraph-image.png`)이 아니라 `OG_IMAGE` 상수**이고 루트와
+  `pageMetadata`가 **항상** 싣는다(정적 파일 메타는 파일이 있는 세그먼트에서만 합쳐진다). `pageMetadata`가 매번 완전한 객체를 내는 이유다.
+- **robots는 요청 시점 판정이다**(`force-dynamic` + 함수 안 `optionalEnv("VERCEL_ENV")`). 빌드 시점 값이면 Promote to Production이
+  preview 산출물을 올릴 때 프로덕션이 `Disallow: /`로 굳는다. **모르면 숨긴다** — `production` 밖은 전부 `Disallow: /`(보안 헤더의
+  "모르면 프로덕션처럼 좁힌다"와 반대 방향의 fail-closed).
+- ⚠️ **noindex 셋(`/signin`·`/invite/**`·`/signin/link/**`)을 robots.txt로 막지 않는다** — 막으면 크롤러가 페이지의 noindex를 못 보고
+  외부 링크만으로 URL이 색인된다(토큰이 검색 결과에 뜬다). `/projects`·`/account`는 비로그인에게 302라 본문이 없어 robots 거부가 맞다.
+- ⚠️ **스트리밍 metadata를 전 UA에서 끈다**(`next.config.ts`의 `htmlLimitedBots: /.*/`). `/`·`/docs/**`가 세션을 읽어 동적이라 Next는
+  metadata를 스트리밍하고, HTML-limited 목록 밖의 UA(GPTBot·ClaudeBot·PerplexityBot)는 `<title>`·canonical을 `<body>` 끝에서 받는다.
+  정적 `metadata` export도 동적 페이지에서는 스트리밍되므로 페이지별로는 못 막는다.
+- ⚠️ **sitemap·`llms*.txt`는 빌드 prerender가 전제다** — `guide/`를 읽는데 `outputFileTracingIncludes`는 `/docs/[[...slug]]` 함수에만
+  싣는다. `force-static`을 빼거나 동적 API를 쓰면 Vercel에서만 500이다(로컬 `next start`는 리포 파일을 그대로 읽어 못 잡는다).
+  셋은 **결정적**이다 — 같은 `guide/` 상태에서 같은 바이트(불변식 4의 정신: 크롤러가 “바뀜”을 판단하는 재료다), 정렬은 SUMMARY 하나.
+- **Analytics는 허용 목록이 유일한 거름망이다** — `<Analytics>`가 루트 레이아웃에 있어(추적 경로 `/`·`/signin`·`/docs`·`/privacy`에
+  공통 세그먼트가 없다) 앱 화면에서도 로드된다. `redactAnalyticsEvent`가 추적 경로만 통과시키고 쿼리·해시를 벗긴다(`utm_*`도 사라진다 —
+  받아들인 손실). 앱 URL엔 초대 토큰·프로젝트 slug·검색어가 실리므로 차단 목록이 아니다. ⚠️ **`beforeSend`는 `url`만 바꿀 수 있다** —
+  referrer는 못 건드리므로 토큰 페이지 둘(`/invite/**`·`/signin/link/**`)이 `referrer: "no-referrer"`를 낸다(`strict-origin-when-cross-origin`
+  아래 같은 출처 referrer는 전체 URL이다). 개발 서버에서는 렌더하지 않는다 — dev 디버그 스크립트(`va.vercel-scripts.com`)를 CSP가 막고,
+  CSP를 넓히지 않는다(프로덕션·preview는 동일 출처 `/_vercel/insights/*`).
+
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
 
 - **리포 이름은 주소, `Project.repositoryId`는 정체성이다.** 최초 생성·OWNER 재연결 때 GitHub가
