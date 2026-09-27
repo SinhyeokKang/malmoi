@@ -6,9 +6,9 @@ description: 실제 리포로 push→편집→pull→머지→재pull 왕복을 
 
 ## 사용
 
-- `/l10n-roundtrip <project-slug> --surface <slug> --path-template <template>` — 지정 표면으로 한 바퀴.
+- `/roundtrip <project-slug> --surface <slug> --path-template <template>` — 지정 표면으로 한 바퀴.
 - 두 표면 검증은 `--surface`·`--path-template` 쌍을 둘 지정하고, 각 표면 push·편집 뒤 Publish를 **한 번만** 한다.
-- `/l10n-roundtrip <project-slug> --dry` — **PR을 만들지 않고** 렌더 결과만 원본과 비교한다 (1·2단계까지).
+- `/roundtrip <project-slug> --dry` — **PR을 만들지 않고** 렌더 결과만 원본과 비교한다 (1·2단계까지).
 - `--merge <squash|merge|rebase>` — 4단계의 머지 방식. **기본 `squash`.** 루프 마커는 커밋 메시지와 PR 제목 둘 다에 있어 셋 다 가드를 지나야 하는데(ARCHITECTURE §3), 2026-09-17까지 이 스킬이 squash만 돌아 merge commit 회귀는 구조적으로 안 보였다(launch-readiness L1.2). `lib/pull/`을 고쳤으면 **`merge`로 한 번 더** 돈다.
 
 ## 언제 쓰나
@@ -103,7 +103,7 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/pull
 
 ### 4. 머지 → 재pull 수렴
 
-**PR 머지는 사용자가 한다** — 되돌리기 어려운 작업이라 이 스킬이 대신 승인하지 않는다. 명령을 제시하고 대기한다.
+**PR 머지는 이 스킬이 직접 한다** (2026-09-27 사용자 — "어차피 테스트 리포로 도는거라"). 대상이 전제 조건 1의 **폐기용 리포**일 때만이고, 아래 "머지 전 확인"을 통과한 뒤에 부른다. 폐기용 리포가 아니면 애초에 이 스킬을 돌리지 않는다.
 
 ```
 GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> --<squash|merge|rebase> --delete-branch
@@ -140,7 +140,7 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 ## 리포트
 
 ```
-🔄 l10n-roundtrip: <slug> (<adapter>, <키>키 <로케일>로케일)
+🔄 roundtrip: <slug> (<adapter>, <키>키 <로케일>로케일)
 전제: 폐기용 리포 <repo> / Project·Surface·경로 소유권 확인 / smoke:github OK
 1 push:       200 — <n>키 / <n>번역 / <n>refs
 2 값 고정점:   no-changes ✅ / ❌ (committed — 중단) · ⚠️ 표현 보존은 여기서 안 보인다
@@ -154,7 +154,7 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 ## 금지 사항
 
 - **실물 오픈소스 리포를 대상으로 삼지 않는다.** 폐기용 복제본만.
-- **PR 머지를 대신 하지 않는다** — 사용자에게 명령을 주고 대기한다.
+- **폐기용 리포가 아닌 곳의 PR을 머지하지 않는다** — 머지 권한은 전제 조건 1의 리포에만 있다.
 - **프로덕션 env·프로덕션 DB를 검증 때문에 바꾸지 않는다** — 로컬 dev 서버 + dev DB로 돌린다.
 - **`.env.local`을 편집하지 않는다** — 읽지도 쓰지도 않는다. 토큰은 명령 앞에 붙여 그 프로세스에만 넘긴다 (0단계).
 - **2단계 게이트를 건너뛰지 않는다.** 값 고정점이 깨진 채 3단계로 가면 PR이 전 파일 재작성으로 나오고, 그걸 "diff가 크네"로 넘기면 결정성 붕괴를 놓친다.

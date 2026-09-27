@@ -11,7 +11,7 @@
 **읽는 법**
 - 라운드 순서는 **런칭 차단 → 데이터 결함 → 첫 사용 경험 → 방어선 → 부채**다. R0은 코드가 아니라 콘솔·계정이다.
 - 🔒 = **제품 결정이 먼저**다. `/implement`는 이 표시에서 멈추고 결정을 받는다. 결정이 나면 PRODUCT 또는 ARCHITECTURE를 먼저 고치고 태스크를 푼다.
-- 검증 줄은 자동(`pnpm test` · `pnpm test:projects:postgres` · `pnpm typecheck`)과 수동(`/runtime-test` · `/design-sync` · `/l10n-roundtrip` · 콘솔)을 구분한다.
+- 검증 줄은 자동(`pnpm test` · `pnpm test:projects:postgres` · `pnpm typecheck`)과 수동(`/runtime-test` · `/design-sync` · `/roundtrip` · 콘솔)을 구분한다.
 - "0회/없음"을 단언하는 검증은 **같은 픽스처의 허용 경로에서 N > 0**을 짝으로 단언한다(POSTMORTEM 2026-09-14).
 - 감사 발견은 정적 읽기다 — **각 태스크의 첫 검증은 재현(red)이다.** 재현이 안 되면 태스크를 닫고 그 사실을 적는다.
 - **뮤테이션은 일회성 확인이 아니라 리포에 남는 단언으로 끝낸다.** "지우고 돌려보고 되돌린다"는 절차 자체가 사고였다(POSTMORTEM 2026-09-16 "뮤테이션을 되돌리는 `git checkout`이 미커밋 작업을 지웠다"). 작업 중인 파일에 `git checkout -- <경로>`를 쓰지 않는다.
@@ -70,10 +70,10 @@
 - [x] L1.2 (2026-09-17 완료) 번역 PR을 **merge commit**으로 머지해도 루프 마커가 살아 있게 한다. `lib/pull/payload.ts:19,76`은 마커를 커밋 메시지에만 넣고 PR 제목·본문(`lib/pull/run.ts:216,218`)에는 없다. 검사 셋(`action.yml:82`·`lib/onboarding/workflow.ts:143`·`docs/ACTIONS.md:58`)은 `head_commit.message`만 본다. merge commit 메시지는 `Merge pull request #N from …\n\n<PR 제목>`이라 지금은 마커가 없고, CI push가 DB를 Publish 시점 값으로 덮어 그 뒤 편집이 사라진다. `docs/ACTIONS.md`는 머지 방식을 한 번도 말한 적이 없다 — squash 의존이 무문서였다. (audit #1)
   - **방향(결정됨)**: **PR 제목에 마커**를 넣는다. merge commit 둘째 문단이 PR 제목이라 **기존 가드 셋이 그대로 잡는다** — `action.yml`·워크플로 스니펫·대상 리포 변경 0, 태그 이동 0. squash(기본 = 단일 커밋 메시지 / 리포 설정 "PR 제목" = 제목)·rebase(스냅샷 브랜치는 1커밋)도 전부 덮인다. "검사 쪽이 둘째 부모를 본다" 안은 러너 `fetch-depth`와 태그 릴리스를 부르므로 버린다. `findOpenPrUrl`(`run.ts:211`)로 **재사용되는 기존 PR은 제목을 PATCH**한다(`lib/github.ts` 안 installation 토큰 — 경계 위반 아님).
   - 검증(자동, 재현 먼저): `head_commit.message = "Merge pull request #N from a/b\n\n<지금 PR 제목>"` 픽스처에서 가드 판정이 **run**으로 나오는 red를 먼저 적는다. 마커 판정의 소비자는 bash·GH expression이라 TS 순수 함수는 거울일 뿐이다 — `lib/pull/__tests__/sync-branch-consumers.test.ts:18-31` 형으로 **생산자 상수(`SKIP_MARKER`)와 `action.yml:84`·`workflow.ts:143`·`ACTIONS.md:58` 리터럴을 텍스트로 묶는다.** PR 생성·재사용 둘 다에서 제목에 마커가 있다는 단언. 모양 다섯: merge commit · squash 기본 · squash "PR 제목" 설정 · rebase · **사람 커밋(마커 없음 → run)**. 사람 PR 제목에 마커가 우연히 든 경우는 "그 사람이 원한 것"으로 두고 ACTIONS.md에 적는다.
-  - 검증(수동, `/l10n-roundtrip`): 폐기용 리포에서 "Create a merge commit"으로 머지 → push run이 skip 로그(`action.yml:86` notice)를 남긴다. L1.2b 선행.
+  - 검증(수동, `/roundtrip`): 폐기용 리포에서 "Create a merge commit"으로 머지 → push run이 skip 로그(`action.yml:86` notice)를 남긴다. L1.2b 선행.
   - 문서: `docs/ACTIONS.md`에 "머지 방식은 무엇이든 된다 · PR 제목의 마커를 지우지 마라"(외부 계약), `PRODUCT.md:179` "Actions 경로는 실물로 검증돼 있다"를 "squash·merge commit 둘 다"로 정정. POSTMORTEM에 관련 항목이 0건이라 사고 전 정적 발견이다 — 고친 뒤 `/postmortem`.
   - ✅ **코드·자동 검증·문서 완료(2026-09-17)** — `PR_TITLE`(`payload.ts`), `findOpenPr`+`updatePrTitle`(`client.ts`·`github.ts`), 재사용 PR 제목 PATCH(`run.ts`), `skip-marker.test.ts`(모양 다섯 + 소비자 셋), `run.test.ts` 셋, ACTIONS.md "머지 방식" 절, PRODUCT:181, ARCHITECTURE §3. ✅ **실물 검증·회고 완료(2026-09-17)** — `org-install-qa`(폐기용 org 포크) PR #1을 `--merge`로 머지, 재사용 PR 제목 PATCH 확인, run 35231174347 job skipped, POSTMORTEM 2026-09-17 항목. ⚠️ 원래 후보 `i18n-format-check`·`bugshot-i18n-test-qa`는 설치 id가 낡아 [Reconnect] 필요(L2.10과 같이 본다).
-- [x] L1.2b (2026-09-17 완료 — `--merge <squash|merge|rebase>`, 머지 전 PR 제목 마커 확인 추가) `/l10n-roundtrip` 스킬에 머지 방식 인자(`--merge`/`--squash`)를 추가한다. 지금 `.claude/commands/l10n-roundtrip.md:108`은 `--squash`만 돌고 `:112`가 squash 결과에서만 마커를 확인해 merge commit 회귀는 구조적으로 안 보인다. **스킬 변경은 코드와 다른 커밋이다.**
+- [x] L1.2b (2026-09-17 완료 — `--merge <squash|merge|rebase>`, 머지 전 PR 제목 마커 확인 추가) `/roundtrip` 스킬에 머지 방식 인자(`--merge`/`--squash`)를 추가한다. 지금 `.claude/commands/roundtrip.md:108`은 `--squash`만 돌고 `:112`가 squash 결과에서만 마커를 확인해 merge commit 회귀는 구조적으로 안 보인다. **스킬 변경은 코드와 다른 커밋이다.**
   - 검증(수동): 스킬 문서에 두 방식의 확인 단계가 갈려 있다. `pnpm sync:agents:check` 대상 아님(미러 제외 스킬).
 - [x] L1.3 (2026-09-18 — 문서·`apply.ts` 주석은 2026-09-17에 이미 들어가 있었고 남은 것은 PG 검증이었다. `lib/keys/__tests__/push-absent-cells.integration.ts`: `""` · 키 부재 · 로케일 파일 부재 · orphaned 키 네 갈래가 DB 셀을 유지하고, 같은 페이로드의 값 있는 셀은 덮이며 `updatedBy = NULL`(대조), 뒤이은 pull이 유지된 셀을 그대로 낸다. 뮤테이션: `apply.ts`의 `t.value !== ""`를 빼면 red. **흡수 항목은 갈렸다** — 수술적 치환은 빈 값으로 치환하지 않아 UI에서 비워도 원본 값이 남고 다음 push가 되돌린다. "지우려면 UI에서 비운다"가 재생성 어댑터에서만 참이라 ARCHITECTURE §5.5.2에 한 문단 더했다. `test:projects:postgres` 115) push가 **리포에서 지우거나 `""`로 바꾼 번역**을 DB에 반영하지 않는 현재 동작을 **정본에 적는다(결정 (b))**. `lib/push/apply.ts:254`의 `t.value !== ""` 필터 때문에 결과가 셀 단위로 리포 ∪ DB가 되고, 다음 번역 PR이 지운 번역을 되살린다. `:253` 주석은 `keyId` 반쪽만 설명하고 `:262-264`가 "예외 없음"을 단언해 서로 모순이다. **POSTMORTEM 2026-09-09(`:811`)가 이 의미론의 정본이다** — `buildWriteEntries`가 `""`≡부재로 정했고 "판정 기준은 그 값이 없으면 키가 사라지는가"(`:824`). (a) "리포 부재면 DB 셀도 비움"은 §0 불변식 3(번역을 지우지 않고 보존)과 만나며, DB `""`는 pull에서 키 삭제라 "빈 값 기록"이 아니다. sync-edit-protection spec `:46-49`가 이미 이 구멍을 별도 spec으로 분리하고 선행 조건("명시적 빈값 vs 미번역 빈값을 export가 구별하는 수단")을 박아 뒀다. (audit #2)
   - 문서: ARCHITECTURE §0 불변식 3 옆과 §5.5.2 "예외도 없다" 아래에 **"코드에서 번역을 지우는 방법은 없다 — 지우려면 UI에서 비운다. push의 `""`·부재는 '모름'이지 '삭제'가 아니다"**. `apply.ts:253` 주석에 `!== ""`의 이유. PRODUCT §10에 "(a) 리포 부재 → DB 비움은 빈값 export 구별 수단(sync-edit-protection 후속 spec)이 정해질 때".
@@ -254,7 +254,7 @@
 
 ## R8 — 감사 후속 (2026-09-25, audit-report·delivery-invariants 디렉터리를 지우며 옮겼다)
 
-- [ ] L8.1 `/l10n-roundtrip` 미실시 — delivery-invariants(B1)의 수동 게이트. DESIGN §6.646의 보류 줄·base 부재 거부·전부 보류 미리보기가 "미실측"이다. 폐기용 리포(`i18n-order-check` · ts-dict 리포)로 한 바퀴.
+- [ ] L8.1 `/roundtrip` 미실시 — delivery-invariants(B1)의 수동 게이트. DESIGN §6.646의 보류 줄·base 부재 거부·전부 보류 미리보기가 "미실측"이다. 폐기용 리포(`i18n-order-check` · ts-dict 리포)로 한 바퀴.
 - [ ] L8.2 CSP enforce 뒤 런타임 콘솔 확인(audit #75) — 프로덕션·preview 콘솔에 CSP 위반이 0인지.
 - [ ] L8.3 prod `pg_default_acl` 재측정(audit #82) — 워커에 prod 자격증명이 없어 dev만 쟀다. `anon`·`authenticated`의 `public` 권한 0을 prod에서 확인(`/db` 5단계).
 
@@ -267,6 +267,6 @@
 1. **개발자(L0.5 GitHub 계정, `malmoi-test-org` 비관리자)**: 로그인 → 설치 요청 → (오너 승인) → 착지 → 프로젝트 생성 → 설정 화면 링크만 따라 워크플로 부착 → CI push. 관측물: 요청 대기 화면 · 착지 후 `/projects/new` · **대상 리포 run URL(green)**.
 2. **비개발자(L0.5 Google 계정, 테스트 사용자 목록 밖)**: 초대 링크 → Google 로그인 → 수락 → 편집 → Publish. 관측물: 수락 화면 · **PR URL**. **스톱워치**: 초대 링크 클릭부터 Publish까지 안내 없이 — PRODUCT §1 "10분 안에·설명 없이"의 유일한 측정이다.
 3. **개발자**: PR을 **"Create a merge commit"**으로 머지. 관측물: **merge commit SHA** · 재push run URL에 skip notice(`action.yml:86`).
-4. 머지 뒤: 비개발자가 Publish 이후 저장한 편집이 **DB에 남아 있고**(`updatedBy` 보존 쿼리 1건) 다음 Publish에 실린다 · 재pull이 **0 diff**(PRODUCT §1 "무의미한 PR" 없음, `l10n-roundtrip.md` 4단계) · sync-edit-protection T17의 보류→적재 재개.
+4. 머지 뒤: 비개발자가 Publish 이후 저장한 편집이 **DB에 남아 있고**(`updatedBy` 보존 쿼리 1건) 다음 Publish에 실린다 · 재pull이 **0 diff**(PRODUCT §1 "무의미한 PR" 없음, `roundtrip.md` 4단계) · sync-edit-protection T17의 보류→적재 재개.
 5. 🔒 결정은 전부 PRODUCT·ARCHITECTURE에 문장으로 남았다(위 "결정 기록"의 오른쪽 열).
 6. 이 디렉터리를 지운다.
