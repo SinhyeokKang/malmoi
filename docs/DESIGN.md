@@ -1064,7 +1064,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 위험 블록 | amber radius 10 · padding 12 · 13px · 글리프 14 mt 2 · **줄 사이 6** · `#fffbeb`/`#fde68a`/`#78350f` · **수에만 weight 500** |
 | 푸터 | padding 16 · gap 8 · flex-end · 버튼 36/radius 10/px 12/14px |
 | 확정 버튼 | **위험 집계가 0이어도 danger다** — 글자 `#dc2626` · bg `#fff` · border `destructive/40` |
-| 포커스 | 열릴 때 `Cancel`. 접근 이름 `Sync` ≠ 확정 라벨 — **확정 라벨이 건수로 갈린다** (2026-09-18): 미발송 0이면 `Sync from repository`, N이면 `Discard changes and sync`(무엇을 버리는지를 동사가 먼저 말한다). 둘 다 트리거와 이름이 다르다 |
+| 포커스 | 열릴 때 `Cancel`. 접근 이름 `Sync` ≠ 확정 라벨 — **확정 라벨이 건수로 갈린다** (2026-09-18): 미발송 0이면 `Sync from repository`, N이면 `Discard changes and sync`(무엇을 버리는지를 동사가 먼저 말한다). ⚠️ **N은 폐기 승인 지문과 같은 응답의 건수다** (audit #2) — 화면 건수는 발급 전 잠정값이고, 그동안 확정은 `aria-disabled`라 잠정값으로 승인되지 않는다. 둘 다 트리거와 이름이 다르다 |
 | `aria-describedby` | ⚠️ **Radix는 설명문 하나에만 건다** — 경고 블록 id를 함께 넘겨 넓힌다. 안 넓히면 열릴 때 읽히는 것이 "덮는다"까지이고 **무엇이 지워지는지는 안 읽힌다** |
 
 **위험 블록은 네 갈래이고 권유 줄이 갈래마다 다르다.** ⚠️ **블록이 줄어드는 방향으로 움직인다** —
