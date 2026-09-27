@@ -14,7 +14,7 @@ import { parse } from "yaml";
  * - `setup-node` v7의 자동 캐시가 대상 리포 `package.json`을 읽는다 → 명시로 끈다.
  */
 
-type Step = { name?: string; id?: string; if?: string; uses?: string; run?: string; shell?: string; with?: Record<string, unknown> };
+type Step = { name?: string; id?: string; if?: string; uses?: string; run?: string; shell?: string; env?: Record<string, unknown>; with?: Record<string, unknown> };
 
 const action = parse(readFileSync(join(".github", "actions", "malmoi-i18n-push", "action.yml"), "utf8")) as { runs: { steps: Step[] } };
 const steps = action.runs.steps;
@@ -65,6 +65,19 @@ describe("pnpm store 캐시 — 워크스페이스 안 복사본을 키로 쓴�
     expect(removeAt).toBeGreaterThan(pnpmAt);
     expect(steps[removeAt]?.if).toContain("always()");
     expect(steps[removeAt]?.if).toContain(GUARD);
+  });
+
+  it("정리가 준비의 디렉터리만 지운다 — 경로는 env로 받고 워크스페이스 접두사를 확인한다", () => {
+    const remove = steps.find((s) => JSON.stringify(s).includes(`steps.${prepId}.outputs.dir`) && s.run?.includes("rm -rf") === true);
+    const envName = Object.entries(remove?.env ?? {}).find(([, v]) => outputRef(v, "dir") === prepId)?.[0];
+    expect(envName).toBeDefined();
+    // `${{ }}`를 스크립트에 보간하지 않는다 — 이 파일의 관례다.
+    expect(remove?.run).not.toContain("${{");
+    expect(remove?.run).toContain(`"$GITHUB_WORKSPACE"/.malmoi-i18n-cache.*) rm -rf -- "$${envName}"`);
+  });
+
+  it("준비가 판정을 `detect-cache.cjs`에 맡긴다 — 단위 테스트가 보는 그 파일이다", () => {
+    expect(steps[prepAt]?.run).toContain("detect-cache.cjs");
   });
 
   it("`run_install`을 주지 않는다 — install은 말모이 lockfile 옆에서 우리가 돈다", () => {
