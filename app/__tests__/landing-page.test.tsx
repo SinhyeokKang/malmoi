@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
@@ -6,6 +8,7 @@ import type { SessionRead } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
+import { navFooterItems } from "@/lib/shell/nav";
 
 /**
  * **루트(`/`)의 세 갈래** (ARCHITECTURE `rootView` 문단 · DESIGN §6.615) — `ok`는 여전히 `/projects`(2026-09-10 결정), `none`·`unavailable`은 랜딩이다.
@@ -96,7 +99,7 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
   });
 
   /**
-   * **CTA 버튼마다 선행 아이콘 하나** (2026-09-27 사용자, DESIGN §6.615) — Docs `BookOpen` · Get started `LogIn` · GitHub는
+   * **CTA 버튼마다 선행 아이콘 하나** (2026-09-27 사용자, DESIGN §6.615) — Docs는 앱 셸 `Docs` 항목과 같은 글리프 · Get started `LogIn` · GitHub는
    * 리포의 유일한 브랜드 마크(`components/sources/github-mark.tsx` — lucide 1.37에 `github`가 없다). 전부 장식이라 `aria-hidden`이고,
    * 크기는 `Button`의 svg 슬롯(16)이 정한다 — 첫 자식이 svg여야 "선행"이다.
    */
@@ -113,7 +116,11 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
       expect(first?.getAttribute("class") ?? "").not.toMatch(/size-/);
     }
     const icon = (a: Element | undefined) => a?.firstElementChild?.getAttribute("class") ?? "";
-    expect(icon(buttons[0])).toContain("lucide-book-open");
+    // Docs는 `navFooterItems`의 Docs 항목과 같은 글리프다 — 셸이 바꾸면 랜딩도 따라간다.
+    const docsIcon = navFooterItems().find((item) => item.key === "docs")?.icon;
+    expect(docsIcon).toBeDefined();
+    const expected = docsIcon ? /class="([^"]*)"/.exec(renderToStaticMarkup(createElement(docsIcon)))?.[1] : undefined;
+    expect(icon(buttons[0])).toBe(expected);
     expect(icon(buttons[1])).toContain("lucide-log-in");
     expect(icon(buttons[3])).toContain("lucide-log-in");
     // GitHub 마크는 lucide 클래스가 없는 리포 자산이다 — 경로 둘(얼굴 · 꼬리)이 그것을 가린다.

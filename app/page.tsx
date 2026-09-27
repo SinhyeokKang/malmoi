@@ -1,4 +1,4 @@
-import { BookOpen, LogIn } from "lucide-react";
+import { CircleHelp, LogIn } from "lucide-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -12,6 +12,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
+import { navFooterItems } from "@/lib/shell/nav";
 import { jsonLdHtml, LANDING_LD } from "@/lib/seo/json-ld";
 import { pageMetadata } from "@/lib/seo/site";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,12 @@ export const metadata: Metadata = {
   ...pageMetadata({ title: m.seo.homeTitle, description: m.landing.hero.body, path: "/" }),
   title: { absolute: m.seo.homeTitle },
 };
+
+/**
+ * 히어로 `Docs`의 아이콘은 앱 셸의 `Docs` 항목(`navFooterItems`)과 같은 것이다 — 같은 행선지가 화면마다 다른 글리프를 쓰지 않게
+ * 정의에서 읽는다. 항목이 사라지면 지금의 글리프로 떨어진다.
+ */
+const DocsIcon = navFooterItems().find((item) => item.key === "docs")?.icon ?? CircleHelp;
 
 /**
  * **루트는 랜딩이다** (Claude Design `Landing.dc.html` 1a–1d). 로그인 화면은 `/signin`이 그린다.
@@ -53,7 +60,7 @@ export default async function Root() {
         <p className="mt-5 max-w-[44em] text-lg leading-[1.6] text-balance">{hero.body}</p>
         <div className="mt-5 flex gap-2">
           {/* 선행 아이콘은 `Button`의 svg 슬롯(16 · gap 8)에 맡긴다 — 크기를 여기서 주지 않는다(DESIGN §6.615). */}
-          <ButtonLink href={routes.docs()} size="lg"><BookOpen aria-hidden />{shell.docs}</ButtonLink>
+          <ButtonLink href={routes.docs()} size="lg"><DocsIcon aria-hidden />{shell.docs}</ButtonLink>
           <ButtonLink href={routes.signIn()} variant="primary" size="lg"><LogIn aria-hidden />{shell.getStarted}</ButtonLink>
         </div>
       </section>
