@@ -206,3 +206,36 @@ it("code-dict 중복 프로퍼티는 미리보기를 막지 않고 마지막 값
   mocks.client.getBlobText.mockResolvedValue("hello: first\nhello: old\n");
   await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow("Preview cannot read all values");
 });
+/**
+ * **키 자리가 표면의 어느 파일에도 없으면 미리보기도 보류로 센다** (audit #1 B · launch-audit B3.1). 전에는 같은 파일의 다른 로케일이 그 키를
+ * 가질 때만 `withoutKey`였고 나머지는 "Preview path unavailable"로 화면을 막았는데, 실행은 경고 없이 그 셀을 전달로 셌다 — 둘이 갈렸다.
+ */
+it("ts-dict 키가 모든 로케일 객체에서 사라지면 미리보기 withoutKey와 실행 withheld가 같다 (같은 픽스처)", async () => {
+  const { runPull } = await import("@/lib/pull/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  const A = 'const en = { hello: "hi" };\nconst ko = { hello: "안녕" };\n';
+  const cols = { adapterName: "ts-dict", pathTemplate: "*.ts", nested: null };
+  db.project.findUniqueOrThrow.mockResolvedValue({ ...project, surfaces: [{ ...surface, ...cols, locales: [{ code: "en" }, { code: "ko" }] }] });
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], localeCode: "ko" }, { ...rows[0], keyId: "k2", localeCode: "ko", value: "잘가", stringKey: { key: "gone" } }]);
+  db.translation.count.mockResolvedValue(2);
+  db.translation.groupBy.mockResolvedValue([{ keyId: "k" }, { keyId: "k2" }]);
+  mocks.client.getTree.mockResolvedValue([{ path: "a.ts", sha: "a" }]);
+  mocks.client.getBlobText.mockResolvedValue(A);
+  const preview = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: [{ path: "a.ts", sha: "a" }] }, blobs: { a: A } });
+  const edit = (id: string, keyId: string) => ({ id, token: id, cell: { surfaceId: "s", keyId, localeCode: "ko", restoreValue: "" } });
+  const result = await runPull({
+    loadState: async () => ({
+      project: { ...project, slug: "acme" },
+      surfaces: [{ ...surface, ...cols, localeCodes: ["en", "ko"], keys: [
+        { id: "k", key: "hello", sourceText: "hi", orphaned: false, cells: { en: { value: "hi" }, ko: { value: "new" } } },
+        { id: "k2", key: "gone", sourceText: "bye", orphaned: false, cells: { en: { value: "bye" }, ko: { value: "잘가" } } },
+      ] }],
+      maxUpdatedAt: new Date(), unpublished: 2, pendingEdits: [edit("t1", "k"), edit("t2", "k2")],
+    }),
+    createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
+  });
+  expect(preview.groups.flatMap(g => g.rows.map(r => r.key))).toEqual(["hello"]);
+  expect(preview).toMatchObject({ withoutFile: 0, withoutKey: 1, sendable: { total: 1, keys: 1 } });
+  expect(result).toMatchObject({ status: "committed", delivered: preview.sendable.total, withheld: { file: 0, key: preview.withoutKey } });
+});

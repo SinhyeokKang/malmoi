@@ -142,6 +142,15 @@ export function serializeJson(value: unknown, style: JsonStyle = DEFAULT_JSON_ST
   return style.bom ? BOM + text : text;
 }
 
+/**
+ * 낼 항목이 0개인 재생성 파일. **원본이 있을 때만 `{}`를 낸다** (audit #1 · ARCHITECTURE §1.1 "낼 것 0개") — 원본 파일은 이미
+ * "이 로케일 지원함"이라 빈 객체가 새 의미를 만들지 않고, `null`로 두면 옛 값이 파일에 남아 비운 편집이 전달되지 않는다.
+ * 원본이 없으면 `null` — 빈 새 파일은 없던 로케일을 지원한다고 말한다. 표현(들여쓰기·줄바꿈·BOM)은 원본에서 읽는다.
+ */
+export function emptyCatalog(original: string | undefined): string | null {
+  return original === undefined ? null : serializeJson(Object.create(null) as Record<string, never>, observeJsonStyle(original));
+}
+
 /** 코드 유닛 하나를 `\uXXXX`로. 소문자 4자리 — 원본 관례이자 `charCodeAt` 기본형이다. */
 const NON_ASCII_UNIT = /[-￿]/g;
 

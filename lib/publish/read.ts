@@ -9,6 +9,7 @@ import { actorLabel } from "@/lib/keys/view";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
+import { keySlot } from "@/lib/pull/undeliverable";
 import { buildPublishDiff, PREVIEW_LIMIT, type BaseValues, type PublishCell } from "./diff";
 import { PreviewBaseFileMissing, type PublishPreview } from "./preview";
 
@@ -82,15 +83,10 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
       }
       const matches = paths.filter(p => adapter.layout === "per-locale" ? p.locale === row.localeCode :
         Object.hasOwn(base[p.path] ?? {}, row.localeCode) && Object.hasOwn(base[p.path]![row.localeCode]!, row.stringKey.key));
-      // ts-dict: 그 로케일 객체에 자리가 없고 같은 파일의 다른 로케일이 그 키를 가지면 실행은 `write-slot-missing`으로 그 셀만 보류한다.
-      if (adapter.layout === "multi-locale" && adapter.writeStrategy === "surgical" && matches.length === 0) {
-        const owners = paths.filter(p => {
-          const file = base[p.path];
-          return file !== undefined && Object.hasOwn(file, row.localeCode)
-            && Object.keys(file).some(locale => locale !== row.localeCode && Object.hasOwn(file[locale]!, row.stringKey.key));
-        });
-        if (owners.length > 0) { withoutKey++; heldKeys.add(row.keyId); continue; }
-      }
+      // ts-dict: 그 로케일 객체는 있는데 어느 파일에도 키 자리가 없으면 실행은 그 셀만 보류한다 — **같은 `keySlot` 판정이다**(audit #1 B).
+      // 같은 파일의 다른 로케일이 키를 가질 때(`write-slot-missing`)만 세면 키가 모든 로케일에서 사라진 셀은 화면이 막고 실행은 전달로 셌다.
+      if (adapter.layout === "multi-locale" && adapter.writeStrategy === "surgical" && matches.length === 0
+        && keySlot(base, row.localeCode, row.stringKey.key).kind === "absent") { withoutKey++; heldKeys.add(row.keyId); continue; }
       // 대상을 확정하지 못했는데 첫 파일을 고르면 무엇을 덮는지 거짓으로 안내한다.
       const path = matches.length === 1 ? matches[0]?.path : undefined;
       if (!path) throw new Error("Preview path unavailable");

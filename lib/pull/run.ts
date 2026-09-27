@@ -14,7 +14,7 @@ import { renderLocaleFiles, type RenderKey } from "./render";
 import { compareSurfaces, surfaceOwnership } from "@/lib/surfaces/plan";
 import { planMultiSurfacePull } from "./surfaces";
 import { planProtectedPublish } from "@/lib/protection/plan";
-import { blockingErrors, splitEdits, withheldCoordinates } from "./undeliverable";
+import { blockingErrors, readSlotFiles, slotlessCells, splitEdits, withheldCoordinates } from "./undeliverable";
 
 /**
  * pull 오케스트레이션. **판정은 전부 `plan.ts`·`payload.ts`·`render.ts`에 있고** 여기는 순서와
@@ -220,7 +220,19 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
   // ⚠️ **보류 셀은 전달 확인에 싣지 않는다** — 불변식 9. `deliveryContexts`는 좁히지 않는다: 좁히면 그 표면의 확인이 무효로 남아
   // 표면 안 모든 키의 Revert가 막힌다(delivery-invariants D3). 1층은 그대로 전체 pending 수라 보류가 남으면 매 실행 트리를 읽는다.
   const keyById = new Map(surfaces.flatMap(surface => surface.keys.flatMap(k => (k.id === undefined ? [] : [[k.id, k.key] as const]))));
-  const split = splitEdits(pendingEdits, withheldCoordinates(rendered), keyId => keyById.get(keyId));
+  const coordinates = withheldCoordinates(rendered);
+  // ⚠️ **키 자리가 표면의 어느 파일에도 없는 ts-dict 셀도 보류다** (audit #1 B) — writer는 삽입하지 않고, 같은 파일의 다른 로케일이 그 키를
+  // 가질 때만 경고한다. 미리보기(`publish/read.ts`)가 같은 `keySlot`으로 판정한다. 원본만 읽는다 — 이 어댑터의 렌더는 자리를 만들지 않는다.
+  for (const item of resolved) {
+    const adapter = adapterFor(item.format);
+    if (adapter.layout !== "multi-locale" || adapter.writeStrategy !== "surgical") continue;
+    const files = readSlotFiles(adapter, item.format, item.paths.flatMap(p => {
+      const content = current.get(p.path);
+      return content === undefined ? [] : [{ path: p.path, content }];
+    }));
+    for (const cell of slotlessCells(item.surface.id, files, pendingEdits, keyId => keyById.get(keyId))) coordinates.cells.add(cell);
+  }
+  const split = splitEdits(pendingEdits, coordinates, keyId => keyById.get(keyId));
   const withheld = split.withheld.length === 0 ? {} : { withheld: split.withheldBy };
   if (split.delivered.length === 0 && split.withheld.length > 0) return { status: "skipped", reason: "withheld", withheld: split.withheldBy };
 

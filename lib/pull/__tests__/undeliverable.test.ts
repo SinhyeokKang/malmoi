@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { blockingErrors, splitEdits, withheldCoordinates, type RenderedSurface } from "../undeliverable";
+import { blockingErrors, keySlot, readSlotFiles, slotlessCells, splitEdits, withheldCoordinates, type RenderedSurface, type SlotFiles } from "../undeliverable";
+import { tsDict } from "@/lib/adapters/ts-dict";
+import type { DetectedFormat } from "@/lib/adapters/types";
 import type { PendingEdit } from "../run";
 
 /**
@@ -113,5 +115,40 @@ describe("splitEdits — 캡처 편집을 실린 것/보류된 것으로 가른�
     const out = splitEdits([{ id: "e1", token: "t" }], { locales: new Set(), cells: new Set() }, keyOf);
     expect(out.delivered).toHaveLength(1);
     expect(out.withheld).toHaveLength(0);
+  });
+});
+
+describe("keySlot · slotlessCells — ts-dict 키 자리 (audit #1 B)", () => {
+  const files: SlotFiles = {
+    "ns/a.ts": { en: { hello: "Hi" }, fr: { hello: "Salut" } },
+    "ns/b.ts": { en: { bye: "Bye" }, fr: {} },
+  };
+
+  it("자리가 있으면 그 파일들 · 로케일 객체는 있는데 키가 어디에도 없으면 absent · 로케일 객체가 없으면 no-locale", () => {
+    expect(keySlot(files, "fr", "hello")).toEqual({ kind: "slot", paths: ["ns/a.ts"] });
+    expect(keySlot(files, "fr", "gone")).toEqual({ kind: "absent" });
+    expect(keySlot(files, "de", "hello")).toEqual({ kind: "no-locale" });
+  });
+
+  it("프로토타입 키는 자리가 아니다", () => {
+    expect(keySlot(files, "fr", "constructor")).toEqual({ kind: "absent" });
+    expect(keySlot(files, "toString", "hello")).toEqual({ kind: "no-locale" });
+  });
+
+  it("absent 셀만 좌표로 낸다 — 다른 표면·좌표 없는 편집·no-locale은 제외", () => {
+    const keys: Record<string, string> = { k1: "hello", k2: "gone", k3: "bye" };
+    const edits = [edit("1", "fr", "k1"), edit("2", "fr", "k2"), edit("3", "fr", "k3"), edit("4", "de", "k2"), edit("5", "fr", "k2", "s2"),
+      { id: "6", token: "t6" }];
+    expect(slotlessCells("s1", files, edits, (id) => keys[id])).toEqual(["s1\0fr\0gone", "s1\0fr\0bye"]);
+  });
+
+  it("readSlotFiles는 파일마다 읽는다 — 로케일이 파일 사이에 섞이지 않는다", () => {
+    const format: DetectedFormat = { adapter: "ts-dict", pathTemplate: "*.ts", locales: ["en", "fr"] };
+    const read = readSlotFiles(tsDict, format, [
+      { path: "a.ts", content: 'const en = { hello: "Hi" };\nconst fr = {};\n' },
+      { path: "b.ts", content: 'const en = { bye: "Bye" };\nconst fr = { bye: "Salut" };\n' },
+    ]);
+    expect(keySlot(read, "fr", "hello")).toEqual({ kind: "absent" });
+    expect(keySlot(read, "fr", "bye")).toEqual({ kind: "slot", paths: ["b.ts"] });
   });
 });

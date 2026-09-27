@@ -407,6 +407,14 @@ export function writerContractViolations(adapter: Adapter): string[] {
         bad.push("원본의 **값**이 출력에 새어 나왔다 — 원본에서 읽는 것은 표현뿐이다 (병합 없음)");
       }
     }
+    // **원본이 있는데 낼 것이 0개면 `{}`다** (audit #1 · launch-audit B3.1 A). `null`이면 호출부가 파일을 안 내 옛 값이 남는데,
+    // 그 로케일의 마지막 번역을 비운 편집은 전달로 셌다. 원본의 값이 새지 않아야 하는 것은 위와 같다.
+    const emptied = adapter.write(donor, { locale, entries: [{ key: "only", message: "" }] });
+    if (emptied === null) {
+      bad.push("원본이 있는데 낼 항목이 0개라고 null을 냈다 — 파일에 옛 값이 남는다 (빈 객체를 내야 한다)");
+    } else if (emptied.includes(STYLE_DONOR_VALUE) || emptied.replace(/\s/g, "") !== "{}") {
+      bad.push(`원본이 있는데 낼 항목이 0개일 때 빈 객체가 아니다: ${JSON.stringify(emptied)}`);
+    }
   }
   if (!plain.endsWith("\n")) bad.push("파일 끝 개행이 없다");
   if (plain.endsWith("\n\n")) bad.push("파일 끝 개행이 2개 이상이다");
@@ -424,7 +432,7 @@ export function writerContractViolations(adapter: Adapter): string[] {
     bad.push("writeEmpty 표시가 있는 빈 값을 뺐다 — base 파일에서 키가 사라진다");
   }
   if (write([{ key: "only", message: "", orphaned: false }]) !== null) {
-    bad.push("낼 항목이 0개인데 null을 내지 않았다 — 빈 파일은 '이 로케일 지원함'으로 읽힌다");
+    bad.push("원본이 없는데 낼 항목이 0개인데 null을 내지 않았다 — 빈 새 파일은 '이 로케일 지원함'으로 읽힌다");
   }
   if (write([{ key: "only", message: "V", orphaned: true }]) !== null) {
     bad.push("남은 키가 orphaned뿐인데 null을 내지 않았다");

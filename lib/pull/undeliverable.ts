@@ -1,3 +1,4 @@
+import type { Adapter, AdapterFile, DetectedFormat } from "@/lib/adapters/types";
 import type { LocalFile, RenderError } from "./plan";
 import type { PendingEdit } from "./run";
 
@@ -49,6 +50,60 @@ export function withheldCoordinates(rendered: readonly RenderedSurface[]): Withh
 /** reject 대상 오류만. 문자열 조립(`warnings`)은 호출부가 이 결과로 한다. */
 export function blockingErrors(rendered: readonly RenderedSurface[]): { surfaceSlug: string; error: RenderError }[] {
   return [...classified(rendered)].flatMap(({ surface, error, verdict }) => (verdict.kind === "blocking" ? [{ surfaceSlug: surface.surfaceSlug, error }] : []));
+}
+
+/**
+ * 수술적 multi-locale(ts-dict) 표면의 **키 자리**: 경로 → 로케일 → 그 로케일 객체의 키 → 값. `publish/read.ts`의 이전 값 맵과 같은 모양이라
+ * 미리보기와 실행이 같은 입력으로 판정한다. 값은 판정에 쓰지 않는다 — 자리의 유무만 본다(불변식 1).
+ */
+export type SlotFiles = Readonly<Record<string, Readonly<Record<string, Readonly<Record<string, string>>>>>>;
+
+/** 원본 파일들을 파일마다 읽어 `SlotFiles`로. 여러 파일을 한 번에 읽으면 로케일이 합쳐져 어느 파일의 자리인지 잃는다. */
+export function readSlotFiles(adapter: Pick<Adapter, "read">, format: DetectedFormat, files: readonly AdapterFile[]): SlotFiles {
+  const out: Record<string, Record<string, Record<string, string>>> = Object.create(null);
+  for (const file of files) {
+    const byLocale: Record<string, Record<string, string>> = Object.create(null);
+    for (const locale of adapter.read(format, [file]).locales) {
+      const entries: Record<string, string> = Object.create(null);
+      for (const entry of locale.entries) entries[entry.key] = entry.message;
+      byLocale[locale.locale] = entries;
+    }
+    out[file.path] = byLocale;
+  }
+  return out;
+}
+
+/**
+ * 셀 하나의 자리 판정 (audit #1 B · launch-audit B3.1). ts-dict는 없는 키를 **삽입하지 않으므로**(ARCHITECTURE §1.4) 자리가 없는 셀은 파일
+ * 바이트에 닿지 않는다.
+ * - `slot` — 그 로케일 객체에 키가 있는 파일들
+ * - `absent` — 그 로케일 객체는 있는데 어느 파일에도 키가 없다 → **보류**. writer의 `write-slot-missing`은 같은 파일의 다른 로케일이
+ *   키를 가질 때만 나서, 키가 모든 로케일에서 사라진 경우는 경고 없이 전달로 셌다
+ * - `no-locale` — 그 로케일 객체가 어느 파일에도 없다. 실행은 `write-locale-object-missing`으로 거부한다 — 보류가 아니다
+ */
+export type SlotVerdict = { kind: "slot"; paths: string[] } | { kind: "absent" } | { kind: "no-locale" };
+
+export function keySlot(files: SlotFiles, locale: string, key: string): SlotVerdict {
+  const withLocale = Object.keys(files).filter((path) => Object.hasOwn(files[path]!, locale));
+  if (withLocale.length === 0) return { kind: "no-locale" };
+  const paths = withLocale.filter((path) => Object.hasOwn(files[path]![locale]!, key));
+  return paths.length === 0 ? { kind: "absent" } : { kind: "slot", paths };
+}
+
+/** 표면 하나에서 `absent`인 편집 셀의 좌표(`withheldCoordinates`의 `cells`와 같은 형). */
+export function slotlessCells(
+  surfaceId: string,
+  files: SlotFiles,
+  edits: readonly PendingEdit[],
+  keyOf: (keyId: string) => string | undefined,
+): string[] {
+  return edits.flatMap((edit) => {
+    const cell = edit.cell;
+    if (cell === undefined || cell.surfaceId !== surfaceId) return [];
+    const key = keyOf(cell.keyId);
+    if (key === undefined || keySlot(files, cell.localeCode, key).kind !== "absent") return [];
+    return [`${surfaceId}\0${cell.localeCode}\0${key}`];
+  });
 }
 
 /**
