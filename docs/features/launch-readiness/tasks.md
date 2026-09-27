@@ -123,11 +123,11 @@
   - 검증(자동): 시계 주입 — 0개 · 1개 단독 초과 · 전부 fast · 마지막 하나가 초과 넷. 초과 시 응답에 `unprocessed` N>0, **예산 안이면 0** 대조.
   - 문구: ④ 설명 줄(`DESIGN.md:1196` "Imported N keys. Add the push token…")의 **둘째 문장**으로 넣는다(별도 블록이면 `/design-sync`). ⚠️ "every night"는 **참으로 확정**(2026-09-19 L0.3 — Hobby 하루 1회 · `vercel.json` `0 18 * * *` · 프로덕션 배포에서만). 사전 주석에 근거 코드(`selectPullTargets`·`vercel.json`)를 적는다(POSTMORTEM 2026-09-14). PRODUCT §4.1/§7.6에 야간 PR 한 줄.
   - 검증(자동, DOM): ④ 렌더에 그 키. 검증(수동, `/runtime-test`): ④는 실제 생성으로만 도달 — `bugshot-i18n-test-qa`가 아니라 새 생성 한 번.
-- [ ] L2.10 **GitHub App을 둘로 나눈다(결정됨)**: `malmoi`(prod — 개인키는 Vercel Production 한 곳) + `malmoi-dev`(로컬·preview — 설치 대상은 폐기용 리포만). 지금은 `lib/github.ts:32-39` `createApp`이 어떤 `installationId`든 토큰을 찍고(`:290-296`) 제한은 호출부의 `Project.installationId`뿐이라, 공개 뒤엔 로컬 머신의 개인키로 모든 외부 설치의 contents:write 토큰을 발급할 수 있다. 재연결 비용(`installationId`, malmoi#52)은 **지금 테스트 리포 6개 = ~0이고 런칭 뒤엔 고객마다 [Reconnect]다**. (audit #12)
+- [ ] L2.10 (2026-09-27 진행 — **dev App `malmoi-sync-dev`(ID 5095571) 생성·public·설치 완료**: 권한은 prod와 같은 셋(contents·pull_requests write, metadata read, 이벤트 0), "Request user authorization during installation" 켬. 설치 = `SinhyeokKang` 선택 5(`i18n-format-check`·`i18n-order-check`·`i18n-single-locale`·`i18n-none`·`i18n-many-locales`) + `malmoi-test-org` 선택 1(`bugshot-i18n-test`). 로컬 `.env.local`(사용자가 교체)·Vercel **Preview** 다섯 변수 교체, Production은 prod App 값 유지(⚠️ `GITHUB_APP_ID`가 Production·Preview 한 변수로 묶여 있어 `env rm … preview`가 둘 다 지웠다 — Production을 `4787722`로 복구, 그 사이 prod 배포 없음). dev DB 프로젝트 7개 `installationId`를 새 설치로 직접 갱신(Reconnect 사건 미기록). `pnpm smoke:github bugshot-i18n-test-qa`·`i18n-format-check` 통과. **prod App 설치는 `SinhyeokKang`(All)·`malmoi-test-org`에서 제거** — prod DB 프로젝트가 테스트 흔적 둘(`bugshot-i18n-test`·`i18n-workflow-check`)뿐임을 읽기 전용 조회로 확인한 뒤. **남은 것**: prod App callback을 `https://mal-moi.com/api/github/callback` 하나로 줄이기 · `test-sinhyeok` 계정의 prod 설치(이 세션에서 관리 불가) · prod smoke(개인키가 Vercel Production에만 있어 로컬에서 못 돈다 — `/merge` 뒤 확인) · dev 키로 prod 설치 토큰 발급 실패 짝 검증 · CLAUDE.md 게이트웨이 "셋이 하나를 공유"·OPERATIONS 갱신 · `malmoi-test-org/i18n-workflow-check`를 dev 설치에 넣을지) **GitHub App을 둘로 나눈다(결정됨)**: `malmoi`(prod — 개인키는 Vercel Production 한 곳) + `malmoi-dev`(로컬·preview — 설치 대상은 폐기용 리포만). 지금은 `lib/github.ts:32-39` `createApp`이 어떤 `installationId`든 토큰을 찍고(`:290-296`) 제한은 호출부의 `Project.installationId`뿐이라, 공개 뒤엔 로컬 머신의 개인키로 모든 외부 설치의 contents:write 토큰을 발급할 수 있다. 재연결 비용(`installationId`, malmoi#52)은 **지금 테스트 리포 6개 = ~0이고 런칭 뒤엔 고객마다 [Reconnect]다**. (audit #12)
   - 따라오는 것: `GITHUB_APP_ID`·`PRIVATE_KEY`·`GITHUB_APP_CLIENT_*`·`GITHUB_APP_SLUG` App별 · `lib/github-connect/origin.ts:38-47` 호스트별 callback 등록 · L0.2 설정을 둘 다에 · OPERATIONS "키를 든 곳"(POSTMORTEM 2026-09-06 `:504`) 재계수 · **`d759d39`가 오늘 적은 CLAUDE.md:266 "셋이 하나를 공유"를 되돌림** · dev DB 프로젝트 여섯 [Reconnect].
   - 검증(수동): `pnpm smoke:github <slug>`가 로컬(dev App)·프로덕션(prod App) 각각 통과. dev App 개인키로 prod 설치 ID 토큰 발급 시도 → 실패(짝: dev 설치 ID → 성공).
 
-- [ ] L2.11 **공개 직전 prod·dev DB 데이터를 비운다(결정됨, 2026-09-27 사용자)**: prod에 테스트 흔적(`bugshot-i18n-test` 프로젝트 · 노출된 push 토큰)이 남아 있고, 실사용자가 없는 지금이 비용 0인 마지막 시점이다.
+- [ ] L2.11 (2026-09-27 메모 — prod DB `Project`는 테스트 흔적 둘뿐이고 prod App 설치 제거로 둘 다 GitHub 연결이 끊겼다) **공개 직전 prod·dev DB 데이터를 비운다(결정됨, 2026-09-27 사용자)**: prod에 테스트 흔적(`bugshot-i18n-test` 프로젝트 · 노출된 push 토큰)이 남아 있고, 실사용자가 없는 지금이 비용 0인 마지막 시점이다.
   - **순서**: L2.10(App 분리 — 설치 ID가 바뀌어 기존 프로젝트는 어차피 [Reconnect]) 뒤 · sec-audit-3 `/merge`(v1.0.0 · prod `db:deploy` · T2.3 USAGE 재조회) 뒤 · 공개 전.
   - **방법**: `migrate reset`이 아니라 앱 테이블 `TRUNCATE … CASCADE` — 스키마·`_prisma_migrations`·스키마 권한(USAGE 회수·anon GRANT 0)을 그대로 둔다. 실행 전 prod `pg_dump` 백업(로컬 보관 — PII 봉투라 키와 쌍으로). prod 쓰기라 **명령을 보이고 사용자 승인 뒤** 실행한다.
   - **같이 치운다**: Vercel Blob 두 스토어(`pnpm smoke:blob` 고아 목록 → 삭제) · 테스트 대상 리포의 `PUSH_TOKEN` secret·워크플로(토큰 무효로 CI 401) · 로그인 세션은 전부 끊긴다(오너 재가입).
@@ -135,7 +135,7 @@
   - ⚠️ "사건은 지우지 않는다"(ProjectEvent, 불변식 3 확장)는 앱의 동작 규칙이라 출시 전 운영자 초기화와 충돌하지 않는다.
   - 검증(수동): 두 DB에서 앱 테이블 행 0 · `pnpm db:status`/`db:status:prod` 최신 · anon·authenticated USAGE false 유지 · Blob 스토어 객체 0 · 오너 로그인 → 새 프로젝트 생성 한 바퀴.
 
-- [ ] L2.12 **OG 이미지 `public/og.png`를 만든다(사용자 몫, 2026-09-27 seo-geo에서 이관)**: 코드는 이미 `OG_IMAGE`(`lib/seo/`)로 모든 공개 페이지의 `og:image`·`twitter:image`에 `https://mal-moi.com/og.png`를 싣는다 — 파일이 없는 동안 그 URL은 404다(빌드는 통과, 공유 카드에 이미지가 안 뜬다).
+- [x] L2.12 (2026-09-27 완료 — 사용자 제공 2400×1260을 1200×630으로 줄여 `public/og.png`, `m.seo.ogImageAlt`·DIRECTORY 갱신, IHDR 크기 테스트. launch-audit B6.4로 dev에 들어감. **남은 것**: `/merge` 뒤 `curl -sI https://mal-moi.com/og.png` 200 · 카드 미리보기) **OG 이미지 `public/og.png`를 만든다(사용자 몫, 2026-09-27 seo-geo에서 이관)**: 코드는 이미 `OG_IMAGE`(`lib/seo/`)로 모든 공개 페이지의 `og:image`·`twitter:image`에 `https://mal-moi.com/og.png`를 싣는다 — 파일이 없는 동안 그 URL은 404다(빌드는 통과, 공유 카드에 이미지가 안 뜬다).
   - 규격: 1200×630 PNG, 8MB 이하. 텍스트는 가운데 약 1000×520 안(슬랙·X·카톡이 가장자리를 자른다). 표기 `Malmoi`.
   - 같이 고친다: `messages/en.tsx`의 `m.seo.ogImageAlt`(아직 없는 이미지를 묘사한 초안) → 실제 이미지 내용 한 문장 · `docs/DIRECTORY.md`의 `public/og.png` 행("아직 리포에 없음" 문구를 걷는다).
   - 검증: 로컬 `curl -sI localhost:3000/og.png` 200 · `/merge` 뒤 `curl -sI https://mal-moi.com/og.png` 200 · 슬랙/X 카드 미리보기에 이미지.
@@ -254,7 +254,7 @@
 
 ## R8 — 감사 후속 (2026-09-25, audit-report·delivery-invariants 디렉터리를 지우며 옮겼다)
 
-- [ ] L8.1 `/roundtrip` 미실시 — delivery-invariants(B1)의 수동 게이트. DESIGN §6.646의 보류 줄·base 부재 거부·전부 보류 미리보기가 "미실측"이다. 폐기용 리포(`i18n-order-check` · ts-dict 리포)로 한 바퀴.
+- [ ] L8.1 (2026-09-27 부분 — launch-audit QA2가 `i18n-order-check`(json-catalog)·`i18n-format-check`(yaml)로 한 바퀴: 보류 줄(Logs "Not sent" = 배너 수)·CI 보류 행·base 삭제 키 보류·`--merge` 마커·결정성(`/api/pull` 전 프로젝트 `no-edits`, DB 렌더 = 리포) 통과. **못 밟은 것**: base 부재·base 읽기 불가 거부 화면, ts-dict 리포, chrome-locales) `/roundtrip` 미실시 — delivery-invariants(B1)의 수동 게이트. DESIGN §6.646의 보류 줄·base 부재 거부·전부 보류 미리보기가 "미실측"이다. 폐기용 리포(`i18n-order-check` · ts-dict 리포)로 한 바퀴.
 - [ ] L8.2 CSP enforce 뒤 런타임 콘솔 확인(audit #75) — 프로덕션·preview 콘솔에 CSP 위반이 0인지.
 - [ ] L8.3 prod `pg_default_acl` 재측정(audit #82) — 워커에 prod 자격증명이 없어 dev만 쟀다. `anon`·`authenticated`의 `public` 권한 0을 prod에서 확인(`/db` 5단계).
 
