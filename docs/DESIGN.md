@@ -1224,13 +1224,13 @@ Publish를 누르면 `1h` + `Sign in`(`/signin`)이고 Retry가 없으며 포커
 `withoutFile`과 같은 `text-xs muted` 문단이 사유별 한 줄로 선다(새 raw 색·블록 없음). 문장은 미리보기와 같은 명사·같은 약속이고 역할별로
 끝이 갈린다(EDITOR `Ask a project owner.` / OWNER 파일 추가 또는 `Revert to last sent`). ⚠️ **갈래마다 고정한 패널 높이에 이 줄이 들어가는지
 재지 않았다.** 미리보기 표 아래 `withoutKey` 한 줄(ts-dict 자리 없는 키)도 같다.
-**미리보기 base 파일 부재는 전용 거부다** (2026-09-24 사용자 결정 — **미실측**): `configError` 패널을 쓰고 제목 `The base language file isn't in the
+**미리보기 base 파일 부재는 전용 거부다** (2026-09-24 사용자 결정 — 2026-09-27 OWNER 실측, `i18n-format-check`(yaml-catalog). EDITOR 끝맺음은 미실측. ⚠️ **수술적 per-locale 어댑터 전용이다**(`lib/publish/read.ts` `surgicalPerLocale`) — 재생성 어댑터(chrome-locales 실측)는 거부하지 않고 base 파일을 다시 쓰는 PR을 약속한다): `configError` 패널을 쓰고 제목 `The base language file isn't in the
 repository` · 설명에 경로와 브랜치 · `Trying again won't help` Alert에 역할별 다음 행동 · 액션은 OWNER에게만 `Settings`다. **Try again이 없다** — 다시
-눌러도 같은 거부다(L3.3). **base 파일을 읽을 수 없을 때도 같은 틀이다** (2026-09-27, B3 r3 — **미실측**): 제목 `The base language file can't be read` ·
-설명에 경로·브랜치와 "어느 키가 있는지 알 수 없다" · 역할별 다음 행동은 "파일을 고친다"다. **Logs에는 `Not sent`**(결과 어휘 `notSent` — warning 톤 · 글리프 amber)가 보류만 남은 Publish에 선다.
+눌러도 같은 거부다(L3.3). **base 파일을 읽을 수 없을 때도 같은 틀이다** (2026-09-27, B3 r3 — 같은 날 OWNER 실측): 제목 `The base language file can't be read` ·
+설명에 경로·브랜치와 "어느 키가 있는지 알 수 없다" · 역할별 다음 행동은 "파일을 고친다"다. **Logs에는 `Not sent`**(결과 어휘 `notSent` — warning 톤 · 글리프 amber)가 보류만 남은 Publish에 선다 — writer 경고로 쓰기 전에 멈춘 실행(이 거부의 야간 실행이 그것이다)도 같다(2026-09-27 실측으로 "Nothing to send"였던 것을 고쳤다).
 **전부 보류인 미리보기**(#84 — **미실측**): 제목 `Nothing can be sent yet` · 액션 `Close` 하나 · PR 줄 없음 · 표와 보류 줄은 그대로다. 보류가 섞이면 제목·요약이 나가는 수이고
 도입 문장이 `The edits that can be sent go to …`로 갈린다. `no-changes` + 보류 결과는 `Not sent` 틀(#83)이고 설명이 보류 사유 문장이다.
-**PR을 닫는 no-changes** (B1 r3 — **미실측**): 미리보기 제목 `Publishing closes pull request #N` · 버튼 `Close pull request #N`, PR이 없으면
+**PR을 닫는 no-changes** (B1 r3 — PR이 없는 갈래 `Nothing differs from <base>` → 결과 `Nothing changed in the files`만 2026-09-27 실측, PR을 닫는 갈래는 **미실측**): 미리보기 제목 `Publishing closes pull request #N` · 버튼 `Close pull request #N`, PR이 없으면
 `Nothing differs from <base>` · 버튼 `Publish`. 푸터는 파일 수를 빼고 `N changes · K keys`다(#94 — 실행·Logs가 `0 files`라 편집이 사는 파일을 세면 한 흐름 안에서 수가 갈린다). ⚠️ **평소 갈래의 파일 수는 실행이 바꾸는 파일 수다**(#128 — `changedFiles`, 상한과 무관). "PR을 닫는다/바뀌는 것 없음" 갈래도 셀 근사가 아니라 `changedFiles`가 비었을 때만이다(#128 r5). 편집 없이 바뀌는 파일은 표에 편집 그룹과 같은 머리행(경로 + 우측 `No unsent edits`) + `text-xs muted` 설명 한 줄로 선다(**미실측**). base와 같은 행은 −/+ 두 줄 대신 값 한 줄 + `text-xs muted` 사유(`Undoes the change in #N` /
 `Already in the repository`). 결과에는 `text-xs muted` 한 줄(역할별 끝맺음) + `View #N` 링크(`text-blue-600`, §6.3 외부 링크), Logs 상세는
 `Closed pull request` 필드다.
