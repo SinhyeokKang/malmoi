@@ -72,7 +72,6 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
         {data.sources.length > 0 && <Badge variant="neutral">{data.sources.length}</Badge>}</span>
       {/* ⚠️ `min-w-0`이 없으면 flex 자식의 최소 크기가 min-content라 이 문장이 좁은 폭에서 [Add source]를 민다.
           1016 이하에서는 시안이 이 줄을 **버린다** — 버리는 순서의 첫째다. */}
-      <p className="text-muted-foreground min-w-0 text-xs @max-[1016px]/panel:hidden">{m.sources.description}</p>
       {canEdit && <Button ref={trigger} variant="primary" className="ml-auto" onClick={() => setAdding(true)}><Plus className="size-3.5" aria-hidden />{m.sources.add}</Button>}
     </div></PanelHeader>
     <PanelBody width="fluid" className="space-y-4">

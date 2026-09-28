@@ -29,7 +29,7 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, health, ac
     ⚠️ **`notice`가 언제나 요소다** — `PanelCard`는 `notice === undefined`일 때만 머리에 `border-b`를 긋는데, Suspense
     요소는 내용이 없어도 undefined가 아니다. 그래서 선을 이 자리가 대신 긋는다(inset Alert의 `border-t`와 같은 1px).
   */
-  return <PanelCard title={m.settings.repository.title} subtitle={m.settings.repository.description} notice={
+  return <PanelCard title={m.settings.repository.title} notice={
     <Suspense fallback={<Divider />}><Notice health={health} failure={shown} appSlug={appSlug} /></Suspense>
   }>
     <Suspense fallback={<ConnectionRowPending />}>

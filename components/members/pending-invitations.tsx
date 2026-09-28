@@ -156,7 +156,6 @@ export function PendingInvitations({
         titleId={headingId}
         count={invitations.length}
         countLabel={m.members.pending.count(invitations.length)}
-        description={m.members.pending.cardHint}
       >
         {cardAlert !== null && (
           <div data-pending-alert>

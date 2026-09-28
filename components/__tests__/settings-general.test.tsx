@@ -69,15 +69,12 @@ it("Archived metadata controls are disabled with a reason", async () => {
   expect(container.textContent).toContain("Restore this project");
 });
 
-/**
- * **주소 힌트도 호스트를 말하지 않는다** (launch-readiness L7.5 — `naming-hint.test.tsx`와 같은 근거).
- * `mal-moi.com`을 박으면 dev·로컬에서 지금 보고 있는 호스트와 다른 주소를 알려 준다. 힌트가 전하는 것은
- * slug가 경로에 박히고 바뀌지 않는다는 것이라 호스트 없이도 참이다.
- */
-it("The address hint names the path without a host", async () => {
+/** 2026-09-28 사용자 — 주소 칸 옆 안내 문장(`Opens at /projects/<slug>. …`)을 걷었다. 칸이 slug 하나만 든다. */
+it("The address row shows the slug alone — no hint, no host", async () => {
   const { container } = await render(view());
+  expect(container.querySelector<HTMLInputElement>("#project-address")?.value).toBe("acme");
   const text = container.textContent ?? "";
-  expect(text).toContain("/projects/acme");
+  expect(text).not.toContain("/projects/acme");
   expect(text).not.toMatch(/mal-moi\.com|vercel\.app|localhost/);
 });
 

@@ -59,7 +59,6 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
        * 기본값이 그대로 맞는다. 같은 값의 variant를 하나 더 두면 다음 사람이 어느 쪽을 쓸지 고민한다.
        */
       badge={<Badge variant="neutral">{m.link.methods.count(counts.connected, counts.total)}</Badge>}
-      subtitle={m.link.methods.description}
       notice={notice}
     >
       <PanelRows>

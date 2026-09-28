@@ -54,7 +54,6 @@ export function GithubSection({
   return (
     <PanelCard
       title={m.account.github.title}
-      subtitle={m.account.github.description}
       notice={failure !== null ? <Alert inset variant="danger">{failure}</Alert> : undefined}
     >
       <PanelRows>
