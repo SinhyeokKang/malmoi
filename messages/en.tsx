@@ -519,7 +519,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-09-27",
+      effectiveDate: "2026-09-28",
       /**
        * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
        */
@@ -600,7 +600,7 @@ export const en = {
                 "Deciding which projects you can open and what you can do in them.",
                 "Showing your teammates who changed a translation and who asked for a sync.",
                 "Writing translations back to the repository a project is connected to, as a pull request.",
-                "Emailing an invitation link to an address a project owner enters. The email holds the link and nothing else — no project name, no role and no tracking.",
+                "Emailing an invitation link to an address a project owner enters. The email holds the link and the project it is for — the project's name, its picture and the role you are invited with. It does not say who invited you, and it has no tracking.",
                 "Keeping the service running, which includes looking at error logs when something fails.",
                 "Counting visits to the public pages, to see whether people find Malmoi and which docs they read. Only totals are looked at.",
               ],
@@ -623,7 +623,7 @@ export const en = {
                 "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
                 "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
                 "An invitation stops working after 7 days, or as soon as it is accepted, revoked or sent again. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
-                "An invitation email: Resend, which sends it, keeps a record of the message — the address, the subject and the link in it — for 30 days.",
+                "An invitation email: Resend, which sends it, keeps a record of the message — the address, the subject and the email itself, with the link, the project's name, the address of its picture if it has one, and your role — for 30 days.",
                 "Translations and the record of who changed them: kept for the life of the project.",
               ],
             },
@@ -639,15 +639,15 @@ export const en = {
                 "GitHub — signing you in, and reading and writing the repository a project is connected to. Translations are committed and opened as a pull request by Malmoi's GitHub App, not under your own account.",
                 "Google — signing you in, if you choose Google.",
                 "Supabase — the database, hosted in Tokyo.",
-                "Vercel — hosting for the app, storage for uploaded profile pictures, and counting visits to the public pages (Web Analytics, described under What we collect). Vercel records requests to the service, including IP addresses, as part of running it.",
-                "Resend — sending invitation emails, from Tokyo. It receives the invited address and the message with the invitation link. Open and click tracking are off.",
+                "Vercel — hosting for the app, storage for uploaded profile pictures and project pictures, and counting visits to the public pages (Web Analytics, described under What we collect). Vercel records requests to the service, including IP addresses, as part of running it.",
+                "Resend — sending invitation emails, from Tokyo. It receives the invited address and the message: the invitation link, the project's name, the address of its picture if it has one, and the role you are invited with. Open and click tracking are off.",
               ],
             },
             {
               p: "A profile picture that comes from GitHub or Google is loaded by your browser directly from their servers, so those requests reach them even though Malmoi sends them nothing.",
             },
             {
-              p: "An invitation email shows a logo that your email app loads from mal-moi.com. It is the same image at the same address for everyone, so it does not tell Malmoi who opened the email.",
+              p: "An invitation email shows a logo and the project's picture (or a placeholder icon when it has none), and your email app loads all of them from mal-moi.com — Malmoi fetches the picture from its own storage, so your email app reaches no one else. The logo and the icon are the same for everyone, and a project's picture is the same for everyone invited to that project, so none of them tells Malmoi who opened the email.",
             },
           ],
         },
@@ -714,7 +714,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
