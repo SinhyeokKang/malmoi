@@ -60,7 +60,9 @@ export const getProject = defineTool({
       connection: health.status,
       toSend: aggregates.unsent.get(access.projectId) ?? 0,
       newFromGitHub: aggregates.newKeys.get(access.projectId) ?? 0,
-      openPullRequest: project.lastPrUrl,
+      // ⚠️ **마지막 Publish의 PR이지 열린 PR이 아니다** (#144) — 성공한 Publish가 쓴 값이고 그 뒤 닫혔을 수 있다. Home의 "Last publish: Pull request #N"과
+      // 같은 값이다. 지금 열려 있는지는 `preview_publish`가 GitHub을 보고 답한다 — 여기서 GitHub을 부르지 않는다.
+      lastPublishPullRequest: project.lastPrUrl,
       lastPublishedAt: project.lastPublishedAt?.toISOString() ?? null,
       sources: project.surfaces.map(surface => ({
         slug: surface.slug, adapter: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale,

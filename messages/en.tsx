@@ -3244,7 +3244,7 @@ export const en = {
     tools: {
       whoami: "Show who this token belongs to, whether GitHub is connected, and what the token may do (permissions, projects, expiry).",
       list_projects: "List the projects you can use with this token, with your role, repository, and whether each is ready.",
-      get_project: "Show a project's overview: sources, languages, key counts, changes to send, the open pull request, and repository connection.",
+      get_project: "Show a project's overview: sources, languages, key counts, changes to send, the last publish's pull request, and repository connection. Whether a pull request is open now comes from preview_publish.",
       list_repositories: "List the GitHub repositories you can connect to a new project. Needs the Create projects permission.",
       list_branches: "List a repository's branches. Pass { owner, repo } for a new project or { slug } for an existing one, not both.",
       detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new project or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",

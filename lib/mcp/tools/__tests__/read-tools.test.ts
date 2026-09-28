@@ -25,6 +25,10 @@ vi.mock("@/lib/onboarding-run/detect", async (orig) => ({ ...(await orig<object>
 vi.mock("@/lib/keys/translation-list", async (orig) => ({ ...(await orig<object>()), loadTranslationList: h.loadTranslationList }));
 vi.mock("@/lib/keys/revert-translation", async (orig) => ({ ...(await orig<object>()), previewRevert: h.previewRevert }));
 vi.mock("@/lib/import/prepare", () => ({ prepareSync: h.prepareSync }));
+vi.mock("@/lib/keys/query", async (orig) => ({ ...(await orig<object>()),
+  loadProjectListAggregates: async () => ({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map() }),
+  loadSurfaceCounts: async () => [] }));
+vi.mock("@/lib/github", async (orig) => ({ ...(await orig<object>()), loadConnectionHealth: async () => ({ status: "ok" }) }));
 
 const { TOOLS } = await import("..");
 const tool = (name: string) => {
@@ -214,5 +218,25 @@ describe("노출 — 화면과 같은 경계", () => {
     expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: "owner", tokenHash: "hash-owner" } }));
     expect(outcome).toMatchObject({ status: "ok", data: { token: { grants: ["translation:write"], scope: { kind: "projects", projects: ["acme"] } } } });
     expect(JSON.stringify(outcome)).not.toContain('"p1"');
+  });
+});
+
+/**
+ * **`get_project`의 PR은 "마지막 Publish의 PR"이다** (#144). `Project.lastPrUrl`은 성공한 Publish가 쓴 값이고 그 PR이 지금 열려 있는지는 모른다 —
+ * `openPullRequest`라고 부르면 에이전트가 닫힌 PR을 "리뷰 대기 중"으로 말한다. Home도 같은 값을 "Last publish: Pull request #N"으로 쓴다.
+ * 지금 열려 있는지는 `preview_publish`가 GitHub을 보고 답한다 — 설명이 그쪽을 가리킨다.
+ */
+describe("get_project — 마지막 Publish의 PR", () => {
+  it("lastPrUrl을 lastPublishPullRequest로 싣고 openPullRequest라는 이름을 쓰지 않는다", async () => {
+    await (prisma as unknown as { project: { update: (a: unknown) => Promise<unknown> } }).project.update({ where: { id: "p1" }, data: { lastPrUrl: "https://github.com/o/r/pull/14" } });
+    const outcome = await call("get_project", subject("owner"), { slug: "acme" });
+    expect(outcome.status === "ok" && outcome.data.lastPublishPullRequest).toBe("https://github.com/o/r/pull/14");
+    expect(outcome.status === "ok" && "openPullRequest" in outcome.data).toBe(false);
+  });
+
+  it("도구 설명이 열린 PR 여부는 preview_publish가 답한다고 말한다", async () => {
+    const { m } = await import("@/lib/i18n");
+    expect(m.mcp.tools.get_project).not.toMatch(/open pull request/i);
+    expect(m.mcp.tools.get_project).toContain("preview_publish");
   });
 });
