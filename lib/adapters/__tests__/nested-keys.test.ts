@@ -153,3 +153,63 @@ describe("json-catalog read — nestedByPath는 프로토타입 없는 객체다
     expect(r.nestedByPath).toEqual(Object.assign(Object.create(null) as object, { "l/en.json": false }));
   });
 });
+
+/**
+ * **빈 객체 `{}`는 중첩의 증거가 아니다** (malmoi#147). 재생성 어댑터는 표현을 원본에서 읽지만, 항목이 0개인 파일은 중첩인지 평평한지 말하지
+ * 않는다 — 그 파일을 "평평하다"로 관측하면 중첩 표면의 로케일 파일에 `"menu.openFile"`이 최상위 점 키로 나간다. 그 `{}`는 Malmoi 자신이
+ * 마지막 값을 비울 때 쓴 것(`emptyCatalog`)이라 흔한 경로다. `{}`가 실제로 말하는 표현(줄바꿈·BOM)은 그대로 원본을 따른다.
+ */
+describe("json-catalog — 빈 {} 로케일 파일은 표면의 nested를 따른다 (malmoi#147)", () => {
+  const NESTED_EN = JSON.stringify({ menu: { openFile: "Open file" } }, null, 2) + "\n";
+  const FLAT_EN = JSON.stringify({ "menu.openFile": "Open file", title: "Title" }, null, 2) + "\n";
+  const entries = [{ key: "menu.openFile", message: "Ouvrir" }];
+  const both = fmt({ locales: ["en", "fr"] });
+
+  it("read가 {}의 중첩 여부를 관측값으로 남기지 않는다 — 형제의 관측은 그대로", () => {
+    const r = jsonCatalog.read(both, [f("locales/en.json", NESTED_EN), f("locales/fr.json", "{}\r\n")]);
+    expect(r.nestedByPath).toEqual({ "locales/en.json": true });
+    expect(r.nested).toBe(true);
+  });
+
+  it("중첩 표면 + {} 원본 → 중첩으로 쓰고 원본의 CRLF는 유지한다", () => {
+    const r = jsonCatalog.read(both, [f("locales/en.json", NESTED_EN), f("locales/fr.json", "{}\r\n")]);
+    const out = jsonCatalog.write(fmt({ locales: ["en", "fr"], nested: r.nested, nestedByPath: r.nestedByPath, currentFiles: [f("locales/fr.json", "{}\r\n")] }), { locale: "fr", entries });
+    expect(out).toBe('{\r\n  "menu": {\r\n    "openFile": "Ouvrir"\r\n  }\r\n}\r\n');
+  });
+
+  it("⚠️ 저장된 옛 관측(`{}` → false)이 남아 있어도 원본이 {}면 표면의 nested를 따른다 — 이미 적재된 프로젝트", () => {
+    const out = jsonCatalog.write(fmt({ locales: ["en", "fr"], nested: true, nestedByPath: { "locales/en.json": true, "locales/fr.json": false },
+      currentFiles: [f("locales/fr.json", "{}\n")] }), { locale: "fr", entries });
+    expect(JSON.parse(out!)).toEqual({ menu: { openFile: "Ouvrir" } });
+  });
+
+  it("평평한 표면 + {} 원본 → 평평하게 쓴다 (짝)", () => {
+    const r = jsonCatalog.read(both, [f("locales/en.json", FLAT_EN), f("locales/fr.json", "{}\n")]);
+    expect(r.nested).toBe(false);
+    const out = jsonCatalog.write(fmt({ locales: ["en", "fr"], nested: r.nested, nestedByPath: r.nestedByPath, currentFiles: [f("locales/fr.json", "{}\n")] }), { locale: "fr", entries });
+    expect(JSON.parse(out!)).toEqual({ "menu.openFile": "Ouvrir" });
+  });
+
+  it("점 키를 이미 가진 평평한 파일은 중첩 표면에서도 평평하게 쓴다 — 파일별 규칙은 그대로 (짝, §1.35)", () => {
+    const flatFr = JSON.stringify({ "menu.openFile": "Ouvrir" }, null, 2) + "\n";
+    const r = jsonCatalog.read(both, [f("locales/en.json", NESTED_EN), f("locales/fr.json", flatFr)]);
+    const out = jsonCatalog.write(fmt({ locales: ["en", "fr"], nested: r.nested, nestedByPath: r.nestedByPath, currentFiles: [f("locales/fr.json", flatFr)] }), { locale: "fr", entries });
+    expect(JSON.parse(out!)).toEqual({ "menu.openFile": "Ouvrir" });
+  });
+
+  it("왕복 — 비움(emptyCatalog) → 다시 채움 → 읽기가 같은 키·같은 모양이고 결정적이다", () => {
+    const format = (fr: string) => {
+      const r = jsonCatalog.read(both, [f("locales/en.json", NESTED_EN), f("locales/fr.json", fr)]);
+      return fmt({ locales: ["en", "fr"], nested: r.nested, nestedByPath: r.nestedByPath, currentFiles: [f("locales/fr.json", fr)] });
+    };
+    const nestedFr = '{\n  "menu": {\n    "openFile": "Ouvrir"\n  }\n}\n';
+    const emptied = jsonCatalog.write(format(nestedFr), { locale: "fr", entries: [] })!;
+    expect(emptied).toBe("{}\n");
+    const refilled = jsonCatalog.write(format(emptied), { locale: "fr", entries })!;
+    expect(refilled).toBe(nestedFr);
+    expect(jsonCatalog.write(format(emptied), { locale: "fr", entries })).toBe(refilled);
+    const back = jsonCatalog.read(both, [f("locales/fr.json", refilled)]);
+    expect(back.locales[0]?.entries.map(e => [e.key, e.message])).toEqual([["menu.openFile", "Ouvrir"]]);
+    expect(back.nestedByPath).toEqual({ "locales/fr.json": true });
+  });
+});
