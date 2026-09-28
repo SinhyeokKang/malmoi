@@ -206,6 +206,68 @@ describe("buildInvitationEmail — 이미지", () => {
   });
 });
 
+/**
+ * **타일은 이미지가 막히거나 깨져도 32×32 정사각이다** (malmoi#140 — Gmail iOS 폴백 갈래에서 세로로 늘었다).
+ *
+ * 텍스트 열(이름 20 + 1 + 역할 17 = 38px)이 32보다 높아 같은 행의 타일 `<td>`가 38로 늘어난다 — `height`는 셀의
+ * 최소값이다. 그래서 색을 든 셀은 행에서 떼어 **고정 크기 중첩 표** 안에 두고, 행 쪽 셀은 색 없이 가운데 정렬만
+ * 한다. 셀 안의 인라인 자리표시(깨진 이미지 아이콘·공백)가 줄 높이로 셀을 밀지 못하게 `line-height:0;font-size:0`.
+ */
+describe("buildInvitationEmail — 타일 정사각", () => {
+  const BRANCHES = [
+    ["폴백", null, BOX_URL],
+    ["썸네일", BLOB, "https://mal-moi.com/api/images/"],
+  ] as const;
+
+  function escapeRe(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  }
+
+  it.each(BRANCHES)("%s 갈래: 타일 셀이 style에 32px 고정·line-height 0·font-size 0·overflow hidden을 든다", (_name, image, src) => {
+    const { html } = buildInvitationEmail({ ...base, project: { ...project, image } });
+    const cell = new RegExp(`<td([^>]*)>\\s*<img src="${escapeRe(src)}`).exec(html)?.[1];
+    expect(cell).toBeDefined();
+    expect(cell).toMatch(/width="32"/);
+    expect(cell).toMatch(/height="32"/);
+    const style = /style="([^"]*)"/.exec(cell ?? "")?.[1] ?? "";
+    for (const decl of ["width:32px", "height:32px", "max-height:32px", "line-height:0", "font-size:0", "overflow:hidden"]) expect(style).toContain(decl);
+  });
+
+  it.each(BRANCHES)("%s 갈래: 타일 셀은 32×32 고정 중첩 표 안에 있다 — 행 높이(텍스트 38px)가 셀을 늘리지 못한다", (_name, image, src) => {
+    const { html } = buildInvitationEmail({ ...base, project: { ...project, image } });
+    const wrapper = new RegExp(`<table([^>]*)>\\s*<tr>\\s*<td[^>]*>\\s*<img src="${escapeRe(src)}`).exec(html)?.[1];
+    expect(wrapper).toBeDefined();
+    expect(wrapper).toContain('role="presentation"');
+    expect(wrapper).toMatch(/width="32"/);
+    expect(wrapper).toMatch(/height="32"/);
+    expect(wrapper).toMatch(/style="[^"]*width:32px;height:32px/);
+  });
+
+  it.each(BRANCHES)("%s 갈래: 행에 붙은 바깥 셀은 색이 없고 세로 가운데다 — 늘어나도 보이지 않는다", (_name, image) => {
+    const { html } = buildInvitationEmail({ ...base, project: { ...project, image } });
+    const outer = /<td([^>]*)>\s*<table[^>]*width="32"/.exec(html)?.[1];
+    expect(outer).toBeDefined();
+    expect(outer).not.toContain("bgcolor");
+    expect(outer).not.toContain("background");
+    expect(outer).toContain('valign="middle"');
+  });
+
+  it("폴백 갈래: Box <img>는 style로 16px 고정 + display:block이다", () => {
+    const { html } = buildInvitationEmail(base);
+    const img = new RegExp(`<img src="${escapeRe(BOX_URL)}"[^>]*>`).exec(html)?.[0] ?? "";
+    expect(img).toContain('width="16"');
+    expect(img).toContain('height="16"');
+    expect(img).toMatch(/style="[^"]*display:block;width:16px;height:16px/);
+  });
+
+  it("썸네일 갈래: 비율 규칙은 그대로다 — width·height 속성 없이 max 32", () => {
+    const { html } = buildInvitationEmail({ ...base, project: { ...project, image: BLOB } });
+    const img = new RegExp(`<img src="${escapeRe(PROXIED)}"[^>]*>`).exec(html)?.[0] ?? "";
+    expect(img).not.toMatch(/\s(width|height)=/);
+    expect(img).toContain("max-width:32px;max-height:32px");
+  });
+});
+
 describe("buildInvitationEmail — 프로젝트 이름", () => {
   it("평범한 이름은 원문 그대로 선다", () => {
     expect(buildInvitationEmail(base).html).toContain(">Acme Web<");
