@@ -9,12 +9,18 @@ import { describe, expect, it, vi } from "vitest";
 import { PublicFooter } from "@/components/public-shell/footer";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { AuthLayout } from "@/components/signin/auth-layout";
-import { publicCta } from "@/lib/auth/landing";
+import { publicAccount } from "@/lib/auth/landing";
 import { m } from "@/lib/i18n";
 import { FOOTER_LINKS, GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
 import { render } from "./helpers/dom";
+
+// 헤더가 로그아웃 Action을 참조로 넘긴다 — 실물은 `@/auth`를 물어 jsdom에서 세울 수 없다.
+vi.mock("@/lib/auth/sign-out", () => ({ signOutAction: async () => {} }));
+
+const GUEST = publicAccount({ status: "none" });
+const SIGNED_IN = publicAccount({ status: "ok", userId: "u1", name: "Ada", email: "ada@x.dev", image: null });
 
 /**
  * 공개 셸 (DESIGN §6.615) — 헤더 · 패널(표면 + 스크롤러) · 푸터. 랜딩(`/`)과 `/privacy`가 쓴다.
@@ -23,7 +29,7 @@ import { render } from "./helpers/dom";
  * 포커스가 있으면 Space/PageDown이 root scroller만 민다(DESIGN §6.615 "키보드").
  */
 /** 랜딩이 넘기는 값 그대로 — `app/page.tsx`. */
-const shell = () => render(h(PublicShell, { cta: publicCta("none"), current: "home", children: h("p", null, "landing body") }));
+const shell = () => render(h(PublicShell, { account: GUEST, children: h("p", null, "landing body") }));
 
 describe("공개 셸 — 구조", () => {
   it("본문 랜드마크가 하나이고 페이지 내용은 스크롤러 안에 선다", async () => {
@@ -61,7 +67,7 @@ describe("공개 셸 — 구조", () => {
   it("해시가 `tabIndex`를 든 요소를 가리키면 그 요소가 포커스를 받는다", async () => {
     history.replaceState(null, "", "#workflow");
     try {
-      await render(h(PublicShell, { cta: publicCta("none"), children: h("h2", { id: "workflow", tabIndex: -1 }, "Workflow") }));
+      await render(h(PublicShell, { account: GUEST, children: h("h2", { id: "workflow", tabIndex: -1 }, "Workflow") }));
       expect(document.activeElement?.id).toBe("workflow");
     } finally {
       history.replaceState(null, "", window.location.pathname);
@@ -72,7 +78,7 @@ describe("공개 셸 — 구조", () => {
     for (const hash of ["#plain", "#%E0"]) {
       history.replaceState(null, "", hash);
       try {
-        const { container } = await render(h(PublicShell, { cta: publicCta("none"), children: h("p", { id: "plain" }, "body") }));
+        const { container } = await render(h(PublicShell, { account: GUEST, children: h("p", { id: "plain" }, "body") }));
         expect(document.activeElement).toBe(container.querySelector("[data-public-scroller]"));
       } finally {
         history.replaceState(null, "", window.location.pathname);
@@ -82,7 +88,7 @@ describe("공개 셸 — 구조", () => {
 
   /** `/docs`는 레이아웃이 셸을 들고 본문 스크롤러는 페이지가 든다(DESIGN §6.61) — 셸이 스크롤러를 하나 더 만들면 중첩된다. */
   it("`bare`면 패널 안을 스크롤러로 감싸지 않는다", async () => {
-    const { container } = await render(h(PublicShell, { cta: publicCta("none"), current: "docs", bare: true, children: h("p", null, "body") }));
+    const { container } = await render(h(PublicShell, { account: GUEST, current: "docs", bare: true, children: h("p", null, "body") }));
     expect(container.querySelectorAll("[data-public-scroller]")).toHaveLength(0);
     expect(container.querySelector("main > p")?.textContent).toBe("body");
   });
@@ -122,19 +128,18 @@ describe("공개 셸 — 헤더", () => {
     expect(logo?.getAttribute("href")).toBe(routes.home());
   });
 
-  /** 헤더 내비는 앱 안 목적지만 든다 — GitHub는 푸터 첫 링크와 랜딩 CTA에 남는다(2026-09-28 사용자). */
-  it("Main 내비가 Home · Docs · Changelog 순이고 Home만 aria-current다", async () => {
+  /** 헤더 내비는 앱 안 목적지만 든다 — GitHub는 내비 밖 우측 끝이다(2026-09-28 사용자). 랜딩은 current가 없다(`Home`이 빠졌다). */
+  it("Main 내비가 Docs · Changelog 순이고 랜딩에선 어느 것도 aria-current가 아니다", async () => {
     const { container } = await shell();
     const nav = container.querySelector(`nav[aria-label="${m.landing.shell.nav}"]`);
     expect(m.landing.shell.nav).toBe("Main");
     const links = [...(nav?.querySelectorAll("a") ?? [])];
     expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
-      [m.landing.shell.home, routes.home()],
       [m.landing.shell.docs, routes.docs()],
       [m.changelog.title, routes.changelog()],
     ]);
-    expect(links.map((a) => a.getAttribute("aria-current"))).toEqual(["page", null, null]);
-    expect(links.map((a) => a.getAttribute("target"))).toEqual([null, null, null]);
+    expect(links.map((a) => a.getAttribute("aria-current"))).toEqual([null, null]);
+    expect(links.map((a) => a.getAttribute("target"))).toEqual([null, null]);
   });
 
   it("CTA는 Get started 하나이고 로그인으로 간다", async () => {
@@ -146,46 +151,78 @@ describe("공개 셸 — 헤더", () => {
   });
 
   it("`/docs/*`는 Docs만 aria-current다", async () => {
-    const { container } = await render(h(PublicShell, { cta: publicCta("none"), current: "docs", children: h("p", null, "body") }));
+    const { container } = await render(h(PublicShell, { account: GUEST, current: "docs", children: h("p", null, "body") }));
     const links = [...container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] a`)];
-    expect(links.map((a) => a.getAttribute("aria-current"))).toEqual([null, "page", null]);
+    expect(links.map((a) => a.getAttribute("aria-current"))).toEqual(["page", null]);
   });
 
   it("`/changelog`는 Changelog만 aria-current다", async () => {
-    const { container } = await render(h(PublicShell, { cta: publicCta("none"), current: "changelog", children: h("p", null, "body") }));
+    const { container } = await render(h(PublicShell, { account: GUEST, current: "changelog", children: h("p", null, "body") }));
     const links = [...container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] a`)];
-    expect(links.map((a) => a.getAttribute("aria-current"))).toEqual([null, null, "page"]);
+    expect(links.map((a) => a.getAttribute("aria-current"))).toEqual([null, "page"]);
   });
 
   /** `/privacy`는 헤더 링크 어디에도 없는 화면이다 — current를 안 넘기면 어느 링크도 current가 아니다. */
   it("`current`가 없으면 헤더에 `aria-current`가 없다", async () => {
-    const { container } = await render(h(PublicShell, { cta: publicCta("none"), children: h("p", null, "body") }));
+    const { container } = await render(h(PublicShell, { account: GUEST, children: h("p", null, "body") }));
     expect(container.querySelectorAll("header [aria-current]")).toHaveLength(0);
   });
 
-  /** 헤더 primary는 선행 아이콘을 든다 — 라벨 키가 행선지라 아이콘도 그것을 따른다(DESIGN §6.615). 내비 링크 셋은 글자만이다. */
-  it("primary의 선행 아이콘 — Get started `LogIn` · Open Malmoi `Box`, 내비엔 아이콘이 없다", async () => {
-    for (const [status, glyph] of [["none", "lucide-log-in"], ["ok", "lucide-box"]] as const) {
-      const { container } = await render(h(PublicShell, { cta: publicCta(status), children: h("p", null, "body") }));
-      const first = container.querySelector("header > div a")?.firstElementChild;
-      expect(first?.tagName.toLowerCase()).toBe("svg");
-      expect(first?.getAttribute("aria-hidden")).toBe("true");
-      expect(first?.getAttribute("class")).toContain(glyph);
-      expect(container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] svg`)).toHaveLength(0);
+  /** 2026-09-28 사용자 — 로고가 곧 홈이라 `Home`을 뺐다. 내비는 `Docs · Changelog` 둘이고 글자만이다. */
+  it("내비는 Docs · Changelog 둘이고 아이콘이 없다", async () => {
+    const { container } = await shell();
+    const links = [...container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] a`)];
+    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+      [m.landing.shell.docs, routes.docs()],
+      [m.changelog.title, routes.changelog()],
+    ]);
+    expect(container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] svg`)).toHaveLength(0);
+  });
+
+  it("비로그인 primary는 `LogIn` 아이콘을 든 Get started다", async () => {
+    const { container } = await shell();
+    const first = container.querySelector(`header a[href="${routes.signIn()}"]`)?.firstElementChild;
+    expect(first?.tagName.toLowerCase()).toBe("svg");
+    expect(first?.getAttribute("aria-hidden")).toBe("true");
+    expect(first?.getAttribute("class")).toContain("lucide-log-in");
+  });
+
+  /** 2026-09-28 사용자 — `Open Malmoi` 대신 앱 셸과 같은 아바타 메뉴로 들어간다. */
+  it("로그인이면 Get started 없이 앱 셸과 같은 사용자 메뉴가 선다", async () => {
+    const { container } = await render(h(PublicShell, { account: SIGNED_IN, children: h("p", null, "body") }));
+    expect([...container.querySelectorAll("header a")].filter((a) => a.getAttribute("href") === routes.signIn())).toHaveLength(0);
+    expect(container.querySelector(`header button[aria-label="${m.common.nav.userMenu}"]`)).not.toBeNull();
+    expect(container.querySelector("header")?.textContent).not.toContain("Open Malmoi");
+  });
+
+  /** primary와 GitHub 사이에 연한 세로 구분선 하나 — 장식이라 접근성 트리에 안 선다. */
+  it("우측은 GitHub · 구분선 · primary 순서다", async () => {
+    for (const account of [GUEST, SIGNED_IN]) {
+      const { container } = await render(h(PublicShell, { account, children: h("p", null, "body") }));
+      const right = container.querySelector("header > div:last-child");
+      const kids = [...(right?.children ?? [])];
+      expect(kids).toHaveLength(3);
+      expect(kids[1]?.getAttribute("aria-hidden")).toBe("true");
+      expect(kids[1]?.className).toContain("bg-border-subtle");
+      expect(kids[0]?.getAttribute("href")).toBe(GITHUB_REPO_URL);
     }
   });
 
-  it("CTA는 받은 href·라벨 키 그대로 선다", async () => {
-    const { container } = await render(h(PublicShell, { cta: publicCta("ok"), children: h("p", null, "body") }));
-    const primary = container.querySelector("header > div a");
-    expect(m.landing.shell.openMalmoi).toBe("Open Malmoi");
-    expect([primary?.textContent, primary?.getAttribute("href")]).toEqual([m.landing.shell.openMalmoi, routes.projects()]);
+  /** 버튼이 아니라 좌측 내비 항목 모양이다 — 보더 없이 hover 때만 면이 선다(앱 사이드바 `Item`과 같은 값). */
+  it("GitHub는 아이콘 + GitHub 글자이고 사이드바 항목 모양이다", async () => {
+    const { container } = await shell();
+    const github = container.querySelector(`header a[href="${GITHUB_REPO_URL}"]`);
+    expect(github?.textContent).toBe(m.landing.shell.github);
+    expect(github?.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+    const classes = github?.className.split(/\s+/) ?? [];
+    expect(classes).toEqual(expect.arrayContaining(["rounded-sm", "p-1.5", "text-sm", "hover:bg-foreground/[0.03]"]));
+    expect(classes.some((c) => c === "border" || c.startsWith("border-"))).toBe(false);
   });
 });
 
 /**
- * ⚠️ **외부 링크를 그리는 자리가 둘이다**(공개 셸 푸터 · `/signin` — 헤더의 GitHub는 2026-09-28에 빠졌다) — 목록 동등성 검사는 href만 보므로
- * 한쪽이 `rel`·`target`을 잃어도 못 잡는다. 둘을 따로 세고, 헤더는 0건을 센다(`/signin`은 2026-09-26부터 같은 `PublicFooter`를 그린다).
+ * ⚠️ **외부 링크를 그리는 자리가 셋이다**(공개 셸 헤더 · 푸터 · `/signin` — 헤더의 GitHub는 2026-09-28에 우측 primary 왼쪽으로 돌아왔다) — 목록 동등성
+ * 검사는 href만 보므로 한쪽이 `rel`·`target`을 잃어도 못 잡는다. 셋을 따로 센다(`/signin`은 2026-09-26부터 같은 `PublicFooter`를 그린다).
  */
 describe("GitHub 링크 — 새 탭 + `noreferrer`", () => {
   const external = (links: Element[]) => {
@@ -195,10 +232,9 @@ describe("GitHub 링크 — 새 탭 + `noreferrer`", () => {
     expect(github[0]?.getAttribute("rel")?.split(/\s+/)).toContain("noreferrer");
   };
 
-  /** 지우지 않고 뒤집었다 — 이 단언이 없으면 헤더에 GitHub가 돌아오는 회귀를 못 잡는다. */
-  it("랜딩 헤더에는 GitHub가 없다", async () => {
+  it("랜딩 헤더", async () => {
     const { container } = await shell();
-    expect([...container.querySelectorAll("header a")].filter((a) => a.getAttribute("href") === GITHUB_REPO_URL)).toHaveLength(0);
+    external([...container.querySelectorAll("header a")]);
   });
 
   it("랜딩 푸터", async () => {
@@ -246,12 +282,10 @@ describe("푸터 링크 — `/signin`과 한 목록", () => {
   const pairs = (root: ParentNode) =>
     [...root.querySelectorAll("footer a")].map((a) => [a.textContent, a.getAttribute("href")]);
 
-  it("순서가 GitHub · Privacy Policy · Docs · Changelog다", () => {
+  it("GitHub · Privacy Policy 둘이다 — Docs·Changelog는 헤더가 든다", () => {
     expect(FOOTER_LINKS.map(({ label, href, external }) => [label, href, external])).toEqual([
       [m.signIn.footer.github, GITHUB_REPO_URL, true],
       [m.signIn.footer.privacy, routes.privacy(), false],
-      [m.signIn.footer.docs, routes.docs(), false],
-      [m.changelog.title, routes.changelog(), false],
     ]);
   });
 

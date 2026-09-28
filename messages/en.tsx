@@ -348,7 +348,7 @@ export const en = {
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
     consent: { before: "By clicking Continue through a third party you accept the Malmoi ", link: "Privacy Policy", after: "." },
-    footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Privacy Policy", docs: "Docs" },
+    footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Privacy Policy" },
     /**
      * 우측 장식의 문구 둘. ⚠️ **키비주얼을 `alt=""`로 둘 수 있는 근거가 이 두 줄이다** — 이미지
      * 안에 구운 텍스트가 말하는 것을 여기가 이미 말하고 있어야 그것이 장식이 된다.
@@ -366,12 +366,9 @@ export const en = {
     shell: {
       logo: "Malmoi home",
       nav: "Main",
-      home: "Home",
       docs: "Docs",
       github: "GitHub",
       getStarted: "Get started",
-      /** 공개 셸 primary의 로그인 갈래 — `/privacy`에만 선다(랜딩은 `ok`에서 안 그려진다). */
-      openMalmoi: "Open Malmoi",
     },
     /** 히어로 — 버튼 둘은 헤더와 같은 말이라 `shell.docs`·`shell.getStarted`를 쓴다(같은 구역). */
     hero: {

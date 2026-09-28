@@ -113,11 +113,11 @@ describe("PrivacyDoc — 구조", () => {
 });
 
 describe("PrivacyDoc — 그릇 (시안 1e)", () => {
-  it("컨테이너 1120 · 본문 720 + 목차 200 · 간격 64 · 상하 120", async () => {
+  it("컨테이너 1120 · 본문 720 + 목차 200 · 간격 64 · 위 64(`/docs`·`/changelog`와 같다) · 아래 120", async () => {
     const { container } = await doc();
     const grid = container.firstElementChild;
     expect(grid?.className.split(/\s+/)).toEqual(
-      expect.arrayContaining(["mx-auto", "max-w-[1120px]", "px-10", "py-30", "grid", "grid-cols-[minmax(0,720px)_200px]", "justify-between", "gap-16"]),
+      expect.arrayContaining(["mx-auto", "max-w-[1120px]", "px-10", "pt-16", "pb-30", "grid", "grid-cols-[minmax(0,720px)_200px]", "justify-between", "gap-16"]),
     );
   });
 

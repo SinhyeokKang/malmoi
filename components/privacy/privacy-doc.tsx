@@ -22,7 +22,7 @@ export function PrivacyDoc() {
   const tocItems = sections.map(({ id, heading }) => ({ id, heading: Object.hasOwn(labels, id) ? (labels[id] ?? heading) : heading }));
 
   return (
-    <div className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 py-30">
+    <div className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 pt-16 pb-30">
       <article className="min-w-0">
         <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{title}</h1>
         {/*

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { ENTRY_BLOCK, ReleaseEntry } from "@/components/changelog/release-entry";
 import { DOC_LINK, PROSE } from "@/components/docs/classes";
 import { PublicShell } from "@/components/public-shell/public-shell";
-import { publicCta } from "@/lib/auth/landing";
+import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { loadReleases } from "@/lib/changelog/load";
 import { m } from "@/lib/i18n";
@@ -49,7 +49,7 @@ export default async function Changelog() {
   const [session, loaded] = await Promise.all([readSession(), loadReleases()]);
 
   return (
-    <PublicShell cta={publicCta(session.status)} current="changelog">
+    <PublicShell account={publicAccount(session)} current="changelog">
       <div className="mx-auto max-w-[800px] px-10 pt-16 pb-30">
         <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{m.changelog.title}</h1>
         <p className={cn(PROSE, "mt-5")}>{m.changelog.intro(releases)}</p>

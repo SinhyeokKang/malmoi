@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { PrivacyDoc } from "@/components/privacy/privacy-doc";
 import { PublicShell } from "@/components/public-shell/public-shell";
-import { publicCta } from "@/lib/auth/landing";
+import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo/site";
@@ -22,13 +22,13 @@ export const metadata: Metadata = pageMetadata({ title: m.publicDocs.privacy.tit
  *
  * ⚠️ **인가를 지나지 않는다** — 공개 문서라 로그인 없이 읽혀야 한다(`entry-points.test.ts`의
  * `EXEMPT`에 이름으로 등재). 같은 이유로 1차 차단의 보호 경로에도 없다. 세션을 읽는 것은 **헤더 primary
- * 하나 때문이고 차단이 아니다** — 로그인이면 `Open Malmoi`, 아니면(장애 포함) `Get started`(`publicCta`).
+ * 하나 때문이고 차단이 아니다** — 로그인이면 아바타 메뉴, 아니면(장애 포함) `Get started`(`publicAccount`).
  */
 export default async function Privacy() {
   const session = await readSession();
 
   return (
-    <PublicShell cta={publicCta(session.status)}>
+    <PublicShell account={publicAccount(session)}>
       <PrivacyDoc />
     </PublicShell>
   );

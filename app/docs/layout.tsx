@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { DocsNavLink } from "@/components/docs/nav-link";
 import { PublicShell } from "@/components/public-shell/public-shell";
-import { publicCta } from "@/lib/auth/landing";
+import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { docHref } from "@/lib/guide/href";
 import { loadSummary } from "@/lib/guide/load";
@@ -27,7 +27,7 @@ export default async function DocsLayout({ children }: { children: ReactNode }) 
   const nav = loadSummary();
 
   return (
-    <PublicShell cta={publicCta(session.status)} current="docs" bare>
+    <PublicShell account={publicAccount(session)} current="docs" bare>
       <nav aria-label={m.publicDocs.docs.nav} className="border-border w-[264px] shrink-0 overflow-y-auto border-r p-4">
         <ul className="m-0 list-none space-y-3 p-0">
           {nav.map((chapter) => (

@@ -7,7 +7,7 @@ import { Stage } from "@/components/landing/stage";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { buttonClass, ButtonLink } from "@/components/ui/button";
-import { publicCta, rootView } from "@/lib/auth/landing";
+import { rootView } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { GITHUB_REPO_URL } from "@/lib/links";
@@ -48,7 +48,7 @@ export default async function Root() {
 
   const { hero, stage, closing, mockup, shell } = m.landing;
   return (
-    <PublicShell cta={publicCta("none")} current="home">
+    <PublicShell account={null}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(LANDING_LD) }} />
       <section aria-labelledby="landing-hero" className="flex flex-col items-center px-8 pt-30 text-center">
         {/* h1·CTA h2는 48/600 — DESIGN §4가 예고한 weight 600의 첫 소비자다(§6.615). */}

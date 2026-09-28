@@ -1,4 +1,5 @@
 import type { SessionRead } from "./read-session";
+import { displayName } from "@/lib/account/plan";
 import { routes } from "@/lib/routes";
 
 /**
@@ -17,7 +18,7 @@ import { routes } from "@/lib/routes";
  *
  * `ok`를 반환하는 함수를 `requireUser` 자리에 꽂으면 의미가 안 맞는다 — 그래서 둘이다.
  *
- * ⚠️ **잎이다** — `lib/routes.ts`(import 0)만 읽고 `SessionRead`는 **타입으로만** 가져온다.
+ * ⚠️ **잎이다** — `lib/routes.ts`·`lib/account/plan.ts`(둘 다 import 0)만 읽고 `SessionRead`는 **타입으로만** 가져온다.
  * 그 모듈을 값으로 읽으면 `@/auth`가 따라와 그래프가 통째로 열린다.
  */
 
@@ -64,20 +65,15 @@ export function rootView(status: SessionRead["status"]): RootView {
 }
 
 /**
- * 공개 셸(`/`·`/privacy`) 헤더의 primary. **로그인이면 앱으로 연다** — 공개 화면에 선 편집자가 로그인 화면으로
- * 다시 가는 길밖에 없으면 안 된다. 랜딩은 `ok`에서 안 그려지므로 늘 `none` 쪽이다.
+ * 공개 셸 헤더 우측의 계정. **로그인이면 앱 셸과 같은 아바타 메뉴로 앱에 들어간다**(2026-09-28 사용자 — 옛 `Open Malmoi` 버튼 대체).
+ * 공개 화면에 선 편집자가 로그인 화면으로 다시 가는 길밖에 없으면 안 된다. 랜딩은 `ok`에서 안 그려지므로 늘 `null`이다.
  *
- * ⚠️ **라벨은 사전 키다** — 이 모듈이 `@/lib/i18n`을 읽으면 위의 잎 주석이 거짓이 된다. 헤더가 키로 사전을 읽는다.
- * ⚠️ **`unavailable`은 비로그인 쪽이다** — 앱으로 보내 봐야 보호 라우트가 다시 튕긴다. 맵 + `satisfies`는 `REJECT`와 같은 이유다.
+ * ⚠️ **`unavailable`은 비로그인 쪽이다** — 앱으로 보내 봐야 보호 라우트가 다시 튕긴다.
+ * ⚠️ **이름은 앱 셸과 같은 `displayName`을 지난다** — 규칙이 갈리면 같은 계정이 두 얼굴이 된다. 그 모듈은 import 0이라 잎이 유지된다.
  */
-export type PublicCta = { href: string; label: "getStarted" | "openMalmoi" };
+export type PublicAccount = { name: string; email: string | null; image: string | null };
 
-const CTA = {
-  ok: { href: routes.projects(), label: "openMalmoi" },
-  none: { href: routes.signIn(), label: "getStarted" },
-  unavailable: { href: routes.signIn(), label: "getStarted" },
-} satisfies Record<SessionRead["status"], PublicCta>;
-
-export function publicCta(status: SessionRead["status"]): PublicCta {
-  return CTA[status];
+export function publicAccount(session: SessionRead): PublicAccount | null {
+  if (session.status !== "ok") return null;
+  return { name: displayName(session.name, session.email), email: session.email, image: session.image };
 }

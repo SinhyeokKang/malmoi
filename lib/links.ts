@@ -29,11 +29,12 @@ export type FooterLink = { href: string; label: string; external: boolean };
 /**
  * 셸 밖 화면의 푸터 링크 — **공개 셸(`PublicFooter`)과 `/signin`·초대·계정 병합(`AuthLayout`)이 이 목록 하나를 읽는다**
  * (DESIGN §6.615). 사본이 둘이면 순서가 갈린다 — 시안의 랜딩 푸터가 이미 `Docs · Privacy Policy`로 어긋나 있었다(2026-09-26
- * 사용자가 이쪽 순서로 판정). `Changelog`는 2026-09-28에 끝에 붙었다 — 앞 셋의 순서는 건드리지 않는다.
+ * 사용자가 이쪽 순서로 판정).
+ *
+ * ⚠️ **`Docs`·`Changelog`가 없다** (2026-09-28 사용자) — 공개 셸 헤더 내비와 아바타 메뉴가 이미 든다. 푸터는 외부 리포와 방침 둘이다.
+ * 셸 밖 화면(`/signin`·초대·계정 병합)에는 헤더가 없어 그 둘로 가는 길이 사라지는 것도 같은 판정이다.
  */
 export const FOOTER_LINKS: readonly FooterLink[] = [
   { href: GITHUB_REPO_URL, label: m.signIn.footer.github, external: true },
   { href: routes.privacy(), label: m.signIn.footer.privacy, external: false },
-  { href: routes.docs(), label: m.signIn.footer.docs, external: false },
-  { href: routes.changelog(), label: m.changelog.title, external: false },
 ];

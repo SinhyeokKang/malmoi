@@ -14,7 +14,12 @@ import { routes } from "@/lib/routes";
  */
 const mocks = vi.hoisted(() => ({ status: "none" as SessionRead["status"], loaded: { ok: false } as LoadedReleases }));
 
-vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: mocks.status }) }));
+vi.mock("@/lib/auth/read-session", () => ({
+  readSession: async () =>
+    mocks.status === "ok" ? { status: "ok", userId: "u1", name: "Ada", email: "ada@x.dev", image: null } : { status: mocks.status },
+}));
+// 헤더가 로그아웃 Action을 참조로 넘긴다 — 실물은 `@/auth`를 물어 jsdom에서 세울 수 없다.
+vi.mock("@/lib/auth/sign-out", () => ({ signOutAction: async () => {} }));
 vi.mock("@/lib/changelog/load", () => ({ loadReleases: async () => mocks.loaded }));
 
 beforeEach(() => {
@@ -65,7 +70,8 @@ describe("`/changelog` — 공개 셸", () => {
 
   it("헤더 primary는 세션으로 갈린다", async () => {
     const container = await page({ ok: false }, "ok");
-    expect(container.querySelector("header > div a")?.getAttribute("href")).toBe(routes.projects());
+    expect(container.querySelector(`header button[aria-label="${m.common.nav.userMenu}"]`)).not.toBeNull();
+    expect(container.querySelector(`header a[href="${routes.signIn()}"]`)).toBeNull();
   });
 
   it("소개 문장이 UTC와 GitHub Releases를 말한다", async () => {

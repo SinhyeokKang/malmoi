@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { PublicCta } from "@/lib/auth/landing";
+import type { PublicAccount } from "@/lib/auth/landing";
 
 import { PublicFooter } from "./footer";
 import { PublicHeader, type HeaderCurrent } from "./header";
@@ -21,14 +21,14 @@ import { PublicScroller } from "./scroller";
  * ⚠️ **`min-w-[1280px]`**: 그 아래는 가로 스크롤이 정상이다(DESIGN §5 — 앱 셸과 같다).
  */
 export function PublicShell({
-  cta,
+  account,
   current,
   bare = false,
   children,
 }: {
-  /** 세션 판정은 페이지가 한다(`publicCta`) — 헤더는 세션을 직접 읽지 않는다. */
-  cta: PublicCta;
-  /** 헤더 링크 중 지금 서 있는 곳. `/privacy`처럼 헤더에 없는 화면이면 비운다. */
+  /** 세션 판정은 페이지가 한다(`publicAccount`) — 헤더는 세션을 직접 읽지 않는다. `null`이면 `Get started`다. */
+  account: PublicAccount | null;
+  /** 헤더 링크 중 지금 서 있는 곳. 랜딩·`/privacy`처럼 헤더에 없는 화면이면 비운다. */
   current?: HeaderCurrent;
   /**
    * 패널 안을 스크롤러로 감싸지 않는다 — `/docs`는 레이아웃이 셸과 내비를 들고 **페이지가 본문 스크롤러를 든다**
@@ -46,7 +46,7 @@ export function PublicShell({
       <style>{`body{background-color:var(--canvas)}`}</style>
 
       <div className="bg-canvas flex h-svh min-w-[1280px] flex-col overflow-hidden px-2 pt-2">
-        <PublicHeader cta={cta} current={current} />
+        <PublicHeader account={account} current={current} />
         <main className="border-border-subtle bg-background shadow-low relative flex min-h-0 flex-1 overflow-hidden rounded-xl border">
           {bare ? children : <PublicScroller>{children}</PublicScroller>}
         </main>

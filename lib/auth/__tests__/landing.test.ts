@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { publicCta, rejectTarget, rootView } from "@/lib/auth/landing";
+import { publicAccount, rejectTarget, rootView } from "@/lib/auth/landing";
 import { routes } from "@/lib/routes";
 
 /**
@@ -60,20 +60,21 @@ describe("rootView — 루트(`/`)가 무엇을 그리나 (랜딩)", () => {
   });
 });
 
-describe("publicCta — 공개 셸 헤더의 primary", () => {
-  /**
-   * ⚠️ **라벨은 사전 키다** — 이 모듈은 잎이라 `@/lib/i18n`을 물지 않는다. 헤더가 키로 사전을 읽는다.
-   */
-  it("세션이 있으면 앱으로 연다", () => {
-    expect(publicCta("ok")).toEqual({ href: routes.projects(), label: "openMalmoi" });
+describe("publicAccount — 공개 셸 헤더 우측의 계정", () => {
+  it("세션이 있으면 앱 셸 아바타와 같은 이름·사진을 싣는다", () => {
+    expect(publicAccount({ status: "ok", userId: "u1", name: "  ", email: "a@x.dev", image: "https://img/a.webp" })).toEqual({
+      name: "a@x.dev",
+      email: "a@x.dev",
+      image: "https://img/a.webp",
+    });
   });
 
-  it("세션이 없으면 로그인으로 보낸다", () => {
-    expect(publicCta("none")).toEqual({ href: routes.signIn(), label: "getStarted" });
+  it("세션이 없으면 계정이 없다 — 헤더는 Get started다", () => {
+    expect(publicAccount({ status: "none" })).toBeNull();
   });
 
-  /** 장애는 비로그인 쪽이다 — 공개 화면에서 앱으로 보내 봐야 보호 라우트가 다시 튕긴다. */
+  /** 장애는 비로그인 쪽이다 — 아바타 메뉴로 앱에 들어가 봐야 보호 라우트가 다시 튕긴다. */
   it("세션을 못 읽으면 비로그인과 같다", () => {
-    expect(publicCta("unavailable")).toEqual(publicCta("none"));
+    expect(publicAccount({ status: "unavailable" })).toBeNull();
   });
 });

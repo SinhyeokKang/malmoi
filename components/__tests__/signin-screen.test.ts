@@ -122,7 +122,6 @@ describe("로그인 화면 — 레이아웃 계약", () => {
     const links = read("lib/links.ts");
     expect(read("components/public-shell/footer.tsx")).toMatch(/\bFOOTER_LINKS\b/);
     expect(links).toMatch(/routes\.privacy\(\)/);
-    expect(links).toMatch(/routes\.docs\(\)/);
   });
 });
 
