@@ -15,7 +15,7 @@ const RAW2 = "mlm_" + "c".repeat(43);
 const HASH2 = hashApiToken(RAW2);
 const now = Date.now();
 
-const hoisted = vi.hoisted(() => ({ apiToken: { findUnique: vi.fn(), updateMany: vi.fn() }, echo: false }));
+const hoisted = vi.hoisted(() => ({ apiToken: { findUnique: vi.fn(), updateMany: vi.fn() }, echo: false, origins: [] as (string | null)[] }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({ apiToken: hoisted.apiToken }) }));
 /**
@@ -25,8 +25,9 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => ({ apiToken: hoisted.apiToken }) }
 vi.mock("@/lib/mcp/server", async importOriginal => {
   const real = await importOriginal<typeof import("@/lib/mcp/server")>();
   return {
-    createMcpServer: (subject: Parameters<typeof real.createMcpServer>[0]) => {
-      const server = real.createMcpServer(subject);
+    createMcpServer: (subject: Parameters<typeof real.createMcpServer>[0], origin: string | null = null) => {
+      hoisted.origins.push(origin);
+      const server = real.createMcpServer(subject, origin);
       if (hoisted.echo) {
         server.registerTool("echo_subject", { annotations: { readOnlyHint: true } }, async () => ({
           content: [{ type: "text", text: "echo" }],
@@ -49,6 +50,7 @@ const validRow = () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   hoisted.echo = false;
+  hoisted.origins = [];
   hoisted.apiToken.findUnique.mockImplementation(async ({ where }: { where: { tokenHash: string } }) => {
     if (where.tokenHash === HASH) return validRow();
     if (where.tokenHash === HASH2) return { ...validRow(), userId: "u2", tokenHash: HASH2 };
@@ -292,5 +294,21 @@ describe("주체 배선 — 동시 요청", () => {
       { userId: "u1", tokenId: HASH },
       { userId: "u2", tokenId: HASH2 },
     ]);
+  });
+});
+
+/**
+ * **브라우저 링크의 origin** (design §2.4) — CLI는 상대 경로를 못 연다. 허용 호스트(`requestOrigin`)에서 온 요청만 origin을 넘기고, 모르는
+ * 호스트는 `null`(경로 그대로)이다 — 조작된 `Host`로 남의 호스트 링크를 만들지 않는다.
+ */
+describe("도구 문맥의 origin", () => {
+  const list = { jsonrpc: "2.0", id: 1, method: "tools/list" };
+  it.each([
+    [{ host: "dev.mal-moi.com", "x-forwarded-proto": "https" }, "https://dev.mal-moi.com"],
+    [{ host: "localhost:3000" }, "http://localhost:3000"],
+    [{ host: "evil.example", "x-forwarded-proto": "https" }, null],
+  ])("%j → %s", async (headers, expected) => {
+    await post(list, { headers: { ...LEGACY, ...headers } });
+    expect(hoisted.origins).toEqual([expected]);
   });
 });

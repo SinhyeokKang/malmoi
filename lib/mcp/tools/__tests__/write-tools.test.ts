@@ -35,7 +35,7 @@ vi.mock("@/lib/onboarding-run/add", async (orig) => ({ ...(await orig<object>())
 
 const { TOOLS } = await import("..");
 const run = (name: string, who: ApiTokenSubject, input: Record<string, unknown>): Promise<ToolOutcome> =>
-  TOOLS.find(t => t.name === name)!.run({ prisma, subject: who, now: new Date() }, input as never);
+  TOOLS.find(t => t.name === name)!.run({ prisma, subject: who, now: new Date(), origin: null }, input as never);
 const code = (outcome: ToolOutcome) => outcome.status === "refused" ? outcome.code : outcome.status;
 const ALL: TokenGrant[] = ["translation:write", "project:settings", "member:manage", "project:create"];
 const subject = (userId: string, grants: TokenGrant[] = ALL, scope: TokenScope = { kind: "all" }): ApiTokenSubject => ({ userId, grants, scope, tokenId: `hash-${userId}` });

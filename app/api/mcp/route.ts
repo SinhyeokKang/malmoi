@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { readBoundedText } from "@/lib/bounded-body";
 import { getPrisma } from "@/lib/db";
 import { logFailure } from "@/lib/github-connect/log";
+import { requestOrigin } from "@/lib/github-connect/origin";
 import { checkOrigin } from "@/lib/mcp/http";
 import { createMcpServer } from "@/lib/mcp/server";
 import { parseBearer } from "@/lib/mcp/token";
@@ -33,8 +34,13 @@ const MAX_BODY_BYTES = 1_048_576;
 const unauthorized = () => NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
 /** 주체를 SDK의 `authInfo`로 싣는다 — 원문 토큰은 싣지 않는다(`token` 자리에 해시). 2026-07-28 쪽 팩토리가 `extra`에서 되읽는다. */
-function authInfoOf(subject: ApiTokenSubject): AuthInfo {
-  return { token: subject.tokenId, clientId: subject.userId, scopes: [...subject.grants], extra: { subject } };
+function authInfoOf(subject: ApiTokenSubject, origin: string | null): AuthInfo {
+  return { token: subject.tokenId, clientId: subject.userId, scopes: [...subject.grants], extra: { subject, origin } };
+}
+
+/** 도구가 브라우저로 보내는 링크의 origin — 허용 호스트만(`requestOrigin`). 조작된 `Host`로 남의 호스트 링크를 만들지 않는다. */
+function originOf(request: Request): string | null {
+  return requestOrigin({ host: request.headers.get("host"), forwardedProto: request.headers.get("x-forwarded-proto") })?.origin ?? null;
 }
 
 function subjectOf(info: AuthInfo | undefined): ApiTokenSubject {
@@ -47,16 +53,17 @@ function subjectOf(info: AuthInfo | undefined): ApiTokenSubject {
 let modern: McpHttpHandler | null = null;
 /** 모듈 한 벌 — 첫 요청에 만든다(최상위에서 만들면 import만으로 SDK가 경고를 찍고 인스턴스를 세운다). */
 function modernHandler(): McpHttpHandler {
-  modern ??= createMcpHandler(ctx => createMcpServer(subjectOf(ctx.authInfo)), { legacy: "reject", responseMode: "json", onerror: error => logFailure("mcp-sdk", error) });
+  modern ??= createMcpHandler(ctx => createMcpServer(subjectOf(ctx.authInfo), typeof ctx.authInfo?.extra?.origin === "string" ? ctx.authInfo.extra.origin : null), { legacy: "reject", responseMode: "json", onerror: error => logFailure("mcp-sdk", error) });
   return modern;
 }
 
 async function serveLegacy(request: Request, parsedBody: unknown, subject: ApiTokenSubject): Promise<Response> {
-  const server = createMcpServer(subject);
+  const origin = originOf(request);
+  const server = createMcpServer(subject, origin);
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   await server.connect(transport);
   try {
-    return await transport.handleRequest(request, { parsedBody, authInfo: authInfoOf(subject) });
+    return await transport.handleRequest(request, { parsedBody, authInfo: authInfoOf(subject, origin) });
   } finally {
     await server.close();
   }
@@ -109,7 +116,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     // 본문은 이미 읽었다 — 두 경로 모두 `parsedBody`로 넘겨 다시 읽지 않는다(원 요청의 헤더는 SDK가 그대로 검사한다).
     if (await isLegacyRequest(request, parsedBody)) return await serveLegacy(request, parsedBody, subject);
-    return await modernHandler().fetch(request, { parsedBody, authInfo: authInfoOf(subject) });
+    return await modernHandler().fetch(request, { parsedBody, authInfo: authInfoOf(subject, originOf(request)) });
   } catch (error) {
     logFailure("mcp-dispatch", error);
     return NextResponse.json({ error: "unavailable" }, { status: 500 });

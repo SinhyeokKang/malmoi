@@ -27,7 +27,7 @@ vi.mock("@/lib/github", async (orig) => ({
 }));
 
 const { TOOLS } = await import("..");
-const run = (name: string, input: Record<string, unknown>) => TOOLS.find(t => t.name === name)!.run({ prisma, subject, now: NOW }, input as never);
+const run = (name: string, input: Record<string, unknown>) => TOOLS.find(t => t.name === name)!.run({ prisma, subject, now: NOW, origin: null }, input as never);
 
 const NOW = new Date("2026-09-28T00:00:00Z");
 const subject: ApiTokenSubject = { userId: "u1", grants: ["project:create"], scope: { kind: "all" }, tokenId: "hash" };

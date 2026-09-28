@@ -10,7 +10,7 @@ import { routes } from "@/lib/routes";
 
 import type { NeedsBrowserReason, ToolOutcome } from "../result";
 import { checkCreateTool, checkProjectTool } from "./access";
-import { coreSubject, defineTool, ok } from "./define";
+import { appUrl, coreSubject, defineTool, ok, type ToolContext } from "./define";
 
 /**
  * 리포 축 읽기 셋 (design §2.1 · §2.4). 두 GitHub 자격증명이 만나는 코어(`lib/onboarding-run`)를 부른다 — 사용자 확인은 user-to-server,
@@ -22,19 +22,20 @@ import { coreSubject, defineTool, ok } from "./define";
 
 const BROWSER: Partial<Record<string, NeedsBrowserReason>> = { "not-connected": "not-connected", reauthorize: "reauthorize", "no-installations": "no-installations" };
 
-function refusedOrBrowser(code: string): ToolOutcome {
+function refusedOrBrowser(ctx: ToolContext, code: string): ToolOutcome {
   const reason = Object.hasOwn(BROWSER, code) ? BROWSER[code] : undefined;
-  return reason === undefined ? { status: "refused", code } : { status: "needs-browser", reason, url: routes.account() };
+  return reason === undefined ? { status: "refused", code } : { status: "needs-browser", reason, url: appUrl(ctx, routes.account()) };
 }
 
 export const listRepositoriesTool = defineTool({
   name: "list_repositories",
   inputSchema: z.object({}),
-  async run({ prisma, subject }) {
+  async run(ctx) {
+    const { prisma, subject } = ctx;
     const gate = checkCreateTool(subject, { name: "list_repositories" });
     if (gate.status !== "ok") return gate;
     const result = await listRepositories(prisma, coreSubject(subject));
-    if (!result.ok) return refusedOrBrowser(result.error);
+    if (!result.ok) return refusedOrBrowser(ctx, result.error);
     return ok({ repositories: result.repos, installRequestPending: result.pending }, m.mcp.summary.repositories(result.repos.length));
   },
 });
@@ -57,7 +58,8 @@ function variantOf(input: z.infer<typeof RepoOrSlug> & { ref?: string }): { kind
 export const listBranches = defineTool({
   name: "list_branches",
   inputSchema: RepoOrSlug,
-  async run({ prisma, subject }, input) {
+  async run(ctx, input) {
+    const { prisma, subject } = ctx;
     const target = variantOf(input);
     if (target === null) return { status: "invalid-input" };
     let result;
@@ -71,7 +73,7 @@ export const listBranches = defineTool({
       if (gate.status !== "ok") return gate;
       result = await listLinkedBranches(prisma, coreSubject(subject), target);
     }
-    if (!result.ok) return refusedOrBrowser(result.error);
+    if (!result.ok) return refusedOrBrowser(ctx, result.error);
     // sync 브랜치는 기준 브랜치가 될 수 없다(malmoi#126) — 설정 화면의 목록과 같은 필터다.
     const names = result.names.filter(name => !isSyncBranchName(name));
     return ok({ branches: names, defaultBranch: result.defaultBranch, truncated: result.truncated }, m.mcp.summary.branches(names.length));
@@ -81,7 +83,8 @@ export const listBranches = defineTool({
 export const detectFormatsTool = defineTool({
   name: "detect_formats",
   inputSchema: RepoOrSlug.extend({ ref: DetectInput.shape.ref }),
-  async run({ prisma, subject }, input) {
+  async run(ctx, input) {
+    const { prisma, subject } = ctx;
     const target = variantOf(input);
     if (target === null) return { status: "invalid-input" };
     let result;
@@ -98,9 +101,9 @@ export const detectFormatsTool = defineTool({
     if (!result.ok) {
       // 정상 조회 뒤 후보가 없을 때만 브라우저의 수동 설정으로 보낸다 — 장애·거부·예산 초과는 그대로 낸다.
       if (result.error === "no-candidates") {
-        return { status: "needs-browser", reason: "no-candidates", url: target.kind === "new" ? routes.newProject() : routes.sources(target.slug) };
+        return { status: "needs-browser", reason: "no-candidates", url: appUrl(ctx, target.kind === "new" ? routes.newProject() : routes.sources(target.slug)) };
       }
-      return refusedOrBrowser(result.error);
+      return refusedOrBrowser(ctx, result.error);
     }
     return ok({ candidates: result.candidates }, m.mcp.summary.formats(result.candidates.length));
   },

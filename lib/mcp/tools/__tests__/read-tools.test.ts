@@ -34,7 +34,9 @@ const tool = (name: string) => {
 };
 
 let prisma: PrismaClient;
+let origin: string | null = null;
 beforeEach(() => {
+  origin = null;
   prisma = createHarness({
     projects: [{ id: "p1", slug: "acme" }, { id: "p2", slug: "other" }],
     members: [
@@ -58,7 +60,7 @@ function subject(userId: string, grants: TokenGrant[] = [], scope: TokenScope = 
   return { userId, grants, scope, tokenId: `hash-${userId}` };
 }
 const call = (name: string, who: ApiTokenSubject, input: Record<string, unknown>): Promise<ToolOutcome> =>
-  tool(name).run({ prisma, subject: who, now: new Date("2026-09-28T00:00:00Z") }, input as never);
+  tool(name).run({ prisma, subject: who, now: new Date("2026-09-28T00:00:00Z"), origin }, input as never);
 const status = (outcome: ToolOutcome) => outcome.status === "refused" ? outcome.code : outcome.status;
 
 const SURFACE = { slug: "acme", surfaceSlug: "default" };
@@ -159,6 +161,14 @@ describe("입력 경로 — 섞지 않는다", () => {
 });
 
 describe("needs-browser (design §2.4)", () => {
+  it("허용 호스트에서 온 요청이면 절대 URL이다 — CLI가 경로만으로는 못 연다", async () => {
+    origin = "https://dev.mal-moi.com";
+    h.listRepositories.mockResolvedValue({ ok: false, error: "not-connected", pending: false });
+    expect(await call("list_repositories", subject("owner", ["project:create"]), {})).toEqual({ status: "needs-browser", reason: "not-connected", url: `https://dev.mal-moi.com${routes.account()}` });
+    h.detectFormats.mockResolvedValue({ ok: false, error: "no-candidates" });
+    expect(await call("detect_formats", subject("owner", ["project:create"]), { owner: "o", repo: "r" })).toMatchObject({ url: `https://dev.mal-moi.com${routes.newProject()}` });
+  });
+
   it.each(["not-connected", "reauthorize", "no-installations"] as const)("%s는 /account 하나로 보낸다 — URL에 비밀값이 없다", async error => {
     h.listRepositories.mockResolvedValue({ ok: false, error, pending: false });
     const outcome = await call("list_repositories", subject("owner", ["project:create"]), {});

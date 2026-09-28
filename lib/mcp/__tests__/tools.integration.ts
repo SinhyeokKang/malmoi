@@ -93,7 +93,7 @@ async function token(userId: string, over: { grants?: TokenGrant[]; allProjects?
   return { userId, tokenId: row.tokenHash, grants: row.grants, scope: row.allProjects ? { kind: "all" } : { kind: "projects", projectIds: row.projectIds } };
 }
 const call = (name: string, subject: ApiTokenSubject, input: Record<string, unknown>): Promise<ToolOutcome> =>
-  TOOLS.find(t => t.name === name)!.run({ prisma, subject, now: new Date() }, input as never);
+  TOOLS.find(t => t.name === name)!.run({ prisma, subject, now: new Date(), origin: null }, input as never);
 const code = (outcome: ToolOutcome) => outcome.status === "refused" ? outcome.code : outcome.status;
 const koValue = async () => (await prisma.translation.findUniqueOrThrow({ where: { id: "k1-ko" } })).value;
 const events = () => prisma.projectEvent.count({ where: { projectId: "p" } });

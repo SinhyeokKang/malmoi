@@ -20,7 +20,7 @@ import { executeTool } from "./tools/execute";
  * 이름·순서·annotations는 카탈로그가, 입력 스키마·실행은 `lib/mcp/tools/*`가 든다.
  * `subject`는 서버가 토큰에서 만든 주체다 — 도구 입력으로 주체를 받지 않는다.
  */
-export function createMcpServer(subject: ApiTokenSubject): McpServer {
+export function createMcpServer(subject: ApiTokenSubject, origin: string | null = null): McpServer {
   const server = new McpServer({ name: "Malmoi", version: "1" }, { capabilities: { tools: { listChanged: false } } });
   const implemented = new Map(TOOLS.map(tool => [tool.name, tool]));
   for (const tool of toolCatalog()) {
@@ -28,7 +28,7 @@ export function createMcpServer(subject: ApiTokenSubject): McpServer {
     // 카탈로그와 구현이 어긋났다 — 설정 오류라 요청을 받기 전에 던진다(`tools/registry.test.ts`가 상시로 센다).
     if (definition === undefined) throw new Error(`MCP tool ${tool.name} has no implementation`);
     server.registerTool(tool.name, { description: toolDescription(tool.name), annotations: tool.annotations, inputSchema: definition.inputSchema },
-      async (input: unknown) => executeTool(definition, () => ({ prisma: getPrisma(), subject, now: new Date() }), input));
+      async (input: unknown) => executeTool(definition, () => ({ prisma: getPrisma(), subject, now: new Date(), origin }), input));
   }
   return server;
 }
