@@ -82,6 +82,21 @@ describe("logs — 시각과 페이지네이션", () => {
     expect(read("components/logs/event-row.tsx")).toContain("aria-label={utcMinute(");
   });
 
+  /** 날짜만 쓰는 두 줄(coverage · 보관 복구)도 절대 날짜라 `utcDay`를 지난다 — ISO를 잘라 보이지 않는다. */
+  it("coverage · 보관 줄의 날짜가 `utcDay`다", () => {
+    const src = read(PAGE);
+    expect(src).toMatch(/m\.logs\.coverage\(utcDay\(/);
+    expect(src).toMatch(/m\.logs\.archived\.restoreLine\(utcDay\(/);
+    expect(src).not.toContain("slice(0, 10)");
+  });
+
+  /** 카드 머리가 ISO 키를 그리면 날짜 형이 화면에서 둘로 갈린다 — 키는 React `key`에만 쓴다. */
+  it("날짜 카드 머리가 `group.heading`이다 — ISO `dayKey`를 그리지 않는다", () => {
+    const src = read(PAGE);
+    expect(src).toContain("{group.heading}</h2>");
+    expect(src).not.toMatch(/>\{group\.dayKey\}</);
+  });
+
   it("'Older'가 `routes.logs`를 지난다 — 경로를 화면이 조립하지 않는다", () => {
     expect(src).toContain("routes.logs");
     // 2026-09-05 사고의 답이다: 문자열 리터럴은 타입도 테스트도 못 본다.

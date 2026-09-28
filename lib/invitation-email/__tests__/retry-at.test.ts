@@ -8,15 +8,15 @@ import { retryAtLabel } from "../retry-at";
  */
 describe("retryAtLabel", () => {
   it("초가 있으면 다음 분으로 올린다", () => {
-    expect(retryAtLabel("2026-09-23T12:00:30.000Z")).toBe("2026-09-23 12:01 UTC");
-    expect(retryAtLabel("2026-09-23T12:00:00.001Z")).toBe("2026-09-23 12:01 UTC");
+    expect(retryAtLabel("2026-09-23T12:00:30.000Z")).toBe("Sep 23, 2026 12:01 UTC");
+    expect(retryAtLabel("2026-09-23T12:00:00.001Z")).toBe("Sep 23, 2026 12:01 UTC");
   });
 
   it("정각은 그대로다", () => {
-    expect(retryAtLabel("2026-09-23T12:00:00.000Z")).toBe("2026-09-23 12:00 UTC");
+    expect(retryAtLabel("2026-09-23T12:00:00.000Z")).toBe("Sep 23, 2026 12:00 UTC");
   });
 
   it("자정·월말을 넘긴다", () => {
-    expect(retryAtLabel("2026-09-30T23:59:10.000Z")).toBe("2026-10-01 00:00 UTC");
+    expect(retryAtLabel("2026-09-30T23:59:10.000Z")).toBe("Oct 1, 2026 00:00 UTC");
   });
 });

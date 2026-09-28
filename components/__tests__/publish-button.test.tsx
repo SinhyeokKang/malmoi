@@ -562,7 +562,7 @@ it("실패 시각은 <time dateTime>에 UTC 라벨로 선다", async () => {
   mocks.pull.mockResolvedValueOnce({ status: "failed", error: "unavailable", retryable: true, code: "ref-1" });
   await render(<Host />); await click("Publish1"); await click("Open pull request");
   const time = document.querySelector("time");
-  expect(time?.textContent).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
+  expect(time?.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4} \d{2}:\d{2} UTC$/);
   expect(new Date(time?.getAttribute("dateTime") ?? "").toISOString()).toBe(time?.getAttribute("dateTime"));
 });
 

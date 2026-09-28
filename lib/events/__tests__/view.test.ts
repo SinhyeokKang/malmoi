@@ -185,12 +185,22 @@ describe("groupByDay — UTC 자정으로 끊는다", () => {
   const NOW = new Date("2026-09-20T02:00:00.000Z");
   const at = (iso: string) => ({ occurredAt: new Date(iso) });
 
-  it("오늘·어제는 낱말이고 나머지는 날짜다", () => {
+  it("오늘·어제만 낱말이 붙고 나머지는 없다", () => {
     const groups = groupByDay(
       [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
       NOW,
     );
-    expect(groups.map((group) => group.label)).toEqual([m.logs.day.today, m.logs.day.yesterday, "2026-09-18"]);
+    expect(groups.map((group) => group.label)).toEqual([m.logs.day.today, m.logs.day.yesterday, null]);
+  });
+
+  /** 카드 머리는 늘 날짜이고(앱의 날짜 형), 오늘·어제 낱말은 그 옆의 덧붙임이다 — 지난 날짜가 두 번 서지 않는다. */
+  it("머리는 `utcDay` 형이고 그룹 키는 ISO 그대로다", () => {
+    const groups = groupByDay(
+      [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
+      NOW,
+    );
+    expect(groups.map((group) => group.heading)).toEqual(["Sep 20, 2026", "Sep 19, 2026", "Sep 18, 2026"]);
+    expect(groups.map((group) => group.dayKey)).toEqual(["2026-09-20", "2026-09-19", "2026-09-18"]);
   });
 
   /**

@@ -403,7 +403,7 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     await settle();
     const alert = formAlert();
     expect(alert?.textContent).toContain(m.members.invite.limit.title);
-    expect(alert?.textContent).toContain(m.members.invite.limit.user(30, 29, 2, "2026-09-23 12:01 UTC"));
+    expect(alert?.textContent).toContain(m.members.invite.limit.user(30, 29, 2, "Sep 23, 2026 12:01 UTC"));
     expect(alert?.className).toContain("amber");
   });
 
@@ -415,7 +415,7 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     await settle();
     const alert = formAlert();
     expect(alert?.textContent).toContain(m.members.invite.limit.title);
-    expect(alert?.textContent).toContain(m.members.invite.limit.project(20, 18, 3, "2026-09-23 12:01 UTC"));
+    expect(alert?.textContent).toContain(m.members.invite.limit.project(20, 18, 3, "Sep 23, 2026 12:01 UTC"));
     expect(alert?.className).toContain("amber");
     expect(email(2).value).toBe("c@x.com");
     expect(document.activeElement).toBe(submit());
@@ -426,7 +426,7 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     await open();
     await fill(["a@x.com", "mina@example.com"]);
     await click(submit());
-    expect(formAlert()?.textContent).toContain(m.members.invite.limit.address("mina@example.com", "2026-09-23 12:01 UTC"));
+    expect(formAlert()?.textContent).toContain(m.members.invite.limit.address("mina@example.com", "Sep 23, 2026 12:01 UTC"));
   });
 
   it("결과 미확인은 warning이고 일부가 갔을 수 있다고 말한다", async () => {
