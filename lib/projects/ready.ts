@@ -1,3 +1,4 @@
+import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 

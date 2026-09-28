@@ -381,8 +381,10 @@ describe("쓰기 경로가 목록 둘을 무효화한다", () => {
     expect(src).toContain('revalidatePath("/projects/new")');
   });
 
-  it("번역 저장·Revert·Publish Action이 그 공유 함수를 부른다", () => {
-    expect(read("app/(edit)/actions.ts").match(/revalidateTranslationReaders\((parsed\.data\.)?slug\)/g)).toHaveLength(3);
+  it.each(["saveTranslationKey", "revertTranslationKey", "triggerPullAction"])("%s가 그 공유 함수를 부른다", (name) => {
+    const src = read("app/(edit)/actions.ts");
+    const body = src.match(new RegExp(`export async function ${name}\\b[\\s\\S]*?(?=\\nexport |$)`))?.[0] ?? "";
+    expect(body.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, "")).toMatch(/revalidateTranslationReaders\(/);
   });
 });
 
