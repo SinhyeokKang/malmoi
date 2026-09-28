@@ -833,3 +833,15 @@ it("프로젝트 이미지의 동시 교체·제거는 현재 URL을 삭제하�
   expect(await updateProjectName({ slug: "add", name: "  Renamed  " })).toEqual({ ok: true, name: "Renamed" });
   expect(await prisma.project.findUniqueOrThrow({ where: { id: "add" } })).toMatchObject({ name: "Renamed", slug: "add" });
 });
+
+/** MCP 토큰 주체의 소스 추가 — 잠금 직후 `lockApiToken`이 토큰을 다시 읽는다(mcp-connector design §1.25). 쓰기 0건. */
+it("잠금 뒤 다시 읽은 토큰이 없으면(폐기·재발급) 표면을 만들지 않는다 · grant가 없으면 token-scope — 유효 토큰은 만든다 (짝)", async () => {
+  const input = await addFixture();
+  await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "live", grants: ["project:settings"], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+  await expect(addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input], tokenId: "stale" })).rejects.toMatchObject({ code: "unauthorized" });
+  await prisma.apiToken.update({ where: { userId: "owner" }, data: { grants: [] } });
+  await expect(addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input], tokenId: "live" })).rejects.toMatchObject({ code: "token-scope" });
+  expect(await prisma.translationSurface.count({ where: { projectId: "add", id: { not: "surface-add" } } })).toBe(0);
+  await prisma.apiToken.update({ where: { userId: "owner" }, data: { grants: ["project:settings"] } });
+  expect(await addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input], tokenId: "live" })).toMatchObject([{ surfaceSlug: "second" }]);
+});

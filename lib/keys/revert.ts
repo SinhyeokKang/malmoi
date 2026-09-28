@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { lockApiToken } from "@/lib/auth/lock";
 import { recordEvent } from "@/lib/events/record";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { hasActiveImport } from "@/lib/import/plan";
@@ -23,7 +24,9 @@ export type RevertTarget = { projectId: string; surfaceId: string; surfaceSlug: 
 type Blocked = { status: "blocked"; reason: Exclude<RevertPlan, { ok: true }>["reason"] | "key-unavailable"; localeCodes?: string[] };
 
 export type RevertPreview = { status: "ready"; locales: { code: string; before: string; after: string }[]; confirmation: string } | Blocked;
-export type RevertResult = { status: "reverted"; cells: { localeCode: string; value: string }[] } | { status: "reconfirm" } | Blocked;
+export type RevertResult = { status: "reverted"; cells: { localeCode: string; value: string }[] } | { status: "reconfirm" } | Blocked
+  /** MCP 토큰 주체만 — 잠금 뒤 다시 읽은 토큰이 무효·범위 밖·grant 없음이다(`lockApiToken`). 쓰기 0건. */
+  | { status: "error"; error: "unauthorized" | "not-found" | "token-scope" };
 
 type State =
   | { ok: false; blocked: Blocked }
@@ -98,14 +101,18 @@ export async function previewKeyRevert(prisma: PrismaClient, target: RevertTarge
   };
 }
 
-export async function executeKeyRevert(prisma: PrismaClient, target: RevertTarget & { confirmation: string }): Promise<RevertResult> {
+export async function executeKeyRevert(prisma: PrismaClient, target: RevertTarget & { confirmation: string; tokenId?: string }): Promise<RevertResult> {
   const { projectId, surfaceId, surfaceSlug, keyId, userId } = target;
   return prisma.$transaction(async (tx) => {
     // 저장·Publish 확정과 같은 잠금 순서다 — 잠금 뒤에 다시 판정해야 확인창 이후의 변화를 본다.
     await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
     await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${projectId} AND "id" = ${surfaceId} FOR UPDATE`;
+    // MCP 토큰은 잠금 직후 다시 읽는다 — 대기 중 폐기·재발급을 본다(mcp-connector design §1.25). grant 거부는 역할 판정 뒤다.
+    const token = await lockApiToken(tx, { tokenId: target.tokenId, userId, projectId, grant: "project:settings" });
+    if (token.status !== "ok") return { status: "error", error: token.status } as const;
     const member = await tx.projectMember.findFirst({ where: { projectId, userId, role: "OWNER" }, select: { userId: true } });
     if (member === null) return { status: "blocked", reason: "forbidden" } as const;
+    if (token.grant === "token-scope") return { status: "error", error: "token-scope" } as const;
     const active = await tx.translationSurface.findFirst({
       where: { id: surfaceId, projectId, archivedAt: null, project: { archivedAt: null } },
       select: { id: true },

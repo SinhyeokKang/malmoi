@@ -142,6 +142,10 @@ const DELEGATED_CORES = new Map([
   ["revokePendingInvitation", "lib/auth/members.ts"],
   ["changeMemberRole", "lib/auth/members.ts"],
   ["inviteMembers", "lib/invitation-email/create.ts"],
+  ["listLinkedBranches", "lib/onboarding-run/branches.ts"],
+  ["addSources", "lib/onboarding-run/add.ts"],
+  ["importRepository", "lib/onboarding-run/import.ts"],
+  ["rotateToken", "lib/onboarding-run/rotate-token.ts"],
 ]);
 
 /** 이름 그대로의 호출 — 앞이 식별자·`.`이면 다른 이름의 꼬리다(`xsaveTranslation(`·`obj.saveTranslation(`). */
@@ -926,8 +930,9 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
   });
 });
 
-it.each(["runRepositoryImport", "checkOpenPullRequest"])("%s는 OWNER의 project:settings로 인가한다", name => {
-  const source = readFileSync(join(APP, "(edit)/projects/actions.ts"), "utf8");
+// runRepositoryImport의 인가는 공유 코어 `importRepository`로 옮겨졌다(mcp-connector T4-c) — 위임 판정은 `DELEGATED_CORES`가 센다.
+it.each([["lib/onboarding-run/import.ts", "importRepository"], ["app/(edit)/projects/actions.ts", "checkOpenPullRequest"]])("%s#%s는 OWNER의 project:settings로 인가한다", (file, name) => {
+  const source = readFileSync(join(ROOT, file), "utf8");
   const declaration = source.match(new RegExp(`export async function ${name}\\b[\\s\\S]*?(?=\\nexport |$)`))?.[0];
   expect(declaration).toBeDefined();
   expect(declaration).toMatch(/getProjectAccess\([\s\S]*?permission:\s*["']project:settings["']/);

@@ -19,7 +19,8 @@ const SITES = [
   // changeMember · revokeInvitation (MCP change_member · revoke_invitation)
   "lib/auth/members.ts#changeMemberRole",
   "lib/auth/members.ts#revokePendingInvitation",
-  "app/(edit)/projects/actions.ts#rotatePushToken",
+  // rotatePushToken (MCP rotate_push_token)
+  "lib/onboarding-run/rotate-token.ts#rotateToken",
   // archiveProject · unarchiveProject (MCP archive_project · unarchive_project)
   "lib/projects/archive.ts#runArchive",
   "lib/projects/archive.ts#runUnarchive",
@@ -60,28 +61,39 @@ const TOKEN_SITES = [
   "lib/keys/save-key.ts#applyKeySave",
   "lib/keys/save-key.ts#applyKeySaveBatch",
   "lib/sync/run.ts#startRun",
+  "lib/onboarding-run/rotate-token.ts#rotateToken",
+];
+
+/**
+ * **raw `FOR UPDATE`로 잠그는 MCP 쓰기** — `lockProjectAccess`를 안 지나므로 잠금 직후 `lockApiToken(tx, { tokenId, … })`을 직접 부른다.
+ * 수동 Sync 실행권 · Revert · 소스 추가 (프로젝트 생성은 T4-d).
+ */
+const RAW_TOKEN_SITES = [
+  "lib/import/run.ts#acquire",
+  "lib/keys/revert.ts#executeKeyRevert",
+  "lib/surfaces/create.ts#addSurfacesFromSnapshot",
 ];
 
 function source(path: string): SourceFile {
   return project.getSourceFile(`${ROOT}${path}`) ?? project.addSourceFileAtPath(`${ROOT}${path}`);
 }
 
-/** 함수 안에서 `$transaction(...)` 콜백 안에 있는 `lockProjectAccess(...)` 호출 수. */
-function lockedCalls(file: SourceFile, name: string): number {
+/** 함수 안에서 `$transaction(...)` 콜백 안에 있는 `callee(...)` 호출 수. */
+function lockedCalls(file: SourceFile, name: string, callee = "lockProjectAccess"): number {
   const fn = file.getFunction(name);
   if (fn === undefined) throw new Error(`${file.getBaseName()}#${name} not found`);
   return fn.getDescendantsOfKind(SyntaxKind.CallExpression).filter(call => {
-    if (call.getExpression().getText() !== "lockProjectAccess") return false;
+    if (call.getExpression().getText() !== callee) return false;
     return call.getAncestors().some(a => Node.isCallExpression(a) && a.getExpression().getText().endsWith(".$transaction"));
   }).length;
 }
 
-/** 함수 안 `lockProjectAccess(tx, { … })` 호출 중 둘째 인자 객체에 `tokenId` 속성이 **없는** 것의 수. */
-function callsWithoutToken(file: SourceFile, name: string): number {
+/** 함수 안 `callee(tx, { … })` 호출 중 둘째 인자 객체에 `tokenId` 속성이 **없는** 것의 수. */
+function callsWithoutToken(file: SourceFile, name: string, callee = "lockProjectAccess"): number {
   const fn = file.getFunction(name);
   if (fn === undefined) throw new Error(`${file.getBaseName()}#${name} not found`);
   return fn.getDescendantsOfKind(SyntaxKind.CallExpression).filter(call => {
-    if (call.getExpression().getText() !== "lockProjectAccess") return false;
+    if (call.getExpression().getText() !== callee) return false;
     const arg = call.getArguments()[1];
     return !(arg !== undefined && Node.isObjectLiteralExpression(arg) && arg.getProperty("tokenId") !== undefined);
   }).length;
@@ -98,6 +110,12 @@ describe("잠금 안 인가 재확인", () => {
     expect(TOKEN_SITES.every(s => SITES.includes(s))).toBe(true);
     expect(lockedCalls(source(path), name)).toBeGreaterThan(0);
     expect(callsWithoutToken(source(path), name)).toBe(0);
+  });
+
+  it.each(RAW_TOKEN_SITES)("%s는 잠금 tx 안에서 lockApiToken에 tokenId를 싣는다", site => {
+    const [path, name] = site.split("#") as [string, string];
+    expect(lockedCalls(source(path), name, "lockApiToken")).toBeGreaterThan(0);
+    expect(callsWithoutToken(source(path), name, "lockApiToken")).toBe(0);
   });
 
   it("tokenId 검출기가 빠진 호출을 센다 — 단축 속성·대입 속성은 실린 것이다", () => {

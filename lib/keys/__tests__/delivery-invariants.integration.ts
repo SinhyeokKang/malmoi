@@ -122,6 +122,20 @@ const edit = (key: string, locales: string[], tag = "tok") =>
   pool.query(`UPDATE "Translation" t SET "value" = 'Edited', "updatedBy" = 'owner', "pendingEditToken" = $1 || '-' || t."localeCode"
     FROM "StringKey" k WHERE k."id" = t."keyId" AND k."key" = $2 AND t."projectId" = 'p' AND t."localeCode" = ANY($3::text[])`, [`${tag}-${key}`, key, locales]);
 
+describe("MCP 토큰 주체의 수동 Sync — 실행권 획득 tx에서 토큰을 다시 읽는다 (mcp-connector design §1.25)", () => {
+  it("폐기·재발급된 해시면 실행권을 얻지 않는다(import 토큰 0) · 유효 해시면 적재한다 (짝)", async () => {
+    await seed(); await ci(payload(["key0"]));
+    await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "live", grants: ["project:settings"], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+    const repo = () => reader(Object.fromEntries(LOCALES.map(l => [`i18n/${l}.json`, '{"key0":"Repository"}'])));
+    const run = (tokenId: string) => runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, tokenId }, async () => repo());
+    expect(await run("stale")).toEqual({ ok: false, error: "unauthorized" });
+    expect((await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).repositoryImportToken).toBeNull();
+    expect((await cellOf("key0", "ko"))?.value).toBe("CI");
+    expect(await run("live")).toMatchObject({ ok: true });
+    expect((await cellOf("key0", "ko"))?.value).toBe("Repository");
+  });
+});
+
 // ── #1 유령 보류 · D1 ─────────────────────────────────────────────────────────────────────────────
 
 describe("#1 · D1 — 폐기 승인 Sync가 이번 적재로 orphan이 된 승인 셀의 토큰을 비운다", () => {
@@ -267,6 +281,16 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     expect((await cellOf("a", "fr"))?.pendingEditToken).not.toBeNull();
     return t;
   }
+
+  it("MCP 토큰 주체는 잠금 뒤 토큰을 다시 읽는다 — 폐기·재발급된 해시면 쓰기 0건, 유효 해시면 되돌린다 (짝)", async () => {
+    const t = await withheldFixture();
+    await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "live", grants: ["project:settings"], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+    const preview = await previewKeyRevert(prisma, t);
+    if (preview.status !== "ready") throw new Error("expected ready");
+    expect(await executeKeyRevert(prisma, { ...t, confirmation: preview.confirmation, tokenId: "stale" })).toEqual({ status: "error", error: "unauthorized" });
+    expect((await cellOf("a", "fr"))?.pendingEditToken).not.toBeNull();
+    expect(await executeKeyRevert(prisma, { ...t, confirmation: preview.confirmation, tokenId: "live" })).toMatchObject({ status: "reverted" });
+  });
 
   it("보류된 fr을 OWNER가 마지막 전달 값으로 되돌릴 수 있다", async () => {
     const t = await withheldFixture();

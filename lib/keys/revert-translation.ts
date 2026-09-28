@@ -44,6 +44,6 @@ export async function runRevert(
   if (access.status !== "ok") return { status: "error", error: access.status };
   if (!(await isProjectReady(prisma, access.projectId))) return { status: "error", error: "not-ready" };
   return executeKeyRevert(prisma, {
-    projectId: access.projectId, surfaceId: access.surfaceId, surfaceSlug: input.surfaceSlug, keyId: input.keyId, userId: subject.userId, confirmation: input.confirmation,
+    projectId: access.projectId, surfaceId: access.surfaceId, surfaceSlug: input.surfaceSlug, keyId: input.keyId, userId: subject.userId, tokenId: subject.tokenId, confirmation: input.confirmation,
   });
 }
