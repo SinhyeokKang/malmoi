@@ -25,12 +25,15 @@ createInvitations / resendInvitation (app/(edit)/projects/actions.ts)
    - 입력에 `project: { name: string; image: string | null }`, `role: "OWNER" | "EDITOR"` 추가.
    - `subject`는 `INVITATION_EMAIL_SUBJECT` 고정이고 값을 `You're invited to a project on Malmoi`로 바꾼다 — 테스트가 이름·역할이 subject·preheader에 없음을 고정한다.
    - `text`: **초대 URL 한 줄 유지**(기존 "개행 없음" 단언 유지) — OWNER 자유 문구를 서식 없는 파트에 싣지 않는다.
-   - **치환은 단일 패스다**: `html.replace(/\{\{(\w+)\}\}/g, (_, k) => …)`, 값 조회는 `Object.hasOwn`. 지금의 연쇄 `replaceAll`에 사용자 입력(`PROJECT_NAME`)이 끼면 `{{INVITE_URL}}`이 든 이름이 뒤 치환에서 다시 전개된다(`escapeHtml`은 `{`·`}`를 안 건드린다). 함수 인자라 `$&` 치환 패턴도 해석되지 않는다.
-   - `image: ""`는 `null`과 같게 본다(`ImageTile`의 판정과 맞춘다 — 구현 때 그 판정을 확인해 따른다).
+   - **치환은 단일 패스다**: `html.replace(/\{\{(\w+)\}\}/g, (_, k) => …)`, 값 조회는 `Object.hasOwn`. 맵에는 새 변수뿐 아니라 기존 `{{LOGO_URL}}`·`{{INVITE_URL}}`과 조각 안의 `{{TILE_SRC}}`·`{{TILE_BG}}`까지 **전부** 든다 — 연쇄 `replaceAll`을 하나라도 남기면 같은 재전개 경로가 산다. 지금의 연쇄 `replaceAll`에 사용자 입력(`PROJECT_NAME`)이 끼면 `{{INVITE_URL}}`이 든 이름이 뒤 치환에서 다시 전개된다(`escapeHtml`은 `{`·`}`를 안 건드린다). 함수 인자라 `$&` 치환 패턴도 해석되지 않는다.
+   - **썸네일 src는 `planProjectImageDelete(project.image)`(`lib/upload/image.ts`)로 정한다** — 키가 나오면 `https://mal-moi.com/api/images/${key}`, `null`이면 폴백 갈래. `null`·`""`·우리 스토어가 아닌 URL이 전부 같은 자리에서 폴백으로 간다(화면 `useImageFallback`의 "매핑 뒤 falsy면 폴백"과 같은 판정). 새 정규식을 만들지 않는다.
+   - 근거: 23ae508 이후 **Blob 호스트를 수신 측에 주지 않는다**(ARCHITECTURE §6.7) — FortiGate류 사내 필터가 `*.vercel-storage.com`을 막으므로 이미지를 직접 받는 메일 클라이언트(Apple Mail·Outlook)도 같이 막힌다(Gmail은 프록시). origin은 `INVITATION_EMAIL_LOGO_URL`과 같이 **프로덕션 고정**이다(preview는 SSO 뒤, `config.origin`을 따르지 않는다). `/api/images/`는 middleware matcher 밖이고 인가가 없으며 쿼리가 붙으면 404라 수신자별 파라미터를 끼울 자리가 없다.
+   - 대가: dev DB의 키는 프로덕션 스토어에 없어 **dev·preview 메일의 썸네일 갈래는 빈 칸(404)이 정상**이다 — Box PNG·로고와 같은 부류로 수용.
+   - ⚠️ 메일은 `ImageTile`·`Avatar`(`useImageFallback`) 밖의 **세 번째 매핑 소비자**이고 `components/__tests__/image-origin.test.tsx`의 그물 밖이다 — `message.test.ts`의 "html에 `vercel-storage.com` 0건" 단언이 유일한 방어선이다(tasks T2).
 2. **`emailProjectName(name)`** — **grapheme 기준**(`Intl.Segmenter("en", { granularity: "grapheme" })`, Node 24 내장) 60개 초과 시 앞 59개 + `…`(`…` 포함 60). 코드 포인트로 자르면 ZWJ 이모지·국기 쌍·결합 문자가 중간에서 깨진다. **순서는 자르기 → 이스케이프**다 — 거꾸로면 `&amp;` 같은 엔티티가 중간에서 잘린다.
    - N=60의 근거는 **피싱 무게 상한**이지 줄 수가 아니다 — 라틴 14px는 한 줄, 한글 60자는 두 줄로 넘어가며 수용한다. `PROJECT_NAME_MAX_CHARS`(`lib/projects/plan.ts`, UTF-16 `length` 200)와 단위가 다른 것은 의도다.
 3. **`TONE_HEX: Record<Tone, string>`** — 상수 하나, 호출부는 `TONE_HEX[toneOf(project.name)]`(**자르기 전 원래 이름**으로 — 잘린 이름으로 고르면 61자 이상에서 화면 색과 갈린다). 타입이 여덟 전부를 강제한다. 판정은 화면과 같은 `lib/tone.ts`, 값만 hex다. 위치는 `lib/invitation-email/`(메일만 쓴다 — `lib/tone.ts`는 import 0 잎이라 거기 넣지 않는다).
-   - 값은 **Tailwind v4 `theme.css`의 `--color-<tone>-600` oklch를 sRGB로 환산·클리핑한 근사값**이다(메일 클라이언트가 oklch를 못 읽는다). indigo를 뺀 일곱은 sRGB 밖이라 P3 화면에서는 앱 쪽이 더 채도가 높다 — 피할 수 없는 잔여 차이로 수용한다.
+   - 값은 **Tailwind v4 `theme.css`의 `--color-<tone>-600` oklch를 sRGB로 환산해 채널별 0–1 clamp한 근사값**이다(**gamut mapping 아님** — CSS Color 4 방식으로 환산하면 rose `#e60045`·emerald `#009669`로 갈려 red가 난다. 테스트도 같은 clamp 환산을 쓴다)(메일 클라이언트가 oklch를 못 읽는다). indigo를 뺀 일곱은 sRGB 밖이라 P3 화면에서는 앱 쪽이 더 채도가 높다 — 피할 수 없는 잔여 차이로 수용한다.
    | tone | -600 (v4 → sRGB) |
    |---|---|
    | rose `#ec003f` · orange `#f54900` · amber `#e17100` · emerald `#009966` | teal `#009689` · sky `#0084d1` · indigo `#4f39f6` · fuchsia `#c800de` |
@@ -41,9 +44,9 @@ createInvitations / resendInvitation (app/(edit)/projects/actions.ts)
 
 - 새 변수: `{{PROJECT_NAME}}` · `{{ROLE}}` · `{{TILE}}`. `{{TILE}}`에는 `template.ts`의 두 상수(`INVITATION_EMAIL_TILE_IMAGE` / `INVITATION_EMAIL_TILE_FALLBACK` 꼴) 중 하나가 들어가고, 그 안의 `{{TILE_SRC}}`·`{{TILE_BG}}`는 같은 단일 패스로 치환된다. 분리안(`bgcolor=""`)은 클라이언트마다 해석이 갈려 기각. 마크업은 template, 조립 없음(머리 주석 원칙 유지).
 - 카드 규격은 수락 화면 카드의 computed 값에 맞춘다(`project-card.tsx`·`app/globals.css`):
-  - 카드: 테두리 `1px #e5e5e5`, **radius 12**(`rounded-lg` = `--radius` 0.75rem), padding 12, 타일↔텍스트 gap 12.
-  - 타일 32×32 radius 8(`rounded-sm`). **radius를 거는 자리가 갈래마다 다르다** — 이미지 갈래는 `<img>`에(Gmail은 `<td>` radius가 자식을 자르지 않는다), 폴백 갈래는 `<td bgcolor>`에. Outlook은 radius 무시 — 수용.
-  - 타일 셀은 `width="32" height="32" align="center" valign="middle"` 고정. 썸네일 `<img width="32" style="max-width:32px;max-height:32px;height:auto">` — `normalizeImage`가 `fit: "inside"`라 비정사각이 오고 메일은 `object-fit`을 무시하므로 찌그러뜨리지 않고 담는다. Box PNG는 `width="16" height="16"`(파일은 2x인 32×32).
+  - 카드: 테이블 `width="100%"`(화면 `w-full`), 테두리 `1px #e5e5e5`, **radius 12**(`rounded-lg` = `--radius` 0.75rem), padding 12, 타일↔텍스트 gap 12.
+  - 타일 32×32 radius 8(`rounded-sm`). **radius를 거는 자리가 갈래마다 다르다** — 이미지 갈래는 `<img>`에(Gmail은 `<td>` radius가 자식을 자르지 않는다), 폴백 갈래는 `<td bgcolor>`에. Outlook은 radius 무시 — 수용. 화면은 32 상자를 `overflow-hidden`으로 자르지만 메일은 이미지 자체를 둥글리므로 비정사각 이미지는 이미지 모서리가 둥글어진다 — 수용.
+  - 타일 셀은 `width="32" height="32" align="center" valign="middle"` 고정. 썸네일 `<img style="display:block;width:auto;height:auto;max-width:32px;max-height:32px">`(**width 속성 없음**) — `normalizeImage`가 `fit: "inside"` + `withoutEnlargement`라 가로·세로로 긴 것과 32 미만이 오고 메일은 `object-fit`을 무시한다. `width="32"` 속성을 두면 세로로 긴 이미지가 `max-height`에 눌려 찌그러진다. width 속성이 필요한 Outlook 데스크톱은 어차피 WebP를 못 띄운다(비목표). 32 미만 원본은 확대하지 않는다 — 화면(`object-contain` 확대)과의 차이로 수용. Box PNG는 `width="16" height="16"`(파일은 2x인 32×32).
   - 이름 `14px/20px`, 역할 `13px/17px`(`text-xs` 행간은 짝이 없어 13×1.3333), 둘 다 `letter-spacing:0.02em` weight 400, 두 줄 사이 1px. 이름 `#0a0a0a`, 역할 `#737373`.
   - 이름 셀 `word-break:break-word;overflow-wrap:anywhere` — 메일에는 `truncate`가 없고 공백 없는 긴 이름이 560 폭을 민다(대체 링크 문단과 같은 형).
   - 카드 테이블 `role="presentation"`(기존 표와 같이) — 읽기 순서 로고 → h1 → 문장 → 이름 → 역할 → 버튼.
@@ -54,14 +57,14 @@ createInvitations / resendInvitation (app/(edit)/projects/actions.ts)
 
 ## 새 정적 에셋
 
-- `public/email/box@2x.png` — lucide `Box` 글리프(`node_modules/lucide-react/dist/esm/icons/box.mjs`의 `__iconNode`로 SVG 조립, viewBox 24 · stroke 2 · `stroke="#fff"` `fill="none"`), 투명 배경, 32×32 렌더(표시 16px의 2x — 화면 `size-4` stroke 2와 같은 비율). 로고와 같이 **프로덕션 고정 URL**(`https://mal-moi.com/email/box@2x.png`)로 참조한다 — preview는 SSO 뒤라 메일 클라이언트가 못 받는다(`message.ts`의 LOGO_URL 주석). **프로덕션 배포 전 dev 메일에서는 빈 칸**이다. 경로를 옮기면 이미 보낸 메일이 깨진다.
+- `public/email/box@2x.png` — lucide `Box` 글리프(`node_modules/lucide-react/dist/esm/icons/box.mjs`의 `__iconNode`로 SVG 조립, viewBox 24 · stroke 2 · `stroke="#fff"` `fill="none"`), 투명 배경, 32×32 렌더(표시 16px의 2x — 화면 `size-4` stroke 2와 같은 비율). 로고와 같이 **프로덕션 고정 URL**(`https://mal-moi.com/email/box@2x.png`)로 참조한다 — preview는 SSO 뒤라 메일 클라이언트가 못 받는다(`message.ts`의 `INVITATION_EMAIL_LOGO_URL` 주석). **프로덕션 배포 전 dev 메일에서는 빈 칸**이다. 경로를 옮기면 이미 보낸 메일이 깨진다.
 - 생성은 `.scratch/`의 일회성 sharp 스크립트, 산출 PNG만 커밋한다(`.gitignore`는 `public/fonts/`만 막는다).
 
 ## 데이터·잠금
 
 - `issueInvitations`·`reissueInvitation`이 `lockProjectAccess` 뒤 `tx.project.findUnique({ where: { id: projectId }, select: { name: true, image: true } })`를 읽어 `issued` outcome에 `project`로 싣는다. 잠금 뒤 읽어야 동시 이름 변경과의 순서가 참이다(발급 사건과 같은 시점의 값). 이미 잠근 행의 PK 읽기 한 번이라 잠금 추가·교착 순서 변화가 없다(`lockProjectAccess`가 이미 `archivedAt`을 읽는 쿼리 하나가 더 붙는 비용 — 수용). 보관된 프로젝트는 `lockProjectAccess`가 먼저 거부해 이 읽기에 닿지 않는다.
 - `IssuedInvitation`에 `role`을 더한다(발급은 `writeInvitation`이 가진 `recipient.role`, 재발급은 저장된 `row.role` — 추가 쿼리 없음, 출처가 서버에 고정).
-- `Project.image`는 스키마 주석대로 **PII가 아닌 공개 Blob URL**이다(User.image와 다르다 — 봉투 없음). **쓰는 자리가 `uploadProjectImage`의 `putImage` 반환값 하나**라 서버가 쓴 Blob URL뿐이다 → 스킴 검증 없이 이스케이프해 `src`에 넣는다. 외부 URL을 넣는 쓰기 경로가 생기면 이 판정을 다시 연다.
+- `Project.image`는 스키마 주석대로 **PII가 아닌 공개 Blob URL**이다(User.image와 다르다 — 봉투 없음). 메일에는 그 값을 싣지 않고 **`planProjectImageDelete`가 뽑은 키로 만든 자사 경로만** 싣는다(위 순수 함수 1) — 우리 스토어 모양이 아닌 값은 `src`에 닿지 않으므로 스킴 검증이 따로 필요 없다. 이스케이프는 그대로 지난다.
 
 ## 스키마 변경
 
@@ -73,15 +76,16 @@ createInvitations / resendInvitation (app/(edit)/projects/actions.ts)
 
 ## 불변식·보안 영향
 
-- **피싱 레버**: 프로젝트 이름은 OWNER 자유 입력(최대 200자)이다. 본문 카드에만 싣고(제목·preheader·text 제외), 60 grapheme 상한 + 이스케이프 + 카드 안의 이름 자리로 한정해 "문장처럼 읽히는 자유 문구"의 무게를 줄인다. 발송 한도(주소 60초 · 프로젝트 20/h · 발급자 30/h)는 그대로 스팸 상한이다.
+- **피싱 레버**: 프로젝트 이름은 OWNER 자유 입력(최대 200자)이다. 본문 카드에만 싣고(제목·preheader·text 제외), 60 grapheme 상한 + 이스케이프 + 카드 안의 이름 자리로 한정해 "문장처럼 읽히는 자유 문구"의 무게를 줄인다. 발송 한도(주소 60초 · 프로젝트 20/h · 발급자 30/h — `limits.ts`)는 그대로 스팸 상한이다.
 - **HTML 주입·재치환**: 이름·URL 모두 기존 `escapeHtml`을 지나고, 단일 패스 치환이라 값 안의 `{{…}}`가 다시 전개되지 않는다. 테스트가 `<script>`·`"`·`'`·`&`·`$&`·`{{INVITE_URL}}` 이름을 고정한다.
-- **추적**: 썸네일 URL은 프로젝트 단위 값이라 수신자를 가르지 않는다 — Malmoi 쪽 열람 추적이 아니다(로고와 같은 논리). 단 **수신자 메일 클라이언트가 Vercel Blob에 요청한다**(Gmail은 프록시) — `/privacy`의 로고 문단·Vercel 항목을 T7에서 고친다.
-- 인증 경계 무관. `import "server-only"`: `message.ts`는 테스트가 직접 import하는 순수 모듈이라 붙이지 않는다(현행 유지). `client-safe.test.ts`는 `recipients.ts` 그래프만 보므로 `message.ts`가 `m`을 import해도 걸리지 않는다(확인함).
+- **추적**: 썸네일 URL은 프로젝트 단위 값이라 수신자를 가르지 않는다 — Malmoi 쪽 열람 추적이 아니다(로고와 같은 논리). 메일 클라이언트는 **로고와 같은 `mal-moi.com`**에 요청하고 Blob은 서버끼리 받는다(`readImage`는 헤더를 넘기지 않는다) → 새 전송처가 없다. 단 `/privacy` 로고 문단의 "the same image … for everyone"은 썸네일이 프로젝트마다 달라 거짓이 되므로 T7에서 고친다.
+- 인증 경계 무관. `import "server-only"`: `message.ts`는 테스트가 직접 import하는 순수 모듈이라 붙이지 않는다(현행 유지). `client-safe.test.ts`는 `recipients.ts` 그래프만 보므로 `message.ts`가 `m`을 import해도 걸리지 않는다(확인함). `m`은 `@/lib/i18n`에서 가져온다(`messages/en.tsx`의 export는 `en` — 선례 `lib/auth/message.ts`).
 
 ## POSTMORTEM 소환
 
 - **2026-09-09 malmoi#18** — "표시용 축약이 유일한 식별자인 자리를 만들지 않는다." 이름 60자 자르기가 해당하나: **메일 한 통에 프로젝트 하나라 식별 충돌이 없다** → 해당 없음. (수락 화면도 `truncate`로 한 줄에서 자르므로 전체 이름을 보장하는 자리는 아니다.)
 - **2026-09-17 목록/상세 썸네일 색 불일치** — 같은 엔터티 타일의 교차 화면 계약. `TONE_HEX`를 `theme.css` 환산값과 대조하는 테스트가 재발 방지다.
 - **2026-09-19 privacy** — 등재·게이트는 "빠짐"을 잡지 "거짓"을 못 잡는다 → T7에서 고친 문장마다 소스 대조.
-- **malmoi#50** — 깨진 썸네일 URL. 메일에는 런타임 폴백이 없다(이미지 onError 없음) — 깨지면 빈 칸이다. 비목표(이미 보낸 메일의 이미지 보존)로 수용.
+- **malmoi#50** — 깨진 썸네일 URL. 메일에는 런타임 폴백이 없다(이미지 onError 없음) — 깨지면 빈 칸이다. 비목표(이미 보낸 메일의 이미지 보존)로 수용. 프록시 라우트의 `CDN-Cache-Control`이 하루라 지운 이미지가 그동안 더 보일 수도 있다.
+- **2026-09-20 부류(그물 밖 새 소비자)** — 메일의 매핑은 `image-origin.test.tsx`가 안 본다 → `message.test.ts`의 `vercel-storage.com` 0건 단언.
 - `replaceAll` 문자열 치환 패턴 — 단일 패스 치환도 함수 인자를 유지한다.

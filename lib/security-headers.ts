@@ -33,8 +33,13 @@ const TOOLBAR: Readonly<Record<string, readonly string[]>> = {
 };
 
 /**
- * **Vercel Blob 공개 호스트 하나의 모양** (sec-audit-3 #12). 이 값이 CSP 문자열에 그대로 이어 붙으므로 `;`·공백·
- * 와일드카드가 새면 지시어를 주입하게 된다 — 스토어 id 한 라벨만 받는다.
+ * **Vercel Blob 공개 호스트 하나의 모양** (sec-audit-3 #12).
+ *
+ * ⚠️ **소비자가 CSP에서 `/api/images/[...key]`로 옮겨갔다** (2026-09-28). 전에는 이 값이 `img-src`에 이어 붙어
+ * `;`·공백·와일드카드가 새면 **지시어를 주입**했다. 지금 막는 것은 그 다음 축이다 — `lib/upload/store.ts`의
+ * `readImage`가 이 판정을 지난 호스트로만 상류를 부르므로, **느슨해지면 우리 서버가 아무 Vercel 고객의 공개
+ * 스토어를 대신 읽어 주는 프록시가 된다.** 스토어 id 한 라벨만 받는 이유가 그것이고, `.endsWith(…)`로 바꾸면
+ * 정확히 sec-audit-3 #12가 CSP가 못 막는 층에서 재발한다.
  */
 const BLOB_PUBLIC_HOST = /^[a-z0-9]+\.public\.blob\.vercel-storage\.com$/;
 
@@ -63,11 +68,9 @@ const NONCE = /^[A-Za-z0-9+/_-]+={0,2}$/;
  * ⚠️ **`style-src`에는 `'unsafe-inline'`이 남는다** — React `style` 속성·sonner·radix가 인라인 스타일을 쓰고 nonce는
  * 속성에 안 붙는다(ARCHITECTURE §8 잔여).
  */
-export function buildCsp(env: CspEnvironment, options: { nonce: string; blobHost: string | undefined }): string {
+export function buildCsp(env: CspEnvironment, options: { nonce: string }): string {
   // 정책 문자열에 그대로 이어 붙으므로 따옴표·`;`가 새면 지시어를 주입한다 — 호출자가 `createNonce`여도 여기서 막는다.
   if (!NONCE.test(options.nonce)) throw new Error("buildCsp: malformed nonce");
-  // ⚠️ 모양이 틀린 값은 없는 것으로 친다 — 없으면 업로드 이미지가 안 보일 뿐이고(fail-closed), 남의 스토어는 안 열린다.
-  const blob = options.blobHost !== undefined && isBlobPublicHost(options.blobHost) ? [`https://${options.blobHost}`] : [];
   const directives: [string, string[]][] = [
     ["default-src", ["'self'"]],
     // Next는 스타일을 인라인으로 넣는다.
@@ -76,9 +79,13 @@ export function buildCsp(env: CspEnvironment, options: { nonce: string; blobHost
     ["script-src", ["'self'", `'nonce-${options.nonce}'`, "'strict-dynamic'", ...(env === "development" ? ["'unsafe-eval'"] : [])]],
     // 폰트는 자사 호스트다 (`public/fonts/` — CLAUDE.md 폰트 절).
     ["font-src", ["'self'"]],
-    // 공급자 아바타 둘 + 업로드한 프로필·프로젝트 이미지(Vercel Blob 공개 읽기). ⚠️ Blob은 **이 환경의 스토어 하나**다 —
-    // `*.public.blob.vercel-storage.com`은 아무 Vercel 고객의 공개 스토어를 열었다(sec-audit-3 #12).
-    ["img-src", ["'self'", "data:", "https://avatars.githubusercontent.com", "https://lh3.googleusercontent.com", ...blob]],
+    /*
+     * 공급자 아바타 둘 + `'self'`. ⚠️ **업로드 이미지는 자사 출처다** (2026-09-28) — `imageSrc`가 Blob URL을
+     * `/api/images/<key>`로 접고 그 라우트가 서버에서 상류를 부르므로, 브라우저는 Blob 호스트에 붙지 않는다
+     * (기업 웹 필터가 그 호스트를 막는 것이 시작이었다 — ARCHITECTURE §6.7).
+     * ⚠️ **되돌리려면 `imageSrc`도 함께 되돌린다** — 여기만 넓히면 정책만 느슨해지고 얻는 것이 없다.
+     */
+    ["img-src", ["'self'", "data:", "https://avatars.githubusercontent.com", "https://lh3.googleusercontent.com"]],
     // HMR 웹소켓 — Safari는 `'self'`를 ws로 넓히지 않는다.
     ["connect-src", ["'self'", ...(env === "development" ? ["ws:", "wss:"] : [])]],
     // ⚠️ `form-action`은 폼 제출 뒤의 302에도 걸린다 — GitHub(OAuth·App 설치)과 Google 로그인
