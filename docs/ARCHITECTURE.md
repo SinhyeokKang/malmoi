@@ -2515,6 +2515,10 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
 - `tools/list` 순서는 **`toolCatalog()` 배열 순서**다(SDK가 등록 순서를 그대로 낸다 — 실측). ⚠️ 두 CLI가 화면에 이름순으로 다시
   정렬하는 것은 클라이언트 쪽 일이다 — 결정성 계약은 wire 순서다. 카탈로그 이름에 구현이 없으면 **서버 생성 시 던진다**
   (`lib/mcp/tools/__tests__/registry.test.ts`).
+- **도구마다 `description`이 있고 정본은 `messages/en.tsx`의 `mcp.tools`다** — 에이전트가 도구를 고르고 "미리보기 먼저"를 아는
+  근거가 이 한 줄뿐이다(이름·입력 스키마만으로는 `preview_publish` → `publish` 순서가 안 보인다). 사전에 두는 이유는 브랜드·한글
+  게이트가 보게 하려는 것이다. ⚠️ **설명이 없거나 빈 이름이 있으면 서버가 서지 않는다**(`toolDescription`이 던진다) — 카탈로그에
+  이름을 늘리면 사전도 같이 늘린다.
 - 401에서 **두 CLI 모두 OAuth로 넘어가지 않는다** — Claude Code는 `Authorization` 헤더가 설정돼 있으면 OAuth fallback을 끄고 401
   본문을 사용자에게 그대로 보인다(실측). `/.well-known/*` 요청은 0건이었다. 그래서 401 본문이 사용자에게 읽히는 문장이다.
 - 알려진 소음: `responseMode: "json"`이면 SDK가 `createMcpHandler` 생성 시 `console.warn` 한 줄을 낸다(모듈 로드당 1회 — 핸들러를
@@ -2632,7 +2636,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 
 | 도구 | 프로젝트 역할 조건 | 토큰 grant 조건 | 무엇을 |
 |---|---|---|---|
-| `whoami` | 없음(계정) | 없음 | 이름·GitHub 연결 여부·토큰 권한/범위 — 에이전트가 자기 권한을 아는 유일한 수단 |
+| `whoami` | 없음(계정) | 없음 | 이름·GitHub 연결 여부·토큰 권한/범위 — 에이전트가 자기 권한을 아는 유일한 수단. 범위는 내부 id가 아니라 **slug**다(지금 멤버인 비보관 프로젝트 중 범위 안의 것만 — 나간 프로젝트의 id를 말하지 않는다) |
 | `list_projects` | 없음(멤버십 ∩ 범위로 거른다) | 없음 | 목록 조회·표시 판정 재사용 |
 | `get_project` | OWNER / EDITOR | 없음 | Home 집계 — 표면·로케일·To send·열린 PR·연결 건강 |
 | `list_repositories` | 없음(생성 준비) | `project:create` | 연결 가능한 리포. 연결·설치가 없으면 `needs-browser` |
@@ -2672,7 +2676,8 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 - **`set_translations`는 한 잠금·한 tx에 키 최대 100개**다(`lib/mcp/batch.ts#planBatchSave` → `applyKeySaveBatch`). 거부된 키는 그 키만
   건너뛰고 나머지는 같은 tx로 커밋된다 — "키마다 원자"의 뜻은 **일부 키의 거부가 정상 결과**라는 것이다. 키별 tx를 버린 이유는
   잠금 tx 실측이 키당 0.5–0.7초라 100키가 60초에 못 들어서다. 한 tx 100키는 로컬 PG 190–218 ms였다(T7 — 도쿄 pooler는 재측정 대상).
-  상한 초과(`too-many`)·중복 키(`duplicate-key` — 어느 값이 이겼는지를 판정하게 된다)는 호출 전체를 거부한다. 사건은 키마다 하나.
+  상한 초과(`too-many`)·중복 키(`duplicate-key` — 어느 값이 이겼는지를 판정하게 된다, `detail.keyId`가 그 키다)는 호출 전체를 거부한다.
+  거부된 키는 결과 행에 `error` 코드와 **번역 화면 저장 바닥의 같은 문장**(`cannot-clear`는 로케일 목록까지)을 싣는다. 사건은 키마다 하나.
 - **`create_project`가 첫 적재까지다** — `runFirstIngest`를 도구로 따로 두지 않는다(§3.1). `requirePush: true`(POSTMORTEM 2026-09-27).
 - ⚠️ **push 토큰 원문이 도구 결과로 나간다**(`create_project`·`rotate_push_token`, 2026-09-28 사용자) — 결과는 에이전트 대화(= LLM
   공급자)에 실린다. 받아들인 근거: 프로젝트 한정 · `/api/push` 한 곳의 쓰기 · 재발급이 곧 폐기이고, 어차피 그 토큰이 가는 곳이 그
@@ -2688,15 +2693,20 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
   문장**이다 — 에이전트가 사용자에게 옮길 문장이 화면과 같아야 한다. 화면의 공용 사전(Access·Onboard·Connect·Settings)을 그대로
   지나고, 화면이 사전 밖에서 문장을 고르는 거부(Publish 모달·Sync 결과·Revert·초대)는 **그 화면의 키**를 넘긴다. 새 문장은 도구에만
   있는 갈래(`token-scope`·`reconfirm`·`invalid-input`·`too-many`·`duplicate-key`)뿐이다. 모르는 코드는 원문을 싣지 않고 장애로 접는다.
-- **장애는 거부가 아니다** — `unavailable`만 `retryable: true`를 싣는다. `publish`의 재시도 가능 실패도 `unavailable`로 접는다(코드·
-  사유는 Logs가 든다).
+- **장애는 거부가 아니다** — `unavailable`만 `retryable: true`를 싣는다.
+- **`publish`의 실패는 `outcome.code`(`SyncErrorCode`)와 `retryable`로 가른다** — ⚠️ `outcome.error`는 코드가 아니라 실행기가 고른 safe
+  문장이거나 `internal (ref …)`다. 문장으로 가르면 갈래가 조용히 틀린다(M3 r1에서 고쳤다). 재시도 가능 → `unavailable` + `detail { code,
+  delivery }`(문장은 싣지 않는다 — ref일 수 있다). 재시도 불가(설정) → 그 코드로 거부 + Publish 화면의 `configError` 틀(리포·base branch)
+  + `detail { reason, delivery }`. `already-running`·`too-soon`은 Publish 화면의 같은 문장이고 `too-soon`은 `retryAfterSeconds`를 싣는다.
+  코드 없는 실패는 실행 전 거부(잠금 뒤 인가·readiness)라 그 코드의 화면 문장이다. `reconfirm`은 Logs의 사유 문장이다.
 - ⚠️ **도구가 던지면 SDK가 예외 문구를 결과에 싣는다**(`createToolError(error.message)`) — §6.0의 500 본문 규칙을 어긴다. 그래서
   `lib/mcp/tools/execute.ts`가 문맥 생성까지 try 안에서 전부 잡아 `unavailable`로 접고 원인은 로그에만 남긴다.
 - **`needs-browser`도 `isError: true`다** — `{ status, reason, url, message }`, `retryable` 없음. GitHub 연결·재인가·설치는 state 쿠키가
   방어선인 브라우저 왕복이라(§6.4) 도구가 대신하지 않는다. `not-connected`·`reauthorize`·`no-installations`는 전부 `/account` 하나다
   (`/projects/new`로 보내면 사용자가 브라우저에서 생성을 끝내 에이전트 흐름이 끊긴다). 후보 없음(`no-candidates`)만 신규는
-  `/projects/new`, 기존은 그 프로젝트 Sources다 — 수동 포맷 확정은 브라우저의 기존 경로를 쓴다. URL은 `lib/routes.ts`의 **앱 경로**이고
-  서명·nonce를 싣지 않는다. 권한 거부·GitHub 장애·예산 초과는 원래 결과를 유지한다 — 브라우저 전환으로 숨기지 않는다.
+  `/projects/new`, 기존은 그 프로젝트 Sources다 — 수동 포맷 확정은 브라우저의 기존 경로를 쓴다. URL은 **허용 호스트에서 온 요청이면
+  절대 URL**이다(CLI는 상대 경로를 못 연다) — route가 `requestOrigin`(`ALLOWED_HOSTS`)으로 origin을 만들어 도구 문맥에 넘기고
+  `appUrl`이 붙인다. 허용 밖 `Host`면 앱 경로 그대로다 — 조작된 `Host`로 남의 호스트 링크를 만들지 않는다. 서명·nonce를 싣지 않는다. 권한 거부·GitHub 장애·예산 초과는 원래 결과를 유지한다 — 브라우저 전환으로 숨기지 않는다.
 
 #### 6.45.7 소스에서 상시로 세는 것
 
