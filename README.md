@@ -185,13 +185,6 @@ agent instructions); product scope is in [`docs/PRODUCT.md`](docs/PRODUCT.md).
 The engineering docs and source comments are in Korean — the project is built
 by one person, and that's the language it was thought in.
 
-## The name
-
-*Malmoi* (말모이, "gathering words") was the 1910s project to
-compile the first Korean dictionary — many people collecting scattered words
-into one book.
-
 ## License
 
-[MIT](LICENSE). Country flags in `public/flags/` are from
-[country-flag-icons](https://gitlab.com/catamphetamine/country-flag-icons) (MIT).
+[MIT](LICENSE) © 2026 Sinhyeok Kang
