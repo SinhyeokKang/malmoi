@@ -62,6 +62,14 @@ async function serveLegacy(request: Request, parsedBody: unknown, subject: ApiTo
   }
 }
 
+/** `subscriptions/listen` 요청이면 그 id(없으면 `null`), 아니면 `undefined`. */
+function listenRequestId(body: unknown): string | number | null | undefined {
+  if (body === null || typeof body !== "object") return undefined;
+  const message = body as { method?: unknown; id?: unknown };
+  if (message.method !== "subscriptions/listen") return undefined;
+  return typeof message.id === "string" || typeof message.id === "number" ? message.id : null;
+}
+
 export async function POST(request: Request): Promise<Response> {
   if (!checkOrigin(request.headers)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
@@ -87,6 +95,16 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return NextResponse.json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, { status: 400 });
   }
+
+  // ⚠️ **배치를 받지 않는다** — 2025-06-18 개정(Codex)이 배치를 없앴고, 도구가 서면 배치 하나가 한 요청 안에서 DB 도구를 펼친다
+  // (본문 상한은 바이트만 막는다). 어느 호출도 실행하지 않고 끊는다.
+  if (Array.isArray(parsedBody)) {
+    return NextResponse.json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Batch requests are not supported" } }, { status: 400 });
+  }
+  // ⚠️ `listChanged: false`여도 SDK는 `subscriptions/listen`에 SSE를 연다(15초 keepalive — 함수를 `maxDuration`까지 붙잡고, 버스는
+  // 모듈 전역이라 인스턴스 사이에 안 닿는다). 목록이 배포 사이에 안 바뀌므로 구독할 것이 없다 — SDK에 넘기기 전에 끊는다.
+  const listen = listenRequestId(parsedBody);
+  if (listen !== undefined) return NextResponse.json({ jsonrpc: "2.0", id: listen, error: { code: -32601, message: "Method not found" } });
 
   try {
     // 본문은 이미 읽었다 — 두 경로 모두 `parsedBody`로 넘겨 다시 읽지 않는다(원 요청의 헤더는 SDK가 그대로 검사한다).

@@ -12,11 +12,32 @@ import { hashApiToken } from "@/lib/mcp/token";
 
 const RAW = "mlm_" + "b".repeat(43);
 const HASH = hashApiToken(RAW);
+const RAW2 = "mlm_" + "c".repeat(43);
+const HASH2 = hashApiToken(RAW2);
 const now = Date.now();
 
-const hoisted = vi.hoisted(() => ({ apiToken: { findUnique: vi.fn(), updateMany: vi.fn() } }));
+const hoisted = vi.hoisted(() => ({ apiToken: { findUnique: vi.fn(), updateMany: vi.fn() }, echo: false }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({ apiToken: hoisted.apiToken }) }));
+/**
+ * 주체 배선을 재는 시험 도구 — `echo` 켠 테스트에서만 등록한다. 서버가 받은 주체를 그대로 돌려주므로, 요청 사이에 서버·주체가
+ * 새면(모듈 캐시·클로저 공유) 다른 토큰의 `userId`가 보인다.
+ */
+vi.mock("@/lib/mcp/server", async importOriginal => {
+  const real = await importOriginal<typeof import("@/lib/mcp/server")>();
+  return {
+    createMcpServer: (subject: Parameters<typeof real.createMcpServer>[0]) => {
+      const server = real.createMcpServer(subject);
+      if (hoisted.echo) {
+        server.registerTool("echo_subject", { annotations: { readOnlyHint: true } }, async () => ({
+          content: [{ type: "text", text: "echo" }],
+          structuredContent: { userId: subject.userId, tokenId: subject.tokenId },
+        }));
+      }
+      return server;
+    },
+  };
+});
 
 const route = await import("../mcp/route");
 const { POST } = route;
@@ -28,7 +49,12 @@ const validRow = () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  hoisted.apiToken.findUnique.mockImplementation(async ({ where }: { where: { tokenHash: string } }) => (where.tokenHash === HASH ? validRow() : null));
+  hoisted.echo = false;
+  hoisted.apiToken.findUnique.mockImplementation(async ({ where }: { where: { tokenHash: string } }) => {
+    if (where.tokenHash === HASH) return validRow();
+    if (where.tokenHash === HASH2) return { ...validRow(), userId: "u2", tokenHash: HASH2 };
+    return null;
+  });
   hoisted.apiToken.updateMany.mockResolvedValue({ count: 1 });
 });
 
@@ -168,11 +194,17 @@ describe("2025 handshake (Codex)", () => {
     expect(await res.json()).toMatchObject({ id: 5, error: { code: -32601 } });
   });
 
-  it("배치 배열 → 응답 배열", async () => {
-    const res = await post([{ jsonrpc: "2.0", id: 6, method: "tools/list" }, { jsonrpc: "2.0", id: 7, method: "ping" }], { headers: LEGACY });
+  /**
+   * ⚠️ **배치를 받지 않는다** (2026-09-28 오케스트레이터 결정) — 2025-06-18 개정(Codex)이 배치를 없앴고, 도구가 서면 100건 배치 하나가
+   * 한 요청 안에서 DB 도구를 펼친다. 본문 상한은 바이트만 막는다.
+   */
+  it("배치 배열 → 400 · -32600, 어느 호출도 실행하지 않는다", async () => {
+    hoisted.echo = true;
+    const res = await post([{ jsonrpc: "2.0", id: 6, method: "tools/list" }, { jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "echo_subject", arguments: {} } }], { headers: LEGACY });
+    expect(res.status).toBe(400);
     const body = await res.json();
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.map((r: { id: number }) => r.id).sort()).toEqual([6, 7]);
+    expect(Array.isArray(body)).toBe(false);
+    expect(body).toMatchObject({ jsonrpc: "2.0", id: null, error: { code: -32600 } });
   });
 });
 
@@ -202,9 +234,44 @@ describe("2026-07-28 (Claude Code)", () => {
     expect(body.result).toMatchObject({ isError: true, structuredContent: { status: "not-implemented" } });
   });
 
+  /**
+   * ⚠️ `listChanged: false`여도 SDK는 `subscriptions/listen`에 SSE를 연다(15초 keepalive — 함수를 maxDuration까지 붙잡고, 버스는
+   * 모듈 전역이다). SDK에 넘기기 전에 -32601로 끊는다.
+   */
+  it("subscriptions/listen → JSON -32601, 스트림을 열지 않는다", async () => {
+    const res = await post(
+      { jsonrpc: "2.0", id: "listen:0", method: "subscriptions/listen", params: { notifications: { toolsListChanged: true }, _meta: META } },
+      { headers: modern("subscriptions/listen") },
+    );
+    expect(res.headers.get("content-type")).toContain("application/json");
+    expect(await res.json()).toEqual({ jsonrpc: "2.0", id: "listen:0", error: { code: -32601, message: "Method not found" } });
+  });
+
   it("Mcp-Method 헤더 없음 → 400 -32020 (SDK 사다리)", async () => {
     const res = await post({ jsonrpc: "2.0", id: 9, method: "tools/list", params: { _meta: META } }, { headers: { "mcp-protocol-version": "2026-07-28" } });
     expect(res.status).toBe(400);
     expect(await res.json()).toMatchObject({ error: { code: -32020 } });
+  });
+});
+
+/**
+ * **주체는 요청마다 따로다** (검수 Y1). 두 토큰을 동시에 보내 각 응답이 자기 토큰의 `userId`·`tokenId`를 받는지 본다 — 서버나 주체를
+ * 요청 사이에 캐시하면 한쪽이 다른 사용자로 돈다(POSTMORTEM 2026-09-06의 "사용자로 안 좁혔다"가 진입점에서 나는 형).
+ */
+describe("주체 배선 — 동시 요청", () => {
+  const call = (token: string, protocol: "legacy" | "modern", id: number) => post(
+    { jsonrpc: "2.0", id, method: "tools/call", params: { name: "echo_subject", arguments: {}, ...(protocol === "modern" ? { _meta: META } : {}) } },
+    { token, headers: protocol === "legacy" ? LEGACY : { "mcp-protocol-version": "2026-07-28", "mcp-method": "tools/call", "mcp-name": "echo_subject" } },
+  ).then(res => res.json());
+
+  it.each(["legacy", "modern"] as const)("%s — 두 토큰이 각자의 주체를 받는다", async protocol => {
+    hoisted.echo = true;
+    const results = await Promise.all([call(RAW, protocol, 1), call(RAW2, protocol, 2), call(RAW, protocol, 3), call(RAW2, protocol, 4)]);
+    expect(results.map(r => r.result?.structuredContent)).toEqual([
+      { userId: "u1", tokenId: HASH },
+      { userId: "u2", tokenId: HASH2 },
+      { userId: "u1", tokenId: HASH },
+      { userId: "u2", tokenId: HASH2 },
+    ]);
   });
 });
