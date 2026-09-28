@@ -86,8 +86,10 @@ describe("`/changelog` — 항목 틀", () => {
     const classes = [...main(container).querySelectorAll("section")].map((s) => s.className);
     expect(classes).toHaveLength(2);
     expect(new Set(classes).size).toBe(1);
-    // 같은 문자열이어도 `first:` 변형이면 첫 항목만 선·위 여백을 잃는다 — 특례 자체를 센다.
-    expect(classes[0]).not.toMatch(/(^|\s)first:/);
+    // 같은 문자열이어도 `first:`·`[&:first-child]:` 변형이면 첫 항목만 선·위 여백을 잃는다 — 특례 자체를 센다.
+    // 부모(`[&>section:first-child]:`)에서 거는 길도 있어 목록 틀의 클래스도 본다.
+    expect(classes[0]).not.toMatch(/first/);
+    expect(main(container).querySelector("section")?.parentElement?.className).not.toMatch(/first/);
   });
 
   it("실패·빈 목록·100건 문장은 항목과 같은 틀에 선다", async () => {
@@ -95,13 +97,25 @@ describe("`/changelog` — 항목 틀", () => {
     const block = entry.querySelector("section")!.className;
     const olderBlock = [...entry.querySelectorAll("p")].at(-1)?.parentElement;
     expect(olderBlock?.className).toBe(block);
-    for (const loaded of [{ ok: false } as const, { ok: true, releases: [], truncated: false } as const]) {
+    const fallbacks: LoadedReleases[] = [{ ok: false }, { ok: true, releases: [], truncated: false }];
+    for (const loaded of fallbacks) {
       const container = await page(loaded);
       const sentence = [...main(container).querySelectorAll("p")].at(-1);
       expect(sentence?.parentElement?.className).toBe(block);
       // 이름 없는 section을 두지 않는다(POSTMORTEM 2026-09-15) — 틀은 같고 태그는 div다.
       expect(sentence?.parentElement?.tagName).toBe("DIV");
     }
+  });
+
+  it("빈 목록에 100건이 겹치면 문장 둘이 각자 같은 틀에 선다", async () => {
+    const block = main(await page({ ok: true, releases: TWO, truncated: false })).querySelector("section")!.className;
+    const container = await page({ ok: true, releases: [], truncated: true });
+    const sentences = [...main(container).querySelectorAll("h1 ~ div p")];
+    expect(sentences.map((p) => p.textContent)).toEqual([
+      "No releases have been published yet. New versions appear here and on GitHub Releases.",
+      "Older releases are on GitHub Releases.",
+    ]);
+    for (const p of sentences) expect(p.parentElement?.className).toBe(block);
   });
 });
 
