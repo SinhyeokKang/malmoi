@@ -25,6 +25,7 @@ import { parseLogFilter } from "@/lib/events/filter";
 import { runSync } from "@/lib/sync/run";
 import { planWithheldLines } from "@/lib/publish/plan";
 import { readPublishPreview } from "@/lib/publish/read";
+import { publishFingerprint } from "@/lib/publish/fingerprint";
 
 import { applyKeySave } from "../save-key";
 
@@ -517,6 +518,47 @@ describe("Publish 지문 — 미리보기 뒤 바뀐 export 입력은 reconfirm 
     expect(await manual("anything")).toEqual({ status: "skipped", reason: "no-edits" });
     expect(fake.calls).toEqual([]);
     expect(await manual("anything")).toMatchObject({ status: "failed", error: "too-soon" });
+  });
+
+  /**
+   * **보여 준 것과 서명한 것이 한 스냅샷이다** (Codex review CR-01). 미리보기가 GitHub을 기다리는 동안 저장이 들어오면, 표시 행은 그 전(A)이고
+   * 지문도 A여야 한다 — 지문만 뒤(B)를 읽으면 그 지문의 `publish`가 `reconfirm` 없이 보이지 않은 B를 보낸다(spec 완료 조건 9).
+   */
+  it("GitHub 대기 중 저장 — 미리보기 표시·지문 둘 다 저장 전이고, 그 지문의 publish는 reconfirm · 새 미리보기는 새 값으로 커밋 (짝)", async () => {
+    await fixture();
+    const getRefSha = fake.client.getRefSha.bind(fake.client);
+    let saved = false;
+    fake.client.getRefSha = async ref => {
+      if (!saved) {
+        saved = true;
+        await pool.query(`UPDATE "Translation" t SET "value" = 'Changed', "pendingEditToken" = 'mid-save'
+          FROM "StringKey" k WHERE k."id" = t."keyId" AND k."key" = 'key0' AND t."projectId" = 'p' AND t."localeCode" = 'ko'`);
+      }
+      return getRefSha(ref);
+    };
+    const shown = await preview();
+    expect(saved).toBe(true);
+    const cell = shown.groups.flatMap(g => g.rows).find(r => r.key === "key0" && r.localeCode === "ko");
+    expect(cell?.after).toBe("Edited");
+    expect(await manual(shown.fingerprint)).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(writes()).toEqual([]);
+
+    repo();
+    const fresh = await preview();
+    expect(fresh.groups.flatMap(g => g.rows).find(r => r.key === "key0" && r.localeCode === "ko")?.after).toBe("Changed");
+    expect(await manual(fresh.fingerprint)).toMatchObject({ status: "committed", delivered: 1 });
+  });
+
+  it("표시 수는 실행 스냅샷의 미전달 셀과 같은 술어다 — total·keys = loadPullState의 unpublished·pendingEdits", async () => {
+    await fixture(["key0", "key1", "key2"]);
+    await edit("key1", ["en", "fr"], "more");
+    const shown = await preview();
+    const state = await loadPullState(prisma, "fixture");
+    expect(shown.total).toBe(3);
+    expect(shown.total).toBe(state.unpublished);
+    expect(shown.total).toBe(state.pendingEdits.length);
+    expect(shown.keys).toBe(new Set(state.pendingEdits.map(e => e.cell?.keyId)).size);
+    expect(shown.fingerprint).toBe(publishFingerprint(state, "basehead"));
   });
 
   it("인자 없는 웹·cron Publish는 대조 없이 기존대로 커밋한다", async () => {
