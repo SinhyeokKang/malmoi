@@ -862,13 +862,13 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 |---|---|
 | 그릇 | ⚠️ **`mx-auto max-w-[800px] px-10 pt-16 pb-30` 한 겹** — 본문 720 + 좌우 40, 위 64(§6.61 `/docs`와 같다), 아래 120. **목차가 없어 §6.61·§6.616의 720 + 목차 200 격자를 따르지 않는다** — 빈 200 열을 남기면 본문이 왼쪽으로 쏠린다. 시안의 1120 바깥 그릇에서도 이탈했다 |
 | `h1` · 소개 | `h1` 36/1.3/600(§6.616과 같다) · 소개 16/1.75 · **위 20**(§6.61 `h1+p`와 같다). 소개가 `Dates are in UTC.`를 한 번 말하고 항목의 날짜엔 라벨이 없다 |
-| 목록 | 소개 아래 40. 항목 사이 `border-t` `--border` + 위아래 40(첫 항목은 선·위 여백 없음). **항목은 `<section aria-labelledby={tag}>`**(이름 없는 section 금지) |
+| 목록 | 소개 아래 40. **모든 항목이 같은 틀**(`ENTRY_BLOCK` — `border-t` `--border` + 위아래 40) — ⚠️ **첫 항목도 예외가 아니다**(ds1 실측: 소개 → 선 40 · 소개 → 첫 `h2` 81). 선이 소개와 목록을 가른다. 특례(`first:` 류)는 `changelog-page.test.tsx`가 막는다. **항목은 `<section aria-labelledby={tag}>`**(이름 없는 section 금지) |
 | 항목 머리 | 버전 `h2` 24/1.4/600 → 8 → 날짜 14/1.6 muted(`<time dateTime>`에 원 ISO, 보이는 쪽은 `utcDay`) → 32 → 본문 |
-| 버전 앵커 | ⚠️ **`h2` 안의 글자가 자기 자신을 가리키는 네이티브 `<a href="#v1.0.1">`다** — `h2`는 `id={tag}` · `tabIndex={-1}` · `scroll-mt-12` · `focus:outline-none`(§6.61 h2와 같은 형). 링크 색은 **`foreground` 그대로**(본문 파랑 아님) + 포커스 링만. 해시 착지·포커스는 `PublicScroller`가 한다 — 시안의 `replaceState` + JS 스크롤은 쓰지 않는다 |
+| 버전 앵커 | ⚠️ **`h2` 안의 글자가 자기 자신을 가리키는 네이티브 `<a href="#v1.0.1">`다** — `h2`는 `id={tag}` · `tabIndex={-1}` · `scroll-mt-12` · `focus:outline-none`(§6.61 h2와 같은 형). 링크 색은 **`foreground` 그대로**(본문 파랑 아님) · hover는 글자색만 `muted-foreground`(시안 1b — 누를 수 있다는 유일한 신호) + 포커스 링. 해시 착지·포커스는 `PublicScroller`가 한다 — 시안의 `replaceState` + JS 스크롤은 쓰지 않는다 |
 | 본문 제목 | 원문의 최소 깊이를 `h3`로 맞춘다(`shiftHeadings` — `##`·`###` → `h3`·`h4`). `h3` = §6.61 h3(18/1.5/500 · 위 32). ⚠️ **`h4`~`h6`는 이 화면이 정한 급이다** — `text-prose`(16) · 1.6 · 500 · 위 24(리포에 `h4` 급이 없었고, 없으면 브라우저 기본 700이 나온다) |
-| 본문 | 문단·목록·굵게·인라인 코드·hr은 §6.61의 원고 급과 같은 클래스 상수다(`components/docs/classes.ts`의 `PROSE`·`LIST`·`INLINE_CODE`·`DOC_LINK`). 링크는 `text-blue-600`(§6.3), 스킴이 있거나 `//`로 시작하면 새 탭 + `noreferrer`(원고의 `resolveDocLink`와 같은 외부 판정). 끝의 `**Full changelog:**` 줄은 걷는다(`View on GitHub`가 대신한다) |
+| 본문 | 문단·목록·굵게·인라인 코드·hr은 §6.61의 원고 급과 같은 클래스 상수다(`components/docs/classes.ts`의 `PROSE`·`LIST`·`INLINE_CODE`·`DOC_LINK`). 링크는 `text-blue-600`(§6.3), 스킴이 있거나 `//`로 시작하면 새 탭 + `noreferrer`(원고의 `resolveDocLink`와 같은 외부 판정). 목록 항목은 `text-pretty`(굵은 머리 + 긴 문장이라 끝줄에 낱말 하나가 떨어지기 쉽다). 끝의 `**Full changelog:**` 줄은 걷는다(`View on GitHub`가 대신한다) |
 | `View on GitHub` | 본문 아래 32 · `<a>` + `buttonClass({ variant: "default", size: "md" })` + 선행 `GithubMark` · 새 탭 + `noreferrer`(`ButtonLink`는 `next/link`라 외부에 쓰지 않는다 — 랜딩 GitHub CTA와 같은 형). 행선지는 그 판의 Release 페이지. **접근 이름은 `View v1.0.1 on GitHub`**(`aria-label`) — 보이는 글자가 항목마다 같아서다 |
-| 실패 · 빈 목록 · 100건 | 첫 항목 자리의 **본문 문장 하나**다(`Alert`·`EmptyState`·재시도 없음 — 실패는 캐시되지 않으니 새로고침이 곧 재시도다). 100건 안내는 목록 끝이고 **빈 목록에도 선다**(100칸을 액션 태그 릴리스가 채웠을 수 있다). 문장 안 `GitHub Releases` 링크는 새 탭 + `noreferrer` |
+| 실패 · 빈 목록 · 100건 | 첫 항목 자리의 **본문 문장 하나**이고 **항목과 같은 틀**(`ENTRY_BLOCK`)에 선다 — 시안은 `<section>`이지만 이름 댈 제목이 없어 `div`다(이름 없는 section 금지). 100건 문장도 같은 틀이다(시안 밖 — 목록 리듬에 맞춘 선택)(`Alert`·`EmptyState`·재시도 없음 — 실패는 캐시되지 않으니 새로고침이 곧 재시도다). 100건 안내는 목록 끝이고 **빈 목록에도 선다**(100칸을 액션 태그 릴리스가 채웠을 수 있다). 문장 안 `GitHub Releases` 링크는 새 탭 + `noreferrer` |
 | `Latest` 표시 | 없다 |
 | 새 색 | **0** — blue-600(등재)·토큰뿐 |
 
