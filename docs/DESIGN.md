@@ -1769,7 +1769,7 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 
 ### 6.8 아이콘 — `lucide-react` 16px, **셸은 전 항목이 아이콘을 든다** (2026-09-08)
 
-세트는 `lucide-react` **하나**다 (§1). ⚠️ **예외가 하나 있다** — provider 브랜드 로고(GitHub·Google)는
+세트는 `lucide-react` **하나**다 (§1). ⚠️ **예외가 하나 있다** — 브랜드 로고(provider GitHub·Google · **MCP**(2026-09-29 — `McpIcon`, 공식 Model Context Protocol 로고, simple-icons CC0. `/mcp` 자리가 전부 이것이고 `components/__tests__/mcp-glyph.test.ts`가 센다. 채운 글리프지만 선 폭이 가늘어 16에서 이웃 lucide보다 무겁지 않다))는
 그 라이브러리에 **없다**(브랜드 글리프를 제외한다). `components/signin/brand-icons.tsx`가 인라인 SVG로
 들고(⚠️ **GitHub 글리프는 채운 로고 `GithubIcon` 하나다** — 2026-09-28 사용자. 로그인·계정·온보딩·설정뿐 아니라 랜딩 CTA · 프로젝트 목록 행 · Sources 머리 ·
 공개 셸 헤더 GitHub도 이것이고(`/changelog`의 View on GitHub 버튼은 2026-09-28에 걷혔다), 옛 lucide 0.462 외곽선 사본은 지웠다. `components/__tests__/github-glyph.test.ts`가 소스에서 로고 path를 센다), **Google의 4색은 §6.2의 "새 raw 색을 늘리지 않는다"와 아래 "색은 상속"의 예외다** — 브랜드 색은
@@ -1779,10 +1779,10 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 
 | 자리 | 아이콘 |
 |---|---|
-| 사이드바 — 사용자 구역 | Projects `Box` · New project `Plus`(2026-09-27 — [New project] 버튼과 같은 글리프) · Account `CircleUser` (2026-09-11 — 라벨은 2026-09-23에 `Settings`에서 바뀌었다) |
+| 사이드바 — 사용자 구역 | Projects `Box` · New project `Plus`(2026-09-27 — [New project] 버튼과 같은 글리프) · **MCP connector — 공식 MCP 로고 `McpIcon`**(2026-09-29 사용자 — 브랜드 글리프라 lucide가 아니다, 위 예외) · Account `CircleUser` (2026-09-11 — 라벨은 2026-09-23에 `Settings`에서 바뀌었다) |
 | 사이드바 — 프로젝트 구역 | Home `House` · Sources `Files` · Translations `Languages` · Members `Users` · Logs `History` · Project settings `Settings` (8-3이 이름과 순서를 시안에 맞췄다) |
 | 사이드바 하단 전역 | **Changelog `Compass` · Docs `CircleHelp`** — 둘뿐이다 (2026-09-27 사용자 — Sign out `LogOut`은 사용자 메뉴로만 갔다). ⚠️ `LayoutGrid`·`PanelLeft`는 소비자가 0이 됐다(`Plus`·`CircleUser`는 아래 두 자리에서 다시 쓰인다) |
-| 헤더 사용자 메뉴 | Projects `Box` · New project `Plus` · Account `CircleUser` · Changelog `Compass` · Docs `CircleHelp` · Privacy Policy `ShieldCheck` · Sign out `LogOut`(제출 중 `Loader2`) — 같은 목적지는 사이드바와 같은 글리프다 (2026-09-27 사용자) |
+| 헤더 사용자 메뉴 | Projects `Box` · New project `Plus` · MCP connector `McpIcon` · Account `CircleUser` · Changelog `Compass` · Docs `CircleHelp` · Privacy Policy `ShieldCheck` · Sign out `LogOut`(제출 중 `Loader2`) — 같은 목적지는 사이드바와 같은 글리프다 (2026-09-27 사용자) |
 | 프로젝트 스위처 | 트리거 `ChevronsUpDown` · 행 `ProjectThumbnail` 16 + 지금 프로젝트 `Check` · 맨 아래 `Plus` New project (2026-09-27 — 8-3에 사라졌다가 돌아왔다, §6.5) |
 | 헤더 | **로고와 사용자 메뉴 아바타뿐이다** (8-2) — ⚠️ 햄버거 `Menu`는 **없어졌다**(반응형 분기 0). breadcrumb 구분자는 아이콘이 아니라 텍스트 `/`다(§6.4) |
 | 아이콘 전용 버튼 | 닫기 `X` · 복사 `Copy` → 성공 `Check` · **칩 하나 제거 `X` 14(`size-6` 원형 안) · 칩 전체 초기화 `RotateCcw` 20(`size-7` 원형 안)**(§6.1) |
@@ -1791,7 +1791,7 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 | 필터 | 검색 `Input` 앞 `Search`(`absolute left-2` + `pl-8`) · **로케일 다중 선택 트리거 안 `ChevronDown`**(§6.1). ⚠️ **상태 `Select`가 없어져 `ListFilter`도 소비자 0이다** (8-4) |
 | Alert 4종 | `Info`·`CircleCheck`·`TriangleAlert`·`CircleX` — **정본은 §6.2 표**다 |
 | 외부 링크 | **글리프 없음** — 색과 새 탭만 든다 (§6.3, 2026-09-18 반전) |
-| `EmptyState` | **`IconTile lg` 칸 안의 20** `text-muted-foreground` (2026-09-28 — 옛 48 원 안의 16) — **일러스트는 여전히 없다**. 빈 이력 `History` · 보관된 프로젝트 `Archive` · 프로젝트 0개 `FolderGit2` · **필터·검색 0건 `Search`**(§6.63) · **대기 초대 0건 `MailPlus`** · 번역 화면 셋 `Languages` · 소스 0개는 역할별 평문 안내 |
+| `EmptyState` | **`IconTile lg` 칸 안의 20** `text-muted-foreground` (2026-09-28 — 옛 48 원 안의 16) — **일러스트는 여전히 없다**. 빈 이력 `History` · 보관된 프로젝트 `Archive` · 프로젝트 0개 `FolderGit2` · **필터·검색 0건 `Search`**(§6.63) · **대기 초대 0건 `MailPlus`** · **`/mcp` 토큰 없음 `McpIcon`**(`EmptyRowCard inset`) · 번역 화면 셋 `Languages` · 소스 0개는 역할별 평문 안내 |
 
 **쓰지 않는 자리** (아이콘이 정보를 안 더하고 스캔만 방해한다): 배지(§6.2는 텍스트만) · `Card` 제목 · 표 헤더 · **반복 목록의 모든 행**(네임스페이스 패널·리포 목록·키 행 — 같은 아이콘이 n번 반복되면 정보량이 0이다) · 텍스트 링크 안(외부 링크 예외).
 
