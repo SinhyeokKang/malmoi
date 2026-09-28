@@ -160,7 +160,7 @@ More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (Korean).
 ## Privacy
 
 Malmoi sends data to five services and no one else: GitHub, Google (if you sign
-in with it), Supabase (database, Tokyo), Vercel (hosting, profile pictures, cookieless page-view counts on the public pages), and Resend
+in with it), Supabase (database, Tokyo), Vercel (hosting, profile and project pictures, cookieless page-view counts on the public pages), and Resend
 (invitation emails, tracking off).
 [Full policy →](https://mal-moi.com/privacy)
 
