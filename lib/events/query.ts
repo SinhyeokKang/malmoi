@@ -214,8 +214,9 @@ function eventResult(row: Pick<Selected, "kind" | "result" | "syncRun" | "finish
       return "sent";
     // ⚠️ **보류만 남은 실행은 "보낼 것이 없었다"가 아니다** (delivery-invariants D7) — 편집은 있었고 못 실었다.
     // writer 경고로 쓰기 전에 멈춘 실행(`warnings > 0`)도 같다 — 결과 모달이 같은 실행을 `Not sent`로 말한다(2026-09-27 L8.1).
+    // ⚠️ **지문 불일치로 쓰기 전에 멈춘 실행(`errorCode: "reconfirm"`)도 같다** (mcp-connector T6.5) — 편집이 있었고 아무것도 안 보냈다. 필터(`resultWhere`)와 같은 술어다.
     case "SKIPPED":
-      return row.syncRun.withheld > 0 || row.syncRun.warnings > 0 ? "notSent" : "nothingToSend";
+      return row.syncRun.withheld > 0 || row.syncRun.warnings > 0 || row.syncRun.errorCode === "reconfirm" ? "notSent" : "nothingToSend";
     case "FAILED":
       return "failed";
     default:
@@ -324,8 +325,9 @@ function resultWhere(result: EventResult): Prisma.ProjectEventWhereInput {
   const status = PUBLISH_STATUS[result];
   if (status === undefined) return { result };
   // SKIPPED 하나가 두 어휘로 갈린다 — 조회(`eventResult`)와 같은 술어여야 필터와 행 라벨이 갈리지 않는다.
-  const run: Prisma.SyncRunWhereInput = result === "notSent" ? { status, OR: [{ withheld: { gt: 0 } }, { warnings: { gt: 0 } }] }
-    : result === "nothingToSend" ? { status, withheld: 0, warnings: 0 } : { status };
+  // `errorCode`는 nullable이라 `not`만 쓰면 NULL 행(보통의 SKIPPED)이 빠진다 — `lib/sync/run.ts`의 too-soon 기준과 같은 모양이다.
+  const run: Prisma.SyncRunWhereInput = result === "notSent" ? { status, OR: [{ withheld: { gt: 0 } }, { warnings: { gt: 0 } }, { errorCode: "reconfirm" }] }
+    : result === "nothingToSend" ? { status, withheld: 0, warnings: 0, OR: [{ errorCode: null }, { errorCode: { not: "reconfirm" } }] } : { status };
   return { OR: [{ result }, { syncRun: run },
     ...(result === "running" ? [{ kind: "IMPORT" as const, result: null, finishedAt: null }] : []),
   ] };

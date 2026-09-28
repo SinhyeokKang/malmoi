@@ -252,6 +252,15 @@ describe("Publish 결과는 조인이 든다 (결정 1)", () => {
     expect((await loadEvents(prisma, "p1", base({ results: ["nothingToSend"] }))).rows.map((r) => r.ref)).toEqual([nothing]);
   });
 
+  /** mcp-connector T6.5 r1 — 지문 불일치로 쓰기 전에 멈춘 실행(SKIPPED + errorCode reconfirm)도 Nothing to send가 아니다. 조회와 필터가 같은 술어다. */
+  it("SKIPPED + errorCode reconfirm도 notSent다 · 필터가 nothingToSend와 가른다", async () => {
+    const reconfirm = await publishRun("run-r", "SKIPPED", { errorCode: "reconfirm", changed: null, occurredAt: new Date(AT.getTime() + 1000) });
+    const nothing = await publishRun("run-n", "SKIPPED", { changed: 0 });
+    expect((await loadEvents(prisma, "p1", base())).rows.map((r) => [r.ref, r.result, r.run?.errorCode])).toEqual([[reconfirm, "notSent", "reconfirm"], [nothing, "nothingToSend", null]]);
+    expect((await loadEvents(prisma, "p1", base({ results: ["notSent"] }))).rows.map((r) => r.ref)).toEqual([reconfirm]);
+    expect((await loadEvents(prisma, "p1", base({ results: ["nothingToSend"] }))).rows.map((r) => r.ref)).toEqual([nothing]);
+  });
+
   it("실행이 나중에 닫혀도 이벤트 쪽 값이 갈리지 않는다", async () => {
     await publishRun("run-1", "RUNNING");
     await prisma.syncRun.update({ where: { id: "run-1" }, data: { status: "SUCCEEDED", changed: 3, warnings: 2, prUrl: "https://x/1" } });
