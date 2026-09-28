@@ -1,5 +1,4 @@
-import type { LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -211,7 +210,8 @@ export function EmptyRowCard({
   action,
   inset = false,
 }: {
-  icon: LucideIcon;
+  /** lucide 글리프 또는 브랜드 글리프(`brand-icons.tsx` — `/mcp`의 `McpIcon`). 칸이 `[&_svg]:size-5`로 크기를 정한다. */
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   title: string;
   description: string;
   /** 출구가 없는 소비자가 있다 — 대기 초대 0건은 **버튼을 두지 않는다**(할 일이 헤더의 [Invite]다). */

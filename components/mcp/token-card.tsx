@@ -1,10 +1,10 @@
 "use client";
 
-import { Plug } from "lucide-react";
 import { unstable_rethrow, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { revokeApiToken, type ApiTokenRevokeResult } from "@/app/(edit)/mcp/actions";
+import { McpIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -149,7 +149,7 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
         )}
         {token.state === "none" ? (
           // 버튼이 없다 — 할 일이 머리의 Create token이다(대기 초대 0건과 같은 판정).
-          <EmptyRowCard inset icon={Plug} title={m.mcpConnector.token.emptyTitle} description={m.mcpConnector.token.emptyBody} />
+          <EmptyRowCard inset icon={McpIcon} title={m.mcpConnector.token.emptyTitle} description={m.mcpConnector.token.emptyBody} />
         ) : (
           <TokenFacts token={token} now={new Date(now)} afterAlert={unconfirmed !== null} />
         )}

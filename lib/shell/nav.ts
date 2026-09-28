@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
 
-import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages, Plug, Plus, Settings, Users } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages, Plus, Settings, Users } from "lucide-react";
+
+import { McpIcon } from "@/components/signin/brand-icons";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -169,7 +171,8 @@ export function navWorkItems(projectCount?: number): NavItem[] {
    * `MCP connector` (mcp-connector 핸드오프 §4) — **`Account` 바로 앞**이다. 토큰은 프로젝트가 아니라 사람에게 붙어 `Account`와 같은
    * 축이다. 이 목록을 헤더 사용자 메뉴의 첫 묶음도 읽으므로 거기에도 함께 선다(의도).
    */
-  { key: "mcp", label: m.common.nav.mcp, icon: Plug, href: routes.mcp(), exact: true },
+  // 글리프는 공식 MCP 로고다(2026-09-29 사용자 — 옛 lucide `Plug`). lucide에 브랜드가 없어 `brand-icons.tsx`의 인라인 SVG다.
+  { key: "mcp", label: m.common.nav.mcp, icon: McpIcon, href: routes.mcp(), exact: true },
   { key: "account", label: m.common.nav.account, icon: CircleUser, href: routes.account(), exact: true },
   ];
 }

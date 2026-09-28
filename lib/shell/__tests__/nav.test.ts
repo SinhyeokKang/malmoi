@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { CircleHelp, Compass, Plug, Plus } from "lucide-react";
+import { CircleHelp, Compass, Plus } from "lucide-react";
+
+import { McpIcon } from "@/components/signin/brand-icons";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Role } from "@/lib/auth/permission";
@@ -226,10 +228,10 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
       ["mcp", "/mcp"],
       ["account", "/account"],
     ]);
-    // MCP connector — 글리프 `Plug` · 정확히 일치 · 배지 없음 · 라벨이 페이지 제목과 같은 키(핸드오프 §4).
+    // MCP connector — 공식 MCP 로고(`McpIcon`, 2026-09-29 사용자 — 옛 `Plug`) · 정확히 일치 · 배지 없음 · 라벨이 페이지 제목과 같은 키(핸드오프 §4).
     const mcp = items.find((i) => i.key === "mcp");
     expect(mcp?.label).toBe(m.common.nav.mcp);
-    expect(mcp?.icon).toBe(Plug);
+    expect(mcp?.icon).toBe(McpIcon);
     expect(mcp?.exact).toBe(true);
     expect(mcp?.badge).toBeUndefined();
     const created = items.find((i) => i.key === "newProject");

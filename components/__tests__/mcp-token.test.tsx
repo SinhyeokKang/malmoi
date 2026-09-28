@@ -107,6 +107,10 @@ describe("카드 상태 셋", () => {
     expect(button(card(), m.mcpConnector.token.create)).not.toBeNull();
     expect(button(card(), m.mcpConnector.token.rotate)).toBeNull();
     expect(card().textContent).toContain(m.mcpConnector.token.emptyTitle);
+    // 빈 상태 칸의 글리프는 공식 MCP 로고다(2026-09-29 — 옛 lucide `Plug`) — 단색 `currentColor` · 낭독 제외.
+    const glyph = find<SVGSVGElement>(card(), "svg path[d^='M13.85 0a4.16']").ownerSVGElement;
+    expect(glyph?.getAttribute("fill")).toBe("currentColor");
+    expect(glyph?.getAttribute("aria-hidden")).toBe("true");
     expect(card().querySelectorAll("button")).toHaveLength(1);
     expect(live().getAttribute("role")).toBe("status");
     expect(live().textContent).toBe("");
