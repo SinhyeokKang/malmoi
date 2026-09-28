@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { Project } from "ts-morph";
 import { describe, expect, it } from "vitest";
 
 import { config as middlewareConfig } from "../../middleware";
@@ -119,6 +120,28 @@ const USER_SCOPED_ACTIONS = new Set([
 ]);
 
 /**
+ * **인가를 공유 코어로 옮긴 Action** (mcp-connector T4 — design §3 "추출 경계"). Server Action과 MCP 도구가 같은 코어를 부르므로
+ * 인가 호출이 Action 본문이 아니라 코어 본문에 있다. 여기 적힌 코어를 부르는 export는 가드를 지난 것으로 센다 — 대신 **코어 본문이
+ * 프로젝트 가드를 직접 부르는지**를 아래에서 따로 센다(두 홉 모두 호출을 본다. 코어 안에서 헬퍼로 한 겹 더 감추면 못 센다).
+ * `이름 → 파일(리포 루트 기준)`. 옮긴 가족마다 같이 늘린다.
+ */
+const DELEGATED_CORES = new Map([
+  ["saveTranslation", "lib/keys/save-translation.ts"],
+  ["saveTranslationBatch", "lib/keys/save-translation.ts"],
+  ["loadMoreKeys", "lib/keys/load-more.ts"],
+  ["previewRevert", "lib/keys/revert-translation.ts"],
+  ["runRevert", "lib/keys/revert-translation.ts"],
+  ["publishProject", "lib/sync/publish.ts"],
+  ["prepareSync", "lib/import/prepare.ts"],
+  ["loadPreview", "lib/publish/load-preview.ts"],
+]);
+
+/** 이름 그대로의 호출 — 앞이 식별자·`.`이면 다른 이름의 꼬리다(`xsaveTranslation(`·`obj.saveTranslation(`). */
+function callsName(code: string, name: string): boolean {
+  return new RegExp(`(?<![\\w.$])${name}\\(`).test(code);
+}
+
+/**
  * 소스 스캔 판정 전에 주석을 벗긴다 (POSTMORTEM 2026-09-18). 이 리포는 "왜"를 주석에 적어 가드·식별자
  * 이름을 인용하는 주석이 흔하고, 벗기지 않으면 인용 하나가 호출·읽기로 세어진다.
  */
@@ -133,7 +156,8 @@ function stripComments(source: string): string {
  */
 function exportGuarded(body: string, id: string): boolean {
   const code = stripComments(body);
-  return PROJECT_GUARDS.some((g) => code.includes(`${g}(`)) || (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(code));
+  return PROJECT_GUARDS.some((g) => code.includes(`${g}(`)) || [...DELEGATED_CORES.keys()].some((core) => callsName(code, core)) ||
+    (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(code));
 }
 
 /** readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다. */
@@ -162,6 +186,26 @@ it("사용자 Action의 readSession은 두 거부 반환 없이는 인증으로 
   expect(hasUserGuard(read + none)).toBe(false);
   expect(hasUserGuard(read + outage)).toBe(false);
   expect(hasUserGuard(read + none + outage)).toBe(true);
+});
+
+describe("공유 코어 위임", () => {
+  const morph = new Project({ skipAddingFilesFromTsConfig: true, skipFileDependencyResolution: true });
+
+  it.each([...DELEGATED_CORES])("%s(%s)가 프로젝트 가드를 직접 부른다", (name, file) => {
+    const fn = morph.addSourceFileAtPath(join(ROOT, file)).getFunction(name);
+    expect(fn?.isExported(), `${file}#${name}`).toBe(true);
+    const code = stripComments(fn?.getText() ?? "");
+    expect(PROJECT_GUARDS.some((g) => code.includes(`${g}(`)), `${file}#${name}`).toBe(true);
+  });
+
+  // 검출기가 0을 낼 수 있어야 위의 N>0이 의미를 갖는다 (POSTMORTEM 2026-09-14).
+  it("코어 이름의 꼬리·주석 인용·목록 밖 이름은 위임으로 세지 않는다", () => {
+    expect(exportGuarded("return saveTranslation(getPrisma(), { userId }, parsed.data);", "x.ts#f")).toBe(true);
+    expect(exportGuarded("return presaveTranslation(getPrisma(), { userId }, parsed.data);", "x.ts#f")).toBe(false);
+    expect(exportGuarded("return lib.saveTranslation(getPrisma(), { userId }, parsed.data);", "x.ts#f")).toBe(false);
+    expect(exportGuarded("return write(); // saveTranslation(prisma) 가 인가한다", "x.ts#f")).toBe(false);
+    expect(exportGuarded("return saveTranslations(getPrisma(), { userId }, parsed.data);", "x.ts#f")).toBe(false);
+  });
 });
 
 /**

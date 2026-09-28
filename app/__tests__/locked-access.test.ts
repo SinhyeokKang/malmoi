@@ -34,6 +34,8 @@ const SITES = [
   "app/(edit)/projects/[slug]/sources/actions.ts#updateBaseLocale",
   // saveTranslationKey
   "lib/keys/save-key.ts#applyKeySave",
+  // MCP set_translations — 배치 한 번에 잠금 한 번
+  "lib/keys/save-key.ts#applyKeySaveBatch",
   // triggerPullAction (manual) — cron은 사람이 없어 requestedBy가 null이다
   "lib/sync/run.ts#startRun",
 ];

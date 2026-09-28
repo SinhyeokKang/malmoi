@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { ADAPTERS } from "@/lib/adapters";
 import type { LockedAccess } from "@/lib/auth/access";
 import { lockProjectAccess } from "@/lib/auth/lock";
@@ -26,65 +26,102 @@ export type KeySaveResult =
   | { ok: false; error: "key-unavailable" }
   | { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] };
 
+type KeyChanges = readonly { localeCode: string; value: string }[];
+type KeySaveTarget = { projectId: string; surfaceId: string; surfaceSlug: string; userId: string };
+/** 잠금 뒤 인가를 지난 한 키의 결과 — 접근 거부는 배치 전체의 결과라 여기 없다. */
+export type KeyEntryResult = Exclude<KeySaveResult, { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] }>;
+
 export async function applyKeySave(
   prisma: PrismaClient,
-  input: { projectId: string; surfaceId: string; surfaceSlug: string; keyId: string; userId: string; changes: readonly { localeCode: string; value: string }[] },
+  input: KeySaveTarget & { keyId: string; changes: KeyChanges },
 ): Promise<KeySaveResult> {
-  const { projectId, surfaceId, surfaceSlug, keyId, userId } = input;
+  const { projectId, surfaceId, userId } = input;
   return prisma.$transaction(async (tx) => {
     const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId });
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
+    return saveKeyLocked(tx, input, input.keyId, input.changes);
+  }, { maxWait: 10_000, timeout: 30_000 });
+}
 
-    // 인가가 준 projectId·surfaceId로 다시 좁힌다 — 멤버십은 "이 keyId가 그 프로젝트 것"을 뜻하지 않는다.
-    const key = await tx.stringKey.findFirst({ where: { id: keyId, projectId, surfaceId, orphaned: false }, select: { key: true, sourceText: true } });
-    if (key === null) return { ok: false, error: "key-unavailable" } as const;
-    const surface = await tx.translationSurface.findFirstOrThrow({ where: { id: surfaceId, projectId }, select: { baseLocale: true, adapterName: true } });
-    // 비우기 판정의 입력이라 잠금 안에서 읽는다(delivery-invariants D2). 모르는 어댑터는 수술적으로 친다 — 비우기를 막는 쪽이 안전하다.
-    const writeStrategy = ADAPTERS.find(adapter => adapter.name === surface.adapterName)?.writeStrategy ?? "surgical";
-    const locales = await tx.locale.findMany({ where: { projectId, surfaceId, orphaned: false }, select: { code: true } });
-    const rows = await tx.translation.findMany({ where: { projectId, surfaceId, keyId }, select: { localeCode: true, value: true, pendingEditToken: true } });
-    const rowOf = new Map(rows.map(row => [row.localeCode, row]));
+export type KeyBatchSaveResult =
+  | { ok: true; results: { keyId: string; result: KeyEntryResult }[] }
+  | { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] };
 
-    const plan = planKeySave(new Map(locales.map(l => [l.code, rowOf.get(l.code)?.value ?? null])), input.changes, { writeStrategy, baseLocale: surface.baseLocale });
-    if (!plan.ok) return plan;
-    if (plan.writes.length === 0) return { ok: true, keyId, cells: [] };
+/**
+ * **여러 키를 한 잠금·한 트랜잭션으로 저장한다** (mcp-connector design §2.2 — `set_translations`). 잠금·인가 재확인은 배치에 한 번이고
+ * 키마다 `applyKeySave`와 같은 판정(`saveKeyLocked`)을 돌려 결과를 입력 순서대로 모은다. **거부된 키는 그 키만 건너뛴다** — 일부 키의
+ * 거부가 정상 결과다. DB 실패는 던지고 앞 키까지 전부 롤백된다.
+ *
+ * ⚠️ 키별 tx가 아닌 이유: 잠금 tx 실측이 키당 0.5–0.7초라 100키가 60초 안에 못 든다. 한 tx 안의 키들은 잠금 대기 없이 UPDATE만 돈다.
+ * ⚠️ 상한·중복 키 거부는 호출자의 입력 검증이다(`planBatchSave`) — 여기는 검증된 목록을 받는다.
+ */
+export async function applyKeySaveBatch(
+  prisma: PrismaClient,
+  input: KeySaveTarget & { entries: readonly { keyId: string; changes: KeyChanges }[] },
+): Promise<KeyBatchSaveResult> {
+  const { projectId, surfaceId, userId } = input;
+  return prisma.$transaction(async (tx) => {
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId });
+    if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
+    const results: { keyId: string; result: KeyEntryResult }[] = [];
+    // 순차다 — 같은 tx의 쿼리는 한 연결이라 병렬로 보내도 빨라지지 않고, 같은 키가 두 번 오면 앞 저장을 뒤 판정이 봐야 한다.
+    for (const entry of input.entries) results.push({ keyId: entry.keyId, result: await saveKeyLocked(tx, input, entry.keyId, entry.changes) });
+    return { ok: true, results } as const;
+  }, { maxWait: 10_000, timeout: 30_000 });
+}
 
-    const delivery = await readDeliveryState(tx, projectId, surfaceId);
-    const inFlight = await publishInFlight(tx, projectId);
-    for (const write of plan.writes) {
-      const before = rowOf.get(write.localeCode);
-      const baseline = planBaselineOnSave({
-        changed: true,
-        wasPending: (before?.pendingEditToken ?? null) !== null,
-        confirmationValid: delivery?.valid ?? false,
-        publishInFlight: inFlight,
-        // 실제 적용 base로 판정한다 — 선언만 바뀐 base는 export에 쓰이지 않았다.
-        before: { value: before?.value ?? null, isBase: surface.baseLocale === write.localeCode, sourceText: key.sourceText },
-      });
-      // 편집 토큰은 값이 실제로 바뀐 셀에만 새로 쓴다 — Publish가 캡처한 토큰과 달라야 전달 확인 CAS가 이 저장을 해제하지 않는다.
-      const pendingEditToken = randomUUID();
-      await tx.translation.upsert({
-        where: { keyId_localeCode: { keyId, localeCode: write.localeCode }, projectId, surfaceId },
-        create: { projectId, surfaceId, keyId, localeCode: write.localeCode, value: write.value, needsReview: false, updatedBy: userId, pendingEditToken },
-        update: { value: write.value, needsReview: false, updatedBy: userId, pendingEditToken },
-      });
-      if (baseline.record && delivery !== null) {
-        const cell = { projectId, surfaceId, keyId, localeCode: write.localeCode };
-        await tx.translationBaseline.upsert({
-          where: { projectId_surfaceId_keyId_localeCode: cell },
-          create: { ...cell, restoreValue: baseline.restoreValue, revision: delivery.revision },
-          update: { restoreValue: baseline.restoreValue, revision: delivery.revision, recordedAt: new Date() },
-        });
-      }
-      await recordEvent(tx, {
-        projectId,
-        subtype: "translation.saved",
-        actor: { kind: "USER", userId },
-        surfaceIds: [surfaceId],
-        // 잠금 뒤에 읽은 값이다 — 그래서 `before`가 실제로 내가 덮은 값이다.
-        payload: { kind: "TRANSLATION", surfaceSlug, key: key.key, locale: write.localeCode, before: before?.value ?? null, after: write.value },
+/** 잠금·인가 재확인을 지난 tx 안에서 키 하나를 판정하고 쓴다 — 단건·배치가 같은 함수를 지나야 화면과 도구의 판정이 한 벌이다. */
+async function saveKeyLocked(tx: Prisma.TransactionClient, target: KeySaveTarget, keyId: string, changes: KeyChanges): Promise<KeyEntryResult> {
+  const { projectId, surfaceId, surfaceSlug, userId } = target;
+  // 인가가 준 projectId·surfaceId로 다시 좁힌다 — 멤버십은 "이 keyId가 그 프로젝트 것"을 뜻하지 않는다.
+  const key = await tx.stringKey.findFirst({ where: { id: keyId, projectId, surfaceId, orphaned: false }, select: { key: true, sourceText: true } });
+  if (key === null) return { ok: false, error: "key-unavailable" } as const;
+  const surface = await tx.translationSurface.findFirstOrThrow({ where: { id: surfaceId, projectId }, select: { baseLocale: true, adapterName: true } });
+  // 비우기 판정의 입력이라 잠금 안에서 읽는다(delivery-invariants D2). 모르는 어댑터는 수술적으로 친다 — 비우기를 막는 쪽이 안전하다.
+  const writeStrategy = ADAPTERS.find(adapter => adapter.name === surface.adapterName)?.writeStrategy ?? "surgical";
+  const locales = await tx.locale.findMany({ where: { projectId, surfaceId, orphaned: false }, select: { code: true } });
+  const rows = await tx.translation.findMany({ where: { projectId, surfaceId, keyId }, select: { localeCode: true, value: true, pendingEditToken: true } });
+  const rowOf = new Map(rows.map(row => [row.localeCode, row]));
+
+  const plan = planKeySave(new Map(locales.map(l => [l.code, rowOf.get(l.code)?.value ?? null])), changes, { writeStrategy, baseLocale: surface.baseLocale });
+  if (!plan.ok) return plan;
+  if (plan.writes.length === 0) return { ok: true, keyId, cells: [] };
+
+  const delivery = await readDeliveryState(tx, projectId, surfaceId);
+  const inFlight = await publishInFlight(tx, projectId);
+  for (const write of plan.writes) {
+    const before = rowOf.get(write.localeCode);
+    const baseline = planBaselineOnSave({
+      changed: true,
+      wasPending: (before?.pendingEditToken ?? null) !== null,
+      confirmationValid: delivery?.valid ?? false,
+      publishInFlight: inFlight,
+      // 실제 적용 base로 판정한다 — 선언만 바뀐 base는 export에 쓰이지 않았다.
+      before: { value: before?.value ?? null, isBase: surface.baseLocale === write.localeCode, sourceText: key.sourceText },
+    });
+    // 편집 토큰은 값이 실제로 바뀐 셀에만 새로 쓴다 — Publish가 캡처한 토큰과 달라야 전달 확인 CAS가 이 저장을 해제하지 않는다.
+    const pendingEditToken = randomUUID();
+    await tx.translation.upsert({
+      where: { keyId_localeCode: { keyId, localeCode: write.localeCode }, projectId, surfaceId },
+      create: { projectId, surfaceId, keyId, localeCode: write.localeCode, value: write.value, needsReview: false, updatedBy: userId, pendingEditToken },
+      update: { value: write.value, needsReview: false, updatedBy: userId, pendingEditToken },
+    });
+    if (baseline.record && delivery !== null) {
+      const cell = { projectId, surfaceId, keyId, localeCode: write.localeCode };
+      await tx.translationBaseline.upsert({
+        where: { projectId_surfaceId_keyId_localeCode: cell },
+        create: { ...cell, restoreValue: baseline.restoreValue, revision: delivery.revision },
+        update: { restoreValue: baseline.restoreValue, revision: delivery.revision, recordedAt: new Date() },
       });
     }
-    return { ok: true, keyId, cells: plan.writes };
-  }, { maxWait: 10_000, timeout: 30_000 });
+    await recordEvent(tx, {
+      projectId,
+      subtype: "translation.saved",
+      actor: { kind: "USER", userId },
+      surfaceIds: [surfaceId],
+      // 잠금 뒤에 읽은 값이다 — 그래서 `before`가 실제로 내가 덮은 값이다.
+      payload: { kind: "TRANSLATION", surfaceSlug, key: key.key, locale: write.localeCode, before: before?.value ?? null, after: write.value },
+    });
+  }
+  return { ok: true, keyId, cells: plan.writes };
 }

@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
-import { applyKeySave } from "@/lib/keys/save-key";
+import { applyKeySave, applyKeySaveBatch } from "@/lib/keys/save-key";
 import { loadPullState, saveLastPulledAt } from "@/lib/pull/load";
 
 /**
@@ -209,5 +209,54 @@ describe("applyKeySave — 수술적 표면의 비-base 비우기", () => {
   it("base en \"\"는 기존대로 저장된다 (짝)", async () => {
     expect(await applyKeySave(prisma, input([{ localeCode: "en", value: "" }]))).toEqual({ ok: true, keyId: "p-k1", cells: [{ localeCode: "en", value: "" }] });
     expect(await cell("en")).toMatchObject({ value: "", updatedBy: "u1" });
+  });
+});
+
+/**
+ * **여러 키를 한 잠금·한 트랜잭션으로** (mcp-connector design §2.2 — `set_translations`). "키마다 원자"의 뜻은 **일부 키의 거부가
+ * 정상 결과**라는 것이다 — 거부된 키만 건너뛰고 나머지는 같은 tx로 커밋된다. 키마다 판정은 화면 Save와 같다.
+ */
+describe("applyKeySaveBatch", () => {
+  beforeEach(async () => {
+    await prisma.stringKey.create({ data: { id: "p-k2", projectId: "p", surfaceId: "p-s", key: "bye", namespace: "_root", sourceText: "Bye", sourceHash: "b" } });
+  });
+  const batch = (entries: { keyId: string; changes: { localeCode: string; value: string }[] }[], over: { userId?: string } = {}) =>
+    applyKeySaveBatch(prisma, { projectId: "p", surfaceId: "p-s", surfaceSlug: "default", userId: "u1", entries, ...over });
+
+  it("키마다 화면 Save와 같은 결과를 입력 순서대로 모으고, 거부된 키만 건너뛴다", async () => {
+    const result = await batch([
+      { keyId: "p-k2", changes: [{ localeCode: "ko", value: "잘가" }] },
+      { keyId: "p-k1", changes: [{ localeCode: "fr", value: "x" }] },
+      { keyId: "p-k0", changes: [{ localeCode: "ko", value: "x" }] },
+      { keyId: "p-k1", changes: [{ localeCode: "ja", value: "やあ" }] },
+    ]);
+    expect(result).toEqual({ ok: true, results: [
+      { keyId: "p-k2", result: { ok: true, keyId: "p-k2", cells: [{ localeCode: "ko", value: "잘가" }] } },
+      { keyId: "p-k1", result: { ok: false, error: "unknown-locale", localeCodes: ["fr"] } },
+      { keyId: "p-k0", result: { ok: false, error: "key-unavailable" } },
+      { keyId: "p-k1", result: { ok: true, keyId: "p-k1", cells: [{ localeCode: "ja", value: "やあ" }] } },
+    ] });
+    expect((await cell("ja"))?.value).toBe("やあ");
+    expect((await prisma.translation.findUnique({ where: { keyId_localeCode: { keyId: "p-k2", localeCode: "ko" } } }))?.value).toBe("잘가");
+    // 사건은 키마다 하나 — 화면 Save와 같다.
+    expect((await events()).map(e => (e.payload as { key: string }).key).sort()).toEqual(["bye", "greet"]);
+  });
+
+  it("잠금 뒤 인가가 거부되면 어떤 키도 쓰지 않는다 (위 성공 경로 대조)", async () => {
+    await prisma.projectMember.delete({ where: { projectId_userId: { projectId: "p", userId: "u1" } } });
+    expect(await batch([{ keyId: "p-k1", changes: [{ localeCode: "ja", value: "やあ" }] }])).toEqual({ ok: false, error: "not-found" });
+    expect(await cell("ja")).toBeNull();
+    expect(await events()).toEqual([]);
+  });
+
+  it("DB 실패는 던지고 앞 키까지 전부 롤백한다 — 부분 커밋이 없다", async () => {
+    // 둘째 키의 쓰기만 실패하게 한다 — 첫 키가 이미 upsert된 뒤다.
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Translation" ADD CONSTRAINT "boom" CHECK ("value" <> 'boom')`);
+    await expect(batch([
+      { keyId: "p-k1", changes: [{ localeCode: "ja", value: "やあ" }] },
+      { keyId: "p-k2", changes: [{ localeCode: "ko", value: "boom" }] },
+    ])).rejects.toThrow();
+    expect(await cell("ja")).toBeNull();
+    expect(await events()).toEqual([]);
   });
 });

@@ -71,7 +71,7 @@ import {
 import { applyPushInTransaction } from "@/lib/push/apply";
 import { redrawIfArchived } from "@/lib/revalidate-after-commit";
 import { resolveLocalePaths } from "@/lib/pull/plan";
-import { readDiscardApproval } from "@/lib/import/approval";
+import { prepareSync } from "@/lib/import/prepare";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import type { RepositoryImportError, RepositoryImportOutcome } from "@/lib/import/result";
@@ -1503,26 +1503,15 @@ export async function runRepositoryImport(raw: { slug: string; approval: string 
 }
 
 /**
- * 수동 Sync 확인 Dialog가 열릴 때 **폐기 승인 지문을 발급한다** (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). OWNER 전용 — Sync와 같은 권한이다.
- *
- * ⚠️ **토큰 원문을 돌려주지 않는다** — 지문과 건수만 간다. 원문이 화면에 가면 클라이언트가 지문을 스스로 만들 수 있다.
- * ⚠️ 실패는 `undefined`다 — 화면은 `null` 승인으로 실행하고 서버가 reconfirm으로 답한다(폐기가 조용히 열리는 경로가 없다).
+ * 수동 Sync 확인 Dialog가 열릴 때 **폐기 승인 지문을 발급한다** (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). 본체는 공유
+ * 코어 `prepareSync`다 — 원문 비노출·`undefined` 실패 계약이 거기 있다.
  */
 export async function prepareRepositorySync(raw: { slug: string }): Promise<{ approval: string; unsent: number } | undefined> {
   const parsed = SlugOnlyInput.safeParse(raw);
   if (!parsed.success) return undefined;
   const session = await readSession();
   if (session.status !== "ok") return undefined;
-  const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, { userId: session.userId, slug: parsed.data.slug, permission: "project:settings" });
-  if (access.status !== "ok") return undefined;
-  try {
-    const { fingerprint, pending } = await readDiscardApproval(prisma, { projectId: access.projectId, userId: session.userId });
-    return { approval: fingerprint, unsent: pending.length };
-  } catch (error) {
-    logFailure("repository-sync-prepare", error);
-    return undefined;
-  }
+  return prepareSync(getPrisma(), { userId: session.userId }, parsed.data);
 }
 
 export async function checkOpenPullRequest(raw: { slug: string }): Promise<OpenImportPr> {
