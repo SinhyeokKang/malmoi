@@ -96,9 +96,10 @@ export function buildInvitationEmail(input: {
 }
 
 /**
- * ⚠️ **단일 패스 치환이다.** 연쇄 `replaceAll`이면 `{{INVITE_URL}}`이 든 프로젝트 이름이 뒤 치환에서 다시 전개된다
- * (`escapeHtml`은 `{`·`}`를 안 건드린다). 치환 결과는 다시 훑지 않으므로 사용자 값 안의 `{{…}}`는 문자 그대로
- * 남는다. `{{TILE}}`만 조각(우리 상수)을 같은 규칙으로 풀어 넣는다. 값을 함수로 돌려줘 `$&` 패턴도 해석되지 않는다.
+ * ⚠️ **사용자 값은 정확히 한 번만 치환된다.** 연쇄 `replaceAll`이면 `{{INVITE_URL}}`이 든 프로젝트 이름이 뒤
+ * 치환에서 다시 전개된다(`escapeHtml`은 `{`·`}`를 안 건드린다). 치환 결과는 다시 훑지 않으므로 사용자 값 안의
+ * `{{…}}`는 문자 그대로 남는다. 다시 채우는 것은 `{{TILE}}` 하나뿐이다 — 그 값은 우리 상수 조각이고 조각 안
+ * 변수의 값도 상수 URL · allowlist를 지난 키 · hex뿐이다. 값을 함수로 돌려줘 `$&` 패턴도 해석되지 않는다.
  */
 function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (match, name: string) => {
