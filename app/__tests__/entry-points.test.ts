@@ -51,6 +51,13 @@ const EXEMPT = new Set([
    */
   "api/push/failure/route.ts",
   "api/pull/route.ts",
+  /**
+   * 업로드 이미지 읽기 프록시 (2026-09-28, ARCHITECTURE §6.7). **인가가 없다** — 이 바이트는 오늘도
+   * 공개 읽기(Vercel Blob `access: "public"`)이고, 여기서 세션을 읽으면 응답이 캐시 불가가 되어
+   * CDN 층이 통째로 사라진다. 키를 모르면 못 읽고 키에는 난수가 있다. 프록시가 허용하는 키는
+   * `isStoredImageKey` 하나이고, 상류 호출은 **요청 헤더를 하나도 안 넘긴다**.
+   */
+  "api/images/[...key]/route.ts",
   "api/auth/[...nextauth]/route.ts",
   "page.tsx",
   "signin/page.tsx",
