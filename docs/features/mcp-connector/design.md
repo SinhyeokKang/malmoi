@@ -136,11 +136,17 @@ planCreateAccess({ grants }) → { status: "ok" } | { status: "token-scope" }   
   읽으면 잠금 대기 중 **재발급**된 새 행(새 해시·새 권한)이 통과한다. 두 키로 읽으므로 재발급·폐기 둘 다 "행 없음"으로 거부된다. 입구에서 얻은 grants/scope를
   재사용하지 않는다. 폐기·재발급 tx가 먼저 커밋됐으면 재읽기가 그것을 본다 — spec 조건 6은 이것으로 충족된다. `FOR SHARE`는 쓰지
   않는다: 병렬 읽기 도구의 `lastUsedAt` UPDATE가 쓰기 tx 뒤에 줄을 서게 만들고, 에이전트의 병렬 호출(§1.3)이 정확히 그 모양이다.
-- **확장점은 `lockProjectAccess` 하나다** (`lib/auth/lock.ts`). `lockProjectAccess(tx, { …, token?: { id /* = tokenHash */, grant } })`로 넓혀 잠금 뒤
-  토큰을 다시 읽고 `planToolAccess`를 돌린다 — `app/__tests__/locked-access.test.ts`의 `SITES` 16자리가 전부 이 함수를 지나므로
-  한 자리 수정으로 전부에 붙는다. 그 AST 테스트는 "MCP가 닿는 자리의 호출에 `token` 인자가 있는가"를 추가로 센다.
+- **확장점은 `lockProjectAccess` 하나다** (`lib/auth/lock.ts`). `lockProjectAccess(tx, { …, tokenId /* = tokenHash, 세션·cron은 undefined */ })`로
+  넓혀 잠금 뒤 토큰을 다시 읽는다 — `app/__tests__/locked-access.test.ts`의 `SITES`가 전부 이 함수를 지나므로 한 자리 수정으로 전부에 붙는다.
+  **요구 grant는 `permission` 그대로다** — 쓰기 도구는 전부 역할 permission과 같은 grant를 요구하고(`lib/auth/__tests__/lock-grant.test.ts`가
+  카탈로그로 고정), 다른 grant가 필요한 쓰기가 생기면 그때 인자를 넓힌다. 판정 순서: 토큰 무효 → `unauthorized`, 범위 밖 → `not-found`(멤버십 전),
+  멤버십·역할·보관 → 기존 갈래, grant 없음 → `token-scope`(마지막).
+- **`tokenId`는 잠금 자리 입력의 필수 키다**(`tokenId: string | undefined`) — 중간 홉이 빠뜨리면 컴파일 에러다. 세션·cron 경로는 `undefined`를
+  명시한다. 주체(`subject`)를 받은 함수가 리터럴 `tokenId: undefined`로 버리는 것은 AST 테스트가 막는다. `TOKEN_SITES`·`RAW_TOKEN_SITES`는
+  MCP가 닿는 잠금 호출에 `tokenId` 인자가 실렸는지 센다.
 - raw `FOR UPDATE`로 남은 넷(`lib/import/run.ts` · `lib/keys/revert.ts` · `lib/surfaces/create.ts` · 프로젝트 생성의 User 잠금)은
-  같은 재읽기 헬퍼 `lockApiToken(tx, { tokenId, userId })`를 잠금 직후에 부른다(`where: { userId, tokenHash: tokenId }`).
+  같은 재읽기 헬퍼 `lockApiToken(tx, { tokenId, userId, projectId, grant })`를 잠금 직후에 부르고(`where: { userId, tokenHash: tokenId }`),
+  무효·범위 밖은 즉시, grant 없음은 멤버십·역할·**보관** 판정 뒤에 거부한다.
 - 유효하지 않은 토큰은 인증 거부로 접고, 이 재판정 실패 자체로 프로젝트 사건을 남기지 않는다.
 
 | 쓰기 경로 | 재판정 위치 |
