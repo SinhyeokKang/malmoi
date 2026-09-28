@@ -2623,8 +2623,11 @@ PNG/JPEG 시그니처를 검사한 뒤 `normalizeImage`(`lib/upload/normalize.ts
 - **소비자는 잎 둘로 고정한다** — `ImageTile`·`Avatar`가 공유하는 `useImageFallback` 안에서만 매핑한다.
   `Project.image`·`User.image`를 읽는 자리가 십여 곳이라 호출자마다 적으면 새 화면 하나가 규칙을 조용히
   빠뜨린다(POSTMORTEM 2026-09-20이 같은 부류다). 그물은 `components/__tests__/image-origin.test.tsx`다.
-- ⚠️ **CSP `img-src`에는 Blob 호스트가 아직 남아 있다** — 되돌릴 때 `imageSrc` 하나만 손대면 되게
-  한 것이고, 매핑이 자리 잡으면 별도 변경으로 지운다.
+- ⚠️ **CSP `img-src`에서 Blob 호스트를 뺐다** (2026-09-28 — 프로덕션 실측 뒤 별도 변경으로). 프록시가
+  나간 v1.0.2에서 **blob 호스트로 나가는 요청이 0건**임을 확인하고 지웠다(DOM에는 RSC 페이로드 안에
+  원본 URL이 남지만 prop 직렬화라 요청을 만들지 않는다). ⚠️ **되돌리려면 `imageSrc`와 짝으로 되돌린다** —
+  정책만 넓히면 얻는 것 없이 느슨해진다. 그물은 `lib/__tests__/security-headers.test.ts`가 환경 셋에서
+  "정책 어디에도 blob 호스트가 없다"를 재는 것이다.
 - **긴 캐시가 안전한 근거는 키의 난수다** — `imageObjectKey`·`projectImageObjectKey`가 난수를 싣고 저장이
   `addRandomSuffix: false`라 교체마다 URL이 통째로 바뀐다. 키를 결정적으로 바꾸면 그 전제가 깨진다.
 
@@ -2800,7 +2803,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   - **CSP는 enforce이고 환경 셋으로 갈린다** (2026-09-24 사용자 판정 "보안 강하게" — 2026-09-09의 "Report-Only로
     시작"을 뒤집었다). **프로덕션**(그리고 판정 못 한 모든 환경 — 가장 좁은 쪽으로 접는다): `default-src 'self'` ·
     **`script-src 'self' 'nonce-<요청마다>' 'strict-dynamic'`** · `style-src 'self' 'unsafe-inline'` · `font-src 'self'` ·
-    `img-src`에 `data:`·GitHub/Google 아바타 호스트 둘·**이 환경의 Blob 공개 호스트 하나** · `connect-src 'self'` ·
+    `img-src`에 `data:`·GitHub/Google 아바타 호스트 둘(⚠️ **업로드 이미지는 자사 출처라 여기 없다** — §6.7) · `connect-src 'self'` ·
     `form-action 'self' https://github.com https://accounts.google.com` · `object-src 'none'` · `base-uri 'self'` ·
     `frame-ancestors 'none'`. **`next dev`**: + script `'unsafe-eval'`(React 디버깅) · connect `ws:`·`wss:`(HMR).
     **preview**(`VERCEL_ENV=preview`): + Vercel Toolbar 호스트(Vercel 문서 "Using a Content Security Policy"의 목록 그대로 —
@@ -2824,13 +2827,13 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   - ⚠️ **`style-src 'unsafe-inline'`은 잔여다** (결정 B) — React `style` 속성·sonner·radix가 인라인 스타일을 쓰고 nonce는
     `style` **속성**에 붙지 않는다. CSS 주입(속성 선택자로 값 빼내기 등)은 이 정책이 막지 않는다.
   - ⚠️ **미들웨어는 `lib/env.ts`를 import하지 않는다** — 그 모듈이 `lib/failure.ts`를 거쳐 `node:crypto`를 물고, `middleware.ts`는
-    Edge 런타임이라 빌드가 경고하고 배포에서 모듈 로드가 죽을 수 있다(그러면 전 페이지 500). 선택값 셋(`NODE_ENV`·`VERCEL_ENV`·
-    `BLOB_PUBLIC_HOST`)을 함수 안에서 `process.env`로 읽고 빈 문자열을 없음으로 친다(`optionalEnv`와 같은 규칙).
-  - **Blob은 이 환경의 스토어 하나다** (2026-09-27, sec-audit-3 #12). 전에는 `https://*.public.blob.vercel-storage.com` —
-    **아무 Vercel 고객의 공개 스토어**가 이미지 출처로 열려 있었다. 이제 `BLOB_PUBLIC_HOST`(선택, 스토어 id 한 라벨
-    `<id>.public.blob.vercel-storage.com`)를 `isBlobPublicHost`(`^[a-z0-9]+\.public\.blob\.vercel-storage\.com$`)로 검증해 그 하나만
-    넣는다. ⚠️ **없거나 모양이 틀리면 Blob 호스트를 넣지 않는다(fail-closed)** — 부팅·업로드는 살고 **업로드 이미지만 화면에서
-    안 보인다.** 토큰(`BLOB_READ_WRITE_TOKEN`)에서 스토어 id를 파싱하지 않는다 — 문서화되지 않은 형식이다. 등록 절차는 OPERATIONS.
+    Edge 런타임이라 빌드가 경고하고 배포에서 모듈 로드가 죽을 수 있다(그러면 전 페이지 500). 선택값 둘(`NODE_ENV`·`VERCEL_ENV`)을
+    함수 안에서 `process.env`로 읽고 빈 문자열을 없음으로 친다(`optionalEnv`와 같은 규칙).
+  - **Blob 호스트는 이제 CSP에 없다** (2026-09-28 — 2026-09-27 sec-audit-3 #12가 `*.public.blob.vercel-storage.com`
+    와일드카드를 스토어 하나로 좁혔고, 프록시가 나가면서 그 하나마저 필요 없어졌다). **`isBlobPublicHost`는 남는다** —
+    소비자가 미들웨어에서 `lib/upload/store.ts`의 `readImage`로 옮겨갔고, 거기서 느슨해지면 **우리 서버가 아무 Vercel
+    고객의 공개 스토어를 대신 읽어 주는 프록시**가 된다(같은 발견이 CSP가 못 막는 층에서 재발한다). `BLOB_PUBLIC_HOST`도
+    미들웨어가 아니라 그 라우트가 읽는다. 토큰(`BLOB_READ_WRITE_TOKEN`)에서 스토어 id를 파싱하지 않는다 — 문서화되지 않은 형식이다.
   - ⚠️ **`form-action`은 폼 제출 뒤의 302에도 걸린다** — Google 로그인은 폼 POST → 302 `accounts.google.com`이라
     그 호스트가 빠지면 Google 로그인만 **콘솔에만 남고** 멈춘다. 새 외부 왕복(공급자·설치 흐름)을 늘리면 여기부터 본다.
   - ⚠️ **`img-src`는 공급자 아바타 호스트를 둘만 연다** — Google이 `lh3` 밖의 호스트를 주면 그 아바타가 깨진다.
