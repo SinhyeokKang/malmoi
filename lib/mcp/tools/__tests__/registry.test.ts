@@ -11,8 +11,8 @@ vi.mock("server-only", () => ({}));
 const { TOOLS } = await import("..");
 
 /**
- * **구현 ↔ 카탈로그** (mcp-connector T6). 카탈로그가 이름·순서·annotations·조건의 정본이고 구현은 이름으로 붙는다. 카탈로그는 `/mcp`
- * 페이지(클라이언트)가 읽는 잎이라 도구 구현을 import하면 안 된다 — 방향은 구현 → 카탈로그 하나다.
+ * **구현 ↔ 카탈로그** (mcp-connector T6). 카탈로그가 이름·순서·annotations·조건의 정본이고 구현은 이름으로 붙는다. 카탈로그는 쓰기 코어의
+ * `lib/auth/lock.ts`도 무는 잎이라 도구 구현을 import하면 안 된다(순환) — 방향은 구현 → 카탈로그 하나다.
  */
 const DIR = join(__dirname, "..");
 const TOOL_FILES = readdirSync(DIR).filter(f => f.endsWith(".ts"));

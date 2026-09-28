@@ -84,7 +84,7 @@ describe("toolCatalog", () => {
     }
   });
 
-  it("잎 데이터 모듈이다 — /mcp 페이지(클라이언트)가 읽으므로 import가 없다", () => {
+  it("잎 데이터 모듈이다 — 쓰기 코어가 지나는 lock.ts가 물므로 import가 없다", () => {
     const source = readFileSync(join(__dirname, "..", "catalog.ts"), "utf8");
     const imports = source.split("\n").filter(line => /^import\s/.test(line) && !/^import type\s/.test(line));
     expect(imports).toEqual([]);

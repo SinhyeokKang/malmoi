@@ -3,9 +3,10 @@
  * 순서로** 등록된다 — SDK가 등록 순서를 그대로 내보내므로(design §1.1 실측) 여기가 순서의 정본이다. 두 CLI가 화면에서 이름순으로
  * 다시 정렬하는 것은 클라이언트 쪽 일이다.
  *
- * ⚠️ **잎 데이터 모듈이다** — `/mcp` 페이지(클라이언트)가 읽으므로 값 import를 두지 않는다(`client-graph.test.ts`). 도구 구현
- * (`lib/mcp/tools/*`)이 이것을 import하는 방향이지 반대가 아니다. 그래서 `Permission`·`TokenGrant`도 문자열로 다시 적는다 —
- * 타입 import만 남기면 번들에 안 실리지만, 어휘가 셋·넷이라 복제 비용보다 그래프를 비워 두는 쪽이 싸다.
+ * ⚠️ **잎 데이터 모듈이다** — 소비자는 서버 쪽 셋(`lib/mcp/server.ts`·`lib/mcp/tools/access.ts`·`lib/auth/lock.ts`)이고 `/mcp` 화면은 읽지
+ * 않는다. 그래도 값 import를 두지 않는 이유: 모든 쓰기 코어가 지나는 `lock.ts`가 이것을 물어 붙인 그래프가 쓰기 경로 전부로 번지고,
+ * 도구 구현(`lib/mcp/tools/*`) → 카탈로그 방향이 뒤집히면 순환이 된다. 서버 전용 표시도 붙이지 않는다 — 순수 판정·테스트가 바로 import한다.
+ * 그래서 `Permission`·`TokenGrant`도 문자열로 다시 적는다 — 어휘가 셋·넷이라 복제 비용보다 그래프를 비워 두는 쪽이 싸다.
  *
  * **역할 조건과 토큰 grant 조건은 별개 필드다** — 역할의 permission을 grant로 자동 복제하지 않는다(tasks T6). `rolePermission: null`은
  * 프로젝트 역할이 없는 동작(계정 조회·생성 준비), `tokenGrant: null`은 grant 없는 토큰도 되는 동작이다.
