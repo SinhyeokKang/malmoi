@@ -467,7 +467,7 @@ lib/
                         · disclosure(sectionGaps — 등재 ↔ 본문의 절) · doc-text(docText·docDigest — 본문 텍스트·해시,
                         node:crypto라 테스트 전용). 실물 대조는 __tests__/policy-gate.test.tsx(ARCHITECTURE §6.035)
   invitation-email/     초대 메일(PRODUCT §4.1 · ARCHITECTURE §6.02). 순수 판정 — recipients(다중 입력·행별 역할·정규화 중복 거부) ·
-                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html — 템플릿은 template.ts, Claude Design `email/invite.html`이 정본, 로고는 public/email/logo@2x.png 고정 URL) ·
+                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html 프로젝트 카드 — 템플릿·카드 조각 두 벌은 template.ts이고 코드가 정본(첫 시안은 대조 기준이 아니다), 단일 패스 치환, 이름은 60 grapheme 자르기 → 이스케이프, 썸네일은 planProjectImageDelete의 키로 mal-moi.com/api/images/ 고정 URL, 폴백 톤은 TONE_HEX, 로고·Box는 public/email/ 고정 URL) ·
                         config(env 맵 → ready/unavailable, origin을 VERCEL_ENV와 대조) · result(batch 응답 → 요청 단위
                         accepted/rejected/unknown) · limits(상수, 잎). 껍데기(server-only) — issue(Project 잠금 안 발급·재발급,
                         메일을 안 보낸다 — 재발급은 옛 링크의 조건부 닫기 count=1이 선행조건) · send(commit 뒤 Resend batch 한 번,
@@ -655,8 +655,8 @@ types/next-auth.d.ts    session.user.id를 싣는 모듈 확장. ⚠️ `login`(
 public/og.png           링크 미리보기 이미지 1장 — 1200×630 PNG(사용자 제공 2400×1260 원본을 축소, 원본은 커밋하지 않는다). ⚠️ 치수는 OG_IMAGE 선언과 같아야 한다(site.test.ts가 IHDR로 잰다). 코드는 lib/seo/site.ts의 OG_IMAGE로 **항상** 싣는다 —
                         파일 규약(app/opengraph-image.png)이 아닌 이유는 얕은 병합이다. 대체 텍스트는 m.seo.ogImageAlt
 public/brand/ flags/ email/
-                        ⚠️ 커밋된 원본이다(fonts/는 반대로 생성물). email/logo@2x.png는 초대 메일이 절대 URL
-                        (INVITATION_EMAIL_LOGO_URL)로 참조한다 — 옮기면 이미 보낸 메일의 로고가 깨진다(middleware matcher 제외). flags 253개는 lib/keys/flag.ts의
+                        ⚠️ 커밋된 원본이다(fonts/는 반대로 생성물). email/logo@2x.png·box@2x.png(썸네일 없는 프로젝트 카드의 흰 Box 글리프, 32×32 투명 —
+                        lucide box의 __iconNode로 한 번 렌더한 산출물)는 초대 메일이 프로덕션 절대 URL로 참조한다 — 옮기면 이미 보낸 메일이 깨진다(middleware matcher 제외). flags 253개는 lib/keys/flag.ts의
                         FLAG_INVENTORY와 정확히 같아야 한다(flag-assets.test.ts가 양방향으로 센다).
                         flags 원본은 country-flag-icons@1.6.20 3x2(MIT) — flags/LICENSE가 그 원문이다
 LICENSE                 MIT. ⚠️ 전문에 문장을 더하지 않는다 — GitHub가 유사도로 판정해 한 줄만 붙여도 인식이 풀린다
