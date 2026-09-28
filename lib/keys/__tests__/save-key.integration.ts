@@ -25,6 +25,9 @@ let binaries: string;
 const PORT = 55495;
 let pool: Pool;
 let prisma: PrismaClient;
+/** 쿼리를 세는 두 번째 클라이언트 — 배치의 왕복 수가 키 수에 비례하지 않는지 잰다(#145). */
+let counted: PrismaClient;
+let queries = 0;
 let started = false;
 
 beforeAll(async () => {
@@ -35,6 +38,9 @@ beforeAll(async () => {
   const config = { host: directory, port: PORT, user: "postgres", database: "postgres" };
   pool = new Pool(config);
   prisma = new PrismaClient({ adapter: new PrismaPg(config), log: [] });
+  counted = new PrismaClient({ adapter: new PrismaPg(config), log: [{ emit: "event", level: "query" }] });
+  // `log` 설정의 제네릭이 `let` 선언에서 사라진다 — `$on`만 좁혀 부른다.
+  (counted as unknown as { $on(event: "query", cb: () => void): void }).$on("query", () => { queries += 1; });
 });
 
 beforeEach(async () => {
@@ -50,6 +56,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await prisma?.$disconnect();
+  await counted?.$disconnect();
   await pool?.end();
   if (started) execFileSync(join(binaries, "pg_ctl"), ["-D", join(directory, "data"), "-m", "immediate", "-w", "stop"], { stdio: "pipe" });
   rmSync(directory, { recursive: true, force: true });
@@ -242,6 +249,23 @@ describe("applyKeySaveBatch", () => {
     expect((await events()).map(e => (e.payload as { key: string }).key).sort()).toEqual(["bye", "greet"]);
   });
 
+  it("같은 키가 두 번 오면 뒤 판정이 앞 저장을 본다 — 새 셀이어도(아직 쓰지 않은 행) 최종 값·사건의 before가 맞다", async () => {
+    const result = await batch([
+      { keyId: "p-k1", changes: [{ localeCode: "ja", value: "一" }, { localeCode: "ko", value: "하나" }] },
+      { keyId: "p-k1", changes: [{ localeCode: "ja", value: "二" }, { localeCode: "ko", value: "하나" }] },
+    ]);
+    expect(result).toMatchObject({ ok: true, results: [
+      { keyId: "p-k1", result: { ok: true, cells: [{ localeCode: "ja", value: "一" }, { localeCode: "ko", value: "하나" }] } },
+      // 둘째의 ko는 앞 저장과 같다 — no-op이라 쓰지 않는다.
+      { keyId: "p-k1", result: { ok: true, cells: [{ localeCode: "ja", value: "二" }] } },
+    ] });
+    expect(await cell("ja")).toMatchObject({ value: "二", updatedBy: "u1" });
+    expect(await cell("ko")).toMatchObject({ value: "하나", needsReview: false });
+    const payloads = (await events()).map(e => e.payload as { locale: string; before: string | null; after: string });
+    expect(payloads.filter(p => p.locale === "ja").map(p => [p.before, p.after]).sort()).toEqual([[null, "一"], ["一", "二"]]);
+    expect(payloads.filter(p => p.locale === "ko")).toHaveLength(1);
+  });
+
   it("잠금 뒤 인가가 거부되면 어떤 키도 쓰지 않는다 (위 성공 경로 대조)", async () => {
     await prisma.projectMember.delete({ where: { projectId_userId: { projectId: "p", userId: "u1" } } });
     expect(await batch([{ keyId: "p-k1", changes: [{ localeCode: "ja", value: "やあ" }] }])).toEqual({ ok: false, error: "not-found" });
@@ -258,5 +282,31 @@ describe("applyKeySaveBatch", () => {
     ])).rejects.toThrow();
     expect(await cell("ja")).toBeNull();
     expect(await events()).toEqual([]);
+  });
+});
+
+/**
+ * **배치의 왕복 수는 키 수에 비례하지 않는다** (#145). 원격 DB(도쿄)에서 왕복 하나가 수십 ms라 키마다 읽기가 붙으면 100키가 30초 tx를 넘는다 —
+ * 전 키의 읽기를 잠금 뒤 상수 번에 끝내고, 키마다 남는 것은 셀 쓰기 하나뿐이어야 한다(사건은 한 문장으로 모은다).
+ */
+describe("applyKeySaveBatch — 쿼리 수", () => {
+  async function measure(n: number, existing = false): Promise<number> {
+    await prisma.stringKey.createMany({ data: Array.from({ length: n }, (_, i) => ({ id: `q${n}-${i}`, projectId: "p", surfaceId: "p-s", key: `q${n}.${i}`, namespace: "_root", sourceText: `S${i}`, sourceHash: `h${i}` })) });
+    if (existing) await prisma.translation.createMany({ data: Array.from({ length: n }, (_, i) => ({ projectId: "p", surfaceId: "p-s", keyId: `q${n}-${i}`, localeCode: "ko", value: "old" })) });
+    queries = 0;
+    const result = await applyKeySaveBatch(counted, { projectId: "p", surfaceId: "p-s", surfaceSlug: "default", userId: "u1", tokenId: undefined,
+      entries: Array.from({ length: n }, (_, i) => ({ keyId: `q${n}-${i}`, changes: [{ localeCode: "ko", value: `값 ${i}` }] })) });
+    expect(result.ok && result.results.every(r => r.result.ok)).toBe(true);
+    return queries;
+  }
+
+  it("새 셀만 쓰는 배치는 1키와 50키의 쿼리 수가 같다 — 셀·사건이 한 문장씩이다", async () => {
+    expect(await measure(50)).toBe(await measure(1));
+  });
+
+  it("기존 셀을 고치는 배치는 키당 UPDATE 하나만 는다 — 읽기는 키 수와 무관하다", async () => {
+    const one = await measure(1, true);
+    const fifty = await measure(50, true);
+    expect(fifty - one).toBe(49);
   });
 });

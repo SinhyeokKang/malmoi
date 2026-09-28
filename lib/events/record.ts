@@ -76,6 +76,15 @@ export async function recordEvent(tx: Prisma.TransactionClient, input: EventInpu
 }
 
 /**
+ * 사건 여럿을 **한 문장으로** 남긴다 — 원격 DB에서 사건 하나가 왕복 하나라, 한 tx에서 셀 N개를 쓰는 저장(`applyKeySaveBatch`)이 사건만으로
+ * N 왕복을 더하지 않게 한다(#145). 행은 `recordEvent`와 같은 `eventData`다 — 모양이 두 벌이 되지 않는다.
+ */
+export async function recordEvents(tx: Prisma.TransactionClient, inputs: readonly EventInput[]): Promise<void> {
+  if (inputs.length === 0) return;
+  await tx.projectEvent.createMany({ data: inputs.map(eventData) });
+}
+
+/**
  * 실행 사건 — **재전달·동시 요청에도 한 건이다** (spec 완료조건 4b).
  *
  * ⚠️ **완료된 결과를 덮지 않는다** — 이미 있으면 **아무것도 쓰지 않고** 돌아간다. 같은 식별자의
