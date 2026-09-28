@@ -118,7 +118,7 @@ export 가드 갱신 + `client-graph.test.ts` green이다.
   `lib/mcp/tools/*`는 `server-only`이고 `toolCatalog`(잎)를 import한다 — 반대 방향 금지.
 - design §2.1의 역할 조건/grant 조건을 카탈로그와 판정에 각각 등록한다. 기존 인가 함수에 넘기는 permission을 토큰의 필수 grant로 자동
   복제하지 않는다.
-- 검증: OWNER/EDITOR × 빈 grants로 `list_keys`·`preview_publish`·**기존 프로젝트 `list_branches`** 성공, OWNER만 `preview_sync`·
+- 검증: OWNER/EDITOR × 빈 grants로 `list_keys`·`preview_publish` 성공, **기존 프로젝트 `list_branches`는 OWNER만 빈 grants로 성공**(PRODUCT §3 읽기 예외 — malmoi#123은 리포 읽기 전용 OWNER를 여는 것이지 EDITOR를 여는 것이 아니다, EDITOR `forbidden`), OWNER만 `preview_sync`·
   `preview_revert`·`get_workflow` 성공, EDITOR는 `forbidden`. 빈 grants의 `list_repositories`·신규 `list_branches`·신규 `detect_formats`는
   `token-scope`, 기존 `detect_formats`는 OWNER `token-scope` / EDITOR `forbidden`. 범위 밖은 모든 프로젝트 조회에서 `not-found`.
   `allProjects=false` + `projectIds` 빈 토큰은 모든 프로젝트가 `not-found`. 읽기 전용 토큰이 받은 미리보기 핸들로 쓰기를 실행할 수 없다.
