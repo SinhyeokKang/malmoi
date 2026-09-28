@@ -91,6 +91,8 @@ export 가드 갱신 + `client-graph.test.ts` green이다.
 ## T5. 토큰 저장소 + 진입점 + 토큰 Action
 
 - `lib/mcp/token-store.ts` — `resolveApiToken(prisma, bearer, now)` → `{ userId, tokenId, grants, scope } | null`, `lastUsedAt` 스로틀 쓰기.
+  **`tokenId` = `ApiToken.tokenHash`**(2026-09-28 결정 — `id` 컬럼 없음). 잠금 뒤 재읽기는 `userId` **AND** `tokenHash`다(design §1.25) —
+  잠금 대기 중 재발급된 토큰(같은 `userId`, 새 해시)이 거부돼야 한다.
   `server-only`.
 - `app/api/mcp/route.ts` — POST만 · `checkOrigin` → 인증 → `readBoundedText(1 MiB)` → 디스패치(T1이 확정한 개정 또는 JSON-RPC 폴백) ·
   `maxDuration = 60` · 쿠키 미사용 · `server-only`.
@@ -116,13 +118,15 @@ export 가드 갱신 + `client-graph.test.ts` green이다.
   `lib/mcp/tools/*`는 `server-only`이고 `toolCatalog`(잎)를 import한다 — 반대 방향 금지.
 - design §2.1의 역할 조건/grant 조건을 카탈로그와 판정에 각각 등록한다. 기존 인가 함수에 넘기는 permission을 토큰의 필수 grant로 자동
   복제하지 않는다.
-- 검증: OWNER/EDITOR × 빈 grants로 `list_keys`·`preview_publish`·**기존 프로젝트 `list_branches`** 성공, OWNER만 `preview_sync`·
+- 검증: OWNER/EDITOR × 빈 grants로 `list_keys`·`preview_publish` 성공, **기존 프로젝트 `list_branches`는 OWNER만 빈 grants로 성공**(PRODUCT §3 읽기 예외 — malmoi#123은 리포 읽기 전용 OWNER를 여는 것이지 EDITOR를 여는 것이 아니다, EDITOR `forbidden`), OWNER만 `preview_sync`·
   `preview_revert`·`get_workflow` 성공, EDITOR는 `forbidden`. 빈 grants의 `list_repositories`·신규 `list_branches`·신규 `detect_formats`는
   `token-scope`, 기존 `detect_formats`는 OWNER `token-scope` / EDITOR `forbidden`. 범위 밖은 모든 프로젝트 조회에서 `not-found`.
   `allProjects=false` + `projectIds` 빈 토큰은 모든 프로젝트가 `not-found`. 읽기 전용 토큰이 받은 미리보기 핸들로 쓰기를 실행할 수 없다.
 - `detect_formats`는 신규 `{ owner, repo, ref? }`와 기존 `{ slug }` 입력을 구별한다. 두 입력의 혼합과 거부 후 경로 폴백은 허용하지 않는다.
 - 검증: 기존 프로젝트 하나에 `Project settings`만 허용한 토큰의 탐지 성공과 `project:create` 불필요 · 범위 밖 `not-found` · EDITOR
   `forbidden` · grant 없음 `token-scope` · 리포 읽기 전용 거부 · 리포/ref 덮어쓰기 입력 거부.
+- `detect_formats`의 확인값 발급(`signSampleConfirmation`)은 `APP_SIGNING_SECRET`이 비면 **던진다** — 도구가 `unavailable`로 접는다
+  (`sample-expired`·`no-candidates`로 접지 않는다). T7의 소비(`planSampleConfirmations`)도 같다(design §2.2).
 - `needs-browser`: 연결 안 됨·재인가·설치 0 전부 `routes.account()`. 후보 없음은 `reason: "no-candidates"` + 신규 `routes.newProject()` /
   기존 `routes.sources(slug)`.
 - 검증: 연결됐지만 설치 0인 사용자도 `/account` · URL에 비밀값 없음 · 권한 거부·GitHub 장애·예산 초과는 `no-candidates`로 접히지 않음 ·
@@ -160,7 +164,7 @@ export 가드 갱신 + `client-graph.test.ts` green이다.
   쓰기 0회 · 검증 뒤 ref 변경을 끼워 넣어 다른 head를 적재하지 않음 · 한도 3 도달 · slug 충돌 · 기존 웹 생성·소스 추가가 확인값 없이 기존
   검증을 거쳐 동작(회귀). 설정 전용 토큰으로 T6의 `detect_formats({ slug })` → `add_sources` 완료, 범위 밖 프로젝트 불가, 생성 권한 없음.
 - design §1.25의 주체 `{ userId, tokenId }`를 모든 쓰기 코어까지 전달. `lockProjectAccess({ token })` 경로와 raw 잠금 넷의 `lockApiToken`
-  둘 다 잠금 뒤 토큰을 재읽기. Action과 같은 `revalidatePath`.
+  둘 다 잠금 뒤 토큰을 **`userId` AND `tokenHash`(= `tokenId`)로** 재읽기 — `userId`만으로 읽으면 재발급된 새 행이 통과한다. Action과 같은 `revalidatePath`.
 - 검증(PG, `lib/mcp/__tests__/*.integration.ts` — `vitest.projects.config.ts` include에 등록): 실제 잠금 대기를 관측한 뒤 Revoke·만료·
   재발급을 적용해 대기하던 쓰기가 번역·설정·사건·실행권을 남기지 않음. 생성은 User 잠금 대기 중 재발급(`project:create` 없는 토큰) 시
   Project·OWNER·`projectIds`가 생기지 않음. 웹/cron 기존 경로 유지.
@@ -195,6 +199,8 @@ export 가드 갱신 + `client-graph.test.ts` green이다.
 - ARCHITECTURE 새 절(인증 경계 표에 `/api/mcp` 행 · §1.25 판정 순서 · 핸들 표 · §3.1 "만나는 자리"에 `lib/onboarding-run` 추가) · DIRECTORY
   (`lib/onboarding-run/` · `lib/mcp/` · 동사형 파일명 근거) · CLAUDE.md 명령어 표의 PG 수동 실행 디렉터리에 `lib/mcp/**`·`app/api/mcp/**` 추가 ·
   DESIGN 등재 없음 확인 · `.env.example` 변화 없음 확인.
+- **ARCHITECTURE §6.45 신설 + PRODUCT §4.1 "MCP 커넥터" ④의 design.md 포인터 괄호 삭제** — T0이 "(§6.45로 신설 — 신설 전까지는
+  `docs/features/mcp-connector/design.md` §2)"로 적어 둔 괄호다. 기능 디렉터리를 지우기 전에 정본 포인터를 ARCHITECTURE로 옮긴다.
 - **preview 보호 선행 확인**: design §4.1에 따라 CLI와 GitHub Actions 각각 SSO 보호를 통과하도록 준비한다. 보호를 통과한 무효 앱 토큰은
   앱의 401, 유효 토큰은 MCP/CI 응답을 받아야 한다. 302·SSO HTML은 앱 검증 성공으로 세지 않는다. CLI는 환경변수에서 읽은 자동화 bypass
   값을 별도 헤더로 전달한다. CI는 폐기용 리포의 테스트 전용 전송 래퍼에서 기존 payload 생성 경로를 재사용하고 bypass 헤더만 추가한다.
@@ -208,3 +214,23 @@ export 가드 갱신 + `client-graph.test.ts` green이다.
 - 검증: 위 왕복의 PR URL과 Logs 화면 캡처 · CLI/CI 각각의 보호 통과 여부·앱 상태 코드·dev DB 사용 기록 · `pnpm build` green.
 
 ── `docs(ARCHITECTURE|DIRECTORY|privacy|guide): …` (문서별 별도 커밋)
+
+## 결정 기록 (`/orchestrate`, 2026-09-28)
+
+- **T8 시안** — Claude Design 핸드오프 수령(design §8에 링크). 워크트리엔 `.env.local`이 없어 dev 서버가 안 뜨므로, 워커는 시안을 읽고
+  구현 + jsdom 검증까지, computed style 실측(`/design-sync` 루프)은 통합 뒤 main 체크아웃의 QA 워커가 한다.
+- **T9 preview 보호 통과** — Vercel "Protection Bypass for Automation" secret은 사용자가 QA 직전에 준비한다(로컬 셸 환경변수 +
+  폐기용 리포 secret, 값은 트랜스크립트에 남기지 않는다). 준비가 안 되면 preview 실물은 미완으로 기록한다.
+- **배치** (워커는 전부 Claude Code):
+
+| 배치 | 태스크 | 건드리는 곳 | 순서 |
+|---|---|---|---|
+| M1 | T0 · T1 · T2 · T3 → (M2 대기) → T5 | PRODUCT · `package.json`/lockfile · `lib/mcp/{token,grant,issue-plan,batch,result,catalog,http}.ts` · `lib/publish/fingerprint.ts` · `prisma/` · `lib/privacy/collected.ts` · `app/api/mcp/` · `app/(edit)/mcp/actions.ts` · 메타 테스트 | T3 뒤 인계 `a`, M2 통합 뒤 T5 → 인계 `b` → `/push` ① |
+| M2 | T4-0 · T4-a → (M1 `a` 대기) → T4-b · T4-c · T4-d | `app/(edit)/**/actions.ts` · `lib/auth/lock.ts` · 추출 코어 · `locked-access`/`entry-points`/`credential-separation` 테스트 | M1과 병렬, T4-b 전에 `WAITING FOR M1` |
+| M3 | T6 → (M4 대기) → `preview_publish` · T7 → T9 문서(ARCHITECTURE · DIRECTORY · CLAUDE.md · 가이드 본문) | `lib/mcp/tools/*` · `app/api/mcp/route.ts` 디스패치 | `/push` ① 뒤 |
+| M4 | T6.5 | `lib/pull/**` · `lib/sync/run.ts` · `lib/publish/read.ts` | `/push` ① 뒤, M3와 병렬 |
+| M5 | T8 · `/privacy` 본문(T9) | `app/(edit)/mcp/page.tsx` · `components/mcp/**` · `lib/shell/nav.ts` · `lib/auth/cookie.ts` · `lib/routes` · `app/privacy` | `/push` ① 뒤, M3·M4와 병렬. `messages/en.tsx`는 M3와 겹치므로 늦게 통합되는 쪽이 `git rebase dev` |
+| QA | `/runtime-test` · `/design-sync` 실측 · `/roundtrip`(`i18n-order-check`) · preview 실물(T9) · `/guide-shots` | main 체크아웃 | 전부 dev에 들어간 뒤 직렬 |
+- **README 히어로** (2026-09-29 사용자) — 문구와 이미지 둘 다. 문구: 태그라인/본문에 AI 에이전트(MCP) 연결 한 줄(T9 문서와 함께, 사실의 정본은
+  PRODUCT·가이드). 이미지: 사이드바에 `MCP connector`가 늘어 `docs/assets/readme/hero.webp`가 낡는다 — QA 단계에서 새 셸로 재촬영.
+- **MCP 로고** (2026-09-29 사용자) — MCP를 가리키는 `Plug` 자리 전부(사이드바·사용자 메뉴·`/mcp` 빈 상태)를 공식 MCP 로고로. 새 의존성 없이 `components/signin/brand-icons.tsx`의 인라인 SVG(`McpIcon`, `currentColor`).

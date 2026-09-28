@@ -370,3 +370,22 @@ describe("importReasonMessage", () => {
     }
   });
 });
+
+/**
+ * **reconfirm으로 멈춘 Publish** (mcp-connector T6.5 r1). SKIPPED 행이지만 편집은 있었고 아무것도 안 보냈다 — `Not sent`로 서고, 사유 문장이
+ * `m.logs.reasons.reconfirm`이다. 조회(`eventResult`)가 notSent로 옮기고 여기서는 그 결과 + 코드로 사유를 고른다.
+ */
+describe("reconfirm Publish — Not sent + 사유", () => {
+  it("notSent + reconfirm이면 reasonKey가 reconfirm이다 · 다른 notSent는 사유가 없다 (짝)", () => {
+    expect(eventView(row({ result: "notSent", errorCode: "reconfirm" })).reasonKey).toBe("reconfirm");
+    expect(eventView(row({ result: "notSent", errorCode: null })).reasonKey).toBeNull();
+  });
+
+  it("메타 줄 끝에 reconfirm 문장이 선다 · 보류로 인한 notSent에는 없다 (짝)", async () => {
+    const { eventMeta } = await import("../view");
+    const meta = (errorCode: string | null) => eventMeta({ kind: "PUBLISH", subtype: "publish.run", result: "notSent", actor: { kind: "USER" },
+      payload: { kind: "PUBLISH", surfaceSlugs: ["a"], refusal: null }, run: { changed: null, prUrl: null, errorCode } }, false);
+    expect(meta("reconfirm").at(-1)).toBe(m.logs.reasons.reconfirm);
+    expect(meta(null)).not.toContain(m.logs.reasons.reconfirm);
+  });
+});

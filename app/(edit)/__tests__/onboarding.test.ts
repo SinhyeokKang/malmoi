@@ -4,7 +4,7 @@ import type { ProbeResult } from "@/lib/github-connect/health";
 import type { InstallationRepo } from "@/lib/github-connect/user";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { signSampleConfirmation } from "@/lib/onboarding/sample-confirmation";
-import { renderProjectWorkflowYaml, workflowSurfaceOf, type WorkflowSurface } from "@/lib/onboarding/workflow";
+import { renderProjectWorkflowYaml, workflowApiUrl, workflowSurfaceOf, type WorkflowSurface } from "@/lib/onboarding/workflow";
 
 /** 표면 하나짜리 프로덕션 호출 — 온보딩 ④·설정이 `renderProjectWorkflowYaml`을 직접 부른다(래퍼는 테스트만 썼다 — launch-readiness L4.7). */
 const renderOneSurface = ({ slug, baseBranch, ...surface }: { slug: string; baseBranch: string } & WorkflowSurface) =>
@@ -864,7 +864,7 @@ describe("createProject — 재검증한 값만 저장한다 (ARCHITECTURE §3.1
     expect(db.projects.find((p) => p.slug === "acme-web")).toBeUndefined();
   });
 
-  /** ④의 [Start translating]이 옛 `/translations` redirect를 건너뛰려면 기본 표면을 알아야 한다 (audit-ux #22). */
+  /** 결과가 기본 표면을 든다 — MCP `create_project`가 `defaultSourceSlug`로 싣는다(④는 2026-09-29부터 프로젝트 Home으로 간다). */
   it("결과가 저장된 기본 표면의 slug를 든다", async () => {
     const result = await createProject(createInput());
     const row = db.projects.find((p) => p.slug === "acme-web");
@@ -1816,7 +1816,8 @@ describe("신규 생성은 전체 준비와 적재가 성공해야 한다", () =
     hoisted.applyPushInTransaction.mockRejectedValueOnce(new Error("write failure"));
     expect(await createProject(createInput())).toMatchObject({ ok: false, error: "ingest-failed", surface: { pathTemplate: "i18n/{locale}.json" } });
     hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache failure"); });
-    await expect(createProject(createInput({ slug: "second-project" }))).rejects.toThrow("cache failure");
+    // 커밋된 생성은 캐시 장애로 실패가 되지 않는다(mcp-connector r2) — 전엔 reject였고, 사용자는 이미 생긴 프로젝트를 다시 만들려 했다.
+    expect(await createProject(createInput({ slug: "second-project" }))).toMatchObject({ ok: true, slug: "second-project" });
   });
 });
 
@@ -1840,11 +1841,49 @@ it("탐지 후보 outputPaths는 표본 밖 언어도 포함하며 추가 읽기
  * 같은 규칙이라 두 화면이 같은 파일을 권한다 — 갈리면 ④를 떠난 뒤 설정에서 복사한 YAML이
  * 탐지 1순위를 보내고 `checkFormat`이 재실행으로 안 풀리는 409를 낸다.
  */
-it("단일 자동 후보 성공 YAML은 확정 base를 박은 고정 문자열과 바이트 동일하다", async () => {
+it("단일 자동 후보 성공 YAML은 확정 base를 박은 고정 문자열과 바이트 동일하다 — 프로덕션에서 만들면 api-url이 없다", async () => {
+  useHost("mal-moi.com", "https");
   const result = await createProject(createInput());
   expect(result.ok && result.yaml).toBe("name: malmoi-i18n\n\non:\n  push:\n    branches: [\"develop\"]\n  workflow_dispatch:\n\nconcurrency:\n  group: malmoi-i18n-acme-web-${{ github.ref }}\n  cancel-in-progress: true\n\npermissions:\n  contents: read\n  pull-requests: read\n\njobs:\n  push:\n    # Keeps the workflow from re-running when a translation PR is merged \u2014 without it, push and pull call each other.\n    if: \"!contains(github.event.head_commit.message, '[skip-malmoi-i18n]')\"\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n\n      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v2\n        with:\n          push-token: ${{ secrets.PUSH_TOKEN }}\n          project: acme-web\n          surface: i18n\n          path-template: \"i18n/{locale}.json\"\n          adapter: json-catalog\n          base-locale: en\n          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)\n");
 });
 
+
+/**
+ * **생성 워크플로는 만든 앱을 가리킨다** (preview QA T9). dev·로컬에서 만든 프로젝트의 워크플로가 action 기본값(프로덕션)으로 push해 401이 났다.
+ * origin은 요청의 `Host`를 `requestOrigin`이 허용 목록과 대조한 값이고, 모르는 호스트면 줄을 내지 않는다(= 프로덕션 기본값).
+ */
+function useHost(host: string, proto: string | null = null) {
+  hoisted.headerGet.mockImplementation((name: string) => name.toLowerCase() === "host" ? host : name.toLowerCase() === "x-forwarded-proto" ? proto : null);
+}
+describe("생성 워크플로의 api-url — 요청 origin", () => {
+  it.each([
+    ["dev.mal-moi.com", "https", '          api-url: "https://dev.mal-moi.com"'],
+    ["localhost:3000", null, '          api-url: "http://localhost:3000"'],
+  ])("createProject: %s → api-url 한 줄", async (host, proto, line) => {
+    useHost(host, proto);
+    const result = await createProject(createInput());
+    expect(result.ok && result.yaml.split("\n").filter(l => l.includes("api-url"))).toEqual([line]);
+  });
+
+  it.each([["mal-moi.com", "https"], ["evil.com", "https"]])("createProject: %s → api-url 없음 (생성은 그대로 성공)", async (host, proto) => {
+    useHost(host, proto);
+    const result = await createProject(createInput());
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.yaml).not.toContain("api-url");
+  });
+
+  it("addSurfaces: dev에서 추가한 step도 api-url을 든다 · 프로덕션은 없다", async () => {
+    Object.assign(db.projects[0]!, { repoOwner: "acme", repoName: "web", repositoryId: "1035512", installationId: "77", baseBranch: "develop" });
+    hoisted.addSurfacesFromSnapshot.mockResolvedValue([{ pathTemplate: "i18n/{locale}.json", surfaceSlug: "i18n", count: 2, failed: 0 }]);
+    const picks = [{ adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" }];
+    useHost("dev.mal-moi.com", "https");
+    const dev = await addSurfaces({ slug: "acme", picks });
+    expect(dev.ok && dev.yaml).toContain('api-url: "https://dev.mal-moi.com"');
+    useHost("mal-moi.com", "https");
+    const prod = await addSurfaces({ slug: "acme", picks });
+    expect(prod.ok && prod.yaml).not.toContain("api-url");
+  });
+});
 
 it.each([false, true])("생성 결과와 설정 YAML은 비기본 base와 확정 adapter를 동일하게 출력한다 (manual=%s)", async (manual) => {
   const result = await createProject(createInput({ manual, baseLocale: "ko" }));
@@ -1853,7 +1892,7 @@ it.each([false, true])("생성 결과와 설정 YAML은 비기본 base와 확정
   const settingsYaml = renderProjectWorkflowYaml({ slug: result.slug, baseBranch: result.baseBranch,
     surfaces: result.surfaces.map(surface => workflowSurfaceOf({ slug: surface.surfaceSlug,
       pathTemplate: surface.pathTemplate, adapterName: surface.adapter, baseLocale: surface.baseLocale,
-      declaredBaseLocale: null })) });
+      declaredBaseLocale: null })), apiUrl: workflowApiUrl("http://localhost:3000") });
   expect(result.yaml).toContain("adapter: json-catalog");
   expect(result.yaml).toContain("base-locale: ko");
   expect(settingsYaml).toBe(result.yaml);

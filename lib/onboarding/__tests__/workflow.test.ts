@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { SKIP_MARKER } from "@/lib/pull/payload";
 
-import { renderProjectWorkflowYaml, renderSurfaceWorkflowStep, workflowSurfaceOf, type WorkflowSurface } from "../workflow";
+import { renderProjectWorkflowYaml, renderSurfaceWorkflowStep, workflowApiUrl, workflowSurfaceOf, type WorkflowSurface } from "../workflow";
 
 /** 표면 하나짜리 프로덕션 호출 — 온보딩 ④·설정이 `renderProjectWorkflowYaml`을 직접 부른다(래퍼는 테스트만 썼다 — launch-readiness L4.7). */
 const renderOneSurface = ({ slug, baseBranch, ...surface }: { slug: string; baseBranch: string } & WorkflowSurface) =>
@@ -291,5 +291,41 @@ describe("workflowSurfaceOf", () => {
 
   it("첫 push 전이라 `pathTemplate`이 없으면 빈 문자열이다", () => {
     expect(row({ pathTemplate: null }).pathTemplate).toBe("");
+  });
+});
+
+/**
+ * **생성 워크플로는 만든 앱을 가리킨다** (preview QA T9). action의 `api-url` 기본값이 프로덕션이라, dev·로컬에서 만든 프로젝트의 워크플로가
+ * 프로덕션으로 push해 401이 났다(에이전트가 CI 3회 + 토큰 재발급으로 진단). 프로덕션 origin이면 줄이 없다 — 출력이 오늘과 바이트 단위로 같다.
+ * origin은 호출부가 `requestOrigin`으로 검증한 값이지만 여기서 허용 호스트를 한 번 더 대조한다 — 검증 안 된 Host를 남의 리포에 박지 않는다.
+ */
+describe("workflowApiUrl · api-url 줄", () => {
+  const surface = { surfaceSlug: "web", pathTemplate: "web/{locale}.json", adapter: "json-catalog" as const, baseLocale: "en" };
+  const yaml = (origin: string | null) => renderProjectWorkflowYaml({ slug: "order-check", baseBranch: "main", surfaces: [surface], apiUrl: workflowApiUrl(origin) });
+
+  it("프로덕션·없음·허용 밖 → 생략, 출력은 인자 없는 호출과 바이트 단위로 같다", () => {
+    const today = renderProjectWorkflowYaml({ slug: "order-check", baseBranch: "main", surfaces: [surface] });
+    for (const origin of ["https://mal-moi.com", "http://mal-moi.com", null, "https://evil.com", "http://evil.com:3000", "not a url", "http://dev.mal-moi.com"]) {
+      expect(workflowApiUrl(origin), String(origin)).toBeUndefined();
+      expect(yaml(origin), String(origin)).toBe(today);
+    }
+    expect(today).not.toContain("api-url");
+  });
+
+  it("dev·로컬 origin → with: 안에 api-url 한 줄(인용), github-token 앞", () => {
+    for (const origin of ["https://dev.mal-moi.com", "http://localhost:3000", "http://127.0.0.1:3001"]) {
+      expect(workflowApiUrl(origin)).toBe(origin);
+      const lines = yaml(origin).split("\n");
+      const at = lines.indexOf(`          api-url: ${JSON.stringify(origin)}`);
+      expect(at, origin).toBeGreaterThan(lines.findIndex(l => l.includes("path-template:")));
+      expect(at).toBeLessThan(lines.findIndex(l => l.includes("github-token:")));
+      expect(lines.filter(l => l.includes("api-url"))).toHaveLength(1);
+    }
+  });
+
+  it("표면이 여럿이면 step마다 같은 api-url이다 — Add surface step도 같은 생산자다", () => {
+    const two = renderProjectWorkflowYaml({ slug: "x", baseBranch: "main", surfaces: [surface, { ...surface, surfaceSlug: "app", pathTemplate: "app/{locale}.json" }], apiUrl: "https://dev.mal-moi.com" });
+    expect(two.split("\n").filter(l => l === '          api-url: "https://dev.mal-moi.com"')).toHaveLength(2);
+    expect(renderSurfaceWorkflowStep({ slug: "x", ...surface, apiUrl: "https://dev.mal-moi.com" })).toContain('api-url: "https://dev.mal-moi.com"');
   });
 });

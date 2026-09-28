@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { Archive } from "lucide-react";
 import { GeneralCard } from "@/components/settings/general-card";
@@ -15,7 +16,8 @@ import { loadConnectionHealth } from "@/lib/github";
 import { loadAccountView } from "@/lib/github-connect/account-view";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
-import { planWorkflowStale, renderProjectWorkflowYaml, workflowSurfaceOf } from "@/lib/onboarding/workflow";
+import { requestOrigin } from "@/lib/github-connect/origin";
+import { planWorkflowStale, renderProjectWorkflowYaml, workflowApiUrl, workflowSurfaceOf } from "@/lib/onboarding/workflow";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { routes } from "@/lib/routes";
 import { utcMinute } from "@/lib/utc-time";
@@ -53,7 +55,9 @@ export default async function SettingsPage({ params, searchParams }: { params: P
       <ArchiveCard slug={slug} name={project.name} archived={archived} openPrUrl={openPrUrl} />
     </div>
   </PanelCard>;
-  const workflow = project.surfaces.length > 0 && <WorkflowBlock yaml={renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf) })} />;
+  // `api-url`은 이 화면을 연 앱을 가리킨다 — 워크플로를 그릴 때만 요청 헤더를 읽는다.
+  const apiUrl = project.surfaces.length > 0 ? await requestApiUrl() : undefined;
+  const workflow = project.surfaces.length > 0 && <WorkflowBlock yaml={renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), ...(apiUrl === undefined ? {} : { apiUrl }) })} />;
   return <>
     <PanelHeader>{notice !== null && <Alert variant="danger">{notice}</Alert>}<h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.projectSettings}</h1></PanelHeader>
     <PanelBody className="space-y-4">
@@ -64,4 +68,10 @@ export default async function SettingsPage({ params, searchParams }: { params: P
       {!archived && archive}
     </PanelBody>
   </>;
+}
+
+/** dev에서 복사한 워크플로가 프로덕션으로 push하지 않게(preview QA T9) — `requestOrigin`이 허용 목록과 대조한 origin만, 프로덕션·모르는 값은 생략(`workflowApiUrl`). */
+async function requestApiUrl(): Promise<string | undefined> {
+  const head = await headers();
+  return workflowApiUrl(requestOrigin({ host: head.get("host"), forwardedProto: head.get("x-forwarded-proto") })?.origin);
 }

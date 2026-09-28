@@ -4,32 +4,31 @@ import { adapterFor } from "@/lib/adapters";
 import { adapterErrorKind } from "@/lib/adapters/types";
 import { createGitClient } from "@/lib/github";
 import { loadActors } from "@/lib/keys/query";
-import { pendingWhere } from "@/lib/protection/where";
 import { actorLabel } from "@/lib/keys/view";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
 import { keySlot } from "@/lib/pull/undeliverable";
-import { loadPullState } from "@/lib/pull/load";
+import { loadPreviewSnapshot } from "@/lib/pull/load";
 import { projectFormats, renderProject } from "@/lib/pull/run";
+import { publishFingerprint } from "./fingerprint";
 import { buildPublishDiff, PREVIEW_LIMIT, type BaseValues, type PublishCell } from "./diff";
 import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, type PublishPreview } from "./preview";
 
 /** 이전 값은 표시 전용이다 — export·커밋·PR 판정의 입력으로 넘기지 않는다. */
 export async function readPublishPreview(prisma: PrismaClient, projectId: string, slug: string): Promise<PublishPreview> {
-  const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, include: {
-    surfaces: { where: { archivedAt: null }, include: { locales: { where: { orphaned: false }, select: { code: true } } } },
-  } });
+  /**
+   * ⚠️ **보여 주는 것과 서명하는 것이 한 스냅샷이다** (Codex review CR-01). 표시 행·수·표면 설정·렌더 입력·`fingerprint`가 전부 이 한 벌에서 온다 —
+   * 따로 읽으면 GitHub 대기 중의 저장이 "A를 보여 주고 B를 승인하는" 지문을 만든다. 행 술어는 배너·1층·목록과 같은 `pendingWhere`다(sync-edit-protection T8).
+   */
+  const { state, rows, total, keys, archivedAt } = await loadPreviewSnapshot(prisma, slug, PREVIEW_LIMIT);
+  const project = state.project;
+  // slug가 가리키는 프로젝트가 인가된 그 프로젝트여야 한다 — 다르면 남의 행을 보여 주게 된다.
+  if (project.id !== projectId) throw new Error("Project changed");
   if (!project.installationId || !project.repositoryId) throw new Error("Repository unavailable");
-  // 무엇이 PR로 나가는가를 정하는 사본이다 — 배너·1층·목록과 같은 토큰 술어여야 "보낼 편집 N건"이 서로 맞는다 (sync-edit-protection T8).
-  const where = pendingWhere(projectId);
-  const [rows, total, keyIds, client, rawPr] = await Promise.all([
-    prisma.translation.findMany({ where, take: PREVIEW_LIMIT, orderBy: [{ surfaceId: "asc" }, { keyId: "asc" }, { localeCode: "asc" }], include: { stringKey: { select: { key: true } } } }),
-    prisma.translation.count({ where }),
-    // 바닥 요약의 "키 수"는 **미발송 전체**를 세야 한다 — 표에 실린 200행만 세면 상한 아래에서만 참이다.
-    prisma.translation.groupBy({ by: ["keyId"], where }),
+  const [client, rawPr] = await Promise.all([
     createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId).then(cachedBlobs),
-    loadOpenPrUrl(slug, project),
+    loadOpenPrUrl(slug, { ...project, repositoryId: project.repositoryId, archivedAt }),
   ]);
   const head = await client.getRefSha(`heads/${project.baseBranch}`);
   if (head === null) throw new Error("Base unavailable");
@@ -42,10 +41,10 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   let withoutKey = 0;
   /** 보류된 셀이 하나라도 있는 키 — 실린 셀이 하나도 없으면 "보낼 수 있는 키"에서 빠진다(#84). */
   const heldKeys = new Set<string>();
-  for (const surface of project.surfaces) {
+  for (const surface of state.surfaces) {
     const surfaceRows = rows.filter(r => r.surfaceId === surface.id);
     if (!surfaceRows.length) continue;
-    const format = formatFromProject(surface, surface.locales.map(l => l.code));
+    const format = formatFromProject(surface, surface.localeCodes);
     const adapter = adapterFor(format);
     const paths = resolveLocalePaths(format, adapter.layout, tree.map(t => t.path));
     // ⚠️ **재생성 per-locale은 base 파일을 늘 읽는다** (B3 r3) — 실행이 base 원본으로 base 키 집합을 정하고(B3.4) 못 읽으면 비-base 편집만 있어도 거부한다.
@@ -86,7 +85,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
       if (basePath !== undefined && !shas.has(basePath.path)) throw new PreviewBaseFileMissing(basePath.path, project.baseBranch);
     }
     for (const row of surfaceRows) {
-      if (!surface.locales.some(locale => locale.code === row.localeCode)) throw new Error("Preview path unavailable");
+      if (!surface.localeCodes.includes(row.localeCode)) throw new Error("Preview path unavailable");
       // 수술적 치환은 원본이 없으면 그 파일을 안 낸다(`render.ts`) — 나가지 않을 셀을 약속하지 않는다. 실행은 그 셀을 보류한다.
       if (surgicalPerLocale) {
         const target = paths.find(p => p.locale === row.localeCode);
@@ -116,7 +115,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   // ⚠️ **바뀌는 파일은 실행과 같은 렌더·blob 비교에서 온다** (#128) — 편집 셀의 파일만 세면 토큰 없이 바뀌는 파일(orphan 줄 제거, 닫힌 PR에 실렸던 값의
   // 재전송)이 빠지고 결과에서야 "N files changed"가 나온다. blob은 위에서 읽은 것을 다시 쓴다(`cachedBlobs`).
   // ⚠️ **읽은 head·트리를 넘긴다** (#128 r5) — 한 번 열 때 ref 1·트리 1이고, 셀과 파일 목록이 같은 head를 본다. blob은 실행 한 번과 같다(전 표면 전 로케일 파일).
-  const { changes, rendered } = await renderProject(project, projectFormats((await loadPullState(prisma, slug)).surfaces), client, { baseHead: head, tree });
+  const { changes, rendered } = await renderProject(project, projectFormats(state.surfaces), client, { baseHead: head, tree });
   /**
    * ⚠️ **편집이 없는 표면도 실행은 렌더하고, 그 표면의 base 파일 문제로 `writer-warnings` 거부한다** (#128 r5). 위 루프는 편집 있는 표면만 보므로 여기서
    * 같은 전용 거부로 옮긴다 — 일반 실패(Retry)는 다시 눌러도 같다. 그 밖의 writer 오류는 옛 동작 그대로다(미리보기는 writer 경고를 약속하지 않는다).
@@ -129,12 +128,14 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     }
   }
   // `truncated`는 상한 때문에 **조회하지 않은** 행만이다 — 뺀 셀은 `withoutFile`·`withoutKey`가 따로 말한다.
-  return { ...buildPublishDiff(cells, base), total, keys: keyIds.length, truncated: Math.max(0, total - rows.length), withoutFile, withoutKey,
+  return { ...buildPublishDiff(cells, base), total, keys, truncated: Math.max(0, total - rows.length), withoutFile, withoutKey,
     // ⚠️ **화면이 말하는 수는 나가는 수다** (#84 — POSTMORTEM 2026-09-17). 결과의 `delivered`·Logs와 같은 모집단이어야 한다. 상한(200행) 밖 행은
     // 판정하지 않았으므로 나가는 쪽으로 센다 — `truncated`와 같이 읽힌다.
     changedFiles: changes.map(c => c.path),
-    sendable: { total: total - withoutFile - withoutKey, keys: keyIds.length - [...heldKeys].filter(id => !cells.some(c => c.keyId === id)).length },
-    openPr: parseGithubPrUrl(rawPr, project) };
+    sendable: { total: total - withoutFile - withoutKey, keys: keys - [...heldKeys].filter(id => !cells.some(c => c.keyId === id)).length },
+    openPr: parseGithubPrUrl(rawPr, project),
+    // ⚠️ **셀 표시가 아니라 렌더가 쓴 스냅샷 전체 + 읽은 head다** (mcp-connector design §3.1) — 200행 상한 밖 편집·토큰 없는 export 변경도 바꾼다.
+    fingerprint: publishFingerprint(state, head) };
 }
 
 /** 같은 blob을 두 번 받지 않는다 — 미리보기 조회와 실행 렌더(`renderProject`)가 같은 트리의 같은 파일을 읽는다. */

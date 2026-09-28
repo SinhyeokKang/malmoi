@@ -370,7 +370,8 @@ describe("설정 화면 — 저장된 임포트 실패를 읽는다", () => {
  */
 describe("쓰기 경로가 목록 둘을 무효화한다", () => {
   it.each([
-    ["번역 저장·Publish", "app/(edit)/actions.ts"],
+    // 번역 저장·Publish·Revert는 공유 함수로 지운다 — MCP 도구도 같은 함수를 부른다(아래 짝).
+    ["번역 저장·Publish", "lib/keys/revalidate-readers.ts"],
     ["CI push", "app/api/push/route.ts"],
     ["CI 실패 보고", "app/api/push/failure/route.ts"],
     ["첫 적재", "app/(edit)/projects/actions.ts"],
@@ -378,6 +379,12 @@ describe("쓰기 경로가 목록 둘을 무효화한다", () => {
     const src = read(path);
     expect(src).toContain('revalidatePath("/projects")');
     expect(src).toContain('revalidatePath("/projects/new")');
+  });
+
+  it.each(["saveTranslationKey", "revertTranslationKey", "triggerPullAction"])("%s가 그 공유 함수를 부른다", (name) => {
+    const src = read("app/(edit)/actions.ts");
+    const body = src.match(new RegExp(`export async function ${name}\\b[\\s\\S]*?(?=\\nexport |$)`))?.[0] ?? "";
+    expect(body.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, "")).toMatch(/revalidateTranslationReaders\(/);
   });
 });
 

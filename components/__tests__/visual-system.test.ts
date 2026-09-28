@@ -121,6 +121,8 @@ const REGISTERED: Record<string, string[]> = {
   "text-red-800": ["components/projects/project-list.tsx"],
   // blue-600 — 링크 색 (§6.3) · 검색 일치 구간
   "text-blue-600": [
+    // `/mcp` 가이드 링크 한 줄 (mcp-connector)
+    "app/(edit)/mcp/page.tsx",
     "app/signin/page.tsx",
     // `/docs` 원고 본문 링크 · 404 복귀 링크 (§6.61)
     "components/docs/classes.ts",
@@ -145,7 +147,8 @@ const REGISTERED: Record<string, string[]> = {
   ],
   "bg-blue-600/[0.14]": ["components/projects/project-list.tsx"],
   // neutral 계단 — 300 · 400 · 600 · 50 (§6.2)
-  "border-neutral-300": ["components/landing/mockup/translations.tsx", "components/translations/workspace/locale-panel.tsx", "components/ui/checkbox.tsx", "components/ui/radio.tsx"],
+  // `components/mcp/token-modal.tsx` — 멤버십 0의 꺼진 `Chosen projects` 행 지시자(Radix Item이 아니라 사유를 읽히는 `aria-disabled` 행이다)
+  "border-neutral-300": ["components/landing/mockup/translations.tsx", "components/mcp/token-modal.tsx", "components/translations/workspace/locale-panel.tsx", "components/ui/checkbox.tsx", "components/ui/radio.tsx"],
   "text-neutral-300": ["components/members/role-chip.tsx"],
   "text-neutral-400": [
     "app/(edit)/account/page.tsx",
@@ -156,6 +159,10 @@ const REGISTERED: Record<string, string[]> = {
     "components/home/meta-column.tsx",
     "components/landing/mockup/translations.tsx",
     "components/logs/event-detail.tsx",
+    // `/mcp` — 사실 블록·Server URL 라벨 열(`/account` Profile과 같은 형) · 만료 토큰의 값(보관 행과 같은 예외) · 멤버십 0 행 (mcp-connector)
+    "components/mcp/connect-card.tsx",
+    "components/mcp/token-card.tsx",
+    "components/mcp/token-modal.tsx",
     "components/members/member-row.tsx",
     "components/projects/project-list.tsx",
     "components/settings/general-card.tsx",

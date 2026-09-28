@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
-import { applyKeySave } from "@/lib/keys/save-key";
+import { applyKeySave, applyKeySaveBatch } from "@/lib/keys/save-key";
 import { loadPullState, saveLastPulledAt } from "@/lib/pull/load";
 
 /**
@@ -25,6 +25,9 @@ let binaries: string;
 const PORT = 55495;
 let pool: Pool;
 let prisma: PrismaClient;
+/** 쿼리를 세는 두 번째 클라이언트 — 배치의 왕복 수가 키 수에 비례하지 않는지 잰다(#145). */
+let counted: PrismaClient;
+let queries = 0;
 let started = false;
 
 beforeAll(async () => {
@@ -35,6 +38,9 @@ beforeAll(async () => {
   const config = { host: directory, port: PORT, user: "postgres", database: "postgres" };
   pool = new Pool(config);
   prisma = new PrismaClient({ adapter: new PrismaPg(config), log: [] });
+  counted = new PrismaClient({ adapter: new PrismaPg(config), log: [{ emit: "event", level: "query" }] });
+  // `log` 설정의 제네릭이 `let` 선언에서 사라진다 — `$on`만 좁혀 부른다.
+  (counted as unknown as { $on(event: "query", cb: () => void): void }).$on("query", () => { queries += 1; });
 });
 
 beforeEach(async () => {
@@ -50,6 +56,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
   await prisma?.$disconnect();
+  await counted?.$disconnect();
   await pool?.end();
   if (started) execFileSync(join(binaries, "pg_ctl"), ["-D", join(directory, "data"), "-m", "immediate", "-w", "stop"], { stdio: "pipe" });
   rmSync(directory, { recursive: true, force: true });
@@ -69,7 +76,7 @@ async function seed(p: string) {
 }
 
 const input = (changes: { localeCode: string; value: string }[], over: Partial<Parameters<typeof applyKeySave>[1]> = {}) =>
-  ({ projectId: "p", surfaceId: "p-s", surfaceSlug: "default", keyId: "p-k1", userId: "u1", changes, ...over });
+  ({ projectId: "p", surfaceId: "p-s", surfaceSlug: "default", keyId: "p-k1", userId: "u1", tokenId: undefined, changes, ...over });
 const cell = (locale: string) => prisma.translation.findUnique({ where: { keyId_localeCode: { keyId: "p-k1", localeCode: locale } } });
 const events = () => prisma.projectEvent.findMany({ where: { projectId: "p", subtype: "translation.saved" }, orderBy: { occurredAt: "asc" } });
 const baselines = () => prisma.translationBaseline.findMany({ where: { projectId: "p" }, orderBy: { localeCode: "asc" } });
@@ -209,5 +216,116 @@ describe("applyKeySave — 수술적 표면의 비-base 비우기", () => {
   it("base en \"\"는 기존대로 저장된다 (짝)", async () => {
     expect(await applyKeySave(prisma, input([{ localeCode: "en", value: "" }]))).toEqual({ ok: true, keyId: "p-k1", cells: [{ localeCode: "en", value: "" }] });
     expect(await cell("en")).toMatchObject({ value: "", updatedBy: "u1" });
+  });
+});
+
+/**
+ * **여러 키를 한 잠금·한 트랜잭션으로** (mcp-connector design §2.2 — `set_translations`). "키마다 원자"의 뜻은 **일부 키의 거부가
+ * 정상 결과**라는 것이다 — 거부된 키만 건너뛰고 나머지는 같은 tx로 커밋된다. 키마다 판정은 화면 Save와 같다.
+ */
+describe("applyKeySaveBatch", () => {
+  beforeEach(async () => {
+    await prisma.stringKey.create({ data: { id: "p-k2", projectId: "p", surfaceId: "p-s", key: "bye", namespace: "_root", sourceText: "Bye", sourceHash: "b" } });
+  });
+  const batch = (entries: { keyId: string; changes: { localeCode: string; value: string }[] }[], over: { userId?: string } = {}) =>
+    applyKeySaveBatch(prisma, { projectId: "p", surfaceId: "p-s", surfaceSlug: "default", userId: "u1", entries, ...over, tokenId: undefined });
+
+  it("키마다 화면 Save와 같은 결과를 입력 순서대로 모으고, 거부된 키만 건너뛴다", async () => {
+    const result = await batch([
+      { keyId: "p-k2", changes: [{ localeCode: "ko", value: "잘가" }] },
+      { keyId: "p-k1", changes: [{ localeCode: "fr", value: "x" }] },
+      { keyId: "p-k0", changes: [{ localeCode: "ko", value: "x" }] },
+      { keyId: "p-k1", changes: [{ localeCode: "ja", value: "やあ" }] },
+    ]);
+    expect(result).toEqual({ ok: true, results: [
+      { keyId: "p-k2", result: { ok: true, keyId: "p-k2", cells: [{ localeCode: "ko", value: "잘가" }] } },
+      { keyId: "p-k1", result: { ok: false, error: "unknown-locale", localeCodes: ["fr"] } },
+      { keyId: "p-k0", result: { ok: false, error: "key-unavailable" } },
+      { keyId: "p-k1", result: { ok: true, keyId: "p-k1", cells: [{ localeCode: "ja", value: "やあ" }] } },
+    ] });
+    expect((await cell("ja"))?.value).toBe("やあ");
+    expect((await prisma.translation.findUnique({ where: { keyId_localeCode: { keyId: "p-k2", localeCode: "ko" } } }))?.value).toBe("잘가");
+    // 사건은 키마다 하나 — 화면 Save와 같다.
+    expect((await events()).map(e => (e.payload as { key: string }).key).sort()).toEqual(["bye", "greet"]);
+  });
+
+  it("같은 키가 두 번 오면 뒤 판정이 앞 저장을 본다 — 새 셀이어도(아직 쓰지 않은 행) 최종 값·사건의 before가 맞다", async () => {
+    const result = await batch([
+      { keyId: "p-k1", changes: [{ localeCode: "ja", value: "一" }, { localeCode: "ko", value: "하나" }] },
+      { keyId: "p-k1", changes: [{ localeCode: "ja", value: "二" }, { localeCode: "ko", value: "하나" }] },
+    ]);
+    expect(result).toMatchObject({ ok: true, results: [
+      { keyId: "p-k1", result: { ok: true, cells: [{ localeCode: "ja", value: "一" }, { localeCode: "ko", value: "하나" }] } },
+      // 둘째의 ko는 앞 저장과 같다 — no-op이라 쓰지 않는다.
+      { keyId: "p-k1", result: { ok: true, cells: [{ localeCode: "ja", value: "二" }] } },
+    ] });
+    expect(await cell("ja")).toMatchObject({ value: "二", updatedBy: "u1" });
+    expect(await cell("ko")).toMatchObject({ value: "하나", needsReview: false });
+    const payloads = (await events()).map(e => e.payload as { locale: string; before: string | null; after: string });
+    expect(payloads.filter(p => p.locale === "ja").map(p => [p.before, p.after]).sort()).toEqual([[null, "一"], ["一", "二"]]);
+    expect(payloads.filter(p => p.locale === "ko")).toHaveLength(1);
+  });
+
+  it("잠금 뒤 인가가 거부되면 어떤 키도 쓰지 않는다 (위 성공 경로 대조)", async () => {
+    await prisma.projectMember.delete({ where: { projectId_userId: { projectId: "p", userId: "u1" } } });
+    expect(await batch([{ keyId: "p-k1", changes: [{ localeCode: "ja", value: "やあ" }] }])).toEqual({ ok: false, error: "not-found" });
+    expect(await cell("ja")).toBeNull();
+    expect(await events()).toEqual([]);
+  });
+
+  it("앞 키의 쓰기가 이미 실행된 뒤 마지막 쓰기가 실패하면 전부 롤백한다 — 부분 커밋이 없다", async () => {
+    // 앞 키는 **기존 셀**이라 루프 안에서 `updateMany`가 먼저 실행된다. 뒤 키는 새 셀이라 끝의 `createMany`에서 실패한다.
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "p-s", keyId: "p-k1", localeCode: "ja", value: "old" } });
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Translation" ADD CONSTRAINT "boom" CHECK ("value" <> 'boom')`);
+    await expect(batch([
+      { keyId: "p-k1", changes: [{ localeCode: "ja", value: "やあ" }] },
+      { keyId: "p-k2", changes: [{ localeCode: "ko", value: "boom" }] },
+    ])).rejects.toThrow();
+    // 이미 실행된 UPDATE까지 되돌아갔다 — 값·토큰·사건 모두 그대로다.
+    expect(await cell("ja")).toMatchObject({ value: "old", pendingEditToken: null });
+    expect(await prisma.translation.findUnique({ where: { keyId_localeCode: { keyId: "p-k2", localeCode: "ko" } } })).toBeNull();
+    expect(await events()).toEqual([]);
+  });
+
+  it("전달 확인이 유효하면 두 키(기존 셀·새 셀)의 복원 기준이 같은 revision으로 남는다 — 전달 상태를 배치에 한 번 읽는다", async () => {
+    await confirm();
+    const revision = (await prisma.deliveryConfirmation.findFirst({ where: { projectId: "p" } }))?.revision;
+    expect(revision).toEqual(expect.any(String));
+    await batch([
+      { keyId: "p-k1", changes: [{ localeCode: "ko", value: "새 값" }] },
+      { keyId: "p-k2", changes: [{ localeCode: "ko", value: "잘가" }] },
+    ]);
+    const rows = await prisma.translationBaseline.findMany({ where: { projectId: "p" }, orderBy: { keyId: "asc" } });
+    expect(rows.map(r => ({ keyId: r.keyId, localeCode: r.localeCode, restoreValue: r.restoreValue, revision: r.revision }))).toEqual([
+      { keyId: "p-k1", localeCode: "ko", restoreValue: "안녕", revision },
+      // 행이 없던 비-base 셀의 직전 export 값은 빈 문자열이다(단건 저장과 같은 규칙).
+      { keyId: "p-k2", localeCode: "ko", restoreValue: "", revision },
+    ]);
+  });
+});
+
+/**
+ * **배치의 왕복 수는 키 수에 비례하지 않는다** (#145). 원격 DB(도쿄)에서 왕복 하나가 수십 ms라 키마다 읽기가 붙으면 100키가 30초 tx를 넘는다 —
+ * 전 키의 읽기를 잠금 뒤 상수 번에 끝내고, 키마다 남는 것은 셀 쓰기 하나뿐이어야 한다(사건은 한 문장으로 모은다).
+ */
+describe("applyKeySaveBatch — 쿼리 수", () => {
+  async function measure(n: number, existing = false): Promise<number> {
+    await prisma.stringKey.createMany({ data: Array.from({ length: n }, (_, i) => ({ id: `q${n}-${i}`, projectId: "p", surfaceId: "p-s", key: `q${n}.${i}`, namespace: "_root", sourceText: `S${i}`, sourceHash: `h${i}` })) });
+    if (existing) await prisma.translation.createMany({ data: Array.from({ length: n }, (_, i) => ({ projectId: "p", surfaceId: "p-s", keyId: `q${n}-${i}`, localeCode: "ko", value: "old" })) });
+    queries = 0;
+    const result = await applyKeySaveBatch(counted, { projectId: "p", surfaceId: "p-s", surfaceSlug: "default", userId: "u1", tokenId: undefined,
+      entries: Array.from({ length: n }, (_, i) => ({ keyId: `q${n}-${i}`, changes: [{ localeCode: "ko", value: `값 ${i}` }] })) });
+    expect(result.ok && result.results.every(r => r.result.ok)).toBe(true);
+    return queries;
+  }
+
+  it("새 셀만 쓰는 배치는 1키와 50키의 쿼리 수가 같다 — 셀·사건이 한 문장씩이다", async () => {
+    expect(await measure(50)).toBe(await measure(1));
+  });
+
+  it("기존 셀을 고치는 배치는 키당 UPDATE 하나만 는다 — 읽기는 키 수와 무관하다", async () => {
+    const one = await measure(1, true);
+    const fifty = await measure(50, true);
+    expect(fifty - one).toBe(49);
   });
 });

@@ -19,20 +19,61 @@ CLI 에이전트 ──POST /api/mcp (Authorization: Bearer mlm_…)──▶ ro
 **Server Action과 도구는 같은 코어의 형제 껍데기다.** 도구가 Action을 부르지 않는다 — Action은 `readSession()`으로 주체를 얻는데
 이 진입점엔 세션이 없다. 그리고 CLAUDE.md "외부가 부르는 진입점을 Server Action으로 만들지 않는다"가 그 반대 방향을 이미 막는다.
 
-### 1.1 프로토콜 — T1이 확정한다
+### 1.1 프로토콜 — T1 실측으로 확정 (2026-09-28)
 
-⚠️ **아래는 가정이다** (검수 C). 로컬 `package.json`·lockfile·`node_modules`에 `@modelcontextprotocol/*`가 0건이라 SDK 패키지명·
-개정 날짜·`server/discover`의 존재를 이 리포 안에서 확인할 수 없다. **T1의 실측 결과로 이 절을 다시 쓴다.**
+**SDK를 쓴다 — `@modelcontextprotocol/server` 2.1.0**(exact 고정, 의존성은 `@modelcontextprotocol/core` 2.1.0 + `zod ^4.2` —
+빌드 스크립트 없음이라 `onlyBuiltDependencies`를 건드리지 않는다. 2.1.0은 2026-09-23 publish라 `minimumReleaseAge`를 넘었다). JSON-RPC
+직접 수신 폴백은 쓰지 않는다. 실측은 미커밋 `app/api/mcp-probe/route.ts`를 `next dev`(DB·env 없이 뜬다)에 올려 curl과 두 CLI로 쟀다.
 
-- 가정 A: 2026-07-28 stateless 개정 — 세션·`initialize`가 없고 요청마다 `_meta`에 버전·클라이언트 능력이 실리며 `server/discover`를
-  구현한다. 가정 B: 2025-11-25 개정의 stateless 모드 — `initialize`를 받되 세션 id를 발급하지 않고 JSON으로 응답한다. 에이전트 CLI의
-  현재 지원은 B 쪽일 가능성이 높다.
-- **T1 체크리스트** — SDK(`@modelcontextprotocol/server` 2.x로 추정)가 (a) Web 표준 `Request`/`Response` 전송을 드는가(Next Route
-  Handler는 Node `http.IncomingMessage`가 아니다) (b) JSON 응답 모드 + 세션 id 미발급이 되는가 (c) Bearer 인증을 SDK 앞단에서
-  우리가 끝내고 넘길 수 있는가 (d) `tools/list` 순서가 등록 순으로 결정적인가. `mcp-handler`는 SSE용 Redis를 끌고 와 쓰지 않는다.
-- **폴백**: 하나라도 안 되면 SDK 없이 JSON-RPC 세 메서드(`initialize` · `tools/list` · `tools/call`)를 직접 받는다 — 그 셋이면
-  Claude Code·Codex CLI가 돈다. 디스패처는 어느 쪽이든 `toolCatalog()`와 `toToolResult()`를 지나므로 도구 층은 바뀌지 않는다.
-- 응답은 **JSON 한 벌**(SSE 스트림 없음). 진행 알림을 보낼 긴 작업이 Publish·첫 적재 둘이고 둘 다 60초 안이다.
+- **가정 A와 B가 둘 다 맞다 — 클라이언트마다 개정이 다르다.** Claude Code 2.1.283은 **2026-07-28**(`server/discover` →
+  `tools/list` → `tools/call`, 요청마다 `_meta` 봉투 + `MCP-Protocol-Version`·`Mcp-Method` 헤더)이고, Codex CLI 0.157.1은
+  **2025-era**(`initialize` → `notifications/initialized` → `tools/list` → `tools/call`, `MCP-Protocol-Version: 2025-06-18`)다.
+  **그래서 두 개정을 같은 도구 정의로 받는다** — 하나만 받으면 한쪽 CLI가 안 붙는다.
+- **체크리스트 넷 — 전부 된다, 단 (b)는 조립으로 된다.**
+  - (a) Web `Request`/`Response` ✅ — `createMcpHandler(factory).fetch(request, opts)`와 `WebStandardStreamableHTTPServerTransport.
+    handleRequest(request, opts)`가 둘 다 Web 표준이고 Route Handler의 `Request`를 그대로 받는다.
+  - (b) JSON 응답 + 세션 id 미발급 ✅(조립) — `createMcpHandler`의 `responseMode: "json"`은 **2026-07-28 쪽에만** 걸린다. 기본
+    `legacy: "stateless"`의 2025 응답은 **`text/event-stream`**이었다(실측). 그래서 **`createMcpHandler(factory, { legacy: "reject",
+    responseMode: "json" })` 앞에 `isLegacyRequest(request)`로 가르고**, 2025 쪽은 요청마다 새 `WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined, enableJsonResponse: true })`로 받는다 — SDK 문서가 제시하는 "hand-wired composition" 형이다. 두 쪽 다
+    `content-type: application/json`, `Mcp-Session-Id` 헤더 없음, notification은 `202` 빈 본문(실측).
+  - (c) Bearer를 앞단에서 끝내기 ✅ — SDK 입구는 토큰을 검증하지 않고 `authInfo`를 **그대로 통과**시킨다("never derived from
+    request headers"). route가 먼저 401을 끝내고, 통과한 요청만 `{ authInfo }`로 넘긴다. 핸들러에서는 `ctx.http?.authInfo`로
+    읽힌다(실측). **주체는 팩토리 인자로 받는다** — 팩토리가 요청마다 불리고(2026-07-28 쪽은 `McpRequestContext.authInfo`, 2025 쪽은
+    route가 직접 부른다) 도구 핸들러는 그 클로저의 주체만 본다. 핸들러가 `ctx.http`를 읽지 않으므로 두 개정의 경로가 갈리지 않는다.
+  - (d) `tools/list` 순서 ✅ — **등록 순서 그대로**다(`zeta, alpha, mid`로 등록 → 같은 순서로 3회 동일, 두 개정 동일). ⚠️ **두 CLI가
+    화면에 보이는 순서는 이름순이다**(클라이언트 쪽 정렬) — 서버의 결정성 계약은 wire 순서이고 `toolCatalog()` 배열 순서로 등록한다.
+- ⚠️ **`tools.listChanged: false`를 명시한다.** `McpServer`는 도구를 등록하면 기본 `listChanged: true`를 광고하고, 그러면 Claude
+  Code가 **`subscriptions/listen` SSE 스트림을 연다**(실측 — 응답이 끝나지 않는다). Vercel 함수에서는 그 스트림이 `maxDuration`까지
+  함수를 붙잡고 끊기면 다시 연다. `new McpServer(info, { capabilities: { tools: { listChanged: false } } })`로 바꾸자 Claude Code가
+  listen 없이 discover → list → call만 보냈다(실측). 도구 목록은 배포 사이에 안 바뀌므로 잃는 것이 없다.
+  ⚠️ **그래도 SDK는 `subscriptions/listen` 요청이 오면 SSE를 연다**(15초 keepalive, 버스는 모듈 전역) — route가 SDK에 넘기기 전에
+  JSON-RPC `-32601`로 끊는다(검수 Y2).
+- **route가 받는 모양은 이것 하나로 확정한다** (T5가 이 확정문으로 디스패치한다):
+  1. `checkOrigin` → Bearer 인증(401) → `readBoundedText(1 MiB)`(400) → `JSON.parse`(실패는 JSON-RPC `-32700` — SDK에 맡겨도 된다).
+  2. **배열 본문(JSON-RPC 배치)은 `400 -32600`으로 거부한다**(2026-09-28 오케스트레이터 결정 — 2025-06-18 개정이 배치를 없앴고,
+     도구가 서면 배치 하나가 한 요청 안에서 DB 도구를 펼친다). `subscriptions/listen`은 `-32601`. 그 뒤
+     `isLegacyRequest(request, parsedBody)` — 이미 파싱한 본문을 넘겨 본문을 두 번 읽지 않는다.
+  3. `true` → 요청마다 `factory(subject)` + `WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined,
+     enableJsonResponse: true })` → `server.connect(transport)` → `transport.handleRequest(request, { parsedBody })` → `finally
+     server.close()`. `false` → 모듈 한 벌의 `createMcpHandler(..., { legacy: "reject", responseMode: "json" })`의 `fetch(request,
+     { parsedBody })` — 팩토리가 요청마다 불리므로 주체는 `authInfo.extra`로 실어 `McpRequestContext.authInfo`에서 읽는다.
+  4. `maxRequestBodySize`는 SDK 기본 4 MiB지만 route가 이미 1 MiB로 끊었고 `parsedBody`에는 SDK 상한이 안 걸린다.
+- **SDK가 이미 고정하는 JSON-RPC 응답** (2025 쪽 실측 — T5 테스트가 route 층에서 다시 고정한다): 미지 도구 `-32602 "Tool nope not
+  found"`, 미지 메서드 `-32601 "Method not found"`, id 없는 notification은 `202`(배치 배열은 SDK가 응답 배열로 답하지만 route가 앞에서
+  거부한다 — 위 2). 2026-07-28 쪽은
+  `Mcp-Method` 헤더가 없거나 본문과 다르면 `400 -32020`.
+- **401에서 두 CLI 모두 OAuth로 넘어가지 않는다** — Claude Code는 `Authorization` 헤더가 설정돼 있으면 "OAuth fallback is disabled"로
+  멈추고 **401 본문을 사용자에게 그대로 보인다**(실측: `Error detail: { error : unauthorized }`). `/.well-known/*` 요청은 0건이었다.
+  → 401 본문은 갈래를 말하지 않는 고정 문장 하나다(spec 조건 4).
+- T5의 임시 `not-implemented` 갈래는 T7에서 지웠다 — 카탈로그 28개가 전부 `lib/mcp/tools/*` 구현을 가지며, 구현이 빠진 이름은 서버 생성
+  시점에 던진다(`lib/mcp/tools/__tests__/registry.test.ts`가 양방향으로 센다).
+- 알려진 소음: `responseMode: "json"`이면 SDK가 `createMcpHandler` 생성 시점에 `console.warn` 한 줄을 낸다(모듈 로드당 1회).
+- 응답은 **JSON 한 벌**(SSE 스트림 없음). 진행 알림을 보낼 긴 작업이 Publish·첫 적재 둘이고 둘 다 60초 안이다 — `json` 모드는
+  중간 알림을 버린다(SDK 문서)는 대가를 받아들인다.
+- 실측에 쓴 CLI 설정(토큰은 환경변수 참조 — POSTMORTEM 2026-09-04): Claude Code `--mcp-config`의
+  `{"type":"http","url":…,"headers":{"Authorization":"Bearer ${MALMOI_TOKEN}"}}`, Codex `-c mcp_servers.<name>.url=… -c
+  mcp_servers.<name>.bearer_token_env_var="MALMOI_TOKEN"`. 이 두 형이 `/mcp` 연결 예시(§8)의 원형이다.
 - 호출 사이 상태 = **서버 발급 핸들**. Publish 지문은 신규이며, 샘플 HMAC은 기존 발급/검증 함수를 재사용하되 생성·소스 추가의
   소비 경로를 새로 연결한다:
 
@@ -50,7 +91,7 @@ CLI 에이전트 ──POST /api/mcp (Authorization: Bearer mlm_…)──▶ ro
 - 저장은 **sha256 hex만**이라 발급 뒤 원문은 **어디에도 없다**. 잃어버리면 재발급이다(✅ 사용자 확인). 해시 규칙은 `hashInviteToken`
   한 벌이다(무염 sha256 hex — push 토큰·초대와 같다). **조회 방향은 해시 → 행**이고(PRODUCT §7.8의 교훈), 행이 `userId`를 준다.
   비교 연산이 없어 타이밍 축이 없다.
-- **계정당 하나** — `ApiToken.userId @unique`. 발급은 기존 행을 지우고 새 행을 넣는 한 tx라 [Create]와 [Rotate]가 같은 Action이다.
+- **계정당 하나** — `ApiToken.userId @id`(PK가 곧 unique). 발급은 기존 행을 지우고 새 행을 넣는 한 tx라 [Create]와 [Rotate]가 같은 Action이다.
 - 판정 `planApiTokenUse({ row, now })` → `ok | rejected` 두 갈래(만료·폐기·없음을 한 갈래로 접는다 — 401 하나). 만료 경계는
   `expiresAt <= now`가 거부다.
 - `lastUsedAt`은 **1분 단위로만** 갱신한다(호출마다 UPDATE하면 에이전트 루프가 행을 두드린다). 판정은 순수 `shouldTouch`.
@@ -67,16 +108,22 @@ CLI 에이전트 ──POST /api/mcp (Authorization: Bearer mlm_…)──▶ ro
 type TokenGrant = Permission | "project:create";          // 토큰 전용 어휘 하나만 더한다
 type TokenScope = { kind: "all" } | { kind: "projects"; projectIds: readonly string[] };
 
-// 순수 — lib/mcp/grant.ts
-planToolAccess({ role, grants, scope, projectId, rolePermission, tokenGrant }) →
-  | { status: "ok" }
-  | { status: "not-found" }      // 범위 밖 — 존재를 말하지 않는다(멤버 아님과 같은 갈래)
-  | { status: "forbidden" }      // 역할이 못 한다 — 화면과 같은 사유
-  | { status: "token-scope" }    // 역할은 되는데 이 토큰이 안 받았다
+type ApiTokenAuthority = { userId: string; grants: readonly TokenGrant[]; scope: TokenScope };
+
+// 순수 — lib/mcp/grant.ts (T2 구현)
+planToolAccess({ token: ApiTokenAuthority, member: MemberContext | null, archivedAt, archivedPolicy?, rolePermission, tokenGrant }) →
+  | { status: "ok"; projectId; role; archived }   // planProjectAccess의 ok 그대로 — projectId·role은 멤버십 행의 것
+  | { status: "not-found" }                       // 범위 밖 · 멤버 아님 · 없는 프로젝트 — 존재를 말하지 않는다
+  | { status: "forbidden" }                       // 역할이 못 한다 — 화면과 같은 사유
+  | { status: "archived"; projectId; role }       // 보관 — planProjectAccess 그대로
+  | { status: "token-scope" }                     // 역할은 되는데 이 토큰이 안 받았다
+planCreateAccess({ grants }) → { status: "ok" } | { status: "token-scope" }   // 프로젝트가 없는 동작 — 역할 판정 없음
 ```
 
-- **판정 순서가 계약이다**: 범위 → 멤버십·보관(`planProjectAccess`) → 역할 → 토큰. 범위를 먼저 봐야 범위 밖 프로젝트의 보관·역할이
-  새지 않는다. 역할을 토큰보다 먼저 봐야 EDITOR에게 "토큰을 고치면 된다"는 거짓 안내가 안 선다.
+- **판정 순서가 계약이다**: 범위 → 멤버십 → 역할 → 보관 → 토큰. 가운데 셋은 `planProjectAccess`를 **그대로 재사용**한다(보관·읽기 예외
+  `archivedPolicy` 판정을 복제하지 않는다 — 그 함수의 순서가 이미 멤버십 → 역할 → 보관이다). `member`는 호출부가 **토큰의 `userId`로**
+  조회한 멤버십 행이다. 범위를 먼저 봐야 범위 밖 프로젝트의 보관·역할이 새지 않는다. 역할을 토큰보다 먼저 봐야 EDITOR에게 "토큰을
+  고치면 된다"는 거짓 안내가 안 선다. 보관을 토큰보다 먼저 봐야 답이 "되돌리는 법"이 된다(grant를 고쳐도 보관된 프로젝트엔 못 쓴다).
 - **역할 조건과 토큰 grant 조건은 별개다.** `rolePermission`은 기존 역할 판정, `tokenGrant`는 위임 동작 판정이며 `null`이면 그 조건을
   요구하지 않는다. **grant 없는 토큰은 내 프로젝트 안의 데이터를 읽는다** — spec의 한 문장 규칙. GitHub 계정 열거·파일 다운로드
   도구(§2.1의 "신규" 경로 셋)만 grant를 요구한다. `readOnlyHint`는 인가 조건이 아니다.
@@ -87,17 +134,26 @@ planToolAccess({ role, grants, scope, projectId, rolePermission, tokenGrant }) �
 
 #### 쓰기 주체와 잠금 뒤 재판정 (검수 H 반영)
 
-- 서버가 구성한 쓰기 주체는 `{ userId, tokenId?: string }`다 — 세션 경로는 `tokenId` 없음, MCP 경로는 있음. 도구 입력으로 주체를 받지
+- 서버가 구성한 쓰기 주체는 `{ userId, tokenId?: string }`다 — 세션 경로는 `tokenId` 없음, MCP 경로는 있음. **`tokenId`는
+  `ApiToken.tokenHash`다**(2026-09-28 오케스트레이터 결정 — `id` 컬럼이 없고 `userId`가 PK라 행을 가리키는 값이 해시뿐이다. 해시는 원문이
+  아니고 로그에도 이미 무해한 값이다). 도구 입력으로 주체를 받지
   않는다. 사건의 actor는 두 경우 모두 기존 USER다. cron의 시스템 주체는 그대로다.
 - **재판정은 잠금 뒤 재읽기다 — 행 잠금을 더하지 않는다.** 기존 `Project` → `TranslationSurface` 잠금을 얻은 뒤 같은 tx에서
-  `ApiToken`을 다시 읽어(READ COMMITTED) `userId` 일치·존재·만료를 확인하고 §1.25의 순서를 다시 돌린다. 입구에서 얻은 grants/scope를
+  `ApiToken`을 다시 읽어(READ COMMITTED) **`userId` AND `tokenHash`로** 존재·만료를 확인하고 §1.25의 순서를 다시 돌린다 — `userId`만으로
+  읽으면 잠금 대기 중 **재발급**된 새 행(새 해시·새 권한)이 통과한다. 두 키로 읽으므로 재발급·폐기 둘 다 "행 없음"으로 거부된다. 입구에서 얻은 grants/scope를
   재사용하지 않는다. 폐기·재발급 tx가 먼저 커밋됐으면 재읽기가 그것을 본다 — spec 조건 6은 이것으로 충족된다. `FOR SHARE`는 쓰지
   않는다: 병렬 읽기 도구의 `lastUsedAt` UPDATE가 쓰기 tx 뒤에 줄을 서게 만들고, 에이전트의 병렬 호출(§1.3)이 정확히 그 모양이다.
-- **확장점은 `lockProjectAccess` 하나다** (`lib/auth/lock.ts`). `lockProjectAccess(tx, { …, token?: { id, grant } })`로 넓혀 잠금 뒤
-  토큰을 다시 읽고 `planToolAccess`를 돌린다 — `app/__tests__/locked-access.test.ts`의 `SITES` 16자리가 전부 이 함수를 지나므로
-  한 자리 수정으로 전부에 붙는다. 그 AST 테스트는 "MCP가 닿는 자리의 호출에 `token` 인자가 있는가"를 추가로 센다.
+- **확장점은 `lockProjectAccess` 하나다** (`lib/auth/lock.ts`). `lockProjectAccess(tx, { …, tokenId /* = tokenHash, 세션·cron은 undefined */ })`로
+  넓혀 잠금 뒤 토큰을 다시 읽는다 — `app/__tests__/locked-access.test.ts`의 `SITES`가 전부 이 함수를 지나므로 한 자리 수정으로 전부에 붙는다.
+  **요구 grant는 `permission` 그대로다** — 쓰기 도구는 전부 역할 permission과 같은 grant를 요구하고(`lib/auth/__tests__/lock-grant.test.ts`가
+  카탈로그로 고정), 다른 grant가 필요한 쓰기가 생기면 그때 인자를 넓힌다. 판정 순서: 토큰 무효 → `unauthorized`, 범위 밖 → `not-found`(멤버십 전),
+  멤버십·역할·보관 → 기존 갈래, grant 없음 → `token-scope`(마지막).
+- **`tokenId`는 잠금 자리 입력의 필수 키다**(`tokenId: string | undefined`) — 중간 홉이 빠뜨리면 컴파일 에러다. 세션·cron 경로는 `undefined`를
+  명시한다. 주체(`subject`)를 받은 함수가 리터럴 `tokenId: undefined`로 버리는 것은 AST 테스트가 막는다. `TOKEN_SITES`·`RAW_TOKEN_SITES`는
+  MCP가 닿는 잠금 호출에 `tokenId` 인자가 실렸는지 센다.
 - raw `FOR UPDATE`로 남은 넷(`lib/import/run.ts` · `lib/keys/revert.ts` · `lib/surfaces/create.ts` · 프로젝트 생성의 User 잠금)은
-  같은 재읽기 헬퍼 `lockApiToken(tx, { tokenId, userId })`를 잠금 직후에 부른다.
+  같은 재읽기 헬퍼 `lockApiToken(tx, { tokenId, userId, projectId, grant })`를 잠금 직후에 부르고(`where: { userId, tokenHash: tokenId }`),
+  무효·범위 밖은 즉시, grant 없음은 멤버십·역할·**보관** 판정 뒤에 거부한다.
 - 유효하지 않은 토큰은 인증 거부로 접고, 이 재판정 실패 자체로 프로젝트 사건을 남기지 않는다.
 
 | 쓰기 경로 | 재판정 위치 |
@@ -188,6 +244,9 @@ branch로 탐지한다. 호출자가 다른 리포나 ref로 바꿀 수 없으�
   `APP_SIGNING_SECRET`을 재사용한다. 서명 필드는 이미 `userId·repositoryId·installationId·ref·headSha·format·issuedAt`이고 TTL 30분이라
   **서명 확장이 필요 없다**(검수에서 코드 대조).
 - 검증 함수가 반환한 포맷과 선택한 adapter·pathTemplate을 대조하고, baseLocale은 서명된 locales에 포함돼야 한다.
+- ⚠️ **`signSampleConfirmation`·`verifySampleConfirmation`은 `APP_SIGNING_SECRET`이 비면 던진다**(거부가 아니라 설정 장애다) —
+  T2의 `planSampleConfirmations`(`lib/mcp/confirm.ts`)는 그것을 잡지 않고 올린다. 호출하는 도구(`detect_formats`의 발급 · `create_project`·
+  `add_sources`의 소비)가 **`unavailable`로 접는다**. `sample-expired`로 접으면 에이전트가 재탐지를 반복하고 원인이 가려진다.
 - 확인값 누락은 입력 오류다. 변조·컨텍스트 불일치·만료·미래 발급 시각은 기존 `sample-expired`로 접고, `detect_formats`를 다시 호출해
   확인값을 받도록 안내한다. 포맷/기준 로케일 불일치는 기존 `manual-no-match`다. 자동 재탐지로 새 확인값을 만들어 쓰기를 계속하지 않는다.
 - **같은 스냅샷을 검증과 적재에 쓴다.** 인가 후 읽은 리포 스냅샷으로 HMAC을 확인하고, 해당 head에 고정된 파일을
@@ -210,6 +269,8 @@ branch로 탐지한다. 호출자가 다른 리포나 ref로 바꿀 수 없으�
 
 - 성공은 `structuredContent`(JSON) + 짧은 `text` 요약. 거부는 **`isError: true` + 기존 거부 코드**(`archived` · `not-found` · `forbidden` ·
   `reconfirm` · `repo-read-only` · …)와 `messages/en.tsx`의 **같은 문장**이다 — 에이전트가 사용자에게 옮길 문장이 화면과 같아야 한다.
+- **`needs-browser`도 `isError: true`다**(T2 구현) — 호출이 목적을 이루지 못했고 에이전트가 사용자에게 링크를 전해야 한다.
+  `structuredContent`는 `{ status: "needs-browser", reason, url, message }`, `retryable`은 없다.
 - 순수 `toToolResult(union)` 하나가 모든 도구의 union → MCP 결과 변환을 든다. **장애는 거부가 아니다**(§6.00 ②) — `unavailable`은
   `retryable: true`를 싣고 나머지는 싣지 않는다.
 - 500 본문 규칙(§6.0)을 따른다 — 예외 메시지·스택을 결과에 싣지 않는다.
@@ -235,7 +296,7 @@ GitHub App 설치·user-to-server 인가는 state 쿠키가 방어선인 브라�
 | `planApiTokenUse({ row, now })` | `lib/mcp/token.ts` | 없음·만료 → 한 갈래, `expiresAt <= now` 경계 |
 | `shouldTouch(lastUsedAt, now)` | `lib/mcp/token.ts` | 1분 스로틀 |
 | `planApiTokenIssue({ expiresIn, grants, scope, memberProjectIds })` | `lib/mcp/issue-plan.ts` | 만료 선택지 30/90/365 · grant 어휘 밖 거부 · 범위는 현재 멤버십의 비보관 프로젝트만 · 멤버십 0이면 `projects` 범위 거부 |
-| `planToolAccess({ role, grants, scope, projectId, rolePermission, tokenGrant })` | `lib/mcp/grant.ts` | §1.25의 네 갈래와 **판정 순서**. 역할 × 토큰 × 범위 매트릭스 |
+| `planToolAccess({ token, member, archivedAt, archivedPolicy?, rolePermission, tokenGrant })` · `planCreateAccess({ grants })` | `lib/mcp/grant.ts` | §1.25의 다섯 갈래와 **판정 순서**(범위 → 멤버십 → 역할 → 보관 → 토큰, `planProjectAccess` 재사용). 역할 × 토큰 × 범위 매트릭스 |
 | `publishFingerprint(state, baseHead)` | `lib/publish/fingerprint.ts` | `PullState` + base head SHA를 `discardFingerprint`와 같은 tuple 직렬화로. 같은 입력은 같은 지문, 번역·전달 토큰·키/로케일·표면 설정·리포/브랜치·base head 변경은 다른 지문. 표시 상한과 무관 |
 | `planBatchSave(entries)` | `lib/mcp/batch.ts` | 100개 상한 · 중복 키 거부 · 입력 순서 유지 |
 | `checkOrigin(headers)` | `lib/mcp/http.ts` | 없으면 통과, 있으면 `ALLOWED_HOSTS` 대조 |
@@ -298,6 +359,8 @@ RepeatableRead 한 tx에서 키·번역·토큰·표면을 읽으며(`lib/pull/l
 - **덧붙일 것 둘**: ① `reconfirm`은 리포에 아무것도 안 썼으므로 `too-soon`의 기준(`status ∈ {SUCCEEDED, SKIPPED}`, `lib/sync/run.ts`)에서
   뺀다 — SKIPPED로 닫으면 에이전트가 새 핸들로 재호출해도 30초를 기다린다. ② 새 결과 갈래를 `lib/pull/__tests__/error-codes.test.ts`의
   양방향 목록에 등재한다.
+- **reconfirm에 별도 빈도 상한을 두지 않는다** (`/orchestrate` 판정, 2026-09-28) — `too-soon` 제외 뒤에도 추가 제한이 없는 것은 의도다: 빈도
+  상한은 spec 비목표이고(ARCHITECTURE §6.06), reconfirm은 GitHub 쓰기 없이 head 1회 읽기로 끝난다. Logs는 이 행을 `Not sent` + 사유 문장으로 그린다.
 - **캡처 뒤 편집**: 기존 CAS 그대로다 — 새 편집의 미전달 토큰은 지워지지 않는다.
 
 검증은 지문 함수만으로 끝내지 않는다. 미리보기 뒤 저장 · base head 변경 · 표시 상한 밖 편집 · 미전달 토큰 없는 export 입력 변경을
@@ -422,6 +485,6 @@ Publish 지문은 `discardFingerprint`처럼 상태 digest다. §4.1의 bypass �
 - **새 raw 색·새 Badge variant는 없다** — `Badge neutral` · `Button danger` · `Alert danger` · `bg-muted` 안에서 끝난다. DESIGN §6.2 등재 없음.
 - **새 페이지라 `/design-sync` 대상이다** — Claude Design 핸드오프(정적 시안, 상태별 프레임: 빈 · 카드(활성) · 카드(만료) · 발급 ① ·
   발급 ②(원문) · Rotate 확인 · Revoke 확인 · 거부 · 결과 미확인 · 멤버십 0의 범위 선택)를 받아 구현한다. "진행"·"복사 실패"는 프리미티브가
-  들어 프레임이 필요 없다. 시안 링크는 받는 즉시 이 문서에 붙인다.
+  들어 프레임이 필요 없다. **시안**: https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=design_handoff_mcp_connector%2FREADME.md (2026-09-28 수령).
 - 가이드 `/docs`에 **Connect an AI agent** 페이지 하나(`/guide`) — 설정·예시 프롬프트("이 리포를 Malmoi에 연결해 줘", "비어 있는 fr
   번역을 채우고 Publish해 줘")·권한 설명·도구 묶음. 페이지와 가이드가 같은 사실을 말하되 정본은 가이드다.

@@ -117,7 +117,7 @@ async function addFixture() {
 
 // Run the original single-source regression cases through the new batch writer.
 async function addOneFixture(input: AddSurfaceSnapshot) {
-  const [result] = await addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input] });
+  const [result] = await addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input], tokenId: undefined });
   if (!result) throw new Error("Missing added source");
   const surface = await prisma.translationSurface.findUniqueOrThrow({ where: { projectId_slug: { projectId: input.projectId, slug: result.surfaceSlug } } });
   return { ...result, surfaceId: surface.id };
@@ -656,6 +656,30 @@ it.each(["missing", "partial", "conflict"])("실제 Action의 %s 준비 거부�
   expect(await createProject(input)).toMatchObject({ ok: false });
   await expectNoCreation();
 });
+/**
+ * **MCP 토큰 주체의 생성** (mcp-connector T4-d · design §1.25). User 잠금 뒤 토큰을 다시 읽고, 고른-범위 토큰이면 같은 tx에서
+ * `projectIds`에 새 프로젝트를 더한다 — 안 넣으면 방금 만든 프로젝트를 그 토큰이 못 만진다.
+ */
+it("잠금 뒤 토큰이 무효·grant 없음이면 아무 행도 남기지 않는다 · 고른-범위 토큰은 새 프로젝트를 범위에 더한다 (짝)", async () => {
+  const { input } = await creationFixture();
+  const { createProjectFromRepo } = await import("@/lib/onboarding-run/create");
+  const make = (tokenId: string) => createProjectFromRepo(prisma, { userId: "create-owner", tokenId }, input);
+  await prisma.apiToken.create({ data: { userId: "create-owner", tokenHash: "live", grants: ["translation:write"], allProjects: false, projectIds: ["elsewhere"], expiresAt: new Date(Date.now() + 86_400_000) } });
+  expect(await make("stale")).toEqual({ ok: false, error: "unauthorized" });
+  expect(await make("live")).toEqual({ ok: false, error: "token-scope" });
+  await expectNoCreation();
+  await prisma.apiToken.update({ where: { userId: "create-owner" }, data: { grants: ["project:create"] } });
+  expect(await make("live")).toMatchObject({ ok: true });
+  const created = await prisma.project.findUniqueOrThrow({ where: { slug: input.slug }, select: { id: true } });
+  expect((await prisma.apiToken.findUniqueOrThrow({ where: { userId: "create-owner" } })).projectIds).toEqual(["elsewhere", created.id]);
+});
+it("전체 범위 토큰의 생성은 projectIds를 건드리지 않는다", async () => {
+  const { input } = await creationFixture();
+  const { createProjectFromRepo } = await import("@/lib/onboarding-run/create");
+  await prisma.apiToken.create({ data: { userId: "create-owner", tokenHash: "live", grants: ["project:create"], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+  expect(await createProjectFromRepo(prisma, { userId: "create-owner", tokenId: "live" }, input)).toMatchObject({ ok: true });
+  expect((await prisma.apiToken.findUniqueOrThrow({ where: { userId: "create-owner" } })).projectIds).toEqual([]);
+});
 it("같은 사용자의 동시 생성은 OWNER 한도를 넘지 않고 같은 slug는 하나만 성공한다", async () => {
   const { createProject, input } = await creationFixture();
   const same = await Promise.all([createProject(input), createProject(input)]);
@@ -771,7 +795,7 @@ async function multiFixture() {
   const first = await addFixture();
   const second = { ...first, format: { ...first.format, pathTemplate: "third/{locale}.json" }, targets: ["third/en.json", "third/ko.json"], blobs: new Map([["third/en.json", '{"old":"Third"}'], ["third/ko.json", '{"old":"Third translation"}']]) };
   const paths = [...first.paths, ...second.targets];
-  return { projectSlug: "add", inputs: [{ ...first, paths }, { ...second, paths }] };
+  return { projectSlug: "add", inputs: [{ ...first, paths }, { ...second, paths }], tokenId: undefined };
 }
 it("다중 소스는 한 tx로 생성하고 적재 부분 실패를 그대로 커밋한다", async () => {
   const input = await multiFixture(); input.inputs[1]!.blobs.delete("third/ko.json");
@@ -798,7 +822,7 @@ it.each(["second-surface", "last-write", "timeout"])("다중 생성의 %s 실패
 }, 45000);
 it("다중 생성의 중복 템플릿과 경로 경합은 기존 데이터를 보존한다", async () => {
   const input = await multiFixture(); const before = await existingSurface();
-  await expect(addSurfacesFromSnapshot(prisma, { ...input, inputs: [input.inputs[0]!, input.inputs[0]!] })).rejects.toMatchObject({ code: "path-conflict" });
+  await expect(addSurfacesFromSnapshot(prisma, { ...input, inputs: [input.inputs[0]!, input.inputs[0]!], tokenId: undefined })).rejects.toMatchObject({ code: "path-conflict" });
   const results = await Promise.allSettled([addSurfacesFromSnapshot(prisma, input), addSurfacesFromSnapshot(prisma, input)]);
   expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
   const failed = results.find(r => r.status === "rejected");
@@ -810,6 +834,8 @@ it("다중 생성의 중복 템플릿과 경로 경합은 기존 데이터를 �
 
 const imageIO = vi.hoisted(() => ({ put: vi.fn(), del: vi.fn() }));
 vi.mock("@/lib/upload/store", () => ({ putImage: imageIO.put, deleteImage: imageIO.del }));
+// 생성 Action이 워크플로 `api-url`용 origin을 읽는다 — 요청 밖이라 Host 없음(= 프로덕션 기본값)으로 둔다.
+vi.mock("next/headers", async (orig) => ({ ...(await orig<object>()), headers: async () => ({ get: () => null }) }));
 vi.mock("@/lib/upload/normalize", () => ({ normalizeImage: async () => ({ ok: true, bytes: Uint8Array.of(1) }) }));
 it("프로젝트 이미지의 동시 교체·제거는 현재 URL을 삭제하지 않는다", async () => {
   await addFixture();
@@ -832,4 +858,24 @@ it("프로젝트 이미지의 동시 교체·제거는 현재 URL을 삭제하�
   expect(new Set(removed).size).toBe(removed.length);
   expect(await updateProjectName({ slug: "add", name: "  Renamed  " })).toEqual({ ok: true, name: "Renamed" });
   expect(await prisma.project.findUniqueOrThrow({ where: { id: "add" } })).toMatchObject({ name: "Renamed", slug: "add" });
+});
+
+it("소스 추가의 grant 판정은 보관 판정 뒤다 — 보관된 프로젝트에 grant 없는 토큰이면 archived", async () => {
+  const input = await addFixture();
+  await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "live", grants: [], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+  await prisma.project.update({ where: { id: "add" }, data: { archivedAt: new Date() } });
+  await expect(addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input], tokenId: "live" })).rejects.toMatchObject({ code: "archived" });
+  await prisma.project.update({ where: { id: "add" }, data: { archivedAt: null } });
+  await expect(addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input], tokenId: "live" })).rejects.toMatchObject({ code: "token-scope" });
+});
+/** MCP 토큰 주체의 소스 추가 — 잠금 직후 `lockApiToken`이 토큰을 다시 읽는다(mcp-connector design §1.25). 쓰기 0건. */
+it("잠금 뒤 다시 읽은 토큰이 없으면(폐기·재발급) 표면을 만들지 않는다 · grant가 없으면 token-scope — 유효 토큰은 만든다 (짝)", async () => {
+  const input = await addFixture();
+  await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "live", grants: ["project:settings"], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+  await expect(addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input], tokenId: "stale" })).rejects.toMatchObject({ code: "unauthorized" });
+  await prisma.apiToken.update({ where: { userId: "owner" }, data: { grants: [] } });
+  await expect(addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input], tokenId: "live" })).rejects.toMatchObject({ code: "token-scope" });
+  expect(await prisma.translationSurface.count({ where: { projectId: "add", id: { not: "surface-add" } } })).toBe(0);
+  await prisma.apiToken.update({ where: { userId: "owner" }, data: { grants: ["project:settings"] } });
+  expect(await addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input], tokenId: "live" })).toMatchObject([{ surfaceSlug: "second" }]);
 });

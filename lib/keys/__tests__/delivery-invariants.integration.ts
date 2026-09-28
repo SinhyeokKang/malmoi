@@ -24,6 +24,8 @@ import { loadEvents } from "@/lib/events/query";
 import { parseLogFilter } from "@/lib/events/filter";
 import { runSync } from "@/lib/sync/run";
 import { planWithheldLines } from "@/lib/publish/plan";
+import { readPublishPreview } from "@/lib/publish/read";
+import { publishFingerprint } from "@/lib/publish/fingerprint";
 
 import { applyKeySave } from "../save-key";
 
@@ -117,10 +119,38 @@ function reader(files: Record<string, string | undefined | (() => string | undef
 }
 const approve = async () => (await readDiscardApproval(prisma, { projectId: "p", userId: "owner" })).fingerprint;
 const sync = (repo: RepoReader, approval: string | null) =>
-  runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval }, async () => repo);
+  runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval, tokenId: undefined }, async () => repo);
 const edit = (key: string, locales: string[], tag = "tok") =>
   pool.query(`UPDATE "Translation" t SET "value" = 'Edited', "updatedBy" = 'owner', "pendingEditToken" = $1 || '-' || t."localeCode"
     FROM "StringKey" k WHERE k."id" = t."keyId" AND k."key" = $2 AND t."projectId" = 'p' AND t."localeCode" = ANY($3::text[])`, [`${tag}-${key}`, key, locales]);
+
+describe("MCP 토큰 주체의 수동 Sync — 실행권 획득 tx에서 토큰을 다시 읽는다 (mcp-connector design §1.25)", () => {
+  it("grant 판정은 보관 판정 뒤다 — 보관된 프로젝트에 grant 없는 토큰이면 archived이고 거부 사건이 남는다", async () => {
+    await seed(); await ci(payload(["key0"]));
+    await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "live", grants: [], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+    await prisma.project.update({ where: { id: "p" }, data: { archivedAt: new Date() } });
+    const repo = reader(Object.fromEntries(LOCALES.map(l => [`i18n/${l}.json`, '{"key0":"Repository"}'])));
+    expect(await runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, tokenId: "live" }, async () => repo))
+      .toEqual({ ok: false, error: "archived" });
+    expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "import.notStarted" } })).toBe(1);
+    // 대조: 보관이 아니면 grant 부재가 드러난다.
+    await prisma.project.update({ where: { id: "p" }, data: { archivedAt: null } });
+    expect(await runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, tokenId: "live" }, async () => repo))
+      .toEqual({ ok: false, error: "token-scope" });
+  });
+
+  it("폐기·재발급된 해시면 실행권을 얻지 않는다(import 토큰 0) · 유효 해시면 적재한다 (짝)", async () => {
+    await seed(); await ci(payload(["key0"]));
+    await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "live", grants: ["project:settings"], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+    const repo = () => reader(Object.fromEntries(LOCALES.map(l => [`i18n/${l}.json`, '{"key0":"Repository"}'])));
+    const run = (tokenId: string) => runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, tokenId }, async () => repo());
+    expect(await run("stale")).toEqual({ ok: false, error: "unauthorized" });
+    expect((await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).repositoryImportToken).toBeNull();
+    expect((await cellOf("key0", "ko"))?.value).toBe("CI");
+    expect(await run("live")).toMatchObject({ ok: true });
+    expect((await cellOf("key0", "ko"))?.value).toBe("Repository");
+  });
+});
 
 // ── #1 유령 보류 · D1 ─────────────────────────────────────────────────────────────────────────────
 
@@ -258,7 +288,7 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     await saveLastPulledAt(prisma, "p", new Date(), undefined, [], { runId: "confirm", contexts: state.deliveryContexts ?? [] });
     await prisma.syncRun.update({ where: { id: "confirm" }, data: { status: "SUCCEEDED", finishedAt: new Date() } });
     const t = await target();
-    expect(await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "하나!" }, { localeCode: "fr", value: "un!" }] })).toMatchObject({ ok: true });
+    expect(await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "하나!" }, { localeCode: "fr", value: "un!" }], tokenId: undefined })).toMatchObject({ ok: true });
     await beforePublish?.();
     // fr.yml이 base에 없다 — fr 셀은 보류되고 ko는 나간다.
     expect(await publish([{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }]))
@@ -268,12 +298,33 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     return t;
   }
 
+  it("grant 판정은 보관 판정 뒤다 — 보관된 프로젝트에 grant 없는 토큰이면 보관 갈래(key-unavailable)다", async () => {
+    const t = await withheldFixture();
+    await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "live", grants: [], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+    const preview = await previewKeyRevert(prisma, t);
+    if (preview.status !== "ready") throw new Error("expected ready");
+    await prisma.project.update({ where: { id: "p" }, data: { archivedAt: new Date() } });
+    expect(await executeKeyRevert(prisma, { ...t, confirmation: preview.confirmation, tokenId: "live" })).toEqual({ status: "blocked", reason: "key-unavailable" });
+    await prisma.project.update({ where: { id: "p" }, data: { archivedAt: null } });
+    expect(await executeKeyRevert(prisma, { ...t, confirmation: preview.confirmation, tokenId: "live" })).toEqual({ status: "error", error: "token-scope" });
+  });
+
+  it("MCP 토큰 주체는 잠금 뒤 토큰을 다시 읽는다 — 폐기·재발급된 해시면 쓰기 0건, 유효 해시면 되돌린다 (짝)", async () => {
+    const t = await withheldFixture();
+    await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "live", grants: ["project:settings"], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+    const preview = await previewKeyRevert(prisma, t);
+    if (preview.status !== "ready") throw new Error("expected ready");
+    expect(await executeKeyRevert(prisma, { ...t, confirmation: preview.confirmation, tokenId: "stale" })).toEqual({ status: "error", error: "unauthorized" });
+    expect((await cellOf("a", "fr"))?.pendingEditToken).not.toBeNull();
+    expect(await executeKeyRevert(prisma, { ...t, confirmation: preview.confirmation, tokenId: "live" })).toMatchObject({ status: "reverted" });
+  });
+
   it("보류된 fr을 OWNER가 마지막 전달 값으로 되돌릴 수 있다", async () => {
     const t = await withheldFixture();
     const preview = await previewKeyRevert(prisma, t);
     expect(preview).toMatchObject({ status: "ready", locales: [{ code: "fr", after: "Repo" }] });
     if (preview.status !== "ready") throw new Error("expected ready");
-    expect(await executeKeyRevert(prisma, { ...t, confirmation: preview.confirmation })).toMatchObject({ status: "reverted" });
+    expect(await executeKeyRevert(prisma, { ...t, confirmation: preview.confirmation, tokenId: undefined })).toMatchObject({ status: "reverted" });
     expect(await cellOf("a", "fr")).toMatchObject({ value: "Repo", pendingEditToken: null });
   });
 
@@ -297,14 +348,14 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
   it("runSync의 보류 수가 SyncRun.withheld로 남고 Logs 행이 같은 수를 든다", async () => {
     await withheldFixture();
     const t = await target();
-    await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "하나!!" }] });
+    await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "하나!!" }], tokenId: undefined });
     const tree = [{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }];
     github.client = createFakeGitClient({
       refSha: { "heads/main": "basehead" },
       tree: { basehead: tree.map(f => ({ path: f.path, sha: blobSha(f.content) })) },
       blobs: Object.fromEntries(tree.map(f => [blobSha(f.content), f.content])),
     }).client;
-    const outcome = await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null });
+    const outcome = await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null, tokenId: undefined });
     expect(outcome).toMatchObject({ status: "committed", withheld: { file: 1, key: 0 } });
     const [row] = (await loadEvents(prisma, "p", { ...parseLogFilter({}) })).rows.filter(r => r.kind === "PUBLISH");
     expect(row?.run?.withheld).toBe(1);
@@ -319,8 +370,8 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     await seed(yaml);
     await ci(yamlPayload());
     const t = await target();
-    await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "X" }] });
-    await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "Repo" }] });
+    await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "X" }], tokenId: undefined });
+    await applyKeySave(prisma, { ...t, changes: [{ localeCode: "ko", value: "Repo" }], tokenId: undefined });
     const tree = ["en", "ko", "fr"].map(l => ({ path: `config/locales/${l}.yml`, content: `${l}:\n  a: Repo\n` }));
     const fake = createFakeGitClient({
       refSha: { "heads/main": "basehead", "heads/malmoi-i18n/sync-fixture": "stale" },
@@ -329,7 +380,7 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
       openPr: { url: "https://github.com/o/r/pull/4", number: 4, title: "t", base: "main" },
     });
     github.client = fake.client;
-    const outcome = await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null });
+    const outcome = await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null, tokenId: undefined });
     expect(outcome).toMatchObject({ status: "skipped", reason: "no-changes", closedPr: { number: 4 } });
     expect(fake.calls.map(c => c.method).filter(m => m === "closePr" || m === "updateRefForce")).toEqual(["closePr", "updateRefForce"]);
     expect(await prisma.syncRun.findFirst({ where: { projectId: "p", trigger: "CRON" } })).toMatchObject({ status: "SKIPPED", prUrl: "https://github.com/o/r/pull/4" });
@@ -343,8 +394,179 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     expect(await protectedCi(yamlPayload())).toMatchObject({ status: "deferred", pendingCount: 1 });
     const preview = await previewKeyRevert(prisma, t);
     if (preview.status !== "ready") throw new Error(`expected ready, got ${JSON.stringify(preview)}`);
-    await executeKeyRevert(prisma, { ...t, confirmation: preview.confirmation });
+    await executeKeyRevert(prisma, { ...t, confirmation: preview.confirmation, tokenId: undefined });
     expect(await countPending(prisma, "p")).toBe(0);
     expect(await protectedCi(yamlPayload())).toMatchObject({ status: "applied" });
+  });
+});
+
+/**
+ * **Publish 지문 — `expectedFingerprint`** (mcp-connector T6.5 · design §3.1). 미리보기(`readPublishPreview`)가 낸 지문을 실제 `runSync`가 실행권 뒤
+ * `loadPullState` + base head로 재계산해 대조한다. 불일치는 GitHub 쓰기 0회의 `reconfirm`이고 토큰은 그대로다. 각 reconfirm 단언은 같은 픽스처의
+ * 새 미리보기가 커밋하는 짝을 든다 — 짝이 없으면 "늘 reconfirm"도 green이다.
+ */
+describe("Publish 지문 — 미리보기 뒤 바뀐 export 입력은 reconfirm (mcp-connector T6.5)", () => {
+  const MUTATIONS = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr", "updatePrTitle", "updatePrBase", "closePr"];
+  let fake: ReturnType<typeof createFakeGitClient>;
+  function repo(head = "basehead") {
+    fake = createFakeGitClient({ refSha: { "heads/main": head }, tree: { [head]: [] } });
+    github.client = fake.client;
+    return fake;
+  }
+  const writes = () => fake.calls.map(c => c.method).filter(m => MUTATIONS.includes(m));
+  const manual = (expectedFingerprint?: string) =>
+    runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner", tokenId: undefined, expectedFingerprint });
+  const preview = () => readPublishPreview(prisma, "p", "fixture");
+  const lastRun = () => prisma.syncRun.findFirstOrThrow({ where: { projectId: "p" }, orderBy: { startedAt: "desc" } });
+
+  async function fixture(keys = ["key0", "key1"]) {
+    await seed();
+    await ci(payload(keys));
+    await edit("key0", ["ko"]);
+    repo();
+  }
+
+  it("미리보기 뒤 저장 → reconfirm · 쓰기 0 · 토큰 유지 · SKIPPED/reconfirm 행 — 곧바로 새 미리보기로 부르면 too-soon 없이 커밋한다 (짝)", async () => {
+    await fixture();
+    const stale = (await preview()).fingerprint;
+    await edit("key1", ["fr"], "later");
+    expect(await manual(stale)).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(writes()).toEqual([]);
+    expect(await countPending(prisma, "p")).toBe(2);
+    expect(await lastRun()).toMatchObject({ status: "SKIPPED", errorCode: "reconfirm", changed: null });
+
+    repo();
+    expect(await manual((await preview()).fingerprint)).toMatchObject({ status: "committed", delivered: 2 });
+    expect(writes().length).toBeGreaterThan(0);
+    expect(await countPending(prisma, "p")).toBe(0);
+  });
+
+  it("base head가 미리보기 뒤 움직였으면 reconfirm이다", async () => {
+    await fixture();
+    const stale = (await preview()).fingerprint;
+    repo("movedhead");
+    expect(await manual(stale)).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(writes()).toEqual([]);
+    expect(await manual((await preview()).fingerprint)).toMatchObject({ status: "committed" });
+  });
+
+  it("표면 설정(pathTemplate)이 바뀌었으면 reconfirm이다", async () => {
+    await fixture();
+    const stale = (await preview()).fingerprint;
+    await prisma.translationSurface.update({ where: { id: "s" }, data: { pathTemplate: "locales/{locale}.json" } });
+    expect(await manual(stale)).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(writes()).toEqual([]);
+    expect(await countPending(prisma, "p")).toBe(1);
+  });
+
+  it("표시 상한(200행) 밖의 편집도 reconfirm이다", async () => {
+    const keys = Array.from({ length: 70 }, (_, i) => `key${String(i).padStart(2, "0")}`);
+    await seed(); await ci(payload(keys));
+    for (const key of keys) await edit(key, LOCALES);
+    repo();
+    const shown = await preview();
+    expect(shown.truncated).toBeGreaterThan(0);
+    // 미리보기 조회와 같은 정렬의 마지막 행 — 표에 실리지 않은 셀이다.
+    const [outside] = await prisma.translation.findMany({ where: { projectId: "p", pendingEditToken: { not: null } },
+      orderBy: [{ surfaceId: "desc" }, { keyId: "desc" }, { localeCode: "desc" }], take: 1, select: { keyId: true, localeCode: true } });
+    if (outside === undefined) throw new Error("no pending row");
+    await prisma.translation.update({ where: { keyId_localeCode: outside }, data: { value: "Edited again" } });
+    expect(await manual(shown.fingerprint)).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(writes()).toEqual([]);
+  });
+
+  it("미전달 토큰 없는 export 입력 변경(orphan)도 reconfirm이다", async () => {
+    await fixture();
+    const stale = (await preview()).fingerprint;
+    await pool.query(`UPDATE "StringKey" SET "orphaned" = true WHERE "projectId" = 'p' AND "key" = 'key1'`);
+    expect(await countPending(prisma, "p")).toBe(1);
+    expect(await manual(stale)).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(writes()).toEqual([]);
+  });
+
+  it("대조 뒤 저장은 이번 전송에 섞이지 않고 미전달로 남는다 — 확인된 입력만 커밋한다", async () => {
+    await fixture();
+    const fingerprint = (await preview()).fingerprint;
+    const getTree = fake.client.getTree.bind(fake.client);
+    let injected = false;
+    fake.client.getTree = async sha => {
+      if (!injected) { injected = true; await edit("key1", ["fr"], "after-compare"); }
+      return getTree(sha);
+    };
+    expect(await manual(fingerprint)).toMatchObject({ status: "committed", delivered: 1 });
+    expect(injected).toBe(true);
+    expect((await cellOf("key0", "ko"))?.pendingEditToken).toBeNull();
+    expect(await cellOf("key1", "fr")).toMatchObject({ value: "Edited", pendingEditToken: "after-compare-key1-fr" });
+    const tree = fake.calls.find(c => c.method === "createTree")?.args[0] as { path: string; content?: string }[] | undefined;
+    expect(JSON.stringify(tree ?? [])).not.toMatch(/"key1":\s*"Edited"/);
+  });
+
+  it("already-running · too-soon은 지문과 무관하게 그대로 거부하고 GitHub을 부르지 않는다", async () => {
+    await fixture();
+    const fingerprint = (await preview()).fingerprint;
+    const previewCalls = fake.calls.length;
+    await prisma.syncRun.create({ data: { id: "live", projectId: "p", status: "RUNNING", trigger: "MANUAL", startedAt: new Date() } });
+    expect(await manual(fingerprint)).toMatchObject({ status: "failed", error: "already-running" });
+    await prisma.syncRun.update({ where: { id: "live" }, data: { status: "SUCCEEDED", finishedAt: new Date() } });
+    expect(await manual(fingerprint)).toMatchObject({ status: "failed", error: "too-soon" });
+    expect(fake.calls.length).toBe(previewCalls);
+  });
+
+  it("보낼 것이 없으면 no-edits이고 그 스킵은 too-soon 기준에 든다 — reconfirm만 빠진다 (짝)", async () => {
+    await seed(); await ci(payload(["key0"]));
+    repo();
+    expect(await manual("anything")).toEqual({ status: "skipped", reason: "no-edits" });
+    expect(fake.calls).toEqual([]);
+    expect(await manual("anything")).toMatchObject({ status: "failed", error: "too-soon" });
+  });
+
+  /**
+   * **보여 준 것과 서명한 것이 한 스냅샷이다** (Codex review CR-01). 미리보기가 GitHub을 기다리는 동안 저장이 들어오면, 표시 행은 그 전(A)이고
+   * 지문도 A여야 한다 — 지문만 뒤(B)를 읽으면 그 지문의 `publish`가 `reconfirm` 없이 보이지 않은 B를 보낸다(spec 완료 조건 9).
+   */
+  it("GitHub 대기 중 저장 — 미리보기 표시·지문 둘 다 저장 전이고, 그 지문의 publish는 reconfirm · 새 미리보기는 새 값으로 커밋 (짝)", async () => {
+    await fixture();
+    const getRefSha = fake.client.getRefSha.bind(fake.client);
+    let saved = false;
+    fake.client.getRefSha = async ref => {
+      if (!saved) {
+        saved = true;
+        await pool.query(`UPDATE "Translation" t SET "value" = 'Changed', "pendingEditToken" = 'mid-save'
+          FROM "StringKey" k WHERE k."id" = t."keyId" AND k."key" = 'key0' AND t."projectId" = 'p' AND t."localeCode" = 'ko'`);
+      }
+      return getRefSha(ref);
+    };
+    const shown = await preview();
+    expect(saved).toBe(true);
+    const cell = shown.groups.flatMap(g => g.rows).find(r => r.key === "key0" && r.localeCode === "ko");
+    expect(cell?.after).toBe("Edited");
+    expect(await manual(shown.fingerprint)).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(writes()).toEqual([]);
+
+    repo();
+    const fresh = await preview();
+    expect(fresh.groups.flatMap(g => g.rows).find(r => r.key === "key0" && r.localeCode === "ko")?.after).toBe("Changed");
+    expect(await manual(fresh.fingerprint)).toMatchObject({ status: "committed", delivered: 1 });
+  });
+
+  it("표시 수는 실행 스냅샷의 미전달 셀과 같은 술어다 — total·keys = loadPullState의 unpublished·pendingEdits", async () => {
+    await fixture(["key0", "key1", "key2"]);
+    await edit("key1", ["en", "fr"], "more");
+    const shown = await preview();
+    const state = await loadPullState(prisma, "fixture");
+    expect(shown.total).toBe(3);
+    expect(shown.total).toBe(state.unpublished);
+    expect(shown.total).toBe(state.pendingEdits.length);
+    expect(shown.keys).toBe(new Set(state.pendingEdits.map(e => e.cell?.keyId)).size);
+    expect(shown.fingerprint).toBe(publishFingerprint(state, "basehead"));
+  });
+
+  it("인자 없는 웹·cron Publish는 대조 없이 기존대로 커밋한다", async () => {
+    await fixture();
+    await edit("key1", ["fr"], "later");
+    expect(await manual()).toMatchObject({ status: "committed", delivered: 2 });
+    repo();
+    await edit("key1", ["en"], "night");
+    expect(await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null, tokenId: undefined })).toMatchObject({ status: "committed", delivered: 1 });
   });
 });

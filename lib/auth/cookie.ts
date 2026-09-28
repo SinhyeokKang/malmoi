@@ -50,6 +50,8 @@ export function shouldRedirectToLogin(input: { method: string; cookieNames: read
 const PROTECTED: readonly RegExp[] = [
   /^(?:\/(_next\/data\/[^/]{1,}))?\/projects(?:\/((?:[^\/#\?]+?)(?:\/(?:[^\/#\?]+?))*))?(\.json|\.rsc|\.segments\/.+\.segment\.rsc)?[\/#\?]?$/,
   /^(?:\/(_next\/data\/[^/]{1,}))?\/account(\.json|\.rsc|\.segments\/.+\.segment\.rsc)?[\/#\?]?$/,
+  // `/mcp` (mcp-connector) — `/account`와 같은 사용자 축 한 장짜리 라우트라 같은 모양이다.
+  /^(?:\/(_next\/data\/[^/]{1,}))?\/mcp(\.json|\.rsc|\.segments\/.+\.segment\.rsc)?[\/#\?]?$/,
 ];
 
 /**

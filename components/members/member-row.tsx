@@ -70,7 +70,7 @@ export function MemberRow({
             셸 아바타(표시 이름에서 온 글자)와 달라지고 같은 계정이 화면마다 다른 사람으로 보인다
             (`entity-card.tsx`가 밟은 함정). 푸는 방법이 "중립 원"이 아니라 **`?`**인 것이 캔버스의 답이다.
           */}
-          {glyph ?? <Avatar name={identity.avatarSeed ?? ""} size={32} />}
+          {glyph ?? <Avatar name={identity.avatarSeed ?? ""} src={identity.avatarImage} size={32} />}
         </span>
 
         {/*

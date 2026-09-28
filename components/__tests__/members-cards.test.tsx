@@ -33,6 +33,7 @@ const now = new Date("2026-09-17T00:00:00Z");
 const member = (over: Partial<MemberView> & { userId: string }): MemberView => ({
   name: `Name ${over.userId}`,
   emailLabel: `${over.userId}***@acme.com`,
+  image: null,
   readable: true,
   role: "EDITOR",
   joinedAt: now,

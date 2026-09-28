@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { CircleHelp, Compass, Plus } from "lucide-react";
+
+import { McpIcon } from "@/components/signin/brand-icons";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Role } from "@/lib/auth/permission";
@@ -218,13 +220,20 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
    * ⚠️ **`New project`가 `Projects` 바로 아래에 선다** (2026-09-27 사용자 — 8-3의 "사이드바에 없다"를 뒤집었다).
    * 아이콘은 [New project] 버튼과 같은 `Plus`, 배지는 없다.
    */
-  it("사용자 축은 Projects · New project · Account 순이다", () => {
+  it("사용자 축은 Projects · New project · MCP connector · Account 순이다", () => {
     const items = navZones(null, ctx)[0]?.items ?? [];
     expect(items.map((i) => [i.key, i.href])).toEqual([
       ["projects", "/projects"],
       ["newProject", "/projects/new"],
+      ["mcp", "/mcp"],
       ["account", "/account"],
     ]);
+    // MCP connector — 공식 MCP 로고(`McpIcon`, 2026-09-29 사용자 — 옛 `Plug`) · 정확히 일치 · 배지 없음 · 라벨이 페이지 제목과 같은 키(핸드오프 §4).
+    const mcp = items.find((i) => i.key === "mcp");
+    expect(mcp?.label).toBe(m.common.nav.mcp);
+    expect(mcp?.icon).toBe(McpIcon);
+    expect(mcp?.exact).toBe(true);
+    expect(mcp?.badge).toBeUndefined();
     const created = items.find((i) => i.key === "newProject");
     expect(created?.label).toBe(m.common.nav.newProject);
     expect(created?.icon).toBe(Plus);
@@ -246,7 +255,7 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
    */
   it("`Projects`에만 개수 배지가 붙고, 0도 값이다", () => {
     const items = navZones(null, { userName: "Shin", projectCount: 0 })[0]?.items ?? [];
-    expect(items.map((i) => i.badge)).toEqual([0, undefined, undefined]);
+    expect(items.map((i) => i.badge)).toEqual([0, undefined, undefined, undefined]);
     expect(navZones(null, ctx)[0]?.items[0]?.badge).toBe(3);
   });
 
@@ -357,10 +366,16 @@ describe("프로젝트 설정 항목의 라벨", () => {
   });
 
   /** 문장·링크가 메뉴에 없는 이름으로 그 화면을 부르면 사이드바에서 찾을 수 없다. */
+  /**
+   * ⚠️ **예외 한 자리 — MCP 토큰의 허용 동작 이름**(mcp-connector spec 완료조건 2 · 핸드오프 §12). 그것은 화면이 아니라 **권한**
+   * (`project:settings` — Sources·Sync·기준 브랜치·push 토큰·보관)의 이름이고 설정 화면 하나를 가리키지 않는다. 그 줄만 빼고 센다.
+   */
   it("화면 문구가 옛 이름 `Project settings`로 그 화면을 부르지 않는다", () => {
     const src = readFileSync(join(process.cwd(), "messages/en.tsx"), "utf8")
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
-    expect(src).not.toMatch(/[Pp]roject settings/);
+    const GRANT = '"project:settings": { label: "Project settings",';
+    expect(src.split(GRANT).length - 1).toBe(1);
+    expect(src.replace(GRANT, "")).not.toMatch(/[Pp]roject settings/);
   });
 });

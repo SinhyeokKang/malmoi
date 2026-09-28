@@ -48,10 +48,14 @@ describe("BACKFILL_CONDITION_SQL — 옛 술어 ∧ 활성 셀 ∧ 토큰 없음
 });
 
 describe("사본 ④ — Publish 미리보기가 무엇을 PR로 보낼지 같은 술어로 고른다 (T8)", () => {
-  it("`lib/publish/read.ts`가 `pendingWhere`를 쓰고 옛 저자·시각 조건을 들지 않는다", () => {
-    const source = readFileSync("lib/publish/read.ts", "utf8");
-    expect(source).toContain("pendingWhere(projectId)");
-    expect(source).not.toContain("updatedBy: { not: null }");
+  /** 표시 행은 Codex review CR-01부터 `lib/pull/load.ts#loadPreviewSnapshot`이 지문과 같은 스냅샷에서 읽는다 — 술어는 그 자리의 `pendingWhere`다. */
+  it("Publish 미리보기가 `loadPreviewSnapshot`의 `pendingWhere`로 행을 고르고 옛 저자·시각 조건을 들지 않는다", () => {
+    const read = readFileSync("lib/publish/read.ts", "utf8");
+    const load = readFileSync("lib/pull/load.ts", "utf8");
+    const snapshot = load.slice(load.indexOf("export async function loadPreviewSnapshot"), load.indexOf("async function loadSnapshot("));
+    expect(read).toContain("loadPreviewSnapshot(prisma, slug, PREVIEW_LIMIT)");
+    expect(snapshot).toContain("pendingWhere(state.project.id)");
+    for (const source of [read, snapshot]) expect(source).not.toContain("updatedBy: { not: null }");
   });
 
   it("`lib/keys/unpublished.ts`(옛 공유 조각)가 사라졌다 — 술어의 주인은 하나다", () => {

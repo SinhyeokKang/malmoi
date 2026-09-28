@@ -267,6 +267,10 @@ export const en = {
        */
       account: "Account",
       /**
+       * `/mcp` (mcp-connector) — 사이드바 사용자 축의 `Account` 바로 앞. **페이지 제목도 이 키다**(DESIGN "메뉴명 = 페이지 제목").
+       */
+      mcp: "MCP connector",
+      /**
        * 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다.
        *
        * ⚠️ **화면 제목도 이 키들을 쓴다** (2026-09-11 사용자 — "LNB 메뉴명과 페이지 타이틀은 항상
@@ -514,7 +518,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-09-28",
+      effectiveDate: "2026-09-29",
       /**
        * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
        */
@@ -574,6 +578,11 @@ export const en = {
                     "Your own edits",
                     "Showing your teammates who changed what",
                   ],
+                  [
+                    "A personal token for AI agents: a one-way hash of it (never the token itself), the actions and projects you allowed it, and when it was created, last used and expires",
+                    "Created by Malmoi when you create or rotate a token on the MCP connector page",
+                    "Letting an AI agent you run act for you, within what your project role already allows",
+                  ],
                 ],
               },
             },
@@ -598,6 +607,7 @@ export const en = {
                 "Emailing an invitation link to an address a project owner enters. The email holds the link and the project it is for — the project's name, its picture if it has one, and the role you are invited with. It does not say who invited you, and it has no tracking.",
                 "Keeping the service running, which includes looking at error logs when something fails.",
                 "Counting visits to the public pages, to see whether people find Malmoi and which docs they read. Only totals are looked at.",
+                "Letting an AI agent you connect with your own token do what you could do in the app. What it changes is recorded as your change.",
               ],
             },
             {
@@ -620,6 +630,7 @@ export const en = {
                 "An invitation stops working after 7 days, or as soon as it is accepted, revoked or sent again. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
                 "An invitation email: Resend, which sends it, keeps a record of the message — the address, the subject and the email itself, with the link, the project's name, the address of its picture if it has one, and your role — for 30 days.",
                 "Translations and the record of who changed them: kept for the life of the project.",
+                "An AI agent token stops working when it expires (30, 90 or 365 days after you create it) or as soon as you rotate or revoke it. Its row is deleted when you rotate or revoke it, or with your account; until then an expired token stays listed so you can see what it allowed.",
               ],
             },
           ],
@@ -640,6 +651,9 @@ export const en = {
             },
             {
               p: "A profile picture that comes from GitHub or Google is loaded by your browser directly from their servers, so those requests reach them even though Malmoi sends them nothing.",
+            },
+            {
+              p: "If you connect an AI agent with your token, what the agent reads through it — the translations, activity and members of your projects, and a project's push token when you ask for one — goes to that agent and to whichever AI service it uses. You choose and run that agent; Malmoi does not send it anything on its own and has no agreement with it.",
             },
             {
               p: "An invitation email shows a logo and the project's picture (or a placeholder icon when it has none), and your email app loads all of them from mal-moi.com — Malmoi fetches the picture from its own storage, so your email app reaches no one else. The logo and the icon are the same for everyone, and a project's picture is the same for everyone invited to that project, so none of them tells Malmoi who opened the email.",
@@ -709,7 +723,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
@@ -1258,6 +1272,8 @@ export const en = {
       "db-unavailable": "We couldn't reach our own storage. The next nightly run tries again.",
       stale: "This run stopped before it finished.",
       unknown: "Something went wrong. The next nightly run tries again.",
+      /** MCP `publish`만 낸다 — 미리보기 뒤 보낼 내용이 바뀌어 아무것도 안 보냈다(mcp-connector design §3.1). */
+      reconfirm: "The changes to send were updated after the preview, so nothing was sent. Preview again, then publish.",
       fallback: "Something went wrong. Tell your developers if it keeps happening.",
     },
     /** 거부 여섯의 문장 (spec §6.1). **다음 번에도 같은 이유로 거부될 것**만 여기 있다. */
@@ -1736,6 +1752,96 @@ export const en = {
     },
   },
 
+  /**
+   * **`/mcp` — MCP connector 페이지** (핸드오프 `design_handoff_mcp_connector` §12 — 문구가 전부 확정이다). 도구 결과 문장은 이 블록이
+   * 아니라 `mcp`(M3)다 — 에이전트가 읽는 문장과 사람이 읽는 화면을 한 블록에 섞지 않는다.
+   */
+  mcpConnector: {
+    token: {
+      title: "Your token",
+      create: "Create token",
+      rotate: "Rotate",
+      revoke: "Revoke",
+      expired: "Expired",
+      emptyTitle: "No token yet",
+      emptyBody: "Create a token to let an AI agent work in your projects.",
+      facts: {
+        grants: "Allowed actions",
+        scope: "Scope",
+        created: "Created",
+        lastUsed: "Last used",
+        expires: "Expires",
+      },
+      // 빈 grant를 안 그리면 "권한 없음"과 구별이 안 된다 — 읽기는 grant 없이 된다(design §1.25).
+      readOnly: "Read only",
+      allProjects: "All projects",
+      projects: (n: number): string => `${n.toLocaleString("en-US")} project${n === 1 ? "" : "s"}`,
+      never: "Never",
+      // 결과 미확인(`4b`) — 복구는 머리의 Rotate다. 버튼을 더하지 않는다.
+      unconfirmed: "We couldn't confirm the result. If you didn't get a token value, rotate to get a new one.",
+      // 폐기 응답 유실 — 핸드오프에 프레임이 없다(4b와 같은 자리·형). 다음 행동은 카드를 보고 남았으면 다시 폐기다.
+      revokeUnconfirmed: "We couldn't confirm the token was revoked. If it's still shown here, revoke it again.",
+      // 항상 DOM에 있는 `role="status"`가 읽는 완료 문장 — 화면에는 안 보인다(카드가 바뀐 것이 시각 신호다).
+      status: {
+        created: "Token created",
+        rotated: "Token rotated",
+        revoked: "Token revoked",
+      },
+    },
+    /** 허용 동작 넷 — 순서는 `TOKEN_GRANTS`다. 라벨은 카드 사실 블록에서 ` · `로 잇는다. */
+    grants: {
+      "translation:write": { label: "Translate & publish", hint: "Save translations and open publish PRs." },
+      // Sync·Revert가 미전달 편집을 버린다 — 그래서 힌트에 `sync`가 있다(핸드오프 결정 16).
+      "project:settings": { label: "Project settings", hint: "Sources, sync, base branch, push token, archive." },
+      "member:manage": { label: "Members", hint: "Invite, change roles, remove." },
+      "project:create": { label: "Create projects", hint: "List your GitHub repositories and set up new projects." },
+    },
+    connect: {
+      title: "Connect",
+      serverUrl: "Server URL",
+      agent: "Agent",
+      clients: { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor" },
+      // 기존 파일에 항목을 덧붙이는 꼴이라 동사가 `Add to`다(핸드오프 §4). 경로는 sans 평문이고 색만 올린다.
+      addTo: (path: ReactNode): ReactNode => <>Add to {path}</>,
+    },
+    // 핸드오프 §12 문장 그대로다. 링크 라벨은 가이드 페이지 제목(`guide/SUMMARY.md`)과 같아야 한다.
+    guide: {
+      lead: "See what an agent can do and example prompts in the guide →",
+      link: "Connect an AI agent",
+    },
+    form: {
+      createTitle: "Create token",
+      rotateTitle: "Rotate token",
+      expiresIn: "Expires in",
+      days: (n: number): string => `${n.toLocaleString("en-US")} days`,
+      grants: "Allowed actions",
+      grantsHelp: "Reading keys, events and members inside your projects never needs a grant.",
+      scope: "Scope",
+      allMine: "All my projects",
+      chosen: "Chosen projects",
+      noMembership: "You're not a member of any project yet.",
+      // 열린 결정 1(핸드오프 §13) — 바닥 왼쪽 상태 슬롯에 둔다(초대 모달의 상태 문장과 같은 자리).
+      chooseOne: "Choose at least one project.",
+      step: (n: number): string => `Step ${n.toLocaleString("en-US")} of 2`,
+      create: "Create",
+      rotateConfirm: "Rotate and show new token",
+      rotateWarning: "Rotating stops the current token immediately. Every agent using it stops until you paste the new one.",
+      failed: "We couldn't create the token. Try again in a moment.",
+    },
+    result: {
+      title: "Your token",
+      // ⚠️ `<strong className="font-normal">` 자리다 — 모달 문맥의 강조이지 굵기가 아니다(design §8).
+      copyNow: "Copy it now — it won't be shown again.",
+      setEnv: "Set it as MALMOI_TOKEN in your shell, then use the Connect snippet below.",
+      done: "Done",
+    },
+    revoke: {
+      title: "Revoke your token?",
+      body: "Every agent using it stops immediately. This can't be undone.",
+      confirm: "Revoke token",
+    },
+  },
+
   newProject: {
     /** `formatLabel` — 어댑터 내부 이름을 화면에 쓰지 않는다 (PRODUCT §3). */
     formats: {
@@ -2034,7 +2140,8 @@ export const en = {
       ingest: {
         retry: "Try again",
         refsHint: "Code references arrive after your CI workflow first runs. You can start translating now.",
-        open: "Start translating",
+        // 목적지(프로젝트 Home)를 말한다 — 2026-09-29 전엔 번역 화면으로 가는 "Start translating"이었다.
+        open: "Open project",
       },
       workflow: {
         saveAs: "Save as",
@@ -3117,6 +3224,112 @@ export const en = {
       confirmHint: "You won't be able to sign in with it until you sign in with it again at this address.",
       /** 호출이 끊겨 해제됐는지 모른다 (audit-ux #14) — 사유를 지어내지 않고 새로고침으로 확인하게 한다. */
       unlinkUnconfirmed: "We couldn't confirm that change. Refresh to see your sign-in methods.",
+    },
+  },
+
+  /**
+   * **MCP 커넥터의 도구 결과 문장** (mcp-connector design §2.3). 에이전트가 사용자에게 옮기는 문장이다 — 화면과 같은 거부는 화면의
+   * 키를 그대로 쓰고(`lib/mcp/result.ts`의 대응표), 여기엔 **도구에만 있는 갈래**만 둔다.
+   */
+  mcp: {
+    errors: {
+      // 역할은 되는데 토큰이 그 동작을 안 받았다 — 토큰은 불변이라 다음 행동은 재발급 하나다.
+      "token-scope": "This token doesn't allow that action. Issue a new token with that permission on the MCP connector page.",
+      // Publish 핸들이 낡았다 — 아무것도 안 보냈다는 것과 다음 행동을 함께 말한다.
+      reconfirm: "The translations changed after the preview, so nothing was sent. Preview again, then publish with the new handle.",
+      "invalid-input": "The arguments don't match this tool's input. Check them and try again.",
+      "too-many": (limit: number): string => `Save up to ${limit.toLocaleString("en-US")} keys per call. Split the rest into another call.`,
+      "duplicate-key": "The same key appears more than once. Send each key once per call.",
+    },
+    /** 도구 설명(`tools/list`의 `description`) — 에이전트가 도구를 고르는 근거다. 핸들이 필요한 도구는 무엇을 먼저 부르는지 말한다. */
+    tools: {
+      whoami: "Show who this token belongs to, whether GitHub is connected, and what the token may do (permissions, projects, expiry).",
+      list_projects: "List the projects you can use with this token, with your role, repository, and whether each is ready.",
+      get_project: "Show a project's overview: sources, languages, key counts, changes to send, the last publish's pull request, and repository connection. Whether a pull request is open now comes from preview_publish.",
+      list_repositories: "List the GitHub repositories you can connect to a new project. Needs the Create projects permission.",
+      list_branches: "List a repository's branches. Pass { owner, repo } for a new project or { slug } for an existing one, not both.",
+      detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new project or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
+      list_keys: "List a source's translation keys with their completion. Takes the same filters as the translations screen and a cursor for the next page.",
+      get_key: "Show one key: its source text, every language's value, review and unsent flags, and where the code uses it.",
+      preview_publish: "Preview what Publish would send in a pull request. Returns a fingerprint to pass to publish, and pullRequest: open (with its url), none, or unknown when GitHub couldn't be checked.",
+      preview_sync: "Preview a sync from the repository and how many unsent edits it would discard. Returns an approval to pass to sync_repository.",
+      preview_revert: "Preview reverting one key to the version last confirmed as sent. Returns a confirmation to pass to revert_to_last_sent.",
+      list_events: "List a project's activity log, newest first. Takes the same filters as the Logs screen and a cursor.",
+      get_workflow: "Get the GitHub Actions workflow file for the project's repository. It reads the push token from the PUSH_TOKEN secret.",
+      list_members: "List a project's members with masked email labels. Owners also see pending invitations.",
+      create_project: "Create a project from a repository using the candidates and confirmations from detect_formats, and run the first sync. Returns a push token once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
+      add_sources: "Add translation sources to a project using the candidates and confirmations from detect_formats({ slug }), and run their first sync.",
+      set_translations: "Save translations for up to 100 keys in one call. A rejected key is skipped and the rest are saved.",
+      publish: "Send saved changes to the repository as a pull request. Call preview_publish first and pass its fingerprint.",
+      sync_repository: "Load the repository's values into Malmoi, discarding unsent edits. Call preview_sync first and pass its approval.",
+      revert_to_last_sent: "Revert one key's unsent languages to the version last confirmed as sent. Call preview_revert first and pass its confirmation.",
+      update_project: "Change a project's name or base branch.",
+      set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
+      rotate_push_token: "Issue a new push token. The old one stops working at once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
+      invite_members: "Invite people by email. Each invitation goes out by email and the link isn't returned.",
+      revoke_invitation: "Revoke a pending invitation.",
+      change_member: "Change a member's role, or remove them with nextRole: null. The last owner can't be removed.",
+      archive_project: "Archive a project. Editing, publishing, and syncs stop until it's restored.",
+      unarchive_project: "Restore an archived project.",
+    },
+    /**
+     * 도구 성공 결과의 한 줄 요약(`content` text) — 에이전트가 사용자에게 옮기는 문장이다. 값은 `structuredContent`에 따로 실린다.
+     */
+    summary: {
+      signedIn: "Signed in to Malmoi.",
+      signedInAs: (name: string): string => `Signed in to Malmoi as ${name}.`,
+      projects: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "project" : "projects"}.`,
+      project: (name: string): string => `Project ${name}.`,
+      events: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "log entry" : "log entries"}.`,
+      members: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "member" : "members"}.`,
+      workflow: "Workflow file for the repository. Store the push token as the PUSH_TOKEN secret.",
+      keys: (shown: number, matched: number): string => `Showing ${shown.toLocaleString("en-US")} of ${matched.toLocaleString("en-US")} ${matched === 1 ? "key" : "keys"}.`,
+      key: (key: string): string => `Key ${key}.`,
+      revertBlocked: "This key can't be reverted right now.",
+      revertReady: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "language" : "languages"} can be reverted to the last sent value.`,
+      repositories: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "repository" : "repositories"}.`,
+      branches: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "branch" : "branches"}.`,
+      formats: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "translation file format" : "translation file formats"} found.`,
+      publishPreview: (n: number): string => n === 0 ? "Nothing to publish." : `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} would be sent in a pull request. Publish with this fingerprint.`,
+      published: (view: string): string =>
+        view === "created" ? "Sent for review in a new pull request."
+        : view === "updated" ? "Updated the open pull request."
+        : view === "partial" ? "Some changes weren't sent. See the result for why."
+        : "Nothing changed — the repository already has these values.",
+      saved: (saved: number, rejected: number): string =>
+        `Saved ${saved.toLocaleString("en-US")} ${saved === 1 ? "key" : "keys"}${rejected === 0 ? "" : `; ${rejected.toLocaleString("en-US")} ${rejected === 1 ? "key was" : "keys were"} not saved`}.`,
+      updated: "Settings saved.",
+      nameOnly: "The name was saved, but the base branch wasn't.",
+      // 브랜치 코어가 던졌다 — 바뀌었는지 모른다. 재시도 전에 확인하라는 것이 다음 행동이다(Codex review CR-02).
+      branchUnconfirmed: "The name was saved. We couldn't confirm whether the base branch changed — check it with get_project before trying again.",
+      baseLocale: (locale: string): string => `Base language set to ${locale}. It takes effect after the next sync from the repository.`,
+      pushToken: "New push token issued. The old one stopped working. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
+      archived: "Project archived. Restore it to edit or publish again.",
+      restored: "Project restored.",
+      invited: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "invitation" : "invitations"} sent.`,
+      revoked: "Invitation revoked.",
+      memberRemoved: "Member removed.",
+      memberChanged: (role: string): string => `Role changed to ${role === "OWNER" ? "Owner" : "Editor"}.`,
+      created: (slug: string, keys: number): string =>
+        `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Set the push token first with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing it on standard input — don't use --body (--body - stores a literal "-"). Then commit the workflow file.`,
+      sourcesAdded: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. Add the workflow steps to the repository's workflow file.`,
+      synced: (kept: number): string => kept === 0
+        ? "Synced from the repository."
+        : `Synced from the repository. ${kept.toLocaleString("en-US")} unsent ${kept === 1 ? "edit remains" : "edits remain"}, so automatic updates stay paused.`,
+      syncPreview: (unsent: number): string => unsent === 0
+        ? "Sync will load the repository's values. No unsent edits will be discarded."
+        : `Sync will load the repository's values and discard ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"}.`,
+    },
+    /**
+     * 브라우저가 필요한 갈래 — 설치·인가는 state 쿠키가 방어선인 왕복이라 도구가 대신하지 않는다(ARCHITECTURE §6.4).
+     * 결과에 URL이 따로 실린다 — 문장은 "무엇을 하고 돌아오라"만 말한다.
+     */
+    needsBrowser: {
+      "not-connected": "Connect your GitHub account in your browser, then call this tool again.",
+      reauthorize: "Your GitHub authorization expired. Reauthorize in your browser, then call this tool again.",
+      "no-installations": "Install the Malmoi GitHub App in your browser, then call this tool again.",
+      // 수동 포맷 확정 도구는 없다(spec 비목표) — 브라우저의 수동 설정이 그 길이다.
+      "no-candidates": "We couldn't find translation files automatically. Set up the format manually in your browser.",
     },
   },
 

@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor, isAdapterName } from "@/lib/adapters";
+import { lockApiToken } from "@/lib/auth/lock";
 import { templatePaths } from "@/lib/onboarding/confirm";
 import { prepareFirstSnapshot, type FirstSnapshotInput } from "@/lib/onboarding/ingest";
 import { runTokenFor } from "@/lib/events/payload";
@@ -12,7 +13,9 @@ import { applyPushInTransaction } from "@/lib/push/apply";
 import { resolveLocalePaths } from "@/lib/pull/plan";
 import { planSurfaceSlug, surfaceOwnership } from "./plan";
 
-export type AddSurfaceErrorCode = "not-found" | "forbidden" | "archived" | "repo-replaced" | "path-conflict" | "ingest-failed";
+export type AddSurfaceErrorCode = "not-found" | "forbidden" | "archived" | "repo-replaced" | "path-conflict" | "ingest-failed"
+  /** MCP 토큰 주체만 — 잠금 뒤 다시 읽은 토큰이 무효이거나 grant가 없다(`lockApiToken`). */
+  | "unauthorized" | "token-scope";
 export class SurfaceCreationError extends Error {
   constructor(readonly code: AddSurfaceErrorCode, readonly conflicts: { path: string; surfaceSlugs: string[] }[] = []) {
     super(code);
@@ -26,7 +29,7 @@ export type AddSurfaceSnapshot = Omit<FirstSnapshotInput, "surfaceId" | "surface
 
 /** GitHub I/O는 호출부가 끝낸다. 잠금 후 재조회한 경계와 첫 적재만 원자적으로 확정한다. */
 /** 모든 파싱을 잠금 전에 끝내고 검증된 payload만 같은 tx로 쓴다. */
-export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { projectSlug: string; inputs: readonly AddSurfaceSnapshot[] }) {
+export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { projectSlug: string; inputs: readonly AddSurfaceSnapshot[]; tokenId: string | undefined }) {
   const first = input.inputs[0];
   if (!first || input.inputs.some(item => item.projectId !== first.projectId || item.userId !== first.userId)) throw new SurfaceCreationError("ingest-failed");
   if (new Set(input.inputs.map(item => item.format.pathTemplate)).size !== input.inputs.length) throw new SurfaceCreationError("path-conflict");
@@ -38,11 +41,16 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
   });
   return prisma.$transaction(async tx => {
     await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${first.projectId} FOR UPDATE`;
+    // MCP 토큰은 잠금 직후 다시 읽는다(mcp-connector design §1.25) — grant 거부는 역할·보관 판정 뒤다.
+    const token = await lockApiToken(tx, { tokenId: input.tokenId, userId: first.userId, projectId: first.projectId, grant: "project:settings" });
+    if (token.status !== "ok") throw new SurfaceCreationError(token.status);
     const project = await tx.project.findUnique({ where: { id: first.projectId } });
     if (!project) throw new SurfaceCreationError("not-found");
     const member = await tx.projectMember.findUnique({ where: { projectId_userId: { projectId: first.projectId, userId: first.userId } } });
     if (member?.role !== "OWNER") throw new SurfaceCreationError("forbidden");
     if (project.archivedAt !== null) throw new SurfaceCreationError("archived");
+    // grant는 멤버십·역할·보관 뒤다(`planToolAccess`와 같은 순서).
+    if (token.grant === "token-scope") throw new SurfaceCreationError("token-scope");
     for (const { repository: expected } of input.inputs) {
       if (project.repositoryId !== expected.repositoryId || project.installationId !== expected.installationId || project.repoOwner !== expected.repoOwner || project.repoName !== expected.repoName || project.baseBranch !== expected.baseBranch) throw new SurfaceCreationError("repo-replaced");
     }

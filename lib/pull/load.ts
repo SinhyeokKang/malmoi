@@ -22,6 +22,30 @@ export async function loadPullState(prisma: PrismaClient, slug: string): Promise
   return prisma.$transaction((tx) => loadSnapshot(tx, slug), { isolationLevel: "RepeatableRead" });
 }
 
+/**
+ * **Publish 미리보기의 DB 스냅샷 한 벌** (Codex review CR-01). 미리보기가 **보여 주는 것**(미발송 행 상한까지·전체 수·키 수·표면 설정)과
+ * **서명하는 것**(`publishFingerprint`의 입력 = 이 `state`)을 같은 RepeatableRead tx에서 읽는다. 둘이 따로 읽히면 그 사이의 저장이
+ * "A를 보여 주고 B를 승인하는" 지문을 만들고, 그 지문으로 한 `publish`는 `reconfirm` 없이 B를 보낸다.
+ *
+ * ⚠️ **tx 안에서 GitHub을 부르지 않는다** — 호출부가 이 결과를 받은 뒤 네트워크로 간다. 행 술어는 실행과 같은 `pendingWhere`다.
+ * @param limit 표시 상한(`PREVIEW_LIMIT`) — `lib/publish`를 import하지 않으려고 호출부가 넘긴다.
+ */
+export async function loadPreviewSnapshot(prisma: PrismaClient, slug: string, limit: number) {
+  return prisma.$transaction(async (tx) => {
+    const state = await loadSnapshot(tx, slug);
+    const where = pendingWhere(state.project.id);
+    const rows = await tx.translation.findMany({
+      where, take: limit, orderBy: [{ surfaceId: "asc" }, { keyId: "asc" }, { localeCode: "asc" }],
+      select: { surfaceId: true, keyId: true, localeCode: true, value: true, updatedBy: true, updatedAt: true, stringKey: { select: { key: true } } },
+    });
+    const total = await tx.translation.count({ where });
+    // 바닥 요약의 "키 수"는 **미발송 전체**를 센다 — 표에 실린 행만 세면 상한 아래에서만 참이다.
+    const keyIds = await tx.translation.groupBy({ by: ["keyId"], where });
+    const flags = await tx.project.findUniqueOrThrow({ where: { id: state.project.id }, select: { archivedAt: true } });
+    return { state, rows, total, keys: keyIds.length, archivedAt: flags.archivedAt };
+  }, { isolationLevel: "RepeatableRead" });
+}
+
 async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Promise<PullState> {
   const project = await prisma.project.findUnique({
     where: { slug },

@@ -40,6 +40,21 @@ describe("MemberRow — 아바타 씨앗", () => {
   });
 });
 
+describe("MemberRow — 아바타 사진", () => {
+  it("사진이 있으면 이니셜 대신 사진을 그린다", async () => {
+    const row = planMemberIdentity({ name: "Jane", emailLabel: null, image: "https://avatars.githubusercontent.com/u/1", readable: true });
+    const { container } = await render(<MemberRow id="u1" identity={row} />);
+    expect(find(container, "[data-avatar] img").getAttribute("src")).toBe("https://avatars.githubusercontent.com/u/1");
+  });
+
+  it("못 읽은 행은 사진 값이 있어도 `?`다", async () => {
+    const row = planMemberIdentity({ name: "Jane", emailLabel: null, image: "https://x/y.png", readable: false });
+    const { container } = await render(<MemberRow id="u1" identity={row} />);
+    expect(container.querySelector("[data-avatar] img")).toBeNull();
+    expect(find(container, "[data-avatar]").textContent).toBe("?");
+  });
+});
+
 describe("MemberRow — 두 줄과 자기 표식", () => {
   it("이름이 1행이고 마스킹 주소가 2행이다", async () => {
     const { container } = await render(<MemberRow id="u1" identity={identity("Jane", "j***@acme.com")} />);

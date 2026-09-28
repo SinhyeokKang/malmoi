@@ -11,7 +11,8 @@
 <p align="center">
   <strong>Connect your projects, translate &amp; ship together.</strong><br/>
   Malmoi is a localization tool for GitHub repositories. It finds the translation files already in your repo,<br/>
-  lets teammates edit them in the browser, and sends every change back as one pull request.
+  lets teammates edit them in the browser, and sends every change back as one pull request.<br/>
+  Coding agents can do the same work over MCP with your personal token.
 </p>
 
 <h3 align="center"><a href="https://mal-moi.com"><ins>Open Malmoi</ins></a> · <a href="https://mal-moi.com/docs">Read the docs</a></h3>
@@ -83,7 +84,7 @@ before and after. History is kept for the life of the project.
 
 </td>
 <td width="50%">
-  <img src="docs/assets/readme/logs.webp" alt="Logs listing translation edits and publishes to GitHub, grouped by UTC date" width="100%" />
+  <img src="docs/assets/readme/logs.webp" alt="Logs filtered to Publish, listing sent, not-sent, and nothing-to-send runs grouped by UTC date" width="100%" />
 </td>
 </tr>
 <tr>
@@ -113,6 +114,11 @@ brings new keys into Malmoi and marks translations whose source text changed as
   ([details](https://mal-moi.com/docs/sync/nightly)).
 - **Two roles** — owners manage the repository, settings, and members; editors
   translate and publish. Invite teammates by email and pick a role per invite.
+- **AI agents over MCP** — connect Claude Code, Codex, or Cursor with a
+  personal token that expires. The agent can do only what you can in each
+  project, and only what the token allows; its edits are saved as yours.
+  Malmoi itself never calls an AI model
+  ([details](https://mal-moi.com/docs/ai-agents)).
 
 ## Supported file formats
 
@@ -179,13 +185,6 @@ agent instructions); product scope is in [`docs/PRODUCT.md`](docs/PRODUCT.md).
 The engineering docs and source comments are in Korean — the project is built
 by one person, and that's the language it was thought in.
 
-## The name
-
-*Malmoi* (말모이, "gathering words") was the 1910s project to
-compile the first Korean dictionary — many people collecting scattered words
-into one book.
-
 ## License
 
-[MIT](LICENSE). Country flags in `public/flags/` are from
-[country-flag-icons](https://gitlab.com/catamphetamine/country-flag-icons) (MIT).
+[MIT](LICENSE) © 2026 Sinhyeok Kang

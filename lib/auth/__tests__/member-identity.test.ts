@@ -16,6 +16,7 @@ describe("planMemberIdentity — 갈래 넷", () => {
       secondary: "j***@acme.com",
       unnamed: false,
       avatarSeed: "Jane",
+      avatarImage: null,
     });
   });
 
@@ -29,6 +30,7 @@ describe("planMemberIdentity — 갈래 넷", () => {
       secondary: null,
       unnamed: false,
       avatarSeed: null,
+      avatarImage: null,
     });
   });
 
@@ -38,6 +40,7 @@ describe("planMemberIdentity — 갈래 넷", () => {
       secondary: null,
       unnamed: true,
       avatarSeed: null,
+      avatarImage: null,
     });
   });
 
@@ -51,6 +54,7 @@ describe("planMemberIdentity — 갈래 넷", () => {
       secondary: null,
       unnamed: true,
       avatarSeed: null,
+      avatarImage: null,
     });
   });
 
@@ -93,6 +97,29 @@ describe("planMemberIdentity — 아바타 씨앗", () => {
       secondary: null,
       unnamed: false,
       avatarSeed: null,
+      avatarImage: null,
     });
+  });
+});
+
+/**
+ * **사진은 계정의 것이라 1행 갈래와 무관하다** (2026-09-28 사용자 — `/account`·셸은 사진인데 멤버 행만
+ * 이니셜이었다). 같은 계정이 화면마다 다른 얼굴이면 아바타가 사람을 못 가리킨다(씨앗을 가른 이유와 같다).
+ */
+describe("planMemberIdentity — 아바타 사진", () => {
+  it("읽을 수 있는 행은 이름이 있든 없든 사진을 그대로 싣는다", () => {
+    const image = "https://avatars.githubusercontent.com/u/1";
+    for (const input of [
+      { name: "Jane", emailLabel: "j***@acme.com" },
+      { name: null, emailLabel: "j***@acme.com" },
+      { name: null, emailLabel: null },
+    ]) {
+      expect(planMemberIdentity({ ...input, image, readable: true }).avatarImage).toBe(image);
+    }
+  });
+
+  /** ⚠️ 못 읽은 행은 이름도 못 읽었다 — 사진만 사람의 것으로 그리면 "못 읽음"이 "사람"으로 보인다. */
+  it("못 읽은 행은 사진이 있어도 싣지 않는다", () => {
+    expect(planMemberIdentity({ name: null, emailLabel: null, image: "https://x/y.png", readable: false }).avatarImage).toBeNull();
   });
 });

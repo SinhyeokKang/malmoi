@@ -129,7 +129,8 @@ export async function loadEvent(prisma: PrismaClient, projectId: string, ref: st
 }
 
 /**
- * 행위자 필터의 목록 — **이벤트에 등장한 행위자 distinct** (결정 8). 계정이 지워진 사람들은
+ * 행위자 필터의 목록 — **이벤트에 등장한 행위자 distinct** (결정 8). `distinct: ["actorUserId"]`라 한 사람이 한 행이다 — 라벨 입력이 이미 사람
+ * 단위라 `present`의 #146 결함이 여기엔 없다(테스트가 이 목록의 직렬화도 함께 잰다). 계정이 지워진 사람들은
  * `Removed user` 하나로 접힌다(FK가 `SetNull`이라 구별이 없다).
  */
 export async function loadEventActors(
@@ -155,12 +156,30 @@ export async function loadEventActors(
   return out;
 }
 
-/** 저장 행 → 화면이 읽는 행. 마스킹은 **목록 전체를 한 번에** 본다. */
+/**
+ * 저장 행 → 화면이 읽는 행. 마스킹은 **목록 전체를 한 번에** 보되 **사람마다 한 번**이다.
+ *
+ * ⚠️ **행 단위 목록을 `maskedEmailLabels`에 넣지 않는다** (malmoi#146). 그 함수는 입력 하나하나를 서로 다른 행으로 보고 같은 도메인의 "다른 행"을
+ * 경쟁자로 센다 — 사건이 둘 이상인 사람은 자기 주소와 충돌하고, 같은 문자열은 어떤 접두로도 안 갈려 **원문으로 떨어진다.** v1.0.0부터 Logs
+ * RSC 페이로드와 MCP `list_events`가 그 원문을 모든 멤버에게 실었다. 그래서 사용자 id로 모은 **distinct 주소 목록**에서 라벨을 만들고 행에 되돌린다.
+ */
 function present(rows: readonly Selected[]): EventRow[] {
   // 행 하나가 못 열려도 이력은 산다 — 키 부재만 장애로 남긴다 (`loadMembers`와 같은 규칙).
   validatePiiReadKeys();
   const decoded = rows.map((row) => (row.actor === null ? null : readable(() => decodeUser(row.actor!))));
-  const labels = maskedEmailLabels(decoded.map((user) => user?.email ?? ""));
+  const people = new Map<string, number>();
+  const emails: string[] = [];
+  for (const [index, row] of rows.entries()) {
+    const email = decoded[index]?.email;
+    if (row.actor === null || !email || people.has(row.actor.id)) continue;
+    people.set(row.actor.id, emails.length);
+    emails.push(email);
+  }
+  const personLabels = maskedEmailLabels(emails);
+  const labelOf = (row: Selected) => {
+    const at = row.actor === null ? undefined : people.get(row.actor.id);
+    return at === undefined ? null : (personLabels[at] ?? null);
+  };
   return rows.map((row, index) => {
     const user = decoded[index];
     return {
@@ -181,7 +200,7 @@ function present(rows: readonly Selected[]): EventRow[] {
             : user === null || user === undefined
               ? m.common.unreadable
               : user.email
-                ? (labels[index] ?? null)
+                ? labelOf(row)
                 : null,
       },
       surfaceIds: row.surfaceIds,
@@ -214,8 +233,9 @@ function eventResult(row: Pick<Selected, "kind" | "result" | "syncRun" | "finish
       return "sent";
     // ⚠️ **보류만 남은 실행은 "보낼 것이 없었다"가 아니다** (delivery-invariants D7) — 편집은 있었고 못 실었다.
     // writer 경고로 쓰기 전에 멈춘 실행(`warnings > 0`)도 같다 — 결과 모달이 같은 실행을 `Not sent`로 말한다(2026-09-27 L8.1).
+    // ⚠️ **지문 불일치로 쓰기 전에 멈춘 실행(`errorCode: "reconfirm"`)도 같다** (mcp-connector T6.5) — 편집이 있었고 아무것도 안 보냈다. 필터(`resultWhere`)와 같은 술어다.
     case "SKIPPED":
-      return row.syncRun.withheld > 0 || row.syncRun.warnings > 0 ? "notSent" : "nothingToSend";
+      return row.syncRun.withheld > 0 || row.syncRun.warnings > 0 || row.syncRun.errorCode === "reconfirm" ? "notSent" : "nothingToSend";
     case "FAILED":
       return "failed";
     default:
@@ -324,8 +344,9 @@ function resultWhere(result: EventResult): Prisma.ProjectEventWhereInput {
   const status = PUBLISH_STATUS[result];
   if (status === undefined) return { result };
   // SKIPPED 하나가 두 어휘로 갈린다 — 조회(`eventResult`)와 같은 술어여야 필터와 행 라벨이 갈리지 않는다.
-  const run: Prisma.SyncRunWhereInput = result === "notSent" ? { status, OR: [{ withheld: { gt: 0 } }, { warnings: { gt: 0 } }] }
-    : result === "nothingToSend" ? { status, withheld: 0, warnings: 0 } : { status };
+  // `errorCode`는 nullable이라 `not`만 쓰면 NULL 행(보통의 SKIPPED)이 빠진다 — `lib/sync/run.ts`의 too-soon 기준과 같은 모양이다.
+  const run: Prisma.SyncRunWhereInput = result === "notSent" ? { status, OR: [{ withheld: { gt: 0 } }, { warnings: { gt: 0 } }, { errorCode: "reconfirm" }] }
+    : result === "nothingToSend" ? { status, withheld: 0, warnings: 0, OR: [{ errorCode: null }, { errorCode: { not: "reconfirm" } }] } : { status };
   return { OR: [{ result }, { syncRun: run },
     ...(result === "running" ? [{ kind: "IMPORT" as const, result: null, finishedAt: null }] : []),
   ] };

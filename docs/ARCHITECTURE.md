@@ -801,8 +801,11 @@ Publish·Revert·폐기 Sync를 함께 말한다 — 응답 계약은 그대로�
 ### 3.1 온보딩 — 2패스 탐지와 첫 적재 (SaaS 5단계, `lib/onboarding/`)
 
 pull과 **같은 App 설치 토큰**을 쓰지만 방향이 반대다(읽기 전용) 그리고 **판정층이 GitHub을 모른다** —
-`lib/onboarding/*`는 스냅샷과 blob을 **값으로** 받고, 두 자격증명이 만나는 자리는 Server Action 하나다
-(`credential-separation.test.ts`가 상시로 센다).
+`lib/onboarding/*`는 스냅샷과 blob을 **값으로** 받고, 두 자격증명이 만나는 자리는 **Server Action과
+`lib/onboarding-run/`**이다(`credential-separation.test.ts`가 상시로 센다). ⚠️ 2026-09-28까지는 "Server Action 하나"였다 —
+MCP 도구(§6.45)가 같은 생성·탐지·소스 추가를 부르게 되면서 두 자격증명을 함께 쥐는 조립(`checkRepoAccess` 등)이
+Action 밖으로 나와야 했다. `lib/onboarding`에 넣으면 그 루트의 "두 자격증명 import 없음" 규칙이 red라 새 루트다.
+`lib/onboarding-run`·`lib/mcp`는 Server Action과 같은 규칙 집합(`MEETING_ROOTS` — 둘 다 import 가능, 쓰기는 App 토큰만)에 든다.
 
 ⚠️ **`createApp()`은 모듈 lazy 싱글턴이다** (2026-09-25, audit-ux #8) — 요청 사이에 App과 그 설치 토큰 캐시가 살아남아 웜 인스턴스에서 probe가 3홉→2홉이 된다. env는 매 호출 읽고 값이 바뀌면 새 App을 만든다(모듈 최상위 평가 없음). 그 대가로 캐시 토큰이 만료 직전일 수 있어, 정적 Octokit에 고정하는 `createGitClient`는 남은 시간이 5분 미만이면 `refresh: true`로 재발급한다(`TOKEN_MARGIN_MS`) — 60초 Publish가 중간에 401을 받지 않게 한다.
 
@@ -1752,9 +1755,10 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 | `/api/github/callback` | 세션(`requireUser`) + userId에 묶인 **state HMAC** + state 쿠키 | 브라우저가 돌아오는 지점이라 CSRF 축이 초대 토큰과 같다 (§6.4) |
 | `/api/push/failure` 호출 | Bearer **같은 프로젝트별 토큰** (2026-09-13) | CI가 **적재에 실패했다는 사실**만 남긴다. 로케일 파일을 파싱하지 못하면 `/api/push`는 아예 안 불리므로, 그 실패는 여태 대상 리포의 Actions 로그에만 있었다. ⚠️ **새 토큰을 만들지 않았다** — 같은 `PUSH_TOKEN`이고, 그래서 인증 경로가 하나 더 늘지 않는다. ⚠️ **아무것도 적재하지 않는다**: 키·번역은 물론 `lastCommitSha`·`lastCommitAt`도 안 움직인다(전진시키면 다음 정상 push가 자기 커밋으로 `stale-commit` 409를 받는다). 본문은 **4 KiB 상한 + `strictObject`**이고 코드 넷만 받는다 — 파서 원문·소스 문자열·로컬 절대경로는 보고에도 DB에도 들어가지 않는다 |
 | `/api/push` 호출 | Bearer **프로젝트별 토큰** (생성·해싱은 `lib/push/token.ts`, **조회는 `app/api/push/route.ts`**) | Actions는 사람이 아니다. **fail-closed** — 해시가 없는 프로젝트는 어떤 토큰으로도 통과하지 못하고(컬럼이 `null`), 거부 응답은 어느 쪽이 틀렸는지 알려주지 않는다(토큰 존재 여부·프로젝트 존재 여부를 탐색할 단서를 주지 않는다). ⚠️ 2026-09-07 전에는 서버 env 하나였고 그 값이 비면 500이었다 — 지금은 그런 변수가 없다 |
+| `/api/mcp` 호출 | Bearer **개인 토큰** `mlm_…` (`ApiToken`, 조회는 `lib/mcp/token-store.ts#resolveApiToken`) (2026-09-28) | CLI·코딩 에이전트는 브라우저가 아니다. **쿠키를 읽지 않는다** — 그것이 CSRF 방어의 전부다(제3자 페이지는 Bearer를 못 붙인다). ⚠️ **넷째 GitHub 자격증명이 아니라 Malmoi 신원이다** — 도구 안의 GitHub 호출은 Action과 같은 두 토큰이다. 401 본문은 없음·무효·만료·폐기를 가르지 않는 한 문장이다. 규칙 전부는 §6.45 |
 | `/api/pull` cron 호출 | `CRON_SECRET` | 공개 엔드포인트면 아무나 커밋을 유발할 수 있다. **`checkBearer`를 재사용한다** — fail-closed가 이미 그 시그니처에 있다. 실측: 시크릿 없음·틀림 모두 401이고 응답이 구별되지 않는다 |
 
-⚠️ **경계를 소스에서 상시로 센다** — `lib/github-connect/__tests__/credential-separation.test.ts`가 양방향으로 본다(개인키가 연결 경로로 / 사용자 토큰이 커밋 경로로) + 연결 경로의 쓰기 금지 + **스캐너 자신이 red를 낼 수 있는지**까지 검사한다. ⚠️ **축이 둘 더 있다** (2026-09-07 이후): ① **세 번째 경계** — `lib/onboarding/`은 두 자격증명 어느 쪽도, `@/lib/github`도 import하지 못한다(두 토큰이 Server Action 하나에서만 만나는 성질이 여기서 선다). ② **쓰기 검사가 네 입구로 넓어졌다** — `request(...)`/`paginate(...)`의 라우트 문자열, `rest.*`의 이름 기반 writer(`create*`·`update*`·`delete*`·`replace*`·`add*`·`remove*`·`merge`·`set*`), `graphql` mutation. 2026-09-07까지는 리터럴 `request("POST"…)`만 봐서 "GET만 부른다"가 근거 없이 서 있었다. `lib/adapters/__tests__/contract.ts`·`app/__tests__/entry-points.test.ts`와 같은 계열이다.
+⚠️ **경계를 소스에서 상시로 센다** — `lib/github-connect/__tests__/credential-separation.test.ts`가 양방향으로 본다(개인키가 연결 경로로 / 사용자 토큰이 커밋 경로로) + 연결 경로의 쓰기 금지 + **스캐너 자신이 red를 낼 수 있는지**까지 검사한다. ⚠️ **축이 둘 더 있다** (2026-09-07 이후): ① **세 번째 경계** — `lib/onboarding/`은 두 자격증명 어느 쪽도, `@/lib/github`도 import하지 못한다(두 토큰이 Server Action과 `lib/onboarding-run`·`lib/mcp`에서만 만나는 성질이 여기서 선다 — §3.1). ② **쓰기 검사가 네 입구로 넓어졌다** — `request(...)`/`paginate(...)`의 라우트 문자열, `rest.*`의 이름 기반 writer(`create*`·`update*`·`delete*`·`replace*`·`add*`·`remove*`·`merge`·`set*`), `graphql` mutation. 2026-09-07까지는 리터럴 `request("POST"…)`만 봐서 "GET만 부른다"가 근거 없이 서 있었다. `lib/adapters/__tests__/contract.ts`·`app/__tests__/entry-points.test.ts`와 같은 계열이다.
 
 ⚠️ **막는 것은 디렉터리가 아니라 토큰을 쥔 모듈이다**(`user.ts`·`token-store.ts`). `lib/github.ts`가 `lib/github-connect/health.ts`의 `probeFromError`를 import하는 것은 **필수**다 — 금지하면 403·404 분류가 두 벌이 되어 설치 일시중지가 한쪽에서만 `app-uninstalled`가 된다.
 
@@ -2469,6 +2473,267 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
 `count: 1`을 받고 다른 쪽은 0을 받아 자기 결과를 버린다. 조건 없이 쓰면 나중 쓰기가 이미 무효가 된
 토큰으로 행을 덮어 **그 사용자의 연결이 통째로 죽는다**. `planTokenUse` 3갈래와 `refreshFailure`가 그
 앞의 판정이고, ⚠️ **429는 4xx인데 `unavailable`이다**(영구 거부가 아니다).
+
+### 6.45 MCP 커넥터 — `/api/mcp` (2026-09-28, mcp-connector)
+
+**CLI·코딩 에이전트가 개인 토큰으로 화면과 같은 일을 하는 외부 진입점이다**(PRODUCT §4.1 "MCP 커넥터"). 새 흐름은 없다 —
+도구는 **Server Action과 같은 코어의 형제 껍데기**다. 도구가 Action을 부르지 않는 이유는 둘이다: Action은 `readSession()`으로
+주체를 얻는데 이 진입점엔 세션이 없고, "외부가 부르는 진입점을 Server Action으로 만들지 않는다"(CLAUDE.md)가 반대 방향을 막는다.
+그래서 코어가 `(prisma, subject: Subject, input)`을 받고(`lib/auth/subject.ts`), Action은 세션·redirect·캐시 무효화를,
+도구(`lib/mcp/tools/*`)는 Bearer 주체·MCP 결과·같은 경로의 캐시 무효화를 든다. **이 절이 도구 목록과 쓰기 범위의 정본이다**.
+
+#### 6.45.1 진입점 — 순서가 계약이다 (`app/api/mcp/route.ts`)
+
+**POST 하나 · Origin → 인증 → 크기 → 파싱 → 거부 둘 → 개정 분기.** 인증이 본문보다 먼저라 무효 토큰 하나로 본문을 읽히지
+않는다(§6.06과 같은 순서). GET·DELETE(2025 개정의 세션 조작)는 내보내지 않는다 — Next가 405다. `maxDuration = 60`.
+
+| 단계 | 거부 | 왜 |
+|---|---|---|
+| `checkOrigin`(`lib/mcp/http.ts`) | 403 `forbidden` | **없으면 통과, 있으면 `ALLOWED_HOSTS` 대조**(`lib/github-connect/origin.ts`). Node `fetch`·CLI는 `Origin`을 안 싣고, 브라우저 클라이언트(MCP Inspector)는 같은 origin에서만 붙는다 — 스펙의 DNS rebinding 권고다. 방어선이 아니라 검증이다 |
+| `parseBearer` → `resolveApiToken` | 401 `{ error: "unauthorized" }` | 없음·무효·만료·폐기가 **같은 본문**이다. ⚠️ **조회 장애는 500 `unavailable`이다, 401이 아니다** — 401로 접으면 에이전트가 사용자에게 재발급을 권한다(§6.1.2와 같은 축) |
+| `readBoundedText(1 MiB)` | 400 `too-large` | `set_translations` 100키가 넉넉히 든다. SDK의 4 MiB 상한은 `parsedBody`에 안 걸린다 — route가 끊는 것이 전부다 |
+| `JSON.parse` | 400 JSON-RPC `-32700` | |
+| 배열 본문(JSON-RPC 배치) | 400 `-32600` | 2025-06-18 개정이 배치를 없앴고, 배치 하나가 한 요청 안에서 DB 도구를 펼친다(본문 상한은 바이트만 막는다). 어느 호출도 실행하지 않는다 |
+| `subscriptions/listen` | JSON-RPC `-32601` | 아래 ⚠️ 둘째 |
+
+- **두 개정을 같은 도구 정의로 받는다** (T1 실측, 2026-09-28). ⚠️ **클라이언트마다 개정이 다르다** — Claude Code 2.1.283은
+  **2026-07-28**(`server/discover` → `tools/list` → `tools/call`, 요청마다 `_meta` 봉투 + `MCP-Protocol-Version`·`Mcp-Method`
+  헤더), Codex CLI 0.157.1은 **2025 handshake**(`initialize` → `notifications/initialized` → …, `MCP-Protocol-Version:
+  2025-06-18`)다. 하나만 받으면 한쪽 CLI가 안 붙는다. `isLegacyRequest(request, parsedBody)`로 갈라 2025 쪽은 요청마다
+  `WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true })`, 2026 쪽은 모듈 한 벌의
+  `createMcpHandler(…, { legacy: "reject", responseMode: "json" })`다. 두 쪽 다 JSON 한 벌 · 세션 id 없음 · notification은 202 빈 본문.
+- ⚠️ **SDK 기본값으로는 2025 응답이 SSE다** — `responseMode: "json"`은 2026 쪽에만 걸리고 기본 `legacy: "stateless"`는
+  `text/event-stream`을 냈다(실측). 그래서 위처럼 손으로 조립한다(SDK 문서의 "hand-wired composition").
+- ⚠️ **`tools.listChanged: false`를 명시한다**(`lib/mcp/server.ts`). `McpServer`는 도구를 등록하면 기본 `listChanged: true`를
+  광고하고, 그러면 Claude Code가 `subscriptions/listen` **SSE 스트림을 열어 응답이 끝나지 않는다**(실측) — Vercel 함수가
+  `maxDuration`까지 붙잡히고 끊기면 다시 연다. 그리고 **false여도 SDK는 `subscriptions/listen` 요청이 오면 SSE를 연다**(15초
+  keepalive, 버스는 모듈 전역이라 인스턴스 사이에 닿지도 않는다) — 그래서 route가 SDK 앞에서 `-32601`로 끊는다. 도구 목록은 배포
+  사이에 안 바뀌므로 잃는 것이 없다.
+- **주체는 팩토리 인자다** — SDK는 `authInfo`를 검증 없이 통과시킨다("never derived from request headers"). route가 401을 끝낸
+  요청만 `authInfo.extra.subject`로 넘기고(`token` 자리에 원문이 아니라 해시), 도구는 `createMcpServer(subject)`의 클로저만 본다.
+  주체가 없는 요청이 서버에 닿으면 **던진다** — 조용히 익명으로 돌지 않는다.
+- `tools/list` 순서는 **`toolCatalog()` 배열 순서**다(SDK가 등록 순서를 그대로 낸다 — 실측). ⚠️ 두 CLI가 화면에 이름순으로 다시
+  정렬하는 것은 클라이언트 쪽 일이다 — 결정성 계약은 wire 순서다. 카탈로그 이름에 구현이 없으면 **서버 생성 시 던진다**
+  (`lib/mcp/tools/__tests__/registry.test.ts`).
+- **도구마다 `description`이 있고 정본은 `messages/en.tsx`의 `mcp.tools`다** — 에이전트가 도구를 고르고 "미리보기 먼저"를 아는
+  근거가 이 한 줄뿐이다(이름·입력 스키마만으로는 `preview_publish` → `publish` 순서가 안 보인다). 사전에 두는 이유는 브랜드·한글
+  게이트가 보게 하려는 것이다. ⚠️ **설명이 없거나 빈 이름이 있으면 서버가 서지 않는다**(`toolDescription`이 던진다) — 카탈로그에
+  이름을 늘리면 사전도 같이 늘린다.
+- 401에서 **두 CLI 모두 OAuth로 넘어가지 않는다** — Claude Code는 `Authorization` 헤더가 설정돼 있으면 OAuth fallback을 끄고 401
+  본문을 사용자에게 그대로 보인다(실측). `/.well-known/*` 요청은 0건이었다. 그래서 401 본문이 사용자에게 읽히는 문장이다.
+- 알려진 소음: `responseMode: "json"`이면 SDK가 `createMcpHandler` 생성 시 `console.warn` 한 줄을 낸다(모듈 로드당 1회 — 핸들러를
+  첫 요청에 만드는 이유이기도 하다: 최상위에서 만들면 import만으로 경고가 찍힌다).
+
+#### 6.45.2 개인 토큰 (`ApiToken`)
+
+- 형은 `mlm_` + 32바이트 base64url, **저장은 sha256 hex만**이다(`hashInviteToken`과 같은 무염 해시 — 초대·push 토큰과 같다). 조회
+  방향이 해시 → 행이라 비교 연산이 없고 타이밍 축도 없다. 발급 뒤 원문은 어디에도 없다 — 잃으면 재발급이다.
+- **계정당 하나**(`userId @id`) · **불변**이다. 발급 = 기존 행 삭제 + 삽입의 한 tx라 `/mcp`의 Create와 Rotate가 같은 Action
+  (`issueApiToken`)이고, 폐기 = 행 삭제다. 권한·범위를 바꾸는 길은 재발급뿐이다. 자격증명이라 사용자 삭제는 `onDelete: Cascade`다
+  (사건 보존 원칙은 `ProjectEvent`의 것이다).
+- **만료는 필수**(30 / 90 / 365일) · 경계는 `expiresAt <= now`가 거부다(`planApiTokenUse`). 만료 없는 토큰은 만들 수 없다.
+- `lastUsedAt`은 **1분 단위로만** 쓴다(`shouldTouch`) — 호출마다 UPDATE하면 에이전트 루프가 행을 두드린다.
+- ⚠️ **권한은 토큰에 있지 않고 매 호출 DB에 있다** — 역할은 `ProjectMember`에서, 토큰은 행에서 요청마다 다시 읽는다(§6.00 ④).
+  멤버 제거·역할 변경·폐기가 **다음 호출부터** 반영된다.
+- `ProjectEvent`는 바뀌지 않는다 — 에이전트가 한 일은 그 사용자의 사건이다(경유 컬럼·Logs 표시 없음). 탈취 대응은 사건이 아니라
+  토큰 쪽이 든다(만료 필수 · `lastUsedAt` · 재발급).
+
+#### 6.45.3 유효 권한 = 역할 ∩ 토큰 (`lib/mcp/grant.ts`)
+
+토큰의 어휘는 기존 `Permission` 셋 + 토큰 전용 **`project:create`** 하나다(`TokenGrant`). 새 역할도 넷째 `Permission`도 아니다 —
+**좁히기만 한다**(PRODUCT §4.2 "세밀한 RBAC"이 이것이 아닌 이유). 범위는 `All projects`(이후 초대받은 프로젝트 포함) 또는 고른
+프로젝트(`projectIds`)다.
+
+**판정 순서가 계약이다 — 범위 → 멤버십 → 역할 → 보관 → 토큰** (`planToolAccess`). 가운데 셋은 `planProjectAccess`를 그대로
+재사용한다(보관 읽기 예외를 복제하지 않는다).
+
+- 범위가 먼저다 — 범위 밖 프로젝트의 보관·역할이 새지 않는다(`not-found`, 존재를 말하지 않는다).
+- 역할이 토큰보다 먼저다 — EDITOR에게 "토큰을 고치면 된다"는 거짓 안내(`token-scope`)가 서지 않고 `forbidden`이 선다.
+- 보관이 토큰보다 먼저다 — 답이 "되돌리는 법"이어야 한다. grant를 고쳐도 보관된 프로젝트엔 못 쓴다.
+- ⚠️ **역할 조건과 grant 조건은 별개 필드다**(`ToolRequirement { rolePermission, tokenGrant }`) — 역할의 permission을 grant로 자동
+  복제하지 않는다. **grant 없는 토큰은 내 프로젝트 안의 데이터를 읽는다** — 화면의 한 문장이 `Reading keys, events and members
+  inside your projects never needs a grant.`다. grant를 요구하는 읽기는 **GitHub 계정 열거와 파일 다운로드**뿐이다
+  (`list_repositories` · 신규 `list_branches` · `detect_formats`). `readOnlyHint`는 인가 조건이 아니다.
+- `project:create`는 프로젝트 판정을 지나지 않는다(`planCreateAccess`). ⚠️ **고른-범위 토큰이 만든 프로젝트는 같은 tx에서 그 토큰의
+  `projectIds`에 들어간다** — 안 넣으면 방금 만든 프로젝트를 그 토큰이 못 만진다.
+- 발급 범위는 **현재 멤버십의 비보관 프로젝트만**이고 멤버십 0이면 고른-범위를 거부한다(`planApiTokenIssue`). 그 뒤 멤버에서 빠진 id가
+  남아도 판정이 멤버십을 먼저 보므로 효과 0이다 — 정리하지 않는다(다시 초대받으면 되살아나는 것이 토큰 주인의 선택이다).
+- **도구 입구가 GitHub·코어보다 먼저 판정한다**(`lib/mcp/tools/access.ts`의 `checkProjectTool`·`checkCreateTool`, 조건의 정본은
+  `toolCatalog()`) — 범위 밖·grant 없는 토큰이 GitHub 레이트 리밋을 태우지 않는다. 입구는 코어의 인가(`getProjectAccess` 등)와
+  잠금 뒤 재판정을 **대신하지 않는다**.
+
+**쓰기는 잠금 뒤 토큰을 다시 읽는다 — `userId` AND `tokenHash`.** 주체는 `{ userId, tokenId }`이고 **`tokenId` = `ApiToken.tokenHash`**다
+(`id` 컬럼이 없고 `userId`가 PK라 행을 가리키는 값이 해시뿐이다 — 해시는 원문이 아니다). ⚠️ **`userId`만으로 읽으면 잠금 대기 중
+재발급된 새 행(새 해시·새 권한)이 통과한다** — 두 키로 읽으므로 재발급·폐기가 둘 다 "행 없음"이다. 입구에서 얻은 grants·scope를
+재사용하지 않는다.
+
+- 확장점은 **`lockProjectAccess(tx, { …, tokenId })` 하나**다(`lib/auth/lock.ts`) — `SITES`가 전부 이 함수를 지난다. 요구 grant는
+  `permission` 그대로다(쓰기 도구가 전부 역할 permission과 같은 grant를 요구한다 — `lib/auth/__tests__/lock-grant.test.ts`가 카탈로그로
+  고정). 판정: 토큰 무효 → `unauthorized`, 범위 밖 → `not-found`(멤버십 전), 멤버십·역할·보관 → 기존 갈래, grant 없음 → `token-scope`(마지막).
+- raw `FOR UPDATE`로 남은 넷(`lib/import/run.ts#acquire` · `lib/keys/revert.ts#executeKeyRevert` · `lib/surfaces/create.ts#addSurfacesFromSnapshot`
+  · `lib/onboarding-run/create.ts`의 User 잠금)은 잠금 직후 `lockApiToken(tx, { tokenId, userId, projectId, grant })`다(순수 판정은
+  `lib/mcp/locked-token.ts#planLockedToken`).
+- ⚠️ **`tokenId`는 잠금 자리 입력의 필수 키다**(`string | undefined`) — 중간 홉이 빠뜨리면 컴파일 에러다. 세션·cron은 `undefined`를
+  명시한다. 주체를 받은 함수가 리터럴 `tokenId: undefined`로 버리는 것은 `app/__tests__/locked-access.test.ts`의 `TOKEN_SITES`·
+  `RAW_TOKEN_SITES`가 AST로 막는다.
+- ⚠️ **행 잠금(`FOR SHARE`)을 더하지 않는다** — READ COMMITTED 재읽기로 먼저 커밋된 폐기·재발급을 본다. 잠그면 병렬 읽기 도구의
+  `lastUsedAt` UPDATE가 쓰기 tx 뒤에 줄을 서는데, 에이전트의 병렬 호출이 정확히 그 모양이다.
+- Publish·Sync처럼 외부 I/O가 이어지는 작업의 권한 확정 시점은 **실행권 획득 tx**다 — 그 뒤의 폐기가 이미 시작된 외부 작업을
+  취소하는 계약은 아니다. 재판정 실패 자체로 프로젝트 사건을 남기지 않는다.
+
+| 쓰기 경로 | 재판정 위치 |
+|---|---|
+| 키 저장(배치) | `applyKeySaveBatch`의 tx, Project → Surface 잠금 뒤 — 배치 한 번에 한 번 |
+| Publish | `lib/sync/run.ts`의 실행권 tx, Project 잠금 뒤·SyncRun 생성 전 |
+| 수동 Sync | `lib/import/run.ts#acquire`, Project 잠금 뒤·import token 기록 전 |
+| Revert | `lib/keys/revert.ts`, Project → Surface 잠금 뒤·번역/사건 쓰기 전 |
+| 소스 추가 | `lib/surfaces/create.ts`, Project 잠금 뒤·표면/첫 적재 쓰기 전 |
+| 프로젝트 생성 | `lib/onboarding-run/create.ts`의 User 잠금 뒤 — `project:create` 확인 후 생성과 `projectIds` 추가가 같은 tx |
+| 설정·기준 로케일·push 토큰 회전·멤버/초대·보관/복원 | 각 코어의 `lockProjectAccess` 호출에 `tokenId` |
+
+**GitHub 자격증명은 세 축 그대로다**(§6 표). 도구 안의 사용자 확인은 `ensureUserToken`(user-to-server, GET만), 쓰기는 installation
+토큰이다. 두 자격증명이 만나는 조립은 `lib/onboarding-run/`이고 `lib/mcp`와 함께 Server Action 규칙 집합(`MEETING_ROOTS`)에 든다(§3.1).
+⚠️ **에이전트는 도구를 병렬로 부른다**(`list_repositories` + `list_branches`를 한 턴에) — 같은 사용자의 만료 user-to-server 토큰을
+두 요청이 동시에 회전하는 모양이 탭 둘보다 훨씬 흔하다. `token-store.ts`의 조건부 쓰기(§6.4 끝)가 그 경우를 받고,
+`lib/mcp/tools/__tests__/token-race.test.ts`가 한쪽 실패 + 다른 쪽 대기를 포함해 잰다(POSTMORTEM 2026-09-16).
+
+#### 6.45.4 호출 사이의 상태 = 서버 발급 핸들
+
+MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇이든 끼울 수 있다. 확인이 필요한 쓰기는 **미리보기가 준 핸들**을 받고,
+실행이 그 핸들을 지금 상태와 대조한다. ⚠️ **핸들은 재인가를 대신하지 않는다** — 읽기 전용 토큰이 받은 미리보기 핸들로 쓰기를
+실행할 수 없다(실행이 역할과 쓰기 grant를 다시 본다).
+
+| 핸들 | 발급 | 소비 | 불일치 |
+|---|---|---|---|
+| 샘플 확인값(HMAC, 30분 — `signSampleConfirmation`) | `detect_formats` | `create_project` · `add_sources` | `sample-expired`(변조·만료·대상 불일치) · `manual-no-match`(포맷·기준 로케일) |
+| Sync 폐기 지문(`readDiscardApproval`) | `preview_sync` | `sync_repository` | 화면 Sync와 같은 재확인 |
+| Revert 확인값(`previewKeyRevert`) | `preview_revert` | `revert_to_last_sent` | 화면 Revert와 같은 재확인 |
+| **Publish 지문**(`lib/publish/fingerprint.ts#publishFingerprint`) | `preview_publish` | `publish` | **`reconfirm`** — GitHub 쓰기 0회 |
+| 목록 cursor | `list_keys` · `list_events` | 같은 도구 | — |
+
+- **샘플 확인값은 MCP 경로에만 필수다** — 웹 `createProject`·`addSurfaces`는 확인값 없이 파일을 다시 읽어 `planConfirmedFormat`으로
+  검증하고, 그 입력 계약은 그대로다. 서명 필드가 이미 사용자·리포·설치·ref·head·포맷·발급 시각이라 확장이 없다. **같은 스냅샷을
+  검증과 적재에 쓴다** — 확인 뒤 ref를 다시 읽어 다른 head를 적재하지 않는다. 후보 하나라도 실패하면 Project·Surface·번역·사건·
+  `projectIds` 쓰기 0건이다(`lib/mcp/confirm.ts#planSampleConfirmations`). 자동 재탐지로 새 확인값을 만들어 쓰기를 잇지 않는다.
+- ⚠️ **`APP_SIGNING_SECRET`이 비면 서명·검증이 던진다 — `unavailable`로 접는다**, `sample-expired`·`no-candidates`로 접지 않는다.
+  그렇게 접으면 에이전트가 재탐지를 반복하고 원인이 가려진다(설정 장애는 거부가 아니다 — §6.00 ②).
+- **Publish 지문은 `loadPullState` 전체 + base head SHA**다 — `discardFingerprint`와 같은 tuple 직렬화이고 표시 상한(200행)과 무관하다.
+  그래서 200행 밖 편집·미전달 토큰 없는 export 입력 변경(orphan 등)도 지문을 바꾼다. `runSync` → `triggerPull` → `runPull`에
+  `expectedFingerprint?` 인자 하나를 꿰고, `runPull`이 `loadState()`와 head를 읽은 **직후·첫 GitHub 쓰기 전에** 비교한다. 실행권 tx·
+  `startRun`·전달 확인 CAS·웹·cron은 바뀌지 않는다(인자를 안 주면 비교 없음). 캡처 뒤 편집은 기존 CAS가 미전달로 보존한다.
+- ⚠️ **`reconfirm`은 `too-soon` 기준(`status ∈ {SUCCEEDED, SKIPPED}`)에서 빠진다**(`lib/sync/run.ts`) — 리포에 아무것도 안 썼는데 세면
+  새 핸들로 재호출한 에이전트가 30초를 기다린다. **별도 빈도 상한은 두지 않는다** — reconfirm은 GitHub 쓰기 없이 head 1회 읽기로
+  끝나고, 빈도 상한은 §6.06이 받아들인 위험이다. Logs는 이 행을 `Not sent` + 사유 문장으로 그린다.
+
+#### 6.45.5 도구 목록과 쓰기 범위 — 정본 (`lib/mcp/catalog.ts`)
+
+**28개 — 읽기 14 · 쓰기 14.** 이름·순서·annotations·요구 조건의 코드 정본은 `toolCatalog()`(잎 데이터 모듈 — 소비자는 서버 쪽 셋
+`lib/mcp/server.ts`·`lib/mcp/tools/access.ts`·`lib/auth/lock.ts`이고 `/mcp` 화면은 읽지 않는다. 그래도 잎인 이유: 모든 쓰기 코어가 지나는
+`lock.ts`가 이것을 물므로 값 import가 붙으면 그 그래프가 쓰기 경로 전부에 번지고, 구현 → 카탈로그 방향이 뒤집히면 순환이 생긴다.
+`server-only`도 없어 순수 테스트가 바로 import한다 — `catalog.test.ts`)이고 이 표가 그 판정의 근거다. 도구 구현은 조건을 자기 파일에 다시 적지 않는다.
+입력에 `projectId`·`userId`가 없다 — 스키마가 그 필드를 모르고(POSTMORTEM 2026-09-06), 입력 스키마는 코어가 export한 zod를
+재사용한다(복제하면 한쪽만 좁아진다).
+
+**읽기** (`readOnlyHint: true`)
+
+| 도구 | 프로젝트 역할 조건 | 토큰 grant 조건 | 무엇을 |
+|---|---|---|---|
+| `whoami` | 없음(계정) | 없음 | 이름·GitHub 연결 여부·토큰 권한/범위 — 에이전트가 자기 권한을 아는 유일한 수단. 범위는 내부 id가 아니라 **slug**다(지금 멤버인 비보관 프로젝트 중 범위 안의 것만 — 나간 프로젝트의 id를 말하지 않는다) |
+| `list_projects` | 없음(멤버십 ∩ 범위로 거른다) | 없음 | 목록 조회·표시 판정 재사용 |
+| `get_project` | OWNER / EDITOR | 없음 | Home 집계 — 표면·로케일·To send·**마지막 Publish의 PR**(`lastPublishPullRequest` = `Project.lastPrUrl`)·연결 건강. ⚠️ 열린 PR이 아니다 — 그 뒤 닫혔을 수 있고, 여기서 GitHub을 부르지 않는다. 지금 열려 있는지는 `preview_publish`가 답한다(#144) |
+| `list_repositories` | 없음(생성 준비) | `project:create` | 연결 가능한 리포. 연결·설치가 없으면 `needs-browser` |
+| `list_branches` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / **기존: 없음** | 기존 프로젝트의 브랜치 목록은 PRODUCT §3의 읽기 예외다. sync 브랜치 제외 |
+| `detect_formats` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / 기존: `project:settings` | 파일 다운로드라 두 경로 다 grant. 둘 다 리포 쓰기 권한 확인. 샘플 확인값 발급 |
+| `list_keys` | OWNER / EDITOR (표면) | 없음 | 검색·상태 필터·cursor, 페이지 100 |
+| `get_key` | OWNER / EDITOR (표면) | 없음 | 로케일 값·설명·사용처·플래그 |
+| `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR — `pullRequest: { status: "open", number, url } \| { status: "none" } \| { status: "unknown" }`. ⚠️ 조회 실패·시간 초과(`loadOpenPrUrl`의 `undefined`)를 "없음"으로 접지 않는다 — `undefined`는 JSON에서 필드째 사라지므로 상태가 값이다(Codex review CR-04) |
+| `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라) |
+| `preview_revert` | OWNER (표면) | 없음 | Revert 확인값 |
+| `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다 |
+| `get_workflow` | OWNER | 없음 | 생성 YAML. push 토큰 원문 없음(`${{ secrets.PUSH_TOKEN }}`만) |
+| `list_members` | OWNER / EDITOR | 없음 | 남의 이메일 마스킹 유지 |
+
+**`detect_formats`의 두 입력**: 신규는 `{ owner, repo, ref? }`, 기존은 `{ slug }`다. **섞은 입력은 거부하고, 기존 경로가 거부됐다고
+신규 경로로 넘어가지 않는다.** 기존 경로는 인가된 프로젝트에 **저장된 리포와 base branch**로만 탐지한다 — 호출자가 리포·ref를
+바꿀 수 없다(`lib/onboarding-run/detect.ts#detectProjectFormats`). 그래서 `Project settings`만 받은 토큰으로 `detect_formats({ slug })`
+→ `add_sources`가 끝나고 `project:create`가 필요 없다.
+
+**쓰기** — 역할과 grant를 **둘 다** 요구한다(`project:create`만 프로젝트 역할이 없다). "쓰기 범위"는 그 도구가 바꿀 수 있는 것이다.
+
+| 도구 | 권한 | 쓰기 범위 | 확인 | hint |
+|---|---|---|---|---|
+| `create_project` | `project:create` + 리포 push | Project·OWNER·Surface N·첫 적재·push 토큰 · 고른-범위 토큰이면 `projectIds` | 샘플 확인값 | — |
+| `add_sources` | `project:settings` + 리포 push | Surface 추가·첫 적재 | 샘플 확인값 | — |
+| `set_translations` | 표면 `translation:write` | 키 ≤100개의 로케일 값·`needsReview` 해제 — **한 tx, 키별 결과** | — | — |
+| `publish` | `translation:write` | sync 브랜치 커밋·PR 생성/갱신 | Publish 지문 | — |
+| `sync_repository` | `project:settings` | 리포 값으로 번역 덮기(미전달 폐기 포함) | 폐기 지문 | destructive |
+| `revert_to_last_sent` | 표면 `project:settings` | 키 하나의 미전달 셀 복원 | Revert 확인값 | destructive |
+| `update_project` | `project:settings` | 이름 · base branch | — | — |
+| `set_base_locale` | 표면 `project:settings` | 기준 로케일 선언 | — | — |
+| `rotate_push_token` | `project:settings` + 리포 push | push 토큰 교체(원문 반환) | — | destructive |
+| `invite_members` | `member:manage` | 초대 발급 + 메일 발송 | — | — |
+| `revoke_invitation` · `change_member` | `member:manage` | 초대 무효 · 역할 변경/제거 | — | destructive |
+| `archive_project` · `unarchive_project` | `project:settings` | `archivedAt` | — | archive만 destructive |
+
+- **`set_translations`는 한 잠금·한 tx에 키 최대 100개**다(`lib/mcp/batch.ts#planBatchSave` → `applyKeySaveBatch`). 거부된 키는 그 키만
+  건너뛰고 나머지는 같은 tx로 커밋된다 — "키마다 원자"의 뜻은 **일부 키의 거부가 정상 결과**라는 것이다. 키별 tx를 버린 이유는
+  잠금 tx 실측이 키당 0.5–0.7초라 100키가 60초에 못 들어서다. 한 tx 100키는 로컬 PG 190–218 ms였다(T7 — 도쿄 pooler는 재측정 대상).
+  상한 초과(`too-many`)·중복 키(`duplicate-key` — 어느 값이 이겼는지를 판정하게 된다, `detail.keyId`가 그 키다)는 호출 전체를 거부한다.
+  거부된 키는 결과 행에 `error` 코드와 **번역 화면 저장 바닥의 같은 문장**(`cannot-clear`는 로케일 목록까지)을 싣는다. 사건은 키마다 하나.
+- **`create_project`가 첫 적재까지다** — `runFirstIngest`를 도구로 따로 두지 않는다(§3.1). `requirePush: true`(POSTMORTEM 2026-09-27).
+- ⚠️ **push 토큰 원문이 도구 결과로 나간다**(`create_project`·`rotate_push_token`, 2026-09-28 사용자) — 결과는 에이전트 대화(= LLM
+  공급자)에 실린다. 받아들인 근거: 프로젝트 한정 · `/api/push` 한 곳의 쓰기 · 재발급이 곧 폐기이고, 어차피 그 토큰이 가는 곳이 그
+  에이전트가 쓰는 리포의 secret이다. 결과 요약은 **`gh secret set PUSH_TOKEN --repo OWNER/REPO`의 표준입력**으로 넘기라고 말한다 —
+  ⚠️ `--body`를 생략한다(`--body -`는 문자 `-`를 저장한다). 이름은 생성 YAML의 `${{ secrets.PUSH_TOKEN }}`과 같다.
+- `update_project`는 이름 저장 뒤 브랜치가 거부되면 `ok` + `failed.baseBranch`다 — 이름 성공을 지우지 않는다(불변식 9). 브랜치 코어가
+  **던지면** `ok` + `unconfirmed: ["baseBranch"]`다 — 통신 예외는 롤백을 뜻하지 않아 거부가 아니라 확인 불가이고, `executeTool`의 일괄
+  `unavailable`에 이름 성공이 지워지지 않게 도구 안에서 받는다(Codex review CR-02 · POSTMORTEM 2026-09-20). 브랜치만 요청했으면 그대로 장애다.
+- 도구가 쓴 뒤 캐시 무효화는 Action과 **같은 경로**이고 던지지 않는 형(`revalidateTranslationReaders` · `lib/revalidate-after-commit.ts`의 `settleRevalidate`)이다 — 커밋된 쓰기를
+  캐시 장애가 실패로 바꾸지 않는다(POSTMORTEM 2026-09-20).
+
+#### 6.45.6 결과 모양 (`lib/mcp/result.ts#toToolResult`)
+
+- 성공은 `structuredContent`(JSON) + 짧은 `text` 요약(`m.mcp.summary`). 거부는 **`isError: true` + 기존 거부 코드 + 화면과 같은
+  문장**이다 — 에이전트가 사용자에게 옮길 문장이 화면과 같아야 한다. 화면의 공용 사전(Access·Onboard·Connect·Settings)을 그대로
+  지나고, 화면이 사전 밖에서 문장을 고르는 거부(Publish 모달·Sync 결과·Revert·초대)는 **그 화면의 키**를 넘긴다. 새 문장은 도구에만
+  있는 갈래(`token-scope`·`reconfirm`·`invalid-input`·`too-many`·`duplicate-key`)뿐이다. 모르는 코드는 원문을 싣지 않고 장애로 접는다.
+- **장애는 거부가 아니다** — `unavailable`만 `retryable: true`를 싣는다.
+- **`publish`의 실패는 `outcome.code`(`SyncErrorCode`)와 `retryable`로 가른다** — ⚠️ `outcome.error`는 코드가 아니라 실행기가 고른 safe
+  문장이거나 `internal (ref …)`다. 문장으로 가르면 갈래가 조용히 틀린다(M3 r1에서 고쳤다). 재시도 가능 → `unavailable` + `detail { code,
+  delivery }`(문장은 싣지 않는다 — ref일 수 있다). 재시도 불가(설정) → 그 코드로 거부 + Publish 화면의 `configError` 틀(리포·base branch)
+  + `detail { reason, delivery }`. `already-running`·`too-soon`은 Publish 화면의 같은 문장이고 `too-soon`은 `retryAfterSeconds`를 싣는다.
+  코드 없는 실패는 실행 전 거부(잠금 뒤 인가·readiness)라 그 코드의 화면 문장이다. `reconfirm`은 Logs의 사유 문장이다.
+  ⚠️ **리포 라벨 조회는 설정 오류 갈래에서만 하고, 실패하면 slug 라벨로 떨어진다** — 실행은 이미 끝났으므로 보조 조회의 예외가
+  `executeTool`의 일괄 `unavailable`로 `code`·`delivery`를 지우면 안 된다(Codex review CR-03).
+- ⚠️ **도구가 던지면 SDK가 예외 문구를 결과에 싣는다**(`createToolError(error.message)`) — §6.0의 500 본문 규칙을 어긴다. 그래서
+  `lib/mcp/tools/execute.ts`가 문맥 생성까지 try 안에서 전부 잡아 `unavailable`로 접고 원인은 로그에만 남긴다.
+  ⚠️ **그 catch는 이미 확정된 결과를 모른다** — 커밋 뒤 단계(부분 성공 뒤 둘째 코어·실행 뒤 보조 조회)의 예외는 도구 안에서 받는다.
+- **`needs-browser`도 `isError: true`다** — `{ status, reason, url, message }`, `retryable` 없음. GitHub 연결·재인가·설치는 state 쿠키가
+  방어선인 브라우저 왕복이라(§6.4) 도구가 대신하지 않는다. `not-connected`·`reauthorize`·`no-installations`는 전부 `/account` 하나다
+  (`/projects/new`로 보내면 사용자가 브라우저에서 생성을 끝내 에이전트 흐름이 끊긴다). 후보 없음(`no-candidates`)만 신규는
+  `/projects/new`, 기존은 그 프로젝트 Sources다 — 수동 포맷 확정은 브라우저의 기존 경로를 쓴다. URL은 **허용 호스트에서 온 요청이면
+  절대 URL**이다(CLI는 상대 경로를 못 연다) — route가 `requestOrigin`(`ALLOWED_HOSTS`)으로 origin을 만들어 도구 문맥에 넘기고
+  `appUrl`이 붙인다. 허용 밖 `Host`면 앱 경로 그대로다 — 조작된 `Host`로 남의 호스트 링크를 만들지 않는다. 서명·nonce를 싣지 않는다. 권한 거부·GitHub 장애·예산 초과는 원래 결과를 유지한다 — 브라우저 전환으로 숨기지 않는다.
+
+#### 6.45.7 소스에서 상시로 세는 것
+
+| 테스트 | 무엇을 |
+|---|---|
+| `app/__tests__/exempt-route-guards.test.ts` | EXEMPT route → 필수 가드 호출 맵. `/api/mcp`는 주석 제거 후 `resolveApiToken(`. ⚠️ 기존 `entry-points`는 route를 EXEMPT 문자열에 넣을 뿐 가드를 못 센다(POSTMORTEM 2026-09-18) |
+| `lib/mcp/__tests__/no-cookie-reads.test.ts` | `lib/mcp/**`·`app/api/mcp/**`의 `auth(`·`readSession(`·`cookies(` + `headers`·`NextRequest`를 통한 쿠키 읽기 금지 |
+| `lib/github-connect/__tests__/credential-separation.test.ts` | `MEETING_ROOTS`(`lib/onboarding-run`·`lib/mcp`)가 Server Action 규칙 — 쓰기는 App 토큰만 |
+| `app/__tests__/locked-access.test.ts` | `TOKEN_SITES`·`RAW_TOKEN_SITES`가 잠금 호출의 `tokenId` 인자를 AST로 |
+| `lib/auth/__tests__/lock-grant.test.ts` | 쓰기 도구의 grant = 역할 permission(카탈로그로) |
+| `lib/mcp/__tests__/catalog.test.ts` · `lib/mcp/tools/__tests__/registry.test.ts` | 이름·순서 명시적 배열 동치 · 카탈로그 ↔ 구현 1:1 |
+| `lib/mcp/__tests__/tools.integration.ts` (PG) | 잠금 대기를 관측한 뒤 폐기·만료·재발급 → 대기하던 쓰기가 아무것도 남기지 않음 · 100키 한 tx |
+
+#### 6.45.8 ⚠️ preview는 Vercel SSO 뒤다
+
+`dev.mal-moi.com/api/mcp`에 Bearer만 보내면 **보호층의 302에서 멈춘다** — 302·SSO HTML을 앱 검증 성공으로 세지 않는다. 검증에서는
+Vercel "Protection Bypass for Automation" 값을 **`x-vercel-protection-bypass` 헤더로 따로** 싣고 Malmoi Bearer는 `Authorization`에
+둔다(두 자격증명을 바꿔 쓰지 않는다). bypass 값은 로컬 환경변수·폐기용 리포 secret에서만 읽고 URL 쿼리·설정 파일 원문·로그·캡처에
+넣지 않는다. 앱의 `lib/env.ts`·`.env.example`에 들어가지 않는다 — 앱 런타임 값이 아니다. CI 쪽은 공개 composite action에 bypass
+입력이 없어 **폐기용 리포의 테스트 전용 전송 래퍼**로만 잰다(공개 action 입력·불변 태그를 바꾸지 않는다).
 
 ### 6.5 `probeRepo`가 두 번 부르는 이유 — 200이 접근을 증명하지 않는다
 

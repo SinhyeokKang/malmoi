@@ -17,6 +17,8 @@ If filters hide every event, the list says so; choose **Clear filters** to see e
 
 Open an event to inspect its details without changing the list filters. Translation events identify the key and source; sync and Publish events show their observed result.
 
+![An event opened from Logs: a Publish run that sent two files to GitHub, with its trigger and a link to the pull request](/guide/logs-event.webp "Open an event to see its details.")
+
 ## Read archived history {#archived-history}
 
 Current members can read Logs after a project is archived. Archive blocks project writes and settings changes; it does not erase the activity history.

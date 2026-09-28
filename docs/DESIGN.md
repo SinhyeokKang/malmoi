@@ -290,8 +290,8 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | PageTitle | `h1 text-lg font-medium` (18/500/0.01em) | `18px`·`500`·`0.18px`. ⚠️ **`tracking-[0.01em]`을 손으로 쓰지 않는다** — `--text-lg--letter-spacing`이 이미 그 값이다 |
 | 설명 한 줄 | `description` **prop** — `text-xs text-muted-foreground`(13) | `13px`·`#737373`. 소비자는 설명 prop을 쓰는 패널이다(⚠️ `logs`는 2026-09-24부터 **보관 안내만** 이 자리를 쓴다 — 평소 설명문은 종류 필터와 같은 목록이라 지웠다) **전에는 12와 14 두 벌로 갈려 있었다** |
 | 본문 여백 | `p-4` (16) | 같음 |
-| 카드 머리 | `px-4 py-3` (상하 12 · 좌우 16 — 2026-09-28 사용자, 옛 `p-4`) · **최소 높이 48**(`min-h-12` — 같은 날 사용자, 설명 문구를 걷은 카드와 든 카드의 머리 높이가 갈리지 않게) | 패널 머리와 같은 날 같은 값이다. ⚠️ **한 프리미티브가 들지 않는다** — `PanelCard`·`RowCard` 둘 + 손으로 적은 실물 다섯(Home의 주의·Logs·메타 카드 · Logs 날짜 카드 · Publish 경고 카드) + 로딩 골격 여덟이라 `card-head.test.ts`가 소스에서 센다. ⚠️ **번역 화면의 카드 머리 셋(트리 · 목록 · 로케일 상세)은 높이 고정 `h-12`(48)이다** — 세 머리의 아래 선이 한 줄이어야 해서 여백이 아니라 높이로 든다. 다른 카드 머리의 최소 높이와 같은 값이다(2026-09-28 사용자 — 옛 52 = 12 + 언어 Select sm 28 + 12, 이제 Select는 위아래 10을 받는다). 골격 · 랜딩 목업도 같은 값이다 |
-| 폭 등급 | `width` prop — `fluid` 1280 / `limited` 896 (기본) | **fluid 열둘**(목록 · 그 스켈레톤 · Home · 그 스켈레톤 · **멤버 · Sources 목록 · Sources 보관 안내 · 이력 · 이력 오류 경계** + 멤버·이력·Sources 스켈레톤) / **limited 넷**(프로젝트 설정 · 그 스켈레톤 · `/account` · 그 스켈레톤) + 본문 전용 셋 — 정본은 `shell-layout.test.ts`의 `FLUID`·`LIMITED` |
+| 카드 머리 | `px-4 py-3` (상하 12 · 좌우 16 — 2026-09-28 사용자, 옛 `p-4`) · **최소 높이 48**(`min-h-12` — 같은 날 사용자, 설명 문구를 걷은 카드와 든 카드의 머리 높이가 갈리지 않게) | 패널 머리와 같은 날 같은 값이다. ⚠️ **한 프리미티브가 들지 않는다** — `PanelCard`·`RowCard` 둘 + 손으로 적은 실물 다섯(Home의 주의·Logs·메타 카드 · Logs 날짜 카드 · Publish 경고 카드) + 로딩 골격 여덟이라 `card-head.test.ts`가 소스에서 센다. ⚠️ **번역 화면의 카드 머리 셋(트리 · 목록 · 로케일 상세)은 높이 고정 `h-12`(48)이다** — 세 머리의 아래 선이 한 줄이어야 해서 여백이 아니라 높이로 든다. 다른 카드 머리의 최소 높이와 같은 값이다(2026-09-28 사용자 — 옛 52 = 12 + 언어 Select sm 28 + 12, 이제 Select는 위아래 10을 받는다). 골격 · 랜딩 목업도 같은 값이다. ⚠️ **`/mcp`는 핸드오프와 다르다 — 등재된 이탈이다** (2026-09-29, mcp-connector · #143): 핸드오프 §4가 `RowCard` 머리 하한을 **60**(버튼 36 + 위아래 12)으로 올려 토큰 카드와 Connect 카드의 첫 행 시작선을 맞추라고 했지만 **48을 유지했다** — 공유 프리미티브를 올리면 이미 선 `/projects`·Members의 카드 머리가 함께 움직이고(구현된 화면은 코드가 정본이다) 위 48 규칙과 `card-head.test.ts`가 깨진다. 토큰 카드 머리는 36 버튼 때문에 **60이 되고**, 버튼 없는 Connect 머리는 **48**이다 — 두 카드가 세로로 쌓여 첫 행 정렬의 차이가 작다고 봤다. ⚠️ **`/mcp`의 폭도 핸드오프와 다르다** — 핸드오프는 limited 896, **2026-09-29 사용자 판정으로 fluid 1280**이다(아래 폭 등급 행) |
+| 폭 등급 | `width` prop — `fluid` 1280 / `limited` 896 (기본) | **fluid 열셋**(목록 · 그 스켈레톤 · Home · 그 스켈레톤 · **멤버 · Sources 목록 · Sources 보관 안내 · 이력 · 이력 오류 경계** + 멤버·이력·Sources 스켈레톤 · **`/mcp`** — 핸드오프 결정 2는 `/account`와 같은 limited 896이었고 **2026-09-29 사용자가 fluid로 바꿨다**(user override)) / **limited 넷**(프로젝트 설정 · 그 스켈레톤 · `/account` · 그 스켈레톤) + 본문 전용 셋 — 정본은 `shell-layout.test.ts`의 `FLUID`·`LIMITED` |
 
 ⚠️ **설명 슬롯이 prop인 이유는 POSTMORTEM 2026-09-14다** — *"프리미티브의 여백 하나가 그 슬롯을 안
 쓰는 소비자에게만 깨졌다"*. 머리 여백(상하 12)의 전제는 **"제목 줄 하나"**이고, 설명이 붙는 화면은 머리가 세로로
@@ -414,8 +414,8 @@ computed style로 잰 것이다.
 |---|---|---|
 | `text-amber-700` | **등재** (소비자 확장) | 번역 작업 화면의 **상태 글자** — 키 행의 `Needs review`·미번역 수, 로케일 행의 `Missing`·`Not saved`·`n of m languages`, 툴바의 미저장 수. amber-800(배지 글자)은 면 위의 값이라 면 없이 선 글자에는 한 단계 밝은 700이 캔버스 값이다(흰 배경 5.0:1) |
 | `border-amber-500/50` | **등재** (새 값) | Sources 기준 언어 `Select`의 **대기 테두리** 하나. 같은 칸의 오류 `border-destructive/50`과 짝이다 — amber-500은 이미 면 값으로 등재돼 있고 알파만 새로 든다 |
-| `neutral-300` | **등재** (소비자 확장) | 위 줄 — 체크박스 · 점선 상자 · 자물쇠 |
-| `neutral-400` | **등재** (소비자 확장) | 번역 화면 트리의 네임스페이스 글리프 · 로케일 머리의 경로 구분 chevron · 설정 General 카드의 라벨 열(`/account` Profile과 같은 형) · Sources 상세의 **사라진 언어 행 수치**(같은 행의 `missing` 알약이 뜻을 완성한다 — §6.63 보관 행과 같은 예외) · 멤버 행의 `(you)` |
+| `neutral-300` | **등재** (소비자 확장) | 위 줄 — 체크박스 · 점선 상자 · 자물쇠 · `/mcp` 토큰 폼의 꺼진 `Chosen projects` 지시자(멤버십 0 — 사유를 읽히는 `aria-disabled` 행이라 Radix `Radio`가 아니다) |
+| `neutral-400` | **등재** (소비자 확장) | 번역 화면 트리의 네임스페이스 글리프 · 로케일 머리의 경로 구분 chevron · 설정 General 카드의 라벨 열(`/account` Profile과 같은 형) · Sources 상세의 **사라진 언어 행 수치**(같은 행의 `missing` 알약이 뜻을 완성한다 — §6.63 보관 행과 같은 예외) · 멤버 행의 `(you)` · **`/mcp`**(mcp-connector) 사실 블록·Server URL의 라벨 열 · **만료 토큰의 사실 값**(같은 카드의 `Expired` 배지가 뜻을 완성한다 — 보관 행과 같은 예외) · 멤버십 0의 꺼진 `Chosen projects` 이름 |
 | `neutral-600` | **등재** (소비자 확장) | 번역 작업 화면의 **한 단계 아래 글리프**(트리 소스 행의 chevron·파일, 키 목록의 트리 열기, 링크 복사, 툴바 Sync) · `Not sent` 알약 글자 |
 | `bg-white` (이력 날짜 카드) | **접기** → `bg-background` | §6.2가 `bg-white`를 로그인 좌측 하나로 한정한다. 셸 안 흰 카드는 토큰이다 |
 | `disabled:text-neutral-400` (번역 필터 트리거) | **접기** → `disabled:text-muted-foreground` | `Button`의 꺼진 글자와 같은 값이어야 필터 줄의 꺼진 컨트롤이 한 형으로 읽힌다 |
@@ -1338,7 +1338,7 @@ repository` · 설명에 경로와 브랜치 · `Trying again won't help` Alert�
 
 | 자리 | 규칙 |
 |---|---|
-| 행 | 아바타 **32** · 두 줄 텍스트 · 메타 · **오른쪽 군(갭 8)**. padding `14 14 14 12` · 요소 갭 16. 텍스트가 **60에서 시작**한다(`pl-3` 12 + 32 + `gap-4` 16) — 띠의 `pl-15`(60)와 같은 x라야 그 띠가 이 행에 속한 것으로 읽힌다 |
+| 행 | 아바타 **32** · 두 줄 텍스트 · 메타 · **오른쪽 군(갭 8)**. ⚠️ **멤버 행의 아바타는 계정 사진이다** (2026-09-28 사용자 — 그 전엔 `src`가 배선되지 않아 전원이 이니셜이었고 `/account`·셸의 사진과 같은 계정이 다른 얼굴로 보였다). 사진은 1행 갈래와 무관하고 못 읽은 행만 `?`다(`planMemberIdentity`의 `avatarImage`). 대기 초대 행은 계정이 없어 mail 칩 그대로다. padding `14 14 14 12` · 요소 갭 16. 텍스트가 **60에서 시작**한다(`pl-3` 12 + 32 + `gap-4` 16) — 띠의 `pl-15`(60)와 같은 x라야 그 띠가 이 행에 속한 것으로 읽힌다 |
 | 고정 열 | 이름 **300** · 역할 **132** · 가입일/만료 **150**. ⚠️ **늘어나게 두면 오른쪽 메타의 x가 행마다 달라져** "오너가 몇인지"를 세로로 훑을 수 없다 — `/projects`의 이름 칸 420과 같은 장치다 |
 | 글자 | 이름 `text-base`(15/500) · 주소 `text-sm`(14) · 메타·띠 `text-xs`(13) · `(you)` 13/400 `text-neutral-400`. ⚠️ **캔버스의 15·14·13이 이 리포의 `base`·`sm`·`xs`와 정확히 맞물린다**(§4) |
 | 값이 자기 라벨을 든다 | `Joined {상대시각}` · `Expires {상대시각}` · `Invited by {누구}`. ⚠️ **열 머리를 지운 대가다** — 라벨이 없으면 `2 days ago`가 가입일인지 만료인지 화면이 말하지 않는다. ⚠️ **`Invited by`는 행의 유일한 가변 칸이라 잘린다** — 1280에서 112px(malmoi#90). 잘림을 받되 전문을 `title`로 든다 |
@@ -1769,7 +1769,7 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 
 ### 6.8 아이콘 — `lucide-react` 16px, **셸은 전 항목이 아이콘을 든다** (2026-09-08)
 
-세트는 `lucide-react` **하나**다 (§1). ⚠️ **예외가 하나 있다** — provider 브랜드 로고(GitHub·Google)는
+세트는 `lucide-react` **하나**다 (§1). ⚠️ **예외가 하나 있다** — 브랜드 로고(provider GitHub·Google · **MCP**(2026-09-29 — `McpIcon`, 공식 Model Context Protocol 로고, simple-icons CC0. `/mcp` 자리가 전부 이것이고 `components/__tests__/mcp-glyph.test.ts`가 센다. 채운 글리프지만 선 폭이 가늘어 16에서 이웃 lucide보다 무겁지 않다))는
 그 라이브러리에 **없다**(브랜드 글리프를 제외한다). `components/signin/brand-icons.tsx`가 인라인 SVG로
 들고(⚠️ **GitHub 글리프는 채운 로고 `GithubIcon` 하나다** — 2026-09-28 사용자. 로그인·계정·온보딩·설정뿐 아니라 랜딩 CTA · 프로젝트 목록 행 · Sources 머리 ·
 공개 셸 헤더 GitHub도 이것이고(`/changelog`의 View on GitHub 버튼은 2026-09-28에 걷혔다), 옛 lucide 0.462 외곽선 사본은 지웠다. `components/__tests__/github-glyph.test.ts`가 소스에서 로고 path를 센다), **Google의 4색은 §6.2의 "새 raw 색을 늘리지 않는다"와 아래 "색은 상속"의 예외다** — 브랜드 색은
@@ -1779,10 +1779,10 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 
 | 자리 | 아이콘 |
 |---|---|
-| 사이드바 — 사용자 구역 | Projects `Box` · New project `Plus`(2026-09-27 — [New project] 버튼과 같은 글리프) · Account `CircleUser` (2026-09-11 — 라벨은 2026-09-23에 `Settings`에서 바뀌었다) |
+| 사이드바 — 사용자 구역 | Projects `Box` · New project `Plus`(2026-09-27 — [New project] 버튼과 같은 글리프) · **MCP connector — 공식 MCP 로고 `McpIcon`**(2026-09-29 사용자 — 브랜드 글리프라 lucide가 아니다, 위 예외) · Account `CircleUser` (2026-09-11 — 라벨은 2026-09-23에 `Settings`에서 바뀌었다) |
 | 사이드바 — 프로젝트 구역 | Home `House` · Sources `Files` · Translations `Languages` · Members `Users` · Logs `History` · Project settings `Settings` (8-3이 이름과 순서를 시안에 맞췄다) |
 | 사이드바 하단 전역 | **Changelog `Compass` · Docs `CircleHelp`** — 둘뿐이다 (2026-09-27 사용자 — Sign out `LogOut`은 사용자 메뉴로만 갔다). ⚠️ `LayoutGrid`·`PanelLeft`는 소비자가 0이 됐다(`Plus`·`CircleUser`는 아래 두 자리에서 다시 쓰인다) |
-| 헤더 사용자 메뉴 | Projects `Box` · New project `Plus` · Account `CircleUser` · Changelog `Compass` · Docs `CircleHelp` · Privacy Policy `ShieldCheck` · Sign out `LogOut`(제출 중 `Loader2`) — 같은 목적지는 사이드바와 같은 글리프다 (2026-09-27 사용자) |
+| 헤더 사용자 메뉴 | Projects `Box` · New project `Plus` · MCP connector `McpIcon` · Account `CircleUser` · Changelog `Compass` · Docs `CircleHelp` · Privacy Policy `ShieldCheck` · Sign out `LogOut`(제출 중 `Loader2`) — 같은 목적지는 사이드바와 같은 글리프다 (2026-09-27 사용자) |
 | 프로젝트 스위처 | 트리거 `ChevronsUpDown` · 행 `ProjectThumbnail` 16 + 지금 프로젝트 `Check` · 맨 아래 `Plus` New project (2026-09-27 — 8-3에 사라졌다가 돌아왔다, §6.5) |
 | 헤더 | **로고와 사용자 메뉴 아바타뿐이다** (8-2) — ⚠️ 햄버거 `Menu`는 **없어졌다**(반응형 분기 0). breadcrumb 구분자는 아이콘이 아니라 텍스트 `/`다(§6.4) |
 | 아이콘 전용 버튼 | 닫기 `X` · 복사 `Copy` → 성공 `Check` · **칩 하나 제거 `X` 14(`size-6` 원형 안) · 칩 전체 초기화 `RotateCcw` 20(`size-7` 원형 안)**(§6.1) |
@@ -1791,7 +1791,7 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 | 필터 | 검색 `Input` 앞 `Search`(`absolute left-2` + `pl-8`) · **로케일 다중 선택 트리거 안 `ChevronDown`**(§6.1). ⚠️ **상태 `Select`가 없어져 `ListFilter`도 소비자 0이다** (8-4) |
 | Alert 4종 | `Info`·`CircleCheck`·`TriangleAlert`·`CircleX` — **정본은 §6.2 표**다 |
 | 외부 링크 | **글리프 없음** — 색과 새 탭만 든다 (§6.3, 2026-09-18 반전) |
-| `EmptyState` | **`IconTile lg` 칸 안의 20** `text-muted-foreground` (2026-09-28 — 옛 48 원 안의 16) — **일러스트는 여전히 없다**. 빈 이력 `History` · 보관된 프로젝트 `Archive` · 프로젝트 0개 `FolderGit2` · **필터·검색 0건 `Search`**(§6.63) · **대기 초대 0건 `MailPlus`** · 번역 화면 셋 `Languages` · 소스 0개는 역할별 평문 안내 |
+| `EmptyState` | **`IconTile lg` 칸 안의 20** `text-muted-foreground` (2026-09-28 — 옛 48 원 안의 16) — **일러스트는 여전히 없다**. 빈 이력 `History` · 보관된 프로젝트 `Archive` · 프로젝트 0개 `FolderGit2` · **필터·검색 0건 `Search`**(§6.63) · **대기 초대 0건 `MailPlus`** · **`/mcp` 토큰 없음 `McpIcon`**(`EmptyRowCard inset`) · 번역 화면 셋 `Languages` · 소스 0개는 역할별 평문 안내 |
 
 **쓰지 않는 자리** (아이콘이 정보를 안 더하고 스캔만 방해한다): 배지(§6.2는 텍스트만) · `Card` 제목 · 표 헤더 · **반복 목록의 모든 행**(네임스페이스 패널·리포 목록·키 행 — 같은 아이콘이 n번 반복되면 정보량이 0이다) · 텍스트 링크 안(외부 링크 예외).
 

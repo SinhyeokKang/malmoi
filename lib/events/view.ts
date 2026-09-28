@@ -75,8 +75,15 @@ export function eventView(row: EventViewRow): EventView {
     label: result === null ? null : LABELS[result],
     // 음수는 없는 것으로 읽는다 — 화면에 `-1 dropped`를 내지 않는다.
     warningsLabel: row.warnings > 0 ? m.logs.warnings(row.warnings) : null,
-    reasonKey: result === "failed" ? reasonKey(row.errorCode) : null,
+    reasonKey: result === "failed" ? reasonKey(row.errorCode) : isReconfirm(result, row.errorCode) ? "reconfirm" : null,
   };
+}
+
+/**
+ * 지문 불일치로 멈춘 Publish (mcp-connector T6.5) — `Not sent` 행 중 이것만 사유 문장을 든다. 보류·writer 경고의 notSent는 수(`withheld`·`N dropped`)가 말한다.
+ */
+function isReconfirm(result: EventResult | null, errorCode: string | null): boolean {
+  return result === "notSent" && errorCode === "reconfirm";
 }
 
 /**
@@ -485,6 +492,8 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
   // 실패 사유는 마지막이다 — 보관 중이면 야간 절이 빠진다 (`planArchivedReason`).
   if (row.result === "failed") {
     parts.push(eventFailureMessage(row, archived));
+  } else if (isReconfirm(row.result, row.run?.errorCode ?? null)) {
+    parts.push(m.logs.reasons.reconfirm);
   }
   return parts;
 }

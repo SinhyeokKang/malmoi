@@ -2541,3 +2541,31 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - **`pnpm test`의 파일 수가 평소의 배수면 수집 범위부터 의심한다.** 개별 실패를 읽기 전에 `Test Files` 줄을 본다 — 이번에 진단을 늦춘 것이 그 순서였다.
   - 후속 후보(이 스킬은 코드를 고치지 않는다): `vitest.config.ts`의 `exclude`에 `.claude/worktrees/**`를 더하고 `.gitignore`에도 `.claude/worktrees/`를 넣는다. grep: `rg -n 'exclude:' vitest.config.ts` → 2026-09-28 현재 `["node_modules/**", ".next/**"]` 한 곳뿐이다. 같은 형의 다른 생성물 디렉터리(`.scratch/`)는 `__tests__` 규약을 안 쓰므로 include glob에 안 걸린다.
   - ✅ **같은 날 닫았다** (`fix(security-headers)` 커밋): `exclude`에 `.claude/worktrees/**`, `.gitignore`에 `.claude/worktrees/`를 넣었다. **설정이라 단위 테스트가 없으므로 실측으로 확인했다** — `.claude/worktrees/fake-wt/lib/__tests__/decoy.test.ts`에 반드시 실패하는 테스트를 심고 `pnpm vitest run`을 돌려 파일 수가 501로 유지되고 `decoy`가 출력에 0번 나오는 것을 봤다. **설정 변경은 이 형태의 실측이 유일한 그물이다** — glob 오타는 typecheck도 테스트도 못 본다.
+
+### 2026-09-29 — 사건 목록의 행위자 라벨이 사건 2개 이상인 사람의 원문 이메일을 실었다 ([malmoi#146](https://github.com/SinhyeokKang/malmoi/issues/146))
+
+- **영역**: `lib/events/query.ts`(`present`) · `lib/auth/invite-label.ts`(`maskedEmailLabels`) · `lib/auth/query.ts`(`loadPendingInvitations`)
+- **증상**: MCP `list_events`의 `actor.emailLabel`이 행위자마다 원문 주소였다 — EDITOR 토큰으로 OWNER의 주소를 읽었고, 같은 프로젝트의 `list_members`는 `ox5015***@gmail.com`처럼 가린 값을 냈다. 같은 값이 웹 Logs의 RSC 페이로드에도 실려 **모든 멤버가 view-source로 읽을 수 있었고**, 화면은 이름을 먼저 그려 이름이 있는 계정에선 보이지 않았다(이름 없는 계정은 화면에도 섰을 수 있다). **v1.0.0부터 프로덕션.**
+- **근본 원인**: `maskedEmailLabels`의 계약은 **"입력 하나 = 구별해야 할 대상 하나"**다 — 같은 도메인의 "다른 입력"을 경쟁자로 세고, 끝까지 안 갈리면(한쪽이 다른 쪽의 접두) 원문을 돌려준다(malmoi#18이 의도한 폴백). `present`는 **이벤트 행 단위** 주소 목록을 넣었고, 같은 사람의 두 번째 행이 자기 자신을 경쟁자로 만들었다 — 같은 문자열은 어떤 접두로도 안 갈리므로 원문 폴백으로 떨어졌다. 그 함수의 기존 소비자(멤버 표·대기 초대)는 **행 = 사람**이라 계약이 우연히 지켜졌고, 사건 목록은 **행 ≠ 사람**인 첫 소비자였다. 시그니처(`string[] → string[]`, 입력과 같은 길이)가 "행 목록을 그대로 넣으라"로 읽히고, distinct 전제는 주석에도 타입에도 없었다.
+- **그물**:
+  - 잡은 것: MCP QA(`/runtime-test`)가 `list_events`와 `list_members`의 같은 사람 라벨을 대조했다. 도구 출력이 화면과 달리 이름 뒤에 숨지 않는 첫 표면이었다.
+  - 놓친 것: `lib/events/__tests__/query.integration.ts`의 "원문 없음"·"같은 도메인 두 사람이 갈린다"는 **행위자당 사건 1개**로만 쟀다 — 결함이 드러나는 입력(같은 사람 2행 이상)이 픽스처에 없었다. 웹 Logs의 실물 검증은 화면만 봤고 화면은 이름을 먼저 그린다. `invite-label.test.ts`는 함수를 정확히 잰다 — 결함은 함수가 아니라 호출부의 입력 모양이다(#18과 같은 "목록 안의 성질" 부류).
+- **수정**: `present`가 사용자 id로 distinct 주소를 모아 라벨을 한 번 만들고 행에 되돌린다(`684aca48`). 같은 계약 위반이 **가능한** 자리도 방어했다 — `loadPendingInvitations`는 초대 행 단위이고 발급이 같은 주소의 미수락 행을 먼저 만료시키지만 **DB 제약이 없다**. 같은 주소의 대기 행이 둘 남으면 같은 폴백이 OWNER 화면에 원문을 내므로 distinct 주소로 라벨을 만든다(`b5712f7e`). 두 곳 모두 테스트(같은 사람/주소 여러 행 → 마스킹, 목록·상세·행위자 필터 직렬화에 원문 0)를 먼저 red로 세웠고, 행 단위로 되돌리면 red인 것을 뮤테이션으로 확인했다.
+- **재발 방지**:
+  - grep: `rg -n "maskedEmailLabels\(" lib app components` → 각 호출의 입력이 **사람(주소) 단위로 distinct인지** 확인한다. 행 ≠ 사람인 목록(사건·셀 메타·이력·감사 로그)을 그대로 넣으면 같은 결함이다. 2026-09-29 전수: `lib/events/query.ts:148` `loadEventActors`(`distinct: ["actorUserId"]` — 사람 단위, 안전) · `lib/events/query.ts:178` `present`(수정) · `lib/auth/query.ts:108` `loadMembers`(`@@unique([projectId, userId])` — 안전) · `lib/auth/query.ts:187` `loadPendingInvitations`(수정) · `app/(edit)/projects/actions.ts:160`(원소 하나 — 안전). 남은 해당 없음.
+  - **라벨·마스킹 테스트의 픽스처는 같은 대상의 행을 둘 이상 넣는다.** 대상당 한 행 픽스처는 "목록 안에서의 유일성" 결함을 원리적으로 못 본다 — #18은 서로 다른 두 대상의 충돌, 이번은 같은 대상의 자기 충돌로 같은 함수의 양 끝을 밟았다.
+  - **원문 노출 가드는 로더 출력 전체를 직렬화해 센다**(`JSON.stringify(...)).not.toContain(<시드 주소>)`). 화면 검증은 이름이 가리므로 그물이 아니다 — 새 PII 소비 로더(MCP 도구 포함)는 이 가드를 같이 든다.
+
+### 2026-09-29 — 중첩 JSON 표면의 빈 `{}` 로케일 파일에 번역이 최상위 점 키로 나갔다 ([malmoi#147](https://github.com/SinhyeokKang/malmoi/issues/147))
+
+- **영역**: `lib/adapters/json-catalog.ts`(`read`의 파일별 관측 · `writeWithErrors`의 관측 우선) · `lib/adapters/json-style.ts`(`emptyCatalog`)
+- **증상**: 폐기용 리포 `i18n-order-check` PR #12(MCP Publish)에서 `locales/fr.json`이 `{}`(CRLF) → `{ "menu.openFile": "…" }`가 됐다. 형제 en/ja/ko는 `{ "menu": { "openFile": … } }`이고 push도 "json-catalog (중첩)"을 보고했다. 값은 왕복했지만(재push가 점 키를 `menu.openFile`로 읽는다) 파일 구조가 형제와 어긋나, 평탄 키 폴백이 없는 런타임(vue-i18n, i18next `ignoreJSONStructure: false`)에서는 그 로케일이 빈다. 그 `{}`는 Malmoi가 fr의 마지막 값을 비울 때 직접 쓴 것(PR #10, `emptyCatalog`)이다.
+- **근본 원인**: 파일별 관측(§1.35 — 위 musicblocks 항목이 도입했다)은 "중첩 객체가 하나라도 있나"를 boolean으로 냈고 **증거 없음을 표현할 자리가 없었다** — 키 0개 파일은 "객체 없음 = 평평"으로 읽혀 `nestedByPath`에 `false`로 저장됐다. writer는 파일별 관측을 표면 값보다 앞세운다(형제 때문에 평평한 파일이 쪼개지는 손실을 막는 옳은 순서). 두 규칙이 각각 옳은 채로 만나 "비어 있음"이 "평평함"을 이겼다. 빈 파일을 만드는 경로(`emptyCatalog`, audit #1)가 파일별 관측보다 나중에 생겨, 관측 쪽의 암묵 전제("로케일 파일에는 항목이 있다")를 아무도 다시 보지 않았다.
+- **그물**:
+  - 잡은 것: `/roundtrip` 실물 — PR diff에서 형제와 다른 모양을 눈으로 봤다.
+  - 놓친 것: 어댑터 단위·contract 매트릭스는 **항목 있는 원본**으로만 파일별 관측을 쟀고, `emptyCatalog` 테스트는 "비우면 `{}`"까지만 봤다 — **비운 뒤 다시 채우는 왕복**이 없었다. 값은 왕복하므로 값 비교 검사(pull no-edits·dry run)도 green이었다 — 표현 결함은 값 비교가 원리적으로 못 본다.
+- **수정**: read가 `{}`를 관측하지 않고(키 부재 = "표면 값으로"), write는 원본이 `{}`이면 **저장된 옛 관측도** 버리고 표면의 `nested`를 따른다 — 이미 적재된 표면이 다음 push 전에도 고쳐진다(`e3fb013a`). `{}`가 실제로 말하는 줄바꿈·BOM은 그대로 따른다. 비움 → 채움 왕복·결정성 테스트를 추가했고 read·write 각각의 뮤테이션이 red다.
+- **재발 방지**:
+  - grep: `rg -n "ByPath\[|observe[A-Z]\w*\(" lib/adapters --glob '!**/__tests__/**'` → 원본에서 **표현을 관측하는** 자리마다 "항목 0개 원본(`{}`·빈 파일)이면 무엇을 관측하나"를 묻는다. 2026-09-29 전수: 파일별 중첩 관측은 `json-catalog.ts:172` 한 곳(수정). `observeJsonStyle`(json-catalog·chrome-locales·`emptyCatalog`)은 `{}`에서 들여쓰기 `none`→기본 2칸, `compactPaths` 빈 집합, 이스케이프 두 축 기본값 — 증거 없는 축이 이미 기본으로 떨어진다(실측, 해당 없음).
+  - **Malmoi가 스스로 쓰는 퇴화 출력(`emptyCatalog` 같은 빈 파일)은 다음 read·write의 입력으로 왕복 테스트한다** — 쓰기만 테스트하면 그 출력이 관측기를 속이는지 모른다.
+  - 관측값이 boolean이면 "증거 없음"은 **키 부재**로 표현한다 — 값 `false`로 접지 않는다. `nestedByPath`의 부재는 이미 "표면 값으로"를 뜻한다.

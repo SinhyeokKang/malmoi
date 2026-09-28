@@ -11,6 +11,8 @@ Before archiving, merge or close any open translation pull request if you do not
 1. Open **Settings** and choose **Archive project**.
 2. Read the confirmation, then choose Archive project again. The button changes to **Restore project**.
 
+![Project Settings scrolled down to the Archive project card below the repository and CI integration cards](/guide/archive-card.webp "Choose Archive project at the bottom of Settings.")
+
 Members can still open **Logs**; other project pages are unavailable while archived, although project owners may open Settings.
 
 While archived, a workflow run gets a 409 response and the repository workflow turns red. Remove the workflow or restore the project.

@@ -45,9 +45,9 @@ export function isRunActive(startedAt: Date, now: Date): boolean {
 // 위 둘이 여기 있는 이유는 소비자가 sync 경로 안에서 여럿(게이트·껍데기)이어서다.
 
 /**
- * `SyncRun.errorCode`에 남는 값. **생산자 없는 코드는 두지 않는다** — 여기 일곱은 전부
- * `lib/pull`의 특정 throw 자리이거나(`lib/pull/__tests__/error-codes.test.ts`가 양방향으로 고정한다)
- * 껍데기가 만드는 것(`stale`)이다.
+ * `SyncRun.errorCode`에 남는 값. **생산자 없는 코드는 두지 않는다** — 여기 여덟은 전부
+ * `lib/pull`의 특정 throw 자리이거나 껍데기가 만드는 것(`stale`)이거나 `runPull`의 반환(`reconfirm` — SKIPPED 행)이다.
+ * `lib/pull/__tests__/error-codes.test.ts`가 생산자 목록과 이 union을 양방향으로 고정한다.
  *
  * ⚠️ **없앤 것과 이유** (ARCHITECTURE §5.6.3): `adapter-write-failed`(어댑터 오류는 `warnings`로 접혀 실패가
  * 아니다) · `app-uninstalled`/`base-branch-missing`(같은 한 문장에서 나와 가를 수 없다 →
@@ -61,6 +61,11 @@ export const SYNC_ERROR_CODES = [
   "db-unavailable",
   "stale",
   "unknown",
+  /**
+   * 미리보기 뒤 export 입력이 바뀌었다 (mcp-connector design §3.1). **던지는 자리가 없다** — `runPull`이 반환하고 `planSyncFinish`가 SKIPPED 행에
+   * 싣는다. `lib/sync/run.ts`의 `too-soon` 기준이 이 값으로 행을 뺀다.
+   */
+  "reconfirm",
 ] as const;
 
 export type SyncErrorCode = (typeof SYNC_ERROR_CODES)[number];
@@ -77,6 +82,7 @@ const RETRYABLE: Readonly<Record<SyncErrorCode, boolean>> = {
   "db-unavailable": true,
   stale: true,
   unknown: true,
+  reconfirm: true,
 };
 
 export type SyncTriggerKind = "manual" | "cron";
@@ -169,6 +175,10 @@ export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFi
   const warnings = result.status === "skipped" && result.reason === "writer-warnings" ? result.warnings.length : 0;
   const counted = result.status === "committed" || result.reason === "no-changes" || result.reason === "withheld" ? result.withheld : undefined;
   const withheld = counted === undefined ? 0 : counted.file + counted.key;
+  if (result.status === "skipped" && result.reason === "reconfirm") {
+    // ⚠️ **FAILED로 닫지 않는다** — Revert의 settled 판정(`lib/keys/revert.ts`)이 FAILED를 "썼을 수 있는 실행"으로 센다. 렌더를 안 했으니 `changed`는 관측 없음이다.
+    return { status: "SKIPPED", errorCode: "reconfirm", retryable: RETRYABLE.reconfirm, prUrl: null, changed: null, warnings: 0, withheld: 0 };
+  }
   if (result.status === "skipped") {
     // ⚠️ **SKIPPED 행의 `prUrl`은 이 실행이 닫은 PR이다** (B1 r3) — 스킵 행에 prUrl이 선 적이 없어 뜻이 겹치지 않는다. 새 컬럼을 만들지 않는다.
     const prUrl = result.reason === "no-changes" && result.closedPr !== undefined ? result.closedPr.url : null;

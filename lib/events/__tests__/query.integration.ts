@@ -8,6 +8,7 @@ import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
+import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import { encodeUserFields } from "@/lib/credentials/records";
 import { optionalEnv } from "@/lib/env";
 
@@ -252,6 +253,15 @@ describe("Publish 결과는 조인이 든다 (결정 1)", () => {
     expect((await loadEvents(prisma, "p1", base({ results: ["nothingToSend"] }))).rows.map((r) => r.ref)).toEqual([nothing]);
   });
 
+  /** mcp-connector T6.5 r1 — 지문 불일치로 쓰기 전에 멈춘 실행(SKIPPED + errorCode reconfirm)도 Nothing to send가 아니다. 조회와 필터가 같은 술어다. */
+  it("SKIPPED + errorCode reconfirm도 notSent다 · 필터가 nothingToSend와 가른다", async () => {
+    const reconfirm = await publishRun("run-r", "SKIPPED", { errorCode: "reconfirm", changed: null, occurredAt: new Date(AT.getTime() + 1000) });
+    const nothing = await publishRun("run-n", "SKIPPED", { changed: 0 });
+    expect((await loadEvents(prisma, "p1", base())).rows.map((r) => [r.ref, r.result, r.run?.errorCode])).toEqual([[reconfirm, "notSent", "reconfirm"], [nothing, "nothingToSend", null]]);
+    expect((await loadEvents(prisma, "p1", base({ results: ["notSent"] }))).rows.map((r) => r.ref)).toEqual([reconfirm]);
+    expect((await loadEvents(prisma, "p1", base({ results: ["nothingToSend"] }))).rows.map((r) => r.ref)).toEqual([nothing]);
+  });
+
   it("실행이 나중에 닫혀도 이벤트 쪽 값이 갈리지 않는다", async () => {
     await publishRun("run-1", "RUNNING");
     await prisma.syncRun.update({ where: { id: "run-1" }, data: { status: "SUCCEEDED", changed: 3, warnings: 2, prUrl: "https://x/1" } });
@@ -299,6 +309,34 @@ describe("행위자 — 원문 이메일이 나가지 않는다", () => {
     await event({ actorUserId: "u2" });
     const labels = (await loadEvents(prisma, "p1", base())).rows.map((row) => row.actor.emailLabel);
     expect(new Set(labels).size).toBe(2);
+  });
+
+  /**
+   * ⚠️ **라벨은 사람마다 한 번이다** (malmoi#146 — v1.0.0부터 프로덕션). 행마다 만들면 사건이 둘 이상인 사람이 **자기 주소와 충돌해**
+   * `maskedEmailLabels`가 원문으로 떨어졌다 — Logs RSC 페이로드와 MCP `list_events`가 모든 멤버에게 원문 주소를 실었다.
+   */
+  it("같은 사람의 사건이 셋이어도 원문이 아니라 마스킹 라벨이다", async () => {
+    for (let i = 0; i < 3; i += 1) await event({ actorUserId: "u2", occurredAt: new Date(AT.getTime() + i * 1000) });
+    const labels = (await loadEvents(prisma, "p1", base())).rows.map((row) => row.actor.emailLabel);
+    expect(labels).toEqual(["k***@example.com", "k***@example.com", "k***@example.com"]);
+  });
+
+  it("같은 도메인 두 사람이 여러 행에 있어도 멤버 표와 같은 만큼만 넓힌다", async () => {
+    for (let i = 0; i < 4; i += 1) await event({ actorUserId: i % 2 === 0 ? "u1" : "u2", occurredAt: new Date(AT.getTime() + (4 - i) * 1000) });
+    const rows = (await loadEvents(prisma, "p1", base())).rows;
+    const [kim, kang] = maskedEmailLabels(["kim@example.com", "kang@example.com"]);
+    expect(rows.map((row) => row.actor.emailLabel)).toEqual([kim, kang, kim, kang]);
+    expect(kim).toBe("ki***@example.com");
+  });
+
+  it("어느 행위자 조합에서도 직렬화 결과에 원문 주소가 없다 — 목록·상세·행위자 필터", async () => {
+    for (let i = 0; i < 6; i += 1) await event({ actorUserId: i % 3 === 2 ? "u1" : "u2", occurredAt: new Date(AT.getTime() + i * 1000) });
+    const page = await loadEvents(prisma, "p1", base());
+    const detail = await loadEvent(prisma, "p1", page.rows[0]!.ref);
+    const actors = await loadEventActors(prisma, "p1");
+    for (const raw of ["kim@example.com", "kang@example.com"]) {
+      expect(JSON.stringify([page, detail, actors])).not.toContain(raw);
+    }
   });
 
   it("계정이 지워진 USER만 removed다 — AUTOMATION·UNKNOWN과 구별된다", async () => {

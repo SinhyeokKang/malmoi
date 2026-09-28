@@ -33,18 +33,22 @@ import {
  */
 export async function runSync(
   prisma: PrismaClient,
-  input: { projectId: string; slug: string; trigger: SyncTriggerKind; requestedBy: string | null },
+  input: {
+    projectId: string; slug: string; trigger: SyncTriggerKind; requestedBy: string | null; tokenId: string | undefined;
+    /** MCP `publish`의 미리보기 지문 (mcp-connector design §3.1). 실행권·게이트는 그대로이고 `runPull`이 첫 쓰기 전에 대조한다. */
+    expectedFingerprint?: string;
+  },
 ): Promise<PullOutcome> {
   const { projectId, slug, trigger, requestedBy } = input;
 
-  const started = await startRun(prisma, projectId, trigger, requestedBy);
+  const started = await startRun(prisma, projectId, trigger, requestedBy, input.tokenId);
   if (started.status !== "ok") return started.outcome;
   const runId = started.runId;
 
   let result: Parameters<typeof planSyncFinish>[0];
   let outcome: PullOutcome;
   try {
-    const pulled = await triggerPull(prisma, slug, runId);
+    const pulled = await triggerPull(prisma, slug, runId, input.expectedFingerprint);
     result = pulled;
     outcome = pulled;
   } catch (error) {
@@ -92,13 +96,15 @@ async function startRun(
   projectId: string,
   trigger: SyncTriggerKind,
   requestedBy: string | null,
+  /** MCP 토큰 주체의 Publish — 실행권 획득이 권한 확정 시점이다(mcp-connector design §1.25). */
+  tokenId: string | undefined,
 ): Promise<Started> {
   return prisma.$transaction(async (tx) => {
     // 수동 실행은 사람이 연다 — 진입점 인가 뒤 잠금을 기다리는 동안 제거·보관됐으면 행을 만들지 않는다(감사 #10).
     // cron은 사람이 없고 보관 프로젝트를 `selectPullTargets`가 이미 뺀다.
     if (requestedBy === null) await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
     else {
-      const locked = await lockProjectAccess(tx, { projectId, userId: requestedBy, permission: "translation:write" });
+      const locked = await lockProjectAccess(tx, { projectId, userId: requestedBy, permission: "translation:write", tokenId });
       if (locked.status !== "ok") return { status: "rejected", outcome: { status: "failed", error: locked.status, delivery: "not-started", retryable: false } };
     }
 
@@ -111,8 +117,10 @@ async function startRun(
     });
     // ⚠️ **FAILED를 안 집는다** — 최소 간격은 "리포에 쓴 뒤 쉬는 간격"이라 아무것도 못 쓴 실행은
     // 세지 않는다 (ARCHITECTURE §5.6.2). 그 술어가 여기 있으므로 판정 함수는 `null`만 받는다.
+    // ⚠️ **SKIPPED/`reconfirm`도 안 집는다** (mcp-connector design §3.1) — 첫 쓰기 전에 끝난 실행이라 같은 이유다. 세면 새 미리보기로
+    // 곧바로 다시 부른 에이전트가 30초를 기다린다. `errorCode`는 nullable이라 `not`만 쓰면 NULL 행(보통의 SKIPPED)이 빠진다.
     const lastSettled = await tx.syncRun.findFirst({
-      where: { projectId, status: { in: ["SUCCEEDED", "SKIPPED"] } },
+      where: { projectId, status: { in: ["SUCCEEDED", "SKIPPED"] }, OR: [{ errorCode: null }, { errorCode: { not: "reconfirm" } }] },
       orderBy: { startedAt: "desc" },
       select: { finishedAt: true },
     });

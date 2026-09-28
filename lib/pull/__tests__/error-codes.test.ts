@@ -56,6 +56,17 @@ const UNCODED: readonly string[] = [
   "project slug is not usable as a git branch name",
 ];
 
+/**
+ * **던지지 않고 생기는 코드** — 이 스캔이 보는 `fail(` 자리가 아닌 생산자를 이름으로 고정한다. `SYNC_ERROR_CODES`는 `CODED`의 코드와 이 목록의
+ * 합과 **정확히** 같아야 한다(양방향): 새 코드가 어느 쪽에도 없으면 생산자 없는 코드이고, 여기 있는데 union에 없으면 목록이 낡았다.
+ *
+ * - `github-error`·`db-unavailable`·`unknown` — 남의 예외를 `classifySyncError`가 분류한다.
+ * - `stale` — 껍데기(`lib/sync/run.ts`)가 옛 RUNNING 행을 닫는다.
+ * - `reconfirm` — `runPull`이 지문 불일치를 **반환**하고(`reason: "reconfirm"`) `planSyncFinish`가 SKIPPED 행에 싣는다(mcp-connector T6.5).
+ *   리포에 아무것도 안 썼으므로 던지지 않는다 — 던지면 `delivery: "unknown"`이 되고 FAILED 행이 Revert settled 판정을 흔든다.
+ */
+const UNTHROWN: readonly string[] = ["github-error", "db-unavailable", "stale", "unknown", "reconfirm"];
+
 type Site = { file: string; args: string; hasCode: boolean };
 
 /**
@@ -147,5 +158,15 @@ describe("lib/pull의 fail( 자리 — 코드를 드는 것과 안 드는 것이
     for (const raw of codes) {
       expect(SYNC_ERROR_CODES as readonly string[]).toContain(raw.replace(/^["']|["']$/g, ""));
     }
+  });
+
+  it("SYNC_ERROR_CODES = 던지는 자리의 코드 ∪ 던지지 않는 생산자 — 양방향으로 같다", () => {
+    const expected = [...new Set([...CODED.map(([, code]) => code), ...UNTHROWN])].sort();
+    expect([...SYNC_ERROR_CODES].sort()).toEqual(expected);
+  });
+
+  it("reconfirm은 fail( 자리가 아니라 runPull의 반환이다", () => {
+    expect(SITES.some((s) => s.args.includes('"reconfirm"'))).toBe(false);
+    expect(stripComments(readFileSync(`${ROOT}lib/pull/run.ts`, "utf8"))).toContain('reason: "reconfirm"');
   });
 });

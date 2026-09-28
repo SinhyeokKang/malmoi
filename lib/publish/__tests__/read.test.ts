@@ -1,24 +1,43 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
-const mocks = vi.hoisted(() => ({ client: { getRefSha: vi.fn(), getTree: vi.fn(), getBlobText: vi.fn() }, open: vi.fn(), load: vi.fn() }));
-// 실행과 같은 렌더에 넣을 스냅샷(#128). 기본은 표면 없음 — 바뀌는 파일 목록이 빈다. 그 목록을 재는 테스트만 실제 상태를 준다.
-vi.mock("@/lib/pull/load", () => ({ loadPullState: mocks.load }));
+const mocks = vi.hoisted(() => ({ client: { getRefSha: vi.fn(), getTree: vi.fn(), getBlobText: vi.fn() }, open: vi.fn(), load: vi.fn(), snapshot: vi.fn() }));
+/**
+ * **미리보기의 DB 입력은 스냅샷 한 벌이다** (Codex review CR-01 — `loadPreviewSnapshot`). 이 파일의 픽스처는 표시 쪽(`db.project`·`db.translation`)과
+ * 렌더 쪽(`mocks.load`)을 따로 주던 모양이라, 목이 그 둘을 **한 스냅샷으로 조립**한다: 표면은 렌더 상태가 주면 그것, 아니면 표시 픽스처의 표면(키 없음).
+ * 조립한 스냅샷은 `snapshotOf()`로 다시 꺼낸다 — 지문 단언이 "응답이 쓴 바로 그 상태"를 입력으로 삼게. 한 스냅샷의 실제 보장은 PG가 잰다(delivery-invariants).
+ */
+let lastSnapshot: { state: unknown } | undefined;
+const snapshotOf = () => lastSnapshot!.state as never;
+vi.mock("@/lib/pull/load", () => ({ loadPreviewSnapshot: mocks.snapshot }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/github", () => ({ createGitClient: async () => mocks.client }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: mocks.open }));
 vi.mock("@/lib/keys/query", () => ({ loadActors: async () => new Map() }));
 import { readPublishPreview } from "../read";
+import { publishFingerprint } from "../fingerprint";
 const surface = { id: "s", slug: "web", adapterName: "json-catalog", pathTemplate: "{locale}.json", baseLocale: "en", nested: false, nestedByPath: {}, locales: [{ code: "en" }] };
 const project = { id: "p", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", repositoryId: "2", lastPulledAt: null, archivedAt: null, surfaces: [surface] };
 const rows = [{ surfaceId: "s", keyId: "k", localeCode: "en", value: "new", updatedBy: "editor", updatedAt: new Date(), stringKey: { key: "hello" } }];
 const db = { project: { findUniqueOrThrow: vi.fn() }, translation: { findMany: vi.fn(), count: vi.fn(), groupBy: vi.fn() } };
-beforeEach(() => { vi.clearAllMocks(); db.project.findUniqueOrThrow.mockResolvedValue(project); db.translation.findMany.mockResolvedValue(rows); db.translation.count.mockResolvedValue(1); db.translation.groupBy.mockResolvedValue([{ keyId: "k" }]); mocks.client.getRefSha.mockResolvedValue("head"); mocks.client.getTree.mockResolvedValue([{ path: "en.json", sha: "blob" }]); mocks.client.getBlobText.mockResolvedValue('{"hello":"old"}'); mocks.open.mockResolvedValue("https://github.com/o/r/pull/12"); mocks.load.mockResolvedValue({ project: { ...project, slug: "acme" }, surfaces: [], maxUpdatedAt: null, unpublished: 0, pendingEdits: [] }); });
+beforeEach(() => { vi.clearAllMocks(); db.project.findUniqueOrThrow.mockResolvedValue(project); db.translation.findMany.mockResolvedValue(rows); db.translation.count.mockResolvedValue(1); db.translation.groupBy.mockResolvedValue([{ keyId: "k" }]); mocks.client.getRefSha.mockResolvedValue("head"); mocks.client.getTree.mockResolvedValue([{ path: "en.json", sha: "blob" }]); mocks.client.getBlobText.mockResolvedValue('{"hello":"old"}'); mocks.open.mockResolvedValue("https://github.com/o/r/pull/12"); mocks.load.mockResolvedValue({ project: { ...project, slug: "acme" }, surfaces: [], maxUpdatedAt: null, unpublished: 0, pendingEdits: [] });
+  mocks.snapshot.mockImplementation(async (_prisma: unknown, slug: string, limit: number) => {
+    const fixture = await db.project.findUniqueOrThrow();
+    const loaded = await mocks.load();
+    const surfaces = loaded.surfaces.length > 0 ? loaded.surfaces
+      : fixture.surfaces.map((s: { locales: { code: string }[] }) => ({ ...s, localeCodes: s.locales.map(l => l.code), keys: [] }));
+    const state = { ...loaded, project: { ...fixture, slug }, surfaces };
+    lastSnapshot = { state };
+    const found = await db.translation.findMany();
+    return { state, rows: found.slice(0, limit), total: await db.translation.count(), keys: (await db.translation.groupBy()).length, archivedAt: fixture.archivedAt };
+  });
+});
 it("쓰기 메서드 없는 클라이언트로 base 이전 값과 DB 값을 함께 읽는다", async () => {
  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
  expect(result.groups[0]?.rows[0]).toMatchObject({ before: "old", after: "new" });
  expect(result.openPr?.number).toBe(12);
- expect(db.project.findUniqueOrThrow.mock.calls[0]?.[0].where).toEqual({ id: "p" });
- expect(db.translation.findMany.mock.calls[0]?.[0]).toMatchObject({ where: { projectId: "p", surface: { archivedAt: null }, pendingEditToken: { not: null } }, take: 200 });
+ // DB 입력은 스냅샷 한 번이다 — 표시 상한을 함께 넘긴다(CR-01).
+ expect(mocks.snapshot).toHaveBeenCalledTimes(1);
+ expect(mocks.snapshot).toHaveBeenCalledWith(db, "acme", 200);
  expect(mocks.client.getRefSha).toHaveBeenCalledWith("heads/main");
 });
 it("base 파싱 실패를 빈 이전 값으로 접지 않는다", async () => { mocks.client.getBlobText.mockResolvedValue("invalid"); await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toThrow(); });
@@ -384,7 +403,7 @@ it("#128 — 편집 없는 파일이 바뀌면 미리보기의 바뀌는 파일 
   expect(result).toMatchObject({ status: "committed", changed: ["fr.json", "ja.json"] });
   expect(preview.changedFiles).toEqual(result.status === "committed" ? result.changed : []);
   expect(preview.groups.map(g => g.path)).toEqual(["fr.json"]);
-  expect(mocks.load).toHaveBeenCalledWith(db, "acme");
+  expect(mocks.snapshot).toHaveBeenCalledWith(db, "acme", 200);
   // #128 r5 — 한 번 열 때 ref 1 · 트리 1 · 파일당 blob 1이다(실행 한 번과 같은 GitHub 비용). 렌더가 ref·트리를 다시 읽으면 셀과 파일 목록이
   // 서로 다른 head를 볼 수 있다.
   expect(mocks.client.getRefSha).toHaveBeenCalledTimes(1);
@@ -423,4 +442,23 @@ it.each([
   const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: tree }, blobs });
   const result = await runPull({ loadState: async () => state, createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme" });
   expect(result).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+});
+/**
+ * **미리보기가 Publish 지문을 낸다** (mcp-connector T6.5 · design §3.1). 입력은 이미 부르는 `loadPullState` 전체 + 이미 읽은 base head다 —
+ * 표시 행(200행)과 무관하다. `publish`가 실행권 뒤 같은 입력으로 재계산해 대조한다.
+ */
+it("fingerprint는 표시에 쓴 바로 그 스냅샷과 읽은 base head의 publishFingerprint다", async () => {
+  mocks.load.mockResolvedValue({ project: { ...project, slug: "acme" }, surfaces: [], maxUpdatedAt: null, unpublished: 1, pendingEdits: [{ id: "t", token: "tok" }] });
+  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(result.fingerprint).toBe(publishFingerprint(snapshotOf(), "head"));
+  expect(mocks.snapshot).toHaveBeenCalledTimes(1);
+  // 같은 스냅샷이라도 head가 다르면 다른 지문이다 — 미리보기가 head를 입력으로 싣는다는 짝.
+  mocks.client.getRefSha.mockResolvedValue("head2");
+  const again = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(again.fingerprint).toBe(publishFingerprint(snapshotOf(), "head2"));
+  expect(again.fingerprint).not.toBe(result.fingerprint);
+});
+
+it("스냅샷이 인가된 프로젝트와 다른 프로젝트를 가리키면 보여 주지 않는다", async () => {
+  await expect(readPublishPreview(db as unknown as PrismaClient, "other-project", "acme")).rejects.toThrow("Project changed");
 });

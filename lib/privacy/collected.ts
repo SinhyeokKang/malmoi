@@ -69,6 +69,8 @@ export const MODEL_CLASSES = {
    */
   DeliveryConfirmation: "not-personal",
   TranslationBaseline: "not-personal",
+  /** 사람의 자격증명과 그 사람이 위임한 권한·범위·사용 시각이다(mcp-connector). */
+  ApiToken: "personal",
 } as const satisfies Record<Prisma.ModelName, "personal" | "not-personal">;
 
 type PersonalModel = {
@@ -90,6 +92,7 @@ interface ScalarFieldsOf extends Record<PersonalModel, string> {
   VerificationToken: Prisma.VerificationTokenScalarFieldEnum;
   ProjectMember: Prisma.ProjectMemberScalarFieldEnum;
   ProjectInvitation: Prisma.ProjectInvitationScalarFieldEnum;
+  ApiToken: Prisma.ApiTokenScalarFieldEnum;
 }
 
 type FieldPath = { [M in PersonalModel]: `${M}.${ScalarFieldsOf[M]}` }[PersonalModel];
@@ -165,6 +168,19 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "ProjectInvitation.acceptedAt": "collected",
   "ProjectInvitation.invitedBy": "collected",
   "ProjectInvitation.expiresAt": "retention",
+
+  /**
+   * MCP 개인 토큰 (mcp-connector). 스칼라 전부가 사람을 가리킨다 — 해시도 그 사람의 자격증명이고, 권한·범위는 그 사람이 고른 위임,
+   * `lastUsedAt`은 활동 시각이다. 만료는 다른 토큰들처럼 보관 기간을 정한다. ⚠️ `/privacy` 본문 개정은 T9(`policy-gate.test.tsx`)가 든다.
+   */
+  "ApiToken.userId": "collected",
+  "ApiToken.grants": "collected",
+  "ApiToken.allProjects": "collected",
+  "ApiToken.projectIds": "collected",
+  "ApiToken.tokenHash": "collected",
+  "ApiToken.createdAt": "collected",
+  "ApiToken.lastUsedAt": "collected",
+  "ApiToken.expiresAt": "retention",
 
   /**
    * 번역 값 자체는 프로젝트의 산출물이고 사람을 기술하지 않는다.

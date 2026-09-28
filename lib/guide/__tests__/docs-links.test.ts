@@ -4,6 +4,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { headings, parseMd } from "@/lib/guide/parse";
+import { m } from "@/lib/i18n";
 import { flattenNav, parseSummary, slugToFile } from "@/lib/guide/summary";
 
 /**
@@ -73,5 +74,14 @@ describe("`routes.docs(...)` 호출 대상", () => {
       return ids.includes(anchor) ? [] : [`${call.at}: ${page}#${anchor}`];
     });
     expect(missing).toEqual([]);
+  });
+});
+
+// 라벨이 페이지 이름을 말하는 링크는 그 페이지 제목과 같아야 한다 — 제목만 바뀌면 없는 이름을 단 링크가 남는다(핸드오프 §12).
+describe("`/mcp` 가이드 링크", () => {
+  it("라벨이 대상 페이지(ai-agents)의 SUMMARY 제목이다", () => {
+    const nav = flattenNav(parseSummary(parseMd(readFileSync(join(GUIDE, "SUMMARY.md"), "utf8"))));
+    expect(nav.find((item) => item.file === "ai-agents.md")?.title).toBe(m.mcpConnector.guide.link);
+    expect(readFileSync(join(ROOT, "app/(edit)/mcp/page.tsx"), "utf8")).toContain('routes.docs("ai-agents")');
   });
 });

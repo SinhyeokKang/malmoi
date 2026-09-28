@@ -89,6 +89,15 @@ const ONBOARDING_SOURCES = [
  * 2홉 뒤에 사용자 토큰을 물어도 green이었다 (POSTMORTEM "2홉은 못 본다").
  */
 const APP_TOKEN_SOURCES = ["lib/pull", "lib/push", "lib/projects", "lib/publish", "lib/import"].flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
+/**
+ * **두 자격증명이 만나는 코어** (mcp-connector T4-c — design §1.3). Server Action과 MCP 도구가 같은 코어를 부르므로 만남점이 Server Action
+ * 하나가 아니게 됐다. 규칙은 Server Action과 같다 — **둘 다 import할 수 있고, 쓰기는 App 토큰 경로(`@/lib/github`)만** 한다: App 개인키를
+ * 직접 물지 않고(`lib/github.ts`만 문다) octokit 쓰기를 직접 부르지 않는다. ⚠️ `lib/onboarding`·`APP_TOKEN_SOURCES`에 넣으면 사용자 토큰
+ * import가 red다 — 거기 넣지 않는다. 새 만남점 루트는 여기 더한다.
+ */
+// `lib/mcp` — MCP 도구(T6·T7)가 `ensureUserToken`(GET)과 App 토큰 경로 코어를 함께 부른다(design §1.3 · §6 불변식 6).
+const MEETING_ROOTS = ["lib/onboarding-run", "lib/mcp"];
+const MEETING_SOURCES = MEETING_ROOTS.flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
 /** 커밋 경로(App 토큰) 모듈. 온보딩이 이걸 물면 두 자격증명이 한 파일에서 만날 길이 열린다. */
 const COMMIT_PATH_IMPORT = /from\s+["'](@\/lib\/github|\.\.\/github)["']/;
 
@@ -172,7 +181,7 @@ describe("App 토큰 경로가 사용자 토큰을 모른다", () => {
    * 찾아 목록 안인지 잰다 — 짝으로 실제 소비자가 0이 아님을 본다.
    */
   it("lib/에서 `@/lib/github`을 무는 파일은 전부 스캔 범위 안이다", () => {
-    const scanned = new Set(APP_TOKEN_SOURCES.map((f) => f.rel));
+    const scanned = new Set([...APP_TOKEN_SOURCES, ...MEETING_SOURCES].map((f) => f.rel));
     const consumers = sourcesIn(join(ROOT, "lib"), "lib").filter((f) => COMMIT_PATH_IMPORT.test(codeOnly(f.source)));
     expect(consumers.length).toBeGreaterThan(3);
     expect(consumers.map((f) => f.rel).filter((rel) => !scanned.has(rel))).toEqual([]);
@@ -181,6 +190,27 @@ describe("App 토큰 경로가 사용자 토큰을 모른다", () => {
   it("lib/pull·push·projects·publish·import가 사용자 토큰 모듈을 import하지 않는다", () => {
     const offenders = APP_TOKEN_SOURCES.filter((f) => USER_TOKEN_IMPORT.test(codeOnly(f.source))).map((f) => f.rel);
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("두 자격증명이 만나는 코어 — Server Action과 같은 규칙", () => {
+  it("스캔 대상을 실제로 찾았다 — 두 자격증명을 다 무는 파일이 있다", () => {
+    expect(MEETING_SOURCES.length).toBeGreaterThan(3);
+    // 규칙이 공허하지 않다: 만남점이면 사용자 토큰과 App 토큰 경로를 한 파일에서 무는 자리가 있어야 한다.
+    expect(MEETING_SOURCES.some((f) => USER_TOKEN_IMPORT.test(codeOnly(f.source)) && COMMIT_PATH_IMPORT.test(codeOnly(f.source)))).toBe(true);
+  });
+
+  it("App 개인키를 직접 참조하지 않는다 — installation 토큰은 `lib/github.ts`만 만든다", () => {
+    expect(MEETING_SOURCES.filter((f) => APP_CREDENTIAL.test(codeOnly(f.source))).map((f) => f.rel)).toEqual([]);
+  });
+
+  it("octokit 쓰기를 직접 부르지 않는다 — 쓰기는 App 토큰 경로의 함수로만", () => {
+    expect(MEETING_SOURCES.filter((f) => WRITE_CALL.test(codeOnly(f.source))).map((f) => f.rel)).toEqual([]);
+  });
+
+  it("사용자 토큰 전용 루트(lib/onboarding)·App 토큰 루트와 겹치지 않는다", () => {
+    const others = new Set([...ONBOARDING_SOURCES, ...APP_TOKEN_SOURCES].map((f) => f.rel));
+    expect(MEETING_SOURCES.filter((f) => others.has(f.rel)).map((f) => f.rel)).toEqual([]);
   });
 });
 

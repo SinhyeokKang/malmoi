@@ -167,7 +167,9 @@ function read(format: DetectedFormat, files: readonly { path: string; content: s
 
     const top = parsed as Record<string, unknown>;
     const fileNested = Object.values(top).some((v) => v !== null && typeof v === "object");
-    nestedByPath[file.path] = fileNested;
+    // ⚠️ **빈 객체는 관측하지 않는다** (malmoi#147) — `{}`는 중첩인지 평평한지 말하지 않는다. `false`로 남기면 writer가 그것을 표면의
+    // `nested`보다 앞세워 중첩 표면의 이 파일에 점 키를 최상위로 쓴다. 그 `{}`는 Malmoi가 마지막 값을 비울 때 쓴 것(`emptyCatalog`)이다.
+    if (Object.keys(top).length > 0) nestedByPath[file.path] = fileNested;
     if (fileNested) nested = true;
 
     const flat: LocaleEntry[] = [];
@@ -256,7 +258,9 @@ function writeWithErrors(
   // 평평한 파일이 중첩으로 쓰이고 **점 포함 키의 값이 사라진다**(§1.35의 손실 계열). 도달 조건은
   // 확장자 없는 `{locale}` 템플릿 + 그 이름의 로케일이라 좁지만, 결과가 조용한 데이터 손실이다.
   const byPath = format.nestedByPath;
-  const observed = byPath !== undefined && Object.hasOwn(byPath, path) ? byPath[path] : undefined;
+  // ⚠️ **원본이 `{}`이면 저장된 관측도 버린다** (malmoi#147) — read가 이제 `{}`를 관측하지 않지만, 이미 적재된 표면의 `nestedByPath`에는
+  // 옛 `false`가 남아 있다. 다음 push가 그 값을 지우기 전까지의 Publish도 표면의 `nested`를 따라야 한다.
+  const observed = byPath !== undefined && Object.hasOwn(byPath, path) && !isEmptyObjectText(original) ? byPath[path] : undefined;
   const nested = observed ?? format.nested ?? false;
   // **표현은 원본에서 읽는다** (ARCHITECTURE §1.4를 재생성으로 옮긴 것). 원본이 없으면 기본값이다 —
   // 재생성은 원본 없이도 파일을 만들어야 한다(신규 로케일). ⚠️ `currentFiles?.[0]`가 아니라
@@ -297,6 +301,17 @@ function writeWithErrors(
   const normalized: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
   for (const name of Object.keys(root)) normalized[name] = normalizeArrays(root[name]);
   return { content: serializeJson(normalized, style), errors };
+}
+
+/** 원본이 항목 없는 객체(`{}`)인가 — 중첩의 증거가 없는 파일이다. 못 읽으면 `false`(관측을 그대로 둔다 — 없는 판정을 만들지 않는다). */
+function isEmptyObjectText(original: string | undefined): boolean {
+  if (original === undefined) return false;
+  try {
+    const parsed: unknown = JSON.parse(stripBom(original));
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) && Object.keys(parsed).length === 0;
+  } catch {
+    return false;
+  }
 }
 
 function setDeep(node: Record<string, unknown>, segments: readonly string[], value: string): void {

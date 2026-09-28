@@ -6,10 +6,10 @@
 
 - `guide/SUMMARY.md`가 페이지·순서·계층의 정본이다. 페이지를 추가하거나 옮기면 SUMMARY와 내부 링크를 함께 고친다.
 - `guide/README.md`는 개요이고 `<chapter>/README.md`는 장 개요다. 각 페이지는 H1 하나와 바로 다음 독립 도입 문단(1–2문장)으로 시작한다. 도입에는 굵은 글씨나 링크를 넣지 않으며 카드 설명으로도 쓴다. 작업 페이지에는 필요한 사전 조건, 사용자가 고르는 것과 화면에 보이는 것을 함께 쓰는 번호 단계, `What happens next` 절을 둔다. 설명·참조 페이지에는 번호 단계가 없어도 된다.
-- 개요의 두 갈래 카드와 나머지 장 목록, 장 개요의 하위 목록은 SUMMARY와 각 페이지의 도입 문단에서 생성한다. 원고에 카드·목록을 중복 작성하지 않는다. 개요는 H1과 도입만, 장 개요는 H1과 도입에 필요한 본문만 둔다.
+- 개요의 두 갈래 카드와 나머지 장 목록, 장 개요의 하위 목록은 SUMMARY와 각 페이지의 도입 문단에서 생성한다. 원고에 카드·목록을 중복 작성하지 않는다. 개요는 H1과 도입, 그리고 대표 화면 스크린샷 한 장만 둔다(카드보다 위에 선다). 장 개요는 H1과 도입에 필요한 본문만 둔다.
 - 두 갈래의 선택은 `lib/guide/overview.ts`가 소유한다(렌더링 단계에서 추가). 제목은 SUMMARY, 설명은 도입 문단에서 가져온다.
 - `AUTHORING.md`와 `SHOOTING.md`는 SUMMARY에 올리지 않고 공개 페이지로 제공하지 않는다. SUMMARY 자신도 페이지가 아니라 내비 데이터다.
-- 실제 화면은 스크린샷으로 기록하며 촬영 규약은 `SHOOTING.md`가 소유한다. 이미지 게이트와 촬영 매뉴얼이 서기 전에는 이미지 참조를 넣지 않는다.
+- 실제 화면은 스크린샷으로 기록하며 촬영 규약은 `SHOOTING.md`가 소유한다. 화면을 안내하는 작업 페이지는 적어도 한 장을 둔다 — 화면이 없는 참조 페이지(`reference/formats.md`·`reference/limits.md` 등)와 GitHub 쪽 동작만 설명하는 페이지(`sync/merging.md`·`sync/nightly.md`)는 예외다. 이미지는 절의 단계 목록 뒤(또는 그 화면을 여는 단계 앞)에 둔다.
 
 ## 페이지별 독자 {#audiences}
 
@@ -36,6 +36,7 @@
 | `sync/revert.md` | Undo and resync | 개발자 |
 | `sync/logs.md` | Check activity in Logs | 공통 |
 | `account.md` | Your account | 공통 |
+| `ai-agents.md` | Connect an AI agent | 공통 |
 | `reference/README.md` | Reference | 공통 |
 | `reference/formats.md` | Supported file formats | 개발자 |
 | `reference/limits.md` | Limits | 공통 |
@@ -126,6 +127,7 @@
 | `sync/revert.md` | OWNER 전용 복원·수동 Sync, 지문 확인·미전달 처리 | `lib/keys/revert.ts`, `lib/protection/`, `lib/sync/`, `app/(edit)/actions.ts`, `docs/ARCHITECTURE.md` §5.8 |
 | `sync/logs.md` | 필터·상세·수동 갱신·보관 이력 | `app/(edit)/projects/[slug]/logs/page.tsx`, `components/logs/`, `lib/events/`, `docs/ARCHITECTURE.md` §5.7 |
 | `account.md` | 프로필·로그인 수단·GitHub 연결·전체 로그아웃 | `app/(edit)/account/`, `components/account/`, `lib/account-connect/`, `lib/login-link/`, `lib/session-revocation/`, `docs/PRODUCT.md` §4.1·§7.7 |
+| `ai-agents.md` | 토큰 발급·회전·폐기, 연결 조각 셋, 역할 ∩ 토큰 권한, 도구 묶음, push 토큰 secret 저장 | `app/(edit)/mcp/`, `components/mcp/`, `lib/mcp/snippets.ts`(조각 — `content.test.ts`가 글자 단위로 대조), `lib/mcp/catalog.ts`, `lib/mcp/grant.ts`, `lib/mcp/tools/`, `messages/en.tsx`의 `mcpConnector`·`mcp`, `docs/ARCHITECTURE.md` §6.45, `docs/PRODUCT.md` §4.1 |
 | `reference/formats.md` | 지원 포맷 다섯·경로·보존 특성 | `lib/adapters/index.ts`, `lib/adapters/`, `lib/onboarding/detect.ts`, `docs/ARCHITECTURE.md` §1 |
 | `reference/limits.md` | 프로젝트·멤버·slug·초대 상한, 파일·적재 예산 | `lib/onboarding/create-plan.ts` (`PROJECT_LIMIT`), `lib/auth/invitation.ts` (`MEMBER_LIMIT`), `lib/onboarding/slug.ts` (`PROJECT_SLUG_MAX`), `lib/invitation-email/limits.ts` (`INVITATION_HOURLY_LIMIT`), `lib/onboarding/budget.ts`, `lib/push/plan.ts` |
 | `reference/troubleshooting.md` | 설치 누락·stale commit 409·payload 400·사용자 복구 경로 | `app/api/push/route.ts`, `lib/push/guard.ts`, `lib/push/plan.ts`, `docs/ACTIONS.md` §3, `lib/github-connect/message.ts`, `lib/onboarding/message.ts`, `messages/en.tsx` |

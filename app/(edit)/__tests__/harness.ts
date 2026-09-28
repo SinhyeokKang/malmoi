@@ -28,9 +28,9 @@ function sealedWithLostKey(value: string | null): string | null {
   return value === null ? null : value.split(":").map((part, i) => (i === 2 ? "lost" : part)).join(":");
 }
 function storedUser(user: UserSeed) {
-  const fields = encodeUserFields(user.id, { name: user.name ?? null, ...(user.email === null ? {} : { email: user.email }) });
+  const fields = encodeUserFields(user.id, { name: user.name ?? null, image: user.image ?? null, ...(user.email === null ? {} : { email: user.email }) });
   if (user.unreadable !== true) return { ...user, ...fields };
-  return { ...user, ...fields, email: sealedWithLostKey(fields.email ?? null), name: sealedWithLostKey(fields.name ?? null) };
+  return { ...user, ...fields, email: sealedWithLostKey(fields.email ?? null), name: sealedWithLostKey(fields.name ?? null), image: sealedWithLostKey(fields.image ?? null) };
 }
 function storedInvitation(row: InvitationSeed) {
   const fields = encodeInvitationEmail(row.id, row.projectId, row.email);
@@ -86,7 +86,7 @@ export type SyncRunSeed = {
 export type MemberSeed = { projectId: string; userId: string; role: Role; createdAt?: Date };
 /** ⚠️ `email`이 nullable이다 — 스키마가 그렇고(OAuth provider가 주소를 안 줄 수 있다), 페이크가
  *  스키마보다 좁으면 "이메일 없는 멤버" 갈래를 테스트가 만들 수 없다 (하네스 자기검사 — POSTMORTEM 2026-09-06). */
-export type UserSeed = { id: string; email: string | null; name?: string | null; unreadable?: boolean };
+export type UserSeed = { id: string; email: string | null; name?: string | null; image?: string | null; unreadable?: boolean };
 export type InvitationSeed = {
   id: string;
   projectId: string;
@@ -408,7 +408,15 @@ export function createHarness(seed: Seed = {}) {
         // 시드가 사용자를 안 준 채 멤버를 만들 수 있고, 그때 가짜가 빈 객체를 내면 호출부의 null 처리가 검증되지 않는다.
         if (args.select.user !== undefined) {
           const user = users.find((u) => u.id === m.userId);
-          projected["user"] = user === undefined ? null : storedUser(user);
+          /**
+           * ⚠️ **중첩 select를 따른다** (2026-09-28 멤버 사진 — `image`를 select하지 않아 전원이 이니셜이었는데
+           * 가짜가 행 전체를 내서 로더 테스트가 그 누락을 못 봤다).
+           */
+          const inner = (args.select.user as { select?: Record<string, unknown> }).select;
+          const stored = user === undefined ? null : storedUser(user);
+          projected["user"] = stored === null || inner === undefined
+            ? stored
+            : Object.fromEntries(Object.entries(stored).filter(([k]) => inner[k] === true));
         }
         if (args.select.project !== undefined) {
           const project = projects.find((p) => p.id === m.projectId);
@@ -955,6 +963,10 @@ export function createHarness(seed: Seed = {}) {
     $executeRaw: executeRaw,
     projectEvent: {
       create: createEvent,
+      createMany: vi.fn(async (args: { data: Record<string, unknown>[] }) => {
+        for (const data of args.data) await createEvent({ data });
+        return { count: args.data.length };
+      }),
       upsert: vi.fn(async (args: { where: { projectId_runToken: { projectId: string; runToken: string } }; create: Record<string, unknown> }) => {
         const { projectId, runToken } = args.where.projectId_runToken;
         const existing = projectEvents.find((r) => r.projectId === projectId && r.runToken === runToken);
@@ -1103,9 +1115,11 @@ export function createHarness(seed: Seed = {}) {
         }
         return [...counted].map(([group, n]) => { const [projectId, surfaceId] = group.split("|"); return { projectId, surfaceId, _count: { _all: n } }; });
       },
-      findMany: async ({ where }: { where: { projectId: string; orphaned?: boolean } & ScopedWhere }) =>
+      // 배치 저장이 키 여럿을 한 번에 읽는다(`id: { in }` — #145).
+      findMany: async ({ where }: { where: { projectId: string; orphaned?: boolean; id?: { in: string[] } } & ScopedWhere }) =>
         keys
-          .filter((k) => k.projectId === where.projectId && matchesScope(k, where) && (where.orphaned === undefined || k.orphaned === where.orphaned))
+          .filter((k) => k.projectId === where.projectId && matchesScope(k, where) && (where.orphaned === undefined || k.orphaned === where.orphaned) &&
+            (where.id === undefined || where.id.in.includes(k.id)))
           .slice()
           .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0))
           .map((k) => ({
@@ -1206,6 +1220,27 @@ export function createHarness(seed: Seed = {}) {
         translations.push(row);
         return row;
       },
+      /** 배치 저장의 새 셀 — `upsert`의 생성 갈래와 같은 FK 검사를 지난다(#145). */
+      createMany: async ({ data }: { data: Record<string, unknown>[] }) => {
+        const at = tick();
+        for (const create of data) {
+          const row = { value: "", description: null, placeholders: null, needsReview: false, updatedBy: null, ...create, updatedAt: at } as TranslationSeed;
+          if (!keys.some(k => k.id === row.keyId && k.projectId === row.projectId && k.surfaceId === row.surfaceId) ||
+            !locales.some(l => l.projectId === row.projectId && l.surfaceId === row.surfaceId && l.code === row.localeCode)) {
+            throw Object.assign(new Error("translation composite FK"), { code: "P2003" });
+          }
+          if (translations.some(t => t.keyId === row.keyId && t.localeCode === row.localeCode)) throw Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+          translations.push(row);
+        }
+        return { count: data.length };
+      },
+      /** 배치 저장의 기존 셀 — 셀 하나를 가리키는 좁힘만 쓴다(`projectId`·`surfaceId`·`keyId`·`localeCode`). */
+      updateMany: async ({ where, data }: { where: { projectId: string; surfaceId: string; keyId: string; localeCode: string }; data: Record<string, unknown> }) => {
+        const at = tick();
+        const rows = translations.filter(t => t.projectId === where.projectId && t.surfaceId === where.surfaceId && t.keyId === where.keyId && t.localeCode === where.localeCode);
+        for (const row of rows) Object.assign(row, data, { updatedAt: at });
+        return { count: rows.length };
+      },
       /**
        * ⚠️ **`projectId`로 좁힌다.** 시드의 번역 행은 `keyId`만 들지만 실제 테이블에는 `projectId`
        * 컬럼이 있다 — 키를 통해 되짚어 **같은 좁힘**을 흉내 낸다. 안 하면 `countUnpublished`의
@@ -1283,7 +1318,7 @@ export function createHarness(seed: Seed = {}) {
       }: {
         where: {
           projectId: string;
-          keyId?: string;
+          keyId?: string | { in: string[] };
           value?: { not: string };
           stringKey?: { orphaned?: boolean };
           locale?: { orphaned?: boolean };
@@ -1299,7 +1334,8 @@ export function createHarness(seed: Seed = {}) {
           const key = live.get(t.keyId);
           if (key === undefined) return false;
           // 키 단위 저장이 한 키의 셀만 읽는다 — 무시하면 다른 키의 값이 그 키의 "이전 값"이 된다.
-          if (where.keyId !== undefined && t.keyId !== where.keyId) return false;
+          if (typeof where.keyId === "string" && t.keyId !== where.keyId) return false;
+          if (typeof where.keyId === "object" && !where.keyId.in.includes(t.keyId)) return false;
           if (!matchesScope(t, where)) return false;
           if (where.value !== undefined && t.value === where.value.not) return false;
           const wantOrphaned = where.stringKey?.orphaned;

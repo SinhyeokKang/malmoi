@@ -77,6 +77,7 @@
 | 패널 리사이즈 | `react-resizable-panels` — `resizable.tsx` 하나가 쓴다. ⚠️ **jsdom에서는 화면의 모든 클릭을 삼킨다** — `vitest.setup.ts`가 막는다 |
 | 아이콘·폰트 | `lucide-react` / **Pretendard Variable 동적 서브셋, 자사 호스트** |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 |
+| MCP 서버 | `@modelcontextprotocol/server` — **exact 고정**(`/api/mcp`, ARCHITECTURE §6.45). ⚠️ **클라이언트마다 개정이 다르다**(Claude Code 2026-07-28 · Codex 2025 handshake) — route가 둘 다 받고, SDK 기본값으로는 2025 응답이 SSE이고 `listChanged` 기본 true가 끝나지 않는 SSE를 연다. 올리기 전에 그 절을 읽는다 |
 | YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`) |
 | 사용처 수집 | `ts-morph` AST + 정규식 — **`refs` 전담, 실패는 경고** |
 | 가이드 파싱 | `unified` + `remark-parse` + `remark-gfm` → **mdast 한 벌**(`lib/guide/parse.ts`) — 게이트·목차·렌더러가 같은 파서 구성을 쓴다. 렌더러는 `react-markdown`(서버 컴포넌트, `rehype-raw` 없음) |
@@ -112,10 +113,12 @@
 | 초대·멤버·보관·프로젝트 생성·온보딩 | **Server Action** (`app/(edit)/projects/actions.ts` 등) | 편집 UI |
 | 기준 로케일 선언, 소스 상세 조회 | **Server Action** (`app/(edit)/projects/[slug]/sources/actions.ts`) | 편집 UI — `updateBaseLocale`이 `Project`→`TranslationSurface` 잠금과 같은 트랜잭션의 `ProjectEvent`를 든다 |
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
+| MCP 개인 토큰 발급·폐기 | **Server Action** (`app/(edit)/mcp/actions.ts`) | `/mcp` — `requireUser`만, `userId`로 좁힌다. 발급 = 기존 행 삭제 + 삽입 한 tx라 Create·Rotate가 같은 Action이다. ⚠️ **MCP 도구에 발급·폐기가 없다** — 토큰이 토큰을 만들지 않는다 |
 | Publish 미리보기 | **Server Action** (`app/(edit)/publish-actions.ts`) | 편집 UI — **읽기만 한다.** 그래서 `revalidatePath`를 부르지 않는다 |
 | 읽기 전용 조회 — Revert 미리보기(`previewTranslationRevert`), 키 목록 다음 페이지(`loadMoreTranslationKeys`) | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI — Publish 미리보기와 같이 **`revalidatePath`를 부르지 않는다.** 인증·인가·readiness는 쓰기 Action과 같은 판정을 지난다. More가 Action인 이유는 cursor를 주소에 싣지 않으려는 것이다(audit-ux #19) |
 | `/api/push` | Route Handler | GitHub Actions — Bearer가 **그 프로젝트의 토큰 원문**이다 |
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
+| `/api/mcp` | Route Handler | CLI·코딩 에이전트 — Bearer가 **그 사용자의 개인 토큰**이다(`ApiToken`). **쿠키를 읽지 않는다**(CSRF 방어의 전부). 도구는 Action과 **같은 코어의 형제 껍데기**이고 Action을 부르지 않는다(ARCHITECTURE §6.45) |
 | `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) |
 | `/api/github/callback` | Route Handler | GitHub 리다이렉트 복귀. **나가는 쪽은 Server Action**이 쿠키를 심고 `redirect`한다 — 돌아오는 쪽은 전체 페이지 내비게이션이라 Action이 받을 수 없다. ⚠️ `middleware.ts` matcher에 넣지 않는다(302되면 `code`가 사라진다). **설치·인가·리포 선택 변경이 전부 여기로 온다**(ARCHITECTURE §6.4) |
 
@@ -159,7 +162,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
 | 자격증명 cutover 마무리 | `pnpm credentials:finalize:dev` / `credentials:finalize:prod` — 기본 **verify-only**이고 `--apply`를 줘야 `prisma migrate deploy`까지 간다. ⚠️ **`db:deploy` 말고 prod 마이그레이션 상태를 움직일 수 있는 명령이 이것 하나 더 있다** — 실패하면 트래픽을 막은 채로 둔다 |
 | 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
-| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. 미전달 술어의 공유 조각(`pendingWhere`)과 손 사본들이 "같은 행을 세나"를 재는 유일한 자리다(ARCHITECTURE). `lib/invitation-email/issue.ts`·`lib/auth/lock.ts`·`lib/sync/run.ts`·`lib/keys/**`·`lib/events/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`·**`prisma/migrations/**`**를 건드렸으면 손으로 돌린다 |
+| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. 미전달 술어의 공유 조각(`pendingWhere`)과 손 사본들이 "같은 행을 세나"를 재는 유일한 자리다(ARCHITECTURE). `lib/invitation-email/issue.ts`·`lib/auth/lock.ts`·`lib/sync/run.ts`·`lib/keys/**`·`lib/events/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`·`lib/mcp/**`·`app/api/mcp/**`·`lib/onboarding-run/**`·**`prisma/migrations/**`**를 건드렸으면 손으로 돌린다 |
 
 ### 새 머신 셋업
 

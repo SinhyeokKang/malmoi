@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { Project } from "ts-morph";
 import { describe, expect, it } from "vitest";
 
 import { config as middlewareConfig } from "../../middleware";
@@ -52,6 +53,12 @@ const EXEMPT = new Set([
    */
   "api/push/failure/route.ts",
   "api/pull/route.ts",
+  /**
+   * MCP 진입점 (mcp-connector). **세션이 아니라 개인 토큰(Bearer)이 주체를 정한다** — 호출자가 CLI·코딩 에이전트라 쿠키가 없고,
+   * 쿠키를 읽지 않는 것이 CSRF 방어의 전부다. 가드 호출(`resolveApiToken(`)은 `exempt-route-guards.test.ts`가 센다 — 여기 예외에
+   * 든 순간 이 파일은 그 route의 인증을 못 본다. 프로젝트 인가는 도구마다 기존 인가 함수를 지난다.
+   */
+  "api/mcp/route.ts",
   /**
    * 업로드 이미지 읽기 프록시 (2026-09-28, ARCHITECTURE §6.7). **인가가 없다** — 이 바이트는 오늘도
    * 공개 읽기(Vercel Blob `access: "public"`)이고, 여기서 세션을 읽으면 응답이 캐시 불가가 되어
@@ -116,7 +123,44 @@ const USER_SCOPED_ACTIONS = new Set([
   // `Account`는 사용자 소유다 — 프로젝트를 하나도 안 만든 사용자도 도달해야 한다 (2026-09-07 리뷰 🟡9)
   "projects/actions.ts#startGithubConnectForUser",
   "projects/actions.ts#disconnectGithub",
+  // `ApiToken`은 사용자 소유다 — 계정당 하나이고 프로젝트가 없어도 발급·폐기할 수 있어야 한다(생성 전용 토큰). mcp-connector T5
+  "mcp/actions.ts#issueApiToken",
+  "mcp/actions.ts#revokeApiToken",
 ]);
+
+/**
+ * **인가를 공유 코어로 옮긴 Action** (mcp-connector T4 — design §3 "추출 경계"). Server Action과 MCP 도구가 같은 코어를 부르므로
+ * 인가 호출이 Action 본문이 아니라 코어 본문에 있다. 여기 적힌 코어를 부르는 export는 가드를 지난 것으로 센다 — 대신 **코어 본문이
+ * 프로젝트 가드를 직접 부르는지**를 아래에서 따로 센다(두 홉 모두 호출을 본다. 코어 안에서 헬퍼로 한 겹 더 감추면 못 센다).
+ * `이름 → 파일(리포 루트 기준)`. 옮긴 가족마다 같이 늘린다.
+ */
+const DELEGATED_CORES = new Map([
+  ["saveTranslation", "lib/keys/save-translation.ts"],
+  ["saveTranslationBatch", "lib/keys/save-translation.ts"],
+  ["loadMoreKeys", "lib/keys/load-more.ts"],
+  ["previewRevert", "lib/keys/revert-translation.ts"],
+  ["runRevert", "lib/keys/revert-translation.ts"],
+  ["publishProject", "lib/sync/publish.ts"],
+  ["prepareSync", "lib/import/prepare.ts"],
+  ["loadPreview", "lib/publish/load-preview.ts"],
+  ["changeBaseBranch", "lib/settings/update.ts"],
+  ["renameProject", "lib/settings/update.ts"],
+  ["declareBaseLocale", "lib/sources/base-locale.ts"],
+  ["runArchive", "lib/projects/archive.ts"],
+  ["runUnarchive", "lib/projects/archive.ts"],
+  ["revokePendingInvitation", "lib/auth/members.ts"],
+  ["changeMemberRole", "lib/auth/members.ts"],
+  ["inviteMembers", "lib/invitation-email/create.ts"],
+  ["listLinkedBranches", "lib/onboarding-run/branches.ts"],
+  ["addSources", "lib/onboarding-run/add.ts"],
+  ["importRepository", "lib/onboarding-run/import.ts"],
+  ["rotateToken", "lib/onboarding-run/rotate-token.ts"],
+]);
+
+/** 이름 그대로의 호출 — 앞이 식별자·`.`이면 다른 이름의 꼬리다(`xsaveTranslation(`·`obj.saveTranslation(`). */
+function callsName(code: string, name: string): boolean {
+  return new RegExp(`(?<![\\w.$])${name}\\(`).test(code);
+}
 
 /**
  * 소스 스캔 판정 전에 주석을 벗긴다 (POSTMORTEM 2026-09-18). 이 리포는 "왜"를 주석에 적어 가드·식별자
@@ -133,7 +177,8 @@ function stripComments(source: string): string {
  */
 function exportGuarded(body: string, id: string): boolean {
   const code = stripComments(body);
-  return PROJECT_GUARDS.some((g) => code.includes(`${g}(`)) || (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(code));
+  return PROJECT_GUARDS.some((g) => code.includes(`${g}(`)) || [...DELEGATED_CORES.keys()].some((core) => callsName(code, core)) ||
+    (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(code));
 }
 
 /** readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다. */
@@ -162,6 +207,26 @@ it("사용자 Action의 readSession은 두 거부 반환 없이는 인증으로 
   expect(hasUserGuard(read + none)).toBe(false);
   expect(hasUserGuard(read + outage)).toBe(false);
   expect(hasUserGuard(read + none + outage)).toBe(true);
+});
+
+describe("공유 코어 위임", () => {
+  const morph = new Project({ skipAddingFilesFromTsConfig: true, skipFileDependencyResolution: true });
+
+  it.each([...DELEGATED_CORES])("%s(%s)가 프로젝트 가드를 직접 부른다", (name, file) => {
+    const fn = morph.addSourceFileAtPath(join(ROOT, file)).getFunction(name);
+    expect(fn?.isExported(), `${file}#${name}`).toBe(true);
+    const code = stripComments(fn?.getText() ?? "");
+    expect(PROJECT_GUARDS.some((g) => code.includes(`${g}(`)), `${file}#${name}`).toBe(true);
+  });
+
+  // 검출기가 0을 낼 수 있어야 위의 N>0이 의미를 갖는다 (POSTMORTEM 2026-09-14).
+  it("코어 이름의 꼬리·주석 인용·목록 밖 이름은 위임으로 세지 않는다", () => {
+    expect(exportGuarded("return saveTranslation(getPrisma(), { userId }, parsed.data);", "x.ts#f")).toBe(true);
+    expect(exportGuarded("return presaveTranslation(getPrisma(), { userId }, parsed.data);", "x.ts#f")).toBe(false);
+    expect(exportGuarded("return lib.saveTranslation(getPrisma(), { userId }, parsed.data);", "x.ts#f")).toBe(false);
+    expect(exportGuarded("return write(); // saveTranslation(prisma) 가 인가한다", "x.ts#f")).toBe(false);
+    expect(exportGuarded("return saveTranslations(getPrisma(), { userId }, parsed.data);", "x.ts#f")).toBe(false);
+  });
 });
 
 /**
@@ -789,6 +854,12 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
     expect(isProtectedPath("/projects/new")).toBe(true);
     expect(isProtectedPath("/projects/sample/settings")).toBe(true);
     expect(isProtectedPath("/account")).toBe(true);
+    // `/mcp` (mcp-connector) — `/account`와 같은 모양이다. 접두만 같은 경로·API 진입점은 보호 대상이 아니다.
+    expect(isProtectedPath("/mcp")).toBe(true);
+    expect(isProtectedPath("/mcp.rsc")).toBe(true);
+    expect(isProtectedPath("/%6Dcp")).toBe(true);
+    expect(isProtectedPath("/mcpx")).toBe(false);
+    expect(isProtectedPath("/api/mcp")).toBe(false);
     // 접두 문자열만 같은 경로는 보호 대상이 아니다 — 이 줄이 위 넷을 의미 있게 만든다.
     expect(isProtectedPath("/projectsx")).toBe(false);
     expect(isProtectedPath("/invite/sample")).toBe(false);
@@ -874,8 +945,9 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
   });
 });
 
-it.each(["runRepositoryImport", "checkOpenPullRequest"])("%s는 OWNER의 project:settings로 인가한다", name => {
-  const source = readFileSync(join(APP, "(edit)/projects/actions.ts"), "utf8");
+// runRepositoryImport의 인가는 공유 코어 `importRepository`로 옮겨졌다(mcp-connector T4-c) — 위임 판정은 `DELEGATED_CORES`가 센다.
+it.each([["lib/onboarding-run/import.ts", "importRepository"], ["app/(edit)/projects/actions.ts", "checkOpenPullRequest"]])("%s#%s는 OWNER의 project:settings로 인가한다", (file, name) => {
+  const source = readFileSync(join(ROOT, file), "utf8");
   const declaration = source.match(new RegExp(`export async function ${name}\\b[\\s\\S]*?(?=\\nexport |$)`))?.[0];
   expect(declaration).toBeDefined();
   expect(declaration).toMatch(/getProjectAccess\([\s\S]*?permission:\s*["']project:settings["']/);

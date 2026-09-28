@@ -23,7 +23,9 @@ export type AccessError =
    * 프로젝트가 보관됐다 (7단계). **`forbidden`과 가른다** — 권한은 그대로이고 프로젝트가 멈춘
    * 것이라, "권한이 없다"고 말하면 사용자가 OWNER에게 권한을 달라고 하게 된다.
    */
-  | "archived";
+  | "archived"
+  /** MCP 토큰이 그 동작의 grant를 안 받았다 — 역할은 된다(`lockProjectAccess`). 세션 경로에서는 나오지 않는다. */
+  | "token-scope";
 
 const ACCESS_ERRORS: ReadonlySet<string> = new Set<AccessError>([
   "unauthorized",
@@ -33,6 +35,7 @@ const ACCESS_ERRORS: ReadonlySet<string> = new Set<AccessError>([
   "not-member",
   "unavailable",
   "archived",
+  "token-scope",
 ]);
 
 /**
@@ -48,7 +51,8 @@ export function isAccessError(value: unknown): value is AccessError {
  * 갈래가 늘면 **사전에 키가 없어 컴파일 에러**다 — 지금까지의 `never` 검사와 같은 힘이고 코드는 줄어든다.
  * 던져도 되는 이유는 인자가 우리 코드가 만든 값만 들어오기 때문이다(아래 둘과 다르다).
  */
-const ACCESS = m.errors.access satisfies Record<AccessError, string>;
+// `token-scope`는 MCP 도구 결과와 같은 문장이다 — 사전에 한 벌만 둔다.
+const ACCESS = { ...m.errors.access, "token-scope": m.mcp.errors["token-scope"] } satisfies Record<AccessError, string>;
 
 export function accessErrorMessage(error: AccessError): string {
   return ACCESS[error];
