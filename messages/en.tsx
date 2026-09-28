@@ -600,7 +600,7 @@ export const en = {
                 "Deciding which projects you can open and what you can do in them.",
                 "Showing your teammates who changed a translation and who asked for a sync.",
                 "Writing translations back to the repository a project is connected to, as a pull request.",
-                "Emailing an invitation link to an address a project owner enters. The email holds the link and the project it is for — the project's name, its picture and the role you are invited with. It does not say who invited you, and it has no tracking.",
+                "Emailing an invitation link to an address a project owner enters. The email holds the link and the project it is for — the project's name, its picture if it has one, and the role you are invited with. It does not say who invited you, and it has no tracking.",
                 "Keeping the service running, which includes looking at error logs when something fails.",
                 "Counting visits to the public pages, to see whether people find Malmoi and which docs they read. Only totals are looked at.",
               ],
