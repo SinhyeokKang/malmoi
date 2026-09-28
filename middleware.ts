@@ -39,12 +39,9 @@ export default function middleware(request: NextRequest): NextResponse {
 
   const nonce = createNonce();
   // ⚠️ **`lib/env.ts`를 import하지 않는다** — 그 모듈이 `lib/failure.ts`를 거쳐 `node:crypto`를 물고, 이 파일은 Edge
-  // 런타임이라 빌드가 경고하고 배포에서 모듈 로드가 죽을 수 있다(그러면 **전 페이지**가 500이다). 셋 다 선택값이라
+  // 런타임이라 빌드가 경고하고 배포에서 모듈 로드가 죽을 수 있다(그러면 **전 페이지**가 500이다). 둘 다 선택값이라
   // `optionalEnv`와 같은 규칙(빈 문자열 = 없음)을 손으로 적용한다.
-  const csp = buildCsp(cspEnvironment({ nodeEnv: process.env.NODE_ENV || undefined, vercelEnv: process.env.VERCEL_ENV || undefined }), {
-    nonce,
-    blobHost: process.env.BLOB_PUBLIC_HOST || undefined,
-  });
+  const csp = buildCsp(cspEnvironment({ nodeEnv: process.env.NODE_ENV || undefined, vercelEnv: process.env.VERCEL_ENV || undefined }), { nonce });
   // ⚠️ **요청 쪽에도 싣는다** — Next는 렌더 중 **요청** 헤더의 CSP에서 nonce를 뽑아 자기 스크립트에 붙인다.
   // 응답에만 실으면 모든 스크립트가 nonce 없이 나가 이 정책에 막힌다.
   const requestHeaders = new Headers(request.headers);

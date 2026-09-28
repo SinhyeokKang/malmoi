@@ -34,7 +34,14 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/__tests__/**/*.test.{ts,tsx}"],
-    exclude: ["node_modules/**", ".next/**"],
+    /*
+     * ⚠️ **`.claude/worktrees/**`가 여기 있어야 한다** (2026-09-28, POSTMORTEM). Agent 툴의 워크트리 격리가
+     * 워크트리를 **리포 안**에 만드는데, Vitest는 `.gitignore`를 보지 않으므로 그 복사본의 테스트까지
+     * 수집한다 — 실측에서 파일이 501개가 아니라 **1002개**로 잡혔고, 워크트리엔 `node_modules`가 없어
+     * 대부분 실패해 `/push` 로컬 게이트가 red로 **오진**됐다. `passWithNoTests`를 끈 방어가 0개로 줄어드는
+     * 사고를 막는다면, 이 줄은 **배수로 늘어나는 사고**를 막는다.
+     */
+    exclude: ["node_modules/**", ".next/**", ".claude/worktrees/**"],
     // next-auth는 `next/server`를 확장자 없이 import해 Node ESM 해석이 실패한다 — 인라인해야 진짜
     // 핸들러를 부를 수 있다 (`lib/login-link/__tests__/http.test.ts`의 `AUTH_URL` 회귀).
     server: { deps: { inline: ["next-auth"] } },
