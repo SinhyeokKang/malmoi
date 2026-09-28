@@ -13,15 +13,22 @@
  */
 
 /**
+ * ⚠️ **타일 두 갈래는 32×32 고정 중첩 표 안에 선다** (malmoi#140 — Gmail iOS에서 폴백 타일이 세로로 늘었다).
+ * 옆 텍스트 열(이름 20 + 1 + 역할 17 = 38px)이 32보다 높고 `<td height>`는 최소값이라, 타일 셀이 카드 행에
+ * 직접 붙으면 행과 같이 38로 늘어난다. 행에 붙는 바깥 셀은 색 없이 세로 가운데 정렬만 하고, 색·이미지는 안쪽
+ * 셀이 든다. 안쪽 셀의 `line-height:0;font-size:0`은 깨진 이미지 자리표시·공백이 줄 높이로 셀을 미는 것을,
+ * `overflow:hidden`은 넘치는 자리표시를 막는다(메일 클라이언트마다 지원이 갈린다 — 1차 방어는 중첩 표다).
+ */
+/**
  * 썸네일 갈래. ⚠️ **width·height 속성이 없다** — `normalizeImage`가 `fit: "inside"`라 가로·세로로 긴 것이
  * 오고 메일은 `object-fit`을 무시한다. `width="32"`를 두면 세로로 긴 이미지가 `max-height`에 눌려 찌그러진다.
  * radius는 `<img>`에 건다(Gmail은 `<td>` radius가 자식을 자르지 않는다). 셀에 색을 깔지 않는다 — 투명
  * 이미지의 배경이 프로젝트마다 달라지면 안 된다(`ImageTile`과 같은 판정). `alt=""`는 이름이 바로 옆이라서다.
  */
-export const INVITATION_EMAIL_TILE_IMAGE = `<td width="32" height="32" align="center" valign="middle" style="width:32px;height:32px;"><img src="{{TILE_SRC}}" alt="" style="display:block;width:auto;height:auto;max-width:32px;max-height:32px;border:0;outline:none;text-decoration:none;border-radius:8px;"></td>`;
+export const INVITATION_EMAIL_TILE_IMAGE = `<td width="32" align="center" valign="middle" style="width:32px;"><table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0" border="0" style="width:32px;height:32px;border-collapse:separate;"><tr><td width="32" height="32" align="center" valign="middle" style="width:32px;height:32px;max-height:32px;line-height:0;font-size:0;overflow:hidden;"><img src="{{TILE_SRC}}" alt="" style="display:block;width:auto;height:auto;max-width:32px;max-height:32px;border:0;outline:none;text-decoration:none;border-radius:8px;"></td></tr></table></td>`;
 
-/** 폴백 갈래 — 톤 셀 + 흰 Box 글리프(파일은 2x인 32×32). radius는 셀에 건다. */
-export const INVITATION_EMAIL_TILE_FALLBACK = `<td width="32" height="32" align="center" valign="middle" bgcolor="{{TILE_BG}}" style="width:32px;height:32px;background-color:{{TILE_BG}};border-radius:8px;"><img src="{{TILE_SRC}}" width="16" height="16" alt="" style="display:block;width:16px;height:16px;border:0;outline:none;text-decoration:none;"></td>`;
+/** 폴백 갈래 — 톤 셀 + 흰 Box 글리프(파일은 2x인 32×32). radius는 색을 든 안쪽 셀에 건다. */
+export const INVITATION_EMAIL_TILE_FALLBACK = `<td width="32" align="center" valign="middle" style="width:32px;"><table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0" border="0" style="width:32px;height:32px;border-collapse:separate;"><tr><td width="32" height="32" align="center" valign="middle" bgcolor="{{TILE_BG}}" style="width:32px;height:32px;max-height:32px;line-height:0;font-size:0;overflow:hidden;background-color:{{TILE_BG}};border-radius:8px;"><img src="{{TILE_SRC}}" width="16" height="16" alt="" style="display:block;width:16px;height:16px;border:0;outline:none;text-decoration:none;"></td></tr></table></td>`;
 
 export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
