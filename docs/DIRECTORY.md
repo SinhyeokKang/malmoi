@@ -599,7 +599,7 @@ lib/
   bounded-body.ts       ⚠️ 잎. 외부 진입점 본문을 상한 안에서만 읽는다(`/api/push`·`/api/push/failure`) —
                         선언된 길이는 읽기 전에, chunked는 읽는 도중에 끊는다. json()·text()를 먼저 부르면 다 읽은 뒤다
   cause.ts              ⚠️ 잎. causeMessage — 잡은 값의 메시지. `(cause as Error).message`는 Error 아닌 throw에서 undefined다
-  utc-time.ts           ⚠️ 잎. 절대 시각의 UTC 표기 하나(`2026-09-10 12:00 UTC`) — Logs·Publish가 같이 쓴다
+  utc-time.ts           ⚠️ 잎. 절대 날짜·시각의 UTC 표기 하나(`Sep 27, 2026` · `Sep 27, 2026 16:34 UTC`) — 앱의 절대 날짜가 전부 지난다
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
   env.ts db.ts githash.ts utils.ts relative-time.ts tone.ts
