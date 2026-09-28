@@ -6,17 +6,16 @@
 
 | 항목 | 값 | 이유 |
 | --- | --- | --- |
-| DPR | 2 | 표시 폭 720 칸에서 흐리지 않다 |
-| 크롭 | 조작 영역 중심의 부분 크롭 · 원본 폭 ≤ 850 CSS px | 앱 13px가 720 칸에서 11px 이상으로 남는다 |
-| 파일 폭 | ≤ 1700px | DPR 2 × 850 |
-| 표시 폭 | 720 | 본문 칼럼 가득(DESIGN §6.61) |
-| 최소 글자 | 표시 기준 11px | 12px 문구가 많은 화면은 780 CSS px 안팎으로 더 좁힌다 |
+| 뷰포트 | **1280×800 CSS px** (16:10) — README 히어로만 1400×875 | 앱의 최소 폭 1280이다 (2026-09-28 사용자) |
+| DPR | 2 | 캡처 원본이 곧 파일이다 — 줄이지 않는다 |
+| 범위 | **뷰포트 전체** — 셸(LNB·헤더)과 모달의 Dim까지 그대로 | 독자는 글자를 읽으려는 게 아니라 화면의 전반적인 모양을 본다 (2026-09-28 사용자). 표시 폭 720에서 앱 글자가 작아지는 것은 받아들였다 |
+| 파일 | 2560×1600 (히어로 2800×1750) | DPR 2 × 뷰포트 |
 | 형식 | WebP(`sharp`, quality 90) | 같은 origin 정적 파일이라 CSP `img-src 'self'`로 충분하다 |
-| 액자·배경 | **파일에 굽지 않는다** | 액자(`--border-subtle` · radius 12 · `shadow-low`)는 렌더러 CSS가 그린다. 둥근 모달은 모서리의 배경막이 안 들어오게 안쪽으로 자른다 |
+| 액자·배경 | **파일에 굽지 않는다** | 액자(`--border-subtle` · radius 12 · `shadow-low`)는 렌더러 CSS가 그린다 |
 
-- 폭이 넘치는 화면은 뷰포트를 바꾸지 않고 **촬영 직전 DOM에서 그 칼럼·모달의 폭만 줄인다**(`style.width`). 저장·제출은 하지 않는다. 앱의 모달과 번역 화면 칼럼은 폭을 따라 흐르므로 실물과 같은 배치가 나온다.
-- 캡처는 `page.cdp("Page.captureScreenshot", { clip: { …, scale: 1 } })`로 받는다 — `scale`은 DPR에 곱해지므로 1이 2x 파일이다. `page.screenshot()`의 `clip`은 CSS 1x로 떨어진다.
-- 촬영 직전 `innerWidth`·`devicePixelRatio`를 확인한다(ego-browser 기본 창은 DPR 2였다).
+- ⚠️ **2026-09-28 전 규격은 조작 영역 중심의 부분 크롭(원본 폭 ≤ 850 CSS px · 표시 기준 최소 글자 11px)이었다** — 사용자가 뷰포트 전체로 뒤집었다. README도 같은 파일을 쓴다(`docs/assets/readme/`에는 README 전용 두 장 — 히어로 · Logs — 만 있다).
+- 뷰포트는 `page.cdp("Emulation.setDeviceMetricsOverride", { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false })`로 고정한다(끝나면 `Emulation.clearDeviceMetricsOverride`). 캡처는 `page.cdp("Page.captureScreenshot", { clip: { x: 0, y: 0, width: 1280, height: 800, scale: 1 } })` — `scale`은 DPR에 곱해지므로 1이 2x 파일이다.
+- 캡처 직전 마우스를 뷰포트 구석으로 옮긴다 — hover 면이 행에 남는다. Next dev 오버레이(`nextjs-portal`)는 DOM에서 지운다(브라우저 확장이 `<html>`에 속성을 붙여 hydration 경고를 띄운다).
 
 ## 환경 {#environment}
 
@@ -62,18 +61,22 @@
 
 | 에셋 | 소스 | blob | 치수 |
 | --- | --- | --- | --- |
-| /guide/push-token-secret.webp | lib/onboarding/workflow.ts | 863ed9ad9c93fd6265ccbd6e8719ce567b49ca0b | 1672x876 |
-| /guide/workflow-file.webp | components/settings/ci-card.tsx, components/onboarding/workflow-block.tsx, lib/onboarding/workflow.ts | a51dd7329e19754536eec21e9165a067174e61c2, e099fcb70b6fca21b04b07c69217a0b2a0018f9e, 863ed9ad9c93fd6265ccbd6e8719ce567b49ca0b | 1496x1036 |
-| /guide/actions-policy.webp | lib/onboarding/workflow.ts, .github/actions/malmoi-i18n-push/action.yml | 863ed9ad9c93fd6265ccbd6e8719ce567b49ca0b, 7278e8afabcf49ab7691443251786b3352c276c6 | 1672x1044 |
-| /guide/translation-editor.webp | components/translations/workspace/key-list.tsx, components/translations/workspace/locale-panel.tsx | 2b76bc12d1bef23dc6db41b0877ce19bd6f4c52b, 017cfe5e337051262ffdd18f1c9bcc14962c1169 | 1700x1616 |
-| /guide/publish-preview.webp | components/publish-button.tsx, lib/publish/preview.ts | 0b34325ec125423306f9a2bd15c71a02d8e0c389, 53a5195bd22c62e1f778cca4f7c3bb46d5f0515c | 1496x1160 |
+| /guide/push-token-secret.webp | lib/onboarding/workflow.ts | 863ed9ad9c93fd6265ccbd6e8719ce567b49ca0b | 2560x1600 |
+| /guide/workflow-file.webp | components/settings/ci-card.tsx, components/onboarding/workflow-block.tsx, lib/onboarding/workflow.ts | a51dd7329e19754536eec21e9165a067174e61c2, e099fcb70b6fca21b04b07c69217a0b2a0018f9e, 863ed9ad9c93fd6265ccbd6e8719ce567b49ca0b | 2560x1600 |
+| /guide/actions-policy.webp | lib/onboarding/workflow.ts, .github/actions/malmoi-i18n-push/action.yml | 863ed9ad9c93fd6265ccbd6e8719ce567b49ca0b, 7278e8afabcf49ab7691443251786b3352c276c6 | 2560x1600 |
+| /guide/translation-editor.webp | components/translations/workspace/key-list.tsx, components/translations/workspace/locale-panel.tsx | cafd131a5e8b57ae4a29f982c003ede91aab8a11, f17f4f6797c264157960eb1f78c2ffc592125130 | 2560x1600 |
+| /guide/publish-preview.webp | components/publish-button.tsx, lib/publish/preview.ts | 5da54cab3106be7df63d6093f2d28c42f2b643d5, d9707bc9dbbca0146284bda805a9bd1d7faa9ee0 | 2560x1600 |
+
+- ⚠️ **셸이 컷에 들어간 뒤로 LNB·패널 머리·카드 머리(`components/shell/**`·`components/ui/panel-card.tsx` 등)의 변경도 모든 컷을 낡게 한다** — 소스로 올리면 신호가 죽으므로(`messages/en.tsx`와 같은 이유) 올리지 않는다. 셸을 바꿨으면 컷 전체를 손으로 다시 본다.
 
 ## 알려진 벽 {#walls}
 
 - **GitHub App 설치 왕복**(①의 1클릭 설치·요청 복귀·승인 복귀)은 로컬에서 못 밟는다 — 설치 URL이 `redirect_uri`를 안 받아 프로덕션 callback으로 간다. 찍어야 하면 수동으로 찍고, 아니면 건너뛴다.
 - **④ `Malmoi is ready`는 프로젝트를 새로 만들어야만 닿는다.** OWNER 계정이 활성 프로젝트 셋(상한)을 이미 가져 생성이 막히고, 만들면 dev DB에 일회용 프로젝트가 쌓인다. 게다가 그 화면은 push 토큰 원문을 보인다. 같은 워크플로 문구는 Settings → CI integration → Workflow file 모달에서 찍는다(본문도 "or later from Settings"로 안내한다).
+- ⚠️ **미전달 표시를 지우는 길** (2026-09-28): 촬영용 편집을 원래 값으로 다시 저장하면 값은 리포와 같아지고 표시만 남는다. 그 셀에 전달된 적 있는 값이 없으면 **Revert to last sent가 꺼진다**(OWNER에게도 — "The last sent version isn't available"). 그때 OWNER의 Publish 미리보기가 *Nothing differs from dev*를 내고, 그 Publish는 **PR 없이 보낸 것으로 표시만 한다**(GitHub 쓰기 없음, Logs에 Publish 사건 1건). 편집자 장 컷은 이 정리 **뒤에** 찍는다 — 남으면 번역 화면에 `Repository updates are paused…` 배너와 `Not sent` 칩이 선다.
 - **Publish 미리보기는 미전달 편집이 있어야 열린다** — 없으면 Publish가 `aria-disabled`다. 편집을 하나 저장해 찍으면 그 셀에 미전달 표시가 남는다. **Revert to last sent**는 마지막 전달 값이 없는 셀에서 꺼져 있을 수 있고, 같은 값을 다시 저장해도 미전달 표시는 안 지워진다(`lib/keys/save-key.ts`가 저장마다 새 토큰을 쓴다). 촬영 전에 되돌릴 길을 정한다.
-- **GitHub 설정 화면에서 뷰포트 에뮬레이션(`Emulation.setDeviceMetricsOverride`)은 자동 모드 분류기가 막았다**(2026-09-27). 칼럼 폭을 DOM에서 줄이는 쪽으로 찍는다.
+- **GitHub 설정 화면에서 뷰포트 에뮬레이션(`Emulation.setDeviceMetricsOverride`)은 자동 모드 분류기가 막았다**(2026-09-27). ⚠️ 2026-09-28에는 앱에서 건 에뮬레이션이 같은 탭의 github.com 이동 뒤에도 유지돼 막히지 않았다 — 막히면 앱 탭에서 걸고 이동한다. GitHub 테마는 촬영 계정의 설정(지금 다크)을 따른다 — 바꾸지 않는다.
+- **로그인 전환은 공급자의 계정 선택 화면으로 된다** — OWNER는 GitHub, EDITOR는 Google 계정이다. 비밀번호·2단계 인증을 묻으면 사람에게 넘긴다.
 
 ## 진행 상태 {#progress}
 
@@ -83,3 +86,4 @@
 - GitHub 정책 컷의 옵션 문구 `Allow OWNER, and select non-OWNER, actions and reusable workflows`를 실물(조직 소유 리포)에서 확인했다.
 - 2026-09-27 `/guide/workflow-file.webp` 재촬영 — #120이 모달의 중복 문장(`Save this in your repository as …`)을 지우고 힌트 링크를 `Add the workflow`로 바꿨다.
 - 2026-09-27 action v2(action-run-cache) — `workflow.ts`(checkout v7.0.1·`@malmoi-i18n-push-v2`)·`action.yml`(셋업 판 교체) 변경으로 `push-token-secret`·`workflow-file`·`actions-policy`가 stale — **재촬영 없이 blob SHA만 갱신**했다. 바뀐 줄은 `workflow-file`의 스크롤 아래이고, 허용 목록 넷(`@*`)과 GitHub 화면은 그대로다.
+- 2026-09-28 **규격 전환 — 뷰포트 전체(1280×800 · DPR 2 · 셸과 Dim 포함)로 다섯 컷 전부 재촬영**(사용자). 같은 날 셸 변경(PanelHeader·카드 머리 12/16, 번역 화면 카드 머리 52, LNB Changelog 버전 배지)이 들어간 화면이다. README가 같은 다섯 파일을 쓰고, README 전용은 `docs/assets/readme/hero.webp`(1400×875)·`logs.webp`(1280×800) 둘이다. 편집자 장 컷(`translation-editor`·`publish-preview`)은 EDITOR 계정이고 표시 이름을 `Jordan Lee`로 치환했다. Publish 촬영용 편집(`common.cancel` fr `Abandonner`)은 `Annuler`로 되돌리고 OWNER의 "Nothing differs" Publish로 미전달 표시를 지웠다.
