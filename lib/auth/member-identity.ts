@@ -29,11 +29,18 @@ export type MemberIdentity = {
    * `null`이면 이니셜 없는 **중립 원**이다 — 자리 채움 문구의 첫 글자(`N`·`C`)도 사람을 안 가리킨다.
    */
   avatarSeed: string | null;
+  /**
+   * 아바타 사진. **1행 갈래와 무관하게 계정의 사진이다** — `/account`·셸이 사진을 그리는데 이 행만
+   * 이니셜이면 같은 계정이 화면마다 다른 얼굴이 된다(2026-09-28 사용자). 못 읽은 행만 `null`이다.
+   */
+  avatarImage: string | null;
 };
 
 export function planMemberIdentity(member: {
   name: string | null;
   emailLabel: string | null;
+  /** 대기 초대에는 계정이 없어 사진도 없다 — 그 호출부는 넘기지 않는다. */
+  image?: string | null;
   readable: boolean;
 }): MemberIdentity {
   /**
@@ -42,18 +49,19 @@ export function planMemberIdentity(member: {
    * 판정은 이 불리언 하나이고 라벨 문자열을 비교하지 않는다.
    */
   if (!member.readable) {
-    return { primary: m.members.unreadableLabel, secondary: null, unnamed: true, avatarSeed: null };
+    return { primary: m.members.unreadableLabel, secondary: null, unnamed: true, avatarSeed: null, avatarImage: null };
   }
 
+  const avatarImage = member.image ?? null;
   // 공백뿐인 이름은 이름이 아니다 — `Avatar`가 `"?"`로 떨어뜨리고 색도 빈 문자열에서 뽑힌다.
   const name = member.name?.trim() ?? "";
   if (name !== "") {
-    return { primary: name, secondary: member.emailLabel, unnamed: false, avatarSeed: name };
+    return { primary: name, secondary: member.emailLabel, unnamed: false, avatarSeed: name, avatarImage };
   }
 
   if (member.emailLabel !== null) {
-    return { primary: member.emailLabel, secondary: null, unnamed: false, avatarSeed: null };
+    return { primary: member.emailLabel, secondary: null, unnamed: false, avatarSeed: null, avatarImage };
   }
 
-  return { primary: m.members.unnamed, secondary: null, unnamed: true, avatarSeed: null };
+  return { primary: m.members.unnamed, secondary: null, unnamed: true, avatarSeed: null, avatarImage };
 }

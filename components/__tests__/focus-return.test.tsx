@@ -149,8 +149,8 @@ describe("Dialog 트리거 — 진행 중에도 포커스를 지킨다 (#32·#32
   it("역할 변경을 확정하면 그 행의 역할 셀렉트로 돌아온다 — 트리거 없는 Dialog다", async () => {
     const now = new Date("2026-09-17T00:00:00Z");
     const members: MemberView[] = [
-      { userId: "u1", name: "Owner", emailLabel: "o***@example.com", readable: true, role: "OWNER", joinedAt: now },
-      { userId: "u2", name: "Alice", emailLabel: "a***@example.com", readable: true, role: "EDITOR", joinedAt: now },
+      { userId: "u1", name: "Owner", emailLabel: "o***@example.com", image: null, readable: true, role: "OWNER", joinedAt: now },
+      { userId: "u2", name: "Alice", emailLabel: "a***@example.com", image: null, readable: true, role: "EDITOR", joinedAt: now },
     ];
     const response = deferred<{ ok: true }>();
     mocks.changeMember.mockReturnValue(response.promise);

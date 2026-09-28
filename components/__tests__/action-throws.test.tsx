@@ -44,8 +44,8 @@ import type { MemberView, PendingInvitation } from "@/lib/auth/query";
 import { m } from "@/lib/i18n";
 
 const now = new Date("2026-09-17T00:00:00Z");
-const alice: MemberView = { userId: "u2", name: "Alice", emailLabel: "a***@example.com", readable: true, role: "EDITOR", joinedAt: now };
-const owner: MemberView = { userId: "u1", name: "Owner", emailLabel: "o***@example.com", readable: true, role: "OWNER", joinedAt: now };
+const alice: MemberView = { userId: "u2", name: "Alice", emailLabel: "a***@example.com", image: null, readable: true, role: "EDITOR", joinedAt: now };
+const owner: MemberView = { userId: "u1", name: "Owner", emailLabel: "o***@example.com", image: null, readable: true, role: "OWNER", joinedAt: now };
 const invite: PendingInvitation = { id: "i1", emailLabel: "t***@example.com", readable: true, role: "EDITOR", expiresAt: new Date("2026-09-24T00:00:00Z"), invitedByName: "Owner" };
 
 const byLabel = (label: string) => {

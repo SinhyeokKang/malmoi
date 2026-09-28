@@ -152,8 +152,8 @@ describe("#12 — 중복 refresh를 지우고 대기가 커밋을 덮는다", ()
 
 describe("#13 — 행 잠금과 토스트·닫기가 커밋 뒤다", () => {
   const now = new Date("2026-09-17T00:00:00Z");
-  const alice: MemberView = { userId: "u2", name: "Alice", emailLabel: "a***@example.com", readable: true, role: "EDITOR", joinedAt: now };
-  const owner: MemberView = { userId: "u1", name: "Owner", emailLabel: "o***@example.com", readable: true, role: "OWNER", joinedAt: now };
+  const alice: MemberView = { userId: "u2", name: "Alice", emailLabel: "a***@example.com", image: null, readable: true, role: "EDITOR", joinedAt: now };
+  const owner: MemberView = { userId: "u1", name: "Owner", emailLabel: "o***@example.com", image: null, readable: true, role: "OWNER", joinedAt: now };
   const invite: PendingInvitation = { id: "i1", emailLabel: "t***@example.com", readable: true, role: "EDITOR", expiresAt: new Date("2026-09-24T00:00:00Z"), invitedByName: "Owner" };
 
   it("멤버 제거: 목록 커밋 전까지 그 행의 Remove가 잠긴 채 돈다", async () => {

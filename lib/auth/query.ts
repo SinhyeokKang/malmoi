@@ -70,6 +70,8 @@ export type MemberView = {
    * 관측자는 그 프로젝트의 EDITOR 이상이고 view-source로 읽는다. 안 읽는 것이 안 새는 것이다.
    */
   emailLabel: string | null;
+  /** 계정 사진(공급자 URL 또는 업로드 Blob URL). 못 읽은 행은 `null`이다 — 이름과 같은 봉투다. */
+  image: string | null;
   /**
    * 이 행의 PII를 **복호화할 수 있었나**. `false`면 `name`·`emailLabel`의 값은 폴백이고 사람의 것이 아니다.
    *
@@ -89,7 +91,7 @@ export async function loadMembers(prisma: PrismaClient, projectId: string): Prom
   const storedRows = await prisma.projectMember.findMany({
     where: { projectId },
     // ⚠️ `email`을 **읽되 돌려주지 않는다** — 가리려면 원문이 필요하고, 나가면 안 되는 것은 반환값이다.
-    select: { userId: true, role: true, createdAt: true, user: { select: { id: true, name: true, email: true, emailLookup: true } } },
+    select: { userId: true, role: true, createdAt: true, user: { select: { id: true, name: true, email: true, emailLookup: true, image: true } } },
     orderBy: { createdAt: "asc" },
   });
   /**
@@ -111,6 +113,7 @@ export async function loadMembers(prisma: PrismaClient, projectId: string): Prom
       userId: r.userId,
       // 못 읽은 행은 이름도 못 읽는다 — 옛 값을 그럴듯하게 보여줄 자리가 없다.
       name: r.user?.name ?? null,
+      image: r.user?.image ?? null,
       emailLabel: unreadable ? m.common.unreadable : r.user?.email ? (labels[i] ?? null) : null,
       readable: !unreadable,
       role: r.role,
