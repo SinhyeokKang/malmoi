@@ -43,7 +43,7 @@ const SITES: { path: string; head: string; count: number }[] = [
 const FIXED: { path: string; count: number }[] = [
   { path: "components/translations/workspace/tree-panel.tsx", count: 1 },
   { path: "components/translations/workspace/key-list.tsx", count: 1 },
-  { path: "components/translations/workspace/locale-panel.tsx", count: 1 },
+  { path: "components/translations/workspace/locale-panel.tsx", count: 2 },
   { path: "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/loading.tsx", count: 1 },
   { path: "components/landing/mockup/translations.tsx", count: 3 },
 ];
