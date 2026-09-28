@@ -2555,3 +2555,17 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - grep: `rg -n "maskedEmailLabels\(" lib app components` → 각 호출의 입력이 **사람(주소) 단위로 distinct인지** 확인한다. 행 ≠ 사람인 목록(사건·셀 메타·이력·감사 로그)을 그대로 넣으면 같은 결함이다. 2026-09-29 전수: `lib/events/query.ts:148` `loadEventActors`(`distinct: ["actorUserId"]` — 사람 단위, 안전) · `lib/events/query.ts:178` `present`(수정) · `lib/auth/query.ts:108` `loadMembers`(`@@unique([projectId, userId])` — 안전) · `lib/auth/query.ts:187` `loadPendingInvitations`(수정) · `app/(edit)/projects/actions.ts:160`(원소 하나 — 안전). 남은 해당 없음.
   - **라벨·마스킹 테스트의 픽스처는 같은 대상의 행을 둘 이상 넣는다.** 대상당 한 행 픽스처는 "목록 안에서의 유일성" 결함을 원리적으로 못 본다 — #18은 서로 다른 두 대상의 충돌, 이번은 같은 대상의 자기 충돌로 같은 함수의 양 끝을 밟았다.
   - **원문 노출 가드는 로더 출력 전체를 직렬화해 센다**(`JSON.stringify(...)).not.toContain(<시드 주소>)`). 화면 검증은 이름이 가리므로 그물이 아니다 — 새 PII 소비 로더(MCP 도구 포함)는 이 가드를 같이 든다.
+
+### 2026-09-29 — 중첩 JSON 표면의 빈 `{}` 로케일 파일에 번역이 최상위 점 키로 나갔다 ([malmoi#147](https://github.com/SinhyeokKang/malmoi/issues/147))
+
+- **영역**: `lib/adapters/json-catalog.ts`(`read`의 파일별 관측 · `writeWithErrors`의 관측 우선) · `lib/adapters/json-style.ts`(`emptyCatalog`)
+- **증상**: 폐기용 리포 `i18n-order-check` PR #12(MCP Publish)에서 `locales/fr.json`이 `{}`(CRLF) → `{ "menu.openFile": "…" }`가 됐다. 형제 en/ja/ko는 `{ "menu": { "openFile": … } }`이고 push도 "json-catalog (중첩)"을 보고했다. 값은 왕복했지만(재push가 점 키를 `menu.openFile`로 읽는다) 파일 구조가 형제와 어긋나, 평탄 키 폴백이 없는 런타임(vue-i18n, i18next `ignoreJSONStructure: false`)에서는 그 로케일이 빈다. 그 `{}`는 Malmoi가 fr의 마지막 값을 비울 때 직접 쓴 것(PR #10, `emptyCatalog`)이다.
+- **근본 원인**: 파일별 관측(§1.35 — 위 musicblocks 항목이 도입했다)은 "중첩 객체가 하나라도 있나"를 boolean으로 냈고 **증거 없음을 표현할 자리가 없었다** — 키 0개 파일은 "객체 없음 = 평평"으로 읽혀 `nestedByPath`에 `false`로 저장됐다. writer는 파일별 관측을 표면 값보다 앞세운다(형제 때문에 평평한 파일이 쪼개지는 손실을 막는 옳은 순서). 두 규칙이 각각 옳은 채로 만나 "비어 있음"이 "평평함"을 이겼다. 빈 파일을 만드는 경로(`emptyCatalog`, audit #1)가 파일별 관측보다 나중에 생겨, 관측 쪽의 암묵 전제("로케일 파일에는 항목이 있다")를 아무도 다시 보지 않았다.
+- **그물**:
+  - 잡은 것: `/roundtrip` 실물 — PR diff에서 형제와 다른 모양을 눈으로 봤다.
+  - 놓친 것: 어댑터 단위·contract 매트릭스는 **항목 있는 원본**으로만 파일별 관측을 쟀고, `emptyCatalog` 테스트는 "비우면 `{}`"까지만 봤다 — **비운 뒤 다시 채우는 왕복**이 없었다. 값은 왕복하므로 값 비교 검사(pull no-edits·dry run)도 green이었다 — 표현 결함은 값 비교가 원리적으로 못 본다.
+- **수정**: read가 `{}`를 관측하지 않고(키 부재 = "표면 값으로"), write는 원본이 `{}`이면 **저장된 옛 관측도** 버리고 표면의 `nested`를 따른다 — 이미 적재된 표면이 다음 push 전에도 고쳐진다(`e3fb013a`). `{}`가 실제로 말하는 줄바꿈·BOM은 그대로 따른다. 비움 → 채움 왕복·결정성 테스트를 추가했고 read·write 각각의 뮤테이션이 red다.
+- **재발 방지**:
+  - grep: `rg -n "ByPath\[|observe[A-Z]\w*\(" lib/adapters --glob '!**/__tests__/**'` → 원본에서 **표현을 관측하는** 자리마다 "항목 0개 원본(`{}`·빈 파일)이면 무엇을 관측하나"를 묻는다. 2026-09-29 전수: 파일별 중첩 관측은 `json-catalog.ts:172` 한 곳(수정). `observeJsonStyle`(json-catalog·chrome-locales·`emptyCatalog`)은 `{}`에서 들여쓰기 `none`→기본 2칸, `compactPaths` 빈 집합, 이스케이프 두 축 기본값 — 증거 없는 축이 이미 기본으로 떨어진다(실측, 해당 없음).
+  - **Malmoi가 스스로 쓰는 퇴화 출력(`emptyCatalog` 같은 빈 파일)은 다음 read·write의 입력으로 왕복 테스트한다** — 쓰기만 테스트하면 그 출력이 관측기를 속이는지 모른다.
+  - 관측값이 boolean이면 "증거 없음"은 **키 부재**로 표현한다 — 값 `false`로 접지 않는다. `nestedByPath`의 부재는 이미 "표면 값으로"를 뜻한다.
