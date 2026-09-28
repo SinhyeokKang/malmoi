@@ -4,7 +4,15 @@ import { logFailure } from "@/lib/github-connect/log";
 
 // DB 커밋 뒤 캐시 장애가 성공한 쓰기를 실패로 뒤집지 않게 한다.
 export function revalidateAfterCommit(scope: string, path = "/"): void {
-  try { revalidatePath(path, "layout"); }
+  settleRevalidate(scope, () => revalidatePath(path, "layout"));
+}
+
+/**
+ * 커밋 뒤 재검증 호출 **하나**를 감싼다 — 던지면 로그만 남긴다. 호출부가 경로·type을 그대로 적어 두려고 콜백을 받는다
+ * (`revalidateAfterCommit`은 layout 하나라 페이지 경로를 못 싣는다). 경로마다 따로 감싸야 앞 경로의 실패가 뒤 경로를 건너뛰지 않는다.
+ */
+export function settleRevalidate(scope: string, revalidate: () => void): void {
+  try { revalidate(); }
   catch (error) { logFailure(`${scope}-cache`, error); }
 }
 

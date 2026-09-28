@@ -1,6 +1,6 @@
 "use server";
 
-import { redrawIfArchived, revalidateAfterCommit } from "@/lib/revalidate-after-commit";
+import { redrawIfArchived, revalidateAfterCommit, settleRevalidate } from "@/lib/revalidate-after-commit";
 
 import { projectImageObjectKey, planProjectImageDelete, IMAGE_MAX_BYTES, type UploadReject } from "@/lib/upload/image";
 import { normalizeImage } from "@/lib/upload/normalize";
@@ -198,7 +198,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   try {
     locked = await prisma.$transaction(async (tx) => {
       // GitHub 왕복(초 단위) 동안 강등·보관이 끝났을 수 있다 — 잠금 뒤 다시 본다.
-      const locked = await lockProjectAccess(tx, { projectId, userId, permission: "project:settings" });
+      const locked = await lockProjectAccess(tx, { projectId, userId, permission: "project:settings", tokenId: undefined });
       if (locked.status !== "ok") return locked;
       await tx.project.update({
         where: { id: projectId, repositoryId: project.repositoryId ?? null, repoOwner: project.repoOwner, repoName: project.repoName },
@@ -275,12 +275,12 @@ export async function updateRepositorySettings(raw: {
   const outcome = await changeBaseBranch(getPrisma(), { userId: session.userId }, parsed.data);
   if (!outcome.ok) return redrawIfArchived(slug, outcome.error, outcome);
 
-  revalidatePath(`/projects/${slug}/settings`);
+  settleRevalidate("base-branch", () => revalidatePath(`/projects/${slug}/settings`));
   /**
    * ⚠️ **브랜치를 보이는 화면이 2026-09-15에 둘이 됐다** — Home의 메타 열과 Sync 확인 Dialog의
    * 본문이 그 값을 읽는다. 전 주석("이 화면 하나다")이 그때 거짓이 됐다.
    */
-  revalidatePath(`/projects/${slug}`, "layout");
+  settleRevalidate("base-branch", () => revalidatePath(`/projects/${slug}`, "layout"));
   return { ok: true };
 }
 
@@ -340,7 +340,7 @@ export async function uploadProjectImage(form: FormData): Promise<ProjectImageRe
     stage = "database-update";
     // 네트워크 I/O는 잠금 밖, 이전 이미지 삭제는 커밋 뒤다. sharp·Blob이 초 단위라 권한·보관은 잠금 뒤 다시 본다.
     previous = await prisma.$transaction(async tx => {
-      const locked = await lockProjectAccess(tx, { projectId, userId: session.userId, permission: "project:settings" });
+      const locked = await lockProjectAccess(tx, { projectId, userId: session.userId, permission: "project:settings", tokenId: undefined });
       if (locked.status !== "ok") return locked;
       const row = await tx.project.findUnique({ where: { id: projectId }, select: { image: true } });
       if (!row) throw new Error("Project disappeared");
@@ -388,7 +388,7 @@ export async function deleteProjectImage(raw: string): Promise<{ ok: true } | { 
   // 보관 = Restore만 (PRODUCT §7.9) — 보관 중 거부는 잠금 안 판정이 한다.
   try {
     previous = await prisma.$transaction(async tx => {
-      const locked = await lockProjectAccess(tx, { projectId, userId: session.userId, permission: "project:settings" });
+      const locked = await lockProjectAccess(tx, { projectId, userId: session.userId, permission: "project:settings", tokenId: undefined });
       if (locked.status !== "ok") return locked;
       const row = await tx.project.findUnique({ where: { id: projectId }, select: { image: true } });
       if (!row) throw new Error("Project disappeared");

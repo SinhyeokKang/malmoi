@@ -51,7 +51,7 @@ import {
   type CandidateSummary,
   type SampleRow,
 } from "@/lib/onboarding/detect";
-import { redrawIfArchived } from "@/lib/revalidate-after-commit";
+import { redrawIfArchived, settleRevalidate } from "@/lib/revalidate-after-commit";
 import { prepareSync } from "@/lib/import/prepare";
 import { checkRepoAccess, type OnboardFailure } from "@/lib/onboarding-run/access";
 import { addSources, AddSurfacesInput, type AddSurfacesResult } from "@/lib/onboarding-run/add";
@@ -104,7 +104,7 @@ export async function createInvitations(raw: { slug: string; recipients: { email
 
   const { result, issued } = await inviteMembers(getPrisma(), { userId: session.userId }, parsed.data);
   // ⚠️ 발송 결과와 무관하게 다시 그린다 — 초대는 이미 생겼고 Pending에 보여야 Resend로 복구할 수 있다.
-  if (issued) revalidatePath(`/projects/${parsed.data.slug}/members`);
+  if (issued) settleRevalidate("invite", () => revalidatePath(`/projects/${parsed.data.slug}/members`));
   return result;
 }
 
@@ -189,7 +189,7 @@ export async function revokeInvitation(raw: { slug: string; invitationId: string
   const result = await revokePendingInvitation(getPrisma(), { userId: session.userId }, input);
   if (!result.ok) return result;
 
-  revalidatePath(`/projects/${input.slug}/members`);
+  settleRevalidate("revoke-invitation", () => revalidatePath(`/projects/${input.slug}/members`));
   return { ok: true };
 }
 
@@ -214,7 +214,7 @@ export async function changeMember(raw: {
   const result = await changeMemberRole(getPrisma(), { userId: session.userId }, input);
   if (!result.ok) return result;
 
-  revalidatePath(`/projects/${input.slug}/members`);
+  settleRevalidate("member-change", () => revalidatePath(`/projects/${input.slug}/members`));
   return { ok: true };
 }
 
@@ -613,10 +613,10 @@ export async function createProject(raw: {
 
   const result = await createProjectFromRepo(getPrisma(), { userId }, input);
   if (!result.ok) return result;
-  revalidatePath("/projects");
+  settleRevalidate("create-project", () => revalidatePath("/projects"));
   // ⚠️ **`/projects/new`도 지운다.** 모달 뒤에 목록이 있으므로 그 라우트도 같은 목록을 그리는데,
   // 위가 **접두가 아니라 경로 하나**라 여기를 안 덮는다 (POSTMORTEM 2026-09-09).
-  revalidatePath("/projects/new");
+  settleRevalidate("create-project", () => revalidatePath("/projects/new"));
   return result;
 }
 
@@ -846,9 +846,9 @@ export async function runRepositoryImport(raw: { slug: string; approval: string 
   } finally {
     // 인가 전 거부는 아무것도 안 바꿨다 — 트리를 싣지 않는다(`RepositoryImportError` 주석의 "try 앞 거부").
     if (attempted) {
-      revalidatePath(`/projects/${slug}`, "layout");
-      revalidatePath("/projects");
-      revalidatePath("/projects/new");
+      settleRevalidate("repository-import", () => revalidatePath(`/projects/${slug}`, "layout"));
+      settleRevalidate("repository-import", () => revalidatePath("/projects"));
+      settleRevalidate("repository-import", () => revalidatePath("/projects/new"));
     }
   }
 }
@@ -905,7 +905,7 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
   const result = await rotateToken(getPrisma(), { userId }, parsed.data);
   if (!result.ok) return redrawIfArchived(slug, result.error, result);
 
-  revalidatePath(`/projects/${slug}/settings`);
+  settleRevalidate("rotate-token", () => revalidatePath(`/projects/${slug}/settings`));
   return result;
 }
 
@@ -927,7 +927,7 @@ export async function archiveProject(slug: unknown): Promise<ArchiveResult> {
 
   const result = await runArchive(getPrisma(), { userId: session.userId }, parsed.data);
   if (!result.ok) return result;
-  revalidatePath("/", "layout");
+  settleRevalidate("archive", () => revalidatePath("/", "layout"));
   return result;
 }
 
@@ -942,7 +942,7 @@ export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
 
   const result = await runUnarchive(getPrisma(), { userId: session.userId }, parsed.data);
   if (!result.ok) return result;
-  revalidatePath("/", "layout");
+  settleRevalidate("unarchive", () => revalidatePath("/", "layout"));
   return result;
 }
 

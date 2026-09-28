@@ -1816,7 +1816,8 @@ describe("신규 생성은 전체 준비와 적재가 성공해야 한다", () =
     hoisted.applyPushInTransaction.mockRejectedValueOnce(new Error("write failure"));
     expect(await createProject(createInput())).toMatchObject({ ok: false, error: "ingest-failed", surface: { pathTemplate: "i18n/{locale}.json" } });
     hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache failure"); });
-    await expect(createProject(createInput({ slug: "second-project" }))).rejects.toThrow("cache failure");
+    // 커밋된 생성은 캐시 장애로 실패가 되지 않는다(mcp-connector r2) — 전엔 reject였고, 사용자는 이미 생긴 프로젝트를 다시 만들려 했다.
+    expect(await createProject(createInput({ slug: "second-project" }))).toMatchObject({ ok: true, slug: "second-project" });
   });
 });
 
