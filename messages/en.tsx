@@ -3243,6 +3243,28 @@ export const en = {
       "not-implemented": "This tool isn't available yet.",
     },
     /**
+     * 도구 성공 결과의 한 줄 요약(`content` text) — 에이전트가 사용자에게 옮기는 문장이다. 값은 `structuredContent`에 따로 실린다.
+     */
+    summary: {
+      signedIn: "Signed in to Malmoi.",
+      signedInAs: (name: string): string => `Signed in to Malmoi as ${name}.`,
+      projects: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "project" : "projects"}.`,
+      project: (name: string): string => `Project ${name}.`,
+      events: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "log entry" : "log entries"}.`,
+      members: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "member" : "members"}.`,
+      workflow: "Workflow file for the repository. Store the push token as the PUSH_TOKEN secret.",
+      keys: (shown: number, matched: number): string => `Showing ${shown.toLocaleString("en-US")} of ${matched.toLocaleString("en-US")} ${matched === 1 ? "key" : "keys"}.`,
+      key: (key: string): string => `Key ${key}.`,
+      revertBlocked: "This key can't be reverted right now.",
+      revertReady: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "language" : "languages"} can be reverted to the last sent value.`,
+      repositories: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "repository" : "repositories"}.`,
+      branches: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "branch" : "branches"}.`,
+      formats: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "translation file format" : "translation file formats"} found.`,
+      syncPreview: (unsent: number): string => unsent === 0
+        ? "Sync will load the repository's values. No unsent edits will be discarded."
+        : `Sync will load the repository's values and discard ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"}.`,
+    },
+    /**
      * 브라우저가 필요한 갈래 — 설치·인가는 state 쿠키가 방어선인 왕복이라 도구가 대신하지 않는다(ARCHITECTURE §6.4).
      * 결과에 URL이 따로 실린다 — 문장은 "무엇을 하고 돌아오라"만 말한다.
      */

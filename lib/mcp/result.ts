@@ -1,4 +1,8 @@
+import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
+import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
+import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib/settings/message";
 
 import { BATCH_SAVE_LIMIT } from "./batch";
 
@@ -27,6 +31,8 @@ export type NeedsBrowserReason = "not-connected" | "reauthorize" | "no-installat
 export type ToolOutcome =
   | { status: "ok"; data: Record<string, unknown>; summary: string }
   | { status: ToolRejection }
+  /** 코어가 Action과 같은 union으로 낸 거부 — 화면의 사전을 그대로 지난다(`rejectionMessage`). */
+  | { status: "refused"; code: string }
   /** URL은 `lib/routes.ts`가 만든 앱 경로다 — 서명·nonce를 싣지 않는다(design §2.4). */
   | { status: "needs-browser"; reason: NeedsBrowserReason; url: string };
 
@@ -55,8 +61,27 @@ const MESSAGE = {
 
 const text = (value: string): ToolResult["content"] => [{ type: "text", text: value }];
 
+/**
+ * 코어 거부 코드 → 화면과 같은 문장. 도구 전용 갈래(`MESSAGE`)를 먼저, 그다음 화면의 사전을 화면이 읽는 순서로 본다 — 온보딩 화면은
+ * `onboardErrorMessage`가 연결 거부 다섯을 `connectErrorMessage`로 넘긴다. 어느 사전에도 없으면 `null`이다.
+ */
+function rejectionMessage(code: string): string | null {
+  if (Object.hasOwn(MESSAGE, code)) return MESSAGE[code as ToolRejection];
+  if (isAccessError(code)) return accessErrorMessage(code);
+  if (isRepositorySettingsError(code)) return repositorySettingsErrorMessage(code);
+  if (isOnboardError(code)) return onboardErrorMessage(code);
+  if (isConnectError(code)) return connectErrorMessage(code);
+  return null;
+}
+
 export function toToolResult(outcome: ToolOutcome): ToolResult {
   if (outcome.status === "ok") return { isError: false, content: text(outcome.summary), structuredContent: outcome.data };
+  if (outcome.status === "refused") {
+    const message = rejectionMessage(outcome.code);
+    // 모르는 코드는 장애로 접는다 — 코드 원문을 싣지 않는다(코어 밖의 값이 결과로 새지 않게).
+    if (message === null || outcome.code === "unavailable") return toToolResult({ status: "unavailable" });
+    return { isError: true, content: text(message), structuredContent: { status: outcome.code, message } };
+  }
   if (outcome.status === "needs-browser") {
     const message = m.mcp.needsBrowser[outcome.reason];
     return { isError: true, content: text(`${message} ${outcome.url}`), structuredContent: { status: "needs-browser", reason: outcome.reason, url: outcome.url, message } };

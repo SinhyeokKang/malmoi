@@ -7,7 +7,6 @@ import { hashApiToken } from "@/lib/mcp/token";
 /**
  * `POST /api/mcp` (mcp-connector design §1.1 · §1.2). 순서는 Origin → 인증 → 크기 → 파싱 → 디스패치이고 쿠키를 읽지 않는다.
  * 두 개정(2026-07-28 · 2025 handshake)을 같은 도구 정의로 받는다 — Claude Code는 앞, Codex는 뒤다(T1 실측).
- * 도구 구현(T6·T7)이 서기 전까지 `tools/call`은 카탈로그의 모든 이름에 `not-implemented` 거부를 돌려준다.
  */
 
 const RAW = "mlm_" + "b".repeat(43);
@@ -177,11 +176,24 @@ describe("2025 handshake (Codex)", () => {
     expect(publish.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
   });
 
-  it("카탈로그 도구 호출 → isError · not-implemented (T6·T7 전)", async () => {
+  /**
+   * ⚠️ **도구가 던지면 SDK는 예외 문구를 결과에 싣는다** — 서버 팩토리가 잡아 장애로 접는다(§6.0). 이 테스트의 가짜 DB에는 `user`가 없어
+   * `whoami`의 조회가 던진다 — 그 문구(`Cannot read properties…`)가 응답에 없어야 한다.
+   */
+  it("도구가 던지면 isError · unavailable · retryable이고 예외 문구가 없다", async () => {
     const res = await post({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "whoami", arguments: {} } }, { headers: LEGACY });
     const body = await res.json();
     expect(body.result.isError).toBe(true);
-    expect(body.result.structuredContent).toMatchObject({ status: "not-implemented", message: m.mcp.errors["not-implemented"] });
+    expect(body.result.structuredContent).toEqual({ status: "unavailable", message: m.errors.access.unavailable, retryable: true });
+    expect(JSON.stringify(body)).not.toMatch(/Cannot read|undefined|TypeError/);
+  });
+
+  it("입력 스키마를 싣는다 — tools/list의 list_keys는 slug·surfaceSlug를 요구한다", async () => {
+    const res = await post({ jsonrpc: "2.0", id: 8, method: "tools/list" }, { headers: LEGACY });
+    const tool = (await res.json()).result.tools.find((t: { name: string }) => t.name === "list_keys");
+    expect(tool.inputSchema).toMatchObject({ type: "object", required: expect.arrayContaining(["slug", "surfaceSlug"]) });
+    expect(Object.keys(tool.inputSchema.properties)).not.toContain("userId");
+    expect(Object.keys(tool.inputSchema.properties)).not.toContain("projectId");
   });
 
   it("미지 도구 이름 → JSON-RPC -32602", async () => {
@@ -225,13 +237,13 @@ describe("2026-07-28 (Claude Code)", () => {
     expect(body.result.tools.map((t: { name: string }) => t.name)).toEqual(toolCatalog().map(t => t.name));
   });
 
-  it("tools/call → not-implemented", async () => {
+  it("tools/call → 도구 결과(isError 결과로 돌아온다 — JSON-RPC 오류가 아니다)", async () => {
     const res = await post(
-      { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "list_keys", arguments: {}, _meta: META } },
-      { headers: modern("tools/call", { "mcp-name": "list_keys" }) },
+      { jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "whoami", arguments: {}, _meta: META } },
+      { headers: modern("tools/call", { "mcp-name": "whoami" }) },
     );
     const body = await res.json();
-    expect(body.result).toMatchObject({ isError: true, structuredContent: { status: "not-implemented" } });
+    expect(body.result).toMatchObject({ isError: true, structuredContent: { status: "unavailable" } });
   });
 
   /**

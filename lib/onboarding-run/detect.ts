@@ -6,6 +6,8 @@ import { adapterFor, detectCandidatesAcross } from "@/lib/adapters";
 import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import { compareKeys } from "@/lib/adapters/shared";
 import type { AdapterFile, DetectedFormat } from "@/lib/adapters/types";
+import type { AccessError } from "@/lib/auth/message";
+import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { requireEnv } from "@/lib/env";
 import { openRepoReader } from "@/lib/github";
@@ -41,9 +43,39 @@ export async function detectFormats(prisma: PrismaClient, subject: Subject, inpu
 
   const access = await checkRepoAccess(prisma, userId, owner, repo, true);
   if (access.status !== "ok") return { ok: false, error: access.error };
+  return detectIn(userId, access, ref ?? access.defaultBranch);
+}
 
+/**
+ * **기존 프로젝트의 탐지** (MCP `detect_formats({ slug })` — design §2.1). 인가된 프로젝트에 **저장된** 리포와 base branch로만 탐지한다 —
+ * 호출자가 리포·ref를 바꿀 수 없다. OWNER(`project:settings`) + GitHub 리포 쓰기 권한을 확인하고, 확인한 리포 id를 고정된
+ * `Project.repositoryId`와 대조한다. 후보와 확인값은 `add_sources`가 소비한다. 거부됐다고 신규 탐지로 자동 전환하지 않는다.
+ */
+export async function detectProjectFormats(prisma: PrismaClient, subject: Subject, input: { slug: string }): Promise<DetectResult | { ok: false; error: AccessError }> {
+  const { userId } = subject;
+  const project = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "project:settings" });
+  if (project.status !== "ok") return { ok: false, error: project.status };
+  const row = await prisma.project.findUnique({
+    where: { id: project.projectId },
+    select: { repoOwner: true, repoName: true, installationId: true, repositoryId: true, baseBranch: true },
+  });
+  if (row === null) return { ok: false, error: "not-found" };
+  if (row.installationId === null || row.repositoryId === null) return { ok: false, error: "repo-not-installed" };
+  const access = await checkRepoAccess(prisma, userId, row.repoOwner, row.repoName, true);
+  if (access.status !== "ok") return { ok: false, error: access.error };
+  // 같은 이름의 **다른** 리포는 이 프로젝트가 아니다 — 고정된 신원으로 대조한다(`listLinkedBranches`와 같은 규칙).
+  if (access.repositoryId !== row.repositoryId || access.installationId !== row.installationId) return { ok: false, error: "repo-forbidden" };
+  return detectIn(userId, access, row.baseBranch);
+}
+
+/** 인가를 지난 리포 하나의 2패스 탐지 + 후보별 확인값 서명. `APP_SIGNING_SECRET`이 비면 던진다 — 호출자가 장애로 접는다. */
+async function detectIn(
+  userId: string,
+  access: { repoOwner: string; repoName: string; installationId: string; repositoryId: string },
+  ref: string,
+): Promise<DetectResult> {
   const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
-  const snapshot = await reader.snapshot(ref ?? access.defaultBranch);
+  const snapshot = await reader.snapshot(ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
   const paths = snapshot.files.map((f) => f.path);
@@ -68,7 +100,7 @@ export async function detectFormats(prisma: PrismaClient, subject: Subject, inpu
     if (confirmed.status !== "ok") return [];
     return [{ ...summary, outputPaths: candidateOutputPaths({ ...confirmed.format, locales: summary.locales }, paths), confirmation: signSampleConfirmation({
       userId, repositoryId: access.repositoryId, installationId: access.installationId,
-      ref: ref ?? access.defaultBranch, headSha: snapshot.headSha,
+      ref, headSha: snapshot.headSha,
       // 전 언어의 경로는 전체 트리 탐지가 확인했다. 내용을 받은 셋으로 줄이면 lazy 언어가 사라진다.
       format: { ...confirmed.format, locales: summary.locales },
     }, requireEnv("APP_SIGNING_SECRET"), new Date()) }];

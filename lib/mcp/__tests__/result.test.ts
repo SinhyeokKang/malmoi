@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import { accessErrorMessage } from "@/lib/auth/message";
+import { connectErrorMessage } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
+import { onboardErrorMessage } from "@/lib/onboarding/message";
+import { repositorySettingsErrorMessage } from "@/lib/settings/message";
 
 import { TOOL_REJECTIONS, toToolResult, type ToolRejection } from "../result";
 
@@ -82,5 +86,41 @@ describe("toToolResult — needs-browser", () => {
     expect(result.content[0]?.text).toContain(m.mcp.needsBrowser[reason]);
     expect(result.content[0]?.text).toContain(url);
     expect("retryable" in result.structuredContent).toBe(false);
+  });
+});
+
+/**
+ * **코어 거부 코드는 화면의 사전을 그대로 지난다** (design §2.3 — T6). 코어는 Action과 같은 union(`AccessError`·`OnboardError`·
+ * `ConnectError`·`RepositorySettingsError`)으로 거부한다 — 도구가 그 코드를 새 문장으로 다시 쓰면 에이전트와 화면이 다른 말을 한다.
+ */
+describe("toToolResult — refused(코어 거부 코드)", () => {
+  it.each([
+    ["forbidden", accessErrorMessage("forbidden")],
+    ["repo-not-installed", onboardErrorMessage("repo-not-installed")],
+    ["limit-reached", onboardErrorMessage("limit-reached")],
+    ["no-candidates", onboardErrorMessage("no-candidates")],
+    ["invalid-branch", repositorySettingsErrorMessage("invalid-branch")],
+    ["exchange-failed", connectErrorMessage("exchange-failed")],
+  ])("%s → 화면 사전의 문장, status는 그 코드", (code, message) => {
+    const result = toToolResult({ status: "refused", code });
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toEqual({ status: code, message });
+    expect(result.content[0]?.text).toBe(message);
+  });
+
+  it("도구 전용 갈래(token-scope)도 같은 경로로 찾는다", () => {
+    expect(toToolResult({ status: "refused", code: "token-scope" }).content[0]?.text).toBe(m.mcp.errors["token-scope"]);
+  });
+
+  it("unavailable은 refused로 와도 retryable이다", () => {
+    expect(toToolResult({ status: "refused", code: "unavailable" }).structuredContent).toMatchObject({ status: "unavailable", retryable: true });
+  });
+
+  it("어느 사전에도 없는 코드·프로토타입 이름은 unavailable로 접힌다 — 코드 원문을 싣지 않는다", () => {
+    for (const code of ["constructor", "no-such-code"]) {
+      const result = toToolResult({ status: "refused", code });
+      expect(result.structuredContent).toMatchObject({ status: "unavailable", retryable: true });
+      expect(JSON.stringify(result)).not.toContain(code);
+    }
   });
 });
