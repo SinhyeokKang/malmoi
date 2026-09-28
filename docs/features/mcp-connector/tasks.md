@@ -233,3 +233,4 @@ export 가드 갱신 + `client-graph.test.ts` green이다.
 | QA | `/runtime-test` · `/design-sync` 실측 · `/roundtrip`(`i18n-order-check`) · preview 실물(T9) · `/guide-shots` | main 체크아웃 | 전부 dev에 들어간 뒤 직렬 |
 - **README 히어로** (2026-09-29 사용자) — 문구와 이미지 둘 다. 문구: 태그라인/본문에 AI 에이전트(MCP) 연결 한 줄(T9 문서와 함께, 사실의 정본은
   PRODUCT·가이드). 이미지: 사이드바에 `MCP connector`가 늘어 `docs/assets/readme/hero.webp`가 낡는다 — QA 단계에서 새 셸로 재촬영.
+- **MCP 로고** (2026-09-29 사용자) — MCP를 가리키는 `Plug` 자리 전부(사이드바·사용자 메뉴·`/mcp` 빈 상태)를 공식 MCP 로고로. 새 의존성 없이 `components/signin/brand-icons.tsx`의 인라인 SVG(`McpIcon`, `currentColor`).
