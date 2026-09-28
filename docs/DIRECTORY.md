@@ -544,8 +544,10 @@ lib/
                         result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · snippets(연결 조각 — 토큰은
                         $MALMOI_TOKEN 참조로만) · catalog(도구 28 — 이름·순서·annotations·요구 조건의 코드 정본).
                         server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveApiToken) · tools/.
-                        ⚠️ catalog·snippets는 잎이다(import 0) — /mcp 클라이언트가 값으로 읽는다. 도구 구현이 catalog를 import하는
-                        방향이지 반대가 아니다(client-graph). 순수 모듈에 server-only가 없는 것은 lib/mcp/__tests__/pure-boundary가 센다
+                        ⚠️ catalog·snippets는 잎이다(import 0). snippets는 /mcp 클라이언트(connect-card)가 값으로 읽는다(client-graph).
+                        catalog의 소비자는 서버 쪽 셋(server · tools/access · lib/auth/lock)이다 — 그래도 잎인 이유는 모든 쓰기 코어가
+                        지나는 lock.ts가 물기 때문이고(값 import가 쓰기 경로 전부로 번진다), 도구 구현 → catalog 방향이 뒤집히면 순환이다.
+                        순수 모듈에 server-only가 없는 것은 lib/mcp/__tests__/pure-boundary가 센다
   mcp/tools/            도구 구현(전부 server-only). access(입구 판정 — GitHub·코어보다 먼저, 조건은 catalog에서) · define(appUrl — needs-browser 링크를 허용 호스트 origin의 절대 URL로) ·
                         execute(⚠️ 던지면 SDK가 예외 문구를 결과에 싣는다 — 여기서 잡아 unavailable로 접는다) · 도메인별
                         account·project·keys·repos·sync·publish·translations·settings·members·onboarding · index(TOOLS).
