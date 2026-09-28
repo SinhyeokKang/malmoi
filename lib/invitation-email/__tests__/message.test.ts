@@ -91,4 +91,12 @@ describe("buildInvitationEmail — html", () => {
     expect(png.subarray(1, 4).toString()).toBe("PNG");
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([80, 80]);
   });
+
+  it("폴백 타일의 Box PNG가 public/email/에 32×32 RGBA로 있다 — 표시 16×16의 @2x, 톤 배경이 비쳐야 한다", () => {
+    const png = readFileSync("public/email/box@2x.png");
+    expect(png.subarray(1, 4).toString()).toBe("PNG");
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([32, 32]);
+    // IHDR color type 6 = truecolor + alpha. 불투명 PNG면 톤 셀 위에 사각이 선다.
+    expect(png[25]).toBe(6);
+  });
 });
