@@ -134,6 +134,14 @@ const DELEGATED_CORES = new Map([
   ["publishProject", "lib/sync/publish.ts"],
   ["prepareSync", "lib/import/prepare.ts"],
   ["loadPreview", "lib/publish/load-preview.ts"],
+  ["changeBaseBranch", "lib/settings/update.ts"],
+  ["renameProject", "lib/settings/update.ts"],
+  ["declareBaseLocale", "lib/sources/base-locale.ts"],
+  ["runArchive", "lib/projects/archive.ts"],
+  ["runUnarchive", "lib/projects/archive.ts"],
+  ["revokePendingInvitation", "lib/auth/members.ts"],
+  ["changeMemberRole", "lib/auth/members.ts"],
+  ["inviteMembers", "lib/invitation-email/create.ts"],
 ]);
 
 /** 이름 그대로의 호출 — 앞이 식별자·`.`이면 다른 이름의 꼬리다(`xsaveTranslation(`·`obj.saveTranslation(`). */

@@ -7,9 +7,8 @@ import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { isUniqueViolation, logCaught } from "@/lib/failure";
 import { planSurfaceSlug, surfaceOwnership, selectDefaultSurface } from "@/lib/surfaces/plan";
 import { addSurfacesFromSnapshot, SurfaceCreationError, type AddSurfaceErrorCode, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
-import { issueInvitations, reissueInvitation, type IssuedInvitation } from "@/lib/invitation-email/issue";
-import { parseRecipients, type RecipientRowError } from "@/lib/invitation-email/recipients";
-import type { IssuePlan, IssueRowError } from "@/lib/invitation-email/plan";
+import { inviteMembers, InvitationsInput, toMessages, type InvitationsResult } from "@/lib/invitation-email/create";
+import { reissueInvitation } from "@/lib/invitation-email/issue";
 import { readInvitationEmailConfigFromEnv, sendInvitationEmails } from "@/lib/invitation-email/send";
 
 import { IngestBudgetError } from "@/lib/onboarding/budget";
@@ -27,14 +26,13 @@ import { codeDictCandidatePaths } from "@/lib/adapters/code-dict";
 import type { AdapterError, AdapterFile, AdapterName, DetectedFormat } from "@/lib/adapters/types";
 import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import type { AccessError } from "@/lib/auth/message";
-import { planMemberChange } from "@/lib/auth/membership";
+import { changeMemberRole, MemberChangeInput, revokePendingInvitation, RevokeInput, type MemberChangeResult, type RevokeResult } from "@/lib/auth/members";
 import type { Role } from "@/lib/auth/permission";
 import { lockProjectAccess } from "@/lib/auth/lock";
 import { getProjectAccess } from "@/lib/auth/query";
 import { readSession } from "@/lib/auth/read-session";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
-import { invitationEventLabel, userEventLabel } from "@/lib/events/member-label";
 import { runTokenFor } from "@/lib/events/payload";
 import { finishRun, recordEvent, recordImportRefusal, recordRun } from "@/lib/events/record";
 import { optionalEnv, requireEnv } from "@/lib/env";
@@ -74,6 +72,7 @@ import { resolveLocalePaths } from "@/lib/pull/plan";
 import { prepareSync } from "@/lib/import/prepare";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
+import { runArchive, runUnarchive, type ArchiveResult } from "@/lib/projects/archive";
 import type { RepositoryImportError, RepositoryImportOutcome } from "@/lib/import/result";
 import type { OpenImportPr } from "@/lib/import/confirm";
 import { readFiles, snapshotError } from "@/lib/import/read";
@@ -95,23 +94,12 @@ import type { PrismaClient } from "@/generated/prisma/client";
  *
  * ⚠️ 화면은 6단계다 — 지금 호출자는 테스트와 번역 화면의 임시 초대 폼뿐이다. 그래도 판정을
  * 여기 두는 이유는 **`planMemberChange`에 호출부가 없으면 그 보호가 실재하지 않기 때문**이다
- * (이 리포의 반복 실패 유형 — POSTMORTEM 2026-09-03).
+ * (이 리포의 반복 실패 유형 — POSTMORTEM 2026-09-03). 그 호출부는 이제 공유 코어 `lib/auth/members.ts`다.
  */
 
 /**
- * ⚠️ **Server Action은 공개 엔드포인트다** — 타입 시그니처는 클라이언트를 구속하지 않는다 (`lib/keys/save.ts`의
- * `SaveInput`과 같은 이유). `role`은 DB enum에 그대로 들어가므로 조작된 값은 Prisma가 던져 digest 오류가 된다 —
- * 거부는 값으로 흘러야 한다 (ARCHITECTURE §6.3, code-review 2026-09-06 🟡13).
- */
-const RoleSchema = z.enum(["OWNER", "EDITOR"]);
-const MemberChangeInput = z.object({
-  slug: z.string().min(1),
-  targetUserId: z.string().min(1),
-  nextRole: RoleSchema.nullable(),
-});
-
-/**
- * 다중 초대 메일 (docs/features/invitation-email design §3·§4). **요청 전체가 통과하거나 전체가 막힌다.**
+ * 다중 초대 메일 (docs/features/invitation-email design §3·§4). **요청 전체가 통과하거나 전체가 막힌다.** 본체는 공유 코어
+ * `inviteMembers`다(MCP `invite_members`와 같다).
  *
  * ⚠️ **링크를 돌려주는 단건 발급은 없다** (2026-09-23) — 원문은 메일로만 나간다. 메일 장애 동안 초대는 지연되고,
  *   발급 뒤 메일이 안 나간 초대는 Pending의 Resend로 복구한다.
@@ -119,59 +107,20 @@ const MemberChangeInput = z.object({
  * 순서가 계약이다: 입력 → 인가 → 메일 설정(없으면 **쓰기 전에** 막는다) → 잠금 안 발급 → commit 뒤 발송 한 번.
  * ⚠️ **응답에 토큰·URL이 없다** — 원문은 서버 메모리와 메일에만 있다.
  */
-const InvitationsInput = z.object({
-  slug: z.string().min(1),
-  // 상한은 `parseRecipients`가 판정한다(too-many를 값으로 돌려준다). 여기 숫자는 파싱 비용의 방어선이다.
-  recipients: z.array(z.object({ email: z.string().max(1000), role: z.string().max(20) })).min(1).max(200),
-});
-
-export type InvitationsResult =
-  | { ok: true; count: number }
-  | { ok: false; error: "invalid-rows"; rowErrors: (RecipientRowError | IssueRowError)[] }
-  | { ok: false; error: "rate-limited"; retryAt: string; limit: "address"; index: number }
-  | { ok: false; error: "rate-limited"; retryAt: string; limit: "project" | "user"; used: number }
-  | { ok: false; error: "email-rejected" | "email-unknown"; retryAt: string }
-  | { ok: false; error: string };
+export type { InvitationsResult };
 
 export async function createInvitations(raw: { slug: string; recipients: { email: string; role: string }[] }): Promise<InvitationsResult> {
   const parsed = InvitationsInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
-  const input = parsed.data;
-  // 빈 행은 클라이언트가 전송 전에 뺀다(design §3.2). 서버가 조용히 건너뛰면 행 오류 인덱스가 입력과 어긋난다.
-  if (input.recipients.some((r) => r.email.trim() === "")) return { ok: false, error: "invalid input" };
 
   const session = await readSession();
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
-  const { userId } = session;
 
-  const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "member:manage" });
-  if (access.status !== "ok") return { ok: false, error: access.status };
-
-  const recipients = parseRecipients(input.recipients);
-  if (recipients.status === "invalid-rows") return { ok: false, error: "invalid-rows", rowErrors: recipients.rowErrors };
-  if (recipients.status !== "ok") return { ok: false, error: recipients.status === "empty" ? "invalid input" : recipients.status };
-
-  const config = readInvitationEmailConfigFromEnv();
-  if (config.status !== "ready") return { ok: false, error: "email-unavailable" };
-
-  let issued: Awaited<ReturnType<typeof issueInvitations>>;
-  try {
-    issued = await issueInvitations(prisma, { projectId: access.projectId, userId, recipients: recipients.recipients });
-  } catch (error) {
-    logCaught("invite", "issue", error);
-    return { ok: false, error: "unavailable" };
-  }
-  if (issued.status === "invalid-rows") return { ok: false, error: "invalid-rows", rowErrors: issued.rowErrors };
-  if (issued.status === "rate-limited") return rateLimited(issued);
-  if (issued.status !== "issued") return { ok: false, error: issued.status };
-
-  const outcome = await sendInvitationEmails(config, issued.project, toMessages(issued.invitations));
+  const { result, issued } = await inviteMembers(getPrisma(), { userId: session.userId }, parsed.data);
   // ⚠️ 발송 결과와 무관하게 다시 그린다 — 초대는 이미 생겼고 Pending에 보여야 Resend로 복구할 수 있다.
-  revalidatePath(`/projects/${input.slug}/members`);
-  if (outcome === "accepted") return { ok: true, count: issued.invitations.length };
-  return { ok: false, error: outcome === "rejected" ? "email-rejected" : "email-unknown", retryAt: issued.retryAt.toISOString() };
+  if (issued) revalidatePath(`/projects/${parsed.data.slug}/members`);
+  return result;
 }
 
 const ResendInput = z.object({ slug: z.string().min(1), invitationId: z.string().min(1) });
@@ -228,23 +177,10 @@ export async function resendInvitation(raw: { slug: string; invitationId: string
   return { ok: false, error: outcome === "rejected" ? "email-rejected" : "email-unknown", label, retryAt: issued.retryAt.toISOString() };
 }
 
-function rateLimited(plan: Extract<IssuePlan, { status: "rate-limited" }>): InvitationsResult {
-  const retryAt = plan.retryAt.toISOString();
-  return plan.limit === "address"
-    ? { ok: false, error: "rate-limited", retryAt, limit: "address", index: plan.index }
-    : { ok: false, error: "rate-limited", retryAt, limit: plan.limit, used: plan.used };
-}
 
-function toMessages(invitations: readonly IssuedInvitation[]) {
-  return invitations.map((i) => ({ to: i.email, token: i.token, role: i.role }));
-}
-
-const RevokeInput = z.object({ slug: z.string().min(1), invitationId: z.string().min(1) });
-
-export type RevokeResult = { ok: true } | { ok: false; error: string };
 
 /**
- * 대기 중인 초대를 무효화한다 (6b-2 — ARCHITECTURE §6.02).
+ * 대기 중인 초대를 무효화한다 (6b-2 — ARCHITECTURE §6.02). 본체는 공유 코어 `revokePendingInvitation`이다(MCP `revoke_invitation`과 같다).
  *
  * ⚠️ **행을 지우지 않는다.** `prisma/schema.prisma`의 `acceptedAt` 주석이 그것을 금지한다 — 지우면
  * 그 링크의 재사용 시도가 `already-accepted`가 아니라 `not-found`가 되어 만료·오배송과 뭉개진다.
@@ -265,60 +201,18 @@ export async function revokeInvitation(raw: { slug: string; invitationId: string
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
 
-  const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, {
-    userId: session.userId,
-    slug: input.slug,
-    permission: "member:manage",
-  });
-  if (access.status !== "ok") return { ok: false, error: access.status };
-
-  // 조건부 쓰기의 count를 읽는다 — `update`는 행이 없을 때 P2025로 던지고, Server Action의
-  // 처리되지 않은 throw는 사용자에게 digest만 있는 오류가 된다 (`changeMember`와 같은 형).
-  // ⚠️ **사건이 같은 트랜잭션이다** — 0행이면 아무것도 안 쓰고, 사건 기록이 실패하면 무효화도 롤백된다.
-  const written = await prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId: session.userId, permission: "member:manage" });
-    if (locked.status !== "ok") return locked;
-    const invitation = await tx.projectInvitation.findFirst({ where: { id: input.invitationId, projectId: access.projectId } });
-    if (invitation === null || invitation.acceptedAt !== null) return 0;
-    // 이미 만료된 초대는 무효화할 상태가 없다 — 성공 응답은 유지하되 사건을 만들지 않는다.
-    if (invitation.expiresAt <= new Date()) return 1;
-    // 라벨을 **쓰기 전에** 읽는다 — 무효화는 행을 지우지 않지만 순서를 뒤집을 이유도 없다.
-    const targetLabel = await invitationEventLabel(tx, { projectId: access.projectId, invitationId: input.invitationId });
-    const count = (await tx.projectInvitation.updateMany({
-      where: { id: input.invitationId, projectId: access.projectId, acceptedAt: null },
-      data: { expiresAt: new Date() },
-    })).count;
-    if (count === 0) return 0;
-    await recordEvent(tx, {
-      projectId: access.projectId,
-      subtype: "member.invitationRevoked",
-      actor: { kind: "USER", userId: session.userId },
-      scope: "project-wide",
-      payload: { kind: "MEMBER", targetLabel, role: null },
-    });
-    return count;
-  });
-  if (typeof written !== "number") return { ok: false, error: written.status };
-  if (written === 0) return { ok: false, error: "not-found" };
+  const result = await revokePendingInvitation(getPrisma(), { userId: session.userId }, input);
+  if (!result.ok) return result;
 
   revalidatePath(`/projects/${input.slug}/members`);
   return { ok: true };
 }
 
-export type MemberChangeResult = { ok: true } | { ok: false; error: string };
-
-/** 트랜잭션 안에서 던져 쓰기를 되돌리는 신호. 밖에서 잡아 `last-owner`로 바꾼다 — 사용자에게 예외를 보내지 않는다. */
-class LastOwnerRollback extends Error {
-  constructor() {
-    super("last owner would be removed");
-    this.name = "LastOwnerRollback";
-  }
-}
+export type { MemberChangeResult, RevokeResult };
 
 /**
- * 제거(`nextRole: null`)와 역할 변경이 **같은 판정을 지난다** — 강등을 따로 두면 "제거는 막고
- * 강등은 통과"가 되는데 결과는 같다(OWNER 없는 프로젝트).
+ * 제거(`nextRole: null`)와 역할 변경 — 본체는 공유 코어 `changeMemberRole`이다(MCP `change_member`와 같다). 마지막 OWNER 보호·
+ * 잠금 순서가 거기 있다.
  */
 export async function changeMember(raw: {
   slug: string;
@@ -332,74 +226,8 @@ export async function changeMember(raw: {
   const session = await readSession();
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
-  const { userId } = session;
-
-  const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, {
-    userId,
-    slug: input.slug,
-    permission: "member:manage",
-  });
-  if (access.status !== "ok") return { ok: false, error: access.status };
-  const { projectId } = access;
-
-  /**
-   * ⚠️ **판정·쓰기·재집계가 한 트랜잭션이고, 프로젝트 행을 먼저 잠근다.** OWNER 둘이 **동시에 각자를**
-   * 제거·강등하면 둘 다 OWNER 2명인 목록을 읽어 통과하고 서로 다른 행을 쓰므로 count도 각각 1이다 —
-   * 결과는 OWNER 0명이고 아무도 되살릴 수 없다 (Codex 감사 2026-09-06 #2). FK Restrict는 멤버 행 **변경**을
-   * 막지 않는다. `SELECT … FOR UPDATE`가 같은 프로젝트의 멤버 변경을 직렬화하고, 쓰기 뒤 OWNER를 다시 세는
-   * 것은 잠금이 새는 경우(다른 경로의 쓰기)의 그물이다 — 0이면 던져 롤백한다.
-   */
-  const outcome = await prisma.$transaction(async (tx) => {
-    // 잠금 대기 중 호출자가 제거·강등됐으면 여기서 멈춘다 — OWNER 재집계는 "남은 OWNER가 있나"만 보고 "누가 지우나"를 안 본다.
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage" });
-    if (locked.status !== "ok") return locked.status;
-
-    // 인가된 projectId로 좁힌다 — 안 좁히면 남의 프로젝트 멤버가 목록에 섞여 판정이 흔들린다.
-    const members = await tx.projectMember.findMany({
-      where: { projectId },
-      select: { userId: true, role: true },
-    });
-
-    const plan = planMemberChange({ members, targetUserId: input.targetUserId, nextRole: input.nextRole });
-    if (plan !== "ok") return plan;
-    if (members.find(member => member.userId === input.targetUserId)?.role === input.nextRole) return "ok" as const;
-
-    // ⚠️ **조건부 쓰기의 count를 읽는다.** `delete`/`update`는 행이 사라졌을 때 P2025로 던지는데,
-    // 그건 다른 경로가 같은 멤버를 먼저 지운 경우 실제로 일어난다 — Server Action에서 처리되지 않은
-    // throw는 사용자에게 digest만 있는 일반 오류가 되고, `planMemberChange`가 만들어 둔 사유가
-    // 무시된다. `acceptInvitation`의 단일 사용과 같은 형태다.
-    const where = { projectId, userId: input.targetUserId };
-    const written =
-      input.nextRole === null
-        ? await tx.projectMember.deleteMany({ where })
-        : await tx.projectMember.updateMany({ where, data: { role: input.nextRole } });
-
-    // 판정과 쓰기 사이에 사라졌다 — 다른 요청이 먼저 처리한 것이고, 결과는 그쪽이 옳다.
-    if (written.count === 0) return "not-member" as const;
-
-    // 제거와 역할 변경이 **같은 사건 계열**이다 — `after`가 null이면 제거다(판정이 하나인 것과 같은 축).
-    await recordEvent(tx, {
-      projectId,
-      subtype: input.nextRole === null ? "member.removed" : "member.roleChanged",
-      actor: { kind: "USER", userId },
-      scope: "project-wide",
-      payload: {
-        kind: "MEMBER",
-        targetLabel: await userEventLabel(tx, input.targetUserId),
-        role: { before: members.find((member) => member.userId === input.targetUserId)?.role ?? null, after: input.nextRole },
-      },
-    });
-
-    const owners = await tx.projectMember.count({ where: { projectId, role: "OWNER" } });
-    if (owners === 0) throw new LastOwnerRollback();
-    return "ok" as const;
-  }).catch((error: unknown) => {
-    if (error instanceof LastOwnerRollback) return "last-owner" as const;
-    throw error;
-  });
-
-  if (outcome !== "ok") return { ok: false, error: outcome };
+  const result = await changeMemberRole(getPrisma(), { userId: session.userId }, input);
+  if (!result.ok) return result;
 
   revalidatePath(`/projects/${input.slug}/members`);
   return { ok: true };
@@ -1604,22 +1432,13 @@ export async function rotatePushToken(raw: { slug: string }): Promise<RotateToke
   return { ok: true, pushToken };
 }
 
-export type ArchiveResult = { ok: true } | { ok: false; error: string };
+export type { ArchiveResult };
 
 /**
- * 프로젝트 보관 (7단계 — ARCHITECTURE §5.6.4).
- *
- * **되돌릴 수 있는 사실 하나를 쓴다** — 상태 머신도 삭제도 아니다(PRODUCT §7.9의 자동 영구 삭제는
- * 비목표다). 그 사실 하나가 편집·Publish·야간 cron·CI push를 한꺼번에 멈춘다.
- *
- * ⚠️ **인가가 `project:settings`다** — 그래서 보관된 프로젝트에서도 이 Action이 지나간다
- * (`planProjectAccess`가 그 permission만 통과시킨다). 그것이 되돌리는 길이다.
+ * 프로젝트 보관 (7단계 — ARCHITECTURE §5.6.4). 본체는 공유 코어 `runArchive`다(MCP `archive_project`와 같다).
  *
  * ⚠️ **`revalidatePath("/", "layout")`이다.** 보관은 목록·사이드바·Home·번역·설정을 다 바꾼다 —
  * 경로를 나열하면 다음에 생기는 화면이 조용히 빠진다 (POSTMORTEM 2026-09-09, `disconnectGithub` 선례).
- *
- * ⚠️ **열린 PR을 닫지 않는다** (PRODUCT §7.9). 보관의 뜻은 "멈춘다"이고 GitHub 상태를 정리하는 일이
- * 아니다 — 설정 화면이 그 PR을 링크로 보여 사람이 판단한다.
  */
 export async function archiveProject(slug: unknown): Promise<ArchiveResult> {
   const parsed = SlugOnlyInput.safeParse({ slug });
@@ -1629,48 +1448,13 @@ export async function archiveProject(slug: unknown): Promise<ArchiveResult> {
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
 
-  const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, {
-    userId: session.userId,
-    slug: parsed.data.slug,
-    permission: "project:settings",
-  });
-  if (access.status !== "ok") return { ok: false, error: access.status };
-
-  // ⚠️ `where`가 **인가가 돌려준 projectId**다 — slug로 다시 찾으면 클라이언트 입력이 조회 조건이 된다.
-  const archived = await prisma.$transaction(async (tx) => {
-    // 보관 토글은 보관 중에도 통과한다 — 이미 보관됐으면 아래에서 no-op이다(PRODUCT §7.9).
-    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId: session.userId, permission: "project:settings", archiveToggle: true });
-    if (locked.status !== "ok") return locked;
-    const project = await tx.project.findUnique({ where: { id: access.projectId }, select: { archivedAt: true } });
-    if (project === null || project.archivedAt !== null) return locked;
-    await tx.project.update({ where: { id: access.projectId }, data: { archivedAt: new Date() } });
-    /**
-     * ⚠️ **보관 사건 자체를 읽을 수 있어야 한다** — 그 때문에 Logs가 보관된 프로젝트에서도 열린다
-     * (완료조건 11). 사건은 남았는데 볼 화면이 없으면 기록한 의미가 없다.
-     */
-    await recordEvent(tx, {
-      projectId: access.projectId,
-      subtype: "settings.archived",
-      actor: { kind: "USER", userId: session.userId },
-      scope: "project-wide",
-      payload: { kind: "SETTINGS", field: "archived", value: { before: null, after: "archived" } },
-    });
-    return locked;
-  });
-  if (archived.status !== "ok") return { ok: false, error: archived.status };
-
+  const result = await runArchive(getPrisma(), { userId: session.userId }, parsed.data);
+  if (!result.ok) return result;
   revalidatePath("/", "layout");
-  return { ok: true };
+  return result;
 }
 
-/**
- * 되돌리기. **확인을 묻지 않는다** — 잃는 것이 없다.
- *
- * ⚠️ **위와 한 함수로 합치지 않는다.** 인가 호출을 공용 헬퍼로 빼면 `entry-points.test.ts`가
- * 각 export 안에서 그것을 못 보고, 그 검사는 "파일 어딘가에 호출이 있다"로는 부족하다는 것이
- * 존재 이유 전부다. 여기서 반복되는 여덟 줄은 **반복되기를 바라는** 여덟 줄이다.
- */
+/** 되돌리기 — 본체는 공유 코어 `runUnarchive`다. **확인을 묻지 않는다** — 잃는 것이 없다. */
 export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
   const parsed = SlugOnlyInput.safeParse({ slug });
   if (!parsed.success) return { ok: false, error: "invalid input" };
@@ -1679,33 +1463,10 @@ export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
 
-  const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, {
-    userId: session.userId,
-    slug: parsed.data.slug,
-    permission: "project:settings",
-  });
-  if (access.status !== "ok") return { ok: false, error: access.status };
-
-  const restored = await prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId: session.userId, permission: "project:settings", archiveToggle: true });
-    if (locked.status !== "ok") return locked;
-    const project = await tx.project.findUnique({ where: { id: access.projectId }, select: { archivedAt: true } });
-    if (project === null || project.archivedAt === null) return locked;
-    await tx.project.update({ where: { id: access.projectId }, data: { archivedAt: null } });
-    await recordEvent(tx, {
-      projectId: access.projectId,
-      subtype: "settings.restored",
-      actor: { kind: "USER", userId: session.userId },
-      scope: "project-wide",
-      payload: { kind: "SETTINGS", field: "archived", value: { before: "archived", after: null } },
-    });
-    return locked;
-  });
-  if (restored.status !== "ok") return { ok: false, error: restored.status };
-
+  const result = await runUnarchive(getPrisma(), { userId: session.userId }, parsed.data);
+  if (!result.ok) return result;
   revalidatePath("/", "layout");
-  return { ok: true };
+  return result;
 }
 
 /**

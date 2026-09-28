@@ -16,27 +16,49 @@ const project = new Project({ skipAddingFilesFromTsConfig: true, skipFileDepende
 
 /** `파일#함수` — 인가를 다시 봐야 하는 쓰기의 **트랜잭션을 여는 자리**다. Action이 lib에 위임하면 lib 함수를 적는다. */
 const SITES = [
-  "app/(edit)/projects/actions.ts#changeMember",
-  "app/(edit)/projects/actions.ts#revokeInvitation",
+  // changeMember · revokeInvitation (MCP change_member · revoke_invitation)
+  "lib/auth/members.ts#changeMemberRole",
+  "lib/auth/members.ts#revokePendingInvitation",
   "app/(edit)/projects/actions.ts#rotatePushToken",
-  "app/(edit)/projects/actions.ts#archiveProject",
-  "app/(edit)/projects/actions.ts#unarchiveProject",
+  // archiveProject · unarchiveProject (MCP archive_project · unarchive_project)
+  "lib/projects/archive.ts#runArchive",
+  "lib/projects/archive.ts#runUnarchive",
   // createInvitations · resendInvitation
   "lib/invitation-email/issue.ts#issueInvitations",
   "lib/invitation-email/issue.ts#reissueInvitation",
   // runFirstIngest
   "lib/onboarding/ingest.ts#ingestFirstSnapshot",
   "app/(edit)/projects/[slug]/settings/actions.ts#connectRepository",
-  "app/(edit)/projects/[slug]/settings/actions.ts#updateRepositorySettings",
-  "app/(edit)/projects/[slug]/settings/actions.ts#updateProjectName",
+  // updateRepositorySettings · updateProjectName (MCP update_project)
+  "lib/settings/update.ts#changeBaseBranch",
+  "lib/settings/update.ts#renameProject",
   "app/(edit)/projects/[slug]/settings/actions.ts#uploadProjectImage",
   "app/(edit)/projects/[slug]/settings/actions.ts#deleteProjectImage",
-  "app/(edit)/projects/[slug]/sources/actions.ts#updateBaseLocale",
+  // updateBaseLocale (MCP set_base_locale)
+  "lib/sources/base-locale.ts#declareBaseLocale",
   // saveTranslationKey
   "lib/keys/save-key.ts#applyKeySave",
   // MCP set_translations — 배치 한 번에 잠금 한 번
   "lib/keys/save-key.ts#applyKeySaveBatch",
   // triggerPullAction (manual) — cron은 사람이 없어 requestedBy가 null이다
+  "lib/sync/run.ts#startRun",
+];
+
+/**
+ * **MCP 도구가 닿는 잠금 자리** (mcp-connector design §1.25). 잠금 안 재판정이 토큰까지 다시 읽으려면 호출에 `tokenId`가 실려야 한다 —
+ * 빠지면 대기 중 폐기·재발급된 토큰의 쓰기가 멤버십 판정만 지나 커밋된다. 위 `SITES`의 부분집합이고, 도구가 늘면 같이 늘린다.
+ */
+const TOKEN_SITES = [
+  "lib/auth/members.ts#changeMemberRole",
+  "lib/auth/members.ts#revokePendingInvitation",
+  "lib/projects/archive.ts#runArchive",
+  "lib/projects/archive.ts#runUnarchive",
+  "lib/invitation-email/issue.ts#issueInvitations",
+  "lib/settings/update.ts#changeBaseBranch",
+  "lib/settings/update.ts#renameProject",
+  "lib/sources/base-locale.ts#declareBaseLocale",
+  "lib/keys/save-key.ts#applyKeySave",
+  "lib/keys/save-key.ts#applyKeySaveBatch",
   "lib/sync/run.ts#startRun",
 ];
 
@@ -54,10 +76,40 @@ function lockedCalls(file: SourceFile, name: string): number {
   }).length;
 }
 
+/** 함수 안 `lockProjectAccess(tx, { … })` 호출 중 둘째 인자 객체에 `tokenId` 속성이 **없는** 것의 수. */
+function callsWithoutToken(file: SourceFile, name: string): number {
+  const fn = file.getFunction(name);
+  if (fn === undefined) throw new Error(`${file.getBaseName()}#${name} not found`);
+  return fn.getDescendantsOfKind(SyntaxKind.CallExpression).filter(call => {
+    if (call.getExpression().getText() !== "lockProjectAccess") return false;
+    const arg = call.getArguments()[1];
+    return !(arg !== undefined && Node.isObjectLiteralExpression(arg) && arg.getProperty("tokenId") !== undefined);
+  }).length;
+}
+
 describe("잠금 안 인가 재확인", () => {
   it.each(SITES)("%s", site => {
     const [path, name] = site.split("#") as [string, string];
     expect(lockedCalls(source(path), name)).toBeGreaterThan(0);
+  });
+
+  it.each(TOKEN_SITES)("%s는 잠금에 tokenId를 싣는다", site => {
+    const [path, name] = site.split("#") as [string, string];
+    expect(TOKEN_SITES.every(s => SITES.includes(s))).toBe(true);
+    expect(lockedCalls(source(path), name)).toBeGreaterThan(0);
+    expect(callsWithoutToken(source(path), name)).toBe(0);
+  });
+
+  it("tokenId 검출기가 빠진 호출을 센다 — 단축 속성·대입 속성은 실린 것이다", () => {
+    const file = project.createSourceFile(`${ROOT}.scratch/locked-token-fixture.ts`, [
+      "async function missing(tx: any) { return lockProjectAccess(tx, { projectId: 'p' }); }",
+      "async function short(tx: any, tokenId: string) { return lockProjectAccess(tx, { projectId: 'p', tokenId }); }",
+      "async function assigned(tx: any, s: any) { return lockProjectAccess(tx, { projectId: 'p', tokenId: s.tokenId }); }",
+      "declare function lockProjectAccess(tx: unknown, input: unknown): unknown;",
+    ].join("\n"), { overwrite: true });
+    expect(callsWithoutToken(file, "missing")).toBe(1);
+    expect(callsWithoutToken(file, "short")).toBe(0);
+    expect(callsWithoutToken(file, "assigned")).toBe(0);
   });
 
   // 검출기가 0을 낼 수 있어야 위의 N>0이 의미를 갖는다 (POSTMORTEM 2026-09-14).

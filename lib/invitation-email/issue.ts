@@ -145,11 +145,11 @@ function retryAfterIssue(limits: Awaited<ReturnType<typeof readLimits>>, count: 
 
 export async function issueInvitations(
   prisma: PrismaClient,
-  input: { projectId: string; userId: string; recipients: readonly IssueRecipient[] },
+  input: { projectId: string; userId: string; recipients: readonly IssueRecipient[]; tokenId?: string },
 ): Promise<IssueOutcome> {
   const { projectId, userId, recipients } = input;
   return prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage" });
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage", tokenId: input.tokenId });
     if (locked.status !== "ok") return locked;
     const now = new Date();
     const limits = await readLimits(tx, { projectId, userId, emails: recipients.map((r) => r.email), now });

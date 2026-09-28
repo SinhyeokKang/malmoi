@@ -132,6 +132,8 @@ describe("planImportRefusal", () => {
         "고쳐야 할 것"으로 읽지 않도록 적어 둔다. 언젠가 union을 실제 생산자 집합으로 좁히는 것이 답이다.
       */
       "state-mismatch", "state-expired", "wrong-user", "denied", "exchange-failed", "taken-by-other",
+      // MCP 토큰 주체만 낸다(`lockProjectAccess`) — 화면 경로엔 생산자가 없고, 같은 토큰으로 다시 눌러도 같다.
+      "token-scope",
     ] as const satisfies readonly RepositoryImportError[];
     /** 기다리거나 다시 누르면 답이 달라진다. */
     const transient = ["already-running", "ingest-failed", "unavailable", "unconfirmed", "reconfirm", "unauthorized"] as const satisfies readonly RepositoryImportError[];

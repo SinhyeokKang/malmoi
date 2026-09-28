@@ -2,7 +2,6 @@
 
 import { redrawIfArchived, revalidateAfterCommit } from "@/lib/revalidate-after-commit";
 
-import { planProjectName } from "@/lib/projects/plan";
 import { projectImageObjectKey, planProjectImageDelete, IMAGE_MAX_BYTES, type UploadReject } from "@/lib/upload/image";
 import { normalizeImage } from "@/lib/upload/normalize";
 import { putImage, deleteImage } from "@/lib/upload/store";
@@ -31,10 +30,8 @@ import { STATE_TTL_MINUTES, signState, stateCookieName } from "@/lib/github-conn
 import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { authorizeUrl, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
 import { probeRepo } from "@/lib/github";
-import { isValidBranchName } from "@/lib/pull/branch-name";
-import { isSyncBranchName } from "@/lib/pull/ref-slug";
-import { invalidateDeliveryConfirmations } from "@/lib/pull/load";
 import type { RepositorySettingsError } from "@/lib/settings/message";
+import { BaseBranchInput, changeBaseBranch, ProjectNameInput, renameProject } from "@/lib/settings/update";
 
 /**
  * GitHub 계정 연결의 **나가는 쪽** (ARCHITECTURE §6.4). 돌아오는 쪽만 Route Handler다
@@ -248,12 +245,6 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
 
 // ── 기준 브랜치 (6b-3. 기준 로케일은 6b-5가 `locales/actions.ts`로 옮겼다) ────────
 
-const SettingsInput = z.object({
-  slug: z.string().min(1),
-  /** 트림하지 않는다 — `isValidBranchName`이 앞뒤 공백을 **거부**한다 (그 모듈의 경고). */
-  baseBranch: z.string().min(1),
-});
-
 export type RepositorySettingsResult =
   | { ok: true }
   | { ok: false; error: RepositorySettingsError | AccessError | "invalid input" };
@@ -273,57 +264,15 @@ export async function updateRepositorySettings(raw: {
   slug: string;
   baseBranch: string;
 }): Promise<RepositorySettingsResult> {
-  const parsed = SettingsInput.safeParse(raw);
+  const parsed = BaseBranchInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
-  const { slug, baseBranch } = parsed.data;
+  const { slug } = parsed.data;
 
   const session = await readSession();
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
 
-  const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, {
-    userId: session.userId,
-    slug,
-    permission: "project:settings",
-  });
-  if (access.status !== "ok") return { ok: false, error: access.status };
-  const { projectId } = access;
-
-  /**
-   * 형식은 저장 전에 본다 — **여기서는** GitHub을 부르지 않는다(브랜치의 실존은 pull이 시끄럽게
-   * 말한다, DESIGN §6.6).
-   *
-   * 설정과 온보딩은 같은 목록 조회·선택 UI를 쓴다. 목록은 조회 시점의 안내일 뿐이므로 저장 인가와
-   * 형식 검증은 이 액션이 계속 맡는다. 300개 초과 시 자유 입력도 이 검증을 지난다.
-   *
-   * ⚠️ **검증 함수는 한 벌이다** — 양쪽 다 `isValidBranchName`이고, 갈리면 온보딩이 통과시킨 이름을
-   * 설정이 거부한다.
-   */
-  if (!isValidBranchName(baseBranch)) return { ok: false, error: "invalid-branch" };
-  // 목록에서 빠져도 자유 입력(300개 초과)·직접 호출이 같은 이름을 보낸다 (malmoi#126).
-  if (isSyncBranchName(baseBranch)) return { ok: false, error: "sync-branch" };
-
-  const outcome = await prisma.$transaction(async (tx) => {
-    // 잠금 뒤 읽어야 동시 변경의 before와 no-op 판정이 실제 저장 직전 상태를 가리킨다.
-    const locked = await lockProjectAccess(tx, { projectId, userId: session.userId, permission: "project:settings" });
-    if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
-    const project = await tx.project.findUnique({ where: { id: projectId }, select: { baseBranch: true } });
-    if (project === null) return { ok: false, error: "not-found" } as const;
-    if (baseBranch !== project.baseBranch) {
-      await tx.project.update({ where: { id: projectId }, data: { baseBranch } });
-      // 브랜치는 되돌릴 수 있어 context 지문만으로는 옛 확인이 부활한다 — 같은 tx에서 무효화한다 (ARCHITECTURE §5.8).
-      await invalidateDeliveryConfirmations(tx, projectId);
-      await recordEvent(tx, {
-        projectId,
-        subtype: "settings.baseBranchChanged",
-        actor: { kind: "USER", userId: session.userId },
-        scope: "project-wide",
-        payload: { kind: "SETTINGS", field: "baseBranch", value: { before: project.baseBranch, after: baseBranch } },
-      });
-    }
-    return { ok: true } as const;
-  });
+  const outcome = await changeBaseBranch(getPrisma(), { userId: session.userId }, parsed.data);
   if (!outcome.ok) return redrawIfArchived(slug, outcome.error, outcome);
 
   revalidatePath(`/projects/${slug}/settings`);
@@ -342,43 +291,18 @@ export async function updateRepositorySettings(raw: {
  */
 
 
+/** 본체는 공유 코어 `renameProject`다(MCP `update_project`와 같다). */
 export async function updateProjectName(raw: { slug: string; name: string }): Promise<
   { ok: true; name: string } | { ok: false; error: "empty" | "too-long" | AccessError | "invalid input" }
 > {
-  const parsed = z.object({ slug: z.string().min(1), name: z.string() }).safeParse(raw);
+  const parsed = ProjectNameInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const session = await readSession();
   if (session.status !== "ok") return { ok: false, error: session.status === "none" ? "unauthorized" : "unavailable" };
-  const prisma = getPrisma();
-  const access = await getProjectAccess(prisma, { userId: session.userId, slug: parsed.data.slug, permission: "project:settings" });
-  if (access.status !== "ok") return { ok: false, error: access.status };
-  const plan = planProjectName(parsed.data.name);
-  if (!plan.ok) return { ok: false, error: plan.reason };
-  // 보관 = Restore만 (PRODUCT §7.9) — 보관 중 거부는 잠금 안 판정이 한다.
-  let locked;
-  try {
-    locked = await prisma.$transaction(async (tx) => {
-      const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId: session.userId, permission: "project:settings" });
-      if (locked.status !== "ok") return locked;
-      const row = await tx.project.findUnique({ where: { id: access.projectId }, select: { name: true } });
-      if (!row) throw new Error("Project disappeared");
-      // 잠금 뒤에 읽은 값이라 `before`가 실제로 내가 덮은 이름이다.
-      if (row.name === plan.name) return locked;
-      await tx.project.update({ where: { id: access.projectId }, data: { name: plan.name } });
-      await recordEvent(tx, {
-        projectId: access.projectId,
-        subtype: "settings.nameChanged",
-        actor: { kind: "USER", userId: session.userId },
-        scope: "project-wide",
-        payload: { kind: "SETTINGS", field: "name", value: { before: row.name, after: plan.name } },
-      });
-      return locked;
-    });
-  }
-  catch (error) { console.error("Project name update failed.", { projectId: access.projectId, cause: describeFailure(error) }); return { ok: false, error: "unavailable" }; }
-  if (locked.status !== "ok") return redrawIfArchived(parsed.data.slug, locked.status, { ok: false, error: locked.status });
+  const result = await renameProject(getPrisma(), { userId: session.userId }, parsed.data);
+  if (!result.ok) return redrawIfArchived(parsed.data.slug, result.error, result);
   revalidateAfterCommit("name");
-  return { ok: true, name: plan.name };
+  return result;
 }
 
 async function cleanProjectImage(url: string | null, projectId: string): Promise<void> {

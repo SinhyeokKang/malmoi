@@ -42,7 +42,7 @@ export async function publishProject(prisma: PrismaClient, subject: Subject, inp
    * `SyncRun` 행·오류 분류를 들고, **던지지 않는다**. 남의 라이브러리 메시지를 `ref`로 접는 규칙도
    * 그쪽에 있다(`publish-failure.test.ts`가 이 경로로 그것을 계속 잰다).
    */
-  return { outcome: await runSync(prisma, { projectId: access.projectId, slug: input.slug, trigger: "manual", requestedBy: userId }), attempted: true };
+  return { outcome: await runSync(prisma, { projectId: access.projectId, slug: input.slug, trigger: "manual", requestedBy: userId, tokenId: subject.tokenId }), attempted: true };
 }
 
 /**

@@ -74,7 +74,9 @@ export function planProjectAccess(input: {
   return { status: "ok", projectId: member.projectId, role: member.role, archived };
 }
 
-export type LockedAccess = { status: "ok"; role: Role } | { status: "not-found" } | { status: "forbidden" } | { status: "archived" };
+export type LockedAccess = { status: "ok"; role: Role } | { status: "not-found" } | { status: "forbidden" } | { status: "archived" }
+  /** MCP 토큰 주체만 — 잠금 뒤 다시 읽은 토큰이 없거나 만료됐다 / 이 동작의 grant를 안 받았다 (`lockProjectAccess`). */
+  | { status: "unauthorized" } | { status: "token-scope" };
 
 /**
  * **잠금 뒤 다시 읽은 값으로 쓰기를 판정한다** (감사 #9·#10·#26 — ARCHITECTURE §5.6.4). 진입점 판정은 잠금 전 1회라

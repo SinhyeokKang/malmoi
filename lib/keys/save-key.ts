@@ -27,7 +27,7 @@ export type KeySaveResult =
   | { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] };
 
 type KeyChanges = readonly { localeCode: string; value: string }[];
-type KeySaveTarget = { projectId: string; surfaceId: string; surfaceSlug: string; userId: string };
+type KeySaveTarget = { projectId: string; surfaceId: string; surfaceSlug: string; userId: string; tokenId?: string };
 /** 잠금 뒤 인가를 지난 한 키의 결과 — 접근 거부는 배치 전체의 결과라 여기 없다. */
 export type KeyEntryResult = Exclude<KeySaveResult, { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] }>;
 
@@ -35,9 +35,9 @@ export async function applyKeySave(
   prisma: PrismaClient,
   input: KeySaveTarget & { keyId: string; changes: KeyChanges },
 ): Promise<KeySaveResult> {
-  const { projectId, surfaceId, userId } = input;
+  const { projectId, surfaceId, userId, tokenId } = input;
   return prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId });
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId, tokenId });
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
     return saveKeyLocked(tx, input, input.keyId, input.changes);
   }, { maxWait: 10_000, timeout: 30_000 });
@@ -59,9 +59,9 @@ export async function applyKeySaveBatch(
   prisma: PrismaClient,
   input: KeySaveTarget & { entries: readonly { keyId: string; changes: KeyChanges }[] },
 ): Promise<KeyBatchSaveResult> {
-  const { projectId, surfaceId, userId } = input;
+  const { projectId, surfaceId, userId, tokenId } = input;
   return prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId });
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId, tokenId });
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
     const results: { keyId: string; result: KeyEntryResult }[] = [];
     // 순차다 — 같은 tx의 쿼리는 한 연결이라 병렬로 보내도 빨라지지 않고, 같은 키가 두 번 오면 앞 저장을 뒤 판정이 봐야 한다.

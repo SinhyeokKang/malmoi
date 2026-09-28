@@ -33,11 +33,11 @@ import {
  */
 export async function runSync(
   prisma: PrismaClient,
-  input: { projectId: string; slug: string; trigger: SyncTriggerKind; requestedBy: string | null },
+  input: { projectId: string; slug: string; trigger: SyncTriggerKind; requestedBy: string | null; tokenId?: string },
 ): Promise<PullOutcome> {
   const { projectId, slug, trigger, requestedBy } = input;
 
-  const started = await startRun(prisma, projectId, trigger, requestedBy);
+  const started = await startRun(prisma, projectId, trigger, requestedBy, input.tokenId);
   if (started.status !== "ok") return started.outcome;
   const runId = started.runId;
 
@@ -92,13 +92,15 @@ async function startRun(
   projectId: string,
   trigger: SyncTriggerKind,
   requestedBy: string | null,
+  /** MCP 토큰 주체의 Publish — 실행권 획득이 권한 확정 시점이다(mcp-connector design §1.25). */
+  tokenId: string | undefined,
 ): Promise<Started> {
   return prisma.$transaction(async (tx) => {
     // 수동 실행은 사람이 연다 — 진입점 인가 뒤 잠금을 기다리는 동안 제거·보관됐으면 행을 만들지 않는다(감사 #10).
     // cron은 사람이 없고 보관 프로젝트를 `selectPullTargets`가 이미 뺀다.
     if (requestedBy === null) await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
     else {
-      const locked = await lockProjectAccess(tx, { projectId, userId: requestedBy, permission: "translation:write" });
+      const locked = await lockProjectAccess(tx, { projectId, userId: requestedBy, permission: "translation:write", tokenId });
       if (locked.status !== "ok") return { status: "rejected", outcome: { status: "failed", error: locked.status, delivery: "not-started", retryable: false } };
     }
 
