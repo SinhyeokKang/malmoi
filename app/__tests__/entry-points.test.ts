@@ -59,6 +59,8 @@ const EXEMPT = new Set([
    * `isStoredImageKey` 하나이고, 상류 호출은 **요청 헤더를 하나도 안 넘긴다**.
    */
   "api/images/[...key]/route.ts",
+  // 초대 메일의 썸네일 PNG 변환판 (#140) — 위와 같은 공개 바이트·같은 검증이고, 프로젝트 썸네일 키만 받는다.
+  "api/images/email/[...key]/route.ts",
   "api/auth/[...nextauth]/route.ts",
   "page.tsx",
   "signin/page.tsx",
