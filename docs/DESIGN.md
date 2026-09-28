@@ -330,7 +330,7 @@ grep -rn "<PanelBody"   components app | grep -v __tests__   # 19 (+ 같은 자�
 
 ### 6.1a 번역 작업 화면 — 트리 · 키 목록 · 로케일 세 패널 (2026-09-23, translation-rework C4 · 시안 `design_handoff_translations` 2a · 트리 2k-B)
 
-⚠️ **이동은 누른 즉시 반응하고 URL 커밋이 뒤따른다** (2026-09-25, audit-ux U1·U3) — 키·트리·필터·검색은 하나의 `useTransition`(`navigating`)을 지나고, 선택 행·필터 라벨·트리 선택은 `useOptimistic`(`view`)으로 먼저 선다. 대기 중 목록·상세는 `aria-busy`, 상세 입력과 언어 메뉴는 읽기 전용이다(응답 전 입력이 교체로 사라지던 결함 — `replaceState`가 대기 이동을 버리는 Next 16.3 `ACTION_RESTORE`도 이것이 막는다). 연속 조작은 **낙관값 `view.query` 위에 쌓는다** — 서버 prop `query`로 조립하면 앞 선택이 지워진다(POSTMORTEM 2026-09-12 부류). 키 선택·More는 `replace`, 트리·필터·검색은 `push`(D2). More는 클라이언트 누적이고 URL에 cursor가 없다. 소스 전환은 세그먼트가 바뀌어 `translations/loading.tsx` 골격이 전면을 덮는다(받아들인 동작).
+⚠️ **이동은 누른 즉시 반응하고 URL 커밋이 뒤따른다** (2026-09-25, audit-ux U1·U3) — 키·트리·필터·검색은 하나의 `useTransition`(`navigating`)을 지나고, 선택 행·필터 라벨·트리 선택은 `useOptimistic`(`view`)으로 먼저 선다. 대기 중 목록·상세는 `aria-busy`, 상세 입력과 언어 메뉴는 읽기 전용이다. **다른 키로 가는 동안(키·트리) 상세는 골격 `LocalePanelSkeleton`이다**(2026-09-28 사용자 — 선택 행만 먼저 옮겨가 옛 값이 새 키의 것으로 읽혔다. 머리 48 · 키 블록 · 언어 셋 · 푸터가 실물 치수). 필터·검색은 선택을 안 옮기므로 옛 상세가 읽기 전용으로 남는다(응답 전 입력이 교체로 사라지던 결함 — `replaceState`가 대기 이동을 버리는 Next 16.3 `ACTION_RESTORE`도 이것이 막는다). 연속 조작은 **낙관값 `view.query` 위에 쌓는다** — 서버 prop `query`로 조립하면 앞 선택이 지워진다(POSTMORTEM 2026-09-12 부류). 키 선택·More는 `replace`, 트리·필터·검색은 `push`(D2). More는 클라이언트 누적이고 URL에 cursor가 없다. 소스 전환은 세그먼트가 바뀌어 `translations/loading.tsx` 골격이 전면을 덮는다(받아들인 동작).
 
 **SoT는 Claude Design 캔버스 `Translations.dc.html`의 2a다.** 아래 값은 Chrome 1440×900(LNB 열림)에서
 computed style로 잰 것이다.
