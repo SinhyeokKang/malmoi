@@ -2627,8 +2627,10 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 
 #### 6.45.5 도구 목록과 쓰기 범위 — 정본 (`lib/mcp/catalog.ts`)
 
-**28개 — 읽기 14 · 쓰기 14.** 이름·순서·annotations·요구 조건의 코드 정본은 `toolCatalog()`(잎 데이터 모듈 — `/mcp`가 읽을 수 있게
-값 import가 없다, `client-graph.test.ts`)이고 이 표가 그 판정의 근거다. 도구 구현은 조건을 자기 파일에 다시 적지 않는다.
+**28개 — 읽기 14 · 쓰기 14.** 이름·순서·annotations·요구 조건의 코드 정본은 `toolCatalog()`(잎 데이터 모듈 — 소비자는 서버 쪽 셋
+`lib/mcp/server.ts`·`lib/mcp/tools/access.ts`·`lib/auth/lock.ts`이고 `/mcp` 화면은 읽지 않는다. 그래도 잎인 이유: 모든 쓰기 코어가 지나는
+`lock.ts`가 이것을 물므로 값 import가 붙으면 그 그래프가 쓰기 경로 전부에 번지고, 구현 → 카탈로그 방향이 뒤집히면 순환이 생긴다.
+`server-only`도 없어 순수 테스트가 바로 import한다 — `catalog.test.ts`)이고 이 표가 그 판정의 근거다. 도구 구현은 조건을 자기 파일에 다시 적지 않는다.
 입력에 `projectId`·`userId`가 없다 — 스키마가 그 필드를 모르고(POSTMORTEM 2026-09-06), 입력 스키마는 코어가 export한 zod를
 재사용한다(복제하면 한쪽만 좁아진다).
 
