@@ -2513,3 +2513,30 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: `SKIPPED` 하나가 두 어휘(`nothingToSend`·`notSent`)로 갈리는데, 가르는 술어가 D7(보류)을 더할 때 **`withheld > 0`만** 봤다. `planSyncFinish`는 writer 경고 거부를 `withheld: 0, warnings: N`으로 적으므로 그 갈래는 술어에 안 닿았다. 결과 모달(`lib/publish/plan.ts`)은 `PullResult`의 `reason`을 직접 보고, Logs는 `SyncRun` 컬럼 조인만 본다 — **같은 실행을 두 소비자가 다른 입력으로 판정**해서 한쪽에 갈래가 늘 때 다른 쪽이 따라오지 않았다.
 - **그물**: 잡은 것 — L8.1 `/roundtrip`에서 base 파일을 일부러 깨뜨리고 Logs를 열어 본 것뿐이다. 놓친 것 — `query.integration.ts`의 notSent 테스트가 `withheld > 0` 행만 심었고, 단위 테스트는 `planSyncFinish`의 `warnings` 수만 재서 "그 행이 Logs에서 무엇으로 읽히나"를 잇는 자리가 없었다. 갈래가 "미실측"으로 DESIGN에 적혀 있었다.
 - **재발 방지**: `SKIPPED`를 어휘로 옮기는 술어는 `eventResult`와 `resultWhere` 두 곳이 같은 조건이어야 한다 — `grep -n 'withheld > 0\|withheld: { gt\|warnings: { gt\|warnings > 0' lib/events/query.ts`로 두 자리가 같은 컬럼 집합을 보는지 확인한다. `PullResult`에 `skipped` 갈래를 더하면 `planSyncFinish`가 그것을 어느 컬럼에 적는지, 그 컬럼 조합이 `eventResult`의 어느 어휘로 떨어지는지를 `query.integration.ts`에 한 행씩 심는다(지금 `withheld`·`warnings` 두 행이 있다).
+
+### 2026-09-28 — Next 외부 rewrite가 세션 쿠키를 제3자 호스트로 넘긴다
+
+- **영역**: `next.config.ts`(`rewrites()`) ← `app/api/images/[...key]/route.ts`·`lib/upload/store.ts`(`readImage`)
+- **증상**: 프로덕션에 나간 적은 없다 — 구현 직전 실측으로 잡았다. 기업 웹 필터가 Blob 호스트를 막는 문제(같은 날 `fortigate` 건)를 풀려고 `/api/images/:path* → https://<blob host>/:path*` 외부 rewrite를 넣었더니, 에코 상류를 붙여 잰 요청에 `cookie: __Secure-authjs.session-token=…`과 `authorization: Bearer …`가 그대로 도착했다. `<img src="/api/images/…">`는 **동일 출처**라 브라우저가 세션 쿠키를 자동으로 싣고, Next의 외부 rewrite는 요청 헤더를 상류로 **그대로 전달**한다. 이 앱은 DB 세션이라 그 토큰 하나가 곧 계정 접근이고, 아바타·썸네일이 뜨는 **모든 화면에서 매 요청마다** 나갔을 것이다.
+- **근본 원인**: rewrite를 "URL을 바꾸는 선언"으로 읽었다. 실제로는 **프록시**이고, 프록시의 기본값은 요청을 그대로 넘기는 것이다. 그 기본값이 설정 파일 세 줄에 안 보여서, 설계 검토 둘(아키텍처 축·보안 축)이 SSRF·캐시·열거·비용까지 파고도 **나가는 요청에 무엇이 실리나**를 아무도 묻지 않았다. 질문이 전부 "우리가 무엇을 보내는가"였고 "브라우저가 우리에게 무엇을 보내는가"가 없었다.
+- **그물**:
+  - 잡은 것: 구현 에이전트가 스펙대로 만든 뒤 **자기 판단으로 재검토 항목에 올린 것** 하나. 그리고 `next.config.ts`의 destination을 로컬 에코 서버로 돌려 헤더를 실제로 찍어 본 실측.
+  - 놓친 것: 설계 리뷰 둘 다. `pnpm typecheck`·`pnpm test`·`pnpm build` 셋 다(배선 층이라 원리적으로 못 본다 — ARCHITECTURE §0.5). 코드 리뷰도 못 본다 — **세 줄이 다 맞게 생겼다.**
+- **재발 방지**:
+  - **외부 호스트로 가는 rewrite를 만들지 않는다.** 자사 출처로 남의 호스트를 감싸야 하면 Route Handler로 `fetch`하고 **헤더를 넘기지 않는다**. 그 생략이 유일한 방어라 주석이 아니라 소스 스캔이 지킨다 — `lib/upload/__tests__/image-proxy-isolation.test.ts`가 `readImage`의 `fetch`에 `headers:` 옵션이 없고 `request.headers`·`cookies()`를 안 읽는 것을 상시로 센다(`credential-separation.test.ts`와 같은 계보).
+  - grep: `rg -n 'async rewrites|destination:\s*[`"]https?://' next.config.ts vercel.json` → 2026-09-28 실행 결과 **0건**(이 건을 Route Handler로 바꿨으므로). 한 건이라도 잡히면 그 destination이 우리 도메인인지, 아니면 위 실측을 다시 돌려야 하는지 판정한다.
+  - **동일 출처 자산 경로를 새로 만들면 "브라우저가 여기에 쿠키를 싣는다"를 전제로 시작한다.** 실측은 `next.config.ts`의 destination을 로컬 에코 서버(`http.createServer`로 `req.headers` 출력)로 잠시 돌려 찍는 것이고, 5분이면 끝난다.
+  - ⚠️ **ARCHITECTURE §6.7·§6.75와 `lib/upload/store.ts`의 머리 주석에 이 실측이 적혀 있다** — 누군가 "rewrite가 더 간단한데 왜 라우트냐"고 물을 때 답이 코드 옆에 있어야 한다. 실제로 이 세션에서 rewrite가 **더 작다는 이유로 한 번 채택됐다가** 되돌려졌다.
+
+### 2026-09-28 — 리포 안의 git worktree를 Vitest가 같이 수집해 게이트가 red로 오진됐다
+
+- **영역**: `vitest.config.ts`(`test.exclude`) · `.gitignore` · Agent 툴의 `isolation: "worktree"`
+- **증상**: `/push` 1단계에서 `pnpm test`가 `Test Files 1002 failed/passed (1002)` · `Tests 1157 failed | 12893 passed`로 떨어졌다. 직전에 통과한 것과 같은 트리인데 red라 "체리픽이 뭔가 깼다"로 읽었다. 실제 원인은 파일 **수**였다 — 정상이 501개인데 정확히 2배였고, Vitest가 `.claude/worktrees/agent-<id>/` 안의 테스트 복사본까지 수집하고 있었다. 그 워크트리는 `node_modules`·`generated/prisma`가 별도라 대부분 실패한다.
+- **근본 원인**: Agent 툴의 워크트리 격리가 워크트리를 **리포 안**(`.claude/worktrees/`)에 만든다. `vitest.config.ts`의 `exclude`는 `["node_modules/**", ".next/**"]` 둘뿐이고, **Vitest는 `.gitignore`를 보지 않는다** — 게다가 그 경로는 `.gitignore`에도 없어서 `git status`에 `??`로만 떴다. `/push` 0b가 미추적을 "보고만 하고 통과"시키는 것은 **커밋 오염** 축에서는 옳지만, 그 디렉터리가 **게이트의 입력**이 된다는 축은 아무도 안 봤다.
+- **그물**:
+  - 잡은 것: 실패 요약의 파일 수(1002 = 501×2)와, 실패 경로가 전부 `.claude/worktrees/`로 시작한다는 것. 둘 다 사람이 눈으로 센 것이다.
+  - 놓친 것: `/push` 0b(미추적이라 통과). `.gitignore`(그 경로가 없다). `vitest.config.ts`의 `exclude`. **`passWithNoTests`를 끈 방어의 반대 방향** — 0개로 줄어드는 사고는 막지만 **배수로 늘어나는 사고**는 막는 것이 없다.
+- **재발 방지**:
+  - **워크트리 커밋을 체리픽한 뒤 게이트를 돌리기 전에 워크트리를 먼저 제거한다** — `git worktree remove <path> --force` + `git branch -D <branch>`. 순서가 뒤집히면 위 증상을 그대로 밟는다.
+  - **`pnpm test`의 파일 수가 평소의 배수면 수집 범위부터 의심한다.** 개별 실패를 읽기 전에 `Test Files` 줄을 본다 — 이번에 진단을 늦춘 것이 그 순서였다.
+  - 후속 후보(이 스킬은 코드를 고치지 않는다): `vitest.config.ts`의 `exclude`에 `.claude/worktrees/**`를 더하고 `.gitignore`에도 `.claude/worktrees/`를 넣는다. grep: `rg -n 'exclude:' vitest.config.ts` → 2026-09-28 현재 `["node_modules/**", ".next/**"]` 한 곳뿐이다. 같은 형의 다른 생성물 디렉터리(`.scratch/`)는 `__tests__` 규약을 안 쓰므로 include glob에 안 걸린다.
