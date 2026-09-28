@@ -534,10 +534,12 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /docs · /docs/:slug*           ✅ 사용 가이드 — 원고 guide/**.md · 순서 guide/SUMMARY.md · 공개 셸 + 문서 내비 ← docs-guide (2026-09-26)
                                /docs = 개요(독자 두 갈래 Set up / Translate) · 없는 slug·AUTHORING·SHOOTING은 404
                                옛 /docs#<id> 일곱은 개요가 새 페이지로 보낸다 · 앱 안 링크는 routes.docs(page?, anchor?)
+/changelog                     릴리스 노트 — 원문은 GitHub Release(공개 리포, 토큰 없이 1시간 캐시) · 공개 셸 · #v<x.y.z> 착지 ← changelog (2026-09-28)
+                               앱 태그 v<x.y.z>만(draft·prerelease·액션 태그 제외) · GitHub 실패·0건도 200 + GitHub Releases 안내
 /robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
-/sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /privacy — /signin은 noindex라 없다 ← seo-geo
+/sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /changelog · /privacy — /signin은 noindex라 없다 ← seo-geo
 /llms.txt · /llms-full.txt     ✅ 가이드 목차(제목·절대 URL·첫 문단) · 원고 전문(페이지마다 Source 줄) — text/plain ← seo-geo
-                               색인: 공개 넷(/·/docs·/docs/:slug·/privacy)만 canonical · /signin·/invite·/signin/link는 noindex(robots.txt로는 안 막는다)
+                               색인: 공개 다섯(/·/docs·/docs/:slug·/changelog·/privacy)만 canonical · /signin·/invite·/signin/link는 noindex(robots.txt로는 안 막는다)
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
@@ -556,6 +558,15 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /projects/:slug/logs           ✅ 프로젝트 전체 활동 이력 (?event= 상세)  ← logs-rework (ProjectEvent 소비자)
 /projects/:slug/settings       나머지 프로젝트 설정 전부
 ```
+
+**`/changelog`가 판정 셋을 뒤집었다** (2026-09-28 사용자). ① 사이드바 하단·사용자 메뉴의 `Release notes`(GitHub Releases
+외부 링크) → 라벨 `Changelog`의 앱 안 링크 — 목적지가 앱 안 페이지가 됐고 화면 라벨은 그 페이지 제목과 같은 키여야 한다.
+② 공개 헤더 `Home · Docs · GitHub` → `Home · Docs · Changelog` — 헤더 내비는 앱 안 목적지만 들고, GitHub는 푸터 첫 링크·
+랜딩 CTA에 남아 도달성이 줄지 않는다. ③ 절대 날짜·시각 형이 `Sep 27, 2026` / `Sep 27, 2026 16:34 UTC` 하나로 모였다 — 날짜만
+쓰는 자리와 시각을 쓰는 자리가 서로 달랐고 이 페이지가 셋째 형을 들일 참이었다("UTC를 말한다"는 그대로다). **원문의 정본은
+GitHub Release**라 소스에 사본이 없고, 본문 이미지는 `<img>`가 아니라 링크로 나간다(CSP·방침 전송처를 넓히지 않는다).
+비범위: 버전별 하위 페이지 · 검색·필터·페이지네이션(100건 초과분은 GitHub 링크 한 문장) · RSS·구독·새 버전 배지(§4.2 알림
+비범위 인접) · 앱 안 작성 UI · `/merge` 직후 즉시 반영.
 
 **번역은 표면 아래, 소스 관리는 프로젝트 아래다.** 내부 링크는 `routes.surfaceTranslations`와
 `routes.sources`를 쓴다. `routes.translations`의 옛 주소는 저장된 기본 표면으로 보내며
@@ -576,7 +587,7 @@ Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#6
 ⚠️ **로그인은 `/`가 아니라 `/signin`이다** (2026-09-10, 8-1a). 랜딩이 `/`에 설 자리라 미리 갈랐다 —
 나중에 옮기면 그 목적지를 만드는 **아홉 자리**가 동시에 움직이고, 경로 문자열은 타입이 못 보는 부류라
 하나만 빠뜨려도 조용하다(POSTMORTEM 2026-09-05). **2026-09-26부터 `/`가 랜딩이다** — 헤더(Home · Docs ·
-GitHub · Get started) · 히어로 · 스크롤 구동 목업(편집 → Publish 다섯 씬) · 마무리 CTA(DESIGN §6.615).
+Changelog · Get started — GitHub는 2026-09-28에 헤더에서 빠져 푸터 첫 링크와 마무리 CTA에 남는다) · 히어로 · 스크롤 구동 목업(편집 → Publish 다섯 씬) · 마무리 CTA(DESIGN §6.615).
 **로그인 상태로 오면 여전히 `/projects`다**(*"로그인 이후 랜딩 못 가게"*, 2026-09-10 사용자) — 그래서
 랜딩을 보는 사람은 늘 비로그인이고 CTA는 `Get started`(→ `/signin`) 하나다. 세션을 못 읽는 장애
 (`unavailable`)도 랜딩이다 — 공개 화면이 세션 장애로 안 열리는 것이 더 나쁘고, 장애 신호는 `/signin`·보호
@@ -692,7 +703,7 @@ GitHub · Get started) · 히어로 · 스크롤 구동 목업(편집 → Publis
    - ⚠️ **순서**: 백로그의 조건이 *"착수 전에 어느 왕복이 얼마인지부터 재야 한다"* 다
      **재기 전에 스키마를 늘리는 것은 순서가 거꾸로다.**
 
-⚠️ **2026-09-27에 8-3의 두 결정이 다시 뒤집혔다** (사용자) — 사용자 축에 **`New project`**가 돌아왔고(`Projects · New project · Account` — 헤더 사용자 메뉴의 첫 묶음도 같은 목록이다), 프로젝트 구역 머리에 **프로젝트 전환 메뉴**가 섰다(이름 검색 · 보관 포함 · 지금 프로젝트 체크 · 고르면 그 프로젝트 Home). 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었고, 새 프로젝트는 목록 버튼 하나였다. 사이드바 **하단은 `Release notes · Docs` 둘**이다(Release notes는 GitHub Releases 외부 링크) — `Sign out`은 하단에서 빠져 사용자 메뉴에만 있다(`lib/shell/nav.ts`의 `navFooterItems`).
+⚠️ **2026-09-27에 8-3의 두 결정이 다시 뒤집혔다** (사용자) — 사용자 축에 **`New project`**가 돌아왔고(`Projects · New project · Account` — 헤더 사용자 메뉴의 첫 묶음도 같은 목록이다), 프로젝트 구역 머리에 **프로젝트 전환 메뉴**가 섰다(이름 검색 · 보관 포함 · 지금 프로젝트 체크 · 고르면 그 프로젝트 Home). 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었고, 새 프로젝트는 목록 버튼 하나였다. 사이드바 **하단은 `Changelog · Docs` 둘**이다(2026-09-28 — GitHub Releases 외부 링크 `Release notes`였던 첫 항목이 앱 안 `/changelog`가 되고 라벨이 그 페이지 제목 `Changelog`와 같은 키가 됐다) — `Sign out`은 하단에서 빠져 사용자 메뉴에만 있다(`lib/shell/nav.ts`의 `navFooterItems`).
 
 ⚠️ **그 뒤 뒤집혔다** (8-3, 2026-09-11) — 구역 라벨은 **이름 그대로**(사용자 이름 / 프로젝트 이름)이고 계정 항목은 `Settings`다. ⚠️ **계정 항목은 2026-09-23에 다시 `Account`가 됐다**(사용자) — 같은 사이드바에 `Project settings`가 서 있어 `Settings`가 축만 다른 동의어였고, 2인칭(`Your account`)으로 돌아간 것이 아니라 라우트·아이콘과 같은 낱말을 고른 것이다. 아래는 8-3 때의 판정이다. ~~**문구는 2인칭으로 통일한다** — 구역 `Your work`, 항목 `Your account`. 시안의 `My account`는 구역과
 인칭이 섞였다.~~
