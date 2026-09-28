@@ -114,10 +114,11 @@ describe("routes.home — 랜딩", () => {
   });
 });
 
-describe("routes.privacy · routes.docs — 공개 문서", () => {
+describe("routes.privacy · routes.docs · routes.changelog — 공개 페이지", () => {
   it("정적 경로다", () => {
     expect(routes.privacy()).toBe("/privacy");
     expect(routes.docs()).toBe("/docs");
+    expect(routes.changelog()).toBe("/changelog");
   });
 
   it("`routes.docs(page, anchor)` — 페이지·앵커를 잇고, 비면 붙이지 않는다", () => {

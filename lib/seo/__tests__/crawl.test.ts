@@ -30,15 +30,16 @@ describe("robotsFor — 프로덕션만 연다", () => {
   });
 });
 
-describe("sitemapEntries — `/` · docs 전부 · `/privacy`", () => {
+describe("sitemapEntries — `/` · docs 전부 · `/changelog` · `/privacy`", () => {
   const flat = flattenNav(loadSummary());
 
-  it("항목 수가 SUMMARY 전부 + 2이고 SUMMARY 순서다", () => {
+  it("항목 수가 SUMMARY 전부 + 3이고 SUMMARY 순서다 — `/changelog`는 `/privacy` 앞", () => {
     const urls = sitemapEntries(flat).map((entry) => entry.url);
-    expect(urls).toHaveLength(flat.length + 2);
+    expect(urls).toHaveLength(flat.length + 3);
     expect(urls[0]).toBe(`${SITE_ORIGIN}/`);
     expect(urls.at(-1)).toBe(`${SITE_ORIGIN}/privacy`);
-    expect(urls.slice(1, -1)).toEqual(flat.map((item) => `${SITE_ORIGIN}/docs${item.slug.map((part) => `/${part}`).join("")}`));
+    expect(urls.at(-2)).toBe(`${SITE_ORIGIN}/changelog`);
+    expect(urls.slice(1, -2)).toEqual(flat.map((item) => `${SITE_ORIGIN}/docs${item.slug.map((part) => `/${part}`).join("")}`));
   });
 
   it("개요는 끝 `/` 없는 `/docs`이고, 중첩 장이 부모 뒤에 온다", () => {
