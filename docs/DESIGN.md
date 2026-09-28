@@ -885,20 +885,24 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 문구 | `<title>`·h1 `You're invited to a project on Malmoi` · 본문 `You've been invited to join this project on Malmoi.` 하나 · preheader는 고정 | 받은편지함 목록(제목·preheader)에 OWNER 입력 문구를 세우지 않는다 |
 | 카드 | 테이블 `width="100%"` · 테두리 `1px #e5e5e5` · radius **12** · padding 12 · 타일↔텍스트 gap 12 | `InviteProjectCard`의 `w-full rounded-lg border p-3 gap-3`(`--radius` 0.75rem) — 국기 열만 뺐다 |
 | 여백 | 문장 → 카드 16 · 카드 → 버튼 28 | — |
-| 타일 | 셀 `width="32" height="32" align="center" valign="middle"` · radius 8 | `size-8 rounded-sm` |
+| 타일 | **32×32 고정 중첩 표**(`<table width="32" height="32">`) 안의 셀 `width="32" height="32" align="center" valign="middle"` + style `width:32px;height:32px;max-height:32px;line-height:0;font-size:0;overflow:hidden` · radius 8. 카드 행에 붙는 바깥 셀은 **색 없이** `valign="middle"`만 | `size-8 rounded-sm` · `items-center` |
 | 썸네일 갈래 | `<img src="https://mal-moi.com/api/images/<key>" alt="">`, **width 속성 없이** `display:block;width:auto;height:auto;max-width:32px;max-height:32px` + radius는 **`<img>`에** · 셀 배경 없음 | `ImageTile`은 이미지 뒤에 톤을 안 깐다(투명 이미지의 배경이 프로젝트마다 달라지지 않게) |
-| 폴백 갈래 | `<td bgcolor="TONE_HEX[tone]">`에 radius + `https://mal-moi.com/email/box@2x.png`(`width="16" height="16"`, 파일은 32×32) `alt=""` | `toneFill(name)` + 흰 `Box` `size-4` |
+| 폴백 갈래 | 안쪽 `<td bgcolor="TONE_HEX[tone]">`에 radius + `https://mal-moi.com/email/box@2x.png`(`width="16" height="16"` + style `display:block;width:16px;height:16px`, 파일은 32×32) `alt=""` | `toneFill(name)` + 흰 `Box` `size-4` |
 | 이름 | `14px/20px` `#0a0a0a` · 역할 `13px/17px` `#737373`(`Owner`/`Editor` — `m.projects.role`) · 둘 다 weight 400 · `letter-spacing:0.02em` · 두 줄 사이 1px | `text-sm` / `text-xs text-muted-foreground` · `gap-px`. 13px 행간 17은 `text-xs`의 짝이 없어 13×1.3333 |
 | 이름 줄바꿈 | `word-break:break-word;overflow-wrap:anywhere` · **60 grapheme 상한**(넘으면 앞 59 + `…`) | 화면은 `truncate`인데 메일엔 없다 — 공백 없는 긴 이름이 560 폭을 민다(대체 링크 문단과 같은 형) |
 
 - ⚠️ **톤은 자르기 전 이름으로 고른다** — 잘린 이름으로 고르면 61자 이상에서 화면 타일 색과 갈린다(POSTMORTEM 2026-09-17 교차 화면 톤 계약).
+- ⚠️ **타일은 행에 직접 붙지 않는다** (malmoi#140 — Gmail iOS에서 폴백 타일이 세로로 늘었다). 옆 텍스트 열이 이름 20 + 1 + 역할 17 = **38px**로
+  32보다 높고 `<td height>`는 최소값이라, 색을 든 셀이 카드 행에 붙으면 행과 같이 **32×38**이 된다(로컬 Chrome 렌더로 재현 — 픽셀 32×38 → 수정 뒤 32×32).
+  그래서 색·이미지는 32×32 중첩 표의 안쪽 셀이 들고 바깥 셀은 색 없이 가운데 정렬만 한다. `line-height:0;font-size:0`은 깨진 이미지 자리표시·공백의
+  줄 높이가 셀을 미는 것을, `overflow:hidden`은 넘치는 자리표시를 막는 보조 방어다(`<td>`의 `overflow` 지원은 클라이언트마다 갈린다 — 1차 방어는 중첩 표다).
 - ⚠️ **radius를 거는 자리가 갈래마다 다르다** — Gmail은 `<td>` radius가 자식 `<img>`를 자르지 않아 썸네일은 이미지 자체를 둥글린다.
   화면은 32 상자를 `overflow-hidden`으로 자르므로 **비정사각 이미지는 메일에서 이미지 모서리가 둥글어진다** — 수용. Outlook은 radius를 무시한다 — 수용.
 - ⚠️ **`width="32"` 속성을 두지 않는다** — `normalizeImage`가 `fit: "inside"` + `withoutEnlargement`라 가로·세로로 긴 것과 32 미만이 오고
   메일은 `object-fit`을 무시한다. 속성이 있으면 세로로 긴 이미지가 `max-height`에 눌려 찌그러진다. **32 미만 원본은 확대하지 않는다** —
   화면(`object-contain` 확대)과의 차이로 수용.
 - ⚠️ **`alt=""`를 명시한다**(썸네일·Box 둘 다) — 생략하면 Outlook이 파일명을 표시하고, 이름이 바로 옆이라 대체 텍스트는 이름을 두 번 읽힌다(화면 `ImageTile`도 `aria-hidden`).
-- **이미지 차단 시 모습**: 썸네일 갈래는 빈 32칸, 폴백 갈래는 글리프 없는 톤 사각 — 둘 다 수용. **Windows용 Outlook 데스크톱은 WebP를 못 띄워** 썸네일 갈래가 깨진 칸이다 — 수용(PNG 사본을 만들지 않는다). 메일 앱의 다크 강제 반전은 `color-scheme: light`로 못 막는다 — 로고·버튼과 같은 위험.
+- **이미지 차단·깨짐 시 모습**: 썸네일 갈래는 빈 32칸, 폴백 갈래는 글리프 없는 톤 **정사각**(32×32 유지 — 위 중첩 표) — 둘 다 수용. **Windows용 Outlook 데스크톱은 WebP를 못 띄워** 썸네일 갈래가 깨진 칸이다 — 수용(PNG 사본을 만들지 않는다). 메일 앱의 다크 강제 반전은 `color-scheme: light`로 못 막는다 — 로고·버튼과 같은 위험.
 - **dev·preview 메일의 썸네일·Box PNG는 빈 칸이 정상이다** — 둘 다 프로덕션 고정 URL이라(preview는 SSO 뒤) dev 스토어 키와 미배포 에셋을 프로덕션이 모른다.
 
 **메일 hex** — `visual-system.test.ts`는 `app`·`components`만 훑으므로 이 값들은 그 게이트 밖이다. 하나를 빼면 새 색이 아니라 **등재된 값의 사본**이다:
