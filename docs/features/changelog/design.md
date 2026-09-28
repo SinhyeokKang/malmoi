@@ -40,7 +40,7 @@ components/changelog/
 
 ## 렌더
 
-- 시안: Claude Design `Changelog.dc.html`(1a–1f) + `Changelog Page.dc.html`. 치수는 시안 설명 카드가 정본이다 — 읽기 그릇 720 한 열 가운데(`max-w-[1120px]` · `px-10 pt-16 pb-30`, 목차 없음) · 항목 머리 버전 `h2` 24/600 → 8 → 날짜 14 muted → 32 · 항목 사이 `border-t` + 위아래 40 · 끝에 `Button` default md `View on GitHub`(`GithubMark`, 새 탭).
+- 시안: Claude Design [`Changelog.dc.html`](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Changelog.dc.html)(1a–1f) + `Changelog Page.dc.html`. 치수는 시안 설명 카드가 정본이다 — 읽기 그릇 720 한 열 가운데(`max-w-[1120px]` · `px-10 pt-16 pb-30`, 목차 없음) · 항목 머리 버전 `h2` 24/600 → 8 → 날짜 14 muted → 32 · 항목 사이 `border-t` + 위아래 40 · 끝에 `Button` default md `View on GitHub`(`GithubMark`, 새 탭).
 - ⚠️ **읽기 그릇이 `DocFrame`(720 + 목차 200)을 따르지 않는다** — 목차 없이 빈 200 열을 남기면 본문이 왼쪽으로 쏠린다. 새 그릇이므로 DESIGN §6.61 근처에 등재한다.
 - **버전 앵커는 네이티브 `<a href="#v1.0.1">`** + 제목 `tabIndex={-1}` · `scroll-mt-12`다. 시안의 `replaceState` + JS 스크롤은 쓰지 않는다 — 착지가 같고 클라이언트 JS가 0이다(차이는 히스토리 항목 하나). 하드 진입의 해시 착지·포커스는 `PublicScroller`가 이미 한다.
 - `react-markdown` + `remark-gfm`, **`rehype-raw` 없음** — 가이드 렌더러(`components/docs/guide-markdown.tsx`)와 같은 조합이다. 이것이 "Release 본문 HTML이 그대로 실리지 않는다"를 보장한다.

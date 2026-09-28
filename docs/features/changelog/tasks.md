@@ -1,6 +1,6 @@
 # changelog — tasks
 
-시안: Claude Design `Changelog.dc.html` · `Changelog Page.dc.html` (2026-09-28 수령, 판정 반영 완료).
+시안: Claude Design [`Changelog.dc.html`](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Changelog.dc.html) · `Changelog Page.dc.html` (2026-09-28 수령, 판정 반영 완료).
 
 ## 커밋 1 — 순수 함수 (`feat(changelog): parse GitHub releases`)
 

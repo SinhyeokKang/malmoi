@@ -14,7 +14,7 @@
 - 라우트는 **`/changelog`**, 메뉴 라벨은 **`Changelog`** 다(지금 `Release notes`에서 바꾼다).
 - **원문의 정본은 GitHub Release**(`SinhyeokKang/malmoi`)다. 소스에 사본을 두지 않는다 — 두 벌이면 한쪽만 고쳐진다.
 - 공개 셸(`PublicShell`) 안의 **공개 페이지**다. 인가가 없다(`/privacy`와 같은 급).
-- 시각 시안은 Claude Design 핸드오프 `Changelog.dc.html`에서 받았다(`/design-sync`).
+- 시각 시안은 Claude Design 핸드오프 [`Changelog.dc.html`](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Changelog.dc.html)(프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`, 컴포넌트 `Changelog Page.dc.html`)에서 받았다(`/design-sync`).
 - **공개 헤더 내비는 `Home · Docs · Changelog`** 다. GitHub를 헤더에서 빼고 푸터 첫 링크와 랜딩 CTA에만 둔다. 공개 푸터 끝에 `Changelog`를 붙인다(2026-09-28 사용자).
 - **날짜는 `Sep 27, 2026`(UTC 기준)** 이다. 앱 규약 `2026-09-27 16:34 UTC`의 예외이고, UTC라는 사실은 소개 문장이 한 번 말한다(2026-09-28 사용자).
 - 본문의 `**Full changelog:**` 줄은 빼고, 항목마다 `View on GitHub`(그 판의 Release 페이지)를 둔다. `Latest` 표시는 없다.
