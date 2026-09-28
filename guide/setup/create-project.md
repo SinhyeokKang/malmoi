@@ -31,6 +31,7 @@ The project is ready immediately. The first page inside creation says **Malmoi i
 
 1. Copy the push token shown on the ready page. It is shown once; rotate it later in **Settings** if you lose it.
 2. Add the workflow and secret by following [Add the workflow](workflow.md).
+3. Choose **Open project** to go to the project's Home page.
 
 The creator becomes **Owner**.
 
