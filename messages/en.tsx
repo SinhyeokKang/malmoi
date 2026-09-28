@@ -291,6 +291,9 @@ export const en = {
       /** 사이드바 사용자 구역의 `Projects` 바로 아래 항목 (2026-09-27 사용자 — 8-3의 "사이드바에는 없다"를 뒤집었다). 목록 화면의 버튼·빈 상태도 쓴다. */
       newProject: "New project",
       userMenu: "Account menu",
+      /** LNB 맨 아래 접기 토글 (2026-09-28 사용자 — 8-3이 지운 접기가 돌아왔다). 접힌 레일에선 `title`로도 보인다. */
+      collapseSidebar: "Collapse sidebar",
+      expandSidebar: "Expand sidebar",
       /**
        * LNB 프로젝트 구역 머리의 전환 메뉴 (2026-09-27 사용자). ⚠️ **맨 아래 행은 `newProject`를 그대로 쓴다** — 같은 행동을
        * LNB 항목·목록 버튼과 다른 이름(`Create project`)으로 부르면 그중 하나가 낡는다.

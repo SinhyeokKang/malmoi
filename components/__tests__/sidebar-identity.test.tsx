@@ -45,8 +45,8 @@ describe("사이드바 구역 머리의 아바타·썸네일", () => {
   });
 
   /**
-   * ⚠️ **머리의 얼굴이 아래 항목 아이콘과 같은 규격이다** (2026-09-25 사용자) — 16 · `p-1.5` · `gap-2`라
-   * 머리 라벨과 항목 라벨의 시작점이 한 세로선에 선다.
+   * ⚠️ **머리의 얼굴이 아래 항목 아이콘과 같은 규격이다** (2026-09-25 사용자) — 16 · 같은 줄 틀(`h-8 px-2 gap-2` — 2026-09-28에
+   * 접기가 돌아오며 옛 `p-1.5`에서 바뀌었다: 접힌 32 칸에서 아이콘이 가운데 서는 값)이라 머리 라벨과 항목 라벨의 시작점이 한 세로선에 선다.
    */
   it("아바타·썸네일이 항목 아이콘과 같은 16이고, 라벨 시작점이 항목과 같다", async () => {
     pathname = "/projects/beta";
@@ -58,7 +58,7 @@ describe("사이드바 구역 머리의 아바타·썸네일", () => {
     expect(tile?.className).toContain("size-4");
     const head = container.querySelector('nav[aria-label="Beta"] [data-zone-head]');
     const item = container.querySelector('nav[aria-label="Beta"] a');
-    for (const cls of ["p-1.5", "gap-2"]) {
+    for (const cls of ["h-8", "px-2", "gap-2"]) {
       expect(head?.className.split(" ")).toContain(cls);
       expect(item?.className.split(" ")).toContain(cls);
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -7,8 +8,22 @@ import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { ProjectSwitcher } from "@/components/shell/project-switcher";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { m } from "@/lib/i18n";
 import { activeProject, navFooterItems, navZones, type NavItem, type NavProject } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
+
+import { useSidebarCollapse } from "./sidebar-collapse";
+
+/**
+ * 항목 한 줄의 틀 — **펼침·접힘이 같은 틀이다**(2026-09-28 사용자 — 접기가 돌아왔다). 아이콘은 늘 왼쪽 8에 서고, 접힌 레일(40)에서
+ * 항목 폭이 32가 되면 `8 + 16 + 8`이라 아이콘이 32 정사각의 한가운데다. 라벨은 폭이 줄며 잘리고 투명해질 뿐 자리를 바꾸지 않는다 —
+ * 레이아웃을 갈아 끼우면 전이 중간에 아이콘이 튄다.
+ */
+const ROW = "flex h-8 items-center gap-2 rounded-sm px-2 text-sm whitespace-nowrap";
+
+/** 접히면 사라지는 것(라벨·배지) — 자리는 남기고 투명해진다. 접근 이름은 DOM에 남은 글자가 그대로 댄다. */
+const FADE = "transition-opacity duration-200";
 
 /**
  * 앱 셸의 사이드바 (8-2 골격 → **8-3이 시안 `212:944`에 맞췄다**).
@@ -18,11 +33,9 @@ import { cn } from "@/lib/utils";
  * 그래서 항목의 hover·선택이 **배경 알파**다: `--accent`는 `--muted`와 같은 값이라(DESIGN §2.1)
  * 캔버스 위에서 보이지 않고, `bg-foreground/…`는 어느 표면에서도 성립한다.
  *
- * ⚠️ **접기가 없다** (8-3 사용자 결정 — 시안에 없다). 그것이 사라지면서 아이콘 전용 레일도 함께
- * 사라졌고, **레일에서만 렌더되던 툴팁도 없어졌다** — 2026-09-08에 셸을 죽였던 그 자리다
- * (소비자가 0이 되어 2026-09-11에 `Tooltip` 프리미티브 자체를 걷어냈다 — **조상 provider를 요구하는
-  * Radix 컴포넌트는 프리미티브가 자기 provider를 든다**는 교훈은 POSTMORTEM 2026-09-08에 남아 있고,
-  * 다음에 그런 컴포넌트를 들일 때 그 확인을 한 번 한다).
+ * ⚠️ **접기가 2026-09-28에 돌아왔다** (사용자 — 8-3이 "시안에 없다"며 지웠다). 상태는 셸 패널이 소유하고(`sidebar-collapse.ts`)
+ * 여기는 라벨·구역 머리를 숨기기만 한다. **툴팁은 여전히 없다** — 2026-09-11에 `Tooltip` 프리미티브를 걷었고(**조상 provider를
+ * 요구하는 Radix 컴포넌트는 프리미티브가 자기 provider를 든다**는 교훈은 POSTMORTEM 2026-09-08), 접힌 항목의 이름은 `title`이 보인다.
  *
  * ⚠️ **반응형 분기가 0개다** (8단계 규약 3 — 최소 대응 너비 1280).
  *
@@ -44,6 +57,7 @@ export function Sidebar({
   const pathname = usePathname();
   const project = activeProject(pathname, memberships);
   const zones = navZones(project, { userName, projectCount: memberships.length });
+  const { collapsed, toggle } = useSidebarCollapse();
 
   return (
     <aside
@@ -51,7 +65,10 @@ export function Sidebar({
       //
       // ⚠️ **폭이 여기 없다.** 옛 `w-60 shrink-0` 자리는 `components/shell/shell-panels.tsx`의
       // `Panel`이 든다(200~320, 기본 240) — 폭이 두 곳에 있으면 드래그가 고정 폭에 덮인다.
-      className="flex h-full flex-col gap-2 overflow-y-auto p-1"
+      //
+      // ⚠️ **`overflow-x-hidden`이 접힘을 만든다** — 패널이 40으로 좁아지면 라벨·배지가 여기서 잘린다.
+      data-collapsed={collapsed ? "" : undefined}
+      className="flex h-full flex-col gap-2 overflow-x-hidden overflow-y-auto p-1"
     >
       {/*
         **구역 둘** (PRODUCT §7.7). ⚠️ **라벨이 이름 그대로다** — 사용자 축은 사용자 이름, 프로젝트 축은
@@ -74,7 +91,17 @@ export function Sidebar({
             16 · `p-1.5` · `gap-2`가 `Item`과 같아서 머리 라벨과 항목 라벨의 시작점이 한 세로선에 선다.
             줄 높이도 항목과 같은 32다. 중심만 맞추던 옛 판정은 라벨 시작점이 4px 어긋났다.
           */}
-          <p data-zone-head className="text-foreground flex items-center gap-2 p-1.5 text-sm font-medium">
+          {/*
+            ⚠️ **접히면 구역 머리(사용자 이름·프로젝트 이름 줄)가 사라진다** (2026-09-28 사용자) — 구역 사이의 수평선은 남는다.
+            높이를 grid 행으로 접어 아래 항목이 튀지 않고 올라온다. `inert`가 접힌 머리의 전환 메뉴를 Tab 순서에서 뺀다.
+          */}
+          <div
+            inert={collapsed}
+            className={cn("grid transition-[grid-template-rows,opacity,margin] duration-200", collapsed ? "-mb-0.5 grid-rows-[0fr] opacity-0" : "grid-rows-[1fr]")}
+          >
+          {/* ⚠️ 행을 접는 것은 이 겹이다 — `h-8`을 든 `<p>`에 `overflow-hidden`을 걸면 제 높이 32를 지켜 0fr 행 밖으로 넘친다. */}
+          <div className="min-h-0 overflow-hidden">
+          <p data-zone-head className={cn(ROW, "text-foreground font-medium")}>
             {zone.key === "work" ? (
               <Avatar name={userName} src={userImage} size={16} />
             ) : (
@@ -87,8 +114,10 @@ export function Sidebar({
             */}
             {zone.key === "project" && <ProjectSwitcher projects={memberships} current={project?.slug ?? null} />}
           </p>
+          </div>
+          </div>
           {zone.items.map((item) => (
-            <Item key={item.key} item={item} active={isActive(pathname, item)} />
+            <Item key={item.key} item={item} active={isActive(pathname, item)} collapsed={collapsed} />
           ))}
         </nav>
       ))}
@@ -99,8 +128,26 @@ export function Sidebar({
       */}
       <div data-sidebar-zone="footer" className="mt-auto flex flex-col gap-0.5 pt-2">
         {navFooterItems().map((item) => (
-          <Item key={item.key} item={item} active={isActive(pathname, item)} />
+          <Item key={item.key} item={item} active={isActive(pathname, item)} collapsed={collapsed} />
         ))}
+        {/*
+          ⚠️ **LNB 맨 아래다** (2026-09-28 사용자). 리사이저로도 접고 편다 — 하한(200) 밑으로 끌면 접히고, 접힌 채 끌면 펴진다(`collapsible`).
+          `Button`이지 raw `<button>`이 아니다(ui/ 밖 raw 태그 0 게이트) — 항목과 같은 틀(`ROW`)로 덮는다.
+        */}
+        <Button
+          variant="ghost"
+          onClick={toggle}
+          aria-expanded={!collapsed}
+          title={collapsed ? m.common.nav.expandSidebar : undefined}
+          className={cn(ROW, "text-foreground hover:text-foreground h-8 justify-start hover:bg-foreground/[0.03]")}
+        >
+          <span className="flex size-4 shrink-0 items-center justify-center">
+            {collapsed ? <PanelLeftOpen className="size-4" aria-hidden /> : <PanelLeftClose className="size-4" aria-hidden />}
+          </span>
+          <span className={cn("min-w-0 truncate", FADE, collapsed && "opacity-0")}>
+            {collapsed ? m.common.nav.expandSidebar : m.common.nav.collapseSidebar}
+          </span>
+        </Button>
       </div>
     </aside>
   );
@@ -119,14 +166,17 @@ function isActive(pathname: string, item: NavItem): boolean {
 }
 
 /** 항목 하나 — 시안 치수는 `p-6 · gap-8 · radius-8 · 아이콘 16 · 14px`이다. */
-function Item({ item, active }: { item: NavItem; active: boolean }) {
+function Item({ item, active, collapsed = false }: { item: NavItem; active: boolean; collapsed?: boolean }) {
   const Icon = item.icon;
   return (
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
+      // 접힌 레일엔 라벨이 안 보인다 — 툴팁 프리미티브가 없어(위 머리 주석) 브라우저 `title`이 이름을 보인다.
+      title={collapsed ? item.label : undefined}
       className={cn(
-        "text-foreground flex items-center gap-2 rounded-sm p-1.5 text-sm",
+        ROW,
+        "text-foreground",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         /**
          * ⚠️ hover와 선택이 **같은 알파면** 포인터 아래의 항목이 선택된 것처럼 보인다 — 한 단계 벌린다.
@@ -155,13 +205,13 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
         철회). 선택 상태는 **면(배경 알파) 하나로만** 표현한다 — 굵기가 함께 움직이면 라벨 폭이 바뀌어
         선택을 옮길 때마다 글자가 미세하게 흔들리고, 신호가 둘이라 면의 대비를 조정할 근거도 흐려진다.
       */}
-      <span className="min-w-0 truncate">{item.label}</span>
+      <span className={cn("min-w-0 truncate", FADE, collapsed && "opacity-0")}>{item.label}</span>
       {/*
         ⚠️ **0도 보인다** — `undefined`와 `0`이 다르다. 프로젝트가 없다는 사실은 그 자체로 정보이고,
         `item.badge && …`로 쓰면 0이 falsy라 조용히 사라진다.
       */}
       {item.badge !== undefined && (
-        <Badge variant="neutral" className="ml-auto shrink-0">
+        <Badge variant="neutral" className={cn("ml-auto shrink-0", FADE, collapsed && "opacity-0")}>
           {item.badge}
         </Badge>
       )}
