@@ -54,6 +54,12 @@ const EXEMPT = new Set([
   "api/push/failure/route.ts",
   "api/pull/route.ts",
   /**
+   * MCP 진입점 (mcp-connector). **세션이 아니라 개인 토큰(Bearer)이 주체를 정한다** — 호출자가 CLI·코딩 에이전트라 쿠키가 없고,
+   * 쿠키를 읽지 않는 것이 CSRF 방어의 전부다. 가드 호출(`resolveApiToken(`)은 `exempt-route-guards.test.ts`가 센다 — 여기 예외에
+   * 든 순간 이 파일은 그 route의 인증을 못 본다. 프로젝트 인가는 도구마다 기존 인가 함수를 지난다.
+   */
+  "api/mcp/route.ts",
+  /**
    * 업로드 이미지 읽기 프록시 (2026-09-28, ARCHITECTURE §6.7). **인가가 없다** — 이 바이트는 오늘도
    * 공개 읽기(Vercel Blob `access: "public"`)이고, 여기서 세션을 읽으면 응답이 캐시 불가가 되어
    * CDN 층이 통째로 사라진다. 키를 모르면 못 읽고 키에는 난수가 있다. 프록시가 허용하는 키는
@@ -117,6 +123,9 @@ const USER_SCOPED_ACTIONS = new Set([
   // `Account`는 사용자 소유다 — 프로젝트를 하나도 안 만든 사용자도 도달해야 한다 (2026-09-07 리뷰 🟡9)
   "projects/actions.ts#startGithubConnectForUser",
   "projects/actions.ts#disconnectGithub",
+  // `ApiToken`은 사용자 소유다 — 계정당 하나이고 프로젝트가 없어도 발급·폐기할 수 있어야 한다(생성 전용 토큰). mcp-connector T5
+  "mcp/actions.ts#issueApiToken",
+  "mcp/actions.ts#revokeApiToken",
 ]);
 
 /**

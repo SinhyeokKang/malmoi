@@ -24,6 +24,7 @@ const EXPECTED_MESSAGE: Record<ToolRejection, string> = {
   "invalid-input": m.mcp.errors["invalid-input"],
   "too-many": m.mcp.errors["too-many"](100),
   "duplicate-key": m.mcp.errors["duplicate-key"],
+  "not-implemented": m.mcp.errors["not-implemented"],
 };
 
 describe("toToolResult — 성공", () => {

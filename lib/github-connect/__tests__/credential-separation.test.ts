@@ -95,7 +95,8 @@ const APP_TOKEN_SOURCES = ["lib/pull", "lib/push", "lib/projects", "lib/publish"
  * 직접 물지 않고(`lib/github.ts`만 문다) octokit 쓰기를 직접 부르지 않는다. ⚠️ `lib/onboarding`·`APP_TOKEN_SOURCES`에 넣으면 사용자 토큰
  * import가 red다 — 거기 넣지 않는다. 새 만남점 루트는 여기 더한다.
  */
-const MEETING_ROOTS = ["lib/onboarding-run"];
+// `lib/mcp` — MCP 도구(T6·T7)가 `ensureUserToken`(GET)과 App 토큰 경로 코어를 함께 부른다(design §1.3 · §6 불변식 6).
+const MEETING_ROOTS = ["lib/onboarding-run", "lib/mcp"];
 const MEETING_SOURCES = MEETING_ROOTS.flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
 /** 커밋 경로(App 토큰) 모듈. 온보딩이 이걸 물면 두 자격증명이 한 파일에서 만날 길이 열린다. */
 const COMMIT_PATH_IMPORT = /from\s+["'](@\/lib\/github|\.\.\/github)["']/;

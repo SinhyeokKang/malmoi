@@ -3133,6 +3133,8 @@ export const en = {
       "invalid-input": "The arguments don't match this tool's input. Check them and try again.",
       "too-many": (limit: number): string => `Save up to ${limit.toLocaleString("en-US")} keys per call. Split the rest into another call.`,
       "duplicate-key": "The same key appears more than once. Send each key once per call.",
+      // 도구 구현 전 자리표시(T5) — 도구가 다 서면 지운다.
+      "not-implemented": "This tool isn't available yet.",
     },
     /**
      * 브라우저가 필요한 갈래 — 설치·인가는 state 쿠키가 방어선인 왕복이라 도구가 대신하지 않는다(ARCHITECTURE §6.4).

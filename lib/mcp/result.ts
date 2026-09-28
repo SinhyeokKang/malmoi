@@ -17,6 +17,8 @@ export const TOOL_REJECTIONS = [
   "not-found", "forbidden", "archived", "unavailable", "token-scope",
   "repo-read-only", "sample-expired", "manual-no-match", "not-ready",
   "reconfirm", "invalid-input", "too-many", "duplicate-key",
+  // 도구 구현(T6·T7) 전의 자리표시 — 도구가 다 서면 이 갈래를 지운다.
+  "not-implemented",
 ] as const;
 export type ToolRejection = (typeof TOOL_REJECTIONS)[number];
 
@@ -48,6 +50,7 @@ const MESSAGE = {
   "invalid-input": m.mcp.errors["invalid-input"],
   "too-many": m.mcp.errors["too-many"](BATCH_SAVE_LIMIT),
   "duplicate-key": m.mcp.errors["duplicate-key"],
+  "not-implemented": m.mcp.errors["not-implemented"],
 } satisfies Record<ToolRejection, string>;
 
 const text = (value: string): ToolResult["content"] => [{ type: "text", text: value }];
