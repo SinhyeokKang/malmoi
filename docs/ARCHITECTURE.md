@@ -2572,6 +2572,62 @@ PNG/JPEG 시그니처를 검사한 뒤 `normalizeImage`(`lib/upload/normalize.ts
 대한 Blob 호스트·키 형식 allowlist와 **실제 삭제 직전 세션 사용자 경로 검사**를 모두 통과해야 한다.
 실패 로그에는 단계·사용자 ID만 남기고 SDK·DB 오류 원문과 URL을 기록하지 않는다.
 
+**읽기는 자사 출처를 지난다** (2026-09-28). ⚠️ **브라우저에 Blob 호스트를 주지 않는다** — 기업 웹
+필터(FortiGate 실측)가 `*.vercel-storage.com`을 "File Sharing and Storage"로 막고 TLS를 자기 CA로
+가로채, 그 망의 브라우저는 프로필 사진·프로젝트 썸네일에서 `ERR_CERT_AUTHORITY_INVALID`를 받는다.
+잎의 폴백(`useImageFallback`)이 조용히 이니셜·타일로 떨어지므로 **사용자는 업로드가 실패한 줄 안다**
+(업로드 자체는 끝까지 된다). `mal-moi.com`은 가로채이지 않는다.
+
+- **매핑은 `imageSrc`(`lib/upload/image.ts`) 하나다** — 저장된 URL에서 `planImageDelete`·
+  `planProjectImageDelete`로 키를 뽑아 `/api/images/<key>`로 바꾸고, 우리 객체가 아니면(공급자 아바타·
+  `null`) **입력 그대로** 돌려준다. 키 판정을 새로 쓰지 않으므로 경로 조각(`..`·`%2f`)도 그 allowlist가
+  막는다. ⚠️ **환경변수를 읽지 않는다** — 클라이언트가 닿는 잎이고 `BLOB_PUBLIC_HOST`는
+  `NEXT_PUBLIC_`이 아니라 브라우저에서 `undefined`다(읽으면 매핑이 **조용히 no-op**이 된다).
+- ⚠️ **서빙은 Route Handler(`app/api/images/[...key]/route.ts`)이고 `next.config.ts`의 rewrite가 아니다.
+  이 문장이 이 절에서 가장 중요하다 — 안 적어 두면 다음 사람이 "한 줄이면 되는데"라며 rewrite를 다시 제안한다.**
+  **Next의 외부 rewrite는 요청 헤더를 상류로 그대로 넘긴다** — 로컬 echo 상류로 재현했을 때
+  `cookie: __Secure-authjs.session-token=…`과 `authorization: Bearer …`가 도착했다. `<img src="/api/images/…">`는
+  동일 출처라 브라우저가 세션 쿠키를 붙이고, 이 앱은 **DB 세션**이라 그 토큰이 곧 계정 접근이다. 아바타·썸네일
+  요청 **한 장마다** 나간다. 그래서 상류 호출은 `readImage`(`lib/upload/store.ts`)가 **`fetch`에 헤더를 하나도
+  안 넘기고** 한다. 상시 방어선은 `lib/upload/__tests__/image-proxy-isolation.test.ts`다(소스를 훑어 `headers`
+  옵션과 `request.headers`·`cookies()`를 0으로 고정한다 — 주석은 썩는다).
+- **키 술어는 별개다** — 라우트가 받는 것은 `isStoredImageKey`
+  (`^(avatars|projects)/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+\.(png|jpeg|webp)$`)를 지난 키뿐이다.
+  ⚠️ **`planImageDelete`·`planProjectImageDelete`를 재사용하지 않는다 — 방향이 반대다.** 그 둘의 호스트 검사는
+  **접미 일치**라 아무 Vercel 고객의 공개 스토어를 통과시킨다(입력이 우리 DB 값인 `imageSrc` 방향에서는 참이다).
+  ⚠️ **판정은 이어 붙인 문자열 하나에 건다** — Next가 catch-all 세그먼트를 디코드하므로(`%2e%2e` → `..`,
+  `%2f` → `/`) 조각이 전부 그 문자열에 드러나고 ASCII allowlist가 한 번에 막는다. 세그먼트별로 재면
+  개수 검사가 사라지는 날 새 축이 열린다.
+- **호스트는 `optionalEnv("BLOB_PUBLIC_HOST")` + `isBlobPublicHost`뿐이다** — 없거나 모양이 틀리면
+  **fetch 없이 404**다(CSP와 같은 fail-closed — 증상은 "이미지가 안 보인다"이고 빌드·부팅은 산다).
+  URL은 검증 뒤 **문자열 이어 붙이기**다(`new URL(key, base)`는 `..`를 해석한다). `redirect: "error"` —
+  상류 302를 따라가면 임의 호스트로 가는 두 번째 길이 열린다.
+- **상류 실패를 중계하지 않는다** — 비-OK·비이미지 `content-type`·타임아웃(5초)·예외는 전부 **빈 404**이고,
+  사유는 단계 이름만 서버 로그에 남는다(키·URL·상류 원문은 안 남긴다). 응답 `content-type`은 **검증된
+  확장자**에서 온다. Blob의 오류 본문은 XML이고, 그것을 200으로 중계하면 `<img>`가 `naturalWidth === 0`
+  폴백에 흔적 없이 떨어진다.
+- **캐시 헤더가 둘이다** — `Cache-Control: public, max-age=31536000, immutable` +
+  `CDN-Cache-Control: public, s-maxage=86400`. Route Handler는 기본 동적이라 앞의 하나만으로는 CDN에
+  안 앉는다. ⚠️ **CDN TTL이 1년이 아니라 하루인 이유는 삭제다** — 함수 응답에는 퍼지 경로가 없어
+  **그 값이 곧 "지운 이미지가 아직 나가는 창"의 길이**다. `dynamic`·`revalidate` export는 쓰지 않는다.
+- **한 객체에 URL이 하나다** — 쿼리스트링은 404이고, `pathname`이 `/api/images/<key>`와 **글자까지**
+  같지 않아도 404다. `URL`은 `pathname`을 디코드하지 않으므로 `%61vatars/…`·`u1%2Fn1.webp`처럼 다르게
+  적힌 같은 키가 여기서 갈린다 — 둘 다 **CDN 캐시 키가 쪼개지는 것**을 막는 같은 축이고, 한쪽만 닫으면
+  요지가 사라진다. ⚠️ **allowlist가 아니다** — 막는 일은 `isStoredImageKey`가 이미 했다. 정상 경로는
+  안 걸린다(`imageSrc`가 내는 것은 `[A-Za-z0-9_-]`·`/`·`.`뿐이라 퍼센트 인코딩이 안 된다).
+  `Set-Cookie`·`Vary`도 내지 않는다(둘 중 하나라도 있으면 응답이 캐시 불가가 된다).
+- **받아들인 노출 둘**: ① **인가도 속도 제한도 없다** — `entry-points.test.ts`의 `EXEMPT`에 이름으로
+  올려 둔다. 세션을 읽으면 응답이 캐시 불가가 되어 CDN 층이 사라지고, 이 바이트는 오늘도 공개 읽기다.
+  §6.7의 "무제한 업로드"와 같은 갈래지만 **이쪽은 로그인조차 필요 없다**. 키를 모르면 못 읽고 키에는
+  난수가 있다. ② **CDN TTL이 삭제 창이다**(위). 둘 다 다음 감사가 새 발견으로 다시 캐지 않도록 적는다.
+- **소비자는 잎 둘로 고정한다** — `ImageTile`·`Avatar`가 공유하는 `useImageFallback` 안에서만 매핑한다.
+  `Project.image`·`User.image`를 읽는 자리가 십여 곳이라 호출자마다 적으면 새 화면 하나가 규칙을 조용히
+  빠뜨린다(POSTMORTEM 2026-09-20이 같은 부류다). 그물은 `components/__tests__/image-origin.test.tsx`다.
+- ⚠️ **CSP `img-src`에는 Blob 호스트가 아직 남아 있다** — 되돌릴 때 `imageSrc` 하나만 손대면 되게
+  한 것이고, 매핑이 자리 잡으면 별도 변경으로 지운다.
+- **긴 캐시가 안전한 근거는 키의 난수다** — `imageObjectKey`·`projectImageObjectKey`가 난수를 싣고 저장이
+  `addRandomSuffix: false`라 교체마다 URL이 통째로 바뀐다. 키를 결정적으로 바꾸면 그 전제가 깨진다.
+
 ### 6.75 프로젝트 메타데이터 (2026-09-20)
 
 `Project.image String?`는 `projects/<projectId>/…` 난수 키를 사용하는 공개 Blob URL을 저장한다. avatar 키 판정을
@@ -2584,6 +2640,12 @@ sharp 정규화(192px 이내 WebP)로 재사용하며 PII 봉투는 쓰지 않�
 번역 값이 아니므로 서버에서 archived를 거부하지 않는다. 보관 UI의 비활성과 의도적으로 갈린다.
 성공 뒤 `/` layout을 갱신하고 설정·목록·Home·초대 네 reader가 image를 읽는다. Blob 스모크는 avatars와
 projects를 각각 조회해 User.image/Project.image 참조와 대조하며 고아를 자동 삭제하지 않는다.
+
+**읽기 경로는 프로필 사진과 같다** (2026-09-28, §6.7) — `imageSrc`가 `projects/` 접두도 `/api/images/<key>`로
+바꾸고, 서빙은 `app/api/images/[...key]/route.ts`가 한다(rewrite가 아닌 근거는 §6.7 — 외부 rewrite는 세션
+쿠키를 상류로 넘긴다). ⚠️ **네 reader(설정·목록·Home·초대) 어디에도 매핑이 없다** — 넷 다 `ImageTile`을
+지나고 그 잎 하나가 규칙을 든다. ⚠️ **avatar 키 판정을 넓히지 않는다는 규칙은 프록시에서도 그대로다** —
+`isStoredImageKey`가 두 접두를 한 정규식으로 받되 `planProjectImageDelete`를 일반화하지 않는 별도 술어다.
 
 ### 6.8 표시 이름의 소유권 (2026-09-13)
 

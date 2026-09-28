@@ -112,6 +112,12 @@ app/
                         아예 안 불려서 그 실패가 대상 리포 로그에만 있었다. 같은 토큰 · 코드 넷 ·
                         본문 4 KiB · 키/번역/커밋 기준점을 건드리지 않는다
   api/pull/             DB → PR. cron 전용(CRON_SECRET)
+  api/images/[...key]/  업로드 이미지 읽기 프록시(2026-09-28). 브라우저가 Blob 호스트를 보지 않게 같은
+                        바이트를 우리 출처로 낸다 — 기업 웹 필터가 그 호스트를 막는다(ARCHITECTURE §6.7).
+                        ⚠️ **next.config의 rewrite가 아닌 이유가 이 디렉터리의 존재 이유다** — 외부 rewrite는
+                        요청 헤더를 상류로 넘겨 세션 쿠키가 Blob 호스트에 닿는다. 상류 호출(readImage)은
+                        헤더를 하나도 안 넘기고, 그 사실은 image-proxy-isolation.test.ts가 소스에서 상시로 센다.
+                        인가·속도 제한 없음(EXEMPT에 등재) · 키는 isStoredImageKey만 · 실패는 전부 빈 404
   api/auth/[...nextauth]/  Auth.js 핸들러(auth.ts의 handlers를 그대로 내보낸다). 인가를 지나지 않는 것이
                         당연해서 entry-points의 면제 목록에 이름으로 든다
   api/github/callback/  ⚠️ matcher에 넣지 않는다 — 로그인 화면으로 302되면 code가 사라진다.
@@ -149,6 +155,9 @@ components/
                         주석으로만 지켜지던 함정 다섯이 두 벌로 갈린다 (DESIGN §6.4)
   ui/image-tile.tsx     프로젝트 타일의 이미지 + 깨진 URL 폴백. useImageFallback은 Avatar와 한 벌이고
                         마크업만 다르다 — 소비자 셋(목록·Home / 초대 / 설정)은 서버 컴포넌트로 남는다
+                        ⚠️ **읽기 경로 매핑(imageSrc)도 그 훅 안에 있다** — Blob 호스트를 브라우저에 주지
+                        않는 규칙의 소비자를 잎 둘로 고정한다(ARCHITECTURE §6.7). 그물은
+                        components/__tests__/image-origin.test.tsx
   ui/panel-card.tsx     PanelCard/Rows/Row/Facts. 계정 구역에서 승격, 제목 없는 카드도 지원.
                         옛 ui/card.tsx와 account/account-section.tsx는 마지막 소비자 전환과 함께 삭제
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
@@ -365,8 +374,14 @@ lib/
                         전부 선점 해제**한다 — 목적이 셋이라 남은 쿠키가 다음 왕복의 갈래를 바꾼다)
                         ⚠️ 판정은 순수 함수, 조회·세션은 얇은 껍데기라는 규칙이 이 디렉터리의 형이다
   upload/               프로필·프로젝트 이미지. image(형식·크기·키·삭제 allowlist 판정 +
-                        planImagePick — 클라이언트 선검사) · normalize(server-only. sharp로 EXIF 방향
-                        적용 → 192px 이내 축소 → WebP 재인코딩) · store(server-only Vercel Blob I/O) ·
+                        planImagePick — 클라이언트 선검사 + imageSrc — 저장 URL → /api/images/<key> +
+                        isStoredImageKey·storedImageContentType — 프록시가 받는 키의 술어).
+                        ⚠️ imageSrc는 env를 읽지 않는다: 클라이언트가 닿는 잎이라 읽으면 조용한 no-op이고,
+                        호스트는 라우트가 서버에서 붙인다. ⚠️ isStoredImageKey는 planImageDelete의 일반화가
+                        아니다 — 그쪽 호스트 검사는 접미 일치라 남의 스토어를 통과시킨다(방향이 반대)
+                        · normalize(server-only. sharp로 EXIF 방향
+                        적용 → 192px 이내 축소 → WebP 재인코딩) · store(server-only Vercel Blob I/O +
+                        readImage — 프록시의 상류 호출. ⚠️ fetch에 헤더를 하나도 안 넘긴다) ·
                         message(거부 → 문구). 실 저장소 검증·고아 후보 조회는 pnpm smoke:blob
                         ⚠️ **normalize는 인증·사용자·Blob·DB에 닿지 않는다** — bytes → bytes라
                         프로젝트 이미지도 그대로 재사용한다. avatars/projects 키·삭제 판정은 분리한다
@@ -659,6 +674,8 @@ vercel.json             Cron(야간 1회) + ⚠️ regions: ["hnd1"] — 함수�
 next.config.ts          ⚠️ CSP 밖 보안 응답 헤더를 여기서 낸다 — 값은 lib/security-headers.ts. **CSP는 여기 없다**(요청마다 nonce라 middleware.ts가 유일한 출처).
                         ⚠️ agentRules: false — Next가 AGENTS.md에 자기 블록을 덧붙이는 동작을 끈다
                         ⚠️ outputFileTracingIncludes — /docs 함수 번들에 guide/**/*.md를 싣는다(fs로 읽어 트레이서가 못 따라간다)
+                        ⚠️ 이미지 프록시는 여기 없다 — rewrite는 요청 헤더(세션 쿠키)를 상류로 넘긴다.
+                        app/api/images/[...key]/가 한다(ARCHITECTURE §6.7)
 vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암호화 키 셋을 세운다.
                         ⚠️ 셋째가 있다 — 리사이즈 핸들의 getBoundingClientRect를 화면 밖으로 민다.
                         jsdom은 모든 rect가 0×0@(0,0)이라 react-resizable-panels의 히트 판정이
