@@ -2140,7 +2140,8 @@ export const en = {
       ingest: {
         retry: "Try again",
         refsHint: "Code references arrive after your CI workflow first runs. You can start translating now.",
-        open: "Start translating",
+        // 목적지(프로젝트 Home)를 말한다 — 2026-09-29 전엔 번역 화면으로 가는 "Start translating"이었다.
+        open: "Open project",
       },
       workflow: {
         saveAs: "Save as",

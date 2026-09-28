@@ -473,7 +473,7 @@ export function NewProject({
       nextDisabled={!nextEnabled(step, state)}
       // ⚠️ **③→④만 [Next]가 로딩이다** — 예외 I가 ③에 머물러야 하므로 미리 넘어갈 수 없다.
       // 나머지 전이는 "다음 단계 안의 스켈레톤"이 규칙이다 (DESIGN §6.7).
-      // ④의 [Start translating]도 이동이 커밋될 때까지 로딩이다 (audit-ux #22) — 전엔 transition 없는 `push`라 누른 뒤 무반응이었다.
+      // ④의 [Open project]도 이동이 커밋될 때까지 로딩이다 (audit-ux #22) — 전엔 transition 없는 `push`라 누른 뒤 무반응이었다.
       nextPending={(step === 3 && pending) || (step === 4 && opening)}
       showBack={step === 2 || step === 3}
       bodyDirection={step === 2 ? "row" : "column"}
@@ -495,10 +495,10 @@ export function NewProject({
         else if (step === 3) create();
         /*
           ⚠️ **`replace`다, `push`가 아니다** (audit-ux #22) — push면 뒤로가기가 가로챈 모달(`/projects/new`)을 다시 띄운다.
-          목적지는 기본 표면의 편집 주소다(#4) — 옛 `/translations`는 서버 redirect를 한 번 더 거친다.
+          목적지는 **프로젝트 Home**이다(2026-09-29 사용자 — 전엔 기본 표면의 번역 화면이었다). 가로챈 모달 슬롯은 `@modal/[...rest]`가 비운다.
         */
         else if (created !== undefined && !opening) {
-          startOpening(() => router.replace(routes.surfaceTranslations(created.slug, created.defaultSurfaceSlug)));
+          startOpening(() => router.replace(routes.project(created.slug)));
         }
       }}
       // ⚠️ **생성 중에는 닫히지 않는다** (audit #13) — 닫아도 `createProject`는 계속 돌고, ④의 일회용 push 토큰을

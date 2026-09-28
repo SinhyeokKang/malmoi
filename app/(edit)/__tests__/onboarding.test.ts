@@ -864,7 +864,7 @@ describe("createProject — 재검증한 값만 저장한다 (ARCHITECTURE §3.1
     expect(db.projects.find((p) => p.slug === "acme-web")).toBeUndefined();
   });
 
-  /** ④의 [Start translating]이 옛 `/translations` redirect를 건너뛰려면 기본 표면을 알아야 한다 (audit-ux #22). */
+  /** 결과가 기본 표면을 든다 — MCP `create_project`가 `defaultSourceSlug`로 싣는다(④는 2026-09-29부터 프로젝트 Home으로 간다). */
   it("결과가 저장된 기본 표면의 slug를 든다", async () => {
     const result = await createProject(createInput());
     const row = db.projects.find((p) => p.slug === "acme-web");

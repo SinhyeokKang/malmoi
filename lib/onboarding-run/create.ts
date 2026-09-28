@@ -71,7 +71,7 @@ class TokenRollback extends Error {
 
 export type CreatedSurface = { surfaceSlug: string; pathTemplate: string; adapter: AdapterName; baseLocale: string };
 export type CreateProjectResult =
-  /** `defaultSurfaceSlug`는 ④의 [Start translating]이 옛 번역 라우트의 redirect를 건너뛰는 목적지다 (audit-ux #22). */
+  /** `defaultSurfaceSlug`는 MCP `create_project`가 `defaultSourceSlug`로 싣는 기본 표면이다(④는 2026-09-29부터 프로젝트 Home으로 간다). */
   | { ok: true; slug: string; defaultSurfaceSlug: string; pushToken: string; baseBranch: string; surfaces: CreatedSurface[]; count: number; yaml: string }
   | { ok: false; error: OnboardFailure | "path-conflict" | "token-scope";
       surface?: { pathTemplate: string; failed: number; errors: AdapterError[] };

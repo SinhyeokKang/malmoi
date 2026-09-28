@@ -236,7 +236,7 @@ it("④는 모든 적재가 끝난 결과와 토큰을 보존하고 추가 적�
   expect(document.body.textContent).toContain("test-token");
   expect(document.body.textContent).toContain("Synced 2 keys.");
   expect(document.body.textContent).toContain("server-workflow");
-  expect(button("Start translating").disabled).toBe(false);
+  expect(button("Open project").disabled).toBe(false);
   // 야간 자동 PR이 온보딩 어디에도 없었다 (launch-readiness L2.9) — 만든 사람이 PR을 처음 보는 날 놀라지 않게.
   expect(document.body.textContent).toMatch(/every night/i);
   expect(mocks.runFirstIngest).not.toHaveBeenCalled();
@@ -244,23 +244,23 @@ it("④는 모든 적재가 끝난 결과와 토큰을 보존하고 추가 적�
 });
 
 /**
- * **④의 [Start translating]은 기본 표면의 편집 주소로 replace한다** (audit-ux #22 · #4). push면 뒤로가기가 가로챈
- * 모달(`/projects/new`)을 다시 띄우고, 옛 `/translations`는 서버 redirect를 한 번 더 거친다.
+ * **④의 [Open project]는 프로젝트 Home으로 replace한다** (2026-09-29 사용자 — 전엔 기본 표면의 번역 화면이었다). 라벨이 목적지를
+ * 말한다. push면 뒤로가기가 가로챈 모달(`/projects/new`)을 다시 띄운다(audit-ux #22).
  */
-it("④의 [Start translating]은 기본 표면으로 replace한다 — push가 아니다", async () => {
+it("④의 [Open project]는 프로젝트 Home으로 replace한다 — push가 아니다", async () => {
   mocks.createProject.mockResolvedValue({ ok: true, slug: "acme-web", defaultSurfaceSlug: "app", pushToken: "t", baseBranch: "main", count: 2, surfaces: [], yaml: "y" });
   await naming();
   await click(button("Create project"));
-  await click(button("Start translating"));
-  expect(mocks.router.replace).toHaveBeenCalledWith("/projects/acme-web/surfaces/app/translations");
+  await click(button("Open project"));
+  expect(mocks.router.replace).toHaveBeenCalledWith("/projects/acme-web");
   expect(mocks.router.push).not.toHaveBeenCalled();
 });
 
 /**
- * **④의 이동 pending은 [Start translating]만 잠그고 닫기는 잠그지 않는다** (audit-ux #22). 짝 둘: 이동이 커밋될 때까지
+ * **④의 이동 pending은 [Open project]만 잠그고 닫기는 잠그지 않는다** (audit-ux #22). 짝 둘: 이동이 커밋될 때까지
  * 버튼이 로딩(`nextPending`)이고, 닫기는 생성 `pending`에만 묶여 있어 그대로 열려 있다 — 합치면 ④에서 모달이 갇힌다.
  */
-it("④ 이동 중에는 [Start translating]이 로딩이고 ×는 그대로 열려 있다", async () => {
+it("④ 이동 중에는 [Open project]가 로딩이고 ×는 그대로 열려 있다", async () => {
   mocks.createProject.mockResolvedValue({ ok: true, slug: "acme-web", defaultSurfaceSlug: "app", pushToken: "t", baseBranch: "main", count: 2, surfaces: [], yaml: "y" });
   // 이동이 커밋되지 않은 채로 둔다 — transition이 약속을 기다리는 동안이 pending이다.
   const navigation = deferred<void>();
@@ -268,12 +268,12 @@ it("④ 이동 중에는 [Start translating]이 로딩이고 ×는 그대로 열
   await naming();
   await click(button("Create project"));
   const closeButton = () => find<HTMLButtonElement>(document.body, 'button[aria-label="Close"]');
-  expect(button("Start translating").disabled).toBe(false);
-  await click(button("Start translating"));
-  expect(button("Start translating").disabled).toBe(true);
+  expect(button("Open project").disabled).toBe(false);
+  await click(button("Open project"));
+  expect(button("Open project").disabled).toBe(true);
   expect(closeButton().disabled).toBe(false);
   await act(async () => navigation.resolve());
-  expect(button("Start translating").disabled).toBe(false);
+  expect(button("Open project").disabled).toBe(false);
   expect(mocks.router.replace).toHaveBeenCalledTimes(1);
 });
 
