@@ -2640,13 +2640,13 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 |---|---|---|---|
 | `whoami` | 없음(계정) | 없음 | 이름·GitHub 연결 여부·토큰 권한/범위 — 에이전트가 자기 권한을 아는 유일한 수단. 범위는 내부 id가 아니라 **slug**다(지금 멤버인 비보관 프로젝트 중 범위 안의 것만 — 나간 프로젝트의 id를 말하지 않는다) |
 | `list_projects` | 없음(멤버십 ∩ 범위로 거른다) | 없음 | 목록 조회·표시 판정 재사용 |
-| `get_project` | OWNER / EDITOR | 없음 | Home 집계 — 표면·로케일·To send·열린 PR·연결 건강 |
+| `get_project` | OWNER / EDITOR | 없음 | Home 집계 — 표면·로케일·To send·**마지막 Publish의 PR**(`lastPublishPullRequest` = `Project.lastPrUrl`)·연결 건강. ⚠️ 열린 PR이 아니다 — 그 뒤 닫혔을 수 있고, 여기서 GitHub을 부르지 않는다. 지금 열려 있는지는 `preview_publish`가 답한다(#144) |
 | `list_repositories` | 없음(생성 준비) | `project:create` | 연결 가능한 리포. 연결·설치가 없으면 `needs-browser` |
 | `list_branches` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / **기존: 없음** | 기존 프로젝트의 브랜치 목록은 PRODUCT §3의 읽기 예외다. sync 브랜치 제외 |
 | `detect_formats` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / 기존: `project:settings` | 파일 다운로드라 두 경로 다 grant. 둘 다 리포 쓰기 권한 확인. 샘플 확인값 발급 |
 | `list_keys` | OWNER / EDITOR (표면) | 없음 | 검색·상태 필터·cursor, 페이지 100 |
 | `get_key` | OWNER / EDITOR (표면) | 없음 | 로케일 값·설명·사용처·플래그 |
-| `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 |
+| `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR(GitHub 조회) |
 | `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라) |
 | `preview_revert` | OWNER (표면) | 없음 | Revert 확인값 |
 | `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다 |
