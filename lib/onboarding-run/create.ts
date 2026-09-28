@@ -21,7 +21,7 @@ import { PROJECT_LIMIT, planProjectCreate } from "@/lib/onboarding/create-plan";
 import { ingestTargets } from "@/lib/onboarding/detect";
 import { prepareFirstSnapshot } from "@/lib/onboarding/ingest";
 import { planSlug } from "@/lib/onboarding/slug";
-import { renderProjectWorkflowYaml } from "@/lib/onboarding/workflow";
+import { renderProjectWorkflowYaml, workflowApiUrl } from "@/lib/onboarding/workflow";
 import { PROJECT_NAME_MAX_CHARS } from "@/lib/projects/plan";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { resolveLocalePaths } from "@/lib/pull/plan";
@@ -92,7 +92,11 @@ export async function createProjectFromRepo(
    * MCP `create_project`만 — `detect_formats`가 준 샘플 확인값, `input.surfaces`와 같은 순서(design §2.2). 주면 인가 뒤 읽은 **같은 스냅샷**의
    * head로 전부 대조하고 하나라도 실패하면 쓰기 0건이다. 웹은 주지 않는다(파일을 다시 읽어 `planConfirmedFormat`으로 검증하는 기존 계약).
    */
-  options: { confirmations?: readonly (string | undefined)[] } = {},
+  options: {
+    confirmations?: readonly (string | undefined)[];
+    /** 요청이 들어온 앱 origin(검증된 값) — 워크플로의 `api-url`을 정한다(`workflowApiUrl` — 프로덕션·모르는 값은 생략). */
+    origin?: string | null;
+  } = {},
 ): Promise<CreateProjectResult> {
   const { userId, tokenId } = subject;
 
@@ -199,7 +203,7 @@ export async function createProjectFromRepo(
   if (defaultSurface === null) return { ok: false, error: "invalid input" };
   const yaml = renderProjectWorkflowYaml({ slug: input.slug, baseBranch, surfaces: prepared.map(s => ({
     surfaceSlug: s.surface.surfaceSlug, pathTemplate: s.surface.pathTemplate, ...s.workflow,
-  })) });
+  })), ...apiUrlOf(options.origin) });
   const pushToken = generatePushToken();
   let writingPath = defaultSurface.surface.pathTemplate;
 
@@ -320,4 +324,10 @@ export async function createProjectFromRepo(
 
   return { ok: true, slug: input.slug, defaultSurfaceSlug: defaultSurface.surface.surfaceSlug, pushToken, baseBranch, surfaces: prepared.map(s => s.surface),
     count: prepared.reduce((sum, s) => sum + s.payload.keys.length, 0), yaml };
+}
+
+/** `exactOptionalPropertyTypes` — 없으면 키 자체를 뺀다. */
+function apiUrlOf(origin: string | null | undefined): { apiUrl?: string } {
+  const apiUrl = workflowApiUrl(origin);
+  return apiUrl === undefined ? {} : { apiUrl };
 }

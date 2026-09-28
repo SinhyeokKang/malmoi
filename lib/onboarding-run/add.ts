@@ -15,7 +15,7 @@ import { isLocaleShaped, isPathSafeLocale } from "@/lib/locale-code";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
 import type { OnboardError } from "@/lib/onboarding/message";
-import { renderSurfaceWorkflowStep } from "@/lib/onboarding/workflow";
+import { renderSurfaceWorkflowStep, workflowApiUrl } from "@/lib/onboarding/workflow";
 import { addSurfacesFromSnapshot, SurfaceCreationError, type AddSurfaceErrorCode, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 
 import { planSampleConfirmations } from "@/lib/mcp/confirm";
@@ -38,7 +38,11 @@ export async function addSources(
   subject: Subject,
   input: z.infer<typeof AddSurfacesInput>,
   /** MCP `add_sources`만 — `input.picks`와 같은 순서의 샘플 확인값(`createProjectFromRepo`와 같은 계약). 웹은 주지 않는다. */
-  options: { confirmations?: readonly (string | undefined)[] } = {},
+  options: {
+    confirmations?: readonly (string | undefined)[];
+    /** 요청이 들어온 앱 origin(검증된 값) — step의 `api-url`을 정한다(`workflowApiUrl`). */
+    origin?: string | null;
+  } = {},
 ): Promise<AddSurfacesResult> {
   const { userId } = subject;
   // ⚠️ 비밀값은 아래 try **밖에서** 읽는다 — 안에서 던지면 catch가 `ingest-failed`로 접어 설정 오류가 적재 실패로 둔갑한다(design §2.2).
@@ -91,9 +95,11 @@ export async function addSources(
     logFailure("onboard-add-surfaces", error);
     return { ok: false, error: "ingest-failed" };
   }
+  const apiUrl = workflowApiUrl(options.origin);
   const yaml = results.map((result, index) => {
     const source = inputs[index]!;
-    return renderSurfaceWorkflowStep({ slug: input.slug, surfaceSlug: result.surfaceSlug, pathTemplate: source.format.pathTemplate, adapter: source.format.adapter, baseLocale: source.baseLocale });
+    return renderSurfaceWorkflowStep({ slug: input.slug, surfaceSlug: result.surfaceSlug, pathTemplate: source.format.pathTemplate, adapter: source.format.adapter, baseLocale: source.baseLocale,
+      ...(apiUrl === undefined ? {} : { apiUrl }) });
   }).join("\n");
   return { ok: true, results, yaml };
 

@@ -31,13 +31,13 @@ export const createProject = defineTool({
   name: "create_project",
   // 수동 확정(`manual`)은 도구에 없다 — 후보가 없으면 브라우저의 수동 설정이 길이다(`detect_formats`의 needs-browser).
   inputSchema: CreateProjectInput.omit({ manual: true }).extend({ surfaces: z.array(PickWithConfirmation).min(1) }),
-  async run({ prisma, subject }, input) {
+  async run({ prisma, subject, origin }, input) {
     const gate = checkCreateTool(subject, { name: "create_project" });
     if (gate.status !== "ok") return gate;
     const { surfaces, ...rest } = input;
     const result = await createProjectFromRepo(prisma, coreSubject(subject), {
       ...rest, surfaces: surfaces.map(({ confirmation: _c, ...surface }) => surface),
-    }, { confirmations: surfaces.map(surface => surface.confirmation) });
+    }, { confirmations: surfaces.map(surface => surface.confirmation), origin });
     if (!result.ok) return failure(result);
     settleRevalidate("create-project", () => revalidatePath("/projects"));
     settleRevalidate("create-project", () => revalidatePath("/projects/new"));
@@ -55,12 +55,12 @@ export const createProject = defineTool({
 export const addSourcesTool = defineTool({
   name: "add_sources",
   inputSchema: AddSurfacesInput.extend({ picks: z.array(AddSurfacesInput.shape.picks.element.extend({ confirmation: Confirmation })).min(1).max(200) }),
-  async run({ prisma, subject }, input) {
+  async run({ prisma, subject, origin }, input) {
     const gate = await checkProjectTool(prisma, subject, { name: "add_sources", slug: input.slug });
     if (gate.status !== "ok") return gate;
     const result = await addSources(prisma, coreSubject(subject), {
       slug: input.slug, picks: input.picks.map(({ confirmation: _c, ...pick }) => pick),
-    }, { confirmations: input.picks.map(pick => pick.confirmation) });
+    }, { confirmations: input.picks.map(pick => pick.confirmation), origin });
     if (!result.ok) return failure(result);
     settleRevalidate("add-sources", () => revalidatePath(`/projects/${input.slug}`, "layout"));
     settleRevalidate("add-sources", () => revalidatePath("/projects"));

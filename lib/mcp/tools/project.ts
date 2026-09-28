@@ -9,7 +9,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import { m } from "@/lib/i18n";
 import { loadProjectListAggregates, loadSurfaceCounts } from "@/lib/keys/query";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
-import { renderProjectWorkflowYaml, workflowSurfaceOf } from "@/lib/onboarding/workflow";
+import { renderProjectWorkflowYaml, workflowApiUrl, workflowSurfaceOf } from "@/lib/onboarding/workflow";
 
 import { checkProjectTool } from "./access";
 import { defineTool, ok } from "./define";
@@ -117,7 +117,7 @@ export const listMembers = defineTool({
 export const getWorkflow = defineTool({
   name: "get_workflow",
   inputSchema: Slug,
-  async run({ prisma, subject }, { slug }) {
+  async run({ prisma, subject, origin }, { slug }) {
     const gate = await checkProjectTool(prisma, subject, { name: "get_workflow", slug });
     if (gate.status !== "ok") return gate;
     const access = await getProjectAccess(prisma, { userId: subject.userId, slug, permission: "project:settings" });
@@ -128,7 +128,9 @@ export const getWorkflow = defineTool({
     });
     if (project === null || project.surfaces.length === 0) return { status: "refused", code: "not-ready" };
     // push 토큰 원문은 없다 — YAML은 `${{ secrets.PUSH_TOKEN }}`만 가리킨다. 원문은 `rotate_push_token`의 결과에만 있다.
-    const yaml = renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf) });
+    // `api-url`은 이 요청이 들어온 앱을 가리킨다 — 프로덕션·모르는 origin은 생략(`workflowApiUrl`).
+    const apiUrl = workflowApiUrl(origin);
+    const yaml = renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), ...(apiUrl === undefined ? {} : { apiUrl }) });
     return ok({ path: ".github/workflows/malmoi-i18n.yml", yaml, secretName: "PUSH_TOKEN" }, m.mcp.summary.workflow);
   },
 });

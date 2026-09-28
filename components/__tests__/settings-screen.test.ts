@@ -34,6 +34,12 @@ describe("설정 — 워크플로 YAML이 활성 표면 전부를 든다", () =>
     expect(src).toMatch(/surfaces:\s*project\.surfaces\.map\(workflowSurfaceOf\)/);
   });
 
+  /** preview QA T9 — dev에서 복사한 워크플로가 프로덕션으로 push했다. `api-url`은 검증된 요청 origin에서만 나온다(판정은 `workflowApiUrl`이 잰다). */
+  it("워크플로의 api-url을 requestOrigin으로 검증한 origin에서 만든다 — Host를 직접 싣지 않는다", () => {
+    expect(src).toMatch(/workflowApiUrl\(requestOrigin\(\{ host: head\.get\("host"\)/);
+    expect(src).not.toMatch(/apiUrl:\s*head\.get/);
+  });
+
   it("표면 행 → step 입력 변환을 화면이 직접 하지 않는다 — 그 규칙은 잴 수 있는 자리에 있다", () => {
     expect(src).not.toContain("basePending");
     expect(src).not.toMatch(/adapterName\s*===\s*"ts-dict"/);

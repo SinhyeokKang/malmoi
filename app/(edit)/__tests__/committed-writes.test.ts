@@ -10,6 +10,8 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/auth", () => ({ auth: async () => ({ user: { id: "u1" } }) }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({}) }));
 vi.mock("next/cache", () => ({ revalidatePath: h.revalidatePath }));
+// 생성·소스 추가 Action이 워크플로 `api-url`용 origin을 읽는다 — 요청 밖이라 Host 없음(= 프로덕션 기본값)으로 둔다.
+vi.mock("next/headers", () => ({ headers: async () => ({ get: () => null }), cookies: async () => ({ get: () => undefined, set: () => {} }) }));
 const core = (name: string) => (...args: unknown[]) => h.core(name, ...args);
 vi.mock("@/lib/settings/update", async (orig) => ({ ...(await orig<object>()), changeBaseBranch: core("changeBaseBranch") }));
 vi.mock("@/lib/auth/members", async (orig) => ({ ...(await orig<object>()), revokePendingInvitation: core("revoke"), changeMemberRole: core("change") }));

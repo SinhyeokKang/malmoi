@@ -124,7 +124,7 @@ describe("역할 × grant × 범위", () => {
     // 확인값은 코어로 따로 넘어가고 표면 입력에는 없다 — 웹 입력 계약은 그대로다.
     expect(h.core).toHaveBeenCalledWith("create", prisma, { userId: "owner", tokenId: "hash-owner" },
       { owner: "o", repo: "r", slug: "new", name: "New", baseBranch: "main", surfaces: [{ adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" }] },
-      { confirmations: ["c"] });
+      { confirmations: ["c"], origin: null });
   });
 });
 

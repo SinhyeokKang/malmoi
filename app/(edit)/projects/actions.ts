@@ -611,7 +611,7 @@ export async function createProject(raw: {
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
 
-  const result = await createProjectFromRepo(getPrisma(), { userId }, input);
+  const result = await createProjectFromRepo(getPrisma(), { userId }, input, { origin: await appOrigin() });
   if (!result.ok) return result;
   settleRevalidate("create-project", () => revalidatePath("/projects"));
   // ⚠️ **`/projects/new`도 지운다.** 모달 뒤에 목록이 있으므로 그 라우트도 같은 목록을 그리는데,
@@ -955,13 +955,19 @@ export async function unarchiveProject(slug: unknown): Promise<ArchiveResult> {
 
 export type { AddSurfacesResult };
 
+/** 생성 워크플로의 `api-url`용 — `requestOrigin`이 허용 목록과 대조한 값만. 모르면 `null`(= 프로덕션 기본값). */
+async function appOrigin(): Promise<string | null> {
+  const head = await headers();
+  return requestOrigin({ host: head.get("host"), forwardedProto: head.get("x-forwarded-proto") })?.origin ?? null;
+}
+
 export async function addSurfaces(raw: { slug: string; picks: { adapter: string; pathTemplate: string; baseLocale: string }[] }): Promise<AddSurfacesResult> {
   const parsed = AddSurfacesInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
   const session = await readSession();
   if (session.status !== "ok") return { ok: false, error: session.status === "none" ? "unauthorized" : "unavailable" };
-  const result = await addSources(getPrisma(), { userId: session.userId }, input);
+  const result = await addSources(getPrisma(), { userId: session.userId }, input, { origin: await appOrigin() });
   if (!result.ok) return result;
   // The transaction has committed. Cache failures must not claim that nothing was added.
   try {

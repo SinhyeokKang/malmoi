@@ -92,8 +92,8 @@ async function token(userId: string, over: { grants?: TokenGrant[]; allProjects?
   await prisma.apiToken.create({ data: row });
   return { userId, tokenId: row.tokenHash, grants: row.grants, scope: row.allProjects ? { kind: "all" } : { kind: "projects", projectIds: row.projectIds } };
 }
-const call = (name: string, subject: ApiTokenSubject, input: Record<string, unknown>): Promise<ToolOutcome> =>
-  TOOLS.find(t => t.name === name)!.run({ prisma, subject, now: new Date(), origin: null }, input as never);
+const call = (name: string, subject: ApiTokenSubject, input: Record<string, unknown>, origin: string | null = null): Promise<ToolOutcome> =>
+  TOOLS.find(t => t.name === name)!.run({ prisma, subject, now: new Date(), origin }, input as never);
 const code = (outcome: ToolOutcome) => outcome.status === "refused" ? outcome.code : outcome.status;
 const koValue = async () => (await prisma.translation.findUniqueOrThrow({ where: { id: "k1-ko" } })).value;
 const events = () => prisma.projectEvent.count({ where: { projectId: "p" } });
@@ -247,6 +247,23 @@ describe("add_sources", () => {
     expect(await events()).toBe(0);
     expect(code(await call("add_sources", subject, { slug: "p", picks: [{ ...SECOND, confirmation: sign(SECOND) }] }))).toBe("ok");
     expect(await prisma.translationSurface.count({ where: { projectId: "p" } })).toBe(2);
+  });
+});
+
+/**
+ * **생성 워크플로는 만든 앱을 가리킨다** (preview QA T9). 도구 컨텍스트의 `origin`(route가 `requestOrigin`으로 검증한 값)이 프로덕션이 아니면
+ * `api-url`을 박는다 — 안 박으면 dev에서 만든 프로젝트의 CI가 프로덕션으로 push해 401이다. 프로덕션·없음은 오늘과 같은 출력이다.
+ */
+describe("get_workflow — api-url은 요청 origin을 따른다", () => {
+  const yamlOf = (outcome: ToolOutcome) => (outcome.status === "ok" ? String(outcome.data.yaml) : JSON.stringify(outcome));
+  it("dev origin → api-url 한 줄 · 프로덕션·없음 → 없음(두 출력이 같다)", async () => {
+    const owner = await token("owner");
+    const dev = yamlOf(await call("get_workflow", owner, { slug: "p" }, "https://dev.mal-moi.com"));
+    expect(dev.split("\n").filter(l => l.includes("api-url"))).toEqual(['          api-url: "https://dev.mal-moi.com"']);
+    const prod = yamlOf(await call("get_workflow", owner, { slug: "p" }, "https://mal-moi.com"));
+    const none = yamlOf(await call("get_workflow", owner, { slug: "p" }, null));
+    expect(prod).not.toContain("api-url");
+    expect(prod).toBe(none);
   });
 });
 

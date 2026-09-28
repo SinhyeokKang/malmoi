@@ -1,6 +1,7 @@
 import type { AdapterName } from "@/lib/adapters/types";
 import { isAdapterName } from "@/lib/adapters";
 import { fail } from "@/lib/failure";
+import { isAllowedHost } from "@/lib/github-connect/origin";
 import { basePending } from "./base-pending";
 
 /**
@@ -19,6 +20,8 @@ import { basePending } from "./base-pending";
  */
 export function renderSurfaceWorkflowStep(input: {
   slug: string; surfaceSlug: string; pathTemplate: string; adapter?: AdapterName; baseLocale?: string;
+  /** `workflowApiUrl`의 결과만 넣는다 — 없으면 action 기본값(프로덕션)이다. */
+  apiUrl?: string;
 }): string {
   return [
     "      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v2",
@@ -29,6 +32,7 @@ export function renderSurfaceWorkflowStep(input: {
     `          path-template: ${JSON.stringify(input.pathTemplate)}`,
     ...(input.adapter === undefined ? [] : [`          adapter: ${input.adapter}`]),
     ...(input.baseLocale === undefined ? [] : [baseLocaleLine(input.baseLocale)]),
+    ...(input.apiUrl === undefined ? [] : [`          api-url: ${JSON.stringify(input.apiUrl)}`]),
     "          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)",
     "",
   ].join("\n");
@@ -63,8 +67,10 @@ export function renderProjectWorkflowYaml(input: {
   /** `Project.baseBranch` — `main`으로 고정하면 base가 `develop`인 리포에서 CI가 영영 안 돈다. */
   baseBranch: string;
   surfaces: readonly WorkflowSurface[];
+  /** `workflowApiUrl`의 결과 — 모든 step에 같은 값이다. */
+  apiUrl?: string;
 }): string {
-  const { slug, baseBranch, surfaces } = input;
+  const { slug, baseBranch, surfaces, apiUrl } = input;
   // step이 없는 워크플로는 red 없이 **조용히 아무것도 안 한다** — 화면이 붙여넣기를 권한 파일이라
   // 그 침묵의 비용이 크다. 활성 표면이 0인 프로젝트는 마이그레이션 precondition이 이미 막는다.
   if (surfaces.length === 0) fail("a workflow needs at least one surface");
@@ -72,7 +78,32 @@ export function renderProjectWorkflowYaml(input: {
   // ⚠️ **`""` 둘이 빈 줄 하나다.** 앞의 하나가 checkout 줄을 끝내고 뒤의 하나가 빈 줄을 만든다 —
   // step 사이의 `join("\n")`과 같은 간격이라 표면 수와 무관하게 모양이 같다.
   return [...header(slug, baseBranch), "", ""].join("\n")
-    + surfaces.map((surface) => renderSurfaceWorkflowStep({ slug, ...surface })).join("\n");
+    + surfaces.map((surface) => renderSurfaceWorkflowStep({ slug, ...surface, ...(apiUrl === undefined ? {} : { apiUrl }) })).join("\n");
+}
+
+/** action(`malmoi-i18n-push-v2`)의 `api-url` 기본값 — 이 origin이면 줄을 내지 않는다(출력이 줄 도입 전과 바이트 단위로 같다). */
+const PRODUCTION_ORIGIN = "https://mal-moi.com";
+
+/**
+ * **생성 워크플로의 `api-url` — 워크플로를 만든 앱을 가리킨다** (preview QA T9). 기본값이 프로덕션이라 dev·로컬에서 만든 프로젝트의 CI가
+ * 프로덕션으로 push해 401이 났다. 프로덕션·없음은 생략한다.
+ *
+ * ⚠️ **허용 호스트를 여기서 한 번 더 본다** — 호출부는 `requestOrigin`(웹)·도구 컨텍스트(MCP)로 검증한 값을 넘기지만, 이 값은 **남의 리포의
+ * CI가 push 토큰을 보낼 곳**이다. 검증 안 된 Host가 한 번이라도 흘러오면 토큰 유출 경로가 되므로 모르는 origin은 생략(= 프로덕션)으로 접는다.
+ */
+export function workflowApiUrl(origin: string | null | undefined): string | undefined {
+  if (origin === null || origin === undefined) return undefined;
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return undefined;
+  }
+  if (url.origin !== origin || !isAllowedHost(url.host) || url.hostname === new URL(PRODUCTION_ORIGIN).hostname) return undefined;
+  // action이 `http:`를 루프백 밖에서 exit 2로 거부한다(토큰 평문 전송 — docs/ACTIONS.md). 그런 줄은 박지 않는다.
+  const loopback = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) return undefined;
+  return origin;
 }
 
 /**

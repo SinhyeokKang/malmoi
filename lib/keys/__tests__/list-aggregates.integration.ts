@@ -834,6 +834,8 @@ it("다중 생성의 중복 템플릿과 경로 경합은 기존 데이터를 �
 
 const imageIO = vi.hoisted(() => ({ put: vi.fn(), del: vi.fn() }));
 vi.mock("@/lib/upload/store", () => ({ putImage: imageIO.put, deleteImage: imageIO.del }));
+// 생성 Action이 워크플로 `api-url`용 origin을 읽는다 — 요청 밖이라 Host 없음(= 프로덕션 기본값)으로 둔다.
+vi.mock("next/headers", async (orig) => ({ ...(await orig<object>()), headers: async () => ({ get: () => null }) }));
 vi.mock("@/lib/upload/normalize", () => ({ normalizeImage: async () => ({ ok: true, bytes: Uint8Array.of(1) }) }));
 it("프로젝트 이미지의 동시 교체·제거는 현재 URL을 삭제하지 않는다", async () => {
   await addFixture();
