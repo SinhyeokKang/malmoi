@@ -56,7 +56,7 @@ one **Save** writes every changed language of a key at once.
 
 </td>
 <td width="50%">
-  <img src="public/guide/translation-editor.webp" alt="Key list beside the selected key with its English source and French and Korean translations" width="100%" />
+  <img src="public/guide/translation-editor.webp" alt="The translation screen with a key selected and its English source and French and Korean translations" width="100%" />
 </td>
 </tr>
 <tr>
@@ -70,7 +70,7 @@ to the base branch — merging stays with your reviewers.
 
 </td>
 <td width="50%">
-  <img src="public/guide/publish-preview.webp" alt="Publish preview listing one changed value and a button that replaces the open pull request" width="100%" />
+  <img src="public/guide/publish-preview.webp" alt="Publish preview listing one changed value and a button that opens a pull request" width="100%" />
 </td>
 </tr>
 <tr>
@@ -83,7 +83,7 @@ before and after. History is kept for the life of the project.
 
 </td>
 <td width="50%">
-  <img src="docs/assets/readme/logs.webp" alt="Logs listing translation edits, a source added, a base language change, and a sync, grouped by UTC date" width="100%" />
+  <img src="docs/assets/readme/logs.webp" alt="Logs listing translation edits and publishes to GitHub, grouped by UTC date" width="100%" />
 </td>
 </tr>
 <tr>
@@ -97,7 +97,7 @@ brings new keys into Malmoi and marks translations whose source text changed as
 
 </td>
 <td width="50%">
-  <img src="public/guide/workflow-file.webp" alt="The generated workflow YAML in Malmoi Settings with a Copy YAML button" width="100%" />
+  <img src="public/guide/workflow-file.webp" alt="The Workflow file dialog in Malmoi Settings with the generated YAML and a Copy YAML button" width="100%" />
 </td>
 </tr>
 </table>
