@@ -11,6 +11,8 @@ Before you start: Sign in with a verified email, open **Projects**, and choose *
 3. If Malmoi shows **Waiting for approval**, ask an organization owner to approve it, then choose **Try again**.
 4. Select the repository, choose the **Branch** that contains your translation files, and choose **Next**. This is the base branch that Malmoi reads and opens translation pull requests against.
 
+![Step 1 of 4 of New project with a repository selected in the list and dev chosen as its branch](/guide/create-repository.webp "Select the repository and its branch, then choose Next.")
+
 ## Choose files {#choose-files}
 
 1. Select the detected files. Detection requires at least two languages.
@@ -19,11 +21,15 @@ Before you start: Sign in with a verified email, open **Projects**, and choose *
 
 Malmoi shows one source for each selected set of files. A source can use a different base language from another source.
 
+![Step 2 of 4 with two detected sets of translation files selected and a preview of one set's keys and values](/guide/create-files.webp "Select the detected files and check their keys.")
+
 ## Name the project {#confirm-project}
 
 1. Check each source's **Base language**. Its file decides which keys exist; keys found only in another language are left out.
 2. Enter the project **Name** and **Address**. The address is the name in the project URL; it must be globally unique and cannot be changed later.
 3. Review the file and size limits in [Limits](../reference/limits.md#files), then choose **Create project**.
+
+![Step 3 of 4 with the project name and address filled in and English chosen as a source's base language](/guide/create-name.webp "Check the base language, name, and address before you create the project.")
 
 The project is ready immediately. The first page inside creation says **Malmoi is ready**, and you can translate and invite teammates right away.
 
