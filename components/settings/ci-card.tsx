@@ -8,6 +8,7 @@ import { FileCode2, ChevronRight } from "lucide-react";
 import { PanelCard } from "@/components/ui/panel-card";
 import { PushTokenPanel } from "./push-token-panel";
 import { m } from "@/lib/i18n";
+import { IconTile } from "@/components/ui/icon-tile";
 export function CiCard({ slug, archived, stale, children }: { slug: string; archived: boolean; stale: readonly string[]; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -22,7 +23,7 @@ export function CiCard({ slug, archived, stale, children }: { slug: string; arch
     <PushTokenPanel slug={slug} disabled={archived} />
     <div className="border-border border-t">
       <Button ref={trigger} variant="ghost" className="text-foreground focus-visible:ring-inset h-auto w-full justify-start gap-3 rounded-none px-4 py-[13px] text-left" aria-disabled={blocked !== undefined || undefined} aria-describedby={blocked} onClick={() => { if (blocked === undefined) setOpen(true); }}>
-        <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded"><FileCode2 className="size-4" aria-hidden /></span>
+        <IconTile><FileCode2 aria-hidden /></IconTile>
         <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-base font-medium">{m.settings.ci.workflow}</span><span className="text-muted-foreground text-xs">.github/workflows/malmoi-i18n.yml</span></span>
         <ChevronRight className="text-muted-foreground size-4" aria-hidden />
       </Button>

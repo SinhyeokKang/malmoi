@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
+import { IconTile } from "./icon-tile";
 
 /** Shared account and project settings card. Header and row dividers have distinct roles. */
 export function PanelCard({
@@ -93,7 +94,7 @@ export function PanelRow({
 }) {
   return (
     <li className="border-border flex items-center gap-3 border-t px-4 py-[13px] first:border-t-0">
-      <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded">{glyph}</span>
+      <IconTile>{glyph}</IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
         <span className="truncate text-base tracking-[0.015em]">
           <span className="font-medium">{name}</span>

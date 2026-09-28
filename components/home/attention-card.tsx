@@ -10,6 +10,7 @@ import type { HomeState } from "@/lib/home/state";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
 import { ALL_NAMESPACES, routes } from "@/lib/routes";
+import { IconTile } from "@/components/ui/icon-tile";
 
 /**
  * `Needs your attention` (캔버스 `2a` 왼쪽 가운데).
@@ -129,9 +130,9 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
       href={href}
       className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-divider flex items-center gap-3 border-t px-4 py-3.5 focus-visible:ring-2 focus-visible:outline-none"
     >
-      <span className={`flex size-7 shrink-0 items-center justify-center rounded ${tile.className}`}>
-        <Tile className="size-4" aria-hidden />
-      </span>
+      <IconTile className={tile.className}>
+        <Tile aria-hidden />
+      </IconTile>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         {/* ⚠️ **한 줄로 자른다** — 표면·로케일 이름이 길어지면 둘째 줄이 밀려 행 높이가 흔들린다. */}
         <span className="text-muted-foreground truncate text-xs">{title(item)}</span>

@@ -84,7 +84,7 @@ export default function TranslationsLoading() {
             {/* `EmptyState` 치수 — `py-12` · 칩 48(`mb-3`) · 제목 18(`mb-1`) · 설명 14. */}
             <div className="flex flex-1 items-center justify-center">
               <div className="flex w-full flex-col items-center py-12">
-                <Skeleton className="mb-3 size-12 rounded-full" />
+                <Skeleton className="mb-3 size-10 rounded-sm" />
                 <div className="mb-1 flex w-full justify-center">
                   <SkeletonLine text="text-lg" className="w-56" />
                 </div>

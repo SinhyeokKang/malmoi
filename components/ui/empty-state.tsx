@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { IconTile } from "./icon-tile";
 
 /**
  * 빈 상태 (DESIGN §6.4·§10): 제목은 마침표 없는 짧은 구, 설명은 완전 문장 하나, **액션은 버튼 하나.**
@@ -38,9 +39,9 @@ export function EmptyState({
      */
     <div className={cn("flex flex-col items-center py-12 text-center", className)}>
       {Icon !== undefined && (
-        <span className="bg-foreground/5 mb-3 flex size-12 items-center justify-center rounded-full">
-          <Icon className="text-muted-foreground size-4" aria-hidden />
-        </span>
+        <IconTile size="lg" className="mb-3">
+          <Icon aria-hidden />
+        </IconTile>
       )}
       {/*
         ⚠️ **`text-lg`다** (2026-09-11 사용자 — `text-base`에서 한 단계 올렸다). 같은 날 `--text-base`가

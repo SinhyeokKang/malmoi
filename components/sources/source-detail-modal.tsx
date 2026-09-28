@@ -25,6 +25,7 @@ import type { SourceDetail } from "@/lib/sources/query";
 import { utcMinute } from "@/lib/utc-time";
 import { BaseLanguageForm } from "./base-language-form";
 import { SourceStatus } from "./source-status";
+import { IconTile } from "@/components/ui/icon-tile";
 
 export type DetailState = { status: "loading" } | { status: "failed" | "rejected" } | { status: "ready"; detail: SourceDetail; refreshFailed?: boolean };
 export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, importing = false, importResult, onBusy, onClose, onReload, onImport, onSaved, returnFocusRef, fallbackFocusRef }: {
@@ -92,12 +93,12 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
       <PanelCard title={m.sources.status} subtitle={m.sources.statusHelp}>
         {importResult && <div role="status" className="border-divider text-base border-t px-4 py-[13px]">{importResult.text}</div>}
         <div className="border-divider flex items-center gap-3 border-t px-4 py-[13px]">
-          <span className={cn("flex size-7 shrink-0 items-center justify-center rounded", statusFailed ? "bg-destructive/8 text-destructive" : "bg-foreground/5 text-neutral-600")}>
-            {statusFailed ? <CircleAlert className="size-4" aria-hidden />
+          <IconTile className={statusFailed ? "bg-destructive/8 text-destructive" : undefined}>
+            {statusFailed ? <CircleAlert aria-hidden />
               : importStatus?.state === "importing" ? <span aria-hidden className="border-foreground/15 border-t-muted-foreground size-3.5 animate-spin rounded-full border-2 [animation-duration:0.7s]" />
-              : importStatus?.state === "not-imported" ? <Clock className="size-4" aria-hidden />
-              : <Check className="size-4" aria-hidden />}
-          </span>
+              : importStatus?.state === "not-imported" ? <Clock aria-hidden />
+              : <Check aria-hidden />}
+          </IconTile>
           <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
             <span className="text-base"><span className="font-medium">{statusLabel}</span>
               {statusAt !== null && <> — {importStatus?.state === "importing" && <>{m.sources.started} </>}{importStatus?.state === "not-imported" && <>{m.sources.addedAgo} </>}<RelativeAt at={statusAt} now={now} /></>}</span>
@@ -116,7 +117,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         {/* ⚠️ **적재 이후 실패는 두 행이다** (`1d` ④) — 실패 한 줄만 두면 지금 보이는 키가 유효한지 알 수 없다.
             ⚠️ **둘째 행이 말하는 것은 적재 시각이 아니라 원본 커밋이다** — 적재 완료 시각을 저장하는 컬럼이 없다. */}
         {importStatus?.state === "failed-after" && detail.lastImportedAt && <div className="border-border flex items-center gap-3 border-t px-4 py-[13px]">
-          <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded text-neutral-600"><Check className="size-4" aria-hidden /></span>
+          <IconTile><Check aria-hidden /></IconTile>
           <span className="min-w-0 flex-1 text-base"><span className="font-medium">{m.sources.lastSuccess}</span> — <SourceTime at={detail.lastImportedAt} /></span>
         </div>}
       </PanelCard>

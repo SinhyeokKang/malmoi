@@ -34,7 +34,7 @@ export default function LogsLoading() {
           {[0, 1, 2].map((index) => (
             <div key={index} className="border-border flex items-center gap-3 border-t px-4 py-[13px]">
               <Skeleton className="h-3.5 w-10 shrink-0 rounded-md" />
-              <Skeleton className="size-7 shrink-0 rounded-sm" />
+              <Skeleton className="size-7 shrink-0 rounded" />
               <Skeleton className="h-3.5 flex-1 rounded-md" />
               <Skeleton className="h-3.5 w-24 shrink-0 rounded-md" />
             </div>

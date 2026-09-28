@@ -19,6 +19,7 @@ import { planSlug, PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
 import { SYNC_BRANCH_PREFIX } from "@/lib/pull/ref-slug";
 
 import { failureText } from "../failure";
+import { IconTile } from "@/components/ui/icon-tile";
 
 /**
  * ③ 이름·주소·기준 언어 (DESIGN §6.7).
@@ -252,15 +253,10 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
                         labelClassName="gap-3"
                         label={
                           <>
-                            <span
-                              className={cn(
-                                "flex size-10 shrink-0 items-center justify-center rounded-md",
-                                active ? "bg-background" : "bg-muted",
-                              )}
-                            >
+                            <IconTile size="lg" className={active ? "bg-background" : "bg-muted"}>
                               {/* ⚠️ 매핑이 없으면 `LocaleFlag`가 `null`을 낸다 — 칩은 그대로 서고 안만 빈다. */}
                               <LocaleFlag code={code} size="md" />
-                            </span>
+                            </IconTile>
                             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                               <span className="block truncate text-base font-medium">{languageName(code)}</span>
                               <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>

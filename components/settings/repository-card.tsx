@@ -13,6 +13,7 @@ import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { installationSettingsUrl } from "@/lib/github-connect/installation-url";
 import { m } from "@/lib/i18n";
 import { RepositoryForm } from "./repository-form";
+import { IconTile } from "@/components/ui/icon-tile";
 
 /**
  * ⚠️ **`health`·`account`가 promise다** (audit-ux #8). 둘 다 GitHub 왕복이라 페이지가 await하면 이 화면 전체가
@@ -72,7 +73,7 @@ function ConnectionRow({ health: pending, slug, owner, repo, archived, onFailure
   const status = health.status === "ok" || health.status === "repo-moved" ? m.settings.repository.health.ok : disconnected ? m.settings.repository.disconnected : health.status === "not-connected" ? m.settings.repository.notConnected : health.status === "unknown" ? m.settings.repository.unknown : null;
   const detail = health.status === "ok" ? m.settings.installed : health.status === "unknown" ? m.settings.repository.health.unknown : health.status === "not-connected" ? m.settings.repository.health["not-connected"] : health.status === "repo-moved" ? m.settings.repository.movedHint : disconnected ? m.settings.repository.paused : null;
   return <div className={ROW}>
-    <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded">{disconnected ? <Unplug className="size-4" aria-hidden /> : health.status === "not-connected" ? <Link2 className="size-4" aria-hidden /> : <GithubIcon className="size-4" />}</span>
+    <IconTile>{disconnected ? <Unplug className="size-4" aria-hidden /> : health.status === "not-connected" ? <Link2 className="size-4" aria-hidden /> : <GithubIcon className="size-4" />}</IconTile>
     <div className="min-w-0 flex-1 space-y-[3px]"><p className="text-base break-all"><span className="font-medium">{owner}/{repo}</span>{status && <> — {status}</>}</p>{detail && <p className="text-muted-foreground text-xs">{detail}</p>}</div>
     {canConnect ? <fieldset className="[&_.animate-spin]:size-3.5" disabled={archived}><ReconnectButton onFailure={onFailure} slug={slug} label={health.status === "not-connected" ? m.settings.repository.connect : m.settings.repository.reconnect} variant={health.status === "repo-moved" ? undefined : "primary"} /></fieldset>
       : health.status === "ok" && <a className={buttonClass({ variant: "default", size: "md" }) + " focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none"} href={`https://github.com/${owner}/${repo}`} target="_blank" rel="noreferrer">{m.settings.openRepo}<ExternalLink aria-hidden /></a>}

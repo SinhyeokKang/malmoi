@@ -55,7 +55,7 @@ export default function MembersLoading() {
             실물 문구 길이에서 두 줄로 접힌다 — 한 줄로 그리면 도착 때 한 줄만큼 늘어난다.
           */}
           <div data-skeleton-empty className="border-foreground/[0.06] flex flex-col items-center gap-2.5 border-t p-8">
-            <Skeleton className="size-10 rounded-full" />
+            <Skeleton className="size-10 rounded-sm" />
             <div className="flex w-full flex-col items-center gap-1.5">
               <SkeletonLine text="text-base" className="w-48" />
               {["w-80", "w-56"].map((width) => (

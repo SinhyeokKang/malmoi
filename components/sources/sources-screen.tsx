@@ -25,6 +25,7 @@ import { summarizeAddResults, type SurfaceAdded } from "@/lib/surfaces/plan-add"
 import { AddSourcesModal } from "./add-sources-modal";
 import { SourceDetailModal, type DetailState } from "./source-detail-modal";
 import { SourceStatus } from "./source-status";
+import { IconTile } from "@/components/ui/icon-tile";
 
 type Result = { tone: "success" | "warning" | "danger"; text?: string; added?: SurfaceAdded[]; source?: string };
 export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = false }: {
@@ -93,7 +94,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
         </div>}
         {data.sources.length === 0
           ? <div className="border-divider flex flex-col items-center gap-2.5 border-t px-6 py-10 text-center">
-              <span className="bg-foreground/4 flex size-9 items-center justify-center rounded-lg text-neutral-600"><FileJson2 className="size-5" aria-hidden /></span>
+              <IconTile size="lg"><FileJson2 aria-hidden /></IconTile>
               <span className="text-base font-medium">{m.sources.emptyTitle}</span>
               <span className="text-muted-foreground max-w-[460px] text-xs leading-[1.7]">{canEdit ? m.sources.emptyOwner : m.sources.emptyEditor}</span>
             </div>
@@ -110,7 +111,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
               <Button variant="ghost" type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="hover:bg-foreground/2 disabled:bg-foreground/3 h-auto min-w-0 flex-1 justify-start gap-3 whitespace-normal rounded-none px-4 py-[13px] text-left focus-visible:ring-inset @max-[1016px]/panel:items-start" onClick={event => {
                 returnFocus.current = event.currentTarget; selection.current = source.slug; setSelected(source.slug); void load(source.slug, false);
               }}>
-                <span data-source-glyph data-tone={failed ? "failed" : "default"} className={cn("flex size-7 shrink-0 items-center justify-center rounded", failed ? "bg-destructive/8 text-destructive" : "bg-foreground/5 text-neutral-600")}><Glyph className="size-4" aria-hidden /></span>
+                <IconTile data-source-glyph data-tone={failed ? "failed" : "default"} className={failed ? "bg-destructive/8 text-destructive" : undefined}><Glyph className="size-4" aria-hidden /></IconTile>
                 <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-foreground text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
                   {/* ⚠️ 경로가 sans다 — mono는 `<pre>` 코드 블록 전용이다 (DESIGN §4.1, 2026-09-23). `text-xs`가 13px라 옛 `text-mono`와 크기는 같다. */}
                   {source.connection && <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">{source.connection.pathTemplate ?? m.sources.notConfigured}</span>}

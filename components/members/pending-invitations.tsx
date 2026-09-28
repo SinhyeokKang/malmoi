@@ -19,6 +19,7 @@ import { m } from "@/lib/i18n";
 import { INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 import { relativeTime } from "@/lib/relative-time";
+import { IconTile } from "@/components/ui/icon-tile";
 
 /**
  * 대기 중인 초대 (DESIGN §6.65). **멤버 카드와 같은 그릇·같은 행 껍데기다.**
@@ -193,12 +194,9 @@ export function PendingInvitations({
                       `planMemberIdentity`가 `avatarSeed: null`을 준다).
                     */
                     glyph={
-                      <span
-                        aria-hidden
-                        className="bg-foreground/[0.05] text-muted-foreground flex size-8 items-center justify-center rounded-full"
-                      >
-                        <Mail className="size-3.5" />
-                      </span>
+                      <IconTile>
+                        <Mail aria-hidden />
+                      </IconTile>
                     }
                     meta={
                       /* ⚠️ **가로 두 칸이다** (캔버스) — 만료는 150 고정, 초대한 사람은 남는 폭이다.

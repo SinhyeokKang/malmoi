@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { IconTile, type IconTileSize } from "@/components/ui/icon-tile";
 import type { GlyphIcon, GlyphTone } from "@/lib/events/view";
 import { cn } from "@/lib/utils";
 
@@ -49,22 +50,14 @@ const ICON: Readonly<Record<GlyphIcon, LucideIcon>> = {
 };
 
 /**
- * ⚠️ **`lg`(40)는 상세 머리 전용이다** — 목록 행은 28이다. 40은 온보딩 ①②의 글리프 칩과 같은
- * 규격이라 글리프 20 · radius 10(`rounded-md`)도 그쪽을 따른다 (DESIGN §5.1 · §6.7).
+ * ⚠️ **`lg`(40)는 상세 머리 전용이다** — 목록 행은 `sm`(28)이다. 규격 둘은 `IconTile`이 든다(2026-09-28 사용자 — 옛 목록 칸 radius 8 ·
+ * 상세 칸 radius 10을 앱 공통 28/4/16 · 40/8/20으로 접었다). 여기서 더하는 것은 사건 색(`TONE`)뿐이다.
  */
-const SIZE = {
-  sm: { chip: "size-7 rounded-sm", icon: "size-4" },
-  lg: { chip: "size-10 rounded-md", icon: "size-5" },
-} as const;
-
-export function EventGlyph({ icon, tone, size = "sm", className }: { icon: GlyphIcon; tone: GlyphTone; size?: keyof typeof SIZE; className?: string }) {
+export function EventGlyph({ icon, tone, size = "sm", className }: { icon: GlyphIcon; tone: GlyphTone; size?: IconTileSize; className?: string }) {
   const Icon = ICON[icon];
   return (
-    <span
-      aria-hidden
-      className={cn("flex shrink-0 items-center justify-center", SIZE[size].chip, TONE[tone], className)}
-    >
-      <Icon className={cn("shrink-0", SIZE[size].icon)} />
-    </span>
+    <IconTile aria-hidden size={size} className={cn(TONE[tone], className)}>
+      <Icon />
+    </IconTile>
   );
 }
