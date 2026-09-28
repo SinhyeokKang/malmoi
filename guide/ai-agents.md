@@ -16,7 +16,7 @@ The agent connects over MCP (Model Context Protocol) at `https://mal-moi.com/api
 
 Keep the token out of files and chat. Store it in the `MALMOI_TOKEN` environment variable of the shell that starts your agent, for example with `read -s MALMOI_TOKEN && export MALMOI_TOKEN` and then pasting the token. The connection snippets below read that variable, so the token itself never appears in a settings file.
 
-You have one token at a time. To change what it allows, choose **Rotate** and create a new one; the old token stops working immediately, and every agent using it stops until you give it the new one. **Revoke** stops the token without creating a new one. An expired token shows **Expired**; create a new one.
+You have one token at a time. To change what it allows, choose **Rotate**, then **Rotate and show new token**; the old token stops working immediately, and every agent using it stops until you give it the new one. **Revoke** stops the token without creating a new one. An expired token shows **Expired**; create a new one.
 
 ## Add Malmoi to your agent {#connect}
 
@@ -71,22 +71,22 @@ Restart the agent after adding the entry. If it reports `unauthorized`, the toke
 
 ## What the agent can do {#permissions}
 
-The agent can do only what you can do in a project, and only what the token allows. A token never adds a permission: if you are a translator (Editor role) in a project, **Project settings** and **Members** do nothing there. The **MCP connector** page says the same: project settings and members apply only where you're a project owner.
+The agent can do only what you can do in a project, and only what the token allows. A token never adds a permission: if you are a translator (Editor role) in a project, **Project settings** and **Members** do nothing there.
 
-A token with no allowed actions can still read translations, activity, and members in the projects its scope covers. Only listing your GitHub repositories and reading repository files need an allowed action.
+A token with no allowed actions can still read translations, activity, and members in the projects its scope covers. Project owners can also preview a sync or a revert and read the workflow file without one. Only listing your GitHub repositories and their branches for a new project, and reading repository files, need an allowed action.
 
 ### Allowed actions and roles {#allowed-actions}
 
 | Allowed action | What the agent can do | Who can use it |
 | --- | --- | --- |
 | **Translate & publish** | Save translations and publish them as a pull request. | Owners and Editors |
-| **Project settings** | Add sources, detect formats in the connected repository, sync from the repository, revert to the last published value, change the name, base branch, or base language, rotate the push token, archive or restore. | Owners |
+| **Project settings** | Add sources and rotate the push token (both also need write access to the repository), detect formats in the connected repository, sync from the repository, revert to the last published value, change the name, base branch, or base language, archive or restore. | Owners |
 | **Members** | Invite people, cancel invitations, change roles, remove members. | Owners |
-| **Create projects** | List your GitHub repositories and branches, detect formats, and create projects. | Anyone signed in, up to the [project limit](reference/limits.md#limits) |
+| **Create projects** | List your GitHub repositories and branches, detect formats, and create projects (creating also needs write access to the repository). | Anyone signed in, up to the [project limit](reference/limits.md#limits) |
 
 **All my projects** covers every project you are a member of, including ones you join later. **Chosen projects** covers only the projects you pick. A project the agent creates with a **Chosen projects** token is added to that token.
 
-Changes to your role or membership apply from the agent's next request. Archived projects can't be changed, even with the right allowed action; the agent can still read their activity.
+Changes to your role or membership apply from the agent's next request. Archived projects can't be changed, even with the right allowed action, except for restoring them with **Project settings**; the agent can still read their activity.
 
 ### Tools by task {#tools}
 
