@@ -1838,6 +1838,15 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
   서버 메모리의 원문은 **commit 뒤** Resend `/emails/batch`에 **한 번** 실린다(잠금 안 네트워크 호출·fire-and-forget·
   자동 재시도가 없다, 10초 timeout · 요청 UUID 멱등 키). 결과는 요청 단위 `accepted`/`rejected`/`unknown`이고
   주소별 발송 상태를 만들지 않는다 — 발송 실패는 이미 commit한 초대를 되돌리지 않는다.
+- ⚠️ **메일의 프로젝트 카드는 `Project` 잠금 뒤에 읽은 값이다** (2026-09-28, invitation-email-project). 발급·재발급이
+  `lockProjectAccess` 뒤 `readIssuedProject`(`issue.ts:125`)로 `name`·`image`를 읽어 outcome에 싣는다 — 잠금 전에 읽으면
+  동시 이름 변경과의 순서가 거짓이 된다. 이미 잠근 행의 PK 읽기라 잠금·교착 순서가 바뀌지 않는다. 역할은 발급이 입력 역할,
+  재발급이 저장된 역할이다(추가 쿼리 없음). ⚠️ **메일은 발송 시점 스냅샷이 아니다** — 썸네일은 URL로만 실리므로 OWNER가 바꾸면
+  옛 Blob이 지워져 이미 보낸 메일의 이미지가 깨진다(CDN 하루 동안은 더 보일 수 있다, §6.7). ⚠️ **템플릿 치환은 단일 패스다**
+  (`message.ts:103`의 `fill`) — 연쇄 `replaceAll`이면 `{{INVITE_URL}}`이 든 프로젝트 이름(OWNER 자유 입력)이 뒤 치환에서 다시
+  전개된다(`escapeHtml`은 `{`·`}`를 안 건드린다). 치환 결과를 다시 훑지 않고 값을 함수로 돌려줘 `$&` 패턴도 해석되지 않는다.
+  이름은 **grapheme 60개에서 자른 뒤** 이스케이프한다(순서가 거꾸로면 `&amp;`가 중간에서 잘린다). 제목·preheader·text에는
+  이름·역할이 없다.
 - ⚠️ **발급은 전부 아니면 아무것도다** (`lib/invitation-email/issue.ts`). 입력·인가·**메일 설정**(`config.ts` —
   origin을 `VERCEL_ENV`와 대조한다)을 쓰기 전에 보고, `Project` 잠금 **안에서** 좌석·이미 멤버·같은 주소 60초·
   프로젝트 최근 1시간 20건(`plan.ts`)을 판정한다. 한 대상이라도 거부면 회전·생성·사건이 0건이다. 한도 기록은
@@ -2620,9 +2629,14 @@ PNG/JPEG 시그니처를 검사한 뒤 `normalizeImage`(`lib/upload/normalize.ts
   올려 둔다. 세션을 읽으면 응답이 캐시 불가가 되어 CDN 층이 사라지고, 이 바이트는 오늘도 공개 읽기다.
   §6.7의 "무제한 업로드"와 같은 갈래지만 **이쪽은 로그인조차 필요 없다**. 키를 모르면 못 읽고 키에는
   난수가 있다. ② **CDN TTL이 삭제 창이다**(위). 둘 다 다음 감사가 새 발견으로 다시 캐지 않도록 적는다.
-- **소비자는 잎 둘로 고정한다** — `ImageTile`·`Avatar`가 공유하는 `useImageFallback` 안에서만 매핑한다.
+- **화면 소비자는 잎 둘로 고정한다**(초대 메일은 아래 예외) — `ImageTile`·`Avatar`가 공유하는 `useImageFallback` 안에서만 매핑한다.
   `Project.image`·`User.image`를 읽는 자리가 십여 곳이라 호출자마다 적으면 새 화면 하나가 규칙을 조용히
   빠뜨린다(POSTMORTEM 2026-09-20이 같은 부류다). 그물은 `components/__tests__/image-origin.test.tsx`다.
+  ⚠️ **예외는 초대 메일 하나다** (2026-09-28, invitation-email-project) — 메일은 **절대 URL**이 필요하고 React가
+  아니라서 `imageSrc`(상대 경로)도 잎도 못 쓴다. `buildInvitationEmail`이 `planProjectImageDelete`로 키를 뽑아
+  `https://mal-moi.com/api/images/<key>`(프로덕션 고정 — preview는 SSO 뒤)를 싣고, 키가 안 나오면 폴백 글리프로 간다
+  (`lib/invitation-email/message.ts:78`·`:85`). 이 매핑은 위 그물 **밖**이므로 그물은
+  `lib/invitation-email/__tests__/message.test.ts`의 "어느 입력이든 html에 `vercel-storage.com` 0건"이다.
 - ⚠️ **CSP `img-src`에서 Blob 호스트를 뺐다** (2026-09-28 — 프로덕션 실측 뒤 별도 변경으로). 프록시가
   나간 v1.0.2에서 **blob 호스트로 나가는 요청이 0건**임을 확인하고 지웠다(DOM에는 RSC 페이로드 안에
   원본 URL이 남지만 prop 직렬화라 요청을 만들지 않는다). ⚠️ **되돌리려면 `imageSrc`와 짝으로 되돌린다** —
@@ -2641,13 +2655,13 @@ sharp 정규화(192px 이내 WebP)로 재사용하며 PII 봉투는 쓰지 않�
 
 `updateProjectName`은 생성과 공유하는 200자 상한·trim을 적용하고 slug를 바꾸지 않는다. 이름·이미지는
 번역 값이 아니므로 서버에서 archived를 거부하지 않는다. 보관 UI의 비활성과 의도적으로 갈린다.
-성공 뒤 `/` layout을 갱신하고 설정·목록·Home·초대 네 reader가 image를 읽는다. Blob 스모크는 avatars와
+성공 뒤 `/` layout을 갱신하고 설정·목록·Home·초대 수락 화면 넷과 초대 메일, 다섯 reader가 image를 읽는다. Blob 스모크는 avatars와
 projects를 각각 조회해 User.image/Project.image 참조와 대조하며 고아를 자동 삭제하지 않는다.
 
 **읽기 경로는 프로필 사진과 같다** (2026-09-28, §6.7) — `imageSrc`가 `projects/` 접두도 `/api/images/<key>`로
 바꾸고, 서빙은 `app/api/images/[...key]/route.ts`가 한다(rewrite가 아닌 근거는 §6.7 — 외부 rewrite는 세션
-쿠키를 상류로 넘긴다). ⚠️ **네 reader(설정·목록·Home·초대) 어디에도 매핑이 없다** — 넷 다 `ImageTile`을
-지나고 그 잎 하나가 규칙을 든다. ⚠️ **avatar 키 판정을 넓히지 않는다는 규칙은 프록시에서도 그대로다** —
+쿠키를 상류로 넘긴다). ⚠️ **화면 reader 넷(설정·목록·Home·초대 수락 — 초대 메일 제외) 어디에도 매핑이 없다** — 넷 다 `ImageTile`을
+지나고 그 잎 하나가 규칙을 든다. 다섯째인 초대 메일만 `ImageTile` 밖에서 `planProjectImageDelete`로 직접 매핑한다(§6.7의 예외). ⚠️ **avatar 키 판정을 넓히지 않는다는 규칙은 프록시에서도 그대로다** —
 `isStoredImageKey`가 두 접두를 한 정규식으로 받되 `planProjectImageDelete`를 일반화하지 않는 별도 술어다.
 
 ### 6.8 표시 이름의 소유권 (2026-09-13)
