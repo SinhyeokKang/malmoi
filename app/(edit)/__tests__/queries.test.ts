@@ -376,6 +376,28 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
     expect(rows.map((r) => r.emailLabel)).toEqual(["z***@acme.com", "Unavailable"]);
   });
 
+  /**
+   * ⚠️ **같은 주소의 대기 초대 둘이 원문으로 떨어지지 않는다** (malmoi#146 후속). 발급이 같은 주소의 미수락 행을 먼저 만료시키지만 DB 제약은
+   * 없다 — 둘이 남으면 행 단위 라벨은 자기 주소와 충돌해 원문이 된다. 라벨은 **주소마다 한 번**이다.
+   */
+  it("같은 주소의 대기 초대가 둘이어도 마스킹 라벨이고 다른 주소와는 멤버 표만큼만 넓힌다", async () => {
+    const pending = {
+      projectId: "p1", role: "EDITOR" as const, expiresAt: new Date("2026-09-20T00:00:00Z"),
+      acceptedAt: null, invitedBy: "u1",
+    };
+    const db = createHarness({
+      ...withEmails(),
+      invitations: [
+        { ...pending, id: "i-a1", email: "zoe@acme.com", tokenHash: "h-a1" },
+        { ...pending, id: "i-a2", email: "zoe@acme.com", tokenHash: "h-a2" },
+        { ...pending, id: "i-b", email: "zack@acme.com", tokenHash: "h-b" },
+      ],
+    });
+    const rows = await loadPendingInvitations(db.prisma, "p1", NOW);
+    expect(rows.map((r) => [r.id, r.emailLabel])).toEqual([["i-b", "za***@acme.com"], ["i-a1", "zo***@acme.com"], ["i-a2", "zo***@acme.com"]]);
+    expect(JSON.stringify(rows)).not.toContain("zoe@acme.com");
+  });
+
   it("⚠️ **키가 통째로 없으면 던진다** — 그것은 행의 손상이 아니라 장애다", async () => {
     const db = createHarness(withEmails());
     vi.stubEnv("PII_ENCRYPTION_KEYS", "");
