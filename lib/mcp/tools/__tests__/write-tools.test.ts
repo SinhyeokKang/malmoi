@@ -8,6 +8,7 @@ import { m } from "@/lib/i18n";
 import { toolCatalog } from "../../catalog";
 import type { TokenGrant, TokenScope } from "../../grant";
 import { toToolResult, type ToolOutcome } from "../../result";
+import { executeTool } from "../execute";
 import type { ApiTokenSubject } from "../../token-store";
 
 /**
@@ -36,6 +37,9 @@ vi.mock("@/lib/onboarding-run/add", async (orig) => ({ ...(await orig<object>())
 const { TOOLS } = await import("..");
 const run = (name: string, who: ApiTokenSubject, input: Record<string, unknown>): Promise<ToolOutcome> =>
   TOOLS.find(t => t.name === name)!.run({ prisma, subject: who, now: new Date(), origin: null }, input as never);
+/** 실제 MCP 경로 — 도구가 던지면 `executeTool`이 `unavailable`로 접는다. 부분 성공이 그 catch에 지워지는지를 여기서 잰다. */
+const exec = (name: string, who: ApiTokenSubject, input: Record<string, unknown>) =>
+  executeTool(TOOLS.find(t => t.name === name)!, () => ({ prisma, subject: who, now: new Date(), origin: null }), input);
 const code = (outcome: ToolOutcome) => outcome.status === "refused" ? outcome.code : outcome.status;
 const ALL: TokenGrant[] = ["translation:write", "project:settings", "member:manage", "project:create"];
 const subject = (userId: string, grants: TokenGrant[] = ALL, scope: TokenScope = { kind: "all" }): ApiTokenSubject => ({ userId, grants, scope, tokenId: `hash-${userId}` });
@@ -245,5 +249,28 @@ describe("결과 문장은 화면과 같은 키", () => {
     h.core.mockImplementation(async (name: string) => name === "branch" ? { ok: false, error: "invalid-branch" } : RESULTS[name]);
     const outcome = await run("update_project", subject("owner"), { slug: "acme", name: "New", baseBranch: "bad name" });
     expect(outcome).toMatchObject({ status: "ok", data: { changed: { name: "New" }, failed: { baseBranch: "invalid-branch" } } });
+  });
+});
+
+// Codex review CR-02 — 뒤 단계의 예외가 이미 커밋된 결과를 지우지 않는다(POSTMORTEM 2026-09-20).
+describe("update_project — 이름 커밋 뒤 브랜치 코어가 던지면", () => {
+  const branchThrows = () => h.core.mockImplementation(async (name: string) => {
+    if (name === "branch") throw new Error("connection reset");
+    return RESULTS[name];
+  });
+
+  it("changed.name을 남기고 브랜치를 '확인 불가'로 알린다 — 거부도 일괄 unavailable도 아니다", async () => {
+    branchThrows();
+    const result = await exec("update_project", subject("owner"), { slug: "acme", name: "New", baseBranch: "release" });
+    expect(result.isError).toBe(false);
+    expect(result.structuredContent).toEqual({ changed: { name: "New" }, unconfirmed: ["baseBranch"] });
+    expect(result.content[0]?.text).toBe(m.mcp.summary.branchUnconfirmed);
+    expect(JSON.stringify(result)).not.toContain("connection reset");
+  });
+
+  it("브랜치만 요청했으면 그대로 unavailable · retryable이다", async () => {
+    branchThrows();
+    const result = await exec("update_project", subject("owner"), { slug: "acme", baseBranch: "release" });
+    expect(result.structuredContent).toMatchObject({ status: "unavailable", retryable: true });
   });
 });

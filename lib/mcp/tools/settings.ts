@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 
+import { logFailure } from "@/lib/github-connect/log";
 import { m } from "@/lib/i18n";
 import { rotateToken } from "@/lib/onboarding-run/rotate-token";
 import { runArchive, runUnarchive } from "@/lib/projects/archive";
@@ -33,7 +34,19 @@ export const updateProject = defineTool({
       changed.name = renamed.name;
     }
     if (baseBranch !== undefined) {
-      const moved = await changeBaseBranch(prisma, coreSubject(subject), { slug, baseBranch });
+      let moved: Awaited<ReturnType<typeof changeBaseBranch>>;
+      try {
+        moved = await changeBaseBranch(prisma, coreSubject(subject), { slug, baseBranch });
+      } catch (error) {
+        // 브랜치만 요청했으면 지울 성공이 없다 — `executeTool`이 장애로 접는다.
+        if (name === undefined) throw error;
+        // ⚠️ **이름은 이미 커밋됐다 — 예외로 그 성공을 지우지 않는다**(Codex review CR-02 · POSTMORTEM 2026-09-20). 통신 예외는 브랜치가
+        // 롤백됐다는 뜻이 아니므로 거부가 아니라 "확인 불가"다. 커밋됐을 수 있으니 두 화면을 다시 그린다.
+        logFailure("mcp-tool-update_project", error);
+        settleRevalidate("base-branch", () => revalidatePath(`/projects/${slug}/settings`));
+        settleRevalidate("base-branch", () => revalidatePath(`/projects/${slug}`, "layout"));
+        return ok({ changed, unconfirmed: ["baseBranch"] }, m.mcp.summary.branchUnconfirmed);
+      }
       // 이름은 이미 커밋됐다 — 뒤의 거부로 앞의 성공을 지우지 않는다(불변식 9). 이름을 안 바꾼 호출이면 그대로 거부다.
       if (!moved.ok && name === undefined) return redrawIfArchived(slug, moved.error, { status: "refused", code: moved.error });
       if (!moved.ok) return redrawIfArchived(slug, moved.error, ok({ changed, failed: { baseBranch: moved.error } }, m.mcp.summary.nameOnly));

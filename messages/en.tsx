@@ -3299,6 +3299,8 @@ export const en = {
         `Saved ${saved.toLocaleString("en-US")} ${saved === 1 ? "key" : "keys"}${rejected === 0 ? "" : `; ${rejected.toLocaleString("en-US")} ${rejected === 1 ? "key was" : "keys were"} not saved`}.`,
       updated: "Settings saved.",
       nameOnly: "The name was saved, but the base branch wasn't.",
+      // 브랜치 코어가 던졌다 — 바뀌었는지 모른다. 재시도 전에 확인하라는 것이 다음 행동이다(Codex review CR-02).
+      branchUnconfirmed: "The name was saved. We couldn't confirm whether the base branch changed — check it with get_project before trying again.",
       baseLocale: (locale: string): string => `Base language set to ${locale}. It takes effect after the next sync from the repository.`,
       pushToken: "New push token issued. The old one stopped working. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
       archived: "Project archived. Restore it to edit or publish again.",
