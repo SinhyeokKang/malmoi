@@ -1841,10 +1841,11 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
 - ⚠️ **메일의 프로젝트 카드는 `Project` 잠금 뒤에 읽은 값이다** (2026-09-28, invitation-email-project). 발급·재발급이
   `lockProjectAccess` 뒤 `readIssuedProject`(`issue.ts:125`)로 `name`·`image`를 읽어 outcome에 싣는다 — 잠금 전에 읽으면
   동시 이름 변경과의 순서가 거짓이 된다. 이미 잠근 행의 PK 읽기라 잠금·교착 순서가 바뀌지 않는다. 역할은 발급이 입력 역할,
-  재발급이 저장된 역할이다(추가 쿼리 없음). ⚠️ **메일은 발송 시점 스냅샷이 아니다** — 썸네일은 URL로만 실리므로 OWNER가 바꾸면
-  옛 Blob이 지워져 이미 보낸 메일의 이미지가 깨진다(CDN 하루 동안은 더 보일 수 있다, §6.7). ⚠️ **템플릿 치환은 단일 패스다**
+  재발급이 저장된 역할이다(추가 쿼리 없음). ⚠️ **이름·역할은 발송 시점 값이 박히지만 썸네일은 발송 시점 스냅샷이 아니다** — URL로만
+  실리므로 OWNER가 바꾸면 옛 Blob이 지워져 이미 보낸 메일의 이미지가 깨진다(CDN 하루 동안은 더 보일 수 있다, §6.7). ⚠️ **템플릿 치환은 단일 패스다**
   (`message.ts:103`의 `fill`) — 연쇄 `replaceAll`이면 `{{INVITE_URL}}`이 든 프로젝트 이름(OWNER 자유 입력)이 뒤 치환에서 다시
-  전개된다(`escapeHtml`은 `{`·`}`를 안 건드린다). 치환 결과를 다시 훑지 않고 값을 함수로 돌려줘 `$&` 패턴도 해석되지 않는다.
+  전개된다(`escapeHtml`은 `{`·`}`를 안 건드린다). **사용자 값은 정확히 한 번 치환된다** — 다시 채우는 것은 `{{TILE}}` 하나이고,
+  그것은 우리 상수 조각이며 그 안의 값도 상수 URL · allowlist를 지난 키 · hex뿐이다(`message.ts:106`). 값을 함수로 돌려줘 `$&` 패턴도 해석되지 않는다.
   이름은 **grapheme 60개에서 자른 뒤** 이스케이프한다(순서가 거꾸로면 `&amp;`가 중간에서 잘린다). 제목·preheader·text에는
   이름·역할이 없다.
 - ⚠️ **발급은 전부 아니면 아무것도다** (`lib/invitation-email/issue.ts`). 입력·인가·**메일 설정**(`config.ts` —
@@ -2655,13 +2656,13 @@ sharp 정규화(192px 이내 WebP)로 재사용하며 PII 봉투는 쓰지 않�
 
 `updateProjectName`은 생성과 공유하는 200자 상한·trim을 적용하고 slug를 바꾸지 않는다. 이름·이미지는
 번역 값이 아니므로 서버에서 archived를 거부하지 않는다. 보관 UI의 비활성과 의도적으로 갈린다.
-성공 뒤 `/` layout을 갱신하고 설정·목록·Home·초대 수락 화면 넷과 초대 메일, 다섯 reader가 image를 읽는다. Blob 스모크는 avatars와
+성공 뒤 `/` layout을 갱신하고 설정·목록·Home·셸(사이드바·프로젝트 스위처)·초대 수락 화면과 초대 메일이 image를 읽는다. Blob 스모크는 avatars와
 projects를 각각 조회해 User.image/Project.image 참조와 대조하며 고아를 자동 삭제하지 않는다.
 
 **읽기 경로는 프로필 사진과 같다** (2026-09-28, §6.7) — `imageSrc`가 `projects/` 접두도 `/api/images/<key>`로
 바꾸고, 서빙은 `app/api/images/[...key]/route.ts`가 한다(rewrite가 아닌 근거는 §6.7 — 외부 rewrite는 세션
-쿠키를 상류로 넘긴다). ⚠️ **화면 reader 넷(설정·목록·Home·초대 수락 — 초대 메일 제외) 어디에도 매핑이 없다** — 넷 다 `ImageTile`을
-지나고 그 잎 하나가 규칙을 든다. 다섯째인 초대 메일만 `ImageTile` 밖에서 `planProjectImageDelete`로 직접 매핑한다(§6.7의 예외). ⚠️ **avatar 키 판정을 넓히지 않는다는 규칙은 프록시에서도 그대로다** —
+쿠키를 상류로 넘긴다). ⚠️ **화면 reader(설정·목록·Home·셸·초대 수락) 어디에도 매핑이 없다** — 전부 `ImageTile`을
+지나고 그 잎 하나가 규칙을 든다. 초대 메일만 `ImageTile` 밖에서 `planProjectImageDelete`로 직접 매핑한다(§6.7의 예외). ⚠️ **avatar 키 판정을 넓히지 않는다는 규칙은 프록시에서도 그대로다** —
 `isStoredImageKey`가 두 접두를 한 정규식으로 받되 `planProjectImageDelete`를 일반화하지 않는 별도 술어다.
 
 ### 6.8 표시 이름의 소유권 (2026-09-13)
