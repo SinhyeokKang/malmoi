@@ -84,7 +84,7 @@ CLI 에이전트 ──POST /api/mcp (Authorization: Bearer mlm_…)──▶ ro
 - 저장은 **sha256 hex만**이라 발급 뒤 원문은 **어디에도 없다**. 잃어버리면 재발급이다(✅ 사용자 확인). 해시 규칙은 `hashInviteToken`
   한 벌이다(무염 sha256 hex — push 토큰·초대와 같다). **조회 방향은 해시 → 행**이고(PRODUCT §7.8의 교훈), 행이 `userId`를 준다.
   비교 연산이 없어 타이밍 축이 없다.
-- **계정당 하나** — `ApiToken.userId @unique`. 발급은 기존 행을 지우고 새 행을 넣는 한 tx라 [Create]와 [Rotate]가 같은 Action이다.
+- **계정당 하나** — `ApiToken.userId @id`(PK가 곧 unique). 발급은 기존 행을 지우고 새 행을 넣는 한 tx라 [Create]와 [Rotate]가 같은 Action이다.
 - 판정 `planApiTokenUse({ row, now })` → `ok | rejected` 두 갈래(만료·폐기·없음을 한 갈래로 접는다 — 401 하나). 만료 경계는
   `expiresAt <= now`가 거부다.
 - `lastUsedAt`은 **1분 단위로만** 갱신한다(호출마다 UPDATE하면 에이전트 루프가 행을 두드린다). 판정은 순수 `shouldTouch`.
@@ -101,16 +101,22 @@ CLI 에이전트 ──POST /api/mcp (Authorization: Bearer mlm_…)──▶ ro
 type TokenGrant = Permission | "project:create";          // 토큰 전용 어휘 하나만 더한다
 type TokenScope = { kind: "all" } | { kind: "projects"; projectIds: readonly string[] };
 
-// 순수 — lib/mcp/grant.ts
-planToolAccess({ role, grants, scope, projectId, rolePermission, tokenGrant }) →
-  | { status: "ok" }
-  | { status: "not-found" }      // 범위 밖 — 존재를 말하지 않는다(멤버 아님과 같은 갈래)
-  | { status: "forbidden" }      // 역할이 못 한다 — 화면과 같은 사유
-  | { status: "token-scope" }    // 역할은 되는데 이 토큰이 안 받았다
+type ApiTokenAuthority = { userId: string; grants: readonly TokenGrant[]; scope: TokenScope };
+
+// 순수 — lib/mcp/grant.ts (T2 구현)
+planToolAccess({ token: ApiTokenAuthority, member: MemberContext | null, archivedAt, archivedPolicy?, rolePermission, tokenGrant }) →
+  | { status: "ok"; projectId; role; archived }   // planProjectAccess의 ok 그대로 — projectId·role은 멤버십 행의 것
+  | { status: "not-found" }                       // 범위 밖 · 멤버 아님 · 없는 프로젝트 — 존재를 말하지 않는다
+  | { status: "forbidden" }                       // 역할이 못 한다 — 화면과 같은 사유
+  | { status: "archived"; projectId; role }       // 보관 — planProjectAccess 그대로
+  | { status: "token-scope" }                     // 역할은 되는데 이 토큰이 안 받았다
+planCreateAccess({ grants }) → { status: "ok" } | { status: "token-scope" }   // 프로젝트가 없는 동작 — 역할 판정 없음
 ```
 
-- **판정 순서가 계약이다**: 범위 → 멤버십·보관(`planProjectAccess`) → 역할 → 토큰. 범위를 먼저 봐야 범위 밖 프로젝트의 보관·역할이
-  새지 않는다. 역할을 토큰보다 먼저 봐야 EDITOR에게 "토큰을 고치면 된다"는 거짓 안내가 안 선다.
+- **판정 순서가 계약이다**: 범위 → 멤버십 → 역할 → 보관 → 토큰. 가운데 셋은 `planProjectAccess`를 **그대로 재사용**한다(보관·읽기 예외
+  `archivedPolicy` 판정을 복제하지 않는다 — 그 함수의 순서가 이미 멤버십 → 역할 → 보관이다). `member`는 호출부가 **토큰의 `userId`로**
+  조회한 멤버십 행이다. 범위를 먼저 봐야 범위 밖 프로젝트의 보관·역할이 새지 않는다. 역할을 토큰보다 먼저 봐야 EDITOR에게 "토큰을
+  고치면 된다"는 거짓 안내가 안 선다. 보관을 토큰보다 먼저 봐야 답이 "되돌리는 법"이 된다(grant를 고쳐도 보관된 프로젝트엔 못 쓴다).
 - **역할 조건과 토큰 grant 조건은 별개다.** `rolePermission`은 기존 역할 판정, `tokenGrant`는 위임 동작 판정이며 `null`이면 그 조건을
   요구하지 않는다. **grant 없는 토큰은 내 프로젝트 안의 데이터를 읽는다** — spec의 한 문장 규칙. GitHub 계정 열거·파일 다운로드
   도구(§2.1의 "신규" 경로 셋)만 grant를 요구한다. `readOnlyHint`는 인가 조건이 아니다.
@@ -121,17 +127,20 @@ planToolAccess({ role, grants, scope, projectId, rolePermission, tokenGrant }) �
 
 #### 쓰기 주체와 잠금 뒤 재판정 (검수 H 반영)
 
-- 서버가 구성한 쓰기 주체는 `{ userId, tokenId?: string }`다 — 세션 경로는 `tokenId` 없음, MCP 경로는 있음. 도구 입력으로 주체를 받지
+- 서버가 구성한 쓰기 주체는 `{ userId, tokenId?: string }`다 — 세션 경로는 `tokenId` 없음, MCP 경로는 있음. **`tokenId`는
+  `ApiToken.tokenHash`다**(2026-09-28 오케스트레이터 결정 — `id` 컬럼이 없고 `userId`가 PK라 행을 가리키는 값이 해시뿐이다. 해시는 원문이
+  아니고 로그에도 이미 무해한 값이다). 도구 입력으로 주체를 받지
   않는다. 사건의 actor는 두 경우 모두 기존 USER다. cron의 시스템 주체는 그대로다.
 - **재판정은 잠금 뒤 재읽기다 — 행 잠금을 더하지 않는다.** 기존 `Project` → `TranslationSurface` 잠금을 얻은 뒤 같은 tx에서
-  `ApiToken`을 다시 읽어(READ COMMITTED) `userId` 일치·존재·만료를 확인하고 §1.25의 순서를 다시 돌린다. 입구에서 얻은 grants/scope를
+  `ApiToken`을 다시 읽어(READ COMMITTED) **`userId` AND `tokenHash`로** 존재·만료를 확인하고 §1.25의 순서를 다시 돌린다 — `userId`만으로
+  읽으면 잠금 대기 중 **재발급**된 새 행(새 해시·새 권한)이 통과한다. 두 키로 읽으므로 재발급·폐기 둘 다 "행 없음"으로 거부된다. 입구에서 얻은 grants/scope를
   재사용하지 않는다. 폐기·재발급 tx가 먼저 커밋됐으면 재읽기가 그것을 본다 — spec 조건 6은 이것으로 충족된다. `FOR SHARE`는 쓰지
   않는다: 병렬 읽기 도구의 `lastUsedAt` UPDATE가 쓰기 tx 뒤에 줄을 서게 만들고, 에이전트의 병렬 호출(§1.3)이 정확히 그 모양이다.
-- **확장점은 `lockProjectAccess` 하나다** (`lib/auth/lock.ts`). `lockProjectAccess(tx, { …, token?: { id, grant } })`로 넓혀 잠금 뒤
+- **확장점은 `lockProjectAccess` 하나다** (`lib/auth/lock.ts`). `lockProjectAccess(tx, { …, token?: { id /* = tokenHash */, grant } })`로 넓혀 잠금 뒤
   토큰을 다시 읽고 `planToolAccess`를 돌린다 — `app/__tests__/locked-access.test.ts`의 `SITES` 16자리가 전부 이 함수를 지나므로
   한 자리 수정으로 전부에 붙는다. 그 AST 테스트는 "MCP가 닿는 자리의 호출에 `token` 인자가 있는가"를 추가로 센다.
 - raw `FOR UPDATE`로 남은 넷(`lib/import/run.ts` · `lib/keys/revert.ts` · `lib/surfaces/create.ts` · 프로젝트 생성의 User 잠금)은
-  같은 재읽기 헬퍼 `lockApiToken(tx, { tokenId, userId })`를 잠금 직후에 부른다.
+  같은 재읽기 헬퍼 `lockApiToken(tx, { tokenId, userId })`를 잠금 직후에 부른다(`where: { userId, tokenHash: tokenId }`).
 - 유효하지 않은 토큰은 인증 거부로 접고, 이 재판정 실패 자체로 프로젝트 사건을 남기지 않는다.
 
 | 쓰기 경로 | 재판정 위치 |
@@ -222,6 +231,9 @@ branch로 탐지한다. 호출자가 다른 리포나 ref로 바꿀 수 없으�
   `APP_SIGNING_SECRET`을 재사용한다. 서명 필드는 이미 `userId·repositoryId·installationId·ref·headSha·format·issuedAt`이고 TTL 30분이라
   **서명 확장이 필요 없다**(검수에서 코드 대조).
 - 검증 함수가 반환한 포맷과 선택한 adapter·pathTemplate을 대조하고, baseLocale은 서명된 locales에 포함돼야 한다.
+- ⚠️ **`signSampleConfirmation`·`verifySampleConfirmation`은 `APP_SIGNING_SECRET`이 비면 던진다**(거부가 아니라 설정 장애다) —
+  T2의 `planSampleConfirmations`(`lib/mcp/confirm.ts`)는 그것을 잡지 않고 올린다. 호출하는 도구(`detect_formats`의 발급 · `create_project`·
+  `add_sources`의 소비)가 **`unavailable`로 접는다**. `sample-expired`로 접으면 에이전트가 재탐지를 반복하고 원인이 가려진다.
 - 확인값 누락은 입력 오류다. 변조·컨텍스트 불일치·만료·미래 발급 시각은 기존 `sample-expired`로 접고, `detect_formats`를 다시 호출해
   확인값을 받도록 안내한다. 포맷/기준 로케일 불일치는 기존 `manual-no-match`다. 자동 재탐지로 새 확인값을 만들어 쓰기를 계속하지 않는다.
 - **같은 스냅샷을 검증과 적재에 쓴다.** 인가 후 읽은 리포 스냅샷으로 HMAC을 확인하고, 해당 head에 고정된 파일을
@@ -244,6 +256,8 @@ branch로 탐지한다. 호출자가 다른 리포나 ref로 바꿀 수 없으�
 
 - 성공은 `structuredContent`(JSON) + 짧은 `text` 요약. 거부는 **`isError: true` + 기존 거부 코드**(`archived` · `not-found` · `forbidden` ·
   `reconfirm` · `repo-read-only` · …)와 `messages/en.tsx`의 **같은 문장**이다 — 에이전트가 사용자에게 옮길 문장이 화면과 같아야 한다.
+- **`needs-browser`도 `isError: true`다**(T2 구현) — 호출이 목적을 이루지 못했고 에이전트가 사용자에게 링크를 전해야 한다.
+  `structuredContent`는 `{ status: "needs-browser", reason, url, message }`, `retryable`은 없다.
 - 순수 `toToolResult(union)` 하나가 모든 도구의 union → MCP 결과 변환을 든다. **장애는 거부가 아니다**(§6.00 ②) — `unavailable`은
   `retryable: true`를 싣고 나머지는 싣지 않는다.
 - 500 본문 규칙(§6.0)을 따른다 — 예외 메시지·스택을 결과에 싣지 않는다.
@@ -269,7 +283,7 @@ GitHub App 설치·user-to-server 인가는 state 쿠키가 방어선인 브라�
 | `planApiTokenUse({ row, now })` | `lib/mcp/token.ts` | 없음·만료 → 한 갈래, `expiresAt <= now` 경계 |
 | `shouldTouch(lastUsedAt, now)` | `lib/mcp/token.ts` | 1분 스로틀 |
 | `planApiTokenIssue({ expiresIn, grants, scope, memberProjectIds })` | `lib/mcp/issue-plan.ts` | 만료 선택지 30/90/365 · grant 어휘 밖 거부 · 범위는 현재 멤버십의 비보관 프로젝트만 · 멤버십 0이면 `projects` 범위 거부 |
-| `planToolAccess({ role, grants, scope, projectId, rolePermission, tokenGrant })` | `lib/mcp/grant.ts` | §1.25의 네 갈래와 **판정 순서**. 역할 × 토큰 × 범위 매트릭스 |
+| `planToolAccess({ token, member, archivedAt, archivedPolicy?, rolePermission, tokenGrant })` · `planCreateAccess({ grants })` | `lib/mcp/grant.ts` | §1.25의 다섯 갈래와 **판정 순서**(범위 → 멤버십 → 역할 → 보관 → 토큰, `planProjectAccess` 재사용). 역할 × 토큰 × 범위 매트릭스 |
 | `publishFingerprint(state, baseHead)` | `lib/publish/fingerprint.ts` | `PullState` + base head SHA를 `discardFingerprint`와 같은 tuple 직렬화로. 같은 입력은 같은 지문, 번역·전달 토큰·키/로케일·표면 설정·리포/브랜치·base head 변경은 다른 지문. 표시 상한과 무관 |
 | `planBatchSave(entries)` | `lib/mcp/batch.ts` | 100개 상한 · 중복 키 거부 · 입력 순서 유지 |
 | `checkOrigin(headers)` | `lib/mcp/http.ts` | 없으면 통과, 있으면 `ALLOWED_HOSTS` 대조 |
