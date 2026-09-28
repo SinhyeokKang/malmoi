@@ -21,6 +21,8 @@ app/
   privacy/              방침. 공개 셸 안의 components/privacy/(DESIGN §6.616) · 본문은 messages/en.tsx의 publicDocs.privacy.
                         ⚠️ 세션을 읽는 이유는 차단이 아니다 — 헤더 primary(publicCta: 로그인이면 Open Malmoi → /projects,
                         아니면 Get started → /signin). 그래서 동적이다
+  changelog/            릴리스 노트(DESIGN §6.617). 공개 셸 안 · 원문은 lib/changelog/load(GitHub Release, 토큰 없이 1시간 캐시).
+                        ⚠️ 세션을 읽는 이유는 /privacy와 같다(헤더 primary) — 인가 없음(entry-points EXEMPT). GitHub가 실패해도 200이다
   docs/                 사용 가이드(DESIGN §6.61). layout(공개 셸 bare + 문서 내비 — SUMMARY를 읽는다) ·
                         [[...slug]]/page(개요·장 개요·일반 문서 — 본문 스크롤러를 페이지가 key={slug}로 든다, 없는 slug는
                         notFound()) · not-found(셸·내비 안 404). 원고는 guide/**.md. ⚠️ 셸이 레이아웃에 있는 유일한 공개 화면이다 —
@@ -41,7 +43,7 @@ app/
                         · screens(lang·revalidate 안전·보관 갈래 다섯) · security-headers(next.config를 불러서)
                         · api/__tests__/pull-budget(야간 cron 시간 예산 — 가짜 시계로 넘긴 수가 unprocessed에 실리는지)
                         · locked-access(잠금 재판정 16자리를 AST로 센다 — `$transaction` 콜백 안의 호출만, 주석 제외)
-                        · root-boundaries · seo-metadata · crawl-files · landing-page · docs-page · privacy-page
+                        · root-boundaries · seo-metadata · crawl-files · landing-page · docs-page · privacy-page · changelog-page
                         · api/__tests__/ github-callback · push-failure · route-diagnostics · surface-boundary
   (edit)/               인증 필요. 1차 차단은 middleware, 본판정은 각 진입점
     layout.tsx          셸. ⚠️ {children}을 흰 패널로 감싸지 않는다 — 감싸면 흰 패널이 겹쳐 padding이 두 배다.
@@ -197,7 +199,7 @@ components/
                         입력 상태만 든다
   analytics.tsx         Vercel Web Analytics 래퍼("use client") — 루트 레이아웃이 서버 컴포넌트라 beforeSend(함수)를 못 넘겨서 선다.
                         ⚠️ 개발 서버에서는 null(dev 디버그 스크립트를 CSP가 막는다 — CSP를 넓히지 않는다)
-  public-shell/         공개 셸(`/` · `/privacy` · `/docs/*`) — PublicShell({ cta, current, bare }) · header · footer · scroller. 헤더 40 · 패널 ·
+  public-shell/         공개 셸(`/` · `/privacy` · `/docs/*` · `/changelog`) — PublicShell({ cta, current, bare }) · header · footer · scroller. 헤더 40 · 패널 ·
                         푸터 40, 루트 h-svh min-w-[1280px] overflow-hidden. ⚠️ "use client"는 scroller 하나이고 lib/를 물지
                         않는다 — 문서가 스크롤되지 않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다.
                         data-public-scroller가 랜딩 스테이지·공개 문서 목차의 스크롤 대상 표식이다. 해시가 tabindex 든 헤딩을
@@ -210,6 +212,9 @@ components/
                         code-block(클라이언트 — Copy + visually-hidden live region) · nav-link(클라이언트 — usePathname 정확 일치) ·
                         legacy-hash(클라이언트 — 옛 /docs#id → router.replace, 표는 서버가 넘긴다) · requested-path(404 주소) ·
                         classes.ts(서버·클라이언트가 같이 쓰는 클래스 — "use client" 모듈에 두면 값이 아니라 참조가 온다)
+  changelog/            `/changelog` 조각 — release-entry(서버 — 항목 하나: 자기 링크 버전 h2 · utcDay · View on GitHub) ·
+                        release-markdown(서버 — GitHub 원문 렌더러. ⚠️ GuideMarkdown을 재사용하지 않는다 — 원고 전용 전제를 든다.
+                        rehype-raw 없음 · urlTransform 기본값 · 이미지는 링크로. 원고와 같은 급은 docs/classes.ts 상수로만 공유한다)
   public-doc-toc.tsx · public-doc-table.tsx
                         두 공개 문서가 한 벌씩 쓰는 목차 Toc(클라이언트 잎 — [data-public-scroller] 구독 → rAF →
                         lib/public-doc/toc의 currentSection, 클릭은 scrollTo(top − 48) + 절 h2로 포커스)와 표
@@ -568,6 +573,10 @@ lib/
                         역방향 스크럽의 조건이라 이전 프레임을 입력으로 받지 않는다. `/`에 무엇을 그릴지는
                         여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다. 공개 셸 헤더의
                         primary(publicCta — 라벨을 사전 키로 준다, 그 모듈이 잎이라서)도 그 파일이다
+  changelog/            `/changelog`의 원문 읽기. parse(parseReleases — Zod 검증 · 앱 태그 v<x.y.z>만 · published_at 내림차순, 같은
+                        시각은 semver 숫자순 · truncated = 거르기 전 100건) · markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog ·
+                        imagesToLinks) · load(server-only 껍데기 — fetch · revalidate 3600 · 3초 타임아웃 · ⚠️ 던지지 않는다, 로그엔 status와
+                        남은 한도만). ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
   public-doc/           공개 문서 목차의 현재 절 판정 — toc(currentSection). ⚠️ 잎(import 0) — 목차 클라이언트가 값으로 읽는다
   guide/                `/docs` 원고의 순수 함수 + 로더. parse(mdast 한 벌 — 게이트·목차·렌더러가 같은 트리) · summary(SUMMARY →
                         내비, slug ↔ 파일) · collect(링크·라벨·이미지 수집, resolveDocLink) · sections(절·표·도입 문단) ·
@@ -581,7 +590,8 @@ lib/
                         production만 허용, 모르면 숨긴다 · sitemapEntries) · json-ld(jsonLdHtml — dangerouslySetInnerHTML의 유일한 입력 ·
                         LANDING_LD · docLd) · llms(llmsIndex · llmsFull — 결정적) · analytics(redactAnalyticsEvent — 추적 경로 허용 목록.
                         ⚠️ 잎, 전 페이지 클라이언트 번들에 든다)
-  links.ts              외부 링크(GitHub 리포 URL)와 푸터 링크 목록 — 랜딩·/signin 푸터가 같은 목록·순서를 읽는다.
+  links.ts              외부 링크(GitHub 리포 좌표 GITHUB_REPO 하나에서 리포·Releases·API·releaseTagUrl을 파생)와 푸터 링크 목록 —
+                        공개 셸·/signin 푸터가 같은 목록·순서를 읽는다. ⚠️ 클라이언트 그래프 밖이다(2026-09-28 — 앱 셸 소비자가 사라졌다).
                         ⚠️ 외부 URL을 routes.ts에 넣지 않는 이유가 이 파일이다(죽은 라우트 검사가 앱 경로로 읽는다)
   routes.ts             앱 내부 링크의 단일 출처(잎, import 0). ⚠️ 쿼리는 withQuery를 지나야
                         entry-points의 "쿼리 수신자" 검사에 걸린다 — 문자열 연결은 그 검사를 회피한다
