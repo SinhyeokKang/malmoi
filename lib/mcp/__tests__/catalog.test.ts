@@ -1,9 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
-import { toolCatalog, type ToolSpec } from "../catalog";
+import type { Permission } from "@/lib/auth/permission";
+
+import { toolCatalog, type ToolRequirement, type ToolSpec } from "../catalog";
+import { TOKEN_GRANTS, type TokenGrant } from "../grant";
 
 /**
  * 도구 카탈로그 (mcp-connector design §2 — PRODUCT §4.3 ⑤의 개방 조건). `tools/list`는 이 배열 순서로 등록되고 SDK가 등록 순서를
@@ -86,5 +89,26 @@ describe("toolCatalog", () => {
     const imports = source.split("\n").filter(line => /^import\s/.test(line) && !/^import type\s/.test(line));
     expect(imports).toEqual([]);
     expect(source).not.toContain("server-only");
+  });
+});
+
+/**
+ * ⚠️ **카탈로그는 잎이라 어휘를 문자열로 다시 적는다** — 그 대가(한쪽만 바뀌면 컴파일러가 침묵한다)를 여기서 진다. `Permission`을 늘리거나
+ * 이름을 바꾸면 아래 타입 단언이 `pnpm typecheck`에서, 값 대조가 `pnpm test`에서 red가 된다.
+ */
+describe("toolCatalog — 어휘가 grant.ts와 같다", () => {
+  it("역할 조건 어휘 = Permission, grant 어휘 = TokenGrant(= Permission | project:create)", () => {
+    expectTypeOf<NonNullable<ToolRequirement["rolePermission"]>>().toEqualTypeOf<Permission>();
+    expectTypeOf<NonNullable<ToolRequirement["tokenGrant"]>>().toEqualTypeOf<TokenGrant>();
+    expectTypeOf<TokenGrant>().toEqualTypeOf<Permission | "project:create">();
+  });
+
+  it("카탈로그가 쓰는 grant가 전부 TOKEN_GRANTS 안이고, TOKEN_GRANTS가 전부 어딘가에 쓰인다", () => {
+    const used = new Set<string>();
+    for (const tool of toolCatalog()) {
+      const reqs = "tokenGrant" in tool.access ? [tool.access] : [tool.access.newProject, tool.access.existingProject];
+      for (const r of reqs) if (r.tokenGrant !== null) used.add(r.tokenGrant);
+    }
+    expect([...used].sort()).toEqual([...TOKEN_GRANTS].sort());
   });
 });
