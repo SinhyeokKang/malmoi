@@ -1,7 +1,9 @@
 import type { SVGProps } from "react";
 
 /**
- * provider 로고 둘 (8-1b).
+ * provider 로고 둘 (8-1b). ⚠️ **`GithubIcon`이 이 리포의 유일한 GitHub 글리프다** (2026-09-28 사용자) — 로그인 버튼뿐 아니라
+ * 랜딩 CTA · 프로젝트 목록 · Sources 머리 · `/changelog`의 View on GitHub가 모두 이것을 쓴다. `components/sources/`의 옛 lucide 외곽선
+ * 글리프와 두 벌이던 것을 합쳤다 — 늘리지 말고 여기서 가져다 쓴다(`components/__tests__/github-glyph.test.ts`가 소스에서 센다).
  *
  * ⚠️ **`components/ui/`가 아니다.** 그 디렉터리는 프리미티브의 집이고 브랜드 글리프는
  * 프리미티브가 아니다 — DESIGN §6.8이 *"provider 로고가 필요하면 인라인 SVG를 **그 컴포넌트

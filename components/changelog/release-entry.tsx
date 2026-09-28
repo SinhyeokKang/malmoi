@@ -1,4 +1,4 @@
-import { GithubMark } from "@/components/sources/github-mark";
+import { GithubIcon } from "@/components/signin/brand-icons";
 import { buttonClass } from "@/components/ui/button";
 import type { Release } from "@/lib/changelog/parse";
 import { m } from "@/lib/i18n";
@@ -53,7 +53,7 @@ export function ReleaseEntry({ release }: { release: Release }) {
         aria-label={m.changelog.viewOnGithubLabel(tag)}
         className={cn(buttonClass({ variant: "default", size: "md" }), "mt-8", FOCUS)}
       >
-        <GithubMark />
+        <GithubIcon />
         {m.changelog.viewOnGithub}
       </a>
     </section>
