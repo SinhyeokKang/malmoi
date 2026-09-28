@@ -480,14 +480,13 @@ describe("캔버스 대조로 잡은 자리", () => {
     expect(EMPTY).not.toContain("KeyVisual");
     expect(EMPTY).not.toContain("DotField");
     expect(EMPTY).not.toContain("from-auth-hero-from");
-    // 셸 밖 규격(40 · radius 12)에서 셸 안 규격(36 · radius 10)으로 내려온다.
-    expect(EMPTY).not.toContain('size="lg"');
+    // 버튼은 셸 밖 규격(`lg`)이 아니다 — 칸의 `IconTile size="lg"`는 빈 상태 공통 규격이라 다른 축이다.
+    expect(EMPTY).not.toMatch(/<(?:Button|ButtonLink)[^>]*size="lg"/);
   });
 
-  /** 아이콘 칩 36 · radius 8 · 제목 15/500 · 설명 14/1.6 46ch (캔버스 `1b`). */
+  /** 아이콘 칩은 빈 상태 공통 `IconTile lg`(40 · radius 8 · 글리프 20 — 2026-09-28 사용자, 옛 36) · 제목 15/500 · 설명 14/1.6 46ch (캔버스 `1b`). */
   it.each([
-    ["아이콘 칩 36", "size-9"],
-    ["칩 radius 8", "rounded-sm"],
+    ["아이콘 칩 — 빈 상태 공통 규격", '<IconTile size="lg">'],
     ["제목 15/500", "text-base font-medium"],
     ["설명 46ch", "max-w-[46ch]"],
     ["카드 radius 12", "rounded-lg"],

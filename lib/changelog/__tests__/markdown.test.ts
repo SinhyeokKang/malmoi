@@ -7,7 +7,7 @@ import { dropFullChangelog, imagesToLinks, shiftHeadings } from "../markdown";
 import { V1_0_0, V1_0_1 } from "./fixtures";
 
 /**
- * 릴리스 본문 mdast 손질 (design "순수 함수"). 페이지 `h1` → 버전 `h2` 아래라 본문 제목의 바닥은 늘 `h3`다.
+ * 릴리스 본문 mdast 손질 (design "순수 함수"). 버전 제목과 본문 `##`가 같은 `h1`이다 — 본문 제목의 바닥은 늘 `h1`이다(2026-09-28 사용자).
  * 본문 이미지는 `<img>`가 아니라 alt 글자의 링크가 된다 — CSP `img-src`와 `/privacy` 전송처를 넓히지 않는다.
  */
 
@@ -40,20 +40,20 @@ function find<T extends Nodes["type"]>(tree: Nodes, type: T): Extract<Nodes, { t
 }
 
 describe("shiftHeadings", () => {
-  it("## · ### → h3 · h4", () => {
-    expect(depths(run(V1_0_1.body, shiftHeadings))).toEqual([3, 3, 4, 3]);
+  it("## · ### → h1 · h2", () => {
+    expect(depths(run(V1_0_1.body, shiftHeadings))).toEqual([1, 1, 2, 1]);
   });
 
-  it("사람이 넣은 #도 h3가 되고 나머지는 같은 폭으로 내려간다", () => {
-    expect(depths(run("# A\n\n## B\n\n### C", shiftHeadings))).toEqual([3, 4, 5]);
+  it("사람이 넣은 #는 그대로 h1이고 나머지도 그대로다", () => {
+    expect(depths(run("# A\n\n## B\n\n### C", shiftHeadings))).toEqual([1, 2, 3]);
   });
 
-  it("바닥이 3보다 깊으면 3으로 올린다", () => {
-    expect(depths(run("#### A\n\n##### B", shiftHeadings))).toEqual([3, 4]);
+  it("바닥이 1보다 깊으면 1로 올린다", () => {
+    expect(depths(run("#### A\n\n##### B", shiftHeadings))).toEqual([1, 2]);
   });
 
-  it("h6에서 멈춘다", () => {
-    expect(depths(run("# A\n\n#### B\n\n###### C", shiftHeadings))).toEqual([3, 6, 6]);
+  it("같은 폭으로 올리고 h6를 넘지 않는다", () => {
+    expect(depths(run("## A\n\n#### B\n\n###### C", shiftHeadings))).toEqual([1, 3, 5]);
   });
 
   it("제목이 없으면 그대로다", () => {

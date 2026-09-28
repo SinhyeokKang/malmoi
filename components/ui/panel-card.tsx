@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
+import { IconTile } from "./icon-tile";
 
 /** Shared account and project settings card. Header and row dividers have distinct roles. */
 export function PanelCard({
@@ -36,7 +37,7 @@ export function PanelCard({
       className="@container border-border bg-background overflow-hidden rounded-lg border"
     >
       {/* 머리는 한 줄이다 — 제목·배지가 왼쪽, 설명이 `ml-auto`로 툴바 자리에 선다. */}
-      {title !== undefined && <header className={`border-divider flex flex-wrap items-center gap-2 px-4 py-3 ${notice === undefined ? "border-b" : ""}`}>
+      {title !== undefined && <header className={`border-divider flex min-h-12 flex-wrap items-center gap-2 px-4 py-3 ${notice === undefined ? "border-b" : ""}`}>
         <h2 id={titleId} className="text-base font-medium tracking-[0.015em]">{title}</h2>
         {badge}
         {subtitle !== undefined && <div className="text-muted-foreground ml-auto @max-[640px]:ml-0 @max-[640px]:w-full text-xs tracking-[0.02em]">{subtitle}</div>}
@@ -93,7 +94,7 @@ export function PanelRow({
 }) {
   return (
     <li className="border-border flex items-center gap-3 border-t px-4 py-[13px] first:border-t-0">
-      <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded">{glyph}</span>
+      <IconTile>{glyph}</IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
         <span className="truncate text-base tracking-[0.015em]">
           <span className="font-medium">{name}</span>

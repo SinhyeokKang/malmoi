@@ -139,7 +139,6 @@ export function MemberList({
         titleId={headingId}
         count={members.length}
         countLabel={m.members.count(members.length)}
-        description={m.members.cardHint}
       >
         <RowCardList labelledBy={headingId}>
           {members.map((member, index) => {

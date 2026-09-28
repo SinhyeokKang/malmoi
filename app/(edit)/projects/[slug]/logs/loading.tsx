@@ -27,14 +27,14 @@ export default function LogsLoading() {
       </PanelHeader>
       <PanelBody width="fluid" className="space-y-4" aria-hidden>
         <div className="border-border overflow-hidden rounded-xl border">
-          <div className="px-4 py-3">
+          <div className="flex min-h-12 items-center px-4 py-3">
             <Skeleton className="h-[15px] w-24 rounded-md" />
           </div>
           {/* 행 높이는 실물과 같다 — 다르면 데이터가 도착하는 순간 레이아웃이 튄다. */}
           {[0, 1, 2].map((index) => (
             <div key={index} className="border-border flex items-center gap-3 border-t px-4 py-[13px]">
               <Skeleton className="h-3.5 w-10 shrink-0 rounded-md" />
-              <Skeleton className="size-7 shrink-0 rounded-sm" />
+              <Skeleton className="size-7 shrink-0 rounded" />
               <Skeleton className="h-3.5 flex-1 rounded-md" />
               <Skeleton className="h-3.5 w-24 shrink-0 rounded-md" />
             </div>

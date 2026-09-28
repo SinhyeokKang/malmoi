@@ -1,3 +1,4 @@
+import { LIST, PROSE, SECTION_HEADING } from "@/components/docs/classes";
 import { DOC_TABLE, DocTable } from "@/components/public-doc-table";
 import { Toc } from "@/components/public-doc-toc";
 import { m } from "@/lib/i18n";
@@ -22,7 +23,7 @@ export function PrivacyDoc() {
   const tocItems = sections.map(({ id, heading }) => ({ id, heading: Object.hasOwn(labels, id) ? (labels[id] ?? heading) : heading }));
 
   return (
-    <div className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 py-30">
+    <div className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 pt-16 pb-30">
       <article className="min-w-0">
         <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{title}</h1>
         {/*
@@ -33,7 +34,7 @@ export function PrivacyDoc() {
         <p className="text-muted-foreground mt-3 text-sm leading-[1.6]">
           {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{utcDay(new Date(effectiveDate))}</time>
         </p>
-        <p className="text-prose mt-6 leading-[1.75] text-pretty">{intro}</p>
+        <p className={cn(PROSE, "mt-6")}>{intro}</p>
         <hr className="border-border mt-10" />
         {sections.map((section, index) => (
           // 이름 없는 `<section>`을 두지 않는다 (POSTMORTEM 2026-09-15) — 이름은 `<h2 id>`가 댄다.
@@ -42,7 +43,8 @@ export function PrivacyDoc() {
             key={section.id}
             aria-labelledby={section.id}
             className={cn(
-              index === 0 ? "mt-12" : "mt-14",
+              // 절 간격은 공개 문서 공통 급(위 32)이다 — `<h2>`가 아니라 `<section>`이 든다(h2는 `m-0`).
+              "mt-8",
               "[&_a]:text-blue-600 [&_a]:focus-visible:ring-ring [&_a]:focus-visible:ring-2 [&_a]:focus-visible:outline-none",
             )}
           >
@@ -50,16 +52,16 @@ export function PrivacyDoc() {
               `scroll-mt-12` — 하드 해시 착지도 목차 클릭과 같은 48 아래에 선다.
               `tabIndex={-1}` — 목차가 누른 절로 포커스를 옮긴다(`toc.tsx`). 조작 대상이 아니라 링을 그리지 않는다.
             */}
-            <h2 id={section.id} tabIndex={-1} className="m-0 scroll-mt-12 text-2xl leading-[1.4] font-semibold focus:outline-none">
+            <h2 id={section.id} tabIndex={-1} className={cn(SECTION_HEADING, "mt-0 scroll-mt-12 focus:outline-none")}>
               {section.heading}
             </h2>
             {section.blocks.map((block, blockIndex) =>
               "p" in block ? (
-                <p key={blockIndex} className="text-prose mt-4 leading-[1.75] text-pretty">
+                <p key={blockIndex} className={PROSE}>
                   {block.p}
                 </p>
               ) : "ul" in block ? (
-                <ul key={blockIndex} className="text-prose mt-4 list-disc space-y-2 pl-[22px] leading-[1.75]">
+                <ul key={blockIndex} className={`${LIST} list-disc`}>
                   {block.ul.map((item, itemIndex) => (
                     <li key={itemIndex}>{item}</li>
                   ))}

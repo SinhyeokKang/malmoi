@@ -26,7 +26,8 @@ const base = {
 };
 
 const BLOB = "https://abc123.public.blob.vercel-storage.com/projects/p_1/thumb-x.webp";
-const PROXIED = "https://mal-moi.com/api/images/projects/p_1/thumb-x.webp";
+// 메일은 PNG 변환 경로를 쓴다 (#140 — Gmail이 WebP 알파를 버린다).
+const PROXIED = "https://mal-moi.com/api/images/email/projects/p_1/thumb-x.webp";
 const BOX_URL = "https://mal-moi.com/email/box@2x.png";
 
 function preheader(html: string): string {
@@ -149,7 +150,7 @@ describe("buildInvitationEmail — html", () => {
 });
 
 describe("buildInvitationEmail — 이미지", () => {
-  const ALLOWED_SRC = /^(https:\/\/mal-moi\.com\/email\/(logo|box)@2x\.png|https:\/\/mal-moi\.com\/api\/images\/projects\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.(png|jpeg|webp))$/;
+  const ALLOWED_SRC = /^(https:\/\/mal-moi\.com\/email\/(logo|box)@2x\.png|https:\/\/mal-moi\.com\/api\/images\/email\/projects\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.(png|jpeg|webp))$/;
 
   function srcs(html: string): string[] {
     return [...html.matchAll(/<img\b[^>]*\bsrc="([^"]*)"/g)].map((m) => m[1] ?? "");

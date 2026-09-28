@@ -84,7 +84,7 @@ export default function TranslationsLoading() {
             {/* `EmptyState` 치수 — `py-12` · 칩 48(`mb-3`) · 제목 18(`mb-1`) · 설명 14. */}
             <div className="flex flex-1 items-center justify-center">
               <div className="flex w-full flex-col items-center py-12">
-                <Skeleton className="mb-3 size-12 rounded-full" />
+                <Skeleton className="mb-3 size-10 rounded-sm" />
                 <div className="mb-1 flex w-full justify-center">
                   <SkeletonLine text="text-lg" className="w-56" />
                 </div>
@@ -103,7 +103,7 @@ export default function TranslationsLoading() {
 /** 트리·목록의 52 머리(12 + 로케일 Select 28 + 12 — 세 머리의 아래 선이 한 줄이다) — 제목 + 개수 배지(+ 목록은 오른쪽 끝 정렬 안내). 아래 선은 본문 쪽이 든다. */
 function PanelHead({ title, aside = false }: { title: string; aside?: boolean }) {
   return (
-    <div className="flex h-[52px] shrink-0 items-center gap-2 px-4">
+    <div className="flex h-12 shrink-0 items-center gap-2 px-4">
       <SkeletonLine text="text-base" className={title} />
       <Skeleton className="size-5 rounded-full" />
       {aside && <Skeleton className="ml-auto h-3 w-24 rounded-md" />}

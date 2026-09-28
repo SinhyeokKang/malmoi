@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 
 import { FilterMenu } from "./filter-menu";
 import { KeyList } from "./key-list";
-import { LocalePanel, type DetailView } from "./locale-panel";
+import { LocalePanel, LocalePanelSkeleton, type DetailView } from "./locale-panel";
 import { TreePanel } from "./tree-panel";
 import { useLeaveGuard } from "./use-leave-guard";
 
@@ -689,7 +689,14 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           </div>
           <ResizeHandle layout={layout} onChange={rememberLeft} />
           <div data-panel="detail" aria-busy={navigating || undefined} className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
-            {detail === null ? (
+            {/*
+              ⚠️ **다른 키로 가는 동안 상세는 골격이다** (2026-09-28 사용자) — 선택 행은 낙관적으로 먼저 옮겨가는데 상세는 응답까지 옛 키의
+              값이라, 새 행 옆에 옛 값이 서서 어느 키를 보는지 헷갈렸다. 필터·검색은 선택을 안 옮기므로 옛 상세가 그대로 선다.
+              draft는 이 화면(reducer)이 들어 패널이 내려가도 잃지 않는다 — 확인창 판정은 이동 전에 이미 끝났다.
+            */}
+            {navigating && view.keyId !== keyId ? (
+              <LocalePanelSkeleton />
+            ) : detail === null ? (
               <div className="flex flex-1 items-center justify-center">
                 {props.detail !== null && "absent" in props.detail
                   ? <EmptyState icon={Languages} title={w.detail.keyGone(props.detail.surfaceSlug)} />

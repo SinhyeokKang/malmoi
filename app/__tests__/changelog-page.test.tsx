@@ -14,7 +14,12 @@ import { routes } from "@/lib/routes";
  */
 const mocks = vi.hoisted(() => ({ status: "none" as SessionRead["status"], loaded: { ok: false } as LoadedReleases }));
 
-vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: mocks.status }) }));
+vi.mock("@/lib/auth/read-session", () => ({
+  readSession: async () =>
+    mocks.status === "ok" ? { status: "ok", userId: "u1", name: "Ada", email: "ada@x.dev", image: null } : { status: mocks.status },
+}));
+// 헤더가 로그아웃 Action을 참조로 넘긴다 — 실물은 `@/auth`를 물어 jsdom에서 세울 수 없다.
+vi.mock("@/lib/auth/sign-out", () => ({ signOutAction: async () => {} }));
 vi.mock("@/lib/changelog/load", () => ({ loadReleases: async () => mocks.loaded }));
 
 beforeEach(() => {
@@ -65,7 +70,8 @@ describe("`/changelog` — 공개 셸", () => {
 
   it("헤더 primary는 세션으로 갈린다", async () => {
     const container = await page({ ok: false }, "ok");
-    expect(container.querySelector("header > div a")?.getAttribute("href")).toBe(routes.projects());
+    expect(container.querySelector(`header button[aria-label="${m.common.nav.userMenu}"]`)).not.toBeNull();
+    expect(container.querySelector(`header a[href="${routes.signIn()}"]`)).toBeNull();
   });
 
   it("소개 문장이 UTC와 GitHub Releases를 말한다", async () => {
@@ -122,13 +128,13 @@ describe("`/changelog` — 항목 틀", () => {
 describe("`/changelog` — 목록", () => {
   it("릴리스가 받은 순서대로 항목이 된다", async () => {
     const container = await page({ ok: true, releases: TWO, truncated: false });
-    expect([...main(container).querySelectorAll("h2")].map((h) => h.id)).toEqual(["v1.0.1", "v1.0.0"]);
+    expect([...main(container).querySelectorAll("section > h1")].map((h) => h.id)).toEqual(["v1.0.1", "v1.0.0"]);
     expect(main(container).textContent).not.toContain("couldn't be loaded");
   });
 
   it("실패면 안내 문장 하나이고 항목이 없다", async () => {
     const container = await page({ ok: false });
-    expect(main(container).querySelectorAll("h2")).toHaveLength(0);
+    expect(main(container).querySelectorAll("section > h1")).toHaveLength(0);
     expect(main(container).textContent).toContain("The changelog couldn't be loaded from GitHub just now.");
     expectExternal(releasesLinks(main(container)));
     expect(releasesLinks(main(container))).toHaveLength(2);
@@ -136,7 +142,7 @@ describe("`/changelog` — 목록", () => {
 
   it("빈 목록이면 빈 목록 문장이다", async () => {
     const container = await page({ ok: true, releases: [], truncated: false });
-    expect(main(container).querySelectorAll("h2")).toHaveLength(0);
+    expect(main(container).querySelectorAll("section > h1")).toHaveLength(0);
     expect(main(container).textContent).toContain("No releases have been published yet.");
     expect(releasesLinks(main(container))).toHaveLength(2);
   });

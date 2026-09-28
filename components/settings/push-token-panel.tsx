@@ -14,6 +14,7 @@ import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 
 import { CopyButton } from "@/components/onboarding/copy-button";
+import { IconTile } from "@/components/ui/icon-tile";
 
 /**
  * push 토큰 재발급 (PRODUCT §7.8). **원문은 이 반환값에만 있다** — 저장되는 것은 해시뿐이다.
@@ -34,7 +35,7 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
     <>
     <div className="space-y-2 px-4 py-[13px]">
       <div className="flex items-center gap-3 @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start">
-        <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded"><KeyRound className="size-4" aria-hidden /></span>
+        <IconTile><KeyRound aria-hidden /></IconTile>
         <div className="min-w-0 flex-1 space-y-[3px]"><p className="text-base font-medium">{m.settings.token.title}</p><p className="text-muted-foreground text-xs">
           {m.settings.token.description(<span className="text-foreground">PUSH_TOKEN</span>)}
         </p></div>

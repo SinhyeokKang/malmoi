@@ -10,6 +10,7 @@ import type { HomeState } from "@/lib/home/state";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
 import { ALL_NAMESPACES, routes } from "@/lib/routes";
+import { IconTile } from "@/components/ui/icon-tile";
 
 /**
  * `Needs your attention` (캔버스 `2a` 왼쪽 가운데).
@@ -50,7 +51,7 @@ export function AttentionCard({ items, slug, role, state, now }: {
       화면에도 jsdom 테스트에도 안 나타나는 부류다 (2026-09-13의 `combobox` 빈 이름과 같은 축).
     */
     <section className="border-border overflow-hidden rounded-lg border" aria-labelledby="home-attention-title">
-      <h2 id="home-attention-title" className="flex items-center gap-2 px-4 py-3 text-base font-medium">
+      <h2 id="home-attention-title" className="flex min-h-12 items-center gap-2 px-4 py-3 text-base font-medium">
         {m.home.attention.title}
         {/* ⚠️ **빈 상태에는 pill이 없다** (캔버스 `2a-empty`) — `0`을 배지로 세우면 하나의 항목처럼 읽힌다. */}
         {items.count > 0 && (
@@ -129,9 +130,9 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
       href={href}
       className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-divider flex items-center gap-3 border-t px-4 py-3.5 focus-visible:ring-2 focus-visible:outline-none"
     >
-      <span className={`flex size-7 shrink-0 items-center justify-center rounded ${tile.className}`}>
-        <Tile className="size-4" aria-hidden />
-      </span>
+      <IconTile className={tile.className}>
+        <Tile aria-hidden />
+      </IconTile>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         {/* ⚠️ **한 줄로 자른다** — 표면·로케일 이름이 길어지면 둘째 줄이 밀려 행 높이가 흔들린다. */}
         <span className="text-muted-foreground truncate text-xs">{title(item)}</span>

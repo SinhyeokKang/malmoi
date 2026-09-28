@@ -23,6 +23,7 @@ import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 import { failureText } from "../failure";
+import { IconTile } from "@/components/ui/icon-tile";
 
 /**
  * ① 리포와 브랜치 (DESIGN §6.7).
@@ -132,7 +133,7 @@ export function RepoStep({
           {[0, 1, 2].map((i) => (
             <li key={i} className="flex items-center gap-3 p-3">
               <Skeleton className="size-4 rounded-full" />
-              <Skeleton className="size-10 rounded-md" />
+              <Skeleton className="size-10 rounded-sm" />
               <div className="flex flex-1 flex-col gap-1.5">
                 <Skeleton className="h-4 w-48" />
                 <Skeleton className="h-3.5 w-72" />
@@ -243,14 +244,9 @@ export function RepoStep({
                           (`/projects` 목록의 `toneFill`과 반대). 선택되면 **칩만** 흰색으로 뒤집혀
                           muted 면 위에서 떠오른다.
                         */}
-                        <span
-                          className={cn(
-                            "flex size-10 shrink-0 items-center justify-center rounded-md",
-                            active ? "bg-background" : "bg-muted",
-                          )}
-                        >
-                          <FolderGit2 className="text-muted-foreground size-5" aria-hidden />
-                        </span>
+                        <IconTile size="lg" className={active ? "bg-background" : "bg-muted"}>
+                          <FolderGit2 aria-hidden />
+                        </IconTile>
                         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                           <span className="block truncate text-base font-medium">{repo.repo}</span>
                           {/*

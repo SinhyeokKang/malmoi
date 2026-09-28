@@ -171,14 +171,10 @@ const REGISTERED: Record<string, string[]> = {
     // 랜딩 목업은 번역 작업 화면의 정적 복제라 그 화면의 색을 그대로 쓴다(새 값 0).
     "components/landing/mockup/translations.tsx",
     "components/projects/project-list.tsx",
-    "components/sources/source-detail-modal.tsx",
-    "components/sources/sources-archived.tsx",
-    "components/sources/sources-screen.tsx",
     "components/translations/workspace/key-list.tsx",
     "components/translations/workspace/locale-panel.tsx",
     "components/translations/workspace/tree-panel.tsx",
     "components/translations/workspace/workspace.tsx",
-    "components/ui/row-card.tsx",
   ],
   "bg-neutral-50": ["components/logs/event-detail.tsx"],
   // 흑백 둘 (§6.2 "흑백 둘과 남의 자산은 이 규칙 밖이다")

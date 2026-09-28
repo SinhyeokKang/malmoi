@@ -74,7 +74,7 @@ export default function ProjectHomeLoading() {
           맞히려 들지는 않는다 — 틀리면 두 번 튄다.
         */}
         <aside className="border-border overflow-hidden rounded-lg border">
-          <div className="px-4 py-3">
+          <div className="flex min-h-12 items-center px-4 py-3">
             <Skeleton className="h-5 w-20 rounded-md" />
           </div>
           <MetaGroup rows={6} />
@@ -96,7 +96,7 @@ export default function ProjectHomeLoading() {
 function Card({ rows, footer, divided = true }: { rows: number; footer: boolean; divided?: boolean }) {
   return (
     <section className="border-border overflow-hidden rounded-lg border">
-      <div className="px-4 py-3">
+      <div className="flex min-h-12 items-center px-4 py-3">
         <Skeleton className="h-5 w-40 rounded-md" />
       </div>
       <ul className={divided ? undefined : "border-divider border-t px-4 pt-3.5"}>
@@ -105,7 +105,8 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
             key={i}
             className={divided ? "border-divider flex items-center gap-3 border-t px-4 py-3.5" : "flex items-center gap-3 pb-4"}
           >
-            <Skeleton className={divided ? "size-7 shrink-0 rounded" : "size-2.5 shrink-0 rounded-full"} />
+            {/* 두 카드 다 행 칸이 `IconTile sm`(28 · radius 4)이다 — Logs 카드의 옛 10 점은 실물(사건 칸 28)과 달라 도착 때 튀었다. */}
+            <Skeleton className="size-7 shrink-0 rounded" />
             {/*
               ⚠️ **자리의 높이는 블록이 아니라 컨테이너가 든다** (2026-09-16 실측) — 블록을 두껍게
               키우면 행 높이는 맞아도 회색 덩어리가 글자보다 굵어진다. 할 일 행은 실물이 **두 줄**

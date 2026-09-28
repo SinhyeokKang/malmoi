@@ -47,7 +47,6 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
   return (
     <PanelCard
       title={m.account.sessionsSection.title}
-      subtitle={m.account.sessionsSection.description}
       notice={message !== null ? <Alert inset variant="danger">{message}</Alert> : undefined}
     >
       <PanelRows>

@@ -291,6 +291,9 @@ export const en = {
       /** 사이드바 사용자 구역의 `Projects` 바로 아래 항목 (2026-09-27 사용자 — 8-3의 "사이드바에는 없다"를 뒤집었다). 목록 화면의 버튼·빈 상태도 쓴다. */
       newProject: "New project",
       userMenu: "Account menu",
+      /** LNB 맨 아래 접기 토글 (2026-09-28 사용자 — 8-3이 지운 접기가 돌아왔다). 접힌 레일에선 `title`로도 보인다. */
+      collapseSidebar: "Collapse sidebar",
+      expandSidebar: "Expand sidebar",
       /**
        * LNB 프로젝트 구역 머리의 전환 메뉴 (2026-09-27 사용자). ⚠️ **맨 아래 행은 `newProject`를 그대로 쓴다** — 같은 행동을
        * LNB 항목·목록 버튼과 다른 이름(`Create project`)으로 부르면 그중 하나가 낡는다.
@@ -348,7 +351,7 @@ export const en = {
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
     consent: { before: "By clicking Continue through a third party you accept the Malmoi ", link: "Privacy Policy", after: "." },
-    footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Privacy Policy", docs: "Docs" },
+    footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Privacy Policy" },
     /**
      * 우측 장식의 문구 둘. ⚠️ **키비주얼을 `alt=""`로 둘 수 있는 근거가 이 두 줄이다** — 이미지
      * 안에 구운 텍스트가 말하는 것을 여기가 이미 말하고 있어야 그것이 장식이 된다.
@@ -366,12 +369,9 @@ export const en = {
     shell: {
       logo: "Malmoi home",
       nav: "Main",
-      home: "Home",
       docs: "Docs",
       github: "GitHub",
       getStarted: "Get started",
-      /** 공개 셸 primary의 로그인 갈래 — `/privacy`에만 선다(랜딩은 `ok`에서 안 그려진다). */
-      openMalmoi: "Open Malmoi",
     },
     /** 히어로 — 버튼 둘은 헤더와 같은 말이라 `shell.docs`·`shell.getStarted`를 쓴다(같은 구역). */
     hero: {
@@ -766,9 +766,6 @@ export const en = {
     empty: (releases: ReactNode): ReactNode => <>No releases have been published yet. New versions appear here and on {releases}.</>,
     /** GitHub 한 요청 상한(100건)에 닿았을 때 목록 끝 — 페이지네이션은 없다. */
     truncated: (releases: ReactNode): ReactNode => <>Older releases are on {releases}.</>,
-    viewOnGithub: "View on GitHub",
-    /** 보이는 글자는 항목마다 같다 — 접근 이름이 버전을 들어야 링크 목록에서 갈린다. */
-    viewOnGithubLabel: (tag: string): string => `View ${tag} on GitHub`,
   },
 
   /**
@@ -1548,8 +1545,6 @@ export const en = {
       avatar: "Avatar",
       name: "Name",
       email: "Email",
-      /** 이메일 칸 옆 출처 문구 — 고칠 수 없는 이유를 그 자리에서 말한다. */
-      emailSource: "Comes from the account you sign in with.",
       /**
        * ⚠️ **이름 칸과 이메일 칸이 같은 문구를 쓴다.** 이메일은 검증된 주소 없이 로그인 자체가
        * 막히므로 사실상 안 나오고, 이름은 provider가 안 줄 수 있다 — 어느 쪽도 빈 칸을 남기지 않는다.
@@ -1583,7 +1578,6 @@ export const en = {
        * 같이 서면 **같은 사전의 다른 절**에 살아 리뷰로 안 걸린다 (2026-09-13 `malmoi`/`Malmoi`).
        */
       title: "GitHub App",
-      description: "Write access to the repositories you selected for the app, not a way to sign in.",
       /**
        * ⚠️ **아래 넷은 행 본문의 `— {상태}` 자리다** (2026-09-16 — 핸드오프 v2). 상태를 13 보조 줄로
        * 내리면 **부연으로 읽히는데**, 이 행이 답하는 질문이 곧 상태다. 보조 줄은 `hint*`가 든다.
@@ -1659,7 +1653,6 @@ export const en = {
     /** 구역 헤더 — 항목 둘(이 기기 / 모든 기기)이 한 리스트에 선다. */
     sessionsSection: {
       title: "Sessions",
-      description: "Close what's open right now.",
     },
     sessions: {
       title: "Sign out everywhere",
@@ -1731,7 +1724,7 @@ export const en = {
     picture: {
       upload: "Image upload",
       delete: "Delete",
-      caption: "PNG or JPEG, up to 3 MB. Resized automatically.",
+      caption: "PNG or JPEG, up to 3 MB.",
       /** ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */
       noPicture: "You haven't added one yet.",
       /**
@@ -2557,7 +2550,6 @@ export const en = {
     /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
     screenLoading: "Loading sources",
     title: "Sources",
-    description: "The translation files Malmoi reads from your repository.",
     /**
      * 관리하지 않는 항목 (B2 r3 · QA5 — ARCHITECTURE §1 "read 오류의 두 갈래"). **실패 문장이 아니다** — 코드의 식·참조라
      * 파일에 그대로 남고 번역을 잃지 않는다. Sync 결과 문장 뒤에 안내로만 붙는다.
@@ -2669,8 +2661,6 @@ export const en = {
     seatsFull: (limit: number): string => `${limit} of ${limit} seats — remove someone to invite`,
     /** EDITOR 시야. ⚠️ **좌석 초과보다 이 사유가 이긴다** (`planSeatNotice`의 단언이 그것을 고정한다). */
     ownerOnly: "Only project owners can invite or change roles",
-    /** Members 카드 헤더의 설명 한 줄. */
-    cardHint: "Project owners can manage members and settings",
     /**
      * 카드 카운트 배지의 sr-only 문장.
      *
@@ -2821,8 +2811,6 @@ export const en = {
 
     pending: {
       title: "Pending invitations",
-      /** 카드 헤더의 설명 한 줄 — 만료가 사용 여부와 무관하다는 것이 이 화면에서 유일하게 놀라는 규칙이다. */
-      cardHint: "A link expires after 7 days whether it is used or not",
       /**
        * ⚠️ `m.members.count`와 같은 이유 — 기본값이 "projects"다.
        *
@@ -2884,10 +2872,7 @@ export const en = {
     general: {
       title: "General", thumbnail: "Thumbnail", name: "Name", address: "Address",
       upload: "Upload", remove: "Remove",
-      caption: "PNG or JPEG, up to 3 MB. Shown in the project list, on Home, and on invites.",
-      /** ⚠️ **호스트를 말하지 않는다** (launch-readiness L7.5) — 박아 두면 dev·로컬에서도 프로덕션 주소가 보인다. */
-      addressHelp: (slug: string): string => `Opens at /projects/${slug}. The address can't be changed later.`,
-      nameHelp: "The display name only. The URL and the repository stay the same.",
+      caption: "PNG or JPEG, up to 3 MB.",
       emptyName: "Enter a project name.", longName: "Use 200 characters or fewer.",
       busy: "Updating the thumbnail…", noImage: "There is no thumbnail to remove.",
     },
@@ -2930,7 +2915,6 @@ export const en = {
       movedHint: "Reconnect to store the new name. Syncs keep working in the meantime.",
       paused: "Syncs and publishes are paused. Everything already translated is safe.",
       title: "Repository",
-      description: "Source strings come from here, and translations go back as pull requests.",
       connect: "Connect",
       reconnect: "Reconnect",
       connectFailed: "We couldn't start the connection. Try again in a moment.",
@@ -3106,11 +3090,6 @@ export const en = {
        * ⚠️ **계산값이라 서버가 안 는다** — `loginMethodRows`가 준 행에서 `methodCounts`가 센다.
        */
       count: (connected: number, total: number): string => `${connected} of ${total}`,
-      /**
-       * ⚠️ **앞 절(`These are the accounts you can use to sign in.`)을 뺐다** (2026-09-16) —
-       * 카드 제목이 이미 그 말을 한다. 헤더 오른쪽 한 줄은 제목이 **안 하는 말**만 든다.
-       */
-      description: "Adding one happens when you sign in with it at this same address.",
       /**
        * ⚠️ **`Add ${provider}`였다** (2026-09-13). 행의 제목이 이미 provider 이름이라 버튼까지
        * 그것을 반복하면 같은 단어가 한 줄에 두 번 선다. 보이는 라벨은 짧게 두고 **접근 이름만**

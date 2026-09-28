@@ -7,6 +7,7 @@ import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { utcMinute } from "@/lib/utc-time";
+import { IconTile } from "@/components/ui/icon-tile";
 
 /**
  * 보관된 프로젝트의 Sources (시안 `1g`).
@@ -25,7 +26,7 @@ export function SourcesArchived({ slug, role, archivedAt }: { slug: string; role
     <PanelBody width="fluid">
       <PanelCard title={m.sources.title}>
         <div className="border-divider flex items-center gap-3 border-t px-4 py-[13px]">
-          <span className="bg-foreground/5 flex size-7 shrink-0 items-center justify-center rounded text-neutral-600"><Archive className="size-4" aria-hidden /></span>
+          <IconTile><Archive aria-hidden /></IconTile>
           <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
             <span className="text-base"><span className="font-medium">{m.logs.archived.badge}</span>{archivedAt && <> — <time dateTime={archivedAt.toISOString()} aria-label={utcMinute(archivedAt)}>{utcMinute(archivedAt)}</time></>}</span>
             <span className="text-muted-foreground text-xs">{canEdit ? m.sources.archivedOwner : m.sources.archivedEditor}</span>

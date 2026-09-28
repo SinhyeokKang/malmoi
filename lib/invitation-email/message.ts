@@ -82,7 +82,8 @@ export function buildInvitationEmail(input: {
     PROJECT_NAME: escapeHtml(emailProjectName(input.project.name)),
     ROLE: escapeHtml(m.projects.role[input.role]),
     TILE: key === null ? INVITATION_EMAIL_TILE_FALLBACK : INVITATION_EMAIL_TILE_IMAGE,
-    TILE_SRC: key === null ? BOX_URL : escapeHtml(`${IMAGE_PROXY_ORIGIN}/api/images/${key}`),
+    // 메일은 PNG 변환 경로다 (#140 — Gmail이 WebP 알파를 버리고 iOS에서 깨뜨렸다). 앱 화면은 `/api/images/` WebP 그대로다.
+    TILE_SRC: key === null ? BOX_URL : escapeHtml(`${IMAGE_PROXY_ORIGIN}/api/images/email/${key}`),
     // 톤은 자르기 전 원래 이름으로 고른다 — 잘린 이름으로 고르면 화면 타일과 색이 갈린다.
     TILE_BG: TONE_HEX[toneOf(input.project.name)],
   });

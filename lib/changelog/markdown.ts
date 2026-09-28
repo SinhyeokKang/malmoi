@@ -7,8 +7,8 @@ import { visit } from "unist-util-visit";
  */
 
 /**
- * 본문의 최소 제목 깊이를 3으로 맞춘다 — 페이지 `h1` → 버전 `h2` 아래라 바닥이 늘 3이다. 사람이 넣은 `#`도 `h3`가
- * 되어 버전 제목과 급이 겹치지 않는다. `h6`에서 멈춘다.
+ * 본문의 최소 제목 깊이를 1로 맞춘다 — 원문 `##`가 버전과 같은 `h1`이 된다(2026-09-28 사용자 — 태그째 올렸다, 옛 바닥 3).
+ * 급은 모양이 가른다(버전 30 · 본문 절 24 — `components/docs/classes.ts`). 나머지는 같은 폭으로 움직이고 `h6`에서 멈춘다.
  */
 export function shiftHeadings(tree: Root): void {
   let min = Infinity;
@@ -16,7 +16,7 @@ export function shiftHeadings(tree: Root): void {
     min = Math.min(min, node.depth);
   });
   if (min === Infinity) return;
-  const shift = 3 - min;
+  const shift = 1 - min;
   visit(tree, "heading", (node) => {
     node.depth = Math.min(6, node.depth + shift) as 1 | 2 | 3 | 4 | 5 | 6;
   });

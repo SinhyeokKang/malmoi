@@ -9,11 +9,16 @@ import { routes } from "@/lib/routes";
 
 /**
  * **`/privacy`는 공개 셸 안에 선다** (DESIGN §6.616). 세션은 차단이 아니라 **헤더 primary 하나**를 가른다 —
- * 로그인이면 `Open Malmoi`, 아니면(장애 포함) `Get started`.
+ * 로그인이면 앱 셸과 같은 아바타 메뉴, 아니면(장애 포함) `Get started`.
  */
 const mocks = vi.hoisted(() => ({ status: "none" as SessionRead["status"] }));
 
-vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: mocks.status }) }));
+vi.mock("@/lib/auth/read-session", () => ({
+  readSession: async () =>
+    mocks.status === "ok" ? { status: "ok", userId: "u1", name: "Ada", email: "ada@x.dev", image: null } : { status: mocks.status },
+}));
+// 헤더가 로그아웃 Action을 참조로 넘긴다 — 실물은 `@/auth`를 물어 jsdom에서 세울 수 없다.
+vi.mock("@/lib/auth/sign-out", () => ({ signOutAction: async () => {} }));
 
 beforeEach(() => {
   vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
@@ -27,14 +32,15 @@ async function page(status: SessionRead["status"]) {
 }
 
 const primary = (container: HTMLElement) => {
-  const link = container.querySelector("header > div a");
+  const link = container.querySelector(`header a[href="${routes.signIn()}"]`);
   return [link?.textContent, link?.getAttribute("href")];
 };
 
 describe("`/privacy` — 헤더 primary가 세션으로 갈린다", () => {
-  it("`ok` → Open Malmoi · `/projects`", async () => {
+  it("`ok` → 아바타 메뉴, Get started 없음", async () => {
     const { container } = await page("ok");
-    expect(primary(container)).toEqual([m.landing.shell.openMalmoi, routes.projects()]);
+    expect(container.querySelector(`header button[aria-label="${m.common.nav.userMenu}"]`)).not.toBeNull();
+    expect(container.querySelector(`header a[href="${routes.signIn()}"]`)).toBeNull();
   });
 
   it.each(["none", "unavailable"] as const)("`%s` → Get started · `/signin`", async (status) => {

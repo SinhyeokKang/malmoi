@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { DOC_LINK, INLINE_CODE, LIST, PROSE } from "@/components/docs/classes";
+import { DOC_LINK, INLINE_CODE, LIST, MINOR_HEADING, PROSE, SECTION_HEADING, SUB_HEADING } from "@/components/docs/classes";
 import { dropFullChangelog, imagesToLinks, shiftHeadings } from "@/lib/changelog/markdown";
 
 /**
@@ -13,13 +13,15 @@ const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 const isExternal = (href: string) => SCHEME.test(href) || href.startsWith("//");
 
 /**
- * 제목 급 — `h3`는 원고 렌더러의 h3 그대로, `h4`~`h6`는 이 리포에 급이 없어 여기서 정했다(16 · 500 · 위 24).
- * 정하지 않으면 브라우저 기본 700이 나와 굵기 규칙 밖이다.
+ * 제목 급 — 버전이 `h1`이라 본문 `##`도 `h1`이다(`shiftHeadings`). 모양은 공개 문서 공통 급(`components/docs/classes.ts`)이고
+ * `h4`~`h6`만 이 화면이 정한 급이다(16/1.6/500 · 위 16 — 원고엔 `h4`가 없다). 정하지 않으면 브라우저 기본 700이 나와 굵기 규칙 밖이다.
  */
-const DEEP = "text-prose m-0 mt-6 leading-[1.6] font-medium";
+const DEEP = "text-prose m-0 mt-4 leading-[1.6] font-medium";
 
 const components: Components = {
-  h3: ({ node: _node, children }) => <h3 className="m-0 mt-8 text-lg leading-[1.5] font-medium">{children}</h3>,
+  h1: ({ node: _node, children }) => <h1 className={SECTION_HEADING}>{children}</h1>,
+  h2: ({ node: _node, children }) => <h2 className={SUB_HEADING}>{children}</h2>,
+  h3: ({ node: _node, children }) => <h3 className={MINOR_HEADING}>{children}</h3>,
   h4: ({ node: _node, children }) => <h4 className={DEEP}>{children}</h4>,
   h5: ({ node: _node, children }) => <h5 className={DEEP}>{children}</h5>,
   h6: ({ node: _node, children }) => <h6 className={DEEP}>{children}</h6>,

@@ -1,11 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ImperativePanelGroupHandle } from "react-resizable-panels";
 
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { m } from "@/lib/i18n";
-import { panelConstraints, panelLayout, type PanelPx } from "@/lib/shell/panel-size";
+import { panelConstraints, panelLayout, panelPercent, type PanelPx } from "@/lib/shell/panel-size";
+import { cn } from "@/lib/utils";
+
+import { SidebarCollapseContext } from "./sidebar-collapse";
 
 /**
  * LNB의 px 치수. **하한 200**은 nav 항목의 아이콘+라벨+배지가 유지되는 자리, **기본 240**은 시안
@@ -25,6 +28,15 @@ import { panelConstraints, panelLayout, type PanelPx } from "@/lib/shell/panel-s
  */
 export const SHELL_SIDEBAR_PX: PanelPx = { min: 200, default: 240, max: 320 };
 
+/**
+ * 접힌 LNB 폭 — 항목 32 정사각 + 사이드바 `p-1` 좌우 8(2026-09-28 사용자 — 접기가 돌아왔다).
+ * ⚠️ **하한(200)보다 작은 값이라 `collapsible`이 있어야 선다** — 라이브러리는 `collapsedSize`만 하한 밖을 허용한다.
+ */
+export const SHELL_SIDEBAR_COLLAPSED_PX = 40;
+
+/** 펼침·접힘 전환 시간(ms) — 버튼으로 토글할 때만 flex-grow에 전이를 건다. 드래그·창 크기 변화는 즉시다. */
+const TOGGLE_MS = 200;
+
 /** 핸들 폭 = 떼어낸 `gap-2`의 폭. 이 값이 갈리면 변경 전후로 간격이 달라진다. */
 export const SHELL_HANDLE_PX = 8;
 
@@ -33,7 +45,8 @@ export const SHELL_HANDLE_PX = 8;
  * 경고**하고 패널을 균등 분할한다. 최소 대응 너비(1280 − `p-2` 16 − 핸들 8)를 기준으로 두면
  * 그 경고도, 균등 분할도 없다.
  */
-const FALLBACK = panelConstraints(1280 - 16 - SHELL_HANDLE_PX, SHELL_SIDEBAR_PX) ?? undefined;
+const FALLBACK_AVAILABLE = 1280 - 16 - SHELL_HANDLE_PX;
+const FALLBACK = panelConstraints(FALLBACK_AVAILABLE, SHELL_SIDEBAR_PX) ?? undefined;
 
 /**
  * 셸의 본문 행 — **LNB ↔ 콘텐츠를 드래그로 가른다.**
@@ -75,17 +88,37 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
    * 지키는 것은 %가 아니라 px이고, 사용자가 창을 넓혔다고 LNB가 같이 넓어지지 않는다.
    */
   const groupRef = useRef<ImperativePanelGroupHandle>(null);
-  /** 지금 지켜야 할 LNB의 px. 시안 값에서 시작하고 **사용자의 드래그만** 이 값을 바꾼다. */
+  /** 지금 지켜야 할 **펼친** LNB의 px. 시안 값에서 시작하고 **사용자의 드래그만** 이 값을 바꾼다 — 접힘은 이 값을 건드리지 않는다. */
   const sidebarPx = useRef(SHELL_SIDEBAR_PX.default);
   const dragging = useRef(false);
+  /** 접힘은 **패널의 실제 몫**에서 읽는다(`onResize`) — 버튼이든 드래그 스냅이든 같은 판정 하나다. */
+  const [collapsed, setCollapsed] = useState(false);
+  const collapsedRef = useRef(false);
+  const [animating, setAnimating] = useState(false);
 
   useEffect(() => {
     if (available === null) return;
-    const layout = panelLayout(available, sidebarPx.current);
+    const layout = panelLayout(available, collapsedRef.current ? SHELL_SIDEBAR_COLLAPSED_PX : sidebarPx.current);
     if (layout !== null) groupRef.current?.setLayout(layout);
   }, [available]);
 
+  /**
+   * ⚠️ **`collapse()`·`expand()`가 아니라 `setLayout`이다** — `expand()`는 라이브러리가 기억한 **%**로 돌아가 창 폭이 바뀐 뒤엔
+   * px가 어긋난다. 지키는 것이 px라 펼칠 때도 `sidebarPx`에서 다시 계산한다.
+   */
+  const toggle = useCallback(() => {
+    const width = available ?? FALLBACK_AVAILABLE;
+    const layout = panelLayout(width, collapsedRef.current ? sidebarPx.current : SHELL_SIDEBAR_COLLAPSED_PX);
+    if (layout === null) return;
+    setAnimating(true);
+    groupRef.current?.setLayout(layout);
+    window.setTimeout(() => setAnimating(false), TOGGLE_MS);
+  }, [available]);
+
+  const collapse = useMemo(() => ({ collapsed, toggle }), [collapsed, toggle]);
+
   return (
+    <SidebarCollapseContext.Provider value={collapse}>
     <div ref={measure} className="flex min-h-0 flex-1">
       {/*
         ⚠️ **그룹에도 인라인 `overflow: hidden`이 붙는다** — 패널만 풀면 `ContentPanel`의 `shadow-low`가
@@ -94,12 +127,22 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
       <ResizablePanelGroup ref={groupRef} direction="horizontal" style={{ overflow: "visible" }}>
         <ResizablePanel
           {...(constraints ?? FALLBACK)}
+          collapsible
+          collapsedSize={panelPercent(available ?? FALLBACK_AVAILABLE, SHELL_SIDEBAR_COLLAPSED_PX)}
+          // 버튼 토글만 부드럽게 잇는다 — 드래그 중에 전이가 걸리면 핸들이 포인터를 늦게 따라온다.
+          // ⚠️ `min-w-0` — 패널이 `overflow: visible`이라 flex 최소 폭이 라벨의 한 줄 폭(`whitespace-nowrap`)이 되어 40까지 못 줄어든다.
+          className={cn("min-w-0", animating && "transition-[flex-grow] ease-out")}
           /**
            * ⚠️ **드래그일 때만 받는다.** 폭 변화로 우리가 부른 `setLayout`도 여기로 돌아오는데, 그것을
            * 새 의사로 읽으면 px가 그때그때의 반올림을 따라 흘러간다.
            */
           onResize={(size) => {
-            if (dragging.current && available !== null) sidebarPx.current = (size / 100) * available;
+            const width = available ?? FALLBACK_AVAILABLE;
+            const isCollapsed = size <= panelPercent(width, SHELL_SIDEBAR_COLLAPSED_PX) + 0.01;
+            collapsedRef.current = isCollapsed;
+            setCollapsed(isCollapsed);
+            // 접힌 몫은 펼칠 폭이 아니다 — 드래그로 접어도 펼치면 마지막 펼친 폭으로 돌아간다.
+            if (dragging.current && available !== null && !isCollapsed) sidebarPx.current = (size / 100) * available;
           }}
           /**
            * ⚠️ **재기 전에는 %가 거짓이라 px로 못박는다.** 그룹 폭이 뷰포트를 따르는데 SSR은 그것을
@@ -115,7 +158,7 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
           style={
             constraints === null
               ? { overflow: "visible", flexGrow: 0, flexShrink: 0, flexBasis: `${SHELL_SIDEBAR_PX.default}px` }
-              : { overflow: "visible" }
+              : { overflow: "visible", transitionDuration: `${TOGGLE_MS}ms` }
           }
         >
           {sidebar}
@@ -134,5 +177,6 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
         <ResizablePanel style={{ overflow: "visible" }} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)]">{children}</ResizablePanel>
       </ResizablePanelGroup>
     </div>
+    </SidebarCollapseContext.Provider>
   );
 }

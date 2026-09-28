@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { IconTile } from "./icon-tile";
 
 /**
  * **행 목록 카드** — 자기 헤더(제목 · 카운트 배지 · 설명 한 줄)를 든 카드와 그 아래 행들
@@ -68,7 +69,7 @@ export function RowCard({
         아래로 내리면 카드 헤더가 두 줄이 되어 행 목록의 시작 y가 카드마다 달라지고, 두 카드를
         나란히 훑을 때 첫 행의 위치가 어긋난다. `/projects`는 이 슬롯을 안 쓰므로 한 줄 그대로다.
       */}
-      <div className="flex items-center gap-2 px-4 py-3">
+      <div className="flex min-h-12 items-center gap-2 px-4 py-3">
         {/*
           ⚠️ **id가 있으면 포커스도 받는다.** 이 id가 붙는 유일한 이유가 **행이 사라진 뒤의 착지점**
           이라서(malmoi#51), 둘을 갈라 두면 `getElementById`는 찾는데 `focus()`가 무시되어 포커스가
@@ -229,24 +230,13 @@ export function EmptyRowCard({
       )}
     >
       {/*
-        ⚠️ **카드 안과 밖의 규격이 다르다** — 캔버스가 둘을 다르게 그렸다: 서 있는 카드(`/projects`
-        0건)는 **칩 36 라운드 사각 · 글리프 16 · padding `48 24`**이고, 카드 **안**의 0건(대기 초대)은
-        **칩 40 원 · 글리프 18 · padding 32 · gap 10**이다. 앞은 화면의 착지점이고 뒤는 카드 하나가
-        비었다는 보조 신호라 무게가 다르다. **`/projects`의 값을 건드리지 않으려고** 갈래를 `inset`에 묶는다.
+        ⚠️ **카드 안과 밖은 여백이 다르다** — 서 있는 카드(`/projects` 0건)는 padding `48 24` · gap 14, 카드 **안**의 0건(대기 초대)은
+        padding 32 · gap 10이다. 앞은 화면의 착지점이고 뒤는 카드 하나가 비었다는 보조 신호라 무게가 다르다. **칸은 둘 다 빈 상태 공통
+        `IconTile lg`(40 · radius 8 · 글리프 20)다**(2026-09-28 사용자 — 옛 카드 밖 36 라운드 사각 · 카드 안 40 원을 하나로 접었다).
       */}
-      <span
-        className={cn(
-          "bg-foreground/[0.04] flex items-center justify-center text-neutral-600",
-          inset ? "size-10 rounded-full" : "size-9 rounded-sm",
-        )}
-      >
-        {/*
-          ⚠️ **글리프는 둘 다 16이다** — 캔버스는 카드 안 빈 상태를 18로 그리는데 §6.8이 아이콘 크기를
-          **넷(16·14·12·20)으로 고정**하고, 18을 쓰면 리포 최초의 임의 아이콘 치수가 생긴다.
-          §6.63의 등재된 이탈 2번이 `/projects` 빈 상태에서 같은 판단을 이미 내렸다 — 두 자리가 같은 값이다.
-        */}
-        <Icon className="size-4" aria-hidden />
-      </span>
+      <IconTile size="lg">
+        <Icon aria-hidden />
+      </IconTile>
       {/*
         ⚠️ **`<p>` 둘이다 — `<span>`으로 두면 문단 경계가 0이 된다.** `flex flex-col`이 시각적으로는
         같은 결과를 내서 화면에도 테스트에도 안 나타난다.

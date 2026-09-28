@@ -188,7 +188,6 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               tabIndex={-1}
               className="bg-muted w-80 cursor-default"
             />
-            <p className="text-muted-foreground text-xs">{m.account.profile.emailSource}</p>
           </div>
           </PanelFacts>
         </PanelCard>

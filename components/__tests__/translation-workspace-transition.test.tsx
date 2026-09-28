@@ -100,6 +100,7 @@ it("키를 누르면 응답 전에 그 행이 선택되고 목록·상세가 bus
   const { container } = await render(<Harness initial={initial} />);
   // 짝 단언 — 이동 전에는 busy가 아니고 선택은 k1이다.
   expect(panel(container, "list").getAttribute("aria-busy")).toBeNull();
+  expect(panel(container, "detail").querySelector("[data-skeleton-detail]")).toBeNull();
   expect(row(container, "k1")?.getAttribute("aria-current")).toBe("true");
   await user.click(row(container, "k2")!);
   expect(mocks.replace).toHaveBeenCalledTimes(1);
@@ -108,9 +109,13 @@ it("키를 누르면 응답 전에 그 행이 선택되고 목록·상세가 bus
   expect(row(container, "k1")?.getAttribute("aria-current")).toBeNull();
   expect(panel(container, "list").getAttribute("aria-busy")).toBe("true");
   expect(panel(container, "detail").getAttribute("aria-busy")).toBe("true");
+  // 옛 키(k1)의 값을 새 선택 옆에 세우지 않는다 — 응답까지 골격이다.
+  expect(panel(container, "detail").querySelector("[data-skeleton-detail]")).not.toBeNull();
+  expect(area(container, "en")).toBeNull();
   await arrive(b);
   expect(panel(container, "list").getAttribute("aria-busy")).toBeNull();
   expect(panel(container, "detail").getAttribute("aria-busy")).toBeNull();
+  expect(panel(container, "detail").querySelector("[data-skeleton-detail]")).toBeNull();
   expect(row(container, "k2")?.getAttribute("aria-current")).toBe("true");
 });
 
@@ -127,6 +132,8 @@ it("필터를 고르면 응답 전에 트리거 라벨이 바뀐다 — 필터�
   expect(mocks.push).toHaveBeenCalledTimes(1);
   expect(trigger().getAttribute("aria-label")).toBe(`Completeness: ${m.translations.workspace.filters.completion.incomplete}`);
   expect(panel(container, "list").getAttribute("aria-busy")).toBe("true");
+  // 필터는 선택을 옮기지 않는다 — 상세는 같은 키라 골격으로 바꾸지 않는다.
+  expect(panel(container, "detail").querySelector("[data-skeleton-detail]")).toBeNull();
   await arrive(b);
   expect(trigger().getAttribute("aria-label")).toBe(`Completeness: ${m.translations.workspace.filters.completion.incomplete}`);
 });
@@ -142,9 +149,10 @@ it("트리 클릭은 첫 키 예약값으로 한 번만 push하고, 응답이 �
   const node = [...container.querySelectorAll<HTMLButtonElement>("button")].find(el => el.textContent?.includes("common") && !el.closest("[data-key-row]"))!;
   await user.click(node);
   expect(mocks.push).toHaveBeenCalledExactlyOnceWith(expect.stringContaining("key=%40first"));
-  // 응답 전 — 누른 항목이 선택으로 서고, 옛 상세는 읽기 전용으로 남는다(빈 상태로 번쩍이지 않는다).
+  // 응답 전 — 누른 항목이 선택으로 서고, 상세는 골격이다(빈 상태로 번쩍이지도, 옛 키를 새 선택 옆에 세우지도 않는다).
   expect(node.getAttribute("aria-current")).toBe("true");
-  expect(area(container, "zh")?.readOnly).toBe(true);
+  expect(area(container, "zh")).toBeNull();
+  expect(container.querySelector("[data-skeleton-detail]")).not.toBeNull();
   const replaceState = vi.spyOn(window.history, "replaceState");
   await arrive(b);
   expect(container.textContent).not.toContain(m.translations.workspace.detail.selectKey);
@@ -362,16 +370,18 @@ it("응답 전에 키를 고른 뒤 필터를 고르면 필터 이동이 새 키
   ⚠️ **`history.replaceState`는 대기 중인 이동을 버린다** (Next 16.3 — ACTION_RESTORE가 pending navigation을 대체한다). 옛 상세의
   언어 메뉴는 읽기 전용 잠금 밖이라 키 이동을 기다리는 동안 바꾸면 그 이동이 사라졌다.
 */
-it("키 이동을 기다리는 동안 언어 메뉴가 잠기고, 도착하면 풀린다", async () => {
+// 키·트리 이동 동안은 상세가 골격이라 메뉴가 없다 — 옛 상세가 남는 이동(필터·검색)에서 잠긴다.
+it("검색 이동을 기다리는 동안 언어 메뉴가 잠기고, 도착하면 풀린다", async () => {
   const user = userEvent.setup();
   const initial = props();
   const b = gate();
-  respond = () => ({ next: { ...initial, query: { ...initial.query, key: "k2" }, detail: detailOf("k2") }, gate: b });
+  respond = () => ({ next: { ...initial, query: { ...initial.query, q: "save" } }, gate: b });
   const { container } = await render(<Harness initial={initial} />);
   const languages = () => container.querySelector<HTMLButtonElement>('button[aria-label^="Languages:"]')!;
   // 짝 — 대기 전에는 열 수 있다.
   expect(languages().disabled).toBe(false);
-  await user.click(row(container, "k2")!);
+  await user.type(container.querySelector<HTMLInputElement>('input[type="search"]')!, "save{Enter}");
+  expect(mocks.push).toHaveBeenCalledTimes(1);
   expect(languages().disabled).toBe(true);
   await arrive(b);
   expect(languages().disabled).toBe(false);

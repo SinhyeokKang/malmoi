@@ -6,6 +6,7 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 import { LocaleBadge } from "@/components/translations/locale-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { localeTextAttrs } from "@/lib/translations/text-direction";
 import { m } from "@/lib/i18n";
@@ -64,7 +65,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex h-[52px] shrink-0 items-center gap-2 px-4">
+      <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
           <FileJson2 className="size-4 shrink-0" aria-hidden />
           {detail.key.surfaceSlug}
@@ -131,6 +132,45 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
           ))}
         </div>
         {footer}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 다른 키의 상세를 기다리는 동안의 골격 — 머리 · 키 블록 · 언어 셋 · 푸터가 실물 치수다(DESIGN §6.64 로딩 행 — 도착 때 안 움직인다).
+ * 언어 수는 모르므로 가장 흔한 셋이다.
+ */
+export function LocalePanelSkeleton() {
+  return (
+    <div data-skeleton-detail className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex h-12 shrink-0 items-center gap-2 px-4">
+        <Skeleton className="size-4 shrink-0 rounded" />
+        <SkeletonLine text="text-sm" className="w-32" />
+        <Skeleton className="ml-auto h-7 w-28 rounded-md" />
+      </div>
+      <div className="border-divider flex min-h-0 flex-1 flex-col overflow-hidden border-t">
+        <div className="border-divider flex shrink-0 flex-col gap-1 border-b px-4 py-3.5">
+          <div className="flex h-7 items-center gap-2.5">
+            {/* ⚠️ 비율 폭은 부모 폭이 있어야 선다 — flex 행의 `SkeletonLine`은 내용 폭이라 `flex-1`이 없으면 0으로 접힌다. */}
+            <div className="min-w-0 flex-1"><SkeletonLine text="text-base" className="w-[45%]" /></div>
+            <Skeleton className="ml-auto h-3 w-20 rounded-md" />
+            <Skeleton className="size-7 shrink-0 rounded-md" />
+          </div>
+          <SkeletonLine text="text-xs" className="w-[60%]" />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {[0, 1, 2].map(i => (
+            <div key={i} className={cn("flex shrink-0 flex-col gap-2 px-4 py-3", i > 0 && "border-border border-t")}>
+              <Skeleton className="h-5 w-12 rounded-full" />
+              <Skeleton className="h-[62px] w-full rounded-md" />
+            </div>
+          ))}
+        </div>
+        <div className="border-border flex shrink-0 items-center gap-3 border-t px-4 py-3">
+          <SkeletonLine text="text-xs" className="w-24" />
+          <Skeleton className="ml-auto h-9 w-16 rounded-md" />
+        </div>
       </div>
     </div>
   );

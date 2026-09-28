@@ -8,7 +8,7 @@
 
 ```
 app/
-  page.tsx              랜딩(`/`). rootView가 세션이 있으면 /projects로 redirect, 없거나 못 읽으면 PublicShell(cta = publicCta("none"), current = home) + 히어로 + Stage + 마무리 CTA.
+  page.tsx              랜딩(`/`). rootView가 세션이 있으면 /projects로 redirect, 없거나 못 읽으면 PublicShell(account = null, current 없음) + 히어로 + Stage + 마무리 CTA.
                         ⚠️ 로그인 상태면 /projects다 — 랜딩이 선 뒤에도 그렇다. 쿼리를 읽지 않는다
   signin/page.tsx       로그인(GitHub·Google). Auth.js의 pages.signIn·pages.error가 여기다.
                         ⚠️ 보호 경로(isProtectedPath)에 넣으면 로그인이 통째로 죽는다 — 목적지를 안 보므로
@@ -19,7 +19,7 @@ app/
   signin/link/[challenge]/   계정 병합 안내. 인가가 없고 challenge가 대신한다 → 보호 경로 밖.
                         ⚠️ 만료를 이 화면으로 말하지 않는다 — /signin으로 되돌린다
   privacy/              방침. 공개 셸 안의 components/privacy/(DESIGN §6.616) · 본문은 messages/en.tsx의 publicDocs.privacy.
-                        ⚠️ 세션을 읽는 이유는 차단이 아니다 — 헤더 primary(publicCta: 로그인이면 Open Malmoi → /projects,
+                        ⚠️ 세션을 읽는 이유는 차단이 아니다 — 헤더 우측(publicAccount: 로그인이면 앱 셸과 같은 아바타 메뉴,
                         아니면 Get started → /signin). 그래서 동적이다
   changelog/            릴리스 노트(DESIGN §6.617). 공개 셸 안 · 원문은 lib/changelog/load(GitHub Release, 토큰 없이 1시간 캐시).
                         ⚠️ 세션을 읽는 이유는 /privacy와 같다(헤더 primary) — 인가 없음(entry-points EXEMPT). GitHub가 실패해도 200이다
@@ -120,6 +120,8 @@ app/
                         요청 헤더를 상류로 넘겨 세션 쿠키가 Blob 호스트에 닿는다. 상류 호출(readImage)은
                         헤더를 하나도 안 넘기고, 그 사실은 image-proxy-isolation.test.ts가 소스에서 상시로 센다.
                         인가·속도 제한 없음(EXEMPT에 등재) · 키는 isStoredImageKey만 · 실패는 전부 빈 404
+  api/images/email/[...key]/  초대 메일 썸네일의 PNG 변환판(2026-09-28, #140) — 위와 같은 검증·읽기 뒤 emailThumbnailPng(96×96).
+                        Gmail이 WebP 알파를 버린다. 프로젝트 썸네일 키만. /api/images/ 아래라 WAF 규칙이 그대로 덮는다
   api/auth/[...nextauth]/  Auth.js 핸들러(auth.ts의 handlers를 그대로 내보낸다). 인가를 지나지 않는 것이
                         당연해서 entry-points의 면제 목록에 이름으로 든다
   api/github/callback/  ⚠️ matcher에 넣지 않는다 — 로그인 화면으로 302되면 code가 사라진다.
@@ -133,7 +135,7 @@ middleware.ts           인증 차단의 유일한 1차 지점 + CSP의 유일�
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 25개 + tone.ts·focus.ts 헬퍼 (focus.ts는 2026-09-24 audit B5 —
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 26개(2026-09-28 IconTile) + tone.ts·focus.ts 헬퍼 (focus.ts는 2026-09-24 audit B5 —
                         포커스 착지 셋 landFocus·neighbourFocus·useLandAfter, DESIGN §7) (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
@@ -182,6 +184,8 @@ components/
                         ⚠️ 사이드바 폭이 aside가 아니라 여기 Panel에 있다(200/240/320) — 둘 다 들면
                         고정 폭이 드래그를 덮어 "핸들만 움직인다"가 된다
                         ⚠️ 행의 gap-2가 핸들 폭(w-2)으로 옮겨 갔다 — gap 안에 핸들을 끼우면 8+8+8이다
+                        ⚠️ LNB 접기(40 레일)도 여기다 — collapsible 패널이라 버튼과 드래그가 같은 판정이다.
+                        sidebar-collapse.ts가 그 상태를 사이드바에 넘기는 컨텍스트다(사이드바는 숨기기만 한다)
   translations/workspace/  **번역 작업 화면** (2026-09-23, translation-rework C4 — DESIGN §6.1a). workspace(draft·이동·폭의
                         **한 소유자** — 저장·Revert·Publish 확인이 전부 여기서 갈린다) · tree-panel · key-list · locale-panel ·
                         filter-menu · use-leave-guard(뒤로가기는 capture 단계 popstate에서 되돌리고 새로고침·닫기는
@@ -204,15 +208,16 @@ components/
                         않는다 — 문서가 스크롤되지 않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다.
                         data-public-scroller가 랜딩 스테이지·공개 문서 목차의 스크롤 대상 표식이다. 해시가 tabindex 든 헤딩을
                         가리키면 마운트 때 그 헤딩이 포커스를 받는다. bare는 스크롤러를 안 만든다(/docs는 페이지가 든다). ⚠️ 헤더는 세션을 읽지
-                        않는다 — primary는 페이지가 publicCta로 정해 넘긴다. route group 레이아웃으로 묶지 않는다(이동 때 스크롤러 재마운트)
+                        않는다 — 우측 primary는 페이지가 publicAccount로 정해 넘기고, 로그아웃은 lib/auth/sign-out을 참조로 넘긴다. route group 레이아웃으로 묶지 않는다(이동 때 스크롤러 재마운트)
                         footer는 셸 밖 2열 골격(signin/auth-layout — /signin·초대·계정 병합)도 두 패널 아래에 그린다 — 푸터 렌더러가 하나다
   privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로)
   docs/                 `/docs/*` 조각 — guide-markdown(서버 — react-markdown에 로더 트리 사본을 꽂고 요소를 매핑한다.
                         ⚠️ urlTransform을 덮지 않는다 · rehype-raw 없음 — raw HTML은 글자로 나가므로 원고에서 게이트가 막는다) · doc-frame(그릇 · 이전/다음 · 장 개요 행 · 개요 두 갈래) ·
                         code-block(클라이언트 — Copy + visually-hidden live region) · nav-link(클라이언트 — usePathname 정확 일치) ·
                         legacy-hash(클라이언트 — 옛 /docs#id → router.replace, 표는 서버가 넘긴다) · requested-path(404 주소) ·
-                        classes.ts(서버·클라이언트가 같이 쓰는 클래스 — "use client" 모듈에 두면 값이 아니라 참조가 온다)
-  changelog/            `/changelog` 조각 — release-entry(서버 — 항목 하나: 자기 링크 버전 h2 · utcDay · View on GitHub) ·
+                        classes.ts(서버·클라이언트가 같이 쓰는 클래스 — "use client" 모듈에 두면 값이 아니라 참조가 온다. 공개 문서 셋(/docs·/privacy·/changelog)의
+                        글자 급·간격 한 벌: SECTION_HEADING · SUB_HEADING · MINOR_HEADING · PROSE · LIST)
+  changelog/            `/changelog` 조각 — release-entry(서버 — 항목 하나: 버전 h1 = 그 판의 GitHub Release 링크 · utcDay) ·
                         release-markdown(서버 — GitHub 원문 렌더러. ⚠️ GuideMarkdown을 재사용하지 않는다 — 원고 전용 전제를 든다.
                         rehype-raw 없음 · urlTransform 기본값 · 이미지는 링크로. 원고와 같은 급은 docs/classes.ts 상수로만 공유한다)
   public-doc-toc.tsx · public-doc-table.tsx
@@ -369,6 +374,7 @@ lib/
                         seat-notice(좌석 라벨 갈래 + EDITOR 우선순위. ⚠️ 서버 전용 — invitation이
                         node:crypto를 문다. 화면은 값만 받는다) ·
                         lock(lockUser — 인증 왕복 셋의 User 행 잠금 · lockProjectAccess — Project→Surface 잠금 뒤 멤버십·역할·보관 재판정, 순수 판정은 access의 planLockedAccess) · message · landing · invite-label ·
+                        sign-out(로그아웃 Action 한 벌 — 앱 셸·공개 셸 헤더가 사용자 메뉴에 참조로 넘긴다. 함수 단위 "use server") ·
                         profile(⚠️ GitHub provider의 기본 userinfo를 대체한다 — @auth/core는 /user/emails에서
                         주소만 뽑고 verified를 버려, 검증한 주소와 저장되는 주소가 갈린다. /user 조회 실패는
                         던지고 검증 실패는 email을 비워 signIn이 막게 한다) ·
@@ -384,7 +390,8 @@ lib/
                         호스트는 라우트가 서버에서 붙인다. ⚠️ isStoredImageKey는 planImageDelete의 일반화가
                         아니다 — 그쪽 호스트 검사는 접미 일치라 남의 스토어를 통과시킨다(방향이 반대)
                         · normalize(server-only. sharp로 EXIF 방향
-                        적용 → 192px 이내 축소 → WebP 재인코딩) · store(server-only Vercel Blob I/O +
+                        적용 → 192px 이내 축소 → WebP 재인코딩) · email-thumbnail(server-only. 저장본 → 96×96 PNG, 초대 메일 전용 —
+                        메일 클라이언트가 WebP 알파를 버린다, #140) · store(server-only Vercel Blob I/O +
                         readImage — 프록시의 상류 호출. ⚠️ fetch에 헤더를 하나도 안 넘긴다) ·
                         message(거부 → 문구). 실 저장소 검증·고아 후보 조회는 pnpm smoke:blob
                         ⚠️ **normalize는 인증·사용자·Blob·DB에 닿지 않는다** — bytes → bytes라
@@ -471,7 +478,7 @@ lib/
                         · disclosure(sectionGaps — 등재 ↔ 본문의 절) · doc-text(docText·docDigest — 본문 텍스트·해시,
                         node:crypto라 테스트 전용). 실물 대조는 __tests__/policy-gate.test.tsx(ARCHITECTURE §6.035)
   invitation-email/     초대 메일(PRODUCT §4.1 · ARCHITECTURE §6.02). 순수 판정 — recipients(다중 입력·행별 역할·정규화 중복 거부) ·
-                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html 프로젝트 카드 — 템플릿·카드 조각 두 벌은 template.ts이고 코드가 정본(첫 시안은 대조 기준이 아니다), 사용자 값 1회 치환, 이름은 60 grapheme 자르기 → 이스케이프, 썸네일은 planProjectImageDelete의 키로 mal-moi.com/api/images/ 고정 URL, 폴백 톤은 TONE_HEX, 로고·Box는 public/email/ 고정 URL) ·
+                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html 프로젝트 카드 — 템플릿·카드 조각 두 벌은 template.ts이고 코드가 정본(첫 시안은 대조 기준이 아니다), 사용자 값 1회 치환, 이름은 60 grapheme 자르기 → 이스케이프, 썸네일은 planProjectImageDelete의 키로 mal-moi.com/api/images/email/ 고정 URL(PNG 변환판), 폴백 톤은 TONE_HEX, 로고·Box는 public/email/ 고정 URL) ·
                         config(env 맵 → ready/unavailable, origin을 VERCEL_ENV와 대조) · result(batch 응답 → 요청 단위
                         accepted/rejected/unknown) · limits(상수, 잎). 껍데기(server-only) — issue(Project 잠금 안 발급·재발급,
                         메일을 안 보낸다 — 재발급은 옛 링크의 조건부 닫기 count=1이 선행조건) · send(commit 뒤 Resend batch 한 번,
@@ -571,7 +578,7 @@ lib/
                         ⚠️ 잎(import 0) — 스테이지 클라이언트가 값으로 읽는다. 같은 스크롤 위치 → 같은 프레임이
                         역방향 스크럽의 조건이라 이전 프레임을 입력으로 받지 않는다. `/`에 무엇을 그릴지는
                         여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다. 공개 셸 헤더의
-                        primary(publicCta — 라벨을 사전 키로 준다, 그 모듈이 잎이라서)도 그 파일이다
+                        계정(publicAccount — 로그인이면 아바타 메뉴의 이름·사진)도 그 파일이다
   changelog/            `/changelog`의 원문 읽기. parse(parseReleases — Zod 검증 · 앱 태그 v<x.y.z>만 · published_at 내림차순, 같은
                         시각은 semver 숫자순 · truncated = 거르기 전 100건) · markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog ·
                         imagesToLinks) · load(server-only 껍데기 — fetch · revalidate 3600 · 3초 타임아웃 · ⚠️ 던지지 않는다, 로그엔 status와

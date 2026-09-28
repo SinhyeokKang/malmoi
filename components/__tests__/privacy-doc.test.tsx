@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 
+import { PROSE } from "@/components/docs/classes";
 import { PrivacyDoc } from "@/components/privacy/privacy-doc";
 import { m } from "@/lib/i18n";
 import { utcDay } from "@/lib/utc-time";
@@ -113,27 +114,27 @@ describe("PrivacyDoc — 구조", () => {
 });
 
 describe("PrivacyDoc — 그릇 (시안 1e)", () => {
-  it("컨테이너 1120 · 본문 720 + 목차 200 · 간격 64 · 상하 120", async () => {
+  it("컨테이너 1120 · 본문 720 + 목차 200 · 간격 64 · 위 64(`/docs`·`/changelog`와 같다) · 아래 120", async () => {
     const { container } = await doc();
     const grid = container.firstElementChild;
     expect(grid?.className.split(/\s+/)).toEqual(
-      expect.arrayContaining(["mx-auto", "max-w-[1120px]", "px-10", "py-30", "grid", "grid-cols-[minmax(0,720px)_200px]", "justify-between", "gap-16"]),
+      expect.arrayContaining(["mx-auto", "max-w-[1120px]", "px-10", "pt-16", "pb-30", "grid", "grid-cols-[minmax(0,720px)_200px]", "justify-between", "gap-16"]),
     );
   });
 
-  it("본문은 16/1.75이고 보조 색이 아니다", async () => {
+  /** 공개 문서 공통 급(`components/docs/classes.ts`) — `/docs`·`/changelog`와 한 벌이다(2026-09-28 사용자). */
+  it("본문은 공통 급(16/1.6)이고 보조 색이 아니다", async () => {
     const { container } = await doc();
     for (const p of container.querySelectorAll("section p")) {
-      expect(p.className).toContain("text-prose");
-      expect(p.className).toContain("leading-[1.75]");
+      expect(p.className).toBe(PROSE);
       expect(p.className).not.toContain("text-muted-foreground");
     }
   });
 
-  it("첫 절은 48, 이후는 56 위에 선다", async () => {
+  it("절마다 공통 급의 절 간격(32) 위에 선다", async () => {
     const { container } = await doc();
     const tops = [...container.querySelectorAll("section")].map((s) => s.className.split(/\s+/).find((c) => /^mt-/.test(c)));
-    expect(tops).toEqual(["mt-12", ...Array(6).fill("mt-14")]);
+    expect(tops).toEqual(Array(7).fill("mt-8"));
   });
 });
 

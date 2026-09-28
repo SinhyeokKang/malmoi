@@ -64,7 +64,7 @@ beforeEach(() => {
 });
 afterEach(async () => { for (const entry of gates.splice(0)) await act(async () => entry.open()); });
 
-it("다른 키로 가는 동안 옛 키의 칸은 읽기 전용이고, 새 상세가 오면 다시 쓸 수 있다", async () => {
+it("다른 키로 가는 동안 옛 키의 칸은 서지 않고(골격), 새 상세가 오면 다시 쓸 수 있다", async () => {
   const user = userEvent.setup();
   const initial = props();
   const b = gate();
@@ -76,9 +76,9 @@ it("다른 키로 가는 동안 옛 키의 칸은 읽기 전용이고, 새 상�
   expect(mocks.replace).toHaveBeenCalledTimes(1);
   // 옛 화면이 그대로 선다 — 폴백으로 치우지 않는다.
   expect(container.querySelector("[data-fallback]")).toBeNull();
-  expect(area(container, "zh")?.readOnly).toBe(true);
-  await user.type(area(container, "zh")!, "空");
-  expect(area(container, "zh")?.value).toBe("");
+  // 옛 키의 칸이 새 선택 옆에 서면 거기 친 입력이 확인 없이 교체된다(audit-ux #1) — 골격이 칸 자체를 내린다.
+  expect(area(container, "zh")).toBeNull();
+  expect(container.querySelector("[data-skeleton-detail]")).not.toBeNull();
   await arrive(b);
   expect(container.textContent).toContain("common.k2");
   expect(area(container, "zh")?.readOnly).toBe(false);
@@ -108,7 +108,7 @@ it("필터가 선택 키를 결과 밖으로 밀면 후속 replace의 응답까�
   expect(container.textContent).toContain("Select a key");
 });
 
-it("트리 전환 중에도 옛 키의 칸은 읽기 전용이고, 첫 키가 열리면 풀린다", async () => {
+it("트리 전환 중에도 옛 키의 칸은 서지 않고(골격), 첫 키가 열리면 쓸 수 있다", async () => {
   const user = userEvent.setup();
   const initial = props();
   const first = gate();
@@ -118,7 +118,8 @@ it("트리 전환 중에도 옛 키의 칸은 읽기 전용이고, 첫 키가 �
   const node = [...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.includes("common") && !b.closest("[data-key-row]"));
   await user.click(node!);
   expect(mocks.push).toHaveBeenCalledTimes(1);
-  expect(area(container, "zh")?.readOnly).toBe(true);
+  expect(area(container, "zh")).toBeNull();
+  expect(container.querySelector("[data-skeleton-detail]")).not.toBeNull();
   await arrive(first);
   expect(mocks.replace).not.toHaveBeenCalled();
   expect(area(container, "zh")?.readOnly).toBe(false);

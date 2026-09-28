@@ -27,6 +27,7 @@ import type { AdapterChoice } from "@/lib/onboarding/types";
 import { cn } from "@/lib/utils";
 
 import { failureText } from "../failure";
+import { IconTile } from "@/components/ui/icon-tile";
 
 /**
  * ② 로케일 파일 — 좌 240 후보 목록 + 우 키·값 표 (DESIGN §6.7).
@@ -174,9 +175,9 @@ export function FilesStep({
         );
         const content = (
                   <>
-                    <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-md", active ? "bg-background" : "bg-muted")}>
-                      <Glyph className="text-muted-foreground size-5" aria-hidden />
-                    </span>
+                    <IconTile size="lg" className={active ? "bg-background" : "bg-muted"}>
+                      <Glyph aria-hidden />
+                    </IconTile>
                     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                       {/* 경로는 사용자가 자기 리포에서 확인할 수 있는 유일한 단서다 — **이름 자리가 경로다**. */}
                       {/* ⚠️ 240px 열이라 둘 다 잘리고 선택 안 한 후보는 경로를 읽을 곳이 없다 — 잘림을 받되 전문을 `title`로 든다 (malmoi#97). */}
@@ -252,7 +253,7 @@ export function FilesStep({
             {[0, 1].map((i) => (
               <li key={i} className={cn("flex items-center gap-3 p-3", i > 0 && "border-divider border-t")}>
                 <Skeleton className="size-4 rounded-full" />
-                <Skeleton className="size-10 rounded-md" />
+                <Skeleton className="size-10 rounded-sm" />
                 <div className="flex flex-1 flex-col gap-1.5">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-3.5 w-24" />

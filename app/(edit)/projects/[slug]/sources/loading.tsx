@@ -40,7 +40,7 @@ export default function SourcesLoading() {
 
       <PanelBody width="fluid" className="space-y-4" aria-hidden>
         <div className="border-border bg-background overflow-hidden rounded-lg border">
-          <div className="border-divider flex items-center gap-2 border-b px-4 py-3">
+          <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
             <SkeletonLine text="text-base" className="w-16" />
             <Skeleton className="size-5 rounded-full" />
             <div className="ml-auto w-44">
