@@ -132,6 +132,7 @@ git push origin dev
 **Full changelog:** <compareBase>v<next>
 ```
 
+- ⚠️ **이 양식이 곧 `/changelog` 화면 문구다** — 앱이 Release 본문을 그대로 읽어 그린다(`lib/changelog/`, 1시간 캐시). 제목은 한 단계 내려 서고(`##` → `h3`), 끝의 `**Full changelog:**` 줄은 걷히고, **이미지는 `<img>`가 아니라 alt 글자의 링크로 바뀐다** — 스크린샷을 넣으려면 alt를 링크 문장으로 쓴다. raw HTML은 글자로 보이니 쓰지 않는다. 태그가 `v<x.y.z>`가 아니거나 draft·prerelease면 화면에 없다.
 - 남는 커밋이 0이면 Highlights에 `Maintenance release — no user-facing changes.` 한 줄, Features·Fixes 생략.
 - **1.0.0(seed)만 다르다**: `compareBase`가 null이니 Full changelog 줄을 뺀다. Highlights는 첫 공개 릴리스로, Features는 커밋 나열이 아니라 README의 기능 절을 기준으로 **지금 할 수 있는 것**을 영역별로 요약한다(사실 대조 소스는 PRODUCT·README·가이드). PR body는 1.0.0이어도 ① 양식 그대로다(커밋을 영역별로 접는다).
 
