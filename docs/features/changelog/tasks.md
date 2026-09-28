@@ -6,9 +6,9 @@
 
 ## 커밋 1 — 날짜 포맷터 통일 (`refactor(time): unify absolute dates on utc-time`)
 
-- [ ] **T0a `utcDay` · `utcMinute` 형** — `lib/__tests__/utc-time.test.ts`를 먼저 고친다. `utcDay(2026-09-27T16:34:14Z)` = `Sep 27, 2026`, `utcMinute` = `Sep 27, 2026 16:34 UTC`, 1월·12월·한 자리 날짜. **TZ 고정**: 파일 최상단에서 `process.env.TZ = "Asia/Seoul"`을 세우고 가드 단언 `expect(new Date("2026-09-27T16:34:14Z").getDate()).toBe(28)`를 먼저 둔다(TZ가 실제로 먹었다는 증거 — 없으면 CI(UTC)에서 공허하게 통과한다).
+- [x] **T0a `utcDay` · `utcMinute` 형** — `lib/__tests__/utc-time.test.ts`를 먼저 고친다. `utcDay(2026-09-27T16:34:14Z)` = `Sep 27, 2026`, `utcMinute` = `Sep 27, 2026 16:34 UTC`, 1월·12월·한 자리 날짜. **TZ 고정**: 파일 최상단에서 `process.env.TZ = "Asia/Seoul"`을 세우고 가드 단언 `expect(new Date("2026-09-27T16:34:14Z").getDate()).toBe(28)`를 먼저 둔다(TZ가 실제로 먹었다는 증거 — 없으면 CI(UTC)에서 공허하게 통과한다).
   검증: `pnpm test lib/__tests__/utc-time.test.ts` green. `grep -rn "toLocaleDateString\|toLocaleTimeString" app components lib | grep -v __tests__` 0건.
-- [ ] **T0b 날짜 전용 자리** — `lib/events/view.ts` `dayLabel`(표시만, `dayKey`는 ISO 유지) · `logs/page.tsx:145·185` · `privacy-doc.tsx:33`(표시만, `dateTime`·사전 값 ISO 유지).
+- [x] **T0b 날짜 전용 자리** — `lib/events/view.ts` `dayLabel`(표시만, `dayKey`는 ISO 유지) · `logs/page.tsx:145·185` · `privacy-doc.tsx:33`(표시만, `dateTime`·사전 값 ISO 유지).
   검증: 기존 형을 단언하던 테스트를 새 형으로 옮긴다 — `lib/invitation-email/__tests__/retry-at.test.ts` · `components/__tests__/pending-resend.test.tsx` · `invite-modal.test.tsx` · `settings-layout.test.tsx` + `grep -rn "[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\} UTC" app components lib`로 남은 단언을 센다. Logs 날짜 카드·`/privacy` 시행일 테스트가 없으면 그 자리 DOM 단언을 하나씩 더한다. `policy-gate.test.tsx` green(사전 값 불변).
 
 ## 커밋 2 — 순수 함수 (`feat(changelog): parse GitHub releases`)
@@ -64,7 +64,7 @@
 - [ ] **T9** `pnpm typecheck` + `pnpm test` + `pnpm build` green. 빌드가 GitHub를 부르지 않는지(페이지가 동적이고 sitemap이 정적) 빌드 로그로 본다.
 - [ ] **T10** `docs(PRODUCT)`: §7.7 IA에 `/changelog`. :530 sitemap 목록 · :532 "공개 넷" canonical 목록 · :570-571 헤더 `Home · Docs · GitHub · Get started` → `Home · Docs · Changelog · Get started` · :687 8-3 하단 항목(`Release notes · Docs` → `Changelog · Docs`)과 "GitHub Releases 외부 링크" 설명. 뒤집은 판정 셋의 근거(spec "뒤집는 근거")를 옮긴다. 확인: `grep -n "Release notes\|Home · Docs · GitHub" docs/PRODUCT.md` 0건.
 - [ ] **T11** `docs(DESIGN)`: 공개 셸 화면 목록에 추가, 시안 이탈값(800 한 겹 그릇 · 앵커 자기 링크 · `h4` 급) 등재, "본문이 사전을 지나지 않는 유일한 공개 텍스트" 명시. 고칠 행: :32 · :644 · :654 · :772 · :800(공개 셸 화면 셋 → 넷) · :810 · :811 · :814 · :840(시행일 "날짜 포맷터를 새로 만들지 않는다" → `utcDay`) · :1603(행 접근 이름 예시 형) · :1709-1710. 확인: `grep -n "Release notes\|Home · Docs · GitHub\|[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\} UTC" docs/DESIGN.md` 0건.
-- [ ] **T11b** CLAUDE.md 코드 컨벤션 "날짜" 항목을 새 형(`Sep 27, 2026` / `Sep 27, 2026 16:34 UTC`, 생산자 `lib/utc-time.ts`)으로 고치고 `pnpm sync:agents`를 돌린다. `lib/utc-time.ts` 머리 주석의 L7.1 형도 고친다(T0a).
+- [x] **T11b** CLAUDE.md 코드 컨벤션 "날짜" 항목을 새 형(`Sep 27, 2026` / `Sep 27, 2026 16:34 UTC`, 생산자 `lib/utc-time.ts`)으로 고치고 `pnpm sync:agents`를 돌린다. `lib/utc-time.ts` 머리 주석의 L7.1 형도 고친다(T0a).
 - [ ] **T12** `docs(DIRECTORY)`: `lib/changelog/` · `components/changelog/`.
 - [ ] **T13** `.claude/commands/merge.md` 5단계 ②에 "이 양식이 `/changelog` 화면 문구다 — 이미지는 링크로 바뀐다"를 한 줄 추가하고, `pnpm sync:agents`를 돌린다.
 - [ ] **T14** README에 사용자 노출 링크·날짜 예시가 있으면 대조한다. `/privacy` 참 여부를 확인한다(`/push` 4단계). `guide/`·SHOOTING 매핑에 `Release notes`·헤더 GitHub·옛 시각 형이 찍힌 스크린샷이 있는지 `pnpm guide:check`와 grep으로 본다.
