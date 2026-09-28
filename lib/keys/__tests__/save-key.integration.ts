@@ -273,15 +273,34 @@ describe("applyKeySaveBatch", () => {
     expect(await events()).toEqual([]);
   });
 
-  it("DB 실패는 던지고 앞 키까지 전부 롤백한다 — 부분 커밋이 없다", async () => {
-    // 둘째 키의 쓰기만 실패하게 한다 — 첫 키가 이미 upsert된 뒤다.
+  it("앞 키의 쓰기가 이미 실행된 뒤 마지막 쓰기가 실패하면 전부 롤백한다 — 부분 커밋이 없다", async () => {
+    // 앞 키는 **기존 셀**이라 루프 안에서 `updateMany`가 먼저 실행된다. 뒤 키는 새 셀이라 끝의 `createMany`에서 실패한다.
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "p-s", keyId: "p-k1", localeCode: "ja", value: "old" } });
     await prisma.$executeRawUnsafe(`ALTER TABLE "Translation" ADD CONSTRAINT "boom" CHECK ("value" <> 'boom')`);
     await expect(batch([
       { keyId: "p-k1", changes: [{ localeCode: "ja", value: "やあ" }] },
       { keyId: "p-k2", changes: [{ localeCode: "ko", value: "boom" }] },
     ])).rejects.toThrow();
-    expect(await cell("ja")).toBeNull();
+    // 이미 실행된 UPDATE까지 되돌아갔다 — 값·토큰·사건 모두 그대로다.
+    expect(await cell("ja")).toMatchObject({ value: "old", pendingEditToken: null });
+    expect(await prisma.translation.findUnique({ where: { keyId_localeCode: { keyId: "p-k2", localeCode: "ko" } } })).toBeNull();
     expect(await events()).toEqual([]);
+  });
+
+  it("전달 확인이 유효하면 두 키(기존 셀·새 셀)의 복원 기준이 같은 revision으로 남는다 — 전달 상태를 배치에 한 번 읽는다", async () => {
+    await confirm();
+    const revision = (await prisma.deliveryConfirmation.findFirst({ where: { projectId: "p" } }))?.revision;
+    expect(revision).toEqual(expect.any(String));
+    await batch([
+      { keyId: "p-k1", changes: [{ localeCode: "ko", value: "새 값" }] },
+      { keyId: "p-k2", changes: [{ localeCode: "ko", value: "잘가" }] },
+    ]);
+    const rows = await prisma.translationBaseline.findMany({ where: { projectId: "p" }, orderBy: { keyId: "asc" } });
+    expect(rows.map(r => ({ keyId: r.keyId, localeCode: r.localeCode, restoreValue: r.restoreValue, revision: r.revision }))).toEqual([
+      { keyId: "p-k1", localeCode: "ko", restoreValue: "안녕", revision },
+      // 행이 없던 비-base 셀의 직전 export 값은 빈 문자열이다(단건 저장과 같은 규칙).
+      { keyId: "p-k2", localeCode: "ko", restoreValue: "", revision },
+    ]);
   });
 });
 
