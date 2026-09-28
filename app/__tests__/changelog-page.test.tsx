@@ -76,6 +76,35 @@ describe("`/changelog` — 공개 셸", () => {
   });
 });
 
+/**
+ * 시안 1a·1c·1d: **항목마다 같은 틀**(위 선 + 위아래 40)이고 첫 항목도 예외가 아니다 — 소개 아래 40 뒤에 선이 한 번 선다.
+ * 실패·빈 목록·100건 문장도 **첫 항목 자리의 같은 틀**에 선다. 값이 아니라 "같은 틀인가"를 센다.
+ */
+describe("`/changelog` — 항목 틀", () => {
+  it("첫 항목도 나머지와 같은 틀이다", async () => {
+    const container = await page({ ok: true, releases: TWO, truncated: false });
+    const classes = [...main(container).querySelectorAll("section")].map((s) => s.className);
+    expect(classes).toHaveLength(2);
+    expect(new Set(classes).size).toBe(1);
+    // 같은 문자열이어도 `first:` 변형이면 첫 항목만 선·위 여백을 잃는다 — 특례 자체를 센다.
+    expect(classes[0]).not.toMatch(/(^|\s)first:/);
+  });
+
+  it("실패·빈 목록·100건 문장은 항목과 같은 틀에 선다", async () => {
+    const entry = main(await page({ ok: true, releases: TWO, truncated: true }));
+    const block = entry.querySelector("section")!.className;
+    const olderBlock = [...entry.querySelectorAll("p")].at(-1)?.parentElement;
+    expect(olderBlock?.className).toBe(block);
+    for (const loaded of [{ ok: false } as const, { ok: true, releases: [], truncated: false } as const]) {
+      const container = await page(loaded);
+      const sentence = [...main(container).querySelectorAll("p")].at(-1);
+      expect(sentence?.parentElement?.className).toBe(block);
+      // 이름 없는 section을 두지 않는다(POSTMORTEM 2026-09-15) — 틀은 같고 태그는 div다.
+      expect(sentence?.parentElement?.tagName).toBe("DIV");
+    }
+  });
+});
+
 describe("`/changelog` — 목록", () => {
   it("릴리스가 받은 순서대로 항목이 된다", async () => {
     const container = await page({ ok: true, releases: TWO, truncated: false });
