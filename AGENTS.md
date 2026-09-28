@@ -86,7 +86,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 로그인 | Auth.js v5 **DB 세션** — GitHub + Google. 로그인은 **검증된 이메일만** 요구하고 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. **같은 주소에 두 번째 로그인 수단을 붙이는 challenge 왕복은 `lib/login-link/`**(세션이 없는 채로 도는 흐름이라 진정성은 Auth.js의 state 쿠키가 든다), **세션 폐기는 `lib/session-revocation/`**(challenge에 세션·state 지문을 담는다) — 형은 같고 증명이 다르니 섞지 않는다. ⚠️ **Google 동의 화면은 External + 게시(In production)다** — Internal로 바꾸면 조직 밖 계정을 `403 org_internal`로 막아 초대 경로가 통째로 죽는다(게시 절차는 OPERATIONS) |
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** — `@octokit/oauth-app`(`octokit`이 재수출하는 `OAuthApp`으로는 안 된다) |
-| 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**. 소비자는 프로필 사진 하나로 **확정**이다(ARCHITECTURE §6.7) |
+| 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**. 소비자는 프로필 사진·프로젝트 썸네일 둘이다(ARCHITECTURE §6.7·§6.75) |
 | 초대 메일 | Resend REST API — **SDK 없이 `fetch`**. 환경변수 셋이 전부 `optionalEnv`라 **비거나 틀려도 발급·발송만 막힌다** |
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
