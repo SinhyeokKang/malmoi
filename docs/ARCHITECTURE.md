@@ -2646,7 +2646,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `detect_formats` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / 기존: `project:settings` | 파일 다운로드라 두 경로 다 grant. 둘 다 리포 쓰기 권한 확인. 샘플 확인값 발급 |
 | `list_keys` | OWNER / EDITOR (표면) | 없음 | 검색·상태 필터·cursor, 페이지 100 |
 | `get_key` | OWNER / EDITOR (표면) | 없음 | 로케일 값·설명·사용처·플래그 |
-| `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR(GitHub 조회) |
+| `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR — `pullRequest: { status: "open", number, url } \| { status: "none" } \| { status: "unknown" }`. ⚠️ 조회 실패·시간 초과(`loadOpenPrUrl`의 `undefined`)를 "없음"으로 접지 않는다 — `undefined`는 JSON에서 필드째 사라지므로 상태가 값이다(Codex review CR-04) |
 | `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라) |
 | `preview_revert` | OWNER (표면) | 없음 | Revert 확인값 |
 | `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다 |
@@ -2685,7 +2685,9 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
   공급자)에 실린다. 받아들인 근거: 프로젝트 한정 · `/api/push` 한 곳의 쓰기 · 재발급이 곧 폐기이고, 어차피 그 토큰이 가는 곳이 그
   에이전트가 쓰는 리포의 secret이다. 결과 요약은 **`gh secret set PUSH_TOKEN --repo OWNER/REPO`의 표준입력**으로 넘기라고 말한다 —
   ⚠️ `--body`를 생략한다(`--body -`는 문자 `-`를 저장한다). 이름은 생성 YAML의 `${{ secrets.PUSH_TOKEN }}`과 같다.
-- `update_project`는 이름 저장 뒤 브랜치가 거부되면 `ok` + `failed.baseBranch`다 — 이름 성공을 지우지 않는다(불변식 9).
+- `update_project`는 이름 저장 뒤 브랜치가 거부되면 `ok` + `failed.baseBranch`다 — 이름 성공을 지우지 않는다(불변식 9). 브랜치 코어가
+  **던지면** `ok` + `unconfirmed: ["baseBranch"]`다 — 통신 예외는 롤백을 뜻하지 않아 거부가 아니라 확인 불가이고, `executeTool`의 일괄
+  `unavailable`에 이름 성공이 지워지지 않게 도구 안에서 받는다(Codex review CR-02 · POSTMORTEM 2026-09-20). 브랜치만 요청했으면 그대로 장애다.
 - 도구가 쓴 뒤 캐시 무효화는 Action과 **같은 경로**이고 던지지 않는 형(`revalidateTranslationReaders` · `lib/revalidate-after-commit.ts`의 `settleRevalidate`)이다 — 커밋된 쓰기를
   캐시 장애가 실패로 바꾸지 않는다(POSTMORTEM 2026-09-20).
 
@@ -2701,8 +2703,11 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
   delivery }`(문장은 싣지 않는다 — ref일 수 있다). 재시도 불가(설정) → 그 코드로 거부 + Publish 화면의 `configError` 틀(리포·base branch)
   + `detail { reason, delivery }`. `already-running`·`too-soon`은 Publish 화면의 같은 문장이고 `too-soon`은 `retryAfterSeconds`를 싣는다.
   코드 없는 실패는 실행 전 거부(잠금 뒤 인가·readiness)라 그 코드의 화면 문장이다. `reconfirm`은 Logs의 사유 문장이다.
+  ⚠️ **리포 라벨 조회는 설정 오류 갈래에서만 하고, 실패하면 slug 라벨로 떨어진다** — 실행은 이미 끝났으므로 보조 조회의 예외가
+  `executeTool`의 일괄 `unavailable`로 `code`·`delivery`를 지우면 안 된다(Codex review CR-03).
 - ⚠️ **도구가 던지면 SDK가 예외 문구를 결과에 싣는다**(`createToolError(error.message)`) — §6.0의 500 본문 규칙을 어긴다. 그래서
   `lib/mcp/tools/execute.ts`가 문맥 생성까지 try 안에서 전부 잡아 `unavailable`로 접고 원인은 로그에만 남긴다.
+  ⚠️ **그 catch는 이미 확정된 결과를 모른다** — 커밋 뒤 단계(부분 성공 뒤 둘째 코어·실행 뒤 보조 조회)의 예외는 도구 안에서 받는다.
 - **`needs-browser`도 `isError: true`다** — `{ status, reason, url, message }`, `retryable` 없음. GitHub 연결·재인가·설치는 state 쿠키가
   방어선인 브라우저 왕복이라(§6.4) 도구가 대신하지 않는다. `not-connected`·`reauthorize`·`no-installations`는 전부 `/account` 하나다
   (`/projects/new`로 보내면 사용자가 브라우저에서 생성을 끝내 에이전트 흐름이 끊긴다). 후보 없음(`no-candidates`)만 신규는
