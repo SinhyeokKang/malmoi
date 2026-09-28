@@ -9,10 +9,20 @@ import { routes } from "@/lib/routes";
  * ⚠️ **리포가 public이어야 이 링크가 산다** — private이면 로그아웃 방문자에게 404다
  * (2026-09-18 public 전환).
  */
-export const GITHUB_REPO_URL = "https://github.com/SinhyeokKang/malmoi";
+export const GITHUB_REPO = "SinhyeokKang/malmoi";
+
+export const GITHUB_REPO_URL = `https://github.com/${GITHUB_REPO}`;
 
 /** 릴리스 노트 — `/merge`가 머지마다 만드는 GitHub Release 목록이다. 사용자 메뉴와 사이드바 하단이 같이 읽는다. */
 export const GITHUB_RELEASES_URL = `${GITHUB_REPO_URL}/releases`;
+
+/** `/changelog`가 읽는 원문 — **토큰 없이** 부른다(리포가 public이라는 위 전제와 같다). */
+export const GITHUB_RELEASES_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
+
+/** 그 판의 Release 페이지 — compare가 없는 첫 판에도 선다. */
+export function releaseTagUrl(tag: string): string {
+  return `${GITHUB_RELEASES_URL}/tag/${tag}`;
+}
 
 export type FooterLink = { href: string; label: string; external: boolean };
 
