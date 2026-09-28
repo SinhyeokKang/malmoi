@@ -53,6 +53,8 @@ git push --force-with-lease=dev:<3단계 SHA> origin dev
 
 `git log --oneline -3`으로 dev와 origin/main이 같은 해시인지.
 
+⚠️ **동기화 push 뒤 그 SHA의 dev CI가 끝나기 전에는 dev에 다시 push하지 않는다** (2026-09-28, v1.0.1). 그 SHA는 main 커밋이자 릴리스 태그다 — 다음 dev push가 `ci.yml`의 `cancel-in-progress`(그룹 `ci-<ref>`)로 그 run을 취소하면, 취소된 run이 main 커밋·Release에 ✗로 남는다. main CI와는 그룹이 달라 겹치지 않는다 — 겹치는 것은 dev의 다음 push다. `gh run list --branch dev --commit <SHA>`가 completed인지 보고 넘어간다. 이미 취소됐으면 `gh run rerun <id>`. `/merge` 10단계와 같은 규칙이다.
+
 ## 리포트
 
 ```

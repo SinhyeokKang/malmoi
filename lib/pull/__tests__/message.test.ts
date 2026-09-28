@@ -26,4 +26,12 @@ describe("pullRevalidates", () => {
   it.each(["unauthorized", "not-ready", "forbidden", "unavailable", "invalid input"])("runSync 앞의 거부 %s는 트리가 없다", error => {
     expect(pullRevalidates({ status: "failed", error, delivery: "not-started", retryable: false })).toBe(false);
   });
+  /**
+   * ⚠️ **응답을 잃은 Publish(`unconfirmed`)는 트리가 온다** (malmoi#135) — Action 응답과 함께 재검증 트리가 사라졌지만 서버가 PR을
+   * 냈을 수 있으므로 `usePublish`가 refresh로 트리를 부르고, 교차 잠금은 그 트리까지 간다(옛 `To send`로 Sync·Publish가 켜지지 않게).
+   * 서버의 세션 거부 `unavailable`과 같은 코드를 쓰면 둘을 못 가른다.
+   */
+  it("응답을 잃은 실행(unconfirmed)은 refresh 트리를 기다린다 (malmoi#135)", () => {
+    expect(pullRevalidates({ status: "failed", error: "unconfirmed", delivery: "unknown", retryable: true })).toBe(true);
+  });
 });

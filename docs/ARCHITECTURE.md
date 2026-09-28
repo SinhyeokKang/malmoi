@@ -946,18 +946,25 @@ action 스코프에 **그 뒤의 모든 transition을 얽는다**(POSTMORTEM 202
 푼다. 값이 아니라 식별자인 이유는 재검증이 같은 수치를 줄 수 있어서다. Action 전이 아니라 결과 시점에 뜨는 이유는 도는 동안의 키·필터
 이동이 prop을 바꾸기 때문이고, 그 시점에 재검증 트리가 이미 커밋돼 있을 수 없다(Next가 promise를 먼저 풀고 트리를 나중에 커밋한다).
 상한 `COMMIT_WAIT_MS`(10 s)가 트리가 끝내 안 오는 갈래를 푼다. ⚠️ **"거부는 트리가 없다"가 아니다** — 어느 결과가 트리를 싣고 오는지는
-Action의 `revalidatePath` 자리가 정하고, 그 분류를 순수 함수 둘이 든다: Sync는 `importRevalidates`(`runRepositoryImport`의 `try` 안 거부 —
-`reconfirm`·`already-running`·`not-ready`… — 도 `finally`를 지난다, `try` 앞의 거부만 없다. ⚠️ 클라이언트가 접은 throw `unconfirmed`는 예외로 `true`다 — 아래), Publish는 `pullRevalidates`(`runSync`를
-지난 `failed`도 온다 — 표식은 실행 실패의 `code`와 게이트의 `already-running`·`too-soon`, `delivery`는 게이트 거부도 `not-started`라 못
-가른다). Revert는 `reverted`만 기다린다. 트리를 기다리는 동안 [Publish]를 누르면 새 미리보기가 아니라 결과가 열린다. 결과 문구는
+Action의 `revalidatePath` 자리가 정하고, 그 분류를 순수 함수 둘이 든다. Sync는 `importRevalidates`다 — `runRepositoryImport`의 `try` 안
+거부(`reconfirm`·`already-running`·`not-ready`…)도 `finally`를 지나고, `try` 앞의 거부만 트리가 없다. Publish는 `pullRevalidates`다 —
+`runSync`를 지난 `failed`도 온다. 표식은 실행 실패의 `code`와 게이트의 `already-running`·`too-soon`이고, `delivery`는 게이트 거부도
+`not-started`라 못 가른다. 둘 다 클라이언트가 접은 throw `unconfirmed`는 `true`다(아래 응답 유실 예외). Revert는 `reverted`만 기다린다. 트리를 기다리는 동안 [Publish]를 누르면 새 미리보기가 아니라 결과가 열린다. 결과 문구는
 promise가 풀릴 때 서도 된다. 소비자는 Home Sync · 번역 화면
 Sync · `usePublish` · Revert 넷이다. 같은 이유로 그 뒤에 `router.refresh()`를 또 부르지 않는다(두 번째 전체 렌더가 표시 없이 돈다)
-— **예외 하나**: 응답을 잃은 Sync(`runRepositoryImport` 호출이 throw — `unconfirmed`, malmoi#132)는 재검증 트리가 응답과 함께 사라지고
+— **예외는 응답을 잃은 실행 하나의 부류이고 소비자가 셋이다**(Sync · Publish · Sources 첫 적재). 응답을 잃은 Sync(`runRepositoryImport` 호출이 throw — `unconfirmed`, malmoi#132)는 재검증 트리가 응답과 함께 사라지고
 서버가 Sync를 끝냈는지(편집 폐기 포함) 모르므로 `SyncButton`이 **한 번** refresh하고(재실행은 안 한다 — 두 번 돌 수 있다) 호스트는 그
 트리까지 잠금을 잇는다. 번역 화면은 그 트리를 **새 세대**로 받는다(끝났다면 들여온 키가 목록에 서야 한다). `navigator.onLine === false`면
 부르지 않는다 — Next 16.3의 `fetchServerResponse`는 RSC fetch 실패를 브라우저 내비게이션(MPA 폴백)으로 떨어뜨린다. ⚠️ **온라인이어도 그
 폴백 갈래는 남는다**(`!res.ok || !isFlightResponse` — 5xx 오류 페이지 · 세션 만료의 `/signin` 302 · 배포 스큐 리로드) — 리로드된 화면이
-서버 상태를 말하므로 거짓 "안 됐다"보다 낫다고 받았다. Publish의 throw(`delivery: "unknown"`)는 아직 이 예외를 안 든다.
+서버 상태를 말하므로 거짓 "안 됐다"보다 낫다고 받았다. **Publish와 Sources 첫 적재도 같은 예외를 든다** (malmoi#135): `triggerPullAction`
+throw는 `UNCONFIRMED_PULL`(`error: "unconfirmed"`, `lib/pull/message.ts` — ⚠️ 서버의 세션 거부 `unavailable`과 코드를 나눠야
+`pullRevalidates`가 둘을 가른다)이고 `pullRevalidates`가 `true`라 `usePublish`가 옛 트리 기준으로 `wait()`를 뜬 뒤 **한 번** refresh한다
+— 잠금이 refresh 트리까지 간다. ⚠️ **그 트리가 서버가 끝낸 뒤의 트리라는 보장은 없다** — 서버가 아직 Publish를 돌리는 중이면 refresh는
+옛 트리를 싣고 와 잠금이 먼저 풀린다. 그때 데이터를 지키는 것은 서버 게이트(`already-running`)다. 번역 화면 목록은 새 세대가 아니다: Publish는 키를 더하거나 지우지 않아 평소 Publish 재검증과 같은
+병합이 맞다. `runFirstIngest` throw는 `didn't finish`를 단언하지 않고 refresh하며, 바뀐 `data`를 받는 effect가 상세를 한 번 읽는다
+(⚠️ 다시 눌렀을 때 서버가 `not-awaiting`으로 거부하는 것은 **끝난** 적재뿐이다 — 아직 도는 적재는 `finally`가 `busy`를 refresh 트리보다
+먼저 내려 두 번째 첫 적재와 겹칠 수 있다. 둘 다 리포 값만 싣고 아직 편집이 없어 해가 작다고 받았다).
 ⚠️ **알려진 예외 둘이 남아 있다** — `reconnect-button.tsx`의 `startTransition(async …)`와 Add sources의 `run(async … addSurfaces)`(`add-sources-modal.tsx`, `useTransition` 안이라 그동안 이동이 얽힌다 — 모달이 닫기를 막는 동안의 일이라 받았다)가 아직 이 형이다(후속 이슈).
 
 ⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Publish]가 사는 곳은
@@ -2565,6 +2572,62 @@ PNG/JPEG 시그니처를 검사한 뒤 `normalizeImage`(`lib/upload/normalize.ts
 대한 Blob 호스트·키 형식 allowlist와 **실제 삭제 직전 세션 사용자 경로 검사**를 모두 통과해야 한다.
 실패 로그에는 단계·사용자 ID만 남기고 SDK·DB 오류 원문과 URL을 기록하지 않는다.
 
+**읽기는 자사 출처를 지난다** (2026-09-28). ⚠️ **브라우저에 Blob 호스트를 주지 않는다** — 기업 웹
+필터(FortiGate 실측)가 `*.vercel-storage.com`을 "File Sharing and Storage"로 막고 TLS를 자기 CA로
+가로채, 그 망의 브라우저는 프로필 사진·프로젝트 썸네일에서 `ERR_CERT_AUTHORITY_INVALID`를 받는다.
+잎의 폴백(`useImageFallback`)이 조용히 이니셜·타일로 떨어지므로 **사용자는 업로드가 실패한 줄 안다**
+(업로드 자체는 끝까지 된다). `mal-moi.com`은 가로채이지 않는다.
+
+- **매핑은 `imageSrc`(`lib/upload/image.ts`) 하나다** — 저장된 URL에서 `planImageDelete`·
+  `planProjectImageDelete`로 키를 뽑아 `/api/images/<key>`로 바꾸고, 우리 객체가 아니면(공급자 아바타·
+  `null`) **입력 그대로** 돌려준다. 키 판정을 새로 쓰지 않으므로 경로 조각(`..`·`%2f`)도 그 allowlist가
+  막는다. ⚠️ **환경변수를 읽지 않는다** — 클라이언트가 닿는 잎이고 `BLOB_PUBLIC_HOST`는
+  `NEXT_PUBLIC_`이 아니라 브라우저에서 `undefined`다(읽으면 매핑이 **조용히 no-op**이 된다).
+- ⚠️ **서빙은 Route Handler(`app/api/images/[...key]/route.ts`)이고 `next.config.ts`의 rewrite가 아니다.
+  이 문장이 이 절에서 가장 중요하다 — 안 적어 두면 다음 사람이 "한 줄이면 되는데"라며 rewrite를 다시 제안한다.**
+  **Next의 외부 rewrite는 요청 헤더를 상류로 그대로 넘긴다** — 로컬 echo 상류로 재현했을 때
+  `cookie: __Secure-authjs.session-token=…`과 `authorization: Bearer …`가 도착했다. `<img src="/api/images/…">`는
+  동일 출처라 브라우저가 세션 쿠키를 붙이고, 이 앱은 **DB 세션**이라 그 토큰이 곧 계정 접근이다. 아바타·썸네일
+  요청 **한 장마다** 나간다. 그래서 상류 호출은 `readImage`(`lib/upload/store.ts`)가 **`fetch`에 헤더를 하나도
+  안 넘기고** 한다. 상시 방어선은 `lib/upload/__tests__/image-proxy-isolation.test.ts`다(소스를 훑어 `headers`
+  옵션과 `request.headers`·`cookies()`를 0으로 고정한다 — 주석은 썩는다).
+- **키 술어는 별개다** — 라우트가 받는 것은 `isStoredImageKey`
+  (`^(avatars|projects)/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+\.(png|jpeg|webp)$`)를 지난 키뿐이다.
+  ⚠️ **`planImageDelete`·`planProjectImageDelete`를 재사용하지 않는다 — 방향이 반대다.** 그 둘의 호스트 검사는
+  **접미 일치**라 아무 Vercel 고객의 공개 스토어를 통과시킨다(입력이 우리 DB 값인 `imageSrc` 방향에서는 참이다).
+  ⚠️ **판정은 이어 붙인 문자열 하나에 건다** — Next가 catch-all 세그먼트를 디코드하므로(`%2e%2e` → `..`,
+  `%2f` → `/`) 조각이 전부 그 문자열에 드러나고 ASCII allowlist가 한 번에 막는다. 세그먼트별로 재면
+  개수 검사가 사라지는 날 새 축이 열린다.
+- **호스트는 `optionalEnv("BLOB_PUBLIC_HOST")` + `isBlobPublicHost`뿐이다** — 없거나 모양이 틀리면
+  **fetch 없이 404**다(CSP와 같은 fail-closed — 증상은 "이미지가 안 보인다"이고 빌드·부팅은 산다).
+  URL은 검증 뒤 **문자열 이어 붙이기**다(`new URL(key, base)`는 `..`를 해석한다). `redirect: "error"` —
+  상류 302를 따라가면 임의 호스트로 가는 두 번째 길이 열린다.
+- **상류 실패를 중계하지 않는다** — 비-OK·비이미지 `content-type`·타임아웃(5초)·예외는 전부 **빈 404**이고,
+  사유는 단계 이름만 서버 로그에 남는다(키·URL·상류 원문은 안 남긴다). 응답 `content-type`은 **검증된
+  확장자**에서 온다. Blob의 오류 본문은 XML이고, 그것을 200으로 중계하면 `<img>`가 `naturalWidth === 0`
+  폴백에 흔적 없이 떨어진다.
+- **캐시 헤더가 둘이다** — `Cache-Control: public, max-age=31536000, immutable` +
+  `CDN-Cache-Control: public, s-maxage=86400`. Route Handler는 기본 동적이라 앞의 하나만으로는 CDN에
+  안 앉는다. ⚠️ **CDN TTL이 1년이 아니라 하루인 이유는 삭제다** — 함수 응답에는 퍼지 경로가 없어
+  **그 값이 곧 "지운 이미지가 아직 나가는 창"의 길이**다. `dynamic`·`revalidate` export는 쓰지 않는다.
+- **한 객체에 URL이 하나다** — 쿼리스트링은 404이고, `pathname`이 `/api/images/<key>`와 **글자까지**
+  같지 않아도 404다. `URL`은 `pathname`을 디코드하지 않으므로 `%61vatars/…`·`u1%2Fn1.webp`처럼 다르게
+  적힌 같은 키가 여기서 갈린다 — 둘 다 **CDN 캐시 키가 쪼개지는 것**을 막는 같은 축이고, 한쪽만 닫으면
+  요지가 사라진다. ⚠️ **allowlist가 아니다** — 막는 일은 `isStoredImageKey`가 이미 했다. 정상 경로는
+  안 걸린다(`imageSrc`가 내는 것은 `[A-Za-z0-9_-]`·`/`·`.`뿐이라 퍼센트 인코딩이 안 된다).
+  `Set-Cookie`·`Vary`도 내지 않는다(둘 중 하나라도 있으면 응답이 캐시 불가가 된다).
+- **받아들인 노출 둘**: ① **인가도 속도 제한도 없다** — `entry-points.test.ts`의 `EXEMPT`에 이름으로
+  올려 둔다. 세션을 읽으면 응답이 캐시 불가가 되어 CDN 층이 사라지고, 이 바이트는 오늘도 공개 읽기다.
+  §6.7의 "무제한 업로드"와 같은 갈래지만 **이쪽은 로그인조차 필요 없다**. 키를 모르면 못 읽고 키에는
+  난수가 있다. ② **CDN TTL이 삭제 창이다**(위). 둘 다 다음 감사가 새 발견으로 다시 캐지 않도록 적는다.
+- **소비자는 잎 둘로 고정한다** — `ImageTile`·`Avatar`가 공유하는 `useImageFallback` 안에서만 매핑한다.
+  `Project.image`·`User.image`를 읽는 자리가 십여 곳이라 호출자마다 적으면 새 화면 하나가 규칙을 조용히
+  빠뜨린다(POSTMORTEM 2026-09-20이 같은 부류다). 그물은 `components/__tests__/image-origin.test.tsx`다.
+- ⚠️ **CSP `img-src`에는 Blob 호스트가 아직 남아 있다** — 되돌릴 때 `imageSrc` 하나만 손대면 되게
+  한 것이고, 매핑이 자리 잡으면 별도 변경으로 지운다.
+- **긴 캐시가 안전한 근거는 키의 난수다** — `imageObjectKey`·`projectImageObjectKey`가 난수를 싣고 저장이
+  `addRandomSuffix: false`라 교체마다 URL이 통째로 바뀐다. 키를 결정적으로 바꾸면 그 전제가 깨진다.
+
 ### 6.75 프로젝트 메타데이터 (2026-09-20)
 
 `Project.image String?`는 `projects/<projectId>/…` 난수 키를 사용하는 공개 Blob URL을 저장한다. avatar 키 판정을
@@ -2577,6 +2640,12 @@ sharp 정규화(192px 이내 WebP)로 재사용하며 PII 봉투는 쓰지 않�
 번역 값이 아니므로 서버에서 archived를 거부하지 않는다. 보관 UI의 비활성과 의도적으로 갈린다.
 성공 뒤 `/` layout을 갱신하고 설정·목록·Home·초대 네 reader가 image를 읽는다. Blob 스모크는 avatars와
 projects를 각각 조회해 User.image/Project.image 참조와 대조하며 고아를 자동 삭제하지 않는다.
+
+**읽기 경로는 프로필 사진과 같다** (2026-09-28, §6.7) — `imageSrc`가 `projects/` 접두도 `/api/images/<key>`로
+바꾸고, 서빙은 `app/api/images/[...key]/route.ts`가 한다(rewrite가 아닌 근거는 §6.7 — 외부 rewrite는 세션
+쿠키를 상류로 넘긴다). ⚠️ **네 reader(설정·목록·Home·초대) 어디에도 매핑이 없다** — 넷 다 `ImageTile`을
+지나고 그 잎 하나가 규칙을 든다. ⚠️ **avatar 키 판정을 넓히지 않는다는 규칙은 프록시에서도 그대로다** —
+`isStoredImageKey`가 두 접두를 한 정규식으로 받되 `planProjectImageDelete`를 일반화하지 않는 별도 술어다.
 
 ### 6.8 표시 이름의 소유권 (2026-09-13)
 

@@ -148,8 +148,11 @@ export const en = {
       "not-ready": "This project hasn't finished its first sync yet",
       "not-connected": "Malmoi is not connected to this repository",
       "already-running": "A sync is already running",
-      /** ⚠️ 제목 자리라 마침표가 없다(DESIGN §10). 아무것도 지워지지 않았다는 것이 요지다. */
-      "reconfirm": "The project changed after you opened Sync — nothing was discarded. Open Sync again to review",
+      /**
+       * ⚠️ 제목 자리라 마침표가 없다(DESIGN §10). 아무것도 지워지지 않았다는 것이 요지다.
+       * ⚠️ **원인을 말하지 않는다** (malmoi#137) — 지문의 어떤 변화(새 미전달 편집·기준 브랜치…)에도, 지문 발급 실패(`approval: null`)에도 선다.
+       */
+      "reconfirm": "Sync couldn't confirm that what you reviewed is still current — nothing was discarded. Open Sync again to review and confirm",
       "no-surfaces": "There's nothing to sync — this project has no active sources",
       "invalid input": "The project could not be identified. Refresh the page and try again.",
       /**
@@ -2452,6 +2455,14 @@ export const en = {
         </>
       ),
       retry: "Try again",
+      /**
+       * `1i`의 응답 유실 형 — 클라이언트만 낸다 (malmoi#135). 끊긴 것은 Malmoi의 응답이라 `transientError`의 "GitHub"·"partway"가 거짓이다.
+       * "opened the pull request"라고 쓰지 않는다 — 열린 PR이 있으면 그 PR을 갱신한다.
+       * ⚠️ **"화면이 최신이다"를 덧붙이지 않는다** — 오프라인이면 다시 읽지 않는다(`usePublish`). 무엇이 됐는지는 다시 읽은 화면이 말한다.
+       */
+      lostResponse: "The response didn't come back",
+      lostResponseDescription:
+        "Malmoi may have sent your changes anyway. Your edits are still saved here.",
 
       /** 실행 전 명시적 거부만 미전송을 단정한다 (spec C10). */
       notStarted: "Nothing was sent. Your edits are safe.",
@@ -2941,7 +2952,12 @@ export const en = {
     },
 
     status: {
-      failed: "The sync didn't finish. Try again in a moment.",
+      /**
+       * 응답을 잃은 첫 적재 — 클라이언트만 낸다 (malmoi#135). ⚠️ **"didn't finish"를 쓰지 않는다**(옛 `failed`) — 서버가 적재를 끝냈을 수 있다.
+       * 무엇이 됐는지는 다시 읽은 상세가 말한다. 다시 눌렀을 때 서버가 `not-awaiting`으로 거부하는 것은 **끝난** 적재뿐이다 —
+       * 아직 도는 적재와는 겹칠 수 있다(둘 다 리포 값만 싣는다, `sources-screen.tsx`).
+       */
+      unconfirmed: "We couldn't confirm whether the sync finished.",
     },
 
     token: {

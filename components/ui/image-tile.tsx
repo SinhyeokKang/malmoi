@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
+import { imageSrc } from "@/lib/upload/image";
 import { cn } from "@/lib/utils";
 
 /**
@@ -12,6 +13,12 @@ import { cn } from "@/lib/utils";
  *
  * ⚠️ **`ref`가 한 번 더 본다** — 하이드레이션 전에 끝난 실패는 `onError`로 안 온다(서버가 그린 화면).
  * 이슈의 실측이 `complete = true`·`naturalWidth = 0`이었다.
+ *
+ * ⚠️ **읽기 경로 매핑(`imageSrc`)이 여기 하나에 있다** — `Project.image`·`User.image`를 읽는 자리가
+ * 십여 곳이라 호출자마다 적으면 새 화면 하나가 규칙을 조용히 빠뜨린다(POSTMORTEM 2026-09-20이
+ * 같은 부류다 — 폴백 규칙의 소비자가 늘 때 그물이 안 따라왔다). 소비자는 `ImageTile`·`Avatar` 둘이고,
+ * 그물은 `components/__tests__/image-origin.test.tsx`다. **기억하는 실패도 매핑된 값이라** 비교가
+ * 어긋나지 않는다.
  */
 export function useImageFallback(src: string | null | undefined): {
   shown: string | null;
@@ -19,7 +26,8 @@ export function useImageFallback(src: string | null | undefined): {
   ref: (image: HTMLImageElement | null) => void;
 } {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const shown = src && src !== failedSrc ? src : null;
+  const mapped = imageSrc(src);
+  const shown = mapped && mapped !== failedSrc ? mapped : null;
   return {
     shown,
     onError: () => setFailedSrc(shown),

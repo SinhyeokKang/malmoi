@@ -231,11 +231,16 @@ it("EDITOR에게는 설정 링크 대신 project owner를 부른다 (#85) — �
  * ⚠️ **reconfirm은 편집만의 결과가 아니다** (audit #3 후속) — 폐기 승인 지문이 리포 연결·기준 브랜치까지 들므로 설정 변경도 이 거부를 낸다.
  * "Translations changed"라고 말하면 편집이 없던 사람이 원인을 엉뚱한 곳에서 찾는다. 지운 것이 없다는 사실과 다시 열라는 지시는 남긴다.
  */
-it("reconfirm은 원인을 가리지 않는 문장으로 말하고 지운 것이 없다고 알린다", async () => {
+/*
+ * ⚠️ **"The project changed"도 원인 하나를 단언한다** (malmoi#137) — 같은 거부가 새 미전달 편집·기준 브랜치 변경 등 지문의 어떤 변화에도
+ * 서고, 지문 발급이 실패해 `approval: null`이 나간 갈래에서는 아무것도 안 바뀌었을 수도 있다. 아는 것만 말한다: 본 것이 지금도
+ * 맞는지 확인하지 못했다 · 지운 것이 없다 · 다시 열어 확인한다.
+ */
+it("reconfirm은 원인을 가리지 않는 문장으로 말하고 지운 것이 없다고 알린다 (malmoi#137)", async () => {
   const { container } = await render(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "reconfirm" }} />);
   const text = alert(container)?.textContent ?? "";
-  expect(text).toContain("The project changed after you opened Sync");
-  expect(text).not.toContain("Translations changed");
+  expect(text).toContain("Sync couldn't confirm that what you reviewed is still current");
+  expect(text).not.toMatch(/changed/i);
   expect(text).toContain("nothing was discarded");
-  expect(text).toContain("Open Sync again to review");
+  expect(text).toContain("Open Sync again to review and confirm");
 });

@@ -251,11 +251,13 @@ describe("행 축 (8-4)", () => {
    *
    * ⚠️ **그 가드를 지키는 단언이 8-4 전까지 0건이었다** — 위 "성공 뒤 서버 렌더를 갱신한다"는
    * 호출이 **있는지만** 본다.
+   *
+   * ⚠️ **예외 하나 — 응답을 잃은 실행** (malmoi#135): 재검증 트리가 응답과 함께 사라져 서버 상태를 모른다. 호출은 그 갈래의 한 줄뿐이다.
    */
-  it("`router.refresh()`를 부르지 않는다 — 재검증은 Action이 싣고 온다 (audit-ux #12)", () => {
+  it("`router.refresh()`는 응답을 잃은 실행에만 부른다 — 재검증은 Action이 싣고 온다 (audit-ux #12)", () => {
     const src = read(PUBLISH);
-    expect(src).not.toMatch(/router\.refresh\(\)/);
-    expect(src).not.toMatch(/useRouter/);
+    const calls = src.split("\n").filter(line => /router\.refresh\(\)/.test(line));
+    expect(calls).toEqual([expect.stringMatching(/^\s*if \(next === UNCONFIRMED_PULL && navigator\.onLine !== false\) router\.refresh\(\);$/)]);
     // 짝: 결과는 여전히 실행 뒤에 선다.
     expect(src).toMatch(/setResult\(\{ outcome: next/);
   });

@@ -195,6 +195,7 @@ git push --force-with-lease=dev:$LEASE origin dev
 
 - `git diff --quiet`가 실패하면 **중단.** 방금 머지한 내용 말고 다른 것이 `origin/dev`에 들어왔다는 뜻이다. 머지 자체는 이미 끝났으므로 되돌릴 것은 없고, 동기화만 보류하고 리포트에 남긴다.
 - lease가 거부되면 **`--force`로 뚫지 않는다.** `/sync`를 손으로 다시 돌린다.
+- ⚠️ **동기화 push 뒤 그 SHA의 dev CI가 끝나기 전에는 dev에 다시 push하지 않는다** (2026-09-28, v1.0.1). 그 SHA는 main 커밋이자 릴리스 태그다 — 다음 dev push가 `ci.yml`의 `cancel-in-progress`(그룹 `ci-<ref>`)로 그 run을 취소하면, 취소된 run이 main 커밋·Release에 ✗로 남는다. main CI와는 그룹이 달라 겹치지 않는다 — 겹치는 것은 dev의 다음 push다. `gh run list --branch dev --commit <SHA>`가 completed인지 보고 넘어간다. 이미 취소됐으면 `gh run rerun <id>`. 절차가 `/sync`와 같으니 두 곳을 같이 고친다.
 
 ### 11. 프로덕션 배포 확인 (논블로킹)
 

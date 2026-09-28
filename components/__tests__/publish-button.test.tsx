@@ -104,9 +104,48 @@ it("조회 실패와 응답 유실 재시도 모두 새 확인을 요구한다",
   await click("Try again"); expect(mocks.pull).not.toHaveBeenCalled(); await click("Open pull request");
   expect(document.body.textContent).toContain("We couldn't confirm whether your changes were sent.");
   expect(document.body.textContent).not.toContain("Nothing was sent");
-  expect(mocks.refresh).not.toHaveBeenCalled();
   await click("Try again"); expect(mocks.pull).toHaveBeenCalledTimes(1);
   await click("Open pull request"); expect(mocks.pull).toHaveBeenCalledTimes(2);
+});
+/**
+ * ⚠️ **응답을 잃은 Publish는 서버가 PR을 냈을 수 있다** (malmoi#135 — Sync의 #132와 같은 부류). Action의 재검증 트리가 응답과
+ * 함께 사라져 화면이 Publish 전 트리(`To send`·PR 링크)로 남았다. 실패를 단언하지 않고 **한 번** 다시 읽으며, 다시 실행하지 않는다 —
+ * 두 번 나갈 수 있다. 잠금은 refresh 트리가 올 때까지 간다.
+ */
+it("응답을 잃은 Publish는 확인 못 함을 말하고 한 번 다시 읽으며 새 트리까지 잠근다 (malmoi#135)", async () => {
+  mocks.pull.mockRejectedValueOnce(new Error("lost"));
+  const view = await render(<Host />); await click("Publish1"); await click("Open pull request");
+  expect(mocks.pull).toHaveBeenCalledTimes(1);
+  expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  expect(document.body.textContent).toContain("We couldn't confirm whether your changes were sent.");
+  // "GitHub didn't answer"는 사실이 아니다 — 끊긴 것은 Malmoi 응답이고, GitHub 쓰기는 끝났을 수 있다.
+  expect(document.body.textContent).not.toContain("GitHub didn't answer");
+  expect(document.body.textContent).not.toContain("failed partway");
+  // 열린 PR이 있으면 새로 열지 않고 갱신한다 — "opened the pull request"는 그 갈래에서 거짓이다.
+  expect(document.body.textContent).toContain("Malmoi may have sent your changes anyway.");
+  await click("Close");
+  expect(button("Publish").getAttribute("aria-busy")).toBe("true");
+  // refresh 트리 — 서버가 보냈다면 건수가 0이다.
+  await view.rerender(<Host count={0} />);
+  expect(button("Publish").getAttribute("aria-busy")).toBeNull();
+  expect(mocks.pull).toHaveBeenCalledTimes(1);
+  expect(mocks.refresh).toHaveBeenCalledTimes(1);
+});
+/** ⚠️ **오프라인이면 다시 읽지 않는다** — RSC fetch가 실패하면 Next가 브라우저 내비게이션으로 떨어져 오류 페이지가 결과를 덮는다. */
+it("오프라인에서 응답을 잃은 Publish는 refresh를 부르지 않는다", async () => {
+  mocks.pull.mockRejectedValueOnce(new Error("offline"));
+  const online = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+  try {
+    await render(<Host />); await click("Publish1"); await click("Open pull request");
+    expect(document.body.textContent).toContain("We couldn't confirm whether your changes were sent.");
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  } finally { online.mockRestore(); }
+});
+/** 응답이 온 결과에는 부르지 않는다 (audit-ux #12) — 서버의 세션 거부 `unavailable`은 트리가 없지만 데이터도 안 바뀌었다. */
+it("응답이 온 unavailable 거부에는 refresh를 부르지 않는다", async () => {
+  mocks.pull.mockResolvedValueOnce({ status: "failed", error: "unavailable", delivery: "not-started", retryable: true });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  expect(mocks.refresh).not.toHaveBeenCalled();
 });
 /**
  * **조회 중에는 "조회 실패"를 말하지 않는다** (malmoi#49). `prUnknown`은 열린 PR 조회가 **실제로**
