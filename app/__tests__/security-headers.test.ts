@@ -106,11 +106,16 @@ describe("미들웨어 CSP (sec-audit-3 #11)", () => {
     vi.stubEnv("VERCEL_ENV", vercelEnv ?? "");
     vi.stubEnv("BLOB_PUBLIC_HOST", BLOB);
     const csp = run("/").headers.get("content-security-policy");
-    expect(csp).toBe(buildCsp(expected, { nonce: nonceOf(csp)!, blobHost: BLOB }));
+    expect(csp).toBe(buildCsp(expected, { nonce: nonceOf(csp)! }));
   });
 
-  it("`BLOB_PUBLIC_HOST`가 없으면 Blob 호스트가 정책에 없다 — fail-closed (sec-audit-3 #12)", () => {
-    vi.stubEnv("BLOB_PUBLIC_HOST", "");
+  /*
+   * ⚠️ **값이 **있어도** 정책에 안 실린다** (2026-09-28). 전에는 "없으면 안 실린다"(fail-closed)가 계약이었는데,
+   * 업로드 이미지가 `/api/images/<key>`(자사 출처)를 지나면서 브라우저가 Blob 호스트에 붙을 일이 없어졌다.
+   * 그래서 이 변수는 이제 **미들웨어가 아니라 그 라우트**의 상류 호스트다 — 정책에 새어 나오면 회귀다.
+   */
+  it("`BLOB_PUBLIC_HOST`가 있어도 Blob 호스트가 정책에 없다", () => {
+    vi.stubEnv("BLOB_PUBLIC_HOST", BLOB);
     expect(run("/").headers.get("content-security-policy")).not.toContain("blob.vercel-storage.com");
   });
 });
@@ -134,7 +139,7 @@ describe("전 페이지가 동적이다 (sec-audit-3 #11)", () => {
  */
 describe("`/docs` 원고 이미지 — 같은 origin", () => {
   it.each(["production", "preview", "development"] as const)("%s 정책의 img-src가 'self'를 든다", (env) => {
-    const imgSrc = buildCsp(env, { nonce: "AAAA", blobHost: undefined }).split(";").map((part) => part.trim()).find((part) => part.startsWith("img-src "));
+    const imgSrc = buildCsp(env, { nonce: "AAAA" }).split(";").map((part) => part.trim()).find((part) => part.startsWith("img-src "));
     expect(imgSrc?.split(/\s+/)).toContain("'self'");
   });
 });

@@ -40,17 +40,17 @@ describe("createNonce (sec-audit-3 #11)", () => {
 
 describe("buildCsp — script nonce (sec-audit-3 #11)", () => {
   it.each(["production", "preview", "development"] as const)("%s의 script-src에 `'unsafe-inline'`이 없고 nonce + strict-dynamic이다", (env) => {
-    const script = directive(buildCsp(env, { nonce: NONCE, blobHost: BLOB }), "script-src");
+    const script = directive(buildCsp(env, { nonce: NONCE }), "script-src");
     expect(script).not.toContain("'unsafe-inline'");
     expect(script.slice(0, 3)).toEqual(["'self'", `'nonce-${NONCE}'`, "'strict-dynamic'"]);
   });
 
   it("style-src는 `'unsafe-inline'`을 남긴다 — nonce는 `style` 속성에 안 붙는다(결정 B의 잔여)", () => {
-    expect(directive(buildCsp("production", { nonce: NONCE, blobHost: BLOB }), "style-src")).toEqual(["'self'", "'unsafe-inline'"]);
+    expect(directive(buildCsp("production", { nonce: NONCE }), "style-src")).toEqual(["'self'", "'unsafe-inline'"]);
   });
 
   it.each([["따옴표 주입", "abc' 'unsafe-inline"], ["지시어 주입", "abc; script-src *"], ["빈 값", ""]])("모양이 틀린 nonce(%s)는 던진다 — 정책에 이어 붙이지 않는다", (_label, nonce) => {
-    expect(() => buildCsp("production", { nonce, blobHost: BLOB })).toThrow();
+    expect(() => buildCsp("production", { nonce })).toThrow();
   });
 });
 
@@ -77,36 +77,33 @@ describe("isBlobPublicHost (sec-audit-3 #12)", () => {
   });
 });
 
-describe("buildCsp — Blob 호스트 (sec-audit-3 #12)", () => {
-  const imgSrc = (blobHost: string | undefined) => directive(buildCsp("production", { nonce: NONCE, blobHost }), "img-src");
-
-  it("이 환경의 스토어 하나만 연다 — 와일드카드는 어느 환경에도 없다", () => {
-    expect(imgSrc(BLOB)).toContain(`https://${BLOB}`);
-    for (const env of ["production", "preview", "development"] as const) {
-      expect(buildCsp(env, { nonce: NONCE, blobHost: BLOB })).not.toContain("*.public.blob.vercel-storage.com");
-    }
+describe("buildCsp — Blob 호스트는 더 이상 정책에 없다 (2026-09-28)", () => {
+  /*
+   * ⚠️ **브라우저가 Blob 호스트에 직접 붙지 않는다** — 업로드 이미지는 `imageSrc`가 `/api/images/<key>`로
+   * 접고 그 라우트가 서버에서 상류를 부른다(ARCHITECTURE §6.7). 그래서 `img-src`에서 뺐다.
+   *
+   * ⚠️ **이 테스트가 "다시 넣지 않는다"를 고정한다** — 값이 없어도 되는 것이 아니라 **있으면 안 되는** 것이다.
+   * 되돌리려면 `imageSrc`도 함께 되돌려야 하고, 그 짝을 잊으면 정책만 넓어진다.
+   */
+  it.each(["production", "preview", "development"] as const)("%s 정책 어디에도 Blob 호스트가 없다", (env) => {
+    expect(buildCsp(env, { nonce: NONCE })).not.toContain("blob.vercel-storage.com");
   });
 
-  it("없으면 Blob 호스트를 넣지 않는다 — fail-closed", () => {
-    expect(imgSrc(undefined).some((s) => s.includes("blob.vercel-storage.com"))).toBe(false);
-  });
-
-  it("모양이 틀린 값은 없는 것으로 친다 — 정책에 한 글자도 새지 않는다", () => {
-    const csp = buildCsp("production", { nonce: NONCE, blobHost: "abc.public.blob.vercel-storage.com; script-src *" });
-    expect(csp).not.toContain("blob.vercel-storage.com");
-    expect(csp).toBe(buildCsp("production", { nonce: NONCE, blobHost: undefined }));
+  it("img-src는 자사 출처와 공급자 아바타 둘뿐이다", () => {
+    expect(directive(buildCsp("production", { nonce: NONCE }), "img-src"))
+      .toEqual(["'self'", "data:", "https://avatars.githubusercontent.com", "https://lh3.googleusercontent.com"]);
   });
 });
 
 describe("buildCsp", () => {
-  const prod = buildCsp("production", { nonce: NONCE, blobHost: BLOB });
+  const prod = buildCsp("production", { nonce: NONCE });
 
   it("프로덕션 기준 지시어 — 현재 흐름이 쓰는 호스트만 연다", () => {
     expect(directive(prod, "default-src")).toEqual(["'self'"]);
     expect(directive(prod, "script-src")).toEqual(["'self'", `'nonce-${NONCE}'`, "'strict-dynamic'"]);
     expect(directive(prod, "style-src")).toEqual(["'self'", "'unsafe-inline'"]);
     expect(directive(prod, "font-src")).toEqual(["'self'"]);
-    expect(directive(prod, "img-src")).toEqual(["'self'", "data:", "https://avatars.githubusercontent.com", "https://lh3.googleusercontent.com", `https://${BLOB}`]);
+    expect(directive(prod, "img-src")).toEqual(["'self'", "data:", "https://avatars.githubusercontent.com", "https://lh3.googleusercontent.com"]);
     expect(directive(prod, "connect-src")).toEqual(["'self'"]);
     // ⚠️ Google 로그인은 폼 POST → 302 `accounts.google.com`이다 — `form-action`은 그 리다이렉트에도 걸린다.
     expect(directive(prod, "form-action")).toEqual(["'self'", "https://github.com", "https://accounts.google.com"]);
@@ -123,7 +120,7 @@ describe("buildCsp", () => {
   });
 
   it("dev는 eval과 HMR 웹소켓만 더한다", () => {
-    const dev = buildCsp("development", { nonce: NONCE, blobHost: BLOB });
+    const dev = buildCsp("development", { nonce: NONCE });
     expect(directive(dev, "script-src")).toEqual(["'self'", `'nonce-${NONCE}'`, "'strict-dynamic'", "'unsafe-eval'"]);
     expect(directive(dev, "connect-src")).toEqual(["'self'", "ws:", "wss:"]);
     expect(dev).not.toContain("vercel.live");
@@ -131,7 +128,7 @@ describe("buildCsp", () => {
   });
 
   it("preview는 Vercel Toolbar 문서의 호스트를 더하고 eval은 없다", () => {
-    const preview = buildCsp("preview", { nonce: NONCE, blobHost: BLOB });
+    const preview = buildCsp("preview", { nonce: NONCE });
     expect(preview).not.toContain("'unsafe-eval'");
     expect(directive(preview, "script-src")).toContain("https://vercel.live");
     expect(directive(preview, "connect-src")).toEqual(expect.arrayContaining(["https://vercel.live", "wss://ws-us3.pusher.com"]));
