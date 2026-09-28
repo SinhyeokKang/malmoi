@@ -282,7 +282,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 
 | 자리 | 값 | 실측 |
 |---|---|---|
-| 머리 여백 | `p-4` (16 전방향) | `16px 16px 16px 16px` — 라우트 아홉 |
+| 머리 여백 | `px-4 py-3` (상하 12 · 좌우 16) | `12px 16px 12px 16px` — 라우트 아홉 + 번역 작업 화면 머리 · 그 골격 · 랜딩 목업 번역 씬(프리미티브 밖이라 같은 값을 손으로 든다 — `panel-header.test.tsx`가 센다). ⚠️ **2026-09-28 사용자 — 옛 `p-4`(16 전방향)에서 세로만 줄었다.** 좌우 16은 본문과 왼쪽을 맞추는 값이라 그대로다 |
 | 머리 아래 선 | `border-b border-border` (1px `#e5e5e5`) | 같음. ⚠️ **바깥 요소가 든다** — 폭 상한 안쪽에 두면 1280을 넘는 화면에서 선이 잘린다 |
 | 머리 열 간격 | `gap-3` (12) | `12px` — 제목 줄 · 거부 `Alert` · 설명 한 줄이 이 간격으로 쌓인다 |
 | 제목 행 | `flex min-h-9 items-center gap-3` | `36px` / `12px`. ⚠️ **`min-h-9`가 없으면 버튼 없는 화면에서 28로 떨어져 머리가 라우트마다 4px 튄다** |
@@ -290,10 +290,11 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | PageTitle | `h1 text-lg font-medium` (18/500/0.01em) | `18px`·`500`·`0.18px`. ⚠️ **`tracking-[0.01em]`을 손으로 쓰지 않는다** — `--text-lg--letter-spacing`이 이미 그 값이다 |
 | 설명 한 줄 | `description` **prop** — `text-xs text-muted-foreground`(13) | `13px`·`#737373`. 소비자는 설명 prop을 쓰는 패널이다(⚠️ `logs`는 2026-09-24부터 **보관 안내만** 이 자리를 쓴다 — 평소 설명문은 종류 필터와 같은 목록이라 지웠다) **전에는 12와 14 두 벌로 갈려 있었다** |
 | 본문 여백 | `p-4` (16) | 같음 |
+| 카드 머리 | `px-4 py-3` (상하 12 · 좌우 16 — 2026-09-28 사용자, 옛 `p-4`) | 패널 머리와 같은 날 같은 값이다. ⚠️ **한 프리미티브가 들지 않는다** — `PanelCard`·`RowCard` 둘 + 손으로 적은 실물 다섯(Home의 주의·Logs·메타 카드 · Logs 날짜 카드 · Publish 경고 카드) + 로딩 골격 여덟이라 `card-head.test.ts`가 소스에서 센다. ⚠️ **번역 화면의 카드 머리 셋(트리 · 목록 · 로케일 상세)은 높이 고정 `h-[52px]`이다** — 세 머리의 아래 선이 한 줄이어야 해서 여백이 아니라 높이로 든다. 52 = 12 + 가장 높은 내용물(언어 Select sm 28) + 12(옛 53 = 16 + 글자 줄 21 + 16). 골격 · 랜딩 목업도 같은 값이다 |
 | 폭 등급 | `width` prop — `fluid` 1280 / `limited` 896 (기본) | **fluid 열둘**(목록 · 그 스켈레톤 · Home · 그 스켈레톤 · **멤버 · Sources 목록 · Sources 보관 안내 · 이력 · 이력 오류 경계** + 멤버·이력·Sources 스켈레톤) / **limited 넷**(프로젝트 설정 · 그 스켈레톤 · `/account` · 그 스켈레톤) + 본문 전용 셋 — 정본은 `shell-layout.test.ts`의 `FLUID`·`LIMITED` |
 
 ⚠️ **설명 슬롯이 prop인 이유는 POSTMORTEM 2026-09-14다** — *"프리미티브의 여백 하나가 그 슬롯을 안
-쓰는 소비자에게만 깨졌다"*. 여백 16의 전제는 **"제목 줄 하나"**이고, 설명이 붙는 화면은 머리가 세로로
+쓰는 소비자에게만 깨졌다"*. 머리 여백(상하 12)의 전제는 **"제목 줄 하나"**이고, 설명이 붙는 화면은 머리가 세로로
 늘어야 한다. 그 회고의 재발 방지가 *"조건이 있으면 코드에 조건으로 쓴다"*이므로 주석이 아니라 슬롯이다.
 
 ⚠️ **소비자를 세는 명령** (적을 때 실제로 돌려 본문과 맞춘다):
@@ -652,7 +653,7 @@ lucide 목록에 `external-link`가 없고 `2a`가 *"리포 주소와 PR 번호�
 | 사용자 축 항목 | **Projects**(`Box`, 개수 배지) · **New project**(`Plus` → `/projects/new`, 배지 없음) · **Account**(`CircleUser` → `/account`). ⚠️ **셋 다 `exact`다** — `/projects`가 `/projects/new`의 접두라 접두로 재면 새 프로젝트 화면에서 둘이 함께 선택된다. ⚠️ **라벨이 2026-09-23에 `Settings`에서 바뀌었다**(사용자) — 시안(8-3)은 `Settings`였으나 같은 사이드바의 `Project settings`와 축만 다른 동의어라 어느 설정인지 되묻게 했고, `Account`는 라우트·아이콘과 같은 낱말이다. ⚠️ **아이콘 둘이 2026-09-11에 바뀌었다**: Projects는 **목록 행 타일과 같은 글리프**(같은 대상을 두 글리프로 가리키지 않는다), 계정 항목은 **헤더 서랍 안 같은 항목과 같은 글리프**(`Settings` 톱니는 프로젝트 설정이 쓰므로 사용자 축과 섞인다). ⚠️ **`New project`가 `Projects` 바로 아래에 선다** (2026-09-27 사용자 — 8-3의 "사이드바에 없다"를 뒤집었다). 글리프는 목록의 [New project] 버튼과 같은 `Plus`다 — 한 행동을 두 글리프로 가리키지 않는다. ⚠️ **유저 메뉴도 같은 `Account` 문구를 쓴다** — 한 곳을 가리키는 이름이 둘이면 그중 하나가 낡는다 |
 | 프로젝트 축 항목 | **Home**(`House`) · **Sources**(`Files`) · **Translations**(`Languages`) · **Members**(`Users`) · **Logs**(`History`) · **Project settings**(`Settings`, `project:settings` 역할만). Sources가 Translations 앞이다 — 소스 구성·언어 상태를 확인한 뒤 번역으로 간다. |
 | 활성 판정 | ⚠️ **규칙이 축이 아니라 항목에 붙는다** (6b-6 — `NavItem.exact`). **접두인 것 셋**: Sources·Translations·Members·Project settings 중 하위 경로가 있는 것들. **정확히 일치인 것**: Home(`/projects/<slug>`는 그 프로젝트 **모든** 하위 라우트의 접두다) · **Logs**(하위 라우트가 없다 — `?cursor=`는 쿼리다) · Projects(`/projects`가 `/projects/new`의 접두다) · Account |
-| 하단 전역 | **Changelog**(`Compass` → `/changelog`) · **Docs**(`CircleHelp` → `/docs`) — 둘 다 같은 탭이다(2026-09-28 — 첫 항목은 GitHub Releases 외부 링크 `Release notes`였다). 프로젝트·사용자 축이 아니라 공개 셸 페이지라 구역 밖 `mt-auto`다. ⚠️ **Sign out이 없다** (2026-09-27 사용자) — 로그아웃은 헤더 사용자 메뉴 하나에만 있다. ⚠️ 아이콘 둘이 사용자 메뉴의 같은 항목과 같다(Docs는 LNB의 기존 `CircleHelp`로 두 곳을 맞췄다). ⚠️ **`<nav>`가 아니다** — 구역 밖 전역 링크라 이름 붙은 landmark를 하나 더 세우지 않는다. ⚠️ **라벨이 그 화면의 제목과 같은 키다**(`m.publicDocs.docs.title` · `m.changelog.title`) — 2026-09-11까지 `nav.help: "Help"`로 갈려 있었고, 같은 라우트를 가리키는 라벨이 둘이면 하나가 낡는다. 그 화면의 본문은 2026-09-24에 섰다(L2.3). ⚠️ **Collapse는 사라졌다** |
+| 하단 전역 | **Changelog**(`Compass` → `/changelog`) · **Docs**(`CircleHelp` → `/docs`) — 둘 다 같은 탭이다(2026-09-28 — 첫 항목은 GitHub Releases 외부 링크 `Release notes`였다). ⚠️ **Changelog 행 오른쪽에 현재 앱 버전 배지**(`x.y.z`, 개수 배지와 같은 `Badge neutral` · 같은 자리 — 2026-09-28 사용자). 값은 `package.json`의 `version`을 빌드가 박은 것(`lib/app-version.ts`)이라 **dev·preview는 마지막 릴리스 번호**다. 새 판 알림·읽음 표시가 아니다(changelog 비목표). 프로젝트·사용자 축이 아니라 공개 셸 페이지라 구역 밖 `mt-auto`다. ⚠️ **Sign out이 없다** (2026-09-27 사용자) — 로그아웃은 헤더 사용자 메뉴 하나에만 있다. ⚠️ 아이콘 둘이 사용자 메뉴의 같은 항목과 같다(Docs는 LNB의 기존 `CircleHelp`로 두 곳을 맞췄다). ⚠️ **`<nav>`가 아니다** — 구역 밖 전역 링크라 이름 붙은 landmark를 하나 더 세우지 않는다. ⚠️ **라벨이 그 화면의 제목과 같은 키다**(`m.publicDocs.docs.title` · `m.changelog.title`) — 2026-09-11까지 `nav.help: "Help"`로 갈려 있었고, 같은 라우트를 가리키는 라벨이 둘이면 하나가 낡는다. 그 화면의 본문은 2026-09-24에 섰다(L2.3). ⚠️ **Collapse는 사라졌다** |
 | 콘텐츠 패널 | `components/shell/content-panel.tsx` — **`<main>`**이고 `flex min-w-0 flex-1 flex-col **overflow-hidden** rounded-xl border border-border-subtle bg-background shadow-low`. ⚠️ **스크롤이 패널이 아니라 본문에 있다** (2026-09-11) — 패널이 통째로 스크롤하면 제목·툴바가 콘텐츠와 함께 올라가는데 그 둘은 "지금 보고 있는 것이 무엇인지"를 말한다. 형제 둘이 그것을 가른다: **`PanelHeader`**(`shrink-0`) · **`PanelBody`**(`min-h-0 flex-1 overflow-y-auto`). `head` prop이 아닌 이유는 라우트 넷 중 셋이 패널을 **레이아웃**에서 드는데 레이아웃은 페이지 props를 못 받아서다. 여백과 폭 상한은 **§5.15가 정본이다** — 둘 다 그 프리미티브가 들고 화면이 적지 않는다(⚠️ **폭 상한은 안쪽 래퍼가 든다** — 스크롤 컨테이너에 직접 주면 좁아져 스크롤바가 콘텐츠 옆에 생긴다). ⚠️ **본문 랜드마크를 이것이 든다 — 화면은 자기 `<main>`을 만들지 않는다**(라우트당 하나가 구조로 보장된다. 8-2에서 `/projects`가 실제로 그것을 잃었다). ⚠️ **넷이 함께 있어야 패널이 뜬다**(흰 배경·radius·border·그림자) — 8-1b가 그중 몇을 한꺼번에 잃고도 "그럭저럭" 보여서 못 알아챘다 |
 
 **스크롤은 사이드바와 콘텐츠 패널이 각자 자기 안에서 든다**(둘 다 `overflow-y-auto`), 콘텐츠 패널엔
@@ -742,7 +743,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 보관 상태로 옮겨 간다. 거부 문구는 공용 `errors.access.archived`("설정에서 복원하라")가 아니라 다른 행과 같은
 `settings.archivedReason`이고(`settingsAccessMessage`), 보관 상태가 오면 그 행의 옛 오류·거부된 입력은 내린다.
 
-공유 `PanelCard`는 radius 12 · `@container` · 머리 padding 16 · 제목 15/500이다. 헤더↔본문은
+공유 `PanelCard`는 radius 12 · `@container` · 머리 padding **상하 12 · 좌우 16**(2026-09-28, 옛 16 전방향 — §5.15 카드 머리 행) · 제목 15/500이다. 헤더↔본문은
 `border-divider`, 행↔행은 `border-border`다. 제목 없는 사용은 헤더와 `aria-labelledby`를 생략한다.
 활성·보관 상태 모두 이름 있는 설정 region 넷을 유지한다. 본문 폭은 기존 limited PanelBody 규칙을 따른다.
 
@@ -980,7 +981,7 @@ rose `#ec003f` · orange `#f54900` · amber `#e17100` · emerald `#009966` · te
 | 행 글리프 | **`ProjectThumbnail`이 소유한다**(`components/projects/project-thumbnail.tsx` — Home 머리와 같은 컴포넌트다). `size-7 rounded-sm` + `toneFill` + 흰 `Box` 16 · **테두리 없음**(2026-09-25 사용자 — 2026-09-20의 `border border-border`를 걷었다. 이미지·폴백 두 갈래가 함께 없어 폴백 순간에도 같은 28로 보인다. `Avatar`·초대 카드 타일·설정 General 썸네일과 같은 판정이다). ⚠️ **radius가 8이고 캔버스의 4가 아니다** (2026-09-17 사용자 — 이 표에서 캔버스를 벗어난 유일한 값이다): 초대 카드의 같은 타일이 8이라(§6.4) 같은 대상이 화면마다 다른 모서리를 갖고 있었고, **세 화면을 한 값으로 모으는 쪽**을 골랐다 | 28 · radius 8 |
 | 띠 | `py-2 pr-3.5 pl-14` · `border-t border-foreground/[0.06]` · `bg-foreground/[0.02]` · 13 | 좌측 들여쓰기 56 |
 | 카드 | `rounded-lg`(12) + `border-border` + `overflow-hidden` | 12 |
-| 카드 헤더 | `padding 16` · `h2 text-base font-medium`(15/500/0.015em) + 카운트 `Badge neutral`(gap 8). **hover도 링크도 없다** | `16` · `15` |
+| 카드 헤더 | `padding 12 16`(2026-09-28, 옛 16) · `h2 text-base font-medium`(15/500/0.015em) + 카운트 `Badge neutral`(gap 8). **hover도 링크도 없다** | `12 16` · `15` |
 | 헤더↔첫 행 선 | `border-foreground/[0.06]` — 흰 배경 합성이 `#f0f0f0`이고 **행 구분선보다 한 급 약하다.** 그래야 "헤더 + 행들"로 읽힌다 | `#f0f0f0` |
 | 행 사이 선 | **`divide-y`가 아니다** — 행마다 `border-t border-border`(첫 행은 위 줄이 이긴다) | `#e5e5e5` |
 | 빈 상태 카드 | `padding 48 24` · `gap 14` · 칩 `size-9 rounded-sm bg-foreground/[0.04]`(36·radius 8) · 제목↔설명 `gap-1.5` · 제목 15/500 · 설명 14 `leading-relaxed` 46ch | 전부 실측 일치 |
@@ -1619,12 +1620,12 @@ DB에 없었고, `lastCommitAt`(원본 커밋)을 그 자리에 쓰면 거짓이
 
 ⚠️ **그 재편이 푼 문제는 그대로 유효하다** — 그 전엔 `Card` 다섯이 `space-y-6`으로 평평하게 쌓여 축이 안 보였고, 같은 화면에 "GitHub"이 세 군데(로그인 수단 · 리포 쓰기 권한 · 전체 로그아웃의 확인 상대) 나오는데 그 구별을 **카드 설명문 두 줄**에 맡기고 있었다. 축을 드는 것은 지금도 **카드 제목**이고, 바뀐 것은 그 제목이 사는 자리다.
 
-뼈대(2026-09-16 브라우저 실측 — computed style): 본문 폭 **896**(`max-w-4xl`, 안쪽 래퍼가 든다) · 머리 padding **16** · 본문 padding **16**(`PanelBody`가 `p-4`로 든다 — 화면이 다시 정하면 두 번 적용된다) · **카드 사이 16**(`space-y-4`, 실측 16·16·16 — 전엔 구역 28 + 헤더↔리스트 12) · 항목 사이 **0**.
+뼈대(2026-09-16 브라우저 실측 — computed style): 본문 폭 **896**(`max-w-4xl`, 안쪽 래퍼가 든다) · 머리 padding **16**(⚠️ 2026-09-28부터 상하 12 · 좌우 16 — §5.15) · 본문 padding **16**(`PanelBody`가 `p-4`로 든다 — 화면이 다시 정하면 두 번 적용된다) · **카드 사이 16**(`space-y-4`, 실측 16·16·16 — 전엔 구역 28 + 헤더↔리스트 12) · 항목 사이 **0**.
 
 | 규격 | 값 |
 |---|---|
 | 카드 | `border-border overflow-hidden rounded-lg border` — radius **12**. ⚠️ **`rounded-xl`은 이 리포에서 16이다** (POSTMORTEM 2026-09-15): 한 단계 둥글어지고 화면에서 모서리가 섞인다 |
-| 카드 헤더 | `p-4` · `h2` **15/500/0.015em** + 배지(gap 8) + 설명 한 줄 `ml-auto text-xs muted`. 카드 폭 640px 이상에서는 설명을 제목 옆에 두고, 미만에서는 아래로 내린다 |
+| 카드 헤더 | `px-4 py-3`(2026-09-28, 옛 `p-4`) · `h2` **15/500/0.015em** + 배지(gap 8) + 설명 한 줄 `ml-auto text-xs muted`. 카드 폭 640px 이상에서는 설명을 제목 옆에 두고, 미만에서는 아래로 내린다 |
 | 디바이더 **둘** | 헤더 아래 **`--divider`**(#f0f0f0) · 행 사이 **`--border`**(#e5e5e5). ⚠️ **같은 회색 하나면 머리가 첫 행처럼 보인다** — 옅은 선이 "여기부터 내용", 진한 선이 "항목과 항목"이다 |
 | 항목 | `px-4 py-[13px] gap-3` · 글리프 **28**(radius 4 · `bg-foreground/5`) · 본문 `min-w-0 flex-1 flex-col gap-[3px]` · 우측 `flex shrink-0 items-center gap-2` |
 | 항목 본문 | **한 줄이다** — `**{이름}** — {상태}` (`PanelRow`의 `name` + `status`). 15/0.015em, 이름만 500. ⚠️ **상태를 13 보조 줄로 내리지 않는다** — 그러면 **부연으로 읽히는데**, 상태는 이 행이 묻는 질문의 답이다. ⚠️ **구분자(em dash)는 프리미티브가 든다** — 호출부마다 문자열에 박으면 한 화면에 `—`와 `-`가 섞인다 |
