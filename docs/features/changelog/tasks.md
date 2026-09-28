@@ -69,3 +69,8 @@
 - [ ] **T13** `.claude/commands/merge.md` 5단계 ②에 "이 양식이 `/changelog` 화면 문구다 — 이미지는 링크로 바뀐다"를 한 줄 추가하고, `pnpm sync:agents`를 돌린다.
 - [ ] **T14** README에 사용자 노출 링크·날짜 예시가 있으면 대조한다. `/privacy` 참 여부를 확인한다(`/push` 4단계). `guide/`·SHOOTING 매핑에 `Release notes`·헤더 GitHub·옛 시각 형이 찍힌 스크린샷이 있는지 `pnpm guide:check`와 grep으로 본다.
 - [ ] 기능 종료 시 결론을 정본에 올리고 `docs/features/changelog/`를 지운다.
+
+## 결정 기록 (orchestrate, 2026-09-28)
+
+- 배치 A `dates` = 커밋 1(T0a·T0b) + T11b + DESIGN의 날짜 행(:840 · :1603 등 옛 시각 형). 배치 B `changelog` = 커밋 2~5(T1~T8) + T9~T14(날짜 행 제외). B는 T5 전에 A의 dev 통합을 기다린다(`utcDay` 의존 · DESIGN.md 겹침).
+- T5의 `/design-sync`는 워커 워크트리가 아니라 **dev 통합 뒤 main 체크아웃에서 B 워커가** 수정 라운드로 돈다(워크트리엔 `.env.local`이 없다). 워커 인계 시점의 T5 게이트는 DOM 테스트까지다.
