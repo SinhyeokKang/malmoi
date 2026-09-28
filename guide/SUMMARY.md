@@ -19,6 +19,7 @@
   - [Undo and resync](sync/revert.md)
   - [Check activity in Logs](sync/logs.md)
 - [Your account](account.md)
+- [Connect an AI agent](ai-agents.md)
 - [Reference](reference/README.md)
   - [Supported file formats](reference/formats.md)
   - [Limits](reference/limits.md)

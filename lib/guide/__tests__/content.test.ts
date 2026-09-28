@@ -11,6 +11,7 @@ import { PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
 import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { MEMBER_LIMIT } from "@/lib/auth/invitation";
 import { SKIP_MARKER } from "@/lib/pull/payload";
+import { CONNECT_CLIENTS, TOKEN_ENV, connectSnippet } from "@/lib/mcp/snippets";
 import { allowedActions } from "./helpers/allowed-actions";
 import { servedGuideFiles } from "./helpers/served";
 import { collectLinks, collectUiLabels } from "../collect";
@@ -92,6 +93,21 @@ describe("실물 가이드 본문 게이트", () => {
     expect(new Set(allowedActions()).size).toBe(4);
     expect(nav().length).toBeGreaterThan(0);
     expect(slugToFile(["setup", "workflow"], nav().map(({ file }) => file))).toBe("setup/workflow.md");
+  });
+
+  // `/mcp`의 Connect 카드와 가이드가 같은 조각을 보여야 한다 — 한쪽만 바뀌면 에이전트 설정이 두 모양이 된다(정본은 snippets.ts).
+  it("AI 에이전트 연결 조각이 /mcp의 조각과 글자 단위로 같다", () => {
+    const value = tree("ai-agents.md");
+    const blocks: { meta: string; body: string }[] = [];
+    visit(value, "code", (node) => {
+      blocks.push({ meta: node.meta ?? "", body: node.value });
+    });
+    for (const client of CONNECT_CLIENTS) {
+      const snippet = connectSnippet(client, "https://mal-moi.com/api/mcp");
+      expect(blocks, client).toContainEqual(expect.objectContaining({ meta: expect.stringContaining(`title="${snippet.path}"`), body: snippet.body }));
+    }
+    expect(sectionByAnchor(value, "token")).toContain(TOKEN_ENV);
+    expect(sectionByAnchor(value, "push-token")).toContain("gh secret set PUSH_TOKEN --repo OWNER/REPO");
   });
 });
 
