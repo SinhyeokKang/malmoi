@@ -422,6 +422,6 @@ Publish 지문은 `discardFingerprint`처럼 상태 digest다. §4.1의 bypass �
 - **새 raw 색·새 Badge variant는 없다** — `Badge neutral` · `Button danger` · `Alert danger` · `bg-muted` 안에서 끝난다. DESIGN §6.2 등재 없음.
 - **새 페이지라 `/design-sync` 대상이다** — Claude Design 핸드오프(정적 시안, 상태별 프레임: 빈 · 카드(활성) · 카드(만료) · 발급 ① ·
   발급 ②(원문) · Rotate 확인 · Revoke 확인 · 거부 · 결과 미확인 · 멤버십 0의 범위 선택)를 받아 구현한다. "진행"·"복사 실패"는 프리미티브가
-  들어 프레임이 필요 없다. 시안 링크는 받는 즉시 이 문서에 붙인다.
+  들어 프레임이 필요 없다. **시안**: https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=design_handoff_mcp_connector%2FREADME.md (2026-09-28 수령).
 - 가이드 `/docs`에 **Connect an AI agent** 페이지 하나(`/guide`) — 설정·예시 프롬프트("이 리포를 Malmoi에 연결해 줘", "비어 있는 fr
   번역을 채우고 Publish해 줘")·권한 설명·도구 묶음. 페이지와 가이드가 같은 사실을 말하되 정본은 가이드다.

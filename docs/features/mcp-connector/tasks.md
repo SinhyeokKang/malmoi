@@ -208,3 +208,20 @@ export 가드 갱신 + `client-graph.test.ts` green이다.
 - 검증: 위 왕복의 PR URL과 Logs 화면 캡처 · CLI/CI 각각의 보호 통과 여부·앱 상태 코드·dev DB 사용 기록 · `pnpm build` green.
 
 ── `docs(ARCHITECTURE|DIRECTORY|privacy|guide): …` (문서별 별도 커밋)
+
+## 결정 기록 (`/orchestrate`, 2026-09-28)
+
+- **T8 시안** — Claude Design 핸드오프 수령(design §8에 링크). 워크트리엔 `.env.local`이 없어 dev 서버가 안 뜨므로, 워커는 시안을 읽고
+  구현 + jsdom 검증까지, computed style 실측(`/design-sync` 루프)은 통합 뒤 main 체크아웃의 QA 워커가 한다.
+- **T9 preview 보호 통과** — Vercel "Protection Bypass for Automation" secret은 사용자가 QA 직전에 준비한다(로컬 셸 환경변수 +
+  폐기용 리포 secret, 값은 트랜스크립트에 남기지 않는다). 준비가 안 되면 preview 실물은 미완으로 기록한다.
+- **배치** (워커는 전부 Claude Code):
+
+| 배치 | 태스크 | 건드리는 곳 | 순서 |
+|---|---|---|---|
+| M1 | T0 · T1 · T2 · T3 → (M2 대기) → T5 | PRODUCT · `package.json`/lockfile · `lib/mcp/{token,grant,issue-plan,batch,result,catalog,http}.ts` · `lib/publish/fingerprint.ts` · `prisma/` · `lib/privacy/collected.ts` · `app/api/mcp/` · `app/(edit)/mcp/actions.ts` · 메타 테스트 | T3 뒤 인계 `a`, M2 통합 뒤 T5 → 인계 `b` → `/push` ① |
+| M2 | T4-0 · T4-a → (M1 `a` 대기) → T4-b · T4-c · T4-d | `app/(edit)/**/actions.ts` · `lib/auth/lock.ts` · 추출 코어 · `locked-access`/`entry-points`/`credential-separation` 테스트 | M1과 병렬, T4-b 전에 `WAITING FOR M1` |
+| M3 | T6 → (M4 대기) → `preview_publish` · T7 → T9 문서(ARCHITECTURE · DIRECTORY · CLAUDE.md · 가이드 본문) | `lib/mcp/tools/*` · `app/api/mcp/route.ts` 디스패치 | `/push` ① 뒤 |
+| M4 | T6.5 | `lib/pull/**` · `lib/sync/run.ts` · `lib/publish/read.ts` | `/push` ① 뒤, M3와 병렬 |
+| M5 | T8 · `/privacy` 본문(T9) | `app/(edit)/mcp/page.tsx` · `components/mcp/**` · `lib/shell/nav.ts` · `lib/auth/cookie.ts` · `lib/routes` · `app/privacy` | `/push` ① 뒤, M3·M4와 병렬. `messages/en.tsx`는 M3와 겹치므로 늦게 통합되는 쪽이 `git rebase dev` |
+| QA | `/runtime-test` · `/design-sync` 실측 · `/roundtrip`(`i18n-order-check`) · preview 실물(T9) · `/guide-shots` | main 체크아웃 | 전부 dev에 들어간 뒤 직렬 |
