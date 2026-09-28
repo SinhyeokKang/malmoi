@@ -11,7 +11,11 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(__dirname, "..", "..", "..");
 const TREES = ["lib/mcp", "app/api/mcp"];
-const FORBIDDEN = [/\bauth\(/, /\breadSession\(/, /\bcookies\(/];
+const FORBIDDEN = [
+  /\bauth\(/, /\breadSession\(/, /\bcookies\(/,
+  // 헤더를 직접 읽는 우회 — `request.headers.get("Cookie")`·`req.cookies`(NextRequest)
+  /headers\.get\(\s*["'`]cookie["'`]/i, /\.cookies\b/,
+];
 
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
@@ -39,6 +43,13 @@ describe("쿠키 읽기 스캐너", () => {
     expect(readsCookies("const s = await auth();")).toBe(true);
     expect(readsCookies("const s = await readSession();")).toBe(true);
     expect(readsCookies("const jar = await cookies();")).toBe(true);
+  });
+
+  it("헤더·NextRequest로 쿠키를 읽는 우회도 잡는다", () => {
+    expect(readsCookies('const raw = request.headers.get("cookie");')).toBe(true);
+    expect(readsCookies("const raw = request.headers.get('Cookie');")).toBe(true);
+    expect(readsCookies("const jar = req.cookies.get(\"x\");")).toBe(true);
+    expect(readsCookies('request.headers.get("authorization"); const cookieless = true;')).toBe(false);
   });
 
   it("import·주석 인용·비슷한 이름은 호출이 아니다", () => {
