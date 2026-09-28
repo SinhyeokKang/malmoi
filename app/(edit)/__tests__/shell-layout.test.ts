@@ -311,6 +311,8 @@ describe("콘텐츠 패널 — 라우트마다 정확히 하나", () => {
 describe("패널 폭 등급을 화면이 고르고 있다", () => {
   /** 프로젝트·사용자 축의 **목록** 화면 — 카드가 패널을 채운다(시안 `1a`). */
   const FLUID = new Set([
+    // `/mcp` — 핸드오프는 limited 896이었고 2026-09-29 사용자가 fluid로 바꿨다(DESIGN §5.1).
+    "app/(edit)/mcp/page.tsx",
     "app/(edit)/projects/(list)/loading.tsx",
     "app/(edit)/projects/[slug]/(home)/loading.tsx",
     "app/(edit)/projects/[slug]/(home)/page.tsx",
@@ -330,8 +332,6 @@ describe("패널 폭 등급을 화면이 고르고 있다", () => {
     "app/(edit)/account/loading.tsx",
     "app/(edit)/account/page.tsx",
     "app/(edit)/error.tsx",
-    // `/mcp` — `/account`와 같은 등급(핸드오프 결정 2 · limited 896).
-    "app/(edit)/mcp/page.tsx",
     "app/(edit)/projects/[slug]/settings/loading.tsx",
     "app/(edit)/projects/[slug]/settings/page.tsx",
     "components/project-archived.tsx",

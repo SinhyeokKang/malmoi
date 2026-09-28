@@ -15,7 +15,7 @@ import { routes } from "@/lib/routes";
  * **MCP connector** (`/mcp` — PRODUCT §4.1 "MCP 커넥터" · 핸드오프 `design_handoff_mcp_connector`). 사용자 축이다 — 토큰은 계정에 붙는다.
  *
  * ⚠️ **`requireUser`만 지난다 — 인가할 프로젝트가 없다**(`/account`와 같다). 모든 조회는 세션의 `userId`로만 좁힌다(POSTMORTEM 2026-09-06).
- * ⚠️ **폭 limited 896 · 제목 = 사이드바 라벨**(`m.common.nav.mcp`). 모달 열림은 클라이언트 상태라 딥링크가 없다.
+ * ⚠️ **폭 fluid 1280 · 제목 = 사이드바 라벨**(`m.common.nav.mcp`). 핸드오프는 `/account`와 같은 limited 896이었고 **2026-09-29 사용자가 fluid로 바꿨다**(DESIGN §5.1). 모달 열림은 클라이언트 상태라 딥링크가 없다.
  * ⚠️ **서버 URL은 이 요청의 origin이다** — preview에서 보면 preview 주소가 나와야 연결 조각을 그대로 쓸 수 있다. origin을 못 만들면
  * (허용 목록 밖 Host) 프로덕션 주소로 떨어진다.
  */
@@ -46,10 +46,10 @@ export default async function McpPage() {
 
   return (
     <>
-      <PanelHeader>
+      <PanelHeader width="fluid">
         <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.mcp}</h1>
       </PanelHeader>
-      <PanelBody className="flex flex-col gap-4">
+      <PanelBody width="fluid" className="flex flex-col gap-4">
         <TokenCard token={token} projects={projects} now={now.toISOString()} />
         <ConnectCard serverUrl={`${origin}/api/mcp`} />
         {/*
