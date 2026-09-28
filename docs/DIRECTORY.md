@@ -261,12 +261,11 @@ components/
                         살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다
   onboarding/modal.tsx  components/ui/modal.tsx를 그대로 재수출한다 — 호출부를 안 건드리려는 한 줄이다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
-                        sources-archived · github-mark 일곱.
+                        sources-archived 여섯.
                         목록 소유자가 선택·쓰기 결과를 유지. 로딩/거부/장애를 구별하고 쓰기는 기존 Action 경계를 따른다.
                         sources-archived는 보관 프로젝트의 안내 한 장이고 목록·상세를 아예 열지 않는다
-                        (판정이 조회 **전에** 선다). ⚠️ github-mark는 **이 리포의 유일한 브랜드 마크다** —
-                        `lucide-react` 1.37이 브랜드 아이콘을 통째로 빼서 0.462의 path를 손으로 들고 있다.
-                        늘리지 말고 다른 자리가 생기면 여기서 가져다 쓴다
+                        (판정이 조회 **전에** 선다). GitHub 글리프는 여기 없다 — 리포 전체가 signin/brand-icons의
+                        GithubIcon 하나를 쓴다(2026-09-28 — 옛 lucide 외곽선 사본을 지웠다)
   settings/             general-card · repository-card/repository-form ·
                         ci-card · archive-card · push-token-panel. 독립 add-surface.tsx는 모달 전환 뒤
                         삭제했고, push-token-panel은 소비자가 ci-card 하나뿐이라 onboarding/에서 옮겼다.
