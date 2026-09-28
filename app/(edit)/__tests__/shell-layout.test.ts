@@ -330,6 +330,8 @@ describe("패널 폭 등급을 화면이 고르고 있다", () => {
     "app/(edit)/account/loading.tsx",
     "app/(edit)/account/page.tsx",
     "app/(edit)/error.tsx",
+    // `/mcp` — `/account`와 같은 등급(핸드오프 결정 2 · limited 896).
+    "app/(edit)/mcp/page.tsx",
     "app/(edit)/projects/[slug]/settings/loading.tsx",
     "app/(edit)/projects/[slug]/settings/page.tsx",
     "components/project-archived.tsx",

@@ -41,15 +41,19 @@ export function RowCard({
   title: string;
   /** `<ul aria-labelledby>`와 포커스 착지점이 이 id를 쓴다 (멤버 화면). `/projects`는 안 준다. */
   titleId?: string;
-  count: number;
   /**
-   * 카운트 배지의 sr-only 문장.
+   * 카운트 배지. ⚠️ **선택이다** (mcp-connector 핸드오프 §4) — `/mcp`의 토큰·Connect 카드는 셀 것이 없다(계정당 하나).
+   * 없으면 배지를 그리지 않는다. `/projects`·멤버는 그대로 넘기므로 동작이 안 바뀐다.
+   */
+  count?: number;
+  /**
+   * 카운트 배지의 sr-only 문장. `count`가 있을 때만 쓴다.
    *
    * ⚠️ **기본값을 두지 않는다** — 전에는 `m.projects.count(count)`가 이 자리에 박혀 있어서, 그대로
    * 공유하면 멤버 카드가 "3 projects"를 낭독한다. 숫자만 그리면 접근 이름이 "Members 3"이 되므로
    * 보이는 것은 숫자로 두고 스크린리더에는 완전한 문장을 준다.
    */
-  countLabel: string;
+  countLabel?: string;
   /**
    * 헤더의 설명 한 줄.
    *
@@ -83,10 +87,12 @@ export function RowCard({
           {title}
         </h2>
         {/* ⚠️ **배지가 `h2`의 바로 다음 형제여야 한다** — 두 렌더 테스트가 `h2 + span`으로 집는다. */}
-        <Badge variant="neutral">
-          <span aria-hidden>{count}</span>
-          <span className="sr-only">{countLabel}</span>
-        </Badge>
+        {count !== undefined && (
+          <Badge variant="neutral">
+            <span aria-hidden>{count}</span>
+            <span className="sr-only">{countLabel}</span>
+          </Badge>
+        )}
         {description !== undefined && (
           <span className="text-muted-foreground ml-auto truncate text-xs">{description}</span>
         )}

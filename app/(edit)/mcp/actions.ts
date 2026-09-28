@@ -8,14 +8,14 @@ import { logFailure } from "@/lib/github-connect/log";
 import { planApiTokenIssue } from "@/lib/mcp/issue-plan";
 import { generateApiToken, hashApiToken } from "@/lib/mcp/token";
 import { revalidateAfterCommit } from "@/lib/revalidate-after-commit";
+import { routes } from "@/lib/routes";
 
 /**
  * MCP 개인 토큰 발급·폐기 (mcp-connector T5). **계정당 하나 · 불변**이라 [Create]와 [Rotate]가 같은 Action이다 — 기존 행 삭제 + 새 행
  * 삽입을 한 tx로. 폐기는 행 삭제다(자격증명이라 사건 보존 원칙 밖이다).
  *
  * `requireUser` 하나로 충분하다 — 행이 **사용자 소유**다. 모든 쿼리는 세션의 `userId`로만 좁힌다(POSTMORTEM 2026-09-06).
- * 캐시 무효화는 아직 전 레이아웃(`"/"`)이다 — `/mcp` 페이지와 `routes.mcp()`가 T8에서 선다(경로 리터럴은 죽은 링크 검사가 막는다).
- * T8이 `routes.mcp()`로 좁힌다.
+ * 캐시 무효화는 `/mcp` 레이아웃 하나다 — 토큰을 그리는 화면이 그것뿐이다(사이드바·셸은 토큰을 안 읽는다).
  * ⚠️ **토큰이 토큰을 만들지 않는다**(spec 비목표) — MCP 도구에 발급·폐기가 없고 여기가 유일한 길이다.
  */
 
@@ -64,7 +64,7 @@ export async function issueApiToken(raw: unknown): Promise<ApiTokenIssueResult> 
     logFailure("mcp-token-issue", error);
     return { ok: false, reason: "unavailable" };
   }
-  revalidateAfterCommit("mcp-token");
+  revalidateAfterCommit("mcp-token", routes.mcp());
   return { ok: true, token, expiresAt: expiresAt.toISOString() };
 }
 
@@ -77,6 +77,6 @@ export async function revokeApiToken(): Promise<ApiTokenRevokeResult> {
     logFailure("mcp-token-revoke", error);
     return { ok: false, reason: "unavailable" };
   }
-  revalidateAfterCommit("mcp-token");
+  revalidateAfterCommit("mcp-token", routes.mcp());
   return { ok: true };
 }

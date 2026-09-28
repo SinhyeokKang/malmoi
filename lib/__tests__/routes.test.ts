@@ -19,6 +19,7 @@ describe("routes — 정적 경로", () => {
    */
   it("계정 화면은 프로젝트 축이 아니다 — slug가 없다", () => {
     expect(routes.account()).toBe("/account");
+    expect(routes.mcp()).toBe("/mcp");
   });
 
   /**

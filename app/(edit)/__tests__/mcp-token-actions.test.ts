@@ -87,9 +87,9 @@ describe("issueApiToken", () => {
     expect(hoisted.revalidateAfterCommit).not.toHaveBeenCalled();
   });
 
-  it("커밋 뒤 다시 그린다 (T8 전까지 전 레이아웃)", async () => {
+  it("커밋 뒤 /mcp를 다시 그린다", async () => {
     await issueApiToken(valid);
-    expect(hoisted.revalidateAfterCommit).toHaveBeenCalledWith("mcp-token");
+    expect(hoisted.revalidateAfterCommit).toHaveBeenCalledWith("mcp-token", "/mcp");
   });
 });
 
@@ -97,7 +97,7 @@ describe("revokeApiToken", () => {
   it("세션 사용자의 행만 지운다 — 멱등", async () => {
     await expect(revokeApiToken()).resolves.toEqual({ ok: true });
     expect(hoisted.apiToken.deleteMany).toHaveBeenCalledWith({ where: { userId: "alice" } });
-    expect(hoisted.revalidateAfterCommit).toHaveBeenCalledWith("mcp-token");
+    expect(hoisted.revalidateAfterCommit).toHaveBeenCalledWith("mcp-token", "/mcp");
   });
 
   it("DB 장애 → unavailable", async () => {

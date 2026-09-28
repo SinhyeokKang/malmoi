@@ -267,6 +267,10 @@ export const en = {
        */
       account: "Account",
       /**
+       * `/mcp` (mcp-connector) — 사이드바 사용자 축의 `Account` 바로 앞. **페이지 제목도 이 키다**(DESIGN "메뉴명 = 페이지 제목").
+       */
+      mcp: "MCP connector",
+      /**
        * 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다.
        *
        * ⚠️ **화면 제목도 이 키들을 쓴다** (2026-09-11 사용자 — "LNB 메뉴명과 페이지 타이틀은 항상
@@ -1735,6 +1739,95 @@ export const en = {
        * 트리에도 아무 설명이 없었다 — 스크린리더에는 *"…, 버튼, 사용 불가"*까지만 들린다.
        */
       busy: "Wait for the current upload to finish.",
+    },
+  },
+
+  /**
+   * **`/mcp` — MCP connector 페이지** (핸드오프 `design_handoff_mcp_connector` §12 — 문구가 전부 확정이다). 도구 결과 문장은 이 블록이
+   * 아니라 `mcp`(M3)다 — 에이전트가 읽는 문장과 사람이 읽는 화면을 한 블록에 섞지 않는다.
+   */
+  mcpConnector: {
+    token: {
+      title: "Your token",
+      create: "Create token",
+      rotate: "Rotate",
+      revoke: "Revoke",
+      expired: "Expired",
+      emptyTitle: "No token yet",
+      emptyBody: "Create a token to let an AI agent work in your projects.",
+      facts: {
+        grants: "Allowed actions",
+        scope: "Scope",
+        created: "Created",
+        lastUsed: "Last used",
+        expires: "Expires",
+      },
+      // 빈 grant를 안 그리면 "권한 없음"과 구별이 안 된다 — 읽기는 grant 없이 된다(design §1.25).
+      readOnly: "Read only",
+      allProjects: "All projects",
+      projects: (n: number): string => `${n.toLocaleString("en-US")} project${n === 1 ? "" : "s"}`,
+      never: "Never",
+      // 결과 미확인(`4b`) — 복구는 머리의 Rotate다. 버튼을 더하지 않는다.
+      unconfirmed: "We couldn't confirm the result. If you didn't get a token value, rotate to get a new one.",
+      // 폐기 응답 유실 — 핸드오프에 프레임이 없다(4b와 같은 자리·형). 다음 행동은 카드를 보고 남았으면 다시 폐기다.
+      revokeUnconfirmed: "We couldn't confirm the token was revoked. If it's still shown here, revoke it again.",
+      // 항상 DOM에 있는 `role="status"`가 읽는 완료 문장 — 화면에는 안 보인다(카드가 바뀐 것이 시각 신호다).
+      status: {
+        created: "Token created",
+        rotated: "Token rotated",
+        revoked: "Token revoked",
+      },
+    },
+    /** 허용 동작 넷 — 순서는 `TOKEN_GRANTS`다. 라벨은 카드 사실 블록에서 ` · `로 잇는다. */
+    grants: {
+      "translation:write": { label: "Translate & publish", hint: "Save translations and open publish PRs." },
+      // Sync·Revert가 미전달 편집을 버린다 — 그래서 힌트에 `sync`가 있다(핸드오프 결정 16).
+      "project:settings": { label: "Project settings", hint: "Sources, sync, base branch, push token, archive." },
+      "member:manage": { label: "Members", hint: "Invite, change roles, remove." },
+      "project:create": { label: "Create projects", hint: "List your GitHub repositories and set up new projects." },
+    },
+    connect: {
+      title: "Connect",
+      serverUrl: "Server URL",
+      agent: "Agent",
+      clients: { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor" },
+      // 기존 파일에 항목을 덧붙이는 꼴이라 동사가 `Add to`다(핸드오프 §4). 경로는 sans 평문이고 색만 올린다.
+      addTo: (path: ReactNode): ReactNode => <>Add to {path}</>,
+    },
+    guide: {
+      lead: "See what an agent can do and example prompts in the guide →",
+      link: "Connect an AI agent",
+    },
+    form: {
+      createTitle: "Create token",
+      rotateTitle: "Rotate token",
+      expiresIn: "Expires in",
+      days: (n: number): string => `${n.toLocaleString("en-US")} days`,
+      grants: "Allowed actions",
+      grantsHelp: "Reading keys, events and members inside your projects never needs a grant.",
+      scope: "Scope",
+      allMine: "All my projects",
+      chosen: "Chosen projects",
+      noMembership: "You're not a member of any project yet.",
+      // 열린 결정 1(핸드오프 §13) — 바닥 왼쪽 상태 슬롯에 둔다(초대 모달의 상태 문장과 같은 자리).
+      chooseOne: "Choose at least one project.",
+      step: (n: number): string => `Step ${n.toLocaleString("en-US")} of 2`,
+      create: "Create",
+      rotateConfirm: "Rotate and show new token",
+      rotateWarning: "Rotating stops the current token immediately. Every agent using it stops until you paste the new one.",
+      failed: "We couldn't create the token. Try again in a moment.",
+    },
+    result: {
+      title: "Your token",
+      // ⚠️ `<strong className="font-normal">` 자리다 — 모달 문맥의 강조이지 굵기가 아니다(design §8).
+      copyNow: "Copy it now — it won't be shown again.",
+      setEnv: "Set it as MALMOI_TOKEN in your shell, then use the Connect snippet below.",
+      done: "Done",
+    },
+    revoke: {
+      title: "Revoke your token?",
+      body: "Every agent using it stops immediately. This can't be undone.",
+      confirm: "Revoke token",
     },
   },
 

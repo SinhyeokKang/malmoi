@@ -152,6 +152,8 @@ export const routes = {
    * (하나를 닫을 때 다른 하나까지 지워진다).
    */
   account: (query: { e?: string; sessionRevocation?: string; link?: string; connect?: string } = {}): string => withQuery("/account", query),
+  /** MCP connector (mcp-connector) — 개인 토큰 발급·회전·폐기. 사용자 축이다(토큰은 계정에 붙는다). 쿼리가 없다 — 모달은 클라이언트 상태다. */
+  mcp: (): string => "/mcp",
   /**
    * 병합 안내 화면 (account-linking T2). **challenge는 경로에 있다** — 경로 토큰이라 "표시 전용
    * 힌트"라는 애매한 층이 없고, `/invite/[token]`과 같은 부류다.

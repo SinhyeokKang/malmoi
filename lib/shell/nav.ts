@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages, Plus, Settings, Users } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages, Plug, Plus, Settings, Users } from "lucide-react";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -15,7 +15,8 @@ import { routes } from "@/lib/routes";
  * 바뀐 것 넷: 사용자 축이 **둘로** 줄었고(`Projects`·`Settings` — `New project`가 빠졌다),
  * 구역 라벨이 **이름 그대로**이며(`Your work` → 사용자 이름), 프로젝트 축 순서에서 **Locales가
  * Translations보다 앞**이고, 하단에 **Help**가 붙었다.
- * ⚠️ **그 뒤 사용자 결정이 시안을 넘었다** (2026-09-27): 사용자 축은 `Projects · New project · Account` 셋이고
+ * ⚠️ **그 뒤 사용자 결정이 시안을 넘었다** (2026-09-27): 사용자 축은 `Projects · New project · Account` 셋이었고(2026-09-28에
+ * `Account` 앞에 `MCP connector`가 들어 넷이다 — mcp-connector)
  * (`navWorkItems` — 헤더 사용자 메뉴의 첫 묶음도 이 목록이다), 하단은 `Changelog · Docs`다(2026-09-28 — GitHub Releases 외부 링크였던 첫 항목이 앱 안 `/changelog`가 됐다).
  */
 
@@ -164,6 +165,11 @@ export function navWorkItems(projectCount?: number): NavItem[] {
    * 같은 글리프라야 "내 계정"이 한 어휘로 읽힌다. `Settings`(톱니)는 프로젝트 설정이 쓰므로,
    * 여기에 같이 쓰면 사용자 축과 프로젝트 축이 같은 모양으로 섞인다.
    */
+  /**
+   * `MCP connector` (mcp-connector 핸드오프 §4) — **`Account` 바로 앞**이다. 토큰은 프로젝트가 아니라 사람에게 붙어 `Account`와 같은
+   * 축이다. 이 목록을 헤더 사용자 메뉴의 첫 묶음도 읽으므로 거기에도 함께 선다(의도).
+   */
+  { key: "mcp", label: m.common.nav.mcp, icon: Plug, href: routes.mcp(), exact: true },
   { key: "account", label: m.common.nav.account, icon: CircleUser, href: routes.account(), exact: true },
   ];
 }

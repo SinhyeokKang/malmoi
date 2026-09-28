@@ -12,7 +12,7 @@ import { render } from "./helpers/dom";
 
 /**
  * **헤더 사용자 메뉴** (2026-09-27 사용자) — 항목이 필터 메뉴와 같은 `DropdownMenuItem` 모양이고, 순서가
- * `Projects · New project · Account | Changelog · Docs · Privacy Policy | Sign out`이다. LNB와 겹치는 항목은 의도다.
+ * `Projects · New project · MCP connector · Account | Changelog · Docs · Privacy Policy | Sign out`이다. LNB와 겹치는 항목은 의도다.
  */
 async function open() {
   await render(<UserMenu name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} />);
@@ -34,6 +34,7 @@ it("머리 뒤 항목 순서와 구분선이 사용자가 정한 그대로다", 
     "---",
     m.common.nav.projects,
     m.common.nav.newProject,
+    m.common.nav.mcp,
     m.common.nav.account,
     "---",
     m.changelog.title,

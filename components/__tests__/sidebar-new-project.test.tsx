@@ -17,11 +17,11 @@ const current = (container: HTMLElement) =>
   [...container.querySelectorAll<HTMLAnchorElement>('a[aria-current="page"]')].map((a) => a.textContent?.replace(/\d+$/, "").trim());
 
 describe("사이드바 — New project", () => {
-  it("사용자 구역이 Projects · New project · Account 순이다", async () => {
+  it("사용자 구역이 Projects · New project · MCP connector · Account 순이다", async () => {
     path.value = "/projects";
     const { container } = await render(<Sidebar memberships={[]} userName="Kim" userImage={null} />);
     const work = container.querySelector("nav")!;
-    expect([...work.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["/projects", "/projects/new", "/account"]);
+    expect([...work.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["/projects", "/projects/new", "/mcp", "/account"]);
   });
 
   it("`/projects/new`에서는 New project 하나만 선택이다", async () => {

@@ -854,6 +854,12 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
     expect(isProtectedPath("/projects/new")).toBe(true);
     expect(isProtectedPath("/projects/sample/settings")).toBe(true);
     expect(isProtectedPath("/account")).toBe(true);
+    // `/mcp` (mcp-connector) — `/account`와 같은 모양이다. 접두만 같은 경로·API 진입점은 보호 대상이 아니다.
+    expect(isProtectedPath("/mcp")).toBe(true);
+    expect(isProtectedPath("/mcp.rsc")).toBe(true);
+    expect(isProtectedPath("/%6Dcp")).toBe(true);
+    expect(isProtectedPath("/mcpx")).toBe(false);
+    expect(isProtectedPath("/api/mcp")).toBe(false);
     // 접두 문자열만 같은 경로는 보호 대상이 아니다 — 이 줄이 위 넷을 의미 있게 만든다.
     expect(isProtectedPath("/projectsx")).toBe(false);
     expect(isProtectedPath("/invite/sample")).toBe(false);
