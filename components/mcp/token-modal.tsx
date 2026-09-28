@@ -1,6 +1,7 @@
 "use client";
 
 import { Box, Languages, ListChecks, Plus, Settings, Users, type LucideIcon } from "lucide-react";
+import { unstable_rethrow } from "next/navigation";
 import { useRef, useState, useTransition, type RefObject } from "react";
 
 import { issueApiToken, type ApiTokenIssueResult } from "@/app/(edit)/mcp/actions";
@@ -31,7 +32,7 @@ export type TokenFormInitial = { grants: readonly TokenGrant[]; scope: "all" | "
 
 /**
  * ⚠️ **어휘를 다시 적는다 — `TOKEN_GRANTS`를 값으로 import하지 않는다.** 그 모듈은 `lib/auth/access`를 물어 클라이언트 그래프가 넓어진다
- * (`client-graph.test.ts`). 두 벌의 대가는 `mcp-token-modal.test.tsx`가 순서까지 같다고 고정해 진다.
+ * (`client-graph.test.ts`). 두 벌의 대가는 `components/__tests__/mcp-token.test.tsx`가 순서까지 같다고 고정해 진다.
  */
 export const GRANT_ORDER = ["translation:write", "project:settings", "member:manage", "project:create"] as const satisfies readonly TokenGrant[];
 
@@ -101,14 +102,18 @@ export function TokenModal({
     if (pending || emptyChoice) return;
     setFailed(false);
     startTransition(async () => {
-      let result: ApiTokenIssueResult | null;
+      // `undefined`는 값 없이 끝난 호출이다(redirect가 reject 대신 resolve로 올 때의 방어) — 아무것도 단정하지 않고 폼을 그대로 둔다.
+      let result: ApiTokenIssueResult | null | undefined;
       try {
         result = await issueApiToken({
           expiresInDays: expires,
           grants: GRANT_ORDER.filter((g) => grants.has(g)),
           scope: scope === "all" ? { kind: "all" } : { kind: "projects", projectIds: chosenIds },
         });
-      } catch {
+      } catch (thrown) {
+        // ⚠️ **세션 만료의 redirect는 되던진다** — `requireUser`가 `/signin`으로 보내는 신호이고, 삼키면 "결과 미확인"이 거짓으로 선다
+        // (`profile-name-form.tsx`와 같은 형).
+        unstable_rethrow(thrown);
         // 호출이 끊기면 서버가 발급했는지 모른다 — 성공으로도 실패로도 단정하지 않는다(재시도하면 두 번째 토큰이 첫째를 덮는다).
         result = null;
       }
@@ -116,6 +121,7 @@ export function TokenModal({
         onUnconfirmed();
         return;
       }
+      if (result === undefined) return;
       if (result.ok) {
         setToken(result.token);
         setStep(2);
@@ -136,7 +142,8 @@ export function TokenModal({
       title={title}
       transitionKey={String(step)}
       closeLabel={m.common.close}
-      closeDisabled={pending}
+      // ⚠️ **②는 Done만 닫는다** — Esc·바깥 클릭·X로 닫히면 원문을 잃는다(다시 볼 길이 없다). ①은 평소처럼 닫힌다.
+      closeDisabled={pending || step === 2}
       returnFocusRef={returnFocusRef}
       fallbackFocusRef={fallbackFocusRef}
       footer={<span data-token-status>{status}</span>}

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, Component, type ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,9 +11,27 @@ import { API_TOKEN_EXPIRY_DAYS } from "@/lib/mcp/issue-plan";
 
 import { find, render } from "./helpers/dom";
 
-const mocks = vi.hoisted(() => ({ issue: vi.fn(), revoke: vi.fn(), refresh: vi.fn() }));
+const mocks = vi.hoisted(() => ({ issue: vi.fn(), revoke: vi.fn(), refresh: vi.fn(), rethrown: [] as unknown[] }));
 vi.mock("@/app/(edit)/mcp/actions", () => ({ issueApiToken: mocks.issue, revokeApiToken: mocks.revoke }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
+vi.mock("next/navigation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/navigation")>();
+  return {
+    ...actual,
+    useRouter: () => ({ refresh: mocks.refresh }),
+    // 실물을 그대로 부르고, 되던진 것만 기록한다 — 호출부가 redirect를 삼키지 않았는지를 경계 렌더와 별개로 잰다.
+    unstable_rethrow: (thrown: unknown) => {
+      try { actual.unstable_rethrow(thrown); } catch (error) { mocks.rethrown.push(error); throw error; }
+    },
+  };
+});
+
+/** `requireUser`의 redirect — Server Action 호출부에서는 reject로 온다(`action-throws.test.tsx`와 같은 모양). */
+const REDIRECT = () => Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/signin;307;" });
+class Boundary extends Component<{ children: ReactNode }, { error: unknown }> {
+  state = { error: null as unknown };
+  static getDerivedStateFromError(error: unknown) { return { error }; }
+  render() { return this.state.error === null ? this.props.children : <p data-caught>{String((this.state.error as { digest?: string }).digest)}</p>; }
+}
 
 /**
  * `/mcp` 토큰 카드·모달 (mcp-connector T8 · 핸드오프 `1a`–`4b`). 서버 확인 전에는 성공으로 보이지 않고, 응답을 잃으면 **자동 재시도 없이**
@@ -53,6 +71,7 @@ let fixup: MutationObserver;
 let clipboard: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.rethrown.length = 0;
   fixup = installFocusFixup();
   clipboard = vi.fn(async () => {});
   Object.defineProperty(navigator, "clipboard", { value: { writeText: clipboard }, configurable: true });
@@ -60,9 +79,10 @@ beforeEach(() => {
 afterEach(() => fixup.disconnect());
 
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-async function mount(token: TokenCardData, projects: ScopeProject[] = PROJECTS) {
+async function mount(token: TokenCardData, projects: ScopeProject[] = PROJECTS, boundary = false) {
   await settle();
-  const view = await render(<TokenCard token={token} projects={projects} now={NOW} />);
+  const ui = <TokenCard token={token} projects={projects} now={NOW} />;
+  const view = await render(boundary ? <Boundary>{ui}</Boundary> : ui);
   await settle();
   return { ...view, update: (next: TokenCardData) => view.rerender(<TokenCard token={next} projects={projects} now={NOW} />) };
 }
@@ -199,6 +219,66 @@ describe("생성 ① → ②", () => {
     expect(card().textContent).toContain(m.mcpConnector.token.unconfirmed);
     expect(mocks.issue).toHaveBeenCalledTimes(1);
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
+    // 문장은 항상 DOM에 있는 status 영역이 읽는다 — 조건부로 끼워 넣는 live 영역을 따로 세우지 않는다.
+    expect(live().textContent).toBe(m.mcpConnector.token.unconfirmed);
+    expect(card().querySelectorAll('[role="status"]')).toHaveLength(1);
+  });
+
+  it("② 원문 화면은 Esc · 바깥 클릭 · X로 닫히지 않는다 — Done이 유일한 출구다", async () => {
+    mocks.issue.mockResolvedValue({ ok: true, token: RAW, expiresAt: ACTIVE.expiresAt });
+    await mount({ state: "none" });
+    await click(button(card(), m.mcpConnector.token.create));
+    await click(button(panel()!, m.mcpConnector.form.create));
+    await userEvent.keyboard("{Escape}");
+    await settle();
+    expect(panel()).not.toBeNull();
+    const overlay = [...document.querySelectorAll<HTMLElement>("[data-state]")].find((el) => el.className.includes("bg-foreground/32"));
+    if (overlay !== undefined) {
+      await act(async () => {
+        overlay.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        overlay.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      await settle();
+    }
+    expect(panel()).not.toBeNull();
+    const close = find<HTMLButtonElement>(panel()!, `button[aria-label="${m.common.close}"]`);
+    expect(close.disabled).toBe(true);
+    expect(find<HTMLElement>(panel()!, "[data-token-value]").textContent).toBe(RAW);
+    await click(button(panel()!, m.mcpConnector.result.done));
+    expect(panel()).toBeNull();
+  });
+
+  it("① 폼은 Esc로 닫힌다 — 잠금은 ②만이다", async () => {
+    await mount({ state: "none" });
+    await click(button(card(), m.mcpConnector.token.create));
+    await userEvent.keyboard("{Escape}");
+    await settle();
+    expect(panel()).toBeNull();
+  });
+
+  it("세션 만료(redirect reject) — 되던져 Next가 로그인으로 보낸다 · 미확인 Alert·재시도 없음", async () => {
+    mocks.issue.mockRejectedValue(REDIRECT());
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    await mount({ state: "none" }, PROJECTS, true);
+    await click(button(document.body, m.mcpConnector.token.create));
+    await click(button(panel()!, m.mcpConnector.form.create));
+    await settle();
+    error.mockRestore();
+    expect(document.querySelector("[data-caught]")?.textContent).toContain("NEXT_REDIRECT");
+    expect(mocks.rethrown).toHaveLength(1);
+    expect(document.body.textContent).not.toContain(m.mcpConnector.token.unconfirmed);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+    expect(mocks.issue).toHaveBeenCalledTimes(1);
+  });
+
+  it("응답이 값 없이 끝나도(undefined) TypeError도 미확인도 없다 — 모달이 그대로 선다", async () => {
+    mocks.issue.mockResolvedValue(undefined);
+    await mount({ state: "none" });
+    await click(button(card(), m.mcpConnector.token.create));
+    await click(button(panel()!, m.mcpConnector.form.create));
+    await settle();
+    expect(panel()).not.toBeNull();
+    expect(card().textContent).not.toContain(m.mcpConnector.token.unconfirmed);
     expect(live().textContent).toBe("");
   });
 
@@ -291,6 +371,32 @@ describe("폐기", () => {
     await click(button(card(), m.mcpConnector.token.revoke));
     await click(button(dialog()!, m.mcpConnector.revoke.confirm));
     expect(find<HTMLElement>(dialog()!, '[role="alert"]').textContent).toBe(m.errors.access.unavailable);
+    expect(live().textContent).toBe("");
+  });
+
+  it("세션 만료(redirect reject) — 되던진다 · 미확인 Alert 없음", async () => {
+    mocks.revoke.mockRejectedValue(REDIRECT());
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    await mount(ACTIVE, PROJECTS, true);
+    await click(button(document.body, m.mcpConnector.token.revoke));
+    await click(button(dialog()!, m.mcpConnector.revoke.confirm));
+    await settle();
+    await settle();
+    error.mockRestore();
+    // ⚠️ Radix Dialog 안에서 시작한 transition의 throw는 jsdom에서 경계 렌더까지 안 닿는다 — 되던졌는지를 직접 잰다.
+    expect(mocks.rethrown).toHaveLength(1);
+    expect(String((mocks.rethrown[0] as { digest?: string }).digest)).toContain("NEXT_REDIRECT");
+    expect(document.body.textContent).not.toContain(m.mcpConnector.token.revokeUnconfirmed);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  it("폐기 응답이 값 없이 끝나도 TypeError가 없다", async () => {
+    mocks.revoke.mockResolvedValue(undefined);
+    await mount(ACTIVE);
+    await click(button(card(), m.mcpConnector.token.revoke));
+    await click(button(dialog()!, m.mcpConnector.revoke.confirm));
+    await settle();
+    expect(card().textContent).not.toContain(m.mcpConnector.token.revokeUnconfirmed);
     expect(live().textContent).toBe("");
   });
 

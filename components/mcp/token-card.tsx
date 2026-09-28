@@ -1,7 +1,7 @@
 "use client";
 
 import { Plug } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { unstable_rethrow, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { revokeApiToken, type ApiTokenRevokeResult } from "@/app/(edit)/mcp/actions";
@@ -68,6 +68,12 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
   const live = token.state === "active";
   const expired = token.state === "expired";
 
+  /** 미확인 문장은 카드의 Alert(시각)와 항상 DOM에 있는 status 영역(낭독) 둘로 선다 — 조건부로 끼워 넣는 live 영역은 삽입 시점을 놓친다. */
+  function unconfirm(kind: "issue" | "revoke") {
+    setUnconfirmed(kind);
+    setStatus(kind === "issue" ? m.mcpConnector.token.unconfirmed : m.mcpConnector.token.revokeUnconfirmed);
+  }
+
   function refreshIfOnline() {
     if (navigator.onLine !== false) router.refresh();
   }
@@ -76,18 +82,21 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
     if (revoking) return;
     setRevokeFailed(false);
     startRevoke(async () => {
-      let result: ApiTokenRevokeResult | null;
+      let result: ApiTokenRevokeResult | null | undefined;
       try {
         result = await revokeApiToken();
-      } catch {
+      } catch (thrown) {
+        // 세션 만료의 redirect는 되던진다 — 삼키면 "확인하지 못했다"가 거짓으로 선다.
+        unstable_rethrow(thrown);
         result = null;
       }
       if (result === null) {
         setRevokeOpen(false);
-        setUnconfirmed("revoke");
+        unconfirm("revoke");
         refreshIfOnline();
         return;
       }
+      if (result === undefined) return;
       if (!result.ok) {
         setRevokeFailed(true);
         return;
@@ -134,7 +143,7 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
         }
       >
         {unconfirmed !== null && (
-          <Alert variant="warning" inset role="status">
+          <Alert variant="warning" inset>
             {unconfirmed === "issue" ? m.mcpConnector.token.unconfirmed : m.mcpConnector.token.revokeUnconfirmed}
           </Alert>
         )}
@@ -166,7 +175,7 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
           }}
           onUnconfirmed={() => {
             setModal(null);
-            setUnconfirmed("issue");
+            unconfirm("issue");
             refreshIfOnline();
           }}
         />

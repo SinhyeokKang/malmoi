@@ -1804,9 +1804,10 @@ export const en = {
       // 기존 파일에 항목을 덧붙이는 꼴이라 동사가 `Add to`다(핸드오프 §4). 경로는 sans 평문이고 색만 올린다.
       addTo: (path: ReactNode): ReactNode => <>Add to {path}</>,
     },
+    // ⚠️ 가이드의 `Connect an AI agent` 페이지가 서기 전의 일반 문장이다 — 그 페이지가 서면 핸드오프 §12 문장(`See what an agent can do…`)과
+    // 링크 라벨로 바꾼다(M3 T9).
     guide: {
-      lead: "See what an agent can do and example prompts in the guide →",
-      link: "Connect an AI agent",
+      lead: "How Malmoi works is covered in the",
     },
     form: {
       createTitle: "Create token",
