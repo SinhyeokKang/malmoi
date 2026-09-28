@@ -79,7 +79,11 @@ export function toToolResult(outcome: ToolOutcome): ToolResult {
   if (outcome.status === "refused") {
     const message = outcome.message ?? rejectionMessage(outcome.code);
     // 모르는 코드는 장애로 접는다 — 코드 원문을 싣지 않는다(코어 밖의 값이 결과로 새지 않게).
-    if (message === null || outcome.code === "unavailable") return toToolResult({ status: "unavailable" });
+    if (message === null) return toToolResult({ status: "unavailable" });
+    // 장애는 재시도 표시를 싣는다 — `detail`(코드·전송 여부)은 호출부가 고른 값이다.
+    if (outcome.code === "unavailable") {
+      return { isError: true, content: text(MESSAGE.unavailable), structuredContent: { ...outcome.detail, status: "unavailable", message: MESSAGE.unavailable, retryable: true } };
+    }
     // `detail`은 호출부가 고른 값(행 오류 인덱스·재시도 시각 등)이다 — 예외·원문을 싣지 않는다.
     return { isError: true, content: text(message), structuredContent: { ...outcome.detail, status: outcome.code, message } };
   }

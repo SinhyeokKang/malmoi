@@ -53,18 +53,35 @@ export const publish = defineTool({
     const { outcome, attempted } = await publishProject(prisma, coreSubject(subject), { slug, expectedFingerprint: fingerprint });
     // 실행기에 닿았으면 스킵·실패에도 지운다 — 웹 Publish와 같은 셋이다(`triggerPullAction`).
     if (attempted) revalidateTranslationReaders(slug);
-    return publishOutcome(outcome);
+    const project = outcome.status === "failed" && outcome.code !== undefined
+      ? await prisma.project.findUnique({ where: { slug }, select: { repoOwner: true, repoName: true, baseBranch: true } })
+      : null;
+    return publishOutcome(outcome, { label: project === null ? slug : `${project.repoOwner}/${project.repoName}`, branch: project?.baseBranch ?? "" });
   },
 });
 
-function publishOutcome(outcome: Awaited<ReturnType<typeof publishProject>>["outcome"]): ToolOutcome {
+/**
+ * 실행 결과 → 도구 결과. ⚠️ **`error`는 코드가 아니다** — 실행기가 고른 safe 문장이거나 `internal (ref …)`다. 판정은 `code`(`SyncErrorCode`)와
+ * `retryable`로 한다: 다시 해도 같은 실패(설정)는 Publish 화면의 `configError` 틀 + 서버의 safe 문장, 장애는 `unavailable` + 코드·전송 여부.
+ */
+function publishOutcome(outcome: Awaited<ReturnType<typeof publishProject>>["outcome"], repo: { label: string; branch: string }): ToolOutcome {
   if (outcome.status === "skipped" && outcome.reason === "reconfirm") return { status: "refused", code: "reconfirm", message: m.logs.reasons.reconfirm };
   if (outcome.status === "failed") {
-    if (outcome.error === "already-running") return { status: "refused", code: outcome.error, message: m.translations.publish.alreadyRunningBody };
-    if (outcome.error === "too-soon") return { status: "refused", code: outcome.error, message: m.translations.publish.tooSoonBody };
-    // 실행 실패는 거부가 아니라 장애일 수 있다 — `retryable`이면 장애로 접는다(§6.00 ②). 코드는 Logs가 말한다.
-    if (outcome.retryable === true) return { status: "unavailable" };
-    return { status: "refused", code: outcome.error };
+    const delivery = outcome.delivery;
+    if (outcome.error === "already-running") return { status: "refused", code: outcome.error, message: m.translations.publish.alreadyRunningBody, detail: { delivery } };
+    if (outcome.error === "too-soon") {
+      return { status: "refused", code: outcome.error, message: m.translations.publish.tooSoonBody,
+        detail: { delivery, ...(outcome.retryAfterSeconds === undefined ? {} : { retryAfterSeconds: outcome.retryAfterSeconds }) } };
+    }
+    if (outcome.code !== undefined) {
+      // 장애 — 거부가 아니다(§6.00 ②). 문장은 싣지 않고(`internal (ref …)`일 수 있다) 코드·전송 여부만 싣는다. Logs가 같은 코드를 든다.
+      if (outcome.retryable === true) return { status: "refused", code: "unavailable", detail: { code: outcome.code, delivery } };
+      const p = m.translations.publish;
+      return { status: "refused", code: outcome.code, message: `${p.configError}. ${p.configErrorDescription(repo.label, repo.branch)}`,
+        detail: { reason: outcome.error, delivery } };
+    }
+    // 코드 없는 실패는 실행 전 거부다(잠금 뒤 인가·readiness) — 그 코드의 화면 문장이다.
+    return { status: "refused", code: outcome.error, detail: { delivery } };
   }
   const view = planPublishView(outcome);
   return ok({ result: view, outcome }, m.mcp.summary.published(view));

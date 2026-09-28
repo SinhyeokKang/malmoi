@@ -147,6 +147,38 @@ describe("set_translations 입력", () => {
   });
 });
 
+describe("publish 실패 — 코드(`SyncErrorCode`)로 가른다", () => {
+  const failed = (over: Record<string, unknown>) => h.core.mockResolvedValueOnce({ outcome: { status: "failed", delivery: "not-started", ...over }, attempted: true });
+  const publishNow = () => run("publish", subject("editor"), { slug: "acme", fingerprint: "f" });
+
+  it("다시 해도 같은 실패(설정)는 refused — Publish 화면의 configError 문장과 서버의 safe 메시지, 재시도 표시 없음", async () => {
+    failed({ error: "The base language file couldn't be read.", code: "base-unreadable", retryable: false });
+    const result = toToolResult(await publishNow());
+    const text = result.content[0]?.text ?? "";
+    expect(text).toContain(m.translations.publish.configError);
+    expect(text).toContain(m.translations.publish.configErrorDescription("o/r", "main"));
+    expect(result.structuredContent).toMatchObject({ status: "base-unreadable", reason: "The base language file couldn't be read.", delivery: "not-started" });
+    expect("retryable" in result.structuredContent).toBe(false);
+  });
+
+  it("장애는 unavailable · retryable이고 code와 delivery를 싣는다(전송 여부를 숨기지 않는다 — 불변식 9)", async () => {
+    failed({ error: "internal (ref abc)", code: "github-error", retryable: true, delivery: "unknown" });
+    const result = toToolResult(await publishNow());
+    expect(result.structuredContent).toMatchObject({ status: "unavailable", retryable: true, code: "github-error", delivery: "unknown" });
+    expect(JSON.stringify(result)).not.toContain("internal (ref");
+  });
+
+  it("too-soon은 retryAfterSeconds를 싣는다", async () => {
+    failed({ error: "too-soon", retryable: true, retryAfterSeconds: 17 });
+    expect(toToolResult(await publishNow()).structuredContent).toMatchObject({ status: "too-soon", retryAfterSeconds: 17, message: m.translations.publish.tooSoonBody });
+  });
+
+  it("실행 전 거부(잠금 뒤 인가)는 그 코드의 화면 문장이다", async () => {
+    failed({ error: "forbidden", retryable: false });
+    expect(toToolResult(await publishNow()).structuredContent).toMatchObject({ status: "forbidden", message: accessErrorMessage("forbidden") });
+  });
+});
+
 describe("결과 문장은 화면과 같은 키", () => {
   it("Publish 거부 — reconfirm은 Logs의 문장, 동시 실행·간격은 Publish 모달의 문장", async () => {
     h.core.mockResolvedValueOnce({ outcome: { status: "skipped", reason: "reconfirm" }, attempted: true });
