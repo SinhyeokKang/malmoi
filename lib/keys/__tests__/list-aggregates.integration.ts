@@ -656,6 +656,30 @@ it.each(["missing", "partial", "conflict"])("실제 Action의 %s 준비 거부�
   expect(await createProject(input)).toMatchObject({ ok: false });
   await expectNoCreation();
 });
+/**
+ * **MCP 토큰 주체의 생성** (mcp-connector T4-d · design §1.25). User 잠금 뒤 토큰을 다시 읽고, 고른-범위 토큰이면 같은 tx에서
+ * `projectIds`에 새 프로젝트를 더한다 — 안 넣으면 방금 만든 프로젝트를 그 토큰이 못 만진다.
+ */
+it("잠금 뒤 토큰이 무효·grant 없음이면 아무 행도 남기지 않는다 · 고른-범위 토큰은 새 프로젝트를 범위에 더한다 (짝)", async () => {
+  const { input } = await creationFixture();
+  const { createProjectFromRepo } = await import("@/lib/onboarding-run/create");
+  const make = (tokenId: string) => createProjectFromRepo(prisma, { userId: "create-owner", tokenId }, input);
+  await prisma.apiToken.create({ data: { userId: "create-owner", tokenHash: "live", grants: ["translation:write"], allProjects: false, projectIds: ["elsewhere"], expiresAt: new Date(Date.now() + 86_400_000) } });
+  expect(await make("stale")).toEqual({ ok: false, error: "unauthorized" });
+  expect(await make("live")).toEqual({ ok: false, error: "token-scope" });
+  await expectNoCreation();
+  await prisma.apiToken.update({ where: { userId: "create-owner" }, data: { grants: ["project:create"] } });
+  expect(await make("live")).toMatchObject({ ok: true });
+  const created = await prisma.project.findUniqueOrThrow({ where: { slug: input.slug }, select: { id: true } });
+  expect((await prisma.apiToken.findUniqueOrThrow({ where: { userId: "create-owner" } })).projectIds).toEqual(["elsewhere", created.id]);
+});
+it("전체 범위 토큰의 생성은 projectIds를 건드리지 않는다", async () => {
+  const { input } = await creationFixture();
+  const { createProjectFromRepo } = await import("@/lib/onboarding-run/create");
+  await prisma.apiToken.create({ data: { userId: "create-owner", tokenHash: "live", grants: ["project:create"], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000) } });
+  expect(await createProjectFromRepo(prisma, { userId: "create-owner", tokenId: "live" }, input)).toMatchObject({ ok: true });
+  expect((await prisma.apiToken.findUniqueOrThrow({ where: { userId: "create-owner" } })).projectIds).toEqual([]);
+});
 it("같은 사용자의 동시 생성은 OWNER 한도를 넘지 않고 같은 slug는 하나만 성공한다", async () => {
   const { createProject, input } = await creationFixture();
   const same = await Promise.all([createProject(input), createProject(input)]);

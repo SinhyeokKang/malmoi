@@ -66,12 +66,14 @@ const TOKEN_SITES = [
 
 /**
  * **raw `FOR UPDATE`로 잠그는 MCP 쓰기** — `lockProjectAccess`를 안 지나므로 잠금 직후 `lockApiToken(tx, { tokenId, … })`을 직접 부른다.
- * 수동 Sync 실행권 · Revert · 소스 추가 (프로젝트 생성은 T4-d).
+ * 수동 Sync 실행권 · Revert · 소스 추가 · 프로젝트 생성.
  */
 const RAW_TOKEN_SITES = [
   "lib/import/run.ts#acquire",
   "lib/keys/revert.ts#executeKeyRevert",
   "lib/surfaces/create.ts#addSurfacesFromSnapshot",
+  // 프로젝트 생성 — 잠글 프로젝트가 없어 User 행을 잠근다
+  "lib/onboarding-run/create.ts#createProjectFromRepo",
 ];
 
 function source(path: string): SourceFile {
