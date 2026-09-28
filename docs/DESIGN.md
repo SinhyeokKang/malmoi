@@ -414,8 +414,8 @@ computed style로 잰 것이다.
 |---|---|---|
 | `text-amber-700` | **등재** (소비자 확장) | 번역 작업 화면의 **상태 글자** — 키 행의 `Needs review`·미번역 수, 로케일 행의 `Missing`·`Not saved`·`n of m languages`, 툴바의 미저장 수. amber-800(배지 글자)은 면 위의 값이라 면 없이 선 글자에는 한 단계 밝은 700이 캔버스 값이다(흰 배경 5.0:1) |
 | `border-amber-500/50` | **등재** (새 값) | Sources 기준 언어 `Select`의 **대기 테두리** 하나. 같은 칸의 오류 `border-destructive/50`과 짝이다 — amber-500은 이미 면 값으로 등재돼 있고 알파만 새로 든다 |
-| `neutral-300` | **등재** (소비자 확장) | 위 줄 — 체크박스 · 점선 상자 · 자물쇠 |
-| `neutral-400` | **등재** (소비자 확장) | 번역 화면 트리의 네임스페이스 글리프 · 로케일 머리의 경로 구분 chevron · 설정 General 카드의 라벨 열(`/account` Profile과 같은 형) · Sources 상세의 **사라진 언어 행 수치**(같은 행의 `missing` 알약이 뜻을 완성한다 — §6.63 보관 행과 같은 예외) · 멤버 행의 `(you)` |
+| `neutral-300` | **등재** (소비자 확장) | 위 줄 — 체크박스 · 점선 상자 · 자물쇠 · `/mcp` 토큰 폼의 꺼진 `Chosen projects` 지시자(멤버십 0 — 사유를 읽히는 `aria-disabled` 행이라 Radix `Radio`가 아니다) |
+| `neutral-400` | **등재** (소비자 확장) | 번역 화면 트리의 네임스페이스 글리프 · 로케일 머리의 경로 구분 chevron · 설정 General 카드의 라벨 열(`/account` Profile과 같은 형) · Sources 상세의 **사라진 언어 행 수치**(같은 행의 `missing` 알약이 뜻을 완성한다 — §6.63 보관 행과 같은 예외) · 멤버 행의 `(you)` · **`/mcp`**(mcp-connector) 사실 블록·Server URL의 라벨 열 · **만료 토큰의 사실 값**(같은 카드의 `Expired` 배지가 뜻을 완성한다 — 보관 행과 같은 예외) · 멤버십 0의 꺼진 `Chosen projects` 이름 |
 | `neutral-600` | **등재** (소비자 확장) | 번역 작업 화면의 **한 단계 아래 글리프**(트리 소스 행의 chevron·파일, 키 목록의 트리 열기, 링크 복사, 툴바 Sync) · `Not sent` 알약 글자 |
 | `bg-white` (이력 날짜 카드) | **접기** → `bg-background` | §6.2가 `bg-white`를 로그인 좌측 하나로 한정한다. 셸 안 흰 카드는 토큰이다 |
 | `disabled:text-neutral-400` (번역 필터 트리거) | **접기** → `disabled:text-muted-foreground` | `Button`의 꺼진 글자와 같은 값이어야 필터 줄의 꺼진 컨트롤이 한 형으로 읽힌다 |
