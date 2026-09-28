@@ -562,6 +562,32 @@ model User {
   invitationsSent ProjectInvitation[]
   syncRuns        SyncRun[]
   events          ProjectEvent[]
+  apiToken        ApiToken?
+}
+
+/// **MCP 개인 토큰** (mcp-connector — PRODUCT §4.1 "MCP 커넥터"). 에이전트 = 그 사용자라 **계정당 하나**이고(`userId`가 PK),
+/// **불변**이다 — 권한·범위를 바꾸려면 재발급(같은 tx의 삭제 + 삽입)이고 폐기는 행 삭제다. 유효 권한은 역할 ∩ 토큰이라
+/// 여기에 역할을 싣지 않는다(불변식 7 — 매 호출 `ProjectMember`를 읽는다).
+///
+/// ⚠️ **인덱스가 `projectId` 선두가 아니다** — 사용자 축 모델이다(`Account`·`Session`과 같다). 조회는 Bearer의 해시 → 행 하나이고,
+/// 그 행이 준 `userId`로 모든 사용자 축 조회를 좁힌다(POSTMORTEM 2026-09-06).
+model ApiToken {
+  userId      String    @id
+  /// `TokenGrant`(`lib/mcp/grant.ts`) — 앱 층 어휘라 enum이 아니다(`SyncRun.errorCode`와 같은 근거). 빈 배열 = 읽기 전용.
+  grants      String[]
+  /// true면 내 멤버십 전부(이후 초대받은 프로젝트 포함), false면 `projectIds`만.
+  allProjects Boolean
+  /// 선례 `ProjectEvent.surfaceIds`. FK가 없다 — 프로젝트는 삭제 경로가 없고, 멤버에서 빠진 id는 멤버십 판정이 먼저라 효과가 없다.
+  projectIds  String[]  @default([])
+  /// sha256 hex(`hashApiToken` = `hashInviteToken`). 원문은 어디에도 없다 — 잃어버리면 재발급이다.
+  tokenHash   String    @unique
+  createdAt   DateTime  @default(now())
+  /// 1분 단위로만 갱신한다(`shouldTouch`) — 호출마다 UPDATE하면 에이전트 루프가 행을 두드린다.
+  lastUsedAt  DateTime?
+  /// 필수 — 만료 없는 토큰은 만들 수 없다(30/90/365일). 만료 토큰 정리 job은 없다: 카드가 `Expired`를 보이고 재발급이 덮는다.
+  expiresAt   DateTime
+  /// 토큰은 자격증명이라 사건과 달리 보존할 이유가 없다 — 사용자 삭제와 함께 사라진다.
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 /// OAuth provider 연결. **컬럼 이름이 snake_case인 것은 OAuth 응답 필드를 그대로 받기 때문이다** —

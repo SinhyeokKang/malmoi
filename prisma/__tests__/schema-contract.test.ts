@@ -272,3 +272,37 @@ describe("additive — 기존 다섯 모델이 그대로다", () => {
     expect(block("model", "Translation")).toMatch(/^\s*updatedBy\s+String\?/m);
   });
 });
+
+describe("개인 MCP 토큰 — ApiToken (mcp-connector)", () => {
+  it("계정당 하나다 — userId가 PK라 두 번째 행이 설 수 없다", () => {
+    expect(block("model", "ApiToken")).toMatch(/^\s*userId\s+String\s+@id\b/m);
+  });
+
+  it("tokenHash가 unique다 — Bearer로 행을 찾는 유일한 키이고 조회 방향은 해시 → 행이다", () => {
+    expect(block("model", "ApiToken")).toMatch(/^\s*tokenHash\s+String\s+@unique\b/m);
+  });
+
+  it("권한·범위·만료·사용 시각 컬럼이 있다 — 만료는 필수, 사용 시각은 nullable", () => {
+    const body = block("model", "ApiToken");
+    for (const f of ["userId", "grants", "allProjects", "projectIds", "tokenHash", "createdAt", "lastUsedAt", "expiresAt"]) {
+      expect(fieldNames(body), f).toContain(f);
+    }
+    expect(body).toMatch(/^\s*grants\s+String\[\]/m);
+    expect(body).toMatch(/^\s*allProjects\s+Boolean\s/m);
+    expect(body).toMatch(/^\s*projectIds\s+String\[\]\s+@default\(\[\]\)/m);
+    expect(body).toMatch(/^\s*expiresAt\s+DateTime\s*($|\/\/)/m);
+    expect(body).toMatch(/^\s*lastUsedAt\s+DateTime\?/m);
+  });
+
+  it("사용자 삭제는 Cascade다 — 토큰은 자격증명이라 사건과 달리 보존할 이유가 없다", () => {
+    expect(block("model", "ApiToken")).toMatch(/user\s+User\s+@relation\(fields: \[userId\], references: \[id\], onDelete: Cascade\)/);
+  });
+
+  it("projectIds에 FK가 없다 — 프로젝트 삭제 경로가 없고 멤버십 판정이 먼저라 남은 id는 효과가 없다", () => {
+    expect(block("model", "ApiToken")).not.toMatch(/Project\s+@relation/);
+  });
+
+  it("User가 역관계를 하나로 든다", () => {
+    expect(block("model", "User")).toMatch(/^\s*apiToken\s+ApiToken\?/m);
+  });
+});
