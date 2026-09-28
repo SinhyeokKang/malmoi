@@ -14,6 +14,7 @@ import { renderLocaleFiles, type RenderKey } from "./render";
 import { compareSurfaces, surfaceOwnership } from "@/lib/surfaces/plan";
 import { planMultiSurfacePull } from "./surfaces";
 import { planProtectedPublish } from "@/lib/protection/plan";
+import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { blockingErrors, readSlotFiles, slotlessCells, splitEdits, withheldCoordinates } from "./undeliverable";
 
 /**
@@ -120,6 +121,11 @@ export type PullResult =
   /** 실린 편집 0 + 보류 > 0. 쓰기도 전달 확인도 없다 — 파일 변경이 있었더라도 이 편집들 몫이 아니다. */
   | { status: "skipped"; reason: "withheld"; withheld: Withheld }
   | { status: "skipped"; reason: "writer-warnings"; warnings: string[] }
+  /**
+   * 미리보기가 준 지문(`expectedFingerprint`)과 실행권 뒤 스냅샷 + base head의 지문이 다르다 (mcp-connector design §3.1). **첫 쓰기 전에** 끝나
+   * GitHub 쓰기·전달 확인 무효화·성공 확정이 전부 0이다. 인자가 없는 호출(웹·cron)에는 생기지 않는다.
+   */
+  | { status: "skipped"; reason: "reconfirm" }
   | {
       status: "committed";
       /** 전달 확인한 편집 수 — 결과 화면이 말하는 "N changes"다. 미리보기의 미발송 전체와 다르다(보류가 빠진다). */
@@ -168,20 +174,10 @@ export async function renderProject(
   project: Pick<PullProject, "slug" | "baseBranch">,
   formats: ProjectFormats,
   client: Pick<GitClient, "getRefSha" | "getTree" | "getBlobText">,
-  read?: { baseHead: string; tree: Awaited<ReturnType<GitClient["getTree"]>> },
+  /** 트리를 빼면 `baseHead`만 쓰고 트리는 여기서 읽는다 — 지문 대조가 head만 먼저 읽는 경로(`runPull`)다. */
+  read?: { baseHead: string; tree?: Awaited<ReturnType<GitClient["getTree"]>> },
 ) {
-  const baseHead = read?.baseHead ?? await client.getRefSha(`heads/${project.baseBranch}`);
-  // ⚠️ **`null`을 "브랜치 없음"으로 읽고 진행하지 않는다.** GitHub은 권한 없는 리소스에 404를
-  // 주므로 설치 취소·권한 누락도 `null`로 온다. base가 없으면 그 자체로 진행 불가다
-  // (`malmoi-i18n/sync`의 `null`만 정상 입력이다 — 첫 실행 경로).
-  if (baseHead === null) {
-    // ⚠️ **브랜치 부재와 접근 상실이 같은 `null`로 온다** — 코드가 그 둘을 가르지 않는 것이 정직하다.
-    fail(
-      `cannot read the base branch: ${project.baseBranch} (missing branch, or the app lacks access)`,
-      "base-unreadable",
-    );
-  }
-
+  const baseHead = read?.baseHead ?? await readBaseHead(project, client);
   const tree = read?.tree ?? await client.getTree(baseHead);
   const resolved = formats.map(item => ({ ...item,
     paths: resolveLocalePaths(item.format, item.layout, tree.map(t => t.path)),
@@ -220,8 +216,28 @@ export async function renderProject(
   return { baseHead, tree, resolved, current, rendered, local, changes };
 }
 
-export async function runPull(deps: PullDeps): Promise<PullResult> {
-  const { project, surfaces, maxUpdatedAt, unpublished, pendingEdits, deliveryContexts = [] } = await deps.loadState();
+async function readBaseHead(project: Pick<PullProject, "baseBranch">, client: Pick<GitClient, "getRefSha">): Promise<string> {
+  const baseHead = await client.getRefSha(`heads/${project.baseBranch}`);
+  // ⚠️ **`null`을 "브랜치 없음"으로 읽고 진행하지 않는다.** GitHub은 권한 없는 리소스에 404를
+  // 주므로 설치 취소·권한 누락도 `null`로 온다. base가 없으면 그 자체로 진행 불가다
+  // (`malmoi-i18n/sync`의 `null`만 정상 입력이다 — 첫 실행 경로).
+  if (baseHead === null) {
+    // ⚠️ **브랜치 부재와 접근 상실이 같은 `null`로 온다** — 코드가 그 둘을 가르지 않는 것이 정직하다.
+    fail(
+      `cannot read the base branch: ${project.baseBranch} (missing branch, or the app lacks access)`,
+      "base-unreadable",
+    );
+  }
+  return baseHead;
+}
+
+/**
+ * @param expectedFingerprint `preview_publish`가 준 지문 (mcp-connector design §3.1). 주면 `loadState()`와 base head를 읽은 직후·첫 GitHub 쓰기 전에
+ *   같은 입력의 `publishFingerprint`와 대조하고, 다르면 `reconfirm`이다. **안 주면 대조가 없다** — 웹·cron 경로는 그대로다.
+ */
+export async function runPull(deps: PullDeps, expectedFingerprint?: string): Promise<PullResult> {
+  const state = await deps.loadState();
+  const { project, surfaces, maxUpdatedAt, unpublished, pendingEdits, deliveryContexts = [] } = state;
 
   // ── 1층: DB 측 스킵. 여기서 끝나면 GitHub을 한 번도 부르지 않는다 ────────────
   if (shouldSkipPull(unpublished)) {
@@ -241,7 +257,17 @@ export async function runPull(deps: PullDeps): Promise<PullResult> {
 
   const formats = projectFormats(surfaces);
   const client = await deps.createClient(project);
-  const { baseHead, tree, resolved, current, rendered, local, changes } = await renderProject(project, formats, client);
+  /**
+   * ⚠️ **대조는 head 한 번 읽은 직후다** — 트리·blob을 읽기 전이라 reconfirm이 읽기도 최소다. 1층(no-edits)보다 뒤인 것은 의도다: 보낼 것이 없으면
+   * 지문과 무관하게 GitHub 0회로 끝난다. 읽은 head를 렌더에 넘긴다 — 다시 읽으면 대조한 head와 커밋의 부모가 갈릴 수 있다.
+   */
+  let read: { baseHead: string } | undefined;
+  if (expectedFingerprint !== undefined) {
+    const baseHead = await readBaseHead(project, client);
+    if (publishFingerprint(state, baseHead) !== expectedFingerprint) return { status: "skipped", reason: "reconfirm" };
+    read = { baseHead };
+  }
+  const { baseHead, tree, resolved, current, rendered, local, changes } = await renderProject(project, formats, client, read);
   const warnings = blockingErrors(rendered).map(({ surfaceSlug, error }) => `${surfaceSlug}: ${error.path}: ${adapterErrorMessage(error)}`);
   /**
    * ⚠️ **2층 비교·브랜치 되돌림보다 앞이다** — 경고가 있는 렌더는 무엇을 쓰든 값 일부가 빠진 파일이다. 1층을 지났으므로

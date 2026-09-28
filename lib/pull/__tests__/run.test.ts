@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { blobSha } from "@/lib/githash";
 import { SKIP_MARKER } from "../payload";
+import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { runPull, type PullDeps, type PullState } from "../run";
 import { createFakeGitClient, type FakeCall } from "./fake-client";
 import type { RenderKey } from "../render";
@@ -997,5 +998,95 @@ describe("runPull — 로케일 모양이 아닌 저장된 행 (sec-audit-3 1b)"
     expect(calls.map((c) => c.method)).not.toContain("createCommit");
     expect(JSON.stringify(calls)).not.toContain("curl evil");
     expect(writes).toEqual([]);
+  });
+});
+
+/**
+ * **Publish 지문 대조** (mcp-connector T6.5 · design §3.1). `preview_publish`가 준 지문과 실행권 뒤 스냅샷(`loadState()`) + base head의
+ * 지문이 다르면 **GitHub 쓰기 0회**로 `reconfirm`이다. 대조는 head를 읽은 직후·첫 쓰기 전이고, 인자를 안 주면(웹·cron) 대조가 없다.
+ * 입력 축마다(미리보기 뒤 저장 · base head · 표면 설정 · 표시 상한 밖 편집 · 토큰 없는 export 변경) reconfirm을 하나씩 세고, 같은
+ * 입력은 기존 경로(committed)를 짝으로 든다 — 짝이 없으면 "늘 reconfirm"도 green이다.
+ */
+describe("runPull — expectedFingerprint (mcp-connector T6.5)", () => {
+  const MUTATING = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr", "updatePrTitle", "updatePrBase", "closePr"];
+  const previewState = (): PullState => ({
+    project: { ...PROJECT },
+    surfaces: [{ ...PROJECT, id: "s1", slug: "default", localeCodes: ["en", "ko"],
+      keys: [{ id: "k1", key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나" }, en: { value: "one" } } }] }],
+    maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [{ id: "t1", token: "tok-1" }],
+  });
+
+  function harness(state: PullState, fake = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] } })) {
+    const order: string[] = [];
+    const deps: PullDeps = {
+      loadState: async () => state,
+      createClient: async () => fake.client,
+      saveLastPulledAt: async () => void order.push("save"),
+      invalidateDelivery: async () => void order.push("invalidate"),
+      syncBranch: "malmoi-i18n/sync",
+    };
+    return { deps, order, calls: fake.calls };
+  }
+
+  it("같은 입력의 지문이면 기존 경로 그대로 커밋한다 — base ref는 한 번만 읽는다", async () => {
+    const { deps, calls } = harness(previewState());
+    const result = await runPull(deps, publishFingerprint(previewState(), "basehead"));
+    expect(result.status).toBe("committed");
+    expect(calls.filter(c => c.method === "getRefSha" && c.args[0] === "heads/dev")).toHaveLength(1);
+  });
+
+  const drifts: [string, (s: PullState) => void][] = [
+    ["미리보기 뒤 저장(번역 값·토큰)", s => { s.surfaces[0]!.keys[0]!.cells.ko = { value: "하나!" }; s.pendingEdits = [{ id: "t1", token: "tok-2" }]; }],
+    ["표면 설정(pathTemplate)", s => { s.surfaces[0]!.pathTemplate = "locales/{locale}.json"; }],
+    ["미전달 토큰 없는 export 입력(orphan)", s => { s.surfaces[0]!.keys.push({ id: "k2", key: "b", sourceText: "b", orphaned: true, cells: { en: { value: "b" } } }); }],
+  ];
+
+  it.each(drifts)("%s → reconfirm · GitHub 쓰기 0회 · 무효화·확정 없음", async (_label, change) => {
+    const now = previewState();
+    change(now);
+    const { deps, order, calls } = harness(now);
+    expect(await runPull(deps, publishFingerprint(previewState(), "basehead"))).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(calls.map(c => c.method)).toEqual(["getRefSha"]);
+    expect(calls.filter(c => MUTATING.includes(c.method))).toEqual([]);
+    expect(order).toEqual([]);
+  });
+
+  it("base head가 미리보기 뒤 움직였으면 reconfirm이다 — 트리도 읽지 않는다", async () => {
+    const { deps, order, calls } = harness(previewState());
+    expect(await runPull(deps, publishFingerprint(previewState(), "oldhead"))).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(calls.map(c => c.method)).toEqual(["getRefSha"]);
+    expect(order).toEqual([]);
+  });
+
+  it("표시 상한(200행) 밖의 편집도 reconfirm이다", async () => {
+    const many = (): PullState => {
+      const s = previewState();
+      s.surfaces[0]!.keys = Array.from({ length: 300 }, (_, i) => ({ id: `k${i}`, key: `key${i}`, sourceText: `v${i}`, orphaned: false, cells: { en: { value: `v${i}` }, ko: { value: `k${i}` } } }));
+      return s;
+    };
+    const now = many();
+    now.surfaces[0]!.keys[299]!.cells.ko = { value: "changed" };
+    const { deps, calls } = harness(now);
+    expect(await runPull(deps, publishFingerprint(many(), "basehead"))).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(calls.filter(c => MUTATING.includes(c.method))).toEqual([]);
+  });
+
+  it("보낼 것이 없으면 지문과 무관하게 no-edits다 — 1층의 GitHub 0회가 그대로다", async () => {
+    const { deps, calls } = harness({ ...previewState(), unpublished: 0, pendingEdits: [] });
+    expect(await runPull(deps, "whatever")).toEqual({ status: "skipped", reason: "no-edits" });
+    expect(calls).toEqual([]);
+  });
+
+  it("base ref를 못 읽으면 대조 전에 base-unreadable로 던진다 — reconfirm으로 접지 않는다", async () => {
+    const { deps, calls } = harness(previewState(), createFakeGitClient({}));
+    await expect(runPull(deps, publishFingerprint(previewState(), "basehead"))).rejects.toMatchObject({ code: "base-unreadable" });
+    expect(calls.map(c => c.method)).toEqual(["getRefSha"]);
+  });
+
+  it("인자가 없으면 대조하지 않는다 — 웹·cron은 바뀐 입력을 그대로 보낸다 (짝)", async () => {
+    const now = previewState();
+    now.surfaces[0]!.keys[0]!.cells.ko = { value: "하나!" };
+    const { deps } = harness(now);
+    expect((await runPull(deps)).status).toBe("committed");
   });
 });

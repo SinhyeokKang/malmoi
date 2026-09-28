@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { blobSha } from "@/lib/githash";
+import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { runPull, type DeliveryContext, type PullDeps, type PullState } from "../run";
 import { createFakeGitClient, type FakeCall } from "./fake-client";
 import type { GitClient } from "../client";
@@ -142,5 +143,21 @@ describe("runPull — 성공 확정에 같은 스냅샷의 context를 넘긴다"
     const { deps, saved } = harness(committing(), { loadState: async () => state({ deliveryContexts: undefined }) });
     await runPull(deps);
     expect(saved[0]?.[4]).toEqual([]);
+  });
+});
+
+describe("runPull — reconfirm은 무효화도 확정도 없다 (mcp-connector T6.5)", () => {
+  it("지문 불일치는 첫 쓰기 전에 끝난다 — 확인을 잃지 않고 성공 확정도 안 쓴다", async () => {
+    const fake = committing();
+    const { deps, order } = harness(fake);
+    expect(await runPull(deps, "not-the-preview")).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(order).toEqual([]);
+    expect(fake.calls.map(c => c.method).filter(m => MUTATIONS.includes(m))).toEqual([]);
+  });
+
+  it("같은 지문이면 무효화 → 확정 순서가 그대로다 (짝)", async () => {
+    const { deps, order } = harness(committing());
+    expect((await runPull(deps, publishFingerprint(state(), "basehead"))).status).toBe("committed");
+    expect(order).toEqual(["invalidate", "save"]);
   });
 });

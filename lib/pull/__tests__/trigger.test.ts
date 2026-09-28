@@ -23,6 +23,7 @@ vi.mock("../load", () => ({
 
 import { createFakeGitClient } from "./fake-client";
 import { triggerPull } from "../trigger";
+import { publishFingerprint } from "@/lib/publish/fingerprint";
 
 describe("triggerPull — 조립", () => {
   it("편집이 없으면 1층에서 끝나고 GitHub 클라이언트를 만들지 않는다", async () => {
@@ -175,3 +176,34 @@ describe("triggerPull — 전달 기준 배선", () => {
   });
 });
 
+
+/** **지문 인자 배선** (mcp-connector T6.5). `triggerPull`이 넷째 인자를 `runPull`에 그대로 넘기고, 불일치면 무효화·확정 없이 끝난다. */
+describe("triggerPull — expectedFingerprint 배선", () => {
+  const state = () => ({
+    project: { id: "p1", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "dev", installationId: "1", repositoryId: "100", lastPulledAt: null },
+    surfaces: [{ id: "s1", slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en",
+      localeCodes: ["en"], keys: [{ key: "a", sourceText: "A", orphaned: false, cells: { en: { value: "A" } } }] }],
+    maxUpdatedAt: new Date("2026-09-04T00:00:00Z"), unpublished: 1, pendingEdits: [{ id: "t", token: "tok" }],
+  });
+
+  it("다른 지문이면 reconfirm이고 GitHub 쓰기·무효화·확정이 없다", async () => {
+    hoisted.loadPullState.mockResolvedValue(state());
+    const fake = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] } });
+    hoisted.createGitClient.mockReturnValue(fake.client);
+    hoisted.invalidateDeliveryConfirmations.mockClear();
+    hoisted.saveLastPulledAt.mockClear();
+    expect(await triggerPull({} as never, "demo", "run-1", "stale-fingerprint")).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(fake.calls.map(c => c.method)).toEqual(["getRefSha"]);
+    expect(hoisted.invalidateDeliveryConfirmations).not.toHaveBeenCalled();
+    expect(hoisted.saveLastPulledAt).not.toHaveBeenCalled();
+  });
+
+  it("같은 지문이면 커밋한다 (짝)", async () => {
+    hoisted.loadPullState.mockResolvedValue(state());
+    hoisted.createGitClient.mockReturnValue(createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] } }).client);
+    hoisted.saveLastPulledAt.mockResolvedValue(undefined);
+    hoisted.invalidateDeliveryConfirmations.mockResolvedValue(undefined);
+    const result = await triggerPull({} as never, "demo", "run-1", publishFingerprint(state() as never, "basehead"));
+    expect(result.status).toBe("committed");
+  });
+});

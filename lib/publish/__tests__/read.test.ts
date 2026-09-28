@@ -8,6 +8,7 @@ vi.mock("@/lib/github", () => ({ createGitClient: async () => mocks.client }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: mocks.open }));
 vi.mock("@/lib/keys/query", () => ({ loadActors: async () => new Map() }));
 import { readPublishPreview } from "../read";
+import { publishFingerprint } from "../fingerprint";
 const surface = { id: "s", slug: "web", adapterName: "json-catalog", pathTemplate: "{locale}.json", baseLocale: "en", nested: false, nestedByPath: {}, locales: [{ code: "en" }] };
 const project = { id: "p", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", repositoryId: "2", lastPulledAt: null, archivedAt: null, surfaces: [surface] };
 const rows = [{ surfaceId: "s", keyId: "k", localeCode: "en", value: "new", updatedBy: "editor", updatedAt: new Date(), stringKey: { key: "hello" } }];
@@ -423,4 +424,19 @@ it.each([
   const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: tree }, blobs });
   const result = await runPull({ loadState: async () => state, createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme" });
   expect(result).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+});
+/**
+ * **미리보기가 Publish 지문을 낸다** (mcp-connector T6.5 · design §3.1). 입력은 이미 부르는 `loadPullState` 전체 + 이미 읽은 base head다 —
+ * 표시 행(200행)과 무관하다. `publish`가 실행권 뒤 같은 입력으로 재계산해 대조한다.
+ */
+it("fingerprint는 loadPullState 스냅샷과 읽은 base head의 publishFingerprint다", async () => {
+  const state = { project: { ...project, slug: "acme" }, surfaces: [], maxUpdatedAt: null, unpublished: 1, pendingEdits: [{ id: "t", token: "tok" }] };
+  mocks.load.mockResolvedValue(state);
+  const result = await readPublishPreview(db as unknown as PrismaClient, "p", "acme");
+  expect(result.fingerprint).toBe(publishFingerprint(state as never, "head"));
+  expect(mocks.load).toHaveBeenCalledTimes(1);
+  // 같은 스냅샷이라도 head가 다르면 다른 지문이다 — 미리보기가 head를 입력으로 싣는다는 짝.
+  mocks.client.getRefSha.mockResolvedValue("head2");
+  expect((await readPublishPreview(db as unknown as PrismaClient, "p", "acme")).fingerprint).toBe(publishFingerprint(state as never, "head2"));
+  expect(publishFingerprint(state as never, "head2")).not.toBe(result.fingerprint);
 });

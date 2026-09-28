@@ -1258,6 +1258,8 @@ export const en = {
       "db-unavailable": "We couldn't reach our own storage. The next nightly run tries again.",
       stale: "This run stopped before it finished.",
       unknown: "Something went wrong. The next nightly run tries again.",
+      /** MCP `publish`만 낸다 — 미리보기 뒤 보낼 내용이 바뀌어 아무것도 안 보냈다(mcp-connector design §3.1). */
+      reconfirm: "The changes to send were updated after the preview, so nothing was sent. Preview again, then publish.",
       fallback: "Something went wrong. Tell your developers if it keeps happening.",
     },
     /** 거부 여섯의 문장 (spec §6.1). **다음 번에도 같은 이유로 거부될 것**만 여기 있다. */

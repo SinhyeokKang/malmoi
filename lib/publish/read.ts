@@ -12,6 +12,7 @@ import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
 import { keySlot } from "@/lib/pull/undeliverable";
 import { loadPullState } from "@/lib/pull/load";
 import { projectFormats, renderProject } from "@/lib/pull/run";
+import { publishFingerprint } from "./fingerprint";
 import { buildPublishDiff, PREVIEW_LIMIT, type BaseValues, type PublishCell } from "./diff";
 import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, type PublishPreview } from "./preview";
 
@@ -116,7 +117,8 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   // ⚠️ **바뀌는 파일은 실행과 같은 렌더·blob 비교에서 온다** (#128) — 편집 셀의 파일만 세면 토큰 없이 바뀌는 파일(orphan 줄 제거, 닫힌 PR에 실렸던 값의
   // 재전송)이 빠지고 결과에서야 "N files changed"가 나온다. blob은 위에서 읽은 것을 다시 쓴다(`cachedBlobs`).
   // ⚠️ **읽은 head·트리를 넘긴다** (#128 r5) — 한 번 열 때 ref 1·트리 1이고, 셀과 파일 목록이 같은 head를 본다. blob은 실행 한 번과 같다(전 표면 전 로케일 파일).
-  const { changes, rendered } = await renderProject(project, projectFormats((await loadPullState(prisma, slug)).surfaces), client, { baseHead: head, tree });
+  const state = await loadPullState(prisma, slug);
+  const { changes, rendered } = await renderProject(project, projectFormats(state.surfaces), client, { baseHead: head, tree });
   /**
    * ⚠️ **편집이 없는 표면도 실행은 렌더하고, 그 표면의 base 파일 문제로 `writer-warnings` 거부한다** (#128 r5). 위 루프는 편집 있는 표면만 보므로 여기서
    * 같은 전용 거부로 옮긴다 — 일반 실패(Retry)는 다시 눌러도 같다. 그 밖의 writer 오류는 옛 동작 그대로다(미리보기는 writer 경고를 약속하지 않는다).
@@ -134,7 +136,9 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     // 판정하지 않았으므로 나가는 쪽으로 센다 — `truncated`와 같이 읽힌다.
     changedFiles: changes.map(c => c.path),
     sendable: { total: total - withoutFile - withoutKey, keys: keyIds.length - [...heldKeys].filter(id => !cells.some(c => c.keyId === id)).length },
-    openPr: parseGithubPrUrl(rawPr, project) };
+    openPr: parseGithubPrUrl(rawPr, project),
+    // ⚠️ **셀 표시가 아니라 렌더가 쓴 스냅샷 전체 + 읽은 head다** (mcp-connector design §3.1) — 200행 상한 밖 편집·토큰 없는 export 변경도 바꾼다.
+    fingerprint: publishFingerprint(state, head) };
 }
 
 /** 같은 blob을 두 번 받지 않는다 — 미리보기 조회와 실행 렌더(`renderProject`)가 같은 트리의 같은 파일을 읽는다. */

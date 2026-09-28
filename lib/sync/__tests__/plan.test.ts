@@ -265,6 +265,7 @@ describe("classifySyncError — 안정적 오류 코드", () => {
       "db-unavailable",
       "stale",
       "unknown",
+      "reconfirm",
     ]);
   });
 });
@@ -327,5 +328,22 @@ describe("planSyncFinish — 닫은 PR", () => {
     expect(planSyncFinish({ status: "skipped", reason: "no-changes", closedPr: { number: 4, url: "https://github.com/o/r/pull/4" } }))
       .toMatchObject({ status: "SKIPPED", prUrl: "https://github.com/o/r/pull/4", changed: 0 });
     expect(planSyncFinish({ status: "skipped", reason: "no-changes" })).toMatchObject({ prUrl: null });
+  });
+});
+
+/**
+ * **reconfirm은 리포에 아무것도 안 쓴 스킵이다** (mcp-connector T6.5 · design §3.1). `SKIPPED`로 닫되 `errorCode`로 표시해 `too-soon`의 기준에서
+ * 뺀다(`lib/sync/run.ts`) — 표시가 없으면 에이전트가 새 미리보기로 재호출해도 30초를 기다린다. `FAILED`로 닫지 않는다: Revert의 settled
+ * 판정(`lib/keys/revert.ts`)이 FAILED를 "썼을 수 있는 실행"으로 센다. 렌더를 안 했으니 `changed`는 관측 없음(`null`)이다.
+ */
+describe("planSyncFinish — reconfirm", () => {
+  it("SKIPPED + errorCode reconfirm · 재시도 가능 · changed null", () => {
+    expect(planSyncFinish({ status: "skipped", reason: "reconfirm" })).toEqual({
+      status: "SKIPPED", errorCode: "reconfirm", retryable: true, prUrl: null, changed: null, warnings: 0, withheld: 0,
+    });
+  });
+
+  it("다른 스킵은 errorCode가 없다 (짝)", () => {
+    expect(planSyncFinish({ status: "skipped", reason: "no-edits" })).toMatchObject({ status: "SKIPPED", errorCode: null });
   });
 });

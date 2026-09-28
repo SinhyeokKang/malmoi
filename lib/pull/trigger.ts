@@ -26,8 +26,9 @@ export { REF_SAFE_SLUG, isRefSafeSlug } from "./ref-slug";
 /**
  * @param runId 이 실행의 `SyncRun.id`. 있으면 성공 확정이 그 실행권으로 전달 확인을 쓴다(translation-rework — ARCHITECTURE §5.8).
  *   `null`이면 확인을 쓰지 않는다 — 실행권 없이는 교체된 늦은 성공을 가를 수 없다. **인자를 생략할 수 없게 둔 것이 요지다.**
+ * @param expectedFingerprint MCP `publish`만 넘긴다 — `runPull`이 그대로 대조한다(mcp-connector design §3.1). cron·웹은 생략한다.
  */
-export async function triggerPull(prisma: PrismaClient, slug: string, runId: string | null): Promise<PullResult> {
+export async function triggerPull(prisma: PrismaClient, slug: string, runId: string | null, expectedFingerprint?: string): Promise<PullResult> {
   const result = await runPull({
     loadState: () => loadPullState(prisma, slug),
     createClient: async (project) => {
@@ -41,7 +42,7 @@ export async function triggerPull(prisma: PrismaClient, slug: string, runId: str
     invalidateDelivery: (projectId) => invalidateDeliveryConfirmations(prisma, projectId),
     withheldRevertable: (projectId, withheld) => withheldRevertable(prisma, projectId, withheld),
     syncBranch: syncBranchFor(slug),
-  });
+  }, expectedFingerprint);
 
   // ⚠️ **경고가 있으면 쓰기 전에 멈추고 `lastPulledAt`을 안 쓴다** (sync-edit-protection T10, 2026-09-18). 2026-09-04 audit #35는
   // 반대를 골랐다 — `missingOriginal` 같은 **지속 상태** 경고에서 매일 밤 트리·blob 전량 읽기가 영구화된다는 근거였다.

@@ -18,6 +18,11 @@ export type PublishPreview = PublishDiff & {
   changedFiles: string[];
   /** 실제로 나가는 편집·키 수 (#84). 제목·요약·PR 줄·실행 진행 제목이 이 수로 말한다 — `total`·`keys`는 보류를 포함한 미발송 전체다. */
   sendable: { total: number; keys: number };
+  /**
+   * **Publish 지문** (mcp-connector design §3.1) — MCP `publish`가 `expectedFingerprint`로 돌려주면 실행이 실행권 뒤 같은 입력으로 대조해 다르면
+   * `reconfirm`이다. 웹 Publish는 쓰지 않는다. 상태 digest라 비밀이 아니다(편집 토큰 원문은 해시 안에만 있다).
+   */
+  fingerprint: string;
 };
 /**
  * 미리보기 조회의 결과. **거부(`rejected`)와 읽기 실패(`failed`)가 갈린다** (launch-readiness L3.3) — 거부는 실행 전

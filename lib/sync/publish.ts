@@ -17,7 +17,12 @@ import { runSync } from "./run";
  * **EDITOR도 부를 수 있다** — Publish는 base branch 직접 쓰기가 아니라 검토 가능한 PR 생성이다(PRODUCT §3). 그래서 permission이
  * `translation:write`이고 별도 권한을 두지 않았다. **커밋 작성자는 항상 App 토큰이다** — `triggerPull`이 `createGitClient`만 쓴다.
  */
-export async function publishProject(prisma: PrismaClient, subject: Subject, input: { slug: string }): Promise<{ outcome: PullOutcome; attempted: boolean }> {
+export async function publishProject(
+  prisma: PrismaClient,
+  subject: Subject,
+  /** `expectedFingerprint` — MCP `publish`가 `preview_publish`의 `preview.fingerprint`를 넘긴다(design §3.1). 웹 Action은 생략한다(대조 없음). */
+  input: { slug: string; expectedFingerprint?: string },
+): Promise<{ outcome: PullOutcome; attempted: boolean }> {
   const { userId } = subject;
   const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "translation:write" });
   if (access.status !== "ok") {
@@ -42,7 +47,8 @@ export async function publishProject(prisma: PrismaClient, subject: Subject, inp
    * `SyncRun` 행·오류 분류를 들고, **던지지 않는다**. 남의 라이브러리 메시지를 `ref`로 접는 규칙도
    * 그쪽에 있다(`publish-failure.test.ts`가 이 경로로 그것을 계속 잰다).
    */
-  return { outcome: await runSync(prisma, { projectId: access.projectId, slug: input.slug, trigger: "manual", requestedBy: userId, tokenId: subject.tokenId }), attempted: true };
+  return { outcome: await runSync(prisma, { projectId: access.projectId, slug: input.slug, trigger: "manual", requestedBy: userId, tokenId: subject.tokenId,
+    expectedFingerprint: input.expectedFingerprint }), attempted: true };
 }
 
 /**
