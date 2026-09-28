@@ -26,7 +26,8 @@ const components: Components = {
   p: ({ node: _node, children }) => <p className={PROSE}>{children}</p>,
   ul: ({ node: _node, children }) => <ul className={`${LIST} list-disc`}>{children}</ul>,
   ol: ({ node: _node, children }) => <ol className={`${LIST} list-decimal`}>{children}</ol>,
-  li: ({ node: _node, children }) => <li className="[&>p:first-child]:mt-0">{children}</li>,
+  // `text-pretty` — 굵은 머리 + 긴 문장 한 항목이라 마지막 줄에 낱말 하나가 떨어지기 쉽다(시안 1a).
+  li: ({ node: _node, children }) => <li className="text-pretty [&>p:first-child]:mt-0">{children}</li>,
   strong: ({ node: _node, children }) => <strong className="font-medium">{children}</strong>,
   code: ({ node: _node, children }) => <code className={INLINE_CODE}>{children}</code>,
   hr: () => <hr className="border-border my-10" />,

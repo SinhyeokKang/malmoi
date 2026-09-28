@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { ReleaseEntry } from "@/components/changelog/release-entry";
+import { ENTRY_BLOCK, ReleaseEntry } from "@/components/changelog/release-entry";
 import { DOC_LINK, PROSE } from "@/components/docs/classes";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { publicCta } from "@/lib/auth/landing";
@@ -20,6 +20,18 @@ const releases: ReactNode = (
     {m.changelog.releases}
   </a>
 );
+
+/**
+ * 항목 자리의 문장 하나 — 항목과 같은 틀(`ENTRY_BLOCK`)이다(시안 1c·1d). ⚠️ `div`다 — 이름 댈 제목이 없어 `section`이면
+ * 이름 없는 랜드마크가 된다(POSTMORTEM 2026-09-15).
+ */
+function Sentence({ children }: { children: ReactNode }) {
+  return (
+    <div className={ENTRY_BLOCK}>
+      <p className={cn(PROSE, "mt-0")}>{children}</p>
+    </div>
+  );
+}
 
 /**
  * **공개 셸 안의 릴리스 노트** (시안 `Changelog.dc.html` 1a–1d). 원문의 정본은 GitHub Release이고 소스에 사본이 없다 —
@@ -43,21 +55,19 @@ export default async function Changelog() {
         <p className={cn(PROSE, "mt-5")}>{m.changelog.intro(releases)}</p>
         <div className="mt-10">
           {!loaded.ok ? (
-            <p className={cn(PROSE, "mt-0")}>{m.changelog.failed(releases)}</p>
+            <Sentence>{m.changelog.failed(releases)}</Sentence>
           ) : (
             <>
               {loaded.releases.length === 0 ? (
-                <p className={cn(PROSE, "mt-0")}>{m.changelog.empty(releases)}</p>
+                <Sentence>{m.changelog.empty(releases)}</Sentence>
               ) : (
                 loaded.releases.map((release) => <ReleaseEntry key={release.tag} release={release} />)
               )}
               {/*
-                마지막 항목의 아래 40이 이미 떼어 준다. ⚠️ 빈 목록에도 선다 — 원 배열 100칸을 액션 태그 릴리스가 다 채우면
-                거른 뒤 0건이어도 그 너머에 앱 릴리스가 있을 수 있다(`truncated`는 거르기 전 길이다).
+                ⚠️ 빈 목록에도 선다 — 원 배열 100칸을 액션 태그 릴리스가 다 채우면 거른 뒤 0건이어도 그 너머에 앱 릴리스가
+                있을 수 있다(`truncated`는 거르기 전 길이다).
               */}
-              {loaded.truncated ? (
-                <p className={cn(PROSE, loaded.releases.length === 0 ? undefined : "mt-0")}>{m.changelog.truncated(releases)}</p>
-              ) : null}
+              {loaded.truncated ? <Sentence>{m.changelog.truncated(releases)}</Sentence> : null}
             </>
           )}
         </div>
