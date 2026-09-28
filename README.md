@@ -84,7 +84,7 @@ before and after. History is kept for the life of the project.
 
 </td>
 <td width="50%">
-  <img src="docs/assets/readme/logs.webp" alt="Logs listing translation edits and publishes to GitHub, grouped by UTC date" width="100%" />
+  <img src="docs/assets/readme/logs.webp" alt="Logs filtered to Publish, listing sent, not-sent, and nothing-to-send runs grouped by UTC date" width="100%" />
 </td>
 </tr>
 <tr>
