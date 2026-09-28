@@ -9,11 +9,8 @@ import { TableBody, TableHead, TableHeader, TableRow, Td } from "@/components/ui
 import { remarkGuide } from "@/lib/guide/remark";
 import type { ShotSize } from "@/lib/guide/shots";
 
-import { DOC_LINK, INLINE_CODE } from "./classes";
+import { DOC_LINK, INLINE_CODE, LIST, PROSE } from "./classes";
 import { CodeBlock } from "./code-block";
-
-const PROSE = "text-prose mt-4 leading-[1.75] text-pretty";
-const LIST = "text-prose mt-4 space-y-2 pl-[22px] leading-[1.75]";
 
 const NO_SIZES: Record<string, ShotSize> = Object.create(null);
 

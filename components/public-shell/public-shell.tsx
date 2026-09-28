@@ -3,11 +3,11 @@ import type { ReactNode } from "react";
 import type { PublicCta } from "@/lib/auth/landing";
 
 import { PublicFooter } from "./footer";
-import { PublicHeader } from "./header";
+import { PublicHeader, type HeaderCurrent } from "./header";
 import { PublicScroller } from "./scroller";
 
 /**
- * 공개 셸(`/` · `/privacy` · `/docs/*`) — 헤더 40 + 8 · 패널 · 푸터 40이 뷰포트 높이를 **정확히** 채운다 (시안 1a · 1e).
+ * 공개 셸(`/` · `/privacy` · `/docs/*` · `/changelog`) — 헤더 40 + 8 · 패널 · 푸터 40이 뷰포트 높이를 **정확히** 채운다 (시안 1a · 1e).
  *
  * ⚠️ **route group 레이아웃으로 만들지 않는다** — 페이지마다 셸을 렌더해야 이동 때 스크롤러가 다시 마운트되어
  * 스크롤이 맨 위로 가고 포커스도 다시 받는다. `/docs`만 레이아웃이 셸을 들고(`bare`) 스크롤러는 페이지가 든다 — 같은 규칙이다.
@@ -29,7 +29,7 @@ export function PublicShell({
   /** 세션 판정은 페이지가 한다(`publicCta`) — 헤더는 세션을 직접 읽지 않는다. */
   cta: PublicCta;
   /** 헤더 링크 중 지금 서 있는 곳. `/privacy`처럼 헤더에 없는 화면이면 비운다. */
-  current?: "home" | "docs";
+  current?: HeaderCurrent;
   /**
    * 패널 안을 스크롤러로 감싸지 않는다 — `/docs`는 레이아웃이 셸과 내비를 들고 **페이지가 본문 스크롤러를 든다**
    * (DESIGN §6.61). 셸을 레이아웃에 두면 스크롤러가 재마운트되지 않으므로, 그 자리를 페이지로 내린 것이다.

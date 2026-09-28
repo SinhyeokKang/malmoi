@@ -23,6 +23,7 @@ import { getMiddlewareMatchers } from "next/dist/build/analysis/get-page-static-
  * - `/` — **공개 랜딩이다**. 세션이 있으면 `/projects`로 보내고, 없거나 못 읽으면 랜딩을 그린다(`rootView`)
  * - `/signin` — 로그인 화면. 세션이 없는 사람이 보는 화면이고, 여기가 막히면 아무도 못 들어온다
  * - `/privacy`·`/docs` — 공개 문서. 로그인 없이 읽혀야 하고, 로그인 화면 푸터가 가리킨다
+ * - `/changelog` — 공개 릴리스 노트. DB를 읽지 않고 원문은 공개 리포의 GitHub Release다
  * - `/invite/[token]` — **수락 전엔 멤버가 아니다.** 토큰이 인가를 대신한다 (membership.test.ts)
  * - `/api/github/callback` — GitHub이 브라우저를 되돌리는 지점. `requireUser`로 스스로 인증하고,
  *   state가 무효면 slug를 못 믿어 `/projects?e=`로 간다 (`matcher`에 넣으면 `code`가 사라진다)
@@ -63,6 +64,8 @@ const EXEMPT = new Set([
   "signin/page.tsx",
   "privacy/page.tsx",
   "docs/[[...slug]]/page.tsx",
+  /** 공개 릴리스 노트 — DB를 읽지 않고 세션은 헤더 primary에만 쓴다(`/privacy`와 같은 급). 원문은 공개 리포의 GitHub Release다. */
+  "changelog/page.tsx",
   "invite/[token]/page.tsx",
   /**
    * 병합 안내 (account-linking T2). **인가가 없고 challenge가 대신한다** — 비로그인이 봐야 하는
@@ -768,7 +771,7 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
    * ⚠️ **하드코딩이다** — `PROTECTED`는 `(edit)/` 아래에서만 만들어지므로, 여기 등재하지 않으면
    * "보호 경로가 아니다"를 재는 대상이 아예 없다 (POSTMORTEM 2026-09-07).
    */
-  const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/privacy", "/docs", "/docs/setup/workflow"];
+  const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/privacy", "/changelog", "/docs", "/docs/setup/workflow"];
 
   /** Next matcher의 `source` — 이 모양(정규식 그룹 하나)은 path-to-regexp와 JS 정규식이 같게 읽는다. */
   const MATCHERS = (middlewareConfig.matcher as readonly string[]).map((source) => new RegExp(`^${source}$`));

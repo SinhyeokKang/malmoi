@@ -752,6 +752,31 @@ export const en = {
   },
 
   /**
+   * `/changelog` (spec 결정). ⚠️ **`title`이 다섯 자리의 라벨 키다** — 사이드바 하단 · 사용자 메뉴 · 공개 헤더 · 공개 푸터 ·
+   * 페이지 `h1`이 이 값 하나를 읽는다(라벨이 그 화면의 제목과 같은 키, DESIGN).
+   *
+   * ⚠️ **릴리스 본문은 여기 없다** — GitHub Release 원문이 정본이고 사전을 지나지 않는 유일한 공개 텍스트다. 그 원문의 계약은
+   * `.claude/commands/merge.md` 5단계 ② 양식이다. 안내 문장 넷은 모두 `releases`(GitHub Releases 외부 링크)를 받는다.
+   */
+  changelog: {
+    title: "Changelog",
+    /** 검색·링크 미리보기 설명 — 소개 문장의 첫 문장과 같은 말이다. */
+    description: "What changed in each release of Malmoi, newest first.",
+    releases: "GitHub Releases",
+    intro: (releases: ReactNode): ReactNode => (
+      <>What changed in each release of Malmoi, newest first. Dates are in UTC. The same notes are published on {releases}.</>
+    ),
+    /** 시안 1c의 "Read them"은 단수 changelog를 받지 못해 고쳤다. 재시도 버튼은 없다 — 성공만 캐시되니 새로고침이 곧 재시도다. */
+    failed: (releases: ReactNode): ReactNode => <>The changelog couldn&apos;t be loaded from GitHub just now. Read it on {releases}.</>,
+    empty: (releases: ReactNode): ReactNode => <>No releases have been published yet. New versions appear here and on {releases}.</>,
+    /** GitHub 한 요청 상한(100건)에 닿았을 때 목록 끝 — 페이지네이션은 없다. */
+    truncated: (releases: ReactNode): ReactNode => <>Older releases are on {releases}.</>,
+    viewOnGithub: "View on GitHub",
+    /** 보이는 글자는 항목마다 같다 — 접근 이름이 버전을 들어야 링크 목록에서 갈린다. */
+    viewOnGithubLabel: (tag: string): string => `View ${tag} on GitHub`,
+  },
+
+  /**
    * 프로젝트 Home — **카드 넷 · 할 일 · 로그 · 메타 열** (DESIGN §6.64).
    *
    * ⚠️ **화면에 `pull`·`push` 낱말이 0이다** (DESIGN §10). 표시는 `Sync`(리포 → 앱)와
