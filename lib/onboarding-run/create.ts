@@ -10,6 +10,7 @@ import type { Subject } from "@/lib/auth/subject";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { runTokenFor } from "@/lib/events/payload";
 import { recordEvent, recordRun } from "@/lib/events/record";
+import { requireEnv } from "@/lib/env";
 import { isUniqueViolation } from "@/lib/failure";
 import { openRepoReader } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
@@ -28,6 +29,8 @@ import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { applyPushInTransaction } from "@/lib/push/apply";
 import { generatePushToken, hashPushToken } from "@/lib/push/token";
 import { planSurfaceSlug, selectDefaultSurface, surfaceOwnership } from "@/lib/surfaces/plan";
+
+import { planSampleConfirmations } from "@/lib/mcp/confirm";
 
 import { checkRepoAccess, type OnboardFailure } from "./access";
 import { ownedActiveProjects } from "./repos";
@@ -79,7 +82,16 @@ export type CreateProjectResult =
  * 같은 트랜잭션에 저장한다. User 잠금 뒤 토큰 유효성·`project:create`를 다시 보고, 고른-범위 토큰이면 같은 tx에서 `projectIds`에 더한다.
  * 별도 클라이언트 `tokenId`나 범위 추가 플래그를 받지 않는다 — 주체가 든다. 재검증은 호출자의 몫이다.
  */
-export async function createProjectFromRepo(prisma: PrismaClient, subject: Subject, input: z.infer<typeof CreateProjectInput>): Promise<CreateProjectResult> {
+export async function createProjectFromRepo(
+  prisma: PrismaClient,
+  subject: Subject,
+  input: z.infer<typeof CreateProjectInput>,
+  /**
+   * MCP `create_project`만 — `detect_formats`가 준 샘플 확인값, `input.surfaces`와 같은 순서(design §2.2). 주면 인가 뒤 읽은 **같은 스냅샷**의
+   * head로 전부 대조하고 하나라도 실패하면 쓰기 0건이다. 웹은 주지 않는다(파일을 다시 읽어 `planConfirmedFormat`으로 검증하는 기존 계약).
+   */
+  options: { confirmations?: readonly (string | undefined)[] } = {},
+): Promise<CreateProjectResult> {
   const { userId, tokenId } = subject;
 
   // ⚠️ **형식 규칙은 `lib/pull/trigger.ts`의 `REF_SAFE_SLUG`와 같은 정규식이다** — 갈리면 온보딩이
@@ -125,6 +137,16 @@ export async function createProjectFromRepo(prisma: PrismaClient, subject: Subje
   const baseBranch = input.baseBranch;
   const snapshot = await reader.snapshot(baseBranch);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+  if (options.confirmations !== undefined) {
+    // ⚠️ 검증과 적재가 같은 head다 — 아래 준비는 이 스냅샷의 blob sha로만 읽는다. 확인 뒤 ref를 다시 읽지 않는다.
+    const verdict = planSampleConfirmations({
+      candidates: input.surfaces.map((surface, index) => ({ ...surface, confirmation: options.confirmations?.[index] })),
+      context: { userId, repositoryId: access.repositoryId, installationId: plan.installationId, ref: baseBranch, headSha: snapshot.headSha },
+      secret: requireEnv("APP_SIGNING_SECRET"),
+      now: new Date(),
+    });
+    if (verdict.status !== "ok") return { ok: false, error: verdict.status === "invalid-input" ? "invalid input" : verdict.status };
+  }
 
   const paths = snapshot.files.map(f => f.path);
   const projectId = randomUUID();

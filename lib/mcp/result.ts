@@ -21,8 +21,6 @@ export const TOOL_REJECTIONS = [
   "not-found", "forbidden", "archived", "unavailable", "token-scope",
   "repo-read-only", "sample-expired", "manual-no-match", "not-ready",
   "reconfirm", "invalid-input", "too-many", "duplicate-key",
-  // 도구 구현(T6·T7) 전의 자리표시 — 도구가 다 서면 이 갈래를 지운다.
-  "not-implemented",
 ] as const;
 export type ToolRejection = (typeof TOOL_REJECTIONS)[number];
 
@@ -31,8 +29,11 @@ export type NeedsBrowserReason = "not-connected" | "reauthorize" | "no-installat
 export type ToolOutcome =
   | { status: "ok"; data: Record<string, unknown>; summary: string }
   | { status: ToolRejection }
-  /** 코어가 Action과 같은 union으로 낸 거부 — 화면의 사전을 그대로 지난다(`rejectionMessage`). */
-  | { status: "refused"; code: string }
+  /**
+   * 코어가 Action과 같은 union으로 낸 거부 — 화면의 사전을 그대로 지난다(`rejectionMessage`). 화면이 공용 사전 밖(Sync 결과·Publish
+   * 모달·Revert 문구)에서 문장을 고르는 거부는 호출부가 **그 화면의 키**를 `message`로 넘긴다 — 새 문장을 쓰지 않는다.
+   */
+  | { status: "refused"; code: string; message?: string; detail?: Record<string, unknown> }
   /** URL은 `lib/routes.ts`가 만든 앱 경로다 — 서명·nonce를 싣지 않는다(design §2.4). */
   | { status: "needs-browser"; reason: NeedsBrowserReason; url: string };
 
@@ -56,7 +57,6 @@ const MESSAGE = {
   "invalid-input": m.mcp.errors["invalid-input"],
   "too-many": m.mcp.errors["too-many"](BATCH_SAVE_LIMIT),
   "duplicate-key": m.mcp.errors["duplicate-key"],
-  "not-implemented": m.mcp.errors["not-implemented"],
 } satisfies Record<ToolRejection, string>;
 
 const text = (value: string): ToolResult["content"] => [{ type: "text", text: value }];
@@ -77,10 +77,11 @@ function rejectionMessage(code: string): string | null {
 export function toToolResult(outcome: ToolOutcome): ToolResult {
   if (outcome.status === "ok") return { isError: false, content: text(outcome.summary), structuredContent: outcome.data };
   if (outcome.status === "refused") {
-    const message = rejectionMessage(outcome.code);
+    const message = outcome.message ?? rejectionMessage(outcome.code);
     // 모르는 코드는 장애로 접는다 — 코드 원문을 싣지 않는다(코어 밖의 값이 결과로 새지 않게).
     if (message === null || outcome.code === "unavailable") return toToolResult({ status: "unavailable" });
-    return { isError: true, content: text(message), structuredContent: { status: outcome.code, message } };
+    // `detail`은 호출부가 고른 값(행 오류 인덱스·재시도 시각 등)이다 — 예외·원문을 싣지 않는다.
+    return { isError: true, content: text(message), structuredContent: { ...outcome.detail, status: outcome.code, message } };
   }
   if (outcome.status === "needs-browser") {
     const message = m.mcp.needsBrowser[outcome.reason];

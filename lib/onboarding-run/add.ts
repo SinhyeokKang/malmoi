@@ -7,6 +7,7 @@ import type { AccessError } from "@/lib/auth/message";
 import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { openRepoReader } from "@/lib/github";
+import { requireEnv } from "@/lib/env";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
 import { readFiles, snapshotError } from "@/lib/import/read";
@@ -16,6 +17,8 @@ import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
 import type { OnboardError } from "@/lib/onboarding/message";
 import { renderSurfaceWorkflowStep } from "@/lib/onboarding/workflow";
 import { addSurfacesFromSnapshot, SurfaceCreationError, type AddSurfaceErrorCode, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
+
+import { planSampleConfirmations } from "@/lib/mcp/confirm";
 
 import { checkRepoAccess } from "./access";
 
@@ -30,8 +33,16 @@ export type AddSurfacesResult =
  * 여기서 조립하고, 표면 생성 tx는 `addSurfacesFromSnapshot`이 든다(잠금 뒤 토큰 재읽기 포함). 재검증은 호출자의 몫이다 — 성공이면
  * 커밋된 것이다.
  */
-export async function addSources(prisma: PrismaClient, subject: Subject, input: z.infer<typeof AddSurfacesInput>): Promise<AddSurfacesResult> {
+export async function addSources(
+  prisma: PrismaClient,
+  subject: Subject,
+  input: z.infer<typeof AddSurfacesInput>,
+  /** MCP `add_sources`만 — `input.picks`와 같은 순서의 샘플 확인값(`createProjectFromRepo`와 같은 계약). 웹은 주지 않는다. */
+  options: { confirmations?: readonly (string | undefined)[] } = {},
+): Promise<AddSurfacesResult> {
   const { userId } = subject;
+  // ⚠️ 비밀값은 아래 try **밖에서** 읽는다 — 안에서 던지면 catch가 `ingest-failed`로 접어 설정 오류가 적재 실패로 둔갑한다(design §2.2).
+  const secret = options.confirmations === undefined ? null : requireEnv("APP_SIGNING_SECRET");
   if (new Set(input.picks.map(pick => pick.pathTemplate)).size !== input.picks.length || input.picks.some(pick => !isAdapterName(pick.adapter) || !isPathSafeLocale(pick.baseLocale) || !isLocaleShaped(pick.baseLocale))) return { ok: false, error: "invalid input" };
   const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
@@ -47,6 +58,16 @@ export async function addSources(prisma: PrismaClient, subject: Subject, input: 
     const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId, repo.repositoryId);
     const snapshot = await reader.snapshot(project.baseBranch);
     if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
+    if (options.confirmations !== undefined && secret !== null) {
+      // 같은 스냅샷의 head로 대조한다 — 아래 다운로드는 이 트리의 blob sha로만 읽는다.
+      const verdict = planSampleConfirmations({
+        candidates: input.picks.map((pick, index) => ({ ...pick, confirmation: options.confirmations?.[index] })),
+        context: { userId, repositoryId: repo.repositoryId, installationId: repo.installationId, ref: project.baseBranch, headSha: snapshot.headSha },
+        secret,
+        now: new Date(),
+      });
+      if (verdict.status !== "ok") return { ok: false, error: verdict.status === "invalid-input" ? "invalid input" : verdict.status };
+    }
     const paths = snapshot.files.map(file => file.path);
     const selected = input.picks.map(pick => {
       if (!isAdapterName(pick.adapter)) throw new SurfaceCreationError("ingest-failed");

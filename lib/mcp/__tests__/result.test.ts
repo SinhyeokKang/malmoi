@@ -28,7 +28,6 @@ const EXPECTED_MESSAGE: Record<ToolRejection, string> = {
   "invalid-input": m.mcp.errors["invalid-input"],
   "too-many": m.mcp.errors["too-many"](100),
   "duplicate-key": m.mcp.errors["duplicate-key"],
-  "not-implemented": m.mcp.errors["not-implemented"],
 };
 
 describe("toToolResult — 성공", () => {
@@ -123,4 +122,9 @@ describe("toToolResult — refused(코어 거부 코드)", () => {
       expect(JSON.stringify(result)).not.toContain(code);
     }
   });
+});
+
+it("refused의 message는 호출부가 고른 화면 문장이 이긴다", () => {
+  expect(toToolResult({ status: "refused", code: "already-running", message: m.translations.publish.alreadyRunningBody }).structuredContent)
+    .toEqual({ status: "already-running", message: m.translations.publish.alreadyRunningBody });
 });

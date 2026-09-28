@@ -1,12 +1,10 @@
 import "server-only";
 
 import { McpServer } from "@modelcontextprotocol/server";
-import { z } from "zod";
 
 import { getPrisma } from "@/lib/db";
 
 import { toolCatalog } from "./catalog";
-import { toToolResult } from "./result";
 import type { ApiTokenSubject } from "./token-store";
 import { TOOLS } from "./tools";
 import { executeTool } from "./tools/execute";
@@ -18,7 +16,7 @@ import { executeTool } from "./tools/execute";
  * ⚠️ **`tools.listChanged: false`** — 기본 true면 Claude Code가 `subscriptions/listen` SSE를 열고 응답이 끝나지 않는다(T1 실측).
  * Vercel 함수가 `maxDuration`까지 붙잡힌다. 도구 목록은 배포 사이에 안 바뀌므로 잃는 것이 없다.
  *
- * 구현(`lib/mcp/tools/*`)이 있는 도구는 그 입력 스키마·실행을, 아직 없는 이름은 `not-implemented`를 돌려준다(T7 전의 자리표시).
+ * 이름·순서·annotations는 카탈로그가, 입력 스키마·실행은 `lib/mcp/tools/*`가 든다.
  * `subject`는 서버가 토큰에서 만든 주체다 — 도구 입력으로 주체를 받지 않는다.
  */
 export function createMcpServer(subject: ApiTokenSubject): McpServer {
@@ -26,10 +24,8 @@ export function createMcpServer(subject: ApiTokenSubject): McpServer {
   const implemented = new Map(TOOLS.map(tool => [tool.name, tool]));
   for (const tool of toolCatalog()) {
     const definition = implemented.get(tool.name);
-    if (definition === undefined) {
-      server.registerTool(tool.name, { annotations: tool.annotations, inputSchema: z.looseObject({}) }, async () => toToolResult({ status: "not-implemented" }));
-      continue;
-    }
+    // 카탈로그와 구현이 어긋났다 — 설정 오류라 요청을 받기 전에 던진다(`tools/registry.test.ts`가 상시로 센다).
+    if (definition === undefined) throw new Error(`MCP tool ${tool.name} has no implementation`);
     server.registerTool(tool.name, { annotations: tool.annotations, inputSchema: definition.inputSchema },
       async (input: unknown) => executeTool(definition, () => ({ prisma: getPrisma(), subject, now: new Date() }), input));
   }

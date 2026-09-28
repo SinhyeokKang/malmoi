@@ -3239,8 +3239,6 @@ export const en = {
       "invalid-input": "The arguments don't match this tool's input. Check them and try again.",
       "too-many": (limit: number): string => `Save up to ${limit.toLocaleString("en-US")} keys per call. Split the rest into another call.`,
       "duplicate-key": "The same key appears more than once. Send each key once per call.",
-      // 도구 구현 전 자리표시(T5) — 도구가 다 서면 지운다.
-      "not-implemented": "This tool isn't available yet.",
     },
     /**
      * 도구 성공 결과의 한 줄 요약(`content` text) — 에이전트가 사용자에게 옮기는 문장이다. 값은 `structuredContent`에 따로 실린다.
@@ -3260,6 +3258,30 @@ export const en = {
       repositories: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "repository" : "repositories"}.`,
       branches: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "branch" : "branches"}.`,
       formats: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "translation file format" : "translation file formats"} found.`,
+      publishPreview: (n: number): string => n === 0 ? "Nothing to publish." : `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} would be sent in a pull request. Publish with this fingerprint.`,
+      published: (view: string): string =>
+        view === "created" ? "Sent for review in a new pull request."
+        : view === "updated" ? "Updated the open pull request."
+        : view === "partial" ? "Some changes weren't sent. See the result for why."
+        : "Nothing changed — the repository already has these values.",
+      saved: (saved: number, rejected: number): string =>
+        `Saved ${saved.toLocaleString("en-US")} ${saved === 1 ? "key" : "keys"}${rejected === 0 ? "" : `; ${rejected.toLocaleString("en-US")} ${rejected === 1 ? "key was" : "keys were"} not saved`}.`,
+      updated: "Settings saved.",
+      nameOnly: "The name was saved, but the base branch wasn't.",
+      baseLocale: (locale: string): string => `Base language set to ${locale}. It takes effect after the next sync from the repository.`,
+      pushToken: "New push token issued. The old one stopped working. Store it as the PUSH_TOKEN repository secret through standard input (gh secret set PUSH_TOKEN --repo OWNER/REPO).",
+      archived: "Project archived. Restore it to edit or publish again.",
+      restored: "Project restored.",
+      invited: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "invitation" : "invitations"} sent.`,
+      revoked: "Invitation revoked.",
+      memberRemoved: "Member removed.",
+      memberChanged: (role: string): string => `Role changed to ${role === "OWNER" ? "Owner" : "Editor"}.`,
+      created: (slug: string, keys: number): string =>
+        `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Commit the workflow file and store the push token as the PUSH_TOKEN secret.`,
+      sourcesAdded: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. Add the workflow steps to the repository's workflow file.`,
+      synced: (kept: number): string => kept === 0
+        ? "Synced from the repository."
+        : `Synced from the repository. ${kept.toLocaleString("en-US")} unsent ${kept === 1 ? "edit remains" : "edits remain"}, so automatic updates stay paused.`,
       syncPreview: (unsent: number): string => unsent === 0
         ? "Sync will load the repository's values. No unsent edits will be discarded."
         : `Sync will load the repository's values and discard ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"}.`,

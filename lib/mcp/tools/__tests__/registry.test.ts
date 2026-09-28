@@ -16,6 +16,11 @@ const DIR = join(__dirname, "..");
 const TOOL_FILES = readdirSync(DIR).filter(f => f.endsWith(".ts"));
 
 describe("도구 레지스트리", () => {
+  it("카탈로그의 모든 이름에 구현이 있다 — 임시 자리표시 없이 서버가 선다", () => {
+    const implemented = new Set(TOOLS.map(t => t.name));
+    expect(toolCatalog().map(t => t.name).filter(n => !implemented.has(n))).toEqual([]);
+  });
+
   it("구현 이름이 전부 카탈로그에 있고 겹치지 않는다", () => {
     const names = TOOLS.map(t => t.name);
     expect(new Set(names).size).toBe(names.length);

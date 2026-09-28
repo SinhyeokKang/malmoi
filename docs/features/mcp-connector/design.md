@@ -66,8 +66,8 @@ CLI 에이전트 ──POST /api/mcp (Authorization: Bearer mlm_…)──▶ ro
 - **401에서 두 CLI 모두 OAuth로 넘어가지 않는다** — Claude Code는 `Authorization` 헤더가 설정돼 있으면 "OAuth fallback is disabled"로
   멈추고 **401 본문을 사용자에게 그대로 보인다**(실측: `Error detail: { error : unauthorized }`). `/.well-known/*` 요청은 0건이었다.
   → 401 본문은 갈래를 말하지 않는 고정 문장 하나다(spec 조건 4).
-- ⚠️ **`not-implemented`는 임시다** — T5의 `lib/mcp/server.ts`는 카탈로그 28개를 등록만 하고 전부 `not-implemented` 거부를 돌려준다.
-  T6·T7(M3)이 도구를 세우며 그 갈래(`lib/mcp/result.ts`·`messages/en.tsx` `mcp.errors`)를 지운다 — **`/merge` 전에 0건이어야 한다.**
+- T5의 임시 `not-implemented` 갈래는 T7에서 지웠다 — 카탈로그 28개가 전부 `lib/mcp/tools/*` 구현을 가지며, 구현이 빠진 이름은 서버 생성
+  시점에 던진다(`lib/mcp/tools/__tests__/registry.test.ts`가 양방향으로 센다).
 - 알려진 소음: `responseMode: "json"`이면 SDK가 `createMcpHandler` 생성 시점에 `console.warn` 한 줄을 낸다(모듈 로드당 1회).
 - 응답은 **JSON 한 벌**(SSE 스트림 없음). 진행 알림을 보낼 긴 작업이 Publish·첫 적재 둘이고 둘 다 60초 안이다 — `json` 모드는
   중간 알림을 버린다(SDK 문서)는 대가를 받아들인다.
