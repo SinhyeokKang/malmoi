@@ -43,6 +43,7 @@ app/
                         · screens(lang·revalidate 안전·보관 갈래 다섯) · security-headers(next.config를 불러서)
                         · api/__tests__/pull-budget(야간 cron 시간 예산 — 가짜 시계로 넘긴 수가 unprocessed에 실리는지)
                         · locked-access(잠금 재판정 16자리를 AST로 센다 — `$transaction` 콜백 안의 호출만, 주석 제외)
+                        · exempt-route-guards(EXEMPT route → 필수 가드 호출 맵 — /api/mcp는 resolveApiToken. 2026-09-28)
                         · root-boundaries · seo-metadata · crawl-files · landing-page · docs-page · privacy-page · changelog-page
                         · api/__tests__/ github-callback · push-failure · route-diagnostics · surface-boundary
   (edit)/               인증 필요. 1차 차단은 middleware, 본판정은 각 진입점
@@ -74,6 +75,11 @@ app/
                         requireUser만 지난다. 인가할 프로젝트가 없는 축이다)
                         (⚠️ ContentPanel을 안 든다 — 이 라우트는 layout.tsx가 든다. /projects만
                         페이지가 들어서 그쪽 loading.tsx가 패널을 드는 것이고, 여기서 또 들면 두 겹이다)
+    mcp/                MCP connector(`/mcp`, 2026-09-28). 사용자 축 한 장 — requireUser만 지난다(인가할 프로젝트가 없다,
+                        account/와 같은 형 · layout.tsx가 ContentPanel을 든다). page.tsx(토큰 카드 · 연결 조각 · 가이드 링크) ·
+                        actions.ts(issueApiToken — 기존 행 삭제 + 삽입 한 tx라 Create와 Rotate가 같은 Action · revokeApiToken).
+                        ⚠️ 토큰이 토큰을 만들지 않는다 — MCP 도구에 발급·폐기가 없고 여기가 유일한 길이다.
+                        ⚠️ 서버 URL은 이 요청의 origin이다 — preview에서 보면 preview 주소여야 조각을 그대로 쓴다
     projects/[slug]/    프로젝트 축. layout.tsx가 ContentPanel 하나를 든다 (우측 패널은 2026-09-16 제거 — DESIGN §6.55)
                         ⚠️ 레이아웃은 인가의 차단 지점이 될 수 없다(페이지와 병렬 렌더) — 서버 데이터를 안 읽는다
       (home)/           Home 전용 route group(URL 불변). ⚠️ loading.tsx를 [slug]/에 바로 두면
@@ -113,6 +119,10 @@ app/
   api/push/failure/     CI가 **적재에 실패했다는 사실**만 남긴다(2026-09-13). 파싱이 깨지면 /api/push는
                         아예 안 불려서 그 실패가 대상 리포 로그에만 있었다. 같은 토큰 · 코드 넷 ·
                         본문 4 KiB · 키/번역/커밋 기준점을 건드리지 않는다
+  api/mcp/              CLI·코딩 에이전트 → 코어(2026-09-28, ARCHITECTURE §6.45). Bearer가 **개인 토큰**이다(ApiToken).
+                        ⚠️ 쿠키를 읽지 않는다 — CSRF 방어의 전부다(lib/mcp/__tests__/no-cookie-reads). POST 하나이고
+                        두 MCP 개정(2026-07-28 · 2025 handshake)을 같은 도구로 받는다. 배치·subscriptions/listen은 SDK 앞에서 끊는다.
+                        가드 호출은 app/__tests__/exempt-route-guards가 센다(EXEMPT 등재만으로는 가드를 못 센다)
   api/pull/             DB → PR. cron 전용(CRON_SECRET)
   api/images/[...key]/  업로드 이미지 읽기 프록시(2026-09-28). 브라우저가 Blob 호스트를 보지 않게 같은
                         바이트를 우리 출처로 낸다 — 기업 웹 필터가 그 호스트를 막는다(ARCHITECTURE §6.7).
@@ -198,6 +208,11 @@ components/
                         (⚠️ 국기는 CSS background-image다 — 로케일 200개 행에서 <img>면 요소가 그만큼 는다).
                         옛 번역 표 조각(header·filters·filter-chips·key-group·announcer)과 셀 편집
                         translation-input은 translation-rework T16에서 지웠다
+  mcp/                  `/mcp` 조각 셋(2026-09-28) — token-card(RowCard 머리에 행동 — 없음·만료 = Create, 활성 = Rotate · Revoke.
+                        결과 미확인은 이 세션에만 산다) · token-modal(OnboardingModal 2단계 — ① 폼 ② 원문 1회, Done이 유일한 출구) ·
+                        connect-card(SegmentedControl + WorkflowBlock 형 조각 — 공개 문서 CodeBlock이 아니라 mono 자리가 안 는다).
+                        ⚠️ grant 어휘·만료 선택지를 **다시 적는다** — TOKEN_GRANTS를 값으로 import하면 lib/auth/access가
+                        클라이언트 그래프에 들어온다(client-graph). 두 벌의 대가는 components/__tests__/mcp-token이 순서까지 고정해 진다
   sources/ settings/ onboarding/ projects/ signin/ account/ invite/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
@@ -523,6 +538,24 @@ lib/
                         (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄 ·
                         cli/push-url — `push-local --url` 판정. 토큰 원문을 싣는 요청이라 http는 루프백 셋만, 위반은 exit 2)
                         각 기능의 순수 판정층
+  mcp/                  MCP 커넥터(2026-09-28, ARCHITECTURE §6.45). **순수 판정이 대부분이고 server-only가 셋뿐이다** —
+                        token(생성·해시·Bearer 파싱·planApiTokenUse·shouldTouch) · grant(planToolAccess — 범위 → 멤버십 → 역할 →
+                        보관 → 토큰) · issue-plan · batch(100키 상한·중복) · confirm(샘플 확인값 소비) · locked-token(잠금 뒤 재판정) ·
+                        result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · snippets(연결 조각 — 토큰은
+                        $MALMOI_TOKEN 참조로만) · catalog(도구 28 — 이름·순서·annotations·요구 조건의 코드 정본).
+                        server-only: server(요청마다 McpServer — listChanged: false) · token-store(resolveApiToken) · tools/.
+                        ⚠️ catalog·snippets는 잎이다(import 0) — /mcp 클라이언트가 값으로 읽는다. 도구 구현이 catalog를 import하는
+                        방향이지 반대가 아니다(client-graph). 순수 모듈에 server-only가 없는 것은 lib/mcp/__tests__/pure-boundary가 센다
+  mcp/tools/            도구 구현(전부 server-only). access(입구 판정 — GitHub·코어보다 먼저, 조건은 catalog에서) · define ·
+                        execute(⚠️ 던지면 SDK가 예외 문구를 결과에 싣는다 — 여기서 잡아 unavailable로 접는다) · 도메인별
+                        account·project·keys·repos·sync·publish·translations·settings·members·onboarding · index(TOOLS).
+                        ⚠️ Action을 import하지 않는다 — 같은 코어의 형제 껍데기다(세션이 없다)
+  onboarding-run/       **두 GitHub 자격증명이 만나는 조립**(2026-09-28 T4-c — ARCHITECTURE §3.1). Server Action과 MCP 도구가
+                        같이 부른다: access(checkRepoAccess) · repos · branches · detect · add · create · import · rotate-token.
+                        ⚠️ lib/onboarding/에 두지 않는 이유가 이 디렉터리의 존재 이유다 — 그 루트는 "두 자격증명 import 없음"이라
+                        credential-separation이 red다. 여기는 Server Action과 같은 규칙 집합(MEETING_ROOTS)이다.
+                        ⚠️ 파일명이 동사형이다(lib/projects/archive처럼) — `*-run.ts` 접미 선례가 없고, 기존 run.ts는 도메인당
+                        하나인 실행기 이름이라(lib/sync/run · lib/import/run) 그 이름을 쓰면 실행기가 여럿으로 읽힌다
   home/                 Home의 순수 판정 다섯 (2026-09-15 재편). state(여섯 아트보드 → 값 하나 —
                         ⚠️ 로딩은 갈래가 아니다: 라우트의 loading.tsx이고 union에 넣으면 생산자 없는
                         갈래가 남는다) · cards(보조 줄과 0 갈래 — ⚠️ 상태의 보조 줄이 0 갈래를 이긴다) ·
