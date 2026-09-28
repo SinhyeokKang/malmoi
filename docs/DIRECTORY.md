@@ -589,6 +589,8 @@ lib/
                         production만 허용, 모르면 숨긴다 · sitemapEntries) · json-ld(jsonLdHtml — dangerouslySetInnerHTML의 유일한 입력 ·
                         LANDING_LD · docLd) · llms(llmsIndex · llmsFull — 결정적) · analytics(redactAnalyticsEvent — 추적 경로 허용 목록.
                         ⚠️ 잎, 전 페이지 클라이언트 번들에 든다)
+  app-version.ts        ⚠️ 잎. 현재 앱 버전 `x.y.z` — `next.config`의 `env`가 `package.json`의 version을 빌드 때 박은 `APP_VERSION`을 읽는다
+                        (LNB Changelog 배지). `package.json`을 import하지 않는다 — 사이드바(클라이언트)가 의존성 목록까지 싣는다
   links.ts              외부 링크(GitHub 리포 좌표 GITHUB_REPO 하나에서 리포·Releases·API·releaseTagUrl을 파생)와 푸터 링크 목록 —
                         공개 셸·/signin 푸터가 같은 목록·순서를 읽는다. ⚠️ 클라이언트 그래프 밖이다(2026-09-28 — 앱 셸 소비자가 사라졌다).
                         ⚠️ 외부 URL을 routes.ts에 넣지 않는 이유가 이 파일이다(죽은 라우트 검사가 앱 경로로 읽는다)
