@@ -763,9 +763,6 @@ export const en = {
     empty: (releases: ReactNode): ReactNode => <>No releases have been published yet. New versions appear here and on {releases}.</>,
     /** GitHub 한 요청 상한(100건)에 닿았을 때 목록 끝 — 페이지네이션은 없다. */
     truncated: (releases: ReactNode): ReactNode => <>Older releases are on {releases}.</>,
-    viewOnGithub: "View on GitHub",
-    /** 보이는 글자는 항목마다 같다 — 접근 이름이 버전을 들어야 링크 목록에서 갈린다. */
-    viewOnGithubLabel: (tag: string): string => `View ${tag} on GitHub`,
   },
 
   /**

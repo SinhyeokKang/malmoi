@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ReleaseEntry } from "@/components/changelog/release-entry";
+import { SECTION_HEADING, SUB_HEADING } from "@/components/docs/classes";
 import { m } from "@/lib/i18n";
 import { releaseTagUrl } from "@/lib/links";
 
@@ -47,19 +48,22 @@ async function entry() {
 }
 
 describe("ReleaseEntry — 머리", () => {
-  it("버전 h2는 자기 자신을 가리키는 앵커이고 해시 착지 대상이다", async () => {
+  /** 2026-09-28 사용자 — 버전 글자가 곧 그 판의 GitHub Release 링크다(옛 자기 앵커 + 본문 아래 `View on GitHub` 대체). 글리프 없음. */
+  it("버전 h1은 해시 착지 대상이고, 글자가 그 판의 Release로 새 탭에서 간다", async () => {
     const container = await entry();
-    const h2 = container.querySelector("h2");
-    expect(h2?.id).toBe("v1.0.1");
-    expect(h2?.getAttribute("tabindex")).toBe("-1");
-    expect(h2?.className).toContain("scroll-mt-12");
-    const anchor = h2?.querySelector("a");
-    expect(anchor?.getAttribute("href")).toBe("#v1.0.1");
+    const h1 = container.querySelector("h1");
+    expect(h1?.id).toBe("v1.0.1");
+    expect(h1?.getAttribute("tabindex")).toBe("-1");
+    expect(h1?.className).toContain("scroll-mt-12");
+    const anchor = h1?.querySelector("a");
+    expect(anchor?.getAttribute("href")).toBe(releaseTagUrl("v1.0.1"));
     expect(anchor?.textContent).toBe("v1.0.1");
-    expect(anchor?.getAttribute("target")).toBeNull();
+    expect(anchor?.getAttribute("target")).toBe("_blank");
+    expect(anchor?.getAttribute("rel")).toBe("noreferrer");
+    expect(anchor?.querySelector("svg")).toBeNull();
   });
 
-  it("구역의 이름은 버전 h2다 — 이름 없는 section이 없다", async () => {
+  it("구역의 이름은 버전 h1이다 — 이름 없는 section이 없다", async () => {
     const container = await entry();
     expect(container.querySelector("section")?.getAttribute("aria-labelledby")).toBe("v1.0.1");
   });
@@ -73,13 +77,15 @@ describe("ReleaseEntry — 머리", () => {
 });
 
 describe("ReleaseEntry — 본문", () => {
-  it("원문 제목은 h3부터 선다 — h4는 정한 급(16 · 500)을 든다", async () => {
+  /** 2026-09-28 사용자 — 버전 h1, 본문 큰 제목 h2 식으로 태그째 한 단계씩 올렸다. */
+  it("원문 ##는 버전과 같은 h1이고 모양은 공개 문서 공통 급이다 — 버전 30 > 절 24 > 소제목 20", async () => {
     const container = await entry();
-    expect([...container.querySelectorAll("h3")].map((h) => h.textContent)).toEqual(["Highlights", "Features"]);
-    expect(container.querySelector("h4")?.textContent).toBe("GitHub Action");
-    expect(container.querySelector("h4")?.className).toContain("text-prose");
-    expect(container.querySelector("h4")?.className).toContain("font-medium");
-    expect(container.querySelector("h5")?.className).toContain("font-medium");
+    const [version, ...body] = [...container.querySelectorAll("h1")];
+    expect(version?.className).toContain("text-3xl");
+    expect(body.map((h) => h.textContent)).toEqual(["Highlights", "Features"]);
+    expect(body[0]?.className).toBe(SECTION_HEADING);
+    expect(container.querySelector("h2")?.textContent).toBe("GitHub Action");
+    expect(container.querySelector("h2")?.className).toBe(SUB_HEADING);
   });
 
   it("raw HTML은 요소가 아니라 글자로 선다", async () => {
@@ -130,13 +136,10 @@ describe("ReleaseEntry — 본문", () => {
   });
 });
 
-describe("ReleaseEntry — View on GitHub", () => {
-  it("그 판의 Release 페이지로 새 탭에서 가고, 접근 이름에 버전이 든다", async () => {
+describe("ReleaseEntry — 버튼 없음", () => {
+  it("본문 아래 `View on GitHub` 버튼이 없다 — 버전 글자가 대신한다", async () => {
     const container = await entry();
-    const link = [...container.querySelectorAll("a")].find((a) => a.textContent === m.changelog.viewOnGithub);
-    expect(link?.getAttribute("href")).toBe(releaseTagUrl("v1.0.1"));
-    expect(link?.getAttribute("target")).toBe("_blank");
-    expect(link?.getAttribute("rel")).toBe("noreferrer");
-    expect(link?.getAttribute("aria-label")).toBe("View v1.0.1 on GitHub");
+    expect(container.textContent).not.toContain("View on GitHub");
+    expect(container.querySelectorAll(`a[href="${releaseTagUrl("v1.0.1")}"]`)).toHaveLength(1);
   });
 });

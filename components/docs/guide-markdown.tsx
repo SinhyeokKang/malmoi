@@ -9,7 +9,8 @@ import { TableBody, TableHead, TableHeader, TableRow, Td } from "@/components/ui
 import { remarkGuide } from "@/lib/guide/remark";
 import type { ShotSize } from "@/lib/guide/shots";
 
-import { DOC_LINK, INLINE_CODE, LIST, PROSE } from "./classes";
+import { DOC_LINK, INLINE_CODE, LIST, PROSE, SECTION_HEADING, SUB_HEADING } from "./classes";
+import { cn } from "@/lib/utils";
 import { CodeBlock } from "./code-block";
 
 const NO_SIZES: Record<string, ShotSize> = Object.create(null);
@@ -35,14 +36,12 @@ function components(sizes: Record<string, ShotSize>): Components {
   return {
     h1: ({ node: _node, ...props }) => <h1 {...props} className="m-0 text-4xl leading-[1.3] font-semibold" />,
     // `scroll-mt-12` — 하드 해시 착지도 목차 클릭과 같은 48 아래에 선다. `tabIndex`는 remarkGuide가 싣는다.
-    h2: ({ node: _node, ...props }) => (
-      <h2 {...props} className="m-0 mt-14 scroll-mt-12 text-2xl leading-[1.4] font-semibold focus:outline-none" />
-    ),
-    h3: ({ node: _node, ...props }) => <h3 {...props} className="m-0 mt-8 scroll-mt-12 text-lg leading-[1.5] font-medium" />,
+    h2: ({ node: _node, ...props }) => <h2 {...props} className={cn(SECTION_HEADING, "scroll-mt-12 focus:outline-none")} />,
+    h3: ({ node: _node, ...props }) => <h3 {...props} className={cn(SUB_HEADING, "scroll-mt-12")} />,
     p: ({ node, children }) => (isFigure(node) ? <>{children}</> : <p className={PROSE}>{children}</p>),
     ul: ({ node: _node, children }) => <ul className={`${LIST} list-disc`}>{children}</ul>,
     ol: ({ node: _node, children }) => <ol className={`${LIST} list-decimal`}>{children}</ol>,
-    // 목록 속 문단은 항목 간격(8)이 이미 떼어 준다 — 문단의 mt 16이 겹치지 않게 첫 문단을 되누른다.
+    // 목록 속 문단은 항목 간격(4)이 이미 떼어 준다 — 문단의 mt 8이 겹치지 않게 첫 문단을 되누른다.
     li: ({ node: _node, children }) => <li className="[&>p:first-child]:mt-0">{children}</li>,
     // 브라우저 기본 700은 굵기 규칙(`visual-system.test.ts`) 밖이다.
     strong: ({ node: _node, children }) => <strong className="font-medium">{children}</strong>,

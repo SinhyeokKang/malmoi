@@ -128,13 +128,13 @@ describe("`/changelog` — 항목 틀", () => {
 describe("`/changelog` — 목록", () => {
   it("릴리스가 받은 순서대로 항목이 된다", async () => {
     const container = await page({ ok: true, releases: TWO, truncated: false });
-    expect([...main(container).querySelectorAll("h2")].map((h) => h.id)).toEqual(["v1.0.1", "v1.0.0"]);
+    expect([...main(container).querySelectorAll("section > h1")].map((h) => h.id)).toEqual(["v1.0.1", "v1.0.0"]);
     expect(main(container).textContent).not.toContain("couldn't be loaded");
   });
 
   it("실패면 안내 문장 하나이고 항목이 없다", async () => {
     const container = await page({ ok: false });
-    expect(main(container).querySelectorAll("h2")).toHaveLength(0);
+    expect(main(container).querySelectorAll("section > h1")).toHaveLength(0);
     expect(main(container).textContent).toContain("The changelog couldn't be loaded from GitHub just now.");
     expectExternal(releasesLinks(main(container)));
     expect(releasesLinks(main(container))).toHaveLength(2);
@@ -142,7 +142,7 @@ describe("`/changelog` — 목록", () => {
 
   it("빈 목록이면 빈 목록 문장이다", async () => {
     const container = await page({ ok: true, releases: [], truncated: false });
-    expect(main(container).querySelectorAll("h2")).toHaveLength(0);
+    expect(main(container).querySelectorAll("section > h1")).toHaveLength(0);
     expect(main(container).textContent).toContain("No releases have been published yet.");
     expect(releasesLinks(main(container))).toHaveLength(2);
   });
