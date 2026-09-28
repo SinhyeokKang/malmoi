@@ -8,6 +8,7 @@ import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
+import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import { encodeUserFields } from "@/lib/credentials/records";
 import { optionalEnv } from "@/lib/env";
 
@@ -308,6 +309,34 @@ describe("행위자 — 원문 이메일이 나가지 않는다", () => {
     await event({ actorUserId: "u2" });
     const labels = (await loadEvents(prisma, "p1", base())).rows.map((row) => row.actor.emailLabel);
     expect(new Set(labels).size).toBe(2);
+  });
+
+  /**
+   * ⚠️ **라벨은 사람마다 한 번이다** (malmoi#146 — v1.0.0부터 프로덕션). 행마다 만들면 사건이 둘 이상인 사람이 **자기 주소와 충돌해**
+   * `maskedEmailLabels`가 원문으로 떨어졌다 — Logs RSC 페이로드와 MCP `list_events`가 모든 멤버에게 원문 주소를 실었다.
+   */
+  it("같은 사람의 사건이 셋이어도 원문이 아니라 마스킹 라벨이다", async () => {
+    for (let i = 0; i < 3; i += 1) await event({ actorUserId: "u2", occurredAt: new Date(AT.getTime() + i * 1000) });
+    const labels = (await loadEvents(prisma, "p1", base())).rows.map((row) => row.actor.emailLabel);
+    expect(labels).toEqual(["k***@example.com", "k***@example.com", "k***@example.com"]);
+  });
+
+  it("같은 도메인 두 사람이 여러 행에 있어도 멤버 표와 같은 만큼만 넓힌다", async () => {
+    for (let i = 0; i < 4; i += 1) await event({ actorUserId: i % 2 === 0 ? "u1" : "u2", occurredAt: new Date(AT.getTime() + (4 - i) * 1000) });
+    const rows = (await loadEvents(prisma, "p1", base())).rows;
+    const [kim, kang] = maskedEmailLabels(["kim@example.com", "kang@example.com"]);
+    expect(rows.map((row) => row.actor.emailLabel)).toEqual([kim, kang, kim, kang]);
+    expect(kim).toBe("ki***@example.com");
+  });
+
+  it("어느 행위자 조합에서도 직렬화 결과에 원문 주소가 없다 — 목록·상세·행위자 필터", async () => {
+    for (let i = 0; i < 6; i += 1) await event({ actorUserId: i % 3 === 2 ? "u1" : "u2", occurredAt: new Date(AT.getTime() + i * 1000) });
+    const page = await loadEvents(prisma, "p1", base());
+    const detail = await loadEvent(prisma, "p1", page.rows[0]!.ref);
+    const actors = await loadEventActors(prisma, "p1");
+    for (const raw of ["kim@example.com", "kang@example.com"]) {
+      expect(JSON.stringify([page, detail, actors])).not.toContain(raw);
+    }
   });
 
   it("계정이 지워진 USER만 removed다 — AUTOMATION·UNKNOWN과 구별된다", async () => {

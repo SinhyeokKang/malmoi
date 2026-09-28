@@ -129,7 +129,8 @@ export async function loadEvent(prisma: PrismaClient, projectId: string, ref: st
 }
 
 /**
- * 행위자 필터의 목록 — **이벤트에 등장한 행위자 distinct** (결정 8). 계정이 지워진 사람들은
+ * 행위자 필터의 목록 — **이벤트에 등장한 행위자 distinct** (결정 8). `distinct: ["actorUserId"]`라 한 사람이 한 행이다 — 라벨 입력이 이미 사람
+ * 단위라 `present`의 #146 결함이 여기엔 없다(테스트가 이 목록의 직렬화도 함께 잰다). 계정이 지워진 사람들은
  * `Removed user` 하나로 접힌다(FK가 `SetNull`이라 구별이 없다).
  */
 export async function loadEventActors(
@@ -155,12 +156,30 @@ export async function loadEventActors(
   return out;
 }
 
-/** 저장 행 → 화면이 읽는 행. 마스킹은 **목록 전체를 한 번에** 본다. */
+/**
+ * 저장 행 → 화면이 읽는 행. 마스킹은 **목록 전체를 한 번에** 보되 **사람마다 한 번**이다.
+ *
+ * ⚠️ **행 단위 목록을 `maskedEmailLabels`에 넣지 않는다** (malmoi#146). 그 함수는 입력 하나하나를 서로 다른 행으로 보고 같은 도메인의 "다른 행"을
+ * 경쟁자로 센다 — 사건이 둘 이상인 사람은 자기 주소와 충돌하고, 같은 문자열은 어떤 접두로도 안 갈려 **원문으로 떨어진다.** v1.0.0부터 Logs
+ * RSC 페이로드와 MCP `list_events`가 그 원문을 모든 멤버에게 실었다. 그래서 사용자 id로 모은 **distinct 주소 목록**에서 라벨을 만들고 행에 되돌린다.
+ */
 function present(rows: readonly Selected[]): EventRow[] {
   // 행 하나가 못 열려도 이력은 산다 — 키 부재만 장애로 남긴다 (`loadMembers`와 같은 규칙).
   validatePiiReadKeys();
   const decoded = rows.map((row) => (row.actor === null ? null : readable(() => decodeUser(row.actor!))));
-  const labels = maskedEmailLabels(decoded.map((user) => user?.email ?? ""));
+  const people = new Map<string, number>();
+  const emails: string[] = [];
+  for (const [index, row] of rows.entries()) {
+    const email = decoded[index]?.email;
+    if (row.actor === null || !email || people.has(row.actor.id)) continue;
+    people.set(row.actor.id, emails.length);
+    emails.push(email);
+  }
+  const personLabels = maskedEmailLabels(emails);
+  const labelOf = (row: Selected) => {
+    const at = row.actor === null ? undefined : people.get(row.actor.id);
+    return at === undefined ? null : (personLabels[at] ?? null);
+  };
   return rows.map((row, index) => {
     const user = decoded[index];
     return {
@@ -181,7 +200,7 @@ function present(rows: readonly Selected[]): EventRow[] {
             : user === null || user === undefined
               ? m.common.unreadable
               : user.email
-                ? (labels[index] ?? null)
+                ? labelOf(row)
                 : null,
       },
       surfaceIds: row.surfaceIds,
