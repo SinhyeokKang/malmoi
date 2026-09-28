@@ -2635,7 +2635,11 @@ PNG/JPEG 시그니처를 검사한 뒤 `normalizeImage`(`lib/upload/normalize.ts
   빠뜨린다(POSTMORTEM 2026-09-20이 같은 부류다). 그물은 `components/__tests__/image-origin.test.tsx`다.
   ⚠️ **예외는 초대 메일 하나다** (2026-09-28, invitation-email-project) — 메일은 **절대 URL**이 필요하고 React가
   아니라서 `imageSrc`(상대 경로)도 잎도 못 쓴다. `buildInvitationEmail`이 `planProjectImageDelete`로 키를 뽑아
-  `https://mal-moi.com/api/images/<key>`(프로덕션 고정 — preview는 SSO 뒤)를 싣고, 키가 안 나오면 폴백 글리프로 간다
+  `https://mal-moi.com/api/images/email/<key>`(프로덕션 고정 — preview는 SSO 뒤)를 싣고, 키가 안 나오면 폴백 글리프로 간다.
+  ⚠️ **메일 경로는 PNG 변환판이다** (2026-09-28, #140 — 프로덕션 실측): 저장본 WebP를 Gmail이 알파를 버려 검게 채웠고 Gmail iOS는
+  계단처럼 깨뜨렸다. `app/api/images/email/[...key]/route.ts`가 같은 검증·같은 `readImage`를 지나 `emailThumbnailPng`(96×96 PNG,
+  contain + 투명 여백)로 바꿔 낸다. **프로젝트 썸네일 키만** 받는다. 경로가 `/api/images/` 아래인 것은 WAF 규칙(`path starts with`)이
+  그대로 덮게 하려는 것이다
   (`lib/invitation-email/message.ts:78`·`:85`). 이 매핑은 위 그물 **밖**이므로 그물은
   `lib/invitation-email/__tests__/message.test.ts`의 "어느 입력이든 html에 `vercel-storage.com` 0건"이다.
 - ⚠️ **CSP `img-src`에서 Blob 호스트를 뺐다** (2026-09-28 — 프로덕션 실측 뒤 별도 변경으로). 프록시가
