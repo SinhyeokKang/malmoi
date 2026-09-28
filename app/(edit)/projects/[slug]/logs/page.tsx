@@ -130,7 +130,7 @@ export default async function LogsPage({
                 ⚠️ **경계선이 경계가 드러나는 행 바로 위에 한 번** 선다 (spec §7.1) — 페이지 경계에
                 걸리면 아래 페이지가 들고, 커서가 이미 과거면 그리지 않는다.
               */}
-              <div className="flex items-center gap-2 p-4">
+              <div className="flex items-center gap-2 px-4 py-3">
                 <h2 className="text-base font-medium">{group.heading}</h2>
                 {group.label !== null && <span className="text-muted-foreground text-xs">{group.label}</span>}
               </div>

@@ -571,7 +571,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-border flex shrink-0 flex-col gap-3 border-b p-4">
+      <div className="border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3">
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-2">
             <h1 ref={titleRef} tabIndex={-1} className="text-lg font-medium">{m.common.nav.translations}</h1>

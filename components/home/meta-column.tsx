@@ -35,7 +35,7 @@ export function MetaColumn({ rows, slug, now, canOpenSettings }: {
 
   return (
     <aside className="border-border flex h-fit flex-col overflow-hidden rounded-lg border" aria-labelledby="home-meta-title">
-      <h2 id="home-meta-title" className="p-4 text-base font-medium">
+      <h2 id="home-meta-title" className="px-4 py-3 text-base font-medium">
         {m.home.meta.title}
       </h2>
       <MetaGroup rows={facts} now={now} />

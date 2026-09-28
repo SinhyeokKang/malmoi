@@ -31,7 +31,7 @@ export function LogsCard({ rows, slug, now, archived, syncedBefore }: {
   return (
     /* ⚠️ **접근 이름이 있어야 `region` 랜드마크다** — 없으면 `generic`으로 접힌다 (`attention-card` 주석). */
     <section className="border-border flex flex-col overflow-hidden rounded-lg border" aria-labelledby="home-logs-title">
-      <h2 id="home-logs-title" className="shrink-0 p-4 text-base font-medium">{m.home.logs.title}</h2>
+      <h2 id="home-logs-title" className="shrink-0 px-4 py-3 text-base font-medium">{m.home.logs.title}</h2>
 
       {rows.length === 0 ? (
         <EmptyState

@@ -18,7 +18,7 @@ export default function TranslationsLoading() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <span className="sr-only" role="status">{m.translations.loading}</span>
-      <div className="border-border flex shrink-0 flex-col gap-3 border-b p-4" aria-hidden>
+      <div className="border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3" aria-hidden>
         <div className="flex items-center gap-3">
           <div className="inline-flex items-center gap-2">
             <SkeletonLine text="text-lg" className="w-28" />
@@ -100,10 +100,10 @@ export default function TranslationsLoading() {
   );
 }
 
-/** 트리·목록의 53 머리 — 제목 + 개수 배지(+ 목록은 오른쪽 끝 정렬 안내). 아래 선은 본문 쪽이 든다. */
+/** 트리·목록의 52 머리(12 + 로케일 Select 28 + 12 — 세 머리의 아래 선이 한 줄이다) — 제목 + 개수 배지(+ 목록은 오른쪽 끝 정렬 안내). 아래 선은 본문 쪽이 든다. */
 function PanelHead({ title, aside = false }: { title: string; aside?: boolean }) {
   return (
-    <div className="flex h-[53px] shrink-0 items-center gap-2 px-4">
+    <div className="flex h-[52px] shrink-0 items-center gap-2 px-4">
       <SkeletonLine text="text-base" className={title} />
       <Skeleton className="size-5 rounded-full" />
       {aside && <Skeleton className="ml-auto h-3 w-24 rounded-md" />}

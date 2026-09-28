@@ -359,7 +359,7 @@ function Progress({ branch }: { branch: string }) {
 function Warnings({ warnings }: { warnings: readonly string[] }) {
   const groups = summarizeWarnings(warnings);
   return <section className="border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border">
-    <div className="border-divider flex shrink-0 items-center gap-2 border-b px-4 py-[11px]">
+    <div className="border-divider flex shrink-0 items-center gap-2 border-b px-4 py-3">
       <TriangleAlert className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
       <h3 className="text-sm font-medium">{p.notWritten}</h3>
       <span className="text-muted-foreground ml-auto shrink-0 text-xs">{p.warnings(warnings.length)}</span>

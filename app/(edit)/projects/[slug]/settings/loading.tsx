@@ -88,7 +88,7 @@ export default function SettingsLoading() {
 function Card({ title, subtitle = false, children }: { title: string; subtitle?: boolean; children: ReactNode }) {
   return (
     <div data-skeleton-card className="border-border bg-background overflow-hidden rounded-lg border">
-      <div className="border-divider flex items-center gap-2 border-b p-4">
+      <div className="border-divider flex items-center gap-2 border-b px-4 py-3">
         <SkeletonLine text="text-base" className={title} />
         {subtitle && (
           <div className="ml-auto w-[48%]">

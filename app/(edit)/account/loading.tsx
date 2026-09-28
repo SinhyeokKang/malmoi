@@ -101,7 +101,7 @@ export default function AccountLoading() {
 function SkeletonCard({ children }: { children: ReactNode }) {
   return (
     <div className="border-border overflow-hidden rounded-lg border">
-      <div className="border-divider flex items-center gap-2 border-b p-4">
+      <div className="border-divider flex items-center gap-2 border-b px-4 py-3">
         <Skeleton className="h-5 w-28" />
         <Skeleton className="ml-auto h-4 w-48" />
       </div>

@@ -54,7 +54,7 @@ export function RowCard({
    *
    * ⚠️ **`/projects`가 이 슬롯을 안 쓰는 소비자다.** POSTMORTEM 2026-09-14가 정확히 이 모양이었다 —
    * 프리미티브의 여백 하나가 **그 슬롯을 안 쓰는** 소비자에게만 깨졌다. 그래서 조건을 코드에
-   * **조건으로** 쓴다: 설명이 없으면 헤더는 예전과 글자 하나까지 같은 한 줄(`p-4` + `flex items-center gap-2`)이다.
+   * **조건으로** 쓴다: 설명이 없으면 헤더는 예전과 글자 하나까지 같은 한 줄(`px-4 py-3` + `flex items-center gap-2`)이다.
    */
   description?: string;
   /** 헤더 오른쪽 슬롯 — `/projects` 검색 결과 카드의 `Clear search` 하나가 쓴다. */
@@ -68,7 +68,7 @@ export function RowCard({
         아래로 내리면 카드 헤더가 두 줄이 되어 행 목록의 시작 y가 카드마다 달라지고, 두 카드를
         나란히 훑을 때 첫 행의 위치가 어긋난다. `/projects`는 이 슬롯을 안 쓰므로 한 줄 그대로다.
       */}
-      <div className="flex items-center gap-2 p-4">
+      <div className="flex items-center gap-2 px-4 py-3">
         {/*
           ⚠️ **id가 있으면 포커스도 받는다.** 이 id가 붙는 유일한 이유가 **행이 사라진 뒤의 착지점**
           이라서(malmoi#51), 둘을 갈라 두면 `getElementById`는 찾는데 `focus()`가 무시되어 포커스가

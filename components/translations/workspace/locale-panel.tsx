@@ -64,7 +64,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex h-[53px] shrink-0 items-center gap-2 px-4">
+      <div className="flex h-[52px] shrink-0 items-center gap-2 px-4">
         <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
           <FileJson2 className="size-4 shrink-0" aria-hidden />
           {detail.key.surfaceSlug}
