@@ -3,6 +3,7 @@ import "server-only";
 import { McpServer } from "@modelcontextprotocol/server";
 
 import { getPrisma } from "@/lib/db";
+import { m } from "@/lib/i18n";
 
 import { toolCatalog } from "./catalog";
 import type { ApiTokenSubject } from "./token-store";
@@ -26,8 +27,15 @@ export function createMcpServer(subject: ApiTokenSubject): McpServer {
     const definition = implemented.get(tool.name);
     // 카탈로그와 구현이 어긋났다 — 설정 오류라 요청을 받기 전에 던진다(`tools/registry.test.ts`가 상시로 센다).
     if (definition === undefined) throw new Error(`MCP tool ${tool.name} has no implementation`);
-    server.registerTool(tool.name, { annotations: tool.annotations, inputSchema: definition.inputSchema },
+    server.registerTool(tool.name, { description: toolDescription(tool.name), annotations: tool.annotations, inputSchema: definition.inputSchema },
       async (input: unknown) => executeTool(definition, () => ({ prisma: getPrisma(), subject, now: new Date() }), input));
   }
   return server;
+}
+
+/** 설명은 사전이 든다(브랜드·한글 게이트가 본다). 카탈로그에 새 이름이 늘면 사전에도 늘려야 한다 — 없으면 서버가 서지 않는다. */
+function toolDescription(name: string): string {
+  const tools: Record<string, string> = m.mcp.tools;
+  if (!Object.hasOwn(tools, name) || tools[name] === "") throw new Error(`MCP tool ${name} has no description`);
+  return tools[name]!;
 }

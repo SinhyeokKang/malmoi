@@ -3240,6 +3240,37 @@ export const en = {
       "too-many": (limit: number): string => `Save up to ${limit.toLocaleString("en-US")} keys per call. Split the rest into another call.`,
       "duplicate-key": "The same key appears more than once. Send each key once per call.",
     },
+    /** 도구 설명(`tools/list`의 `description`) — 에이전트가 도구를 고르는 근거다. 핸들이 필요한 도구는 무엇을 먼저 부르는지 말한다. */
+    tools: {
+      whoami: "Show who this token belongs to, whether GitHub is connected, and what the token may do (permissions, projects, expiry).",
+      list_projects: "List the projects you can use with this token, with your role, repository, and whether each is ready.",
+      get_project: "Show a project's overview: sources, languages, key counts, changes to send, the open pull request, and repository connection.",
+      list_repositories: "List the GitHub repositories you can connect to a new project. Needs the Create projects permission.",
+      list_branches: "List a repository's branches. Pass { owner, repo } for a new project or { slug } for an existing one, not both.",
+      detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new project or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
+      list_keys: "List a source's translation keys with their completion. Takes the same filters as the translations screen and a cursor for the next page.",
+      get_key: "Show one key: its source text, every language's value, review and unsent flags, and where the code uses it.",
+      preview_publish: "Preview what Publish would send in a pull request. Returns a fingerprint to pass to publish.",
+      preview_sync: "Preview a sync from the repository and how many unsent edits it would discard. Returns an approval to pass to sync_repository.",
+      preview_revert: "Preview reverting one key to the version last confirmed as sent. Returns a confirmation to pass to revert_to_last_sent.",
+      list_events: "List a project's activity log, newest first. Takes the same filters as the Logs screen and a cursor.",
+      get_workflow: "Get the GitHub Actions workflow file for the project's repository. It reads the push token from the PUSH_TOKEN secret.",
+      list_members: "List a project's members with masked email labels. Owners also see pending invitations.",
+      create_project: "Create a project from a repository using the candidates and confirmations from detect_formats, and run the first sync. Returns a push token once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
+      add_sources: "Add translation sources to a project using the candidates and confirmations from detect_formats({ slug }), and run their first sync.",
+      set_translations: "Save translations for up to 100 keys in one call. A rejected key is skipped and the rest are saved.",
+      publish: "Send saved changes to the repository as a pull request. Call preview_publish first and pass its fingerprint.",
+      sync_repository: "Load the repository's values into Malmoi, discarding unsent edits. Call preview_sync first and pass its approval.",
+      revert_to_last_sent: "Revert one key's unsent languages to the version last confirmed as sent. Call preview_revert first and pass its confirmation.",
+      update_project: "Change a project's name or base branch.",
+      set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
+      rotate_push_token: "Issue a new push token. The old one stops working at once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
+      invite_members: "Invite people by email. Each invitation goes out by email and the link isn't returned.",
+      revoke_invitation: "Revoke a pending invitation.",
+      change_member: "Change a member's role, or remove them with nextRole: null. The last owner can't be removed.",
+      archive_project: "Archive a project. Editing, publishing, and syncs stop until it's restored.",
+      unarchive_project: "Restore an archived project.",
+    },
     /**
      * 도구 성공 결과의 한 줄 요약(`content` text) — 에이전트가 사용자에게 옮기는 문장이다. 값은 `structuredContent`에 따로 실린다.
      */
@@ -3269,7 +3300,7 @@ export const en = {
       updated: "Settings saved.",
       nameOnly: "The name was saved, but the base branch wasn't.",
       baseLocale: (locale: string): string => `Base language set to ${locale}. It takes effect after the next sync from the repository.`,
-      pushToken: "New push token issued. The old one stopped working. Store it as the PUSH_TOKEN repository secret through standard input (gh secret set PUSH_TOKEN --repo OWNER/REPO).",
+      pushToken: "New push token issued. The old one stopped working. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
       archived: "Project archived. Restore it to edit or publish again.",
       restored: "Project restored.",
       invited: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "invitation" : "invitations"} sent.`,
@@ -3277,7 +3308,7 @@ export const en = {
       memberRemoved: "Member removed.",
       memberChanged: (role: string): string => `Role changed to ${role === "OWNER" ? "Owner" : "Editor"}.`,
       created: (slug: string, keys: number): string =>
-        `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Commit the workflow file and store the push token as the PUSH_TOKEN secret.`,
+        `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Commit the workflow file, then set the push token with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing it on standard input — don't use --body (--body - stores a literal "-").`,
       sourcesAdded: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. Add the workflow steps to the repository's workflow file.`,
       synced: (kept: number): string => kept === 0
         ? "Synced from the repository."

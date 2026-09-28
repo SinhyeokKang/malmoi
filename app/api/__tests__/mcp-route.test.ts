@@ -188,6 +188,13 @@ describe("2025 handshake (Codex)", () => {
     expect(JSON.stringify(body)).not.toMatch(/Cannot read|undefined|TypeError/);
   });
 
+  it("tools/list의 모든 도구가 비지 않은 설명을 싣는다", async () => {
+    const res = await post({ jsonrpc: "2.0", id: 9, method: "tools/list" }, { headers: LEGACY });
+    const tools = (await res.json()).result.tools as { name: string; description?: string }[];
+    expect(tools.filter(t => !t.description?.trim()).map(t => t.name)).toEqual([]);
+    expect(tools.find(t => t.name === "publish")?.description).toBe(m.mcp.tools.publish);
+  });
+
   it("입력 스키마를 싣는다 — tools/list의 list_keys는 slug·surfaceSlug를 요구한다", async () => {
     const res = await post({ jsonrpc: "2.0", id: 8, method: "tools/list" }, { headers: LEGACY });
     const tool = (await res.json()).result.tools.find((t: { name: string }) => t.name === "list_keys");

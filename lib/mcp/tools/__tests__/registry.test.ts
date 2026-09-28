@@ -3,6 +3,8 @@ import { join } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
+import { m } from "@/lib/i18n";
+
 import { toolCatalog } from "../../catalog";
 
 vi.mock("server-only", () => ({}));
@@ -30,6 +32,20 @@ describe("도구 레지스트리", () => {
 
   it.each(TOOL_FILES)("tools/%s는 server-only다", file => {
     expect(readFileSync(join(DIR, file), "utf8")).toMatch(/^import "server-only";/m);
+  });
+
+  it("모든 카탈로그 도구에 설명이 있고 사전에 남는 이름이 없다", () => {
+    const names = toolCatalog().map(t => t.name);
+    expect(Object.keys(m.mcp.tools).sort()).toEqual([...names].sort());
+    for (const name of names) expect((m.mcp.tools as Record<string, string>)[name]?.trim(), name).toBeTruthy();
+  });
+
+  it("push 토큰을 주는 도구는 표준입력으로 secret을 넣으라고 말한다 — --body는 쓰지 말라고", () => {
+    for (const text of [m.mcp.tools.rotate_push_token, m.mcp.tools.create_project, m.mcp.summary.pushToken, m.mcp.summary.created("acme", 1)]) {
+      expect(text).toContain("gh secret set PUSH_TOKEN --repo OWNER/REPO");
+      expect(text).toContain("standard input");
+      expect(text).toContain("don't use --body");
+    }
   });
 
   it("카탈로그가 도구 구현을 import하지 않는다", () => {
