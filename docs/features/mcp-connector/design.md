@@ -47,20 +47,27 @@ CLI 에이전트 ──POST /api/mcp (Authorization: Bearer mlm_…)──▶ ro
   Code가 **`subscriptions/listen` SSE 스트림을 연다**(실측 — 응답이 끝나지 않는다). Vercel 함수에서는 그 스트림이 `maxDuration`까지
   함수를 붙잡고 끊기면 다시 연다. `new McpServer(info, { capabilities: { tools: { listChanged: false } } })`로 바꾸자 Claude Code가
   listen 없이 discover → list → call만 보냈다(실측). 도구 목록은 배포 사이에 안 바뀌므로 잃는 것이 없다.
+  ⚠️ **그래도 SDK는 `subscriptions/listen` 요청이 오면 SSE를 연다**(15초 keepalive, 버스는 모듈 전역) — route가 SDK에 넘기기 전에
+  JSON-RPC `-32601`로 끊는다(검수 Y2).
 - **route가 받는 모양은 이것 하나로 확정한다** (T5가 이 확정문으로 디스패치한다):
   1. `checkOrigin` → Bearer 인증(401) → `readBoundedText(1 MiB)`(400) → `JSON.parse`(실패는 JSON-RPC `-32700` — SDK에 맡겨도 된다).
-  2. `isLegacyRequest(request, parsedBody)` — 이미 파싱한 본문을 넘겨 본문을 두 번 읽지 않는다.
+  2. **배열 본문(JSON-RPC 배치)은 `400 -32600`으로 거부한다**(2026-09-28 오케스트레이터 결정 — 2025-06-18 개정이 배치를 없앴고,
+     도구가 서면 배치 하나가 한 요청 안에서 DB 도구를 펼친다). `subscriptions/listen`은 `-32601`. 그 뒤
+     `isLegacyRequest(request, parsedBody)` — 이미 파싱한 본문을 넘겨 본문을 두 번 읽지 않는다.
   3. `true` → 요청마다 `factory(subject)` + `WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined,
      enableJsonResponse: true })` → `server.connect(transport)` → `transport.handleRequest(request, { parsedBody })` → `finally
      server.close()`. `false` → 모듈 한 벌의 `createMcpHandler(..., { legacy: "reject", responseMode: "json" })`의 `fetch(request,
      { parsedBody })` — 팩토리가 요청마다 불리므로 주체는 `authInfo.extra`로 실어 `McpRequestContext.authInfo`에서 읽는다.
   4. `maxRequestBodySize`는 SDK 기본 4 MiB지만 route가 이미 1 MiB로 끊었고 `parsedBody`에는 SDK 상한이 안 걸린다.
 - **SDK가 이미 고정하는 JSON-RPC 응답** (2025 쪽 실측 — T5 테스트가 route 층에서 다시 고정한다): 미지 도구 `-32602 "Tool nope not
-  found"`, 미지 메서드 `-32601 "Method not found"`, 배치 배열은 응답 배열, id 없는 notification은 `202`. 2026-07-28 쪽은
+  found"`, 미지 메서드 `-32601 "Method not found"`, id 없는 notification은 `202`(배치 배열은 SDK가 응답 배열로 답하지만 route가 앞에서
+  거부한다 — 위 2). 2026-07-28 쪽은
   `Mcp-Method` 헤더가 없거나 본문과 다르면 `400 -32020`.
 - **401에서 두 CLI 모두 OAuth로 넘어가지 않는다** — Claude Code는 `Authorization` 헤더가 설정돼 있으면 "OAuth fallback is disabled"로
   멈추고 **401 본문을 사용자에게 그대로 보인다**(실측: `Error detail: { error : unauthorized }`). `/.well-known/*` 요청은 0건이었다.
   → 401 본문은 갈래를 말하지 않는 고정 문장 하나다(spec 조건 4).
+- ⚠️ **`not-implemented`는 임시다** — T5의 `lib/mcp/server.ts`는 카탈로그 28개를 등록만 하고 전부 `not-implemented` 거부를 돌려준다.
+  T6·T7(M3)이 도구를 세우며 그 갈래(`lib/mcp/result.ts`·`messages/en.tsx` `mcp.errors`)를 지운다 — **`/merge` 전에 0건이어야 한다.**
 - 알려진 소음: `responseMode: "json"`이면 SDK가 `createMcpHandler` 생성 시점에 `console.warn` 한 줄을 낸다(모듈 로드당 1회).
 - 응답은 **JSON 한 벌**(SSE 스트림 없음). 진행 알림을 보낼 긴 작업이 Publish·첫 적재 둘이고 둘 다 60초 안이다 — `json` 모드는
   중간 알림을 버린다(SDK 문서)는 대가를 받아들인다.
