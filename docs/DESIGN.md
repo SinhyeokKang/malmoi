@@ -908,7 +908,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 카드 | 테이블 `width="100%"` · 테두리 `1px #e5e5e5` · radius **12** · padding 12 · 타일↔텍스트 gap 12 | `InviteProjectCard`의 `w-full rounded-lg border p-3 gap-3`(`--radius` 0.75rem) — 국기 열만 뺐다 |
 | 여백 | 문장 → 카드 16 · 카드 → 버튼 28 | — |
 | 타일 | **32×32 고정 중첩 표**(`<table width="32" height="32">`) 안의 셀 `width="32" height="32" align="center" valign="middle"` + style `width:32px;height:32px;max-height:32px;line-height:0;font-size:0;overflow:hidden` · radius 8. 카드 행에 붙는 바깥 셀은 **색 없이** `valign="middle"`만 | `size-8 rounded-sm` · `items-center` |
-| 썸네일 갈래 | `<img src="https://mal-moi.com/api/images/<key>" alt="">`, **width 속성 없이** `display:block;width:auto;height:auto;max-width:32px;max-height:32px` + radius는 **`<img>`에** · 셀 배경 없음 | `ImageTile`은 이미지 뒤에 톤을 안 깐다(투명 이미지의 배경이 프로젝트마다 달라지지 않게) |
+| 썸네일 갈래 | `<img src="https://mal-moi.com/api/images/email/<key>" alt="">`(96×96 PNG 변환판 — 메일 클라이언트가 WebP 알파를 버린다, #140), **width 속성 없이** `display:block;width:auto;height:auto;max-width:32px;max-height:32px` + radius는 **`<img>`에** · 셀 배경 없음 | `ImageTile`은 이미지 뒤에 톤을 안 깐다(투명 이미지의 배경이 프로젝트마다 달라지지 않게) |
 | 폴백 갈래 | 안쪽 `<td bgcolor="TONE_HEX[tone]">`에 radius + `https://mal-moi.com/email/box@2x.png`(`width="16" height="16"` + style `display:block;width:16px;height:16px`, 파일은 32×32) `alt=""` | `toneFill(name)` + 흰 `Box` `size-4` |
 | 이름 | `14px/20px` `#0a0a0a` · 역할 `13px/17px` `#737373`(`Owner`/`Editor` — `m.projects.role`) · 둘 다 weight 400 · `letter-spacing:0.02em` · 두 줄 사이 1px | `text-sm` / `text-xs text-muted-foreground` · `gap-px`. 13px 행간 17은 `text-xs`의 짝이 없어 13×1.3333 |
 | 이름 줄바꿈 | `word-break:break-word;overflow-wrap:anywhere` · **60 grapheme 상한**(넘으면 앞 59 + `…`) | 화면은 `truncate`인데 메일엔 없다 — 공백 없는 긴 이름이 560 폭을 민다(대체 링크 문단과 같은 형) |
