@@ -312,3 +312,18 @@ describe("publish — 실행 뒤 리포 라벨 조회가 실패하면", () => {
     expect(result.content[0]?.text).toContain(m.translations.publish.configErrorDescription("acme", ""));
   });
 });
+
+// Codex review CR-04 — 열린 PR "모름"을 "없음"으로 접지 않는다.
+describe("preview_publish — 열린 PR 세 상태", () => {
+  const withPr = (openPr: unknown) => h.core.mockResolvedValueOnce({ status: "ok", preview: { ...(RESULTS.preview as { preview: object }).preview, openPr } });
+  const pr = async () => (await exec("preview_publish", subject("editor", []), { slug: "acme" })).structuredContent.pullRequest;
+
+  it("열림 · 없음 · 확인 불가가 직렬화 뒤에도 갈린다", async () => {
+    withPr({ number: 7, url: "https://github.com/o/r/pull/7" });
+    expect(await pr()).toEqual({ status: "open", number: 7, url: "https://github.com/o/r/pull/7" });
+    withPr(null);
+    expect(await pr()).toEqual({ status: "none" });
+    withPr(undefined);
+    expect(JSON.parse(JSON.stringify(await pr()))).toEqual({ status: "unknown" });
+  });
+});

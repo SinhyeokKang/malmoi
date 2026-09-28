@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logFailure } from "@/lib/github-connect/log";
+import type { OpenImportPr } from "@/lib/import/confirm";
 import { m } from "@/lib/i18n";
 import { revalidateTranslationReaders } from "@/lib/keys/revalidate-readers";
 import { loadPreview } from "@/lib/publish/load-preview";
@@ -40,7 +41,7 @@ export const previewPublish = defineTool({
       sendable: preview.sendable,
       changedFiles: preview.changedFiles,
       unsent: { total: preview.total, keys: preview.keys, withoutFile: preview.withoutFile, withoutKey: preview.withoutKey },
-      openPullRequest: preview.openPr ?? null,
+      pullRequest: pullRequestState(preview.openPr),
       groups: preview.groups,
     }, m.mcp.summary.publishPreview(preview.sendable.total));
   },
@@ -58,6 +59,16 @@ export const publish = defineTool({
     return publishOutcome(outcome, () => repoLabel(prisma, slug));
   },
 });
+
+/**
+ * 지금 열린 PR — ⚠️ **"모름"을 "없음"으로 접지 않는다**(Codex review CR-04). `loadOpenPrUrl`의 `undefined`는 조회 실패·시간 초과이고
+ * `null`만 없음이다. `undefined`는 JSON에서 필드째 사라지므로 상태를 값으로 싣는다 — 에이전트가 "열린 PR이 없다"고 거짓으로 안내하지 않게.
+ */
+function pullRequestState(openPr: OpenImportPr): { status: "open"; number: number; url: string } | { status: "none" } | { status: "unknown" } {
+  if (openPr === undefined) return { status: "unknown" };
+  if (openPr === null) return { status: "none" };
+  return { status: "open", number: openPr.number, url: openPr.url };
+}
 
 /**
  * 설정 오류 문장의 리포 라벨. ⚠️ **실행은 이미 끝났다 — 이 조회가 실패해도 결과를 지우지 않는다**(Codex review CR-03 · POSTMORTEM 2026-09-20).

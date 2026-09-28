@@ -3250,7 +3250,7 @@ export const en = {
       detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new project or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
       list_keys: "List a source's translation keys with their completion. Takes the same filters as the translations screen and a cursor for the next page.",
       get_key: "Show one key: its source text, every language's value, review and unsent flags, and where the code uses it.",
-      preview_publish: "Preview what Publish would send in a pull request. Returns a fingerprint to pass to publish.",
+      preview_publish: "Preview what Publish would send in a pull request. Returns a fingerprint to pass to publish, and pullRequest: open (with its url), none, or unknown when GitHub couldn't be checked.",
       preview_sync: "Preview a sync from the repository and how many unsent edits it would discard. Returns an approval to pass to sync_repository.",
       preview_revert: "Preview reverting one key to the version last confirmed as sent. Returns a confirmation to pass to revert_to_last_sent.",
       list_events: "List a project's activity log, newest first. Takes the same filters as the Logs screen and a cursor.",
