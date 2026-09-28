@@ -14,6 +14,8 @@ The agent connects over MCP (Model Context Protocol) at `https://mal-moi.com/api
 4. Under **Scope**, choose **All my projects** or **Chosen projects**.
 5. Choose **Create**, then **Copy** the token. It is shown only once; choose **Done** after you have stored it.
 
+![Step 1 of 2 of the Create token dialog with 90 days selected, Translate & publish checked, and All my projects chosen](/guide/mcp-create-token.webp "Choose the expiry, the allowed actions, and the scope, then create the token.")
+
 Keep the token out of files and chat. Store it in the `MALMOI_TOKEN` environment variable of the shell that starts your agent, for example with `read -s MALMOI_TOKEN && export MALMOI_TOKEN` and then pasting the token. The connection snippets below read that variable, so the token itself never appears in a settings file.
 
 You have one token at a time. To change what it allows, choose **Rotate**, then **Rotate and show new token**; the old token stops working immediately, and every agent using it stops until you give it the new one. **Revoke** stops the token without creating a new one. An expired token shows **Expired**; create a new one.
@@ -21,6 +23,8 @@ You have one token at a time. To change what it allows, choose **Rotate**, then 
 ## Add Malmoi to your agent {#connect}
 
 The **Connect** card on the **MCP connector** page shows the same snippets with the server address for the site you are using.
+
+![The MCP connector page with the current token's allowed actions, scope, and expiry above the Connect card and its Claude Code snippet](/guide/mcp-connector.webp "Copy the snippet for your agent from the Connect card.")
 
 ### Claude Code {#claude-code}
 

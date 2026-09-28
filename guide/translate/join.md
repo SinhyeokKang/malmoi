@@ -10,6 +10,8 @@ An invitation is tied to the address that received it. You can sign in with GitH
 2. Sign in with the invited address. For GitHub, the invited address must be your GitHub primary email.
 3. Choose **Accept invitation**. Malmoi opens the project.
 
+![An invitation page showing the invited email address, the project with the Editor role, and an Accept invitation button](/guide/accept-invitation.webp "Check the address, then accept the invitation.")
+
 Invitations to archived projects cannot be accepted. The link stops working once you accept it, after seven days, or if a project owner revokes or resends it. Do not forward it: it works only for the invited address.
 
 ## Resolve invitation problems {#invitation-problems}

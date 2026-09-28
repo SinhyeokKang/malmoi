@@ -11,6 +11,8 @@ Before you start: Open your avatar menu at the top right and choose **Account**.
 
 The picture is resized automatically and the original file is not kept.
 
+![The Account page with the profile, sign-in methods, and GitHub App sections](/guide/account.webp "Update your profile and sign-in methods in Account.")
+
 ## Manage sign-in methods {#sign-in-methods}
 
 Choose **Connect** for another provider and sign in with the same email address. The last method cannot be removed; Account says **This is your only way to sign in.**

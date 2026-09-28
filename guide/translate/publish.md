@@ -8,6 +8,8 @@ Before you start: Save the values you want to publish. Publish includes all save
 
 Malmoi puts the files into one change request (a *pull request* on GitHub). You do not need a GitHub account; the development team reviews and merges it.
 
+![A project's Home with one change to send and an active Publish button showing the count](/guide/home-publish.webp "Publish is at the top of Home.")
+
 1. Choose **Publish** at the top of **Home** or **Translations**.
 2. Review the pieces of text (keys) and languages in the preview, then use the action described below.
 
@@ -32,6 +34,8 @@ The result can say:
 - An open pull request was closed — the files already match the repository.
 - GitHub did not answer — try again later.
 - **We couldn't confirm whether your changes were sent.** Check **Logs** before trying again.
+
+![The Publish result saying nothing changed in the files because the edits were already in the repository](/guide/publish-result.webp "Read the result before you close it.")
 
 ## Automatic publishing {#nightly}
 

@@ -15,6 +15,8 @@ Choose **Owner** only for someone who should manage the repository connection, *
 3. Enter addresses and choose a role for each row.
 4. Send the invitations.
 
+![The Invite members dialog with two email addresses, the Editor role chosen for each, and a button that sends both invitations](/guide/invite-members.webp "Enter each address, choose a role, and send the invitations.")
+
 If any address would exceed a limit, no invitations are sent. A failed email still counts toward the hourly limit.
 
 Each address appears under **Pending invitations** after the invitation is created. Check the sending result before closing the invitation dialog; a listed invitation does not by itself mean the email arrived.
@@ -22,6 +24,8 @@ Each address appears under **Pending invitations** after the invitation is creat
 ## Manage members {#members}
 
 Project owners can change a member's role, choose **Remove** for a member, or manage **Pending invitations** with **Revoke** and **Resend**. A pending invitation's role cannot change; revoke it and invite the address again. See [Join a project](../translate/join.md) for the recipient's steps.
+
+![The Members list with an Owner and an Editor, each with a role menu and a Remove button, above an empty list of pending invitations](/guide/members.webp "Change a role or remove a member from the list.")
 
 ## What happens next {#next}
 

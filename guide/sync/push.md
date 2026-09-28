@@ -12,6 +12,8 @@ Run the generated workflow on the base branch. The workflow checks the push toke
 
 If any translation has an unpublished edit, the workflow succeeds and reports `deferred`. New and removed keys wait too; the repository is not partially loaded. Publish the edits and run the workflow again, or a project owner can resolve them with [Undo and resync](revert.md). Publishing removes the protection for the edits that were published, even before the pull request is merged. Merge that pull request before the next repository update if you want those values to remain in Malmoi.
 
+![A project's Home with one unsent change to send and a note that repository updates are paused](/guide/home-paused.webp "Unpublished edits hold repository updates until they are published.")
+
 ## Keep removed keys {#removed-keys}
 
 A key missing from the repository is kept rather than deleted. Its translations remain available if the key returns in a later workflow run.
