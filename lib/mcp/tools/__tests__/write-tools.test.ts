@@ -38,8 +38,8 @@ const { TOOLS } = await import("..");
 const run = (name: string, who: ApiTokenSubject, input: Record<string, unknown>): Promise<ToolOutcome> =>
   TOOLS.find(t => t.name === name)!.run({ prisma, subject: who, now: new Date(), origin: null }, input as never);
 /** 실제 MCP 경로 — 도구가 던지면 `executeTool`이 `unavailable`로 접는다. 부분 성공이 그 catch에 지워지는지를 여기서 잰다. */
-const exec = (name: string, who: ApiTokenSubject, input: Record<string, unknown>) =>
-  executeTool(TOOLS.find(t => t.name === name)!, () => ({ prisma, subject: who, now: new Date(), origin: null }), input);
+const exec = (name: string, who: ApiTokenSubject, input: Record<string, unknown>, db: PrismaClient = prisma) =>
+  executeTool(TOOLS.find(t => t.name === name)!, () => ({ prisma: db, subject: who, now: new Date(), origin: null }), input);
 const code = (outcome: ToolOutcome) => outcome.status === "refused" ? outcome.code : outcome.status;
 const ALL: TokenGrant[] = ["translation:write", "project:settings", "member:manage", "project:create"];
 const subject = (userId: string, grants: TokenGrant[] = ALL, scope: TokenScope = { kind: "all" }): ApiTokenSubject => ({ userId, grants, scope, tokenId: `hash-${userId}` });
@@ -272,5 +272,43 @@ describe("update_project — 이름 커밋 뒤 브랜치 코어가 던지면", (
     branchThrows();
     const result = await exec("update_project", subject("owner"), { slug: "acme", baseBranch: "release" });
     expect(result.structuredContent).toMatchObject({ status: "unavailable", retryable: true });
+  });
+});
+
+// Codex review CR-03 — 리포 라벨용 보조 조회가 실행 결과를 지우지 않는다.
+describe("publish — 실행 뒤 리포 라벨 조회가 실패하면", () => {
+  const failed = (over: Record<string, unknown>) => h.core.mockResolvedValueOnce({ outcome: { status: "failed", ...over }, attempted: true });
+  /** 입구 판정의 조회는 통과시키고, 리포 라벨(`repoOwner`) 조회만 던지는 클라이언트. `labelCalls`가 그 조회 횟수다. */
+  let labelCalls = 0;
+  const labelLookupThrows = (): PrismaClient => {
+    labelCalls = 0;
+    const project = new Proxy(prisma.project, {
+      get: (target, prop, receiver) => prop !== "findUnique" ? Reflect.get(target, prop, receiver) : (args: { select?: Record<string, unknown> }) => {
+        if (args.select !== undefined && "repoOwner" in args.select) {
+          labelCalls += 1;
+          return Promise.reject(new Error("pool timeout"));
+        }
+        return target.findUnique(args as never);
+      },
+    });
+    return new Proxy(prisma, { get: (target, prop, receiver) => prop === "project" ? project : Reflect.get(target, prop, receiver) });
+  };
+
+  it("장애(retryable)는 라벨을 조회하지 않고 code·delivery를 그대로 싣는다", async () => {
+    const db = labelLookupThrows();
+    failed({ error: "internal (ref abc)", code: "github-error", retryable: true, delivery: "unknown" });
+    const result = await exec("publish", subject("editor"), { slug: "acme", fingerprint: "f" }, db);
+    expect(result.structuredContent).toMatchObject({ status: "unavailable", retryable: true, code: "github-error", delivery: "unknown" });
+    expect(labelCalls).toBe(0);
+  });
+
+  it("설정 오류는 slug 라벨로 떨어지고 code·delivery·재시도 없음을 지킨다", async () => {
+    const db = labelLookupThrows();
+    failed({ error: "The base language file couldn't be read.", code: "base-unreadable", retryable: false, delivery: "not-started" });
+    const result = await exec("publish", subject("editor"), { slug: "acme", fingerprint: "f" }, db);
+    expect(labelCalls).toBe(1);
+    expect(result.structuredContent).toMatchObject({ status: "base-unreadable", delivery: "not-started" });
+    expect("retryable" in result.structuredContent).toBe(false);
+    expect(result.content[0]?.text).toContain(m.translations.publish.configErrorDescription("acme", ""));
   });
 });

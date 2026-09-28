@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
 
+import type { PrismaClient } from "@/generated/prisma/client";
+import { logFailure } from "@/lib/github-connect/log";
 import { m } from "@/lib/i18n";
 import { revalidateTranslationReaders } from "@/lib/keys/revalidate-readers";
 import { loadPreview } from "@/lib/publish/load-preview";
@@ -53,18 +55,32 @@ export const publish = defineTool({
     const { outcome, attempted } = await publishProject(prisma, coreSubject(subject), { slug, expectedFingerprint: fingerprint });
     // 실행기에 닿았으면 스킵·실패에도 지운다 — 웹 Publish와 같은 셋이다(`triggerPullAction`).
     if (attempted) revalidateTranslationReaders(slug);
-    const project = outcome.status === "failed" && outcome.code !== undefined
-      ? await prisma.project.findUnique({ where: { slug }, select: { repoOwner: true, repoName: true, baseBranch: true } })
-      : null;
-    return publishOutcome(outcome, { label: project === null ? slug : `${project.repoOwner}/${project.repoName}`, branch: project?.baseBranch ?? "" });
+    return publishOutcome(outcome, () => repoLabel(prisma, slug));
   },
 });
 
 /**
- * 실행 결과 → 도구 결과. ⚠️ **`error`는 코드가 아니다** — 실행기가 고른 safe 문장이거나 `internal (ref …)`다. 판정은 `code`(`SyncErrorCode`)와
+ * 설정 오류 문장의 리포 라벨. ⚠️ **실행은 이미 끝났다 — 이 조회가 실패해도 결과를 지우지 않는다**(Codex review CR-03 · POSTMORTEM 2026-09-20).
+ * 던지면 `executeTool`이 전송 여부(`delivery`)·코드를 버린 일괄 `unavailable`로 접으므로, 실패는 slug 라벨로 떨어진다.
+ */
+async function repoLabel(prisma: PrismaClient, slug: string): Promise<{ label: string; branch: string }> {
+  try {
+    const project = await prisma.project.findUnique({ where: { slug }, select: { repoOwner: true, repoName: true, baseBranch: true } });
+    return { label: project === null ? slug : `${project.repoOwner}/${project.repoName}`, branch: project?.baseBranch ?? "" };
+  } catch (error) {
+    logFailure("mcp-tool-publish-label", error);
+    return { label: slug, branch: "" };
+  }
+}
+
+/**
+ * 실행 결과 → 도구 결과. 리포 라벨은 **그것을 쓰는 갈래(설정 오류)에서만** 조회한다 — 장애 응답이 보조 조회에 기대지 않게. ⚠️ **`error`는 코드가 아니다** — 실행기가 고른 safe 문장이거나 `internal (ref …)`다. 판정은 `code`(`SyncErrorCode`)와
  * `retryable`로 한다: 다시 해도 같은 실패(설정)는 Publish 화면의 `configError` 틀 + 서버의 safe 문장, 장애는 `unavailable` + 코드·전송 여부.
  */
-function publishOutcome(outcome: Awaited<ReturnType<typeof publishProject>>["outcome"], repo: { label: string; branch: string }): ToolOutcome {
+async function publishOutcome(
+  outcome: Awaited<ReturnType<typeof publishProject>>["outcome"],
+  repoOf: () => Promise<{ label: string; branch: string }>,
+): Promise<ToolOutcome> {
   if (outcome.status === "skipped" && outcome.reason === "reconfirm") return { status: "refused", code: "reconfirm", message: m.logs.reasons.reconfirm };
   if (outcome.status === "failed") {
     const delivery = outcome.delivery;
@@ -77,6 +93,7 @@ function publishOutcome(outcome: Awaited<ReturnType<typeof publishProject>>["out
       // 장애 — 거부가 아니다(§6.00 ②). 문장은 싣지 않고(`internal (ref …)`일 수 있다) 코드·전송 여부만 싣는다. Logs가 같은 코드를 든다.
       if (outcome.retryable === true) return { status: "refused", code: "unavailable", detail: { code: outcome.code, delivery } };
       const p = m.translations.publish;
+      const repo = await repoOf();
       return { status: "refused", code: outcome.code, message: `${p.configError}. ${p.configErrorDescription(repo.label, repo.branch)}`,
         detail: { reason: outcome.error, delivery } };
     }
