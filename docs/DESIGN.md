@@ -866,9 +866,9 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 항목 머리 | 버전 `h2` 24/1.4/600 → 8 → 날짜 14/1.6 muted(`<time dateTime>`에 원 ISO, 보이는 쪽은 `utcDay`) → 32 → 본문 |
 | 버전 앵커 | ⚠️ **`h2` 안의 글자가 자기 자신을 가리키는 네이티브 `<a href="#v1.0.1">`다** — `h2`는 `id={tag}` · `tabIndex={-1}` · `scroll-mt-12` · `focus:outline-none`(§6.61 h2와 같은 형). 링크 색은 **`foreground` 그대로**(본문 파랑 아님) + 포커스 링만. 해시 착지·포커스는 `PublicScroller`가 한다 — 시안의 `replaceState` + JS 스크롤은 쓰지 않는다 |
 | 본문 제목 | 원문의 최소 깊이를 `h3`로 맞춘다(`shiftHeadings` — `##`·`###` → `h3`·`h4`). `h3` = §6.61 h3(18/1.5/500 · 위 32). ⚠️ **`h4`~`h6`는 이 화면이 정한 급이다** — `text-prose`(16) · 1.6 · 500 · 위 24(리포에 `h4` 급이 없었고, 없으면 브라우저 기본 700이 나온다) |
-| 본문 | 문단·목록·굵게·인라인 코드·hr은 §6.61의 원고 급과 같은 클래스 상수다(`components/docs/classes.ts`의 `PROSE`·`LIST`·`INLINE_CODE`·`DOC_LINK`). 링크는 `text-blue-600`(§6.3), `http(s):`는 새 탭 + `noreferrer`. 끝의 `**Full changelog:**` 줄은 걷는다(`View on GitHub`가 대신한다) |
+| 본문 | 문단·목록·굵게·인라인 코드·hr은 §6.61의 원고 급과 같은 클래스 상수다(`components/docs/classes.ts`의 `PROSE`·`LIST`·`INLINE_CODE`·`DOC_LINK`). 링크는 `text-blue-600`(§6.3), 스킴이 있거나 `//`로 시작하면 새 탭 + `noreferrer`(원고의 `resolveDocLink`와 같은 외부 판정). 끝의 `**Full changelog:**` 줄은 걷는다(`View on GitHub`가 대신한다) |
 | `View on GitHub` | 본문 아래 32 · `<a>` + `buttonClass({ variant: "default", size: "md" })` + 선행 `GithubMark` · 새 탭 + `noreferrer`(`ButtonLink`는 `next/link`라 외부에 쓰지 않는다 — 랜딩 GitHub CTA와 같은 형). 행선지는 그 판의 Release 페이지. **접근 이름은 `View v1.0.1 on GitHub`**(`aria-label`) — 보이는 글자가 항목마다 같아서다 |
-| 실패 · 빈 목록 · 100건 | 첫 항목 자리의 **본문 문장 하나**다(`Alert`·`EmptyState`·재시도 없음 — 실패는 캐시되지 않으니 새로고침이 곧 재시도다). 100건 안내는 목록 끝이다. 문장 안 `GitHub Releases` 링크는 새 탭 + `noreferrer` |
+| 실패 · 빈 목록 · 100건 | 첫 항목 자리의 **본문 문장 하나**다(`Alert`·`EmptyState`·재시도 없음 — 실패는 캐시되지 않으니 새로고침이 곧 재시도다). 100건 안내는 목록 끝이고 **빈 목록에도 선다**(100칸을 액션 태그 릴리스가 채웠을 수 있다). 문장 안 `GitHub Releases` 링크는 새 탭 + `noreferrer` |
 | `Latest` 표시 | 없다 |
 | 새 색 | **0** — blue-600(등재)·토큰뿐 |
 
