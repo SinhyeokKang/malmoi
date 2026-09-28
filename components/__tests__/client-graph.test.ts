@@ -95,6 +95,8 @@ const KNOWN_OFFENDERS = ["ts-morph", "octokit", "@prisma/client", "node:fs", "se
  */
 const CLIENT_LIB_FILES = [
   "lib/account/plan.ts",
+  // LNB Changelog 배지가 읽는 버전 문자열 — import 0인 잎이다. `package.json`은 `next.config`의 `env`가 빌드 때 문자열로 박는다.
+  "lib/app-version.ts",
   "lib/auth/email.ts",
   "lib/auth/member-identity.ts",
   "lib/auth/membership.ts",

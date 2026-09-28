@@ -4,6 +4,7 @@ import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages,
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
+import { appVersion } from "@/lib/app-version";
 import { routes } from "@/lib/routes";
 
 /**
@@ -126,7 +127,7 @@ export type NavItem = {
    * 관계 `_count`다 — **둘 다 왕복이 0이다.** ⚠️ 셋은 2026-09-27에 열렸다(사용자 — PRODUCT §7.7 결정 5를 뒤집었다).
    * 거절 근거가 "매 페이지 왕복"이었고, 셸이 이미 부르는 조회에 얹으면 그 근거가 서지 않는다.
    */
-  badge?: number;
+  badge?: number | string;
 };
 
 /**
@@ -239,7 +240,8 @@ function translationsHref(project: NavProject): string {
 export function navFooterItems(): NavItem[] {
   // `exact`는 효과가 없다 — 사이드바는 앱 셸(`app/(edit)/layout.tsx`)에만 서고 `/docs/*`·`/changelog`는 공개 셸이라 둘이 한 화면에 안 선다.
   return [
-    { key: "changelog", label: m.changelog.title, icon: Compass, href: routes.changelog(), exact: true },
+    // 오른쪽 배지는 현재 앱 버전 `x.y.z`다 (2026-09-28 사용자 — 개수 배지와 같은 자리·모양). 비면 싣지 않는다.
+    { key: "changelog", label: m.changelog.title, icon: Compass, href: routes.changelog(), exact: true, ...(appVersion() === "" ? {} : { badge: appVersion() }) },
     { key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: true },
   ];
 }
