@@ -23,6 +23,7 @@ import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "@/lib/
 import { PROJECT_WIDE, clearedLogsQuery, hasNarrowing, logsQuery, type LogFilter } from "@/lib/events/filter";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
+import { utcDay as dayText } from "@/lib/utc-time";
 import { cn } from "@/lib/utils";
 
 /**
@@ -332,10 +333,15 @@ function sameRange(filter: LogFilter, range: { from: string; to: string }): bool
   return filter.from === range.from && filter.to === range.to;
 }
 
+/**
+ * 칩 글자만 `lib/utc-time.ts`의 형이다(`Sep 27, 2026`) — URL·입력 값·프리셋 판정은 ISO 그대로다. `new Date("YYYY-MM-DD")`는 UTC 자정이라
+ * 날짜가 밀리지 않는다. ⚠️ 위의 지역 `utcDay(offset)`는 ISO를 만드는 다른 함수라 import에 별칭을 붙였다.
+ */
 function dateLabel(filter: LogFilter): string {
   if (filter.from === null && filter.to === null) return m.logs.filters.anyDate;
-  if (filter.from !== null && filter.from === filter.to) return filter.from;
-  return `${filter.from ?? "…"} – ${filter.to ?? "…"}`;
+  const day = (iso: string | null) => (iso === null ? "…" : dayText(new Date(iso)));
+  if (filter.from !== null && filter.from === filter.to) return day(filter.from);
+  return `${day(filter.from)} – ${day(filter.to)}`;
 }
 
 function actorLabel(filter: LogFilter, actors: readonly { id: string; label: string }[]): string {

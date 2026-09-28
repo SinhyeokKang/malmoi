@@ -139,3 +139,18 @@ it("현재 범위와 같은 프리셋이 선택된 라디오다", async () => {
   expect(items).toContainEqual([m.logs.range.last7, "menuitemradio", "false"]);
   expect(items).toContainEqual([m.logs.range.customOpen, "menuitem", null]);
 });
+
+/**
+ * **칩 글자의 날짜는 `lib/utc-time.ts`의 형이다** (2026-09-28 — 날짜 표기 통일이 놓친 자리). URL·입력 값은 ISO 그대로이고, 사람이 읽는
+ * 트리거 글자만 `Sep 27, 2026`이다. ⚠️ 전엔 URL 값을 그대로 내서 `… – 2026-09-27`이 화면에 섰다.
+ */
+it.each([
+  [{ from: "2026-09-27", to: "2026-09-27" }, "Sep 27, 2026"],
+  [{ from: "2026-09-20", to: "2026-09-27" }, "Sep 20, 2026 – Sep 27, 2026"],
+  [{ to: "2026-09-27" }, "… – Sep 27, 2026"],
+  [{ from: "2026-09-20" }, "Sep 20, 2026 – …"],
+])("날짜 칩 %j → %s", async (query, label) => {
+  await render(<LogFilters {...props} filter={parseLogFilter(query)} />);
+  expect(trigger("Date").textContent).toContain(label);
+  expect(trigger("Date").textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+});
