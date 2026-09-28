@@ -231,3 +231,5 @@ export 가드 갱신 + `client-graph.test.ts` green이다.
 | M4 | T6.5 | `lib/pull/**` · `lib/sync/run.ts` · `lib/publish/read.ts` | `/push` ① 뒤, M3와 병렬 |
 | M5 | T8 · `/privacy` 본문(T9) | `app/(edit)/mcp/page.tsx` · `components/mcp/**` · `lib/shell/nav.ts` · `lib/auth/cookie.ts` · `lib/routes` · `app/privacy` | `/push` ① 뒤, M3·M4와 병렬. `messages/en.tsx`는 M3와 겹치므로 늦게 통합되는 쪽이 `git rebase dev` |
 | QA | `/runtime-test` · `/design-sync` 실측 · `/roundtrip`(`i18n-order-check`) · preview 실물(T9) · `/guide-shots` | main 체크아웃 | 전부 dev에 들어간 뒤 직렬 |
+- **README 히어로** (2026-09-29 사용자) — 문구와 이미지 둘 다. 문구: 태그라인/본문에 AI 에이전트(MCP) 연결 한 줄(T9 문서와 함께, 사실의 정본은
+  PRODUCT·가이드). 이미지: 사이드바에 `MCP connector`가 늘어 `docs/assets/readme/hero.webp`가 낡는다 — QA 단계에서 새 셸로 재촬영.
