@@ -25,8 +25,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string }[] = [
   { effectiveDate: "2026-09-26", digest: "440e6802bea1828929a8f70aa81d2aed8e0a0a73f063ecdc95265e0671edb097" },
   { effectiveDate: "2026-09-27", digest: "d84367948c5659f424ca71196fde9be6762eeb6f235943e58429bb800930d008" },
   { effectiveDate: "2026-09-28", digest: "d793dcdfd5b28f80eb91bbf582665e411c02ca251514407398b84485d6d128be" },
-  // mcp-connector — AI 에이전트 개인 토큰(해시·허용 동작·범위·사용 시각) · 에이전트가 읽는 것의 행방. 같은 날 둘째 개정이다.
-  { effectiveDate: "2026-09-28", digest: "71b5cbebca9db8715676570d664a9db6dcf4debea6c44a08b66389a11aebc97e" },
+  // mcp-connector — AI 에이전트 개인 토큰(해시·허용 동작·범위·사용 시각) · 에이전트가 읽는 것의 행방. 2026-09-28 초안이 v1.1.0 머지일로 옮겨졌다.
+  { effectiveDate: "2026-09-29", digest: "e6c29b97727ea713450110a19f52138eb28b9f23fa2ad6b8bfd5d7954f1a9473" },
 ];
 
 const privacy = m.publicDocs.privacy;
