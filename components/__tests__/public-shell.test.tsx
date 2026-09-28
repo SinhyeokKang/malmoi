@@ -185,7 +185,7 @@ describe("공개 셸 — 헤더", () => {
 
 /**
  * ⚠️ **외부 링크를 그리는 자리가 둘이다**(공개 셸 푸터 · `/signin` — 헤더의 GitHub는 2026-09-28에 빠졌다) — 목록 동등성 검사는 href만 보므로
- * 한쪽이 `rel`·`target`을 잃어도 못 잡는다. 셋을 따로 센다(`/signin`은 2026-09-26부터 같은 `PublicFooter`를 그린다).
+ * 한쪽이 `rel`·`target`을 잃어도 못 잡는다. 둘을 따로 세고, 헤더는 0건을 센다(`/signin`은 2026-09-26부터 같은 `PublicFooter`를 그린다).
  */
 describe("GitHub 링크 — 새 탭 + `noreferrer`", () => {
   const external = (links: Element[]) => {

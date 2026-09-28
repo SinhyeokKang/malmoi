@@ -44,15 +44,20 @@ export default async function Changelog() {
         <div className="mt-10">
           {!loaded.ok ? (
             <p className={cn(PROSE, "mt-0")}>{m.changelog.failed(releases)}</p>
-          ) : loaded.releases.length === 0 ? (
-            <p className={cn(PROSE, "mt-0")}>{m.changelog.empty(releases)}</p>
           ) : (
             <>
-              {loaded.releases.map((release) => (
-                <ReleaseEntry key={release.tag} release={release} />
-              ))}
-              {/* 마지막 항목의 아래 40이 이미 떼어 준다. */}
-              {loaded.truncated ? <p className={cn(PROSE, "mt-0")}>{m.changelog.truncated(releases)}</p> : null}
+              {loaded.releases.length === 0 ? (
+                <p className={cn(PROSE, "mt-0")}>{m.changelog.empty(releases)}</p>
+              ) : (
+                loaded.releases.map((release) => <ReleaseEntry key={release.tag} release={release} />)
+              )}
+              {/*
+                마지막 항목의 아래 40이 이미 떼어 준다. ⚠️ 빈 목록에도 선다 — 원 배열 100칸을 액션 태그 릴리스가 다 채우면
+                거른 뒤 0건이어도 그 너머에 앱 릴리스가 있을 수 있다(`truncated`는 거르기 전 길이다).
+              */}
+              {loaded.truncated ? (
+                <p className={cn(PROSE, loaded.releases.length === 0 ? undefined : "mt-0")}>{m.changelog.truncated(releases)}</p>
+              ) : null}
             </>
           )}
         </div>

@@ -94,7 +94,7 @@ export function Sidebar({
       ))}
 
       {/*
-        하단 전역 — 라우트가 아니라 "앱을 벗어나는 것"이라 구역 밖이다. Changelog(`/changelog`) · Docs(`/docs`) 둘이다 — 둘 다 공개 셸 페이지라 같은 탭에서 연다.
+        하단 전역 — 프로젝트·사용자 축이 아니라 공개 셸 페이지라 구역 밖이다. Changelog(`/changelog`) · Docs(`/docs`) 둘이고 같은 탭에서 연다.
         ⚠️ **Sign out이 없다** (2026-09-27 사용자) — 로그아웃은 헤더 사용자 메뉴 하나에만 있다.
       */}
       <div data-sidebar-zone="footer" className="mt-auto flex flex-col gap-0.5 pt-2">

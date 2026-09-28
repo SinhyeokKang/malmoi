@@ -5,7 +5,12 @@ import remarkGfm from "remark-gfm";
 import { DOC_LINK, INLINE_CODE, LIST, PROSE } from "@/components/docs/classes";
 import { dropFullChangelog, imagesToLinks, shiftHeadings } from "@/lib/changelog/markdown";
 
-const EXTERNAL = /^https?:\/\//i;
+/**
+ * 스킴이 있거나 `//`로 시작하면 외부다 — 원고 판정(`lib/guide/collect.ts`의 `resolveDocLink`)과 같은 기준이다.
+ * `http(s):`만 보면 프로토콜 상대 `//host/x`가 같은 탭 · referrer 포함으로 나간다.
+ */
+const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+const isExternal = (href: string) => SCHEME.test(href) || href.startsWith("//");
 
 /**
  * 제목 급 — `h3`는 원고 렌더러의 h3 그대로, `h4`~`h6`는 이 리포에 급이 없어 여기서 정했다(16 · 500 · 위 24).
@@ -27,7 +32,7 @@ const components: Components = {
   hr: () => <hr className="border-border my-10" />,
   // 원고와 달리 hProperties를 싣는 플러그인이 없다 — 외부 판정을 여기서 한다.
   a: ({ node: _node, href = "", children }) =>
-    EXTERNAL.test(href) ? (
+    isExternal(href) ? (
       <a href={href} target="_blank" rel="noreferrer" className={DOC_LINK}>
         {children}
       </a>
