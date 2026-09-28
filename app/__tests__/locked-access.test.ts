@@ -1,3 +1,5 @@
+import { readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Node, Project, SyntaxKind, type SourceFile } from "ts-morph";
@@ -101,6 +103,27 @@ function callsWithoutToken(file: SourceFile, name: string, callee = "lockProject
   }).length;
 }
 
+/**
+ * **주체를 받은 함수는 `tokenId`를 버리지 못한다** (mcp-connector r2). 잠금 자리 입력의 `tokenId`는 필수 키라 **빠뜨리면** 컴파일
+ * 에러지만, 리터럴 `tokenId: undefined`는 타입을 지난다 — 주체(`subject`)를 받은 코어가 그렇게 쓰면 MCP 토큰의 잠금 뒤 재판정이 조용히
+ * 사라진다. 세션·cron 전용 경로(주체를 안 받는다)만 `undefined`를 명시한다.
+ */
+function droppedTokens(file: SourceFile): string[] {
+  return file.getFunctions().filter(fn => fn.getParameters().some(p => p.getName() === "subject")).flatMap(fn =>
+    fn.getDescendantsOfKind(SyntaxKind.PropertyAssignment)
+      .filter(p => p.getName() === "tokenId" && p.getInitializer()?.getText() === "undefined")
+      .map(() => `${file.getBaseName()}#${fn.getName() ?? "?"}`));
+}
+
+function libSources(dir: string): string[] {
+  return readdirSync(dir).flatMap(entry => {
+    if (entry === "__tests__") return [];
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) return libSources(full);
+    return entry.endsWith(".ts") ? [full] : [];
+  });
+}
+
 describe("잠금 안 인가 재확인", () => {
   it.each(SITES)("%s", site => {
     const [path, name] = site.split("#") as [string, string];
@@ -118,6 +141,22 @@ describe("잠금 안 인가 재확인", () => {
     const [path, name] = site.split("#") as [string, string];
     expect(lockedCalls(source(path), name, "lockApiToken")).toBeGreaterThan(0);
     expect(callsWithoutToken(source(path), name, "lockApiToken")).toBe(0);
+  });
+
+  it("주체를 받은 lib 함수가 tokenId를 리터럴 undefined로 버리지 않는다", () => {
+    const files = libSources(`${ROOT}lib`);
+    expect(files.length).toBeGreaterThan(100);
+    expect(files.flatMap(path => droppedTokens(source(path.slice(ROOT.length))))).toEqual([]);
+  });
+
+  it("버린 tokenId 검출기가 주체 함수의 리터럴 undefined만 잡는다", () => {
+    const file = project.createSourceFile(`${ROOT}.scratch/dropped-token-fixture.ts`, [
+      "function dropped(subject: any) { return lock({ userId: subject.userId, tokenId: undefined }); }",
+      "function passed(subject: any) { return lock({ userId: subject.userId, tokenId: subject.tokenId }); }",
+      "function session(userId: string) { return lock({ userId, tokenId: undefined }); }",
+      "declare function lock(input: unknown): unknown;",
+    ].join("\n"), { overwrite: true });
+    expect(droppedTokens(file)).toEqual(["dropped-token-fixture.ts#dropped"]);
   });
 
   it("tokenId 검출기가 빠진 호출을 센다 — 단축 속성·대입 속성은 실린 것이다", () => {

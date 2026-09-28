@@ -152,7 +152,7 @@ describe("멤버 관리 (member:manage)", () => {
   });
 
   it("강등된 OWNER는 초대를 발급하지 못한다", async () => {
-    const issue = () => issueInvitations(prisma, { projectId: "p", userId: "a", recipients: [{ email: "new@x.com", role: "EDITOR" }] });
+    const issue = () => issueInvitations(prisma, { projectId: "p", userId: "a", recipients: [{ email: "new@x.com", role: "EDITOR" }], tokenId: undefined });
     expect(await race("demoted", "a", issue)).toEqual({ status: "forbidden" });
     expect(await prisma.projectInvitation.count({ where: { projectId: "p" } })).toBe(1);
   });
@@ -232,7 +232,7 @@ describe("설정 쓰기 (project:settings)", () => {
 });
 
 describe("번역 쓰기 (translation:write)", () => {
-  const save = () => applyKeySave(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: "k1", userId: "editor", changes: [{ localeCode: "ko", value: "새 값" }] });
+  const save = () => applyKeySave(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: "k1", userId: "editor", changes: [{ localeCode: "ko", value: "새 값" }], tokenId: undefined });
 
   it.each(["removed", "archived"] as const)("%s이면 저장과 사건이 커밋되지 않는다", async change => {
     expect(await race(change, "editor", save)).toEqual({ ok: false, error: change === "archived" ? "archived" : "not-found" });
@@ -246,12 +246,12 @@ describe("번역 쓰기 (translation:write)", () => {
   });
 
   it("제거된 EDITOR의 수동 Publish는 실행 행을 만들지 않는다", async () => {
-    const publish = () => runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "editor" });
+    const publish = () => runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "editor", tokenId: undefined });
     expect(await race("removed", "editor", publish)).toEqual({ status: "failed", error: "not-found", delivery: "not-started", retryable: false });
     expect(await prisma.syncRun.count({ where: { projectId: "p" } })).toBe(0);
     expect(h.pull).not.toHaveBeenCalled();
     // 대조: 남은 멤버의 실행은 행을 연다.
-    await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "a" });
+    await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "a", tokenId: undefined });
     expect(await prisma.syncRun.count({ where: { projectId: "p" } })).toBe(1);
   });
 });

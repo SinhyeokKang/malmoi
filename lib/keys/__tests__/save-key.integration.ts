@@ -69,7 +69,7 @@ async function seed(p: string) {
 }
 
 const input = (changes: { localeCode: string; value: string }[], over: Partial<Parameters<typeof applyKeySave>[1]> = {}) =>
-  ({ projectId: "p", surfaceId: "p-s", surfaceSlug: "default", keyId: "p-k1", userId: "u1", changes, ...over });
+  ({ projectId: "p", surfaceId: "p-s", surfaceSlug: "default", keyId: "p-k1", userId: "u1", tokenId: undefined, changes, ...over });
 const cell = (locale: string) => prisma.translation.findUnique({ where: { keyId_localeCode: { keyId: "p-k1", localeCode: locale } } });
 const events = () => prisma.projectEvent.findMany({ where: { projectId: "p", subtype: "translation.saved" }, orderBy: { occurredAt: "asc" } });
 const baselines = () => prisma.translationBaseline.findMany({ where: { projectId: "p" }, orderBy: { localeCode: "asc" } });
@@ -221,7 +221,7 @@ describe("applyKeySaveBatch", () => {
     await prisma.stringKey.create({ data: { id: "p-k2", projectId: "p", surfaceId: "p-s", key: "bye", namespace: "_root", sourceText: "Bye", sourceHash: "b" } });
   });
   const batch = (entries: { keyId: string; changes: { localeCode: string; value: string }[] }[], over: { userId?: string } = {}) =>
-    applyKeySaveBatch(prisma, { projectId: "p", surfaceId: "p-s", surfaceSlug: "default", userId: "u1", entries, ...over });
+    applyKeySaveBatch(prisma, { projectId: "p", surfaceId: "p-s", surfaceSlug: "default", userId: "u1", entries, ...over, tokenId: undefined });
 
   it("키마다 화면 Save와 같은 결과를 입력 순서대로 모으고, 거부된 키만 건너뛴다", async () => {
     const result = await batch([

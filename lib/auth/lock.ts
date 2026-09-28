@@ -31,7 +31,7 @@ export async function lockUser(tx: Prisma.TransactionClient, userId: string): Pr
  */
 export async function lockProjectAccess(
   tx: Prisma.TransactionClient,
-  input: { projectId: string; userId: string; permission: Permission; surfaceId?: string; archiveToggle?: boolean; tokenId?: string },
+  input: { projectId: string; userId: string; permission: Permission; surfaceId?: string; archiveToggle?: boolean; tokenId: string | undefined },
 ): Promise<LockedAccess> {
   const { projectId, userId, surfaceId } = input;
   await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;

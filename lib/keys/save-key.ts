@@ -27,7 +27,7 @@ export type KeySaveResult =
   | { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] };
 
 type KeyChanges = readonly { localeCode: string; value: string }[];
-type KeySaveTarget = { projectId: string; surfaceId: string; surfaceSlug: string; userId: string; tokenId?: string };
+type KeySaveTarget = { projectId: string; surfaceId: string; surfaceSlug: string; userId: string; tokenId: string | undefined };
 /** 잠금 뒤 인가를 지난 한 키의 결과 — 접근 거부는 배치 전체의 결과라 여기 없다. */
 export type KeyEntryResult = Exclude<KeySaveResult, { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] }>;
 

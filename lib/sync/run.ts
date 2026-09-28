@@ -33,7 +33,7 @@ import {
  */
 export async function runSync(
   prisma: PrismaClient,
-  input: { projectId: string; slug: string; trigger: SyncTriggerKind; requestedBy: string | null; tokenId?: string },
+  input: { projectId: string; slug: string; trigger: SyncTriggerKind; requestedBy: string | null; tokenId: string | undefined },
 ): Promise<PullOutcome> {
   const { projectId, slug, trigger, requestedBy } = input;
 

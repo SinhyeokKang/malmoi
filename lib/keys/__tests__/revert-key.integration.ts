@@ -73,7 +73,7 @@ async function confirm(startedAt = new Date()) {
   await prisma.syncRun.update({ where: { id }, data: { status: "SUCCEEDED", finishedAt: new Date() } });
 }
 const save = (changes: { localeCode: string; value: string }[], userId = "editor") =>
-  applyKeySave(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: "k1", userId, changes });
+  applyKeySave(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: "k1", userId, changes, tokenId: undefined });
 const target = { projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: "k1", userId: "owner" };
 const cell = (locale: string) => prisma.translation.findUnique({ where: { keyId_localeCode: { keyId: "k1", localeCode: locale } } });
 
@@ -165,7 +165,7 @@ describe("executeKeyRevert", () => {
     await prisma.translation.update({ where: { keyId_localeCode: { keyId: "k1", localeCode: "ko" } }, data: { needsReview: true } });
     const preview = await previewKeyRevert(prisma, target);
     if (preview.status !== "ready") throw new Error("unreachable");
-    const result = await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation });
+    const result = await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation, tokenId: undefined });
     expect(result).toEqual({ status: "reverted", cells: [{ localeCode: "ja", value: "" }, { localeCode: "ko", value: "안녕" }] });
     expect(await cell("ko")).toMatchObject({ value: "안녕", pendingEditToken: null, needsReview: true, updatedBy: "owner" });
     expect(await cell("ja")).toMatchObject({ value: "", pendingEditToken: null });
@@ -183,7 +183,7 @@ describe("executeKeyRevert", () => {
     await save([{ localeCode: "ko", value: "안녕" }]);
     const preview = await previewKeyRevert(prisma, target);
     if (preview.status !== "ready") throw new Error("unreachable");
-    await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation });
+    await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation, tokenId: undefined });
     expect(await cell("ko")).toMatchObject({ value: "안녕", pendingEditToken: null });
   });
 
@@ -192,7 +192,7 @@ describe("executeKeyRevert", () => {
     const preview = await previewKeyRevert(prisma, target);
     if (preview.status !== "ready") throw new Error("unreachable");
     await save([{ localeCode: "ko", value: "더 새 값" }], "other");
-    expect(await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation })).toEqual({ status: "reconfirm" });
+    expect(await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation, tokenId: undefined })).toEqual({ status: "reconfirm" });
     expect((await cell("ko"))?.value).toBe("더 새 값");
   });
 
@@ -200,8 +200,8 @@ describe("executeKeyRevert", () => {
     await edited();
     const preview = await previewKeyRevert(prisma, target);
     if (preview.status !== "ready") throw new Error("unreachable");
-    expect(await executeKeyRevert(prisma, { ...target, confirmation: "0".repeat(64) })).toEqual({ status: "reconfirm" });
-    expect(await executeKeyRevert(prisma, { ...target, userId: "other-owner", confirmation: preview.confirmation })).toEqual({ status: "reconfirm" });
+    expect(await executeKeyRevert(prisma, { ...target, confirmation: "0".repeat(64), tokenId: undefined })).toEqual({ status: "reconfirm" });
+    expect(await executeKeyRevert(prisma, { ...target, userId: "other-owner", confirmation: preview.confirmation, tokenId: undefined })).toEqual({ status: "reconfirm" });
     expect((await cell("ko"))?.pendingEditToken).not.toBeNull();
   });
 
@@ -210,7 +210,7 @@ describe("executeKeyRevert", () => {
     const preview = await previewKeyRevert(prisma, target);
     if (preview.status !== "ready") throw new Error("unreachable");
     await prisma.syncRun.create({ data: { id: "live", projectId: "p", status: "RUNNING", trigger: "MANUAL" } });
-    expect(await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation })).toEqual({ status: "blocked", reason: "busy" });
+    expect(await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation, tokenId: undefined })).toEqual({ status: "blocked", reason: "busy" });
     expect((await cell("ko"))?.value).toBe("새 값");
   });
 
@@ -218,8 +218,8 @@ describe("executeKeyRevert", () => {
     await edited();
     const preview = await previewKeyRevert(prisma, target);
     if (preview.status !== "ready") throw new Error("unreachable");
-    await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation });
-    expect(await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation })).toEqual({ status: "blocked", reason: "nothing" });
+    await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation, tokenId: undefined });
+    expect(await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation, tokenId: undefined })).toEqual({ status: "blocked", reason: "nothing" });
   });
 });
 
@@ -237,7 +237,7 @@ it.each(["removed", "demoted", "archived"] as const)("잠금 대기 중 %s이면
     if (change === "removed") await blocker.query('DELETE FROM "ProjectMember" WHERE "projectId" = $1 AND "userId" = $2', ["p", "owner"]);
     else if (change === "demoted") await blocker.query(`UPDATE "ProjectMember" SET "role" = 'EDITOR' WHERE "projectId" = $1 AND "userId" = $2`, ["p", "owner"]);
     else await blocker.query('UPDATE "Project" SET "archivedAt" = now() WHERE "id" = $1', ["p"]);
-    reverting = executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation });
+    reverting = executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation, tokenId: undefined });
     // 타이머 대신 실제 잠금 대기를 관측한다 — execute가 잠금 전 상태를 읽어도 회귀가 잡힌다.
     await expect.poll(async () => (await pool.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%'")).rows[0].n).toBeGreaterThan(0);
     await blocker.query("COMMIT");

@@ -145,7 +145,7 @@ function retryAfterIssue(limits: Awaited<ReturnType<typeof readLimits>>, count: 
 
 export async function issueInvitations(
   prisma: PrismaClient,
-  input: { projectId: string; userId: string; recipients: readonly IssueRecipient[]; tokenId?: string },
+  input: { projectId: string; userId: string; recipients: readonly IssueRecipient[]; tokenId: string | undefined },
 ): Promise<IssueOutcome> {
   const { projectId, userId, recipients } = input;
   return prisma.$transaction(async (tx) => {
@@ -169,7 +169,7 @@ export async function reissueInvitation(
 ): Promise<ReissueOutcome> {
   const { projectId, userId, invitationId } = input;
   return prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage" });
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage", tokenId: undefined });
     if (locked.status !== "ok") return locked;
     const now = new Date();
     // ⚠️ `projectId`로 좁힌다 — id를 알아도 남의 프로젝트 초대를 되살릴 수 없다.
