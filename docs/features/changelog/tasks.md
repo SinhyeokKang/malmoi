@@ -27,7 +27,7 @@
 
 ## 커밋 4 — 페이지 + 공개 배선 (`feat(changelog): public changelog page`) — 시안 이후
 
-- [ ] **T5 렌더러 · 항목 컴포넌트** — `/design-sync`로 `Changelog.dc.html` 1a–1d에 맞춘다(800 한 겹 그릇 · 항목 머리 · `h2` 자기 링크 앵커 · `View on GitHub`). DOM 테스트(jsdom):
+- [x] **T5 렌더러 · 항목 컴포넌트** — `/design-sync`로 `Changelog.dc.html` 1a–1d에 맞춘다(800 한 겹 그릇 · 항목 머리 · `h2` 자기 링크 앵커 · `View on GitHub`). DOM 테스트(jsdom):
   - 본문 `<script>`·`<img onerror>`가 DOM 요소로 생기지 않고 **글자로 보인다**(`guide-markdown.test.tsx:71-72` 형).
   - `![x](https://github.com/user-attachments/…)` → `<img>` 0개, 글자 `x`의 링크.
   - `[x](javascript:alert(1))` → href가 걷힌다(`guide-markdown.test.tsx:74-80` 형).
@@ -35,13 +35,13 @@
   - `View on GitHub` 접근 이름이 `View v1.0.1 on GitHub`.
   - `h4`가 정한 급의 클래스를 든다.
   검증: DOM 테스트 green, `/design-sync` 실측 통과(수동).
-- [ ] **T6 `app/changelog/page.tsx` + `routes.changelog` + `EXEMPT`·`PUBLIC` 등재 + 사전 `changelog` 묶음**.
+- [x] **T6 `app/changelog/page.tsx` + `routes.changelog` + `EXEMPT`·`PUBLIC` 등재 + 사전 `changelog` 묶음**.
   - 자동: `lib/__tests__/routes.test.ts:117-127`에 `routes.changelog()` 사례. `app/__tests__/changelog-page.test.tsx`(`privacy-page.test.tsx:34-57` 형) — `loadReleases`를 `{ok:false}` · 빈 목록 · 두 건 · truncated로 mock해 문구와 `GITHUB_RELEASES_URL` 링크(새 탭 + `rel`), 헤더 `aria-current="page"`가 Changelog에, 푸터가 `FOOTER_LINKS`와 같음, truncated 문장 유무를 단언한다.
   검증: `entry-points.test.ts` · `no-korean-ui` · `terminology` · `changelog-page.test.tsx` · `routes.test.ts` green.
   - 수동(ego-browser, **`pnpm build && pnpm start`에서** — `next dev`는 HMR fetch 캐시라 판정 불가): 로그아웃 200, `#v1.0.1` 착지·포커스. 실패 미캐시: `.next/cache/fetch-cache`를 비운다 → 오프라인으로 첫 요청 → 1c 안내 → 온라인 복귀 후 새로고침 → 목록(실패가 캐시되지 않았다는 증거). 콜드 캐시 첫 진입 지연을 잰다. "200인데 스키마 불일치"는 수동 재현 불가 — spec 조건 6에 수용한 한계로 적혀 있다.
 - [x] **T7 sitemap · analytics 허용 목록** — sitemap은 `/privacy` 앞.
   검증: `crawl.test.ts`(`at(-1) === /privacy` 유지, 개수 갱신) · `analytics.test.ts`(`/changelog` 통과, `/changelog/`·`/changelogx` 거부) green.
-- [ ] **T7b 공개 헤더 · 푸터** — `PublicHeader` 내비 `Home · Docs · Changelog`(GitHub 제거, `current: "changelog"`, `header.tsx:25·33`), `FOOTER_LINKS` 끝에 `Changelog`, 라벨 `m.changelog.title`.
+- [x] **T7b 공개 헤더 · 푸터** — `PublicHeader` 내비 `Home · Docs · Changelog`(GitHub 제거, `current: "changelog"`, `header.tsx:25·33`), `FOOTER_LINKS` 끝에 `Changelog`, 라벨 `m.changelog.title`.
   검증: `components/__tests__/public-shell.test.tsx` 갱신 green —
   - :125-135 내비 순서 Home·Docs·Changelog.
   - :147-150 `/docs`의 `aria-current` 배열.
@@ -51,7 +51,7 @@
 
 ## 커밋 5 — 앱 셸 링크 (`feat(shell): point Changelog at the in-app page`)
 
-- [ ] **T8 `navFooterItems` · `user-menu`** — 외부 → 내부, 라벨 `m.changelog.title`, `m.common.nav.releaseNotes` 삭제. 소비자 `sidebar.tsx:101` · `landing/mockup/app-frame.tsx:30` · `user-menu.tsx:80`(→ `MenuLink`).
+- [x] **T8 `navFooterItems` · `user-menu`** — 외부 → 내부, 라벨 `m.changelog.title`, `m.common.nav.releaseNotes` 삭제. 소비자 `sidebar.tsx:101` · `landing/mockup/app-frame.tsx:30` · `user-menu.tsx:80`(→ `MenuLink`).
   검증: 갱신 green —
   - `lib/shell/__tests__/nav.test.ts:318`, :9의 고아 `GITHUB_RELEASES_URL` import 제거.
   - `components/__tests__/user-menu.test.tsx:31-64`(행 순서 · href · `target` 없음 — 내부 항목 규칙).
