@@ -359,6 +359,8 @@ RepeatableRead 한 tx에서 키·번역·토큰·표면을 읽으며(`lib/pull/l
 - **덧붙일 것 둘**: ① `reconfirm`은 리포에 아무것도 안 썼으므로 `too-soon`의 기준(`status ∈ {SUCCEEDED, SKIPPED}`, `lib/sync/run.ts`)에서
   뺀다 — SKIPPED로 닫으면 에이전트가 새 핸들로 재호출해도 30초를 기다린다. ② 새 결과 갈래를 `lib/pull/__tests__/error-codes.test.ts`의
   양방향 목록에 등재한다.
+- **reconfirm에 별도 빈도 상한을 두지 않는다** (`/orchestrate` 판정, 2026-09-28) — `too-soon` 제외 뒤에도 추가 제한이 없는 것은 의도다: 빈도
+  상한은 spec 비목표이고(ARCHITECTURE §6.06), reconfirm은 GitHub 쓰기 없이 head 1회 읽기로 끝난다. Logs는 이 행을 `Not sent` + 사유 문장으로 그린다.
 - **캡처 뒤 편집**: 기존 CAS 그대로다 — 새 편집의 미전달 토큰은 지워지지 않는다.
 
 검증은 지문 함수만으로 끝내지 않는다. 미리보기 뒤 저장 · base head 변경 · 표시 상한 밖 편집 · 미전달 토큰 없는 export 입력 변경을
