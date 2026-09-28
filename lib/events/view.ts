@@ -5,6 +5,7 @@ import type { SurfaceImportResult } from "@/lib/import/result";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
 import { languageName } from "@/lib/onboarding/language-name";
 import type { SyncErrorCode } from "@/lib/sync/plan";
+import { utcDay } from "@/lib/utc-time";
 
 import type { EventCursor } from "./filter";
 import type { EventKind, EventPayload, EventResult } from "./payload";
@@ -323,7 +324,8 @@ export function refusalMessage(code: string | null): string {
   return code !== null && Object.hasOwn(reasons, code) ? (reasons[code] ?? fallback) : fallback;
 }
 
-export type DayGroup<T> = { dayKey: string; label: string; rows: T[] };
+/** `dayKey`는 ISO(그룹 키 · React `key`), `heading`은 보이는 날짜, `label`은 오늘·어제일 때만 붙는 낱말이다. */
+export type DayGroup<T> = { dayKey: string; heading: string; label: string | null; rows: T[] };
 
 /**
  * 날짜 카드 — **UTC 자정으로 끊는다.**
@@ -339,7 +341,8 @@ export function groupByDay<T extends { occurredAt: Date }>(rows: readonly T[], n
   const groups = new Map<string, DayGroup<T>>();
   for (const row of rows) {
     const key = dayKey(row.occurredAt);
-    const group = groups.get(key) ?? { dayKey: key, label: dayLabel(key, today, yesterday), rows: [] };
+    // 키가 UTC 자정의 ISO 날짜라 `utcDay`가 같은 날을 말한다.
+    const group = groups.get(key) ?? { dayKey: key, heading: utcDay(new Date(key)), label: dayLabel(key, today, yesterday), rows: [] };
     group.rows.push(row);
     groups.set(key, group);
   }
@@ -350,10 +353,10 @@ function dayKey(at: Date): string {
   return at.toISOString().slice(0, 10);
 }
 
-function dayLabel(key: string, today: string, yesterday: string): string {
+function dayLabel(key: string, today: string, yesterday: string): string | null {
   if (key === today) return m.logs.day.today;
   if (key === yesterday) return m.logs.day.yesterday;
-  return key;
+  return null;
 }
 
 /**

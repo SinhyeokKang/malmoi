@@ -1,6 +1,7 @@
 import { DOC_TABLE, DocTable } from "@/components/public-doc-table";
 import { Toc } from "@/components/public-doc-toc";
 import { m } from "@/lib/i18n";
+import { utcDay } from "@/lib/utc-time";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,11 +27,11 @@ export function PrivacyDoc() {
         <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{title}</h1>
         {/*
           메타 줄이라 보조 색이 맞다 — 본문의 muted 금지는 여기 안 걸린다(§6.61). 라벨 없이 날짜만 두면 무슨 날짜인지 모른다.
-          사전의 `"YYYY-MM-DD"`를 그대로 보이고 `dateTime`에 넣는다 — 날짜만 든 `datetime`은 올바른 HTML이고
-          `lib/utc-time.ts`를 먹이면 분까지 붙는다.
+          사전의 `"YYYY-MM-DD"`는 `dateTime`에 그대로 넣고(날짜만 든 `datetime`은 올바른 HTML이다) 보이는 쪽만
+          앱의 날짜 형(`utcDay`)이다 — 사전 값을 바꾸면 `policy-gate`가 개정 이력을 요구한다.
         */}
         <p className="text-muted-foreground mt-3 text-sm leading-[1.6]">
-          {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{effectiveDate}</time>
+          {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{utcDay(new Date(effectiveDate))}</time>
         </p>
         <p className="text-prose mt-6 leading-[1.75] text-pretty">{intro}</p>
         <hr className="border-border mt-10" />

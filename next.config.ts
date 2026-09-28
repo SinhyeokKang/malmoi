@@ -1,12 +1,15 @@
 import type { NextConfig } from "next";
 
 import { securityHeaders } from "./lib/security-headers";
+import { version } from "./package.json";
 
 const nextConfig: NextConfig = {
   // Leave multipart overhead above the 3 MB image limit.
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
   // 타입·린트 오류를 빌드가 삼키지 않게 둔다(기본값이지만 명시). 게이트는 pnpm typecheck다.
   typescript: { ignoreBuildErrors: false },
+  // 앱 버전 문자열 하나만 번들에 박는다 — `lib/app-version.ts`(LNB Changelog 배지)가 읽는다.
+  env: { APP_VERSION: version },
 
   /**
    * ⚠️ Next가 `AGENTS.md`에 자기 블록을 덧붙이는 동작을 끈다.

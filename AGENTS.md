@@ -86,7 +86,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 로그인 | Auth.js v5 **DB 세션** — GitHub + Google. 로그인은 **검증된 이메일만** 요구하고 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. **같은 주소에 두 번째 로그인 수단을 붙이는 challenge 왕복은 `lib/login-link/`**(세션이 없는 채로 도는 흐름이라 진정성은 Auth.js의 state 쿠키가 든다), **세션 폐기는 `lib/session-revocation/`**(challenge에 세션·state 지문을 담는다) — 형은 같고 증명이 다르니 섞지 않는다. ⚠️ **Google 동의 화면은 External + 게시(In production)다** — Internal로 바꾸면 조직 밖 계정을 `403 org_internal`로 막아 초대 경로가 통째로 죽는다(게시 절차는 OPERATIONS) |
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** — `@octokit/oauth-app`(`octokit`이 재수출하는 `OAuthApp`으로는 안 된다) |
-| 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**. 소비자는 프로필 사진 하나로 **확정**이다(ARCHITECTURE §6.7) |
+| 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**. 소비자는 프로필 사진·프로젝트 썸네일 둘이다(ARCHITECTURE §6.7·§6.75) |
 | 초대 메일 | Resend REST API — **SDK 없이 `fetch`**. 환경변수 셋이 전부 `optionalEnv`라 **비거나 틀려도 발급·발송만 막힌다** |
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
@@ -286,7 +286,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`). 인가 판정에 넘기는 값(`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다. 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 단 테스트가 직접 import하는 순수 모듈엔 붙이지 않는다. ⚠️ **`vitest.setup.ts`가 그것을 전역 mock하므로 "테스트가 죽는다"는 더 이상 잎 모듈을 분리시키는 압력이 아니다** — **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**이고 그것은 `"use client"` 그래프만 본다.
-- **날짜는 UTC로 저장하고, 절대 시각도 UTC로 말한다** — `<time dateTime>` 안에 `lib/utc-time.ts`의 `2026-09-10 12:00 UTC` 형(Logs 화면이 정본). 라벨 없는 로컬 시각은 보는 사람이 어느 시간대인지 모른다. 상대 시각(`lib/relative-time.ts`)만 보는 시점 기준이다.
+- **날짜는 UTC로 저장하고, 절대 날짜·시각도 UTC로 말한다** — `<time dateTime>` 안에 `lib/utc-time.ts`가 만든 형 하나: 날짜만 `Sep 27, 2026`(`utcDay`), 시각까지 `Sep 27, 2026 16:34 UTC`(`utcMinute`). 생산자는 그 파일 하나이고 `toLocaleDateString`은 쓰지 않는다. 라벨 없는 로컬 시각은 보는 사람이 어느 시간대인지 모른다. 상대 시각(`lib/relative-time.ts`)만 보는 시점 기준이다.
 - **일회성 실험 스크립트는 `.scratch/`에 둔다.** 리포 **안**이어야 tsconfig·경로 별칭이 잡히고, `.gitignore`에 있어야 `git add -A`에 안 딸려간다.
 - **⚠️ 차단은 두 층이고, 조건부 렌더는 어느 층도 아니다.** 1차 `middleware.ts`는 렌더 요청(GET·HEAD)에 쿠키 이름만 보는 값싼 차단이고, **본판정은 진입점**이다 — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. App Router가 레이아웃과 페이지를 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). **새 보호 라우트는 `isProtectedPath`(`lib/auth/cookie.ts`)에 추가한다** — matcher는 CSP nonce 때문에 전 페이지다(ARCHITECTURE §8).
 - **⚠️ 로케일 파일이 키의 진실, 코드 스캔은 `refs`만 준다.** 스캔 실패로 적재를 막지 않는다 — 남의 리포 CI를 우리 규칙으로 실패시키지 않는다.

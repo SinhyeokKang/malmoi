@@ -89,7 +89,7 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
     // 상한 자체는 `cn(...)`을 지나는 안쪽 래퍼가 든다.
     expect(contentPanel).toMatch(/fluid: "mx-auto w-full max-w-7xl"/);
     expect(contentPanel).toMatch(/limited: "mx-auto w-full max-w-4xl"/);
-    expect(contentPanel).toMatch(/cn\(CONTENT_MAX\[width\], "flex flex-col gap-3 p-4", className\)/);
+    expect(contentPanel).toMatch(/cn\(CONTENT_MAX\[width\], "flex flex-col gap-3 px-4 py-3", className\)/);
     expect(contentPanel).toMatch(/cn\(CONTENT_MAX\[width\], "min-h-full p-4", className\)/);
   });
 

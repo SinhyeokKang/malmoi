@@ -144,11 +144,11 @@ describe("Resend — 성공", () => {
 
 describe("Resend — 실패는 카드 안 Alert 하나", () => {
   it.each([
-    [{ ok: false, error: "email-rejected", label: "a***@acme.com", retryAt: "2026-09-23T12:00:30Z" }, () => m.members.pending.resendFailed("a***@acme.com", "2026-09-23 12:01 UTC")],
+    [{ ok: false, error: "email-rejected", label: "a***@acme.com", retryAt: "2026-09-23T12:00:30Z" }, () => m.members.pending.resendFailed("a***@acme.com", "Sep 23, 2026 12:01 UTC")],
     [{ ok: false, error: "email-unknown", label: "a***@acme.com", retryAt: "2026-09-23T12:00:30Z" }, () => m.members.pending.resendUnconfirmed("a***@acme.com")],
-    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "address" }, () => m.members.pending.resendLimited("a***@acme.com", "2026-09-23 12:01 UTC")],
-    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "project", used: 20 }, () => m.members.pending.resendProjectLimited("a***@acme.com", 20, "2026-09-23 12:01 UTC")],
-    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "user", used: 30 }, () => m.members.pending.resendUserLimited("a***@acme.com", 30, "2026-09-23 12:01 UTC")],
+    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "address" }, () => m.members.pending.resendLimited("a***@acme.com", "Sep 23, 2026 12:01 UTC")],
+    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "project", used: 20 }, () => m.members.pending.resendProjectLimited("a***@acme.com", 20, "Sep 23, 2026 12:01 UTC")],
+    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "user", used: 30 }, () => m.members.pending.resendUserLimited("a***@acme.com", 30, "Sep 23, 2026 12:01 UTC")],
     [{ ok: false, error: "email-unavailable" }, () => m.members.pending.resendUnavailable("a***@acme.com")],
     [{ ok: false, error: "not-found" }, () => m.members.pending.gone("a***@acme.com")],
   ])("%j는 대상 라벨을 넣어 카드 머리 아래에 선다", async (result, text) => {

@@ -6,6 +6,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { loadSourceDetail } from "@/app/(edit)/projects/[slug]/sources/actions";
 import { runFirstIngest } from "@/app/(edit)/projects/actions";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { GithubIcon } from "@/components/signin/brand-icons";
 import { PanelCard } from "@/components/ui/panel-card";
 import { Badge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -21,7 +22,6 @@ import { planSurfaceImportStatus } from "@/lib/import/surface-status";
 import { planSourceActions } from "@/lib/sources/actions";
 import type { SourcesData } from "@/lib/sources/query";
 import { summarizeAddResults, type SurfaceAdded } from "@/lib/surfaces/plan-add";
-import { GithubMark } from "./github-mark";
 import { AddSourcesModal } from "./add-sources-modal";
 import { SourceDetailModal, type DetailState } from "./source-detail-modal";
 import { SourceStatus } from "./source-status";
@@ -77,7 +77,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
     </div></PanelHeader>
     <PanelBody width="fluid" className="space-y-4">
       <PanelCard title={m.sources.title} badge={data.sources.length > 0 ? <Badge variant="neutral">{data.sources.length}</Badge> : undefined}
-        subtitle={data.repository ? <span className="flex items-center gap-1.5"><GithubMark className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}>
+        subtitle={data.repository ? <span className="flex items-center gap-1.5"><GithubIcon className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}>
         {/* ⚠️ **추가 결과는 카드의 첫 행이다** (시안 `1i`) — 토스트도, 카드 밖 Alert도 아니다. 적재가
             토스트보다 오래 걸리고, 닫는 것은 사람이다. */}
         {result && <div role="status" className="border-divider bg-foreground/2 flex items-start gap-3 border-t px-4 py-[13px]">

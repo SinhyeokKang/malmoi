@@ -220,6 +220,8 @@ export const routes = {
   /** 랜딩. ⚠️ 로그인 상태면 `/projects`로 redirect된다(`rootView`, 2026-09-10 결정). */
   home: (): string => "/",
   privacy: (): string => "/privacy",
+  /** 릴리스 노트 — 원문은 GitHub Release이고 이 페이지가 읽어 보여 준다. 사이드바 하단 · 사용자 메뉴 · 공개 헤더·푸터가 가리킨다. */
+  changelog: (): string => "/changelog",
   /**
    * 문서 — `page`는 SUMMARY slug(`"setup/workflow"`), `anchor`는 그 페이지의 H2 `{#id}`.
    * ⚠️ **호출의 인자는 리터럴이어야 한다** — `lib/guide/__tests__/docs-links.test.ts`가 `app`·`components`·`lib`의 호출을

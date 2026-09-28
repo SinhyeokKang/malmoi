@@ -14,7 +14,6 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/projects" }));
 import { Sidebar } from "@/components/shell/sidebar";
 import { UserMenu } from "@/components/shell/user-menu";
 import { m } from "@/lib/i18n";
-import { GITHUB_RELEASES_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
 /**
@@ -33,15 +32,15 @@ const signOutItem = () => {
 };
 
 /**
- * ⚠️ **사이드바에는 Sign out이 없다** (2026-09-27 사용자) — 로그아웃은 사용자 메뉴 하나에만 있다. 하단은 Release notes · Docs 둘이다.
+ * ⚠️ **사이드바에는 Sign out이 없다** (2026-09-27 사용자) — 로그아웃은 사용자 메뉴 하나에만 있다. 하단은 Changelog · Docs 둘이다.
  */
-it("사이드바 하단에 Sign out이 없고 Release notes(새 탭) · Docs 순이다", async () => {
+it("사이드바 하단에 Sign out이 없고 Changelog · Docs 순이다 — 둘 다 같은 탭", async () => {
   const { container } = await render(<Sidebar memberships={[]} userName="Kim" userImage={null} />);
   expect(container.querySelector("form")).toBeNull();
   expect([...container.querySelectorAll("button")].some(b => b.textContent?.trim() === m.common.nav.signOut)).toBe(false);
   const footer = [...container.querySelectorAll<HTMLAnchorElement>('[data-sidebar-zone="footer"] a')];
   expect(footer.map(a => [a.textContent?.trim(), a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")])).toEqual([
-    [m.common.nav.releaseNotes, GITHUB_RELEASES_URL, "_blank", "noreferrer"],
+    [m.changelog.title, routes.changelog(), null, null],
     [m.publicDocs.docs.title, routes.docs(), null, null],
   ]);
 });

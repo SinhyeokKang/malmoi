@@ -21,6 +21,8 @@ app/
   privacy/              방침. 공개 셸 안의 components/privacy/(DESIGN §6.616) · 본문은 messages/en.tsx의 publicDocs.privacy.
                         ⚠️ 세션을 읽는 이유는 차단이 아니다 — 헤더 primary(publicCta: 로그인이면 Open Malmoi → /projects,
                         아니면 Get started → /signin). 그래서 동적이다
+  changelog/            릴리스 노트(DESIGN §6.617). 공개 셸 안 · 원문은 lib/changelog/load(GitHub Release, 토큰 없이 1시간 캐시).
+                        ⚠️ 세션을 읽는 이유는 /privacy와 같다(헤더 primary) — 인가 없음(entry-points EXEMPT). GitHub가 실패해도 200이다
   docs/                 사용 가이드(DESIGN §6.61). layout(공개 셸 bare + 문서 내비 — SUMMARY를 읽는다) ·
                         [[...slug]]/page(개요·장 개요·일반 문서 — 본문 스크롤러를 페이지가 key={slug}로 든다, 없는 slug는
                         notFound()) · not-found(셸·내비 안 404). 원고는 guide/**.md. ⚠️ 셸이 레이아웃에 있는 유일한 공개 화면이다 —
@@ -41,7 +43,7 @@ app/
                         · screens(lang·revalidate 안전·보관 갈래 다섯) · security-headers(next.config를 불러서)
                         · api/__tests__/pull-budget(야간 cron 시간 예산 — 가짜 시계로 넘긴 수가 unprocessed에 실리는지)
                         · locked-access(잠금 재판정 16자리를 AST로 센다 — `$transaction` 콜백 안의 호출만, 주석 제외)
-                        · root-boundaries · seo-metadata · crawl-files · landing-page · docs-page · privacy-page
+                        · root-boundaries · seo-metadata · crawl-files · landing-page · docs-page · privacy-page · changelog-page
                         · api/__tests__/ github-callback · push-failure · route-diagnostics · surface-boundary
   (edit)/               인증 필요. 1차 차단은 middleware, 본판정은 각 진입점
     layout.tsx          셸. ⚠️ {children}을 흰 패널로 감싸지 않는다 — 감싸면 흰 패널이 겹쳐 padding이 두 배다.
@@ -197,7 +199,7 @@ components/
                         입력 상태만 든다
   analytics.tsx         Vercel Web Analytics 래퍼("use client") — 루트 레이아웃이 서버 컴포넌트라 beforeSend(함수)를 못 넘겨서 선다.
                         ⚠️ 개발 서버에서는 null(dev 디버그 스크립트를 CSP가 막는다 — CSP를 넓히지 않는다)
-  public-shell/         공개 셸(`/` · `/privacy` · `/docs/*`) — PublicShell({ cta, current, bare }) · header · footer · scroller. 헤더 40 · 패널 ·
+  public-shell/         공개 셸(`/` · `/privacy` · `/docs/*` · `/changelog`) — PublicShell({ cta, current, bare }) · header · footer · scroller. 헤더 40 · 패널 ·
                         푸터 40, 루트 h-svh min-w-[1280px] overflow-hidden. ⚠️ "use client"는 scroller 하나이고 lib/를 물지
                         않는다 — 문서가 스크롤되지 않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다.
                         data-public-scroller가 랜딩 스테이지·공개 문서 목차의 스크롤 대상 표식이다. 해시가 tabindex 든 헤딩을
@@ -210,6 +212,9 @@ components/
                         code-block(클라이언트 — Copy + visually-hidden live region) · nav-link(클라이언트 — usePathname 정확 일치) ·
                         legacy-hash(클라이언트 — 옛 /docs#id → router.replace, 표는 서버가 넘긴다) · requested-path(404 주소) ·
                         classes.ts(서버·클라이언트가 같이 쓰는 클래스 — "use client" 모듈에 두면 값이 아니라 참조가 온다)
+  changelog/            `/changelog` 조각 — release-entry(서버 — 항목 하나: 자기 링크 버전 h2 · utcDay · View on GitHub) ·
+                        release-markdown(서버 — GitHub 원문 렌더러. ⚠️ GuideMarkdown을 재사용하지 않는다 — 원고 전용 전제를 든다.
+                        rehype-raw 없음 · urlTransform 기본값 · 이미지는 링크로. 원고와 같은 급은 docs/classes.ts 상수로만 공유한다)
   public-doc-toc.tsx · public-doc-table.tsx
                         두 공개 문서가 한 벌씩 쓰는 목차 Toc(클라이언트 잎 — [data-public-scroller] 구독 → rAF →
                         lib/public-doc/toc의 currentSection, 클릭은 scrollTo(top − 48) + 절 h2로 포커스)와 표
@@ -256,12 +261,11 @@ components/
                         살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다
   onboarding/modal.tsx  components/ui/modal.tsx를 그대로 재수출한다 — 호출부를 안 건드리려는 한 줄이다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
-                        sources-archived · github-mark 일곱.
+                        sources-archived 여섯.
                         목록 소유자가 선택·쓰기 결과를 유지. 로딩/거부/장애를 구별하고 쓰기는 기존 Action 경계를 따른다.
                         sources-archived는 보관 프로젝트의 안내 한 장이고 목록·상세를 아예 열지 않는다
-                        (판정이 조회 **전에** 선다). ⚠️ github-mark는 **이 리포의 유일한 브랜드 마크다** —
-                        `lucide-react` 1.37이 브랜드 아이콘을 통째로 빼서 0.462의 path를 손으로 들고 있다.
-                        늘리지 말고 다른 자리가 생기면 여기서 가져다 쓴다
+                        (판정이 조회 **전에** 선다). GitHub 글리프는 여기 없다 — 리포 전체가 signin/brand-icons의
+                        GithubIcon 하나를 쓴다(2026-09-28 — 옛 lucide 외곽선 사본을 지웠다)
   settings/             general-card · repository-card/repository-form ·
                         ci-card · archive-card · push-token-panel. 독립 add-surface.tsx는 모달 전환 뒤
                         삭제했고, push-token-panel은 소비자가 ci-card 하나뿐이라 onboarding/에서 옮겼다.
@@ -467,7 +471,7 @@ lib/
                         · disclosure(sectionGaps — 등재 ↔ 본문의 절) · doc-text(docText·docDigest — 본문 텍스트·해시,
                         node:crypto라 테스트 전용). 실물 대조는 __tests__/policy-gate.test.tsx(ARCHITECTURE §6.035)
   invitation-email/     초대 메일(PRODUCT §4.1 · ARCHITECTURE §6.02). 순수 판정 — recipients(다중 입력·행별 역할·정규화 중복 거부) ·
-                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html — 템플릿은 template.ts, Claude Design `email/invite.html`이 정본, 로고는 public/email/logo@2x.png 고정 URL) ·
+                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html 프로젝트 카드 — 템플릿·카드 조각 두 벌은 template.ts이고 코드가 정본(첫 시안은 대조 기준이 아니다), 사용자 값 1회 치환, 이름은 60 grapheme 자르기 → 이스케이프, 썸네일은 planProjectImageDelete의 키로 mal-moi.com/api/images/ 고정 URL, 폴백 톤은 TONE_HEX, 로고·Box는 public/email/ 고정 URL) ·
                         config(env 맵 → ready/unavailable, origin을 VERCEL_ENV와 대조) · result(batch 응답 → 요청 단위
                         accepted/rejected/unknown) · limits(상수, 잎). 껍데기(server-only) — issue(Project 잠금 안 발급·재발급,
                         메일을 안 보낸다 — 재발급은 옛 링크의 조건부 닫기 count=1이 선행조건) · send(commit 뒤 Resend batch 한 번,
@@ -568,6 +572,10 @@ lib/
                         역방향 스크럽의 조건이라 이전 프레임을 입력으로 받지 않는다. `/`에 무엇을 그릴지는
                         여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다. 공개 셸 헤더의
                         primary(publicCta — 라벨을 사전 키로 준다, 그 모듈이 잎이라서)도 그 파일이다
+  changelog/            `/changelog`의 원문 읽기. parse(parseReleases — Zod 검증 · 앱 태그 v<x.y.z>만 · published_at 내림차순, 같은
+                        시각은 semver 숫자순 · truncated = 거르기 전 100건) · markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog ·
+                        imagesToLinks) · load(server-only 껍데기 — fetch · revalidate 3600 · 3초 타임아웃 · ⚠️ 던지지 않는다, 로그엔 status와
+                        남은 한도만). ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
   public-doc/           공개 문서 목차의 현재 절 판정 — toc(currentSection). ⚠️ 잎(import 0) — 목차 클라이언트가 값으로 읽는다
   guide/                `/docs` 원고의 순수 함수 + 로더. parse(mdast 한 벌 — 게이트·목차·렌더러가 같은 트리) · summary(SUMMARY →
                         내비, slug ↔ 파일) · collect(링크·라벨·이미지 수집, resolveDocLink) · sections(절·표·도입 문단) ·
@@ -581,7 +589,10 @@ lib/
                         production만 허용, 모르면 숨긴다 · sitemapEntries) · json-ld(jsonLdHtml — dangerouslySetInnerHTML의 유일한 입력 ·
                         LANDING_LD · docLd) · llms(llmsIndex · llmsFull — 결정적) · analytics(redactAnalyticsEvent — 추적 경로 허용 목록.
                         ⚠️ 잎, 전 페이지 클라이언트 번들에 든다)
-  links.ts              외부 링크(GitHub 리포 URL)와 푸터 링크 목록 — 랜딩·/signin 푸터가 같은 목록·순서를 읽는다.
+  app-version.ts        ⚠️ 잎. 현재 앱 버전 `x.y.z` — `next.config`의 `env`가 `package.json`의 version을 빌드 때 박은 `APP_VERSION`을 읽는다
+                        (LNB Changelog 배지). `package.json`을 import하지 않는다 — 사이드바(클라이언트)가 의존성 목록까지 싣는다
+  links.ts              외부 링크(GitHub 리포 좌표 GITHUB_REPO 하나에서 리포·Releases·API·releaseTagUrl을 파생)와 푸터 링크 목록 —
+                        공개 셸·/signin 푸터가 같은 목록·순서를 읽는다. ⚠️ 클라이언트 그래프 밖이다(2026-09-28 — 앱 셸 소비자가 사라졌다).
                         ⚠️ 외부 URL을 routes.ts에 넣지 않는 이유가 이 파일이다(죽은 라우트 검사가 앱 경로로 읽는다)
   routes.ts             앱 내부 링크의 단일 출처(잎, import 0). ⚠️ 쿼리는 withQuery를 지나야
                         entry-points의 "쿼리 수신자" 검사에 걸린다 — 문자열 연결은 그 검사를 회피한다
@@ -599,7 +610,7 @@ lib/
   bounded-body.ts       ⚠️ 잎. 외부 진입점 본문을 상한 안에서만 읽는다(`/api/push`·`/api/push/failure`) —
                         선언된 길이는 읽기 전에, chunked는 읽는 도중에 끊는다. json()·text()를 먼저 부르면 다 읽은 뒤다
   cause.ts              ⚠️ 잎. causeMessage — 잡은 값의 메시지. `(cause as Error).message`는 Error 아닌 throw에서 undefined다
-  utc-time.ts           ⚠️ 잎. 절대 시각의 UTC 표기 하나(`2026-09-10 12:00 UTC`) — Logs·Publish가 같이 쓴다
+  utc-time.ts           ⚠️ 잎. 절대 날짜·시각의 UTC 표기 하나(`Sep 27, 2026` · `Sep 27, 2026 16:34 UTC`) — 앱의 절대 날짜가 전부 지난다
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
   env.ts db.ts githash.ts utils.ts relative-time.ts tone.ts
@@ -655,8 +666,8 @@ types/next-auth.d.ts    session.user.id를 싣는 모듈 확장. ⚠️ `login`(
 public/og.png           링크 미리보기 이미지 1장 — 1200×630 PNG(사용자 제공 2400×1260 원본을 축소, 원본은 커밋하지 않는다). ⚠️ 치수는 OG_IMAGE 선언과 같아야 한다(site.test.ts가 IHDR로 잰다). 코드는 lib/seo/site.ts의 OG_IMAGE로 **항상** 싣는다 —
                         파일 규약(app/opengraph-image.png)이 아닌 이유는 얕은 병합이다. 대체 텍스트는 m.seo.ogImageAlt
 public/brand/ flags/ email/
-                        ⚠️ 커밋된 원본이다(fonts/는 반대로 생성물). email/logo@2x.png는 초대 메일이 절대 URL
-                        (INVITATION_EMAIL_LOGO_URL)로 참조한다 — 옮기면 이미 보낸 메일의 로고가 깨진다(middleware matcher 제외). flags 253개는 lib/keys/flag.ts의
+                        ⚠️ 커밋된 원본이다(fonts/는 반대로 생성물). email/logo@2x.png·box@2x.png(썸네일 없는 프로젝트 카드의 흰 Box 글리프, 32×32 투명 —
+                        lucide box의 __iconNode로 만든 산출물, 생성 스크립트는 남기지 않는다)는 초대 메일이 프로덕션 절대 URL로 참조한다 — 옮기면 이미 보낸 메일이 깨진다(middleware matcher 제외). flags 253개는 lib/keys/flag.ts의
                         FLAG_INVENTORY와 정확히 같아야 한다(flag-assets.test.ts가 양방향으로 센다).
                         flags 원본은 country-flag-icons@1.6.20 3x2(MIT) — flags/LICENSE가 그 원문이다
 LICENSE                 MIT. ⚠️ 전문에 문장을 더하지 않는다 — GitHub가 유사도로 판정해 한 줄만 붙여도 인식이 풀린다

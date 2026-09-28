@@ -23,6 +23,9 @@ describe("redactAnalyticsEvent — 거른다", () => {
     "/Docs",
     "/docs/",
     "/privacy/",
+    "/changelog/",
+    "/changelogx",
+    "/changelog/v1.0.1",
     "/docs/..%2Finvite%2Ftok",
     "/docs/a_b",
     "/signin/",
@@ -43,6 +46,8 @@ describe("redactAnalyticsEvent — 통과시키되 쿼리·해시를 벗긴다",
     ["/docs", `${ORIGIN}/docs`],
     ["/docs/setup/create-project", `${ORIGIN}/docs/setup/create-project`],
     ["/privacy#cookies", `${ORIGIN}/privacy`],
+    ["/changelog#v1.0.1", `${ORIGIN}/changelog`],
+    ["/changelog?x=1", `${ORIGIN}/changelog`],
   ])("%s → %s (origin 유지)", (path, expected) => {
     expect(redactAnalyticsEvent(view(path))).toEqual({ type: "pageview", url: expected });
   });

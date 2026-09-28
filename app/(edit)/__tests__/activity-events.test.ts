@@ -166,7 +166,7 @@ describe("멤버 — 넷이 같은 계열로 남는다", () => {
   it("초대는 마스킹 라벨과 역할만 남긴다 — 링크 원문도 해시도 없다", async () => {
     const result = await createInvitations({ slug: "alpha", recipients: [{ email: "New.Person@Example.com", role: "EDITOR" }] });
     expect(result.ok).toBe(true);
-    const token = (hoisted.send.mock.calls.at(-1) as unknown as [unknown, { token: string }[]])[1][0]!.token;
+    const token = (hoisted.send.mock.calls.at(-1) as unknown as [unknown, unknown, { token: string }[]])[2][0]!.token;
 
     expect(db.projectEvents).toHaveLength(1);
     const event = db.projectEvents[0]!;

@@ -18,6 +18,7 @@ import { loadEvent, loadEventActors, loadEvents } from "@/lib/events/query";
 import { coverageBoundaryIndex, groupByDay } from "@/lib/events/view";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
+import { utcDay } from "@/lib/utc-time";
 
 /**
  * 프로젝트 **전체 활동 이력** (logs-rework — 시안 `design_handoff_project_logs`, 아트보드 1a–1l).
@@ -129,9 +130,9 @@ export default async function LogsPage({
                 ⚠️ **경계선이 경계가 드러나는 행 바로 위에 한 번** 선다 (spec §7.1) — 페이지 경계에
                 걸리면 아래 페이지가 들고, 커서가 이미 과거면 그리지 않는다.
               */}
-              <div className="flex items-center gap-2 p-4">
-                <h2 className="text-base font-medium">{group.dayKey}</h2>
-                {group.label !== group.dayKey && <span className="text-muted-foreground text-xs">{group.label}</span>}
+              <div className="flex items-center gap-2 px-4 py-3">
+                <h2 className="text-base font-medium">{group.heading}</h2>
+                {group.label !== null && <span className="text-muted-foreground text-xs">{group.label}</span>}
               </div>
               {group.rows.map((row) => {
                 const showBoundary = index === boundary && project.activityCoverageStartedAt !== null;
@@ -142,7 +143,7 @@ export default async function LogsPage({
                       <div className="flex items-center gap-3 px-4 py-3">
                         <span className="bg-border h-px flex-1" />
                         <span className="text-muted-foreground text-center text-xs text-pretty">
-                          {m.logs.coverage(project.activityCoverageStartedAt!.toISOString().slice(0, 10))}
+                          {m.logs.coverage(utcDay(project.activityCoverageStartedAt!))}
                         </span>
                         <span className="bg-border h-px flex-1" />
                       </div>
@@ -182,7 +183,7 @@ export default async function LogsPage({
             /* ⚠️ **복원 링크는 OWNER에게만** — EDITOR에게 누를 수 없는 것을 보이지 않는다. */
             actions={canPerform(role, "project:settings") ? <ButtonLink href={routes.settings(slug)}>{m.logs.archived.restoreAction}</ButtonLink> : undefined}
           >
-            {m.logs.archived.restoreLine(project.archivedAt.toISOString().slice(0, 10))}
+            {m.logs.archived.restoreLine(utcDay(project.archivedAt))}
           </Alert>
         )}
       </PanelBody>

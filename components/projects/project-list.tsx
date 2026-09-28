@@ -17,7 +17,7 @@ import { EmptyProjects, NoProjectsMatch } from "@/components/projects/empty-proj
 import { LocaleMeter } from "@/components/locale-meter";
 import { ProjectSearch, useProjectQuery } from "@/components/projects/search-input";
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
-import { GithubMark } from "@/components/sources/github-mark";
+import { GithubIcon } from "@/components/signin/brand-icons";
 import { NewProjectButton } from "@/components/projects/new-project-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
@@ -291,12 +291,12 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
 
             ⚠️ **리포가 링크가 아니다** — 행 전체가 이미 `<a>`라 중첩할 수 없다.
 
-            ⚠️ **리포 앞에 `GithubMark` 14가 선다** (2026-09-25 사용자 — Vercel 목록처럼). 이 리포의 유일한 브랜드 마크이고
+            ⚠️ **리포 앞에 GitHub 로고 14가 선다** (2026-09-25 사용자 — Vercel 목록처럼). 글리프는 리포 전체가 쓰는 `GithubIcon` 하나이고
             Sources 머리와 같은 크기다. 색은 상속이라 보관 행이면 함께 물러난다. 말줄임은 안쪽 글자 span이 든다 —
             바깥이 `flex`라 `truncate`를 거기 두면 마크까지 잘리는 대신 줄임표가 안 선다.
           */}
           <span className={cn("flex min-w-0 items-center gap-1.5 text-sm", status === "archived" ? "text-neutral-400" : "text-muted-foreground")}>
-            <GithubMark className="size-3.5 shrink-0" />
+            <GithubIcon className="size-3.5 shrink-0" />
             <span className="truncate">
               {`${row.repoOwner}/${row.repoName}`}
               {" · "}

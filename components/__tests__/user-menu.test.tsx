@@ -5,7 +5,6 @@ import { expect, it, vi } from "vitest";
 
 import { UserMenu } from "@/components/shell/user-menu";
 import { m } from "@/lib/i18n";
-import { GITHUB_RELEASES_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 import { navWorkItems } from "@/lib/shell/nav";
 
@@ -13,7 +12,7 @@ import { render } from "./helpers/dom";
 
 /**
  * **헤더 사용자 메뉴** (2026-09-27 사용자) — 항목이 필터 메뉴와 같은 `DropdownMenuItem` 모양이고, 순서가
- * `Projects · New project · Account | Release notes · Docs · Privacy Policy | Sign out`이다. LNB와 겹치는 항목은 의도다.
+ * `Projects · New project · Account | Changelog · Docs · Privacy Policy | Sign out`이다. LNB와 겹치는 항목은 의도다.
  */
 async function open() {
   await render(<UserMenu name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} />);
@@ -37,7 +36,7 @@ it("머리 뒤 항목 순서와 구분선이 사용자가 정한 그대로다", 
     m.common.nav.newProject,
     m.common.nav.account,
     "---",
-    m.common.nav.releaseNotes,
+    m.changelog.title,
     m.publicDocs.docs.title,
     m.publicDocs.privacy.title,
     "---",
@@ -45,20 +44,18 @@ it("머리 뒤 항목 순서와 구분선이 사용자가 정한 그대로다", 
   ]);
 });
 
-it("내부 항목은 앱 라우트를, Release notes는 GitHub Releases를 새 탭으로 연다", async () => {
+it("항목이 전부 앱 라우트이고 새 탭이 없다 — Changelog도 앱 안 `/changelog`다", async () => {
   const menu = await open();
   expect(item(menu, m.common.nav.projects).getAttribute("href")).toBe(routes.projects());
   expect(item(menu, m.common.nav.newProject).getAttribute("href")).toBe(routes.newProject());
   expect(item(menu, m.common.nav.account).getAttribute("href")).toBe(routes.account());
   expect(item(menu, m.publicDocs.docs.title).getAttribute("href")).toBe(routes.docs());
   expect(item(menu, m.publicDocs.privacy.title).getAttribute("href")).toBe(routes.privacy());
-  const release = item(menu, m.common.nav.releaseNotes);
-  expect(release.getAttribute("href")).toBe(GITHUB_RELEASES_URL);
-  expect(release.getAttribute("target")).toBe("_blank");
-  expect(release.getAttribute("rel")).toBe("noreferrer");
+  const release = item(menu, m.changelog.title);
+  expect(release.getAttribute("href")).toBe(routes.changelog());
   // 아이콘은 사이드바 하단의 같은 항목과 같은 `Compass`다 (2026-09-27 사용자).
   expect(release.querySelector("svg")?.getAttribute("class")).toContain("lucide-compass");
-  for (const label of [m.common.nav.projects, m.common.nav.account, m.publicDocs.docs.title, m.publicDocs.privacy.title]) {
+  for (const label of [m.common.nav.projects, m.common.nav.account, m.changelog.title, m.publicDocs.docs.title, m.publicDocs.privacy.title]) {
     expect(item(menu, label).hasAttribute("target")).toBe(false);
   }
 });

@@ -6,5 +6,9 @@
 /** 본문 링크 — 내부든 외부든 파랑 · 밑줄 없음 · 포커스 링 셋(DESIGN §6.3 · §7). */
 export const DOC_LINK = "text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
+/** 본문 문단 · 목록 — 원고 렌더러와 `/changelog` 본문 렌더러가 같은 급을 쓴다. */
+export const PROSE = "text-prose mt-4 leading-[1.75] text-pretty";
+export const LIST = "text-prose mt-4 space-y-2 pl-[22px] leading-[1.75]";
+
 /** 인라인 코드 — mono 0.875em · `--muted` · radius 6 · 2/6(시안 1b, #119). */
 export const INLINE_CODE = "bg-muted rounded-[6px] px-1.5 py-0.5 font-mono text-[0.875em]";

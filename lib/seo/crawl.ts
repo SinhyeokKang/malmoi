@@ -22,7 +22,7 @@ export function robotsFor(vercelEnv: string | undefined): MetadataRoute.Robots {
 }
 
 /**
- * `/sitemap.xml` — `/` · docs 전부(SUMMARY 순서) · `/privacy`. `/signin`은 noindex라 넣지 않는다.
+ * `/sitemap.xml` — `/` · docs 전부(SUMMARY 순서) · `/changelog` · `/privacy`. `/signin`은 noindex라 넣지 않는다.
  *
  * ⚠️ **`lastModified`를 싣지 않는다** — 빌드 시각을 넣으면 매 배포가 "전부 바뀜"이 되어 신호가 무의미해진다.
  */
@@ -30,6 +30,7 @@ export function sitemapEntries(flat: readonly FlatNavItem[]): MetadataRoute.Site
   return [
     { url: `${SITE_ORIGIN}/` },
     ...flat.map((item) => ({ url: `${SITE_ORIGIN}${docHref(item.slug)}` })),
+    { url: `${SITE_ORIGIN}${routes.changelog()}` },
     { url: `${SITE_ORIGIN}${routes.privacy()}` },
   ];
 }

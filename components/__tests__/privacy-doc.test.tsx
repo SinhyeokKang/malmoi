@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { PrivacyDoc } from "@/components/privacy/privacy-doc";
 import { m } from "@/lib/i18n";
+import { utcDay } from "@/lib/utc-time";
 
 import { find, render } from "./helpers/dom";
 
@@ -44,7 +45,10 @@ describe("PrivacyDoc — 구조", () => {
     const { container } = await doc();
     const time = find(container, "time");
     expect(time.getAttribute("datetime")).toBe(privacy.effectiveDate);
-    expect(time.parentElement?.textContent).toBe(`${m.publicDocs.effectiveDate} ${privacy.effectiveDate}`);
+    // 보이는 형은 `lib/utc-time.ts`의 날짜 형이고, `dateTime`·사전 값은 ISO 그대로다(`policy-gate`가 그 값을 본다).
+    expect(time.textContent).toBe(utcDay(new Date(privacy.effectiveDate)));
+    expect(time.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
+    expect(time.parentElement?.textContent).toBe(`${m.publicDocs.effectiveDate} ${utcDay(new Date(privacy.effectiveDate))}`);
   });
 
   /** POSTMORTEM 2026-09-19 — 가로 스크롤은 표 자기 컨테이너가 든다. 키보드로 닿으려면 region·tabIndex·이름 셋. */

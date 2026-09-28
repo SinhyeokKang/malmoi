@@ -9,19 +9,31 @@ import { routes } from "@/lib/routes";
  * ⚠️ **리포가 public이어야 이 링크가 산다** — private이면 로그아웃 방문자에게 404다
  * (2026-09-18 public 전환).
  */
-export const GITHUB_REPO_URL = "https://github.com/SinhyeokKang/malmoi";
+export const GITHUB_REPO = "SinhyeokKang/malmoi";
 
-/** 릴리스 노트 — `/merge`가 머지마다 만드는 GitHub Release 목록이다. 사용자 메뉴와 사이드바 하단이 같이 읽는다. */
+export const GITHUB_REPO_URL = `https://github.com/${GITHUB_REPO}`;
+
+/** 릴리스 노트 원문 — `/merge`가 머지마다 만드는 GitHub Release 목록이다. `/changelog`의 안내 문장들이 가리킨다. */
 export const GITHUB_RELEASES_URL = `${GITHUB_REPO_URL}/releases`;
+
+/** `/changelog`가 읽는 원문 — **토큰 없이** 부른다(리포가 public이라는 위 전제와 같다). */
+export const GITHUB_RELEASES_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
+
+/** 그 판의 Release 페이지 — compare가 없는 첫 판에도 선다. */
+export function releaseTagUrl(tag: string): string {
+  return `${GITHUB_RELEASES_URL}/tag/${tag}`;
+}
 
 export type FooterLink = { href: string; label: string; external: boolean };
 
 /**
- * 셸 밖 화면의 푸터 링크 — **`/signin`과 랜딩이 이 목록 하나를 읽는다** (DESIGN §6.615). 사본이 둘이면
- * 순서가 갈린다 — 시안의 랜딩 푸터가 이미 `Docs · Privacy Policy`로 어긋나 있었다(2026-09-26 사용자가 이쪽 순서로 판정).
+ * 셸 밖 화면의 푸터 링크 — **공개 셸(`PublicFooter`)과 `/signin`·초대·계정 병합(`AuthLayout`)이 이 목록 하나를 읽는다**
+ * (DESIGN §6.615). 사본이 둘이면 순서가 갈린다 — 시안의 랜딩 푸터가 이미 `Docs · Privacy Policy`로 어긋나 있었다(2026-09-26
+ * 사용자가 이쪽 순서로 판정). `Changelog`는 2026-09-28에 끝에 붙었다 — 앞 셋의 순서는 건드리지 않는다.
  */
 export const FOOTER_LINKS: readonly FooterLink[] = [
   { href: GITHUB_REPO_URL, label: m.signIn.footer.github, external: true },
   { href: routes.privacy(), label: m.signIn.footer.privacy, external: false },
   { href: routes.docs(), label: m.signIn.footer.docs, external: false },
+  { href: routes.changelog(), label: m.changelog.title, external: false },
 ];

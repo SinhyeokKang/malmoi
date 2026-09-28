@@ -41,6 +41,6 @@ it("보관 일시가 `<time dateTime>` 안의 UTC 한 줄이다", async () => {
   const { container } = await render(await page());
   const stamp = container.querySelector("time");
   expect(stamp?.getAttribute("dateTime")).toBe(new Date("2026-09-20").toISOString());
-  expect(stamp?.textContent).toBe("2026-09-20 00:00 UTC");
-  expect(container.textContent).toContain("Archived on 2026-09-20 00:00 UTC");
+  expect(stamp?.textContent).toBe("Sep 20, 2026 00:00 UTC");
+  expect(container.textContent).toContain("Archived on Sep 20, 2026 00:00 UTC");
 });

@@ -86,7 +86,7 @@ type PanelWidth = keyof typeof CONTENT_MAX;
  * ⚠️ **선은 조건부가 아니다.** 스크롤할 때만 나타나는 선은 "무언가 숨어 있다"는 신호인데, 여기서는
  * 구조가 이미 그것을 말한다.
  *
- * ⚠️ **여백 16의 전제는 "제목 줄 하나"다** (POSTMORTEM 2026-09-14 — 프리미티브의 여백이 그 슬롯을
+ * ⚠️ **머리 여백(상하 12 · 좌우 16 — 2026-09-28 사용자, 옛 전방향 16)의 전제는 "제목 줄 하나"다** (POSTMORTEM 2026-09-14 — 프리미티브의 여백이 그 슬롯을
  * 안 쓰는 소비자에게만 깨졌다). 설명 한 줄이 붙는 화면 셋(`logs`·`locales`·`surfaces/new`)은 머리가
  * 세로로 늘어야 하므로 **그 조건을 주석이 아니라 슬롯으로 든다** — 크기(13)도 여기서 정해지고,
  * 호출부에 맡겼을 때 그것이 12와 14 두 벌로 갈려 있었다.
@@ -102,7 +102,7 @@ export function PanelHeader({
 }: ComponentPropsWithoutRef<"div"> & { width?: PanelWidth; description?: ReactNode }) {
   return (
     <div className="border-border shrink-0 border-b" {...props}>
-      <div className={cn(CONTENT_MAX[width], "flex flex-col gap-3 p-4", className)}>
+      <div className={cn(CONTENT_MAX[width], "flex flex-col gap-3 px-4 py-3", className)}>
         {children}
         {description !== undefined && <p className="text-muted-foreground text-xs">{description}</p>}
       </div>

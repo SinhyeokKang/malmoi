@@ -15,9 +15,10 @@ const config: Extract<InvitationEmailConfig, { status: "ready" }> = {
   from: "malmoi <invite@notify.mal-moi.com>",
   origin: "https://mal-moi.com",
 };
+const project = { name: "Acme Web", image: null };
 const messages = [
-  { to: "a@x.com", token: "tok_a" },
-  { to: "b@x.com", token: "tok_b" },
+  { to: "a@x.com", token: "tok_a", role: "EDITOR" as const },
+  { to: "b@x.com", token: "tok_b", role: "OWNER" as const },
 ];
 
 const fetchMock = vi.fn();
@@ -50,7 +51,7 @@ function lastRequest(): { url: string; init: RequestInit } {
 describe("sendInvitationEmails — 요청 모양", () => {
   it("batch 엔드포인트에 POST 한 번이다", async () => {
     fetchMock.mockResolvedValueOnce(ok(2));
-    await sendInvitationEmails(config, messages);
+    await sendInvitationEmails(config, project, messages);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(lastRequest().url).toBe("https://api.resend.com/emails/batch");
     expect(lastRequest().init.method).toBe("POST");
@@ -58,18 +59,29 @@ describe("sendInvitationEmails — 요청 모양", () => {
 
   it("본문은 개인별 메시지 배열이다 — 한 메시지에 수신자 한 명, 자기 링크 한 줄", async () => {
     fetchMock.mockResolvedValueOnce(ok(2));
-    await sendInvitationEmails(config, messages);
+    await sendInvitationEmails(config, project, messages);
     expect(JSON.parse(String(lastRequest().init.body))).toEqual([
-      { from: config.from, to: ["a@x.com"], subject: "You're invited to Malmoi", text: "https://mal-moi.com/invite/tok_a", html: expect.stringContaining("https://mal-moi.com/invite/tok_a") },
-      { from: config.from, to: ["b@x.com"], subject: "You're invited to Malmoi", text: "https://mal-moi.com/invite/tok_b", html: expect.stringContaining("https://mal-moi.com/invite/tok_b") },
+      { from: config.from, to: ["a@x.com"], subject: "You're invited to a project on Malmoi", text: "https://mal-moi.com/invite/tok_a", html: expect.stringContaining("https://mal-moi.com/invite/tok_a") },
+      { from: config.from, to: ["b@x.com"], subject: "You're invited to a project on Malmoi", text: "https://mal-moi.com/invite/tok_b", html: expect.stringContaining("https://mal-moi.com/invite/tok_b") },
     ]);
+  });
+
+  it("역할이 섞인 배치에서 메시지마다 자기 역할이 서고 프로젝트 카드는 같다", async () => {
+    fetchMock.mockResolvedValueOnce(ok(2));
+    await sendInvitationEmails(config, project, messages);
+    const [a, b] = JSON.parse(String(lastRequest().init.body)) as { html: string }[];
+    expect(a?.html).toContain(">Editor<");
+    expect(a?.html).not.toContain(">Owner<");
+    expect(b?.html).toContain(">Owner<");
+    expect(b?.html).not.toContain(">Editor<");
+    for (const m of [a, b]) expect(m?.html).toContain(">Acme Web<");
   });
 
   it("Bearer 키와 요청마다 새 UUID 멱등 키를 싣는다", async () => {
     fetchMock.mockResolvedValue(ok(2));
-    await sendInvitationEmails(config, messages);
+    await sendInvitationEmails(config, project, messages);
     const first = new Headers(lastRequest().init.headers);
-    await sendInvitationEmails(config, messages);
+    await sendInvitationEmails(config, project, messages);
     const second = new Headers(lastRequest().init.headers);
     expect(first.get("authorization")).toBe("Bearer re_secret_key");
     expect(first.get("content-type")).toBe("application/json");
@@ -79,7 +91,7 @@ describe("sendInvitationEmails — 요청 모양", () => {
 
   it("timeout 신호를 건다", async () => {
     fetchMock.mockResolvedValueOnce(ok(2));
-    await sendInvitationEmails(config, messages);
+    await sendInvitationEmails(config, project, messages);
     expect(lastRequest().init.signal).toBeInstanceOf(AbortSignal);
   });
 });
@@ -87,39 +99,39 @@ describe("sendInvitationEmails — 요청 모양", () => {
 describe("sendInvitationEmails — 결과 판정 (던지지 않는다)", () => {
   it("전체 id 목록이면 accepted다", async () => {
     fetchMock.mockResolvedValueOnce(ok(2));
-    await expect(sendInvitationEmails(config, messages)).resolves.toBe("accepted");
+    await expect(sendInvitationEmails(config, project, messages)).resolves.toBe("accepted");
   });
 
   it("명시적 거부(422)는 rejected다", async () => {
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ name: "validation_error", message: "a@x.com is bad" }), { status: 422 }));
-    await expect(sendInvitationEmails(config, messages)).resolves.toBe("rejected");
+    await expect(sendInvitationEmails(config, project, messages)).resolves.toBe("rejected");
   });
 
   it("5xx는 unknown이다", async () => {
     fetchMock.mockResolvedValueOnce(new Response("upstream", { status: 502 }));
-    await expect(sendInvitationEmails(config, messages)).resolves.toBe("unknown");
+    await expect(sendInvitationEmails(config, project, messages)).resolves.toBe("unknown");
   });
 
   it("id가 모자란 2xx는 unknown이다", async () => {
     fetchMock.mockResolvedValueOnce(ok(1));
-    await expect(sendInvitationEmails(config, messages)).resolves.toBe("unknown");
+    await expect(sendInvitationEmails(config, project, messages)).resolves.toBe("unknown");
   });
 
   it("JSON이 아닌 2xx 본문은 unknown이다", async () => {
     fetchMock.mockResolvedValueOnce(new Response("<html>", { status: 200 }));
-    await expect(sendInvitationEmails(config, messages)).resolves.toBe("unknown");
+    await expect(sendInvitationEmails(config, project, messages)).resolves.toBe("unknown");
   });
 
   it("timeout·네트워크 오류는 unknown이다", async () => {
     fetchMock.mockRejectedValueOnce(new DOMException("The operation timed out.", "TimeoutError"));
-    await expect(sendInvitationEmails(config, messages)).resolves.toBe("unknown");
+    await expect(sendInvitationEmails(config, project, messages)).resolves.toBe("unknown");
     fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
-    await expect(sendInvitationEmails(config, messages)).resolves.toBe("unknown");
+    await expect(sendInvitationEmails(config, project, messages)).resolves.toBe("unknown");
   });
 
   it("자동 재시도하지 않는다", async () => {
     fetchMock.mockResolvedValueOnce(new Response("", { status: 503 }));
-    await sendInvitationEmails(config, messages);
+    await sendInvitationEmails(config, project, messages);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
@@ -131,7 +143,7 @@ describe("sendInvitationEmails — 로그에 원문이 없다", () => {
     ["throw", () => Promise.reject(new TypeError("fetch failed for a@x.com tok_a"))],
   ])("%s 경로의 로그에 주소·토큰·키·공급자 원문이 없다", async (_name, response) => {
     fetchMock.mockImplementationOnce(response);
-    await sendInvitationEmails(config, messages);
+    await sendInvitationEmails(config, project, messages);
     const all = logs.join("\n");
     for (const secret of ["a@x.com", "b@x.com", "tok_a", "tok_b", "re_secret_key", "https://mal-moi.com/invite"]) {
       expect(all).not.toContain(secret);
@@ -140,7 +152,7 @@ describe("sendInvitationEmails — 로그에 원문이 없다", () => {
 
   it("실패는 한 줄 남긴다 — 원인을 볼 곳이 서버 로그뿐이다", async () => {
     fetchMock.mockResolvedValueOnce(new Response("", { status: 500 }));
-    await sendInvitationEmails(config, messages);
+    await sendInvitationEmails(config, project, messages);
     expect(logs.join("\n")).toMatch(/invite-email/);
   });
 });

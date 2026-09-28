@@ -34,9 +34,9 @@ describe("`/sitemap.xml`", () => {
     expect(mod.dynamic).toBe("force-static");
   });
 
-  it("SUMMARY 전부 + `/` + `/privacy`", async () => {
+  it("SUMMARY 전부 + `/` + `/changelog` + `/privacy`", async () => {
     const { default: sitemap } = await import("@/app/sitemap");
-    expect(sitemap()).toHaveLength(flattenNav(loadSummary()).length + 2);
+    expect(sitemap()).toHaveLength(flattenNav(loadSummary()).length + 3);
   });
 });
 

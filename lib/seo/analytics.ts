@@ -9,7 +9,7 @@ import type { BeforeSendEvent } from "@vercel/analytics";
  *
  * ⚠️ **잎 모듈이다** — 값 import 0, 타입만(`client-graph.test.ts`의 `CLIENT_LIB_FILES`). `SITE_ORIGIN`·`m`도 물지 않는다.
  */
-const TRACKED = /^(?:\/|\/signin|\/privacy|\/docs(?:\/[A-Za-z0-9-]+)*)$/;
+const TRACKED = /^(?:\/|\/signin|\/privacy|\/changelog|\/docs(?:\/[A-Za-z0-9-]+)*)$/;
 
 export function redactAnalyticsEvent(event: BeforeSendEvent): BeforeSendEvent | null {
   let parsed: URL;

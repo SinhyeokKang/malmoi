@@ -31,12 +31,31 @@ const header = async (ui: Parameters<typeof PanelHeader>[0]) => {
 };
 
 describe("PanelHeader — 여백·선·폭을 프리미티브가 든다", () => {
-  /** 캔버스 넷 모두 머리가 `padding:16`이다. 24와 12가 섞인 비대칭이 여기서 끝난다. */
-  it("안쪽 래퍼가 전방향 16을 든다", async () => {
+  /**
+   * **상하 12 · 좌우 16** (2026-09-28 사용자 — 전 영역 공통, 옛 전방향 16). 좌우는 `PanelBody`의 16과 같아야
+   * 머리와 본문의 왼쪽이 맞는다 — 줄어드는 것은 세로뿐이다.
+   */
+  it("안쪽 래퍼가 상하 12 · 좌우 16을 든다", async () => {
     const outer = await header({ children: <h1>Projects</h1> });
     const inner = find<HTMLElement>(outer, ":scope > div");
-    expect(inner.classList.contains("p-4")).toBe(true);
-    for (const cls of [...inner.classList]) expect(cls).not.toMatch(/^(px|py|pt|pb|pl|pr)-/);
+    expect(inner.classList.contains("px-4")).toBe(true);
+    expect(inner.classList.contains("py-3")).toBe(true);
+    for (const cls of [...inner.classList]) expect(cls).not.toMatch(/^(p|pt|pb|pl|pr)-/);
+  });
+
+  /**
+   * ⚠️ **번역 작업 화면(과 그 골격·랜딩 목업)은 프리미티브를 안 쓰고 같은 머리를 손으로 적는다** (세 패널이 본문 전체를 든다 — DESIGN §6.1a).
+   * 규격이 바뀌면 그 둘이 옛 값에 남는다 — 실물과 골격 둘 다 소스에서 센다.
+   */
+  it.each([
+    "components/translations/workspace/workspace.tsx",
+    "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/loading.tsx",
+    // 랜딩 목업은 제품 화면 그대로다(DESIGN 목업 씬 구조) — 머리가 옛 값에 남으면 랜딩만 실물과 갈린다.
+    "components/landing/mockup/translations.tsx",
+  ])("%s의 머리가 같은 여백이다", (path) => {
+    const source = readFileSync(join(ROOT, path), "utf8");
+    const heads = [...source.matchAll(/className="border-border flex shrink-0 flex-col gap-3 border-b ([^"]*)"/g)].map((match) => match[1]);
+    expect(heads).toEqual(["px-4 py-3"]);
   });
 
   /**
@@ -97,7 +116,7 @@ describe("PanelHeader — 여백·선·폭을 프리미티브가 든다", () => 
   });
 
   /**
-   * ⚠️ **여백 16의 전제는 "제목 줄 하나"다.** 설명이 붙으면 세로로 늘어야 하므로 래퍼가 열이고
+   * ⚠️ **머리 여백(상하 12)의 전제는 "제목 줄 하나"다.** 설명이 붙으면 세로로 늘어야 하므로 래퍼가 열이고
    * 간격이 12다 — 그 조건을 주석이 아니라 코드가 든다 (POSTMORTEM 2026-09-14).
    */
   it("래퍼가 열이고 간격 12다 — 설명·거부 Alert이 제목 줄 아래로 쌓인다", async () => {

@@ -95,6 +95,8 @@ const KNOWN_OFFENDERS = ["ts-morph", "octokit", "@prisma/client", "node:fs", "se
  */
 const CLIENT_LIB_FILES = [
   "lib/account/plan.ts",
+  // LNB Changelog 배지가 읽는 버전 문자열 — import 0인 잎이다. `package.json`은 `next.config`의 `env`가 빌드 때 문자열로 박는다.
+  "lib/app-version.ts",
   "lib/auth/email.ts",
   "lib/auth/member-identity.ts",
   "lib/auth/membership.ts",
@@ -122,8 +124,6 @@ const CLIENT_LIB_FILES = [
   "lib/keys/flag.ts",
   // 랜딩 스테이지가 스크롤 위치마다 값으로 읽는 수학 — import 0인 잎이다(아래 잎 검사).
   "lib/landing/stage.ts",
-  // 외부 링크 상수(GitHub·Releases) — 사용자 메뉴와 사이드바 하단이 읽는다. `i18n`·`routes`만 문다.
-  "lib/links.ts",
   // LNB 프로젝트 스위처의 목록 필터 — import 0인 잎이다.
   "lib/shell/switcher.ts",
   "lib/login-link/message.ts",
@@ -422,6 +422,8 @@ describe("클라이언트 그래프", () => {
       // 언어 이름은 이미 잎이다(import 0) — 온보딩 ③이 같은 함수를 쓴다.
       "lib/onboarding/language-name.ts",
       "lib/projects/import-failure.ts",
+      // 날짜 카드 머리의 날짜 형 — import 0인 잎이다(`publish-button.tsx`가 클라이언트에서 같은 파일을 읽는다).
+      "lib/utc-time.ts",
       "messages/en.tsx",
     ]);
     expect([...view.packages].filter((name) => !allowed(name))).toEqual([]);

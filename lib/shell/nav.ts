@@ -4,7 +4,7 @@ import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages,
 
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
-import { GITHUB_RELEASES_URL } from "@/lib/links";
+import { appVersion } from "@/lib/app-version";
 import { routes } from "@/lib/routes";
 
 /**
@@ -16,7 +16,7 @@ import { routes } from "@/lib/routes";
  * 구역 라벨이 **이름 그대로**이며(`Your work` → 사용자 이름), 프로젝트 축 순서에서 **Locales가
  * Translations보다 앞**이고, 하단에 **Help**가 붙었다.
  * ⚠️ **그 뒤 사용자 결정이 시안을 넘었다** (2026-09-27): 사용자 축은 `Projects · New project · Account` 셋이고
- * (`navWorkItems` — 헤더 사용자 메뉴의 첫 묶음도 이 목록이다), 하단은 `Release notes · Docs`다.
+ * (`navWorkItems` — 헤더 사용자 메뉴의 첫 묶음도 이 목록이다), 하단은 `Changelog · Docs`다(2026-09-28 — GitHub Releases 외부 링크였던 첫 항목이 앱 안 `/changelog`가 됐다).
  */
 
 /**
@@ -120,8 +120,6 @@ export type NavItem = {
   href: string;
   /** `NavSection.exact`와 같은 뜻 — 활성 판정이 정확히 일치인가. */
   exact: boolean;
-  /** 앱 밖(GitHub)으로 나가는 링크 — 새 탭으로 연다. 외부 링크 글리프는 달지 않는다(DESIGN §6.3). */
-  external?: boolean;
   /**
    * 우측 개수 배지 (8-3, 시안).
    *
@@ -129,7 +127,7 @@ export type NavItem = {
    * 관계 `_count`다 — **둘 다 왕복이 0이다.** ⚠️ 셋은 2026-09-27에 열렸다(사용자 — PRODUCT §7.7 결정 5를 뒤집었다).
    * 거절 근거가 "매 페이지 왕복"이었고, 셸이 이미 부르는 조회에 얹으면 그 근거가 서지 않는다.
    */
-  badge?: number;
+  badge?: number | string;
 };
 
 /**
@@ -233,16 +231,17 @@ function translationsHref(project: NavProject): string {
 }
 
 /**
- * 사이드바 하단의 전역 항목. **라우트가 아니라 "앱을 벗어나는 것"들이라 구역 밖이다.**
+ * 사이드바 하단의 전역 항목. **프로젝트·사용자 축이 아니라 공개 셸 페이지들이라 구역 밖이다.**
  *
- * ⚠️ **Release notes → Docs 둘이다** (2026-09-27 사용자). Sign out은 여기서 빠져 사용자 메뉴에만 있다.
+ * ⚠️ **Changelog → Docs 둘이다** (2026-09-27 사용자 — Changelog는 2026-09-28에 GitHub Releases 외부 링크에서 `/changelog`로). Sign out은 여기서 빠져 사용자 메뉴에만 있다.
  * ⚠️ **아이콘이 사용자 메뉴의 같은 항목과 같다**(`Compass` · `CircleHelp`) — 같은 곳을 두 글리프로 가리키지 않는다.
  * ⚠️ **Docs가 `/docs`(개요)를 가리킨다** (8-3 사용자 결정). 셸은 역할을 읽지 않는다 — 개발자·편집자 갈래는 개요가 준다.
  */
 export function navFooterItems(): NavItem[] {
-  // `exact`는 효과가 없다 — 사이드바는 앱 셸(`app/(edit)/layout.tsx`)에만 서고 `/docs/*`는 공개 셸이라 둘이 한 화면에 안 선다.
+  // `exact`는 효과가 없다 — 사이드바는 앱 셸(`app/(edit)/layout.tsx`)에만 서고 `/docs/*`·`/changelog`는 공개 셸이라 둘이 한 화면에 안 선다.
   return [
-    { key: "releaseNotes", label: m.common.nav.releaseNotes, icon: Compass, href: GITHUB_RELEASES_URL, exact: true, external: true },
+    // 오른쪽 배지는 현재 앱 버전 `x.y.z`다 (2026-09-28 사용자 — 개수 배지와 같은 자리·모양). 비면 싣지 않는다.
+    { key: "changelog", label: m.changelog.title, icon: Compass, href: routes.changelog(), exact: true, ...(appVersion() === "" ? {} : { badge: appVersion() }) },
     { key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: true },
   ];
 }

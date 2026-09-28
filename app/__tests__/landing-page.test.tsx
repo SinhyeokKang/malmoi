@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
+import { GithubIcon } from "@/components/signin/brand-icons";
 import type { SessionRead } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
 import { GITHUB_REPO_URL } from "@/lib/links";
@@ -100,7 +101,7 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
 
   /**
    * **CTA 버튼마다 선행 아이콘 하나** (2026-09-27 사용자, DESIGN §6.615) — Docs는 앱 셸 `Docs` 항목과 같은 글리프 · Get started `LogIn` · GitHub는
-   * 리포의 유일한 브랜드 마크(`components/sources/github-mark.tsx` — lucide 1.37에 `github`가 없다). 전부 장식이라 `aria-hidden`이고,
+   * 리포의 유일한 GitHub 글리프 `GithubIcon`(`components/signin/brand-icons.tsx` — lucide 1.37에 `github`가 없다). 전부 장식이라 `aria-hidden`이고,
    * 크기는 `Button`의 svg 슬롯(16)이 정한다 — 첫 자식이 svg여야 "선행"이다.
    */
   it("CTA 버튼 넷이 선행 아이콘을 `aria-hidden`으로 든다", async () => {
@@ -123,8 +124,8 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     expect(icon(buttons[0])).toBe(expected);
     expect(icon(buttons[1])).toContain("lucide-log-in");
     expect(icon(buttons[3])).toContain("lucide-log-in");
-    // GitHub 마크는 lucide 클래스가 없는 리포 자산이다 — 경로 둘(얼굴 · 꼬리)이 그것을 가린다.
-    expect(buttons[2]?.firstElementChild?.querySelectorAll("path")).toHaveLength(2);
+    // GitHub 글리프는 lucide 클래스가 없는 리포 자산이다 — `GithubIcon`과 마크업이 같은지로 가린다.
+    expect(buttons[2]?.firstElementChild?.outerHTML).toBe(renderToStaticMarkup(createElement(GithubIcon)));
   });
 
   it("목업 프레임은 `aria-hidden`이고 캡션 다섯은 숨은 `<ol>`이 든다", async () => {

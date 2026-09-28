@@ -122,7 +122,8 @@ describe("공개 셸 — 헤더", () => {
     expect(logo?.getAttribute("href")).toBe(routes.home());
   });
 
-  it("Main 내비가 Home · Docs · GitHub 순이고 Home만 aria-current다", async () => {
+  /** 헤더 내비는 앱 안 목적지만 든다 — GitHub는 푸터 첫 링크와 랜딩 CTA에 남는다(2026-09-28 사용자). */
+  it("Main 내비가 Home · Docs · Changelog 순이고 Home만 aria-current다", async () => {
     const { container } = await shell();
     const nav = container.querySelector(`nav[aria-label="${m.landing.shell.nav}"]`);
     expect(m.landing.shell.nav).toBe("Main");
@@ -130,10 +131,10 @@ describe("공개 셸 — 헤더", () => {
     expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
       [m.landing.shell.home, routes.home()],
       [m.landing.shell.docs, routes.docs()],
-      [m.landing.shell.github, GITHUB_REPO_URL],
+      [m.changelog.title, routes.changelog()],
     ]);
     expect(links.map((a) => a.getAttribute("aria-current"))).toEqual(["page", null, null]);
-    expect(links[2]?.getAttribute("target")).toBe("_blank");
+    expect(links.map((a) => a.getAttribute("target"))).toEqual([null, null, null]);
   });
 
   it("CTA는 Get started 하나이고 로그인으로 간다", async () => {
@@ -148,6 +149,12 @@ describe("공개 셸 — 헤더", () => {
     const { container } = await render(h(PublicShell, { cta: publicCta("none"), current: "docs", children: h("p", null, "body") }));
     const links = [...container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] a`)];
     expect(links.map((a) => a.getAttribute("aria-current"))).toEqual([null, "page", null]);
+  });
+
+  it("`/changelog`는 Changelog만 aria-current다", async () => {
+    const { container } = await render(h(PublicShell, { cta: publicCta("none"), current: "changelog", children: h("p", null, "body") }));
+    const links = [...container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] a`)];
+    expect(links.map((a) => a.getAttribute("aria-current"))).toEqual([null, null, "page"]);
   });
 
   /** `/privacy`는 헤더 링크 어디에도 없는 화면이다 — current를 안 넘기면 어느 링크도 current가 아니다. */
@@ -177,8 +184,8 @@ describe("공개 셸 — 헤더", () => {
 });
 
 /**
- * ⚠️ **외부 링크를 그리는 자리가 셋이다**(랜딩 헤더 · 공개 셸 푸터 · `/signin`) — 목록 동등성 검사는 href만 보므로
- * 한쪽이 `rel`·`target`을 잃어도 못 잡는다. 셋을 따로 센다(`/signin`은 2026-09-26부터 같은 `PublicFooter`를 그린다).
+ * ⚠️ **외부 링크를 그리는 자리가 둘이다**(공개 셸 푸터 · `/signin` — 헤더의 GitHub는 2026-09-28에 빠졌다) — 목록 동등성 검사는 href만 보므로
+ * 한쪽이 `rel`·`target`을 잃어도 못 잡는다. 둘을 따로 세고, 헤더는 0건을 센다(`/signin`은 2026-09-26부터 같은 `PublicFooter`를 그린다).
  */
 describe("GitHub 링크 — 새 탭 + `noreferrer`", () => {
   const external = (links: Element[]) => {
@@ -188,9 +195,10 @@ describe("GitHub 링크 — 새 탭 + `noreferrer`", () => {
     expect(github[0]?.getAttribute("rel")?.split(/\s+/)).toContain("noreferrer");
   };
 
-  it("랜딩 헤더", async () => {
+  /** 지우지 않고 뒤집었다 — 이 단언이 없으면 헤더에 GitHub가 돌아오는 회귀를 못 잡는다. */
+  it("랜딩 헤더에는 GitHub가 없다", async () => {
     const { container } = await shell();
-    external([...container.querySelectorAll("header a")]);
+    expect([...container.querySelectorAll("header a")].filter((a) => a.getAttribute("href") === GITHUB_REPO_URL)).toHaveLength(0);
   });
 
   it("랜딩 푸터", async () => {
@@ -238,11 +246,12 @@ describe("푸터 링크 — `/signin`과 한 목록", () => {
   const pairs = (root: ParentNode) =>
     [...root.querySelectorAll("footer a")].map((a) => [a.textContent, a.getAttribute("href")]);
 
-  it("순서가 GitHub · Privacy Policy · Docs다", () => {
-    expect(FOOTER_LINKS.map(({ label, href }) => [label, href])).toEqual([
-      [m.signIn.footer.github, GITHUB_REPO_URL],
-      [m.signIn.footer.privacy, routes.privacy()],
-      [m.signIn.footer.docs, routes.docs()],
+  it("순서가 GitHub · Privacy Policy · Docs · Changelog다", () => {
+    expect(FOOTER_LINKS.map(({ label, href, external }) => [label, href, external])).toEqual([
+      [m.signIn.footer.github, GITHUB_REPO_URL, true],
+      [m.signIn.footer.privacy, routes.privacy(), false],
+      [m.signIn.footer.docs, routes.docs(), false],
+      [m.changelog.title, routes.changelog(), false],
     ]);
   });
 

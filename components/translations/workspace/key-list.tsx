@@ -40,7 +40,7 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
   const headingId = useId();
   return (
     <div data-panel="list" aria-busy={busy || undefined} className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex h-[53px] shrink-0 items-center gap-2 px-4">
+      <div className="flex h-[52px] shrink-0 items-center gap-2 px-4">
         {treeButton !== undefined && (
           <Button size="sm" aria-label={m.translations.workspace.tree.open} aria-expanded={treeButton.open} aria-controls={treeButton.open ? treeButton.controls : undefined} onClick={treeButton.onToggle} className="size-7 p-0">
             <PanelLeftOpen className="size-3.5 text-neutral-600" aria-hidden />

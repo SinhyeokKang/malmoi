@@ -31,14 +31,16 @@ const INVITE_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type IssueRecipient = { email: string; role: Role };
-export type IssuedInvitation = { email: string; token: string };
+export type IssuedInvitation = { email: string; token: string; role: Role };
+/** 메일 카드에 싣는 값 — **잠금 뒤 읽은 것이다**(발급 사건과 같은 시점). `image`는 PII가 아닌 공개 Blob URL이다. */
+export type IssuedProject = { name: string; image: string | null };
 type Refusal = Exclude<IssuePlan, { status: "ok" }>;
 
 /** 잠금 뒤 다시 본 인가의 거부 — 발급자가 대기 중 강등·제거됐다. */
 type AccessRefusal = Exclude<LockedAccess, { status: "ok" }>;
-export type IssueOutcome = { status: "issued"; invitations: IssuedInvitation[]; retryAt: Date } | Refusal | AccessRefusal;
+export type IssueOutcome = { status: "issued"; invitations: IssuedInvitation[]; project: IssuedProject; retryAt: Date } | Refusal | AccessRefusal;
 export type ReissueOutcome =
-  | { status: "issued"; invitation: IssuedInvitation; retryAt: Date }
+  | { status: "issued"; invitation: IssuedInvitation; project: IssuedProject; retryAt: Date }
   | { status: "not-found" }
   | { status: "unreadable" }
   | Refusal
@@ -113,7 +115,17 @@ async function writeInvitation(tx: Tx, input: { projectId: string; userId: strin
     scope: "project-wide",
     payload: { kind: "MEMBER", targetLabel: maskEmail(recipient.email), role: { before: null, after: recipient.role } },
   });
-  return { email: recipient.email, token };
+  return { email: recipient.email, token, role: recipient.role };
+}
+
+/**
+ * ⚠️ **`lockProjectAccess` 뒤에만 부른다.** 잠금 전에 읽으면 동시 이름 변경과의 순서가 거짓이 된다. 이미 잠근
+ * 행의 PK 읽기라 잠금·교착 순서가 바뀌지 않는다. 행이 없을 수 없다(잠금이 방금 찾았다) — 없으면 던져 롤백시킨다.
+ */
+async function readIssuedProject(tx: Tx, projectId: string): Promise<IssuedProject> {
+  const project = await tx.project.findUnique({ where: { id: projectId }, select: { name: true, image: true } });
+  if (project === null) throw new Error("locked project vanished");
+  return project;
 }
 
 /**
@@ -146,7 +158,8 @@ export async function issueInvitations(
 
     const invitations: IssuedInvitation[] = [];
     for (const recipient of recipients) invitations.push(await writeInvitation(tx, { projectId, userId, recipient, now }));
-    return { status: "issued" as const, invitations, retryAt: retryAfterIssue(limits, recipients.length, now) };
+    const project = await readIssuedProject(tx, projectId);
+    return { status: "issued" as const, invitations, project, retryAt: retryAfterIssue(limits, recipients.length, now) };
   });
 }
 
@@ -186,6 +199,7 @@ export async function reissueInvitation(
     if (closed.count !== 1) return { status: "not-found" as const };
 
     const invitation = await writeInvitation(tx, { projectId, userId, recipient, now });
-    return { status: "issued" as const, invitation, retryAt: retryAfterIssue(limits, 1, now) };
+    const project = await readIssuedProject(tx, projectId);
+    return { status: "issued" as const, invitation, project, retryAt: retryAfterIssue(limits, 1, now) };
   });
 }

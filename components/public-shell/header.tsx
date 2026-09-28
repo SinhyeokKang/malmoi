@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ButtonLink } from "@/components/ui/button";
 import type { PublicCta } from "@/lib/auth/landing";
 import { m } from "@/lib/i18n";
-import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 
@@ -19,18 +18,20 @@ const NAV_LINK =
  */
 const CTA_ICON = { getStarted: LogIn, openMalmoi: Box } as const;
 
+export type HeaderCurrent = "home" | "docs" | "changelog";
+
 /**
- * 공개 셸 헤더 — 로고 · `Main` 내비 · 우측 primary (시안 1a · 1e).
+ * 공개 셸 헤더 — 로고 · `Main` 내비(`Home · Docs · Changelog`) · 우측 primary (시안 1a · 1e).
+ *
+ * ⚠️ **내비는 앱 안 목적지만 든다** (2026-09-28 사용자) — GitHub는 헤더에서 빠져 푸터 첫 링크와 랜딩 마무리 CTA에 남는다.
  *
  * ⚠️ **선택 상태를 그리지 않는다** — 현재 화면(`current`)은 `aria-current="page"`만 든다. 헤더에 서는 항목이 셋뿐이라
  * 그리면 랜딩에서 항상 켜진 칸 하나가 되고, `/privacy`는 셋 어디에도 없다. `/docs/*`는 `docs`다(시안 `Docs.dc.html` 1a).
  *
  * ⚠️ **primary는 페이지가 정한다**(`publicCta`) — 랜딩은 늘 `Get started`(`ok`는 `/projects`로 redirect),
  * `/privacy`는 로그인이면 `Open Malmoi`다. 라벨은 사전 키로 온다(`lib/auth/landing.ts`가 잎이라서).
- *
- * ⚠️ **GitHub에 외부 링크 글리프를 붙이지 않는다**(DESIGN §6.3) — 새 탭으로만 연다.
  */
-export function PublicHeader({ cta, current }: { cta: PublicCta; current?: "home" | "docs" }) {
+export function PublicHeader({ cta, current }: { cta: PublicCta; current?: HeaderCurrent }) {
   const Icon = CTA_ICON[cta.label];
   return (
     <header className="mb-2 flex h-10 shrink-0 items-center gap-5 px-1">
@@ -48,9 +49,9 @@ export function PublicHeader({ cta, current }: { cta: PublicCta; current?: "home
         <Link href={routes.docs()} aria-current={current === "docs" ? "page" : undefined} className={NAV_LINK}>
           {m.landing.shell.docs}
         </Link>
-        <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" className={NAV_LINK}>
-          {m.landing.shell.github}
-        </a>
+        <Link href={routes.changelog()} aria-current={current === "changelog" ? "page" : undefined} className={NAV_LINK}>
+          {m.changelog.title}
+        </Link>
       </nav>
       <div className="ml-auto flex">
         <ButtonLink href={cta.href} variant="primary" size="md">

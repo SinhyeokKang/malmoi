@@ -60,7 +60,7 @@ function FilterTrigger({ label, size }: { label: string; size: "md" | "sm" }) {
 export function TranslationsView({ phase }: { phase: Phase }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-border flex shrink-0 flex-col gap-3 border-b p-4">
+      <div className="border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3">
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-2">
             <span className="text-lg font-medium">{m.common.nav.translations}</span>
@@ -114,7 +114,7 @@ function SourceTree() {
   const t = w.tree;
   return (
     <div data-landing-tree="" className="border-border flex min-h-0 w-[260px] shrink-0 flex-col border-r">
-      <div className="flex h-[53px] shrink-0 items-center gap-2 px-4">
+      <div className="flex h-[52px] shrink-0 items-center gap-2 px-4">
         <span className="text-base font-medium">{t.title}</span>
         <Badge variant="neutral">{fixture.sources.length}</Badge>
       </div>
@@ -161,7 +161,7 @@ function KeyList({ phase }: { phase: Phase }) {
   const unsent = new Set<string>(fixture.diff.filter((row) => row.key !== fixture.selected.key).map((row) => row.key));
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex h-[53px] shrink-0 items-center gap-2 px-4">
+      <div className="flex h-[52px] shrink-0 items-center gap-2 px-4">
         <span className="text-base font-medium">{list.keys}</span>
         <Badge variant="neutral">{count(current?.keyCount ?? 0)}</Badge>
         <span className="text-muted-foreground ml-auto shrink-0 text-xs">{list.incompleteFirst}</span>
@@ -198,7 +198,7 @@ function LocaleDetail({ phase }: { phase: Phase }) {
   const total = filled + 1;
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex h-[53px] shrink-0 items-center gap-2 px-4">
+      <div className="flex h-[52px] shrink-0 items-center gap-2 px-4">
         <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
           <FileJson2 className="size-4 shrink-0" aria-hidden />
           {fixture.source}

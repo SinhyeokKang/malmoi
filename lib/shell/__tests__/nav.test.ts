@@ -2,12 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { CircleHelp, Compass, Plus } from "lucide-react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
-import { GITHUB_RELEASES_URL } from "@/lib/links";
-
 import { activeProject, navFooterItems, navZones, projectSections, type NavProject } from "../nav";
 
 /**
@@ -311,15 +309,36 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
  */
 describe("navFooterItems", () => {
   /**
-   * ⚠️ **Release notes → Docs 순서다** (2026-09-27 사용자). Release note만 외부(GitHub Releases, 새 탭)이고,
+   * ⚠️ **Changelog → Docs 순서다** (2026-09-27 사용자 — 라벨·행선지는 2026-09-28에 앱 안 `/changelog`로). 둘 다 내부이고,
    * 아이콘은 사용자 메뉴의 같은 항목과 같은 글리프다 — 같은 곳을 두 글리프로 가리키지 않는다.
    */
-  it("Release notes(GitHub Releases, 새 탭) 다음 Docs(`/docs`)다", () => {
-    expect(navFooterItems().map((i) => ({ key: i.key, href: i.href, external: i.external ?? false }))).toEqual([
-      { key: "releaseNotes", href: GITHUB_RELEASES_URL, external: true },
-      { key: "docs", href: "/docs", external: false },
+  // 외부 링크 항목이 없어져 `NavItem.external`도 사라졌다 — 새 탭 여부는 사이드바 DOM 테스트(`sign-out-pending`)가 본다.
+  it("Changelog(`/changelog`) 다음 Docs(`/docs`)다", () => {
+    expect(navFooterItems().map((i) => ({ key: i.key, label: i.label, href: i.href }))).toEqual([
+      { key: "changelog", label: m.changelog.title, href: "/changelog" },
+      { key: "docs", label: m.publicDocs.docs.title, href: "/docs" },
     ]);
     expect(navFooterItems().map((i) => i.icon)).toEqual([Compass, CircleHelp]);
+  });
+
+  /**
+   * **Changelog 행 오른쪽에 현재 앱 버전 배지** (2026-09-28 사용자 — 개수 배지와 같은 자리·같은 모양, 글자는 `x.y.z`만).
+   * 값은 빌드가 박는다(`lib/app-version.ts`). 비면 배지를 싣지 않는다 — 빈 칩이 서지 않게.
+   */
+  describe("버전 배지", () => {
+    afterEach(() => vi.unstubAllEnvs());
+
+    it("Changelog가 현재 버전을 배지로 든다 — Docs는 배지가 없다", () => {
+      vi.stubEnv("APP_VERSION", "1.0.3");
+      const items = navFooterItems();
+      expect(items.find((i) => i.key === "changelog")?.badge).toBe("1.0.3");
+      expect(items.find((i) => i.key === "docs")?.badge).toBeUndefined();
+    });
+
+    it("버전이 비면 배지가 없다", () => {
+      vi.stubEnv("APP_VERSION", undefined);
+      expect(navFooterItems().find((i) => i.key === "changelog")?.badge).toBeUndefined();
+    });
   });
 
   it("Sign out은 LNB에 없다 — 사용자 메뉴에만 있다 (2026-09-27 사용자)", () => {
