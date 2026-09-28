@@ -53,14 +53,12 @@ export default async function McpPage() {
         <TokenCard token={token} projects={projects} now={now.toISOString()} />
         <ConnectCard serverUrl={`${origin}/api/mcp`} />
         {/*
-          "무엇을 시킬 수 있나"의 정본은 가이드다 — 카탈로그 사본을 두지 않는다(낡는다).
-          ⚠️ **지금은 문서 첫 페이지다** — `Connect an AI agent` 페이지가 아직 없다(M3 T9). 그 페이지가 서면 라벨(핸드오프 §12의
-          `Connect an AI agent`)과 slug를 함께 바꾼다 — 없는 페이지 이름을 단 링크가 첫 페이지에 떨어지지 않게 지금은 일반 라벨이다.
+          "무엇을 시킬 수 있나"의 정본은 가이드다 — 카탈로그 사본을 두지 않는다(낡는다). 라벨이 그 페이지 제목과 같다(핸드오프 §12).
         */}
         <p className="text-muted-foreground shrink-0 text-sm leading-[1.6]">
           {m.mcpConnector.guide.lead}{" "}
-          <Link href={routes.docs()} className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
-            {m.publicDocs.docs.title}
+          <Link href={routes.docs("ai-agents")} className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
+            {m.mcpConnector.guide.link}
           </Link>
         </p>
       </PanelBody>
