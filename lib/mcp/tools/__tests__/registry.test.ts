@@ -48,6 +48,13 @@ describe("도구 레지스트리", () => {
     }
   });
 
+  // 워크플로 첫 실행이 secret을 읽는다 — 커밋이 먼저면 그 실행이 secret 없이 실패한다(가이드 ai-agents#connect-repo와 같은 순서).
+  it("생성 요약은 secret을 먼저, 워크플로 커밋을 나중에 말한다", () => {
+    const text = m.mcp.summary.created("acme", 1);
+    expect(text.indexOf("gh secret set")).toBeGreaterThan(-1);
+    expect(text.indexOf("gh secret set")).toBeLessThan(text.indexOf("ommit the workflow"));
+  });
+
   it("카탈로그가 도구 구현을 import하지 않는다", () => {
     const catalog = readFileSync(join(DIR, "..", "catalog.ts"), "utf8");
     expect(catalog).not.toMatch(/from\s+["'][^"']*tools/);

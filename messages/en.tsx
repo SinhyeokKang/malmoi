@@ -3308,7 +3308,7 @@ export const en = {
       memberRemoved: "Member removed.",
       memberChanged: (role: string): string => `Role changed to ${role === "OWNER" ? "Owner" : "Editor"}.`,
       created: (slug: string, keys: number): string =>
-        `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Commit the workflow file, then set the push token with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing it on standard input — don't use --body (--body - stores a literal "-").`,
+        `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Set the push token first with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing it on standard input — don't use --body (--body - stores a literal "-"). Then commit the workflow file.`,
       sourcesAdded: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. Add the workflow steps to the repository's workflow file.`,
       synced: (kept: number): string => kept === 0
         ? "Synced from the repository."
