@@ -875,9 +875,9 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 
 ### 6.625 초대 메일 — 프로젝트 카드 (2026-09-28, invitation-email-project)
 
-**앱 화면이 아니라 메일 HTML이다**(`lib/invitation-email/template.ts`). 토큰·Tailwind가 닿지 않으므로 값이 **hex 사본**이고,
-정본은 옆 열의 화면 값이다. ⚠️ **구현이 dev에 들어간 뒤로는 코드가 정본이다** — 첫 구현의 Claude Design `email/invite.html`은
-더 이상 대조 기준이 아니다(CLAUDE.md `/design-sync` 절). 순서는 로고 → h1 → 문장 → **카드** → 버튼 → 대체 링크이고, 읽기 순서도 같다
+**앱 화면이 아니라 메일 HTML이다**(`lib/invitation-email/template.ts`). 토큰·Tailwind가 닿지 않으므로 값이 **hex 사본**이다. 축이 둘이다:
+**① 값의 출처** — 각 hex·치수는 아래 표 옆 열의 화면 값(토큰·computed)에서 온다. **② 메일 모양의 정본** — 구현이 dev에 들어간 뒤로는
+`template.ts`이고, 첫 구현의 Claude Design `email/invite.html`은 더 이상 대조 기준이 아니다(CLAUDE.md `/design-sync` 절). 순서는 로고 → h1 → 문장 → **카드** → 버튼 → 대체 링크이고, 읽기 순서도 같다
 (카드 테이블 `role="presentation"`).
 
 | 요소 | 메일 값 | 근거(화면) |
@@ -907,7 +907,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 |---|---|---|
 | `#171717` | `--primary` | 버튼 면·테두리 · Outlook VML 버튼 |
 | `#fafafa` | `--primary-foreground` | 버튼 글자 |
-| `#262626` | **없음**(neutral-800) | 버튼 hover. ⚠️ 화면 `primary`는 `hover:bg-foreground`로 **어두워지고** 메일은 첫 시안 값대로 **밝아진다** — 이 기능 전부터의 값이고 이번에 건드리지 않았다 |
+| `#262626` | **없음**(neutral-800) | 버튼 hover. ⚠️ 화면 `primary`는 `hover:bg-foreground`로 **어두워지고** 메일은 첫 시안 값대로 **밝아진다**(첫 시안의 값 — 화면과 방향이 반대인 채로 둔다) |
 | `#0a0a0a` | `--foreground` | h1 · 본문 문장 · 대체 링크 · 카드 이름 |
 | `#737373` | `--muted-foreground` | 역할 · 대체 링크 안내 · 만료 안내 · 푸터 |
 | `#e5e5e5` | `--border` | 카드 테두리 · 본문 카드 아래선 · 구분선 |
