@@ -167,7 +167,7 @@ export async function createInvitations(raw: { slug: string; recipients: { email
   if (issued.status === "rate-limited") return rateLimited(issued);
   if (issued.status !== "issued") return { ok: false, error: issued.status };
 
-  const outcome = await sendInvitationEmails(config, toMessages(issued.invitations));
+  const outcome = await sendInvitationEmails(config, issued.project, toMessages(issued.invitations));
   // ⚠️ 발송 결과와 무관하게 다시 그린다 — 초대는 이미 생겼고 Pending에 보여야 Resend로 복구할 수 있다.
   revalidatePath(`/projects/${input.slug}/members`);
   if (outcome === "accepted") return { ok: true, count: issued.invitations.length };
@@ -220,7 +220,7 @@ export async function resendInvitation(raw: { slug: string; invitationId: string
   }
   if (issued.status !== "issued") return { ok: false, error: issued.status };
 
-  const outcome = await sendInvitationEmails(config, toMessages([issued.invitation]));
+  const outcome = await sendInvitationEmails(config, issued.project, toMessages([issued.invitation]));
   revalidatePath(`/projects/${input.slug}/members`);
   // 한 주소를 가리는 자리라 충돌 판정이 필요 없다 — 단건 발급의 라벨과 같다.
   const label = maskedEmailLabels([issued.invitation.email])[0] ?? "";
@@ -236,7 +236,7 @@ function rateLimited(plan: Extract<IssuePlan, { status: "rate-limited" }>): Invi
 }
 
 function toMessages(invitations: readonly IssuedInvitation[]) {
-  return invitations.map((i) => ({ to: i.email, token: i.token }));
+  return invitations.map((i) => ({ to: i.email, token: i.token, role: i.role }));
 }
 
 const RevokeInput = z.object({ slug: z.string().min(1), invitationId: z.string().min(1) });

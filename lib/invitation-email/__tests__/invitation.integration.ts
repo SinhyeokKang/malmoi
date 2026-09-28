@@ -339,6 +339,65 @@ describe("reissueInvitation — 저장된 주소·역할로 재발급", () => {
   });
 });
 
+/**
+ * **메일 카드의 입력은 잠금 뒤 값이다** (invitation-email-project). 이름·썸네일은 `Project` 잠금 안에서 읽고,
+ * 역할은 발급이 입력 역할·재발급이 저장된 역할이다 — 클라이언트 입력도, 발급 전 캐시도 아니다.
+ */
+describe("발급 outcome — 메일 카드의 프로젝트·역할", () => {
+  const THUMB = "https://abc.public.blob.vercel-storage.com/projects/p/t.webp";
+
+  it("발급은 잠금 안에서 읽은 이름·썸네일과 대상마다 입력 역할을 싣는다", async () => {
+    await prisma.project.update({ where: { id: "p" }, data: { name: "Acme Web", image: THUMB } });
+    const result = await issueInvitations(prisma, {
+      projectId: "p",
+      userId: "u1",
+      recipients: [
+        { email: "a@x.com", role: "EDITOR" },
+        { email: "b@x.com", role: "OWNER" },
+      ],
+    });
+    expect(result).toMatchObject({ status: "issued", project: { name: "Acme Web", image: THUMB } });
+    if (result.status !== "issued") return;
+    expect(result.invitations.map((i) => i.role)).toEqual(["EDITOR", "OWNER"]);
+  });
+
+  it("발급 뒤 이름을 바꾸고 썸네일을 지운 다음 재발급하면 새 이름과 null을 싣는다 — 폴백 갈래로 바뀐다", async () => {
+    await prisma.project.update({ where: { id: "p" }, data: { name: "Old", image: THUMB } });
+    const first = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }] });
+    expect(first).toMatchObject({ status: "issued", project: { name: "Old", image: THUMB } });
+
+    await prisma.project.update({ where: { id: "p" }, data: { name: "New", image: null } });
+    // 같은 주소 60초 제한을 지나도록 발급 시각을 과거로 민다.
+    await prisma.projectInvitation.updateMany({ where: { projectId: "p" }, data: { createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) } });
+    const id = (await live("a@x.com"))[0]?.id ?? "";
+    const again = await reissueInvitation(prisma, { projectId: "p", userId: "u1", invitationId: id });
+    expect(again).toMatchObject({ status: "issued", project: { name: "New", image: null } });
+  });
+
+  it("재발급 역할은 저장된 역할이다", async () => {
+    await seedInvitation({ id: "inv", email: "a@x.com", role: "OWNER" });
+    const result = await reissueInvitation(prisma, { projectId: "p", userId: "u1", invitationId: "inv" });
+    expect(result).toMatchObject({ status: "issued", invitation: { role: "OWNER" } });
+    // 대조: 같은 경로가 EDITOR 초대에서는 EDITOR를 싣는다.
+    await seedInvitation({ id: "inv2", email: "c@x.com", role: "EDITOR" });
+    await expect(reissueInvitation(prisma, { projectId: "p", userId: "u1", invitationId: "inv2" })).resolves.toMatchObject({
+      status: "issued",
+      invitation: { role: "EDITOR" },
+    });
+  });
+
+  it("보관된 프로젝트는 archived로 거부되고 project를 싣지 않는다", async () => {
+    await seedInvitation({ id: "inv", email: "a@x.com" });
+    await prisma.project.update({ where: { id: "p" }, data: { archivedAt: new Date() } });
+    const issued = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "z@x.com", role: "EDITOR" }] });
+    expect(issued.status).toBe("archived");
+    expect(issued).not.toHaveProperty("project");
+    const reissued = await reissueInvitation(prisma, { projectId: "p", userId: "u1", invitationId: "inv" });
+    expect(reissued.status).toBe("archived");
+    expect(reissued).not.toHaveProperty("project");
+  });
+});
+
 describe("reissueInvitation — 수락·철회와의 교차", () => {
   it("수락이 먼저 확정되면 재발급·사건이 0건이다", async () => {
     await seedInvitation({ id: "inv", email: "joiner@x.com" });

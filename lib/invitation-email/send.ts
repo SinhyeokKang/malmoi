@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
+import type { Role } from "@/lib/auth/permission";
 import { optionalEnv } from "@/lib/env";
 
 import { readInvitationEmailConfig, type InvitationEmailConfig } from "./config";
@@ -29,9 +30,10 @@ export function readInvitationEmailConfigFromEnv(): InvitationEmailConfig {
 /** ⚠️ 던지지 않는다 — 발송 실패가 이미 commit한 초대를 생성 실패로 바꾸면 안 된다. */
 export async function sendInvitationEmails(
   config: Extract<InvitationEmailConfig, { status: "ready" }>,
-  messages: readonly { to: string; token: string }[],
+  project: { name: string; image: string | null },
+  messages: readonly { to: string; token: string; role: Role }[],
 ): Promise<EmailOutcome> {
-  const body = messages.map((m) => buildInvitationEmail({ from: config.from, origin: config.origin, to: m.to, token: m.token }));
+  const body = messages.map((m) => buildInvitationEmail({ from: config.from, origin: config.origin, to: m.to, token: m.token, project, role: m.role }));
   let response: BatchResponse;
   try {
     const res = await fetch(ENDPOINT, {

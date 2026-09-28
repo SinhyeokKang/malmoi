@@ -38,6 +38,7 @@ const { createInvitations, resendInvitation } = await import("../projects/action
 
 const READY = { status: "ready", apiKey: "re_k", from: "malmoi <invite@notify.mal-moi.com>", origin: "https://mal-moi.com" };
 const RETRY = new Date("2026-09-23T12:01:00.000Z");
+const PROJECT = { name: "Alpha", image: null };
 
 function seeded() {
   return createHarness({
@@ -64,12 +65,18 @@ beforeEach(() => {
   for (const fn of [hoisted.issueInvitations, hoisted.reissueInvitation, hoisted.readConfig, hoisted.send, hoisted.revalidatePath]) fn.mockReset();
   hoisted.readConfig.mockReturnValue(READY);
   hoisted.send.mockResolvedValue("accepted");
-  hoisted.issueInvitations.mockImplementation(async (_prisma: unknown, input: { recipients: { email: string }[] }) => ({
+  hoisted.issueInvitations.mockImplementation(async (_prisma: unknown, input: { recipients: { email: string; role: string }[] }) => ({
     status: "issued",
-    invitations: input.recipients.map((r, i) => ({ email: r.email, token: `tok_${i}` })),
+    invitations: input.recipients.map((r, i) => ({ email: r.email, token: `tok_${i}`, role: r.role })),
+    project: PROJECT,
     retryAt: RETRY,
   }));
-  hoisted.reissueInvitation.mockResolvedValue({ status: "issued", invitation: { email: "pending@a.com", token: "tok_r" }, retryAt: RETRY });
+  hoisted.reissueInvitation.mockResolvedValue({
+    status: "issued",
+    invitation: { email: "pending@a.com", token: "tok_r", role: "OWNER" },
+    project: PROJECT,
+    retryAt: RETRY,
+  });
 });
 
 const two = [
@@ -223,9 +230,10 @@ describe("createInvitations — commit 뒤 한 번 발송하고 요청 단위로
     expect(result).toEqual({ ok: true, count: 2 });
     noSecrets(result);
     expect(hoisted.send).toHaveBeenCalledTimes(1);
-    expect(hoisted.send).toHaveBeenCalledWith(READY, [
-      { to: "new@a.com", token: "tok_0" },
-      { to: "boss@b.com", token: "tok_1" },
+    // 프로젝트는 잠금 안에서 읽은 값, 역할은 메시지마다 자기 것이다.
+    expect(hoisted.send).toHaveBeenCalledWith(READY, PROJECT, [
+      { to: "new@a.com", token: "tok_0", role: "EDITOR" },
+      { to: "boss@b.com", token: "tok_1", role: "OWNER" },
     ]);
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/alpha/members");
   });
@@ -278,7 +286,8 @@ describe("resendInvitation — 저장된 주소로 재발급 후 발송", () => 
     expect(result).toEqual({ ok: true, label: "p***@a.com" });
     noSecrets(result);
     expect(result).not.toEqual(expect.objectContaining({ label: "pending@a.com" }));
-    expect(hoisted.send).toHaveBeenCalledWith(READY, [{ to: "pending@a.com", token: "tok_r" }]);
+    // 역할은 재발급 outcome의 저장된 역할이다 — 클라이언트 입력이 아니다.
+    expect(hoisted.send).toHaveBeenCalledWith(READY, PROJECT, [{ to: "pending@a.com", token: "tok_r", role: "OWNER" }]);
     expect(hoisted.revalidatePath).toHaveBeenCalledWith("/projects/alpha/members");
   });
 

@@ -36,7 +36,7 @@ const { createInvitations, changeMember, revokeInvitation } = await import("../p
 const invite = (email: string, role: string = "EDITOR", slug = "alpha") =>
   createInvitations({ slug, recipients: [{ email, role }] });
 /** 마지막 발송의 첫 메시지 토큰 — 응답에는 원문이 없다. */
-const sentToken = (): string => (hoisted.send.mock.calls.at(-1)?.[1] as { token: string }[] | undefined)?.[0]?.token ?? "";
+const sentToken = (): string => (hoisted.send.mock.calls.at(-1)?.[2] as { token: string }[] | undefined)?.[0]?.token ?? "";
 const { acceptInvitation } = await import("../../invite/actions");
 
 const LATER = new Date("2126-01-01T00:00:00Z");
