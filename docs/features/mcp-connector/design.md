@@ -19,20 +19,54 @@ CLI 에이전트 ──POST /api/mcp (Authorization: Bearer mlm_…)──▶ ro
 **Server Action과 도구는 같은 코어의 형제 껍데기다.** 도구가 Action을 부르지 않는다 — Action은 `readSession()`으로 주체를 얻는데
 이 진입점엔 세션이 없다. 그리고 CLAUDE.md "외부가 부르는 진입점을 Server Action으로 만들지 않는다"가 그 반대 방향을 이미 막는다.
 
-### 1.1 프로토콜 — T1이 확정한다
+### 1.1 프로토콜 — T1 실측으로 확정 (2026-09-28)
 
-⚠️ **아래는 가정이다** (검수 C). 로컬 `package.json`·lockfile·`node_modules`에 `@modelcontextprotocol/*`가 0건이라 SDK 패키지명·
-개정 날짜·`server/discover`의 존재를 이 리포 안에서 확인할 수 없다. **T1의 실측 결과로 이 절을 다시 쓴다.**
+**SDK를 쓴다 — `@modelcontextprotocol/server` 2.1.0**(exact 고정, 의존성은 `@modelcontextprotocol/core` 2.1.0 + `zod ^4.2` —
+빌드 스크립트 없음이라 `onlyBuiltDependencies`를 건드리지 않는다. 2.1.0은 2026-09-23 publish라 `minimumReleaseAge`를 넘었다). JSON-RPC
+직접 수신 폴백은 쓰지 않는다. 실측은 미커밋 `app/api/mcp-probe/route.ts`를 `next dev`(DB·env 없이 뜬다)에 올려 curl과 두 CLI로 쟀다.
 
-- 가정 A: 2026-07-28 stateless 개정 — 세션·`initialize`가 없고 요청마다 `_meta`에 버전·클라이언트 능력이 실리며 `server/discover`를
-  구현한다. 가정 B: 2025-11-25 개정의 stateless 모드 — `initialize`를 받되 세션 id를 발급하지 않고 JSON으로 응답한다. 에이전트 CLI의
-  현재 지원은 B 쪽일 가능성이 높다.
-- **T1 체크리스트** — SDK(`@modelcontextprotocol/server` 2.x로 추정)가 (a) Web 표준 `Request`/`Response` 전송을 드는가(Next Route
-  Handler는 Node `http.IncomingMessage`가 아니다) (b) JSON 응답 모드 + 세션 id 미발급이 되는가 (c) Bearer 인증을 SDK 앞단에서
-  우리가 끝내고 넘길 수 있는가 (d) `tools/list` 순서가 등록 순으로 결정적인가. `mcp-handler`는 SSE용 Redis를 끌고 와 쓰지 않는다.
-- **폴백**: 하나라도 안 되면 SDK 없이 JSON-RPC 세 메서드(`initialize` · `tools/list` · `tools/call`)를 직접 받는다 — 그 셋이면
-  Claude Code·Codex CLI가 돈다. 디스패처는 어느 쪽이든 `toolCatalog()`와 `toToolResult()`를 지나므로 도구 층은 바뀌지 않는다.
-- 응답은 **JSON 한 벌**(SSE 스트림 없음). 진행 알림을 보낼 긴 작업이 Publish·첫 적재 둘이고 둘 다 60초 안이다.
+- **가정 A와 B가 둘 다 맞다 — 클라이언트마다 개정이 다르다.** Claude Code 2.1.283은 **2026-07-28**(`server/discover` →
+  `tools/list` → `tools/call`, 요청마다 `_meta` 봉투 + `MCP-Protocol-Version`·`Mcp-Method` 헤더)이고, Codex CLI 0.157.1은
+  **2025-era**(`initialize` → `notifications/initialized` → `tools/list` → `tools/call`, `MCP-Protocol-Version: 2025-06-18`)다.
+  **그래서 두 개정을 같은 도구 정의로 받는다** — 하나만 받으면 한쪽 CLI가 안 붙는다.
+- **체크리스트 넷 — 전부 된다, 단 (b)는 조립으로 된다.**
+  - (a) Web `Request`/`Response` ✅ — `createMcpHandler(factory).fetch(request, opts)`와 `WebStandardStreamableHTTPServerTransport.
+    handleRequest(request, opts)`가 둘 다 Web 표준이고 Route Handler의 `Request`를 그대로 받는다.
+  - (b) JSON 응답 + 세션 id 미발급 ✅(조립) — `createMcpHandler`의 `responseMode: "json"`은 **2026-07-28 쪽에만** 걸린다. 기본
+    `legacy: "stateless"`의 2025 응답은 **`text/event-stream`**이었다(실측). 그래서 **`createMcpHandler(factory, { legacy: "reject",
+    responseMode: "json" })` 앞에 `isLegacyRequest(request)`로 가르고**, 2025 쪽은 요청마다 새 `WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined, enableJsonResponse: true })`로 받는다 — SDK 문서가 제시하는 "hand-wired composition" 형이다. 두 쪽 다
+    `content-type: application/json`, `Mcp-Session-Id` 헤더 없음, notification은 `202` 빈 본문(실측).
+  - (c) Bearer를 앞단에서 끝내기 ✅ — SDK 입구는 토큰을 검증하지 않고 `authInfo`를 **그대로 통과**시킨다("never derived from
+    request headers"). route가 먼저 401을 끝내고, 통과한 요청만 `{ authInfo }`로 넘긴다. 핸들러에서는 `ctx.http?.authInfo`로
+    읽힌다(실측). **주체는 팩토리 인자로 받는다** — 팩토리가 요청마다 불리고(2026-07-28 쪽은 `McpRequestContext.authInfo`, 2025 쪽은
+    route가 직접 부른다) 도구 핸들러는 그 클로저의 주체만 본다. 핸들러가 `ctx.http`를 읽지 않으므로 두 개정의 경로가 갈리지 않는다.
+  - (d) `tools/list` 순서 ✅ — **등록 순서 그대로**다(`zeta, alpha, mid`로 등록 → 같은 순서로 3회 동일, 두 개정 동일). ⚠️ **두 CLI가
+    화면에 보이는 순서는 이름순이다**(클라이언트 쪽 정렬) — 서버의 결정성 계약은 wire 순서이고 `toolCatalog()` 배열 순서로 등록한다.
+- ⚠️ **`tools.listChanged: false`를 명시한다.** `McpServer`는 도구를 등록하면 기본 `listChanged: true`를 광고하고, 그러면 Claude
+  Code가 **`subscriptions/listen` SSE 스트림을 연다**(실측 — 응답이 끝나지 않는다). Vercel 함수에서는 그 스트림이 `maxDuration`까지
+  함수를 붙잡고 끊기면 다시 연다. `new McpServer(info, { capabilities: { tools: { listChanged: false } } })`로 바꾸자 Claude Code가
+  listen 없이 discover → list → call만 보냈다(실측). 도구 목록은 배포 사이에 안 바뀌므로 잃는 것이 없다.
+- **route가 받는 모양은 이것 하나로 확정한다** (T5가 이 확정문으로 디스패치한다):
+  1. `checkOrigin` → Bearer 인증(401) → `readBoundedText(1 MiB)`(400) → `JSON.parse`(실패는 JSON-RPC `-32700` — SDK에 맡겨도 된다).
+  2. `isLegacyRequest(request, parsedBody)` — 이미 파싱한 본문을 넘겨 본문을 두 번 읽지 않는다.
+  3. `true` → 요청마다 `factory(subject)` + `WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined,
+     enableJsonResponse: true })` → `server.connect(transport)` → `transport.handleRequest(request, { parsedBody })` → `finally
+     server.close()`. `false` → 모듈 한 벌의 `createMcpHandler(..., { legacy: "reject", responseMode: "json" })`의 `fetch(request,
+     { parsedBody })` — 팩토리가 요청마다 불리므로 주체는 `authInfo.extra`로 실어 `McpRequestContext.authInfo`에서 읽는다.
+  4. `maxRequestBodySize`는 SDK 기본 4 MiB지만 route가 이미 1 MiB로 끊었고 `parsedBody`에는 SDK 상한이 안 걸린다.
+- **SDK가 이미 고정하는 JSON-RPC 응답** (2025 쪽 실측 — T5 테스트가 route 층에서 다시 고정한다): 미지 도구 `-32602 "Tool nope not
+  found"`, 미지 메서드 `-32601 "Method not found"`, 배치 배열은 응답 배열, id 없는 notification은 `202`. 2026-07-28 쪽은
+  `Mcp-Method` 헤더가 없거나 본문과 다르면 `400 -32020`.
+- **401에서 두 CLI 모두 OAuth로 넘어가지 않는다** — Claude Code는 `Authorization` 헤더가 설정돼 있으면 "OAuth fallback is disabled"로
+  멈추고 **401 본문을 사용자에게 그대로 보인다**(실측: `Error detail: { error : unauthorized }`). `/.well-known/*` 요청은 0건이었다.
+  → 401 본문은 갈래를 말하지 않는 고정 문장 하나다(spec 조건 4).
+- 알려진 소음: `responseMode: "json"`이면 SDK가 `createMcpHandler` 생성 시점에 `console.warn` 한 줄을 낸다(모듈 로드당 1회).
+- 응답은 **JSON 한 벌**(SSE 스트림 없음). 진행 알림을 보낼 긴 작업이 Publish·첫 적재 둘이고 둘 다 60초 안이다 — `json` 모드는
+  중간 알림을 버린다(SDK 문서)는 대가를 받아들인다.
+- 실측에 쓴 CLI 설정(토큰은 환경변수 참조 — POSTMORTEM 2026-09-04): Claude Code `--mcp-config`의
+  `{"type":"http","url":…,"headers":{"Authorization":"Bearer ${MALMOI_TOKEN}"}}`, Codex `-c mcp_servers.<name>.url=… -c
+  mcp_servers.<name>.bearer_token_env_var="MALMOI_TOKEN"`. 이 두 형이 `/mcp` 연결 예시(§8)의 원형이다.
 - 호출 사이 상태 = **서버 발급 핸들**. Publish 지문은 신규이며, 샘플 HMAC은 기존 발급/검증 함수를 재사용하되 생성·소스 추가의
   소비 경로를 새로 연결한다:
 
