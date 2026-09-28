@@ -43,7 +43,8 @@ const ALLOWED_HOSTS: readonly string[] = [
 /** 로컬 개발 — 포트는 고정하지 않는다(3000이 잡혀 있으면 Next가 다음 포트로 뜬다). */
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1)(:\d+)?$/;
 
-function allowed(host: string): boolean {
+/** `lib/mcp/http.ts`의 `Origin` 대조도 이 목록을 쓴다 — 호스트를 늘리면 두 판정이 함께 넓어진다(목록이 두 벌이면 한쪽이 낡는다). */
+export function isAllowedHost(host: string): boolean {
   return ALLOWED_HOSTS.includes(host.toLowerCase()) || LOCAL_HOST.test(host);
 }
 
@@ -54,7 +55,7 @@ export function requestOrigin(input: {
   const host = input.host ?? "";
   if (host === "" || !HOST.test(host)) return null;
   // 모양이 맞아도 우리 호스트가 아니면 origin을 만들지 않는다 — 이 값이 `redirect_uri`가 된다.
-  if (!allowed(host)) return null;
+  if (!isAllowedHost(host)) return null;
 
   // 프록시가 둘 이상이면 `https,http`처럼 목록으로 온다 — 뒤를 보면 판정이 뒤집힌다.
   const proto = (input.forwardedProto ?? "").split(",")[0]?.trim().toLowerCase() ?? "";

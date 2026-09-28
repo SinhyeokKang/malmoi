@@ -3120,6 +3120,33 @@ export const en = {
     },
   },
 
+  /**
+   * **MCP 커넥터의 도구 결과 문장** (mcp-connector design §2.3). 에이전트가 사용자에게 옮기는 문장이다 — 화면과 같은 거부는 화면의
+   * 키를 그대로 쓰고(`lib/mcp/result.ts`의 대응표), 여기엔 **도구에만 있는 갈래**만 둔다.
+   */
+  mcp: {
+    errors: {
+      // 역할은 되는데 토큰이 그 동작을 안 받았다 — 토큰은 불변이라 다음 행동은 재발급 하나다.
+      "token-scope": "This token doesn't allow that action. Issue a new token with that permission on the MCP connector page.",
+      // Publish 핸들이 낡았다 — 아무것도 안 보냈다는 것과 다음 행동을 함께 말한다.
+      reconfirm: "The translations changed after the preview, so nothing was sent. Preview again, then publish with the new handle.",
+      "invalid-input": "The arguments don't match this tool's input. Check them and try again.",
+      "too-many": (limit: number): string => `Save up to ${limit.toLocaleString("en-US")} keys per call. Split the rest into another call.`,
+      "duplicate-key": "The same key appears more than once. Send each key once per call.",
+    },
+    /**
+     * 브라우저가 필요한 갈래 — 설치·인가는 state 쿠키가 방어선인 왕복이라 도구가 대신하지 않는다(ARCHITECTURE §6.4).
+     * 결과에 URL이 따로 실린다 — 문장은 "무엇을 하고 돌아오라"만 말한다.
+     */
+    needsBrowser: {
+      "not-connected": "Connect your GitHub account in your browser, then call this tool again.",
+      reauthorize: "Your GitHub authorization expired. Reauthorize in your browser, then call this tool again.",
+      "no-installations": "Install the Malmoi GitHub App in your browser, then call this tool again.",
+      // 수동 포맷 확정 도구는 없다(spec 비목표) — 브라우저의 수동 설정이 그 길이다.
+      "no-candidates": "We couldn't find translation files automatically. Set up the format manually in your browser.",
+    },
+  },
+
   errors: {
     /**
      * 프로필 사진 업로드 거부 — `UploadReject` 넷 + Action의 `unavailable` + 폴백.
