@@ -543,10 +543,10 @@ lib/
                         보관 → 토큰) · issue-plan · batch(100키 상한·중복) · confirm(샘플 확인값 소비) · locked-token(잠금 뒤 재판정) ·
                         result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · snippets(연결 조각 — 토큰은
                         $MALMOI_TOKEN 참조로만) · catalog(도구 28 — 이름·순서·annotations·요구 조건의 코드 정본).
-                        server-only: server(요청마다 McpServer — listChanged: false) · token-store(resolveApiToken) · tools/.
+                        server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveApiToken) · tools/.
                         ⚠️ catalog·snippets는 잎이다(import 0) — /mcp 클라이언트가 값으로 읽는다. 도구 구현이 catalog를 import하는
                         방향이지 반대가 아니다(client-graph). 순수 모듈에 server-only가 없는 것은 lib/mcp/__tests__/pure-boundary가 센다
-  mcp/tools/            도구 구현(전부 server-only). access(입구 판정 — GitHub·코어보다 먼저, 조건은 catalog에서) · define ·
+  mcp/tools/            도구 구현(전부 server-only). access(입구 판정 — GitHub·코어보다 먼저, 조건은 catalog에서) · define(appUrl — needs-browser 링크를 허용 호스트 origin의 절대 URL로) ·
                         execute(⚠️ 던지면 SDK가 예외 문구를 결과에 싣는다 — 여기서 잡아 unavailable로 접는다) · 도메인별
                         account·project·keys·repos·sync·publish·translations·settings·members·onboarding · index(TOOLS).
                         ⚠️ Action을 import하지 않는다 — 같은 코어의 형제 껍데기다(세션이 없다)
@@ -738,7 +738,7 @@ vitest.projects.config.ts
                         건드렸으면 손으로 돌린다. 편집 토큰의 조건부 쓰기(적재 정리·Publish CAS·backfill)와
                         동시 CI push의 결과 표시(concurrent-import — barrier로 두 요청을 교차시킨다)와 전달 층 불변식
                         (delivery-invariants — 승인 Sync의 orphan 토큰 해제 · orphan 셀 적재 제외 · 로케일 재시도 · 보류 뒤 Revert)도
-                        여기서만 잰다 — include가 `lib`(루트)·`lib/keys`·`lib/events`·`lib/invitation-email`의 `__tests__/*.integration.ts`로
+                        여기서만 잰다 — include가 `lib`(루트)·`lib/keys`·`lib/events`·`lib/invitation-email`·`lib/mcp`의 `__tests__/*.integration.ts`로
                         박혀 있어 그 밖에 만든 통합 테스트는 조용히 0건 수집된다
 vitest.credentials.config.ts
                         같은 형의 둘째다 — 자격증명 암·복호의 **격리 PostgreSQL** 검증
