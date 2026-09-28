@@ -229,6 +229,27 @@ describe("create_project", () => {
   });
 });
 
+describe("add_sources", () => {
+  const sign = (format: { adapter: string; pathTemplate: string }, head = HEAD) => signSampleConfirmation(
+    { userId: "owner", repositoryId: "123", installationId: "77", ref: "main", headSha: head, format: { ...format, locales: ["en", "ko"] } }, SECRET, new Date());
+  beforeEach(async () => {
+    // 리포 확인이 고정된 신원과 대조한다 — 가짜 GitHub의 리포로 프로젝트를 맞춘다.
+    await prisma.project.update({ where: { id: "p" }, data: { repoOwner: "acme", repoName: "web", installationId: "77", repositoryId: "123" } });
+  });
+  const SECOND = { adapter: "json-catalog", pathTemplate: "second/{locale}.json", baseLocale: "en" };
+
+  it("후보의 확인값이 실패하면 Surface·번역·사건 쓰기 0건 (대조: 유효하면 추가된다)", async () => {
+    const subject = await token("owner");
+    expect(await call("add_sources", subject, { slug: "p", picks: [{ ...SECOND, confirmation: sign(SECOND, "e".repeat(40)) }] }))
+      .toMatchObject({ status: "refused", code: "sample-expired", detail: { index: 0 } });
+    expect(await prisma.translationSurface.count({ where: { projectId: "p" } })).toBe(1);
+    expect(await prisma.translation.count({ where: { projectId: "p", surfaceId: { not: "s" } } })).toBe(0);
+    expect(await events()).toBe(0);
+    expect(code(await call("add_sources", subject, { slug: "p", picks: [{ ...SECOND, confirmation: sign(SECOND) }] }))).toBe("ok");
+    expect(await prisma.translationSurface.count({ where: { projectId: "p" } })).toBe(2);
+  });
+});
+
 describe("set_translations — 100키 한 tx", () => {
   it("1번 키 not-found가 나머지 99를 막지 않고, 100키가 30초 tx 안에 끝난다(실측 기록)", async () => {
     await prisma.stringKey.createMany({ data: Array.from({ length: 99 }, (_, i) => ({ id: `b${i}`, projectId: "p", surfaceId: "s", key: `bulk.${i}`, namespace: "_root", sourceText: `S${i}`, sourceHash: `h${i}` })) });
@@ -240,7 +261,7 @@ describe("set_translations — 100키 한 tx", () => {
     console.info("set_translations 100 keys ms", elapsed);
     expect(outcome.status).toBe("ok");
     const results = outcome.status === "ok" ? outcome.data.results as { keyId: string; status: string; error?: string }[] : [];
-    expect(results[0]).toEqual({ keyId: "missing", status: "rejected", error: "key-unavailable" });
+    expect(results[0]).toMatchObject({ keyId: "missing", status: "rejected", error: "key-unavailable" });
     expect(results.filter(r => r.status === "saved")).toHaveLength(99);
     expect(await prisma.translation.count({ where: { projectId: "p", keyId: { startsWith: "b" } } })).toBe(99);
     expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "translation.saved" } })).toBe(99);

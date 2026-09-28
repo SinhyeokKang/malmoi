@@ -17,12 +17,16 @@ export const whoami = defineTool({
   name: "whoami",
   inputSchema: z.object({}),
   async run({ prisma, subject }) {
-    const [user, github, token] = await Promise.all([
+    const [user, github, token, memberships] = await Promise.all([
       prisma.user.findUnique({ where: { id: subject.userId }, select: { id: true, name: true } }),
       prisma.account.findFirst({ where: { userId: subject.userId, provider: APP_ACCOUNT_PROVIDER }, select: { providerAccountId: true } }),
       // 해시까지 조건이다 — 재발급된 새 행의 만료를 옛 토큰의 것으로 말하지 않는다.
       prisma.apiToken.findFirst({ where: { userId: subject.userId, tokenHash: subject.tokenId }, select: { expiresAt: true } }),
+      subject.scope.kind === "all" ? Promise.resolve([]) : prisma.projectMember.findMany({
+        where: { userId: subject.userId, project: { archivedAt: null } }, select: { project: { select: { id: true, slug: true } } },
+      }),
     ]);
+    const scoped = memberships.filter(row => inScope(subject.scope, row.project.id)).map(row => row.project.slug).sort();
     // 못 여는 봉투(키 회전 중)는 이름이 없는 것으로 말한다 — 원문 대신 봉투를 싣지 않는다.
     const name = user === null ? null : readable(() => decodeUser(user).name) ?? null;
     return ok({
@@ -30,7 +34,8 @@ export const whoami = defineTool({
       github: { connected: github !== null },
       token: {
         grants: [...subject.grants],
-        scope: subject.scope.kind === "all" ? { kind: "all" } : { kind: "projects", projectIds: [...subject.scope.projectIds] },
+        // 내부 id 대신 에이전트가 도구에 넘길 slug다 — 지금 멤버인 비보관 프로젝트 중 범위 안의 것만(나간 프로젝트의 id를 말하지 않는다).
+        scope: subject.scope.kind === "all" ? { kind: "all" } : { kind: "projects", projects: scoped },
         expiresAt: token?.expiresAt.toISOString() ?? null,
       },
     }, name === null ? m.mcp.summary.signedIn : m.mcp.summary.signedInAs(name));

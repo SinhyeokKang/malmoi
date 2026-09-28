@@ -27,7 +27,7 @@ export const setTranslations = defineTool({
     const batch = planBatchSave(entries);
     if (batch.status === "empty") return { status: "invalid-input" };
     if (batch.status === "too-many") return { status: "too-many" };
-    if (batch.status === "duplicate-key") return { status: "duplicate-key" };
+    if (batch.status === "duplicate-key") return { status: "refused", code: "duplicate-key", detail: { keyId: batch.keyId } };
     const gate = await checkProjectTool(prisma, subject, { name: "set_translations", slug });
     if (gate.status !== "ok") return gate;
     const result = await saveTranslationBatch(prisma, coreSubject(subject), { slug, surfaceSlug, entries: batch.entries });
@@ -38,10 +38,18 @@ export const setTranslations = defineTool({
     return ok({
       results: result.results.map(({ keyId, result: r }) => r.ok
         ? { keyId, status: "saved", cells: r.cells }
-        : { keyId, status: "rejected", error: r.error, ...("localeCodes" in r ? { localeCodes: r.localeCodes } : {}) }),
+        : { keyId, status: "rejected", error: r.error, message: keyRejection(r), ...("localeCodes" in r ? { localeCodes: r.localeCodes } : {}) }),
     }, m.mcp.summary.saved(saved.length, result.results.length - saved.length));
   },
 });
+
+/** 키 하나의 거부 → 번역 화면 저장 바닥의 같은 문장(`components/translations/workspace/workspace.tsx`의 `ALERTS`). */
+function keyRejection(r: { error: string; localeCodes?: string[] }): string {
+  const footer = m.translations.workspace.footer;
+  if (r.error === "cannot-clear") return `${footer.cannotClear.title((r.localeCodes ?? []).join(", "))} ${footer.cannotClear.body}`;
+  if (r.error === "key-unavailable") return footer.keyGone;
+  return footer.saveFailed.body;
+}
 
 const REVERT_BLOCKED: Record<string, string> = {
   forbidden: m.translations.workspace.revert.forbidden,

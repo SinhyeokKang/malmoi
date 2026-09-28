@@ -133,6 +133,11 @@ describe("set_translations 입력", () => {
     expect(h.core).not.toHaveBeenCalled();
   });
 
+  it("중복 키 거부는 그 keyId를 싣는다", async () => {
+    expect(toToolResult(await run("set_translations", subject("owner"), { ...S, entries: [entry("k1"), entry("k1")] })).structuredContent)
+      .toMatchObject({ status: "duplicate-key", keyId: "k1", message: m.mcp.errors["duplicate-key"] });
+  });
+
   it("거부된 키는 그 키만 rejected이고 나머지는 saved — 저장된 셀이 있으면 번역 화면들을 다시 그린다", async () => {
     h.core.mockResolvedValueOnce({ ok: true, results: [
       { keyId: "k1", result: { ok: false, error: "key-unavailable" } },
@@ -140,10 +145,25 @@ describe("set_translations 입력", () => {
     ] });
     const outcome = await run("set_translations", subject("editor"), { ...S, entries: [entry("k1"), entry("k2")] });
     expect(outcome.status === "ok" && outcome.data.results).toEqual([
-      { keyId: "k1", status: "rejected", error: "key-unavailable" },
+      { keyId: "k1", status: "rejected", error: "key-unavailable", message: m.translations.workspace.footer.keyGone },
       { keyId: "k2", status: "saved", cells: [{ localeCode: "ko", value: "v" }] },
     ]);
     expect(h.revalidatePath.mock.calls).toEqual([["/projects/acme", "layout"], ["/projects"], ["/projects/new"]]);
+  });
+});
+
+describe("preview_publish", () => {
+  const preview = () => run("preview_publish", subject("editor", []), { slug: "acme" });
+  it("grant 없는 EDITOR도 지문을 받는다 — 실행은 publish가 역할·grant를 다시 본다", async () => {
+    expect(await preview()).toMatchObject({ status: "ok", data: { fingerprint: "f", sendable: { total: 1, keys: 1 } } });
+  });
+  it("base 파일이 없으면 Publish 화면의 같은 문장이다", async () => {
+    h.core.mockResolvedValueOnce({ status: "refused", reason: "base-file-missing", path: "i18n/en.json", branch: "main" });
+    expect(toToolResult(await preview()).content[0]?.text).toBe(m.translations.publish.baseFileMissing.description("i18n/en.json", "main"));
+  });
+  it("읽기 실패는 unavailable · retryable", async () => {
+    h.core.mockResolvedValueOnce({ status: "failed" });
+    expect(toToolResult(await preview()).structuredContent).toMatchObject({ status: "unavailable", retryable: true });
   });
 });
 
@@ -211,6 +231,14 @@ describe("결과 문장은 화면과 같은 키", () => {
     expect(result.content[0]?.text).toBe(m.members.invite.sendFailed);
     expect(result.structuredContent).toMatchObject({ status: "email-rejected", retryAt: "2026-09-29T00:00:00.000Z" });
     expect(h.revalidatePath).toHaveBeenCalledWith("/projects/acme/members");
+  });
+
+  it("확인값 실패는 어느 후보인지(index)를 싣는다", async () => {
+    h.core.mockResolvedValueOnce({ ok: false, error: "sample-expired", index: 1 });
+    const input = { owner: "o", repo: "r", slug: "new", name: "New", baseBranch: "main", surfaces: [CONFIRMED, CONFIRMED] };
+    expect(toToolResult(await run("create_project", subject("owner"), input)).structuredContent).toMatchObject({ status: "sample-expired", index: 1 });
+    h.core.mockResolvedValueOnce({ ok: false, error: "invalid input", index: 0 });
+    expect(toToolResult(await run("add_sources", subject("owner"), { slug: "acme", picks: [CONFIRMED] })).structuredContent).toMatchObject({ status: "invalid-input", index: 0 });
   });
 
   it("update_project — 이름은 됐는데 브랜치가 거부되면 이름 성공을 지우지 않는다", async () => {

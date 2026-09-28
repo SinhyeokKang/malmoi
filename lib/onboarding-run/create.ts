@@ -75,7 +75,9 @@ export type CreateProjectResult =
   | { ok: true; slug: string; defaultSurfaceSlug: string; pushToken: string; baseBranch: string; surfaces: CreatedSurface[]; count: number; yaml: string }
   | { ok: false; error: OnboardFailure | "path-conflict" | "token-scope";
       surface?: { pathTemplate: string; failed: number; errors: AdapterError[] };
-      conflicts?: { path: string; surfaceSlugs: string[] }[] };
+      conflicts?: { path: string; surfaceSlugs: string[] }[];
+      /** MCP 확인값 판정만 — 실패한 후보의 순번. */
+      index?: number };
 
 /**
  * **프로젝트 생성의 공유 코어** (mcp-connector T4-d) — 편집 UI ④와 MCP `create_project`. 모든 표면의 읽기·파싱을 끝낸 뒤 생성과 첫 적재를
@@ -145,7 +147,8 @@ export async function createProjectFromRepo(
       secret: requireEnv("APP_SIGNING_SECRET"),
       now: new Date(),
     });
-    if (verdict.status !== "ok") return { ok: false, error: verdict.status === "invalid-input" ? "invalid input" : verdict.status };
+    // `index`는 어느 후보가 실패했는지다 — 에이전트가 그 후보만 다시 탐지한다.
+    if (verdict.status !== "ok") return { ok: false, error: verdict.status === "invalid-input" ? "invalid input" : verdict.status, index: verdict.index };
   }
 
   const paths = snapshot.files.map(f => f.path);

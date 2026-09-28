@@ -19,10 +19,10 @@ import { coreSubject, defineTool, ok } from "./define";
  */
 const Confirmation = z.string().min(1).max(65_536);
 
-function failure(error: string, detail: Record<string, unknown> = {}): ToolOutcome {
-  // 코어의 입력 오류 낱말(`invalid input`)은 도구 어휘(`invalid-input`)로 옮긴다 — 같은 갈래다.
-  if (error === "invalid input") return { status: "invalid-input" };
-  return { status: "refused", code: error, detail };
+function failure(result: { error: string; index?: number; surface?: unknown; conflicts?: unknown }): ToolOutcome {
+  const detail = { ...(result.index === undefined ? {} : { index: result.index }), ...(result.surface ? { surface: result.surface } : {}), ...(result.conflicts ? { conflicts: result.conflicts } : {}) };
+  // 코어의 입력 오류 낱말(`invalid input`)은 도구 어휘(`invalid-input`)로 옮긴다 — 같은 갈래다. 후보 순번은 그대로 싣는다.
+  return { status: "refused", code: result.error === "invalid input" ? "invalid-input" : result.error, detail };
 }
 
 const PickWithConfirmation = CreateProjectInput.shape.surfaces.element.extend({ confirmation: Confirmation });
@@ -38,7 +38,7 @@ export const createProject = defineTool({
     const result = await createProjectFromRepo(prisma, coreSubject(subject), {
       ...rest, surfaces: surfaces.map(({ confirmation: _c, ...surface }) => surface),
     }, { confirmations: surfaces.map(surface => surface.confirmation) });
-    if (!result.ok) return failure(result.error, { ...(result.surface ? { surface: result.surface } : {}), ...(result.conflicts ? { conflicts: result.conflicts } : {}) });
+    if (!result.ok) return failure(result);
     settleRevalidate("create-project", () => revalidatePath("/projects"));
     settleRevalidate("create-project", () => revalidatePath("/projects/new"));
     /**
@@ -61,7 +61,7 @@ export const addSourcesTool = defineTool({
     const result = await addSources(prisma, coreSubject(subject), {
       slug: input.slug, picks: input.picks.map(({ confirmation: _c, ...pick }) => pick),
     }, { confirmations: input.picks.map(pick => pick.confirmation) });
-    if (!result.ok) return failure(result.error, result.conflicts ? { conflicts: result.conflicts } : {});
+    if (!result.ok) return failure(result);
     settleRevalidate("add-sources", () => revalidatePath(`/projects/${input.slug}`, "layout"));
     settleRevalidate("add-sources", () => revalidatePath("/projects"));
     return ok({ sources: result.results, workflowSteps: result.yaml }, m.mcp.summary.sourcesAdded(result.results.length));

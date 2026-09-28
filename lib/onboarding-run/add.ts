@@ -26,7 +26,7 @@ export const AddSurfacesInput = z.object({ slug: z.string().min(1).max(40), pick
 
 export type AddSurfacesResult =
   | { ok: true; results: import("@/lib/surfaces/plan-add").SurfaceAdded[]; yaml: string }
-  | { ok: false; error: OnboardError | AccessError | AddSurfaceErrorCode | "invalid input" | ConnectError; conflicts?: { path: string; surfaceSlugs: string[] }[] };
+  | { ok: false; error: OnboardError | AccessError | AddSurfaceErrorCode | "invalid input" | ConnectError; conflicts?: { path: string; surfaceSlugs: string[] }[]; index?: number };
 
 /**
  * **소스 추가의 공유 코어** (mcp-connector T4-c) — 편집 UI와 MCP `add_sources`. 리포 확인(쓰기 권한 포함)·다운로드·포맷 재검증을
@@ -66,7 +66,8 @@ export async function addSources(
         secret,
         now: new Date(),
       });
-      if (verdict.status !== "ok") return { ok: false, error: verdict.status === "invalid-input" ? "invalid input" : verdict.status };
+      // `index`는 어느 후보가 실패했는지다 — 에이전트가 그 후보만 다시 탐지한다.
+      if (verdict.status !== "ok") return { ok: false, error: verdict.status === "invalid-input" ? "invalid input" : verdict.status, index: verdict.index };
     }
     const paths = snapshot.files.map(file => file.path);
     const selected = input.picks.map(pick => {

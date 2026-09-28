@@ -212,6 +212,7 @@ describe("노출 — 화면과 같은 경계", () => {
     const outcome = await call("whoami", subject("owner", ["translation:write"], { kind: "projects", projectIds: ["p1"] }), {});
     // 해시까지 조건이다 — 재발급된 새 행의 만료를 옛 토큰의 것으로 말하지 않는다.
     expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: "owner", tokenHash: "hash-owner" } }));
-    expect(outcome).toMatchObject({ status: "ok", data: { token: { grants: ["translation:write"], scope: { kind: "projects", projectIds: ["p1"] } } } });
+    expect(outcome).toMatchObject({ status: "ok", data: { token: { grants: ["translation:write"], scope: { kind: "projects", projects: ["acme"] } } } });
+    expect(JSON.stringify(outcome)).not.toContain('"p1"');
   });
 });
