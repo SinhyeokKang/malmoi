@@ -46,3 +46,8 @@
   - `[commit] docs(ARCHITECTURE): invitation emails read the project under the lock`
 - [ ] **T12** 게이트: `pnpm typecheck` + `pnpm test` + `pnpm test:projects:postgres` + `pnpm build` green → 이 디렉터리 삭제.
   - `[commit] docs(feature): remove invitation-email-project`
+
+## 결정 기록 (/orchestrate, 2026-09-28)
+
+- 배치: **C** = T1~T4(코드) · **D** = T8·T9·T10 → C가 dev에 들어간 뒤 T7·T11(코드 라인 인용). 파일 겹침 없음(C는 `messages/en.tsx`를 안 건드린다). T12는 지휘자, T6은 `/merge` 뒤라 이번 범위 밖.
+- T5: 통합 뒤 main 체크아웃의 QA 워커가 dev QA 프로젝트로 두 갈래를 `ox501tube@gmail.com`에 발송하고 Gmail 웹은 ego-browser로 본다. Apple Mail 2장은 사용자가 본다.
