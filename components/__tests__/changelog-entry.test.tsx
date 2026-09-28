@@ -29,6 +29,12 @@ A new version of the GitHub Action. See [the docs](https://mal-moi.com/docs) or 
 
 ![Settings screen](https://github.com/user-attachments/assets/abc)
 
+![Ref shot][shot]
+
+See [protocol-relative](//example.com/x).
+
+[shot]: https://github.com/user-attachments/assets/ref
+
 [Bad](javascript:alert(1))
 
 **Full changelog:** https://github.com/SinhyeokKang/malmoi/compare/v1.0.0...v1.0.1
@@ -91,6 +97,15 @@ describe("ReleaseEntry — 본문", () => {
     expect(link?.getAttribute("href")).toBe("https://github.com/user-attachments/assets/abc");
   });
 
+  it("참조형 이미지도 <img>가 아니라 새 탭 링크다", async () => {
+    const container = await entry();
+    expect(container.querySelectorAll("img")).toHaveLength(0);
+    const link = [...container.querySelectorAll("a")].find((a) => a.textContent === "Ref shot");
+    expect(link?.getAttribute("href")).toBe("https://github.com/user-attachments/assets/ref");
+    expect(link?.getAttribute("target")).toBe("_blank");
+    expect(link?.getAttribute("rel")).toBe("noreferrer");
+  });
+
   it("`javascript:` href는 걷힌다", async () => {
     const container = await entry();
     const bad = [...container.querySelectorAll("a")].find((a) => a.textContent === "Bad");
@@ -100,7 +115,8 @@ describe("ReleaseEntry — 본문", () => {
   it("외부 링크는 새 탭 + noreferrer · 문서 안 링크는 그대로", async () => {
     const container = await entry();
     const byText = (text: string) => [...container.querySelectorAll("a")].find((a) => a.textContent === text);
-    for (const text of ["the docs", "Settings screen"]) {
+    // 프로토콜 상대(`//host`)도 외부다 — 원고 판정(`resolveDocLink`)과 같다.
+    for (const text of ["the docs", "Settings screen", "protocol-relative"]) {
       expect(byText(text)?.getAttribute("target")).toBe("_blank");
       expect(byText(text)?.getAttribute("rel")).toBe("noreferrer");
     }

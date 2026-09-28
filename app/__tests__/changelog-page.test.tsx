@@ -105,6 +105,13 @@ describe("`/changelog` — 목록", () => {
     expectExternal(releasesLinks(main(container)));
   });
 
+  it("원 배열이 상한인데 거른 뒤 0건이어도 Older releases 문장이 선다", async () => {
+    const container = await page({ ok: true, releases: [], truncated: true });
+    const paragraphs = [...main(container).querySelectorAll("p")];
+    expect(main(container).textContent).toContain("No releases have been published yet.");
+    expect(paragraphs.at(-1)?.textContent).toBe("Older releases are on GitHub Releases.");
+  });
+
   it("상한 아래면 Older releases 문장이 없다", async () => {
     const container = await page({ ok: true, releases: TWO, truncated: false });
     expect(main(container).textContent).not.toContain("Older releases");
