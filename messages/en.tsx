@@ -288,11 +288,6 @@ export const en = {
        */
       projectSettings: "Settings",
       signOut: "Sign out",
-      /**
-       * GitHub Releases로 가는 외부 링크 (2026-09-27 사용자 — 복수형 `notes`가 사용자 결정이다) — 사용자 메뉴와
-       * 사이드바 하단이 같은 키를 쓴다.
-       */
-      releaseNotes: "Release notes",
       /** 사이드바 사용자 구역의 `Projects` 바로 아래 항목 (2026-09-27 사용자 — 8-3의 "사이드바에는 없다"를 뒤집었다). 목록 화면의 버튼·빈 상태도 쓴다. */
       newProject: "New project",
       userMenu: "Account menu",

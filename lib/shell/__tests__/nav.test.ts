@@ -312,10 +312,11 @@ describe("navFooterItems", () => {
    * ⚠️ **Changelog → Docs 순서다** (2026-09-27 사용자 — 라벨·행선지는 2026-09-28에 앱 안 `/changelog`로). 둘 다 내부이고,
    * 아이콘은 사용자 메뉴의 같은 항목과 같은 글리프다 — 같은 곳을 두 글리프로 가리키지 않는다.
    */
-  it("Changelog(`/changelog`) 다음 Docs(`/docs`)다 — 둘 다 새 탭이 아니다", () => {
-    expect(navFooterItems().map((i) => ({ key: i.key, label: i.label, href: i.href, external: i.external ?? false }))).toEqual([
-      { key: "changelog", label: m.changelog.title, href: "/changelog", external: false },
-      { key: "docs", label: m.publicDocs.docs.title, href: "/docs", external: false },
+  // 외부 링크 항목이 없어져 `NavItem.external`도 사라졌다 — 새 탭 여부는 사이드바 DOM 테스트(`sign-out-pending`)가 본다.
+  it("Changelog(`/changelog`) 다음 Docs(`/docs`)다", () => {
+    expect(navFooterItems().map((i) => ({ key: i.key, label: i.label, href: i.href }))).toEqual([
+      { key: "changelog", label: m.changelog.title, href: "/changelog" },
+      { key: "docs", label: m.publicDocs.docs.title, href: "/docs" },
     ]);
     expect(navFooterItems().map((i) => i.icon)).toEqual([Compass, CircleHelp]);
   });

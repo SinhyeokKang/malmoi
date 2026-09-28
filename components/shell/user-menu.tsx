@@ -15,17 +15,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { m } from "@/lib/i18n";
-import { GITHUB_RELEASES_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 import { navWorkItems, type NavItem } from "@/lib/shell/nav";
 
 /**
  * top bar 우측. **항목이 일곱이고 순서가 사용자 결정이다** (2026-09-27):
- * `Projects · New project · Account | Release notes · Docs · Privacy Policy | Sign out`. 첫 묶음은 사이드바 사용자 구역과
+ * `Projects · New project · Account | Changelog · Docs · Privacy Policy | Sign out`. 첫 묶음은 사이드바 사용자 구역과
  * **같은 목록**(`navWorkItems`)이고, LNB와 겹치는 항목은 의도다. **모든 줄이 필터 메뉴와 같은 `DropdownMenuItem` 모양이고 앞 아이콘 하나를 든다** —
  * 아이콘은 같은 목적지를 가리키는 다른 자리와 같은 글리프다(Projects `Box` · New project `Plus` · Account `CircleUser` ·
- * Docs `CircleHelp`는 LNB, Release notes `Compass`는 LNB 하단과 공유). Release notes만 외부(GitHub Releases, 새 탭)이고 외부 링크 글리프를
- * 달지 않는다(DESIGN §6.3).
+ * Docs `CircleHelp`는 LNB, Changelog `Compass`는 LNB 하단과 공유). 전부 앱 안 목적지다 — Changelog는 2026-09-28에 GitHub Releases
+ * 외부 링크에서 `/changelog`로 바뀌었다.
  *
  * ⚠️ **아바타가 사진을 싣는다** (2026-09-13). 그 전엔 `SessionRead`가 `name`·`email`만 들어
  * 이니셜뿐이었고, **여기 적혀 있던 근거의 뒷문장이 거짓이었다**: *"`publicSession`이 필드를 하나 더
@@ -74,12 +73,7 @@ export function UserMenu({
           <MenuLink key={item.key} href={item.href} icon={item.icon} label={item.label} />
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <a href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
-            <Compass className="size-4" aria-hidden />
-            {m.common.nav.releaseNotes}
-          </a>
-        </DropdownMenuItem>
+        <MenuLink href={routes.changelog()} icon={Compass} label={m.changelog.title} />
         <MenuLink href={routes.docs()} icon={CircleHelp} label={m.publicDocs.docs.title} />
         <MenuLink href={routes.privacy()} icon={ShieldCheck} label={m.publicDocs.privacy.title} />
         <DropdownMenuSeparator />
