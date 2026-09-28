@@ -28,9 +28,9 @@ function sealedWithLostKey(value: string | null): string | null {
   return value === null ? null : value.split(":").map((part, i) => (i === 2 ? "lost" : part)).join(":");
 }
 function storedUser(user: UserSeed) {
-  const fields = encodeUserFields(user.id, { name: user.name ?? null, ...(user.email === null ? {} : { email: user.email }) });
+  const fields = encodeUserFields(user.id, { name: user.name ?? null, image: user.image ?? null, ...(user.email === null ? {} : { email: user.email }) });
   if (user.unreadable !== true) return { ...user, ...fields };
-  return { ...user, ...fields, email: sealedWithLostKey(fields.email ?? null), name: sealedWithLostKey(fields.name ?? null) };
+  return { ...user, ...fields, email: sealedWithLostKey(fields.email ?? null), name: sealedWithLostKey(fields.name ?? null), image: sealedWithLostKey(fields.image ?? null) };
 }
 function storedInvitation(row: InvitationSeed) {
   const fields = encodeInvitationEmail(row.id, row.projectId, row.email);
@@ -86,7 +86,7 @@ export type SyncRunSeed = {
 export type MemberSeed = { projectId: string; userId: string; role: Role; createdAt?: Date };
 /** ⚠️ `email`이 nullable이다 — 스키마가 그렇고(OAuth provider가 주소를 안 줄 수 있다), 페이크가
  *  스키마보다 좁으면 "이메일 없는 멤버" 갈래를 테스트가 만들 수 없다 (하네스 자기검사 — POSTMORTEM 2026-09-06). */
-export type UserSeed = { id: string; email: string | null; name?: string | null; unreadable?: boolean };
+export type UserSeed = { id: string; email: string | null; name?: string | null; image?: string | null; unreadable?: boolean };
 export type InvitationSeed = {
   id: string;
   projectId: string;
@@ -408,7 +408,15 @@ export function createHarness(seed: Seed = {}) {
         // 시드가 사용자를 안 준 채 멤버를 만들 수 있고, 그때 가짜가 빈 객체를 내면 호출부의 null 처리가 검증되지 않는다.
         if (args.select.user !== undefined) {
           const user = users.find((u) => u.id === m.userId);
-          projected["user"] = user === undefined ? null : storedUser(user);
+          /**
+           * ⚠️ **중첩 select를 따른다** (2026-09-28 멤버 사진 — `image`를 select하지 않아 전원이 이니셜이었는데
+           * 가짜가 행 전체를 내서 로더 테스트가 그 누락을 못 봤다).
+           */
+          const inner = (args.select.user as { select?: Record<string, unknown> }).select;
+          const stored = user === undefined ? null : storedUser(user);
+          projected["user"] = stored === null || inner === undefined
+            ? stored
+            : Object.fromEntries(Object.entries(stored).filter(([k]) => inner[k] === true));
         }
         if (args.select.project !== undefined) {
           const project = projects.find((p) => p.id === m.projectId);

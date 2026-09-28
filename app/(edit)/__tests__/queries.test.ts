@@ -251,6 +251,21 @@ describe("loadMembers", () => {
     const db = createHarness({ projects: [{ id: "p1", slug: "acme" }] });
     expect(await loadMembers(db.prisma, "p1")).toEqual([]);
   });
+
+  /** 2026-09-28 — `image`를 select하지 않아 모든 행이 이니셜이었다. 순수 함수·DOM 테스트는 이 층을 못 본다. */
+  it("계정 사진을 복호화해 싣고, 사진이 없으면 null이다", async () => {
+    const base = memberSeed();
+    const db = createHarness({ ...base, users: (base.users ?? []).map((u) => u.id === "u1" ? { ...u, image: "https://avatars.githubusercontent.com/u/1" } : u) });
+    const rows = await loadMembers(db.prisma, "p1");
+    expect(rows.map((r) => r.image)).toEqual(["https://avatars.githubusercontent.com/u/1", null]);
+  });
+
+  it("못 읽은 행은 사진도 null이다 — 이름과 같은 봉투다", async () => {
+    const base = memberSeed();
+    const db = createHarness({ ...base, users: (base.users ?? []).map((u) => u.id === "u1" ? { ...u, image: "https://x/y.png", unreadable: true } : u) });
+    const rows = await loadMembers(db.prisma, "p1");
+    expect(rows[0]).toMatchObject({ image: null, readable: false });
+  });
 });
 
 describe("loadPendingInvitations", () => {
