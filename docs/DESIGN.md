@@ -491,6 +491,7 @@ computed style로 잰 것이다.
 **흑백 둘과 남의 자산은 이 규칙 밖이다** (2026-09-11 등재):
 
 - **`bg-white`** — 셸 밖 좌측 패널의 **true white** 하나뿐이다(`components/signin/auth-layout.tsx`). `--background`가 아닌 이유는 §6.62에 있다: 캔버스와의 대비가 그 화면의 골격이라 토큰이 움직여도 이 자리는 순백이어야 한다.
+- **초대 메일의 hex**(`lib/invitation-email/`, 2026-09-28) — 메일 클라이언트가 토큰·oklch를 못 읽어 **등재된 값의 hex 사본**을 쓴다(짝이 없는 버튼 hover `#262626` 하나를 빼고) — 목록과 짝은 §6.625.
 - **`text-white`** — `toneFill` 위의 글자·글리프 전용이다(아바타 이니셜·목록 행 타일). tone 여덟의 짝이라 별도 색이 아니다.
 - **국기 SVG 253개**(`public/flags/` — `country-flag-icons@1.6.20` 3x2, MIT) — **우리가 고른 색이 아니다.** Google 4색(§6.8)과 같은 부류라 토큰으로 접지 않고, 인라인 `style`의 `background-image`로만 들어온다(§6.1). 이 예외를 다른 자산으로 넓히지 않는다.
 
@@ -871,6 +872,52 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 초대 복귀 링크 (2026-09-12) | provider 화면에서 취소하면 Auth.js가 `/signin?error=`로 되돌리고 **초대 토큰이 사라진다.** `authjs.callback-url`이 초대를 가리킬 때만 provider 버튼 **아래·약관 위**에 `text-blue-600` 텍스트 링크 한 줄을 세운다(§6.3의 셸 밖 링크 규칙). ⚠️ **버튼으로 만들지 않는다** — 이 화면의 primary는 로그인이고, 돌아가는 길은 `/privacy`·`/docs`의 그것과 같은 무게다 |
 | 초대 수락 | 같은 골격. **실패는 모두 인라인 `Alert`**다 — 이 초대의 지속되는 조건이므로 규약 8을 적용한다(예외 추가 아님). `planInviteView`의 `kind`가 알림과 CTA를 함께 고른다. `blocked`는 재시도 가능한 장애에만 토큰 보존 GET 버튼이고, 재시도 없는 막힘(없음·만료·사용됨)은 **출구 하나**다 — 로그인했으면 [Go to your projects](`/projects`), 아니면 [Sign in](`/signin`) (2026-09-24, audit #15 — 셸 밖이라 전엔 할 수 있는 일이 0이었다), `sign-in`은 provider 둘과 하단 캡션, `accept`는 프로젝트 카드와 수락, `wrong-account`는 프로젝트 카드와 **출구 하나**인데 그 출구가 사유로 갈린다 — `email-mismatch`는 [Sign in with another account](로그아웃 → 같은 링크), `already-member`는 **[Open project]**다. ⚠️ **뒤엣것에 로그아웃을 주지 않는다** (2026-09-12 실물 검증): 문구는 프로젝트를 열라는데 유일한 버튼이 세션을 끊는 것이었고, 이 화면은 셸 밖이라 시키는 일을 할 수단이 0이었다. 만료가 불일치보다 앞이고 불일치가 기존 멤버보다 앞이다. 알림은 설명 아래·카드 위, 비로그인에는 프로젝트 카드가 없다. provider 버튼은 `/signin`과 같은 `ProviderSubmit`·브랜드 아이콘·문구를 쓰고 GitHub이 `primary`다. |
 | 계정 병합 (2026-09-12) | 같은 골격 · 320 컬럼 다섯 줄(로고 · `h1` · 설명 · `EntityCard` · 채움 버튼 + 각주) + 구분선 아래 outlined 버튼. ⚠️ **실패는 기본 상태 + `Alert variant="danger"` 한 장이 전부다** — 부제·각주·구분선·버튼 라벨이 그대로다(실패에서 레이아웃을 갈아치우면 같은 화면으로 돌아온 것을 못 알아본다). 자리는 설명 **아래**, 카드 **위**. ⚠️ **§6.25 Layer A가 아니라 의도적 예외다** — 빼도 화면이 안 비지만, **메시지와 조치가 한 자리에 있어야** 한다: 다시 누를 버튼이 바로 아래이고 토스트는 그 둘을 화면의 반대 끝으로 가른다. ⚠️ **만료는 이 화면을 다시 그리지 않는다** — `/signin`으로 되돌린다(다시 그리면 그 상태가 또 하나의 표면이 된다) |
+
+### 6.625 초대 메일 — 프로젝트 카드 (2026-09-28, invitation-email-project)
+
+**앱 화면이 아니라 메일 HTML이다**(`lib/invitation-email/template.ts`). 토큰·Tailwind가 닿지 않으므로 값이 **hex 사본**이고,
+정본은 옆 열의 화면 값이다. ⚠️ **구현이 dev에 들어간 뒤로는 코드가 정본이다** — 첫 구현의 Claude Design `email/invite.html`은
+더 이상 대조 기준이 아니다(CLAUDE.md `/design-sync` 절). 순서는 로고 → h1 → 문장 → **카드** → 버튼 → 대체 링크이고, 읽기 순서도 같다
+(카드 테이블 `role="presentation"`).
+
+| 요소 | 메일 값 | 근거(화면) |
+|---|---|---|
+| 문구 | `<title>`·h1 `You're invited to a project on Malmoi` · 본문 `You've been invited to join this project on Malmoi.` 하나 · preheader는 고정 | 받은편지함 목록(제목·preheader)에 OWNER 입력 문구를 세우지 않는다 |
+| 카드 | 테이블 `width="100%"` · 테두리 `1px #e5e5e5` · radius **12** · padding 12 · 타일↔텍스트 gap 12 | `InviteProjectCard`의 `w-full rounded-lg border p-3 gap-3`(`--radius` 0.75rem) — 국기 열만 뺐다 |
+| 여백 | 문장 → 카드 16 · 카드 → 버튼 28 | — |
+| 타일 | 셀 `width="32" height="32" align="center" valign="middle"` · radius 8 | `size-8 rounded-sm` |
+| 썸네일 갈래 | `<img src="https://mal-moi.com/api/images/<key>" alt="">`, **width 속성 없이** `display:block;width:auto;height:auto;max-width:32px;max-height:32px` + radius는 **`<img>`에** · 셀 배경 없음 | `ImageTile`은 이미지 뒤에 톤을 안 깐다(투명 이미지의 배경이 프로젝트마다 달라지지 않게) |
+| 폴백 갈래 | `<td bgcolor="TONE_HEX[tone]">`에 radius + `https://mal-moi.com/email/box@2x.png`(`width="16" height="16"`, 파일은 32×32) `alt=""` | `toneFill(name)` + 흰 `Box` `size-4` |
+| 이름 | `14px/20px` `#0a0a0a` · 역할 `13px/17px` `#737373`(`Owner`/`Editor` — `m.projects.role`) · 둘 다 weight 400 · `letter-spacing:0.02em` · 두 줄 사이 1px | `text-sm` / `text-xs text-muted-foreground` · `gap-px`. 13px 행간 17은 `text-xs`의 짝이 없어 13×1.3333 |
+| 이름 줄바꿈 | `word-break:break-word;overflow-wrap:anywhere` · **60 grapheme 상한**(넘으면 앞 59 + `…`) | 화면은 `truncate`인데 메일엔 없다 — 공백 없는 긴 이름이 560 폭을 민다(대체 링크 문단과 같은 형) |
+
+- ⚠️ **톤은 자르기 전 이름으로 고른다** — 잘린 이름으로 고르면 61자 이상에서 화면 타일 색과 갈린다(POSTMORTEM 2026-09-17 교차 화면 톤 계약).
+- ⚠️ **radius를 거는 자리가 갈래마다 다르다** — Gmail은 `<td>` radius가 자식 `<img>`를 자르지 않아 썸네일은 이미지 자체를 둥글린다.
+  화면은 32 상자를 `overflow-hidden`으로 자르므로 **비정사각 이미지는 메일에서 이미지 모서리가 둥글어진다** — 수용. Outlook은 radius를 무시한다 — 수용.
+- ⚠️ **`width="32"` 속성을 두지 않는다** — `normalizeImage`가 `fit: "inside"` + `withoutEnlargement`라 가로·세로로 긴 것과 32 미만이 오고
+  메일은 `object-fit`을 무시한다. 속성이 있으면 세로로 긴 이미지가 `max-height`에 눌려 찌그러진다. **32 미만 원본은 확대하지 않는다** —
+  화면(`object-contain` 확대)과의 차이로 수용.
+- ⚠️ **`alt=""`를 명시한다**(썸네일·Box 둘 다) — 생략하면 Outlook이 파일명을 표시하고, 이름이 바로 옆이라 대체 텍스트는 이름을 두 번 읽힌다(화면 `ImageTile`도 `aria-hidden`).
+- **이미지 차단 시 모습**: 썸네일 갈래는 빈 32칸, 폴백 갈래는 글리프 없는 톤 사각 — 둘 다 수용. **Windows용 Outlook 데스크톱은 WebP를 못 띄워** 썸네일 갈래가 깨진 칸이다 — 수용(PNG 사본을 만들지 않는다). 메일 앱의 다크 강제 반전은 `color-scheme: light`로 못 막는다 — 로고·버튼과 같은 위험.
+- **dev·preview 메일의 썸네일·Box PNG는 빈 칸이 정상이다** — 둘 다 프로덕션 고정 URL이라(preview는 SSO 뒤) dev 스토어 키와 미배포 에셋을 프로덕션이 모른다.
+
+**메일 hex** — `visual-system.test.ts`는 `app`·`components`만 훑으므로 이 값들은 그 게이트 밖이다. 하나를 빼면 새 색이 아니라 **등재된 값의 사본**이다:
+
+| hex | 화면 짝 | 자리 |
+|---|---|---|
+| `#171717` | `--primary` | 버튼 면·테두리 · Outlook VML 버튼 |
+| `#fafafa` | `--primary-foreground` | 버튼 글자 |
+| `#262626` | **없음**(neutral-800) | 버튼 hover. ⚠️ 화면 `primary`는 `hover:bg-foreground`로 **어두워지고** 메일은 첫 시안 값대로 **밝아진다** — 이 기능 전부터의 값이고 이번에 건드리지 않았다 |
+| `#0a0a0a` | `--foreground` | h1 · 본문 문장 · 대체 링크 · 카드 이름 |
+| `#737373` | `--muted-foreground` | 역할 · 대체 링크 안내 · 만료 안내 · 푸터 |
+| `#e5e5e5` | `--border` | 카드 테두리 · 본문 카드 아래선 · 구분선 |
+| `#ffffff` | true white | 본문 배경 · preheader 글자(숨김) — §6.2 `bg-white` 예외와 같은 부류 |
+
+**`TONE_HEX` 여덟**(`lib/invitation-email/`) — §6.2에 이미 등재된 **tone `-600`의 hex 사본**이다. Tailwind v4 `theme.css`의 oklch를
+sRGB로 환산해 **채널별 0–1 clamp**한 값이고(gamut mapping이 아니다 — 그렇게 환산하면 rose·emerald가 갈린다), 테스트가 `theme.css`를 읽어
+같은 방식으로 환산해 대조한다(Tailwind를 올리면 거기서 red):
+rose `#ec003f` · orange `#f54900` · amber `#e17100` · emerald `#009966` · teal `#009689` · sky `#0084d1` · indigo `#4f39f6` · fuchsia `#c800de`.
+⚠️ **indigo를 뺀 일곱은 sRGB 밖이라 P3 화면에서는 앱 쪽이 더 채도가 높다** — 메일 클라이언트가 oklch를 못 읽으므로 피할 수 없는 잔여 차이로 수용한다.
 
 ### 6.63 프로젝트 목록 (`/projects`) — 그룹 **카드** 셋 + 행마다 Meter (2026-09-15 2차 재설계)
 
