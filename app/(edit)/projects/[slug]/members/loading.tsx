@@ -76,7 +76,7 @@ export default function MembersLoading() {
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
-      <div className="flex items-center gap-2 px-4 py-3">
+      <div className="flex min-h-12 items-center gap-2 px-4 py-3">
         <SkeletonLine text="text-base" className="w-28" />
         <Skeleton className="h-5 w-5 rounded-full" />
         <div className="ml-auto w-72">

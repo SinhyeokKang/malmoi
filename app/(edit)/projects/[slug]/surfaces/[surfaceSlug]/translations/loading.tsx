@@ -103,7 +103,7 @@ export default function TranslationsLoading() {
 /** 트리·목록의 52 머리(12 + 로케일 Select 28 + 12 — 세 머리의 아래 선이 한 줄이다) — 제목 + 개수 배지(+ 목록은 오른쪽 끝 정렬 안내). 아래 선은 본문 쪽이 든다. */
 function PanelHead({ title, aside = false }: { title: string; aside?: boolean }) {
   return (
-    <div className="flex h-[52px] shrink-0 items-center gap-2 px-4">
+    <div className="flex h-12 shrink-0 items-center gap-2 px-4">
       <SkeletonLine text="text-base" className={title} />
       <Skeleton className="size-5 rounded-full" />
       {aside && <Skeleton className="ml-auto h-3 w-24 rounded-md" />}

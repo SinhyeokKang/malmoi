@@ -52,7 +52,7 @@ export default function ProjectsLoading() {
       <PanelBody width="fluid" className="flex flex-col gap-4" aria-hidden>
         <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
           {/* 카드 헤더 — 실물과 같은 `px-4 py-3`이라야 첫 행의 y가 안 튄다. */}
-          <div className="flex items-center gap-2 px-4 py-3">
+          <div className="flex min-h-12 items-center gap-2 px-4 py-3">
             <Skeleton className="h-5 w-32" />
             <Skeleton className="size-5 rounded-full" />
           </div>

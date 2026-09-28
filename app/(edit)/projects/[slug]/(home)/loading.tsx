@@ -74,7 +74,7 @@ export default function ProjectHomeLoading() {
           맞히려 들지는 않는다 — 틀리면 두 번 튄다.
         */}
         <aside className="border-border overflow-hidden rounded-lg border">
-          <div className="px-4 py-3">
+          <div className="flex min-h-12 items-center px-4 py-3">
             <Skeleton className="h-5 w-20 rounded-md" />
           </div>
           <MetaGroup rows={6} />
@@ -96,7 +96,7 @@ export default function ProjectHomeLoading() {
 function Card({ rows, footer, divided = true }: { rows: number; footer: boolean; divided?: boolean }) {
   return (
     <section className="border-border overflow-hidden rounded-lg border">
-      <div className="px-4 py-3">
+      <div className="flex min-h-12 items-center px-4 py-3">
         <Skeleton className="h-5 w-40 rounded-md" />
       </div>
       <ul className={divided ? undefined : "border-divider border-t px-4 pt-3.5"}>

@@ -50,7 +50,7 @@ export function AttentionCard({ items, slug, role, state, now }: {
       화면에도 jsdom 테스트에도 안 나타나는 부류다 (2026-09-13의 `combobox` 빈 이름과 같은 축).
     */
     <section className="border-border overflow-hidden rounded-lg border" aria-labelledby="home-attention-title">
-      <h2 id="home-attention-title" className="flex items-center gap-2 px-4 py-3 text-base font-medium">
+      <h2 id="home-attention-title" className="flex min-h-12 items-center gap-2 px-4 py-3 text-base font-medium">
         {m.home.attention.title}
         {/* ⚠️ **빈 상태에는 pill이 없다** (캔버스 `2a-empty`) — `0`을 배지로 세우면 하나의 항목처럼 읽힌다. */}
         {items.count > 0 && (

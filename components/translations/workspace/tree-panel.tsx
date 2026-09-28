@@ -36,7 +36,7 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
 
   return (
     <div className={cn("flex min-h-0 flex-col", className)} style={width === undefined ? undefined : { width }}>
-      <div className="flex h-[52px] shrink-0 items-center gap-2 px-4">
+      <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         <h2 className="text-base font-medium">{m.translations.workspace.tree.title}</h2>
         <Badge variant="neutral">{tree.surfaces.length}</Badge>
       </div>

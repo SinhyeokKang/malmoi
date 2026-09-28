@@ -68,7 +68,7 @@ export function RowCard({
         아래로 내리면 카드 헤더가 두 줄이 되어 행 목록의 시작 y가 카드마다 달라지고, 두 카드를
         나란히 훑을 때 첫 행의 위치가 어긋난다. `/projects`는 이 슬롯을 안 쓰므로 한 줄 그대로다.
       */}
-      <div className="flex items-center gap-2 px-4 py-3">
+      <div className="flex min-h-12 items-center gap-2 px-4 py-3">
         {/*
           ⚠️ **id가 있으면 포커스도 받는다.** 이 id가 붙는 유일한 이유가 **행이 사라진 뒤의 착지점**
           이라서(malmoi#51), 둘을 갈라 두면 `getElementById`는 찾는데 `focus()`가 무시되어 포커스가
