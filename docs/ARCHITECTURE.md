@@ -970,7 +970,7 @@ throw는 `UNCONFIRMED_PULL`(`error: "unconfirmed"`, `lib/pull/message.ts` — �
 병합이 맞다. `runFirstIngest` throw는 `didn't finish`를 단언하지 않고 refresh하며, 바뀐 `data`를 받는 effect가 상세를 한 번 읽는다
 (⚠️ 다시 눌렀을 때 서버가 `not-awaiting`으로 거부하는 것은 **끝난** 적재뿐이다 — 아직 도는 적재는 `finally`가 `busy`를 refresh 트리보다
 먼저 내려 두 번째 첫 적재와 겹칠 수 있다. 둘 다 리포 값만 싣고 아직 편집이 없어 해가 작다고 받았다).
-⚠️ **알려진 예외 둘이 남아 있다** — `reconnect-button.tsx`의 `startTransition(async …)`와 Add sources의 `run(async … addSurfaces)`(`add-sources-modal.tsx`, `useTransition` 안이라 그동안 이동이 얽힌다 — 모달이 닫기를 막는 동안의 일이라 받았다)가 아직 이 형이다(후속 이슈).
+⚠️ **예외였던 둘도 이 형으로 옮겼다** (2026-09-29, malmoi#107) — `reconnect-button.tsx`의 재연결과 Add sources의 추가(`add-sources-modal.tsx`)는 수동 대기 + `useCommitWait`이고, 신호는 호스트가 넘기는 서버 prop(설정 `health` · Home `repo` · Sources `data`)이다. 모달의 수동 확인·GitHub 연결은 짧아 `useTransition`에 남았다.
 
 ⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Publish]가 사는 곳은
 **표면 경로**(`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`)이고 그 세그먼트를 쓴다.
@@ -2849,7 +2849,7 @@ GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" 
 
 **화면을 그리는 동안 GitHub을 기다리는 자리는 전부 `lib/github-wait.ts`의 `GITHUB_WAIT_MS`(8초)를 읽는다** — 목록의 원격 신호(`loadRemoteSignals`)·연결 확인(`probeRepo`)·설정의 열린 PR(`loadOpenPrUrl`)·계정 조회(`loadAccountView` — 설정·`/account`). 넘기면 각자의 실패 갈래(신호 없음 · `error`→`unknown` · `undefined` · `unavailable`)로 접고 로그 한 줄을 남긴다. 같은 원격을 기다리는 두 화면의 마감이 다르면 한쪽은 "확인할 수 없음", 다른 쪽은 아직 매달린 채로 갈린다 — 그래서 사본을 두지 않는다. 설정 화면은 그 셋을 await하지 않고 Suspense로 스트리밍하며, **App 인스턴스는 요청 사이에 남는다**(설치 토큰 캐시가 인스턴스에 붙어 있다 — `createApp`). ⚠️ 그래서 캐시가 만료 직전 토큰을 줄 수 있고, 고정 토큰을 쥐는 `createGitClient`는 만료가 5분 안이면 `refresh: true`로 다시 받는다.
 
-⚠️ **`loadInstalledRepoCount`(`/account` — 설치 목록 + 설치별 리포)는 아직 이 마감 밖이다** (후속 이슈).
+`loadInstalledRepoCount`(`/account` — 설치 목록 + 설치별 리포)도 같은 마감이다 (2026-09-29, malmoi#107) — 넘기면 `null`("말할 수 없다" — 그 줄을 안 그린다)이다.
 
 ### 6.6 Credential 저장 경계 (2026-09-10, dev·prod 전환 완료)
 
