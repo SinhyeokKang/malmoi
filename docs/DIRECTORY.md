@@ -119,11 +119,15 @@ app/
   api/push/failure/     CI가 **적재에 실패했다는 사실**만 남긴다(2026-09-13). 파싱이 깨지면 /api/push는
                         아예 안 불려서 그 실패가 대상 리포 로그에만 있었다. 같은 토큰 · 코드 넷 ·
                         본문 4 KiB · 키/번역/커밋 기준점을 건드리지 않는다
-  api/mcp/              CLI·코딩 에이전트 → 코어(2026-09-28, ARCHITECTURE §6.45). Bearer가 **개인 토큰**이다(ApiToken).
+  api/mcp/              CLI·코딩 에이전트 → 코어(2026-09-28, ARCHITECTURE §6.45). Bearer가 **개인 토큰**(ApiToken) 또는 **OAuth access**(OAuthConnection)다.
                         ⚠️ 쿠키를 읽지 않는다 — CSRF 방어의 전부다(lib/mcp/__tests__/no-cookie-reads). POST 하나이고
                         두 MCP 개정(2026-07-28 · 2025 handshake)을 같은 도구로 받는다. 배치·subscriptions/listen은 SDK 앞에서 끊는다.
                         가드 호출은 app/__tests__/exempt-route-guards가 센다(EXEMPT 등재만으로는 가드를 못 센다)
   api/pull/             DB → PR. cron 전용(CRON_SECRET)
+  oauth/token/ · oauth/revoke/  MCP OAuth 토큰 교환·refresh · 폐기(mcp-oauth). 세션이 아니라 제출된 code·refresh·토큰이 인가다 — 쿠키를 읽지 않고
+                        DB 장애는 server_error 500이다. 코어는 lib/oauth-server/. authorize 페이지(oauth/authorize/)는 세션을 읽는 쪽이라 따로다
+  .well-known/          OAuth 발견 문서 둘(RFC 9728 oauth-protected-resource/api/mcp · RFC 8414 oauth-authorization-server). 요청 origin의
+                        상수만 낸다(허용 밖 호스트 404) · DB·쿠키를 읽지 않는다
   api/images/[...key]/  업로드 이미지 읽기 프록시(2026-09-28). 브라우저가 Blob 호스트를 보지 않게 같은
                         바이트를 우리 출처로 낸다 — 기업 웹 필터가 그 호스트를 막는다(ARCHITECTURE §6.7).
                         ⚠️ **next.config의 rewrite가 아닌 이유가 이 디렉터리의 존재 이유다** — 외부 rewrite는
@@ -552,10 +556,15 @@ lib/
                         execute(⚠️ 던지면 SDK가 예외 문구를 결과에 싣는다 — 여기서 잡아 unavailable로 접는다) · 도메인별
                         account·project·keys·repos·sync·publish·translations·settings·members·onboarding · index(TOOLS).
                         ⚠️ Action을 import하지 않는다 — 같은 코어의 형제 껍데기다(세션이 없다)
-  oauth/                MCP OAuth의 **순수 판정만**(mcp-oauth 진행 중 — 껍데기·스키마는 아직 없다). authorize(쿼리 파싱 — Object.hasOwn) ·
+  oauth/                MCP OAuth의 **순수 판정만**(mcp-oauth 진행 중 — 껍데기는 oauth-server/). authorize(쿼리 파싱 — Object.hasOwn) ·
                         redirect(https·loopback http만, loopback은 포트만 뺀 원문 대조) · pkce(S256) · exchange(planCodeExchange — code 스냅샷만 · planRefresh — 30초 유예) ·
                         consent(planApiTokenIssue 재사용) · client-metadata(CIMD 문서 검증 — 가져오기·SSRF는 호출자) · bearer(mlm_/mlo_ 접두) ·
-                        metadata(발견 문서 둘 + WWW-Authenticate). ⚠️ server-only 없음 — 순수 모듈이다
+                        metadata(발견 문서 둘 + WWW-Authenticate) · endpoint(요청 origin → issuer·resource) · access(planOAuthAccess) ·
+                        tokens(원문 생성·수명) · token-request(form 파싱) · revoke(planRevoke) · callback(콜백 URL) · ssrf(isPublicAddress).
+                        ⚠️ server-only 없음 — 순수 모듈이다
+  oauth-server/         MCP OAuth의 **DB·네트워크 껍데기**(전부 server-only · 쿠키를 읽지 않는다). token(교환·refresh — User → Connection 잠금) ·
+                        revoke · authorize(요청 저장·읽기 · code 발급 · 거부 — 동의 Action이 부른다, 세션은 호출자가 읽는다) ·
+                        client-metadata-fetch(CIMD — 해석된 주소 전부 공개 · 그 주소에 고정 · 리다이렉트 불추종)
   onboarding-run/       **두 GitHub 자격증명이 만나는 조립**(2026-09-28 T4-c — ARCHITECTURE §3.1). Server Action과 MCP 도구가
                         같이 부른다: access(checkRepoAccess) · repos · branches · detect · add · create · import · rotate-token.
                         ⚠️ lib/onboarding/에 두지 않는 이유가 이 디렉터리의 존재 이유다 — 그 루트는 "두 자격증명 import 없음"이라
