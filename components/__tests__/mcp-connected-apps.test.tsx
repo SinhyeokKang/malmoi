@@ -218,6 +218,16 @@ describe("끊기", () => {
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(heading());
   });
+
+  it("미확인 알림이 머리 아래에 서면 첫 행 선은 행↔행(진한) 선이다 — 약한 선이 두 겹이 되지 않는다", async () => {
+    mocks.disconnect.mockRejectedValue(new TypeError("Failed to fetch"));
+    await mount(APPS);
+    await click(rowButton("c1"));
+    await click(dialog()!.querySelector("[data-disconnect-confirm]"));
+    const first = find<HTMLElement>(card(), "ul").firstElementChild as HTMLElement;
+    expect(first.className).toContain("border-border");
+    expect(first.className).not.toContain("border-foreground/[0.06]");
+  });
 });
 
 describe("Connect 카드 — 방식 세그먼트", () => {
