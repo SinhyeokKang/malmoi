@@ -1,4 +1,3 @@
-import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,6 +15,7 @@ import { ProviderSubmit } from "@/components/signin/provider-button";
 import { Alert } from "@/components/ui/alert";
 import { ButtonLink } from "@/components/ui/button";
 import { readSession } from "@/lib/auth/read-session";
+import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import { decodeUser } from "@/lib/credentials/records";
 import { credentialIO } from "@/lib/credentials/access";
 import { getPrisma } from "@/lib/db";

@@ -3,8 +3,8 @@ import { IconTile } from "@/components/ui/icon-tile";
 import { m } from "@/lib/i18n";
 
 /**
- * 동의 화면의 **앱 카드** (mcp-oauth 핸드오프 §7.2) — 로그인 전·동의 단계가 같은 것을 쓴다. `EntityCard`와 같은 치수(radius 12 · padding 12 ·
- * 칩 32/8)이고 칩은 `McpIcon`이다 — 앱 로고·색을 가져오지 않는다(이름·이미지는 클라이언트가 정한 것이라 신원 보증이 아니다, design §6.1).
+ * 동의 화면의 **앱 카드** (mcp-oauth 핸드오프 §7.2) — 로그인 전·동의 단계가 같은 것을 쓴다. `EntityCard`와 같은 카드 치수(radius 12 · padding 12)이고
+ * 칩은 `IconTile sm`(28) 안의 `McpIcon`이다 — 앱 로고·색을 가져오지 않는다(이름·이미지는 클라이언트가 정한 것이라 신원 보증이 아니다, design §6.1).
  *
  * ⚠️ **이름·식별 줄은 말줄임하지 않고 전문을 줄바꿈한다** — 말줄임하면 사칭 주소의 구별되는 부분이 잘리고 `title`은 키보드·터치에서 안 보인다.
  * 이름은 `overflow-wrap:anywhere`, 식별 줄은 `break-all`.
