@@ -15,52 +15,52 @@ T1 종료 조건은 등록 방식·loopback 호환 정책·refresh 경합과 재
 
 ### 0.1 T1 결과 (2026-09-29 실측)
 
-⚠️ **claude.ai는 미측정이다.** 스텁을 공개할 quick tunnel(`cloudflared`)이 Claude Code auto mode 분류기에 거부됐다(외부 ingress 터널).
-그래서 T1은 **닫히지 않았다** — 사람이 터널을 승인하거나 다른 공개 경로를 정해 claude.ai 행을 채워야 §2의 DCR 여부가 확정된다.
-⚠️ **2차 시도(같은 날)도 막혔다 — 터널은 섰지만 커넥터를 추가할 수 없었다.** 측정 계정은 claude.ai **Team 조직 멤버**이고,
-`사용자 지정 → 커넥터 → 추가 → 커스텀 커넥터 추가`가 비활성이다(`aria-disabled`, 안내 "조직 소유자에게 팀에 추가해 달라고 요청하세요").
-조직 설정은 다른 멤버에게도 번지므로 건드리지 않았다. 스텁에 claude.ai 요청은 0건이다. 그래서 사용자 지정 헤더 입력칸이 있는지도 보지 못했다.
+claude.ai는 세 번째 시도에서 쟀다. 앞의 두 번은 막혔다 — ① quick tunnel(`cloudflared`)이 Claude Code auto mode 분류기에 거부됐고(사용자가 좁은 허용 규칙을 추가해 풀었다),
+② 측정 계정이 claude.ai **Team 조직 멤버**라 `사용자 지정 → 커넥터 → 추가 → 커스텀 커넥터 추가`가 비활성이었다(`aria-disabled`, 안내 "조직 소유자에게 팀에 추가해 달라고 요청하세요").
+③ 개인 **Free** 계정으로 바꿔 잰 결과가 아래 표의 claude.ai 열이다. Free는 커스텀 커넥터가 **1개**로 제한된다("Free 플랜에서는 커스텀 커넥터를 1개만 사용할 수 있습니다") —
+모드마다 지우고 다시 추가했다.
 
 - **제품 영향**: Team·Enterprise 조직의 번역 편집자는 **스스로 Malmoi를 붙일 수 없다** — 조직 소유자가 조직 커넥터로 먼저 등록해야 한다.
-  spec의 "번역 편집자가 claude.ai 웹 커넥터로 붙는 경로"는 개인 플랜 사용자이거나 소유자가 먼저 등록한 경우에만 선다. 가이드와 `/mcp` 연결 예시에 이 전제를 적어야 한다.
-- **남은 측정 경로**: 조직 소유자 계정 또는 개인(Pro·Max) 계정으로 같은 스텁을 붙인다. 둘 다 없으면 claude.ai 열은 T10(prod)에서 처음 잰다.
+  개인 플랜은 스스로 붙일 수 있지만 Free는 커스텀 커넥터 1개가 전부다. 가이드와 `/mcp` 연결 예시에 이 전제를 적어야 한다.
 
 스텁은 `.scratch/oauth-stub/`(커밋 안 함)의 Node 서버 셋이다 — 등록 광고만 다르다: `both`(CIMD 지원 + `registration_endpoint`) · `cimd` 전용 · `dcr` 전용.
 authorize는 자동 승인, 토큰 엔드포인트는 회전 + §4.1 재사용 폐기를 흉내 낸다. 설정은 **헤더 없는 URL만**이다. 모든 요청은 JSONL로 남겼다.
 실제 설치 버전은 계획과 다르다 — **Claude Code 2.1.284**, **Codex CLI 0.154.0**.
 
-| 항목 | Claude Code 2.1.284 | Codex CLI 0.154.0 | claude.ai |
+| 항목 | Claude Code 2.1.284 | Codex CLI 0.154.0 | claude.ai(개인 Free, 2026-09-29) |
 |---|---|---|---|
-| 첫 요청 | `POST /api/mcp`(`server/discover`, 2026-07-28) → 401 | `GET /api/mcp` 프로브(`MCP-Protocol-Version: 2024-11-05`) → 405 | 미측정 |
-| PRM 발견 | **401의 `WWW-Authenticate` `resource_metadata`** → `/.well-known/oauth-protected-resource/api/mcp` | **헤더를 보지 않고 RFC 9728 경로를 추측**한다 — 같은 `/.well-known/oauth-protected-resource/api/mcp`. 그 뒤 AS 문서 | 미측정 |
-| AS 문서 | `/.well-known/oauth-authorization-server`(루트) | 같다 | 미측정 |
-| 그 밖의 well-known | 재인증의 revoke 흐름에서 루트 `/.well-known/oauth-protected-resource` 1회(404, 영향 없음). `openid-configuration`은 0건 | 0건 | 미측정 |
-| `both` 모드 등록 | **CIMD** — `client_id=https://claude.ai/oauth/claude-code-client-metadata` | **CIMD** — `client_id=https://chatgpt.com/oauth/codex/<id>/client.json`(서버 추가마다 `<id>`가 다르다) | 미측정 |
-| `cimd` 전용 | 성공 | 성공 | 미측정 |
-| `dcr` 전용 | 성공 — `/oauth/register`에 `client_name: "Claude Code (<서버 이름>)"`, 포트가 박힌 `redirect_uris` 하나 | 성공 — `client_name: "Codex"`, `application_type: native` | 미측정 |
-| CIMD 문서 `redirect_uris` | `http://localhost/callback` · `http://127.0.0.1/callback`(**포트 없음**) | `http://127.0.0.1/callback/<id>` · `http://localhost/callback/<id>`(**포트 없음**) | 미측정 |
-| 실제 `redirect_uri` | **`http://localhost:<임의 포트>/callback`** — 재인증 5회 전부 `localhost`, `127.0.0.1`은 0회 | **`http://127.0.0.1:<임의 포트>/callback/<id>`** — `localhost`는 0회 | 미측정 |
-| `[::1]` | 0회 | 0회 | — |
-| `resource` | authorize · code 교환 · refresh **전부** 보낸다(정확한 MCP URL) | 같다 | 미측정 |
-| PKCE | S256 | S256 | 미측정 |
-| refresh 사용 | 쓴다. **만료가 가까우면 선제 refresh** — `expires_in: 45`에서는 요청마다 refresh(2.5초에 4회), 3600에서는 만료 전 0회. 401이면 반응형 refresh 1회 뒤 재시도 | 쓴다 — 시작 시 401을 받으면 refresh 1회 뒤 `initialize` 재시도 | 미측정 |
-| refresh의 `client_id` | 보낸다 | 보낸다 | 미측정 |
-| `/oauth/revoke` | **쓴다** — `/mcp` → Re-authenticate가 옛 refresh·access를 각각 revoke(RFC 7009, `token_type_hint` 포함) | 0회 | 미측정 |
-| 도구 호출 | `tools/call ping` → pong | `initialize` → `notifications/initialized` → `tools/list` → `tools/call ping` → pong(2025-06-18) | 미측정 |
+| 첫 요청 | `POST /api/mcp`(`server/discover`, 2026-07-28) → 401 | `GET /api/mcp` 프로브(`MCP-Protocol-Version: 2024-11-05`) → 405 | 추가 대화상자가 **추가 전에 서버를 탐지**한다 — `POST /api/mcp` `initialize`(2025-11-25, 백엔드 `python-httpx`) → 401 → PRM → AS. 결과로 인증 "지금 로그인 · 감지됨"과 등록 방식 "감지됨"을 미리 고른다 |
+| PRM 발견 | **401의 `WWW-Authenticate` `resource_metadata`** → `/.well-known/oauth-protected-resource/api/mcp` | **헤더를 보지 않고 RFC 9728 경로를 추측**한다 — 같은 `/.well-known/oauth-protected-resource/api/mcp`. 그 뒤 AS 문서 | `/.well-known/oauth-protected-resource/api/mcp` — 헤더가 가리키는 경로와 RFC 9728 추측 경로가 같아 **둘 중 무엇을 썼는지는 가를 수 없다** |
+| AS 문서 | `/.well-known/oauth-authorization-server`(루트) | 같다 | 같다 |
+| 그 밖의 well-known | 재인증의 revoke 흐름에서 루트 `/.well-known/oauth-protected-resource` 1회(404, 영향 없음). `openid-configuration`은 0건 | 0건 | 0건 |
+| `both` 모드 등록 | **CIMD** — `client_id=https://claude.ai/oauth/claude-code-client-metadata` | **CIMD** — `client_id=https://chatgpt.com/oauth/codex/<id>/client.json`(서버 추가마다 `<id>`가 다르다) | **CIMD** — `client_id=https://claude.ai/oauth/mcp-oauth-client-metadata`(대화상자가 "Claude의 게시된 ID 사용 · 감지됨"을 기본 선택) |
+| `cimd` 전용 | 성공 | 성공 | 성공 |
+| `dcr` 전용 | 성공 — `/oauth/register`에 `client_name: "Claude Code (<서버 이름>)"`, 포트가 박힌 `redirect_uris` 하나 | 성공 — `client_name: "Codex"`, `application_type: native` | 성공 — 대화상자가 "자동으로 등록 · 감지됨"으로 바꿔 고른다. `/oauth/register`에 `client_name: "Claude"`, `redirect_uris: ["https://claude.ai/api/mcp/auth_callback"]`, `token_endpoint_auth_method: none` |
+| CIMD 문서 `redirect_uris` | `http://localhost/callback` · `http://127.0.0.1/callback`(**포트 없음**) | `http://127.0.0.1/callback/<id>` · `http://localhost/callback/<id>`(**포트 없음**) | `https://claude.ai/api/mcp/auth_callback` 하나. `client_name: "Claude"`, `grant_types`에 `urn:ietf:params:oauth:grant-type:jwt-bearer`도 있다 |
+| 실제 `redirect_uri` | **`http://localhost:<임의 포트>/callback`** — 재인증 5회 전부 `localhost`, `127.0.0.1`은 0회 | **`http://127.0.0.1:<임의 포트>/callback/<id>`** — `localhost`는 0회 | **`https://claude.ai/api/mcp/auth_callback`** — 포트 없음, 완전 일치(authorize 4회 전부) |
+| `[::1]` | 0회 | 0회 | 해당 없음(HTTPS 콜백) |
+| `resource` | authorize · code 교환 · refresh **전부** 보낸다(정확한 MCP URL) | 같다 | 같다 — authorize·교환·refresh 전부 |
+| PKCE | S256 | S256 | S256 |
+| refresh 사용 | 쓴다. **만료가 가까우면 선제 refresh** — `expires_in: 45`에서는 요청마다 refresh(2.5초에 4회), 3600에서는 만료 전 0회. 401이면 반응형 refresh 1회 뒤 재시도 | 쓴다 — 시작 시 401을 받으면 refresh 1회 뒤 `initialize` 재시도 | 쓴다. `expires_in: 45`에서는 **요청마다 선제 refresh**(직렬), 3600에서는 401 → refresh 1회 → 재시도 |
+| refresh의 `client_id` | 보낸다 | 보낸다 | 보낸다 |
+| `/oauth/revoke` | **쓴다** — `/mcp` → Re-authenticate가 옛 refresh·access를 각각 revoke(RFC 7009, `token_type_hint` 포함) | 0회 | **0회** — 설정의 "연결 해제"도, 커넥터 "제거"도 revoke를 부르지 않는다 |
+| 도구 호출 | `tools/call ping` → pong | `initialize` → `notifications/initialized` → `tools/list` → `tools/call ping` → pong(2025-06-18) | 채팅에서 `ping` → pong. 호출마다 새 세션 — 보통 `server/discover` → `tools/call`(2026-07-28, UA `Claude-User`), 재연결 직후엔 `initialize` → `notifications/initialized` → `tools/call`(2025)도 보낸다. **두 개정을 다 쓴다** |
 
-- **CIMD 가져오기는 둘 다 공개 HTTPS 200 + `application/json`이었다** — 문서의 `client_id`가 URL과 같다. `client_name`은 Claude Code만 넣고 Codex 문서엔 없다
+- **CIMD 가져오기는 셋 다 공개 HTTPS 200 + `application/json`이었다** — 문서의 `client_id`가 URL과 같다. `client_name`은 Claude Code·claude.ai만 넣고 Codex 문서엔 없다
   (DCR일 때만 `Codex`). 동의 화면의 이름 폴백이 필요하다 — 이름이 없으면 clientId URL을 보인다(§6.1의 "이름은 신원 보증이 아니다"와 같은 방향).
 - **브라우저**: 두 CLI 모두 authorize URL을 **시스템 기본 브라우저로 연다.** Codex `mcp add`는 추가 직후 자동으로 로그인까지 돈다. `codex mcp login`에는 브라우저를
   끄는 옵션이 없다(`--oauth-client-registration auto|cimd|dcr`만). 그래서 재로그인 측정은 건너뛰었다(사용자 브라우저를 다시 열지 않기 위해).
+  claude.ai는 로그인된 브라우저 세션에서 authorize를 열고(Referer `https://claude.ai/`), 토큰 교환·refresh는 Anthropic 백엔드가 한다(UA `python-httpx`).
+- **claude.ai 커넥터 UI에 사용자 지정 헤더 칸이 없다** — 입력은 이름·URL, 인증(지금 로그인 / 필요할 때 로그인 / 로그인 없음), OAuth 클라이언트(CIMD / DCR / 자체 client ID·시크릿),
+  고급(전송 방식: 스트리밍 HTTP / SSE)이 전부다. "로그인 없음"을 골라도 헤더·API 키 칸이 생기지 않는다.
 
-### 0.2 T10 claude.ai 확인 환경 — prod 머지 후 (추천)
+### 0.2 T10 claude.ai 확인 환경 — prod 머지 후 (확정)
 
 **claude.ai는 prod(`mal-moi.com`)에서 머지 뒤 확인한다.** preview는 Vercel SSO 뒤인데 claude.ai 커넥터는 Anthropic 서버에서 URL 하나로 붙는다.
-Protection Bypass는 `x-vercel-protection-bypass` **헤더**여야 하고(§6.45.8 — URL 쿼리 금지), 커넥터가 그 헤더를 PRM·AS·token 요청까지 매번 싣게 할 방법이 없다.
-401 → well-known → token 요청은 우리가 조립한 URL을 클라이언트가 따라가므로 쿼리를 실어도 첫 요청에만 붙는다. ⚠️ 이 판단은 claude.ai 실측 전의 추론이다 — claude.ai가
-사용자 지정 헤더를 받는다면 preview도 된다. T10 규칙(tasks)대로 preview 단계에서는 claude.ai를 완료로 적지 않고 spec 1을 prod 확인까지 미완으로 둔다.
-⚠️ T10을 하는 계정은 **커스텀 커넥터를 추가할 권한이 있어야 한다**(조직 소유자 또는 개인 플랜) — Team 멤버 계정으로는 추가 단계에서 멈춘다(§0.1 2차 시도).
-claude.ai가 T1에서 끝내 미측정이면 T10 prod 확인이 claude.ai의 **첫 실측**이 되고, 그때 CIMD로 안 붙으면 DCR 추가가 prod 뒤로 밀린다.
+Protection Bypass는 `x-vercel-protection-bypass` **헤더**여야 하고(§6.45.8 — URL 쿼리 금지), **커넥터 UI에 헤더 칸이 없다**(§0.1 실측).
+쿼리를 실어도 401 → well-known → token은 우리가 광고한 URL을 따라가므로 첫 요청에만 붙는다. 그래서 preview에서는 claude.ai가 원리적으로 못 붙는다.
+T10 규칙(tasks)대로 preview 단계에서는 claude.ai를 완료로 적지 않고 spec 1을 prod 확인까지 미완으로 둔다.
+⚠️ T10을 하는 계정은 **커스텀 커넥터를 추가할 권한이 있어야 한다** — Team 멤버는 비활성, 개인 Free는 1개 한도(이미 하나 쓰고 있으면 먼저 지운다).
 
 ## 1. 영향 받는 흐름
 
@@ -107,9 +107,11 @@ claude.ai가 T1에서 끝내 미측정이면 T10 prod 확인이 claude.ai의 **�
 
 **T1 판정 (2026-09-29, §0.1):**
 
-- **CIMD를 구현한다.** 두 CLI 모두 `both`에서 CIMD를 골랐고 `cimd` 전용에서도 붙었다. 등록 테이블 없이 두 CLI가 선다.
-- **DCR은 claude.ai 실측 뒤에 정한다.** 두 CLI는 DCR 없이 된다. claude.ai가 `cimd` 전용에서 실패할 때만 DCR(`OAuthClient` + 상한)을 더한다.
-  지금 DCR을 선반영하지 않는다 — 무인증 등록 엔드포인트는 대상이 확인된 뒤에만 연다.
+- **CIMD만 구현한다.** 세 클라이언트 모두 `both`에서 CIMD를 골랐고 `cimd` 전용에서도 붙었다. 등록 테이블 없이 셋이 선다.
+- **DCR은 만들지 않는다** — 셋 다 DCR 없이 된다. 무인증 등록 엔드포인트와 `OAuthClient` 테이블·상한·정리 기준이 통째로 빠진다.
+  AS 문서에 `registration_endpoint`를 광고하지 않는다(광고하면 claude.ai 대화상자가 DCR을 "감지됨"으로 고를 수 있다 — `dcr` 전용에서 실측).
+- `planClientMetadata`는 **모르는 `grant_types` 값을 거부하지 않는다** — claude.ai 문서에 `jwt-bearer`가 있다. 필요한 `authorization_code`·`refresh_token`과
+  `token_endpoint_auth_method: none`만 요구한다. `client_name`이 없는 문서(Codex)도 받는다.
 - **`localhost`를 loopback 예외에 넣는다 — Claude Code가 `localhost`만 쓴다**(5/5). 규칙은 IP literal과 같다: **등록된 URI와 요청 URI 둘 다 host가
   문자 그대로 `localhost`이고 scheme이 `http`일 때만 포트를 무시**한다. path·query는 완전 일치다. `localhost` ↔ `127.0.0.1` 교차 일치는 허용하지 않는다
   (두 CLI의 CIMD 문서가 두 host를 각각 선언하므로 필요 없다). 근거: RFC 8252 §7.3은 `localhost`를 권장하지 않을 뿐 금지하지 않고, 콜백은 사용자 기기의
@@ -117,6 +119,7 @@ claude.ai가 T1에서 끝내 미측정이면 T10 prod 확인이 claude.ai의 **�
 - **포트 예외는 CIMD의 포트 없는 등록값 때문에 필수다** — 두 CLI 모두 문서엔 포트가 없고 요청엔 임의 포트가 붙는다. DCR 등록값은 포트까지 박혀 있어
   완전 일치로 충분하다.
 - `[::1]`은 두 CLI 모두 쓰지 않았다 — 표준 예외로 남기되 호환 근거로 삼지 않는다.
+- claude.ai 콜백 `https://claude.ai/api/mcp/auth_callback`은 CIMD 문서의 값과 완전 일치로 통과한다 — 예외 규칙이 필요 없다.
 
 ## 3. 순수 함수로 분리 가능한 부분 (`/tdd` 진입점)
 
@@ -227,22 +230,23 @@ model OAuthCode {
 
 #### T1 실측 — ⚠️ COMPAT-RISK (2026-09-29, 스텁이 이 절의 폐기를 흉내 냈다)
 
-⚠️ **같은 클라이언트의 프로세스 둘이 저장된 자격증명 하나를 나눠 쓰다 access 만료 뒤 refresh가 겹치면, 정상 사용으로 연결이 폐기된다.**
+⚠️ **같은 클라이언트의 프로세스 둘이 저장된 자격증명 하나를 나눠 쓰다 access 만료 뒤 refresh가 겹치면, 정상 사용으로 연결이 폐기된다**(두 CLI. claude.ai는 해당 없음).
 둘 다 재사용으로 판정되고 모든 세션이 수동 재인증으로 떨어진다. → 사용자 판정으로 위의 **재사용 유예 30초**를 더했다(2026-09-29).
 
-| 시나리오 | Claude Code | Codex |
-|---|---|---|
-| 한 프로세스 안의 병렬 도구 호출(만료 직후 5개) | **직렬이다** — 401 한 번 → refresh 1회 → 나머지는 새 access. MCP HTTP 요청 자체가 ~60ms 간격으로 줄 선다 | 한 프로세스는 refresh 1회(시작 시) |
-| 프로세스 둘, 겹치지 않음(7초 간격) | 둘째가 **저장소의 회전된 refresh를 다시 읽어** 보냈다 — 재사용 없음 | 측정 안 함 |
-| 프로세스 둘, 겹침 | **같은 refresh를 두 번 제출 → 재사용 → 폐기.** 둘째는 `invalid_grant` 뒤 저장소의 새 refresh로 한 번 더 시도했으나 이미 폐기된 연결이었다. 겹침은 token 응답을 10초로 늘려 만들었다 | **동시에 시작한 `codex exec` 둘이 같은 refresh를 1ms 차이로 제출 → 재사용 → 폐기, 둘 다 서버를 잃었다.** 지연은 400ms(실제 RTT 수준)였다. Codex는 시작할 때 설정된 서버 전부에 붙으므로 만료 뒤 병렬로 띄우면 거의 확실히 겹친다 |
-| refresh 응답 유실(회전 뒤 소켓 끊음) | **옛 refresh를 즉시 재전송 → 재사용 → 폐기** → "needs you to sign in again (run /mcp)" | 같다 — 시작 재시도가 같은 refresh를 한 번 더 보낸다 → 폐기 → 도구가 목록에서 사라진다 |
-| `invalid_grant`(강제) | **자동 재동의 없음.** 도구 호출이 "run /mcp to re-authenticate"로 실패한다. `/mcp` → Authenticate로 복구 | **자동 재동의 없음.** stderr에 `AuthRequired`만 남고 에이전트는 "도구가 없다"고만 말한다. 복구는 `codex mcp login`(브라우저) |
+| 시나리오 | Claude Code | Codex | claude.ai |
+|---|---|---|---|
+| 한 프로세스 안의 병렬 도구 호출(만료 직후 5개) | **직렬이다** — 401 한 번 → refresh 1회 → 나머지는 새 access. MCP HTTP 요청 자체가 ~60ms 간격으로 줄 선다 | 한 프로세스는 refresh 1회(시작 시) | **직렬이다** — "5개 병렬"을 시켜도 한 개씩 나갔다. refresh는 inflight 1을 넘은 적이 없다(백엔드 구성요소 `Anthropic/Toolbox`·`Anthropic/ClaudeAI`가 같은 자격증명을 쓰지만 겹치지 않았다) |
+| 프로세스 둘, 겹치지 않음(7초 간격) | 둘째가 **저장소의 회전된 refresh를 다시 읽어** 보냈다 — 재사용 없음 | 측정 안 함 | 해당 없음(서버 쪽 단일 저장) |
+| 프로세스 둘, 겹침 | **같은 refresh를 두 번 제출 → 재사용 → 폐기.** 둘째는 `invalid_grant` 뒤 저장소의 새 refresh로 한 번 더 시도했으나 이미 폐기된 연결이었다. 겹침은 token 응답을 10초로 늘려 만들었다 | **동시에 시작한 `codex exec` 둘이 같은 refresh를 1ms 차이로 제출 → 재사용 → 폐기, 둘 다 서버를 잃었다.** 지연은 400ms(실제 RTT 수준)였다. Codex는 시작할 때 설정된 서버 전부에 붙으므로 만료 뒤 병렬로 띄우면 거의 확실히 겹친다 | 관측 안 됨 |
+| refresh 응답 유실(회전 뒤 소켓 끊음) | **옛 refresh를 즉시 재전송 → 재사용 → 폐기** → "needs you to sign in again (run /mcp)" | 같다 — 시작 재시도가 같은 refresh를 한 번 더 보낸다 → 폐기 → 도구가 목록에서 사라진다 | **옛 refresh를 다시 보내지 않는다 — 재사용 없음.** 대신 refresh를 포기하고 만료된 access로만 재시도해 "The connector's server returned an error"가 이어진다. 설정 화면은 계속 "연결됨"이고 재로그인 안내도 없다. 복구는 설정에서 연결 해제 → 연결(수동) |
+| `invalid_grant`(강제) | **자동 재동의 없음.** 도구 호출이 "run /mcp to re-authenticate"로 실패한다. `/mcp` → Authenticate로 복구 | **자동 재동의 없음.** stderr에 `AuthRequired`만 남고 에이전트는 "도구가 없다"고만 말한다. 복구는 `codex mcp login`(브라우저) | **채팅 안에서 재로그인을 요청한다** — 도구 결과 자리에 "이 도구를 사용하려면 인증이 필요합니다 [연결]". 한 번 누르면 authorize → 교환 → 같은 도구 호출이 끝난다 |
 
 - 재사용이 **한 프로세스 안에서는** 나오지 않았다 — 두 CLI 모두 in-process 직렬이다. 선제 refresh 연쇄(짧은 TTL)도 직렬이었다. access 1시간이면 정상 단일 세션은 안전하다.
 - 위험은 **여러 세션 동시 사용**이다 — 워크트리 워커 여러 개(`/orchestrate`), 병렬 `codex exec`, 같은 머신의 두 Claude Code 창. 주기는 access 수명(1h)마다 한 번이고,
   겹침 창은 우리 `/oauth/token` 왕복 시간이다(DB 잠금 + 도쿄 리전).
 - 응답 유실 뒤 옛 토큰 재전송은 두 CLI 모두 **정상 재시도**다. 정책대로면 네트워크 한 번 끊김이 재동의를 요구한다(§4.1이 이미 받아들인 대가 — 실측으로 확인만 했다).
-- 재동의는 둘 다 **수동**이다. 서버가 `invalid_grant`로 끊으면 사용자가 `/mcp`(Claude Code)나 `codex mcp login`을 직접 돌려야 하고, Codex는 사용자에게 이유를 보이지 않는다.
+- claude.ai는 재사용을 만들지 않았다 — 이 정책으로 끊기는 경로가 관측되지 않았다. 대신 **응답 유실에 스스로 회복하지 못한다**(위 표). 정책과 무관한 클라이언트 동작이다.
+- 두 CLI의 재동의는 **수동**이다. 서버가 `invalid_grant`로 끊으면 사용자가 `/mcp`(Claude Code)나 `codex mcp login`을 직접 돌려야 하고, Codex는 사용자에게 이유를 보이지 않는다.
 
 ### 4.2 동의·교환·끊기의 원자성
 

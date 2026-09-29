@@ -117,3 +117,6 @@
 - 동의 화면 앱 카드 칩: **`IconTile` lg(40)** (사용자 판정 — 시안 32/8 대신 기존 두 규격 중 큰 쪽).
 - claude.ai 실측 계정(사용자 판정): Team 멤버 계정은 커스텀 커넥터 추가가 막혀(조직 소유자만) 개인(무료) 계정으로 잰다. 그것도 막히면 prod 머지 뒤 T10이 첫 실측이고,
   CIMD로 안 붙으면 DCR은 후속 릴리스다. Team·Enterprise 멤버는 조직 소유자가 먼저 등록해야 한다는 전제를 `/mcp` 안내와 가이드에 적는다.
+- T1 종결(개인 무료 계정, m1 r3): claude.ai도 CIMD(`https://claude.ai/oauth/mcp-oauth-client-metadata`, 콜백 `https://claude.ai/api/mcp/auth_callback`)로 붙는다 →
+  **DCR은 만들지 않는다.** 실제 `fetchClientMetadata`·`planRedirectUri`가 그 문서와 콜백을 통과시키는 것도 확인했다(지휘자). claude.ai는 연결 해제 때 `/oauth/revoke`를
+  부르지 않으므로 끊긴 연결은 사용자가 `/mcp`에서 끊을 때까지 남는다. 실서버 확인은 여전히 prod 머지 뒤 T10이다(헤더 칸 없음 — preview SSO 우회 불가).
