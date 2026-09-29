@@ -200,6 +200,8 @@ components/
                         "지금 보고 있는 것"을 말할 것이 사라진다
                         ⚠️ 본문 랜드마크를 ContentPanel이 든다 — 화면은 자기 <main>을 안 든다
                         ⚠️ 사이드바 항목 노출은 편의이고 차단이 아니다(방어는 페이지) — 판정은 lib/shell/nav.ts
+                        navigation-dim.tsx  화면 이동 dim — 셸이 아니라 루트 레이아웃이 든다(공개 셸·로그인에도 선다).
+                        판정(다른 pathname만)은 lib/shell/navigation-dim.ts
                         shell-panels.tsx  LNB ↔ 콘텐츠 리사이저. 서버 레이아웃과 PanelGroup 사이의
                         "use client" 경계이고 sidebar·children을 prop으로 통과시킨다
                         ⚠️ 사이드바 폭이 aside가 아니라 여기 Panel에 있다(200/240/320) — 둘 다 들면
