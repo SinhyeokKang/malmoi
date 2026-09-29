@@ -12,15 +12,27 @@
  * 포트를 뺀 **원문**으로 대조한다 — `URL`로 정규화하면 `127.1`·`2130706433`·`/a/../callback`·끝의 빈 `?`가 등록 값과 같아진다.
  * 호스트가 `http://` 바로 뒤에 와야 하므로 userinfo·대문자 scheme·`localhost.evil.example`은 이 모양에 안 맞아 예외가 아니다.
  */
+// 등록값에 포트가 있어도 양쪽 다 무시한다(RFC 8252 §7.3 — 포트는 요청 시점에 정해진다).
 const LOOPBACK = /^(http:\/\/(?:127\.0\.0\.1|\[::1\]|localhost))(?::\d{1,5})?(?=[/?]|$)/;
 
 function withoutLoopbackPort(value: string): string | null {
   return LOOPBACK.test(value) ? value.replace(LOOPBACK, "$1") : null;
 }
 
+/**
+ * 콜백으로 쓸 수 있는 URI — `https:` 또는 loopback `http:`뿐이다. `javascript:`·`data:`는 동의 뒤 **우리 origin에서** 실행되고,
+ * 원격 `http:`는 code를 평문으로 내보내며, 사설 scheme은 받는 앱을 가릴 수 없다. CIMD 문서 검증·authorize 파싱·대조가 전부 이것을 지난다.
+ */
+export function isAllowedRedirectUri(value: string): boolean {
+  if (!URL.canParse(value) || value.includes("#")) return false;
+  const url = new URL(value);
+  if (url.username !== "" || url.password !== "") return false;
+  return url.protocol === "https:" || LOOPBACK.test(value);
+}
+
 export function planRedirectUri(registered: readonly string[], requested: string): boolean {
   // fragment는 등록과 같아도 받지 않는다(RFC 6749 §3.1.2) — code가 브라우저 쪽에 남는다.
-  if (!URL.canParse(requested) || requested.includes("#")) return false;
+  if (!isAllowedRedirectUri(requested)) return false;
   const loopback = withoutLoopbackPort(requested);
   return registered.some(candidate => candidate === requested || (loopback !== null && withoutLoopbackPort(candidate) === loopback));
 }

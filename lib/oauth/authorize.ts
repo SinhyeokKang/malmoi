@@ -1,4 +1,5 @@
 import { isCodeChallenge } from "./pkce";
+import { isAllowedRedirectUri } from "./redirect";
 
 /**
  * `/oauth/authorize` 쿼리 판정 (mcp-oauth design §3). **등록 대조는 하지 않는다** — `client_id`·`redirect_uri`의 모양만 보고,
@@ -44,17 +45,13 @@ function read(params: Params, key: string): { kind: "none" } | { kind: "one"; va
   return { kind: "one", value: raw[0] ?? "" };
 }
 
-function isAbsoluteUrl(value: string): boolean {
-  return URL.canParse(value) && !value.includes("#");
-}
-
 export function parseAuthorizeRequest(params: Params, expectedResource: string): AuthorizeParse {
   const fatal = { ok: false, error: "invalid_request", redirectable: false } as const;
   const clientId = read(params, "client_id");
   const redirectUri = read(params, "redirect_uri");
   const state = read(params, "state");
   if (clientId.kind !== "one" || clientId.value === "" || clientId.value.length > MAX_LENGTH) return fatal;
-  if (redirectUri.kind !== "one" || redirectUri.value.length > MAX_LENGTH || !isAbsoluteUrl(redirectUri.value)) return fatal;
+  if (redirectUri.kind !== "one" || redirectUri.value.length > MAX_LENGTH || !isAllowedRedirectUri(redirectUri.value)) return fatal;
   // 중복 state는 어느 쪽을 돌려줄지 정할 수 없다 — 되돌려 보내지 않는다.
   if (state.kind === "many" || (state.kind === "one" && state.value.length > MAX_LENGTH)) return fatal;
 

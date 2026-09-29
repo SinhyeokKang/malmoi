@@ -1,3 +1,5 @@
+import { isAllowedRedirectUri } from "./redirect";
+
 /**
  * CIMD(Client ID Metadata Document) 검증 (mcp-oauth design §2 "T1 판정" — 두 CLI 모두 CIMD로 등록한다).
  * 가져오기·SSRF 방어(HTTPS만 · 사설 IP 거부 · 크기·시간 상한 · 리다이렉트 불추종)는 호출자의 몫이고, 여기는 **가져온 JSON**만 본다.
@@ -19,13 +21,13 @@ export type ClientMetadata = {
 export type ClientMetadataPlan = { ok: true; client: ClientMetadata } | { ok: false };
 
 /**
- * HTTPS · 경로 있음 · fragment·userinfo 없음 · **정규화해도 같은 문자열**. 마지막 조건이 점 세그먼트·대문자 호스트를 막는다 —
+ * HTTPS · 경로 있음 · fragment·userinfo·query 없음(CIMD 초안 SHOULD NOT) · **정규화해도 같은 문자열**. 마지막 조건이 점 세그먼트·대문자 호스트를 막는다 —
  * 정규화 전후가 다르면 가져온 문서의 `client_id`와 저장·표시하는 값이 갈린다.
  */
 function isClientIdUrl(value: string): boolean {
   if (!URL.canParse(value)) return false;
   const url = new URL(value);
-  return url.protocol === "https:" && url.pathname !== "/" && url.hash === "" && !value.includes("#")
+  return url.protocol === "https:" && url.pathname !== "/" && url.hash === "" && !value.includes("#") && !value.includes("?")
     && url.username === "" && url.password === "" && url.href === value;
 }
 
@@ -41,7 +43,7 @@ export function planClientMetadata(doc: unknown, clientIdUrl: string): ClientMet
 
   const uris = own(doc, "redirect_uris");
   if (!Array.isArray(uris) || uris.length === 0) return reject;
-  if (!uris.every((uri): uri is string => typeof uri === "string" && URL.canParse(uri))) return reject;
+  if (!uris.every((uri): uri is string => typeof uri === "string" && isAllowedRedirectUri(uri))) return reject;
 
   const name = own(doc, "client_name");
   const clientName = typeof name === "string" && name.trim() !== "" ? name : null;
