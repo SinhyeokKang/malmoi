@@ -67,8 +67,6 @@ const button = (label: string) => [...document.querySelectorAll<HTMLButtonElemen
 const click = async (el: Element | null) => { if (el === null) throw new Error("missing"); await userEvent.click(el as HTMLElement); await settle(); };
 const status = () => find<HTMLElement>(document.body, "[data-consent-status]").textContent;
 const fieldset = () => find<HTMLFieldSetElement>(document.body, "[data-consent-form]");
-/** 끝나지 않는 호출 — 제출 중 상태를 잡는다. */
-const hang = () => new Promise<never>(() => {});
 
 describe("기본", () => {
   it("권한은 한 열 · 만료 90 · All my projects · 돌아갈 곳 · 대체 경고 없음", async () => {
@@ -121,7 +119,9 @@ describe("범위 입력", () => {
 
 describe("제출 중 · 결과", () => {
   it("Authorize 제출 중 — 스피너 · Deny disabled · 폼 fieldset disabled · Not you? 막음", async () => {
-    mocks.authorize.mockReturnValue(hang());
+    // ⚠️ 끝에서 푼다 — 안 끝나는 async transition은 뒤 테스트의 transition을 pending으로 붙잡는다(POSTMORTEM 2026-09-18).
+    let finish!: (value: unknown) => void;
+    mocks.authorize.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
     await mount();
     await click(button("Authorize"));
     expect(button("Authorize")!.disabled).toBe(true);
@@ -131,6 +131,8 @@ describe("제출 중 · 결과", () => {
     expect(button("Not you?")!.disabled).toBe(true);
     await click(button("Authorize"));
     expect(mocks.authorize).toHaveBeenCalledTimes(1);
+    await act(async () => finish(undefined));
+    await settle();
   });
 
   it("명시 거부 — danger Alert · 선택 보존 · Authorize가 그 Alert를 가리키고 포커스가 남는다 · 다시 누르면 재시도", async () => {

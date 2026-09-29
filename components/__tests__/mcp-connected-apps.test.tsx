@@ -166,18 +166,21 @@ describe("끊기", () => {
     expect(document.activeElement).toBe(heading());
   });
 
-  it("명시 실패 — Dialog 안 danger Alert · 닫히지 않는다 · 행이 남는다", async () => {
+  it("명시 실패 — Dialog 안 danger Alert · 닫히지 않는다 · 행이 남는다 · 포커스는 확정 버튼(재시도 자리)", async () => {
     mocks.disconnect.mockResolvedValue({ ok: false, reason: "unavailable" });
     await mount(APPS);
     await click(rowButton("c1"));
     await click(dialog()!.querySelector("[data-disconnect-confirm]"));
     expect(dialog()).not.toBeNull();
+    expect(document.activeElement).toBe(dialog()!.querySelector("[data-disconnect-confirm]"));
     expect(find<HTMLElement>(dialog()!, '[role="alert"]').textContent).toBeTruthy();
     expect(rowButton("c1")).not.toBeNull();
   });
 
   it("제출 중 — 확정 스피너 · Cancel disabled · Esc로 닫히지 않는다", async () => {
-    mocks.disconnect.mockReturnValue(new Promise(() => {}));
+    // ⚠️ 끝에서 푼다 — 안 끝나는 async transition은 뒤 테스트의 transition을 pending으로 붙잡는다(POSTMORTEM 2026-09-18).
+    let finish!: (value: unknown) => void;
+    mocks.disconnect.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
     await mount(APPS);
     await click(rowButton("c1"));
     await click(dialog()!.querySelector("[data-disconnect-confirm]"));
@@ -185,6 +188,8 @@ describe("끊기", () => {
     await userEvent.keyboard("{Escape}");
     await settle();
     expect(dialog()).not.toBeNull();
+    await act(async () => finish({ ok: true }));
+    await settle();
   });
 
   it("응답 유실 — 성공으로 말하지 않는다 · 닫고 카드가 말한다 · 재조회 · 포커스는 카드 제목 · 행은 남는다", async () => {
