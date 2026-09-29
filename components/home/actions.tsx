@@ -239,15 +239,13 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
           </> : undefined}
         >
           {/*
-            ⚠️ **본문이 muted다 — 제목과 글리프만 빨강이다** (캔버스 `2b`). 배너 전체가 빨가면
-            "무엇이 안전한가"(나머지 표면은 들어왔다 · 값은 마지막 성공의 것이다)까지 경고로
-            읽혀서, 이 배너가 하는 일의 절반이 사라진다.
+            ⚠️ **본문을 덮지 않는다 — 글자는 Alert의 본문 색이다** (DESIGN §6.2 — 색은 배경과 글리프만). 배너 전체가 빨가면
+            "무엇이 안전한가"(나머지 표면은 들어왔다 · 값은 마지막 성공의 것이다)까지 경고로 읽힌다 — 전엔 danger 본문이 빨개서
+            여기만 muted로 덮었고, Alert가 그 규칙을 들게 된 뒤로 덮개가 이 배너만 흐리게 했다.
           */}
-          <span className="text-muted-foreground">
-            {m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
-            {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}
-            {!owner && <> {m.home.banner.syncFailed.editor}</>}
-          </span>
+          {m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
+          {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}
+          {!owner && <> {m.home.banner.syncFailed.editor}</>}
         </Alert>
       )}
 
