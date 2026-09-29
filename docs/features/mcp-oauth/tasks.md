@@ -111,3 +111,5 @@
 - CIMD 입력 경계(m2 리뷰, 보수 기본값): 문서의 `redirect_uris`는 `https:` 전부와 loopback host(`127.0.0.1`·`[::1]`·`localhost`)의 `http:`만 받는다
   (`javascript:`·`data:`·원격 `http:` 거부 — 동의 뒤 되돌려 보내는 주소라 XSS·open redirect 경로다). `client_id` URL의 query는 거부한다(CIMD 초안 SHOULD NOT).
   커스텀 scheme 클라이언트가 관측되면 그때 넓힌다.
+- 무인증 authorize 남용(m3 리뷰): **Vercel WAF rate limit**을 `/oauth/authorize`에 IP 단위로 건다 — log 모드로 시작해 실트래픽을 보고 429로 올린다
+  (이미지 프록시 WAF 선례). 코드·작업 큐 없음. 규칙 추가는 `/merge` 전 프로덕션 프로젝트에서 하고 OPERATIONS에 절차를 남긴다(T9).
