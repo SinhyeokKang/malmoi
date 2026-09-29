@@ -111,6 +111,24 @@ describe("toToolResult — refused(코어 거부 코드)", () => {
     expect(toToolResult({ status: "refused", code: "token-scope" }).content[0]?.text).toBe(m.mcp.errors["token-scope"]);
   });
 
+  /**
+   * #149 — `token-scope`의 다음 행동은 **주체마다 다르다**. 개인 토큰은 불변이라 재발급이고, OAuth 연결은 앱에서 다시 연결(재동의 — mcp-oauth
+   * design §4)해야 권한이 바뀐다. OAuth 앱에게 "토큰을 새로 발급하라"고 하면 다른 연결 방식(원문 복사)으로 보낸다.
+   */
+  it("token-scope 문장은 자격증명 종류로 갈린다 — OAuth는 다시 연결, 개인 토큰은 재발급", () => {
+    for (const outcome of [{ status: "token-scope" } as const, { status: "refused", code: "token-scope" } as const]) {
+      const oauth = toToolResult(outcome, "oauth");
+      expect(oauth.content[0]?.text).toBe(m.mcp.errors["token-scope-oauth"]);
+      expect(oauth.structuredContent).toMatchObject({ status: "token-scope", message: m.mcp.errors["token-scope-oauth"] });
+      expect(toToolResult(outcome, "api-token").content[0]?.text).toBe(m.mcp.errors["token-scope"]);
+      // 주체를 모르면(세션 경로 등) 지금 문장 그대로다.
+      expect(toToolResult(outcome).content[0]?.text).toBe(m.mcp.errors["token-scope"]);
+    }
+    expect(m.mcp.errors["token-scope-oauth"]).not.toMatch(/new token|Issue/);
+    // 다른 거부는 주체와 무관하다.
+    expect(toToolResult({ status: "not-found" }, "oauth").content[0]?.text).toBe(m.errors.access["not-found"]);
+  });
+
   it("unavailable은 refused로 와도 retryable이다", () => {
     expect(toToolResult({ status: "refused", code: "unavailable" }).structuredContent).toMatchObject({ status: "unavailable", retryable: true });
   });
