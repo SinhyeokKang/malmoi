@@ -20,10 +20,11 @@ export const whoami = defineTool({
     const [user, github, token, memberships] = await Promise.all([
       prisma.user.findUnique({ where: { id: subject.userId }, select: { id: true, name: true } }),
       prisma.account.findFirst({ where: { userId: subject.userId, provider: APP_ACCOUNT_PROVIDER }, select: { providerAccountId: true } }),
-      // 해시까지 조건이다 — 재발급된 새 행의 만료를 옛 토큰의 것으로 말하지 않는다. OAuth 연결의 만료는 T5에서 붙는다.
+      // 해시까지 조건이다 — 재발급된 새 행의 만료를 옛 토큰의 것으로 말하지 않는다. OAuth는 **연결 수명**이다 — access의 1시간이 아니다
+      // (에이전트가 "한 시간 뒤 끊긴다"고 말하면 틀린다. access는 클라이언트가 조용히 refresh한다).
       subject.credential.kind === "api-token"
         ? prisma.apiToken.findFirst({ where: { userId: subject.userId, tokenHash: subject.credential.tokenHash }, select: { expiresAt: true } })
-        : Promise.resolve(null),
+        : prisma.oAuthConnection.findFirst({ where: { userId: subject.userId, id: subject.credential.connectionId }, select: { expiresAt: true } }),
       subject.scope.kind === "all" ? Promise.resolve([]) : prisma.projectMember.findMany({
         where: { userId: subject.userId, project: { archivedAt: null } }, select: { project: { select: { id: true, slug: true } } },
       }),

@@ -63,12 +63,12 @@ export async function lockCredential(
 ): Promise<LockedToken> {
   const { credential } = input;
   if (credential === undefined) return { status: "ok", grant: "ok" };
-  // OAuth 연결 재읽기는 테이블이 생기는 T5에서 붙는다 — 그 전엔 OAuth 주체가 만들어지지 않으므로 거부가 안전한 쪽이다.
-  if (credential.kind === "oauth") return { status: "unauthorized" };
-  const row = await tx.apiToken.findFirst({
+  const select = { grants: true, allProjects: true, projectIds: true, expiresAt: true } as const;
+  const row = credential.kind === "oauth"
+    // ⚠️ 연결 id로 읽는다, access 해시가 아니다 — 대기 중 refresh가 access를 회전해도 같은 연결의 쓰기는 정당하다. 끊기·재동의·재사용 폐기는
+    // 행 삭제라 "행 없음"이다(재동의는 새 id). `expiresAt`은 연결 수명이다 — access 만료는 입구가 이미 봤다.
+    ? await tx.oAuthConnection.findFirst({ where: { userId: input.userId, id: credential.connectionId }, select })
     // ⚠️ 해시까지 조건이다 — `userId`만으로 읽으면 재발급된 새 토큰의 권한으로 옛 토큰의 쓰기가 통과한다(spec 조건 6).
-    where: { userId: input.userId, tokenHash: credential.tokenHash },
-    select: { grants: true, allProjects: true, projectIds: true, expiresAt: true },
-  });
+    : await tx.apiToken.findFirst({ where: { userId: input.userId, tokenHash: credential.tokenHash }, select });
   return planLockedToken({ row, now: new Date(), projectId: input.projectId, grant: input.grant });
 }

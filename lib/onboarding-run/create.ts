@@ -250,6 +250,9 @@ export async function createProjectFromRepo(
        */
       if (credential?.kind === "api-token") {
         await tx.apiToken.updateMany({ where: { userId, tokenHash: credential.tokenHash, allProjects: false }, data: { projectIds: { push: project.id } } });
+      } else if (credential?.kind === "oauth") {
+        // 부른 연결 하나에만 — 같은 사용자의 다른 연결·개인 토큰에는 편입하지 않는다(mcp-oauth design §5). 연결 id라 재동의된 새 연결에도 안 붙는다.
+        await tx.oAuthConnection.updateMany({ where: { userId, id: credential.connectionId, allProjects: false }, data: { projectIds: { push: project.id } } });
       }
       /**
        * ⚠️ **생성은 사건 셋이다** (결정 13): 생성 1 + **소스당** 1 + 최초 적재 1. 한 줄로 접으면
