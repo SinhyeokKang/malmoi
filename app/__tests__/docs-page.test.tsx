@@ -94,6 +94,12 @@ describe("`/docs` — 개요(1a)", () => {
     expect(mocks.replace).toHaveBeenCalledWith("/docs/reference/formats#formats");
   });
 
+  it("섹션으로 나뉜 옛 `/docs/ai-agents#token`은 새 페이지로 replace된다 (malmoi#152)", async () => {
+    history.replaceState(null, "", "/docs/ai-agents#token");
+    await page(["ai-agents"]);
+    expect(mocks.replace).toHaveBeenCalledWith("/docs/ai-agents/token#token");
+  });
+
   it("표에 없는 해시는 그대로 둔다", async () => {
     history.replaceState(null, "", "/docs#nope");
     await page(undefined);

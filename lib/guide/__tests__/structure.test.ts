@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { legacyAnchorTarget } from "../legacy";
-import { LEGACY_ANCHORS } from "../legacy-anchors";
+import { LEGACY_ANCHORS, SECTION_LEGACY_ANCHORS } from "../legacy-anchors";
 import { headings, parseMd } from "../parse";
 import { leadParagraph, parseMdTable } from "../sections";
 import { flattenNav, parseSummary, slugToFile } from "../summary";
@@ -64,6 +64,27 @@ describe("실물 가이드 구조", () => {
       const file = slugToFile(path!.split("/"), files);
       expect(file, target).not.toBeNull();
       expect(headings(read(file!)).map(({ id }) => id), target).toContain(anchor);
+    }
+  });
+
+  /**
+   * **한 페이지였던 `ai-agents.md`의 절 id 열여덟이 새 페이지로 간다** (malmoi#152). 섹션으로 나눈 뒤 옛
+   * `/docs/ai-agents#<id>` 링크가 개요 맨 위에 멈췄다 — 프로덕션이 한 페이지를 서빙하던 동안 공유된 주소다.
+   * 목록은 나누기 전 원고(ef2cfd42^)의 id 전부다.
+   */
+  it("옛 ai-agents 해시 열여덟이 전부 새 페이지의 실재하는 절로 간다", () => {
+    const old = ["browser", "browser-claude-code", "browser-codex", "browser-claude-ai", "connected-apps", "token", "connect",
+      "claude-code", "codex", "cursor", "permissions", "allowed-actions", "tools", "prompts", "connect-repo", "push-token",
+      "fill-and-publish", "next"];
+    const table = SECTION_LEGACY_ANCHORS["ai-agents"];
+    expect(Object.keys(table).sort()).toEqual([...old].sort());
+    const files = nav().map(({ file }) => file);
+    for (const [id, target] of Object.entries(table)) {
+      const [path, anchor] = target.slice("/docs/".length).split("#");
+      expect(path, target).toMatch(/^ai-agents\/[a-z-]+$/);
+      const file = slugToFile(path!.split("/"), files);
+      expect(file, target).not.toBeNull();
+      expect(headings(read(file!)).map(({ id: heading }) => heading), `${id} → ${target}`).toContain(anchor);
     }
   });
 
