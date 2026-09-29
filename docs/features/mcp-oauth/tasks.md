@@ -104,3 +104,7 @@
 - T1 claude.ai 실측: `cloudflared` quick tunnel로 `.scratch/` 스텁을 공개한다. 실측용 커넥터는 끝나면 claude.ai에서 지운다.
 - T7 `/design-sync`: m4는 워크트리에서 DOM 테스트까지 구현 → 지휘자가 dev에 로컬 통합(push 전) → 같은 워커가 main 체크아웃에서
   `/design-sync` 루프로 마무리한다(워크트리엔 `.env.local`이 없다).
+- T1 결론(Claude Code·Codex, claude.ai 미측정): 등록은 **CIMD**, DCR은 claude.ai 실측 뒤. loopback 포트 예외에 literal `localhost`를 넣는다(교차 host 없음).
+- refresh 재사용 정책(T1 COMPAT-RISK에 대한 사용자 판정): **30초 유예 창.** 회전 뒤 30초 안(`now - usedAt <= 30s`)에 다시 온 옛 refresh는
+  폐기·회전 없이 `invalid_grant`만 답하고, 창 밖 재제출은 기존대로 그 연결을 폐기한다. 근거: 두 CLI 모두 프로세스 간 refresh가 겹쳐 정상 사용으로
+  연결이 폐기됐고(Codex 병렬 시작 1ms 차), Claude Code는 `invalid_grant` 뒤 저장소의 새 refresh로 재시도한다. 대가: 회전 직후 30초 안의 탈취 refresh 사용은 탐지하지 않는다.
