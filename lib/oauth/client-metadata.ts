@@ -24,7 +24,7 @@ export type ClientMetadataPlan = { ok: true; client: ClientMetadata } | { ok: fa
  * HTTPS · 경로 있음 · fragment·userinfo·query 없음(CIMD 초안 SHOULD NOT) · **정규화해도 같은 문자열**. 마지막 조건이 점 세그먼트·대문자 호스트를 막는다 —
  * 정규화 전후가 다르면 가져온 문서의 `client_id`와 저장·표시하는 값이 갈린다.
  */
-function isClientIdUrl(value: string): boolean {
+export function isClientIdUrl(value: string): boolean {
   if (!URL.canParse(value)) return false;
   const url = new URL(value);
   return url.protocol === "https:" && url.pathname !== "/" && url.hash === "" && !value.includes("#") && !value.includes("?")
