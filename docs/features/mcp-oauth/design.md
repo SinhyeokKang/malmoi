@@ -202,6 +202,8 @@ model OAuthCode {
 
 ## 6.1 동의·로그인·연결 목록 UI
 
+시안: https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=MCP+OAuth.dc.html (프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`, 핸드오프 `design_handoff_mcp_oauth/`). 1차 피드백은 `design-feedback.md`.
+
 - 기존 `LinkDest`에 `{ kind: "oauth"; requestId }`를 추가한다. `destFromCallbackUrl`뿐 아니라 challenge 직렬화·역직렬화·성공/오류 착지,
   `/signin` 복귀 링크와 계정 연결 화면까지 같은 목적지를 보존한다. 임의 URL을 저장하지 않고 허용된 경로의 요청 ID로 복원한다.
   복귀 시 요청이 없거나 만료·소비됐으면 명시적으로 끝내고 `/projects`로 조용히 바꾸지 않는다.
