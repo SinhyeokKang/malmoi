@@ -50,6 +50,12 @@ Malmoi가 MCP Authorization 스펙의 **Authorization Server + Resource Server**
 14. 동의 요청 하나에서 code는 최대 하나만 발급된다. 연결 교체는 유효 code 교환의 원자적 커밋 시점이며,
     새 동의는 이전 미교환 code를 무효화한다. 연결을 끊으면 해당 연결의 미교환 code도 무효화해 뒤늦은 교환으로 되살리지 못한다.
 
+## 디자인 정본
+
+시안: https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=MCP+OAuth.dc.html
+(프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`, 핸드오프 `design_handoff_mcp_oauth/` — `/oauth/authorize` 신규 · `/mcp` 변경).
+2026-09-29 2차 피드백까지 반영해 확정했다. 샘플로 남은 자리(핸드오프 §10.2)는 T1 실측으로 채운다.
+
 ## 비목표
 
 - **개인 토큰 대체·폐지** — 병행이다. 헤더만 받는 클라이언트와 CI가 계속 쓴다.

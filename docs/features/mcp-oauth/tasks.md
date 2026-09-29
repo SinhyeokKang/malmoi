@@ -64,7 +64,7 @@
   끊기 후 미교환 code 거부를 검증한다. 서로 다른 origin이 같은 DB를 보게 해 code·refresh·access가 교차 승인되지 않는지도 확인한다.
 ──
 ## T7. 동의 화면 + 로그인 왕복 (`/design-sync` — 신규 페이지, Claude Design 핸드오프 선행)
-- 디자인 작업 지시는 `design-prompt.md`. 코드베이스의 기존 화면과 design §6.1을 기준으로 상태·인터랙션 핸드오프를 먼저 받는다.
+- 디자인 정본은 spec "디자인 정본"의 Claude Design 핸드오프(`design_handoff_mcp_oauth/`)다. `/design-sync`가 그것을 SoT로 대조한다.
 - `app/oauth/authorize/page.tsx` — 검증 → 요청 행 저장 → `?request=` 정규화 → 무세션이면 공급자 버튼(`clearAuthRoundtripCookies` → `signIn`, `redirectTo` = 그 URL) → 동의 폼.
 - Authorize/Deny Server Action은 design §4.2의 요청 소비를 따른다. `LinkDest`에 oauth requestId를 더하고 `destFromCallbackUrl`·
   challenge 직렬화/역직렬화·성공/오류 착지·`/signin` 복귀 링크를 함께 확장한다. "Signed in as … · Not you?"도 요청을 유지한다.
