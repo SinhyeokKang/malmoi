@@ -17,6 +17,8 @@ There are two ways to connect. Claude Code, Codex, and claude.ai can [sign in th
 5. Choose **Expires in**, **Allowed actions**, and **Scope**, the same choices as a [personal token](#token).
 6. Choose **Authorize**. Your browser hands the agent back its connection, and you return to the agent. **Deny** sends the agent away without a connection.
 
+![The Connect an app to Malmoi screen for Claude, showing the signed-in account with Not you?, the app's name and address, Expires in set to 90 days, and Allowed actions with Translate & publish checked](/guide/oauth-consent.webp "Check the app's address, then choose what it can do.")
+
 If you connected the same app before, the screen says so: authorizing again replaces that connection, and the app may be signed out on your other computers. A sign-in request stays open for 10 minutes; if it expires or was already answered, start again from the agent.
 
 ### Claude Code {#browser-claude-code}
