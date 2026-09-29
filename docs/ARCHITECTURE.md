@@ -1755,7 +1755,7 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 | `/api/github/callback` | 세션(`requireUser`) + userId에 묶인 **state HMAC** + state 쿠키 | 브라우저가 돌아오는 지점이라 CSRF 축이 초대 토큰과 같다 (§6.4) |
 | `/api/push/failure` 호출 | Bearer **같은 프로젝트별 토큰** (2026-09-13) | CI가 **적재에 실패했다는 사실**만 남긴다. 로케일 파일을 파싱하지 못하면 `/api/push`는 아예 안 불리므로, 그 실패는 여태 대상 리포의 Actions 로그에만 있었다. ⚠️ **새 토큰을 만들지 않았다** — 같은 `PUSH_TOKEN`이고, 그래서 인증 경로가 하나 더 늘지 않는다. ⚠️ **아무것도 적재하지 않는다**: 키·번역은 물론 `lastCommitSha`·`lastCommitAt`도 안 움직인다(전진시키면 다음 정상 push가 자기 커밋으로 `stale-commit` 409를 받는다). 본문은 **4 KiB 상한 + `strictObject`**이고 코드 넷만 받는다 — 파서 원문·소스 문자열·로컬 절대경로는 보고에도 DB에도 들어가지 않는다 |
 | `/api/push` 호출 | Bearer **프로젝트별 토큰** (생성·해싱은 `lib/push/token.ts`, **조회는 `app/api/push/route.ts`**) | Actions는 사람이 아니다. **fail-closed** — 해시가 없는 프로젝트는 어떤 토큰으로도 통과하지 못하고(컬럼이 `null`), 거부 응답은 어느 쪽이 틀렸는지 알려주지 않는다(토큰 존재 여부·프로젝트 존재 여부를 탐색할 단서를 주지 않는다). ⚠️ 2026-09-07 전에는 서버 env 하나였고 그 값이 비면 500이었다 — 지금은 그런 변수가 없다 |
-| `/api/mcp` 호출 | Bearer **개인 토큰** `mlm_…` (`ApiToken`, 조회는 `lib/mcp/token-store.ts#resolveApiToken`) (2026-09-28) | CLI·코딩 에이전트는 브라우저가 아니다. **쿠키를 읽지 않는다** — 그것이 CSRF 방어의 전부다(제3자 페이지는 Bearer를 못 붙인다). ⚠️ **넷째 GitHub 자격증명이 아니라 Malmoi 신원이다** — 도구 안의 GitHub 호출은 Action과 같은 두 토큰이다. 401 본문은 없음·무효·만료·폐기를 가르지 않는 한 문장이다. 규칙 전부는 §6.45 |
+| `/api/mcp` 호출 | Bearer **개인 토큰** `mlm_…` (`ApiToken`) 또는 **OAuth access** `mlo_…` (`OAuthConnection` — mcp-oauth, 2026-09-29). 입구는 `lib/mcp/token-store.ts#resolveBearer` 하나이고 접두로 먼저 가른다 (2026-09-28) | CLI·코딩 에이전트는 브라우저가 아니다. **쿠키를 읽지 않는다** — 그것이 CSRF 방어의 전부다(제3자 페이지는 Bearer를 못 붙인다). ⚠️ **넷째 GitHub 자격증명이 아니라 Malmoi 신원이다** — 도구 안의 GitHub 호출은 Action과 같은 두 토큰이다. 401 본문은 없음·무효·만료·폐기를 가르지 않는 한 문장이다. 규칙 전부는 §6.45 |
 | `/api/pull` cron 호출 | `CRON_SECRET` | 공개 엔드포인트면 아무나 커밋을 유발할 수 있다. **`checkBearer`를 재사용한다** — fail-closed가 이미 그 시그니처에 있다. 실측: 시크릿 없음·틀림 모두 401이고 응답이 구별되지 않는다 |
 
 ⚠️ **경계를 소스에서 상시로 센다** — `lib/github-connect/__tests__/credential-separation.test.ts`가 양방향으로 본다(개인키가 연결 경로로 / 사용자 토큰이 커밋 경로로) + 연결 경로의 쓰기 금지 + **스캐너 자신이 red를 낼 수 있는지**까지 검사한다. ⚠️ **축이 둘 더 있다** (2026-09-07 이후): ① **세 번째 경계** — `lib/onboarding/`은 두 자격증명 어느 쪽도, `@/lib/github`도 import하지 못한다(두 토큰이 Server Action과 `lib/onboarding-run`·`lib/mcp`에서만 만나는 성질이 여기서 선다 — §3.1). ② **쓰기 검사가 네 입구로 넓어졌다** — `request(...)`/`paginate(...)`의 라우트 문자열, `rest.*`의 이름 기반 writer(`create*`·`update*`·`delete*`·`replace*`·`add*`·`remove*`·`merge`·`set*`), `graphql` mutation. 2026-09-07까지는 리터럴 `request("POST"…)`만 봐서 "GET만 부른다"가 근거 없이 서 있었다. `lib/adapters/__tests__/contract.ts`·`app/__tests__/entry-points.test.ts`와 같은 계열이다.
@@ -2490,7 +2490,7 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
 | 단계 | 거부 | 왜 |
 |---|---|---|
 | `checkOrigin`(`lib/mcp/http.ts`) | 403 `forbidden` | **없으면 통과, 있으면 `ALLOWED_HOSTS` 대조**(`lib/github-connect/origin.ts`). Node `fetch`·CLI는 `Origin`을 안 싣고, 브라우저 클라이언트(MCP Inspector)는 같은 origin에서만 붙는다 — 스펙의 DNS rebinding 권고다. 방어선이 아니라 검증이다 |
-| `parseBearer` → `resolveApiToken` | 401 `{ error: "unauthorized" }` | 없음·무효·만료·폐기가 **같은 본문**이다. ⚠️ **조회 장애는 500 `unavailable`이다, 401이 아니다** — 401로 접으면 에이전트가 사용자에게 재발급을 권한다(§6.1.2와 같은 축) |
+| `parseBearer` → `resolveBearer` | 401 `{ error: "unauthorized" }` + `WWW-Authenticate: Bearer resource_metadata="<요청 origin>/.well-known/oauth-protected-resource/api/mcp"`(허용 밖 호스트면 헤더 없음) | 없음·무효·만료·폐기가 **같은 본문**이다. OAuth access는 저장된 issuer/resource가 현재 origin과 맞아야 한다(mcp-oauth). ⚠️ **조회 장애는 500 `unavailable`이다, 401이 아니다** — 401로 접으면 에이전트가 사용자에게 재발급을 권한다(§6.1.2와 같은 축) |
 | `readBoundedText(1 MiB)` | 400 `too-large` | `set_translations` 100키가 넉넉히 든다. SDK의 4 MiB 상한은 `parsedBody`에 안 걸린다 — route가 끊는 것이 전부다 |
 | `JSON.parse` | 400 JSON-RPC `-32700` | |
 | 배열 본문(JSON-RPC 배치) | 400 `-32600` | 2025-06-18 개정이 배치를 없앴고, 배치 하나가 한 요청 안에서 DB 도구를 펼친다(본문 상한은 바이트만 막는다). 어느 호출도 실행하지 않는다 |
@@ -2519,8 +2519,9 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
   근거가 이 한 줄뿐이다(이름·입력 스키마만으로는 `preview_publish` → `publish` 순서가 안 보인다). 사전에 두는 이유는 브랜드·한글
   게이트가 보게 하려는 것이다. ⚠️ **설명이 없거나 빈 이름이 있으면 서버가 서지 않는다**(`toolDescription`이 던진다) — 카탈로그에
   이름을 늘리면 사전도 같이 늘린다.
-- 401에서 **두 CLI 모두 OAuth로 넘어가지 않는다** — Claude Code는 `Authorization` 헤더가 설정돼 있으면 OAuth fallback을 끄고 401
-  본문을 사용자에게 그대로 보인다(실측). `/.well-known/*` 요청은 0건이었다. 그래서 401 본문이 사용자에게 읽히는 문장이다.
+- **헤더를 설정한 클라이언트는** 401에서 OAuth로 넘어가지 않는다 — Claude Code는 `Authorization` 헤더가 설정돼 있으면 OAuth fallback을 끄고 401
+  본문을 사용자에게 그대로 보인다(실측). `/.well-known/*` 요청은 0건이었다. 그래서 401 본문이 사용자에게 읽히는 문장이다. **헤더 없이 URL만
+  등록한 클라이언트는** 401의 `WWW-Authenticate`(Claude Code)나 추측한 RFC 9728 경로(Codex)로 OAuth 발견을 시작한다(mcp-oauth T1 실측, 2026-09-29).
 - 알려진 소음: `responseMode: "json"`이면 SDK가 `createMcpHandler` 생성 시 `console.warn` 한 줄을 낸다(모듈 로드당 1회 — 핸들러를
   첫 요청에 만드는 이유이기도 하다: 최상위에서 만들면 import만으로 경고가 찍힌다).
 
@@ -2719,8 +2720,8 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 
 | 테스트 | 무엇을 |
 |---|---|
-| `app/__tests__/exempt-route-guards.test.ts` | EXEMPT route → 필수 가드 호출 맵. `/api/mcp`는 주석 제거 후 `resolveApiToken(`. ⚠️ 기존 `entry-points`는 route를 EXEMPT 문자열에 넣을 뿐 가드를 못 센다(POSTMORTEM 2026-09-18) |
-| `lib/mcp/__tests__/no-cookie-reads.test.ts` | `lib/mcp/**`·`app/api/mcp/**`의 `auth(`·`readSession(`·`cookies(` + `headers`·`NextRequest`를 통한 쿠키 읽기 금지 |
+| `app/__tests__/exempt-route-guards.test.ts` | EXEMPT route → 필수 가드 호출 맵. `/api/mcp`는 주석 제거 후 `resolveBearer(`, `/oauth/token`은 `exchangeAuthorizationCode(`·`refreshConnection(`, `/oauth/revoke`는 `revokeToken(`. ⚠️ 기존 `entry-points`는 route를 EXEMPT 문자열에 넣을 뿐 가드를 못 센다(POSTMORTEM 2026-09-18) |
+| `lib/mcp/__tests__/no-cookie-reads.test.ts` | `lib/mcp/**`·`app/api/mcp/**` + OAuth 비쿠키 쪽(`lib/oauth/**`·`lib/oauth-server/**`·`app/.well-known/**`·`app/oauth/token`·`app/oauth/revoke` — authorize 페이지는 제외)의 `auth(`·`readSession(`·`cookies(` + `headers`·`NextRequest`를 통한 쿠키 읽기 금지 |
 | `lib/github-connect/__tests__/credential-separation.test.ts` | `MEETING_ROOTS`(`lib/onboarding-run`·`lib/mcp`)가 Server Action 규칙 — 쓰기는 App 토큰만 |
 | `app/__tests__/locked-access.test.ts` | `TOKEN_SITES`·`RAW_TOKEN_SITES`가 잠금 호출의 `credential` 인자를 AST로 |
 | `lib/auth/__tests__/lock-grant.test.ts` | 쓰기 도구의 grant = 역할 permission(카탈로그로) |
