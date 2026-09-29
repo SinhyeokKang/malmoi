@@ -66,7 +66,7 @@ function components(sizes: Record<string, ShotSize>): Components {
       return <CodeBlock code={hastText(code).replace(/\n$/, "")} filename={typeof filename === "string" ? filename : null} />;
     },
     blockquote: ({ node: _node, children }) => (
-      <Alert variant="info" className="mt-6 text-sm leading-[1.6] [&_p]:mt-0 [&_p]:text-sm [&_p]:leading-[1.6] [&_p+p]:mt-2">
+      <Alert variant="info" className="mt-6 leading-[1.6] [&_p]:mt-0 [&_p]:text-sm [&_p]:leading-[1.6] [&_p+p]:mt-2">
         {children}
       </Alert>
     ),

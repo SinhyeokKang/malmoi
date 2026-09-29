@@ -95,9 +95,7 @@ const REGISTERED: Record<string, string[]> = {
   // amber — 경고 축 (§6.2 "새 raw 색을 늘리지 않는다")
   "bg-amber-100/80": ["components/home/attention-card.tsx", "components/ui/badge.tsx"],
   "text-amber-800": ["components/home/attention-card.tsx", "components/projects/project-list.tsx", "components/ui/badge.tsx"],
-  "bg-amber-50": ["components/home/sync-button.tsx", "components/ui/alert.tsx", ...GLYPH],
-  "border-amber-200": ["components/home/sync-button.tsx", "components/ui/alert.tsx"],
-  "text-amber-900": ["components/home/sync-button.tsx", "components/ui/alert.tsx"],
+  "bg-amber-50": ["components/ui/alert.tsx", ...GLYPH],
   "bg-amber-500": ["components/locale-meter.tsx", "components/sources/source-detail-modal.tsx"],
   // B6 — 기준 언어 대기 테두리. `border-destructive/50`(오류)의 짝이다.
   "border-amber-500/50": ["components/sources/base-language-form.tsx"],
@@ -108,11 +106,15 @@ const REGISTERED: Record<string, string[]> = {
     "components/translations/workspace/key-list.tsx",
     "components/translations/workspace/locale-panel.tsx",
     "components/translations/workspace/workspace.tsx",
+    // Alert warning 글리프 (2026-09-29 — 색은 배경과 글리프만 든다)
+    "components/ui/alert.tsx",
     ...GLYPH,
   ],
   // 초록 — `Active` 배지 · diff
   "bg-green-100/80": ["components/ui/badge.tsx"],
-  "text-green-800": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/ui/badge.tsx"],
+  "text-green-800": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/ui/alert.tsx", "components/ui/badge.tsx"],
+  // Alert 배경 셋 (2026-09-29 사용자 — `bg-amber-50`은 위, `bg-red-50`·`bg-blue-50`은 활동 칩과 같은 값이라 아래에서 합친다)
+  "bg-green-50": ["components/ui/alert.tsx"],
   "bg-green-800/[0.16]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
   // 빨강 — diff · missing 알약 · 사라짐 띠 · 임포트 실패 띠
   "text-red-700": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/sources/source-detail-modal.tsx", "components/ui/badge.tsx", ...GLYPH],
@@ -145,6 +147,7 @@ const REGISTERED: Record<string, string[]> = {
     "components/sources/sources-screen.tsx",
     "components/translations/workspace/locale-panel.tsx",
     "components/translations/workspace/workspace.tsx",
+    "components/ui/alert.tsx",
     "components/ui/button.tsx",
   ],
   "bg-blue-600/[0.14]": ["components/projects/project-list.tsx"],
@@ -196,8 +199,11 @@ const REGISTERED: Record<string, string[]> = {
   ...Object.fromEntries(["rose", "orange", "amber", "emerald", "teal", "sky", "indigo", "fuchsia"].map((tone) => [`bg-${tone}-600`, TONE_FILES])),
   // 활동 글리프 칩 일곱 (§6.68)
   ...Object.fromEntries(
-    ["bg-emerald-50", "text-emerald-700", "bg-red-50", "bg-slate-100", "text-slate-600", "bg-blue-50", "text-blue-700", "bg-teal-50", "text-teal-700", "bg-violet-50", "text-violet-700"].map((value) => [value, GLYPH]),
+    ["bg-emerald-50", "text-emerald-700", "bg-slate-100", "text-slate-600", "text-blue-700", "bg-teal-50", "text-teal-700", "bg-violet-50", "text-violet-700"].map((value) => [value, GLYPH]),
   ),
+  // 활동 칩과 Alert가 같은 값을 쓴다 (Alert `danger`·`info` 배경)
+  "bg-red-50": ["components/ui/alert.tsx", ...GLYPH],
+  "bg-blue-50": ["components/ui/alert.tsx", ...GLYPH],
 };
 
 describe("raw 색은 §6.2 등재 목록 안에만 선다 (audit #43·#44)", () => {
@@ -324,10 +330,16 @@ describe("프리미티브를 손으로 다시 만들지 않는다 (audit #49)", 
     }
   });
 
-  it("안내 상자는 `Alert`가 든다 — 이력 보관 안내·상세 노트", () => {
-    // 상시 안내는 `Alert info`다. 실패 노트는 live 의미를 피하려고 Alert가 아니다(B6 r1 — `logs-events.test.tsx`가 센다).
-    expect(read("components/logs/event-detail.tsx")).toMatch(/function Note\b[^]*?<Alert variant="info">/);
-    expect(read("app/(edit)/projects/[slug]/logs/page.tsx")).toMatch(/<Alert\s+variant="info"[\s\S]{0,400}\{m\.logs\.archived\.restoreLine/);
+  it("안내 상자는 `Alert`가 든다 — 이력 보관 안내·상세 노트·Sync 확인 경고", () => {
+    // 상시 안내는 `Alert neutral`이다. 실패 노트는 `danger`이되 live가 꺼져 있다(B6 r1 — `logs-events.test.tsx`가 센다).
+    expect(read("components/logs/event-detail.tsx")).toMatch(/function Note\b[^]*?<Alert variant=\{tone\} size="compact" live="off">/);
+    expect(read("app/(edit)/projects/[slug]/logs/page.tsx")).toMatch(/<Alert\s+variant="neutral"[\s\S]{0,400}\{m\.logs\.archived\.restoreLine/);
+    expect(read("components/home/sync-button.tsx")).toMatch(/<Alert id=\{warningId\} variant="warning" size="compact">/);
+  });
+
+  it("경고·안내 상자를 손으로 그리지 않는다 — Alert의 배경 넷이 그 파일 밖에 서지 않는다", () => {
+    const box = /(?<![\w-])bg-(?:amber|red|green|blue)-50(?![\w/-])[^"]*(?:rounded|p-\d)|(?:rounded|p-\d)[^"]*(?<![\w-])bg-(?:amber|red|green|blue)-50(?![\w/-])/;
+    expect(SOURCES.filter(({ path, source }) => path !== "components/ui/alert.tsx" && !GLYPH.includes(path) && box.test(source)).map(({ path }) => path)).toEqual([]);
   });
 });
 

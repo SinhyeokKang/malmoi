@@ -68,7 +68,7 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, ret
       ? (owner ? m.repositorySync.baseBranchMissing.owner(branch) : m.repositorySync.baseBranchMissing.editor(branch))
       : reasonMessage(outcome.error);
     const action = !owner && (refusal.action === "settings" || refusal.action === "reconnect") ? null : refusal.action;
-    return <Alert variant={refusal.tone} role="status" title={title}
+    return <Alert variant={refusal.tone} live={refusal.tone === "danger" ? "alert" : "status"} title={title}
       onDismiss={refusal.dismissible ? onDismiss : undefined}
       actions={action === null ? undefined
         /*
@@ -138,7 +138,7 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, ret
         {surface.errors.map((error, index) => <p key={index} data-error-code={error.code} className="whitespace-pre-wrap break-words">{error.path}: {adapterErrorMessage(error)}</p>)}
       </div>)}
   </>;
-  return <Alert variant={tone} role="status" title={title} onDismiss={onDismiss}
+  return <Alert variant={tone} live={tone === "danger" ? "alert" : "status"} title={title} onDismiss={onDismiss}
     /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 진짜 `disabled`는 포커스를 못 받아 왜 꺼졌는지 닿지 않았다.
        사유는 `<span>`이다 — 이 Alert의 형(줄 수)을 `<p>`로 센다. */
     actions={retry && onRetry ? <>

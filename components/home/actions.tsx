@@ -220,8 +220,10 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
     /*
       ⚠️ **여백을 이 블록이 든다** (2026-09-15 리뷰 🔴1) — 바깥 래퍼에 두면 `:empty`가 이 `<div>`를
       자식으로 보고 영원히 거짓이 되어, 배너가 0개인 **가장 흔한 화면**에 그 여백이 유령으로 남는다.
+      ⚠️ **위가 16이고 아래가 0이다** (2026-09-29 사용자) — 캔버스의 `margin:0 24px 20px`를 옮겨 위를 0으로 뒀더니
+      머리의 `border-b`에 Alert가 붙었다(캔버스 머리엔 선이 없다). 아래는 `PanelBody`의 `p-4`가 16을 든다.
     */
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pb-4 empty:hidden">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pt-4 empty:hidden">
       {state === "import_failed" && failedSurface !== null && reason !== null && (
         <Alert
           variant="danger"

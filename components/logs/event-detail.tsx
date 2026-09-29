@@ -1,4 +1,4 @@
-import { ArrowUpRight, CircleAlert } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -143,8 +143,8 @@ export function EventDetail({
         {row.result === "failed" && (
           <Note tone="danger" body={eventFailureMessage(row, archived)} note={row.kind === "PUBLISH" ? m.logs.detail.notes.publish : null} />
         )}
-        {row.result === "running" && <Note tone="muted" body={m.logs.detail.noResult} note={null} />}
-        {row.subtype === "settings.pushTokenRotated" && <Note tone="muted" body={m.logs.meta.tokenEffect} note={m.logs.detail.notes.token} />}
+        {row.result === "running" && <Note tone="neutral" body={m.logs.detail.noResult} note={null} />}
+        {row.subtype === "settings.pushTokenRotated" && <Note tone="neutral" body={m.logs.meta.tokenEffect} note={m.logs.detail.notes.token} />}
       </div>
 
       {/*
@@ -204,25 +204,19 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
 }
 
 /**
- * 상세의 안내 한 줄.
+ * 상세의 안내 한 줄 — 좁은 Dialog 안이라 `compact`다.
  *
- * ⚠️ **실패는 `Alert danger`가 아니다** (B6 r1, 2026-09-24 사용자). 상세는 **지난 기록**인데 `danger`는
- * `role="alert"`를 들어 여는 순간 assertive로 끼어든다 — 결과가 방금 일어난 자리(Sync·Publish)의 판정을
- * 과거 기록에 적용하는 셈이다. 그래서 **아이콘만 붉은** 무색 상자이고 live 의미가 없다.
- * 나머지(진행 중·토큰 회전)는 상시 안내라 `Alert info`다 — 그 variant는 `role`을 들지 않는다.
+ * ⚠️ **실패는 `danger`이되 `live="off"`다** (B6 r1, 2026-09-24 사용자). 상세는 **지난 기록**인데 `danger`의
+ * 기본 알림은 `role="alert"`라 여는 순간 assertive로 끼어든다 — 결과가 방금 일어난 자리(Sync·Publish)의 판정을
+ * 과거 기록에 적용하는 셈이다. 나머지(진행 중·토큰 회전)는 상시 안내라 `neutral`이다.
  */
-function Note({ tone, body, note }: { tone: "danger" | "muted"; body: string; note: string | null }) {
-  const text = (
-    <span className="flex min-w-0 flex-1 flex-col gap-1">
-      <span className="text-sm leading-[1.5]">{body}</span>
-      {note !== null && <span className="text-muted-foreground text-xs text-pretty">{note}</span>}
-    </span>
-  );
-  if (tone === "muted") return <Alert variant="info"><span data-event-note className="flex">{text}</span></Alert>;
+function Note({ tone, body, note }: { tone: "danger" | "neutral"; body: string; note: string | null }) {
   return (
-    <div data-event-note className="border-border flex items-start gap-2.5 rounded-md border p-3.5">
-      <CircleAlert className="text-destructive mt-px size-4 shrink-0" aria-hidden />
-      {text}
+    <div data-event-note>
+      <Alert variant={tone} size="compact" live="off">
+        <p className="text-pretty">{body}</p>
+        {note !== null && <p className="text-muted-foreground mt-1 text-xs text-pretty">{note}</p>}
+      </Alert>
     </div>
   );
 }

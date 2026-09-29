@@ -161,8 +161,8 @@ describe("리포 갱신 보류 배너 (sync-edit-protection T13)", () => {
     expect(src).not.toMatch(/onDismiss/);
   });
 
-  it("[C11] info tone이다 — 안전한 상태에 amber 경고를 띄우지 않는다(DESIGN §6.1)", () => {
-    expect(src).toMatch(/variant="info"/);
+  it("[C11] neutral tone이다 — 안전한 상태에 색을 띄우지 않는다(DESIGN §6.1)", () => {
+    expect(src).toMatch(/variant="neutral"/);
     expect(src).not.toMatch(/variant="warning"/);
   });
 

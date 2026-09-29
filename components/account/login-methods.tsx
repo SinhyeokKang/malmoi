@@ -48,7 +48,7 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
   const notice =
     unconfirmed ? <Alert inset variant="danger">{m.link.methods.unlinkUnconfirmed}</Alert>
     : unlinkFailure !== null ? <Alert inset variant="danger">{unlinkFailure}</Alert>
-    : outcome !== null ? <Alert inset variant={outcome === "connected" ? "success" : "danger"} role={outcome === "connected" ? "status" : undefined}>{m.errors.connectMethod[outcome]}</Alert>
+    : outcome !== null ? <Alert inset variant={outcome === "connected" ? "success" : "danger"} live={outcome === "connected" ? "status" : undefined}>{m.errors.connectMethod[outcome]}</Alert>
     : undefined;
   return (
     <PanelCard

@@ -269,7 +269,7 @@ export default async function ProjectHomePage({
       </PanelHeader>
 
       {/*
-        ⚠️ **배너가 머리와 본문 사이에 있다** (캔버스 `2b`·`2c`·`2d` — `margin:0 24px 20px`).
+        ⚠️ **배너가 머리와 본문 사이에 있다** (캔버스 `2b`·`2c`·`2d`). 여백은 `HomeNotices`가 든다(위 16 · 아래는 본문의 16).
         본문 안에 두면 스크롤과 함께 밀려 올라가고, 그러면 "왜 버튼이 안 눌리나"를 말하는 문장이
         화면 밖으로 나간다 (POSTMORTEM 2026-09-06).
 

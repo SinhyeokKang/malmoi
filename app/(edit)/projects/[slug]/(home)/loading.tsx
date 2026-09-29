@@ -29,7 +29,7 @@ export default function ProjectHomeLoading() {
         채** 트리에 들어왔다가 통째로 사라지고, live 영역은 삽입 시점에 등록되므로 그 첫 내용은
         읽힐 수도 안 읽힐 수도 있다. 제거는 `aria-relevant` 기본값이 announce하지 않으므로 언제나
         안 읽힌다. 빈 래퍼를 상시로 세우는 해법은 **라우트가 통째로 바뀌는 이 자리에는 걸 곳이 없다**
-        — 그 논의는 `components/ui/alert.tsx`의 `role` prop 주석이 든다.
+        — 그 논의는 `components/ui/alert.tsx`의 `live` prop 주석이 든다.
       */}
       <span className="sr-only" role="status">{m.home.loading}</span>
       {/* ⚠️ `aria-hidden`이 머리와 본문 **둘 다**에 있다 — 하나만 빠져도 스크린리더가 회색 블록을 읽는다. */}

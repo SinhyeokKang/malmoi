@@ -177,9 +177,9 @@ export default async function LogsPage({
         </div>
 
         {archived && project.archivedAt !== null && (
-          /* 손으로 그린 상자였다 (audit #49) — 상시 조건의 안내라 `info`이고 닫기가 없다(§6.2 보류 배너와 같은 형). */
+          /* 손으로 그린 상자였다 (audit #49) — 상시 조건의 안내라 `neutral`이고 닫기가 없다(§6.2 보류 배너와 같은 형). */
           <Alert
-            variant="info"
+            variant="neutral"
             /* ⚠️ **복원 링크는 OWNER에게만** — EDITOR에게 누를 수 없는 것을 보이지 않는다. */
             actions={canPerform(role, "project:settings") ? <ButtonLink href={routes.settings(slug)}>{m.logs.archived.restoreAction}</ButtonLink> : undefined}
           >

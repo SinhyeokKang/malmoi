@@ -177,7 +177,7 @@ export function ConsentPanel({
           </div>
         )}
         {unconfirmed && (
-          <Alert variant="warning" role="status">
+          <Alert variant="warning" live="status">
             {m.oauthAuthorize.unconfirmed}
           </Alert>
         )}

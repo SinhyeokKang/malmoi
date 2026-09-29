@@ -121,7 +121,7 @@ export function ConnectedAppsCard({ apps, now }: { apps: readonly ConnectedAppDa
         countLabel={rows === null ? undefined : m.mcpConnector.apps.title}
       >
         {unconfirmed !== null && (
-          <Alert variant="warning" inset role="status">
+          <Alert variant="warning" inset live="status">
             {m.mcpConnector.apps.unconfirmed(unconfirmed)}
           </Alert>
         )}
