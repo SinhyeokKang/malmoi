@@ -59,6 +59,8 @@ Every agent you authorize is listed under **Connected apps** on the **MCP connec
 2. Find the app. Two connections can have the same name; the address under the name tells them apart.
 3. Choose **Disconnect**, then **Disconnect app**.
 
+![The MCP connector page with two connected apps, Claude Code and a Codex app shown by its address, each with its allowed actions, scope, last use, expiry, and a Disconnect button, above the personal token card](/guide/mcp-connector.webp "Disconnect an app you no longer use.")
+
 The app loses access from its next request. Your other apps and your personal token keep working. A connection that has expired stays listed with **Expired**; authorize the app again from the agent to keep using it.
 
 ## Create a token {#token}
@@ -80,8 +82,6 @@ You have one personal token at a time; connected apps don't count toward it. To 
 ## Add Malmoi with a token {#connect}
 
 The **Connect** card on the **MCP connector** page shows the same snippets with the server address for the site you are using: choose **Personal token** for these, or **Sign in with browser** for the ones [above](#browser).
-
-![The MCP connector page with the current token's allowed actions, scope, and expiry above the Connect card and its Claude Code snippet](/guide/mcp-connector.webp "Copy the snippet for your agent from the Connect card.")
 
 ### Claude Code {#claude-code}
 
