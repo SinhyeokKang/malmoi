@@ -76,7 +76,7 @@ describe("실물 가이드 구조", () => {
     const old = ["browser", "browser-claude-code", "browser-codex", "browser-claude-ai", "connected-apps", "token", "connect",
       "claude-code", "codex", "cursor", "permissions", "allowed-actions", "tools", "prompts", "connect-repo", "push-token",
       "fill-and-publish", "next"];
-    const table = SECTION_LEGACY_ANCHORS["ai-agents"];
+    const table = SECTION_LEGACY_ANCHORS["ai-agents"] ?? {};
     expect(Object.keys(table).sort()).toEqual([...old].sort());
     const files = nav().map(({ file }) => file);
     for (const [id, target] of Object.entries(table)) {

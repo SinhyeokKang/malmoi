@@ -6,7 +6,7 @@ import { GuideMarkdown } from "@/components/docs/guide-markdown";
 import { LegacyHashRedirect } from "@/components/docs/legacy-hash";
 import { PublicScroller } from "@/components/public-shell/scroller";
 import { docHref } from "@/lib/guide/href";
-import { LEGACY_ANCHORS } from "@/lib/guide/legacy-anchors";
+import { LEGACY_ANCHORS, SECTION_LEGACY_ANCHORS } from "@/lib/guide/legacy-anchors";
 import { loadPage, loadPageBySlug, loadShotSizes, loadSummary } from "@/lib/guide/load";
 import { OVERVIEW_TRACKS } from "@/lib/guide/overview";
 import { leadParagraph } from "@/lib/guide/sections";
@@ -92,6 +92,8 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   const children = node?.children ?? [];
   // 장 개요(1c) — 하위 목록은 원고가 아니라 SUMMARY 자식에서 붙인다. 목차가 없다.
   const chapterIndex = children.length > 0;
+  // 한 페이지였다가 섹션으로 나뉜 장의 옛 해시 (malmoi#152) — slug는 남이 정한 키라 `Object.hasOwn`으로만 찾는다.
+  const legacy = Object.hasOwn(SECTION_LEGACY_ANCHORS, slug.join("/")) ? SECTION_LEGACY_ANCHORS[slug.join("/")] : undefined;
   // ⚠️ 장 URL이 `slug[0]`인 것은 SUMMARY가 2단이라는 전제다 — `FlatNavItem.parent`는 제목 문자열뿐이다.
   const ld = docLd({
     title: self?.title ?? "",
@@ -103,6 +105,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   return (
     <PublicScroller key={slug.join("/")}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(ld) }} />
+      {legacy ? <LegacyHashRedirect table={legacy} /> : null}
       <DocFrame toc={chapterIndex ? [] : extractToc(page.tree)}>
         {!chapterIndex && self?.parent ? <DocEyebrow>{self.parent}</DocEyebrow> : null}
         <GuideMarkdown tree={page.tree} file={page.file} sizes={loadShotSizes()} />
