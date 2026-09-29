@@ -123,6 +123,8 @@ const REGISTERED: Record<string, string[]> = {
   "text-blue-600": [
     // `/mcp` 가이드 링크 한 줄 (mcp-connector)
     "app/(edit)/mcp/page.tsx",
+    // `/oauth/authorize` 로그인 전 약관 링크 — `/signin`과 같은 줄이다 (mcp-oauth)
+    "app/oauth/authorize/page.tsx",
     "app/signin/page.tsx",
     // `/docs` 원고 본문 링크 · 404 복귀 링크 (§6.61)
     "components/docs/classes.ts",
@@ -147,8 +149,9 @@ const REGISTERED: Record<string, string[]> = {
   ],
   "bg-blue-600/[0.14]": ["components/projects/project-list.tsx"],
   // neutral 계단 — 300 · 400 · 600 · 50 (§6.2)
-  // `components/mcp/token-modal.tsx` — 멤버십 0의 꺼진 `Chosen projects` 행 지시자(Radix Item이 아니라 사유를 읽히는 `aria-disabled` 행이다)
-  "border-neutral-300": ["components/landing/mockup/translations.tsx", "components/mcp/token-modal.tsx", "components/translations/workspace/locale-panel.tsx", "components/ui/checkbox.tsx", "components/ui/radio.tsx"],
+  // `components/mcp/token-grant-fields.tsx` — 멤버십 0의 꺼진 `Chosen projects` 행 지시자(Radix Item이 아니라 사유를 읽히는 `aria-disabled` 행이다).
+  // 토큰 모달과 `/oauth/authorize` 동의 화면이 공유하는 필드다 (mcp-oauth — 핸드오프 §7.6)
+  "border-neutral-300": ["components/landing/mockup/translations.tsx", "components/mcp/token-grant-fields.tsx", "components/translations/workspace/locale-panel.tsx", "components/ui/checkbox.tsx", "components/ui/radio.tsx"],
   "text-neutral-300": ["components/members/role-chip.tsx"],
   "text-neutral-400": [
     "app/(edit)/account/page.tsx",
@@ -160,9 +163,11 @@ const REGISTERED: Record<string, string[]> = {
     "components/landing/mockup/translations.tsx",
     "components/logs/event-detail.tsx",
     // `/mcp` — 사실 블록·Server URL 라벨 열(`/account` Profile과 같은 형) · 만료 토큰의 값(보관 행과 같은 예외) · 멤버십 0 행 (mcp-connector)
+    // · 연결된 앱의 사실 라벨·만료 행 값 (mcp-oauth — 토큰 카드와 같은 형)
     "components/mcp/connect-card.tsx",
+    "components/mcp/connected-apps-card.tsx",
     "components/mcp/token-card.tsx",
-    "components/mcp/token-modal.tsx",
+    "components/mcp/token-grant-fields.tsx",
     "components/members/member-row.tsx",
     "components/projects/project-list.tsx",
     "components/settings/general-card.tsx",

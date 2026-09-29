@@ -27,6 +27,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string }[] = [
   { effectiveDate: "2026-09-28", digest: "d793dcdfd5b28f80eb91bbf582665e411c02ca251514407398b84485d6d128be" },
   // mcp-connector — AI 에이전트 개인 토큰(해시·허용 동작·범위·사용 시각) · 에이전트가 읽는 것의 행방. 2026-09-28 초안이 v1.1.0 머지일로 옮겨졌다.
   { effectiveDate: "2026-09-29", digest: "e6c29b97727ea713450110a19f52138eb28b9f23fa2ad6b8bfd5d7954f1a9473" },
+  // mcp-oauth — 브라우저 로그인으로 붙는 앱 연결(이름·주소·콜백·해시·허용 동작·범위·사용 시각) · 보존 · CIMD 문서 읽기. 같은 날 두 번째 개정이다 — 머지일이 바뀌면 날짜를 옮긴다.
+  { effectiveDate: "2026-09-29", digest: "e335ec7a17858075cedf5f04e94f3fdbb25b93172d64d380f68516d74e6f8d61" },
 ];
 
 const privacy = m.publicDocs.privacy;

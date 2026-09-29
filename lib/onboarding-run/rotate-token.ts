@@ -22,7 +22,7 @@ export type RotateTokenResult =
  */
 export async function rotateToken(prisma: PrismaClient, subject: Subject, input: { slug: string }): Promise<RotateTokenResult> {
   const { slug } = input;
-  const { userId, tokenId } = subject;
+  const { userId, credential } = subject;
   const access = await getProjectAccess(prisma, { userId, slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
   // 보관 = Restore만 — 거부될 요청이 GitHub을 부르지 않게 먼저 막는다. 경합 창은 잠금 안 판정이 닫는다.
@@ -48,7 +48,7 @@ export async function rotateToken(prisma: PrismaClient, subject: Subject, input:
   const pushToken = generatePushToken();
   // ⚠️ `where`가 **인가가 돌려준 projectId**다.
   const locked = await prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId, permission: "project:settings", tokenId });
+    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId, permission: "project:settings", credential });
     if (locked.status !== "ok") return locked;
     await tx.project.update({
       where: { id: access.projectId },

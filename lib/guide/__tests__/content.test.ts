@@ -103,8 +103,13 @@ describe("실물 가이드 본문 게이트", () => {
       blocks.push({ meta: node.meta ?? "", body: node.value });
     });
     for (const client of CONNECT_CLIENTS) {
-      const snippet = connectSnippet(client, "https://mal-moi.com/api/mcp");
+      const snippet = connectSnippet(client, "https://mal-moi.com/api/mcp", "token");
       expect(blocks, client).toContainEqual(expect.objectContaining({ meta: expect.stringContaining(`title="${snippet.path}"`), body: snippet.body }));
+    }
+    // 브라우저 로그인 방식(mcp-oauth) — 조각이 있는 클라이언트는 둘이다(claude.ai는 웹 화면의 단계라 조각이 없다).
+    for (const client of ["claude-code", "codex"] as const) {
+      const snippet = connectSnippet(client, "https://mal-moi.com/api/mcp", "browser");
+      expect(blocks, `browser ${client}`).toContainEqual(expect.objectContaining({ meta: expect.stringContaining(`title="${snippet.path}"`), body: snippet.body }));
     }
     expect(sectionByAnchor(value, "token")).toContain(TOKEN_ENV);
     expect(sectionByAnchor(value, "push-token")).toContain("gh secret set PUSH_TOKEN --repo OWNER/REPO");

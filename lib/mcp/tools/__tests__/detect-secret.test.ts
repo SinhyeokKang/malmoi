@@ -26,7 +26,7 @@ vi.mock("@/lib/github", async (orig) => ({
 const { executeTool } = await import("../execute");
 const { TOOLS } = await import("..");
 const detect = TOOLS.find(t => t.name === "detect_formats")!;
-const subject: ApiTokenSubject = { userId: "u1", grants: ["project:create"], scope: { kind: "all" }, tokenId: "hash" };
+const subject: ApiTokenSubject = { userId: "u1", grants: ["project:create"], scope: { kind: "all" }, credential: { kind: "api-token", tokenHash: "hash" } };
 const context = () => ({ prisma: {} as never, subject, now: new Date(), origin: null });
 
 beforeEach(() => { vi.spyOn(console, "error").mockImplementation(() => {}); });

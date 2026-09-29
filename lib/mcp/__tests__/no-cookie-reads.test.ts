@@ -10,7 +10,14 @@ import { describe, expect, it } from "vitest";
  */
 
 const ROOT = join(__dirname, "..", "..", "..");
-const TREES = ["lib/mcp", "app/api/mcp"];
+/**
+ * MCP 진입점 + OAuth의 **비쿠키 쪽** (mcp-oauth spec 조건 10): 발견 문서 · 순수 판정. `/oauth/authorize` 페이지·동의 Action은 세션을 읽어야
+ * 하므로 여기 없다 — `app/oauth` 통째가 아니라 비쿠키 route만 든다.
+ */
+const TREES = ["lib/mcp", "app/api/mcp", "lib/oauth", "lib/oauth-server", "app/.well-known", "app/oauth/token", "app/oauth/revoke"];
+/** 트리가 조용히 비면(이동·개명) 방어선이 장식이 된다 — 각 트리의 대표 파일이 실제로 스캔되는지 센다. */
+const REQUIRED = ["app/api/mcp/route.ts", "lib/oauth/exchange.ts", "lib/oauth-server/token.ts", "lib/oauth-server/revoke.ts",
+  "app/.well-known/oauth-protected-resource/api/mcp/route.ts", "app/.well-known/oauth-authorization-server/route.ts", "app/oauth/token/route.ts", "app/oauth/revoke/route.ts"];
 const FORBIDDEN = [
   /\bauth\(/, /\breadSession\(/, /\bcookies\(/,
   // 헤더를 직접 읽는 우회 — `request.headers.get("Cookie")`·`req.cookies`(NextRequest)
@@ -59,12 +66,16 @@ describe("쿠키 읽기 스캐너", () => {
   });
 });
 
-describe("lib/mcp/** · app/api/mcp/**", () => {
+describe("MCP · OAuth 비쿠키 트리", () => {
   const files = TREES.flatMap(tree => sources(join(ROOT, tree)));
 
   it("스캔 대상이 있다 — 0건이면 방어선이 아니라 장식이다", () => {
-    expect(files.some(f => f.endsWith(join("app", "api", "mcp", "route.ts")))).toBe(true);
+    for (const path of REQUIRED) expect(files).toContain(join(ROOT, path));
     expect(files.length).toBeGreaterThan(5);
+  });
+
+  it("authorize 페이지는 이 검사 밖이다 — 세션을 읽는 쪽이다", () => {
+    expect(files.some(f => f.includes(join("app", "oauth", "authorize")))).toBe(false);
   });
 
   it("auth( · readSession( · cookies( 호출이 0건", () => {

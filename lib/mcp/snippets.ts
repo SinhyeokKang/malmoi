@@ -10,15 +10,34 @@
  * ⚠️ **잎이다 — import가 0이다.** 클라이언트 컴포넌트가 값으로 읽는다.
  */
 
+/** 개인 토큰 방식의 클라이언트 — 순서가 탭 순서다. */
 export const CONNECT_CLIENTS = ["claude-code", "codex", "cursor"] as const;
 export type ConnectClient = (typeof CONNECT_CLIENTS)[number];
+
+/**
+ * 브라우저(OAuth) 방식의 클라이언트 (mcp-oauth 핸드오프 §7.4). claude.ai는 설정 파일이 아니라 웹 화면의 단계라 조각이 없다 — 카드가 단계를 그린다.
+ * Cursor는 OAuth 실측 대상이 아니다(spec — 대상 셋 고정).
+ */
+export const BROWSER_CLIENTS = ["claude-code", "codex", "claude-ai"] as const;
+export type BrowserClient = (typeof BROWSER_CLIENTS)[number];
+
+export const CONNECT_METHODS = ["browser", "token"] as const;
+export type ConnectMethod = (typeof CONNECT_METHODS)[number];
 
 /** 사용자 셸에 둘 환경변수 이름 — 발급 결과 화면의 안내와 같은 이름이어야 한다. */
 export const TOKEN_ENV = "MALMOI_TOKEN";
 /** 설정 파일의 서버 키 — 에이전트 도구 이름의 접두(`mcp__malmoi__…`)가 된다. 식별자라 소문자다(brand-spelling 예외 한 자리). */
 export const SERVER_KEY = "malmoi";
 
-export function connectSnippet(client: ConnectClient, url: string): { path: string; body: string } {
+/**
+ * ⚠️ **브라우저 방식은 서버 키 + URL만이다** — 헤더가 있으면 Claude Code는 OAuth로 넘어가지 않고 401 본문만 보인다(ARCHITECTURE §6.45.1 실측).
+ * 두 방식을 한 조각에 섞지 않는다. 브라우저 방식에 조각이 있는 클라이언트는 둘(Claude Code · Codex)이다.
+ */
+export function connectSnippet(client: ConnectClient, url: string, method: ConnectMethod): { path: string; body: string } {
+  if (method === "browser") {
+    if (client === "codex") return { path: "~/.codex/config.toml", body: `[mcp_servers.${SERVER_KEY}]\nurl = ${JSON.stringify(url)}` };
+    return { path: ".mcp.json", body: json({ mcpServers: { [SERVER_KEY]: { type: "http", url } } }) };
+  }
   if (client === "codex") {
     return { path: "~/.codex/config.toml", body: `[mcp_servers.${SERVER_KEY}]\nurl = ${JSON.stringify(url)}\nbearer_token_env_var = "${TOKEN_ENV}"` };
   }

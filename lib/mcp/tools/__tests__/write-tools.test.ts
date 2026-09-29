@@ -42,7 +42,7 @@ const exec = (name: string, who: ApiTokenSubject, input: Record<string, unknown>
   executeTool(TOOLS.find(t => t.name === name)!, () => ({ prisma: db, subject: who, now: new Date(), origin: null }), input);
 const code = (outcome: ToolOutcome) => outcome.status === "refused" ? outcome.code : outcome.status;
 const ALL: TokenGrant[] = ["translation:write", "project:settings", "member:manage", "project:create"];
-const subject = (userId: string, grants: TokenGrant[] = ALL, scope: TokenScope = { kind: "all" }): ApiTokenSubject => ({ userId, grants, scope, tokenId: `hash-${userId}` });
+const subject = (userId: string, grants: TokenGrant[] = ALL, scope: TokenScope = { kind: "all" }): ApiTokenSubject => ({ userId, grants, scope, credential: { kind: "api-token", tokenHash: `hash-${userId}` } });
 
 const RESULTS: Record<string, unknown> = {
   save: { ok: true, results: [{ keyId: "k1", result: { ok: true, keyId: "k1", cells: [{ localeCode: "ko", value: "v" }] } }] },
@@ -122,7 +122,7 @@ describe("역할 × grant × 범위", () => {
     expect(code(await run("create_project", subject("owner", ["project:settings"]), input))).toBe("token-scope");
     expect(code(await run("create_project", subject("owner", ["project:create"]), input))).toBe("ok");
     // 확인값은 코어로 따로 넘어가고 표면 입력에는 없다 — 웹 입력 계약은 그대로다.
-    expect(h.core).toHaveBeenCalledWith("create", prisma, { userId: "owner", tokenId: "hash-owner" },
+    expect(h.core).toHaveBeenCalledWith("create", prisma, { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" } },
       { owner: "o", repo: "r", slug: "new", name: "New", baseBranch: "main", surfaces: [{ adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" }] },
       { confirmations: ["c"], origin: null });
   });

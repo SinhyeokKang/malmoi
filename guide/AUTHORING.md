@@ -82,6 +82,11 @@
 | Repository access | GitHub App installation | GitHub App installation settings |
 | Only select repositories | GitHub App installation | GitHub App installation settings |
 | Run workflow | GitHub Actions workflow page | GitHub Actions workflow page |
+| Customize | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
+| Connectors | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
+| Add | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
+| Add custom connector | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
+| Connect | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
 | Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows | GitHub Actions policy | [GitHub Actions policy documentation](https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization); 문서 대조 2026-09-26, 실물 대조 2026-09-27(조직 소유 리포 설정 화면 — 문구 일치) |
 
 ## 앵커와 링크 {#anchors}
@@ -127,7 +132,7 @@
 | `sync/revert.md` | OWNER 전용 복원·수동 Sync, 지문 확인·미전달 처리 | `lib/keys/revert.ts`, `lib/protection/`, `lib/sync/`, `app/(edit)/actions.ts`, `docs/ARCHITECTURE.md` §5.8 |
 | `sync/logs.md` | 필터·상세·수동 갱신·보관 이력 | `app/(edit)/projects/[slug]/logs/page.tsx`, `components/logs/`, `lib/events/`, `docs/ARCHITECTURE.md` §5.7 |
 | `account.md` | 프로필·로그인 수단·GitHub 연결·전체 로그아웃 | `app/(edit)/account/`, `components/account/`, `lib/account-connect/`, `lib/login-link/`, `lib/session-revocation/`, `docs/PRODUCT.md` §4.1·§7.7 |
-| `ai-agents.md` | 토큰 발급·회전·폐기, 연결 조각 셋, 역할 ∩ 토큰 권한, 도구 묶음, push 토큰 secret 저장 | `app/(edit)/mcp/`, `components/mcp/`, `lib/mcp/snippets.ts`(조각 — `content.test.ts`가 글자 단위로 대조), `lib/mcp/catalog.ts`, `lib/mcp/grant.ts`, `lib/mcp/tools/`, `messages/en.tsx`의 `mcpConnector`·`mcp`, `docs/ARCHITECTURE.md` §6.45, `docs/PRODUCT.md` §4.1 |
+| `ai-agents.md` | 브라우저 로그인 연결(조각 둘·claude.ai 커넥터 단계·동의 화면·재동의 대체·요청 10분), Connected apps·끊기, 토큰 발급·회전·폐기, 토큰 조각 셋, 역할 ∩ 허용 권한, 도구 묶음, push 토큰 secret 저장 | `app/oauth/authorize/`, `components/oauth/`, `lib/oauth/authorize-view.ts`, `app/(edit)/mcp/`, `components/mcp/`, `lib/mcp/snippets.ts`(조각 — 두 방식 모두 `content.test.ts`가 글자 단위로 대조), `lib/mcp/catalog.ts`, `lib/mcp/grant.ts`, `lib/mcp/tools/`, `messages/en.tsx`의 `mcpConnector`·`mcp`, `docs/ARCHITECTURE.md` §6.45, `docs/PRODUCT.md` §4.1 |
 | `reference/formats.md` | 지원 포맷 다섯·경로·보존 특성 | `lib/adapters/index.ts`, `lib/adapters/`, `lib/onboarding/detect.ts`, `docs/ARCHITECTURE.md` §1 |
 | `reference/limits.md` | 프로젝트·멤버·slug·초대 상한, 파일·적재 예산 | `lib/onboarding/create-plan.ts` (`PROJECT_LIMIT`), `lib/auth/invitation.ts` (`MEMBER_LIMIT`), `lib/onboarding/slug.ts` (`PROJECT_SLUG_MAX`), `lib/invitation-email/limits.ts` (`INVITATION_HOURLY_LIMIT`), `lib/onboarding/budget.ts`, `lib/push/plan.ts` |
 | `reference/troubleshooting.md` | 설치 누락·stale commit 409·payload 400·사용자 복구 경로 | `app/api/push/route.ts`, `lib/push/guard.ts`, `lib/push/plan.ts`, `docs/ACTIONS.md` §3, `lib/github-connect/message.ts`, `lib/onboarding/message.ts`, `messages/en.tsx` |

@@ -388,6 +388,32 @@ WHERE defaclnamespace = 'public'::regnamespace;
 회수 전에 `nspacl`에 `postgres=U/…`(직접 GRANT)가 있는지 확인한다 — 없으면 앱이 이름 해석에서 막힌다. 대시보드 **Advisors → Security**가
 0 errors인지도 같이 본다.
 
+## Vercel WAF rate limit — 무인증 공개 진입점 (2026-09-28 · 2026-09-29)
+
+**대상은 둘이다** — 인증이 없어 요청 하나가 서버 쪽 비용(함수 호출 · 외부 fetch · DB 쓰기)을 만드는 자리. 코드에 카운터·작업 큐를 두지 않고
+플랫폼 규칙으로 막는다(ARCHITECTURE §6.06 "관측되면 Vercel Firewall부터"의 적용).
+
+| 규칙 | 조건 | 한도 · 키 | 동작 | 상태 |
+|---|---|---|---|---|
+| Rate limit public entry points | `path starts with /api/images/` **OR** `path equals /oauth/authorize` | 600 req / 60s · `ip` | `log` | 2026-09-28 image proxy로 게시 → 2026-09-29 authorize를 OR 조건으로 합쳐 재게시(옛 이름 `Rate limit image proxy`) — 429 승격 대기 |
+
+⚠️ **규칙이 하나인 것은 Hobby 플랜의 rate limit 규칙 상한(1개) 때문이다**(2026-09-29 대시보드 "Upgrade to pro to add up to 40 rate limit rules"). 그래서 두 경로가
+**카운터 하나(IP당 600/60s)를 나눠 쓴다** — authorize만 보면 원래 계획한 60보다 느슨하다. Pro로 올리면 authorize를 60/60s 규칙으로 떼어 낸다.
+
+**왜 authorize인가**: 무인증 GET 하나가 **남이 고른 URL의 CIMD 가져오기**(최대 5초 · 64 KiB)와 **요청 행 삽입**을 만든다(ARCHITECTURE §6.45.9).
+한도 60의 근거: 정상 사용자는 연결 한 번에 2요청(쿼리 → `?request=` 정규화) + 로그인 왕복 복귀 1–2요청이다. 사무실 NAT 뒤 여럿이 동시에 연결해도 넉넉하다.
+
+**변경 절차** — CLI로 초안을 만들고 게시는 사람이 한다:
+1. 초안: `vercel firewall rules edit "Rate limit public entry points" --condition '{"type":"path","op":"pre","value":"/api/images/"}' --or --condition '{"type":"path","op":"eq","value":"/oauth/authorize"}' --yes`
+   (조건은 통째로 바뀌므로 OR 그룹 둘을 매번 다 준다) → `vercel firewall diff`로 확인.
+2. **게시(`vercel firewall publish --yes`)는 사람이 한다** — 에이전트는 초안까지만 만든다.
+3. 게시 뒤 `Firewall → Traffic`에서 규칙 id(`rule_rate_limit_image_proxy_wlXSTS`)로 필터해 1–2주 본다. 정상 사용자가 안 걸리면
+   `vercel firewall rules edit "Rate limit public entry points" --rate-limit-action rate_limit --yes` → 사람이 게시(429). 걸리는 정상 트래픽이 있으면 한도를 먼저 올린다.
+
+⚠️ **WAF는 CDN 앞이라 캐시 HIT도 센다** · **카운터가 리전별이라** 분산 출처는 리전 수만큼 한도를 넘는다 — 막는 것은 단일 출처 증폭이다.
+Hobby 플랜이라 `--duration`·system bypass를 못 쓴다. ⚠️ **`/oauth/token`·`/oauth/revoke`는 대상이 아니다** — 제출한 자격증명이 틀리면 DB 조회
+하나로 끝나고, 정상 클라이언트의 refresh 폭주를 잘못 막으면 연결이 끊긴다(ARCHITECTURE §6.45.9의 30초 유예가 받는 부류다).
+
 ## 호스팅 플랜과 한도 (2026-09-19 확인)
 
 | 무엇 | 플랜 | 따라오는 제약 |

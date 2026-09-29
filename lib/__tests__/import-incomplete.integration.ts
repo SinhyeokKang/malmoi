@@ -81,7 +81,7 @@ function reader(files: Record<string, string | undefined>): RepoReader {
 }
 const sync = async (repo: RepoReader, approve = false) => {
   const approval = approve ? (await readDiscardApproval(prisma, { projectId: "p", userId: "owner" })).fingerprint : null;
-  return runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval, tokenId: undefined }, async () => repo);
+  return runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval, credential: undefined }, async () => repo);
 };
 const keyOf = (key: string) => prisma.stringKey.findFirstOrThrow({ where: { projectId: "p", key }, select: { orphaned: true } });
 const cellOf = async (key: string, locale: string) => {

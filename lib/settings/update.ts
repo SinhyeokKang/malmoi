@@ -34,7 +34,7 @@ export type BaseBranchResult = { ok: true } | { ok: false; error: RepositorySett
  */
 export async function changeBaseBranch(prisma: PrismaClient, subject: Subject, input: z.infer<typeof BaseBranchInput>): Promise<BaseBranchResult> {
   const { slug, baseBranch } = input;
-  const { userId, tokenId } = subject;
+  const { userId, credential } = subject;
   const access = await getProjectAccess(prisma, { userId, slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
   const { projectId } = access;
@@ -50,7 +50,7 @@ export async function changeBaseBranch(prisma: PrismaClient, subject: Subject, i
 
   return prisma.$transaction(async (tx) => {
     // 잠금 뒤 읽어야 동시 변경의 before와 no-op 판정이 실제 저장 직전 상태를 가리킨다.
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "project:settings", tokenId });
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "project:settings", credential });
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
     const project = await tx.project.findUnique({ where: { id: projectId }, select: { baseBranch: true } });
     if (project === null) return { ok: false, error: "not-found" } as const;
@@ -76,7 +76,7 @@ export type ProjectNameResult = { ok: true; name: string } | { ok: false; error:
 
 /** 이름 — 같은 이름이면 사건 없이 성공이다. DB 실패는 `unavailable`로 접는다(원인은 로그). */
 export async function renameProject(prisma: PrismaClient, subject: Subject, input: z.infer<typeof ProjectNameInput>): Promise<ProjectNameResult> {
-  const { userId, tokenId } = subject;
+  const { userId, credential } = subject;
   const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
   const plan = planProjectName(input.name);
@@ -85,7 +85,7 @@ export async function renameProject(prisma: PrismaClient, subject: Subject, inpu
   let locked;
   try {
     locked = await prisma.$transaction(async (tx) => {
-      const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId, permission: "project:settings", tokenId });
+      const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId, permission: "project:settings", credential });
       if (locked.status !== "ok") return locked;
       const row = await tx.project.findUnique({ where: { id: access.projectId }, select: { name: true } });
       if (!row) throw new Error("Project disappeared");

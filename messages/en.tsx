@@ -351,6 +351,8 @@ export const en = {
   signIn: {
     title: "Sign in to Malmoi",
     backToInvitation: "Back to invitation",
+    // 동의 화면에서 시작한 로그인이 취소·오류로 여기 착지했을 때의 복귀 링크(mcp-oauth design §6.1) — `backToInvitation`과 같은 자리·형.
+    backToAuthorization: "Back to app authorization",
     github: "Continue with GitHub",
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
@@ -583,6 +585,11 @@ export const en = {
                     "Created by Malmoi when you create or rotate a token on the MCP connector page",
                     "Letting an AI agent you run act for you, within what your project role already allows",
                   ],
+                  [
+                    "An app you connect by signing in through your browser, such as Claude Code or Codex: the name and address it gives for itself, where it returns after you sign in, one-way hashes of the tokens Malmoi issued to it and of the refresh tokens it has already used (never the tokens themselves), the actions and projects you allowed it, and when it was connected, last used and expires",
+                    "Created by Malmoi when you authorize the app on its connection screen",
+                    "Letting an app you connect act for you, within what your project role already allows",
+                  ],
                 ],
               },
             },
@@ -607,7 +614,7 @@ export const en = {
                 "Emailing an invitation link to an address a project owner enters. The email holds the link and the project it is for — the project's name, its picture if it has one, and the role you are invited with. It does not say who invited you, and it has no tracking.",
                 "Keeping the service running, which includes looking at error logs when something fails.",
                 "Counting visits to the public pages, to see whether people find Malmoi and which docs they read. Only totals are looked at.",
-                "Letting an AI agent you connect with your own token do what you could do in the app. What it changes is recorded as your change.",
+                "Letting an AI agent you connect — with your own token, or by signing in through your browser — do what you could do in the app. What it changes is recorded as your change.",
               ],
             },
             {
@@ -631,6 +638,7 @@ export const en = {
                 "An invitation email: Resend, which sends it, keeps a record of the message — the address, the subject and the email itself, with the link, the project's name, the address of its picture if it has one, and your role — for 30 days.",
                 "Translations and the record of who changed them: kept for the life of the project.",
                 "An AI agent token stops working when it expires (30, 90 or 365 days after you create it) or as soon as you rotate or revoke it. Its row is deleted when you rotate or revoke it, or with your account; until then an expired token stays listed so you can see what it allowed.",
+                "An app connection stops working when it expires (30, 90 or 365 days after you authorize it) or as soon as you disconnect it or authorize the same app again. Its row, with the hashes of the refresh tokens it used, is deleted then, or with your account; an expired connection stays listed until it is deleted. The hand-off from the connection screen to the app lasts one minute and is deleted when the app uses it.",
               ],
             },
           ],
@@ -653,7 +661,7 @@ export const en = {
               p: "A profile picture that comes from GitHub or Google is loaded by your browser directly from their servers, so those requests reach them even though Malmoi sends them nothing.",
             },
             {
-              p: "If you connect an AI agent with your token, what the agent reads through it — the translations, activity and members of your projects, and a project's push token when you ask for one — goes to that agent and to whichever AI service it uses. You choose and run that agent; Malmoi does not send it anything on its own and has no agreement with it.",
+              p: "If you connect an AI agent with your token or by signing in through your browser, what the agent reads through it — the translations, activity and members of your projects, and a project's push token when you ask for one — goes to that agent and to whichever AI service it uses. You choose and run that agent; Malmoi does not send it anything on its own and has no agreement with it. To show an app's name on the connection screen, Malmoi reads the app's public description from the address the app gives; that request carries nothing about you.",
             },
             {
               p: "An invitation email shows a logo and the project's picture (or a placeholder icon when it has none), and your email app loads all of them from mal-moi.com — Malmoi fetches the picture from its own storage, so your email app reaches no one else. The logo and the icon are the same for everyone, and a project's picture is the same for everyone invited to that project, so none of them tells Malmoi who opened the email.",
@@ -674,7 +682,7 @@ export const en = {
               ),
             },
             {
-              p: "Deleting your data removes your account, your GitHub and Google connections, your sessions, your project memberships, any invitation addressed to you that has not been accepted, and a profile picture you uploaded. Resend's record of an invitation email is not removed early; it expires on its own 30 days after the email was sent.",
+              p: "Deleting your data removes your account, your GitHub and Google connections, your sessions, your AI agent token and app connections, your project memberships, any invitation addressed to you that has not been accepted, and a profile picture you uploaded. Resend's record of an invitation email is not removed early; it expires on its own 30 days after the email was sent.",
             },
             {
               p: "Translations stay. They are the project's output and are already in the repository, so removing them would delete work that belongs to the team — but the record of who wrote them stops pointing at you.",
@@ -723,7 +731,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
@@ -1800,9 +1808,50 @@ export const en = {
       title: "Connect",
       serverUrl: "Server URL",
       agent: "Agent",
-      clients: { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor" },
+      clients: { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", "claude-ai": "claude.ai" },
       // 기존 파일에 항목을 덧붙이는 꼴이라 동사가 `Add to`다(핸드오프 §4). 경로는 sans 평문이고 색만 올린다.
       addTo: (path: ReactNode): ReactNode => <>Add to {path}</>,
+      // 방식 세그먼트(mcp-oauth 핸드오프 §7.4) — 두 방식을 한 조각에 섞지 않는다. 브라우저 방식이 기본이다.
+      method: "Connection method",
+      methods: { browser: "Sign in with browser", token: "Personal token" },
+      browserHelp: "Add the server URL to your client. When it connects, your browser opens so you can sign in and choose what it can do. There is no token to copy.",
+      tokenHelp: "Uses the token from Your token above. Set it as MALMOI_TOKEN in your shell, then add this to your client.",
+      // 로그인을 시작하는 명령 — T1 실측(design §0.1): Claude Code는 `/mcp` → Authenticate, Codex는 `codex mcp login`.
+      then: {
+        // 서버 키는 조각이 쓰는 그 식별자다(`lib/mcp/snippets.ts#SERVER_KEY`를 호출부가 넘긴다) — 문장에 손으로 적으면 조각과 갈린다.
+        "claude-code": (key: string): string => `Then run /mcp in Claude Code, pick ${key} and choose Authenticate. Your browser opens to sign in to Malmoi.`,
+        codex: (key: string): string => `Then run codex mcp login ${key}. Your browser opens to sign in to Malmoi.`,
+      },
+      // 헤더가 남아 있으면 Claude Code는 OAuth로 넘어가지 않는다(ARCHITECTURE §6.45.1 실측) — 지울 키를 클라이언트별로 말한다.
+      switchFromToken: {
+        "claude-code": "Switching from a personal token? Remove the headers entry first. While it is there, Claude Code keeps using the token.",
+        codex: "Switching from a personal token? Remove the bearer_token_env_var line first. While it is there, Codex keeps using the token.",
+      },
+      // 메뉴 경로·버튼명은 T1 실측이다(design §0.1 — 개인 Free 계정, `claude.ai/customize/connectors`). 실서버 왕복 확인은 prod 머지 뒤 T10이다.
+      claudeAiSteps: [
+        "In claude.ai, open Customize → Connectors, choose Add, then Add custom connector.",
+        "Paste the server URL above and give it a name, such as Malmoi.",
+        "Choose Connect. In the window that opens, sign in to Malmoi, choose what it can do and select Authorize.",
+      ],
+      // Team·Enterprise 플랜은 멤버가 커스텀 커넥터를 추가하지 못한다(mcp-oauth 결정 기록 — T1 실측 계정 판정). 단계 문구와 달리 이 전제는 확정이다.
+      claudeAiOrgNote: "On a Team or Enterprise plan, the owner of your claude.ai organization has to add the custom connector first.",
+    },
+    /** 연결된 앱(mcp-oauth 핸드오프 §7.3 · §7.5) — OAuth 연결 목록. 개인 토큰 카드와 어휘(`token.facts`)를 공유한다. */
+    apps: {
+      title: "Connected apps",
+      emptyTitle: "No connected apps",
+      emptyBody: "Apps you authorize from Claude Code, Codex or claude.ai show up here.",
+      disconnect: "Disconnect",
+      // 같은 이름의 연결이 둘일 수 있다 — 접근 이름이 식별 줄까지 싣는다(design §6.1).
+      disconnectLabel: (name: string, id: string): string => `Disconnect ${name}, ${id}`,
+      confirmTitle: (name: string): string => `Disconnect ${name}?`,
+      confirmBody: "It loses access right away. Your other apps and your personal token keep working.",
+      confirm: "Disconnect app",
+      disconnected: (name: string): string => `Disconnected ${name}.`,
+      loadFailed: "We couldn't load your connected apps.",
+      unconfirmed: (name: string): string => `We couldn't confirm ${name} was disconnected. If it's still listed, disconnect it again.`,
+      // DCR 연결의 식별 줄 한 줄 형 — 동의 화면의 두 줄(`oauthAuthorize.clientId`·`returnsTo`)을 목록 행에서 잇는다.
+      dcrIdent: (id: string, host: string): string => `Client ID ${id} · returns to ${host}`,
     },
     // 핸드오프 §12 문장 그대로다. 링크 라벨은 가이드 페이지 제목(`guide/SUMMARY.md`)과 같아야 한다.
     guide: {
@@ -1839,6 +1888,47 @@ export const en = {
       title: "Revoke your token?",
       body: "Every agent using it stops immediately. This can't be undone.",
       confirm: "Revoke token",
+    },
+  },
+
+  /**
+   * `/oauth/authorize` — MCP 클라이언트의 로그인·동의 화면(mcp-oauth 핸드오프 §12). 셸 밖이다.
+   * ⚠️ 권한·범위 문구는 여기 없다 — 토큰 발급 모달과 같은 `mcpConnector.form.*`·`grants.*`를 쓴다(spec 조건 4: 어휘가 같다).
+   */
+  oauthAuthorize: {
+    title: "Connect an app to Malmoi",
+    signInDescription: "Sign in to review what this app is asking for.",
+    consentDescription: "Choose what it can do for you. You can disconnect it any time on the MCP connector page.",
+    // 이름은 신원 보증이 아니다(design §6.1) — 배지 없이 카드 아래 한 문장이 말한다.
+    appNameNote: "The app chose this name. Check the address before you continue.",
+    clientId: (id: string): string => `Client ID ${id}`,
+    returnsTo: (uri: string): string => `Returns to ${uri}`,
+    signedInWith: (provider: string): string => `Signed in with ${provider}`,
+    notYou: "Not you?",
+    replaces: (date: string): string =>
+      `You connected this app on ${date}. If you finish connecting, the new connection replaces it and the app may be signed out on your other devices. Deny keeps the current connection.`,
+    denyFailed: "We couldn't record your answer. Nothing changed — try again.",
+    consentNote:
+      "In each project, the app can only do what your role there also allows. All my projects includes projects you join later, and projects the app creates are added to Chosen projects. The connection ends when it expires — connect again from the app to keep using it.",
+    returnTo: (host: string): string => `You'll return to ${host}.`,
+    deny: "Deny",
+    authorize: "Authorize",
+    failed: "We couldn't save this authorization. Your choices are kept — try again.",
+    unconfirmed: "We couldn't confirm whether this went through. Check the request before you try anything else.",
+    checkRequest: "Check request",
+    sessionEnded: "You were signed out. Sign in again to continue — this request is still open.",
+    ended: {
+      notFound: { title: "We couldn't find this request", body: "The link may be incomplete. Go back to the app and connect to Malmoi again." },
+      expired: { title: "This request expired", body: "Requests stay open for 10 minutes. Go back to the app and connect to Malmoi again." },
+      used: {
+        title: "This request was already answered",
+        body: "It was authorized or denied earlier. Check the app — if it isn't connected, connect to Malmoi again from there.",
+      },
+      unavailable: { title: "We couldn't load this request", body: "Something went wrong on our side. The request may still be open — try again in a moment." },
+      invalid: {
+        title: "This app can't connect",
+        body: "Malmoi couldn't verify where this request came from, so it stopped here. Nothing was shared with the app.",
+      },
     },
   },
 
@@ -3235,6 +3325,8 @@ export const en = {
     errors: {
       // 역할은 되는데 토큰이 그 동작을 안 받았다 — 토큰은 불변이라 다음 행동은 재발급 하나다.
       "token-scope": "This token doesn't allow that action. Issue a new token with that permission on the MCP connector page.",
+      // 같은 거부를 OAuth 연결이 받았다(#149) — 연결의 권한을 바꾸는 길은 앱에서 다시 연결(재동의)이다(mcp-oauth design §4). 개인 토큰으로 보내지 않는다.
+      "token-scope-oauth": "This app's connection doesn't allow that action. Connect Malmoi again from the app and allow that permission — the new connection replaces this one.",
       // Publish 핸들이 낡았다 — 아무것도 안 보냈다는 것과 다음 행동을 함께 말한다.
       reconfirm: "The translations changed after the preview, so nothing was sent. Preview again, then publish with the new handle.",
       "invalid-input": "The arguments don't match this tool's input. Check them and try again.",

@@ -636,14 +636,14 @@ it("a second provider at the same address offers a merge instead of creating a u
   expect(rows[0]!.token).not.toBe(location.split("/").pop());
 });
 
-async function startLinkProof(identity: string, dest: { kind: "invite"; token: string } | { kind: "projects" }) {
+async function startLinkProof(identity: string, dest: { kind: "invite"; token: string } | { kind: "oauth"; requestId: string } | { kind: "projects" }) {
   const { owner, stranger } = await linkFixture();
   const token = await beginLink(prisma, { userId: owner.id, provider: "google", providerAccountId: "merge", dest });
   const handlers = fakeAuth("github", identity, false, true);
   const csrf = await handlers.GET(new NextRequest("http://localhost/api/auth/csrf"));
   const csrfToken = (await csrf.json()).csrfToken;
   const csrfCookies = csrf.headers.getSetCookie().map(c => c.split(";")[0]!).join("; ");
-  const landing = dest.kind === "invite" ? `/invite/${dest.token}` : "/projects";
+  const landing = dest.kind === "invite" ? `/invite/${dest.token}` : dest.kind === "oauth" ? `/oauth/authorize?request=${dest.requestId}` : "/projects";
   const signin = await withLinkStart(false, () => handlers.POST(new NextRequest("http://localhost/api/auth/signin/github", { method: "POST", headers: { cookie: csrfCookies, "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: `http://localhost${landing}` }) })));
   const issued = signin.headers.getSetCookie().map(c => c.split(";")[0]!);
   // ⚠️ state가 **우리 이름**으로 저장돼야 이 왕복이 일반 로그인으로 개명될 수 없다 (ARCHITECTURE "계정 병합").
@@ -654,6 +654,14 @@ async function startLinkProof(identity: string, dest: { kind: "invite"; token: s
   const callback = (sentCookie = cookie) => handlers.GET(new NextRequest(`http://localhost/api/auth/callback/github?code=fixture&state=${encodeURIComponent(state)}`, { headers: { cookie: sentCookie } }));
   return { owner, stranger, token: token!, cookie, callback, landing };
 }
+
+/** mcp-oauth design §6.1 — challenge를 거쳐도 같은 authorize 요청으로 돌아온다(요청 상태는 그 화면이 판정한다). */
+it("confirming a link started from an app authorization returns to the same request", async () => {
+  const { owner, callback } = await startLinkProof("merge", { kind: "oauth", requestId: "req_Abc-1" });
+  const response = await callback();
+  expect(response.headers.get("location")).toBe("http://localhost/oauth/authorize?request=req_Abc-1");
+  expect(await prisma.account.count({ where: { userId: owner.id } })).toBe(2);
+});
 
 it("confirming with the account that owns the address links it and returns to the invite", async () => {
   const { owner, callback } = await startLinkProof("merge", { kind: "invite", token: "invite-token" });

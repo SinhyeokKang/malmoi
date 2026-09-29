@@ -2,13 +2,15 @@ import { headers } from "next/headers";
 import Link from "next/link";
 
 import { ConnectCard } from "@/components/mcp/connect-card";
+import { ConnectedAppsCard, type ConnectedAppData } from "@/components/mcp/connected-apps-card";
 import { TokenCard, type TokenCardData } from "@/components/mcp/token-card";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
+import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { m } from "@/lib/i18n";
-import { planTokenCard } from "@/lib/mcp/view";
+import { planConnectedApps, planTokenCard } from "@/lib/mcp/view";
 import { routes } from "@/lib/routes";
 
 /**
@@ -41,6 +43,8 @@ export default async function McpPage() {
       ? view
       : { ...view, createdAt: view.createdAt.toISOString(), lastUsedAt: view.lastUsedAt?.toISOString() ?? null, expiresAt: view.expiresAt.toISOString() };
 
+  const apps = await loadConnectedApps(userId, projects.map((p) => p.id), now);
+
   const head = await headers();
   const origin = requestOrigin({ host: head.get("host"), forwardedProto: head.get("x-forwarded-proto") })?.origin ?? "https://mal-moi.com";
 
@@ -50,6 +54,8 @@ export default async function McpPage() {
         <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.mcp}</h1>
       </PanelHeader>
       <PanelBody width="fluid" className="flex flex-col gap-4">
+        {/* 주 경로(브라우저 로그인)의 결과가 맨 위다 — 관리 카드 위 · 설정 안내 아래의 배치를 잇는다(mcp-oauth 핸드오프 §4). */}
+        <ConnectedAppsCard apps={apps} now={now.toISOString()} />
         <TokenCard token={token} projects={projects} now={now.toISOString()} />
         <ConnectCard serverUrl={`${origin}/api/mcp`} />
         {/*
@@ -64,4 +70,27 @@ export default async function McpPage() {
       </PanelBody>
     </>
   );
+}
+
+/**
+ * 연결 목록 (mcp-oauth 핸드오프 §10.2). **결과가 둘이다** — 목록 또는 장애(`null` → `2i`). 장애를 빈 목록으로 접으면 "연결 없음"이 거짓으로 선다.
+ * 토큰 카드와 달리 이 조회만 감싼다 — 연결 표면이 장애여도 토큰 카드·Connect 카드는 선다(다른 카드는 선다 — 핸드오프 §0).
+ * 만료 행도 싣는다 — 정리 규칙을 따로 두지 않고(삽입 시점 정리, design §4) 조회된 행을 그린다(§13 결정 4).
+ */
+async function loadConnectedApps(userId: string, memberProjectIds: string[], now: Date): Promise<ConnectedAppData[] | null> {
+  try {
+    const rows = await getPrisma().oAuthConnection.findMany({
+      where: { userId },
+      select: { id: true, clientId: true, clientName: true, grants: true, allProjects: true, projectIds: true, createdAt: true, lastUsedAt: true, expiresAt: true },
+    });
+    return planConnectedApps({ rows, memberProjectIds, now }).map((app) => ({
+      ...app,
+      createdAt: app.createdAt.toISOString(),
+      lastUsedAt: app.lastUsedAt?.toISOString() ?? null,
+      expiresAt: app.expiresAt.toISOString(),
+    }));
+  } catch (error) {
+    logCaught("mcp-oauth", "connections", error);
+    return null;
+  }
 }

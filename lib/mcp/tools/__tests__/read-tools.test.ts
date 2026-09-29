@@ -61,7 +61,7 @@ beforeEach(() => {
 });
 
 function subject(userId: string, grants: TokenGrant[] = [], scope: TokenScope = { kind: "all" }): ApiTokenSubject {
-  return { userId, grants, scope, tokenId: `hash-${userId}` };
+  return { userId, grants, scope, credential: { kind: "api-token", tokenHash: `hash-${userId}` } };
 }
 const call = (name: string, who: ApiTokenSubject, input: Record<string, unknown>): Promise<ToolOutcome> =>
   tool(name).run({ prisma, subject: who, now: new Date("2026-09-28T00:00:00Z"), origin }, input as never);
@@ -112,7 +112,7 @@ describe("역할 × 빈 grants", () => {
   it("Project settings만 받은 토큰은 기존 프로젝트 탐지가 되고 project:create가 필요 없다", async () => {
     const settingsOnly = subject("owner", ["project:settings"], { kind: "projects", projectIds: ["p1"] });
     expect(status(await call("detect_formats", settingsOnly, { slug: "acme" }))).toBe("ok");
-    expect(h.detectProjectFormats).toHaveBeenCalledExactlyOnceWith(prisma, { userId: "owner", tokenId: "hash-owner" }, { kind: "existing", slug: "acme" });
+    expect(h.detectProjectFormats).toHaveBeenCalledExactlyOnceWith(prisma, { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" } }, { kind: "existing", slug: "acme" });
     // 같은 토큰의 신규 경로는 project:create가 없다.
     expect(status(await call("detect_formats", settingsOnly, { owner: "o", repo: "r" }))).toBe("token-scope");
   });
@@ -218,6 +218,16 @@ describe("노출 — 화면과 같은 경계", () => {
     expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: "owner", tokenHash: "hash-owner" } }));
     expect(outcome).toMatchObject({ status: "ok", data: { token: { grants: ["translation:write"], scope: { kind: "projects", projects: ["acme"] } } } });
     expect(JSON.stringify(outcome)).not.toContain('"p1"');
+  });
+  it("whoami는 OAuth 주체면 userId AND 연결 id로 **연결 수명**을 읽는다 — access의 1시간 수명이 아니다", async () => {
+    const connection = vi.fn(async () => ({ expiresAt: new Date("2027-01-01T00:00:00Z") }));
+    const apiToken = vi.fn();
+    prisma = Object.assign(Object.create(prisma), { apiToken: { findFirst: apiToken }, oAuthConnection: { findFirst: connection } }) as PrismaClient;
+    const oauth: ApiTokenSubject = { ...subject("owner", ["translation:write"]), credential: { kind: "oauth", connectionId: "c1" } };
+    const outcome = await call("whoami", oauth, {});
+    expect(connection).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: "owner", id: "c1" } }));
+    expect(apiToken).not.toHaveBeenCalled();
+    expect(outcome).toMatchObject({ status: "ok", data: { token: { grants: ["translation:write"], expiresAt: "2027-01-01T00:00:00.000Z" } } });
   });
 });
 

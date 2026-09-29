@@ -10,10 +10,13 @@ import { requestOrigin } from "@/lib/github-connect/origin";
 import { checkOrigin } from "@/lib/mcp/http";
 import { createMcpServer } from "@/lib/mcp/server";
 import { parseBearer } from "@/lib/mcp/token";
-import { resolveApiToken, type ApiTokenSubject } from "@/lib/mcp/token-store";
+import { resolveBearer, type ApiTokenSubject } from "@/lib/mcp/token-store";
+import { oauthEndpoint, type OAuthEndpoint } from "@/lib/oauth/endpoint";
+import { wwwAuthenticate } from "@/lib/oauth/metadata";
 
 /**
- * **MCP 진입점** — `POST /api/mcp` (mcp-connector design §1.1 · §1.2). CLI·코딩 에이전트가 개인 토큰(Bearer)으로 부른다.
+ * **MCP 진입점** — `POST /api/mcp` (mcp-connector design §1.1 · §1.2). CLI·코딩 에이전트가 개인 토큰(`mlm_`) 또는 OAuth access(`mlo_`)를
+ * Bearer로 싣는다(mcp-oauth design §5 — 입구는 `resolveBearer` 하나).
  * 외부 진입점이라 Route Handler다(CLAUDE.md — Server Action은 공개 계약이 아니다).
  *
  * 순서가 계약이다: **Origin → 인증 → 크기 → 파싱 → 디스패치.** 인증이 본문보다 먼저라 무효 토큰 하나로 본문을 읽히지 않는다.
@@ -30,12 +33,21 @@ export const maxDuration = 60;
 /** 본문 상한. `set_translations` 100키가 넉넉히 든다 — 키당 값 상한이 따로 있다(`KEY_SAVE_LIMITS`). */
 const MAX_BODY_BYTES = 1_048_576;
 
-// ⚠️ 401 본문은 한 문장이다 — 없음·무효·만료·폐기를 가르지 않는다(spec 조건 4). Claude Code는 이 본문을 사용자에게 그대로 보인다.
-const unauthorized = () => NextResponse.json({ error: "unauthorized" }, { status: 401 });
+/**
+ * ⚠️ 401 본문은 한 문장이다 — 없음·무효·만료·폐기를 가르지 않는다(spec 조건 4). Claude Code는 이 본문을 사용자에게 그대로 보인다.
+ * `WWW-Authenticate`가 **요청 origin의** PRM을 가리킨다 — 헤더 없이 URL만 등록한 클라이언트가 여기서 OAuth 발견을 시작한다(mcp-oauth T1 실측:
+ * Claude Code는 이 헤더를, Codex는 같은 경로를 추측한다). 허용 밖 호스트면 광고할 origin이 없어 헤더를 싣지 않는다.
+ */
+function unauthorized(endpoint: OAuthEndpoint | null): Response {
+  const headers = endpoint === null ? undefined : { "WWW-Authenticate": wwwAuthenticate(endpoint.issuer) };
+  return NextResponse.json({ error: "unauthorized" }, { status: 401, headers });
+}
 
-/** 주체를 SDK의 `authInfo`로 싣는다 — 원문 토큰은 싣지 않는다(`token` 자리에 해시). 2026-07-28 쪽 팩토리가 `extra`에서 되읽는다. */
+/** 주체를 SDK의 `authInfo`로 싣는다 — 원문 토큰은 싣지 않는다(`token` 자리에 해시 또는 연결 id). 2026-07-28 쪽 팩토리가 `extra`에서 되읽는다. */
 function authInfoOf(subject: ApiTokenSubject, origin: string | null): AuthInfo {
-  return { token: subject.tokenId, clientId: subject.userId, scopes: [...subject.grants], extra: { subject, origin } };
+  const { credential } = subject;
+  const token = credential.kind === "api-token" ? credential.tokenHash : credential.connectionId;
+  return { token, clientId: subject.userId, scopes: [...subject.grants], extra: { subject, origin } };
 }
 
 /** 도구가 브라우저로 보내는 링크의 origin — 허용 호스트만(`requestOrigin`). 조작된 `Host`로 남의 호스트 링크를 만들지 않는다. */
@@ -80,18 +92,19 @@ function listenRequestId(body: unknown): string | number | null | undefined {
 export async function POST(request: Request): Promise<Response> {
   if (!checkOrigin(request.headers)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
+  const endpoint = oauthEndpoint(request.headers);
   const token = parseBearer(request.headers.get("authorization"));
-  if (token === null) return unauthorized();
+  if (token === null) return unauthorized(endpoint);
 
   let subject: ApiTokenSubject | null;
   try {
-    subject = await resolveApiToken(getPrisma(), token, new Date());
+    subject = await resolveBearer(getPrisma(), token, new Date(), endpoint);
   } catch (error) {
     // 장애는 401이 아니다 — 에이전트가 "토큰이 무효"라고 사용자에게 재발급을 권하게 된다.
     logFailure("mcp-auth", error);
     return NextResponse.json({ error: "unavailable" }, { status: 500 });
   }
-  if (subject === null) return unauthorized();
+  if (subject === null) return unauthorized(endpoint);
 
   const text = await readBoundedText(request, MAX_BODY_BYTES);
   if (text === null) return NextResponse.json({ error: "too-large" }, { status: 400 });

@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TokenCard, type TokenCardData } from "@/components/mcp/token-card";
-import { EXPIRY, GRANT_ORDER, type ScopeProject } from "@/components/mcp/token-modal";
+import { EXPIRY, GRANT_ORDER, type ScopeProject } from "@/components/mcp/token-grant-fields";
 import { m } from "@/lib/i18n";
 import { TOKEN_GRANTS } from "@/lib/mcp/grant";
 import { API_TOKEN_EXPIRY_DAYS } from "@/lib/mcp/issue-plan";

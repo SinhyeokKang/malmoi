@@ -48,7 +48,7 @@ const SITES = [
 ];
 
 /**
- * **MCP 도구가 닿는 잠금 자리** (mcp-connector design §1.25). 잠금 안 재판정이 토큰까지 다시 읽으려면 호출에 `tokenId`가 실려야 한다 —
+ * **MCP 도구가 닿는 잠금 자리** (mcp-connector design §1.25). 잠금 안 재판정이 토큰까지 다시 읽으려면 호출에 `credential`이 실려야 한다 —
  * 빠지면 대기 중 폐기·재발급된 토큰의 쓰기가 멤버십 판정만 지나 커밋된다. 위 `SITES`의 부분집합이고, 도구가 늘면 같이 늘린다.
  */
 const TOKEN_SITES = [
@@ -67,7 +67,7 @@ const TOKEN_SITES = [
 ];
 
 /**
- * **raw `FOR UPDATE`로 잠그는 MCP 쓰기** — `lockProjectAccess`를 안 지나므로 잠금 직후 `lockApiToken(tx, { tokenId, … })`을 직접 부른다.
+ * **raw `FOR UPDATE`로 잠그는 MCP 쓰기** — `lockProjectAccess`를 안 지나므로 잠금 직후 `lockCredential(tx, { credential, … })`을 직접 부른다.
  * 수동 Sync 실행권 · Revert · 소스 추가 · 프로젝트 생성.
  */
 const RAW_TOKEN_SITES = [
@@ -92,26 +92,26 @@ function lockedCalls(file: SourceFile, name: string, callee = "lockProjectAccess
   }).length;
 }
 
-/** 함수 안 `callee(tx, { … })` 호출 중 둘째 인자 객체에 `tokenId` 속성이 **없는** 것의 수. */
+/** 함수 안 `callee(tx, { … })` 호출 중 둘째 인자 객체에 `credential` 속성이 **없는** 것의 수. */
 function callsWithoutToken(file: SourceFile, name: string, callee = "lockProjectAccess"): number {
   const fn = file.getFunction(name);
   if (fn === undefined) throw new Error(`${file.getBaseName()}#${name} not found`);
   return fn.getDescendantsOfKind(SyntaxKind.CallExpression).filter(call => {
     if (call.getExpression().getText() !== callee) return false;
     const arg = call.getArguments()[1];
-    return !(arg !== undefined && Node.isObjectLiteralExpression(arg) && arg.getProperty("tokenId") !== undefined);
+    return !(arg !== undefined && Node.isObjectLiteralExpression(arg) && arg.getProperty("credential") !== undefined);
   }).length;
 }
 
 /**
- * **주체를 받은 함수는 `tokenId`를 버리지 못한다** (mcp-connector r2). 잠금 자리 입력의 `tokenId`는 필수 키라 **빠뜨리면** 컴파일
- * 에러지만, 리터럴 `tokenId: undefined`는 타입을 지난다 — 주체(`subject`)를 받은 코어가 그렇게 쓰면 MCP 토큰의 잠금 뒤 재판정이 조용히
+ * **주체를 받은 함수는 `credential`을 버리지 못한다** (mcp-connector r2). 잠금 자리 입력의 `credential`은 필수 키라 **빠뜨리면** 컴파일
+ * 에러지만, 리터럴 `credential: undefined`는 타입을 지난다 — 주체(`subject`)를 받은 코어가 그렇게 쓰면 MCP 토큰의 잠금 뒤 재판정이 조용히
  * 사라진다. 세션·cron 전용 경로(주체를 안 받는다)만 `undefined`를 명시한다.
  */
 function droppedTokens(file: SourceFile): string[] {
   return file.getFunctions().filter(fn => fn.getParameters().some(p => p.getName() === "subject")).flatMap(fn =>
     fn.getDescendantsOfKind(SyntaxKind.PropertyAssignment)
-      .filter(p => p.getName() === "tokenId" && p.getInitializer()?.getText() === "undefined")
+      .filter(p => p.getName() === "credential" && p.getInitializer()?.getText() === "undefined")
       .map(() => `${file.getBaseName()}#${fn.getName() ?? "?"}`));
 }
 
@@ -130,40 +130,40 @@ describe("잠금 안 인가 재확인", () => {
     expect(lockedCalls(source(path), name)).toBeGreaterThan(0);
   });
 
-  it.each(TOKEN_SITES)("%s는 잠금에 tokenId를 싣는다", site => {
+  it.each(TOKEN_SITES)("%s는 잠금에 credential을 싣는다", site => {
     const [path, name] = site.split("#") as [string, string];
     expect(TOKEN_SITES.every(s => SITES.includes(s))).toBe(true);
     expect(lockedCalls(source(path), name)).toBeGreaterThan(0);
     expect(callsWithoutToken(source(path), name)).toBe(0);
   });
 
-  it.each(RAW_TOKEN_SITES)("%s는 잠금 tx 안에서 lockApiToken에 tokenId를 싣는다", site => {
+  it.each(RAW_TOKEN_SITES)("%s는 잠금 tx 안에서 lockCredential에 credential을 싣는다", site => {
     const [path, name] = site.split("#") as [string, string];
-    expect(lockedCalls(source(path), name, "lockApiToken")).toBeGreaterThan(0);
-    expect(callsWithoutToken(source(path), name, "lockApiToken")).toBe(0);
+    expect(lockedCalls(source(path), name, "lockCredential")).toBeGreaterThan(0);
+    expect(callsWithoutToken(source(path), name, "lockCredential")).toBe(0);
   });
 
-  it("주체를 받은 lib 함수가 tokenId를 리터럴 undefined로 버리지 않는다", () => {
+  it("주체를 받은 lib 함수가 credential을 리터럴 undefined로 버리지 않는다", () => {
     const files = libSources(`${ROOT}lib`);
     expect(files.length).toBeGreaterThan(100);
     expect(files.flatMap(path => droppedTokens(source(path.slice(ROOT.length))))).toEqual([]);
   });
 
-  it("버린 tokenId 검출기가 주체 함수의 리터럴 undefined만 잡는다", () => {
+  it("버린 credential 검출기가 주체 함수의 리터럴 undefined만 잡는다", () => {
     const file = project.createSourceFile(`${ROOT}.scratch/dropped-token-fixture.ts`, [
-      "function dropped(subject: any) { return lock({ userId: subject.userId, tokenId: undefined }); }",
-      "function passed(subject: any) { return lock({ userId: subject.userId, tokenId: subject.tokenId }); }",
-      "function session(userId: string) { return lock({ userId, tokenId: undefined }); }",
+      "function dropped(subject: any) { return lock({ userId: subject.userId, credential: undefined }); }",
+      "function passed(subject: any) { return lock({ userId: subject.userId, credential: subject.credential }); }",
+      "function session(userId: string) { return lock({ userId, credential: undefined }); }",
       "declare function lock(input: unknown): unknown;",
     ].join("\n"), { overwrite: true });
     expect(droppedTokens(file)).toEqual(["dropped-token-fixture.ts#dropped"]);
   });
 
-  it("tokenId 검출기가 빠진 호출을 센다 — 단축 속성·대입 속성은 실린 것이다", () => {
+  it("credential 검출기가 빠진 호출을 센다 — 단축 속성·대입 속성은 실린 것이다", () => {
     const file = project.createSourceFile(`${ROOT}.scratch/locked-token-fixture.ts`, [
       "async function missing(tx: any) { return lockProjectAccess(tx, { projectId: 'p' }); }",
-      "async function short(tx: any, tokenId: string) { return lockProjectAccess(tx, { projectId: 'p', tokenId }); }",
-      "async function assigned(tx: any, s: any) { return lockProjectAccess(tx, { projectId: 'p', tokenId: s.tokenId }); }",
+      "async function short(tx: any, credential: string) { return lockProjectAccess(tx, { projectId: 'p', credential }); }",
+      "async function assigned(tx: any, s: any) { return lockProjectAccess(tx, { projectId: 'p', credential: s.credential }); }",
       "declare function lockProjectAccess(tx: unknown, input: unknown): unknown;",
     ].join("\n"), { overwrite: true });
     expect(callsWithoutToken(file, "missing")).toBe(1);

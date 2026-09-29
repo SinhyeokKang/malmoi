@@ -12,7 +12,13 @@ vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) =
 vi.mock("@/lib/login-link/view", () => ({
   loadChallengeView: async () => ({ emailLabel: "a***@example.com", have: "github", pending: "google", joined: new Date("2026-09-01"), dest: { kind: "projects" } }),
 }));
+vi.mock("@/lib/oauth-server/authorize", () => ({
+  readAuthorizationRequest: async () => ({ status: "ok", request: { clientId: "https://claude.ai/oauth/claude-code-client-metadata", clientName: "Claude Code", redirectUri: "http://localhost:5000/callback" } }),
+  storeAuthorizationRequest: vi.fn(),
+}));
+vi.mock("@/lib/oauth-server/client-metadata-fetch", () => ({ fetchClientMetadata: vi.fn() }));
 import SignIn from "@/app/signin/page";
+import OAuthAuthorizePage from "@/app/oauth/authorize/page";
 import InvitePage from "@/app/invite/[token]/page";
 import LinkAccountPage from "@/app/signin/link/[challenge]/page";
 function providers(node: ReactNode): ReactElement[] {
@@ -41,10 +47,13 @@ const ENTRIES = [
   { entry: "root", buttons: 2, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/projects" },
   { entry: "invite", buttons: 2, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/invite/invite-token" },
   { entry: "link", buttons: 1, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/projects" },
+  // mcp-oauth design §6.1 — 동의 화면의 로그인도 일반 로그인 진입점이다. 목적지는 요청 ID 정규형 하나(`e` 없이).
+  { entry: "oauth", buttons: 2, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/oauth/authorize?request=req_1" },
 ] as const;
 
 async function render(entry: (typeof ENTRIES)[number]["entry"]) {
   if (entry === "root") return SignIn({ searchParams: Promise.resolve({}) });
+  if (entry === "oauth") return OAuthAuthorizePage({ searchParams: Promise.resolve({ request: "req_1", e: "signed-out" }) });
   if (entry === "invite") {
     return InvitePage({ params: Promise.resolve({ token: "invite-token" }), searchParams: Promise.resolve({}) });
   }

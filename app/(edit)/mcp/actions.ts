@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { logFailure } from "@/lib/github-connect/log";
 import { planApiTokenIssue } from "@/lib/mcp/issue-plan";
+import { disconnectConnection } from "@/lib/oauth-server/revoke";
 import { generateApiToken, hashApiToken } from "@/lib/mcp/token";
 import { revalidateAfterCommit } from "@/lib/revalidate-after-commit";
 import { routes } from "@/lib/routes";
@@ -78,5 +79,28 @@ export async function revokeApiToken(): Promise<ApiTokenRevokeResult> {
     return { ok: false, reason: "unavailable" };
   }
   revalidateAfterCommit("mcp-token", routes.mcp());
+  return { ok: true };
+}
+
+export type OAuthDisconnectResult = { ok: true } | { ok: false; reason: "unavailable" };
+
+const ConnectionId = z.string().min(1).max(64);
+
+/**
+ * **연결별 끊기** (mcp-oauth spec 조건 8·9 · design §4.2). `requireUser` 하나로 충분하다 — 연결도 사용자 소유다. 코어가 User 잠금 뒤 **세션의
+ * `userId`로** 행을 다시 읽으므로 남의 연결 ID는 없는 행이다(POSTMORTEM 2026-09-06). 멱등이다 — 이미 없으면 사용자가 원한 상태다.
+ * 다른 연결·개인 토큰은 건드리지 않는다.
+ */
+export async function disconnectOAuthConnection(raw: unknown): Promise<OAuthDisconnectResult> {
+  const { userId } = await requireUser();
+  const connectionId = ConnectionId.safeParse(raw);
+  if (!connectionId.success) return { ok: false, reason: "unavailable" };
+  try {
+    await disconnectConnection(getPrisma(), { userId, connectionId: connectionId.data });
+  } catch (error) {
+    logFailure("mcp-oauth-disconnect", error);
+    return { ok: false, reason: "unavailable" };
+  }
+  revalidateAfterCommit("mcp-oauth", routes.mcp());
   return { ok: true };
 }

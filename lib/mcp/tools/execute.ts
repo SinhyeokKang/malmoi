@@ -12,7 +12,9 @@ import type { ToolContext, ToolDefinition } from "./define";
 export async function executeTool(definition: ToolDefinition, context: () => ToolContext, input: unknown): Promise<ToolResult> {
   try {
     // 문맥도 try 안에서 만든다 — DB 클라이언트 생성(설정 누락)이 던져도 같은 갈래다.
-    return toToolResult(await definition.run(context(), input as never));
+    const ctx = context();
+    // 주체의 자격증명 종류가 `token-scope`의 다음 행동을 가른다(#149 — 재발급 vs 앱에서 다시 연결).
+    return toToolResult(await definition.run(ctx, input as never), ctx.subject.credential?.kind);
   } catch (error) {
     logFailure(`mcp-tool-${definition.name}`, error);
     return toToolResult({ status: "unavailable" });

@@ -15,14 +15,14 @@ import { recordEvent } from "@/lib/events/record";
 export type ArchiveResult = { ok: true } | { ok: false; error: string };
 
 export async function runArchive(prisma: PrismaClient, subject: Subject, input: { slug: string }): Promise<ArchiveResult> {
-  const { userId, tokenId } = subject;
+  const { userId, credential } = subject;
   const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
 
   // ⚠️ `where`가 **인가가 돌려준 projectId**다 — slug로 다시 찾으면 클라이언트 입력이 조회 조건이 된다.
   const archived = await prisma.$transaction(async (tx) => {
     // 보관 토글은 보관 중에도 통과한다 — 이미 보관됐으면 아래에서 no-op이다(PRODUCT §7.9).
-    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId, permission: "project:settings", archiveToggle: true, tokenId });
+    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId, permission: "project:settings", archiveToggle: true, credential });
     if (locked.status !== "ok") return locked;
     const project = await tx.project.findUnique({ where: { id: access.projectId }, select: { archivedAt: true } });
     if (project === null || project.archivedAt !== null) return locked;
@@ -45,12 +45,12 @@ export async function runArchive(prisma: PrismaClient, subject: Subject, input: 
  * ⚠️ **위와 한 함수로 합치지 않는다** — 인가 호출을 공용 헬퍼로 빼면 `entry-points.test.ts`가 위임 코어 본문에서 그것을 못 센다.
  */
 export async function runUnarchive(prisma: PrismaClient, subject: Subject, input: { slug: string }): Promise<ArchiveResult> {
-  const { userId, tokenId } = subject;
+  const { userId, credential } = subject;
   const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
 
   const restored = await prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId, permission: "project:settings", archiveToggle: true, tokenId });
+    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId, permission: "project:settings", archiveToggle: true, credential });
     if (locked.status !== "ok") return locked;
     const project = await tx.project.findUnique({ where: { id: access.projectId }, select: { archivedAt: true } });
     if (project === null || project.archivedAt === null) return locked;

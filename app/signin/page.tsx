@@ -55,7 +55,7 @@ export default async function SignIn({
   const shown = error ?? (session.status === "unavailable" ? "Unavailable" : undefined);
 
   return (
-    <AuthLayout>
+    <AuthLayout decoration>
       <AuthColumn>
         <Image src={logo} alt="" width={48} height={48} priority />
         {/* ⚠️ **설명이 없다** — 제품 설명은 랜딩이 맡는다 (8-1b). */}
@@ -69,6 +69,11 @@ export default async function SignIn({
           {dest.kind === "invite" && (
             <Link href={routes.invite(dest.token)} className="text-center text-sm text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
               {m.signIn.backToInvitation}
+            </Link>
+          )}
+          {dest.kind === "oauth" && (
+            <Link href={routes.oauthAuthorize({ request: dest.requestId })} className="text-center text-sm text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
+              {m.signIn.backToAuthorization}
             </Link>
           )}
           <p className="text-muted-foreground text-center text-xs leading-relaxed">

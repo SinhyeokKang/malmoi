@@ -155,6 +155,16 @@ export const routes = {
   /** MCP connector (mcp-connector) — 개인 토큰 발급·회전·폐기. 사용자 축이다(토큰은 계정에 붙는다). 쿼리가 없다 — 모달은 클라이언트 상태다. */
   mcp: (): string => "/mcp",
   /**
+   * MCP 클라이언트의 동의 화면 (mcp-oauth design §1 · §6.1). 클라이언트가 여는 첫 주소는 OAuth 쿼리이고, 검증 뒤 서버가 `?request=`로 정규화한다 —
+   * 앱이 만드는 링크는 전부 이 정규형이다(로그인 복귀 · 계정 연결 착지 · `/signin` 복귀 링크).
+   *
+   * `e`는 이 화면이 읽는 사유다 — `signed-out`(동의 중 세션이 끝났다) · `switch`(`Not you?`로 계정을 바꾸는 중). 문자열 연결로 만들면
+   * `entry-points.test.ts`의 쿼리 수신자 검사를 회피한다(`signIn` 주석과 같은 이유).
+   *
+   * ⚠️ **1차 차단의 보호 경로(`isProtectedPath`)에 넣지 않는다** — 무세션이 정상 진입이고 화면이 스스로 로그인 버튼을 그린다(`/invite/[token]`과 같은 판단).
+   */
+  oauthAuthorize: (query: { request?: string; e?: string } = {}): string => withQuery("/oauth/authorize", query),
+  /**
    * 병합 안내 화면 (account-linking T2). **challenge는 경로에 있다** — 경로 토큰이라 "표시 전용
    * 힌트"라는 애매한 층이 없고, `/invite/[token]`과 같은 부류다.
    *

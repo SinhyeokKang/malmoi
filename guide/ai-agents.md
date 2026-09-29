@@ -1,12 +1,83 @@
 # Connect an AI agent
 
-Let a coding agent such as Claude Code, Codex, or Cursor work in Malmoi for you with a personal token.
+Let an AI agent such as Claude Code, Codex, claude.ai, or Cursor work in Malmoi for you, by signing in through your browser or with a personal token.
 
 Before you start: Sign in to Malmoi. To let the agent create projects, connect GitHub and install the Malmoi GitHub App in [Your account](account.md#github-connection) first.
 
 The agent connects over MCP (Model Context Protocol) at `https://mal-moi.com/api/mcp`. Malmoi doesn't write translations itself: the agent writes the values, and Malmoi saves them as your edits, with the same checks as the browser.
 
+There are two ways to connect. Claude Code, Codex, and claude.ai can [sign in through your browser](#browser): you add only the server address, approve the agent in Malmoi, and never copy a token. Agents that only accept a fixed header, such as Cursor, use a [personal token](#token).
+
+## Sign in through your browser {#browser}
+
+1. Add the server address to your agent. The snippets below have no token in them.
+2. Start the sign-in from your agent (see the next line under each snippet). Your browser opens **Connect an app to Malmoi**.
+3. If you aren't signed in to Malmoi, choose **Continue with GitHub** or **Continue with Google**. You come back to the same screen. If the account shown isn't yours, choose **Not you?** to switch.
+4. Check the app's name and the address under it. The app chose the name itself, so the address is what tells you which app is asking.
+5. Choose **Expires in**, **Allowed actions**, and **Scope**, the same choices as a [personal token](#token).
+6. Choose **Authorize**. Your browser hands the agent back its connection, and you return to the agent. **Deny** sends the agent away without a connection.
+
+![The Connect an app to Malmoi screen for Claude, showing the signed-in account with Not you?, the app's name and address, Expires in set to 90 days, and Allowed actions with Translate & publish checked](/guide/oauth-consent.webp "Check the app's address, then choose what it can do.")
+
+If you connected the same app before, the screen says so: authorizing again replaces that connection, and the app may be signed out on your other computers. A sign-in request stays open for 10 minutes; if it expires or was already answered, start again from the agent.
+
+### Claude Code {#browser-claude-code}
+
+Add this to `.mcp.json` at the root of your project:
+
+```json title=".mcp.json"
+{
+  "mcpServers": {
+    "malmoi": {
+      "type": "http",
+      "url": "https://mal-moi.com/api/mcp"
+    }
+  }
+}
+```
+
+Then run `/mcp` in Claude Code, pick the server you just added, and choose Authenticate. Your browser opens to sign in to Malmoi.
+
+If the entry already has a `headers` line with a personal token, remove it first. While it is there, Claude Code keeps using the token.
+
+### Codex {#browser-codex}
+
+Add this to your Codex configuration file:
+
+```toml title="~/.codex/config.toml"
+[mcp_servers.malmoi]
+url = "https://mal-moi.com/api/mcp"
+```
+
+Then run `codex mcp login` followed by the server name from the snippet. Your browser opens to sign in to Malmoi.
+
+If the entry already has a `bearer_token_env_var` line, remove it first. While it is there, Codex keeps using the token.
+
+### claude.ai {#browser-claude-ai}
+
+claude.ai connects from its own settings, so there is no file to edit.
+
+1. In claude.ai, open **Customize** → **Connectors**, choose **Add**, then **Add custom connector**.
+2. Paste `https://mal-moi.com/api/mcp` and give it a name, such as Malmoi.
+3. Choose **Connect**. A window opens to sign in to Malmoi and authorize, as in the steps above.
+
+On a Team or Enterprise plan, only the owner of your claude.ai organization can add a custom connector; ask them to add Malmoi first, then choose **Connect** yourself. A Free plan allows one custom connector.
+
+## Connected apps {#connected-apps}
+
+Every agent you authorize is listed under **Connected apps** on the **MCP connector** page, one connection per app, with its allowed actions, scope, when it was last used, and when it expires.
+
+1. Open **MCP connector** in the sidebar.
+2. Find the app. Two connections can have the same name; the address under the name tells them apart.
+3. Choose **Disconnect**, then **Disconnect app**.
+
+![The MCP connector page with two connected apps, Claude Code and a Codex app shown by its address, each with its allowed actions, scope, last use, expiry, and a Disconnect button, above the personal token card](/guide/mcp-connector.webp "Disconnect an app you no longer use.")
+
+The app loses access from its next request. Your other apps and your personal token keep working. Removing the connector inside claude.ai doesn't disconnect it here; choose **Disconnect** to end it. A connection that has expired stays listed with **Expired**; authorize the app again from the agent to keep using it.
+
 ## Create a token {#token}
+
+Use a personal token for agents that can't sign in through your browser, such as Cursor.
 
 1. Open **MCP connector** in the sidebar and choose **Create token**.
 2. Under **Expires in**, choose 30, 90, or 365 days. Every token expires.
@@ -18,13 +89,11 @@ The agent connects over MCP (Model Context Protocol) at `https://mal-moi.com/api
 
 Keep the token out of files and chat. Store it in the `MALMOI_TOKEN` environment variable of the shell that starts your agent, for example with `read -s MALMOI_TOKEN && export MALMOI_TOKEN` and then pasting the token. The connection snippets below read that variable, so the token itself never appears in a settings file.
 
-You have one token at a time. To change what it allows, choose **Rotate**, then **Rotate and show new token**; the old token stops working immediately, and every agent using it stops until you give it the new one. **Revoke** stops the token without creating a new one. An expired token shows **Expired**; create a new one.
+You have one personal token at a time; connected apps don't count toward it. To change what it allows, choose **Rotate**, then **Rotate and show new token**; the old token stops working immediately, and every agent using it stops until you give it the new one. **Revoke** stops the token without creating a new one. An expired token shows **Expired**; create a new one.
 
-## Add Malmoi to your agent {#connect}
+## Add Malmoi with a token {#connect}
 
-The **Connect** card on the **MCP connector** page shows the same snippets with the server address for the site you are using.
-
-![The MCP connector page with the current token's allowed actions, scope, and expiry above the Connect card and its Claude Code snippet](/guide/mcp-connector.webp "Copy the snippet for your agent from the Connect card.")
+The **Connect** card on the **MCP connector** page shows the same snippets with the server address for the site you are using: choose **Personal token** for these, or **Sign in with browser** for the ones [above](#browser).
 
 ### Claude Code {#claude-code}
 
@@ -75,7 +144,7 @@ Restart the agent after adding the entry. If it reports `unauthorized`, the toke
 
 ## What the agent can do {#permissions}
 
-The agent can do only what you can do in a project, and only what the token allows. A token never adds a permission: if you are a translator (Editor role) in a project, **Project settings** and **Members** do nothing there.
+The agent can do only what you can do in a project, and only what you allowed it, with a token or a connected app alike. Neither ever adds a permission: if you are a translator (Editor role) in a project, **Project settings** and **Members** do nothing there.
 
 A token with no allowed actions can still read translations, activity, and members in the projects its scope covers. Project owners can also preview a sync or a revert and read the workflow file without one. Only listing your GitHub repositories and their branches for a new project, and reading repository files, need an allowed action.
 
@@ -88,7 +157,7 @@ A token with no allowed actions can still read translations, activity, and membe
 | **Members** | Invite people, cancel invitations, change roles, remove members. | Owners |
 | **Create projects** | List your GitHub repositories and branches, detect formats, and create projects (creating also needs write access to the repository). | Anyone signed in, up to the [project limit](reference/limits.md#limits) |
 
-**All my projects** covers every project you are a member of, including ones you join later. **Chosen projects** covers only the projects you pick. A project the agent creates with a **Chosen projects** token is added to that token.
+**All my projects** covers every project you are a member of, including ones you join later. **Chosen projects** covers only the projects you pick. A project the agent creates with **Chosen projects** is added to that token or connection, and to no other.
 
 Changes to your role or membership apply from the agent's next request. Archived projects can't be changed, even with the right allowed action, except for restoring them with **Project settings**; the agent can still read their activity.
 
@@ -132,4 +201,4 @@ Review the pull request before merging it. The agent can publish only if the tok
 
 ## What happens next {#next}
 
-Check [Logs](sync/logs.md) to see what the agent changed. Rotate or revoke the token on the **MCP connector** page when you no longer need it.
+Check [Logs](sync/logs.md) to see what the agent changed. On the **MCP connector** page, disconnect an app or rotate or revoke the token when you no longer need it.

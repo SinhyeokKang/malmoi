@@ -38,7 +38,7 @@ export type InvitationsResult =
 export async function inviteMembers(
   prisma: PrismaClient, subject: Subject, input: z.infer<typeof InvitationsInput>,
 ): Promise<{ result: InvitationsResult; issued: boolean }> {
-  const { userId, tokenId } = subject;
+  const { userId, credential } = subject;
   const refused = (result: InvitationsResult) => ({ result, issued: false });
   const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "member:manage" });
   if (access.status !== "ok") return refused({ ok: false, error: access.status });
@@ -52,7 +52,7 @@ export async function inviteMembers(
 
   let issued: Awaited<ReturnType<typeof issueInvitations>>;
   try {
-    issued = await issueInvitations(prisma, { projectId: access.projectId, userId, recipients: recipients.recipients, tokenId });
+    issued = await issueInvitations(prisma, { projectId: access.projectId, userId, recipients: recipients.recipients, credential });
   } catch (error) {
     logCaught("invite", "issue", error);
     return refused({ ok: false, error: "unavailable" });

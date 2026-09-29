@@ -1,4 +1,5 @@
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
+import type { Credential } from "@/lib/auth/subject";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
@@ -15,6 +16,7 @@ import { BATCH_SAVE_LIMIT } from "./batch";
  * - **예외 문구를 싣지 않는다**(§6.0) — 결과 모양에 예외 자리가 없고, 입력의 다른 필드는 읽지 않는다.
  *
  * 도구가 새 거부 갈래를 내면 `TOOL_REJECTIONS`와 `MESSAGE`에 함께 늘린다 — `satisfies`가 빠진 갈래를 잡는다.
+ * ⚠️ **`token-scope`만 주체를 본다**(#149) — 다음 행동이 개인 토큰은 재발급, OAuth 연결은 앱에서 다시 연결이다. 상태 코드는 같고 문장만 갈린다.
  */
 
 export const TOOL_REJECTIONS = [
@@ -65,7 +67,8 @@ const text = (value: string): ToolResult["content"] => [{ type: "text", text: va
  * 코어 거부 코드 → 화면과 같은 문장. 도구 전용 갈래(`MESSAGE`)를 먼저, 그다음 화면의 사전을 화면이 읽는 순서로 본다 — 온보딩 화면은
  * `onboardErrorMessage`가 연결 거부 다섯을 `connectErrorMessage`로 넘긴다. 어느 사전에도 없으면 `null`이다.
  */
-function rejectionMessage(code: string): string | null {
+function rejectionMessage(code: string, credential: Credential["kind"] | undefined): string | null {
+  if (code === "token-scope") return scopeMessage(credential);
   if (Object.hasOwn(MESSAGE, code)) return MESSAGE[code as ToolRejection];
   if (isAccessError(code)) return accessErrorMessage(code);
   if (isRepositorySettingsError(code)) return repositorySettingsErrorMessage(code);
@@ -74,10 +77,15 @@ function rejectionMessage(code: string): string | null {
   return null;
 }
 
-export function toToolResult(outcome: ToolOutcome): ToolResult {
+/** 주체를 모르면(세션 경로·테스트) 개인 토큰 문장이다 — 그 전부터 그 문장이었다. */
+function scopeMessage(credential: Credential["kind"] | undefined): string {
+  return credential === "oauth" ? m.mcp.errors["token-scope-oauth"] : MESSAGE["token-scope"];
+}
+
+export function toToolResult(outcome: ToolOutcome, credential?: Credential["kind"]): ToolResult {
   if (outcome.status === "ok") return { isError: false, content: text(outcome.summary), structuredContent: outcome.data };
   if (outcome.status === "refused") {
-    const message = outcome.message ?? rejectionMessage(outcome.code);
+    const message = outcome.message ?? rejectionMessage(outcome.code, credential);
     // 모르는 코드는 장애로 접는다 — 코드 원문을 싣지 않는다(코어 밖의 값이 결과로 새지 않게).
     if (message === null) return toToolResult({ status: "unavailable" });
     // 장애는 재시도 표시를 싣는다 — `detail`(코드·전송 여부)은 호출부가 고른 값이다.
@@ -93,7 +101,7 @@ export function toToolResult(outcome: ToolOutcome): ToolResult {
   }
   // ⚠️ 사전 조회는 `Object.hasOwn`으로 — 타입 밖의 값(`constructor` 등)이 프로토타입에서 문장을 찾지 않게(POSTMORTEM 2026-09-08).
   const status: ToolRejection = Object.hasOwn(MESSAGE, outcome.status) ? outcome.status : "unavailable";
-  const message = MESSAGE[status];
+  const message = status === "token-scope" ? scopeMessage(credential) : MESSAGE[status];
   return {
     isError: true,
     content: text(message),

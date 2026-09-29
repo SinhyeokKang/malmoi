@@ -39,7 +39,7 @@ const DOTS = "components/signin/dot-field.tsx";
 const ICONS = "components/signin/brand-icons.tsx";
 
 describe("키비주얼 — 개별 카드", () => {
-  const html = renderToStaticMarkup(createElement(AuthLayout, { children: null }));
+  const html = renderToStaticMarkup(createElement(AuthLayout, { decoration: true, children: null }));
   const images = html.match(/<img\b[^>]*>/g) ?? [];
 
   it("프로젝트와 번역 카드 세 장을 각각 장식 이미지로 렌더한다", () => {
@@ -65,6 +65,44 @@ describe("키비주얼 — 개별 카드", () => {
     const project = images.find((tag) => tag.includes("malmoi-kv-1.png"));
     expect(project).toBeDefined();
     expect(project).not.toContain("shadow-");
+  });
+});
+
+/**
+ * ⚠️ **장식은 `/signin` 하나만 든다** (2026-09-29 사용자 — 2026-09-10 "초대도 같은 2열" 결정의 반전).
+ * 초대 수락·계정 병합은 흰 폼 패널 단일이다 — 초대가 실패했는데 우측이 환영 KV인 어긋남(§6.62)이 여기서 닫힌다.
+ * 기본값이 단일이라 새 셸 밖 화면(`/oauth/authorize`)은 손대지 않아도 단일로 선다.
+ */
+describe("셸 밖 골격 — 장식은 로그인만", () => {
+  const plain = renderToStaticMarkup(createElement(AuthLayout, { children: createElement("p", null, "form") }));
+  const decorated = renderToStaticMarkup(createElement(AuthLayout, { decoration: true, children: null }));
+
+  it("기본은 폼 패널 단일이다 — KV·도트 필드·2열 그리드가 없다", () => {
+    expect(plain).not.toMatch(/<img\b/);
+    expect(plain).not.toMatch(/<canvas\b/);
+    expect(plain).not.toContain("grid-cols-2");
+    expect(plain).not.toContain("from-auth-hero-from");
+    expect(plain.match(/<main\b/g)).toHaveLength(1);
+    expect(plain).toContain("<p>form</p>");
+  });
+
+  it("`decoration`을 켜면 2열이다 — 폼 좌 · 장식 우", () => {
+    expect(decorated).toContain("grid-cols-2");
+    expect(decorated).toContain("from-auth-hero-from");
+    expect(decorated.match(/<main\b/g)).toHaveLength(1);
+  });
+
+  it("단일에서도 폼 패널 규격이 같다 — true white · border-subtle · shadow-low", () => {
+    const main = plain.match(/<main\b[^>]*>/)?.[0] ?? "";
+    for (const cls of ["bg-white", "border-border-subtle", "shadow-low", "rounded-xl"]) expect(main).toContain(cls);
+  });
+
+  it("`decoration`을 넘기는 소비자는 `/signin` 하나다", () => {
+    expect(read(SIGNIN)).toMatch(/<AuthLayout\s+decoration\b/);
+    for (const page of ["app/invite/[token]/page.tsx", "app/signin/link/[challenge]/page.tsx"]) {
+      expect(read(page)).toMatch(/<AuthLayout>/);
+      expect(read(page)).not.toMatch(/\bdecoration\b/);
+    }
   });
 });
 

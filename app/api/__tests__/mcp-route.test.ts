@@ -15,9 +15,11 @@ const RAW2 = "mlm_" + "c".repeat(43);
 const HASH2 = hashApiToken(RAW2);
 const now = Date.now();
 
-const hoisted = vi.hoisted(() => ({ apiToken: { findUnique: vi.fn(), updateMany: vi.fn() }, echo: false, origins: [] as (string | null)[] }));
+const hoisted = vi.hoisted(() => ({
+  apiToken: { findUnique: vi.fn(), updateMany: vi.fn() }, oAuthConnection: { findUnique: vi.fn(), updateMany: vi.fn() }, echo: false, origins: [] as (string | null)[],
+}));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/db", () => ({ getPrisma: () => ({ apiToken: hoisted.apiToken }) }));
+vi.mock("@/lib/db", () => ({ getPrisma: () => ({ apiToken: hoisted.apiToken, oAuthConnection: hoisted.oAuthConnection }) }));
 /**
  * 주체 배선을 재는 시험 도구 — `echo` 켠 테스트에서만 등록한다. 서버가 받은 주체를 그대로 돌려주므로, 요청 사이에 서버·주체가
  * 새면(모듈 캐시·클로저 공유) 다른 토큰의 `userId`가 보인다.
@@ -31,7 +33,7 @@ vi.mock("@/lib/mcp/server", async importOriginal => {
       if (hoisted.echo) {
         server.registerTool("echo_subject", { annotations: { readOnlyHint: true } }, async () => ({
           content: [{ type: "text", text: "echo" }],
-          structuredContent: { userId: subject.userId, tokenId: subject.tokenId },
+          structuredContent: { userId: subject.userId, credential: subject.credential },
         }));
       }
       return server;
@@ -57,6 +59,8 @@ beforeEach(() => {
     return null;
   });
   hoisted.apiToken.updateMany.mockResolvedValue({ count: 1 });
+  hoisted.oAuthConnection.findUnique.mockResolvedValue(null);
+  hoisted.oAuthConnection.updateMany.mockResolvedValue({ count: 1 });
 });
 
 const LEGACY = { "mcp-protocol-version": "2025-11-25" };
@@ -276,7 +280,7 @@ describe("2026-07-28 (Claude Code)", () => {
 });
 
 /**
- * **주체는 요청마다 따로다** (검수 Y1). 두 토큰을 동시에 보내 각 응답이 자기 토큰의 `userId`·`tokenId`를 받는지 본다 — 서버나 주체를
+ * **주체는 요청마다 따로다** (검수 Y1). 두 토큰을 동시에 보내 각 응답이 자기 토큰의 `userId`·`credential`을 받는지 본다 — 서버나 주체를
  * 요청 사이에 캐시하면 한쪽이 다른 사용자로 돈다(POSTMORTEM 2026-09-06의 "사용자로 안 좁혔다"가 진입점에서 나는 형).
  */
 describe("주체 배선 — 동시 요청", () => {
@@ -289,10 +293,10 @@ describe("주체 배선 — 동시 요청", () => {
     hoisted.echo = true;
     const results = await Promise.all([call(RAW, protocol, 1), call(RAW2, protocol, 2), call(RAW, protocol, 3), call(RAW2, protocol, 4)]);
     expect(results.map(r => r.result?.structuredContent)).toEqual([
-      { userId: "u1", tokenId: HASH },
-      { userId: "u2", tokenId: HASH2 },
-      { userId: "u1", tokenId: HASH },
-      { userId: "u2", tokenId: HASH2 },
+      { userId: "u1", credential: { kind: "api-token", tokenHash: HASH } },
+      { userId: "u2", credential: { kind: "api-token", tokenHash: HASH2 } },
+      { userId: "u1", credential: { kind: "api-token", tokenHash: HASH } },
+      { userId: "u2", credential: { kind: "api-token", tokenHash: HASH2 } },
     ]);
   });
 });
@@ -310,5 +314,71 @@ describe("도구 문맥의 origin", () => {
   ])("%j → %s", async (headers, expected) => {
     await post(list, { headers: { ...LEGACY, ...headers } });
     expect(hoisted.origins).toEqual([expected]);
+  });
+});
+
+/**
+ * **OAuth 발견의 입구** (mcp-oauth design §1 · spec 조건 2). 무인증 401이 `WWW-Authenticate`로 PRM URL을 가리킨다 — Claude Code는 이 헤더로
+ * 발견한다(T1 실측, Codex는 경로를 추측한다). URL은 **요청 origin**의 것이다 — 허용 밖 호스트면 헤더를 싣지 않는다(남의 호스트를 광고하지 않는다).
+ */
+describe("401 — WWW-Authenticate", () => {
+  const PROD = { host: "mal-moi.com", "x-forwarded-proto": "https" };
+  const header = 'Bearer resource_metadata="https://mal-moi.com/.well-known/oauth-protected-resource/api/mcp"';
+
+  it.each([
+    ["토큰 없음", null],
+    ["무효 개인 토큰", "mlm_" + "z".repeat(43)],
+    ["무효 OAuth access", "mlo_" + "z".repeat(43)],
+    ["refresh를 Bearer로", "mlr_" + "z".repeat(43)],
+  ])("%s → 401 · 같은 본문 · 요청 origin의 PRM URL", async (_label, token) => {
+    const res = await post(initialize, { token, headers: PROD });
+    expect(res.status).toBe(401);
+    expect(res.headers.get("www-authenticate")).toBe(header);
+    expect(await res.json()).toEqual({ error: "unauthorized" });
+  });
+
+  it("dev origin은 dev의 PRM을 가리킨다 · 허용 밖 호스트는 헤더가 없다", async () => {
+    const dev = await post(initialize, { token: null, headers: { host: "dev.mal-moi.com", "x-forwarded-proto": "https" } });
+    expect(dev.headers.get("www-authenticate")).toBe('Bearer resource_metadata="https://dev.mal-moi.com/.well-known/oauth-protected-resource/api/mcp"');
+    const evil = await post(initialize, { token: null, headers: { host: "evil.example", "x-forwarded-proto": "https" } });
+    expect(evil.status).toBe(401);
+    expect(evil.headers.get("www-authenticate")).toBeNull();
+  });
+});
+
+describe("OAuth access (mlo_)", () => {
+  const ACCESS = "mlo_" + "o".repeat(43);
+  const PROD = { host: "mal-moi.com", "x-forwarded-proto": "https" };
+  const liveConnection = (over: Record<string, unknown> = {}) => ({
+    id: "c1", userId: "u3", issuer: "https://mal-moi.com", resource: "https://mal-moi.com/api/mcp", grants: [], allProjects: true, projectIds: [],
+    accessExpiresAt: new Date(now + 3_600_000), expiresAt: new Date(now + 86_400_000), lastUsedAt: new Date(), ...over,
+  });
+
+  it("유효 access → 주체의 credential이 연결 id다 · 개인 토큰 조회 없음", async () => {
+    hoisted.echo = true;
+    hoisted.oAuthConnection.findUnique.mockResolvedValue(liveConnection());
+    const res = await post({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "echo_subject", arguments: {} } }, { token: ACCESS, headers: { ...LEGACY, ...PROD } });
+    expect((await res.json()).result.structuredContent).toEqual({ userId: "u3", credential: { kind: "oauth", connectionId: "c1" } });
+    expect(hoisted.apiToken.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("다른 origin에서 발급된 access는 401 — preview와 로컬이 DB를 공유해도", async () => {
+    hoisted.oAuthConnection.findUnique.mockResolvedValue(liveConnection({ issuer: "https://dev.mal-moi.com", resource: "https://dev.mal-moi.com/api/mcp" }));
+    const res = await post(initialize, { token: ACCESS, headers: PROD });
+    expect(res.status).toBe(401);
+  });
+
+  it("허용 밖 호스트면 OAuth 주체를 만들지 않는다(조회 없음)", async () => {
+    const res = await post(initialize, { token: ACCESS, headers: { host: "evil.example", "x-forwarded-proto": "https" } });
+    expect(res.status).toBe(401);
+    expect(hoisted.oAuthConnection.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("조회 장애는 500 unavailable — 401로 접지 않는다", async () => {
+    hoisted.oAuthConnection.findUnique.mockRejectedValue(new Error("P1001"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const res = await post(initialize, { token: ACCESS, headers: PROD });
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: "unavailable" });
   });
 });

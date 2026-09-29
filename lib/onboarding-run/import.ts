@@ -52,7 +52,7 @@ async function runAuthorized(prisma: PrismaClient, subject: Subject, projectId: 
     if (connected.status !== "ok") return await refuse(connected.error);
     if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return await refuse("repo-replaced");
     const { installationId, repositoryId } = project;
-    return await runRepositoryImportFromReader(prisma, { projectId, userId, approval, tokenId: subject.tokenId,
+    return await runRepositoryImportFromReader(prisma, { projectId, userId, approval, credential: subject.credential,
       repository: { repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
     }, () => openRepoReader(project.repoOwner, project.repoName, installationId, repositoryId));
   } catch (error) {

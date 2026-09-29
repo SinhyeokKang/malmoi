@@ -81,7 +81,7 @@ export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnap
   const prepared = prepareFirstSnapshot(input);
   const { payload } = prepared;
   if (payload !== null) await prisma.$transaction(async tx => {
-    const locked = await lockProjectAccess(tx, { projectId: input.projectId, userId: input.userId, permission: "project:settings", surfaceId: input.surfaceId, tokenId: undefined });
+    const locked = await lockProjectAccess(tx, { projectId: input.projectId, userId: input.userId, permission: "project:settings", surfaceId: input.surfaceId, credential: undefined });
     if (locked.status !== "ok") throw new FirstIngestRefused(locked.status);
     await applyPushInTransaction(tx, { projectId: input.projectId, surfaceId: input.surfaceId }, payload, {
       refsMode: "replace", previousBaseLocale: null, startedAt: input.startedAt, token: input.token,

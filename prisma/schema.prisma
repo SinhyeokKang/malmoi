@@ -563,6 +563,8 @@ model User {
   syncRuns        SyncRun[]
   events          ProjectEvent[]
   apiToken        ApiToken?
+  oauthConnections OAuthConnection[]
+  oauthCodes       OAuthCode[]
 }
 
 /// **MCP 개인 토큰** (mcp-connector — PRODUCT §4.1 "MCP 커넥터"). 에이전트 = 그 사용자라 **계정당 하나**이고(`userId`가 PK),
@@ -588,6 +590,108 @@ model ApiToken {
   expiresAt   DateTime
   /// 토큰은 자격증명이라 사건과 달리 보존할 이유가 없다 — 사용자 삭제와 함께 사라진다.
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// **MCP OAuth 연결** (mcp-oauth design §4) — 클라이언트별 "연결"이고 개인 토큰(`ApiToken`)의 형제다. 권한 어휘·범위·만료가 개인 토큰과
+/// 같고(`planConsent` = `planApiTokenIssue`), 유효 권한은 역할 ∩ grant라 역할을 싣지 않는다(불변식 7).
+///
+/// **같은 사용자 × 같은 `clientId`는 하나다** — 재동의 = code 교환 커밋 시점의 삭제 + 삽입(`@@unique`가 교체를 DB에서 강제한다). grants·범위를
+/// 바꾸는 길은 재동의뿐이고, 예외는 고른 범위의 연결이 만든 프로젝트를 같은 tx에서 `projectIds`에 더하는 것 하나다(`ApiToken`과 같다).
+/// 끊기·재사용 폐기는 행 삭제다 — 잠금 뒤 재읽기(`lockCredential`)가 연결 id로 읽어 "행 없음"을 본다.
+///
+/// ⚠️ **발급 환경에 묶인다**(`issuer`·`resource`) — 로컬·preview가 dev DB를 공유해도 다른 origin의 access·refresh를 받지 않는다(spec 조건 13).
+/// ⚠️ **토큰 원문은 어디에도 없다** — access·refresh 모두 sha256 hex(`hashApiToken`)다.
+model OAuthConnection {
+  id               String                @id @default(cuid())
+  userId           String
+  /// CIMD URL. 공개 식별자라 시크릿 인증을 대신하지 않는다 — 바인딩 대조에만 쓴다.
+  clientId         String
+  /// 동의 시점 스냅샷(화면 표시용). **클라이언트가 정한 문자열**이고 신원 보증이 아니다 — 없으면 `null`이고 화면은 `clientId`를 보인다(design §6.1).
+  clientName       String?
+  /// 동의 시점 콜백(기록). **화면에 싣지 않는다** — 연결 구별은 clientId 식별 줄로 충분하다(`(userId, clientId)`가 유일하고 루프백 포트는
+  /// 로그인마다 바뀐다, design §6.1). 교환 바인딩은 code 스냅샷이 든다.
+  redirectUri      String
+  issuer           String
+  /// 발급 환경의 정확한 MCP URL(`<issuer>/api/mcp`).
+  resource         String
+  /// `TokenGrant` — `ApiToken.grants`와 같은 어휘. 앱 층 어휘라 enum이 아니다.
+  grants           String[]
+  allProjects      Boolean
+  projectIds       String[]              @default([])
+  accessTokenHash  String                @unique
+  /// 짧다(1시간, 연결 수명을 넘지 않는다). 만료 뒤는 refresh다.
+  accessExpiresAt  DateTime
+  /// 현재 refresh의 해시. 회전으로 소비된 옛 해시는 `OAuthRefreshHistory`에 남는다.
+  refreshTokenHash String                @unique
+  /// **연결 수명** = 동의 화면의 30/90/365일. refresh가 넘지 못한다 — 만료면 재동의다.
+  expiresAt        DateTime
+  createdAt        DateTime              @default(now())
+  /// 1분 단위로만 갱신한다(`shouldTouch` — `ApiToken`과 같다).
+  lastUsedAt       DateTime?
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshHistory   OAuthRefreshHistory[]
+
+  @@unique([userId, clientId])
+}
+
+/// **회전으로 소비된 refresh의 해시** (mcp-oauth design §4.1). 옛 refresh가 다시 오면 이 행이 가리키는 연결만 폐기한다 — 회전 뒤 30초 안이면
+/// 거부만 한다(`planRefresh`). ⚠️ **연결이 살아 있는 동안 오래된 것까지 보존한다** — 최근 하나만 남기면 여러 번 회전한 옛 토큰의 재사용을 못 본다.
+/// 연결 삭제와 함께 cascade로 지워진다.
+model OAuthRefreshHistory {
+  tokenHash    String          @id
+  connectionId String
+  /// 회전 시각 — 30초 유예 판정의 입력이다.
+  usedAt       DateTime
+  connection   OAuthConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId])
+}
+
+/// **검증된 authorize 요청** (mcp-oauth design §1 · §4.2) — 로그인 왕복 동안 들고 있는다. 난수 `id`가 URL의 `?request=`다.
+/// 사용자 행을 가리키지 않는다(로그인 전에 만든다). 만료 행은 삽입 시점에 같은 tx에서 지운다(작업 큐 없음 — PRODUCT §4.2).
+model OAuthAuthorizationRequest {
+  id            String    @id
+  clientId      String
+  clientName    String?
+  redirectUri   String
+  /// 클라이언트가 안 보낼 수 있다 — 없으면 콜백에 싣지 않는다(PKCE가 CSRF를 막는다).
+  state         String?
+  codeChallenge String
+  issuer        String
+  resource      String
+  /// 10분.
+  expiresAt     DateTime
+  /// Authorize·Deny 중 먼저 온 한 번만 확정한다(조건부 UPDATE).
+  consumedAt    DateTime?
+
+  @@index([expiresAt])
+}
+
+/// **authorization code** (mcp-oauth design §4 · §4.2). 1회용이고 발급 시점 + 60초다. 원문은 콜백 URL에만 있고 여기는 해시다.
+///
+/// ⚠️ **검증 필드는 발급 시점 스냅샷이다** — 요청 행을 다시 읽지 않고, `requestId`는 FK가 아니다. 요청 정리가 살아 있는 code를 cascade로
+/// 지우면 요청 TTL 끝자락에 발급한 code가 교환 직전에 사라진다(spec 조건 6).
+model OAuthCode {
+  codeHash            String    @id
+  /// 발급 출처 식별용 스칼라 — 요청당 code는 하나다.
+  requestId           String    @unique
+  clientId            String
+  clientName          String?
+  redirectUri         String
+  codeChallenge       String
+  issuer              String
+  resource            String
+  userId              String
+  grants              String[]
+  allProjects         Boolean
+  projectIds          String[]  @default([])
+  connectionExpiresAt DateTime
+  expiresAt           DateTime
+  /// 조건부 UPDATE로 소비한다 — 동시 교환은 한 건만 성공한다.
+  usedAt              DateTime?
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, clientId])
 }
 
 /// OAuth provider 연결. **컬럼 이름이 snake_case인 것은 OAuth 응답 필드를 그대로 받기 때문이다** —

@@ -57,7 +57,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
       projectId: "p1",
       slug: "acme",
       trigger: "manual",
-      requestedBy: "u1", tokenId: undefined });
+      requestedBy: "u1", credential: undefined });
 
     expect(outcome).toEqual(COMMITTED);
     expect(h.spies.createSyncRun).toHaveBeenCalledTimes(1);
@@ -78,7 +78,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
 
   it("cron은 trigger가 CRON이고 requestedBy가 null이다", async () => {
     const h = harness();
-    await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, tokenId: undefined });
+    await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, credential: undefined });
     expect(h.syncRuns[0]).toMatchObject({ trigger: "CRON", requestedBy: null });
   });
 
@@ -86,7 +86,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
     const h = harness();
     hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "no-edits" });
     const outcome = await runSync(h.prisma, {
-      projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, tokenId: undefined });
+      projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, credential: undefined });
     expect(outcome).toEqual({ status: "skipped", reason: "no-edits" });
     expect(h.syncRuns[0]).toMatchObject({ status: "SKIPPED", changed: 0, prUrl: null });
   });
@@ -97,7 +97,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
     hoisted.triggerPull.mockImplementation(async () => fail("no install", "not-installed"));
 
     const outcome = await runSync(h.prisma, {
-      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined });
+      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
     expect(outcome).toEqual({ status: "failed", error: "no install", code: "not-installed", retryable: false, delivery: "unknown" });
     expect(h.syncRuns[0]).toMatchObject({ status: "FAILED", errorCode: "not-installed", changed: null });
   });
@@ -109,7 +109,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
     hoisted.triggerPull.mockRejectedValue(leak);
 
     const outcome = await runSync(h.prisma, {
-      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined });
+      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
     expect(outcome.status).toBe("failed");
     if (outcome.status !== "failed") throw new Error("failed여야 한다");
     expect(outcome.error).not.toContain("pooler");
@@ -126,7 +126,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
       const h = harness();
       if (result === null) hoisted.triggerPull.mockRejectedValue(new Error("x"));
       else hoisted.triggerPull.mockResolvedValue(result);
-      await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, tokenId: undefined });
+      await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, credential: undefined });
       expect(h.syncRuns[0]?.finishedAt).toBeInstanceOf(Date);
     }
   });
@@ -134,7 +134,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
   it("warnings 수가 행에 남는다 — 버린 값을 성공으로 숨기지 않는다", async () => {
     const h = harness();
     hoisted.triggerPull.mockResolvedValue({ status: "skipped", reason: "writer-warnings", warnings: ["a: x", "b: y"] });
-    await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, tokenId: undefined });
+    await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, credential: undefined });
     expect(h.syncRuns[0]).toMatchObject({ warnings: 2 });
   });
 });
@@ -142,7 +142,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
 describe("runSync — 잠금과 순서", () => {
   it("Project 행을 FOR UPDATE로 잠그고, 그것이 행 생성보다 앞이다", async () => {
     const h = harness();
-    await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined });
+    await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
 
     expect(h.spies.executeRaw).toHaveBeenCalledTimes(1);
     const [strings, ...values] = h.spies.executeRaw.mock.calls[0] as [TemplateStringsArray, ...unknown[]];
@@ -171,7 +171,7 @@ describe("runSync — 잠금과 순서", () => {
       return COMMITTED;
     });
 
-    await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined });
+    await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
     expect(hoisted.triggerPull).toHaveBeenCalledTimes(1);
   });
 
@@ -179,7 +179,7 @@ describe("runSync — 잠금과 순서", () => {
     const h = harness();
     h.spies.createSyncRun.mockRejectedValueOnce(new Error("insert failed"));
     await expect(
-      runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined }),
+      runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined }),
     ).rejects.toThrow("insert failed");
     expect(h.syncRuns).toHaveLength(0);
     expect(hoisted.triggerPull).not.toHaveBeenCalled();
@@ -195,13 +195,13 @@ describe("runSync — 게이트 거부", () => {
     );
 
     const first = runSync(h.prisma, {
-      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined });
+      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
     // 첫 호출이 RUNNING 행을 만들 때까지 마이크로태스크를 흘려보낸다.
     await vi.advanceTimersByTimeAsync(0);
     expect(h.syncRuns).toHaveLength(1);
 
     const second = await runSync(h.prisma, {
-      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u2", tokenId: undefined });
+      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u2", credential: undefined });
     expect(second).toEqual({ status: "failed", error: "already-running", delivery: "not-started", retryable: false });
     expect(h.syncRuns).toHaveLength(1);
 
@@ -216,7 +216,7 @@ describe("runSync — 게이트 거부", () => {
       syncRuns: [{ id: "r-other", projectId: "p2", status: "RUNNING", startedAt: ago(5) }],
     });
     const outcome = await runSync(h.prisma, {
-      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined });
+      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
     expect(outcome).toEqual(COMMITTED);
     expect(h.syncRuns.filter((r) => r.projectId === "p1")).toHaveLength(1);
   });
@@ -228,7 +228,7 @@ describe("runSync — 게이트 거부", () => {
       ],
     });
     const outcome = await runSync(h.prisma, {
-      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined });
+      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
     expect(outcome).toEqual({ status: "failed", error: "too-soon", retryAfterSeconds: 20, delivery: "not-started", retryable: false });
     expect(hoisted.triggerPull).not.toHaveBeenCalled();
     expect(h.syncRuns).toHaveLength(1);
@@ -241,7 +241,7 @@ describe("runSync — 게이트 거부", () => {
       ],
     });
     const outcome = await runSync(h.prisma, {
-      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined });
+      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
     expect(outcome).toEqual(COMMITTED);
   });
 
@@ -252,7 +252,7 @@ describe("runSync — 게이트 거부", () => {
       ],
     });
     const outcome = await runSync(h.prisma, {
-      projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, tokenId: undefined });
+      projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, credential: undefined });
     expect(outcome).toEqual(COMMITTED);
   });
 });
@@ -265,7 +265,7 @@ describe("runSync — stale 복구", () => {
       ],
     });
     const outcome = await runSync(h.prisma, {
-      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined });
+      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
     expect(outcome).toEqual(COMMITTED);
 
     const stale = h.syncRuns.find((r) => r.id === "r-stale");
@@ -281,7 +281,7 @@ describe("runSync — stale 복구", () => {
       ],
     });
     const outcome = await runSync(h.prisma, {
-      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined });
+      projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
     expect(outcome).toEqual({ status: "failed", error: "already-running", delivery: "not-started", retryable: false });
     expect(h.syncRuns.find((r) => r.id === "r-live")?.status).toBe("RUNNING");
   });
@@ -291,7 +291,7 @@ describe("runSync — 실패가 마지막 성공을 안 덮는다 (완료 조건
   it("껍데기가 Project 컬럼을 아예 안 쓴다", async () => {
     const h = harness();
     hoisted.triggerPull.mockRejectedValue(new Error("boom"));
-    await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, tokenId: undefined });
+    await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, credential: undefined });
 
     // `triggerPull`을 mock하는 이상 이 단언이 보는 것은 "껍데기가 Project를 안 쓴다"까지다 —
     // 그 아래층(`runPull`이 실패 경로에서 `saveLastPulledAt`을 안 부른다)은 `run.test.ts`가 든다.
@@ -312,7 +312,7 @@ it("PR 작성 뒤 실행 기록 실패도 전송 여부 미확인이다", async 
   let wrote = false;
   hoisted.triggerPull.mockImplementation(async () => { wrote = true; return COMMITTED; });
   vi.spyOn(h.prisma.syncRun, "update").mockRejectedValueOnce(Object.assign(new Error("private DB detail"), { name: "PrismaClientKnownRequestError" }));
-  const outcome = await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", tokenId: undefined });
+  const outcome = await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
   expect(wrote).toBe(true);
   expect(outcome).toMatchObject({ status: "failed", code: "db-unavailable", retryable: true, delivery: "unknown" });
 });

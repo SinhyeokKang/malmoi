@@ -85,7 +85,7 @@ const approve = async () => (await readDiscardApproval(prisma, { projectId: "p",
 async function run(approval: string | null) {
   const project = await prisma.project.findUniqueOrThrow({ where: { id: "p" } });
   const repository = { repositoryId: project.repositoryId!, installationId: project.installationId!, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch };
-  return runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval, tokenId: undefined }, async () => reader());
+  return runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval, credential: undefined }, async () => reader());
 }
 const ko = () => prisma.translation.findFirstOrThrow({ where: { projectId: "p", localeCode: "ko" }, select: { value: true, updatedBy: true, pendingEditToken: true } });
 

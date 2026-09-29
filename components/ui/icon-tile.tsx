@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
  * **아이콘 칸 — 규격이 둘뿐이다** (2026-09-28 사용자 — 28px 칸에 radius 4·8이 섞이고 빈 상태 칸이 셋이던 것을 접었다).
  *
  * - `sm` **28 · radius 4 · 글리프 16** — 행 안의 칸 전부(Account·Settings·Sources·Home 주의·Logs 행·Members 대기 초대 등)
- * - `lg` **40 · radius 8 · 글리프 20** — 새 프로젝트 모달의 후보 행 · Logs 사건 상세 머리 · **모든 빈 상태**(`EmptyState`·`EmptyRowCard`)
+ * - `lg` **40 · radius 8 · 글리프 20** — 새 프로젝트 모달의 후보 행 · Logs 사건 상세 머리 · `/oauth/authorize` 앱 카드 칩 · **모든 빈 상태**(`EmptyState`·`EmptyRowCard`)
  *
  * ⚠️ **글리프 크기를 칸이 정한다**(`[&_svg]:size-*`) — 호출부가 준 `size-4`보다 명시도가 높아 `lg` 안에서도 20이 된다. 그래서 규격이
  * 바뀌어도 호출부를 돌지 않는다. 국기처럼 svg가 아닌 내용물은 건드리지 않는다.

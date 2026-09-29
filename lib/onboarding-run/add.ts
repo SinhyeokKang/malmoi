@@ -88,7 +88,7 @@ export async function addSources(
         repository: { repositoryId: repo.repositoryId, installationId: repo.installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
         format: confirmed.format, baseLocale: confirmed.baseLocale, paths, targets, blobs: new Map(relevant.map(file => [file.path, file.content])), headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt });
     }
-    results = await addSurfacesFromSnapshot(prisma, { projectSlug: input.slug, inputs, tokenId: subject.tokenId });
+    results = await addSurfacesFromSnapshot(prisma, { projectSlug: input.slug, inputs, credential: subject.credential });
   } catch (error) {
     if (error instanceof IngestBudgetError) return { ok: false, error: "resource-limit" };
     if (error instanceof SurfaceCreationError) return { ok: false, error: error.code, conflicts: error.conflicts };
