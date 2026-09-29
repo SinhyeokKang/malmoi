@@ -29,9 +29,9 @@ export function defineTool<S extends z.ZodObject>(definition: ToolDefinition<S>)
   return definition as unknown as ToolDefinition;
 }
 
-/** 코어가 받는 주체 — 쓰기 잠금이 `tokenId`(= `ApiToken.tokenHash`)로 토큰을 다시 읽는다. grants·scope는 입구 판정이 이미 썼다. */
+/** 코어가 받는 주체 — 쓰기 잠금이 `credential`로 자격증명을 다시 읽는다. grants·scope는 입구 판정이 이미 썼다. */
 export function coreSubject(subject: ApiTokenSubject): Subject {
-  return { userId: subject.userId, tokenId: subject.tokenId };
+  return { userId: subject.userId, credential: subject.credential };
 }
 
 /**

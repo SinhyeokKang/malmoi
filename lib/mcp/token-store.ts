@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import type { Credential } from "@/lib/auth/subject";
 import { logFailure } from "@/lib/github-connect/log";
 
 import { TOKEN_GRANTS, type ApiTokenAuthority, type TokenGrant } from "./grant";
@@ -10,14 +11,14 @@ import { API_TOKEN_PREFIX, hashApiToken, planApiTokenUse, shouldTouch } from "./
  * Bearer → 서버 주체 (mcp-connector design §1.2 · §1.25). **인가의 입구는 여기 하나다** — `app/__tests__/exempt-route-guards.test.ts`가
  * `/api/mcp` route의 이 호출을 센다.
  *
- * 주체의 `tokenId`는 **`tokenHash`**다(2026-09-28 결정 — `id` 컬럼이 없고 `userId`가 PK다). 쓰기 코어가 잠금 뒤 `userId` AND
+ * 주체의 `credential`은 **`{ kind: "api-token", tokenHash }`**다(2026-09-28 결정 — `id` 컬럼이 없고 `userId`가 PK다). 쓰기 코어가 잠금 뒤 `userId` AND
  * `tokenHash`로 다시 읽어, 대기 중 재발급(같은 `userId`, 새 해시)된 토큰을 거부한다.
  *
  * ⚠️ **조회 장애는 던진다** — `null`(401)로 접으면 DB 장애가 "토큰이 무효"로 읽히고 에이전트가 사용자에게 재발급을 권한다
  * (POSTMORTEM 2026-09-06 "세션 없음과 못 읽었다는 다르다"와 같은 축).
  */
 
-export type ApiTokenSubject = ApiTokenAuthority & { tokenId: string };
+export type ApiTokenSubject = ApiTokenAuthority & { credential: Credential };
 
 export async function resolveApiToken(prisma: Pick<PrismaClient, "apiToken">, token: string, now: Date): Promise<ApiTokenSubject | null> {
   // 접두가 다르면 우리 토큰이 아니다 — push 토큰을 잘못 붙인 설정이 DB를 두드리지 않게.
@@ -44,7 +45,7 @@ export async function resolveApiToken(prisma: Pick<PrismaClient, "apiToken">, to
   const grants = row.grants.filter((g): g is TokenGrant => vocabulary.includes(g));
   return {
     userId: row.userId,
-    tokenId: row.tokenHash,
+    credential: { kind: "api-token", tokenHash: row.tokenHash },
     grants,
     scope: row.allProjects ? { kind: "all" } : { kind: "projects", projectIds: row.projectIds },
   };

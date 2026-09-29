@@ -31,7 +31,7 @@ vi.mock("@/lib/mcp/server", async importOriginal => {
       if (hoisted.echo) {
         server.registerTool("echo_subject", { annotations: { readOnlyHint: true } }, async () => ({
           content: [{ type: "text", text: "echo" }],
-          structuredContent: { userId: subject.userId, tokenId: subject.tokenId },
+          structuredContent: { userId: subject.userId, credential: subject.credential },
         }));
       }
       return server;
@@ -276,7 +276,7 @@ describe("2026-07-28 (Claude Code)", () => {
 });
 
 /**
- * **주체는 요청마다 따로다** (검수 Y1). 두 토큰을 동시에 보내 각 응답이 자기 토큰의 `userId`·`tokenId`를 받는지 본다 — 서버나 주체를
+ * **주체는 요청마다 따로다** (검수 Y1). 두 토큰을 동시에 보내 각 응답이 자기 토큰의 `userId`·`credential`을 받는지 본다 — 서버나 주체를
  * 요청 사이에 캐시하면 한쪽이 다른 사용자로 돈다(POSTMORTEM 2026-09-06의 "사용자로 안 좁혔다"가 진입점에서 나는 형).
  */
 describe("주체 배선 — 동시 요청", () => {
@@ -289,10 +289,10 @@ describe("주체 배선 — 동시 요청", () => {
     hoisted.echo = true;
     const results = await Promise.all([call(RAW, protocol, 1), call(RAW2, protocol, 2), call(RAW, protocol, 3), call(RAW2, protocol, 4)]);
     expect(results.map(r => r.result?.structuredContent)).toEqual([
-      { userId: "u1", tokenId: HASH },
-      { userId: "u2", tokenId: HASH2 },
-      { userId: "u1", tokenId: HASH },
-      { userId: "u2", tokenId: HASH2 },
+      { userId: "u1", credential: { kind: "api-token", tokenHash: HASH } },
+      { userId: "u2", credential: { kind: "api-token", tokenHash: HASH2 } },
+      { userId: "u1", credential: { kind: "api-token", tokenHash: HASH } },
+      { userId: "u2", credential: { kind: "api-token", tokenHash: HASH2 } },
     ]);
   });
 });

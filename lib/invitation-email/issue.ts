@@ -7,6 +7,7 @@ import { maskEmail } from "@/lib/auth/email";
 import { hashInviteToken } from "@/lib/auth/invitation";
 import type { LockedAccess } from "@/lib/auth/access";
 import { lockProjectAccess } from "@/lib/auth/lock";
+import type { Credential } from "@/lib/auth/subject";
 import type { Role } from "@/lib/auth/permission";
 import { findUserByEmail } from "@/lib/credentials/access";
 import { decodeInvitation, encodeInvitationEmail, readable } from "@/lib/credentials/records";
@@ -145,11 +146,11 @@ function retryAfterIssue(limits: Awaited<ReturnType<typeof readLimits>>, count: 
 
 export async function issueInvitations(
   prisma: PrismaClient,
-  input: { projectId: string; userId: string; recipients: readonly IssueRecipient[]; tokenId: string | undefined },
+  input: { projectId: string; userId: string; recipients: readonly IssueRecipient[]; credential: Credential | undefined },
 ): Promise<IssueOutcome> {
   const { projectId, userId, recipients } = input;
   return prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage", tokenId: input.tokenId });
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage", credential: input.credential });
     if (locked.status !== "ok") return locked;
     const now = new Date();
     const limits = await readLimits(tx, { projectId, userId, emails: recipients.map((r) => r.email), now });
@@ -169,7 +170,7 @@ export async function reissueInvitation(
 ): Promise<ReissueOutcome> {
   const { projectId, userId, invitationId } = input;
   return prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage", tokenId: undefined });
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage", credential: undefined });
     if (locked.status !== "ok") return locked;
     const now = new Date();
     // ⚠️ `projectId`로 좁힌다 — id를 알아도 남의 프로젝트 초대를 되살릴 수 없다.

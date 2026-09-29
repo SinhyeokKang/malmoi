@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}));
 const { resolveApiToken } = await import("../token-store");
 
 /**
- * Bearer → 서버 주체 (mcp-connector design §1.2 · §1.25). 조회 방향은 **해시 → 행**이고 원문으로 조회하지 않는다. 주체의 `tokenId`는
+ * Bearer → 서버 주체 (mcp-connector design §1.2 · §1.25). 조회 방향은 **해시 → 행**이고 원문으로 조회하지 않는다. 주체의 `credential`은
  * `tokenHash`다(2026-09-28 결정) — 잠금 뒤 재읽기가 `userId` AND `tokenHash`로 재발급을 거부한다.
  * ⚠️ **장애는 401이 아니다** — 조회가 던지면 그대로 올린다(route가 500으로 답한다). `lastUsedAt` 쓰기 실패만 삼킨다.
  */
@@ -32,10 +32,10 @@ beforeEach(() => {
 });
 
 describe("resolveApiToken", () => {
-  it("유효 토큰 → { userId, tokenId: tokenHash, grants, scope }", async () => {
+  it("유효 토큰 → { userId, credential: tokenHash, grants, scope }", async () => {
     apiToken.findUnique.mockResolvedValue(row());
     await expect(resolveApiToken(prisma, RAW, now)).resolves.toEqual({
-      userId: "u1", tokenId: HASH, grants: ["translation:write"], scope: { kind: "all" },
+      userId: "u1", credential: { kind: "api-token", tokenHash: HASH }, grants: ["translation:write"], scope: { kind: "all" },
     });
   });
 

@@ -198,7 +198,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   try {
     locked = await prisma.$transaction(async (tx) => {
       // GitHub 왕복(초 단위) 동안 강등·보관이 끝났을 수 있다 — 잠금 뒤 다시 본다.
-      const locked = await lockProjectAccess(tx, { projectId, userId, permission: "project:settings", tokenId: undefined });
+      const locked = await lockProjectAccess(tx, { projectId, userId, permission: "project:settings", credential: undefined });
       if (locked.status !== "ok") return locked;
       await tx.project.update({
         where: { id: projectId, repositoryId: project.repositoryId ?? null, repoOwner: project.repoOwner, repoName: project.repoName },
@@ -340,7 +340,7 @@ export async function uploadProjectImage(form: FormData): Promise<ProjectImageRe
     stage = "database-update";
     // 네트워크 I/O는 잠금 밖, 이전 이미지 삭제는 커밋 뒤다. sharp·Blob이 초 단위라 권한·보관은 잠금 뒤 다시 본다.
     previous = await prisma.$transaction(async tx => {
-      const locked = await lockProjectAccess(tx, { projectId, userId: session.userId, permission: "project:settings", tokenId: undefined });
+      const locked = await lockProjectAccess(tx, { projectId, userId: session.userId, permission: "project:settings", credential: undefined });
       if (locked.status !== "ok") return locked;
       const row = await tx.project.findUnique({ where: { id: projectId }, select: { image: true } });
       if (!row) throw new Error("Project disappeared");
@@ -388,7 +388,7 @@ export async function deleteProjectImage(raw: string): Promise<{ ok: true } | { 
   // 보관 = Restore만 (PRODUCT §7.9) — 보관 중 거부는 잠금 안 판정이 한다.
   try {
     previous = await prisma.$transaction(async tx => {
-      const locked = await lockProjectAccess(tx, { projectId, userId: session.userId, permission: "project:settings", tokenId: undefined });
+      const locked = await lockProjectAccess(tx, { projectId, userId: session.userId, permission: "project:settings", credential: undefined });
       if (locked.status !== "ok") return locked;
       const row = await tx.project.findUnique({ where: { id: projectId }, select: { image: true } });
       if (!row) throw new Error("Project disappeared");

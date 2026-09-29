@@ -4,7 +4,8 @@ import { randomUUID } from "node:crypto";
 import type { Prisma, PrismaClient, Project, TranslationSurface } from "@/generated/prisma/client";
 import type { RepoReader } from "@/lib/github";
 import { isAdapterName } from "@/lib/adapters";
-import { lockApiToken } from "@/lib/auth/lock";
+import { lockCredential } from "@/lib/auth/lock";
+import type { Credential } from "@/lib/auth/subject";
 import { logFailure } from "@/lib/github-connect/log";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { importOutcomeFields } from "@/lib/projects/import-status";
@@ -26,7 +27,7 @@ type Repository = Pick<Project, "repositoryId" | "installationId" | "repoOwner" 
 /**
  * @param approval Dialog가 열릴 때 서버가 발급한 폐기 승인 지문(`readDiscardApproval`). 없으면 `null` — 미전달 편집이 있으면 reconfirm이다.
  */
-type ImportRunInput = { projectId: string; userId: string; repository: Repository; approval: string | null; tokenId: string | undefined };
+type ImportRunInput = { projectId: string; userId: string; repository: Repository; approval: string | null; credential: Credential | undefined };
 /** @param approvedTokens 잠금 뒤 지문 대조를 지난 편집 토큰 — upsert는 토큰 없거나 이 목록인 셀만 덮는다. */
 type Lease = { project: Project; surfaces: TranslationSurface[]; token: string; startedAt: Date; userId: string; approvedTokens: readonly string[] };
 const transactionOptions = { maxWait: 10_000, timeout: 30_000 };
@@ -45,7 +46,7 @@ async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ o
   return prisma.$transaction(async tx => {
     await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${input.projectId} FOR UPDATE`;
     // 실행권 획득이 MCP 토큰의 권한 확정 시점이다(mcp-connector design §1.25) — 잠금 직후 다시 읽고, grant 거부는 역할·보관 판정 뒤에 낸다.
-    const apiToken = await lockApiToken(tx, { tokenId: input.tokenId, userId: input.userId, projectId: input.projectId, grant: "project:settings" });
+    const apiToken = await lockCredential(tx, { credential: input.credential, userId: input.userId, projectId: input.projectId, grant: "project:settings" });
     if (apiToken.status !== "ok") return { ok: false, error: apiToken.status };
     const project = await tx.project.findUnique({ where: { id: input.projectId } });
     if (project === null) return { ok: false, error: "not-found" };

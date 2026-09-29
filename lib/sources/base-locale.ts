@@ -23,14 +23,14 @@ export type BaseLocaleDeclareResult = { ok: true } | { ok: false; error: Reposit
  */
 export async function declareBaseLocale(prisma: PrismaClient, subject: Subject, input: z.infer<typeof BaseLocaleInput>): Promise<BaseLocaleDeclareResult> {
   const { slug, surfaceSlug, baseLocale } = input;
-  const { userId, tokenId } = subject;
+  const { userId, credential } = subject;
   const access = await getSurfaceAccess(prisma, { userId, slug, surfaceSlug, permission: "project:settings" });
   if (access.status !== "ok") return { ok: false, error: access.status };
   const { projectId, surfaceId } = access;
 
   return prisma.$transaction(async (tx) => {
     // CI와 같은 잠금 순서로 현실·선언을 함께 읽어야 오래된 값으로 이력을 만들지 않는다. 권한·보관도 잠금 뒤 다시 본다.
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "project:settings", surfaceId, tokenId });
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "project:settings", surfaceId, credential });
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
     const project = await tx.translationSurface.findUnique({
       where: { id: surfaceId, projectId },

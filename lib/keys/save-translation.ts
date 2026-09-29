@@ -21,7 +21,7 @@ export async function saveTranslation(prisma: PrismaClient, subject: Subject, in
   const access = await getSurfaceAccess(prisma, { userId: subject.userId, slug, surfaceSlug, permission: "translation:write" });
   if (access.status !== "ok") return { ok: false, error: access.status };
   if (!(await isProjectReady(prisma, access.projectId))) return { ok: false, error: "not-ready" };
-  return applyKeySave(prisma, { projectId: access.projectId, surfaceId: access.surfaceId, surfaceSlug, keyId, userId: subject.userId, tokenId: subject.tokenId, changes });
+  return applyKeySave(prisma, { projectId: access.projectId, surfaceId: access.surfaceId, surfaceSlug, keyId, userId: subject.userId, credential: subject.credential, changes });
 }
 
 /** 여러 키를 한 잠금으로 — 상한·중복 키 거부는 호출자의 입력 검증이다(`applyKeySaveBatch`). */
@@ -34,5 +34,5 @@ export async function saveTranslationBatch(
   const access = await getSurfaceAccess(prisma, { userId: subject.userId, slug, surfaceSlug, permission: "translation:write" });
   if (access.status !== "ok") return { ok: false, error: access.status };
   if (!(await isProjectReady(prisma, access.projectId))) return { ok: false, error: "not-ready" };
-  return applyKeySaveBatch(prisma, { projectId: access.projectId, surfaceId: access.surfaceId, surfaceSlug, userId: subject.userId, tokenId: subject.tokenId, entries });
+  return applyKeySaveBatch(prisma, { projectId: access.projectId, surfaceId: access.surfaceId, surfaceSlug, userId: subject.userId, credential: subject.credential, entries });
 }

@@ -129,7 +129,7 @@ describe("issueInvitations — 정상 발급", () => {
       recipients: [
         { email: "a@x.com", role: "EDITOR" },
         { email: "b@x.com", role: "OWNER" },
-      ], tokenId: undefined });
+      ], credential: undefined });
     expect(result.status).toBe("issued");
     if (result.status !== "issued") return;
     expect(result.invitations.map((i) => i.email)).toEqual(["a@x.com", "b@x.com"]);
@@ -153,7 +153,7 @@ describe("issueInvitations — 정상 발급", () => {
 
   it("미수락 기존 초대를 회전한다 — 옛 링크는 무효, 유효 링크는 하나", async () => {
     await seedInvitation({ id: "old", email: "a@x.com" });
-    const result = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "OWNER" }], tokenId: undefined });
+    const result = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "OWNER" }], credential: undefined });
     expect(result.status).toBe("issued");
     const old = await prisma.projectInvitation.findUniqueOrThrow({ where: { id: "old" } });
     expect(old.expiresAt.getTime()).toBeLessThanOrEqual(Date.now());
@@ -171,7 +171,7 @@ describe("issueInvitations — 하나라도 거부면 전체 쓰기 0건", () =>
       recipients: [
         { email: "a@x.com", role: "EDITOR" },
         { email: "member@x.com", role: "EDITOR" },
-      ], tokenId: undefined });
+      ], credential: undefined });
     expect(result).toEqual({ status: "invalid-rows", rowErrors: [{ index: 1, code: "already-member" }] });
     expect(await invitations()).toHaveLength(1);
     expect((await prisma.projectInvitation.findUniqueOrThrow({ where: { id: "pending-a" } })).expiresAt).toEqual(before.expiresAt);
@@ -179,7 +179,7 @@ describe("issueInvitations — 하나라도 거부면 전체 쓰기 0건", () =>
   });
 
   it("다른 프로젝트의 멤버는 이 프로젝트의 멤버가 아니다 — 대조", async () => {
-    const result = await issueInvitations(prisma, { projectId: "q", userId: "u1", recipients: [{ email: "member@x.com", role: "EDITOR" }], tokenId: undefined });
+    const result = await issueInvitations(prisma, { projectId: "q", userId: "u1", recipients: [{ email: "member@x.com", role: "EDITOR" }], credential: undefined });
     expect(result.status).toBe("issued");
   });
 
@@ -188,7 +188,7 @@ describe("issueInvitations — 하나라도 거부면 전체 쓰기 0건", () =>
     const result = await issueInvitations(prisma, {
       projectId: "p",
       userId: "u1",
-      recipients: ["a", "b", "c"].map((n) => ({ email: `${n}@x.com`, role: "EDITOR" as const })), tokenId: undefined });
+      recipients: ["a", "b", "c"].map((n) => ({ email: `${n}@x.com`, role: "EDITOR" as const })), credential: undefined });
     expect(result.status).toBe("rate-limited");
     expect(await invitations()).toHaveLength(INVITATION_HOURLY_LIMIT - 1);
     expect(await invitedEvents()).toHaveLength(0);
@@ -196,13 +196,13 @@ describe("issueInvitations — 하나라도 거부면 전체 쓰기 0건", () =>
 
   it("같은 상태의 1명은 통과한다 — 대조", async () => {
     await fillWindow(INVITATION_HOURLY_LIMIT - 1);
-    const result = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }], tokenId: undefined });
+    const result = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }], credential: undefined });
     expect(result.status).toBe("issued");
   });
 
   it("철회·수락된 기록도 한도에 센다 — 철회로 우회되지 않는다", async () => {
     await seedInvitation({ id: "revoked", email: "a@x.com", createdAt: new Date(Date.now() - 10_000), expiresAt: new Date(Date.now() - 5_000) });
-    const result = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }], tokenId: undefined });
+    const result = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }], credential: undefined });
     expect(result.status).toBe("rate-limited");
   });
 
@@ -215,7 +215,7 @@ describe("issueInvitations — 하나라도 거부면 전체 쓰기 0건", () =>
       RETURN NEW; END $$ LANGUAGE plpgsql`);
     await pool.query(`CREATE TRIGGER fail_second_invite BEFORE INSERT ON "ProjectEvent" FOR EACH ROW EXECUTE FUNCTION fail_second_invite()`);
     await expect(
-      issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }, { email: "b@x.com", role: "EDITOR" }], tokenId: undefined }),
+      issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }, { email: "b@x.com", role: "EDITOR" }], credential: undefined }),
     ).rejects.toThrow();
     expect(await invitations()).toHaveLength(1);
     expect((await prisma.projectInvitation.findUniqueOrThrow({ where: { id: "pending-a" } })).expiresAt).toEqual(before.expiresAt);
@@ -237,7 +237,7 @@ describe("issueInvitations — 발급자 최근 1시간 합산", () => {
   it("두 프로젝트 합이 30건이면 어느 프로젝트에도 발급하지 않는다 — 쓰기 0건", async () => {
     await seedBy("p", "u1", 15, "p");
     await seedBy("q", "u1", USER_HOURLY_LIMIT - 15, "q");
-    const result = await issueInvitations(prisma, { projectId: "q", userId: "u1", recipients: [{ email: "new@x.com", role: "EDITOR" }], tokenId: undefined });
+    const result = await issueInvitations(prisma, { projectId: "q", userId: "u1", recipients: [{ email: "new@x.com", role: "EDITOR" }], credential: undefined });
     expect(result).toMatchObject({ status: "rate-limited", limit: "user", used: USER_HOURLY_LIMIT });
     expect(await invitations("q")).toHaveLength(USER_HOURLY_LIMIT - 15);
     expect(await invitedEvents("q")).toHaveLength(0);
@@ -247,7 +247,7 @@ describe("issueInvitations — 발급자 최근 1시간 합산", () => {
     await seedBy("p", "u1", 15, "p");
     await seedBy("q", "u1", USER_HOURLY_LIMIT - 16, "q");
     await seedBy("q", "u2", 4, "other");
-    const result = await issueInvitations(prisma, { projectId: "q", userId: "u1", recipients: [{ email: "new@x.com", role: "EDITOR" }], tokenId: undefined });
+    const result = await issueInvitations(prisma, { projectId: "q", userId: "u1", recipients: [{ email: "new@x.com", role: "EDITOR" }], credential: undefined });
     expect(result.status).toBe("issued");
   });
 });
@@ -256,7 +256,7 @@ describe("issueInvitations — 잠금이 한도를 직렬화한다", () => {
   it("마지막 한 자리의 동시 요청은 하나만 통과한다", async () => {
     await fillWindow(INVITATION_HOURLY_LIMIT - 1);
     const results = await Promise.all(
-      ["a", "b", "c", "d"].map((n) => issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: `${n}@x.com`, role: "EDITOR" }], tokenId: undefined })),
+      ["a", "b", "c", "d"].map((n) => issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: `${n}@x.com`, role: "EDITOR" }], credential: undefined })),
     );
     expect(results.filter((r) => r.status === "issued")).toHaveLength(1);
     expect(results.filter((r) => r.status === "rate-limited")).toHaveLength(3);
@@ -266,7 +266,7 @@ describe("issueInvitations — 잠금이 한도를 직렬화한다", () => {
 
   it("같은 주소의 동시 요청은 하나만 통과한다 — 60초를 우회하지 않고 유효 링크도 하나다", async () => {
     const results = await Promise.all(
-      [0, 1, 2].map(() => issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }], tokenId: undefined })),
+      [0, 1, 2].map(() => issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }], credential: undefined })),
     );
     expect(results.filter((r) => r.status === "issued")).toHaveLength(1);
     expect(await live("a@x.com")).toHaveLength(1);
@@ -351,7 +351,7 @@ describe("발급 outcome — 메일 카드의 프로젝트·역할", () => {
       recipients: [
         { email: "a@x.com", role: "EDITOR" },
         { email: "b@x.com", role: "OWNER" },
-      ], tokenId: undefined });
+      ], credential: undefined });
     expect(result).toMatchObject({ status: "issued", project: { name: "Acme Web", image: THUMB } });
     if (result.status !== "issued") return;
     expect(result.invitations.map((i) => i.role)).toEqual(["EDITOR", "OWNER"]);
@@ -359,7 +359,7 @@ describe("발급 outcome — 메일 카드의 프로젝트·역할", () => {
 
   it("발급 뒤 이름을 바꾸고 썸네일을 지운 다음 재발급하면 새 이름과 null을 싣는다 — 폴백 갈래로 바뀐다", async () => {
     await prisma.project.update({ where: { id: "p" }, data: { name: "Old", image: THUMB } });
-    const first = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }], tokenId: undefined });
+    const first = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "a@x.com", role: "EDITOR" }], credential: undefined });
     expect(first).toMatchObject({ status: "issued", project: { name: "Old", image: THUMB } });
 
     await prisma.project.update({ where: { id: "p" }, data: { name: "New", image: null } });
@@ -385,7 +385,7 @@ describe("발급 outcome — 메일 카드의 프로젝트·역할", () => {
   it("보관된 프로젝트는 archived로 거부되고 project를 싣지 않는다", async () => {
     await seedInvitation({ id: "inv", email: "a@x.com" });
     await prisma.project.update({ where: { id: "p" }, data: { archivedAt: new Date() } });
-    const issued = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "z@x.com", role: "EDITOR" }], tokenId: undefined });
+    const issued = await issueInvitations(prisma, { projectId: "p", userId: "u1", recipients: [{ email: "z@x.com", role: "EDITOR" }], credential: undefined });
     expect(issued.status).toBe("archived");
     expect(issued).not.toHaveProperty("project");
     const reissued = await reissueInvitation(prisma, { projectId: "p", userId: "u1", invitationId: "inv" });

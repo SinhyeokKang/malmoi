@@ -90,7 +90,7 @@ const ALL: TokenGrant[] = ["translation:write", "project:settings", "member:mana
 async function token(userId: string, over: { grants?: TokenGrant[]; allProjects?: boolean; projectIds?: string[] } = {}): Promise<ApiTokenSubject> {
   const row = { userId, tokenHash: `hash-${userId}`, grants: over.grants ?? ALL, allProjects: over.allProjects ?? true, projectIds: over.projectIds ?? [], expiresAt: new Date(Date.now() + 86_400_000) };
   await prisma.apiToken.create({ data: row });
-  return { userId, tokenId: row.tokenHash, grants: row.grants, scope: row.allProjects ? { kind: "all" } : { kind: "projects", projectIds: row.projectIds } };
+  return { userId, credential: { kind: "api-token", tokenHash: row.tokenHash }, grants: row.grants, scope: row.allProjects ? { kind: "all" } : { kind: "projects", projectIds: row.projectIds } };
 }
 const call = (name: string, subject: ApiTokenSubject, input: Record<string, unknown>, origin: string | null = null): Promise<ToolOutcome> =>
   TOOLS.find(t => t.name === name)!.run({ prisma, subject, now: new Date(), origin }, input as never);

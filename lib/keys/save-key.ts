@@ -4,6 +4,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { ADAPTERS } from "@/lib/adapters";
 import type { LockedAccess } from "@/lib/auth/access";
 import { lockProjectAccess } from "@/lib/auth/lock";
+import type { Credential } from "@/lib/auth/subject";
 import { recordEvents } from "@/lib/events/record";
 import { planBaselineOnSave } from "@/lib/translations/baseline";
 
@@ -27,7 +28,7 @@ export type KeySaveResult =
   | { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] };
 
 type KeyChanges = readonly { localeCode: string; value: string }[];
-type KeySaveTarget = { projectId: string; surfaceId: string; surfaceSlug: string; userId: string; tokenId: string | undefined };
+type KeySaveTarget = { projectId: string; surfaceId: string; surfaceSlug: string; userId: string; credential: Credential | undefined };
 /** 잠금 뒤 인가를 지난 한 키의 결과 — 접근 거부는 배치 전체의 결과라 여기 없다. */
 export type KeyEntryResult = Exclude<KeySaveResult, { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] }>;
 
@@ -35,9 +36,9 @@ export async function applyKeySave(
   prisma: PrismaClient,
   input: KeySaveTarget & { keyId: string; changes: KeyChanges },
 ): Promise<KeySaveResult> {
-  const { projectId, surfaceId, userId, tokenId } = input;
+  const { projectId, surfaceId, userId, credential } = input;
   return prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId, tokenId });
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId, credential });
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
     const [result] = await saveKeysLocked(tx, input, [{ keyId: input.keyId, changes: input.changes }]);
     return result!;
@@ -60,9 +61,9 @@ export async function applyKeySaveBatch(
   prisma: PrismaClient,
   input: KeySaveTarget & { entries: readonly { keyId: string; changes: KeyChanges }[] },
 ): Promise<KeyBatchSaveResult> {
-  const { projectId, surfaceId, userId, tokenId } = input;
+  const { projectId, surfaceId, userId, credential } = input;
   return prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId, tokenId });
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId, credential });
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
     const results = await saveKeysLocked(tx, input, input.entries);
     return { ok: true, results: input.entries.map((entry, index) => ({ keyId: entry.keyId, result: results[index]! })) } as const;

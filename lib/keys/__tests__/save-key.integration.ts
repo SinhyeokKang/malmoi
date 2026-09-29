@@ -76,7 +76,7 @@ async function seed(p: string) {
 }
 
 const input = (changes: { localeCode: string; value: string }[], over: Partial<Parameters<typeof applyKeySave>[1]> = {}) =>
-  ({ projectId: "p", surfaceId: "p-s", surfaceSlug: "default", keyId: "p-k1", userId: "u1", tokenId: undefined, changes, ...over });
+  ({ projectId: "p", surfaceId: "p-s", surfaceSlug: "default", keyId: "p-k1", userId: "u1", credential: undefined, changes, ...over });
 const cell = (locale: string) => prisma.translation.findUnique({ where: { keyId_localeCode: { keyId: "p-k1", localeCode: locale } } });
 const events = () => prisma.projectEvent.findMany({ where: { projectId: "p", subtype: "translation.saved" }, orderBy: { occurredAt: "asc" } });
 const baselines = () => prisma.translationBaseline.findMany({ where: { projectId: "p" }, orderBy: { localeCode: "asc" } });
@@ -228,7 +228,7 @@ describe("applyKeySaveBatch", () => {
     await prisma.stringKey.create({ data: { id: "p-k2", projectId: "p", surfaceId: "p-s", key: "bye", namespace: "_root", sourceText: "Bye", sourceHash: "b" } });
   });
   const batch = (entries: { keyId: string; changes: { localeCode: string; value: string }[] }[], over: { userId?: string } = {}) =>
-    applyKeySaveBatch(prisma, { projectId: "p", surfaceId: "p-s", surfaceSlug: "default", userId: "u1", entries, ...over, tokenId: undefined });
+    applyKeySaveBatch(prisma, { projectId: "p", surfaceId: "p-s", surfaceSlug: "default", userId: "u1", entries, ...over, credential: undefined });
 
   it("키마다 화면 Save와 같은 결과를 입력 순서대로 모으고, 거부된 키만 건너뛴다", async () => {
     const result = await batch([
@@ -313,7 +313,7 @@ describe("applyKeySaveBatch — 쿼리 수", () => {
     await prisma.stringKey.createMany({ data: Array.from({ length: n }, (_, i) => ({ id: `q${n}-${i}`, projectId: "p", surfaceId: "p-s", key: `q${n}.${i}`, namespace: "_root", sourceText: `S${i}`, sourceHash: `h${i}` })) });
     if (existing) await prisma.translation.createMany({ data: Array.from({ length: n }, (_, i) => ({ projectId: "p", surfaceId: "p-s", keyId: `q${n}-${i}`, localeCode: "ko", value: "old" })) });
     queries = 0;
-    const result = await applyKeySaveBatch(counted, { projectId: "p", surfaceId: "p-s", surfaceSlug: "default", userId: "u1", tokenId: undefined,
+    const result = await applyKeySaveBatch(counted, { projectId: "p", surfaceId: "p-s", surfaceSlug: "default", userId: "u1", credential: undefined,
       entries: Array.from({ length: n }, (_, i) => ({ keyId: `q${n}-${i}`, changes: [{ localeCode: "ko", value: `값 ${i}` }] })) });
     expect(result.ok && result.results.every(r => r.result.ok)).toBe(true);
     return queries;

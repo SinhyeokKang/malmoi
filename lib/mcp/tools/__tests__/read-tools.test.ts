@@ -61,7 +61,7 @@ beforeEach(() => {
 });
 
 function subject(userId: string, grants: TokenGrant[] = [], scope: TokenScope = { kind: "all" }): ApiTokenSubject {
-  return { userId, grants, scope, tokenId: `hash-${userId}` };
+  return { userId, grants, scope, credential: { kind: "api-token", tokenHash: `hash-${userId}` } };
 }
 const call = (name: string, who: ApiTokenSubject, input: Record<string, unknown>): Promise<ToolOutcome> =>
   tool(name).run({ prisma, subject: who, now: new Date("2026-09-28T00:00:00Z"), origin }, input as never);
@@ -112,7 +112,7 @@ describe("역할 × 빈 grants", () => {
   it("Project settings만 받은 토큰은 기존 프로젝트 탐지가 되고 project:create가 필요 없다", async () => {
     const settingsOnly = subject("owner", ["project:settings"], { kind: "projects", projectIds: ["p1"] });
     expect(status(await call("detect_formats", settingsOnly, { slug: "acme" }))).toBe("ok");
-    expect(h.detectProjectFormats).toHaveBeenCalledExactlyOnceWith(prisma, { userId: "owner", tokenId: "hash-owner" }, { kind: "existing", slug: "acme" });
+    expect(h.detectProjectFormats).toHaveBeenCalledExactlyOnceWith(prisma, { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" } }, { kind: "existing", slug: "acme" });
     // 같은 토큰의 신규 경로는 project:create가 없다.
     expect(status(await call("detect_formats", settingsOnly, { owner: "o", repo: "r" }))).toBe("token-scope");
   });

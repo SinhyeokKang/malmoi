@@ -33,9 +33,11 @@ const MAX_BODY_BYTES = 1_048_576;
 // ⚠️ 401 본문은 한 문장이다 — 없음·무효·만료·폐기를 가르지 않는다(spec 조건 4). Claude Code는 이 본문을 사용자에게 그대로 보인다.
 const unauthorized = () => NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-/** 주체를 SDK의 `authInfo`로 싣는다 — 원문 토큰은 싣지 않는다(`token` 자리에 해시). 2026-07-28 쪽 팩토리가 `extra`에서 되읽는다. */
+/** 주체를 SDK의 `authInfo`로 싣는다 — 원문 토큰은 싣지 않는다(`token` 자리에 해시 또는 연결 id). 2026-07-28 쪽 팩토리가 `extra`에서 되읽는다. */
 function authInfoOf(subject: ApiTokenSubject, origin: string | null): AuthInfo {
-  return { token: subject.tokenId, clientId: subject.userId, scopes: [...subject.grants], extra: { subject, origin } };
+  const { credential } = subject;
+  const token = credential.kind === "api-token" ? credential.tokenHash : credential.connectionId;
+  return { token, clientId: subject.userId, scopes: [...subject.grants], extra: { subject, origin } };
 }
 
 /** 도구가 브라우저로 보내는 링크의 origin — 허용 호스트만(`requestOrigin`). 조작된 `Host`로 남의 호스트 링크를 만들지 않는다. */

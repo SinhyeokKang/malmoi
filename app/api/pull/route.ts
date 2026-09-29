@@ -93,7 +93,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         const projectId = byslug.get(slug) ?? fail(`no project row for target: ${slug}`);
         results.push({
           slug,
-          ...(await runSync(prisma, { projectId, slug, trigger: "cron", requestedBy: null, tokenId: undefined })),
+          ...(await runSync(prisma, { projectId, slug, trigger: "cron", requestedBy: null, credential: undefined })),
         });
       } catch (error) {
         results.push(failureItem(slug, error));

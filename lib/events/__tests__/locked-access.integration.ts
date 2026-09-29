@@ -152,7 +152,7 @@ describe("멤버 관리 (member:manage)", () => {
   });
 
   it("강등된 OWNER는 초대를 발급하지 못한다", async () => {
-    const issue = () => issueInvitations(prisma, { projectId: "p", userId: "a", recipients: [{ email: "new@x.com", role: "EDITOR" }], tokenId: undefined });
+    const issue = () => issueInvitations(prisma, { projectId: "p", userId: "a", recipients: [{ email: "new@x.com", role: "EDITOR" }], credential: undefined });
     expect(await race("demoted", "a", issue)).toEqual({ status: "forbidden" });
     expect(await prisma.projectInvitation.count({ where: { projectId: "p" } })).toBe(1);
   });
@@ -232,7 +232,7 @@ describe("설정 쓰기 (project:settings)", () => {
 });
 
 describe("번역 쓰기 (translation:write)", () => {
-  const save = () => applyKeySave(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: "k1", userId: "editor", changes: [{ localeCode: "ko", value: "새 값" }], tokenId: undefined });
+  const save = () => applyKeySave(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: "k1", userId: "editor", changes: [{ localeCode: "ko", value: "새 값" }], credential: undefined });
 
   it.each(["removed", "archived"] as const)("%s이면 저장과 사건이 커밋되지 않는다", async change => {
     expect(await race(change, "editor", save)).toEqual({ ok: false, error: change === "archived" ? "archived" : "not-found" });
@@ -246,24 +246,24 @@ describe("번역 쓰기 (translation:write)", () => {
   });
 
   it("제거된 EDITOR의 수동 Publish는 실행 행을 만들지 않는다", async () => {
-    const publish = () => runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "editor", tokenId: undefined });
+    const publish = () => runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "editor", credential: undefined });
     expect(await race("removed", "editor", publish)).toEqual({ status: "failed", error: "not-found", delivery: "not-started", retryable: false });
     expect(await prisma.syncRun.count({ where: { projectId: "p" } })).toBe(0);
     expect(h.pull).not.toHaveBeenCalled();
     // 대조: 남은 멤버의 실행은 행을 연다.
-    await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "a", tokenId: undefined });
+    await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "a", credential: undefined });
     expect(await prisma.syncRun.count({ where: { projectId: "p" } })).toBe(1);
   });
 });
 
 /**
- * **MCP 토큰 주체의 쓰기는 잠금 뒤 토큰을 다시 읽는다** (mcp-connector design §1.25 · spec 조건 6). `tokenId`는 `ApiToken.tokenHash`다 —
+ * **MCP 토큰 주체의 쓰기는 잠금 뒤 토큰을 다시 읽는다** (mcp-connector design §1.25 · spec 조건 6). 개인 토큰의 `credential`은 `ApiToken.tokenHash`를 든다 —
  * 행 키(`userId`)로만 읽으면 대기 중 재발급된 새 토큰의 권한으로 옛 토큰의 쓰기가 통과한다.
  */
-describe("MCP 토큰 주체 (tokenId)", () => {
+describe("MCP 토큰 주체 (credential)", () => {
   const token = (over: { grants?: string[]; allProjects?: boolean; projectIds?: string[]; expiresAt?: Date } = {}) =>
     prisma.apiToken.create({ data: { userId: "editor", tokenHash: "old-hash", grants: ["translation:write"], allProjects: true, expiresAt: new Date(Date.now() + 86_400_000), ...over } });
-  const save = (tokenId: string) => applyKeySave(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: "k1", userId: "editor", tokenId, changes: [{ localeCode: "ko", value: "새 값" }] });
+  const save = (tokenHash: string) => applyKeySave(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: "k1", userId: "editor", credential: { kind: "api-token", tokenHash }, changes: [{ localeCode: "ko", value: "새 값" }] });
   const value = async () => (await prisma.translation.findUniqueOrThrow({ where: { id: "k1-ko" } })).value;
 
   it("잠금 대기 중 재발급되면 옛 토큰의 저장과 사건이 커밋되지 않는다", async () => {
@@ -278,7 +278,7 @@ describe("MCP 토큰 주체 (tokenId)", () => {
 
   it("배치 저장도 한 번의 재읽기로 전부 거부한다", async () => {
     await token();
-    const batch = () => applyKeySaveBatch(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", userId: "editor", tokenId: "old-hash", entries: [{ keyId: "k1", changes: [{ localeCode: "ko", value: "새 값" }] }] });
+    const batch = () => applyKeySaveBatch(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", userId: "editor", credential: { kind: "api-token", tokenHash: "old-hash" }, entries: [{ keyId: "k1", changes: [{ localeCode: "ko", value: "새 값" }] }] });
     expect(await race("reissued", "editor", batch)).toEqual({ ok: false, error: "unauthorized" });
     expect(await value()).toBe("안녕");
   });
@@ -298,17 +298,17 @@ describe("MCP 토큰 주체 (tokenId)", () => {
     await token({ grants: [] });
     const { lockProjectAccess } = await import("@/lib/auth/lock");
     const lock = (permission: "project:settings" | "translation:write") =>
-      prisma.$transaction(tx => lockProjectAccess(tx, { projectId: "p", userId: "editor", permission, tokenId: "old-hash" }));
+      prisma.$transaction(tx => lockProjectAccess(tx, { projectId: "p", userId: "editor", permission, credential: { kind: "api-token", tokenHash: "old-hash" } }));
     expect(await lock("project:settings")).toEqual({ status: "forbidden" });
     // 대조: 역할이 되는 동작에서만 grant 부재가 드러난다.
     expect(await lock("translation:write")).toEqual({ status: "token-scope" });
   });
 
-  it("공유 코어가 주체의 tokenId를 잠금까지 꿴다 — 세션 주체(tokenId 없음)는 토큰을 보지 않는다", async () => {
+  it("공유 코어가 주체의 credential을 잠금까지 꿴다 — 세션 주체(credential 없음)는 토큰을 보지 않는다", async () => {
     await token();
     await prisma.translationSurface.update({ where: { id: "s" }, data: { lastCommitSha: "c1" } });
     const input = { slug: "p", surfaceSlug: "default", keyId: "k1", changes: [{ localeCode: "ko", value: "새 값" }] };
-    expect(await saveTranslation(prisma, { userId: "editor", tokenId: "stale" }, input)).toEqual({ ok: false, error: "unauthorized" });
+    expect(await saveTranslation(prisma, { userId: "editor", credential: { kind: "api-token", tokenHash: "stale" } }, input)).toEqual({ ok: false, error: "unauthorized" });
     expect(await value()).toBe("안녕");
     expect((await saveTranslation(prisma, { userId: "editor" }, input)).ok).toBe(true);
   });

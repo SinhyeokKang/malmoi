@@ -38,7 +38,7 @@ export type RevokeResult = { ok: true } | { ok: false; error: string };
  * 보이지 않게"다. 둘 중 하나만 있어도 `count`가 0이 되어 `not-found`로 나간다.
  */
 export async function revokePendingInvitation(prisma: PrismaClient, subject: Subject, input: z.infer<typeof RevokeInput>): Promise<RevokeResult> {
-  const { userId, tokenId } = subject;
+  const { userId, credential } = subject;
   const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "member:manage" });
   if (access.status !== "ok") return { ok: false, error: access.status };
 
@@ -46,7 +46,7 @@ export async function revokePendingInvitation(prisma: PrismaClient, subject: Sub
   // 처리되지 않은 throw는 사용자에게 digest만 있는 오류가 된다 (`changeMember`와 같은 형).
   // ⚠️ **사건이 같은 트랜잭션이다** — 0행이면 아무것도 안 쓰고, 사건 기록이 실패하면 무효화도 롤백된다.
   const written = await prisma.$transaction(async (tx) => {
-    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId: userId, permission: "member:manage", tokenId });
+    const locked = await lockProjectAccess(tx, { projectId: access.projectId, userId: userId, permission: "member:manage", credential });
     if (locked.status !== "ok") return locked;
     const invitation = await tx.projectInvitation.findFirst({ where: { id: input.invitationId, projectId: access.projectId } });
     if (invitation === null || invitation.acceptedAt !== null) return 0;
@@ -88,7 +88,7 @@ class LastOwnerRollback extends Error {
  * (OWNER 없는 프로젝트).
  */
 export async function changeMemberRole(prisma: PrismaClient, subject: Subject, input: z.infer<typeof MemberChangeInput>): Promise<MemberChangeResult> {
-  const { userId, tokenId } = subject;
+  const { userId, credential } = subject;
   const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "member:manage" });
   if (access.status !== "ok") return { ok: false, error: access.status };
   const { projectId } = access;
@@ -102,7 +102,7 @@ export async function changeMemberRole(prisma: PrismaClient, subject: Subject, i
    */
   const outcome = await prisma.$transaction(async (tx) => {
     // 잠금 대기 중 호출자가 제거·강등됐으면 여기서 멈춘다 — OWNER 재집계는 "남은 OWNER가 있나"만 보고 "누가 지우나"를 안 본다.
-    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage", tokenId });
+    const locked = await lockProjectAccess(tx, { projectId, userId, permission: "member:manage", credential });
     if (locked.status !== "ok") return locked.status;
 
     // 인가된 projectId로 좁힌다 — 안 좁히면 남의 프로젝트 멤버가 목록에 섞여 판정이 흔들린다.

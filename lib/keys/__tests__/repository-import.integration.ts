@@ -103,7 +103,7 @@ function reader(content = '{"hello":"Repository"}', pause?: { entered: ReturnTyp
     blob: vi.fn().mockResolvedValue(content),
   };
 }
-const run = (repo = reader(), approval: string | null = null) => runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval, tokenId: undefined }, async () => repo);
+const run = (repo = reader(), approval: string | null = null) => runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval, credential: undefined }, async () => repo);
 const ci = (value = "CI") => applyPush(prisma, { projectId: "p", surfaceId: "s" }, payload(1, value), { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" });
 const values = () => prisma.translation.findMany({ where: { projectId: "p" }, orderBy: [{ localeCode: "asc" }, { keyId: "asc" }] });
 
@@ -256,7 +256,7 @@ it("Sync 적용이 먼저 잠금을 잡아도 뒤따르는 CI가 최종 값을 �
   const ciClient = prisma.$extends({ query: { async $executeRaw({ args, query }) {
     ciEntered.resolve(); return query(args);
   } } });
-  const pendingSync = runRepositoryImportFromReader(syncClient as unknown as PrismaClient, { projectId: "p", userId: "owner", repository, approval: null, tokenId: undefined }, async () => reader('{"key0":"Sync"}'));
+  const pendingSync = runRepositoryImportFromReader(syncClient as unknown as PrismaClient, { projectId: "p", userId: "owner", repository, approval: null, credential: undefined }, async () => reader('{"key0":"Sync"}'));
   await syncEntered.promise;
   const pendingCi = applyPush(ciClient as unknown as PrismaClient, { projectId: "p", surfaceId: "s" }, payload(1, "Final CI"), { token: "ci", startedAt: new Date(), refsMode: "replace", previousBaseLocale: "en" });
   await ciEntered.promise; releaseSync.resolve();
@@ -388,10 +388,10 @@ it("Publish 진행 중 수동 Sync → already-running, stale Publish면 진행 
 it("수동 Sync 진행 중 Publish 시작 → already-running, stale Sync면 게이트를 지난다", async () => {
   await seed(); await ci();
   await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: "other-sync", repositoryImportStartedAt: new Date() } });
-  expect(await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner", tokenId: undefined })).toMatchObject({ status: "failed", error: "already-running" });
+  expect(await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner", credential: undefined })).toMatchObject({ status: "failed", error: "already-running" });
   expect(await prisma.syncRun.count({ where: { projectId: "p" } })).toBe(0);
   await prisma.project.update({ where: { id: "p" }, data: { repositoryImportStartedAt: new Date(Date.now() - 301_000) } });
-  await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner", tokenId: undefined });
+  await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner", credential: undefined });
   // 게이트를 지났다는 증거는 행이다 — 거부에는 행을 만들지 않는다(lib/sync/run.ts). 뒤의 GitHub 호출 실패는 이 테스트 밖이다.
   expect(await prisma.syncRun.count({ where: { projectId: "p" } })).toBe(1);
 });

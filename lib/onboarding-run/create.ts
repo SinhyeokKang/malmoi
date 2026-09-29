@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { adapterFor, isAdapterName } from "@/lib/adapters";
 import type { AdapterError, AdapterName } from "@/lib/adapters/types";
-import { lockApiToken } from "@/lib/auth/lock";
+import { lockCredential } from "@/lib/auth/lock";
 import type { Subject } from "@/lib/auth/subject";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { runTokenFor } from "@/lib/events/payload";
@@ -82,7 +82,7 @@ export type CreateProjectResult =
 /**
  * **프로젝트 생성의 공유 코어** (mcp-connector T4-d) — 편집 UI ④와 MCP `create_project`. 모든 표면의 읽기·파싱을 끝낸 뒤 생성과 첫 적재를
  * 같은 트랜잭션에 저장한다. User 잠금 뒤 토큰 유효성·`project:create`를 다시 보고, 고른-범위 토큰이면 같은 tx에서 `projectIds`에 더한다.
- * 별도 클라이언트 `tokenId`나 범위 추가 플래그를 받지 않는다 — 주체가 든다. 재검증은 호출자의 몫이다.
+ * 별도 클라이언트 `credential`이나 범위 추가 플래그를 받지 않는다 — 주체가 든다. 재검증은 호출자의 몫이다.
  */
 export async function createProjectFromRepo(
   prisma: PrismaClient,
@@ -98,7 +98,7 @@ export async function createProjectFromRepo(
     origin?: string | null;
   } = {},
 ): Promise<CreateProjectResult> {
-  const { userId, tokenId } = subject;
+  const { userId, credential } = subject;
 
   // ⚠️ **형식 규칙은 `lib/pull/trigger.ts`의 `REF_SAFE_SLUG`와 같은 정규식이다** — 갈리면 온보딩이
   // 만든 slug가 pull에서 `fail()`로 죽는다. 형식이 틀리면 GitHub을 부를 이유가 없다.
@@ -218,7 +218,7 @@ export async function createProjectFromRepo(
        */
       await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
       // MCP 토큰은 잠금 직후 다시 읽는다(mcp-connector design §1.25) — 대기 중 폐기·재발급됐으면 아무것도 만들지 않는다.
-      const apiToken = await lockApiToken(tx, { tokenId, userId, projectId: null, grant: "project:create" });
+      const apiToken = await lockCredential(tx, { credential, userId, projectId: null, grant: "project:create" });
       if (apiToken.status !== "ok") throw new TokenRollback("unauthorized");
       if (apiToken.grant === "token-scope") throw new TokenRollback("token-scope");
       const owned = await tx.projectMember.count({ where: ownedActiveProjects(userId) });
@@ -248,8 +248,8 @@ export async function createProjectFromRepo(
        * ⚠️ **고른-프로젝트 범위 토큰이 만든 프로젝트는 같은 tx에서 그 토큰의 범위에 든다** (design §1.25) — 안 넣으면 방금 만든
        * 프로젝트를 그 토큰이 못 만진다. 해시까지 조건이라 재발급된 새 토큰에는 붙지 않는다. 전체 범위 토큰·세션은 0행이다.
        */
-      if (tokenId !== undefined) {
-        await tx.apiToken.updateMany({ where: { userId, tokenHash: tokenId, allProjects: false }, data: { projectIds: { push: project.id } } });
+      if (credential?.kind === "api-token") {
+        await tx.apiToken.updateMany({ where: { userId, tokenHash: credential.tokenHash, allProjects: false }, data: { projectIds: { push: project.id } } });
       }
       /**
        * ⚠️ **생성은 사건 셋이다** (결정 13): 생성 1 + **소스당** 1 + 최초 적재 1. 한 줄로 접으면

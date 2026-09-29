@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { toolCatalog, type ToolRequirement } from "@/lib/mcp/catalog";
 
 /**
- * **잠금 뒤 토큰 재판정의 요구 grant = 역할 permission** (`lib/auth/lock.ts`의 `lockProjectAccess`·raw 자리의 `lockApiToken`).
+ * **잠금 뒤 토큰 재판정의 요구 grant = 역할 permission** (`lib/auth/lock.ts`의 `lockProjectAccess`·raw 자리의 `lockCredential`).
  * 잠금 자리는 도구 이름을 모르고 `permission` 하나만 받으므로 "쓰기 도구의 grant는 역할 permission과 같다"가 카탈로그에서 참이어야
  * 한다. 다른 grant를 요구하는 쓰기 도구가 생기면 여기서 red가 되고, 그때 `lockProjectAccess`가 grant를 따로 받아야 한다.
  */
