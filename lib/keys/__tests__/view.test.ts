@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { relativeTime } from "@/lib/relative-time";
-import { buildPermalink, isUnpublished, localeProgress } from "../view";
+import { buildPermalink, localeProgress } from "../view";
 
 describe("buildPermalink — GitHub 코드 참조", () => {
   const project = { repoOwner: "acme", repoName: "app", lastCommitSha: "a".repeat(40) };
@@ -41,20 +41,6 @@ describe("buildPermalink — GitHub 코드 참조", () => {
     for (const path of ["../../other/repo", "src/../../../x", "/abs.ts", "a//b.ts", "a\\b.ts"]) {
       expect(buildPermalink(project, { path, line: 1 })).toBeNull();
     }
-  });
-});
-
-describe("isUnpublished — 아직 전달 확인되지 않은 편집인가 (sync-edit-protection T8)", () => {
-  it("[C9] 토큰이 있는 활성 셀 → true (pending 투영)", () => {
-    expect(isUnpublished({ pending: true, surfaceArchivedAt: null })).toBe(true);
-  });
-
-  it("토큰이 없으면 → false — 시각·저자가 아니라 토큰이 판정한다 (위 true 대조)", () => {
-    expect(isUnpublished({ pending: false, surfaceArchivedAt: null })).toBe(false);
-  });
-
-  it("[C9] 보관 표면의 셀은 pending이어도 세지 않는다", () => {
-    expect(isUnpublished({ pending: true, surfaceArchivedAt: new Date("2026-09-08T00:00:00Z") })).toBe(false);
   });
 });
 
@@ -270,11 +256,5 @@ describe("소스 스캔 — cells를 직접 인덱싱하지 않는다", () => {
         .filter(([, line]) => /\.cells\[/.test(line) && !/Object\.hasOwn/.test(line));
       expect(offenders, `${file}: Object.hasOwn을 지나야 한다`).toEqual([]);
     }
-  });
-
-  /** ⚠️ **대입 쪽이 빠지면 읽기만 고친 반쪽이 된다** — `__proto__` 대입은 키를 조용히 삼킨다. */
-  it("셀 맵은 `Object.create(null)`로 만든다", () => {
-    const src = readFileSync(join(ROOT, "lib/keys/query.ts"), "utf8");
-    expect(src).toContain('const cells: KeyRow["cells"] = Object.create(null)');
   });
 });

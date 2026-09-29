@@ -82,7 +82,7 @@ let seq = 0;
 
 async function event(over: Partial<{
   projectId: string; kind: "TRANSLATION" | "IMPORT" | "PUBLISH" | "SURFACE" | "MEMBER" | "SETTINGS";
-  occurredAt: Date; result: string | null; actorKind: "USER" | "AUTOMATION" | "UNKNOWN"; actorUserId: string | null;
+  occurredAt: Date; result: string | null; actorKind: "USER" | "AUTOMATION"; actorUserId: string | null;
   surfaceIds: string[]; surfaceScope: string; searchText: string | null; syncRunId: string | null; payload: object;
 }> = {}) {
   seq += 1;
@@ -339,12 +339,11 @@ describe("행위자 — 원문 이메일이 나가지 않는다", () => {
     }
   });
 
-  it("계정이 지워진 USER만 removed다 — AUTOMATION·UNKNOWN과 구별된다", async () => {
+  it("계정이 지워진 USER만 removed다 — AUTOMATION과 구별된다", async () => {
     await event({ actorKind: "USER", actorUserId: null, occurredAt: new Date(AT.getTime() + 2000) });
     await event({ actorKind: "AUTOMATION", actorUserId: null, occurredAt: new Date(AT.getTime() + 1000) });
-    await event({ actorKind: "UNKNOWN", actorUserId: null });
     const rows = (await loadEvents(prisma, "p1", base())).rows;
-    expect(rows.map((row) => [row.actor.kind, row.actor.removed])).toEqual([["USER", true], ["AUTOMATION", false], ["UNKNOWN", false]]);
+    expect(rows.map((row) => [row.actor.kind, row.actor.removed])).toEqual([["USER", true], ["AUTOMATION", false]]);
   });
 
   it("행위자 필터 셋이 각각 좁힌다", async () => {

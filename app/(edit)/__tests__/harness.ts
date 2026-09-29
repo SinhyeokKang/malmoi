@@ -1243,7 +1243,7 @@ export function createHarness(seed: Seed = {}) {
       },
       /**
        * ⚠️ **`projectId`로 좁힌다.** 시드의 번역 행은 `keyId`만 들지만 실제 테이블에는 `projectId`
-       * 컬럼이 있다 — 키를 통해 되짚어 **같은 좁힘**을 흉내 낸다. 안 하면 `countUnpublished`의
+       * 컬럼이 있다 — 키를 통해 되짚어 **같은 좁힘**을 흉내 낸다. 안 하면 `countPending`의
        * 테넌트 좁힘을 이 하네스로는 판정할 수 없다 (POSTMORTEM 2026-09-06 하네스 자기검사).
        */
       count: async ({
@@ -1257,7 +1257,7 @@ export function createHarness(seed: Seed = {}) {
         } & ScopedWhere;
       }) => {
         // ⑤ `pendingWhere`의 하네스 사본 (sync-edit-protection T8). 조건 넷을 전부 해석한다 — 하나라도 무시하면
-        // `countUnpublished`의 orphan 제외를 이 하네스로는 판정할 수 없다(가짜가 실제보다 관대하면 결함이 안 보인다).
+        // `countPending`의 orphan 제외를 이 하네스로는 판정할 수 없다(가짜가 실제보다 관대하면 결함이 안 보인다).
         const live = new Map(keys.filter((k) => k.projectId === where.projectId).map((k) => [k.id, k]));
         return translations.filter((t) => {
           const key = live.get(t.keyId);

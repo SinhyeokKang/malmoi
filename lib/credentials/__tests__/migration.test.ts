@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { classifyCredential, migrateAccountFields, migratePersonalFields, assertUniqueEmails } from "../migration";
 import { decodeUser, encodeUserFields } from "../records";
 import { openToken } from "../storage";
-const account = { userId: "u1", provider: "github-app", providerAccountId: "42", access_token: "legacy", refresh_token: "refresh", id_token: null, expires_at: 17 };
+const account = { userId: "u1", provider: "github-app", providerAccountId: "42", access_token: "legacy", refresh_token: "refresh", expires_at: 17 };
 it("classifies legacy, envelopes, and malformed reserved formats without guessing", () => {
   expect(classifyCredential(null)).toBe("null");
   expect(classifyCredential("legacy")).toBe("legacy");
@@ -19,7 +19,8 @@ it("encrypts App token pairs, preserves expiry, and is restartable", () => {
   expect(() => migrateAccountFields(account, "verify")).toThrow();
 });
 it("clears login secrets, rejects unknown secret-bearing providers", () => {
-  expect(migrateAccountFields({ ...account, provider: "google", id_token: "identity" }, "backfill")).toEqual({ access_token: null, refresh_token: null, id_token: null });
+  // 패치에 `id_token`이 없다 — 그 컬럼은 스키마에서 지웠다(#108). 로그인 provider의 토큰은 저장하지 않으므로 비우는 것이 전부다.
+  expect(migrateAccountFields({ ...account, provider: "google", access_token: "login-access", refresh_token: null }, "backfill")).toStrictEqual({ access_token: null, refresh_token: null });
   expect(() => migrateAccountFields({ ...account, provider: "unknown" }, "backfill")).toThrow();
 });
 it("preserves identities and encrypts each PII field with its lookup atomically", () => {

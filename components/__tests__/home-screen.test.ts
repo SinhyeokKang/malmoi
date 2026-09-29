@@ -62,12 +62,12 @@ describe("Home — 개요가 일로 이어진다 (project-home)", () => {
   });
 
   /**
-   * ⚠️ **미발송 술어의 넷째 벌을 만들지 않는다** (CLAUDE.md). 카드 넷의 수는 `summaryQueue` 하나에서
-   * 나오고, `countUnpublished`는 번역 화면 툴바의 것이다.
+   * ⚠️ **미발송 술어의 사본을 늘리지 않는다** (CLAUDE.md). 카드 넷의 수는 `summaryQueue` 하나에서
+   * 나오고, 표면별 수(`countUnpublishedBySurface`)는 번역 랜딩의 것이다.
    */
-  it("`summaryQueue`를 쓰고 `countUnpublished`를 부르지 않는다", () => {
+  it("`summaryQueue`를 쓰고 `countPending`·`countUnpublishedBySurface`를 부르지 않는다", () => {
     expect(src).toMatch(/summaryQueue\(/);
-    expect(src).not.toMatch(/countUnpublished/);
+    expect(src).not.toMatch(/countPending|countUnpublishedBySurface/);
   });
 
   /**
@@ -89,11 +89,6 @@ describe("Home — 개요가 일로 이어진다 (project-home)", () => {
    */
   it("`maxDuration`을 명시한다", () => {
     expect(src).toMatch(/export const maxDuration = 60/);
-  });
-
-  /** 진행률은 6b-5의 판정을 그대로 쓴다 — `loadKeys`는 행마다 셀과 refs를 들고 와 903키에서 무겁다. */
-  it("`loadKeys`를 부르지 않는다", () => {
-    expect(src).not.toMatch(/loadKeys\(/);
   });
 });
 

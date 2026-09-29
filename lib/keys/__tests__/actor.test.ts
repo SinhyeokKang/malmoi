@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { actorLabel, type Actor, type KeyRow } from "../view";
+import { actorLabel, type Actor } from "../view";
 
 /**
  * 셀 메타의 편집자 표시 (malmoi#3).
@@ -13,20 +13,6 @@ import { actorLabel, type Actor, type KeyRow } from "../view";
  * **Prisma join으로는 풀 수 없다.** 그래서 판정이 두 갈래여야 한다: `User`를 찾으면 사람 이름,
  * 못 찾으면 **원문 그대로**. 못 찾은 값을 버리면 옛 행의 편집자가 화면에서 사라진다.
  */
-
-function row(cells: Record<string, string | null>): KeyRow {
-  return {
-    id: "k1",
-    key: "a.b",
-    namespace: "a",
-    orphaned: false,
-    createdAt: new Date(0),
-    refs: [],
-    cells: Object.fromEntries(
-      Object.entries(cells).map(([code, updatedBy]) => [code, { value: "v", needsReview: false, updatedBy, updatedAt: new Date("2026-09-01T00:00:00Z"), surfaceArchivedAt: null, pending: false }]),
-    ),
-  };
-}
 
 describe("actorLabel — User.id를 사람으로, 옛 핸들은 그대로", () => {
   const actors = new Map<string, Actor>([

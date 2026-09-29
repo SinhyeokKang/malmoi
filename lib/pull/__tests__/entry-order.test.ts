@@ -148,15 +148,16 @@ describe("L1 — orderBy가 두 곳이고 하나만 바뀐다", () => {
   });
 
   /**
-   * ⚠️ **`lib/keys/query.ts`는 `server-only`라 테스트가 import할 수 없다** — 그래서 소스를 읽어
-   * 정적으로 고정한다. 약한 검사지만 지키려는 것이 "그 한 줄이 그대로 있는가"이고,
-   * `server-only`를 떼서 검사를 강하게 만드는 것은 보호를 팔아 테스트를 사는 일이다.
+   * ⚠️ **raw SQL 쿼리는 실 DB 없이 결과를 못 잰다** — 그래서 소스를 읽어 정적으로 고정한다. 약한 검사지만
+   * 지키려는 것이 "그 한 줄이 그대로 있는가"다.
    */
   const sourceOf = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
 
-  it("**편집 UI(lib/keys/query.ts)는 key 순 그대로다** — 바꾸면 번역자의 이분 탐색이 사라진다", () => {
-    // 키 테이블에 검색창이 없어서 알파벳 순이 이름으로 키를 찾는 유일한 수단이다.
-    expect(sourceOf("lib/keys/query.ts")).toContain('orderBy: { key: "asc" }');
+  it("**편집 UI 목록(lib/keys/translation-list.ts)은 같은 순위·표면 안에서 파일 순, 그다음 key 순이다** — cursor와 같은 튜플이어야 한다", () => {
+    // `"key" COLLATE "C"`가 tie-breaker다 — collation을 빼면 DB 로캘을 따라 순서가 갈리고, cursor 비교(`>`)와 어긋나 페이지가 건너뛴다.
+    const src = sourceOf("lib/keys/translation-list.ts");
+    expect(src).toContain('ORDER BY "rank", "surfaceSlug" COLLATE "C", "sidx", "key" COLLATE "C", "id" COLLATE "C"');
+    expect(src).toContain('("rank", "surfaceSlug" COLLATE "C", "sidx", "key" COLLATE "C", "id" COLLATE "C")');
   });
 
   /**

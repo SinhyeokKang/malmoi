@@ -62,23 +62,25 @@ describe("Auth.js 어댑터 계약 — 모델과 컬럼", () => {
     }
   });
 
-  it("Account가 OAuth 응답 컬럼을 전부 갖는다 — 하나라도 없으면 linkAccount가 런타임에 던진다", () => {
+  /**
+   * ⚠️ **"OAuth 응답 컬럼이 하나라도 없으면 linkAccount가 던진다"는 2026-09-10부터 거짓이다** — `safePrismaAdapter`가
+   * `linkAccount`를 덮어 식별자 넷만 쓴다(`lib/auth/safe-adapter.ts`). github-app 연결은 토큰 셋만 쓴다. 쓰는 곳도 읽는 곳도
+   * 없는 칸은 유출 면일 뿐이라 지웠다 (#108).
+   */
+  it("Account는 쓰는 컬럼만 갖는다 — 식별자 넷 + github-app 토큰 셋 + installRequestedAt", () => {
     const names = fieldNames(block("model", "Account"));
-    for (const f of [
-      "userId",
-      "type",
-      "provider",
-      "providerAccountId",
-      "refresh_token",
-      "access_token",
-      "expires_at",
-      "token_type",
-      "scope",
-      "id_token",
-      "session_state",
-    ]) {
+    for (const f of ["userId", "type", "provider", "providerAccountId", "refresh_token", "access_token", "expires_at", "installRequestedAt"]) {
       expect(names).toContain(f);
     }
+    for (const f of ["token_type", "scope", "id_token", "session_state"]) {
+      expect(names).not.toContain(f);
+    }
+  });
+
+  /** 쓰기만 하고 읽는 곳이 없던 시각 둘 (#108) — 확인 시각은 `syncRun.startedAt`이 든다. */
+  it("DeliveryConfirmation·TranslationBaseline이 시각을 복제하지 않는다", () => {
+    expect(fieldNames(block("model", "DeliveryConfirmation"))).not.toContain("confirmedAt");
+    expect(fieldNames(block("model", "TranslationBaseline"))).not.toContain("recordedAt");
   });
 
   it("Session이 sessionToken·userId·expires를 갖는다", () => {
@@ -205,7 +207,7 @@ describe("활동 스트림 — ProjectEvent (logs-rework)", () => {
       "MEMBER",
       "SETTINGS",
     ]);
-    expect(fieldNames(block("enum", "ActorKind"))).toEqual(["USER", "AUTOMATION", "UNKNOWN"]);
+    expect(fieldNames(block("enum", "ActorKind"))).toEqual(["USER", "AUTOMATION"]);
   });
 
   it("사건 하나가 갖는 열여섯", () => {

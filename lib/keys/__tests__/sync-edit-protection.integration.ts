@@ -12,8 +12,10 @@ import { optionalEnv } from "@/lib/env";
 import { loadPullState, saveLastPulledAt } from "@/lib/pull/load";
 import { applyProtectedPush, applyPush } from "@/lib/push/apply";
 import { hashPushToken } from "@/lib/push/token";
-import { countUnpublished, loadKeys, loadProjectListAggregates } from "@/lib/keys/query";
-import { isUnpublished } from "@/lib/keys/view";
+import { loadProjectListAggregates } from "@/lib/keys/query";
+import { loadTranslationDetail, loadTranslationList } from "@/lib/keys/translation-list";
+import { countPending } from "@/lib/protection/where";
+import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
 import { backfillPendingEditTokens } from "@/lib/protection/backfill";
 
 /**
@@ -482,11 +484,11 @@ describe("미전달 술어 전환 — 사본 넷이 같은 행을 센다 (T8)", 
     { key: "k2", locale: "gone", token: "t-orphan-locale" },      // orphan 로케일 [C9]
   ];
 
-  it("[C9] countUnpublished ② = 목록 raw SQL ③ = 셀 isUnpublished ① = pull 1층 = 2 (활성 편집 > 0)", async () => {
+  it("[C9] countPending ② = 목록 raw SQL ③ = 번역 화면 상세 셀 ① = pull 1층 = 2 (활성 편집 > 0)", async () => {
     await seed("p", { lastPulledAt: PULLED, cells });
-    const counted = await countUnpublished(prisma, "p");
+    const counted = await countPending(prisma, "p");
     const aggregate = (await loadProjectListAggregates(prisma, ["p"])).unsent.get("p") ?? 0;
-    const byCell = (await loadKeys(prisma, "p", "surface-p")).flatMap(row => Object.values(row.cells)).filter(c => c !== undefined && isUnpublished(c)).length;
+    const byCell = (await screenPayload("p", "surface-p")).details.flatMap(d => d.status === "ok" ? d.locales.filter(l => l.pending) : []).length;
     const state = await loadPullState(prisma, "p");
     expect(counted).toBe(2);
     expect([aggregate, byCell, state.unpublished, state.pendingEdits.length]).toEqual([2, 2, 2, 2]);
@@ -499,9 +501,17 @@ describe("미전달 술어 전환 — 사본 넷이 같은 행을 센다 (T8)", 
     expect((await loadPullState(prisma, "p")).unpublished).toBe(1);
   });
 
-  it("셀 RSC 페이로드에 토큰 원문이 없다 (`pending: true`는 있다 대조)", async () => {
+  // 번역 화면이 RSC로 싣는 것은 목록과 상세 둘이다 — 페이지·Load more·MCP `list_keys`·`get_key`가 전부 이 두 함수를 지난다.
+  async function screenPayload(projectId: string, surfaceId: string) {
+    const list = await loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: DEFAULT_TRANSLATION_QUERY });
+    const details = [];
+    for (const row of list.rows) details.push(await loadTranslationDetail(prisma, { projectId, surfaceId, keyId: row.keyId }));
+    return { list, details };
+  }
+
+  it("번역 화면 RSC 페이로드(목록·상세)에 토큰 원문이 없다 (`pending: true`는 있다 대조)", async () => {
     await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", token: "secret-token-value" }] });
-    const serialized = JSON.stringify(await loadKeys(prisma, "p", "surface-p"));
+    const serialized = JSON.stringify(await screenPayload("p", "surface-p"));
     expect(serialized).not.toContain("secret-token-value");
     expect(serialized).not.toContain("pendingEditToken");
     expect(serialized).toContain('"pending":true');
