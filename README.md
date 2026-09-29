@@ -12,7 +12,7 @@
   <strong>Connect your projects, translate &amp; ship together.</strong><br/>
   Malmoi is a localization tool for GitHub repositories. It finds the translation files already in your repo,<br/>
   lets teammates edit them in the browser, and sends every change back as one pull request.<br/>
-  Coding agents can do the same work over MCP with your personal token.
+  Coding agents can do the same work over MCP — sign in through your browser, no token to copy.
 </p>
 
 <h3 align="center"><a href="https://mal-moi.com"><ins>Open Malmoi</ins></a> · <a href="https://mal-moi.com/docs">Read the docs</a></h3>
@@ -114,9 +114,13 @@ brings new keys into Malmoi and marks translations whose source text changed as
   ([details](https://mal-moi.com/docs/sync/nightly)).
 - **Two roles** — owners manage the repository, settings, and members; editors
   translate and publish. Invite teammates by email and pick a role per invite.
-- **AI agents over MCP** — connect Claude Code, Codex, or Cursor with a
-  personal token that expires. The agent can do only what you can in each
-  project, and only what the token allows; its edits are saved as yours.
+- **AI agents over MCP** — add the server URL to Claude Code or Codex and sign
+  in through your browser: you choose what the app may do on a consent screen
+  and never see or copy a token. Connected apps are listed on the MCP connector
+  page, where you can disconnect each one. Clients that only take a header
+  (such as Cursor) use a personal token that expires. Either way, the agent can
+  do only what you can in each project, and only what you allowed; its edits
+  are saved as yours.
   Malmoi itself never calls an AI model
   ([details](https://mal-moi.com/docs/ai-agents)).
 
