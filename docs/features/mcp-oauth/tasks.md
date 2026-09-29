@@ -5,7 +5,7 @@
 
 ## T1. 클라이언트 실측 (코드 없음 · `.scratch/` 스텁 서버)
 - 헤더 없는 설정으로 Claude Code · Codex · claude.ai 커넥터를 붙이고 design §0 표를 채운다.
-- 결론: 등록 방식(CIMD / DCR / 둘) · refresh 병렬 동작. 대상은 셋 고정(사용자 판정).
+- 결론: 등록 방식(CIMD / DCR / 둘) · refresh 병렬 동작. (결론은 아래 "결정 기록") 대상은 셋 고정(사용자 판정).
 - refresh 실측은 직렬화·같은 토큰 병렬 제출·응답 유실 후 재시도·재동의까지 포함한다. design §4.1의 재사용 폐기 정책으로
   정상 연결이 반복해서 끊기면 구현 전에 호환성 실패로 보고한다. 재사용 탐지·폐기는 실측만으로 생략하지 않는다.
 - 검증: design.md §0·§2·§4.1에 등록 방식·loopback 호환·refresh 경합/재동의·claude.ai 확인 환경을 실측 근거와 함께 기록한다.
@@ -16,7 +16,7 @@
   메타데이터 빌더 · `wwwAuthenticate` · (CIMD면) `planClientMetadata`. `planConsent`는 `planApiTokenIssue` 재사용.
 - 검증: `pnpm test` green. RFC 7636 부록 B의 PKCE 벡터 · IPv4/IPv6 loopback 포트 예외 · `localhost` 별도 정책 ·
   `__proto__` 쿼리 키 · 만료 경계(`<=`) 포함. 권한 선택은 기존 발급 규칙, 실제 호출 권한은 현재 역할 ∩ grant로 판정한다.
-- refresh 판정 검증: 현재 해시는 회전, 사용 이력의 해시는 해당 연결 폐기, 알 수 없는 해시·없는/만료 연결은 발급 없이 거부.
+- refresh 판정 검증: 현재 해시는 회전, 사용 이력의 해시는 회전 뒤 30초 이내면 쓰기 없이 거부·그 밖은 해당 연결 폐기, 알 수 없는 해시·없는/만료 연결은 발급 없이 거부.
 - code 판정 검증: 발급 스냅샷만으로 PKCE·클라이언트·리다이렉트·리소스를 대조한다. 요청 TTL이 지난 시각에도 code가 유효하면
   통과하고, code의 `expiresAt <= now` 또는 사용됨이면 `invalid_grant`다.
 - 바인딩 검증: 다른 clientId의 refresh, 다른 issuer/resource의 code·refresh·access를 거부한다.
@@ -52,10 +52,10 @@
   design §4.2의 User 잠금 뒤 code 소비·기존 연결 삭제·새 연결 삽입을 같은 tx로 확정한다.
 - refresh는 clientId·issuer/resource를 검증한 뒤 회전/재사용을 판정한다. 폐기 경로는 미교환 code도 같은 tx에서 무효화한다.
   §4.2의 잠금 순서를 따르고, 다른 origin/clientId 요청은 연결을 변경하지 않는다.
-- 검증: `pnpm test` — code 재사용·다른 `redirect_uri`·틀린 verifier·만료가 전부 `invalid_grant` · refresh 재사용도 폐기 커밋 뒤 `invalid_grant` · DB 장애는 `server_error`.
+- 검증: `pnpm test` — code 재사용·다른 `redirect_uri`·틀린 verifier·만료가 전부 `invalid_grant` · refresh 재사용은 유예 안이면 쓰기 없이, 유예 밖이면 폐기 커밋 뒤 `invalid_grant` · DB 장애는 `server_error`.
 - 실 PostgreSQL 검증: `lib/mcp/__tests__/oauth-refresh.integration.ts`를 기존 수집 경로에 두고 `pnpm test:projects:postgres`로 실행한다.
-  같은 refresh 두 건의 회전 성공은 최대 한 건이며 뒤 요청의 재사용 판정 뒤 현재 access·refresh가 모두 거부되는지,
-  여러 번 회전한 옛 해시도 해당 연결을 폐기하는지, 다른 연결·개인 토큰은 유지되는지 확인한다. 이력 삽입·해시 교체 중 실패는
+  같은 refresh 두 건의 회전 성공은 최대 한 건이며 30초 유예 안의 뒤 요청은 연결을 건드리지 않고 `invalid_grant`만 받는지(첫 응답의 토큰은 계속 유효),
+  유예를 넘긴 재제출과 여러 번 회전한 옛 해시는 해당 연결을 폐기하고 현재 access·refresh가 모두 거부되는지, 다른 연결·개인 토큰은 유지되는지 확인한다. 이력 삽입·해시 교체 중 실패는
   함께 롤백되고, 폐기 쓰기 실패는 `invalid_grant`로 숨기지 않는 것도 검증한다.
 - 요청 정리 회귀 검증(T7의 실제 발급 경로 연결 후 완료): `lib/mcp/__tests__/oauth-code.integration.ts`를
   `pnpm test:projects:postgres`로 실행한다. 요청 만료 직전에 code 발급 → 요청 만료 후 실제 정리로 삭제 → code 만료 전 교환 성공,
@@ -108,3 +108,6 @@
 - refresh 재사용 정책(T1 COMPAT-RISK에 대한 사용자 판정): **30초 유예 창.** 회전 뒤 30초 안(`now - usedAt <= 30s`)에 다시 온 옛 refresh는
   폐기·회전 없이 `invalid_grant`만 답하고, 창 밖 재제출은 기존대로 그 연결을 폐기한다. 근거: 두 CLI 모두 프로세스 간 refresh가 겹쳐 정상 사용으로
   연결이 폐기됐고(Codex 병렬 시작 1ms 차), Claude Code는 `invalid_grant` 뒤 저장소의 새 refresh로 재시도한다. 대가: 회전 직후 30초 안의 탈취 refresh 사용은 탐지하지 않는다.
+- CIMD 입력 경계(m2 리뷰, 보수 기본값): 문서의 `redirect_uris`는 `https:` 전부와 loopback host(`127.0.0.1`·`[::1]`·`localhost`)의 `http:`만 받는다
+  (`javascript:`·`data:`·원격 `http:` 거부 — 동의 뒤 되돌려 보내는 주소라 XSS·open redirect 경로다). `client_id` URL의 query는 거부한다(CIMD 초안 SHOULD NOT).
+  커스텀 scheme 클라이언트가 관측되면 그때 넓힌다.
