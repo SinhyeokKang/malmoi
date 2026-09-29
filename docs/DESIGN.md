@@ -24,7 +24,7 @@
 | **elevation** | Tailwind `shadow-sm`·`shadow-md` | **`shadow-low`·`shadow-medium`** (Figma 색 + spread 확대) | §4.5 |
 | **인라인 링크** | `underline` | **밑줄 없음** — 색과 아이콘으로만 | §6.3 |
 | **피드백** | 인라인 `Alert` | **토스트**(전역 결과에 한해) | §6.25 |
-| **셸 밖 화면** | `mx-auto max-w-sm` 카드 | **2열 패널** — 바깥 padding 8 · 패널 간 gap 8. ⚠️ **셋이다** (2026-09-12): `/signin` · `/invite/[token]` · **`/signin/link/[challenge]`** | §5.1 |
+| **셸 밖 화면** | `mx-auto max-w-sm` 카드 | **캔버스 위 패널** — 바깥 padding 8. ⚠️ **셋이다** (2026-09-12): `/signin` · `/invite/[token]` · **`/signin/link/[challenge]`**. ⚠️ **2열(폼 + 장식, gap 8)은 `/signin` 하나다** — 나머지는 폼 패널 단일(2026-09-29, §6.62) | §5.1 |
 | **앱 셸** (8-2) | 사이드바 `bg-muted border-r` + top bar + `xl` 미만 오버레이 | **캔버스 위 패널 둘** — 전폭 40 헤더 · 투명 사이드바 · 흰 콘텐츠 패널, 반응형 분기 0. ⚠️ **320 프로젝트 패널은 2026-09-16에 지웠다**(§6.55) | §5.1·§6.5 |
 | **캔버스 토큰** (8-2) | `--auth-canvas` | **`--canvas`** — 셸과 셸 밖 화면이 같은 값을 쓴다 | §2 |
 | **Badge 모양** (8-3) | `rounded` (4px) | **알약** `rounded-full px-2` + `neutral` variant | §6.4 |
@@ -253,7 +253,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | **헤더 높이** | `h-10` (40px — 2026-09-26 사용자, 옛 48. 32 컨트롤의 위아래가 4씩이다) — ⚠️ **8-2가 top bar를 대체했다**: 전폭이고 border가 없으며 로고를 든다 | `$header-height: 3rem + 1px` |
 | 사이드바 항목 높이 | `p-1.5` + `text-sm` = 32px, 아이콘 16 (8-2 시안 치수: `p-6`·`gap-8`·`radius-8`) | nav item ≈ 32px |
 | **패널 여백** | 바깥 padding 8(`p-2`) · 패널 간 간격 8(LNB↔콘텐츠는 8px 리사이저, 나머지는 `gap-2`) — 규약 3.5, 예외 없음 | — |
-| **콘텐츠 최대 폭 (limited)** | `max-w-4xl` (896px) — ⚠️ **2026-09-20부터 설정 축 둘뿐이다**(사용자 판정): **프로젝트 설정** · **`/account`**(+ 그 스켈레톤). 멤버·Sources(옛 언어)·이력은 그날 fluid로 갔고, 프로젝트 목록(8-3)·Home도 이미 갔다. ⚠️ **초대 수락은 8-1b에 셸 밖 2열로 갔다** — 폼 컬럼이 `w-[320px]`다(§6.62). 그 밖에 **본문 전용 셋**(`error`·`ProjectArchived`·`ProjectNotReady`)이 기본값으로 limited다 | `$limited-layout-width: 1006px` (우리 스케일 대응값) |
+| **콘텐츠 최대 폭 (limited)** | `max-w-4xl` (896px) — ⚠️ **2026-09-20부터 설정 축 둘뿐이다**(사용자 판정): **프로젝트 설정** · **`/account`**(+ 그 스켈레톤). 멤버·Sources(옛 언어)·이력은 그날 fluid로 갔고, 프로젝트 목록(8-3)·Home도 이미 갔다. ⚠️ **초대 수락은 8-1b에 셸 밖 골격으로 갔다**(2026-09-29부터 장식 없는 단일 패널) — 폼 컬럼이 `w-[320px]`다(§6.62). 그 밖에 **본문 전용 셋**(`error`·`ProjectArchived`·`ProjectNotReady`)이 기본값으로 limited다 | `$limited-layout-width: 1006px` (우리 스케일 대응값) |
 | 콘텐츠 fluid | **열둘이다** (2026-09-20, 2026-09-27 갱신) — 프로젝트 목록(+ 그 스켈레톤) · **Home(+ 그 스켈레톤)** · **멤버 · Sources(목록 + 보관 안내) · 이력(+ 오류 경계)** + 멤버·이력·Sources의 스켈레톤. ⚠️ **번역 작업 화면은 빠졌다** — `PanelHeader`·`PanelBody`를 쓰지 않고 세 패널이 본문 전체를 든다(§6.1a). ⚠️ **`surfaces/new`가 이 목록에서 빠졌다** — 그 라우트는 이제 `/sources?add=sources`로 보내는 리다이렉트라 패널을 아예 렌더하지 않는다(§6.6). 남은 폭을 쓰되 **`max-w-7xl`(1280) 상한**이고, 표만 자기 컨테이너 안에서 가로 스크롤한다. 등급은 §5.15의 `width` prop이 든다 | 표 화면은 fluid |
 | **콘텐츠 상한 (공통)** | ⚠️ **등급 둘을 `PanelHeader`·`PanelBody`의 `width` prop이 든다** (2026-09-15 — projects-panel-rework. 그 전에는 프리미티브가 `max-w-7xl` 하나를 들고 limited 일곱이 **안쪽 래퍼**로 `max-w-4xl`을 다시 씌웠다). `fluid` = 1280 · `limited` = 896이고 **기본값이 `limited`다**. ⚠️ **2026-09-20부터 그쪽이 소수다** — `PanelHeader` 소비자 열둘 중 **fluid 아홉 · limited 셋**. 그래도 뒤집지 않는 근거는 "다수"가 아니라 **빠뜨렸을 때의 증상**이다: 좁아지는 쪽이 넘치는 쪽보다 눈에 띄고, fluid를 기본으로 돌리면 본문 전용 셋이 아무도 안 본 채 1280으로 넓어진다. ⚠️ **등급을 셋으로 늘린 것이 아니다** — 화면이 고르던 둘을 한 층 위로 올렸을 뿐이다. ⚠️ **폭과 여백은 같이 결정된다**: 여백만 프리미티브로 올리면 안쪽 래퍼가 살아 있는 limited 일곱이 `16 + 24 = 40`이 된다. ⚠️ **1440을 안 고른 이유**: 뷰포트 2032px부터 걸려 1920 디스플레이(패널 1328)에서는 아무 일도 안 한다. ⚠️ **스크롤 컨테이너에 직접 주지 않는다** — 좁히면 **스크롤바가 콘텐츠 옆에** 생긴다 | — |
 | **패널 머리 (라우트 아홉 공통)** | ⚠️ **2026-09-15에 규격이 프리미티브로 올라갔다** — 아래 §5.15가 정본이다. 그 전 이력: 2026-09-11에 `px-6 pt-6 pb-3` + `h1 text-xl`(20)로 통일했는데(그 전에는 `/projects`·번역만 20이고 나머지 일곱이 15였다) **값을 열한 곳이 각자 적었고 그중 하나가 이미 어긋나 있었다**(`add-surface`의 `px-6 py-5`) | — |
@@ -261,7 +261,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | 드롭다운 패널 | `min-w-60 max-w-md` | 248~456px |
 | 모달 | **`max-w-110` (440px)** — ⚠️ 2026-09-18 사용자가 360에서 올렸다(그 전 2026-09-13에 512에서 360으로 내려왔다, §6.4). 온보딩 모달은 이 프리미티브를 안 쓴다(Radix `Dialog.*`를 직접 조립한다) | modal sm 512 |
 
-**페이지 셸은 둘이다**: **셸 안**(`(edit)` — 헤더 + 사이드바 + 흰 콘텐츠 패널, 그 안이 `max-w-4xl` 또는 fluid) / **셸 밖**(로그인·초대 수락 — **둘 다 2열**이다, 8-1b). 새 화면은 둘 중 하나다.
+**페이지 셸은 둘이다**: **셸 안**(`(edit)` — 헤더 + 사이드바 + 흰 콘텐츠 패널, 그 안이 `max-w-4xl` 또는 fluid) / **셸 밖**(로그인·초대 수락·계정 병합 — **로그인만 2열**이고 나머지는 폼 패널 단일이다, §6.62). 새 화면은 둘 중 하나다.
 
 ⚠️ **둘이 같은 골격이다** (8-2): 캔버스(`--canvas`) 위에 패널이 뜨고 바깥 padding 8 · 패널 간 gap 8 ·
 각 패널 `rounded-xl` + `border-border-subtle` + `shadow-low`다. 셸 안의 그 패널을
@@ -270,7 +270,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 `app/(edit)/__tests__/shell-layout.test.ts`가 레이아웃 체인을 훑어 센다.
 
 ⚠️ **셸 밖 화면의 골격은 `components/signin/auth-layout.tsx` 하나가 든다** (8-1b) — 바깥 padding 8 ·
-패널 간 gap 8 · 각 패널 `rounded-xl` + 아주 연한 border + `shadow-low`, 바깥은 `--canvas`(아주
+패널 간 gap 8(2열인 `/signin`만) · 각 패널 `rounded-xl` + 아주 연한 border + `shadow-low`, 바깥은 `--canvas`(아주
 연한 회색)이고 좌측 패널은 **true white**다. **그 대비가 없으면 흰 패널과 흰 배경이 붙어 경계가
 사라진다.** 시안 전체가 이 규칙이고 좌표로 검산했다 (DESIGN §6.5(규약 3).5).
 
@@ -812,7 +812,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 |---|---|
 | 셸 (`components/public-shell/` — `PublicShell({ account, current })`) | ⚠️ **route group 레이아웃으로 만들지 않는다** — 페이지마다 셸을 그려야 이동 때 스크롤러가 다시 마운트되어 스크롤이 맨 위로 가고 포커스도 다시 받는다. 스크롤러 표식은 `data-public-scroller`(랜딩 스테이지와 `/privacy` 목차가 `closest`로 찾는다). 루트 `h-svh min-w-[1280px] overflow-hidden bg-canvas px-2 pt-2` · 헤더 40 + 8 · 패널 · 푸터 40. 패널 = `(vw − 16) × (vh − 96)` — 윗변 56이 앱 셸 `ContentPanel`과 같다. 패널은 두 겹(바깥 `<main>` 표면 `rounded-xl` 16 · 안쪽 스크롤러) · **문서는 스크롤되지 않는다** — 세로 스크롤은 스크롤러 하나다. `body`에 `--canvas`를 칠한다(오버스크롤 흰 띠) |
 | 헤더 | 로고 32(곧 홈 링크) · `nav` `Docs · Changelog`(14/400 · 6/10 · radius 8 · hover `foreground/[0.03]`) — ⚠️ **`Home`이 없다**(2026-09-28 사용자 — 로고가 홈이다). ⚠️ **내비는 앱 안 목적지만 든다**(같은 날 — GitHub는 내비가 아니라 우측, primary 왼쪽이다). **선택 상태를 그리지 않는다**, `aria-current="page"`만이고 **그것도 `current`를 받은 화면(`/docs/*` `docs` · `/changelog` `changelog`)에서만 선다** — 랜딩·`/privacy`는 둘 어디에도 없어 current 0이다. 라벨 `Changelog`는 페이지 제목과 같은 키(`m.changelog.title`)다. **우측 = GitHub · 세로선 · primary**(gap 12). primary는 **페이지가 `publicAccount`(`lib/auth/landing.ts`)로 정한다**: `none`·`unavailable` → `Get started`(`md` · `/signin`), `ok` → **앱 셸과 같은 아바타 메뉴**(`UserMenu` 32 — 2026-09-28 사용자, 옛 `Open Malmoi` 버튼 대체. 이름은 앱 셸과 같은 `displayName`). 랜딩은 `ok`에서 안 그려져 늘 `Get started`다. 세로선 1×20 `bg-border-subtle`(`aria-hidden` — `divider`는 캔버스보다 옅어 안 보인다). **GitHub는 버튼이 아니라 앱 사이드바 항목 모양이다**(2026-09-28 사용자 — p 6 · gap 8 · radius 8 · `GithubIcon` 16 · 14px · 보더 없음 · hover `foreground/[0.03]` 면만) · 새 탭 · `rel="noreferrer"`. ⚠️ **헤더는 세션을 직접 읽지 않는다** — 로그아웃 Action은 `lib/auth/sign-out.ts`(앱 셸과 한 벌)를 참조로 넘긴다 |
-| 푸터 | `© 2026 Malmoi · GitHub · Privacy Policy` · 항목 간격 20(`gap-5` — 2026-09-28 사용자, 16에서 한 단계) — GitHub는 새 탭·글리프 없음(§6.3). ⚠️ **`Docs`·`Changelog`가 없다**(2026-09-28 사용자 — 공개 셸 헤더 내비와 아바타 메뉴가 든다. 헤더가 없는 셸 밖 화면에서도 같다) — **`/signin`·초대·계정 병합과 같은 컴포넌트다**(`PublicFooter` — 2026-09-26부터 셸 밖 2열도 두 패널 아래에 그린다, §6.62). 목록은 `lib/links.ts` 한 상수다. |
+| 푸터 | `© 2026 Malmoi · GitHub · Privacy Policy` · 항목 간격 20(`gap-5` — 2026-09-28 사용자, 16에서 한 단계) — GitHub는 새 탭·글리프 없음(§6.3). ⚠️ **`Docs`·`Changelog`가 없다**(2026-09-28 사용자 — 공개 셸 헤더 내비와 아바타 메뉴가 든다. 헤더가 없는 셸 밖 화면에서도 같다) — **`/signin`·초대·계정 병합과 같은 컴포넌트다**(`PublicFooter` — 2026-09-26부터 셸 밖 골격도 패널 줄 아래에 그린다, §6.62). 목록은 `lib/links.ts` 한 상수다. |
 | 키보드 | 스크롤러가 `tabIndex={-1}` + 마운트 때 `focus({ preventScroll: true })`를 받는다 — 문서가 스크롤되지 않아 body 포커스로는 Space/PageDown이 아무것도 안 민다. ⚠️ **대가: 첫 Tab이 헤더를 건너뛴다**(포커스가 이미 패널 안이다) — 헤더는 Shift+Tab으로 닿는다. 2026-09-26 리뷰에서 수용했다. ⚠️ **body로 빠진 포커스를 되찾는다** — 헤더·푸터의 빈 곳을 누르면 포커스가 body로 가 키보드 스크롤이 다시 죽었다(2026-09-26 디자인 감사). 문서 `focusout`에서 `relatedTarget`이 없고 이동이 끝난 뒤 `activeElement`가 body면 스크롤러가 `preventScroll`로 되받는다 — 다른 요소로 옮긴 포커스는 건드리지 않는다 |
 | 히어로 · 마무리 CTA | h1·h2 **`text-5xl`(48) · 600** · 행간 1.1 · 자간 −0.015em(크기 토큰, §4) · 서브 `text-lg`(18) · 400 · 1.6 · `max-w-[44em]`(CTA `40em`) · 간격 20. 히어로 위 여백과 히어로 → 트랙 간격이 **120**. ⚠️ **마무리 CTA는 섹션 자신의 padding-block 240**(`py-60` — 2026-09-27 사용자, 120의 두 배. 이웃의 margin으로 만들지 않는다). 버튼은 전부 `lg`(셸 밖 전용, §6.4) — 히어로 `Docs`(default) + `Get started`(primary), 마무리 CTA **`GitHub`(default) + `Get started`(primary)**(2026-09-27). GitHub는 `<a>` + `buttonClass` · `GITHUB_REPO_URL` · 새 탭 · `rel="noreferrer"` · 외부 링크 글리프 없음(§6.3) — `ButtonLink`는 `next/link`라 쓰지 않는다 |
 | CTA 선행 아이콘 | **랜딩 CTA 버튼마다 하나**(2026-09-27 사용자) — `Docs`는 **앱 셸 `Docs` 항목과 같은 글리프**(`navFooterItems`의 `docs` 아이콘을 읽는다 — 지금 `CircleHelp`. LNB·아바타 메뉴와 한 어휘다) · `Get started` `LogIn`(행선지가 `/signin`) · `GitHub` `GithubIcon`(채운 로고 — 리포의 유일한 GitHub 글리프, §6.8) · 공개 헤더 primary `Get started` `LogIn`(로그인이면 아바타라 아이콘이 없다). 크기·간격은 `Button`의 svg 슬롯(16 · gap 8)이 정하고 아이콘에 `size-*`를 주지 않는다. 전부 `aria-hidden`. ⚠️ **헤더 내비 링크 둘(Docs · Changelog)은 글자만이다**. 헤더 GitHub의 `GithubIcon`은 버튼 슬롯 밖이라 `size-4`를 직접 준다 |
@@ -874,13 +874,16 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | `Latest` 표시 | 없다 |
 | 새 색 | **0** — blue-600(등재)·토큰뿐 |
 
-### 6.62 로그인·초대 수락 — 셸 밖 2열 (2026-09-10, 8-1)
+### 6.62 로그인·초대 수락·계정 병합 — 셸 밖 골격 (2026-09-10, 8-1)
 
-**골격을 `components/signin/auth-layout.tsx` 하나가 든다.** 캔버스(`--canvas`) 위에 패널 둘이
+**골격을 `components/signin/auth-layout.tsx` 하나가 든다.** ⚠️ **우측 장식은 `/signin`만 든다** (2026-09-29 사용자 —
+`decoration` prop, 기본 꺼짐). 초대 수락·계정 병합은 흰 폼 패널 **하나**가 캔버스 전폭을 채우고 그 가운데에 320 컬럼이 선다.
+2026-09-10에는 "초대가 번역자의 첫 얼굴"이라 셋이 같은 2열이었는데, 초대가 실패해도 우측이 환영 KV로 남았다(문구가 KV에
+구워져 분기별로 못 바꾼다). 기본값이 단일이므로 새 셸 밖 화면은 넘기지 않으면 단일로 선다. `/signin`에서는 캔버스 위에 패널 둘이
 `grid-cols-2 gap-2`로 앉고, 각 패널이 `rounded-xl` + `border-border-subtle` + `shadow-low`다
 (규약 3.5 — 셸과 같은 규칙이다, §5.1).
 
-⚠️ **푸터는 공개 셸의 `PublicFooter`이고 두 패널 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
+⚠️ **푸터는 공개 셸의 `PublicFooter`이고 패널 줄 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
 `absolute bottom-6`의 14px 줄이었다). 좌표가 공개 셸(§6.615)과 같다: 바깥 `px-2 pt-2` · 패널 줄(`flex-1`) · 푸터 40(13 muted)이 바닥 띠라
 아래 padding이 없다. ⚠️ **루트는 `h-svh`가 아니라 `min-h-svh`다** — 스크롤러가 없는 골격이라 좌측 내용이 길면 문서가 스크롤되어야 한다.
 `<footer>`는 하나이고 `<main>` 밖이다(`public-shell.test.tsx`).
@@ -888,13 +891,13 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 요소 | 규칙 |
 |---|---|
 | 좌측(폼) | **true white** · 폼 컬럼 `w-[320px]` · 로고 48 · `h1` `text-2xl font-semibold`(24/600 — §4) · provider 버튼 둘(`size="lg"` — **셸 밖 전용**, §6.4). ⚠️ **`h1`이 셋 다 있다** — `/invite/[token]`은 2026-09-12까지 이 칸이 비어 있던 유일한 화면이었고(설명 한 줄이 제목을 겸했다), account-linking이 그 규칙 위반을 교정했다 |
-| 우측(장식) | base가 **페이지 배경색**이고 아래로 갈수록 파랑이 든다(`--auth-hero-from` = `--canvas`, `bg-gradient-to-b`). ⚠️ **그라데이션이 없으면 배경과 구분되지 않아 "로그인 패널만 떠 있는 그림"이 된다** — 그것이 의도이므로 위쪽에서 배경으로 수렴한다. 위·아래 문구가 **`text-3xl font-semibold`**(30/600 — §4)이고 그 사이가 키비주얼(`max-w-[768px]`)이다 — ⚠️ **리포에서 `text-3xl`을 쓰는 유일한 자리이고 셸 안으로 넓히지 않는다**(§4의 크기 관용은 `text-2xl`에서 멈춘다: 이 화면만 장식 면적이 있다) |
+| 우측(장식, `/signin`만) | base가 **페이지 배경색**이고 아래로 갈수록 파랑이 든다(`--auth-hero-from` = `--canvas`, `bg-gradient-to-b`). ⚠️ **그라데이션이 없으면 배경과 구분되지 않아 "로그인 패널만 떠 있는 그림"이 된다** — 그것이 의도이므로 위쪽에서 배경으로 수렴한다. 위·아래 문구가 **`text-3xl font-semibold`**(30/600 — §4)이고 그 사이가 키비주얼(`max-w-[768px]`)이다 — ⚠️ **리포에서 `text-3xl`을 쓰는 유일한 자리이고 셸 안으로 넓히지 않는다**(§4의 크기 관용은 `text-2xl`에서 멈춘다: 이 화면만 장식 면적이 있다) |
 | 도트 필드 | Canvas 2D (`components/signin/dot-field.tsx` + 잎 `lib/signin/dot-field.ts`). ⚠️ **hex를 tsx에 박지 않는다** — `--signin-dot`을 `getComputedStyle`로 읽는다(§6.2). ⚠️ 커서가 없으면 `autoCursor`가 ㄹ자로 순회하고 `prefers-reduced-motion`이면 1회 렌더 |
 | 브랜드 아이콘 | GitHub·Google 인라인 SVG (`components/signin/brand-icons.tsx`) — ⚠️ `lucide-react`에 브랜드 글리프가 없고 **Google 4색은 §6.2의 예외다**(남의 브랜드 자산이라 토큰으로 접을 수 없다) |
 | 피드백 | `?error=`·`?sessions=` → **토스트** (§6.25). ⚠️ **`auth-toast`는 아무것도 렌더하지 않는다** — 자리를 차지하면 그것이 곧 인라인 Alert의 자리가 된다 |
 | 초대 복귀 링크 (2026-09-12) | provider 화면에서 취소하면 Auth.js가 `/signin?error=`로 되돌리고 **초대 토큰이 사라진다.** `authjs.callback-url`이 초대를 가리킬 때만 provider 버튼 **아래·약관 위**에 `text-blue-600` 텍스트 링크 한 줄을 세운다(§6.3의 셸 밖 링크 규칙). ⚠️ **버튼으로 만들지 않는다** — 이 화면의 primary는 로그인이고, 돌아가는 길은 `/privacy`·`/docs`의 그것과 같은 무게다 |
-| 초대 수락 | 같은 골격. **실패는 모두 인라인 `Alert`**다 — 이 초대의 지속되는 조건이므로 규약 8을 적용한다(예외 추가 아님). `planInviteView`의 `kind`가 알림과 CTA를 함께 고른다. `blocked`는 재시도 가능한 장애에만 토큰 보존 GET 버튼이고, 재시도 없는 막힘(없음·만료·사용됨)은 **출구 하나**다 — 로그인했으면 [Go to your projects](`/projects`), 아니면 [Sign in](`/signin`) (2026-09-24, audit #15 — 셸 밖이라 전엔 할 수 있는 일이 0이었다), `sign-in`은 provider 둘과 하단 캡션, `accept`는 프로젝트 카드와 수락, `wrong-account`는 프로젝트 카드와 **출구 하나**인데 그 출구가 사유로 갈린다 — `email-mismatch`는 [Sign in with another account](로그아웃 → 같은 링크), `already-member`는 **[Open project]**다. ⚠️ **뒤엣것에 로그아웃을 주지 않는다** (2026-09-12 실물 검증): 문구는 프로젝트를 열라는데 유일한 버튼이 세션을 끊는 것이었고, 이 화면은 셸 밖이라 시키는 일을 할 수단이 0이었다. 만료가 불일치보다 앞이고 불일치가 기존 멤버보다 앞이다. 알림은 설명 아래·카드 위, 비로그인에는 프로젝트 카드가 없다. provider 버튼은 `/signin`과 같은 `ProviderSubmit`·브랜드 아이콘·문구를 쓰고 GitHub이 `primary`다. |
-| 계정 병합 (2026-09-12) | 같은 골격 · 320 컬럼 다섯 줄(로고 · `h1` · 설명 · `EntityCard` · 채움 버튼 + 각주) + 구분선 아래 outlined 버튼. ⚠️ **실패는 기본 상태 + `Alert variant="danger"` 한 장이 전부다** — 부제·각주·구분선·버튼 라벨이 그대로다(실패에서 레이아웃을 갈아치우면 같은 화면으로 돌아온 것을 못 알아본다). 자리는 설명 **아래**, 카드 **위**. ⚠️ **§6.25 Layer A가 아니라 의도적 예외다** — 빼도 화면이 안 비지만, **메시지와 조치가 한 자리에 있어야** 한다: 다시 누를 버튼이 바로 아래이고 토스트는 그 둘을 화면의 반대 끝으로 가른다. ⚠️ **만료는 이 화면을 다시 그리지 않는다** — `/signin`으로 되돌린다(다시 그리면 그 상태가 또 하나의 표면이 된다) |
+| 초대 수락 | 같은 골격의 **단일 패널**(장식 없음). **실패는 모두 인라인 `Alert`**다 — 이 초대의 지속되는 조건이므로 규약 8을 적용한다(예외 추가 아님). `planInviteView`의 `kind`가 알림과 CTA를 함께 고른다. `blocked`는 재시도 가능한 장애에만 토큰 보존 GET 버튼이고, 재시도 없는 막힘(없음·만료·사용됨)은 **출구 하나**다 — 로그인했으면 [Go to your projects](`/projects`), 아니면 [Sign in](`/signin`) (2026-09-24, audit #15 — 셸 밖이라 전엔 할 수 있는 일이 0이었다), `sign-in`은 provider 둘과 하단 캡션, `accept`는 프로젝트 카드와 수락, `wrong-account`는 프로젝트 카드와 **출구 하나**인데 그 출구가 사유로 갈린다 — `email-mismatch`는 [Sign in with another account](로그아웃 → 같은 링크), `already-member`는 **[Open project]**다. ⚠️ **뒤엣것에 로그아웃을 주지 않는다** (2026-09-12 실물 검증): 문구는 프로젝트를 열라는데 유일한 버튼이 세션을 끊는 것이었고, 이 화면은 셸 밖이라 시키는 일을 할 수단이 0이었다. 만료가 불일치보다 앞이고 불일치가 기존 멤버보다 앞이다. 알림은 설명 아래·카드 위, 비로그인에는 프로젝트 카드가 없다. provider 버튼은 `/signin`과 같은 `ProviderSubmit`·브랜드 아이콘·문구를 쓰고 GitHub이 `primary`다. |
+| 계정 병합 (2026-09-12) | 같은 골격의 **단일 패널**(장식 없음) · 320 컬럼 다섯 줄(로고 · `h1` · 설명 · `EntityCard` · 채움 버튼 + 각주) + 구분선 아래 outlined 버튼. ⚠️ **실패는 기본 상태 + `Alert variant="danger"` 한 장이 전부다** — 부제·각주·구분선·버튼 라벨이 그대로다(실패에서 레이아웃을 갈아치우면 같은 화면으로 돌아온 것을 못 알아본다). 자리는 설명 **아래**, 카드 **위**. ⚠️ **§6.25 Layer A가 아니라 의도적 예외다** — 빼도 화면이 안 비지만, **메시지와 조치가 한 자리에 있어야** 한다: 다시 누를 버튼이 바로 아래이고 토스트는 그 둘을 화면의 반대 끝으로 가른다. ⚠️ **만료는 이 화면을 다시 그리지 않는다** — `/signin`으로 되돌린다(다시 그리면 그 상태가 또 하나의 표면이 된다) |
 
 ### 6.625 초대 메일 — 프로젝트 카드 (2026-09-28, invitation-email-project)
 
@@ -1866,7 +1869,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 - **헤더의 검색·`+`·카운터**, **기능 밀도**(사이드바 항목 십수 개). PRODUCT §4.2.
 - **Vue 컴포넌트(`@gitlab/ui`)·아이콘 세트(`gitlab-svgs`)** — lucide 16px로 대응.
 - **일러스트**(빈 상태 SVG) — `EmptyState`는 여전히 아이콘 하나뿐이다.
-  - ⚠️ **로그인 우측 장식은 예외가 됐다** (8-1b). 그전까지 "CSS dot-grid + 토큰만 쓴 정적 모형 카드"였는데, Figma 시안이 **래스터 키비주얼(`public/brand/malmoi-signin-kv.png`)과 Canvas 도트 필드**를 들여왔다. 셸 **밖** 화면 둘(로그인·초대 수락)에만 해당하고, 셸 안 화면에는 여전히 일러스트를 두지 않는다.
+  - ⚠️ **로그인 우측 장식은 예외가 됐다** (8-1b). 그전까지 "CSS dot-grid + 토큰만 쓴 정적 모형 카드"였는데, Figma 시안이 **래스터 키비주얼(`public/brand/malmoi-signin-kv.png`)과 Canvas 도트 필드**를 들여왔다. 셸 **밖** 화면 중 로그인 하나에만 해당하고(초대 수락·계정 병합은 2026-09-29에 단일 패널로 걷어냈다, §6.62), 셸 안 화면에는 여전히 일러스트를 두지 않는다.
 
 ### 9.3 판정 기준
 
