@@ -798,7 +798,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | 개요(1a) | h1 + 도입 + **두 갈래 카드**(대상 13 muted `For developers`/`For translators` · 제목 18/500 · 설명 14 muted → 장 개요로 / 아래 행 셋 44 → 그 장의 첫 할 일 · 머리 ↔ 첫 행 선 `--divider`, 행 ↔ 행 `--border` · 행 끝 `→`) + `More in the docs` h2 + 아래 16에 나머지 장 목록 카드(행 p16 · 제목 15/500 · 설명 14 muted · **화살표 없음**). 목차 열은 비운다. **갈래는 `lib/guide/overview.ts`의 상수**(편집 판단이라 SUMMARY에서 파생하지 않는다) · 나머지 = 갈래에 없는 최상위 장 전부 |
 | 장 개요(1c) | h1 + 도입 + (선택) 본문 + 하위 페이지 목록 카드(행 p16 = 제목 15/500 · 설명 14 muted · `→`) + 이전/다음. 목차 없음. **하위 목록은 원고가 아니라 SUMMARY 자식에서 붙는다** |
 | 설명의 출처 | 카드·행의 설명 = 그 페이지의 **도입 문단**(H1 바로 다음 첫 문단 — `leadParagraph`). 시안 문구는 자리값이다 |
-| 옛 해시 | `/docs#<old>`(사전 본문 시절의 절 일곱)는 개요의 클라이언트 잎(`legacy-hash.tsx`)이 `legacyAnchorTarget`으로 새 페이지에 `router.replace`한다 — 해시는 서버에 오지 않는다 |
+| 옛 해시 | `/docs#<old>`(사전 본문 시절의 절 일곱)는 개요의 클라이언트 잎(`legacy-hash.tsx`)이 `legacyAnchorTarget`으로 새 페이지에 `router.replace`한다 — 해시는 서버에 오지 않는다. **한 페이지를 섹션으로 나누면 그 장 개요도 같은 잎을 세운다**(`SECTION_LEGACY_ANCHORS` — 2026-09-29 `ai-agents`, malmoi#152) |
 | 404(1d) | 셸·내비 안(`app/docs/not-found.tsx`). 내비 현재 표시 없음 · 목차·이전/다음 없음. 위 줄 `404` · h1 `This page doesn't exist` · **한 문단** `There's no page at <주소>. Pick a page from the list, or start from the docs overview.` — 주소는 인라인 코드(클라이언트 잎 `usePathname` — `not-found`는 params를 못 받는다), `docs overview`가 문장 안 링크다. 없는 slug · `AUTHORING` · `SHOOTING`이 여기로 온다. `/docs` 밖 404는 이 화면을 쓰지 않는다 |
 | 화살표 | 행 끝 글리프 `→` · `neutral-400`(등재 값 — lucide 아이콘이 아니다) · `aria-hidden` |
 | hover | 행·카드 `foreground/3`(헤더와 같다) · 내비는 글자색만 |
