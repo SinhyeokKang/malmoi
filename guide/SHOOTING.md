@@ -74,6 +74,7 @@
 | `/guide/account.webp` | `account.md#profile` | OWNER | Account — Profile · Sign-in methods · GitHub App |
 | `/guide/mcp-create-token.webp` | `ai-agents.md#token` | EDITOR | MCP connector → Create token 모달 ①단계(만들지 않음 — ② 토큰 원문은 찍지 않는다) |
 | `/guide/mcp-connector.webp` | `ai-agents.md#connected-apps` | OWNER | MCP connector — Connected apps(연결 둘) + 토큰 카드(원문 없음) + Connect 카드 머리 |
+| `/guide/oauth-consent.webp` | `ai-agents.md#browser` | OWNER | `/oauth/authorize` 동의 화면 — claude.ai CIMD 요청(Authorize 누르지 않음), Translate & publish 하나 체크 |
 
 ## 에셋 매핑 {#shots}
 
@@ -94,7 +95,7 @@
 | /guide/sources.webp | components/sources/sources-screen.tsx, components/sources/source-status.tsx | b19fe7e08e1e0e1eeb82dc6e273e13e6354faa33, 0a919f69e5584af9bf861731c25cdd85b12c8e63 | 2560x1600 |
 | /guide/add-sources.webp | components/sources/add-sources-modal.tsx | ca027d458d6e483d6702243847828090c9ad9d05 | 2560x1600 |
 | /guide/archive-card.webp | components/settings/archive-card.tsx | b16198f250b8322cffa1938286fb2814189851c3 | 2560x1600 |
-| /guide/accept-invitation.webp | app/invite/[token]/page.tsx, components/invite/project-card.tsx, components/signin/auth-layout.tsx | f52c60923f6a8391492807fdf92bb8b473164029, f04bd2df388d5f046ad05818553e51c39fd45376, bd43b9b7ebe1d5fe8e8df04b6d083cfdf4e5cc04 | 2560x1600 |
+| /guide/accept-invitation.webp | app/invite/[token]/page.tsx, components/invite/project-card.tsx, components/signin/auth-layout.tsx | f52c60923f6a8391492807fdf92bb8b473164029, f04bd2df388d5f046ad05818553e51c39fd45376, 707e072f943e340d3d4fb9b389ecb39f75d67eb2 | 2560x1600 |
 | /guide/state-filter.webp | components/translations/workspace/filter-menu.tsx | 8122e89e1cd4f89a9de260f4d4eb875822d168dd | 2560x1600 |
 | /guide/home-publish.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, components/publish-button.tsx | 4174b3928c6ed77494331c9f9271916d08020573, cd1ba61b1b8896bbb609c8abe427d58e48205709, 5da54cab3106be7df63d6093f2d28c42f2b643d5 | 2560x1600 |
 | /guide/publish-result.webp | components/publish-button.tsx | 5da54cab3106be7df63d6093f2d28c42f2b643d5 | 2560x1600 |
@@ -104,7 +105,8 @@
 | /guide/logs-event.webp | components/logs/event-dialog.tsx, components/logs/event-detail.tsx | cadf74e0cb02c69164c5d8bd828ea5441dc71d60, 9788954b94524cd0c09851a166375d9b89974660 | 2560x1600 |
 | /guide/account.webp | app/(edit)/account/page.tsx, components/account/profile-picture.tsx, components/account/login-methods.tsx, components/account/github-section.tsx | 6d03357fb3f33f6c8a21c869640d7f72f0bdca76, 37eec1067fce9caa706483a11deb51d76bf4f39b, dff3cf21dec15a3ca7006dee78278bd95b079324, e866658706416a009765e582123f1158decc7d6c | 2560x1600 |
 | /guide/mcp-create-token.webp | components/mcp/token-modal.tsx, components/mcp/token-grant-fields.tsx | d56afa2334b2932c1734bab087e52280f6a4d543, 0074ab2f4ccec1114cfa3e0dbae332bbec2b6935 | 2560x1600 |
-| /guide/mcp-connector.webp | components/mcp/connected-apps-card.tsx, components/mcp/token-card.tsx, components/mcp/connect-card.tsx | 09449913f4e0f2bac6ed184dadfd753609c22a0e, 02dec0a0e34bb906d65c1921d5f9e1ed50b61d42, 73b289cdd90fdd0358978ef1c0f308c382f022b2 | 2560x1600 |
+| /guide/mcp-connector.webp | components/mcp/connected-apps-card.tsx, components/mcp/token-card.tsx, components/mcp/connect-card.tsx | 09449913f4e0f2bac6ed184dadfd753609c22a0e, 02dec0a0e34bb906d65c1921d5f9e1ed50b61d42, b99c5f6e6433a3076cd469bd79ec6423567e97ca | 2560x1600 |
+| /guide/oauth-consent.webp | app/oauth/authorize/page.tsx, components/oauth/consent-panel.tsx, components/oauth/app-card.tsx | 3440235fe7a45c306afa13f94ba1536d829b5f36, affd217b6f70429991a1d5053aa4caca267d3f81, c53824331c89ec5759a6173c71718b1b6b1ce01f | 2560x1600 |
 | /guide/create-repository.webp | components/onboarding/new-project.tsx, components/onboarding/steps/repo.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, 35a6949ccd7201ce6de97c7b3b2d944d32828c05 | 2560x1600 |
 | /guide/create-files.webp | components/onboarding/new-project.tsx, components/onboarding/steps/files.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, 72c92128cde6e327a6215f67634a0a8d512d31d7 | 2560x1600 |
 | /guide/create-name.webp | components/onboarding/new-project.tsx, components/onboarding/steps/naming.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, c588cef72e7d02b563634caec2630909d0b346c0 | 2560x1600 |
@@ -139,4 +141,4 @@
 - 2026-09-29 (같은 날, 사용자 지시) `setup/create-project.md` ①–③ 세 장 추가(`create-repository` · `create-files` · `create-name`) — `i18n-order-check`를 보관해 상한 자리를 만들고 촬영 뒤 복원했다. ④는 여전히 건너뜀.
 - 2026-09-29 `/guide/accept-invitation.webp` 재촬영 — 셸 밖 골격이 `/signin` 외엔 장식 없는 단일 패널이 됐다(`AuthLayout`의 `decoration`). 변경이 `auth-layout.tsx` 안에서 끝나 `guide:check`가 못 잡았으므로 그 파일을 매핑 소스에 더했다. 초대는 전과 같이 dev DB에 1건(`i18n-order-check`, EDITOR 주소)을 사건 없이 심어 찍고 수락 없이 id로 지웠다. EDITOR 세션에서 `accept` 상태, 이메일은 마스킹된 `o***@…` 꼴이라 `*`까지 잡는 치환이 필요했다.
 - 2026-09-29 mcp-oauth — `mcp-connector` **재촬영**: 맨 위에 Connected apps 카드가 섰다(`ai-agents.md#connected-apps`로 옮겼다). 연결 둘(`Claude Code` · 이름 없는 Codex CIMD URL)은 dev DB에 가짜 `OAuthConnection` 행으로 심었고, 토큰 카드는 UI로 만든 토큰(원문은 찍지 않았다)이다 — 촬영 뒤 셋 다 지웠다. origin `http://localhost:3000` → `https://mal-moi.com`, OWNER 이름·아바타 치환. `mcp-create-token`은 필드를 `token-grant-fields.tsx`로 옮긴 리팩터라 화면이 같아 **재촬영 없이 소스에 그 파일을 더하고 SHA만 갱신**했다.
-- ⚠️ 남은 stale: `/guide/accept-invitation.webp` ← `components/signin/auth-layout.tsx`(mcp-oauth가 `scroll` prop과 주석만 더했다 — 초대 화면은 그 prop을 안 넘겨 화면이 같다). 이번 라운드 범위 밖이라 SHA를 갱신하지 않았다.
+- 2026-09-29 mcp-oauth 후속 — `oauth-consent` **추가**(`ai-agents.md#browser`): claude.ai CIMD(`claude.ai/oauth/mcp-oauth-client-metadata`, 콜백 `claude.ai/api/mcp/auth_callback`)로 만든 authorize 요청의 동의 화면, Authorize는 누르지 않았다(요청 행 1건은 10분 뒤 만료돼 다음 저장이 지운다). 이메일 → `alex.kim@example.com`, GitHub 아바타 → `AK` 이니셜 원. **SHA만 갱신** 둘: `accept-invitation`(`auth-layout.tsx`에 `scroll` prop과 주석만 — 초대 화면은 그 prop을 안 넘긴다) · `mcp-connector`(`connect-card.tsx`에 claude.ai 조직 안내 줄 — claude.ai 탭 안이라 기본 선택(Claude Code) 컷에 안 보인다).
