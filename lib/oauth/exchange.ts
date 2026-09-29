@@ -56,12 +56,21 @@ export type ConnectionRow = {
   expiresAt: Date;
 };
 
-export type UsedTokenRow = { tokenHash: string; connectionId: string };
+export type UsedTokenRow = { tokenHash: string; connectionId: string; usedAt: Date };
+
+/**
+ * 회전 뒤 이 시간 안의 옛 refresh는 **폐기하지 않고 거부만** 한다 (2026-09-29 사용자 판정 — T1 COMPAT-RISK). 같은 클라이언트의 프로세스
+ * 둘이 access 만료 뒤 같은 refresh를 겹쳐 내면(Codex 병렬 시작 1ms) 재사용 폐기가 정상 연결을 끊고 재동의를 강요한다.
+ * 대가: 회전 직후 30초 안에 쓰인 탈취 refresh는 탐지하지 못한다(발급도 없으므로 얻는 것은 없다).
+ */
+export const REFRESH_REUSE_GRACE_MS = 30_000;
 
 export type RefreshPlan =
   | { status: "rotate"; connectionId: string }
   /** 회전 전 토큰의 재사용 — 그 연결을 지운다. 외부 응답은 폐기 커밋 뒤 `invalid_grant`다(RFC 9700 §4.14.2). */
   | { status: "revoke-replayed-connection"; connectionId: string }
+  /** 유예 안의 옛 refresh — 회전도 폐기도 없다. 외부 응답은 `invalid_grant`다. */
+  | { status: "reject-within-grace" }
   | { status: "invalid_grant" };
 
 export function planRefresh(input: {
@@ -90,6 +99,8 @@ export function planRefresh(input: {
   // 이력이 **이 연결**을 가리킬 때만 폐기한다 — 알 수 없는 해시만으로 연결을 지우지 않는다.
   const used = input.usedTokenRow;
   if (used !== null && used.tokenHash === input.presentedHash && used.connectionId === connection.id) {
+    // 경계 포함 — 다른 만료 판정(`<=`)과 같은 쪽으로 둔다.
+    if (input.now.getTime() - used.usedAt.getTime() <= REFRESH_REUSE_GRACE_MS) return { status: "reject-within-grace" };
     return { status: "revoke-replayed-connection", connectionId: connection.id };
   }
   return reject;
