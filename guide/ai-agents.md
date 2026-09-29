@@ -1,12 +1,12 @@
 # Connect an AI agent
 
-Let a coding agent such as Claude Code, Codex, or Cursor work in Malmoi for you, by signing in through your browser or with a personal token.
+Let an AI agent such as Claude Code, Codex, claude.ai, or Cursor work in Malmoi for you, by signing in through your browser or with a personal token.
 
 Before you start: Sign in to Malmoi. To let the agent create projects, connect GitHub and install the Malmoi GitHub App in [Your account](account.md#github-connection) first.
 
 The agent connects over MCP (Model Context Protocol) at `https://mal-moi.com/api/mcp`. Malmoi doesn't write translations itself: the agent writes the values, and Malmoi saves them as your edits, with the same checks as the browser.
 
-There are two ways to connect. Claude Code and Codex can [sign in through your browser](#browser): you add only the server address, approve the agent in Malmoi, and never copy a token. Agents that only accept a fixed header, such as Cursor, use a [personal token](#token).
+There are two ways to connect. Claude Code, Codex, and claude.ai can [sign in through your browser](#browser): you add only the server address, approve the agent in Malmoi, and never copy a token. Agents that only accept a fixed header, such as Cursor, use a [personal token](#token).
 
 ## Sign in through your browser {#browser}
 
@@ -51,6 +51,16 @@ Then run `codex mcp login` followed by the server name from the snippet. Your br
 
 If the entry already has a `bearer_token_env_var` line, remove it first. While it is there, Codex keeps using the token.
 
+### claude.ai {#browser-claude-ai}
+
+claude.ai connects from its own settings, so there is no file to edit.
+
+1. In claude.ai, open **Customize** → **Connectors**, choose **Add**, then **Add custom connector**.
+2. Paste `https://mal-moi.com/api/mcp` and give it a name, such as Malmoi.
+3. Choose **Connect**. A window opens to sign in to Malmoi and authorize, as in the steps above.
+
+On a Team or Enterprise plan, only the owner of your claude.ai organization can add a custom connector; ask them to add Malmoi first, then choose **Connect** yourself. A Free plan allows one custom connector.
+
 ## Connected apps {#connected-apps}
 
 Every agent you authorize is listed under **Connected apps** on the **MCP connector** page, one connection per app, with its allowed actions, scope, when it was last used, and when it expires.
@@ -61,7 +71,7 @@ Every agent you authorize is listed under **Connected apps** on the **MCP connec
 
 ![The MCP connector page with two connected apps, Claude Code and a Codex app shown by its address, each with its allowed actions, scope, last use, expiry, and a Disconnect button, above the personal token card](/guide/mcp-connector.webp "Disconnect an app you no longer use.")
 
-The app loses access from its next request. Your other apps and your personal token keep working. A connection that has expired stays listed with **Expired**; authorize the app again from the agent to keep using it.
+The app loses access from its next request. Your other apps and your personal token keep working. Removing the connector inside claude.ai doesn't disconnect it here; choose **Disconnect** to end it. A connection that has expired stays listed with **Expired**; authorize the app again from the agent to keep using it.
 
 ## Create a token {#token}
 
