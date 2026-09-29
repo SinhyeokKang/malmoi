@@ -136,7 +136,7 @@ model OAuthConnection {            // 클라이언트별 "연결" = 개인 토�
   userId           String
   clientId         String            // CIMD URL 또는 DCR id
   clientName       String            // 동의 시점 스냅샷(화면 표시용)
-  redirectUri      String            // 동의 시점 콜백. 연결 식별 보조 표시용
+  redirectUri      String            // 동의 시점 콜백(기록). 화면에 싣지 않는다 — §6.1
   issuer           String
   resource         String            // 발급 환경의 정확한 MCP URL
   grants           String[]          // ApiToken.grants와 같은 어휘
@@ -286,8 +286,9 @@ model OAuthCode {
 - 무세션·로그인 중·만료 요청·동의 제출 중·실패를 구분하고 기존 Button 로딩·Alert·Dialog를 쓴다. 동의 실패는 입력을 보존한다.
   요청·연결 목록의 최초 조회 중과 조회 실패도 구분한다. 조회 장애는 요청 없음·연결 없음으로 숨기지 않고 재시도를 제공한다.
   `Not you?`도 요청 ID를 유지한 채 계정을 바꾸며, 새 로그인 수단 연결 challenge를 경유하는 경우까지 동일 요청으로 복귀한다.
-- 이름은 신원 보증이 아니다. 동의 화면·연결 행에 CIMD의 clientId URL, DCR의 clientId와 검증된 콜백 주소를 보조 정보로 표시한다.
-  연결에는 동의 시점 redirectUri를 저장해 표시가 현재 메타데이터 변경에 흔들리지 않게 한다. 긴 이름/주소는 줄바꿈하며
+- 이름은 신원 보증이 아니다. 동의 화면·연결 행에 clientId 식별 줄(CIMD URL, 스킴 생략)을 보조 정보로 표시한다. 동의 화면은 검증된 콜백의
+  host를 행동 줄(`You'll return to …`)에 함께 보인다. **연결 행에는 콜백 주소를 싣지 않는다**(2026-09-29 사용자 판정) — clientId 식별 줄로 충분하고
+  `(userId, clientId)`가 유일하며, 루프백 포트는 로그인마다 바뀌어 구별 정보가 되지 않는다. 긴 이름/주소는 줄바꿈하며
   같은 이름의 연결도 끊기 버튼의 접근 이름에서 구별한다. 임의 브랜드 이미지·색을 가져오지 않고 기존 라이트·mono 표면을 따른다.
 - 연결 목록은 빈 상태와 마지막 사용 없음·만료를 구분한다. 끊기는 기존 `components/mcp/token-card.tsx`의 확인 Dialog·제출 중 표시를 따른다.
   명시적 실패는 행과 재시도 위치를 유지한다. 통신 단절의 결과 미확인은 성공으로 말하지 않고 재조회한다. 성공은 목록과 상태 메시지로 알리고,
