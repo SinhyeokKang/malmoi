@@ -10,8 +10,8 @@ import { listInstallationRepos, listUserInstallations } from "./user";
 /**
  * `/account`의 GitHub App 행이 드는 **설치된 리포 수** (DESIGN §6.67).
  *
- * **판정은 `countInstalledRepos`, I/O는 `loadInstalledRepoCount`다.** 껍데기에는 단위 테스트가
- * 없다 — fetch 모킹 비용이 가치를 넘고, `user.ts`가 같은 이유로 그렇게 서 있다.
+ * **판정은 `countInstalledRepos`, I/O는 `loadInstalledRepoCount`다.** 껍데기의 테스트는 마감 하나뿐이다
+ * (`installed-repos-deadline.test.ts`) — 그 밖의 갈래는 fetch 모킹 비용이 가치를 넘고, `user.ts`가 같은 이유로 그렇게 서 있다.
  */
 
 /** 설치 하나의 조회 결과. **실패를 값으로 든다** — 하나가 403이어도 나머지는 세야 한다. */
