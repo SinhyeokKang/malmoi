@@ -59,6 +59,25 @@ describe("planRedirectUri", () => {
       ]) expect(planRedirectUri(registered, requested)).toBe(false);
     });
 
+    it("IPv6도 path·query·scheme을 그대로 대조한다", () => {
+      const registered = ["http://[::1]/callback"];
+      for (const requested of ["http://[::1]:53682/other", "http://[::1]:53682/callback?x=1", "https://[::1]:53682/callback"]) {
+        expect(planRedirectUri(registered, requested)).toBe(false);
+      }
+    });
+
+    it("WHATWG 정규화로만 같아지는 요청은 예외가 아니다 — 포트를 뺀 원문이 등록 원문과 같아야 한다", () => {
+      const registered = ["http://127.0.0.1/callback"];
+      for (const requested of [
+        "http://127.1:5/callback",
+        "http://2130706433:5/callback",
+        "http://127.0.0.1:5/a/../callback",
+        "http://127.0.0.1:5/callback?",
+        "HTTP://127.0.0.1:5/callback",
+        "http://127.0.0.1:05/callback/.",
+      ]) expect(planRedirectUri(registered, requested)).toBe(false);
+    });
+
     it("다른 loopback 주소(127.0.0.2)나 userinfo는 예외가 아니다", () => {
       expect(planRedirectUri(["http://127.0.0.1/callback"], "http://127.0.0.2:53682/callback")).toBe(false);
       expect(planRedirectUri(["http://127.0.0.1/callback"], "http://user@127.0.0.1:53682/callback")).toBe(false);
