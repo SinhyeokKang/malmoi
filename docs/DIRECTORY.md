@@ -552,6 +552,10 @@ lib/
                         execute(⚠️ 던지면 SDK가 예외 문구를 결과에 싣는다 — 여기서 잡아 unavailable로 접는다) · 도메인별
                         account·project·keys·repos·sync·publish·translations·settings·members·onboarding · index(TOOLS).
                         ⚠️ Action을 import하지 않는다 — 같은 코어의 형제 껍데기다(세션이 없다)
+  oauth/                MCP OAuth의 **순수 판정만**(mcp-oauth 진행 중 — 껍데기·스키마는 아직 없다). authorize(쿼리 파싱 — Object.hasOwn) ·
+                        redirect(https·loopback http만, loopback은 포트만 뺀 원문 대조) · pkce(S256) · exchange(planCodeExchange — code 스냅샷만 · planRefresh — 30초 유예) ·
+                        consent(planApiTokenIssue 재사용) · client-metadata(CIMD 문서 검증 — 가져오기·SSRF는 호출자) · bearer(mlm_/mlo_ 접두) ·
+                        metadata(발견 문서 둘 + WWW-Authenticate). ⚠️ server-only 없음 — 순수 모듈이다
   onboarding-run/       **두 GitHub 자격증명이 만나는 조립**(2026-09-28 T4-c — ARCHITECTURE §3.1). Server Action과 MCP 도구가
                         같이 부른다: access(checkRepoAccess) · repos · branches · detect · add · create · import · rotate-token.
                         ⚠️ lib/onboarding/에 두지 않는 이유가 이 디렉터리의 존재 이유다 — 그 루트는 "두 자격증명 import 없음"이라
