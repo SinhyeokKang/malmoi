@@ -69,7 +69,7 @@ function identAfter(next: string, nextNext: string): boolean {
  * ⚠️ **MCP 설정 키 한 자리가 더 있다** (mcp-connector) — `/mcp`의 연결 조각이 사용자 설정 파일에 쓰는 서버 키(`mcpServers.malmoi` ·
  * `[mcp_servers.malmoi]`)이고, 에이전트 도구 이름(`mcp__malmoi__…`)의 접두가 된다. 식별자라 소문자다 — `lib/mcp/snippets.ts`의 상수 하나로 모았다.
  */
-// 가이드(`guide/ai-agents.md`)는 그 조각을 JSON 그대로 싣는다 — 같은 서버 키의 JSON 형이다(`content.test.ts`가 조각과 글자 단위로 대조한다).
+// 가이드(`guide/ai-agents/token.md`·`browser.md`)는 그 조각을 JSON 그대로 싣는다 — 같은 서버 키의 JSON 형이다(`content.test.ts`가 조각과 글자 단위로 대조한다).
 const IDENT_EXCEPTIONS = new Set(['"User-Agent": "malmoi"', 'SERVER_KEY = "malmoi"', '"malmoi": {']);
 /**
  * 대문자로 남는 자리 — **환경변수 이름**이다(셸 관례가 대문자다). 사용자가 셸에 두는 이름이라 화면 문장에도 그대로 선다

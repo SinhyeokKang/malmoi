@@ -81,7 +81,7 @@ describe("`routes.docs(...)` 호출 대상", () => {
 describe("`/mcp` 가이드 링크", () => {
   it("라벨이 대상 페이지(ai-agents)의 SUMMARY 제목이다", () => {
     const nav = flattenNav(parseSummary(parseMd(readFileSync(join(GUIDE, "SUMMARY.md"), "utf8"))));
-    expect(nav.find((item) => item.file === "ai-agents.md")?.title).toBe(m.mcpConnector.guide.link);
+    expect(nav.find((item) => item.file === "ai-agents/README.md")?.title).toBe(m.mcpConnector.guide.link);
     expect(readFileSync(join(ROOT, "app/(edit)/mcp/page.tsx"), "utf8")).toContain('routes.docs("ai-agents")');
   });
 });

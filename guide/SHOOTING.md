@@ -73,9 +73,9 @@
 | `/guide/sync-discard.webp` | `sync/revert.md#resync` | OWNER | Sync 확인창 — 미전달 1건 폐기 경고(확정 안 함) |
 | `/guide/logs-event.webp` | `sync/logs.md#event-details` | OWNER | Logs(Kind: Publish)에서 연 Publish 사건 상세 |
 | `/guide/account.webp` | `account.md#profile` | OWNER | Account — Profile · Sign-in methods · GitHub App |
-| `/guide/mcp-create-token.webp` | `ai-agents.md#token` | EDITOR | MCP connector → Create token 모달 ①단계(만들지 않음 — ② 토큰 원문은 찍지 않는다) |
-| `/guide/mcp-connector.webp` | `ai-agents.md#connected-apps` | OWNER | MCP connector — Connected apps(연결 둘) + 토큰 카드(원문 없음) + Connect 카드 머리 |
-| `/guide/oauth-consent.webp` | `ai-agents.md#browser` | OWNER | `/oauth/authorize` 동의 화면 — claude.ai CIMD 요청(Authorize 누르지 않음), Translate & publish 하나 체크 |
+| `/guide/mcp-create-token.webp` | `ai-agents/token.md#token` | EDITOR | MCP connector → Create token 모달 ①단계(만들지 않음 — ② 토큰 원문은 찍지 않는다) |
+| `/guide/mcp-connector.webp` | `ai-agents/browser.md#connected-apps` | OWNER | MCP connector — Connected apps(연결 둘) + 토큰 카드(원문 없음) + Connect 카드 머리 |
+| `/guide/oauth-consent.webp` | `ai-agents/browser.md#browser` | OWNER | `/oauth/authorize` 동의 화면 — claude.ai CIMD 요청(Authorize 누르지 않음), Translate & publish 하나 체크 |
 
 ## 에셋 매핑 {#shots}
 

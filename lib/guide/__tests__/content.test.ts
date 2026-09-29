@@ -97,22 +97,27 @@ describe("실물 가이드 본문 게이트", () => {
 
   // `/mcp`의 Connect 카드와 가이드가 같은 조각을 보여야 한다 — 한쪽만 바뀌면 에이전트 설정이 두 모양이 된다(정본은 snippets.ts).
   it("AI 에이전트 연결 조각이 /mcp의 조각과 글자 단위로 같다", () => {
-    const value = tree("ai-agents.md");
-    const blocks: { meta: string; body: string }[] = [];
-    visit(value, "code", (node) => {
-      blocks.push({ meta: node.meta ?? "", body: node.value });
-    });
+    // 조각은 두 페이지에 나뉜다 — 토큰 방식은 token.md, 브라우저 방식은 browser.md.
+    const blocksOf = (file: string) => {
+      const blocks: { meta: string; body: string }[] = [];
+      visit(tree(file), "code", (node) => {
+        blocks.push({ meta: node.meta ?? "", body: node.value });
+      });
+      return blocks;
+    };
+    let blocks = blocksOf("ai-agents/token.md");
     for (const client of CONNECT_CLIENTS) {
       const snippet = connectSnippet(client, "https://mal-moi.com/api/mcp", "token");
       expect(blocks, client).toContainEqual(expect.objectContaining({ meta: expect.stringContaining(`title="${snippet.path}"`), body: snippet.body }));
     }
     // 브라우저 로그인 방식(mcp-oauth) — 조각이 있는 클라이언트는 둘이다(claude.ai는 웹 화면의 단계라 조각이 없다).
+    blocks = blocksOf("ai-agents/browser.md");
     for (const client of ["claude-code", "codex"] as const) {
       const snippet = connectSnippet(client, "https://mal-moi.com/api/mcp", "browser");
       expect(blocks, `browser ${client}`).toContainEqual(expect.objectContaining({ meta: expect.stringContaining(`title="${snippet.path}"`), body: snippet.body }));
     }
-    expect(sectionByAnchor(value, "token")).toContain(TOKEN_ENV);
-    expect(sectionByAnchor(value, "push-token")).toContain("gh secret set PUSH_TOKEN --repo OWNER/REPO");
+    expect(sectionByAnchor(tree("ai-agents/token.md"), "token")).toContain(TOKEN_ENV);
+    expect(sectionByAnchor(tree("ai-agents/prompts.md"), "push-token")).toContain("gh secret set PUSH_TOKEN --repo OWNER/REPO");
   });
 });
 
