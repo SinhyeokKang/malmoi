@@ -114,3 +114,4 @@
 - 무인증 authorize 남용(m3 리뷰): **Vercel WAF rate limit**을 `/oauth/authorize`에 IP 단위로 건다 — log 모드로 시작해 실트래픽을 보고 429로 올린다
   (이미지 프록시 WAF 선례). 코드·작업 큐 없음. 규칙 추가는 `/merge` 전 프로덕션 프로젝트에서 하고 OPERATIONS에 절차를 남긴다(T9).
 - `/mcp` 연결 행에 콜백 주소를 보이지 않는다(m4 리뷰, 사용자 판정) — clientId 식별 줄로 충분하다(`(userId, clientId)` unique, loopback 포트는 로그인마다 바뀐다).
+- 동의 화면 앱 카드 칩: **`IconTile` lg(40)** (사용자 판정 — 시안 32/8 대신 기존 두 규격 중 큰 쪽).
