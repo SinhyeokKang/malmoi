@@ -238,7 +238,6 @@ const KIND_KEY = {
 
 function actorLabel(row: EventRow): string {
   if (row.actor.kind === "AUTOMATION") return row.kind === "IMPORT" ? m.logs.trigger.ci : m.logs.trigger.cron;
-  if (row.actor.kind === "UNKNOWN") return m.common.unreadable;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;
 }

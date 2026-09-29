@@ -406,7 +406,7 @@ export type EventMetaRow = {
   subtype: string;
   result: EventResult | null;
   payload: EventPayload | null;
-  actor: { kind: "USER" | "AUTOMATION" | "UNKNOWN" };
+  actor: { kind: "USER" | "AUTOMATION" };
   run: { changed: number | null; prUrl: string | null; errorCode: string | null } | null;
 };
 

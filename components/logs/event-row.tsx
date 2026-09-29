@@ -110,7 +110,6 @@ function ResultLabel({ view }: { view: ReturnType<typeof eventView> }) {
 /** 행위자 폴백 순서 — 이름 → 마스킹 라벨 → `Removed user`, 자동화는 그 자리를 그대로 쓴다. */
 function actorLabel(row: Row): string {
   if (row.actor.kind === "AUTOMATION") return row.kind === "IMPORT" ? m.logs.trigger.ci : m.logs.trigger.cron;
-  if (row.actor.kind === "UNKNOWN") return m.common.unreadable;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;
 }

@@ -146,16 +146,6 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "Account.expires_at": "collected",
   /** 상수 `"oauth"`뿐이다 — 사람을 기술하지 않는다. */
   "Account.type": NOT_PERSONAL,
-  /**
-   * ⚠️ **Auth.js 스키마의 컬럼이지만 우리 코드가 한 번도 쓰지 않는다** (2026-09-19 전수 확인 —
-   * 쓰는 자리는 `app/api/github/callback/route.ts`의 세 컬럼과 `safe-adapter`의 넷뿐이다).
-   * **쓰기 시작하면 이 줄을 `collected`로 옮기고 수집 항목 표에 행을 더한다** — 방침이 "저장하지
-   * 않는다"고 쓴 값이라, 옮기지 않으면 그 문장이 거짓이 된다.
-   */
-  "Account.token_type": NOT_PERSONAL,
-  "Account.scope": NOT_PERSONAL,
-  "Account.id_token": NOT_PERSONAL,
-  "Account.session_state": NOT_PERSONAL,
 
   "Session.sessionToken": "cookies",
   "Session.userId": "cookies",

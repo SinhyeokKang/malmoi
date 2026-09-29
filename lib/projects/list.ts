@@ -95,7 +95,7 @@ export function projectStatus(row: ProjectStatusInput): ProjectStatus {
 export type ProjectEvents = {
   /** 검토 대기 셀 수. */
   review: number;
-  /** 안 보낸 편집 수 — `countUnpublished`와 **같은 술어**의 결과다. */
+  /** 안 보낸 편집 수 — `countPending`과 **같은 술어**의 결과다. */
   unsent: number;
   /** 열린 PR. ⚠️ **`state === "open"`을 확인한 뒤에만 채운다.** */
   openPr: { number: number; url: string } | null;

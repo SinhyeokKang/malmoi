@@ -32,7 +32,7 @@ export async function convertCredentials(prisma: PrismaClient, options: Conversi
     }
     for (const row of accounts) {
       const data = migrateAccountFields(row, options.mode);
-      if (data) writes.push(() => prisma.account.updateMany({ where: { provider: row.provider, providerAccountId: row.providerAccountId, userId: row.userId, access_token: row.access_token, refresh_token: row.refresh_token, id_token: row.id_token, expires_at: row.expires_at }, data }));
+      if (data) writes.push(() => prisma.account.updateMany({ where: { provider: row.provider, providerAccountId: row.providerAccountId, userId: row.userId, access_token: row.access_token, refresh_token: row.refresh_token, expires_at: row.expires_at }, data }));
     }
     for (const row of sessions) {
       if (isHashedSession(row.sessionToken)) continue;

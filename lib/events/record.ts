@@ -21,8 +21,7 @@ import { buildSearchText } from "./search";
 export type EventActorInput =
   /** 계정이 지워졌으면 `userId`가 null이다 — `Removed user`로 접힌다. */
   | { kind: "USER"; userId: string | null }
-  | { kind: "AUTOMATION" }
-  | { kind: "UNKNOWN" };
+  | { kind: "AUTOMATION" };
 
 export type EventInput = {
   projectId: string;

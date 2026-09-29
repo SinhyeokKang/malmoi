@@ -52,7 +52,7 @@ afterAll(async () => {
 });
 
 const confirm = (projectId: string, surfaceId: string, syncRunId: string) => pool.query(
-  `INSERT INTO "DeliveryConfirmation"("projectId","surfaceId",revision,"confirmedAt","syncRunId","contextFingerprint") VALUES ($1,$2,'rev',now(),$3,'ctx')`,
+  `INSERT INTO "DeliveryConfirmation"("projectId","surfaceId",revision,"syncRunId","contextFingerprint") VALUES ($1,$2,'rev',$3,'ctx')`,
   [projectId, surfaceId, syncRunId]);
 const baseline = (projectId: string, surfaceId: string, keyId: string, localeCode = "en") => pool.query(
   `INSERT INTO "TranslationBaseline"("projectId","surfaceId","keyId","localeCode","restoreValue",revision) VALUES ($1,$2,$3,$4,'Hi','rev')`,

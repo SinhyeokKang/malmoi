@@ -10,7 +10,7 @@ import { buildWriteEntries, type LocalFile, type LocalePath, type PullRow, type 
  * ⚠️ `server-only`를 붙이지 않는다 — 테스트가 직접 import한다.
  */
 
-/** 한 키의 전 로케일 값. `lib/keys/view.ts`의 `KeyRow`와 같은 모양이라 조회를 재사용할 수 있다. */
+/** 한 키의 전 로케일 값. */
 export type RenderKey = {
   /** `StringKey.id`. 보류 좌표(키 이름)와 캡처 편집(키 id)을 잇는다 — 없으면 그 키의 셀은 셀 좌표로 보류되지 않는다. */
   id?: string;
@@ -42,7 +42,7 @@ export function rowsForLocale(
   return keys.map((k) => {
     // ⚠️ **로케일 코드는 리포가 정한 키다** — `isPathSafeLocale`이 `constructor`·`toString`을
     // 통과시키므로 평범한 인덱싱은 `Object.prototype`의 값을 셀로 집는다 (CLAUDE.md 코드 컨벤션 ·
-    // 대입 쪽 짝은 `lib/keys/query.ts`의 `Object.create(null)`이다). **여기는 파일로 나가는 경로라 더 위험하다.**
+    // 생산자 `lib/pull/load.ts`는 `Object.fromEntries`라 대입 쪽은 이미 own property다). **여기는 파일로 나가는 경로라 더 위험하다.**
     const cell = Object.hasOwn(k.cells, locale) ? k.cells[locale] : undefined;
     // **base만 키 단위 description으로 폴백한다.** `Translation.description`이 전부 null인
     // 마이그레이션 직후에도 base 파일이 description을 잃지 않게 하는 장치다 —

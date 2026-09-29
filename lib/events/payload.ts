@@ -14,10 +14,10 @@ export const EVENT_KINDS = ["TRANSLATION", "IMPORT", "PUBLISH", "SURFACE", "MEMB
 export type EventKind = (typeof EVENT_KINDS)[number];
 
 /**
- * 행위자의 종류. **`USER`인데 FK가 비었으면 계정이 지워진 사람이다**(`SetNull`) — `AUTOMATION`·
- * `UNKNOWN`과 구별된다 (결정 8).
+ * 행위자의 종류. **`USER`인데 FK가 비었으면 계정이 지워진 사람이다**(`SetNull`) — `AUTOMATION`과
+ * 구별된다 (결정 8).
  */
-export const ACTOR_KINDS = ["USER", "AUTOMATION", "UNKNOWN"] as const;
+export const ACTOR_KINDS = ["USER", "AUTOMATION"] as const;
 
 export type ActorKind = (typeof ACTOR_KINDS)[number];
 
