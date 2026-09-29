@@ -231,7 +231,8 @@ it("배너 [Try again] → Enter → Esc면 포커스가 그 [Try again]에 선�
   retry.focus();
   await act(async () => { await user.keyboard("{Enter}"); });
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
-  await act(async () => { await user.keyboard("{Escape}"); await new Promise(r => setTimeout(r, 20)); });
+  await act(async () => { await user.keyboard("{Escape}"); });
   expect(document.querySelector('[role="dialog"]')).toBeNull();
-  expect(document.activeElement).toBe(button("Try again"));
+  // ⚠️ 복귀는 Radix FocusScope 언마운트의 타이머 뒤라 고정 대기(20ms)는 부하에서 흔들린다 — 폴링한다(`primitive-focus.test.tsx`).
+  await vi.waitFor(() => expect(document.activeElement).toBe(button("Try again")));
 });
