@@ -43,8 +43,9 @@ Malmoi가 MCP Authorization 스펙의 **Authorization Server + Resource Server**
     쿠키를 읽어야 하는 authorize 페이지·로그인·동의 Action은 이 금지 대상과 구분한다.
 11. 새 테이블이 `lib/privacy/collected.ts`에 등재되고, `/privacy` 본문이 여전히 참인지 판정이 끝났다(개정 필요하면 개정 이력 포함).
 12. refresh 회전은 사용된 해시와 연결의 관계를 보존한다. 회전 전 토큰이 다시 제출되면 해당 연결을 폐기하고 `invalid_grant`로 답한다.
-    그 연결의 현재 access·refresh도 다음 호출부터 거부하며, 다른 연결과 개인 토큰은 유지한다. 정상 클라이언트의 병렬 refresh도
-    재사용과 구별할 수 없으므로 같은 정책을 적용한다 — 세 클라이언트의 동작과 재동의 필요 여부를 T1에서 실측한다.
+    그 연결의 현재 access·refresh도 다음 호출부터 거부하며, 다른 연결과 개인 토큰은 유지한다. 단 **회전 뒤 30초 안(경계 포함)**에
+    같은 연결의 옛 refresh가 다시 오면 폐기·회전 없이 `invalid_grant`만 답한다 — 같은 클라이언트의 프로세스 둘이 겹쳐 refresh하는
+    정상 동작(T1 실측)이 재동의를 강요하지 않게 한다(2026-09-29 사용자 판정). 대가: 회전 직후 30초 안에 쓰인 탈취 refresh는 탐지하지 못한다.
 13. code·연결은 발급 issuer와 MCP resource에 묶인다. 다른 origin의 토큰 교환·refresh·access 호출은 거부하며,
     다른 `client_id`의 refresh도 거부한다. 로컬·preview가 DB를 공유해도 이 경계는 유지된다.
 14. 동의 요청 하나에서 code는 최대 하나만 발급된다. 연결 교체는 유효 code 교환의 원자적 커밋 시점이며,

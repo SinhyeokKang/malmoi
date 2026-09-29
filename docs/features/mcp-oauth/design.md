@@ -66,7 +66,7 @@ T1 종료 조건은 등록 방식·loopback 호환 정책·refresh 경합과 재
 | `planRedirectUri(registered[], requested)` | 완전 일치 / loopback 포트 예외 판정 |
 | `verifyPkce(verifier, challenge)` | S256 비교 |
 | `planCodeExchange({ codeRow, now, clientId, redirectUri, resource, verifier, expectedIssuer, expectedResource })` | `ok \| invalid_grant`(만료·사용됨·불일치는 같은 코드). 검증 필드는 codeRow의 발급 시점 스냅샷이며 요청 행을 다시 읽지 않는다 |
-| `planRefresh({ connectionRow, presentedHash, usedTokenRow, now, clientId, resource, expectedIssuer, expectedResource })` | `rotate \| revoke-replayed-connection \| invalid_grant` — 바인딩을 먼저 검증한 뒤 현재 해시·사용 이력·연결 만료 판정. 폐기 판정은 연결 ID를 들고, 외부 응답은 폐기 커밋 뒤 `invalid_grant` |
+| `planRefresh({ connectionRow, presentedHash, usedTokenRow, now, clientId, resource, expectedIssuer, expectedResource })` | `rotate \| revoke-replayed-connection \| reject-within-grace \| invalid_grant` — 바인딩을 먼저 검증한 뒤 현재 해시·사용 이력(회전 뒤 30초 안이면 유예)·연결 만료 판정. 폐기 판정은 연결 ID를 들고, 외부 응답은 폐기 커밋 뒤 `invalid_grant`. 유예는 쓰기 없이 `invalid_grant` |
 | `planConsent(input)` | `planApiTokenIssue` 재사용 — grant 어휘·만료·현재 비보관 멤버십 범위 검증. 역할 ∩ grant는 도구 실행 시 판정하며 동의 시 역할로 선택을 막지 않는다 |
 | `resolveBearerKind(token)` | `mlm_` → 개인 토큰 · `mlo_` → OAuth · 그 밖 → 거부. **DB를 두드리기 전에** 가른다(`resolveApiToken`의 접두 선판정 선례) |
 | `planClientMetadata(doc, clientIdUrl)` (CIMD) | 가져온 문서 검증 |
@@ -151,11 +151,13 @@ model OAuthCode {
   커밋 뒤 `invalid_grant`를 반환한다. 알 수 없는 해시만으로 연결을 폐기하지 않는다. DB 장애는 `server_error`다.
 - 이력은 연결이 살아 있는 동안 오래된 것까지 보존한다. 연결 삭제 시 cascade로 지우고, 만료 연결은 삽입 시점 정리 대상으로 둔다.
   최근 해시 하나만 남기거나 연결보다 먼저 이력을 지우면 옛 토큰 재사용을 탐지하지 못한다.
-- **병렬 제출도 동일한 재사용 판정이다.** 같은 refresh 두 건 중 첫 회전이 커밋되면 뒤 요청은 사용 이력을 읽고 연결을 폐기한다.
-  이미 발급된 첫 응답의 토큰도 그 폐기 이후 거부된다. 공격자와 정상 클라이언트를 구별할 증거가 없으므로 시간만으로 예외를 두거나
-  단순 재시도 오류로 접지 않는다. 응답 유실 후 옛 토큰 재전송도 재동의가 필요하다.
-- T1은 세 클라이언트의 refresh 직렬화·병렬 제출·응답 유실 후 재시도·재동의 동작을 측정한다. 정상 사용에서 연결이 반복 폐기되면
-  구현에 들어가기 전에 호환성 실패로 보고하고 정책을 다시 결정한다. 실측을 이유로 재사용 탐지·폐기를 조용히 생략하지 않는다.
+- **재사용 유예 30초** (2026-09-29 사용자 판정 — T1 COMPAT-RISK). 바인딩 검사를 통과한 옛 해시가 **같은 연결**의 이력에 있고
+  `now - usedAt <= 30초`(경계 포함)이면 **회전도 폐기도 하지 않고** `invalid_grant`만 답한다(`reject-within-grace`, 쓰기 0건).
+  같은 클라이언트의 프로세스 둘이 access 만료 뒤 같은 refresh를 겹쳐 내는 정상 동작(Codex 병렬 시작 1ms)이 연결을 끊지 않게 하는 것이다 —
+  먼저 회전한 쪽이 새 토큰을 들고, 늦은 쪽은 저장소의 새 refresh로 다시 시도한다. 30초를 넘긴 재사용은 위대로 연결을 폐기한다.
+  대가: 회전 직후 30초 안에 쓰인 탈취 refresh는 탐지하지 못한다(유예는 토큰을 발급하지 않으므로 얻는 것은 없다).
+  응답 유실 후 30초가 지난 옛 토큰 재전송은 여전히 재동의가 필요하다.
+- 순수 판정은 `lib/oauth/exchange.ts#planRefresh`(`REFRESH_REUSE_GRACE_MS`)다. 이력 행은 `usedAt`을 들고 와야 한다.
 
 근거: [RFC 9700 §4.14.2](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.14.2).
 
@@ -236,7 +238,7 @@ model OAuthCode {
 - **2026-09-06 인가는 지났는데 조회를 그 사용자로 좁히지 않았다** — 연결 목록·끊기·code 교환의 모든 조회에 `userId`(교환은 code 행이 가진 값)를 건다.
 - **2026-09-16 같은 요청의 `Promise.all`이 토큰 회전을 둘로 겹쳤다** — 에이전트는 병렬로 부른다. 여기서는 우리가 발급자이므로
   외부 공급자의 회전 실패를 재시도하던 정책을 그대로 가져오지 않는다. §4.1의 연결 잠금·사용 이력·재사용 폐기를 적용하고,
-  T1에서 정상 클라이언트가 병렬 refresh를 보내는지 확인한다.
+  정상 클라이언트의 겹친 refresh(T1 실측)는 30초 유예로 받는다.
 - **2026-09-04 시크릿이 트랜스크립트에 남았다** — OAuth 경로는 설정 조각에 비밀값 자리 자체가 없다. `/mcp`의 연결 예시에 "헤더 없는 URL만" 조각을 더한다.
 
 ## 9. 문서 갱신 (implement / push 신선도 단계)
