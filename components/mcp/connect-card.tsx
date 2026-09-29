@@ -66,11 +66,18 @@ export function ConnectCard({ serverUrl }: { serverUrl: string }) {
         />
         {client === "claude-ai" ? (
           // claude.ai는 설정 파일이 아니라 웹 화면이다 — 조각 없이 단계 셋(핸드오프 `2b`).
-          <ol data-connect-steps className="flex list-decimal flex-col gap-1.5 pl-5 text-sm leading-[1.6]">
-            {m.mcpConnector.connect.claudeAiSteps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
+          <div className="flex flex-col gap-3">
+            <ol data-connect-steps className="flex list-decimal flex-col gap-1.5 pl-5 text-sm leading-[1.6]">
+              {m.mcpConnector.connect.claudeAiSteps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+            {/* 전환 안내(`switchFromToken`)와 같은 형 — 13 muted · info 글리프. 단계를 막는 조건이라 단계 바로 아래다. */}
+            <p data-connect-org-note className="text-muted-foreground flex gap-2 text-xs leading-[1.6]">
+              <Info className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+              <span>{m.mcpConnector.connect.claudeAiOrgNote}</span>
+            </p>
+          </div>
         ) : (
           <Snippet client={client} method={method} serverUrl={serverUrl} />
         )}

@@ -254,7 +254,7 @@ describe("Connect 카드 — 방식 세그먼트", () => {
     expect(document.querySelector("pre")).toBeNull();
     expect(find<HTMLElement>(document.body, "[data-connect-steps]").querySelectorAll("li")).toHaveLength(3);
     // Team·Enterprise 멤버는 조직 소유자가 먼저 등록해야 한다(mcp-oauth 결정 기록) — 단계 아래 한 줄이다. 단계 문구 자체는 실측 전 샘플이다.
-    expect(find<HTMLElement>(document.body, "[data-connect-org-note]").textContent).toMatch(/Team or Enterprise.*owner/);
+    expect(find<HTMLElement>(document.body, "[data-connect-org-note]").textContent).toMatch(/Team or Enterprise.*owner of your claude.ai organization/);
   });
 
   it("개인 토큰으로 바꾸면 클라이언트가 Claude Code로 돌아가고 목록에 Cursor가 선다 — 기존 헤더 조각 그대로", async () => {

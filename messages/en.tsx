@@ -1833,6 +1833,8 @@ export const en = {
         "Paste the server URL above and give it a name, such as Malmoi.",
         "Choose Connect. Sign in to Malmoi and choose what it can do in the window that opens.",
       ],
+      // Team·Enterprise 플랜은 멤버가 커스텀 커넥터를 추가하지 못한다(mcp-oauth 결정 기록 — T1 실측 계정 판정). 단계 문구와 달리 이 전제는 확정이다.
+      claudeAiOrgNote: "On a Team or Enterprise plan, the owner of your claude.ai organization has to add the custom connector first.",
     },
     /** 연결된 앱(mcp-oauth 핸드오프 §7.3 · §7.5) — OAuth 연결 목록. 개인 토큰 카드와 어휘(`token.facts`)를 공유한다. */
     apps: {
