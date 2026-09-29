@@ -1,5 +1,8 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 
+import { AppError } from "@/lib/failure";
+import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
+
 import { logFailure } from "./log";
 import { ensureUserToken } from "./token-store";
 import { listInstallationRepos, listUserInstallations } from "./user";
@@ -57,6 +60,15 @@ export function countInstalledRepos(settled: readonly InstallationReposResult[])
  * `null`을 낸다. 연결 상태 자체는 행이 이미 말한다.
  */
 export async function loadInstalledRepoCount(prisma: PrismaClient, userId: string): Promise<number | null> {
+  // ⚠️ **마감이 probe·계정 조회와 같다** (ARCHITECTURE §6.5.2 · malmoi#107) — 설치 목록이나 설치별 조회 하나가 멈추면
+  // `/account`가 `maxDuration`까지 매달렸다. 넘기면 "말할 수 없다"(`null`)이다.
+  return withinGithubWait(readInstalledRepoCount(prisma, userId), () => {
+    logFailure("installed-repos-deadline", new AppError(`no response within ${GITHUB_WAIT_MS}ms`));
+    return null;
+  });
+}
+
+async function readInstalledRepoCount(prisma: PrismaClient, userId: string): Promise<number | null> {
   const token = await ensureUserToken(prisma, userId, new Date());
   // 연결이 없거나 재인가가 필요한 갈래는 행이 그 사실을 말한다 — 집계가 설 자리가 아니다.
   if (token.status !== "ok") return null;

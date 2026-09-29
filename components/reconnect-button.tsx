@@ -1,9 +1,10 @@
 "use client";
 
 import { RefreshCw } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 import { connectRepository } from "@/app/(edit)/projects/[slug]/settings/actions";
+import { useCommitWait } from "@/components/commit-wait";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { accessErrorMessage, isAccessError, type AccessError } from "@/lib/auth/message";
@@ -18,7 +19,7 @@ import { m } from "@/lib/i18n";
  * ⚠️ **성공 문구를 따로 두지 않는다.** `revalidatePath`가 서버에서 돌아 건강성 문구가 `ok`로
  * 바뀌는 것이 곧 성공 신호다 — 문구를 하나 더 두면 그 상태와 어긋날 수 있다.
  */
-export function ReconnectButton({ slug, label, variant, onFailure }: {
+export function ReconnectButton({ slug, label, variant, onFailure, server }: {
   slug: string;
   label: string;
   /**
@@ -28,8 +29,15 @@ export function ReconnectButton({ slug, label, variant, onFailure }: {
   variant?: "primary";
   /** Settings owns its card-wide notice; Home keeps the local fallback. */
   onFailure?: (message: string | null) => void;
+  /**
+   * 서버가 렌더할 때마다 새 객체가 되는 prop — 성공 뒤 대기를 재검증 트리가 커밋될 때까지 잇는다(`useCommitWait`).
+   * ⚠️ **async transition으로 잇지 않는다** (malmoi#107) — 도는 동안의 내비게이션까지 얽는다(ARCHITECTURE §3).
+   */
+  server: unknown;
 }) {
-  const [pending, startTransition] = useTransition();
+  const [running, setRunning] = useState(false);
+  const commit = useCommitWait(server);
+  const pending = running || commit.waiting;
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="space-y-2">
@@ -40,19 +48,22 @@ export function ReconnectButton({ slug, label, variant, onFailure }: {
         onClick={() => {
           setError(null);
           onFailure?.(null);
-          startTransition(async () => {
+          setRunning(true);
+          void (async () => {
             // 거부는 값으로 온다 (ARCHITECTURE §6.3). ⚠️ **통신 실패는 던진다** (audit #24) — 그것도 같은 자리로 접는다.
             let error: string | null;
             try {
               const result = await connectRepository({ slug });
               error = result.ok ? null : result.error;
             } catch { error = FAILED; }
-            if (error !== null) {
+            if (error === null) commit.wait();
+            else {
               // Settings가 받는 쪽이면 보관 거부를 그 화면의 문구로 말한다 — 공용 문구는 "설정에서 복원하라"다 (QA D1).
               if (onFailure) onFailure(messageFor(error, settingsAccessMessage));
               else setError(error);
             }
-          });
+            setRunning(false);
+          })();
         }}
       >
         {/* 아이콘이 있는 버튼은 스피너를 더하지 않고 교체한다 (DESIGN §6.4 · audit-ux #25) — 더하면 글리프 하나만큼 넓어졌다 좁아진다. */}

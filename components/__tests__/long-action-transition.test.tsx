@@ -47,6 +47,8 @@ function Navigate() {
   const [moved, setMoved] = useState(false);
   return <><button type="button" onClick={() => startTransition(() => setMoved(true))}>Navigate</button><output data-moved={moved} /></>;
 }
+/** ⚠️ 모달이 열리면 Radix가 바깥에 `pointer-events: none`을 건다 — 대역은 DOM 클릭으로 누른다. */
+async function navigate() { await act(async () => { byText("Navigate").click(); }); }
 const moved = () => document.querySelector("output[data-moved]")?.getAttribute("data-moved") === "true";
 
 describe("ReconnectButton", () => {
@@ -55,7 +57,7 @@ describe("ReconnectButton", () => {
     mocks.connectRepository.mockReturnValue(call.promise);
     await render(<><ReconnectButton slug="acme" label="Reconnect" server={{}} /><Navigate /></>);
     await click(byText("Reconnect"));
-    await click(byText("Navigate"));
+    await navigate();
     expect(moved()).toBe(true);
     await act(async () => { call.resolve({ ok: true }); });
   });
@@ -99,7 +101,7 @@ describe("AddSourcesModal", () => {
     mocks.addSurfaces.mockReturnValue(call.promise);
     await render(<>{modal({ server: {} })}<Navigate /></>);
     await add();
-    await click(byText("Navigate"));
+    await navigate();
     expect(moved()).toBe(true);
     await act(async () => { call.resolve({ ok: true, results }); });
   });

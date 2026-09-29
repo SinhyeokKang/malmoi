@@ -22,9 +22,12 @@ const props = {
     samples: [{ locale: "en", total: 1, rows: [{ key: "old", value: "Hello" }] }], confirmation: "signed" }] },
 };
 beforeEach(() => { vi.clearAllMocks(); mocks.detect.mockResolvedValue(props.initial); });
+const screen = () => <SourcesScreen slug={props.slug} adapters={props.adapters} role="OWNER" data={{ installed: true, sources: [], repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } }} now={new Date()} initialOpen />;
 async function draw() {
-  await render(<SourcesScreen slug={props.slug} adapters={props.adapters} role="OWNER" data={{ installed: true, sources: [], repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } }} now={new Date()} initialOpen />);
-  return { container: document.body };
+  const view = await render(screen());
+  /** 재검증이 싣고 온 새 서버 트리 — `data`가 새 객체가 된다. 추가 뒤 닫기가 그것을 기다린다(malmoi#107). */
+  const revalidate = () => view.rerender(screen());
+  return { container: document.body, revalidate };
 }
 async function select() {
   await act(async () => { await userEvent.setup().click(find(document.body, '[role="checkbox"]')); });
@@ -53,9 +56,10 @@ it("선택한 표면의 실패 뒤에도 후보와 입력을 보존하고 재시
 it("추가 결과는 새 토큰 없이 기존 workflow step과 부분 실패를 보여준다", async () => {
   mocks.add.mockResolvedValue({ ok: true, results: [{ surfaceSlug: "second", pathTemplate: "second/{locale}.json", count: 1, failed: 1 }], yaml: "surface: second" });
   const user = userEvent.setup();
-  const { container } = await draw();
+  const { container, revalidate } = await draw();
   await select();
   await act(async () => user.click(find(container, '[data-add-sources]')));
+  await revalidate();
   expect(container.textContent).toContain("Update the workflow");
   expect(container.textContent).not.toContain("Save this in your repository as");
   expect(container.textContent).toContain("1");

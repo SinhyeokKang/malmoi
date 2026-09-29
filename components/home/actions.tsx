@@ -254,7 +254,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
           variant="warning"
           title={m.home.banner.notConnected.title}
           /* ⚠️ **이 화면에서만 검정이 Publish가 아니다** (캔버스 `2c`) — 할 수 있는 일이 하나뿐이다. */
-          actions={owner ? <ReconnectButton slug={slug} variant="primary" label={m.home.banner.notConnected.action} /> : undefined}
+          actions={owner ? <ReconnectButton slug={slug} server={repo} variant="primary" label={m.home.banner.notConnected.action} /> : undefined}
         >
           {m.home.banner.notConnected.body}
           {!owner && <> {m.home.banner.notConnected.editor}</>}

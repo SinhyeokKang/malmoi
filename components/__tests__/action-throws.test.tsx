@@ -91,12 +91,12 @@ it("GitHub 연결 해제 호출이 던지면 실패 문구를 세운다", async 
 
 it("Reconnect 호출이 던지면 실패 문구를 세운다 — onFailure가 있으면 그쪽으로 보낸다", async () => {
   mocks.connectRepository.mockRejectedValue(new Error("offline"));
-  await render(<ReconnectButton slug="acme" label="Reconnect" />);
+  await render(<ReconnectButton slug="acme" label="Reconnect" server={{}} />);
   await click([...document.querySelectorAll("button")].find(b => b.textContent?.includes("Reconnect"))!);
   expect(alert()).toContain(m.settings.repository.connectFailed);
 
   const onFailure = vi.fn();
-  await render(<ReconnectButton slug="acme" label="Reconnect again" onFailure={onFailure} />);
+  await render(<ReconnectButton slug="acme" label="Reconnect again" onFailure={onFailure} server={{}} />);
   await click([...document.querySelectorAll("button")].find(b => b.textContent?.includes("Reconnect again"))!);
   expect(onFailure).toHaveBeenLastCalledWith(m.settings.repository.connectFailed);
 });
@@ -144,7 +144,7 @@ it("GitHub 계정 연결 시작이 던지면 실패 문구를 세운다", async 
 it("Add sources의 GitHub 재연결이 던지면 모달 안에서 말한다", async () => {
   mocks.detectRepoFormats.mockResolvedValue({ ok: false, error: "reauthorize" });
   mocks.startGithubConnect.mockRejectedValue(offline());
-  await render(<AddSourcesModal open onClose={vi.fn()} onAdded={vi.fn()} returnFocusRef={{ current: null }} slug="acme" owner="o" repo="r" branch="main" existing={[]} adapters={[]} />);
+  await render(<AddSourcesModal open onClose={vi.fn()} onAdded={vi.fn()} returnFocusRef={{ current: null }} slug="acme" owner="o" repo="r" branch="main" existing={[]} adapters={[]} server={{}} />);
   await click(buttonByText(m.newProject.empty.connect.reauthorize));
   expect(alerts()).toContain(failureText("unavailable"));
 });
