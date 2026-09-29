@@ -15,9 +15,15 @@ app/
                         쿠키 없는 모든 요청이 자기 자신으로 307을 돈다(entry-points가 부정 단언으로 고정)
                         ⚠️ ?error= 없이도 세션이 unavailable이면 문구를 띄운다
                         ⚠️ 초대에서 온 왕복이 여기서 끝나면 돌아가는 링크를 든다 — 자리를 아는 것은
-                        authjs.callback-url 쿠키뿐이고, 갈래가 invite일 때만 세운다(open redirect)
+                        authjs.callback-url 쿠키뿐이고, 갈래가 invite일 때만 세운다(open redirect).
+                        동의 화면(oauth)에서 온 왕복이면 `Back to app authorization`을 세운다(요청 ID 하나만 갈래로 남는다)
   signin/link/[challenge]/   계정 병합 안내. 인가가 없고 challenge가 대신한다 → 보호 경로 밖.
                         ⚠️ 만료를 이 화면으로 말하지 않는다 — /signin으로 되돌린다
+  oauth/authorize/      MCP 클라이언트의 로그인·동의(mcp-oauth, 2026-09-29 — ARCHITECTURE §6.45.9). ⚠️ 보호 경로 밖이다 — 무세션이 정상 진입이고
+                        페이지가 스스로 공급자 버튼을 그린다(넣으면 authorize URL이 요청 저장 전에 /signin으로 튕긴다). page.tsx(OAuth 쿼리 → CIMD →
+                        콜백 대조 → 요청 저장 → ?request= 정규화 · 판정 순서는 lib/oauth/authorize-view) · actions.ts(Authorize·Deny·Check request·
+                        Not you? — 세션을 **다시** 읽고, 콜백 redirect는 try 밖). ⚠️ 쿠키를 읽는 쪽이라 no-cookie-reads의 비쿠키 트리 밖이고,
+                        entry-points의 면제가 export 단위(EXEMPT_ACTIONS)다. 로그인 버튼은 normal-login이 넷째 진입점으로 센다
   privacy/              방침. 공개 셸 안의 components/privacy/(DESIGN §6.616) · 본문은 messages/en.tsx의 publicDocs.privacy.
                         ⚠️ 세션을 읽는 이유는 차단이 아니다 — 헤더 우측(publicAccount: 로그인이면 앱 셸과 같은 아바타 메뉴,
                         아니면 Get started → /signin). 그래서 동적이다
@@ -76,8 +82,9 @@ app/
                         (⚠️ ContentPanel을 안 든다 — 이 라우트는 layout.tsx가 든다. /projects만
                         페이지가 들어서 그쪽 loading.tsx가 패널을 드는 것이고, 여기서 또 들면 두 겹이다)
     mcp/                MCP connector(`/mcp`, 2026-09-28). 사용자 축 한 장 — requireUser만 지난다(인가할 프로젝트가 없다,
-                        account/와 같은 형 · layout.tsx가 ContentPanel을 든다). page.tsx(토큰 카드 · 연결 조각 · 가이드 링크) ·
-                        actions.ts(issueApiToken — 기존 행 삭제 + 삽입 한 tx라 Create와 Rotate가 같은 Action · revokeApiToken).
+                        account/와 같은 형 · layout.tsx가 ContentPanel을 든다). page.tsx(Connected apps · 토큰 카드 · 연결 조각 · 가이드 링크 —
+                        연결 조회만 감싸 장애를 빈 목록과 가른다) · actions.ts(issueApiToken — 기존 행 삭제 + 삽입 한 tx라 Create와 Rotate가 같은 Action ·
+                        revokeApiToken · disconnectOAuthConnection — 세션의 userId + 연결 id, 코어는 lib/oauth-server/revoke).
                         ⚠️ 토큰이 토큰을 만들지 않는다 — MCP 도구에 발급·폐기가 없고 여기가 유일한 길이다.
                         ⚠️ 서버 URL은 이 요청의 origin이다 — preview에서 보면 preview 주소여야 조각을 그대로 쓴다
     projects/[slug]/    프로젝트 축. layout.tsx가 ContentPanel 하나를 든다 (우측 패널은 2026-09-16 제거 — DESIGN §6.55)
@@ -212,11 +219,16 @@ components/
                         (⚠️ 국기는 CSS background-image다 — 로케일 200개 행에서 <img>면 요소가 그만큼 는다).
                         옛 번역 표 조각(header·filters·filter-chips·key-group·announcer)과 셀 편집
                         translation-input은 translation-rework T16에서 지웠다
-  mcp/                  `/mcp` 조각 셋(2026-09-28) — token-card(RowCard 머리에 행동 — 없음·만료 = Create, 활성 = Rotate · Revoke.
+  mcp/                  `/mcp` 조각(2026-09-28 · mcp-oauth 2026-09-29) — token-card(RowCard 머리에 행동 — 없음·만료 = Create, 활성 = Rotate · Revoke.
                         결과 미확인은 이 세션에만 산다) · token-modal(OnboardingModal 2단계 — ① 폼 ② 원문 1회, Done이 유일한 출구) ·
-                        connect-card(SegmentedControl + WorkflowBlock 형 조각 — 공개 문서 CodeBlock이 아니라 mono 자리가 안 는다).
+                        token-grant-fields(권한·범위 **필드만** — 모달과 동의 화면이 공유한다, columns 1|2 · 상태 슬롯·버튼·Alert는 호스트 소유) ·
+                        connected-apps-card(OAuth 연결 목록 · 끊기 Dialog · 조회 장애 ≠ 빈 목록 · RowCardList) ·
+                        connect-card(방식 세그먼트 브라우저/개인 토큰 + SegmentedControl + WorkflowBlock 형 조각 — 공개 문서 CodeBlock이 아니라 mono 자리가 안 는다).
                         ⚠️ grant 어휘·만료 선택지를 **다시 적는다** — TOKEN_GRANTS를 값으로 import하면 lib/auth/access가
                         클라이언트 그래프에 들어온다(client-graph). 두 벌의 대가는 components/__tests__/mcp-token이 순서까지 고정해 진다
+  oauth/                `/oauth/authorize` 조각(mcp-oauth) — app-card(앱 이름 + clientId 식별 줄, 말줄임 없음 · 칩 IconTile lg — 서버·클라이언트 공용) ·
+                        consent-panel(계정·앱·권한 폼·행동 줄 — 결과 셋: 명시 거부 Alert · 결과 미확인 → Check request · 성공은 Action redirect).
+                        ⚠️ 로고·제목·스크롤 영역은 페이지가 든다 — 정적 SVG import가 클라이언트 그래프에 들어오지 않게(client-graph)
   sources/ settings/ onboarding/ projects/ signin/ account/ invite/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
@@ -556,14 +568,15 @@ lib/
                         execute(⚠️ 던지면 SDK가 예외 문구를 결과에 싣는다 — 여기서 잡아 unavailable로 접는다) · 도메인별
                         account·project·keys·repos·sync·publish·translations·settings·members·onboarding · index(TOOLS).
                         ⚠️ Action을 import하지 않는다 — 같은 코어의 형제 껍데기다(세션이 없다)
-  oauth/                MCP OAuth의 **순수 판정만**(mcp-oauth 진행 중 — 껍데기는 oauth-server/). authorize(쿼리 파싱 — Object.hasOwn) ·
+  oauth/                MCP OAuth의 **순수 판정만**(mcp-oauth — 껍데기는 oauth-server/). authorize(쿼리 파싱 — Object.hasOwn) · authorize-view(화면 판정 순서 ·
+                        returnHost) ·
                         redirect(https·loopback http만, loopback은 포트만 뺀 원문 대조) · pkce(S256) · exchange(planCodeExchange — code 스냅샷만 · planRefresh — 30초 유예) ·
                         consent(planApiTokenIssue 재사용) · client-metadata(CIMD 문서 검증 — 가져오기·SSRF는 호출자) · bearer(mlm_/mlo_ 접두) ·
                         metadata(발견 문서 둘 + WWW-Authenticate) · endpoint(요청 origin → issuer·resource) · access(planOAuthAccess) ·
                         tokens(원문 생성·수명) · token-request(form 파싱) · revoke(planRevoke) · callback(콜백 URL) · ssrf(isPublicAddress).
                         ⚠️ server-only 없음 — 순수 모듈이다
   oauth-server/         MCP OAuth의 **DB·네트워크 껍데기**(전부 server-only · 쿠키를 읽지 않는다). token(교환·refresh — User → Connection 잠금) ·
-                        revoke · authorize(요청 저장·읽기 · code 발급 · 거부 — 동의 Action이 부른다, 세션은 호출자가 읽는다) ·
+                        revoke(토큰 폐기 · disconnectConnection — /mcp 끊기, 같은 tx 모양) · authorize(요청 저장·읽기 · code 발급 · 거부 — 동의 Action이 부른다, 세션은 호출자가 읽는다) ·
                         client-metadata-fetch(CIMD — 해석된 주소 전부 공개 · 그 주소에 고정 · 리다이렉트 불추종)
   onboarding-run/       **두 GitHub 자격증명이 만나는 조립**(2026-09-28 T4-c — ARCHITECTURE §3.1). Server Action과 MCP 도구가
                         같이 부른다: access(checkRepoAccess) · repos · branches · detect · add · create · import · rotate-token.
