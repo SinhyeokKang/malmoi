@@ -3323,6 +3323,8 @@ export const en = {
     errors: {
       // 역할은 되는데 토큰이 그 동작을 안 받았다 — 토큰은 불변이라 다음 행동은 재발급 하나다.
       "token-scope": "This token doesn't allow that action. Issue a new token with that permission on the MCP connector page.",
+      // 같은 거부를 OAuth 연결이 받았다(#149) — 연결의 권한을 바꾸는 길은 앱에서 다시 연결(재동의)이다(mcp-oauth design §4). 개인 토큰으로 보내지 않는다.
+      "token-scope-oauth": "This app's connection doesn't allow that action. Connect Malmoi again from the app and allow that permission — the new connection replaces this one.",
       // Publish 핸들이 낡았다 — 아무것도 안 보냈다는 것과 다음 행동을 함께 말한다.
       reconfirm: "The translations changed after the preview, so nothing was sent. Preview again, then publish with the new handle.",
       "invalid-input": "The arguments don't match this tool's input. Check them and try again.",
