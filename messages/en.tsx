@@ -70,8 +70,8 @@ export const en = {
      * 무엇이 **버려지는지**를 말하는 유일한 자리다. 문장을 더하지 않았다(360px Dialog 줄 수 불변).
      * ⚠️ `updatedBy`까지 비워 저자도 리포가 된다(`lib/push/apply.ts`) — "discard"가 그것을 포함한다.
      */
-    unsent: (_n: number, edits: ReactNode): ReactNode => (
-      <>Sync will discard {edits} and replace them with repository values.</>
+    unsent: (n: number, edits: ReactNode): ReactNode => (
+      <>Sync will discard {edits} and replace {n === 1 ? "it" : "them"} with repository values.</>
     ),
     /** ⚠️ 이 줄은 `unsent`와 **독립으로 서거나 빠진다** — 문단으로 잇지 않는다 (시안 `4c`). */
     openPr: (n: number, branch: string): string =>
