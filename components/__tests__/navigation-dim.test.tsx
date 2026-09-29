@@ -74,6 +74,18 @@ describe("NavigationDim", () => {
     }
   });
 
+  /**
+   * **보류 중인 이동을 뒤로 가기로 버리면 곧장 꺼진다** (malmoi#151). 돌아간 기록이 같은 pathname이면(`?event=` 상세를 닫은 뒤
+   * 다른 화면 링크 → 응답 전 뒤로) pathname 커밋이 오지 않아 한도(10 s)까지 화면 전체가 흐렸다.
+   */
+  it("보류 중인 이동에서 뒤로 가기(popstate)를 누르면 pathname이 같아도 곧장 꺼진다", async () => {
+    await render(<NavigationDim />);
+    await press(anchor("/projects"));
+    expect(dim().hasAttribute("data-active")).toBe(true);
+    await act(async () => { window.dispatchEvent(new PopStateEvent("popstate")); });
+    expect(dim().hasAttribute("data-active")).toBe(false);
+  });
+
   it("커밋이 오지 않으면(같은 화면으로 redirect 등) 한도 뒤에 스스로 꺼진다", async () => {
     vi.useFakeTimers();
     await render(<NavigationDim />);
