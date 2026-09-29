@@ -80,7 +80,7 @@
   - ARCHITECTURE `:1710`: §5.8 전달 확인 레코드 필드 목록의 `confirmedAt`.
   - DESIGN `:383`: `isUnpublished`를 `translation-list`의 실제 필드명(`hasPending`·셀 `pending`)으로 바꾼다.
   - §5.7에는 UNKNOWN 언급이 없어 고칠 것이 없다.
-  — 검증: 완료 조건 7의 rg 0건. 남기는 역사 서술 줄이 있으면 여기에 줄 번호로 적는다.
+  — 검증: 완료 조건 7의 rg 0건. 남기는 역사 서술 줄: ARCHITECTURE `:190`(`loadKeys` 삭제 기록) · `:1079–1080`(`isUnpublished`·`countUnpublished` 삭제 기록).
 
 ── 커밋 순서:
 1. `/db`: 스키마 + 마이그레이션

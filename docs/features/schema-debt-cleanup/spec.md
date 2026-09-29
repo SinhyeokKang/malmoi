@@ -42,7 +42,7 @@ CLAUDE.md "기존 dead code는 언급만 하고 삭제하지 않는다"의 **명
 
 ## 완료 조건
 
-1. `rg -n 'isUnpublished|countUnpublished\b|loadKeys\b|KeyRow\b' lib app components` → 0건(주석·테스트 포함). `countUnpublishedBySurface`는 남는다(번역 랜딩이 쓴다).
+1. `rg -n 'isUnpublished|countUnpublished\b|\bloadKeys\b|\bKeyRow\b' lib app components` → 0건(주석·테스트 포함). `countUnpublishedBySurface`는 남는다(번역 랜딩이 쓴다).
 2. `list-aggregates.integration.ts`·`sync-edit-protection.integration.ts`의 술어 대조와 토큰 비노출 단언이 **`lib/keys/translation-list.ts`의 목록·상세 출력**을 잰다. 그리고 두 가지가 성립한다.
    - 상세 투영(`translation-list.ts:276` 부근)에 `pendingEditToken`을 임시로 실으면 토큰 비노출 단언이 red이고, 원복하면 green이다(뮤테이션 1회).
    - `pnpm test:projects:postgres`가 green이다.
@@ -57,7 +57,7 @@ CLAUDE.md "기존 dead code는 언급만 하고 삭제하지 않는다"의 **명
    - (c) **② 실측**: dev에서 로그인 · 로그 화면 · Publish · Save 각 1회. `/merge` ② 뒤 prod에서 로그인 1회 + 로그 화면 열기.
 6. `pnpm typecheck` · `pnpm test` · `pnpm build` · `pnpm test:projects:postgres` · `pnpm test:credentials:postgres` green. ② 마이그레이션이 들어간 상태에서도 green이어야 한다.
 7. 문서가 코드와 맞는다.
-   - `rg -n 'isUnpublished|countUnpublished\b|loadKeys|confirmedAt|recordedAt|UNKNOWN' docs/ARCHITECTURE.md docs/DESIGN.md` → 0건. 예외는 태스크 B1.7에 적은 역사 서술 줄뿐이다.
+   - `rg -n 'isUnpublished|countUnpublished\b|\bloadKeys\b|confirmedAt|recordedAt|UNKNOWN' docs/ARCHITECTURE.md docs/DESIGN.md` → 0건. 예외는 태스크 B1.7에 적은 역사 서술 줄뿐이다.
    - ARCHITECTURE §5.1은 Account snake_case 컬럼을 **셋**이라고 쓴다.
 
 ## 비목표
