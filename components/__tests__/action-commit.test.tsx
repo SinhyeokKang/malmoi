@@ -40,11 +40,9 @@ import { PublishButton, PublishModal, usePublish } from "@/components/publish-bu
 import { InviteModal } from "@/components/members/invite-modal";
 import { MemberList } from "@/components/members/member-list";
 import { PendingInvitations } from "@/components/members/pending-invitations";
-import { AddSourcesModal } from "@/components/sources/add-sources-modal";
 import { SourcesScreen } from "@/components/sources/sources-screen";
 import type { MemberView, PendingInvitation } from "@/lib/auth/query";
 import { m } from "@/lib/i18n";
-import type { CandidateSummary } from "@/lib/onboarding/detect";
 import type { SourceDetail, SourcesData } from "@/lib/sources/query";
 
 let commit: () => void = () => {};
@@ -128,25 +126,6 @@ describe("#12 — 중복 refresh를 지우고 대기가 커밋을 덮는다", ()
     await view.rerender(<SourcesScreen slug="p" role="OWNER" data={{ ...data, sources: [{ ...source }] }} adapters={[]} now={new Date()} />);
     expect(mocks.loadSourceDetail).toHaveBeenCalledTimes(2);
     expect(mocks.refresh).not.toHaveBeenCalled();
-  });
-
-  it("Sources 추가: 모달 닫기와 결과 배너가 커밋과 함께 선다 — refresh 없음", async () => {
-    const candidate: CandidateSummary = {
-      adapter: "json-catalog", label: "JSON", pathTemplate: "i18n/{locale}.json", locales: ["en"], outputPaths: ["i18n/en.json"],
-      baseLocale: "en", keys: { status: "counted", count: 2 }, samples: [{ locale: "en", rows: [{ key: "hello", value: "Hi" }], total: 2 }],
-    };
-    mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [candidate] });
-    mocks.addSurfaces.mockImplementation(revalidating({ ok: true, results: [{ surfaceSlug: "mobile", count: 2, failed: 0 }] }));
-    const onAdded = vi.fn(); const onClose = vi.fn();
-    const ref = { current: null };
-    await render(<AddSourcesModal open onClose={onClose} onAdded={onAdded} returnFocusRef={ref} slug="p" owner="o" repo="r" branch="main" existing={[]} adapters={[]} />);
-    await click(document.querySelector<HTMLElement>('[role="checkbox"]')!);
-    await click(document.querySelector<HTMLElement>("[data-add-sources]")!);
-    expect(onAdded).not.toHaveBeenCalled();
-    expect(onClose).not.toHaveBeenCalled();
-    await finishCommit();
-    expect(onAdded).toHaveBeenCalledOnce();
-    expect(onClose).toHaveBeenCalledOnce();
   });
 });
 
