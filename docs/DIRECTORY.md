@@ -652,7 +652,7 @@ lib/
                         내비, slug ↔ 파일) · collect(링크·라벨·이미지 수집, resolveDocLink) · sections(절·표·도입 문단) ·
                         toc(extractToc — H2만, 둘 미만이면 빈 목록 · tableLabel) · rules(렌더러가 약속하지 않는 원고 문법 — raw HTML · 섞인/링크 이미지 · 각주 · SUMMARY 셋째 단) · dictionary(dictionaryStrings — 사전의 문자열 잎, 굵은 라벨 게이트) · remark(렌더 직전 손질 — {#id} → id · 링크 해소 ·
                         표 이름 · 코드 파일명) · href(docHref — SUMMARY slug → 경로) · overview(개요 두 갈래 상수) · legacy(옛 해시 —
-                        ⚠️ 잎, 클라이언트가 읽는다) · legacy-anchors(옛 id 일곱의 표) · load(server-only — ⚠️ 모듈 최상위에서 읽지 않는다,
+                        ⚠️ 잎, 클라이언트가 읽는다) · legacy-anchors(옛 id 일곱의 표 + 섹션으로 나뉜 장의 옛 id 표) · load(server-only — ⚠️ 모듈 최상위에서 읽지 않는다,
                         함수 안 + React cache) · shots(parseShotSize·shotSizes — SHOOTING 표의 치수를 <img width height>로. 한국어 열 이름 대신 **순서**로 읽는다 — load.test가 실물 표로 순서 읽기 = 이름 읽기를 잰다) · stale(staleShots — SHOOTING 매핑 표의 기록 blob SHA vs 현재 SHA. 한국어 열 이름은 읽지 않는다 — lib/는 no-korean-ui 범위라 열→필드 매핑은 scripts/guide-check 몫). ⚠️ routes.docs(page, anchor)의 인자는 리터럴이어야 한다(docs-links.test가 원고와 대조) —
                         SUMMARY에서 온 slug는 docHref가 잇는다
   seo/                  공개 페이지 머리·크롤러 파일의 순수 함수. site(SITE_ORIGIN — canonical·sitemap·llms·JSON-LD의 유일한 절대 기준,
