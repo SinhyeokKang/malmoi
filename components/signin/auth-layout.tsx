@@ -14,17 +14,18 @@ import { DotField } from "./dot-field";
 /**
  * 셸 **밖** 화면 셋의 골격 (8-1b) — 로그인 · 초대 수락 · 계정 병합.
  *
- * ⚠️ **둘이 같은 형을 쓰는 이유**: 번역자에게는 **초대 화면이 이 제품의 첫 얼굴**이고, 따로
- * 그리면 같은 제품이 두 얼굴이 된다(2026-09-10 사용자 결정). 초대 화면 시안이 따로 없는 것도
- * 그래서다 — 로그인 시안의 규칙을 그대로 적용한다.
+ * ⚠️ **우측 장식은 `/signin`만 든다** (`decoration`, 2026-09-29 사용자) — 초대 수락·계정 병합은 흰 폼 패널
+ * 단일이다. 2026-09-10에는 "초대가 번역자의 첫 얼굴"이라 셋이 같은 2열이었는데, 초대가 실패해도 우측이
+ * 환영 KV로 남는 어긋남이 생겼다(KV에 문구가 구워져 분기별로 못 바꾼다). **기본값이 단일이다** — 새 셸 밖
+ * 화면은 넘기지 않으면 단일로 선다. 패널·캔버스·푸터 좌표는 두 형이 같고 그리드만 다르다.
  *
  * ⚠️ **`min-w-[1280px]`가 없으면 규약 3의 "1280 미만에서 가로 스크롤"이 실제로 일어나지 않는다** —
  * grid가 그냥 압축되고 우측 키비주얼만 잘린다. 규약이 허용한 것은 스크롤이지 잘림이 아니다.
  *
- * ⚠️ **푸터는 공개 셸의 `PublicFooter`이고 두 패널 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
+ * ⚠️ **푸터는 공개 셸의 `PublicFooter`이고 패널 줄 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
  * `absolute bottom-6`의 14px 줄이었다). 좌표도 공개 셸과 같다: 바깥 `px-2 pt-2` · 패널 줄 · 푸터 40이 바닥 띠다.
  */
-export function AuthLayout({ children }: { children: ReactNode }) {
+export function AuthLayout({ children, decoration = false }: { children: ReactNode; decoration?: boolean }) {
   /**
    * ⚠️ **탭 두 장이 배경 위에 떠 있는 구조다** (시안 검산: 프레임 1920 → body가 x=8 y=8의
    * 1904×1064이고, 좌 탭 x=0(948)·우 탭 x=956 → **바깥 padding 8 · 탭 간 gap 8**).
@@ -47,7 +48,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         스크롤되어야 한다(자르지 않는다). 패널 줄이 `flex-1`로 남은 높이를 채운다.
       */}
       <div className="bg-canvas flex min-h-svh min-w-[1280px] flex-col px-2 pt-2">
-        <div className="grid flex-1 grid-cols-2 gap-2">
+        <div className={cn("grid flex-1 gap-2", decoration && "grid-cols-2")}>
           {/*
             ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
             ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.
@@ -57,7 +58,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           <main className="border-border-subtle relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-low">
             {children}
           </main>
-          <Decoration />
+          {decoration && <Decoration />}
         </div>
         <PublicFooter />
       </div>
@@ -74,10 +75,6 @@ export function AuthLayout({ children }: { children: ReactNode }) {
  *
  * ⚠️ **이 패널엔 border가 없다** (시안) — 그라데이션 자체가 면을 만들어 선이 필요 없다. 좌측
  * 폼 패널만 `border-subtle`을 든다.
- *
- * ⚠️ **초대 화면의 실패 분기에서도 이 장식이 그대로 보인다** — 좌측이 "This invitation expired"인데
- * 우측이 환영 화면인 상태가 생긴다. KV에 문구가 **구워져 있어** 분기별로 못 바꾸고, 어색한지는
- * 런타임 목측(T11)이 판단한다.
  */
 function Decoration() {
   return (

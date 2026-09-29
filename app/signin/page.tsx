@@ -55,7 +55,7 @@ export default async function SignIn({
   const shown = error ?? (session.status === "unavailable" ? "Unavailable" : undefined);
 
   return (
-    <AuthLayout>
+    <AuthLayout decoration>
       <AuthColumn>
         <Image src={logo} alt="" width={48} height={48} priority />
         {/* ⚠️ **설명이 없다** — 제품 설명은 랜딩이 맡는다 (8-1b). */}
