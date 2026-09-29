@@ -65,6 +65,10 @@ describe("parseAuthorizeRequest — 되돌려 보낼 수 없는 오류(client·r
     expect(parse({ ...valid(), redirect_uri: "https://claude.ai/cb#frag" })).toMatchObject({ ok: false, redirectable: false });
   });
 
+  it.each(["javascript:alert(1)//", "data:text/html,x", "http://evil.example/cb", "app://cb"])("redirect_uri %s는 redirectable: false", uri => {
+    expect(parse({ ...valid(), redirect_uri: uri })).toEqual({ ok: false, error: "invalid_request", redirectable: false });
+  });
+
   it("상한을 넘는 client_id·redirect_uri·state는 redirectable: false", () => {
     const long = "x".repeat(2049);
     expect(parse({ ...valid(), client_id: `https://a.example/${long}` })).toMatchObject({ ok: false, redirectable: false });

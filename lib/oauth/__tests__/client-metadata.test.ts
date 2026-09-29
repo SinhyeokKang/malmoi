@@ -51,8 +51,8 @@ describe("planClientMetadata — client_id 대조", () => {
     expect(planClientMetadata(doc(http), http)).toEqual({ ok: false });
   });
 
-  it("clientId URL에 경로가 있어야 하고, fragment·userinfo가 없어야 한다", () => {
-    for (const id of ["https://chatgpt.com", "https://chatgpt.com/", `${CODEX}#x`, "https://user@chatgpt.com/client.json"]) {
+  it("clientId URL에 경로가 있어야 하고, fragment·userinfo·query가 없어야 한다", () => {
+    for (const id of ["https://chatgpt.com", "https://chatgpt.com/", `${CODEX}#x`, "https://user@chatgpt.com/client.json", "https://a.example/c?x=1", "https://a.example/c?"]) {
       expect(planClientMetadata(doc(id), id)).toEqual({ ok: false });
     }
   });
@@ -71,6 +71,22 @@ describe("planClientMetadata — redirect_uris", () => {
     for (const uris of [[], "http://127.0.0.1/cb", undefined, null, ["http://127.0.0.1/cb", 1], [{}]]) {
       expect(planClientMetadata(doc(uris), CODEX)).toEqual({ ok: false });
     }
+  });
+
+  it("https와 loopback http(127.0.0.1·[::1]·localhost)만 받는다", () => {
+    const ok = ["https://claude.ai/api/mcp/auth_callback", "http://127.0.0.1/cb", "http://[::1]/cb", "http://localhost/callback"];
+    expect(planClientMetadata(doc(ok), CODEX)).toMatchObject({ ok: true, client: { redirectUris: ok } });
+  });
+
+  it.each([
+    "javascript:alert(document.cookie)//",
+    "data:text/html,<script>alert(1)</script>",
+    "http://evil.example/cb",
+    "app://cb",
+    "http://localhost.evil.example/cb",
+    "http://user@127.0.0.1/cb",
+  ])("%s가 하나라도 있으면 거부한다 — 동의 뒤 우리 origin에서 실행되거나 평문으로 code가 나간다", bad => {
+    expect(planClientMetadata(doc(["http://127.0.0.1/cb", bad]), CODEX)).toEqual({ ok: false });
   });
 
   it("URL로 못 읽는 원소가 있으면 거부한다", () => {

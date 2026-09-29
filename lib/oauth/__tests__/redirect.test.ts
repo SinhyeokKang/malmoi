@@ -120,6 +120,11 @@ describe("planRedirectUri", () => {
     });
   });
 
+  it.each(["javascript:alert(document.cookie)//", "data:text/html,x", "http://evil.example/cb", "app://cb"])(
+    "등록돼 있어도 https·loopback http가 아닌 %s는 거부한다 — 등록 경로가 무엇이든 되살아나지 않게", uri => {
+      expect(planRedirectUri([uri], uri)).toBe(false);
+    });
+
   it("URL로 못 읽는 요청은 거부한다", () => {
     expect(planRedirectUri(["http://127.0.0.1/callback"], "not a url")).toBe(false);
     expect(planRedirectUri(["not a url"], "not a url")).toBe(false);
