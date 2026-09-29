@@ -2849,6 +2849,8 @@ GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" 
 
 **화면을 그리는 동안 GitHub을 기다리는 자리는 전부 `lib/github-wait.ts`의 `GITHUB_WAIT_MS`(8초)를 읽는다** — 목록의 원격 신호(`loadRemoteSignals`)·연결 확인(`probeRepo`)·설정의 열린 PR(`loadOpenPrUrl`)·계정 조회(`loadAccountView` — 설정·`/account`). 넘기면 각자의 실패 갈래(신호 없음 · `error`→`unknown` · `undefined` · `unavailable`)로 접고 로그 한 줄을 남긴다. 같은 원격을 기다리는 두 화면의 마감이 다르면 한쪽은 "확인할 수 없음", 다른 쪽은 아직 매달린 채로 갈린다 — 그래서 사본을 두지 않는다. 설정 화면은 그 셋을 await하지 않고 Suspense로 스트리밍하며, **App 인스턴스는 요청 사이에 남는다**(설치 토큰 캐시가 인스턴스에 붙어 있다 — `createApp`). ⚠️ 그래서 캐시가 만료 직전 토큰을 줄 수 있고, 고정 토큰을 쥐는 `createGitClient`는 만료가 5분 안이면 `refresh: true`로 다시 받는다.
 
+⚠️ **Home만 probe를 30초 기억한다** (2026-09-29, malmoi#107 — `lib/github-connect/probe-memo.ts`). Home은 probe로 상태 매트릭스(DESIGN §6.64)를 정해 Suspense로 뺄 수 없고, 사건 상세를 열 때마다 GitHub 2홉을 다시 기다렸다(Home 1.4–1.9 s vs Logs 0.6–0.8 s). 키에 **저장된 `installationId`·`repositoryId`**가 들어 Reconnect 직후 옛 결과로 `installation-changed`를 거짓 표시하지 않고, `error`는 기억하지 않으며, 인스턴스마다 최대 500개다. **대가는 App 제거 뒤 TTL 동안 Home이 옛 `ok`를 말하는 것**이다 — 그동안 Publish가 켜져도 서버가 GitHub에서 판정한다. 설정 화면·MCP·재연결 Action은 메모를 거치지 않는다(`loadConnectionHealth`의 `memo`를 켜는 곳이 Home 하나인지 `probe-memo.test.ts`가 소스에서 센다).
+
 `loadInstalledRepoCount`(`/account` — 설치 목록 + 설치별 리포)도 같은 마감이다 (2026-09-29, malmoi#107) — 넘기면 `null`("말할 수 없다" — 그 줄을 안 그린다)이다.
 
 ### 6.6 Credential 저장 경계 (2026-09-10, dev·prod 전환 완료)
