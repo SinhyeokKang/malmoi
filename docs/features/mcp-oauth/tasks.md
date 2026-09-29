@@ -96,3 +96,11 @@
 - 배포 순서: **dev 스키마 적용·권한 확인 → Claude Code `/push` → preview 검증 → prod `pnpm db:deploy`·상태·권한 확인 →
   Claude Code `/merge` → prod 검증**. prod 스키마 적용은 `/merge`의 선행 게이트이며 dev 적용으로 대신하지 않는다.
   claude.ai 확인을 prod로 남겼다면 preview에서 세 클라이언트 검증 완료로 기록하지 않고, prod 확인 전 spec 1을 미완으로 둔다.
+
+## 결정 기록 (orchestrate 인테이크, 2026-09-29)
+
+- 배치: **m1-measure**(T1) ∥ **m2-core**(T3 → T2) → **m3-server**(T4·T5·T6) → **m4-ui**(T7·T8·T9) → QA(T7 수동 왕복 · T10).
+  m2의 등록 방식 의존 조각(`planClientMetadata` 또는 DCR 판정)만 m1 결론을 기다린다.
+- T1 claude.ai 실측: `cloudflared` quick tunnel로 `.scratch/` 스텁을 공개한다. 실측용 커넥터는 끝나면 claude.ai에서 지운다.
+- T7 `/design-sync`: m4는 워크트리에서 DOM 테스트까지 구현 → 지휘자가 dev에 로컬 통합(push 전) → 같은 워커가 main 체크아웃에서
+  `/design-sync` 루프로 마무리한다(워크트리엔 `.env.local`이 없다).
