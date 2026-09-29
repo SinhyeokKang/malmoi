@@ -71,6 +71,17 @@ export const MODEL_CLASSES = {
   TranslationBaseline: "not-personal",
   /** 사람의 자격증명과 그 사람이 위임한 권한·범위·사용 시각이다(mcp-connector). */
   ApiToken: "personal",
+  /** 사람의 자격증명(OAuth 연결)과 그 사람이 위임한 권한·범위·사용 시각이다 — `ApiToken`의 형제다(mcp-oauth). */
+  OAuthConnection: "personal",
+  /** 그 사람 연결의 소비된 refresh 해시와 회전 시각이다 — 연결을 거쳐 사람을 가리킨다(mcp-oauth design §4). */
+  OAuthRefreshHistory: "personal",
+  /**
+   * ⚠️ **로그인 전에 만드는 행이라 사람을 가리키는 컬럼이 없다** — 클라이언트가 보낸 요청(클라이언트 식별자·콜백·PKCE challenge·state)뿐이다.
+   * 동의 결과(사용자·권한)는 이 행이 아니라 `OAuthCode`에 저장된다. 사용자 컬럼을 더하면 personal로 옮긴다.
+   */
+  OAuthAuthorizationRequest: "not-personal",
+  /** 누가 무엇을 위임했는가(사용자·권한·범위)의 60초짜리 스냅샷이다. */
+  OAuthCode: "personal",
 } as const satisfies Record<Prisma.ModelName, "personal" | "not-personal">;
 
 type PersonalModel = {
@@ -93,6 +104,9 @@ interface ScalarFieldsOf extends Record<PersonalModel, string> {
   ProjectMember: Prisma.ProjectMemberScalarFieldEnum;
   ProjectInvitation: Prisma.ProjectInvitationScalarFieldEnum;
   ApiToken: Prisma.ApiTokenScalarFieldEnum;
+  OAuthConnection: Prisma.OAuthConnectionScalarFieldEnum;
+  OAuthRefreshHistory: Prisma.OAuthRefreshHistoryScalarFieldEnum;
+  OAuthCode: Prisma.OAuthCodeScalarFieldEnum;
 }
 
 type FieldPath = { [M in PersonalModel]: `${M}.${ScalarFieldsOf[M]}` }[PersonalModel];
@@ -181,6 +195,51 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "ApiToken.createdAt": "collected",
   "ApiToken.lastUsedAt": "collected",
   "ApiToken.expiresAt": "retention",
+
+  /**
+   * MCP OAuth 연결 (mcp-oauth). 개인 토큰과 같은 판정이다 — 해시도 그 사람의 자격증명이고 권한·범위는 그 사람이 고른 위임, `lastUsedAt`은 활동 시각이다.
+   * 클라이언트 식별자·이름·콜백은 **그 사람이 어떤 앱을 연결했나**라서 같이 밝힌다. 연결 수명(`expiresAt`)이 보관 기간을 정한다.
+   * ⚠️ `/privacy` 본문 개정 판정은 T9(`policy-gate.test.tsx`)가 든다.
+   */
+  "OAuthConnection.id": "collected",
+  "OAuthConnection.userId": "collected",
+  "OAuthConnection.clientId": "collected",
+  "OAuthConnection.clientName": "collected",
+  "OAuthConnection.redirectUri": "collected",
+  /** 발급 환경의 origin·MCP URL — 모든 연결에 같은 상수 셋 중 하나다. */
+  "OAuthConnection.issuer": NOT_PERSONAL,
+  "OAuthConnection.resource": NOT_PERSONAL,
+  "OAuthConnection.grants": "collected",
+  "OAuthConnection.allProjects": "collected",
+  "OAuthConnection.projectIds": "collected",
+  "OAuthConnection.accessTokenHash": "collected",
+  "OAuthConnection.accessExpiresAt": "collected",
+  "OAuthConnection.refreshTokenHash": "collected",
+  "OAuthConnection.createdAt": "collected",
+  "OAuthConnection.lastUsedAt": "collected",
+  "OAuthConnection.expiresAt": "retention",
+
+  /** 연결이 살아 있는 동안 보존하고 연결과 함께 사라진다 — 보관 기간은 연결의 것을 따른다. */
+  "OAuthRefreshHistory.tokenHash": "collected",
+  "OAuthRefreshHistory.connectionId": "collected",
+  "OAuthRefreshHistory.usedAt": "collected",
+
+  /** 동의 결과의 60초 스냅샷 — 연결과 같은 항목이다. 발급 출처·검증 필드는 클라이언트가 보낸 요청의 사본이다. */
+  "OAuthCode.codeHash": "collected",
+  "OAuthCode.requestId": NOT_PERSONAL,
+  "OAuthCode.clientId": "collected",
+  "OAuthCode.clientName": "collected",
+  "OAuthCode.redirectUri": "collected",
+  "OAuthCode.codeChallenge": NOT_PERSONAL,
+  "OAuthCode.issuer": NOT_PERSONAL,
+  "OAuthCode.resource": NOT_PERSONAL,
+  "OAuthCode.userId": "collected",
+  "OAuthCode.grants": "collected",
+  "OAuthCode.allProjects": "collected",
+  "OAuthCode.projectIds": "collected",
+  "OAuthCode.connectionExpiresAt": "collected",
+  "OAuthCode.usedAt": "collected",
+  "OAuthCode.expiresAt": "retention",
 
   /**
    * 번역 값 자체는 프로젝트의 산출물이고 사람을 기술하지 않는다.
