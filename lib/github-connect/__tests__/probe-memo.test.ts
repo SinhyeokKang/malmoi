@@ -1,3 +1,7 @@
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it, vi } from "vitest";
 
 import type { ProbeResult } from "../health";
@@ -70,5 +74,19 @@ describe("probeMemoKey", () => {
 
   it("구분자가 섞인 이름끼리 겹치지 않는다", () => {
     expect(probeMemoKey({ ...project, repoOwner: "a/b", repoName: "c" })).not.toBe(probeMemoKey({ ...project, repoOwner: "a", repoName: "b/c" }));
+  });
+});
+
+/**
+ * **메모를 켜는 호출부는 Home 하나다.** 설정 화면은 OWNER가 고치러 가는 자리라 언제나 실물을 봐야 하고, MCP는 에이전트가
+ * 판정의 근거로 쓴다 — 거기에 `memo: true`가 붙으면 App 제거 뒤 30초 동안 거짓 `ok`가 퍼진다.
+ */
+describe("배선", () => {
+  const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+  it("loadConnectionHealth에 memo를 켜는 곳은 Home 페이지뿐이다", () => {
+    const callers = execFileSync("git", ["grep", "-l", "loadConnectionHealth(", "--", "app", "lib", "components"], { cwd: ROOT, encoding: "utf8" })
+      .trim().split("\n").filter(path => !path.includes("__tests__"));
+    const memoized = callers.filter(path => /loadConnectionHealth\([^)]*\{\s*memo:\s*true/.test(readFileSync(`${ROOT}/${path}`, "utf8")));
+    expect(memoized).toEqual(["app/(edit)/projects/[slug]/(home)/page.tsx"]);
   });
 });
