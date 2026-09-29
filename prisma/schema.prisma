@@ -433,11 +433,10 @@ enum EventKind {
 }
 
 /// 누가 일으켰나. ⚠️ **`USER`인데 `actorUserId`가 비어 있으면 계정이 지워진 사람이다**(`SetNull`) —
-/// 그래야 `Removed user`가 `AUTOMATION`·`UNKNOWN`과 구별된다 (logs-rework 결정 8).
+/// 그래야 `Removed user`가 `AUTOMATION`과 구별된다 (logs-rework 결정 8).
 enum ActorKind {
   USER
   AUTOMATION
-  UNKNOWN
 }
 
 /// **프로젝트에서 일어난 사건 하나** (logs-rework). `SyncRun`이 Publish 실행 전용인 것과 달리
@@ -694,9 +693,10 @@ model OAuthCode {
   @@index([userId, clientId])
 }
 
-/// OAuth provider 연결. **컬럼 이름이 snake_case인 것은 OAuth 응답 필드를 그대로 받기 때문이다** —
-/// 어댑터의 `linkAccount`가 `AdapterAccount`를 통째로 `create({ data })`에 넘기므로 **하나라도
-/// 없으면 Prisma가 `Unknown argument`로 던진다.** 안 쓰는 값이라고 빼면 로그인이 깨진다.
+/// OAuth provider 연결. **snake_case 셋은 github-app 토큰이다** — `safePrismaAdapter`가 `linkAccount`를 덮어 로그인은
+/// 식별자 넷만 쓴다(`lib/auth/safe-adapter.ts`). 그래서 OAuth 응답의 나머지 칸(`token_type`·`scope`·`id_token`·
+/// `session_state`)은 두지 않는다 (#108). ⚠️ **`linkAccount`를 다시 기본 어댑터로 돌리면** 응답을 통째로 `create`해
+/// `Unknown argument`로 던진다.
 ///
 /// ⚠️ **자동 계정 병합을 하지 않는다** (ARCHITECTURE §6 — 계정 병합은 `signIn` 콜백의 갈래 둘). 어댑터 기본값이 이미 그렇고
 /// (`allowDangerousEmailAccountLinking` 미설정), 같은 이메일의 다른 provider는
@@ -709,10 +709,6 @@ model Account {
   refresh_token     String?
   access_token      String?
   expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
 
   /// 조직 비관리자의 GitHub App 설치 **요청** 시각 (install-and-connect). `github-app` 행에만 쓴다 — 연결
   /// 해제·다른 계정으로 교체가 행 삭제로 기록을 같이 치운다(User에 두면 새 계정에 거짓 대기가 뜬다).
@@ -820,7 +816,6 @@ model DeliveryConfirmation {
   surfaceId          String
   /// 확인마다 새 UUID. 같은 값을 다시 확인해도 다른 관측이다 — 기준 행의 `revision`이 이것과 같아야 복원할 수 있다.
   revision           String
-  confirmedAt        DateTime
   syncRunId          String
   /// 원문·실제 base·어댑터·경로·리포 정체성·브랜치·importRevision의 지문. 확인 뒤 바뀌면 복원을 막는다.
   contextFingerprint String
@@ -848,7 +843,6 @@ model TranslationBaseline {
   restoreValue String
   /// 기록할 때의 `DeliveryConfirmation.revision`. 다르면 옛 확인의 기준이라 복원하지 않는다.
   revision     String
-  recordedAt   DateTime @default(now())
 
   stringKey    StringKey            @relation(fields: [projectId, surfaceId, keyId], references: [projectId, surfaceId, id], onDelete: Restrict)
   locale       Locale               @relation(fields: [projectId, surfaceId, localeCode], references: [projectId, surfaceId, code], onDelete: Restrict)
