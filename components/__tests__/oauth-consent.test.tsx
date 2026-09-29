@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, Component, type ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,14 +8,31 @@ import type { ScopeProject } from "@/components/mcp/token-grant-fields";
 
 import { find, render } from "./helpers/dom";
 
-const mocks = vi.hoisted(() => ({ authorize: vi.fn(), deny: vi.fn(), check: vi.fn(), switchAccount: vi.fn(), refresh: vi.fn() }));
+const mocks = vi.hoisted(() => ({ authorize: vi.fn(), deny: vi.fn(), check: vi.fn(), switchAccount: vi.fn(), refresh: vi.fn(), rethrown: [] as unknown[] }));
 vi.mock("@/app/oauth/authorize/actions", () => ({
   authorizeOAuthRequest: mocks.authorize,
   denyOAuthRequest: mocks.deny,
   checkOAuthRequest: mocks.check,
   switchOAuthAccount: mocks.switchAccount,
 }));
-vi.mock("next/navigation", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/navigation")>()), useRouter: () => ({ refresh: mocks.refresh }) }));
+vi.mock("next/navigation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/navigation")>();
+  return {
+    ...actual,
+    useRouter: () => ({ refresh: mocks.refresh }),
+    // 실물을 부르고 되던진 것만 기록한다 — 호출부가 redirect를 삼키지 않았는지를 경계 렌더와 별개로 잰다(`mcp-token.test.tsx`와 같다).
+    unstable_rethrow: (thrown: unknown) => {
+      try { actual.unstable_rethrow(thrown); } catch (error) { mocks.rethrown.push(error); throw error; }
+    },
+  };
+});
+
+/** transition에서 되던진 redirect를 받는 경계 — 없으면 Unhandled Error로 `pnpm test`가 exit 1이다. */
+class Boundary extends Component<{ children: ReactNode }, { error: unknown }> {
+  state = { error: null as unknown };
+  static getDerivedStateFromError(error: unknown) { return { error }; }
+  render() { return this.state.error === null ? this.props.children : <p data-caught>{String((this.state.error as { digest?: string }).digest)}</p>; }
+}
 
 /**
  * `/oauth/authorize` 동의 단계 (mcp-oauth 핸드오프 `1c`–`1j` · `1t`·`1u` · §8). 결과 셋 — 명시 거부는 입력 보존 + Alert(같은 버튼이 재시도),
@@ -42,13 +59,13 @@ const PROJECTS: ScopeProject[] = [
 const REDIRECT = () => Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/oauth/authorize?request=req_1&e=signed-out;307;" });
 
 let fixup: MutationObserver;
-beforeEach(() => { vi.clearAllMocks(); fixup = installFocusFixup(); });
+beforeEach(() => { vi.clearAllMocks(); mocks.rethrown.length = 0; fixup = installFocusFixup(); });
 afterEach(() => fixup.disconnect());
 
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-async function mount(over: Partial<Parameters<typeof ConsentPanel>[0]> = {}) {
+async function mount(over: Partial<Parameters<typeof ConsentPanel>[0]> = {}, boundary = false) {
   await settle();
-  const view = await render(
+  const ui = (
     <ConsentPanel
       requestId="req_1"
       app={{ name: "Claude Code", ident: "claude.ai/oauth/claude-code-client-metadata" }}
@@ -58,8 +75,9 @@ async function mount(over: Partial<Parameters<typeof ConsentPanel>[0]> = {}) {
       initial={{ grants: [], scope: "all", projectIds: [] }}
       replacesOn={null}
       {...over}
-    />,
+    />
   );
+  const view = await render(boundary ? <Boundary>{ui}</Boundary> : ui);
   await settle();
   return view;
 }
@@ -207,11 +225,15 @@ describe("제출 중 · 결과", () => {
   it("세션 만료의 redirect는 되던진다 — 미확인·실패 Alert를 세우지 않는다", async () => {
     mocks.authorize.mockRejectedValueOnce(REDIRECT());
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-    await mount();
-    await click(button("Authorize")).catch(() => {});
+    await mount({}, true);
+    await click(button("Authorize"));
+    await settle();
     errors.mockRestore();
+    expect(document.querySelector("[data-caught]")?.textContent).toContain("NEXT_REDIRECT");
+    expect(mocks.rethrown).toHaveLength(1);
     expect(document.body.textContent).not.toContain("We couldn't confirm");
     expect(document.body.textContent).not.toContain("We couldn't save");
+    expect(mocks.authorize).toHaveBeenCalledTimes(1);
   });
 });
 
