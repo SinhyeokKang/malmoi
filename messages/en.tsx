@@ -97,7 +97,7 @@ export const en = {
      * 링크가 앱 안(번역 화면)으로 간다는 것을 **문장이** 말한다. 2026-09-18에 외부 링크도 글리프를
      * 버려서 모양으로는 안팎이 안 갈린다 — 목적지를 알리는 몫이 전부 이 문장에 있다.
      */
-    sendHint: (link: ReactNode): ReactNode => <>To keep them, {link} — it opens the translation screen.</>,
+    sendHint: (n: number, link: ReactNode): ReactNode => <>To keep {n === 1 ? "it" : "them"}, {link} — it opens the translation screen.</>,
     /**
      * 미발송 0 ∧ 열린 PR — `Publish first`가 **거짓이 되는** 갈래다 (시안 `4c` 오른쪽).
      * 링크만 두면 권유가 왜 바뀌었는지가 화면에 없어 문장을 함께 둔다.

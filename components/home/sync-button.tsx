@@ -252,7 +252,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
           조회 중·실패(`undefined`)에는 권할 다음 행동이 없어 줄 자체가 없다 (`4d`).
         */}
         {plan.recommendSend
-          ? <p className="text-muted-foreground">{m.repositorySync.sendHint(
+          ? <p className="text-muted-foreground">{m.repositorySync.sendHint(shownUnsent,
               <Link href={surfaceSlug === undefined ? routes.translations(slug) : routes.surfaceTranslations(slug, surfaceSlug)} className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">{m.repositorySync.sendFirst}</Link>,
             )}</p>
           : pr !== undefined && pr !== null
