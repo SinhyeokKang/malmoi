@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const https = vi.hoisted(() => ({ request: vi.fn() }));
 vi.mock("server-only", () => ({}));
+vi.mock("node:https", () => ({ request: https.request }));
 
-const { fetchClientMetadata } = await import("../client-metadata-fetch");
+const { fetchClientMetadata, pinnedGet } = await import("../client-metadata-fetch");
 
 /**
  * **CIMD 문서 가져오기** (mcp-oauth design §2 · 결정 기록). 순서가 방어다: clientId URL 모양 → DNS 해석 → **해석된 주소 전부** 공개인지 →
@@ -72,5 +74,29 @@ describe("fetchClientMetadata", () => {
       get.mockResolvedValueOnce(response);
       await expect(fetchClientMetadata(CLIENT, deps)).resolves.toEqual({ ok: false, reason: "invalid-document" });
     }
+  });
+});
+
+/**
+ * **실제 네트워크 층의 고정** — keep-alive 에이전트가 있으면 같은 호스트로 열린 소켓을 재사용해 `lookup` 고정을 건너뛴다(리뷰 재현).
+ * 요청마다 에이전트 없이(`agent: false`) 새 연결을 열고, 연결 주소는 `lookup`이 준 고정 주소뿐이다.
+ */
+describe("pinnedGet", () => {
+  it("agent: false · lookup은 두 호출 모양 모두 고정 주소만 준다", async () => {
+    const { EventEmitter } = await import("node:events");
+    https.request.mockImplementation(() => {
+      const req = Object.assign(new EventEmitter(), { end: () => queueMicrotask(() => req.emit("error", new Error("stop"))), destroy: () => undefined });
+      return req;
+    });
+    const pinned = { address: "160.79.104.10", family: 4 as const };
+    await expect(pinnedGet(new URL(CLIENT), pinned, { timeoutMs: 1_000, maxBytes: 10 })).rejects.toThrow("stop");
+    const options = https.request.mock.calls[0]![1] as { agent: unknown; lookup: (h: string, o: object, cb: (...a: unknown[]) => void) => void };
+    expect(options.agent).toBe(false);
+    const single = vi.fn();
+    options.lookup("claude.ai", {}, single);
+    expect(single).toHaveBeenCalledWith(null, "160.79.104.10", 4);
+    const all = vi.fn();
+    options.lookup("claude.ai", { all: true }, all);
+    expect(all).toHaveBeenCalledWith(null, [pinned]);
   });
 });

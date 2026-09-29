@@ -129,6 +129,17 @@ describe("요청 → code → 연결", () => {
     expect((await exchange(code, now)).status).toBe("ok");
   });
 
+  it("교환이 성공하면 그 code 행과 그 사용자의 만료 code 행이 지워진다 — 다른 사용자의 행은 그대로", async () => {
+    // 다른 클라이언트의 code — 새 code 발급 시점엔 아직 살아 있고(발급의 만료 정리에 안 걸린다) 교환 시점엔 만료다.
+    await issued(await store(at(MIN + 30_000), CODEX), at(MIN + 30_000));
+    await issue(await store(at(0)), at(0), { userId: "u2" });
+    const code = codeOf((await issued(await store(at(2 * MIN)), at(2 * MIN))).redirect);
+    expect(await prisma.oAuthCode.count()).toBe(3);
+    expect((await exchange(code, at(2 * MIN + 31_000))).status).toBe("ok");
+    expect((await prisma.oAuthCode.findMany({ select: { userId: true } })).map(r => r.userId)).toEqual(["u2"]);
+    expect(await exchange(code, at(2 * MIN + 32_000))).toEqual({ status: "invalid_grant" });
+  });
+
   it("code는 1회용 — 동시 교환은 한 건만, 재사용은 거부 · 연결은 하나", async () => {
     const code = codeOf((await issued(await store(at(0)), at(1_000))).redirect);
     const results = await Promise.all([exchange(code, at(2_000)), exchange(code, at(2_000))]);

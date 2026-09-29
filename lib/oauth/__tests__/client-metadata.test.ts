@@ -57,6 +57,12 @@ describe("planClientMetadata — client_id 대조", () => {
     }
   });
 
+  it("기본이 아닌 포트의 clientId URL은 거부한다 — 가져오기가 임의 포트의 내부 서비스를 두드리지 않는다", () => {
+    for (const id of ["https://chatgpt.com:8443/client.json", "https://chatgpt.com:22/client.json"]) {
+      expect(planClientMetadata(doc(id), id)).toEqual({ ok: false });
+    }
+  });
+
   it("정규화로만 같아지는 clientId URL(점 세그먼트·대문자 호스트)은 거부한다", () => {
     for (const id of ["https://chatgpt.com/oauth/../client.json", "https://ChatGPT.com/client.json", "not a url"]) {
       expect(planClientMetadata(doc(id), id)).toEqual({ ok: false });

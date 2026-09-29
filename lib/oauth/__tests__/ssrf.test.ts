@@ -33,6 +33,21 @@ describe("isPublicAddress", () => {
     expect(isPublicAddress("::ffff:8.8.8.8")).toBe(true);
   });
 
+  it("6to4(2002::/16)는 품은 IPv4로 판정한다", () => {
+    expect(isPublicAddress("2002:7f00:1::")).toBe(false);
+    expect(isPublicAddress("2002:a9fe:a9fe::1")).toBe(false);
+    expect(isPublicAddress("2002:0808:0808::1")).toBe(true);
+  });
+
+  it("Teredo · NAT64 local-use · SIIT · 새 문서 대역은 거부한다", () => {
+    for (const ip of ["2001::1", "2001:0:4136:e378:8000:63bf:3fff:fdd2", "64:ff9b:1::a9fe:a9fe", "64:ff9b:1:ffff::8.8.8.8", "::ffff:0:7f00:1", "::ffff:0:808:808", "3fff::1", "3fff:0fff::1"]) {
+      expect(isPublicAddress(ip), ip).toBe(false);
+    }
+    // 경계 밖 — 2001:1::/32(Teredo 아님)·3fff:1000::(3fff::/20 밖)은 이 규칙으로 막지 않는다.
+    expect(isPublicAddress("2001:4860::8888")).toBe(true);
+    expect(isPublicAddress("3fff:1000::1")).toBe(true);
+  });
+
   it("주소가 아닌 문자열은 거부한다", () => {
     for (const ip of ["", "localhost", "1.2.3", "1.2.3.256", "::gg", "1::2::3", "01.2.3.4"]) expect(isPublicAddress(ip), ip).toBe(false);
   });

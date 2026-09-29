@@ -229,6 +229,17 @@ describe("실패는 숨지 않는다", () => {
     expect((await refresh(c.refresh, at(2_000))).status).toBe("ok");
   });
 
+  it("해시 교체가 0행이면(사용자 조건 불일치 등) 실패로 롤백한다 — 이력도 남지 않고 토큰을 주지 않는다", async () => {
+    const c = await connect();
+    // BEFORE 트리거가 NULL을 돌려주면 그 행의 UPDATE는 조용히 건너뛴다 — 영향 0행을 만든다.
+    await pool.query(`CREATE FUNCTION skip_update() RETURNS trigger AS $$ BEGIN RETURN NULL; END $$ LANGUAGE plpgsql;
+      CREATE TRIGGER skip_update BEFORE UPDATE ON "OAuthConnection" FOR EACH ROW EXECUTE FUNCTION skip_update();`);
+    await expect(refresh(c.refresh, at(1_000))).rejects.toThrow();
+    expect(await prisma.oAuthRefreshHistory.count()).toBe(0);
+    await pool.query(`DROP TRIGGER skip_update ON "OAuthConnection"`);
+    expect((await refresh(c.refresh, at(2_000))).status).toBe("ok");
+  });
+
   it("재사용 폐기의 삭제가 실패하면 invalid_grant가 아니라 던진다(→ server_error) · 연결은 남는다", async () => {
     const c = await connect();
     await refresh(c.refresh, at(0));
