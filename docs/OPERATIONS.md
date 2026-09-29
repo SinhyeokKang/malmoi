@@ -395,19 +395,20 @@ WHERE defaclnamespace = 'public'::regnamespace;
 
 | 규칙 | 조건 | 한도 · 키 | 동작 | 상태 |
 |---|---|---|---|---|
-| Rate limit image proxy | `path starts with /api/images/` | 600 req / 60s · `ip` | `log` | 2026-09-28 프로덕션 게시 — 429 승격 대기 |
-| Rate limit OAuth authorize | `path equals /oauth/authorize` | 60 req / 60s · `ip` | `log`로 시작 | **추가 대기** — `/merge` 전 프로덕션 프로젝트에서 한다(mcp-oauth 결정 기록) |
+| Rate limit public entry points | `path starts with /api/images/` **OR** `path equals /oauth/authorize` | 600 req / 60s · `ip` | `log` | 2026-09-28 image proxy로 게시 → 2026-09-29 authorize를 OR 조건으로 합쳐 재게시(옛 이름 `Rate limit image proxy`) — 429 승격 대기 |
+
+⚠️ **규칙이 하나인 것은 Hobby 플랜의 rate limit 규칙 상한(1개) 때문이다**(2026-09-29 대시보드 "Upgrade to pro to add up to 40 rate limit rules"). 그래서 두 경로가
+**카운터 하나(IP당 600/60s)를 나눠 쓴다** — authorize만 보면 원래 계획한 60보다 느슨하다. Pro로 올리면 authorize를 60/60s 규칙으로 떼어 낸다.
 
 **왜 authorize인가**: 무인증 GET 하나가 **남이 고른 URL의 CIMD 가져오기**(최대 5초 · 64 KiB)와 **요청 행 삽입**을 만든다(ARCHITECTURE §6.45.9).
 한도 60의 근거: 정상 사용자는 연결 한 번에 2요청(쿼리 → `?request=` 정규화) + 로그인 왕복 복귀 1–2요청이다. 사무실 NAT 뒤 여럿이 동시에 연결해도 넉넉하다.
 
-**추가 절차(오너)** — 대시보드 `Firewall → Configure → Add Rule`:
-1. 이름 `Rate limit OAuth authorize` · If `Request Path` **equals** `/oauth/authorize` · Then `Rate Limit` · Fixed window 60s · 60 requests · Key `IP Address` ·
-   **Action `Log`**(차단하지 않는다).
-2. 저장 뒤 **게시(Publish)는 사람이 누른다** — 에이전트는 규칙 초안까지만 만든다.
-3. 게시 뒤 `Firewall → Traffic`에서 규칙 id로 필터해 1–2주 본다. 정상 사용자가 안 걸리면 Action을 `Rate Limit`(429)로 바꿔 다시 게시한다
-   (CLI: `vercel firewall rules edit "Rate limit OAuth authorize" --rate-limit-action rate_limit --yes` → 사람이 `vercel firewall publish --yes`).
-   걸리는 정상 트래픽이 있으면 한도를 먼저 올린다.
+**변경 절차** — CLI로 초안을 만들고 게시는 사람이 한다:
+1. 초안: `vercel firewall rules edit "Rate limit public entry points" --condition '{"type":"path","op":"pre","value":"/api/images/"}' --or --condition '{"type":"path","op":"eq","value":"/oauth/authorize"}' --yes`
+   (조건은 통째로 바뀌므로 OR 그룹 둘을 매번 다 준다) → `vercel firewall diff`로 확인.
+2. **게시(`vercel firewall publish --yes`)는 사람이 한다** — 에이전트는 초안까지만 만든다.
+3. 게시 뒤 `Firewall → Traffic`에서 규칙 id(`rule_rate_limit_image_proxy_wlXSTS`)로 필터해 1–2주 본다. 정상 사용자가 안 걸리면
+   `vercel firewall rules edit "Rate limit public entry points" --rate-limit-action rate_limit --yes` → 사람이 게시(429). 걸리는 정상 트래픽이 있으면 한도를 먼저 올린다.
 
 ⚠️ **WAF는 CDN 앞이라 캐시 HIT도 센다** · **카운터가 리전별이라** 분산 출처는 리전 수만큼 한도를 넘는다 — 막는 것은 단일 출처 증폭이다.
 Hobby 플랜이라 `--duration`·system bypass를 못 쓴다. ⚠️ **`/oauth/token`·`/oauth/revoke`는 대상이 아니다** — 제출한 자격증명이 틀리면 DB 조회
