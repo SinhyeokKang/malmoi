@@ -39,7 +39,12 @@ describe("authorizationServerMetadata (RFC 8414)", () => {
       code_challenge_methods_supported: ["S256"],
       token_endpoint_auth_methods_supported: ["none"],
       revocation_endpoint_auth_methods_supported: ["none"],
+      client_id_metadata_document_supported: true,
     });
+  });
+
+  it("등록은 CIMD뿐이다 — registration_endpoint(DCR)를 광고하지 않는다", () => {
+    expect(authorizationServerMetadata(ORIGIN)).not.toHaveProperty("registration_endpoint");
   });
 
   it("scope 어휘를 광고하지 않는다 — 새 권한 어휘는 비목표다", () => {
