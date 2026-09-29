@@ -2562,19 +2562,19 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
   `toolCatalog()`) — 범위 밖·grant 없는 토큰이 GitHub 레이트 리밋을 태우지 않는다. 입구는 코어의 인가(`getProjectAccess` 등)와
   잠금 뒤 재판정을 **대신하지 않는다**.
 
-**쓰기는 잠금 뒤 토큰을 다시 읽는다 — `userId` AND `tokenHash`.** 주체는 `{ userId, tokenId }`이고 **`tokenId` = `ApiToken.tokenHash`**다
-(`id` 컬럼이 없고 `userId`가 PK라 행을 가리키는 값이 해시뿐이다 — 해시는 원문이 아니다). ⚠️ **`userId`만으로 읽으면 잠금 대기 중
+**쓰기는 잠금 뒤 토큰을 다시 읽는다 — `userId` AND `tokenHash`.** 주체는 `{ userId, credential }`이고 개인 토큰이면 **`credential` = `{ kind: "api-token", tokenHash }`**다
+(`lib/auth/subject.ts`의 `Credential` — OAuth 연결은 `{ kind: "oauth", connectionId }`이고 그 재읽기는 mcp-oauth T5가 붙인다. `ApiToken`은 `id` 컬럼이 없고 `userId`가 PK라 행을 가리키는 값이 해시뿐이다 — 해시는 원문이 아니다). ⚠️ **`userId`만으로 읽으면 잠금 대기 중
 재발급된 새 행(새 해시·새 권한)이 통과한다** — 두 키로 읽으므로 재발급·폐기가 둘 다 "행 없음"이다. 입구에서 얻은 grants·scope를
 재사용하지 않는다.
 
-- 확장점은 **`lockProjectAccess(tx, { …, tokenId })` 하나**다(`lib/auth/lock.ts`) — `SITES`가 전부 이 함수를 지난다. 요구 grant는
+- 확장점은 **`lockProjectAccess(tx, { …, credential })` 하나**다(`lib/auth/lock.ts`) — `SITES`가 전부 이 함수를 지난다. 요구 grant는
   `permission` 그대로다(쓰기 도구가 전부 역할 permission과 같은 grant를 요구한다 — `lib/auth/__tests__/lock-grant.test.ts`가 카탈로그로
   고정). 판정: 토큰 무효 → `unauthorized`, 범위 밖 → `not-found`(멤버십 전), 멤버십·역할·보관 → 기존 갈래, grant 없음 → `token-scope`(마지막).
 - raw `FOR UPDATE`로 남은 넷(`lib/import/run.ts#acquire` · `lib/keys/revert.ts#executeKeyRevert` · `lib/surfaces/create.ts#addSurfacesFromSnapshot`
-  · `lib/onboarding-run/create.ts`의 User 잠금)은 잠금 직후 `lockApiToken(tx, { tokenId, userId, projectId, grant })`다(순수 판정은
+  · `lib/onboarding-run/create.ts`의 User 잠금)은 잠금 직후 `lockCredential(tx, { credential, userId, projectId, grant })`다(순수 판정은
   `lib/mcp/locked-token.ts#planLockedToken`).
-- ⚠️ **`tokenId`는 잠금 자리 입력의 필수 키다**(`string | undefined`) — 중간 홉이 빠뜨리면 컴파일 에러다. 세션·cron은 `undefined`를
-  명시한다. 주체를 받은 함수가 리터럴 `tokenId: undefined`로 버리는 것은 `app/__tests__/locked-access.test.ts`의 `TOKEN_SITES`·
+- ⚠️ **`credential`은 잠금 자리 입력의 필수 키다**(`Credential | undefined`) — 중간 홉이 빠뜨리면 컴파일 에러다. 세션·cron은 `undefined`를
+  명시한다. 주체를 받은 함수가 리터럴 `credential: undefined`로 버리는 것은 `app/__tests__/locked-access.test.ts`의 `TOKEN_SITES`·
   `RAW_TOKEN_SITES`가 AST로 막는다.
 - ⚠️ **행 잠금(`FOR SHARE`)을 더하지 않는다** — READ COMMITTED 재읽기로 먼저 커밋된 폐기·재발급을 본다. 잠그면 병렬 읽기 도구의
   `lastUsedAt` UPDATE가 쓰기 tx 뒤에 줄을 서는데, 에이전트의 병렬 호출이 정확히 그 모양이다.
@@ -2589,7 +2589,7 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
 | Revert | `lib/keys/revert.ts`, Project → Surface 잠금 뒤·번역/사건 쓰기 전 |
 | 소스 추가 | `lib/surfaces/create.ts`, Project 잠금 뒤·표면/첫 적재 쓰기 전 |
 | 프로젝트 생성 | `lib/onboarding-run/create.ts`의 User 잠금 뒤 — `project:create` 확인 후 생성과 `projectIds` 추가가 같은 tx |
-| 설정·기준 로케일·push 토큰 회전·멤버/초대·보관/복원 | 각 코어의 `lockProjectAccess` 호출에 `tokenId` |
+| 설정·기준 로케일·push 토큰 회전·멤버/초대·보관/복원 | 각 코어의 `lockProjectAccess` 호출에 `credential` |
 
 **GitHub 자격증명은 세 축 그대로다**(§6 표). 도구 안의 사용자 확인은 `ensureUserToken`(user-to-server, GET만), 쓰기는 installation
 토큰이다. 두 자격증명이 만나는 조립은 `lib/onboarding-run/`이고 `lib/mcp`와 함께 Server Action 규칙 집합(`MEETING_ROOTS`)에 든다(§3.1).
@@ -2722,7 +2722,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `app/__tests__/exempt-route-guards.test.ts` | EXEMPT route → 필수 가드 호출 맵. `/api/mcp`는 주석 제거 후 `resolveApiToken(`. ⚠️ 기존 `entry-points`는 route를 EXEMPT 문자열에 넣을 뿐 가드를 못 센다(POSTMORTEM 2026-09-18) |
 | `lib/mcp/__tests__/no-cookie-reads.test.ts` | `lib/mcp/**`·`app/api/mcp/**`의 `auth(`·`readSession(`·`cookies(` + `headers`·`NextRequest`를 통한 쿠키 읽기 금지 |
 | `lib/github-connect/__tests__/credential-separation.test.ts` | `MEETING_ROOTS`(`lib/onboarding-run`·`lib/mcp`)가 Server Action 규칙 — 쓰기는 App 토큰만 |
-| `app/__tests__/locked-access.test.ts` | `TOKEN_SITES`·`RAW_TOKEN_SITES`가 잠금 호출의 `tokenId` 인자를 AST로 |
+| `app/__tests__/locked-access.test.ts` | `TOKEN_SITES`·`RAW_TOKEN_SITES`가 잠금 호출의 `credential` 인자를 AST로 |
 | `lib/auth/__tests__/lock-grant.test.ts` | 쓰기 도구의 grant = 역할 permission(카탈로그로) |
 | `lib/mcp/__tests__/catalog.test.ts` · `lib/mcp/tools/__tests__/registry.test.ts` | 이름·순서 명시적 배열 동치 · 카탈로그 ↔ 구현 1:1 |
 | `lib/mcp/__tests__/tools.integration.ts` (PG) | 잠금 대기를 관측한 뒤 폐기·만료·재발급 → 대기하던 쓰기가 아무것도 남기지 않음 · 100키 한 tx |
