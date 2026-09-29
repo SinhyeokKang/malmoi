@@ -224,7 +224,7 @@ components/
                         data-public-scroller가 랜딩 스테이지·공개 문서 목차의 스크롤 대상 표식이다. 해시가 tabindex 든 헤딩을
                         가리키면 마운트 때 그 헤딩이 포커스를 받는다. bare는 스크롤러를 안 만든다(/docs는 페이지가 든다). ⚠️ 헤더는 세션을 읽지
                         않는다 — 우측 primary는 페이지가 publicAccount로 정해 넘기고, 로그아웃은 lib/auth/sign-out을 참조로 넘긴다. route group 레이아웃으로 묶지 않는다(이동 때 스크롤러 재마운트)
-                        footer는 셸 밖 2열 골격(signin/auth-layout — /signin·초대·계정 병합)도 두 패널 아래에 그린다 — 푸터 렌더러가 하나다
+                        footer는 셸 밖 골격(signin/auth-layout — /signin·초대·계정 병합)도 패널 아래에 그린다 — 푸터 렌더러가 하나다
   privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로)
   docs/                 `/docs/*` 조각 — guide-markdown(서버 — react-markdown에 로더 트리 사본을 꽂고 요소를 매핑한다.
                         ⚠️ urlTransform을 덮지 않는다 · rehype-raw 없음 — raw HTML은 글자로 나가므로 원고에서 게이트가 막는다) · doc-frame(그릇 · 이전/다음 · 장 개요 행 · 개요 두 갈래) ·
