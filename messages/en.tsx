@@ -585,6 +585,11 @@ export const en = {
                     "Created by Malmoi when you create or rotate a token on the MCP connector page",
                     "Letting an AI agent you run act for you, within what your project role already allows",
                   ],
+                  [
+                    "An app you connect by signing in through your browser, such as Claude Code or Codex: the name and address it gives for itself, where it returns after you sign in, one-way hashes of the tokens Malmoi issued to it and of the refresh tokens it has already used (never the tokens themselves), the actions and projects you allowed it, and when it was connected, last used and expires",
+                    "Created by Malmoi when you authorize the app on its connection screen",
+                    "Letting an app you connect act for you, within what your project role already allows",
+                  ],
                 ],
               },
             },
@@ -609,7 +614,7 @@ export const en = {
                 "Emailing an invitation link to an address a project owner enters. The email holds the link and the project it is for — the project's name, its picture if it has one, and the role you are invited with. It does not say who invited you, and it has no tracking.",
                 "Keeping the service running, which includes looking at error logs when something fails.",
                 "Counting visits to the public pages, to see whether people find Malmoi and which docs they read. Only totals are looked at.",
-                "Letting an AI agent you connect with your own token do what you could do in the app. What it changes is recorded as your change.",
+                "Letting an AI agent you connect — with your own token, or by signing in through your browser — do what you could do in the app. What it changes is recorded as your change.",
               ],
             },
             {
@@ -633,6 +638,7 @@ export const en = {
                 "An invitation email: Resend, which sends it, keeps a record of the message — the address, the subject and the email itself, with the link, the project's name, the address of its picture if it has one, and your role — for 30 days.",
                 "Translations and the record of who changed them: kept for the life of the project.",
                 "An AI agent token stops working when it expires (30, 90 or 365 days after you create it) or as soon as you rotate or revoke it. Its row is deleted when you rotate or revoke it, or with your account; until then an expired token stays listed so you can see what it allowed.",
+                "An app connection stops working when it expires (30, 90 or 365 days after you authorize it) or as soon as you disconnect it or authorize the same app again. Its row, with the hashes of the refresh tokens it used, is deleted then, or with your account; an expired connection stays listed until it is deleted. The hand-off from the connection screen to the app lasts one minute and is deleted when the app uses it.",
               ],
             },
           ],
@@ -655,7 +661,7 @@ export const en = {
               p: "A profile picture that comes from GitHub or Google is loaded by your browser directly from their servers, so those requests reach them even though Malmoi sends them nothing.",
             },
             {
-              p: "If you connect an AI agent with your token, what the agent reads through it — the translations, activity and members of your projects, and a project's push token when you ask for one — goes to that agent and to whichever AI service it uses. You choose and run that agent; Malmoi does not send it anything on its own and has no agreement with it.",
+              p: "If you connect an AI agent with your token or by signing in through your browser, what the agent reads through it — the translations, activity and members of your projects, and a project's push token when you ask for one — goes to that agent and to whichever AI service it uses. You choose and run that agent; Malmoi does not send it anything on its own and has no agreement with it. To show an app's name on the connection screen, Malmoi reads the app's public description from the address the app gives; that request carries nothing about you.",
             },
             {
               p: "An invitation email shows a logo and the project's picture (or a placeholder icon when it has none), and your email app loads all of them from mal-moi.com — Malmoi fetches the picture from its own storage, so your email app reaches no one else. The logo and the icon are the same for everyone, and a project's picture is the same for everyone invited to that project, so none of them tells Malmoi who opened the email.",
@@ -676,7 +682,7 @@ export const en = {
               ),
             },
             {
-              p: "Deleting your data removes your account, your GitHub and Google connections, your sessions, your project memberships, any invitation addressed to you that has not been accepted, and a profile picture you uploaded. Resend's record of an invitation email is not removed early; it expires on its own 30 days after the email was sent.",
+              p: "Deleting your data removes your account, your GitHub and Google connections, your sessions, your AI agent token and app connections, your project memberships, any invitation addressed to you that has not been accepted, and a profile picture you uploaded. Resend's record of an invitation email is not removed early; it expires on its own 30 days after the email was sent.",
             },
             {
               p: "Translations stay. They are the project's output and are already in the repository, so removing them would delete work that belongs to the team — but the record of who wrote them stops pointing at you.",
@@ -725,7 +731,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
