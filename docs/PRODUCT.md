@@ -235,10 +235,16 @@ Publish는 미저장을 **버리지 않는다** — 확인창에서 저장된 �
   `routes.account({ sessionRevocation })`가 실어 나른다 — 갈래 다섯이고, **확인 상대를 못 고르는
   갈래**(`pickLoginAccount`가 `null`)가 하나 더 있다
 - **MCP 커넥터 — `/mcp`** (2026-09-28 사용자 판정, `mcp-connector` — §4.3 ⑤를 열었다). CLI·코딩 에이전트가
-  `https://mal-moi.com/api/mcp`에 **개인 토큰(Bearer)** 으로 붙어 화면과 같은 일을 한다 — 생성·번역·Publish·설정·멤버.
+  `https://mal-moi.com/api/mcp`에 붙어 화면과 같은 일을 한다 — 생성·번역·Publish·설정·멤버. ⚠️ **연결 방식이 둘이다**
+  (2026-09-29 사용자 판정, `mcp-oauth` — 병행이고 대체가 아니다): **브라우저 로그인(OAuth)** — 헤더 없이 서버 URL만 등록하면
+  클라이언트가 브라우저로 `/oauth/authorize`를 열고, 사용자는 로그인 + 동의만 한다(토큰 원문을 보거나 복사하지 않는다 — 셸
+  환경변수가 막히는 번역 편집자의 경로다). 대상 클라이언트는 Claude Code · Codex · claude.ai이고 **claude.ai는 아직 실물 확인 전**이다.
+  동의 화면의 권한·범위·만료 어휘는 개인 토큰과 **같다**. `/mcp`의 **Connected apps**가 연결마다(클라이언트당 하나 — 같은 클라이언트의
+  재동의는 기존 연결을 대체한다) 권한·범위·마지막 사용·만료를 보이고 **연결별로 끊는다**. 헤더만 받는 클라이언트와 CI는
+  **개인 토큰(Bearer)** 을 계속 쓴다.
   ① **전용 페이지다** — ⑤가 적었던 "`settings`의 섹션이면 충분하다"를 뒤집는 근거는 **제품 구색**(사용자 — 오버스펙임을 알고
   골랐다)이고, 토큰이 계정 밑이라 프로젝트 `settings`에 둘 자리도 없다(프로젝트 생성은 프로젝트가 생기기 전의 일이고, EDITOR는
-  설정에 못 들어간다). ② **계정당 하나의 불변 토큰이다** — 만료 필수(30/90/365일), 권한·범위를 바꾸려면 재발급(= 앞 토큰 폐기).
+  설정에 못 들어간다). ② **개인 토큰은 계정당 하나의 불변 토큰이다**(OAuth 연결에는 이 제약이 없다 — 클라이언트마다 하나) — 만료 필수(30/90/365일), 권한·범위를 바꾸려면 재발급(= 앞 토큰 폐기).
   에이전트 = 그 사용자라 토큰도 하나다(push 토큰이 프로젝트당 하나인 것과 같다). ③ **유효 권한 = 역할 ∩ 토큰, 좁히기만 한다** —
   토큰은 허용 동작(기존 `Permission` 셋 + 토큰 전용 `project:create`)과 프로젝트 범위를 고르고, 역할보다 넓을 수 없다.
   에이전트가 한 일은 그 사용자의 사건으로 Logs에 선다(경유 표시 없음). ④ **도구 목록과 각 도구의 쓰기 범위의 정본은
@@ -542,6 +548,8 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /                              ✅ 랜딩 (로그인 상태면 /projects로)  ← landing (2026-09-26)
 /signin                        ✅ 로그인                          ← 8-1a
 /signin/link/:challenge        ✅ 계정 병합 안내 (challenge가 인가를 대신한다) ← account-linking (2026-09-12)
+/oauth/authorize               MCP 클라이언트의 로그인·동의 (검증된 요청 행이 인가를 대신한다 · 동의 Action은 세션을 다시 본다) ← mcp-oauth (2026-09-29)
+                               클라이언트가 연 OAuth 쿼리 → 검증 뒤 ?request=<id>로 정규화 · 로그인 왕복·계정 연결·/signin 복귀가 같은 요청으로 돌아온다
 /invite/:token                 초대 수락 (토큰이 인가를 대신한다)
 /privacy                       ✅ 방침 — 랜딩과 같은 공개 셸 안 (헤더 primary가 세션으로 갈린다) ← privacy-shell (2026-09-26)
 /docs · /docs/:slug*           ✅ 사용 가이드 — 원고 guide/**.md · 순서 guide/SUMMARY.md · 공개 셸 + 문서 내비 ← docs-guide (2026-09-26)
@@ -552,13 +560,13 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
 /sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /changelog · /privacy — /signin은 noindex라 없다 ← seo-geo
 /llms.txt · /llms-full.txt     ✅ 가이드 목차(제목·절대 URL·첫 문단) · 원고 전문(페이지마다 Source 줄) — text/plain ← seo-geo
-                               색인: 공개 다섯(/·/docs·/docs/:slug·/changelog·/privacy)만 canonical · /signin·/invite·/signin/link는 noindex(robots.txt로는 안 막는다)
+                               색인: 공개 다섯(/·/docs·/docs/:slug·/changelog·/privacy)만 canonical · /signin·/invite·/signin/link·/oauth/authorize는 noindex(robots.txt로는 안 막는다)
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
 /projects/new                  ✅ 생성 — **`/projects` 위의 모달 딥링크** (뒤에 목록이 그대로 있다) ← new-project-modal (2026-09-13)
 /account                       ✅ 프로필 편집·사진 · 로그인 수단 목록/연결/해제 · GitHub App 연동/해제 · **전체 세션 회수** ← 6b-4 · account-linking · account-connect · account-settings
-/mcp                           MCP connector — 개인 토큰 발급·재발급·폐기 + 연결 예시 (사이드바 `New project` 아래) ← mcp-connector (2026-09-28)
+/mcp                           MCP connector — Connected apps(OAuth 연결 목록·끊기) + 개인 토큰 발급·재발급·폐기 + 연결 예시(방식 둘) (사이드바 `New project` 아래) ← mcp-connector (2026-09-28) · mcp-oauth (2026-09-29)
 
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
 /projects/:slug                ✅ Home — 개요 (착지점)            ← 6b-6 (2026-09-09, 프로덕션)
