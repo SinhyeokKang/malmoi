@@ -14,9 +14,10 @@ const ROOT = join(__dirname, "..", "..", "..");
  * MCP 진입점 + OAuth의 **비쿠키 쪽** (mcp-oauth spec 조건 10): 발견 문서 · 순수 판정. `/oauth/authorize` 페이지·동의 Action은 세션을 읽어야
  * 하므로 여기 없다 — `app/oauth` 통째가 아니라 비쿠키 route만 든다.
  */
-const TREES = ["lib/mcp", "app/api/mcp", "lib/oauth", "app/.well-known"];
+const TREES = ["lib/mcp", "app/api/mcp", "lib/oauth", "lib/oauth-server", "app/.well-known", "app/oauth/token", "app/oauth/revoke"];
 /** 트리가 조용히 비면(이동·개명) 방어선이 장식이 된다 — 각 트리의 대표 파일이 실제로 스캔되는지 센다. */
-const REQUIRED = ["app/api/mcp/route.ts", "lib/oauth/exchange.ts", "app/.well-known/oauth-protected-resource/api/mcp/route.ts", "app/.well-known/oauth-authorization-server/route.ts"];
+const REQUIRED = ["app/api/mcp/route.ts", "lib/oauth/exchange.ts", "lib/oauth-server/token.ts", "lib/oauth-server/revoke.ts",
+  "app/.well-known/oauth-protected-resource/api/mcp/route.ts", "app/.well-known/oauth-authorization-server/route.ts", "app/oauth/token/route.ts", "app/oauth/revoke/route.ts"];
 const FORBIDDEN = [
   /\bauth\(/, /\breadSession\(/, /\bcookies\(/,
   // 헤더를 직접 읽는 우회 — `request.headers.get("Cookie")`·`req.cookies`(NextRequest)

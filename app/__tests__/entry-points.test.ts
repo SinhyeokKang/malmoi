@@ -66,6 +66,12 @@ const EXEMPT = new Set([
   ".well-known/oauth-protected-resource/api/mcp/route.ts",
   ".well-known/oauth-authorization-server/route.ts",
   /**
+   * OAuth 토큰 교환·폐기 (mcp-oauth). **세션이 아니라 제출된 자격증명이 인가다** — code(+PKCE verifier)·refresh·폐기할 토큰 자신.
+   * 호출자가 CLI라 쿠키가 없고 읽지도 않는다. 가드 호출은 `exempt-route-guards.test.ts`가 센다.
+   */
+  "oauth/token/route.ts",
+  "oauth/revoke/route.ts",
+  /**
    * 업로드 이미지 읽기 프록시 (2026-09-28, ARCHITECTURE §6.7). **인가가 없다** — 이 바이트는 오늘도
    * 공개 읽기(Vercel Blob `access: "public"`)이고, 여기서 세션을 읽으면 응답이 캐시 불가가 되어
    * CDN 층이 통째로 사라진다. 키를 모르면 못 읽고 키에는 난수가 있다. 프록시가 허용하는 키는

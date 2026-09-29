@@ -16,6 +16,9 @@ const APP = fileURLToPath(new URL("..", import.meta.url));
 const REQUIRED_GUARD: Record<string, readonly string[]> = {
   // 개인 MCP 토큰 — 세션이 없는 진입점이라 Bearer 해시 조회가 인가의 입구다(design §1.2).
   "api/mcp/route.ts": ["resolveBearer"],
+  // OAuth 토큰·폐기 (mcp-oauth) — 세션이 아니라 code(+PKCE)·refresh·토큰 자신이 인가다. 코어가 잠금 뒤 다시 읽고 판정한다.
+  "oauth/token/route.ts": ["exchangeAuthorizationCode", "refreshConnection"],
+  "oauth/revoke/route.ts": ["revokeToken"],
 };
 
 function stripComments(source: string): string {
