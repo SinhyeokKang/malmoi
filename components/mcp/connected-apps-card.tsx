@@ -2,7 +2,7 @@
 
 import { CircleX } from "lucide-react";
 import { unstable_rethrow, useRouter } from "next/navigation";
-import { useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { disconnectOAuthConnection, type OAuthDisconnectResult } from "@/app/(edit)/mcp/actions";
 import { McpIcon } from "@/components/signin/brand-icons";
@@ -57,6 +57,15 @@ export function ConnectedAppsCard({ apps, now }: { apps: readonly ConnectedAppDa
   const rows = apps === null ? null : apps.filter((app) => !removed.has(app.id));
   const heading = () => document.getElementById(TITLE_ID);
   const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const confirmRef = useRef<HTMLButtonElement | null>(null);
+  /*
+    명시 실패 뒤 Dialog가 남는다 — 진행 중 `disabled`가 포커스를 떨어뜨리므로 재시도 자리(확정 버튼)로 되돌린다(POSTMORTEM 2026-09-24).
+    ⚠️ `useLandAfter`로는 안 된다 — Radix FocusScope가 떨어진 포커스를 Dialog 컨테이너로 잡아 "포커스를 잃었다"가 참이 아니다.
+    성공·미확인은 Dialog가 닫혀 `onCloseAutoFocus`가 착지를 정한다.
+  */
+  useEffect(() => {
+    if (failed && !pending && open) confirmRef.current?.focus();
+  }, [failed, pending, open]);
   // id는 cuid라 선택자에 그대로 넣어도 되지만, 속성 대조로 찾으면 escape 판정 자체가 없다.
   const disconnectButton = (id: string) => [...document.querySelectorAll<HTMLButtonElement>("[data-app-disconnect]")].find((b) => b.dataset.appDisconnect === id) ?? null;
 
@@ -157,7 +166,7 @@ export function ConnectedAppsCard({ apps, now }: { apps: readonly ConnectedAppDa
                 <Button ref={cancelRef} disabled={pending} onClick={() => setOpen(false)}>
                   {m.common.cancel}
                 </Button>
-                <Button data-disconnect-confirm variant="danger" loading={pending} onClick={confirm}>
+                <Button ref={confirmRef} data-disconnect-confirm variant="danger" loading={pending} onClick={confirm}>
                   {m.mcpConnector.apps.confirm}
                 </Button>
               </>
