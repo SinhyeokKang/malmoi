@@ -153,7 +153,8 @@ export default async function ProjectHomePage({
      * **시끄러운 신호는 설정 화면 하나에 남긴다** — 그 화면이 OWNER가 고치러 가는 자리다.
      * 여기서는 `unknown`이라 배너가 안 서고, 원인은 로그에만 남는다.
      */
-    loadConnectionHealth(project).catch((error: unknown) => {
+    // 메모를 켠다 (malmoi#107 ①) — 사건 상세를 열 때마다 GitHub 2홉을 다시 기다렸다. 설정 화면은 끈 채다.
+    loadConnectionHealth(project, { memo: true }).catch((error: unknown) => {
       logFailure("home-connection-health", error);
       return { status: "unknown" } as const;
     }),
