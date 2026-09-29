@@ -164,6 +164,8 @@ const CLIENT_LIB_FILES = [
   "lib/routes.ts",
   "lib/session-revocation/message.ts",
   "lib/settings/message.ts",
+  // 루트의 화면 이동 dim이 클릭마다 읽는 판정 — import 0인 잎이다.
+  "lib/shell/navigation-dim.ts",
   "lib/shell/nav.ts",
   "lib/shell/panel-size.ts",
   "lib/signin/dot-field.ts",
