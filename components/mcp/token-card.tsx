@@ -16,7 +16,8 @@ import { relativeTime } from "@/lib/relative-time";
 import { utcDay } from "@/lib/utc-time";
 import { cn } from "@/lib/utils";
 
-import { TokenModal, type ScopeProject } from "./token-modal";
+import type { ScopeProject } from "./token-grant-fields";
+import { TokenModal } from "./token-modal";
 
 /**
  * `/mcp`의 토큰 카드 (핸드오프 `1a`·`1b`·`1c`·`3a`·`4b`). **행동은 카드 머리에 있다** — 상태가 바뀌어도 자리가 같다(없음·만료 = Create,

@@ -18,6 +18,17 @@ export type ClientMetadata = {
   redirectUris: string[];
 };
 
+/**
+ * 이름 길이 상한(mcp-oauth 핸드오프 §13 결정 3 — "서버가 둔다"). 넘으면 **자르지 않고** 이름이 없는 것으로 본다 — 잘라 보이면 사칭 이름의
+ * 구별되는 끝이 사라지고, 화면은 이름을 줄바꿈해 전문을 보인다. 실측 이름은 `Claude Code` 한 단어 수준이다(§0.1).
+ */
+export const CLIENT_NAME_MAX = 200;
+
+/** 동의 화면 앱 카드와 `/mcp` 연결 행의 식별 줄 — **같은 문자열**이어야 두 화면에서 같은 앱으로 알아본다(핸드오프 §7.3). 스킴만 뗀다. */
+export function clientIdLabel(clientId: string): string {
+  return clientId.startsWith("https://") ? clientId.slice("https://".length) : clientId;
+}
+
 export type ClientMetadataPlan = { ok: true; client: ClientMetadata } | { ok: false };
 
 /**
@@ -47,6 +58,6 @@ export function planClientMetadata(doc: unknown, clientIdUrl: string): ClientMet
   if (!uris.every((uri): uri is string => typeof uri === "string" && isAllowedRedirectUri(uri))) return reject;
 
   const name = own(doc, "client_name");
-  const clientName = typeof name === "string" && name.trim() !== "" ? name : null;
+  const clientName = typeof name === "string" && name.trim() !== "" && name.length <= CLIENT_NAME_MAX ? name : null;
   return { ok: true, client: { clientId: clientIdUrl, clientName, displayName: clientName ?? clientIdUrl, redirectUris: [...uris] } };
 }

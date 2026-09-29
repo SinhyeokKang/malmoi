@@ -28,3 +28,20 @@ export async function revokeToken(prisma: PrismaClient, input: { token: string; 
     await tx.oAuthCode.deleteMany({ where: { userId: row.userId, clientId: row.clientId, usedAt: null } });
   });
 }
+
+/**
+ * `/mcp`의 **연결별 끊기** (spec 조건 8·9 · design §4.2) — `revokeToken`과 같은 tx 모양을 토큰 대신 연결 ID로 한다. `userId`는 Action이 세션으로
+ * 본판정한 값이다(쿠키는 호출자 쪽에 있다). User 잠금 뒤 **그 사용자의** 행을 다시 읽는다 — 남의 연결 ID는 없는 행이다(POSTMORTEM 2026-09-06).
+ * 멱등이다: 없으면(다른 탭이 먼저 끊었거나 재동의로 교체됐다) 아무것도 안 하고 끝난다. ⚠️ DB 장애는 던진다 — 끊지 못했는데 성공으로 말하지 않는다.
+ */
+export async function disconnectConnection(prisma: PrismaClient, input: { userId: string; connectionId: string }): Promise<void> {
+  const { userId, connectionId } = input;
+  await prisma.$transaction(async tx => {
+    if (!(await lockUser(tx, userId))) return;
+    const row = await tx.oAuthConnection.findFirst({ where: { id: connectionId, userId }, select: { id: true, clientId: true } });
+    if (row === null) return;
+    await tx.oAuthConnection.deleteMany({ where: { id: row.id, userId } });
+    // 대기하던 교환이 끊긴 연결을 되살리지 못하게 — 같은 사용자·클라이언트의 미교환 code를 같은 tx에서 지운다(spec 조건 14).
+    await tx.oAuthCode.deleteMany({ where: { userId, clientId: row.clientId, usedAt: null } });
+  });
+}

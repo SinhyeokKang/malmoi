@@ -351,6 +351,8 @@ export const en = {
   signIn: {
     title: "Sign in to Malmoi",
     backToInvitation: "Back to invitation",
+    // 동의 화면에서 시작한 로그인이 취소·오류로 여기 착지했을 때의 복귀 링크(mcp-oauth design §6.1) — `backToInvitation`과 같은 자리·형.
+    backToAuthorization: "Back to app authorization",
     github: "Continue with GitHub",
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
@@ -1800,9 +1802,48 @@ export const en = {
       title: "Connect",
       serverUrl: "Server URL",
       agent: "Agent",
-      clients: { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor" },
+      clients: { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", "claude-ai": "claude.ai" },
       // 기존 파일에 항목을 덧붙이는 꼴이라 동사가 `Add to`다(핸드오프 §4). 경로는 sans 평문이고 색만 올린다.
       addTo: (path: ReactNode): ReactNode => <>Add to {path}</>,
+      // 방식 세그먼트(mcp-oauth 핸드오프 §7.4) — 두 방식을 한 조각에 섞지 않는다. 브라우저 방식이 기본이다.
+      method: "Connection method",
+      methods: { browser: "Sign in with browser", token: "Personal token" },
+      browserHelp: "Add the server URL to your client. When it connects, your browser opens so you can sign in and choose what it can do. There is no token to copy.",
+      tokenHelp: "Uses the token from Your token above. Set it as MALMOI_TOKEN in your shell, then add this to your client.",
+      // 로그인을 시작하는 명령 — T1 실측(design §0.1): Claude Code는 `/mcp` → Authenticate, Codex는 `codex mcp login`.
+      then: {
+        // 서버 키는 조각이 쓰는 그 식별자다(`lib/mcp/snippets.ts#SERVER_KEY`를 호출부가 넘긴다) — 문장에 손으로 적으면 조각과 갈린다.
+        "claude-code": (key: string): string => `Then run /mcp in Claude Code, pick ${key} and choose Authenticate. Your browser opens to sign in to Malmoi.`,
+        codex: (key: string): string => `Then run codex mcp login ${key}. Your browser opens to sign in to Malmoi.`,
+      },
+      // 헤더가 남아 있으면 Claude Code는 OAuth로 넘어가지 않는다(ARCHITECTURE §6.45.1 실측) — 지울 키를 클라이언트별로 말한다.
+      switchFromToken: {
+        "claude-code": "Switching from a personal token? Remove the headers entry first. While it is there, Claude Code keeps using the token.",
+        codex: "Switching from a personal token? Remove the bearer_token_env_var line first. While it is there, Codex keeps using the token.",
+      },
+      // ⚠️ claude.ai는 미실측이다(design §0.1) — 메뉴 경로·버튼명은 시안 샘플이고 T10에서 실물로 확정한다.
+      claudeAiSteps: [
+        "In claude.ai, open Settings → Connectors and choose Add custom connector.",
+        "Paste the server URL above and give it a name, such as Malmoi.",
+        "Choose Connect. Sign in to Malmoi and choose what it can do in the window that opens.",
+      ],
+    },
+    /** 연결된 앱(mcp-oauth 핸드오프 §7.3 · §7.5) — OAuth 연결 목록. 개인 토큰 카드와 어휘(`token.facts`)를 공유한다. */
+    apps: {
+      title: "Connected apps",
+      emptyTitle: "No connected apps",
+      emptyBody: "Apps you authorize from Claude Code, Codex or claude.ai show up here.",
+      disconnect: "Disconnect",
+      // 같은 이름의 연결이 둘일 수 있다 — 접근 이름이 식별 줄까지 싣는다(design §6.1).
+      disconnectLabel: (name: string, id: string): string => `Disconnect ${name}, ${id}`,
+      confirmTitle: (name: string): string => `Disconnect ${name}?`,
+      confirmBody: "It loses access right away. Your other apps and your personal token keep working.",
+      confirm: "Disconnect app",
+      disconnected: (name: string): string => `Disconnected ${name}.`,
+      loadFailed: "We couldn't load your connected apps.",
+      unconfirmed: (name: string): string => `We couldn't confirm ${name} was disconnected. If it's still listed, disconnect it again.`,
+      // DCR 연결의 식별 줄 한 줄 형 — 동의 화면의 두 줄(`oauthAuthorize.clientId`·`returnsTo`)을 목록 행에서 잇는다.
+      dcrIdent: (id: string, host: string): string => `Client ID ${id} · returns to ${host}`,
     },
     // 핸드오프 §12 문장 그대로다. 링크 라벨은 가이드 페이지 제목(`guide/SUMMARY.md`)과 같아야 한다.
     guide: {
@@ -1839,6 +1880,47 @@ export const en = {
       title: "Revoke your token?",
       body: "Every agent using it stops immediately. This can't be undone.",
       confirm: "Revoke token",
+    },
+  },
+
+  /**
+   * `/oauth/authorize` — MCP 클라이언트의 로그인·동의 화면(mcp-oauth 핸드오프 §12). 셸 밖이다.
+   * ⚠️ 권한·범위 문구는 여기 없다 — 토큰 발급 모달과 같은 `mcpConnector.form.*`·`grants.*`를 쓴다(spec 조건 4: 어휘가 같다).
+   */
+  oauthAuthorize: {
+    title: "Connect an app to Malmoi",
+    signInDescription: "Sign in to review what this app is asking for.",
+    consentDescription: "Choose what it can do for you. You can disconnect it any time on the MCP connector page.",
+    // 이름은 신원 보증이 아니다(design §6.1) — 배지 없이 카드 아래 한 문장이 말한다.
+    appNameNote: "The app chose this name. Check the address before you continue.",
+    clientId: (id: string): string => `Client ID ${id}`,
+    returnsTo: (uri: string): string => `Returns to ${uri}`,
+    signedInWith: (provider: string): string => `Signed in with ${provider}`,
+    notYou: "Not you?",
+    replaces: (date: string): string =>
+      `You connected this app on ${date}. If you finish connecting, the new connection replaces it and the app may be signed out on your other devices. Deny keeps the current connection.`,
+    denyFailed: "We couldn't record your answer. Nothing changed — try again.",
+    consentNote:
+      "In each project, the app can only do what your role there also allows. All my projects includes projects you join later, and projects the app creates are added to Chosen projects. The connection ends when it expires — connect again from the app to keep using it.",
+    returnTo: (host: string): string => `You'll return to ${host}.`,
+    deny: "Deny",
+    authorize: "Authorize",
+    failed: "We couldn't save this authorization. Your choices are kept — try again.",
+    unconfirmed: "We couldn't confirm whether this went through. Check the request before you try anything else.",
+    checkRequest: "Check request",
+    sessionEnded: "You were signed out. Sign in again to continue — this request is still open.",
+    ended: {
+      notFound: { title: "We couldn't find this request", body: "The link may be incomplete. Go back to the app and connect to Malmoi again." },
+      expired: { title: "This request expired", body: "Requests stay open for 10 minutes. Go back to the app and connect to Malmoi again." },
+      used: {
+        title: "This request was already answered",
+        body: "It was authorized or denied earlier. Check the app — if it isn't connected, connect to Malmoi again from there.",
+      },
+      unavailable: { title: "We couldn't load this request", body: "Something went wrong on our side. The request may still be open — try again in a moment." },
+      invalid: {
+        title: "This app can't connect",
+        body: "Malmoi couldn't verify where this request came from, so it stopped here. Nothing was shared with the app.",
+      },
     },
   },
 

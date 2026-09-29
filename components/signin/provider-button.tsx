@@ -16,14 +16,18 @@ export function ProviderSubmit({
   label,
   variant,
   icon,
+  autoFocus,
 }: {
   label: string;
   variant: "primary" | "default";
   icon: React.ReactNode;
+  /** `/oauth/authorize`의 `Not you?` 뒤(핸드오프 `1s`) — 계정을 바꾸러 돌아온 사람의 다음 행동이 첫 공급자 버튼이다. */
+  autoFocus?: boolean;
 }) {
   return (
     <SubmitButton
       icon={icon}
+      autoFocus={autoFocus}
       variant={variant}
       size="lg"
       className="w-full"

@@ -25,7 +25,11 @@ import { DotField } from "./dot-field";
  * ⚠️ **푸터는 공개 셸의 `PublicFooter`이고 패널 줄 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
  * `absolute bottom-6`의 14px 줄이었다). 좌표도 공개 셸과 같다: 바깥 `px-2 pt-2` · 패널 줄 · 푸터 40이 바닥 띠다.
  */
-export function AuthLayout({ children, decoration = false }: { children: ReactNode; decoration?: boolean }) {
+/**
+ * ⚠️ **`scroll`은 `/oauth/authorize` 동의 단계만 넘긴다** (mcp-oauth 핸드오프 §7.1) — 폼이 뷰포트보다 길어 `<main>` **안**이 스크롤한다(문서가
+ * 아니라). 바깥이 뷰포트 높이로 고정되고 `<main>`은 가운데 정렬·좌우 여백을 버린다 — 스크롤 영역과 여백은 자식이 든다.
+ */
+export function AuthLayout({ children, decoration = false, scroll = false }: { children: ReactNode; decoration?: boolean; scroll?: boolean }) {
   /**
    * ⚠️ **탭 두 장이 배경 위에 떠 있는 구조다** (시안 검산: 프레임 1920 → body가 x=8 y=8의
    * 1904×1064이고, 좌 탭 x=0(948)·우 탭 x=956 → **바깥 padding 8 · 탭 간 gap 8**).
@@ -47,15 +51,15 @@ export function AuthLayout({ children, decoration = false }: { children: ReactNo
         ⚠️ **`h-svh`가 아니라 `min-h-svh`다** — 공개 셸과 달리 스크롤러가 없어서, 좌측 내용이 뷰포트보다 길면 문서가
         스크롤되어야 한다(자르지 않는다). 패널 줄이 `flex-1`로 남은 높이를 채운다.
       */}
-      <div className="bg-canvas flex min-h-svh min-w-[1280px] flex-col px-2 pt-2">
-        <div className={cn("grid flex-1 gap-2", decoration && "grid-cols-2")}>
+      <div className={cn("bg-canvas flex min-w-[1280px] flex-col px-2 pt-2", scroll ? "h-svh" : "min-h-svh")}>
+        <div className={cn("grid flex-1 gap-2", decoration && "grid-cols-2", scroll && "min-h-0")}>
           {/*
             ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
             ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.
             ⚠️ **`border-subtle`이다** — 시안의 `#f5f6f7`은 배경과 거의 같은 톤이라, 패널을 떼어내는
             것은 흰색 대비와 `shadow-low`이고 border는 가장자리를 정리할 뿐이다.
           */}
-          <main className="border-border-subtle relative flex flex-col items-center justify-center overflow-hidden rounded-xl border bg-white px-8 shadow-low">
+          <main className={cn("border-border-subtle relative flex flex-col overflow-hidden rounded-xl border bg-white shadow-low", scroll ? "min-h-0" : "items-center justify-center px-8")}>
             {children}
           </main>
           {decoration && <Decoration />}

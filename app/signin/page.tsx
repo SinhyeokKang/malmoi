@@ -71,6 +71,11 @@ export default async function SignIn({
               {m.signIn.backToInvitation}
             </Link>
           )}
+          {dest.kind === "oauth" && (
+            <Link href={routes.oauthAuthorize({ request: dest.requestId })} className="text-center text-sm text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
+              {m.signIn.backToAuthorization}
+            </Link>
+          )}
           <p className="text-muted-foreground text-center text-xs leading-relaxed">
             {m.signIn.consent.before}
             <Link

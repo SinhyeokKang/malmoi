@@ -88,6 +88,7 @@ export function SegmentedControl<T extends string>({
   value,
   options,
   onChange,
+  describedBy,
   className,
 }: {
   /** 그룹의 이름. 세그먼트 라벨만으로는 "무엇의 General인가"가 안 드러난다. */
@@ -95,11 +96,14 @@ export function SegmentedControl<T extends string>({
   value: T;
   options: readonly ({ value: T } & SegmentContent)[];
   onChange: (value: T) => void;
+  /** 그룹 아래 설명 한 줄의 id — 고른 값이 무엇을 뜻하는지 말하는 문장이 있을 때(`/mcp` 연결 방식). */
+  describedBy?: string;
   className?: string;
 }) {
   return (
     <RadioGroup
       aria-label={label}
+      aria-describedby={describedBy}
       value={value}
       onValueChange={(next) => {
         const option = options.find((item) => item.value === next);

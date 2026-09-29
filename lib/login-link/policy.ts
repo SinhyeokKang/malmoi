@@ -34,7 +34,13 @@ export function isLoginProvider(value: string): value is LoginProvider {
  * 쓰면 open redirect 판정이 생기고, 그 판정을 잊는 것이 조용하다 — `lib/github-connect/state.ts`의
  * `StateDest`와 같은 관용구이고 이유도 같다.
  */
-export type LinkDest = { kind: "invite"; token: string } | { kind: "projects" };
+export type LinkDest = { kind: "invite"; token: string } | { kind: "oauth"; requestId: string } | { kind: "projects" };
+
+/**
+ * authorize 요청 ID의 모양 — `generateRequestId`의 base64url. 목적지로 받는 값은 이 모양뿐이다 — 공백·구분자가 섞인 값을 요청 ID로
+ * 싣지 않는다(저장·복원·URL 조립이 같은 판정을 쓴다).
+ */
+const REQUEST_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 export type Challenge = {
   userId: string;
@@ -59,7 +65,7 @@ export function challengeIdentifier(c: Challenge): string {
     c.provider,
     c.providerAccountId,
     c.dest.kind,
-    c.dest.kind === "invite" ? c.dest.token : "",
+    c.dest.kind === "invite" ? c.dest.token : c.dest.kind === "oauth" ? c.dest.requestId : "",
   ]);
 }
 
@@ -86,7 +92,9 @@ export function parseChallengeIdentifier(identifier: string): Challenge | null {
         ? { kind: "projects" }
         : destKind === "invite" && destToken !== ""
           ? { kind: "invite", token: destToken }
-          : null;
+          : destKind === "oauth" && REQUEST_ID.test(destToken)
+            ? { kind: "oauth", requestId: destToken }
+            : null;
     if (dest === null) return null;
     const result: Challenge = { userId, provider, providerAccountId, dest };
     // 왕복 대조 — 정규형이 아닌 identifier가 조용히 통과하지 않는다.
@@ -168,7 +176,10 @@ export type LinkOutcome =
 
 /** 성공 착지 — **갈래 이름으로만** 만들어진다 (불변식 9). */
 export function outcomeUrl(dest: LinkDest): string {
-  return dest.kind === "invite" ? routes.invite(dest.token) : routes.projects();
+  if (dest.kind === "invite") return routes.invite(dest.token);
+  // ⚠️ 요청이 그 사이 만료·소비됐어도 여기로 간다 — 동의 화면이 그 상태를 명시적으로 말한다(POSTMORTEM 2026-09-10: 목적이 사라진 왕복을 일반 로그인으로 접지 않는다).
+  if (dest.kind === "oauth") return routes.oauthAuthorize({ request: dest.requestId });
+  return routes.projects();
 }
 
 /**
@@ -201,6 +212,12 @@ export function destFromCallbackUrl(value: string | undefined): LinkDest {
   try {
     // 상대 경로로 올 수도 있어 base를 준다 — origin은 어차피 버린다(갈래만 남는다).
     const target = new URL(decodeURIComponent(value), "http://localhost");
+    // 동의 화면 — 요청 ID **하나**만 갈래로 남긴다. 원래 authorize 쿼리(client_id 등)는 저장하지 않는다: 복귀는 서버가 보관한 요청 행이 든다.
+    if (target.pathname === "/oauth/authorize") {
+      const ids = target.searchParams.getAll("request");
+      const requestId = ids.length === 1 ? ids[0] : undefined;
+      return requestId !== undefined && REQUEST_ID.test(requestId) ? { kind: "oauth", requestId } : { kind: "projects" };
+    }
     const match = /^\/invite\/([^/]+)$/.exec(target.pathname);
     const token = match?.[1];
     return token === undefined || token === "" ? { kind: "projects" } : { kind: "invite", token: decodeURIComponent(token) };
