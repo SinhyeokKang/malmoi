@@ -16,7 +16,7 @@ import { BROWSER_CLIENTS, CONNECT_CLIENTS, CONNECT_METHODS, connectSnippet, SERV
  *
  * ⚠️ **방식이 먼저다**(기본 `Sign in with browser`) — 두 방식을 한 조각에 섞지 않는다. 방식을 바꾸면 클라이언트는 Claude Code로 돌아간다
  * (목록이 방식마다 다르다: 브라우저는 claude.ai, 토큰은 Cursor).
- * ⚠️ **구획 둘 사이 선이 `#f0f0f0`이다**(`border-divider`) — 두 항목이 아니라 한 카드의 두 구획이다.
+ * ⚠️ **구획 둘 사이 선이 `#f0f0f0`이다**(`border-foreground/[0.06]` — RowCard 판 안의 철자다, `RowCardItem` 주석) — 두 항목이 아니라 한 카드의 두 구획이다.
  * ⚠️ **스니펫은 `WorkflowBlock` 형이다 — 공개 문서의 `CodeBlock`이 아니다**(파일명 바 40은 원고용). 그래서 mono 자리가 늘지 않는다
  * (`<pre>` 둘 — DESIGN §4.1 · `surface-rules.test.ts`). 경로는 sans 평문에 색만 올린다.
  * ⚠️ 탭은 새로고침에 남기지 않는다(핸드오프 §9 — 클라이언트 상태).

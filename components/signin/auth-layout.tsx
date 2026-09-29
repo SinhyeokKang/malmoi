@@ -12,7 +12,7 @@ import japaneseCard from "@/public/brand/malmoi-kv-4.png";
 import { DotField } from "./dot-field";
 
 /**
- * 셸 **밖** 화면 셋의 골격 (8-1b) — 로그인 · 초대 수락 · 계정 병합.
+ * 셸 **밖** 화면 넷의 골격 (8-1b) — 로그인 · 초대 수락 · 계정 병합 · 앱 동의(`/oauth/authorize`, 2026-09-29).
  *
  * ⚠️ **우측 장식은 `/signin`만 든다** (`decoration`, 2026-09-29 사용자) — 초대 수락·계정 병합은 흰 폼 패널
  * 단일이다. 2026-09-10에는 "초대가 번역자의 첫 얼굴"이라 셋이 같은 2열이었는데, 초대가 실패해도 우측이

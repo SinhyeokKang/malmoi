@@ -10,7 +10,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { EmptyRowCard, RowCard } from "@/components/ui/row-card";
+import { EmptyRowCard, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
 import { m } from "@/lib/i18n";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { relativeTime } from "@/lib/relative-time";
@@ -136,11 +136,15 @@ export function ConnectedAppsCard({ apps, now }: { apps: readonly ConnectedAppDa
         ) : rows.length === 0 ? (
           <EmptyRowCard inset icon={McpIcon} title={m.mcpConnector.apps.emptyTitle} description={m.mcpConnector.apps.emptyBody} />
         ) : (
-          <ul data-apps-list>
+          // 선의 두 급(머리↔첫 행 · 행↔행)과 목록의 이름은 프리미티브가 든다 — 이웃 카드와 같은 규칙이 한 자리에 있게. 미확인 알림이 머리
+          // 아래에 서면 첫 행은 알림 다음 행이라 행↔행 선이다.
+          <RowCardList labelledBy={TITLE_ID}>
             {rows.map((app, index) => (
-              <AppRow key={app.id} app={app} now={new Date(now)} line={index === 0 && unconfirmed === null ? "head" : "row"} onDisconnect={() => ask(app)} />
+              <RowCardItem key={app.id} first={index === 0 && unconfirmed === null}>
+                <AppRow app={app} now={new Date(now)} onDisconnect={() => ask(app)} />
+              </RowCardItem>
             ))}
-          </ul>
+          </RowCardList>
         )}
         <p role="status" data-apps-live className="sr-only">
           {status}
@@ -187,7 +191,7 @@ export function ConnectedAppsCard({ apps, now }: { apps: readonly ConnectedAppDa
   );
 }
 
-function AppRow({ app, now, line, onDisconnect }: { app: ConnectedAppData; now: Date; line: "head" | "row"; onDisconnect: () => void }) {
+function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; onDisconnect: () => void }) {
   const expired = app.state === "expired";
   const expires = new Date(app.expiresAt);
   const lastUsed = app.lastUsedAt === null ? null : new Date(app.lastUsedAt);
@@ -201,8 +205,7 @@ function AppRow({ app, now, line, onDisconnect }: { app: ConnectedAppData; now: 
     [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? utcDay(expires) : relativeTime(expires, now)}</time>],
   ];
   return (
-    // 머리 바로 아래 첫 행은 머리 선(`#f0f0f0`), 그 밖은 행↔행 선(`#e5e5e5`)이다(핸드오프 §5).
-    <li data-app-row={app.id} className={cn("flex items-center gap-4 border-t px-4 py-3.5", line === "head" ? "border-foreground/[0.06]" : "border-border")}>
+    <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-3.5">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex min-w-0 items-start gap-2">
           <span className={cn("min-w-0 text-base font-medium [overflow-wrap:anywhere]", expired && "text-neutral-400")}>{app.name}</span>
@@ -221,6 +224,6 @@ function AppRow({ app, now, line, onDisconnect }: { app: ConnectedAppData; now: 
       <Button data-app-disconnect={app.id} className="shrink-0" aria-label={m.mcpConnector.apps.disconnectLabel(app.name, app.ident)} onClick={onDisconnect}>
         {m.mcpConnector.apps.disconnect}
       </Button>
-    </li>
+    </div>
   );
 }
