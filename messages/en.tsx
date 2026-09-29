@@ -1827,11 +1827,11 @@ export const en = {
         "claude-code": "Switching from a personal token? Remove the headers entry first. While it is there, Claude Code keeps using the token.",
         codex: "Switching from a personal token? Remove the bearer_token_env_var line first. While it is there, Codex keeps using the token.",
       },
-      // ⚠️ claude.ai는 미실측이다(design §0.1) — 메뉴 경로·버튼명은 시안 샘플이고 T10에서 실물로 확정한다.
+      // 메뉴 경로·버튼명은 T1 실측이다(design §0.1 — 개인 Free 계정, `claude.ai/customize/connectors`). 실서버 왕복 확인은 prod 머지 뒤 T10이다.
       claudeAiSteps: [
-        "In claude.ai, open Settings → Connectors and choose Add custom connector.",
+        "In claude.ai, open Customize → Connectors, choose Add, then Add custom connector.",
         "Paste the server URL above and give it a name, such as Malmoi.",
-        "Choose Connect. Sign in to Malmoi and choose what it can do in the window that opens.",
+        "Choose Connect. In the window that opens, sign in to Malmoi, choose what it can do and select Authorize.",
       ],
       // Team·Enterprise 플랜은 멤버가 커스텀 커넥터를 추가하지 못한다(mcp-oauth 결정 기록 — T1 실측 계정 판정). 단계 문구와 달리 이 전제는 확정이다.
       claudeAiOrgNote: "On a Team or Enterprise plan, the owner of your claude.ai organization has to add the custom connector first.",

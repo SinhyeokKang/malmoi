@@ -258,7 +258,7 @@ describe("Connect 카드 — 방식 세그먼트", () => {
     expect(steps[0]).toMatch(/Customize → Connectors.*Add.*Add custom connector/);
     expect(steps.join(" ")).not.toContain("Settings");
     expect(steps[1]).toContain("server URL");
-    expect(steps[2]).toMatch(/Connect.*Sign in to Malmoi.*Authorize/);
+    expect(steps[2]).toMatch(/Connect.*sign in to Malmoi.*Authorize/);
     // Team·Enterprise 멤버는 조직 소유자가 먼저 등록해야 한다(mcp-oauth 결정 기록) — 단계 아래 한 줄이다.
     expect(find<HTMLElement>(document.body, "[data-connect-org-note]").textContent).toMatch(/Team or Enterprise.*owner of your claude.ai organization/);
   });
