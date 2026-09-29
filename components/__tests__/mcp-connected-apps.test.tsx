@@ -252,8 +252,14 @@ describe("Connect 카드 — 방식 세그먼트", () => {
     await render(<ConnectCard serverUrl={URL} />);
     await click(radio("Agent", "claude.ai"));
     expect(document.querySelector("pre")).toBeNull();
-    expect(find<HTMLElement>(document.body, "[data-connect-steps]").querySelectorAll("li")).toHaveLength(3);
-    // Team·Enterprise 멤버는 조직 소유자가 먼저 등록해야 한다(mcp-oauth 결정 기록) — 단계 아래 한 줄이다. 단계 문구 자체는 실측 전 샘플이다.
+    const steps = [...find<HTMLElement>(document.body, "[data-connect-steps]").querySelectorAll("li")].map((li) => li.textContent ?? "");
+    expect(steps).toHaveLength(3);
+    // 메뉴 경로는 T1 실측(design §0.1 — claude.ai/customize/connectors)이다. 시안 샘플의 Settings 경로로 돌아가면 사용자가 메뉴를 못 찾는다.
+    expect(steps[0]).toMatch(/Customize → Connectors.*Add.*Add custom connector/);
+    expect(steps.join(" ")).not.toContain("Settings");
+    expect(steps[1]).toContain("server URL");
+    expect(steps[2]).toMatch(/Connect.*Sign in to Malmoi.*Authorize/);
+    // Team·Enterprise 멤버는 조직 소유자가 먼저 등록해야 한다(mcp-oauth 결정 기록) — 단계 아래 한 줄이다.
     expect(find<HTMLElement>(document.body, "[data-connect-org-note]").textContent).toMatch(/Team or Enterprise.*owner of your claude.ai organization/);
   });
 
