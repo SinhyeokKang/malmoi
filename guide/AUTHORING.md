@@ -98,6 +98,7 @@
 - 모든 H2 끝에 ` {#id}`를 붙인다. 예시는 `## Add the workflow {#workflow}`다. H3의 앵커는 선택이다.
 - id는 `[a-z0-9-]+`이고 페이지 안에서 중복되지 않는다. 제목을 바꿔도 공개된 id는 유지한다. 앵커 문법 자체를 설명할 때는 반드시 인라인 코드 안에 둔다.
 - 페이지 링크는 `../setup/workflow.md#workflow`처럼 상대 `.md` 경로로 쓴다. `/docs/...` 절대경로를 원고에 넣지 않는다. 같은 페이지의 앵커 링크는 `#workflow`처럼 쓸 수 있다.
+- **한 페이지를 섹션으로 나누면 옛 절 id 전부를 `SECTION_LEGACY_ANCHORS`(같은 파일)에 그 장 slug로 등재한다** — 공유된 `/docs/<장>#<id>`가 개요 맨 위에 멈춘다(malmoi#152, `ai-agents`).
 - 옛 해시 일곱은 `lib/guide/legacy-anchors.ts`가 정본이다. 개요에 본문을 중복하지 않도록 `how-it-works`는 `sync/README.md`의 같은 id로 옮긴다. 나머지 절도 매핑된 페이지에 같은 id를 보존한다.
 
 ## 표 이름 {#tables}
