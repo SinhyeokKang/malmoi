@@ -73,7 +73,7 @@
 | `/guide/logs-event.webp` | `sync/logs.md#event-details` | OWNER | Logs(Kind: Publish)에서 연 Publish 사건 상세 |
 | `/guide/account.webp` | `account.md#profile` | OWNER | Account — Profile · Sign-in methods · GitHub App |
 | `/guide/mcp-create-token.webp` | `ai-agents.md#token` | EDITOR | MCP connector → Create token 모달 ①단계(만들지 않음 — ② 토큰 원문은 찍지 않는다) |
-| `/guide/mcp-connector.webp` | `ai-agents.md#connect` | OWNER | MCP connector — 토큰 카드(원문 없음) + Connect 카드 |
+| `/guide/mcp-connector.webp` | `ai-agents.md#connected-apps` | OWNER | MCP connector — Connected apps(연결 둘) + 토큰 카드(원문 없음) + Connect 카드 머리 |
 
 ## 에셋 매핑 {#shots}
 
@@ -103,8 +103,8 @@
 | /guide/sync-discard.webp | components/home/sync-button.tsx | fbc0e86869a83eb51b2984f584911b83bf7fdb17 | 2560x1600 |
 | /guide/logs-event.webp | components/logs/event-dialog.tsx, components/logs/event-detail.tsx | cadf74e0cb02c69164c5d8bd828ea5441dc71d60, 9788954b94524cd0c09851a166375d9b89974660 | 2560x1600 |
 | /guide/account.webp | app/(edit)/account/page.tsx, components/account/profile-picture.tsx, components/account/login-methods.tsx, components/account/github-section.tsx | 6d03357fb3f33f6c8a21c869640d7f72f0bdca76, 37eec1067fce9caa706483a11deb51d76bf4f39b, dff3cf21dec15a3ca7006dee78278bd95b079324, e866658706416a009765e582123f1158decc7d6c | 2560x1600 |
-| /guide/mcp-create-token.webp | components/mcp/token-modal.tsx | 0c39813e1c5d081e99660558f8602c67887da1ce | 2560x1600 |
-| /guide/mcp-connector.webp | components/mcp/token-card.tsx, components/mcp/connect-card.tsx | 2211e89fc06a86eb77a0f5c43c30d1a8257641f1, c9c0e1d1ad212de2cc4cdd6a3ca2a30c04135561 | 2560x1600 |
+| /guide/mcp-create-token.webp | components/mcp/token-modal.tsx, components/mcp/token-grant-fields.tsx | d56afa2334b2932c1734bab087e52280f6a4d543, 0074ab2f4ccec1114cfa3e0dbae332bbec2b6935 | 2560x1600 |
+| /guide/mcp-connector.webp | components/mcp/connected-apps-card.tsx, components/mcp/token-card.tsx, components/mcp/connect-card.tsx | 09449913f4e0f2bac6ed184dadfd753609c22a0e, 02dec0a0e34bb906d65c1921d5f9e1ed50b61d42, 73b289cdd90fdd0358978ef1c0f308c382f022b2 | 2560x1600 |
 | /guide/create-repository.webp | components/onboarding/new-project.tsx, components/onboarding/steps/repo.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, 35a6949ccd7201ce6de97c7b3b2d944d32828c05 | 2560x1600 |
 | /guide/create-files.webp | components/onboarding/new-project.tsx, components/onboarding/steps/files.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, 72c92128cde6e327a6215f67634a0a8d512d31d7 | 2560x1600 |
 | /guide/create-name.webp | components/onboarding/new-project.tsx, components/onboarding/steps/naming.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, c588cef72e7d02b563634caec2630909d0b346c0 | 2560x1600 |
@@ -138,3 +138,5 @@
 - 2026-09-29 `api-url`(생성 워크플로가 프로덕션 밖에서만 `api-url` 한 줄을 싣는다) — `workflow.ts` 변경으로 `push-token-secret`·`workflow-file`·`actions-policy`가 stale — 세 컷은 프로덕션 출력(변화 없음)이라 **재촬영 없이 blob SHA만 갱신**했다.
 - 2026-09-29 (같은 날, 사용자 지시) `setup/create-project.md` ①–③ 세 장 추가(`create-repository` · `create-files` · `create-name`) — `i18n-order-check`를 보관해 상한 자리를 만들고 촬영 뒤 복원했다. ④는 여전히 건너뜀.
 - 2026-09-29 `/guide/accept-invitation.webp` 재촬영 — 셸 밖 골격이 `/signin` 외엔 장식 없는 단일 패널이 됐다(`AuthLayout`의 `decoration`). 변경이 `auth-layout.tsx` 안에서 끝나 `guide:check`가 못 잡았으므로 그 파일을 매핑 소스에 더했다. 초대는 전과 같이 dev DB에 1건(`i18n-order-check`, EDITOR 주소)을 사건 없이 심어 찍고 수락 없이 id로 지웠다. EDITOR 세션에서 `accept` 상태, 이메일은 마스킹된 `o***@…` 꼴이라 `*`까지 잡는 치환이 필요했다.
+- 2026-09-29 mcp-oauth — `mcp-connector` **재촬영**: 맨 위에 Connected apps 카드가 섰다(`ai-agents.md#connected-apps`로 옮겼다). 연결 둘(`Claude Code` · 이름 없는 Codex CIMD URL)은 dev DB에 가짜 `OAuthConnection` 행으로 심었고, 토큰 카드는 UI로 만든 토큰(원문은 찍지 않았다)이다 — 촬영 뒤 셋 다 지웠다. origin `http://localhost:3000` → `https://mal-moi.com`, OWNER 이름·아바타 치환. `mcp-create-token`은 필드를 `token-grant-fields.tsx`로 옮긴 리팩터라 화면이 같아 **재촬영 없이 소스에 그 파일을 더하고 SHA만 갱신**했다.
+- ⚠️ 남은 stale: `/guide/accept-invitation.webp` ← `components/signin/auth-layout.tsx`(mcp-oauth가 `scroll` prop과 주석만 더했다 — 초대 화면은 그 prop을 안 넘겨 화면이 같다). 이번 라운드 범위 밖이라 SHA를 갱신하지 않았다.
