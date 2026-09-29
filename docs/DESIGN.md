@@ -380,7 +380,7 @@ computed style로 잰 것이다.
 |---|---|---|
 | 미번역 | 무색 — `text-muted-foreground` "Untranslated" | 없음은 상태가 아니라 부재다. 색을 주면 셋 중 가장 흔한 것이 가장 시끄러워진다 |
 | 검토필요 (`needsReview`) | **amber** — `Badge warning` = `bg-amber-100/80 text-amber-800` | 경고지 오류가 아니다 |
-| 미배포 (`isUnpublished`) | 무색 — `Badge muted` "Not yet sent" | 툴바 건수·보류 배너와 **같은 술어**다(편집 토큰이 남은 활성 셀 — 2026-09-18). 색을 주면 편집 직후의 정상 상태가 경고로 읽힌다 |
+| 미배포 (셀 `pending` — `translation-list.ts`) | 무색 — `Badge muted` "Not yet sent" | 툴바 건수·보류 배너와 **같은 술어**다(편집 토큰이 남은 활성 셀 — 2026-09-18). 색을 주면 편집 직후의 정상 상태가 경고로 읽힌다 |
 | orphaned | **red 계열 글자만** — `Badge danger` = `text-destructive` (배경 없음) | §2.3대로 글자색 전용. 배경을 주면 "삭제됨"으로 읽히는데 실제로는 되돌릴 수 있다. **키 행과 로케일 헤더 두 축에 같은 표기** |
 
 **연결 건강성 7종** (설정 화면): **배지를 쓰지 않는다** (2026-09-08 실물 정정) — `ok`·`not-connected`·`unknown`은 평문 `text-muted-foreground text-xs`(가장 흔한 상태가 조용하다) / `repo-moved` → **`Alert warning`** / `app-uninstalled`·`installation-changed` → **`Alert danger` + [Reconnect]** / **`repo-replaced` → `Alert danger`이고 [Reconnect]가 **없다**(2026-09-10, sec-audit-2 — 저장된 주소가 **다른 리포**를 가리키는 상태다. 리포는 프로젝트 생성 시점에 고정이라 `connectRepository`가 재고정을 거부하므로 **눌러도 실패할 버튼**이고, 그래서 'danger = danger + [Reconnect]'라는 짝이 여기서만 깨진다). 색 체계는 아래와 같고 담는 그릇만 다르다. ⚠️ **`unknown`을 `app-uninstalled` 색으로 접지 않는다** — 조회 실패를 "제거됨"으로 보여주면 사용자가 멀쩡한 설치를 다시 만든다.
