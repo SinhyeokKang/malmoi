@@ -224,7 +224,11 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "OAuthRefreshHistory.connectionId": "collected",
   "OAuthRefreshHistory.usedAt": "collected",
 
-  /** 동의 결과의 60초 스냅샷 — 연결과 같은 항목이다. 발급 출처·검증 필드는 클라이언트가 보낸 요청의 사본이다. */
+  /**
+   * 동의 결과의 60초 스냅샷 — 연결과 같은 항목이다. 발급 출처·검증 필드는 클라이언트가 보낸 요청의 사본이다.
+   * 보관은 code 수명(`expiresAt`)이 정한다: **교환되면 그 tx에서 지우고**, 교환 안 된 채 만료된 행은 그 사용자의 다음 발급·교환이 지운다
+   * (작업 큐 없음 — PRODUCT §4.2). 같은 클라이언트의 새 동의·끊기·사용자 삭제도 지운다.
+   */
   "OAuthCode.codeHash": "collected",
   "OAuthCode.requestId": NOT_PERSONAL,
   "OAuthCode.clientId": "collected",

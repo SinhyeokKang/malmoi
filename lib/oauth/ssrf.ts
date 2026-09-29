@@ -3,7 +3,8 @@
  * `169.254.169.254`(클라우드 메타데이터)로 풀리면 이름 검사는 아무것도 못 막는다.
  *
  * ⚠️ **거부 목록이다** — IANA 특수 목적 대역(RFC 6890 계열) 중 우리 서버가 닿으면 안 되는 것을 든다. IPv4를 품은 IPv6(`::ffff:a.b.c.d` mapped ·
- * `64:ff9b::/96` NAT64 · 옛 `::a.b.c.d` compatible)는 **품은 IPv4로** 판정한다 — 그 모양이 사설 대역 우회의 고전이다.
+ * `64:ff9b::/96` NAT64 · `2002::/16` 6to4 · 옛 `::a.b.c.d` compatible)는 **품은 IPv4로** 판정하고, 대상을 가릴 수 없는 모양(Teredo · SIIT ·
+ * NAT64 local-use)은 막는다 — 그 모양이 사설 대역 우회의 고전이다.
  * ⚠️ 주소 파싱을 직접 한다 — `net.isIP`는 모양만 보고, 정규화(`::ffff:7f00:1` ↔ `::ffff:127.0.0.1`)를 안 해 우회 모양을 놓친다.
  * ⚠️ `server-only`를 붙이지 않는다 — 순수 판정이다.
  */
@@ -66,8 +67,15 @@ function v6Blocked(h: number[]): boolean {
   const embedded = [g >> 8, g & 0xff, last >> 8, last & 0xff];
   // mapped `::ffff:a.b.c.d` · compatible `::a.b.c.d`(미지정·루프백 포함) → 품은 IPv4로.
   if (a === 0 && b === 0 && c === 0 && d === 0 && e === 0 && (f === 0xffff || f === 0)) return v4Blocked(embedded);
+  // SIIT `::ffff:0:0/96` — 번역기 뒤의 IPv4를 가리킨다. 공개 서버가 이 모양으로 풀릴 이유가 없다.
+  if (a === 0 && b === 0 && c === 0 && d === 0 && e === 0xffff && f === 0) return true;
   // NAT64 `64:ff9b::/96`.
   if (a === 0x64 && b === 0xff9b && c === 0 && d === 0 && e === 0 && f === 0) return v4Blocked(embedded);
+  if (a === 0x64 && b === 0xff9b && c === 0x0001) return true; // NAT64 local-use 64:ff9b:1::/48
+  // 6to4 `2002::/16` — 둘째·셋째 조각이 IPv4다.
+  if (a === 0x2002) return v4Blocked([b >> 8, b & 0xff, c >> 8, c & 0xff]);
+  if (a === 0x2001 && b === 0) return true; // Teredo 2001::/32 — 끝 32비트가 뒤집힌 IPv4라 대상을 가릴 수 없다
+  if (a === 0x3fff && (b & 0xf000) === 0) return true; // 문서 대역 3fff::/20
   if ((a & 0xfe00) === 0xfc00) return true; // ULA fc00::/7
   if ((a & 0xffc0) === 0xfe80) return true; // 링크 로컬 fe80::/10
   if ((a & 0xffc0) === 0xfec0) return true; // 옛 site-local fec0::/10

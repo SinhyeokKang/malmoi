@@ -77,45 +77,50 @@ export async function fetchClientMetadata(clientId: string, deps: FetchDeps = NO
  * 실제 네트워크 층 — 해석과 **고정된 주소로의** HTTPS GET. `lookup` 옵션이 연결 주소를 정하고 `servername`(SNI)·인증서 검사는 URL의 호스트
  * 이름으로 남는다. `https.request`는 리다이렉트를 따르지 않는다.
  * ⚠️ Node 24의 `net`은 `autoSelectFamily` 때문에 `lookup`을 `{ all: true }`로 부를 수 있다 — 두 모양 다 답한다.
+ * ⚠️ **`agent: false`** — 기본 전역 에이전트는 keep-alive라 같은 호스트로 열린 소켓을 재사용하고, 그때는 `lookup`이 불리지 않아 고정이
+ * 건너뛰어진다(리뷰 재현). 요청마다 새 연결을 연다 — authorize는 사람이 누르는 빈도라 잃는 것이 없다.
  */
+export const pinnedGet: FetchDeps["get"] = (url, pinned, limits) => new Promise((resolve, reject) => {
+  const req = httpsRequest(url, {
+    method: "GET",
+    headers: { accept: "application/json" },
+    agent: false,
+    timeout: limits.timeoutMs,
+    lookup: (_host, options, callback) => {
+      if ((options as { all?: boolean }).all) (callback as unknown as (e: null, a: { address: string; family: number }[]) => void)(null, [pinned]);
+      else callback(null, pinned.address, pinned.family);
+    },
+  }, res => {
+    const chunks: Buffer[] = [];
+    let total = 0;
+    let overflow = false;
+    res.on("data", (chunk: Buffer) => {
+      total += chunk.byteLength;
+      if (total > limits.maxBytes) {
+        overflow = true;
+        res.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    const done = () => resolve({
+      status: res.statusCode ?? 0,
+      contentType: typeof res.headers["content-type"] === "string" ? res.headers["content-type"] : null,
+      body: overflow ? null : Buffer.concat(chunks).toString("utf8"),
+    });
+    res.on("end", done);
+    res.on("close", () => { if (overflow) done(); });
+    res.on("error", error => { if (!overflow) reject(error); });
+  });
+  // 전체 시간 상한 — `timeout`은 소켓 유휴 시간이라 한 바이트씩 흘리는 응답을 못 끊는다.
+  const timer = setTimeout(() => req.destroy(new Error("CIMD fetch timed out")), limits.timeoutMs);
+  req.on("close", () => clearTimeout(timer));
+  req.on("timeout", () => req.destroy(new Error("CIMD fetch timed out")));
+  req.on("error", reject);
+  req.end();
+});
+
 const NODE_DEPS: FetchDeps = {
   resolve: async hostname => (await lookup(hostname, { all: true, verbatim: true })).map(a => ({ address: a.address, family: a.family === 6 ? 6 : 4 })),
-  get: (url, pinned, limits) => new Promise((resolve, reject) => {
-    const req = httpsRequest(url, {
-      method: "GET",
-      headers: { accept: "application/json" },
-      timeout: limits.timeoutMs,
-      lookup: (_host, options, callback) => {
-        if ((options as { all?: boolean }).all) (callback as unknown as (e: null, a: { address: string; family: number }[]) => void)(null, [pinned]);
-        else callback(null, pinned.address, pinned.family);
-      },
-    }, res => {
-      const chunks: Buffer[] = [];
-      let total = 0;
-      let overflow = false;
-      res.on("data", (chunk: Buffer) => {
-        total += chunk.byteLength;
-        if (total > limits.maxBytes) {
-          overflow = true;
-          res.destroy();
-          return;
-        }
-        chunks.push(chunk);
-      });
-      const done = () => resolve({
-        status: res.statusCode ?? 0,
-        contentType: typeof res.headers["content-type"] === "string" ? res.headers["content-type"] : null,
-        body: overflow ? null : Buffer.concat(chunks).toString("utf8"),
-      });
-      res.on("end", done);
-      res.on("close", () => { if (overflow) done(); });
-      res.on("error", error => { if (!overflow) reject(error); });
-    });
-    // 전체 시간 상한 — `timeout`은 소켓 유휴 시간이라 한 바이트씩 흘리는 응답을 못 끊는다.
-    const timer = setTimeout(() => req.destroy(new Error("CIMD fetch timed out")), limits.timeoutMs);
-    req.on("close", () => clearTimeout(timer));
-    req.on("timeout", () => req.destroy(new Error("CIMD fetch timed out")));
-    req.on("error", reject);
-    req.end();
-  }),
+  get: pinnedGet,
 };

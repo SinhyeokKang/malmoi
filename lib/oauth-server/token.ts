@@ -63,6 +63,9 @@ export async function exchangeAuthorizationCode(
       accessTokenHash: hashApiToken(tokens.accessToken), accessExpiresAt: tokens.accessExpiresAt,
       refreshTokenHash: hashApiToken(tokens.refreshToken), expiresAt: code.connectionExpiresAt,
     } });
+    // 쓰인 code와 이 사용자의 만료 code는 더 들고 있을 이유가 없다 — 사용자·권한 스냅샷이 보관 기간(code 수명)을 넘기지 않게 지운다.
+    // 동시 교환의 진 쪽은 사용자 잠금 뒤 재읽기에서 행이 없어 `invalid_grant`다(1회용은 위의 조건부 소비가 이미 증명했다).
+    await tx.oAuthCode.deleteMany({ where: { userId: code.userId, OR: [{ codeHash }, { expiresAt: { lte: now } }] } });
     return { status: "ok", tokens } as const;
   });
 }
@@ -103,10 +106,12 @@ export async function refreshConnection(
     if (plan.status === "rotate" && connection !== null) {
       const tokens = issueTokens(now, connection.expiresAt);
       await tx.oAuthRefreshHistory.create({ data: { tokenHash: presentedHash, connectionId: connection.id, usedAt: now } });
-      await tx.oAuthConnection.update({
-        where: { id: connection.id },
+      const swapped = await tx.oAuthConnection.updateMany({
+        where: { id: connection.id, userId: target.userId },
         data: { accessTokenHash: hashApiToken(tokens.accessToken), accessExpiresAt: tokens.accessExpiresAt, refreshTokenHash: hashApiToken(tokens.refreshToken) },
       });
+      // 잠금 아래라 0행일 수 없다 — 0이면 이력만 남기고 토큰을 주는 반쪽 회전이 되므로 던져서 tx를 되돌린다(route는 server_error).
+      if (swapped.count !== 1) throw new Error("OAuth refresh rotation updated no connection row");
       return { status: "ok", tokens } as const;
     }
     if (plan.status === "revoke-replayed-connection" && connection !== null) {

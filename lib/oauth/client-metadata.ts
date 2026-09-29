@@ -21,14 +21,15 @@ export type ClientMetadata = {
 export type ClientMetadataPlan = { ok: true; client: ClientMetadata } | { ok: false };
 
 /**
- * HTTPS · 경로 있음 · fragment·userinfo·query 없음(CIMD 초안 SHOULD NOT) · **정규화해도 같은 문자열**. 마지막 조건이 점 세그먼트·대문자 호스트를 막는다 —
+ * HTTPS · 경로 있음 · fragment·userinfo·query 없음(CIMD 초안 SHOULD NOT) · **기본 포트만**(임의 포트면 가져오기가 공개 주소의 내부 서비스를
+ * 두드린다) · **정규화해도 같은 문자열**. 마지막 조건이 점 세그먼트·대문자 호스트를 막는다 —
  * 정규화 전후가 다르면 가져온 문서의 `client_id`와 저장·표시하는 값이 갈린다.
  */
 export function isClientIdUrl(value: string): boolean {
   if (!URL.canParse(value)) return false;
   const url = new URL(value);
   return url.protocol === "https:" && url.pathname !== "/" && url.hash === "" && !value.includes("#") && !value.includes("?")
-    && url.username === "" && url.password === "" && url.href === value;
+    && url.username === "" && url.password === "" && url.port === "" && url.href === value;
 }
 
 function own(doc: object, key: string): unknown {
