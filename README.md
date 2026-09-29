@@ -114,8 +114,8 @@ brings new keys into Malmoi and marks translations whose source text changed as
   ([details](https://mal-moi.com/docs/sync/nightly)).
 - **Two roles** — owners manage the repository, settings, and members; editors
   translate and publish. Invite teammates by email and pick a role per invite.
-- **AI agents over MCP** — add the server URL to Claude Code or Codex and sign
-  in through your browser: you choose what the app may do on a consent screen
+- **AI agents over MCP** — add the server URL to Claude Code, Codex, or a
+  claude.ai custom connector and sign in through your browser: you choose what the app may do on a consent screen
   and never see or copy a token. Connected apps are listed on the MCP connector
   page, where you can disconnect each one. Clients that only take a header
   (such as Cursor) use a personal token that expires. Either way, the agent can
