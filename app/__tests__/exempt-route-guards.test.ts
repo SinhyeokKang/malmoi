@@ -15,7 +15,7 @@ const APP = fileURLToPath(new URL("..", import.meta.url));
 /** `app/` 기준 경로 → 주석을 벗긴 소스에 있어야 하는 호출. 새 예외 route가 자기 인증을 가지면 여기에 함께 적는다. */
 const REQUIRED_GUARD: Record<string, readonly string[]> = {
   // 개인 MCP 토큰 — 세션이 없는 진입점이라 Bearer 해시 조회가 인가의 입구다(design §1.2).
-  "api/mcp/route.ts": ["resolveApiToken"],
+  "api/mcp/route.ts": ["resolveBearer"],
 };
 
 function stripComments(source: string): string {

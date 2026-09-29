@@ -12,6 +12,7 @@ import { optionalEnv } from "@/lib/env";
 import { signSampleConfirmation } from "@/lib/onboarding/sample-confirmation";
 
 import type { TokenGrant } from "../grant";
+import { hashApiToken } from "../token";
 import type { ToolOutcome } from "../result";
 import type { ApiTokenSubject } from "../token-store";
 
@@ -43,6 +44,7 @@ vi.mock("@/lib/github", async (orig) => ({
 }));
 
 const { TOOLS } = await import("../tools");
+const { resolveBearer } = await import("../token-store");
 
 const directory = mkdtempSync(join(tmpdir(), "malmoi-mcp-tools-"));
 let binaries: string;
@@ -283,5 +285,113 @@ describe("set_translations — 100키 한 tx", () => {
     expect(await prisma.translation.count({ where: { projectId: "p", keyId: { startsWith: "b" } } })).toBe(99);
     expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "translation.saved" } })).toBe(99);
     expect(elapsed).toBeLessThan(30_000);
+  });
+});
+
+/**
+ * **OAuth 연결 주체 × 실제 잠금** (mcp-oauth T5 — design §5). 개인 토큰과 **같은 잠금 뒤 재읽기**를 지나되 키가 연결 id다: 대기 중 끊기·재동의
+ * (행 삭제·새 id)는 쓰기 0건이고, 대기 중 refresh 회전(같은 행의 해시 교체)은 같은 연결의 정당한 쓰기로 통과한다.
+ * 고른 범위의 연결로 만든 프로젝트는 같은 tx에서 **그 연결에만** 편입된다.
+ */
+describe("OAuth 연결 주체", () => {
+  const ENDPOINT = { issuer: "https://mal-moi.com", resource: "https://mal-moi.com/api/mcp" };
+
+  async function connection(userId: string, over: { clientId?: string; grants?: TokenGrant[]; allProjects?: boolean; projectIds?: string[] } = {}) {
+    const clientId = over.clientId ?? "https://claude.ai/oauth/claude-code-client-metadata";
+    const access = `mlo_${userId}-${clientId.length}-${Math.random().toString(36).slice(2)}`;
+    const row = await prisma.oAuthConnection.create({ data: {
+      userId, clientId, clientName: "Claude Code", redirectUri: "http://localhost/callback", ...ENDPOINT,
+      grants: over.grants ?? ALL, allProjects: over.allProjects ?? true, projectIds: over.projectIds ?? [],
+      accessTokenHash: hashApiToken(access), accessExpiresAt: new Date(Date.now() + 3_600_000),
+      refreshTokenHash: hashApiToken(`mlr_${access}`), expiresAt: new Date(Date.now() + 86_400_000),
+    } });
+    return { id: row.id, access };
+  }
+  /** 입구와 같은 경로로 주체를 만든다 — 요청마다 새로 읽는 것까지 흉내 낸다. */
+  const subjectOf = async (access: string) => (await resolveBearer(prisma, access, new Date(), ENDPOINT))!;
+
+  async function hold(sql: string, values: unknown[], run: () => Promise<ToolOutcome>): Promise<ToolOutcome> {
+    const blocker = await pool.connect();
+    try {
+      await blocker.query("BEGIN");
+      await blocker.query(`SELECT "id" FROM "Project" WHERE "id" = $1 FOR UPDATE`, ["p"]);
+      await blocker.query(sql, values);
+      const pending = run();
+      pending.catch(() => undefined);
+      await expect.poll(async () => (await pool.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND pid <> $1", [(blocker as unknown as { processID: number }).processID])).rows[0].n, { timeout: 10_000 }).toBeGreaterThan(0);
+      await blocker.query("COMMIT");
+      return await pending;
+    } finally {
+      blocker.release();
+    }
+  }
+  const save = (subject: ApiTokenSubject) => call("set_translations", subject, { slug: "p", surfaceSlug: "default", entries: [{ keyId: "k1", changes: [{ localeCode: "ko", value: "새 값" }] }] });
+
+  it("잠금 대기 중 끊기(행 삭제) → unauthorized · 번역·사건 불변", async () => {
+    const { id, access } = await connection("editor");
+    const subject = await subjectOf(access);
+    expect(code(await hold('DELETE FROM "OAuthConnection" WHERE "id" = $1', [id], () => save(subject)))).toBe("unauthorized");
+    expect(await koValue()).toBe("안녕");
+    expect(await events()).toBe(0);
+  });
+
+  it("잠금 대기 중 재동의(삭제 + 새 id) → unauthorized — 새 연결의 권한으로 옛 쓰기가 통과하지 않는다", async () => {
+    const { id, access } = await connection("editor");
+    const subject = await subjectOf(access);
+    const reconsent = 'WITH gone AS (DELETE FROM "OAuthConnection" WHERE "id" = $1 RETURNING *) INSERT INTO "OAuthConnection" SELECT \'new-id\', "userId", "clientId", "clientName", "redirectUri", "issuer", "resource", "grants", "allProjects", "projectIds", \'new-a\', "accessExpiresAt", \'new-r\', "expiresAt", "createdAt", "lastUsedAt" FROM gone';
+    expect(code(await hold(reconsent, [id], () => save(subject)))).toBe("unauthorized");
+    expect(await koValue()).toBe("안녕");
+  });
+
+  it("잠금 대기 중 refresh 회전(같은 행의 해시 교체) → 저장된다", async () => {
+    const { id, access } = await connection("editor");
+    const subject = await subjectOf(access);
+    expect(code(await hold('UPDATE "OAuthConnection" SET "accessTokenHash" = $2, "refreshTokenHash" = $3 WHERE "id" = $1', [id, "rotated-a", "rotated-r"], () => save(subject)))).toBe("ok");
+    expect(await koValue()).toBe("새 값");
+  });
+
+  it("개인 토큰과 같은 인가 결과 — grant 없는 쓰기는 token-scope, 범위 밖은 not-found", async () => {
+    const narrow = await subjectOf((await connection("editor", { grants: [] })).access);
+    expect(code(await save(narrow))).toBe("token-scope");
+    const outside = await subjectOf((await connection("owner", { allProjects: false, projectIds: ["other"] })).access);
+    expect(code(await call("update_project", outside, { slug: "p", name: "After" }))).toBe("not-found");
+  });
+
+  describe("create_project — 고른 범위 편입", () => {
+    const confirmation = (format: { adapter: string; pathTemplate: string }, head = HEAD) => signSampleConfirmation(
+      { userId: "owner", repositoryId: "123", installationId: "77", ref: "main", headSha: head, format: { ...format, locales: ["en", "ko"] } }, SECRET, new Date());
+    const I18N = { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json" };
+    const input = (surfaceConfirmation: string) => ({ owner: "acme", repo: "web", slug: "created", name: "Created", baseBranch: "main",
+      surfaces: [{ ...I18N, baseLocale: "en", confirmation: surfaceConfirmation }] });
+
+    it("그 연결에만 편입되고, 다음 요청의 주체로 즉시 조회·편집한다 — 다른 연결·개인 토큰은 그대로", async () => {
+      const mine = await connection("owner", { allProjects: false, projectIds: ["p"] });
+      const other = await connection("owner", { clientId: "https://chatgpt.com/oauth/codex/x/client.json", allProjects: false, projectIds: ["p"] });
+      await token("owner", { allProjects: false, projectIds: ["p"] });
+      expect(code(await call("create_project", await subjectOf(mine.access), input(confirmation(I18N))))).toBe("ok");
+      const project = await prisma.project.findUniqueOrThrow({ where: { slug: "created" } });
+      expect((await prisma.oAuthConnection.findUniqueOrThrow({ where: { id: mine.id } })).projectIds).toEqual(["p", project.id]);
+      expect((await prisma.oAuthConnection.findUniqueOrThrow({ where: { id: other.id } })).projectIds).toEqual(["p"]);
+      expect((await prisma.apiToken.findUniqueOrThrow({ where: { userId: "owner" } })).projectIds).toEqual(["p"]);
+
+      const next = await subjectOf(mine.access);
+      expect(code(await call("get_project", next, { slug: "created" }))).toBe("ok");
+      expect(code(await call("update_project", next, { slug: "created", name: "Renamed" }))).toBe("ok");
+      expect(code(await call("get_project", await subjectOf(other.access), { slug: "created" }))).toBe("not-found");
+    });
+
+    it("생성이 실패하면 범위 추가도 롤백된다", async () => {
+      const mine = await connection("owner", { allProjects: false, projectIds: ["p"] });
+      expect(code(await call("create_project", await subjectOf(mine.access), input(confirmation(I18N, "e".repeat(40)))))).toBe("sample-expired");
+      expect(await prisma.project.findUnique({ where: { slug: "created" } })).toBeNull();
+      expect((await prisma.oAuthConnection.findUniqueOrThrow({ where: { id: mine.id } })).projectIds).toEqual(["p"]);
+    });
+  });
+
+  it("whoami는 연결 수명을 말한다", async () => {
+    const { id, access } = await connection("owner");
+    const outcome = await call("whoami", await subjectOf(access), {});
+    const { expiresAt } = await prisma.oAuthConnection.findUniqueOrThrow({ where: { id } });
+    expect(outcome).toMatchObject({ status: "ok", data: { token: { expiresAt: expiresAt.toISOString() } } });
   });
 });

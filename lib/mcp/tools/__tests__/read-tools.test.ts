@@ -219,6 +219,16 @@ describe("노출 — 화면과 같은 경계", () => {
     expect(outcome).toMatchObject({ status: "ok", data: { token: { grants: ["translation:write"], scope: { kind: "projects", projects: ["acme"] } } } });
     expect(JSON.stringify(outcome)).not.toContain('"p1"');
   });
+  it("whoami는 OAuth 주체면 userId AND 연결 id로 **연결 수명**을 읽는다 — access의 1시간 수명이 아니다", async () => {
+    const connection = vi.fn(async () => ({ expiresAt: new Date("2027-01-01T00:00:00Z") }));
+    const apiToken = vi.fn();
+    prisma = Object.assign(Object.create(prisma), { apiToken: { findFirst: apiToken }, oAuthConnection: { findFirst: connection } }) as PrismaClient;
+    const oauth: ApiTokenSubject = { ...subject("owner", ["translation:write"]), credential: { kind: "oauth", connectionId: "c1" } };
+    const outcome = await call("whoami", oauth, {});
+    expect(connection).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: "owner", id: "c1" } }));
+    expect(apiToken).not.toHaveBeenCalled();
+    expect(outcome).toMatchObject({ status: "ok", data: { token: { grants: ["translation:write"], expiresAt: "2027-01-01T00:00:00.000Z" } } });
+  });
 });
 
 /**

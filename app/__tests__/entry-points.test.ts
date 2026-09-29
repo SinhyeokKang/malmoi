@@ -60,6 +60,12 @@ const EXEMPT = new Set([
    */
   "api/mcp/route.ts",
   /**
+   * OAuth 발견 문서 둘 (mcp-oauth — RFC 9728 · RFC 8414). **공개 문서다** — 무인증 클라이언트가 401 다음에 읽는다. DB를 읽지 않고 요청 origin의
+   * 상수만 낸다(허용 밖 호스트는 404).
+   */
+  ".well-known/oauth-protected-resource/api/mcp/route.ts",
+  ".well-known/oauth-authorization-server/route.ts",
+  /**
    * 업로드 이미지 읽기 프록시 (2026-09-28, ARCHITECTURE §6.7). **인가가 없다** — 이 바이트는 오늘도
    * 공개 읽기(Vercel Blob `access: "public"`)이고, 여기서 세션을 읽으면 응답이 캐시 불가가 되어
    * CDN 층이 통째로 사라진다. 키를 모르면 못 읽고 키에는 난수가 있다. 프록시가 허용하는 키는
