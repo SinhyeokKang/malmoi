@@ -187,7 +187,7 @@
 | 5 | `yaml-catalog.ts` · `code-dict.ts`의 `missing.sort(compareKeys)` | 수술적 어댑터가 **없는 키를 삽입할 때**. `orderedEntries`를 안 지나지만 정렬 규칙을 공유한다 — **닿으면 회귀다** |
 | 6 | 정수형 키 hoisting | `"0"`·`"10"`은 JS 객체가 앞으로 끌어올린다. `.sort(`로 grep해도 안 나오고 **직렬화를 직접 짜지 않는 한 보존 불가**다. ⚠️ **탐지기는 생겼다** — `scanJson.integerKeys`·`isCanonicalIndex`(`json-style.ts`). `normalizeArrays`의 `isDense`와 **다른 판정**이다(#4와 혼동하기 쉬운 자리) |
 
-**`orderBy: { key: "asc" }`는 이제 `lib/keys/query.ts`(`loadKeys`) 한 곳이다** — ⚠️ 그 함수의 호출자는 통합 테스트뿐이고, **편집 UI의 순서는 `lib/keys/translation-list.ts`의 raw `ORDER BY`**(아래 문단)가 정한다. `lib/pull/load.ts`는 `[{ sortIndex: "asc" }, { key: "asc" }]`로 바뀌었고 `entry-order.test.ts`가 옛 형태의 부재를 단언한다. grep하면 둘 다 잡히므로 어느 쪽인지 이름으로 확인한다.
+**편집 UI의 순서는 `lib/keys/translation-list.ts`의 raw `ORDER BY`가 정한다** — `"rank", "surfaceSlug", "sidx", "key" COLLATE "C", "id"`(누락·검토 대기가 있는 키 먼저 → 표면 → 파일 순 → key). 순수 key 순이 아니다. `entry-order.test.ts`가 그 튜플과 cursor 비교 튜플을 소스로 고정한다(둘이 갈리면 페이지가 건너뛴다). `orderBy: { key: "asc" }`만 쓰던 `loadKeys`는 2026-09-29에 지웠다(#108 — 호출자가 통합 테스트뿐이었다). `lib/pull/load.ts`는 `[{ sortIndex: "asc" }, { key: "asc" }]`이고 `entry-order.test.ts`가 옛 형태의 부재를 단언한다.
 
 ⚠️ **8-4가 그 위에 얹었던 두 층(`pendingFirst` · `groupByNamespace`, `lib/keys/view.ts`)은 2026-09-24에 지웠다** (audit #65) — translation-rework 뒤로 번역 화면의 순서는 목록 SQL(`lib/keys/translation-list.ts`)이 정하고 두 함수는 테스트만 불렀다. 남은 교훈은 그대로다: **순서의 자가 둘이면(Postgres collation vs `compareKeys`의 UTF-16 코드 유닛) 어느 쪽이 정본인지 코드가 말해야 한다** — 이 절의 "`localeCompare` 금지"와 같은 축이다.
 
@@ -660,7 +660,7 @@ sha1("blob " + byteLength + "\0" + content)
 | **1. DB 측 스킵** | **미전달 편집의 수**(`countPending` — `pendingEditToken IS NOT NULL ∧ 활성 표면·키·로케일`)가 0인가 | **GitHub을 한 번도 부르지 않고 종료** |
 | **2. blob SHA 비교** | 로컬 export vs base 트리 | 커밋·PR 경로로 가지 않음 |
 
-⚠️ **2026-09-17(sync-edit-protection T0)까지 1층은 `max(Translation.updatedAt) > lastPulledAt`이었다.** push가 전 행의 `updatedAt`을 올리므로 그 비교는 사람 편집이 없어도 참이 되어, strict 적재 뒤 첫 밤마다 GitHub 왕복(트리·blob 읽기, 편집 되돌림 경로)을 만들었고 열린 PR을 갱신·되돌릴 수 있었다(spec 문제 2·3). T0는 그것을 저자·시각 술어의 건수로 바꿨고, **2026-09-18(T8)부터는 편집 토큰 술어**(`lib/protection/where.ts`의 `pendingWhere` — `countUnpublished`·Publish 캡처·미리보기가 **같은 술어 함수**를 부른다. 호출마다 새 `where`를 만드므로 공유되는 것은 객체가 아니라 판정이다)로 센 수가 0이면 끝이다. 시각 술어는 같은 밀리초의 재저장과 전달 확인을 못 갈랐다. 첫 pull(`lastPulledAt = null`)도 미전달 편집이 없으면 스킵한다 — "첫 pull은 무조건 진행"이던 옛 규칙은 diff 0의 빈 PR을 만들었다. `lastPulledAt`에 캡처되는 값은 그대로 `max(updatedAt)`이다(아래).
+⚠️ **2026-09-17(sync-edit-protection T0)까지 1층은 `max(Translation.updatedAt) > lastPulledAt`이었다.** push가 전 행의 `updatedAt`을 올리므로 그 비교는 사람 편집이 없어도 참이 되어, strict 적재 뒤 첫 밤마다 GitHub 왕복(트리·blob 읽기, 편집 되돌림 경로)을 만들었고 열린 PR을 갱신·되돌릴 수 있었다(spec 문제 2·3). T0는 그것을 저자·시각 술어의 건수로 바꿨고, **2026-09-18(T8)부터는 편집 토큰 술어**(`lib/protection/where.ts`의 `pendingWhere` — `countPending`·Publish 캡처·미리보기가 **같은 술어 함수**를 부른다. 호출마다 새 `where`를 만드므로 공유되는 것은 객체가 아니라 판정이다)로 센 수가 0이면 끝이다. 시각 술어는 같은 밀리초의 재저장과 전달 확인을 못 갈랐다. 첫 pull(`lastPulledAt = null`)도 미전달 편집이 없으면 스킵한다 — "첫 pull은 무조건 진행"이던 옛 규칙은 diff 0의 빈 PR을 만들었다. `lastPulledAt`에 캡처되는 값은 그대로 `max(updatedAt)`이다(아래).
 
 ⚠️ **1층의 두 쿼리는 인덱스와 짝이다** (2026-09-04 · T8 2026-09-18: 미전달 count는 `[projectId, pendingEditToken]`을 탄다 — **단 관계 조인이 낡은 통계에서 그 인덱스를 버린다**(POSTMORTEM 2026-09-18, 8,676행 5.5초) — 그래서 `countPending`이 토큰 컬럼만 보는 count가 0이면 조인을 돌리지 않는다). `@@index([projectId, updatedAt])`이 있어야 캡처용 `aggregate({ where: { projectId }, _max: { updatedAt } })`가 역방향 인덱스 스캔 첫 행에서 멈춘다 — 없으면 그 프로젝트의 `Translation` 전체를 훑는다(실측 skillflo 7,261행). **야간 cron이 매일 부르는 쿼리라 인덱스가 사라져도 게이트에는 안 나타난다.** `[projectId, localeCode, needsReview]`로는 대체되지 않는다(`localeCode`가 제약되지 않아 MAX가 스킵 스캔을 못 한다). `entry-order.test.ts`가 쿼리와 인덱스를 함께 고정한다.
 
@@ -970,7 +970,7 @@ throw는 `UNCONFIRMED_PULL`(`error: "unconfirmed"`, `lib/pull/message.ts` — �
 병합이 맞다. `runFirstIngest` throw는 `didn't finish`를 단언하지 않고 refresh하며, 바뀐 `data`를 받는 effect가 상세를 한 번 읽는다
 (⚠️ 다시 눌렀을 때 서버가 `not-awaiting`으로 거부하는 것은 **끝난** 적재뿐이다 — 아직 도는 적재는 `finally`가 `busy`를 refresh 트리보다
 먼저 내려 두 번째 첫 적재와 겹칠 수 있다. 둘 다 리포 값만 싣고 아직 편집이 없어 해가 작다고 받았다).
-⚠️ **알려진 예외 둘이 남아 있다** — `reconnect-button.tsx`의 `startTransition(async …)`와 Add sources의 `run(async … addSurfaces)`(`add-sources-modal.tsx`, `useTransition` 안이라 그동안 이동이 얽힌다 — 모달이 닫기를 막는 동안의 일이라 받았다)가 아직 이 형이다(후속 이슈).
+⚠️ **예외였던 둘도 이 형으로 옮겼다** (2026-09-29, malmoi#107) — `reconnect-button.tsx`의 재연결과 Add sources의 추가(`add-sources-modal.tsx`)는 수동 대기 + `useCommitWait`이고, 신호는 호스트가 넘기는 서버 prop(설정 `health` · Home `repo` · Sources `data`)이다. 모달의 수동 확인·GitHub 연결은 짧아 `useTransition`에 남았다.
 
 ⚠️ **번역 화면의 이유는 시간이 아니라 판정이다** (§5.6.2) — [Publish]가 사는 곳은
 **표면 경로**(`[slug]/surfaces/[surfaceSlug]/translations/page.tsx`)이고 그 세그먼트를 쓴다.
@@ -1073,10 +1073,11 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   ⚠️ **미배포 집계는 이 컬럼 위에 서지 않는다** (2026-09-18 배포 B 정정). `updatedAt`만 보면 push가 전 행의
   시각을 올려 code push 직후 903키 전부가 "안 보낸 편집"으로 세어지는데, 그 자리를 메운 것은 `updatedBy`가
   아니라 **편집 토큰**이다(아래 `pendingEditToken`) — 배포 A까지 저자·시각 술어였고 배포 B가 토큰 하나로
-  바꿨다. 지금 `countUnpublished`(`lib/keys/query.ts`)는 `countPending`에, 표면별 수를 내는 `countUnpublishedBySurface`는
-  `countPendingBySurface`(같은 `pendingWhere` + `groupBy` — 표면마다 세던 N+1을 대신한다, launch-readiness L7.2)에 그대로 위임하고,
-  `isUnpublished`(`lib/keys/view.ts`)는 `pending` + `surfaceArchivedAt` 둘만 본다. **둘 중 어느 쪽에도
-  `updatedBy`가 없다** — 같은 밀리초의 재저장을 저자로도 시각으로도 가를 수 없어서다.
+  바꿨다. 지금 집계는 `countPending`(`lib/protection/where.ts`)이고, 표면별 수를 내는 `countUnpublishedBySurface`(`lib/keys/query.ts`)는
+  `countPendingBySurface`(같은 `pendingWhere` + `groupBy` — 표면마다 세던 N+1을 대신한다, launch-readiness L7.2)에 그대로 위임한다.
+  번역 화면은 `translation-list.ts`의 목록 `hasPending`·상세 셀 `pending`으로 같은 술어를 투영한다. **어느 쪽에도
+  `updatedBy`가 없다** — 같은 밀리초의 재저장을 저자로도 시각으로도 가를 수 없어서다. (셀 판정 `isUnpublished`와 한 줄 위임
+  `countUnpublished`는 테스트만 부르던 사본이라 2026-09-29에 지웠다 — #108.)
   ⚠️ **그래서 이 컬럼을 읽는 쪽은 폴백을 갖는다** — `loadActors`가 id로 `User`를 따로 읽고(join이 아니다,
   옛 행이 전부 떨어진다) `actorLabel`이 **못 찾은 값을 원문 그대로** 낸다. 옛 핸들과 지워진 `User`의 id가
   그 갈래로 살아남는다. cuid 모양으로 갈라내려 하면 후자가 함께 사라진다. **이 폴백이 없던 동안 화면이
@@ -1112,8 +1113,10 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 
 - ⚠️ **앞의 네 테이블의 모양은 우리가 정한 것이 아니다.** `@auth/prisma-adapter`가 부르는 델리게이트와
   `where` 키가 그것을 정한다 — 현재 `credentialAdapter.getUserByEmail`은 `emailLookup @unique`를 요구하고, `account`의
-  `where:{provider_providerAccountId}`가 복합 키를 요구하는 식이다. `Account`의 snake_case 컬럼 일곱은
-  어댑터 스키마 계약을 유지하지만 현재 로그인 linkAccount는 식별자 네 필드만 저장한다.
+  `where:{provider_providerAccountId}`가 복합 키를 요구하는 식이다. `Account`의 snake_case 컬럼은
+  **셋**(`access_token`·`refresh_token`·`expires_at` — github-app 연결만 쓴다)이다. 로그인 `linkAccount`는 `safePrismaAdapter`가 덮어
+  식별자 네 필드만 저장하므로, 쓰는 곳이 없던 `token_type`·`scope`·`id_token`·`session_state`는 지웠다(#108, 2026-09-29).
+  ⚠️ `linkAccount`를 기본 어댑터로 되돌리면 OAuth 응답을 통째로 `create`해 `Unknown argument`로 던진다.
 - ⚠️ **그 계약을 타입 검사가 못 본다.** 어댑터 시그니처의 `PrismaClient`는 `@prisma/client`에서 오고, 그
   패키지는 `.prisma/client/default`를 re-export하는데 Prisma 7의 `prisma-client` 생성기는 그 경로를 만들지
   않는다(우리 산출물은 `generated/prisma`다). `skipLibCheck: true`가 해결 실패를 삼켜 **파라미터가 사실상
@@ -1707,7 +1710,7 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 
 - **기준 행은 미전달 셀에만 있다.** 매 Publish에 활성 키×언어 전부를 쓰는 조밀 설계는 T1 실측으로 폐기했다 —
   20,000키×200언어 = 4.26M 행이 로컬 upsert 42초 · dev Supabase 추정 ~135초 · 580MB라 `maxDuration 60`과 무료 500MB를 둘 다 넘는다.
-- **소스별 전달 확인 레코드**(revision · confirmedAt · syncRunId · context · invalidatedAt)가 유효하면 "미전달이 아닌 활성 셀의 현재 값 =
+- **소스별 전달 확인 레코드**(revision · syncRunId · context · invalidatedAt — 확인 시각은 `syncRun`이 든다)가 유효하면 "미전달이 아닌 활성 셀의 현재 값 =
   마지막 확인된 export 값"이 성립한다. 그 등식을 깨는 쓰기는 넷이다 — strict 적재(레코드 무효화) · Save(셀을 미전달로 만든다) ·
   Revert(기준값으로 되돌리며 미전달을 푼다) · 폐기 승인 Sync의 orphan 셀 토큰 해제(delivery-invariants D1 — 같은 tx의 `importRevision` 증가가
   확인을 이미 무효화하므로 드러나 깨지지는 않는다). 키·언어의 추가·부활은 적재로만 일어나므로 무효화에 포함된다.
@@ -2849,7 +2852,9 @@ GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" 
 
 **화면을 그리는 동안 GitHub을 기다리는 자리는 전부 `lib/github-wait.ts`의 `GITHUB_WAIT_MS`(8초)를 읽는다** — 목록의 원격 신호(`loadRemoteSignals`)·연결 확인(`probeRepo`)·설정의 열린 PR(`loadOpenPrUrl`)·계정 조회(`loadAccountView` — 설정·`/account`). 넘기면 각자의 실패 갈래(신호 없음 · `error`→`unknown` · `undefined` · `unavailable`)로 접고 로그 한 줄을 남긴다. 같은 원격을 기다리는 두 화면의 마감이 다르면 한쪽은 "확인할 수 없음", 다른 쪽은 아직 매달린 채로 갈린다 — 그래서 사본을 두지 않는다. 설정 화면은 그 셋을 await하지 않고 Suspense로 스트리밍하며, **App 인스턴스는 요청 사이에 남는다**(설치 토큰 캐시가 인스턴스에 붙어 있다 — `createApp`). ⚠️ 그래서 캐시가 만료 직전 토큰을 줄 수 있고, 고정 토큰을 쥐는 `createGitClient`는 만료가 5분 안이면 `refresh: true`로 다시 받는다.
 
-⚠️ **`loadInstalledRepoCount`(`/account` — 설치 목록 + 설치별 리포)는 아직 이 마감 밖이다** (후속 이슈).
+⚠️ **Home만 probe를 30초 기억한다** (2026-09-29, malmoi#107 — `lib/github-connect/probe-memo.ts`). Home은 probe로 상태 매트릭스(DESIGN §6.64)를 정해 Suspense로 뺄 수 없고, 사건 상세를 열 때마다 GitHub 2홉을 다시 기다렸다(Home 1.4–1.9 s vs Logs 0.6–0.8 s). 키에 **저장된 `installationId`·`repositoryId`**가 들어 Reconnect 직후 옛 결과로 `installation-changed`를 거짓 표시하지 않고, `error`는 기억하지 않으며, 인스턴스마다 최대 500개다. **대가는 App 제거 뒤 TTL 동안 Home이 옛 `ok`를 말하는 것**이다 — 그동안 Publish가 켜져도 서버가 GitHub에서 판정한다. 설정 화면·MCP·재연결 Action은 메모를 거치지 않는다(`loadConnectionHealth`의 `memo`를 켜는 곳이 Home 하나인지 `probe-memo.test.ts`가 소스에서 센다).
+
+`loadInstalledRepoCount`(`/account` — 설치 목록 + 설치별 리포)도 같은 마감이다 (2026-09-29, malmoi#107) — 넘기면 `null`("말할 수 없다" — 그 줄을 안 그린다)이다.
 
 ### 6.6 Credential 저장 경계 (2026-09-10, dev·prod 전환 완료)
 

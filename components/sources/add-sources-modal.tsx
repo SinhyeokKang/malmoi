@@ -1,11 +1,12 @@
 "use client";
 
 import { unstable_rethrow } from "next/navigation";
-import { startTransition, useEffect, useState, useTransition, type RefObject } from "react";
+import { useEffect, useState, useTransition, type RefObject } from "react";
 import { addSurfaces, confirmManualFormat, detectRepoFormats, loadCandidateSample } from "@/app/(edit)/projects/actions";
 import { startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/actions";
 import { FilesStep, failedPreview, samplePreview, type ManualEntry, type PreviewState } from "@/components/onboarding/steps/files";
 import { failureText } from "@/components/onboarding/failure";
+import { useCommitWait } from "@/components/commit-wait";
 import { SlowNotice } from "@/components/slow-notice";
 import { OnboardingModal } from "@/components/ui/modal";
 import { Alert } from "@/components/ui/alert";
@@ -18,9 +19,11 @@ import type { AdapterChoice } from "@/lib/onboarding/types";
 import { planSurfaceSelection } from "@/lib/onboarding/select-surfaces";
 import { planAddSources, type SurfaceAdded } from "@/lib/surfaces/plan-add";
 
-export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, owner, repo, branch, existing, adapters }: {
+export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, owner, repo, branch, existing, adapters, server }: {
   open: boolean; onClose: () => void; onAdded: (results: SurfaceAdded[]) => void; returnFocusRef: RefObject<HTMLButtonElement | null>;
   slug: string; owner: string; repo: string; branch: string; existing: readonly { pathTemplate: string | null }[]; adapters: AdapterChoice[];
+  /** 서버가 렌더할 때마다 새 객체가 되는 prop — 추가 뒤 닫기를 재검증 트리 커밋까지 미룬다(`useCommitWait`). */
+  server: unknown;
 }) {
   const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
   const [checked, setChecked] = useState<Set<number>>(new Set());
@@ -39,7 +42,14 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   const [manualError, setManualError] = useState<string>();
   const [conflicts, setConflicts] = useState<{ path: string; surfaceSlugs: string[] }[]>([]);
   const [manual, setManual] = useState<ManualEntry>({ adapter: adapters[0]?.adapter ?? "json-catalog", pathTemplate: "", baseLocale: "" });
-  const [pending, run] = useTransition();
+  const [transitioning, run] = useTransition();
+  /**
+   * ⚠️ **추가는 `run(async …)` 밖에서 돈다** (malmoi#107 · ARCHITECTURE §3) — 첫 적재까지 도는 긴 Action이라 async transition으로
+   * 감싸면 그동안의 내비게이션이 전부 얽혔다. 수동 대기 + 커밋 대기다. 수동 확인·GitHub 연결은 짧아 그대로 둔다.
+   */
+  const [adding, setAdding] = useState(false);
+  const commit = useCommitWait(server);
+  const pending = transitioning || adding || commit.waiting;
   /**
    * ⚠️ **대기 하나를 버튼 셋이 나눠 쓴다** — [Add]·수동 [Confirm]·GitHub 연결. 스피너는 누른 쪽에만 선다 (audit-ux #26 —
    * `profile-picture.tsx`가 경고한 함정). 막는 것은 여전히 `pending` 하나다.
@@ -51,9 +61,9 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
    */
   const [added, setAdded] = useState<SurfaceAdded[] | null>(null);
   useEffect(() => {
-    if (added === null || pending) return;
+    if (added === null || adding || commit.waiting) return;
     setAdded(null); onAdded(added); onClose();
-  }, [added, pending, onAdded, onClose]);
+  }, [added, adding, commit.waiting, onAdded, onClose]);
   const [revision, setRevision] = useState(0);
   const candidate = picked === null ? undefined : candidates[picked];
   const locked = new Set(candidates.flatMap((c, index) => existing.some(s => s.pathTemplate === c.pathTemplate) ? [index] : []));
@@ -102,13 +112,15 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
         const plan = planAddSources({ picked: candidates.filter((_, i) => checked.has(i)), existing });
         if (!plan.ok || plan.add.length === 0 || pending) return;
         setError(undefined); setManualError(undefined); setUnknown(false); setConflicts([]); setOperation("add");
-        run(async () => {
+        setAdding(true);
+        void (async () => {
           try {
             const result = await addSurfaces({ slug, picks: plan.add.map(c => ({ adapter: c.adapter, pathTemplate: c.pathTemplate, baseLocale: bases[candidates.indexOf(c)] ?? c.baseLocale })) });
-            if (result.ok) { const results = result.results; startTransition(() => setAdded(results)); }
+            if (result.ok) { setAdded(result.results); commit.wait(); }
             else { setError(result.error); setConflicts(result.conflicts ?? []); }
           } catch { setUnknown(true); }
-        });
+          setAdding(false);
+        })();
       }}>{m.settings.sources.confirm}</Button>
     </>} footer={addReason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{addReason}</span>
       /* 추가는 첫 적재까지 돈다 (audit-ux #23) — 큰 리포면 버튼 스피너 하나로 30초를 넘긴다. */

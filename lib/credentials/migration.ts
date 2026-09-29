@@ -8,25 +8,24 @@ export type MigrationMode = "backfill" | "verify" | "rotate-token" | "rotate-pii
 export function classifyCredential(value: string | null): "null" | "envelope" | "legacy" {
   return value === null ? "null" : (value.startsWith("enc:") || /^[^:]+:v[0-9]+:/.test(value)) ? "envelope" : "legacy";
 }
-export type AccountFields = { userId: string; provider: string; providerAccountId: string; access_token: string | null; refresh_token: string | null; id_token: string | null };
-type AccountPatch = Pick<AccountFields, "access_token" | "refresh_token" | "id_token">;
+export type AccountFields = { userId: string; provider: string; providerAccountId: string; access_token: string | null; refresh_token: string | null };
+type AccountPatch = Pick<AccountFields, "access_token" | "refresh_token">;
 // ⚠️ **`plan*`이 아니다** — 이 리포의 `plan*`은 순수 함수인데 이 둘은 봉투를 열고 다시 봉인한다(키를 env에서 읽는다, launch-readiness L7.1).
 export function migrateAccountFields(row: AccountFields, mode: MigrationMode): AccountPatch | null {
-  const hasSecrets = [row.access_token, row.refresh_token, row.id_token].some(v => v !== null);
+  const hasSecrets = [row.access_token, row.refresh_token].some(v => v !== null);
   if (row.provider === "github" || row.provider === "google") {
     if (!hasSecrets) return null;
     if (mode !== "backfill") throw new CredentialError();
-    return { access_token: null, refresh_token: null, id_token: null };
+    return { access_token: null, refresh_token: null };
   }
   if (row.provider !== "github-app") {
     if (hasSecrets) throw new CredentialError();
     return null;
   }
-  if (row.id_token !== null) throw new CredentialError();
   const formats = [row.access_token, row.refresh_token].filter(v => v !== null).map(classifyCredential);
   if (new Set(formats).size > 1) throw new CredentialError();
   if (formats.includes("legacy") && [row.access_token, row.refresh_token].some(v => v?.includes(":"))) throw new CredentialError();
-  const result: AccountPatch = { access_token: row.access_token, refresh_token: row.refresh_token, id_token: null };
+  const result: AccountPatch = { access_token: row.access_token, refresh_token: row.refresh_token };
   for (const field of ["access_token", "refresh_token"] as const) {
     const value = row[field];
     if (value === null) continue;

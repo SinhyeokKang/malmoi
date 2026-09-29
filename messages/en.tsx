@@ -70,8 +70,8 @@ export const en = {
      * 무엇이 **버려지는지**를 말하는 유일한 자리다. 문장을 더하지 않았다(360px Dialog 줄 수 불변).
      * ⚠️ `updatedBy`까지 비워 저자도 리포가 된다(`lib/push/apply.ts`) — "discard"가 그것을 포함한다.
      */
-    unsent: (_n: number, edits: ReactNode): ReactNode => (
-      <>Sync will discard {edits} and replace them with repository values.</>
+    unsent: (n: number, edits: ReactNode): ReactNode => (
+      <>Sync will discard {edits} and replace {n === 1 ? "it" : "them"} with repository values.</>
     ),
     /** ⚠️ 이 줄은 `unsent`와 **독립으로 서거나 빠진다** — 문단으로 잇지 않는다 (시안 `4c`). */
     openPr: (n: number, branch: string): string =>
@@ -97,7 +97,7 @@ export const en = {
      * 링크가 앱 안(번역 화면)으로 간다는 것을 **문장이** 말한다. 2026-09-18에 외부 링크도 글리프를
      * 버려서 모양으로는 안팎이 안 갈린다 — 목적지를 알리는 몫이 전부 이 문장에 있다.
      */
-    sendHint: (link: ReactNode): ReactNode => <>To keep them, {link} — it opens the translation screen.</>,
+    sendHint: (n: number, link: ReactNode): ReactNode => <>To keep {n === 1 ? "it" : "them"}, {link} — it opens the translation screen.</>,
     /**
      * 미발송 0 ∧ 열린 PR — `Publish first`가 **거짓이 되는** 갈래다 (시안 `4c` 오른쪽).
      * 링크만 두면 권유가 왜 바뀌었는지가 화면에 없어 문장을 함께 둔다.

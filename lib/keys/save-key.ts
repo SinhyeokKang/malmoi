@@ -139,7 +139,7 @@ async function saveKeysLocked(tx: Prisma.TransactionClient, target: KeySaveTarge
         await tx.translationBaseline.upsert({
           where: { projectId_surfaceId_keyId_localeCode: cell },
           create: { ...cell, restoreValue: baseline.restoreValue, revision: delivery.revision },
-          update: { restoreValue: baseline.restoreValue, revision: delivery.revision, recordedAt: new Date() },
+          update: { restoreValue: baseline.restoreValue, revision: delivery.revision },
         });
       }
       events.push({

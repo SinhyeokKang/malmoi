@@ -105,7 +105,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     where: { projectId: project.id },
     _max: { updatedAt: true },
   });
-  // 1층 판정값 — `countUnpublished`와 같은 토큰 술어다. 시각으로 세면 push가 올린 `updatedAt`이 편집으로 읽히고
+  // 1층 판정값 — `pendingWhere` 토큰 술어다. 시각으로 세면 push가 올린 `updatedAt`이 편집으로 읽히고
   // (T0), 저자·시각으로 세면 같은 밀리초 재저장과 전달 확인을 못 가른다 (sync-edit-protection T8).
   const unpublished = await countPending(prisma, project.id);
   // 전달 확인할 편집 — export와 **같은 스냅샷**에서 읽어야 "PR에 실린 값의 토큰"이 된다 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
@@ -302,7 +302,6 @@ async function confirmDelivery(
   // 순차로 읽는다 — 대화형 트랜잭션은 커넥션 하나라 `Promise.all`이 왕복을 줄이지 못한다(POSTMORTEM 2026-09-16).
   const owner = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { repositoryId: true, baseBranch: true } });
   const rows = await tx.translationSurface.findMany({ where: { projectId, id: { in: surfaceIds }, archivedAt: null } });
-  const now = new Date();
   const revisionBySurface = new Map<string, string>();
   /** 보류 셀 기준을 옮길 수 있는 표면 — 같은 context의 직전 확인 revision → 새 revision. 아래 재갱신 주석이 이유다. */
   const restamp = new Map<string, { from: string; to: string }>();
@@ -316,7 +315,7 @@ async function confirmDelivery(
       where: { projectId_surfaceId: { projectId, surfaceId: row.id } }, select: { revision: true, contextFingerprint: true },
     });
     if (prior !== null && prior.contextFingerprint === context.fingerprint) restamp.set(row.id, { from: prior.revision, to: revision });
-    const data = { revision, confirmedAt: now, syncRunId: delivery.runId, contextFingerprint: context.fingerprint, invalidatedAt: null };
+    const data = { revision, syncRunId: delivery.runId, contextFingerprint: context.fingerprint, invalidatedAt: null };
     await tx.deliveryConfirmation.upsert({
       where: { projectId_surfaceId: { projectId, surfaceId: row.id } },
       create: { projectId, surfaceId: row.id, ...data },
@@ -349,8 +348,8 @@ async function confirmDelivery(
     const key = { projectId, surfaceId: cell.surfaceId, keyId: cell.keyId, localeCode: cell.localeCode };
     await tx.translationBaseline.upsert({
       where: { projectId_surfaceId_keyId_localeCode: key },
-      create: { ...key, restoreValue, revision, recordedAt: now },
-      update: { restoreValue, revision, recordedAt: now },
+      create: { ...key, restoreValue, revision },
+      update: { restoreValue, revision },
     });
   }
 }

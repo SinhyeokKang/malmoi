@@ -220,8 +220,10 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
     /*
       ⚠️ **여백을 이 블록이 든다** (2026-09-15 리뷰 🔴1) — 바깥 래퍼에 두면 `:empty`가 이 `<div>`를
       자식으로 보고 영원히 거짓이 되어, 배너가 0개인 **가장 흔한 화면**에 그 여백이 유령으로 남는다.
+      ⚠️ **위가 16이고 아래가 0이다** (2026-09-29 사용자) — 캔버스의 `margin:0 24px 20px`를 옮겨 위를 0으로 뒀더니
+      머리의 `border-b`에 Alert가 붙었다(캔버스 머리엔 선이 없다). 아래는 `PanelBody`의 `p-4`가 16을 든다.
     */
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pb-4 empty:hidden">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pt-4 empty:hidden">
       {state === "import_failed" && failedSurface !== null && reason !== null && (
         <Alert
           variant="danger"
@@ -237,15 +239,13 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
           </> : undefined}
         >
           {/*
-            ⚠️ **본문이 muted다 — 제목과 글리프만 빨강이다** (캔버스 `2b`). 배너 전체가 빨가면
-            "무엇이 안전한가"(나머지 표면은 들어왔다 · 값은 마지막 성공의 것이다)까지 경고로
-            읽혀서, 이 배너가 하는 일의 절반이 사라진다.
+            ⚠️ **본문을 덮지 않는다 — 글자는 Alert의 본문 색이다** (DESIGN §6.2 — 색은 배경과 글리프만). 배너 전체가 빨가면
+            "무엇이 안전한가"(나머지 표면은 들어왔다 · 값은 마지막 성공의 것이다)까지 경고로 읽힌다 — 전엔 danger 본문이 빨개서
+            여기만 muted로 덮었고, Alert가 그 규칙을 들게 된 뒤로 덮개가 이 배너만 흐리게 했다.
           */}
-          <span className="text-muted-foreground">
-            {m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
-            {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}
-            {!owner && <> {m.home.banner.syncFailed.editor}</>}
-          </span>
+          {m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
+          {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}
+          {!owner && <> {m.home.banner.syncFailed.editor}</>}
         </Alert>
       )}
 
@@ -254,7 +254,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
           variant="warning"
           title={m.home.banner.notConnected.title}
           /* ⚠️ **이 화면에서만 검정이 Publish가 아니다** (캔버스 `2c`) — 할 수 있는 일이 하나뿐이다. */
-          actions={owner ? <ReconnectButton slug={slug} variant="primary" label={m.home.banner.notConnected.action} /> : undefined}
+          actions={owner ? <ReconnectButton slug={slug} server={repo} variant="primary" label={m.home.banner.notConnected.action} /> : undefined}
         >
           {m.home.banner.notConnected.body}
           {!owner && <> {m.home.banner.notConnected.editor}</>}

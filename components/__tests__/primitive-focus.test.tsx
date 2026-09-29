@@ -145,9 +145,13 @@ it("포커스 없이 트리거를 눌러 연 Dialog는 닫히면 트리거로 �
   document.getElementById("earlier")!.focus();
   await act(async () => { clickWithoutFocus(byText("Rotate")); });
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
-  // Radix의 트리거 복귀는 FocusScope 언마운트의 타이머 뒤다 — 한 틱으로는 아직 body다.
-  await act(async () => { clickWithoutFocus(byText("Cancel")); await new Promise(r => setTimeout(r, 20)); });
-  expect(document.activeElement).toBe(byText("Rotate"));
+  /*
+    Radix의 트리거 복귀는 FocusScope 언마운트의 타이머(`setTimeout`) 뒤다 — 한 틱으로는 아직 body다.
+    ⚠️ **고정 대기(20ms)로 기다리지 않는다** — 언마운트는 `act`가 빠져나올 때 flush되고, 그 타이머가 `expect`보다 먼저 도는지는
+    이벤트 루프 순서라 전체 스위트 부하에서 한 번씩 red였다. 조건이 설 때까지 폴링한다.
+  */
+  await act(async () => { clickWithoutFocus(byText("Cancel")); });
+  await vi.waitFor(() => expect(document.activeElement).toBe(byText("Rotate")));
 });
 
 it("포커스 없이 버튼을 눌러 상태로 연 Dialog도 그 버튼으로 돌아온다", async () => {
@@ -164,6 +168,7 @@ it("포커스 없이 버튼을 눌러 상태로 연 Dialog도 그 버튼으로 �
   await render(<Host />);
   document.getElementById("earlier")!.focus();
   await act(async () => { clickWithoutFocus(byText("Open")); });
-  await act(async () => { clickWithoutFocus(byText("Keep editing")); await new Promise(r => setTimeout(r, 20)); });
-  expect(document.activeElement).toBe(byText("Open"));
+  await act(async () => { clickWithoutFocus(byText("Keep editing")); });
+  // 위 테스트와 같은 이유로 폴링한다 — 고정 대기는 부하에서 한 번씩 red였다.
+  await vi.waitFor(() => expect(document.activeElement).toBe(byText("Open")));
 });

@@ -18,12 +18,12 @@ it("승격한 행은 제목·상태·설명·동작을 유지한다", async () =
   expect(container.textContent).toContain("GitHub — Connected");
   expect(container.querySelector("button")?.textContent).toBe("Manage");
 });
-it("inset과 페이지 경고의 역할은 같고 카드 경고만 외곽선을 없앤다", async () => {
+it("inset과 페이지 경고의 역할은 같고 카드 경고만 radius를 없앤다", async () => {
   const { container } = await render(<><Alert variant="danger">Page failure</Alert><PanelCard title="Repository"><Alert variant="danger" inset>Connection failure</Alert></PanelCard></>);
   const [page, inset] = [...container.querySelectorAll('[role="alert"]')];
   expect(page?.className).toContain("rounded-lg");
   expect(inset?.className).toContain("rounded-none");
-  expect(inset?.className).toContain("border-t");
+  expect(inset?.className).not.toMatch(/(?:^|\s)border/);
 });
 it("오류 ID는 재렌더에도 유지되고 필드 설명과 장식 아이콘을 연결한다", async () => {
   const form = (error: string) => <FormGroup label="Name" htmlFor="name" error={error}><input id="name" aria-invalid aria-describedby="name-error" /></FormGroup>;

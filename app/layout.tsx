@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Toaster } from "sonner";
 
 import { SiteAnalytics } from "@/components/analytics";
+import { NavigationDim } from "@/components/shell/navigation-dim";
 import { m } from "@/lib/i18n";
 import { OG_IMAGE, SITE_ORIGIN } from "@/lib/seo/site";
 
@@ -73,6 +74,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             },
           }}
         />
+        {/* 앱 전체의 화면 이동에 걸린다 — 공개 셸·로그인·편집 셸이 레이아웃을 따로 들어 여기가 유일한 공통 자리다. */}
+        <NavigationDim />
         <SiteAnalytics />
       </body>
     </html>

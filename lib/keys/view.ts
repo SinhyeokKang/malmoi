@@ -12,20 +12,6 @@ export type KeyRefRow = {
   line: number;
 };
 
-/** 한 로케일의 번역 셀. 테이블의 한 칸이다. */
-export type Cell = {
-  surfaceArchivedAt: Date | null;
-  value: string | null;
-  needsReview: boolean;
-  updatedBy: string | null;
-  updatedAt: Date;
-  /**
-   * `isUnpublished`가 읽는다 — 아직 전달 확인되지 않은 편집 토큰이 있는가(`pendingWhere`의 투영).
-   * ⚠️ **토큰 원문이 아니라 boolean이다** — 이 객체는 RSC 페이로드로 화면에 가고, 원문이 새면 폐기 승인 지문을 위조할 수 있다.
-   */
-  pending: boolean;
-};
-
 /**
  * 셀을 편집한 사람. `User` 행에서 온다 — **프로젝트가 아니라 사용자에 속한 테이블**이므로
  * 조회를 좁히는 축이 `projectId`가 아니다 (POSTMORTEM 2026-09-06). 조회할 id는 호출부가
@@ -60,24 +46,6 @@ export function actorLabel(updatedBy: string | null, actors: ReadonlyMap<string,
   return name ? name : maskEmail(actor.email);
 }
 
-/**
- * 테이블의 한 행. **로케일별 셀을 전부 들고 있다** — 화면이 `| key | en | ko | fr |`이므로
- * 행 하나가 모든 로케일을 그린다. 로케일마다 화면을 갈아타면 문맥이 끊긴다.
- */
-export type KeyRow = {
-  id: string;
-  key: string;
-  namespace: string;
-  /** 키가 **처음 들어온** 시각. `?state=new`가 `Project.lastPulledAt`과 견준다. */
-  createdAt: Date;
-
-  description?: string | null;
-  orphaned: boolean;
-  /** 로케일 코드 → 셀. 없는 로케일은 미번역이다. */
-  cells: Record<string, Cell | undefined>;
-  refs: KeyRefRow[];
-};
-
 export type PermalinkProject = {
   repoOwner: string;
   repoName: string;
@@ -98,16 +66,6 @@ export function buildPermalink(project: PermalinkProject, ref: KeyRefRow): strin
   // 경로의 `/`는 디렉터리 구분자라 살리고, `[locale]` 같은 특수문자만 인코딩한다.
   const path = ref.path.split("/").map(encodeURIComponent).join("/");
   return `https://github.com/${project.repoOwner}/${project.repoName}/blob/${project.lastCommitSha}/${path}#L${ref.line}`;
-}
-
-/**
- * 아직 전달 확인되지 않은 편집인가 (sync-edit-protection T8). `pendingWhere`의 행 단위 형태다.
- *
- * ⚠️ **`surfaceArchivedAt`이 required다** — optional이던 동안 호출부가 안 실으면 보관 표면 셀도 셌다.
- * ⚠️ **시각·저자로 판정하지 않는다** — `lastPulledAt` 비교는 같은 밀리초 재저장을 못 가르고, Publish의 전달 확인은 토큰으로 한다.
- */
-export function isUnpublished(cell: { pending: boolean; surfaceArchivedAt: Date | null }): boolean {
-  return cell.pending && cell.surfaceArchivedAt === null;
 }
 
 /**

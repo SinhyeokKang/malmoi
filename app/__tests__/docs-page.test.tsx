@@ -9,6 +9,12 @@ import { routes } from "@/lib/routes";
  * **`/docs/*` — 원고 렌더** (DESIGN §6.61 · 시안 `Docs.dc.html` 1a–1d). 실물 `guide/`를 읽는다 — 원고가 움직이면 여기서 red다.
  * 시각 값의 대조는 `/design-sync`의 몫이고, 여기는 구조(어떤 페이지에 무엇이 서는가)만 본다.
  */
+/*
+  ⚠️ **`testTimeout`을 이 파일에서만 올린다** (2026-09-29 실측). 파일의 첫 `page()`가 페이지·레이아웃 모듈의 콜드 import를
+  그 테스트의 예산 안에서 치러(단독 2.4 s) 전체 스위트 부하에서 기본 5 s를 한 번씩 넘겼다. 다른 무거운 DOM 파일과 같은 값이다.
+*/
+vi.setConfig({ testTimeout: 20_000 });
+
 const mocks = vi.hoisted(() => ({ path: "/docs", replace: vi.fn() }));
 
 vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: "none" }) }));
@@ -86,6 +92,12 @@ describe("`/docs` — 개요(1a)", () => {
     history.replaceState(null, "", "/docs#formats");
     await page(undefined);
     expect(mocks.replace).toHaveBeenCalledWith("/docs/reference/formats#formats");
+  });
+
+  it("섹션으로 나뉜 옛 `/docs/ai-agents#token`은 새 페이지로 replace된다 (malmoi#152)", async () => {
+    history.replaceState(null, "", "/docs/ai-agents#token");
+    await page(["ai-agents"]);
+    expect(mocks.replace).toHaveBeenCalledWith("/docs/ai-agents/token#token");
   });
 
   it("표에 없는 해시는 그대로 둔다", async () => {

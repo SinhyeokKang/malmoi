@@ -12,7 +12,7 @@ it("defaults to read-only and rejects apply without both cutover attestations", 
   expect(updateMany).not.toHaveBeenCalled();
 });
 it("rejects duplicate App accounts before any conversion", async () => {
-  const a = { userId: "u1", provider: "github-app", providerAccountId: "1", access_token: null, refresh_token: null, id_token: null };
+  const a = { userId: "u1", provider: "github-app", providerAccountId: "1", access_token: null, refresh_token: null };
   const db = { user: { findMany: vi.fn().mockResolvedValue([]) }, account: { findMany: vi.fn().mockResolvedValue([a, { ...a, providerAccountId: "2" }]) }, projectInvitation: { findMany: vi.fn().mockResolvedValue([]) }, session: { findMany: vi.fn().mockResolvedValue([]) } } as unknown as PrismaClient;
   await expect(convertCredentials(db, { mode: "backfill" })).rejects.toThrow();
 });

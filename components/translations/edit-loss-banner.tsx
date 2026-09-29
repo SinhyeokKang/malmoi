@@ -22,7 +22,7 @@ export function EditLossBanner({ count, publishButtonId }: { count: number; publ
   if (count === 0) return null;
   return (
     <Alert
-      variant="info"
+      variant="neutral"
       actions={
         <Button onClick={() => document.getElementById(publishButtonId)?.focus()}>
           {m.translations.banner.sendWithPublish}

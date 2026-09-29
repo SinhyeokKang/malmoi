@@ -11,9 +11,9 @@ import { optionalEnv } from "@/lib/env";
 import { PrismaClient } from "@/generated/prisma/client";
 import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
-import { isUnpublished } from "@/lib/keys/view";
 import { reviewByLocale } from "@/lib/projects/list";
-import { countUnpublished, countUnpublishedBySurface, loadKeys, loadProjectListAggregates, loadReviewAttention } from "../query";
+import { countUnpublishedBySurface, loadProjectListAggregates, loadReviewAttention } from "../query";
+import { countPending } from "@/lib/protection/where";
 import { loadPullState } from "@/lib/pull/load";
 import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
 import { loadTranslationDetail, loadTranslationList } from "../translation-list";
@@ -23,8 +23,8 @@ import { addSurfacesFromSnapshot, type AddSurfaceSnapshot } from "@/lib/surfaces
  * **raw 집계 둘이 기준 판정과 같은 답을 내는가** (ARCHITECTURE §5).
  *
  * ⚠️ **가짜 클라이언트의 호출 수만으로 raw SQL이 맞다고 판정하지 않는다.** `list-aggregates.test.ts`가
- * 재는 것은 "다섯 번만 보냈나"이고, 여기서 재는 것은 **"⑤와 `countUnpublished`가 같은 행을 세나"**다 —
- * 술어가 세 벌(`isUnpublished` 값 판정 / `countUnpublished` 집계 / 이 SQL)이 됐으므로 그중 하나가
+ * 재는 것은 "다섯 번만 보냈나"이고, 여기서 재는 것은 **"⑤와 `countPending`이 같은 행을 세나"**다 —
+ * 술어가 여러 벌(`pendingWhere` 집계 / 이 SQL / 번역 화면의 목록·상세 투영)이므로 그중 하나가
  * 낡으면 화면의 숫자와 배너가 갈린다.
  *
  * ⚠️ **`pnpm test`에 없다** (`vitest.projects.config.ts`). 로컬 PostgreSQL 바이너리를 요구하고
@@ -72,21 +72,20 @@ const PULLED = new Date("2026-09-10T00:00:00Z");
 const BEFORE = new Date("2026-09-09T00:00:00Z");
 const AFTER = new Date("2026-09-11T00:00:00Z");
 
-it("셀 미발송 판정의 표면 보관 시각은 실제 쿼리가 생산한다", async () => {
+it("표면을 보관하면 화면 경로의 pending과 countPending이 함께 0이 된다 (보관 전 > 0 대조)", async () => {
   await seed({ id: "archived-cell", lastPulledAt: PULLED, archived: false });
+  // ⚠️ 보관 전을 먼저 잰다 — 화면 경로는 보관 표면을 아예 안 실으므로 "보관 후 0"만으로는 공허하다 (audit #63).
+  const before = await countPending(prisma, "archived-cell");
+  expect(before).toBeGreaterThan(0);
+  expect((await pendingViaTranslationList("archived-cell", "surface-archived-cell")).cells).toBe(before);
   await prisma.translationSurface.update({ where: { id: "surface-archived-cell" }, data: { archivedAt: AFTER } });
-  const rows = await loadKeys(prisma, "archived-cell", "surface-archived-cell");
-  const cells = rows.flatMap(row => Object.values(row.cells)).filter(cell => cell !== undefined);
-  expect(cells.length).toBeGreaterThan(0);
-  expect(cells.every(cell => "surfaceArchivedAt" in cell && cell.surfaceArchivedAt?.getTime() === AFTER.getTime())).toBe(true);
-  expect(cells.some(cell => isUnpublished(cell))).toBe(false);
-  // 실제 화면 경로(`translation-list.ts`)는 보관 표면을 아예 안 싣는다 — 셀이 pending으로 설 자리가 없다 (audit #63).
   expect((await loadTranslationList(prisma, { projectId: "archived-cell", routeSurfaceId: "surface-archived-cell", query: DEFAULT_TRANSLATION_QUERY })).rows).toEqual([]);
-  expect(await countUnpublished(prisma, "archived-cell")).toBe(0);
+  expect(await pendingViaTranslationList("archived-cell", "surface-archived-cell")).toEqual({ keys: 0, cells: 0 });
+  expect(await countPending(prisma, "archived-cell")).toBe(0);
 });
 
 /**
- * **번역 화면의 손 사본 둘** (audit #63). `loadKeys`는 화면이 더는 부르지 않는다 — 목록의 `bool_or` 투영과 상세의 셀 투영이
+ * **번역 화면의 손 사본 둘** (audit #63). 목록의 `bool_or` 투영과 상세의 셀 투영이
  * `translation-list.ts`에 있고, 그 둘이 `pendingWhere`와 같은 행을 세는지는 여기서만 잰다. 목록은 **키 단위**라 키마다
  * pending 셀이 여럿이면 셀 수보다 작다 — 그래서 상세를 키마다 읽어 셀로 센다.
  */
@@ -270,21 +269,20 @@ it("A push leaves B locales, keys, translations, refs and import state untouched
   expect(await prisma.translation.findUnique({ where: { keyId_localeCode: { keyId: "p1-old", localeCode: "ko" } } })).toMatchObject({ value: "Repository", updatedBy: null });
   // Phase A retains the old PK, but it must never allow a cell to cross surface ownership.
   await expect(prisma.translation.create({ data: { projectId: "p1", surfaceId: "b", keyId: "b-key", localeCode: "en", value: "wrong surface" } })).rejects.toThrow();
-  const unpublished = await countUnpublished(prisma, "p1");
+  const unpublished = await countPending(prisma, "p1");
   expect(unpublished).toBeGreaterThan(0);
   await prisma.translationSurface.update({ where: { id: "b" }, data: { archivedAt: AFTER } });
-  expect(await countUnpublished(prisma, "p1")).toBe(unpublished - 1);
+  expect(await countPending(prisma, "p1")).toBe(unpublished - 1);
   const aggregate = await loadProjectListAggregates(prisma, ["p1"]);
   expect(aggregate.locales.some(l => l.surfaceId === "b")).toBe(false);
-  expect(aggregate.unsent.get("p1") ?? 0).toBe(await countUnpublished(prisma, "p1"));
+  expect(aggregate.unsent.get("p1") ?? 0).toBe(await countPending(prisma, "p1"));
   const newest = new Date("2099-01-01T00:00:00Z");
   await prisma.translation.update({ where: { keyId_localeCode: { keyId: "b-key", localeCode: "fr" } }, data: { updatedAt: newest } });
   const state = await loadPullState(prisma, "p1");
   expect(state.surfaces.map(s => s.slug)).toEqual(["default"]);
   expect(state.maxUpdatedAt).toEqual(newest);
-  // 1층 스킵의 판정값은 `countUnpublished`와 같은 where 조각으로 센다(T0) — 보관 표면 b의 셀은 둘 다 빼야 한다.
-  expect(state.unpublished).toBe(await countUnpublished(prisma, "p1"));
-  expect(isUnpublished({ pending: true, surfaceArchivedAt: AFTER })).toBe(false);
+  // 1층 스킵의 판정값은 `countPending`과 같은 where 조각으로 센다(T0) — 보관 표면 b의 셀은 둘 다 빼야 한다.
+  expect(state.unpublished).toBe(await countPending(prisma, "p1"));
 });
 
 /**
@@ -343,25 +341,22 @@ async function seed(input: { id: string; lastPulledAt: Date | null; archived: bo
   }
 }
 
-it("⑤가 countUnpublished와, 그리고 행별 isUnpublished의 합과 같다 — orphan 키는 셋 다 뺀다 [C9]", async () => {
+it("⑤가 countPending과, 그리고 번역 화면의 목록·상세 투영과 같다 — orphan 키는 셋 다 뺀다 [C9]", async () => {
   await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
 
   const { unsent } = await loadProjectListAggregates(prisma, ["p1"]);
-  const counted = await countUnpublished(prisma, "p1");
-  const byRow = (await loadKeys(prisma, "p1", "surface-p1"))
-    .flatMap(row => Object.values(row.cells)).filter(cell => cell !== undefined && isUnpublished(cell)).length;
+  const counted = await countPending(prisma, "p1");
 
   // 토큰 없는 `old`는 빠지고 orphan 키 `gone`도 빠진다 — 남는 것은 `same`과 `new` 둘이다. 시각은 판정에 안 쓴다.
   expect(unsent.get("p1")).toBe(2);
   expect(unsent.get("p1")).toBe(counted);
-  expect(unsent.get("p1")).toBe(byRow);
   // 이 픽스처는 키마다 셀 하나라 목록의 키 수와 상세의 셀 수가 둘 다 같아야 한다.
   expect(await pendingViaTranslationList("p1", "surface-p1")).toEqual({ keys: 2, cells: 2 });
 });
 
 /**
  * **표면별 미배포 수는 표면 수와 무관한 쿼리 수로 센다** (launch-readiness L7.2, audit #40). 전엔 로케일·번역 화면이 표면마다
- * `countUnpublished`를 불러 N+1이었다. 술어는 `pendingWhere`(①)를 그대로 지난다 — 여섯째 사본을 만들지 않는다.
+ * `countPending`을 불러 N+1이었다. 술어는 `pendingWhere`(①)를 그대로 지난다 — 여섯째 사본을 만들지 않는다.
  * ⚠️ **쿼리 수는 1이 아니라 ≤2다** — `countPending`과 같은 선행 count(토큰 컬럼만, 인덱스만 탄다)를 남긴다. 낡은 통계에서
  * 관계 조인이 5.5초로 튀던 실측 대응이라 빼지 않는다.
  */
@@ -378,12 +373,12 @@ it("countUnpublishedBySurface가 표면별 개별 호출·전체 합과 같고, 
   const bySurface = await countUnpublishedBySurface(counted, "p1");
   expect(queries).toBeLessThanOrEqual(2);
   for (const surfaceId of ["surface-p1", "b", "c"]) {
-    expect(bySurface.get(surfaceId) ?? 0).toBe(await countUnpublished(prisma, "p1", surfaceId));
+    expect(bySurface.get(surfaceId) ?? 0).toBe(await countPending(prisma, "p1", surfaceId));
   }
   expect(bySurface.get("surface-p1")).toBe(2);
   expect(bySurface.get("b")).toBe(1);
   expect(bySurface.has("c")).toBe(false);
-  expect([...bySurface.values()].reduce((a, b) => a + b, 0)).toBe(await countUnpublished(prisma, "p1"));
+  expect([...bySurface.values()].reduce((a, b) => a + b, 0)).toBe(await countPending(prisma, "p1"));
   // 토큰이 하나도 없으면 선행 count 하나로 끝난다.
   await prisma.translation.updateMany({ where: { projectId: "p1" }, data: { pendingEditToken: null } });
   queries = 0;
@@ -396,7 +391,7 @@ it("첫 pull 전에도 세 판정이 같다", async () => {
   await seed({ id: "p1", lastPulledAt: null, archived: false });
 
   const { unsent } = await loadProjectListAggregates(prisma, ["p1"]);
-  const counted = await countUnpublished(prisma, "p1");
+  const counted = await countPending(prisma, "p1");
   expect(unsent.get("p1")).toBe(2);
   expect(unsent.get("p1")).toBe(counted);
 });
@@ -543,10 +538,8 @@ it.each([PULLED, null])("미발송 세 술어의 토큰·빈 값·고아 키·�
       updatedBy: cell.token === null ? null : "user", updatedAt: cell.updatedAt, pendingEditToken: cell.token,
     } });
   }
-  const cells = (await loadKeys(prisma, "p1", "surface-p1")).flatMap(row => Object.values(row.cells)).filter(cell => cell !== undefined);
   const expected = 2;
-  expect(cells.filter((cell) => isUnpublished(cell))).toHaveLength(expected);
-  expect(await countUnpublished(prisma, "p1")).toBe(expected);
+  expect(await countPending(prisma, "p1")).toBe(expected);
   expect((await loadProjectListAggregates(prisma, ["p1"])).unsent.get("p1")).toBe(expected);
   // orphan 로케일(ko)의 토큰 셀·orphan 키 셀은 화면 경로에서도 빠진다 — `old`는 ko 토큰만 있어 pending 키가 아니다.
   expect(await pendingViaTranslationList("p1", "surface-p1")).toEqual({ keys: expected, cells: expected });

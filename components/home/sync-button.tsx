@@ -1,11 +1,12 @@
 "use client";
 
-import { ArrowDownToLine, LoaderCircle, TriangleAlert } from "lucide-react";
+import { ArrowDownToLine, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 
 import { checkOpenPullRequest, prepareRepositorySync, runRepositoryImport } from "@/app/(edit)/projects/actions";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { m } from "@/lib/i18n";
@@ -223,22 +224,19 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
       */}
       {plan.atRisk && <>
         {/*
-          ⚠️ **`Alert warning`의 감축형이고 프리미티브로 올리지 않는다** — 소비자가 이 Dialog 하나이고,
-          올리면 안 본 화면 넷이 함께 움직인다. 색 셋은 그대로이고 **치수만** 다르다(radius 10 ·
-          padding 12 · 글자 13 · 글리프 14): 360 Dialog에서 `p-4` Alert는 본문 폭을 296으로 떨어뜨려
-          두 줄 문장이 네 줄이 된다 (시안 §7 · README §13-1).
+          ⚠️ **`compact`다** — 360 Dialog에서 기본 `p-4`는 본문 폭을 296으로 떨어뜨려 두 줄 문장이 네 줄이 된다
+          (시안 §7 · README §13-1). ⚠️ **알림은 Alert가 아니라 안쪽 줄 묶음이 든다** — 아래 주석.
           ⚠️ **글리프는 블록 머리에 하나다** — 줄마다 주면 경고가 둘인 화면이 되는데, 실제로는 한
           경고("덮인다")의 근거가 둘이다.
         */}
-        <div id={warningId} className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">
-          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+        <Alert id={warningId} variant="warning" size="compact">
           {/*
             PR 조회가 돌아오면 이 줄이 **바뀐다**(미확인 → PR 번호). 그 교체를 알리는 것이 live의 몫이다.
             ⚠️ **줄이 사라지는 것은 알리지 못한다** — `aria-relevant` 기본값이 `additions text`라 제거는
             announce되지 않는다. 다행히 사라지는 방향은 위험이 **줄어드는** 쪽이라 놓쳐도 덜 위험하고,
             반대로 두면(늘어나는 블록) 못 본 경고가 생긴다.
           */}
-          <div aria-live="polite" className="min-w-0 flex-1 space-y-1.5">
+          <div aria-live="polite" className="space-y-1.5">
             {plan.recommendSend && <p>{m.repositorySync.unsent(shownUnsent, <span className="font-medium">{m.repositorySync.unsentCount(shownUnsent)}</span>)}</p>}
             {openPr === "checking"
               ? <p>{m.repositorySync.prChecking}</p>
@@ -246,7 +244,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
                 ? <p>{m.repositorySync.prUnknown}</p>
                 : pr !== null ? <p>{m.repositorySync.openPr(pr.number, branch)}</p> : null}
           </div>
-        </div>
+        </Alert>
         {/*
           ⚠️ **권유는 링크이고 확인 버튼과 두 축으로 떨어진다** — 누르면 다른 라우트로 떠나므로 바닥
           오른쪽(= 이 질문에 답하는 자리)에 서면 세 번째 답으로 읽힌다.
@@ -254,7 +252,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
           조회 중·실패(`undefined`)에는 권할 다음 행동이 없어 줄 자체가 없다 (`4d`).
         */}
         {plan.recommendSend
-          ? <p className="text-muted-foreground">{m.repositorySync.sendHint(
+          ? <p className="text-muted-foreground">{m.repositorySync.sendHint(shownUnsent,
               <Link href={surfaceSlug === undefined ? routes.translations(slug) : routes.surfaceTranslations(slug, surfaceSlug)} className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">{m.repositorySync.sendFirst}</Link>,
             )}</p>
           : pr !== undefined && pr !== null

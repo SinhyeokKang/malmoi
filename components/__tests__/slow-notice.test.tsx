@@ -84,7 +84,7 @@ it("재연결 중에는 아이콘이 스피너로 바뀌고 글리프는 하나�
   // ⚠️ 끝에 풀어 준다 — 영원히 안 끝나는 async transition은 뒤 테스트의 transition을 pending으로 붙잡는다 (POSTMORTEM 2026-09-18).
   let settle: (value: unknown) => void = () => {};
   mocks.connect.mockImplementation(() => new Promise(resolve => { settle = resolve; }));
-  const { container } = await render(<ReconnectButton slug="acme" label="Reconnect" />);
+  const { container } = await render(<ReconnectButton slug="acme" label="Reconnect" server={{}} />);
   const button = container.querySelector("button")!;
   expect(button.querySelectorAll("svg")).toHaveLength(1);
   expect(button.querySelector(".animate-spin")).toBeNull();

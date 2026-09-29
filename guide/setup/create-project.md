@@ -35,6 +35,8 @@ The project is ready immediately. The first page inside creation says **Malmoi i
 
 ## Finish setup {#finish-setup}
 
+![Step 4 of 4, Malmoi is ready, with the push token, its Copy button, and the workflow file to save in the repository](/guide/create-ready.webp "Copy the push token and the workflow before you leave this page.")
+
 1. Copy the push token shown on the ready page. It is shown once; rotate it later in **Settings** if you lose it.
 2. Add the workflow and secret by following [Add the workflow](workflow.md).
 3. Choose **Open project** to go to the project's Home page.

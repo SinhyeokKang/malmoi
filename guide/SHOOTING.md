@@ -57,6 +57,7 @@
 | `/guide/create-repository.webp` | `setup/create-project.md#connect-github` | OWNER | ①단계 — `i18n`으로 거른 저장소 목록, 선택 + Branch |
 | `/guide/create-files.webp` | `setup/create-project.md#choose-files` | OWNER | ②단계 — 감지된 세트 둘 선택 + 미리보기 |
 | `/guide/create-name.webp` | `setup/create-project.md#confirm-project` | OWNER | ③단계 — Name·Address + Base language(Create project 누르지 않음) |
+| `/guide/create-ready.webp` | `setup/create-project.md#finish-setup` | OWNER | ④단계 `Malmoi is ready` — 토큰 칩(가짜 값) + 워크플로 블록 + Open project |
 | `/guide/project-home.webp` | `README.md` | OWNER | 프로젝트 Home — 카운트 카드 넷 + 프로젝트 메타 |
 | `/guide/invite-members.webp` | `setup/members.md#invite` | OWNER | Members → Invite member 모달, 가짜 주소 둘(전송 안 함) |
 | `/guide/members.webp` | `setup/members.md#members` | OWNER | Members 목록(Owner·Editor) + 빈 Pending invitations |
@@ -72,9 +73,9 @@
 | `/guide/sync-discard.webp` | `sync/revert.md#resync` | OWNER | Sync 확인창 — 미전달 1건 폐기 경고(확정 안 함) |
 | `/guide/logs-event.webp` | `sync/logs.md#event-details` | OWNER | Logs(Kind: Publish)에서 연 Publish 사건 상세 |
 | `/guide/account.webp` | `account.md#profile` | OWNER | Account — Profile · Sign-in methods · GitHub App |
-| `/guide/mcp-create-token.webp` | `ai-agents.md#token` | EDITOR | MCP connector → Create token 모달 ①단계(만들지 않음 — ② 토큰 원문은 찍지 않는다) |
-| `/guide/mcp-connector.webp` | `ai-agents.md#connected-apps` | OWNER | MCP connector — Connected apps(연결 둘) + 토큰 카드(원문 없음) + Connect 카드 머리 |
-| `/guide/oauth-consent.webp` | `ai-agents.md#browser` | OWNER | `/oauth/authorize` 동의 화면 — claude.ai CIMD 요청(Authorize 누르지 않음), Translate & publish 하나 체크 |
+| `/guide/mcp-create-token.webp` | `ai-agents/token.md#token` | EDITOR | MCP connector → Create token 모달 ①단계(만들지 않음 — ② 토큰 원문은 찍지 않는다) |
+| `/guide/mcp-connector.webp` | `ai-agents/browser.md#connected-apps` | OWNER | MCP connector — Connected apps(연결 둘) + 토큰 카드(원문 없음) + Connect 카드 머리 |
+| `/guide/oauth-consent.webp` | `ai-agents/browser.md#browser` | OWNER | `/oauth/authorize` 동의 화면 — claude.ai CIMD 요청(Authorize 누르지 않음), Translate & publish 하나 체크 |
 
 ## 에셋 매핑 {#shots}
 
@@ -89,41 +90,42 @@
 | /guide/actions-policy.webp | lib/onboarding/workflow.ts, .github/actions/malmoi-i18n-push/action.yml | 45d351ca4d9fc6cff70c84d0e784e6e992edba69, 7278e8afabcf49ab7691443251786b3352c276c6 | 2560x1600 |
 | /guide/translation-editor.webp | components/translations/workspace/key-list.tsx, components/translations/workspace/locale-panel.tsx | 0a18a5bcbc8fa31d663ea0dbf7523c2b72c4b6cc, 1616f975ee725ef8c687ea5f647ae3fecbe3e4ac | 2560x1600 |
 | /guide/publish-preview.webp | components/publish-button.tsx, lib/publish/preview.ts | 5da54cab3106be7df63d6093f2d28c42f2b643d5, 257ebc5a440efdd31731c6426b9851f869a41561 | 2560x1600 |
-| /guide/project-home.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, components/home/meta-column.tsx | 4174b3928c6ed77494331c9f9271916d08020573, cd1ba61b1b8896bbb609c8abe427d58e48205709, de89009886e92c6592bd49c7a9f7671c273086ac | 2560x1600 |
+| /guide/project-home.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, components/home/meta-column.tsx | 5b17e2dd84ed26dd5b6fee96b9959bf98a44f591, cd1ba61b1b8896bbb609c8abe427d58e48205709, de89009886e92c6592bd49c7a9f7671c273086ac | 2560x1600 |
 | /guide/invite-members.webp | components/members/invite-modal.tsx | a081452a0821600fc1e9ed02fb20dbd8073ae06e | 2560x1600 |
 | /guide/members.webp | components/members/member-list.tsx, components/members/member-row.tsx, components/members/pending-invitations.tsx | 4945fd24321dc38619c04e3251b1afc108785e09, 540128fd7eff236573687ebd7bbbec98a8dc09a8, b64f43fad2ebaed332569e381b893ecac7414db7 | 2560x1600 |
-| /guide/sources.webp | components/sources/sources-screen.tsx, components/sources/source-status.tsx | b19fe7e08e1e0e1eeb82dc6e273e13e6354faa33, 0a919f69e5584af9bf861731c25cdd85b12c8e63 | 2560x1600 |
-| /guide/add-sources.webp | components/sources/add-sources-modal.tsx | ca027d458d6e483d6702243847828090c9ad9d05 | 2560x1600 |
+| /guide/sources.webp | components/sources/sources-screen.tsx, components/sources/source-status.tsx | 5de1b8ef34458c4c5c9c4ca3d4c0931d734c4918, 0a919f69e5584af9bf861731c25cdd85b12c8e63 | 2560x1600 |
+| /guide/add-sources.webp | components/sources/add-sources-modal.tsx | a5d967e4ae6d9c0ea5e6490d959f5bd8fb3539af | 2560x1600 |
 | /guide/archive-card.webp | components/settings/archive-card.tsx | b16198f250b8322cffa1938286fb2814189851c3 | 2560x1600 |
 | /guide/accept-invitation.webp | app/invite/[token]/page.tsx, components/invite/project-card.tsx, components/signin/auth-layout.tsx | f52c60923f6a8391492807fdf92bb8b473164029, f04bd2df388d5f046ad05818553e51c39fd45376, 707e072f943e340d3d4fb9b389ecb39f75d67eb2 | 2560x1600 |
 | /guide/state-filter.webp | components/translations/workspace/filter-menu.tsx | 8122e89e1cd4f89a9de260f4d4eb875822d168dd | 2560x1600 |
-| /guide/home-publish.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, components/publish-button.tsx | 4174b3928c6ed77494331c9f9271916d08020573, cd1ba61b1b8896bbb609c8abe427d58e48205709, 5da54cab3106be7df63d6093f2d28c42f2b643d5 | 2560x1600 |
+| /guide/home-publish.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, components/publish-button.tsx | 5b17e2dd84ed26dd5b6fee96b9959bf98a44f591, cd1ba61b1b8896bbb609c8abe427d58e48205709, 5da54cab3106be7df63d6093f2d28c42f2b643d5 | 2560x1600 |
 | /guide/publish-result.webp | components/publish-button.tsx | 5da54cab3106be7df63d6093f2d28c42f2b643d5 | 2560x1600 |
-| /guide/home-paused.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx | 4174b3928c6ed77494331c9f9271916d08020573, cd1ba61b1b8896bbb609c8abe427d58e48205709 | 2560x1600 |
-| /guide/revert-confirm.webp | components/translations/workspace/workspace.tsx, components/translations/edit-loss-banner.tsx | 0401ce55fb57f4b2b24b175da11fe2b9efea88af, 99d6e108205e3761d97872cf98c363ee1c634060 | 2560x1600 |
-| /guide/sync-discard.webp | components/home/sync-button.tsx | fbc0e86869a83eb51b2984f584911b83bf7fdb17 | 2560x1600 |
-| /guide/logs-event.webp | components/logs/event-dialog.tsx, components/logs/event-detail.tsx | cadf74e0cb02c69164c5d8bd828ea5441dc71d60, 9788954b94524cd0c09851a166375d9b89974660 | 2560x1600 |
-| /guide/account.webp | app/(edit)/account/page.tsx, components/account/profile-picture.tsx, components/account/login-methods.tsx, components/account/github-section.tsx | 6d03357fb3f33f6c8a21c869640d7f72f0bdca76, 37eec1067fce9caa706483a11deb51d76bf4f39b, dff3cf21dec15a3ca7006dee78278bd95b079324, e866658706416a009765e582123f1158decc7d6c | 2560x1600 |
+| /guide/home-paused.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx | 5b17e2dd84ed26dd5b6fee96b9959bf98a44f591, cd1ba61b1b8896bbb609c8abe427d58e48205709 | 2560x1600 |
+| /guide/revert-confirm.webp | components/translations/workspace/workspace.tsx, components/translations/edit-loss-banner.tsx | 0401ce55fb57f4b2b24b175da11fe2b9efea88af, 4cbebb3c05947fab764389a51253f24589bfb2d0 | 2560x1600 |
+| /guide/sync-discard.webp | components/home/sync-button.tsx | 7993dfca5dac36ad87d5fdf3de1b168410dcd8fb | 2560x1600 |
+| /guide/logs-event.webp | components/logs/event-dialog.tsx, components/logs/event-detail.tsx | cadf74e0cb02c69164c5d8bd828ea5441dc71d60, 76d2e83603942d5a17b12436c0f4c51512763dca | 2560x1600 |
+| /guide/account.webp | app/(edit)/account/page.tsx, components/account/profile-picture.tsx, components/account/login-methods.tsx, components/account/github-section.tsx | 6d03357fb3f33f6c8a21c869640d7f72f0bdca76, 37eec1067fce9caa706483a11deb51d76bf4f39b, b5c854085c6c97a92859631493939f2ef4220967, e866658706416a009765e582123f1158decc7d6c | 2560x1600 |
 | /guide/mcp-create-token.webp | components/mcp/token-modal.tsx, components/mcp/token-grant-fields.tsx | d56afa2334b2932c1734bab087e52280f6a4d543, 0074ab2f4ccec1114cfa3e0dbae332bbec2b6935 | 2560x1600 |
-| /guide/mcp-connector.webp | components/mcp/connected-apps-card.tsx, components/mcp/token-card.tsx, components/mcp/connect-card.tsx | 09449913f4e0f2bac6ed184dadfd753609c22a0e, 02dec0a0e34bb906d65c1921d5f9e1ed50b61d42, b99c5f6e6433a3076cd469bd79ec6423567e97ca | 2560x1600 |
-| /guide/oauth-consent.webp | app/oauth/authorize/page.tsx, components/oauth/consent-panel.tsx, components/oauth/app-card.tsx | 3440235fe7a45c306afa13f94ba1536d829b5f36, affd217b6f70429991a1d5053aa4caca267d3f81, c53824331c89ec5759a6173c71718b1b6b1ce01f | 2560x1600 |
+| /guide/mcp-connector.webp | components/mcp/connected-apps-card.tsx, components/mcp/token-card.tsx, components/mcp/connect-card.tsx | 6ff150d2c6518cf026c8da643895cca18e0d47f3, 02dec0a0e34bb906d65c1921d5f9e1ed50b61d42, b99c5f6e6433a3076cd469bd79ec6423567e97ca | 2560x1600 |
+| /guide/oauth-consent.webp | app/oauth/authorize/page.tsx, components/oauth/consent-panel.tsx, components/oauth/app-card.tsx | 3440235fe7a45c306afa13f94ba1536d829b5f36, 12ad3105c15d4917f0a245797f1b092f59159757, c53824331c89ec5759a6173c71718b1b6b1ce01f | 2560x1600 |
 | /guide/create-repository.webp | components/onboarding/new-project.tsx, components/onboarding/steps/repo.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, 35a6949ccd7201ce6de97c7b3b2d944d32828c05 | 2560x1600 |
 | /guide/create-files.webp | components/onboarding/new-project.tsx, components/onboarding/steps/files.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, 72c92128cde6e327a6215f67634a0a8d512d31d7 | 2560x1600 |
 | /guide/create-name.webp | components/onboarding/new-project.tsx, components/onboarding/steps/naming.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, c588cef72e7d02b563634caec2630909d0b346c0 | 2560x1600 |
+| /guide/create-ready.webp | components/onboarding/new-project.tsx, components/onboarding/steps/result.tsx, components/onboarding/workflow-block.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, fa71478e64a00108ed033fcb26b2ff8e1f998f1c, e099fcb70b6fca21b04b07c69217a0b2a0018f9e | 2560x1600 |
 
 - ⚠️ **셸이 컷에 들어간 뒤로 LNB·패널 머리·카드 머리(`components/shell/**`·`components/ui/panel-card.tsx` 등)의 변경도 모든 컷을 낡게 한다** — 소스로 올리면 신호가 죽으므로(`messages/en.tsx`와 같은 이유) 올리지 않는다. 셸을 바꿨으면 컷 전체를 손으로 다시 본다.
 
 ## 알려진 벽 {#walls}
 
 - **GitHub App 설치 왕복**(①의 1클릭 설치·요청 복귀·승인 복귀)은 로컬에서 못 밟는다 — 설치 URL이 `redirect_uri`를 안 받아 프로덕션 callback으로 간다. 찍어야 하면 수동으로 찍고, 아니면 건너뛴다.
-- **④ `Malmoi is ready`는 프로젝트를 새로 만들어야만 닿는다.** OWNER 계정이 활성 프로젝트 셋(상한)을 이미 가져 생성이 막히고, 만들면 dev DB에 일회용 프로젝트가 쌓인다. 게다가 그 화면은 push 토큰 원문을 보인다. 같은 워크플로 문구는 Settings → CI integration → Workflow file 모달에서 찍는다(본문도 "or later from Settings"로 안내한다).
+- **④ `Malmoi is ready`는 프로젝트를 새로 만들어야만 닿는다**(2026-09-29 사용자 승인으로 찍었다). 절차: ①–③과 같이 `i18n-order-check`를 보관해 자리를 만들고 → 실제 UI로 일회용 프로젝트를 만든다(Name `Acme web`·Address `acme-web` — 마스킹이 필요 없다) → ④가 뜨면 **스냅샷·텍스트 출력 전에** 토큰 칩(`<code>`)을 같은 형(base64url 43자)의 무작위 가짜 값으로 바꾸고, 캡처 직전 그 값이 남았는지 다시 확인한다 → YAML의 `api-url:` 줄은 로컬에서만 생기므로 DOM에서 지운다(프로덕션 출력과 맞춘다) → 캡처 뒤 Close → 일회용 프로젝트를 dev DB에서 **그 id로 좁힌 SQL**로 지운다(한 트랜잭션: `ProjectEvent`·`DeliveryConfirmation`·`SyncRun`·`TranslationBaseline`·`Translation`·`StringKey`(`KeyRef`는 cascade)·`Locale`·`ProjectInvitation`·`ProjectMember` → `Project.defaultSurfaceId` NULL → `TranslationSurface` → `Project`. **UI 삭제는 없다**) → `i18n-order-check`를 Restore. ⚠️ 폐기한 프로젝트의 사건은 촬영 흔적이라 같이 지운다 — 남은 프로젝트의 사건은 지우지 않는다.
 - ⚠️ **미전달 표시를 지우는 길** (2026-09-28): 촬영용 편집을 원래 값으로 다시 저장하면 값은 리포와 같아지고 표시만 남는다. 그 셀에 전달된 적 있는 값이 없으면 **Revert to last sent가 꺼진다**(OWNER에게도 — "The last sent version isn't available"). 그때 OWNER의 Publish 미리보기가 *Nothing differs from dev*를 내고, 그 Publish는 **PR 없이 보낸 것으로 표시만 한다**(GitHub 쓰기 없음, Logs에 Publish 사건 1건). 편집자 장 컷은 이 정리 **뒤에** 찍는다 — 남으면 번역 화면에 `Repository updates are paused…` 배너와 `Not sent` 칩이 선다.
 - **Publish 미리보기는 미전달 편집이 있어야 열린다** — 없으면 Publish가 `aria-disabled`다. 편집을 하나 저장해 찍으면 그 셀에 미전달 표시가 남는다. **Revert to last sent**는 마지막 전달 값이 없는 셀에서 꺼져 있을 수 있고, 같은 값을 다시 저장해도 미전달 표시는 안 지워진다(`lib/keys/save-key.ts`가 저장마다 새 토큰을 쓴다). 촬영 전에 되돌릴 길을 정한다.
 - **GitHub 설정 화면에서 뷰포트 에뮬레이션(`Emulation.setDeviceMetricsOverride`)은 자동 모드 분류기가 막았다**(2026-09-27). ⚠️ 2026-09-28에는 앱에서 건 에뮬레이션이 같은 탭의 github.com 이동 뒤에도 유지돼 막히지 않았다 — 막히면 앱 탭에서 걸고 이동한다. GitHub 테마는 촬영 계정의 설정(지금 다크)을 따른다 — 바꾸지 않는다.
 - **로그인 전환은 공급자의 계정 선택 화면으로 된다** — OWNER는 GitHub, EDITOR는 Google 계정이다. 비밀번호·2단계 인증을 묻으면 사람에게 넘긴다.
 
 - ⚠️ **Revert to last sent는 전달 확인(`DeliveryConfirmation`)이 유효할 때만 켜진다** (2026-09-29): 확인이 무효인 소스에선 편집 직후에도 "The last sent version isn't available"로 꺼진다. **PR 없이 끝나는 Publish(`Nothing differs from dev` → `Nothing changed in the files`)가 새 확인을 세운다** — 그 뒤에 한 편집은 기준이 기록돼 Revert가 켜지고, 확인창 촬영 뒤 실제 Revert로 셀을 되돌리면 미전달 표시까지 GitHub 쓰기 없이 지워진다. 순서: 편집 → 원래 값으로 재저장 → Publish(Nothing differs) → 새 편집 → Revert 확인창 촬영 → Revert.
-- **새 프로젝트 흐름(①–③)은 OWNER가 활성 프로젝트 상한(셋)이면 `/projects/new`가 목록으로 돌려보낸다** (2026-09-29 — 같은 dev DB를 쓰는 다른 QA가 MCP로 프로젝트를 만들어 셋이 됐다). 자리는 **OWNER 단독의 유휴 프로젝트(`i18n-order-check`)를 Settings에서 보관**해 만들고, 촬영 뒤 같은 카드의 Restore project로 되돌린다(사용자 승인 2026-09-29). 남이 쓰는 프로젝트는 건드리지 않는다. ③에서 **Create project를 누르지 않는다** — ④는 벽이다.
+- **새 프로젝트 흐름(①–③)은 OWNER가 활성 프로젝트 상한(셋)이면 `/projects/new`가 목록으로 돌려보낸다** (2026-09-29 — 같은 dev DB를 쓰는 다른 QA가 MCP로 프로젝트를 만들어 셋이 됐다). 자리는 **OWNER 단독의 유휴 프로젝트(`i18n-order-check`)를 Settings에서 보관**해 만들고, 촬영 뒤 같은 카드의 Restore project로 되돌린다(사용자 승인 2026-09-29). 남이 쓰는 프로젝트는 건드리지 않는다. ③에서 **Create project를 누르지 않는다** — ④는 위 절차(일회용 프로젝트 + 정리)로만 찍는다.
 - ①의 저장소 목록은 설치가 닿는 **개인 리포 이름을 전부** 보인다 — 검색창에 `i18n`을 넣어 테스트 리포만 남긴 상태로 찍는다. 목록의 GitHub 계정명은 `alex-kim`으로 치환한다(셸의 표시 이름은 `Alex Kim`).
 - **dev DB는 다른 워커·preview와 함께 쓴다** — 촬영 중에 프로젝트 수·Logs·Projects 배지가 바뀔 수 있다. 촬영 전후 상태를 스냅샷으로 대조한다.
 
@@ -142,3 +144,6 @@
 - 2026-09-29 `/guide/accept-invitation.webp` 재촬영 — 셸 밖 골격이 `/signin` 외엔 장식 없는 단일 패널이 됐다(`AuthLayout`의 `decoration`). 변경이 `auth-layout.tsx` 안에서 끝나 `guide:check`가 못 잡았으므로 그 파일을 매핑 소스에 더했다. 초대는 전과 같이 dev DB에 1건(`i18n-order-check`, EDITOR 주소)을 사건 없이 심어 찍고 수락 없이 id로 지웠다. EDITOR 세션에서 `accept` 상태, 이메일은 마스킹된 `o***@…` 꼴이라 `*`까지 잡는 치환이 필요했다.
 - 2026-09-29 mcp-oauth — `mcp-connector` **재촬영**: 맨 위에 Connected apps 카드가 섰다(`ai-agents.md#connected-apps`로 옮겼다). 연결 둘(`Claude Code` · 이름 없는 Codex CIMD URL)은 dev DB에 가짜 `OAuthConnection` 행으로 심었고, 토큰 카드는 UI로 만든 토큰(원문은 찍지 않았다)이다 — 촬영 뒤 셋 다 지웠다. origin `http://localhost:3000` → `https://mal-moi.com`, OWNER 이름·아바타 치환. `mcp-create-token`은 필드를 `token-grant-fields.tsx`로 옮긴 리팩터라 화면이 같아 **재촬영 없이 소스에 그 파일을 더하고 SHA만 갱신**했다.
 - 2026-09-29 mcp-oauth 후속 — `oauth-consent` **추가**(`ai-agents.md#browser`): claude.ai CIMD(`claude.ai/oauth/mcp-oauth-client-metadata`, 콜백 `claude.ai/api/mcp/auth_callback`)로 만든 authorize 요청의 동의 화면, Authorize는 누르지 않았다(요청 행 1건은 10분 뒤 만료돼 다음 저장이 지운다). 이메일 → `alex.kim@example.com`, GitHub 아바타 → `AK` 이니셜 원. **SHA만 갱신** 둘: `accept-invitation`(`auth-layout.tsx`에 `scroll` prop과 주석만 — 초대 화면은 그 prop을 안 넘긴다) · `mcp-connector`(`connect-card.tsx`에 claude.ai 조직 안내 줄 — claude.ai 탭 안이라 기본 선택(Claude Code) 컷에 안 보인다).
+- 2026-09-29 `create-ready` **추가**(`setup/create-project.md#finish-setup` ④, 사용자 지시) — 벽 절의 절차대로 일회용 프로젝트(`SinhyeokKang/i18n-format-check` · dev · `locales/{locale}.yml` 한 세트)를 만들어 찍고 id로 지웠다(`ProjectEvent` 3 · `Translation` 28 · `StringKey` 10 · `Locale` 3 · `ProjectMember` 1 · `TranslationSurface` 1 · `Project` 1). 토큰 칩은 가짜 값이고 `api-url` 줄은 지웠다. Dim 뒤 셸은 마스킹 표 + `SinhyeokKang` → `Alex Kim`·`alex-kim/` + 아바타 `AK` 치환. `i18n-order-check`는 보관 → 복원(Logs에 보관·복원 사건이 남는다). 화면 문구(`Malmoi is ready` · `Push token` · `Open project`)가 본문과 같아 제외 사유였던 "버튼 문구 변경 예정"은 해소됐다. `create-project.md`에 남은 컷 없음.
+- 2026-09-29 Alert 재작업(테두리 없는 다섯 tone · `compact` · `live`) — stale 11컷 중 **Alert가 화면에 있는 둘만 재촬영**: `revert-confirm`(뒤의 보류 배너가 `info`→`neutral` 무테) · `sync-discard`(경고 블록이 `Alert warning compact`로). 편집은 `_locales` `EXT_NAME` fr 하나(`Signalement de bugs en un instant` → `Signaler un bug en un seul clic`)를 저장해 두 확인창을 찍고(Sync는 Cancel) 실제 Revert로 되돌렸다 — 미전달 0, GitHub 쓰기 없음, Logs에 편집 1·Revert 1 사건이 남았다. **SHA만 갱신** 아홉: `project-home`·`home-publish`·`home-paused`(Home 알림 띠가 비어 `empty:hidden` — 위 여백 16은 띠가 설 때만, `page.tsx`는 주석·memo 옵션), `sources`·`add-sources`(prop 배선·async transition 걷기 — 화면 불변), `logs-event`(성공 Publish라 노트가 없다), `account`·`mcp-connector`·`oauth-consent`(`role`→`live` 개명, 해당 Alert는 결과·미확인 상태에서만 선다).
+- 2026-09-29 `sync-discard` **재촬영** — 미전달 1건일 때 대명사를 단수로 고쳤다(`replace them` → `replace it`, `To keep them` → `To keep it`). 같은 셋업(`_locales` `EXT_NAME` fr 편집 1건 → Sync 확인창, Cancel → 실제 Revert로 복원)이고 미전달 0, GitHub 쓰기 없음, Logs에 편집 1·Revert 1 사건이 더 남았다.

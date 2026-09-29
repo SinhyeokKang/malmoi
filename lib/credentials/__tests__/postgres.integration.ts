@@ -55,7 +55,7 @@ async function legacy() {
   await prisma.project.create({ data: { id: ids.p1, slug: "alpha", name: "Alpha", repoOwner: "fixture", repoName: "fixture" } });
   await prisma.projectMember.create({ data: { projectId: ids.p1, userId: ids.u1, role: "OWNER" } });
   await prisma.projectInvitation.create({ data: { id: ids.i1, projectId: ids.p1, invitedBy: ids.u1, email: "bob@example.com", role: "EDITOR", tokenHash: "unchanged-hash", expiresAt: new Date("2030-01-01") } });
-  await prisma.account.createMany({ data: [{ userId: ids.u1, type: "oauth", provider: "github", providerAccountId: "login1", access_token: "login-access", id_token: "login-identity" }, { userId: ids.u1, type: "oauth", provider: "github-app", providerAccountId: "app1", access_token: "app-access", refresh_token: "app-refresh", expires_at: 1234 }] });
+  await prisma.account.createMany({ data: [{ userId: ids.u1, type: "oauth", provider: "github", providerAccountId: "login1", access_token: "login-access", refresh_token: "login-refresh" }, { userId: ids.u1, type: "oauth", provider: "github-app", providerAccountId: "app1", access_token: "app-access", refresh_token: "app-refresh", expires_at: 1234 }] });
   await prisma.session.createMany({ data: [{ userId: ids.u1, sessionToken: "old-cookie", expires: new Date("2030-01-01") }, { userId: ids.u1, sessionToken: hashSessionToken("new-cookie"), expires: new Date("2030-01-01") }] });
 }
 beforeAll(async () => {
@@ -168,7 +168,7 @@ it("User row lock blocks concurrent additional account linking", async () => {
   const user = await adapter.createUser!({ id: "ignored-provider-id", email: "u@example.com", emailVerified: null });
   const results = await Promise.allSettled(["github", "google"].map(provider => adapter.linkAccount!({ userId: user.id, provider, providerAccountId: "provider1", type: "oauth", access_token: "must-not-store" })));
   expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
-  expect(await prisma.account.findMany()).toEqual([expect.objectContaining({ userId: user.id, access_token: null, refresh_token: null, id_token: null })]);
+  expect(await prisma.account.findMany()).toEqual([expect.objectContaining({ userId: user.id, access_token: null, refresh_token: null })]);
 });
 it("PII/token rotation, partial reindex, missing-key recovery and backup restore", async () => {
   await legacy(); await convertCredentials(prisma, { mode: "backfill", ...cutover });
@@ -264,7 +264,7 @@ it.each(["github", "google"] as const)("installed Auth.js %s callback stores dig
   const session = await prisma.session.findUniqueOrThrow({ where: { sessionToken: hashSessionToken(raw) } });
   expect(session.sessionToken).not.toBe(raw);
   const account = await prisma.account.findFirstOrThrow();
-  expect(account).toMatchObject({ access_token: null, refresh_token: null, id_token: null });
+  expect(account).toMatchObject({ access_token: null, refresh_token: null });
   const stored = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } });
   expect(stored.email).toMatch(/^enc:v1:/);
   const read = (value: string) => handlers.GET(new NextRequest("http://localhost/api/auth/session", { headers: { cookie: `authjs.session-token=${value}` } }));
@@ -798,7 +798,7 @@ it("connect consumes exactly once and preserves sessions and other purposes", as
   expect(await prisma.session.count()).toBe(3);
   expect(await prisma.user.count()).toBe(2);
   expect(await prisma.verificationToken.findMany()).toEqual([expect.objectContaining({ identifier: "other-purpose" })]);
-  expect(await prisma.account.findUnique({ where: { provider_providerAccountId: { provider: "google", providerAccountId: "new-method" } } })).toMatchObject({ userId: proof.userId, access_token: null, refresh_token: null, id_token: null });
+  expect(await prisma.account.findUnique({ where: { provider_providerAccountId: { provider: "google", providerAccountId: "new-method" } } })).toMatchObject({ userId: proof.userId, access_token: null, refresh_token: null });
 });
 it("a replaced connect challenge cannot delete or consume another purpose", async () => {
   const { proof, input } = await connectFixture();

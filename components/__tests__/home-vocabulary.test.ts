@@ -209,6 +209,7 @@ const NOT_A_COUNT: Record<string, string> = {
   "home.attention.more": "상한이 5다 — `lib/home/attention.ts`의 `CAP` 상수가 강제한다",
   // 수를 직접 찍지 않는다 — 보이는 수는 인자로 받은 `unsentCount(n)` 노드가 만들고, `n`은 단복수에만 쓴다.
   "repositorySync.unsent": "수를 찍지 않는다 — 단복수 판정에만 쓴다",
+  "repositorySync.sendHint": "수를 찍지 않는다 — 단복수 판정에만 쓴다",
 };
 
 /**

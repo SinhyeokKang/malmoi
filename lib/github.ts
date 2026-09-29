@@ -10,6 +10,7 @@ import { requirePinnedRepositoryId, requireSameRepository } from "@/lib/github-c
 import { parsePrivateKey, requireEnv } from "@/lib/env";
 import { planConnectionHealth, probeFromError, type ConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
 import { logFailure } from "@/lib/github-connect/log";
+import { createProbeMemo, probeMemoKey, PROBE_MEMO_MAX, PROBE_MEMO_TTL_MS } from "@/lib/github-connect/probe-memo";
 import type { GitClient, GitTreeBlob } from "@/lib/pull/client";
 import type { CommitPayload, TreePayload } from "@/lib/pull/payload";
 
@@ -153,16 +154,22 @@ async function readProbe(app: App, owner: string, repo: string): Promise<ProbeRe
  * 것은 환경변수 누락뿐이다 — 그것까지 `unknown`("잠시 뒤 다시")으로 접으면 **설정 오류가 영원히
  * 일시 장애로 보인다** (code-review 2026-09-07). 블록의 독립 실패는 GitHub 장애에 대한 것이지
  * 설정 오류가 아니다.
+ *
+ * @param options.memo **Home만 켠다** (malmoi#107 ①) — probe를 `PROBE_MEMO_TTL_MS` 동안 기억한다. 설정 화면·MCP는 끈 채로
+ *   실물을 본다(`probe-memo.ts`).
  */
 export async function loadConnectionHealth(project: {
   repoOwner: string;
   repoName: string;
   installationId: string | null;
   repositoryId: string | null;
-}): Promise<ConnectionHealth> {
+}, options: { memo?: boolean } = {}): Promise<ConnectionHealth> {
   if (project.installationId === null) return { status: "not-connected" };
-  return planConnectionHealth({ project, probe: await probeRepo(project.repoOwner, project.repoName) });
+  const probe = () => probeRepo(project.repoOwner, project.repoName);
+  return planConnectionHealth({ project, probe: await (options.memo ? homeProbeMemo(probeMemoKey(project), probe) : probe()) });
 }
+
+const homeProbeMemo = createProbeMemo({ ttlMs: PROBE_MEMO_TTL_MS, max: PROBE_MEMO_MAX });
 
 /**
  * 리포를 여러 번 읽는 동안 **설치 토큰을 한 번만 발급**하는 리더. 온보딩의 탐지·첫 적재가 이것을 쓴다.

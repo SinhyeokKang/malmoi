@@ -153,7 +153,8 @@ export default async function ProjectHomePage({
      * **시끄러운 신호는 설정 화면 하나에 남긴다** — 그 화면이 OWNER가 고치러 가는 자리다.
      * 여기서는 `unknown`이라 배너가 안 서고, 원인은 로그에만 남는다.
      */
-    loadConnectionHealth(project).catch((error: unknown) => {
+    // 메모를 켠다 (malmoi#107 ①) — 사건 상세를 열 때마다 GitHub 2홉을 다시 기다렸다. 설정 화면은 끈 채다.
+    loadConnectionHealth(project, { memo: true }).catch((error: unknown) => {
       logFailure("home-connection-health", error);
       return { status: "unknown" } as const;
     }),
@@ -268,7 +269,7 @@ export default async function ProjectHomePage({
       </PanelHeader>
 
       {/*
-        ⚠️ **배너가 머리와 본문 사이에 있다** (캔버스 `2b`·`2c`·`2d` — `margin:0 24px 20px`).
+        ⚠️ **배너가 머리와 본문 사이에 있다** (캔버스 `2b`·`2c`·`2d`). 여백은 `HomeNotices`가 든다(위 16 · 아래는 본문의 16).
         본문 안에 두면 스크롤과 함께 밀려 올라가고, 그러면 "왜 버튼이 안 눌리나"를 말하는 문장이
         화면 밖으로 나간다 (POSTMORTEM 2026-09-06).
 

@@ -326,6 +326,16 @@ it("[C4] 미전달 편집의 경고 줄은 discard와 replace를 한 번씩만 �
   expect(mocks.run).not.toHaveBeenCalled();
 });
 
+/** 단수면 대명사도 단수다 — "1 unsent translation change and replace them"이었다(런타임 QA 2026-09-29). */
+it("미전달 편집이 하나면 경고 줄의 대명사가 it이다", async () => {
+  mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 1 });
+  await render(<SyncButton {...props} unsent={1} />);
+  await click("Sync");
+  const warning = document.querySelector('[aria-live="polite"]')?.textContent ?? "";
+  expect(warning).toContain("Sync will discard 1 unsent translation change and replace it with repository values.");
+  expect(document.body.textContent).toContain("To keep it, Publish first");
+});
+
 /**
  * **지문이 오기 전에는 확정할 수 없다** (audit #14). 전엔 `prepareRepositorySync`가 돌아오기 전에 누르면 `approval: null`이
  * 나가 서버가 reconfirm을 냈고, 화면은 *"Translations changed after you opened Sync"* 라는 **사실과 다른** 문장을 띄웠다.

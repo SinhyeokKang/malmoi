@@ -16,8 +16,8 @@ import {
   type ProjectEvents,
   type RowLocaleProgress,
 } from "@/lib/projects/list";
-import { countPending, countPendingBySurface } from "@/lib/protection/where";
-import type { Actor, KeyRow } from "./view";
+import { countPendingBySurface } from "@/lib/protection/where";
+import type { Actor } from "./view";
 
 /**
  * 키 리스트 데이터 조회. **`projectId`로 좁힌다** — 인덱스가 전부 `projectId` 선두 복합이고,
@@ -88,66 +88,6 @@ export async function loadProject(prisma: PrismaClient, projectId: string, surfa
 }
 
 /**
- * **전 로케일**의 키 목록. 테이블이 로케일을 열로 펼치므로 한 번에 다 읽는다.
- *
- * 네임스페이스 필터를 SQL로 내리지 않는다 — 사이드바가 전 네임스페이스의 집계를 필요로 하므로
- * 어차피 전체를 읽어야 하고, 두 번 읽는 대신 한 번 읽어 메모리에서 나눈다.
- *
- * ⚠️ **번역을 로케일별로 좁히지 않는다** — 이전엔 `where: { localeCode }`로 1:1이었지만
- * 테이블은 전 로케일이 필요하다. 로케일 6개면 행 수가 6배지만, `Translation`이 키당 최대
- * 로케일 수만큼이라 상한이 명확하다(skillflo 8676행). 로케일별로 6번 쿼리하는 것보다 낫다.
- */
-export async function loadKeys(
-  prisma: PrismaClient,
-  projectId: string,
-  surfaceId: string,
-): Promise<KeyRow[]> {
-  const keys = await prisma.stringKey.findMany({
-    where: { projectId, surfaceId },
-    orderBy: { key: "asc" },
-    select: {
-      id: true, key: true, namespace: true, description: true, orphaned: true, createdAt: true,
-      surface: { select: { archivedAt: true } },
-      translations: {
-        // 토큰 원문은 select해도 셀로 옮기지 않는다 — 셀은 RSC 페이로드로 화면에 간다 (sync-edit-protection — ARCHITECTURE §5의 `pendingEditToken`).
-        select: { localeCode: true, value: true, needsReview: true, updatedBy: true, updatedAt: true, pendingEditToken: true,
-          locale: { select: { orphaned: true } } },
-      },
-      refs: { select: { path: true, line: true }, orderBy: [{ path: "asc" }, { line: "asc" }] },
-    },
-  });
-
-  return keys.map((k) => {
-    // ⚠️ **평범한 `{}`가 아니다** — 키가 `Locale.code`(리포가 정한다)라서다. `__proto__`는
-    // `isPathSafeLocale`이 막지만 그 방어선은 다른 모듈에 있는 한 겹이고, 평범한 객체에
-    // `out["__proto__"] = v`를 하면 setter가 불려 own property가 안 생겨 **그 로케일 열이 조용히
-    // 사라진다** (CLAUDE.md 코드 컨벤션). 읽는 쪽 짝은 `lib/pull/render.ts`의 `Object.hasOwn`이다.
-    const cells: KeyRow["cells"] = Object.create(null);
-    for (const t of k.translations) {
-      cells[t.localeCode] = {
-        value: t.value,
-        needsReview: t.needsReview,
-        updatedBy: t.updatedBy,
-        updatedAt: t.updatedAt,
-        surfaceArchivedAt: k.surface.archivedAt,
-        // `pendingWhere`와 같은 조건의 투영 — orphan 키·로케일의 남은 토큰은 미전달이 아니다.
-        pending: t.pendingEditToken !== null && !k.orphaned && !t.locale.orphaned,
-      };
-    }
-    return {
-      id: k.id,
-      key: k.key,
-      namespace: k.namespace,
-      description: k.description,
-      orphaned: k.orphaned,
-      createdAt: k.createdAt,
-      cells,
-      refs: k.refs,
-    };
-  });
-}
-
-/**
  * 편집자 이름의 출처. **`Translation.updatedBy`를 Prisma join으로 풀 수 없다** — 그 컬럼은 FK가 없고
  * `User.id`와 옛 GitHub 핸들이 섞여 있어(스키마 주석) join하면 옛 행이 통째로 떨어진다. 그래서
  * 호출부가 모은 id로 **한 번 더** 읽고, 못 찾은 값은 `actorLabel`이 원문으로 낸다.
@@ -175,22 +115,7 @@ export async function loadActors(prisma: PrismaClient, ids: string[]): Promise<M
   return new Map(decoded.map((u) => [u.id, u]));
 }
 
-/**
- * 아직 전달 확인되지 않은 편집의 **수**. `isUnpublished`(`./view`)의 집계 형태이고, where 조각은 pull 1층·Publish
- * 미리보기와 같은 `pendingWhere`다 (sync-edit-protection T8). 목록의 `loadProjectListAggregates` raw ⑤만 SQL 사본이다.
- *
- * ⚠️ **시각·저자로 세지 않는다** — push가 전 행의 `updatedAt`을 올리고, 같은 밀리초의 재저장을 시각으로는 못 가른다.
- * ⚠️ **`projectId`로 좁힌다** — RLS가 없어 애플리케이션이 유일한 테넌트 방어선이다.
- */
-export async function countUnpublished(
-  prisma: PrismaClient,
-  projectId: string,
-  surfaceId?: string,
-): Promise<number> {
-  return countPending(prisma, projectId, surfaceId);
-}
-
-/** 표면 → 미배포 수(`countPendingBySurface`). 합은 `countUnpublished(prisma, projectId)`와 같다 — 둘 다 보관 표면을 뺀다. */
+/** 표면 → 미배포 수(`countPendingBySurface`). 합은 `countPending(prisma, projectId)`와 같다 — 둘 다 보관 표면을 뺀다. */
 export function countUnpublishedBySurface(prisma: PrismaClient, projectId: string): Promise<Map<string, number>> {
   return countPendingBySurface(prisma, projectId);
 }
@@ -430,7 +355,7 @@ export async function loadProjectList(
 /**
  * 로케일별 진행률의 재료 (6b-5). **집계는 `localeProgress`가 한다** — 여기는 조회만이다.
  *
- * ⚠️ **`loadKeys`를 재사용하지 않는다.** 그쪽은 행마다 셀과 `refs`를 들고 오므로 903키 프로젝트에서
+ * ⚠️ **번역 화면의 조회를 재사용하지 않는다.** 그쪽은 셀과 `refs`를 들고 오므로 903키 프로젝트에서
  * 이 화면이 번역 화면만큼 무거워진다. 여기 필요한 것은 개수뿐이라 **셀에서 `{ localeCode, needsReview }`
  * 둘만** 뽑는다 — `value`를 select하면 번역 본문 전체가 따라온다.
  *
@@ -533,8 +458,8 @@ export async function loadProjectListAggregates(
         AND (p."lastPulledAt" IS NULL OR k."createdAt" > p."lastPulledAt")
       GROUP BY k."projectId"`,
     /**
-     * ⑤ 미발송 — **`pendingWhere`(`lib/protection/where.ts`)의 SQL 사본이다.** `countUnpublished`·`isUnpublished`·
-     * pull 1층·Publish 미리보기와 같은 행을 센다(`pnpm test:projects:postgres`가 대조한다).
+     * ⑤ 미발송 — **`pendingWhere`(`lib/protection/where.ts`)의 SQL 사본이다.** `countPending`·
+     * 번역 화면의 목록·상세 투영·pull 1층·Publish 미리보기와 같은 행을 센다(`pnpm test:projects:postgres`가 대조한다).
      *
      * ⚠️ **토큰으로 판정한다** — 시각·저자 조건을 되살리면 push 직후 전 행이 "안 보낸 편집"이 되거나(T0) 같은 밀리초
      * 재저장을 못 가른다(sync-edit-protection T8).

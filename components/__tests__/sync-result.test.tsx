@@ -183,7 +183,7 @@ it("[C4][C10] 남은 편집이 있으면 두 줄 warning이고 브랜치 헤드�
   expect(container.textContent).toContain("2 unsent changes were kept");
   expect(container.textContent).not.toContain("from main");
   expect(lines(container)).toBe(2);
-  expect(container.querySelector(".border-amber-200")).not.toBeNull();
+  expect(container.querySelector('[data-alert="warning"]')).not.toBeNull();
 });
 
 /**

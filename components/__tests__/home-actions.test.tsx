@@ -231,7 +231,19 @@ it("배너 [Try again] → Enter → Esc면 포커스가 그 [Try again]에 선�
   retry.focus();
   await act(async () => { await user.keyboard("{Enter}"); });
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
-  await act(async () => { await user.keyboard("{Escape}"); await new Promise(r => setTimeout(r, 20)); });
+  await act(async () => { await user.keyboard("{Escape}"); });
   expect(document.querySelector('[role="dialog"]')).toBeNull();
-  expect(document.activeElement).toBe(button("Try again"));
+  // ⚠️ 복귀는 Radix FocusScope 언마운트의 타이머 뒤라 고정 대기(20ms)는 부하에서 흔들린다 — 폴링한다(`primitive-focus.test.tsx`).
+  await vi.waitFor(() => expect(document.activeElement).toBe(button("Try again")));
+});
+
+/**
+ * **동기화 실패 배너의 본문도 본문 색이다** (DESIGN §6.2 — 색은 배경과 글리프만 든다). Alert를 다섯 tone으로 옮기기 전엔
+ * danger 본문이 빨개서 이 배너만 muted로 덮었는데, 그 덮개가 남아 새 규칙에서 혼자 흐렸다.
+ */
+it("동기화 실패 배너의 본문을 muted로 덮지 않는다", async () => {
+  await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  const banner = [...document.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(m.home.banner.syncFailed.title));
+  expect(banner).toBeDefined();
+  expect(banner!.querySelector(".text-muted-foreground")).toBeNull();
 });

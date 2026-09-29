@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EVENT_KINDS, readPayload } from "../payload";
+import { ACTOR_KINDS, EVENT_KINDS, readPayload } from "../payload";
 
 /**
  * 저장된 Json → 종류별 맥락 (audit #74 — 테스트 없는 순수 export였다). **읽는 쪽이 폴백을 든다** —
@@ -127,4 +127,9 @@ describe("readPayload — 프로토타입에서 찾아진 값을 읽지 않는�
     expect(readPayload("IMPORT", { source: "toString", refusal: "constructor", surfaces: [{ status: "hasOwnProperty" }] }))
       .toMatchObject({ source: "ci", refusal: null, surfaces: [] });
   });
+});
+
+/** 생산자가 없던 `UNKNOWN`을 지웠다 (#108) — 스키마 enum과 같은 두 값이어야 필터·라벨이 없는 갈래를 들지 않는다. */
+it("행위자 종류는 USER·AUTOMATION 둘이다 — 스키마 `ActorKind`와 같다", () => {
+  expect(ACTOR_KINDS).toEqual(["USER", "AUTOMATION"]);
 });
