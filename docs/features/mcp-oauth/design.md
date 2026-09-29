@@ -17,6 +17,13 @@ T1 종료 조건은 등록 방식·loopback 호환 정책·refresh 경합과 재
 
 ⚠️ **claude.ai는 미측정이다.** 스텁을 공개할 quick tunnel(`cloudflared`)이 Claude Code auto mode 분류기에 거부됐다(외부 ingress 터널).
 그래서 T1은 **닫히지 않았다** — 사람이 터널을 승인하거나 다른 공개 경로를 정해 claude.ai 행을 채워야 §2의 DCR 여부가 확정된다.
+⚠️ **2차 시도(같은 날)도 막혔다 — 터널은 섰지만 커넥터를 추가할 수 없었다.** 측정 계정은 claude.ai **Team 조직 멤버**이고,
+`사용자 지정 → 커넥터 → 추가 → 커스텀 커넥터 추가`가 비활성이다(`aria-disabled`, 안내 "조직 소유자에게 팀에 추가해 달라고 요청하세요").
+조직 설정은 다른 멤버에게도 번지므로 건드리지 않았다. 스텁에 claude.ai 요청은 0건이다. 그래서 사용자 지정 헤더 입력칸이 있는지도 보지 못했다.
+
+- **제품 영향**: Team·Enterprise 조직의 번역 편집자는 **스스로 Malmoi를 붙일 수 없다** — 조직 소유자가 조직 커넥터로 먼저 등록해야 한다.
+  spec의 "번역 편집자가 claude.ai 웹 커넥터로 붙는 경로"는 개인 플랜 사용자이거나 소유자가 먼저 등록한 경우에만 선다. 가이드와 `/mcp` 연결 예시에 이 전제를 적어야 한다.
+- **남은 측정 경로**: 조직 소유자 계정 또는 개인(Pro·Max) 계정으로 같은 스텁을 붙인다. 둘 다 없으면 claude.ai 열은 T10(prod)에서 처음 잰다.
 
 스텁은 `.scratch/oauth-stub/`(커밋 안 함)의 Node 서버 셋이다 — 등록 광고만 다르다: `both`(CIMD 지원 + `registration_endpoint`) · `cimd` 전용 · `dcr` 전용.
 authorize는 자동 승인, 토큰 엔드포인트는 회전 + §4.1 재사용 폐기를 흉내 낸다. 설정은 **헤더 없는 URL만**이다. 모든 요청은 JSONL로 남겼다.
@@ -52,6 +59,8 @@ authorize는 자동 승인, 토큰 엔드포인트는 회전 + §4.1 재사용 �
 Protection Bypass는 `x-vercel-protection-bypass` **헤더**여야 하고(§6.45.8 — URL 쿼리 금지), 커넥터가 그 헤더를 PRM·AS·token 요청까지 매번 싣게 할 방법이 없다.
 401 → well-known → token 요청은 우리가 조립한 URL을 클라이언트가 따라가므로 쿼리를 실어도 첫 요청에만 붙는다. ⚠️ 이 판단은 claude.ai 실측 전의 추론이다 — claude.ai가
 사용자 지정 헤더를 받는다면 preview도 된다. T10 규칙(tasks)대로 preview 단계에서는 claude.ai를 완료로 적지 않고 spec 1을 prod 확인까지 미완으로 둔다.
+⚠️ T10을 하는 계정은 **커스텀 커넥터를 추가할 권한이 있어야 한다**(조직 소유자 또는 개인 플랜) — Team 멤버 계정으로는 추가 단계에서 멈춘다(§0.1 2차 시도).
+claude.ai가 T1에서 끝내 미측정이면 T10 prod 확인이 claude.ai의 **첫 실측**이 되고, 그때 CIMD로 안 붙으면 DCR 추가가 prod 뒤로 밀린다.
 
 ## 1. 영향 받는 흐름
 
