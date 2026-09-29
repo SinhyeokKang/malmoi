@@ -84,6 +84,20 @@ describe("목록", () => {
     expect(second.textContent).toContain("Never");
   });
 
+  /**
+   * 목록은 이웃 카드와 같은 `RowCardList`/`RowCardItem`이다(design-sync 리뷰) — 손으로 적으면 행 선 규칙이 바뀔 때 이 카드만 남고,
+   * 목록의 접근 이름(카드 제목)이 빠진다.
+   */
+  it("목록은 카드 제목으로 이름 붙은 RowCardList다 — 선은 머리↔첫 행이 약하고 행↔행이 진하다", async () => {
+    await mount(APPS);
+    const list = find<HTMLElement>(card(), "ul");
+    expect(list.getAttribute("aria-labelledby")).toBe(heading().id);
+    const items = [...list.children] as HTMLElement[];
+    expect(items.map((li) => li.tagName)).toEqual(["LI", "LI", "LI"]);
+    expect(items[0]!.className).toContain("border-foreground/[0.06]");
+    expect(items[1]!.className).toContain("border-border");
+  });
+
   it("같은 이름의 두 연결은 끊기 버튼의 접근 이름이 다르다", async () => {
     await mount(APPS);
     expect(rowButton("c2")?.getAttribute("aria-label")).toBe("Disconnect Claude, claude.ai/oauth/mcp-client-metadata");
