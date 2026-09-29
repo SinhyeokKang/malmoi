@@ -23,7 +23,8 @@ vi.mock("server-only", () => ({}));
 
 const { storeAuthorizationRequest, issueAuthorizationCode, denyAuthorizationRequest, readAuthorizationRequest } = await import("@/lib/oauth-server/authorize");
 const { exchangeAuthorizationCode } = await import("@/lib/oauth-server/token");
-const { revokeToken } = await import("@/lib/oauth-server/revoke");
+const { revokeToken, disconnectConnection } = await import("@/lib/oauth-server/revoke");
+const { hashApiToken } = await import("../token");
 const { resolveBearer } = await import("../token-store");
 
 const directory = mkdtempSync(join(tmpdir(), "malmoi-oauth-code-"));
@@ -256,6 +257,55 @@ describe("revoke 바인딩", () => {
     await revokeToken(prisma, { token: "mlr_unknown", clientId: CLAUDE }, PROD);
     expect(await prisma.oAuthConnection.count()).toBe(1);
     await revokeToken(prisma, { token: tokens.tokens.accessToken, clientId: CLAUDE }, PROD);
+    expect(await prisma.oAuthConnection.count()).toBe(0);
+  });
+});
+
+/**
+ * **`/mcp`의 연결별 끊기** (spec 조건 8·9·14 · design §4.2). `/oauth/revoke`와 같은 tx 모양을 연결 ID로 — User 잠금 뒤 그 사용자의 행을 다시 읽고,
+ * 연결과 같은 클라이언트의 미교환 code를 함께 지운다. 다음 호출부터 401이고, 다른 연결·개인 토큰은 그대로다.
+ */
+describe("연결별 끊기", () => {
+  async function connect(clientId: string, now: Date) {
+    const requestId = await store(now, clientId);
+    const code = codeOf((await issued(requestId, now)).redirect);
+    const tokens = await exchangeAuthorizationCode(prisma, { code, codeVerifier: VERIFIER, clientId, redirectUri: REDIRECT, resource: undefined }, PROD, now);
+    if (tokens.status !== "ok") throw new Error("setup: exchange");
+    const row = await prisma.oAuthConnection.findFirstOrThrow({ where: { userId: "u1", clientId } });
+    return { id: row.id, access: tokens.tokens.accessToken };
+  }
+
+  it("끊은 연결의 다음 호출은 거부되고, 다른 연결·개인 토큰은 계속 된다", async () => {
+    const claude = await connect(CLAUDE, at(0));
+    const codex = await connect(CODEX, at(0));
+    const personal = "mlm_personal";
+    await prisma.apiToken.create({ data: { userId: "u1", tokenHash: hashApiToken(personal), grants: [], allProjects: true, expiresAt: at(86_400_000) } });
+    // 대조: 끊기 전에는 셋 다 산다.
+    for (const token of [claude.access, codex.access, personal]) expect(await resolveBearer(prisma, token, at(1_000), PROD), token).not.toBeNull();
+
+    await disconnectConnection(prisma, { userId: "u1", connectionId: claude.id });
+    expect(await resolveBearer(prisma, claude.access, at(2_000), PROD)).toBeNull();
+    expect(await resolveBearer(prisma, codex.access, at(2_000), PROD)).toMatchObject({ credential: { kind: "oauth", connectionId: codex.id } });
+    expect(await resolveBearer(prisma, personal, at(2_000), PROD)).not.toBeNull();
+  });
+
+  it("그 클라이언트의 미교환 code도 함께 지운다 — 뒤늦은 교환이 끊긴 연결을 되살리지 못한다 (다른 클라이언트 code는 그대로)", async () => {
+    const claude = await connect(CLAUDE, at(0));
+    const pending = codeOf((await issued(await store(at(1_000)), at(1_000))).redirect);
+    const codexPending = codeOf((await issued(await store(at(1_000), CODEX), at(1_000))).redirect);
+    await disconnectConnection(prisma, { userId: "u1", connectionId: claude.id });
+    expect(await exchange(pending, at(2_000))).toEqual({ status: "invalid_grant" });
+    expect(await prisma.oAuthConnection.count()).toBe(0);
+    expect((await exchangeAuthorizationCode(prisma, { code: codexPending, codeVerifier: VERIFIER, clientId: CODEX, redirectUri: REDIRECT, resource: undefined }, PROD, at(2_000))).status).toBe("ok");
+  });
+
+  it("다른 사용자의 연결 ID로는 끊지 못한다 · 없는 ID·두 번째 끊기는 아무 일 없이 끝난다", async () => {
+    const claude = await connect(CLAUDE, at(0));
+    await disconnectConnection(prisma, { userId: "u2", connectionId: claude.id });
+    await disconnectConnection(prisma, { userId: "u1", connectionId: "missing" });
+    expect(await resolveBearer(prisma, claude.access, at(1_000), PROD)).not.toBeNull();
+    await disconnectConnection(prisma, { userId: "u1", connectionId: claude.id });
+    await disconnectConnection(prisma, { userId: "u1", connectionId: claude.id });
     expect(await prisma.oAuthConnection.count()).toBe(0);
   });
 });

@@ -94,6 +94,11 @@ const EXEMPT = new Set([
    */
   "signin/link/[challenge]/page.tsx",
   /**
+   * MCP 클라이언트의 동의 화면 (mcp-oauth design §1). **인가가 없고 검증된 요청 행이 대신한다** — 무세션이 정상 진입이라 1차 차단의
+   * 보호 경로에도 없다(아래 `PUBLIC` 부정 단언). 동의 결과를 쓰는 것은 세션을 다시 보는 Action이다(`EXEMPT_ACTIONS`).
+   */
+  "oauth/authorize/page.tsx",
+  /**
    * 크롤러용 가이드 목차·전문 (seo-geo). **인가가 없다** — 이미 공개된 `/docs` 원고만 내고, 빌드 때 prerender된다.
    */
   "llms.txt/route.ts",
@@ -138,6 +143,8 @@ const USER_SCOPED_ACTIONS = new Set([
   // `ApiToken`은 사용자 소유다 — 계정당 하나이고 프로젝트가 없어도 발급·폐기할 수 있어야 한다(생성 전용 토큰). mcp-connector T5
   "mcp/actions.ts#issueApiToken",
   "mcp/actions.ts#revokeApiToken",
+  // `OAuthConnection`도 사용자 소유다 — 코어가 세션의 userId로 행을 다시 읽는다(mcp-oauth spec 조건 8)
+  "mcp/actions.ts#disconnectOAuthConnection",
 ]);
 
 /**
@@ -249,7 +256,18 @@ describe("공유 코어 위임", () => {
  * 아니고**, 인가를 대신하는 것은 단일 사용 토큰과 provider가 검증한 이메일 대조다 (ARCHITECTURE §6.02,
  * membership.test.ts).
  */
-const EXEMPT_ACTIONS = new Set(["invite/actions.ts#acceptInvitation"]);
+const EXEMPT_ACTIONS = new Set([
+  "invite/actions.ts#acceptInvitation",
+  /**
+   * `/oauth/authorize`의 동의 Action (mcp-oauth design §4.2). **프로젝트 인가가 아니다** — 동의는 사용자 자신의 권한을 클라이언트에 위임하는
+   * 일이고, 범위는 코어(`planConsent`)가 **현재 비보관 멤버십**으로 거른다. Authorize·Deny는 `readSession`을 직접 다시 읽어 무세션이면 같은
+   * 요청의 로그인 화면으로 보낸다(`requireUser`의 `/signin` redirect로는 요청을 잃는다). Check는 요청 상태만 읽고, 계정 전환은 로그아웃이다.
+   */
+  "oauth/authorize/actions.ts#authorizeOAuthRequest",
+  "oauth/authorize/actions.ts#denyOAuthRequest",
+  "oauth/authorize/actions.ts#checkOAuthRequest",
+  "oauth/authorize/actions.ts#switchOAuthAccount",
+]);
 
 /**
  * `"use server"` 파일이 내보내는 **공개 엔드포인트**의 선언 위치. 형태가 둘이라 둘을 다 본다 —
@@ -850,7 +868,7 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
    * ⚠️ **하드코딩이다** — `PROTECTED`는 `(edit)/` 아래에서만 만들어지므로, 여기 등재하지 않으면
    * "보호 경로가 아니다"를 재는 대상이 아예 없다 (POSTMORTEM 2026-09-07).
    */
-  const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/privacy", "/changelog", "/docs", "/docs/setup/workflow"];
+  const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/oauth/authorize", "/privacy", "/changelog", "/docs", "/docs/setup/workflow"];
 
   /** Next matcher의 `source` — 이 모양(정규식 그룹 하나)은 path-to-regexp와 JS 정규식이 같게 읽는다. */
   const MATCHERS = (middlewareConfig.matcher as readonly string[]).map((source) => new RegExp(`^${source}$`));

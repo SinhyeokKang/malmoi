@@ -20,3 +20,12 @@ it.each([undefined, "/projects", "%broken", "https://example.com/path"])("초대
   expect(html).not.toContain("Back to invitation");
   expect(html).not.toContain('href="/invite/');
 });
+
+/** mcp-oauth design §6.1 — 공급자 취소·오류로 `/signin`에 착지해도 같은 동의 요청으로 돌아갈 길이 있다(POSTMORTEM 2026-09-12). */
+it("동의 화면에서 시작한 로그인은 같은 요청으로 돌아가는 링크를 만든다", async () => {
+  state.get.mockImplementation((key: string) => key === "authjs.callback-url" ? { value: encodeURIComponent("http://localhost:3000/oauth/authorize?request=req_1") } : undefined);
+  const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({ error: "AccessDenied" }) }));
+  expect(html).toContain('href="/oauth/authorize?request=req_1"');
+  expect(html).toContain("Back to app authorization");
+  expect(html).not.toContain("Back to invitation");
+});

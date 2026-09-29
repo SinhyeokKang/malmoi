@@ -182,3 +182,31 @@ it("로그인 provider 판정은 github-app을 배제한다", () => {
   expect(isLoginProvider("github-app")).toBe(false);
   expect(isLoginProvider("__proto__")).toBe(false);
 });
+
+/**
+ * **동의 화면 목적지** (mcp-oauth design §6.1 · POSTMORTEM 2026-09-10·2026-09-12). 계정 연결 challenge를 거쳐도 같은 authorize 요청으로
+ * 돌아와야 한다 — 저장하는 것은 요청 ID 하나이고 URL이 아니다. 요청이 없거나 끝났는지는 착지한 화면이 말한다(조용히 `/projects`로 접지 않는다).
+ */
+it("동의 화면 목적지는 요청 ID로 저장·복원되고 착지는 그 요청의 authorize 화면이다", () => {
+  const oauth: Challenge = { ...challenge, dest: { kind: "oauth", requestId: "Abc_-123" } };
+  expect(parseChallengeIdentifier(challengeIdentifier(oauth))).toEqual(oauth);
+  expect(outcomeUrl({ kind: "oauth", requestId: "Abc_-123" })).toBe("/oauth/authorize?request=Abc_-123");
+  // 빈 ID는 목적지가 아니다 — 파싱 자체가 거부한다.
+  expect(parseChallengeIdentifier(challengeIdentifier({ ...challenge, dest: { kind: "oauth", requestId: "" } }))).toBeNull();
+});
+
+it("callback-url의 authorize 주소는 요청 ID만 남기고, 다른 쿼리·모양은 갈래가 아니다", () => {
+  expect(destFromCallbackUrl("http://localhost:3000/oauth/authorize?request=Abc_-123")).toEqual({ kind: "oauth", requestId: "Abc_-123" });
+  expect(destFromCallbackUrl(encodeURIComponent("http://localhost:3000/oauth/authorize?request=Abc_-123"))).toEqual({ kind: "oauth", requestId: "Abc_-123" });
+  expect(destFromCallbackUrl("/oauth/authorize?request=Abc_-123&e=switch")).toEqual({ kind: "oauth", requestId: "Abc_-123" });
+  for (const value of [
+    "http://localhost/oauth/authorize",
+    "http://localhost/oauth/authorize?request=",
+    "http://localhost/oauth/authorize?request=a&request=b",
+    "http://localhost/oauth/authorize?request=has%20space",
+    "http://localhost/oauth/authorize?client_id=https%3A%2F%2Fx.test%2Fc",
+    "http://localhost/oauth/authorize/extra?request=abc",
+  ]) {
+    expect(destFromCallbackUrl(value), value).toEqual({ kind: "projects" });
+  }
+});

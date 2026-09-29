@@ -103,7 +103,8 @@ describe("실물 가이드 본문 게이트", () => {
       blocks.push({ meta: node.meta ?? "", body: node.value });
     });
     for (const client of CONNECT_CLIENTS) {
-      const snippet = connectSnippet(client, "https://mal-moi.com/api/mcp");
+      // 가이드는 아직 개인 토큰 방식만 싣는다 — 브라우저 방식 조각은 T9(가이드 갱신)에서 더한다.
+      const snippet = connectSnippet(client, "https://mal-moi.com/api/mcp", "token");
       expect(blocks, client).toContainEqual(expect.objectContaining({ meta: expect.stringContaining(`title="${snippet.path}"`), body: snippet.body }));
     }
     expect(sectionByAnchor(value, "token")).toContain(TOKEN_ENV);

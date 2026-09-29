@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planClientMetadata } from "../client-metadata";
+import { CLIENT_NAME_MAX, clientIdLabel, planClientMetadata } from "../client-metadata";
 
 /**
  * CIMD 문서 검증 (mcp-oauth design §2 "T1 판정"). 가져오기·SSRF 방어는 호출자(T6)의 몫이고, 여기는 **가져온 JSON**만 본다.
@@ -115,5 +115,25 @@ describe("planClientMetadata — 문서 모양·남이 정한 키 (POSTMORTEM 20
   it("own property `__proto__` 키가 있는 리터럴 JSON도 판정이 흔들리지 않는다", () => {
     const parsed: unknown = JSON.parse(`{"__proto__":{"client_name":"Evil"},"client_id":"${CODEX}","redirect_uris":["http://127.0.0.1/cb"]}`);
     expect(planClientMetadata(parsed, CODEX)).toMatchObject({ ok: true, client: { clientName: null } });
+  });
+});
+
+/**
+ * 화면 표시 (mcp-oauth 핸드오프 §7.2 · §13 결정 3). 이름 길이의 상한은 서버가 둔다 — 넘으면 이름이 없는 것으로 보고 clientId URL을 보인다
+ * (잘라서 보이면 사칭 이름의 구별되는 끝이 사라진다). 식별 줄은 동의 화면·연결 목록이 같은 문자열을 쓴다.
+ */
+describe("표시 — 이름 상한 · 식별 줄", () => {
+  it(`client_name이 ${CLIENT_NAME_MAX}자를 넘으면 없는 것으로 본다 — 경계는 통과`, () => {
+    const at = { client_id: CODEX, client_name: "a".repeat(CLIENT_NAME_MAX), redirect_uris: ["http://127.0.0.1/cb"] };
+    expect(planClientMetadata(at, CODEX)).toMatchObject({ ok: true, client: { clientName: "a".repeat(CLIENT_NAME_MAX) } });
+    const over = { ...at, client_name: "a".repeat(CLIENT_NAME_MAX + 1) };
+    expect(planClientMetadata(over, CODEX)).toMatchObject({ ok: true, client: { clientName: null, displayName: CODEX } });
+  });
+
+  it("식별 줄은 clientId URL에서 https://만 뗀 값이다", () => {
+    expect(clientIdLabel(CLAUDE_CODE)).toBe("claude.ai/oauth/claude-code-client-metadata");
+    expect(clientIdLabel(CODEX)).toBe("chatgpt.com/oauth/codex/abc123/client.json");
+    // URL이 아닌 식별자(저장 값이 CIMD가 아닐 때)는 그대로 보인다 — 감추지 않는다.
+    expect(clientIdLabel("7c1e0f52")).toBe("7c1e0f52");
   });
 });
