@@ -608,7 +608,8 @@ model OAuthConnection {
   clientId         String
   /// 동의 시점 스냅샷(화면 표시용). **클라이언트가 정한 문자열**이고 신원 보증이 아니다 — 없으면 `null`이고 화면은 `clientId`를 보인다(design §6.1).
   clientName       String?
-  /// 동의 시점 콜백 — 같은 이름의 연결을 구별하는 보조 표시다. 교환 바인딩은 code 스냅샷이 든다.
+  /// 동의 시점 콜백(기록). **화면에 싣지 않는다** — 연결 구별은 clientId 식별 줄로 충분하다(`(userId, clientId)`가 유일하고 루프백 포트는
+  /// 로그인마다 바뀐다, design §6.1). 교환 바인딩은 code 스냅샷이 든다.
   redirectUri      String
   issuer           String
   /// 발급 환경의 정확한 MCP URL(`<issuer>/api/mcp`).
