@@ -34,7 +34,7 @@ Add this to `.mcp.json` at the root of your project:
 }
 ```
 
-Then run `/mcp` in Claude Code, pick `malmoi`, and choose Authenticate. Your browser opens to sign in to Malmoi.
+Then run `/mcp` in Claude Code, pick the server you just added, and choose Authenticate. Your browser opens to sign in to Malmoi.
 
 If the entry already has a `headers` line with a personal token, remove it first. While it is there, Claude Code keeps using the token.
 
@@ -47,7 +47,7 @@ Add this to your Codex configuration file:
 url = "https://mal-moi.com/api/mcp"
 ```
 
-Then run `codex mcp login malmoi`. Your browser opens to sign in to Malmoi.
+Then run `codex mcp login` followed by the server name from the snippet. Your browser opens to sign in to Malmoi.
 
 If the entry already has a `bearer_token_env_var` line, remove it first. While it is there, Codex keeps using the token.
 
