@@ -234,7 +234,8 @@ describe("사실을 단언하는 문장 (B4 r1)", () => {
     expect(m.projects.empty.description).toContain("it only writes back by opening a pull request");
   });
   it("Sync 권유 링크는 번역 화면을 연다고만 말한다 — Publish는 Home에도 있다", () => {
-    expect(textOf(m.repositorySync.sendHint("LINK"))).toBe("To keep them, LINK — it opens the translation screen.");
+    expect(textOf(m.repositorySync.sendHint(2, "LINK"))).toBe("To keep them, LINK — it opens the translation screen.");
+    expect(textOf(m.repositorySync.sendHint(1, "LINK"))).toBe("To keep it, LINK — it opens the translation screen.");
   });
   it("Publish 거부 폴백은 같은 모달의 'Trying again won't help'과 모순되지 않는다", () => {
     expect(m.translations.publish.refused).not.toMatch(/try again/i);

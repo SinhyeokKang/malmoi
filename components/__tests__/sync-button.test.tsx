@@ -333,6 +333,7 @@ it("미전달 편집이 하나면 경고 줄의 대명사가 it이다", async ()
   await click("Sync");
   const warning = document.querySelector('[aria-live="polite"]')?.textContent ?? "";
   expect(warning).toContain("Sync will discard 1 unsent translation change and replace it with repository values.");
+  expect(document.body.textContent).toContain("To keep it, Publish first");
 });
 
 /**
