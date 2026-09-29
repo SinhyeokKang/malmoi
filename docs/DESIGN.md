@@ -24,7 +24,7 @@
 | **elevation** | Tailwind `shadow-sm`·`shadow-md` | **`shadow-low`·`shadow-medium`** (Figma 색 + spread 확대) | §4.5 |
 | **인라인 링크** | `underline` | **밑줄 없음** — 색과 아이콘으로만 | §6.3 |
 | **피드백** | 인라인 `Alert` | **토스트**(전역 결과에 한해) | §6.25 |
-| **셸 밖 화면** | `mx-auto max-w-sm` 카드 | **캔버스 위 패널** — 바깥 padding 8. ⚠️ **셋이다** (2026-09-12): `/signin` · `/invite/[token]` · **`/signin/link/[challenge]`**. ⚠️ **2열(폼 + 장식, gap 8)은 `/signin` 하나다** — 나머지는 폼 패널 단일(2026-09-29, §6.62) | §5.1 |
+| **셸 밖 화면** | `mx-auto max-w-sm` 카드 | **캔버스 위 패널** — 바깥 padding 8. ⚠️ **넷이다** (2026-09-12 셋 + 2026-09-29 mcp-oauth): `/signin` · `/invite/[token]` · **`/signin/link/[challenge]`** · **`/oauth/authorize`**. ⚠️ **2열(폼 + 장식, gap 8)은 `/signin` 하나다** — 나머지는 폼 패널 단일(2026-09-29, §6.62) | §5.1 |
 | **앱 셸** (8-2) | 사이드바 `bg-muted border-r` + top bar + `xl` 미만 오버레이 | **캔버스 위 패널 둘** — 전폭 40 헤더 · 투명 사이드바 · 흰 콘텐츠 패널, 반응형 분기 0. ⚠️ **320 프로젝트 패널은 2026-09-16에 지웠다**(§6.55) | §5.1·§6.5 |
 | **캔버스 토큰** (8-2) | `--auth-canvas` | **`--canvas`** — 셸과 셸 밖 화면이 같은 값을 쓴다 | §2 |
 | **Badge 모양** (8-3) | `rounded` (4px) | **알약** `rounded-full px-2` + `neutral` variant | §6.4 |
@@ -261,7 +261,7 @@ Figma의 `effect-elevation/low`·`/medium`을 `@theme`에 옮겼다. 소비 경�
 | 드롭다운 패널 | `min-w-60 max-w-md` | 248~456px |
 | 모달 | **`max-w-110` (440px)** — ⚠️ 2026-09-18 사용자가 360에서 올렸다(그 전 2026-09-13에 512에서 360으로 내려왔다, §6.4). 온보딩 모달은 이 프리미티브를 안 쓴다(Radix `Dialog.*`를 직접 조립한다) | modal sm 512 |
 
-**페이지 셸은 둘이다**: **셸 안**(`(edit)` — 헤더 + 사이드바 + 흰 콘텐츠 패널, 그 안이 `max-w-4xl` 또는 fluid) / **셸 밖**(로그인·초대 수락·계정 병합 — **로그인만 2열**이고 나머지는 폼 패널 단일이다, §6.62). 새 화면은 둘 중 하나다.
+**페이지 셸은 둘이다**: **셸 안**(`(edit)` — 헤더 + 사이드바 + 흰 콘텐츠 패널, 그 안이 `max-w-4xl` 또는 fluid) / **셸 밖**(로그인·초대 수락·계정 병합·앱 동의 — **로그인만 2열**이고 나머지는 폼 패널 단일이다, §6.62). 새 화면은 둘 중 하나다.
 
 ⚠️ **둘이 같은 골격이다** (8-2): 캔버스(`--canvas`) 위에 패널이 뜨고 바깥 padding 8 · 패널 간 gap 8 ·
 각 패널 `rounded-xl` + `border-border-subtle` + `shadow-low`다. 셸 안의 그 패널을
@@ -885,12 +885,12 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 
 ⚠️ **푸터는 공개 셸의 `PublicFooter`이고 패널 줄 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
 `absolute bottom-6`의 14px 줄이었다). 좌표가 공개 셸(§6.615)과 같다: 바깥 `px-2 pt-2` · 패널 줄(`flex-1`) · 푸터 40(13 muted)이 바닥 띠라
-아래 padding이 없다. ⚠️ **루트는 `h-svh`가 아니라 `min-h-svh`다** — 스크롤러가 없는 골격이라 좌측 내용이 길면 문서가 스크롤되어야 한다.
+아래 padding이 없다. ⚠️ **루트는 `h-svh`가 아니라 `min-h-svh`다** — 스크롤러가 없는 골격이라 좌측 내용이 길면 문서가 스크롤되어야 한다. ⚠️ **예외 하나 — `/oauth/authorize` 동의 단계는 `scroll`을 넘긴다**(mcp-oauth 핸드오프 §7.1): 루트가 `h-svh`이고 `<main>` **안**이 스크롤한다(폼이 뷰포트보다 길다).
 `<footer>`는 하나이고 `<main>` 밖이다(`public-shell.test.tsx`).
 
 | 요소 | 규칙 |
 |---|---|
-| 좌측(폼) | **true white** · 폼 컬럼 `w-[320px]` · 로고 48 · `h1` `text-2xl font-semibold`(24/600 — §4) · provider 버튼 둘(`size="lg"` — **셸 밖 전용**, §6.4). ⚠️ **`h1`이 셋 다 있다** — `/invite/[token]`은 2026-09-12까지 이 칸이 비어 있던 유일한 화면이었고(설명 한 줄이 제목을 겸했다), account-linking이 그 규칙 위반을 교정했다 |
+| 좌측(폼) | **true white** · 폼 컬럼 `w-[320px]`(⚠️ `/oauth/authorize` 동의 단계만 480 — 권한 폼을 담는다, mcp-oauth 핸드오프 §4) · 로고 48 · `h1` `text-2xl font-semibold`(24/600 — §4) · provider 버튼 둘(`size="lg"` — **셸 밖 전용**, §6.4). ⚠️ **`h1`이 셋 다 있다** — `/invite/[token]`은 2026-09-12까지 이 칸이 비어 있던 유일한 화면이었고(설명 한 줄이 제목을 겸했다), account-linking이 그 규칙 위반을 교정했다 |
 | 우측(장식, `/signin`만) | base가 **페이지 배경색**이고 아래로 갈수록 파랑이 든다(`--auth-hero-from` = `--canvas`, `bg-gradient-to-b`). ⚠️ **그라데이션이 없으면 배경과 구분되지 않아 "로그인 패널만 떠 있는 그림"이 된다** — 그것이 의도이므로 위쪽에서 배경으로 수렴한다. 위·아래 문구가 **`text-3xl font-semibold`**(30/600 — §4)이고 그 사이가 키비주얼(`max-w-[768px]`)이다 — ⚠️ **리포에서 `text-3xl`을 쓰는 유일한 자리이고 셸 안으로 넓히지 않는다**(§4의 크기 관용은 `text-2xl`에서 멈춘다: 이 화면만 장식 면적이 있다) |
 | 도트 필드 | Canvas 2D (`components/signin/dot-field.tsx` + 잎 `lib/signin/dot-field.ts`). ⚠️ **hex를 tsx에 박지 않는다** — `--signin-dot`을 `getComputedStyle`로 읽는다(§6.2). ⚠️ 커서가 없으면 `autoCursor`가 ㄹ자로 순회하고 `prefers-reduced-motion`이면 1회 렌더 |
 | 브랜드 아이콘 | GitHub·Google 인라인 SVG (`components/signin/brand-icons.tsx`) — ⚠️ `lucide-react`에 브랜드 글리프가 없고 **Google 4색은 §6.2의 예외다**(남의 브랜드 자산이라 토큰으로 접을 수 없다) |
