@@ -73,7 +73,8 @@ export function parseAuthorizeRequest(params: Params, expectedResource: string):
 
   const resource = read(params, "resource");
   if (resource.kind === "many") return fail("invalid_request");
-  // MCP 클라이언트는 resource를 반드시 보낸다 — 없거나 다른 환경의 것이면 이 AS가 발급할 대상이 아니다.
+  // 두 CLI는 authorize·교환·refresh 전부에 resource를 보낸다(design §0.1). claude.ai는 미측정이다 — 생략이 관측되면 여기부터 다시 본다.
+  // 없거나 다른 환경의 것이면 이 AS가 발급할 대상이 아니다.
   if (resource.kind !== "one" || resource.value !== expectedResource) return fail("invalid_target");
 
   return { ok: true, request: { ...back, codeChallenge: challenge.value, resource: resource.value } };

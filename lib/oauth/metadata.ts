@@ -26,6 +26,8 @@ export function authorizationServerMetadata(origin: string): OAuthMetadata {
     // public client뿐이다 — 클라이언트 시크릿을 발급하지 않는다(spec 비목표).
     token_endpoint_auth_methods_supported: ["none"],
     revocation_endpoint_auth_methods_supported: ["none"],
+    // 등록은 CIMD뿐이다 — 두 CLI가 그것을 골랐다(design §2 "T1 판정"). DCR은 claude.ai 실측 전까지 광고하지 않는다.
+    client_id_metadata_document_supported: true,
   };
 }
 
