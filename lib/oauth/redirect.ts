@@ -7,24 +7,19 @@
  * ⚠️ `server-only`를 붙이지 않는다 — 순수 판정이다.
  */
 
-const LOOPBACK_HOSTS: readonly string[] = ["127.0.0.1", "[::1]"];
+/**
+ * 포트를 뺀 **원문**으로 대조한다 — `URL`로 정규화하면 `127.1`·`2130706433`·`/a/../callback`·끝의 빈 `?`가 등록 값과 같아진다.
+ * 호스트가 `http://` 바로 뒤에 와야 하므로 userinfo·대문자 scheme은 이 모양에 안 맞아 예외가 아니다.
+ */
+const LOOPBACK = /^(http:\/\/(?:127\.0\.0\.1|\[::1\]))(?::\d{1,5})?(?=[/?]|$)/;
 
-function parse(value: string): URL | null {
-  return URL.canParse(value) ? new URL(value) : null;
+function withoutLoopbackPort(value: string): string | null {
+  return LOOPBACK.test(value) ? value.replace(LOOPBACK, "$1") : null;
 }
 
 export function planRedirectUri(registered: readonly string[], requested: string): boolean {
-  const url = parse(requested);
   // fragment는 등록과 같아도 받지 않는다(RFC 6749 §3.1.2) — code가 브라우저 쪽에 남는다.
-  if (url === null || url.hash !== "" || requested.includes("#")) return false;
-  return registered.some(candidate => candidate === requested || loopbackMatch(candidate, url));
-}
-
-/** scheme·host·path·query는 그대로, 포트만 무시한다. userinfo가 끼면 예외가 아니다. */
-function loopbackMatch(candidate: string, requested: URL): boolean {
-  const registered = parse(candidate);
-  if (registered === null || registered.protocol !== "http:" || requested.protocol !== "http:") return false;
-  if (!LOOPBACK_HOSTS.includes(registered.hostname) || registered.hostname !== requested.hostname) return false;
-  if (registered.username !== "" || registered.password !== "" || requested.username !== "" || requested.password !== "") return false;
-  return registered.pathname === requested.pathname && registered.search === requested.search && registered.hash === "";
+  if (!URL.canParse(requested) || requested.includes("#")) return false;
+  const loopback = withoutLoopbackPort(requested);
+  return registered.some(candidate => candidate === requested || (loopback !== null && withoutLoopbackPort(candidate) === loopback));
 }
