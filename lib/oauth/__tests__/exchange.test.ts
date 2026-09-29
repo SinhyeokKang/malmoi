@@ -86,12 +86,12 @@ describe("planRefresh", () => {
   });
 
   it("사용 이력의 해시면 그 연결을 폐기한다 — 외부 응답은 호출자가 커밋 뒤 invalid_grant로 낸다", () => {
-    expect(refresh({ presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c1" } }))
+    expect(refresh({ presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c1", usedAt: at(-60_000) } }))
       .toEqual({ status: "revoke-replayed-connection", connectionId: "c1" });
   });
 
   it("여러 번 회전한 옛 해시도 같은 판정이다 — 이력이 그 연결을 가리키면 폐기", () => {
-    expect(refresh({ presentedHash: "oldest", usedTokenRow: { tokenHash: "oldest", connectionId: "c1" }, connectionRow: connection({ refreshTokenHash: "newest" }) }))
+    expect(refresh({ presentedHash: "oldest", usedTokenRow: { tokenHash: "oldest", connectionId: "c1", usedAt: at(-86_400_000) }, connectionRow: connection({ refreshTokenHash: "newest" }) }))
       .toEqual({ status: "revoke-replayed-connection", connectionId: "c1" });
   });
 
@@ -100,16 +100,43 @@ describe("planRefresh", () => {
   });
 
   it("다른 연결을 가리키는 이력은 이 연결을 폐기하지 않는다(재동의로 새 행이 된 뒤의 옛 해시)", () => {
-    expect(refresh({ presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c0" } })).toEqual({ status: "invalid_grant" });
+    expect(refresh({ presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c0", usedAt: at(-60_000) } })).toEqual({ status: "invalid_grant" });
   });
 
   it("해시가 맞지 않는 이력 행은 무시한다", () => {
-    expect(refresh({ presentedHash: "old", usedTokenRow: { tokenHash: "other", connectionId: "c1" } })).toEqual({ status: "invalid_grant" });
+    expect(refresh({ presentedHash: "old", usedTokenRow: { tokenHash: "other", connectionId: "c1", usedAt: at(-60_000) } })).toEqual({ status: "invalid_grant" });
+  });
+
+  describe("재사용 유예 30초 — 같은 클라이언트 프로세스 둘의 겹친 refresh (design §4.1)", () => {
+    const used = (ms: number, connectionId = "c1") => ({ tokenHash: "old", connectionId, usedAt: at(-ms) });
+
+    it("회전 뒤 정확히 30초까지는 폐기·회전 없이 거부한다(경계 포함)", () => {
+      expect(refresh({ presentedHash: "old", usedTokenRow: used(30_000) })).toEqual({ status: "reject-within-grace" });
+      expect(refresh({ presentedHash: "old", usedTokenRow: used(0) })).toEqual({ status: "reject-within-grace" });
+    });
+
+    it("30초 + 1ms부터는 재사용으로 보고 연결을 폐기한다", () => {
+      expect(refresh({ presentedHash: "old", usedTokenRow: used(30_001) })).toEqual({ status: "revoke-replayed-connection", connectionId: "c1" });
+    });
+
+    it("유예는 회전하지 않는다 — 현재 해시가 아닌 한 rotate가 나오지 않는다", () => {
+      for (const ms of [0, 1, 15_000, 30_000]) expect(refresh({ presentedHash: "old", usedTokenRow: used(ms) }).status).not.toBe("rotate");
+    });
+
+    it("바인딩 불일치는 유예 판정보다 먼저 거부한다", () => {
+      expect(refresh({ clientId: "https://evil.example/meta", presentedHash: "old", usedTokenRow: used(1) })).toEqual({ status: "invalid_grant" });
+      expect(refresh({ expectedIssuer: "https://dev.mal-moi.com", presentedHash: "old", usedTokenRow: used(1) })).toEqual({ status: "invalid_grant" });
+      expect(refresh({ resource: "https://mal-moi.com/other", presentedHash: "old", usedTokenRow: used(1) })).toEqual({ status: "invalid_grant" });
+    });
+
+    it("다른 연결을 가리키는 이력은 유예 안이어도 거부만 한다", () => {
+      expect(refresh({ presentedHash: "old", usedTokenRow: used(1, "c0") })).toEqual({ status: "invalid_grant" });
+    });
   });
 
   it("없는 연결은 invalid_grant", () => {
     expect(refresh({ connectionRow: null })).toEqual({ status: "invalid_grant" });
-    expect(refresh({ connectionRow: null, presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c1" } })).toEqual({ status: "invalid_grant" });
+    expect(refresh({ connectionRow: null, presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c1", usedAt: at(-60_000) } })).toEqual({ status: "invalid_grant" });
   });
 
   it("연결 만료 경계는 `<=` — refresh가 연결 수명을 넘지 못한다", () => {
@@ -121,14 +148,14 @@ describe("planRefresh", () => {
     it("다른 client_id의 refresh는 회전도 폐기도 없이 invalid_grant", () => {
       expect(refresh({ clientId: "https://evil.example/meta" })).toEqual({ status: "invalid_grant" });
       expect(refresh({ clientId: undefined })).toEqual({ status: "invalid_grant" });
-      expect(refresh({ clientId: "https://evil.example/meta", presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c1" } }))
+      expect(refresh({ clientId: "https://evil.example/meta", presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c1", usedAt: at(-60_000) } }))
         .toEqual({ status: "invalid_grant" });
     });
 
     it("다른 발급 환경(issuer·resource)은 회전·폐기 없이 invalid_grant", () => {
       expect(refresh({ expectedIssuer: "https://dev.mal-moi.com" })).toEqual({ status: "invalid_grant" });
       expect(refresh({ expectedResource: "https://dev.mal-moi.com/api/mcp" })).toEqual({ status: "invalid_grant" });
-      expect(refresh({ expectedIssuer: "https://dev.mal-moi.com", presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c1" } }))
+      expect(refresh({ expectedIssuer: "https://dev.mal-moi.com", presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c1", usedAt: at(-60_000) } }))
         .toEqual({ status: "invalid_grant" });
     });
 
@@ -139,7 +166,7 @@ describe("planRefresh", () => {
 
     it("명시된 다른 resource는 회전·폐기 없이 invalid_grant", () => {
       expect(refresh({ resource: "https://mal-moi.com/other" })).toEqual({ status: "invalid_grant" });
-      expect(refresh({ resource: "https://mal-moi.com/other", presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c1" } }))
+      expect(refresh({ resource: "https://mal-moi.com/other", presentedHash: "old", usedTokenRow: { tokenHash: "old", connectionId: "c1", usedAt: at(-60_000) } }))
         .toEqual({ status: "invalid_grant" });
     });
   });
