@@ -528,7 +528,8 @@ lib/
                         읽는다(ARCHITECTURE §6.5.2). octokit을 물지 않는 잎이라 lib/github를 mock한 테스트에서도 실물이 돈다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
                         account-view · connect-plan · health · token · token-store · user · repository-id ·
-                        installed-repos · installation-url · callback-plan(callback 갈래 판정 — 쓰기는
+                        installed-repos · installation-url · probe-memo(Home 전용 probe 30초 메모 — 설정·MCP는 안 거친다) ·
+                        callback-plan(callback 갈래 판정 — 쓰기는
                         route에 남는다) · pending(설치 요청 대기·승인 판정) · log(접힌 실패를 **서버 로그에만** 남기는
                         logFailure — 응답 본문에는 안 싣는다) · message(거부 → 문구. ⚠️ 던지지 않는다 —
                         ?e=가 주소창 값이라 단언을 걸면 설정 화면이 통째로 죽는다)
