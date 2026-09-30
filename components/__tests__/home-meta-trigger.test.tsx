@@ -53,9 +53,11 @@ describe("메타 열 — 실행 주체", () => {
   });
 
   it("Never에는 주체가 붙지 않는다", async () => {
-    expect(await valueOf({ kind: "lastSync", at: null, failedAt: null, trigger: "nightly", held: null })).toBe(m.home.meta.never);
+    // 첫 동기화 전은 Sync 행만 "Not synced yet"이다(1-Y17) — Publish 행에 그 말을 쓰면 거짓이다(fix1 🔴1).
+    expect(await valueOf({ kind: "lastSync", at: null, failedAt: null, trigger: "nightly", held: null })).toBe(m.home.meta.notSyncedYet);
     expect(await valueOf({ kind: "lastPublish", at: null, prUrl: null, trigger: "nightly" })).toBe(m.home.meta.never);
-    expect(await valueOf({ kind: "lastSync", at: null, failedAt: null, trigger: null, held: "open-pr" })).toBe(m.home.meta.never);
+    expect(await valueOf({ kind: "lastPublish", at: null, prUrl: null, trigger: "nightly" })).not.toMatch(/synced/i);
+    expect(await valueOf({ kind: "lastSync", at: null, failedAt: null, trigger: null, held: "open-pr" })).toBe(m.home.meta.notSyncedYet);
   });
 
   it("Last publish — PR · 시각 · 주체, PR이 없으면 시각 · 주체", async () => {

@@ -138,6 +138,8 @@ export const en = {
     supersededTitle: "Superseded",
     /** 거부 Alert의 액션 셋(아래 `signIn` 포함). 다른 구역(`archive.empty` · `settings.repository`)에서 빌려 오지 않는다. */
     openSettings: "Open settings",
+    /** 계정 미연결 거부(`not-connected`)의 액션 — 이 사람의 GitHub 연결이 사는 화면이다. 문장("connect it in Account")과 같은 곳을 가리킨다. */
+    openAccount: "Open Account",
     /** 세션이 끝난 거부의 액션 (QA D2) — 편집자 세션 Alert의 `Sign in`과 같은 낱말이다. */
     signIn: "Sign in",
     reconnect: "Reconnect",
@@ -833,7 +835,9 @@ export const en = {
       // ⚠️ 같은 카드의 수치가 `1,207`인데 이 줄만 `1207 en`이면 같은 수인지부터 다시 읽어야 한다.
       localeCount: (code: string, n: number): string => `${n.toLocaleString("en-US")} ${code}`,
       allFilled: (n: number): string => `${n.toLocaleString("en-US")} keys all filled`,
+      /** 보낼 칸(To send) 전용 — 검토 0은 `nothingToReview`다(같은 값이면 To review 칸이 거짓이 된다). */
       nothingPending: "nothing to send",
+      nothingToReview: "nothing to review",
       /**
        * `2b` — 값은 마지막 **성공**의 것이다. 실패했다고 수가 사라지면 "번역이 날아갔다"로 읽힌다.
        * ⚠️ 정상 줄(`synced`)과 같은 낱말이다(2026-09-30 사용자 — `last good sync`가 혼자 길어 카드가 한 줄 높았다). 과거형 `synced`가 성공을
@@ -842,8 +846,11 @@ export const en = {
       lastGoodSync: (when: string | null): string => (when === null ? "not synced yet" : `synced ${when}`),
       asOf: (when: string | null): string => (when === null ? "not synced yet" : `as of ${when}`),
       asOfLastSync: "as of the last sync",
-      /** 연결 문제(미연결·끊김) 동안 — "paused"는 표에 없는 상태어라 쓰지 않는다(DESIGN §2.4). 미연결에도 참이도록 "connected"다. */
-      cannotSend: "can't be sent until connected",
+      /**
+       * 연결 문제 셋(미연결·끊김·다른 리포) 동안 — "paused"는 표에 없는 상태어라 쓰지 않는다(DESIGN §2.4). 푸는 방법이 셋 다 달라
+       * (Connect · Reconnect · 새 프로젝트) 조건을 말하지 않는다 — 방법은 같은 화면의 배너가 든다.
+       */
+      cannotSend: "can't be sent right now",
       /** 보낼 편집이 있는 동안 CI 적재가 보류된다 — OWNER가 그 사실을 아는 화면 자리다 (sync-edit-protection T13). */
       repositoryUpdatesHeld: "repository updates held",
       frozen: "frozen at archive",
@@ -934,8 +941,10 @@ export const en = {
       failedAt: (when: string): string => `failed ${when}`,
       /** 최근 적재 사건이 열린 Malmoi PR로 보류됐다 (nightly-sync 14a) — 푸는 조건(머지)을 말한다. */
       heldByOpenPr: "held until the pull request is merged or closed",
-      /** 첫 동기화 전 — 같은 Home 카드 보조줄과 같은 낱말이다(1-Y17). ⚠️ MCP 연결 앱의 "Never"(마지막 사용)와 다른 개념이다. */
-      never: "Not synced yet",
+      /** 시각이 없는 칸(마지막 Publish · 주의 항목 시각). ⚠️ Sync 행은 아래 `notSyncedYet`이다 — 이 값을 Publish 행이 같이 읽는다. */
+      never: "Never",
+      /** 첫 동기화 전의 Last sync 행 전용 — 같은 Home 카드 보조줄과 같은 낱말이다(1-Y17). */
+      notSyncedYet: "Not synced yet",
       /** 캔버스는 `Pull request #127 · 2d ago` — **무엇을 보냈나**가 먼저고 시각이 뒤다. */
       pullRequest: "Pull request",
       /** PR 번호는 링크의 이름이다 — 주소를 그대로 읽히지 않는다. */
@@ -1570,7 +1579,8 @@ export const en = {
       review: (n: number): string =>
         `${n.toLocaleString("en-US")} cell${n === 1 ? " is" : "s are"} translated and waiting for review.`,
       unsent: (n: number): string =>
-        n === 1 ? "1 unsent edit — it goes to GitHub when you publish." : `${n.toLocaleString("en-US")} unsent edits — they go to GitHub when you publish.`,
+        // ⚠️ 결과를 약속하지 않는다 — Publish가 보류하는 편집(파일·키가 아직 없음)도 같은 술어로 세어진다.
+        `${n.toLocaleString("en-US")} unsent edit${n === 1 ? "" : "s"} — publish to send ${n === 1 ? "it" : "them"}.`,
       prOpen: (n: number): string => `Pull request #${n} is open — merge it to finish.`,
       /**
        * 열린 PR 조회가 실패했다(ux-drift-unify Q6) — "없음"이 아니라 모름이다. ⚠️ **목적어를 붙인다** — 홀로 서는 "Couldn't check"는
@@ -2410,7 +2420,7 @@ export const en = {
         button: "Revert to last sent",
         title: "Revert to the last confirmed version?",
         body: (n: number, list: string): string =>
-          `Your ${n.toLocaleString("en-US")} language${n === 1 ? "" : "s"} that ${n === 1 ? "isn't" : "aren't"} sent yet — ${list} — ${n === 1 ? "goes" : "go"} back to the version last confirmed as sent. What you saved since then is discarded.`,
+          `Your unsent edits in ${n.toLocaleString("en-US")} language${n === 1 ? "" : "s"} — ${list} — go back to the version last confirmed as sent. What you saved since then is discarded.`,
         confirm: "Revert translations",
         unavailable: "The last sent version isn't available for every changed language.",
         unsaved: "Save or discard your changes first.",

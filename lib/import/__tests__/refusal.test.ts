@@ -19,7 +19,8 @@ describe("planImportRefusal", () => {
     expect(planImportRefusal("not-ready")).toEqual({ tone: "warning", dismissible: false, action: "settings" });
     expect(planImportRefusal("unpinned")).toEqual({ tone: "warning", dismissible: false, action: "reconnect" });
     // 계정 미연결(ConnectError)은 리포 재연결이 아니다 — 설정의 계정 복구 줄로 보낸다(ux-drift-unify r1).
-    expect(planImportRefusal("not-connected")).toEqual({ tone: "warning", dismissible: false, action: "settings" });
+    // 이 사람의 GitHub 계정 연결은 Account 화면에 산다 — 문장("connect it in Account")과 버튼이 같은 곳을 가리킨다(fix1 🟡8).
+    expect(planImportRefusal("not-connected")).toEqual({ tone: "warning", dismissible: false, action: "account" });
   });
 
   it("표면 추가는 이 Alert가 보낼 곳이 아니다 — no-surfaces에 액션이 없다", () => {

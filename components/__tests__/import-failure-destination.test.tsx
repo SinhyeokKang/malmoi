@@ -61,3 +61,10 @@ it("partial-import 항목은 Partially synced 문장이고 실패 문장을 빌�
   expect(container.textContent).not.toContain(m.home.attention.importFailed.body);
   expect(container.textContent).not.toMatch(/didn['’]t come in|couldn['’]t read/);
 });
+
+/** fix1 🔴1 — 실패 항목의 시각 칸이 비어도 "Not synced yet"을 말하지 않는다(옆 문장이 "the last sync couldn't read"다). */
+it("실패 항목의 시각이 없으면 Not synced yet이 아니다", async () => {
+  const { container } = await render(<AttentionCard items={{ shown: [{ ...failed, at: null }], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />);
+  expect(container.textContent).not.toMatch(/not synced yet/i);
+  expect(container.textContent).toContain(m.home.meta.never);
+});

@@ -127,7 +127,7 @@ function value(row: MetaRow, now: Date): ReactNode {
     case "lastSync":
       return (
         <span>
-          {row.at === null ? m.home.meta.never : <>{relativeTime(row.at, now)}<TriggerBadge trigger={row.trigger} /></>}
+          {row.at === null ? m.home.meta.notSyncedYet : <>{relativeTime(row.at, now)}<TriggerBadge trigger={row.trigger} /></>}
           {/* `2b`에서만 실패가 붙는다 — `1d ago · nightly · failed 10m ago`(시각 → 주체 → 실패). */}
           {row.failedAt !== null && (
             <span className="text-destructive"> · {m.home.meta.failedAt(relativeTime(row.failedAt, now))}</span>

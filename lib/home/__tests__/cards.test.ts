@@ -109,7 +109,8 @@ describe("countCards — 보조 줄이 그 수의 기준을 말한다", () => {
     expect(countCards(zero).map((c) => c.subline)).toEqual([
       { kind: "synced", at: at("2026-09-14T00:00:00Z") },
       { kind: "allFilled", keys: 903 },
-      { kind: "nothingPending" },
+      // 검토 0과 보낼 것 0은 다른 문장이다 — "nothing to send"가 To review 칸에 서면 거짓이다(fix1 🔴2).
+      { kind: "nothingToReview" },
       { kind: "nothingPending" },
     ]);
   });

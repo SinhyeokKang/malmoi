@@ -77,7 +77,9 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, ret
         */
         : action === "sign-in"
           ? <a href={routes.signIn()} target="_blank" rel="noreferrer" className={buttonClass()}>{m.repositorySync.signIn}</a>
-          : <ButtonLink href={routes.settings(slug)}>{action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;
+          : action === "account"
+            ? <ButtonLink href={routes.account()}>{m.repositorySync.openAccount}</ButtonLink>
+            : <ButtonLink href={routes.settings(slug)}>{action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;
   }
   const summary = summarizeImport(outcome.surfaces);
   /*

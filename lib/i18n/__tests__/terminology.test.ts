@@ -74,12 +74,17 @@ function guideStrings(root: string): Found[] {
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
 /**
+ * 셋째 칸이 있으면 **그 경로에서만** 센다 — §5의 "partial 문맥의 failed"·"이미지의 Delete"처럼 낱말이 아니라 자리가 금지인 칸이다.
+ */
+type Ban = readonly [name: string, text: RegExp, where?: RegExp];
+
+/**
  * 표의 "쓰지 않는 말" + git 어휘. **대소문자를 가리지 않는다** — 문장 첫 자리에서 대문자가 된다.
  *
  * ⚠️ `pull request`는 고유명사라 뺀 뒤에 센다. `push token`·`PUSH_TOKEN`도 토큰의 이름이다.
  * ⚠️ `{locale}`이 든 토막은 경로 예시다 — 사용자가 칠 값이라 통째로 뺀다.
  */
-const BANNED: readonly [string, RegExp][] = [
+const BANNED: readonly Ban[] = [
   ["surface", /\bsurfaces?\b/i],
   ["import", /\bimport(s|ed|ing)?\b/i],
   ["send changes", /\bsend changes\b/i],
@@ -113,17 +118,19 @@ const scrub = (text: string): string =>
  * ⚠️ **라벨 자리 금지어는 `^…$`로 문장 전체를 본다** — "Couldn't load"·"Couldn't be read"는 **이름**으로 금지이고,
  * "We couldn't load your repositories." 같은 오류 문장은 개념이 다르다.
  */
-const CONCEPT_BANNED: readonly [string, RegExp][] = [
+const CONCEPT_BANNED: readonly Ban[] = [
   // 동기화 실패 — 문장은 "The last sync couldn't finish" 하나
   ["Sync could not finish", /^sync could(?: not|n['’]t) finish/i],
   ["did not finish", /\bdid(?: not|n['’]t) finish\b/i],
   ["failed on its first sync", /\bfailed on its first sync\b/i],
   // 일부 반영은 실패가 아니다 — 데이터는 들어갔다
   ["did not come in", /\bdid(?: not|n['’]t) come in\b/i],
+  // 일부 반영 키(경로에 partial)는 실패·불가 동사를 쓰지 않는다 — 데이터는 들어갔다
+  ["partial: failed", /\bfail|\bcould(?:n['’]t| not)\b/i, /partial/i],
   // 복호화 실패의 이름은 Unavailable 하나
-  ["Couldn't be read", /^could(?: not|n['’]t) be read$/i],
+  ["Couldn't be read", /^could(?: not|n['’]t) be read[.!]?$/i],
   // 진행 중은 종류가 낱말을 정한다(Syncing… · Publishing…)
-  ["Running…", /\brunning…/i],
+  ["Running…", /\brunning(?:…|\.\.\.)/i],
   // 연결 끊김의 결과는 "stop"이다 — paused는 표에 없는 상태어, held는 보류 전용
   ["paused", /\bpaused\b/i],
   ["held", /\bheld\b(?! back)/i],
@@ -134,18 +141,20 @@ const CONCEPT_BANNED: readonly [string, RegExp][] = [
   // 미전달 — 상태 Unsent, 명사 unsent edit(s)
   ["unpublished", /\bunpublished\b/i],
   ["unsent change", /\bunsent (?:translation )?changes?\b/i],
-  ["not sent yet", /\bnot (?:been )?sent (?:to GitHub )?yet\b/i],
+  ["not sent yet", /(?:\bnot|n['’]t) (?:been )?sent (?:to GitHub )?yet\b/i],
   ["Missing only", /\bmissing only\b/i],
-  ["Couldn't load", /^could(?: not|n['’]t) load$/i],
-  ["Authorization expired", /^authorization expired$/i],
+  ["Couldn't load", /^could(?: not|n['’]t) load[.!]?$/i],
+  ["Authorization expired", /^authorization expired[.!]?$/i],
   ["cancelled an invitation", /\bcancell?ed (?:an |the )?invitation\b|\binvitation was cancell?ed\b/i],
   ["Malmoi app", /\bMalmoi app\b/i],
   ["account settings", /\baccount settings\b/i],
   ["Image upload", /\bimage upload\b/i],
+  // 이미지(프로필 사진·프로젝트 썸네일)를 걷는 동작은 Remove다
+  ["image Delete", /^delete\b/i, /picture|image|avatar|thumbnail/i],
   // 목적지 라벨 하나 — /projects는 "Go to your projects", GitHub은 "Open on GitHub"
   ["Open projects", /\bopen projects\b/i],
   ["View on GitHub", /\bview on GitHub\b/i],
-  ["Open repository", /^open repository$/i],
+  ["Open repository", /^open repository[.!]?$/i],
   // 축약형 (DESIGN §10) — 강조가 필요한 부정만 ALLOWED가 든다
   ["could not", /\bcould not\b/i],
   ["did not", /\bdid not\b/i],
@@ -214,9 +223,11 @@ function allows(path: string, name: string, allowed: Readonly<Record<string, rea
   });
 }
 
-function violations(found: readonly Found[], banned: readonly [string, RegExp][] = BANNED): string[] {
+function violations(found: readonly Found[], banned: readonly Ban[] = BANNED): string[] {
   return found.flatMap(({ path, text }) =>
-    banned.filter(([name, pattern]) => !allows(path, name) && pattern.test(scrub(text))).map(([name]) => `${path} — "${name}" in: ${text}`),
+    banned
+      .filter(([name, pattern, where]) => (where === undefined || where.test(path)) && !allows(path, name) && pattern.test(scrub(text)))
+      .map(([name]) => `${path} — "${name}" in: ${text}`),
   );
 }
 
@@ -273,6 +284,9 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
       "X cancelled an invitation", "or the invitation was cancelled.", "The Malmoi app is installed", "in account settings",
       "Image upload", "Open projects", "View on GitHub", "Open repository", "We could not sign you out", "cannot be sent",
       "Malmoi is not connected", "This source was not replaced.",
+      // 우회형(fix1 🟡3) — 라벨 끝 마침표 · 축약형 · 마침표 셋
+      "Couldn't be read.", "Couldn't load.", "Authorization expired.", "Open repository.", "Saved · hasn't been sent yet",
+      "3 edits haven't been sent to GitHub yet.", "Running...",
     ]) caught(text);
     for (const text of [
       "The last sync couldn't finish", "Unavailable", "Syncing…", "Publishing…", "Syncs and publishes stop until it's reconnected.",
@@ -284,6 +298,15 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
     expect(sample("Held", "logs.status.deferred")).toEqual([]);
     expect(sample("Held back", "translations.publish.notSent")).toEqual([]);
     expect(sample("Held", "home.banner.disconnected.body")).not.toEqual([]);
+    // 자리 금지(§5) — partial 키의 실패 동사 · 이미지 키의 Delete. 다른 자리에서는 같은 낱말이 통과한다.
+    expect(sample("The sync failed", "home.banner.partial.title")).not.toEqual([]);
+    expect(sample("Some files couldn't be read", "repositorySync.partial")).not.toEqual([]);
+    expect(sample("Partially synced", "logs.status.partial")).toEqual([]);
+    expect(sample("The sync failed", "logs.sentence.import.failed")).toEqual([]);
+    expect(sample("Delete", "account.picture.delete")).not.toEqual([]);
+    expect(sample("Delete", "settings.general.thumbnailRemove")).not.toEqual([]);
+    expect(sample("Remove", "account.picture.delete")).toEqual([]);
+    expect(sample("Delete", "x")).toEqual([]);
   });
 
   it("쓰지 않는 말이 서빙되는 원고에 없다", () => {

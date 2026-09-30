@@ -145,6 +145,8 @@ function sublineText(subline: CardSubline, now: Date): string {
       return m.home.cards.allFilled(subline.keys);
     case "nothingPending":
       return m.home.cards.nothingPending;
+    case "nothingToReview":
+      return m.home.cards.nothingToReview;
     case "lastGoodSync":
       return m.home.cards.lastGoodSync(when(subline.at));
     case "asOf":

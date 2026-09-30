@@ -39,6 +39,7 @@ export type CardSubline =
   | { kind: "reviewByLocale"; locales: readonly { code: string; count: number }[] }
   | { kind: "allFilled"; keys: number }
   | { kind: "nothingPending" }
+  | { kind: "nothingToReview" }
   | { kind: "lastGoodSync"; at: Date | null }
   | { kind: "asOf"; at: Date | null }
   | { kind: "asOfLastSync" }
@@ -134,7 +135,7 @@ function sublineFor(key: CardKey, input: Parameters<typeof countCards>[0]): Card
     return counts.toTranslate === 0 ? { kind: "allFilled", keys: input.keys } : { kind: "acrossSurfaces", surfaces: input.surfaces };
   }
   if (key === "toReview") {
-    return counts.toReview === 0 ? { kind: "nothingPending" } : { kind: "reviewByLocale", locales: input.reviewByLocale };
+    return counts.toReview === 0 ? { kind: "nothingToReview" } : { kind: "reviewByLocale", locales: input.reviewByLocale };
   }
   /*
     ⚠️ **마지막 Publish 시각보다 이 사실이 앞선다** (DESIGN §6.64). 자동 적재가 보류 중이면 리포의 새 키·삭제가 앱에 안

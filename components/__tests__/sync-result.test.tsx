@@ -2,6 +2,7 @@
 import { expect, it, vi } from "vitest";
 import { SyncResult } from "@/components/home/sync-result";
 import type { SurfaceImportResult } from "@/lib/import/result";
+import { m } from "@/lib/i18n";
 import { render } from "./helpers/dom";
 
 const props = { slug: "acme", branch: "main" };
@@ -166,7 +167,8 @@ it("거부는 tone·닫기·액션이 갈래마다 갈린다", async () => {
   expect(view.container.querySelector('a[href="/projects/acme/settings"]')?.textContent).toBe("Reconnect");
   expect(view.container.textContent).toContain("This repository is disconnected");
   await view.rerender(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "not-connected" }} />);
-  expect(view.container.querySelector('a[href="/projects/acme/settings"]')?.textContent).toBe("Open settings");
+  expect(view.container.querySelector('a[href="/account"]')?.textContent).toBe(m.repositorySync.openAccount);
+  expect(view.container.textContent).toContain("Account");
   expect(view.container.textContent).not.toMatch(/disconnected/i);
 
   // ⚠️ 리포는 생성 시점 고정이라 [Reconnect]가 눌러도 실패할 버튼이다 (DESIGN §6.2).
