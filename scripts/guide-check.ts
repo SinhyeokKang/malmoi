@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * 가이드 스크린샷 stale 목록 — 촬영 매핑 표(`guide/SHOOTING.md` `#shots`)의 기록 SHA를 작업 트리의
- * `git hash-object`와 견준다.
+ * `git hash-object`와, `dict:` 소스는 사전 키 값의 SHA-1(`dictDigest`)과 견준다.
  *
  *   pnpm guide:check [--json]
  *
@@ -16,7 +16,8 @@ import { fileURLToPath } from "node:url";
 
 import { parseMd } from "../lib/guide/parse";
 import { parseMdTable } from "../lib/guide/sections";
-import { shotSources, staleShots, type ShotRecord, type StaleShot } from "../lib/guide/stale";
+import { dictDigest, shotDictKeys, shotSources, staleShots, type ShotRecord, type StaleShot } from "../lib/guide/stale";
+import { m } from "../lib/i18n";
 
 const USAGE = "사용법: pnpm guide:check [--json]";
 
@@ -66,6 +67,11 @@ function main() {
   const present = shotSources(rows).filter((path) => existsSync(join(root, path)) && statSync(join(root, path)).isFile());
   const shas = present.length === 0 ? [] : execFileSync("git", ["hash-object", "--", ...present], { cwd: root, encoding: "utf8" }).trim().split("\n");
   const current = new Map(present.map((path, i) => [path, shas[i] ?? ""]));
+  // 사전 키는 작업 트리의 사전을 읽는다 — 파일 SHA와 같이 "찍을 화면이 지금 그리는 낱말"이다
+  for (const key of shotDictKeys(rows)) {
+    const digest = dictDigest(m, key);
+    if (digest !== null) current.set(`dict:${key}`, digest);
+  }
   report(staleShots(rows, current));
 }
 
