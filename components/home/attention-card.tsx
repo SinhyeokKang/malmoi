@@ -55,7 +55,8 @@ export function AttentionCard({ items, slug, role, state, now }: {
       화면에도 jsdom 테스트에도 안 나타나는 부류다 (2026-09-13의 `combobox` 빈 이름과 같은 축).
     */
     <section className="border-border overflow-hidden rounded-lg border" aria-labelledby="home-attention-title">
-      <h2 id="home-attention-title" className="flex min-h-12 items-center gap-2 px-4 py-3 text-base font-medium">
+      {/* 머리 아래 선은 머리가 긋는다(2026-10-01 4-Y1 — `PanelCard`와 한 규약). 본문의 첫 줄은 `border-t`를 들지 않는다. */}
+      <h2 id="home-attention-title" className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3 text-base font-medium">
         {m.home.attention.title}
         {/* ⚠️ **빈 상태에는 pill이 없다** (캔버스 `2a-empty`) — `0`을 배지로 세우면 하나의 항목처럼 읽힌다. `CountBadge`가 든다. */}
         <CountBadge count={items.count} label={m.home.attention.count(items.count)} />
@@ -63,7 +64,7 @@ export function AttentionCard({ items, slug, role, state, now }: {
 
       {items.count === 0 ? (
         <EmptyState
-          className="border-divider border-t px-4 py-8"
+          className="px-4 py-8"
           icon={state === "archived" ? Archive : CircleCheck}
           title={state === "archived" ? m.home.attention.archived.title : m.home.attention.empty.title}
           description={state === "archived" ? m.home.attention.archived.description : m.home.attention.empty.description}
@@ -72,7 +73,8 @@ export function AttentionCard({ items, slug, role, state, now }: {
         <>
           <ul>
             {items.shown.map((item) => (
-              <li key={itemKey(item)}>
+              // 첫 행은 머리 선 바로 아래라 자기 선을 내려놓는다.
+              <li key={itemKey(item)} className="[&:first-child>a]:border-t-0">
                 <AttentionRow item={item} slug={slug} role={role} now={now} />
               </li>
             ))}

@@ -80,7 +80,8 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
         subtitle={data.repository ? <span className="flex items-center gap-1.5"><GithubIcon className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}>
         {/* ⚠️ **추가 결과는 카드의 첫 행이다** (시안 `1i`) — 토스트도, 카드 밖 Alert도 아니다. 적재가
             토스트보다 오래 걸리고, 닫는 것은 사람이다. */}
-        {result && <div role="status" className="border-divider bg-foreground/2 flex items-start gap-3 border-t px-4 py-[13px]">
+        {/* 머리 아래 선은 카드가 긋는다(4-Y1) — 결과 줄은 아래 선으로 목록과 갈린다. */}
+        {result && <div role="status" className="border-divider bg-foreground/2 flex items-start gap-3 border-b px-4 py-[13px]">
           <div className="min-w-0 flex-1 space-y-[3px]">
             {result.text && <p className="text-base">{result.source && <><span className="font-medium">{result.source}</span> — </>}{result.text}</p>}
             {result.added && <><p className="text-base"><span className="font-medium">{m.sources.addedCount(result.added.length)}</span> — {result.added.map((source, index) => <Fragment key={source.surfaceSlug}>
@@ -93,7 +94,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           <CloseButton label={m.common.close} onClick={event => { neighbourFocus(event.currentTarget.closest('[role="status"]') ?? event.currentTarget)?.focus(); setResult(null); }} />
         </div>}
         {data.sources.length === 0
-          ? <div className="border-divider flex flex-col items-center gap-2.5 border-t px-6 py-10 text-center">
+          ? <div className="flex flex-col items-center gap-2.5 px-6 py-10 text-center">
               <IconTile size="lg"><FileJson2 aria-hidden /></IconTile>
               <span className="text-base font-medium">{m.sources.emptyTitle}</span>
               <span className="text-muted-foreground max-w-[460px] text-xs leading-[1.7]">{canEdit ? m.sources.emptyOwner : m.sources.emptyEditor}</span>

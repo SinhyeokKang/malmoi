@@ -22,7 +22,9 @@ it.each(['repository', 'token'])('%s failures use the full-width card notice', a
   const alert = container.querySelector('[role="alert"]')!;
   expect(alert).not.toBeNull();
   expect(alert.className).toContain('rounded-none');
-  expect(alert.parentElement).toBe(container.querySelector('section'));
+  // 카드 폭 그대로다 — 카드 바로 아래이거나, 머리 아래 선을 드는 notice 래퍼(2026-10-01 4-Y1) 바로 아래다.
+  const holder = alert.parentElement!;
+  expect(holder === container.querySelector('section') || holder.matches('section > [data-card-notice]')).toBe(true);
 });
 
 /**

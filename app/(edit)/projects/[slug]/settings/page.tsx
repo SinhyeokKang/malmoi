@@ -59,7 +59,8 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   const apiUrl = project.surfaces.length > 0 ? await requestApiUrl() : undefined;
   const workflow = project.surfaces.length > 0 && <WorkflowBlock yaml={renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), ...(apiUrl === undefined ? {} : { apiUrl }) })} />;
   return <>
-    <PanelHeader>{notice !== null && <Alert variant="danger">{notice}</Alert>}<h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.projectSettings}</h1></PanelHeader>
+    {/* 거부 Alert는 제목 **아래**다(`notice` 슬롯 — 2026-10-01 4-Y7, 옛 자리는 h1 위였다). */}
+    <PanelHeader notice={notice !== null && <Alert variant="danger">{notice}</Alert>}><h1 className="flex items-center text-lg font-medium">{m.common.nav.projectSettings}</h1></PanelHeader>
     <PanelBody className="space-y-4">
       {archived && archive}
       <GeneralCard slug={slug} name={project.name} image={project.image} archived={archived} />

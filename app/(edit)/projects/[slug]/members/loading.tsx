@@ -18,7 +18,7 @@ export default function MembersLoading() {
     <>
       <span className="sr-only" role="status">{m.members.loading}</span>
       <PanelHeader aria-hidden>
-        <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <SkeletonLine text="text-lg" className="w-24" />
           <div className="flex items-center gap-3">
             <SkeletonLine text="text-xs" className="w-24" />

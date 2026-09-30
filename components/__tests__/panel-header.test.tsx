@@ -104,6 +104,30 @@ describe("PanelHeader — 여백·선·폭을 프리미티브가 든다", () => 
     expect(line.classList.contains("text-muted-foreground")).toBe(true);
   });
 
+  /**
+   * **제목 행의 최소 높이 36(`min-h-9`)을 프리미티브가 든다** (2026-10-01 ux-drift-unify T14 · 4-Y8) — 버튼 없는 화면에서 줄 높이가
+   * 28로 떨어지면 머리가 라우트마다 4px 튄다. 전엔 소비자 넷이 손으로 적었다. 첫 자식이 제목 행이다.
+   */
+  it("첫 자식(제목 행)이 최소 높이 36을 받는다", async () => {
+    const outer = await header({ children: <h1>Projects</h1> });
+    const inner = find<HTMLElement>(outer, ":scope > div");
+    expect(inner.classList.contains("[&>:first-child]:min-h-9")).toBe(true);
+  });
+
+  /**
+   * **`notice` 슬롯 — 설명 아래, 제목 블록 뒤다** (4-Y7). 페이지 수준 거부 Alert가 h1 **위**에 서던 화면(Settings)이 있었다.
+   */
+  it("notice는 설명 아래에 선다 — 제목 행이 여전히 첫 자식이다", async () => {
+    const outer = await header({ children: <h1>Settings</h1>, description: "Line.", notice: <div role="alert">Refused</div> });
+    const inner = find<HTMLElement>(outer, ":scope > div");
+    expect([...inner.children].map((node) => node.tagName.toLowerCase() + (node.getAttribute("role") ? `[${node.getAttribute("role")}]` : ""))).toEqual(["h1", "p", "div[alert]"]);
+  });
+
+  it("notice가 없으면 그리지 않는다", async () => {
+    const outer = await header({ children: <h1>Settings</h1> });
+    expect(find<HTMLElement>(outer, ":scope > div").children).toHaveLength(1);
+  });
+
   /** 설명이 없으면 그 자리가 DOM에 없다 — 빈 `<p>`의 line-height가 머리를 늘린다. */
   it("설명이 없으면 그리지 않는다", async () => {
     const outer = await header({ children: <h1>Projects</h1> });
@@ -240,6 +264,13 @@ describe("소비자 열여섯 — 여백을 넘기지 않는다", () => {
 
     expect(uses("<PanelHeader").sort()).toEqual([...CONSUMERS].sort());
     expect(uses("<PanelBody").sort()).toEqual([...CONSUMERS, ...BODY_ONLY].sort());
+  });
+
+  /** 제목 행의 `min-h-9`는 프리미티브가 든다(T14) — 소비자가 다시 적으면 두 곳이 된다. 머리 안 첫 줄만 센다. */
+  it.each(CONSUMERS)("%s가 머리 제목 행에 min-h-9를 적지 않는다", (path) => {
+    const source = readFileSync(join(ROOT, path), "utf8");
+    const heads = [...source.matchAll(/<PanelHeader\b[^>]*>([\s\S]*?)<\/PanelHeader>/g)].map((match) => match[1] ?? "");
+    for (const head of heads) expect(head, path).not.toMatch(/className="[^"]*\bmin-h-9\b/);
   });
 
   /** 등급 prop이 사라졌다 — 소비자가 `width=`를 넘기면 좁은 등급이 되살아날 자리가 생긴다. */

@@ -9,6 +9,7 @@ import type { MetaRow } from "@/lib/home/meta";
 import { m } from "@/lib/i18n";
 import { pullNumberFrom } from "@/lib/projects/remote-plan";
 import { relativeTime } from "@/lib/relative-time";
+import { cn } from "@/lib/utils";
 import { routes } from "@/lib/routes";
 
 /**
@@ -36,11 +37,13 @@ export function MetaColumn({ rows, slug, now, canOpenSettings }: {
 
   return (
     <aside className="border-border flex h-fit flex-col overflow-hidden rounded-lg border" aria-labelledby="home-meta-title">
-      <h2 id="home-meta-title" className="flex min-h-12 items-center px-4 py-3 text-base font-medium">
+      {/* 머리 아래 선은 머리가 긋는다(2026-10-01 4-Y1 — `PanelCard`와 한 규약) · 머리 gap은 카드 머리 한 벌이다(4-W1). */}
+      <h2 id="home-meta-title" className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3 text-base font-medium">
         {m.home.meta.title}
       </h2>
-      <MetaGroup rows={facts} now={now} />
-      <MetaGroup rows={times} now={now} />
+      {/* 구역 사이 선만 구역이 든다 — 머리 바로 아래 구역은 머리 선을 쓴다. */}
+      <MetaGroup rows={facts} now={now} divided={false} />
+      <MetaGroup rows={times} now={now} divided={facts.length > 0} />
       {canOpenSettings && (
         <Link
           href={routes.settings(slug)}
@@ -58,10 +61,10 @@ export function MetaColumn({ rows, slug, now, canOpenSettings }: {
  * ⚠️ **라벨 폭이 96으로 고정이다** — `justify-between`으로 벌리면 값의 시작 위치가 라벨 길이를 따라
  * 행마다 달라지고, 아홉 행이 한 열로 안 읽힌다.
  */
-function MetaGroup({ rows, now }: { rows: readonly MetaRow[]; now: Date }) {
+function MetaGroup({ rows, now, divided }: { rows: readonly MetaRow[]; now: Date; divided: boolean }) {
   if (rows.length === 0) return null;
   return (
-    <dl className="border-divider flex flex-col gap-2.5 border-t px-4 py-3.5">
+    <dl className={cn("flex flex-col gap-2.5 px-4 py-3.5", divided && "border-divider border-t")}>
       {rows.map((row) => (
         <div key={row.kind} className="flex items-baseline gap-3">
           <dt className="w-24 shrink-0 text-xs text-neutral-400">{m.home.meta[row.kind]}</dt>

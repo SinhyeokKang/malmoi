@@ -31,17 +31,18 @@ export function LogsCard({ rows, slug, now, archived, syncedBefore }: {
   return (
     /* ⚠️ **접근 이름이 있어야 `region` 랜드마크다** — 없으면 `generic`으로 접힌다 (`attention-card` 주석). */
     <section className="border-border flex flex-col overflow-hidden rounded-lg border" aria-labelledby="home-logs-title">
-      <h2 id="home-logs-title" className="flex min-h-12 shrink-0 items-center px-4 py-3 text-base font-medium">{m.home.logs.title}</h2>
+      {/* 머리 아래 선은 머리가 긋는다(2026-10-01 4-Y1 — `PanelCard`와 한 규약) · 머리 gap은 카드 머리 한 벌이다(4-W1). */}
+      <h2 id="home-logs-title" className="border-divider flex min-h-12 shrink-0 items-center gap-2 border-b px-4 py-3 text-base font-medium">{m.home.logs.title}</h2>
 
       {rows.length === 0 ? (
         <EmptyState
-          className="border-divider border-t px-4 py-8"
+          className="px-4 py-8"
           icon={History}
           title={m.logs.empty.title}
           description={syncedBefore ? m.logs.empty.description : m.home.logs.empty.beforeFirstSync}
         />
       ) : (
-        <ul className="border-divider flex flex-col border-t">
+        <ul className="flex flex-col">
           {rows.map((row) => (
             <li key={row.id} id={`event-${row.ref}`} tabIndex={-1} className="border-divider not-first:border-t">
               {/* ⚠️ **시각 열이 없다** — 날짜 카드가 없으므로 오른쪽에 상대 시각이 서고 결과는 보조줄로 내려간다. */}

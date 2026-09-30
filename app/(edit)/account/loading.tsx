@@ -33,7 +33,7 @@ export default function AccountLoading() {
     <>
       <PanelHeader>
         {/* 제목 줄은 실물과 같은 min-h-9다 — 머리 높이가 안 튄다. */}
-        <div className="flex min-h-9 items-center">
+        <div className="flex items-center">
           <Skeleton className="h-7 w-32" />
         </div>
       </PanelHeader>

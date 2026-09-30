@@ -95,8 +95,9 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
       {/* ⚠️ **시안 `1d`의 행 형이다** — 28 칩 + 제목/보조 두 줄 + 오른쪽 행동. `Alert` 상자가 아니다:
           같은 카드 안에서 상태가 상자를 쓰면 실패만 다른 그릇이 된다. */}
       <PanelCard title={m.sources.status} subtitle={m.sources.statusHelp}>
-        {importResult && <div role="status" className="border-divider text-base border-t px-4 py-[13px]">{importResult.text}</div>}
-        <div className="border-divider flex items-center gap-3 border-t px-4 py-[13px]">
+        {/* 머리 아래 선은 카드가 긋는다(4-Y1) — 첫 줄은 `border-t`를 들지 않고, 결과 줄이 있으면 그 아래 선이 상태 줄과 가른다. */}
+        {importResult && <div role="status" className="border-divider text-base border-b px-4 py-[13px]">{importResult.text}</div>}
+        <div className="flex items-center gap-3 px-4 py-[13px]">
           {/* 칸 톤은 상태 톤이다(2026-09-30 통일): 성공 초록 · 일부 반영 호박 · 실패 빨강 · 진행·미적재 무색. */}
           <IconTile tone={statusPartial ? "warning" : statusFailed ? "danger" : importStatus?.state === "imported" ? "success" : "muted"}>
             {statusFailed ? <CircleAlert aria-hidden />
@@ -127,7 +128,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         </div>}
       </PanelCard>
       <PanelCard title={m.locales.field.label} subtitle={m.sources.baseHelp} badge={basePending(detail) ? <Badge variant="warning">{m.sources.waiting}</Badge> : undefined}>
-        <div className="border-divider border-t px-4 py-[13px]">
+        <div className="px-4 py-[13px]">
         {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned).map(row => row.code)} awaiting={basePending(detail)} onDirty={setDraft} onPending={onBusy} onError={setFieldError} onSaved={onSaved} />
           : <div className="flex items-center gap-3">
               {/* 시안 `1e` ④ — EDITOR는 점선 칩과 자물쇠이고 컨트롤이 없다. */}
@@ -142,12 +143,12 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         </div>
       </PanelCard>
       <PanelCard title={m.sources.languages} count={detail.locales} countLabel={m.sources.languageCount(detail.locales)} subtitle={m.sources.languagesHelp}>
-        {detail.languages.length === 0 ? <p className="text-muted-foreground border-divider border-t px-4 py-[13px] text-xs">{m.locales.empty.description}</p>
+        {detail.languages.length === 0 ? <p className="text-muted-foreground px-4 py-[13px] text-xs">{m.locales.empty.description}</p>
           : <ul>{detail.languages.map((row, index) => {
           // 집계 두 쿼리 사이 적재가 바뀌어도 막대 합은 트랙을 넘지 않는다. 퍼센트는 완료만 센다.
           const done = Math.min(row.total, row.translated);
           const review = Math.min(Math.max(0, row.total - done), row.needsReview);
-          return <li key={row.code} className={cn("flex items-center gap-4 px-4 py-[13px] @max-[640px]:flex-wrap", index === 0 ? "border-divider border-t" : "border-border border-t")}>
+          return <li key={row.code} className={cn("flex items-center gap-4 px-4 py-[13px] @max-[640px]:flex-wrap", index > 0 && "border-border border-t")}>
             <span className="flex w-[150px] shrink-0 items-center gap-2 @max-[850px]:w-[120px]">
               <span className={cn("flex", row.orphaned && "opacity-50")}><LocaleFlag code={row.code} /></span>
               <span className={cn("text-base", row.orphaned && "text-muted-foreground")}>{row.code}</span>

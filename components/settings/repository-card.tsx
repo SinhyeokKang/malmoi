@@ -28,12 +28,9 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, health, ac
   const [failure, setFailure] = useState<string | null>(null);
   // 보관 상태가 오면 옛 거부를 내린다 — 카드가 보관 상태를 대신 말한다 (QA D1).
   const shown = failure && !archived ? failure : null;
-  /*
-    ⚠️ **`notice`가 언제나 요소다** — `PanelCard`는 `notice === undefined`일 때만 머리에 `border-b`를 긋는데, Suspense
-    요소는 내용이 없어도 undefined가 아니다. 그래서 선을 이 자리가 대신 긋는다(inset Alert의 `border-t`와 같은 1px).
-  */
+  // 머리 아래 선은 `PanelCard`가 notice 아래에 긋는다(2026-10-01 4-Y1) — 비어 도착하는 Suspense notice도 선을 따로 들지 않는다.
   return <PanelCard title={m.settings.repository.title} notice={
-    <Suspense fallback={<Divider />}><Notice health={health} failure={shown} appSlug={appSlug} /></Suspense>
+    <Suspense fallback={null}><Notice health={health} failure={shown} appSlug={appSlug} /></Suspense>
   }>
     <Suspense fallback={<ConnectionRowPending />}>
       <ConnectionRow health={health} slug={slug} owner={owner} repo={repo} archived={archived} onFailure={setFailure} />
@@ -42,10 +39,6 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, health, ac
     {/* 가장 흔한 모양(연결된 계정)에는 이 줄이 없다 — 골격도 없다. 틀리면 두 번 튄다. */}
     <Suspense fallback={null}><Recovery account={account} /></Suspense>
   </PanelCard>;
-}
-
-function Divider() {
-  return <div className="border-divider border-t" />;
 }
 
 function Notice({ health: pending, failure, appSlug }: { health: Promise<ConnectionHealth>; failure: string | null; appSlug?: string }) {
@@ -57,7 +50,7 @@ function Notice({ health: pending, failure, appSlug }: { health: Promise<Connect
       {/* ⚠️ 밑줄을 붙이지 않는다 — 나가는 신호는 색과 새 탭이 든다 (DESIGN §6.3, 전역 규칙) */}
       {health.status === "app-uninstalled" && installUrl && <> <a className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={installUrl} target="_blank" rel="noreferrer">{m.settings.repository.health.install}</a> — {m.settings.repository.health.installHint}</>}
     </Alert> : undefined;
-  if (notice === undefined && failure === null) return <Divider />;
+  if (notice === undefined && failure === null) return null;
   return <>{notice}{failure !== null && <Alert inset variant="danger">{failure}</Alert>}</>;
 }
 

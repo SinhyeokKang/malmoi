@@ -16,12 +16,13 @@ const ROOT = process.cwd();
 
 const SITES: { path: string; head: string; count: number }[] = [
   // 프리미티브
-  { path: "components/ui/panel-card.tsx", head: "border-divider flex min-h-12 flex-wrap items-center gap-2 {pad} ", count: 1 },
+  // 머리 아래 선은 notice 유무에 따라 머리 또는 notice 래퍼가 든다(2026-10-01 4-Y1) — 그래서 머리 줄 문자열에 선이 없다.
+  { path: "components/ui/panel-card.tsx", head: '"flex min-h-12 flex-wrap items-center gap-2 {pad}"', count: 1 },
   { path: "components/ui/row-card.tsx", head: '"flex min-h-12 items-center gap-2 {pad}"', count: 1 },
-  // 손으로 적은 실물 — Home 카드 셋과 Logs 날짜 카드
-  { path: "components/home/attention-card.tsx", head: '"flex min-h-12 items-center gap-2 {pad} text-base font-medium"', count: 1 },
-  { path: "components/home/logs-card.tsx", head: '"flex min-h-12 shrink-0 items-center {pad} text-base font-medium"', count: 1 },
-  { path: "components/home/meta-column.tsx", head: '"flex min-h-12 items-center {pad} text-base font-medium"', count: 1 },
+  // 손으로 적은 실물 — Home 카드 셋과 Logs 날짜 카드. Home 셋은 머리가 아래 선을 긋고 gap이 한 벌이다(2026-10-01 4-Y1 · 4-W1).
+  { path: "components/home/attention-card.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad} text-base font-medium"', count: 1 },
+  { path: "components/home/logs-card.tsx", head: '"border-divider flex min-h-12 shrink-0 items-center gap-2 border-b {pad} text-base font-medium"', count: 1 },
+  { path: "components/home/meta-column.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad} text-base font-medium"', count: 1 },
   { path: "app/(edit)/projects/[slug]/logs/page.tsx", head: '"flex min-h-12 items-center gap-2 {pad}"', count: 1 },
   // 로딩 골격 — PanelCard형 셋 · RowCard형 둘 · Home · Logs
   { path: "app/(edit)/projects/[slug]/settings/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },

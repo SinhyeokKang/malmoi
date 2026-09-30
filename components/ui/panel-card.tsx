@@ -3,6 +3,7 @@
 import { useId, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { CountBadge } from "@/components/ui/count-badge";
+import { cn } from "@/lib/utils";
 import { IconTile } from "./icon-tile";
 
 /** Shared account and project settings card. Header and row dividers have distinct roles. */
@@ -28,7 +29,7 @@ export function PanelCard({
    * 어긋난다. 이 화면에는 툴바가 없어 그 자리가 비어 있었다.
    */
   subtitle?: ReactNode;
-  /** 카드 Alert — **헤더 아래·리스트 위**다. 머리 Alert와 달리 닫기가 없다. */
+  /** 카드 Alert — **헤더 아래·리스트 위**다. 머리 Alert와 달리 닫기가 없다. 머리 아래 선은 이 래퍼 아래로 내려간다. */
   notice?: ReactNode;
   children: ReactNode;
 }) {
@@ -45,14 +46,21 @@ export function PanelCard({
       // 배경을 카드가 든다 — 캔버스가 `#fff`를 카드에 명시했다. 오늘은 패널과 같은 값이다.
       className="@container border-border bg-background overflow-hidden rounded-lg border"
     >
+      {/*
+        ⚠️ **머리 아래 선은 카드가 긋는다 — notice가 있으면 notice 아래 한 줄** (2026-10-01 ux-drift-unify 4-Y1). 전엔 notice가 있으면
+        머리가 선을 내려놓고 자식(`<Divider/>`·첫 행 `border-t`)이 대신 그어, 선이 둘이거나 0인 카드가 섞였다. **자식은 첫 줄에
+        `border-t`를 들지 않는다** — 행 사이 선만 자식 몫이다. 선의 자리는 둘 중 하나다: notice가 없으면 머리, 있으면 notice 래퍼.
+        notice가 Suspense처럼 비어 도착해도 래퍼가 선을 든다.
+      */}
       {/* 머리는 한 줄이다 — 제목·배지가 왼쪽, 설명이 `ml-auto`로 툴바 자리에 선다. */}
-      {title !== undefined && <header className={`border-divider flex min-h-12 flex-wrap items-center gap-2 px-4 py-3 ${notice === undefined ? "border-b" : ""}`}>
-        <h2 id={titleId} className="text-base font-medium tracking-[0.015em]">{title}</h2>
+      {title !== undefined && <header className={cn("flex min-h-12 flex-wrap items-center gap-2 px-4 py-3", notice === undefined && "border-divider border-b")}>
+        {/* 제목 자간은 손으로 들지 않는다 — RowCard·Home 카드와 한 벌이다(4-W1). */}
+        <h2 id={titleId} className="text-base font-medium">{title}</h2>
         {count !== undefined && <CountBadge count={count} label={countLabel ?? ""} />}
         {badge}
         {subtitle !== undefined && <div className="text-muted-foreground ml-auto @max-[640px]:ml-0 @max-[640px]:w-full text-xs tracking-[0.02em]">{subtitle}</div>}
       </header>}
-      {notice}
+      {notice !== undefined && <div data-card-notice className="border-divider border-b">{notice}</div>}
       {/*
         ⚠️ **카드가 `<ul>`을 만들지 않는다** — Profile 카드의 몸통은 목록이 아니라 사실 블록이다.
         여기서 감싸면 `<ul>` 안에 `<div>`가 들어가 구조가 깨지고, 스크린리더가 편집 폼을 목록으로

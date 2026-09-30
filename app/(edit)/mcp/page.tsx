@@ -55,7 +55,7 @@ export default async function McpPage() {
           가이드 링크가 제목 행 우측이다(2026-09-30 사용자 — 본문 맨 아래의 헬퍼 문장을 걷었다). 글리프는 LNB Docs와 같은 `CircleHelp`다 —
           같은 곳(가이드)으로 가는 두 입구가 같은 기호를 쓴다. "무엇을 시킬 수 있나"의 정본은 가이드다 — 카탈로그 사본을 두지 않는다(낡는다).
         */}
-        <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-lg font-medium">{m.common.nav.mcp}</h1>
           <ButtonLink href={routes.docs("ai-agents")}>
             <CircleHelp aria-hidden />

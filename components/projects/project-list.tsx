@@ -132,10 +132,10 @@ export function ProjectList({
     <>
       <PanelHeader>
         {/*
-          ⚠️ **`min-h-9`가 제목 행에 있다** (DESIGN §5.1). 버튼이 없는 갈래(`1b` — 프로젝트 0건)에서
-          줄 높이가 28로 떨어지면 머리 높이가 라우트마다 4px 튄다.
+          ⚠️ **제목 행의 `min-h-9`는 `PanelHeader`가 첫 자식에 든다** (DESIGN §5.1 · 2026-10-01). 버튼이 없는 갈래(`1b` — 프로젝트
+          0건)에서 줄 높이가 28로 떨어지면 머리 높이가 라우트마다 4px 튄다 — 이 행이 첫 자식이어야 하는 이유다.
         */}
-        <div className="flex min-h-9 items-center gap-3">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-medium">{m.common.nav.projects}</h1>
             {/*

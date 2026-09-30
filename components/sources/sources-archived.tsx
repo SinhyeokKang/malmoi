@@ -25,7 +25,7 @@ export function SourcesArchived({ slug, role, archivedAt }: { slug: string; role
     </div></PanelHeader>
     <PanelBody>
       <PanelCard title={m.sources.title}>
-        <div className="border-divider flex items-center gap-3 border-t px-4 py-[13px]">
+        <div className="flex items-center gap-3 px-4 py-[13px]">
           <IconTile><Archive aria-hidden /></IconTile>
           <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
             <span className="text-base"><span className="font-medium">{m.logs.archived.badge}</span>{archivedAt && <> — <time dateTime={archivedAt.toISOString()} aria-label={utcMinute(archivedAt)}>{utcMinute(archivedAt)}</time></>}</span>
