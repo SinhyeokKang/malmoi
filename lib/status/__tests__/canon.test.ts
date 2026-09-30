@@ -46,11 +46,10 @@ describe("STATE", () => {
     expect(allowed[row.tone]).toContain(row.variant);
   });
 
-  /** 무색이 둘이다 — 글자만(`muted`: Superseded·Unavailable)과 면(`neutral`: Unsent 등, Q3). 톤만으로 가를 수 없어 행이 variant를 든다. */
-  it("무색 둘을 행이 가른다", () => {
-    expect(STATE.superseded.variant).toBe("muted");
-    expect(STATE.unavailable.variant).toBe("muted");
+  /** 무색 배지는 면(`neutral`)이다(Q3) — 글자만(`muted`: Superseded·Unavailable)은 소비자가 이 표를 읽지 않아 행이 없다(T29에서 걷었다). */
+  it("무색 상태 배지는 면을 든다", () => {
     expect(STATE.unsent.variant).toBe("neutral");
+    expect(entries.filter(([, row]) => row.variant === "muted")).toEqual([]);
   });
 
   it("같은 상태 낱말이 DESIGN §2.4와 같다", () => {
@@ -59,6 +58,5 @@ describe("STATE", () => {
     expect(STATE.disconnected.label).toBe("Disconnected");
     expect(STATE.held.label).toBe("Held");
     expect(STATE.unsent.label).toBe("Unsent");
-    expect(STATE.unavailable.label).toBe("Unavailable");
   });
 });
