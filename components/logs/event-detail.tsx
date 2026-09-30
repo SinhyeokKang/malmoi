@@ -10,7 +10,7 @@ import { Button, buttonClass } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
-import { eventGlyph, eventSentence, eventView, eventFailureMessage, importReasonMessage, refusalMessage, valueState } from "@/lib/events/view";
+import { changedValuesText, deferredText, eventGlyph, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, refusalMessage, triggerOf, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
@@ -230,8 +230,9 @@ const KIND_KEY = {
   SETTINGS: "settings",
 } as const satisfies Record<EventRow["kind"], keyof typeof m.logs.detail.kindLabel>;
 
+/** 행 쪽(`event-row.tsx`)과 같은 판정이다 — 자동화 낱말은 `triggerOf`가 정한다. */
 function actorLabel(row: EventRow): string {
-  if (row.actor.kind === "AUTOMATION") return row.kind === "IMPORT" ? m.logs.trigger.ci : m.logs.trigger.cron;
+  if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;
 }
@@ -253,7 +254,7 @@ function fields(row: EventRow): [string, ReactNode][] {
   const out: [string, ReactNode][] = [];
   const payload = row.payload;
   if (row.kind === "PUBLISH") {
-    out.push([m.logs.detail.labels.trigger, row.actor.kind === "AUTOMATION" ? m.logs.trigger.cron : actorLabel(row)]);
+    out.push([m.logs.detail.labels.trigger, actorLabel(row)]);
     out.push([
       m.logs.detail.labels.files,
       row.run?.changed == null ? (
@@ -291,9 +292,12 @@ function fields(row: EventRow): [string, ReactNode][] {
     out.push([m.logs.detail.labels.locale, payload.locale]);
   }
   if (payload?.kind === "IMPORT") {
-    out.push([m.logs.detail.labels.trigger, `${payload.source === "ci" ? m.logs.trigger.ci : actorLabel(row)}`]);
-    if (row.result === "deferred" && payload.pendingEdits !== null) out.push([m.logs.detail.labels.unsentEdits, m.logs.deferredReason(payload.pendingEdits)]);
+    out.push([m.logs.detail.labels.trigger, actorLabel(row)]);
+    const deferred = row.result === "deferred" ? deferredText(payload) : null;
+    // 편집 수가 아닌 보류는 칸 이름부터 다르다 — `Unsent edits`에 PR 사유를 적으면 칸이 거짓말한다.
+    if (deferred !== null) out.push([heldReason(payload.deferReason) === null ? m.logs.detail.labels.unsentEdits : m.logs.detail.labels.heldBecause, deferred]);
     else if ((payload.pendingEdits ?? 0) > 0) out.push([m.logs.detail.labels.unsentEdits, m.repositorySync.kept(payload.pendingEdits!)]);
+    out.push([m.logs.detail.labels.values, changedValuesText(row.result, payload.changedValues)]);
     if (payload.errorCode !== null) out.push([m.logs.detail.labels.errorCode, payload.errorCode]);
     if (payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(payload.refusal)]);
     if (payload.keys !== null) out.push([m.logs.detail.labels.resultPerSource, m.logs.meta.keys(payload.keys)]);

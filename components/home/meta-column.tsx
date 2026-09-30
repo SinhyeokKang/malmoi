@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { LocaleFlag } from "@/components/translations/locale-badge";
 import { Badge } from "@/components/ui/badge";
+import type { Trigger } from "@/lib/events/view";
 import type { MetaRow } from "@/lib/home/meta";
 import { m } from "@/lib/i18n";
 import { pullNumberFrom } from "@/lib/projects/remote-plan";
@@ -119,11 +120,12 @@ function value(row: MetaRow, now: Date): ReactNode {
     case "lastSync":
       return (
         <span>
-          {row.at === null ? m.home.meta.never : relativeTime(row.at, now)}
-          {/* `2b`에서만 값이 둘이다 — `1d ago · failed 10m ago`. */}
+          {row.at === null ? m.home.meta.never : `${relativeTime(row.at, now)}${triggerSuffix(row.trigger)}`}
+          {/* `2b`에서만 실패가 붙는다 — `1d ago · nightly · failed 10m ago`(시각 → 주체 → 실패). */}
           {row.failedAt !== null && (
             <span className="text-destructive"> · {m.home.meta.failedAt(relativeTime(row.failedAt, now))}</span>
           )}
+          {row.heldByOpenPr && ` · ${m.home.meta.heldByOpenPr}`}
         </span>
       );
     case "lastPublish": {
@@ -131,7 +133,7 @@ function value(row: MetaRow, now: Date): ReactNode {
       const pr = pullNumberFrom(row.prUrl);
       if (row.at === null) return m.home.meta.never;
       return pr === null || row.prUrl === null ? (
-        relativeTime(row.at, now)
+        `${relativeTime(row.at, now)}${triggerSuffix(row.trigger)}`
       ) : (
         /* 캔버스는 **PR이 앞이고 시각이 뒤**다 — 이 행이 답하는 질문이 "무엇을 보냈나"라서다. */
         <span>
@@ -148,7 +150,7 @@ function value(row: MetaRow, now: Date): ReactNode {
           >
             {m.home.meta.pr(pr)}
           </a>
-          {` · ${relativeTime(row.at, now)}`}
+          {` · ${relativeTime(row.at, now)}${triggerSuffix(row.trigger)}`}
         </span>
       );
     }
@@ -156,4 +158,14 @@ function value(row: MetaRow, now: Date): ReactNode {
     case "archived":
       return relativeTime(row.at, now);
   }
+}
+
+/**
+ * 실행 주체 (nightly-sync 14) — Logs 사람 행의 보조줄과 같은 사전(`m.logs.meta`)에서 뽑는다. 사건이 없으면(`null`) 붙이지 않는다 —
+ * 이력 도입 전 실행에 주체를 추정해 적지 않는다.
+ */
+const TRIGGER_WORD = { manual: m.logs.meta.manual, nightly: m.logs.meta.nightly, ci: m.logs.meta.ci } satisfies Record<Trigger, string>;
+
+function triggerSuffix(trigger: Trigger | null): string {
+  return trigger === null ? "" : ` · ${TRIGGER_WORD[trigger]}`;
 }

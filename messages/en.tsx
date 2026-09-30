@@ -903,6 +903,8 @@ export const en = {
       notConnected: "Not connected",
       /** `2b`의 둘째 값 — `1d ago · failed 10m ago`. */
       failedAt: (when: string): string => `failed ${when}`,
+      /** 최근 적재 사건이 열린 Malmoi PR로 보류됐다 (nightly-sync 14a) — 푸는 조건(머지)을 말한다. */
+      heldByOpenPr: "held until the pull request is merged",
       never: "Never",
       /** 캔버스는 `Pull request #127 · 2d ago` — **무엇을 보냈나**가 먼저고 시각이 뒤다. */
       pullRequest: "Pull request",
@@ -1067,6 +1069,15 @@ export const en = {
     /** 보류 사유 — **삭제도 성공도 아니다**를 한 문장이 말한다. */
     deferredReason: (count: number): string =>
       `${count.toLocaleString("en-US")} unsent edit${count === 1 ? " is" : "s are"} being protected. Nothing was synced.`,
+    /**
+     * 편집 수가 아닌 보류 사유 셋 (nightly-sync). ⚠️ `deferredReason(0)`으로 떨어지면 "0 unsent edits are being protected"라는
+     * 거짓이 선다 — 이 셋은 편집이 없는데도 멈췄다. 푸는 사람(PR 리뷰어·다음 실행·개발자)까지 말한다.
+     */
+    deferReasons: {
+      "open-pr": "A Malmoi pull request is still open. Nothing was synced — syncing resumes once it's merged or closed.",
+      "pr-check-failed": "We couldn't check GitHub for an open Malmoi pull request, so nothing was synced. The next run checks again.",
+      "too-large": "The repository change is too large to sync automatically. Nothing was synced — ask your developers to sync it.",
+    },
     empty: {
       title: "No activity yet",
       description: "Syncs, translation edits and publishes show up here as they happen.",
@@ -1096,8 +1107,12 @@ export const en = {
     },
     /** 행의 보조줄이 쓰는 낱말. **없는 값을 자리 채우려고 적지 않는다.** */
     meta: {
+      /** 실행 주체 셋 (nightly-sync) — 사람 행의 보조줄과 Home 메타 열이 같은 낱말을 쓴다. 자동화 행은 행위자가 문장 머리에 서므로 보조줄에 안 싣는다. */
       manual: "manual",
-      automatic: "automatic",
+      nightly: "nightly",
+      ci: "CI",
+      /** 적재가 실제로 값을 바꾼 번역 셀 수 — 관측값이고 판정에 쓰지 않는다. */
+      values: (n: number): string => `${n.toLocaleString("en-US")} value${n === 1 ? "" : "s"} changed`,
       files: (n: number): string => `${n.toLocaleString("en-US")} file${n === 1 ? "" : "s"}`,
       keys: (n: number): string => `${n.toLocaleString("en-US")} key${n === 1 ? "" : "s"}`,
       noPullRequest: "no pull request",
@@ -1145,6 +1160,16 @@ export const en = {
         superseded: (who: ReactNode): ReactNode => <>{who} sync gave way to another run</>,
         failed: (who: ReactNode): ReactNode => <>{who} sync failed</>,
         notStarted: (who: ReactNode): ReactNode => <>{who} sync was refused</>,
+        /** 야간 스킵 — 편집도 새 커밋도 없었다. ⚠️ "synced"라고 말하지 않는다 — 아무것도 읽지 않았다. */
+        upToDate: (who: ReactNode): ReactNode => <>{who} found nothing to publish or sync</>,
+        /** 야간 스킵 실패 — base 브랜치 head를 못 읽었다. 적재가 시작조차 안 했으므로 "sync failed"와 가른다. */
+        baseUnreadable: (who: ReactNode): ReactNode => <>{who} couldn&rsquo;t read the repository&rsquo;s base branch</>,
+        /** 편집 수가 아닌 보류 셋 — `pending-edits`는 위 `deferred`(소스 이름)가 그대로 든다. */
+        held: {
+          "open-pr": (who: ReactNode): ReactNode => <>{who} held the sync — a Malmoi pull request is still open</>,
+          "pr-check-failed": (who: ReactNode): ReactNode => <>{who} held the sync — GitHub didn&rsquo;t answer about pull requests</>,
+          "too-large": (who: ReactNode): ReactNode => <>{who} held the sync — the change is too large to sync automatically</>,
+        },
       },
       member: {
         invited: (who: ReactNode, target: string): ReactNode => <>{who} invited {target}</>,
@@ -1202,6 +1227,9 @@ export const en = {
         role: "Role",
         effect: "Effect",
         unsentEdits: "Unsent edits",
+        /** 편집 수가 아닌 보류의 사유 칸 — `Unsent edits`에 PR 사유를 적으면 칸 이름이 거짓이 된다. */
+        heldBecause: "Held because",
+        values: "Values",
         withheld: "Not sent",
         closedPullRequest: "Closed pull request",
       },

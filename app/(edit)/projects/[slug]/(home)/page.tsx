@@ -23,6 +23,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems } from "@/lib/home/attention";
 import { countCards } from "@/lib/home/cards";
 import { metaRows } from "@/lib/home/meta";
+import { loadHomeRuns } from "@/lib/home/runs";
 import { lastSyncTime } from "@/lib/home/sync-time";
 import { planHomeState } from "@/lib/home/state";
 import {
@@ -132,7 +133,7 @@ export default async function ProjectHomePage({
    * ⚠️ **연결 조회는 `installationId`가 있을 때만 GitHub을 친다** — `loadConnectionHealth`가 그
    * 가드를 든다. GitHub 장애는 값(`unknown`)으로 오므로 이 화면이 그것에 죽지 않는다.
    */
-  const [aggregates, events, review, openEvent, health] = await Promise.all([
+  const [aggregates, events, review, openEvent, health, triggers] = await Promise.all([
     loadProjectListAggregates(prisma, [projectId]),
     /**
      * ⚠️ **Logs와 같은 함수다** (logs-rework 결정 — 조합 쿼리 넷이 사라졌다). 같은 수를 두 번 세지
@@ -158,6 +159,8 @@ export default async function ProjectHomePage({
       logFailure("home-connection-health", error);
       return { status: "unknown" } as const;
     }),
+    // 메타 열의 실행 주체(`12 hours ago · nightly`) — 행위자를 싣지 않는 사건 셋이다(nightly-sync F2).
+    loadHomeRuns(prisma, projectId),
   ]);
   // 번역 사건은 키 **이름**을 든다 — Logs와 같은 해석이다(translation-rework T12).
   const translationHref = openEvent?.payload?.kind === "TRANSLATION"
@@ -337,6 +340,7 @@ export default async function ProjectHomePage({
             lastPrUrl: project.lastPrUrl,
             createdAt: project.createdAt,
             archivedAt: project.archivedAt,
+            triggers,
           })}
           slug={slug}
           now={now}

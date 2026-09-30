@@ -3,7 +3,7 @@ import Link from "next/link";
 import { EventGlyph } from "@/components/logs/glyph";
 import { RowChevron } from "@/components/logs/row-chevron";
 import { Badge } from "@/components/ui/badge";
-import { eventGlyph, eventSentence, eventView, eventMeta } from "@/lib/events/view";
+import { eventGlyph, eventSentence, eventView, eventMeta, triggerOf } from "@/lib/events/view";
 import type { EventRow as Row } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
@@ -107,9 +107,12 @@ function ResultLabel({ view }: { view: ReturnType<typeof eventView> }) {
   return <Badge variant="warning">{view.label}</Badge>;
 }
 
-/** 행위자 폴백 순서 — 이름 → 마스킹 라벨 → `Removed user`, 자동화는 그 자리를 그대로 쓴다. */
+/**
+ * 행위자 폴백 순서 — 이름 → 마스킹 라벨 → `Removed user`, 자동화는 그 자리를 그대로 쓴다.
+ * ⚠️ 자동화 낱말은 `triggerOf`(subtype)가 정한다 — 종류로 가르면 야간 적재·스킵이 `CI`로 선다(nightly-sync).
+ */
 function actorLabel(row: Row): string {
-  if (row.actor.kind === "AUTOMATION") return row.kind === "IMPORT" ? m.logs.trigger.ci : m.logs.trigger.cron;
+  if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;
 }
