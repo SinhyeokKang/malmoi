@@ -47,10 +47,10 @@
 
 ## E. 야간 루프
 
-- [ ] **E1** `selectPullTargets` 정렬 키를 `lastNightlyAt`로(구 A4), `NIGHTLY_IMPORT_START_MS`, `runNightly` 껍데기 + `/api/pull` 루프 교체. `lastNightlyAt`은 방문 머리 단독 update. `PullItem`에 `action`. 요약 로그 카운터 확장. `pull-budget.test.ts:22`·`route-diagnostics.test.ts:46`의 `@/lib/sync/run` mock을 `runNightly` 경계로 옮긴다.
+- [x] **E1** `selectPullTargets` 정렬 키를 `lastNightlyAt`로(구 A4), `NIGHTLY_IMPORT_START_MS`, `runNightly` 껍데기 + `/api/pull` 루프 교체. `lastNightlyAt`은 방문 머리 단독 update. `PullItem`에 `action`. 요약 로그 카운터 확장. `pull-budget.test.ts:22`·`route-diagnostics.test.ts:46`의 `@/lib/sync/run` mock을 `runNightly` 경계로 옮긴다.
   — 검증: `lib/pull/__tests__/targets.test.ts` "null이 맨 앞 · 오래된 순 · 동점 slug" green · `app/api/pull` 테스트(가짜 `lib/pull/__tests__/fake-client.ts`의 `record`) — publish 갈래: `createGitClient` 0회 + `runSync`가 `trigger: "cron"`으로 불림 · upToDate: `getRefSha` 1회 · `findOpenPr` 0회 · 트리·blob 0회 · head 조회 뒤에만 PR 조회(순서 단언, `Promise.all` 없음) · PR 조회 마감 초과 → `pr-check-failed` · head throw → `base-unreadable` · 적재 시작 마감 초과 → 사건 0행 + `unprocessed` · 실패 방문도 `lastNightlyAt` 기록 · 한 프로젝트 실패가 나머지를 안 막는다 · 요약 로그 한 줄에 카운터 전부.
   — 검증(통합, `lib/nightly/__tests__/nightly.integration.ts`): **방문마다 사건 최대 1행**(갈래별 subtype·결과·사유) · 편집 없는 밤에 `SyncRun` 0행 · `[skip-malmoi-i18n]` 머지 커밋으로 head가 앞선 프로젝트(열린 PR 없음) → `import.nightly` 갈래(완료 조건 13) · 닫힌 PR만 있음 → 적재(완료 조건 6 — `findOpenPr`의 `state: "open"` 파라미터는 `lib/pull/__tests__/client.test.ts`에서 단언) · 함수 사망으로 남은 `running` 적재 행을 다음 방문의 만료 닫기가 닫는다.
-- [ ] **E2** Logs 결과·주체 술어: `deferred` 사유 넷과 `upToDate`가 `eventResult`·`resultWhere`에서 같은 어휘로 떨어지고, `triggerWhere`가 `triggerOf`와 같은 행을 고른다.
+- [x] **E2** Logs 결과·주체 술어: `deferred` 사유 넷과 `upToDate`가 `eventResult`·`resultWhere`에서 같은 어휘로 떨어지고, `triggerWhere`가 `triggerOf`와 같은 행을 고른다.
   — 검증: `lib/events/__tests__/query.integration.ts`에 사유별·주체별 한 행(`source` 없는 옛 CI 행 포함) · 필터 `deferred`가 넷 다 잡는다 · `upToDate` 행의 `eventResult`가 null이 아니다 · `actor=ci`/`nightly`/옛 `automation` 각각이 기대 행만 낸다 · 모든 행에서 `triggerOf(row)`와 `triggerWhere` 소속이 일치.
 
 ── 커밋: `feat(pull): decide nightly publish, import or skip per project`
