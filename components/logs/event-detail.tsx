@@ -1,16 +1,16 @@
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { CopyButton } from "@/components/onboarding/copy-button";
 import { EventGlyph } from "@/components/logs/glyph";
 import { Alert } from "@/components/ui/alert";
+import { ResultBadge } from "@/components/logs/result-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
-import { eventGlyph, eventSentence, eventView, eventFailureMessage, importReasonMessage, refusalMessage, valueState } from "@/lib/events/view";
+import { changedValuesText, deferredText, eventGlyph, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, refusalMessage, triggerOf, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
@@ -57,14 +57,7 @@ export function EventDetail({
         <span className="flex min-w-0 flex-1 flex-col gap-1 pr-9">
           <span className="text-muted-foreground flex items-center gap-2 text-xs">
             {m.logs.detail.kindLabel[KIND_KEY[row.kind]]}
-            {view.label !== null &&
-              (view.tone === "danger" ? (
-                <span className="text-destructive text-xs font-medium">{view.label}</span>
-              ) : view.tone === "warning" ? (
-                <Badge variant="warning">{view.label}</Badge>
-              ) : (
-                <span className="text-muted-foreground text-xs">{view.label}</span>
-              ))}
+            {view.label !== null && <ResultBadge tone={view.tone} label={view.label} />}
             {view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
           </span>
           <DialogTitleSlot.Title className="text-lg font-medium text-pretty">
@@ -129,9 +122,10 @@ export function EventDetail({
                       {surface.reason === null ? "" : ` · ${importReasonMessage(surface.reason)}`}
                     </span>
                   </span>
-                  <span className={surface.status === "failed" ? "text-destructive shrink-0 text-xs font-medium" : "text-muted-foreground shrink-0 text-xs"}>
+                  {/* 소스별 결과도 Sources 행 상태와 같은 배지다(2026-09-30 사용자) — 같은 어휘가 두 화면에서 한 모양이다. */}
+                  <Badge variant={SURFACE_VARIANT[surface.status]} className="shrink-0">
                     {surfaceWord(surface.status)}
-                  </span>
+                  </Badge>
                 </div>
               ))}
             </div>
@@ -153,11 +147,12 @@ export function EventDetail({
         구분선과 빈 56px만 남는 판이 됐다 (2026-09-22 `/design-sync` 실측). 닫기는 종류와 무관하다.
         ⚠️ **`data-*`로 잡는다** — 우상단 X와 접근 이름이 같아(둘 다 "Close") role 질의가 둘을 함께 집는다.
       */}
-      <div data-event-detail-footer className="border-divider flex shrink-0 items-center gap-2 border-t px-6 py-4">
-        {destination(row, slug, canOpenSettings, repoUrl, translationHref)}
+      {/* 순서는 `[Close](보조) [목적지](primary)`다(2026-09-30 사용자 — Sources 상세 모달과 같은 판). 목적지가 없으면 [Close] 하나가 오른쪽에 선다. */}
+      <div data-event-detail-footer className="border-divider flex shrink-0 items-center justify-end gap-2 border-t px-6 py-4">
         <DialogClose asChild>
-          <Button className="ml-auto">{m.logs.detail.actions.close}</Button>
+          <Button>{m.logs.detail.actions.close}</Button>
         </DialogClose>
+        {destination(row, slug, canOpenSettings, repoUrl, translationHref)}
       </div>
     </>
   );
@@ -230,11 +225,14 @@ const KIND_KEY = {
   SETTINGS: "settings",
 } as const satisfies Record<EventRow["kind"], keyof typeof m.logs.detail.kindLabel>;
 
+/** 행 쪽(`event-row.tsx`)과 같은 판정이다 — 자동화 낱말은 `triggerOf`가 정한다. */
 function actorLabel(row: EventRow): string {
-  if (row.actor.kind === "AUTOMATION") return row.kind === "IMPORT" ? m.logs.trigger.ci : m.logs.trigger.cron;
+  if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;
 }
+
+const SURFACE_VARIANT = { imported: "success", partial: "warning", superseded: "neutral", failed: "missing" } as const;
 
 function surfaceWord(status: "imported" | "partial" | "failed" | "superseded"): string {
   if (status === "imported") return m.logs.status.imported;
@@ -253,7 +251,7 @@ function fields(row: EventRow): [string, ReactNode][] {
   const out: [string, ReactNode][] = [];
   const payload = row.payload;
   if (row.kind === "PUBLISH") {
-    out.push([m.logs.detail.labels.trigger, row.actor.kind === "AUTOMATION" ? m.logs.trigger.cron : actorLabel(row)]);
+    out.push([m.logs.detail.labels.trigger, actorLabel(row)]);
     out.push([
       m.logs.detail.labels.files,
       row.run?.changed == null ? (
@@ -291,9 +289,12 @@ function fields(row: EventRow): [string, ReactNode][] {
     out.push([m.logs.detail.labels.locale, payload.locale]);
   }
   if (payload?.kind === "IMPORT") {
-    out.push([m.logs.detail.labels.trigger, `${payload.source === "ci" ? m.logs.trigger.ci : actorLabel(row)}`]);
-    if (row.result === "deferred" && payload.pendingEdits !== null) out.push([m.logs.detail.labels.unsentEdits, m.logs.deferredReason(payload.pendingEdits)]);
+    out.push([m.logs.detail.labels.trigger, actorLabel(row)]);
+    const deferred = row.result === "deferred" ? deferredText(payload) : null;
+    // 편집 수가 아닌 보류는 칸 이름부터 다르다 — `Unsent edits`에 PR 사유를 적으면 칸이 거짓말한다.
+    if (deferred !== null) out.push([heldReason(payload.deferReason) === null ? m.logs.detail.labels.unsentEdits : m.logs.detail.labels.heldBecause, deferred]);
     else if ((payload.pendingEdits ?? 0) > 0) out.push([m.logs.detail.labels.unsentEdits, m.repositorySync.kept(payload.pendingEdits!)]);
+    out.push([m.logs.detail.labels.values, changedValuesText(row.result, payload.changedValues)]);
     if (payload.errorCode !== null) out.push([m.logs.detail.labels.errorCode, payload.errorCode]);
     if (payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(payload.refusal)]);
     if (payload.keys !== null) out.push([m.logs.detail.labels.resultPerSource, m.logs.meta.keys(payload.keys)]);
@@ -314,20 +315,17 @@ function fields(row: EventRow): [string, ReactNode][] {
 
 /**
  * 시안의 푸터 버튼은 폼이 하나다 — [Close]와 목적지 링크가 `Button` `default`/`md`로 정확히 겹친다
- * (h36 · radius 10 · px 12 · 14 · hover `#fafafa`). ⚠️ **`ButtonLink`가 아니라 `buttonClass()`다** —
+ * (primary — 2026-09-30 사용자). ⚠️ **`ButtonLink`가 아니라 `buttonClass()`다** —
  * 셋 중 하나가 외부 리포로 나가는 `target="_blank"`라 `<a>`여야 하고, 그 차용은 `button.tsx`가 정한
  * 경로다(손으로 쓴 클래스 문자열은 `Button`이 받은 hover 교체 같은 갱신을 못 받는다).
  */
-const FOOTER_LINK = cn(buttonClass(), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", "gap-1.5");
-
-/** ⚠️ **화살표는 "여기를 떠난다"는 신호다** — 캔버스가 목적지 셋에 모두 달았고 15/보조색이다. */
-const LEAVE = <ArrowUpRight className="text-muted-foreground size-4" aria-hidden />;
+const FOOTER_LINK = cn(buttonClass({ variant: "primary" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none");
 
 /** 목적지 링크 하나 — 권한이 없거나 대상이 없으면 **그리지 않는다.** */
 function destination(row: EventRow, slug: string, canOpenSettings: boolean, repoUrl: string | null, translationHref: string | null): ReactNode {
-  if (row.kind === "TRANSLATION" && translationHref !== null) return <Link href={translationHref} className={FOOTER_LINK}>{m.logs.detail.actions.openTranslation}{LEAVE}</Link>;
-  if (row.kind === "MEMBER") return <Link href={routes.members(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openMembers}{LEAVE}</Link>;
-  if (row.kind === "SETTINGS" && canOpenSettings) return <Link href={routes.settings(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openSettings}{LEAVE}</Link>;
-  if (row.kind === "PUBLISH" && repoUrl !== null) return <a href={repoUrl} target="_blank" rel="noreferrer" className={FOOTER_LINK}>{m.logs.detail.actions.openRepository}{LEAVE}</a>;
+  if (row.kind === "TRANSLATION" && translationHref !== null) return <Link href={translationHref} className={FOOTER_LINK}>{m.logs.detail.actions.openTranslation}</Link>;
+  if (row.kind === "MEMBER") return <Link href={routes.members(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openMembers}</Link>;
+  if (row.kind === "SETTINGS" && canOpenSettings) return <Link href={routes.settings(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openSettings}</Link>;
+  if (row.kind === "PUBLISH" && repoUrl !== null) return <a href={repoUrl} target="_blank" rel="noreferrer" className={FOOTER_LINK}>{m.logs.detail.actions.openRepository}</a>;
   return null;
 }

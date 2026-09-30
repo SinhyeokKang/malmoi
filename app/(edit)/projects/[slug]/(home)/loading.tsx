@@ -33,7 +33,7 @@ export default function ProjectHomeLoading() {
       */}
       <span className="sr-only" role="status">{m.home.loading}</span>
       {/* ⚠️ `aria-hidden`이 머리와 본문 **둘 다**에 있다 — 하나만 빠져도 스크린리더가 회색 블록을 읽는다. */}
-      <PanelHeader width="fluid" aria-hidden>
+      <PanelHeader aria-hidden>
         <div className="flex items-center gap-2.5">
           <Skeleton className="size-7 rounded" />
           <Skeleton className="h-6 w-48 rounded-md" />
@@ -44,7 +44,7 @@ export default function ProjectHomeLoading() {
         </div>
       </PanelHeader>
 
-      <PanelBody width="fluid" className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5" aria-hidden>
+      <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5" aria-hidden>
         <div className="flex min-w-0 flex-col gap-5">
           <div className="grid grid-cols-4 gap-2">
             {[0, 1, 2, 3].map((i) => (

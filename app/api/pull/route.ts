@@ -6,11 +6,13 @@ import { getPrisma } from "@/lib/db";
 import { classifyFailure, fail } from "@/lib/failure";
 import { optionalEnv } from "@/lib/env";
 import { checkBearer, statusFor } from "@/lib/push/auth";
+import { runNightly } from "@/lib/nightly/run";
+import { summarizeNightly } from "@/lib/nightly/summary";
 import { PULL_BATCH_LIMIT, PULL_TIME_BUDGET_MS, selectPullTargets, type PullItem } from "@/lib/pull/targets";
-import { runSync } from "@/lib/sync/run";
 
 /**
- * DB → `malmoi-i18n/sync` PR. **cron 전용 진입점이다** — 편집 UI는 Server Action이 `triggerPull`을
+ * 야간 동기화 (nightly-sync) — 프로젝트마다 `runNightly`가 **Publish(DB → PR) · 서버 적재(리포 → DB) · 스킵** 중 하나를 고른다.
+ * **cron 전용 진입점이다** — 편집 UI는 Server Action이 `triggerPull`을
  * 직접 부른다 (CLAUDE.md "데이터 변경 경로", 내부 쓰기에 Route Handler를 새로 만들지 않는다).
  *
  * ⚠️ **`middleware.ts`의 matcher에 넣지 않는다.** cron 요청엔 세션이 없다. 지금 matcher는 `/api/*`를
@@ -55,19 +57,23 @@ export async function GET(request: Request): Promise<NextResponse> {
         slug: true,
         installationId: true,
         repositoryId: true,
-        surfaces: { select: { archivedAt: true, lastCommitSha: true } },
+        // 야간 판정의 입력 — head 조회·PR 조회·적재의 리포 신원을 **이 행에서** 넘긴다(방문 중에 다시 읽지 않는다).
+        repoOwner: true,
+        repoName: true,
+        baseBranch: true,
+        surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true } },
         // 보관 제외 (7단계) — 순회 대상에서 빠지므로 게이트까지 가지도 않는다.
         archivedAt: true,
-        // ⚠️ **정렬 재료다** — 마지막 실행이 오래된 프로젝트부터 돈다. 상한에서 잘린 뒤쪽이
+        // ⚠️ **정렬 재료다** — 마지막 야간 방문이 오래된 프로젝트부터 돈다. 상한에서 잘린 뒤쪽이
         // 매일 밤 같은 프로젝트면 그것은 영원히 안 돈다 (`selectPullTargets`).
-        syncRuns: { take: 1, orderBy: { startedAt: "desc" }, select: { startedAt: true } },
+        lastNightlyAt: true,
       },
     });
 
     // ⚠️ **상한이 붙었다** (2026-09-09, sec-audit 발견 26) — 못 돈 수가 응답과 로그에 실린다.
     const selected = selectPullTargets(projects, PULL_BATCH_LIMIT);
     let unprocessed = selected.unprocessed;
-    const byslug = new Map(projects.map((p) => [p.slug, p.id]));
+    const byslug = new Map(projects.map((p) => [p.slug, p]));
     const results: PullItem[] = [];
     for (const [index, slug] of selected.targets.entries()) {
       // ⚠️ **예산을 넘으면 나머지를 시작하지 않는다** (`PULL_TIME_BUDGET_MS`) — `maxDuration`에 죽으면 아래 요약이
@@ -83,18 +89,15 @@ export async function GET(request: Request): Promise<NextResponse> {
       // 바깥 catch가 받아 이미 모은 결과가 통째로 버려지고 500이 된다. `failureItem`은 순수 판정과
       // 로그뿐이라 던질 것이 없다.
       //
-      // ⚠️ **`runSync`는 던지지 않는다** (7단계) — 실패도 게이트 거부도 값이다. 그래도 `try`를 남기는
-      // 이유는 그 함수의 DB 쓰기(행 생성·닫기)가 여전히 던질 수 있어서다.
+      // ⚠️ **`runNightly`의 갈래들은 실패를 값으로 준다** — 그래도 `try`를 남기는 이유는 방문 기록·사건 쓰기·적재의 실행권
+      // 획득(`acquire`) 같은 DB 쓰기가 여전히 던질 수 있어서다. 던지면 이 프로젝트만 `failed`이고 나머지는 돈다.
       try {
         // 인가를 지날 일이 없는 경로다 — `projectId`는 방금 조회한 행의 것이고 slug는 로그용이다.
         // ⚠️ **부재를 조용히 건너뛰지 않는다.** `targets`가 같은 배열에서 나오므로 일어날 수 없지만,
         // 일어난다면 그 프로젝트는 결과에서 **흔적 없이 사라지고** 요약의 `targets` 수와 어긋난다 —
         // 이 리포가 반복해 밟은 "실패한 조회를 없음으로 읽는" 형태다 (POSTMORTEM 2026-09-03).
-        const projectId = byslug.get(slug) ?? fail(`no project row for target: ${slug}`);
-        results.push({
-          slug,
-          ...(await runSync(prisma, { projectId, slug, trigger: "cron", requestedBy: null, credential: undefined })),
-        });
+        const target = byslug.get(slug) ?? fail(`no project row for target: ${slug}`);
+        results.push({ slug, ...(await runNightly(prisma, target, () => Date.now() - startedAt)) });
       } catch (error) {
         results.push(failureItem(slug, error));
       }
@@ -103,8 +106,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     // ⚠️ **요약을 한 줄 남긴다.** 응답이 항상 200 배열이라 cron 실행은 성공으로 표시되고, cron은 본문을
     // 버린다 — 요약이 없으면 "전 프로젝트가 매일 밤 실패한다"가 성공과 같은 관측값이 된다
     // (POSTMORTEM 2026-09-06의 형태). 로그 grep 하나로 잡히는 자리를 만든다.
-    const failed = results.filter((r) => r.status === "failed").length;
-    console.log(`[pull] targets=${results.length} failed=${failed} unprocessed=${unprocessed}`);
+    // ⚠️ 응답의 `unprocessed`는 **방문하지 않은 수**만이다 — 마감으로 멈춘 방문은 `results`의 항목(`action: "none"`)이고 요약에서는 `deadline`으로
+    // 센다. 합치면 `results.length + unprocessed`가 고른 수보다 커진다.
+    console.log(summarizeNightly(results, unprocessed).line);
     // ⚠️ **미처리를 배열 밖에 싣는다** — 항목으로 섞으면 `PullItem` 계약이 흔들리고, 소비자가
     // 그것을 프로젝트 하나로 센다. 0이어도 필드를 뺀 적이 없어야 부재와 0이 구별된다.
     return NextResponse.json({ results, unprocessed });

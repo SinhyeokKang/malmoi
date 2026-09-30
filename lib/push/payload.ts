@@ -177,4 +177,9 @@ export type PushResponse =
       orphanedLocales: number;
       refs: number;
     }
-  | { status: "deferred"; reason: "pending-edits"; pendingCount: number; projectId: string; commitSha: string };
+  | { status: "deferred"; reason: "pending-edits"; pendingCount: number; projectId: string; commitSha: string }
+  /**
+   * 열린 Malmoi PR 게이트 (nightly-sync). **`pendingCount`가 없다** — 미전달 편집 0에서 선 보류라 수가 거짓 "0 unsent"가 된다.
+   * v2 CLI는 `pendingCount`가 정수일 때만 경고하므로 이 갈래는 경고 없이 green이다.
+   */
+  | { status: "deferred"; reason: "open-pr" | "pr-check-failed"; projectId: string; commitSha: string };

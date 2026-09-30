@@ -329,3 +329,24 @@ describe("clearedLogsQuery — 필터를 전부 뗀 쿼리", () => {
     expect(parseLogFilter(clearedLogsQuery({ ...narrowed, event: "evt_9" }))).toEqual(filter({ event: "evt_9" }));
   });
 });
+
+describe("parseLogFilter — 주체 필터 ci · nightly (nightly-sync)", () => {
+  it.each(["ci", "nightly", "automation"])("?actor=%s 가 URL로 왕복한다", (actor) => {
+    const parsed = parseLogFilter({ actor });
+    expect(parsed.actor).toBe(actor);
+    expect(logsQuery(parsed)).toEqual({ actor });
+    expect(parseLogFilter(logsQuery(parsed))).toEqual(parsed);
+  });
+
+  it("주체 필터는 좁히는 축이다 — hasNarrowing", () => {
+    expect(hasNarrowing(filter({ actor: "ci" }))).toBe(true);
+    expect(hasNarrowing(filter({ actor: "nightly" }))).toBe(true);
+    expect(hasNarrowing(filter())).toBe(false);
+  });
+
+  it("ci ↔ nightly 전환은 커서를 버린다 — filterChanged", () => {
+    expect(filterChanged(filter({ actor: "ci" }), filter({ actor: "nightly" }))).toBe(true);
+    expect(filterChanged(filter({ actor: "automation" }), filter({ actor: "ci" }))).toBe(true);
+    expect(filterChanged(filter({ actor: "ci" }), filter({ actor: "ci" }))).toBe(false);
+  });
+});

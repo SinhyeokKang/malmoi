@@ -324,7 +324,7 @@ it("Import 보조줄 판정은 남은 편집과 소스별 결과를 함께 보�
   const { eventMeta } = await import("../view");
   const parts = eventMeta({ kind: "IMPORT", subtype: "import.run", result: "imported", actor: { kind: "USER" }, run: null,
     payload: { kind: "IMPORT", source: "manual", surfaceSlugs: ["web"], keys: 4, pendingEdits: 2,
-      surfaces: [{ surfaceSlug: "web", status: "imported", count: 4, reason: null }], errorCode: null, refusal: null } }, false);
+      surfaces: [{ surfaceSlug: "web", status: "imported", count: 4, reason: null }], errorCode: null, refusal: null, deferReason: null, changedValues: null } }, false);
   expect(parts).toContain(m.repositorySync.kept(2));
   expect(parts).toContain(`web: ${m.logs.status.imported}, ${m.logs.meta.keys(4)}`);
 });

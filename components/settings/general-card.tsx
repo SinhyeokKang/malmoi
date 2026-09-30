@@ -66,12 +66,13 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
                 catch { setImageError(uploadRejectMessage("unavailable")); }
               });
             }}>{m.settings.general.upload}</FileInput>
-            <Button className="[&_.animate-spin]:size-3.5" variant="ghost" aria-describedby="project-image-caption" disabled={archived || pending || !image} loading={pending && operation === "remove"} aria-busy={pending && operation === "remove"} onClick={() => {
+            {/* 썸네일이 없으면 [Remove]를 그리지 않는다(2026-09-30 사용자 — 꺼진 버튼을 걷었다). */}
+            {image && <Button className="[&_.animate-spin]:size-3.5" variant="ghost" aria-describedby="project-image-caption" disabled={archived || pending} loading={pending && operation === "remove"} aria-busy={pending && operation === "remove"} onClick={() => {
               setImageError(null); setOperation("remove");
               run(async () => { try { const result = await deleteProjectImage(slug); if (!result.ok) setImageError(isAccessError(result.reason) ? settingsAccessMessage(result.reason) : uploadRejectMessage(result.reason)); } catch { setImageError(uploadRejectMessage("unavailable")); } });
-            }}>{m.settings.general.remove}</Button>
+            }}>{m.settings.general.remove}</Button>}
           </div>
-          <p id="project-image-caption" role={shownImageError ? "alert" : undefined} className={cn("text-xs", shownImageError ? "text-destructive" : "text-muted-foreground")}>{shownImageError && <CircleAlert aria-hidden className="mr-1 inline size-3.5" />}{caption}{!image && !shownImageError && !pending && !archived && <span className="sr-only"> {m.settings.general.noImage}</span>}</p>
+          <p id="project-image-caption" role={shownImageError ? "alert" : undefined} className={cn("text-xs", shownImageError ? "text-destructive" : "text-muted-foreground")}>{shownImageError && <CircleAlert aria-hidden className="mr-1 inline size-3.5" />}{caption}</p>
         </div>
       </div>
     </PanelFacts>

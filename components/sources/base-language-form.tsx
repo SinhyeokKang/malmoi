@@ -52,9 +52,11 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
             onPointerDown={event => { if (locked) event.preventDefault(); }} onClick={event => { if (locked) event.preventDefault(); }} onKeyDown={event => { if (locked && event.key !== "Tab") event.preventDefault(); }}><SelectValue /></SelectTrigger>
           <SelectContent>{locales.map(code => <SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent>
         </Select>
-        <Button ref={submit} type="submit" loading={state.pending} disabled={unavailable || state.draft === state.baseline}>{m.locales.field.save}</Button>
+        {/* primary다(2026-09-30 사용자) — 모달 바닥의 [Open translations]와 함께 primary가 둘이다(§6.4 "화면당 하나"의 예외). */}
+        <Button ref={submit} type="submit" variant="primary" loading={state.pending} disabled={unavailable || state.draft === state.baseline}>{m.locales.field.save}</Button>
         {state.result === "saved" && <span role="status" className="text-muted-foreground text-xs">{m.locales.field.saved}</span>}
-        <p className="text-muted-foreground min-w-0 flex-1 text-xs leading-[1.7] @max-[850px]:basis-full">{m.locales.field.help}</p>
+        {/* 설명은 컨트롤 줄 아래로 떨어진다(2026-09-30 사용자 — 옆에 두면 세 줄로 꺾여 컨트롤보다 키가 컸다). */}
+        <p className="text-muted-foreground min-w-0 basis-full text-xs leading-[1.7]">{m.locales.field.help}</p>
       </div>
     {unavailable && <p id="base-unavailable" className="text-muted-foreground text-xs">{baseLocale === null ? m.sources.firstImport : m.locales.field.noLocales}</p>}
     {error && <span className="text-destructive flex items-start gap-1.5 text-xs leading-[1.55]"><CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden />{isRepositorySettingsError(error) ? repositorySettingsErrorMessage(error) : isAccessError(error) ? accessErrorMessage(error) : m.locales.field.failed}</span>}

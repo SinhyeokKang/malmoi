@@ -99,11 +99,11 @@ export default async function LogsPage({
         ⚠️ **설명은 보관 안내 하나뿐이다** (2026-09-24 사용자) — 옛 "Everything that happened…"는 종류
         필터가 이미 말하는 목록이었다.
       */}
-      <PanelHeader width="fluid" description={archived ? m.logs.archived.description : undefined}>
+      <PanelHeader description={archived ? m.logs.archived.description : undefined}>
         <LogFilters slug={slug} filter={filter} sources={sources} actors={actors} refreshable={!archived} />
       </PanelHeader>
 
-      <PanelBody width="fluid" className="space-y-4">
+      <PanelBody className="space-y-4">
         {page.rows.length === 0 ? (
           narrowed ? (
             /* ⚠️ **빈 이력과 원인이 반대다** — 하나는 프로젝트가 비었고 하나는 내가 좁혔다. */

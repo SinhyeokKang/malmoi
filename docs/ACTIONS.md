@@ -113,6 +113,20 @@ Node 20 사용 중단 경고는 옮기기 전까지 남는다.
 v2는 그 수정(`scripts/local-env.ts`) 뒤의 커밋이다 — `scripts/__tests__/push-local-graph.test.ts`가 그 그래프를 상시로 센다.
 판정의 근거·파일:줄은 `docs/features/action-run-cache/design.md` "v2가 v1과 다른 것"에 있었다 — 2026-09-28 v1.0.1 뒤 지웠으므로 `git log -- docs/features/action-run-cache`로 본다.
 
+### v3 (nightly-sync — 아직 안 끊었다)
+
+**`malmoi-i18n-push-v3`는 서버가 `/merge`로 프로덕션에 나간 뒤에 끊는다** (아래 "서버 배포 → 태그 릴리스 → 사용 리포 전환"). 그 전까지 소비자는 전부 v2(또는 v1)이고, 이 절의 v3 동작은 **다음 릴리스 뒤에야** main의 스크립트로 나간다. v2와 다른 것은 **둘**이다 — 보류 사유별 CLI 경고(서버가 열린 PR 보류 §3 표의 `open-pr`·`pr-check-failed`를 더했고, 그 응답엔 `pendingCount`가 없다)와 열린 PR 안내 스텝의 문구(아래 "열린 PR이 있으면…" 절).
+
+⚠️ **v2 소비자는 서버 게이트가 나간 뒤 거짓 경고를 본다** — v2 태그의 `action.yml`은 열린 PR이 있으면 여전히 "이 push가 그 PR의 편집을 덮는다 (MVP 3.1의 손실 창)"를 찍는데, 서버가 적재를 보류하므로 그 문장은 더는 참이 아니다. 편집은 덮이지 않는다. **v3로 옮길 때까지** 이 경고는 무시해도 된다고 안내한다.
+
+| `deferred` 응답의 `reason` | v2 CLI | v3 CLI |
+|---|---|---|
+| `pending-edits` (`pendingCount` 있음) | exit 0 + 미전달 편집 경고 | 같다 |
+| `open-pr` | **exit 0, 경고 없음**(본문만 찍힌다) | exit 0 + `::warning title=Malmoi import deferred::a Malmoi pull request is still open — repository changes were not imported, so the translations in it aren't overwritten. Review the pull request and merge or close it; the next push or the nightly sync imports these changes.` |
+| `pr-check-failed` | **exit 0, 경고 없음** | exit 0 + `::warning title=Malmoi import deferred::couldn't check whether the Malmoi pull request is still open — repository changes were not imported. Re-run this job later.` |
+
+⚠️ **v2가 새 사유에서 경고 없이 green인 것은 의도다** — v2 CLI(`lib/cli/push-response.ts`의 옛 판정)는 `pendingCount`가 정수일 때만 경고하므로, 서버가 수를 싣지 않는 사유는 조용히 지나간다. 거짓 "0 unsent translation changes"보다 낫다. 본문(`"status":"deferred","reason":"open-pr"`)은 v2 run 로그에도 찍힌다. 경고 문구는 `lib/cli/__tests__/push-response.test.ts`가 고정한다.
+
 ⚠️ **앱 릴리스 태그(`v<x.y.z>`)는 action 계약이 아니다 — `@malmoi-i18n-push-vN`을 쓴다** (2026-09-27). `/merge`가
 머지마다 `v1.0.0` 같은 태그를 만들고 그것도 `uses:`가 받는 유효한 ref지만, 앱 릴리스마다 움직이는 축이라
 action 호환을 약속하지 않는다. 앱 버전이 올라도 action 태그는 안 움직인다.
@@ -173,7 +187,7 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 | `push-token` | **항상.** 그 프로젝트의 토큰 **원문**이다(서버는 해시만 갖는다) — 이것이 프로젝트를 정하고 `project`는 그 뒤에 대조된다. 재발급하면 옛 토큰이 즉시 무효라 이 리포의 secret을 같은 세션에 바꾼다 |
 | `project` | **항상.** `push-token`이 정한 프로젝트의 slug와 다르면 409다 (오배송 거부 — ARCHITECTURE §5.5.5). 토큰이 먼저 프로젝트를 정하고 이 값은 그 뒤에 대조된다 |
 | `target` | 로케일·소스가 **하위 디렉터리**에만 있을 때(모노레포). 기본은 `github.workspace`. `git rev-parse`도 이 경로에서 돈다 |
-| `github-token` | **항상 권장.** 없으면 열린 번역 PR 경고 스텝이 통째로 빠진다 — 실패도 경고도 없이 조용히 |
+| `github-token` | **항상 권장.** 없으면 열린 번역 PR 경고 스텝이 통째로 빠진다 — 실패도 경고도 없이 조용히. ⚠️ **2026-09-30(nightly-sync)부터 이 스텝은 안내일 뿐이다** — 열린 PR이 있으면 서버가 이 토큰과 무관하게 적재를 보류한다(§3 `open-pr`). 빠지는 것은 push **전의** 한 줄뿐이다 |
 | `adapter` | **말모이가 생성하는 YAML은 확정한 어댑터를 항상 명시한다.** 자동 탐지·수동 지정 여부와 무관하게 결과 화면과 설정 화면이 같은 값을 내므로, 복사 후 CI의 탐지 순위가 저장된 포맷을 바꾸지 않는다. **한 리포에 포맷이 둘이면 필수.** `ts-dict`도 2026-09-14부터 자동 탐지 후보에 오르지만(ARCHITECTURE §1.9 판정 ③) **1순위는 `detectCandidatesAcross`의 순위가 정한다** — bugshot-2는 `_locales` 4키가 크롬 버킷이라 `ts-dict` 903키보다 언제나 앞선다 → `adapter: ts-dict`. 명시가 없으면 순위가 다른 쪽을 골라 큰 쪽 키가 orphan된다 |
 | `base-locale` | **`en`이 없는 리포는 필수.** 없으면 사전순 첫 로케일을 base로 추정하고, 틀리면 진짜 base에만 있는 키가 적재에서 빠져 orphaned로 떨어진다 — 키 집합은 base 파일이 정한다 (2026-09-04). ⚠️ **말모이 설정 화면에서 기준 언어를 바꾸면 이 값도 함께 고쳐야 한다** (6b-3): 화면은 "선언"만 저장하고 실제 전환은 **이 값을 든 다음 push**가 한다 — 안 고치면 CI는 계속 옛 base를 보내 통과하고(409가 아니다) 변경이 **영영 일어나지 않는다.** 그래서 대기 중에는 설정 화면의 워크플로 YAML이 이 줄을 무조건 박아 낸다. ⚠️ **2026-09-14부터 말모이가 내는 YAML은 대기가 아닐 때도 이 줄을 든다** — 온보딩 ③에서 탐지 1순위가 아닌 기준 언어를 고를 수 있고, 그때 이 줄이 없으면 CI가 1순위를 보내 `format mismatch` 409가 된다. 결과 화면과 설정 화면이 같은 값을 낸다 |
 | `wrapper` | 기본값(`@/i18n#t`)이 아닐 때. 여러 개면 줄바꿈으로 나눈다 |
@@ -215,6 +229,8 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 | `api-url`이 https가 아니다(루프백 `http:` 제외) | **red** (exit 2 — 토큰을 평문으로 보내기 전에 멈춘다) |
 | **박아 둔 `adapter`·`base-locale`이 그 리포의 실제 탐지 결과와 안 맞는다** | **red** (exit 1 — **서버까지 가지 않는다**). 정확히 이 문서가 "박아라"라고 권하는 두 input의 실패 경로다 |
 | **말모이에 아직 안 보낸 번역 편집이 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"pending-edits","pendingCount":N,…}` (2026-09-18, sync-edit-protection). 미전달 편집이 하나라도 있으면 **프로젝트 전체 적재를 보류**해 편집이 리포 값에 덮이지 않게 한다. 이 run의 새 키·삭제·로케일 변경도 앱에 **안 들어갔다**. 풀리는 길: 번역자가 Publish해 PR로 보낸 뒤 이 job을 **다시 돌리기**(다음 push도 된다), 또는 OWNER가 앱의 `[Sync]`에서 편집 폐기를 승인하기. ⚠️ **Publish로 안 나가는 편집이 있다** (#129) — 언어 파일이나 키 자리가 리포에 없으면(코드에서 지운 base 키 포함) 그 편집은 보류되어 Publish 뒤에도 `deferred`가 이어진다. 그때 주된 해법은 **파일·키를 리포에 되돌려 놓기**이고, 아니면 폐기 승인 Sync, 되돌릴 기준이 있는 셀이면 OWNER의 `Revert to last sent`다. 경고 줄이 이 순서로 함께 말한다(응답 필드는 그대로다 — 서버는 어느 편집이 보류인지 모른다). ⚠️ **red가 아니다** — 남의 리포 CI를 앱 상태로 실패시키지 않는다. 새 CLI는 `::warning title=Malmoi import deferred::…` 한 줄을 더 낸다(구 태그 `@malmoi-i18n-push-v1`은 본문만 찍는다 — 그래도 exit 0이라 안전하다. 성공 본문은 `"status":"applied"`로 시작한다) |
+| **말모이 번역 PR(`malmoi-i18n/sync-<project>`)이 아직 열려 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"open-pr",…}`(`pendingCount` 없음, 2026-09-30 nightly-sync). 미전달 편집이 0이어도 그렇다 — Publish가 커밋에 성공하면 편집 토큰이 비워지므로, PR이 머지되기 전에 적재하면 그 PR의 번역이 DB에서 옛 리포 값으로 덮인다. 이 run의 새 키·삭제도 앱에 **안 들어갔다.** 풀리는 길: **그 PR을 머지하거나 닫는다** — 그 뒤 **다음 push나 야간 동기화가 받는다.** ⚠️ **이 job을 다시 돌리지 않는다** — PR이 머지된 뒤 옛 커밋의 job을 다시 돌리면 그 커밋의 옛 값이 방금 머지된 번역을 strict로 덮는다(야간이 이미 더 새 커밋을 적재했으면 `stale-commit` 409다). 닫은(머지 안 한) PR은 열린 PR로 세지 않는다. ⚠️ **GitHub App 설치나 리포 고정(`installationId`·`repositoryId`)이 없는 프로젝트엔 이 게이트가 없다** — PR을 낼 수 없으니 열린 PR도 없다. v2 CLI는 경고 없이 본문만 찍는다(§2 "v3") |
+| **말모이가 열린 PR을 확인하지 못했다**(GitHub 오류·설치 토큰 실패·마감 초과) | **green + 적재 없음** — 200 `{"status":"deferred","reason":"pr-check-failed",…}`. ⚠️ **"PR 없음"으로 읽지 않는다**(fail-closed) — 그렇게 읽으면 GitHub 장애 동안 열린 PR의 번역이 덮인다. 대가로 **CI 적재가 GitHub 가용성에 묶인다.** 할 일: 나중에 이 job을 **다시 돌린다**(야간 동기화도 다시 묻는다). 계속되면 말모이 설정의 GitHub 연결(설치·리포 선택)을 본다 |
 | `head_commit.message`에 `[skip-malmoi-i18n]` | **green + `::notice`, 적재 없음** — pull이 만든 커밋이 머지될 때 무한 루프를 막는 가드다. 마커는 **커밋 메시지와 PR 제목 둘 다**에 있어 squash·rebase·merge commit 어느 방식이든 잡힌다(아래 "머지 방식"). "적재가 안 됐다"의 흔한 원인이라 여기 적는다 |
 | 동적 키만 있어 `refs`가 0건 | green + 로그 한 줄 |
 | 로케일 파일에 없는 키를 코드가 참조 | green + 로그 한 줄 |
@@ -247,7 +263,7 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 
 ⚠️ **401부터 푼다 — 토큰이 틀리면 400·409를 아예 못 본다.** JSON 파싱과 zod 검증이 **인증 뒤에** 있다(`app/api/push/route.ts` — `maxDuration = 60`인 공개 엔드포인트라 무효 토큰 하나로 1446키 페이로드를 파싱시키고 zod `issues`로 스키마 구조까지 받아 가게 두지 않는다). 그래서 페이로드가 아무리 깨져 있어도 토큰이 안 맞으면 응답은 401이다 — 진단을 페이로드에서 시작하면 엉뚱한 곳을 판다.
 
-응답 본문이 run 로그에 **800자**까지 찍힌다(`lib/cli/push-response.ts`의 `reportPushResponse`가 든 `slice(0, 800)` — `scripts/push-local.ts`는 부르기만 한다 — 바이트가 아니라 UTF-16 문자다. 한국어 문구가 실리면 실제 상한이 최대 ~2,400바이트다). 4xx는 본문으로 진단된다 — 400은 `{"error":"invalid payload", issues}`(zod) 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때) 또는 `{"error":"body too large"}`(본문 **4,500,000바이트** 초과 — Vercel 함수의 요청 본문 상한 이하로 잡은 값이다. 플랫폼 상한이 2진 4.5 MiB라면 그 사이의 페이로드는 여기서 걸린다), 409는 다섯이고 **보관이 맨 앞이다**(`{"error":"archived"}` — 위 표 참고) — 나머지 넷은 판정 순서대로 slug 오배송(`expected/got`) · 표면 불일치(`surface mismatch`) · **표면 교체**(`format mismatch` — `got`이 `adapter`·`pathTemplate`·`baseLocale` 객체이고, `expected`엔 거기에 **`declaredBaseLocale`이 하나 더** 실린다: 대기 중인 프로젝트의 CI 로그에서 "선언한 그 값도 받아들여진다"가 보여야 한다 — 6b-3) · 커밋 역행(`commitAt/lastCommitAt`)이다. ⚠️ **표면 교체가 커밋 역행보다 앞이다** — 둘 다 걸린 run은 `format mismatch`를 받는다. 표면 교체는 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다. ⚠️ **같은 409의 두 번째 경로가 있고 그쪽엔 이 처방이 안 듣는다** — 리포가 **로케일 파일 경로를 옮긴** 경우다(`checkFormat`이 `pathTemplate`도 비교하므로 워크플로에 무엇을 박아도 영구 red다). 서버는 GitHub을 부르지 않아 정당한 이전을 오배송과 구별할 수 없다 — ⚠️ **재설정 UI는 아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다, PRODUCT),  **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
+응답 본문이 run 로그에 **800자**까지 찍힌다(`lib/cli/push-response.ts`의 `reportPushResponse`가 든 `slice(0, 800)` — `scripts/push-local.ts`는 부르기만 한다 — 바이트가 아니라 UTF-16 문자다. 한국어 문구가 실리면 실제 상한이 최대 ~2,400바이트다). 4xx는 본문으로 진단된다 — 400은 `{"error":"invalid payload", issues}`(zod) 또는 `{"error":"invalid json"}`(본문이 JSON이 아닐 때) 또는 `{"error":"body too large"}`(본문 **4,500,000바이트** 초과 — Vercel 함수의 요청 본문 상한 이하로 잡은 값이다. 플랫폼 상한이 2진 4.5 MiB라면 그 사이의 페이로드는 여기서 걸린다), 409는 다섯이고 **보관이 맨 앞이다**(`{"error":"archived"}` — 위 표 참고) — 나머지 넷은 판정 순서대로 slug 오배송(`expected/got`) · 표면 불일치(`surface mismatch`) · **표면 교체**(`format mismatch` — `got`이 `adapter`·`pathTemplate`·`baseLocale` 객체이고, `expected`엔 거기에 **`declaredBaseLocale`이 하나 더** 실린다: 대기 중인 프로젝트의 CI 로그에서 "선언한 그 값도 받아들여진다"가 보여야 한다 — 6b-3) · 커밋 역행(`commitAt/lastCommitAt`)이다. ⚠️ **표면 교체가 커밋 역행보다 앞이다** — 둘 다 걸린 run은 `format mismatch`를 받는다. 표면 교체는 워크플로에 `adapter`·`base-locale`이 안 박혀 CI가 탐지 1순위를 보낼 때 난다. ⚠️ **같은 409의 두 번째 경로가 있고 그쪽엔 이 처방이 안 듣는다** — 리포가 **로케일 파일 경로를 옮긴** 경우다(`checkFormat`이 `pathTemplate`도 비교하므로 워크플로에 무엇을 박아도 영구 red다). 서버는 리포 트리를 읽지 않아(GitHub 호출은 열린 PR 조회 하나뿐이다) 정당한 이전을 오배송과 구별할 수 없다 — ⚠️ **재설정 UI는 아직 없다**(7단계가 `needs_configuration`을 후속으로 미뤘다, PRODUCT),  **401은 `{"error":"unauthorized"}` 하나뿐이다**(헤더 없음·토큰 오타·미발급 프로젝트가 전부 같은 응답이다 — 프로젝트 존재를 노출하지 않는다. 404는 2026-09-07에 사라졌다). **500은 `{"error":"internal","ref":"…"}`** 이고 원인은 말모이 Vercel 로그에 `[push] <ref>`로 있다(대상 리포가 public일 수 있어 남의 라이브러리 메시지는 싣지 않는다 — ARCHITECTURE §6.0). 우리 문구(`MissingEnvError`·`AppError`)는 그대로 온다.
 
 ### 실행 식별자 — 같은 실행이 두 줄이 되지 않게 한다 (2026-09-20)
 
@@ -271,11 +287,13 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 ⚠️ **대상 리포가 쓰는 action 태그는 서버 배포만으로 새 스크립트를 받지 않는다** — 그 태그를
 옮기는 것이 릴리스다(CLAUDE.md). 순서: **서버 배포 → 태그 릴리스 → 사용 리포 전환.** `executionId`를 내는 생산자는 v2부터다.
 
-### 열린 PR 경고는 차단이 아니다
+### 열린 PR이 있으면 서버가 적재를 보류한다 (2026-09-30 판정 반전)
 
-번역 PR이 머지되기 전의 push는 그 편집을 덮는다 (ARCHITECTURE §0 불변식 2의 손실 창 — 2026-09-03에 실증됐다). 그래서 열린 번역 PR이 있으면 run 요약에 경고가 붙는다. 브랜치는 **프로젝트별**이다 — `malmoi-i18n/sync-<project>` (`inputs.project`로 조립한다. 2026-09-05에 상수 하나에서 갈렸고, 이 조회가 옛 이름을 보던 동안 경고는 항상 "없음"이었다).
+번역 PR이 머지되기 전의 push는 그 편집을 덮었다 (ARCHITECTURE §0 불변식 2의 손실 창 — 2026-09-03에 실증됐다). **2026-09-30(nightly-sync)부터 서버가 막는다** — `/api/push`가 인증·미전달 편집 사전 집계 뒤에 GitHub App installation 토큰으로 열린 말모이 PR을 조회하고, 있으면 적재 전체를 `deferred`(`open-pr`)로 보류한다(§3 표). 야간 동기화의 서버 적재도 같은 게이트를 지난다. action의 열린 PR 경고 스텝은 그 사실을 push **전에** 알리는 안내로 남았다 — **v3부터** 문구가 "이 push가 그 PR의 편집을 덮는다"에서 "이 PR을 머지하거나 닫을 때까지 Malmoi가 리포 변경의 적재를 보류한다"로 바뀐다(v2 태그는 옛 문구 그대로라 게이트 뒤에는 거짓이다 — §2 "v3"), `github-token`이 없어 이 스텝이 빠져도 보류는 일어난다. 브랜치는 **프로젝트별**이다 — `malmoi-i18n/sync-<project>` (`inputs.project`로 조립한다. 2026-09-05에 상수 하나에서 갈렸고, 이 조회가 옛 이름을 보던 동안 경고는 항상 "없음"이었다).
 
-**막지 않는 이유**: 막으면 "어느 쪽이 이기는지"를 CI가 판정하게 되고, 그건 병합 로직이라 코어 원칙을 깬다. 개발자가 볼 재료만 남기고 판단은 사람이 한다.
+**옛 판정**(~2026-09-29): "막으면 '어느 쪽이 이기는지'를 CI가 판정하게 되고, 그건 병합 로직이다 — 경고만 남긴다." **뒤집은 이유**: 게이트는 셀을 고르지 않는다. 입력은 "말모이 PR이 열려 있나" 하나이고 결과는 **적재 전체의 보류**다 — 미전달 편집 보류(`pending-edits`)와 같은 부류다. 리포 값과 DB 값을 견주는 코드는 여전히 0곳이고, 보류가 풀리면 적재는 전과 같은 strict 덮어쓰기다. 경고만으로는 편집자가 Publish한 번역이 리뷰어가 PR을 보기 전에 DB에서 사라지는 것을 아무도 막지 못했다.
+
+**대가**: PR이 열린 동안 리포의 새 키·삭제가 앱에 안 들어온다(야간 Publish가 PR을 매일 갱신하므로 편집이 이어지는 팀에선 며칠 이어질 수 있다 — 푸는 사람은 PR 리뷰어다). 조회 실패도 보류라(`pr-check-failed`) CI 적재가 GitHub 가용성에 묶인다.
 
 ### 머지 방식은 무엇이든 된다 — 단, PR 제목의 마커를 지우지 않는다
 
@@ -284,3 +302,5 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 ## 4. 야간 pull은 대상 리포와 무관하다
 
 `/api/pull`은 **말모이의 Vercel Cron**이 부른다 (`vercel.json`, UTC 18:00 = KST 03:00). 대상 리포에 pull용 워크플로를 넣지 않는다 — 리포 쓰기는 말모이의 GitHub App이 하고, 대상 리포의 `GITHUB_TOKEN`은 이 경로에 들어오지 않는다 (ARCHITECTURE §6).
+
+**야간은 리포에서 받기도 한다** (2026-09-30, nightly-sync). 미전달 편집이 없는 프로젝트는 base head가 마지막 적재와 다르고 열린 말모이 PR이 없으면 서버가 리포를 직접 읽어 적재한다(ARCHITECTURE §3.05). 그래서 **이 워크플로는 필수가 아니다** — 붙이지 않으면 리포 변경이 하루 한 번 들어오고, 붙이면 커밋마다 즉시 들어온다. 야간 적재는 서버 적재 예산(파일 200개·파일당 2MB·총 10MB — `lib/onboarding/budget.ts`, 그리고 잘리지 않은 트리)을 지나므로, 그보다 큰 리포는 야간이 매일 `too-large`로 보류하고 이 워크플로가 유일한 자동 경로다.

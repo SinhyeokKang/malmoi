@@ -17,7 +17,7 @@ describe("buildSearchText — 무엇이 들어가나", () => {
       { kind: "MEMBER", targetLabel: "k***@a.com", role: null },
       { kind: "SETTINGS", field: "name", value: null },
       { kind: "SURFACE", surfaceSlug: "web", adapter: null, baseLocale: null },
-      { kind: "IMPORT", source: "ci", surfaceSlugs: [], keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null },
+      { kind: "IMPORT", source: "ci", surfaceSlugs: [], keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null, deferReason: null, changedValues: null },
     ];
     for (const payload of payloads) expect(buildSearchText(REF, payload), payload.kind).toContain(REF);
   });
@@ -43,7 +43,7 @@ describe("buildSearchText — 무엇이 들어가나", () => {
     const text = buildSearchText(REF, {
       kind: "IMPORT", source: "ci", surfaceSlugs: ["web", "mobile"], keys: 12, pendingEdits: null,
       surfaces: [{ surfaceSlug: "web", status: "imported", count: 12, reason: null }],
-      errorCode: "github-error", refusal: null,
+      errorCode: "github-error", refusal: null, deferReason: null, changedValues: null,
     });
     for (const token of ["ci", "web", "mobile", "github-error"]) expect(text, token).toContain(token);
   });

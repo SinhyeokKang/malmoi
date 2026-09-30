@@ -196,7 +196,9 @@ beforeEach(() => {
     name.toLowerCase() === "host" ? "localhost:3000" : null,
   );
   hoisted.listBranches.mockResolvedValue({ status: "ok", names: ["main", "develop"], truncated: false });
-  hoisted.ingestFirstSnapshot.mockResolvedValue({ count: 2, failed: 0, errors: [] });
+  hoisted.ingestFirstSnapshot.mockResolvedValue({ count: 2, failed: 0, errors: [], changedValues: 2 });
+  // 적재 코어는 언제나 `PushOutcome`을 돌려준다 — 생성 트랜잭션이 그 `changedValues`를 사건에 싣는다(nightly-sync C2).
+  hoisted.applyPushInTransaction.mockResolvedValue({ changedValues: 0 });
   // sec-audit-3 #14 — 연결 state·샘플 확인은 전용 키로 서명한다. AUTH_SECRET을 다른 값으로 두어 그 키를 안 쓰는 것까지 고정한다.
   vi.stubEnv("APP_SIGNING_SECRET", "test-secret-0123456789abcdef");
   vi.stubEnv("AUTH_SECRET", "auth-js-only-secret-not-for-app-signing");
@@ -1320,6 +1322,20 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (PRODUCT §7.5)
       failed: 3,
       errors: [{ path: "i18n/ko.json", message: "중복" }],
     });
+  });
+
+  it("첫 적재 사건이 적재가 바꾼 값 수(changedValues)를 싣는다 (nightly-sync C2)", async () => {
+    hoisted.ingestFirstSnapshot.mockResolvedValue({ count: 2, failed: 0, errors: [], changedValues: 6 });
+    await runFirstIngest({ slug: "acme" });
+    const run = db.projectEvents.find((row) => row.subtype === "import.first");
+    expect(run).toMatchObject({ result: "imported", payload: expect.objectContaining({ changedValues: 6 }) });
+  });
+
+  it("적재 실패로 닫힌 첫 적재 사건의 changedValues는 0이 아니라 null이다", async () => {
+    hoisted.ingestFirstSnapshot.mockRejectedValue(new Error("boom"));
+    await runFirstIngest({ slug: "acme" });
+    const run = db.projectEvents.find((row) => row.subtype === "import.first");
+    expect(run).toMatchObject({ result: "failed", payload: expect.objectContaining({ changedValues: null }) });
   });
 
   it("이미 ready면 not-awaiting이다 — strict push라 번역자 편집을 버튼 하나로 덮는다", async () => {

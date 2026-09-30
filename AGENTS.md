@@ -50,7 +50,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 따라서:
 
 - **push는 리포 값으로 번역을 덮고 저자도 비운다** (`ON CONFLICT DO UPDATE`, `"updatedBy" = NULL`). 변경 감지도 병합도 없다. **덮인 값의 저자는 리포이므로 사람 이름이 남는 쪽이 거짓이었다.**
-- **단, 미전달 편집이 하나라도 있으면 CI 적재를 통째로 보류한다** (2026-09-18, sync-edit-protection — 옛 판정 "편집 손실 창은 코드에서 지우지 않는다"의 반전). **보류 판정은 리포를 보지 않는다** — 입력은 `Translation.pendingEditToken`으로 센 미전달 편집 수 하나이고, 0이면 위의 strict 적재가 그대로 돈다. 그래서 변경 감지도 병합도 아니다. 미배포 집계·1층 스킵·배지가 전부 그 토큰 술어(`lib/protection/where.ts`) 위에 선다. 편집을 버리는 길은 OWNER가 서버 발급 지문으로 승인한 수동 Sync뿐이다(⚠️ translation-rework가 둘째 — 마지막 전달 확인된 DB 값으로 되돌리는 OWNER 전용 `Revert to last sent` — 를 더했다 — 2026-09-23, 프로덕션 #71, ARCHITECTURE §5.8). **대가는 적재 지연이다** — 미전달 편집이 남은 동안 리포의 새 키·삭제도 앱에 안 들어온다(`/api/push`는 200 `deferred`).
+- **단, 미전달 편집이 있거나 말모이 PR이 열려 있으면 자동 적재(CI·야간)를 통째로 보류한다** (2026-09-18 sync-edit-protection이 편집 수를, 2026-09-30 nightly-sync가 열린 PR을 더했다 — 경위는 ARCHITECTURE §5.5.2). **보류 판정은 리포 값을 보지 않는다** — 입력은 `Translation.pendingEditToken`으로 센 미전달 편집 수와 "말모이 PR이 열려 있나" 둘이고, 둘 다 비면 위의 strict 적재가 그대로 돈다. 게이트는 셀을 고르지 않고 적재 **전체**를 보류하므로 **병합이 아니다.** ⚠️ PR 조회 실패는 보류다(`pr-check-failed`, fail-closed — 그래서 `/api/push`가 GitHub을 부른다). 미배포 집계·1층 스킵·배지가 전부 그 토큰 술어(`lib/protection/where.ts`) 위에 선다. 편집을 버리는 길은 OWNER 전용 둘이다 — 서버 발급 지문으로 승인한 수동 Sync와 `Revert to last sent`(2026-09-23, ARCHITECTURE §5.8). **대가는 둘이다** — 보류 동안 리포의 새 키·삭제가 앱에 안 들어오고(`/api/push`는 200 `deferred`), CI 적재가 GitHub 가용성에 묶인다.
 - **키는 삭제하지 않는다.** 코드에서 사라진 키도 `orphaned` 플래그만 세운다 — 브랜치를 되돌리거나 기능을 복구하면 번역이 그대로 살아 돌아와야 한다.
 - **pull은 값을 병합하지 않는다.** **모든 어댑터가 원본 파일 내용을 읽는다** — 수술적 치환(`ts-dict`·`yaml-catalog`·`code-dict`)은 **구조**(빈 줄·주석·키 순서)를, 재생성(`chrome-locales`·`json-catalog`)은 **표현**(들여쓰기·한 줄 컨테이너·이스케이프·필드 순서)을 가져온다. 견줄 **값**은 어느 쪽도 원본에서 가져오지 않는다. ⚠️ **예외 하나 — base 파일의 키 집합은 원본이 정한다**(2026-09-27, B3.4): 원본과 DB에 다 있는 키는 DB 값, 원본에만 있는 키(CI 보류 중 코드가 추가)는 원본 엔트리 그대로, DB에만 있는 키(코드가 지움)는 쓰지 않는다. 키마다 출처가 하나라 병합이 아니다. 기존 값과 DB 값을 견줘 고르는 코드가 생기는 순간 이 원칙이 깨진다.
 - **export는 결정적이어야 한다.** 같은 DB 상태 + 같은 원본 파일 → 언제나 바이트 단위로 같은 파일. 이게 깨지면 blob SHA 비교가 매번 "변경됨"을 뱉어 무의미한 커밋이 쌓이고, 변경 감지 최적화 전체가 무너진다.
@@ -180,8 +180,9 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
 | 자격증명 cutover 마무리 | `pnpm credentials:finalize:dev` / `credentials:finalize:prod` — 기본 **verify-only**이고 `--apply`를 줘야 `prisma migrate deploy`까지 간다. ⚠️ **`db:deploy` 말고 prod 마이그레이션 상태를 움직일 수 있는 명령이 이것 하나 더 있다** — 실패하면 트래픽을 막은 채로 둔다 |
-| 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
-| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. 미전달 술어의 공유 조각(`pendingWhere`)과 손 사본들이 "같은 행을 세나"를 재는 유일한 자리다(ARCHITECTURE). `lib/invitation-email/issue.ts`·`lib/auth/lock.ts`·`lib/sync/run.ts`·`lib/keys/**`·`lib/events/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`·`lib/mcp/**`·`app/api/mcp/**`·`lib/onboarding-run/**`·**`prisma/migrations/**`**를 건드렸으면 손으로 돌린다 |
+| **로컬 게이트** | `pnpm gate [--base <ref>]` — `db:generate` → typecheck → test → (diff가 트리거 경로면) 격리 postgres 스위트 → build → `sync:agents:check`, **첫 실패의 exit code로 끝난다**(정본 `scripts/gate-plan.ts`). ⚠️ **출력을 `| grep`·`| head`로 거르지 않는다** — 파이프가 종료 코드를 삼켜 red가 dev에 나간 적이 있다(2026-09-30). `/push`·`/ship`·`/orchestrate`·워커 브리프가 이 한 명령을 부른다 |
+| 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드리면 `pnpm gate`가 붙인다 |
+| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. 미전달 술어의 공유 조각(`pendingWhere`)과 손 사본들이 "같은 행을 세나"를 재는 유일한 자리다(ARCHITECTURE). **어느 경로를 건드렸을 때 도는지의 정본은 `scripts/gate-plan.ts`의 트리거이고 `pnpm gate`가 스스로 붙인다** — 손으로 판정하지 않는다 |
 
 ### 새 머신 셋업
 
@@ -231,7 +232,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 | 게이트 | 어디 | 무엇을 막나 |
 |---|---|---|
-| `pnpm typecheck` + `test` + `build` | `/push` 1단계 (로컬) | dev·preview에 red가 나가는 것 |
+| `pnpm gate` (typecheck · test · 트리거 시 격리 postgres · build · 미러) | `/push` 1단계 (로컬) | dev·preview에 red가 나가는 것 |
 | PR `verify` 체크 | `/merge` 7단계 (GitHub) | **프로덕션에 red가 나가는 것** |
 
 - **로컬 게이트를 "PR CI가 잡아줄 것"이라며 건너뛰지 않는다.** 그 CI는 커밋 여러 개가 쌓인 뒤에 돌아서, red가 나오면 무엇이 깼는지 특정하는 비용이 지금의 3분보다 크다.

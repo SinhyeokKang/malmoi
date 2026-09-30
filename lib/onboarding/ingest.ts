@@ -77,18 +77,20 @@ export class FirstIngestRefused extends Error {
  * ⚠️ **`userId`는 잠금 뒤 재인가의 입력이다** (감사 #9). Action 입구 인가 뒤 GitHub에서 스냅샷을 받는 초 단위 창에 OWNER가
  * 강등·제거될 수 있다 — 적재 트랜잭션이 `Project` 잠금 뒤 다시 본다.
  */
-export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnapshotInput & { userId: string }): Promise<FirstIngestResult> {
+export async function ingestFirstSnapshot(prisma: PrismaClient, input: FirstSnapshotInput & { userId: string }): Promise<FirstIngestResult & { changedValues: number }> {
   const prepared = prepareFirstSnapshot(input);
   const { payload } = prepared;
-  if (payload !== null) await prisma.$transaction(async tx => {
+  // 적재를 안 탔으면 바뀐 값이 없다 — 관측한 0이다(실패 실행의 `null`과 다르다: 그 판단은 호출부가 결과로 한다).
+  const changedValues = payload === null ? 0 : await prisma.$transaction(async tx => {
     const locked = await lockProjectAccess(tx, { projectId: input.projectId, userId: input.userId, permission: "project:settings", surfaceId: input.surfaceId, credential: undefined });
     if (locked.status !== "ok") throw new FirstIngestRefused(locked.status);
-    await applyPushInTransaction(tx, { projectId: input.projectId, surfaceId: input.surfaceId }, payload, {
+    const applied = await applyPushInTransaction(tx, { projectId: input.projectId, surfaceId: input.surfaceId }, payload, {
       refsMode: "replace", previousBaseLocale: null, startedAt: input.startedAt, token: input.token,
       importOutcome: prepared.result.failed === 0 ? null : "partial-import",
     });
+    return applied.changedValues;
   }, { maxWait: 10_000, timeout: 30_000 });
-  return prepared.result;
+  return { ...prepared.result, changedValues };
 }
 
 /**

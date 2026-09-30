@@ -7,7 +7,9 @@ import { validatePiiReadKeys } from "@/lib/credentials/storage";
 import { m } from "@/lib/i18n";
 
 import { PROJECT_WIDE, parseDateRange, type EventCursor, type LogFilter } from "./filter";
+import { triggerWhere } from "./trigger-where";
 import {
+  EVENT_RESULTS,
   eventKindOf,
   readPayload,
   type ActorKind,
@@ -243,9 +245,11 @@ function eventResult(row: Pick<Selected, "kind" | "result" | "syncRun" | "finish
   }
 }
 
-const RESULTS: readonly string[] = [
-  "running", "sent", "nothingToSend", "notSent", "imported", "deferred", "partial", "superseded", "notStarted", "failed",
-];
+/**
+ * ⚠️ **`EVENT_RESULTS`에서 파생한다** — 전에는 손 사본이라 어휘가 늘어도 타입이 못 잡았고, 빠진 값은 `asResult`가 null을 줘
+ * 결과 칸이 조용히 빈다(nightly-sync `upToDate`).
+ */
+const RESULTS: readonly string[] = EVENT_RESULTS;
 
 /** 모르는 값은 결과 없음이다 — 던지지 않는다(읽는 쪽이 폴백을 든다). */
 function asResult(raw: string): EventResult | null {
@@ -256,8 +260,13 @@ function scope(raw: string): SurfaceScope {
   return raw === "sources" || raw === "project-wide" ? raw : "not-recorded";
 }
 
-/** 행위자 필터의 특수 값 둘. 사용자 id는 cuid라 이 낱말들과 겹칠 수 없다. */
+/**
+ * 행위자 필터의 특수 값. 사용자 id는 cuid라 이 낱말들과 겹칠 수 없다.
+ * `automation`은 옛 링크용이다 — 메뉴 항목은 `ci`·`nightly` 둘이고, 옛 값은 둘 다를 뜻한다(nightly-sync).
+ */
 export const ACTOR_AUTOMATION = "automation";
+export const ACTOR_CI = "ci";
+export const ACTOR_NIGHTLY = "nightly";
 export const ACTOR_REMOVED = "removed";
 
 /**
@@ -294,6 +303,7 @@ function narrow(filter: LogFilter, sourceIds: readonly string[]): Prisma.Project
   }
 
   if (filter.actor === ACTOR_AUTOMATION) where.actorKind = "AUTOMATION";
+  else if (filter.actor === ACTOR_CI || filter.actor === ACTOR_NIGHTLY) and.push(triggerWhere(filter.actor));
   else if (filter.actor === ACTOR_REMOVED) {
     where.actorKind = "USER";
     where.actorUserId = null;

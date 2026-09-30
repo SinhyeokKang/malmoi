@@ -16,7 +16,7 @@ Check the Actions log for the generated workflow path, `PUSH_TOKEN`, allowed act
 
 A 409 can mean the project is archived, the project or source does not match, the format does not match, or the commit is stale. A 400 means the files sent by the workflow or configured file set failed validation. Read the reason in the workflow run log in GitHub Actions before changing the project configuration.
 
-New keys may be waiting because saved edits are unpublished; publish them and run the workflow again.
+New keys may be waiting because saved edits are unpublished; publish them and run the workflow again. If the run log shows `deferred` with `open-pr`, a Malmoi pull request is still open: merge or close it. With `pr-check-failed`, Malmoi couldn't check GitHub; run the workflow again later.
 
 If **Publish** is disabled, there may be nothing unsent (“Everything you've edited is already sent.”), GitHub may not be connected, the project may be archived, or Sync may be running (“Publishing is currently unavailable.”). See [Publish your changes](../translate/publish.md#publish) for the editor path. Project owners can fix the connection or wait for Sync.
 

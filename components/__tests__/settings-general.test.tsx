@@ -63,6 +63,14 @@ it("Image operations lock both controls and reflect replacement and deletion", a
   await rerender(view(null));
   expect(container.querySelector("img")).toBeNull();
 });
+// 썸네일이 없으면 [Remove]를 그리지 않는다(2026-09-30 사용자 — 꺼진 버튼과 sr-only 사유를 걷었다).
+it("Remove appears only when a thumbnail exists", async () => {
+  const { container } = await render(view(null));
+  expect([...container.querySelectorAll("button")].some(b => b.textContent === "Remove")).toBe(false);
+  expect(container.textContent).not.toContain("There is no thumbnail to remove.");
+  await render(view("/logo.webp"));
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === "Remove")).toBe(true);
+});
 it("Archived metadata controls are disabled with a reason", async () => {
   const { container } = await render(view("/logo.webp", true));
   for (const b of container.querySelectorAll("button")) expect(b.disabled).toBe(true);

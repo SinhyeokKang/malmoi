@@ -12,6 +12,8 @@
 1. 번역 값은 DB, 소스 키와 로케일 존재 여부는 리포가 정본이다.
    ⚠️ **미전달 편집이 있는 동안은 유예된다** (2026-09-18, sync-edit-protection) — CI 자동 적재가 통째로 보류되므로
    리포의 새 키·삭제·로케일 추가도 그동안 앱에 안 들어온다(§5.5.2). 편집을 Publish하거나 OWNER가 폐기를 승인하면 풀린다.
+   ⚠️ **Malmoi PR이 열려 있는 동안도 유예된다** (2026-09-30, nightly-sync) — Publish가 토큰을 비운 뒤에도 그 편집은 PR이 머지되기
+   전까지 리포에 없으므로, 자동 적재(CI·야간)가 PR이 열린 동안 통째로 보류된다(`open-pr` — §5.5.2). PR을 머지하거나 닫으면 풀린다.
    ⚠️ **미전달 편집을 버리는 길이 둘이다 — (translation-rework, 2026-09-23 · 프로덕션, #71)** — 수동 Sync(리포 값으로 덮는다)와
    **`Revert to last sent`**(키 하나의 미전달 셀을 **마지막으로 전달 확인된 DB 값**으로 되돌린다). 둘 다 OWNER 전용이고 서버가 발급한
    지문을 되돌려 받을 때만 열린다. Revert가 풀어 준 셀도 미전달이 아니게 되므로 CI 보류를 푸는 셋째 경로가 된다. §5.8.
@@ -26,6 +28,10 @@
    ⚠️ **pull 시점 base 파일의 키 집합은 원본 base 파일이 정한다** (2026-09-27, launch-audit B3.4) — CI 적재가 보류된 동안 DB 키 집합이
    리포보다 뒤처지므로, DB 키로 base를 쓰면 코드가 더한 키를 지우고 지운 키를 되살렸다. 원본과 DB(활성)에 다 있는 키는 DB 값, 원본에만 있는
    키는 원본 값, DB에만 있는 키는 쓰지 않는다 — **키마다 출처가 하나라 이 불변식 안이다**(두 값을 견주지 않는다). §3 "base 키 집합".
+   ⚠️ **야간 서버 적재도 "push 시점"이고, 자동 적재의 보류 입력은 둘이 됐다** (2026-09-30, nightly-sync) — 미전달 편집 수 · "Malmoi PR이
+   열려 있나". 야간은 그 앞에 base head SHA 동일성으로 **스킵**(`upToDate` — 적재할 새 커밋이 없다)을 가르는데, 그것은 보류가 아니다. 셋 다 값이
+   아니라 **적재를 할지**만 정하고, 보류의 결과는 적재 **전체**라 셀을 고르지 않는다.
+   적재가 실제로 바꾼 셀 수(`changedValues`)는 적재 **뒤** 관측값이고 어떤 판정도 읽지 않는다(§5.5.2).
 3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다. **코드에서 번역을 지우는 방법은 없다** — 지우려면
    UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
    ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
@@ -709,6 +715,16 @@ clone하지 않는다.
 backfill은 토큰을 더하기만 하므로 못 지운다. ⚠️ 해제 UPDATE는 `updatedAt`을 건드리지 않는다 — 올리면 방금 쓴
 `lastPulledAt`보다 뒤가 되어 옛 술어가 보낸 편집을 다시 센다. 1층 스킵·실패 경로는 해제하지 않는다.
 
+⚠️ **머지 전 손실 창 — 열린 PR 게이트가 닫는다** (2026-09-30, nightly-sync). 커밋 성공이 토큰을 비우므로 PR이 아직 열려 있을 때 base에
+다른 코드 커밋이 들어오면, 자동 적재는 미전달 0을 보고 strict로 덮었다 — DB가 옛 리포 값으로 돌아가고 다음 Publish가 sync 브랜치를 force로
+옮기면 PR에서도 사라졌다. 그동안 이 창의 장치는 **경고뿐**이었다(action의 열린 PR 경고 · 수동 Sync Dialog의 `atRisk`). 지금은 자동 적재(CI
+`/api/push`·야간 서버 적재)가 **열린 Malmoi PR이 있으면 통째로 보류한다**(`open-pr` — §5.5.2). 토큰을 PR 머지까지 유지하는 안은 전달 확인의
+의미(§5 `pendingEditToken`)를 바꾸므로 버렸다 — **토큰 절은 불변이다.** 수동 Sync는 OWNER가 지문으로 승인하는 폐기 경로라 게이트가 없고
+`atRisk` 경고를 그대로 둔다.
+⚠️ **남은 창 — 판정과 적재 사이의 경합** (허용): 게이트 판정은 잠금 밖이다. 판정 뒤 Publish가 PR을 열고 토큰을 비우면 잠금 안의 재집계도 0이라
+그 적재는 덮는다. 창은 적재 한 번(수 초)이고, 덮인 값은 이미 커밋된 PR 스냅샷에 남아 **다음 Publish 전에 PR이 머지되면 복구된다.** 잠금 안에서
+PR을 다시 묻지 않는다 — 트랜잭션 안에서 GitHub을 부르지 않는다(§5.6.1).
+
 ⚠️ **writer 경고가 있으면 GitHub에 쓰기 전에 멈춘다** (2026-09-18, sync-edit-protection T10 — 2026-09-04 결정의 반전). 렌더 뒤·2층 비교 전에 **판정과 껍데기가 갈린다**: 순수 판정 `planProtectedPublish`(`lib/protection/plan.ts`)가 `{ action: "reject", reason: "writer-warnings" }`를 내고, 그것을 `PullResult`의 `skipped/writer-warnings`로 접는 것은 `lib/pull/run.ts`다 — `lastPulledAt`도 토큰도 쓰지 않는다. ⚠️ **같은 디렉터리의 적재 쪽 이름은 `planProtectedPush`가 아니다**: 판정이 `planProtectedImport`, 그것을 잠금·트랜잭션으로 감싸는 껍데기가 `applyProtectedPush`(`lib/push/apply.ts`)다. 전에는 경고를 커밋·스킵 결과에 실어 보냈는데, 그러면 **버린 값의 편집 토큰까지 전달 확인으로 비워져** 보내지 않은 편집을 보냈다고 기록한다. 경고는 `PullResult`의 그 갈래에만 있다(`committed`·`no-changes`에 자리가 없다). **대가**: `missingOriginal`처럼 **지속 상태**인 경고는 사람이 해소할 때까지 매 밤 트리·blob을 다시 읽는다 — 1층이 토큰으로 판정하므로 미전달 편집이 없는 프로젝트는 여전히 GitHub을 안 부른다. `lib/pull/trigger.ts`가 `console.warn`으로도 낸다.
 
 ⚠️ **좌표가 정확한 두 부류는 거부가 아니라 보류다** (2026-09-24, delivery-invariants D3 — `lib/pull/undeliverable.ts`). 수술적 per-locale 표면의
@@ -763,7 +779,7 @@ Publish·Revert·폐기 Sync를 함께 말한다 — 응답 계약은 그대로�
 - **⚠️ ref의 슬래시를 직접 인코딩하지 않는다 — `octokit`이 담당한다.** `heads/dev`를 그대로 넘기면 octokit이 `.../git/ref/heads%2Fdev`를 만든다. 우리가 먼저 `heads%2Fdev`로 바꾸면 `%252F`가 되어 **조용한 404**다(실측). 이 항목은 원래 raw `fetch` 전제로 쓰여 있었고, 그대로 따르다 함정을 스스로 만들었다 (`docs/POSTMORTEM.md` 2026-09-01). **`Project.baseBranch`가 슬래시를 포함하지 않는 것과 무관하게** `malmoi-i18n/sync`가 있으므로 이 층은 항상 걸린다.
 - **⚠️ 브랜치 이름에 프로젝트 slug가 들어간다 — `malmoi-i18n/sync-<slug>`** (`syncBranchFor`). 같은 리포를 가리키는 기존 Project 둘은 계속 별도 브랜치를 쓴다. 새 다중 표면 모델은 Project 하나의 활성 표면을 같은 snapshot에서 렌더해 tree·commit·PR 하나로 보낸다(PRODUCT §7.1). 표면별 브랜치는 만들지 않고 기존 Project도 자동 병합하지 않는다.
   - `Project.slug`에 형식 제약이 없어(`slug String @unique`) **`syncBranchFor`가 유일한 방어선이다** — git이 거부할 이름(`..`·`/`·공백·`~^:?*[\`·`@{`·앞뒤 `.`)을 화이트리스트로 막고 던진다. 안 막으면 `createRef`가 422로 죽고 원인이 "GitHub이 거절함"으로만 보인다.
-  - **이름을 쓸 수 없는 곳(composite action의 YAML·스모크 스크립트)은 같은 접두 + input으로 조립한다** — `SYNC_BRANCH: malmoi-i18n/sync-${{ inputs.project }}`. 이름이 갈린 뒤 action의 "열린 PR 경고"가 옛 상수를 조회해 **항상 "없음"을 찍었다**(2026-09-06 Codex 감사 #8) — 손실 창의 유일한 신호가 하루 동안 죽어 있었다. `lib/pull/__tests__/sync-branch-consumers.test.ts`가 생산자와 소비자 셋(action.yml·`smoke-github.ts`·ACTIONS.md)을 텍스트로 묶는다.
+  - **이름을 쓸 수 없는 곳(composite action의 YAML·스모크 스크립트)은 같은 접두 + input으로 조립한다** — `SYNC_BRANCH: malmoi-i18n/sync-${{ inputs.project }}`. 이름이 갈린 뒤 action의 "열린 PR 경고"가 옛 상수를 조회해 **항상 "없음"을 찍었다**(2026-09-06 Codex 감사 #8) — 당시엔 손실 창의 유일한 신호가 하루 동안 죽어 있었다. ⚠️ **2026-09-30(nightly-sync)부터 그 경고는 신호가 아니라 안내다** — 손실 창은 서버의 열린 PR 게이트가 닫는다(아래 "머지 전 손실 창"). 서버 조회는 `findOpenPr`(`syncBranchFor`)를 쓰므로 이 이름 묶음과 별개로 맞다. `lib/pull/__tests__/sync-branch-consumers.test.ts`가 생산자와 소비자 셋(action.yml·`smoke-github.ts`·ACTIONS.md)을 텍스트로 묶는다.
   - 아래 서술의 `malmoi-i18n/sync`는 전부 이 이름을 가리킨다.
 - **브랜치가 없으면 `PATCH`가 아니라 `POST /git/refs`다.** 첫 실행 경로를 반드시 다뤄야 한다.
 - **parents는 항상 base head다.** `malmoi-i18n/sync`의 기존 head를 parent로 쓰면 누적 히스토리가 되고, base가 앞서 나간 뒤엔 3-way merge가 필요해진다 — 코어 원칙 위반.
@@ -785,7 +801,7 @@ Publish·Revert·폐기 Sync를 함께 말한다 — 응답 계약은 그대로�
 ### 3.05 cron은 **전 프로젝트를 순회한다** (`lib/pull/targets.ts`, SaaS 5단계)
 
 `/api/pull`은 프로젝트 하나를 받지 않는다. `project.findMany` → `selectPullTargets` → 프로젝트별
-`runSync`를 돌고 **`{ results, unprocessed }`**로 응답한다.
+**야간 판정**(`runNightly` — 아래)을 돌고 **`{ results, unprocessed }`**로 응답한다. 껍데기는 `lib/nightly/run.ts`, 요약 줄은 `lib/nightly/summary.ts`(순수)다.
 
 - **선택 규칙**: `installationId`·`repositoryId`·`lastCommitSha`가 **셋 다 있고 보관되지 않은** 프로젝트만이다 —
   앞의 둘은 App이 그 리포를 볼 수 있고 **어느 리포인지 고정돼 있다**는 뜻이고(§9), 뒤는 최초 적재가
@@ -793,12 +809,97 @@ Publish·Revert·폐기 Sync를 함께 말한다 — 응답 계약은 그대로�
   쌓이고 진짜 장애가 그 안에 묻힌다. ⚠️ **`repositoryId`가 조건에 들어간 것은 2026-09-10이다** —
   그 컬럼이 생기기 전에 만들어진 행은 전부 null이고 `createClient`가 확실히 던지므로, 남겨 두면
   재연결 전까지 **프로젝트마다 매일 밤 실패 `SyncRun`이 하나씩** 쌓인다.
-- **최근 실행이 오래된 순서이며 동점은 slug `compareKeys`**다(§5.6.5).
-- **안전 캡이 둘이다** — 배치 상한 `PULL_BATCH_LIMIT` 50과 시작 예산 `PULL_TIME_BUDGET_MS` 45초(`lib/pull/targets.ts`). 예산을 넘기면
-  남은 프로젝트를 **시작하지 않고** `unprocessed`에 더한다 — `maxDuration` 60 안에서 요약 응답을 지키려는 것이고, 시작 전 판정이라
-  첫 프로젝트는 항상 돈다(`app/api/pull/route.ts`).
+- **마지막 야간 방문(`Project.lastNightlyAt`)이 오래된 순서이며 동점은 slug `compareKeys`**다(§5.6.5).
+- **안전 캡이 셋이다** — 배치 상한 `PULL_BATCH_LIMIT` 50과 시작 예산 `PULL_TIME_BUDGET_MS` 45초, 그리고 **적재 갈래만의** 시작 마감
+  `NIGHTLY_IMPORT_START_MS` 20초(셋 다 `lib/pull/targets.ts`). 예산을 넘기면 남은 프로젝트를 **시작하지 않고** `unprocessed`에 더한다 —
+  `maxDuration` 60 안에서 요약 응답을 지키려는 것이고, 시작 전 판정이라 첫 프로젝트는 항상 돈다(`app/api/pull/route.ts`).
+  ⚠️ **적재 마감이 더 이른 이유**: 예산 판정은 루프 머리뿐이고 서버 적재의 표면 트랜잭션 timeout은 30초다(`lib/import/run.ts`) — 45초 가까이
+  적재를 시작하면 함수가 `maxDuration`에 죽고 그 밤의 요약을 통째로 잃는다. 마감은 **head가 다르다고 판정된 뒤**에 재고(경과는 판정마다 다시
+  읽는다 — GitHub 조회 뒤의 시각이다), 넘기면 **PR 조회조차 하지 않고** 사건 없이 결과 항목 `none`/`unprocessed`로 끝난다 — 늦게 시작한 방문이
+  head 대기 + PR 대기를 더 쓰면 그것만으로 60초를 넘길 수 있다. PR 조회 **뒤**에도 한 번 더 잰다(판정의 마지막 갈래 — PR 대기가 마감을 넘긴 방문도
+  적재를 시작하지 않는다). ⚠️ **마감으로 멈춘 방문은 방문으로 세지 않는다** — `runNightly` 머리가 쓴 `lastNightlyAt`을 **이전 값으로 되돌리는**(조건부 — 머리에서 쓴 값 그대로일 때만) 것이
+  방문 기록의 유일한 예외이고, 그래서 다음 밤 정렬이 그 프로젝트를 앞으로 가져온다(되돌리지 않으면 "방금 방문함"으로 맨 뒤에 선다).
+  head 조회도 `GITHUB_WAIT_MS`(8초) 안이라 **스킵·마감 갈래의 최악이 예산 45초 + head 대기 8초 ≈ 53초 < 60**이다. ⚠️ **이 경계는 스킵·마감
+  갈래만이다** — 44초께 시작한 Publish(GitHub 쓰기 여러 번)나 20초 전에 시작한 다표면 적재(표면당 트랜잭션 30초)는 그 밖이라 `maxDuration`을
+  넘길 수 있다. 그래서 함수가 죽어 남은 `running` 적재 행은 **다음 방문이 갈래와 무관하게** 닫는다 — `runNightly`가 방문 기록 직후 `closeExpiredImportRuns`(`lib/import/run.ts`)를 `Project` 잠금 안에서 돌리고, 살아 있는 실행(`hasLiveInternalImport`)은 닫지 않는다(§5.7.2). 새 사건은 없다. ⚠️ **이 정리는 방문을 막지 않는다** — 잠금은 `FOR UPDATE SKIP LOCKED`라 누가 쥐고 있으면(=살아 있는 실행) 그 밤은 건너뛰고, 던져도 `logCaught`만 남기고 판정·갈래는 그대로 돈다. 기다리면 트랜잭션 timeout까지 매달려 그 밤의 미전달 편집 Publish가 안 나간다.
+  ⚠️ **응답의 `unprocessed`는 방문하지 않은 수만이다**(예산·상한) — 마감으로 멈춘 방문은 `results`의 항목이고 요약에서는 `deadline=`으로 센다.
+  합치면 `results.length + unprocessed`가 고른 수보다 커진다(두 번 센다). 대가: **GitHub 장애 밤**엔 방문마다 head 대기 8초를 다 쓸 수 있어
+  뒤쪽 프로젝트가 `unprocessed`로 다음 밤에 넘어간다.
 - **한 프로젝트의 실패가 나머지를 막지 않는다** — 항목별 try/catch이고 실패도 배열의 한 항목으로 나온다.
-  ⚠️ 그래서 **HTTP 200이 전부 성공을 뜻하지 않는다**: 항목의 `status`를 봐야 한다.
+  ⚠️ 그래서 **HTTP 200이 전부 성공을 뜻하지 않는다**: 항목의 `status`(와 `action`)를 봐야 한다. 응답 본문은 cron이 버리므로 요약 로그 한 줄
+  `[pull] targets= published= imported= skipped= deferred= failed= notReady= unprocessed= deadline=`가 관측의 전부다(POSTMORTEM 2026-09-06 — 전면
+  장애가 성공과 같은 관측값). **주 카운터는 0이어도 싣는다**(부재와 0이 구별돼야 grep이 성립한다). 그 뒤에 0이 아닌 **세부 카운터**가 이름 순으로
+  붙는다: `deferred.<사유>` · `skipped.<Publish 스킵 사유>` · `refused.<코드>`(사건 없는 실행권 거부 — 적재의 `already-running` 등과 Publish의
+  `already-running`·`too-soon`) · `failed.base-unreadable` · `partial`(imported 안) · `superseded`(skipped 안). ⚠️ `refused.*`는 주 카운터 어디에도
+  더하지 않는다 — 사건 없는 갈래라 성공도 실패도 아니다. ⚠️ `published`는 **커밋한 Publish만**이다 — Publish 갈래의 스킵(no-changes 등)은 `skipped`다.
+  ⚠️ `PullItem`은 `{ slug } & NightlyVisit`(`lib/nightly/summary.ts`)이고 `action`이 갈래를 말한다 — **타입으로** 늘린 외부 계약이다(POSTMORTEM 2026-08-31).
+
+#### 야간 판정 — Publish · 적재 · 스킵 중 하나 (2026-09-30, nightly-sync — `lib/nightly/plan.ts`)
+
+전에는 편집이 없어도 `runSync`가 `SyncRun` + `publish.run`을 쓰고 1층이 스킵해 "Nightly publish had nothing to send"가 섰고, 워크플로 없는
+프로젝트는 첫 적재 뒤로 리포 → DB가 멈춰 있었다(워크플로는 선택 사항이다 — PRODUCT §7.4). 지금은 프로젝트마다 순수 판정 `planNightly`가
+한 갈래를 고른다. **I/O가 0이고** 껍데기(`runNightly`)가 `need`를 받을 때마다 그 입력만 조회해 다시 부른다 — "무엇을 묻지 않는가"가
+판정에서 정해진다. 판정은 많아야 세 번이다(head → PR → 결론) — 네 번째 `need`는 판정의 결함이라 던진다.
+
+```
+runNightly 머리: Project.lastNightlyAt = now (단독 update — 방문 기록)
+countPending > 0 ──────────────────────────────► Publish (runSync, trigger "cron" — 지금 그대로)
+비교 대상 표면(활성 · 포맷 완전 · lastCommitSha 있음) 0개 ─► 사건 없음 · notReady
+createGitClient → getRefSha(base)  (8초 마감 안)
+  throw · 마감 ─────────────────────────────────► nightly.skip · failed · base-unreadable (사건만)
+  null(브랜치 없음) ────────────────────────────► 같은 사건 + 활성 표면 lastImportError (같은 tx, #155)
+비교 대상 전부 lastCommitSha == head · 실패 상태 없음 ─► nightly.skip · upToDate
+  (실패 상태(lastImportError)가 남은 표면은 같은 head여도 아래 적재 쪽 — 부분 적재 · #155 같은 SHA 복구)
+경과 > NIGHTLY_IMPORT_START_MS ─────────────────► 사건 없음 · unprocessed (PR 조회 안 함 · 요약 deadline=)
+열린 PR 조회(삼상태, 같은 클라이언트, 8초 마감) → planOpenPrGate
+  undefined(실패·마감) ─────────────────────────► nightly.skip · deferred · pr-check-failed
+  url ─────────────────────────────────────────► nightly.skip · deferred · open-pr
+  null ── 경과 > NIGHTLY_IMPORT_START_MS(재확인) ──► 사건 없음 · unprocessed (요약 deadline=)
+       └───────────────────────────────────────► 서버 적재 (import.nightly, AUTOMATION)
+```
+
+- **Publish가 먼저이고 GitHub을 부르지 않는다** — 편집 있는 프로젝트에 1층 스킵의 "API 0회"를 그대로 둔다. 미전달 0인 프로젝트만 GitHub에 닿는다.
+- **head 비교가 PR 조회보다 앞이고 순차다** — 아무 커밋도 없던 밤에 PR 목록을 부르지 않는다. `Promise.all`로 묶지 않는다(POSTMORTEM 2026-09-13).
+  head 비교는 변경 감지가 아니라 "적재할 새 커밋이 있나"이고 값을 보지 않는다(blob SHA 스킵과 같은 부류). ⚠️ **base head 대비**다 — sync 브랜치
+  상태와 섞지 않는다(POSTMORTEM 2026-09-09).
+- ⚠️ **비교 대상을 좁힌다** — `lastCommitSha`가 null이거나 포맷이 불완전한 표면은 적재해도 전진하지 않으므로, 넣으면 `upToDate`가 영원히 안 서서
+  매일 전 표면을 다시 적재한다. **빈 배열의 `every`는 참이라** 비교 대상 0개를 먼저 `notReady`로 뺀다. 적재 자체는 수동 Sync와 같은 표면 집합을 돈다.
+- ⚠️ **SHA 일치는 완전한 적재의 증거가 아니다** (2026-09-30 사용자 판정) — `partial-import`도 `lastCommitSha`를 전진시키므로, 실패 상태(`lastImportError`)가
+  남은 비교 대상 표면은 같은 head여도 `upToDate`가 아니라 적재 쪽으로 간다(미전달 편집·열린 PR 게이트는 그대로). 일시 실패는 다음 밤 스스로 풀린다.
+  **대가**: 영구히 깨진 로케일 파일이 있으면 고칠 때까지 **밤마다 `import.nightly` · `partial` 한 행**이 서고 head가 같아도 매일 트리·blob을 읽는다.
+  #155 브랜치 부재도 같은 부류다 — 되살리기 전까지는 `base-unreadable`, 같은 SHA로 되살린 뒤 첫 밤에 적재해 실패가 풀린다.
+- ⚠️ **실패를 "PR 없음"·"같은 head"로 읽는 경로가 없다** — 열린 PR 입력은 `{ url }` 상자에 담긴다: "아직 안 물었다"(상자 없음 → `need`)와
+  "물었는데 확인 못 함"(`url: undefined` → `pr-check-failed`)이 같은 `undefined`로 접히지 않게(POSTMORTEM 2026-09-03). head가 던지거나
+  마감을 넘기거나 `null`(base 브랜치 없음·권한 없는 404)이면 `base-unreadable`이다 — `null`만 표면 실패 상태도 쓴다(아래 §5.5.2 분류, #155). ⚠️ **클라이언트 생성(토큰 발급 + 리포 신원)부터 그 마감 안이다** —
+  설정 오류(개인키 누락 등)도 던지지 않고 `base-unreadable`이 되며, `failed.base-unreadable` 카운터와 `[nightly] head` 로그가 그것을 말한다.
+- **GitHub 호출의 실제 모양**: `createGitClient`가 installation 토큰 발급 + `GET /repos`(identity)를 먼저 부르고 그다음 `getRefSha`다. 완료 조건은
+  "하지 않는 호출"(트리·blob·PR 목록 0회)로 잰다. PR 조회는 head를 읽은 **같은 클라이언트**를 쓴다(`loadOpenPrUrl`처럼 새로 만들지 않는다).
+  ⚠️ **적재하는 밤은 installation 토큰이 둘이다** — head용 `GitClient`와 적재용 `openRepoReader`(자체 토큰 발급)의 타입이 달라 재사용하지 않는다.
+- **자동화의 리포 신원**: 수동 경로는 `checkRepoAccess`(user-to-server)로 확인하지만 야간엔 사용자가 없다 — `repositoryId`에 고정된 installation
+  토큰 범위와 `acquire`의 `repo-replaced` 판정이 대신한다(§0 불변식 11).
+- `[skip-malmoi-i18n]` 머지 커밋은 CI가 건너뛰고, 그 밤 야간이 head 변경을 보고 적재한다(PR은 이미 머지돼 열린 PR이 없다). **루프가 아니다** —
+  야간 Publish는 편집이 있을 때만 PR을 만들고, 적재는 편집 토큰을 만들지 않는다.
+- **대가**: 야간 적재가 `lastCommitAt`을 전진시키므로 그 뒤 도착한 옛 커밋의 CI run은 `stale-commit` 409를 받는다(§5.5.5) — 수동 Sync에 이미 있던 부류가
+  매일 자동이 된다.
+
+**방문마다 사건이 최대 하나다** (2026-09-29 사용자 — "무엇을 했고 왜 안 했는지가 남아야 한다") — `runNightly`가 판정 뒤 정확히 한 갈래를 부르고
+그 갈래가 자기 사건을 쓴다(스킵만 `runNightly`가 `recordEvent`로 쓴다):
+
+| 결과 | 사건 | 결과어 |
+|---|---|---|
+| Publish | `PUBLISH` · `publish.run` · AUTOMATION | 지금 그대로. `runPull`의 스킵·보류·경고도 이 행의 결과로 선다 |
+| 적재 | `IMPORT` · **`import.nightly`** · AUTOMATION · `source: "nightly"` | `imported` · `partial` · `failed` · `deferred`(`pending-edits` · `too-large`) |
+| 스킵 | `IMPORT` · **`nightly.skip`** · AUTOMATION · `source: "nightly"` | `upToDate` · `deferred`(`open-pr` · `pr-check-failed`) · `failed`(`base-unreadable`) |
+| 사건 없음 | — | 실행권 거부(적재의 `already-running` 등 · Publish의 `already-running`·`too-soon` → `refused.<코드>`) · 적재 시작 마감(`deadline`) · 비교 대상 0(`notReady`) · 예산 미방문(응답 `unprocessed`) — 요약 카운터에만 선다 |
+
+- ⚠️ **새 `EventKind`를 만들지 않는다** — 스킵은 편집 0인 밤에만 서므로 Publish가 할 일은 이미 없고 남은 질문은 "리포에서 받았나"라 `IMPORT`에 둔다.
+  대가: Logs에서 편집 없는 밤의 행이 Publish 종류에서 Imports 종류로 옮겨 갔다(행 수는 같다).
+- **결과어는 조건별로 기존 것을 재사용한다**(POSTMORTEM 2026-09-27) — 같은 `open-pr`이 CI와 야간 양쪽에서 `deferred` + `deferReason`이다.
+  **새 결과어는 `upToDate` 하나**이고 `nothingToSend`("Nothing to send")와 키·라벨을 따로 둔다 — 받을 것도 없었다.
+- `lastNightlyAt`은 **정렬 힌트이지 이력이 아니다** — 사건과 같은 트랜잭션에 묶지 않고, 쓰는 자리는 `runNightly` 안의 둘이다(POSTMORTEM 2026-09-15) —
+  머리의 방문 기록, 그리고 **유일한 예외인 마감 복원**: 적재 시작 마감으로 멈춘 방문은 방문하지 않은 것과 같게 이전 값으로 되돌린다(위 "안전 캡").
+  ⚠️ 복원은 **조건부**다(`updateMany … where lastNightlyAt = 머리에서 쓴 값`) — 그 사이 다른 실행이 새로 찍었으면 덮지 않는다.
+  실패 방문도 기록하므로 매일 실패하는 프로젝트가 맨 앞을 차지하지 않는다.
 
 ### 3.1 온보딩 — 2패스 탐지와 첫 적재 (SaaS 5단계, `lib/onboarding/`)
 
@@ -1305,11 +1406,53 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 > **⚠️ 2026-08-31 정책 반전.** 이전 구현은 `DO NOTHING`(없을 때만 채우는 콜드 스타트)이었고, 그전 스펙은 "번역 값을 어떤 경로로도 건드리지 않는다"였다. **문서에서 이 둘 중 하나를 서술한 대목을 보면 낡은 것이다.** 반전 이유는 §0 불변식 2에 있다 — 진실의 방향을 한 번에 하나로 두는 것이 "병합 없음"을 지키는 가장 단순한 형태다.
 
-**미전달 편집이 있으면 CI 적재를 통째로 보류한다** (2026-09-18, sync-edit-protection — 옛 판정 "편집 손실 창은 코드에서 지우지 않는다, 완화는 pull 주기를 줄이는 쪽에서만"의 반전). 그 옛 판정이 금지한 것은 **변경 감지와 병합**이었고, 보류는 둘 다 하지 않는다: **자동 적재 판정은 리포를 보지 않는다** — 입력은 프로젝트 전체의 미전달 편집 수(`countPending`) 하나이고, 0이면 이 절의 strict 적재가 한 줄도 안 바뀐 채 돈다. 리포 값과 DB 값을 견주는 코드가 없어 승자를 고르는 자리도 없다.
+**미전달 편집이 있으면 CI 적재를 통째로 보류한다** (2026-09-18, sync-edit-protection — 옛 판정 "편집 손실 창은 코드에서 지우지 않는다, 완화는 pull 주기를 줄이는 쪽에서만"의 반전). 그 옛 판정이 금지한 것은 **변경 감지와 병합**이었고, 보류는 둘 다 하지 않는다: **자동 적재 판정은 리포 값을 보지 않는다** — 입력은 프로젝트 전체의 미전달 편집 수(`countPending`)와 **"Malmoi PR이 열려 있나"**이고(⚠️ 2026-09-30 nightly-sync가 둘째를 더했다 — 옛 문장 "입력은 미전달 편집 수 하나"의 반전, 아래 열린 PR 게이트. 야간의 head 동일성은 **스킵**(`upToDate`)의 입력이지 보류의 입력이 아니다 — §3.05), 둘 다 비면 이 절의 strict 적재가 한 줄도 안 바뀐 채 돈다. 리포 값과 DB 값을 견주는 코드가 없어 승자를 고르는 자리도 없다.
+
+**보류 사유는 넷이다** (`DEFER_REASONS` — `lib/events/payload.ts`). IMPORT 사건의 `deferReason`과 Logs 문장이 넷을 가른다 — 편집 수가 아닌 셋이 "0 unsent edits are being protected"로 떨어지지 않게 `m.logs.deferReasons`가 `satisfies Record<…>`로 누락을 잡는다(`lib/events/view.ts`).
+
+| 사유 | 누가 내나 | 뜻 | 풀리는 길 |
+|---|---|---|---|
+| `pending-edits` | CI · 야간 | 미전달 편집이 있다(사전 집계 · 잠금 안 재집계 · 표면별 사후 재집계) | Publish · Revert · 폐기 승인 Sync |
+| `open-pr` | CI · 야간 | 열린 Malmoi PR이 있다 | PR 리뷰어가 머지하거나 닫는다 |
+| `pr-check-failed` | CI · 야간 | PR 조회가 실패하거나 마감(`GITHUB_WAIT_MS`)을 넘겼다 — **fail-closed** | 다음 실행이 다시 묻는다 |
+| `too-large` | **야간만** | 서버 적재의 영구 한도(파일 예산 `resource-limit` · 트리 잘림) — 아래 "야간의 서버 전용 한도" | 파일을 줄이거나 리포 워크플로로 받는다(CI 경로엔 이 예산이 없다) |
+
+**열린 PR 게이트** (2026-09-30, nightly-sync — `planOpenPrGate` in `lib/protection/plan.ts`). 입력은 조회의 삼상태 `string | null | undefined` 하나이고 결과는 `apply` 또는 적재 **전체**의 `defer`다 — `pending-edits`와 같은 부류라 셀을 고르지 않는다. ACTIONS의 옛 판정 "열린 PR 경고는 차단이 아니다 — 막으면 '어느 쪽이 이기는지'를 CI가 판정한다"의 반전이고, 그 판정이 막으려던 것(값을 견줘 승자를 고르는 것)은 여전히 0곳이다. 닫는 창은 §3 "머지 전 손실 창".
+- **자리**: `/api/push`는 인증 → 가드 → 사전 집계(0) **뒤**, `markImportStarted` **앞**, 트랜잭션 **밖**이다. 무효 토큰이 GitHub 왕복을 유발하지 않고(인증 뒤 — JSON·스키마 검사를 인증 뒤로 옮긴 것과 같은 이유), 보류가 아무것도 쓰지 않는다(진행 표시 앞). 야간은 `planNightly`가 head 비교 뒤에 같은 함수를 부른다.
+- ⚠️ **`planProtectedImport`와 합치지 않는다** — `applyProtectedPush` 안의 재판정은 GitHub을 부르지 않으므로 늘 `null`을 박는 호출자가 되거나, 선택 입력이면 `undefined`로 모든 CI가 조용히 보류된다. 사전 판정(route·야간)만 게이트를 부른다.
+- ⚠️ **`installationId`·`repositoryId`가 null이면 게이트가 없다**(`null`) — PR을 낼 수 없는 프로젝트엔 열린 Malmoi PR도 없다(`loadOpenPrForImportGate` in `lib/projects/open-pr.ts`). 설정 화면용 `loadOpenPrUrl`은 `repositoryId null`을 `undefined`로 읽는데, 그것을 그대로 쓰면 고정 전 옛 행의 CI가 영구 보류된다. prod에서 installation이 있고 `repositoryId`가 null인 행은 0이다(2026-09-30 prod 읽기 전용 조회) — 이 갈래는 옛 행의 안전판이다.
+- ⚠️ **조회는 installation 토큰 GET이다** — `lib/github.ts`의 `createGitClient` → `findOpenPr`(`<owner>:malmoi-i18n/sync-<slug>`, `state=open`)라 자격증명 분리(`credential-separation.test.ts`)와 충돌하지 않는다. 닫힌(머지 안 된) PR은 열린 PR로 세지 않는다.
+- 응답: `PushResponse`의 `deferred`가 **사유별 union**이다 — `{ reason: "pending-edits", pendingCount }` | `{ reason: "open-pr" | "pr-check-failed" }`(`pendingCount` 없음). 생산자 `deferred()`에도 이 타입이 붙는다(POSTMORTEM 2026-08-31). v2 CLI는 `pendingCount`가 정수일 때만 경고하므로 새 사유는 **경고 없이 green**이고, v3 CLI가 사유별 경고를 낸다(ACTIONS).
 
 - `/api/push`는 가드(보관·오배송·포맷·역행) 뒤에 사전 집계 → 0이 아니면 **200 `{status: "deferred", reason: "pending-edits", pendingCount}`** 이고 어떤 컬럼도 쓰지 않는다(진행 표시 포함). 0이면 `applyProtectedPush`가 Project 잠금 안에서 다시 세고, upsert 뒤 **재집계**가 0이 아니면 트랜잭션 전체를 롤백하고 `deferred`다 — 조건 불일치는 0행이라 조용하므로(POSTMORTEM 2026-09-14) 재집계 예외가 그 무음을 깬다. ⚠️ **저장도 같은 `Project` → `TranslationSurface` 잠금 안이라**(§5.7.1) "판정과 upsert 사이에 커밋된 저장"은 끼지 못한다 — 재집계가 잡는 것은 **이 적재가 unorphan시킨 토큰 셀**이다(사전 집계는 orphan을 빼서 0이었다가 키·로케일이 되살아나면 1이 된다).
 - 수동 Sync는 OWNER가 Dialog를 열 때 받은 **폐기 승인 지문**(사용자·프로젝트·**리포 연결(`repositoryId`·`installationId`·owner·name)과 기준 브랜치**·활성 표면의 revision과 설정·pending `(id, token)`의 sha256)을 되돌려 줄 때만 편집을 덮는다. ⚠️ **리포·브랜치가 입력인 이유** (audit #3): Action은 실행 시점의 Project로 대상 리포를 만들므로 승인과 실행 사이의 설정 변경은 `repo-replaced`에 안 걸리고, 연결·브랜치 변경은 `importRevision`도 안 올린다 — 빠지면 `main` 기준 승인이 `release`를 덮는다. ⚠️ **Dialog의 건수·라벨·경고는 지문과 같은 응답의 `unsent`다** (audit #2) — 호출부의 화면 건수로 그리면 동료가 방금 만든 편집의 지문을 "지울 것이 없다"는 창으로 승인시킨다(`components/home/sync-button.tsx`). 서버가 Project 잠금 뒤 재계산해 대조하고(POSTMORTEM 2026-09-13), 승인 집합의 토큰만 upsert 가드를 통과한다 — 승인 뒤 저장은 살아남아 결과의 `remainingEdits`로 선다.
-- **대가는 정확히 하나다**: 미전달 편집이 남아 있는 동안 리포의 새 소스 키·삭제도 앱에 안 들어온다(§0 불변식 1의 유예). 손실을 막는 값이 "적재가 늦어짐"이고 병합이 아니다.
+- **대가는 둘이다** (2026-09-30, nightly-sync — 전에는 "정확히 하나"였다):
+  1. **적재 지연** — 미전달 편집이 남거나 Malmoi PR이 열린 동안 리포의 새 소스 키·삭제도 앱에 안 들어온다(§0 불변식 1의 유예). 야간 Publish가 PR을 매일 갱신하므로 편집이 이어지는 팀에서는 며칠씩 이어질 수 있다. 손실을 막는 값이 "적재가 늦어짐"이고 병합이 아니다.
+  2. **CI 적재가 GitHub 가용성에 묶인다** — 전에는 `/api/push`가 GitHub을 부르지 않았다. 조회 실패는 보류(`pr-check-failed`)라 설치 장애 동안 리포 → DB가 멈춘다(fail-closed). "PR 없음"으로 읽으면 장애 동안 편집이 덮인다(POSTMORTEM 2026-09-03).
+
+**야간 서버 적재는 자동화 갈래다** (2026-09-30, nightly-sync — `runAutomationImport` in `lib/import/run.ts`). 수동 Sync와 같은 코어를 `actor: { kind: "AUTOMATION" }`으로 돈다 — 사용자·지문·자격증명이 없고 폐기 승인 경로가 없으므로 **`approvedTokens`는 언제나 빈 배열**이고 편집을 한 줄도 덮지 않는다. `acquire`는 OWNER·지문 검사 대신 잠금 안에서 `planProtectedImport({ mode: "auto" })`로 다시 세고, 보류면 사건 `deferred`(`pending-edits`)로 닫는다(실행 행 없이). `already-running`·`no-surfaces` 같은 거부는 사건 없이 반환한다 — `recordImportRefusal`의 USER·manual 하드코딩은 수동 경로 전용이다. 사건은 subtype `import.nightly` · actor AUTOMATION · `source: "nightly"`이고 `finishRun`의 `closed` 검사를 지난다(POSTMORTEM 2026-09-14). 수동 Sync의 공개 시그니처와 동작은 그대로다.
+- ⚠️ **표면별 사후 재집계** — 사후 재집계는 원래 `applyProtectedPush`에만 있었다. 자동화는 `finishSurface` 트랜잭션 안에서 적용 뒤 `countPending`을 다시 세고 0이 아니면 던져 **그 표면을 롤백하고 뒤 표면을 시작하지 않는다**(파일을 읽는 동안 저장된 편집). 앞 표면이 커밋됐으면 `partial`, 없으면 `deferred`(`pending-edits`) — 멈춘 표면은 결과 목록에 없으므로 `summarizeRun`이 `halted`로 따로 받는다(안 그러면 나머지가 전부 `imported`라 성공으로 접힌다). 이미 커밋된 표면은 토큰 가드가 편집을 안 덮었으므로 되돌릴 이유가 없다. ⚠️ **이 재집계가 잡는 unorphan된 토큰 셀은 매일 밤 다시 잡힌다** — 적재가 키를 되살리면 1이 되어 그 표면이 롤백되고 다음 밤도 같다. CI `applyProtectedPush`와 같은 모양이고 풀리는 길도 같다(Publish·Revert·폐기 승인 Sync).
+- ⚠️ **야간의 서버 전용 한도는 표면 실패 상태를 쓰지 않는다** (2026-09-30 사용자 — spec의 "야간이 CI로 건강한 프로젝트를 Home에서 실패로 뒤집지 않는다"를 서버 전용 한도 전부로 넓혔다). 분류는 순수 함수 둘(`classifySnapshotFailure`·`classifySurfaceFailure` in `lib/import/automation.ts`)이다:
+
+  | 분류 | 무엇 | 사건 | 표면 `lastImportError` |
+  |---|---|---|---|
+  | `hold` | 영구 서버 전용 한도 — 파일 예산 `resource-limit`(§5.5.05 — 200파일 · 파일당 2MB · 합계 10MB) · 트리 잘림(`truncated`) | `deferred` · `too-large` | 안 쓴다 |
+  | `transient` | 일시·자격 실패 — 스냅샷 `unavailable` · reader 열기(installation 토큰·리포 선택 해제) · blob 다운로드 실패만인 표면 · 표면 트랜잭션 예외 | `failed`(errorCode만) | 안 쓴다 |
+  | `record` | CI도 같이 실패할 것 — 어댑터 파싱 실패 · 0키(오류 없는 실패) · `base-branch-missing` · `partial-import` | 소스별 결과 | **쓴다**(수동과 같이) |
+
+  ⚠️ **야간 스킵의 `base-unreadable`도 같은 두 부류로 갈린다** (#155, 2026-09-30 사용자) — 사건 어휘(`nightly.skip` · `failed` · `base-unreadable`)는 둘이 같다.
+  base 브랜치가 **정말 없으면**(`getRefSha` → `null`, 판정의 `branchMissing: true`) `record`다 — 사건과 **같은 트랜잭션**에서 활성 표면에
+  `lastImportError = import-failed` + `lastImportFailedAt`을 쓴다(수동 Sync가 `base-branch-missing`에서 쓰는 코드 그대로 — 새 코드를 만들지 않는다).
+  사건만 남기면 Home이 "Nothing needs you"라고 말했다 — 주의 항목·`failed` 접미는 표면 `lastImportError`만 읽는다. 진행 표시(`lastImportStartedAt`·토큰)는
+  건드리지 않는다(이 방문은 적재를 시작하지 않았고, 도는 CI의 표시를 뺏지 않는다). 다음 성공 적재(야간·CI·수동)가 같은 컬럼을 비운다.
+  head 조회 **throw · 마감 · 클라이언트 생성(설정) 실패**는 `transient`다 — 사건만 남는다.
+
+  `too-large`는 **모든 표면이 한도 보류일 때만**이다 — 파싱 실패가 섞이면 `failed`, 적재가 섞이면 `partial`로 소스별 결과에 맡긴다(`summarizeRun`). ⚠️ **한도 보류 프로젝트는 매 밤 다시 시도하고 매 밤 `too-large`를 남긴다** — 한도가 영구라 상태를 쓰지 않는 대가다. ⚠️ **수동 Sync는 이 분류를 타지 않는다** — 사람이 누른 실행의 실패는 그 사람이 Home에서 봐야 한다.
+
+**`changedValues` — 적재가 실제로 `value`를 바꾼 셀 수** (2026-09-30, nightly-sync). 모든 적재 사건(CI · 야간 · 수동 Sync · 첫 적재 셋)이 싣고 Logs 상세가 "N values changed"로 보인다. 필드가 없는 옛 사건과 실패 실행은 0이 아니라 `—`다 — 실패에 0을 적으면 "아무것도 안 바뀐 성공"과 같아진다(`changedValuesText`). 정의는 삽입 포함 `value`가 바뀐 셀이고 description·placeholders만 바뀐 셀과 토큰 가드로 안 덮인 셀은 세지 않는다.
+- ⚠️ **판정에 쓰지 않는다 — 관측값이다.** 이 수로 무엇을 덮을지 고르는 순간 병합이다. `rg changedValues lib/protection lib/nightly lib/pull`이 0이어야 한다.
+- 세는 자리는 공유 코어의 upsert 한 문장이다(`lib/push/apply.ts`) — `ON CONFLICT … RETURNING`은 old 값을 못 보므로 CTE `old`가 기존 값을 먼저 읽고 `IS DISTINCT FROM`으로 센다(그래서 `$executeRaw`가 `$queryRaw`다). 싣는 생산자는 따로 배선한다(CI `onApplied` · 수동/야간 `close` · 첫 적재 셋).
+- ⚠️ **`old`는 상관 서브쿼리 + `LIMIT 1`이고 `projectId` 조건은 그 펜스 밖이다** (POSTMORTEM 2026-09-18 부류 — 낡은 통계에서 인덱스를 버렸다). 평범한 조인이면 ANALYZE 전 표에서 해시 조인 + 풀스캔을 고르고(실측), `projectId`를 안에 넣으면 ANALYZE 전 계획이 `projectId` 선두 인덱스로 갈아타 행마다 프로젝트 범위를 훑는다(실측). 펜스 밖 조건은 내려가지 않아 조회는 유일 인덱스 `Translation_keyId_localeCode_key` 그대로이고 테넌트 조건은 결과에 걸린다. 계획은 `lib/keys/__tests__/repository-import.integration.ts`가 1446키 픽스처에서 ANALYZE 전·후 `EXPLAIN (FORMAT JSON)`의 `Index Name`으로 고정하고, 시간 상한은 **라우트 `maxDuration`(60초)**을 단언한다(`pnpm test:projects:postgres` — 실측은 warm 230–270ms. 옛 태스크의 "기존 상한 안"은 잴 수 없는 문장이라 이 경계로 바꿨다).
 
 **"예외 없음"의 범위는 값이 있는 셀이다** (2026-09-17 명문화, launch-readiness L1.3). `applyPush`는 `value === ""`인 엔트리를 적재 대상에서 뺀다(`lib/push/apply.ts`) — 리포에서 사라지거나 비워진 번역은 DB 셀을 **건드리지 않는다**. 이것은 셀 단위 "누가 이겼나"가 아니라 **"코드에서 번역을 지우는 방법은 없다"**(§0 불변식 3)의 귀결이다: pull은 DB의 `""`를 부재로 내보내므로(POSTMORTEM 2026-09-09 — `buildWriteEntries`의 판정 기준은 "그 값이 없으면 키가 사라지는가"), 부재를 삭제로 받으면 리포에 잠깐 없던 셀이 다음 PR에서 키째 사라진다. 지우려면 UI에서 비운다. **"리포 부재 → DB 비움"으로 바꾸는 것은 export가 명시적 빈값과 미번역 빈값을 구별하는 수단이 생긴 뒤의 일이다**(PRODUCT §10).
 
@@ -1397,13 +1540,13 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
     늘지 않는다 — 같은 컬럼에 선언을 쓰는 안을 기각한 근거다.
 - **셋이 다 null이면 통과시킨다** — "포맷은 push가 채운다"가 원래 계약이고 온보딩 밖에서 만들어진 행은
   첫 push가 심는다. 좁아지는 것은 한 번 채워진 뒤부터다.
-- ⚠️ **정당한 이전(리포가 로케일 파일을 옮겼다)도 409가 된다.** 이 라우트는 GitHub을 부르지 않으므로
-  오배송과 구별할 수 없다. 조용히 덮는 것보다 시끄럽게 멈추는 쪽을 고른다 — 손실이 되돌릴 수 없는
+- ⚠️ **정당한 이전(리포가 로케일 파일을 옮겼다)도 409가 된다.** 가드는 GitHub을 부르지 않으므로(라우트의 유일한 GitHub 호출은
+  가드 **뒤**의 열린 PR 게이트다 — §5.5.2) 오배송과 구별할 수 없다. 조용히 덮는 것보다 시끄럽게 멈추는 쪽을 고른다 — 손실이 되돌릴 수 없는
   방향이다. ⚠️ **그 409를 푸는 재설정 UI는 아직 없다** (2026-09-10 정정): 7단계가 `needs_configuration`을
   **후속으로 미뤘고** 구현은 0건이다 — 복구는 손으로 포맷 컬럼을 고치는 것뿐이다.
 
 - **같은 커밋의 재전송은 통과시킨다.** strict라 결과가 같고, 스캐너를 고쳐 같은 커밋을 다시 올리는 것은 정당한 조작이다. 그래서 판정 기준이 `commitSha` 동일성이 아니라 **`commitAt` 역행**이다.
-- **GitHub API로 조상 관계를 확인하지 않는다.** 더 정확하지만 지금 GitHub을 전혀 부르지 않는 push 라우트에 App 토큰과 네트워크 왕복이 들어온다. 커밋 시각은 Actions가 `git show -s --format=%cI`로 공짜로 얻는다.
+- **GitHub API로 조상 관계를 확인하지 않는다.** 더 정확하지만 가드마다 App 토큰과 네트워크 왕복이 들어온다. ⚠️ 2026-09-30(nightly-sync)부터 라우트가 열린 PR 게이트로 GitHub을 한 번 부르지만, 인증·가드·사전 집계를 다 지난 요청에만이고 조상 확인은 여전히 하지 않는다(§5.5.2). 커밋 시각은 Actions가 `git show -s --format=%cI`로 공짜로 얻는다.
 - ⚠️ **프로젝트별 토큰으로 바뀌었다** (2026-09-07, SaaS 5단계). 원래는 "토큰↔프로젝트 매핑을 DB에 둬야 하고 시크릿이 프로젝트 수만큼 는다"는 이유로 거부했는데, SaaS가 프로젝트를 여러 개 받는 순간 서버 env 하나로는 대상을 가릴 수 없어 그 대가를 치르기로 했다. 매핑은 `Project.pushTokenHash`(sha256, `@unique`)다.
   - **조회 순서가 판정의 요지다**: `sha256(Bearer)` → 행 조회 → 그 행의 slug와 페이로드 대조. **페이로드 slug로 행을 찾으면 안 된다** — 오배송된 페이로드가 인증 대상을 스스로 고르게 되어 검사가 순환이 된다.
   - **`pushTokenHash`가 `null`인 프로젝트는 어떤 해시로도 조회되지 않는다** — fail-closed가 컬럼의 성질로 성립한다. 무효 토큰·미발급 프로젝트·없는 프로젝트가 전부 **401 하나**이고 404는 없다(프로젝트 존재를 노출하지 않는다).
@@ -1424,12 +1567,12 @@ strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물
 
 ### 5.5.7 적재 실행권 — 토큰 둘과 revision 하나 (2026-09-14 multi-surface B, 2026-09-17 정본화)
 
-적재 경로가 넷이다(CI push · 첫 적재 · Add sources(`addSurfaces`) · 수동 Sync). 서로 겹치거나 뒤늦게 끝나는 실행이 **남의 결과를 덮지 않게** 하는 컬럼이 셋이다.
+적재 경로가 다섯이다(CI push · 첫 적재 · Add sources(`addSurfaces`) · 수동 Sync · 야간 서버 적재 — 마지막은 수동 Sync와 같은 코어·같은 프로젝트 lease를 AUTOMATION으로 돈다, §5.5.2). 서로 겹치거나 뒤늦게 끝나는 실행이 **남의 결과를 덮지 않게** 하는 컬럼이 셋이다.
 
 | 컬럼 | 소유 | 무엇을 막나 |
 |---|---|---|
 | `TranslationSurface.lastImportToken` + `lastImportStartedAt` | 표면 | **뒤늦은 결과 쓰기.** 실행이 시작할 때 UUID를 세우고(`markImportStarted`·`lib/surfaces/create.ts`·`lib/import/run.ts`), 실패 보고와 진행 표시 거두기는 전부 `WHERE lastImportToken = <내 토큰>`이다 — A가 끝난 뒤 B가 시작했으면 A의 늦은 실패 보고는 0행이고 B의 표시를 못 지운다. ⚠️ **`applyPush`의 성공 결과만 예외다**(2026-09-18, launch-readiness L3.7) — 결과(`lastImportError`·`lastImportFailedAt`)는 무조건, 진행 표시(`lastImportStartedAt`·토큰)만 조건부다. 잠금 뒤 커밋 순서가 곧 데이터 순서라 마지막 커밋의 결과가 맞고, 결과까지 거르면 교차한 B가 토큰을 덮은 사이 A의 성공이 0행이 되어 옛 실패가 남는다. 300초(`IMPORT_STALE_AFTER_SECONDS`) 지나면 죽은 실행으로 보고 새 실행이 들어간다 |
-| `Project.repositoryImportToken` + `repositoryImportStartedAt` | 프로젝트 | **수동 Sync 한 번에 하나.** 표면 전부와 네트워크 준비(스냅샷 다운로드)에 걸치므로 표면 토큰이 아니라 프로젝트 토큰이다. `planRepositoryImport`가 활성 lease면 `already-running`을 낸다. 정리도 `WHERE repositoryImportToken = <내 토큰>`이라 남의 lease를 못 지운다 |
+| `Project.repositoryImportToken` + `repositoryImportStartedAt` | 프로젝트 | **수동 Sync·야간 적재 합쳐 한 번에 하나.** 표면 전부와 네트워크 준비(스냅샷 다운로드)에 걸치므로 표면 토큰이 아니라 프로젝트 토큰이다. `planRepositoryImport`가 활성 lease면 `already-running`을 낸다. 정리도 `WHERE repositoryImportToken = <내 토큰>`이라 남의 lease를 못 지운다 |
 | `TranslationSurface.importRevision` | 표면 | **옛 상태 위에 계획한 적용.** 성공한 적용마다 +1(`applyPush`·`finishSurface`). 수동 Sync는 계획 시점의 revision을 잡아 두고 표면마다 적용 tx에서 `planImportApply`가 현재값과 대조한다 — 그 사이 CI push가 지나갔으면 `superseded`로 그 표면만 건너뛴다(값을 견주는 것이 아니라 **"내가 본 상태가 아직 그 상태인가"**만 본다 — §0 불변식 2 안이다) |
 
 ⚠️ **`lastImportToken`을 세우는 자리는 트랜잭션 밖이다** — `app/api/push/route.ts`의 `markImportStarted`. 동시 CI 둘이 사전 가드를 함께 지나면 토큰은 나중 요청의 것이 된다. **옮기지 않는다** — 적용 트랜잭션 안으로 옮기면 롤백된 실패에서 표시가 없어 `finishImportRun`의 토큰 대조가 0행이 되고 `import-failed` 기록이 사라진다. 대신 교차의 두 결과를 따로 막는다(2026-09-18, launch-readiness L3.7 — `lib/keys/__tests__/concurrent-import.integration.ts`가 barrier로 재현한다): ① 성공 결과는 토큰과 무관하게 쓴다(위 표) ② 트랜잭션 **안**의 `stale-commit`은 실패가 아니라 "더 새 커밋이 먼저 적재됐다"라 `abandonImportRun`으로 표시만 거둔다. 둘 중 하나만 있으면 성공한 적재가 `import-failed`로 그려진다. 보류도 같은 형이다 — 판정을 표시 **앞**의 사전 집계로 두어 보류 경로는 쓰기 0이고, 경합 보류만 `abandonImportRun`이 자기 표시를 거둔다.
@@ -1600,10 +1743,16 @@ PRODUCT §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 
 
 ### 5.6.5 cron 순회 순서는 아사 대책이다
 
-`selectPullTargets`가 **마지막 `SyncRun.startedAt`이 가장 오래된 것부터** 돈다(한 번도 안 돈 프로젝트가
-맨 앞, 동점은 slug). 전에는 `slug` 오름차순이라 `PULL_BATCH_LIMIT`에서 잘리는 뒤쪽이 **매일 밤 같은
+`selectPullTargets`가 **마지막 야간 방문(`Project.lastNightlyAt`)이 가장 오래된 것부터** 돈다(한 번도 안 돈 프로젝트가
+맨 앞, 동점은 slug — 2026-09-30 전 키는 마지막 `SyncRun.startedAt`이었다, 아래). 전에는 `slug` 오름차순이라 `PULL_BATCH_LIMIT`에서 잘리는 뒤쪽이 **매일 밤 같은
 프로젝트**였고 — 그 프로젝트는 영원히 안 돈다. `project-onboarding`이 "7단계가 큐로 가른다"고 넘긴
 자리이고, **큐 없이 정렬로** 풀었다. 동점 폴백이 slug인 것은 결정성을 잃지 않기 위해서다.
+
+⚠️ **정렬 키가 `Project.lastNightlyAt`으로 바뀌었다** (2026-09-30, nightly-sync — `20260930015436_add_project_last_nightly_at`).
+편집 없는 프로젝트가 더는 `SyncRun`을 만들지 않으므로(§3.05 야간 판정), 옛 키(`syncRuns[0].startedAt`)는 그 프로젝트를 영원히 "한 번도 안 돈 것"으로
+맨 앞에 두고 50개 상한에서 편집 있는 프로젝트를 잘랐을 것이다 — 이 절이 정렬로 푼 아사가 되살아난다. `ProjectEvent`에서 파생하지 않는 이유: 방문마다
+사건이 서지 않는 갈래가 있고(`notReady`·마감 `unprocessed`·실행권 거부), 매 밤 전 프로젝트의 최근 야간 사건을 조인해야 한다. 컬럼이 null이면
+옛 정렬의 `-Infinity`와 같다 — 코드가 먼저 나가도 안전하다. 한 번도 안 돈 프로젝트가 맨 앞 · 동점 slug는 그대로다.
 
 ## 5.7 활동 스트림 (`ProjectEvent` — 2026-09-20, logs-rework)
 
@@ -1616,7 +1765,7 @@ Recent logs가 **같은 조회**(`lib/events/query.ts`)를 읽는다. `SyncRun`�
 | 부류 | 확정 지점 | 실패 모드 |
 |---|---|---|
 | **상태 변경** (번역 저장 · 멤버 · 설정 · 소스) | **변경과 같은 트랜잭션** (`recordEvent`) | 어느 쪽이 실패해도 **둘 다 롤백**된다 |
-| **외부 실행** (CI 적재 · 수동 Sync · 최초 적재 · Publish) | **서버가 관측한 종료** (`recordRun`/`finishRun`) | 기록 실패가 실행을 되돌리지 않는다 — 실행은 이미 일어났다 |
+| **외부 실행** (CI 적재 · 수동 Sync · 최초 적재 · Publish · 야간 적재·스킵) | **서버가 관측한 종료** (`recordRun`/`finishRun`) | 기록 실패가 실행을 되돌리지 않는다 — 실행은 이미 일어났다 |
 
 - ⚠️ **이벤트만 남고 변경이 없는 조합이 생기면 이력이 거짓이 된다.** 그래서 `recordEvent`는
   트랜잭션 클라이언트만 받고 스스로 트랜잭션을 열지 않는다.
@@ -1652,6 +1801,9 @@ Recent logs가 **같은 조회**(`lib/events/query.ts`)를 읽는다. `SyncRun`�
   갱신 건수를 돌려준다(0행 갱신은 조용하다 — POSTMORTEM 2026-09-14).
 - **중단된 내부 Import는 다음 실행이 닫는다** — lease를 얻는 트랜잭션에서 `import:` 접두의 미종료 행을
   `failed`로 닫는다. Publish의 stale 처리와 같은 형이고, **조회·브라우저는 상태를 바꾸지 않는다.**
+  ⚠️ **닫는 자리는 둘이다** (2026-09-30, nightly-sync) — 적재 진입(`acquire`)과 **야간 방문마다**(`closeExpiredImportRuns` — head가 같아 적재가 안 도는 밤에도
+  죽은 행이 `Running…`으로 남지 않게). 둘 다 같은 닫기(`closeImportRunsInTx`)를 쓰고, "살아 있나"는 공유 술어 `hasLiveInternalImport`(`lib/import/plan.ts` —
+  실행권 토큰 ∨ 활성 표면 진행 표시; `planRepositoryImport`의 `already-running`도 이것이다)가 정한다. 첫 적재는 실행권 없이 표면 표시만 세우므로 사본을 두면 그 행을 닫는다.
 
 ### 5.7.3 값을 복제하지 않는다
 
@@ -1703,6 +1855,25 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
   DB의 `surfaceScope: "project-wide"`와는 구별한다.
 - ⚠️ **모르는 slug를 고른 URL은 0건이다** — 빈 목록을 "필터 없음"으로 되돌리면 지운 소스를 고른
   주소가 전체 목록을 보여준다.
+
+### 5.7.7 실행 주체 — `manual` · `nightly` · `ci` (2026-09-30, nightly-sync)
+
+자동화 행이 전에는 전부 `CI`로 읽혔고(야간 Publish 제외), 행위자 필터의 `automation` 한 항목이 "Nightly"로 적힌 채 CI 적재까지 걸렀다.
+지금은 주체가 셋이고 판정은 한 자리다 — `triggerOf`(`lib/events/view.ts`): USER → `manual`(MCP 포함), AUTOMATION ∧ (PUBLISH ∨ subtype ∈
+`NIGHTLY_SUBTYPES` = {`import.nightly`, `nightly.skip`}) → `nightly`, 그 밖의 AUTOMATION(`import.ci`, 생산자 0곳인 보고 실패) → `ci`.
+Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 쓴다.
+- ⚠️ **`subtype` 컬럼만 본다** — `payload.source`는 옛 행에 없고 `readPayload`가 모르는 값을 `?? "ci"`로 접는다. 그래서 `IMPORT_SOURCES`에 `"nightly"`를
+  더한 것은 표시용이고, 주체 판정은 그 폴백에 기대지 않는다.
+- **필터 술어는 `triggerWhere`**(`lib/events/trigger-where.ts`)이고 같은 컬럼을 본다. ⚠️ **`ci`는 AUTOMATION 안에서 `nightly`의 여집합(`NOT`)으로 적는다** —
+  따로 적으면 어느 쪽에도 안 드는 자동화 행이 생겨 옛 `?actor=automation`에서만 보인다. 옛 링크의 `automation`은 읽기만 하고 둘 다를 뜻한다(메뉴 항목 없음).
+  둘이 같은 행을 가르는지는 같은 모듈끼리의 비교가 아니라 `query.integration.ts`의 실제 행으로 잰다(POSTMORTEM 2026-09-14 — nightly-sync E2가 `source` 없는 옛 CI 행을 포함해 행을 심는다).
+- **새 결과어 `upToDate`** — `Record<EventResult, …>`가 누락을 잡고, `lib/events/query.ts`의 `RESULTS`는 `EVENT_RESULTS`에서 파생한다(손 사본이면 `asResult`가
+  null을 줘 결과 칸이 조용히 빈다). 결과 필터 그룹은 "Both"다.
+- **Home 메타 열**(`lib/home/runs.ts` → `homeTriggers` in `lib/home/meta.ts`): 사건 셋(최근 성공 적재 · 최근 적재(보류 포함) · 최근 성공 Publish)을 페이지의
+  기존 `Promise.all` 한 라운드 안에서 읽는다. ⚠️ **행위자를 고르지 않는다**(POSTMORTEM 2026-09-29 #146). ⚠️ `Last sync`의 주체는 **`lastImportedAt`을
+  적어도 한 표면에서 전진시킨** 적재의 것이다 — 표면이 전부 실패한 `partial`의 주체를 붙이면 더 옛 실행의 시각에 거짓 주체가 선다. 고른 사건이 못 쓰이면
+  더 옛 사건으로 물러나지 않는다(틀린 주체보다 주체 없음). ⚠️ **`lastSyncAt`과 사건 시각을 대조하지 않는다** — 트랜잭션 경계가 달라 밀리초가 갈리고,
+  대조가 실패하면 주체가 조용히 사라진다. 보류 한 줄("held until the pull request is merged or closed")은 **최신 적재 종류 사건**(결과 무관 — 실패·`upToDate`·진행 중 포함)이 `deferred` · `open-pr`일 때만이다 — 결과로 거르면 PR을 닫은 뒤 선 실패·`upToDate`를 건너뛰어 옛 보류가 남는다(`lib/home/runs.ts`, 실제 행은 `runs.integration.ts`).
 
 ## 5.8 전달 기준과 Revert (translation-rework — 2026-09-23 구현 · 프로덕션, #71–#73)
 
@@ -2660,7 +2831,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR — `pullRequest: { status: "open", number, url } \| { status: "none" } \| { status: "unknown" }`. ⚠️ 조회 실패·시간 초과(`loadOpenPrUrl`의 `undefined`)를 "없음"으로 접지 않는다 — `undefined`는 JSON에서 필드째 사라지므로 상태가 값이다(Codex review CR-04) |
 | `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라) |
 | `preview_revert` | OWNER (표면) | 없음 | Revert 확인값 |
-| `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다 |
+| `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다. 행은 `kind`·`subtype`·`result`·`payload`를 가공 없이 싣는다 — 2026-09-30(nightly-sync)부터 subtype `import.nightly`·`nightly.skip`, 결과 `upToDate`, IMPORT payload의 `source: "nightly"`·`deferReason`(넷)·`changedValues`(부재 `null`)가 그대로 나간다. `query`는 Logs 주소와 같은 해석이라 `actor=ci`·`actor=nightly`(옛 `automation`)도 받는다 |
 | `get_workflow` | OWNER | 없음 | 생성 YAML. push 토큰 원문 없음(`${{ secrets.PUSH_TOKEN }}`만) |
 | `list_members` | OWNER / EDITOR | 없음 | 남의 이메일 마스킹 유지 |
 

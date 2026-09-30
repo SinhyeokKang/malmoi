@@ -104,8 +104,8 @@ export function TokenGrantFields({
           value={String(value.expires)}
           options={EXPIRY.map((days) => ({ value: String(days), label: m.mcpConnector.form.days(days) }))}
           onChange={(next) => set({ expires: Number(next) as Expiry })}
-          // 모달(2열)은 360 고정, 동의 화면(1열)은 폼 폭을 채운다(2026-09-30 사용자).
-          className={columns === 2 ? "w-[360px]" : "w-full"}
+          // 모달·동의 화면 모두 폭을 채운다(2026-09-30 사용자 — 모달의 360 고정을 걷었다).
+          className="w-full"
         />
       </div>
 

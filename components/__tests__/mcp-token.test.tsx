@@ -122,7 +122,8 @@ describe("카드 상태 셋", () => {
     expect(button(card(), m.mcpConnector.token.revoke)).not.toBeNull();
     expect(button(card(), m.mcpConnector.token.create)).toBeNull();
     expect(facts()).toEqual({
-      [m.mcpConnector.token.facts.grants]: "Translate & publish · Members",
+      // 권한마다 배지 하나라 textContent가 이어 붙는다 — 배지 개수는 `grant-badges`를 보는 쪽이 센다.
+      [m.mcpConnector.token.facts.grants]: "Translate & publishMembers",
       [m.mcpConnector.token.facts.scope]: m.mcpConnector.token.allProjects,
       [m.mcpConnector.token.facts.created]: "Sep 28, 2026",
       [m.mcpConnector.token.facts.lastUsed]: m.mcpConnector.token.never,

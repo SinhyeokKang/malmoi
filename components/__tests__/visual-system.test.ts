@@ -117,14 +117,11 @@ const REGISTERED: Record<string, string[]> = {
   "bg-green-50": ["components/ui/alert.tsx"],
   "bg-green-800/[0.16]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
   // 빨강 — diff · missing 알약 · 사라짐 띠 · 임포트 실패 띠
-  "text-red-700": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/sources/source-detail-modal.tsx", "components/ui/badge.tsx", ...GLYPH],
+  "text-red-700": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/sources/source-detail-modal.tsx"],
   "bg-red-700/[0.14]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
-  "bg-red-700/10": ["components/ui/badge.tsx"],
   "text-red-800": ["components/projects/project-list.tsx"],
   // blue-600 — 링크 색 (§6.3) · 검색 일치 구간
   "text-blue-600": [
-    // `/mcp` 가이드 링크 한 줄 (mcp-connector)
-    "app/(edit)/mcp/page.tsx",
     // `/oauth/authorize` 로그인 전 약관 링크 — `/signin`과 같은 줄이다 (mcp-oauth)
     "app/oauth/authorize/page.tsx",
     "app/signin/page.tsx",
@@ -160,18 +157,17 @@ const REGISTERED: Record<string, string[]> = {
     "app/(edit)/account/page.tsx",
     // `/docs` 행 화살표 `→` (§6.61, #119)
     "components/docs/doc-frame.tsx",
-    "components/home/attention-card.tsx",
     "components/home/count-cards.tsx",
     "components/home/meta-column.tsx",
     "components/landing/mockup/translations.tsx",
     "components/logs/event-detail.tsx",
-    // `/mcp` — 사실 블록·Server URL 라벨 열(`/account` Profile과 같은 형) · 만료 토큰의 값(보관 행과 같은 예외) · 멤버십 0 행 (mcp-connector)
+    // `/mcp` — 사실 블록(`/account` Profile과 같은 형) · 만료 토큰의 값(보관 행과 같은 예외) · 멤버십 0 행 (mcp-connector)
     // · 연결된 앱의 사실 라벨·만료 행 값 (mcp-oauth — 토큰 카드와 같은 형)
-    "components/mcp/connect-card.tsx",
     "components/mcp/connected-apps-card.tsx",
+    // `Allowed actions` 배지 — 만료 행의 흐린 값(2026-09-30 — 사실 블록에서 옮겨 왔다)
+    "components/mcp/grant-badges.tsx",
     "components/mcp/token-card.tsx",
     "components/mcp/token-grant-fields.tsx",
-    "components/members/member-row.tsx",
     "components/projects/project-list.tsx",
     "components/settings/general-card.tsx",
     // LNB 스위처의 보관 배지 — `/projects` 행 칩과 같은 형 (§6.5)
@@ -202,7 +198,7 @@ const REGISTERED: Record<string, string[]> = {
     ["bg-emerald-50", "text-emerald-700", "bg-slate-100", "text-slate-600", "text-blue-700", "bg-teal-50", "text-teal-700", "bg-violet-50", "text-violet-700"].map((value) => [value, GLYPH]),
   ),
   // 활동 칩과 Alert가 같은 값을 쓴다 (Alert `danger`·`info` 배경)
-  "bg-red-50": ["components/ui/alert.tsx", ...GLYPH],
+  "bg-red-50": ["components/ui/alert.tsx"],
   "bg-blue-50": ["components/ui/alert.tsx", ...GLYPH],
 };
 

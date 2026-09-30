@@ -32,19 +32,19 @@ description: 여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고,
 
 ```bash
 W=$(orca worktree create --repo id:<repoId> --name <batch> --base-branch dev --no-parent --json | jq -r .result.worktree.id)
-T=$(orca terminal create --worktree "id:$W" --title <batch> --command 'claude --permission-mode auto' --json | jq -r .result.terminal.handle)
+T=$(orca terminal create --worktree "id:$W" --title <batch> --command 'claude --permission-mode bypassPermissions' --json | jq -r .result.terminal.handle)
 orca terminal wait --terminal $T --for tui-idle --timeout-ms 60000 --json
 orca terminal send --terminal $T --text "Read <scratchpad>/brief-<batch>.md and follow it exactly." --enter --json
 ```
 
-- **`--permission-mode auto`로 띄운다.** `--agent claude`는 Orca 버그로 승인 대기 상태로 열리고, `--dangerously-skip-permissions`는 auto mode 분류기가 거부한다.
+- **`--permission-mode bypassPermissions`로 띄운다** (2026-09-30 사용자 — auto의 분류기가 워커의 정당한 셋업(로컬 앱 보관·폐기용 리포 PR 머지·토큰 전달)을 매번 막아 사람 승인이 필요했다). `--agent claude`는 Orca 버그로 승인 대기 상태로 열린다. ⚠️ bypass 확인창은 `~/.claude/settings.json`의 `skipDangerousModePermissionPrompt: true`가 넘긴다 — 그 값이 없으면 워커가 확인창에서 멈춘다. ⚠️ **분류기가 없으므로 경계는 브리프가 진다** — prod DB·`db:deploy`·`git push`·`/merge`·`.env.local` 복사 금지를 브리프에 빠짐없이 적는다(아래 목록). QA 워커(main 체크아웃)도 같다.
   **다른 세션의 권한 프롬프트를 지휘자가 대신 누르지 않는다.**
 - **브리프는 파일로 쓰고 한 줄로 보낸다** — 여러 줄을 TUI에 붙이면 깨진다. 브리프에 반드시 넣는 것:
   - 계획 원본 경로와 담당 항목, **다른 배치 소유라 건드리지 말 것** 목록
   - `/ship` 재정의: 임시 워크트리 브랜치 = dev 등가 · **11단계(`/push`) 전에 멈춤** · `/merge`·`/sync`·`git push`·`db:deploy` 금지
   - 스키마 변경: 허용 여부. 허용하면 **DB 없이** `prisma migrate diff`로 SQL만 만들고(⚠️ `prisma.config.ts`가 URL이 없으면 datasource를 빼서 diff가 **빈 출력 + exit 0**이다 — 연결하지 않는 더미 `DIRECT_URL`을 준다), dev DB 적용은 지휘자가 한다
-  - **`.env.local`을 복사하지 말 것** — 분류기가 거부한다. 워커 게이트는 DB 없이 도는 것 + 격리 `test:projects:postgres`로 충분하다
-  - 런타임 검증은 끝으로 미룬다(워커는 목록만 남긴다)
+  - **`.env.local`을 복사하지 말 것** — 분류기가 거부한다. 워커 게이트는 **`pnpm gate --base dev`** 하나다(DB 없이 돌고, 트리거 경로면 격리 postgres 스위트를 스스로 붙인다). ⚠️ 출력을 파이프로 거르지 말라고 적는다
+  - 런타임 검증은 끝으로 미룬다 — 단 **`/ship` 6.2단계대로 (a) 결정적으로 잴 수 있는 항목은 시나리오 테스트로 먼저 쓰고**, 인계 문서의 "런타임 검증 목록"에는 **(b)만** 남긴다(각 항목이 왜 (b)인지 한 줄)
   - 인계 프로토콜: `.scratch/handoff-<batch>.md` 작성 → `orca worktree set --worktree active --comment "<batch> HANDOFF READY"` → **`HANDOFF READY: <batch>`** 한 줄 출력 후 정지
 - **QA 전용 워커(코드 수정 없음)는 워크트리가 아니라 main 체크아웃에서 띄운다** — 워크트리에는 `.env.local`이 없어 dev 서버가 안 뜬다.
 
@@ -66,10 +66,10 @@ Codex 워커의 차이는 브리프에 명시한다:
 
 ## 2. 감시
 
-- 워커 터미널을 `orca terminal read ... | grep -q "HANDOFF READY: <batch>"`로 폴링하는 루프를 **`run_in_background`**로 건다. 끝나면 알림이 온다.
+- 워커 터미널을 `orca terminal read`로 읽어 마커를 **줄 머리 일치**(아래)로 찾는 폴링 루프를 **`run_in_background`**로 건다. 끝나면 알림이 온다.
 - ⚠️ **감시 스크립트는 bash 3 호환으로 쓴다** — macOS `/bin/bash`는 `declare -A`가 없고, 실패하면 터미널 인자가 비어 **엉뚱한 터미널의 출력을 읽어 오보를 낸다**(실제로 "ready" 오보가 났다). `pair=B1:term_…` 문자열 분해를 쓴다.
 - ⚠️ `cmd &`로 띄운 백그라운드는 알림이 오지 않는다 — 반드시 `run_in_background`다.
-- ⚠️ **마커는 줄 전체가 마커일 때만 인정한다** — 지휘자가 보낸 지시문("…print `HANDOFF READY: X r1`")도 워커 터미널 입력줄에 그대로 찍혀서, 부분 일치 grep은 **지시를 보낸 직후 오보를 낸다**(2026-09-24 실제로 났다). `re.fullmatch(r'\s*(⏺\s*)?<marker>\s*', line)`처럼 줄 단위 전체 일치로 본다.
+- ⚠️ **마커는 줄 머리가 마커일 때만 인정한다** — 지휘자가 보낸 지시문("…print `HANDOFF READY: X r1`")도 워커 터미널 입력줄에 그대로 찍혀서, 부분 일치 grep은 **지시를 보낸 직후 오보를 낸다**(2026-09-24 실제로 났다). `re.match(r'\s*(?:[⏺•]\s*)?<marker>(?:\s|$)', line)`처럼 **줄 머리** 일치로 본다. ⚠️ 줄 끝까지 일치(`fullmatch`)는 안 된다 — Codex TUI는 마커 앞에 `•`를, 뒤에 스피너 잔상을 붙여 찍어 2026-09-30 리뷰 인계를 통째로 놓쳤다.
 - 알림을 받으면 **터미널을 직접 다시 읽고, 인계 문서·커밋이 실제로 늘었는지 확인한 뒤** 움직인다.
 - ⚠️ **지시를 보내는 것과 그 마커의 감시를 거는 것은 한 동작이다** (2026-09-25 사용자 — "오케스트레이션 중 이렇게 중단이 발생하면 안 됨").
   같은 응답에서 `orca terminal send`와 그 마커의 `run_in_background` 감시를 **짝으로** 건다 — 보낸 지시마다 기대 마커가 정확히 하나 있고,
@@ -83,6 +83,7 @@ Codex 워커의 차이는 브리프에 명시한다:
 ## 3. 리뷰 → 수정 라운드
 
 1. 인계 문서를 읽고, 그 배치 diff(`git log $(git merge-base dev <branch>)..<branch>`)를 **리뷰 서브에이전트**(general-purpose, 리포트 전용)에 맡긴다. 프롬프트에 계획 항목 · 인계 문서 주장 검증 · 관련 POSTMORTEM · 해당 배치 특유의 위험을 넣는다.
+   - **런타임 목록 분류도 판정시킨다** (2026-09-30) — (b)에 남긴 항목 중 진입점 → 격리 DB → 뷰 모델로 결정적으로 잴 수 있는 것은 🟡("시나리오 테스트로 옮겨라")다. 시나리오 테스트가 DB 행에서 멈추고 뷰 모델 출력을 단언하지 않으면 그것도 🟡다 — #155가 그 틈으로 런타임까지 갔다.
 2. 🔴·🟡 지적과 **사용자 결정이 필요한 항목**을 가른다. 결정은 `AskUserQuestion`으로 받는다.
 3. 수정 라운드 브리프(`brief-<batch>-fix<N>.md`)를 같은 워커 터미널로 보낸다 — 워커는 컨텍스트를 들고 있으므로 새 세션을 열지 않는다. 마커는 `HANDOFF READY: <batch> r<N>`.
 4. 🔴 0이 될 때까지 반복한다. 워커가 스스로 계획과 다르게 간 곳(「계획과 다른 점」)은 리뷰가 반드시 판정한다.
@@ -92,11 +93,11 @@ Codex 워커의 차이는 브리프에 명시한다:
 ```bash
 git status --porcelain                              # 비어 있어야 한다
 git cherry-pick $(git merge-base dev <branch>)..<branch>
-pnpm db:generate                                    # ⚠️ 스키마가 바뀐 배치 뒤에는 필수 — 안 하면 typecheck가 옛 클라이언트로 red
-pnpm typecheck && pnpm test && pnpm build && pnpm sync:agents:check   # + 트리거면 pnpm test:projects:postgres
+pnpm gate                                           # db:generate → typecheck → test → (트리거면) 격리 postgres → build → 미러. 끝줄만 본다
 git push                                            # = /push 1·3·4·5단계를 여기서 수행한다
 ```
 
+- ⚠️ **게이트를 손으로 조립하지 않는다** (2026-09-30) — `pnpm test | grep … | head`로 건 게이트는 파이프가 종료 코드를 삼켜 29건 red를 dev에 내보냈다. `pnpm gate`의 끝줄 `gate: ok`/`gate: FAILED at <step>`만 근거로 쓴다.
 - 마이그레이션이 든 배치: dev DB에 `pnpm exec prisma migrate deploy`(PRISMA_TARGET 없음 = dev) → `db:status` → anon 권한 0 확인(`/db` 5단계). **prod `db:deploy`는 `/merge` 1단계다.**
 - 문서 신선도(`/push` 4단계)는 리뷰가 찾은 문서 드리프트를 **문서별 커밋**으로 얹는다.
 - 계획 문서의 항목을 체크하는 커밋을 같이 얹는다.
@@ -106,7 +107,7 @@ git push                                            # = /push 1·3·4·5단계�
 ## 5. 런타임 검증 (모든 배치가 dev에 들어간 뒤)
 
 - **QA 워커를 main 체크아웃에서** 띄운다(`/runtime-test` · `/roundtrip` · 레이아웃 QA). dev 서버는 하나라 QA는 **직렬**이다.
-- 범위는 각 인계 문서의 "런타임 검증 목록"을 모은 것 + 레이아웃 QA(1280·1440·1890 · 극단 데이터 · DOM 측정: 가로 스크롤 · 겹침 · 잘림 · 빈 박스).
+- 범위는 각 인계 문서의 "런타임 검증 목록"(= (b)만 — (a)는 이미 시나리오 테스트다)을 모은 것 + 레이아웃 QA(1280·1440·1890 · 극단 데이터 · DOM 측정: 가로 스크롤 · 겹침 · 잘림 · 빈 박스).
   시안(Claude Design)은 없으므로 `/design-sync`가 아니라 DESIGN.md 대비 레이아웃 QA다.
 - ⚠️ **QA가 끝난 뒤 main 체크아웃에서 게이트를 돌리기 전에 두 잔재를 치운다** (2026-09-24 QA6 뒤 실측): ① QA가 대상 리포를
   `.scratch/` 아래에 clone하면 vitest가 그 리포의 테스트까지 집어 **수백 파일이 red**다 — clone은 리포 밖(스크래치패드)으로 옮긴다.

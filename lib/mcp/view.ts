@@ -1,5 +1,7 @@
 import { clientIdLabel } from "@/lib/oauth/client-metadata";
 
+import { connectionBrand, type Brand } from "./brand";
+
 import { TOKEN_GRANTS, type TokenGrant } from "./grant";
 
 /**
@@ -52,6 +54,8 @@ export type ConnectedAppView = {
   createdAt: Date;
   lastUsedAt: Date | null;
   expiresAt: Date;
+  /** client_id 호스트로만 고른 로고 — 이름으로 고르지 않는다(`brand.ts`). */
+  brand: Brand | null;
 };
 
 export function planConnectedApps(input: {
@@ -72,6 +76,7 @@ export function planConnectedApps(input: {
     createdAt: row.createdAt,
     lastUsedAt: row.lastUsedAt,
     expiresAt: row.expiresAt,
+    brand: connectionBrand(row.clientId),
   }));
   // 정렬(핸드오프 §7.3): 마지막 사용 최신 → 사용 없음(연결일 최신) → 만료. 만료가 맨 아래라 살아 있는 연결이 먼저 읽힌다.
   const rank = (v: ConnectedAppView) => (v.state === "expired" ? 2 : v.lastUsedAt === null ? 1 : 0);

@@ -71,6 +71,8 @@ it("1446키·6로케일의 실제 POST 경로를 격리 PG에서 측정한다", 
   await seed();
   vi.doMock("@/lib/db", () => ({ getPrisma: () => prisma }));
   vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+  // 열린 Malmoi PR 없음 — 이 파일은 게이트 뒤(적재)를 잰다. 게이트 자체는 `app/api/__tests__/push-open-pr.test.ts`(nightly-sync D1).
+  vi.doMock("@/lib/projects/open-pr", () => ({ loadOpenPrForImportGate: async () => null }));
   const { POST } = await import("@/app/api/push/route");
   const samples: number[] = [];
   for (let index = 0; index < 4; index++) {
@@ -81,7 +83,38 @@ it("1446키·6로케일의 실제 POST 경로를 격리 PG에서 측정한다", 
     expect(await response.json()).toMatchObject({ translationsFilled: 8676 });
   }
   expect(await prisma.stringKey.count({ where: { projectId: "p" } })).toBe(1446);
+  // 상한은 라우트의 `maxDuration`이다 — 그 값에 닿으면 함수가 죽는다. 실측(격리 PG)은 수백 ms라 흔들림에 여유가 크다.
+  const { maxDuration } = await import("@/app/api/push/route");
+  expect(Math.max(...samples)).toBeLessThan(maxDuration * 1000);
   writeFileSync(join(tmpdir(), "malmoi-sync-post-timing.json"), JSON.stringify(samples));
+});
+
+/**
+ * **`changedValues`의 기존 값 읽기가 인덱스를 탄다** (nightly-sync C2 · POSTMORTEM 2026-09-18 — 낡은 통계에서 관계 조인이 인덱스를 버렸다).
+ * 번역 upsert가 `old` CTE로 `(keyId, localeCode)` 등식 조인을 하나 더 한다 — 1446키·6로케일 벌크에서 그 조인이 `Translation_keyId_localeCode_key`를
+ * 쓰는지 ANALYZE 전·후로 본다. ⚠️ `EXPLAIN`만(ANALYZE 옵션 없음) — 쓰기 문장이라 실행하면 픽스처가 바뀐다.
+ */
+it("1446키 벌크 upsert의 기존 값 읽기가 ANALYZE 전·후 모두 (keyId, localeCode) 인덱스를 탄다", async () => {
+  await seed();
+  const { applyPush: apply, translationUpsertSql } = await import("@/lib/push/apply");
+  await apply(prisma, { projectId: "p", surfaceId: "s" }, payload(1446), { token: "seed", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" });
+  const keys = await prisma.stringKey.findMany({ where: { projectId: "p" }, select: { id: true } });
+  const rows = keys.flatMap(key => ["en", "ko", "fr", "de", "ja", "es"].map(locale => ({ keyId: key.id, locale, value: "Next" })));
+  expect(rows).toHaveLength(8676);
+  const sql = translationUpsertSql({ projectId: "p", surfaceId: "s" }, rows, [], new Date());
+  const nodes = (node: Record<string, unknown>): Record<string, unknown>[] =>
+    [node, ...(Array.isArray(node["Plans"]) ? (node["Plans"] as Record<string, unknown>[]).flatMap(nodes) : [])];
+  const onTranslation = (plan: Record<string, unknown>) => nodes(plan).filter(node => node["Relation Name"] === "Translation");
+  const indexNames = (plan: Record<string, unknown>) => onTranslation(plan).flatMap(node => typeof node["Index Name"] === "string" ? [node["Index Name"]] : []);
+  for (const phase of ["before", "after"]) {
+    if (phase === "after") await pool.query("ANALYZE");
+    const explain = await pool.query(`EXPLAIN (FORMAT JSON) ${sql.text}`, sql.values as unknown[]);
+    const plan = explain.rows[0]["QUERY PLAN"][0]["Plan"] as Record<string, unknown>;
+    process.stdout.write(JSON.stringify({ phase, indexes: indexNames(plan) }) + "\n");
+    expect(indexNames(plan), phase).toContain("Translation_keyId_localeCode_key");
+    // 인덱스를 쓰는 노드가 있어도 다른 노드가 표 전체(전 테넌트)를 훑으면 소용없다.
+    expect(onTranslation(plan).map(node => node["Node Type"]), phase).not.toContain("Seq Scan");
+  }
 });
 
 // Tests below must fail before the repository import implementation exists.

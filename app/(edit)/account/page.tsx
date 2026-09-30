@@ -125,7 +125,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
     <>
       {/*
         ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
-        여백·폭 등급·머리 아래 선은 **프리미티브가 든다**(기본 등급이 `limited` = `max-w-4xl`) —
+        여백·폭 상한·머리 아래 선은 **프리미티브가 든다**(`max-w-7xl` 하나 — 2026-09-30에 896에서 넓혔다) —
         화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader>

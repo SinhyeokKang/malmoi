@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { compareKeys } from "@/lib/adapters/shared";
 
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { importOutcomeFields, type ImportFailureCode } from "@/lib/projects/import-status";
 import { isBaseLocaleChange, checkFormat, checkCommitOrder, checkProjectSlug } from "./guard";
 import type { PushPayloadType } from "./plan";
@@ -65,6 +65,11 @@ export type PushOutcome = {
    * (`DO UPDATE`) — 후보 수가 아니라 실제 영향 행수를 보고한다.
    */
   translationsFilled: number;
+  /**
+   * `value`가 실제로 바뀐 번역 셀 수(삽입 포함) — nightly-sync `changedValues`. description·placeholders만 바뀐 셀과 토큰 가드로 안 덮인 셀은
+   * 세지 않는다. ⚠️ **관측값이다 — 판정에 쓰지 않는다.** 이 수로 무엇을 덮을지 고르는 순간 병합이다(ARCHITECTURE §0 불변식 2).
+   */
+  changedValues: number;
 };
 
 export type ApplyOptions = {
@@ -130,7 +135,8 @@ export type AppliedHook = (tx: Prisma.TransactionClient, outcome: PushOutcome) =
 /**
  * **CI 자동 적재** — 프로젝트 전체에 미전달 편집이 하나라도 있으면 아무것도 쓰지 않고 보류한다 (sync-edit-protection — ARCHITECTURE §5.5.2).
  *
- * 리포를 보지 않는다 — 판정 입력은 DB의 pending 수 하나이고 리포 값과 DB 값을 견주지 않는다(병합이 아니다).
+ * 리포 값을 보지 않는다 — **이 트랜잭션 안의** 재판정 입력은 DB의 pending 수 하나이고 리포 값과 DB 값을 견주지 않는다(병합이 아니다).
+ * 열린 Malmoi PR 게이트는 트랜잭션 **밖** 사전 판정(`/api/push` — `planOpenPrGate`)이 이미 봤다 — 트랜잭션 안에서 GitHub을 부르지 않는다.
  *
  * ⚠️ **재집계를 지우지 않는다.** 저장은 이제 같은 `Project` → `TranslationSurface` 잠금 안이라 "판정 뒤·upsert 전" 저장은 끼지 못한다 —
  * 재집계가 잡는 것은 **이 적재가 unorphan시킨 토큰 셀**이다: 사전 집계(`pendingWhere`)는 orphan을 빼므로 0이었다가 키·로케일이 되살아나면
@@ -333,38 +339,7 @@ async function applyWith(
     // ⚠️ 단 **미전달 편집(토큰 있는 셀)은 덮지 않는다** (sync-edit-protection, 2026-09-18). CI는 그런 셀이 하나라도 있으면
     //    애초에 적재를 보류하고(`applyProtectedPush`), 수동 Sync는 OWNER가 승인한 토큰만 덮는다. 값 비교가 아니라 토큰 유무다.
     // needsReview는 건드리지 않는다 — 원문 변경 전파(위 문장)가 그 축을 담당한다.
-    ...(uniqueTranslations.length === 0 ? [] : [prisma.$executeRaw`
-      INSERT INTO "Translation" ("id", "projectId", "surfaceId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
-      SELECT v."id", v."projectId", v."surfaceId", v."keyId", v."localeCode", v."value", v."description", v."placeholders"::jsonb, v."needsReview", v."updatedAt"
-      FROM unnest(
-        ${uniqueTranslations.map(() => randomUUID())}::text[],
-        ${uniqueTranslations.map(() => projectId)}::text[],
-        ${uniqueTranslations.map(() => surfaceId)}::text[],
-        ${uniqueTranslations.map((t) => t.keyId)}::text[],
-        ${uniqueTranslations.map((t) => t.locale)}::text[],
-        ${uniqueTranslations.map((t) => t.value)}::text[],
-        ${uniqueTranslations.map((t) => t.description ?? null)}::text[],
-        -- jsonb[]로 바로 못 받는다: Prisma가 배열을 text[]로 보내므로 text로 받아 SELECT에서
-        -- 행마다 캐스팅한다. 그래서 SELECT * 가 아니라 컬럼을 이름으로 세운다.
-        ${uniqueTranslations.map((t) => (t.placeholders === undefined ? null : JSON.stringify(t.placeholders)))}::text[],
-        ${uniqueTranslations.map(() => false)}::boolean[],
-        ${uniqueTranslations.map(() => now)}::timestamp[]
-      ) AS v("id", "projectId", "surfaceId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
-      ON CONFLICT ("keyId", "localeCode") DO UPDATE SET
-        "value" = EXCLUDED."value",
-        -- strict라 chrome 필드도 리포 값이 덮는다 (ARCHITECTURE §0 불변식 2). 리포에서 사라졌으면 DB에서도 빠진다.
-        "description" = EXCLUDED."description",
-        "placeholders" = EXCLUDED."placeholders",
-        -- **덮인 값의 저자는 리포다** (ARCHITECTURE §5.5.2). 사람 이름을 남기면 거짓이고,
-        -- 미배포 집계(countPending)가 push 직후 전 키를 "안 보낸 편집"으로 센다.
-        "updatedBy" = NULL,
-        -- 덮인 셀의 편집은 더 이상 존재하지 않는다 — 토큰도 비운다. 페이로드에 없는 셀(실패 파일·빈 값)은
-        -- 이 문장이 안 닿아 토큰이 남는다 (sync-edit-protection — ARCHITECTURE §5의 pendingEditToken 절).
-        "pendingEditToken" = NULL,
-        "updatedAt" = ${now}
-      -- ⚠️ **토큰 있는 셀은 덮지 않는다** — 값을 견주지 않고 "아직 전달 확인되지 않은 편집인가"만 본다 (sync-edit-protection — ARCHITECTURE §5.5.2).
-      -- 승인된 폐기(수동 Sync)의 토큰만 예외다. 조건 불일치는 0행이라 조용하므로 CI 경로는 재집계가 그 무음을 깬다.
-      WHERE "Translation"."pendingEditToken" IS NULL OR "Translation"."pendingEditToken" = ANY(${[...(options.approvedTokens ?? [])]}::text[])`]),
+    ...(uniqueTranslations.length === 0 ? [] : [prisma.$queryRaw(translationUpsertSql(scope, uniqueTranslations, options.approvedTokens ?? [], now))]),
 
     // KeyRef 전체 교체. 증분 갱신은 삭제 케이스를 놓치고, 스캔이 전수라 교체가 더 정확하다.
     ...(options.refsMode === "preserve" ? [] : [prisma.$executeRaw`
@@ -431,7 +406,7 @@ async function applyWith(
 
   const results = await execute([...statements, ...rest]);
   const staleTranslations = plan.staleKeyIds.length === 0 ? 0 : numberAt(results, staleAt);
-  const translationsFilled = uniqueTranslations.length === 0 ? 0 : numberAt(results, filledAt);
+  const upserted = uniqueTranslations.length === 0 ? { filled: 0, changed: 0 } : upsertCounts(results[filledAt]);
   const orphanedLocales = liveLocales.length === 0 ? 0 : numberAt(results, 1);
 
   return {
@@ -442,9 +417,92 @@ async function applyWith(
     unorphaned: plan.toUnorphan.length,
     staleTranslations,
     refs: options.refsMode === "preserve" ? 0 : refs.length,
-    translationsFilled,
+    translationsFilled: upserted.filled,
     orphanedLocales,
+    changedValues: upserted.changed,
   };
+}
+
+/**
+ * 번역 upsert 한 문장 — **strict 덮어쓰기**와 그 적재가 실제로 바꾼 값 수를 함께 낸다.
+ *
+ * `ON CONFLICT ... RETURNING`은 옛 값을 못 보므로 `old`가 같은 문장 안에서 기존 값을 먼저 읽는다 — 한 문장의 CTE는 같은 스냅샷을 보므로
+ * `old`는 갱신 **전** 값이다. `RETURNING`은 실제로 쓰인 행만 내므로 토큰 가드로 건너뛴 셀은 세어지지 않는다.
+ *
+ * ⚠️ `old`는 `(keyId, localeCode)` 등식 조회다 — `Translation_keyId_localeCode_key`를 타야 1446키 벌크에서 표 전체(전 테넌트)를 훑지 않는다.
+ * `repository-import.integration.ts`가 ANALYZE 전·후 `EXPLAIN`으로 그 인덱스를 고정한다(POSTMORTEM 2026-09-18 — 낡은 통계에서 인덱스를 버렸다).
+ */
+export function translationUpsertSql(
+  scope: PushScope,
+  rows: readonly { keyId: string; locale: string; value: string; description?: string | null; placeholders?: unknown }[],
+  approvedTokens: readonly string[],
+  now: Date,
+): Prisma.Sql {
+  const { projectId, surfaceId } = scope;
+  return Prisma.sql`
+      WITH v AS (
+        SELECT * FROM unnest(
+          ${rows.map(() => randomUUID())}::text[],
+          ${rows.map(() => projectId)}::text[],
+          ${rows.map(() => surfaceId)}::text[],
+          ${rows.map((t) => t.keyId)}::text[],
+          ${rows.map((t) => t.locale)}::text[],
+          ${rows.map((t) => t.value)}::text[],
+          ${rows.map((t) => t.description ?? null)}::text[],
+          -- jsonb[]로 바로 못 받는다: Prisma가 배열을 text[]로 보내므로 text로 받아 SELECT에서
+          -- 행마다 캐스팅한다. 그래서 SELECT * 가 아니라 컬럼을 이름으로 세운다.
+          ${rows.map((t) => (t.placeholders === undefined ? null : JSON.stringify(t.placeholders)))}::text[],
+          ${rows.map(() => false)}::boolean[],
+          ${rows.map(() => now)}::timestamp[]
+        ) AS v("id", "projectId", "surfaceId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
+      ),
+      old AS (
+        -- ⚠️ **상관 서브쿼리 + LIMIT 1이다** — 평범한 조인이면 통계가 낡은 표(ANALYZE 전)에서 해시 조인 + 풀스캔을 고른다(실측). LIMIT이
+        -- 서브쿼리 끌어올리기를 막아 행마다 유일 인덱스 조회가 된다. 유일 제약이라 행은 많아야 하나다.
+        -- ⚠️ **projectId 조건은 펜스 밖이다** — 안에 넣으면 ANALYZE 전 계획이 projectId 선두 인덱스로 갈아타 행마다 프로젝트 범위를 훑는다(실측).
+        -- 펜스 밖 조건은 서브쿼리로 내려가지 않으므로 조회는 유일 인덱스 그대로이고, 테넌트 조건은 결과에 걸린다.
+        SELECT v."keyId", v."localeCode", t."value"
+        FROM v CROSS JOIN LATERAL (
+          SELECT "value", "projectId" FROM "Translation" WHERE "keyId" = v."keyId" AND "localeCode" = v."localeCode" LIMIT 1
+        ) t
+        WHERE t."projectId" = ${projectId}
+      ),
+      up AS (
+        INSERT INTO "Translation" ("id", "projectId", "surfaceId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")
+        SELECT v."id", v."projectId", v."surfaceId", v."keyId", v."localeCode", v."value", v."description", v."placeholders"::jsonb, v."needsReview", v."updatedAt"
+        FROM v
+        ON CONFLICT ("keyId", "localeCode") DO UPDATE SET
+          "value" = EXCLUDED."value",
+          -- strict라 chrome 필드도 리포 값이 덮는다 (ARCHITECTURE §0 불변식 2). 리포에서 사라졌으면 DB에서도 빠진다.
+          "description" = EXCLUDED."description",
+          "placeholders" = EXCLUDED."placeholders",
+          -- **덮인 값의 저자는 리포다** (ARCHITECTURE §5.5.2). 사람 이름을 남기면 거짓이고,
+          -- 미배포 집계(countPending)가 push 직후 전 키를 "안 보낸 편집"으로 센다.
+          "updatedBy" = NULL,
+          -- 덮인 셀의 편집은 더 이상 존재하지 않는다 — 토큰도 비운다. 페이로드에 없는 셀(실패 파일·빈 값)은
+          -- 이 문장이 안 닿아 토큰이 남는다 (sync-edit-protection — ARCHITECTURE §5의 pendingEditToken 절).
+          "pendingEditToken" = NULL,
+          "updatedAt" = ${now}
+        -- ⚠️ **토큰 있는 셀은 덮지 않는다** — 값을 견주지 않고 "아직 전달 확인되지 않은 편집인가"만 본다 (sync-edit-protection — ARCHITECTURE §5.5.2).
+        -- 승인된 폐기(수동 Sync)의 토큰만 예외다. 조건 불일치는 0행이라 조용하므로 CI 경로는 재집계가 그 무음을 깬다.
+        WHERE "Translation"."pendingEditToken" IS NULL OR "Translation"."pendingEditToken" = ANY(${[...approvedTokens]}::text[])
+        RETURNING "keyId", "localeCode", "value"
+      )
+      -- 덮을지 고르는 데 쓰지 않는다 — 이미 쓰인 행을 센다(관측값).
+      SELECT count(*)::int AS "filled",
+        (count(*) FILTER (WHERE old."keyId" IS NULL OR old."value" IS DISTINCT FROM up."value"))::int AS "changed"
+      FROM up LEFT JOIN old ON old."keyId" = up."keyId" AND old."localeCode" = up."localeCode"`;
+}
+
+/** upsert 문장의 결과 행 → 두 수. 모양이 예상과 다르면 0이다 — 보고값이라 던지지 않는다(`numberAt`과 같은 축). */
+function upsertCounts(result: unknown): { filled: number; changed: number } {
+  const row: unknown = Array.isArray(result) ? result[0] : undefined;
+  if (typeof row !== "object" || row === null) return { filled: 0, changed: 0 };
+  const count = (key: string) => {
+    const value = Object.hasOwn(row, key) ? (row as Record<string, unknown>)[key] : undefined;
+    return typeof value === "number" ? value : 0;
+  };
+  return { filled: count("filled"), changed: count("changed") };
 }
 
 /** 트랜잭션 결과에서 영향 행수를 꺼낸다. 형태가 예상과 다르면 0으로 — 보고값이라 던지지 않는다. */

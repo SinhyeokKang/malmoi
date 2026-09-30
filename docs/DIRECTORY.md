@@ -226,8 +226,9 @@ components/
   mcp/                  `/mcp` 조각(2026-09-28 · mcp-oauth 2026-09-29) — token-card(RowCard 머리에 행동 — 없음·만료 = Create, 활성 = Rotate · Revoke.
                         결과 미확인은 이 세션에만 산다) · token-modal(OnboardingModal 2단계 — ① 폼 ② 원문 1회, Done이 유일한 출구) ·
                         token-grant-fields(권한·범위 **필드만** — 모달과 동의 화면이 공유한다, columns 1|2 · 상태 슬롯·버튼·Alert는 호스트 소유) ·
-                        connected-apps-card(OAuth 연결 목록 · 끊기 Dialog · 조회 장애 ≠ 빈 목록 · RowCardList) ·
-                        connect-card(방식 세그먼트 브라우저/개인 토큰 + SegmentedControl + WorkflowBlock 형 조각 — 공개 문서 CodeBlock이 아니라 mono 자리가 안 는다).
+                        connected-apps-card(OAuth 연결 목록 · 머리의 Copy server URL · 행 왼쪽 로고 칸 · 끊기 Dialog · 조회 장애 ≠ 빈 목록 · RowCardList) ·
+                        brand-logo(에이전트 공식 로고를 `<img>`로 그대로 — 색을 입히지 않는다).
+                        ⚠️ Connect 카드(조각 · 방식·에이전트 탭)는 2026-09-30에 걷었다 — 연결 조각의 정본은 가이드(guide/ai-agents/)다.
                         ⚠️ grant 어휘·만료 선택지를 **다시 적는다** — TOKEN_GRANTS를 값으로 import하면 lib/auth/access가
                         클라이언트 그래프에 들어온다(client-graph). 두 벌의 대가는 components/__tests__/mcp-token이 순서까지 고정해 진다
   oauth/                `/oauth/authorize` 조각(mcp-oauth) — app-card(앱 이름 + clientId 식별 줄, 말줄임 없음 · 칩 IconTile lg — 서버·클라이언트 공용) ·
@@ -454,16 +455,28 @@ lib/
                         pull 쪽에서 그 침묵이 내는 결과는 base_tree 누락, 즉 나머지 파일이 전부 삭제된 커밋이다
                         ⚠️ pull/message는 PullOutcome 유니온의 주인이다 — 화면과 Action이 **값으로** 받는
                         타입이라 run의 결과에 실패 갈래를 더해 한 자리에서 닫는다
+                        ⚠️ pull/targets의 정렬 키는 `lastNightlyAt`(2026-09-30 — 편집 없는 프로젝트가 `SyncRun`을 안 만들어
+                        옛 키로는 영원히 맨 앞이다)이고, 루프 상수 셋(`PULL_BATCH_LIMIT`·`PULL_TIME_BUDGET_MS`·
+                        `NIGHTLY_IMPORT_START_MS`)도 여기 산다. 야간 판정 자체는 lib/nightly/다
   import/               리포 재적재(화면 이름 `Sync`) — approval(폐기 승인 지문의 발급·재계산이 같은 함수) · read(파일 읽기·스냅샷 오류) · surface(읽기·준비
                         추출) · empty(정상 빈 카탈로그와 깨진 파싱을 가른다) · plan(거부 순서·실행권) ·
                         apply-plan(revision·실행 토큰 대조) · run(진입점 껍데기) · confirm·result·refusal
                         ⚠️ **뒤의 셋은 화면이 값으로 부르는 잎이다**(client-graph) — confirm은 어느 경고
                         줄이 서는지, result는 결과 요약, refusal은 거부의 tone·닫기·액션을 정한다.
                         판정을 컴포넌트에 두면 "형이 둘"(성공 한 줄 · 사고 두 줄)이 테스트 밖으로 나간다
+                        · automation(2026-09-30, nightly-sync — 야간 서버 적재의 **실패 분류와 종료 결과**, 순수).
+                        classifySnapshotFailure·classifySurfaceFailure가 hold(영구 서버 한도 → `deferred too-large`) ·
+                        transient(일시·자격 실패 → 사건만 `failed`) · record(CI도 같이 실패할 것 → `lastImportError`)로 가르고
+                        summarizeRun이 사후 재집계 중단(`partial`/`deferred pending-edits`)까지 접는다.
+                        ⚠️ run.ts 안에 두지 않는 이유: 그 판정이 "야간이 CI로 건강한 프로젝트를 실패로 뒤집지 않는다"의 전부라
+                        I/O 없이 표로 고정해야 한다(`__tests__/automation.test.ts`). 수동 Sync는 이 분류를 타지 않는다
   events/               **프로젝트 활동 스트림** (2026-09-20, logs-rework) — payload(어휘·종류별 맥락·
                         `runToken` 조립·`readPayload`) · view(결과 열·값 상태·UTC 날짜 카드·수집 경계선) ·
                         filter(URL 판정·커서·UTC 구간) · search(검색 문자열의 **유일한 관문**) /
-                        query(`server-only` 조회) · record(사건 기록) · ci(CI 적재 사건) · member-label
+                        query(`server-only` 조회) · record(사건 기록) · ci(CI 적재 사건) · member-label ·
+                        trigger-where(2026-09-30 — 행위자 필터 `ci`·`nightly`의 Prisma 술어. view의 `triggerOf`와 **같은 컬럼**
+                        (`actorKind`·`kind`·`subtype`)을 보고 `ci`를 AUTOMATION 안 `nightly`의 여집합으로 적는다. ⚠️ query.ts가 아니라
+                        따로인 이유: query는 `server-only`라 단위 테스트가 그 경계를 못 넘는다 — Prisma는 타입으로만 문다)
                         ⚠️ **앞의 넷은 잎이다** — 클라이언트가 값으로 읽고, 조회를 물면 그 순간 Prisma가
                         번들에 온다(POSTMORTEM 2026-09-07의 7.2MB). `client-graph.test.ts`가 파일 집합을
                         정확 일치로 고정한다
@@ -507,6 +520,19 @@ lib/
                         파일 목록으로 고정) · where(토큰 술어 pendingWhere — **미전달 술어의 주인**. countPending·
                         loadPendingEdits는 토큰 컬럼만 보는 count가 0이면 관계 조인을 건너뛴다, POSTMORTEM 2026-09-18) ·
                         backfill(옛 술어 ∧ 활성 ∧ 토큰 없음 SQL 한 문장 — 배포 B precondition 마이그레이션이 같은 조건을 복제한다)
+                        ⚠️ plan에 **열린 PR 게이트**(`planOpenPrGate`, 2026-09-30 nightly-sync)가 산다 — `/api/push` 사전 판정과
+                        야간 판정이 공유한다. `planProtectedImport`와 합치지 않은 이유는 트랜잭션 안 재판정(push/apply)이 GitHub을
+                        못 부르기 때문이다(ARCHITECTURE §5.5.2)
+  nightly/              **야간 판정** (2026-09-30, nightly-sync — ARCHITECTURE §3.05). plan(`planNightly` — 프로젝트 하나를
+                        Publish / 적재 / 스킵 / 사건 없음으로 가르는 **한 함수**, I/O 0). 껍데기는 `need`를 받을 때마다 그 입력만
+                        조회해 다시 부른다 — "무엇을 묻지 않는가"(편집이 있으면 head를, head가 같으면 PR 목록을)가 이 함수에서
+                        정해지고, 그래서 조회를 `Promise.all`로 몰지 않는다(POSTMORTEM 2026-09-13).
+                        ⚠️ lib/pull/에 두지 않는 이유: pull은 DB → PR 한 방향이고 이 판정은 그 방향과 반대(적재)까지 고른다
+                        · run(`runNightly` — 방문 하나의 껍데기. `lastNightlyAt`을 쓰는 자리가 여기뿐이고(머리의 방문 기록 + 유일한 예외인 마감 복원 — 머리 값 그대로일 때만 되돌리는 조건부), `need`마다
+                        head·PR을 순차로 조회해 다시 판정한 뒤 정확히 한 갈래(`runSync` · `runAutomationImport` · `nightly.skip`
+                        사건)를 부른다. server-only) · summary(`NightlyVisit` — `/api/pull` 응답 항목 `PullItem`의 본체와
+                        요약 로그 줄 `summarizeNightly`, 순수). ⚠️ `NightlyVisit`을 손으로 적고 판정의 skip·none 갈래와 같은지
+                        컴파일 타임에 잰다 — `Omit<union>`이 갈래별 필드를 지워서다
   privacy/              개인정보처리방침의 등재부 — collected(모델 전수 분류 + personal 모델의 스칼라
                         전수 → 방침의 절 id). ⚠️ **로직 0의 데이터 파일이고 게이트는 pnpm typecheck이다** —
                         모델·필드가 늘면 이름을 지목하며 red. import type 하나뿐이라 server-only가 아니다
@@ -562,10 +588,10 @@ lib/
   mcp/                  MCP 커넥터(2026-09-28, ARCHITECTURE §6.45). **순수 판정이 대부분이고 server-only가 셋뿐이다** —
                         token(생성·해시·Bearer 파싱·planApiTokenUse·shouldTouch) · grant(planToolAccess — 범위 → 멤버십 → 역할 →
                         보관 → 토큰) · issue-plan · batch(100키 상한·중복) · confirm(샘플 확인값 소비) · locked-token(잠금 뒤 재판정) ·
-                        result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · snippets(연결 조각 — 토큰은
-                        $MALMOI_TOKEN 참조로만) · catalog(도구 28 — 이름·순서·annotations·요구 조건의 코드 정본).
+                        result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · brand(연결 로고 — client_id 호스트 정확
+                        일치만, 이름으로 고르지 않는다) · catalog(도구 28 — 이름·순서·annotations·요구 조건의 코드 정본).
                         server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveApiToken) · tools/.
-                        ⚠️ catalog·snippets는 잎이다(import 0). snippets는 /mcp 클라이언트(connect-card)가 값으로 읽는다(client-graph).
+                        ⚠️ catalog·brand는 잎이다(import 0). brand는 /mcp 클라이언트(connected-apps-card · brand-logo)가 값으로 읽는다(client-graph).
                         catalog의 소비자는 서버 쪽 셋(server · tools/access · lib/auth/lock)이다 — 그래도 잎인 이유는 모든 쓰기 코어가
                         지나는 lock.ts가 물기 때문이고(값 import가 쓰기 경로 전부로 번진다), 도구 구현 → catalog 방향이 뒤집히면 순환이다.
                         순수 모듈에 server-only가 없는 것은 lib/mcp/__tests__/pure-boundary가 센다
@@ -596,6 +622,9 @@ lib/
                         actorLabel의 null이 아니다) · meta(행이 상태에 따라 사라지거나 는다) ·
                         sync-time(lastSyncTime — lastImportedAt의 최댓값, 시각 컬럼 이전 적재는 "unrecorded"로 null과 가른다)
                         ⚠️ **전부 I/O가 없고 server-only를 안 붙인다** — 테스트가 직접 import한다
+                        ⚠️ **예외 하나 — runs(2026-09-30, nightly-sync)는 server-only 조회다**: 메타 열의 실행 주체용 사건 셋
+                        (최근 성공 적재 · 최근 적재(보류 포함) · 최근 성공 Publish)을 읽어 meta의 `homeTriggers`에 넘긴다.
+                        행위자를 select하지 않는다(POSTMORTEM 2026-09-29 #146). 판정(주체·보류 한 줄)은 meta에 남아 순수다
   shell/panel-size.ts   px 치수 → 리사이즈 패널의 % 제약. ⚠️ 분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다
                         — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
                         ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다
@@ -613,7 +642,9 @@ lib/
                         그 판정의 순수 부분(변경된 로케일 **파일 수** · PR 번호 파싱). ⚠️ 키 수가
                         아니다 — 서버는 그 커밋을 체크아웃하지 않아 셀 수가 없다
   projects/open-pr.ts   server-only. installation 토큰으로 sync 브랜치의 **열린 PR 하나**를 찾는다 —
-                        Publish·Sync 화면이 "이미 열려 있다"를 말할 근거다
+                        Publish·Sync 화면이 "이미 열려 있다"를 말할 근거다. loadOpenPrForImportGate(2026-09-30)는
+                        `/api/push` 게이트용 입력이다 — ⚠️ `installationId`·`repositoryId` null이면 `null`(게이트 없음)이고
+                        loadOpenPrUrl의 `repositoryId null → undefined`를 그대로 쓰지 않는다(옛 행의 CI가 영구 보류된다)
   projects/pr-url.ts    parseGithubPrUrl(순수). ⚠️ 저장된 URL을 **그 프로젝트의 owner/name으로 다시 검증**한다
                         — DB 문자열을 그대로 링크로 내면 남의 리포를 가리키는 값이 화면에 선다
   projects/import-failure.ts
@@ -725,7 +756,10 @@ scripts/                adapter-survey · sync-agents · copy-fonts · scan · i
                         (⚠️ DATABASE_URL을 친다 — prod는 명령 한 줄에서 그 변수를 넘긴다, 0행 두 번이 수렴)
                         release(순수 버전 판정 — planRelease·recommendLevel·latestReleaseTag. ⚠️ lib/가 아닌 이유는 앱 런타임이 안 쓰는 하네스 로직이라서다) ·
                         release-plan(pnpm release:plan — /merge 3단계 전용. 원격 태그(ls-remote)·origin/dev·origin/main을 읽는다. 읽기 전용,
-                        exit 0 판정 / 1 error / 2 인자가 주어짐)
+                        exit 0 판정 / 1 error / 2 인자가 주어짐) ·
+                        gate-plan(순수 게이트 판정 — planGate(단계 순서 · 격리 postgres 트리거의 **정본**) · isTeardownOnlyFailure) ·
+                        gate(pnpm gate — /push·/ship·/orchestrate의 **유일한 로컬 게이트**. 첫 실패의 exit code로 끝난다, 2 = 인자 오류.
+                        ⚠️ 2026-09-30 손으로 조립한 `| grep | head` 게이트가 종료 코드를 삼켜 red를 dev에 냈다 — 그래서 한 명령이다)
                         __tests__/workflow-pins가 .github/ 아래 uses:가 40자 SHA로 핀됐는지 센다.
                         __tests__/prisma-select-columns는 이 디렉터리의 select 키를 schema.prisma와
                         대조한다 — ⚠️ tsc가 Prisma select 키를 안 보고 scripts/는 pnpm test 밖이다
@@ -742,7 +776,9 @@ public/brand/ flags/ email/
                         ⚠️ 커밋된 원본이다(fonts/는 반대로 생성물). email/logo@2x.png·box@2x.png(썸네일 없는 프로젝트 카드의 흰 Box 글리프, 32×32 투명 —
                         lucide box의 __iconNode로 만든 산출물, 생성 스크립트는 남기지 않는다)는 초대 메일이 프로덕션 절대 URL로 참조한다 — 옮기면 이미 보낸 메일이 깨진다(middleware matcher 제외). flags 253개는 lib/keys/flag.ts의
                         FLAG_INVENTORY와 정확히 같아야 한다(flag-assets.test.ts가 양방향으로 센다).
-                        flags 원본은 country-flag-icons@1.6.20 3x2(MIT) — flags/LICENSE가 그 원문이다
+                        flags 원본은 country-flag-icons@1.6.20 3x2(MIT) — flags/LICENSE가 그 원문이다.
+                        brand/agents/는 남의 로고다(2026-09-30) — Anthropic press kit Claude Spark · OpenAI black monoblossom을 **받은 그대로** 둔다
+                        (색·비율 변경 금지 — 크기 보정은 BrandLogo의 표시 배율로 한다). 우리 로고(brand/ 바로 아래)와 섞지 않는다
 LICENSE                 MIT. ⚠️ 전문에 문장을 더하지 않는다 — GitHub가 유사도로 판정해 한 줄만 붙여도 인식이 풀린다
 guide/                  **사용 가이드 원고**(en) — SUMMARY.md(IA 정본 · 내비 순서) + README.md(개요) + <장>/README.md + <장>/<페이지>.md.
                         AUTHORING.md·SHOOTING.md는 한국어 매뉴얼이고 SUMMARY 밖이라 서빙되지 않는다(`/docs/AUTHORING`은 404).
@@ -767,16 +803,16 @@ vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암
 vitest.projects.config.ts
                         목록 집계의 **격리 PostgreSQL** 검증(`pnpm test:projects:postgres`).
                         ⚠️ `pnpm test`에 없다 — 실제 클러스터를 띄우고, 미전달 술어가 공유 조각(pendingWhere)
-                        + 손 사본 셋(번역 목록 bool_or · 상세 셀 투영 · 프로젝트 목록 raw SQL)이라 "같은 행을 세나"를 재는 유일한 자리다. `lib/keys/**`의 raw 집계를
-                        건드렸으면 손으로 돌린다. 편집 토큰의 조건부 쓰기(적재 정리·Publish CAS·backfill)와
+                        + 손 사본 셋(번역 목록 bool_or · 상세 셀 투영 · 프로젝트 목록 raw SQL)이라 "같은 행을 세나"를 재는 유일한 자리다. 트리거 경로를 건드리면
+                        `pnpm gate`가 붙인다(정본 scripts/gate-plan.ts). 편집 토큰의 조건부 쓰기(적재 정리·Publish CAS·backfill)와
                         동시 CI push의 결과 표시(concurrent-import — barrier로 두 요청을 교차시킨다)와 전달 층 불변식
                         (delivery-invariants — 승인 Sync의 orphan 토큰 해제 · orphan 셀 적재 제외 · 로케일 재시도 · 보류 뒤 Revert)도
-                        여기서만 잰다 — include가 `lib`(루트)·`lib/keys`·`lib/events`·`lib/invitation-email`·`lib/mcp`의 `__tests__/*.integration.ts`로
-                        박혀 있어 그 밖에 만든 통합 테스트는 조용히 0건 수집된다
+                        여기서만 잰다 — include가 디렉터리별 `__tests__/*.integration.ts`로 박혀 있어 그 밖에 만든 통합 테스트는 조용히 0건 수집된다.
+                        ⚠️ 디렉터리를 더하면 `scripts/gate-plan.ts` 트리거에도 더한다 — `__tests__/gate-plan.test.ts`가 둘을 대조한다
 vitest.credentials.config.ts
                         같은 형의 둘째다 — 자격증명 암·복호의 **격리 PostgreSQL** 검증
                         (`pnpm test:credentials:postgres`, include는 `lib/credentials/__tests__/*.integration.ts`).
-                        ⚠️ 이쪽도 `pnpm test` 밖이라 `lib/credentials/**`를 건드렸으면 손으로 돌린다
+                        ⚠️ 이쪽도 `pnpm test` 밖이다 — `lib/credentials/**`를 건드리면 `pnpm gate`가 붙인다
 auth.ts                 Auth.js v5. 어댑터가 credentialAdapter(그 아래가 safePrismaAdapter)이고
                         세션 토큰은 우리가 만든다(DB엔 digest만). handlers는 withRevocation으로 감싼다
 ```

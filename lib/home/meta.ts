@@ -1,3 +1,6 @@
+import { readPayload, type ActorKind, type EventKind } from "@/lib/events/payload";
+import { triggerOf, type Trigger } from "@/lib/events/view";
+
 import type { HomeState } from "./state";
 import type { SyncTime } from "./sync-time";
 
@@ -25,8 +28,16 @@ export type MetaRow =
   | { kind: "keys"; count: number }
   | { kind: "members"; count: number }
   /** ⚠️ **`2b`에서 값이 둘이다** — `1d ago · failed 10m ago`. 뒤쪽이 `lastImportFailedAt`이다. */
-  | { kind: "lastSync"; at: Date | null; failedAt: Date | null }
-  | { kind: "lastPublish"; at: Date | null; prUrl: string | null }
+  | {
+      kind: "lastSync";
+      at: Date | null;
+      failedAt: Date | null;
+      /** 최근 성공 적재의 주체 (nightly-sync 14). 사건이 없으면(이력 도입 전) `null`이고 주체를 붙이지 않는다. */
+      trigger: Trigger | null;
+      /** 최근 적재 사건이 열린 Malmoi PR로 보류됐다 (14a). */
+      heldByOpenPr: boolean;
+    }
+  | { kind: "lastPublish"; at: Date | null; prUrl: string | null; trigger: Trigger | null }
   | { kind: "created"; at: Date }
   /** ⚠️ **시각만 든다** (DESIGN §6.64 이탈 표) — 캔버스의 `· by Sinhyeok`을 뺀 **의도된 이탈**이다. */
   | { kind: "archived"; at: Date };
@@ -47,6 +58,7 @@ export function metaRows(input: {
   lastPrUrl: string | null;
   createdAt: Date;
   archivedAt: Date | null;
+  triggers: HomeTriggers;
 }): MetaRow[] {
   const disconnected = input.state === "not_connected";
   const rows: MetaRow[] = [
@@ -65,12 +77,56 @@ export function metaRows(input: {
     // 실패 시각은 실패 상태에서만 나란히 선다 — 성공한 뒤에도 남으면 옛 실패를 상시로 말한다.
   );
   if (input.lastSyncAt !== "unrecorded")
-    rows.push({ kind: "lastSync", at: input.lastSyncAt, failedAt: input.state === "import_failed" ? input.lastImportFailedAt : null });
+    rows.push({
+      kind: "lastSync", at: input.lastSyncAt, failedAt: input.state === "import_failed" ? input.lastImportFailedAt : null,
+      trigger: input.triggers.sync, heldByOpenPr: input.triggers.heldByOpenPr,
+    });
   rows.push(
-    { kind: "lastPublish", at: input.lastPublishedAt, prUrl: input.lastPrUrl },
+    { kind: "lastPublish", at: input.lastPublishedAt, prUrl: input.lastPrUrl, trigger: input.triggers.publish },
     { kind: "created", at: input.createdAt },
   );
   // 시각 없는 사건을 세우지 않는다 — 활동 스트림이 관측된 것만 남기는 것과 같은 규칙이다.
   if (input.state === "archived" && input.archivedAt !== null) rows.push({ kind: "archived", at: input.archivedAt });
   return rows;
+}
+
+/** Home이 읽는 사건 한 줄 — **행위자를 싣지 않는다**(POSTMORTEM 2026-09-29 #146). 주체는 컬럼 셋(`triggerOf`)이 정한다. */
+export type RunEvent = { actorKind: ActorKind; kind: EventKind; subtype: string; result: string | null; payload: unknown };
+
+export type HomeTriggers = { sync: Trigger | null; publish: Trigger | null; heldByOpenPr: boolean };
+
+/**
+ * 성공 적재 — `lastImportedAt`을 전진시키는 집합과 같다. ⚠️ 두 집합이 갈리면 "12시간 전 수동 Sync" 옆에 그 뒤 보류된 야간 행의
+ * `nightly`가 붙는다. 조회(`lib/home/runs.ts`)가 같은 목록으로 좁히고, 여기서 한 번 더 거른다.
+ */
+export const SUCCESSFUL_IMPORT_RESULTS = ["imported", "partial"] as const;
+
+/**
+ * `lastImportedAt`을 적어도 한 표면에서 전진시킨 적재인가. ⚠️ `partial` 사건은 표면이 전부 코드를 달고 끝났을 수 있다 — 그 표면은
+ * `lastImportedAt`을 안 쓴다(`importOutcomeFields`). 그러면 `Last sync` 시각은 더 옛 실행의 것이라 이 사건의 주체를 붙이면 거짓이다.
+ */
+function advancedSyncTime(event: RunEvent): boolean {
+  if (event.result === "imported") return true;
+  if (event.result !== "partial") return false;
+  const payload = readPayload(event.kind, event.payload);
+  return payload?.kind === "IMPORT" && payload.surfaces.some((surface) => surface.status === "imported");
+}
+
+/**
+ * 사건 셋 → 메타 열의 주체와 보류 한 줄 (nightly-sync 14·14a).
+ *
+ * ⚠️ **고른 적재 사건이 못 쓰이면 더 옛 사건으로 물러나지 않는다** — 물러난 사건이 `lastSyncAt`과 다른 실행일 수 있다. 틀린 주체보다 주체 없음이 낫다.
+ *
+ * ⚠️ **`lastSyncAt`(표면 `lastImportedAt`)과 사건 시각을 대조하지 않는다** — 트랜잭션 경계가 달라 밀리초가 갈리고, 대조가
+ * 실패하면 주체가 조용히 사라진다.
+ */
+export function homeTriggers(input: { lastImport: RunEvent | null; latestImport: RunEvent | null; lastPublish: RunEvent | null }): HomeTriggers {
+  const last = input.lastImport;
+  const latest = input.latestImport;
+  const payload = latest === null ? null : readPayload(latest.kind, latest.payload);
+  return {
+    sync: last !== null && advancedSyncTime(last) ? triggerOf(last) : null,
+    publish: input.lastPublish === null ? null : triggerOf(input.lastPublish),
+    heldByOpenPr: latest?.result === "deferred" && payload?.kind === "IMPORT" && payload.deferReason === "open-pr",
+  };
 }

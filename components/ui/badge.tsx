@@ -16,12 +16,12 @@ import { cn } from "@/lib/utils";
 /**
  * 레이블은 위치와 무관하게 500으로 통일한다 (2026-09-12 사용자).
  *
- * ⚠️ **한 글자면 정원이다** (2026-09-11 사용자). `min-w-5`가 높이(`text-xs` 16 + `py-0.5` 4 = 20)와
+ * ⚠️ **한 글자면 정원이다** (2026-09-11 사용자). `min-w-5`가 높이(`text-2xs` 16 + `py-0.5` 4 = 20 — 2026-09-30부터 12px, `globals.css`)와
  * 같고 `justify-center`가 그 안에 글자를 앉힌다 — 좌우 padding만으로는 한 글자에서도 가로가 더 길어
  * 개수 배지가 알약처럼 늘어졌다. **padding을 `px-1.5`로 줄여야** 한 글자에서 min-w가 이긴다
  * (`px-2`면 8+7+8=23으로 20을 넘는다). 여러 글자는 그대로 알약이 된다.
  */
-const badge = cva("inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-medium", {
+const badge = cva("inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-2xs font-medium", {
   variants: {
     variant: {
       // ⚠️ **muted 표면 위에 놓지 않는다** — 이 색은 흰 배경에서 4.75:1이고 `--muted` 위에서는
@@ -47,10 +47,10 @@ const badge = cva("inline-flex min-w-5 items-center justify-center rounded-full 
        *
        * ⚠️ **`danger`와 축이 다르다.** 그쪽은 같은 행의 다른 배지들과 나란히 서는 표식이라 배경을
        * 안 들었고, 이쪽은 **비고 열 전체가 그 한 알약**이라 amber `warning`과 같은 무게로 서야
-       * 검토 필요와 사라짐이 한눈에 갈린다. `red-700`(#b91c1c)은 `destructive`(#dc2626)보다
-       * 한 단계 어둡고, 시안이 두 색을 구별해 쓴다(실패 글자 vs 사라짐 알약).
+       * 검토 필요와 사라짐이 한눈에 갈린다. ⚠️ **2026-09-30부터 실패 알약도 이 variant다**(Logs 결과 · Sources 상태) — 면·글자는
+       * Sources 실패 칩과 같은 `bg-destructive/8 text-destructive`로 통일했다(사용자 — 옛 값은 `red-700/10` + `red-700`).
        */
-      missing: "gap-1.5 bg-red-700/10 text-red-700",
+      missing: "gap-1.5 bg-destructive/8 text-destructive",
       /**
        * 회색 알약 (8-3 — 목록 행의 상태 · 제목 옆 총계). ⚠️ **새 raw 색이 아니다**:
        * `--foreground`의 알파라 §6.2의 "등재된 것이 전부" 규칙 밖이다.

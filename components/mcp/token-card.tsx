@@ -4,6 +4,7 @@ import { unstable_rethrow, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { revokeApiToken, type ApiTokenRevokeResult } from "@/app/(edit)/mcp/actions";
+import { GrantBadges } from "@/components/mcp/grant-badges";
 import { McpIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -216,12 +217,11 @@ function TokenFacts({ token, now, afterAlert }: { token: Exclude<TokenCardData, 
   const created = new Date(token.createdAt);
   const expires = new Date(token.expiresAt);
   const lastUsed = token.lastUsedAt === null ? null : new Date(token.lastUsedAt);
-  const grants = token.grants.length === 0 ? m.mcpConnector.token.readOnly : token.grants.map((g) => m.mcpConnector.grants[g].label).join(" · ");
   const scope = token.scope.kind === "all" ? m.mcpConnector.token.allProjects : m.mcpConnector.token.projects(token.scope.projectIds.length);
   // ⚠️ 만료된 값은 기록으로 남기되 흐리게 한다(핸드오프 결정 7) — 새 토큰을 만들 때 참고할 값이다.
   const value = cn("text-sm", expired && "text-neutral-400");
   const facts: [string, ReactNode][] = [
-    [m.mcpConnector.token.facts.grants, grants],
+    [m.mcpConnector.token.facts.grants, <GrantBadges key="g" grants={token.grants} dimmed={expired} />],
     [m.mcpConnector.token.facts.scope, scope],
     [m.mcpConnector.token.facts.created, <time key="c" dateTime={token.createdAt}>{utcDay(created)}</time>],
     [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time key="l" dateTime={token.lastUsedAt ?? ""}>{expired ? utcDay(lastUsed) : relativeTime(lastUsed, now)}</time>],

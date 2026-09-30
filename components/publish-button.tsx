@@ -131,7 +131,7 @@ export function PublishButton({ id, count, publish, disabled = false }: { id?: s
         onClick={event => { if (plan.disabled) return; publish.triggerRef.current = event.currentTarget; publish.launch(); }}>
         {publish.pending ? <LoaderCircle className="animate-spin" aria-hidden /> : <Send aria-hidden />}
         {m.translations.publish.button}
-        {plan.badge !== null && <span className="bg-background/20 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-xs">{plan.badge.toLocaleString("en-US")}</span>}
+        {plan.badge !== null && <span className="bg-background/20 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-2xs">{plan.badge.toLocaleString("en-US")}</span>}
       </Button>
       {plan.disabled && plan.hint && <span id={reasonId} className="sr-only">{plan.hint}</span>}
     </span>

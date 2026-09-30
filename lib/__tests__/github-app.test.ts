@@ -115,3 +115,16 @@ describe("createGitClient 토큰 수명", () => {
     expect(hoisted.tokens).toEqual(["cached"]);
   });
 });
+
+/**
+ * **열린 PR만 센다** (nightly-sync 완료 조건 6). 닫힌(머지 안 된) PR은 게이트를 세우지 않는다 — `state: "open"`이 빠지면 GitHub 기본값도
+ * open이지만, 그 기본값에 기대면 누가 `state`를 바꾸는 순간 닫힌 PR이 CI·야간 적재를 영구 보류한다.
+ */
+describe("createGitClient.findOpenPr", () => {
+  it("`owner:branch` head와 `state: open`으로 묻는다", async () => {
+    const client = await createGitClient("o", "r", "7", "9");
+    hoisted.request.mockResolvedValueOnce({ data: [] });
+    await expect(client.findOpenPr("o:malmoi-i18n/sync-acme")).resolves.toBeNull();
+    expect(hoisted.request).toHaveBeenLastCalledWith("GET /repos/{owner}/{repo}/pulls", expect.objectContaining({ head: "o:malmoi-i18n/sync-acme", state: "open" }));
+  });
+});

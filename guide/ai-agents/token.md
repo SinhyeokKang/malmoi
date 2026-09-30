@@ -18,7 +18,7 @@ You have one personal token at a time; connected apps don't count toward it. To 
 
 ## Add Malmoi with a token {#connect}
 
-The **Connect** card on the **MCP connector** page shows the same snippets with the server address for the site you are using: choose **Personal token** for these, or **Sign in with browser** for the ones in [Sign in through your browser](browser.md#browser).
+The snippets below use `https://mal-moi.com/api/mcp`. To copy the server address of the site you are using, choose **Copy server URL** on the **Connected apps** card of the **MCP connector** page.
 
 ### Claude Code {#claude-code}
 

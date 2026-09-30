@@ -158,8 +158,7 @@ const CLIENT_LIB_FILES = [
   // `usePublish`가 결과가 재검증 트리를 싣고 오는지 읽는다(`pullRevalidates`, malmoi#103 r1) — import가 타입뿐인 잎이다.
   "lib/pull/message.ts",
   "lib/pull/ref-slug.ts",
-  // `/mcp` Connect 카드의 설정 조각 — import 0인 잎이다(`snippets.test.ts`가 센다).
-  "lib/mcp/snippets.ts",
+  "lib/mcp/brand.ts",
   "lib/relative-time.ts",
   "lib/routes.ts",
   "lib/session-revocation/message.ts",
@@ -421,6 +420,8 @@ describe("클라이언트 그래프", () => {
   it("`lib/events`의 판정 모듈 셋은 잎이다 — 조회를 물지 않는다", () => {
     const view = walk([join(ROOT, "lib/events/view.ts")]);
     expect([...view.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      // 어휘 사전(import 0) — 주체 판정 `triggerOf`가 야간 subtype 목록을 값으로 읽는다(nightly-sync).
+      "lib/events/payload.ts",
       "lib/events/view.ts",
       "lib/i18n/index.ts",
       // 언어 이름은 이미 잎이다(import 0) — 온보딩 ③이 같은 함수를 쓴다.

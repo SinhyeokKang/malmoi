@@ -1,7 +1,7 @@
 import { compareKeys } from "@/lib/adapters/shared";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 
-import type { PullResult } from "./run";
+import type { NightlyVisit } from "@/lib/nightly/summary";
 
 /**
  * 야간 cron이 돌 프로젝트 고르기 (ARCHITECTURE §3.05). **순수 판정이다** — 조회는 라우트가 한다.
@@ -24,8 +24,11 @@ import type { PullResult } from "./run";
  * 넘긴 자리이고, 여기서 **큐 없이 정렬로** 푼다: 마지막 실행이 가장 오래된 것부터, 한 번도 안 돈
  * 프로젝트가 맨 앞, **동점은 slug**(결정성은 그대로 지킨다 — `localeCompare`가 아니라 `compareKeys`다).
  *
- * @param projects 라우트의 `select` 결과 그대로다 — `syncRuns`는 `take: 1, orderBy: { startedAt: desc }`로
- *   읽은 **최근 하나**이고, 판정층이 그것을 재조립하지 않는다.
+ * ⚠️ **정렬 키는 `lastNightlyAt`(마지막 야간 방문)이다** (nightly-sync). 옛 키 `syncRuns[0].startedAt`은 Publish 실행이 있어야
+ * 전진했는데, 편집 없는 프로젝트는 더는 `SyncRun`을 만들지 않는다 — 옛 키로는 그 프로젝트가 영원히 "한 번도 안 돈 것"으로 상한의
+ * 앞을 채워 편집 있는 프로젝트가 잘린다. 방문 기록은 스킵·실패 방문도 쓰므로 매일 실패하는 프로젝트가 맨 앞을 차지하지 않는다.
+ *
+ * @param projects 라우트의 `select` 결과 그대로다 — 판정층이 재조립하지 않는다.
  */
 export function selectPullTargets(
   projects: readonly {
@@ -39,7 +42,7 @@ export function selectPullTargets(
     repositoryId: string | null;
     surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null }[];
     archivedAt: Date | null;
-    syncRuns: readonly { startedAt: Date }[];
+    lastNightlyAt: Date | null;
   }[],
   limit: number,
 ): { targets: string[]; unprocessed: number } {
@@ -47,9 +50,9 @@ export function selectPullTargets(
     .filter((p) => planProjectReadiness(p) === "ready" && p.repositoryId !== null && p.archivedAt === null)
     .slice()
     .sort((a, b) => {
-      // 한 번도 안 돈 프로젝트를 `-Infinity`로 둔다 — "가장 오래 안 돌았다"가 그 뜻이다.
-      const at = a.syncRuns[0]?.startedAt.getTime() ?? -Infinity;
-      const bt = b.syncRuns[0]?.startedAt.getTime() ?? -Infinity;
+      // 한 번도 방문 안 한 프로젝트를 `-Infinity`로 둔다 — "가장 오래 안 돌았다"가 그 뜻이다.
+      const at = a.lastNightlyAt?.getTime() ?? -Infinity;
+      const bt = b.lastNightlyAt?.getTime() ?? -Infinity;
       return at === bt ? compareKeys(a.slug, b.slug) : at - bt;
     })
     .map((p) => p.slug);
@@ -76,6 +79,15 @@ export const PULL_BATCH_LIMIT = 50;
 export const PULL_TIME_BUDGET_MS = 45_000;
 
 /**
+ * 야간 **적재 갈래만** 시작할 수 있는 시간 (nightly-sync). 루프 예산(`PULL_TIME_BUDGET_MS`)보다 이르다 — 서버 적재는
+ * 표면 트랜잭션 timeout이 30초(`lib/import/run.ts`)라, 45초 가까이 시작하면 `maxDuration = 60`을 뚫고 그 밤의 요약이
+ * 통째로 사라진다. 넘기면 적재를 시작하지 않고 `unprocessed`로 세며, 그 방문은 `lastNightlyAt`을 방문 전 값으로 되돌려(`runNightly`)
+ * 다음 밤 정렬이 앞으로 가져온다.
+ * Publish·스킵은 이 마감을 보지 않는다 — 그쪽은 루프 예산이 든다.
+ */
+export const NIGHTLY_IMPORT_START_MS = 20_000;
+
+/**
  * cron 응답의 항목 하나. **계약을 타입으로 든다** — `unknown[]`이면 `slug`가 스프레드에 덮이거나
  * 실패 항목의 모양이 바뀌어도 컴파일러가 침묵한다 (POSTMORTEM 2026-08-31: 외부 계약을 리터럴로
  * 조립했다가 필수 필드가 늘어도 조용했다).
@@ -84,5 +96,6 @@ export const PULL_TIME_BUDGET_MS = 45_000;
  * 타입으로 강제된다(생기면 교차 타입이 충돌한다).
  */
 export type PullItem =
-  | ({ slug: string } & PullResult)
+  | ({ slug: string } & NightlyVisit)
+  /** 방문이 던졌다(DB 오류 등) — 한 프로젝트의 실패가 나머지를 막지 않도록 라우트가 값으로 접는다. */
   | { slug: string; status: "failed"; error?: string; ref?: string };

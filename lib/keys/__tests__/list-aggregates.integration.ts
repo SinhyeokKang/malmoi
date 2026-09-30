@@ -602,6 +602,19 @@ async function creationFixture() {
     ] };
   return { createProject, input, blobs, snapshot };
 }
+/** nightly-sync C2 — 첫 적재 생산자 둘도 적재가 바꾼 값 수를 사건에 싣는다(새 셀은 전부 바뀐 값이다). */
+it("첫 적재 사건(Add surface · 프로젝트 생성)이 changedValues를 싣는다", async () => {
+  await addOneFixture(await addFixture());
+  const added = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "add", subtype: "import.first" } });
+  expect(added.payload).toMatchObject({ source: "first", changedValues: 2 });
+
+  const { createProject, input } = await creationFixture();
+  expect(await createProject(input)).toMatchObject({ ok: true });
+  const project = await prisma.project.findUniqueOrThrow({ where: { slug: input.slug }, select: { id: true } });
+  const created = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: project.id, subtype: "import.first" } });
+  expect(created.payload).toMatchObject({ source: "first", changedValues: await prisma.translation.count({ where: { projectId: project.id } }) });
+  expect(await prisma.translation.count({ where: { projectId: project.id } })).toBeGreaterThan(0);
+});
 async function expectNoCreation() {
   for (const table of ["Project", "ProjectMember", "TranslationSurface", "Locale", "StringKey", "Translation", "KeyRef"]) {
     expect((await pool.query(`SELECT count(*)::int AS count FROM "${table}"`)).rows[0].count, table).toBe(0);

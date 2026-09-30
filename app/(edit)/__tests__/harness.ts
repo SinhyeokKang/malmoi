@@ -42,6 +42,8 @@ export type ProjectSeed = {
   slug: string;
   name?: string;
   installationId?: string | null;
+  /** 고정된 리포 id. 기본은 null이다(`FORMAT`) — 열린 PR 게이트(nightly-sync D1)는 null이면 GitHub을 안 부른다. */
+  repositoryId?: string | null;
   /**
    * ⚠️ **시드 프로젝트는 기본이 "적재 완료"다** (2026-09-07, T6). 번역 Action이 `planProjectReadiness`를
    * 지나므로 `null`이면 `not-ready`로 거부된다 — 편집 흐름 테스트가 보려는 것은 그것이 아니다.

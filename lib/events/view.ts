@@ -8,7 +8,7 @@ import type { SyncErrorCode } from "@/lib/sync/plan";
 import { utcDay } from "@/lib/utc-time";
 
 import type { EventCursor } from "./filter";
-import type { EventKind, EventPayload, EventResult } from "./payload";
+import { NIGHTLY_SUBTYPES, type ActorKind, type DeferReason, type EventKind, type EventPayload, type EventResult } from "./payload";
 
 /**
  * Logs 행의 **순수 판정** (logs-rework design §6). 화면이 `kind`로 삼항을 엮으면 갈래가 JSX 안에 흩어지고 그 자리에는 누락을 잡는 장치가 없다.
@@ -53,6 +53,7 @@ const TONES: Readonly<Record<EventResult, EventTone>> = {
   partial: "warning",
   notStarted: "warning",
   failed: "danger",
+  upToDate: "muted",
 };
 
 const LABELS: Readonly<Record<EventResult, string>> = {
@@ -66,6 +67,7 @@ const LABELS: Readonly<Record<EventResult, string>> = {
   superseded: m.logs.status.superseded,
   notStarted: m.logs.status.notStarted,
   failed: m.logs.status.failed,
+  upToDate: m.logs.status.upToDate,
 };
 
 export function eventView(row: EventViewRow): EventView {
@@ -176,6 +178,7 @@ const RESULT_GLYPH_TONE: Readonly<Record<EventResult, GlyphTone>> = {
   nothingToSend: "slate",
   notSent: "amber",
   superseded: "slate",
+  upToDate: "slate",
 };
 
 const KIND_GLYPH_TONE: Readonly<Record<EventKind, GlyphTone>> = {
@@ -221,6 +224,21 @@ function glyphIcon(kind: EventKind, subtype: string): GlyphIcon {
   }
 }
 
+export type Trigger = "manual" | "nightly" | "ci";
+
+/**
+ * 실행 주체 (nightly-sync). USER는 언제나 `manual`이고(MCP 포함), 자동화는 PUBLISH이거나 야간 subtype이면 `nightly`,
+ * 그 밖(`import.ci`·생산자 0곳인 보고 실패)은 `ci`다.
+ *
+ * ⚠️ **`subtype` 컬럼만 본다** — `payload.source`는 옛 행에 없고 `readPayload`가 모르는 값을 `ci`로 접는다.
+ * 필터 쪽 술어(`triggerWhere`)가 같은 컬럼을 보고, 같은 행을 가르는지는 `query.integration.ts`가 실제 행으로 잰다.
+ */
+export function triggerOf(row: { actorKind: ActorKind; kind: EventKind; subtype: string }): Trigger {
+  if (row.actorKind === "USER") return "manual";
+  if (row.kind === "PUBLISH" || (NIGHTLY_SUBTYPES as readonly string[]).includes(row.subtype)) return "nightly";
+  return "ci";
+}
+
 /**
  * 행의 문장 (캔버스 §7 — **행위자로 시작한다**).
  *
@@ -263,18 +281,23 @@ export function eventSentence(
       }
     case "IMPORT": {
       const slugs = payload?.kind === "IMPORT" ? payload.surfaceSlugs : [];
+      const held = payload?.kind === "IMPORT" ? heldReason(payload.deferReason) : null;
       switch (row.result) {
         case null:
         case "running":
           return m.logs.sentence.import.running(actor);
+        case "upToDate":
+          return m.logs.sentence.import.upToDate(actor);
         case "deferred":
-          return m.logs.sentence.import.deferred(actor, slugs[0] ?? m.logs.none);
+          // ⚠️ 사유가 편집 수가 아니면 소스 이름 문장("held back on web")이 원인을 잘못 가리킨다 — 멈춘 것은 적재 전체다.
+          return held === null ? m.logs.sentence.import.deferred(actor, slugs[0] ?? m.logs.none) : m.logs.sentence.import.held[held](actor);
         case "superseded":
           return m.logs.sentence.import.superseded(actor);
         case "notStarted":
           return m.logs.sentence.import.notStarted(actor);
         case "failed":
-          return m.logs.sentence.import.failed(actor);
+          // 야간 스킵의 실패는 head를 못 읽은 것 하나다(`planNightly`) — 적재가 시작되지 않았다.
+          return row.subtype === "nightly.skip" ? m.logs.sentence.import.baseUnreadable(actor) : m.logs.sentence.import.failed(actor);
         default:
           return m.logs.sentence.import.imported(actor, Math.max(slugs.length, 1));
       }
@@ -322,6 +345,36 @@ const SETTINGS_SENTENCE: Record<string, (who: ReactNode) => ReactNode> = {
  */
 function languageOf(code: string): string {
   return code === "" ? m.logs.none : languageName(code);
+}
+
+/**
+ * 편집 수가 아닌 보류 사유 (nightly-sync). `pending-edits`와 옛 행(`null`)은 `null`이다 — 그 둘은 편집 수 문장이 설명한다.
+ *
+ * ⚠️ **`satisfies`가 누락을 잡는다** — `DEFER_REASONS`가 늘 때 문장이 안 늘면 새 사유가 "0 unsent edits"로 떨어진다.
+ */
+const DEFER_REASON_TEXT = m.logs.deferReasons satisfies Record<Exclude<DeferReason, "pending-edits">, string>;
+
+export type HeldReason = keyof typeof DEFER_REASON_TEXT;
+
+export function heldReason(reason: DeferReason | null): HeldReason | null {
+  return reason === null || reason === "pending-edits" ? null : reason;
+}
+
+/**
+ * 보류 행의 사유 한 줄 — 보조줄과 상세가 같이 쓴다. 편집 수 보류는 수를 말하고, 나머지는 사유를 말한다.
+ * 수를 수집하지 않은 편집 수 보류는 `null`이다(지어내지 않는다).
+ */
+export function deferredText(payload: Extract<EventPayload, { kind: "IMPORT" }>): string | null {
+  const held = heldReason(payload.deferReason);
+  if (held !== null) return DEFER_REASON_TEXT[held];
+  return payload.pendingEdits === null ? null : m.logs.deferredReason(payload.pendingEdits);
+}
+
+/**
+ * 바뀐 값 수의 표시 — 부재·실패는 `—`다. ⚠️ 실패 실행에 0을 적으면 "아무것도 안 바뀐 성공"과 같아진다(`files`와 같은 규칙).
+ */
+export function changedValuesText(result: EventResult | null, changed: number | null): string {
+  return changed === null || result === "failed" ? m.logs.none : m.logs.meta.values(changed);
 }
 
 /** 거부 여섯의 문장. 모르는 코드는 던지지 않고 폴백이다 (`reasonKey`와 같은 축). */
@@ -410,12 +463,15 @@ export type EventMetaRow = {
   run: { changed: number | null; prUrl: string | null; errorCode: string | null } | null;
 };
 
-export type EventMetaPart = string | { kind: "code" | "link"; text: string };
+/** `badge` — 정해진 값 중 하나(트리거 `manual`)는 배지로 선다(2026-09-30 사용자 — Home 요약과 같은 모양). */
+export type EventMetaPart = string | { kind: "code" | "link" | "badge"; text: string };
 
 /** 적재 실패를 발송 실패 문구로 설명하면 복구 방향이 반대가 된다. */
-export function eventFailureMessage(row: Pick<EventMetaRow, "kind" | "payload" | "run">, archived: boolean): string {
+export function eventFailureMessage(row: Pick<EventMetaRow, "kind" | "subtype" | "payload" | "run">, archived: boolean): string {
   if (row.kind !== "IMPORT") return planArchivedReason(row.run?.errorCode ?? "", archived);
   const code = row.payload?.kind === "IMPORT" ? row.payload.errorCode : null;
+  // 야간 스킵 실패(`base-unreadable`)는 적재 전 단계의 실패라 적재 사유 사전에 없다 — 야간 Publish와 같은 사유 사전을 쓴다.
+  if (row.subtype === "nightly.skip") return planArchivedReason(code ?? "", archived);
   return importReasonMessage(code);
 }
 
@@ -443,7 +499,9 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
       break;
     }
     case "PUBLISH": {
-      parts.push(m.logs.kinds.publish, row.actor.kind === "AUTOMATION" ? m.logs.meta.automatic : m.logs.meta.manual);
+      parts.push(m.logs.kinds.publish);
+      // ⚠️ 자동화 행은 행위자(`Nightly`·`CI`)가 문장 머리에 선다 — 보조줄에서 주체를 두 번 말하지 않는다.
+      if (triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "manual") parts.push({ kind: "badge", text: m.logs.meta.manual });
       parts.push(row.run?.changed === null || row.run === null ? `${m.logs.detail.labels.files}: ${m.logs.none}` : m.logs.meta.files(row.run.changed));
       if (row.run?.prUrl != null) parts.push({ kind: "link", text: m.translations.publish.viewLink });
       else if (row.result !== "running") parts.push(m.logs.meta.noPullRequest);
@@ -453,9 +511,10 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
     case "IMPORT": {
       parts.push(m.logs.kinds.imports);
       if (payload?.kind !== "IMPORT") break;
-      parts.push(payload.source === "ci" ? m.logs.meta.automatic : m.logs.meta.manual);
+      if (triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "manual") parts.push({ kind: "badge", text: m.logs.meta.manual });
+      const deferred = row.result === "deferred" ? deferredText(payload) : null;
       if (payload.refusal !== null) parts.push(refusalMessage(payload.refusal), m.logs.meta.nothingImported);
-      else if (row.result === "deferred" && payload.pendingEdits !== null) parts.push(m.logs.deferredReason(payload.pendingEdits));
+      else if (deferred !== null) parts.push(deferred);
       else if (payload.surfaces.length > 0) {
         parts.push(payload.surfaces.map((surface) => `${surface.surfaceSlug}: ${resultWord(surface.status)}${surface.count === null ? "" : `, ${m.logs.meta.keys(surface.count)}`}`).join(" · "));
       } else if (payload.keys !== null) parts.push(m.logs.meta.keys(payload.keys));

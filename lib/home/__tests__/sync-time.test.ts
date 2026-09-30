@@ -34,6 +34,7 @@ describe("lastSyncTime", () => {
 const meta = {
   state: "default" as const, repoOwner: "o", repoName: "r", baseBranch: "main", surfaces: 1, locales: ["en"],
   keys: 1, members: 1, lastImportFailedAt: null, lastPublishedAt: null, lastPrUrl: null, createdAt: at("2026-09-01T00:00:00Z"), archivedAt: null,
+  triggers: { sync: null, publish: null, heldByOpenPr: false },
 };
 
 describe("시각이 기록되지 않은 Sync", () => {

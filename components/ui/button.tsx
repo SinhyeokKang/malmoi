@@ -20,8 +20,8 @@ import { cn } from "@/lib/utils";
  * `sm` 8 · `md` 10 · `lg` 12. **base에 두고 size에서 덮으면** cva가 충돌하는 클래스 둘을 내고
  * `cn()`의 twMerge가 이기는 것에 기대게 되는데, 그 의존을 만들지 않는 것이 이 배치의 이유다.
  *
- * ⚠️ **라벨 weight가 400이다** (2026-09-10 사용자 — 8-1b에서 한 단계 내렸다). 본문 기본이 300이고
- * 가장 두꺼운 서체가 500이므로(§4), 버튼은 그 사이에 앉는다 — 500이면 화면에서 버튼만 도드라진다.
+ * ⚠️ **라벨 weight가 500(medium)이다** (2026-09-30 사용자 — 2026-09-10에 400으로 내렸던 것을 되돌렸다).
+ * 헤더 내비·링크(`components/public-shell/header.tsx`)도 같은 무게다 — 누르는 것은 한 벌로 읽힌다.
  *
  * ⚠️ **포커스 링 셋을 여는 태그에 리터럴로 적는다** (§7). cva 베이스에 넣으면 짧아지지만
  * `focus-ring.test.ts`가 **여는 태그의 소스를 읽으므로** 그 순간 방어선이 이 파일을 통째로 못 본다 —
@@ -52,7 +52,7 @@ import { cn } from "@/lib/utils";
  */
 export const buttonClass = cva(
   cn(
-    "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 text-sm font-normal whitespace-nowrap",
+    "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 text-sm font-medium whitespace-nowrap",
     "transition-colors disabled:cursor-not-allowed aria-disabled:cursor-not-allowed",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   ),
@@ -61,12 +61,12 @@ export const buttonClass = cva(
       variant: {
         // **화면당 하나**다 — 확정 액션 (§6.4).
         /**
-         * ⚠️ **hover에서 어두워진다** (2026-09-13 — 계정 화면 핸드오프 실측). 코드는
-         * `bg-primary/90`(≈#2e2e2e)이라 **밝아지고** 있었고, 캔버스는 `--foreground`(#0a0a0a)로
-         * 내려간다. 눈으로는 "둘 다 회색"이라 리뷰가 못 잡는 부류이므로 computed style로 잰다.
+         * ⚠️ **hover에서 밝아진다** (2026-09-30 사용자 — "면색이 좀 더 발광하게"). `bg-primary/85`(흰 배경 위 ≈#3a3a3a)다.
+         * 2026-09-13에는 캔버스대로 `--foreground`(#0a0a0a)로 **어두워지게** 했었는데, 둘이 거의 같은 검정이라 hover가 안 보였다.
+         * 눈으로는 "둘 다 회색"이라 리뷰가 못 잡는 부류이므로 computed style로 잰다.
          */
         primary: cn(
-          "bg-primary text-primary-foreground hover:bg-foreground",
+          "bg-primary text-primary-foreground hover:bg-primary/85",
           "disabled:bg-muted disabled:text-muted-foreground",
           "aria-disabled:bg-muted aria-disabled:text-muted-foreground aria-disabled:hover:bg-muted",
         ),
@@ -83,30 +83,24 @@ export const buttonClass = cva(
           //    aria-disabled에서만 배경이 투명해진다(2026-09-17 실측: 흰색 → rgba(0,0,0,0)).
           "aria-disabled:text-muted-foreground aria-disabled:hover:bg-background",
         ),
-        // ⚠️ `bg-destructive`가 없다 — destructive는 **글자색 전용**이다 (§2.3).
         /**
+         * ⚠️ **연한 붉은 면 + 붉은 글자이고 테두리가 없다** (2026-09-30 사용자 — 흰 면 + 붉은 테두리 `/40`에서 바꿨다).
+         * 면은 `destructive`의 알파라 새 토큰이 없다.
+         *
+         * ⚠️ **면·글자가 Sources 실패 칩(`IconTile` `bg-destructive/8 text-destructive`)과 같다** (2026-09-30 사용자 — 붉은 면 넷을 한 조합으로
+         * 통일했다: 이 버튼 · 실패 알약 · Logs 글리프 칩 · Sources 칩). ⚠️ **대비가 약 4.3:1이다** — AA(4.5)에 조금 못 미친다(red-700이면 5.5:1이었다).
+         *
          * ⚠️ **꺼져도 destructive 계열을 유지한다** (2026-09-20 — 사용자가 화면에서 잡았다).
-         *
-         * 다른 variant는 꺼지면 `text-muted-foreground`로 죽지만 여기는 아니다: 이 variant의 소비자가
-         * **전부 되돌릴 수 없는 동작**이라(Discard · Archive · Sign out everywhere · Unlink · Remove ·
-         * Revoke) 회색으로 접으면 **"이건 파괴적이다"라는 신호가 사라진다.** 핸드오프가 danger의 꺼진
-         * 형을 따로 정의한 이유이고, 값은 선 `/20` · 글자 `/40` — 켜진 상태(선 `/40` · 글자 100%)에서
-         * 한 단계씩 내려간다.
-         *
-         * ⚠️ **선과 글자를 반드시 짝으로 옅힌다.** 글자만 바꿨더니 테두리가 `/40` 그대로 남아
-         * **붉은 테두리 + 회색 글자**가 됐다 — 꺼진 것으로도 켜진 것으로도 안 읽히는 모양이다.
-         *
-         * ⚠️ **대비가 낮아진다** — `text-destructive/40`은 흰 배경에서 약 1.6:1로 muted(4.7:1)보다
-         * 낮다. 꺼진 컨트롤이라 WCAG 1.4.3 대상은 아니고, **이 리포는 꺼진 컨트롤에 사유를 반드시
-         * 붙인다**(DESIGN §6.65) — 색이 지지 않는 정보를 그 문장이 진다.
+         * 이 variant의 소비자가 **전부 되돌릴 수 없는 동작**이라(Discard · Archive · Sign out everywhere · Unlink ·
+         * Remove · Revoke) 회색으로 접으면 **"이건 파괴적이다"라는 신호가 사라진다.** 꺼진 형은 면 `/5` · 글자
+         * `destructive/40` — **면과 글자를 반드시 짝으로 옅힌다**(한쪽만 옅히면 꺼진 것으로도 켜진 것으로도 안 읽힌다).
+         * 꺼진 글자의 낮은 대비는 **꺼진 컨트롤에 사유를 반드시 붙이는 규칙**(DESIGN §6.65)이 진다.
          */
         danger: cn(
-          "border-destructive/40 text-destructive hover:bg-destructive/5 bg-background border",
-          "disabled:border-destructive/20 disabled:text-destructive/40 disabled:hover:bg-transparent",
-          // ⚠️ `bg-background`이고 `bg-transparent`가 아니다 — 짝인 `disabled:hover:bg-transparent`는
-          //    브라우저가 disabled에 hover를 안 태워 **한 번도 적용된 적이 없고**, 그대로 복제하면
-          //    aria-disabled에서만 배경이 투명해진다(2026-09-17 실측: 흰색 → rgba(0,0,0,0)).
-          "aria-disabled:border-destructive/20 aria-disabled:text-destructive/40 aria-disabled:hover:bg-background",
+          "bg-destructive/8 text-destructive hover:bg-destructive/12",
+          "disabled:bg-destructive/5 disabled:text-destructive/40 disabled:hover:bg-destructive/5",
+          // ⚠️ `aria-disabled`는 브라우저가 hover를 태우므로 면을 붙들어 둔다 — 없으면 꺼진 버튼이 hover에서 짙어진다.
+          "aria-disabled:bg-destructive/5 aria-disabled:text-destructive/40 aria-disabled:hover:bg-destructive/5",
         ),
         ghost: cn(
           "text-muted-foreground hover:text-foreground",

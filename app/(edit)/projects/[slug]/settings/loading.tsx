@@ -7,14 +7,14 @@ import { m } from "@/lib/i18n";
 /**
  * Settings가 서버에서 오는 동안의 골격 (audit-ux #5 · DESIGN §6.64 로딩 행 — 형제 화면도 같은 규칙).
  *
- * ⚠️ **`ContentPanel`을 들지 않는다** — `[slug]/layout.tsx`가 든다. ⚠️ **폭 등급이 `limited`다** — 실물이 그렇다.
+ * ⚠️ **`ContentPanel`을 들지 않는다** — `[slug]/layout.tsx`가 든다.
  *
  * ⚠️ **이 골격은 DB 조회 동안만 선다** — GitHub 왕복(연결 확인 · 계정 · 열린 PR)은 페이지가 await하지 않고 연결 카드의
  * 자리만 Suspense 뒤에서 도착한다(audit-ux #8). 그래서 골격이 가리는 것은 DB 한 번이고, 도착하면 실물이 **자기 fallback**을
  * 든 채 선다 — 카드 넷의 순서·행 수가 OWNER의 기본 모양 그대로다(General 셋 · Repository 상태 + 기준 브랜치 · CI 셋 ·
  * Archive 하나). 조건부 알림(`notice`·복구 줄·보관 사유)은 그리지 않는다.
  *
- * ⚠️ **사실 표의 두 열(96 + 값)은 카드 폭 640 이상의 모양이다** — 셸이 최소 1280이라 `limited` 카드가 그 아래로 안 좁는다.
+ * ⚠️ **사실 표의 두 열(96 + 값)은 카드 폭 640 이상의 모양이다** — 셸이 최소 1280이라 카드가 그 아래로 안 좁는다.
  */
 export default function SettingsLoading() {
   return (

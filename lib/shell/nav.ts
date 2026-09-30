@@ -75,8 +75,8 @@ export type NavSection = {
 /**
  * 프로젝트 컨텍스트의 항목들. **여섯이다.**
  *
- * ⚠️ **순서가 시안이다** — Home · Locales · Translations · Members · Logs · Project settings.
- * 로케일이 번역보다 앞인 것은 "어떤 언어가 있나"가 "그 언어를 채운다"보다 앞선 질문이어서다.
+ * ⚠️ **순서** — Home · Sources · Translations · Logs · Members · Project settings (2026-09-30 사용자 — 시안의 Members · Logs를 맞바꿨다).
+ * 소스가 번역보다 앞인 것은 "어떤 파일·언어가 있나"가 "그 언어를 채운다"보다 앞선 질문이어서다.
  *
  * ⚠️ **항목은 자기 라우트와 같은 사이클에 온다** (6b-4 판정) — 없는 라우트를 가리키는 항목은 404이고,
  * 죽은 링크 검사의 접두 규칙(`/projects/*`)이 그것을 못 잡는다.
@@ -99,9 +99,9 @@ export function projectSections(role: Role): NavSection[] {
       href: (slug) => routes.translations(slug),
       exact: false,
     },
-    { key: "members", label: m.common.nav.members, icon: Users, href: (slug) => routes.members(slug), exact: false },
     /** `exact: true`인 것은 하위 라우트가 없어서다 — `?cursor=`는 쿼리라 경로가 아니다. */
     { key: "logs", label: m.common.nav.logs, icon: History, href: (slug) => routes.logs(slug), exact: true },
+    { key: "members", label: m.common.nav.members, icon: Users, href: (slug) => routes.members(slug), exact: false },
   ];
   if (canPerform(role, "project:settings")) {
     sections.push({

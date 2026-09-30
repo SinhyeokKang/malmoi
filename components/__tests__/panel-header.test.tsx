@@ -79,20 +79,15 @@ describe("PanelHeader — 여백·선·폭을 프리미티브가 든다", () => 
     expect(SOURCE).not.toMatch(/border-b[^"]*\?|\?[^"]*border-b/);
   });
 
-  it.each([
-    ["limited", "max-w-4xl"],
-    ["fluid", "max-w-7xl"],
-  ] as const)("폭 등급 %s가 %s다", async (width, expected) => {
-    const outer = await header({ width, children: <h1>Projects</h1> });
-    expect(find<HTMLElement>(outer, ":scope > div").classList.contains(expected)).toBe(true);
-  });
-
   /**
-   * ⚠️ **기본이 `limited`다** — 7 대 4로 다수이고, 빠뜨렸을 때 좁아지는 쪽이 넘치는 쪽보다 눈에 띈다.
+   * **폭 상한이 하나다 — 1280(`max-w-7xl`)** (2026-09-30 사용자 — *"좁은 너비를 쓰는 곳은 이제 없음"*).
+   * 설정·계정이 쓰던 896(`limited`)이 사라지며 등급 prop도 함께 사라졌다.
    */
-  it("등급을 안 주면 limited다", async () => {
+  it("폭 상한이 max-w-7xl 하나다", async () => {
     const outer = await header({ children: <h1>Projects</h1> });
-    expect(find<HTMLElement>(outer, ":scope > div").classList.contains("max-w-4xl")).toBe(true);
+    const inner = find<HTMLElement>(outer, ":scope > div");
+    expect(inner.classList.contains("max-w-7xl")).toBe(true);
+    expect(inner.classList.contains("max-w-4xl")).toBe(false);
   });
 
   /**
@@ -149,15 +144,7 @@ describe("PanelBody — 같은 여백, 같은 등급", () => {
     const outer = await body({ children: <p>rows</p> });
     expect(outer.classList.contains("overflow-y-auto")).toBe(true);
     expect([...outer.classList].filter((c) => c.startsWith("max-w-"))).toEqual([]);
-    expect(find<HTMLElement>(outer, ":scope > div").classList.contains("max-w-4xl")).toBe(true);
-  });
-
-  it.each([
-    ["limited", "max-w-4xl"],
-    ["fluid", "max-w-7xl"],
-  ] as const)("폭 등급 %s가 %s다", async (width, expected) => {
-    const outer = await body({ width, children: <p>rows</p> });
-    expect(find<HTMLElement>(outer, ":scope > div").classList.contains(expected)).toBe(true);
+    expect(find<HTMLElement>(outer, ":scope > div").classList.contains("max-w-7xl")).toBe(true);
   });
 
   /** ⚠️ **`min-h-full`이 없으면 `/projects`의 빈 상태가 세로 중앙에 안 선다.** */
@@ -253,6 +240,14 @@ describe("소비자 열여섯 — 여백을 넘기지 않는다", () => {
 
     expect(uses("<PanelHeader").sort()).toEqual([...CONSUMERS].sort());
     expect(uses("<PanelBody").sort()).toEqual([...CONSUMERS, ...BODY_ONLY].sort());
+  });
+
+  /** 등급 prop이 사라졌다 — 소비자가 `width=`를 넘기면 좁은 등급이 되살아날 자리가 생긴다. */
+  it("소비자가 Panel에 width를 넘기지 않는다", () => {
+    for (const path of [...CONSUMERS, ...BODY_ONLY]) {
+      const tags = [...readFileSync(join(ROOT, path), "utf8").matchAll(/<Panel(?:Header|Body)\b[^>]*>/g)].map((match) => match[0]);
+      for (const tag of tags) expect(tag, path).not.toMatch(/\bwidth=/);
+    }
   });
 
   it("소비자가 열여섯 + 본문 전용 넷이다 — 수가 바뀌면 다시 센다", () => {

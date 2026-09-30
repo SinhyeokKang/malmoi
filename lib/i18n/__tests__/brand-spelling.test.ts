@@ -67,10 +67,10 @@ function identAfter(next: string, nextNext: string): boolean {
  */
 /*
  * ⚠️ **MCP 설정 키 한 자리가 더 있다** (mcp-connector) — `/mcp`의 연결 조각이 사용자 설정 파일에 쓰는 서버 키(`mcpServers.malmoi` ·
- * `[mcp_servers.malmoi]`)이고, 에이전트 도구 이름(`mcp__malmoi__…`)의 접두가 된다. 식별자라 소문자다 — `lib/mcp/snippets.ts`의 상수 하나로 모았다.
+ * `[mcp_servers.malmoi]`)이고, 에이전트 도구 이름(`mcp__malmoi__…`)의 접두가 된다. 식별자라 소문자다. 2026-09-30에 앱 안 조각(Connect 카드)을 걷어 이제 가이드에만 선다.
  */
-// 가이드(`guide/ai-agents/token.md`·`browser.md`)는 그 조각을 JSON 그대로 싣는다 — 같은 서버 키의 JSON 형이다(`content.test.ts`가 조각과 글자 단위로 대조한다).
-const IDENT_EXCEPTIONS = new Set(['"User-Agent": "malmoi"', 'SERVER_KEY = "malmoi"', '"malmoi": {']);
+// 가이드(`guide/ai-agents/token.md`·`browser.md`)는 그 조각을 JSON 그대로 싣는다 — 같은 서버 키의 JSON 형이다.
+const IDENT_EXCEPTIONS = new Set(['"User-Agent": "malmoi"', '"malmoi": {']);
 /**
  * 대문자로 남는 자리 — **환경변수 이름**이다(셸 관례가 대문자다). 사용자가 셸에 두는 이름이라 화면 문장에도 그대로 선다
  * (`Set it as MALMOI_TOKEN in your shell`). 암호 문맥의 식별자(`malmoi/pii`)를 대문자로 올리지 않는다는 규칙과 축이 다르다.
@@ -149,8 +149,7 @@ describe("제품 이름 표기 — 화면은 Malmoi, 식별자는 malmoi", () =>
     expect(brandViolations('"MALMOI" "MalMoi"')).toHaveLength(2);
   });
 
-  it("MCP 설정 키 상수와 환경변수 이름 MALMOI_TOKEN만 예외다", () => {
-    expect(brandViolations('export const SERVER_KEY = "malmoi";')).toEqual([]);
+  it("환경변수 이름 MALMOI_TOKEN만 예외다", () => {
     expect(brandViolations('"Set it as MALMOI_TOKEN in your shell"')).toEqual([]);
     // 이름이 조금만 달라도 예외가 아니다 — 대문자 변형은 여전히 위반이다.
     expect(brandViolations('"MALMOI_TOKENS"')).toHaveLength(1);

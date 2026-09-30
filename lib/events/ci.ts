@@ -2,7 +2,7 @@ import "server-only";
 
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 
-import { runTokenFor, type EventResult, type NotStartedReason, type SurfaceOutcome } from "./payload";
+import { runTokenFor, type DeferReason, type EventResult, type NotStartedReason, type SurfaceOutcome } from "./payload";
 import { recordRun, type EventInput } from "./record";
 
 /**
@@ -32,6 +32,10 @@ export type CiImportEvent = {
   pendingEdits?: number | null;
   errorCode?: string | null;
   refusal?: NotStartedReason | null;
+  /** `deferred`의 사유. 보류가 아니면 비운다. */
+  deferReason?: DeferReason | null;
+  /** 적재가 실제로 바꾼 값 수(`PushOutcome.changedValues`). 적재가 없던 사건은 비운다. */
+  changedValues?: number | null;
   surfaces?: readonly SurfaceOutcome[];
 };
 
@@ -57,6 +61,8 @@ export function ciImportEvent(input: CiImportEvent): EventInput & { runToken: st
       surfaces: input.surfaces ?? [],
       errorCode: input.errorCode ?? null,
       refusal: input.refusal ?? null,
+      deferReason: input.deferReason ?? null,
+      changedValues: input.changedValues ?? null,
     },
   };
 }

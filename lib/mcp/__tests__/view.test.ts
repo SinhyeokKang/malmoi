@@ -79,7 +79,18 @@ describe("planConnectedApps", () => {
       createdAt: conn().createdAt,
       lastUsedAt: null,
       expiresAt: conn().expiresAt,
+      brand: "claude",
     }]);
+  });
+
+  it("로고는 client_id 호스트로만 고른다 — 이름이 Claude Code여도 다른 호스트면 없다", () => {
+    const [codex, fake] = planConnectedApps({
+      rows: [conn({ id: "a", clientId: CODEX }), conn({ id: "b", clientId: "https://example.com/claude-code.json", clientName: "Claude Code" })],
+      memberProjectIds: [],
+      now,
+    }).sort((x, y) => x.id.localeCompare(y.id));
+    expect(codex?.brand).toBe("openai");
+    expect(fake?.brand).toBeNull();
   });
 
   it("이름이 없으면 clientId URL이 이름이다 — 식별 줄은 그대로 보인다", () => {

@@ -23,7 +23,7 @@ export default function SourcesLoading() {
     // 실물 뿌리(`data-sources-screen`)와 같은 컨테이너 — 이름 있는 질의가 걸릴 곳이 여기다.
     <div className="@container/panel flex min-h-0 flex-1 flex-col">
       <span className="sr-only" role="status">{m.sources.screenLoading}</span>
-      <PanelHeader width="fluid" aria-hidden>
+      <PanelHeader aria-hidden>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             {/* 제목 + 배지 폭이 실물(`Sources` + 한 자리 배지 = 96)과 같게 — 68 + gap 8 + 20. */}
@@ -38,7 +38,7 @@ export default function SourcesLoading() {
         </div>
       </PanelHeader>
 
-      <PanelBody width="fluid" className="space-y-4" aria-hidden>
+      <PanelBody className="space-y-4" aria-hidden>
         <div className="border-border bg-background overflow-hidden rounded-lg border">
           <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
             <SkeletonLine text="text-base" className="w-16" />

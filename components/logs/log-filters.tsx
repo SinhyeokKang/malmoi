@@ -162,8 +162,12 @@ export function LogFilters({
           <DropdownMenuItem selected={filter.actor === "removed"} onSelect={() => go({ actor: "removed" })}>
             {m.logs.trigger.removed}
           </DropdownMenuItem>
+          {/* ⚠️ 옛 `automation` 한 항목은 `Nightly`로 적힌 채 CI까지 걸렀다 — 둘로 가른다. 옛 링크(`?actor=automation`)는 읽기만 한다(메뉴 항목 없음). */}
           <DropdownMenuLabel>{m.logs.filters.automation}</DropdownMenuLabel>
-          <DropdownMenuItem selected={filter.actor === "automation"} onSelect={() => go({ actor: "automation" })}>
+          <DropdownMenuItem selected={filter.actor === "ci"} onSelect={() => go({ actor: "ci" })}>
+            {m.logs.trigger.ci}
+          </DropdownMenuItem>
+          <DropdownMenuItem selected={filter.actor === "nightly"} onSelect={() => go({ actor: "nightly" })}>
             {m.logs.trigger.cron}
           </DropdownMenuItem>
         </Filter>
@@ -346,7 +350,10 @@ function dateLabel(filter: LogFilter): string {
 
 function actorLabel(filter: LogFilter, actors: readonly { id: string; label: string }[]): string {
   if (filter.actor === null) return m.logs.filters.anyone;
-  if (filter.actor === "automation") return m.logs.trigger.cron;
+  if (filter.actor === "ci") return m.logs.trigger.ci;
+  if (filter.actor === "nightly") return m.logs.trigger.cron;
+  // 옛 링크 — CI와 야간 둘 다를 뜻하므로 머리 낱말로 읽는다.
+  if (filter.actor === "automation") return m.logs.filters.automation;
   if (filter.actor === "removed") return m.logs.trigger.removed;
   return actors.find((actor) => actor.id === filter.actor)?.label ?? m.common.unreadable;
 }
@@ -363,6 +370,7 @@ const RESULT_KEY: Readonly<Record<EventResult, keyof typeof m.logs.status>> = {
   superseded: "superseded",
   notStarted: "notStarted",
   failed: "failed",
+  upToDate: "upToDate",
 };
 
 /**
@@ -384,6 +392,7 @@ const RESULT_GROUP_OF: Readonly<Record<EventResult, "imports" | "publish" | "bot
   notSent: "publish",
   running: "both",
   failed: "both",
+  upToDate: "both",
 };
 
 /** 어느 종류의 결과인지 그룹으로 보인다 (캔버스 `1m`). 순서는 `EVENT_RESULTS`가 든다. */

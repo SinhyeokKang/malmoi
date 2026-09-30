@@ -820,8 +820,12 @@ export const en = {
       localeCount: (code: string, n: number): string => `${n.toLocaleString("en-US")} ${code}`,
       allFilled: (n: number): string => `${n.toLocaleString("en-US")} keys all filled`,
       nothingPending: "nothing pending",
-      /** `2b` — 값은 마지막 **성공**의 것이다. 실패했다고 수가 사라지면 "번역이 날아갔다"로 읽힌다. */
-      lastGoodSync: (when: string | null): string => (when === null ? "no good sync yet" : `last good sync ${when}`),
+      /**
+       * `2b` — 값은 마지막 **성공**의 것이다. 실패했다고 수가 사라지면 "번역이 날아갔다"로 읽힌다.
+       * ⚠️ 정상 줄(`synced`)과 같은 낱말이다(2026-09-30 사용자 — `last good sync`가 혼자 길어 카드가 한 줄 높았다). 과거형 `synced`가 성공을
+       * 말하고, 실패는 주의 카드가 든다. `last sync`로 줄이지 않는다 — 그러면 방금 실패한 시도를 가리킨다.
+       */
+      lastGoodSync: (when: string | null): string => (when === null ? "not synced yet" : `synced ${when}`),
       asOf: (when: string | null): string => (when === null ? "never synced" : `as of ${when}`),
       asOfLastSync: "as of the last sync",
       cannotSend: "cannot be sent while paused",
@@ -903,6 +907,8 @@ export const en = {
       notConnected: "Not connected",
       /** `2b`의 둘째 값 — `1d ago · failed 10m ago`. */
       failedAt: (when: string): string => `failed ${when}`,
+      /** 최근 적재 사건이 열린 Malmoi PR로 보류됐다 (nightly-sync 14a) — 푸는 조건(머지)을 말한다. */
+      heldByOpenPr: "held until the pull request is merged or closed",
       never: "Never",
       /** 캔버스는 `Pull request #127 · 2d ago` — **무엇을 보냈나**가 먼저고 시각이 뒤다. */
       pullRequest: "Pull request",
@@ -1046,6 +1052,8 @@ export const en = {
       superseded: "Superseded",
       /** 사람이 고쳐야 풀리는 거부 여섯 (spec §6.1). 다시 눌러 사라지는 거부는 이력에 안 남는다. */
       notStarted: "Not started",
+      /** 편집 없는 밤, 리포도 그대로였다 (nightly-sync). ⚠️ `skipped`("Nothing to send")와 다른 낱말이다 — 받을 것도 없었다. */
+      upToDate: "Up to date",
     },
     /**
      * 날짜 카드 머리에 붙는 낱말 (캔버스 `1a`). **UTC 자정으로 끊는다** — 로컬로 끊으면 밤 사이 실행이
@@ -1065,6 +1073,19 @@ export const en = {
     /** 보류 사유 — **삭제도 성공도 아니다**를 한 문장이 말한다. */
     deferredReason: (count: number): string =>
       `${count.toLocaleString("en-US")} unsent edit${count === 1 ? " is" : "s are"} being protected. Nothing was synced.`,
+    /**
+     * 편집 수가 아닌 보류 사유 셋 (nightly-sync). ⚠️ `deferredReason(0)`으로 떨어지면 "0 unsent edits are being protected"라는
+     * 거짓이 선다 — 이 셋은 편집이 없는데도 멈췄다. 푸는 사람(PR 리뷰어·다음 실행·개발자)까지 말한다.
+     */
+    deferReasons: {
+      "open-pr": "A Malmoi pull request is still open. Nothing was synced — syncing resumes once it's merged or closed.",
+      "pr-check-failed": "We couldn't check GitHub for an open Malmoi pull request, so nothing was synced. The next run checks again.",
+      /**
+       * ⚠️ 서버 적재 예산은 수동 Sync도 지난다 — [Sync]를 출구로 권하면 같은 이유로 또 실패한다. 출구는 둘이다: 파일을 줄인다
+       * (`resource-limit` 문구와 같은 방향) · 예산 밖 경로인 리포 워크플로. 야간의 주 대상이 워크플로 없는 프로젝트라 앞엣것이 먼저다.
+       */
+      "too-large": "The repository change is too large for a server-side sync. Nothing was synced. Reduce the files' size, or deliver it with the repository workflow.",
+    },
     empty: {
       title: "No activity yet",
       description: "Syncs, translation edits and publishes show up here as they happen.",
@@ -1094,8 +1115,12 @@ export const en = {
     },
     /** 행의 보조줄이 쓰는 낱말. **없는 값을 자리 채우려고 적지 않는다.** */
     meta: {
+      /** 실행 주체 셋 (nightly-sync) — 사람 행의 보조줄과 Home 메타 열이 같은 낱말을 쓴다. 자동화 행은 행위자가 문장 머리에 서므로 보조줄에 안 싣는다. */
       manual: "manual",
-      automatic: "automatic",
+      nightly: "nightly",
+      ci: "CI",
+      /** 적재가 실제로 값을 바꾼 번역 셀 수 — 관측값이고 판정에 쓰지 않는다. */
+      values: (n: number): string => `${n.toLocaleString("en-US")} value${n === 1 ? "" : "s"} changed`,
       files: (n: number): string => `${n.toLocaleString("en-US")} file${n === 1 ? "" : "s"}`,
       keys: (n: number): string => `${n.toLocaleString("en-US")} key${n === 1 ? "" : "s"}`,
       noPullRequest: "no pull request",
@@ -1143,6 +1168,16 @@ export const en = {
         superseded: (who: ReactNode): ReactNode => <>{who} sync gave way to another run</>,
         failed: (who: ReactNode): ReactNode => <>{who} sync failed</>,
         notStarted: (who: ReactNode): ReactNode => <>{who} sync was refused</>,
+        /** 야간 스킵 — 편집도 새 커밋도 없었다. ⚠️ "synced"라고 말하지 않는다 — 아무것도 읽지 않았다. */
+        upToDate: (who: ReactNode): ReactNode => <>{who} found nothing to publish or sync</>,
+        /** 야간 스킵 실패 — base 브랜치 head를 못 읽었다. 적재가 시작조차 안 했으므로 "sync failed"와 가른다. */
+        baseUnreadable: (who: ReactNode): ReactNode => <>{who} couldn&rsquo;t read the repository&rsquo;s base branch</>,
+        /** 편집 수가 아닌 보류 셋 — `pending-edits`는 위 `deferred`(소스 이름)가 그대로 든다. */
+        held: {
+          "open-pr": (who: ReactNode): ReactNode => <>{who} held the sync — a Malmoi pull request is still open</>,
+          "pr-check-failed": (who: ReactNode): ReactNode => <>{who} held the sync — GitHub didn&rsquo;t answer about pull requests</>,
+          "too-large": (who: ReactNode): ReactNode => <>{who} held the sync — the change is too large for a server-side sync</>,
+        },
       },
       member: {
         invited: (who: ReactNode, target: string): ReactNode => <>{who} invited {target}</>,
@@ -1200,6 +1235,9 @@ export const en = {
         role: "Role",
         effect: "Effect",
         unsentEdits: "Unsent edits",
+        /** 편집 수가 아닌 보류의 사유 칸 — `Unsent edits`에 PR 사유를 적으면 칸 이름이 거짓이 된다. */
+        heldBecause: "Held because",
+        values: "Values",
         withheld: "Not sent",
         closedPullRequest: "Closed pull request",
       },
@@ -1751,8 +1789,6 @@ export const en = {
       upload: "Image upload",
       delete: "Delete",
       caption: "PNG or JPEG, up to 3 MB.",
-      /** ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */
-      noPicture: "You haven't added one yet.",
       /**
        * ⚠️ **막는 이유가 둘이라 문구도 둘이다** (2026-09-14 2차 리뷰 R5). 둘은 **사진이 없다**와
        * **다른 하나가 돌고 있다**이고, 뒤의 것은 스피너가 **이 버튼에 없으므로** 화면에도 접근성
@@ -1806,41 +1842,10 @@ export const en = {
       "member:manage": { label: "Members", hint: "Invite, change roles, remove." },
       "project:create": { label: "Create projects", hint: "List your GitHub repositories and set up new projects." },
     },
-    connect: {
-      title: "Connect",
-      serverUrl: "Server URL",
-      agent: "Agent",
-      clients: { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", "claude-ai": "claude.ai" },
-      // 기존 파일에 항목을 덧붙이는 꼴이라 동사가 `Add to`다(핸드오프 §4). 경로는 sans 평문이고 색만 올린다.
-      addTo: (path: ReactNode): ReactNode => <>Add to {path}</>,
-      // 방식 세그먼트(mcp-oauth 핸드오프 §7.4) — 두 방식을 한 조각에 섞지 않는다. 브라우저 방식이 기본이다.
-      method: "Connection method",
-      methods: { browser: "Sign in with browser", token: "Personal token" },
-      browserHelp: "Add the server URL to your client. When it connects, your browser opens so you can sign in and choose what it can do. There is no token to copy.",
-      tokenHelp: "Uses the token from Your token above. Set it as MALMOI_TOKEN in your shell, then add this to your client.",
-      // 로그인을 시작하는 명령 — T1 실측(design §0.1): Claude Code는 `/mcp` → Authenticate, Codex는 `codex mcp login`.
-      then: {
-        // 서버 키는 조각이 쓰는 그 식별자다(`lib/mcp/snippets.ts#SERVER_KEY`를 호출부가 넘긴다) — 문장에 손으로 적으면 조각과 갈린다.
-        "claude-code": (key: string): string => `Then run /mcp in Claude Code, pick ${key} and choose Authenticate. Your browser opens to sign in to Malmoi.`,
-        codex: (key: string): string => `Then run codex mcp login ${key}. Your browser opens to sign in to Malmoi.`,
-      },
-      // 헤더가 남아 있으면 Claude Code는 OAuth로 넘어가지 않는다(ARCHITECTURE §6.45.1 실측) — 지울 키를 클라이언트별로 말한다.
-      switchFromToken: {
-        "claude-code": "Switching from a personal token? Remove the headers entry first. While it is there, Claude Code keeps using the token.",
-        codex: "Switching from a personal token? Remove the bearer_token_env_var line first. While it is there, Codex keeps using the token.",
-      },
-      // 메뉴 경로·버튼명은 T1 실측이다(design §0.1 — 개인 Free 계정, `claude.ai/customize/connectors`). 실서버 왕복 확인은 prod 머지 뒤 T10이다.
-      claudeAiSteps: [
-        "In claude.ai, open Customize → Connectors, choose Add, then Add custom connector.",
-        "Paste the server URL above and give it a name, such as Malmoi.",
-        "Choose Connect. In the window that opens, sign in to Malmoi, choose what it can do and select Authorize.",
-      ],
-      // Team·Enterprise 플랜은 멤버가 커스텀 커넥터를 추가하지 못한다(mcp-oauth 결정 기록 — T1 실측 계정 판정). 단계 문구와 달리 이 전제는 확정이다.
-      claudeAiOrgNote: "On a Team or Enterprise plan, the owner of your claude.ai organization has to add the custom connector first.",
-    },
     /** 연결된 앱(mcp-oauth 핸드오프 §7.3 · §7.5) — OAuth 연결 목록. 개인 토큰 카드와 어휘(`token.facts`)를 공유한다. */
     apps: {
       title: "Connected apps",
+      copyServerUrl: "Copy server URL",
       emptyTitle: "No connected apps",
       emptyBody: "Apps you authorize from Claude Code, Codex or claude.ai show up here.",
       disconnect: "Disconnect",
@@ -1855,9 +1860,8 @@ export const en = {
       // DCR 연결의 식별 줄 한 줄 형 — 동의 화면의 두 줄(`oauthAuthorize.clientId`·`returnsTo`)을 목록 행에서 잇는다.
       dcrIdent: (id: string, host: string): string => `Client ID ${id} · returns to ${host}`,
     },
-    // 핸드오프 §12 문장 그대로다. 링크 라벨은 가이드 페이지 제목(`guide/SUMMARY.md`)과 같아야 한다.
+    // /mcp 머리 우측 버튼(2026-09-30 사용자 — 본문 끝 헬퍼 문장을 걷었다). 라벨은 가이드 페이지 제목(`guide/SUMMARY.md`)과 같아야 한다.
     guide: {
-      lead: "See what an agent can do and example prompts in the guide →",
       link: "Connect an AI agent",
     },
     form: {
@@ -1883,7 +1887,7 @@ export const en = {
       title: "Your token",
       // ⚠️ `<strong className="font-normal">` 자리다 — 모달 문맥의 강조이지 굵기가 아니다(design §8).
       copyNow: "Copy it now — it won't be shown again.",
-      setEnv: "Set it as MALMOI_TOKEN in your shell, then use the Connect snippet below.",
+      setEnv: "Set it as MALMOI_TOKEN in your shell, then add Malmoi to your agent — Connect an AI agent shows how.",
       done: "Done",
     },
     revoke: {
@@ -1992,11 +1996,12 @@ export const en = {
       result: {
         title: "Malmoi is ready",
         /**
-         * ⚠️ **둘째 문장이 야간 PR 공지다** (launch-readiness L2.9) — 전에는 온보딩 어디에도 없어 첫 PR이 예고 없이 왔다.
-         * "every night"는 참이다: `vercel.json` 하루 1회(Hobby) · 프로덕션 배포에서만 · 대상은 `selectPullTargets`가
-         * 고르고 GitHub에 닿는 것은 미전달 편집이 있는 프로젝트뿐이다(PRODUCT §7.6).
+         * ⚠️ **첫 문장이 야간 공지다** (launch-readiness L2.9 — 전에는 첫 PR이 예고 없이 왔다). nightly-sync(2026-09-30)부터 야간이
+         * 양방향이라 둘 다 말한다: 미전달 편집이 있으면 PR, 없으면 리포의 새 커밋을 받는다(PRODUCT §4.1). "every night"는 참이다 —
+         * `vercel.json` 하루 1회 · 프로덕션 배포에서만 · 대상은 `selectPullTargets`가 고른다.
+         * ⚠️ **워크플로를 "계속 받으려면 필요한 것"으로 말하지 않는다** — 이제 커밋마다 받는 선택지다(PRODUCT §7.4).
          */
-        description: "Add the push token to the repository so CI can send translations back. Every night, translations not yet sent go to the repository as a pull request.",
+        description: "Every night, Malmoi sends translations not yet sent to the repository as a pull request, or picks up new commits. To pick up changes on every commit instead, add the push token and the workflow to the repository.",
       },
     },
 
@@ -3073,7 +3078,7 @@ export const en = {
       upload: "Upload", remove: "Remove",
       caption: "PNG or JPEG, up to 3 MB.",
       emptyName: "Enter a project name.", longName: "Use 200 characters or fewer.",
-      busy: "Updating the thumbnail…", noImage: "There is no thumbnail to remove.",
+      busy: "Updating the thumbnail…",
     },
     sources: {
       add: "Add sources", locked: "Already a source",

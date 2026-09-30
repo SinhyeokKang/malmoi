@@ -23,6 +23,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems } from "@/lib/home/attention";
 import { countCards } from "@/lib/home/cards";
 import { metaRows } from "@/lib/home/meta";
+import { loadHomeRuns } from "@/lib/home/runs";
 import { lastSyncTime } from "@/lib/home/sync-time";
 import { planHomeState } from "@/lib/home/state";
 import {
@@ -132,7 +133,7 @@ export default async function ProjectHomePage({
    * ⚠️ **연결 조회는 `installationId`가 있을 때만 GitHub을 친다** — `loadConnectionHealth`가 그
    * 가드를 든다. GitHub 장애는 값(`unknown`)으로 오므로 이 화면이 그것에 죽지 않는다.
    */
-  const [aggregates, events, review, openEvent, health] = await Promise.all([
+  const [aggregates, events, review, openEvent, health, triggers] = await Promise.all([
     loadProjectListAggregates(prisma, [projectId]),
     /**
      * ⚠️ **Logs와 같은 함수다** (logs-rework 결정 — 조합 쿼리 넷이 사라졌다). 같은 수를 두 번 세지
@@ -158,6 +159,8 @@ export default async function ProjectHomePage({
       logFailure("home-connection-health", error);
       return { status: "unknown" } as const;
     }),
+    // 메타 열의 실행 주체(`12 hours ago · nightly`) — 행위자를 싣지 않는 사건 셋이다(nightly-sync F2).
+    loadHomeRuns(prisma, projectId),
   ]);
   // 번역 사건은 키 **이름**을 든다 — Logs와 같은 해석이다(translation-rework T12).
   const translationHref = openEvent?.payload?.kind === "TRANSLATION"
@@ -252,7 +255,7 @@ export default async function ProjectHomePage({
       B의 Home에 남고 진행 중 잠금까지 넘어온다 (handoff §T9 · `home-screen.test.ts`가 센다).
     */
     <HomeActions key={slug} slug={slug}>
-      <PanelHeader width="fluid">
+      <PanelHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
           <HomeTitle image={project.image} archived={state === "archived"}>{project.name}</HomeTitle>
@@ -303,7 +306,7 @@ export default async function ProjectHomePage({
         ⚠️ **간격이 20이다** — 블록 사이도 같은 20이라 세로·가로가 한 격자로 읽힌다. 카드 넷 사이만
         8이고, 그 차이가 넷을 한 덩어리로 묶는다.
       */}
-      <PanelBody width="fluid" className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
+      <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
         <div className="flex min-w-0 flex-col gap-5">
           <CountCards
             cards={countCards({
@@ -337,6 +340,7 @@ export default async function ProjectHomePage({
             lastPrUrl: project.lastPrUrl,
             createdAt: project.createdAt,
             archivedAt: project.archivedAt,
+            triggers,
           })}
           slug={slug}
           now={now}

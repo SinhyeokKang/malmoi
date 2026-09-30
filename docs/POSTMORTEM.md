@@ -2569,3 +2569,15 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - grep: `rg -n "ByPath\[|observe[A-Z]\w*\(" lib/adapters --glob '!**/__tests__/**'` → 원본에서 **표현을 관측하는** 자리마다 "항목 0개 원본(`{}`·빈 파일)이면 무엇을 관측하나"를 묻는다. 2026-09-29 전수: 파일별 중첩 관측은 `json-catalog.ts:172` 한 곳(수정). `observeJsonStyle`(json-catalog·chrome-locales·`emptyCatalog`)은 `{}`에서 들여쓰기 `none`→기본 2칸, `compactPaths` 빈 집합, 이스케이프 두 축 기본값 — 증거 없는 축이 이미 기본으로 떨어진다(실측, 해당 없음).
   - **Malmoi가 스스로 쓰는 퇴화 출력(`emptyCatalog` 같은 빈 파일)은 다음 read·write의 입력으로 왕복 테스트한다** — 쓰기만 테스트하면 그 출력이 관측기를 속이는지 모른다.
   - 관측값이 boolean이면 "증거 없음"은 **키 부재**로 표현한다 — 값 `false`로 접지 않는다. `nestedByPath`의 부재는 이미 "표면 값으로"를 뜻한다.
+
+### 2026-09-30 — 손으로 조립한 게이트가 29건 red를 dev에 push했다
+
+- **영역**: `/orchestrate` 4단계(통합) · `/push` 1단계 — 지휘자가 셸에서 조립한 게이트 명령
+- **증상**: nightly-sync 통합에서 `pnpm -s test 2>&1 | grep -E "Test Files|Tests |FAIL" | head && pnpm -s test:projects:postgres … && pnpm -s build … && git push`를 돌렸다. `pnpm test`가 29건 실패(`focus-return`·`home-actions` — 다른 워커가 동시에 돌린 테스트 부하로 난 jsdom 타이밍 흔들림)했는데 체인이 멈추지 않고 `a2498145`가 dev에 push됐다. 재실행은 green이었다.
+- **근본 원인**: 파이프라인의 종료 코드는 **마지막 명령**(`head`)의 것이라 `&&`가 `pnpm test`의 실패를 못 봤다(`set -o pipefail` 없음). 게이트가 스킬 문서에 **명령 나열**(`pnpm typecheck && pnpm test && …` + "트리거면 postgres")로만 있어서, 매 통합마다 사람(지휘자)이 출력을 줄이려고 파이프를 붙이며 다시 조립했다 — 조립할 때마다 이 함정이 열린다. 같은 날 같은 부류가 하나 더: 워커 인계 감시가 마커를 **줄 전체 일치**(`fullmatch`)로 봐서, Codex TUI가 `• REVIEW READY: …` + 스피너 잔상으로 찍은 줄을 놓쳤다(사용자가 "끝난 것 같은데"라고 알려줄 때까지 몰랐다) — 출력 모양에 대한 가정이 조용히 실패했다.
+- **그물**: 놓친 것 — 로컬 게이트 자체(파이프가 삼킴), 지휘자의 `echo`(성공 줄만 grep해서 보여 줬다). 잡은 것 — 결과를 **눈으로 읽은** 순간(출력에 `Failed Tests 29`가 있었다) · 다음 재실행. dev CI(`verify`)도 같은 커밋을 돌렸을 것이다 — 프로덕션 게이트(PR CI)까지는 가지 않았다.
+- **재발 방지**:
+  - **게이트는 `pnpm gate` 한 명령이다**(`scripts/gate.ts` · 판정 `scripts/gate-plan.ts` — `8a92ddfc`). 첫 실패의 exit code로 끝나고, 격리 postgres 트리거를 스스로 판정하며, "테스트는 전부 통과 + 워커 종료 오류만"일 때만 한 번 재시도하고 끝줄에 `retried:`를 남긴다. `/push`·`/ship`·`/orchestrate`·워커 브리프가 이것을 부른다.
+  - grep: `rg -n "pnpm (-s )?(test|typecheck|build|gate)[^\n]*\| *(grep|head|tail)" .claude/commands .agents/skills scripts CLAUDE.md docs --glob '!docs/POSTMORTEM.md'` → **게이트 명령에 파이프가 붙은 자리**. 2026-09-30 실행 결과 남은 것은 경고문 3곳(`orchestrate.md:100` · `gate-plan.ts:4` · `gate-plan.test.ts:9`)뿐이고 실행 예시는 0건.
+  - 셸에서 게이트를 굳이 손으로 돌려야 하면 `set -o pipefail`을 먼저 건다 — 그리고 "성공 줄만 grep"한 출력을 근거로 쓰지 않는다.
+  - 마커 감시는 **줄 머리 일치**(`re.match(r'\s*(?:[⏺•]\s*)?<marker>(?:\s|$)')`, `orchestrate.md` §2). grep: `rg -n "fullmatch" .claude/commands` → 0건이어야 한다.

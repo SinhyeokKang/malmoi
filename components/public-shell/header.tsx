@@ -12,9 +12,9 @@ import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 
-/** 시안 1a: 14/400 · 6/10 · radius 8 · hover `foreground` 알파 .03. */
+/** 시안 1a: 14/500(2026-09-30 사용자 — 400에서 올렸다) · 6/10 · radius 8 · hover `foreground` 알파 .03. */
 const NAV_LINK =
-  "rounded-sm px-2.5 py-1.5 text-sm hover:bg-foreground/3 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
+  "rounded-sm px-2.5 py-1.5 text-sm font-medium hover:bg-foreground/3 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
 /**
  * ⚠️ **버튼이 아니라 앱 사이드바 항목(`components/shell/sidebar.tsx`의 `Item`)과 같은 모양이다** (2026-09-28 사용자) — p 6 · gap 8 ·
@@ -22,7 +22,7 @@ const NAV_LINK =
  * ⚠️ **앱 셸 헤더의 New project도 이 값이다** (2026-09-30 사용자 — 같은 패턴에서 GitHub 자리만 바뀐다). 한 벌로 둔다.
  */
 export const PUBLIC_HEADER_LINK =
-  "text-foreground flex items-center gap-2 rounded-sm p-1.5 text-sm hover:bg-foreground/[0.03] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
+  "text-foreground flex items-center gap-2 rounded-sm p-1.5 text-sm font-medium hover:bg-foreground/[0.03] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
 export type HeaderCurrent = "docs" | "changelog";
 

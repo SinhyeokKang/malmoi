@@ -45,4 +45,4 @@ The creator becomes **Owner**.
 
 ## What happens next {#next}
 
-The workflow keeps the project current and adds code references after its first run. A failed workflow does not make the project unready.
+The nightly run keeps the project current once a day, with or without the workflow. The workflow updates it on every commit and adds code references after its first run. A failed workflow does not make the project unready.

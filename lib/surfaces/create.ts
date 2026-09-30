@@ -72,6 +72,7 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
     const ownership = surfaceOwnership(owners);
     if (!ownership.ok) throw new SurfaceCreationError("path-conflict", ownership.conflicts);
     const results = [];
+    let changedValues = 0;
     for (const { item, surfaceId, slug, token, startedAt, payload, result } of additions) {
       await tx.translationSurface.create({ data: { id: surfaceId, projectId: first.projectId, slug, adapterName: item.format.adapter, pathTemplate: item.format.pathTemplate, baseLocale: item.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token } });
       /**
@@ -85,7 +86,8 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
         surfaceIds: [surfaceId],
         payload: { kind: "SURFACE", surfaceSlug: slug, adapter: item.format.adapter, baseLocale: { before: null, after: item.baseLocale } },
       });
-      await applyPushInTransaction(tx, { projectId: first.projectId, surfaceId }, { ...payload, surfaceSlug: slug }, { refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: result.failed === 0 ? null : "partial-import" });
+      const applied = await applyPushInTransaction(tx, { projectId: first.projectId, surfaceId }, { ...payload, surfaceSlug: slug }, { refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: result.failed === 0 ? null : "partial-import" });
+      changedValues += applied.changedValues;
       results.push({ pathTemplate: item.format.pathTemplate, surfaceSlug: slug, count: result.count, failed: result.failed });
     }
 
@@ -117,7 +119,7 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
             count: value.result.count,
             reason: null,
           })),
-          errorCode: null, refusal: null,
+          errorCode: null, refusal: null, deferReason: null, changedValues,
         },
       });
     }

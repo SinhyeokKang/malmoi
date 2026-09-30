@@ -1,4 +1,5 @@
 import { LocaleFlag } from "@/components/translations/locale-badge";
+import { Badge } from "@/components/ui/badge";
 import type { RowLocaleProgress } from "@/lib/projects/list";
 
 /**
@@ -30,8 +31,11 @@ export function LocaleMeter({ locale }: { locale: RowLocaleProgress }) {
           ⚠️ **국기 폭을 예약하지 않는다** — 매핑이 없으면(`es`·`pt`·`ar` 등) 그 자리가 통째로 비고,
           `gap-1.5`로 코드가 왼쪽으로 붙는다. 틀린 국기는 없는 것보다 나쁘다는 판정의 연장이다.
         */}
-        <LocaleFlag code={locale.code} />
-        <span className="truncate">{locale.code}</span>
+        {/* 국기 + 코드는 배지 하나다(2026-09-30 사용자 — Home 메타 열 Languages와 같은 모양). */}
+        <Badge variant="neutral" className="min-w-0 gap-1">
+          <LocaleFlag code={locale.code} />
+          <span className="truncate">{locale.code}</span>
+        </Badge>
         <span className="text-muted-foreground ml-auto">{locale.percent}%</span>
       </span>
       {/*

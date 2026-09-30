@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 const TONE: Readonly<Record<GlyphTone, string>> = {
   green: "bg-emerald-50 text-emerald-700",
   amber: "bg-amber-50 text-amber-700",
-  red: "bg-red-50 text-red-700",
+  red: "bg-destructive/8 text-destructive",
   slate: "bg-slate-100 text-slate-600",
   blue: "bg-blue-50 text-blue-700",
   teal: "bg-teal-50 text-teal-700",

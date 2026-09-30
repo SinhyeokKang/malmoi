@@ -128,9 +128,9 @@ runs:
       working-directory: ${{ github.action_path }}/../../..
       run: pnpm install --frozen-lockfile
 
-    # ⚠️ **차단이 아니라 경고다.** strict라 이 PR이 머지되기 전의 push는 번역자의 편집을
-    # 지운다 (MVP §3.1의 손실 창). 막으면 병합 판정이 되어 코어 원칙을 깨므로, 개발자가
-    # 판단할 재료만 남긴다.
+    # ⚠️ **차단은 서버가 한다** (nightly-sync, 2026-09-29 판정 반전). 열린 Malmoi PR이 있으면 `/api/push`가 적재 전체를
+    # `deferred`(`open-pr`)로 보류해 그 PR의 편집이 덮이지 않는다 — 셀을 고르지 않으므로 병합이 아니다. 이 스텝은 그 사실을
+    # push **전에** 알리는 안내로 남는다(`github-token`을 줘야 돈다). 게이트의 정본은 서버이고, 이 경고가 없어도 적재는 보류된다.
     # ⚠️ **`--repo`를 명시한다.** 이 스텝의 작업 디렉터리는 호출자(대상 리포)지만 `gh`가
     # 무엇을 컨텍스트로 잡는지에 의존하면 조용히 엉뚱한 리포를 조회한다 — 첫 실행에서 PR이
     # 열려 있는데 "없음"이 나왔다.
@@ -154,7 +154,7 @@ runs:
           exit 0
         fi
         if [ -n "$out" ]; then
-          echo "::warning title=머지되지 않은 번역 PR::$out — 이 push가 그 PR의 편집을 덮는다 (MVP 3.1의 손실 창). 머지한 뒤 다시 push하는 것을 권한다"
+          echo "::warning title=머지되지 않은 번역 PR::$out — 이 PR을 머지하거나 닫을 때까지 Malmoi가 리포 변경의 적재를 보류한다(PR의 번역을 덮지 않으려고). 머지하면 다음 push나 야간 동기화가 받는다"
         else
           echo "열린 $SYNC_BRANCH PR 없음 (조회 성공)"
         fi

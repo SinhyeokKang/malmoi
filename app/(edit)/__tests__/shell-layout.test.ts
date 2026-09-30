@@ -76,9 +76,7 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
    * `overflow-y-auto`를 든 요소를 좁히면 **스크롤바가 콘텐츠 옆에** 생긴다 — 화면 다섯이
    * `max-w-4xl`을 안쪽 래퍼에 두는 이유가 그것이고, 프리미티브로 올리면서 같은 함정이 따라온다.
    *
-   * ⚠️ **등급 둘을 프리미티브가 든다** (projects-panel-rework T3 · DESIGN §5.1). 등급을 셋으로 늘린
-   * 것이 아니라 **화면이 고르던 둘을 prop으로 올린 것**이다 — 안쪽 래퍼가 `max-w-4xl`을 다시
-   * 씌우면 limited 일곱의 여백이 `16 + 24 = 40`이 된다.
+   * ⚠️ **폭 상한은 하나(1280)이고 프리미티브가 든다** (2026-09-30 사용자 — 896 `limited`를 없앴다, DESIGN §5.1).
    *
    * ⚠️ **눈으로는 "폭이 맞네"로 보인다** — 스크롤바 위치는 콘텐츠가 넘칠 때만 드러난다.
    */
@@ -87,10 +85,10 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
     const outers = [...contentPanel.matchAll(/<div className="([^"]*)"/g)].map((m) => m[1] ?? "");
     expect(outers.filter((cls) => /max-w-/.test(cls))).toEqual([]);
     // 상한 자체는 `cn(...)`을 지나는 안쪽 래퍼가 든다.
-    expect(contentPanel).toMatch(/fluid: "mx-auto w-full max-w-7xl"/);
-    expect(contentPanel).toMatch(/limited: "mx-auto w-full max-w-4xl"/);
-    expect(contentPanel).toMatch(/cn\(CONTENT_MAX\[width\], "flex flex-col gap-3 px-4 py-3", className\)/);
-    expect(contentPanel).toMatch(/cn\(CONTENT_MAX\[width\], "min-h-full p-4", className\)/);
+    expect(contentPanel).toMatch(/const CONTENT_MAX = "mx-auto w-full max-w-7xl"/);
+    expect(contentPanel).not.toContain("max-w-4xl");
+    expect(contentPanel).toMatch(/cn\(CONTENT_MAX, "flex flex-col gap-3 px-4 py-3", className\)/);
+    expect(contentPanel).toMatch(/cn\(CONTENT_MAX, "min-h-full p-4", className\)/);
   });
 
   /**
@@ -302,42 +300,11 @@ describe("콘텐츠 패널 — 라우트마다 정확히 하나", () => {
 });
 
 /**
- * ⚠️ **폭 등급은 프리미티브가 들지만 고르는 것은 화면이고, 아무도 그 선택을 세지 않았다.**
- * `content-panel.tsx`의 기본값이 `limited`인데 **그쪽이 소수다**(설정 둘) — 그래서 목록 화면이
- * prop을 빠뜨리면 조용히 896으로 좁아진다. 2026-09-22에 실제로 밟았다: Sources가 옛 Locales의
- * `width="fluid"`를 옮겨오지 못한 채 배포됐고, `typecheck`·`pnpm test` 5,008건이 전부 green이었다.
- * 증상이 "내용이 안 보인다"가 아니라 **"여백이 넓다"**라서 화면을 봐도 결함으로 안 읽힌다.
+ * ⚠️ **폭 등급이 하나다** (2026-09-30 사용자 — *"좁은 너비를 쓰는 곳은 이제 없음"*). 둘이던 동안 기본값 `limited`가
+ * 소수였고, prop을 빠뜨린 화면이 조용히 896으로 좁아졌다(2026-09-22 Sources — 5,008건이 green이었다). 등급 prop을
+ * 없앴으니 **화면이 다시 폭을 고르는 자리**(`width=`)가 생기는 것만 막는다.
  */
-describe("패널 폭 등급을 화면이 고르고 있다", () => {
-  /** 프로젝트·사용자 축의 **목록** 화면 — 카드가 패널을 채운다(시안 `1a`). */
-  const FLUID = new Set([
-    // `/mcp` — 핸드오프는 limited 896이었고 2026-09-29 사용자가 fluid로 바꿨다(DESIGN §5.1).
-    "app/(edit)/mcp/page.tsx",
-    "app/(edit)/projects/(list)/loading.tsx",
-    "app/(edit)/projects/[slug]/(home)/loading.tsx",
-    "app/(edit)/projects/[slug]/(home)/page.tsx",
-    "app/(edit)/projects/[slug]/logs/error.tsx",
-    "app/(edit)/projects/[slug]/logs/loading.tsx",
-    "app/(edit)/projects/[slug]/logs/page.tsx",
-    "app/(edit)/projects/[slug]/members/loading.tsx",
-    "app/(edit)/projects/[slug]/members/page.tsx",
-    "app/(edit)/projects/[slug]/sources/loading.tsx",
-    "components/projects/project-list.tsx",
-    "components/sources/sources-archived.tsx",
-    "components/sources/sources-screen.tsx",
-    // translation-rework T16 — 옛 번역 머리가 빠졌다. 작업 화면은 폭 등급을 고르지 않고 세 패널이 본문 전체를 든다(DESIGN §6.1a).
-  ]);
-  /** 폼만 있는 화면과 **본문 전용** — 한 줄이 1280까지 늘면 라벨과 입력이 갈린다. */
-  const LIMITED = new Set([
-    "app/(edit)/account/loading.tsx",
-    "app/(edit)/account/page.tsx",
-    "app/(edit)/error.tsx",
-    "app/(edit)/projects/[slug]/settings/loading.tsx",
-    "app/(edit)/projects/[slug]/settings/page.tsx",
-    "components/project-archived.tsx",
-    "components/project-not-ready.tsx",
-  ]);
-
+describe("패널 폭을 화면이 고르지 않는다", () => {
   /** 소스에서 주석을 걷는다 — JSDoc이 `<PanelBody`를 **말만 해도** 태그로 세는 것을 막는다. */
   const code = (source: string): string =>
     source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
@@ -374,26 +341,11 @@ describe("패널 폭 등급을 화면이 고르고 있다", () => {
     .map((rel) => ({ rel, tags: tags(read(rel)) }))
     .filter((file) => file.tags.length > 0);
 
-  /**
-   * ⚠️ **새 파일을 세는 것이 요지다.** Sources는 **새 화면**이었고 목록형 검사였다면 영영 안 걸렸다 —
-   * 하드코딩 목록은 "지금 맞다"만 고정하고 "빠뜨렸다"는 못 잡는다.
-   */
-  it("패널을 쓰는 화면이 전부 등급 판정을 받았다", () => {
-    const listed = new Set([...FLUID, ...LIMITED]);
-    expect(consumers.map((file) => file.rel).filter((rel) => !listed.has(rel))).toEqual([]);
-    expect(consumers.length).toBe(listed.size);
-  });
-
-  it.each([...FLUID])("%s는 두 패널 모두 fluid다", (rel) => {
-    const found = consumers.find((file) => file.rel === rel)?.tags ?? [];
-    expect(found.length).toBeGreaterThan(0);
-    expect(found.filter((tag) => !tag.includes('width="fluid"'))).toEqual([]);
-  });
-
-  it.each([...LIMITED])("%s는 limited다", (rel) => {
-    const found = consumers.find((file) => file.rel === rel)?.tags ?? [];
-    expect(found.length).toBeGreaterThan(0);
-    expect(found.filter((tag) => tag.includes('width="fluid"'))).toEqual([]);
+  /** ⚠️ **새 파일을 세는 것이 요지다** — 목록형 검사는 "지금 맞다"만 고정하고 새 화면을 못 잡는다. */
+  it("패널을 쓰는 어느 화면도 width를 넘기지 않는다", () => {
+    expect(consumers.length).toBeGreaterThan(0);
+    const offenders = consumers.flatMap((file) => file.tags.filter((tag) => /\bwidth=/.test(tag)).map(() => file.rel));
+    expect(offenders).toEqual([]);
   });
 });
 

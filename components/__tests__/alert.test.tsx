@@ -70,3 +70,11 @@ it("id가 루트에 선다 — 다른 컨트롤의 aria-describedby 대상이 �
   const { container } = await render(<Alert id="warning">x</Alert>);
   expect(container.querySelector("[data-alert]")?.id).toBe("warning");
 });
+
+/** 제목↔본문은 기본 4 · compact 2다(2026-09-30 사용자) — 열 gap(8 · 6)에서 제목이 −4를 당긴다. 본문이 없으면 당기지 않는다(액션과의 간격이 줄지 않게). */
+it("제목은 본문이 있을 때만 -mb-1로 붙는다", async () => {
+  const withBody = (await render(<Alert title="Title">Body</Alert>)).container;
+  expect(withBody.querySelector("p.font-medium")?.className).toContain("-mb-1");
+  const titleOnly = (await render(<Alert title="Synced" />)).container;
+  expect(titleOnly.querySelector("p.font-medium")?.className).not.toContain("-mb-1");
+});
