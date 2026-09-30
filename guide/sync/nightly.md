@@ -31,7 +31,7 @@ The nightly run does not update the project, and records why in **Logs**, when:
 - GitHub didn't answer whether that pull request is open. Malmoi does not guess; the next run checks again.
 - The change is too large for a server-side sync. Nightly updates use the same file budget as creating a project (see [Limits](../reference/limits.md#files)). Reduce the files' size, or deliver the change with the repository workflow.
 
-If the nightly run can't read the repository's branch, or GitHub doesn't answer in time, the event shows **Failed** in **Logs** instead of a hold. A project owner can check the branch and the GitHub connection in project **Settings**.
+If the nightly run can't read the repository's branch, or GitHub doesn't answer in time, the event shows **Failed** in **Logs** instead of a hold. If the branch no longer exists, Home also shows the sync as failed until the next successful sync; if GitHub only failed to answer, Home is unchanged and the next run tries again. A project owner can check the branch and the GitHub connection in project **Settings**.
 
 ## Nightly sync or the workflow {#workflow}
 
