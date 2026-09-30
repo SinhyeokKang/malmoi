@@ -83,6 +83,31 @@ describe("스트리밍 — GitHub 판정", () => {
    * **U7 r1 🔴1** — 이미 보인 Suspense 경계 안에서 `use(새 promise)`를 하면 키 선택·필터·트리 이동(`navigate("replace")`)과 저장 뒤 재검증이 GitHub probe가
    * 끝날 때까지 커밋되지 않았다. 도착 판정은 effect로 구독하고, 새 판정이 올 때까지 마지막 도착값을 든다.
    */
+  /**
+   * **U7 r2** — 소스·프로젝트를 옮겨도 작업 화면이 마운트된 채 남을 수 있다. 옛 소스의 연결 판정이 새 조회가 끝날 때까지 남으면 다른 프로젝트의
+   * Publish·Sync를 끄거나 켠다. 식별 키(프로젝트 · 소스)가 바뀌면 도착값을 버리고 새 첫 렌더 판정(`status`)으로 돌아간다.
+   */
+  it("프로젝트·소스가 바뀌면 옛 판정이 서지 않는다", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<TranslationWorkspace {...props({ unpublished: 1, connection: { status: "unknown", later: Promise.resolve({ status: "app-uninstalled" } as ConnectionHealth) } })} />));
+    expect(off(buttons(container).sync)).toBe(true);
+    const later = (health: Promise<ConnectionHealth>, over: { slug?: string; routeSurfaceSlug?: string }) =>
+      act(async () => startTransition(() => root.render(<TranslationWorkspace {...props({ ...over, unpublished: 1, connection: { status: "unknown", later: health } })} />)));
+    // 소스만 바뀐다 — 같은 프로젝트의 다른 소스.
+    await later(new Promise<ConnectionHealth>(() => {}), { routeSurfaceSlug: "app" });
+    expect(off(buttons(container).sync)).toBe(false);
+    expect(off(buttons(container).publish)).toBe(false);
+    // 프로젝트가 바뀐다.
+    await later(Promise.resolve({ status: "app-uninstalled" } as ConnectionHealth), { routeSurfaceSlug: "app" });
+    expect(off(buttons(container).sync)).toBe(true);
+    await later(new Promise<ConnectionHealth>(() => {}), { slug: "globex", routeSurfaceSlug: "app" });
+    expect(off(buttons(container).sync)).toBe(false);
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
   it("새 promise가 대기 중이어도 전환이 커밋되고 마지막 판정이 남는다", async () => {
     const container = document.createElement("div");
     document.body.append(container);

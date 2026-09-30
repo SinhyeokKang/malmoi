@@ -527,7 +527,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     (`ProjectArchived`가 대신 선다). 스트리밍으로 도착한 GitHub 판정이 첫 렌더의 DB 판정을 이긴다.
   */
   // ⚠️ effect 구독이다(`useArrived`) — `use()`로 받으면 키 선택·필터·저장 뒤 재검증 전환이 GitHub probe를 기다렸다(U7 r1). 새 판정이 올 때까지 마지막 값을 든다.
-  const arrived = useArrived(props.connection.later)?.status ?? null;
+  // 식별 키는 프로젝트 · 경로 소스다 — 옮겨도 이 화면이 마운트된 채 남으면 옛 소스의 판정이 새 조회까지 버튼을 붙잡았다(U7 r2).
+  const arrived = useArrived(props.connection.later, `${slug}/${routeSurfaceSlug}`)?.status ?? null;
   const availability = planActionAvailability({ archived: false, connection: arrived ?? props.connection.status });
   /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
   const openSync = () => { if (!publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };

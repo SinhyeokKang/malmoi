@@ -16,8 +16,8 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const mounted: (() => void)[] = [];
 afterEach(() => { for (const unmount of mounted.splice(0)) act(() => unmount()); });
 
-function Host({ label, hold, as }: { label: string; hold: Promise<HoldReason | null>; as: "subline" | "badge" }) {
-  return <div><span data-label>{label}</span><HoldLater hold={hold} as={as} /></div>;
+function Host({ label, hold, as, project = "acme" }: { label: string; hold: Promise<HoldReason | null>; as: "subline" | "badge"; project?: string }) {
+  return <div><span data-label>{label}</span><HoldLater hold={hold} as={as} identity={project} /></div>;
 }
 
 async function mount(ui: React.ReactNode) {
@@ -57,5 +57,20 @@ describe("HoldLater", () => {
     await view.transition(<Host label="B" hold={Promise.resolve("open-pr")} as="subline" />);
     await act(async () => resolveOld(null));
     expect(view.container.textContent).toContain(m.home.cards.held["open-pr"]);
+  });
+
+  /**
+   * **U7 r2** — 같은 트리가 다른 프로젝트로 다시 렌더되면(스위처가 컴포넌트를 마운트한 채 둔다) 옛 프로젝트의 사유가 새 조회가 끝날 때까지 남았다.
+   * 식별 키가 바뀌면 그 자리에서 비운다 — 그 사이 다른 프로젝트의 Held를 말하지 않는다.
+   */
+  it.each([
+    ["subline", m.home.cards.held["open-pr"]],
+    ["badge", STATE.held.label],
+  ] as const)("%s — 프로젝트가 바뀌면 옛 프로젝트의 사유가 서지 않는다", async (as, text) => {
+    const view = await mount(<Host label="A" hold={Promise.resolve("open-pr")} as={as} project="acme" />);
+    expect(view.container.textContent).toContain(text);
+    await view.transition(<Host label="B" hold={new Promise(() => {})} as={as} project="globex" />);
+    expect(view.container.querySelector("[data-label]")?.textContent).toBe("B");
+    expect(view.container.textContent).not.toContain(text);
   });
 });

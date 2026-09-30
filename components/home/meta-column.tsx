@@ -52,7 +52,7 @@ export function MetaColumn({ rows, slug, now, canOpenSettings, heldLater }: {
       </h2>
       {/* 구역 사이 선만 구역이 든다 — 머리 바로 아래 구역은 머리 선을 쓴다. */}
       <MetaGroup rows={facts} now={now} divided={false} />
-      <MetaGroup rows={times} now={now} divided={facts.length > 0} heldLater={heldLater} />
+      <MetaGroup rows={times} now={now} divided={facts.length > 0} heldLater={heldLater} slug={slug} />
       {canOpenSettings && (
         <Link
           href={routes.settings(slug)}
@@ -70,21 +70,21 @@ export function MetaColumn({ rows, slug, now, canOpenSettings, heldLater }: {
  * ⚠️ **라벨 폭이 96으로 고정이다** — `justify-between`으로 벌리면 값의 시작 위치가 라벨 길이를 따라
  * 행마다 달라지고, 아홉 행이 한 열로 안 읽힌다.
  */
-function MetaGroup({ rows, now, divided, heldLater }: { rows: readonly MetaRow[]; now: Date; divided: boolean; heldLater?: Promise<HoldReason | null> }) {
+function MetaGroup({ rows, now, divided, heldLater, slug }: { rows: readonly MetaRow[]; now: Date; divided: boolean; heldLater?: Promise<HoldReason | null>; slug?: string }) {
   if (rows.length === 0) return null;
   return (
     <dl className={cn("flex flex-col gap-2.5 px-4 py-3.5", divided && "border-divider border-t")}>
       {rows.map((row) => (
         <div key={row.kind} className="flex items-baseline gap-3">
           <dt className="w-24 shrink-0 text-xs text-neutral-400">{m.home.meta[row.kind]}</dt>
-          <dd className="min-w-0 flex-1 text-sm">{value(row, now, heldLater)}</dd>
+          <dd className="min-w-0 flex-1 text-sm">{value(row, now, heldLater, slug)}</dd>
         </div>
       ))}
     </dl>
   );
 }
 
-function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>): ReactNode {
+function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>, slug = ""): ReactNode {
   switch (row.kind) {
     case "repository":
       return row.disconnected ? (
@@ -144,7 +144,7 @@ function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>):
           {row.failed !== null && <span>· <StatusBadge state={row.failed.state} className="mr-1.5 align-middle" />{relativeTime(row.failed.at, now)}</span>}
           {/* 보류는 지금의 판정이다(ux-drift-unify Q6) — 사유 문장은 `To send` 카드 보조 줄이 든다. PR에 달린 사유는 늦게 도착한다. */}
           {/* 늦게 도착하는 사유는 클라이언트 섬이 effect로 받는다 — `use()`로 받으면 `?event=`·재검증 전환이 조회를 기다린다(U7 r1). */}
-          {heldLater === undefined ? <Held reason={row.held} /> : <HoldLater hold={heldLater} as="badge" />}
+          {heldLater === undefined ? <Held reason={row.held} /> : <HoldLater hold={heldLater} as="badge" identity={slug} />}
         </span>
       );
     case "lastPublish": {
