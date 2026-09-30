@@ -53,7 +53,8 @@
 - 라벨은 `dictionaryStrings(m)`에 포함된 문자열 또는 아래 외부 라벨 표에 있어야 한다. 옛 `publicDocs.docs.sections` 본문은 제거됐고, 라벨 게이트는 전체 사전을 대상으로 한다. 함수·JSX 값은 제외한다.
 - `Publish 3 changes` 같은 보간 라벨과 `hookHint` 같은 함수형 문구는 굵게 쓰지 않는다. 숫자 예시를 사전에 있는 고정 라벨처럼 취급하지 않는다.
 - GitHub 등 외부 화면의 라벨도 굵게 쓰되 아래 표에 정확한 문구·화면·근거를 먼저 기록한다. 사전에 이미 있는 라벨이라도 그 화면에 실제로 있는지는 원고 검토에서 확인한다.
-- 사용자가 보는 이름으로 쓴다. 아래 표의 내부 단어는 오른쪽 표현으로 바꾼다. 화면 문구를 그대로 인용할 때는 `Not sent` 같은 라벨을 예외로 쓸 수 있다.
+- 사용자가 보는 이름으로 쓴다. 아래 표의 내부 단어는 오른쪽 표현으로 바꾼다. 화면 문구를 그대로 인용할 때는 `Revert to last sent` 같은 라벨을 예외로 쓸 수 있다.
+- **상태 낱말은 `docs/DESIGN.md` §2.4가 정본이다.** 표의 상태 행은 그 표의 낱말을 가이드 산문으로 옮긴 것이고, 둘이 갈리면 §2.4를 따르고 이 표를 고친다.
 
 | 내부 단어 | 가이드 표현 |
 | --- | --- |
@@ -62,7 +63,13 @@
 | repository → Malmoi | update |
 | owner control | Sync |
 | Malmoi → GitHub | Publish |
-| sent / delivered / delivery-confirmed | published |
+| sent / delivered / delivery-confirmed | published (동작을 설명할 때) |
+| unsent / pending / unpublished (미전달 편집) | 화면 상태 낱말 **Unsent**, 산문 "unsent edits" — "unpublished edits"를 쓰지 않는다 |
+| hold / defer / pause / wait (리포 갱신 보류) | 화면 라벨 **Held**, 산문 "held"("Repository updates are held until …") — "on hold"·"paused"·"waits"를 쓰지 않는다. CI 로그의 `deferred`를 인용할 때만 예외이고, 한 번은 "Logs shows it as **Held**"로 잇는다 |
+| partial import (일부 반영) | **Partially synced** — "failed"·"couldn't finish"로 쓰지 않는다(데이터는 들어갔다) |
+| import failed (동기화 실패) | **Sync failed**, 문장은 "the last sync couldn't finish" (Logs 결과 칸만 **Failed**) |
+| Publish withheld (일부 보류) | **Held back** — Sync 문장에는 쓰지 않는다 |
+| disconnected / unpinned (연결 끊김) | **Disconnected** → **Reconnect**. 결과는 "syncs and publishes stop until it's reconnected" — "paused"를 쓰지 않는다 |
 | project role | Owner / Editor; first mention: translators (Editor role) |
 | address | the name in the project URL |
 
