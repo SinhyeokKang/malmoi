@@ -846,7 +846,8 @@ runNightly 머리: Project.lastNightlyAt = now (단독 update — 방문 기록)
 countPending > 0 ──────────────────────────────► Publish (runSync, trigger "cron" — 지금 그대로)
 비교 대상 표면(활성 · 포맷 완전 · lastCommitSha 있음) 0개 ─► 사건 없음 · notReady
 createGitClient → getRefSha(base)  (8초 마감 안)
-  throw · 마감 · null ─────────────────────────► nightly.skip · failed · base-unreadable
+  throw · 마감 ─────────────────────────────────► nightly.skip · failed · base-unreadable (사건만)
+  null(브랜치 없음) ────────────────────────────► 같은 사건 + 활성 표면 lastImportError (같은 tx, #155)
 비교 대상 전부 lastCommitSha == head ────────────► nightly.skip · upToDate
 경과 > NIGHTLY_IMPORT_START_MS ─────────────────► 사건 없음 · unprocessed (PR 조회 안 함 · 요약 deadline=)
 열린 PR 조회(삼상태, 같은 클라이언트, 8초 마감) → planOpenPrGate
@@ -864,7 +865,7 @@ createGitClient → getRefSha(base)  (8초 마감 안)
   매일 전 표면을 다시 적재한다. **빈 배열의 `every`는 참이라** 비교 대상 0개를 먼저 `notReady`로 뺀다. 적재 자체는 수동 Sync와 같은 표면 집합을 돈다.
 - ⚠️ **실패를 "PR 없음"·"같은 head"로 읽는 경로가 없다** — 열린 PR 입력은 `{ url }` 상자에 담긴다: "아직 안 물었다"(상자 없음 → `need`)와
   "물었는데 확인 못 함"(`url: undefined` → `pr-check-failed`)이 같은 `undefined`로 접히지 않게(POSTMORTEM 2026-09-03). head가 던지거나
-  마감을 넘기거나 `null`(base 브랜치 없음·권한 없는 404)이면 `base-unreadable`이다. ⚠️ **클라이언트 생성(토큰 발급 + 리포 신원)부터 그 마감 안이다** —
+  마감을 넘기거나 `null`(base 브랜치 없음·권한 없는 404)이면 `base-unreadable`이다 — `null`만 표면 실패 상태도 쓴다(아래 §5.5.2 분류, #155). ⚠️ **클라이언트 생성(토큰 발급 + 리포 신원)부터 그 마감 안이다** —
   설정 오류(개인키 누락 등)도 던지지 않고 `base-unreadable`이 되며, `failed.base-unreadable` 카운터와 `[nightly] head` 로그가 그것을 말한다.
 - **GitHub 호출의 실제 모양**: `createGitClient`가 installation 토큰 발급 + `GET /repos`(identity)를 먼저 부르고 그다음 `getRefSha`다. 완료 조건은
   "하지 않는 호출"(트리·blob·PR 목록 0회)로 잰다. PR 조회는 head를 읽은 **같은 클라이언트**를 쓴다(`loadOpenPrUrl`처럼 새로 만들지 않는다).
@@ -1433,6 +1434,13 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
   | `hold` | 영구 서버 전용 한도 — 파일 예산 `resource-limit`(§5.5.05 — 200파일 · 파일당 2MB · 합계 10MB) · 트리 잘림(`truncated`) | `deferred` · `too-large` | 안 쓴다 |
   | `transient` | 일시·자격 실패 — 스냅샷 `unavailable` · reader 열기(installation 토큰·리포 선택 해제) · blob 다운로드 실패만인 표면 · 표면 트랜잭션 예외 | `failed`(errorCode만) | 안 쓴다 |
   | `record` | CI도 같이 실패할 것 — 어댑터 파싱 실패 · 0키(오류 없는 실패) · `base-branch-missing` · `partial-import` | 소스별 결과 | **쓴다**(수동과 같이) |
+
+  ⚠️ **야간 스킵의 `base-unreadable`도 같은 두 부류로 갈린다** (#155, 2026-09-30 사용자) — 사건 어휘(`nightly.skip` · `failed` · `base-unreadable`)는 둘이 같다.
+  base 브랜치가 **정말 없으면**(`getRefSha` → `null`, 판정의 `branchMissing: true`) `record`다 — 사건과 **같은 트랜잭션**에서 활성 표면에
+  `lastImportError = import-failed` + `lastImportFailedAt`을 쓴다(수동 Sync가 `base-branch-missing`에서 쓰는 코드 그대로 — 새 코드를 만들지 않는다).
+  사건만 남기면 Home이 "Nothing needs you"라고 말했다 — 주의 항목·`failed` 접미는 표면 `lastImportError`만 읽는다. 진행 표시(`lastImportStartedAt`·토큰)는
+  건드리지 않는다(이 방문은 적재를 시작하지 않았고, 도는 CI의 표시를 뺏지 않는다). 다음 성공 적재(야간·CI·수동)가 같은 컬럼을 비운다.
+  head 조회 **throw · 마감 · 클라이언트 생성(설정) 실패**는 `transient`다 — 사건만 남는다.
 
   `too-large`는 **모든 표면이 한도 보류일 때만**이다 — 파싱 실패가 섞이면 `failed`, 적재가 섞이면 `partial`로 소스별 결과에 맡긴다(`summarizeRun`). ⚠️ **한도 보류 프로젝트는 매 밤 다시 시도하고 매 밤 `too-large`를 남긴다** — 한도가 영구라 상태를 쓰지 않는 대가다. ⚠️ **수동 Sync는 이 분류를 타지 않는다** — 사람이 누른 실행의 실패는 그 사람이 Home에서 봐야 한다.
 
