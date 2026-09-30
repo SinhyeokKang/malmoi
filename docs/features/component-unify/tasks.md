@@ -96,9 +96,9 @@
 
 ## F. 문서 · 종료
 
-- **T21** 문서(design §6.4 나머지) — DESIGN §2.1·§6.625·§8(API 규약 표) · CLAUDE.md(UI 행 개수 · Radix 목록 · 작업 원칙 예외 한 줄) · DIRECTORY · global-search design(S9) · sr 상태 줄 glob 테스트.
+- **T21** 문서(design §6.4 나머지) — DESIGN §2.1·§6.625·§8(API 규약 표) · CLAUDE.md(UI 행 개수 · Radix 목록 · 작업 원칙 예외 한 줄) · DIRECTORY · global-search 문서 대조(design §6.4 — 산출물 이름) · sr 상태 줄 glob 테스트.
   검증 [수동]: design §6.4 목록 전부 ✓ · [자동] sr 상태 줄 테스트 green(`loading.tsx` 8/8).
-  `[commit]` 문서별 — `docs(DESIGN): …` · `docs(CLAUDE): …` · `docs(DIRECTORY): …` · `docs(feature): global-search follows the input width prop`
+  `[commit]` 문서별 — `docs(DESIGN): …` · `docs(CLAUDE): …` · `docs(DIRECTORY): …` · `docs(feature): global-search matches component-unify names`
 - **T22** 기능 종료 — 결론을 정본으로 올렸는지 확인하고 디렉터리 삭제.
   검증 [자동]: `pnpm gate` green · `test ! -d docs/features/component-unify`.
   `[commit] docs: close component-unify`
