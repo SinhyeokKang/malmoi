@@ -821,7 +821,7 @@ Publish·Revert·폐기 Sync를 함께 말한다 — 응답 계약은 그대로�
   방문 기록의 유일한 예외이고, 그래서 다음 밤 정렬이 그 프로젝트를 앞으로 가져온다(되돌리지 않으면 "방금 방문함"으로 맨 뒤에 선다).
   head 조회도 `GITHUB_WAIT_MS`(8초) 안이라 **스킵·마감 갈래의 최악이 예산 45초 + head 대기 8초 ≈ 53초 < 60**이다. ⚠️ **이 경계는 스킵·마감
   갈래만이다** — 44초께 시작한 Publish(GitHub 쓰기 여러 번)나 20초 전에 시작한 다표면 적재(표면당 트랜잭션 30초)는 그 밖이라 `maxDuration`을
-  넘길 수 있다. 그래서 함수가 죽어 남은 `running` 적재 행은 **다음 방문이 갈래와 무관하게** 닫는다 — `runNightly`가 방문 기록 직후 `closeExpiredImportRuns`(`lib/import/run.ts`)를 `Project` 잠금 안에서 돌리고, 살아 있는 실행(`hasLiveInternalImport`)은 닫지 않는다(§5.7.2). 새 사건은 없다.
+  넘길 수 있다. 그래서 함수가 죽어 남은 `running` 적재 행은 **다음 방문이 갈래와 무관하게** 닫는다 — `runNightly`가 방문 기록 직후 `closeExpiredImportRuns`(`lib/import/run.ts`)를 `Project` 잠금 안에서 돌리고, 살아 있는 실행(`hasLiveInternalImport`)은 닫지 않는다(§5.7.2). 새 사건은 없다. ⚠️ **이 정리는 방문을 막지 않는다** — 잠금은 `FOR UPDATE SKIP LOCKED`라 누가 쥐고 있으면(=살아 있는 실행) 그 밤은 건너뛰고, 던져도 `logCaught`만 남기고 판정·갈래는 그대로 돈다. 기다리면 트랜잭션 timeout까지 매달려 그 밤의 미전달 편집 Publish가 안 나간다.
   ⚠️ **응답의 `unprocessed`는 방문하지 않은 수만이다**(예산·상한) — 마감으로 멈춘 방문은 `results`의 항목이고 요약에서는 `deadline=`으로 센다.
   합치면 `results.length + unprocessed`가 고른 수보다 커진다(두 번 센다). 대가: **GitHub 장애 밤**엔 방문마다 head 대기 8초를 다 쓸 수 있어
   뒤쪽 프로젝트가 `unprocessed`로 다음 밤에 넘어간다.
