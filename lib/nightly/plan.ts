@@ -57,7 +57,9 @@ export function planNightly(input: NightlyInput): NightlyPlan {
   const head = input.head.sha;
   if (compared.every((surface) => surface.lastCommitSha === head)) return { action: "skip", outcome: "upToDate" };
 
-  if (input.openPr === undefined) return { action: "need", input: "open-pr" };
+  // ⚠️ **마감 뒤에는 PR을 묻지 않는다** — 루프 예산은 방문 시작 전에만 재므로, 늦게 시작한 방문이 head 대기 + PR 대기를 더 쓰면 `maxDuration`을
+  // 넘겨 그 밤의 요약이 사라진다(POSTMORTEM 2026-09-06). 마감 뒤의 PR 조회는 어차피 적재를 못 시작한다 — 사건 없이 미처리로 세고 다음 밤 정렬이 앞으로 가져온다.
+  if (input.openPr === undefined) return input.elapsedMs > NIGHTLY_IMPORT_START_MS ? { action: "none", counter: "unprocessed" } : { action: "need", input: "open-pr" };
   const gate = planOpenPrGate({ openPr: input.openPr.url });
   if (gate.action === "defer") return { action: "skip", outcome: "deferred", reason: gate.reason };
 

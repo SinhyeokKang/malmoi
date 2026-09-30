@@ -195,17 +195,34 @@ describe("갈래별 호출", () => {
     expect((await call()).results[0]).toMatchObject({ action: "skip", outcome: "failed", reason: "base-unreadable" });
   });
 
-  it("적재 시작 마감 초과 → 사건 0행 · 적재 0회 · unprocessed", async () => {
+  it("적재 시작 마감 초과 → PR 조회 0회 · 사건 0행 · 적재 0회 · 결과 항목(deadline)이고 미방문 수는 아니다", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     const p = row("late");
     state.rows = [p];
-    // head 조회가 마감을 다 쓴다 — 판정은 조회 **뒤**의 경과로 잰다.
-    client(p, {}, { getRefSha: async () => { vi.setSystemTime(Date.now() + NIGHTLY_IMPORT_START_MS + 1); return HEAD; } });
+    // head 조회가 마감을 다 쓴다 — 판정은 조회 **뒤**의 경과로 잰다. ⚠️ 그 뒤 PR 대기를 더 쓰면 `maxDuration`을 넘길 수 있다(r2).
+    const calls = client(p, {}, { getRefSha: async () => { vi.setSystemTime(Date.now() + NIGHTLY_IMPORT_START_MS + 1); return HEAD; } });
     const body = await call();
     expect(body.results[0]).toEqual({ slug: "late", action: "none", counter: "unprocessed" });
-    expect(body.unprocessed).toBe(1);
+    expect(calls.filter((c) => c.method === "findOpenPr")).toHaveLength(0);
+    expect(body.unprocessed).toBe(0);
     expect(state.events).toEqual([]);
     expect(state.runAutomationImport).not.toHaveBeenCalled();
+  });
+
+  it("⚠️ results.length + unprocessed = 고른 수 — 마감 멈춤과 예산 미방문을 두 번 세지 않는다", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const a = row("a"); const b = row("b"); const c = row("c");
+    state.rows = [a, b, c];
+    // 첫 방문이 루프 예산까지 다 쓴다 — 그 방문은 마감 멈춤이고, 나머지 둘은 시작하지 않는다.
+    client(a, {}, { getRefSha: async () => { vi.setSystemTime(Date.now() + 50_000); return HEAD; } });
+    const body = await call();
+    expect(body.results.map((r) => r.slug)).toEqual(["a"]);
+    expect(body.unprocessed).toBe(2);
+    expect(body.results.length + body.unprocessed).toBe(3);
+    const lines = vi.mocked(console.log).mock.calls.map((c) => String(c[0])).filter((line) => line.startsWith("[pull] "));
+    expect(lines[0]).toContain("targets=1");
+    expect(lines[0]).toContain("unprocessed=2");
+    expect(lines[0]).toContain("deadline=1");
   });
 });
 
@@ -239,6 +256,7 @@ describe("방문 기록 · 격리 · 요약", () => {
     client(open, { openPr: { url: "https://github.com/o/o/pull/1", number: 1, title: "t" } });
     await call();
     const lines = vi.mocked(console.log).mock.calls.map((c) => String(c[0])).filter((line) => line.startsWith("[pull] "));
-    expect(lines).toEqual(["[pull] targets=3 published=1 imported=0 skipped=1 deferred=1 failed=0 notReady=0 unprocessed=0 deferred.open-pr=1"]);
+    // Publish 갈래의 스킵(no-edits 가짜)은 보낸 것이 아니다 — published가 아니라 skipped.<사유>다(r2).
+    expect(lines).toEqual(["[pull] targets=3 published=0 imported=0 skipped=2 deferred=1 failed=0 notReady=0 unprocessed=0 deadline=0 deferred.open-pr=1 skipped.no-edits=1"]);
   });
 });

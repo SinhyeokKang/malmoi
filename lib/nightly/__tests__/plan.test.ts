@@ -146,6 +146,24 @@ describe("planNightly — 적재 시작 마감", () => {
   });
 });
 
+/**
+ * ⚠️ **마감을 넘긴 방문은 PR을 묻지 않는다** (r2 — GitHub 장애 밤의 `maxDuration` 초과). 루프 예산은 방문 **시작 전**에만 재므로, 45초 가까이
+ * 시작한 방문이 head 대기 8초 + PR 대기 8초를 더 쓰면 함수가 죽어 요약이 사라진다. 마감 뒤의 PR 조회는 어차피 보류·미처리만 낳는다.
+ */
+describe("planNightly — 마감 뒤에는 PR 조회를 요구하지 않는다", () => {
+  it("head가 다르고 경과가 마감을 넘었으면 need open-pr 대신 none unprocessed", () => {
+    expect(planNightly(input({ head: { ok: true, sha: HEAD }, elapsedMs: NIGHTLY_IMPORT_START_MS + 1 }))).toEqual({ action: "none", counter: "unprocessed" });
+  });
+
+  it("마감 안이면 그대로 PR을 묻는다 (짝)", () => {
+    expect(planNightly(input({ head: { ok: true, sha: HEAD }, elapsedMs: NIGHTLY_IMPORT_START_MS }))).toEqual({ action: "need", input: "open-pr" });
+  });
+
+  it("head를 못 읽은 방문은 마감 뒤에도 base-unreadable 사건이다 — 이미 쓴 대기의 결과를 버리지 않는다", () => {
+    expect(planNightly(input({ head: { ok: false }, elapsedMs: NIGHTLY_IMPORT_START_MS * 2 }))).toEqual({ action: "skip", outcome: "failed", reason: "base-unreadable" });
+  });
+});
+
 describe("NIGHTLY_IMPORT_START_MS", () => {
   it("루프 예산보다 이르다 — 표면 트랜잭션(30s)이 maxDuration(60s)을 뚫지 않게 먼저 끊는다", () => {
     expect(NIGHTLY_IMPORT_START_MS).toBe(20_000);
