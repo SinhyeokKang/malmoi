@@ -57,9 +57,9 @@
 
 ## F. UI
 
-- [ ] **F1** Logs: `actorLabel`(event-row.tsx·event-detail.tsx 세 곳)의 **AUTOMATION 분기만** `triggerOf`로 — 사람 이름 경로 유지. `eventMeta`도. 행위자 메뉴의 `automation` 항목 → `CI`·`Nightly` 둘. `deferredReason` 사유별 분기 · `nightly.skip`·`import.nightly` 문장(행위자 머리 문법) · 자동화 행 보조줄의 주체 낱말 제거 · 상세 `changedValues`(부재 `—`).
+- [x] **F1** Logs: `actorLabel`(event-row.tsx·event-detail.tsx 세 곳)의 **AUTOMATION 분기만** `triggerOf`로 — 사람 이름 경로 유지. `eventMeta`도. 행위자 메뉴의 `automation` 항목 → `CI`·`Nightly` 둘. `deferredReason` 사유별 분기 · `nightly.skip`·`import.nightly` 문장(행위자 머리 문법) · 자동화 행 보조줄의 주체 낱말 제거 · 상세 `changedValues`(부재 `—`).
   — 검증: DOM 테스트(event-row·event-detail·log-filters, jsdom) — 야간 행 `Nightly` · CI 행 `CI` · 사람 행 마스킹 이름 그대로 · `open-pr` + `pendingEdits: 0` 행이 "0 unsent edits"를 안 낸다 · 메뉴 `CI`·`Nightly` 선택이 URL `?actor=`로 왕복 · `changedValues` 없음 → `—` · `no-korean-ui` green · 문구는 `messages/en.tsx` · 버튼 이름을 부르는 문구는 terminology 테스트에 사전 참조.
-- [ ] **F2** Home 요약: 기존 `Promise.all` 안에서 최근 적재·PUBLISH 사건 조회(행위자 비선택) → `metaRows`에 `trigger`·`heldByOpenPr` → `12 hours ago · nightly` · `· held until the pull request is merged`.
+- [x] **F2** Home 요약: 기존 `Promise.all` 안에서 최근 적재·PUBLISH 사건 조회(행위자 비선택) → `metaRows`에 `trigger`·`heldByOpenPr` → `12 hours ago · nightly` · `· held until the pull request is merged`.
   — 검증: `lib/home/__tests__/meta.test.ts` 갈래 — manual · nightly · CI · null(사건 없음) · 실패 행 순서 `1d ago · nightly · failed 10m ago` · 최근 적재가 `deferred open-pr` → 보류 한 줄 · `partial`/`deferred`/`superseded`가 주체를 잘못 가리키지 않는다 · 새 jsdom 테스트(메타 열 렌더) · `components/__tests__/home-screen.test.ts`(소스 스캔) green · **수동**: `/runtime-test`로 로컬 Home 확인.
 
 ── 커밋: `feat(ui): show manual, nightly or CI trigger on home summary and logs`
