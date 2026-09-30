@@ -101,6 +101,39 @@ size="lg"`(40)는 그대로 **셸 밖 카드 전용**이다(로그인·초대 �
 
 값은 **red-600 (`0 72.2% 50.6%`)** 이고 흰 배경에서 4.83:1로 AA를 넘는다. shadcn 기본값 red-500은 흰 배경에서 **3.76:1로 미달**이라 쓰지 않는다.
 
+### 2.4 상태 톤·낱말 — 정본 (2026-09-30 사용자)
+
+**상태가 같으면 형태(배지·Alert·행 띠·아이콘 칸·글자)가 달라도 톤과 낱말이 같다.** 전수 조사에서 같은 "동기화 실패"가 목록 회색 · Home Alert 빨강 · attention 노랑이었고, 같은 뜻에 낱말이 여섯 벌이었다. 새 상태 표시는 이 표에서 톤과 낱말을 고른다 — 화면에서 새로 정하지 않는다.
+
+| 톤 | 뜻 | 배지 | Alert | 행 띠(`BannerLine`) | 아이콘 칸 |
+|---|---|---|---|---|---|
+| success 초록 | 끝났고 정상 | `success` | `success` | — | `bg-green-100/80 text-green-800` |
+| neutral 회색 | 정보 · 대기 · 할 일 없음 · 정상 작업 흐름 | `neutral` | `neutral` | `muted` | `bg-foreground/5` |
+| warning 호박 | 손봐야 하지만 깨지진 않음 | `warning` | `warning` | `warning` | `bg-amber-100/80 text-amber-800` |
+| danger 빨강 | 실패 · 깨짐 | `missing`(붉은 면) | `danger` | `danger` | `bg-destructive/8 text-destructive` |
+
+| 상태 | 톤 | 낱말 |
+|---|---|---|
+| 동기화 성공 · Publish 보냄 | success | Synced · Sent |
+| 동기화 중 · 아직 전 · 변경 없음 · 보낼 것 없음 · 밀림 | neutral | Syncing… · Not synced yet · Up to date · Nothing to send · Superseded |
+| 동기화 실패(첫·마지막 모두) · Publish 실패 | danger | Sync failed · Failed |
+| 일부 반영(`partial-import` 포함 — `importFailureTone`) | warning | Partially synced |
+| 보류(미전달 편집 · 열린 PR · 너무 큼) | warning | Held — 문장은 "Repository updates are held until …" |
+| Publish 일부 보류 | warning | Held back |
+| 미전달 편집(정상 작업 흐름) | neutral | Unsent |
+| 거부(시작 안 함) | warning | Not started |
+| PR 열림 | neutral | Open |
+| 연결됨 | success | Connected |
+| 미연결(설치 없음) · 끊김(재연결 필요) · 다른 리포 | neutral · warning · danger | Not connected · Disconnected · Wrong repository (`connectionProblem`) |
+| 인가·토큰·연결 앱 만료 · 연결 확인 실패 | warning | Expired · Couldn't check |
+| 검토 대기 · 기준 언어 변경 대기 | warning | Needs review · Waiting to apply |
+| 미번역 | neutral | Untranslated |
+| 사라진 언어 | danger | Removed from repository |
+| 보관 | neutral | Archived |
+
+- `/projects` 칩은 **그 프로젝트의 가장 나쁜 상태 하나**다: Sync failed > Partially synced > Disconnected > Not synced yet·Setup > Active(보관은 Archived).
+- ⚠️ **알려진 틈**: `/projects`의 Disconnected는 `repositoryId`만 보고, App 제거는 Home만 안다(목록은 행마다 GitHub을 부르지 않는다).
+
 ## 3. 라이트 단일 — `dark:`를 쓰지 않는다
 
 **`dark:` variant를 새로 쓰지 않는다.** 다크 모드는 비범위다.
@@ -1689,6 +1722,7 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 - **문장이 행위자로 시작한다**(500 굵기). 자동 실행은 `Nightly`·`CI`가 그 자리를 그대로 쓴다 — 사람과 자동화를 같은 문법으로 읽는다. ⚠️ **방향은 낱말과 글리프가 함께 말한다**: 내보내기 `sent … to GitHub`/`git-pull-request-arrow`, 가져오기 `synced … from the repository`/`arrow-down-to-line`. 내부 이름이 하나(`SyncRun`)라는 사실이 두 방향을 섞을 근거가 되지 않는다.
   ⚠️ **자동화 낱말은 `triggerOf`(`lib/events/view.ts`)가 `subtype` 컬럼으로 정한다** (2026-09-30, nightly-sync) — AUTOMATION이 PUBLISH이거나 야간 subtype(`import.nightly`·`nightly.skip`)이면 `Nightly`, 그 밖이 `CI`다. 전엔 AUTOMATION IMPORT가 전부 `CI`였다. 행·상세의 행위자·Trigger 필드·Home 메타 열이 이 하나를 쓴다. 사람 행은 그대로 마스킹된 이름이다.
 - **야간 적재·스킵 문장** (2026-09-30, 행위자 머리 문법 그대로 — 정본은 `messages/en.tsx`의 `m.logs.sentence.import`): 편집도 새 커밋도 없던 밤 `Nightly found nothing to publish or sync`(⚠️ "synced"라 말하지 않는다 — 아무것도 읽지 않았다) · head를 못 읽은 밤 `Nightly couldn’t read the repository’s base branch`("sync failed"와 가른다 — 적재가 시작조차 안 했다) · 편집 수가 아닌 보류 셋 `{who} held the sync — a Malmoi pull request is still open` / `— GitHub didn’t answer about pull requests` / `— the change is too large for a server-side sync`. `pending-edits` 보류는 옛 문장(소스 이름) 그대로다. 야간 적재 자체(`import.nightly`)는 수동 Sync와 같은 결과 문장을 쓴다.
+- **보조줄 문법은 `[배지…]  사실 · 사실`이다** (2026-09-30 사용자 — `EventMetaLine` 하나를 Home 최근 로그와 Logs가 같이 쓴다). 맨 앞 배지는 종류다 — 실행은 주체와 합친 한 배지(`Manual sync` · `Nightly sync` · `CI sync` · `Manual publish` …), 그 밖은 `Translation` · `Member` · `Source` · `Settings`. 이어서 로케일(국기+코드) · 소스 슬러그 · 역할(`Editor` → `Owner`, 이전이 없으면 `Owner` 하나) · 어댑터 배지. 사실은 글자로 ` · `가 잇고, 결과는 보조줄에 싣지 않는다(Logs 결과 열 · Recent logs 시각 앞). 이전 값이 없으면 `— → x`가 아니라 `x`다.
 - **보조줄은 그 종류가 실제로 가진 맥락만** 적는다. 없는 값을 자리 채우려고 적지 않는다. ⚠️ **자동화 행은 보조줄에 주체 낱말을 싣지 않는다** — 행위자(`Nightly`·`CI`)가 이미 문장 머리에 서므로 두 번 말하지 않는다. `manual`은 사람 행에만 붙는다. ⚠️ **보류 행의 사유 한 줄은 `deferReason`으로 가른다** (`deferredText`) — 편집 수 보류만 `N unsent edits are being protected`이고, 나머지 셋은 사유 문장(`m.logs.deferReasons`)이다. 그대로 두면 `open-pr`에서 거짓 "0 unsent edits"가 선다. `too-large` 문장은 출구 둘(파일을 줄인다 · 리포 워크플로로 보낸다)을 말한다 — 수동 Sync도 같은 예산을 지나므로 [Sync]를 권하지 않는다.
 - **결과는 배지다** (2026-09-30 사용자 — 무색 평문 · 붉은 글자 · 호박 배지가 섞여 있던 것을 `ResultBadge` 하나로): 무색 `neutral` · 보류/부분 `warning` · 실패 `missing`(붉은 면). 행과 상세 머리가 같은 컴포넌트다. 넓은 열(172)에서는 **칸 오른쪽 끝**(chevron 옆 — Sources 행 상태와 같은 자리)이다. 사람 행 보조줄의 `manual`도 `Badge neutral`이다.
 - **결과 열은 실행에만 값이 있고 비어 있어도 폭을 유지한다** — 스무 행을 훑을 때 결과가 같은 세로선에 서야 실행만 골라 읽을 수 있다. 번역 저장·역할 변경에 `Sent`류를 붙이면 **없는 실행을 발명하는 것**이 된다.
