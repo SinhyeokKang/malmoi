@@ -242,6 +242,8 @@ describe("1c 입력 오류 — 제출 전 전체 검증", () => {
     expect(reason(0)).toBeNull();
     expect(reason(1)).toBe(m.members.invite.rowError.invalidEmail);
     expect(reason(2)).toBe(m.members.invite.rowError.duplicate(1));
+    // 행 사유는 alert가 아니다 — 알림은 바닥 상태 문장이 한 번 한다(행마다 alert면 줄 수만큼 끼어든다).
+    for (const line of document.querySelectorAll("[data-row-reason]")) expect(line.hasAttribute("role")).toBe(false);
     await settle();
     expect(document.activeElement).toBe(email(1));
     expect(submit().disabled).toBe(false);

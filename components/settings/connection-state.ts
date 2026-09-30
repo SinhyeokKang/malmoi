@@ -14,6 +14,13 @@ export function repositoryConnectionState(status: ConnectionHealth["status"], pr
   if (problem === "not-connected") return "notConnected";
   if (problem === "disconnected") return "disconnected";
   if (problem === "wrong-repository") return "wrongRepository";
-  if (status === "unknown") return "couldNotCheck";
-  return "connected";
+  // ⚠️ **폴백이 없다** — 건강성 갈래가 늘면 여기서 typecheck가 red다(새 갈래가 조용히 Connected로 서지 않게).
+  switch (status) {
+    case "unknown": return "couldNotCheck";
+    case "ok": case "repo-moved": return "connected";
+    // 문제 갈래는 위의 `problem`에서 끝난다 — 여기 닿는 것은 `problem`이 판정과 어긋나게 들어온 경우(교차 행렬 카나리아)뿐이고,
+    // 그때 Connected를 내므로 행렬이 red를 낸다.
+    case "not-connected": case "unpinned": case "app-uninstalled": case "installation-changed": case "repo-replaced": return "connected";
+    default: return status satisfies never;
+  }
 }

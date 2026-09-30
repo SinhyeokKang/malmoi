@@ -235,9 +235,10 @@ describe("PrivacyDoc — 시안 대조 교정", () => {
 it("changes 절의 개정 날짜가 utcDay로 보이고 dateTime은 ISO다", async () => {
   const { container } = await doc();
   const items = [...container.querySelectorAll<HTMLElement>("section[aria-labelledby=\"changes\"] li")];
-  const dated = items.filter((li) => li.querySelector("time") !== null);
-  expect(dated.length).toBeGreaterThan(0);
-  for (const li of dated) {
+  // 개정 이력은 줄마다 날짜로 시작한다 — 한 줄이라도 ISO로 남으면 여기서 red다.
+  expect(items.length).toBeGreaterThan(0);
+  expect(items.every((li) => li.querySelector("time") !== null)).toBe(true);
+  for (const li of items) {
     const time = li.querySelector("time")!;
     const iso = time.getAttribute("dateTime")!;
     expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}$/);

@@ -121,3 +121,14 @@ it("CI 워크플로 행은 누를 수 있는 행이라 hover 면이 있다 (4-Y1
   const row = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes(m.settings.ci.workflow))!;
   expect(row.className).toContain("hover:bg-foreground/[0.02]");
 });
+
+it.each([
+  ["보관", { archived: true, children: <p>yaml</p> }],
+  ["소스 없음", { archived: false, children: null }],
+] as const)("막힌 CI 워크플로 행(%s)에는 hover 면이 서지 않는다", async (_case, props) => {
+  const { container } = await render(<CiCard slug="acme" archived={props.archived} stale={[]}>{props.children}</CiCard>);
+  const row = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes(m.settings.ci.workflow))!;
+  expect(row.getAttribute("aria-disabled")).toBe("true");
+  // `aria-disabled:` 철자는 `buttonClass` 밖에서 금지라(`disabled-pairing.test.ts`) 막힌 동안 hover 클래스 자체가 없다.
+  expect(row.className).not.toContain("hover:bg-foreground");
+});

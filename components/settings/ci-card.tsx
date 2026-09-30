@@ -9,6 +9,7 @@ import { PanelCard } from "@/components/ui/panel-card";
 import { PushTokenPanel } from "./push-token-panel";
 import { m } from "@/lib/i18n";
 import { IconTile } from "@/components/ui/icon-tile";
+import { cn } from "@/lib/utils";
 export function CiCard({ slug, archived, stale, children }: { slug: string; archived: boolean; stale: readonly string[]; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -19,10 +20,12 @@ export function CiCard({ slug, archived, stale, children }: { slug: string; arch
     닿지 않았다. 보관이 먼저다 — 보관된 프로젝트는 소스가 있어도 못 연다.
   */
   const blocked = archived ? archivedId : !children ? noSourcesId : undefined;
+  // 누를 수 있는 행의 hover 면(4-Y12)은 막힌 행에 서지 않는다 — `ghost`는 `aria-disabled` hover를 잠그지 않는다(`button.tsx`).
+  // ⚠️ `aria-disabled:` 철자로 끄지 않는다 — 그 변형은 `buttonClass` 밖에서 금지다(`disabled-pairing.test.ts`). 막힌 동안 클래스를 빼는다.
   return <PanelCard title={m.settings.ci.title} subtitle={m.settings.ci.description}>
     <PushTokenPanel slug={slug} disabled={archived} />
     <div className="border-border border-t">
-      <Button ref={trigger} variant="ghost" className="text-foreground hover:bg-foreground/[0.02] focus-visible:ring-inset h-auto w-full justify-start gap-3 rounded-none px-4 py-[13px] text-left" aria-disabled={blocked !== undefined || undefined} aria-describedby={blocked} onClick={() => { if (blocked === undefined) setOpen(true); }}>
+      <Button ref={trigger} variant="ghost" className={cn("text-foreground focus-visible:ring-inset h-auto w-full justify-start gap-3 rounded-none px-4 py-[13px] text-left", blocked === undefined && "hover:bg-foreground/[0.02]")} aria-disabled={blocked !== undefined || undefined} aria-describedby={blocked} onClick={() => { if (blocked === undefined) setOpen(true); }}>
         <IconTile><FileCode2 aria-hidden /></IconTile>
         <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-base font-medium">{m.settings.ci.workflow}</span><span className="text-muted-foreground text-xs">.github/workflows/malmoi-i18n.yml</span></span>
         <ChevronRight className="text-muted-foreground size-4" aria-hidden />

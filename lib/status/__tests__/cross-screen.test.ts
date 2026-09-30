@@ -235,6 +235,16 @@ type Row = {
 
 const MATRIX: Row[] = [
   {
+    // 건강한 프로젝트 — 카나리아가 문제 갈래에서만 서지 않게 연결됨 칸을 하나 둔다(Settings `connected`).
+    input: "정상",
+    fixture: fixture(),
+    list: { chip: "active", banner: null },
+    home: { banner: null, hold: null },
+    settings: "connected",
+    sources: ["synced"],
+    refusal: { error: "none" },
+  },
+  {
     input: "repositoryId null(설치 있음)",
     fixture: fixture({ repositoryId: null }),
     list: { chip: "disconnected", banner: "disconnected" },
