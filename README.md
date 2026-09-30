@@ -26,7 +26,7 @@ Translators never touch Git: they sign in, edit, and hit **Publish**.
 ## How it works
 
 ```text
-                 push to the base branch (GitHub Actions)
+       push to the base branch (GitHub Actions) or nightly
   Repository  ──────────────────────────────────────────────▶  Malmoi
   decides which keys exist                         teammates edit values
       ▲                                                          │
@@ -35,11 +35,12 @@ Translators never touch Git: they sign in, edit, and hit **Publish**.
 ```
 
 Connect a repository and Malmoi detects the translation files and loads them —
-no commit needed before you see your strings. A generated workflow keeps it
-current after that, and **Publish** sends saved edits back as one pull request.
-The two sides are never merged: a push replaces Malmoi's values with the
-repository's (unless edits are waiting), and Publish writes Malmoi's values
-back.
+no commit needed before you see your strings. After that, a nightly sync picks
+up new commits once a day, or an optional generated workflow delivers them on
+every push, and **Publish** sends saved edits back as one pull request.
+The two sides are never merged: an update replaces Malmoi's values with the
+repository's (unless edits are waiting or a Malmoi pull request is still open),
+and Publish writes Malmoi's values back.
 
 [Get started →](https://mal-moi.com/docs/setup/create-project)
 
@@ -103,15 +104,16 @@ brings new keys into Malmoi and marks translations whose source text changed as
 </tr>
 </table>
 
-- **Unsent edits hold back syncing** — while any saved edit is unpublished, a
-  workflow run loads nothing (its log says `deferred`). Publishing releases the
-  hold for the edits it sent, even before the pull request is merged — merge it
-  before the next push to keep those values. Only a project owner can
-  discard unsent edits (Sync or Revert).
+- **Unsent edits hold back syncing** — while any saved edit is unpublished, or
+  a Malmoi pull request is still open, a repository update loads nothing (the
+  workflow log says `deferred`). Merge or close the pull request and the next
+  update goes through. Only a project owner can discard unsent edits (Sync or
+  Revert).
 - **Removed keys are kept** — bring the code back and its translations return.
-- **Nightly publishing** — saved changes nobody published go out once a night
-  (18:00 UTC) for active, connected projects whose first sync has succeeded
-  ([details](https://mal-moi.com/docs/sync/nightly)).
+- **Nightly sync** — once a night (18:00 UTC), for active, connected projects
+  whose first sync has succeeded: saved changes nobody published go out as a
+  pull request, and otherwise new commits on the base branch come in — so the
+  workflow is optional ([details](https://mal-moi.com/docs/sync/nightly)).
 - **Two roles** — owners manage the repository, settings, and members; editors
   translate and publish. Invite teammates by email and pick a role per invite.
 - **AI agents over MCP** — add the server URL to Claude Code, Codex, or a
