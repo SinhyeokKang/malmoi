@@ -606,7 +606,7 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
   제보가 오면 FCP가 아니라 이 표의 `loadEventEnd`부터 본다.**
 
 ⚠️ **2026-10-01 — 위 판정의 전제("전체 보기는 기본 경로가 아니다")가 바뀌었다** (translation-filter-scope, 2026-09-30 사용자). 기본 범위가
-**All sources**이고 화면 목록이 **전량**(`pageSize: "all"`, `Show more keys` 없음)이라 전 소스 × 전 키가 기본 착지다. 목록은 요약 행뿐이고
+**All sources**이고 화면 목록이 **전량**(`pageSize: "all"`, "더 보기" 버튼 없음)이라 전 소스 × 전 키가 기본 착지다. 목록은 요약 행뿐이고
 입력은 선택 키 하나라(`<Textarea>` 2,721개 시절과 다른 화면) 가상화 없이 측정 게이트를 세웠다. 로컬 production 빌드(`pnpm build && pnpm start`,
 dev DB = 로컬 Mac → 도쿄 pooler), 소스 셋 fixture, warm-up 1회 버림 + 3회 중앙값:
 
@@ -648,7 +648,7 @@ dev DB = 로컬 Mac → 도쿄 pooler), 소스 셋 fixture, warm-up 1회 버림 
   - ⚠️ **검색 일치 조각은 키당 한 행이다**(`matchesFor`의 `DISTINCT ON (keyId)`, 로케일 `COLLATE "C"` 첫 것) — 전량에서 흔한 단어를 찾으면
     키 × 로케일 행이 Node로 왔다.
   - **재검증 응답이 곧 조건의 전부다** — 같은 세대의 재검증에서 서버 행에 없는 행은 선택 여부와 무관하게 `savedOut`이다(`mergeServerRows`).
-    전엔 More로 붙인 페이지 밖 행 때문에 선택 키만 판정했다(`loadMoreTranslationKeys`는 2026-10-01에 지웠다).
+    전엔 More로 붙인 페이지 밖 행 때문에 선택 키만 판정했다("다음 페이지" Server Action은 2026-10-01에 지웠다).
   - ⚠️ **`PAGE_SIZE` 100 + keyset cursor는 MCP `list_keys` 전용으로 남는다** — 외부 계약이다(§6.45). 숫자 `pageSize` 경로는 SQL count를 유지하고,
     통합 테스트가 두 경로의 행·집계가 같음을 단언한다. cursor는 주소에 없다(audit-ux #19) — 옛 `?cursor=` 주소는 cursor를 뺀 주소로 redirect한다.
   ⚠️ **Sync 성공도 새 세대다** (2026-09-27, 감사 #11) — 같은 조건의 재검증은 행을 끼워 넣지 않아 들여온 키가 목록에 안 섰다. 기준은 Sync를
