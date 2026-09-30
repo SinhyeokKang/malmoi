@@ -47,7 +47,7 @@
    | 상태 | primary | secondary |
    |---|---|---|
    | 키 0개(`noKeys`) | 없음 | 없음 |
-   | `q` 있음 · scope ≠ project | `search-all` (scope만 project로, completion·state 유지) | `isNarrowed`면 `show-all` |
+   | `q` 있음 · scope ≠ project | `search-all` (scope만 project로, completion·state 유지) | completion·state가 켜졌으면 `show-all` (범위만 좁혔으면 `show-all`이 `search-all`과 같은 쿼리라 세우지 않는다 — spec 조건 9) |
    | `q` 있음 · scope = project | `clear-search` | completion·state가 켜졌으면 `show-all` |
    | `q` 없음 · `isNarrowed` | `show-all` | 없음 |
 4. **신규 `firstRowAt(rows, surfaceSlug, ns)`** — 트리 이동의 대상(§3.2). `ns = ALL_NAMESPACES`면 그 소스의 첫 행, 없으면 `undefined`.
