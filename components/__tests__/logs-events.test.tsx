@@ -19,7 +19,7 @@ const row = (over: Partial<Row> = {}): Row => ({
   result: "imported", actor: { kind: "USER", removed: false, name: "Kim", emailLabel: null },
   surfaceIds: ["s1"], surfaceScope: "sources", run: null,
   payload: { kind: "IMPORT", source: "manual", surfaceSlugs: ["web"], keys: 4, pendingEdits: 0,
-    surfaces: [{ surfaceSlug: "web", status: "imported", count: 4, reason: null }], errorCode: null, refusal: null },
+    surfaces: [{ surfaceSlug: "web", status: "imported", count: 4, reason: null }], errorCode: null, refusal: null, deferReason: null, changedValues: null },
   ...over,
 });
 

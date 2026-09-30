@@ -31,6 +31,8 @@ describe("readPayload — 정상 payload는 그대로 읽힌다", () => {
       surfaces: [{ surfaceSlug: "web", status: "partial", count: 3, reason: "read-errors" }],
       errorCode: "import-failed",
       refusal: "stale-commit",
+      deferReason: "open-pr",
+      changedValues: 5,
     })).toEqual({
       kind: "IMPORT",
       source: "manual",
@@ -40,6 +42,8 @@ describe("readPayload — 정상 payload는 그대로 읽힌다", () => {
       surfaces: [{ surfaceSlug: "web", status: "partial", count: 3, reason: "read-errors" }],
       errorCode: "import-failed",
       refusal: "stale-commit",
+      deferReason: "open-pr",
+      changedValues: 5,
     });
   });
 
@@ -77,6 +81,8 @@ describe("readPayload — 빠지거나 모양이 틀린 필드는 폴백이다",
       surfaces: [],
       errorCode: null,
       refusal: null,
+      deferReason: null,
+      changedValues: null,
     });
     expect(readPayload("IMPORT", { keys: Number.POSITIVE_INFINITY, surfaceSlugs: "web" })).toMatchObject({ keys: null, surfaceSlugs: [] });
   });

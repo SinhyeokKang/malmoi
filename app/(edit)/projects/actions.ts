@@ -717,7 +717,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
       await recordRun(tx, {
         projectId, subtype: "import.first", actor: { kind: "USER", userId },
         surfaceIds: [surface.id], occurredAt: startedAt, runToken,
-        payload: { kind: "IMPORT", source: "first", surfaceSlugs, keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null },
+        payload: { kind: "IMPORT", source: "first", surfaceSlugs, keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null, deferReason: null, changedValues: null },
       });
     })
     .catch((error: unknown) => logFailure("onboard-ingest-event", error));
@@ -731,7 +731,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
         payload: {
           kind: "IMPORT", source: "first", surfaceSlugs, keys: outcome.keys, pendingEdits: null,
           surfaces: [{ surfaceSlug: surface.slug, status: result === "failed" ? "failed" : result === "partial" ? "partial" : "imported", count: outcome.keys, reason: outcome.errorCode }],
-          errorCode: outcome.errorCode, refusal: null,
+          errorCode: outcome.errorCode, refusal: null, deferReason: null, changedValues: null,
         },
       }));
       // ⚠️ **0행 갱신은 조용하다** (POSTMORTEM 2026-09-14) — 다른 실행이 이 행을 먼저 닫았다는 뜻이고,

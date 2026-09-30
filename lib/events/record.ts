@@ -163,6 +163,6 @@ export async function recordImportRefusal(
     projectId: input.projectId, subtype: "import.notStarted", actor: { kind: "USER", userId: input.userId },
     scope: "project-wide", result: "notStarted", finishedAt: new Date(),
     payload: { kind: "IMPORT", source: "manual", surfaceSlugs: [], keys: null, pendingEdits: null,
-      surfaces: [], errorCode: null, refusal },
+      surfaces: [], errorCode: null, refusal, deferReason: null, changedValues: null },
   });
 }

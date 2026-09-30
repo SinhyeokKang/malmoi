@@ -76,6 +76,14 @@ export const PULL_BATCH_LIMIT = 50;
 export const PULL_TIME_BUDGET_MS = 45_000;
 
 /**
+ * 야간 **적재 갈래만** 시작할 수 있는 시간 (nightly-sync). 루프 예산(`PULL_TIME_BUDGET_MS`)보다 이르다 — 서버 적재는
+ * 표면 트랜잭션 timeout이 30초(`lib/import/run.ts`)라, 45초 가까이 시작하면 `maxDuration = 60`을 뚫고 그 밤의 요약이
+ * 통째로 사라진다. 넘기면 적재를 시작하지 않고 `unprocessed`로 세며, 다음 밤 `lastNightlyAt` 정렬이 앞으로 가져온다.
+ * Publish·스킵은 이 마감을 보지 않는다 — 그쪽은 루프 예산이 든다.
+ */
+export const NIGHTLY_IMPORT_START_MS = 20_000;
+
+/**
  * cron 응답의 항목 하나. **계약을 타입으로 든다** — `unknown[]`이면 `slug`가 스프레드에 덮이거나
  * 실패 항목의 모양이 바뀌어도 컴파일러가 침묵한다 (POSTMORTEM 2026-08-31: 외부 계약을 리터럴로
  * 조립했다가 필수 필드가 늘어도 조용했다).

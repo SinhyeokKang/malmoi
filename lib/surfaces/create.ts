@@ -117,7 +117,7 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
             count: value.result.count,
             reason: null,
           })),
-          errorCode: null, refusal: null,
+          errorCode: null, refusal: null, deferReason: null, changedValues: null,
         },
       });
     }

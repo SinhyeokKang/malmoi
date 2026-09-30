@@ -363,6 +363,7 @@ const RESULT_KEY: Readonly<Record<EventResult, keyof typeof m.logs.status>> = {
   superseded: "superseded",
   notStarted: "notStarted",
   failed: "failed",
+  upToDate: "upToDate",
 };
 
 /**
@@ -384,6 +385,7 @@ const RESULT_GROUP_OF: Readonly<Record<EventResult, "imports" | "publish" | "bot
   notSent: "publish",
   running: "both",
   failed: "both",
+  upToDate: "both",
 };
 
 /** 어느 종류의 결과인지 그룹으로 보인다 (캔버스 `1m`). 순서는 `EVENT_RESULTS`가 든다. */

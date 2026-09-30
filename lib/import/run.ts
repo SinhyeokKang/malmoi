@@ -109,7 +109,7 @@ async function acquire(prisma: PrismaClient, input: ImportRunInput): Promise<{ o
       occurredAt: startedAt,
       runToken: runTokenFor({ kind: "import", token }),
       payload: { kind: "IMPORT", source: "manual", surfaceSlugs: active.map(surface => surface.slug),
-        keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null },
+        keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null, deferReason: null, changedValues: null },
     });
     return { ok: true, lease: { project, token, startedAt, userId: input.userId, approvedTokens: approval.pending.map(edit => edit.token),
       surfaces: active } };
@@ -228,6 +228,8 @@ export async function runRepositoryImportFromReader(prisma: PrismaClient, input:
           surfaces: surfaces.map(surface => ({ surfaceSlug: surface.surfaceSlug, status: surface.status, count: surface.count, reason: surface.reason })),
           errorCode: outcome.ok ? null : outcome.error,
           refusal: null,
+          deferReason: null,
+          changedValues: null,
         },
       });
       // ⚠️ **0행 갱신은 조용하다** (POSTMORTEM 2026-09-14) — 다음 실행의 stale 정리가 이 행을 먼저

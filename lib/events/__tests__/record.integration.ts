@@ -70,7 +70,7 @@ afterAll(async () => {
 
 const IMPORT: EventPayload = {
   kind: "IMPORT", source: "ci", surfaceSlugs: ["web"], keys: null, pendingEdits: null,
-  surfaces: [], errorCode: null, refusal: null,
+  surfaces: [], errorCode: null, refusal: null, deferReason: null, changedValues: null,
 };
 
 const token = runTokenFor({ kind: "ci", surfaceId: "s1", executionId: "11111111-2222-4333-8444-555555555555" });

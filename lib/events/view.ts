@@ -8,7 +8,7 @@ import type { SyncErrorCode } from "@/lib/sync/plan";
 import { utcDay } from "@/lib/utc-time";
 
 import type { EventCursor } from "./filter";
-import type { EventKind, EventPayload, EventResult } from "./payload";
+import { NIGHTLY_SUBTYPES, type ActorKind, type EventKind, type EventPayload, type EventResult } from "./payload";
 
 /**
  * Logs 행의 **순수 판정** (logs-rework design §6). 화면이 `kind`로 삼항을 엮으면 갈래가 JSX 안에 흩어지고 그 자리에는 누락을 잡는 장치가 없다.
@@ -53,6 +53,7 @@ const TONES: Readonly<Record<EventResult, EventTone>> = {
   partial: "warning",
   notStarted: "warning",
   failed: "danger",
+  upToDate: "muted",
 };
 
 const LABELS: Readonly<Record<EventResult, string>> = {
@@ -66,6 +67,7 @@ const LABELS: Readonly<Record<EventResult, string>> = {
   superseded: m.logs.status.superseded,
   notStarted: m.logs.status.notStarted,
   failed: m.logs.status.failed,
+  upToDate: m.logs.status.upToDate,
 };
 
 export function eventView(row: EventViewRow): EventView {
@@ -176,6 +178,7 @@ const RESULT_GLYPH_TONE: Readonly<Record<EventResult, GlyphTone>> = {
   nothingToSend: "slate",
   notSent: "amber",
   superseded: "slate",
+  upToDate: "slate",
 };
 
 const KIND_GLYPH_TONE: Readonly<Record<EventKind, GlyphTone>> = {
@@ -219,6 +222,21 @@ function glyphIcon(kind: EventKind, subtype: string): GlyphIcon {
       if (subtype === "settings.archived" || subtype === "settings.restored") return "archive";
       return "settings";
   }
+}
+
+export type Trigger = "manual" | "nightly" | "ci";
+
+/**
+ * 실행 주체 (nightly-sync). USER는 언제나 `manual`이고(MCP 포함), 자동화는 PUBLISH이거나 야간 subtype이면 `nightly`,
+ * 그 밖(`import.ci`·생산자 0곳인 보고 실패)은 `ci`다.
+ *
+ * ⚠️ **`subtype` 컬럼만 본다** — `payload.source`는 옛 행에 없고 `readPayload`가 모르는 값을 `ci`로 접는다.
+ * 필터 쪽 술어(`triggerWhere`)가 같은 컬럼을 보고, 같은 행을 가르는지는 `query.integration.ts`가 실제 행으로 잰다.
+ */
+export function triggerOf(row: { actorKind: ActorKind; kind: EventKind; subtype: string }): Trigger {
+  if (row.actorKind === "USER") return "manual";
+  if (row.kind === "PUBLISH" || (NIGHTLY_SUBTYPES as readonly string[]).includes(row.subtype)) return "nightly";
+  return "ci";
 }
 
 /**

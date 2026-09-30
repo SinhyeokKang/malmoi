@@ -1046,6 +1046,8 @@ export const en = {
       superseded: "Superseded",
       /** 사람이 고쳐야 풀리는 거부 여섯 (spec §6.1). 다시 눌러 사라지는 거부는 이력에 안 남는다. */
       notStarted: "Not started",
+      /** 편집 없는 밤, 리포도 그대로였다 (nightly-sync). ⚠️ `skipped`("Nothing to send")와 다른 낱말이다 — 받을 것도 없었다. */
+      upToDate: "Up to date",
     },
     /**
      * 날짜 카드 머리에 붙는 낱말 (캔버스 `1a`). **UTC 자정으로 끊는다** — 로컬로 끊으면 밤 사이 실행이

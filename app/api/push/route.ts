@@ -218,7 +218,7 @@ export async function POST(request: Request): Promise<NextResponse> {
      */
     const pendingBefore = await countPending(prisma, project.id);
     if (pendingBefore > 0) {
-      await record({ surface, result: "deferred", pendingEdits: pendingBefore });
+      await record({ surface, result: "deferred", deferReason: "pending-edits", pendingEdits: pendingBefore });
       return deferred(project.id, parsed.data.commitSha, pendingBefore);
     }
 
@@ -286,7 +286,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (result.status === "deferred") {
       // 롤백됐으니 결과 필드는 옛 그대로다 — 진행 표시만 거둔다.
       await abandonImportRun(prisma, { ...scope, token });
-      await record({ surface, result: "deferred", pendingEdits: result.pendingCount });
+      await record({ surface, result: "deferred", deferReason: "pending-edits", pendingEdits: result.pendingCount });
       return deferred(project.id, parsed.data.commitSha, result.pendingCount);
     }
     const outcome = result.outcome;

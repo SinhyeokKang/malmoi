@@ -304,7 +304,7 @@ export async function createProjectFromRepo(
           keys: prepared.reduce((sum, item) => sum + item.payload.keys.length, 0),
           pendingEdits: null,
           surfaces: prepared.map(item => ({ surfaceSlug: item.surface.surfaceSlug, status: "imported" as const, count: item.payload.keys.length, reason: null })),
-          errorCode: null, refusal: null,
+          errorCode: null, refusal: null, deferReason: null, changedValues: null,
         },
       });
       /**

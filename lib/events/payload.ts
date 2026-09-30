@@ -37,6 +37,11 @@ export const EVENT_RESULTS = [
   "superseded",
   "notStarted",
   "failed",
+  /**
+   * 야간 스킵 전용 (nightly-sync) — 미전달 편집 0 · 비교 대상 표면 전부가 base head와 같았다. **"보낼 것도 받을 것도 없었다"**이고
+   * Publish의 `nothingToSend`와 키·라벨을 따로 둔다(결과 필터 그룹 "Both").
+   */
+  "upToDate",
 ] as const;
 
 export type EventResult = (typeof EVENT_RESULTS)[number];
@@ -60,9 +65,23 @@ export const NOT_STARTED_REASONS = [
 export type NotStartedReason = (typeof NOT_STARTED_REASONS)[number];
 
 /** 실행을 시작한 자리. `reported-failure`는 `/api/push/failure`가 받은 보고다. */
-export const IMPORT_SOURCES = ["ci", "manual", "first", "reported-failure"] as const;
+export const IMPORT_SOURCES = ["ci", "manual", "first", "reported-failure", "nightly"] as const;
 
 export type ImportSource = (typeof IMPORT_SOURCES)[number];
+
+/**
+ * 적재 보류 사유 넷 (nightly-sync). 같은 조건은 CI·야간 모두 `deferred` + 이 낱말이다 — 결과어를 조건마다 새로 만들면
+ * 같은 사실이 두 소비자에서 다른 어휘로 선다(POSTMORTEM 2026-09-27). `too-large`는 야간 전용이다.
+ */
+export const DEFER_REASONS = ["pending-edits", "open-pr", "pr-check-failed", "too-large"] as const;
+
+export type DeferReason = (typeof DEFER_REASONS)[number];
+
+/**
+ * 야간이 쓰는 IMPORT subtype 둘. **주체 판정(`triggerOf`)과 필터(`triggerWhere`)가 이 목록 하나를 본다** — `payload.source`가
+ * 아니다: 옛 행에는 없고, 읽는 쪽 폴백(`?? "ci"`)이 야간 행을 CI로 읽는다.
+ */
+export const NIGHTLY_SUBTYPES = ["import.nightly", "nightly.skip"] as const;
 
 /** 전후 값. **전문 그대로다** — 상한은 이미 저장 층이 10,000자로 든다 (결정 5). */
 export type ValueChange = { before: string | null; after: string | null };
@@ -107,6 +126,13 @@ export type EventPayload =
       surfaces: readonly SurfaceOutcome[];
       errorCode: string | null;
       refusal: NotStartedReason | null;
+      /** `deferred`의 사유. 옛 보류 행은 `null`이고 `pending-edits`였다. */
+      deferReason: DeferReason | null;
+      /**
+       * 그 적재가 실제로 `value`를 바꾼 번역 셀 수(삽입 포함). **관측값이다 — 판정에 쓰지 않는다**(쓰는 순간 병합이다).
+       * 옛 행·실패 실행은 `null`이고 0이 아니다.
+       */
+      changedValues: number | null;
     }
   | {
       /** ⚠️ **결과·파일 수·PR은 없다** (결정 1) — 조회가 `SyncRun`을 조인해 읽는다. 복제하지 않는다. */
@@ -200,6 +226,8 @@ export function readPayload(kind: EventKind, value: unknown): EventPayload | nul
         surfaces: outcomes(raw),
         errorCode: str(raw, "errorCode"),
         refusal: oneOfRaw(NOT_STARTED_REASONS, str(raw, "refusal")),
+        deferReason: oneOfRaw(DEFER_REASONS, str(raw, "deferReason")),
+        changedValues: num(raw, "changedValues"),
       };
     case "PUBLISH":
       return { kind, surfaceSlugs: strings(raw, "surfaceSlugs"), refusal: oneOfRaw(NOT_STARTED_REASONS, str(raw, "refusal")) };
