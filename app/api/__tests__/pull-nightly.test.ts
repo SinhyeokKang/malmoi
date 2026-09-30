@@ -245,6 +245,24 @@ describe("갈래별 호출", () => {
 });
 
 describe("방문 기록 · 격리 · 요약", () => {
+  /**
+   * ⚠️ **만료 행 정리가 방문을 막지 않는다** (Codex 교차 리뷰 r2 🟡). 정리는 부수 작업이다 — 실패하면 그 밤의 미전달 편집 Publish가 안 나가고
+   * 루프 예산만 먹는다. 던져도 로그만 남기고 판정·갈래는 그대로 돈다.
+   */
+  it("만료 행 정리가 던져도 Publish·스킵은 그대로 돈다", async () => {
+    const edits = row("edits"); const same = row("same", { lastCommitSha: HEAD });
+    state.rows = [edits, same];
+    state.pending[edits.id] = 1;
+    client(same, {});
+    state.closeExpiredImportRuns.mockRejectedValue(new Error("lock timeout"));
+    const { results } = await call();
+    expect(results).toEqual([
+      { slug: "edits", action: "publish", status: "skipped", reason: "no-edits" },
+      { slug: "same", action: "skip", outcome: "upToDate" },
+    ]);
+    expect(state.runSync).toHaveBeenCalledTimes(1);
+  });
+
   it("실패한 방문도 lastNightlyAt을 쓴다 — 정렬이 매일 같은 프로젝트를 맨 앞에 두지 않는다", async () => {
     const p = row("boom");
     state.rows = [p];

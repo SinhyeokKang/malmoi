@@ -68,7 +68,12 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
    * ⚠️ **어느 갈래든 먼저 만료된 `import:` 행을 닫는다** — 적재 갈래만 닫으면(`acquire`) 마지막 표면까지 커밋한 뒤 죽은 실행이 head가 같은 밤마다
    * `Running…`으로 남는다. 살아 있는 lease는 건드리지 않고(`hasLiveInternalImport`), 새 사건을 만들지 않는다.
    */
-  await closeExpiredImportRuns(prisma, target.id);
+  // ⚠️ **정리가 방문을 막지 않는다** (Codex 교차 리뷰 r2) — 부수 작업이라, 던지면 로그만 남기고 판정·갈래는 그대로 돈다(미전달 편집 Publish가 먼저다).
+  try {
+    await closeExpiredImportRuns(prisma, target.id);
+  } catch (error) {
+    logCaught("nightly", "close-expired", error);
+  }
 
   const active = target.surfaces.filter((surface) => surface.archivedAt === null);
   const input: NightlyInput = {

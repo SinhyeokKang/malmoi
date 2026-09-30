@@ -347,3 +347,37 @@ it("첫 적재가 표면 진행 표시만 세운 채 도는 중이면 그 행도
   await visit();
   expect(await prisma.projectEvent.findFirstOrThrow({ where: { ref: "evt_first" } })).toMatchObject({ finishedAt: null });
 });
+
+/**
+ * ⚠️ **다른 트랜잭션이 `Project` 잠금을 쥐고 있으면 정리를 건너뛴다** (Codex 교차 리뷰 r2 🟡). 잠금을 쥔 쪽은 살아 있는 실행(CI 적재·수동 Sync·
+ * 저장)이다 — 기다리면 방문이 30초 timeout까지 매달려 그 밤의 Publish가 안 나간다. `SKIP LOCKED`로 바로 돌아오고 정리는 다음 밤이 한다.
+ */
+it("Project 잠금이 잡혀 있으면 만료 행 정리가 기다리지 않고 0으로 돌아온다 — 행은 다음 밤이 닫는다", async () => {
+  await seed();
+  const deadAt = new Date(Date.now() - 60 * 60 * 1000);
+  await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: "dead", repositoryImportStartedAt: deadAt } });
+  await openRun("evt_locked", deadAt);
+  const holder = await pool.connect();
+  try {
+    await holder.query("BEGIN");
+    await holder.query(`SELECT "id" FROM "Project" WHERE "id" = 'p' FOR UPDATE`);
+    const { closeExpiredImportRuns } = await import("@/lib/import/run");
+    const began = Date.now();
+    expect(await closeExpiredImportRuns(prisma, "p")).toBe(0);
+    expect(Date.now() - began).toBeLessThan(5_000);
+    expect(await prisma.projectEvent.findFirstOrThrow({ where: { ref: "evt_locked" } })).toMatchObject({ finishedAt: null });
+  } finally {
+    await holder.query("ROLLBACK");
+    holder.release();
+  }
+});
+
+it("잠금이 풀린 뒤의 방문은 같은 행을 닫는다 (짝)", async () => {
+  await seed();
+  const deadAt = new Date(Date.now() - 60 * 60 * 1000);
+  await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: "dead", repositoryImportStartedAt: deadAt } });
+  await openRun("evt_later", deadAt);
+  github({ refSha: { "heads/main": OLD } });
+  await visit();
+  expect(await prisma.projectEvent.findFirstOrThrow({ where: { ref: "evt_later" } })).toMatchObject({ result: "failed" });
+});

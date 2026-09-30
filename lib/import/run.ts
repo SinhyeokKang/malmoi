@@ -168,10 +168,13 @@ async function closeImportRunsInTx(tx: Prisma.TransactionClient, projectId: stri
  * 야간 방문의 **만료 닫기** (Codex 교차 리뷰 🟡) — 적재에 들어가지 않는 방문(head 같음·보류·Publish)도 죽은 실행의 `Running…`을 닫는다.
  * 전에는 `acquire` 안에만 있어, 마지막 표면까지 커밋한 뒤 사건 종료 전에 죽은 실행은 다음 커밋이나 수동 Sync가 올 때까지 열려 있었다.
  * ⚠️ `Project` 잠금 아래에서 `hasLiveInternalImport`로 판정하고 **살아 있는 lease는 닫지 않는다.** 새 사건을 만들지 않는다.
+ * ⚠️ **잠금을 기다리지 않는다(`SKIP LOCKED`)** (Codex 교차 리뷰 r2) — 잠금을 쥔 쪽은 살아 있는 실행(CI 적재·수동 Sync·저장)이라 오늘 밤 닫을 것이
+ * 없다. 기다리면 방문이 트랜잭션 timeout까지 매달려 그 밤의 Publish가 안 나가고 루프 예산을 먹는다. 건너뛴 정리는 다음 밤이 한다.
  */
 export async function closeExpiredImportRuns(prisma: PrismaClient, projectId: string): Promise<number> {
   return prisma.$transaction(async tx => {
-    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    const locked = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE SKIP LOCKED`;
+    if (locked.length === 0) return 0;
     const project = await tx.project.findUnique({ where: { id: projectId }, select: { repositoryImportToken: true, repositoryImportStartedAt: true } });
     if (project === null) return 0;
     const surfaces = await tx.translationSurface.findMany({ where: { projectId }, select: { archivedAt: true, lastImportStartedAt: true } });
