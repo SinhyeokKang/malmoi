@@ -25,7 +25,7 @@ import { countCards } from "@/lib/home/cards";
 import { metaRows } from "@/lib/home/meta";
 import { loadHomeRuns } from "@/lib/home/runs";
 import { lastSyncTime } from "@/lib/home/sync-time";
-import { connectionProblem, planHomeState } from "@/lib/home/state";
+import { connectionProblem, planActionAvailability, planHomeState } from "@/lib/home/state";
 import {
   loadActors, loadProjectListAggregates, loadReviewAttention,
 } from "@/lib/keys/query";
@@ -34,6 +34,7 @@ import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { isImportFailureCode } from "@/lib/projects/import-status";
 import { reviewByLocale, summaryQueue, worstFailingSurface } from "@/lib/projects/list";
 import { pullNumberFrom } from "@/lib/projects/remote-plan";
+import { openPrGateApplies } from "@/lib/protection/plan";
 import { routes } from "@/lib/routes";
 
 /**
@@ -240,7 +241,14 @@ export default async function ProjectHomePage({
     actors,
   });
 
-  const paused = state === "not_connected" || state === "archived";
+  // 번역 화면과 같은 판정이다(ux-drift-unify §3.3) — 끊김·보관이면 머리의 Sync·Publish가 함께 꺼진다.
+  const availability = planActionAvailability({ archived, connection: health.status });
+  const paused = !availability.sync || !availability.publish;
+  /**
+   * 보류 판정의 입력 — 게이트와 같다(`planHoldNotice`, ux-drift-unify Q6). ⚠️ **열린 PR 조회는 아직 배선하지 않았다** — 본문을 막지 않는
+   * 스트리밍으로 붙인다(ux-drift-unify T18, malmoi#107이 메모로 줄인 병목을 되살리지 않는다). 그때까지 PR 갈래는 "없음"이다.
+   */
+  const hold = { openPr: null, gateApplies: openPrGateApplies(project) };
   const defaultSurface = project.defaultSurface?.archivedAt === null ? project.defaultSurface.slug : null;
 
   return (
@@ -316,6 +324,7 @@ export default async function ProjectHomePage({
               keys,
               lastSyncAt,
               reviewByLocale: reviewByLocale(aggregates.locales, aggregates.cells).get(projectId) ?? [],
+              ...hold,
             })}
             slug={slug}
             surfaceSlug={defaultSurface}
@@ -343,6 +352,8 @@ export default async function ProjectHomePage({
             archivedAt: project.archivedAt,
             triggers,
             connection: connectionProblem(health.status),
+            pending: counts.toSend,
+            ...hold,
           })}
           slug={slug}
           now={now}

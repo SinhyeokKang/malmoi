@@ -1527,6 +1527,11 @@ export const en = {
       unsent: (n: number): string =>
         `${n.toLocaleString("en-US")} edit${n === 1 ? " has" : "s have"} not been sent to GitHub yet.`,
       prOpen: (n: number): string => `Pull request #${n} is open — merge it to finish.`,
+      /**
+       * 열린 PR 조회가 실패했다(ux-drift-unify Q6) — "없음"이 아니라 모름이다. ⚠️ **목적어를 붙인다** — 홀로 서는 "Couldn't check"는
+       * 연결 확인 실패의 낱말이다(DESIGN §10.1). 게이트가 fail-closed라 그 동안 리포 갱신이 멈춘다.
+       */
+      prCheckFailed: "Couldn't check for an open pull request.",
       /** ⚠️ **base 브랜치 이름을 그대로 넣는다** — `main`을 하드코딩하지 않는다. */
       repoAhead: (n: number, baseBranch: string): string =>
         `${n} translation file${n === 1 ? "" : "s"} changed on ${baseBranch} after your last sync.`,

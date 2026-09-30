@@ -66,18 +66,21 @@ async function importEvent(at: string, over: { subtype: string; result: string |
 const manualSuccess = () => importEvent("2026-09-27T10:00:00Z", { subtype: "import.run", result: "imported", actor: "USER", payload: { source: "manual" } });
 const heldOpenPr = () => importEvent("2026-09-28T18:00:00Z", { subtype: "nightly.skip", result: "deferred", actor: "AUTOMATION", payload: { source: "nightly", deferReason: "open-pr" } });
 
-it("open-pr 보류가 최신이면 보류 한 줄이 선다 (짝)", async () => {
+/**
+ * ⚠️ **보류 한 줄은 사건에서 오지 않는다** (ux-drift-unify Q6) — 지금의 판정(`planHoldNotice`)이다. 최신 사건이 보류여도 주체는 마지막 성공 적재의 것이다.
+ */
+it("open-pr 보류가 최신이어도 주체는 마지막 성공 적재의 것이다", async () => {
   await manualSuccess();
   await heldOpenPr();
-  expect(await loadHomeRuns(prisma, "p")).toEqual({ sync: "manual", publish: null, heldByOpenPr: true });
+  expect(await loadHomeRuns(prisma, "p")).toEqual({ sync: "manual", publish: null });
 });
 
 it.each([
   ["야간 적재 실패", { subtype: "import.nightly", result: "failed", actor: "AUTOMATION" as const, payload: { source: "nightly", errorCode: "ingest-failed" } }],
   ["야간 스킵 upToDate", { subtype: "nightly.skip", result: "upToDate", actor: "AUTOMATION" as const, payload: { source: "nightly" } }],
-])("PR이 닫힌 뒤 %s가 최신이면 보류 한 줄이 사라지고, 주체는 마지막 성공 적재의 것이다", async (_name, latest) => {
+])("PR이 닫힌 뒤 %s가 최신이어도 주체는 마지막 성공 적재의 것이다", async (_name, latest) => {
   await manualSuccess();
   await heldOpenPr();
   await importEvent("2026-09-29T18:00:00Z", latest);
-  expect(await loadHomeRuns(prisma, "p")).toEqual({ sync: "manual", publish: null, heldByOpenPr: false });
+  expect(await loadHomeRuns(prisma, "p")).toEqual({ sync: "manual", publish: null });
 });

@@ -59,3 +59,31 @@ describe("assembleProjectListRows — 표면을 평탄화하지 않는다", () =
     expect(rowBanner(row)).toEqual({ kind: "needs_reconnect" });
   });
 });
+
+/**
+ * **④ 조립이 "모름"을 보존한다** (ux-drift-unify Q6) — 전에는 `remote.get(...)?.openPr ?? null`이 `undefined`(확인 못 함)를 "없음"으로 접어
+ * 앞의 세 경로가 삼상태를 지켜도 목록 띠가 사라졌다.
+ */
+describe("assembleProjectListRows — 열린 PR 삼상태", () => {
+  const PR = { number: 7, url: "https://github.com/o/r/pull/7" };
+  it.each([
+    ["모름", { openPr: undefined, repoAheadFiles: 0 }, undefined],
+    ["없음", { openPr: null, repoAheadFiles: 0 }, null],
+    ["열림", { openPr: PR, repoAheadFiles: 0 }, PR],
+  ] as const)("%s를 그대로 싣는다", (_label, signals, expected) => {
+    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map([["p1", signals]]));
+    expect(row?.openPr).toEqual(expected);
+    expect(row !== undefined && "openPr" in row).toBe(true);
+  });
+
+  it("원격 결과에 행이 없으면 없음이다", () => {
+    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map());
+    expect(row?.openPr).toBeNull();
+  });
+
+  it("모름이면 띠가 Couldn't check다", () => {
+    const [row] = assembleProjectListRows([member([surface()])], EMPTY, new Map([["p1", { openPr: undefined, repoAheadFiles: 0 }]]));
+    if (row === undefined) throw new Error("no row");
+    expect(rowBanner(row)).toEqual({ kind: "pr_check_failed" });
+  });
+});

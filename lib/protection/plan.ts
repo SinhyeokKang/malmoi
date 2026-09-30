@@ -50,6 +50,37 @@ export function openPrGateApplies(project: { installationId: string | null; repo
   return project.installationId !== null && project.repositoryId !== null;
 }
 
+export type HoldReason = "pending-edits" | "open-pr" | "pr-check-failed";
+export type HoldNotice = { reason: HoldReason };
+
+/**
+ * **화면이 말하는 보류** (ux-drift-unify Q6) — Home 카드·메타가 읽는다. 입력은 게이트와 **같다**(미전달 수 · 열린 PR 삼상태)이고,
+ * 결론도 게이트 둘(`planProtectedImport` auto · `planOpenPrGate`)을 순서대로 지난 것과 같다. **게이트를 대신하지 않는다** — 표시일 뿐이다.
+ *
+ * ⚠️ **두 게이트를 합치지 않는다**(위 `planOpenPrGate` 주석) — 이것은 그 위에 얹은 표시 판정이고 게이트 호출부는 그대로 둘을 부른다.
+ * ⚠️ **순서: 보관·끊김 → null, 편집 > 0 → `pending-edits`, 그다음 PR.** 게이트도 편집을 먼저 본다(`/api/push` · `lib/nightly/plan.ts`).
+ * 편집이 있으면 PR 조회 결과와 무관하므로 호출부는 PR을 조회하지 않아도 된다.
+ * ⚠️ `gateApplies`(`openPrGateApplies`)는 **PR 갈래에만** 관계한다 — 편집 보류는 설치 여부와 무관하게 돈다.
+ * ⚠️ `pr-check-failed`는 **보류다** — 게이트가 fail-closed라 실제로 적재가 멈춘다. "없음"으로 말하지 않는다(POSTMORTEM 2026-09-03).
+ *
+ * @param disconnected Sync·Publish가 돌 수 없는 연결(`planHomeState`의 `not_connected`). ⚠️ 연결 판정 술어를 여기로 복제하지 않는다 —
+ *   이 파일은 잎이고(`client-graph.test.ts`), 연결 판정(`lib/github-connect/health.ts`)은 `lib/failure`를 문다.
+ */
+export function planHoldNotice(input: {
+  pending: number;
+  openPr: string | null | undefined;
+  gateApplies: boolean;
+  archived: boolean;
+  disconnected: boolean;
+}): HoldNotice | null {
+  if (input.archived || input.disconnected) return null;
+  const edits = planProtectedImport({ mode: "auto", pending: input.pending });
+  if (edits.action === "defer") return { reason: edits.reason };
+  if (!input.gateApplies) return null;
+  const pr = planOpenPrGate({ openPr: input.openPr });
+  return pr.action === "defer" ? { reason: pr.reason } : null;
+}
+
 export type ProtectedPublish =
   | { action: "proceed" }
   | { action: "skip"; reason: "no-edits" }

@@ -176,7 +176,7 @@ describe("이름·시각·색 (#33·#40·#41·#42)", () => {
 
   it("가져오는 중의 상대 시각이 time·UTC 접근 이름을 든다", async () => {
     const at = new Date("2026-09-24T03:04:00Z");
-    const { container } = await render(<SourceStatus now={new Date("2026-09-24T03:09:00Z")} source={{ lastCommitSha: null, lastImportStartedAt: at, lastImportError: null, lastImportFailedAt: null, lastCommitAt: null }} />);
+    const { container } = await render(<SourceStatus now={new Date("2026-09-24T03:09:00Z")} source={{ lastCommitSha: null, lastImportStartedAt: at, lastImportError: null, lastImportFailedAt: null, lastImportedAt: null }} />);
     const time = container.querySelector("time");
     expect(time?.getAttribute("dateTime")).toBe(at.toISOString());
     expect(time?.getAttribute("aria-label")).toBe(utcMinute(at));

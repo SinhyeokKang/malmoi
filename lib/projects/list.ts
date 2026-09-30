@@ -109,8 +109,11 @@ export type ProjectEvents = {
   review: number;
   /** 안 보낸 편집 수 — `countPending`과 **같은 술어**의 결과다. */
   unsent: number;
-  /** 열린 PR. ⚠️ **`state === "open"`을 확인한 뒤에만 채운다.** */
-  openPr: { number: number; url: string } | null;
+  /**
+   * 열린 PR. ⚠️ **`state === "open"`을 확인한 뒤에만 채운다.** `undefined`는 **확인 못 함**이고 "없음"(`null`)이 아니다(ux-drift-unify Q6) —
+   * 열린 PR 게이트가 fail-closed라 그 동안 적재가 실제로 멈춘다.
+   */
+  openPr: { number: number; url: string } | null | undefined;
   /** base가 앞선 **로케일 파일 수**. ⚠️ 키 수가 아니다 (C′) — 서버는 리포의 키를 모른다. */
   repoAheadFiles: number;
 };
@@ -181,6 +184,8 @@ export type RowBanner =
   /** F: 역할로 갈리지 않는다. */
   | { kind: "unsent"; count: number }
   | { kind: "pr_open"; number: number; url: string }
+  /** 열린 PR을 확인하지 못했다 — 같은 신호의 모름이라 `pr_open` 자리에 선다(ux-drift-unify Q6). */
+  | { kind: "pr_check_failed" }
   /** C′: 키가 아니라 **로케일 파일** 수다. */
   | { kind: "repo_ahead"; files: number }
   | { kind: "review"; count: number }
@@ -199,6 +204,7 @@ export function rowBanner(row: RowInput): RowBanner {
   if (status === "awaiting_first_sync") return null;
   // E: 머지만 남은 프로젝트도 편집이 남아 있으면 그 사실을 먼저 본다.
   if (row.unsent > 0) return { kind: "unsent", count: row.unsent };
+  if (row.openPr === undefined) return { kind: "pr_check_failed" };
   if (row.openPr !== null) return { kind: "pr_open", number: row.openPr.number, url: row.openPr.url };
   if (row.repoAheadFiles > 0) return { kind: "repo_ahead", files: row.repoAheadFiles };
   if (row.review > 0) return { kind: "review", count: row.review };

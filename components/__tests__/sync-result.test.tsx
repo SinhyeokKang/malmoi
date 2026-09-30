@@ -244,3 +244,15 @@ it("reconfirm은 원인을 가리지 않는 문장으로 말하고 지운 것이
   expect(text).toContain("nothing was discarded");
   expect(text).toContain("Open Sync again to review and confirm");
 });
+
+/**
+ * **전 표면 superseded는 실패가 아니라 밀림이다** (ux-drift-unify 🔴 B) — Logs가 회색 Superseded로 말하는 실행을 Home이 호박으로 말했다.
+ * 톤은 `summarizeImport`(= `TONES[summarizeImportEvent]`)에서 오고, 무색(`muted`)은 Alert의 `neutral`이다.
+ */
+it("전 표면 superseded는 neutral Alert다 — Logs와 같은 톤", async () => {
+  const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [
+    row("web", "superseded", "superseded"), row("emails", "superseded", "lease-lost"),
+  ] }} />);
+  expect(container.querySelector("[data-alert]")?.getAttribute("data-alert")).toBe("neutral");
+  expect(alert(container)?.getAttribute("role")).toBe("status");
+});

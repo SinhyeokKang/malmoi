@@ -3,6 +3,7 @@ import type { ImportFailureCode } from "@/lib/projects/import-status";
 import type { AccessError } from "@/lib/auth/message";
 import type { ConnectError } from "@/lib/github-connect/message";
 import type { OnboardError } from "@/lib/onboarding/message";
+import { summarizeImportEvent, TONES, type EventTone } from "@/lib/events/view";
 
 export type SurfaceImportReason = ImportFailureCode | "resource-limit" | "invalid-format" | "superseded" | "lease-lost";
 export type SurfaceImportResult = {
@@ -42,7 +43,8 @@ export function importRevalidates(outcome: RepositoryImportOutcome): boolean {
   return outcome.ok || !BEFORE_TRY.has(outcome.error);
 }
 export type ImportSummary = {
-  tone: "success" | "warning" | "danger";
+  /** 결과 어휘(`summarizeImportEvent`) → `TONES` — Logs와 같은 톤이다. 전 표면 superseded는 실패가 아니라 밀림이라 `muted`다. */
+  tone: EventTone;
   keys: number; imported: number; partial: number;
   unreadable: readonly string[]; superseded: readonly string[]; invalidFormat: readonly string[];
 };
@@ -52,8 +54,8 @@ export function summarizeImport(results: readonly SurfaceImportResult[]): Import
   const partial = results.filter(result => result.status === "partial").length;
   const sorted = [...results].sort((a, b) => a.surfaceSlug < b.surfaceSlug ? -1 : a.surfaceSlug > b.surfaceSlug ? 1 : 0);
   return {
-    tone: results.length > 0 && imported === results.length ? "success" : imported + partial > 0 ? "warning" :
-      results.length === 0 || results.some(result => result.status === "failed") ? "danger" : "warning",
+    // ⚠️ **톤을 여기서 따로 고르지 않는다** (ux-drift-unify 🔴 B) — 사본이던 때 전 표면 superseded가 Home에선 호박, Logs에선 회색이었다.
+    tone: TONES[summarizeImportEvent(results)],
     keys: results.reduce((sum, result) => sum + result.count, 0), imported, partial,
     unreadable: sorted.filter(result => result.status === "failed" && result.reason !== "invalid-format").map(result => result.surfaceSlug),
     superseded: sorted.filter(result => result.status === "superseded").map(result => result.surfaceSlug),

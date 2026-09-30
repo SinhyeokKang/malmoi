@@ -38,14 +38,28 @@ export function planHomeState(input: {
   counts: SummaryQueue;
 }): HomeState {
   if (input.archived) return "archived";
-  const { status } = input.connection;
-  if (status === "not-connected" || status === "unpinned" || status === "app-uninstalled" || status === "installation-changed" || status === "repo-replaced") {
-    return "not_connected";
-  }
+  if (blocksActions(input.connection.status)) return "not_connected";
   // "지금 돌고 있다"가 "지난번에 실패했다"를 이긴다 — 목록·설정과 **같은 술어**다.
   if (input.surfaces.some((surface) => failing(surface))) return "import_failed";
   const { newFromGithub, toTranslate, toReview, toSend } = input.counts;
   return newFromGithub + toTranslate + toReview + toSend === 0 ? "empty" : "default";
+}
+
+/** 이 연결로는 Sync·Publish가 돌 수 없다 — `planHomeState`의 `not_connected`와 `planActionAvailability`가 같은 술어를 쓴다. */
+function blocksActions(status: ConnectionHealth["status"]): boolean {
+  return status === "not-connected" || status === "unpinned" || status === "app-uninstalled" || status === "installation-changed" || status === "repo-replaced";
+}
+
+/**
+ * **Publish·Sync를 켤 수 있나** (ux-drift-unify §3.3 · 🔴 F) — Home과 번역 화면이 이것 하나를 부른다. 번역 화면이 끊김에도 둘을 켜 두어
+ * #52(누르면 실패만 반복되고 [Reconnect]로 가는 길이 없다)의 재발 경로였다.
+ *
+ * ⚠️ **모름(`unknown`)은 끄지 않는다** — `planHomeState`가 조회 실패를 미연결로 접지 않는 것과 같은 축이다. 누르면 서버가 어차피 다시 판정한다.
+ * ⚠️ 둘이 지금은 같은 값이지만 필드를 가른 것은 소비자가 둘을 따로 그리기 때문이다(Home 머리 · 번역 화면 툴바).
+ */
+export function planActionAvailability(input: { archived: boolean; connection: ConnectionHealth["status"] }): { publish: boolean; sync: boolean } {
+  const on = !input.archived && !blocksActions(input.connection);
+  return { publish: on, sync: on };
 }
 
 /**

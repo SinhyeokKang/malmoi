@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { connectionProblem, planHomeState } from "../state";
+import { connectionProblem, planActionAvailability, planHomeState } from "../state";
 
 /**
  * Home의 여섯 화면(캔버스 `2a`~`2e`)이 **한 함수의 반환값 하나로** 갈린다 (DESIGN §6.64).
@@ -119,5 +119,40 @@ describe("connectionProblem", () => {
     ["unknown", null],
   ] as const)("%s → %s", (status, problem) => {
     expect(connectionProblem(status)).toBe(problem);
+  });
+});
+
+/**
+ * **Publish·Sync를 켤 수 있나** (ux-drift-unify §3.3 · 🔴 F). Home과 번역 화면이 같은 함수를 부른다 — 번역 화면은 끊김에도 둘을 켜 두어
+ * #52의 재발 경로였다. ⚠️ **모름(`unknown`)은 끄지 않는다** — 조회 실패를 끊김으로 접으면 GitHub 장애가 작업 중단이 된다(서버가 어차피 다시 판정한다).
+ */
+describe("planActionAvailability", () => {
+  const OFF = { publish: false, sync: false };
+  const ON = { publish: true, sync: true };
+  it.each([
+    ["not-connected"], ["unpinned"], ["app-uninstalled"], ["installation-changed"], ["repo-replaced"],
+  ] as const)("끊김 %s → 둘 다 꺼짐", (status) => {
+    expect(planActionAvailability({ archived: false, connection: status })).toEqual(OFF);
+  });
+
+  it.each([["ok"], ["repo-moved"], ["unknown"]] as const)("%s → 둘 다 켜짐", (status) => {
+    expect(planActionAvailability({ archived: false, connection: status })).toEqual(ON);
+  });
+
+  it("보관이면 연결과 무관하게 꺼짐", () => {
+    expect(planActionAvailability({ archived: true, connection: "ok" })).toEqual(OFF);
+    expect(planActionAvailability({ archived: true, connection: "unpinned" })).toEqual(OFF);
+    expect(planActionAvailability({ archived: true, connection: "unknown" })).toEqual(OFF);
+  });
+
+  it("Home 상태와 같은 결론이다 — 꺼지는 조합이 곧 archived·not_connected다", () => {
+    const statuses = ["not-connected", "unpinned", "app-uninstalled", "installation-changed", "repo-replaced", "ok", "repo-moved", "unknown"] as const;
+    for (const archived of [false, true]) {
+      for (const status of statuses) {
+        const connection = status === "installation-changed" ? { status, installationId: "2" } : status === "repo-moved" ? { status, fullName: "a/b" } : { status };
+        const state = planHomeState({ ...base, archived, connection });
+        expect(planActionAvailability({ archived, connection: status }).sync).toBe(state !== "archived" && state !== "not_connected");
+      }
+    }
   });
 });

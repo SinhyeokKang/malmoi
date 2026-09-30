@@ -43,7 +43,7 @@ export type EventView = {
  * 결과 → 배지 색. **셋뿐이라 낱말이 구별을 든다** (DESIGN §6.2는 새 raw 색을 금지한다).
  * 가장 흔한 다섯이 가장 조용하고, 사람이 고쳐야 풀리는 셋만 warning이며, 실패만 danger다.
  */
-const TONES: Readonly<Record<EventResult, EventTone>> = {
+export const TONES: Readonly<Record<EventResult, EventTone>> = {
   running: "muted",
   sent: "success",
   nothingToSend: "muted",
@@ -440,8 +440,8 @@ export function coverageBoundaryIndex(
 }
 
 /**
- * 소스별 결과 → 결과 어휘 (spec §6). `summarizeImport`의 tone 판정과 같은 근거이고, 이쪽은
- * **낱말**을 낸다.
+ * 소스별 결과 → 결과 어휘 (spec §6). **`summarizeImport`의 tone은 이 값을 `TONES`로 옮긴 것이다** (ux-drift-unify 🔴 B) —
+ * Home의 Sync 결과와 Logs가 같은 실행을 같은 톤으로 말한다.
  *
  * ⚠️ **빈 결과를 전체 성공으로 접지 않는다** — 관측이 없었다는 것은 성공이 아니다.
  */

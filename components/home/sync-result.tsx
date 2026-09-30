@@ -138,7 +138,8 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, ret
         {surface.errors.map((error, index) => <p key={index} data-error-code={error.code} className="whitespace-pre-wrap break-words">{error.path}: {adapterErrorMessage(error)}</p>)}
       </div>)}
   </>;
-  return <Alert variant={tone} live={tone === "danger" ? "alert" : "status"} title={title} onDismiss={onDismiss}
+  // 결과 톤은 Logs와 같은 어휘다(`EventTone`) — 무색(`muted`, 전 표면 superseded)은 Alert의 `neutral`이다.
+  return <Alert variant={tone === "muted" ? "neutral" : tone} live={tone === "danger" ? "alert" : "status"} title={title} onDismiss={onDismiss}
     /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 진짜 `disabled`는 포커스를 못 받아 왜 꺼졌는지 닿지 않았다.
        사유는 `<span>`이다 — 이 Alert의 형(줄 수)을 `<p>`로 센다. */
     actions={retry && onRetry ? <>

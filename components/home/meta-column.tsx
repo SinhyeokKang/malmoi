@@ -131,7 +131,7 @@ function value(row: MetaRow, now: Date): ReactNode {
           )}
           {/* Never에는 아무것도 붙이지 않는다 — 주체와 같은 규칙. */}
           {/* 보류는 호박이다(2026-09-30 상태 통일). */}
-          {row.at !== null && row.heldByOpenPr && <span className="text-amber-800"> · {m.home.meta.heldByOpenPr}</span>}
+          {row.at !== null && row.held === "open-pr" && <span className="text-amber-800"> · {m.home.meta.heldByOpenPr}</span>}
         </span>
       );
     case "lastPublish": {

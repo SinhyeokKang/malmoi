@@ -21,6 +21,9 @@ const base = {
   lastSyncAt: at("2026-09-14T00:00:00Z"),
   lastPublishedAt: at("2026-09-13T00:00:00Z"),
   reviewByLocale: [{ code: "en", count: 5 }, { code: "ja", count: 3 }],
+  // 열린 PR 삼상태 — 게이트와 같은 입력이다(ux-drift-unify Q6).
+  openPr: null,
+  gateApplies: true,
 };
 
 const card = (input: Parameters<typeof countCards>[0], key: string) =>
@@ -66,7 +69,7 @@ describe("countCards — 보조 줄이 그 수의 기준을 말한다", () => {
       { kind: "synced", at: at("2026-09-14T00:00:00Z") },
       { kind: "acrossSurfaces", surfaces: 3 },
       { kind: "reviewByLocale", locales: [{ code: "en", count: 5 }, { code: "ja", count: 3 }] },
-      { kind: "repositoryUpdatesPaused" },
+      { kind: "repositoryUpdatesPaused", reason: "pending-edits" },
     ]);
   });
 
@@ -80,8 +83,25 @@ describe("countCards — 보조 줄이 그 수의 기준을 말한다", () => {
    * 0이면 기존 `nothing pending` 갈래다(아래 0 갈래 테스트).
    */
   it("[C12] 보낼 편집이 있으면 repository updates paused를 말한다", () => {
-    expect(card(base, "toSend")?.subline).toEqual({ kind: "repositoryUpdatesPaused" });
+    expect(card(base, "toSend")?.subline).toEqual({ kind: "repositoryUpdatesPaused", reason: "pending-edits" });
     expect(card({ ...base, counts: { ...counts, toSend: 0 } }, "toSend")?.subline).toEqual({ kind: "nothingPending" });
+  });
+
+  /**
+   * **편집 0이어도 말모이 PR이 열려 있으면 보류다** (ux-drift-unify Q6 · 6-Y9) — 전에는 `toSend > 0`만 보류로 말해, 게이트가 적재를 멈춘
+   * 동안 Home은 "nothing pending"이었다. 판정은 게이트와 같은 입력의 `planHoldNotice`다. 조회 실패는 Held(fail-closed)다.
+   */
+  it.each([
+    ["PR 열림", { openPr: "https://github.com/acme/web/pull/7" }, { kind: "repositoryUpdatesPaused", reason: "open-pr" }],
+    ["PR 조회 실패", { openPr: undefined }, { kind: "repositoryUpdatesPaused", reason: "pr-check-failed" }],
+    ["PR 없음", { openPr: null }, { kind: "nothingPending" }],
+    ["게이트가 서지 않는 프로젝트", { openPr: undefined, gateApplies: false }, { kind: "nothingPending" }],
+  ] as const)("편집 0 + %s", (_label, over, subline) => {
+    expect(card({ ...base, counts: { ...counts, toSend: 0 }, ...over }, "toSend")?.subline).toEqual(subline);
+  });
+
+  it("편집 > 0이면 PR 조회 결과와 무관하게 pending-edits다", () => {
+    expect(card({ ...base, openPr: undefined }, "toSend")?.subline).toEqual({ kind: "repositoryUpdatesPaused", reason: "pending-edits" });
   });
 
   it("0이면 근거가 바뀐다 — 다 채웠다 / 대기 없음", () => {

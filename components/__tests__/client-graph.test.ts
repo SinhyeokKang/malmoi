@@ -106,6 +106,8 @@ const CLIENT_LIB_FILES = [
   // Logs의 필터 바가 값으로 읽는 잎 둘 — 조회(`lib/events/query.ts`)는 이 그래프에 없다.
   "lib/events/filter.ts",
   "lib/events/payload.ts",
+  // Home의 Sync 결과 톤이 Logs와 같은 길(`summarizeImportEvent` → `TONES`)로 나온다(ux-drift-unify 🔴 B) — 아래 잎 검사가 그 그래프를 고정한다.
+  "lib/events/view.ts",
   // Settings recovery now owns its card notice; this leaf only assembles public URLs.
   "lib/github-connect/installation-url.ts",
   "lib/github-connect/message.ts",

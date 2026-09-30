@@ -376,8 +376,11 @@ export function assembleProjectListRows(
     repoAheadFrom: remote.get(r.project.id)?.repoAheadFrom ?? null,
     review: review.get(r.project.id) ?? 0,
     unsent: aggregates.unsent.get(r.project.id) ?? 0,
-    // 조회가 실패했거나 입력이 없으면 둘 다 "없음"이다 — 그 띠만 빠지고 나머지는 DB만으로 선다.
-    openPr: remote.get(r.project.id)?.openPr ?? null,
+    /**
+     * ⚠️ **`undefined`(확인 못 함)를 보존한다** (ux-drift-unify Q6 ④) — `?? null`로 접으면 원격 조회가 지킨 삼상태가 여기서 "없음"이 되어
+     * "Couldn't check" 띠가 사라진다. 원격 결과에 행이 없을 때만 없음이다.
+     */
+    openPr: remote.has(r.project.id) ? remote.get(r.project.id)?.openPr : null,
     repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
   }));
 }

@@ -29,15 +29,15 @@ describe("메타 열 — 실행 주체", () => {
     ["nightly", m.logs.meta.nightly],
     ["ci", m.logs.meta.ci],
   ] as const)("Last sync에 %s가 붙는다", async (trigger, word) => {
-    expect(await valueOf({ kind: "lastSync", at: day, failedAt: null, trigger, heldByOpenPr: false })).toBe(`${relativeTime(day, now)}[${word}]`);
+    expect(await valueOf({ kind: "lastSync", at: day, failedAt: null, trigger, held: null })).toBe(`${relativeTime(day, now)}[${word}]`);
   });
 
   it("주체가 없으면 시각만이다 — 이력 도입 전", async () => {
-    expect(await valueOf({ kind: "lastSync", at: day, failedAt: null, trigger: null, heldByOpenPr: false })).toBe(relativeTime(day, now));
+    expect(await valueOf({ kind: "lastSync", at: day, failedAt: null, trigger: null, held: null })).toBe(relativeTime(day, now));
   });
 
   it("실패 행 순서는 시각 · 주체 · 실패다", async () => {
-    expect(await valueOf({ kind: "lastSync", at: day, failedAt: tenMin, trigger: "nightly", heldByOpenPr: false }))
+    expect(await valueOf({ kind: "lastSync", at: day, failedAt: tenMin, trigger: "nightly", held: null }))
       .toBe(`${relativeTime(day, now)}[${m.logs.meta.nightly}] · ${m.home.meta.failedAt(relativeTime(tenMin, now))}`);
   });
 
@@ -48,14 +48,14 @@ describe("메타 열 — 실행 주체", () => {
   });
 
   it("최근 적재가 open-pr 보류면 보류 한 줄이 붙는다", async () => {
-    expect(await valueOf({ kind: "lastSync", at: day, failedAt: null, trigger: "ci", heldByOpenPr: true }))
+    expect(await valueOf({ kind: "lastSync", at: day, failedAt: null, trigger: "ci", held: "open-pr" }))
       .toBe(`${relativeTime(day, now)}[${m.logs.meta.ci}] · ${m.home.meta.heldByOpenPr}`);
   });
 
   it("Never에는 주체가 붙지 않는다", async () => {
-    expect(await valueOf({ kind: "lastSync", at: null, failedAt: null, trigger: "nightly", heldByOpenPr: false })).toBe(m.home.meta.never);
+    expect(await valueOf({ kind: "lastSync", at: null, failedAt: null, trigger: "nightly", held: null })).toBe(m.home.meta.never);
     expect(await valueOf({ kind: "lastPublish", at: null, prUrl: null, trigger: "nightly" })).toBe(m.home.meta.never);
-    expect(await valueOf({ kind: "lastSync", at: null, failedAt: null, trigger: null, heldByOpenPr: true })).toBe(m.home.meta.never);
+    expect(await valueOf({ kind: "lastSync", at: null, failedAt: null, trigger: null, held: "open-pr" })).toBe(m.home.meta.never);
   });
 
   it("Last publish — PR · 시각 · 주체, PR이 없으면 시각 · 주체", async () => {

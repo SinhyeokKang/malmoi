@@ -227,6 +227,18 @@ describe("rowBanner — 겹치면 하나만 (DESIGN §6.63 띠 우선순위)", (
     expect(rowBanner(row({ openPr: pr }))).toEqual({ kind: "pr_open", number: 142, url: pr.url });
   });
 
+  /**
+   * **PR 조회 실패는 "없음"이 아니라 "모름"이다** (ux-drift-unify Q6) — 열린 PR 게이트가 fail-closed라 그 동안 적재가 실제로 멈춘다.
+   * 같은 신호의 모름이라 `pr_open` 자리에 선다: 안 보낸 편집 뒤, 원격 변경·검토 앞.
+   */
+  it("PR 조회 실패(undefined)는 pr_open 자리의 Couldn't check 띠다", () => {
+    expect(rowBanner(row({ openPr: undefined }))).toEqual({ kind: "pr_check_failed" });
+    expect(rowBanner(row({ openPr: undefined, unsent: 3 }))).toEqual({ kind: "unsent", count: 3 });
+    expect(rowBanner(row({ openPr: undefined, repoAheadFiles: 2, review: 5 }))).toEqual({ kind: "pr_check_failed" });
+    expect(rowBanner(row({ openPr: undefined, repositoryId: null }))).toEqual({ kind: "needs_reconnect" });
+    expect(rowBanner(row({ openPr: undefined, archivedAt: new Date(0) }))).toBeNull();
+  });
+
   it("원격 변경이 검토를 이긴다 — C′는 키가 아니라 파일 수다", () => {
     expect(rowBanner(row({ repoAheadFiles: 3, review: 88 }))).toEqual({ kind: "repo_ahead", files: 3 });
     expect(rowBanner(row({ review: 88 }))).toEqual({ kind: "review", count: 88 });

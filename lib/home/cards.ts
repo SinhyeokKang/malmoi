@@ -1,4 +1,5 @@
 import type { SummaryQueue } from "@/lib/projects/list";
+import { planHoldNotice, type HoldReason } from "@/lib/protection/plan";
 
 import type { HomeState } from "./state";
 import type { SyncTime } from "./sync-time";
@@ -44,8 +45,11 @@ export type CardSubline =
   | { kind: "pausedCannotSend" }
   | { kind: "frozenAtArchive" }
   | { kind: "neverSent" }
-  /** 보낼 편집이 있어 CI 자동 적재가 보류 중이다 (DESIGN §6.64). 보류는 저장되는 상태가 아니라 pending > 0에서 파생된다. */
-  | { kind: "repositoryUpdatesPaused" };
+  /**
+   * 자동 적재가 보류 중이다 (DESIGN §6.64). 보류는 저장되는 상태가 아니라 게이트와 같은 입력에서 파생된다(`planHoldNotice` — ux-drift-unify Q6):
+   * 보낼 편집이 있거나(`pending-edits`), 편집 0에 말모이 PR이 열려 있거나(`open-pr`), 그 PR을 확인하지 못했다(`pr-check-failed` — 게이트가 fail-closed).
+   */
+  | { kind: "repositoryUpdatesPaused"; reason: HoldReason };
 
 export type HomeCard = {
   key: CardKey;
@@ -79,6 +83,10 @@ export function countCards(input: {
   lastSyncAt: SyncTime;
   /** 검토 대기의 로케일별 분해 — `8 cells · 5 en, 3 ja`의 뒤쪽이다. */
   reviewByLocale: readonly { code: string; count: number }[];
+  /** 말모이 PR 삼상태 — 게이트와 같은 입력이다(`undefined`는 확인 못 함). 편집이 있으면 결과에 쓰이지 않으므로 호출부는 조회를 건너뛰어도 된다. */
+  openPr: string | null | undefined;
+  /** `openPrGateApplies(project)` — 설치·리포 고정이 없으면 PR 갈래가 서지 않는다. */
+  gateApplies: boolean;
 }): HomeCard[] {
   const { counts } = input;
   return CARD_KEYS.map((key) => ({
@@ -128,10 +136,12 @@ function sublineFor(key: CardKey, input: Parameters<typeof countCards>[0]): Card
   if (key === "toReview") {
     return counts.toReview === 0 ? { kind: "nothingPending" } : { kind: "reviewByLocale", locales: input.reviewByLocale };
   }
-  if (counts.toSend === 0) return { kind: "nothingPending" };
   /*
-    ⚠️ **마지막 Publish 시각보다 이 사실이 앞선다** (DESIGN §6.64). 보낼 편집이 있으면 리포의 새 키·삭제가 앱에 안
+    ⚠️ **마지막 Publish 시각보다 이 사실이 앞선다** (DESIGN §6.64). 자동 적재가 보류 중이면 리포의 새 키·삭제가 앱에 안
     들어오고, 그것을 OWNER가 아는 자리가 이 줄이다. 넷째 전폭 배너를 두지 않는다 — 상시 상태에 배너를 두면 Home의 배너 0개 전제가 깨진다.
+    ⚠️ **판정은 게이트와 같은 입력이다** (ux-drift-unify Q6) — `toSend`가 곧 게이트의 미전달 수(같은 술어)이고, 편집 0이어도 PR이 열려 있거나
+    확인하지 못했으면 보류다. 전에는 `toSend > 0`만 봐서 PR 보류 동안 "nothing pending"이었다.
   */
-  return { kind: "repositoryUpdatesPaused" };
+  const hold = planHoldNotice({ pending: counts.toSend, openPr: input.openPr, gateApplies: input.gateApplies, archived: false, disconnected: false });
+  return hold === null ? { kind: "nothingPending" } : { kind: "repositoryUpdatesPaused", reason: hold.reason };
 }

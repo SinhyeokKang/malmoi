@@ -14,8 +14,10 @@ import { changedLocaleFileCount, pullNumberFrom } from "./remote-plan";
  * 경계가 셋이고 섞지 않는다 (ARCHITECTURE §0 불변식 6, `credential-separation.test.ts`가 상시로 센다).
  *
  * ⚠️ **실패는 값으로 흐른다.** 이 호출은 **행동을 권하는 부가 정보**이고, GitHub이 느린 날에도
- * `/projects`가 로그인 직후의 착지점이라는 사실은 안 바뀐다. 실패하면 두 띠만 빠지고 목록은
- * DB만으로 완성된다 — 다만 **실패를 성공처럼 그리지도 않는다**: 둘 다 안 그린다.
+ * `/projects`가 로그인 직후의 착지점이라는 사실은 안 바뀐다. 실패해도 목록은 DB만으로 완성된다.
+ * ⚠️ **PR 조회 실패는 "없음"이 아니라 "모름"(`undefined`)이다** (ux-drift-unify Q6) — 열린 PR 게이트가 fail-closed라 그 동안 적재가
+ * 실제로 멈추므로, 목록은 PR 번호가 있는 행에 "Couldn't check for an open pull request" 띠를 세운다. 전에는 넷의 경로(요청 거부 ·
+ * 클라이언트 실패 · 전체 마감 · 행 조립)가 모두 "없음"으로 접어 띠가 조용히 사라졌다. compare 쪽은 모름을 말할 자리가 없어 전처럼 0이다.
  *
  * ⚠️ **보관 제외 전부를 처리한다.** `slice(0, 3)`이 아니다 — 3은 **동시에 도는 프로젝트 수**이고,
  * 하나가 끝나면 바로 다음을 시작한다(3개 묶음 전체를 기다리지 않는다).
@@ -37,7 +39,10 @@ export type RemoteTarget = {
   archived: boolean;
 };
 
-export type RemoteSignals = { openPr: { number: number; url: string } | null; repoAheadFiles: number; repoAheadFrom?: string };
+/**
+ * @param openPr 삼상태 — 열린 PR · `null`(없음 또는 게이트가 서지 않는 행: 설치·리포 없음 · 보관 · PR 번호 없음) · `undefined`(확인 못 함).
+ */
+export type RemoteSignals = { openPr: { number: number; url: string } | null | undefined; repoAheadFiles: number; repoAheadFrom?: string };
 
 const NONE: RemoteSignals = { openPr: null, repoAheadFiles: 0 };
 
@@ -75,8 +80,19 @@ export async function loadRemoteSignals(
     mapWithLimit(targets, CONCURRENCY, (target) => signalsFor(target, createClient)),
   );
   // 완료 순서가 결과 매핑을 바꾸지 않는다 — 인덱스로 되돌려 붙인다.
-  // 마감에 걸렸으면 `signals`가 비어 모든 행이 "신호 없음"이 된다 — 실패와 같은 갈래다.
-  return new Map(targets.map((target, index) => [target.projectId, signals[index] ?? NONE]));
+  // 마감에 걸렸으면 `signals`가 비어 PR을 물었어야 할 모든 행이 "모름"이 된다 — 실패와 같은 갈래다(PR 번호가 있는 모든 행에 띠가 서는 것이 정직하다).
+  return new Map(targets.map((target, index) => [target.projectId, signals[index] ?? unknownFor(target)]));
+}
+
+/** 이 행의 PR을 물어야 하나 — 보관·설치·리포 id·PR 번호 중 하나라도 없으면 게이트가 서지 않는 쪽이라 "없음"이다. */
+function pullNumberToCheck(target: RemoteTarget): number | null {
+  if (target.archived || target.installationId === null || target.repositoryId === null) return null;
+  return pullNumberFrom(target.lastPrUrl);
+}
+
+/** 확인하지 못한 행의 신호 — PR을 물었어야 하면 모름, 아니면 없음. compare는 모름을 말할 자리가 없어 0이다. */
+function unknownFor(target: RemoteTarget): RemoteSignals {
+  return pullNumberToCheck(target) === null ? NONE : { openPr: undefined, repoAheadFiles: 0 };
 }
 
 async function signalsFor(
@@ -88,7 +104,7 @@ async function signalsFor(
   // 설치나 리포 id가 없으면 클라이언트를 만들 수 없다. 행은 목록에 남고 DB 상태로 표시된다.
   if (target.installationId === null || target.repositoryId === null) return NONE;
 
-  const pullNumber = pullNumberFrom(target.lastPrUrl);
+  const pullNumber = pullNumberToCheck(target);
   const formats = target.surfaces.flatMap(s =>
     s.lastCommitSha !== null && s.adapterName !== null && s.pathTemplate !== null && isAdapterName(s.adapterName)
       ? [{ adapter: s.adapterName, pathTemplate: s.pathTemplate, storedLocales: s.storedLocales, lastCommitSha: s.lastCommitSha }]
@@ -107,15 +123,17 @@ async function signalsFor(
     // 한쪽이 실패해도 나머지 요청이 끝나야 워커 자리를 반납한다 — Promise.all은 먼저 거부된다.
     // ⚠️ **안쪽 compare도 한 층에 펼친다** (audit #15) — compare들을 `Promise.all`로 묶어 넣으면 한 소스의 거부가 그 묶음을
     // 먼저 끝내 다른 compare가 떠 있는 채로 자리가 돌아갔다(POSTMORTEM 2026-09-13과 같은 원인).
+    // ⚠️ **PR과 compare를 따로 판정한다** (ux-drift-unify Q6 ①) — 한 판정으로 묶으면 compare 거부가 PR 결과까지 버렸고 PR 거부가 "없음"이 됐다.
     const rejected = [opened, ...compared].find((result): result is PromiseRejectedResult => result.status === "rejected");
-    if (rejected !== undefined) {
-      logCaught("remote-signals", "signals", rejected.reason);
-      return NONE;
-    }
-    const comparisons = compared.flatMap(result => (result.status === "fulfilled" ? [result.value] : []));
-    const open = opened.status === "fulfilled" && opened.value;
+    if (rejected !== undefined) logCaught("remote-signals", "signals", rejected.reason);
+    // 한 소스의 compare라도 거부됐으면 원격 변경 띠를 만들지 않는다 — 일부만 센 수는 거짓이다(기존대로 "없음").
+    const comparisons = compared.every(result => result.status === "fulfilled")
+      ? compared.flatMap(result => (result.status === "fulfilled" ? [result.value] : []))
+      : [];
+    const openPr = opened.status === "rejected" ? undefined
+      : opened.value === true && pullNumber !== null && target.lastPrUrl !== null ? { number: pullNumber, url: target.lastPrUrl } : null;
     return {
-      openPr: open === true && pullNumber !== null && target.lastPrUrl !== null ? { number: pullNumber, url: target.lastPrUrl } : null,
+      openPr,
       // base가 앞서지 않았으면 파일을 세지 않는다 — 같은 커밋에서 갈라진 변경은 이 띠가 말할 것이 아니다.
       repoAheadFiles: comparisons.reduce((sum, { format, compare }) => sum + (compare.ahead ? changedLocaleFileCount(format, compare.files) : 0), 0),
       ...(() => { const changed = comparisons.find(({ format, compare }) => compare.ahead && changedLocaleFileCount(format, compare.files) > 0);
@@ -128,7 +146,8 @@ async function signalsFor(
      * 다만 화면이 띠를 빼는 것으로 끝나므로 "왜 안 뜨나"를 볼 곳이 로그뿐이다 (POSTMORTEM 2026-09-14).
      */
     logCaught("remote-signals", "fetch", error);
-    return NONE;
+    // ⚠️ 클라이언트·토큰을 못 만들었다 — PR을 물었어야 하면 "모름"이다(ux-drift-unify Q6 ②).
+    return unknownFor(target);
   }
 }
 

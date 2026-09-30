@@ -371,12 +371,13 @@ function ProjectBanner({ row, banner }: { row: ProjectListRow; banner: NonNullab
     <BannerLine
       icon={<BannerIcon banner={banner} />}
       // 띠 전체가 상태의 색이다 — 실패는 Home Alert·Logs·Sources와 같은 빨강, 재연결 필요는 Home Alert와 같은 호박(2026-09-30 사용자).
-      tone={banner.kind === "import_failed" ? importFailureTone(banner.reason) : banner.kind === "needs_reconnect" || banner.kind === "review" ? "warning" : "muted"}
+      tone={banner.kind === "import_failed" ? importFailureTone(banner.reason) : banner.kind === "needs_reconnect" || banner.kind === "review" || banner.kind === "pr_check_failed" ? "warning" : "muted"}
       action={<BannerAction row={row} banner={banner} canSettle={canSettle} />}
     >
       {banner.kind === "review" && m.projects.banner.review(banner.count)}
       {banner.kind === "unsent" && m.projects.banner.unsent(banner.count)}
       {banner.kind === "pr_open" && m.projects.banner.prOpen(banner.number)}
+      {banner.kind === "pr_check_failed" && m.projects.banner.prCheckFailed}
       {banner.kind === "repo_ahead" && m.projects.banner.repoAhead(banner.files, row.baseBranch)}
       {banner.kind === "setup" && m.projects.banner.setup}
       {banner.kind === "needs_reconnect" && m.projects.banner.needsReconnect}
@@ -402,6 +403,8 @@ function BannerIcon({ banner }: { banner: NonNullable<RowBanner> }) {
     setup: { glyph: CircleDashed, tone: "" },
     unsent: { glyph: GitPullRequestArrow, tone: "" },
     pr_open: { glyph: GitPullRequest, tone: "" },
+    // 확인 못 한 열린 PR — 경고 글리프다(게이트가 fail-closed라 적재가 실제로 멈춘다).
+    pr_check_failed: { glyph: TriangleAlert, tone: "" },
     repo_ahead: { glyph: GitMerge, tone: "" },
     review: { glyph: Eye, tone: "" },
   }[banner.kind];
@@ -447,6 +450,9 @@ function BannerAction({
       return row.unsentSurfaceSlug === null ? null : internal(routes.surfaceTranslations(row.slug, row.unsentSurfaceSlug), m.projects.banner.action.send);
     case "pr_open":
       return external(banner.url, m.projects.banner.action.viewPr);
+    case "pr_check_failed":
+      // 갈 곳이 없다 — 다음 방문에서 다시 확인한다.
+      return null;
     case "repo_ahead":
       // compare 범위는 원격 조회가 이미 계산한 것과 같다 — 화면이 그 범위를 그대로 연다.
       return external(
