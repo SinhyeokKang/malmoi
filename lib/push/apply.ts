@@ -135,7 +135,8 @@ export type AppliedHook = (tx: Prisma.TransactionClient, outcome: PushOutcome) =
 /**
  * **CI 자동 적재** — 프로젝트 전체에 미전달 편집이 하나라도 있으면 아무것도 쓰지 않고 보류한다 (sync-edit-protection — ARCHITECTURE §5.5.2).
  *
- * 리포를 보지 않는다 — 판정 입력은 DB의 pending 수 하나이고 리포 값과 DB 값을 견주지 않는다(병합이 아니다).
+ * 리포 값을 보지 않는다 — **이 트랜잭션 안의** 재판정 입력은 DB의 pending 수 하나이고 리포 값과 DB 값을 견주지 않는다(병합이 아니다).
+ * 열린 Malmoi PR 게이트는 트랜잭션 **밖** 사전 판정(`/api/push` — `planOpenPrGate`)이 이미 봤다 — 트랜잭션 안에서 GitHub을 부르지 않는다.
  *
  * ⚠️ **재집계를 지우지 않는다.** 저장은 이제 같은 `Project` → `TranslationSurface` 잠금 안이라 "판정 뒤·upsert 전" 저장은 끼지 못한다 —
  * 재집계가 잡는 것은 **이 적재가 unorphan시킨 토큰 셀**이다: 사전 집계(`pendingWhere`)는 orphan을 빼므로 0이었다가 키·로케일이 되살아나면
