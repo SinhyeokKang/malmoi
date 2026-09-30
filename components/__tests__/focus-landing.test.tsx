@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { act, useState } from "react";
+import { act, useLayoutEffect, useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { focusLost, landFocus, neighbourFocus, useLandAfter } from "@/components/ui/focus";
+import { focusLost, landFocus, neighbourFocus, useLandAfter, useLandAfterCommit } from "@/components/ui/focus";
 
 import { render } from "./helpers/dom";
 
@@ -113,5 +113,63 @@ describe("neighbourFocus — 보이지 않는 요소", () => {
     });
     expect(neighbourFocus(alert)).toBe(shown);
     rects.mockRestore();
+  });
+});
+
+/*
+  malmoi#158 — 누른 버튼이 착지와 같은 커밋에서 사라지면, passive 착지(`useLandAfter`)는 커밋이 칠해진 뒤라 그 사이 프레임의 포커스가 body다.
+  `useLandAfterCommit`은 같은 판정을 layout 단계에서 한다. 형제 probe의 layout effect가 그 커밋의 포커스를 잰다(act는 passive까지 비운다).
+*/
+describe("useLandAfterCommit — 사라지는 버튼의 커밋 동기 착지", () => {
+  // 훅을 든 화면과 probe는 **형제**이고 상태는 둘의 부모가 든다 — 자식의 layout effect는 부모보다 먼저 돌고, probe가 그 커밋에
+  // 다시 렌더돼야 그 커밋을 잰다.
+  function LandingScreen({ hook, pending, setPending }: { hook: typeof useLandAfter; pending: boolean; setPending: (next: boolean) => void }) {
+    const title = useRef<HTMLHeadingElement>(null);
+    hook(pending, () => title.current);
+    return <>
+      <h2 ref={title} tabIndex={-1}>Keys</h2>
+      {/* key로 갈라 둔다 — 같은 자리의 같은 태그는 React가 DOM을 재사용해 "사라지는 버튼"이 안 된다. */}
+      {pending ? <button key="arrive" onClick={() => setPending(false)}>Arrive</button> : <button key="show" onClick={() => setPending(true)}>Show all</button>}
+    </>;
+  }
+  function CommitProbe({ seen }: { seen: (Element | null)[] }) {
+    useLayoutEffect(() => { seen.push(document.activeElement); });
+    return null;
+  }
+  function LandingHarness({ hook, seen }: { hook: typeof useLandAfter; seen: (Element | null)[] }) {
+    const [pending, setPending] = useState(false);
+    return <><LandingScreen hook={hook} pending={pending} setPending={setPending} /><CommitProbe seen={seen} /></>;
+  }
+  const buttonNamed = (label: string) => [...document.querySelectorAll("button")].find(b => b.textContent === label)!;
+  async function arriveWith(hook: typeof useLandAfter) {
+    const seen: (Element | null)[] = [];
+    await render(<LandingHarness hook={hook} seen={seen} />);
+    act(() => buttonNamed("Show all").click());
+    const arrive = buttonNamed("Arrive");
+    act(() => arrive.focus());
+    seen.length = 0;
+    act(() => arrive.click());
+    return seen;
+  }
+
+  it("사라지는 커밋의 layout 단계에서 이미 착지했다", async () => {
+    const seen = await arriveWith(useLandAfterCommit);
+    expect(seen[0]).toBe(document.querySelector("h2"));
+    expect(document.activeElement).toBe(document.querySelector("h2"));
+  });
+
+  it("대조: useLandAfter는 그 커밋의 layout 단계에서 아직 body다 — 착지는 passive 단계다", async () => {
+    const seen = await arriveWith(useLandAfter);
+    expect(seen[0]).toBe(document.body);
+    expect(document.activeElement).toBe(document.querySelector("h2"));
+  });
+
+  it("사용자가 옮긴 포커스는 뺏지 않는다 — 판정은 useLandAfter와 같다", async () => {
+    const other = button("Elsewhere");
+    await render(<LandingHarness hook={useLandAfterCommit} seen={[]} />);
+    act(() => buttonNamed("Show all").click());
+    act(() => other.focus());
+    act(() => buttonNamed("Arrive").click());
+    expect(document.activeElement).toBe(other);
   });
 });

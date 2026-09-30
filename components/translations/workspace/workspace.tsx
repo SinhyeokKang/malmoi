@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
-import { useLandAfter } from "@/components/ui/focus";
+import { useLandAfter, useLandAfterCommit } from "@/components/ui/focus";
 import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
 import type { TranslationList, TranslationListRow, TranslationTree } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
@@ -374,7 +374,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     const next = applyEmptyAction(action.kind, view.query);
     attempt({ kind }, () => { setEmptyPressed(slot); pendingSelection.current = "filter"; navigate(withQuery(next), "push", { query: next }); });
   }
-  useLandAfter(navigating && emptyPressed !== null, () => listTitleRef.current);
+  // ⚠️ 커밋 동기 착지다 — 누른 빈 상태 버튼이 도착 커밋에서 사라지므로, passive 착지면 전량 목록이 칠해지는 동안 포커스가 body였다(malmoi#158).
+  useLandAfterCommit(navigating && emptyPressed !== null, () => listTitleRef.current);
   useEffect(() => { if (!navigating && emptyPressed !== null) setEmptyPressed(null); });
 
   // ── Save ──────────────────────────────────────────────────────────────────

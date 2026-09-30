@@ -74,8 +74,19 @@ function Harness({ initial }: { initial: WorkspaceProps }) {
       <Wait on={state.wait} />
       <Commit entry={state.entry} />
       <TranslationWorkspace {...state.props} />
+      <FocusProbe />
     </Suspense>
   );
+}
+/*
+  #158 — 커밋마다 **layout 단계 끝**의 포커스를 기록한다. 형제 순서상 워크스페이스의 layout effect 뒤, passive effect(`useEffect`) 앞이다 —
+  브라우저는 그 사이에 칠할 수 있으므로 여기서 `body`면 사용자가 그 프레임을 본다. `act()`는 passive effect까지 비우므로 끝난 뒤의
+  `activeElement`만 보면 이 틈을 못 잰다.
+*/
+const commitFocus: (Element | null)[] = [];
+function FocusProbe() {
+  useLayoutEffect(() => { commitFocus.push(document.activeElement); });
+  return null;
 }
 const arrive = async (entry: Gate) => { await act(async () => { entry.open(); await entry.promise; }); };
 
@@ -239,7 +250,13 @@ it.each([
   expect(pressed.getAttribute("aria-busy")).toBe("true");
   expect(document.activeElement).not.toBe(document.body);
   expect(document.activeElement).toBe(pressed);
+  commitFocus.length = 0;
   await arrive(b);
+  // #158 — 버튼을 지우는 도착 커밋에서 이미 목록 제목이다. passive effect까지 기다리면 그 사이 칠해진 프레임이 `body`였다(5,000행에서 3.3초).
+  expect(pressed.isConnected).toBe(false);
+  expect(commitFocus.length).toBeGreaterThan(0);
+  expect(commitFocus[0]).not.toBe(document.body);
+  expect(commitFocus[0]).toBe(panel(container, "list").querySelector("h2"));
   expect(document.activeElement).toBe(panel(container, "list").querySelector("h2"));
 });
 
