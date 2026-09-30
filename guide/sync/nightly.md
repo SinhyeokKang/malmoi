@@ -18,7 +18,7 @@ Saved values that cannot be published stay in Malmoi. If your changes were not p
 
 If nothing is waiting to be published, the nightly run checks whether the branch Malmoi reads has new commits since Malmoi last read your sources.
 
-- No new commits: nothing is read and the event says **Up to date**.
+- No new commits and nothing failed last time: nothing is read and the event says **Up to date**. If a file failed to update, the nightly run tries again each night until it succeeds.
 - New commits: Malmoi reads the sources from the repository and updates the project, the same way a project owner's Sync does, but without discarding anything. On Home, **Last sync** then shows `nightly` after the time.
 
 If someone saves a translation while the nightly update is running, Malmoi stops before the next source so the new edit is not overwritten. The sources it already updated stay updated.
