@@ -19,8 +19,8 @@ describe("배지 라벨 12px", () => {
     expect(css).toMatch(/--text-2xs--line-height:\s*calc\(1 \/ 0\.75\);/);
   });
 
-  // Badge 프리미티브 + 버튼 안의 손으로 만든 개수 알약(Publish · 랜딩 목업 복제)
-  it.each(["components/ui/badge.tsx", "components/publish-button.tsx", "components/landing/mockup/translations.tsx"])(
+  // Badge 프리미티브 + 랜딩 목업의 손으로 만든 개수 알약(Publish 버튼 복제). 실물 Publish 버튼은 2026-10-01부터 `CountBadge`다.
+  it.each(["components/ui/badge.tsx", "components/landing/mockup/translations.tsx"])(
     "%s의 알약이 text-2xs다",
     (path) => {
       const pills = [...read(path).matchAll(/"[^"]*rounded-full px-1\.5[^"]*"/g)].map((match) => match[0]);

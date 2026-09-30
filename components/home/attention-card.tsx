@@ -2,7 +2,7 @@ import { Archive, ChevronRight, CircleCheck, CircleDot, Languages, TriangleAlert
 import Link from "next/link";
 import type { ComponentType } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import type { AttentionItem, AttentionList } from "@/lib/home/attention";
@@ -11,6 +11,7 @@ import { m } from "@/lib/i18n";
 import { importFailureTone } from "@/lib/projects/import-failure";
 import { relativeTime } from "@/lib/relative-time";
 import { ALL_NAMESPACES, routes } from "@/lib/routes";
+import type { StateTone } from "@/lib/status/canon";
 import { IconTile } from "@/components/ui/icon-tile";
 
 /**
@@ -31,12 +32,12 @@ import { IconTile } from "@/components/ui/icon-tile";
  * (`TranslationSurface`에 그런 컬럼이 없다) `#0891b2`는 §6.2 미등재 raw 색이다. 검토와 같은 무채색
  * 타일에 `languages`를 놓는다. **의도된 이탈이고 `docs/DESIGN.md`에 있다.**
  */
-const TILE: Record<AttentionItem["kind"], { icon: ComponentType<{ className?: string }>; className: string }> = {
+const TILE: Record<AttentionItem["kind"], { icon: ComponentType<{ className?: string }>; tone: StateTone }> = {
   // 실패는 어디서나 붉은 면 조합이다(2026-09-30 사용자 — 여기만 호박이었다, DESIGN §2.3).
-  import_failed: { icon: TriangleAlert, className: "bg-destructive/8 text-destructive" },
+  import_failed: { icon: TriangleAlert, tone: "danger" },
   // 검토 대기는 호박이다 — 카드 글리프·Sources 배지·번역 화면과 같은 톤(2026-09-30 상태 통일).
-  review: { icon: CircleDot, className: "bg-amber-100/80 text-amber-800" },
-  never_filled: { icon: Languages, className: "bg-foreground/5 text-muted-foreground" },
+  review: { icon: CircleDot, tone: "warning" },
+  never_filled: { icon: Languages, tone: "muted" },
 };
 
 export function AttentionCard({ items, slug, role, state, now }: {
@@ -56,10 +57,8 @@ export function AttentionCard({ items, slug, role, state, now }: {
     <section className="border-border overflow-hidden rounded-lg border" aria-labelledby="home-attention-title">
       <h2 id="home-attention-title" className="flex min-h-12 items-center gap-2 px-4 py-3 text-base font-medium">
         {m.home.attention.title}
-        {/* ⚠️ **빈 상태에는 pill이 없다** (캔버스 `2a-empty`) — `0`을 배지로 세우면 하나의 항목처럼 읽힌다. */}
-        {items.count > 0 && (
-          <Badge variant="neutral">{items.count}</Badge>
-        )}
+        {/* ⚠️ **빈 상태에는 pill이 없다** (캔버스 `2a-empty`) — `0`을 배지로 세우면 하나의 항목처럼 읽힌다. `CountBadge`가 든다. */}
+        <CountBadge count={items.count} label={m.home.attention.count(items.count)} />
       </h2>
 
       {items.count === 0 ? (
@@ -126,7 +125,7 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
           // 그 로케일이 비어 있는 키 — `Missing in {locale}`이 정확히 그 뜻이다.
           : { ns: ALL_NAMESPACES, completion: "missing", missingLocale: item.code });
   // 실패 칩의 톤은 코드가 정한다 — 일부 반영은 호박(2026-09-30 상태 통일).
-  const tile = item.kind === "import_failed" && importFailureTone(item.reason) === "warning" ? { ...TILE.import_failed, className: "bg-amber-100/80 text-amber-800" } : TILE[item.kind];
+  const tile = item.kind === "import_failed" && importFailureTone(item.reason) === "warning" ? { ...TILE.import_failed, tone: "warning" as const } : TILE[item.kind];
   const Tile = tile.icon;
 
   return (
@@ -134,7 +133,7 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
       href={href}
       className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-divider flex items-center gap-3 border-t px-4 py-3.5 focus-visible:ring-2 focus-visible:outline-none"
     >
-      <IconTile className={tile.className}>
+      <IconTile tone={tile.tone}>
         <Tile aria-hidden />
       </IconTile>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">

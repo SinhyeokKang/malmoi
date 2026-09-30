@@ -1,0 +1,44 @@
+// @vitest-environment jsdom
+import { describe, expect, it } from "vitest";
+
+import { CountBadge } from "@/components/ui/count-badge";
+import { PanelCard } from "@/components/ui/panel-card";
+import { RowCard } from "@/components/ui/row-card";
+
+import { render } from "./helpers/dom";
+
+/**
+ * **개수 배지는 0이면 서지 않고, 숫자는 `aria-hidden` + sr 문장이다** (DESIGN §6.4 · ux-drift-unify T12 · spec Q13).
+ * 0을 배지로 세우면 하나의 항목처럼 읽히고, 숫자만 낭독하면 접근 이름이 "Members 3"이 된다.
+ */
+describe("CountBadge", () => {
+  it("0이면 아무것도 그리지 않는다", async () => {
+    const { container } = await render(<CountBadge count={0} label="0 sources" />);
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("숫자는 aria-hidden이고 sr 문장이 짝이다", async () => {
+    const { container } = await render(<CountBadge count={1234} label="1,234 keys" />);
+    const pill = container.firstElementChild!;
+    expect(pill.className).toContain("rounded-full");
+    expect(pill.className).toContain("bg-foreground/5");
+    expect(pill.querySelector('[aria-hidden="true"]')?.textContent).toBe("1,234");
+    expect(pill.querySelector(".sr-only")?.textContent).toBe("1,234 keys");
+  });
+});
+
+describe("카드 머리의 count prop", () => {
+  it("PanelCard — 0이면 머리에 배지가 없고, 있으면 제목 바로 다음이다", async () => {
+    const zero = (await render(<PanelCard title="Sources" count={0} countLabel="0 sources"><p>x</p></PanelCard>)).container;
+    expect(zero.querySelector("h2 + span")).toBeNull();
+    const two = (await render(<PanelCard title="Sources" count={2} countLabel="2 sources"><p>x</p></PanelCard>)).container;
+    expect(two.querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe("2 sources");
+  });
+
+  it("RowCard — 0이면 머리에 배지가 없다", async () => {
+    const zero = (await render(<RowCard title="Pending" count={0} countLabel="0 invitations"><ul /></RowCard>)).container;
+    expect(zero.querySelector("h2 + span")).toBeNull();
+    const one = (await render(<RowCard title="Pending" count={1} countLabel="1 invitation"><ul /></RowCard>)).container;
+    expect(one.querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe("1 invitation");
+  });
+});

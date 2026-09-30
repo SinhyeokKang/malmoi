@@ -14,7 +14,7 @@ import { SlowNotice } from "@/components/slow-notice";
 import { BasePendingBanner } from "@/components/translations/base-pending-banner";
 import { EditLossBanner } from "@/components/translations/edit-loss-banner";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -606,10 +606,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-2">
             <h1 ref={titleRef} tabIndex={-1} className="text-lg font-medium">{m.common.nav.translations}</h1>
-            <Badge variant="neutral">
-              <span aria-hidden>{tree.projectKeyCount.toLocaleString("en-US")}</span>
-              <span className="sr-only">{m.translations.keys(tree.projectKeyCount)}</span>
-            </Badge>
+            <CountBadge count={tree.projectKeyCount} label={m.translations.keys(tree.projectKeyCount)} />
           </span>
           <span className="ml-auto flex items-center gap-2">
             {role === "OWNER" ? (

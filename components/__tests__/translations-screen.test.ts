@@ -280,7 +280,7 @@ describe("행 축 (8-4)", () => {
    */
   it("로케일 배지가 orphaned 표시를 든다", () => {
     const src = read(LOCALE_BADGE);
-    expect(src).toMatch(/orphaned \? "danger"/);
+    expect(src).toMatch(/orphaned \? "missing"/);
     expect(src).toMatch(/sr-only/);
   });
 
@@ -330,7 +330,8 @@ describe("행 축 (8-4)", () => {
 
   /** ⚠️ 숫자만 그리면 접근 이름이 "Translations 1134"다 — 시안의 숫자 배지를 유지하며 문장을 준다. */
   it("개수 배지가 접근 이름으로 완전한 문장을 든다", () => {
-    expect(read(WORKSPACE)).toMatch(/sr-only[^>]*>\{m\.translations\.keys\(/);
+    // 숫자 `aria-hidden` + sr 문장은 `CountBadge`가 든다 — 여기서 재는 것은 그 문장이 키 수 문장인가다.
+    expect(read(WORKSPACE)).toMatch(/<CountBadge count=\{tree\.projectKeyCount\} label=\{m\.translations\.keys\(/);
   });
 
   /** ⚠️ 왼쪽 패널이 **소스에서** 사라졌다 — 남으면 같은 필터가 두 곳이고 하나가 낡는다. */

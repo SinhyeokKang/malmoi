@@ -94,9 +94,10 @@ const GLYPH = ["components/logs/glyph.tsx"];
 const REGISTERED: Record<string, string[]> = {
   // amber — 경고 축 (§6.2 "새 raw 색을 늘리지 않는다")
   // 2026-09-30 상태 통일 — 호박 면·글자는 "손봐야 할 것"의 한 벌이다(배지 · 칸 · 행 띠 · 보류 글자).
-  "bg-amber-100/80": ["components/home/attention-card.tsx", "components/sources/source-detail-modal.tsx", "components/ui/badge.tsx"],
-  "text-amber-800": ["components/home/attention-card.tsx", "components/home/meta-column.tsx", "components/sources/source-detail-modal.tsx", "components/ui/badge.tsx", "components/ui/row-card.tsx"],
-  "bg-amber-50": ["components/ui/alert.tsx", ...GLYPH],
+  // 아이콘 칸의 호박·초록은 `IconTile tone` 하나가 든다(2026-10-01 ux-drift-unify T11 — 호출부 넷이 문자열을 들고 있었다).
+  "bg-amber-100/80": ["components/ui/badge.tsx", "components/ui/icon-tile.tsx"],
+  "text-amber-800": ["components/home/meta-column.tsx", "components/sources/source-detail-modal.tsx", "components/ui/badge.tsx", "components/ui/icon-tile.tsx", "components/ui/row-card.tsx"],
+  "bg-amber-50": ["components/ui/alert.tsx"],
   "bg-amber-500": ["components/locale-meter.tsx", "components/sources/source-detail-modal.tsx"],
   // B6 — 기준 언어 대기 테두리. `border-destructive/50`(오류)의 짝이다.
   "border-amber-500/50": ["components/sources/base-language-form.tsx"],
@@ -109,12 +110,11 @@ const REGISTERED: Record<string, string[]> = {
     "components/translations/workspace/workspace.tsx",
     // Alert warning 글리프 (2026-09-29 — 색은 배경과 글리프만 든다)
     "components/ui/alert.tsx",
-    ...GLYPH,
   ],
   // 초록 — `Active` 배지 · diff
   // 초록 면·글자는 성공 칸에도 선다(2026-09-30 — Sources 상세 `Synced` 칸)
-  "bg-green-100/80": ["components/sources/source-detail-modal.tsx", "components/ui/badge.tsx"],
-  "text-green-800": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/sources/source-detail-modal.tsx", "components/ui/alert.tsx", "components/ui/badge.tsx"],
+  "bg-green-100/80": ["components/ui/badge.tsx", "components/ui/icon-tile.tsx"],
+  "text-green-800": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/ui/alert.tsx", "components/ui/badge.tsx", "components/ui/icon-tile.tsx"],
   // Alert 배경 셋 (2026-09-29 사용자 — `bg-amber-50`은 위, `bg-red-50`·`bg-blue-50`은 활동 칩과 같은 값이라 아래에서 합친다)
   "bg-green-50": ["components/ui/alert.tsx"],
   "bg-green-800/[0.16]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
@@ -194,10 +194,8 @@ const REGISTERED: Record<string, string[]> = {
   "text-white": ["components/invite/project-card.tsx", "components/projects/project-thumbnail.tsx", "components/settings/general-card.tsx", "components/ui/avatar.tsx"],
   // tone 여덟 (`-600`)
   ...Object.fromEntries(["rose", "orange", "amber", "emerald", "teal", "sky", "indigo", "fuchsia"].map((tone) => [`bg-${tone}-600`, TONE_FILES])),
-  // 활동 글리프 칩 일곱 (§6.68)
-  ...Object.fromEntries(
-    ["bg-emerald-50", "text-emerald-700", "bg-slate-100", "text-slate-600", "text-blue-700", "bg-teal-50", "text-teal-700", "bg-violet-50", "text-violet-700"].map((value) => [value, GLYPH]),
-  ),
+  // 활동 글리프 칩 — 종류 색 셋만 남는다(D3③ — 결과 색은 `IconTile tone`이 든다, §6.68)
+  ...Object.fromEntries(["text-blue-700", "bg-teal-50", "text-teal-700", "bg-violet-50", "text-violet-700"].map((value) => [value, GLYPH])),
   // 활동 칩과 Alert가 같은 값을 쓴다 (Alert `danger`·`info` 배경)
   "bg-red-50": ["components/ui/alert.tsx"],
   "bg-blue-50": ["components/ui/alert.tsx", ...GLYPH],

@@ -258,9 +258,11 @@ describe("#4 Pending 0건", () => {
     expect(container.querySelector('[role="status"]')).not.toBeNull();
   });
 
-  it("배지가 초대 수를 말한다 — `projects`의 문장을 물려받지 않는다", async () => {
-    const container = await drawPending([]);
-    expect(find(container, "h2 + span .sr-only").textContent).toBe(m.members.pending.count(0));
+  /** 0건이면 배지가 없다(2026-10-01 Q13 — `CountBadge`). 있을 때의 문장은 초대 쪽 문장이다 — `projects`의 문장을 물려받지 않는다. */
+  it("0건이면 배지가 없고, 있으면 초대 수를 말한다", async () => {
+    expect((await drawPending([])).querySelector("h2 + span")).toBeNull();
+    const one = await drawPending([invitation({ id: "i1" })]);
+    expect(one.querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe(m.members.pending.count(1));
   });
 });
 

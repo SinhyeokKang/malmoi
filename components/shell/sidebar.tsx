@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { ProjectSwitcher } from "@/components/shell/project-switcher";
 import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
 import { activeProject, navFooterItems, navZones, type NavItem, type NavProject } from "@/lib/shell/nav";
@@ -157,6 +158,17 @@ function isActive(pathname: string, item: NavItem): boolean {
   return item.exact ? pathname === path : pathname.startsWith(path);
 }
 
+/**
+ * 개수 배지의 sr 문장 — 숫자는 `aria-hidden`이다(`CountBadge`). **개수를 드는 항목만** 여기 있고, 문자열 배지(Changelog 버전)는 개수가 아니다.
+ * ⚠️ 문장을 `lib/shell/nav.ts`가 아니라 여기서 고른다 — 그쪽은 개수만 내고, 그 개수를 읽히는 방식은 화면의 몫이다.
+ */
+const COUNT_LABEL: Readonly<Record<string, (n: number) => string>> = {
+  projects: m.projects.count,
+  sources: m.sources.count,
+  translations: m.translations.keys,
+  members: m.members.count,
+};
+
 /** 항목 하나 — 시안 치수는 `p-6 · gap-8 · radius-8 · 아이콘 16 · 14px`이다. */
 function Item({ item, active, collapsed = false }: { item: NavItem; active: boolean; collapsed?: boolean }) {
   const Icon = item.icon;
@@ -199,10 +211,16 @@ function Item({ item, active, collapsed = false }: { item: NavItem; active: bool
       */}
       <span className={cn("min-w-0 truncate", FADE, collapsed && "opacity-0")}>{item.label}</span>
       {/*
-        ⚠️ **0도 보인다** — `undefined`와 `0`이 다르다. 프로젝트가 없다는 사실은 그 자체로 정보이고,
-        `item.badge && …`로 쓰면 0이 falsy라 조용히 사라진다.
+        ⚠️ **개수는 0이면 서지 않는다** (2026-10-01 ux-drift-unify Q13 — 옛 규칙 "0도 보인다"의 철회). 같은 개수가 카드 머리에서는
+        0에 사라지고 여기서만 `0`으로 서서 한 화면 안에서 규칙이 둘이었다. 문자열 배지(버전)는 개수가 아니라 그대로다.
       */}
-      {item.badge !== undefined && (
+      {typeof item.badge === "number" ? (
+        <CountBadge
+          count={item.badge}
+          label={Object.hasOwn(COUNT_LABEL, item.key) ? COUNT_LABEL[item.key]!(item.badge) : String(item.badge)}
+          className={cn("ml-auto shrink-0", FADE, collapsed && "opacity-0")}
+        />
+      ) : item.badge !== undefined && (
         <Badge variant="neutral" className={cn("ml-auto shrink-0", FADE, collapsed && "opacity-0")}>
           {item.badge}
         </Badge>

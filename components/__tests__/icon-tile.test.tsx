@@ -23,6 +23,28 @@ describe("IconTile", () => {
     expect(container.firstElementChild?.className.split(" ")).toEqual(expect.arrayContaining(["size-10", "rounded-sm", "[&_svg]:size-5"]));
   });
 
+  /**
+   * **상태 칸의 색은 `tone`이 든다** (DESIGN §2.4 아이콘 칸 열 · ux-drift-unify T11) — 호출부가 초록·호박·빨강 문자열을 고르지 않는다.
+   * 기대값은 §2.4 표의 칸 열을 그대로 옮겼다. `muted`는 기본 회색 칸과 같다.
+   */
+  it.each([
+    ["success", "bg-green-100/80 text-green-800"],
+    ["muted", "bg-foreground/5 text-muted-foreground"],
+    ["warning", "bg-amber-100/80 text-amber-800"],
+    ["danger", "bg-destructive/8 text-destructive"],
+  ] as const)("tone %s → §2.4 칸 %s", async (tone, cell) => {
+    const classes = (await render(<IconTile tone={tone}><svg /></IconTile>)).container.firstElementChild?.className.split(" ") ?? [];
+    expect(classes).toEqual(expect.arrayContaining(cell.split(" ")));
+    // 기본 회색 면이 상태 색 옆에 남지 않는다 — 두 면이 한 칸에 서면 twMerge 순서에 기댄다.
+    if (tone !== "muted") expect(classes).not.toContain("bg-foreground/5");
+  });
+
+  it("tone이 없으면 muted 칸이다", async () => {
+    const plain = (await render(<IconTile><svg /></IconTile>)).container.firstElementChild?.className;
+    const muted = (await render(<IconTile tone="muted"><svg /></IconTile>)).container.firstElementChild?.className;
+    expect(plain).toBe(muted);
+  });
+
   it("회색 칸이 기본이고, 정보 색은 덮는다 — 기본 면이 남지 않는다", async () => {
     const plain = (await render(<IconTile><svg /></IconTile>)).container.firstElementChild?.className ?? "";
     expect(plain).toContain("bg-foreground/5");

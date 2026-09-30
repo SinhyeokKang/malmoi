@@ -845,6 +845,8 @@ export const en = {
 
     attention: {
       title: "Needs your attention",
+      /** 머리 개수 배지의 sr 문장 — 숫자는 `aria-hidden`이다(`CountBadge`). */
+      count: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "item" : "items"}`,
       /** `<summary>`의 라벨. **접힌 수만 말한다** — 전체 수는 머리의 pill이 든다. */
       more: (n: number): string => `+${n} more`,
       /**
@@ -2472,6 +2474,8 @@ export const en = {
      */
     publish: {
       button: "Publish",
+      /** 버튼·표면 선택기 안 개수 배지의 sr 문장 — 산문의 명사는 "unsent edit(s)"다(DESIGN §2.4). */
+      unsentCount: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "unsent edit" : "unsent edits"}`,
       viewResult: "View result",
       viewLink: "View pull request",
       nothing: "Everything you've edited is already sent.",
@@ -2790,6 +2794,10 @@ export const en = {
     /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
     screenLoading: "Loading sources",
     title: "Sources",
+    /** 머리·카드·트리의 개수 배지 sr 문장 — 숫자는 `aria-hidden`이다(`CountBadge`, ux-drift-unify Q13). */
+    count: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"}`,
+    /** Sources 상세 Languages 카드의 개수 배지 sr 문장. */
+    languageCount: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "language" : "languages"}`,
     /**
      * 관리하지 않는 항목 (B2 r3 · QA5 — ARCHITECTURE §1 "read 오류의 두 갈래"). **실패 문장이 아니다** — 코드의 식·참조라
      * 파일에 그대로 남고 번역을 잃지 않는다. Sync 결과 문장 뒤에 안내로만 붙는다.

@@ -16,8 +16,14 @@ vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectReposit
 const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, changedFiles: ["ko.json"] as string[], sendable: { total: 1, keys: 1 } };
 const PUBLISH_LIVE = '[aria-live="polite"]:not([data-footer-result])';
 const ok = (data: unknown) => ({ status: "ok", preview: data });
+/** 보이는 글자 — 개수 배지의 sr 문장(`CountBadge`)은 빼고 센다. 버튼 이름 `Publish1`은 보이는 라벨 + 숫자다. */
+function visible(node: Element): string {
+  const copy = node.cloneNode(true) as Element;
+  copy.querySelectorAll(".sr-only").forEach(sr => sr.remove());
+  return copy.textContent?.trim() ?? "";
+}
 function button(name: string) {
-  const node = [...document.querySelectorAll("button")].find(b => b.textContent?.trim() === name || b.getAttribute("aria-label") === name);
+  const node = [...document.querySelectorAll("button")].find(b => visible(b) === name || b.getAttribute("aria-label") === name);
   if (!node) throw new Error(`Missing ${name}`);
   return node;
 }

@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode, SVGProps } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { cn } from "@/lib/utils";
 import { IconTile } from "./icon-tile";
 
@@ -42,7 +42,7 @@ export function RowCard({
   titleId?: string;
   /**
    * 카운트 배지. ⚠️ **선택이다** (mcp-connector 핸드오프 §4) — `/mcp`의 토큰 카드는 셀 것이 없다(계정당 하나).
-   * 없으면 배지를 그리지 않는다. `/projects`·멤버는 그대로 넘기므로 동작이 안 바뀐다.
+   * 없으면 배지를 그리지 않는다. ⚠️ **0이어도 그리지 않는다**(2026-10-01 Q13 — `CountBadge`) — 대기 초대 0건의 카드 머리에 `0`이 서지 않는다.
    */
   count?: number;
   /**
@@ -86,12 +86,8 @@ export function RowCard({
           {title}
         </h2>
         {/* ⚠️ **배지가 `h2`의 바로 다음 형제여야 한다** — 두 렌더 테스트가 `h2 + span`으로 집는다. */}
-        {count !== undefined && (
-          <Badge variant="neutral">
-            <span aria-hidden>{count}</span>
-            <span className="sr-only">{countLabel}</span>
-          </Badge>
-        )}
+        {/* 0이면 서지 않는다 — `CountBadge`가 든다(Q13). */}
+        {count !== undefined && <CountBadge count={count} label={countLabel ?? ""} />}
         {description !== undefined && (
           <span className="text-muted-foreground ml-auto truncate text-xs">{description}</span>
         )}

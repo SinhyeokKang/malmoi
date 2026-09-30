@@ -3,7 +3,7 @@
 import { PanelLeftOpen } from "lucide-react";
 import { memo, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode, type Ref } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
 import { ListItemButton } from "@/components/ui/list-item";
 import type { TranslationListRow } from "@/lib/keys/translation-list";
@@ -91,7 +91,7 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
           </Button>
         )}
         <h2 id={headingId} ref={titleRef} tabIndex={-1} className="text-base font-medium">{title}</h2>
-        <Badge variant="neutral">{count.toLocaleString("en-US")}</Badge>
+        <CountBadge count={count} label={m.translations.keys(count)} />
         {treeButton !== undefined && <span className="min-w-0 truncate">{treeButton.breadcrumb}</span>}
         <span className="text-muted-foreground ml-auto shrink-0 text-xs">
           {savedExtra > 0 && <>{w.savedExtra(savedExtra)} · </>}{w.incompleteFirst}

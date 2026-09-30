@@ -98,7 +98,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         {importResult && <div role="status" className="border-divider text-base border-t px-4 py-[13px]">{importResult.text}</div>}
         <div className="border-divider flex items-center gap-3 border-t px-4 py-[13px]">
           {/* 칸 톤은 상태 톤이다(2026-09-30 통일): 성공 초록 · 일부 반영 호박 · 실패 빨강 · 진행·미적재 무색. */}
-          <IconTile className={statusPartial ? "bg-amber-100/80 text-amber-800" : statusFailed ? "bg-destructive/8 text-destructive" : importStatus?.state === "imported" ? "bg-green-100/80 text-green-800" : undefined}>
+          <IconTile tone={statusPartial ? "warning" : statusFailed ? "danger" : importStatus?.state === "imported" ? "success" : "muted"}>
             {statusFailed ? <CircleAlert aria-hidden />
               : importStatus?.state === "importing" ? <span aria-hidden className="border-foreground/15 border-t-muted-foreground size-3.5 animate-spin rounded-full border-2 [animation-duration:0.7s]" />
               : importStatus?.state === "not-imported" ? <Clock aria-hidden />
@@ -141,7 +141,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         </div>}
         </div>
       </PanelCard>
-      <PanelCard title={m.sources.languages} badge={<Badge variant="neutral">{detail.locales}</Badge>} subtitle={m.sources.languagesHelp}>
+      <PanelCard title={m.sources.languages} count={detail.locales} countLabel={m.sources.languageCount(detail.locales)} subtitle={m.sources.languagesHelp}>
         {detail.languages.length === 0 ? <p className="text-muted-foreground border-divider border-t px-4 py-[13px] text-xs">{m.locales.empty.description}</p>
           : <ul>{detail.languages.map((row, index) => {
           // 집계 두 쿼리 사이 적재가 바뀌어도 막대 합은 트랙을 넘지 않는다. 퍼센트는 완료만 센다.

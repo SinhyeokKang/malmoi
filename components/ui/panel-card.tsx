@@ -2,19 +2,27 @@
 
 import { useId, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { IconTile } from "./icon-tile";
 
 /** Shared account and project settings card. Header and row dividers have distinct roles. */
 export function PanelCard({
   title,
   badge,
+  count,
+  countLabel,
   subtitle,
   notice,
   children,
 }: {
   title?: ReactNode;
-  /** 헤더 제목 옆 카운트 배지 — **수단 카드에만** 있다(세는 값이 그 카드에만 있다). */
+  /**
+   * 헤더 제목 옆 배지 — **개수가 아닌 값**만 여기다(대기 수 `Waiting to apply` · 로그인 수단 `x of y`). 개수는 `count`다.
+   */
   badge?: ReactNode;
+  /** 헤더 제목 옆 개수 — `CountBadge`(0이면 서지 않는다 · 숫자 `aria-hidden` + `countLabel` 문장, 2026-10-01 Q13). */
+  count?: number;
+  countLabel?: string;
   /**
    * 헤더 오른쪽 한 줄. ⚠️ **제목 아래로 쌓지 않는다** — 머리 높이가 카드마다 달라져 행 시작선이
    * 어긋난다. 이 화면에는 툴바가 없어 그 자리가 비어 있었다.
@@ -40,6 +48,7 @@ export function PanelCard({
       {/* 머리는 한 줄이다 — 제목·배지가 왼쪽, 설명이 `ml-auto`로 툴바 자리에 선다. */}
       {title !== undefined && <header className={`border-divider flex min-h-12 flex-wrap items-center gap-2 px-4 py-3 ${notice === undefined ? "border-b" : ""}`}>
         <h2 id={titleId} className="text-base font-medium tracking-[0.015em]">{title}</h2>
+        {count !== undefined && <CountBadge count={count} label={countLabel ?? ""} />}
         {badge}
         {subtitle !== undefined && <div className="text-muted-foreground ml-auto @max-[640px]:ml-0 @max-[640px]:w-full text-xs tracking-[0.02em]">{subtitle}</div>}
       </header>}

@@ -3,7 +3,7 @@
 import { ChevronDown, ChevronRight, FileJson2, Folder, Layers, Search } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { Input } from "@/components/ui/input";
 import { ListItemButton } from "@/components/ui/list-item";
 import type { TranslationTree } from "@/lib/keys/translation-list";
@@ -44,7 +44,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, onSelect, class
     <div className={cn("flex min-h-0 flex-col", className)} style={width === undefined ? undefined : { width }}>
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         <h2 className="text-base font-medium">{m.translations.workspace.tree.title}</h2>
-        <Badge variant="neutral">{tree.surfaces.length}</Badge>
+        <CountBadge count={tree.surfaces.length} label={m.sources.count(tree.surfaces.length)} />
       </div>
       <div className="border-divider flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto border-t p-2">
         {namespaceCount >= FILTER_AT && (

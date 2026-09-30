@@ -8,7 +8,7 @@ import { runFirstIngest } from "@/app/(edit)/projects/actions";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { PanelCard } from "@/components/ui/panel-card";
-import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
 import { neighbourFocus } from "@/components/ui/focus";
 import { failureText } from "@/components/onboarding/failure";
@@ -68,14 +68,14 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
         이름 없는 질의는 카드를 잡는다 — `/panel`이 그 갈림을 막는다. */}
     <PanelHeader><div className="flex items-center gap-3">
       <span className="flex items-center gap-2"><h1 ref={heading} id="sources-heading" tabIndex={-1} className="text-lg font-medium">{m.sources.title}</h1>
-        {/* 시안 `1f` — 개수 배지는 0을 그리지 않는다. */}
-        {data.sources.length > 0 && <Badge variant="neutral">{data.sources.length}</Badge>}</span>
+        {/* 시안 `1f` — 개수 배지는 0을 그리지 않는다(`CountBadge`). */}
+        <CountBadge count={data.sources.length} label={m.sources.count(data.sources.length)} /></span>
       {/* ⚠️ `min-w-0`이 없으면 flex 자식의 최소 크기가 min-content라 이 문장이 좁은 폭에서 [Add source]를 민다.
           1016 이하에서는 시안이 이 줄을 **버린다** — 버리는 순서의 첫째다. */}
       {canEdit && <Button ref={trigger} variant="primary" className="ml-auto" onClick={() => setAdding(true)}><Plus className="size-3.5" aria-hidden />{m.sources.add}</Button>}
     </div></PanelHeader>
     <PanelBody className="space-y-4">
-      <PanelCard title={m.sources.title} badge={data.sources.length > 0 ? <Badge variant="neutral">{data.sources.length}</Badge> : undefined}
+      <PanelCard title={m.sources.title} count={data.sources.length} countLabel={m.sources.count(data.sources.length)}
         subtitle={data.repository ? <span className="flex items-center gap-1.5"><GithubIcon className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}>
         {/* ⚠️ **추가 결과는 카드의 첫 행이다** (시안 `1i`) — 토스트도, 카드 밖 Alert도 아니다. 적재가
             토스트보다 오래 걸리고, 닫는 것은 사람이다. */}
@@ -108,7 +108,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
               <Button variant="ghost" type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="hover:bg-foreground/2 disabled:bg-foreground/3 h-auto min-w-0 flex-1 justify-start gap-3 whitespace-normal rounded-none px-4 py-[13px] text-left focus-visible:ring-inset @max-[1016px]/panel:items-start" onClick={event => {
                 returnFocus.current = event.currentTarget; selection.current = source.slug; setSelected(source.slug); void load(source.slug, false);
               }}>
-                <IconTile data-source-glyph data-tone={failed ? "failed" : "default"} className={failed ? "bg-destructive/8 text-destructive" : undefined}><Glyph className="size-4" aria-hidden /></IconTile>
+                <IconTile data-source-glyph data-tone={failed ? "failed" : "default"} tone={failed ? "danger" : "muted"}><Glyph className="size-4" aria-hidden /></IconTile>
                 <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-foreground text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
                   {/* ⚠️ 경로가 sans다 — mono는 `<pre>` 코드 블록 전용이다 (DESIGN §4.1, 2026-09-23). `text-xs`가 13px라 옛 `text-mono`와 크기는 같다. */}
                   {/* 경로 앞 `Folder` 14 — `/projects` 행 메타의 리포 앞 GitHub 로고와 같은 패턴이다(2026-09-30 사용자). 색은 글자를 상속한다. */}

@@ -83,7 +83,8 @@ it("소스가 둘 이상이면 필터로 한 소스만 남아도 접두가 유�
 it("머리 배지는 원본 활성 소스 수다 — 조건이 트리를 좁혀도 같다", async () => {
   const base = props({ tree: TREE2 });
   const { container } = await render(<TranslationWorkspace {...base} query={{ ...base.query, q: "k1" }} list={withList(base, [rowOf("k1", "web", "common")])} />);
-  expect(treePanel(container).querySelector("h2")?.nextElementSibling?.textContent).toBe("2");
+  // 숫자는 `aria-hidden`이고 sr 문장이 짝이다(`CountBadge`).
+  expect(treePanel(container).querySelector("h2")?.nextElementSibling?.querySelector("[aria-hidden]")?.textContent).toBe("2");
 });
 
 it("조건이 켜지면 일치 0인 노드를 숨기고, 위치 소스는 0이어도 흐린 행으로 남는다 (조건 2·6)", async () => {

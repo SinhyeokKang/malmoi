@@ -22,6 +22,7 @@ import { NewProjectButton } from "@/components/projects/new-project-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { BannerLine, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
 import { canPerform } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -142,10 +143,7 @@ export function ProjectList({
               답한다. 좁혀진 수는 결과 카드의 카운트가 든다 (캔버스 `1c`: 배지 3 · 카드 1).
             */}
             {/* ⚠️ **카드 배지와 같은 처방이다** — 셋만 문장을 들면 같은 화면 두 줄 안에서 갈린다. */}
-            <Badge variant="neutral">
-              <span aria-hidden>{all.length}</span>
-              <span className="sr-only">{m.projects.count(all.length)}</span>
-            </Badge>
+            <CountBadge count={all.length} label={m.projects.count(all.length)} />
           </div>
           {/*
             ⚠️ **프로젝트가 하나도 없으면 검색·[New project]를 그리지 않는다** (캔버스 `1b`).

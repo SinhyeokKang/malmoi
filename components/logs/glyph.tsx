@@ -14,6 +14,7 @@ import {
 
 import { IconTile, type IconTileSize } from "@/components/ui/icon-tile";
 import type { GlyphIcon, GlyphTone } from "@/lib/events/view";
+import type { StateTone } from "@/lib/status/canon";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,17 +23,18 @@ import { cn } from "@/lib/utils";
  * ⚠️ **색이 보조다.** 결과는 결과 열의 낱말이, 종류는 문장이 말한다 — 칩만으로 성립하는 정보는
  * 싣지 않았다. 그래서 `aria-hidden`이다.
  *
- * ⚠️ **팔레트 클래스를 쓰고 임의 hex를 쓰지 않는다** (DESIGN §6.2). 시안의 여덟 쌍이 Tailwind
- * 기본 팔레트와 정확히 같은 값이라 새 raw 색을 늘리지 않고 그대로 선다 — 등재는 DESIGN §6.2다.
+ * ⚠️ **결과 색은 §2.4 아이콘 칸이다** (D3③ · 2026-10-01 ux-drift-unify) — 초록·호박·빨강·회색은 `IconTile tone`이 들고 이 파일은
+ * 색 문자열을 들지 않는다(옛 emerald·amber-50·slate 칸은 같은 상태가 Sources·Home 칸과 갈렸다). Logs 성공이 회색인 것은
+ * `logsResultTone`이 정한다. **별도 축은 종류 색 셋(파랑·청록·보라)뿐**이고 그것만 여기서 덮는다 — 설정 종류의 slate도 회색 칸이다.
  */
-const TONE: Readonly<Record<GlyphTone, string>> = {
-  green: "bg-emerald-50 text-emerald-700",
-  amber: "bg-amber-50 text-amber-700",
-  red: "bg-destructive/8 text-destructive",
-  slate: "bg-slate-100 text-slate-600",
-  blue: "bg-blue-50 text-blue-700",
-  teal: "bg-teal-50 text-teal-700",
-  purple: "bg-violet-50 text-violet-700",
+const TONE: Readonly<Record<GlyphTone, { tone: StateTone } | { className: string }>> = {
+  green: { tone: "success" },
+  amber: { tone: "warning" },
+  red: { tone: "danger" },
+  slate: { tone: "muted" },
+  blue: { className: "bg-blue-50 text-blue-700" },
+  teal: { className: "bg-teal-50 text-teal-700" },
+  purple: { className: "bg-violet-50 text-violet-700" },
 };
 
 /** ⚠️ **`Record`라 아이콘 이름이 늘면 여기서 컴파일이 걸린다** — 조용히 빈 칸이 되지 않는다. */
@@ -55,8 +57,9 @@ const ICON: Readonly<Record<GlyphIcon, LucideIcon>> = {
  */
 export function EventGlyph({ icon, tone, size = "sm", className }: { icon: GlyphIcon; tone: GlyphTone; size?: IconTileSize; className?: string }) {
   const Icon = ICON[icon];
+  const face = TONE[tone];
   return (
-    <IconTile aria-hidden size={size} className={cn(TONE[tone], className)}>
+    <IconTile aria-hidden size={size} tone={"tone" in face ? face.tone : undefined} className={cn("className" in face && face.className, className)}>
       <Icon />
     </IconTile>
   );

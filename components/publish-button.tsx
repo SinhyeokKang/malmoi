@@ -10,6 +10,7 @@ import { useCommitWait } from "@/components/commit-wait";
 import { loadPublishPreview } from "@/app/(edit)/publish-actions";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OnboardingModal } from "@/components/ui/modal";
@@ -131,7 +132,8 @@ export function PublishButton({ id, count, publish, disabled = false }: { id?: s
         onClick={event => { if (plan.disabled) return; publish.triggerRef.current = event.currentTarget; publish.launch(); }}>
         {publish.pending ? <LoaderCircle className="animate-spin" aria-hidden /> : <Send aria-hidden />}
         {m.translations.publish.button}
-        {plan.badge !== null && <span className="bg-background/20 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-2xs">{plan.badge.toLocaleString("en-US")}</span>}
+        {/* 어두운 면 위라 면·글자를 그 면에 맞춰 덮는다 — 개수 규칙(0이면 없음 · sr 문장)은 `CountBadge`가 든다. */}
+        {plan.badge !== null && <CountBadge count={plan.badge} label={p.unsentCount(plan.badge)} className="bg-background/20 text-current" />}
       </Button>
       {plan.disabled && plan.hint && <span id={reasonId} className="sr-only">{plan.hint}</span>}
     </span>

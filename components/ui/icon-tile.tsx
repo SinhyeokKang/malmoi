@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 
+import type { StateTone } from "@/lib/status/canon";
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,9 +12,17 @@ import { cn } from "@/lib/utils";
  * ⚠️ **글리프 크기를 칸이 정한다**(`[&_svg]:size-*`) — 호출부가 준 `size-4`보다 명시도가 높아 `lg` 안에서도 20이 된다. 그래서 규격이
  * 바뀌어도 호출부를 돌지 않는다. 국기처럼 svg가 아닌 내용물은 건드리지 않는다.
  *
- * 면·글자색 기본은 `bg-foreground/5 text-muted-foreground`이고 **정보를 싣는 색만 덮는다**(`className`) — Logs 사건 색 · 실패 빨강 ·
- * 주의 호박 · 온보딩 후보의 선택 면. 회색 칸의 글자색은 이 기본 하나다(옛 상속·`neutral-600`·muted 셋이 섞였다).
+ * **상태 칸의 색은 `tone`이 든다** (DESIGN §2.4 아이콘 칸 열 · 2026-10-01 ux-drift-unify) — 성공 초록 · 경고 호박 · 실패 빨강 · 그 밖 회색.
+ * 호출부가 색 문자열을 고르면 같은 실패가 화면마다 다른 칸이 됐다(Logs 칩 emerald · Sources green · Home 호박 실패). `className`은
+ * **상태가 아닌 면**만 덮는다 — Logs 종류 색(파랑·청록·보라) · 온보딩 후보의 선택 면·`bg-muted`. 회색 칸의 글자색은 기본 하나다.
  */
+const TONE: Readonly<Record<StateTone, string>> = {
+  success: "bg-green-100/80 text-green-800",
+  muted: "bg-foreground/5 text-muted-foreground",
+  warning: "bg-amber-100/80 text-amber-800",
+  danger: "bg-destructive/8 text-destructive",
+};
+
 const SIZE = {
   sm: "size-7 rounded [&_svg]:size-4",
   lg: "size-10 rounded-sm [&_svg]:size-5",
@@ -22,6 +31,6 @@ const SIZE = {
 export type IconTileSize = keyof typeof SIZE;
 
 /** 나머지 속성(`data-*` 표식 등)은 칸 `<span>`에 그대로 선다. */
-export function IconTile({ size = "sm", className, ...props }: ComponentProps<"span"> & { size?: IconTileSize }) {
-  return <span className={cn("bg-foreground/5 text-muted-foreground flex shrink-0 items-center justify-center", SIZE[size], className)} {...props} />;
+export function IconTile({ size = "sm", tone = "muted", className, ...props }: ComponentProps<"span"> & { size?: IconTileSize; tone?: StateTone }) {
+  return <span className={cn("flex shrink-0 items-center justify-center", TONE[tone], SIZE[size], className)} {...props} />;
 }
