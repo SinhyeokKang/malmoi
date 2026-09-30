@@ -168,13 +168,13 @@
   뒤집는 테스트: `visual-system.test.ts:199,225`.
   검증 [자동]: `pnpm exec vitest run components/__tests__/logs-* components/__tests__/visual-system.test.ts` green.
 - **T22 Settings · Account · MCP · Members · 온보딩** — 3-Y10 나머지(확정 = 동사+목적어 — `members.remove`·`settings.account.disconnect`·`link.methods.disconnect`의 확정용 키, U4에서 넘어옴) · 🔴 L(MCP rotate 확정 `danger`, 트리거 "Rotate token") · 3-Y2(push rotate 트리거 `danger`) · 3-Y3(sessions → (a)) ·
-  3-Y6(CI "Close", 초대 모달 Cancel) · 3-Y7(Publish 재로그인 새 탭) · 3-Y9(`ExternalLink` 제거 — `repository-card.tsx:4` 한 곳) · 3-⚪12(내부 `<a>` → `ButtonLink`) · 3-⚪14(Retry `primary lg w-full`) ·
+  3-Y6(CI "Close", 초대 모달 Cancel) · 3-Y7(Publish 재로그인 새 탭) · 3-Y9(`ExternalLink` 제거 — `repository-card.tsx:4` 한 곳) · 3-⚪14(Retry `primary lg w-full`) ·
   3-⚪17(sessions `busy`) · 3-Y8(Q4: `/account` 로그아웃 Dialog 제거, "Sign out everywhere"는 유지) · 1-Y15(Repository 칸 tone) · 4-Y12(CI 행 hover) · 4-Y13(초대 띠 indent) · 4-Y22(사실 라벨 muted) · 5-Y10(MCP 로드 실패 → `Alert inset danger`) ·
   5-Y13(push 토큰 칸 — 온보딩·설정 한 형) · 5-W1(필드 오류 줄 — `FormGroup`의 줄을 떼어 넷이 공유) · 2-Y19(보관 `utcDay`, 방침 개정 이력 `utcDay`, 가입 `utcMonth` 신규 in `lib/utc-time.ts`) ·
   2-Y18(`repo.tsx:174-175` placeholder `…` + label 분리 — 번역 트리는 비목표) · 2-W9(`files.tsx:564,574` 리터럴 → 사전) — T16에서 옮김.
   뒤집는 테스트: `account/__tests__/structure.test.tsx:299-333`.
   검증 [자동]: `pnpm exec vitest run components app lib/utc-time` green. [수동]: 로그아웃이 확인 없이 되고 "Sign out everywhere"는 확인 · sessions 폐기 뒤 포커스 복귀(POSTMORTEM 2026-09-20·24).
-- **T23 앱 셸 · 공통** — 4-Y24(project-archived 화면 — 출구 낱말을 T17과 하나로) · 4-Y18(`app/(edit)/error.tsx` = Logs 경계 형) · 4-W6(404 아이콘) · 4-Y17(`account/loading.tsx` 낭독 줄) · 4-W7·1-W7·2-W10(낡은 주석) ·
+- **T23 앱 셸 · 공통** — 3-⚪12(`publish-button.tsx:434,593` 내부 `<a>` → `ButtonLink` — T22에서 옮김, 파일 소유) · 4-Y24(project-archived 화면 — 출구 낱말을 T17과 하나로) · 4-Y18(`app/(edit)/error.tsx` = Logs 경계 형) · 4-W6(404 아이콘) · 4-Y17(`account/loading.tsx` 낭독 줄) · 4-W7·1-W7·2-W10(낡은 주석) ·
   4-W3(행 padding `py-[13px]`) · 4-W4·5-Y8(hover·선 철자 하나) · 4-W8(px 골격 → `SkeletonLine`) · 5-W2(`RotateCcw` = Clear filters만, Retry·재발급 글리프 정리) · 4-W2(Publish 경고 카드 radius·개수 배지) ·
   5-Y16·1-Y5(Q10: Publish 결과 `Notice` → `Alert` success·neutral·warning, 일부 보류 글리프에 톤) · IconTile 색 덮기 잔여(`onboarding/steps/{naming:256,files:178,repo:247}` · `token-grant-fields.tsx:134,173,220` — 면 색은 T28 허용 목록).
   뒤집는 테스트: `projects-screen.test.ts:269,301` · `sidebar-selection.test.ts:27` · `public-shell.test.tsx:218`(hover — T19에서 옮김).
