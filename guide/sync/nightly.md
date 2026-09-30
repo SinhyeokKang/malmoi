@@ -19,7 +19,7 @@ Saved values that cannot be published stay in Malmoi. If your changes were not p
 If nothing is waiting to be published, the nightly run checks whether the branch Malmoi reads has new commits since Malmoi last read your sources.
 
 - No new commits and nothing failed last time: nothing is read and the event says **Up to date**. If a file failed to update, the nightly run tries again each night until it succeeds.
-- New commits: Malmoi reads the sources from the repository and updates the project, the same way a project owner's Sync does, but without discarding anything. On Home, **Last sync** then shows a **nightly** badge before the time.
+- New commits: Malmoi reads the sources from the repository and updates the project, the same way a project owner's Sync does, but without discarding anything. On Home, **Last sync** then starts with **Nightly sync**.
 
 If someone saves a translation while the nightly update is running, Malmoi stops before the next source so the new edit is not overwritten. The sources it already updated stay updated.
 
@@ -27,8 +27,8 @@ If someone saves a translation while the nightly update is running, Malmoi stops
 
 The nightly run holds the update — the project is not updated, and **Logs** shows **Held** with the reason — when:
 
-- A Malmoi pull request is still open. Its translations are not in the repository yet, so an update would overwrite them. Merge or close the pull request; the next nightly run picks up the changes. Home shows "held until the pull request is merged or closed" next to **Last sync**.
-- GitHub didn't answer whether that pull request is open. Malmoi does not guess; Home says it couldn't check for an open pull request, and the next run checks again.
+- A Malmoi pull request is still open. Its translations are not in the repository yet, so an update would overwrite them. Merge or close the pull request; the next nightly run picks up the changes. Home shows **Held** next to **Last sync**, and the To send card says why.
+- GitHub didn't answer whether that pull request is open. Malmoi does not guess; Home shows **Held**, and the next run checks again.
 - The change is too large for a server-side sync. Nightly updates use the same file budget as creating a project (see [Limits](../reference/limits.md#files)). Reduce the files' size, or deliver the change with the repository workflow.
 
 If the nightly run can't read the repository's branch, or GitHub doesn't answer in time, the event shows **Failed** in **Logs** instead of a hold. If the branch no longer exists, Home also shows the sync as failed until the next successful sync; if GitHub only failed to answer, Home is unchanged and the next run tries again. A project owner can check the branch and the GitHub connection in project **Settings**.

@@ -8,7 +8,7 @@ If your GitHub authorization expired, open **Account** and choose **Reauthorize 
 
 Project **Settings** shows the repository connection as a badge, and each badge has its own next step:
 
-- **Disconnected** — syncs and publishes stop until it's reconnected. Choose **Reconnect**.
+- **Disconnected** — syncs and publishes stop until it's reconnected. Choose **Reconnect**. If the app was removed, the card also shows an **Install the app** link: install it, then come back and reconnect.
 - **Not connected** — no installation is connected yet. Choose **Connect**.
 - **Wrong repository** — the address now holds a different repository. There is no button: check it on GitHub, and if the repository really was replaced, create a new project for it.
 - **Couldn't check** — Malmoi can't check the connection right now. Reopen the page before changing anything.

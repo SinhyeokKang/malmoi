@@ -56,15 +56,12 @@ export function shotDictKeys(rows: readonly ShotRecord[]): string[] {
   return [...new Set(rows.flatMap((row) => split(row.sources).filter(isDictSource).map((source) => source.slice(DICT.length)).filter(isKeyPath)))];
 }
 
-const isStringTree = (value: unknown): boolean =>
-  typeof value === "string" || (value !== null && typeof value === "object" && !Array.isArray(value) && Object.values(value).every(isStringTree));
-
 /**
- * 사전 키 값의 기준값 — 문자열이면 그 문자열의 SHA-1, 문자열만 든 서브트리(메뉴 하나의 낱말들)면 그 JSON의 SHA-1이다.
- * 없는 키·함수·JSX가 섞인 값은 `null` — 호출자가 현재값에서 빼므로 `deleted`로 뜬다(기록한 낱말을 그 키에서 더는 못 찾는다).
+ * 사전 키 값의 기준값 — **문자열 잎만** 받고 그 문자열의 SHA-1이다. 컷에 보이는 낱말마다 키 한 행이다 — 서브트리를 받으면 사전의
+ * 키 순서만 바꿔도, aria 전용 형제(필터 축 이름)가 바뀌어도 stale로 떠 신호가 흐려진다(ux-drift-unify T26 r1).
+ * 없는 키·서브트리·함수·JSX는 `null` — 호출자가 현재값에서 빼므로 `deleted`로 뜬다(기록한 낱말을 그 키에서 더는 못 찾는다).
  *
  * ⚠️ 표의 키는 남이 적은 문자열이라 `Object.hasOwn`으로만 내려간다 — `constructor`가 함수로 찾아지면 안 된다.
- * ⚠️ 서브트리의 JSON은 사전의 키 순서를 따른다 — 순서만 바꿔도 stale로 뜨는데, 메뉴 순서도 화면이라 그게 맞다.
  */
 export function dictDigest(dict: unknown, path: string): string | null {
   if (!isKeyPath(path)) return null;
@@ -73,8 +70,8 @@ export function dictDigest(dict: unknown, path: string): string | null {
     if (value === null || typeof value !== "object" || !Object.hasOwn(value, key)) return null;
     value = (value as Record<string, unknown>)[key];
   }
-  if (!isStringTree(value)) return null;
-  return createHash("sha1").update(typeof value === "string" ? value : JSON.stringify(value)).digest("hex");
+  if (typeof value !== "string") return null;
+  return createHash("sha1").update(value).digest("hex");
 }
 
 /**

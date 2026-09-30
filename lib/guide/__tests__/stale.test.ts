@@ -105,14 +105,12 @@ describe("dictDigest", () => {
     expect(dictDigest(dict, "home.held")).toBe(sha1("repository updates held"));
   });
 
-  it("문자열만 든 서브트리는 JSON의 SHA-1이다 — 메뉴 하나의 낱말 전부를 한 기준값으로 본다", () => {
-    expect(dictDigest(dict, "filters.state")).toBe(sha1(JSON.stringify({ any: "Any state", unsent: "Unsent" })));
+  it("낱말이 바뀌면 기준값이 바뀐다", () => {
+    expect(dictDigest({ filters: { state: { unsent: "Not sent" } } }, "filters.state.unsent")).not.toBe(dictDigest(dict, "filters.state.unsent"));
   });
 
-  it("낱말 하나만 바뀌어도 기준값이 바뀐다", () => {
-    const before = dictDigest({ filters: { state: { any: "Any state", unsent: "Not sent" } } }, "filters.state");
-    expect(before).not.toBeNull();
-    expect(before).not.toBe(dictDigest(dict, "filters.state"));
+  it("서브트리는 null이다 — 잎 키만 받아 키 순서 변경·aria 전용 형제가 기준값을 흔들지 않는다", () => {
+    expect(dictDigest(dict, "filters.state")).toBeNull();
   });
 
   it.each(["home.missing", "home.count", "filters.mixed", "home.held.length", "constructor", "home.toString", "__proto__"])("없는 키·함수·문자열 밖 값 %s는 null이다", (path) => {

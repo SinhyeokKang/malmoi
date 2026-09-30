@@ -81,7 +81,7 @@
 
 `소스`는 그 화면을 그리는 리포 경로를 쉼표로 가른다. `blob`은 소스마다 `git hash-object <경로>` — **`소스`와 같은 순서, 같은 개수**다. `치수`는 파일의 실제 `WxH`이고 게이트가 파일과 대조하며 렌더러가 `width`·`height`로 쓴다. 외부(GitHub) 화면은 그 화면에 들어가는 값을 만드는 파일을 소스로 삼는다.
 
-- `messages/en.tsx`는 소스로 올리지 않는다 — 모든 컷이 사전 수정마다 stale이 되어 신호가 죽는다. **컷의 요지인 낱말은 사전 키를 소스로 올린다**: `dict:<키 경로>`(예: `dict:translations.workspace.filters.state`), `blob` 칸은 **찍힌 낱말**의 SHA-1이다 — 문자열 키는 그 문자열, 문자열만 든 서브트리는 사전 순서 그대로의 `JSON.stringify`. 새로 찍을 때는 그 값을 `dictDigest`(`lib/guide/stale.ts`)로 다시 잰다. 키 행이 없는 컷의 라벨을 바꿨으면 그 라벨이 보이는 컷을 손으로 고른다.
+- `messages/en.tsx`는 소스로 올리지 않는다 — 모든 컷이 사전 수정마다 stale이 되어 신호가 죽는다. **컷의 요지인 낱말은 사전 키를 소스로 올린다**: `dict:<키 경로>`(예: `dict:translations.workspace.filters.state.unsent`), `blob` 칸은 **찍힌 낱말**(그 문자열)의 SHA-1이다. **보이는 문자열 잎만** 올린다 — 서브트리는 받지 않고, aria 전용 키(필터 축 이름)는 컷에 안 보이니 올리지 않는다. 새로 찍을 때는 그 값을 `dictDigest`(`lib/guide/stale.ts`)로 다시 잰다. 키 행이 없는 컷의 라벨을 바꿨으면 그 라벨이 보이는 컷을 손으로 고른다.
 
 | 에셋 | 소스 | blob | 치수 |
 | --- | --- | --- | --- |
@@ -97,7 +97,7 @@
 | /guide/add-sources.webp | components/sources/add-sources-modal.tsx | a5d967e4ae6d9c0ea5e6490d959f5bd8fb3539af | 2560x1600 |
 | /guide/archive-card.webp | components/settings/archive-card.tsx | b16198f250b8322cffa1938286fb2814189851c3 | 2560x1600 |
 | /guide/accept-invitation.webp | app/invite/[token]/page.tsx, components/invite/project-card.tsx, components/signin/auth-layout.tsx | f52c60923f6a8391492807fdf92bb8b473164029, f04bd2df388d5f046ad05818553e51c39fd45376, 707e072f943e340d3d4fb9b389ecb39f75d67eb2 | 2560x1600 |
-| /guide/state-filter.webp | components/translations/workspace/filter-menu.tsx, dict:translations.workspace.filters.state | 8122e89e1cd4f89a9de260f4d4eb875822d168dd, 7861f91318dab7e68f722857e2961369d405766e | 2560x1600 |
+| /guide/state-filter.webp | components/translations/workspace/filter-menu.tsx, dict:translations.workspace.filters.state.any, dict:translations.workspace.filters.state.unsent, dict:translations.workspace.filters.state.review, dict:translations.workspace.filters.state.new | 8122e89e1cd4f89a9de260f4d4eb875822d168dd, c7274cb43067637368cb3c704ecbb7895c5ae845, 587c501eb4069b3a59c57ceec50534b82deec57e, 33a506cf6ec5a56c261838f0a5a3d29cd7f2dacc, 56539cd31aeb7453fb2900c2952b988146fd6127 | 2560x1600 |
 | /guide/home-publish.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, components/publish-button.tsx | 5d062707f1ec591a4acdd7437f5f20093c9766b2, cd1ba61b1b8896bbb609c8abe427d58e48205709, 5da54cab3106be7df63d6093f2d28c42f2b643d5 | 2560x1600 |
 | /guide/publish-result.webp | components/publish-button.tsx | 5da54cab3106be7df63d6093f2d28c42f2b643d5 | 2560x1600 |
 | /guide/home-paused.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, dict:home.cards.repositoryUpdatesHeld | 5d062707f1ec591a4acdd7437f5f20093c9766b2, cd1ba61b1b8896bbb609c8abe427d58e48205709, 80ab385ad53054c5819ef24d273e387217757eb4 | 2560x1600 |
