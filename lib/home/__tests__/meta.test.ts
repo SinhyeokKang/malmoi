@@ -20,15 +20,14 @@ const base = {
   members: 4,
   lastSyncAt: at("2026-09-14T00:00:00Z"),
   lastImportFailedAt: null,
+  lastImportError: null,
   lastPublishedAt: at("2026-09-13T00:00:00Z"),
   lastPrUrl: "https://github.com/acme/web/pull/12",
   createdAt: at("2026-08-01T00:00:00Z"),
   archivedAt: null,
   triggers: { sync: null, publish: null },
-  // 보류 판정의 입력 — 게이트와 같다(ux-drift-unify Q6). 마지막 사건이 아니라 지금의 판정이다.
-  pending: 0,
-  openPr: null,
-  gateApplies: true,
+  // 지금의 보류 사유 — 호출부의 `planHomeHold` 결론이다(ux-drift-unify Q6). 마지막 사건이 아니다.
+  held: null,
 };
 
 const kinds = (input: Parameters<typeof metaRows>[0]) => metaRows(input).map((r) => r.kind);
@@ -90,11 +89,17 @@ describe("metaRows — 상태가 행을 바꾼다", () => {
   });
 
   it("Sync 실패면 마지막 Sync 행이 값 둘을 든다 — 성공 시각과 실패 시각", () => {
-    const failed = { ...base, state: "import_failed" as const, lastImportFailedAt: at("2026-09-15T09:00:00Z") };
+    const failed = { ...base, state: "import_failed" as const, lastImportFailedAt: at("2026-09-15T09:00:00Z"), lastImportError: "import-failed" as const };
     expect(row(failed, "lastSync")).toEqual({
-      kind: "lastSync", at: at("2026-09-14T00:00:00Z"), failedAt: at("2026-09-15T09:00:00Z"), trigger: null, held: null,
+      kind: "lastSync", at: at("2026-09-14T00:00:00Z"), failed: { at: at("2026-09-15T09:00:00Z"), state: "syncFailed" }, trigger: null, held: null,
     });
-    expect(row(base, "lastSync")).toEqual({ kind: "lastSync", at: at("2026-09-14T00:00:00Z"), failedAt: null, trigger: null, held: null });
+    expect(row(base, "lastSync")).toEqual({ kind: "lastSync", at: at("2026-09-14T00:00:00Z"), failed: null, trigger: null, held: null });
+  });
+
+  /** 🔴 A2 — 일부 반영은 데이터가 들어간 적재다. 메타 열이 그것을 "failed"로 말하지 않는다(DESIGN §2.4). */
+  it("일부 반영이면 실패가 아니라 partiallySynced다", () => {
+    const partial = { ...base, state: "import_failed" as const, lastImportFailedAt: at("2026-09-15T09:00:00Z"), lastImportError: "partial-import" as const };
+    expect(row(partial, "lastSync")).toMatchObject({ failed: { at: at("2026-09-15T09:00:00Z"), state: "partiallySynced" } });
   });
 
   /**
@@ -172,31 +177,19 @@ describe("homeTriggers — 사건 → 주체", () => {
   });
 
   it("주체와 보류가 메타 행에 실린다", () => {
-    const rows = metaRows({ ...base, triggers: { sync: "nightly", publish: "ci" }, openPr: "https://github.com/acme/web/pull/12" });
+    const rows = metaRows({ ...base, triggers: { sync: "nightly", publish: "ci" }, held: "open-pr" });
     expect(rows.find((r) => r.kind === "lastSync")).toMatchObject({ trigger: "nightly", held: "open-pr" });
     expect(rows.find((r) => r.kind === "lastPublish")).toMatchObject({ trigger: "ci" });
   });
 });
 
 /**
- * **보류는 지금의 판정이다** (ux-drift-unify Q6 · 6-Y10) — 게이트와 같은 입력(미전달 수 · 열린 PR 삼상태)의 `planHoldNotice`.
- * 마지막 사건으로 판정하던 때는 PR이 닫혀도 옛 보류가 남을 수 있었고, 조회 실패(게이트 fail-closed)를 말할 자리가 없었다.
+ * **보류는 지금의 판정이다** (ux-drift-unify Q6 · 6-Y10) — 사유 셋이 그대로 실린다. 판정(게이트와 같은 입력 · 보관·끊김 → 없음)은
+ * `planHomeHold`(`cards.test.ts`)가 든다. 마지막 사건으로 판정하던 때는 PR이 닫혀도 옛 보류가 남을 수 있었다.
  */
-describe("metaRows — 보류 한 줄", () => {
-  const PR = "https://github.com/acme/web/pull/12";
-  const held = (input: Parameters<typeof metaRows>[0]) => {
-    const found = metaRows(input).find((r) => r.kind === "lastSync");
-    return found?.kind === "lastSync" ? found.held : "no-row";
-  };
-  it.each([
-    ["PR 열림", { openPr: PR }, "open-pr"],
-    ["PR 조회 실패", { openPr: undefined }, "pr-check-failed"],
-    ["편집 > 0", { pending: 3, openPr: PR }, "pending-edits"],
-    ["PR 없음", {}, null],
-    ["게이트가 서지 않는 프로젝트", { gateApplies: false, openPr: undefined }, null],
-    ["끊김", { state: "not_connected" as const, openPr: PR }, null],
-    ["보관", { state: "archived" as const, openPr: PR, pending: 3 }, null],
-  ] as const)("%s → %s", (_label, over, expected) => {
-    expect(held({ ...base, ...over })).toBe(expected);
+describe("metaRows — 보류", () => {
+  it.each(["pending-edits", "open-pr", "pr-check-failed", null] as const)("%s가 Last sync 행에 실린다", (held) => {
+    const found = metaRows({ ...base, held }).find((r) => r.kind === "lastSync");
+    expect(found?.kind === "lastSync" ? found.held : "no-row").toBe(held);
   });
 });

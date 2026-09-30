@@ -2,7 +2,8 @@ import { ChevronRight, History } from "lucide-react";
 import Link from "next/link";
 
 import { EventRow } from "@/components/logs/event-row";
-import { EmptyState } from "@/components/ui/empty-state";
+import { PanelCard } from "@/components/ui/panel-card";
+import { EmptyRowCard } from "@/components/ui/row-card";
 import type { EventRow as Row } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
@@ -29,23 +30,24 @@ export function LogsCard({ rows, slug, now, archived, syncedBefore }: {
   syncedBefore: boolean;
 }) {
   return (
-    /* ⚠️ **접근 이름이 있어야 `region` 랜드마크다** — 없으면 `generic`으로 접힌다 (`attention-card` 주석). */
-    <section className="border-border flex flex-col overflow-hidden rounded-lg border" aria-labelledby="home-logs-title">
-      {/* 머리 아래 선은 머리가 긋는다(2026-10-01 4-Y1 — `PanelCard`와 한 규약) · 머리 gap은 카드 머리 한 벌이다(4-W1). */}
-      <h2 id="home-logs-title" className="border-divider flex min-h-12 shrink-0 items-center gap-2 border-b px-4 py-3 text-base font-medium">{m.home.logs.title}</h2>
-
+    /* 머리·머리 아래 선·접근 이름(`region`)은 `PanelCard`가 든다(5-Y12 — 손으로 복제한 머리가 셋이었다). */
+    <PanelCard title={m.home.logs.title}>
       {rows.length === 0 ? (
-        <EmptyState
-          className="px-4 py-8"
-          icon={History}
-          title={m.logs.empty.title}
-          description={syncedBefore ? m.logs.empty.description : m.home.logs.empty.beforeFirstSync}
-        />
+        /* 카드 안 0건은 `EmptyRowCard inset` 하나다(4-Y14). ⚠️ `-mt-px` — inset의 위 선과 머리 선을 한 줄로 겹친다(`attention-card`와 같다). */
+        <div className="-mt-px">
+          <EmptyRowCard
+            inset
+            icon={History}
+            title={m.logs.empty.title}
+            description={syncedBefore ? m.logs.empty.description : m.home.logs.empty.beforeFirstSync}
+          />
+        </div>
       ) : (
         <ul className="flex flex-col">
           {rows.map((row) => (
-            <li key={row.id} id={`event-${row.ref}`} tabIndex={-1} className="border-divider not-first:border-t">
-              {/* ⚠️ **시각 열이 없다** — 날짜 카드가 없으므로 오른쪽에 상대 시각이 서고 결과는 보조줄로 내려간다. */}
+            /* 선은 `RowCard` 규칙이다(4-Y4) — 머리↔첫 행은 머리 선, 행↔행은 `--border`. Logs 화면의 같은 행과 같은 색이다. */
+            <li key={row.id} id={`event-${row.ref}`} tabIndex={-1} className="border-border not-first:border-t">
+              {/* ⚠️ **시각 열이 없다** — 날짜 카드가 없으므로 오른쪽에 상대 시각이 서고, 결과 배지는 행 오른쪽 그 앞이다(D3⑤ · `event-row`). */}
               <EventRow row={row} href={routes.project(slug, { event: row.ref })} now={now} archived={archived} showTime={false} />
             </li>
           ))}
@@ -61,6 +63,6 @@ export function LogsCard({ rows, slug, now, archived, syncedBefore }: {
         {/* 화면 **안**으로 가는 이동은 전부 chevron이다 — 파랑은 바깥으로 나가는 것에만 남는다 (캔버스). */}
         <ChevronRight className="text-muted-foreground size-4" aria-hidden />
       </Link>
-    </section>
+    </PanelCard>
   );
 }

@@ -40,7 +40,7 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
   });
 
   it("[C12] Home 발송 카드의 보류 보조 줄", () => {
-    expect(m.home.cards.repositoryUpdatesHeld).toBe("repository updates held");
+    expect(m.home.cards.held["pending-edits"]).toBe("repository updates held");
   });
 
   it("Publish의 수는 미리보기 제목이 든다", () => {

@@ -96,7 +96,7 @@ const REGISTERED: Record<string, string[]> = {
   // 2026-09-30 상태 통일 — 호박 면·글자는 "손봐야 할 것"의 한 벌이다(배지 · 칸 · 행 띠 · 보류 글자).
   // 아이콘 칸의 호박·초록은 `IconTile tone` 하나가 든다(2026-10-01 ux-drift-unify T11 — 호출부 넷이 문자열을 들고 있었다).
   "bg-amber-100/80": ["components/ui/badge.tsx", "components/ui/icon-tile.tsx"],
-  "text-amber-800": ["components/home/meta-column.tsx", "components/ui/badge.tsx", "components/ui/icon-tile.tsx", "components/ui/row-card.tsx"],
+  "text-amber-800": ["components/ui/badge.tsx", "components/ui/icon-tile.tsx", "components/ui/row-card.tsx"],
   "bg-amber-50": ["components/ui/alert.tsx"],
   // Sources 상세 언어 행은 `MeterBar`를 공유한다(5-Y18 — 손 사본을 걷었다).
   "bg-amber-500": ["components/locale-meter.tsx"],

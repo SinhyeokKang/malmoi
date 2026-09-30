@@ -1,7 +1,9 @@
 import type { ConnectionHealth } from "@/lib/github-connect/health";
+import { importFailureTone } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import { failing } from "@/lib/projects/list";
 import type { SummaryQueue } from "@/lib/projects/list";
+import type { StateKey } from "@/lib/status/canon";
 
 /**
  * Home이 그리는 화면 갈래 (캔버스 `2a`~`2d` · DESIGN §6.64).
@@ -73,5 +75,29 @@ export function connectionProblem(status: ConnectionHealth["status"]): Connectio
   if (status === "not-connected") return "not-connected";
   if (status === "unpinned" || status === "app-uninstalled" || status === "installation-changed") return "disconnected";
   if (status === "repo-replaced") return "wrong-repository";
+  return null;
+}
+
+const PROBLEM_STATE = { "not-connected": "notConnected", disconnected: "disconnected", "wrong-repository": "wrongRepository" } as const satisfies Record<ConnectionProblem, StateKey>;
+
+/** 연결 갈래 → 상태 키 — Home 배너·메타 열 배지가 같은 낱말·톤을 쓴다(설정 카드와 같은 `STATE` 행). */
+export function connectionState(problem: ConnectionProblem): StateKey {
+  return PROBLEM_STATE[problem];
+}
+
+/** 적재 실패 코드 → 상태 키 — 일부 반영은 "실패"가 아니다(🔴 A2, DESIGN §2.4). Home 배너·메타 열이 같은 낱말을 쓰게 한 자리에서 가른다. */
+export function failureState(code: ImportFailureCode): "syncFailed" | "partiallySynced" {
+  return importFailureTone(code) === "danger" ? "syncFailed" : "partiallySynced";
+}
+
+/**
+ * **Home 배너가 말하는 상태 하나** (DESIGN §2.4) — `HomeNotices`가 이 키로 배너를 고르고, 교차 테스트(`lib/status/__tests__/cross-screen.test.ts`)가
+ * 목록 칩·Settings 배지와 같은 키인지 센다. 전에는 갈래가 컴포넌트 JSX에 있어 테스트가 사본을 들었다.
+ * @param failure 배너가 지목하는 표면의 실패 코드(`worstFailingSurface`) — `import_failed`에서만 읽는다.
+ */
+export function homeBannerState(input: { state: HomeState; problem: ConnectionProblem | null; failure: ImportFailureCode | null }): StateKey | null {
+  if (input.state === "archived") return "archived";
+  if (input.state === "not_connected") return input.problem === null ? null : connectionState(input.problem);
+  if (input.state === "import_failed") return input.failure === null ? null : failureState(input.failure);
   return null;
 }

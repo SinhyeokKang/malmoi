@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { repositoryConnectionState } from "@/components/settings/connection-state";
 import { planConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
-import { connectionProblem, planActionAvailability, planHomeState, type ConnectionProblem } from "@/lib/home/state";
+import { connectionProblem, homeBannerState, planActionAvailability, planHomeState, type ConnectionProblem } from "@/lib/home/state";
 import { m } from "@/lib/i18n";
 import { planRepositoryImport, type ImportPlanInput } from "@/lib/import/plan";
 import { planImportRefusal } from "@/lib/import/refusal";
@@ -29,17 +29,16 @@ import { STATE, type StateKey } from "../canon";
  * - 입력 축이 판정의 매개변수에 없다 — 아래 `RECEIVES`가 **타입으로** 고정한다(판정이 그 축을 받기 시작하면 컴파일이 red다).
  * - readiness가 먼저 막는다 — Home(`ProjectNotReady`)·적재 거부(`not-ready`)가 그 판정에 닿지 않는다.
  *
- * ⚠️ **화면 쪽 매핑(판정 결과 → 상태 키)은 여기 사본이다** — 칩 매핑(`components/projects/project-list.tsx`)·Home 배너 갈래
- * (`components/home/actions.tsx` `HomeNotices`)는 컴포넌트 안에 있고 순수 함수로 export되지 않는다. Settings 배지는 사본이 아니다 —
- * 컴포넌트가 쓰는 `repositoryConnectionState`(`components/settings/connection-state.ts`)를 그대로 지난다.
- * 사본이 낡지 않도록 칩 낱말은 컴포넌트와 같은 사전 키에서 읽어 `STATE` 낱말과 대조한다.
+ * ⚠️ **화면 쪽 매핑(판정 결과 → 상태 키)은 여기 사본이 남은 것이 있다** — 칩 매핑(`components/projects/project-list.tsx`)은 컴포넌트 안에 있다.
+ * Home 배너 갈래는 `HomeNotices`가 부르는 `homeBannerState`를(ux-drift-unify T18), Settings 배지는 컴포넌트가 쓰는
+ * `repositoryConnectionState`(`components/settings/connection-state.ts`)를 그대로 지난다. 사본이 낡지 않도록 칩 낱말은 컴포넌트와 같은 사전 키에서 읽어 `STATE` 낱말과 대조한다.
  */
 
 // ── 판정 묶음 — 카나리아가 한 판정만 바꿔 넣는다 ─────────────────────────────
 
 const REAL = {
   rowChip, rowBanner, worstFailingSurface,
-  planConnectionHealth, connectionProblem, planHomeState, planActionAvailability, planHoldNotice,
+  planConnectionHealth, connectionProblem, planHomeState, homeBannerState, planActionAvailability, planHoldNotice,
   planSurfaceImportStatus, planRepositoryImport, planProjectReadiness,
 };
 type Judgments = typeof REAL;
@@ -154,10 +153,8 @@ function observe(f: Fixture, J: Judgments): Observed {
     const counts = { newFromGithub: 0, toTranslate: 0, toReview: 0, toSend: f.pending };
     const state = J.planHomeState({ archived, connection: health, surfaces, counts });
     const worst = J.worstFailingSurface(surfaces);
-    const banner: StateKey | null = state === "archived" ? "archived"
-      : state === "not_connected" ? (problem === null ? null : PROBLEM_KEY[problem])
-      : state === "import_failed" ? (worst === null ? null : failureKey(worst.importError))
-      : null;
+    // 배너 갈래는 `HomeNotices`가 부르는 그 함수다(ux-drift-unify T18 — 전엔 여기 사본이었다).
+    const banner = J.homeBannerState({ state, problem, failure: worst === null ? null : worst.importError });
     const hold = J.planHoldNotice({
       pending: f.pending, openPr: f.openPr === undefined ? undefined : f.openPr?.url ?? null,
       gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected",

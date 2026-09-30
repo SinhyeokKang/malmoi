@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { connectionProblem, planActionAvailability, planHomeState } from "../state";
+import { connectionProblem, failureState, homeBannerState, planActionAvailability, planHomeState } from "../state";
 
 /**
  * Home의 여섯 화면(캔버스 `2a`~`2e`)이 **한 함수의 반환값 하나로** 갈린다 (DESIGN §6.64).
@@ -154,5 +154,30 @@ describe("planActionAvailability", () => {
         expect(planActionAvailability({ archived, connection: status }).sync).toBe(state !== "archived" && state !== "not_connected");
       }
     }
+  });
+});
+
+/**
+ * **Home 배너의 상태 키** (ux-drift-unify T18) — `HomeNotices`가 이 키로 배너를 고른다. 교차 테스트가 이 함수를 불러 목록 칩·Settings 배지와 대조한다.
+ * ⚠️ 일부 반영은 실패가 아니다(🔴 A2) — 같은 `import_failed` 상태에서도 코드가 톤을 가른다.
+ */
+describe("homeBannerState", () => {
+  it.each([
+    [{ state: "archived", problem: "disconnected", failure: "import-failed" }, "archived"],
+    [{ state: "not_connected", problem: "not-connected", failure: null }, "notConnected"],
+    [{ state: "not_connected", problem: "disconnected", failure: null }, "disconnected"],
+    [{ state: "not_connected", problem: "wrong-repository", failure: null }, "wrongRepository"],
+    [{ state: "import_failed", problem: null, failure: "import-failed" }, "syncFailed"],
+    [{ state: "import_failed", problem: null, failure: "partial-import" }, "partiallySynced"],
+    [{ state: "import_failed", problem: null, failure: null }, null],
+    [{ state: "default", problem: null, failure: null }, null],
+    [{ state: "empty", problem: null, failure: null }, null],
+  ] as const)("%o → %s", (input, expected) => {
+    expect(homeBannerState(input)).toBe(expected);
+  });
+
+  it("실패 코드 전부가 둘 중 하나로 간다 — 일부 반영만 partiallySynced다", () => {
+    expect(failureState("partial-import")).toBe("partiallySynced");
+    expect(failureState("parse-failed")).toBe("syncFailed");
   });
 });

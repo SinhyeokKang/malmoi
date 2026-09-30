@@ -1,6 +1,7 @@
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 /**
  * Home이 서버에서 오는 동안의 골격 (캔버스 `2e`).
@@ -103,19 +104,21 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
         {Array.from({ length: rows }, (_, i) => (
           <li
             key={i}
-            className={divided ? "border-divider flex items-center gap-3 border-t px-4 py-3.5" : "flex items-center gap-3 pb-4"}
+            // 선은 실물과 같은 `RowCard` 규칙이다(4-Y4) — 첫 줄이 머리 선(`--divider`), 행↔행은 `--border`.
+            className={divided ? cn("flex items-center gap-3 border-t px-4 py-3.5", i === 0 ? "border-divider" : "border-border") : "flex items-center gap-3 pb-4"}
           >
             {/* 두 카드 다 행 칸이 `IconTile sm`(28 · radius 4)이다 — Logs 카드의 옛 10 점은 실물(사건 칸 28)과 달라 도착 때 튀었다. */}
             <Skeleton className="size-7 shrink-0 rounded" />
             {/*
               ⚠️ **자리의 높이는 블록이 아니라 컨테이너가 든다** (2026-09-16 실측) — 블록을 두껍게
               키우면 행 높이는 맞아도 회색 덩어리가 글자보다 굵어진다. 할 일 행은 실물이 **두 줄**
-              (표면·로케일 13 + 문장 15)이라 42, 로그 행은 한 줄이라 22다. 전에는 둘 다 14로 서서
+              (문장 15 + 표면·로케일 13)이라 42, 로그 행은 한 줄이라 22다. 전에는 둘 다 14로 서서
               도착하는 순간 할 일이 행마다 ~15, 로그가 ~8.5 늘어났다.
             */}
             <span className={`flex min-w-0 flex-1 flex-col justify-center gap-1 ${divided ? "h-[42px]" : "h-[22px]"}`}>
-              {divided && <Skeleton className="h-[17px] w-[62%] rounded-md" />}
+              {/* 할 일 행은 문장(15)이 먼저고 표면·로케일(13)이 아래다 — 실물과 같은 순서(Q9). */}
               <Skeleton className="h-[21px] w-[72%] rounded-md" />
+              {divided && <Skeleton className="h-[17px] w-[62%] rounded-md" />}
             </span>
             <Skeleton className="ml-auto h-3 w-12 shrink-0 rounded-md" />
           </li>

@@ -1,8 +1,9 @@
 import { readPayload, type ActorKind, type EventKind } from "@/lib/events/payload";
 import { triggerOf, type Trigger } from "@/lib/events/view";
-import { planHoldNotice, type HoldReason } from "@/lib/protection/plan";
+import type { ImportFailureCode } from "@/lib/projects/import-status";
+import type { HoldReason } from "@/lib/protection/plan";
 
-import type { ConnectionProblem, HomeState } from "./state";
+import { failureState, type ConnectionProblem, type HomeState } from "./state";
 import type { SyncTime } from "./sync-time";
 
 /**
@@ -28,11 +29,15 @@ export type MetaRow =
   | { kind: "locales"; codes: readonly string[] }
   | { kind: "keys"; count: number }
   | { kind: "members"; count: number }
-  /** ⚠️ **`2b`에서 값이 둘이다** — `1d ago · failed 10m ago`. 뒤쪽이 `lastImportFailedAt`이다. */
+  /** ⚠️ **`2b`에서 값이 둘이다** — `1d ago · [Sync failed] 10m ago`. 뒤쪽이 `lastImportFailedAt`이다. */
   | {
       kind: "lastSync";
       at: Date | null;
-      failedAt: Date | null;
+      /**
+       * 마지막 적재의 실패 — 상태 키가 배지 낱말이다(4-W11 — 옛 붉은 `failed 10m ago` 글자). ⚠️ **일부 반영은 `partiallySynced`다**(🔴 A2) —
+       * 데이터가 들어간 적재를 "failed"로 말하지 않는다.
+       */
+      failed: { at: Date; state: "syncFailed" | "partiallySynced" } | null;
       /** 최근 성공 적재의 주체 (nightly-sync 14). 사건이 없으면(이력 도입 전) `null`이고 주체를 붙이지 않는다. */
       trigger: Trigger | null;
       /**
@@ -58,6 +63,8 @@ export function metaRows(input: {
   /** `"unrecorded"`면 행을 그리지 않는다 — 적재는 됐는데 시각이 없다. `Never`는 거짓이다 (malmoi#81). */
   lastSyncAt: SyncTime;
   lastImportFailedAt: Date | null;
+  /** 배너가 지목하는 표면의 실패 코드(`worstFailingSurface`) — 실패 배지의 낱말이 그것으로 갈린다. */
+  lastImportError: ImportFailureCode | null;
   lastPublishedAt: Date | null;
   lastPrUrl: string | null;
   createdAt: Date;
@@ -65,10 +72,11 @@ export function metaRows(input: {
   triggers: HomeTriggers;
   /** 미연결 갈래 — 배지 색·낱말이 셋으로 갈린다(2026-09-30 상태 통일). 없으면 `not-connected`로 읽는다. */
   connection?: ConnectionProblem | null;
-  /** 보류 판정의 입력 — 게이트와 같다: 미전달 수 · 말모이 PR 삼상태(`undefined`는 확인 못 함) · `openPrGateApplies(project)`. */
-  pending: number;
-  openPr: string | null | undefined;
-  gateApplies: boolean;
+  /**
+   * 지금의 보류 사유 — `planHomeHold`의 결론(게이트와 같은 입력, ux-drift-unify Q6). ⚠️ **PR 조회를 기다리는 동안은 `null`이다** — 그 사유는
+   * Suspense로 늦게 도착한다(`MetaColumn`의 `heldLater`).
+   */
+  held: HoldReason | null;
 }): MetaRow[] {
   const disconnected = input.state === "not_connected";
   const rows: MetaRow[] = [
@@ -88,10 +96,11 @@ export function metaRows(input: {
   );
   if (input.lastSyncAt !== "unrecorded")
     rows.push({
-      kind: "lastSync", at: input.lastSyncAt, failedAt: input.state === "import_failed" ? input.lastImportFailedAt : null,
+      kind: "lastSync", at: input.lastSyncAt,
+      failed: input.state === "import_failed" && input.lastImportFailedAt !== null && input.lastImportError !== null
+        ? { at: input.lastImportFailedAt, state: failureState(input.lastImportError) } : null,
       trigger: input.triggers.sync,
-      held: planHoldNotice({ pending: input.pending, openPr: input.openPr, gateApplies: input.gateApplies,
-        archived: input.state === "archived", disconnected: disconnected })?.reason ?? null,
+      held: input.held,
     });
   rows.push(
     { kind: "lastPublish", at: input.lastPublishedAt, prUrl: input.lastPrUrl, trigger: input.triggers.publish },

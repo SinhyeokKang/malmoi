@@ -217,8 +217,7 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   "logs.detail.labels.heldBecause": ["held"],
   "logs.sentence.import.*": ["held"],
   "translations.banner.paused": ["held"],
-  "home.cards.repositoryUpdatesHeld": ["held"],
-  "home.meta.heldByOpenPr": ["held"],
+  "home.cards.held.*": ["held"],
   "repositorySync.kept": ["held"],
   "mcp.summary.synced": ["held"],
   // ── Publish 일부 보류(Held back) — 결과 모달·Logs의 Publish 결과만.

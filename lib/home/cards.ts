@@ -84,10 +84,11 @@ export function countCards(input: {
   lastSyncAt: SyncTime;
   /** 검토 대기의 로케일별 분해 — `8 cells · 5 en, 3 ja`의 뒤쪽이다. */
   reviewByLocale: readonly { code: string; count: number }[];
-  /** 말모이 PR 삼상태 — 게이트와 같은 입력이다(`undefined`는 확인 못 함). 편집이 있으면 결과에 쓰이지 않으므로 호출부는 조회를 건너뛰어도 된다. */
-  openPr: string | null | undefined;
-  /** `openPrGateApplies(project)` — 설치·리포 고정이 없으면 PR 갈래가 서지 않는다. */
-  gateApplies: boolean;
+  /**
+   * 지금의 보류 사유 — `planHomeHold`의 결론이다(게이트와 같은 입력, ux-drift-unify Q6). ⚠️ **PR 조회를 기다리는 동안은 `null`이다** — 그 갈래는
+   * 편집 0이라 `nothing to send`가 참이고, 사유는 Suspense로 늦게 도착해 이 줄을 바꾼다(`CountCards`의 `heldLater`).
+   */
+  hold: HoldReason | null;
 }): HomeCard[] {
   const { counts } = input;
   return CARD_KEYS.map((key) => ({
@@ -140,9 +141,33 @@ function sublineFor(key: CardKey, input: Parameters<typeof countCards>[0]): Card
   /*
     ⚠️ **마지막 Publish 시각보다 이 사실이 앞선다** (DESIGN §6.64). 자동 적재가 보류 중이면 리포의 새 키·삭제가 앱에 안
     들어오고, 그것을 OWNER가 아는 자리가 이 줄이다. 넷째 전폭 배너를 두지 않는다 — 상시 상태에 배너를 두면 Home의 배너 0개 전제가 깨진다.
-    ⚠️ **판정은 게이트와 같은 입력이다** (ux-drift-unify Q6) — `toSend`가 곧 게이트의 미전달 수(같은 술어)이고, 편집 0이어도 PR이 열려 있거나
-    확인하지 못했으면 보류다. 전에는 `toSend > 0`만 봐서 PR 보류 동안 "nothing pending"이었다.
+    ⚠️ **판정은 게이트와 같은 입력이다** (ux-drift-unify Q6) — 편집 0이어도 PR이 열려 있거나 확인하지 못했으면 보류다. 전에는 `toSend > 0`만
+    봐서 PR 보류 동안 "nothing pending"이었다. 판정은 호출부의 `planHomeHold`가 한다 — 여기는 결론을 줄로 옮길 뿐이다.
   */
-  const hold = planHoldNotice({ pending: counts.toSend, openPr: input.openPr, gateApplies: input.gateApplies, archived: false, disconnected: false });
-  return hold === null ? { kind: "nothingPending" } : { kind: "repositoryUpdatesPaused", reason: hold.reason };
+  return holdSubline(input.hold);
+}
+
+/** 보류 결론 → `To send` 보조 줄. 스트리밍으로 늦게 도착한 사유도 이것으로 옮긴다 — 두 자리가 다른 줄을 만들지 않게. */
+export function holdSubline(hold: HoldReason | null): CardSubline {
+  return hold === null ? { kind: "nothingPending" } : { kind: "repositoryUpdatesPaused", reason: hold };
+}
+
+/**
+ * **Home이 말하는 보류** (ux-drift-unify Q6 · DESIGN §6.64) — 게이트와 같은 입력으로 `planHoldNotice`를 부른다. ⚠️ **PR을 몰라도 결론이
+ * 서면 조회하지 않는다**(편집 > 0 · 보관 · 끊김 · 게이트 없음) — 결과가 같고, Home 착지마다 GitHub 왕복을 더하지 않는다(malmoi#107).
+ * 조회가 필요할 때만 promise를 돌려준다 — 호출부는 그것을 기다리지 않고 Suspense 뒤로 내린다(본문 렌더를 막지 않는다).
+ *
+ * ⚠️ **PR을 모르는 채로 물었을 때 `pr-check-failed`가 나오는 것이 "PR에 달렸다"의 판정이다** — 그 사유는 PR 갈래에서만 나오므로 술어를 여기에
+ * 다시 쓰지 않는다(게이트 순서의 사본이 생기지 않게). ⚠️ 조회가 던지면 `pr-check-failed`다 — 게이트가 fail-closed다.
+ */
+export function planHomeHold(
+  input: { pending: number; gateApplies: boolean; archived: boolean; disconnected: boolean },
+  lookupOpenPr: () => Promise<string | null | undefined>,
+): HoldReason | null | Promise<HoldReason | null> {
+  const unknown = planHoldNotice({ ...input, openPr: undefined });
+  if (unknown?.reason !== "pr-check-failed") return unknown?.reason ?? null;
+  return lookupOpenPr().then(
+    (openPr) => planHoldNotice({ ...input, openPr })?.reason ?? null,
+    () => "pr-check-failed" as const,
+  );
 }

@@ -2,6 +2,8 @@
 import { expect, it, vi } from "vitest";
 import { SyncResult } from "@/components/home/sync-result";
 import type { SurfaceImportResult } from "@/lib/import/result";
+import { planImportRefusal } from "@/lib/import/refusal";
+import { STATE } from "@/lib/status/canon";
 import { m } from "@/lib/i18n";
 import { render } from "./helpers/dom";
 
@@ -166,6 +168,9 @@ it("거부는 tone·닫기·액션이 갈래마다 갈린다", async () => {
   await view.rerender(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "unpinned" }} />);
   expect(view.container.querySelector('a[href="/projects/acme/settings"]')?.textContent).toBe("Reconnect");
   expect(view.container.textContent).toContain("This repository is disconnected");
+  // 1-Y14 — 끊김 거부는 Home 배너·목록 칩의 Disconnected와 같은 톤이다(호박). 미연결(설치 없음)은 readiness가 먼저 막는다(`not-ready`).
+  expect(planImportRefusal("unpinned").tone).toBe(STATE.disconnected.tone);
+  expect(alert(view.container)?.className).toContain("bg-amber-50");
   await view.rerender(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "not-connected" }} />);
   expect(view.container.querySelector('a[href="/account"]')?.textContent).toBe(m.repositorySync.openAccount);
   expect(view.container.textContent).toContain("Account");

@@ -1,5 +1,6 @@
 "use client";
 
+import { RotateCcw } from "lucide-react";
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { useCommitWait } from "@/components/commit-wait";
@@ -11,15 +12,16 @@ import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { landFocus } from "@/components/ui/focus";
 import { m } from "@/lib/i18n";
 import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
-import type { ConnectionProblem, HomeState } from "@/lib/home/state";
-import { importFailureMessage, importFailureTone } from "@/lib/projects/import-failure";
+import { homeBannerState, type ConnectionProblem, type HomeState } from "@/lib/home/state";
+import { importFailureMessage } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import { relativeTime } from "@/lib/relative-time";
+import { STATE } from "@/lib/status/canon";
 
 /**
  * Home의 **두 자리에 걸친 상태 하나** (project-home T6 · sync-repository T9).
@@ -116,8 +118,8 @@ export function HomeTitle({ archived, children, image }: { archived: boolean; ch
       <h1 ref={titleRef} tabIndex={-1} className="truncate text-lg font-medium">
         {children}
       </h1>
-      {/* 보관은 **머리에서** 말한다 — 배너는 스크롤되지만 이 pill은 제목과 함께 남는다. */}
-      {archived && <Badge>{m.home.meta.archived}</Badge>}
+      {/* 보관은 **머리에서** 말한다 — 배너는 스크롤되지만 이 pill은 제목과 함께 남는다. 모양은 다른 화면의 Archived와 같다(1-Y7 · `STATE`). */}
+      {archived && <StatusBadge state="archived" />}
     </span>
   );
 }
@@ -218,8 +220,12 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
     wasArchived.current = state === "archived";
   }, [state, titleRef]);
 
-  // 일부만 반영된 적재는 제목·본문이 따로다 — 실패 문장을 빌리지 않고, `safe`(마지막 성공의 값)도 거짓이라 세우지 않는다(DESIGN §2.4).
-  const partial = reason !== null && importFailureTone(reason) === "warning";
+  /*
+    배너는 상태 키 하나로 고른다(`homeBannerState` — 교차 테스트가 목록 칩·Settings 배지와 같은 키인지 센다). 톤은 `STATE`가 든다.
+    일부만 반영된 적재는 제목·본문이 따로다 — 실패 문장을 빌리지 않고, `safe`(마지막 성공의 값)도 거짓이라 세우지 않는다(DESIGN §2.4).
+  */
+  const banner = homeBannerState({ state, problem, failure: reason });
+  const partial = banner === "partiallySynced";
 
   return (
     /*
@@ -229,10 +235,10 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
       머리의 `border-b`에 Alert가 붙었다(캔버스 머리엔 선이 없다). 아래는 `PanelBody`의 `p-4`가 16을 든다.
     */
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pt-4 empty:hidden">
-      {state === "import_failed" && failedSurface !== null && reason !== null && (
+      {(banner === "syncFailed" || banner === "partiallySynced") && failedSurface !== null && reason !== null && (
         <Alert
           // 톤은 실패 코드가 정한다 — 일부만 반영된 적재는 호박, 나머지는 빨강(2026-09-30 상태 통일).
-          variant={importFailureTone(reason)}
+          variant={STATE[banner].tone === "danger" ? "danger" : "warning"}
           title={partial ? m.home.banner.partial.title : m.home.banner.syncFailed.title}
           /* ⚠️ **원인 문장은 `importFailureMessage`가 든다** — 사전을 직접 인덱싱하면 그 폴백을 우회한다. */
           /* ⚠️ **`[Try again]`은 `[Sync]`와 같은 Action이다** — 확인 Dialog를 건너뛰지 않는다. */
@@ -240,7 +246,8 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
              "같은 라벨·같은 Action"이 화면에서 깨진다. 무반응인 버튼은 비활성보다 한 단계 아래다. */
           /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 결과 Alert의 [Try again]과 같은 형이다. */
           actions={owner ? <>
-            <Button aria-disabled={publishPending || undefined} aria-describedby={publishPending ? retryReasonId : undefined} title={publishPending ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!publishPending) setSyncOpen(true); }}>{m.home.banner.syncFailed.action}</Button>
+            {/* 결과 Alert의 [Try again]과 같은 글리프다(3-⚪15) — 같은 Dialog를 여는 두 자리가 다른 모양이었다. */}
+            <Button aria-disabled={publishPending || undefined} aria-describedby={publishPending ? retryReasonId : undefined} title={publishPending ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!publishPending) setSyncOpen(true); }}><RotateCcw className="size-3.5" aria-hidden />{m.home.banner.syncFailed.action}</Button>
             {publishPending && <span id={retryReasonId} className="sr-only">{m.repositorySync.waitPublish}</span>}
           </> : undefined}
         >
@@ -257,16 +264,16 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
         </Alert>
       )}
 
-      {state === "not_connected" && problem === "wrong-repository" && (
+      {banner === "wrongRepository" && (
         // ⚠️ **[Reconnect]를 주지 않는다** — 리포는 생성 시점에 고정이라 다른 id로의 재연결을 서버가 거부한다(설정 카드와 같은 판정).
         <Alert variant="danger" title={m.home.banner.wrongRepository.title}>
           {m.home.banner.wrongRepository.body}
         </Alert>
       )}
-      {state === "not_connected" && problem !== "wrong-repository" && (
+      {(banner === "disconnected" || banner === "notConnected") && (
         <Alert
           // 미연결(설치 없음)은 회색, 끊김(재연결 필요)은 호박이다(2026-09-30 상태 통일).
-          variant={problem === "disconnected" ? "warning" : "neutral"}
+          variant={STATE[banner].tone === "warning" ? "warning" : "neutral"}
           title={problem === "disconnected" ? m.home.banner.disconnected.title : m.home.banner.notConnected.title}
           /* ⚠️ **이 화면에서만 검정이 Publish가 아니다** (캔버스 `2c`) — 할 수 있는 일이 하나뿐이다. */
           actions={owner ? <ReconnectButton slug={slug} server={repo} variant="primary" label={problem === "disconnected" ? m.home.banner.disconnected.action : m.home.banner.notConnected.action} /> : undefined}
@@ -276,7 +283,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
         </Alert>
       )}
 
-      {state === "archived" && (
+      {banner === "archived" && (
         <Alert
           // 보관은 이상이 아니라 상태다 — 회색(2026-09-30 상태 통일, Logs·번역 화면과 같은 톤).
           variant="neutral"

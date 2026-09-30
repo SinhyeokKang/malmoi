@@ -851,8 +851,16 @@ export const en = {
        * (Connect · Reconnect · 새 프로젝트) 조건을 말하지 않는다 — 방법은 같은 화면의 배너가 든다.
        */
       cannotSend: "can't be sent right now",
-      /** 보낼 편집이 있는 동안 CI 적재가 보류된다 — OWNER가 그 사실을 아는 화면 자리다 (sync-edit-protection T13). */
-      repositoryUpdatesHeld: "repository updates held",
+      /**
+       * 자동 적재가 보류 중이다 — OWNER가 그 사실을 아는 화면 자리다 (sync-edit-protection T13 · ux-drift-unify Q6). 사유는 `planHomeHold`가 가른다.
+       * ⚠️ **PR 조회 실패도 보류다** — 게이트가 fail-closed라 실제로 적재가 멈춘다. 목적어를 붙인다(홀로 서는 "couldn't check"는 연결 확인 실패 낱말이다).
+       * 닫혀도 풀린다 — Logs 사유 문장("merged or closed")과 같은 조건이다.
+       */
+      held: {
+        "pending-edits": "repository updates held",
+        "open-pr": "held until the pull request is merged or closed",
+        "pr-check-failed": "held — couldn't check for an open pull request",
+      },
       frozen: "frozen at archive",
       neverSent: "never sent",
     },
@@ -936,12 +944,7 @@ export const en = {
       created: "Created",
       archived: "Archived",
       settings: "Settings",
-      notConnected: "Not connected",
-      /** `2b`의 둘째 값 — `1d ago · failed 10m ago`. */
-      failedAt: (when: string): string => `failed ${when}`,
-      /** 최근 적재 사건이 열린 Malmoi PR로 보류됐다 (nightly-sync 14a) — 푸는 조건(머지)을 말한다. */
-      heldByOpenPr: "held until the pull request is merged or closed",
-      /** 시각이 없는 칸(마지막 Publish · 주의 항목 시각). ⚠️ Sync 행은 아래 `notSyncedYet`이다 — 이 값을 Publish 행이 같이 읽는다. */
+      /** 시각이 없는 마지막 Publish 칸. ⚠️ Sync 행은 아래 `notSyncedYet`이다. 주의 항목은 시각이 없으면 칸을 비운다 — 실패한 표면에 "Never"는 거짓이다. */
       never: "Never",
       /** 첫 동기화 전의 Last sync 행 전용 — 같은 Home 카드 보조줄과 같은 낱말이다(1-Y17). */
       notSyncedYet: "Not synced yet",

@@ -21,7 +21,7 @@ import { HOME_EVENT_LIMIT, loadEvent, loadEvents } from "@/lib/events/query";
 import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems } from "@/lib/home/attention";
-import { countCards } from "@/lib/home/cards";
+import { countCards, planHomeHold } from "@/lib/home/cards";
 import { metaRows } from "@/lib/home/meta";
 import { loadHomeRuns } from "@/lib/home/runs";
 import { lastSyncTime } from "@/lib/home/sync-time";
@@ -33,6 +33,7 @@ import { actorLabel } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { isImportFailureCode } from "@/lib/projects/import-status";
 import { reviewByLocale, summaryQueue, worstFailingSurface } from "@/lib/projects/list";
+import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { pullNumberFrom } from "@/lib/projects/remote-plan";
 import { openPrGateApplies } from "@/lib/protection/plan";
 import { routes } from "@/lib/routes";
@@ -245,10 +246,20 @@ export default async function ProjectHomePage({
   const availability = planActionAvailability({ archived, connection: health.status });
   const paused = !availability.sync || !availability.publish;
   /**
-   * 보류 판정의 입력 — 게이트와 같다(`planHoldNotice`, ux-drift-unify Q6). ⚠️ **열린 PR 조회는 아직 배선하지 않았다** — 본문을 막지 않는
-   * 스트리밍으로 붙인다(ux-drift-unify T18, malmoi#107이 메모로 줄인 병목을 되살리지 않는다). 그때까지 PR 갈래는 "없음"이다.
+   * 보류 판정 — 게이트와 같은 입력이다(`planHomeHold` → `planHoldNotice`, ux-drift-unify Q6). ⚠️ **편집이 있으면 PR을 조회하지 않는다**(결과가 같다).
+   * 조회가 필요하면 promise를 **기다리지 않고** 카드 보조 줄·메타 열의 Suspense로 내린다 — 본문 렌더를 막지 않는다(malmoi#107이 메모로 줄인
+   * 착지 병목을 되살리지 않는다). 조회는 여기서 출발하므로 본문과 동시에 돈다.
+   * ⚠️ **거부를 삼킨다** — Home은 모든 프로젝트의 착지 화면이라(위 연결 조회와 같은 판정) 조회 실패는 보류(`pr-check-failed`)로 말한다.
    */
-  const hold = { openPr: null, gateApplies: openPrGateApplies(project) };
+  const hold = planHomeHold(
+    { pending: counts.toSend, gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected" },
+    () => loadOpenPrUrl(slug, project).catch((error: unknown) => {
+      logFailure("home-open-pr", error);
+      return undefined;
+    }),
+  );
+  const heldNow = hold instanceof Promise ? null : hold;
+  const heldLater = hold instanceof Promise ? hold : undefined;
   const defaultSurface = project.defaultSurface?.archivedAt === null ? project.defaultSurface.slug : null;
 
   return (
@@ -324,11 +335,12 @@ export default async function ProjectHomePage({
               keys,
               lastSyncAt,
               reviewByLocale: reviewByLocale(aggregates.locales, aggregates.cells).get(projectId) ?? [],
-              ...hold,
+              hold: heldNow,
             })}
             slug={slug}
             surfaceSlug={defaultSurface}
             now={now}
+            heldLater={heldLater}
           />
           <AttentionCard items={items} slug={slug} role={role} state={state} now={now} />
           <LogsCard rows={events.rows} slug={slug} now={now} archived={archived} syncedBefore={lastSyncAt !== null} />
@@ -346,18 +358,19 @@ export default async function ProjectHomePage({
             members: project._count.members,
             lastSyncAt,
             lastImportFailedAt: failed?.lastImportFailedAt ?? null,
+            lastImportError: failed?.importError ?? null,
             lastPublishedAt: project.lastPublishedAt,
             lastPrUrl: project.lastPrUrl,
             createdAt: project.createdAt,
             archivedAt: project.archivedAt,
             triggers,
             connection: connectionProblem(health.status),
-            pending: counts.toSend,
-            ...hold,
+            held: heldNow,
           })}
           slug={slug}
           now={now}
           canOpenSettings={canPerform(role, "project:settings")}
+          heldLater={heldLater}
         />
       </PanelBody>
 

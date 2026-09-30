@@ -1,9 +1,10 @@
 import { ArrowDownToLine, Eye, GitPullRequestArrow, Languages } from "lucide-react";
 import Link from "next/link";
-import type { ComponentType } from "react";
+import { Suspense, use, type ComponentType } from "react";
 
-import { CARD_STATE, type CardSubline, type HomeCard } from "@/lib/home/cards";
+import { CARD_STATE, holdSubline, type CardSubline, type HomeCard } from "@/lib/home/cards";
 import { m } from "@/lib/i18n";
+import type { HoldReason } from "@/lib/protection/plan";
 import { relativeTime } from "@/lib/relative-time";
 import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
@@ -30,7 +31,17 @@ const GLYPH: Record<HomeCard["key"], ComponentType<{ className?: string }>> = {
  *   기본 표면으로 redirect하는 공가 라우트라 누를 때마다 서버 왕복이 하나 더 붙었다. `null`(기본 표면 없음)이면 옛
  *   경로로 남는다 — 그 라우트가 "표면이 없다"를 말하는 자리다.
  */
-export function CountCards({ cards, slug, surfaceSlug, now }: { cards: readonly HomeCard[]; slug: string; surfaceSlug: string | null; now: Date }) {
+export function CountCards({ cards, slug, surfaceSlug, now, heldLater }: {
+  cards: readonly HomeCard[];
+  slug: string;
+  surfaceSlug: string | null;
+  now: Date;
+  /**
+   * 열린 PR 조회에 달린 보류 사유 (ux-drift-unify Q6) — **`To send` 보조 줄만 늦게 도착한다**, 본문은 기다리지 않는다(malmoi#107이 줄인 착지 병목).
+   * 도착 전에는 카드가 든 줄(`nothing to send` — 편집 0이라 참이다)이 선다.
+   */
+  heldLater?: Promise<HoldReason | null>;
+}) {
   return (
     /*
       카드 넷 사이만 8이다 — 블록 사이(20)보다 좁아야 넷이 **한 덩어리**로 읽힌다 (캔버스 `2a`).
@@ -106,7 +117,10 @@ export function CountCards({ cards, slug, surfaceSlug, now }: { cards: readonly 
                     {value(card)}
                   </span>
                   <span className="text-muted-foreground text-xs">
-                    {m.home.cards.unit[card.unit]} · {sublineText(card.subline, now)}
+                    {m.home.cards.unit[card.unit]} ·{" "}
+                    {card.key === "toSend" && heldLater !== undefined
+                      ? <Suspense fallback={sublineText(card.subline, now)}><HeldSubline hold={heldLater} now={now} /></Suspense>
+                      : sublineText(card.subline, now)}
                   </span>
                 </span>
               </Link>
@@ -160,8 +174,13 @@ function sublineText(subline: CardSubline, now: Date): string {
     case "neverSent":
       return m.home.cards.neverSent;
     case "repositoryUpdatesPaused":
-      return m.home.cards.repositoryUpdatesHeld;
+      return m.home.cards.held[subline.reason];
   }
+}
+
+/** 늦게 도착한 보류 사유 — 카드가 쓰는 같은 변환(`holdSubline`)을 지난다. */
+function HeldSubline({ hold, now }: { hold: Promise<HoldReason | null>; now: Date }) {
+  return sublineText(holdSubline(use(hold)), now);
 }
 
 /**
