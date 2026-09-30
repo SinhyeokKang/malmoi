@@ -94,22 +94,22 @@
 
 ## C. 프리미티브
 
-- **T11** `IconTile tone` · `StatusBadge` 신규 · `Badge`의 `danger` variant 삭제와 `missing`의 `gap-1.5` 삭제(D3② · 1-W2 · 5-Y19).
+- ✅ **T11** (U3) `IconTile tone` · `StatusBadge` 신규 · `Badge`의 `danger` variant 삭제와 `missing`의 `gap-1.5` 삭제(D3② · 1-W2 · 5-Y19).
   - **같은 커밋에서** 유일한 `danger` 소비자 `components/translations/locale-badge.tsx:80` → `missing`(🔴 K — T20에서 당겨옴, 국기 면제).
   - `visual-system.test.ts` `REGISTERED`(`:97` amber · `:116` green)에 `icon-tile.tsx` 등재.
   - 테스트: tone별 클래스 = §2.4 칸 열, `StatusBadge` 전 `StateKey` 렌더(variant = `STATE[k].variant`).
   - 뒤집는 테스트: `status-badges.test.tsx:15` · `label-weight.test.ts:18` · `translations-screen.test.ts:283` · `icon-tile.test.tsx:18-33`.
   검증 [자동]: `pnpm typecheck` green(`danger` 참조 0) + `pnpm exec vitest run components/__tests__/{status-badges,label-weight,translations-screen,icon-tile,visual-system}*` green.
-- **T12** `CountBadge` 신규 — 0이면 null, `aria-hidden` 숫자 + sr 문장. `PanelCard`·`RowCard`·`PanelHeader`에 **`count` prop 신설**(`badge` 슬롯은 그대로). 🔴 M · 4-Y5 · 5-W5(`surface-selector` 기본 `muted`).
+- ✅ **T12** (U3) `CountBadge` 신규 — 0이면 null, `aria-hidden` 숫자 + sr 문장. `PanelCard`·`RowCard`·`PanelHeader`에 **`count` prop 신설**(`badge` 슬롯은 그대로). 🔴 M · 4-Y5 · 5-W5(`surface-selector` 기본 `muted`).
   **소비자 전부 교체(spec Q13)**: `attention-card:61` · `sources-screen:72,78` · `source-detail-modal:144` · `tree-panel:41` · `key-list:50` · `workspace:585` · `project-list:145` ·
   `sidebar:206` · `segmented-control:77` · `surface-selector:26` · `publish-button:134`. ⚠️ `key-list`·`workspace`·`tree-panel`은 `translation-filter-scope` 뒤에(선행 순서).
   뒤집는 테스트: `members-cards.test.tsx:67,263` · `card-head.test.ts:20` · `panel-header.test.tsx` · `account/__tests__/structure.test.tsx:290`.
   검증 [자동]: `pnpm exec vitest run components` green + 소비자 목록 grep(`<Badge[^>]*>{` 꼴 손 조립 0).
-- **T13** `CloseButton`(`modal.tsx:205`에서 추출, X 다섯 형 전부 채택) · 수제 스피너를 `Button busy`/`loading`으로(새 prop 없음 — design §4) · `DialogContent` 초기 포커스 = 푸터 Cancel 표식(조건부, `log-filters:299` opt-out, 수동 지정 3곳 대체). 5-Y9 · 3-⚪13·⚪16 · 5-Y14 · 3-Y4.
+- ✅ **T13** (U3) `CloseButton`(`modal.tsx:205`에서 추출, X 다섯 형 전부 채택) · 수제 스피너를 `Button busy`/`loading`으로(새 prop 없음 — design §4) · `DialogContent` 초기 포커스 = 푸터 Cancel 표식(조건부, `log-filters:299` opt-out, 수동 지정 3곳 대체). 5-Y9 · 3-⚪13·⚪16 · 5-Y14 · 3-Y4.
   뒤집는 테스트: `primitive-focus.test.tsx:26,48,114,142,164` · `dialog-layer.test.tsx:7`.
   검증 [자동]: `pnpm exec vitest run components` green.
   검증 [수동]: design §4의 13곳 Dialog를 브라우저로 열어 첫 포커스가 Cancel(`log-filters`는 첫 날짜 입력)·닫힌 뒤 트리거 복귀(POSTMORTEM 2026-09-20·24).
-- **T14** `PanelCard` — 머리 아래 선은 머리가 긋고(notice 아래), 자식 `border-t` 금지 · `PanelHeader`(`components/shell/content-panel.tsx:76`) `notice` 슬롯(`description` 아래) + `min-h-9`, 수동 `min-h-9` 4곳 제거. 4-Y1 · 4-Y7 · 4-Y8 · 4-W1(카드 제목 자간·머리 gap 한 벌).
+- ✅ **T14** (U3) `PanelCard` — 머리 아래 선은 머리가 긋고(notice 아래), 자식 `border-t` 금지 · `PanelHeader`(`components/shell/content-panel.tsx:76`) `notice` 슬롯(`description` 아래) + `min-h-9`, 수동 `min-h-9` 4곳 제거. 4-Y1 · 4-Y7 · 4-Y8 · 4-W1(카드 제목 자간·머리 gap 한 벌).
   소비자 14곳 표(design §4)와 `settings/page.tsx:62` Alert 순서 변경.
   뒤집는 테스트: `card-head.test.ts:19-23` · `panel-card.test.tsx:27` · `panel-header.test.tsx`.
   검증 [자동]: `pnpm exec vitest run components app` green. 검증 [수동]: 소비자 14곳 카드를 하나씩 열어 머리 아래 선 1개·중복 0.
@@ -294,3 +294,4 @@
 - 2026-10-01 지휘자(U2 리뷰 r1): 리포 id 미고정 거부는 자기 코드 `unpinned`(Disconnected 문구·Reconnect), `not-connected`는 사용자 GitHub 계정 미연결(ConnectError) 문구로 되돌렸다. MCP `sync_repository`는 `unpinned`를 `not-connected`로 접는다(외부 계약 불변).
 - ⚠️ U2 ~ T18 사이 dev에서는 Home 메타의 "held until PR merged" 줄이 서지 않는다(`openPr: null`) — **T18이 dev에 들어가기 전에 `/merge`하지 않는다.**
 - 2026-10-01 지휘자(U5): spec 완료 조건 3의 "표면 0개 → Setup"은 표가 틀렸다 — 설치 있고 활성 표면 0이면 `awaiting_first_sync`(목록 Not synced yet · Home not-ready)이고 목록·Home이 일치한다. 판정은 그대로 두고 테스트가 이것을 고정한다.
+- 2026-10-01 U3: `PanelHeader`에는 `count` prop을 두지 않았다(제목 슬롯이 없다) — 머리 개수 두 곳이 `CountBadge`를 직접 쓴다. `Button` `loading`/`busy`는 `aria-hidden` 앞 글리프를 교체한다(지금 Logs 둘).
