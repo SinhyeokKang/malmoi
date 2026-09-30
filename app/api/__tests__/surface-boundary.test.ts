@@ -5,6 +5,8 @@ const state = vi.hoisted(() => ({ prisma: undefined as unknown, apply: vi.fn() }
 vi.mock("@/lib/db", () => ({ getPrisma: () => state.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/push/apply", () => ({ applyPush: state.apply }));
+// 열린 Malmoi PR 없음 — 표면 경계 거부는 게이트보다 앞이다(nightly-sync D1).
+vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrForImportGate: async () => null }));
 import { POST as push } from "../push/route";
 import { POST as failure } from "../push/failure/route";
 const token = "surface-token";

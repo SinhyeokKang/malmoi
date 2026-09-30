@@ -129,6 +129,8 @@ it("생산자 — CI `/api/push`의 import.ci 사건", async () => {
   await apply(BASE);
   vi.doMock("@/lib/db", () => ({ getPrisma: () => prisma }));
   vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+  // 열린 Malmoi PR 없음 — 이 파일은 게이트 뒤(적재)를 잰다. 게이트 자체는 `app/api/__tests__/push-open-pr.test.ts`(nightly-sync D1).
+  vi.doMock("@/lib/projects/open-pr", () => ({ loadOpenPrForImportGate: async () => null }));
   const { POST } = await import("@/app/api/push/route");
   const body = payload(BASE.map(cell => cell.key === "b" ? { ...cell, value: `${cell.value}2` } : cell));
   const response = await POST(new Request("http://localhost/api/push", { method: "POST", headers: { authorization: `Bearer ${pushToken}` }, body: JSON.stringify(body) }));

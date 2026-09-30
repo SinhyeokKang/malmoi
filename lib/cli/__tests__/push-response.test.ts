@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { reportPushResponse } from "../push-response";
@@ -59,5 +61,52 @@ describe("reportPushResponse", () => {
     const [warning] = reportPushResponse(200, hostile).lines.filter(line => line.startsWith("::warning"));
     expect(warning).not.toContain("set-output");
     expect(warning).not.toContain("::error");
+  });
+});
+
+/**
+ * **열린 PR 게이트의 보류 사유** (nightly-sync D2 — action v3). 서버가 `reason`을 가르고 `pendingCount`를 싣지 않는다 — 사유마다 할 일이
+ * 다르므로(PR을 머지·닫기 / 나중에 다시) 경고도 가른다. ⚠️ 사유는 **허용 목록으로만** 읽는다 — 서버 문자열을 경고에 싣지 않는다.
+ */
+describe("reportPushResponse — 보류 사유별 경고", () => {
+  const held = (reason: string) => JSON.stringify({ status: "deferred", reason, projectId: "p", commitSha: "abc" });
+  const warnings = (text: string) => reportPushResponse(200, text).lines.filter(line => line.startsWith("::warning"));
+
+  it("open-pr → exit 0 + 경고 1줄: PR이 열려 있다 — 머지하거나 닫는다", () => {
+    const report = reportPushResponse(200, held("open-pr"));
+    expect(report.exitCode).toBe(0);
+    const [warning, ...rest] = warnings(held("open-pr"));
+    expect(rest).toEqual([]);
+    expect(warning).toContain("a Malmoi pull request is still open");
+    expect(warning).toContain("merge or close it");
+    expect(warning).toMatch(/not imported/);
+    // `pendingCount`가 없는 보류에서 거짓 "0 unsent"를 내지 않는다.
+    expect(warning).not.toContain("unsent");
+  });
+
+  it("pr-check-failed → 경고 1줄: 확인하지 못했다 — 다시 돌린다", () => {
+    const [warning, ...rest] = warnings(held("pr-check-failed"));
+    expect(rest).toEqual([]);
+    expect(warning).toContain("couldn't check");
+    expect(warning).toMatch(/not imported/);
+    expect(warning).not.toContain("unsent");
+  });
+
+  it("옛 모양(reason 없이 pendingCount만)은 v2 그대로 미전달 경고다", () => {
+    const [warning] = warnings(JSON.stringify({ status: "deferred", pendingCount: 2, projectId: "p", commitSha: "abc" }));
+    expect(warning).toContain("2 unsent translation changes");
+  });
+
+  it("모르는 사유는 열린 PR 경고로 읽지 않는다 — 허용 목록 밖은 v2 판정(정수 pendingCount)으로만 떨어진다", () => {
+    expect(warnings(held("open-pr\n::error::x"))).toEqual([]);
+    expect(warnings(held("later"))).toEqual([]);
+  });
+});
+
+describe("action.yml — 열린 PR 경고 문구가 게이트 이후의 사실을 말한다", () => {
+  const action = readFileSync(".github/actions/malmoi-i18n-push/action.yml", "utf8");
+  it("'이 push가 그 PR의 편집을 덮는다'가 없다 — 서버가 적재를 보류한다", () => {
+    expect(action).not.toContain("이 push가 그 PR의 편집을 덮는다");
+    expect(action).toContain("머지하거나 닫을 때까지");
   });
 });

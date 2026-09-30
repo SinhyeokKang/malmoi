@@ -44,6 +44,8 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 // 목록 둘의 무효화가 push 경로에 붙었다 (DESIGN §6.63) — 테스트 환경에는 그 컨텍스트가 없다.
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 vi.mock("@/lib/sync/run", () => ({ runSync: hoisted.runSync }));
+// 열린 Malmoi PR 없음 — 이 파일은 게이트 뒤의 응답을 본다. 게이트는 `push-open-pr.test.ts`(nightly-sync D1).
+vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrForImportGate: async () => null }));
 // 라우트는 보호 적재(`applyProtectedPush`)를 부른다 — 여기서는 보류 판정 밖(적용 결과·오류 본문)을 보므로 applied로 감싼다.
 // 보류 자체는 `lib/keys/__tests__/sync-edit-protection.integration.ts`가 실제 PostgreSQL로 잰다.
 // ⚠️ **`ApplyGuardError`는 진짜다** (launch-readiness L4.2) — 라우트의 catch가 `instanceof`로 가른다. 빠지면 그 줄이
@@ -92,6 +94,11 @@ const project = (over: Record<string, unknown> = {}) => ({
   // 읽는데, 실제 Prisma는 `select`한 컬럼을 항상 값으로 준다 — 여기서 빼면 가짜가 실제보다 **엄격**해져
   // 정상 push가 전부 409로 보인다.
   archivedAt: null,
+  // 열린 PR 게이트의 select 넷(nightly-sync D1) — 실제 Prisma처럼 값으로 준다.
+  repoOwner: "o",
+  repoName: "r",
+  installationId: null,
+  repositoryId: null,
   ...over,
 });
 

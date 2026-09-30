@@ -5,6 +5,18 @@ import { createGitClient } from "@/lib/github";
 import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
 import { syncBranchFor } from "@/lib/pull/sync-branch";
 
+/**
+ * CI 적재 게이트의 입력 (nightly-sync). `installationId`·`repositoryId`가 null이면 **`null`(게이트 없음)** 이다 — PR을 낼 수 없는 프로젝트엔
+ * 열린 Malmoi PR도 없다. `loadOpenPrUrl`은 `repositoryId null`을 `undefined`로 읽는데, 그대로 쓰면 고정 전 옛 행의 CI가 영구 보류된다.
+ */
+export async function loadOpenPrForImportGate(
+  slug: string,
+  project: { repoOwner: string; repoName: string; installationId: string | null; repositoryId: string | null; archivedAt: Date | null },
+): Promise<string | null | undefined> {
+  if (project.installationId === null || project.repositoryId === null) return null;
+  return loadOpenPrUrl(slug, project);
+}
+
 export async function loadOpenPrUrl(
   slug: string,
   project: {

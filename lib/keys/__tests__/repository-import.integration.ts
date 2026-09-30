@@ -71,6 +71,8 @@ it("1446키·6로케일의 실제 POST 경로를 격리 PG에서 측정한다", 
   await seed();
   vi.doMock("@/lib/db", () => ({ getPrisma: () => prisma }));
   vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
+  // 열린 Malmoi PR 없음 — 이 파일은 게이트 뒤(적재)를 잰다. 게이트 자체는 `app/api/__tests__/push-open-pr.test.ts`(nightly-sync D1).
+  vi.doMock("@/lib/projects/open-pr", () => ({ loadOpenPrForImportGate: async () => null }));
   const { POST } = await import("@/app/api/push/route");
   const samples: number[] = [];
   for (let index = 0; index < 4; index++) {

@@ -8,9 +8,11 @@ import { getPrisma } from "@/lib/db";
 import { recordCiImport, recordCiImportInTransaction, type CiImportEvent } from "@/lib/events/ci";
 import { classifyFailure } from "@/lib/failure";
 import { logFailure } from "@/lib/github-connect/log";
+import { loadOpenPrForImportGate } from "@/lib/projects/open-pr";
 import { abandonImportRun, finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { applyProtectedPush, ApplyGuardError } from "@/lib/push/apply";
 import type { PushResponse } from "@/lib/push/payload";
+import { planOpenPrGate } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
 import { checkArchived, checkCommitOrder, checkFormat, checkProjectSlug, guardStatus } from "@/lib/push/guard";
 import { PushPayload } from "@/lib/push/plan";
@@ -24,7 +26,8 @@ import { hashPushToken } from "@/lib/push/token";
  * `orphaned`를 판정할 수 있고, 리소스 교체가 아니라 부수효과 있는 RPC다.
  *
  * **번역값은 리포 값으로 덮는다** (strict — ARCHITECTURE §0 불변식 2). 단 **미전달 편집이 프로젝트에 하나라도 있으면
- * 적재 전체를 보류한다** (sync-edit-protection, 2026-09-18) — 200 `deferred`이고 어떤 컬럼도 쓰지 않는다. 리포를 보지 않는다.
+ * 적재 전체를 보류한다** (sync-edit-protection, 2026-09-18) — 200 `deferred`이고 어떤 컬럼도 쓰지 않는다. **Malmoi PR이 열려 있어도
+ * 같다**(nightly-sync) — 입력은 "PR이 열려 있나" 하나이고 리포 값은 보지 않는다.
  *
  * ⚠️ **인증은 토큰이 프로젝트를 정한다** (2026-09-07, PRODUCT §7.8). `sha256(원문)`으로
  * `Project.pushTokenHash`를 조회하고, 그 행의 slug와 페이로드를 **그 뒤에** 대조한다. 페이로드 slug로 행을
@@ -80,6 +83,11 @@ export async function POST(request: Request): Promise<NextResponse> {
         // 영구 409가 된다. 타입이 그것을 컴파일 타임에 막는다 (ARCHITECTURE §5.5.5).
         // 보관 거부 (7단계) — 멈춘 프로젝트를 리포가 계속 덮으면 보관 중에 번역이 조용히 바뀐다.
         archivedAt: true,
+        // 열린 PR 게이트(nightly-sync) — 조회 대상 리포와 installation 토큰 범위.
+        repoOwner: true,
+        repoName: true,
+        installationId: true,
+        repositoryId: true,
       },
     });
     // ⚠️ **404를 내지 않는다** — 토큰이 유효하지 않은 것과 그런 프로젝트가 없는 것을 가르면 프로젝트 존재가
@@ -219,7 +227,20 @@ export async function POST(request: Request): Promise<NextResponse> {
     const pendingBefore = await countPending(prisma, project.id);
     if (pendingBefore > 0) {
       await record({ surface, result: "deferred", deferReason: "pending-edits", pendingEdits: pendingBefore });
-      return deferred(project.id, parsed.data.commitSha, pendingBefore);
+      return deferred(project.id, parsed.data.commitSha, { reason: "pending-edits", pendingCount: pendingBefore });
+    }
+
+    /**
+     * **열린 Malmoi PR 게이트** (nightly-sync). Publish가 커밋에 성공하면 편집 토큰이 비워지므로, PR이 머지되기 전의 CI 적재는 사전
+     * 집계 0을 보고 그 편집을 덮는다 — PR이 열린 동안은 적재 전체를 보류한다. 셀을 고르지 않으므로 병합이 아니다(`pending-edits`와 같은 부류).
+     * ⚠️ **조회 실패·마감은 보류다**(fail-closed, POSTMORTEM 2026-09-03) — "PR 없음"으로 읽으면 장애 동안 편집이 덮인다.
+     * ⚠️ 인증·사전 집계 **뒤**, 진행 표시 **앞**이다 — 무효 토큰이 GitHub 왕복을 유발하지 않고, 보류가 아무것도 쓰지 않는다.
+     * ⚠️ 트랜잭션 안(`applyProtectedPush`)에서 다시 묻지 않는다 — 트랜잭션 안에서 GitHub을 부르지 않는다.
+     */
+    const gate = planOpenPrGate({ openPr: await loadOpenPrForImportGate(project.slug, project) });
+    if (gate.action === "defer") {
+      await record({ surface, result: "deferred", deferReason: gate.reason });
+      return deferred(project.id, parsed.data.commitSha, { reason: gate.reason });
     }
 
     const startedAt = new Date();
@@ -288,7 +309,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       // 롤백됐으니 결과 필드는 옛 그대로다 — 진행 표시만 거둔다.
       await abandonImportRun(prisma, { ...scope, token });
       await record({ surface, result: "deferred", deferReason: "pending-edits", pendingEdits: result.pendingCount });
-      return deferred(project.id, parsed.data.commitSha, result.pendingCount);
+      return deferred(project.id, parsed.data.commitSha, { reason: "pending-edits", pendingCount: result.pendingCount });
     }
     const outcome = result.outcome;
     return NextResponse.json<PushResponse>({
@@ -324,6 +345,10 @@ export async function POST(request: Request): Promise<NextResponse> {
  * 보류 응답. **200이다** — 오류가 아니라 "편집이 먼저 전달돼야 한다"는 정상 결과이고, 구 action 태그(`@malmoi-i18n-push-v1`)의
  * CLI도 `res.ok`로 exit 0이 된다(ARCHITECTURE §5.5.2). 편집 셀·토큰은 싣지 않는다 — 대상 리포의 Actions 로그가 public일 수 있다.
  */
-function deferred(projectId: string, commitSha: string, pendingCount: number): NextResponse {
-  return NextResponse.json<PushResponse>({ status: "deferred", reason: "pending-edits", pendingCount, projectId, commitSha });
+function deferred(
+  projectId: string,
+  commitSha: string,
+  detail: { reason: "pending-edits"; pendingCount: number } | { reason: "open-pr" | "pr-check-failed" },
+): NextResponse {
+  return NextResponse.json<Extract<PushResponse, { status: "deferred" }>>({ status: "deferred", ...detail, projectId, commitSha });
 }
