@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { repositoryConnectionState } from "@/components/settings/connection-state";
 import { planConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
-import { connectionProblem, homeBannerState, planActionAvailability, planHomeState, type ConnectionProblem } from "@/lib/home/state";
+import { connectionProblem, homeBannerState, planActionAvailability, planHomeState } from "@/lib/home/state";
 import { m } from "@/lib/i18n";
 import { planRepositoryImport, type ImportPlanInput } from "@/lib/import/plan";
 import { planImportRefusal } from "@/lib/import/refusal";
@@ -100,7 +100,6 @@ function bannerKey(banner: RowBanner): StateKey | null {
   }
 }
 
-const PROBLEM_KEY = { "not-connected": "notConnected", disconnected: "disconnected", "wrong-repository": "wrongRepository" } as const satisfies Record<ConnectionProblem, StateKey>;
 
 // ── 관측 — 입력 하나를 다섯 판정에 넣는다 ───────────────────────────────────
 

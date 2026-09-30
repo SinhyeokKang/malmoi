@@ -78,15 +78,17 @@ describe("probeMemoKey", () => {
 });
 
 /**
- * **메모를 켜는 호출부는 Home 하나다.** 설정 화면은 OWNER가 고치러 가는 자리라 언제나 실물을 봐야 하고, MCP는 에이전트가
- * 판정의 근거로 쓴다 — 거기에 `memo: true`가 붙으면 App 제거 뒤 30초 동안 거짓 `ok`가 퍼진다.
+ * **메모를 켜는 호출부는 Home과 번역 화면 둘이다** (ux-drift-unify U7 r1 — 지휘자 결정). 둘 다 **표시 전용**이고 버튼을 누르면 서버가 다시
+ * 판정한다 — 번역 화면은 키 클릭·저장마다 다시 렌더되어, 메모 없이는 번역자마다 한 번에 GitHub 1–2회가 설치 한도를 먹는다.
+ * 설정 화면은 OWNER가 고치러 가는 자리라 언제나 실물을 봐야 하고, MCP는 에이전트가 판정의 근거로 쓴다 — 거기에 `memo: true`가
+ * 붙으면 App 제거 뒤 30초 동안 거짓 `ok`가 퍼진다.
  */
 describe("배선", () => {
   const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-  it("loadConnectionHealth에 memo를 켜는 곳은 Home 페이지뿐이다", () => {
+  it("loadConnectionHealth에 memo를 켜는 곳은 Home과 번역 화면뿐이다", () => {
     const callers = execFileSync("git", ["grep", "-l", "loadConnectionHealth(", "--", "app", "lib", "components"], { cwd: ROOT, encoding: "utf8" })
       .trim().split("\n").filter(path => !path.includes("__tests__"));
     const memoized = callers.filter(path => /loadConnectionHealth\([^)]*\{\s*memo:\s*true/.test(readFileSync(`${ROOT}/${path}`, "utf8")));
-    expect(memoized).toEqual(["app/(edit)/projects/[slug]/(home)/page.tsx"]);
+    expect(memoized).toEqual(["app/(edit)/projects/[slug]/(home)/page.tsx", "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx"]);
   });
 });

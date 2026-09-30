@@ -2,7 +2,7 @@
 
 import { ArrowDownToLine, Languages, RotateCcw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, use, useCallback, useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
 import { useCommitWait } from "@/components/commit-wait";
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useLandAfter, useLandAfterCommit } from "@/components/ui/focus";
+import { useArrived } from "@/components/use-arrived";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { planActionAvailability } from "@/lib/home/state";
 import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
@@ -525,7 +526,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     **끊기면 Sync·Publish가 함께 꺼진다** — Home 머리와 같은 판정(`planActionAvailability`)이다(🔴 F · #52 재발 경로). 보관은 이 화면에 오지 않는다
     (`ProjectArchived`가 대신 선다). 스트리밍으로 도착한 GitHub 판정이 첫 렌더의 DB 판정을 이긴다.
   */
-  const [arrived, setArrived] = useState<ConnectionHealth["status"] | null>(null);
+  // ⚠️ effect 구독이다(`useArrived`) — `use()`로 받으면 키 선택·필터·저장 뒤 재검증 전환이 GitHub probe를 기다렸다(U7 r1). 새 판정이 올 때까지 마지막 값을 든다.
+  const arrived = useArrived(props.connection.later)?.status ?? null;
   const availability = planActionAvailability({ archived: false, connection: arrived ?? props.connection.status });
   /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
   const openSync = () => { if (!publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
@@ -647,10 +649,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             }}>
               <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} disabled={syncPending || !availability.publish} />
             </span>
-            {/* GitHub 판정은 늦게 도착한다 — 버튼을 Suspense로 감싸지 않는다(도착하는 순간 다시 마운트되면 Dialog·진행 상태를 잃는다). 도착만 알린다. */}
-            {props.connection.later !== undefined && (
-              <Suspense fallback={null}><ConnectionArrival health={props.connection.later} onArrive={setArrived} /></Suspense>
-            )}
+
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1016,9 +1015,3 @@ function ResizeHandle({ layout, onChange }: { layout: ReturnType<typeof planTran
   );
 }
 
-/** 스트리밍으로 도착한 연결 판정을 호스트에 알린다 — 화면에 그리는 것이 없다. */
-function ConnectionArrival({ health, onArrive }: { health: Promise<ConnectionHealth>; onArrive: (status: ConnectionHealth["status"]) => void }) {
-  const { status } = use(health);
-  useEffect(() => onArrive(status), [status, onArrive]);
-  return null;
-}

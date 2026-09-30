@@ -1,7 +1,8 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { Suspense, use, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
+import { HoldLater } from "@/components/home/hold-later";
 import { LocaleFlag } from "@/components/translations/locale-badge";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -35,7 +36,7 @@ export function MetaColumn({ rows, slug, now, canOpenSettings, heldLater }: {
   now: Date;
   canOpenSettings: boolean;
   /**
-   * 열린 PR 조회에 달린 보류 사유 — **본문을 막지 않고 늦게 도착한다**(ux-drift-unify Q6 · malmoi#107). 없으면 `Last sync` 행의 `held`가 결론이다.
+   * 열린 PR 조회에 달린 보류 사유 — **본문을 막지 않고 늦게 도착한다**(ux-drift-unify Q6 · malmoi#107 — 클라이언트 섬 `HoldLater`가 받는다). 없으면 `Last sync` 행의 `held`가 결론이다.
    * `planHomeHold`가 promise를 낼 때만 온다(편집 0 · 게이트 있음).
    */
   heldLater?: Promise<HoldReason | null>;
@@ -142,7 +143,8 @@ function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>):
           {/* `2b`에서만 선다 — 일부 반영은 `Partially synced`다(🔴 A2, "failed"로 말하지 않는다). */}
           {row.failed !== null && <span>· <StatusBadge state={row.failed.state} className="mr-1.5 align-middle" />{relativeTime(row.failed.at, now)}</span>}
           {/* 보류는 지금의 판정이다(ux-drift-unify Q6) — 사유 문장은 `To send` 카드 보조 줄이 든다. PR에 달린 사유는 늦게 도착한다. */}
-          {heldLater === undefined ? <Held reason={row.held} /> : <Suspense fallback={null}><HeldLater hold={heldLater} /></Suspense>}
+          {/* 늦게 도착하는 사유는 클라이언트 섬이 effect로 받는다 — `use()`로 받으면 `?event=`·재검증 전환이 조회를 기다린다(U7 r1). */}
+          {heldLater === undefined ? <Held reason={row.held} /> : <HoldLater hold={heldLater} as="badge" />}
         </span>
       );
     case "lastPublish": {
@@ -182,10 +184,6 @@ function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>):
 /** 보류 배지 — 사유가 셋이어도 낱말은 `Held` 하나다(DESIGN §2.4). 사유는 카드 보조 줄이 든다. */
 function Held({ reason }: { reason: HoldReason | null }) {
   return reason === null ? null : <span>· <StatusBadge state="held" className="align-middle" /></span>;
-}
-
-function HeldLater({ hold }: { hold: Promise<HoldReason | null> }) {
-  return <Held reason={use(hold)} />;
 }
 
 /**

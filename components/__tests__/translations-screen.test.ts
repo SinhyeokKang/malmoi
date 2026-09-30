@@ -357,16 +357,15 @@ describe("행 축 (8-4)", () => {
 
 /**
  * **연결 판정의 배선** (ux-drift-unify T20 · 🔴 F) — 첫 렌더는 DB 판정(`storedConnection`), GitHub 판정은 promise로 내려 기다리지 않는다.
- * ⚠️ 메모를 켜지 않는다 — 메모 호출부는 Home 하나다(`probe-memo.test.ts`). ⚠️ 페이지가 GitHub 판정을 await하면 ARCHITECTURE §1.95의 착지가 는다.
+ * ⚠️ 메모를 켠다(U7 r1 — Home과 둘, `probe-memo.test.ts`) — 키 클릭·저장마다 다시 렌더된다. ⚠️ 페이지가 GitHub 판정을 await하면 ARCHITECTURE §1.95의 착지가 는다.
  */
 describe("번역 화면 — 연결 판정", () => {
   const page = read(PAGE);
 
   it("DB 판정이 먼저이고 GitHub 판정은 기다리지 않는 promise다", () => {
     expect(page).toContain("storedConnection(project)");
-    expect(page).toContain("later: loadConnectionHealth(project)");
+    expect(page).toContain("later: loadConnectionHealth(project, { memo: true })");
     expect(page).not.toMatch(/await loadConnectionHealth/);
-    expect(page).not.toMatch(/memo:\s*true/);
     expect(page).toMatch(/connection=\{connection\}/);
   });
 
@@ -374,6 +373,9 @@ describe("번역 화면 — 연결 판정", () => {
     const workspace = read(WORKSPACE);
     expect(workspace).toContain("planActionAvailability({ archived: false, connection: arrived ?? props.connection.status })");
     expect(workspace).toContain("!availability.publish");
+    // 도착은 effect 구독이다 — `use()`는 전환을 GitHub probe에 붙잡는다(U7 r1).
+    expect(workspace).toContain("useArrived(props.connection.later)");
+    expect(workspace).not.toMatch(/\buse\(/);
     expect(workspace).toContain("paused={!availability.sync || publish.pending}");
   });
 });

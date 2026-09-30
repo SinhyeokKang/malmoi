@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { act, startTransition } from "react";
+import { createRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { render } from "./helpers/dom";
@@ -27,6 +30,8 @@ const buttons = (container: HTMLElement) => {
   };
 };
 const off = (button: HTMLButtonElement | undefined) => button?.getAttribute("aria-disabled") === "true";
+/** GitHub 판정이 정상으로 도착한 모양 — `planConnectionHealth`의 `ok` 갈래다. */
+const OK: ConnectionHealth = { status: "ok" };
 
 describe("첫 렌더 — DB 판정", () => {
   it.each(["not-connected", "unpinned"] as const)("%s면 Sync·Publish가 처음부터 꺼져 있다", async (status) => {
@@ -36,6 +41,16 @@ describe("첫 렌더 — DB 판정", () => {
     expect(off(publish)).toBe(true);
     // 꺼진 이유는 끊김이다 — Publish 대기 문구가 아니다.
     expect(sync?.getAttribute("title")).toBe(m.repositorySync.paused);
+  });
+
+  /** 첫 페인트(SSR HTML — hydration 전)부터 꺼져 있다. 클라이언트 effect에 기대면 hydration 전 한동안 눌린다(U7 r1 — 런타임 (b)4에서 옮겼다). */
+  it("서버 HTML에서부터 Sync·Publish가 aria-disabled다", () => {
+    const html = renderToString(<TranslationWorkspace {...props({ unpublished: 2, connection: { status: "unpinned" } })} />);
+    const host = document.createElement("div");
+    host.innerHTML = html;
+    const { sync, publish } = buttons(host);
+    expect(off(sync)).toBe(true);
+    expect(off(publish)).toBe(true);
   });
 
   it("모름(unknown)은 끄지 않는다 — 누르면 서버가 다시 판정한다", async () => {
@@ -59,8 +74,28 @@ describe("스트리밍 — GitHub 판정", () => {
     const pending = await render(<TranslationWorkspace {...props({ connection: { status: "unknown", later: new Promise<ConnectionHealth>(() => {}) } })} />);
     expect(off(buttons(pending.container).sync)).toBe(false);
     expect(pending.container.querySelector("textarea")).not.toBeNull();
-    const ok = await render(<TranslationWorkspace {...props({ connection: { status: "unknown", later: Promise.resolve({ status: "unknown" } as ConnectionHealth) } })} />);
+    const ok = await render(<TranslationWorkspace {...props({ connection: { status: "unknown", later: Promise.resolve(OK) } })} />);
     expect(off(buttons(ok.container).publish)).toBe(false);
+    expect(off(buttons(ok.container).sync)).toBe(false);
+  });
+
+  /**
+   * **U7 r1 🔴1** — 이미 보인 Suspense 경계 안에서 `use(새 promise)`를 하면 키 선택·필터·트리 이동(`navigate("replace")`)과 저장 뒤 재검증이 GitHub probe가
+   * 끝날 때까지 커밋되지 않았다. 도착 판정은 effect로 구독하고, 새 판정이 올 때까지 마지막 도착값을 든다.
+   */
+  it("새 promise가 대기 중이어도 전환이 커밋되고 마지막 판정이 남는다", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () => root.render(<TranslationWorkspace {...props({ unpublished: 1, connection: { status: "unknown", later: Promise.resolve({ status: "app-uninstalled" } as ConnectionHealth) } })} />));
+    expect(off(buttons(container).sync)).toBe(true);
+    await act(async () => startTransition(() => root.render(
+      <TranslationWorkspace {...props({ unpublished: 4, connection: { status: "unknown", later: new Promise<ConnectionHealth>(() => {}) } })} />,
+    )));
+    expect(buttons(container).publish?.textContent).toContain("4");
+    expect(off(buttons(container).sync)).toBe(true);
+    await act(async () => root.unmount());
+    container.remove();
   });
 });
 

@@ -247,7 +247,7 @@ export default async function ProjectHomePage({
   const paused = !availability.sync || !availability.publish;
   /**
    * 보류 판정 — 게이트와 같은 입력이다(`planHomeHold` → `planHoldNotice`, ux-drift-unify Q6). ⚠️ **편집이 있으면 PR을 조회하지 않는다**(결과가 같다).
-   * 조회가 필요하면 promise를 **기다리지 않고** 카드 보조 줄·메타 열의 Suspense로 내린다 — 본문 렌더를 막지 않는다(malmoi#107이 메모로 줄인
+   * 조회가 필요하면 promise를 **기다리지 않고** 카드 보조 줄·메타 열의 클라이언트 섬(`HoldLater` — effect 구독, `use()`는 전환을 붙잡는다)으로 내린다 — 본문 렌더를 막지 않는다(malmoi#107이 메모로 줄인
    * 착지 병목을 되살리지 않는다). 조회는 여기서 출발하므로 본문과 동시에 돈다.
    * ⚠️ **거부를 삼킨다** — Home은 모든 프로젝트의 착지 화면이라(위 연결 조회와 같은 판정) 조회 실패는 보류(`pr-check-failed`)로 말한다.
    */

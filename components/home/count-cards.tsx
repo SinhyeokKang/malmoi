@@ -1,8 +1,9 @@
 import { ArrowDownToLine, Eye, GitPullRequestArrow, Languages } from "lucide-react";
 import Link from "next/link";
-import { Suspense, use, type ComponentType } from "react";
+import type { ComponentType } from "react";
 
-import { CARD_STATE, holdSubline, type CardSubline, type HomeCard } from "@/lib/home/cards";
+import { HoldLater } from "@/components/home/hold-later";
+import { CARD_STATE, type CardSubline, type HomeCard } from "@/lib/home/cards";
 import { m } from "@/lib/i18n";
 import type { HoldReason } from "@/lib/protection/plan";
 import { relativeTime } from "@/lib/relative-time";
@@ -38,7 +39,7 @@ export function CountCards({ cards, slug, surfaceSlug, now, heldLater }: {
   now: Date;
   /**
    * 열린 PR 조회에 달린 보류 사유 (ux-drift-unify Q6) — **`To send` 보조 줄만 늦게 도착한다**, 본문은 기다리지 않는다(malmoi#107이 줄인 착지 병목).
-   * 도착 전에는 카드가 든 줄(`nothing to send` — 편집 0이라 참이다)이 선다.
+   * 도착 전에는 `nothing to send`(편집 0이라 참이다)가 선다. ⚠️ 받는 것은 클라이언트 섬(`HoldLater`)이다 — `use()`로 받으면 전환이 조회를 기다린다(U7 r1).
    */
   heldLater?: Promise<HoldReason | null>;
 }) {
@@ -119,7 +120,7 @@ export function CountCards({ cards, slug, surfaceSlug, now, heldLater }: {
                   <span className="text-muted-foreground text-xs">
                     {m.home.cards.unit[card.unit]} ·{" "}
                     {card.key === "toSend" && heldLater !== undefined
-                      ? <Suspense fallback={sublineText(card.subline, now)}><HeldSubline hold={heldLater} now={now} /></Suspense>
+                      ? <HoldLater hold={heldLater} as="subline" />
                       : sublineText(card.subline, now)}
                   </span>
                 </span>
@@ -176,11 +177,6 @@ function sublineText(subline: CardSubline, now: Date): string {
     case "repositoryUpdatesPaused":
       return m.home.cards.held[subline.reason];
   }
-}
-
-/** 늦게 도착한 보류 사유 — 카드가 쓰는 같은 변환(`holdSubline`)을 지난다. */
-function HeldSubline({ hold, now }: { hold: Promise<HoldReason | null>; now: Date }) {
-  return sublineText(holdSubline(use(hold)), now);
 }
 
 /**

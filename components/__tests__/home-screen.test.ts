@@ -248,3 +248,23 @@ describe("Home — 활동은 이벤트 스트림 하나다", () => {
     expect(read("components/home/logs-card.tsx")).toContain('from "@/components/logs/event-row"');
   });
 });
+
+/**
+ * **보류 판정의 배선** (ux-drift-unify Q6 · U7 r1 ⚪7) — Home은 `planHomeHold`로 판정하고, PR에 달린 사유는 promise를 **기다리지 않고** 두 자리
+ * (카드 보조 줄 · 메타 열)에 똑같이 내린다. 기다리면 malmoi#107이 줄인 착지 병목이 되살아난다.
+ */
+describe("Home — 보류 판정", () => {
+  const src = read(HOME);
+
+  it("planHomeHold 하나가 판정하고 그 promise를 await하지 않는다", () => {
+    expect(src).toContain("planHomeHold(");
+    expect(src).not.toMatch(/await planHomeHold/);
+    expect(src).not.toMatch(/await\s+hold\b/);
+    expect(src).toContain("loadOpenPrUrl(slug, project)");
+  });
+
+  it("같은 promise가 카드와 메타 열 둘 다에 간다", () => {
+    expect(src).toContain("const heldLater = hold instanceof Promise ? hold : undefined;");
+    expect(src.match(/heldLater=\{heldLater\}/g)).toHaveLength(2);
+  });
+});
