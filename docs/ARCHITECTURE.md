@@ -605,6 +605,28 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
   아니라 사용자가 일부러 고르는 전체 보기다(기본 착지는 load까지 1초). **다음에 이 화면이 느리다는
   제보가 오면 FCP가 아니라 이 표의 `loadEventEnd`부터 본다.**
 
+⚠️ **2026-10-01 — 위 판정의 전제("전체 보기는 기본 경로가 아니다")가 바뀌었다** (translation-filter-scope, 2026-09-30 사용자). 기본 범위가
+**All sources**이고 화면 목록이 **전량**(`pageSize: "all"`, `Show more keys` 없음)이라 전 소스 × 전 키가 기본 착지다. 목록은 요약 행뿐이고
+입력은 선택 키 하나라(`<Textarea>` 2,721개 시절과 다른 화면) 가상화 없이 측정 게이트를 세웠다. 로컬 production 빌드(`pnpm build && pnpm start`,
+dev DB = 로컬 Mac → 도쿄 pooler), 소스 셋 fixture, warm-up 1회 버림 + 3회 중앙값:
+
+| 지표 | 한계(5,000행) | 5,000행 | 2,000행 | 판정 |
+|---|---|---|---|---|
+| `loadEventEnd` | ≤ 2.0초 | **1.33초** | 1.11초 | 통과 |
+| 문서 `transferSize`(gzip) | ≤ 1.5MB | **0.38MB**(디코드 4.87MB) | 0.17MB | 통과 |
+| 상세 타이핑 INP | ≤ 200ms | 판정 불가 — 메인 스레드 몫 39ms | 28ms | **미판정** |
+| Save → 재검증 `responseEnd` | ≤ 1.0초 | **2.49초**(TTFB 1.17초) | 2.55초 | **미달 — 사용자가 수용**(2026-10-01) |
+| 키 클릭 → 상세 열기 긴 작업 | (게이트 밖) | **~2.05초** | 관측 없음 | 별건 [#157](https://github.com/SinhyeokKang/malmoi/issues/157) |
+
+- **Save 재검증 미달은 행 수가 원인이 아니다** — 2,000행도 2.55초이고 TTFB가 ~1.2초다(로컬 → 도쿄 pooler 왕복). 사용자가 한계선을 완화하고
+  More 삭제로 진행했다. 다음에 저장이 느리다는 제보가 오면 행 수보다 재검증 요청의 TTFB부터 본다.
+- **INP는 이 측정 브라우저(ego)에서 판정하지 못했다** — 로그인한 앱 셸에서만 rAF가 ~1초 간격으로 떨어져 event duration이 목록 크기와 무관하게
+  ~1초였다(1행 대조군도 같다). 메인 스레드 몫(입력 지연 + 처리)만 39ms로 한계 안이다. 확정하려면 일반 Chrome에서 다시 잰다.
+- **5,000행에서 키를 클릭하는 순간 메인 스레드가 ~2.05초 막힌다**(매 회, LoAF blocking 2,085ms) — INP 정의상 이 클릭이 페이지 INP다.
+  게이트 밖이라 #157로 따로 추적한다.
+- 20,000키×200언어 fixture(§1.96과 같은 SQL)의 전량 조회 — **기록이지 판정이 아니다**(§1.96의 389ms는 LIMIT 100 + count였다):
+  All sources 26,000행 **221ms** · `JSON.stringify(rows)` **5.86MB** / 모든 키가 일치하는 검색 477ms · 8.70MB / This source 20,000행 244ms · 4.53MB.
+
 ⚠️ **절대값 판정에 `pnpm dev`를 쓰지 않는다.** 같은 화면을 dev 서버로 재면 FCP가 688ms인데
 `responseEnd`가 **10,086ms**이고 본문이 1MB다 — 헤더와 셸이 먼저 나가고 서버가 표를 10초 붙들고 있다.
 같은 코드가 Vercel 빌드에서 0.74초·181KB다. **스트리밍 응답에서는 `responseEnd`와 `transferSize`를
@@ -619,12 +641,16 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 - **신규 인덱스가 없다.** 키 요약은 기존 `(projectId, surfaceId, …)` 인덱스 위의 키 단위 집계이고 KeyRef를 조인하지 않는다.
   **pg_trgm GIN(value·sourceText)은 기각했다** — 키별 EXISTS 계획이라 131→94ms · 36→11ms로 확장 하나를 들일 값이 아니었다.
 - **정렬은 `Incomplete first` 하나이고 URL에 `sort`가 없다** — 고를 것이 없는 파라미터는 만들지 않는다.
-- **`PAGE_SIZE` 100 + keyset cursor**(`lib/keys/translation-list.ts`). 안정 분할이 범위 전체 집계를 요구하므로 비용은 페이지 크기가
-  아니라 `scope`에 좌우된다 — 페이지를 줄여 빨라지길 기대하지 않는다. 조건이 바뀌면 cursor를 푼다.
-  ⚠️ **다음 페이지는 주소가 아니라 `loadMoreTranslationKeys`(읽기 전용 Server Action)로 읽고 화면이 누적한다** (audit-ux #19, 2026-09-25) —
-  cursor가 주소에 있으면 새로고침·공유·뒤로가기가 그 페이지만 보였다. 대가: **저장 뒤 재검증은 첫 페이지만 다시 그린다** — 붙인 행은
-  `mergeServerRows`가 자리에 남기고, 요약이 바뀌는 길은 저장한 행의 `applySavedRow`와 선택 키의 `selectedInResult`뿐이다(남이 바꾼 뒤쪽
-  행의 배지는 재필터까지 낡을 수 있다). More의 행·cursor·대기 상태는 목록 세대에 묶여 조건이 바뀌면 버려진다.
+- **화면 목록은 전량이다 — `pageSize: "all"`** (translation-filter-scope, 2026-09-30 사용자). 안정 분할이 범위 전체 집계를 요구하므로 비용은
+  페이지 크기가 아니라 `scope`에 좌우된다 — 페이지를 나눠도 조회 시간이 줄지 않았다. `"all"`은 LIMIT·cursor가 없고 **SQL count를 따로 돌리지
+  않는다**(CTE가 한 번만 돈다 — 집계는 행에서 센다). 트리의 조건별 숫자도 이 행에서 센다(`lib/translations/tree-narrow.ts` — 새 조회가 없다).
+  측정 게이트와 그 판정은 §1.95.
+  - ⚠️ **검색 일치 조각은 키당 한 행이다**(`matchesFor`의 `DISTINCT ON (keyId)`, 로케일 `COLLATE "C"` 첫 것) — 전량에서 흔한 단어를 찾으면
+    키 × 로케일 행이 Node로 왔다.
+  - **재검증 응답이 곧 조건의 전부다** — 같은 세대의 재검증에서 서버 행에 없는 행은 선택 여부와 무관하게 `savedOut`이다(`mergeServerRows`).
+    전엔 More로 붙인 페이지 밖 행 때문에 선택 키만 판정했다(`loadMoreTranslationKeys`는 2026-10-01에 지웠다).
+  - ⚠️ **`PAGE_SIZE` 100 + keyset cursor는 MCP `list_keys` 전용으로 남는다** — 외부 계약이다(§6.45). 숫자 `pageSize` 경로는 SQL count를 유지하고,
+    통합 테스트가 두 경로의 행·집계가 같음을 단언한다. cursor는 주소에 없다(audit-ux #19) — 옛 `?cursor=` 주소는 cursor를 뺀 주소로 redirect한다.
   ⚠️ **Sync 성공도 새 세대다** (2026-09-27, 감사 #11) — 같은 조건의 재검증은 행을 끼워 넣지 않아 들여온 키가 목록에 안 섰다. 기준은 Sync를
   시작한 순간의 목록이고, 결과와 새 트리 중 어느 쪽이 먼저 커밋돼도 그 목록과 다른 첫 목록에서 새 세대를 시작한다(`workspace.tsx`).
 - **`q`는 200자**(`Q_MAX_LENGTH`) — trim 뒤 비면 검색 없음, LIKE 메타문자는 escape한다.
@@ -2826,7 +2852,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `list_repositories` | 없음(생성 준비) | `project:create` | 연결 가능한 리포. 연결·설치가 없으면 `needs-browser` |
 | `list_branches` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / **기존: 없음** | 기존 프로젝트의 브랜치 목록은 PRODUCT §3의 읽기 예외다. sync 브랜치 제외 |
 | `detect_formats` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / 기존: `project:settings` | 파일 다운로드라 두 경로 다 grant. 둘 다 리포 쓰기 권한 확인. 샘플 확인값 발급 |
-| `list_keys` | OWNER / EDITOR (표면) | 없음 | 검색·상태 필터·cursor, 페이지 100 |
+| `list_keys` | OWNER / EDITOR (표면) | 없음 | 검색·상태 필터·cursor, 페이지 100. **`scope`가 없으면 전 활성 소스다** — 화면 기본값과 같은 파서(2026-09-30 사용자, translation-filter-scope). 경로 소스만 보려면 `query.scope: "source"` |
 | `get_key` | OWNER / EDITOR (표면) | 없음 | 로케일 값·설명·사용처·플래그 |
 | `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR — `pullRequest: { status: "open", number, url } \| { status: "none" } \| { status: "unknown" }`. ⚠️ 조회 실패·시간 초과(`loadOpenPrUrl`의 `undefined`)를 "없음"으로 접지 않는다 — `undefined`는 JSON에서 필드째 사라지므로 상태가 값이다(Codex review CR-04) |
 | `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라) |
