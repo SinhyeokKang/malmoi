@@ -755,7 +755,10 @@ scripts/                adapter-survey · sync-agents · copy-fonts · scan · i
                         (⚠️ DATABASE_URL을 친다 — prod는 명령 한 줄에서 그 변수를 넘긴다, 0행 두 번이 수렴)
                         release(순수 버전 판정 — planRelease·recommendLevel·latestReleaseTag. ⚠️ lib/가 아닌 이유는 앱 런타임이 안 쓰는 하네스 로직이라서다) ·
                         release-plan(pnpm release:plan — /merge 3단계 전용. 원격 태그(ls-remote)·origin/dev·origin/main을 읽는다. 읽기 전용,
-                        exit 0 판정 / 1 error / 2 인자가 주어짐)
+                        exit 0 판정 / 1 error / 2 인자가 주어짐) ·
+                        gate-plan(순수 게이트 판정 — planGate(단계 순서 · 격리 postgres 트리거의 **정본**) · isTeardownOnlyFailure) ·
+                        gate(pnpm gate — /push·/ship·/orchestrate의 **유일한 로컬 게이트**. 첫 실패의 exit code로 끝난다, 2 = 인자 오류.
+                        ⚠️ 2026-09-30 손으로 조립한 `| grep | head` 게이트가 종료 코드를 삼켜 red를 dev에 냈다 — 그래서 한 명령이다)
                         __tests__/workflow-pins가 .github/ 아래 uses:가 40자 SHA로 핀됐는지 센다.
                         __tests__/prisma-select-columns는 이 디렉터리의 select 키를 schema.prisma와
                         대조한다 — ⚠️ tsc가 Prisma select 키를 안 보고 scripts/는 pnpm test 밖이다
@@ -797,16 +800,16 @@ vitest.setup.ts         ⚠️ server-only를 전역 mock하고 테스트용 암
 vitest.projects.config.ts
                         목록 집계의 **격리 PostgreSQL** 검증(`pnpm test:projects:postgres`).
                         ⚠️ `pnpm test`에 없다 — 실제 클러스터를 띄우고, 미전달 술어가 공유 조각(pendingWhere)
-                        + 손 사본 셋(번역 목록 bool_or · 상세 셀 투영 · 프로젝트 목록 raw SQL)이라 "같은 행을 세나"를 재는 유일한 자리다. `lib/keys/**`의 raw 집계를
-                        건드렸으면 손으로 돌린다. 편집 토큰의 조건부 쓰기(적재 정리·Publish CAS·backfill)와
+                        + 손 사본 셋(번역 목록 bool_or · 상세 셀 투영 · 프로젝트 목록 raw SQL)이라 "같은 행을 세나"를 재는 유일한 자리다. 트리거 경로를 건드리면
+                        `pnpm gate`가 붙인다(정본 scripts/gate-plan.ts). 편집 토큰의 조건부 쓰기(적재 정리·Publish CAS·backfill)와
                         동시 CI push의 결과 표시(concurrent-import — barrier로 두 요청을 교차시킨다)와 전달 층 불변식
                         (delivery-invariants — 승인 Sync의 orphan 토큰 해제 · orphan 셀 적재 제외 · 로케일 재시도 · 보류 뒤 Revert)도
-                        여기서만 잰다 — include가 `lib`(루트)·`lib/keys`·`lib/events`·`lib/invitation-email`·`lib/mcp`의 `__tests__/*.integration.ts`로
-                        박혀 있어 그 밖에 만든 통합 테스트는 조용히 0건 수집된다
+                        여기서만 잰다 — include가 디렉터리별 `__tests__/*.integration.ts`로 박혀 있어 그 밖에 만든 통합 테스트는 조용히 0건 수집된다.
+                        ⚠️ 디렉터리를 더하면 `scripts/gate-plan.ts` 트리거에도 더한다 — `__tests__/gate-plan.test.ts`가 둘을 대조한다
 vitest.credentials.config.ts
                         같은 형의 둘째다 — 자격증명 암·복호의 **격리 PostgreSQL** 검증
                         (`pnpm test:credentials:postgres`, include는 `lib/credentials/__tests__/*.integration.ts`).
-                        ⚠️ 이쪽도 `pnpm test` 밖이라 `lib/credentials/**`를 건드렸으면 손으로 돌린다
+                        ⚠️ 이쪽도 `pnpm test` 밖이다 — `lib/credentials/**`를 건드리면 `pnpm gate`가 붙인다
 auth.ts                 Auth.js v5. 어댑터가 credentialAdapter(그 아래가 safePrismaAdapter)이고
                         세션 토큰은 우리가 만든다(DB엔 digest만). handlers는 withRevocation으로 감싼다
 ```
