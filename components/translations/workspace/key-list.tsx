@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelLeftOpen } from "lucide-react";
-import { memo, useId, type ReactNode, type Ref } from "react";
+import { memo, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode, type Ref } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,9 @@ import { cn } from "@/lib/utils";
  * ⚠️ **미번역은 회색이다** (2026-09-30 상태 통일 — 미번역은 이상이 아니라 할 일이다). 호박은 검토 대기(`Needs review`)만 든다. 낱말(`{n} untranslated` · `Complete`)이 둘을 가른다.
  * ⚠️ **저장으로 조건을 벗어난 행은 자리에 남는다**(취소선 + `Saved`) — 다른 키를 눌러도 그대로이고 재필터에서만 빠진다.
  * ⚠️ **선택은 배경만 바꾼다** — 굵기를 주지 않는다(`sidebar.tsx`).
+ * ⚠️ **Tab 정지점은 하나다** (translation-filter-scope T8 — roving tabindex) — 목록이 전량이라 행마다 정지점이면 목록을 지나는 데 수천 번을
+ *    눌러야 했다. 정지점은 방금 포커스한 행 → 선택 행 → 첫 행 순이고, ↑/↓·Home/End가 포커스를 옮기며 Enter·Space(버튼 기본 동작)가 선택한다.
+ *    포커스한 행이 목록에서 사라지면 정지점(없으면 목록 제목)으로 옮긴다 — `body`로 빠지지 않게(POSTMORTEM 2026-09-24).
  */
 export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyId, showSource, onSelect, busy = false, treeButton, empty }: {
   list: ListGeneration<TranslationListRow>;
@@ -36,6 +39,46 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
 }) {
   const w = m.translations.workspace.list;
   const headingId = useId();
+  const listRef = useRef<HTMLUListElement>(null);
+  const [focusedKeyId, setFocusedKeyId] = useState<string | null>(null);
+  const ids = useMemo(() => new Set(list.rows.map(entry => entry.row.keyId)), [list]);
+  const tabStop = focusedKeyId !== null && ids.has(focusedKeyId) ? focusedKeyId
+    : selectedKeyId !== undefined && ids.has(selectedKeyId) ? selectedKeyId
+    : list.rows[0]?.row.keyId;
+
+  /*
+    포커스가 목록 안에 있었나 — 행이 지워지면 blur의 `relatedTarget`이 없으므로 그때는 유지하고, 목록 밖의 요소로 옮겨 갔을 때만 푼다.
+    목록이 바뀐 커밋에 포커스가 `body`에 있으면 지워진 행과 함께 빠진 것이다.
+  */
+  const hadFocus = useRef(false);
+  useLayoutEffect(() => {
+    if (!hadFocus.current || (document.activeElement !== null && document.activeElement !== document.body)) return;
+    (listRef.current?.querySelector<HTMLElement>('[data-key-row][tabindex="0"]') ?? document.getElementById(headingId))?.focus();
+  }, [list, headingId]);
+  function onFocus(event: FocusEvent<HTMLUListElement>) {
+    hadFocus.current = true;
+    const id = event.target instanceof HTMLElement ? event.target.dataset.keyRow : undefined;
+    if (id !== undefined) setFocusedKeyId(id);
+  }
+  function onBlur(event: FocusEvent<HTMLUListElement>) {
+    if (event.relatedTarget === null || event.currentTarget.contains(event.relatedTarget)) return;
+    hadFocus.current = false;
+    // 목록을 떠나면 정지점은 다시 선택 행이다.
+    setFocusedKeyId(null);
+  }
+  function onKeyDown(event: KeyboardEvent<HTMLUListElement>) {
+    const rows = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-key-row]")];
+    const index = rows.indexOf(event.target as HTMLElement);
+    if (index < 0) return;
+    const next = event.key === "ArrowDown" ? Math.min(index + 1, rows.length - 1)
+      : event.key === "ArrowUp" ? Math.max(index - 1, 0)
+      : event.key === "Home" ? 0
+      : event.key === "End" ? rows.length - 1
+      : null;
+    if (next === null) return;
+    event.preventDefault();
+    rows[next]?.focus();
+  }
   return (
     <div data-panel="list" aria-busy={busy || undefined} className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
@@ -53,8 +96,8 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {/* <ul>이어야 스크린리더가 "n개 중 m번째"를 읽는다 — 옛 표는 행 수를 알려 줬다. */}
-        {list.rows.length === 0 ? empty : <ul aria-labelledby={headingId}>{list.rows.map(({ row, savedOut }, index) => (
-          <KeyRow key={row.keyId} row={row} savedOut={savedOut} first={index === 0} selected={row.keyId === selectedKeyId} showSource={showSource} onSelect={onSelect} />
+        {list.rows.length === 0 ? empty : <ul ref={listRef} aria-labelledby={headingId} onKeyDown={onKeyDown} onFocus={onFocus} onBlur={onBlur}>{list.rows.map(({ row, savedOut }, index) => (
+          <KeyRow key={row.keyId} row={row} savedOut={savedOut} first={index === 0} selected={row.keyId === selectedKeyId} tabStop={row.keyId === tabStop} showSource={showSource} onSelect={onSelect} />
         ))}</ul>}
       </div>
     </div>
@@ -65,11 +108,12 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
  * ⚠️ **행은 `memo`다** (translation-filter-scope design §3.1) — 목록이 전량이 되어 수천 행이 한 번에 서는데, draft `useReducer`가 워크스페이스
  * 최상위라 상세에서 한 글자 칠 때마다 전 행이 다시 렌더됐다. 그래서 호출부의 `onSelect`는 렌더마다 같은 함수여야 한다(`workspace.tsx`).
  */
-const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, showSource, onSelect }: {
+const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, showSource, onSelect }: {
   row: TranslationListRow;
   savedOut: boolean;
   first: boolean;
   selected: boolean;
+  tabStop: boolean;
   showSource: boolean;
   onSelect: (row: TranslationListRow) => void;
 }) {
@@ -79,6 +123,7 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, showSource
       <ListItemButton
         data-key-row={row.keyId}
         selected={selected}
+        tabIndex={tabStop ? 0 : -1}
         onClick={() => onSelect(row)}
         className={cn("flex items-start gap-3 border-t px-4 py-3", first ? "border-divider" : "border-border")}
       >
