@@ -41,6 +41,10 @@ The result can say:
 
 If you do not publish, saved changes are published automatically once a night. See [Every night](../sync/nightly.md#nightly) for eligibility and timing.
 
+## While the pull request is open {#open-pull-request}
+
+Your published values are safe while the pull request waits for review. Malmoi holds updates from the repository until the development team merges or closes it, so new app text from code can take longer to appear. If the pull request is closed without being merged, the next update from the repository replaces those values with the repository's.
+
 ## What happens next {#next}
 
 The development team reviews the pull request and merges it into the repository.

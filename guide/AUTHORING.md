@@ -129,13 +129,13 @@
 | `setup/archive.md` | 보관·복원, 열린 PR 유지, 이력 읽기 | `components/settings/archive-card.tsx`, `app/(edit)/projects/actions.ts`, `lib/auth/permission.ts`, `docs/PRODUCT.md` §7.9 |
 | `translate/join.md` | 초대 주소·로그인·수락·거부 | `app/invite/`, `lib/auth/invitation.ts`, `lib/login-link/`, `docs/PRODUCT.md` §3 |
 | `translate/edit.md` | EDITOR의 검색·필터·저장·미저장 확인·플래그 | `components/translations/workspace/`, `app/(edit)/actions.ts`, `lib/keys/save-key.ts`, `lib/keys/save.ts`, `lib/keys/translation-list.ts`, `docs/PRODUCT.md` §3·§4.2 |
-| `translate/publish.md` | EDITOR의 미리보기·실행·결과, PR 표시 범위 | `components/translations/`, `app/(edit)/publish-actions.ts`, `lib/publish/`, `lib/pull/`, `docs/PRODUCT.md` §3·§7.6 |
+| `translate/publish.md` | EDITOR의 미리보기·실행·결과, PR 표시 범위, 열린 PR 동안의 적재 보류 | `components/translations/`, `app/(edit)/publish-actions.ts`, `lib/publish/`, `lib/pull/`, `docs/PRODUCT.md` §3·§7.6 |
 | `sync/README.md` | 코드와 DB의 경계, 병합 없음 | `docs/ARCHITECTURE.md` §0, `lib/push/apply.ts`, `lib/pull/run.ts` |
-| `sync/push.md` | strict 적재, 미전달 보류, 사라진 키 보존 | `app/api/push/route.ts`, `lib/push/apply.ts`, `lib/protection/where.ts`, `docs/ARCHITECTURE.md` §5.5.2 |
+| `sync/push.md` | strict 적재, 보류 사유(미전달 편집·열린 PR·PR 조회 실패), 사라진 키 보존 | `app/api/push/route.ts`, `lib/push/apply.ts`, `lib/protection/where.ts`, `lib/protection/plan.ts`(`planOpenPrGate`), `lib/projects/open-pr.ts`, `lib/cli/push-response.ts`, `docs/ARCHITECTURE.md` §5.5.2 |
 | `sync/merging.md` | 고정 PR·브랜치, 머지 방식, `SKIP_MARKER` | `lib/pull/payload.ts`의 `withSkipMarker`, `docs/ARCHITECTURE.md:733`, `lib/pull/run.ts`, `lib/onboarding/workflow.ts`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md` |
-| `sync/nightly.md` | 하루 한 번 자동 Publish·대상·거부 조건 | `vercel.json`, `app/api/pull/route.ts`, `lib/pull/`, `docs/PRODUCT.md` §7.6 |
+| `sync/nightly.md` | 하루 한 번 프로젝트마다 Publish·서버 적재·스킵 중 하나, 대상·보류 사유(열린 PR·PR 조회 실패·`too-large`·base 읽기 실패), 워크플로와의 관계 | `vercel.json`, `app/api/pull/route.ts`, `lib/pull/`, `lib/nightly/plan.ts`, `lib/import/run.ts`·`lib/import/automation.ts`, `messages/en.tsx`의 `logs.deferReasons`, `docs/PRODUCT.md` §4.1·§7.6, `docs/ARCHITECTURE.md` §3.05 |
 | `sync/revert.md` | OWNER 전용 복원·수동 Sync, 지문 확인·미전달 처리 | `lib/keys/revert.ts`, `lib/protection/`, `lib/sync/`, `app/(edit)/actions.ts`, `docs/ARCHITECTURE.md` §5.8 |
-| `sync/logs.md` | 필터·상세·수동 갱신·보관 이력 | `app/(edit)/projects/[slug]/logs/page.tsx`, `components/logs/`, `lib/events/`, `docs/ARCHITECTURE.md` §5.7 |
+| `sync/logs.md` | 필터(행위자 `CI`·`Nightly`)·상세(`Values`·`Held because`)·수동 갱신·보관 이력 | `app/(edit)/projects/[slug]/logs/page.tsx`, `components/logs/`, `lib/events/`(`triggerOf`·`trigger-where.ts`), `docs/ARCHITECTURE.md` §5.7 |
 | `account.md` | 프로필·로그인 수단·GitHub 연결·전체 로그아웃 | `app/(edit)/account/`, `components/account/`, `lib/account-connect/`, `lib/login-link/`, `lib/session-revocation/`, `docs/PRODUCT.md` §4.1·§7.7 |
 | `ai-agents/README.md` | 연결 방식 둘·MCP 주소·사전 조건 | `app/(edit)/mcp/`, `lib/mcp/snippets.ts`, `docs/ARCHITECTURE.md` §6.45, `docs/PRODUCT.md` §4.1 |
 | `ai-agents/browser.md` | 브라우저 로그인 연결(조각 둘·claude.ai 커넥터 단계·동의 화면·재동의 대체·요청 10분), Connected apps·끊기 | `app/oauth/authorize/`, `components/oauth/`, `lib/oauth/authorize-view.ts`, `app/(edit)/mcp/`, `components/mcp/`, `lib/mcp/snippets.ts`(조각 — `content.test.ts`가 글자 단위로 대조), `messages/en.tsx`의 `mcpConnector` |

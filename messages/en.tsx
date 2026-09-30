@@ -2026,11 +2026,12 @@ export const en = {
       result: {
         title: "Malmoi is ready",
         /**
-         * ⚠️ **둘째 문장이 야간 PR 공지다** (launch-readiness L2.9) — 전에는 온보딩 어디에도 없어 첫 PR이 예고 없이 왔다.
-         * "every night"는 참이다: `vercel.json` 하루 1회(Hobby) · 프로덕션 배포에서만 · 대상은 `selectPullTargets`가
-         * 고르고 GitHub에 닿는 것은 미전달 편집이 있는 프로젝트뿐이다(PRODUCT §7.6).
+         * ⚠️ **첫 문장이 야간 공지다** (launch-readiness L2.9 — 전에는 첫 PR이 예고 없이 왔다). nightly-sync(2026-09-30)부터 야간이
+         * 양방향이라 둘 다 말한다: 미전달 편집이 있으면 PR, 없으면 리포의 새 커밋을 받는다(PRODUCT §4.1). "every night"는 참이다 —
+         * `vercel.json` 하루 1회 · 프로덕션 배포에서만 · 대상은 `selectPullTargets`가 고른다.
+         * ⚠️ **워크플로를 "계속 받으려면 필요한 것"으로 말하지 않는다** — 이제 커밋마다 받는 선택지다(PRODUCT §7.4).
          */
-        description: "Add the push token to the repository so CI can send translations back. Every night, translations not yet sent go to the repository as a pull request.",
+        description: "Every night, Malmoi sends translations not yet sent to the repository as a pull request, or picks up new commits. To pick up changes on every commit instead, add the push token and the workflow to the repository.",
       },
     },
 
