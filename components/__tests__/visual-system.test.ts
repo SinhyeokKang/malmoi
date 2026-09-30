@@ -471,3 +471,191 @@ describe("후보 행 IconTile의 덮기", () => {
     expect(openingTags(row, "IconTile").join(" ")).toContain("opacity-50");
   });
 });
+
+/**
+ * **화면 간 불변식 — 톤·낱말·동작을 소스 전수로 센다** (ux-drift-unify T28). 규칙마다 지금 위반 목록을 먼저 세고, 해소되지 않는 것만 사유와
+ * 함께 허용 목록에 둔다. 각 규칙은 **메모리 카나리아**(실제 소스를 메모리에서 위반으로 바꿔 red)와 **스캔 대상 수 하한**을 든다 —
+ * 스캐너가 아무것도 못 읽어도 "0건"은 green이기 때문이다(POSTMORTEM 2026-09-14).
+ *
+ * | 규칙 | 착수 때 위반 | 해소 |
+ * |---|---|---|
+ * | `ExternalLink` import 0 | `repository-card.tsx:4` | T22 |
+ * | `ui/` 밖 `animate-spin` 0(`[&_.animate-spin]` 선택자 제외) | 11곳 | T13·T17·T20·T22·T23, 남은 일곱은 `SPINNER_ALLOWED` |
+ * | 셸 안 카드 `rounded-xl` 0 | Logs 날짜 카드 | T21 — 16은 패널·1024 모달뿐(`PANEL_16`) |
+ * | `"partial-import"` 비교는 `import-failure.ts` 안에서만 | `sources-screen.tsx:103` 등 | T7·T17 |
+ * | `IconTile`에 상태 색 덮기 0 | 4곳 + `token-grant-fields.tsx:173` | T17·T18·T21·T23 — 면 색(`bg-muted`·`bg-background`)은 허용 |
+ * | `TriangleAlert`는 danger 옆에 서지 않는다 | 0 | T17·T18(선제 고정) |
+ *
+ * `push-token-panel`의 `[&_.animate-spin]` 선택자는 T22·T23에서 사라졌다(글리프 없는 트리거 + `busy`).
+ */
+describe("화면 간 불변식 — grep 규칙 (T28)", () => {
+  const LIB = sourceFiles(join(ROOT, "lib")).map((file) => ({ path: relative(ROOT, file), source: bare(readFileSync(file, "utf8")) }));
+  const real = (path: string) => [...SOURCES, ...LIB].find((entry) => entry.path === path)?.source ?? "";
+
+  it("스캔 대상이 실제로 읽힌다 (하한)", () => {
+    expect(SOURCES.length).toBeGreaterThan(200);
+    expect(LIB.length).toBeGreaterThan(300);
+  });
+
+  describe("`ExternalLink` 글리프를 쓰지 않는다 — 나가는 신호는 색과 새 탭이 든다 (DESIGN §6.8 · 3-Y9)", () => {
+    const LUCIDE = /import\s*\{([^}]*)\}\s*from\s*"lucide-react"/g;
+    const imports = (source: string) => [...source.matchAll(LUCIDE)].flatMap((match) => (match[1] ?? "").split(",").map((name) => name.trim()));
+    const offenders = (entries: { path: string; source: string }[]) => entries.filter(({ source }) => imports(source).includes("ExternalLink")).map(({ path }) => path);
+
+    it("0곳이다", () => {
+      expect(SOURCES.filter(({ source }) => imports(source).length > 0).length).toBeGreaterThan(50);
+      expect(offenders(SOURCES)).toEqual([]);
+    });
+
+    it("카나리아 — repository-card의 lucide import에 되살리면 잡는다", () => {
+      const path = "components/settings/repository-card.tsx";
+      const source = real(path);
+      const mutated = source.replace(/import\s*\{([^}]*\}\s*from\s*"lucide-react")/, "import { ExternalLink,$1");
+      expect(mutated).not.toBe(source);
+      expect(offenders([{ path, source }])).toEqual([]);
+      expect(offenders([{ path, source: mutated }])).toEqual([path]);
+    });
+  });
+
+  describe("`ui/` 밖 수제 스피너는 허용 목록뿐이다 — 버튼 안 진행은 `Button busy`·`loading`이 든다 (3-⚪13 · 5-Y14)", () => {
+    /** `[&_.animate-spin]:size-3.5`는 `Button`이 그린 스피너의 크기를 맞추는 선택자다 — 스피너를 새로 그리지 않는다. */
+    const SPIN = /(?<!\[&_\.)animate-spin/g;
+    /**
+     * ⚠️ **`Button`/`ButtonLink`의 `busy`·`loading`으로 옮길 수 없는 일곱이다** — 사유가 사라지면 걷는다.
+     */
+    const SPINNER_ALLOWED: Record<string, { count: number; why: string }> = {
+      // 도는 동안에도 눌러 진행 모달을 다시 연다(`launch`) — `busy`·`loading`은 클릭을 막는다. 둘째는 버튼이 아니라 진행 목록의 머리다.
+      "components/publish-button.tsx": { count: 2, why: "clickable while pending · progress list" },
+      // `DropdownMenuItem`이다 — `Button`이 아니라 메뉴 항목 형(focus-ring 게이트가 raw `<button>`을 막는다).
+      "components/shell/user-menu.tsx": { count: 1, why: "menu item" },
+      // 서버 헤더의 `Link` 안 `useLinkStatus` 조각 — `ButtonLink`에는 `loading`이 없고 링크 자손에서만 값이 난다.
+      "components/shell/new-project-icon.tsx": { count: 1, why: "link status glyph" },
+      // `buttonClass`를 입은 `Link` + `useTransition` — `ButtonLink`는 `loading`·`onNavigate`를 받지 않는다.
+      "components/projects/new-project-button.tsx": { count: 1, why: "link with its own transition" },
+      // 행 끝 chevron 자리 교체 — 버튼이 아니다(행 전체가 `Link`).
+      "components/logs/row-chevron.tsx": { count: 1, why: "row chevron slot" },
+      // 상태 칸(`IconTile`) 안 글리프 교체 — 버튼이 아니다.
+      "components/sources/source-detail-modal.tsx": { count: 1, why: "status tile glyph" },
+    };
+    const byFile = (entries: { path: string; source: string }[]) => {
+      const out: Record<string, number> = {};
+      for (const { path, source } of entries) {
+        if (path.startsWith("components/ui/")) continue;
+        const n = [...source.matchAll(SPIN)].length;
+        if (n > 0) out[path] = n;
+      }
+      return out;
+    };
+
+    it("허용 목록과 정확히 같다 — 새 자리도, 사라진 자리도 red", () => {
+      expect(byFile(SOURCES)).toEqual(Object.fromEntries(Object.entries(SPINNER_ALLOWED).map(([path, { count }]) => [path, count])));
+    });
+
+    it("선택자 `[&_.animate-spin]`은 세지 않고, `Button` 자신의 스피너는 센다 (카나리아)", () => {
+      expect([..."[&_.animate-spin]:size-3.5".matchAll(SPIN)]).toHaveLength(0);
+      expect([...real("components/ui/button.tsx").matchAll(SPIN)]).toHaveLength(1);
+      const path = "components/home/sync-button.tsx";
+      const source = real(path);
+      expect(byFile([{ path, source }])).toEqual({});
+      const mutated = source.replace("{m.repositorySync.sendFirst}", '<Loader2 className="size-4 animate-spin" aria-hidden />{m.repositorySync.sendFirst}');
+      expect(mutated).not.toBe(source);
+      expect(byFile([{ path, source: mutated }])).toEqual({ [path]: 1 });
+    });
+  });
+
+  describe("radius 16(`rounded-xl`)은 패널과 1024 모달뿐이다 — 셸 안 카드는 12 (DESIGN §5 · 4-Y2)", () => {
+    /** 패널(셸 `main`·공개 셸·로그인 두 판)과 1024 모달 둘, 그리고 그것을 정적으로 복제한 랜딩 목업 둘. */
+    const PANEL_16 = [
+      "components/landing/mockup/app-frame.tsx",
+      "components/landing/mockup/publish.tsx",
+      "components/logs/event-dialog.tsx",
+      "components/public-shell/public-shell.tsx",
+      "components/shell/content-panel.tsx",
+      "components/signin/auth-layout.tsx",
+      "components/ui/modal.tsx",
+    ];
+    const files = (entries: { path: string; source: string }[]) => entries.filter(({ source }) => /(?<![\w-])rounded-xl(?![\w-])/.test(source)).map(({ path }) => path).sort();
+
+    it("등재된 일곱 파일뿐이다", () => {
+      expect(files(SOURCES)).toEqual(PANEL_16);
+    });
+
+    it("카나리아 — Logs 날짜 카드를 16으로 되돌리면 잡는다", () => {
+      const path = "app/(edit)/projects/[slug]/logs/page.tsx";
+      const source = real(path);
+      const mutated = source.replace("rounded-lg border bg-background", "rounded-xl border bg-background");
+      expect(mutated).not.toBe(source);
+      expect(files([{ path, source: mutated }])).toEqual([path]);
+    });
+  });
+
+  describe("`partial-import`를 손으로 비교하지 않는다 — 일부 반영의 톤은 `importFailureTone` 하나가 든다 (🔴 A1 · 6-Y8)", () => {
+    const COMPARE = /[!=]==\s*"partial-import"|"partial-import"\s*[!=]==/g;
+    const offenders = (entries: { path: string; source: string }[]) =>
+      entries.flatMap(({ path, source }) => [...source.matchAll(COMPARE)].map(() => path));
+
+    it("`lib/projects/import-failure.ts` 한 줄뿐이다", () => {
+      expect(offenders([...SOURCES, ...LIB])).toEqual(["lib/projects/import-failure.ts"]);
+    });
+
+    it("카나리아 — 대입·호출 인자는 놓아주고, 화면에서 비교하면 잡는다", () => {
+      const path = "components/sources/sources-screen.tsx";
+      const source = real(path);
+      expect(offenders([{ path, source: 'failRun("partial-import"); x = y === 0 ? null : "partial-import"' }])).toEqual([]);
+      const mutated = source.replace("const { tone } = planSurfaceImportStatus(source);", 'const tone = source.importError === "partial-import" ? "warning" : "danger";');
+      expect(mutated).not.toBe(source);
+      expect(offenders([{ path, source: mutated }])).toEqual([path]);
+    });
+  });
+
+  describe("`IconTile`의 상태 색은 `tone`이 든다 — 호출부는 면만 덮는다 (1-R1 · 5-R1 · 5-Y6)", () => {
+    const STATE_COLOR = /^(?:[a-z-]+:)*(?:text|bg|border|ring)-(?:green|emerald|amber|red|destructive)(?:-|$|\/)/;
+    const tokens = (source: string) => openingTags(source, "IconTile").flatMap((tag) =>
+      [...tag.matchAll(/"([^"]*)"|`([^`]*)`/g)].flatMap((match) => (match[1] ?? match[2] ?? "").split(/\s+/)));
+    const offenders = (entries: { path: string; source: string }[]) =>
+      entries.flatMap(({ path, source }) => tokens(source).filter((token) => STATE_COLOR.test(token)).map((token) => `${path}: ${token}`));
+
+    it("0곳이다", () => {
+      expect(SOURCES.reduce((n, { source }) => n + openingTags(source, "IconTile").length, 0)).toBeGreaterThan(15);
+      expect(offenders(SOURCES)).toEqual([]);
+    });
+
+    it("카나리아 — 온보딩 후보 칸의 면을 호박으로 덮으면 잡는다", () => {
+      const path = "components/onboarding/steps/naming.tsx";
+      const source = real(path);
+      const mutated = source.replace('className={active ? "bg-background" : "bg-muted"}', 'className={active ? "bg-background" : "bg-amber-100/80 text-amber-800"}');
+      expect(mutated).not.toBe(source);
+      expect(offenders([{ path, source: mutated }])).toEqual([`${path}: bg-amber-100/80`, `${path}: text-amber-800`]);
+    });
+  });
+
+  describe("`TriangleAlert`는 danger 옆에 서지 않는다 — 실패는 `CircleX` (DESIGN §2.4 글리프 열 · 5-Y4)", () => {
+    /** 짝을 맺는 세 모양: 톤→글리프 표(`danger: X`) · 칸 객체(`{ icon: X, tone: "danger" }`) · 삼항(`=== "danger" ? X`). */
+    const PAIRED = [
+      /\bdanger\s*:\s*TriangleAlert\b/,
+      /\bTriangleAlert\b[^{}\n]{0,40}\btone:\s*"danger"/,
+      /\btone:\s*"danger"[^{}\n]{0,40}\bTriangleAlert\b/,
+      /"danger"\s*\?\s*TriangleAlert\b/,
+      /tone="danger"[^>]*>\s*<TriangleAlert\b/,
+    ];
+    const offenders = (entries: { path: string; source: string }[]) =>
+      entries.filter(({ source }) => PAIRED.some((pattern) => pattern.test(source))).map(({ path }) => path);
+
+    it("0곳이다", () => {
+      expect(SOURCES.filter(({ source }) => /\bTriangleAlert\b/.test(source)).length).toBeGreaterThanOrEqual(4);
+      expect(offenders(SOURCES)).toEqual([]);
+    });
+
+    it.each([
+      ["components/ui/alert.tsx", "danger: CircleX", "danger: TriangleAlert"],
+      ["components/home/attention-card.tsx", 'import_failed: { icon: CircleX, tone: "danger" }', 'import_failed: { icon: TriangleAlert, tone: "danger" }'],
+      ["components/projects/project-list.tsx", '"danger" ? CircleX : TriangleAlert', '"danger" ? TriangleAlert : CircleX'],
+    ])("카나리아 — %s의 실패 글리프를 삼각으로 바꾸면 잡는다", (path, from, to) => {
+      const source = real(path);
+      expect(offenders([{ path, source }])).toEqual([]);
+      const mutated = source.replace(from, to);
+      expect(mutated).not.toBe(source);
+      expect(offenders([{ path, source: mutated }])).toEqual([path]);
+    });
+  });
+});
