@@ -233,6 +233,16 @@ describe("loadTranslationList — 검색", () => {
     expect((await list(q({ q: "_" }))).rows.map(r => r.keyId)).toEqual(["w4"]);
   });
 
+  it("여러 로케일이 일치하면 COLLATE \"C\"로 첫 로케일의 셀 하나다 — 전량·숫자 페이지가 같다 (DISTINCT ON)", async () => {
+    // 삽입 순서를 코드순과 반대로(ko → ja) 둔다 — 우연히 먼저 넣은 행이 이기는 것과 구분한다.
+    await keys("p", "web", [{ id: "w8", key: "common.both", ns: "common", source: "Both", sort: 3, cells: [["en", "Both"], ["ko", "zzword 한"], ["ja", "zzword 日"]] }]);
+    for (const pageSize of ["all", 100] as const) {
+      const result = await loadTranslationList(prisma, { projectId: "p", routeSurfaceId: "p-web", query: q({ q: "zzword" }), pageSize });
+      expect(result.rows.map(r => r.keyId)).toEqual(["w8"]);
+      expect(result.rows[0]?.match).toEqual({ field: "translation", localeCode: "ja", text: "zzword 日", start: 0, length: 6 });
+    }
+  });
+
   it("일치 조각은 어느 필드·언어인지와 범위를 준다 — HTML이 아니다", async () => {
     const row = (await list(q({ q: "로그" }))).rows[0];
     expect(row?.match).toEqual({ field: "translation", localeCode: "ko", text: "로그인", start: 0, length: 2 });

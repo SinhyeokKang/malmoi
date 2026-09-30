@@ -144,7 +144,7 @@ it("트리 클릭은 첫 키 예약값으로 한 번만 push하고, 응답이 �
   const user = userEvent.setup();
   const initial = props();
   const b = gate();
-  respond = () => ({ next: { ...initial, query: { ...initial.query, ns: "common", scope: "namespace", key: "k2", keySurface: "web" }, list: { ...initial.list }, detail: detailOf("k2") }, gate: b });
+  respond = () => ({ next: { ...initial, query: { ...initial.query, ns: "common", key: "k2", keySurface: "web" }, list: { ...initial.list }, detail: detailOf("k2") }, gate: b });
   const { container } = await render(<Harness initial={initial} />);
   const node = [...container.querySelectorAll<HTMLButtonElement>("button")].find(el => el.textContent?.includes("common") && !el.closest("[data-key-row]"))!;
   await user.click(node);
@@ -155,6 +155,8 @@ it("트리 클릭은 첫 키 예약값으로 한 번만 push하고, 응답이 �
   expect(container.querySelector("[data-skeleton-detail]")).not.toBeNull();
   const replaceState = vi.spyOn(window.history, "replaceState");
   await arrive(b);
+  // 트리 클릭은 위치다 — 응답의 범위가 그대로(All sources)여도 누른 네임스페이스가 강조로 남는다(translation-filter-scope).
+  expect(node.getAttribute("aria-current")).toBe("true");
   expect(container.textContent).not.toContain(m.translations.workspace.detail.selectKey);
   expect(container.textContent).toContain("common.k2");
   expect(mocks.replace).not.toHaveBeenCalled();
