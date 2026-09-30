@@ -107,7 +107,7 @@ type Row = {
 
 export async function loadTranslationList(
   prisma: PrismaClient,
-  input: { projectId: string; routeSurfaceId: string; query: TranslationQuery; pageSize?: number; selectedKeyId?: string },
+  input: { projectId: string; routeSurfaceId: string; query: TranslationQuery; pageSize?: number | "all"; selectedKeyId?: string },
 ): Promise<TranslationList> {
   const { projectId, routeSurfaceId, query } = input;
   const pageSize = input.pageSize ?? PAGE_SIZE;
@@ -177,6 +177,23 @@ export async function loadTranslationList(
       SELECT *, CASE WHEN "missing" > 0 OR "review" THEN 0 ELSE 1 END AS "rank" FROM ks WHERE ${Prisma.join(filters, " AND ")}
     )`;
 
+  const order = Prisma.sql`ORDER BY "rank", "surfaceSlug" COLLATE "C", "sidx", "key" COLLATE "C", "id" COLLATE "C"`;
+  if (pageSize === "all") {
+    /*
+      ⚠️ **전량(화면 목록 — translation-filter-scope)은 count를 SQL로 따로 돌리지 않는다** — CTE가 count와 page에서 두 번 돌던 것을 한 번으로
+      줄인다. 행이 전부 왔으니 집계는 행에서 센다. cursor는 무시한다(다음 페이지가 없다). 숫자 pageSize 경로와 값이 같음은 통합 테스트가 단언한다.
+    */
+    const rows = await prisma.$queryRaw<Row[]>`${filtered} SELECT * FROM f ${order}`;
+    return {
+      ...await shapeRows(prisma, projectId, rows, query, pattern, project.lastPulledAt),
+      matchedKeyCount: rows.length,
+      incompleteKeyCount: rows.filter(row => row.missing > 0).length,
+      nextCursor: null,
+      effective,
+      selectedInResult: selected === null ? null : rows.some(row => row.id === selected),
+    };
+  }
+
   const [counts] = await prisma.$queryRaw<{ matched: number; incomplete: number; selected: boolean | null }[]>`
     ${filtered} SELECT count(*)::int AS "matched", (count(*) FILTER (WHERE "missing" > 0))::int AS "incomplete",
       CASE WHEN ${selected}::text IS NULL THEN NULL ELSE bool_or("id" = ${selected}) END AS "selected" FROM f`;
@@ -184,25 +201,30 @@ export async function loadTranslationList(
   const after = cursor === null ? Prisma.sql`TRUE` : Prisma.sql`("rank", "surfaceSlug" COLLATE "C", "sidx", "key" COLLATE "C", "id" COLLATE "C")
     > (${cursor[0]}::int, ${cursor[1]} COLLATE "C", ${cursor[2]}::int, ${cursor[3]} COLLATE "C", ${cursor[4]} COLLATE "C")`;
   const page = await prisma.$queryRaw<Row[]>`
-    ${filtered} SELECT * FROM f WHERE ${after}
-    ORDER BY "rank", "surfaceSlug" COLLATE "C", "sidx", "key" COLLATE "C", "id" COLLATE "C" LIMIT ${pageSize + 1}`;
+    ${filtered} SELECT * FROM f WHERE ${after} ${order} LIMIT ${pageSize + 1}`;
 
   const visible = page.slice(0, pageSize);
   const last = visible.at(-1);
-  const matches = query.q === undefined ? new Map<string, TranslationMatch>() : await matchesFor(prisma, projectId, visible, query.q, pattern ?? "");
   return {
-    rows: visible.map(row => ({
-      keyId: row.id, surfaceSlug: row.surfaceSlug, namespace: row.namespace, key: row.key, sourceText: row.sourceText,
-      missingCount: row.missing, totalLocales: row.total, hasPending: row.pending, hasReview: row.review,
-      isNew: project.lastPulledAt === null || row.createdAt.getTime() > project.lastPulledAt.getTime(),
-      ...(matches.has(row.id) ? { match: matches.get(row.id) } : {}),
-    })),
+    ...await shapeRows(prisma, projectId, visible, query, pattern, project.lastPulledAt),
     matchedKeyCount: counts?.matched ?? 0,
     incompleteKeyCount: counts?.incomplete ?? 0,
     nextCursor: page.length > pageSize && last !== undefined ? encodeCursor([last.rank, last.surfaceSlug, last.sidx, last.key, last.id]) : null,
     effective,
     // 결과가 0행이면 bool_or가 NULL이다 — 선택이 있었으면 "없다"로 읽는다.
     selectedInResult: selected === null ? null : counts?.selected === true,
+  };
+}
+
+async function shapeRows(prisma: PrismaClient, projectId: string, rows: readonly Row[], query: TranslationQuery, pattern: string | null, lastPulledAt: Date | null) {
+  const matches = query.q === undefined ? new Map<string, TranslationMatch>() : await matchesFor(prisma, projectId, rows, query.q, pattern ?? "");
+  return {
+    rows: rows.map((row): TranslationListRow => ({
+      keyId: row.id, surfaceSlug: row.surfaceSlug, namespace: row.namespace, key: row.key, sourceText: row.sourceText,
+      missingCount: row.missing, totalLocales: row.total, hasPending: row.pending, hasReview: row.review,
+      isNew: lastPulledAt === null || row.createdAt.getTime() > lastPulledAt.getTime(),
+      ...(matches.has(row.id) ? { match: matches.get(row.id) } : {}),
+    })),
   };
 }
 
@@ -220,13 +242,16 @@ async function matchesFor(prisma: PrismaClient, projectId: string, rows: readonl
     rest.push(row.id);
   }
   if (rest.length === 0) return out;
+  /*
+    ⚠️ **키당 한 행만 받는다** (`DISTINCT ON`) — 전량 목록에서 흔한 단어를 검색하면 일치 셀이 키 × 로케일만큼(최대 20,000×200) Node로 왔다.
+    코드순 첫 셀이 JS 접기로 안 잡히는 드문 문자면 다음 셀로 넘어가지 않고 강조 없음이 된다 — 틀린 강조보다 낫다(아래와 같은 규칙).
+  */
   const cells = await prisma.$queryRaw<{ keyId: string; localeCode: string; value: string }[]>`
-    SELECT t."keyId", t."localeCode", t."value" FROM "Translation" t
+    SELECT DISTINCT ON (t."keyId") t."keyId", t."localeCode", t."value" FROM "Translation" t
     JOIN "Locale" l ON l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode" AND NOT l."orphaned"
     WHERE t."projectId" = ${projectId} AND t."keyId" = ANY(${rest}::text[]) AND t."value" ILIKE ${pattern} ESCAPE '\\'
     ORDER BY t."keyId", t."localeCode" COLLATE "C"`;
   for (const cell of cells) {
-    if (out.has(cell.keyId)) continue;
     const start = find(cell.value);
     // DB의 대소문자 접기와 JS의 것이 다른 드문 문자면 범위를 모른다 — 틀린 강조보다 강조 없음이 낫다.
     if (start >= 0) out.set(cell.keyId, { field: "translation", localeCode: cell.localeCode, text: cell.value, start, length: q.length });
