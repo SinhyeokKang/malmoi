@@ -1,5 +1,6 @@
 import "server-only";
 
+import { appVersion } from "@/lib/app-version";
 import { GITHUB_RELEASES_API_URL } from "@/lib/links";
 
 import { parseReleases, RELEASES_PAGE_SIZE, type Release } from "./parse";
@@ -11,6 +12,9 @@ import { parseReleases, RELEASES_PAGE_SIZE, type Release } from "./parse";
  * - **캐시**: `revalidate > 0`을 명시하면 페이지가 동적(`readSession`)이어도 데이터 캐시가 요청 사이에 공유된다.
  *   Next는 `status === 200`만 저장하므로 403·5xx·타임아웃은 캐시 밖이고 다음 요청이 다시 부른다. ⚠️ 200인데 형이
  *   어긋난 응답은 1시간 캐시되어 그동안 안내가 고정된다 — 받아들였다(spec 조건 6).
+ * - ⚠️ **배포마다 캐시 키가 바뀐다** (2026-09-30 사용자) — 데이터 캐시는 배포를 넘어 남고 키는 URL이라, 머지 직후에도 최대 1시간
+ *   옛 목록이 섰다. 빌드가 박은 앱 버전을 `deploy=` 쿼리로 실어 새 배포의 첫 요청이 새로 가져온다(GitHub는 모르는 쿼리를 무시한다).
+ *   `/merge`는 머지 직후 Release를 만들고 Vercel 빌드는 분 단위라, 새 배포가 뜰 때는 보통 그 Release가 이미 있다.
  * - **비인증 한도(60회/시간)는 Vercel 공유 egress IP 단위다** — 남의 호출과 나눈다. 걸린 동안은 빠른 403 → 안내 문장이다.
  */
 
@@ -24,7 +28,8 @@ export type LoadedReleases = { ok: true; releases: Release[]; truncated: boolean
 export async function loadReleases(): Promise<LoadedReleases> {
   let res: Response;
   try {
-    res = await fetch(`${GITHUB_RELEASES_API_URL}?per_page=${RELEASES_PAGE_SIZE}`, {
+    const version = appVersion();
+    res = await fetch(`${GITHUB_RELEASES_API_URL}?per_page=${RELEASES_PAGE_SIZE}${version === "" ? "" : `&deploy=${encodeURIComponent(version)}`}`, {
       headers: {
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
