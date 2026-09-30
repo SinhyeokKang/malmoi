@@ -170,9 +170,11 @@ export function ProjectList({
               <Link
                 href={routes.projects()}
                 onNavigate={clear}
-                className="focus-visible:ring-ring text-foreground ml-auto text-sm focus-visible:ring-2 focus-visible:outline-none"
+                className="focus-visible:ring-ring text-foreground ml-auto inline-flex items-center gap-0.5 text-sm focus-visible:ring-2 focus-visible:outline-none"
               >
                 {m.projects.clearSearch}
+                {/* 앱 안 이동의 표식 — 파랑 대신 chevron이다(DESIGN §6.3 동작 규칙). */}
+                <ChevronRight className="text-muted-foreground size-4" aria-hidden />
               </Link>
             }
           >

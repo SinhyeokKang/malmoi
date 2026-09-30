@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { STATE } from "@/lib/status/canon";
 
 import {
+  CHIP_STATE,
   groupProjects,
   highlightName,
   listBody,
@@ -127,12 +128,13 @@ describe("상태 문구", () => {
   void _coversUnion;
 
   it("갈래 다섯이 전부 문구를 갖는다", () => {
-    for (const status of ALL) expect(m.projects.status[status]).toBeTruthy();
+    for (const status of ALL) expect(STATE[CHIP_STATE[status]].label).toBeTruthy();
   });
 
   it("내부 이름을 흘리지 않는다 — 읽는 사람은 비개발자 동료다", () => {
     for (const status of ALL) {
-      const label = m.projects.status[status];
+      // 칩 낱말은 `STATE`가 든다(ux-drift-unify T19 — 칩이 `CHIP_STATE` 키만 넘긴다).
+      const label = STATE[CHIP_STATE[status]].label;
       expect(label).not.toContain(status);
       // snake_case는 우리 내부 이름의 모양이다 — en 라벨의 보통 낱말과 갈린다.
       expect(label).not.toMatch(/[a-z]+_[a-z]+/);
@@ -140,7 +142,7 @@ describe("상태 문구", () => {
   });
 
   it("다섯이 서로 다르다 — 한 문구로 접히면 상태를 구별할 수 없다", () => {
-    expect(new Set(ALL.map((s) => m.projects.status[s])).size).toBe(ALL.length);
+    expect(new Set(ALL.map((s) => STATE[CHIP_STATE[s]].label)).size).toBe(ALL.length);
   });
 });
 

@@ -1185,10 +1185,6 @@ export const en = {
     },
     /** 행의 보조줄이 쓰는 낱말. **없는 값을 자리 채우려고 적지 않는다.** */
     meta: {
-      /** 실행 주체 셋 (nightly-sync) — 사람 행의 보조줄과 Home 메타 열이 같은 낱말을 쓴다. 자동화 행은 행위자가 문장 머리에 서므로 보조줄에 안 싣는다. */
-      manual: "manual",
-      nightly: "nightly",
-      ci: "CI",
       /** 적재가 실제로 값을 바꾼 번역 셀 수 — 관측값이고 판정에 쓰지 않는다. */
       values: (n: number): string => `${n.toLocaleString("en-US")} value${n === 1 ? "" : "s"} changed`,
       /** 보조줄 맨 앞의 종류 배지(2026-09-30 사용자 — 배지만 봐도 무슨 사건인지). 필터의 복수형(`kinds`)과 따로 둔다. */
@@ -1614,35 +1610,21 @@ export const en = {
       },
     },
     /**
-     * 목록 행 우측 배지의 갈래 넷 (`projectStatus`). **`ready`가 `Active`로 보인다** — 필터 탭이 같은
-     * 낱말을 쓰기 때문이고, 그 근거는 `lib/projects/list.ts`에 있다.
+     * 목록 행 우측 배지의 낱말 중 `STATE`가 이 사전에서 읽는 셋 (`lib/status/canon.ts`). **`ready`가 `Active`로 보인다** — 필터 탭이 같은
+     * 낱말을 쓰기 때문이고, 그 근거는 `lib/projects/list.ts`에 있다. 나머지 칩(Not synced yet · Disconnected · 실패 둘)은 `STATE`가 다른 화면과
+     * 같은 사전 키에서 읽는다(ux-drift-unify T19 — 칩이 `CHIP_STATE` 키만 넘긴다).
      *
-     * ⚠️ **내부 이름을 화면에 쓰지 않는다** (PRODUCT §3) — 번역자도 이 목록을 보고
-     * `awaiting_first_sync`는 그에게 아무것도 알려주지 않는다.
+     * ⚠️ **내부 이름을 화면에 쓰지 않는다** (PRODUCT §3) — 번역자도 이 목록을 본다.
      */
     status: {
       active: "Active",
       archived: "Archived",
-      /**
-       * ⚠️ **한 낱말이다** (2026-09-11 사용자 — "Waiting for first import"에서 줄였다). 배지는 행
-       * 우측의 좁은 칸이고, 문장이 들어가면 이름·리포 URL과 폭을 다툰다. 무엇을 기다리는지는
-       * 그 프로젝트를 열면 `ProjectNotReady`가 문장으로 말한다.
-       */
-      awaiting_first_sync: "Not synced yet",
       /**
        * ⚠️ **한 낱말이고 동사가 아니다** (2026-09-11 사용자 — "Setting up"에서 줄였다). 진행형은
        * 뭔가가 저절로 돌고 있다는 뜻인데 이 상태는 **멈춰 있다**: OWNER가 GitHub App을 연결해야
        * 다음이 없다. 명사가 그 사실을 말하고, 나머지 넷과도 품사가 맞는다.
        */
       setup: "Setup",
-      /**
-       * ⚠️ **git 어휘를 쓰지 않는다** (DESIGN §10) — 번역자도 이 목록을 본다. "repository id가
-       * 고정되지 않았다"가 아니라 **그 사람이 보는 사실**을 말한다.
-       *
-       * ⚠️ **한 낱말이다** (2026-09-11 사용자 — "Reconnect needed"에서 줄였다). 배지는 상태를 말하고
-       * 할 일은 설정 화면의 `Alert`가 말한다 — 좁은 칸에 동사를 넣으면 누를 수 있는 것처럼 읽힌다.
-       */
-      needs_reconnect: "Disconnected",
     },
     /**
      * 마지막 임포트가 실패했을 때의 **사유 문장** (PRODUCT §7.8).

@@ -89,7 +89,8 @@ describe("eventMeta — 주체 낱말과 보류 사유", () => {
       run: { changed: 1, prUrl: null, errorCode: null } })],
   ])("%s 보조줄은 주체를 종류와 합친 배지 하나로 든다 — 낱말을 따로 싣지 않는다", (_, row) => {
     const parts = eventMeta(row, false);
-    for (const word of [m.logs.meta.manual, m.logs.meta.nightly, m.logs.meta.ci, "automatic"]) expect(parts).not.toContain(word);
+    // 옛 소문자 주체 낱말(사전에서 지웠다 — Home 메타 열도 실행 종류 배지를 쓴다, ux-drift-unify U7 r1)이 따로 서지 않는다.
+    for (const word of ["manual", "nightly", "CI", "automatic"]) expect(parts).not.toContain(word);
     const expected = row.kind === "PUBLISH" ? m.logs.meta.runType.PUBLISH.nightly : row.subtype === "import.ci" ? m.logs.meta.runType.IMPORT.ci : m.logs.meta.runType.IMPORT.nightly;
     expect(parts[0]).toEqual({ kind: "badge", text: expected });
   });

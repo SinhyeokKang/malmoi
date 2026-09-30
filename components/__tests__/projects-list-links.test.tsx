@@ -34,6 +34,8 @@ describe("띠 링크 — 파랑은 새 탭 외부만", () => {
     const found = link(await draw(over), label);
     expect(found).toBeDefined();
     expect(found?.className).not.toContain("text-blue-600");
+    // 띠 안의 앱 안 링크는 muted 글자다(DESIGN §6.63) — "파랑이 아님"만으로는 무엇이든 통과한다.
+    expect(found?.className).toContain("text-muted-foreground");
     expect(found?.getAttribute("target")).toBeNull();
     expect(found?.querySelector("svg.lucide-chevron-right")).not.toBeNull();
   });

@@ -511,7 +511,8 @@ describe("캔버스 대조로 잡은 자리", () => {
 
   /** 결과 카드 머리의 `Clear search`는 앱 안 이동이다 — 파랑이 아니다(DESIGN §2.4 동작 규칙 · §6.63, ux-drift-unify T19). */
   it("Clear search 머리 링크가 파랑이 아니다", () => {
-    expect(BODY).toContain('className="focus-visible:ring-ring text-foreground ml-auto text-sm');
+    expect(BODY).toContain('className="focus-visible:ring-ring text-foreground ml-auto inline-flex items-center gap-0.5 text-sm');
+    expect(BODY).toMatch(/\{m\.projects\.clearSearch\}[^<]*<ChevronRight/);
     expect(BODY).not.toContain("ml-auto text-sm text-blue-600");
   });
 });
