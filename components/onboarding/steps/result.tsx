@@ -1,6 +1,6 @@
 "use client";
 
-import { CopyButton } from "../copy-button";
+import { TokenField } from "../copy-button";
 import { m } from "@/lib/i18n";
 
 import { WorkflowBlock } from "../workflow-block";
@@ -12,17 +12,7 @@ export function ResultStep({ pushToken, yaml }: { pushToken: string; yaml: strin
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <section className="flex shrink-0 flex-col gap-2">
         <p className="text-sm font-medium">{m.newProject.result.token.title}</p>
-        {/*
-          ⚠️ **값 칩이 필드와 같은 형이다** — 높이 36 · radius 10 · border · 안쪽 여백 10 (핸드오프 1d).
-          ⚠️ **mono는 YAML 블록 하나뿐이다** — 토큰 칩도 sans다 (DESIGN §4.1). `<code>`는 preflight가
-          mono를 깔아서 `font-sans`를 명시한다.
-        */}
-        <div className="flex items-center gap-2">
-          <code className="border-input bg-muted flex h-9 min-w-0 flex-1 items-center truncate rounded-md border px-2.5 font-sans text-xs">
-            {pushToken}
-          </code>
-          <CopyButton value={pushToken} />
-        </div>
+        <TokenField value={pushToken} />
         {/* ⚠️ `PUSH_TOKEN`은 색만 올린다 (1d). */}
         <p className="text-muted-foreground text-xs leading-[1.7]">
           {m.newProject.result.token.description(<span className="text-foreground">PUSH_TOKEN</span>)}

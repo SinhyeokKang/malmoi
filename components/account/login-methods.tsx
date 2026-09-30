@@ -175,7 +175,7 @@ function DisconnectButton({ label, pending, onConfirm }: { label: string; pendin
             </DialogClose>
             <DialogClose asChild>
               <Button variant="danger" onClick={onConfirm}>
-                {m.link.methods.disconnect}
+                {m.link.methods.disconnectConfirm}
               </Button>
             </DialogClose>
           </>

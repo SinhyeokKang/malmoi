@@ -20,7 +20,7 @@ import { requestOrigin } from "@/lib/github-connect/origin";
 import { planWorkflowStale, renderProjectWorkflowYaml, workflowApiUrl, workflowSurfaceOf } from "@/lib/onboarding/workflow";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { routes } from "@/lib/routes";
-import { utcMinute } from "@/lib/utc-time";
+import { utcDay } from "@/lib/utc-time";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 import { IconTile } from "@/components/ui/icon-tile";
 
@@ -51,7 +51,7 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   const archived = project.archivedAt !== null;
   const archive = <PanelCard title={archived ? m.archive.restore : m.archive.title}>
     <div className="flex items-center justify-between gap-4 px-4 py-[13px] @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start @max-[640px]:[&>[data-archive-card]]:col-start-2 @max-[640px]:[&>[data-archive-card]]:justify-self-start">
-      <IconTile><Archive aria-hidden /></IconTile><p className="text-muted-foreground flex-1 text-xs">{archived ? m.archive.archivedBy(<time dateTime={project.archivedAt!.toISOString()}>{utcMinute(project.archivedAt!)}</time>) : m.archive.description}</p>
+      <IconTile><Archive aria-hidden /></IconTile><p className="text-muted-foreground flex-1 text-xs">{archived ? m.archive.archivedBy(<time dateTime={project.archivedAt!.toISOString()}>{utcDay(project.archivedAt!)}</time>) : m.archive.description}</p>
       <ArchiveCard slug={slug} name={project.name} archived={archived} openPrUrl={openPrUrl} />
     </div>
   </PanelCard>;

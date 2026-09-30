@@ -129,7 +129,8 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {live ? (
                 <>
-                  <Button ref={rotateRef} data-token-action="rotate" onClick={() => setModal({ mode: "rotate", key: Date.now() })}>
+                  {/* 회전 확정이 `danger`라 트리거도 `danger`다(🔴 L — push 토큰과 같은 동작·같은 형). */}
+                  <Button ref={rotateRef} data-token-action="rotate" variant="danger" onClick={() => setModal({ mode: "rotate", key: Date.now() })}>
                     {m.mcpConnector.token.rotate}
                   </Button>
                   <Button ref={revokeRef} data-token-action="revoke" variant="danger" onClick={() => { setRevokeFailed(false); setRevokeOpen(true); }}>
@@ -233,7 +234,7 @@ function TokenFacts({ token, now, afterAlert }: { token: Exclude<TokenCardData, 
     <dl data-token-facts className={cn("grid grid-cols-[120px_1fr] items-baseline gap-x-3 gap-y-2.5 border-t px-4 py-3.5", afterAlert ? "border-border" : "border-foreground/[0.06]")}>
       {facts.map(([label, content]) => (
         <div key={label} className="contents">
-          <dt className="text-xs text-neutral-400">{label}</dt>
+          <dt className="text-muted-foreground text-xs">{label}</dt>
           <dd className={value}>{content}</dd>
         </div>
       ))}

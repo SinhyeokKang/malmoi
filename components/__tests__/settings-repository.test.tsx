@@ -42,6 +42,28 @@ it.each([
   expect(connect).toEqual(button === null ? [] : [button]);
 });
 
+/**
+ * 아이콘 칸도 배지와 같은 상태 톤이다 (ux-drift-unify 1-Y15 — 전엔 칸만 회색이었다). 리포로 나가는 버튼은 색·새 탭이 신호라
+ * 글리프를 달지 않는다 (DESIGN §6.3 · 3-Y9).
+ */
+it.each([
+  [{ status: "ok" }, "success"],
+  [{ status: "not-connected" }, "muted"],
+  [{ status: "unpinned" }, "warning"],
+  [{ status: "repo-replaced" }, "danger"],
+  [{ status: "unknown" }, "warning"],
+] as const)("건강성 %o → 아이콘 칸 %s", async (health, tone) => {
+  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve(health as ConnectionHealth)} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" />);
+  expect(container.querySelector("[data-tone]")?.getAttribute("data-tone")).toBe(tone);
+});
+
+it("Open on GitHub는 새 탭이고 글리프가 없다", async () => {
+  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve({ status: "ok" })} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" />);
+  const open = [...container.querySelectorAll("a")].find(a => a.textContent === "Open on GitHub")!;
+  expect(open.getAttribute("target")).toBe("_blank");
+  expect(open.querySelector("svg")).toBeNull();
+});
+
 it.each(healths)("건강성 $status를 보존하고 복구 가능한 갈래에만 재연결을 둔다", async health => {
   const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve(health)} account={Promise.resolve({ status: "reauthorize" })} appSlug="malmoi" />);
   const connect = [...container.querySelectorAll("button")].filter(b => ["Connect", "Reconnect"].includes(b.textContent ?? ""));

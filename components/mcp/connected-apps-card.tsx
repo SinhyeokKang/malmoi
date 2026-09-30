@@ -1,6 +1,5 @@
 "use client";
 
-import { CircleX } from "lucide-react";
 import { unstable_rethrow, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
@@ -140,12 +139,11 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
           </Alert>
         )}
         {rows === null ? (
-          <div role="alert" data-apps-failed className="border-foreground/[0.06] text-destructive flex items-center gap-3 border-t px-4 py-[13px]">
-            <CircleX className="size-4 shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1 text-sm">{m.mcpConnector.apps.loadFailed}</span>
-            <Button className="text-foreground shrink-0" onClick={() => router.refresh()}>
-              {m.common.retry}
-            </Button>
+          /* 카드에 붙는 실패는 `Alert inset danger`다(ux-drift-unify 5-Y10) — 손 조립 행은 글자 전체가 빨갰다(§6.2 "글자는 본문 색"). */
+          <div data-apps-failed>
+            <Alert inset variant="danger" actions={<Button onClick={() => router.refresh()}>{m.common.retry}</Button>}>
+              {m.mcpConnector.apps.loadFailed}
+            </Alert>
           </div>
         ) : rows.length === 0 ? (
           <EmptyRowCard inset icon={McpIcon} title={m.mcpConnector.apps.emptyTitle} description={m.mcpConnector.apps.emptyBody} />
@@ -237,7 +235,7 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
         <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1">
           {facts.map(([label, content]) => (
             <div key={label} className="flex items-baseline gap-2">
-              <dt className="text-xs text-neutral-400">{label}</dt>
+              <dt className="text-muted-foreground text-xs">{label}</dt>
               <dd className={cn("text-sm", expired && "text-neutral-400")}>{content}</dd>
             </div>
           ))}

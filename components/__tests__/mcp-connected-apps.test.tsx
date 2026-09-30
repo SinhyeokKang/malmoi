@@ -136,7 +136,10 @@ describe("목록", () => {
   it("조회 장애 — 빈 상태가 아니다 · danger 행 + Try again(재조회) · 카운트 없음", async () => {
     await mount(null);
     const failed = find<HTMLElement>(card(), "[data-apps-failed]");
-    expect(failed.getAttribute("role")).toBe("alert");
+    // 카드에 붙는 실패는 `Alert inset danger`다(ux-drift-unify 5-Y10) — 손 조립 행은 글자 전체가 빨갰다(§6.2 "Alert는 글자를 본문 색으로").
+    const alert = find<HTMLElement>(failed, '[data-alert="danger"]');
+    expect(alert.getAttribute("role")).toBe("alert");
+    expect(alert.className).not.toContain("text-destructive");
     expect(failed.textContent).toContain("We couldn't load your connected apps.");
     expect(card().textContent).not.toContain("No connected apps");
     expect(card().querySelector("h2 + span")).toBeNull();

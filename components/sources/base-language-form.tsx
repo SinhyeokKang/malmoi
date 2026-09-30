@@ -1,8 +1,8 @@
 "use client";
-import { CircleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { updateBaseLocale } from "@/app/(edit)/projects/[slug]/sources/actions";
 import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/form-group";
 import { useLandAfter } from "@/components/ui/focus";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
@@ -59,6 +59,6 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
         <p className="text-muted-foreground min-w-0 basis-full text-xs leading-[1.7]">{m.locales.field.help}</p>
       </div>
     {unavailable && <p id="base-unavailable" className="text-muted-foreground text-xs">{baseLocale === null ? m.sources.firstImport : m.locales.field.noLocales}</p>}
-    {error && <span className="text-destructive flex items-start gap-1.5 text-xs leading-[1.55]"><CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden />{isRepositorySettingsError(error) ? repositorySettingsErrorMessage(error) : isAccessError(error) ? accessErrorMessage(error) : m.locales.field.failed}</span>}
+    {error && <FieldError>{isRepositorySettingsError(error) ? repositorySettingsErrorMessage(error) : isAccessError(error) ? accessErrorMessage(error) : m.locales.field.failed}</FieldError>}
   </form>;
 }

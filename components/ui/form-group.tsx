@@ -1,7 +1,9 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { useId, type ComponentProps, type ReactNode } from "react";
 import { CircleAlert } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 /**
  * label + help + error를 한 형으로 든다 (DESIGN §6.4).
@@ -51,10 +53,26 @@ export function FormGroup({
       </label>
       {children}
       {error !== undefined ? (
-        <p id={id} role="alert" className="text-destructive flex items-start gap-1.5 text-xs leading-[1.7]"><CircleAlert className="mt-1 size-3.5 shrink-0" aria-hidden />{error}</p>
+        <FieldError id={id}>{error}</FieldError>
       ) : help !== undefined ? (
         <p id={`${base}-help`} className="text-muted-foreground text-xs leading-[1.7]">{help}</p>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * 필드 오류 한 줄 — `FormGroup` 밖에서 필드 옆 캡션·행 사유로 서는 오류도 이것이다 (ux-drift-unify 5-W1 · DESIGN §2.4 글리프 열 `CircleAlert`).
+ * 전엔 기준 언어·초대 행·설정 캡션 둘이 행간·글리프·정렬을 각자 골라 같은 오류가 네 모양이었다.
+ *
+ * ⚠️ **`role="alert"`가 기본이고 호출부가 끌 수 있다** — 여러 줄이 한꺼번에 서고 요약을 따로 알리는 자리(초대 행 사유 —
+ * 바닥 상태 문장이 알린다)는 `role={undefined}`로 끈다. `className`은 배치(폭·여백)만 덧댄다.
+ */
+export function FieldError({ className, children, ...props }: ComponentProps<"p">) {
+  return (
+    <p role="alert" data-field-error="" className={cn("text-destructive flex items-start gap-1.5 text-xs leading-[1.7]", className)} {...props}>
+      <CircleAlert className="mt-1 size-3.5 shrink-0" aria-hidden />
+      {children}
+    </p>
   );
 }

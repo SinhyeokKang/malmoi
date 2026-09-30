@@ -158,8 +158,8 @@ describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
   it("저장 실패가 폼 안의 붉은 한 줄로 간다", () => {
     const src = read(LOCALES_FORM);
     expect(src).not.toMatch(/<Alert/);
-    expect(src).toMatch(/text-destructive/);
-    expect(src).toMatch(/<CircleAlert/);
+    // 붉은 한 줄은 `FieldError`가 든다(ux-drift-unify 5-W1 — 필드 오류 줄이 한 형이다).
+    expect(src).toMatch(/<FieldError/);
     expect(src).toMatch(/isRepositorySettingsError/);
   });
 

@@ -13,7 +13,7 @@ import { m } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 
-import { CopyButton } from "@/components/onboarding/copy-button";
+import { TokenField } from "@/components/onboarding/copy-button";
 import { IconTile } from "@/components/ui/icon-tile";
 
 /**
@@ -41,7 +41,9 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
         </p></div>
       <Dialog>
         <DialogTrigger asChild>
+          {/* 확정이 `danger`라 트리거도 `danger`다(DESIGN §2.4 동작 규칙 · 3-Y2) — 되돌릴 수 없다는 신호가 창을 열기 전에 선다. */}
           <Button
+            variant="danger"
             className="[&_.animate-spin]:size-3.5 @max-[640px]:col-start-2 @max-[640px]:justify-self-start"
             disabled={disabled}
             /* ⚠️ `loading`이 아니라 `busy`다 (audit #32) — 확정하면 Dialog가 이 트리거로 포커스를 돌려주는데, 같은 커밋에
@@ -93,11 +95,7 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
           <p className="text-xs leading-[1.7]">
             <strong className="text-foreground font-normal">{m.settings.token.warning}</strong>
           </p>
-          <div className="flex items-center gap-2">
-            {/* ⚠️ `<code>`는 preflight가 mono를 깔아서 `font-sans`를 명시한다 — mono는 코드 블록 전용이다 (DESIGN §4.1) */}
-            <code className="bg-muted min-w-0 flex-1 truncate rounded px-2 py-1 font-sans text-xs">{token}</code>
-            <CopyButton value={token} />
-          </div>
+          <TokenField value={token} />
         </div>
       )}
     </div>

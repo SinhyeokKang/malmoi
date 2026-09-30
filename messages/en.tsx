@@ -1855,13 +1855,6 @@ export const en = {
       title: "Sign out",
       /** 행 본문의 `— {범위}` 자리 — 바로 아래 행이 "모든 기기"라 이쪽이 무엇인지 말해야 한다. */
       description: "You'll need to sign in again to open your projects.",
-      /** ⚠️ **확정이 primary다** — 넷 중 유일하게 잃는 것이 없다 (재로그인 한 번이다). */
-      confirmTitle: "Sign out?",
-      /**
-       * ⚠️ **앞 문장이 신규다** — 되돌릴 수 없는 넷 중 이것만 잃는 것이 없다는 사실을 그 자리에서
-       * 말한다. 편집 중에 눌릴 수 있는 버튼이라 "저장 안 한 것이 날아가나"가 첫 질문이다.
-       */
-      confirmHint: "Unsent edits stay saved on Malmoi. You'll need to sign in again to open your projects.",
     },
     picture: {
       upload: "Upload",
@@ -1884,7 +1877,8 @@ export const en = {
     token: {
       title: "Your token",
       create: "Create token",
-      rotate: "Rotate",
+      /** push 토큰(`settings.token.rotate`)과 같은 낱말이다 — 같은 동작의 트리거가 화면마다 갈렸다(ux-drift-unify 🔴 L). */
+      rotate: "Rotate token",
       revoke: "Revoke",
       expired: "Expired",
       emptyTitle: "No token yet",
@@ -2144,7 +2138,8 @@ export const en = {
     repo: {
       /** 리포 목록의 그룹 이름 — `RadioGroup`이 접근 이름 없이 서면 "라디오 그룹"으로만 읽힌다. */
       list: "Repositories",
-      search: "Find a repository by name",
+      /** placeholder는 `…`로 끝나고 접근 이름과 키를 가른다(DESIGN §10 · ux-drift-unify 2-Y18). */
+      search: { label: "Search repositories", placeholder: "Search repositories…" },
       /** 상대 시각은 `lib/relative-time.ts`가 만든다 — 사전은 그것을 감쌀 뿐이다. */
       pushedAt: (rel: string): string => `Pushed ${rel}`,
       branch: "Branch",
@@ -2218,6 +2213,8 @@ export const en = {
           ),
         },
         baseLocale: "Base language",
+        /** 기준 언어 칸의 예시 — 경로 칸의 예시(`formats.*.example`)와 같이 사전이 든다(2-W9). */
+        baseLocalePlaceholder: "en",
         /** ⚠️ 뒷문장("If no file matches…")은 **우측 빈 상태**가 든다 — 둘 다 두면 한 화면에 두 번이다. */
         hint: "Setting a path clears the selection above.",
       },
@@ -2994,6 +2991,8 @@ export const en = {
     /** 보이는 텍스트. 아래 `removeLabel`이 그것을 **포함**해야 한다 (WCAG 2.5.3 Label in Name). */
     remove: "Remove",
     removeLabel: (who: string): string => `Remove ${who}`,
+    /** 확인 Dialog의 확정 — 동사+목적어다(ux-drift-unify 3-Y10). 트리거(`remove`)는 행 안이라 맨 동사로 둔다. */
+    removeConfirm: "Remove member",
     /** 행이 사라진 뒤 한 번 읽히는 결과 (malmoi#51) — 포커스가 제목으로 가므로 무엇이 됐는지는 이 문장이 든다. */
     removed: (who: string): string => `Removed ${who}`,
     /** 확인 모달 — 제목은 **대상을 명시한 질문**, 액션 라벨은 결과다 (DESIGN §10). */
@@ -3213,7 +3212,7 @@ export const en = {
        * "제거됨"으로 보여주면 사용자가 멀쩡한 설치를 다시 만든다.
        */
       health: {
-        // 가장 흔한 상태가 가장 조용해야 한다 — 초록도 배지도 쓰지 않는다.
+        // 연결 행의 배지 낱말이다 — `STATE.connected`(§2.4 연결됨 success)가 가리킨다.
         ok: "Connected",
         "not-connected": "No installation is connected yet.",
         "app-uninstalled": "The app was removed or suspended, or its access to this repository was revoked.",
@@ -3312,6 +3311,11 @@ export const en = {
        * 권한이기도 하다. `aria-label`이 보이는 텍스트를 **포함**한다 (WCAG 2.5.3).
        */
       disconnectLabel: "Disconnect GitHub App",
+      /**
+       * 확인 Dialog의 확정 — 동사+목적어다(3-Y10). ⚠️ **`disconnectLabel`과 글자가 달라야 한다** — 트리거의 접근 이름과 같으면
+       * 음성 입력이 두 컨트롤을 가르지 못한다(DESIGN §6.646). 제목(`Disconnect GitHub App from Malmoi?`)이 대상을 이미 든다.
+       */
+      disconnectConfirm: "Disconnect app",
       disconnectFailed: "We couldn't disconnect. Try again in a moment.",
     },
   },
@@ -3404,6 +3408,8 @@ export const en = {
       /** ⚠️ **사유 없는 disabled는 이 리포가 반복해 밟은 부류다** (POSTMORTEM 2026-09-06). */
       lastMethod: "This is your only way to sign in.",
       confirmDisconnect: (provider: string): string => `Disconnect ${provider}?`,
+      /** 확정 — 동사+목적어(3-Y10). 대상 이름은 제목이 들고, 여기는 축(로그인 수단)을 든다 — 같은 화면에 GitHub App 해제가 있다. */
+      disconnectConfirm: "Disconnect sign-in method",
       confirmHint: "You won't be able to sign in with it until you sign in with it again at this address.",
       /** 호출이 끊겨 해제됐는지 모른다 (audit-ux #14) — 사유를 지어내지 않고 새로고침으로 확인하게 한다. */
       unlinkUnconfirmed: "We couldn't confirm that change. Refresh to see your sign-in methods.",

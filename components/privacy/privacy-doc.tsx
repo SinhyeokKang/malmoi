@@ -4,6 +4,7 @@ import { Toc } from "@/components/public-doc-toc";
 import { m } from "@/lib/i18n";
 import { utcDay } from "@/lib/utc-time";
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 
 /**
  * `/privacy`의 읽기 그릇 — 공개 셸 패널 안에 선다 (시안 `Landing.dc.html` 1e · `Landing Prototype.dc.html` `isPrivacy`,
@@ -63,7 +64,7 @@ export function PrivacyDoc() {
               ) : "ul" in block ? (
                 <ul key={blockIndex} className={`${LIST} list-disc`}>
                   {block.ul.map((item, itemIndex) => (
-                    <li key={itemIndex}>{item}</li>
+                    <li key={itemIndex}>{section.id === "changes" ? <RevisionLine item={item} /> : item}</li>
                   ))}
                 </ul>
               ) : (
@@ -80,4 +81,19 @@ export function PrivacyDoc() {
       <Toc label={m.publicDocs.privacy.toc} items={tocItems} />
     </div>
   );
+}
+
+/** 개정 이력 한 줄의 앞 날짜 — `YYYY-MM-DD — ` 꼴만 집는다. */
+const REVISION = /^(\d{4}-\d{2}-\d{2}) — /;
+
+/**
+ * 개정 이력의 날짜를 머리의 시행일과 같은 형(`utcDay`)으로 보인다 (ux-drift-unify 2-Y19 — 한 페이지에서 머리는 `Sep 29, 2026`,
+ * 이력은 ISO였다). ⚠️ **사전 값은 ISO 그대로다** — 본문 해시(`policy-gate.test.tsx`)가 사전을 보고, 날짜 형을 바꾸는 것은 방침 개정이
+ * 아니다. 날짜로 시작하지 않는 줄은 그대로 둔다.
+ */
+function RevisionLine({ item }: { item: ReactNode }) {
+  const match = typeof item === "string" ? REVISION.exec(item) : null;
+  if (match === null || typeof item !== "string") return <>{item}</>;
+  const iso = match[1] ?? "";
+  return <><time dateTime={iso}>{utcDay(new Date(iso))}</time> — {item.slice(match[0].length)}</>;
 }

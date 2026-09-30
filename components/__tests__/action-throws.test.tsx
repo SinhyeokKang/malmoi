@@ -67,7 +67,7 @@ it("멤버 제거 호출이 던지면 행이 풀리고 확인 불가를 말한�
   mocks.changeMember.mockRejectedValue(new Error("offline"));
   await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
   await click(byLabel("Remove Alice"));
-  await click(inDialog("Remove"));
+  await click(inDialog(m.members.removeConfirm));
   expect(alert()).toContain(m.members.changeUnconfirmed);
   expect(byLabel("Remove Alice").hasAttribute("disabled")).toBe(false);
 });
@@ -85,7 +85,7 @@ it("GitHub 연결 해제 호출이 던지면 실패 문구를 세운다", async 
   mocks.disconnectGithub.mockRejectedValue(new Error("offline"));
   await render(<DisconnectGithubButton />);
   await click(byLabel(m.settings.account.disconnectLabel));
-  await click(inDialog(m.settings.account.disconnect));
+  await click(inDialog(m.settings.account.disconnectConfirm));
   expect(alert()).toContain(m.settings.account.disconnectFailed);
 });
 
@@ -154,7 +154,7 @@ it("로그인 수단 해제가 던지면 카드 머리에 확인 불가를 말�
   mocks.unlinkLoginMethod.mockRejectedValue(offline());
   await render(<LoginMethods rows={methods} />);
   await click(byLabel(m.link.methods.disconnectLabel("GitHub")));
-  await click(inDialog(m.link.methods.disconnect));
+  await click(inDialog(m.link.methods.disconnectConfirm));
   expect(alerts()).toContain(m.link.methods.unlinkUnconfirmed);
 });
 
@@ -177,7 +177,7 @@ it("redirect는 삼키지 않는다 — 해제 성공의 redirect가 실패 문�
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
   await render(<Boundary><LoginMethods rows={methods} /></Boundary>);
   await click(byLabel(m.link.methods.disconnectLabel("GitHub")));
-  await click(inDialog(m.link.methods.disconnect));
+  await click(inDialog(m.link.methods.disconnectConfirm));
   error.mockRestore();
   expect(alerts()).not.toContain(m.link.methods.unlinkUnconfirmed);
   expect(document.querySelector("[data-caught]")?.textContent).toContain("NEXT_REDIRECT");

@@ -23,7 +23,7 @@ export type StateVariant = "success" | "warning" | "missing" | "neutral" | "mute
 export type StateKey =
   | "synced" | "sent" | "syncing" | "notSyncedYet" | "superseded"
   | "syncFailed" | "partiallySynced" | "held" | "unsent"
-  | "prOpen" | "notConnected" | "disconnected" | "wrongRepository" | "couldNotCheck"
+  | "prOpen" | "connected" | "notConnected" | "disconnected" | "wrongRepository" | "couldNotCheck"
   | "unavailable" | "archived" | "setup" | "active";
 
 /** `label`은 사전 값을 가리킨다 — 새 문자열을 만들지 않는다(테스트가 사전 전수와 대조한다). */
@@ -41,6 +41,8 @@ export const STATE: Readonly<Record<StateKey, { tone: StateTone; variant: StateV
   // 정상 작업 흐름이라 면만 있는 무색이다(Q3) — 손 조립 알약을 쓰지 않는다.
   unsent: { tone: "muted", variant: "neutral", label: m.translations.workspace.list.notSent },
   prOpen: { tone: "muted", variant: "neutral", label: m.translations.publish.prState },
+  // Settings 연결 행(`ok`·`repo-moved`) — 배지와 아이콘 칸이 같은 초록이다(§2.4 연결 행).
+  connected: { tone: "success", variant: "success", label: m.settings.repository.health.ok },
   notConnected: { tone: "muted", variant: "neutral", label: m.settings.repository.notConnected },
   // 끊김은 셋이다 — App 제거 · 설치 교체 · 설치는 있고 리포 id가 없음(`unpinned`, D1).
   disconnected: { tone: "warning", variant: "warning", label: m.settings.repository.disconnected },

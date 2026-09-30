@@ -227,3 +227,21 @@ describe("PrivacyDoc — 시안 대조 교정", () => {
     for (const p of container.querySelectorAll("section p")) expect(classes(p)).toContain("text-pretty");
   });
 });
+
+/**
+ * **개정 이력의 날짜가 머리의 시행일과 같은 형이다** (ux-drift-unify 2-Y19) — 한 페이지에서 머리는 `Sep 29, 2026`, 이력은 ISO였다.
+ * 사전 값은 ISO 그대로 두고(방침 게이트의 해시가 본문을 본다) 렌더에서 `<time>`으로 바꾼다.
+ */
+it("changes 절의 개정 날짜가 utcDay로 보이고 dateTime은 ISO다", async () => {
+  const { container } = await doc();
+  const items = [...container.querySelectorAll<HTMLElement>("section[aria-labelledby=\"changes\"] li")];
+  const dated = items.filter((li) => li.querySelector("time") !== null);
+  expect(dated.length).toBeGreaterThan(0);
+  for (const li of dated) {
+    const time = li.querySelector("time")!;
+    const iso = time.getAttribute("dateTime")!;
+    expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(time.textContent).toBe(utcDay(new Date(iso)));
+    expect(li.textContent).not.toContain(iso);
+  }
+});

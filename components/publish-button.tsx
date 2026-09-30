@@ -595,7 +595,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.settings(slug)}>{p.settings}</a>
             // 세션이 끝난 것은 역할과 무관하다 — 다시 로그인하는 것은 누구나 할 수 있다.
             : failed?.error === "unauthorized"
-              ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.signIn()}>{p.signIn}</a>
+              ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.signIn()} target="_blank" rel="noreferrer">{p.signIn}</a>
               : null;
           body = <Stack>
             {/* ⚠️ **서버의 safe 메시지를 버리지 않는다** — 코드만 남기면 "안 된대요"가 "base-unreadable이래요"로 바뀔 뿐이다(DESIGN §6.646). 코드가 없는 갈래는 그 문장이 이미 제목이라 본문을 비운다. */}

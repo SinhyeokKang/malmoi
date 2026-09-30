@@ -63,7 +63,7 @@ export function DisconnectGithubButton({ onFailure }: {
                     });
                   }}
                 >
-                  {m.settings.account.disconnect}
+                  {m.settings.account.disconnectConfirm}
                 </Button>
               </DialogClose>
             </>

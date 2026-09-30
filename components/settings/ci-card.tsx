@@ -22,7 +22,7 @@ export function CiCard({ slug, archived, stale, children }: { slug: string; arch
   return <PanelCard title={m.settings.ci.title} subtitle={m.settings.ci.description}>
     <PushTokenPanel slug={slug} disabled={archived} />
     <div className="border-border border-t">
-      <Button ref={trigger} variant="ghost" className="text-foreground focus-visible:ring-inset h-auto w-full justify-start gap-3 rounded-none px-4 py-[13px] text-left" aria-disabled={blocked !== undefined || undefined} aria-describedby={blocked} onClick={() => { if (blocked === undefined) setOpen(true); }}>
+      <Button ref={trigger} variant="ghost" className="text-foreground hover:bg-foreground/[0.02] focus-visible:ring-inset h-auto w-full justify-start gap-3 rounded-none px-4 py-[13px] text-left" aria-disabled={blocked !== undefined || undefined} aria-describedby={blocked} onClick={() => { if (blocked === undefined) setOpen(true); }}>
         <IconTile><FileCode2 aria-hidden /></IconTile>
         <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-base font-medium">{m.settings.ci.workflow}</span><span className="text-muted-foreground text-xs">.github/workflows/malmoi-i18n.yml</span></span>
         <ChevronRight className="text-muted-foreground size-4" aria-hidden />
@@ -37,7 +37,7 @@ export function CiCard({ slug, archived, stale, children }: { slug: string; arch
     {!archived && !children && <p id={noSourcesId} className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.ci.noSources}</p>}
     {stale.length > 0 && <p className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.ci.stale} {stale.join(", ")}</p>}
     {/* ⚠️ 모달 `description`을 두지 않는다 — 저장 경로 문장은 `WorkflowBlock` 머리(Copy 옆)가 든다. 온보딩 ④와 같은 형이다(#120). */}
-    <OnboardingModal open={open && !archived} onClose={() => setOpen(false)} returnFocusRef={trigger} bodyScroll="hidden" title={m.settings.ci.workflow} panelClassName="h-[min(640px,calc(100svh-96px))] min-h-0" actions={<Button size="lg" onClick={() => setOpen(false)}>{m.common.dismiss}</Button>}>
+    <OnboardingModal open={open && !archived} onClose={() => setOpen(false)} returnFocusRef={trigger} bodyScroll="hidden" title={m.settings.ci.workflow} panelClassName="h-[min(640px,calc(100svh-96px))] min-h-0" actions={<Button size="lg" onClick={() => setOpen(false)}>{m.common.close}</Button>}>
       {children}
       <p className="text-muted-foreground text-xs leading-[1.6]">{m.settings.workflow.hookHint("useTranslations()", "wrapper", <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.docs("setup/workflow", "workflow")}>{m.settings.workflow.hookDoc}</Link>)}</p>
     </OnboardingModal>

@@ -238,6 +238,11 @@ it.each([
   expect(document.body.textContent).toContain("Nothing was sent");
   const links = [...document.querySelectorAll('[role="dialog"] a')].map(a => a.getAttribute("href"));
   expect(links.filter(h => h === "/signin")).toHaveLength(href === null ? 0 : 1);
+  // 세션 만료 뒤 재로그인은 새 탭이다(ux-drift-unify 3-Y7) — 이 탭을 떠나면 번역 화면의 draft가 함께 사라진다(Sync 결과·편집 화면과 같다).
+  for (const a of document.querySelectorAll('[role="dialog"] a[href="/signin"]')) {
+    expect(a.getAttribute("target")).toBe("_blank");
+    expect(a.getAttribute("rel")).toBe("noreferrer");
+  }
   expect(links).not.toContain("/projects/acme/settings");
   expect(mocks.pull).not.toHaveBeenCalled();
 });

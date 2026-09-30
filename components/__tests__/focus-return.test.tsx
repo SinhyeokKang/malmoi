@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   updateProjectName: vi.fn(), uploadProjectImage: vi.fn(), deleteProjectImage: vi.fn(), updateRepositorySettings: vi.fn(), connectRepository: vi.fn(),
   listProjectBranches: vi.fn(), rotatePushToken: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn(),
   changeMember: vi.fn(), revokeInvitation: vi.fn(), resendInvitation: vi.fn(), disconnectGithub: vi.fn(), startGithubConnectForUser: vi.fn(),
-  unlinkLoginMethod: vi.fn(), startLoginMethodConnect: vi.fn(), updateProfileName: vi.fn(),
+  unlinkLoginMethod: vi.fn(), startLoginMethodConnect: vi.fn(), updateProfileName: vi.fn(), startSessionRevocation: vi.fn(),
 }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({
   updateProjectName: mocks.updateProjectName, uploadProjectImage: mocks.uploadProjectImage, deleteProjectImage: mocks.deleteProjectImage,
@@ -30,10 +30,14 @@ vi.mock("@/app/(edit)/projects/actions", () => ({
   changeMember: mocks.changeMember, revokeInvitation: mocks.revokeInvitation, resendInvitation: mocks.resendInvitation,
   disconnectGithub: mocks.disconnectGithub, startGithubConnectForUser: mocks.startGithubConnectForUser,
 }));
-vi.mock("@/app/(edit)/account/actions", () => ({ unlinkLoginMethod: mocks.unlinkLoginMethod, startLoginMethodConnect: mocks.startLoginMethodConnect, updateProfileName: mocks.updateProfileName }));
+vi.mock("@/app/(edit)/account/actions", () => ({
+  unlinkLoginMethod: mocks.unlinkLoginMethod, startLoginMethodConnect: mocks.startLoginMethodConnect, updateProfileName: mocks.updateProfileName,
+  startSessionRevocation: mocks.startSessionRevocation,
+}));
 
 import { GithubSection } from "@/components/account/github-section";
 import { LoginMethods } from "@/components/account/login-methods";
+import { SessionsSection } from "@/components/account/sessions-section";
 import { MemberList } from "@/components/members/member-list";
 import { PendingInvitations } from "@/components/members/pending-invitations";
 import { ArchiveCard } from "@/components/settings/archive-card";
@@ -124,6 +128,31 @@ describe("Dialog 트리거 — 진행 중에도 포커스를 지킨다 (#32·#32
     expect(document.activeElement).toBe(byText(m.settings.token.rotate));
   });
 
+  /**
+   * **모든 기기 로그아웃도 절차 (a)다** (ux-drift-unify 3-Y3 · 3-⚪17) — 확정하면 Dialog가 닫히고 트리거가 `busy`로 포커스를 지킨다.
+   * 전엔 트리거가 진짜 `disabled`라 닫힐 때 포커스가 `body`로 빠질 수 있었다. ⚠️ **두 번째 challenge를 막는 것도 트리거다** —
+   * `busy`가 클릭을 막아 진행 중에 Dialog를 다시 열 수 없다(옛 근거: 확정을 두 번 누르면 첫 challenge가 지워진다).
+   */
+  it("모든 기기 로그아웃 확정 뒤 포커스가 트리거에 남고, 진행 중엔 Dialog가 다시 열리지 않는다", async () => {
+    const response = deferred<void>();
+    mocks.startSessionRevocation.mockReturnValue(response.promise);
+    await render(<SessionsSection outcome={undefined} signOut={() => {}} confirmProvider="GitHub" />);
+    await click(byText(m.account.sessions.title));
+    await click(byText(m.account.sessions.confirmAction("GitHub")));
+    const trigger = byText(m.account.sessions.title);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+    expect(trigger.getAttribute("aria-disabled")).toBe("true");
+    await click(trigger);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(mocks.startSessionRevocation).toHaveBeenCalledTimes(1);
+    // 돌아왔다는 것 자체가 실패다(성공은 provider로 redirect) — 사유가 Dialog 밖 구역에 서고 트리거가 다시 켜진다.
+    await response.resolve();
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain(m.account.sessions.failed);
+    expect(byText(m.account.sessions.title).getAttribute("aria-disabled")).toBeNull();
+    expect(document.activeElement).toBe(byText(m.account.sessions.title));
+  });
+
   it("보관이 성공해 카드가 [Restore project]로 바뀌면 그 버튼으로 착지한다", async () => {
     const response = deferred<{ ok: true }>();
     mocks.archiveProject.mockReturnValue(response.promise);
@@ -172,7 +201,7 @@ describe("해제 뒤 행이 바뀌면 그 행의 새 컨트롤로 (#32)", () => 
     const both = [{ provider: "github" as const, connected: true }, { provider: "google" as const, connected: true }];
     const view = await render(<LoginMethods rows={both} />);
     await click(byLabel(m.link.methods.disconnectLabel("Google")));
-    await click(byText(m.link.methods.disconnect));
+    await click(byText(m.link.methods.disconnectConfirm));
     // `redirect`가 싣는 새 행은 transition이 끝나는 커밋에 함께 온다 — 행이 먼저 바뀌고 pending이 그 뒤에 풀린다.
     await view.rerender(<LoginMethods rows={[both[0]!, { provider: "google", connected: false }]} />);
     await response.resolve();
@@ -184,7 +213,7 @@ describe("해제 뒤 행이 바뀌면 그 행의 새 컨트롤로 (#32)", () => 
     mocks.disconnectGithub.mockReturnValue(response.promise);
     const view = await render(<GithubSection account={{ status: "ok", login: "octo" }} installedRepoCount={1} settingsUrl={null} />);
     await click(byLabel(m.settings.account.disconnectLabel));
-    await click(byText(m.settings.account.disconnect));
+    await click(byText(m.settings.account.disconnectConfirm));
     await act(async () => {
       response.resolve({ ok: true });
       await view.rerender(<GithubSection account={{ status: "ok", login: null }} installedRepoCount={null} settingsUrl={null} />);

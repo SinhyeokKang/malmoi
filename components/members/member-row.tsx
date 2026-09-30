@@ -106,8 +106,9 @@ export function MemberRow({
       {/* ⚠️ **톤을 받지 않는다** — 이 카드의 띠는 전부 `muted`다 (2026-09-20 사용자: *"alert 계열 말고
           그냥 일반 계열"*). 마지막 오너는 **막힌 예외가 아니라 상시 상태**라(오너가 하나면 언제나 참)
           붉은 띠가 매번 서면 경고가 배경이 된다 — 같은 이유로 `bandTone`도 그때 지웠다. */}
+      {/* 들여쓰기는 글리프 폭에서 온다(4-Y13) — 아바타 32는 60, 대기 초대의 28 칸은 행 규칙 56이다. */}
       {band !== null && (
-        <BannerLine id={bandId} indent="avatar">
+        <BannerLine id={bandId} indent={glyph === undefined ? "avatar" : "row"}>
           {band}
         </BannerLine>
       )}

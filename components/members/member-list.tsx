@@ -391,7 +391,7 @@ function RemoveButton({
             </DialogClose>
             <DialogClose asChild>
               <Button variant="danger" onClick={onConfirm}>
-                {m.members.remove}
+                {m.members.removeConfirm}
               </Button>
             </DialogClose>
           </>

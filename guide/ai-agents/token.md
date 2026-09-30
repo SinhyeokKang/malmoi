@@ -14,7 +14,7 @@ Use a personal token for agents that can't sign in through your browser, such as
 
 Keep the token out of files and chat. Store it in the `MALMOI_TOKEN` environment variable of the shell that starts your agent, for example with `read -s MALMOI_TOKEN && export MALMOI_TOKEN` and then pasting the token. The connection snippets below read that variable, so the token itself never appears in a settings file.
 
-You have one personal token at a time; connected apps don't count toward it. To change what it allows, choose **Rotate**, then **Rotate and show new token**; the old token stops working immediately, and every agent using it stops until you give it the new one. **Revoke** stops the token without creating a new one. An expired token shows **Expired**; create a new one.
+You have one personal token at a time; connected apps don't count toward it. To change what it allows, choose **Rotate token**, then **Rotate and show new token**; the old token stops working immediately, and every agent using it stops until you give it the new one. **Revoke** stops the token without creating a new one. An expired token shows **Expired**; create a new one.
 
 ## Add Malmoi with a token {#connect}
 

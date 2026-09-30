@@ -155,22 +155,20 @@ const REGISTERED: Record<string, string[]> = {
   "border-neutral-300": ["components/landing/mockup/translations.tsx", "components/mcp/token-grant-fields.tsx", "components/translations/workspace/locale-panel.tsx", "components/ui/checkbox.tsx", "components/ui/radio.tsx"],
   "text-neutral-300": ["components/members/role-chip.tsx"],
   "text-neutral-400": [
-    "app/(edit)/account/page.tsx",
     // `/docs` 행 화살표 `→` (§6.61, #119)
     "components/docs/doc-frame.tsx",
     "components/home/count-cards.tsx",
     "components/home/meta-column.tsx",
     "components/landing/mockup/translations.tsx",
     "components/logs/event-detail.tsx",
-    // `/mcp` — 사실 블록(`/account` Profile과 같은 형) · 만료 토큰의 값(보관 행과 같은 예외) · 멤버십 0 행 (mcp-connector)
-    // · 연결된 앱의 사실 라벨·만료 행 값 (mcp-oauth — 토큰 카드와 같은 형)
+    // `/mcp` — 만료 토큰의 값(보관 행과 같은 예외) · 멤버십 0 행 (mcp-connector) · 연결된 앱의 만료 행 값 (mcp-oauth — 토큰 카드와 같은 형).
+    // 사실 라벨은 `text-muted-foreground`로 갔다(ux-drift-unify 4-Y22 — Account·General과 함께).
     "components/mcp/connected-apps-card.tsx",
     // `Allowed actions` 배지 — 만료 행의 흐린 값(2026-09-30 — 사실 블록에서 옮겨 왔다)
     "components/mcp/grant-badges.tsx",
     "components/mcp/token-card.tsx",
     "components/mcp/token-grant-fields.tsx",
     "components/projects/project-list.tsx",
-    "components/settings/general-card.tsx",
     // LNB 스위처의 보관 배지 — `/projects` 행 칩과 같은 형 (§6.5)
     "components/shell/project-switcher.tsx",
     "components/sources/source-detail-modal.tsx",

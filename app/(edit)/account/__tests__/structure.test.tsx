@@ -309,7 +309,6 @@ it("되돌릴 수 없는 것마다 확인이 붙고, 직접 제출하는 것이 
     m.link.methods.disconnectLabel(m.link.providers.github),
     m.link.methods.disconnectLabel(m.link.providers.google),
     m.account.sessions.title,
-    m.common.nav.signOut,
     m.settings.account.disconnectLabel,
   ].sort());
   // 접근 이름 충돌은 아래 전용 검사가 든다 — 여기서 세면 비활성 컨트롤이 빠진다.
@@ -317,10 +316,10 @@ it("되돌릴 수 없는 것마다 확인이 붙고, 직접 제출하는 것이 
   /**
    * ⚠️ **남은 폼이 되돌릴 수 있는 것뿐이다.** 확인을 지나는 것은 Dialog 안에서 제출하므로 닫힌
    * 화면의 트리에 없다 — 여기 보이는 `<form>`이 하나라도 늘면 확인 없이 제출하는 자리가 생긴 것이다.
+   * **로그아웃은 확인이 없다**(ux-drift-unify Q4 — 셸 메뉴와 같은 동작, 잃는 것이 재로그인 한 번이다). 그래서 폼이 둘이다.
    */
   const forms = [...container.querySelectorAll("form")];
-  expect(forms).toHaveLength(1);
-  expect(forms[0]!.querySelector("button")?.textContent).toBe(m.account.profile.save);
+  expect(forms.map((form) => form.querySelector("button")?.textContent)).toEqual([m.account.profile.save, m.common.nav.signOut]);
 });
 
 it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 없다", async () => {
@@ -329,7 +328,8 @@ it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 �
     .map((trigger) => trigger.getAttribute("aria-label") ?? trigger.textContent ?? "");
   // 마지막 수단은 비활성이라 Dialog를 지날 문이 없다 — 그래도 이름은 축을 든다(아래 검사).
   expect(labels).not.toContain(m.link.methods.disconnectLabel(m.link.providers.github));
-  expect(labels).toHaveLength(3);
+  // 남는 확인은 둘이다 — Sign out everywhere · GitHub App 해제(로그아웃은 확인이 없다, Q4).
+  expect(labels).toHaveLength(2);
 });
 
 /**

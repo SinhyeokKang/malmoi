@@ -171,8 +171,8 @@ export function RepoStep({
         <Input
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder={m.newProject.repo.search}
-          aria-label={m.newProject.repo.search}
+          placeholder={m.newProject.repo.search.placeholder}
+          aria-label={m.newProject.repo.search.label}
           className="w-full pr-2.5 pl-8"
         />
       </div>

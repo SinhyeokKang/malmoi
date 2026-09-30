@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { updateRepositorySettings } from "@/app/(edit)/projects/[slug]/settings/actions";
-import { Check, CircleAlert, GitBranch } from "lucide-react";
+import { Check, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/form-group";
 import { useLandAfter } from "@/components/ui/focus";
 import { listProjectBranches } from "@/app/(edit)/projects/actions";
 import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
@@ -17,6 +18,10 @@ import { m } from "@/lib/i18n";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { isRepositorySettingsError, repositorySettingsErrorMessage, settingsAccessMessage } from "@/lib/settings/message";
+import { cn } from "@/lib/utils";
+
+/** 기준 브랜치 캡션의 배치 — 오류(`FieldError`)와 안내가 같은 자리에 선다. */
+const CAPTION = "min-w-0 flex-1 basis-40 @max-[640px]:basis-full";
 
 export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false }: { slug: string; owner: string; repo: string; baseBranch: string; disabled?: boolean }) {
   const [pending, startTransition] = useTransition();
@@ -99,9 +104,11 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
               aria-invalid={typeof result === "object"} aria-describedby="base-branch-caption"
               onChange={event => { setBranch(event.target.value); setResult("idle"); }} />}
           <Button ref={saveRef} type="submit" loading={pending} aria-busy={pending} disabled={!editable || branch === current}>{m.settings.repository.fields.save}</Button>
-          <p id="base-branch-caption" role={lookupError || failure !== null ? "alert" : undefined} className={lookupError || failure !== null ? "text-destructive min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs" : "text-foreground/60 min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs"}>
-            {lookupError ? <><CircleAlert className="mr-1 inline size-3.5" aria-hidden />{failureText(lookupError)}</> : failure !== null ? <><CircleAlert className="mr-1 inline size-3.5" aria-hidden />{messageFor(failure)}</> : disabled ? m.settings.archivedReason : result === "saved" ? <><Check className="mr-1 inline size-3.5" aria-hidden />{m.settings.repository.fields.saved}</> : choice?.mode === "input" ? m.newProject.repo.branchTooMany : m.settings.repository.fields.branchHelp}
-          </p>
+          {lookupError || failure !== null ? <FieldError id="base-branch-caption" className={CAPTION}>{lookupError ? failureText(lookupError) : failure !== null ? messageFor(failure) : null}</FieldError> : (
+            <p id="base-branch-caption" className={cn(CAPTION, "text-foreground/60 text-xs")}>
+              {disabled ? m.settings.archivedReason : result === "saved" ? <><Check className="mr-1 inline size-3.5" aria-hidden />{m.settings.repository.fields.saved}</> : choice?.mode === "input" ? m.newProject.repo.branchTooMany : m.settings.repository.fields.branchHelp}
+            </p>
+          )}
           {/* 성공은 전부터 있던 live 영역에 쓴다 (audit #39 — `GeneralCard`와 같은 형). */}
           <span role="status" data-save-status="base-branch" className="sr-only">{result === "saved" && !disabled ? m.settings.repository.fields.saved : ""}</span>
         </div>

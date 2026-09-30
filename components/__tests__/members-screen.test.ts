@@ -230,7 +230,8 @@ describe("멤버 행 — 캔버스 값 그대로", () => {
    * `members-cards.test.tsx`가 렌더한 띠의 `className`으로 잰다.
    */
   it("행이 아바타 폭에 맞는 들여쓰기를 요청한다", () => {
-    expect(read(ROW)).toContain('indent="avatar"');
+    // 글리프를 받은 행(대기 초대의 28 칸)은 행 규칙이다(ux-drift-unify 4-Y13) — 두 값의 렌더는 `members-cards.test.tsx`가 잰다.
+    expect(read(ROW)).toMatch(/indent=\{glyph === undefined \? "avatar" : "row"\}/);
   });
 
   /** ⚠️ **1행의 첫 글자를 아바타 씨앗으로 쓰지 않는다** — 셸 아바타와 다른 글자가 된다. */

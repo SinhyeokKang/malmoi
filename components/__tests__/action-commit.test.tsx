@@ -139,7 +139,7 @@ describe("#13 — 행 잠금과 토스트·닫기가 커밋 뒤다", () => {
     mocks.changeMember.mockImplementation(revalidating({ ok: true }));
     await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
     await click(byName("Remove Alice"));
-    await click(inDialog("Remove"));
+    await click(inDialog(m.members.removeConfirm));
     expect(spinning(byName("Remove Alice"))).toBe(true);
     await finishCommit();
     expect(spinning(byName("Remove Alice"))).toBe(false);
@@ -171,7 +171,7 @@ describe("#13 — 행 잠금과 토스트·닫기가 커밋 뒤다", () => {
     mocks.changeMember.mockImplementation(revalidating({ ok: true }));
     await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
     await click(byName("Remove Alice"));
-    await click(inDialog("Remove"));
+    await click(inDialog(m.members.removeConfirm));
     const select = document.getElementById("role-u2")!;
     expect(spinning(byName("Remove Alice"))).toBe(true);
     expect(select.getAttribute("aria-busy")).toBeNull();

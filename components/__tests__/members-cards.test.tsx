@@ -387,6 +387,13 @@ describe("캔버스 대조로 되돌린 자리", () => {
     expect(bands(container)[0]!.className).not.toContain("pl-14");
   });
 
+  /** 대기 초대 행의 글리프는 28 칸이라 띠가 행 들여쓰기(56)다 — 아바타 폭(60)이면 4px 어긋난다 (ux-drift-unify 4-Y13). */
+  it("대기 초대 행의 띠는 글리프 폭에 맞춰 들여쓰인다", async () => {
+    const container = await drawPending([invitation({ id: "i1", readable: false })]);
+    expect(bands(container)[0]!.className).toContain("pl-14");
+    expect(bands(container)[0]!.className).not.toContain("pl-15");
+  });
+
   /** ⚠️ **대기 초대 행은 사람이 아니다** — 이니셜 원을 그리면 멤버 카드의 행과 구별되지 않는다. */
   it("대기 초대 행의 글리프가 아바타가 아니다", async () => {
     const container = await drawPending([invitation({ id: "i1" })]);
@@ -424,7 +431,7 @@ describe("행별 진행 상태 — 동시 요청", () => {
     await draw([owner, alice, bob]);
     for (const who of ["Alice", "Bob"]) {
       await clickEl(document.querySelector(`[aria-label="Remove ${who}"]`)!);
-      await clickEl(dialogButton("Remove"));
+      await clickEl(dialogButton(m.members.removeConfirm));
     }
     return calls;
   }

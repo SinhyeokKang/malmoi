@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { repositoryConnectionState } from "@/components/settings/connection-state";
 import { planConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
 import { connectionProblem, planActionAvailability, planHomeState, type ConnectionProblem } from "@/lib/home/state";
 import { m } from "@/lib/i18n";
@@ -29,7 +30,8 @@ import { STATE, type StateKey } from "../canon";
  * - readiness가 먼저 막는다 — Home(`ProjectNotReady`)·적재 거부(`not-ready`)가 그 판정에 닿지 않는다.
  *
  * ⚠️ **화면 쪽 매핑(판정 결과 → 상태 키)은 여기 사본이다** — 칩 매핑(`components/projects/project-list.tsx`)·Home 배너 갈래
- * (`components/home/actions.tsx` `HomeNotices`)·Settings 배지(`components/settings/repository-card.tsx`)는 컴포넌트 안에 있고 순수 함수로 export되지 않는다.
+ * (`components/home/actions.tsx` `HomeNotices`)는 컴포넌트 안에 있고 순수 함수로 export되지 않는다. Settings 배지는 사본이 아니다 —
+ * 컴포넌트가 쓰는 `repositoryConnectionState`(`components/settings/connection-state.ts`)를 그대로 지난다.
  * 사본이 낡지 않도록 칩 낱말은 컴포넌트와 같은 사전 키에서 읽어 `STATE` 낱말과 대조한다.
  */
 
@@ -163,8 +165,8 @@ function observe(f: Fixture, J: Judgments): Observed {
     home = { banner, hold: hold?.reason ?? null, actions: J.planActionAvailability({ archived, connection: health.status }) };
   }
 
-  // Settings — 배지는 `connectionProblem`이 정하고 `unknown`만 카드가 덧붙인다(`repository-card.tsx`).
-  const settings: StateKey | null = problem !== null ? PROBLEM_KEY[problem] : health.status === "unknown" ? "couldNotCheck" : null;
+  // Settings — 컴포넌트와 같은 함수다. `connectionProblem`을 넘겨받으므로 카나리아가 그 판정을 바꾸면 이 칸도 따라 바뀐다.
+  const settings: StateKey | null = repositoryConnectionState(health.status, problem);
 
   const sources = f.surfaces.map((s) => J.planSurfaceImportStatus(s).labelKey);
 
