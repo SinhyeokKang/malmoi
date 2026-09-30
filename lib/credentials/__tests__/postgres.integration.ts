@@ -42,11 +42,17 @@ const ids = { u1: "u1", u2: "u2", p1: "p1", i1: "i1" };
  * 전부 적용하면 여기가 곧 R2가 되어 **평문 unique 인덱스가 사라진 채로 시작한다** — 그러면 R1의
  * additive 성질(옛 writer가 그대로 동작하고 중복 이메일이 거부된다)을 잴 수 없다. 이 스위트가
  * 재는 것은 R1→backfill→R2의 **경로**이므로 출발점은 언제나 R1이다.
+ *
+ * ⚠️ **`AUDIT_COLUMN_DROP`도 뺀다** (2026-09-30, #108 ②). finalize SQL의 사전 검사가
+ * `Account."id_token"`을 읽는데 그 마이그레이션이 컬럼을 지운다 — 파일명 순서로는 finalize보다
+ * 뒤지만 finalize를 **나중에** 적용하는 이 스위트에서는 먼저 적용돼 finalize가 없는 컬럼에서 죽는다.
+ * 프로덕션은 finalize를 2026-09-10에 이미 적용했으므로 이 순서를 밟지 않는다.
  */
+const AUDIT_COLUMN_DROP = "20260929233732_drop_unused_audit_columns";
 async function resetSchema() {
   await pool.query('DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public');
   for (const name of readdirSync("prisma/migrations").sort()) {
-    if (name === "migration_lock.toml" || name === FINALIZE_MIGRATION) continue;
+    if (name === "migration_lock.toml" || name === FINALIZE_MIGRATION || name === AUDIT_COLUMN_DROP) continue;
     await pool.query(readFileSync(join("prisma/migrations", name, "migration.sql"), "utf8"));
   }
 }
@@ -406,7 +412,7 @@ it("actual Prisma R1/R2 deploy records failed finalize and resumes only after ve
   mkdirSync(migrations);
   // ⚠️ finalize는 **아래에서** 넣는다 — 처음부터 넣으면 R1 deploy가 그것까지 적용해 "실패한 R2"를 못 만든다.
   for (const name of readdirSync("prisma/migrations")) {
-    if (name === FINALIZE_MIGRATION) continue;
+    if (name === FINALIZE_MIGRATION || name === AUDIT_COLUMN_DROP) continue;
     cpSync(join("prisma/migrations", name), join(migrations, name), { recursive: true });
   }
   const configPath = join(directory, "prisma.config.ts");
