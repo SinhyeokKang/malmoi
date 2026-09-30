@@ -566,7 +566,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /projects                      목록 + 생성 진입
 /projects/new                  ✅ 생성 — **`/projects` 위의 모달 딥링크** (뒤에 목록이 그대로 있다) ← new-project-modal (2026-09-13)
 /account                       ✅ 프로필 편집·사진 · 로그인 수단 목록/연결/해제 · GitHub App 연동/해제 · **전체 세션 회수** ← 6b-4 · account-linking · account-connect · account-settings
-/mcp                           MCP connector — Connected apps(OAuth 연결 목록·끊기) + 개인 토큰 발급·재발급·폐기 + 연결 예시(방식 둘) (사이드바 `New project` 아래) ← mcp-connector (2026-09-28) · mcp-oauth (2026-09-29)
+/mcp                           MCP connector — Connected apps(OAuth 연결 목록·끊기) + 개인 토큰 발급·재발급·폐기 + 연결 예시(방식 둘) (사이드바 `Projects` 아래) ← mcp-connector (2026-09-28) · mcp-oauth (2026-09-29)
 
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
 /projects/:slug                ✅ Home — 개요 (착지점)            ← 6b-6 (2026-09-09, 프로덕션)
@@ -634,7 +634,7 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
 
 ⚠️ **MCP 토큰 화면은 전용 라우트 `/mcp`다** (2026-09-28 — §4.3 ⑤가 적었던 "라우트로 만들지 않는다, `settings`의 섹션이다"를
 뒤집었다). 토큰이 프로젝트가 아니라 **계정** 밑이라 사용자 축(`Your work`)에 선다 — 인가는 `requireUser`, 사이드바 사용자
-구역의 `New project` 바로 아래 `MCP connector`. "MCP로 무엇을 시킬 수 있나"의 정본은 페이지가 아니라 가이드다(페이지는
+구역의 `Projects` 바로 아래 `MCP connector`(2026-09-30에 그 사이의 `New project`가 헤더로 옮겼다). "MCP로 무엇을 시킬 수 있나"의 정본은 페이지가 아니라 가이드다(페이지는
 링크 한 줄). 근거는 §4.1 "MCP 커넥터".
 
 **IA 결정 다섯** — 각각 이유가 있고, 이유가 사라지면 결정도 다시 본다:
@@ -727,7 +727,7 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
    - ⚠️ **순서**: 백로그의 조건이 *"착수 전에 어느 왕복이 얼마인지부터 재야 한다"* 다
      **재기 전에 스키마를 늘리는 것은 순서가 거꾸로다.**
 
-⚠️ **2026-09-27에 8-3의 두 결정이 다시 뒤집혔다** (사용자) — 사용자 축에 **`New project`**가 돌아왔고(`Projects · New project · Account` — 헤더 사용자 메뉴의 첫 묶음도 같은 목록이다), 프로젝트 구역 머리에 **프로젝트 전환 메뉴**가 섰다(이름 검색 · 보관 포함 · 지금 프로젝트 체크 · 고르면 그 프로젝트 Home). 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었고, 새 프로젝트는 목록 버튼 하나였다. 사이드바 **하단은 `Changelog · Docs` 둘**이다(2026-09-28 — GitHub Releases 외부 링크 `Release notes`였던 첫 항목이 앱 안 `/changelog`가 되고 라벨이 그 페이지 제목 `Changelog`와 같은 키가 됐다) — `Sign out`은 하단에서 빠져 사용자 메뉴에만 있다(`lib/shell/nav.ts`의 `navFooterItems`).
+⚠️ **2026-09-27에 8-3의 두 결정이 다시 뒤집혔다** (사용자) — 사용자 축에 **`New project`**가 돌아왔고(`Projects · New project · Account` — 헤더 사용자 메뉴의 첫 묶음도 같은 목록이다. ⚠️ **2026-09-30에 다시 빠졌다** — 자리는 앱 셸 헤더의 아바타 왼쪽 버튼이고, 사용자 구역의 아바타·이름 머리 줄도 함께 걷혔다), 프로젝트 구역 머리에 **프로젝트 전환 메뉴**가 섰다(이름 검색 · 보관 포함 · 지금 프로젝트 체크 · 고르면 그 프로젝트 Home). 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었고, 새 프로젝트는 목록 버튼 하나였다. 사이드바 **하단은 `Changelog · Docs` 둘**이다(2026-09-28 — GitHub Releases 외부 링크 `Release notes`였던 첫 항목이 앱 안 `/changelog`가 되고 라벨이 그 페이지 제목 `Changelog`와 같은 키가 됐다) — `Sign out`은 하단에서 빠져 사용자 메뉴에만 있다(`lib/shell/nav.ts`의 `navFooterItems`).
 
 ⚠️ **그 뒤 뒤집혔다** (8-3, 2026-09-11) — 구역 라벨은 **이름 그대로**(사용자 이름 / 프로젝트 이름)이고 계정 항목은 `Settings`다. ⚠️ **계정 항목은 2026-09-23에 다시 `Account`가 됐다**(사용자) — 같은 사이드바에 `Project settings`가 서 있어 `Settings`가 축만 다른 동의어였고, 2인칭(`Your account`)으로 돌아간 것이 아니라 라우트·아이콘과 같은 낱말을 고른 것이다. 아래는 8-3 때의 판정이다. ~~**문구는 2인칭으로 통일한다** — 구역 `Your work`, 항목 `Your account`. 시안의 `My account`는 구역과
 인칭이 섞였다.~~
