@@ -216,12 +216,15 @@ describe("소비자 열여섯 — 여백을 넘기지 않는다", () => {
    * 세는 명령 (2026-09-20에 다시 돌렸다 — 주석의 이름 인용을 빼고 센다):
    * `grep -rn "<PanelHeader" components app | grep -v __tests__ | grep -v content-panel` → **13**
    * `grep -rn "<PanelBody" components app | grep -v __tests__ | grep -v content-panel` → **17**
-   * 차이 넷이 아래 `BODY_ONLY`다.
+   * 차이 넷이 아래 `BODY_ONLY`다. (2026-10-01 malmoi#162 — not-found 둘이 더해 여섯이다.)
    */
   const BODY_ONLY = [
     "components/project-archived.tsx",
     "components/project-not-ready.tsx",
     "app/(edit)/error.tsx",
+    /** 셸 안 not-found 둘 (malmoi#162) — 제목 없는 빈 상태라 본문만 들고, 세로 중앙은 셸 오류 경계와 같은 형이다. */
+    "app/(edit)/projects/[slug]/not-found.tsx",
+    "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/not-found.tsx",
     /**
      * ⚠️ **Logs 전용 오류 화면이다** (logs-rework 결정 16) — 조회 실패를 빈 목록으로 접지 않으려면
      * 문구가 "이력이 없다"가 아니라 "이력을 못 읽었다"여야 하고, 그 문구는 세그먼트 공용 오류가
@@ -269,11 +272,12 @@ describe("소비자 열여섯 — 여백을 넘기지 않는다", () => {
     }
   });
 
-  it("소비자가 열여섯 + 본문 전용 넷이다 — 수가 바뀌면 다시 센다", () => {
+  it("소비자가 열여섯 + 본문 전용 여섯이다 — 수가 바뀌면 다시 센다", () => {
     // translation-rework T16 — 옛 번역 머리가 빠졌다. 새 작업 화면은 `PanelHeader`를 쓰지 않는다(세 패널이 본문 전체를 든다).
     // mcp-connector — `/mcp`가 하나 더했다(15 → 16).
     expect(CONSUMERS).toHaveLength(16);
-    expect(BODY_ONLY).toHaveLength(4);
+    // malmoi#162 — 셸 안 not-found 둘이 더했다(4 → 6).
+    expect(BODY_ONLY).toHaveLength(6);
   });
 
   it.each(BODY_ONLY)("%s도 여백·폭을 다시 정하지 않는다", (path) => {
