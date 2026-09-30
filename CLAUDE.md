@@ -161,8 +161,9 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
 | 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
 | 자격증명 cutover 마무리 | `pnpm credentials:finalize:dev` / `credentials:finalize:prod` — 기본 **verify-only**이고 `--apply`를 줘야 `prisma migrate deploy`까지 간다. ⚠️ **`db:deploy` 말고 prod 마이그레이션 상태를 움직일 수 있는 명령이 이것 하나 더 있다** — 실패하면 트래픽을 막은 채로 둔다 |
-| 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드렸으면 손으로 돌린다 |
-| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. 미전달 술어의 공유 조각(`pendingWhere`)과 손 사본들이 "같은 행을 세나"를 재는 유일한 자리다(ARCHITECTURE). `lib/invitation-email/issue.ts`·`lib/auth/lock.ts`·`lib/sync/run.ts`·`lib/keys/**`·`lib/events/**`·`lib/surfaces/**`·`lib/push/apply.ts`·`lib/pull/**`·`lib/publish/**`·`lib/import/**`·`lib/protection/**`·`app/(edit)/actions.ts`·`app/api/push/route.ts`·`lib/mcp/**`·`app/api/mcp/**`·`lib/onboarding-run/**`·**`prisma/migrations/**`**를 건드렸으면 손으로 돌린다 |
+| **로컬 게이트** | `pnpm gate [--base <ref>]` — `db:generate` → typecheck → test → (diff가 트리거 경로면) 격리 postgres 스위트 → build → `sync:agents:check`, **첫 실패의 exit code로 끝난다**(정본 `scripts/gate-plan.ts`). ⚠️ **출력을 `| grep`·`| head`로 거르지 않는다** — 파이프가 종료 코드를 삼켜 red가 dev에 나간 적이 있다(2026-09-30). `/push`·`/ship`·`/orchestrate`·워커 브리프가 이 한 명령을 부른다 |
+| 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** `lib/credentials/**`를 건드리면 `pnpm gate`가 붙인다 |
+| 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. 미전달 술어의 공유 조각(`pendingWhere`)과 손 사본들이 "같은 행을 세나"를 재는 유일한 자리다(ARCHITECTURE). **어느 경로를 건드렸을 때 도는지의 정본은 `scripts/gate-plan.ts`의 트리거이고 `pnpm gate`가 스스로 붙인다** — 손으로 판정하지 않는다 |
 
 ### 새 머신 셋업
 
@@ -212,7 +213,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 | 게이트 | 어디 | 무엇을 막나 |
 |---|---|---|
-| `pnpm typecheck` + `test` + `build` | `/push` 1단계 (로컬) | dev·preview에 red가 나가는 것 |
+| `pnpm gate` (typecheck · test · 트리거 시 격리 postgres · build · 미러) | `/push` 1단계 (로컬) | dev·preview에 red가 나가는 것 |
 | PR `verify` 체크 | `/merge` 7단계 (GitHub) | **프로덕션에 red가 나가는 것** |
 
 - **로컬 게이트를 "PR CI가 잡아줄 것"이라며 건너뛰지 않는다.** 그 CI는 커밋 여러 개가 쌓인 뒤에 돌아서, red가 나오면 무엇이 깼는지 특정하는 비용이 지금의 3분보다 크다.
