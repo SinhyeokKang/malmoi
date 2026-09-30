@@ -6,7 +6,7 @@
 
 ## A. URL 계약 (순수)
 
-- **T1** `lib/translations/query.ts` — 기본 `scope: "project"`(DEFAULT·parse 폴백·serialize 생략·`clearFilters`), `treeQuery`가 조건 축을 보존,
+- ✅ **T1** `lib/translations/query.ts` — 기본 `scope: "project"`(DEFAULT·parse 폴백·serialize 생략·`clearFilters`), `treeQuery`가 조건 축을 보존,
   신규 `isNarrowed`·`hasConditions`. 테스트 `lib/translations/__tests__/query.test.ts` 갱신:
   왕복 · 옛 링크 `scope` 없음 → project · `scope=source`·`namespace` 보존(조건 8) · treeQuery가 `q`·`state`·`completion`·`scope`를 안 건드림(조건 3) ·
   `scope=namespace`에서 treeQuery는 `ns`만 바꿈 · `clearFilters` → project(조건 7) · `isNarrowed`·`hasConditions` 진리표.
@@ -15,7 +15,7 @@
   MCP: `lib/mcp` 테스트에 "`scope` 없는 `list_keys` → 전 활성 소스"(조건 13) 추가, 도구 설명 `messages/en.tsx:3365` 갱신.
   ⚠️ 과도 상태: T7 전까지 Scope `on`(:630)이 리터럴 `"source"`라 최초 진입에서 Scope 칩이 켜져 보이고 `showSource`가 선다 — dev에 나가지 않는다(push는 T7 뒤).
   검증 [자동]: `pnpm gate` green(통합 스위트는 `lib/translations`가 gate 트리거가 아니므로 `pnpm test:projects:postgres`를 **손으로** 한 번 더 돈다).
-- **T2** 신규 `lib/translations/tree-narrow.ts`(`countRows`·`narrowTree`) · `emptyActions` · `firstRowAt` — 테스트 먼저, 파일은 `lib/translations/__tests__/`.
+- ✅ **T2** 신규 `lib/translations/tree-narrow.ts`(`countRows`·`narrowTree`) · `emptyActions` · `firstRowAt` — 테스트 먼저, 파일은 `lib/translations/__tests__/`.
   - `narrowTree`: `null`이면 원본 · 0 노드 숨김 · 숫자 교체 · `projectKeyCount` 불변 · 위치 노드는 0이어도 남음 · `keep`에 있는 0 노드는 남음(세대 고정).
   - `countRows`: 빈 rows · 소스·네임스페이스별 합 = rows.length.
   - `emptyActions`: design §2.3 표의 네 행 전부 + `search-all`이 scope만 바꾼 쿼리를 낸다(조건 9).
@@ -25,7 +25,7 @@
 
 ## B. 조회 (SQL 껍데기)
 
-- **T3** `lib/keys/translation-list.ts` — `pageSize: "all"`(LIMIT 없음, SQL count 생략 → `matchedKeyCount = rows.length`) + `matchesFor`의 `DISTINCT ON (t."keyId")`.
+- ✅ **T3** `lib/keys/translation-list.ts` — `pageSize: "all"`(LIMIT 없음, SQL count 생략 → `matchedKeyCount = rows.length`) + `matchesFor`의 `DISTINCT ON (t."keyId")`.
   통합 테스트 먼저(`translation-list.integration.ts`):
   - `"all"`이면 `rows.length === matchedKeyCount` · `nextCursor === null` · `incomplete`·`selectedInResult`가 숫자 `pageSize` 경로의 값과 같다(조건 5).
   - 숫자 `pageSize`와 cursor는 기존대로(MCP 계약).
@@ -38,12 +38,12 @@
 
 ## C. 페이지 · 측정 게이트
 
-- **T4** `page.tsx` — 목록은 `pageSize: "all"`, `@first`는 `firstRowAt`으로 푼다. `KeyList`·행 `memo` + `onSelect` 안정화(design §3.1).
+- ✅ **T4** `page.tsx` — 목록은 `pageSize: "all"`, `@first`는 `firstRowAt`으로 푼다. `KeyList`·행 `memo` + `onSelect` 안정화(design §3.1).
   이 시점엔 `nextCursor`가 늘 `null`이라 More 버튼이 서지 않고, More 코드는 죽은 채 남는다(T6이 지운다).
   테스트: `app/(edit)/projects/[slug]/translations/__tests__/landing.test.tsx`(surfaces page를 import한다, `:34`)의 `@first` 블록(`:102,:115`)에
   트리 이동 대상(rank 0 우선) · 대상 없음 → 선택 없음 · 옛 `?cursor=` redirect 유지(`:94`) 케이스 추가.
   검증 [자동]: `pnpm gate` green. `[commit] feat(translations): land tree moves on the first key of the location`
-- **T5** **측정 게이트** — design §3.3. `.scratch/` 시드로 dev DB에 폐기용 대량 프로젝트(2,000·5,000키, 소스 셋)를 만들고
+- ⚠️ **T5** (미달·사용자 수용, 결정 기록) **측정 게이트** — design §3.3. `.scratch/` 시드로 dev DB에 폐기용 대량 프로젝트(2,000·5,000키, 소스 셋)를 만들고
   (⚠️ dev OWNER가 프로젝트 한도에 걸려 있으면 어느 프로젝트를 쓸지 사용자에게 묻는다) 로컬 `pnpm build && pnpm start`로 잰다.
   20,000키×200언어 DB 시간·응답 바이트는 `.scratch/` 스크립트로 기록(3회 중앙값).
   검증 [수동]: design §3.3 표 네 지표가 전부 한계선 안(조건 11). **미달이면 여기서 멈추고 사용자에게 올린다** — T6 이후를 진행하지 않는다.
@@ -51,14 +51,14 @@
 
 ## D. More 제거 · 화면
 
-- **T6** More 제거 — design §3.1 목록 전부. 순서: ① `MoreInput` → `lib/mcp/tools/keys.ts`의 `ListKeysInput`으로 이전 ② `mergeServerRows`에서 `membership` 인자와
+- ✅ **T6** More 제거 — design §3.1 목록 전부. 순서: ① `MoreInput` → `lib/mcp/tools/keys.ts`의 `ListKeysInput`으로 이전 ② `mergeServerRows`에서 `membership` 인자와
   `cursor`·`extended` 분기 제거, `saved-rows.test.ts`에 "전체 목록 재검증: 빠진 비선택 행 → savedOut" 케이스 추가, `translation-workspace-sync.test.tsx:119,170` 갱신
   ③ Action·`load-more.ts`·`translation-more.test.ts`·`entry-points.test.ts:159`·transition 테스트의 More mock과 케이스·`KeyList` props·문구·주석 삭제.
   검증 [자동]: `pnpm gate` green +
   `grep -rn "loadMoreTranslationKeys\|loadMoreKeys\|load-more\|moreFailed\|moreLoading\|onMore" app components lib messages` 0건 +
   `rg -n 'mergeServerRows|inFlight.sent|state.order|beforeunload' lib/translations components/translations` 결과를 읽고 부분 응답 전제가 남은 소비자가 없음을 보고에 적는다.
   `[commit] refactor(translations): drop the more-keys action now that the list loads in full`
-- **T7** `workspace.tsx`·`tree-panel.tsx`·`key-list.tsx` — `isNarrowed`로 교체, Scope `on`(:630) = `scope !== "project"`, 트리 강조 = 위치(패널 + 오버레이 :684),
+- ✅ **T7** `workspace.tsx`·`tree-panel.tsx`·`key-list.tsx` — `isNarrowed`로 교체, Scope `on`(:630) = `scope !== "project"`, 트리 강조 = 위치(패널 + 오버레이 :684),
   `showSource`·머리 배지·`Filter namespaces` 임계 = 원본 트리, `narrowTree`를 `TreePanel` prop에만(세대별 `keep` 누적), 빈 상태 `emptyActions`
   (`Search all sources` 배선 · `busy` · 성공 뒤 목록 제목으로 포커스), 선택 행 스크롤(마운트 + 트리 이동), `translationLinkFor`·`copyHref`에서 `scope: "namespace"` 제거.
   DOM 테스트(`components/__tests__/translation-workspace*.test.tsx`)를 이름으로 건다:
@@ -73,7 +73,7 @@
   - **state 링크 전수 테스트**(POSTMORTEM 2026-09-15 grep 대체): `cardQuery`·`attention-card.tsx:125`·레거시 redirect가 만드는 `state=` 주소가 전부 `ns=*`를 싣는다.
   검증 [자동]: `pnpm gate` green(`no-korean-ui` 포함).
   `[commit] feat(translations): tree is a location and filters narrow it`
-- **T8** 목록 roving tabindex — Tab 정지점 하나(선택 행, 없으면 첫 행), ↑/↓·Home/End 포커스 이동, Enter·Space 선택. 포커스가 `body`로 빠지지 않음
+- ✅ **T8** 목록 roving tabindex — Tab 정지점 하나(선택 행, 없으면 첫 행), ↑/↓·Home/End 포커스 이동, Enter·Space 선택. 포커스가 `body`로 빠지지 않음
   (선택 행이 목록에서 사라질 때 포함). DOM 테스트 `components/__tests__/translation-workspace*.test.tsx`에 추가.
   검증 [자동]: `pnpm gate` green(조건 12). `[commit] feat(translations): arrow-key navigation in the key list`
 - **T9** `/runtime-test`(로컬, 소스 셋 fixture) — **[수동]**: 조건 1(목록에 세 소스) · 2(A 경로에서 C 값 검색, A가 흐린 0) · 4(트리 클릭 후 첫 키 선택과
@@ -82,12 +82,12 @@
 
 ## E. 문서
 
-- **T10** ARCHITECTURE §1.95(T5 수치 행 + 전제 변경) · §1.96(`PAGE_SIZE`·cursor는 MCP 전용, `loadMoreTranslationKeys` 단락 `:624` 삭제, `"all"`의 count 생략) ·
+- ✅ **T10** ARCHITECTURE §1.95(T5 수치 행 + 전제 변경) · §1.96(`PAGE_SIZE`·cursor는 MCP 전용, `loadMoreTranslationKeys` 단락 `:624` 삭제, `"all"`의 count 생략) ·
   §6.45(`list_keys` 기본 범위) `[commit] docs(ARCHITECTURE): …` · PRODUCT §3 개정(승인 결정 반전 — 2026-09-30 사용자, :635·:781 삭제) `[commit] docs(PRODUCT): …` ·
   DESIGN §6.1a(design §10 항목) `[commit] docs(DESIGN): …` · DIRECTORY.md:61 `[commit] docs(DIRECTORY): …` ·
   CLAUDE.md 데이터 변경 경로 표의 `loadMoreTranslationKeys` 삭제 + `pnpm sync:agents` `[commit] docs(CLAUDE): …`.
   검증 [자동]: `pnpm sync:agents:check` green + `grep -rn "loadMoreTranslationKeys\|Show more keys\|More는 클라이언트" docs CLAUDE.md` 0건.
-- **T11** `/guide`로 `guide/translate/edit.md` Scope 문단 갱신(기본 All sources · 트리 = 위치 · `This namespace` = 위치의 네임스페이스).
+- ✅ **T11** `/guide`로 `guide/translate/edit.md` Scope 문단 갱신(기본 All sources · 트리 = 위치 · `This namespace` = 위치의 네임스페이스).
   검증 [자동]: `pnpm test` green + `pnpm guide:check` 출력 인용(스크린샷 stale 후보는 `/guide-shots` 플래그).
 - **T12** 기능 종료 시 `docs/features/translation-filter-scope/` 삭제.
   검증: PRODUCT §3 · DESIGN §6.1a · ARCHITECTURE §1.95·§1.96·§6.45에 결론이 올라간 것을 확인한 뒤 디렉터리 부재(`ls docs/features/translation-filter-scope` 실패).
