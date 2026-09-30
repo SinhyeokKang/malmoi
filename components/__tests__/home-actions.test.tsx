@@ -247,3 +247,24 @@ it("동기화 실패 배너의 본문을 muted로 덮지 않는다", async () =>
   expect(banner).toBeDefined();
   expect(banner!.querySelector(".text-muted-foreground")).toBeNull();
 });
+
+/**
+ * **일부 반영은 실패 문장을 빌리지 않는다** (ux-drift-unify 🔴 A2 · spec 완료 조건 8) — `partial-import`는 데이터가 들어간 상태인데
+ * 배너 제목이 "The last sync couldn't finish"였다. 제목·본문이 Partially synced 쪽이고, "마지막 성공의 값"(`safe`)도 거짓이라 세우지 않는다.
+ */
+it("partial-import 배너는 warning Partially synced이고 실패·마지막 성공 문장이 없다", async () => {
+  const now = new Date("2026-09-15T12:00:00Z");
+  const { container } = await render(<HomeActions slug="acme">
+    <HomeNotices {...props} state="import_failed" failedSurface="web" reason="partial-import" lastSyncAt={new Date("2026-09-15T11:00:00Z")} now={now} />
+  </HomeActions>);
+  const banner = container.querySelector('[data-alert="warning"]');
+  expect(banner?.textContent).toContain(m.home.banner.partial.title);
+  expect(banner?.textContent).toContain(m.home.banner.partial.body("web", "main", m.projects.importFailure.partialImport));
+  expect(banner?.textContent).not.toMatch(/fail|couldn['’]t finish|could not/i);
+  expect(banner?.textContent).not.toContain("last successful sync");
+  // 대조 — 진짜 실패는 danger 실패 제목이다
+  const failed = await render(<HomeActions slug="acme">
+    <HomeNotices {...props} state="import_failed" failedSurface="web" reason="import-failed" lastSyncAt={null} now={now} />
+  </HomeActions>);
+  expect(failed.container.querySelector('[data-alert="danger"]')?.textContent).toContain(m.home.banner.syncFailed.title);
+});

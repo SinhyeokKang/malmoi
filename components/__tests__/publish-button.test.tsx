@@ -188,7 +188,7 @@ it("꺼진 Publish는 aria-disabled이고 사유를 describedby로 든다", asyn
   const publish = button("Publish");
   expect(publish.hasAttribute("disabled")).toBe(false);
   expect(publish.getAttribute("aria-disabled")).toBe("true");
-  expect(document.getElementById(publish.getAttribute("aria-describedby") ?? "")?.textContent).toBe("Everything you've edited is already sent.");
+  expect(document.getElementById(publish.getAttribute("aria-describedby") ?? "")?.textContent).toBe("Nothing to send — every edit is already sent.");
   await click("Publish");
   expect(mocks.preview).not.toHaveBeenCalled();
 });

@@ -164,7 +164,8 @@ function title(item: AttentionItem): string {
 }
 
 function body(item: AttentionItem): string {
-  if (item.kind === "import_failed") return m.home.attention.importFailed.body;
+  // 일부만 반영된 표면은 실패 문장을 빌리지 않는다(DESIGN §2.4 — 데이터는 들어갔다).
+  if (item.kind === "import_failed") return importFailureTone(item.reason) === "warning" ? m.home.attention.partial.body : m.home.attention.importFailed.body;
   if (item.kind === "review") return m.home.attention.review.body(item.count);
   return m.home.attention.neverFilled.body(item.name);
 }
@@ -175,7 +176,7 @@ function body(item: AttentionItem): string {
  * `actorLabel`이 아니라 **`actors` 맵의 키 존재**에서 왔다.
  */
 function tail(item: AttentionItem): string {
-  if (item.kind === "import_failed") return m.home.attention.importFailed.tail;
+  if (item.kind === "import_failed") return importFailureTone(item.reason) === "warning" ? m.home.attention.partial.tail : m.home.attention.importFailed.tail;
   if (item.kind === "review") return item.who === null ? "." : m.home.attention.review.tail(item.who);
   return m.home.attention.neverFilled.tail(item.keys);
 }

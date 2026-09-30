@@ -161,7 +161,7 @@ it("OWNER의 Revert는 미리보기 확인창을 거쳐 발급된 지문으로 �
   await user.click(button("Revert to last sent"));
   expect(mocks.preview).toHaveBeenCalledWith({ slug: "acme", surfaceSlug: "web", keyId: "k1" });
   expect(document.body.textContent).toContain("Revert to the last confirmed version?");
-  await user.click(button("Revert"));
+  await user.click(button("Revert translations"));
   expect(mocks.revert).toHaveBeenCalledWith({ slug: "acme", surfaceSlug: "web", keyId: "k1", confirmation: "f".repeat(64) });
   expect(area(container, "ko").value).toBe("없음");
   expect(document.activeElement?.getAttribute("data-footer-result")).toBe("true");
@@ -389,7 +389,7 @@ it("Revert 뒤 같은 셀을 저장하면 Not sent와 Revert가 다시 나타난
   mocks.revert.mockResolvedValue({ status: "reverted", cells: [{ localeCode: "ko", value: "없음" }] });
   const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
   await user.click(button("Revert to last sent"));
-  await user.click(button("Revert"));
+  await user.click(button("Revert translations"));
   const restored = { ...initial.detail, locales: initial.detail.locales.map(l => l.code === "ko" ? { ...l, value: "없음", pending: false } : l) };
   await rerender(<TranslationWorkspace {...initial} detail={restored} />);
   await user.type(area(container, "ko"), "!");

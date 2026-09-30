@@ -359,7 +359,7 @@ function actorLabel(filter: LogFilter, actors: readonly { id: string; label: str
 
 /** 결과 어휘 → 사전 키. **`Record`라 어휘가 늘면 여기서 컴파일이 걸린다.** */
 const RESULT_KEY: Readonly<Record<EventResult, keyof typeof m.logs.status>> = {
-  running: "running",
+  running: "inProgress",
   sent: "succeeded",
   nothingToSend: "skipped",
   notSent: "notSent",

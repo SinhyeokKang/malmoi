@@ -472,7 +472,7 @@ it("상한 도달이면 ①이 빈 상태로 서고 프로젝트 목록으로 �
     initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
   expect(document.body.textContent).toContain("Project limit reached");
   expect(document.body.textContent).toMatch(/archive/i);
-  const link = [...document.body.querySelectorAll("a")].find((a) => a.textContent === "Open projects");
+  const link = [...document.body.querySelectorAll("a")].find((a) => a.textContent === "Go to your projects");
   expect(link?.getAttribute("href")).toBe("/projects");
   // 설치 안내와 섞이지 않는다 — 상한은 연결 상태와 무관한 막힘이다.
   expect(document.body.textContent).not.toContain("Install GitHub App");

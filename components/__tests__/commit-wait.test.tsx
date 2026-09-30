@@ -210,7 +210,7 @@ describe("번역 화면", () => {
     const twoPending = () => props({ list: { ...base.list }, detail: base.detail && "key" in base.detail ? { ...base.detail, locales: base.detail.locales.map(l => l.code === "zh" ? { ...l, value: "空", pending: true } : l) } : base.detail });
     const view = await render(<TranslationWorkspace {...twoPending()} />);
     await click(named("Revert to last sent"));
-    await click(named("Revert"));
+    await click(named("Revert translations"));
     expect(locked(named("Revert to last sent"))).toBe(true);
     await view.rerender(<TranslationWorkspace {...twoPending()} />);
     expect(locked(named("Revert to last sent"))).toBe(false);
@@ -221,7 +221,7 @@ describe("번역 화면", () => {
     mocks.revert.mockResolvedValue({ status: "blocked", reason: "busy" });
     await render(<TranslationWorkspace {...props()} />);
     await click(named("Revert to last sent"));
-    await click(named("Revert"));
+    await click(named("Revert translations"));
     expect(named("Revert to last sent").getAttribute("aria-busy")).toBeNull();
   });
 });

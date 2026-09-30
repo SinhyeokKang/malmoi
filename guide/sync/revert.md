@@ -8,7 +8,7 @@ Before you start: Save or discard any open translation edit before using either 
 
 1. In **Translations**, select a key with unpublished edits and choose **Revert to last sent**.
 2. Read the confirmation, which lists the affected languages. All unpublished edits for this key are included, even those saved by another teammate.
-3. Choose **Revert** to restore their last confirmed published values, or **Cancel** to keep the edits.
+3. Choose **Revert translations** to restore their last confirmed published values, or **Cancel** to keep the edits.
 
 ![The Revert confirmation naming the one language that goes back to its last confirmed version, with Cancel and Revert buttons](/guide/revert-confirm.webp "Check the listed languages, then choose Revert.")
 

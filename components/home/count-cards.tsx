@@ -158,7 +158,7 @@ function sublineText(subline: CardSubline, now: Date): string {
     case "neverSent":
       return m.home.cards.neverSent;
     case "repositoryUpdatesPaused":
-      return m.home.cards.repositoryUpdatesPaused;
+      return m.home.cards.repositoryUpdatesHeld;
   }
 }
 

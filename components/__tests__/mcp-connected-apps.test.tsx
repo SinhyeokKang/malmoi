@@ -166,7 +166,7 @@ describe("끊기", () => {
     expect(mocks.disconnect).toHaveBeenCalledWith("c2");
     expect(dialog()).toBeNull();
     expect(rowButton("c2")).toBeNull();
-    expect(live().textContent).toBe("Disconnected Claude.");
+    expect(live().textContent).toBe("Disconnected Claude");
     expect(document.activeElement).toBe(rowButton("c3"));
   });
 

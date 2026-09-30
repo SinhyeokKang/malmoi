@@ -66,7 +66,7 @@ export const en = {
      * ⚠️ **수가 붙는 조각에만 weight 500이 붙는다** (시안 `4b`) — 강조가 둘이면 미발송과 열린 PR이
      * 같은 급으로 경쟁하는데, 실제로 세어진 값은 한쪽뿐이다. 그래서 조각을 따로 낸다.
      */
-    unsentCount: (n: number): string => `${n.toLocaleString("en-US")} unsent translation change${n === 1 ? "" : "s"}`,
+    unsentCount: (n: number): string => `${n.toLocaleString("en-US")} unsent edit${n === 1 ? "" : "s"}`,
     /**
      * **폐기를 말하는 문장 하나로 교체했다** (sync-edit-protection — DESIGN §6.644) — 설명문이 이미 `replace`를 말하지만 이 줄이
      * 무엇이 **버려지는지**를 말하는 유일한 자리다. 문장을 더하지 않았다(360px Dialog 줄 수 불변).
@@ -77,7 +77,7 @@ export const en = {
     ),
     /** ⚠️ 이 줄은 `unsent`와 **독립으로 서거나 빠진다** — 문단으로 잇지 않는다 (시안 `4c`). */
     openPr: (n: number, branch: string): string =>
-      `Edits in pull request #${n} are not in ${branch} yet — they will be replaced too.`,
+      `Edits in pull request #${n} aren't in ${branch} yet — they will be replaced too.`,
     /**
      * ⚠️ **조회 중 자리이고 `prUnknown`으로 대신하지 않는다** (malmoi#75 — Publish의 malmoi#49와 같은
      * 부류). 그 문장은 조회가 **실패했다**는 말이라, 로딩에 세우면 몇 초 동안 일어나지 않은 실패를 읽힌다.
@@ -104,7 +104,7 @@ export const en = {
      * 미발송 0 ∧ 열린 PR — `Publish first`가 **거짓이 되는** 갈래다 (시안 `4c` 오른쪽).
      * 링크만 두면 권유가 왜 바뀌었는지가 화면에 없어 문장을 함께 둔다.
      */
-    nothingUnsent: "Nothing is waiting to be sent.",
+    nothingUnsent: "Nothing to send — every edit is already sent.",
     /**
      * ⚠️ **구역이 다른 문구를 빌려 쓰지 않는다** — `archive.confirm.openPrLink`가 같은 문자열이지만
      * 그것을 참조하면 Archive를 고칠 때 이 화면이 조용히 따라 움직인다 (2026-09-13 리뷰).
@@ -117,19 +117,25 @@ export const en = {
      * 한 문장에 출처와 사고를 함께 얹으면 `from main, but …`으로 절이 셋이 되어 사고가 뒤로 밀린다.
      */
     syncedKeys: (n: number): string => `Synced ${n.toLocaleString("en-US")} key${n === 1 ? "" : "s"}`,
-    unreadable: (n: number): string => `${n} source${n === 1 ? " could" : "s could"} not be read`,
-    /** ⚠️ `could not be read`를 여기 쓰지 않는다 — 그 표면은 **읽혔고 적용만 안 됐다**. */
-    notReplaced: (n: number): string => `${n} source${n === 1 ? " was" : "s were"} not replaced`,
+    unreadable: (n: number): string => `${n} source${n === 1 ? "" : "s"} couldn't be read`,
+    /** ⚠️ `couldn't be read`를 여기 쓰지 않는다 — 그 표면은 **읽혔고 적용만 안 됐다**. */
+    notReplaced: (n: number): string => `${n} source${n === 1 ? " wasn't" : "s weren't"} replaced`,
     withIssue: (base: string, issue: string): string => `${base}, but ${issue}`,
-    partial: (n: number): string => `${n.toLocaleString("en-US")} item${n === 1 ? " was" : "s were"} not synced. Check the details below.`,
+    partial: (n: number): string => `${n.toLocaleString("en-US")} item${n === 1 ? " wasn't" : "s weren't"} synced. Check the details below.`,
     /**
      * 승인 뒤 남은 편집 (sync-edit-protection T9). **실패가 아니다** — 승인 뒤 저장됐거나 리포에 값이 없어 덮이지 않은 편집이다.
      * 남아 있는 한 자동 적재가 멈춘다는 결과까지 말한다(그 사실이 없으면 "성공했는데 왜 안 들어오지"가 된다).
      */
-    kept: (n: number): string => `${n.toLocaleString("en-US")} unsent change${n === 1 ? " was" : "s were"} kept. Repository updates are held until ${n === 1 ? "it is" : "they are"} sent.`,
+    kept: (n: number): string => `${n.toLocaleString("en-US")} unsent edit${n === 1 ? " was" : "s were"} kept. Repository updates are held until ${n === 1 ? "it's" : "they're"} sent.`,
     /** ⚠️ 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (DESIGN §6.644) — 셋 이상이면 헤드라인이 무너진다. */
     cause: (surface: ReactNode, reason: string): ReactNode => <>{surface} — {reason}</>,
-    failedTitle: "Sync could not finish",
+    /** 동기화 실패의 문장은 하나다(DESIGN §2.4) — Home 배너 제목과 같은 문장이다. */
+    failedTitle: "The last sync couldn't finish",
+    /**
+     * 전 표면이 밀린 결과(`summarizeImport.tone === "muted"`) — 실패가 아니라 밀림이라 Logs와 같은 낱말이다(ux-drift-unify 🔴 B).
+     * 보조 문장은 표면별 원인 줄(`errors.superseded`)이 든다.
+     */
+    supersededTitle: "Superseded",
     /** 거부 Alert의 액션 셋(아래 `signIn` 포함). 다른 구역(`archive.empty` · `settings.repository`)에서 빌려 오지 않는다. */
     openSettings: "Open settings",
     /** 세션이 끝난 거부의 액션 (QA D2) — 편집자 세션 Alert의 `Sign in`과 같은 낱말이다. */
@@ -144,15 +150,15 @@ export const en = {
      */
     errors: {
       "invalid-format": "This source has no valid file format.",
-      "superseded": "New repository data arrived while syncing. This source was not replaced. Try again if needed.",
+      "superseded": "New repository data arrived while syncing. This source wasn't replaced. Try again if needed.",
       // ⚠️ **원인을 단언하지 않는다** (r1) — lease 상실은 다른 실행만이 아니라 만료·권한 상실·보관·소스 삭제도 덮는다(`lib/import/apply-plan.ts`).
       "lease-lost": "This sync stopped before it could replace this source. Refresh to see the current state before trying again.",
       "not-ready": "This project hasn't finished its first sync yet",
       /**
        * ⚠️ **Sync를 누른 사람의 GitHub 계정이 연결되지 않았다**(ConnectError) — 리포 연결 문제가 아니다(ux-drift-unify r1). Google로만 로그인한
-       * 둘째 OWNER가 여기 닿는다. 액션은 설정이고, 설정의 계정 복구 줄이 Account settings로 잇는다.
+       * 둘째 OWNER가 여기 닿는다. 액션은 설정이고, 설정의 계정 복구 줄이 Account로 잇는다.
        */
-      "not-connected": "Your GitHub account isn't connected to Malmoi — connect it from account settings to sync",
+      "not-connected": "Your GitHub account isn't connected to Malmoi — connect it in Account to sync",
       /** 리포 id가 고정되지 않은 프로젝트(ux-drift-unify D1) — Home 배너 제목과 같은 Disconnected 문장이다. */
       unpinned: "This repository is disconnected",
       "already-running": "A sync is already running",
@@ -162,7 +168,7 @@ export const en = {
        */
       "reconfirm": "Sync couldn't confirm that what you reviewed is still current — nothing was discarded. Open Sync again to review and confirm",
       "no-surfaces": "There's nothing to sync — this project has no active sources",
-      "invalid input": "The project could not be identified. Refresh the page and try again.",
+      "invalid input": "The project couldn't be identified. Refresh the page and try again.",
       /**
        * ⚠️ **빌려 온 문장이 이 화면에서 거짓이 되는 자리다** — `onboardErrorMessage("ingest-failed")`는
        * "The first import failed. You can try again from settings."이고, 첫 적재가 아닌데 그렇게 말하며
@@ -227,7 +233,7 @@ export const en = {
     failed: "We couldn't add this source. Your existing translations are unchanged. Try again.",
     missingTitle: "Source unavailable",
     missingDescription: "This page may have moved or the source may no longer be active. Open your projects to continue.",
-    projects: "Open projects",
+    projects: "Go to your projects",
   },
   // ⚠️ 화면 섹션은 **그 화면을 만드는 커밋이 더한다** — 빈 껍데기를 미리 두지 않는다("만든 것이 실제로
   // 호출되는가"). 지금 있는 것은 T2~T4가 실제로 읽는 것뿐이고, 로그인·초대 문구는 T6·T8이 더한다.
@@ -812,7 +818,7 @@ export const en = {
    */
   home: {
     /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** — 없으면 로딩이 무음이다. */
-    loading: "Loading project",
+    loading: "Loading project…",
     /**
      * 보조 줄 — `{unit} · {근거}` 두 토막이다 (DESIGN §6.64). ⚠️ **첫 칸만 `keys`다**: 새 키의 빈 칸은
      * `New`에도 `To translate`에도 세므로 넷이 같은 모집단이 아니고, 그 사실을 말하는 자리가 여기다.
@@ -827,7 +833,7 @@ export const en = {
       // ⚠️ 같은 카드의 수치가 `1,207`인데 이 줄만 `1207 en`이면 같은 수인지부터 다시 읽어야 한다.
       localeCount: (code: string, n: number): string => `${n.toLocaleString("en-US")} ${code}`,
       allFilled: (n: number): string => `${n.toLocaleString("en-US")} keys all filled`,
-      nothingPending: "nothing pending",
+      nothingPending: "nothing to send",
       /**
        * `2b` — 값은 마지막 **성공**의 것이다. 실패했다고 수가 사라지면 "번역이 날아갔다"로 읽힌다.
        * ⚠️ 정상 줄(`synced`)과 같은 낱말이다(2026-09-30 사용자 — `last good sync`가 혼자 길어 카드가 한 줄 높았다). 과거형 `synced`가 성공을
@@ -836,9 +842,10 @@ export const en = {
       lastGoodSync: (when: string | null): string => (when === null ? "not synced yet" : `synced ${when}`),
       asOf: (when: string | null): string => (when === null ? "not synced yet" : `as of ${when}`),
       asOfLastSync: "as of the last sync",
-      cannotSend: "cannot be sent while paused",
+      /** 연결 문제(미연결·끊김) 동안 — "paused"는 표에 없는 상태어라 쓰지 않는다(DESIGN §2.4). 미연결에도 참이도록 "connected"다. */
+      cannotSend: "can't be sent until connected",
       /** 보낼 편집이 있는 동안 CI 적재가 보류된다 — OWNER가 그 사실을 아는 화면 자리다 (sync-edit-protection T13). */
-      repositoryUpdatesPaused: "repository updates held",
+      repositoryUpdatesHeld: "repository updates held",
       frozen: "frozen at archive",
       neverSent: "never sent",
     },
@@ -855,8 +862,16 @@ export const en = {
        */
       importFailed: {
         title: (surface: string): string => `${surface} source`,
-        body: "The last sync could not read this source",
-        tail: " — its keys did not come in.",
+        body: "The last sync couldn't read this source",
+        tail: " — nothing from it was synced.",
+      },
+      /**
+       * 일부만 반영된 표면(`partial-import`) — **실패로 말하지 않는다**(DESIGN §2.4 — 데이터는 들어갔다). `importFailed`와 같은 자리의
+       * 형제라 호출부가 `importFailureTone`으로 가른다.
+       */
+      partial: {
+        body: "This source was partially synced",
+        tail: " — some translation files were left out.",
       },
       review: {
         title: (surface: string, locale: string): string => `${surface} · ${locale}`,
@@ -904,7 +919,7 @@ export const en = {
     meta: {
       title: "Project",
       repository: "Repository",
-      branch: "Branch",
+      branch: "Base branch",
       surfaces: "Sources",
       locales: "Languages",
       keys: "Keys",
@@ -919,7 +934,8 @@ export const en = {
       failedAt: (when: string): string => `failed ${when}`,
       /** 최근 적재 사건이 열린 Malmoi PR로 보류됐다 (nightly-sync 14a) — 푸는 조건(머지)을 말한다. */
       heldByOpenPr: "held until the pull request is merged or closed",
-      never: "Never",
+      /** 첫 동기화 전 — 같은 Home 카드 보조줄과 같은 낱말이다(1-Y17). ⚠️ MCP 연결 앱의 "Never"(마지막 사용)와 다른 개념이다. */
+      never: "Not synced yet",
       /** 캔버스는 `Pull request #127 · 2d ago` — **무엇을 보냈나**가 먼저고 시각이 뒤다. */
       pullRequest: "Pull request",
       /** PR 번호는 링크의 이름이다 — 주소를 그대로 읽히지 않는다. */
@@ -928,32 +944,44 @@ export const en = {
 
     banner: {
       syncFailed: {
-        title: "The last sync could not finish",
+        title: "The last sync couldn't finish",
         /**
          * ⚠️ **원인 문장은 `importFailureMessage`가 든다** (PRODUCT §7.8) — 그 함수가 `Object.hasOwn`과
          * 폴백을 이미 가지고 있다. 여기서 사전을 직접 인덱싱하면 그 방어선을 우회한다.
          */
         body: (surface: string, branch: string, reason: string): string =>
-          `Malmoi could not read ${surface} on ${branch}. ${reason}`,
+          `Malmoi couldn't read ${surface} on ${branch}. ${reason}`,
         /** 값이 사라진 것이 아니라는 사실이 이 배너의 절반이다. */
         safe: (when: string | null): string =>
           when === null
             ? "Nothing was lost — the cells you see are from before this sync."
-            : `Nothing was lost — the cells you see are from the last good sync, ${when}.`,
+            : `Nothing was lost — the cells you see are from the last successful sync, ${when}.`,
         action: "Try again",
         /** ⚠️ **EDITOR는 본문만 본다** — 같은 Action이라 버튼이 통째로 없다 (DESIGN §6.64). */
         editor: "Ask a project owner to run the sync again.",
       },
+      /**
+       * 일부만 반영된 적재(`partial-import`, warning) — `syncFailed`의 형제다. ⚠️ **실패 문장을 빌리지 않는다**(DESIGN §2.4 — 데이터는
+       * 들어갔다). `safe`("마지막 성공의 값이다")도 없다 — 이 적재가 값 일부를 이미 바꿨다.
+       */
+      partial: {
+        title: "Partially synced",
+        body: (surface: string, branch: string, reason: string): string => `${surface} on ${branch} was partially synced. ${reason}`,
+      },
       /** 연결 문제 셋 — 미연결(회색) · 끊김(호박) · 다른 리포(빨강). `connectionProblem`이 가른다(2026-09-30 상태 통일). */
       notConnected: {
-        title: "Malmoi is not connected to this repository",
+        title: "Malmoi isn't connected to this repository",
         body: "Connect the GitHub App to this repository to sync and publish. Everything already translated is safe.",
         action: "Connect",
         editor: "Ask a project owner to connect it.",
       },
       disconnected: {
         title: "This repository is disconnected",
-        body: "The GitHub App installation is gone, so syncs and publishes are held. Everything already translated is safe — reconnect and the next sync picks up where it left off.",
+        /**
+         * ⚠️ **끊김은 셋이다**(App 제거 · 설치 교체 · `unpinned` — DESIGN §2.4 D1) — "설치가 사라졌다"는 `unpinned`에서 거짓이다. 결과 문장은
+         * "stop"이고 "held"(보류 전용)를 쓰지 않는다.
+         */
+        body: "Malmoi lost its connection to this repository. Syncs and publishes stop until it's reconnected — everything already translated is safe.",
         action: "Reconnect",
         editor: "Ask a project owner to reconnect it.",
       },
@@ -1067,9 +1095,9 @@ export const en = {
       publishing: "Publishing…",
       /**
        * ⚠️ **Logs 필터의 결과 옵션 전용이다** — 종류를 모르는 자리라 행 결과 배지의 `syncing`·`publishing`을 쓸 수 없다.
-       * 행·상세 배지는 이 낱말을 쓰지 않는다(`resultLabel`). 필터 낱말은 Logs 화면 배치가 정한다.
+       * 행·상세 배지는 이 낱말을 쓰지 않는다(`resultLabel`). 종류 중립 낱말이고 줄임표가 없다 — 진행 표시가 아니라 고르는 조건이다.
        */
-      running: "Running…",
+      inProgress: "In progress",
       /**
        * 적재 실행의 결과 다섯 (spec §6). **색은 셋뿐이라 낱말이 뜻을 든다.**
        *
@@ -1192,19 +1220,19 @@ export const en = {
         running: (who: ReactNode): ReactNode => <>{who} is sending translations to GitHub</>,
         sent: (who: ReactNode): ReactNode => <>{who} sent translations to GitHub</>,
         nothing: (who: ReactNode): ReactNode => <>{who} publish had nothing to send</>,
-        notSent: (who: ReactNode): ReactNode => <>{who} publish couldn't send its edits</>,
+        notSent: (who: ReactNode): ReactNode => <>{who} publish held back its edits</>,
         failed: (who: ReactNode): ReactNode => <>{who} publish failed</>,
-        notStarted: (who: ReactNode): ReactNode => <>{who} publish was refused</>,
+        notStarted: (who: ReactNode): ReactNode => <>{who} publish didn't start</>,
       },
       import: {
         running: (who: ReactNode): ReactNode => <>{who} is reading the repository</>,
         imported: (who: ReactNode, sources: number): ReactNode => (
           <>{who} synced {sources.toLocaleString("en-US")} source{sources === 1 ? "" : "s"} from the repository</>
         ),
-        deferred: (who: ReactNode, source: string): ReactNode => <>{who} sync was held back on {source}</>,
+        deferred: (who: ReactNode, source: string): ReactNode => <>{who} held the sync on {source}</>,
         superseded: (who: ReactNode): ReactNode => <>{who} sync gave way to another run</>,
         failed: (who: ReactNode): ReactNode => <>{who} sync failed</>,
-        notStarted: (who: ReactNode): ReactNode => <>{who} sync was refused</>,
+        notStarted: (who: ReactNode): ReactNode => <>{who} sync didn't start</>,
         /** 야간 스킵 — 편집도 새 커밋도 없었다. ⚠️ "synced"라고 말하지 않는다 — 아무것도 읽지 않았다. */
         upToDate: (who: ReactNode): ReactNode => <>{who} found nothing to publish or sync</>,
         /** 야간 스킵 실패 — base 브랜치 head를 못 읽었다. 적재가 시작조차 안 했으므로 "sync failed"와 가른다. */
@@ -1221,7 +1249,7 @@ export const en = {
         joined: (who: ReactNode): ReactNode => <>{who} joined the project</>,
         roleChanged: (who: ReactNode, target: string): ReactNode => <>{who} changed {target}&rsquo;s role</>,
         removed: (who: ReactNode, target: string): ReactNode => <>{who} removed {target}</>,
-        invitationRevoked: (who: ReactNode): ReactNode => <>{who} cancelled an invitation</>,
+        invitationRevoked: (who: ReactNode): ReactNode => <>{who} revoked an invitation</>,
       },
       surface: {
         added: (who: ReactNode, source: string): ReactNode => <>{who} added the {source} source</>,
@@ -1249,12 +1277,12 @@ export const en = {
      */
     detail: {
       kindLabel: {
-        translation: "Translation edit",
-        import: "Sync run",
-        publish: "Publish run",
-        surface: "Source change",
-        member: "Member change",
-        settings: "Project setting",
+        translation: "Translation",
+        import: "Sync",
+        publish: "Publish",
+        surface: "Source",
+        member: "Member",
+        settings: "Settings",
       },
       labels: {
         reference: "Reference",
@@ -1288,7 +1316,7 @@ export const en = {
         openTranslation: "Open this translation",
         openMembers: "Open members",
         openSettings: "Open settings",
-        openRepository: "Open repository",
+        openRepository: "Open on GitHub",
         close: "Close",
       },
       /**
@@ -1301,7 +1329,7 @@ export const en = {
         token: "Token values are never stored in logs, not even in part.",
       },
       /** ⚠️ **`Running…`을 브라우저 타이머로 바꾸지 않는다** (결정 10) — 닫는 것은 다음 실행이다. */
-      noResult: "The server has not recorded a result.",
+      noResult: "The server hasn't recorded a result.",
       /** 파일 수 `null`은 `—`이고 `0`이 아니다 — 0으로 적으면 "아무것도 안 바뀐 성공"과 같아진다. */
       notRecordedForRun: "not recorded for this run",
       noPullRequest: "None",
@@ -1521,9 +1549,9 @@ export const en = {
      */
     meter: {
       note: {
-        waiting: "Not synced yet.",
-        importing: "Syncing translation files.",
-        failed: "Sync failed.",
+        waiting: "Not synced yet",
+        importing: "Syncing…",
+        failed: "Sync failed",
         setup: "Connect the GitHub App to continue.",
       },
     },
@@ -1540,9 +1568,9 @@ export const en = {
      */
     banner: {
       review: (n: number): string =>
-        `${n.toLocaleString("en-US")} string${n === 1 ? " is" : "s are"} translated and waiting for review.`,
+        `${n.toLocaleString("en-US")} cell${n === 1 ? " is" : "s are"} translated and waiting for review.`,
       unsent: (n: number): string =>
-        `${n.toLocaleString("en-US")} edit${n === 1 ? " has" : "s have"} not been sent to GitHub yet.`,
+        n === 1 ? "1 unsent edit — it goes to GitHub when you publish." : `${n.toLocaleString("en-US")} unsent edits — they go to GitHub when you publish.`,
       prOpen: (n: number): string => `Pull request #${n} is open — merge it to finish.`,
       /**
        * 열린 PR 조회가 실패했다(ux-drift-unify Q6) — "없음"이 아니라 모름이다. ⚠️ **목적어를 붙인다** — 홀로 서는 "Couldn't check"는
@@ -1553,8 +1581,8 @@ export const en = {
       repoAhead: (n: number, baseBranch: string): string =>
         `${n} translation file${n === 1 ? "" : "s"} changed on ${baseBranch} after your last sync.`,
       setup: "Finish setup to start translating.",
-      needsReconnect:
-        "GitHub App access was revoked — syncs and publishes stop until it is reconnected.",
+      /** ⚠️ 목록이 아는 것은 `repositoryId === null`뿐이다 — "access was revoked"는 `unpinned`에서 거짓이었다(D1). Home 배너와 같은 Disconnected 문장이다. */
+      needsReconnect: "This repository is disconnected — syncs and publishes stop until it's reconnected.",
       /** 실패 사유(`importFailure.*`) 뒤에 붙는다 — 설정 화면이 그 상세를 든다. */
       checkDetails: "Check the sync details.",
       /** EDITOR 갈래. 링크를 뺀 자리에 "누가 할 수 있는지"를 말한다. */
@@ -1569,7 +1597,7 @@ export const en = {
          * 그래서 동사가 `Go to`이고 목적지 버튼 이름을 그대로 든다 (audit #28 — 전엔 없는 버튼 `Send changes`였다).
          */
         send: "Go to Publish",
-        viewPr: "View on GitHub",
+        viewPr: "Open on GitHub",
         reviewChanges: "Review changes",
         viewDetails: "View details",
         continueSetup: "Continue setup",
@@ -1619,13 +1647,13 @@ export const en = {
      * 사유를 읽는다. 재시도만 `project:settings` 뒤라 그 사실 한 줄을 더한다 (PRODUCT §3).
      */
     importFailure: {
-      parseFailed: "Translation files could not be parsed.",
+      parseFailed: "Translation files couldn't be parsed.",
       parseCrashed: "A translation file stopped the parser.",
-      invalidLocaleData: "Some translation entries could not be read.",
-      prepareFailed: "The file format could not be read on the last sync.",
+      invalidLocaleData: "Some translation entries couldn't be read.",
+      prepareFailed: "The file format couldn't be read on the last sync.",
       /** 데이터는 들어갔다 — "실패"가 아니라 "일부가 빠졌다"여야 사용자가 목록의 숫자를 믿는다. */
       partialImport: "Some translation files were left out of the last sync.",
-      importFailed: "The last sync did not finish.",
+      importFailed: "The last sync couldn't finish.",
       ownerRetries: "Only project owners can try it again.",
     },
   },
@@ -1693,8 +1721,8 @@ export const en = {
        * 한 줄 안에 이어 붙는 **구절**이라 형이 다르다.
        */
       notConnected: "Not connected",
-      statusReauthorize: "Authorization expired",
-      statusUnavailable: "Couldn't load",
+      statusReauthorize: "Expired",
+      statusUnavailable: "Couldn't check",
       /** 보조 줄 셋 — **다음에 할 일**을 든다. 연결됨 갈래는 `installedOn`이 그 자리에 선다. */
       hintNotConnected: "Connect to see which repositories have the app installed.",
       /**
@@ -1710,7 +1738,7 @@ export const en = {
        */
       hintReauthorize: "You won't be able to add or reconnect repositories until you authorize again. Projects that are already connected keep syncing.",
       /** ⚠️ **"your account"가 아니라 "this connection"이다** — 계정은 멀쩡하고 못 읽은 것은 이 연결이다. */
-      hintUnavailable: "We couldn't load this connection. Open this page again in a moment.",
+      hintUnavailable: "We couldn't check this connection. Open this page again in a moment.",
       /**
        * 연결된 행의 **본문** 상태 절 (2026-09-16에 보조 줄에서 올라왔다).
        *
@@ -1762,7 +1790,7 @@ export const en = {
     },
     sessions: {
       title: "Sign out everywhere",
-      confirmTitle: "Sign out on all devices?",
+      confirmTitle: "Sign out everywhere?",
       confirmHint: "You'll confirm with the account you sign in with, then every device is signed out — including this one.",
       /**
        * ⚠️ **확정 라벨이 결과를 말한다** — 이 버튼은 일을 **끝내지 않는다.** 누르면 provider로
@@ -1807,8 +1835,8 @@ export const en = {
        */
       willConfirm: "We'll send you to your provider to confirm, then bring you back here.",
       button: "Confirm and sign out everywhere",
-      complete: "You have been signed out on all devices. Sign in again to continue.",
-      failed: "We could not sign you out everywhere. Try again.",
+      complete: "You have been signed out everywhere. Sign in again to continue.",
+      failed: "We couldn't sign you out everywhere. Try again.",
       cancelled: "Confirmation was cancelled. You are still signed in. Try again when you are ready.",
       expired: "This confirmation expired. Start again to sign out everywhere.",
       wrongAccount: "Choose the same account you use to sign in to Malmoi, then try again.",
@@ -1826,8 +1854,8 @@ export const en = {
       confirmHint: "Unsent edits stay saved on Malmoi. You'll need to sign in again to open your projects.",
     },
     picture: {
-      upload: "Image upload",
-      delete: "Delete",
+      upload: "Upload",
+      delete: "Remove",
       caption: "PNG or JPEG, up to 3 MB.",
       /**
        * ⚠️ **막는 이유가 둘이라 문구도 둘이다** (2026-09-14 2차 리뷰 R5). 둘은 **사진이 없다**와
@@ -1896,7 +1924,7 @@ export const en = {
       confirmTitle: (name: string): string => `Disconnect ${name}?`,
       confirmBody: "It loses access right away. Your other apps and your personal token keep working.",
       confirm: "Disconnect app",
-      disconnected: (name: string): string => `Disconnected ${name}.`,
+      disconnected: (name: string): string => `Disconnected ${name}`,
       loadFailed: "We couldn't load your connected apps.",
       unconfirmed: (name: string): string => `We couldn't confirm ${name} was disconnected. If it's still listed, disconnect it again.`,
       // DCR 연결의 식별 줄 한 줄 형 — 동의 화면의 두 줄(`oauthAuthorize.clientId`·`returnsTo`)을 목록 행에서 잇는다.
@@ -2091,7 +2119,7 @@ export const en = {
       limit: {
         title: "Project limit reached",
         description: (limit: number): string => `You own ${limit.toLocaleString("en-US")} projects, the most you can have. Archive one to make room.`,
-        action: "Open projects",
+        action: "Go to your projects",
       },
       reconnect: {
         title: "Reconnect GitHub",
@@ -2115,7 +2143,7 @@ export const en = {
       branchDefault: "Using the repository's default branch.",
       branchTooMany: "This repository has too many branches to list — type the branch name.",
       notListed: "Don't see a repository?",
-      loading: "Looking for repositories with the Malmoi app installed…",
+      loading: "Looking for repositories with the Malmoi GitHub App installed…",
       /**
        * 예외 B′ — **예외 B(설치에 리포 없음)와 가른다.** 요구하는 일이 다르다: 검색어를 지워라 /
        * 설치에 리포를 넣어라 (DESIGN §6.7).
@@ -2272,7 +2300,7 @@ export const en = {
           <>
             Add this to the repository's Actions secret {secret}.{" "}
             <strong className="text-foreground font-normal">You won't see it again after you leave this page.</strong> If you lose it,
-            rotate it in settings.
+            rotate it in Settings.
           </>
         ),
       },
@@ -2291,7 +2319,7 @@ export const en = {
 
   translations: {
     /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
-    loading: "Loading translations",
+    loading: "Loading translations…",
     /** 카운터 — ICU가 아니라 삼항 하나다 (PRODUCT §4.2). */
     keys: (n: number): string => (n === 1 ? "1 key" : `${n.toLocaleString("en-US")} keys`),
 
@@ -2327,7 +2355,7 @@ export const en = {
       detail: {
         languages: (filled: number, total: number): string => `${filled.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} languages`,
         allLanguages: "All languages",
-        missingOnly: "Missing only",
+        missingOnly: "Untranslated only",
         languagesGroup: "Languages",
         source: "Source",
         notSaved: "Not saved",
@@ -2347,7 +2375,7 @@ export const en = {
       footer: {
         unsaved: (n: number): string => `${n.toLocaleString("en-US")} unsaved change${n === 1 ? "" : "s"}`,
         saved: "Saved",
-        savedNotSent: "Saved · not sent yet",
+        savedNotSent: "Saved · unsent",
         savedSince: (n: number): string => `Saved · ${n.toLocaleString("en-US")} change${n === 1 ? "" : "s"} since you pressed Save`,
         save: "Save",
         tryAgain: "Try again",
@@ -2383,7 +2411,7 @@ export const en = {
         title: "Revert to the last confirmed version?",
         body: (n: number, list: string): string =>
           `Your ${n.toLocaleString("en-US")} language${n === 1 ? "" : "s"} that ${n === 1 ? "isn't" : "aren't"} sent yet — ${list} — ${n === 1 ? "goes" : "go"} back to the version last confirmed as sent. What you saved since then is discarded.`,
-        confirm: "Revert",
+        confirm: "Revert translations",
         unavailable: "The last sent version isn't available for every changed language.",
         unsaved: "Save or discard your changes first.",
         busy: "This stays off while a save, publish, or sync is running.",
@@ -2430,7 +2458,7 @@ export const en = {
        * 사라지지 않는다. 멈춘 사실과 푸는 조건(보내기)만 말한다. ⚠️ `can be lost`·`automatically`를 되살리지 않는다.
        */
       paused: (n: number): string =>
-        `Repository updates are held until ${n.toLocaleString("en-US")} unsent change${n === 1 ? " is" : "s are"} sent.`,
+        `Repository updates are held until ${n.toLocaleString("en-US")} unsent edit${n === 1 ? " is" : "s are"} sent.`,
       /** 헤더의 Publish 버튼으로 포커스를 옮긴다 — 둘째 트리거가 아니다. 화살표 글리프가 방향을 든다. */
       sendWithPublish: "Send with Publish",
 
@@ -2449,7 +2477,7 @@ export const en = {
       basePending: (locale: string): string =>
         `The base language is changing to ${locale}. ` +
         "It switches on the next sync from your repository's GitHub Actions workflow — the Sync button doesn't apply it. " +
-        "That sync waits while changes are unpublished, so publish them first.",
+        "That sync waits while there are unsent edits, so publish them first.",
     },
 
     empty: {
@@ -2480,7 +2508,7 @@ export const en = {
       unsentCount: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "unsent edit" : "unsent edits"}`,
       viewResult: "View result",
       viewLink: "View pull request",
-      nothing: "Everything you've edited is already sent.",
+      nothing: "Nothing to send — every edit is already sent.",
       paused: "Publishing is currently unavailable.",
 
       /** `1a` — 우회 없는 필수 관문. 조회 중에도 같은 제목·같은 PR 줄이 선다. */
@@ -2536,7 +2564,7 @@ export const en = {
       afterLabel: "Your edit",
       /** 상한은 미리보기 페이로드에만 걸린다 — 발송 범위는 전부다. */
       truncated: (n: number): string =>
-        `${n.toLocaleString("en-US")} more are not listed here. Publishing sends all of them.`,
+        `${n.toLocaleString("en-US")} more aren't listed here. Publishing sends all of them.`,
       /** 수술적 어댑터의 원본 파일이 없어 pull이 안 쓰는 셀 — 표에서 뺐다 (launch-readiness L3.7). 편집은 DB에 남는다. */
       withoutFile: (n: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "edit isn't" : "edits aren't"} listed because the language file isn't in the repository yet. ${n === 1 ? "It stays" : "They stay"} here until the file exists.`,
@@ -2672,7 +2700,8 @@ export const en = {
         withheld: "Nothing was written to the repository. These edits stay saved here until they can be sent.",
         noChanges: "Nothing was written to the repository. Your other edits already matched it, and these stay saved here until they can be sent.",
       },
-      notWritten: "Not written",
+      /** 결과 모달 목록 머리 — 모달 제목·Logs 배지와 같은 Publish 일부 보류 낱말이다(1-Y5). */
+      notWritten: "Held back",
       warnings: (n: number): string =>
         `${n.toLocaleString("en-US")} ${n === 1 ? "warning" : "warnings"} \u00b7 values still saved in Malmoi`,
       stillHere: "These values stay in Malmoi and will go out once the files can hold them.",
@@ -2794,7 +2823,7 @@ export const en = {
    */
   sources: {
     /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
-    screenLoading: "Loading sources",
+    screenLoading: "Loading sources…",
     title: "Sources",
     /** 머리·카드·트리의 개수 배지 sr 문장 — 숫자는 `aria-hidden`이다(`CountBadge`, ux-drift-unify Q13). */
     count: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"}`,
@@ -2839,7 +2868,7 @@ export const en = {
     orphanReason: "This language was removed from the repository.",
     orphanStrip: (code: string): string => `${code} was removed from the repository.`,
     orphanStripRest: (translations: number, active: number): string =>
-      `The ${translations.toLocaleString("en-US")} translations are kept and stay read-only. It comes back when the language is in the repository again and the next sync runs. It is not counted in the ${active.toLocaleString("en-US")} active languages.`,
+      `The ${translations.toLocaleString("en-US")} translations are kept and stay read-only. It comes back when the language is in the repository again and the next sync runs. It isn't counted in the ${active.toLocaleString("en-US")} active languages.`,
     // 시안 `1c`·`1d`의 카드 머리 보조문 셋과 언어 행의 비고 문구. 화면이 아는 값만 말한다.
     statusHelp: "Updated by syncs from your repository.",
     baseHelp: "The base language decides which keys exist in this source.",
@@ -2852,21 +2881,22 @@ export const en = {
     started: "started",
     addedAgo: "added",
     lastSuccess: "Last successful sync",
-    archivedOwner: "Translations are kept. Syncs are stopped, and sources cannot be viewed or changed until the project is restored.",
+    archivedOwner: "Translations are kept. Syncs are stopped, and sources can't be viewed or changed until the project is restored.",
     archivedEditor: "Translations are kept. A project owner can restore it — sources and translations come back then.",
     discardTitle: "Discard the base language change?",
     discardBody: (requested: string, applied: string): string =>
-      `You picked ${requested} but did not save it. The base language stays ${applied}.`,
+      `You picked ${requested} but didn't save it. The base language stays ${applied}.`,
     keepEditing: "Keep editing",
     discardChange: "Discard change",
     importedSummary: (keys: number, locales: number): string =>
       `${keys.toLocaleString("en-US")} active keys in ${locales.toLocaleString("en-US")} ${locales === 1 ? "language" : "languages"}, read from the repository.`,
-    notImportedHelp: "No keys or languages have arrived from this file yet. Adding a source does not connect CI on its own — the workflow in your repository sends the strings.",
+    notImportedHelp: "No keys or languages have arrived from this file yet. Adding a source doesn't connect CI on its own — the workflow in your repository sends the strings.",
     workflow: "Update the workflow in Settings to include the added sources.",
     addedCount: (count: number): string => `${count.toLocaleString("en-US")} ${count === 1 ? "source" : "sources"} added`,
     addedOne: (count: number): string => `synced ${count.toLocaleString("en-US")} keys`,
-    addedFailed: "failed on its first sync",
-    resultKeep: "This stays until you dismiss it, so the result does not disappear when a status changes below.",
+    /** 추가 결과 줄의 조각 — `{slug} sync failed`. 동기화 실패의 배지 낱말이다(DESIGN §2.4). */
+    addedFailed: "sync failed",
+    resultKeep: "This stays until you dismiss it, so the result doesn't disappear when a status changes below.",
   },
 
   locales: {
@@ -2899,7 +2929,7 @@ export const en = {
 
   members: {
     /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
-    loading: "Loading members",
+    loading: "Loading members…",
     /**
      * 패널 헤더 우측의 좌석 잔량 — 갈래는 `planSeatNotice`가 정한다.
      *
@@ -2921,10 +2951,10 @@ export const en = {
     /**
      * 복호화 실패 행 (멤버·대기 초대 공용).
      *
-     * ⚠️ **`m.common.unreadable`("Unavailable")과 갈라 둔다** — 그쪽은 표 셀·라벨 한 단어 제약을 지고
-     * Logs의 행위자 칸(`lib/events/query.ts`)이 여전히 그 자리다. 이 화면은 행 아래 띠가 사유를 들 수 있다.
+     * ⚠️ **`m.common.unreadable`과 같은 낱말이다**(ux-drift-unify Q5) — 같은 사람의 이름이 Members와 Logs에서 다른 말로 나왔다.
+     * 조치 안내는 행 아래 띠(보조 문장)가 든다.
      */
-    unreadableLabel: "Couldn't be read",
+    unreadableLabel: UNAVAILABLE,
     unreadableHint: "This person's name and address couldn't be decrypted. Role and join date are unaffected.",
     /**
      * 읽기전용 역할 칩의 접근 이름 — 보이는 것은 역할 낱말과 자물쇠뿐이다.
@@ -3118,7 +3148,7 @@ export const en = {
   /** settings-block 넷 + 계정 (DESIGN §6.6). **블록이 각자 실패한다** — 문구도 블록별로 갈라져 있다. */
   settings: {
     /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (audit-ux #5 — `m.home.loading`과 같은 형). */
-    loading: "Loading settings",
+    loading: "Loading settings…",
     general: {
       title: "General", thumbnail: "Thumbnail", name: "Name", address: "Address",
       upload: "Upload", remove: "Remove",
@@ -3132,7 +3162,7 @@ export const en = {
       confirm: "Add selected sources",
       notImported: "Not synced yet", importing: "Syncing…", imported: "Synced", failed: "Sync failed",
       failedAfter: "Sync failed", retry: "Run first sync", rerun: "Re-run the workflow on GitHub.",
-      unknown: "We could not confirm the result. Check the source list before trying again.",
+      unknown: "We couldn't confirm the result. Check the source list before trying again.",
       nothingAdded: "Nothing was added. Your selection is still here.",
       description: "Choose translation files from your repository. Existing sources stay selected.",
       selectHelp: "Select at least one new source to add.",
@@ -3151,19 +3181,19 @@ export const en = {
       /** 꺼진 수동 확인([Check files])의 사유 (audit #37). */
       manualReason: "Enter a file path and a base language to check.",
     },
-    ci: { description: "Your workflow pushes source strings into Malmoi on every merge.", title: "CI integration", workflow: "Workflow file", sourcesLead: "One workflow covers every source. Add or change sources in", stale: "Some sources have not been synced yet. Check that the workflow includes them.",
+    ci: { description: "Your workflow pushes source strings into Malmoi on every merge.", title: "CI integration", workflow: "Workflow file", sourcesLead: "One workflow covers every source. Add or change sources in", stale: "Some sources haven't been synced yet. Check that the workflow includes them.",
       /** 소스가 없어 꺼진 워크플로 행의 사유 (audit #37) — 워크플로는 소스 목록에서 만들어진다. */
       noSources: "Add a source to get the workflow." },
     archivedReason: "Restore this project to change its settings.",
-    recovery: "Syncs keep running. Manage your GitHub authorization in account settings to reconnect this repository or add sources.",
-    accountLink: "Account settings",
-    installed: "The Malmoi app is installed on this repository.",
+    recovery: "Syncs keep running. Manage your GitHub authorization in Account to reconnect this repository or add sources.",
+    accountLink: "Account",
+    installed: "The Malmoi GitHub App is installed on this repository.",
     openRepo: "Open on GitHub",
 
     repository: {
       disconnected: "Disconnected", notConnected: "Not connected", unknown: "Couldn't check", wrongRepository: "Wrong repository",
       movedHint: "Reconnect to store the new name. Syncs keep working in the meantime.",
-      paused: "Syncs and publishes are paused. Everything already translated is safe.",
+      paused: "Syncs and publishes stop until it's reconnected. Everything already translated is safe.",
       title: "Repository",
       connect: "Connect",
       reconnect: "Reconnect",
@@ -3271,7 +3301,7 @@ export const en = {
        * 것은 대상이 아니라 축이다**: 같은 "GitHub"이 이 화면에서 로그인 수단이기도 하고 리포 쓰기
        * 권한이기도 하다. `aria-label`이 보이는 텍스트를 **포함**한다 (WCAG 2.5.3).
        */
-      disconnectLabel: "Disconnect GitHub repository access",
+      disconnectLabel: "Disconnect GitHub App",
       disconnectFailed: "We couldn't disconnect. Try again in a moment.",
     },
   },
@@ -3435,14 +3465,14 @@ export const en = {
       repositories: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "repository" : "repositories"}.`,
       branches: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "branch" : "branches"}.`,
       formats: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "translation file format" : "translation file formats"} found.`,
-      publishPreview: (n: number): string => n === 0 ? "Nothing to publish." : `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} would be sent in a pull request. Publish with this fingerprint.`,
+      publishPreview: (n: number): string => n === 0 ? "Nothing to send." : `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} would be sent in a pull request. Publish with this fingerprint.`,
       published: (view: string): string =>
         view === "created" ? "Sent for review in a new pull request."
         : view === "updated" ? "Updated the open pull request."
         : view === "partial" ? "Some changes weren't sent. See the result for why."
         : "Nothing changed — the repository already has these values.",
       saved: (saved: number, rejected: number): string =>
-        `Saved ${saved.toLocaleString("en-US")} ${saved === 1 ? "key" : "keys"}${rejected === 0 ? "" : `; ${rejected.toLocaleString("en-US")} ${rejected === 1 ? "key was" : "keys were"} not saved`}.`,
+        `Saved ${saved.toLocaleString("en-US")} ${saved === 1 ? "key" : "keys"}${rejected === 0 ? "" : `; ${rejected.toLocaleString("en-US")} ${rejected === 1 ? "key wasn't" : "keys weren't"} saved`}.`,
       updated: "Settings saved.",
       nameOnly: "The name was saved, but the base branch wasn't.",
       // 브랜치 코어가 던졌다 — 바뀌었는지 모른다. 재시도 전에 확인하라는 것이 다음 행동이다(Codex review CR-02).
@@ -3528,13 +3558,13 @@ export const en = {
       // 이 문장을 쓴다. 입력이 남는 화면은 자기 문장이 그 사실을 말한다(`footer.saveFailed`).
       unavailable: "Something went wrong. Try again in a moment.",
       // 되돌릴 수 있다는 것과 **누가** 되돌리는지를 함께 말한다 — 그러지 않으면 사용자가 갇힌다.
-      archived: "This project is archived. A project owner can restore it in its settings.",
+      archived: "This project is archived. A project owner can restore it in Settings.",
     },
 
     /** `inviteErrorMessage` — `InviteError` 일곱 + 폴백(모르는 `?e=`에 던지지 않는다). */
     invite: {
       unauthorized: "You're signed out. Sign in and you'll come back to this link.",
-      "not-found": "This invitation doesn't exist. The link is wrong, or the invitation was cancelled.",
+      "not-found": "This invitation doesn't exist. The link is wrong, or the invitation was revoked.",
       expired: "This invitation expired. Ask the person who invited you for a new link.",
       "already-accepted": "This link was already used. An invitation works only once.",
       // 이 화면에서 사용자가 할 수 있는 일이 그것 하나다 — 막힌 이유만 말하면 갇힌다.
@@ -3578,8 +3608,8 @@ export const en = {
 
     /** `connectErrorMessage` — `ConnectError` 열셋 + 폴백. */
     connect: {
-      "state-mismatch": "We couldn't verify that connection request. Start it again from settings.",
-      "state-expired": "That connection request expired. Start it again from settings.",
+      "state-mismatch": "We couldn't verify that connection request. Start it again.",
+      "state-expired": "That connection request expired. Start it again.",
       "wrong-user": "You started this with a different account. Start the connection again.",
       denied: "The connection was cancelled on GitHub. Start it again to continue.",
       "exchange-failed": "We couldn't finish connecting to GitHub. Start it again.",
@@ -3594,7 +3624,7 @@ export const en = {
       "repo-read-only": "This account can only read that repository. Connecting it needs write access — ask the repository owner.",
       // 원인이 고정된 거부에 "잠시 뒤 다시"를 보이면 사용자가 같은 버튼을 반복해서 누른다.
       unavailable: "Something went wrong. Try again in a moment.",
-      fallback: "The GitHub connection failed. Try again from settings.",
+      fallback: "The GitHub connection failed. Try again.",
     },
 
     /**

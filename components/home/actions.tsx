@@ -218,6 +218,9 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
     wasArchived.current = state === "archived";
   }, [state, titleRef]);
 
+  // 일부만 반영된 적재는 제목·본문이 따로다 — 실패 문장을 빌리지 않고, `safe`(마지막 성공의 값)도 거짓이라 세우지 않는다(DESIGN §2.4).
+  const partial = reason !== null && importFailureTone(reason) === "warning";
+
   return (
     /*
       ⚠️ **여백을 이 블록이 든다** (2026-09-15 리뷰 🔴1) — 바깥 래퍼에 두면 `:empty`가 이 `<div>`를
@@ -230,7 +233,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
         <Alert
           // 톤은 실패 코드가 정한다 — 일부만 반영된 적재는 호박, 나머지는 빨강(2026-09-30 상태 통일).
           variant={importFailureTone(reason)}
-          title={m.home.banner.syncFailed.title}
+          title={partial ? m.home.banner.partial.title : m.home.banner.syncFailed.title}
           /* ⚠️ **원인 문장은 `importFailureMessage`가 든다** — 사전을 직접 인덱싱하면 그 폴백을 우회한다. */
           /* ⚠️ **`[Try again]`은 `[Sync]`와 같은 Action이다** — 확인 Dialog를 건너뛰지 않는다. */
           /* ⚠️ **머리의 `[Sync]`와 같은 잠금을 받는다** — 같은 Action을 여는 세 자리가 다르게 움직이면
@@ -246,8 +249,10 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
             "무엇이 안전한가"(나머지 표면은 들어왔다 · 값은 마지막 성공의 것이다)까지 경고로 읽힌다 — 전엔 danger 본문이 빨개서
             여기만 muted로 덮었고, Alert가 그 규칙을 들게 된 뒤로 덮개가 이 배너만 흐리게 했다.
           */}
-          {m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
-          {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}
+          {partial
+            ? m.home.banner.partial.body(failedSurface, branch, importFailureMessage(reason))
+            : <>{m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
+              {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}</>}
           {!owner && <> {m.home.banner.syncFailed.editor}</>}
         </Alert>
       )}

@@ -52,3 +52,12 @@ it("첫 적재 실패 문구가 Settings를 가리키지 않는다 — 재시도
   expect(text).not.toMatch(/settings/i);
   expect(text).toContain("Sources");
 });
+
+/** 🔴 A2 — 일부만 반영된 표면의 항목은 "읽지 못했다·키가 안 들어왔다"를 말하지 않는다(데이터는 들어갔다). */
+it("partial-import 항목은 Partially synced 문장이고 실패 문장을 빌리지 않는다", async () => {
+  const partial = { ...failed, reason: "partial-import" as const };
+  const { container } = await render(<AttentionCard items={{ shown: [partial], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />);
+  expect(container.textContent).toContain(`${m.home.attention.partial.body}${m.home.attention.partial.tail}`);
+  expect(container.textContent).not.toContain(m.home.attention.importFailed.body);
+  expect(container.textContent).not.toMatch(/didn['’]t come in|couldn['’]t read/);
+});

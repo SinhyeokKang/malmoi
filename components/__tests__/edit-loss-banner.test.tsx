@@ -18,7 +18,7 @@ function View({ count }: { count: number }) {
 
 it("[C11] 미전달 편집이 있으면 warning(보류) 배너가 멈춘 이유를 말하고 손실을 예고하지 않는다", async () => {
   const { container } = await render(<View count={3} />);
-  expect(container.textContent).toContain("Repository updates are held until 3 unsent changes are sent.");
+  expect(container.textContent).toContain("Repository updates are held until 3 unsent edits are sent.");
   expect(container.textContent).not.toMatch(/can be lost|automatically/);
   expect(container.querySelector('[data-alert="warning"]')).not.toBeNull();
 });
@@ -26,7 +26,7 @@ it("[C11] 미전달 편집이 있으면 warning(보류) 배너가 멈춘 이유�
 it("[C11] 닫기가 없다 — 상시 조건이라 숨길 지역 상태를 만들지 않는다", async () => {
   const { container } = await render(<View count={1} />);
   expect([...container.querySelectorAll("button")].map(b => b.getAttribute("aria-label") ?? b.textContent)).not.toContain("Dismiss");
-  expect(container.textContent).toContain("until 1 unsent change is sent.");
+  expect(container.textContent).toContain("until 1 unsent edit is sent.");
 });
 
 it("[C11] 미전달 편집이 0이면 렌더하지 않는다 (1 → 렌더 대조는 위)", async () => {

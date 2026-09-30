@@ -27,7 +27,7 @@ it("Home Sync 결과: 관리하지 않는 항목만 있으면 성공 한 줄 + �
 
 it("대조: 진짜 실패가 섞이면 warning이고 not synced를 말한다", async () => {
   const { container } = await render(<SyncResult {...props} outcome={{ ok: true, remainingEdits: 0, surfaces: [row({ status: "partial", failed: 1, unmanaged: 2, errors: [{ path: "src/i18n/other.ts", code: "download-failed" }] })] }} />);
-  expect(container.textContent).toContain("1 item was not synced");
+  expect(container.textContent).toContain("1 item wasn't synced");
   expect(container.textContent).toContain("2 entries aren't plain text and stay in the code.");
 });
 

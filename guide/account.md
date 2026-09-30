@@ -7,7 +7,7 @@ Before you start: Open your avatar menu at the top right and choose **Account**.
 ## Update your profile {#profile}
 
 1. Edit your name and choose **Save**. **Saved** confirms the change.
-2. To change your picture, choose **Image upload** and select a PNG or JPEG up to 3 MB. Your avatar updates after the upload succeeds.
+2. To change your picture, choose **Upload** and select a PNG or JPEG up to 3 MB. Your avatar updates after the upload succeeds.
 
 The picture is resized automatically and the original file is not kept.
 

@@ -94,7 +94,8 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, ret
    * 성공일 때만 참이고, 그 갈래는 시안에 없다(전 표면 실패는 `4e` 다섯에 안 그려져 있다).
    * ⚠️ `could not be read`와 `was not replaced`를 한 문장으로 접지 않는다 — 뒤엣것은 읽혔고 적용만 안 됐다.
    */
-  const title = !replaced ? m.repositorySync.failedTitle
+  // 전 표면이 밀렸으면(`muted`) 실패가 아니다 — Logs와 같은 Superseded다(🔴 B). 원인 줄이 보조 문장을 든다.
+  const title = !replaced ? (summary.tone === "muted" ? m.repositorySync.supersededTitle : m.repositorySync.failedTitle)
     : summary.unreadable.length ? m.repositorySync.withIssue(m.repositorySync.syncedKeys(summary.keys), m.repositorySync.unreadable(summary.unreadable.length))
     : notReplaced ? m.repositorySync.withIssue(m.repositorySync.syncedKeys(summary.keys), m.repositorySync.notReplaced(notReplaced))
     // ⚠️ **파일 일부 실패(`partial`)도 성공 헤드라인을 쓰지 않는다** — 표면은 전부 들어갔지만 값이
