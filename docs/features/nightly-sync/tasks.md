@@ -8,11 +8,11 @@
 
 ## A. 순수 판정
 
-- [ ] **A1** `planOpenPrGate` 신설(`lib/protection/plan.ts` 옆). `planProtectedImport`는 손대지 않는다.
+- [x] **A1** `planOpenPrGate` 신설(`lib/protection/plan.ts` 옆). `planProtectedImport`는 손대지 않는다.
   — 검증: `openPr: undefined → defer pr-check-failed` · `null → apply` · `url → defer open-pr` · 기존 `lib/protection/__tests__/plan.test.ts` 무수정 green · `pnpm test` green.
-- [ ] **A2** `planNightly` 신설(`lib/nightly/plan.ts`). 테스트 먼저.
+- [x] **A2** `planNightly` 신설(`lib/nightly/plan.ts`). 테스트 먼저.
   — 검증: design "야간 판정 순서"의 갈래마다 한 테스트(publish · notReady · base-unreadable(throw) · base-unreadable(`sha: null`) · upToDate · pr-check-failed · open-pr · unprocessed(마감 초과) · import) · "pending > 0이면 head를 요구하지 않는다(`need` 없음)" · "비교 대상 중 하나라도 lastCommitSha가 다르면 import 쪽" · 비교 대상에서 보관·포맷 불완전·`lastCommitSha` null 표면 제외 · **비교 대상 0개 → `notReady`**(빈 배열의 `every`가 `upToDate`로 새지 않는다) · `pnpm test` green.
-- [ ] **A3** `triggerOf`·`triggerWhere` 신설(subtype 기준), `parseLogFilter`의 `actor`에 `ci`·`nightly`(옛 `automation` 읽기 유지). `IMPORT_SOURCES`에 `"nightly"`, IMPORT 페이로드에 `deferReason`·`changedValues`(nullable), 결과어 `upToDate`와 그 라벨·톤·결과 필터 메뉴 항목·`Record<EventResult,…>` 다섯 곳(`lib/events/view.ts:45,58,168` · `components/logs/log-filters.tsx:355,376`)·`messages/en.tsx`, `lib/events/query.ts:243-248` `RESULTS`를 `EVENT_RESULTS`에서 파생, `readPayload` 대응.
+- [x] **A3** `triggerOf`·`triggerWhere` 신설(subtype 기준), `parseLogFilter`의 `actor`에 `ci`·`nightly`(옛 `automation` 읽기 유지). `IMPORT_SOURCES`에 `"nightly"`, IMPORT 페이로드에 `deferReason`·`changedValues`(nullable), 결과어 `upToDate`와 그 라벨·톤·결과 필터 메뉴 항목·`Record<EventResult,…>` 다섯 곳(`lib/events/view.ts:45,58,168` · `components/logs/log-filters.tsx:355,376`)·`messages/en.tsx`, `lib/events/query.ts:243-248` `RESULTS`를 `EVENT_RESULTS`에서 파생, `readPayload` 대응.
   — 검증: `triggerOf` 표 — IMPORT×USER×{`import.run`, `import.first`} → manual · IMPORT×AUTOMATION×{`import.ci`} → ci · IMPORT×AUTOMATION×{`import.nightly`, `nightly.skip`} → nightly · PUBLISH×AUTOMATION → nightly · PUBLISH×USER → manual · 기타 kind×USER → manual · `readPayload`가 `"nightly"`를 `"ci"`로 폴백하지 않는다 · filter 왕복: `?actor=ci`·`?actor=nightly`·옛 `?actor=automation` · `hasNarrowing`·`filterChanged` 단위 테스트 · `upToDate`가 `nothingToSend`와 다른 키·라벨 · `pnpm typecheck` green · `pnpm test` green.
 
 ── 커밋: `feat(nightly): add pure decisions for nightly publish/import/skip and open-PR gate`
