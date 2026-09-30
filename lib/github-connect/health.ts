@@ -31,6 +31,12 @@ export type ProbeResult =
 
 export type ConnectionHealth =
   | { status: "not-connected" }
+  /**
+   * 설치는 있는데 **리포 id가 고정되지 않았다** (ux-drift-unify D1). 목록이 이미 Disconnected(재연결 필요)로 말하던 상태라
+   * `not-connected`(설치 없음 — Connect)와 가른다: 할 일이 [Reconnect] 한 번이다. ⚠️ MCP `get_project.connection`에는 이 값이
+   * 나가지 않는다 — 출력 경계가 `not-connected`로 접는다(외부 계약 불변, `lib/mcp/tools/project.ts`).
+   */
+  | { status: "unpinned" }
   | { status: "app-uninstalled" }
   | { status: "installation-changed"; installationId: string }
   | { status: "repo-moved"; fullName: string }
@@ -63,17 +69,28 @@ export function probeFromError(status: number | undefined): "not-installed" | "e
   return status === 403 || status === 404 ? "not-installed" : "error";
 }
 
+/**
+ * 저장된 두 컬럼만으로 판정이 끝나는 갈래 — 끝나면 probe를 부를 이유가 없다(`loadConnectionHealth`가 GitHub을 건너뛴다).
+ * `null`이면 probe가 필요하다.
+ */
+export function storedConnection(project: { installationId: string | null; repositoryId: string | null }): ConnectionHealth | null {
+  // 저장된 설치가 없으면 probe 결과와 무관하게 아직 연결 전이다.
+  if (project.installationId === null) return { status: "not-connected" };
+  // ⚠️ **리포 id가 없으면 probe 결과와 무관하게 `unpinned`다** (sec-audit-2 발견 34 · ux-drift-unify D1). 그 컬럼이 생기기 전에
+  // 만들어진 행은 이름만 맞는 상태이고, `createGitClient`가 쓰기 직전에 그것을 거부한다 — 여기서 `ok`를 주면
+  // 화면이 초록인데 Publish만 죽는다. 고정은 OWNER의 [Reconnect] 한 번으로 끝난다.
+  if (project.repositoryId === null) return { status: "unpinned" };
+  return null;
+}
+
 export function planConnectionHealth(input: {
   project: { installationId: string | null; repositoryId: string | null; repoOwner: string; repoName: string };
   probe: ProbeResult;
 }): ConnectionHealth {
   const { project, probe } = input;
 
-  // 저장된 것이 없으면 probe 결과와 무관하게 아직 연결 전이다.
-  // ⚠️ **리포 id도 같은 줄에 있다** (sec-audit-2 발견 34). 그 컬럼이 생기기 전에 만들어진 행은
-  // 이름만 맞는 상태이고, `createGitClient`가 쓰기 직전에 그것을 거부한다 — 여기서 `ok`를 주면
-  // 화면이 초록인데 Publish만 죽는다. 고정은 OWNER의 [다시 연결] 한 번으로 끝난다.
-  if (project.installationId === null || project.repositoryId === null) return { status: "not-connected" };
+  const settled = storedConnection(project);
+  if (settled !== null) return settled;
 
   if (probe.status === "error") return { status: "unknown" };
   if (probe.status === "not-installed") return { status: "app-uninstalled" };

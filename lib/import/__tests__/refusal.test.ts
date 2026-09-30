@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { m } from "@/lib/i18n";
+import { planRepositoryImport } from "@/lib/import/plan";
 import { planImportRefusal } from "@/lib/import/refusal";
 import type { RepositoryImportError } from "@/lib/import/result";
 
@@ -151,5 +153,24 @@ describe("planImportRefusal", () => {
 describe("reconfirm — 승인 뒤 편집·설정이 바뀌었다 (sync-edit-protection T9)", () => {
   it("warning이고 닫을 수 있고 액션이 없다 — 다음 행동은 [Sync]를 다시 열어 새 내용을 확인하는 것이다", () => {
     expect(planImportRefusal("reconfirm")).toEqual({ tone: "warning", dismissible: true, action: null });
+  });
+});
+
+/**
+ * **`not-connected` 거부는 설치는 있고 리포 id가 없는 프로젝트의 것이다** (ux-drift-unify D1). 설치가 없으면 readiness가 먼저
+ * `not-ready`를 낸다 — 그래서 이 코드의 문구는 Home·Settings·목록과 같은 **Disconnected** 낱말이다(코드 값은 그대로).
+ */
+describe("not-connected 거부 문구", () => {
+  const surface = { id: "s", slug: "default", archivedAt: null, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", lastImportStartedAt: null };
+  const input = { now: new Date(0), repositoryImportToken: null, repositoryImportStartedAt: null, surfaces: [surface], runningSync: null };
+
+  it("설치가 없으면 not-connected에 닿지 않는다 — readiness가 먼저다", () => {
+    expect(planRepositoryImport({ ...input, readiness: "setup", identity: "not-connected" })).toEqual({ ok: false, error: "not-ready" });
+    expect(planRepositoryImport({ ...input, readiness: "ready", identity: "not-connected" })).toEqual({ ok: false, error: "not-connected" });
+  });
+
+  it("문구가 Home 배너와 같은 Disconnected 낱말이고 'not connected'라 말하지 않는다", () => {
+    expect(m.repositorySync.errors["not-connected"]).toBe(m.home.banner.disconnected.title);
+    expect(m.repositorySync.errors["not-connected"]).not.toMatch(/not connected/i);
   });
 });

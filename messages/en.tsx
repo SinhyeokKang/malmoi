@@ -146,7 +146,11 @@ export const en = {
       // ⚠️ **원인을 단언하지 않는다** (r1) — lease 상실은 다른 실행만이 아니라 만료·권한 상실·보관·소스 삭제도 덮는다(`lib/import/apply-plan.ts`).
       "lease-lost": "This sync stopped before it could replace this source. Refresh to see the current state before trying again.",
       "not-ready": "This project hasn't finished its first sync yet",
-      "not-connected": "Malmoi is not connected to this repository",
+      /**
+       * ⚠️ **코드는 `not-connected`인데 낱말은 Disconnected다** (ux-drift-unify D1) — 설치가 없으면 readiness가 먼저 `not-ready`를
+       * 내므로 이 거부는 설치는 있고 리포 id가 없는 프로젝트의 것이다. Home 배너 제목과 같은 문장이다.
+       */
+      "not-connected": "This repository is disconnected",
       "already-running": "A sync is already running",
       /**
        * ⚠️ 제목 자리라 마침표가 없다(DESIGN §10). 아무것도 지워지지 않았다는 것이 요지다.

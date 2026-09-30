@@ -113,6 +113,8 @@ const CLIENT_LIB_FILES = [
   "lib/github-wait.ts",
   // `/docs` 개요의 옛 해시 잎이 값으로 읽는다 — import 0인 잎이고, 표는 서버가 prop으로 넘긴다.
   "lib/guide/legacy.ts",
+  // Settings 연결 카드가 Home과 같은 연결 판정(`connectionProblem`)을 읽는다(ux-drift-unify D1) — 값 import는 `lib/projects/list.ts` 하나다.
+  "lib/home/state.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
   "lib/import/confirm.ts",

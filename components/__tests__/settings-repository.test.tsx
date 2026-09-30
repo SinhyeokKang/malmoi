@@ -21,6 +21,27 @@ async function choose(container: HTMLElement, name: string) {
   await act(async () => { await userEvent.setup().click(option); });
 }
 const healths: ConnectionHealth[] = [{ status: "ok" }, { status: "not-connected" }, { status: "app-uninstalled" }, { status: "installation-changed", installationId: "2" }, { status: "repo-moved", fullName: "new/repo" }, { status: "repo-replaced" }, { status: "unknown" }];
+/**
+ * 배지·버튼 표 (ux-drift-unify D1) — Settings가 `connectionProblem`으로 Home과 같은 판정을 읽는다.
+ * 설치는 있고 리포 id가 없는 `unpinned`는 목록·Home과 같은 **Disconnected**이고 버튼은 **Reconnect**다.
+ */
+it.each([
+  [{ status: "ok" }, "Connected", null],
+  [{ status: "not-connected" }, "Not connected", "Connect"],
+  [{ status: "unpinned" }, "Disconnected", "Reconnect"],
+  [{ status: "app-uninstalled" }, "Disconnected", "Reconnect"],
+  [{ status: "installation-changed", installationId: "2" }, "Disconnected", "Reconnect"],
+  [{ status: "repo-moved", fullName: "new/repo" }, "Connected", "Reconnect"],
+  [{ status: "repo-replaced" }, "Wrong repository", null],
+  [{ status: "unknown" }, "Couldn't check", null],
+] as const)("건강성 %o → 배지 %s · 버튼 %s", async (health, badge, button) => {
+  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve(health as ConnectionHealth)} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" />);
+  const row = container.querySelector("p.text-base")!;
+  expect(row.textContent).toBe(`acme/web${badge}`);
+  const connect = [...container.querySelectorAll("button")].map(b => b.textContent).filter(t => t === "Connect" || t === "Reconnect");
+  expect(connect).toEqual(button === null ? [] : [button]);
+});
+
 it.each(healths)("건강성 $status를 보존하고 복구 가능한 갈래에만 재연결을 둔다", async health => {
   const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve(health)} account={Promise.resolve({ status: "reauthorize" })} appSlug="malmoi" />);
   const connect = [...container.querySelectorAll("button")].filter(b => ["Connect", "Reconnect"].includes(b.textContent ?? ""));

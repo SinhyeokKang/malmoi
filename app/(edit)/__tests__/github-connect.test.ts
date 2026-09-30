@@ -222,6 +222,17 @@ describe("connectRepository — 3중 검증 (ARCHITECTURE §6)", () => {
     // 레이아웃까지 덮어야 셸의 프로젝트 구역도 함께 다시 그려진다.
     expect(calls).toEqual(expect.arrayContaining([["/projects/acme", "layout"]]));
   });
+
+  /**
+   * ⚠️ **목록도 같은 판정을 읽는다** (ux-drift-unify D1) — 리포 id가 없는 프로젝트를 목록은 Disconnected로 말한다.
+   * Reconnect가 id를 고정해도 `/projects`가 다음 재검증까지 옛 칩을 들면 두 화면이 다시 갈린다.
+   */
+  it("프로젝트 목록도 무효화한다", async () => {
+    hoisted.revalidatePath.mockClear();
+    await connectRepository({ slug: "acme" });
+
+    expect(hoisted.revalidatePath.mock.calls).toEqual(expect.arrayContaining([["/projects"]]));
+  });
 });
 
 describe("connectRepository — GitHub 조회 실패를 거부와 장애로 가른다", () => {

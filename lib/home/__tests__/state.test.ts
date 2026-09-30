@@ -98,6 +98,11 @@ describe("planHomeState — 우선순위가 곧 순서다", () => {
     expect(planHomeState({ ...base, connection: { status: "installation-changed", installationId: "2" } })).toBe("not_connected");
     expect(planHomeState({ ...base, counts: zero, connection: { status: "installation-changed", installationId: "2" } })).toBe("not_connected");
   });
+
+  it("리포 id가 고정되지 않은 것도 미연결이다 — 목록이 Disconnected로 말한다(ux-drift-unify D1)", () => {
+    expect(planHomeState({ ...base, connection: { status: "unpinned" } })).toBe("not_connected");
+    expect(planHomeState({ ...base, archived: true, connection: { status: "unpinned" } })).toBe("archived");
+  });
 });
 
 /** 연결 문제의 갈래 (2026-09-30 상태 통일) — 미연결 회색 · 끊김 호박 · 다른 리포 빨강. 설정 카드와 Home이 같은 판정을 쓴다. */
@@ -106,6 +111,8 @@ describe("connectionProblem", () => {
     ["not-connected", "not-connected"],
     ["app-uninstalled", "disconnected"],
     ["installation-changed", "disconnected"],
+    // 설치는 있고 리포 id가 없다 — 목록의 Disconnected와 같은 결론(ux-drift-unify D1).
+    ["unpinned", "disconnected"],
     ["repo-replaced", "wrong-repository"],
     ["ok", null],
     ["repo-moved", null],

@@ -28,7 +28,11 @@ vi.mock("@/lib/import/prepare", () => ({ prepareSync: h.prepareSync }));
 vi.mock("@/lib/keys/query", async (orig) => ({ ...(await orig<object>()),
   loadProjectListAggregates: async () => ({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map() }),
   loadSurfaceCounts: async () => [] }));
-vi.mock("@/lib/github", async (orig) => ({ ...(await orig<object>()), loadConnectionHealth: async () => ({ status: "ok" }) }));
+// 저장된 두 컬럼이 끝내는 갈래(`not-connected`·`unpinned`)는 실제 판정을 지나고, probe가 필요한 쪽만 `ok`로 둔다.
+vi.mock("@/lib/github", async (orig) => {
+  const { storedConnection } = await import("@/lib/github-connect/health");
+  return { ...(await orig<object>()), loadConnectionHealth: async (project: { installationId: string | null; repositoryId: string | null }) => storedConnection(project) ?? { status: "ok" } };
+});
 
 const { TOOLS } = await import("..");
 const tool = (name: string) => {
@@ -274,5 +278,26 @@ describe("get_project — 마지막 Publish의 PR", () => {
     const { m } = await import("@/lib/i18n");
     expect(m.mcp.tools.get_project).not.toMatch(/open pull request/i);
     expect(m.mcp.tools.get_project).toContain("preview_publish");
+  });
+});
+
+/**
+ * **`connection`의 값 목록은 외부 계약이다** (ux-drift-unify spec Q12). 화면은 설치는 있고 리포 id가 없는 프로젝트를 `unpinned`
+ * (Disconnected)로 가르지만, MCP 출력은 넓히지 않는다 — 출력 경계가 `not-connected`로 접는다.
+ */
+describe("get_project — connection 출력 불변", () => {
+  const setProject = (data: Record<string, unknown>) =>
+    (prisma as unknown as { project: { update: (a: unknown) => Promise<unknown> } }).project.update({ where: { id: "p1" }, data });
+
+  it("리포 id가 없는 프로젝트는 not-connected다", async () => {
+    await setProject({ installationId: "1", repositoryId: null });
+    const outcome = await call("get_project", subject("owner"), { slug: "acme" });
+    expect(outcome.status === "ok" && outcome.data.connection).toBe("not-connected");
+  });
+
+  it("리포 id가 있으면 판정값을 그대로 싣는다", async () => {
+    await setProject({ installationId: "1", repositoryId: "10" });
+    const outcome = await call("get_project", subject("owner"), { slug: "acme" });
+    expect(outcome.status === "ok" && outcome.data.connection).toBe("ok");
   });
 });
