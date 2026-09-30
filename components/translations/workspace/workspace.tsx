@@ -2,7 +2,7 @@
 
 import { ArrowDownToLine, Languages, RotateCcw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
+import { Suspense, use, useCallback, useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
 import { useCommitWait } from "@/components/commit-wait";
@@ -19,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useLandAfter, useLandAfterCommit } from "@/components/ui/focus";
+import type { ConnectionHealth } from "@/lib/github-connect/health";
+import { planActionAvailability } from "@/lib/home/state";
 import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
 import type { TranslationList, TranslationListRow, TranslationTree } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
@@ -64,6 +66,11 @@ export type WorkspaceProps = {
   /** 기준 로케일의 **현실**과 **선언** — 대기 배너의 조건이다 (6b-3, `basePending`). 옛 헤더에서 옮겨 왔다. */
   baseLocale: string | null;
   declaredBaseLocale: string | null;
+  /**
+   * 연결 판정 (ux-drift-unify §3.3 · 🔴 F) — `status`는 첫 렌더의 DB 판정(`storedConnection` — `not-connected`·`unpinned`, 아니면 `unknown`),
+   * `later`는 GitHub 판정의 promise다(App 제거 · 설치 교체 · 리포 교체). 도착하면 그것이 이긴다. ⚠️ **`unknown`은 버튼을 끄지 않는다.**
+   */
+  connection: { status: ConnectionHealth["status"]; later?: Promise<ConnectionHealth> };
 };
 
 type DraftAction = KeyDraftAction | { type: "replace"; state: KeyDraftState };
@@ -514,6 +521,12 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     if (replaced && syncListFrom.current !== null) setResync({ from: syncListFrom.current });
     setSyncOutcomeState(next);
   };
+  /*
+    **끊기면 Sync·Publish가 함께 꺼진다** — Home 머리와 같은 판정(`planActionAvailability`)이다(🔴 F · #52 재발 경로). 보관은 이 화면에 오지 않는다
+    (`ProjectArchived`가 대신 선다). 스트리밍으로 도착한 GitHub 판정이 첫 렌더의 DB 판정을 이긴다.
+  */
+  const [arrived, setArrived] = useState<ConnectionHealth["status"] | null>(null);
+  const availability = planActionAvailability({ archived: false, connection: arrived ?? props.connection.status });
   /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
   const openSync = () => { if (!publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
 
@@ -610,9 +623,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           </span>
           <span className="ml-auto flex items-center gap-2">
             {role === "OWNER" ? (
-              <span onClickCapture={event => { if (dirty.length > 0) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
+              <span onClickCapture={event => { if (dirty.length > 0 && availability.sync) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
+                {/* 끊김이 먼저다 — 그 원인은 Publish가 끝나도 풀리지 않는다(Home 머리와 같은 순서). */}
                 <SyncButton slug={slug} surfaceSlug={routeSurfaceSlug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
-                  paused={publish.pending} pausedReason={m.repositorySync.waitPublish} open={syncOpen} onOpenChange={setSyncOpen} onPendingChange={setSyncPending}
+                  paused={!availability.sync || publish.pending} pausedReason={availability.sync ? m.repositorySync.waitPublish : m.repositorySync.paused}
+                  open={syncOpen} onOpenChange={setSyncOpen} onPendingChange={setSyncPending}
                   onResult={setSyncOutcome} fallbackFocusRef={titleRef} />
               </span>
             ) : (
@@ -630,8 +645,12 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               const onPublish = event.target instanceof Element && event.target.closest(`[id="${publishButtonId}"]:not([aria-disabled="true"])`) !== null;
               if (onPublish && dirty.length > 0 && !publish.pending) { event.preventDefault(); event.stopPropagation(); setDialog({ kind: "publish", locales: dirty }); }
             }}>
-              <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} disabled={syncPending} />
+              <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} disabled={syncPending || !availability.publish} />
             </span>
+            {/* GitHub 판정은 늦게 도착한다 — 버튼을 Suspense로 감싸지 않는다(도착하는 순간 다시 마운트되면 Dialog·진행 상태를 잃는다). 도착만 알린다. */}
+            {props.connection.later !== undefined && (
+              <Suspense fallback={null}><ConnectionArrival health={props.connection.later} onArrive={setArrived} /></Suspense>
+            )}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -824,7 +843,8 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
           {hasPending && (
             // ⚠️ **`loading`을 쓰지 않는다** — 그쪽은 진짜 `disabled`를 걸어 방금 누른 버튼이 포커스를 잃고
             // busy 사유(describedby)에 닿을 길이 사라진다 (DESIGN §6.65). `busy`가 포커스를 지키며 스피너를 든다.
-            <Button aria-disabled={revertBlocked !== null ? "true" : undefined} aria-describedby={revertBlocked !== null ? reasonId : undefined}
+            // 확정이 `danger`라 트리거도 `danger`다 — 확인 창을 열기 전에 되돌릴 수 없다는 신호가 선다(DESIGN §2.4 동작 규칙 · 3-Y2).
+            <Button variant="danger" aria-disabled={revertBlocked !== null ? "true" : undefined} aria-describedby={revertBlocked !== null ? reasonId : undefined}
               busy={revertBusy} onClick={() => { if (revertBlocked === null) onRevert(); }}>
               {w.revert.button}
             </Button>
@@ -935,7 +955,8 @@ function TreeOverlay({ id, onClose, children }: { id: string; onClose: () => voi
     return () => { document.removeEventListener("keydown", key); document.removeEventListener("pointerdown", outside); };
   }, [id, onClose]);
   return (
-    <div ref={ref} id={id} className="border-border bg-popover shadow-medium absolute top-14 left-3 z-20 flex max-h-80 w-70 flex-col overflow-hidden rounded-lg border">
+    // 팝오버 계열의 그림자다(§4.5 — DropdownMenu·Select와 같은 `shadow-md`, 5-Y17).
+    <div ref={ref} id={id} className="border-border bg-popover shadow-md absolute top-14 left-3 z-20 flex max-h-80 w-70 flex-col overflow-hidden rounded-lg border">
       {children}
     </div>
   );
@@ -993,4 +1014,11 @@ function ResizeHandle({ layout, onChange }: { layout: ReturnType<typeof planTran
       )}
     />
   );
+}
+
+/** 스트리밍으로 도착한 연결 판정을 호스트에 알린다 — 화면에 그리는 것이 없다. */
+function ConnectionArrival({ health, onArrive }: { health: Promise<ConnectionHealth>; onArrive: (status: ConnectionHealth["status"]) => void }) {
+  const { status } = use(health);
+  useEffect(() => onArrive(status), [status, onArrive]);
+  return null;
 }

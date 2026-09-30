@@ -28,6 +28,7 @@ export function props(over: Partial<WorkspaceProps> = {}): WorkspaceProps {
     publish: { repo: { owner: "o", name: "r", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }, lastSentLabel: null, lastPrUrl: null },
     sync: { name: "acme", branch: "main" },
     baseLocale: "en", declaredBaseLocale: null,
+    connection: { status: "unknown" },
     ...over,
   };
 }

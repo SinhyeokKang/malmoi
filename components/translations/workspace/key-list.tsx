@@ -6,6 +6,7 @@ import { memo, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEven
 import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
 import { ListItemButton } from "@/components/ui/list-item";
+import { StatusBadge } from "@/components/ui/status-badge";
 import type { TranslationListRow } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
 import type { ListGeneration } from "@/lib/translations/saved-rows";
@@ -136,7 +137,8 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
             <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
               {showSource ? `${row.surfaceSlug} · ${row.key}` : row.key}
             </span>
-            {row.hasPending && <Pill>{w.notSent}</Pill>}
+            {/* 미전달은 `Badge neutral` 하나다(Q3 · 1-Y9 — 테두리 알약 `Pill`을 걷었다, 랜딩 목업·Sources와 같은 형). */}
+            {row.hasPending && <StatusBadge state="unsent" className="shrink-0" />}
             {row.hasReview && <span className="text-xs text-amber-700">{w.needsReview}</span>}
           </span>
         </span>
@@ -147,8 +149,3 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
     </li>
   );
 });
-
-/** `Not sent` 알약 — 테두리 `#e5e5e5` · 글자 `#525252`. ⚠️ 시안은 12px인데 스케일에 12가 없어 `text-xs`(13)다 (audit #45 · DESIGN §4). */
-export function Pill({ children }: { children: ReactNode }) {
-  return <span className="border-border inline-flex shrink-0 items-center rounded-full border px-[7px] py-px text-xs whitespace-nowrap text-neutral-600">{children}</span>;
-}

@@ -49,6 +49,8 @@ export type ProjectContext = {
    * 같은 행을 두 번 읽던 것을 한 번으로 합쳤다 (T7).
    */
   installationId: string | null;
+  /** 번역 화면의 첫 렌더 연결 판정(`storedConnection` — `unpinned`) 재료다(ux-drift-unify T20). 같은 행이라 왕복이 늘지 않는다. */
+  repositoryId: string | null;
   lastCommitSha: string | null;
   baseLocale: string | null;
   /**
@@ -75,7 +77,7 @@ export async function loadProject(prisma: PrismaClient, projectId: string, surfa
     where: { id: projectId },
     select: {
       id: true, slug: true, name: true, repoOwner: true, repoName: true, baseBranch: true,
-      installationId: true,
+      installationId: true, repositoryId: true,
       lastPulledAt: true, lastPublishedAt: true, lastPrUrl: true,
       surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: {
         locales: { select: { code: true, name: true, isBase: true, orphaned: true }, orderBy: { code: "asc" } },

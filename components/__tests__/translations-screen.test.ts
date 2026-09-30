@@ -161,10 +161,10 @@ describe("리포 갱신 보류 배너 (sync-edit-protection T13)", () => {
     expect(src).not.toMatch(/onDismiss/);
   });
 
-  // 2026-09-30 상태 통일 — 보류(held)는 어디서나 호박이다(Logs `Held`·Sync 결과와 같은 톤).
-  it("[C11] warning tone이다 — 보류는 호박이다", () => {
-    expect(src).toMatch(/variant="warning"/);
-    expect(src).not.toMatch(/variant="neutral"/);
+  // 보류는 어디서나 호박이지만 이 화면의 `pending-edits` 배너만 neutral이다(DESIGN §2.4 예외 1 · D3① 2026-10-01) — 편집 한 건마다 상시로 선다.
+  it("[C11] neutral tone이다 — 번역 화면의 pending-edits 예외", () => {
+    expect(src).toMatch(/variant="neutral"/);
+    expect(src).not.toMatch(/variant="warning"/);
   });
 
   it("작업 화면이 Publish 버튼 id를 배너에 넘긴다 — 액션은 둘째 트리거가 아니라 포커스 이동이다", () => {
@@ -352,5 +352,28 @@ describe("행 축 (8-4)", () => {
     expect(/<a\b/.test('<Announcer>')).toBe(false);
     expect(/<main\b/.test('  <main className="x">')).toBe(true);
     expect(/NamespacePanel|NsLink/.test("      <NsLink href={x} />")).toBe(true);
+  });
+});
+
+/**
+ * **연결 판정의 배선** (ux-drift-unify T20 · 🔴 F) — 첫 렌더는 DB 판정(`storedConnection`), GitHub 판정은 promise로 내려 기다리지 않는다.
+ * ⚠️ 메모를 켜지 않는다 — 메모 호출부는 Home 하나다(`probe-memo.test.ts`). ⚠️ 페이지가 GitHub 판정을 await하면 ARCHITECTURE §1.95의 착지가 는다.
+ */
+describe("번역 화면 — 연결 판정", () => {
+  const page = read(PAGE);
+
+  it("DB 판정이 먼저이고 GitHub 판정은 기다리지 않는 promise다", () => {
+    expect(page).toContain("storedConnection(project)");
+    expect(page).toContain("later: loadConnectionHealth(project)");
+    expect(page).not.toMatch(/await loadConnectionHealth/);
+    expect(page).not.toMatch(/memo:\s*true/);
+    expect(page).toMatch(/connection=\{connection\}/);
+  });
+
+  it("작업 화면이 Home과 같은 판정으로 Sync·Publish를 끈다", () => {
+    const workspace = read(WORKSPACE);
+    expect(workspace).toContain("planActionAvailability({ archived: false, connection: arrived ?? props.connection.status })");
+    expect(workspace).toContain("!availability.publish");
+    expect(workspace).toContain("paused={!availability.sync || publish.pending}");
   });
 });

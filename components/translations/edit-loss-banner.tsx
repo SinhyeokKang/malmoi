@@ -22,8 +22,11 @@ export function EditLossBanner({ count, publishButtonId }: { count: number; publ
   if (count === 0) return null;
   return (
     <Alert
-      // 보류는 호박이다 — Logs `Held`·Sync 결과와 같은 톤(2026-09-30 상태 통일).
-      variant="warning"
+      /*
+        ⚠️ **이 화면의 `pending-edits` 보류만 neutral이다** (DESIGN §2.4 예외 1 · D3①) — 편집 한 건마다 상시로 서고, 같은 화면의 Unsent가 neutral이다.
+        같은 보류가 Home 보조 줄·메타·Logs에서는 warning Held다.
+      */
+      variant="neutral"
       actions={
         <Button onClick={() => document.getElementById(publishButtonId)?.focus()}>
           {m.translations.banner.sendWithPublish}

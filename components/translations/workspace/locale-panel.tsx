@@ -7,6 +7,7 @@ import { LocaleBadge } from "@/components/translations/locale-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
 import { localeTextAttrs } from "@/lib/translations/text-direction";
 import { m } from "@/lib/i18n";
@@ -15,7 +16,6 @@ import { MISSING_LANGUAGES } from "@/lib/translations/query";
 import { cn } from "@/lib/utils";
 
 import { FilterMenu } from "./filter-menu";
-import { Pill } from "./key-list";
 
 /**
  * 선택 키의 로케일 상세 (핸드오프 `2a` · `2d` · `2j`). **고정 블록**(키 이름 · N of M · 설명 · 코드 위치)과 저장 푸터는 스크롤하지 않고,
@@ -247,7 +247,7 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
             ? <span className="text-xs text-amber-700">{w.notSaved}</span>
             : missing && <span className="text-muted-foreground text-xs">{w.missing}</span>}
           {locale.needsReview && !missing && <span className="text-xs text-amber-700">{m.translations.workspace.list.needsReview}</span>}
-          {locale.pending && <Pill>{m.translations.workspace.list.notSent}</Pill>}
+          {locale.pending && <StatusBadge state="unsent" className="shrink-0" />}
         </span>
       </div>
       {/*

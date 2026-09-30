@@ -4,6 +4,9 @@ import { ProjectArchived } from "@/components/project-archived";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import { getPrisma } from "@/lib/db";
+import { loadConnectionHealth } from "@/lib/github";
+import { storedConnection } from "@/lib/github-connect/health";
+import { logFailure } from "@/lib/github-connect/log";
 import { countUnpublishedBySurface, loadActors, loadProject } from "@/lib/keys/query";
 import { loadTranslationDetail, loadTranslationList, loadTranslationTree, withActorLabels } from "@/lib/keys/translation-list";
 import { buildPermalink } from "@/lib/keys/view";
@@ -112,6 +115,21 @@ export default async function TranslationsPage({
           };
         })();
 
+  /*
+    ⚠️ **연결은 DB 판정이 먼저고 GitHub 판정은 스트리밍이다** (ux-drift-unify §3.3 · 🔴 F — #52 재발 경로였다: 끊겨도 Publish·Sync가 켜져 있었다).
+    설치·리포 id로 가를 수 있는 둘(`not-connected`·`unpinned`)은 첫 렌더부터 버튼을 끈다 — GitHub 왕복 0. 나머지(App 제거 · 설치 교체 · 리포 교체)는
+    `loadConnectionHealth` promise를 **기다리지 않고** 워크스페이스로 내려 도착한 뒤 끈다(설정 화면과 같은 형) — ARCHITECTURE §1.95의 착지 시간을 늘리지 않는다.
+    ⚠️ **`memo`를 켜지 않는다** — 메모 호출부는 Home 하나다(`probe-memo.test.ts`). ⚠️ 거부는 `unknown`으로 접는다 — 버튼을 끄지 않는다(Home과 같다).
+  */
+  const stored = storedConnection(project);
+  const connection = stored !== null ? { status: stored.status } : {
+    status: "unknown" as const,
+    later: loadConnectionHealth(project).catch((error: unknown) => {
+      logFailure("translations-connection-health", error);
+      return { status: "unknown" } as const;
+    }),
+  };
+
   return (
     <TranslationWorkspace
       slug={slug}
@@ -132,6 +150,7 @@ export default async function TranslationsPage({
       sync={{ name: project.name, branch: project.baseBranch }}
       baseLocale={project.baseLocale}
       declaredBaseLocale={project.declaredBaseLocale}
+      connection={connection}
     />
   );
 }
