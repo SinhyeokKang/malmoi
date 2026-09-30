@@ -186,12 +186,12 @@
 
 ## F. 가이드
 
-- **T25** 본문 — 7-#3(축 이름 대신 보이는 기본값) · 7-#4(보류 산문 held, CI `deferred`는 "Logs shows it as **Held**"로 잇기) · 7-#5(unsent edits) ·
+- ✅ **T25** (U9) 본문 — 7-#3(축 이름 대신 보이는 기본값) · 7-#4(보류 산문 held, CI `deferred`는 "Logs shows it as **Held**"로 잇기) · 7-#5(unsent edits) ·
   7-#6(배지 → 동작 짝: Disconnected → Reconnect, Not connected → Connect, Wrong repository → 새 프로젝트, Couldn't check → 새로고침; D1 반영) ·
   7-#7(Malmoi is ready = 마지막 단계) · 7-⚪16(CI `deferred` ↔ Logs Held 잇는 문장 = 7-#4와 같은 줄) · 7-⚪8(번역 화면 필터 순서 — `translation-filter-scope`가 끝난 뒤의 순서를 따른다, 선행 순서로 보장) · 7-⚪9~15.
   (굵은 라벨 중 사전 변경에 걸린 줄은 이미 T15·T16이 고쳤다 — 여기는 산문.)
   검증 [자동]: `pnpm exec vitest run lib/guide lib/i18n` green(`brand-spelling`이 가이드 md도 본다 — "the app" 소문자 문맥 주의).
-- **T26** 게이트 — design §5.1 · 7-#1(state-filter 컷) · 7-#2(home-paused 컷 · SHOOTING.md:71).
+- ✅ **T26** (U9) 게이트 — design §5.1 · 7-#1(state-filter 컷) · 7-#2(home-paused 컷 · SHOOTING.md:71).
   - `lib/guide/__tests__/content.test.ts:72-76`이 **`ARIA_ONLY` 키 목록**을 빼고 굵은 라벨을 대조(aria 전용 축 이름 red) + 목록 경로 실재 메타 테스트.
   - 가이드 산문에 §5 금지 동의어 0.
   - `lib/guide/stale.ts` 새 소스 종류 `dict:<키 경로>`(기준값 = 키 값 SHA-1) + `guide/SHOOTING.md` 매핑에 키 행(`state-filter.webp` → `translations.workspace.filters.state` 등) · SHOOTING.md:71 컷 설명 "held".
@@ -295,3 +295,4 @@
 - ⚠️ U2 ~ T18 사이 dev에서는 Home 메타의 "held until PR merged" 줄이 서지 않는다(`openPr: null`) — **T18이 dev에 들어가기 전에 `/merge`하지 않는다.**
 - 2026-10-01 지휘자(U5): spec 완료 조건 3의 "표면 0개 → Setup"은 표가 틀렸다 — 설치 있고 활성 표면 0이면 `awaiting_first_sync`(목록 Not synced yet · Home not-ready)이고 목록·Home이 일치한다. 판정은 그대로 두고 테스트가 이것을 고정한다.
 - 2026-10-01 U3: `PanelHeader`에는 `count` prop을 두지 않았다(제목 슬롯이 없다) — 머리 개수 두 곳이 `CountBadge`를 직접 쓴다. `Button` `loading`/`busy`는 `aria-hidden` 앞 글리프를 교체한다(지금 Logs 둘).
+- 2026-10-01 U9: 가이드 원고의 축약형(could not 등 55건)은 원고 금지 목록에서 뺐다 — DESIGN §10은 화면 문체 규칙이고 감사 항목이 아니다(범위 밖, 후속 후보). `dict:` 소스는 보이는 문자열 잎 키만.
