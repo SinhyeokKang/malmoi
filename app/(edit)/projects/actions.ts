@@ -723,7 +723,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
     .catch((error: unknown) => logFailure("onboard-ingest-event", error));
   const closeRun = async (
     result: "imported" | "partial" | "failed",
-    outcome: { keys: number | null; errorCode: string | null; changedValues?: number | null },
+    outcome: { keys: number | null; errorCode: string | null; changedValues: number | null },
   ) => {
     try {
       const closed = await prisma.$transaction(tx => finishRun(tx, {
@@ -731,7 +731,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
         payload: {
           kind: "IMPORT", source: "first", surfaceSlugs, keys: outcome.keys, pendingEdits: null,
           surfaces: [{ surfaceSlug: surface.slug, status: result === "failed" ? "failed" : result === "partial" ? "partial" : "imported", count: outcome.keys, reason: outcome.errorCode }],
-          errorCode: outcome.errorCode, refusal: null, deferReason: null, changedValues: outcome.changedValues ?? null,
+          errorCode: outcome.errorCode, refusal: null, deferReason: null, changedValues: outcome.changedValues,
         },
       }));
       // ⚠️ **0행 갱신은 조용하다** (POSTMORTEM 2026-09-14) — 다른 실행이 이 행을 먼저 닫았다는 뜻이고,
@@ -747,7 +747,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
     const snapshot = await reader.snapshot(project.baseBranch);
     if (snapshot.status !== "ok") {
       await failRun();
-      await closeRun("failed", { keys: null, errorCode: snapshotError(snapshot) });
+      await closeRun("failed", { keys: null, errorCode: snapshotError(snapshot), changedValues: null });
       return { ok: false, error: snapshotError(snapshot) };
     }
 
@@ -757,13 +757,13 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
     } catch (error) {
       if (!(error instanceof IngestBudgetError)) throw error;
       await failRun();
-      await closeRun("failed", { keys: null, errorCode: "resource-limit" });
+      await closeRun("failed", { keys: null, errorCode: "resource-limit", changedValues: null });
       return { ok: false, error: "resource-limit" };
     }
     if (prepared.status !== "ok") {
       logFailure("onboard-ingest", new Error(`stored format no longer holds: ${prepared.reason}`));
       await failRun();
-      await closeRun("failed", { keys: null, errorCode: "ingest-failed" });
+      await closeRun("failed", { keys: null, errorCode: "ingest-failed", changedValues: null });
       return { ok: false, error: "ingest-failed" };
     }
     const { paths, targets, blobs } = prepared;
@@ -808,14 +808,14 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
     // 스냅샷을 받는 동안 권한·보관이 바뀌었다 — 적재 실패가 아니라 거부다.
     if (error instanceof FirstIngestRefused) {
       await failRun();
-      await closeRun("failed", { keys: null, errorCode: error.code });
+      await closeRun("failed", { keys: null, errorCode: error.code, changedValues: null });
       return { ok: false, error: error.code };
     }
     // 던지지 않는다 — 직렬화 경계라 클라이언트가 받을 수 있는 모양으로 바꾼다. 행은 그대로 남고
     // 설정 화면의 [다시 시도]가 같은 Action을 부른다.
     logFailure("onboard-ingest", error);
     await failRun();
-    await closeRun("failed", { keys: null, errorCode: "ingest-failed" });
+    await closeRun("failed", { keys: null, errorCode: "ingest-failed", changedValues: null });
     return { ok: false, error: "ingest-failed" };
   } finally {
     // 조기 실패도 목록의 상태를 바꾼다 — 성공 때만 지우면 실패 사유 대신 캐시된 대기가 남는다.

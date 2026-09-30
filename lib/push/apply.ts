@@ -458,10 +458,13 @@ export function translationUpsertSql(
       old AS (
         -- ⚠️ **상관 서브쿼리 + LIMIT 1이다** — 평범한 조인이면 통계가 낡은 표(ANALYZE 전)에서 해시 조인 + 풀스캔을 고른다(실측). LIMIT이
         -- 서브쿼리 끌어올리기를 막아 행마다 유일 인덱스 조회가 된다. 유일 제약이라 행은 많아야 하나다.
+        -- ⚠️ **projectId 조건은 펜스 밖이다** — 안에 넣으면 ANALYZE 전 계획이 projectId 선두 인덱스로 갈아타 행마다 프로젝트 범위를 훑는다(실측).
+        -- 펜스 밖 조건은 서브쿼리로 내려가지 않으므로 조회는 유일 인덱스 그대로이고, 테넌트 조건은 결과에 걸린다.
         SELECT v."keyId", v."localeCode", t."value"
         FROM v CROSS JOIN LATERAL (
-          SELECT "value" FROM "Translation" WHERE "keyId" = v."keyId" AND "localeCode" = v."localeCode" LIMIT 1
+          SELECT "value", "projectId" FROM "Translation" WHERE "keyId" = v."keyId" AND "localeCode" = v."localeCode" LIMIT 1
         ) t
+        WHERE t."projectId" = ${projectId}
       ),
       up AS (
         INSERT INTO "Translation" ("id", "projectId", "surfaceId", "keyId", "localeCode", "value", "description", "placeholders", "needsReview", "updatedAt")

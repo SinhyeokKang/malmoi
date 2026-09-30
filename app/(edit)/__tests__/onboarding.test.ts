@@ -196,7 +196,7 @@ beforeEach(() => {
     name.toLowerCase() === "host" ? "localhost:3000" : null,
   );
   hoisted.listBranches.mockResolvedValue({ status: "ok", names: ["main", "develop"], truncated: false });
-  hoisted.ingestFirstSnapshot.mockResolvedValue({ count: 2, failed: 0, errors: [] });
+  hoisted.ingestFirstSnapshot.mockResolvedValue({ count: 2, failed: 0, errors: [], changedValues: 2 });
   // 적재 코어는 언제나 `PushOutcome`을 돌려준다 — 생성 트랜잭션이 그 `changedValues`를 사건에 싣는다(nightly-sync C2).
   hoisted.applyPushInTransaction.mockResolvedValue({ changedValues: 0 });
   // sec-audit-3 #14 — 연결 state·샘플 확인은 전용 키로 서명한다. AUTH_SECRET을 다른 값으로 두어 그 키를 안 쓰는 것까지 고정한다.

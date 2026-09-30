@@ -81,6 +81,9 @@ it("1446키·6로케일의 실제 POST 경로를 격리 PG에서 측정한다", 
     expect(await response.json()).toMatchObject({ translationsFilled: 8676 });
   }
   expect(await prisma.stringKey.count({ where: { projectId: "p" } })).toBe(1446);
+  // 상한은 라우트의 `maxDuration`이다 — 그 값에 닿으면 함수가 죽는다. 실측(격리 PG)은 수백 ms라 흔들림에 여유가 크다.
+  const { maxDuration } = await import("@/app/api/push/route");
+  expect(Math.max(...samples)).toBeLessThan(maxDuration * 1000);
   writeFileSync(join(tmpdir(), "malmoi-sync-post-timing.json"), JSON.stringify(samples));
 });
 
@@ -97,16 +100,18 @@ it("1446키 벌크 upsert의 기존 값 읽기가 ANALYZE 전·후 모두 (keyId
   const rows = keys.flatMap(key => ["en", "ko", "fr", "de", "ja", "es"].map(locale => ({ keyId: key.id, locale, value: "Next" })));
   expect(rows).toHaveLength(8676);
   const sql = translationUpsertSql({ projectId: "p", surfaceId: "s" }, rows, [], new Date());
-  const indexNames = (node: Record<string, unknown>): string[] => [
-    ...(node["Relation Name"] === "Translation" && typeof node["Index Name"] === "string" ? [node["Index Name"]] : []),
-    ...(Array.isArray(node["Plans"]) ? (node["Plans"] as Record<string, unknown>[]).flatMap(indexNames) : []),
-  ];
+  const nodes = (node: Record<string, unknown>): Record<string, unknown>[] =>
+    [node, ...(Array.isArray(node["Plans"]) ? (node["Plans"] as Record<string, unknown>[]).flatMap(nodes) : [])];
+  const onTranslation = (plan: Record<string, unknown>) => nodes(plan).filter(node => node["Relation Name"] === "Translation");
+  const indexNames = (plan: Record<string, unknown>) => onTranslation(plan).flatMap(node => typeof node["Index Name"] === "string" ? [node["Index Name"]] : []);
   for (const phase of ["before", "after"]) {
     if (phase === "after") await pool.query("ANALYZE");
     const explain = await pool.query(`EXPLAIN (FORMAT JSON) ${sql.text}`, sql.values as unknown[]);
     const plan = explain.rows[0]["QUERY PLAN"][0]["Plan"] as Record<string, unknown>;
     process.stdout.write(JSON.stringify({ phase, indexes: indexNames(plan) }) + "\n");
     expect(indexNames(plan), phase).toContain("Translation_keyId_localeCode_key");
+    // 인덱스를 쓰는 노드가 있어도 다른 노드가 표 전체(전 테넌트)를 훑으면 소용없다.
+    expect(onTranslation(plan).map(node => node["Node Type"]), phase).not.toContain("Seq Scan");
   }
 });
 
