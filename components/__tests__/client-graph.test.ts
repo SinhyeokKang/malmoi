@@ -172,6 +172,8 @@ const CLIENT_LIB_FILES = [
   "lib/shell/nav.ts",
   "lib/shell/panel-size.ts",
   "lib/signin/dot-field.ts",
+  // 상태 톤·낱말의 정본(ux-drift-unify §3.6) — `lib/i18n`만 무는 잎이다(아래 잎 검사). Sources 상태 판정이 톤을 여기서 읽는다.
+  "lib/status/canon.ts",
   "lib/sources/actions.ts",
   // Add sources의 꺼진 사유 (malmoi#93) — `lib/i18n` 하나만 문다.
   "lib/sources/add-block.ts",
@@ -406,6 +408,13 @@ describe("클라이언트 그래프", () => {
     const redact = walk([join(ROOT, "lib/seo/analytics.ts")]);
     expect([...redact.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/seo/analytics.ts"]);
     expect([...redact.packages]).toEqual([]);
+  });
+
+  /** 상태 정본은 클라이언트 프리미티브(`StatusBadge`·`IconTile`)가 값으로 읽는다 — 사전 밖의 것을 무는 순간을 여기서 직접 건다. */
+  it("`lib/status/canon.ts`는 사전만 문다", () => {
+    const canon = walk([join(ROOT, "lib/status/canon.ts")]);
+    expect([...canon.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/i18n/index.ts", "lib/status/canon.ts", "messages/en.tsx"]);
+    expect([...canon.packages].filter((name) => !allowed(name))).toEqual([]);
   });
 
   it("`lib/protection/plan.ts`는 잎이다 — `fingerprint.ts`(crypto)를 물지 않는다", () => {

@@ -23,6 +23,8 @@ import type { ReactNode } from "react";
  * 그 어긋남은 두 화면을 함께 보는 눈이 없어 안 보인다 (2026-09-13 `malmoi`/`Malmoi` 계열).
  */
 const UNAVAILABLE = "Unavailable";
+/** 야간 재시도 절 — 사유 문장 셋이 끝에 달고, 보관 프로젝트에서는 Logs가 이 절을 뺀다(`planArchivedReason`). 사본을 두지 않으려고 한 곳에 둔다(2-W9). */
+const NIGHTLY_RETRY = "The next nightly run tries again.";
 
 export const en = {
   /**
@@ -1053,7 +1055,16 @@ export const en = {
       /** 보류만 남은 Publish (delivery-invariants D7) — 편집은 있었고 못 실었다. 결과 모달과 같은 낱말이다. ⚠️ 미전달 편집의 `Unsent`와 다른 말이다(2026-09-30 상태 통일). */
       notSent: "Held back",
       failed: "Failed",
-      /** ⚠️ 줄임표는 진행 중에만이다 (DESIGN §10). */
+      /**
+       * ⚠️ 줄임표는 진행 중에만이다 (DESIGN §10). **진행 중은 종류가 낱말을 정한다** (ux-drift-unify 1-Y2) — Sources·Home과 같은
+       * `Syncing…`, Publish는 `Publishing…`. "Running…"을 쓰지 않는다.
+       */
+      syncing: "Syncing…",
+      publishing: "Publishing…",
+      /**
+       * ⚠️ **Logs 필터의 결과 옵션 전용이다** — 종류를 모르는 자리라 행 결과 배지의 `syncing`·`publishing`을 쓸 수 없다.
+       * 행·상세 배지는 이 낱말을 쓰지 않는다(`resultLabel`). 필터 낱말은 Logs 화면 배치가 정한다.
+       */
       running: "Running…",
       /**
        * 적재 실행의 결과 다섯 (spec §6). **색은 셋뿐이라 낱말이 뜻을 든다.**
@@ -1334,14 +1345,16 @@ export const en = {
      * ⚠️ **과거 시제이고 git 어휘가 없다.** 이 문장을 읽는 사람은 실패를 겪은 번역 편집자이고,
      * 그가 할 수 있는 일(개발자에게 말한다·기다린다)까지 말한다.
      */
+    /** 보관 프로젝트의 사유에서 빼는 절 — 야간 발송이 보관 프로젝트를 건너뛰어 그 문장이 거짓이 된다(`planArchivedReason`). */
+    nightlyRetry: NIGHTLY_RETRY,
     reasons: {
       "base-unreadable": "We couldn't read your repository. Ask your developers to check the app's access.",
       "not-installed": "The app wasn't connected to the repository. Ask your developers to reconnect it.",
       "glob-matched-nothing": "The translation files weren't where we expected. Ask your developers.",
-      "github-error": "GitHub didn't answer. The next nightly run tries again.",
-      "db-unavailable": "We couldn't reach our own storage. The next nightly run tries again.",
+      "github-error": `GitHub didn't answer. ${NIGHTLY_RETRY}`,
+      "db-unavailable": `We couldn't reach our own storage. ${NIGHTLY_RETRY}`,
       stale: "This run stopped before it finished.",
-      unknown: "Something went wrong. The next nightly run tries again.",
+      unknown: `Something went wrong. ${NIGHTLY_RETRY}`,
       /** MCP `publish`만 낸다 — 미리보기 뒤 보낼 내용이 바뀌어 아무것도 안 보냈다(mcp-connector design §3.1). */
       reconfirm: "The changes to send were updated after the preview, so nothing was sent. Preview again, then publish.",
       fallback: "Something went wrong. Tell your developers if it keeps happening.",

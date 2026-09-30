@@ -3,6 +3,7 @@ import { clientIdLabel } from "@/lib/oauth/client-metadata";
 import { connectionBrand, type Brand } from "./brand";
 
 import { TOKEN_GRANTS, type TokenGrant } from "./grant";
+import { isExpired } from "@/lib/expiry";
 
 /**
  * `/mcp` 토큰 카드의 판정 (핸드오프 `1a`–`1c`). 페이지(서버)가 행과 멤버십을 읽어 여기 넘기고, 결과만 클라이언트로 간다.
@@ -31,7 +32,7 @@ export function planTokenCard(input: {
   if (row === null) return { state: "none" };
   return {
     // 인증 경계(`planApiTokenUse`)와 같은 `<=` — 카드가 "활성"이라 말하는 순간에 401이 나지 않게.
-    state: row.expiresAt.getTime() <= input.now.getTime() ? "expired" : "active",
+    state: isExpired(row.expiresAt, input.now) ? "expired" : "active",
     grants: TOKEN_GRANTS.filter(g => row.grants.includes(g)),
     scope: row.allProjects ? { kind: "all" } : { kind: "projects", projectIds: row.projectIds.filter(id => input.memberProjectIds.includes(id)) },
     createdAt: row.createdAt,
@@ -70,7 +71,7 @@ export function planConnectedApps(input: {
     id: row.id,
     name: row.clientName ?? row.clientId,
     ident: clientIdLabel(row.clientId),
-    state: row.expiresAt.getTime() <= input.now.getTime() ? "expired" : "active",
+    state: isExpired(row.expiresAt, input.now) ? "expired" : "active",
     grants: TOKEN_GRANTS.filter(g => row.grants.includes(g)),
     scope: row.allProjects ? { kind: "all" } : { kind: "projects", projectIds: row.projectIds.filter(id => input.memberProjectIds.includes(id)) },
     createdAt: row.createdAt,

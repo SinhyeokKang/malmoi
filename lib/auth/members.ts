@@ -9,6 +9,7 @@ import { lockProjectAccess } from "./lock";
 import { planMemberChange } from "./membership";
 import { getProjectAccess } from "./query";
 import type { Subject } from "./subject";
+import { isExpired } from "@/lib/expiry";
 
 /**
  * **멤버·초대 변경의 공유 코어** (mcp-connector T4-b — ARCHITECTURE §6.02). 편집 UI와 MCP `revoke_invitation`·`change_member`가 같은
@@ -51,7 +52,7 @@ export async function revokePendingInvitation(prisma: PrismaClient, subject: Sub
     const invitation = await tx.projectInvitation.findFirst({ where: { id: input.invitationId, projectId: access.projectId } });
     if (invitation === null || invitation.acceptedAt !== null) return 0;
     // 이미 만료된 초대는 무효화할 상태가 없다 — 성공 응답은 유지하되 사건을 만들지 않는다.
-    if (invitation.expiresAt <= new Date()) return 1;
+    if (isExpired(invitation.expiresAt, new Date())) return 1;
     // 라벨을 **쓰기 전에** 읽는다 — 무효화는 행을 지우지 않지만 순서를 뒤집을 이유도 없다.
     const targetLabel = await invitationEventLabel(tx, { projectId: access.projectId, invitationId: input.invitationId });
     const count = (await tx.projectInvitation.updateMany({

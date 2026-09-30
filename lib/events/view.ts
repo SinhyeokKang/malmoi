@@ -57,8 +57,18 @@ export const TONES: Readonly<Record<EventResult, EventTone>> = {
   upToDate: "muted",
 };
 
-const LABELS: Readonly<Record<EventResult, string>> = {
-  running: m.logs.status.running,
+/**
+ * **Logs 스트림의 결과 톤** (DESIGN §2.4 예외 2 · D3③) — 성공(`Sent`·`Synced`)은 무색이다: 이력은 성공이 대부분이라 초록이 배경이 된다.
+ * Home Recent logs도 같은 스트림·같은 행 컴포넌트라 같다. ⚠️ **`TONES`를 바꾸지 않는다** — Home Sync 결과 Alert(`summarizeImport`)가 공유 톤을
+ * 읽고 거기서는 성공이 초록이다. 예외는 이 표시 층 하나가 든다.
+ */
+export function logsResultTone(result: EventResult): EventTone {
+  const tone = TONES[result];
+  return tone === "success" ? "muted" : tone;
+}
+
+/** ⚠️ `running`은 여기 없다 — 종류가 낱말을 정한다(`resultLabel`). */
+const LABELS: Readonly<Record<Exclude<EventResult, "running">, string>> = {
   sent: m.logs.status.succeeded,
   nothingToSend: m.logs.status.skipped,
   notSent: m.logs.status.notSent,
@@ -71,11 +81,17 @@ const LABELS: Readonly<Record<EventResult, string>> = {
   upToDate: m.logs.status.upToDate,
 };
 
+/** 결과 낱말 — 진행 중만 종류가 가른다(Sync `Syncing…` · Publish `Publishing…`, 1-Y2). */
+function resultLabel(kind: EventKind, result: EventResult): string {
+  if (result !== "running") return LABELS[result];
+  return kind === "PUBLISH" ? m.logs.status.publishing : m.logs.status.syncing;
+}
+
 export function eventView(row: EventViewRow): EventView {
   const result = row.result;
   return {
-    tone: result === null ? "muted" : TONES[result],
-    label: result === null ? null : LABELS[result],
+    tone: result === null ? "muted" : logsResultTone(result),
+    label: result === null ? null : resultLabel(row.kind, result),
     // 음수는 없는 것으로 읽는다 — 화면에 `-1 dropped`를 내지 않는다.
     warningsLabel: row.warnings > 0 ? m.logs.warnings(row.warnings) : null,
     reasonKey: result === "failed" ? reasonKey(row.errorCode) : isReconfirm(result, row.errorCode) ? "reconfirm" : null,
@@ -115,12 +131,11 @@ function reasonKey(errorCode: string | null): ReasonKey {
  * 그래서 "The next nightly run tries again."이 **거짓이 된다.** 사전 문구를 고쳐도 검사가 남도록
  * `view.test.ts`가 "보관이면 어느 사유에도 nightly가 없다"를 전 갈래로 센다.
  */
-const NIGHTLY_CLAUSE = "The next nightly run tries again.";
-
 export function planArchivedReason(key: string, archived: boolean): string {
   const sentence = m.logs.reasons[reasonKey(key)];
   if (!archived) return sentence;
-  return sentence.replace(NIGHTLY_CLAUSE, "").replace(/\s{2,}/g, " ").trim();
+  // 절은 사전 값이다(2-W9) — 리터럴 사본이면 사전 문구가 바뀌는 순간 치환이 조용히 빈다.
+  return sentence.replace(m.logs.nightlyRetry, "").replace(/\s{2,}/g, " ").trim();
 }
 
 /** `Unavailable`을 뜻하는 입력. **문자열 센티넬이 아니다** — 실제 값이 그것과 같을 수 있다. */
@@ -147,11 +162,10 @@ export function valueState(value: RecordedValue): ValueView {
 /**
  * 글리프 칩의 색 (캔버스 `1a` 근거 카드).
  *
- * ⚠️ **배지 톤 셋과 별도 축이다** — 칩은 **훑기용 보조**이고 뜻은 결과 열의 낱말과 문장이 든다.
- * 색만으로 구별되는 정보는 칩에 싣지 않았다.
+ * 칩은 **훑기용 보조**이고 뜻은 결과 열의 낱말과 문장이 든다. 색만으로 구별되는 정보는 칩에 싣지 않았다.
  *
- * 규칙이 둘이다: **실행은 결과의 색**(성공 green · 보류/부분/거부 amber · 실패 red · 진행 중과
- * `Nothing to send`는 slate — 보낸 것이 없는 것은 성공이 아니다), **그 외는 종류의 색**.
+ * 규칙이 둘이다: **실행은 결과 톤의 색**(D3③ — §2.4 아이콘 칸과 같은 축이다. Logs 결과 톤이라 성공은 slate: `logsResultTone`),
+ * **그 외는 종류의 색**(파랑·청록·보라 — 이것만 별도 축이다).
  */
 export type GlyphTone = "green" | "amber" | "red" | "slate" | "blue" | "teal" | "purple";
 
@@ -168,19 +182,8 @@ export type GlyphIcon =
   | "archive"
   | "settings";
 
-const RESULT_GLYPH_TONE: Readonly<Record<EventResult, GlyphTone>> = {
-  imported: "green",
-  sent: "green",
-  deferred: "amber",
-  partial: "amber",
-  notStarted: "amber",
-  failed: "red",
-  running: "slate",
-  nothingToSend: "slate",
-  notSent: "amber",
-  superseded: "slate",
-  upToDate: "slate",
-};
+/** 결과 톤 → 칩 색. 결과마다 색 표를 따로 두지 않는다 — 두 벌이면 배지와 칩이 다시 갈린다. */
+const TONE_GLYPH: Readonly<Record<EventTone, GlyphTone>> = { success: "green", muted: "slate", warning: "amber", danger: "red" };
 
 const KIND_GLYPH_TONE: Readonly<Record<EventKind, GlyphTone>> = {
   TRANSLATION: "blue",
@@ -200,7 +203,7 @@ export function eventGlyph(row: Pick<EventViewRow, "kind" | "result"> & { subtyp
   tone: GlyphTone;
 } {
   const run = row.kind === "IMPORT" || row.kind === "PUBLISH";
-  const tone = run && row.result !== null ? RESULT_GLYPH_TONE[row.result] : KIND_GLYPH_TONE[row.kind];
+  const tone = run && row.result !== null ? TONE_GLYPH[logsResultTone(row.result)] : KIND_GLYPH_TONE[row.kind];
   return { icon: glyphIcon(row.kind, row.subtype), tone };
 }
 
@@ -535,13 +538,13 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
       if (payload.refusal !== null) parts.push(refusalMessage(payload.refusal), m.logs.meta.nothingImported);
       else if (deferred !== null) parts.push(deferred);
       else if (payload.surfaces.length > 0) {
-        // 정상 반영은 결과 낱말을 싣지 않는다(문장이 말한다) — 그 밖(실패·부분·대체)만 낱말이 붙는다.
-        for (const surface of payload.surfaces) {
-          const words = [surface.surfaceSlug];
-          if (surface.count !== null) words.push(m.logs.meta.keys(surface.count));
-          if (surface.status !== "imported") words.push(resultWord(surface.status).toLowerCase());
-          parts.push(words.join(" "));
-        }
+        /*
+          ⚠️ **소스는 언제나 배지이고 결과 낱말을 싣지 않는다** (ux-drift-unify 4-Y20) — "web 12 keys partially synced"가 행 오른쪽 결과 배지를
+          인라인에서 한 번 더 말했다. 소스별 결과는 상세가 든다. 배지는 렌더러가 앞에 모으므로 키 수는 합 하나로 싣는다.
+        */
+        for (const surface of payload.surfaces) parts.push({ kind: "badge", text: surface.surfaceSlug });
+        const counts = payload.surfaces.flatMap((surface) => (surface.count === null ? [] : [surface.count]));
+        if (counts.length > 0) parts.push(m.logs.meta.keys(counts.reduce((sum, n) => sum + n, 0)));
       } else if (payload.keys !== null) parts.push(m.logs.meta.keys(payload.keys));
       if (row.result !== "deferred" && (payload.pendingEdits ?? 0) > 0) parts.push(m.repositorySync.kept(payload.pendingEdits!));
       break;
@@ -578,13 +581,6 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
     parts.push(m.logs.reasons.reconfirm);
   }
   return parts;
-}
-
-function resultWord(status: "imported" | "partial" | "failed" | "superseded"): string {
-  if (status === "imported") return m.logs.status.imported;
-  if (status === "partial") return m.logs.status.partial;
-  if (status === "superseded") return m.logs.status.superseded;
-  return m.logs.status.failed;
 }
 
 export function roleWord(role: string | null): string {

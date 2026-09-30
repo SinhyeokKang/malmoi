@@ -16,6 +16,7 @@ import { recordEvent } from "@/lib/events/record";
 
 import { PROJECT_WINDOW_MS } from "./limits";
 import { planInvitationIssue, type IssuePlan, type IssueTarget } from "./plan";
+import { isExpired } from "@/lib/expiry";
 
 /**
  * 초대 발급·재발급의 DB 쪽 (design §3). **메일을 보내지 않는다** — 발송은 commit 뒤 호출부가 한다.
@@ -178,7 +179,7 @@ export async function reissueInvitation(
       where: { id: invitationId, projectId },
       select: { id: true, projectId: true, email: true, role: true, expiresAt: true, acceptedAt: true },
     });
-    if (row === null || row.acceptedAt !== null || row.expiresAt <= now) return { status: "not-found" as const };
+    if (row === null || row.acceptedAt !== null || isExpired(row.expiresAt, now)) return { status: "not-found" as const };
 
     const decoded = readable(() => decodeInvitation(row));
     if (decoded === null) return { status: "unreadable" as const };

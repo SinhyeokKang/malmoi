@@ -7,7 +7,11 @@ import { importFailureMessage } from "@/lib/projects/import-failure";
 import { EVENT_RESULTS } from "../payload";
 import {
   coverageBoundaryIndex,
+  eventGlyph,
+  eventMeta,
   eventView,
+  logsResultTone,
+  TONES,
   groupByDay,
   importReasonMessage,
   planArchivedReason,
@@ -27,10 +31,26 @@ function row(over: Partial<EventViewRow> = {}): EventViewRow {
 }
 
 describe("eventView — 결과 어휘 전부", () => {
-  it("전부 라벨을 갖고, 서로 다르다", () => {
-    const labels = EVENT_RESULTS.map((result) => eventView(row({ result })).label);
-    expect(labels.filter((label) => label !== null)).toHaveLength(EVENT_RESULTS.length);
-    expect(new Set(labels).size).toBe(EVENT_RESULTS.length);
+  /**
+   * 전제가 "(종류, 결과)마다"다 (ux-drift-unify 1-Y2) — 진행 중은 종류가 낱말을 정한다(Sync `Syncing…` · Publish `Publishing…`).
+   * 전에는 결과 하나에 낱말 하나(`Running…`)였다.
+   */
+  it("실행 종류마다 전부 라벨을 갖고, 한 종류 안에서 서로 다르다", () => {
+    for (const kind of ["IMPORT", "PUBLISH"] as const) {
+      const labels = EVENT_RESULTS.map((result) => eventView(row({ kind, result })).label);
+      expect(labels.filter((label) => label !== null), kind).toHaveLength(EVENT_RESULTS.length);
+      expect(new Set(labels).size, kind).toBe(EVENT_RESULTS.length);
+    }
+  });
+
+  it("진행 중은 Sync면 Syncing…, Publish면 Publishing…다 — Running…을 쓰지 않는다", () => {
+    expect(eventView(row({ kind: "IMPORT", result: "running" })).label).toBe("Syncing…");
+    expect(eventView(row({ kind: "PUBLISH", result: "running" })).label).toBe("Publishing…");
+  });
+
+  /** Logs는 결과에서 종류를 빼고 말한다(Q1) — 종류 배지가 앞에 선다. 다른 화면은 종류가 없어 "Sync failed"다. */
+  it("Sync 실패의 결과 배지는 Failed다", () => {
+    expect(eventView(row({ kind: "IMPORT", result: "failed" })).label).toBe("Failed");
   });
 
   it("실패만 danger다", () => {
@@ -43,16 +63,28 @@ describe("eventView — 결과 어휘 전부", () => {
     }
   });
 
-  // 2026-09-30 상태 통일 — 보냈거나 받은 실행은 초록, 할 일이 없던 실행·진행 중·밀림은 회색.
-  it("성공 둘은 success, 나머지 셋은 muted다", () => {
-    for (const result of ["sent", "imported"] as const) expect(eventView(row({ result })).tone, result).toBe("success");
+  /**
+   * **Logs의 성공은 조용하다** (D3③ 예외 — 이력은 성공이 대부분이라 초록이 배경이 된다). Sent·Synced 둘 다다. ⚠️ 공유 결과 톤(`TONES`)은
+   * 성공 = `success`를 유지한다 — Home Sync 결과 Alert가 그것을 읽는다(`summarizeImport`). 예외는 Logs 표시 층(`logsResultTone`)이 든다.
+   */
+  it("성공 둘은 Logs에서 muted이고 공유 톤은 success 그대로다", () => {
+    for (const result of ["sent", "imported"] as const) {
+      expect(eventView(row({ result })).tone, result).toBe("muted");
+      expect(TONES[result], result).toBe("success");
+    }
     for (const result of ["running", "nothingToSend", "superseded"] as const) expect(eventView(row({ result })).tone, result).toBe("muted");
   });
 
+  it("성공 밖은 공유 톤 그대로다", () => {
+    for (const result of EVENT_RESULTS.filter((r) => TONES[r] !== "success")) expect(logsResultTone(result), result).toBe(TONES[result]);
+  });
+
   it("진행 중만 줄임표를 든다 (DESIGN §10)", () => {
-    expect(eventView(row({ result: "running" })).label).toContain("…");
-    for (const result of EVENT_RESULTS.filter((r) => r !== "running")) {
-      expect(eventView(row({ result })).label, result).not.toContain("…");
+    for (const kind of ["IMPORT", "PUBLISH"] as const) {
+      expect(eventView(row({ kind, result: "running" })).label).toContain("…");
+      for (const result of EVENT_RESULTS.filter((r) => r !== "running")) {
+        expect(eventView(row({ kind, result })).label, result).not.toContain("…");
+      }
     }
   });
 
@@ -72,7 +104,8 @@ describe("eventView — warnings는 결과와 독립이다", () => {
   it("성공 행에도 붙는다", () => {
     const view = eventView(row({ result: "sent", warnings: 3 }));
     expect(view.label).toBe(m.logs.status.succeeded);
-    expect(view.tone).toBe("success");
+    // Logs의 성공은 무색이다(D3③ 예외) — 경고 수는 톤과 독립으로 붙는다.
+    expect(view.tone).toBe("muted");
     expect(view.warningsLabel).toBe(m.logs.warnings(3));
   });
 
@@ -326,7 +359,50 @@ it("Import 보조줄 판정은 남은 편집과 소스별 결과를 함께 보�
     payload: { kind: "IMPORT", source: "manual", surfaceSlugs: ["web"], keys: 4, pendingEdits: 2,
       surfaces: [{ surfaceSlug: "web", status: "imported", count: 4, reason: null }], errorCode: null, refusal: null, deferReason: null, changedValues: null } }, false);
   expect(parts).toContain(m.repositorySync.kept(2));
-  expect(parts).toContain(`web ${m.logs.meta.keys(4)}`);
+  // 소스는 언제나 배지다(4-Y20) — 키 수는 사실 조각이다.
+  expect(parts).toContainEqual({ kind: "badge", text: "web" });
+  expect(parts).toContain(m.logs.meta.keys(4));
+});
+
+/**
+ * **IMPORT 보조줄에 결과 낱말이 없다** (ux-drift-unify 4-Y20) — "web 12 keys partially synced"가 인라인에 남아 결과를 두 번 말했다.
+ * 결과는 행 오른쪽 배지가, 소스별 결과는 상세가 든다. 소스는 TRANSLATION처럼 언제나 배지다.
+ */
+it("Import 보조줄은 소스를 배지로, 키 수를 합으로 싣고 결과 낱말을 싣지 않는다", () => {
+  const parts = eventMeta({ kind: "IMPORT", subtype: "import.run", result: "partial", actor: { kind: "USER" }, run: null,
+    payload: { kind: "IMPORT", source: "manual", surfaceSlugs: ["app", "web"], keys: null, pendingEdits: 0,
+      surfaces: [{ surfaceSlug: "app", status: "partial", count: 3, reason: "partial-import" }, { surfaceSlug: "web", status: "superseded", count: null, reason: "superseded" }],
+      errorCode: null, refusal: null, deferReason: null, changedValues: null } }, false);
+  expect(parts).toContainEqual({ kind: "badge", text: "app" });
+  expect(parts).toContainEqual({ kind: "badge", text: "web" });
+  expect(parts).toContain(m.logs.meta.keys(3));
+  const text = parts.filter((p): p is string => typeof p === "string").join(" ").toLowerCase();
+  for (const word of [m.logs.status.partial, m.logs.status.superseded, m.logs.status.failed, m.logs.status.imported]) expect(text).not.toContain(word.toLowerCase());
+});
+
+/**
+ * **결과 글리프 칸도 §2.4 톤을 따른다** (D3③) — 별도 팔레트였던 결과 칩을 결과 톤에서 읽는다. Logs의 성공은 무색이다(예외 2). 종류 칩(파랑·청록·보라)만 별도 축이다.
+ */
+describe("eventGlyph — 결과 칩 톤", () => {
+  const COLOR = { success: "green", muted: "slate", warning: "amber", danger: "red" } as const;
+  it.each(EVENT_RESULTS)("%s의 칩은 Logs 결과 톤의 색이다", (result) => {
+    for (const kind of ["IMPORT", "PUBLISH"] as const) {
+      expect(eventGlyph({ kind, result, subtype: "x" }).tone).toBe(COLOR[logsResultTone(result)]);
+    }
+  });
+  it("성공 실행의 칩은 초록이 아니다", () => {
+    expect(eventGlyph({ kind: "PUBLISH", result: "sent", subtype: "publish.run" }).tone).toBe("slate");
+    expect(eventGlyph({ kind: "IMPORT", result: "imported", subtype: "import.run" }).tone).toBe("slate");
+  });
+  it("비실행 사건은 종류 색이다", () => {
+    expect(eventGlyph({ kind: "TRANSLATION", result: null, subtype: "translation.saved" }).tone).toBe("blue");
+  });
+});
+
+/** 야간 재시도 절은 사전 값이다(2-W9) — 글자 일치에 기대는 리터럴 사본을 두지 않는다. */
+it("야간 재시도 절이 사전의 사유 문장 안에 그대로 있다 — 공허한 치환이 아니다", () => {
+  expect(m.logs.reasons.unknown).toContain(m.logs.nightlyRetry);
+  expect(planArchivedReason("unknown", true)).not.toContain(m.logs.nightlyRetry);
 });
 
 it("소스 추가는 다음 CI에서 적용할 선언이라고 표시하지 않는다", async () => {
