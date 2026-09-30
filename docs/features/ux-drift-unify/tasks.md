@@ -117,7 +117,7 @@
 
 ## D. 사전 (messages/en.tsx) + 개념 색인
 
-- **T15** 상태 낱말 — design §5 표의 상태 행 전부. 1-Y1/2-Y1 · 1-Y2/2-Y2 · 2-Y3 · 🔴 H(1-Y3/2-R2) · 🔴 I(1-Y4/2-R3) · 1-Y5 · 1-Y6/2-W8 · 1-Y11/2-Y4 · 1-Y13/2-Y8 ·
+- ✅ **T15** (U4) 상태 낱말 — design §5 표의 상태 행 전부. 1-Y1/2-Y1 · 1-Y2/2-Y2 · 2-Y3 · 🔴 H(1-Y3/2-R2) · 🔴 I(1-Y4/2-R3) · 1-Y5 · 1-Y6/2-W8 · 1-Y11/2-Y4 · 1-Y13/2-Y8 ·
   1-Y17("Never" → "Not synced yet" — **동기화 문맥 키만**, MCP 연결 앱 "Never"는 유지) · 2-Y5 · 2-Y6 · 2-Y7(cells) · 1-W6 · 🔴 A2 문구(partial 제목·attention 문장) · 🔴 C 띠 문장(`unpinned`에서 참인 문장, "stop") ·
   열린 PR 조회 실패 문장("Couldn't check for an open pull request") · "Superseded" 보조 문장.
   - `terminology.test.ts`: `BANNED`에 §5 금지 목록 추가 + **`ALLOWED` 판정식 확장**(접두 허용 · 한 키에 금지어 여럿) + 판정식 메타 테스트.
@@ -125,7 +125,7 @@
   - 뒤집는 테스트: `sync-result.test.tsx:48,66,73,87,108` · `publish-button.test.tsx:64,158,160,185` · `dictionary.test.ts:21,37-38,43` · `edit-loss-banner.test.tsx:21,29` ·
     `a11y-reasons.test.tsx:53,115`(키 이름 `repositorySync.paused`를 바꾸면 소스 검사도) · `unmanaged-entries.test.tsx:37` · `home-vocabulary.test.ts:299-300`.
   검증 [자동]: `pnpm exec vitest run lib/i18n lib/guide components` green, 금지 목록 0건.
-- **T16** 일반 문구(**사전만** — 컴포넌트 변경은 화면 커밋으로) — 2-Y10/3-Y11(Remove·Upload) · 2-Y11/1-W5(revoked) · 2-Y12(App 호칭) · 2-Y13(Account) · 2-Y14(Settings 대문자) · 2-Y15(축약형) ·
+- ✅ **T16** (U4) 일반 문구(**사전만** — 컴포넌트 변경은 화면 커밋으로) — 2-Y10/3-Y11(Remove·Upload) · 2-Y11/1-W5(revoked) · 2-Y12(App 호칭) · 2-Y13(Account) · 2-Y14(Settings 대문자) · 2-Y15(축약형) ·
   2-Y16/4-W10("Go to your projects") · 2-Y17/3-Y9("Open on GitHub") · 2-Y20 · 2-Y21 · 3-Y10(확정 = 동사+목적어) · 4-Y21(상세 종류 낱말) · 2-Y9(Q5: "Unavailable" 하나) ·
   2-W2 · 2-W3 · 2-W4 · 2-W7(base branch).
   - **같은 커밋에서 가이드 굵은 라벨**: `guide/account.md:10` **Image upload** → **Upload** 외 게이트가 잡는 줄.
@@ -167,7 +167,7 @@
 - **T21 Logs** — D3③/1-Y16(결과 칩 §2.4 칸, 성공 neutral) · 4-Y2/5-Y11(`rounded-lg`, 골격도) · 4-Y3(첫 행 선) · 4-Y21(상세 머리 `[종류][결과]` 배지) · 3-Y6(상세 바닥 `lg`) · 3-⚪16(`CloseButton`) · 4-W9(골격 chevron 칸).
   뒤집는 테스트: `visual-system.test.ts:199,225`.
   검증 [자동]: `pnpm exec vitest run components/__tests__/logs-* components/__tests__/visual-system.test.ts` green.
-- **T22 Settings · Account · MCP · Members · 온보딩** — 🔴 L(MCP rotate 확정 `danger`, 트리거 "Rotate token") · 3-Y2(push rotate 트리거 `danger`) · 3-Y3(sessions → (a)) ·
+- **T22 Settings · Account · MCP · Members · 온보딩** — 3-Y10 나머지(확정 = 동사+목적어 — `members.remove`·`settings.account.disconnect`·`link.methods.disconnect`의 확정용 키, U4에서 넘어옴) · 🔴 L(MCP rotate 확정 `danger`, 트리거 "Rotate token") · 3-Y2(push rotate 트리거 `danger`) · 3-Y3(sessions → (a)) ·
   3-Y6(CI "Close", 초대 모달 Cancel) · 3-Y7(Publish 재로그인 새 탭) · 3-Y9(`ExternalLink` 제거 — `repository-card.tsx:4` 한 곳) · 3-⚪12(내부 `<a>` → `ButtonLink`) · 3-⚪14(Retry `primary lg w-full`) ·
   3-⚪17(sessions `busy`) · 3-Y8(Q4: `/account` 로그아웃 Dialog 제거, "Sign out everywhere"는 유지) · 1-Y15(Repository 칸 tone) · 4-Y12(CI 행 hover) · 4-Y13(초대 띠 indent) · 4-Y22(사실 라벨 muted) · 5-Y10(MCP 로드 실패 → `Alert inset danger`) ·
   5-Y13(push 토큰 칸 — 온보딩·설정 한 형) · 5-W1(필드 오류 줄 — `FormGroup`의 줄을 떼어 넷이 공유) · 2-Y19(보관 `utcDay`, 방침 개정 이력 `utcDay`, 가입 `utcMonth` 신규 in `lib/utc-time.ts`) ·
