@@ -32,4 +32,4 @@ This also signs out the device you are using.
 
 ## What happens next {#next}
 
-Return to a project after updating Account settings.
+Return to a project after updating Account.

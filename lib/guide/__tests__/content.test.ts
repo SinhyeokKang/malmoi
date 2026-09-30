@@ -15,6 +15,7 @@ import { allowedActions } from "./helpers/allowed-actions";
 import { servedGuideFiles } from "./helpers/served";
 import { collectLinks, collectUiLabels } from "../collect";
 import { dictionaryStrings } from "../dictionary";
+import { dictDigest, shotDictKeys } from "../stale";
 import { parseMd, headings, toText } from "../parse";
 import { sectionByAnchor, leadParagraph, parseMdTable } from "../sections";
 import { flattenNav, parseSummary, slugToFile } from "../summary";
@@ -25,6 +26,18 @@ const read = (file: string) => readFileSync(join(GUIDE, file), "utf8");
 const tree = (file: string) => parseMd(read(file));
 const files = () => servedGuideFiles(GUIDE);
 const nav = () => flattenNav(parseSummary(tree("SUMMARY.md")));
+
+/**
+ * **접근 이름에만 붙는 사전 값** — 필터 트리거는 현재 값(`Any state`)을 보이고 축 이름(`State`)은 `aria-label`에만 있다.
+ * 가이드가 이것을 굵게 쓰면 독자는 화면에 없는 글자를 찾는다(ux-drift-unify 7-#3). 다른 키에 같은 문자열이 보이는 라벨로
+ * 있으면 그쪽 근거로 통과한다 — 이 목록은 값이 아니라 경로를 뺀다.
+ */
+const ARIA_ONLY: ReadonlySet<string> = new Set([
+  "logs.filters.axis",
+  "translations.workspace.filters.completion.axis",
+  "translations.workspace.filters.state.axis",
+  "translations.workspace.filters.scope.axis",
+]);
 
 function headingsBefore(treeValue: ReturnType<typeof parseMd>, node: { position?: { start: { line: number } } }): string | null {
   const line = node.position?.start.line ?? Number.MAX_SAFE_INTEGER;
@@ -68,13 +81,34 @@ describe("실물 가이드 본문 게이트", () => {
     }
   });
 
-  it("굵은 라벨은 사전 또는 AUTHORING 허용 목록에만 있다", () => {
-    const allowed = new Set(dictionaryStrings(m));
+  it("굵은 라벨은 사전(보이는 문자열) 또는 AUTHORING 허용 목록에만 있다", () => {
+    const allowed = new Set(dictionaryStrings(m, ARIA_ONLY));
     const external = parseMdTable(tree("AUTHORING.md"), "external-labels") ?? [];
     for (const row of external) allowed.add(row["라벨"] ?? "");
     for (const file of files()) {
       for (const label of collectUiLabels(tree(file))) expect(allowed, `${file}:${label.line} ${label.text}`).toContain(label.text);
     }
+  });
+
+  it("ARIA_ONLY의 경로가 사전에 실재한다 — 키 이름이 바뀌면 거름망이 조용히 비는 것을 막는다", () => {
+    for (const path of ARIA_ONLY) {
+      let value: unknown = m;
+      for (const key of path.split(".")) value = value !== null && typeof value === "object" && Object.hasOwn(value, key) ? (value as Record<string, unknown>)[key] : undefined;
+      expect(value, path).toBeDefined();
+      expect(typeof value === "function", path).toBe(false);
+    }
+  });
+
+  it("aria 전용 축 이름을 굵은 라벨로 쓰면 red다 (카나리아)", () => {
+    const visible = dictionaryStrings(m, ARIA_ONLY);
+    for (const axis of [m.logs.filters.axis.kind, m.logs.filters.axis.actor, m.translations.workspace.filters.state.axis]) expect(visible.has(axis), axis).toBe(false);
+  });
+
+  it("촬영 매핑의 dict: 소스가 사전의 문자열 키다 — 오타면 guide:check가 deleted만 말한다", () => {
+    const rows = parseMdTable(tree("SHOOTING.md"), "shots") ?? [];
+    const keys = shotDictKeys(rows.map((row) => ({ asset: row["에셋"] ?? "", sources: row["소스"] ?? "", blobs: row["blob"] ?? "" })));
+    expect(keys.length).toBeGreaterThanOrEqual(2);
+    for (const key of keys) expect(dictDigest(m, key), key).not.toBeNull();
   });
 
   it("정본 상수와 기존 일곱 절을 원고가 보존한다", () => {

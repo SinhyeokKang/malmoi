@@ -31,6 +31,15 @@ describe("dictionaryStrings — 굵게 라벨이 대조할 사전 문자열", ()
     expect(strings.has("JSX text")).toBe(false);
   });
 
+  it("뺄 경로(exclude)의 값과 그 아래를 모으지 않는다 — 다른 경로의 같은 문자열은 남는다", () => {
+    const withAxis = { filters: { axis: { kind: "Kind", source: "Source" }, state: { axis: "State", any: "Any state" } }, detail: { source: "Source" } };
+    const strings = dictionaryStrings(withAxis, new Set(["filters.axis", "filters.state.axis"]));
+    for (const text of ["Kind", "State"]) expect(strings.has(text), text).toBe(false);
+    for (const text of ["Any state", "Source"]) expect(strings.has(text), text).toBe(true);
+    // 경로는 정확히 맞아야 한다 — 이름이 비슷한 형제는 빠지지 않는다
+    expect(dictionaryStrings({ a: { axis: "X", axisx: "Y" } }, new Set(["a.axis"])).has("Y")).toBe(true);
+  });
+
   it("실제 사전에서 화면 라벨을 찾는다", () => {
     const strings = dictionaryStrings(m);
     expect(strings.has(m.translations.publish.button)).toBe(true);

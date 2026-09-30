@@ -172,6 +172,23 @@ const CONCEPT_BANNED: readonly Ban[] = [
 const CONTRACTIONS = ["could not", "did not", "cannot", "is not", "was not", "were not", "are not", "does not", "do not", "has not"] as const;
 
 /**
+ * **원고용 개념 색인** — 사전 색인에서 둘을 빼고 하나를 더한다.
+ * - `held`를 뺀다 — 사전에서는 자리(보류 키)가 금지를 가르지만 원고에서는 held가 보류의 산문 낱말 그 자체다(AUTHORING #labels).
+ * - 축약형을 뺀다 — 화면 문장의 문체 규칙(DESIGN §10)이지 개념 동의어가 아니고, 원고는 설명문이라 "does not"이 오독되지 않는다.
+ * - 보류 문맥의 wait를 더한다 — 주어가 갱신·키·실행·편집일 때만. "the pull request waits for review"는 보류가 아니다.
+ */
+const GUIDE_CONCEPT_BANNED: readonly Ban[] = [
+  ...CONCEPT_BANNED.filter(([name]) => name !== "held" && !(CONTRACTIONS as readonly string[]).includes(name)),
+  ["waits (hold)", /\b(?:updates?|keys|syncs?|runs?|edits)\b(?:\s+\w+){0,2}\s+(?:wait|waits|waiting)\b/i],
+];
+
+/** 원고는 파일 단위로 건다 — `guide/<file>`. */
+const GUIDE_ALLOWED: Readonly<Record<string, readonly string[]>> = {
+  // Publish 결과 라벨 **Held back**을 인용한다.
+  "guide/translate/publish.md": ["held back"],
+};
+
+/**
  * **이유가 있는 예외만** — 경로마다 그 낱말이 표의 개념이 아닌 까닭이 있다.
  *
  * 키가 `.*`로 끝나면 **접두 허용**이다 — `a.b.*`는 `a.b.x`·`a.b[0]`을 덮고 형제 `a.bc`나 부모 `a.b` 자신은 덮지 않는다.
@@ -223,10 +240,10 @@ function allows(path: string, name: string, allowed: Readonly<Record<string, rea
   });
 }
 
-function violations(found: readonly Found[], banned: readonly Ban[] = BANNED): string[] {
+function violations(found: readonly Found[], banned: readonly Ban[] = BANNED, allowed: Readonly<Record<string, readonly string[]>> = ALLOWED): string[] {
   return found.flatMap(({ path, text }) =>
     banned
-      .filter(([name, pattern, where]) => (where === undefined || where.test(path)) && !allows(path, name) && pattern.test(scrub(text)))
+      .filter(([name, pattern, where]) => (where === undefined || where.test(path)) && !allows(path, name, allowed) && pattern.test(scrub(text)))
       .map(([name]) => `${path} — "${name}" in: ${text}`),
   );
 }
@@ -313,6 +330,23 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
     const found = guideStrings(ROOT);
     expect(new Set(found.filter(({ path }) => path.startsWith("guide/") && path.endsWith(".md")).map(({ path }) => path)).size).toBeGreaterThanOrEqual(1);
     expect(violations(found)).toEqual([]);
+  });
+
+  it("상태 낱말 개념 색인의 금지어가 서빙되는 원고에도 없다 (ux-drift-unify T26)", () => {
+    expect(violations(guideStrings(ROOT), GUIDE_CONCEPT_BANNED, GUIDE_ALLOWED)).toEqual([]);
+  });
+
+  it("원고용 색인은 보류 산문의 wait를 잡고 PR 검토의 wait는 통과시킨다 (판정식 메타)", () => {
+    const sample = (text: string) => violations([{ path: "guide/x.md", text }], GUIDE_CONCEPT_BANNED, GUIDE_ALLOWED);
+    for (const text of ["Automatic updates wait while edits exist.", "New and removed keys wait too.", "In each case the whole update waits.",
+      "New keys may be waiting because saved edits are unsent.", "If unsent edits are waiting, run it again.", "keep automatic syncing on hold", "the run is deferred",
+      "Publish includes all saved unpublished edits"]) expect(sample(text), text).not.toEqual([]);
+    for (const text of ["Your published values are safe while the pull request waits for review.", "Wait for an ongoing sync to finish.",
+      "some projects may wait until another night", "If nothing is waiting to be published", "Repository updates are held until they are published.",
+      "The last method cannot be removed."]) expect(sample(text), text).toEqual([]);
+    // Held back은 Publish 결과 페이지만
+    expect(violations([{ path: "guide/translate/publish.md", text: "Held back — some values can't be written" }], GUIDE_CONCEPT_BANNED, GUIDE_ALLOWED)).toEqual([]);
+    expect(sample("The sync was held back")).not.toEqual([]);
   });
 
   it("원고 스캔은 SUMMARY에 오른 md의 문장을 보고 코드는 뺀다 (픽스처)", () => {

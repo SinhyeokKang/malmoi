@@ -29,7 +29,7 @@ A workflow that uses `malmoi-i18n-push-v1` keeps working unchanged. To move to `
 
 ## Run and check it {#first-run}
 
-Committing the workflow on the base branch starts it. To run it again, open GitHub **Actions**, choose the workflow, and choose **Run workflow**. Check the run log: `applied` means the files were loaded and **Sources** is updated in Malmoi. A green run can also report `deferred` when unpublished edits are waiting; see [When code changes](../sync/push.md#deferred). A failed run shows its reason in the log.
+Committing the workflow on the base branch starts it. To run it again, open GitHub **Actions**, choose the workflow, and choose **Run workflow**. Check the run log: `applied` means the files were loaded and **Sources** is updated in Malmoi. A green run can also report `deferred` when there are unsent edits — the update is held, and Logs shows it as **Held**; see [When code changes](../sync/push.md#deferred). A failed run shows its reason in the log.
 
 To change the base branch later, change **Base branch** in **Settings**, choose **Save**, and edit the workflow's `branches:` value. If you change a source's base language, follow [Add sources](sources.md#base-language) to update the workflow entry.
 
