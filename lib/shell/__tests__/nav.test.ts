@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { CircleHelp, Compass, Plus } from "lucide-react";
+import { CircleHelp, Compass } from "lucide-react";
 
 import { McpIcon } from "@/components/signin/brand-icons";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -217,14 +217,13 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
   });
 
   /**
-   * ⚠️ **`New project`가 `Projects` 바로 아래에 선다** (2026-09-27 사용자 — 8-3의 "사이드바에 없다"를 뒤집었다).
-   * 아이콘은 [New project] 버튼과 같은 `Plus`, 배지는 없다.
+   * ⚠️ **`New project`가 사용자 축에 없다** (2026-09-30 사용자 — 2026-09-27의 "Projects 바로 아래"를 되돌렸다). 앱 셸 헤더의
+   * 아바타 왼쪽 버튼이 그 자리다.
    */
-  it("사용자 축은 Projects · New project · MCP connector · Account 순이다", () => {
+  it("사용자 축은 Projects · MCP connector · Account 순이다", () => {
     const items = navZones(null, ctx)[0]?.items ?? [];
     expect(items.map((i) => [i.key, i.href])).toEqual([
       ["projects", "/projects"],
-      ["newProject", "/projects/new"],
       ["mcp", "/mcp"],
       ["account", "/account"],
     ]);
@@ -234,10 +233,6 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
     expect(mcp?.icon).toBe(McpIcon);
     expect(mcp?.exact).toBe(true);
     expect(mcp?.badge).toBeUndefined();
-    const created = items.find((i) => i.key === "newProject");
-    expect(created?.label).toBe(m.common.nav.newProject);
-    expect(created?.icon).toBe(Plus);
-    expect(created?.badge).toBeUndefined();
   });
 
   /** ⚠️ **구역 라벨이 이름 그대로다** — 사용자 축은 사용자 이름(옛 `Your work`를 대체했다). */

@@ -12,7 +12,7 @@ import { render } from "./helpers/dom";
 
 /**
  * **헤더 사용자 메뉴** (2026-09-27 사용자) — 항목이 필터 메뉴와 같은 `DropdownMenuItem` 모양이고, 순서가
- * `Projects · New project · MCP connector · Account | Changelog · Docs · Privacy Policy | Sign out`이다. LNB와 겹치는 항목은 의도다.
+ * `Projects · MCP connector · Account | Changelog · Docs · Privacy Policy | Sign out`이다. LNB와 겹치는 항목은 의도다.
  */
 async function open() {
   await render(<UserMenu name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} />);
@@ -33,7 +33,6 @@ it("머리 뒤 항목 순서와 구분선이 사용자가 정한 그대로다", 
   expect(rows(menu)).toEqual([
     "---",
     m.common.nav.projects,
-    m.common.nav.newProject,
     m.common.nav.mcp,
     m.common.nav.account,
     "---",
@@ -45,10 +44,16 @@ it("머리 뒤 항목 순서와 구분선이 사용자가 정한 그대로다", 
   ]);
 });
 
+/** ⚠️ **New project가 메뉴에 없다** (2026-09-30 사용자) — 앱 셸 헤더의 아바타 왼쪽 버튼으로 옮겼다. */
+it("New project 항목이 없다", async () => {
+  const menu = await open();
+  expect(rows(menu)).not.toContain(m.common.nav.newProject);
+  expect(menu.querySelector(`a[href="${routes.newProject()}"]`)).toBeNull();
+});
+
 it("항목이 전부 앱 라우트이고 새 탭이 없다 — Changelog도 앱 안 `/changelog`다", async () => {
   const menu = await open();
   expect(item(menu, m.common.nav.projects).getAttribute("href")).toBe(routes.projects());
-  expect(item(menu, m.common.nav.newProject).getAttribute("href")).toBe(routes.newProject());
   expect(item(menu, m.common.nav.account).getAttribute("href")).toBe(routes.account());
   expect(item(menu, m.publicDocs.docs.title).getAttribute("href")).toBe(routes.docs());
   expect(item(menu, m.publicDocs.privacy.title).getAttribute("href")).toBe(routes.privacy());
