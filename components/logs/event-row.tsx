@@ -1,10 +1,11 @@
 import Link from "next/link";
 
+import { EventMetaLine } from "@/components/logs/event-meta";
 import { EventGlyph } from "@/components/logs/glyph";
 import { RowChevron } from "@/components/logs/row-chevron";
 import { ResultBadge } from "@/components/logs/result-badge";
 import { Badge } from "@/components/ui/badge";
-import { eventGlyph, eventSentence, eventView, eventMeta, triggerOf } from "@/lib/events/view";
+import { eventGlyph, eventSentence, eventView, triggerOf } from "@/lib/events/view";
 import type { EventRow as Row } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
@@ -69,26 +70,20 @@ export function EventRow({
       <EventGlyph icon={glyph.icon} tone={glyph.tone} />
       <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
         <span className="text-base [overflow-wrap:anywhere]">{sentence}</span>
-        <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs [overflow-wrap:anywhere]">
-          {!showTime && view.label !== null && <ResultBadge tone={view.tone} label={view.label} />}
-          {!showTime && view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
-          {eventMeta(row, archived).map((part, index) =>
-            typeof part !== "string" && part.kind === "badge" ? (
-              <Badge key={index} variant="neutral">{part.text}</Badge>
-            ) : (
-              <span key={index} className={typeof part !== "string" && part.kind === "link" ? "text-blue-600" : undefined}>{typeof part === "string" ? part : part.text}</span>
-            ),
-          )}
-        </span>
+        <EventMetaLine row={row} archived={archived} />
       </span>
-      {/* 결과 배지는 칸 오른쪽 끝이다(2026-09-30 사용자 — Sources 행 상태처럼 chevron 바로 옆). 칸 폭 172는 그대로라 긴 문장 열이 흔들리지 않는다. */}
+      {/* 결과 배지는 보조줄 밖, 행 오른쪽이다 — Logs는 172 칸의 오른쪽 끝(chevron 옆), Home 최근 로그는 시각 앞(2026-09-30 사용자). */}
       {showTime ? (
         <span className="flex w-[172px] shrink-0 flex-wrap items-center justify-end gap-1.5">
           {view.label !== null && <ResultBadge tone={view.tone} label={view.label} />}
           {view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
         </span>
       ) : (
-        <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(row.occurredAt, now)}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          {view.label !== null && <ResultBadge tone={view.tone} label={view.label} />}
+          {view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
+          <span className="text-muted-foreground text-xs">{relativeTime(row.occurredAt, now)}</span>
+        </span>
       )}
       <span className="text-muted-foreground flex shrink-0">
         <RowChevron />

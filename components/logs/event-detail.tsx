@@ -5,12 +5,13 @@ import { CopyButton } from "@/components/onboarding/copy-button";
 import { EventGlyph } from "@/components/logs/glyph";
 import { Alert } from "@/components/ui/alert";
 import { ResultBadge } from "@/components/logs/result-badge";
+import { RoleBadges } from "@/components/logs/role-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
-import { changedValuesText, deferredText, eventGlyph, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, refusalMessage, triggerOf, valueState } from "@/lib/events/view";
+import { changedValuesText, deferredText, eventGlyph, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
@@ -301,14 +302,15 @@ function fields(row: EventRow): [string, ReactNode][] {
   }
   if (payload?.kind === "MEMBER") {
     out.push([m.logs.detail.labels.member, payload.targetLabel]);
-    if (payload.role !== null) out.push([m.logs.detail.labels.role, `${payload.role.before ?? m.logs.none} → ${payload.role.after ?? m.logs.none}`]);
+    // 행 보조줄과 같은 역할 배지다 — 원문 `— → OWNER`를 싣지 않는다(2026-09-30 사용자).
+    if (payload.role !== null) out.push([m.logs.detail.labels.role, <RoleBadges before={payload.role.before === null ? null : roleWord(payload.role.before)} after={payload.role.after === null ? null : roleWord(payload.role.after)} />]);
   }
   if (payload?.kind === "SURFACE") {
     out.push([m.logs.detail.labels.source, payload.surfaceSlug]);
-    if (payload.baseLocale !== null) out.push([m.logs.detail.labels.effect, `${payload.baseLocale.before ?? m.logs.none} → ${payload.baseLocale.after ?? m.logs.none}`]);
+    if (payload.baseLocale !== null) out.push([m.logs.detail.labels.effect, payload.baseLocale.before === null ? (payload.baseLocale.after ?? m.logs.none) : `${payload.baseLocale.before} → ${payload.baseLocale.after ?? m.logs.none}`]);
   }
   if (payload?.kind === "SETTINGS" && payload.value !== null) {
-    out.push([m.logs.detail.labels.effect, `${payload.value.before ?? m.logs.none} → ${payload.value.after ?? m.logs.none}`]);
+    out.push([m.logs.detail.labels.effect, payload.value.before === null ? (payload.value.after ?? m.logs.none) : `${payload.value.before} → ${payload.value.after ?? m.logs.none}`]);
   }
   return out;
 }

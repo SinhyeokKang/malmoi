@@ -262,7 +262,7 @@ it("More로 붙인 선택 키가 조건을 벗어나면 재검증이 그 행만 
   await user.click(button(m.translations.workspace.list.more)!);
   await rerender(<TranslationWorkspace {...initial} list={{ ...first, rows: [{ ...initial.list.rows[0]!, missingCount: 2 }], selectedInResult: false }} />);
   expect(row(container, "k2")?.textContent).toContain("Saved");
-  expect(row(container, "k1")?.textContent).toContain("2 missing");
+  expect(row(container, "k1")?.textContent).toContain("2 untranslated");
 });
 
 // ── #29 ─────────────────────────────────────────────────────────────────────

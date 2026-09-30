@@ -93,8 +93,9 @@ const GLYPH = ["components/logs/glyph.tsx"];
  */
 const REGISTERED: Record<string, string[]> = {
   // amber — 경고 축 (§6.2 "새 raw 색을 늘리지 않는다")
-  "bg-amber-100/80": ["components/home/attention-card.tsx", "components/ui/badge.tsx"],
-  "text-amber-800": ["components/home/attention-card.tsx", "components/projects/project-list.tsx", "components/ui/badge.tsx"],
+  // 2026-09-30 상태 통일 — 호박 면·글자는 "손봐야 할 것"의 한 벌이다(배지 · 칸 · 행 띠 · 보류 글자).
+  "bg-amber-100/80": ["components/home/attention-card.tsx", "components/sources/source-detail-modal.tsx", "components/ui/badge.tsx"],
+  "text-amber-800": ["components/home/attention-card.tsx", "components/home/meta-column.tsx", "components/sources/source-detail-modal.tsx", "components/ui/badge.tsx", "components/ui/row-card.tsx"],
   "bg-amber-50": ["components/ui/alert.tsx", ...GLYPH],
   "bg-amber-500": ["components/locale-meter.tsx", "components/sources/source-detail-modal.tsx"],
   // B6 — 기준 언어 대기 테두리. `border-destructive/50`(오류)의 짝이다.
@@ -111,15 +112,15 @@ const REGISTERED: Record<string, string[]> = {
     ...GLYPH,
   ],
   // 초록 — `Active` 배지 · diff
-  "bg-green-100/80": ["components/ui/badge.tsx"],
-  "text-green-800": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/ui/alert.tsx", "components/ui/badge.tsx"],
+  // 초록 면·글자는 성공 칸에도 선다(2026-09-30 — Sources 상세 `Synced` 칸)
+  "bg-green-100/80": ["components/sources/source-detail-modal.tsx", "components/ui/badge.tsx"],
+  "text-green-800": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/sources/source-detail-modal.tsx", "components/ui/alert.tsx", "components/ui/badge.tsx"],
   // Alert 배경 셋 (2026-09-29 사용자 — `bg-amber-50`은 위, `bg-red-50`·`bg-blue-50`은 활동 칩과 같은 값이라 아래에서 합친다)
   "bg-green-50": ["components/ui/alert.tsx"],
   "bg-green-800/[0.16]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
   // 빨강 — diff · missing 알약 · 사라짐 띠 · 임포트 실패 띠
-  "text-red-700": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/sources/source-detail-modal.tsx"],
+  "text-red-700": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
   "bg-red-700/[0.14]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
-  "text-red-800": ["components/projects/project-list.tsx"],
   // blue-600 — 링크 색 (§6.3) · 검색 일치 구간
   "text-blue-600": [
     // `/oauth/authorize` 로그인 전 약관 링크 — `/signin`과 같은 줄이다 (mcp-oauth)
@@ -131,7 +132,7 @@ const REGISTERED: Record<string, string[]> = {
     "components/home/meta-column.tsx",
     "components/home/sync-button.tsx",
     "components/logs/event-detail.tsx",
-    "components/logs/event-row.tsx",
+    "components/logs/event-meta.tsx",
     "components/onboarding/steps/repo.tsx",
     "components/privacy/privacy-doc.tsx",
     "components/projects/empty-projects.tsx",

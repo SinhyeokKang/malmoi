@@ -193,10 +193,11 @@ it.each(["list", "home", "invite"])("%s의 이미지 로드 실패는 이름 색
  */
 it("메타 줄이 리포 앞에 GitHub 마크를 든다", async () => {
   const container = await draw({});
-  const meta = [...container.querySelectorAll("span")].find((s) => s.textContent?.startsWith("o/r · "));
+  const meta = [...container.querySelectorAll("span")].find((s) => s.textContent === "o/r" && s.querySelector("svg") !== null);
   const mark = meta?.querySelector("svg");
   expect(mark).not.toBeNull();
   expect(mark?.getAttribute("aria-hidden")).toBe("true");
   expect(mark?.getAttribute("class")).toContain("size-3.5");
-  expect(meta?.textContent).toBe(`o/r · ${m.projects.role.OWNER} · ${m.projects.memberCount(2)}`);
+  // 메타는 리포 하나다(2026-09-30 사용자 — 역할·멤버 수를 걷었다).
+  expect(meta?.textContent).toBe("o/r");
 });

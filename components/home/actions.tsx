@@ -16,8 +16,8 @@ import { Button } from "@/components/ui/button";
 import { landFocus } from "@/components/ui/focus";
 import { m } from "@/lib/i18n";
 import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
-import type { HomeState } from "@/lib/home/state";
-import { importFailureMessage } from "@/lib/projects/import-failure";
+import type { ConnectionProblem, HomeState } from "@/lib/home/state";
+import { importFailureMessage, importFailureTone } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import { relativeTime } from "@/lib/relative-time";
 
@@ -186,10 +186,12 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
   있는 상태**이지 방금 일어난 사건이 아니다. assertive live 영역을 상시 상태에 쓰면 그 화면에
   들어올 때마다 스크린리더가 읽던 것을 끊는다. 의도된 이탈이고 `docs/DESIGN.md`에 있다.
 */
-export function HomeNotices({ slug, name, state, role, branch, repo, unsent, failedSurface, reason, lastSyncAt, now }: {
+export function HomeNotices({ slug, name, state, role, branch, repo, unsent, failedSurface, reason, lastSyncAt, now, problem = null }: {
   slug: string;
   name: string;
   state: HomeState;
+  /** `state === "not_connected"`일 때의 갈래 — 배너 색·문구·동작이 셋으로 갈린다(`connectionProblem`). */
+  problem?: ConnectionProblem | null;
   role: "OWNER" | "EDITOR";
   branch: string;
   /** ⚠️ **서버가 만든다** — `syncBranch`의 규칙이 사는 모듈은 클라이언트가 물면 안 된다(번들 7.2MB). */
@@ -226,7 +228,8 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pt-4 empty:hidden">
       {state === "import_failed" && failedSurface !== null && reason !== null && (
         <Alert
-          variant="danger"
+          // 톤은 실패 코드가 정한다 — 일부만 반영된 적재는 호박, 나머지는 빨강(2026-09-30 상태 통일).
+          variant={importFailureTone(reason)}
           title={m.home.banner.syncFailed.title}
           /* ⚠️ **원인 문장은 `importFailureMessage`가 든다** — 사전을 직접 인덱싱하면 그 폴백을 우회한다. */
           /* ⚠️ **`[Try again]`은 `[Sync]`와 같은 Action이다** — 확인 Dialog를 건너뛰지 않는다. */
@@ -249,21 +252,29 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
         </Alert>
       )}
 
-      {state === "not_connected" && (
+      {state === "not_connected" && problem === "wrong-repository" && (
+        // ⚠️ **[Reconnect]를 주지 않는다** — 리포는 생성 시점에 고정이라 다른 id로의 재연결을 서버가 거부한다(설정 카드와 같은 판정).
+        <Alert variant="danger" title={m.home.banner.wrongRepository.title}>
+          {m.home.banner.wrongRepository.body}
+        </Alert>
+      )}
+      {state === "not_connected" && problem !== "wrong-repository" && (
         <Alert
-          variant="warning"
-          title={m.home.banner.notConnected.title}
+          // 미연결(설치 없음)은 회색, 끊김(재연결 필요)은 호박이다(2026-09-30 상태 통일).
+          variant={problem === "disconnected" ? "warning" : "neutral"}
+          title={problem === "disconnected" ? m.home.banner.disconnected.title : m.home.banner.notConnected.title}
           /* ⚠️ **이 화면에서만 검정이 Publish가 아니다** (캔버스 `2c`) — 할 수 있는 일이 하나뿐이다. */
-          actions={owner ? <ReconnectButton slug={slug} server={repo} variant="primary" label={m.home.banner.notConnected.action} /> : undefined}
+          actions={owner ? <ReconnectButton slug={slug} server={repo} variant="primary" label={problem === "disconnected" ? m.home.banner.disconnected.action : m.home.banner.notConnected.action} /> : undefined}
         >
-          {m.home.banner.notConnected.body}
-          {!owner && <> {m.home.banner.notConnected.editor}</>}
+          {problem === "disconnected" ? m.home.banner.disconnected.body : m.home.banner.notConnected.body}
+          {!owner && <> {problem === "disconnected" ? m.home.banner.disconnected.editor : m.home.banner.notConnected.editor}</>}
         </Alert>
       )}
 
       {state === "archived" && (
         <Alert
-          variant="warning"
+          // 보관은 이상이 아니라 상태다 — 회색(2026-09-30 상태 통일, Logs·번역 화면과 같은 톤).
+          variant="neutral"
           title={m.home.banner.archived.title}
           /* 되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다 (`ArchiveCard`의 규칙). */
           /*

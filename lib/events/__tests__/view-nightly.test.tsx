@@ -87,15 +87,17 @@ describe("eventMeta — 주체 낱말과 보류 사유", () => {
     ["CI 적재", metaRow({ subtype: "import.ci", result: "imported", payload: payload({ source: "ci" }) })],
     ["야간 Publish", metaRow({ kind: "PUBLISH", subtype: "publish.run", result: "sent", payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: null },
       run: { changed: 1, prUrl: null, errorCode: null } })],
-  ])("%s 보조줄에 주체 낱말이 없다", (_, row) => {
+  ])("%s 보조줄은 주체를 종류와 합친 배지 하나로 든다 — 낱말을 따로 싣지 않는다", (_, row) => {
     const parts = eventMeta(row, false);
     for (const word of [m.logs.meta.manual, m.logs.meta.nightly, m.logs.meta.ci, "automatic"]) expect(parts).not.toContain(word);
+    const expected = row.kind === "PUBLISH" ? m.logs.meta.runType.PUBLISH.nightly : row.subtype === "import.ci" ? m.logs.meta.runType.IMPORT.ci : m.logs.meta.runType.IMPORT.nightly;
+    expect(parts[0]).toEqual({ kind: "badge", text: expected });
   });
 
   it("사람 행은 manual을 그대로 든다", () => {
     const parts = eventMeta(metaRow({ subtype: "import.run", result: "imported", actor: { kind: "USER" }, payload: payload({ source: "manual" }) }), false);
-    // 배지로 선다(2026-09-30 사용자 — Home 요약과 같은 모양).
-    expect(parts).toContainEqual({ kind: "badge", text: m.logs.meta.manual });
+    // 종류와 주체가 한 배지다(2026-09-30 사용자 — `Manual sync`).
+    expect(parts[0]).toEqual({ kind: "badge", text: m.logs.meta.runType.IMPORT.manual });
   });
 });
 

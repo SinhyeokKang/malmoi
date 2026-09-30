@@ -22,7 +22,8 @@ export function EditLossBanner({ count, publishButtonId }: { count: number; publ
   if (count === 0) return null;
   return (
     <Alert
-      variant="neutral"
+      // 보류는 호박이다 — Logs `Held`·Sync 결과와 같은 톤(2026-09-30 상태 통일).
+      variant="warning"
       actions={
         <Button onClick={() => document.getElementById(publishButtonId)?.focus()}>
           {m.translations.banner.sendWithPublish}

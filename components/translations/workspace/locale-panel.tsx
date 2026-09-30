@@ -93,7 +93,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
         <div className="border-divider flex shrink-0 flex-col gap-1 border-b px-4 py-3.5">
           <div className="flex items-center gap-2.5">
             <span className="min-w-0 flex-1 text-base font-medium [overflow-wrap:anywhere]">{detail.key.key}</span>
-            <span className={cn("shrink-0 text-xs", filled < total ? "text-amber-700" : "text-muted-foreground")}>{w.languages(filled, total)}</span>
+            <span className="text-muted-foreground shrink-0 text-xs">{w.languages(filled, total)}</span>
             <CopyLink href={copyHref} />
           </div>
           <span className="text-muted-foreground text-xs leading-normal">
@@ -245,7 +245,7 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
             ? <span className="text-muted-foreground text-xs">{w.saving}</span>
             : dirty
             ? <span className="text-xs text-amber-700">{w.notSaved}</span>
-            : missing && <span className="text-xs text-amber-700">{w.missing}</span>}
+            : missing && <span className="text-muted-foreground text-xs">{w.missing}</span>}
           {locale.needsReview && !missing && <span className="text-xs text-amber-700">{m.translations.workspace.list.needsReview}</span>}
           {locale.pending && <Pill>{m.translations.workspace.list.notSent}</Pill>}
         </span>

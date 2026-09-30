@@ -8,6 +8,7 @@ import { canPerform, type Role } from "@/lib/auth/permission";
 import type { AttentionItem, AttentionList } from "@/lib/home/attention";
 import type { HomeState } from "@/lib/home/state";
 import { m } from "@/lib/i18n";
+import { importFailureTone } from "@/lib/projects/import-failure";
 import { relativeTime } from "@/lib/relative-time";
 import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import { IconTile } from "@/components/ui/icon-tile";
@@ -31,8 +32,10 @@ import { IconTile } from "@/components/ui/icon-tile";
  * 타일에 `languages`를 놓는다. **의도된 이탈이고 `docs/DESIGN.md`에 있다.**
  */
 const TILE: Record<AttentionItem["kind"], { icon: ComponentType<{ className?: string }>; className: string }> = {
-  import_failed: { icon: TriangleAlert, className: "bg-amber-100/80 text-amber-800" },
-  review: { icon: CircleDot, className: "bg-foreground/5 text-muted-foreground" },
+  // 실패는 어디서나 붉은 면 조합이다(2026-09-30 사용자 — 여기만 호박이었다, DESIGN §2.3).
+  import_failed: { icon: TriangleAlert, className: "bg-destructive/8 text-destructive" },
+  // 검토 대기는 호박이다 — 카드 글리프·Sources 배지·번역 화면과 같은 톤(2026-09-30 상태 통일).
+  review: { icon: CircleDot, className: "bg-amber-100/80 text-amber-800" },
   never_filled: { icon: Languages, className: "bg-foreground/5 text-muted-foreground" },
 };
 
@@ -122,7 +125,8 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
           ? { ns: ALL_NAMESPACES, state: "review", language: item.code }
           // 그 로케일이 비어 있는 키 — `Missing in {locale}`이 정확히 그 뜻이다.
           : { ns: ALL_NAMESPACES, completion: "missing", missingLocale: item.code });
-  const tile = TILE[item.kind];
+  // 실패 칩의 톤은 코드가 정한다 — 일부 반영은 호박(2026-09-30 상태 통일).
+  const tile = item.kind === "import_failed" && importFailureTone(item.reason) === "warning" ? { ...TILE.import_failed, className: "bg-amber-100/80 text-amber-800" } : TILE[item.kind];
   const Tile = tile.icon;
 
   return (

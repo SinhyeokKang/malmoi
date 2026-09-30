@@ -10,9 +10,9 @@ The key list is on the left. Each row is one piece of text in the app — a *key
 
 ![The translation screen with a key selected in the list and its text in three languages](/guide/translation-editor.webp "Select a row to edit its text in every language.")
 
-**Scope** starts at **This source**, which shows only keys from the same set of translation files; choose **All sources** to widen it. Choose **This namespace** to narrow the list to the selected group of keys. **Clear filters** resets the scope, completion, and state filters; it keeps your search text. The **State** filter includes **Not sent**, **Needs review**, and **New from GitHub**. Needs review marks translations whose source text changed; it is not an approval step.
+**Scope** starts at **This source**, which shows only keys from the same set of translation files; choose **All sources** to widen it. Choose **This namespace** to narrow the list to the selected group of keys. **Clear filters** resets the scope, completion, and state filters; it keeps your search text. The **State** filter includes **Unsent**, **Needs review**, and **New from GitHub**. Needs review marks translations whose source text changed; it is not an approval step.
 
-![The translation screen with the state filter open, listing Any state, Not sent, Needs review, and New from GitHub](/guide/state-filter.webp "Narrow the list by state.")
+![The translation screen with the state filter open, listing Any state, Unsent, Needs review, and New from GitHub](/guide/state-filter.webp "Narrow the list by state.")
 
 ## Edit and save {#save}
 

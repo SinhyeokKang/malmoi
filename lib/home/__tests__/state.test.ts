@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planHomeState } from "../state";
+import { connectionProblem, planHomeState } from "../state";
 
 /**
  * Home의 여섯 화면(캔버스 `2a`~`2e`)이 **한 함수의 반환값 하나로** 갈린다 (DESIGN §6.64).
@@ -97,5 +97,20 @@ describe("planHomeState — 우선순위가 곧 순서다", () => {
   it("설치가 바뀐 것은 미연결이다 — 저장된 설치로는 아무것도 못 한다", () => {
     expect(planHomeState({ ...base, connection: { status: "installation-changed", installationId: "2" } })).toBe("not_connected");
     expect(planHomeState({ ...base, counts: zero, connection: { status: "installation-changed", installationId: "2" } })).toBe("not_connected");
+  });
+});
+
+/** 연결 문제의 갈래 (2026-09-30 상태 통일) — 미연결 회색 · 끊김 호박 · 다른 리포 빨강. 설정 카드와 Home이 같은 판정을 쓴다. */
+describe("connectionProblem", () => {
+  it.each([
+    ["not-connected", "not-connected"],
+    ["app-uninstalled", "disconnected"],
+    ["installation-changed", "disconnected"],
+    ["repo-replaced", "wrong-repository"],
+    ["ok", null],
+    ["repo-moved", null],
+    ["unknown", null],
+  ] as const)("%s → %s", (status, problem) => {
+    expect(connectionProblem(status)).toBe(problem);
   });
 });

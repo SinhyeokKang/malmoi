@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 /**
  * 키 목록 (핸드오프 `2c`). 첫 줄은 **리포 원문**(`sourceText`), 둘째 줄은 키 이름 13 `#737373`.
  *
- * ⚠️ **상태 색은 미완에만 든다** — `{n} missing`은 amber, `Complete`는 보조색. 완료가 다수라 완료에 색을 주면 남은 것이 묻힌다.
+ * ⚠️ **미번역은 회색이다** (2026-09-30 상태 통일 — 미번역은 이상이 아니라 할 일이다). 호박은 검토 대기(`Needs review`)만 든다. 낱말(`{n} untranslated` · `Complete`)이 둘을 가른다.
  * ⚠️ **저장으로 조건을 벗어난 행은 자리에 남는다**(취소선 + `Saved`) — 다른 키를 눌러도 그대로이고 재필터에서만 빠진다.
  * ⚠️ **선택은 배경만 바꾼다** — 굵기를 주지 않는다(`sidebar.tsx`).
  */
@@ -75,7 +75,7 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
                     {row.hasReview && <span className="text-xs text-amber-700">{w.needsReview}</span>}
                   </span>
                 </span>
-                <span className={cn("shrink-0 text-xs", savedOut ? "text-muted-foreground" : row.missingCount > 0 ? "text-amber-700" : "text-muted-foreground")}>
+                <span className="text-muted-foreground shrink-0 text-xs">
                   {savedOut ? w.saved : row.missingCount > 0 ? w.missing(row.missingCount) : w.complete}
                 </span>
               </ListItemButton>

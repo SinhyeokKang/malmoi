@@ -5,6 +5,7 @@ import { ExternalLink, Link2, Unplug } from "lucide-react";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { PanelCard } from "@/components/ui/panel-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,7 +55,8 @@ function Notice({ health: pending, failure, appSlug }: { health: Promise<Connect
   const health = use(pending);
   const installUrl = installationSettingsUrl(appSlug);
   const notice = health.status === "repo-moved" ? <Alert inset variant="warning">{m.settings.repository.health.moved(health.fullName)}</Alert>
-    : isDisconnected(health) || health.status === "repo-replaced" ? <Alert inset variant="danger">{m.settings.repository.health[health.status]}
+    // 연결 끊김(재연결 필요)은 호박, 다른 리포를 가리키는 것은 빨강이다 — 행 배지와 같은 톤(2026-09-30 상태 통일).
+    : isDisconnected(health) || health.status === "repo-replaced" ? <Alert inset variant={health.status === "repo-replaced" ? "danger" : "warning"}>{m.settings.repository.health[health.status]}
       {/* ⚠️ 밑줄을 붙이지 않는다 — 나가는 신호는 색과 새 탭이 든다 (DESIGN §6.3, 전역 규칙) */}
       {health.status === "app-uninstalled" && installUrl && <> <a className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={installUrl} target="_blank" rel="noreferrer">{m.settings.repository.health.install}</a> — {m.settings.repository.health.installHint}</>}
     </Alert> : undefined;
@@ -70,11 +72,13 @@ function ConnectionRow({ health: pending, slug, owner, repo, archived, onFailure
   const health = use(pending);
   const disconnected = isDisconnected(health);
   const canConnect = disconnected || health.status === "not-connected" || health.status === "repo-moved";
-  const status = health.status === "ok" || health.status === "repo-moved" ? m.settings.repository.health.ok : disconnected ? m.settings.repository.disconnected : health.status === "not-connected" ? m.settings.repository.notConnected : health.status === "unknown" ? m.settings.repository.unknown : null;
+  const status = health.status === "ok" || health.status === "repo-moved" ? m.settings.repository.health.ok : disconnected ? m.settings.repository.disconnected : health.status === "not-connected" ? m.settings.repository.notConnected : health.status === "unknown" ? m.settings.repository.unknown : health.status === "repo-replaced" ? m.settings.repository.wrongRepository : null;
+  // 상태는 배지다(2026-09-30 사용자) — 연결됨 초록 · 끊김(재연결 필요)은 Home Alert와 같은 호박 · 미연결 회색 · 확인 실패 호박.
+  const statusTone = health.status === "ok" || health.status === "repo-moved" ? "success" : health.status === "repo-replaced" ? "missing" : disconnected || health.status === "unknown" ? "warning" : "neutral";
   const detail = health.status === "ok" ? m.settings.installed : health.status === "unknown" ? m.settings.repository.health.unknown : health.status === "not-connected" ? m.settings.repository.health["not-connected"] : health.status === "repo-moved" ? m.settings.repository.movedHint : disconnected ? m.settings.repository.paused : null;
   return <div className={ROW}>
     <IconTile>{disconnected ? <Unplug className="size-4" aria-hidden /> : health.status === "not-connected" ? <Link2 className="size-4" aria-hidden /> : <GithubIcon className="size-4" />}</IconTile>
-    <div className="min-w-0 flex-1 space-y-[3px]"><p className="text-base break-all"><span className="font-medium">{owner}/{repo}</span>{status && <> — {status}</>}</p>{detail && <p className="text-muted-foreground text-xs">{detail}</p>}</div>
+    <div className="min-w-0 flex-1 space-y-[3px]"><p className="text-base break-all"><span className="font-medium">{owner}/{repo}</span>{status && <Badge variant={statusTone} className="ml-2 align-middle">{status}</Badge>}</p>{detail && <p className="text-muted-foreground text-xs">{detail}</p>}</div>
     {canConnect ? <fieldset className="[&_.animate-spin]:size-3.5" disabled={archived}><ReconnectButton onFailure={onFailure} slug={slug} server={health} label={health.status === "not-connected" ? m.settings.repository.connect : m.settings.repository.reconnect} variant={health.status === "repo-moved" ? undefined : "primary"} /></fieldset>
       : health.status === "ok" && <a className={buttonClass({ variant: "default", size: "md" }) + " focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none"} href={`https://github.com/${owner}/${repo}`} target="_blank" rel="noreferrer">{m.settings.openRepo}<ExternalLink aria-hidden /></a>}
   </div>;

@@ -63,7 +63,7 @@ it("선택 키의 활성 언어를 base 우선으로 그리고, 빈 칸에는 �
   expect(zh.placeholder).toBe("");
   const help = document.getElementById(zh.getAttribute("aria-describedby") ?? "");
   expect(help?.textContent).toBe("Nothing here");
-  expect(container.textContent).toContain("1 missing");
+  expect(container.textContent).toContain("1 untranslated");
 });
 
 it("blur·Tab은 저장하지 않는다 — Save가 바뀐 로케일만 한 번에 보낸다", async () => {
@@ -397,7 +397,7 @@ it("Revert 뒤 같은 셀을 저장하면 Not sent와 Revert가 다시 나타난
   await user.click(button("Save"));
   await rerender(<TranslationWorkspace {...initial} detail={{ ...restored, locales: restored.locales.map(l => l.code === "ko" ? { ...l, value: "없음!", pending: true } : l) }} />);
   expect(button("Revert to last sent").getAttribute("aria-disabled")).toBeNull();
-  expect(container.textContent).toContain("Not sent");
+  expect(container.textContent).toContain("Unsent");
 });
 
 // 페이지 추가·재검증의 두 회귀(POSTMORTEM 2026-09-23)는 cursor 없는 More로 옮겨 `translation-workspace-transition.test.tsx`가 든다 (audit-ux #19).

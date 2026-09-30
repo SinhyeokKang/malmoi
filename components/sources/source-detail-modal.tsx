@@ -58,13 +58,14 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
   const disabledReason = !detail?.installed ? canEdit ? m.sources.reconnectOwner : m.sources.reconnectEditor : !detail?.lastCommitSha ? m.sources.firstImport : m.sources.noLanguages;
   const failed = state.status === "failed" || state.status === "rejected";
   const statusFailed = importStatus?.state.startsWith("failed") ?? false;
+  const statusPartial = statusFailed && detail?.lastImportError === "partial-import";
   /** 상태마다 "얼마나 됐나"의 출처가 다르다 — 없으면 시각을 생략하고 추정하지 않는다. */
   const statusAt = detail === null ? null
     : importStatus?.state === "importing" ? detail.lastImportStartedAt
     : importStatus?.state === "not-imported" ? detail.createdAt
     : statusFailed ? detail.lastImportFailedAt
     : detail.lastImportedAt;
-  const statusLabel = importStatus === null ? "" : { "not-imported": m.settings.sources.notImported, importing: m.settings.sources.importing, "failed-first": m.settings.sources.failed, "failed-after": m.settings.sources.failedAfter, imported: m.settings.sources.imported }[importStatus.state];
+  const statusLabel = importStatus === null ? "" : statusPartial ? m.logs.status.partial : { "not-imported": m.settings.sources.notImported, importing: m.settings.sources.importing, "failed-first": m.settings.sources.failed, "failed-after": m.settings.sources.failedAfter, imported: m.settings.sources.imported }[importStatus.state];
   return <OnboardingModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, detail.locales)}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : failed ? undefined : m.sources.loading}
     onClose={() => leave()} closeDisabled={busy} returnFocusRef={returnFocusRef} fallbackFocusRef={fallbackFocusRef} quiet={fieldError}
     panelClassName={cn(failed ? "min-h-0" : "min-h-[min(560px,calc(100svh-96px))] max-h-[min(800px,calc(100svh-96px))]")}
@@ -96,7 +97,8 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
       <PanelCard title={m.sources.status} subtitle={m.sources.statusHelp}>
         {importResult && <div role="status" className="border-divider text-base border-t px-4 py-[13px]">{importResult.text}</div>}
         <div className="border-divider flex items-center gap-3 border-t px-4 py-[13px]">
-          <IconTile className={statusFailed ? "bg-destructive/8 text-destructive" : undefined}>
+          {/* 칸 톤은 상태 톤이다(2026-09-30 통일): 성공 초록 · 일부 반영 호박 · 실패 빨강 · 진행·미적재 무색. */}
+          <IconTile className={statusPartial ? "bg-amber-100/80 text-amber-800" : statusFailed ? "bg-destructive/8 text-destructive" : importStatus?.state === "imported" ? "bg-green-100/80 text-green-800" : undefined}>
             {statusFailed ? <CircleAlert aria-hidden />
               : importStatus?.state === "importing" ? <span aria-hidden className="border-foreground/15 border-t-muted-foreground size-3.5 animate-spin rounded-full border-2 [animation-duration:0.7s]" />
               : importStatus?.state === "not-imported" ? <Clock aria-hidden />
@@ -105,7 +107,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
           <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
             <span className="text-base"><span className="font-medium">{statusLabel}</span>
               {statusAt !== null && <> — {importStatus?.state === "importing" && <>{m.sources.started} </>}{importStatus?.state === "not-imported" && <>{m.sources.addedAgo} </>}<RelativeAt at={statusAt} now={now} /></>}</span>
-            <span className={cn("text-xs leading-[1.6]", statusFailed ? "text-destructive" : "text-muted-foreground")}>
+            <span className={cn("text-xs leading-[1.6]", statusPartial ? "text-amber-800" : statusFailed ? "text-destructive" : "text-muted-foreground")}>
               {isImportFailureCode(detail.lastImportError) ? importFailureMessage(detail.lastImportError)
                 : detail.lastCommitSha ? m.sources.importedSummary(detail.keys, detail.locales)
                 : m.sources.notImportedHelp}
@@ -176,7 +178,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             두 배로 길어져 같은 표에서 행 높이가 갈린다. 파일이 사라졌다고 단정하지 않는다. */}
         {detail.languages.filter(row => row.orphaned).map(row => <div key={`missing-${row.code}`} className="border-divider bg-foreground/2 text-destructive flex items-start gap-2 border-t px-4 pt-2.5 pb-3 text-xs">
           <CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
-          <span className="leading-[1.55] text-red-700"><span className="text-foreground">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated, detail.locales)}</span></span>
+          <span className="leading-[1.55]"><span className="text-foreground">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated, detail.locales)}</span></span>
         </div>)}
       </PanelCard>
     </div>}

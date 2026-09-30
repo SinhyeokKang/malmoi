@@ -231,7 +231,7 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex min-w-0 items-start gap-2">
           <span className={cn("min-w-0 text-base font-medium [overflow-wrap:anywhere]", expired && "text-neutral-400")}>{app.name}</span>
-          {expired && <Badge variant="neutral" className="shrink-0">{m.mcpConnector.token.expired}</Badge>}
+          {expired && <Badge variant="warning" className="shrink-0">{m.mcpConnector.token.expired}</Badge>}
         </div>
         <span className="text-muted-foreground min-w-0 text-xs break-all">{app.ident}</span>
         <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1">

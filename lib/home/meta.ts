@@ -1,7 +1,7 @@
 import { readPayload, type ActorKind, type EventKind } from "@/lib/events/payload";
 import { triggerOf, type Trigger } from "@/lib/events/view";
 
-import type { HomeState } from "./state";
+import type { ConnectionProblem, HomeState } from "./state";
 import type { SyncTime } from "./sync-time";
 
 /**
@@ -21,7 +21,7 @@ export type MetaRow =
    * 그 함수 한 줄이 지키는 것이었다.
    */
   | { kind: "repository"; owner: string; name: string; disconnected: false; href: string }
-  | { kind: "repository"; owner: string; name: string; disconnected: true }
+  | { kind: "repository"; owner: string; name: string; disconnected: true; problem: ConnectionProblem }
   | { kind: "branch"; branch: string }
   | { kind: "surfaces"; count: number }
   | { kind: "locales"; codes: readonly string[] }
@@ -59,11 +59,13 @@ export function metaRows(input: {
   createdAt: Date;
   archivedAt: Date | null;
   triggers: HomeTriggers;
+  /** 미연결 갈래 — 배지 색·낱말이 셋으로 갈린다(2026-09-30 상태 통일). 없으면 `not-connected`로 읽는다. */
+  connection?: ConnectionProblem | null;
 }): MetaRow[] {
   const disconnected = input.state === "not_connected";
   const rows: MetaRow[] = [
     disconnected
-      ? { kind: "repository", owner: input.repoOwner, name: input.repoName, disconnected: true }
+      ? { kind: "repository", owner: input.repoOwner, name: input.repoName, disconnected: true, problem: input.connection ?? "not-connected" }
       : { kind: "repository", owner: input.repoOwner, name: input.repoName, disconnected: false,
           href: `https://github.com/${input.repoOwner}/${input.repoName}` },
     { kind: "branch", branch: input.baseBranch },

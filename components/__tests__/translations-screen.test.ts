@@ -161,9 +161,10 @@ describe("리포 갱신 보류 배너 (sync-edit-protection T13)", () => {
     expect(src).not.toMatch(/onDismiss/);
   });
 
-  it("[C11] neutral tone이다 — 안전한 상태에 색을 띄우지 않는다(DESIGN §6.1)", () => {
-    expect(src).toMatch(/variant="neutral"/);
-    expect(src).not.toMatch(/variant="warning"/);
+  // 2026-09-30 상태 통일 — 보류(held)는 어디서나 호박이다(Logs `Held`·Sync 결과와 같은 톤).
+  it("[C11] warning tone이다 — 보류는 호박이다", () => {
+    expect(src).toMatch(/variant="warning"/);
+    expect(src).not.toMatch(/variant="neutral"/);
   });
 
   it("작업 화면이 Publish 버튼 id를 배너에 넘긴다 — 액션은 둘째 트리거가 아니라 포커스 이동이다", () => {

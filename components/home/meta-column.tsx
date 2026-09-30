@@ -79,7 +79,10 @@ function value(row: MetaRow, now: Date): ReactNode {
         <span className="flex flex-wrap items-center gap-1.5">
           {`${row.owner}/${row.name}`}
           {/* ⚠️ **링크가 사라지고 pill이 선다** — 지금 읽을 수 없는 자리를 링크로 두면 화면이 거짓말한다. */}
-          <Badge variant="warning">{m.home.meta.notConnected}</Badge>
+          {/* 배지 톤은 연결 갈래다 — 미연결 회색 · 끊김 호박 · 다른 리포 빨강(2026-09-30 상태 통일, 설정 카드와 같은 낱말). */}
+          {row.problem === "wrong-repository" ? <Badge variant="missing">{m.settings.repository.wrongRepository}</Badge>
+            : row.problem === "disconnected" ? <Badge variant="warning">{m.settings.repository.disconnected}</Badge>
+            : <Badge variant="neutral">{m.home.meta.notConnected}</Badge>}
         </span>
       ) : (
         /*
@@ -127,7 +130,8 @@ function value(row: MetaRow, now: Date): ReactNode {
             <span className="text-destructive"> · {m.home.meta.failedAt(relativeTime(row.failedAt, now))}</span>
           )}
           {/* Never에는 아무것도 붙이지 않는다 — 주체와 같은 규칙. */}
-          {row.at !== null && row.heldByOpenPr && ` · ${m.home.meta.heldByOpenPr}`}
+          {/* 보류는 호박이다(2026-09-30 상태 통일). */}
+          {row.at !== null && row.heldByOpenPr && <span className="text-amber-800"> · {m.home.meta.heldByOpenPr}</span>}
         </span>
       );
     case "lastPublish": {

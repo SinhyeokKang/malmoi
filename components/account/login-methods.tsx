@@ -101,6 +101,7 @@ function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginPr
        * 문서화된 이탈이다(DESIGN §6.67).
        */
       status={row.connected ? m.link.methods.connected : m.link.methods.notConnected}
+      statusTone={row.connected ? "success" : "neutral"}
     >
       <div ref={controls} className="contents">
       {!row.connected ? (

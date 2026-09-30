@@ -67,7 +67,7 @@ describe("metaRows — 상태가 행을 바꾼다", () => {
    */
   it("미연결이면 리포 링크가 빠지고 pill이 선다", () => {
     expect(row({ ...base, state: "not_connected" }, "repository")).toEqual({
-      kind: "repository", owner: "acme", name: "web", disconnected: true,
+      kind: "repository", owner: "acme", name: "web", disconnected: true, problem: "not-connected",
     });
   });
 

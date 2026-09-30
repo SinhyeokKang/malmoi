@@ -26,8 +26,9 @@ import { BannerLine, RowCard, RowCardItem, RowCardList } from "@/components/ui/r
 import { canPerform } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
-import { importFailureMessage } from "@/lib/projects/import-failure";
+import { importFailureMessage, importFailureTone } from "@/lib/projects/import-failure";
 import {
+  failing,
   highlightName,
   listBody,
   meterSlot,
@@ -238,7 +239,14 @@ function RowList({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
 
 function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
   const status = projectStatus(row);
-  const chip = STATUS_CHIP[status];
+  /*
+    칩은 **그 프로젝트의 가장 나쁜 상태 하나**다(2026-09-30 상태 통일 — 실패 중인데 초록 `Active`가 섰다).
+    동기화 실패(빨강) · 일부 반영(호박)이 readiness 칩을 이기고, 보관은 그대로 보관이다. 톤은 `importFailureTone`이 정한다.
+  */
+  const failure = status !== "archived" && failing(row) && row.importError !== null ? importFailureTone(row.importError) : null;
+  const chip = failure === "danger" ? { variant: "missing" as const, tone: "", label: m.settings.sources.failedAfter }
+    : failure === "warning" ? { variant: "warning" as const, tone: "", label: m.logs.status.partial }
+    : { ...STATUS_CHIP[status], label: m.projects.status[status] };
   const slot = meterSlot(row, row.meters);
   const banner = rowBanner(row);
 
@@ -286,7 +294,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             )}
           </span>
           {/*
-            메타 한 줄 — **owner/repo · 역할 · 멤버 수**. ⚠️ **`https://github.com/`를 뗀다**(시안):
+            메타 한 줄 — **owner/repo 하나**다(2026-09-30 사용자 — 역할·멤버 수를 걷었다). ⚠️ **`https://github.com/`를 뗀다**(시안):
             행 폭의 3분의 1을 모든 행이 같은 문자열로 쓰는 것이 그 접두다.
 
             ⚠️ **리포가 링크가 아니다** — 행 전체가 이미 `<a>`라 중첩할 수 없다.
@@ -299,10 +307,6 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             <GithubIcon className="size-3.5 shrink-0" />
             <span className="truncate">
               {`${row.repoOwner}/${row.repoName}`}
-              {" · "}
-              {m.projects.role[row.role]}
-              {" · "}
-              {m.projects.memberCount(row.memberCount)}
             </span>
           </span>
         </span>
@@ -337,7 +341,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
         <span className="ml-auto flex shrink-0 items-center gap-3">
           {/* ⚠️ **칩만 `px-2`다** — 총계·그룹 카운트 배지는 `px-1.5` 그대로여야 `min-w-5`가 이겨 원형이 된다. */}
           <Badge variant={chip.variant} className={cn("px-2", chip.tone)}>
-            {m.projects.status[status]}
+            {chip.label}
           </Badge>
           <ChevronRight aria-hidden className="text-muted-foreground size-4" />
         </span>
@@ -366,6 +370,8 @@ function ProjectBanner({ row, banner }: { row: ProjectListRow; banner: NonNullab
   return (
     <BannerLine
       icon={<BannerIcon banner={banner} />}
+      // 띠 전체가 상태의 색이다 — 실패는 Home Alert·Logs·Sources와 같은 빨강, 재연결 필요는 Home Alert와 같은 호박(2026-09-30 사용자).
+      tone={banner.kind === "import_failed" ? importFailureTone(banner.reason) : banner.kind === "needs_reconnect" || banner.kind === "review" ? "warning" : "muted"}
       action={<BannerAction row={row} banner={banner} canSettle={canSettle} />}
     >
       {banner.kind === "review" && m.projects.banner.review(banner.count)}
@@ -390,8 +396,9 @@ function BannerIcon({ banner }: { banner: NonNullable<RowBanner> }) {
    * 같은 색 알파를 쓰면 획이 만나는 접점에서 알파가 **누적돼 그 점만 진해진다.**
    */
   const icon = {
-    needs_reconnect: { glyph: Unplug, tone: "text-amber-800" },
-    import_failed: { glyph: TriangleAlert, tone: "text-red-800" },
+    // 색은 띠(`BannerLine tone`)가 든다 — 글리프는 글자색을 상속한다.
+    needs_reconnect: { glyph: Unplug, tone: "" },
+    import_failed: { glyph: TriangleAlert, tone: "" },
     setup: { glyph: CircleDashed, tone: "" },
     unsent: { glyph: GitPullRequestArrow, tone: "" },
     pr_open: { glyph: GitPullRequest, tone: "" },

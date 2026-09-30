@@ -47,7 +47,9 @@ describe("활동 행과 상세의 실제 동작", () => {
 
   it("수동 적재 성공은 보호 보류라고 말하지 않고 소스별 결과를 보인다", async () => {
     const { container } = await render(<EventRow row={row()} href="/logs" now={now} archived={false} />);
-    expect(container.textContent).toContain("web: Synced");
+    // 보조줄은 `[Manual sync]  web 4 keys` — 정상 반영은 결과 낱말을 소스마다 반복하지 않는다(2026-09-30 사용자).
+    expect(container.querySelector("[data-event-meta]")?.textContent).toContain("web 4 keys");
+    expect(container.querySelector("[data-event-meta] .rounded-full")?.textContent).toBe("Manual sync");
     expect(container.textContent).not.toContain("Nothing was imported");
   });
 

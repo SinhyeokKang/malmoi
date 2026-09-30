@@ -47,3 +47,16 @@ export function planHomeState(input: {
   const { newFromGithub, toTranslate, toReview, toSend } = input.counts;
   return newFromGithub + toTranslate + toReview + toSend === 0 ? "empty" : "default";
 }
+
+/**
+ * 연결 문제의 **갈래** (2026-09-30 상태 통일) — Home이 넷을 `not_connected` 하나로 접으면서 배너 문구·색이 한 벌이었다.
+ * 톤: 미연결(설치 없음) 회색 · 끊김(App 제거·재설치 — 재연결 필요) 호박 · 다른 리포(repo-replaced) 빨강. 설정 화면의 배지와 같은 판정이다.
+ */
+export type ConnectionProblem = "not-connected" | "disconnected" | "wrong-repository";
+
+export function connectionProblem(status: ConnectionHealth["status"]): ConnectionProblem | null {
+  if (status === "not-connected") return "not-connected";
+  if (status === "app-uninstalled" || status === "installation-changed") return "disconnected";
+  if (status === "repo-replaced") return "wrong-repository";
+  return null;
+}

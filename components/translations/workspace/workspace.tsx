@@ -827,7 +827,8 @@ const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { onCheck: () => void; 
       <a href={routes.signIn()} target="_blank" rel="noreferrer" className="text-blue-600">{m.translations.workspace.footer.session.signIn}</a>
     </Alert>
   ),
-  archived: () => <Alert variant="danger" title={m.translations.workspace.footer.archived} />,
+  // 보관은 회색이다 — 실패가 아니다(2026-09-30 상태 통일).
+  archived: () => <Alert variant="neutral" title={m.translations.workspace.footer.archived} />,
   "lost-access": () => <Alert variant="danger" title={m.translations.workspace.footer.lostAccess} />,
   "revert-failed": () => <Alert variant="danger" title={m.translations.workspace.revert.failed.title}>{m.translations.workspace.revert.failed.body}</Alert>,
   "revert-unknown": ({ onCheck }) => (

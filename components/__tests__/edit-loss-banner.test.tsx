@@ -16,11 +16,11 @@ function View({ count }: { count: number }) {
   </>;
 }
 
-it("[C11] 미전달 편집이 있으면 neutral 배너가 멈춘 이유를 말하고 손실을 예고하지 않는다", async () => {
+it("[C11] 미전달 편집이 있으면 warning(보류) 배너가 멈춘 이유를 말하고 손실을 예고하지 않는다", async () => {
   const { container } = await render(<View count={3} />);
-  expect(container.textContent).toContain("Repository updates are paused until 3 unsent changes are sent.");
+  expect(container.textContent).toContain("Repository updates are held until 3 unsent changes are sent.");
   expect(container.textContent).not.toMatch(/can be lost|automatically/);
-  expect(container.querySelector('[data-alert="neutral"]')).not.toBeNull();
+  expect(container.querySelector('[data-alert="warning"]')).not.toBeNull();
 });
 
 it("[C11] 닫기가 없다 — 상시 조건이라 숨길 지역 상태를 만들지 않는다", async () => {

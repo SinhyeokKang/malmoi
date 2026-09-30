@@ -30,7 +30,7 @@ The result can say:
 - **Sent for review** — a new pull request is open for the development team.
 - **Your earlier pull request now holds this** — the existing pull request was updated.
 - **Nothing changed in the files** — there is nothing new to publish.
-- **Not sent — some values can't be written to the files** or N edits weren't sent — your saved values are kept. Tell a project owner which files are listed.
+- **Held back — some values can't be written to the files** or N edits weren't sent — your saved values are kept. Tell a project owner which files are listed.
 - An open pull request was closed — the files already match the repository.
 - GitHub did not answer — try again later.
 - **We couldn't confirm whether your changes were sent.** Check **Logs** before trying again.

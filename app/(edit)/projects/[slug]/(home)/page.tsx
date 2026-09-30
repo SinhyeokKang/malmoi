@@ -25,7 +25,7 @@ import { countCards } from "@/lib/home/cards";
 import { metaRows } from "@/lib/home/meta";
 import { loadHomeRuns } from "@/lib/home/runs";
 import { lastSyncTime } from "@/lib/home/sync-time";
-import { planHomeState } from "@/lib/home/state";
+import { connectionProblem, planHomeState } from "@/lib/home/state";
 import {
   loadActors, loadProjectListAggregates, loadReviewAttention,
 } from "@/lib/keys/query";
@@ -298,6 +298,7 @@ export default async function ProjectHomePage({
         /* 시각 없는 성공은 "이 Sync 전의 값"으로 말한다 — 지어낸 시각을 배너에 넣지 않는다 (malmoi#81). */
         lastSyncAt={lastSyncAt === "unrecorded" ? null : lastSyncAt}
         now={now}
+        problem={connectionProblem(health.status)}
       />
 
       {/*
@@ -341,6 +342,7 @@ export default async function ProjectHomePage({
             createdAt: project.createdAt,
             archivedAt: project.archivedAt,
             triggers,
+            connection: connectionProblem(health.status),
           })}
           slug={slug}
           now={now}

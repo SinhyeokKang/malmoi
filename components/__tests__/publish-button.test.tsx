@@ -61,7 +61,7 @@ it("닫힌 동안 실행을 유지하고 완료가 자동으로 열리지 않는
   // 재검증 트리가 커밋되기 전까지는 Publish가 잠긴 채다 (malmoi#103) — 서버 렌더를 흉내 낸다.
   await view.rerender(<Host />);
   // writer 경고는 쓰기 전에 멈춘 결과다(T10) — PR 카드가 없고 "보내지 않았다"가 제목이며 버린 값은 펼친 목록이다.
-  await click("View result"); expect(document.body.textContent).toContain("Not sent"); expect(document.body.textContent).not.toContain("#12");
+  await click("View result"); expect(document.body.textContent).toContain("Held back"); expect(document.body.textContent).not.toContain("#12");
   expect(document.querySelector("details")).toBeNull();
   expect(document.body.textContent).toContain("bad\n ^");
 });

@@ -124,7 +124,8 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
         action={
           <>
             {/* ⚠️ `h2` 바로 뒤다 — 이 화면의 배지는 이것 하나다(핸드오프 §4). */}
-            {expired && <Badge variant="neutral">{m.mcpConnector.token.expired}</Badge>}
+            {/* 만료는 호박이다 — GitHub 인가 만료와 같은 톤(2026-09-30 상태 통일). */}
+            {expired && <Badge variant="warning">{m.mcpConnector.token.expired}</Badge>}
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {live ? (
                 <>

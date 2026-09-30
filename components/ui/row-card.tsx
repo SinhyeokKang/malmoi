@@ -169,7 +169,8 @@ export function BannerLine({
    * 내려갔다(사용자: *"alert 계열 말고 그냥 일반 계열"* — 오너가 하나면 상시로 서는 문장이라
    * 붉기가 사후 `Alert`의 무게를 깎는다, DESIGN §6.65). 지우지 않은 것은 판단이 아직 열려 있어서다.
    */
-  tone?: "muted" | "danger";
+  /** ⚠️ **2026-09-30 — 상태 띠의 색은 그 상태의 색이다**(사용자 — 같은 실패가 화면마다 회색·빨강·노랑이었다): 실패 `danger` · 재연결 필요 `warning` · 그 밖 `muted`. */
+  tone?: "muted" | "warning" | "danger";
   /**
    * 텍스트 시작 x. 행의 글리프 폭이 화면마다 달라 값이 둘이다 —
    * `row` 56(`/projects` 썸네일 28 + gap 16 + padding 12) · `avatar` 60(멤버 아바타 32 + 16 + 12).
@@ -183,7 +184,7 @@ export function BannerLine({
       className={cn(
         "border-foreground/[0.06] bg-foreground/[0.02] flex items-center gap-2 border-t py-2 pr-3.5 text-xs",
         indent === "avatar" ? "pl-15" : "pl-14",
-        tone === "danger" ? "text-destructive" : "text-muted-foreground",
+        tone === "danger" ? "text-destructive" : tone === "warning" ? "text-amber-800" : "text-muted-foreground",
       )}
     >
       {icon}

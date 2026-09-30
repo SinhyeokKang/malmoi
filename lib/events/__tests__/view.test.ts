@@ -43,10 +43,10 @@ describe("eventView — 결과 어휘 전부", () => {
     }
   });
 
-  it("나머지 다섯은 muted다 — 가장 흔한 상태가 가장 조용하다 (DESIGN §6.1)", () => {
-    for (const result of ["running", "sent", "nothingToSend", "imported", "superseded"] as const) {
-      expect(eventView(row({ result })).tone, result).toBe("muted");
-    }
+  // 2026-09-30 상태 통일 — 보냈거나 받은 실행은 초록, 할 일이 없던 실행·진행 중·밀림은 회색.
+  it("성공 둘은 success, 나머지 셋은 muted다", () => {
+    for (const result of ["sent", "imported"] as const) expect(eventView(row({ result })).tone, result).toBe("success");
+    for (const result of ["running", "nothingToSend", "superseded"] as const) expect(eventView(row({ result })).tone, result).toBe("muted");
   });
 
   it("진행 중만 줄임표를 든다 (DESIGN §10)", () => {
@@ -72,7 +72,7 @@ describe("eventView — warnings는 결과와 독립이다", () => {
   it("성공 행에도 붙는다", () => {
     const view = eventView(row({ result: "sent", warnings: 3 }));
     expect(view.label).toBe(m.logs.status.succeeded);
-    expect(view.tone).toBe("muted");
+    expect(view.tone).toBe("success");
     expect(view.warningsLabel).toBe(m.logs.warnings(3));
   });
 
@@ -326,7 +326,7 @@ it("Import 보조줄 판정은 남은 편집과 소스별 결과를 함께 보�
     payload: { kind: "IMPORT", source: "manual", surfaceSlugs: ["web"], keys: 4, pendingEdits: 2,
       surfaces: [{ surfaceSlug: "web", status: "imported", count: 4, reason: null }], errorCode: null, refusal: null, deferReason: null, changedValues: null } }, false);
   expect(parts).toContain(m.repositorySync.kept(2));
-  expect(parts).toContain(`web: ${m.logs.status.imported}, ${m.logs.meta.keys(4)}`);
+  expect(parts).toContain(`web ${m.logs.meta.keys(4)}`);
 });
 
 it("소스 추가는 다음 CI에서 적용할 선언이라고 표시하지 않는다", async () => {

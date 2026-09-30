@@ -34,13 +34,13 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
    * "can be lost … automatically"는 절반이 거짓이다.
    */
   it("배너는 1건과 여러 건의 문장이 갈리고 손실을 예고하지 않는다", () => {
-    expect(m.translations.banner.paused(1)).toBe("Repository updates are paused until 1 unsent change is sent.");
-    expect(m.translations.banner.paused(4)).toBe("Repository updates are paused until 4 unsent changes are sent.");
+    expect(m.translations.banner.paused(1)).toBe("Repository updates are held until 1 unsent change is sent.");
+    expect(m.translations.banner.paused(4)).toBe("Repository updates are held until 4 unsent changes are sent.");
     expect(m.translations.banner.paused(2)).not.toMatch(/can be lost|automatically/);
   });
 
   it("[C12] Home 발송 카드의 보류 보조 줄", () => {
-    expect(m.home.cards.repositoryUpdatesPaused).toBe("repository updates paused");
+    expect(m.home.cards.repositoryUpdatesPaused).toBe("repository updates held");
   });
 
   it("Publish의 수는 미리보기 제목이 든다", () => {

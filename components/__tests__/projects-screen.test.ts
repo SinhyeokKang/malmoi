@@ -156,8 +156,9 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
    * ⚠️ **역할이 배지가 아니라 메타 평문이다** (시안 개정). 배지로 만들면 우측에서 상태와 나란히
    * 놓여 어느 쪽이 "지금 벌어지는 일"인지 흐려진다.
    */
-  it("역할을 메타 줄이 든다", () => {
-    expect(PAGE.map(code).join("\n")).toContain("m.projects.role[row.role]");
+  // 2026-09-30 사용자 — 행 메타에서 역할·멤버 수를 걷었다(리포 하나). 역할을 배지로 되살리지도 않는다.
+  it("행 메타가 역할을 싣지 않는다", () => {
+    expect(PAGE.map(code).join("\n")).not.toContain("m.projects.role[row.role]");
     expect(PAGE.map(code).join("\n")).not.toMatch(/<Badge[^>]*>\s*\{m\.projects\.role/);
   });
 });

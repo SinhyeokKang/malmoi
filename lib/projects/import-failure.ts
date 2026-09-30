@@ -57,3 +57,10 @@ export function importFailureMessage(code: ImportFailureCode): string {
   return typeof sentence === "string" ? sentence : m.projects.importFailure.importFailed;
 }
 
+/**
+ * 실패의 **톤** (2026-09-30 사용자 — 상태별 색 통일). 일부만 반영된 적재(`partial-import`)는 실패가 아니라 "손봐야 할 것"이라
+ * 호박이고, 나머지는 빨강이다. 띠·Alert·배지·칸이 전부 이 값을 따른다 — 화면마다 따로 고르면 같은 상태가 다시 무지개가 된다.
+ */
+export function importFailureTone(code: ImportFailureCode): "danger" | "warning" {
+  return code === "partial-import" ? "warning" : "danger";
+}

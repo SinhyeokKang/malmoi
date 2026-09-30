@@ -53,7 +53,6 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
       <PanelRow
         glyph={<LogOut className="text-muted-foreground size-4" aria-hidden />}
         name={m.account.signOut.title}
-        status={m.account.signOut.scope}
         detail={m.account.signOut.description}
       >
         <SignOutButton signOut={signOut} />
@@ -61,7 +60,6 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
       <PanelRow
         glyph={<MonitorSmartphone className="text-muted-foreground size-4" aria-hidden />}
         name={m.account.sessions.title}
-        status={m.account.sessions.scope}
         /**
          * ⚠️ **확인이 둘이 된다는 사실을 누르기 전에 말한다** — 이 왕복은 provider 화면을 한 번 더
          * 지나고, 예고가 없으면 그 두 번째가 실패로 읽힌다.

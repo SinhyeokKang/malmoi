@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileCode2, FileJson2, Plus, X } from "lucide-react";
+import { ChevronRight, FileCode2, FileJson2, Folder, Plus, X } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { loadSourceDetail } from "@/app/(edit)/projects/[slug]/sources/actions";
 import { runFirstIngest } from "@/app/(edit)/projects/actions";
@@ -111,10 +111,11 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
                 <IconTile data-source-glyph data-tone={failed ? "failed" : "default"} className={failed ? "bg-destructive/8 text-destructive" : undefined}><Glyph className="size-4" aria-hidden /></IconTile>
                 <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-foreground text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
                   {/* ⚠️ 경로가 sans다 — mono는 `<pre>` 코드 블록 전용이다 (DESIGN §4.1, 2026-09-23). `text-xs`가 13px라 옛 `text-mono`와 크기는 같다. */}
-                  {source.connection && <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">{source.connection.pathTemplate ?? m.sources.notConfigured}</span>}
-                  <SourceStatus icon source={source} now={now} className="hidden pt-0.5 @max-[1016px]/panel:flex" />
+                  {/* 경로 앞 `Folder` 14 — `/projects` 행 메타의 리포 앞 GitHub 로고와 같은 패턴이다(2026-09-30 사용자). 색은 글자를 상속한다. */}
+                  {source.connection && <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"><Folder className="size-3.5 shrink-0" aria-hidden /><span className="min-w-0 [overflow-wrap:anywhere]">{source.connection.pathTemplate ?? m.sources.notConfigured}</span></span>}
+                  <SourceStatus source={source} now={now} className="hidden pt-0.5 @max-[1016px]/panel:flex" />
                 </span>
-                <SourceStatus icon source={source} now={now} className="@max-[1016px]/panel:hidden" />
+                <SourceStatus source={source} now={now} className="@max-[1016px]/panel:hidden" />
               </Button>
               {/* [Open translations]는 행에서 걷었다(2026-09-30 사용자) — 번역 화면으로 가는 길은 상세 모달의 같은 버튼이다. */}
               <ChevronRight className="size-4 shrink-0 text-neutral-400 @max-[1016px]/panel:mt-2" aria-hidden />

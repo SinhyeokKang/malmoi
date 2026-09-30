@@ -183,11 +183,11 @@ it.each(["OWNER", "EDITOR"] as const)("소스가 없을 때 안내와 추가 권
 // 아래 셋은 실브라우저 대조(2026-09-22)에서 시안과 갈린 자리다 — 색·글리프라 값 테스트로는 안 잡힌다.
 const failedFirst = { ...source, lastCommitSha: null, lastImportError: "parse-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") };
 it.each([
-  { state: "imported" as const, row: source, icon: false, tone: "default", label: "Synced" },
-  { state: "failed-first" as const, row: failedFirst, icon: true, tone: "failed", label: "First sync failed" },
-  { state: "failed-after" as const, row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") }, icon: true, tone: "failed", label: "Last sync failed" },
-  { state: "importing" as const, row: { ...source, lastCommitSha: null, lastImportStartedAt: new Date() }, icon: true, tone: "default", label: "Syncing" },
-])("목록 행은 적재 상태를 색이 아니라 낱말과 글리프로도 말한다 $state", async ({ state, row, icon, tone, label }) => {
+  { state: "imported" as const, row: source, tone: "default", label: "Synced" },
+  { state: "failed-first" as const, row: failedFirst, tone: "failed", label: "Sync failed" },
+  { state: "failed-after" as const, row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") }, tone: "failed", label: "Sync failed" },
+  { state: "importing" as const, row: { ...source, lastCommitSha: null, lastImportStartedAt: new Date() }, tone: "default", label: "Syncing" },
+])("목록 행은 적재 상태를 색이 아니라 낱말로도 말한다 $state", async ({ state, row, tone, label }) => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [row] }} adapters={[]} now={new Date()} />);
   const all = [...document.querySelectorAll(`[data-source-status="${state}"]`)];
   expect(all).toHaveLength(2);
@@ -195,11 +195,9 @@ it.each([
   const status = all[0]!.firstElementChild!;
   expect(status.className).toContain("rounded-full");
   expect(status.textContent).toContain(label);
-  // 실패는 `circle-alert`, 적재 중은 테두리 스피너 — 매체가 달라도 "글리프가 선다"는 같다.
-  expect(status.firstElementChild !== null).toBe(icon);
-  // 장식이라 접근성 트리에 이름 없는 그래픽으로 새면 "색만으로 말하지 않는다"가 반대로 깨진다.
-  // `<time>`은 장식이 아니라 시각이다 — UTC 접근 이름을 든다 (audit #41).
-  expect([...status.children].filter(node => node.tagName !== "TIME").every(node => node.getAttribute("aria-hidden") !== null)).toBe(true);
+  // 배지 안에 글리프를 넣지 않는다(2026-09-30 사용자 — 실패 배지만 아이콘을 들어 튀었다). 낱말이 상태를 든다.
+  // `<time>`은 시각이다 — UTC 접근 이름을 든다 (audit #41).
+  expect([...status.children].filter(node => node.tagName !== "TIME")).toEqual([]);
   expect(document.querySelector("[data-source-glyph]")?.getAttribute("data-tone")).toBe(tone);
 });
 it("상세의 적재 상태는 칩 하나와 두 줄로 선다", async () => {
@@ -207,7 +205,7 @@ it("상세의 적재 상태는 칩 하나와 두 줄로 선다", async () => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [failedFirst] }} adapters={[]} now={new Date()} />);
   await open();
   const dialog = document.querySelector('[role="dialog"]')!;
-  expect(dialog.textContent).toContain("First sync failed");
+  expect(dialog.textContent).toContain("Sync failed");
   expect(dialog.textContent).toContain("Updated by syncs from your repository.");
   // 목록 줄을 상세에 다시 쓰지 않는다 — 두 벌이 되면 실패 낱말이 화면마다 갈린다.
   expect(dialog.querySelector("[data-source-status]")).toBeNull();
@@ -232,12 +230,12 @@ it("상세를 읽지 못하면 설명이 로딩 중이라고 말하지 않는다
   expect(dialog.textContent).toContain("We couldn't load this source");
   expect(dialog.textContent).not.toContain("Loading source details");
 });
-it("사라진 언어는 낱말과 색을 함께 들되 파일이 사라졌다고 단정하지 않는다", async () => {
+it("사라진 언어는 낱말과 색을 함께 든다 — `Removed from repository` 한 낱말(2026-09-30 상태 통일)", async () => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
   await open();
   const row = [...document.querySelectorAll('[role="dialog"] li')].find(node => node.textContent?.startsWith("ja"))!;
-  expect(row.textContent).toContain("Missing from repository");
-  expect(document.querySelector('[role="dialog"]')!.textContent).toContain("was not found in the last sync");
+  expect(row.textContent).toContain("Removed from repository");
+  expect(document.querySelector('[role="dialog"]')!.textContent).toContain("was removed from the repository");
   expect(document.body.textContent).not.toContain("File missing");
 });
 it("적용 대기는 배지·필드 표식·값 두 줄 셋으로 말하고 같은 낱말을 두 번 쓰지 않는다", async () => {

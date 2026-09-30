@@ -12,7 +12,7 @@ Run the generated workflow on the base branch. The workflow checks the push toke
 
 If any translation has an unpublished edit, the workflow succeeds and reports `deferred`. New and removed keys wait too; the repository is not partially loaded. Publish the edits and run the workflow again, or a project owner can resolve them with [Undo and resync](revert.md).
 
-![A project's Home with one unsent change to send and a note that repository updates are paused](/guide/home-paused.webp "Unpublished edits hold repository updates until they are published.")
+![A project's Home with one unsent change to send and a note that repository updates are held](/guide/home-paused.webp "Unpublished edits hold repository updates until they are published.")
 
 ## Wait for the open pull request {#open-pull-request}
 

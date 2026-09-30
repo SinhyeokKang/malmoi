@@ -222,12 +222,13 @@ function namespaceOf(key: string): string {
 /** `1d`·`1e`·`1g`가 공유하는 PR 카드. ⚠️ **제목을 그리지 않는다** — `PullResult`에 없다(§10-6). */
 function PrCard({ repo, number, note }: { repo: string; number: number | null; note: string }) {
   return <div className="border-border flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3.5">
-    <GitPullRequestArrow className="size-4 shrink-0 text-green-800" aria-hidden />
+    {/* 열린 PR은 정보다 — 회색(2026-09-30 상태 통일, /projects 띠와 같은 톤). 성공 초록은 결과(`Sent`)가 든다. */}
+    <GitPullRequestArrow className="text-muted-foreground size-4 shrink-0" aria-hidden />
     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
       <span className="truncate text-sm">{repo}{number !== null && ` #${number}`}</span>
       <span className="text-muted-foreground text-xs">{note}</span>
     </span>
-    <Badge variant="success">{p.prState}</Badge>
+    <Badge variant="neutral">{p.prState}</Badge>
   </div>;
 }
 

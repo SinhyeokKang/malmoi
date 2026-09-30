@@ -6,7 +6,7 @@ Each source is one set of translation files in your repository. Project owners c
 
 ## Open Sources {#sources}
 
-Open **Sources** from the project navigation. Each row shows whether the source has been read, whether its status is **Last sync failed** or **First sync failed**, and which languages are available.
+Open **Sources** from the project navigation. Each row shows whether the source has been read, whether its status is **Sync failed** or **Partially synced**, and which languages are available.
 
 ![The Sources page listing two synced sources with their file paths, key counts, and languages](/guide/sources.webp "Each source is one set of translation files.")
 

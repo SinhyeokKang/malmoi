@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
 import { IconTile } from "./icon-tile";
 
 /** Shared account and project settings card. Header and row dividers have distinct roles. */
@@ -77,17 +78,18 @@ export function PanelRow({
   name,
   status,
   detail,
+  statusTone = "neutral",
   children,
 }: {
   glyph: ReactNode;
   /** 이 행이 무엇에 대한 것인가 — 굵다. */
   name: ReactNode;
   /**
-   * 이 행이 답하는 **상태**. ⚠️ **이름과 같은 줄·같은 크기다** — 13 보조 줄로 내리면 **부연으로
-   * 읽히는데**, 상태는 이 행이 묻는 질문의 답이다. 구분자(em dash)는 여기서 든다: 호출부마다
-   * 문자열에 박으면 한 화면에 `—`와 `-`가 섞인다.
+   * 이 행이 답하는 **상태** — 이름 옆 **배지**다(2026-09-30 사용자 — 옛 `이름 — 상태` 글자). 연결됨은 `success`(초록),
+   * 미연결은 `neutral`(회색), 재인가·조회 실패는 `warning`이다. 상태가 없는 행은 배지를 그리지 않는다 — 사족을 붙이지 않는다.
    */
   status?: ReactNode;
+  statusTone?: "success" | "neutral" | "warning";
   /** **다음에 할 일**을 든다. 없으면 그리지 않는다 — 빈 줄이 서면 행 높이가 이유 없이 갈린다. */
   detail?: ReactNode;
   children?: ReactNode;
@@ -96,9 +98,9 @@ export function PanelRow({
     <li className="border-border flex items-center gap-3 border-t px-4 py-[13px] first:border-t-0">
       <IconTile>{glyph}</IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <span className="truncate text-base tracking-[0.015em]">
-          <span className="font-medium">{name}</span>
-          {status !== undefined && <> — {status}</>}
+        <span className="flex min-w-0 items-center gap-2 text-base tracking-[0.015em]">
+          <span className="truncate font-medium">{name}</span>
+          {status !== undefined && <Badge variant={statusTone} className="shrink-0">{status}</Badge>}
         </span>
         {/* 보조 문구의 행간이 1.5다 — `text-xs` 기본(1.333)보다 한 단계 넓다. */}
         {detail !== undefined && <span className="text-muted-foreground text-xs leading-normal tracking-[0.02em]">{detail}</span>}

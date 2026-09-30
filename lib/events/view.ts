@@ -18,7 +18,8 @@ import { NIGHTLY_SUBTYPES, type ActorKind, type DeferReason, type EventKind, typ
  */
 
 /** ⚠️ **`Badge` variant와 같은 이름이다** (DESIGN §6.2) — 화면이 매핑 표를 또 들지 않는다. */
-export type EventTone = "muted" | "warning" | "danger";
+/** `success` — 실제로 보냈거나 받은 실행(2026-09-30 사용자 — Synced·Sent는 성공 계열이라 초록). 할 일이 없던 실행은 여전히 무색이다. */
+export type EventTone = "success" | "muted" | "warning" | "danger";
 
 export type EventViewRow = {
   kind: EventKind;
@@ -44,10 +45,10 @@ export type EventView = {
  */
 const TONES: Readonly<Record<EventResult, EventTone>> = {
   running: "muted",
-  sent: "muted",
+  sent: "success",
   nothingToSend: "muted",
   notSent: "warning",
-  imported: "muted",
+  imported: "success",
   superseded: "muted",
   deferred: "warning",
   partial: "warning",
@@ -463,8 +464,28 @@ export type EventMetaRow = {
   run: { changed: number | null; prUrl: string | null; errorCode: string | null } | null;
 };
 
-/** `badge` — 정해진 값 중 하나(트리거 `manual`)는 배지로 선다(2026-09-30 사용자 — Home 요약과 같은 모양). */
-export type EventMetaPart = string | { kind: "code" | "link" | "badge"; text: string };
+/**
+ * 보조줄 조각. **문법이 하나다** (2026-09-30 사용자 — 결과·종류·주체·사실이 규칙 없이 섞여 같은 사실을 세 번 말했다):
+ * `[배지…]  사실 · 사실 · 사실`. 배지(`badge` · 역할 `roles`)는 정해진 값만이고 맨 앞에 모이며, 나머지는 글자로 ` · `가 가른다.
+ * ⚠️ **종류 낱말과 결과를 싣지 않는다** — 종류는 글리프와 문장 동사가, 결과는 문장과 결과 열이 이미 말한다.
+ * Home 최근 로그와 Logs가 **같은 조각을 같은 컴포넌트로** 그린다(`components/logs/event-row.tsx`).
+ */
+export type EventMetaPart =
+  | string
+  | { kind: "link" | "badge"; text: string }
+  | { kind: "roles"; before: string | null; after: string | null }
+  | { kind: "locale"; code: string };
+
+/** 배지 조각인가 — 렌더러가 배지를 맨 앞에 모으고 나머지를 ` · `로 잇는다. */
+export function isBadgePart(part: EventMetaPart): boolean {
+  return typeof part !== "string" && (part.kind === "badge" || part.kind === "roles" || part.kind === "locale");
+}
+
+/** `이전 → 이후` — 이전이 없으면(첫 설정) 이후 하나만 말한다. `— → en`은 "없던 것이 생겼다"를 기호로 말해 읽히지 않았다. */
+function change(before: string | null, after: string | null): string {
+  if (before === null) return after ?? m.logs.none;
+  return `${before} → ${after ?? m.logs.none}`;
+}
 
 /** 적재 실패를 발송 실패 문구로 설명하면 복구 방향이 반대가 된다. */
 export function eventFailureMessage(row: Pick<EventMetaRow, "kind" | "subtype" | "payload" | "run">, archived: boolean): string {
@@ -488,20 +509,20 @@ export function importReasonMessage(code: string | null): string {
  */
 export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[] {
   const payload = row.payload;
-  const parts: EventMetaPart[] = [];
+  // 종류가 맨 앞 배지다 — 배지만 훑어도 무슨 사건인지 안다(2026-09-30 사용자). 실행(동기화·Publish)은 주체와 합친 한 배지다(`Manual sync`).
+  const trigger = triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype });
+  const typeWord = row.kind === "IMPORT" || row.kind === "PUBLISH" ? m.logs.meta.runType[row.kind][trigger] : m.logs.meta.type[row.kind];
+  const parts: EventMetaPart[] = [{ kind: "badge", text: typeWord }];
   switch (row.kind) {
     case "TRANSLATION": {
       if (payload?.kind !== "TRANSLATION") break;
-      parts.push(payload.surfaceSlug, payload.locale);
+      parts.push({ kind: "locale", code: payload.locale }, { kind: "badge", text: payload.surfaceSlug });
       const before = valueState(payload.before);
       const after = valueState(payload.after);
       parts.push(`${before.kind === "text" ? before.text : before.label} → ${after.kind === "text" ? after.text : after.label}`);
       break;
     }
     case "PUBLISH": {
-      parts.push(m.logs.kinds.publish);
-      // ⚠️ 자동화 행은 행위자(`Nightly`·`CI`)가 문장 머리에 선다 — 보조줄에서 주체를 두 번 말하지 않는다.
-      if (triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "manual") parts.push({ kind: "badge", text: m.logs.meta.manual });
       parts.push(row.run?.changed === null || row.run === null ? `${m.logs.detail.labels.files}: ${m.logs.none}` : m.logs.meta.files(row.run.changed));
       if (row.run?.prUrl != null) parts.push({ kind: "link", text: m.translations.publish.viewLink });
       else if (row.result !== "running") parts.push(m.logs.meta.noPullRequest);
@@ -509,42 +530,44 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
       break;
     }
     case "IMPORT": {
-      parts.push(m.logs.kinds.imports);
       if (payload?.kind !== "IMPORT") break;
-      if (triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "manual") parts.push({ kind: "badge", text: m.logs.meta.manual });
       const deferred = row.result === "deferred" ? deferredText(payload) : null;
       if (payload.refusal !== null) parts.push(refusalMessage(payload.refusal), m.logs.meta.nothingImported);
       else if (deferred !== null) parts.push(deferred);
       else if (payload.surfaces.length > 0) {
-        parts.push(payload.surfaces.map((surface) => `${surface.surfaceSlug}: ${resultWord(surface.status)}${surface.count === null ? "" : `, ${m.logs.meta.keys(surface.count)}`}`).join(" · "));
+        // 정상 반영은 결과 낱말을 싣지 않는다(문장이 말한다) — 그 밖(실패·부분·대체)만 낱말이 붙는다.
+        for (const surface of payload.surfaces) {
+          const words = [surface.surfaceSlug];
+          if (surface.count !== null) words.push(m.logs.meta.keys(surface.count));
+          if (surface.status !== "imported") words.push(resultWord(surface.status).toLowerCase());
+          parts.push(words.join(" "));
+        }
       } else if (payload.keys !== null) parts.push(m.logs.meta.keys(payload.keys));
       if (row.result !== "deferred" && (payload.pendingEdits ?? 0) > 0) parts.push(m.repositorySync.kept(payload.pendingEdits!));
       break;
     }
     case "MEMBER": {
-      parts.push(m.logs.kinds.members);
       if (payload?.kind !== "MEMBER") break;
-      if (payload.role !== null) parts.push(`${roleWord(payload.role.before)} → ${roleWord(payload.role.after)}`);
+      // 역할은 배지다 — 합류(이전 없음)면 새 역할 하나, 변경이면 이전 → 이후.
+      if (payload.role !== null) parts.push({ kind: "roles", before: payload.role.before === null ? null : roleWord(payload.role.before), after: payload.role.after === null ? null : roleWord(payload.role.after) });
       else parts.push(payload.targetLabel);
       break;
     }
     case "SURFACE": {
-      parts.push(m.logs.kinds.sources);
       if (payload?.kind !== "SURFACE") break;
-      if (payload.adapter !== null) parts.push({ kind: "code", text: payload.adapter });
+      if (payload.adapter !== null) parts.push({ kind: "badge", text: payload.adapter });
       if (payload.baseLocale !== null) {
-        parts.push(`${payload.baseLocale.before ?? m.logs.none} → ${payload.baseLocale.after ?? m.logs.none}`);
+        parts.push(change(payload.baseLocale.before, payload.baseLocale.after));
         if (row.subtype.startsWith("surface.baseLocale")) parts.push(m.logs.meta.declarationOnly);
       }
       break;
     }
     default: {
-      parts.push(m.logs.kinds.settings);
       if (payload?.kind !== "SETTINGS") break;
       if (row.subtype === "settings.pushTokenRotated") parts.push(m.logs.meta.tokenEffect);
       else if (row.subtype === "settings.archived") parts.push(m.logs.meta.archivedEffect);
       else if (row.subtype === "settings.restored") parts.push(m.logs.meta.restoredEffect);
-      else if (payload.value !== null) parts.push(`${payload.value.before ?? m.logs.none} → ${payload.value.after ?? m.logs.none}`);
+      else if (payload.value !== null) parts.push(change(payload.value.before, payload.value.after));
       break;
     }
   }
@@ -564,6 +587,6 @@ function resultWord(status: "imported" | "partial" | "failed" | "superseded"): s
   return m.logs.status.failed;
 }
 
-function roleWord(role: string | null): string {
+export function roleWord(role: string | null): string {
   return role === null ? m.logs.none : role.charAt(0) + role.slice(1).toLowerCase();
 }

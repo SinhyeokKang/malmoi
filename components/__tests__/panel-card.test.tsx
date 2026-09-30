@@ -15,7 +15,8 @@ it("제목 유무에 따라 접근 이름과 헤더를 함께 제공한다", asy
 it("승격한 행은 제목·상태·설명·동작을 유지한다", async () => {
   const { container } = await render(<PanelCard title="Connections"><PanelRows><PanelRow glyph={<span>G</span>} name="GitHub" status="Connected" detail="Account"><button>Manage</button></PanelRow></PanelRows></PanelCard>);
   expect(container.querySelectorAll("ul > li")).toHaveLength(1);
-  expect(container.textContent).toContain("GitHub — Connected");
+  // 상태는 이름 옆 배지다(2026-09-30 사용자 — 옛 `이름 — 상태`).
+  expect(container.querySelector("li .rounded-full")?.textContent).toBe("Connected");
   expect(container.querySelector("button")?.textContent).toBe("Manage");
 });
 it("inset과 페이지 경고의 역할은 같고 카드 경고만 radius를 없앤다", async () => {
