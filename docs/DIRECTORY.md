@@ -454,16 +454,28 @@ lib/
                         pull 쪽에서 그 침묵이 내는 결과는 base_tree 누락, 즉 나머지 파일이 전부 삭제된 커밋이다
                         ⚠️ pull/message는 PullOutcome 유니온의 주인이다 — 화면과 Action이 **값으로** 받는
                         타입이라 run의 결과에 실패 갈래를 더해 한 자리에서 닫는다
+                        ⚠️ pull/targets의 정렬 키는 `lastNightlyAt`(2026-09-30 — 편집 없는 프로젝트가 `SyncRun`을 안 만들어
+                        옛 키로는 영원히 맨 앞이다)이고, 루프 상수 셋(`PULL_BATCH_LIMIT`·`PULL_TIME_BUDGET_MS`·
+                        `NIGHTLY_IMPORT_START_MS`)도 여기 산다. 야간 판정 자체는 lib/nightly/다
   import/               리포 재적재(화면 이름 `Sync`) — approval(폐기 승인 지문의 발급·재계산이 같은 함수) · read(파일 읽기·스냅샷 오류) · surface(읽기·준비
                         추출) · empty(정상 빈 카탈로그와 깨진 파싱을 가른다) · plan(거부 순서·실행권) ·
                         apply-plan(revision·실행 토큰 대조) · run(진입점 껍데기) · confirm·result·refusal
                         ⚠️ **뒤의 셋은 화면이 값으로 부르는 잎이다**(client-graph) — confirm은 어느 경고
                         줄이 서는지, result는 결과 요약, refusal은 거부의 tone·닫기·액션을 정한다.
                         판정을 컴포넌트에 두면 "형이 둘"(성공 한 줄 · 사고 두 줄)이 테스트 밖으로 나간다
+                        · automation(2026-09-30, nightly-sync — 야간 서버 적재의 **실패 분류와 종료 결과**, 순수).
+                        classifySnapshotFailure·classifySurfaceFailure가 hold(영구 서버 한도 → `deferred too-large`) ·
+                        transient(일시·자격 실패 → 사건만 `failed`) · record(CI도 같이 실패할 것 → `lastImportError`)로 가르고
+                        summarizeRun이 사후 재집계 중단(`partial`/`deferred pending-edits`)까지 접는다.
+                        ⚠️ run.ts 안에 두지 않는 이유: 그 판정이 "야간이 CI로 건강한 프로젝트를 실패로 뒤집지 않는다"의 전부라
+                        I/O 없이 표로 고정해야 한다(`__tests__/automation.test.ts`). 수동 Sync는 이 분류를 타지 않는다
   events/               **프로젝트 활동 스트림** (2026-09-20, logs-rework) — payload(어휘·종류별 맥락·
                         `runToken` 조립·`readPayload`) · view(결과 열·값 상태·UTC 날짜 카드·수집 경계선) ·
                         filter(URL 판정·커서·UTC 구간) · search(검색 문자열의 **유일한 관문**) /
-                        query(`server-only` 조회) · record(사건 기록) · ci(CI 적재 사건) · member-label
+                        query(`server-only` 조회) · record(사건 기록) · ci(CI 적재 사건) · member-label ·
+                        trigger-where(2026-09-30 — 행위자 필터 `ci`·`nightly`의 Prisma 술어. view의 `triggerOf`와 **같은 컬럼**
+                        (`actorKind`·`kind`·`subtype`)을 보고 `ci`를 AUTOMATION 안 `nightly`의 여집합으로 적는다. ⚠️ query.ts가 아니라
+                        따로인 이유: query는 `server-only`라 단위 테스트가 그 경계를 못 넘는다 — Prisma는 타입으로만 문다)
                         ⚠️ **앞의 넷은 잎이다** — 클라이언트가 값으로 읽고, 조회를 물면 그 순간 Prisma가
                         번들에 온다(POSTMORTEM 2026-09-07의 7.2MB). `client-graph.test.ts`가 파일 집합을
                         정확 일치로 고정한다
@@ -507,6 +519,19 @@ lib/
                         파일 목록으로 고정) · where(토큰 술어 pendingWhere — **미전달 술어의 주인**. countPending·
                         loadPendingEdits는 토큰 컬럼만 보는 count가 0이면 관계 조인을 건너뛴다, POSTMORTEM 2026-09-18) ·
                         backfill(옛 술어 ∧ 활성 ∧ 토큰 없음 SQL 한 문장 — 배포 B precondition 마이그레이션이 같은 조건을 복제한다)
+                        ⚠️ plan에 **열린 PR 게이트**(`planOpenPrGate`, 2026-09-30 nightly-sync)가 산다 — `/api/push` 사전 판정과
+                        야간 판정이 공유한다. `planProtectedImport`와 합치지 않은 이유는 트랜잭션 안 재판정(push/apply)이 GitHub을
+                        못 부르기 때문이다(ARCHITECTURE §5.5.2)
+  nightly/              **야간 판정** (2026-09-30, nightly-sync — ARCHITECTURE §3.05). plan(`planNightly` — 프로젝트 하나를
+                        Publish / 적재 / 스킵 / 사건 없음으로 가르는 **한 함수**, I/O 0). 껍데기는 `need`를 받을 때마다 그 입력만
+                        조회해 다시 부른다 — "무엇을 묻지 않는가"(편집이 있으면 head를, head가 같으면 PR 목록을)가 이 함수에서
+                        정해지고, 그래서 조회를 `Promise.all`로 몰지 않는다(POSTMORTEM 2026-09-13).
+                        ⚠️ lib/pull/에 두지 않는 이유: pull은 DB → PR 한 방향이고 이 판정은 그 방향과 반대(적재)까지 고른다
+                        · run(`runNightly` — 방문 하나의 껍데기. 머리에서 `lastNightlyAt`을 쓰는 **유일한 자리**이고, `need`마다
+                        head·PR을 순차로 조회해 다시 판정한 뒤 정확히 한 갈래(`runSync` · `runAutomationImport` · `nightly.skip`
+                        사건)를 부른다. server-only) · summary(`NightlyVisit` — `/api/pull` 응답 항목 `PullItem`의 본체와
+                        요약 로그 줄 `summarizeNightly`, 순수). ⚠️ `NightlyVisit`을 손으로 적고 판정의 skip·none 갈래와 같은지
+                        컴파일 타임에 잰다 — `Omit<union>`이 갈래별 필드를 지워서다
   privacy/              개인정보처리방침의 등재부 — collected(모델 전수 분류 + personal 모델의 스칼라
                         전수 → 방침의 절 id). ⚠️ **로직 0의 데이터 파일이고 게이트는 pnpm typecheck이다** —
                         모델·필드가 늘면 이름을 지목하며 red. import type 하나뿐이라 server-only가 아니다
@@ -596,6 +621,9 @@ lib/
                         actorLabel의 null이 아니다) · meta(행이 상태에 따라 사라지거나 는다) ·
                         sync-time(lastSyncTime — lastImportedAt의 최댓값, 시각 컬럼 이전 적재는 "unrecorded"로 null과 가른다)
                         ⚠️ **전부 I/O가 없고 server-only를 안 붙인다** — 테스트가 직접 import한다
+                        ⚠️ **예외 하나 — runs(2026-09-30, nightly-sync)는 server-only 조회다**: 메타 열의 실행 주체용 사건 셋
+                        (최근 성공 적재 · 최근 적재(보류 포함) · 최근 성공 Publish)을 읽어 meta의 `homeTriggers`에 넘긴다.
+                        행위자를 select하지 않는다(POSTMORTEM 2026-09-29 #146). 판정(주체·보류 한 줄)은 meta에 남아 순수다
   shell/panel-size.ts   px 치수 → 리사이즈 패널의 % 제약. ⚠️ 분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다
                         — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
                         ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다
@@ -613,7 +641,9 @@ lib/
                         그 판정의 순수 부분(변경된 로케일 **파일 수** · PR 번호 파싱). ⚠️ 키 수가
                         아니다 — 서버는 그 커밋을 체크아웃하지 않아 셀 수가 없다
   projects/open-pr.ts   server-only. installation 토큰으로 sync 브랜치의 **열린 PR 하나**를 찾는다 —
-                        Publish·Sync 화면이 "이미 열려 있다"를 말할 근거다
+                        Publish·Sync 화면이 "이미 열려 있다"를 말할 근거다. loadOpenPrForImportGate(2026-09-30)는
+                        `/api/push` 게이트용 입력이다 — ⚠️ `installationId`·`repositoryId` null이면 `null`(게이트 없음)이고
+                        loadOpenPrUrl의 `repositoryId null → undefined`를 그대로 쓰지 않는다(옛 행의 CI가 영구 보류된다)
   projects/pr-url.ts    parseGithubPrUrl(순수). ⚠️ 저장된 URL을 **그 프로젝트의 owner/name으로 다시 검증**한다
                         — DB 문자열을 그대로 링크로 내면 남의 리포를 가리키는 값이 화면에 선다
   projects/import-failure.ts
