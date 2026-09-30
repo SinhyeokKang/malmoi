@@ -167,7 +167,7 @@
 - **T21 Logs** — D3③/1-Y16(결과 칩 §2.4 칸, 성공 neutral) · 4-Y2/5-Y11(`rounded-lg`, 골격도) · 4-Y3(첫 행 선) · 4-Y21(상세 머리 `[종류][결과]` 배지) · 3-Y6(상세 바닥 `lg`) · 3-⚪16(`CloseButton`) · 4-W9(골격 chevron 칸).
   뒤집는 테스트: `visual-system.test.ts:199,225`.
   검증 [자동]: `pnpm exec vitest run components/__tests__/logs-* components/__tests__/visual-system.test.ts` green.
-- **T22 Settings · Account · MCP · Members · 온보딩** — 3-Y10 나머지(확정 = 동사+목적어 — `members.remove`·`settings.account.disconnect`·`link.methods.disconnect`의 확정용 키, U4에서 넘어옴) · 🔴 L(MCP rotate 확정 `danger`, 트리거 "Rotate token") · 3-Y2(push rotate 트리거 `danger`) · 3-Y3(sessions → (a)) ·
+- ✅ **T22** (U8) **Settings · Account · MCP · Members · 온보딩** — 3-Y10 나머지(확정 = 동사+목적어 — `members.remove`·`settings.account.disconnect`·`link.methods.disconnect`의 확정용 키, U4에서 넘어옴) · 🔴 L(MCP rotate 확정 `danger`, 트리거 "Rotate token") · 3-Y2(push rotate 트리거 `danger`) · 3-Y3(sessions → (a)) ·
   3-Y6(CI "Close", 초대 모달 Cancel) · 3-Y7(Publish 재로그인 새 탭) · 3-Y9(`ExternalLink` 제거 — `repository-card.tsx:4` 한 곳) · 3-⚪14(Retry `primary lg w-full`) ·
   3-⚪17(sessions `busy`) · 3-Y8(Q4: `/account` 로그아웃 Dialog 제거, "Sign out everywhere"는 유지) · 1-Y15(Repository 칸 tone) · 4-Y12(CI 행 hover) · 4-Y13(초대 띠 indent) · 4-Y22(사실 라벨 muted) · 5-Y10(MCP 로드 실패 → `Alert inset danger`) ·
   5-Y13(push 토큰 칸 — 온보딩·설정 한 형) · 5-W1(필드 오류 줄 — `FormGroup`의 줄을 떼어 넷이 공유) · 2-Y19(보관 `utcDay`, 방침 개정 이력 `utcDay`, 가입 `utcMonth` 신규 in `lib/utc-time.ts`) ·
