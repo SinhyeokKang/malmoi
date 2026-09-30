@@ -102,7 +102,20 @@ export type HomeTriggers = { sync: Trigger | null; publish: Trigger | null; held
 export const SUCCESSFUL_IMPORT_RESULTS = ["imported", "partial"] as const;
 
 /**
+ * `lastImportedAt`을 적어도 한 표면에서 전진시킨 적재인가. ⚠️ `partial` 사건은 표면이 전부 코드를 달고 끝났을 수 있다 — 그 표면은
+ * `lastImportedAt`을 안 쓴다(`importOutcomeFields`). 그러면 `Last sync` 시각은 더 옛 실행의 것이라 이 사건의 주체를 붙이면 거짓이다.
+ */
+function advancedSyncTime(event: RunEvent): boolean {
+  if (event.result === "imported") return true;
+  if (event.result !== "partial") return false;
+  const payload = readPayload(event.kind, event.payload);
+  return payload?.kind === "IMPORT" && payload.surfaces.some((surface) => surface.status === "imported");
+}
+
+/**
  * 사건 셋 → 메타 열의 주체와 보류 한 줄 (nightly-sync 14·14a).
+ *
+ * ⚠️ **고른 적재 사건이 못 쓰이면 더 옛 사건으로 물러나지 않는다** — 물러난 사건이 `lastSyncAt`과 다른 실행일 수 있다. 틀린 주체보다 주체 없음이 낫다.
  *
  * ⚠️ **`lastSyncAt`(표면 `lastImportedAt`)과 사건 시각을 대조하지 않는다** — 트랜잭션 경계가 달라 밀리초가 갈리고, 대조가
  * 실패하면 주체가 조용히 사라진다.
@@ -112,7 +125,7 @@ export function homeTriggers(input: { lastImport: RunEvent | null; latestImport:
   const latest = input.latestImport;
   const payload = latest === null ? null : readPayload(latest.kind, latest.payload);
   return {
-    sync: last !== null && (SUCCESSFUL_IMPORT_RESULTS as readonly (string | null)[]).includes(last.result) ? triggerOf(last) : null,
+    sync: last !== null && advancedSyncTime(last) ? triggerOf(last) : null,
     publish: input.lastPublish === null ? null : triggerOf(input.lastPublish),
     heldByOpenPr: latest?.result === "deferred" && payload?.kind === "IMPORT" && payload.deferReason === "open-pr",
   };

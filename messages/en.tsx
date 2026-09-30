@@ -904,7 +904,7 @@ export const en = {
       /** `2b`의 둘째 값 — `1d ago · failed 10m ago`. */
       failedAt: (when: string): string => `failed ${when}`,
       /** 최근 적재 사건이 열린 Malmoi PR로 보류됐다 (nightly-sync 14a) — 푸는 조건(머지)을 말한다. */
-      heldByOpenPr: "held until the pull request is merged",
+      heldByOpenPr: "held until the pull request is merged or closed",
       never: "Never",
       /** 캔버스는 `Pull request #127 · 2d ago` — **무엇을 보냈나**가 먼저고 시각이 뒤다. */
       pullRequest: "Pull request",
@@ -1076,8 +1076,11 @@ export const en = {
     deferReasons: {
       "open-pr": "A Malmoi pull request is still open. Nothing was synced — syncing resumes once it's merged or closed.",
       "pr-check-failed": "We couldn't check GitHub for an open Malmoi pull request, so nothing was synced. The next run checks again.",
-      /** ⚠️ 서버 적재 예산은 수동 Sync도 지난다 — [Sync]를 출구로 권하면 같은 이유로 또 실패한다. 예산 밖 경로는 리포 워크플로다. */
-      "too-large": "The repository change is too large for a server-side sync. Nothing was synced — your repository's workflow can still deliver it.",
+      /**
+       * ⚠️ 서버 적재 예산은 수동 Sync도 지난다 — [Sync]를 출구로 권하면 같은 이유로 또 실패한다. 출구는 둘이다: 파일을 줄인다
+       * (`resource-limit` 문구와 같은 방향) · 예산 밖 경로인 리포 워크플로. 야간의 주 대상이 워크플로 없는 프로젝트라 앞엣것이 먼저다.
+       */
+      "too-large": "The repository change is too large for a server-side sync. Nothing was synced. Reduce the files' size, or deliver it with the repository workflow.",
     },
     empty: {
       title: "No activity yet",
