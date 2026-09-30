@@ -32,7 +32,8 @@
   - **§6.67:1701**: 로그아웃 확인 없음, "Sign out everywhere"만 확인(Q4). §6.64: Home 할 일 행 보조줄은 아래(Q9). §6.68:1727: Logs ResultBadge 성공 neutral 유지(D3③ 예외).
   - 1766행: 결과 배지는 행 오른쪽(D3⑤). :1113 nightly 표기 → 배지 먼저(nightly G5 흡수). :1103·:1209 "paused". :1356 Logs `Not sent` → 사전과 맞춤("Held back").
   - §6.8: 검색 0건 `SearchX`·프로젝트 0개 `Box`(5-W3), 소스 0개 = `EmptyRowCard inset`(5-Y18 — :628의 "Sources 빈 카드 = `IconTile lg`" 교체). §4: "`Not sent` 알약" → Unsent(2-W10).
-  - §10.1: design §5의 개념 행을 올린다(개념 색인).
+  - §10.1: design §5의 개념 행을 올린다(개념 색인). Home 카드 제목 To send/review/translate(동사형)와 상태 낱말의 품사 차이를 한 줄로 등재(1-W8).
+  - 원본 ID 대응(D3로만 다뤄지던 것): 1-W1(D3①) · 1-W2(D3②) · 1-Y16(D3③) · 3-Y5(D3④) · 4-W12(D3⑤) · 5-W6(Q8).
   - :137 "목록은 행마다 GitHub을 부르지 않는다" → "목록의 **연결 판정**은 GitHub을 보지 않는다"(원격 신호는 이미 부른다).
   검증 [수동]: 아래 체크리스트를 §2.4와 나란히 읽어 전부 ✓ — D3① · D3② · D3③ · D3④ · D3⑤ · Q1 · Q2 · Q3 · Q4(§6.67) · Q5 · Q6 · Q8 · Q9 · Q10 · 예외 둘 · 알려진 틈 넷 · 글리프 열 · 동작 규칙 둘.
   DESIGN을 읽는 자동 테스트는 **지금 없다**. [자동] `pnpm test` green(문서만 바뀌므로 회귀 없음 확인).
@@ -86,20 +87,20 @@
   검증 [자동]: `pnpm exec vitest run lib/status components/__tests__/client-graph.test.ts` green.
 - **T9** `isExpired(expiresAt, now)` — 6-⚪14. 초대·MCP 토큰 사본 여섯(design §3.7)을 교체, 경계(정각 = 만료) 테스트. OAuth 5곳은 제외(spec Q14).
   검증 [자동]: `pnpm exec vitest run lib/auth lib/invitation-email lib/mcp` green.
-- **T10** Logs 판정 `lib/events/view.ts` — 1-Y2(Sync `Syncing…`/Publish `Publishing…`) · 4-Y20(IMPORT 인라인 결과 낱말 제거, 소스는 배지) · Q1(Sync 실패 결과 배지는 "Failed" 유지) ·
-  **성공 톤 `muted`(D3③ 예외)** · `notSent`는 그대로(Q14) · `view.test.ts:31-33` 전제를 "(종류, 결과)마다"로. 결과 칩 톤을 `STATE`에서(D3③).
+- **T10** Logs 판정 `lib/events/view.ts` — 1-Y2/2-Y2(Sync `Syncing…`/Publish `Publishing…`) · 4-Y20(IMPORT 인라인 결과 낱말 제거, 소스는 배지) · Q1(Sync 실패 결과 배지는 "Failed" 유지) ·
+  **성공 톤 `muted`(D3③ 예외, 1-Y16)** · 2-W9 일부(`view.ts:118` `NIGHTLY_CLAUSE` 리터럴 사본 → 사전) · `notSent`는 그대로(Q14) · `view.test.ts:31-33` 전제를 "(종류, 결과)마다"로. 결과 칩 톤을 `STATE`에서(D3③).
   검증 [자동]: `pnpm exec vitest run lib/events` green.
   `[commit] refactor(status): state canon, expiry and Logs judgment` (T8–T10) — `pnpm gate` green.
 
 ## C. 프리미티브
 
-- **T11** `IconTile tone` · `StatusBadge` 신규 · `Badge`의 `danger` variant 삭제와 `missing`의 `gap-1.5` 삭제(D3② · 5-Y19).
+- **T11** `IconTile tone` · `StatusBadge` 신규 · `Badge`의 `danger` variant 삭제와 `missing`의 `gap-1.5` 삭제(D3② · 1-W2 · 5-Y19).
   - **같은 커밋에서** 유일한 `danger` 소비자 `components/translations/locale-badge.tsx:80` → `missing`(🔴 K — T20에서 당겨옴, 국기 면제).
   - `visual-system.test.ts` `REGISTERED`(`:97` amber · `:116` green)에 `icon-tile.tsx` 등재.
   - 테스트: tone별 클래스 = §2.4 칸 열, `StatusBadge` 전 `StateKey` 렌더(variant = `STATE[k].variant`).
   - 뒤집는 테스트: `status-badges.test.tsx:15` · `label-weight.test.ts:18` · `translations-screen.test.ts:283` · `icon-tile.test.tsx:18-33`.
   검증 [자동]: `pnpm typecheck` green(`danger` 참조 0) + `pnpm exec vitest run components/__tests__/{status-badges,label-weight,translations-screen,icon-tile,visual-system}*` green.
-- **T12** `CountBadge` 신규 — 0이면 null, `aria-hidden` 숫자 + sr 문장. `PanelCard`·`RowCard`·`PanelHeader`에 **`count` prop 신설**(`badge` 슬롯은 그대로). 🔴 M · 4-Y5.
+- **T12** `CountBadge` 신규 — 0이면 null, `aria-hidden` 숫자 + sr 문장. `PanelCard`·`RowCard`·`PanelHeader`에 **`count` prop 신설**(`badge` 슬롯은 그대로). 🔴 M · 4-Y5 · 5-W5(`surface-selector` 기본 `muted`).
   **소비자 전부 교체(spec Q13)**: `attention-card:61` · `sources-screen:72,78` · `source-detail-modal:144` · `tree-panel:41` · `key-list:50` · `workspace:585` · `project-list:145` ·
   `sidebar:206` · `segmented-control:77` · `surface-selector:26` · `publish-button:134`. ⚠️ `key-list`·`workspace`·`tree-panel`은 `translation-filter-scope` 뒤에(선행 순서).
   뒤집는 테스트: `members-cards.test.tsx:67,263` · `card-head.test.ts:20` · `panel-header.test.tsx` · `account/__tests__/structure.test.tsx:290`.
@@ -108,7 +109,7 @@
   뒤집는 테스트: `primitive-focus.test.tsx:26,48,114,142,164` · `dialog-layer.test.tsx:7`.
   검증 [자동]: `pnpm exec vitest run components` green.
   검증 [수동]: design §4의 13곳 Dialog를 브라우저로 열어 첫 포커스가 Cancel(`log-filters`는 첫 날짜 입력)·닫힌 뒤 트리거 복귀(POSTMORTEM 2026-09-20·24).
-- **T14** `PanelCard` — 머리 아래 선은 머리가 긋고(notice 아래), 자식 `border-t` 금지 · `PanelHeader`(`components/shell/content-panel.tsx:76`) `notice` 슬롯(`description` 아래) + `min-h-9`, 수동 `min-h-9` 4곳 제거. 4-Y1 · 4-Y7 · 4-Y8.
+- **T14** `PanelCard` — 머리 아래 선은 머리가 긋고(notice 아래), 자식 `border-t` 금지 · `PanelHeader`(`components/shell/content-panel.tsx:76`) `notice` 슬롯(`description` 아래) + `min-h-9`, 수동 `min-h-9` 4곳 제거. 4-Y1 · 4-Y7 · 4-Y8 · 4-W1(카드 제목 자간·머리 gap 한 벌).
   소비자 14곳 표(design §4)와 `settings/page.tsx:62` Alert 순서 변경.
   뒤집는 테스트: `card-head.test.ts:19-23` · `panel-card.test.tsx:27` · `panel-header.test.tsx`.
   검증 [자동]: `pnpm exec vitest run components app` green. 검증 [수동]: 소비자 14곳 카드를 하나씩 열어 머리 아래 선 1개·중복 0.
@@ -116,7 +117,7 @@
 
 ## D. 사전 (messages/en.tsx) + 개념 색인
 
-- **T15** 상태 낱말 — design §5 표의 상태 행 전부. 1-Y1/2-Y1 · 1-Y2 · 2-Y3 · 🔴 H(1-Y3/2-R2) · 🔴 I(1-Y4/2-R3) · 1-Y5 · 1-Y6/2-W8 · 1-Y11/2-Y4 · 1-Y13/2-Y8 ·
+- **T15** 상태 낱말 — design §5 표의 상태 행 전부. 1-Y1/2-Y1 · 1-Y2/2-Y2 · 2-Y3 · 🔴 H(1-Y3/2-R2) · 🔴 I(1-Y4/2-R3) · 1-Y5 · 1-Y6/2-W8 · 1-Y11/2-Y4 · 1-Y13/2-Y8 ·
   1-Y17("Never" → "Not synced yet" — **동기화 문맥 키만**, MCP 연결 앱 "Never"는 유지) · 2-Y5 · 2-Y6 · 2-Y7(cells) · 1-W6 · 🔴 A2 문구(partial 제목·attention 문장) · 🔴 C 띠 문장(`unpinned`에서 참인 문장, "stop") ·
   열린 PR 조회 실패 문장("Couldn't check for an open pull request") · "Superseded" 보조 문장.
   - `terminology.test.ts`: `BANNED`에 §5 금지 목록 추가 + **`ALLOWED` 판정식 확장**(접두 허용 · 한 키에 금지어 여럿) + 판정식 메타 테스트.
@@ -138,14 +139,16 @@
 각 태스크는 **상태 키·tone을 넘기고 variant·색 문자열을 고르지 않는다**. 뒤집는 테스트는 클래스 문자열 대신 상태 키·`data-tone`으로 단언을 옮긴다.
 **화면 태스크의 공통 검증** — [자동] 그 화면 스위트 + 뒤집은 단언이 상태 키·`data-tone`으로 옮겨졌는지 `pnpm exec vitest run <파일들>` green. [수동]은 태스크별로 적는다.
 
-- **T17 Sources** — 🔴 A1(행 칸 `IconTile tone`) · 🔴 J(결과 행 `BannerLine tone`, 상세도) · 1-Y6/5-Y6(성공 칸 초록) · 4-Y6(총계 카드에만) · 4-Y11(chevron muted) ·
+- **T17 Sources** — 🔴 A1(행 칸 `IconTile tone`) · 🔴 J(결과 행 `BannerLine tone`, 상세도) · 5-Y6(성공 칸 초록) · 4-Y6(총계 카드에만) · 4-Y11(chevron muted) ·
   4-Y14(0개 = `EmptyRowCard inset`) · 4-Y16(골격 설명 줄·버튼 제거) · 4-Y23(`ArrowRight` → `ChevronRight`) · 5-Y7(선택 면 0.07) · 5-Y10(사라짐 띠 → `BannerLine danger`) ·
-  5-Y14(수제 원 스피너) · 5-Y18(Meter 막대 — `LocaleMeter`와 공유) · 5-Y19(배지 글리프) · 5-W4(`Plus` 16) · 6-⚪13(`statusAt` 인라인 제거).
+  5-Y14(수제 원 스피너) · 5-Y18(Meter 막대 — `LocaleMeter`와 공유) · 5-Y19(배지 글리프) · 5-W4(`Plus` 16) · 6-⚪13(`statusAt` 인라인 제거) ·
+  4-Y24·5-Y1(Sources 보관 화면 — 머리 Archived 배지 = `StatusBadge archived`, 출구 낱말 하나) · 4-W13(`sources/loading.tsx:31,45` 골격 카운트 원).
   뒤집는 테스트: `sources-screen.test.tsx:201` · `sibling-loading.test.tsx:101-102` · `screens.test.ts:402`(소스 문자열 확인).
   검증 [자동]: `pnpm exec vitest run components/__tests__/sources-screen.test.tsx app` green. [수동]: partial 소스 행이 호박·"Partially synced".
-- **T18 Home** — 🔴 A2(메타 "failed" → partial은 warning 배지 · 실패만 Sync failed) · 🔴 B(Sync 결과 neutral) · 1-Y7(보관 `StatusBadge`) · 1-Y14(미연결 거부 neutral / 끊김 warning) ·
+- **T18 Home** — 🔴 A2(메타 "failed" → partial은 warning 배지 · 실패만 Sync failed) · 🔴 B(Sync 결과 neutral) · 1-Y7/5-Y1(보관 `StatusBadge`) · 1-Y14(미연결 거부 neutral / 끊김 warning) ·
   4-Y4(행 선 RowCard 규칙) · 4-Y19·4-W11(메타 배지-먼저, `[Nightly sync] 1d ago`, 색 글자 → 배지) · 5-Y3(호박 글자 700) · 5-Y4(`CircleX`) · 5-Y5(`Eye`) ·
-  5-Y12(카드 셋 → `PanelCard`) · 3-⚪15(Try again 글리프) · 4-Y10(Q9: 할 일 행 보조줄 아래로) · D3⑤(Recent logs 배지 오른쪽) ·
+  5-Y12(카드 셋 → `PanelCard`) · 3-⚪15(Try again 글리프) · 4-Y10(Q9: 할 일 행 보조줄 아래로) · D3⑤/4-W12(Recent logs 배지 오른쪽) · 1-W4(메타 꼬리 소문자 — 배지화로 소멸) ·
+  4-Y14(Home 부분 — `attention-card.tsx:66`·`logs-card.tsx:37` 카드 안 빈 상태를 Sources와 같은 형) ·
   Q6(**`pending > 0`이면 PR 조회 생략**, 아니면 `loadOpenPrUrl` promise를 보조줄·메타에 **Suspense 스트리밍**, `pr-check-failed` = Held + 사유).
   측정 [수동]: T20과 같은 방식·판정선으로 Home 착지.
   뒤집는 테스트: `home-meta-trigger.test.tsx:32,40,41,46-58` · `sync-result.test.tsx:161`(거부 tone, 1-Y14) · `home-vocabulary.test.ts:137` · `home-screen.test.ts:244,248` · `home-landmarks.test.tsx`.
@@ -161,7 +164,7 @@
   preview(`dev.mal-moi.com`)에서 1회 교차 확인. 결과를 ARCHITECTURE §1.95 표에 추가(T29).
   검증 [자동]: `pnpm exec vitest run components/__tests__/translations-screen.test.ts lib/github-connect/__tests__/probe-memo.test.ts` green(memo 호출부 불변).
   [수동]: 선택 행·hover 행 위의 Unsent 배지 대비 · `repositoryId null` 프로젝트에서 Publish·Sync 첫 렌더부터 꺼짐.
-- **T21 Logs** — D3③(결과 칩 §2.4 칸, 성공 neutral) · 4-Y2(`rounded-lg`, 골격도) · 4-Y3(첫 행 선) · 4-Y21(상세 머리 `[종류][결과]` 배지) · 3-Y6(상세 바닥 `lg`) · 3-⚪16(`CloseButton`) · 4-W9(골격 chevron 칸).
+- **T21 Logs** — D3③/1-Y16(결과 칩 §2.4 칸, 성공 neutral) · 4-Y2/5-Y11(`rounded-lg`, 골격도) · 4-Y3(첫 행 선) · 4-Y21(상세 머리 `[종류][결과]` 배지) · 3-Y6(상세 바닥 `lg`) · 3-⚪16(`CloseButton`) · 4-W9(골격 chevron 칸).
   뒤집는 테스트: `visual-system.test.ts:199,225`.
   검증 [자동]: `pnpm exec vitest run components/__tests__/logs-* components/__tests__/visual-system.test.ts` green.
 - **T22 Settings · Account · MCP · Members · 온보딩** — 🔴 L(MCP rotate 확정 `danger`, 트리거 "Rotate token") · 3-Y2(push rotate 트리거 `danger`) · 3-Y3(sessions → (a)) ·
@@ -171,7 +174,7 @@
   2-Y18(`repo.tsx:174-175` placeholder `…` + label 분리 — 번역 트리는 비목표) · 2-W9(`files.tsx:564,574` 리터럴 → 사전) — T16에서 옮김.
   뒤집는 테스트: `account/__tests__/structure.test.tsx:299-333`.
   검증 [자동]: `pnpm exec vitest run components app lib/utc-time` green. [수동]: 로그아웃이 확인 없이 되고 "Sign out everywhere"는 확인 · sessions 폐기 뒤 포커스 복귀(POSTMORTEM 2026-09-20·24).
-- **T23 앱 셸 · 공통** — 4-Y18(`app/(edit)/error.tsx` = Logs 경계 형) · 4-W6(404 아이콘) · 4-Y17(`account/loading.tsx` 낭독 줄) · 4-W7·1-W7·2-W10(낡은 주석) ·
+- **T23 앱 셸 · 공통** — 4-Y24(project-archived 화면 — 출구 낱말을 T17과 하나로) · 4-Y18(`app/(edit)/error.tsx` = Logs 경계 형) · 4-W6(404 아이콘) · 4-Y17(`account/loading.tsx` 낭독 줄) · 4-W7·1-W7·2-W10(낡은 주석) ·
   4-W3(행 padding `py-[13px]`) · 4-W4·5-Y8(hover·선 철자 하나) · 4-W8(px 골격 → `SkeletonLine`) · 5-W2(`RotateCcw` = Clear filters만, Retry·재발급 글리프 정리) · 4-W2(Publish 경고 카드 radius·개수 배지) ·
   5-Y16·1-Y5(Q10: Publish 결과 `Notice` → `Alert` success·neutral·warning, 일부 보류 글리프에 톤) · IconTile 색 덮기 잔여(`onboarding/steps/{naming:256,files:178,repo:247}` · `token-grant-fields.tsx:134,173,220` — 면 색은 T28 허용 목록).
   뒤집는 테스트: `projects-screen.test.ts:269,301` · `sidebar-selection.test.ts:27` · `public-shell.test.tsx:218`(hover — T19에서 옮김).
@@ -185,10 +188,10 @@
 
 - **T25** 본문 — 7-#3(축 이름 대신 보이는 기본값) · 7-#4(보류 산문 held, CI `deferred`는 "Logs shows it as **Held**"로 잇기) · 7-#5(unsent edits) ·
   7-#6(배지 → 동작 짝: Disconnected → Reconnect, Not connected → Connect, Wrong repository → 새 프로젝트, Couldn't check → 새로고침; D1 반영) ·
-  7-#7(Malmoi is ready = 마지막 단계) · 7-⚪8(번역 화면 필터 순서 — `translation-filter-scope`가 끝난 뒤의 순서를 따른다, 선행 순서로 보장) · 7-⚪9~15.
+  7-#7(Malmoi is ready = 마지막 단계) · 7-⚪16(CI `deferred` ↔ Logs Held 잇는 문장 = 7-#4와 같은 줄) · 7-⚪8(번역 화면 필터 순서 — `translation-filter-scope`가 끝난 뒤의 순서를 따른다, 선행 순서로 보장) · 7-⚪9~15.
   (굵은 라벨 중 사전 변경에 걸린 줄은 이미 T15·T16이 고쳤다 — 여기는 산문.)
   검증 [자동]: `pnpm exec vitest run lib/guide lib/i18n` green(`brand-spelling`이 가이드 md도 본다 — "the app" 소문자 문맥 주의).
-- **T26** 게이트 — design §5.1.
+- **T26** 게이트 — design §5.1 · 7-#1(state-filter 컷) · 7-#2(home-paused 컷 · SHOOTING.md:71).
   - `lib/guide/__tests__/content.test.ts:72-76`이 **`ARIA_ONLY` 키 목록**을 빼고 굵은 라벨을 대조(aria 전용 축 이름 red) + 목록 경로 실재 메타 테스트.
   - 가이드 산문에 §5 금지 동의어 0.
   - `lib/guide/stale.ts` 새 소스 종류 `dict:<키 경로>`(기준값 = 키 값 SHA-1) + `guide/SHOOTING.md` 매핑에 키 행(`state-filter.webp` → `translations.workspace.filters.state` 등) · SHOOTING.md:71 컷 설명 "held".
@@ -238,11 +241,49 @@
 | 6-Y11 | `role === "OWNER"` 손 비교 15곳 — `Permission` 확장은 PRODUCT §4.2 비범위 |
 | 4-Y15(번역 화면 부분) | 번역 화면 검색 0건 빈 상태는 `translation-filter-scope`가 다시 설계한다 |
 | 1-Y17(MCP 연결 앱 "Never") | 마지막 사용 시각이라 동기화 낱말이 틀린 문장이 된다(spec Q14) |
-| 6-⚪14(OAuth 5곳) | `isExpired`는 초대·MCP 토큰 6곳만(spec Q14) |
+| 6-⚪14(OAuth 5곳) | 원본 6-⚪14는 초대·토큰 사본만 나열했다 — OAuth 인라인 비교는 spec Q14 범위 경계로 뺀다 |
+| 1-W3 | "Sent" vs "Sent for review" — 감사가 허용 범위로 판정(문맥이 다르다) |
+| 2-W1 | MCP 토큰 결과만 "Done" — 감사가 유지 판정(발급 결과를 확인하는 동작이라 "Close"와 뜻이 다르다) |
+| 2-W5 | "Privacy Policy" Title case — 문서 고유명 예외 |
+| 2-W6 | Logs 행 시각 "09:42" UTC 라벨 없음 — 날짜 머리 `utcDay`가 맥락을 주고 접근 이름은 `utcMinute`다 |
+| 4-W5 | 이름 줄 배지 배치 두 형 — 렌더 결과가 같다 |
+| 5-W7(Archived·만료 neutral-400 덮개) | 등재된 이탈(`status-badges.test.tsx:29`가 고정). neutral-600 덮개는 T19(1-Y8)가 해소한다 |
+| 6-Y12 | 미전달 술어 손 사본 셋 — 감사 정본 제안이 현 상태 유지이고 `test:projects:postgres`가 대조한다 |
+| 2-Y18(`tree-panel.tsx:51-52`) | 번역 트리는 `translation-filter-scope`가 설계한 자리라 비목표(T22 주석) |
 
-⚠️ 원본 157건 중 위 태스크·이 표 어디에도 ID가 없는 항목은 **착수 전 이 표에 사유와 함께 채운다** — 원본은 세션 스크래치패드에만 있었다.
+원본 181건(중복 합쳐 157) 전수 대조는 2026-10-01 `/orchestrate` 인테이크에서 마쳤다 — 태스크에 없던 24건을 위 태스크 ID 표기 또는 이 표로 옮겼다.
 
-## 후속 (이 기능 밖)
+## 런타임 검증 (2026-10-01 사용자 — 이 기능 안으로 당겼다, `/orchestrate` 마지막 단계)
 
-- `/guide-shots` — `pnpm guide:check` stale 컷 재촬영(state-filter · home-paused · sources · project-home 외).
-- `/runtime-test` — 🔴 15건을 브라우저로 한 번씩 밟는다(특히 C·E·F: 픽스처가 필요하다 — `repositoryId` null 프로젝트, 표면 둘 중 하나 실패).
+- `/runtime-test` — 🔴 15건을 브라우저로 한 번씩 밟는다(특히 C·E·F: 픽스처가 필요하다 — `repositoryId` null 프로젝트, 표면 둘 중 하나 실패) + 각 배치 인계의 (b) 목록 + T18·T20 측정.
+- `/guide-shots` — `pnpm guide:check` stale 컷 재촬영(state-filter · home-paused · sources · project-home 외). runtime-test가 찾은 결함이 dev에 들어간 뒤.
+
+## 오케스트레이션 (2026-10-01 `/orchestrate`)
+
+### 배치 표
+
+| 단계 | 배치 | 태스크 | 선행 | 워커 모델 · effort | 이유 |
+|---|---|---|---|---|---|
+| 1 | U1 정본 문서 | T1 · T2 | — | Opus · medium | 모든 화면이 맞춰 볼 정본이라 모순 판별이 핵심 |
+| 1 | U2 순수 판정 | T3–T10 | — | Opus · high | 보호 게이트 옆·`query.ts`(postgres)·MCP 출력 경계 |
+| 2 | U3 프리미티브 | T11–T14 | U2(`canon.ts`) | Opus · medium | 소비자 전수 교체, 포커스 규칙 |
+| 2 | U5 교차 테스트 | T27 | U2 | Opus · medium | 새 테스트 파일 하나, 판정 결함은 U2로 돌린다 |
+| 3 | U4 사전 | T15–T16 | U3 | Opus · medium | `terminology` 판정식 확장 + 테스트 뒤집기 다수 |
+| 4 | U6 화면 A | T17 · T21 · T24 | U4 | Opus · medium | Sources · Logs · 랜딩 목업 |
+| 4 | U7 화면 B | T18 · T19 · T20 | U4 | Opus · high | Suspense 스트리밍 배선 둘(Home PR · 번역 연결) |
+| 4 | U8 화면 C | T22 | U4 | Opus · medium | Settings·Account·MCP·Members·온보딩 |
+| 4 | U9 가이드 | T25 · T26 | U4 | Opus · medium | `stale.ts` 새 소스 종류(코드) 포함 |
+| 5 | U10 공통 정리 | T23 | U6 · U7 · U8 | Opus · medium | 여러 화면에 걸친 일괄 치환 |
+| 6 | U11 불변식·문서 | T28 · T29 · T30 | 전부 | Opus · medium | 위반표·카나리아·DOM 규칙 |
+| 7 | QA | `/runtime-test` + T18·T20 측정 → `/guide-shots` | 전부 | Opus · medium | main 체크아웃(`.env.local`) |
+| 8 | U11 이어서 | §1.95 측정 행 · T31 | QA | — | |
+
+**겹침**: `messages/en.tsx`를 고치는 배치(U2·U3·U4·화면)는 단계를 나눴다. 4단계 병렬 넷은 자기 화면 키만 고치고 인계 전 `git rebase dev`.
+`project-list.tsx`는 U2(칩 순서 줄만)·U3(카운트)·U7(T19)·U10(hover)이 순서대로 든다.
+
+### 결정 기록
+
+- 2026-10-01 사용자: **`/runtime-test`·`/guide-shots`까지 이 오케스트레이션의 마지막 단계로 돈다**(원래 "후속").
+- 2026-10-01 지휘자: T18·T20의 전후 측정은 로컬 production 빌드 + DB가 필요해 워크트리(`.env.local` 없음)에서 못 잰다 — 7단계 QA 워커가 main 체크아웃에서 잰다.
+  기준 SHA = U6·U7·U8 중 **첫 화면 커밋 직전 dev 해시**(인테이크 시점 기록). 판정선 초과면 멈추고 사용자에게 올린다(spec Q7).
+- 2026-10-01 지휘자: 원본 대조로 빠진 24건을 흡수·제외했다(위 "제외 ID" 표와 각 태스크 ID 표기). 감사 자체가 허용·유지로 판정한 것만 제외했다.
