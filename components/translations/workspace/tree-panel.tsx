@@ -74,7 +74,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, onSelect, class
               >
                 <span className="flex text-neutral-600">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
                 <span className="flex text-neutral-600"><FileJson2 className="size-4" aria-hidden /></span>
-                <span className={cn("min-w-0 flex-1 truncate font-medium", narrowed && surface.keyCount === 0 && "text-muted-foreground")}>{surface.slug}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{surface.slug}</span>
                 <span className="text-muted-foreground text-xs">{surface.keyCount.toLocaleString("en-US")}</span>
               </ListItemButton>
               {open && (

@@ -26,7 +26,7 @@ import { routes } from "@/lib/routes";
 import { dirtyLocales, initKeyDraft, planDraftRecovery, reduceKeyDraft, type KeyDraftAction, type KeyDraftState } from "@/lib/translations/draft";
 import { planTranslationPanelLayout, stepPanelWidth, PANEL } from "@/lib/translations/layout";
 import { planEditorNavigation, type EditorIntent } from "@/lib/translations/navigation";
-import { clearFilters, DEFAULT_TRANSLATION_QUERY, emptyActions, FIRST_KEY, hasConditions, isNarrowed, nextQuery, translationsHref, treeQuery, type EmptyAction, type TranslationQuery } from "@/lib/translations/query";
+import { applyEmptyAction, clearFilters, DEFAULT_TRANSLATION_QUERY, emptyActions, FIRST_KEY, hasConditions, isNarrowed, nextQuery, translationsHref, treeQuery, type EmptyAction, type TranslationQuery } from "@/lib/translations/query";
 import { applySavedRow, mergeServerRows, savedOutCount, startListGeneration, type ListGeneration } from "@/lib/translations/saved-rows";
 import { countRows, narrowTree, nodeKey } from "@/lib/translations/tree-narrow";
 import { summarizeKey } from "@/lib/translations/summary";
@@ -241,8 +241,18 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     ⚠️ **서버 목록은 전량이다** (translation-filter-scope) — 같은 세대의 재검증에서 서버 행에 없는 행은 곧 조건 이탈이라 `savedOut`이 된다.
   */
   const conditionKey = JSON.stringify([routeSurfaceSlug, query.ns, query.scope, query.completion, query.missingLocale, query.state, query.q]);
-  type ListState = { source: typeof list; key: string; rows: ListGeneration<TranslationListRow> };
-  const [listState, setListState] = useState<ListState>(() => ({ source: list, key: conditionKey, rows: startListGeneration(list.rows, 0) }));
+  /**
+   * `seen` — 이 세대에서 서버 행으로 한 번이라도 보인 트리 노드(`nodeKey`). 트리의 0 노드를 세대 안에서 지우지 않는 근거다(design §4).
+   * ⚠️ 세대의 행에서 뽑지 않는다 — 재검증은 행을 끼워 넣지 않으므로, 목록 밖 선택 키(딥링크)가 저장으로 조건에 들어왔다 나가면 노드가
+   * 나타났다 사라졌다(TFS r2).
+   */
+  type ListState = { source: typeof list; key: string; rows: ListGeneration<TranslationListRow>; seen: ReadonlySet<string> };
+  const nodesOf = (server: readonly TranslationListRow[], into: ReadonlySet<string> = new Set()) => {
+    const next = new Set(into);
+    for (const row of server) next.add(nodeKey(row.surfaceSlug, row.namespace));
+    return next;
+  };
+  const [listState, setListState] = useState<ListState>(() => ({ source: list, key: conditionKey, rows: startListGeneration(list.rows, 0), seen: nodesOf(list.rows) }));
   /*
     ⚠️ **Sync 성공은 새 세대다** (감사 #11) — 같은 조건의 재검증은 행을 끼워 넣지 않으므로, 들여온 키가 목록에 영영 안 섰다(처음 목록이
     비었으면 계속 비었다). 기준은 **Sync를 시작한 순간의 목록**이다 — 결과와 새 트리 중 어느 쪽이 먼저 커밋돼도 그 뒤에 온 목록에서 시작한다.
@@ -254,9 +264,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   if (listState.source !== list || resyncDue) {
     if (resyncDue) setResync(null);
     if (listState.key !== conditionKey || resyncDue) {
-      shownList = { source: list, key: conditionKey, rows: startListGeneration(list.rows, listState.rows.generation + 1) };
+      shownList = { source: list, key: conditionKey, rows: startListGeneration(list.rows, listState.rows.generation + 1), seen: nodesOf(list.rows) };
     } else {
-      shownList = { ...listState, source: list, rows: mergeServerRows(listState.rows, list.rows) };
+      shownList = { ...listState, source: list, rows: mergeServerRows(listState.rows, list.rows), seen: nodesOf(list.rows, listState.seen) };
     }
     setListState(shownList);
   }
@@ -360,7 +370,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const listTitleRef = useRef<HTMLHeadingElement>(null);
   function runEmpty(slot: "primary" | "secondary", action: EmptyAction) {
     const kind = action.kind === "clear-search" ? "search" : action.kind === "show-all" ? "clear" : "filter";
-    attempt({ kind }, () => { setEmptyPressed(slot); pendingSelection.current = "filter"; navigate(withQuery(action.query), "push", { query: action.query }); });
+    // 목적지는 누른 순간의 낙관값 위에 쌓는다(POSTMORTEM 2026-09-12) — 표시에 쓴 서버 쿼리가 아니다.
+    const next = applyEmptyAction(action.kind, view.query);
+    attempt({ kind }, () => { setEmptyPressed(slot); pendingSelection.current = "filter"; navigate(withQuery(next), "push", { query: next }); });
   }
   useLandAfter(navigating && emptyPressed !== null, () => listTitleRef.current);
   useEffect(() => { if (!navigating && emptyPressed !== null) setEmptyPressed(null); });
@@ -548,10 +560,12 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const listTitle = query.completion === "incomplete" ? w.list.incompleteKeys : w.list.keys;
   /*
     ⚠️ **빈 상태의 버튼은 표 하나(`emptyActions`)가 정한다** (translation-filter-scope design §2.3) — 검색어가 있는데 범위가 좁으면 먼저 범위를
-    넓히라고 말한다. 다음 주소는 낙관값(`shown`) 위에 쌓는다(POSTMORTEM 2026-09-12). 누른 버튼은 도착까지 `busy`(포커스를 지킨다)이고,
-    도착하면 목록 제목으로 착지한다 — 빈 상태가 사라지면서 포커스가 `body`로 빠지지 않게(POSTMORTEM 2026-09-24).
+    넓히라고 말한다. 누른 버튼은 도착까지 `busy`(포커스를 지킨다)이고, 도착하면 목록 제목으로 착지한다 — 빈 상태가 사라지면서 포커스가
+    `body`로 빠지지 않게(POSTMORTEM 2026-09-24).
+    ⚠️ **표시는 서버 `query`(빈 문구와 같은 기준), 목적지는 누른 순간의 낙관값이다**(`runEmpty`) — 표시까지 낙관값으로 고르면 `Show all`을
+    누른 순간 좁힘이 풀려 그 버튼이 대기 중에 사라지고 포커스가 `body`로 빠졌다(TFS r2).
   */
-  const empty = emptyActions(shown, { noKeys });
+  const empty = emptyActions(query, { noKeys });
   const emptyLabel = (action: EmptyAction) => action.label === "showAll" ? w.empty.showAll(tree.projectKeyCount)
     : action.label === "clearFilters" ? w.filters.clear : w.empty[action.label];
   const emptyButton = (slot: "primary" | "secondary", action: EmptyAction | null) => action !== null && (
@@ -575,16 +589,15 @@ export function TranslationWorkspace(props: WorkspaceProps) {
 
   /*
     ⚠️ **필터가 트리를 좁힌다 — 트리 숫자는 서버 목록의 행에서 센다** (design §4). 새 조회가 없어 "트리 숫자 = 목록 수"가 구조로 맞는다.
-    남기는 노드: 위치(낙관값 — 강조가 사라지지 않게) + 이 목록 세대의 행이 선 노드. 세대의 행은 Save로 조건을 벗어나도 `savedOut`으로 남으므로,
-    같은 세대의 재검증으로 0이 된 노드는 숫자만 0이 된다. 결과는 `TreePanel`의 노드에만 쓴다 — 머리 배지·`Filter namespaces` 임계·
+    남기는 노드: 위치(낙관값 — 강조가 사라지지 않게) + 이 목록 세대에서 서버 행으로 한 번이라도 보인 노드(`seen`). 그래서 같은 세대의
+    재검증으로 0이 된 노드는 숫자만 0이 된다. 결과는 `TreePanel`의 노드에만 쓴다 — 머리 배지·`Filter namespaces` 임계·
     `showSource`·Missing in 선택지는 원본 트리다.
   */
   const treeCounts = useMemo(() => (hasConditions(query) ? countRows(list.rows) : null), [query, list.rows]);
   const treeNodes = useMemo(() => {
-    const keep = new Set([nodeKey(view.surface), nodeKey(view.surface, view.query.ns)]);
-    for (const { row } of rows.rows) keep.add(nodeKey(row.surfaceSlug, row.namespace));
+    const keep = new Set([...shownList.seen, nodeKey(view.surface), nodeKey(view.surface, view.query.ns)]);
     return narrowTree(tree, treeCounts, keep);
-  }, [tree, treeCounts, rows, view.surface, view.query.ns]);
+  }, [tree, treeCounts, shownList.seen, view.surface, view.query.ns]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

@@ -52,8 +52,11 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
   */
   const hadFocus = useRef(false);
   useLayoutEffect(() => {
-    if (!hadFocus.current || (document.activeElement !== null && document.activeElement !== document.body)) return;
-    (listRef.current?.querySelector<HTMLElement>('[data-key-row][tabindex="0"]') ?? document.getElementById(headingId))?.focus();
+    if (hadFocus.current && (document.activeElement === null || document.activeElement === document.body)) {
+      (listRef.current?.querySelector<HTMLElement>('[data-key-row][tabindex="0"]') ?? document.getElementById(headingId))?.focus();
+    }
+    // 목록이 비면 행이 없다 — 표식을 풀어야 나중에 목록이 다시 찼을 때 딴 데 있는 포커스를 끌어오지 않는다.
+    if (list.rows.length === 0) hadFocus.current = false;
   }, [list, headingId]);
   function onFocus(event: FocusEvent<HTMLUListElement>) {
     hadFocus.current = true;

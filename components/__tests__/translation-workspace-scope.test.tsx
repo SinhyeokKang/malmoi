@@ -121,6 +121,24 @@ it("같은 세대의 Save 재검증으로 0이 된 노드는 남고 숫자만 0�
   expect(treeNode(container, "auth")).toBeUndefined();
 });
 
+/*
+  TFS r2 🟡4 — 세대의 행에 없던 노드도 이 세대에서 한 번 보였으면 남는다. 목록 밖의 선택 키(딥링크 · `keySurface`)를 저장해 조건에 들어왔다가
+  다시 나가면, 그 키는 목록 세대에 끼워지지 않으므로 세대의 행만으로는 노드가 나타났다 사라졌다.
+*/
+it("목록 밖 선택 키(딥링크)의 노드가 같은 세대에서 한 번 보였으면, 다시 0이 되어도 남는다", async () => {
+  const base = props({ tree: TREE2 });
+  const review = { ...base.query, state: "review" as const, key: "a1", keySurface: "app" };
+  const { container, rerender } = await render(<TranslationWorkspace {...base} query={review} list={withList(base, [rowOf("k1", "web", "common")])} />);
+  expect(treeNode(container, "app")).toBeUndefined();
+  // 저장으로 a1이 조건에 들어왔다 — 재검증 목록에 선다(목록 세대에는 끼워지지 않는다).
+  await rerender(<TranslationWorkspace {...base} query={review} list={withList(base, [rowOf("k1", "web", "common"), rowOf("a1", "app", "app")])} />);
+  expect(treeNode(container, "app")?.textContent).toContain("1");
+  // 다시 조건 밖으로 — 같은 세대라 숫자만 0이 된다.
+  await rerender(<TranslationWorkspace {...base} query={review} list={withList(base, [rowOf("k1", "web", "common")])} />);
+  expect(treeNode(container, "app")?.textContent).toContain("0");
+  expect(treeNode(container, "app")?.className).toContain("text-muted-foreground");
+});
+
 it("`Filter namespaces` 입력은 조건이 트리를 13개 미만으로 줄여도 남는다 — 원본 트리로 임계를 판정한다", async () => {
   const names = Array.from({ length: 14 }, (_, i) => `ns${String(i).padStart(2, "0")}`);
   const tree: WorkspaceProps["tree"] = { projectKeyCount: 14, surfaces: [{ id: "s1", slug: "web", baseLocale: "en", locales: ["en", "ko", "zh"], keyCount: 14, namespaces: names.map(name => ({ name, keyCount: 1 })) }] };

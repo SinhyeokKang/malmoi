@@ -103,3 +103,16 @@ it("포커스한 행이 사라지고 목록이 비면 목록 제목으로 간다
   await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, q: "zz" }} list={{ ...initial.list, rows: [], matchedKeyCount: 0 }} />);
   expect(document.activeElement).toBe(container.querySelector("[data-panel=list] h2"));
 });
+
+it("목록이 비어 제목으로 옮긴 뒤에는 목록 포커스 표식을 푼다 — 나중에 목록이 다시 차도 포커스를 끌어오지 않는다", async () => {
+  const initial = three({ query: { ...props().query, key: undefined, keySurface: undefined }, detail: null });
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  act(() => row(container, "k2").focus());
+  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, q: "zz" }} list={{ ...initial.list, rows: [], matchedKeyCount: 0 }} />);
+  expect(document.activeElement).toBe(container.querySelector("[data-panel=list] h2"));
+  // 사용자가 포커스를 다른 데로 치웠다(relatedTarget 없는 blur — 빈 자리 클릭과 같다).
+  act(() => (document.activeElement as HTMLElement).blur());
+  expect(document.activeElement).toBe(document.body);
+  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, q: "k" }} list={{ ...initial.list, rows: [rowOf("k3")], matchedKeyCount: 1 }} />);
+  expect(document.activeElement).toBe(document.body);
+});

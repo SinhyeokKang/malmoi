@@ -27,6 +27,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), 
 import { TranslationWorkspace, type WorkspaceProps } from "@/components/translations/workspace/workspace";
 import type { TranslationListRow } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
+import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
 
 import { props } from "./helpers/workspace-props";
 
@@ -188,6 +189,10 @@ it("검색 0건 + 좁힌 범위의 Search all sources는 scope만 넓히고, 기
   expect(next.get("q")).toBe("zz");
   expect(next.get("state")).toBe("review");
   expect(searchAll.getAttribute("aria-busy")).toBe("true");
+  // 대기 중에도 누른 버튼이 같은 라벨로 남는다 — 표시는 빈 문구와 같은 서버 쿼리다(TFS r2 🔴1).
+  expect(searchAll.isConnected).toBe(true);
+  expect(searchAll.textContent?.trim()).toBe(m.translations.workspace.empty.searchAll);
+  expect(document.activeElement).toBe(searchAll);
   await arrive(b);
   expect(rowIds(container)).toEqual(["k7"]);
   expect(document.activeElement).not.toBe(document.body);
@@ -208,6 +213,34 @@ it("검색 0건 + 완성도가 켜졌으면 보조 버튼은 Clear filters이고
   const next = new URL(mocks.push.mock.calls[0]![0] as string, "http://x").searchParams;
   expect(next.get("q")).toBe("zz");
   expect(next.get("completion")).toBeNull();
+});
+
+/*
+  TFS r2 🔴1 — 버튼을 낙관값으로 고르면 `Show all`을 누른 순간 좁힘이 풀려 버튼이 사라지고 포커스가 body로 빠졌다. 누른 버튼은 도착까지
+  같은 자리에 busy로 남고 포커스를 지킨다(DESIGN §6.1a).
+*/
+it.each([
+  ["주 버튼 Show all n keys(검색어 없음 · 좁힘)", { state: "review" as const }, 0],
+  ["보조 버튼 Clear filters(검색어 + 완성도)", { q: "zz", completion: "incomplete" as const }, 1],
+])("%s는 대기 중에도 busy로 남고 포커스를 지킨다", async (_name, over, index) => {
+  const user = userEvent.setup();
+  const base = props();
+  const query = { ...base.query, ...over, key: undefined, keySurface: undefined };
+  const initial: WorkspaceProps = { ...base, query, detail: null, list: { ...base.list, rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, selectedInResult: null } };
+  const b = gate();
+  respond = href => ({ next: { ...initial, query: { ...DEFAULT_TRANSLATION_QUERY, ...(new URL(href, "http://x").searchParams.get("q") === null ? {} : { q: "zz" }) }, list: { ...base.list, rows: [rowOf("k7")], selectedInResult: null } }, gate: b });
+  const { container } = await render(<Harness initial={initial} />);
+  const pressed = [...panel(container, "list").querySelectorAll<HTMLButtonElement>("button")][index]!;
+  const label = pressed.textContent;
+  await user.click(pressed);
+  expect(mocks.push).toHaveBeenCalledOnce();
+  expect(pressed.isConnected).toBe(true);
+  expect(pressed.textContent).toBe(label);
+  expect(pressed.getAttribute("aria-busy")).toBe("true");
+  expect(document.activeElement).not.toBe(document.body);
+  expect(document.activeElement).toBe(pressed);
+  await arrive(b);
+  expect(document.activeElement).toBe(panel(container, "list").querySelector("h2"));
 });
 
 it("마운트 착지는 선택 행으로 스크롤한다 — 딥링크·새로고침", async () => {

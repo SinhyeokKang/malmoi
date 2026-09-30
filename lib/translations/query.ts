@@ -153,13 +153,24 @@ export type EmptyAction = { kind: "search-all" | "clear-search" | "show-all"; la
  */
 export function emptyActions(query: TranslationQuery, { noKeys }: { noKeys: boolean }): { primary: EmptyAction | null; secondary: EmptyAction | null } {
   if (noKeys) return { primary: null, secondary: null };
-  const showAll: EmptyAction = { kind: "show-all", label: query.q === undefined ? "showAll" : "clearFilters", query: clearFilters(query) };
+  const showAll: EmptyAction = { kind: "show-all", label: query.q === undefined ? "showAll" : "clearFilters", query: applyEmptyAction("show-all", query) };
   if (query.q === undefined) return { primary: isNarrowed(query) ? showAll : null, secondary: null };
   const filtered = query.completion !== DEFAULT_TRANSLATION_QUERY.completion || query.state !== undefined;
   const primary: EmptyAction = query.scope !== DEFAULT_TRANSLATION_QUERY.scope
-    ? { kind: "search-all", label: "searchAll", query: nextQuery(query, { scope: DEFAULT_TRANSLATION_QUERY.scope }) }
-    : { kind: "clear-search", label: "clearSearch", query: nextQuery(query, { q: undefined }) };
+    ? { kind: "search-all", label: "searchAll", query: applyEmptyAction("search-all", query) }
+    : { kind: "clear-search", label: "clearSearch", query: applyEmptyAction("clear-search", query) };
   return { primary, secondary: filtered ? showAll : null };
+}
+
+/**
+ * 빈 상태 버튼 종류를 쿼리에 적용한다. ⚠️ **표시와 목적지의 기준이 다르다** — 화면은 버튼을 빈 문구와 같은 서버 쿼리로 고르고(`emptyActions(query)`),
+ * 주소는 누른 순간의 낙관값에 이 함수를 적용해 만든다(POSTMORTEM 2026-09-12). 표시까지 낙관값으로 고르면 `Show all`을 누른 순간 좁힘이 풀려
+ * 그 버튼이 대기 중에 사라지고 포커스가 `body`로 빠졌다.
+ */
+export function applyEmptyAction(kind: EmptyAction["kind"], query: TranslationQuery): TranslationQuery {
+  return kind === "search-all" ? nextQuery(query, { scope: DEFAULT_TRANSLATION_QUERY.scope })
+    : kind === "clear-search" ? nextQuery(query, { q: undefined })
+    : clearFilters(query);
 }
 
 /**

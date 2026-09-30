@@ -183,6 +183,7 @@ const CLIENT_LIB_FILES = [
   "lib/translations/summary.ts",
   // malmoi#91 — 셀의 `dir`·`lang`. import가 없는 잎이다.
   "lib/translations/text-direction.ts",
+  // translation-filter-scope — 필터 → 트리 반영·트리 이동의 첫 키. import는 잎인 lib/routes.ts 하나다.
   "lib/translations/tree-narrow.ts",
   "lib/upload/image.ts",
   "lib/upload/message.ts",

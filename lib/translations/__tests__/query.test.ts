@@ -5,6 +5,7 @@ import {
   FIRST_KEY,
   MISSING_LANGUAGES,
   Q_MAX_LENGTH,
+  applyEmptyAction,
   clearFilters,
   emptyActions,
   hasConditions,
@@ -319,5 +320,37 @@ describe("emptyActions — 0건 빈 상태의 버튼 (translation-filter-scope d
 
   it("검색어도 필터도 없으면 버튼이 없다", () => {
     expect(kinds(q({}))).toEqual([null, null]);
+  });
+});
+
+/*
+  빈 상태 버튼의 **목적지**는 누른 순간의 낙관값 위에 쌓는다(POSTMORTEM 2026-09-12) — 표시(`emptyActions`)는 빈 문구와 같은 서버 쿼리로 하고,
+  주소는 종류를 낙관값에 적용해 만든다. 표시까지 낙관값으로 하면 누른 버튼이 대기 중에 사라져 포커스가 body로 빠졌다(TFS r2 🔴1).
+*/
+describe("applyEmptyAction — 빈 상태 버튼의 목적지", () => {
+  const view: TranslationQuery = {
+    ...DEFAULT_TRANSLATION_QUERY, ns: "auth", scope: "source", completion: "missing", missingLocale: "ja", state: "review",
+    q: "hi", cursor: "c1", key: "k1", keySurface: "web", language: "ko",
+  };
+
+  it("search-all은 범위만 All sources로 — 나머지 조건·위치·선택은 그대로", () => {
+    const { cursor: _cursor, ...rest } = view;
+    expect(applyEmptyAction("search-all", view)).toEqual({ ...rest, scope: "project" });
+  });
+
+  it("clear-search는 검색어만 지운다", () => {
+    const { cursor: _cursor, q: _q, ...rest } = view;
+    expect(applyEmptyAction("clear-search", view)).toEqual(rest);
+  });
+
+  it("show-all은 clearFilters다 — 검색어는 남는다", () => {
+    expect(applyEmptyAction("show-all", view)).toEqual(clearFilters(view));
+  });
+
+  it("emptyActions의 query와 같은 규칙이다 — 같은 쿼리에 적용하면 같은 목적지", () => {
+    for (const query of [view, { ...view, q: undefined }, { ...view, scope: "project" as const }]) {
+      const { primary, secondary } = emptyActions(query, { noKeys: false });
+      for (const action of [primary, secondary]) if (action !== null) expect(applyEmptyAction(action.kind, query)).toEqual(action.query);
+    }
   });
 });
