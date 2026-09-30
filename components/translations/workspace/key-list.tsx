@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelLeftOpen } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import { memo, useId, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,33 +55,9 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {/* <ul>이어야 스크린리더가 "n개 중 m번째"를 읽는다 — 옛 표는 행 수를 알려 줬다. */}
-        {list.rows.length === 0 ? empty : <ul aria-labelledby={headingId}>{list.rows.map(({ row, savedOut }, index) => {
-          const selected = row.keyId === selectedKeyId;
-          return (
-            <li key={row.keyId}>
-              <ListItemButton
-                data-key-row={row.keyId}
-                selected={selected}
-                onClick={() => onSelect(row)}
-                className={cn("flex items-start gap-3 border-t px-4 py-3", index === 0 ? "border-divider" : "border-border")}
-              >
-                <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-                  <span className={cn("text-sm leading-[1.45]", savedOut && "text-muted-foreground line-through")}>{row.sourceText}</span>
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
-                      {showSource ? `${row.surfaceSlug} · ${row.key}` : row.key}
-                    </span>
-                    {row.hasPending && <Pill>{w.notSent}</Pill>}
-                    {row.hasReview && <span className="text-xs text-amber-700">{w.needsReview}</span>}
-                  </span>
-                </span>
-                <span className="text-muted-foreground shrink-0 text-xs">
-                  {savedOut ? w.saved : row.missingCount > 0 ? w.missing(row.missingCount) : w.complete}
-                </span>
-              </ListItemButton>
-            </li>
-          );
-        })}</ul>}
+        {list.rows.length === 0 ? empty : <ul aria-labelledby={headingId}>{list.rows.map(({ row, savedOut }, index) => (
+          <KeyRow key={row.keyId} row={row} savedOut={savedOut} first={index === 0} selected={row.keyId === selectedKeyId} showSource={showSource} onSelect={onSelect} />
+        ))}</ul>}
         {onMore !== null && list.rows.length > 0 && (
           <div className="border-border flex items-center gap-3 border-t px-4 py-3">
             <Button variant="link" className="h-auto px-0" loading={moreLoading} onClick={onMore}>{w.more}</Button>
@@ -92,6 +68,45 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
     </div>
   );
 }
+
+/**
+ * ⚠️ **행은 `memo`다** (translation-filter-scope design §3.1) — 목록이 전량이 되어 수천 행이 한 번에 서는데, draft `useReducer`가 워크스페이스
+ * 최상위라 상세에서 한 글자 칠 때마다 전 행이 다시 렌더됐다. 그래서 호출부의 `onSelect`는 렌더마다 같은 함수여야 한다(`workspace.tsx`).
+ */
+const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, showSource, onSelect }: {
+  row: TranslationListRow;
+  savedOut: boolean;
+  first: boolean;
+  selected: boolean;
+  showSource: boolean;
+  onSelect: (row: TranslationListRow) => void;
+}) {
+  const w = m.translations.workspace.list;
+  return (
+    <li>
+      <ListItemButton
+        data-key-row={row.keyId}
+        selected={selected}
+        onClick={() => onSelect(row)}
+        className={cn("flex items-start gap-3 border-t px-4 py-3", first ? "border-divider" : "border-border")}
+      >
+        <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <span className={cn("text-sm leading-[1.45]", savedOut && "text-muted-foreground line-through")}>{row.sourceText}</span>
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
+              {showSource ? `${row.surfaceSlug} · ${row.key}` : row.key}
+            </span>
+            {row.hasPending && <Pill>{w.notSent}</Pill>}
+            {row.hasReview && <span className="text-xs text-amber-700">{w.needsReview}</span>}
+          </span>
+        </span>
+        <span className="text-muted-foreground shrink-0 text-xs">
+          {savedOut ? w.saved : row.missingCount > 0 ? w.missing(row.missingCount) : w.complete}
+        </span>
+      </ListItemButton>
+    </li>
+  );
+});
 
 /** `Not sent` 알약 — 테두리 `#e5e5e5` · 글자 `#525252`. ⚠️ 시안은 12px인데 스케일에 12가 없어 `text-xs`(13)다 (audit #45 · DESIGN §4). */
 export function Pill({ children }: { children: ReactNode }) {

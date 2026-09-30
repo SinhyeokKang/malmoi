@@ -2,7 +2,7 @@
 
 import { ArrowDownToLine, Languages, Loader2, RotateCcw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { loadMoreTranslationKeys, previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
 import { useCommitWait } from "@/components/commit-wait";
@@ -368,6 +368,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     const next: TranslationQuery = { ...view.query, key: row.keyId, keySurface: row.surfaceSlug };
     attempt({ kind: "select-key", target: row.keyId }, () => navigate(withQuery(next), "replace", { query: next, keyId: row.keyId }));
   }
+  /*
+    ⚠️ **목록 행에 넘기는 선택 함수는 렌더마다 같다** — 행이 `memo`라(`key-list.tsx`) 새 함수를 넘기면 타이핑마다 전 행이 다시 렌더된다.
+    호출 시점엔 최신 `selectRow`(최신 `view`·draft)를 부른다 — 클릭은 커밋 뒤에 오므로 layout effect가 이미 갱신했다.
+  */
+  const selectRowRef = useRef(selectRow);
+  useLayoutEffect(() => { selectRowRef.current = selectRow; });
+  const onSelectRow = useCallback((row: TranslationListRow) => selectRowRef.current(row), []);
   function selectTree(surface: string, ns: string) {
     const next = treeQuery(view.query, ns);
     attempt({ kind: "tree", target: `${surface}/${ns}` }, () => navigate(withQuery(next, surface), "push", { query: next, keyId: undefined, surface }));
@@ -672,7 +679,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               savedExtra={savedOutCount(rows)}
               selectedKeyId={view.keyId}
               showSource={query.scope === "project"}
-              onSelect={selectRow}
+              onSelect={onSelectRow}
               onMore={shownList.cursor === null ? null : () => void loadMore()}
               moreLoading={shownList.more === "loading"}
               moreFailed={shownList.more === "failed"}

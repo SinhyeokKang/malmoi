@@ -14,6 +14,7 @@ import { routes } from "@/lib/routes";
 import type { Raw } from "@/lib/search-params";
 import { requireSurfaceAccess } from "@/lib/surfaces/access";
 import { FIRST_KEY, landOnFirstKey, parseTranslationQuery, serializeTranslationQuery } from "@/lib/translations/query";
+import { firstRowAt } from "@/lib/translations/tree-narrow";
 
 /**
  * 번역 화면 — **트리 · 요약 목록 · 선택 키 상세** 세 패널 (translation-rework — 핸드오프 `2a`, spec §3).
@@ -72,9 +73,10 @@ export default async function TranslationsPage({
   const [project, tree, listed, unsentBySurface, early] = await Promise.all([
     loadProject(prisma, projectId, surfaceId),
     loadTranslationTree(prisma, projectId),
+    // ⚠️ **화면 목록은 전량이다** (translation-filter-scope — 2026-09-30 사용자) — 눌러서 더 읽는 페이지가 없다. cursor 페이징은 MCP 전용이다.
     firstKey || parsed.key === undefined
-      ? loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: unselected })
-      : loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: parsed, selectedKeyId: parsed.key }),
+      ? loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: unselected, pageSize: "all" })
+      : loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: parsed, selectedKeyId: parsed.key, pageSize: "all" }),
     countUnpublishedBySurface(prisma, projectId),
     !firstKey && onRoute ? readDetail({ id: surfaceId }, parsed.key) : null,
   ]);
@@ -86,8 +88,10 @@ export default async function TranslationsPage({
     ⚠️ **트리 이동의 첫 키를 같은 렌더가 싣는다** (audit-ux #18) — 전엔 선택 없는 응답이 상세를 "Select a key"로 비웠고, 클라이언트
     effect가 첫 키로 `replace`를 한 번 더 했다. 다른 소스로 가면 화면이 새로 마운트되어 그 effect의 표식도 잃었다.
     주소의 예약값은 화면이 `history.replaceState`로 첫 키로 맞춘다.
+    ⚠️ **첫 키는 목록 첫 행이 아니라 그 위치(경로 소스·`ns`)의 첫 키다** (translation-filter-scope design §3.2) — 범위가 All sources면 목록
+    첫 행이 다른 소스의 것일 수 있다. 정렬이 `Incomplete first`라 네임스페이스가 연속하지 않으므로 목록 순서상 처음 나오는 것을 고른다.
   */
-  const first = firstKey ? listed.rows[0] : undefined;
+  const first = firstKey ? firstRowAt(listed.rows, surfaceSlug, parsed.ns) : undefined;
   const query = firstKey ? landOnFirstKey(parsed, first) : parsed;
   const list = first === undefined ? listed : { ...listed, selectedInResult: true };
   // 상세의 소스는 `keySurface`가 정한다(전체 범위의 다른 소스 결과) — 인가된 프로젝트의 활성 표면 안에서만 고른다.
