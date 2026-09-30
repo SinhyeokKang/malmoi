@@ -11,7 +11,7 @@ import { Button, buttonClass } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
-import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
+import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, logsResultTone, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
@@ -124,10 +124,11 @@ export function EventDetail({
                       {surface.reason === null ? "" : ` · ${importReasonMessage(surface.reason)}`}
                     </span>
                   </span>
-                  {/* 소스별 결과도 Sources 행 상태와 같은 배지다(2026-09-30 사용자) — 같은 어휘가 두 화면에서 한 모양이다. */}
-                  <Badge variant={SURFACE_VARIANT[surface.status]} className="shrink-0">
-                    {surfaceWord(surface.status)}
-                  </Badge>
+                  {/*
+                    ⚠️ **소스별 결과도 머리와 같은 Logs 결과 톤이다** (malmoi#163 · D3③) — 옛 별도 표는 성공이 초록이라 같은 모달의 머리
+                    Synced(무색)와 같은 낱말이 두 톤이었다. 상태 값이 사건 결과와 같은 이름이라 `logsResultTone`을 그대로 지난다.
+                  */}
+                  <span className="shrink-0"><ResultBadge tone={logsResultTone(surface.status)} label={surfaceWord(surface.status)} /></span>
                 </div>
               ))}
             </div>
@@ -225,8 +226,6 @@ function actorLabel(row: EventRow): string {
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;
 }
-
-const SURFACE_VARIANT = { imported: "success", partial: "warning", superseded: "neutral", failed: "missing" } as const;
 
 function surfaceWord(status: "imported" | "partial" | "failed" | "superseded"): string {
   if (status === "imported") return m.logs.status.imported;

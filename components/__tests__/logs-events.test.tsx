@@ -242,3 +242,28 @@ describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
     expect(held.textContent).toContain("held back its edits");
   });
 });
+
+/**
+ * **소스별 결과도 Logs의 결과 톤이다** (malmoi#163 · D3③ — Logs의 성공은 무색). 머리의 Synced는 neutral인데 같은 모달의 소스별 Synced가
+ * 별도 표(`SURFACE_VARIANT`)로 초록이었다 — 같은 낱말이 한 모달에서 두 톤이었다. 부분은 warning, 실패는 danger 알약(`missing`, design §3.6)이다.
+ */
+describe("상세 — Result per source", () => {
+  it("머리와 소스별 결과가 같은 낱말이면 같은 톤이다", async () => {
+    const value = row();
+    if (value.payload?.kind !== "IMPORT") throw new Error("fixture");
+    value.payload.surfaces = [
+      { surfaceSlug: "web", status: "imported", count: 4, reason: null },
+      { surfaceSlug: "app", status: "partial", count: 2, reason: null },
+      { surfaceSlug: "docs", status: "failed", count: null, reason: null },
+    ];
+    const { container } = await detail(value);
+    const head = [...container.querySelectorAll("[data-event-detail-kind] .rounded-full")].find((b) => b.textContent === m.logs.status.imported)!;
+    const perSource = (word: string) => [...container.querySelectorAll(".rounded-full")].filter((b) => b.textContent === word && !b.closest("[data-event-detail-kind]"));
+    const synced = perSource(m.logs.status.imported);
+    expect(synced).toHaveLength(1);
+    expect(synced[0]!.className).toBe(head.className);
+    expect(synced[0]!.className).not.toMatch(/green/);
+    expect(perSource(m.logs.status.partial)[0]!.className).toMatch(/amber/);
+    expect(perSource(m.logs.status.failed)[0]!.className).toContain("text-destructive");
+  });
+});
