@@ -200,10 +200,12 @@ describe("확인 Dialog의 확정이 danger면 트리거도 danger다 (DESIGN §
    * 새 확인창이 목록 밖에서 태어나면 여기서 red다.
    */
   it("danger 확정을 든 확인창 파일이 전부 목록에 있다", () => {
-    const found = SOURCES.filter(({ source }) => /<(?:DialogContent|Modal)\b/.test(source) && DANGER_BUTTON.test(source)).map(({ path }) => path).sort();
+    const found = SOURCES.filter(({ source }) => /<(?:DialogContent|OnboardingModal)\b/.test(source) && DANGER_BUTTON.test(source)).map(({ path }) => path).sort();
     const covered = new Set([...CONFIRMS.flatMap((entry) => entry.file), ...Object.keys(NO_TRIGGER).map((key) => key.split("#")[0]), SYNC_FILE]);
     expect(found.length).toBeGreaterThan(8);
     expect(found.filter((path) => !covered.has(path))).toEqual([]);
+    // 가드 목록도 실재해야 한다 — 확인창이 사라진 파일은 걷는다.
+    expect(Object.keys(NO_TRIGGER).map((key) => key.split("#")[0]).filter((path) => !found.includes(path!))).toEqual([]);
   });
 });
 
@@ -219,8 +221,9 @@ function strayBlueLinks(root: ParentNode): string[] {
   return [...root.querySelectorAll<HTMLAnchorElement>("a")].filter((a) => a.className.includes("text-blue-600")).filter((a) => {
     if (a.target === "_blank") return false;
     const parent = a.parentElement;
-    // 문장 안 인라인 — 부모가 문단이거나, 링크와 나란히 **글자 노드**를 직접 든다(요소 형제는 문장이 아니다 — 행 띠의 사유 `<span>`).
-    const inline = parent !== null && (parent.tagName === "P" || [...parent.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? "").trim() !== ""));
+    // 문장 안 인라인 — 링크와 나란한 **글자 노드에 낱말이 있다**(요소 형제는 문장이 아니다 — 행 띠의 사유 `<span>`).
+    // ⚠️ 구분자만(`·` — 메타 줄 관용구)은 문장이 아니다 — 부모가 `<p>`여도 같다(r1: `<p>· <a>`가 인라인으로 새어 나갔다).
+    const inline = parent !== null && [...parent.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && /\p{L}{2,}/u.test(node.textContent ?? ""));
     return !inline;
   }).map((a) => `${a.getAttribute("href")} "${a.textContent}"`);
 }
@@ -289,12 +292,16 @@ describe("셸 안 독립·행 링크의 파랑은 새 탭 외부 링크다 (DESI
       '<p>Go to <a class="text-blue-600" href="/projects/acme/sources">Sources</a>.</p>',
       '<div><a class="text-foreground" href="/projects/acme">acme</a></div>',
       '<div><span>A pull request is open.</span><a class="text-blue-600" href="/pr">View</a></div>',
+      '<div>· <a class="text-blue-600" href="/meta">View</a></div>',
+      '<p> · <a class="text-blue-600" href="/dot">Open</a></p>',
     ].join("");
-    expect(strayBlueLinks(root)).toEqual(['/projects/acme/settings "Settings"', '/pr "View"']);
+    expect(strayBlueLinks(root)).toEqual(['/projects/acme/settings "Settings"', '/pr "View"', '/meta "View"', '/dot "Open"']);
   });
 
   it("파랑 링크를 그리는 파일이 전부 렌더 목록이나 사유 목록에 있다", () => {
-    const found = SOURCES.filter(({ source }) => openingTags(source, "a|Link").some((tag) => /(?<![\w-])text-blue-600(?![\w-])/.test(tag))).map(({ path }) => path).sort();
+    // `ButtonLink variant="link"`도 파랑이다(`buttonClass`의 `link` — `text-blue-600`).
+    const blue = (tag: string) => /(?<![\w-])text-blue-600(?![\w-])/.test(tag) || (tag.startsWith("<ButtonLink") && /variant="link"/.test(tag));
+    const found = SOURCES.filter(({ source }) => openingTags(source, "a|Link|ButtonLink").some(blue)).map(({ path }) => path).sort();
     const covered = new Set([...BLUE.map((entry) => entry.file), ...Object.keys(BLUE_UNRENDERED)]);
     expect(found.length).toBeGreaterThan(10);
     expect(found.filter((path) => !covered.has(path))).toEqual([]);

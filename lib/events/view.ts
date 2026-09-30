@@ -164,7 +164,7 @@ export function valueState(value: RecordedValue): ValueView {
  *
  * 칩은 **훑기용 보조**이고 뜻은 결과 열의 낱말과 문장이 든다. 색만으로 구별되는 정보는 칩에 싣지 않았다.
  *
- * 규칙이 둘이다: **실행은 결과 톤의 색**(D3③ — §2.4 아이콘 칸과 같은 축이다. Logs 결과 톤이라 성공은 slate: `logsResultTone`),
+ * 규칙이 둘이다: **실행은 결과 톤의 색**(D3③ — §2.4 아이콘 칸과 같은 축이다. Logs 결과 톤이라 성공은 neutral 칸이다 — `slate`는 `IconTile tone="muted"`로 그려진다: `logsResultTone`, DESIGN §6.2),
  * **그 외는 종류의 색**(파랑·청록·보라 — 이것만 별도 축이다).
  */
 export type GlyphTone = "green" | "amber" | "red" | "slate" | "blue" | "teal" | "purple";
