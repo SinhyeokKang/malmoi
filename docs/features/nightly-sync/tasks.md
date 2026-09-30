@@ -38,9 +38,9 @@
 
 ## D. CI 게이트
 
-- [ ] **D1** `/api/push`: 사전 집계 0 뒤 열린 PR 삼상태 조회(`installationId`·`repositoryId` null → `null`) → `planOpenPrGate` → `deferred` 사유. `PushResponse`를 사유별 union으로, `deferred()` 생산자에 타입, 사건 `deferReason`. 기존 테스트 갱신: `lib/keys/__tests__/sync-edit-protection.integration.ts`·`concurrent-import.integration.ts`·`repository-import.integration.ts`·`app/api/__tests__/surface-boundary.test.ts`·`route-diagnostics.test.ts`에 열린 PR 조회 mock(`null`)과 새 select 필드.
+- [x] **D1** `/api/push`: 사전 집계 0 뒤 열린 PR 삼상태 조회(`installationId`·`repositoryId` null → `null`) → `planOpenPrGate` → `deferred` 사유. `PushResponse`를 사유별 union으로, `deferred()` 생산자에 타입, 사건 `deferReason`. 기존 테스트 갱신: `lib/keys/__tests__/sync-edit-protection.integration.ts`·`concurrent-import.integration.ts`·`repository-import.integration.ts`·`app/api/__tests__/surface-boundary.test.ts`·`route-diagnostics.test.ts`에 열린 PR 조회 mock(`null`)과 새 select 필드.
   — 검증: 라우트 테스트 — PR 있음 → 200 `open-pr`(`pendingCount` 없음) · 조회 throw → `pr-check-failed` · 마감 초과 → `pr-check-failed` · PR 없음 → applied · `repositoryId` null → applied(조회 0회) · 무효 토큰은 GitHub을 부르지 않는다(가짜 client 호출 0회) · 보류 갈래에서 `markImportStarted`·번역·키·`surface.updateMany` 0회 · 사건 `deferReason` 값 · 위 다섯 파일의 기존 applied 단언 green.
-- [ ] **D2** CLI `reportPushResponse`가 `reason`별 경고, `action.yml:157` 열린 PR 경고 문구 정정.
+- [x] **D2** CLI `reportPushResponse`가 `reason`별 경고, `action.yml:157` 열린 PR 경고 문구 정정.
   — 검증: `lib/cli/__tests__/push-response.test.ts`에 `open-pr`·`pr-check-failed` 응답의 경고 문구 · 옛 모양(`pendingCount`만) 응답이 v2 동작 그대로 · 수동 `pnpm push:local` 1회(열린 PR 있는 dev 프로젝트) — **수동**.
 
 ── 커밋: `feat(push): defer CI import while a Malmoi pull request is open`
