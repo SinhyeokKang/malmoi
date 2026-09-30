@@ -81,7 +81,7 @@ export default function TranslationsLoading() {
           {/* 리사이즈 핸들 자리 — 투명 16이고 선이 없다. */}
           <div className="w-4 shrink-0" />
           <div data-skeleton-detail className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
-            {/* `EmptyState` 치수 — `py-12` · 칩 48(`mb-3`) · 제목 18(`mb-1`) · 설명 14. */}
+            {/* `EmptyState` 치수 — `py-12` · 칩 `IconTile lg` 40(`mb-3`) · 제목 18(`mb-1`) · 설명 14. */}
             <div className="flex flex-1 items-center justify-center">
               <div className="flex w-full flex-col items-center py-12">
                 <Skeleton className="mb-3 size-10 rounded-sm" />
@@ -100,7 +100,7 @@ export default function TranslationsLoading() {
   );
 }
 
-/** 트리·목록의 52 머리(12 + 로케일 Select 28 + 12 — 세 머리의 아래 선이 한 줄이다) — 제목 + 개수 배지(+ 목록은 오른쪽 끝 정렬 안내). 아래 선은 본문 쪽이 든다. */
+/** 트리·목록의 48 머리(`h-12` — 세 머리의 아래 선이 한 줄이다) — 제목 + 개수 배지(+ 목록은 오른쪽 끝 정렬 안내). 아래 선은 본문 쪽이 든다. */
 function PanelHead({ title, aside = false }: { title: string; aside?: boolean }) {
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 px-4">

@@ -1,5 +1,5 @@
 import { ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 
 /**
@@ -26,6 +26,8 @@ import { m } from "@/lib/i18n";
  * ⚠️ **행을 둘만 그린다** — 스켈레톤은 "곧 온다"를 말하는 것이지 몇 개가 올지를 예고하는 것이
  * 아니다. 실제 개수를 흉내 내면 그 수가 틀렸을 때 두 번 튄다.
  *
+ * ⚠️ **글자 줄은 `SkeletonLine`이다** (4-W8) — 줄 높이를 px로 적으면 `--text-*` 토큰이 바뀔 때 골격만 떠내려간다.
+ *
  * ⚠️ **`motion-safe:`가 붙어 있다** — 움직임을 줄인 사용자에게는 정지한 회색 블록으로 선다
  * (로그인 화면의 점 필드가 같은 판정이다).
  */
@@ -46,7 +48,7 @@ export default function ProjectsLoading() {
         */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Skeleton className="h-7 w-40" />
+            <SkeletonLine text="text-lg" className="w-40" />
           </div>
           <Skeleton className="ml-auto h-9 w-64" />
           <Skeleton className="h-9 w-32" />
@@ -58,19 +60,19 @@ export default function ProjectsLoading() {
         <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
           {/* 카드 헤더 — 실물과 같은 `px-4 py-3`이라야 첫 행의 y가 안 튄다. */}
           <div className="flex min-h-12 items-center gap-2 px-4 py-3">
-            <Skeleton className="h-5 w-32" />
+            <SkeletonLine text="text-base" className="w-32" />
           </div>
           <ul>
             {[0, 1].map((i) => (
               <li
                 key={i}
-                className={`flex items-center gap-4 py-3.5 pr-3.5 pl-3 ${i === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}`}
+                className={`flex items-center gap-4 py-[13px] pr-3.5 pl-3 ${i === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}`}
               >
                 <Skeleton className="size-7 rounded-[4px]" />
                 <div className="flex w-[420px] shrink-0 flex-col gap-0.5">
-                  <Skeleton className="h-5 w-48" />
+                  <SkeletonLine text="text-base" className="w-48" />
                   {/* 메타 줄은 13이다(4-Y9) — 실물 행과 같은 높이라야 도착 때 안 튄다. */}
-                  <Skeleton className="h-4 w-72" />
+                  <SkeletonLine text="text-xs" className="w-72" />
                 </div>
                 <Skeleton className="ml-auto h-5 w-16 rounded-full" />
               </li>

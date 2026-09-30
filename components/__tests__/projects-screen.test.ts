@@ -246,7 +246,8 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   it.each([
     ["이름 칸 420", "w-[420px]"],
     ["행 요소 gap 16", "gap-4"],
-    ["행 padding 14/14/12", "py-3.5"],
+    // 4-W3(ux-drift-unify) — 행 세로 padding은 `py-[13px]` 한 벌이다(PanelRow·EventRow·Sources·Settings와 같다).
+    ["행 padding 13/14/12", "py-[13px]"],
     ["행 hover 2%", "hover:bg-foreground/[0.02]"],
     ["헤더↔첫 행 hairline #f0f0f0", "border-foreground/[0.06]"],
     ["띠 좌측 들여쓰기 56", "pl-14"],
@@ -277,8 +278,11 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
     expect(BODY).not.toContain("divide-border");
   });
 
-  /** ⚠️ **행 hover는 2%다** — 3%로 두면 시안보다 진하다. */
-  it("옛 hover 3%가 남아 있지 않다", () => {
+  /**
+   * ⚠️ **행 hover는 카드 안 행의 급(2%)이다** (DESIGN §5 — 3%는 캔버스·모달 위 행의 급). 3%로 두면 시안보다 진하다.
+   * 철자(`/[0.0N]` 하나)는 `visual-system.test.ts`의 "알파 면·선의 철자"가 전역으로 센다(5-Y8) — 여기는 급만 본다.
+   */
+  it("카드 안 행이라 캔버스 급 hover 3%가 없다", () => {
     expect(BODY).not.toContain("hover:bg-foreground/[0.03]");
   });
 

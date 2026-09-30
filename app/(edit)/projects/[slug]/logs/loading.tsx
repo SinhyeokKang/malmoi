@@ -1,5 +1,5 @@
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 
 /**
@@ -18,7 +18,7 @@ export default function LogsLoading() {
       <span className="sr-only" role="status">{m.logs.loading.list}</span>
       <PanelHeader aria-hidden>
         <div className="flex items-center gap-2">
-          <Skeleton className="h-6 w-16 rounded-md" />
+          <SkeletonLine text="text-lg" className="w-16" />
           <span className="ml-auto flex items-center gap-2">
             <Skeleton className="h-9 w-50 rounded-md" />
             <Skeleton className="h-9 w-24 rounded-md" />
@@ -28,15 +28,15 @@ export default function LogsLoading() {
       <PanelBody className="space-y-4" aria-hidden>
         <div className="border-border overflow-hidden rounded-lg border">
           <div className="flex min-h-12 items-center px-4 py-3">
-            <Skeleton className="h-[15px] w-24 rounded-md" />
+            <SkeletonLine text="text-base" className="w-24" />
           </div>
           {/* 행 높이는 실물과 같다 — 다르면 데이터가 도착하는 순간 레이아웃이 튄다. 첫 행 선·chevron 칸도 실물 그대로다(4-Y3 · 4-W9). */}
           {[0, 1, 2].map((index) => (
             <div key={index} data-skeleton-event className={`${index === 0 ? "border-foreground/[0.06]" : "border-border"} flex items-center gap-3 border-t px-4 py-[13px]`}>
-              <Skeleton className="h-3.5 w-10 shrink-0 rounded-md" />
+              <div className="w-12 shrink-0"><SkeletonLine text="text-sm" className="w-10" /></div>
               <Skeleton className="size-7 shrink-0 rounded" />
-              <Skeleton className="h-3.5 flex-1 rounded-md" />
-              <Skeleton className="h-3.5 w-24 shrink-0 rounded-md" />
+              <div className="min-w-0 flex-1"><SkeletonLine text="text-base" className="w-full" /></div>
+              <SkeletonLine text="text-xs" className="w-24" />
               <Skeleton className="size-4 shrink-0 rounded" />
             </div>
           ))}

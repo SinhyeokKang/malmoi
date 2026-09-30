@@ -226,7 +226,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
          * 포커스가 아예 안 보였다.** 그 `overflow-hidden`은 `rounded-lg`가 첫·끝 행의 모서리를
          * 자르는 수단이라 뗄 수 없으므로, 링을 안쪽으로 그린다.
          */
-        className="hover:bg-foreground/[0.02] focus-visible:ring-ring flex items-center gap-4 py-3.5 pr-3.5 pl-3 focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
+        className="hover:bg-foreground/[0.02] focus-visible:ring-ring flex items-center gap-4 py-[13px] pr-3.5 pl-3 focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
       >
         <ProjectThumbnail name={row.name} src={row.image} />
 

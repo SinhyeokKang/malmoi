@@ -194,11 +194,16 @@ describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () =
     expect(source).toMatch(/<FooterLink \/>\s*<\/aside>/);
   });
 
-  it("행 높이는 블록이 아니라 컨테이너가 든다", () => {
+  /*
+    ⚠️ **4-W8(ux-drift-unify)에서 뒤집었다** — 할 일·로그 행의 높이는 px 컨테이너(`h-[42px]`·`h-[22px]`)가 아니라 실물과 같은 글자 급의
+    줄 상자(`SkeletonLine`)가 든다. px로 적으면 `--text-*` 토큰이 바뀔 때 골격만 떠내려간다.
+  */
+  it("행 높이는 블록이 아니라 줄 상자가 든다", () => {
     const source = skeleton();
-    // 할 일 행은 두 줄(42) · 로그 행은 한 줄(22) · 메타 행은 `text-sm`의 20이다.
-    expect(source).toMatch(/h-\[42px\]/);
-    expect(source).toMatch(/h-\[22px\]/);
+    // 할 일 행은 두 줄(문장 15 · 표면·로케일 13) · 로그 행은 한 줄 · 메타 행은 `text-sm`의 20이다.
+    expect(source).not.toMatch(/h-\[(?:42|22|21|17)px\]/);
+    expect(source).toContain('<SkeletonLine text="text-base" className="w-[72%]" />');
+    expect(source).toContain('{divided && <SkeletonLine text="text-xs" className="w-[62%]" />}');
     expect(source).toMatch(/flex h-5 items-center/);
     expect(source).toMatch(/flex h-\[45px\] items-center/);
   });

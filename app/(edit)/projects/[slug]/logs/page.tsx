@@ -184,7 +184,7 @@ export default async function LogsPage({
           <Alert
             variant="neutral"
             /* ⚠️ **복원 링크는 OWNER에게만** — EDITOR에게 누를 수 없는 것을 보이지 않는다. */
-            actions={canPerform(role, "project:settings") ? <ButtonLink href={routes.settings(slug)}>{m.logs.archived.restoreAction}</ButtonLink> : undefined}
+            actions={canPerform(role, "project:settings") ? <ButtonLink href={routes.settings(slug)}>{m.archive.empty.action}</ButtonLink> : undefined}
           >
             {m.logs.archived.restoreLine(utcDay(project.archivedAt))}
           </Alert>

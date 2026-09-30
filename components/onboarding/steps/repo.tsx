@@ -230,7 +230,7 @@ export function RepoStep({
                 className={cn(
                   index > 0 && "border-t",
                   index > 0 && (active || prevActive ? "border-border" : "border-divider"),
-                  active ? "bg-muted" : "hover:bg-foreground/3",
+                  active ? "bg-muted" : "hover:bg-foreground/[0.03]",
                 )}
               >
                 <div className="p-3">

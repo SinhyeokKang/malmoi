@@ -124,7 +124,7 @@ export function TokenGrantFields({
             const line = columns === 2 ? cn(index % 2 === 1 && "border-divider border-l", index >= 2 && "border-divider border-t") : index > 0 && "border-divider border-t";
             return (
               <li key={grant} className={cn(line)}>
-                <label className="hover:bg-foreground/3 flex cursor-pointer items-center gap-3 p-3">
+                <label className="hover:bg-foreground/[0.03] flex cursor-pointer items-center gap-3 p-3">
                   <Checkbox
                     data-grant={grant}
                     checked={value.grants.has(grant)}
@@ -170,7 +170,7 @@ export function TokenGrantFields({
               className="border-border focus-visible:ring-ring flex cursor-not-allowed items-center gap-3 border-t p-3 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
             >
               <span aria-hidden className="size-4 shrink-0 rounded-full border border-neutral-300 opacity-50" />
-              <IconTile size="lg" className="bg-muted text-neutral-400">
+              <IconTile size="lg" className="bg-muted">
                 <ListChecks aria-hidden />
               </IconTile>
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">

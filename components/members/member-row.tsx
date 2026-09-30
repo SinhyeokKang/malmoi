@@ -61,8 +61,8 @@ export function MemberRow({
 
   return (
     <>
-      {/* ⚠️ **왼쪽 padding만 12다** (캔버스 `14 14 14 12`) — 글리프가 서는 쪽이라 한 단계 좁다. */}
-      <div className="flex items-center gap-4 py-3.5 pr-3.5 pl-3">
+      {/* ⚠️ **왼쪽 padding만 12다** (`13 14 13 12` — 세로 13은 행 한 벌, 4-W3) — 글리프가 서는 쪽이라 한 단계 좁다. */}
+      <div className="flex items-center gap-4 py-[13px] pr-3.5 pl-3">
         <span data-avatar className="flex shrink-0">
           {/*
             ⚠️ **씨앗이 없으면 빈 문자열을 넘긴다 — 갈래를 늘리지 않는다** (캔버스 `1a` 넷째 행).

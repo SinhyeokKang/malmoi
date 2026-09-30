@@ -224,7 +224,7 @@ export const en = {
     description: "This page may have moved or is no longer available.",
     action: "Go to your projects",
   },
-  /** 셸 밖 오류 경계(`app/error.tsx`·`app/global-error.tsx`) — 무엇이 실패했는지 모르므로 다시 시도만 권한다. */
+  /** 오류 경계(`app/error.tsx`·`app/global-error.tsx`·셸 안 `(edit)/error.tsx`) — 무엇이 실패했는지 모르므로 다시 시도만 권한다. */
   crash: {
     title: "Something went wrong",
     description: "This page couldn't load. Try again in a moment.",
@@ -1366,7 +1366,6 @@ export const en = {
       badge: "Archived",
       description: "This project is archived. The history stays readable — editing, publishing and syncing are off.",
       restoreLine: (date: string): string => `Archived on ${date}. Project owners can restore it from Settings.`,
-      restoreAction: "Open settings",
     },
     trigger: {
       cron: "Nightly",
@@ -1655,6 +1654,8 @@ export const en = {
    * 다른 말을 한다. 여기 있는 것은 이 화면만 쓰는 문구다.
    */
   account: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (4-Y17 — `m.settings.loading`과 같은 형). */
+    loading: "Loading account…",
     profile: {
       /**
        * 카드 헤더 (2026-09-16). **머리 블록이 카드가 되면서 제목이 생겼다** — 카드 넷이 같은 그릇을

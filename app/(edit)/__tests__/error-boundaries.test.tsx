@@ -31,3 +31,19 @@ it("Logs error의 재시도는 retry를 부른다", async () => {
   await clickRetry(<LogsError error={new Error("boom")} retry={retry} />, m.logs.queryError.retry);
   expect(retry).toHaveBeenCalledOnce();
 });
+
+/**
+ * **셸 안 "불러오지 못했다" 경계는 한 형이다** (ux-drift-unify 4-Y18) — 칸 글리프 + 제목 + 설명 + primary Retry. 옛 `(edit)/error`는
+ * 제목·글리프 없는 danger Alert라 Logs 경계와 같은 사건이 두 모양이었다. 글리프는 §2.4 글리프 열의 실패 `CircleX`(`CircleAlert`는 필드 오류 전용).
+ */
+it.each([
+  ["(edit)", EditError, m.crash.title],
+  ["Logs", LogsError, m.logs.queryError.title],
+] as const)("%s 경계는 실패 글리프 칸 + 제목 + 설명 + primary Retry다", async (_name, Boundary, title) => {
+  const { container } = await render(<Boundary error={new Error("boom")} retry={vi.fn()} />);
+  const glyph = container.querySelector("svg");
+  expect(glyph?.getAttribute("class")).toContain("lucide-circle-x");
+  expect(container.textContent).toContain(title);
+  expect(container.querySelectorAll("p")).toHaveLength(2);
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+});

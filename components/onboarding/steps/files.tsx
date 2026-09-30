@@ -195,7 +195,7 @@ export function FilesStep({
               locked && "opacity-50",
               index > 0 && "border-t",
               index > 0 && (active || prevActive ? "border-border" : "border-divider"),
-              active ? "bg-muted" : "hover:bg-foreground/3",
+              active ? "bg-muted" : "hover:bg-foreground/[0.03]",
             )}
           >
             <div className={cn("p-3", selection && "flex items-center gap-3")}>

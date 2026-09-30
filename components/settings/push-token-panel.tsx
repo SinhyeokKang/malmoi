@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, RotateCcw } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { rotatePushToken } from "@/app/(edit)/projects/actions";
@@ -41,16 +41,18 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
         </p></div>
       <Dialog>
         <DialogTrigger asChild>
-          {/* 확정이 `danger`라 트리거도 `danger`다(DESIGN §2.4 동작 규칙 · 3-Y2) — 되돌릴 수 없다는 신호가 창을 열기 전에 선다. */}
+          {/*
+            확정이 `danger`라 트리거도 `danger`다(DESIGN §2.4 동작 규칙 · 3-Y2) — 되돌릴 수 없다는 신호가 창을 열기 전에 선다.
+            글리프가 없다(5-W2) — MCP [Rotate token]과 같다. 옛 `RotateCcw`는 Clear filters의 글리프라 "되돌리기"로 읽혔다.
+          */}
           <Button
             variant="danger"
-            className="[&_.animate-spin]:size-3.5 @max-[640px]:col-start-2 @max-[640px]:justify-self-start"
+            className="@max-[640px]:col-start-2 @max-[640px]:justify-self-start"
             disabled={disabled}
             /* ⚠️ `loading`이 아니라 `busy`다 (audit #32) — 확정하면 Dialog가 이 트리거로 포커스를 돌려주는데, 같은 커밋에
                진짜 `disabled`가 되면 그 포커스가 `body`로 빠진다. */
             busy={pending}
           >
-            {!pending && <RotateCcw aria-hidden />}
             {m.settings.token.rotate}
           </Button>
         </DialogTrigger>

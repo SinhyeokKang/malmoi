@@ -139,7 +139,7 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
   return (
     <Link
       href={href}
-      className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-border flex items-center gap-3 border-t px-4 py-3.5 focus-visible:ring-2 focus-visible:outline-none"
+      className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-border flex items-center gap-3 border-t px-4 py-[13px] focus-visible:ring-2 focus-visible:outline-none"
     >
       <IconTile tone={tile.tone}>
         <Tile aria-hidden />

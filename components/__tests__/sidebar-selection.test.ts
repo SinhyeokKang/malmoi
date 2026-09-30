@@ -23,7 +23,8 @@ describe("사이드바 선택 표현", () => {
     expect(source).toContain('<p data-zone-head className={cn(ROW, "text-foreground font-medium")}>');
   });
 
-  it("선택과 hover가 배경 알파이고 한 단계 벌어져 있다", () => {
+  /** 캔버스 위 행의 급이다 — hover 3% · 선택 7%(DESIGN §5). 철자는 `visual-system.test.ts`가 전역으로 센다(5-Y8). */
+  it("선택과 hover가 배경 알파이고 캔버스 급(3%·7%)으로 한 단계 벌어져 있다", () => {
     expect(source).toContain('active ? "bg-foreground/[0.07]" : "hover:bg-foreground/[0.03]"');
   });
 });

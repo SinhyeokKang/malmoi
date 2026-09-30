@@ -8,7 +8,7 @@ import { m } from "@/lib/i18n";
  * ⚠️ **`ContentPanel`을 들지 않는다** — `[slug]/layout.tsx`가 든다. 여기서 또 감싸면 로딩 동안 패널이 둘이 된다.
  *
  * ⚠️ **치수는 실물 그대로다** — 머리(`min-h-9` 제목 행) · `RowCard` 헤더(`px-4 py-3`, 설명이 같은 줄 오른쪽) · 멤버 행
- * (`py-3.5 pr-3.5 pl-3` · 아바타 32 · 이름 열 300 · 메타 150 · 역할 셀렉트 132 + [Remove]) · 첫 행만 약한 선.
+ * (`py-[13px] pr-3.5 pl-3` · 아바타 32 · 이름 열 300 · 메타 150 · 역할 셀렉트 132 + [Remove]) · 첫 행만 약한 선.
  *
  * ⚠️ **개수는 가장 흔한 모양이다** — 멤버 둘(이름·이메일 두 줄), 대기 초대 0(빈 상태). 실제 수를 맞히려 들면 틀렸을 때
  * 두 번 튄다. 마지막 오너의 사유 띠(OWNER 시점에서 오너 하나인 행)는 그리지 않는다 — 시점마다 갈려 가장 흔한 수가 없다.
@@ -31,7 +31,7 @@ export default function MembersLoading() {
         <Card>
           {[0, 1].map((i) => (
             <div key={i} data-skeleton-member className={i === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}>
-              <div className="flex items-center gap-4 py-3.5 pr-3.5 pl-3">
+              <div className="flex items-center gap-4 py-[13px] pr-3.5 pl-3">
                 <Skeleton className="size-8 shrink-0 rounded-full" />
                 <div className="flex w-[300px] min-w-0 shrink-0 flex-col gap-0.5">
                   <SkeletonLine text="text-base" className="w-[45%]" />

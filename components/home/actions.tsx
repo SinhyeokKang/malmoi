@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCcw } from "lucide-react";
+import { ArrowDownToLine } from "lucide-react";
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { useCommitWait } from "@/components/commit-wait";
@@ -246,8 +246,8 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
              "같은 라벨·같은 Action"이 화면에서 깨진다. 무반응인 버튼은 비활성보다 한 단계 아래다. */
           /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 결과 Alert의 [Try again]과 같은 형이다. */
           actions={owner ? <>
-            {/* 결과 Alert의 [Try again]과 같은 글리프다(3-⚪15) — 같은 Dialog를 여는 두 자리가 다른 모양이었다. */}
-            <Button aria-disabled={publishPending || undefined} aria-describedby={publishPending ? retryReasonId : undefined} title={publishPending ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!publishPending) setSyncOpen(true); }}><RotateCcw className="size-3.5" aria-hidden />{m.home.banner.syncFailed.action}</Button>
+            {/* 결과 Alert의 [Try again]과 같은 글리프다(3-⚪15) — 같은 Dialog를 여는 두 자리가 다른 모양이었다. Sync의 글리프다(5-W2 — `RotateCcw`는 Clear filters 전용). */}
+            <Button aria-disabled={publishPending || undefined} aria-describedby={publishPending ? retryReasonId : undefined} title={publishPending ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!publishPending) setSyncOpen(true); }}><ArrowDownToLine className="size-3.5" aria-hidden />{m.home.banner.syncFailed.action}</Button>
             {publishPending && <span id={retryReasonId} className="sr-only">{m.repositorySync.waitPublish}</span>}
           </> : undefined}
         >

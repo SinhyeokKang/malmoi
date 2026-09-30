@@ -385,6 +385,16 @@ describe("같은 행동은 같은 variant다 (audit #50)", () => {
       expect(source.slice(at - 200, at + 120), path).toContain("<RotateCcw");
     }
   });
+
+  /**
+   * **`RotateCcw`는 Clear filters의 글리프 하나다** (ux-drift-unify 5-W2) — Retry(Sync 결과)·토큰 재발급도 같은 글리프를 들어 "되돌리기"와
+   * "다시 하기"·"새로 만들기"가 한 모양이었다. Sync의 [Try again]은 Sync의 글리프(`ArrowDownToLine`)를, 재발급은 MCP Rotate처럼 글리프 없이 선다.
+   */
+  it("`RotateCcw`를 그리는 자리는 Clear filters뿐이다", () => {
+    const CLEAR = ["app/(edit)/projects/[slug]/logs/page.tsx", "components/logs/log-filters.tsx", "components/projects/empty-projects.tsx", "components/translations/workspace/workspace.tsx"];
+    const drawn = SOURCES.filter(({ source }) => source.includes("<RotateCcw")).map(({ path }) => path).sort();
+    expect(drawn).toEqual(CLEAR);
+  });
 });
 
 /**
@@ -415,5 +425,42 @@ describe("24px 이상은 600, 600은 24px 이상에만", () => {
   it("`font-semibold`는 24px 이상 크기와만 선다", () => {
     const stray = found.filter(({ cls }) => SEMIBOLD.test(cls) && !BIG.test(cls));
     expect(stray.map(({ path, cls }) => `${path}: ${cls}`)).toEqual([]);
+  });
+});
+
+/**
+ * **행 면·선의 알파 철자는 `/[0.0N]` 하나다** (DESIGN §5 · ux-drift-unify 5-Y8 · 4-W4). hover 2%(카드 안 행)·3%(캔버스·모달 위 행)·선택 7%·
+ * 선 6%가 `/2`·`/3`·`/6`·`/7`과 `/[0.02]`… 두 철자로 갈려 grep 한 번으로 소비자를 셀 수 없었다. 급(2·3·7)의 판정은 화면 테스트가 들고
+ * (`projects-screen` 2% · `sidebar-selection`·`public-shell` 3%), 여기는 철자만 센다. 회색 면 `/5`(Badge neutral·Skeleton·IconTile)는 이 급 밖이다.
+ */
+describe("알파 면·선의 철자", () => {
+  const BARE_ALPHA = /\b(?:bg|border|ring)-foreground\/[2367]\b/g;
+
+  it("괄호 없는 철자(`/2`·`/3`·`/6`·`/7`)가 0이다", () => {
+    expect(hits(BARE_ALPHA).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);
+  });
+
+  it("판정식이 괄호 없는 철자를 잡고 정본 철자·다른 급은 놓아준다 (카나리아)", () => {
+    const real = SOURCES.find(({ path }) => path === "components/shell/sidebar.tsx")?.source ?? "";
+    expect(real).toContain("hover:bg-foreground/[0.03]");
+    expect(real.replace("hover:bg-foreground/[0.03]", "hover:bg-foreground/3").match(BARE_ALPHA)).toHaveLength(1);
+    expect("ring-foreground/6 border-foreground/2".match(BARE_ALPHA)).toHaveLength(2);
+    expect("bg-foreground/5 bg-foreground/32 bg-foreground/[0.07]".match(BARE_ALPHA)).toBeNull();
+    expect(SOURCES.length).toBeGreaterThan(200);
+  });
+});
+
+/**
+ * **후보 행의 `IconTile`은 면만 덮는다** (ux-drift-unify T23 — IconTile 색 덮기 잔여). 글리프 색은 `tone`(상태 칸) 아니면 기본 muted 하나다 —
+ * 꺼진 Scope 행의 `text-neutral-400` 칸은 같은 행 라벨이 이미 꺼짐을 말했다. 면(`bg-muted`·`bg-background` — 선택 면)은 T28 허용 목록이다.
+ */
+describe("후보 행 IconTile의 덮기", () => {
+  const FILES = ["components/onboarding/steps/naming.tsx", "components/onboarding/steps/files.tsx", "components/onboarding/steps/repo.tsx", "components/mcp/token-grant-fields.tsx"];
+  const tokens = (path: string) => openingTags(read(path), "IconTile").flatMap((tag) =>
+    [...tag.matchAll(/"([^"]*)"/g)].flatMap((match) => (match[1] ?? "").split(/\s+/)).filter((token) => /^(?:text|bg)-/.test(token)));
+  it.each(FILES)("%s — 면 색만 덮는다", (path) => {
+    const found = tokens(path);
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.filter((token) => token !== "bg-muted" && token !== "bg-background")).toEqual([]);
   });
 });
