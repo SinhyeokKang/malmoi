@@ -367,3 +367,18 @@ it("보관된 Sources는 날짜만 말하고 출구 낱말이 보관 화면들�
   expect(document.querySelector('a[href*="settings"]')?.textContent).toBe(m.archive.empty.action);
   expect(document.querySelector('a[href*="settings"] svg')?.getAttribute("class")).toContain("lucide-chevron-right");
 });
+/*
+  EDITOR의 "누가 돌려야 하나" 문장은 OWNER 줄과 같은 갈림을 탄다(#164) — 이전에 성공한 적이 있는 표면(`failed-after`)에
+  "first sync"를 말하면 거짓이다. Home 배너의 EDITOR 문장과 같은 말이다.
+*/
+it.each([
+  { name: "첫 적재 실패", row: failedFirst, want: m.sources.askOwner, not: m.sources.askOwnerRerun },
+  { name: "이후 실패", row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") }, want: m.sources.askOwnerRerun, not: m.sources.askOwner },
+  { name: "일부 반영", row: partialAfter, want: m.sources.askOwnerRerun, not: m.sources.askOwner },
+])("EDITOR는 $name 상태에서 그 상태에 맞는 요청 문장을 본다", async ({ row, want, not }) => {
+  mocks.load.mockResolvedValue({ ok: true, detail: { ...detail, ...row } });
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [row] }} adapters={[]} now={new Date()} />);
+  await open();
+  expect(document.body.textContent).toContain(want);
+  expect(document.body.textContent).not.toContain(not);
+});

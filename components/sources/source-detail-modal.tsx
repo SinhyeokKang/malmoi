@@ -105,7 +105,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
               {isImportFailureCode(detail.lastImportError) ? importFailureMessage(detail.lastImportError)
                 : detail.lastCommitSha ? m.sources.importedSummary(detail.keys, detail.locales)
                 : m.sources.notImportedHelp}
-              {statusFailed && !canEdit && <> {m.sources.askOwner}</>}
+              {statusFailed && !canEdit && <> {importStatus?.state === "failed-after" ? m.sources.askOwnerRerun : m.sources.askOwner}</>}
               {importStatus?.state === "failed-after" && canEdit && <> {m.settings.sources.rerun}</>}
             </span>
             {!detail.installed && <span className="text-muted-foreground text-xs">{canEdit ? <>{m.sources.reconnectOwner} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></> : m.sources.reconnectEditor}</span>}

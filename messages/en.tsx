@@ -2844,6 +2844,8 @@ export const en = {
     emptyEditor: "A project owner adds the translation files. Nothing to translate until then — you will see the languages here once the first sync lands.",
     ownerOnly: "Only project owners can add sources.",
     askOwner: "Ask a project owner to run the first sync.",
+    // 이전에 성공한 적이 있는 표면(`failed-after`·일부 반영)용 — "first"가 거짓이다. Home 배너의 EDITOR 문장과 같은 말이다.
+    askOwnerRerun: "Ask a project owner to run the sync again.",
     reconnectOwner: "Reconnect the repository in Settings, then try again.",
     reconnectEditor: "Ask a project owner to reconnect the repository.",
     firstImport: "The first sync hasn't finished yet. Adding a source doesn't connect its CI workflow.",
