@@ -37,6 +37,8 @@ export type NightlyTarget = {
   baseBranch: string;
   installationId: string | null;
   repositoryId: string | null;
+  /** 방문 **전** 값 — 마감으로 멈춘 방문이 방문 기록을 되돌릴 때 쓴다. */
+  lastNightlyAt: Date | null;
   surfaces: readonly {
     id: string;
     slug: string;
@@ -53,10 +55,12 @@ export type NightlyTarget = {
  */
 export async function runNightly(prisma: PrismaClient, target: NightlyTarget, elapsedMs: () => number): Promise<NightlyVisit> {
   /**
-   * ⚠️ **방문 기록이 머리이고 쓰는 자리는 여기 하나다** (POSTMORTEM 2026-09-15 — 컬럼을 더하며 쓰는 자리를 전수로 안 셌다). 성공·스킵·실패와
+   * ⚠️ **방문 기록이 머리이고 쓰는 자리는 여기 하나다** — 예외는 마감 멈춤의 되돌림 하나(아래 `none` 갈래) (POSTMORTEM 2026-09-15 — 컬럼을 더하며
+   * 쓰는 자리를 전수로 안 셌다). 성공·스킵·실패와
    * 무관하게 먼저 쓴다 — 정렬(`selectPullTargets`)의 아사 방지 힌트이지 이력이 아니라서 사건과 같은 트랜잭션에 묶지 않는다.
    */
-  await prisma.project.update({ where: { id: target.id }, data: { lastNightlyAt: new Date() } });
+  const stamp = new Date();
+  await prisma.project.update({ where: { id: target.id }, data: { lastNightlyAt: stamp } });
 
   const active = target.surfaces.filter((surface) => surface.archivedAt === null);
   const input: NightlyInput = {
@@ -115,6 +119,14 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
       return { action: "skip", ...rest };
     }
     default:
+      /**
+       * ⚠️ **마감으로 멈춘 방문은 방문으로 치지 않는다** (r3) — 방문 기록이 남으면 다음 밤 뒤로 가고, 정렬이 오래된 순이라 같은 프로젝트들이 매일
+       * 20초 뒤에 닿아 매일 마감에 걸린다(아사). 방문 전 값으로 되돌려 다음 밤 **앞으로** 오게 한다. 머리의 기록 뒤에 누가 다시 썼으면 건드리지
+       * 않는다(조건부). 이것이 `lastNightlyAt`을 쓰는 **유일한 두 번째 자리**다.
+       */
+      if (plan.counter === "unprocessed") {
+        await prisma.project.updateMany({ where: { id: target.id, lastNightlyAt: stamp }, data: { lastNightlyAt: target.lastNightlyAt } });
+      }
       // 사건이 없는 갈래(비교 대상 0 · 적재 시작 마감) — 요약 카운터만 센다.
       return { action: "none", counter: plan.counter };
   }

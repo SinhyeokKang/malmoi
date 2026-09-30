@@ -81,7 +81,8 @@ export const PULL_TIME_BUDGET_MS = 45_000;
 /**
  * 야간 **적재 갈래만** 시작할 수 있는 시간 (nightly-sync). 루프 예산(`PULL_TIME_BUDGET_MS`)보다 이르다 — 서버 적재는
  * 표면 트랜잭션 timeout이 30초(`lib/import/run.ts`)라, 45초 가까이 시작하면 `maxDuration = 60`을 뚫고 그 밤의 요약이
- * 통째로 사라진다. 넘기면 적재를 시작하지 않고 `unprocessed`로 세며, 다음 밤 `lastNightlyAt` 정렬이 앞으로 가져온다.
+ * 통째로 사라진다. 넘기면 적재를 시작하지 않고 `unprocessed`로 세며, 그 방문은 `lastNightlyAt`을 방문 전 값으로 되돌려(`runNightly`)
+ * 다음 밤 정렬이 앞으로 가져온다.
  * Publish·스킵은 이 마감을 보지 않는다 — 그쪽은 루프 예산이 든다.
  */
 export const NIGHTLY_IMPORT_START_MS = 20_000;

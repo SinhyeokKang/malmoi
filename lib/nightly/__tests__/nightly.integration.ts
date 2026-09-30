@@ -31,6 +31,7 @@ vi.mock("@/lib/github", () => ({
 }));
 
 const { runNightly } = await import("@/lib/nightly/run");
+const { NIGHTLY_IMPORT_START_MS, selectPullTargets } = await import("@/lib/pull/targets");
 
 const directory = mkdtempSync(join(tmpdir(), "malmoi-nightly-"));
 let binaries: string;
@@ -87,7 +88,7 @@ async function seed() {
 /** `/api/pull`이 고른 행과 같은 모양 — 라우트의 `select`를 그대로 읽는다. */
 async function target() {
   const row = await prisma.project.findUniqueOrThrow({ where: { id: "p" }, select: {
-    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true,
+    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
     surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true } },
   } });
   return row;
@@ -167,4 +168,52 @@ it("함수 사망으로 남은 running 적재 행을 다음 방문의 만료 닫
   const dead = await prisma.projectEvent.findFirstOrThrow({ where: { ref: "evt_dead" } });
   expect(dead).toMatchObject({ result: "failed" });
   expect(dead.finishedAt).not.toBeNull();
+});
+
+/**
+ * ⚠️ **마감으로 멈춘 방문은 방문으로 치지 않는다** (r3). 머리의 방문 기록이 그대로 남으면 그 프로젝트가 다음 밤 **뒤로** 가고, 정렬이 오래된 순이라
+ * 같은 프로젝트들이 매일 20초 뒤에 닿아 매일 마감에 걸린다(아사). 마감 갈래만 방문 전 값으로 되돌린다 — 다음 밤 앞으로 온다.
+ */
+const late = async () => runNightly(prisma, await target(), () => NIGHTLY_IMPORT_START_MS + 1);
+const stampOf = async (id: string) => (await prisma.project.findUniqueOrThrow({ where: { id } })).lastNightlyAt;
+
+it.each([
+  ["한 번도 방문 안 함(null)", null],
+  ["지난 방문 시각", new Date("2026-09-28T18:00:00Z")],
+])("마감으로 멈춘 방문은 lastNightlyAt을 방문 전 값으로 둔다 — %s", async (_name, previous) => {
+  await seed();
+  await prisma.project.update({ where: { id: "p" }, data: { lastNightlyAt: previous } });
+  const calls = github({});
+  expect(await late()).toEqual({ action: "none", counter: "unprocessed" });
+  expect(calls.map((c) => c.method)).toEqual(["getRefSha"]);
+  expect(await stampOf("p")).toEqual(previous);
+  expect(await events()).toEqual([]);
+});
+
+it("마감으로 멈춘 프로젝트는 다음 밤 제때 방문한 프로젝트보다 앞이다", async () => {
+  await seed();
+  await prisma.project.create({ data: { id: "q", slug: "other", name: "Other", ...repository, repoName: "q",
+    surfaces: { create: { id: "sq", slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", lastCommitSha: OLD, lastCommitAt: oldAt } } } });
+  const before = new Date("2026-09-28T18:00:00Z");
+  await prisma.project.updateMany({ data: { lastNightlyAt: before } });
+  github({ refSha: { "heads/main": OLD } });
+  // q는 제때 방문했다(upToDate) — 방문 기록이 지금으로 전진한다.
+  const q = await prisma.project.findUniqueOrThrow({ where: { id: "q" }, select: {
+    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
+    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true } } } });
+  expect(await runNightly(prisma, q, () => 0)).toEqual({ action: "skip", outcome: "upToDate" });
+  // p는 마감으로 멈췄다.
+  github({});
+  await late();
+  const rows = await prisma.project.findMany({ select: { slug: true, installationId: true, repositoryId: true, archivedAt: true, lastNightlyAt: true,
+    surfaces: { select: { archivedAt: true, lastCommitSha: true } } } });
+  expect(selectPullTargets(rows, 50).targets).toEqual(["fixture", "other"]);
+  expect(await stampOf("q")).not.toEqual(before);
+});
+
+it("마감 외 갈래는 방문을 기록한다 — 실패 방문도 (짝)", async () => {
+  await seed();
+  github({ failOn: "getRefSha" });
+  await visit();
+  expect(await stampOf("p")).not.toBeNull();
 });

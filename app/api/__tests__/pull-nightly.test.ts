@@ -21,6 +21,7 @@ const state = vi.hoisted(() => ({
   pending: {} as Record<string, number>,
   events: [] as Record<string, unknown>[],
   visits: [] as { id: string; lastNightlyAt: Date }[],
+  restores: [] as { where: Record<string, unknown>; data: { lastNightlyAt: Date | null } }[],
   clients: {} as Record<string, GitClient>,
   createGitClient: vi.fn(),
   openRepoReader: vi.fn(),
@@ -35,6 +36,10 @@ vi.mock("@/lib/db", () => ({
       update: async ({ where, data }: { where: { id: string }; data: { lastNightlyAt: Date } }) => {
         state.visits.push({ id: where.id, lastNightlyAt: data.lastNightlyAt });
         return {};
+      },
+      updateMany: async (args: { where: Record<string, unknown>; data: { lastNightlyAt: Date | null } }) => {
+        state.restores.push(args);
+        return { count: 1 };
       },
     },
     translation: { count: async ({ where }: { where: { projectId: string } }) => state.pending[where.projectId] ?? 0 },
@@ -80,6 +85,7 @@ beforeEach(() => {
   state.pending = {};
   state.events = [];
   state.visits = [];
+  state.restores = [];
   state.clients = {};
   state.createGitClient.mockImplementation(async (_owner: string, repo: string) => {
     const found = state.clients[repo];
@@ -207,6 +213,8 @@ describe("갈래별 호출", () => {
     expect(body.unprocessed).toBe(0);
     expect(state.events).toEqual([]);
     expect(state.runAutomationImport).not.toHaveBeenCalled();
+    // 방문으로 치지 않는다(r3) — 머리의 기록을 방문 전 값(null)으로, 그 기록이 그대로일 때만 되돌린다.
+    expect(state.restores).toEqual([{ where: { id: p.id, lastNightlyAt: state.visits[0]?.lastNightlyAt }, data: { lastNightlyAt: null } }]);
   });
 
   it("⚠️ results.length + unprocessed = 고른 수 — 마감 멈춤과 예산 미방문을 두 번 세지 않는다", async () => {
@@ -246,6 +254,8 @@ describe("방문 기록 · 격리 · 요약", () => {
     expect(results.map((r) => r.slug)).toEqual(["a", "b"]);
     expect(results[1]).toMatchObject({ action: "skip", outcome: "upToDate" });
     expect(state.visits.map((v) => v.id)).toEqual([a.id, b.id]);
+    // 마감 외 갈래(실패·스킵)는 기록을 되돌리지 않는다 (짝).
+    expect(state.restores).toEqual([]);
   });
 
   it("요약 로그 한 줄에 카운터 전부", async () => {
