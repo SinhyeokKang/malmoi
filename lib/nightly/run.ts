@@ -8,7 +8,7 @@ import { recordEvent } from "@/lib/events/record";
 import { AppError, logCaught } from "@/lib/failure";
 import { createGitClient, openRepoReader } from "@/lib/github";
 import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
-import { runAutomationImport } from "@/lib/import/run";
+import { closeExpiredImportRuns, runAutomationImport } from "@/lib/import/run";
 import { openPrGateApplies } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
 import type { GitClient } from "@/lib/pull/client";
@@ -64,6 +64,11 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
    */
   const stamp = new Date();
   await prisma.project.update({ where: { id: target.id }, data: { lastNightlyAt: stamp } });
+  /**
+   * ⚠️ **어느 갈래든 먼저 만료된 `import:` 행을 닫는다** — 적재 갈래만 닫으면(`acquire`) 마지막 표면까지 커밋한 뒤 죽은 실행이 head가 같은 밤마다
+   * `Running…`으로 남는다. 살아 있는 lease는 건드리지 않고(`hasLiveInternalImport`), 새 사건을 만들지 않는다.
+   */
+  await closeExpiredImportRuns(prisma, target.id);
 
   const active = target.surfaces.filter((surface) => surface.archivedAt === null);
   const input: NightlyInput = {

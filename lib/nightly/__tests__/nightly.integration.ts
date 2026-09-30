@@ -302,3 +302,48 @@ it("실패 상태 없는 같은 head는 여전히 upToDate다 (짝)", async () =
   github({ refSha: { "heads/main": OLD } });
   expect(await visit()).toEqual({ action: "skip", outcome: "upToDate" });
 });
+
+/**
+ * **적재에 들어가지 않는 방문도 만료된 `import:` 행을 닫는다** (Codex 교차 리뷰 🟡). 마지막 표면까지 커밋한 뒤 사건 종료 전에 함수가 죽으면
+ * 모든 SHA가 head라 다음 밤이 `upToDate`로 끝나고, 만료 닫기가 `acquire` 안에만 있어 `Running…`이 영영 남았다. 살아 있는 lease는 닫지 않는다.
+ * 새 사건은 만들지 않는다(기존 행을 닫을 뿐 — 방문당 새 사건 최대 하나는 그대로).
+ */
+async function openRun(ref: string, startedAt: Date) {
+  await prisma.projectEvent.create({ data: { ref, projectId: "p", kind: "IMPORT", subtype: "import.nightly", actorKind: "AUTOMATION",
+    surfaceIds: ["s"], surfaceScope: "sources", runToken: `import:${ref}`, occurredAt: startedAt, searchText: ref,
+    payload: { kind: "IMPORT", source: "nightly", surfaceSlugs: ["default"] } } });
+}
+
+it("모든 SHA가 head(upToDate)여도 만료된 running 적재 행을 닫는다 — 새 사건은 스킵 한 행뿐", async () => {
+  await seed();
+  const deadAt = new Date(Date.now() - 60 * 60 * 1000);
+  await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: "dead", repositoryImportStartedAt: deadAt } });
+  await openRun("evt_dead", deadAt);
+  github({ refSha: { "heads/main": OLD } });
+  expect(await visit()).toEqual({ action: "skip", outcome: "upToDate" });
+  const dead = await prisma.projectEvent.findFirstOrThrow({ where: { ref: "evt_dead" } });
+  expect(dead).toMatchObject({ result: "failed" });
+  expect(dead.finishedAt).not.toBeNull();
+  expect(await prisma.projectEvent.count({ where: { projectId: "p", NOT: { ref: "evt_dead" } } })).toBe(1);
+});
+
+it("살아 있는 lease의 running 행은 건드리지 않는다 (짝)", async () => {
+  await seed();
+  const liveAt = new Date(Date.now() - 5_000);
+  await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: "live", repositoryImportStartedAt: liveAt } });
+  await openRun("evt_live", liveAt);
+  github({ refSha: { "heads/main": OLD } });
+  await visit();
+  const live = await prisma.projectEvent.findFirstOrThrow({ where: { ref: "evt_live" } });
+  expect(live).toMatchObject({ result: null, finishedAt: null });
+});
+
+it("첫 적재가 표면 진행 표시만 세운 채 도는 중이면 그 행도 건드리지 않는다", async () => {
+  await seed();
+  const liveAt = new Date(Date.now() - 5_000);
+  await prisma.translationSurface.update({ where: { id: "s" }, data: { lastImportStartedAt: liveAt, lastImportToken: "first" } });
+  await openRun("evt_first", liveAt);
+  github({ refSha: { "heads/main": OLD } });
+  await visit();
+  expect(await prisma.projectEvent.findFirstOrThrow({ where: { ref: "evt_first" } })).toMatchObject({ finishedAt: null });
+});

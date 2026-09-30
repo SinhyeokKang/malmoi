@@ -18,7 +18,7 @@ import { finishRun, recordEvent, recordImportRefusal, recordRun } from "@/lib/ev
 import { readDiscardApproval } from "./approval";
 import { classifySnapshotFailure, classifySurfaceFailure, summarizeRun, type ImportEventSummary } from "./automation";
 import { planImportApply, type ImportSettings } from "./apply-plan";
-import { hasActiveImport, planRepositoryImport } from "./plan";
+import { hasActiveImport, hasLiveInternalImport, planRepositoryImport } from "./plan";
 import { snapshotError } from "./read";
 import { prepareSurfaceImport, type PreparedSurfaceImport } from "./surface";
 import type { RepositoryImportError, RepositoryImportOutcome, SurfaceImportResult } from "./result";
@@ -132,10 +132,7 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
      * ⚠️ **`import:` 접두로 좁힌다** — CI(`ci:`)는 종료만 기록하므로 미종료 행이 없고, 접두가 없으면
      * 그쪽까지 건드리게 된다.
      */
-    await tx.projectEvent.updateMany({
-      where: { projectId: project.id, kind: "IMPORT", finishedAt: null, runToken: { startsWith: "import:" } },
-      data: { result: "failed", finishedAt: startedAt },
-    });
+    await closeImportRunsInTx(tx, project.id, startedAt);
 
     /**
      * 실행은 행 하나다 (결정 12) — 시작에 `INSERT`(결과 null), 종료에 같은 행을 갱신한다.
@@ -151,6 +148,36 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
       payload: importPayload({ source: vocabulary.source, surfaceSlugs: active.map(surface => surface.slug) }),
     });
     return { ok: true, lease: { project, token, startedAt, actor, approvedTokens, surfaces: active } };
+  }, transactionOptions);
+}
+
+/**
+ * 아직 안 닫힌 내부 Import 사건을 **만료로** 닫는다. ⚠️ 부르는 쪽이 `Project` 잠금 아래에서 살아 있는 적재가 없음을 이미 확인했어야 한다
+ * (`hasLiveInternalImport`) — 이 함수는 판정하지 않는다.
+ * ⚠️ **`import:` 접두로 좁힌다** — CI(`ci:`)는 종료만 기록하므로 미종료 행이 없고, 접두가 없으면 그쪽까지 건드리게 된다.
+ */
+async function closeImportRunsInTx(tx: Prisma.TransactionClient, projectId: string, at: Date): Promise<number> {
+  const { count } = await tx.projectEvent.updateMany({
+    where: { projectId, kind: "IMPORT", finishedAt: null, runToken: { startsWith: "import:" } },
+    data: { result: "failed", finishedAt: at },
+  });
+  return count;
+}
+
+/**
+ * 야간 방문의 **만료 닫기** (Codex 교차 리뷰 🟡) — 적재에 들어가지 않는 방문(head 같음·보류·Publish)도 죽은 실행의 `Running…`을 닫는다.
+ * 전에는 `acquire` 안에만 있어, 마지막 표면까지 커밋한 뒤 사건 종료 전에 죽은 실행은 다음 커밋이나 수동 Sync가 올 때까지 열려 있었다.
+ * ⚠️ `Project` 잠금 아래에서 `hasLiveInternalImport`로 판정하고 **살아 있는 lease는 닫지 않는다.** 새 사건을 만들지 않는다.
+ */
+export async function closeExpiredImportRuns(prisma: PrismaClient, projectId: string): Promise<number> {
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    const project = await tx.project.findUnique({ where: { id: projectId }, select: { repositoryImportToken: true, repositoryImportStartedAt: true } });
+    if (project === null) return 0;
+    const surfaces = await tx.translationSurface.findMany({ where: { projectId }, select: { archivedAt: true, lastImportStartedAt: true } });
+    const now = new Date();
+    if (hasLiveInternalImport({ now, ...project, surfaces })) return 0;
+    return closeImportRunsInTx(tx, projectId, now);
   }, transactionOptions);
 }
 

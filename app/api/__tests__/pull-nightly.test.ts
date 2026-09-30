@@ -28,6 +28,7 @@ const state = vi.hoisted(() => ({
   openRepoReader: vi.fn(),
   runSync: vi.fn(),
   runAutomationImport: vi.fn(),
+  closeExpiredImportRuns: vi.fn(),
 }));
 
 vi.mock("@/lib/db", () => {
@@ -53,7 +54,7 @@ vi.mock("@/lib/db", () => {
 });
 vi.mock("@/lib/github", () => ({ createGitClient: state.createGitClient, openRepoReader: state.openRepoReader }));
 vi.mock("@/lib/sync/run", () => ({ runSync: state.runSync }));
-vi.mock("@/lib/import/run", () => ({ runAutomationImport: state.runAutomationImport }));
+vi.mock("@/lib/import/run", () => ({ runAutomationImport: state.runAutomationImport, closeExpiredImportRuns: state.closeExpiredImportRuns }));
 vi.mock("@/lib/github-wait", () => ({
   GITHUB_WAIT_MS: 20,
   withinGithubWait: <T,>(work: Promise<T>, late: () => T) =>
@@ -100,6 +101,7 @@ beforeEach(() => {
   });
   state.runSync.mockResolvedValue({ status: "skipped", reason: "no-edits" });
   state.runAutomationImport.mockResolvedValue({ recorded: true, result: "imported", deferReason: null });
+  state.closeExpiredImportRuns.mockResolvedValue(0);
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
@@ -260,6 +262,8 @@ describe("방문 기록 · 격리 · 요약", () => {
     client(b, {});
     const { results } = await call();
     expect(results.map((r) => r.slug)).toEqual(["a", "b"]);
+    // 만료된 `import:` 행 닫기는 갈래와 무관하게 방문마다 한 번 — Publish(a)·스킵(b) 둘 다(Codex 교차 리뷰 🟡).
+    expect(state.closeExpiredImportRuns.mock.calls.map((c) => c[1])).toEqual([a.id, b.id]);
     expect(results[1]).toMatchObject({ action: "skip", outcome: "upToDate" });
     expect(state.visits.map((v) => v.id)).toEqual([a.id, b.id]);
     // 마감 외 갈래(실패·스킵)는 기록을 되돌리지 않는다 (짝).
