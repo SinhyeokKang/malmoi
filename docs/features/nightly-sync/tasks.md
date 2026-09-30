@@ -74,7 +74,7 @@
 - [ ] **G3** `docs(ACTIONS)`: "열린 PR 경고는 차단이 아니다" 절 개정(반전과 병합이 아닌 이유) · `deferred` 사유 `open-pr`·`pr-check-failed`와 할 일(PR을 머지하거나 닫는다) · v3와 v2 소비자 동작(경고 없이 green).
 - [ ] **G4** CLAUDE.md 코어 원칙 "보류 판정은 리포를 보지 않는다" 문장 + `pnpm sync:agents`.
   — 검증: `pnpm sync:agents:check` green.
-- [ ] **G5** `docs(DESIGN)`: §6.64 메타 열 ` · nightly` · 보류 한 줄 · §6.68 행위자 메뉴(CI·Nightly) · 행 문장 규칙에 CI/Nightly 기준 · `upToDate`의 글리프·톤(slate). §6.2 새 raw 색 없음.
+- [x] **G5** (2026-10-01 `ux-drift-unify` T1이 흡수 — ` · nightly` 꼬리와 `upToDate` slate 등재는 **적지 않는다**: 메타 열은 배지 먼저, `upToDate`는 neutral 칸) ~~`docs(DESIGN)`: §6.64 메타 열 ` · nightly` · 보류 한 줄 · §6.68 행위자 메뉴(CI·Nightly) · 행 문장 규칙에 CI/Nightly 기준 · `upToDate`의 글리프·톤(slate). §6.2 새 raw 색 없음.~~
 - [ ] **G6** `/guide`: `guide/sync/nightly.md`(야간에 무엇을 하나, 언제 건너뛰나, "CI = your repository's workflow") · `guide/sync/push.md`(보류 사유) · `guide/sync/logs.md`(행위자 메뉴, 편집 없는 밤의 행이 Imports로) · `guide/translate/publish.md` · `guide/AUTHORING.md` IA 표 · 온보딩 ④ 설명 문구(`messages/en.tsx`) · README 야간 서술.
   — 검증: `pnpm test`(가이드 게이트) green · `pnpm guide:check` stale 목록 인용.
 - [ ] **G7** action v3 릴리스 — **`/merge`로 서버가 프로덕션에 나간 뒤** `malmoi-i18n-push-v3` 태그 → 사용 리포 전환(ACTIONS 순서).

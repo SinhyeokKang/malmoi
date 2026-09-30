@@ -287,3 +287,7 @@
 - 2026-10-01 지휘자: T18·T20의 전후 측정은 로컬 production 빌드 + DB가 필요해 워크트리(`.env.local` 없음)에서 못 잰다 — 7단계 QA 워커가 main 체크아웃에서 잰다.
   기준 SHA = U6·U7·U8 중 **첫 화면 커밋 직전 dev 해시**(인테이크 시점 기록). 판정선 초과면 멈추고 사용자에게 올린다(spec Q7).
 - 2026-10-01 지휘자: 원본 대조로 빠진 24건을 흡수·제외했다(위 "제외 ID" 표와 각 태스크 ID 표기). 감사 자체가 허용·유지로 판정한 것만 제외했다.
+- 2026-10-01 지휘자(U1 리뷰): **`TONES`의 성공은 `success` 그대로**이고 D3③ 예외(Logs 성공 neutral — Sent·Synced 둘 다)는 Logs 표시 층에서 건다.
+  Home **Recent logs**는 같은 스트림·행 컴포넌트라 neutral을 따른다. Home 카드·메타·Sync 결과 Alert·Sources·목록은 success. 그래야 spec 완료 조건 6의
+  합치 테스트(`TONES[summarizeImportEvent(x)] === summarizeImport(x).tone`)가 성공을 포함한 전 조합에서 선다.
+- 2026-10-01 지휘자(U1 해석 승인): Logs **설정** 종류 칩(slate)은 D3③("별도 축은 blue·teal·violet만")에 따라 neutral 칸으로 간다 — 최종 보고에 알린다.
