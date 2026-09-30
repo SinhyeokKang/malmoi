@@ -38,6 +38,12 @@ describe("메타 열 — 실행 주체", () => {
       .toBe(`${relativeTime(day, now)} · ${m.logs.meta.nightly} · ${m.home.meta.failedAt(relativeTime(tenMin, now))}`);
   });
 
+  /** 닫아도 풀린다 — Logs 사유 문장("merged or closed")과 같은 조건을 말한다. */
+  it("보류 한 줄은 머지와 닫기 둘 다를 푸는 조건으로 말한다", () => {
+    expect(m.home.meta.heldByOpenPr).toContain("merged or closed");
+    expect(m.logs.deferReasons["open-pr"]).toContain("merged or closed");
+  });
+
   it("최근 적재가 open-pr 보류면 보류 한 줄이 붙는다", async () => {
     expect(await valueOf({ kind: "lastSync", at: day, failedAt: null, trigger: "ci", heldByOpenPr: true }))
       .toBe(`${relativeTime(day, now)} · ${m.logs.meta.ci} · ${m.home.meta.heldByOpenPr}`);

@@ -125,7 +125,8 @@ describe("homeTriggers — 사건 → 주체", () => {
     ["첫 적재", event({ subtype: "import.first", payload: { source: "first" } }), "manual"],
     ["야간 적재", event({ actorKind: "AUTOMATION", subtype: "import.nightly", payload: { source: "nightly" } }), "nightly"],
     ["CI 적재", event({ actorKind: "AUTOMATION", subtype: "import.ci", payload: { source: "ci" } }), "ci"],
-    ["부분 성공도 성공이다", event({ actorKind: "AUTOMATION", subtype: "import.nightly", result: "partial" }), "nightly"],
+    ["부분 성공도 성공이다", event({ actorKind: "AUTOMATION", subtype: "import.nightly", result: "partial",
+      payload: { source: "nightly", surfaces: [{ surfaceSlug: "web", status: "imported", count: 1, reason: null }] } }), "nightly"],
   ] as const)("%s → %s", (_, lastImport, trigger) => {
     expect(homeTriggers({ lastImport, latestImport: lastImport, lastPublish: null }).sync).toBe(trigger);
   });
@@ -160,6 +161,25 @@ describe("homeTriggers — 사건 → 주체", () => {
   ] as const)("%s는 보류 한 줄을 세우지 않는다", (_, over) => {
     const latestImport = event({ actorKind: "AUTOMATION", subtype: "import.nightly", ...over });
     expect(homeTriggers({ lastImport: null, latestImport, lastPublish: null }).heldByOpenPr).toBe(false);
+  });
+
+  /**
+   * ⚠️ `partial` 사건이 `lastImportedAt`을 하나도 전진시키지 못할 수 있다 — 코드가 붙은 표면은 그 컬럼을 안 쓴다
+   * (`importOutcomeFields`). 그때 주체를 붙이면 옛 수동 Sync 시각 옆에 `nightly`가 선다. 틀린 주체보다 주체 없음이 낫다.
+   */
+  it("partial인데 표면이 전부 partial이면 주체가 없다 — 더 옛 사건으로 물러나지도 않는다", () => {
+    const lastImport = event({ actorKind: "AUTOMATION", subtype: "import.nightly", result: "partial",
+      payload: { source: "nightly", surfaces: [{ surfaceSlug: "web", status: "partial", count: 3, reason: "partial-import" }] } });
+    expect(homeTriggers({ lastImport, latestImport: lastImport, lastPublish: null }).sync).toBeNull();
+  });
+
+  it("partial이어도 imported 표면이 하나 있으면 주체가 선다", () => {
+    const lastImport = event({ actorKind: "AUTOMATION", subtype: "import.nightly", result: "partial",
+      payload: { source: "nightly", surfaces: [
+        { surfaceSlug: "app", status: "imported", count: 3, reason: null },
+        { surfaceSlug: "web", status: "failed", count: null, reason: "parse-failed" },
+      ] } });
+    expect(homeTriggers({ lastImport, latestImport: lastImport, lastPublish: null }).sync).toBe("nightly");
   });
 
   it("주체와 보류가 메타 행에 실린다", () => {

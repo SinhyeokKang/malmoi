@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { m } from "@/lib/i18n";
 
 import type { EventPayload } from "../payload";
-import { eventMeta, eventSentence, type EventMetaRow } from "../view";
+import { eventFailureMessage, eventMeta, eventSentence, type EventMetaRow } from "../view";
 
 /**
  * nightly-sync F1 — 야간·CI 행의 문장과 보조줄. 주체는 `triggerOf`(subtype)가 정하고, 보류 문장은 `deferReason`이 가른다.
@@ -99,9 +99,24 @@ describe("eventMeta — 주체 낱말과 보류 사유", () => {
 });
 
 /** 서버 적재 예산은 수동 Sync도 지난다 — too-large 문구가 [Sync]를 복구 수단으로 권하면 같은 이유로 또 실패한다. */
-it("too-large 문구는 서버 적재 전체의 한계로 말하고 워크플로를 출구로 든다", () => {
+it("too-large 문구는 출구 둘(크기 줄이기 · 워크플로)을 든다 — 워크플로 없는 프로젝트에도 출구가 있다", () => {
   const text = m.logs.deferReasons["too-large"];
-  expect(text).not.toMatch(/automatically|ask your developers to sync/);
+  expect(text).not.toMatch(/automatically|ask your developers to sync|can still deliver/);
+  expect(text).toMatch(/Reduce/);
   expect(text).toContain("workflow");
   expect(renderToStaticMarkup(<>{m.logs.sentence.import.held["too-large"]("WHO")}</>)).not.toContain("automatically");
+});
+
+/** 야간 스킵 실패는 적재 사유 사전에 없는 코드다 — 폴백("import failed")이 아니라 Publish 사유 문장이고, 보관 중엔 야간 절이 빠진다. */
+describe("eventFailureMessage — nightly.skip base-unreadable", () => {
+  const skip = metaRow({ result: "failed", payload: payload({ errorCode: "base-unreadable" }) });
+
+  it("base-unreadable 사유 문장을 낸다", () => {
+    expect(eventFailureMessage(skip, false)).toBe(m.logs.reasons["base-unreadable"]);
+    expect(eventFailureMessage(skip, false)).not.toBe(m.projects.importFailure.importFailed);
+  });
+
+  it("보관 중이면 야간 절이 빠진다", () => {
+    expect(eventFailureMessage(skip, true)).not.toContain("nightly");
+  });
 });
