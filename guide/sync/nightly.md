@@ -30,7 +30,8 @@ The nightly run does not update the project, and records why in **Logs**, when:
 - A Malmoi pull request is still open. Its translations are not in the repository yet, so an update would overwrite them. Merge or close the pull request; the next nightly run picks up the changes. Home shows "held until the pull request is merged or closed" next to **Last sync**.
 - GitHub didn't answer whether that pull request is open. Malmoi does not guess; the next run checks again.
 - The change is too large for a server-side sync. Nightly updates use the same file budget as creating a project (see [Limits](../reference/limits.md#files)). Reduce the files' size, or deliver the change with the repository workflow.
-- The repository's branch can't be read, or GitHub didn't answer in time. A project owner can check the branch and the GitHub connection in project **Settings**.
+
+If the nightly run can't read the repository's branch, or GitHub doesn't answer in time, the event shows **Failed** in **Logs** instead of a hold. A project owner can check the branch and the GitHub connection in project **Settings**.
 
 ## Nightly sync or the workflow {#workflow}
 

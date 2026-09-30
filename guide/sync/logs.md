@@ -11,7 +11,7 @@ Logs records project events with the actor, time, event type, and before-and-aft
 
 Dates and event times use UTC. Result filters apply to syncing and publishing runs.
 
-Under **Automation**, the **Actor** filter offers **CI** for runs of your repository's workflow and **Nightly** for the [nightly run](nightly.md). A night with no unpublished edits appears under **Syncs**, not **Publish**: the nightly run either updated the project from the repository, reported **Up to date**, or held the update.
+Under **Automation**, the **Actor** filter offers **CI** for runs of your repository's workflow and **Nightly** for the [nightly run](nightly.md). A night with no unpublished edits appears under **Syncs**, not **Publish**: the nightly run updated the project from the repository, reported **Up to date**, held the update, or failed (for example, it couldn't read the repository's branch). Some nights leave no event for a project, such as when no source is ready to compare or the run reached the project too late to start an update.
 
 If filters hide every event, the list says so; choose **Clear filters** to see everything.
 
