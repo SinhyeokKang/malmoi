@@ -13,10 +13,10 @@ import { applyPushInTransaction } from "@/lib/push/apply";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { planDiscardConfirmation, planProtectedImport } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
-import { runTokenFor, type DeferReason, type EventPayload, type EventResult } from "@/lib/events/payload";
+import { runTokenFor, type EventPayload } from "@/lib/events/payload";
 import { finishRun, recordEvent, recordImportRefusal, recordRun } from "@/lib/events/record";
-import { summarizeImportEvent } from "@/lib/events/view";
 import { readDiscardApproval } from "./approval";
+import { classifySnapshotFailure, classifySurfaceFailure, summarizeRun, type ImportEventSummary } from "./automation";
 import { planImportApply, type ImportSettings } from "./apply-plan";
 import { hasActiveImport, planRepositoryImport } from "./plan";
 import { snapshotError } from "./read";
@@ -228,8 +228,9 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
         lastCommitSha: snapshot.headSha, lastCommitAt: new Date(snapshot.headCommittedAt), importRevision: { increment: 1 },
         ...importOutcomeFields(null, new Date()), lastImportToken: null,
       } });
-    } else if (!(lease.actor.kind === "AUTOMATION" && prepared.error === "resource-limit")) {
-      // ⚠️ 야간의 예산 초과는 표면 실패 상태를 쓰지 않는다 — 야간이 CI로 건강한 프로젝트를 Home에서 실패로 뒤집지 않는다(사건이 `too-large`를 말한다).
+    } else if (lease.actor.kind === "USER" || classifySurfaceFailure(prepared) === "record") {
+      // ⚠️ 야간의 서버 전용 한도·일시 실패는 표면 실패 상태를 쓰지 않는다 — 야간이 CI로 건강한 프로젝트를 Home에서 실패로 뒤집지 않는다
+      // (`./automation` — 사건이 `too-large`·`failed`를 말한다). CI도 같이 실패할 것(파싱 실패·0키)만 쓴다.
       await tx.translationSurface.update({ where: { id: surface.id, projectId: scope.projectId }, data: {
         ...importOutcomeFields("import-failed", new Date()), lastImportToken: null,
       } });
@@ -249,23 +250,6 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
   }, transactionOptions);
   tally.changedValues += finished.changedValues;
   return finished.surface;
-}
-
-type ImportEventSummary = { result: Extract<EventResult, "imported" | "partial" | "superseded" | "failed" | "deferred">; deferReason: Extract<DeferReason, "pending-edits" | "too-large"> | null };
-
-/**
- * 종료 사건의 결과. 수동은 소스별 결과 그대로이고, 자동화만 보류 둘이 더해진다:
- * 사후 재집계로 멈췄으면 앞 표면이 적재됐는지로 `partial`/`deferred(pending-edits)`, 예산 초과만으로 아무것도 못 받았으면 `deferred(too-large)`.
- * ⚠️ 멈춘 표면은 결과 목록에 없으므로 나머지가 전부 `imported`여도 `partial`이다 — `summarizeImportEvent`에 맡기면 성공으로 접힌다.
- */
-function summarizeRun(actor: RunActor, outcome: RepositoryImportOutcome, halted: boolean): ImportEventSummary {
-  if (!outcome.ok) return { result: "failed", deferReason: null };
-  if (actor.kind === "AUTOMATION") {
-    const applied = outcome.surfaces.some(surface => surface.status === "imported" || surface.status === "partial");
-    if (halted) return applied ? { result: "partial", deferReason: null } : { result: "deferred", deferReason: "pending-edits" };
-    if (!applied && outcome.surfaces.some(surface => surface.reason === "resource-limit")) return { result: "deferred", deferReason: "too-large" };
-  }
-  return { result: summarizeImportEvent(outcome.surfaces), deferReason: null };
 }
 
 /** IMPORT 페이로드 — 관측하지 않은 칸은 `null`이다. 필드가 늘 때 생산자마다 빠뜨리지 않게 이 한 자리에서 채운다. */
@@ -307,6 +291,9 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
   const vocabulary = eventVocabulary(lease.actor);
   /** 자동화의 사후 재집계가 표면을 롤백하고 루프를 멈췄다. */
   let halted = false;
+  /** 자동화의 스냅샷이 서버 한도(`truncated`)에 걸렸다 — 사건은 `deferred`·`too-large`다. */
+  let held = false;
+  const automation = lease.actor.kind === "AUTOMATION";
   const tally: Tally = { changedValues: 0 };
   /**
    * **모든 반환·예외 경로가 이것을 지난다** (T5b-0). 조기 반환이 넷이라 하나라도 빠지면 그 실행이
@@ -317,7 +304,7 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
    */
   const runToken = runTokenFor({ kind: "import", token: lease.token });
   const close = async (outcome: RepositoryImportOutcome): Promise<RepositoryImportOutcome> => {
-    const summary = summarizeRun(lease.actor, outcome, halted);
+    const summary = summarizeRun({ automation, outcome, halted, held });
     observe(summary);
     try {
       const surfaces = outcome.ok ? outcome.surfaces : [];
@@ -355,7 +342,9 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
     const reader = await openReader();
     const snapshot = await reader.snapshot(lease.project.baseBranch);
     if (snapshot.status !== "ok") {
-      for (const surface of lease.surfaces) await finishSurface(prisma, lease, surface, failure, unchangedSnapshot, tally);
+      const kind = automation ? classifySnapshotFailure(snapshot.status) : "record";
+      held = kind === "hold";
+      if (kind === "record") for (const surface of lease.surfaces) await finishSurface(prisma, lease, surface, failure, unchangedSnapshot, tally);
       return await close({ ok: false, error: snapshotError(snapshot) });
     }
     const surfaces: SurfaceImportResult[] = [];
@@ -382,6 +371,8 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
         // 자동화의 사후 재집계 — 이 표면은 이미 롤백됐다. 실패로 기록하지 않고(편집이 들어왔을 뿐이다) 뒤 표면을 시작하지 않는다.
         if (error instanceof PendingEditsDuringImport) { halted = true; break; }
         logFailure("repository-import-surface", error);
+        // 야간의 트랜잭션 예외(timeout·DB 오류)는 일시 실패다 — 사건만 실패로 남기고 표면 실패 상태를 쓰지 않는다.
+        if (automation) { surfaces.push(result(surface, "failed", "import-failed")); continue; }
         try { surfaces.push(await finishSurface(prisma, lease, surface, failure, snapshot, tally)); }
         catch (recordError) { logFailure("repository-import-record", recordError); surfaces.push(result(surface, "failed", "import-failed")); }
       }
@@ -390,7 +381,8 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
     return await close({ ok: true, surfaces, remainingEdits: await countPending(prisma, input.projectId) });
   } catch (error) {
     logFailure("repository-import-read", error);
-    for (const surface of lease.surfaces) {
+    // 야간의 reader 열기·읽기 예외(설치 토큰·리포 선택 해제·네트워크)는 일시·자격 실패다 — 표면 실패 상태를 쓰지 않는다.
+    for (const surface of automation ? [] : lease.surfaces) {
       try { await finishSurface(prisma, lease, surface, failure, unchangedSnapshot, tally); }
       catch (recordError) { logFailure("repository-import-record", recordError); }
     }

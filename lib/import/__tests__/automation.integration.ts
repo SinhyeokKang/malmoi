@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
 import type { RepoReader } from "@/lib/github";
-import { runAutomationImport } from "@/lib/import/run";
+import { runAutomationImport, runRepositoryImportFromReader } from "@/lib/import/run";
 import { applyPush } from "@/lib/push/apply";
 
 /**
@@ -78,16 +78,24 @@ async function seed() {
 }
 
 /** 표면·로케일마다 파일 하나. `onBlob`이 blob 읽기 **전에** 돈다 — 표면 트랜잭션 사이에 저장을 끼우는 자리다. */
-function reader(options: { onBlob?: (slug: string) => Promise<void>; size?: number } = {}): RepoReader {
+function reader(options: {
+  onBlob?: (slug: string) => Promise<void>;
+  size?: number;
+  /** 표면별 파일 크기 — 한 표면만 예산을 넘긴다. */
+  sizeOf?: (slug: string) => number;
+  /** 표면별 blob 내용. `undefined`는 내려받기 실패다. */
+  content?: (slug: string) => string | undefined;
+  snapshot?: "truncated" | "unavailable" | "base-branch-missing";
+} = {}): RepoReader {
   return {
-    snapshot: vi.fn<RepoReader["snapshot"]>(async () => ({
+    snapshot: vi.fn<RepoReader["snapshot"]>(async () => options.snapshot !== undefined ? { status: options.snapshot } : ({
       status: "ok", headSha: HEAD, headCommittedAt: headAt,
-      files: SURFACES.flatMap(slug => LOCALES.map(locale => ({ path: `i18n/${slug}/${locale}.json`, sha: `${slug}:${locale}`, size: options.size ?? 100 }))),
+      files: SURFACES.flatMap(slug => LOCALES.map(locale => ({ path: `i18n/${slug}/${locale}.json`, sha: `${slug}:${locale}`, size: options.sizeOf?.(slug) ?? options.size ?? 100 }))),
     })),
     blob: vi.fn(async (sha: string) => {
       const slug = sha.split(":")[0] ?? "";
       await options.onBlob?.(slug);
-      return '{"hello":"Repository"}';
+      return options.content === undefined ? '{"hello":"Repository"}' : options.content(slug);
     }),
   };
 }
@@ -201,4 +209,86 @@ it("실행 뒤 실행권 표시를 지운다 — 다음 수동 Sync가 already-r
   await seed();
   await run(reader());
   expect(await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).toMatchObject({ repositoryImportToken: null, repositoryImportStartedAt: null });
+});
+
+/**
+ * **서버 전용 한도·일시 실패는 표면 실패 상태를 쓰지 않는다** (2026-09-30 사용자 판정). 야간 경로에서만이다 — 수동은 그대로 쓴다.
+ * 짝: CI도 같이 실패할 것(파싱 실패)은 야간에서도 `lastImportError`를 쓴다.
+ */
+const noSurfaceFailure = async () => {
+  for (const slug of SURFACES) expect(await surface(slug), slug).toMatchObject({ lastImportError: null, lastImportFailedAt: null, lastCommitSha: OLD });
+};
+
+it("트리 잘림(truncated) → deferred too-large · errorCode tree-truncated · 표면 실패 무기록", async () => {
+  await seed();
+  expect(await run(reader({ snapshot: "truncated" }))).toEqual({ recorded: true, result: "deferred", deferReason: "too-large" });
+  await noSurfaceFailure();
+  const rows = await events();
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({ result: "deferred" });
+  expect(rows[0]?.payload).toMatchObject({ deferReason: "too-large", errorCode: "tree-truncated" });
+});
+
+it("수동 Sync의 트리 잘림은 그대로 표면 lastImportError를 쓴다 (짝)", async () => {
+  await seed();
+  const repo = reader({ snapshot: "truncated" });
+  expect(await runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, credential: undefined }, async () => repo))
+    .toEqual({ ok: false, error: "tree-truncated" });
+  for (const slug of SURFACES) expect(await surface(slug)).toMatchObject({ lastImportError: "import-failed" });
+});
+
+it("스냅샷 unavailable(API 오류) → failed · errorCode unavailable · 표면 실패 무기록", async () => {
+  await seed();
+  expect(await run(reader({ snapshot: "unavailable" }))).toEqual({ recorded: true, result: "failed", deferReason: null });
+  await noSurfaceFailure();
+  expect((await events())[0]?.payload).toMatchObject({ errorCode: "unavailable" });
+});
+
+it("base 브랜치 부재(경합) → failed · 표면 실패를 쓴다 — CI도 같이 실패한다", async () => {
+  await seed();
+  expect(await run(reader({ snapshot: "base-branch-missing" }))).toEqual({ recorded: true, result: "failed", deferReason: null });
+  expect(await surface("a")).toMatchObject({ lastImportError: "import-failed" });
+});
+
+it("reader 열기 실패(설치 토큰·리포 선택 해제) → failed ingest-failed · 표면 실패 무기록", async () => {
+  await seed();
+  expect(await runAutomationImport(prisma, { projectId: "p", repository }, async () => { throw new Error("installation token"); }))
+    .toEqual({ recorded: true, result: "failed", deferReason: null });
+  await noSurfaceFailure();
+  expect((await events())[0]?.payload).toMatchObject({ errorCode: "ingest-failed" });
+});
+
+it("내려받기 실패만 → failed · 표면 실패 무기록", async () => {
+  await seed();
+  expect(await run(reader({ content: () => undefined }))).toEqual({ recorded: true, result: "failed", deferReason: null });
+  await noSurfaceFailure();
+});
+
+it("표면 트랜잭션 예외(DB 오류) → failed · 표면 실패 무기록", async () => {
+  await seed();
+  await pool.query(`CREATE FUNCTION fail_write() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'db down'; END $$;
+    CREATE TRIGGER fail_write BEFORE INSERT OR UPDATE ON "Translation" FOR EACH STATEMENT EXECUTE FUNCTION fail_write()`);
+  expect(await run(reader({ content: () => '{"hello":"Changed"}' }))).toEqual({ recorded: true, result: "failed", deferReason: null });
+  await noSurfaceFailure();
+});
+
+it("파싱 실패는 야간에서도 표면 lastImportError를 쓴다 — CI도 같은 파일에서 실패한다", async () => {
+  await seed();
+  expect(await run(reader({ content: () => "{" }))).toEqual({ recorded: true, result: "failed", deferReason: null });
+  for (const slug of SURFACES) expect(await surface(slug)).toMatchObject({ lastImportError: "import-failed" });
+});
+
+it("한도 보류 + 파싱 실패 → failed (too-large로 접지 않는다)", async () => {
+  await seed();
+  const repo = reader({ sizeOf: slug => slug === "a" ? 20_000_000 : 100, content: slug => slug === "b" ? "{" : '{"hello":"Repository"}' });
+  expect(await run(repo)).toEqual({ recorded: true, result: "failed", deferReason: null });
+  expect(await surface("a")).toMatchObject({ lastImportError: null });
+  expect(await surface("b")).toMatchObject({ lastImportError: "import-failed" });
+});
+
+it("한도 보류 + 적재 → partial", async () => {
+  await seed();
+  expect(await run(reader({ sizeOf: slug => slug === "a" ? 20_000_000 : 100 }))).toEqual({ recorded: true, result: "partial", deferReason: null });
+  expect(await surface("a")).toMatchObject({ lastImportError: null, lastCommitSha: OLD });
+  expect(await surface("b")).toMatchObject({ lastCommitSha: HEAD });
 });
