@@ -200,13 +200,17 @@ async function releaseOrphanedApproved(tx: Prisma.TransactionClient, scope: { pr
       AND (k."orphaned" OR l."orphaned")`;
 }
 
-async function finishSurface(prisma: PrismaClient, lease: Lease, surface: TranslationSurface, prepared: PreparedSurfaceImport, snapshot: { headSha: string; headCommittedAt: string }): Promise<SurfaceImportResult> {
-  return prisma.$transaction(async tx => {
+/** 커밋된 표면 트랜잭션이 실제로 바꾼 값 수의 합 — 롤백된 표면은 더하지 않는다(트랜잭션이 끝난 뒤에 더한다). */
+type Tally = { changedValues: number };
+
+async function finishSurface(prisma: PrismaClient, lease: Lease, surface: TranslationSurface, prepared: PreparedSurfaceImport, snapshot: { headSha: string; headCommittedAt: string }, tally: Tally): Promise<SurfaceImportResult> {
+  const finished = await prisma.$transaction(async tx => {
     const check = await current(tx, lease, surface);
-    if (!check.ok) return result(surface, "superseded", check.reason);
+    if (!check.ok) return { surface: result(surface, "superseded", check.reason), changedValues: 0 };
     const scope = { projectId: lease.project.id, surfaceId: surface.id };
+    let changedValues = 0;
     if (prepared.kind === "payload") {
-      await applyPushInTransaction(tx, scope, prepared.payload, {
+      const applied = await applyPushInTransaction(tx, scope, prepared.payload, {
         token: lease.token, startedAt: lease.startedAt, refsMode: "preserve", previousBaseLocale: surface.baseLocale,
         importOutcome: prepared.result.failed > 0 ? "partial-import" : null,
         // 승인 뒤에 저장된 셀은 토큰이 달라 여기서 안 덮인다 — 결과의 `remainingEdits`가 그 수를 말한다.
@@ -214,6 +218,7 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
         // 다운로드·파싱 실패가 하나라도 있으면 빠진 파일의 키를 삭제로 읽지 않는다(audit #7) — 중복 키는 잃는 키가 없어 `errors`에 없다.
         suppressOrphan: prepared.result.errors.length > 0,
       });
+      changedValues = applied.changedValues;
       await releaseOrphanedApproved(tx, scope, lease.approvedTokens);
     } else if (prepared.kind === "empty") {
       await tx.stringKey.updateMany({ where: { ...scope, orphaned: false }, data: { orphaned: true } });
@@ -235,13 +240,15 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
      * 여기서만 보인다. 앞서 커밋된 표면은 가드가 편집을 안 덮었으므로 되돌릴 이유가 없다.
      */
     if (lease.actor.kind === "AUTOMATION" && prepared.kind !== "failed" && await countPending(tx, scope.projectId) > 0) throw new PendingEditsDuringImport();
-    return { surfaceSlug: surface.slug,
+    return { changedValues, surface: { surfaceSlug: surface.slug,
       status: prepared.kind === "failed" ? "failed" : prepared.result.failed > 0 ? "partial" : "imported",
       reason: prepared.kind === "failed" ? prepared.error === "resource-limit" ? "resource-limit" : "import-failed" : null,
       count: prepared.result.count, failed: prepared.result.failed, unmanaged: prepared.result.unmanaged,
       errors: prepared.result.errors.map(({ path, code }) => ({ path, code })),
-    };
+    } satisfies SurfaceImportResult };
   }, transactionOptions);
+  tally.changedValues += finished.changedValues;
+  return finished.surface;
 }
 
 type ImportEventSummary = { result: Extract<EventResult, "imported" | "partial" | "superseded" | "failed" | "deferred">; deferReason: Extract<DeferReason, "pending-edits" | "too-large"> | null };
@@ -300,6 +307,7 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
   const vocabulary = eventVocabulary(lease.actor);
   /** 자동화의 사후 재집계가 표면을 롤백하고 루프를 멈췄다. */
   let halted = false;
+  const tally: Tally = { changedValues: 0 };
   /**
    * **모든 반환·예외 경로가 이것을 지난다** (T5b-0). 조기 반환이 넷이라 하나라도 빠지면 그 실행이
    * 영영 `Running…`으로 남는다 — 화면에 그것을 닫을 수단이 없다.
@@ -326,6 +334,8 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
           surfaces: surfaces.map(surface => ({ surfaceSlug: surface.surfaceSlug, status: surface.status, count: surface.count, reason: surface.reason })),
           errorCode: outcome.ok ? null : outcome.error,
           deferReason: summary.deferReason,
+          // 관측값이다 — 실패 실행은 무엇이 커밋됐는지 세지 않았으므로 `null`이다.
+          changedValues: outcome.ok ? tally.changedValues : null,
         }),
       });
       // ⚠️ **0행 갱신은 조용하다** (POSTMORTEM 2026-09-14) — 다음 실행의 stale 정리가 이 행을 먼저
@@ -345,7 +355,7 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
     const reader = await openReader();
     const snapshot = await reader.snapshot(lease.project.baseBranch);
     if (snapshot.status !== "ok") {
-      for (const surface of lease.surfaces) await finishSurface(prisma, lease, surface, failure, unchangedSnapshot);
+      for (const surface of lease.surfaces) await finishSurface(prisma, lease, surface, failure, unchangedSnapshot, tally);
       return await close({ ok: false, error: snapshotError(snapshot) });
     }
     const surfaces: SurfaceImportResult[] = [];
@@ -367,12 +377,12 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
           token: lease.token, startedAt: lease.startedAt,
           surface: { id: surface.id, slug: surface.slug, adapter: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale, nested: surface.nested, nestedByPath: surface.nestedByPath },
         });
-        surfaces.push(await finishSurface(prisma, lease, surface, prepared, snapshot));
+        surfaces.push(await finishSurface(prisma, lease, surface, prepared, snapshot, tally));
       } catch (error) {
         // 자동화의 사후 재집계 — 이 표면은 이미 롤백됐다. 실패로 기록하지 않고(편집이 들어왔을 뿐이다) 뒤 표면을 시작하지 않는다.
         if (error instanceof PendingEditsDuringImport) { halted = true; break; }
         logFailure("repository-import-surface", error);
-        try { surfaces.push(await finishSurface(prisma, lease, surface, failure, snapshot)); }
+        try { surfaces.push(await finishSurface(prisma, lease, surface, failure, snapshot, tally)); }
         catch (recordError) { logFailure("repository-import-record", recordError); surfaces.push(result(surface, "failed", "import-failed")); }
       }
     }
@@ -381,7 +391,7 @@ async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () 
   } catch (error) {
     logFailure("repository-import-read", error);
     for (const surface of lease.surfaces) {
-      try { await finishSurface(prisma, lease, surface, failure, unchangedSnapshot); }
+      try { await finishSurface(prisma, lease, surface, failure, unchangedSnapshot, tally); }
       catch (recordError) { logFailure("repository-import-record", recordError); }
     }
     return await close({ ok: false, error: "ingest-failed" });

@@ -34,6 +34,8 @@ export type CiImportEvent = {
   refusal?: NotStartedReason | null;
   /** `deferred`의 사유. 보류가 아니면 비운다. */
   deferReason?: DeferReason | null;
+  /** 적재가 실제로 바꾼 값 수(`PushOutcome.changedValues`). 적재가 없던 사건은 비운다. */
+  changedValues?: number | null;
   surfaces?: readonly SurfaceOutcome[];
 };
 
@@ -60,8 +62,7 @@ export function ciImportEvent(input: CiImportEvent): EventInput & { runToken: st
       errorCode: input.errorCode ?? null,
       refusal: input.refusal ?? null,
       deferReason: input.deferReason ?? null,
-      // 적재가 바꾼 값 수는 C2가 적재 코어에서 관측해 싣는다 — 그 전까지는 수집하지 않았다(`null`).
-      changedValues: null,
+      changedValues: input.changedValues ?? null,
     },
   };
 }

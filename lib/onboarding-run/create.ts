@@ -266,6 +266,7 @@ export async function createProjectFromRepo(
         scope: "project-wide",
         payload: { kind: "SETTINGS", field: "project", value: { before: null, after: `${plan.repoOwner}/${plan.repoName}` } },
       });
+      let changedValues = 0;
       for (const item of prepared) {
         writingPath = item.surface.pathTemplate;
         await tx.translationSurface.create({ data: { id: item.id, projectId: project.id,
@@ -280,9 +281,10 @@ export async function createProjectFromRepo(
           payload: { kind: "SURFACE", surfaceSlug: item.surface.surfaceSlug, adapter: item.surface.adapter,
             baseLocale: { before: null, after: item.surface.baseLocale } },
         });
-        await applyPushInTransaction(tx, { projectId: project.id, surfaceId: item.id }, item.payload, {
+        const applied = await applyPushInTransaction(tx, { projectId: project.id, surfaceId: item.id }, item.payload, {
           refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: null,
         });
+        changedValues += applied.changedValues;
       }
       /**
        * 최초 적재 실행 하나 — **소스별로 복제하지 않는다** (결정 14). 여기까지 온 것은 모든 표면의
@@ -304,7 +306,7 @@ export async function createProjectFromRepo(
           keys: prepared.reduce((sum, item) => sum + item.payload.keys.length, 0),
           pendingEdits: null,
           surfaces: prepared.map(item => ({ surfaceSlug: item.surface.surfaceSlug, status: "imported" as const, count: item.payload.keys.length, reason: null })),
-          errorCode: null, refusal: null, deferReason: null, changedValues: null,
+          errorCode: null, refusal: null, deferReason: null, changedValues,
         },
       });
       /**

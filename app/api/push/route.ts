@@ -243,6 +243,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             projectId: project.id, pushTokenHash, executionId,
             surface, result: "imported",
             keys: outcome.inserted + outcome.updated,
+            changedValues: outcome.changedValues,
             surfaces: [{ surfaceSlug: surface.slug, status: "imported", count: outcome.inserted + outcome.updated, reason: null }],
           });
         },

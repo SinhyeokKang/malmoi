@@ -53,6 +53,11 @@ function stubPrisma() {
       captured.push(c);
       return Promise.resolve(1);
     },
+    // 번역 upsert는 `changedValues`를 함께 내려고 `$queryRaw(Prisma.sql…)`다(nightly-sync C2) — 같은 캡처에 싣는다.
+    $queryRaw: (query: { strings: readonly string[]; values: readonly unknown[] }) => {
+      captured.push({ sql: query.strings.join(" ? "), values: [...query.values] });
+      return Promise.resolve([{ filled: 1, changed: 1 }]);
+    },
     $transaction: async (run: (tx: unknown) => Promise<unknown>): Promise<unknown> => run(prisma),
     stringKey: {
       findMany: async (args: { select: Record<string, boolean> }) =>

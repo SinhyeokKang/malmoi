@@ -723,7 +723,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
     .catch((error: unknown) => logFailure("onboard-ingest-event", error));
   const closeRun = async (
     result: "imported" | "partial" | "failed",
-    outcome: { keys: number | null; errorCode: string | null },
+    outcome: { keys: number | null; errorCode: string | null; changedValues?: number | null },
   ) => {
     try {
       const closed = await prisma.$transaction(tx => finishRun(tx, {
@@ -731,7 +731,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
         payload: {
           kind: "IMPORT", source: "first", surfaceSlugs, keys: outcome.keys, pendingEdits: null,
           surfaces: [{ surfaceSlug: surface.slug, status: result === "failed" ? "failed" : result === "partial" ? "partial" : "imported", count: outcome.keys, reason: outcome.errorCode }],
-          errorCode: outcome.errorCode, refusal: null, deferReason: null, changedValues: null,
+          errorCode: outcome.errorCode, refusal: null, deferReason: null, changedValues: outcome.changedValues ?? null,
         },
       }));
       // ⚠️ **0행 갱신은 조용하다** (POSTMORTEM 2026-09-14) — 다른 실행이 이 행을 먼저 닫았다는 뜻이고,
@@ -802,7 +802,7 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
      */
     if (result.count === 0) await failRun("partial-import");
 
-    await closeRun(result.failed > 0 || result.count === 0 ? "partial" : "imported", { keys: result.count, errorCode: null });
+    await closeRun(result.failed > 0 || result.count === 0 ? "partial" : "imported", { keys: result.count, errorCode: null, changedValues: result.changedValues });
     return { ok: true, count: result.count, failed: result.failed, unmanaged: result.unmanaged, errors: [...result.errors] };
   } catch (error) {
     // 스냅샷을 받는 동안 권한·보관이 바뀌었다 — 적재 실패가 아니라 거부다.
