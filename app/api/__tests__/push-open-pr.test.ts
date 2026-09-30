@@ -72,15 +72,19 @@ describe("열린 PR 게이트", () => {
     expect(json).not.toHaveProperty("pendingCount");
     expect(state.findOpenPr).toHaveBeenCalledWith("o:malmoi-i18n/sync-acme");
     expect(state.apply).not.toHaveBeenCalled();
+    // 진행 표시(`markImportStarted` = 표면 update)도 없다 — 게이트가 그 뒤로 옮겨 가면 여기서 red다.
+    expect(h.spies.updateSurface).not.toHaveBeenCalled();
     expect(h.spies.updateManySurfaces).not.toHaveBeenCalled();
     expect(state.record).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ result: "deferred", deferReason: "open-pr" }));
   });
 
   it("PR 조회 throw → 200 deferred pr-check-failed — PR 없음으로 읽지 않는다", async () => {
-    seed();
+    const h = seed();
     state.findOpenPr.mockRejectedValue(new Error("rate limited"));
     expect(await (await POST(request())).json()).toMatchObject({ status: "deferred", reason: "pr-check-failed" });
     expect(state.apply).not.toHaveBeenCalled();
+    expect(h.spies.updateSurface).not.toHaveBeenCalled();
+    expect(h.spies.updateManySurfaces).not.toHaveBeenCalled();
     expect(state.record).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ deferReason: "pr-check-failed" }));
   });
 
@@ -98,10 +102,12 @@ describe("열린 PR 게이트", () => {
   });
 
   it("PR 없음 → applied (짝)", async () => {
-    seed();
+    const h = seed();
     state.findOpenPr.mockResolvedValue(null);
     expect(await (await POST(request())).json()).toMatchObject({ status: "applied" });
     expect(state.apply).toHaveBeenCalledTimes(1);
+    // 짝 — 적용 갈래는 진행 표시를 세운다. 이 단언이 없으면 위 "0회"가 스파이 배선 실수로도 green이다.
+    expect(h.spies.updateSurface).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ lastImportToken: expect.any(String) }) }));
   });
 
   it.each([{ repositoryId: null }, { installationId: null }])("%o → 게이트 없음, 조회 0회, applied", async over => {
