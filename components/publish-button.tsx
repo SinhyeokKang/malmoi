@@ -161,7 +161,8 @@ const PANEL = {
 
 /*
  * ⚠️ **PR 줄·결과 블록은 `Alert`다** (ux-drift-unify Q10) — 옛 손 조립 무색 `Notice`는 같은 성공을 Home Sync(초록 Alert)와 다르게 그렸고
- * 경고도 무색 글리프였다. tone은 뜻으로 고른다: 열린 PR 있음·없음은 정보(neutral), 조회 실패·브랜치 교체는 warning, 바뀐 것 없음은 success.
+ * 경고도 무색 글리프였다. tone은 뜻으로 고른다: 열린 PR 있음·없음·브랜치 교체는 정보(neutral — 교체는 `updated`의 상시 조건이고 버린 것이 없다,
+ * 미리보기 `prOpen`과 같은 사실), 조회 실패는 warning, 바뀐 것 없음은 success.
  * ⚠️ **블록에 `aria-live`를 주지 않는다**(Alert의 비-danger 기본값) — 시안은 PR 줄에 `polite`를 적었지만 **리뷰 6번이
  * "껍데기의 polite live 한 곳"으로 정정했다**: 같은 전이를 둘이 알리면 중복 낭독이 되고,
  * `translations-screen.test.ts`가 번역 작업 화면의 live 영역을 푸터 결과 영역 하나로 고정한다.
@@ -221,7 +222,7 @@ function PrCard({ repo, number, note }: { repo: string; number: number | null; n
 
 /** `1e`·`1g`가 공유하는 브랜치 경고 — 조건은 `pr === "updated"` 하나다(warnings와 무관하다). */
 function Replaced({ branch, base }: { branch: string; base: string }) {
-  return <Alert variant="warning" className="shrink-0" title={p.replacedTitle}>{p.replacedBody(branch, base)}</Alert>;
+  return <Alert variant="neutral" className="shrink-0" title={p.replacedTitle}>{p.replacedBody(branch, base)}</Alert>;
 }
 
 /**

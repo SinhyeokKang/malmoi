@@ -170,7 +170,7 @@ export function TokenGrantFields({
               className="border-border focus-visible:ring-ring flex cursor-not-allowed items-center gap-3 border-t p-3 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
             >
               <span aria-hidden className="size-4 shrink-0 rounded-full border border-neutral-300 opacity-50" />
-              <IconTile size="lg" className="bg-muted">
+              <IconTile size="lg" className="bg-muted opacity-50">
                 <ListChecks aria-hidden />
               </IconTile>
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">

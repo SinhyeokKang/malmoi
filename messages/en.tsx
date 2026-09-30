@@ -2590,8 +2590,7 @@ export const en = {
           <>
             A second pull request isn&apos;t opened. #{n} will hold{" "}
             <span className="text-foreground">everything unsent</span>, not just{" "}
-            {changes === 1 ? "this one" : `these ${changes.toLocaleString("en-US")}`}, and anyone
-            reviewing it will see it change.
+            {changes === 1 ? "this one" : `these ${changes.toLocaleString("en-US")}`}.
           </>
         ),
       },

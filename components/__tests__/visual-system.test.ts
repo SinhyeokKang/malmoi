@@ -463,4 +463,11 @@ describe("후보 행 IconTile의 덮기", () => {
     expect(found.length).toBeGreaterThan(0);
     expect(found.filter((token) => token !== "bg-muted" && token !== "bg-background")).toEqual([]);
   });
+  /** 꺼진 Scope 행의 칸은 형제 라디오와 같은 `opacity-50`으로 물러난다(r1) — 글자색을 덮지 않고 칸째 흐리게 해 라벨보다 진해지지 않는다. */
+  it("꺼진 Scope 행의 칸은 형제 라디오와 같이 흐리다", () => {
+    const source = read("components/mcp/token-grant-fields.tsx");
+    const row = source.slice(source.indexOf('aria-disabled\n'), source.indexOf("m.mcpConnector.form.noMembership"));
+    expect(row).toContain("opacity-50");
+    expect(openingTags(row, "IconTile").join(" ")).toContain("opacity-50");
+  });
 });

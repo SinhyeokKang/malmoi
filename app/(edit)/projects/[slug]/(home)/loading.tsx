@@ -116,7 +116,7 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
               (문장 15 + 표면·로케일 13), 로그 행은 한 줄이다. 전에는 둘 다 14 블록으로 서서
               도착하는 순간 할 일이 행마다 ~15, 로그가 ~8.5 늘어났다.
             */}
-            <span className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+            <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
               {/* 할 일 행은 문장(15)이 먼저고 표면·로케일(13)이 아래다 — 실물과 같은 순서(Q9). */}
               <SkeletonLine text="text-base" className="w-[72%]" />
               {divided && <SkeletonLine text="text-xs" className="w-[62%]" />}

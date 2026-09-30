@@ -367,13 +367,26 @@ it.each([
 });
 it.each([
   ["no-changes", { status: "skipped", reason: "no-changes" }, "success"],
-  ["updated", { ...committedWith(), pr: "updated" }, "warning"],
+  // 교체는 `updated`의 상시 조건이고 버린 것이 없다 — 미리보기 `prOpen`(neutral)과 같은 사실이라 같은 톤이다(r1).
+  ["updated", { ...committedWith(), pr: "updated" }, "neutral"],
 ] as const)("결과 %s의 블록은 뜻에 맞는 Alert tone이다", async (name, outcome, tone) => {
   mocks.pull.mockResolvedValueOnce(outcome);
   await render(<Host />); await click("Publish1"); await click("Open pull request");
   const blocks = [...document.querySelectorAll('[role="dialog"] [data-alert]')];
   expect(blocks.map(node => node.getAttribute("data-alert"))).toEqual([tone]);
   if (name === "updated") expect(blocks[0]?.textContent).toContain(m.translations.publish.replacedTitle);
+});
+/**
+ * **열린 PR 줄 본문은 한 줄에 선다** (r1) — 본문이 14px `Alert`로 커지며 긴 문장이 1024 모달에서 두 줄로 접히면, 한 줄 골격(`AlertSkeleton`)에서
+ * 도착할 때 표가 20px 밀린다(2026-09-17 71 → 76과 같은 부류). 가장 긴 수(큰 changes)에서도 한 줄 길이 안이다.
+ */
+it("열린 PR 줄 본문은 한 줄 길이다", async () => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, openPr: { number: 12345, url: "https://github.com/owner/repo/pull/12345" }, sendable: { total: 123456, keys: 1 } }));
+  await render(<Host />); await click("Publish1");
+  const block = [...document.querySelectorAll('[data-alert="neutral"]')].find(node => node.textContent?.includes(m.translations.publish.prOpen.title(12345)));
+  const body = block?.querySelector("p + div")?.textContent ?? "";
+  expect(body.length).toBeGreaterThan(0);
+  expect(body.length).toBeLessThanOrEqual(100);
 });
 /** 4-W2 · 1-Y5 — 버린 값 목록은 카드 규격(radius 12)이고 개수는 배지(`CountBadge`)이며 머리 글리프가 warning 톤이다. */
 it("writer 경고 목록은 카드 radius · 개수 배지 · warning 글리프다", async () => {
