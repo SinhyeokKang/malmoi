@@ -74,7 +74,7 @@
 | `/guide/logs-event.webp` | `sync/logs.md#event-details` | OWNER | Logs(Kind: Publish)에서 연 Publish 사건 상세 |
 | `/guide/account.webp` | `account.md#profile` | OWNER | Account — Profile · Sign-in methods · GitHub App |
 | `/guide/mcp-create-token.webp` | `ai-agents/token.md#token` | EDITOR | MCP connector → Create token 모달 ①단계(만들지 않음 — ② 토큰 원문은 찍지 않는다) |
-| `/guide/mcp-connector.webp` | `ai-agents/browser.md#connected-apps` | OWNER | MCP connector — Connected apps(연결 둘) + 토큰 카드(원문 없음) + Connect 카드 머리 |
+| `/guide/mcp-connector.webp` | `ai-agents/browser.md#connected-apps` | OWNER | MCP connector — Connected apps(연결 둘, 로고 칸) + 토큰 카드(원문 없음) — Connect 카드는 2026-09-30에 걷었다 |
 | `/guide/oauth-consent.webp` | `ai-agents/browser.md#browser` | OWNER | `/oauth/authorize` 동의 화면 — claude.ai CIMD 요청(Authorize 누르지 않음), Translate & publish 하나 체크 |
 
 ## 에셋 매핑 {#shots}
@@ -106,7 +106,7 @@
 | /guide/logs-event.webp | components/logs/event-dialog.tsx, components/logs/event-detail.tsx | cadf74e0cb02c69164c5d8bd828ea5441dc71d60, 68a8754957aeedf36812d1f15a34df4cc7a4d08b | 2560x1600 |
 | /guide/account.webp | app/(edit)/account/page.tsx, components/account/profile-picture.tsx, components/account/login-methods.tsx, components/account/github-section.tsx | 6d03357fb3f33f6c8a21c869640d7f72f0bdca76, 37eec1067fce9caa706483a11deb51d76bf4f39b, b5c854085c6c97a92859631493939f2ef4220967, e866658706416a009765e582123f1158decc7d6c | 2560x1600 |
 | /guide/mcp-create-token.webp | components/mcp/token-modal.tsx, components/mcp/token-grant-fields.tsx | d56afa2334b2932c1734bab087e52280f6a4d543, bb5b03497d33a637fe411536b527156084be275d | 2560x1600 |
-| /guide/mcp-connector.webp | components/mcp/connected-apps-card.tsx, components/mcp/token-card.tsx, components/mcp/connect-card.tsx | 6ff150d2c6518cf026c8da643895cca18e0d47f3, 02dec0a0e34bb906d65c1921d5f9e1ed50b61d42, b99c5f6e6433a3076cd469bd79ec6423567e97ca | 2560x1600 |
+| /guide/mcp-connector.webp | components/mcp/connected-apps-card.tsx, components/mcp/token-card.tsx | 6ff150d2c6518cf026c8da643895cca18e0d47f3, 02dec0a0e34bb906d65c1921d5f9e1ed50b61d42 | 2560x1600 |
 | /guide/oauth-consent.webp | app/oauth/authorize/page.tsx, components/oauth/consent-panel.tsx, components/oauth/app-card.tsx, components/mcp/token-grant-fields.tsx | 3440235fe7a45c306afa13f94ba1536d829b5f36, 12ad3105c15d4917f0a245797f1b092f59159757, c53824331c89ec5759a6173c71718b1b6b1ce01f, bb5b03497d33a637fe411536b527156084be275d | 2560x1600 |
 | /guide/create-repository.webp | components/onboarding/new-project.tsx, components/onboarding/steps/repo.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, 35a6949ccd7201ce6de97c7b3b2d944d32828c05 | 2560x1600 |
 | /guide/create-files.webp | components/onboarding/new-project.tsx, components/onboarding/steps/files.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, 72c92128cde6e327a6215f67634a0a8d512d31d7 | 2560x1600 |
