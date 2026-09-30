@@ -32,12 +32,12 @@ description: 여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고,
 
 ```bash
 W=$(orca worktree create --repo id:<repoId> --name <batch> --base-branch dev --no-parent --json | jq -r .result.worktree.id)
-T=$(orca terminal create --worktree "id:$W" --title <batch> --command 'claude --permission-mode auto' --json | jq -r .result.terminal.handle)
+T=$(orca terminal create --worktree "id:$W" --title <batch> --command 'claude --permission-mode bypassPermissions' --json | jq -r .result.terminal.handle)
 orca terminal wait --terminal $T --for tui-idle --timeout-ms 60000 --json
 orca terminal send --terminal $T --text "Read <scratchpad>/brief-<batch>.md and follow it exactly." --enter --json
 ```
 
-- **`--permission-mode auto`로 띄운다.** `--agent claude`는 Orca 버그로 승인 대기 상태로 열리고, `--dangerously-skip-permissions`는 auto mode 분류기가 거부한다.
+- **`--permission-mode bypassPermissions`로 띄운다** (2026-09-30 사용자 — auto의 분류기가 워커의 정당한 셋업(로컬 앱 보관·폐기용 리포 PR 머지·토큰 전달)을 매번 막아 사람 승인이 필요했다). `--agent claude`는 Orca 버그로 승인 대기 상태로 열린다. ⚠️ bypass 확인창은 `~/.claude/settings.json`의 `skipDangerousModePermissionPrompt: true`가 넘긴다 — 그 값이 없으면 워커가 확인창에서 멈춘다. ⚠️ **분류기가 없으므로 경계는 브리프가 진다** — prod DB·`db:deploy`·`git push`·`/merge`·`.env.local` 복사 금지를 브리프에 빠짐없이 적는다(아래 목록). QA 워커(main 체크아웃)도 같다.
   **다른 세션의 권한 프롬프트를 지휘자가 대신 누르지 않는다.**
 - **브리프는 파일로 쓰고 한 줄로 보낸다** — 여러 줄을 TUI에 붙이면 깨진다. 브리프에 반드시 넣는 것:
   - 계획 원본 경로와 담당 항목, **다른 배치 소유라 건드리지 말 것** 목록
