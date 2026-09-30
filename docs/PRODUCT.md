@@ -595,7 +595,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /docs · /docs/:slug*           ✅ 사용 가이드 — 원고 guide/**.md · 순서 guide/SUMMARY.md · 공개 셸 + 문서 내비 ← docs-guide (2026-09-26)
                                /docs = 개요(독자 두 갈래 Set up / Translate) · 없는 slug·AUTHORING·SHOOTING은 404
                                옛 /docs#<id> 일곱은 개요가 새 페이지로 보낸다 · 앱 안 링크는 routes.docs(page?, anchor?)
-/changelog                     릴리스 노트 — 원문은 GitHub Release(공개 리포, 토큰 없이 1시간 캐시) · 공개 셸 · #v<x.y.z> 착지 ← changelog (2026-09-28)
+/changelog                     릴리스 노트 — 원문은 GitHub Release(공개 리포, 토큰 없이 1시간 캐시 · 배포마다 새로 받는다) · 공개 셸 · #v<x.y.z> 착지 ← changelog (2026-09-28)
                                앱 태그 v<x.y.z>만(draft·prerelease·액션 태그 제외) · GitHub 실패·0건도 200 + GitHub Releases 안내
 /robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
 /sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /changelog · /privacy — /signin은 noindex라 없다 ← seo-geo
