@@ -80,3 +80,8 @@
 - [ ] **G7** action v3 릴리스 — **`/merge`로 서버가 프로덕션에 나간 뒤** `malmoi-i18n-push-v3` 태그 → 사용 리포 전환(ACTIONS 순서).
   — 검증: 태그가 서버 배포 커밋 뒤를 가리킨다 · 수동: 사용 리포 한 곳에서 열린 PR 상태로 push → run 요약에 `open-pr` 경고.
 - [ ] **G8** 기능 종료 시 결론을 정본으로 올리고 `docs/features/nightly-sync/` 삭제.
+
+## 결정 기록 (orchestrate)
+
+- **2026-09-30 사용자 — 야간 적재의 서버 전용 한계는 표면 실패 상태를 쓰지 않는다.** 스펙 6b(resource-limit)의 근거("야간이 CI로 건강한 프로젝트를 실패로 뒤집지 않는다")를 서버 전용 한계 전부로 넓힌다. 영구 한계(resource-limit · 트리 잘림)는 `deferred` · `too-large`, 일시·자격 실패(스냅샷 unavailable · installation 토큰 · blob 다운로드 · 표면 tx 예외)는 사건 `failed` + errorCode만 남기고 `lastImportError`를 쓰지 않는다. 어댑터 파싱 실패·0키·`partial-import`는 CI도 같이 실패하므로 그대로 쓴다. 수동 Sync는 불변.
+- **2026-09-30 지휘자 — Home 보류 한 줄은 "held until the pull request is merged or closed"** (스펙 14a의 "merged"는 반만 참 — 닫아도 풀린다).
