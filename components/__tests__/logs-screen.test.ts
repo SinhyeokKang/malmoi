@@ -228,9 +228,10 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    * 못 받는다. 실제로 옛 문자열의 hover가 `--accent`(#f5f5f5)에 남아 2026-09-13의 교체를 놓쳤다.
    * ⚠️ **`ButtonLink`가 아닌 이유는 목적지 셋 중 하나가 `target="_blank"`라서다.**
    */
-  it("푸터가 버튼 폼을 빌려 쓴다 — [Close]는 `Button`, 목적지는 primary `buttonClass()`다", () => {
-    expect(body).toContain('buttonClass({ variant: "primary" })');
-    expect(body).toMatch(/<DialogClose asChild>\s*<Button/);
+  /** 1024 표면의 바닥이라 둘 다 `lg`다(3-Y6 — Sources 상세 모달과 같은 판). */
+  it("푸터가 버튼 폼을 빌려 쓴다 — [Close]는 `Button lg`, 목적지는 primary `buttonClass()` lg다", () => {
+    expect(body).toContain('buttonClass({ variant: "primary", size: "lg" })');
+    expect(body).toMatch(/<DialogClose asChild>\s*<Button size="lg"/);
     expect(body).not.toMatch(/hover:bg-accent[^"]*rounded-\[10px\]/);
   });
 

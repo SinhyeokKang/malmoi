@@ -253,7 +253,7 @@ export function triggerOf(row: { actorKind: ActorKind; kind: EventKind; subtype:
  * ⚠️ **모르는 하위 종류는 던지지 않는다** — 종류 이름으로 떨어진다(읽는 쪽이 폴백을 든다).
  */
 export function eventSentence(
-  row: { kind: EventKind; subtype: string; result: EventResult | null; payload: EventPayload | null },
+  row: { kind: EventKind; subtype: string; result: EventResult | null; payload: EventPayload | null; run?: { errorCode: string | null } | null },
   nodes: { actor: ReactNode; key: ReactNode },
 ): ReactNode {
   const { actor } = nodes;
@@ -277,7 +277,8 @@ export function eventSentence(
         case "nothingToSend":
           return m.logs.sentence.publish.nothing(actor);
         case "notSent":
-          return m.logs.sentence.publish.notSent(actor);
+          // 지문 재확인으로 멈춘 실행은 보류가 아니다 — 아무것도 안 보냈고 편집은 남아 있다(U4 리뷰, `isReconfirm`).
+          return isReconfirm(row.result, row.run?.errorCode ?? null) ? m.logs.sentence.publish.reconfirm(actor) : m.logs.sentence.publish.notSent(actor);
         case "notStarted":
           return m.logs.sentence.publish.notStarted(actor);
         default:
@@ -510,12 +511,19 @@ export function importReasonMessage(code: string | null): string {
  *
  * ⚠️ **파일 수 `null`은 `—`이고 `0`이 아니다** — 0으로 적으면 "아무것도 안 바뀐 성공"과 같아진다.
  */
+/**
+ * 종류 배지의 낱말 — 실행(동기화·Publish)은 주체와 합친 한 낱말이다(`Manual sync`). 행 보조줄의 첫 배지와 상세 머리의 종류 배지가
+ * 이것 하나를 쓴다(ux-drift-unify 4-Y21 — 상세가 `Sync run` 같은 두 번째 낱말을 들고 있었다).
+ */
+export function eventKindWord(row: Pick<EventMetaRow, "kind" | "subtype" | "actor">): string {
+  const trigger = triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype });
+  return row.kind === "IMPORT" || row.kind === "PUBLISH" ? m.logs.meta.runType[row.kind][trigger] : m.logs.meta.type[row.kind];
+}
+
 export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[] {
   const payload = row.payload;
-  // 종류가 맨 앞 배지다 — 배지만 훑어도 무슨 사건인지 안다(2026-09-30 사용자). 실행(동기화·Publish)은 주체와 합친 한 배지다(`Manual sync`).
-  const trigger = triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype });
-  const typeWord = row.kind === "IMPORT" || row.kind === "PUBLISH" ? m.logs.meta.runType[row.kind][trigger] : m.logs.meta.type[row.kind];
-  const parts: EventMetaPart[] = [{ kind: "badge", text: typeWord }];
+  // 종류가 맨 앞 배지다 — 배지만 훑어도 무슨 사건인지 안다(2026-09-30 사용자).
+  const parts: EventMetaPart[] = [{ kind: "badge", text: eventKindWord(row) }];
   switch (row.kind) {
     case "TRANSLATION": {
       if (payload?.kind !== "TRANSLATION") break;

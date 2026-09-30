@@ -206,3 +206,39 @@ describe("상세 껍데기 — 실측이 잡은 자리", () => {
     for (const tr of rows) expect(tr.className).toMatch(/\bh-12\b/);
   });
 });
+
+/** ux-drift-unify T21 — 상세 머리가 행과 같은 문법이다. */
+describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
+  it("머리는 `[종류 배지][결과 배지]`이고 종류 낱말은 행 보조줄의 첫 배지와 같다", async () => {
+    const value = row();
+    const { container: rowView } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
+    const kind = rowView.querySelector("[data-event-meta] .rounded-full")?.textContent;
+    const { container } = await detail(value);
+    const badges = [...container.querySelectorAll("[data-event-detail-kind] .rounded-full")].map((node) => node.textContent);
+    expect(badges).toEqual([kind, m.logs.status.imported]);
+    // 옛 muted 글자 `Sync run`은 걷혔다 — 같은 종류가 두 낱말이었다.
+    expect(container.querySelector("[data-event-detail-kind]")?.className).not.toContain("text-muted-foreground");
+  });
+
+  it("바닥 버튼은 1024 표면의 `lg`다 — [Close]와 목적지가 같은 크기다", async () => {
+    const { container } = await render(
+      <Dialog.Root open><Dialog.Content aria-describedby={undefined}>
+        <EventDetail row={row({ kind: "MEMBER", subtype: "member.joined", result: null, finishedAt: null, payload: { kind: "MEMBER", targetLabel: "a@b", role: null } })} slug="alpha" now={now} archived={false} canOpenSettings repoUrl={null} />
+      </Dialog.Content></Dialog.Root>,
+    );
+    const actions = [...container.querySelectorAll("[data-event-detail-footer] a, [data-event-detail-footer] button")];
+    expect(actions).toHaveLength(2);
+    for (const node of actions) expect(node.className.split(" ")).toContain("h-10");
+  });
+
+  /** U4 리뷰 — 지문 재확인으로 멈춘 Publish는 "held back its edits"가 아니다(아무것도 안 보냈고 보류가 아니다). */
+  it("reconfirm으로 멈춘 Publish는 자기 문장을 든다 · 보류로 인한 notSent는 그대로 (짝)", async () => {
+    const publish = (errorCode: string | null) => row({ kind: "PUBLISH", subtype: "publish.run", result: "notSent",
+      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, warnings: 0, withheld: errorCode === null ? 2 : 0, prUrl: null, errorCode } });
+    const { container: stopped } = await render(<EventRow row={publish("reconfirm")} href="/logs" now={now} archived={false} />);
+    expect(stopped.textContent).not.toContain("held back its edits");
+    expect(stopped.textContent).toContain("stopped before sending");
+    const { container: held } = await render(<EventRow row={publish(null)} href="/logs" now={now} archived={false} />);
+    expect(held.textContent).toContain("held back its edits");
+  });
+});

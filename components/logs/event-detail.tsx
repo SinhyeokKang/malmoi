@@ -11,7 +11,7 @@ import { Button, buttonClass } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
-import { changedValuesText, deferredText, eventGlyph, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
+import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
@@ -56,8 +56,9 @@ export function EventDetail({
       <div data-event-detail-header className="flex shrink-0 items-start gap-3 px-6 pt-6 pb-4">
         <EventGlyph icon={glyph.icon} tone={glyph.tone} size="lg" />
         <span className="flex min-w-0 flex-1 flex-col gap-1 pr-9">
-          <span className="text-muted-foreground flex items-center gap-2 text-xs">
-            {m.logs.detail.kindLabel[KIND_KEY[row.kind]]}
+          {/* `[종류][결과]` 배지다(4-Y21) — 종류 낱말은 행 보조줄의 첫 배지와 같다(`eventKindWord`). 옛 muted 글자 `Sync run`은 같은 종류의 두 번째 낱말이었다. */}
+          <span data-event-detail-kind className="flex flex-wrap items-center gap-2">
+            <Badge variant="neutral">{eventKindWord(row)}</Badge>
             {view.label !== null && <ResultBadge tone={view.tone} label={view.label} />}
             {view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
           </span>
@@ -150,8 +151,9 @@ export function EventDetail({
       */}
       {/* 순서는 `[Close](보조) [목적지](primary)`다(2026-09-30 사용자 — Sources 상세 모달과 같은 판). 목적지가 없으면 [Close] 하나가 오른쪽에 선다. */}
       <div data-event-detail-footer className="border-divider flex shrink-0 items-center justify-end gap-2 border-t px-6 py-4">
+        {/* 1024 표면의 바닥은 `lg`다(3-Y6 — Sources 상세 모달과 같은 판). */}
         <DialogClose asChild>
-          <Button>{m.logs.detail.actions.close}</Button>
+          <Button size="lg">{m.logs.detail.actions.close}</Button>
         </DialogClose>
         {destination(row, slug, canOpenSettings, repoUrl, translationHref)}
       </div>
@@ -216,15 +218,6 @@ function Note({ tone, body, note }: { tone: "danger" | "neutral"; body: string; 
     </div>
   );
 }
-
-const KIND_KEY = {
-  TRANSLATION: "translation",
-  IMPORT: "import",
-  PUBLISH: "publish",
-  SURFACE: "surface",
-  MEMBER: "member",
-  SETTINGS: "settings",
-} as const satisfies Record<EventRow["kind"], keyof typeof m.logs.detail.kindLabel>;
 
 /** 행 쪽(`event-row.tsx`)과 같은 판정이다 — 자동화 낱말은 `triggerOf`가 정한다. */
 function actorLabel(row: EventRow): string {
@@ -316,12 +309,12 @@ function fields(row: EventRow): [string, ReactNode][] {
 }
 
 /**
- * 시안의 푸터 버튼은 폼이 하나다 — [Close]와 목적지 링크가 `Button` `default`/`md`로 정확히 겹친다
- * (primary — 2026-09-30 사용자). ⚠️ **`ButtonLink`가 아니라 `buttonClass()`다** —
+ * 시안의 푸터 버튼은 폼이 하나다 — [Close]와 목적지 링크가 `Button` `lg`로 정확히 겹친다
+ * (primary — 2026-09-30 사용자 · `lg` — 1024 표면의 바닥, 3-Y6). ⚠️ **`ButtonLink`가 아니라 `buttonClass()`다** —
  * 셋 중 하나가 외부 리포로 나가는 `target="_blank"`라 `<a>`여야 하고, 그 차용은 `button.tsx`가 정한
  * 경로다(손으로 쓴 클래스 문자열은 `Button`이 받은 hover 교체 같은 갱신을 못 받는다).
  */
-const FOOTER_LINK = cn(buttonClass({ variant: "primary" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none");
+const FOOTER_LINK = cn(buttonClass({ variant: "primary", size: "lg" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none");
 
 /** 목적지 링크 하나 — 권한이 없거나 대상이 없으면 **그리지 않는다.** */
 function destination(row: EventRow, slug: string, canOpenSettings: boolean, repoUrl: string | null, translationHref: string | null): ReactNode {

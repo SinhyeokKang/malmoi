@@ -1230,6 +1230,8 @@ export const en = {
         sent: (who: ReactNode): ReactNode => <>{who} sent translations to GitHub</>,
         nothing: (who: ReactNode): ReactNode => <>{who} publish had nothing to send</>,
         notSent: (who: ReactNode): ReactNode => <>{who} publish held back its edits</>,
+        /** 지문 재확인으로 멈춘 Publish — 보류가 아니다(아무것도 안 보냈다). 사유는 보조줄의 `reasons.reconfirm`이 든다. */
+        reconfirm: (who: ReactNode): ReactNode => <>{who} publish stopped before sending</>,
         failed: (who: ReactNode): ReactNode => <>{who} publish failed</>,
         notStarted: (who: ReactNode): ReactNode => <>{who} publish didn't start</>,
       },
@@ -1285,14 +1287,6 @@ export const en = {
      * 모든 상세에 같은 격자를 깔면 빈 칸이 "못 읽었다"로 읽힌다.
      */
     detail: {
-      kindLabel: {
-        translation: "Translation",
-        import: "Sync",
-        publish: "Publish",
-        surface: "Source",
-        member: "Member",
-        settings: "Settings",
-      },
       labels: {
         reference: "Reference",
         trigger: "Trigger",

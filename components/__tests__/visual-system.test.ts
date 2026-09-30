@@ -217,8 +217,25 @@ describe("raw 색은 §6.2 등재 목록 안에만 선다 (audit #43·#44)", () 
     expect(stale).toEqual([]);
   });
 
-  it("이력 날짜 카드가 흰 토큰을 쓴다 (#43)", () => {
-    expect(read("app/(edit)/projects/[slug]/logs/page.tsx")).toContain("rounded-xl border bg-background");
+  /**
+   * 이력 날짜 카드는 셸 안 카드라 12다(4-Y2·5-Y11 — 16은 패널 하나뿐이다, DESIGN §5). 골격도 같은 값이어야 도착 순간 모서리가 안 튄다.
+   * 머리↔첫 행은 헤더 급 선(`#f0f0f0`)이다(4-Y3 — 옛 `first:`는 카드의 첫 자식이 머리라 한 번도 걸리지 않았다).
+   */
+  it("이력 날짜 카드가 흰 토큰 · radius 12를 쓰고, 골격도 같다 (#43 · 4-Y2)", () => {
+    const page = read("app/(edit)/projects/[slug]/logs/page.tsx");
+    expect(page).toContain("rounded-lg border bg-background");
+    expect(page).not.toContain("rounded-xl");
+    expect(page).not.toContain("first:border-foreground/[0.06]");
+    expect(page).toMatch(/first \? "border-foreground\/\[0\.06\] border-t" : "border-border border-t"/);
+    const skeleton = read("app/(edit)/projects/[slug]/logs/loading.tsx");
+    expect(skeleton).toContain("rounded-lg border");
+    expect(skeleton).not.toContain("rounded-xl");
+  });
+
+  it("이력 상세 껍데기 높이는 `svh`다 — 1024 모달과 같은 단위 (3-Y6)", () => {
+    const shell = read("components/logs/event-dialog.tsx");
+    expect(shell).toContain("max-h-[calc(100svh-96px)]");
+    expect(shell).not.toContain("100vh");
   });
 
   it("임의값 안에 hex·rgba를 쓰지 않는다 — 토큰의 알파로 접는다", () => {

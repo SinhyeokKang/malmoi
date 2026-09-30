@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 
+import LogsLoading from "../projects/[slug]/logs/loading";
 import MembersLoading from "../projects/[slug]/members/loading";
 import SettingsLoading from "../projects/[slug]/settings/loading";
 import SourcesLoading from "../projects/[slug]/sources/loading";
@@ -65,6 +66,16 @@ describe("줄 수 — 실물의 가장 흔한 모양", () => {
     const rows = container.querySelectorAll("[data-skeleton-source]");
     expect(rows).toHaveLength(1);
     expect(rows[0]?.querySelectorAll("[data-skeleton-line]")).toHaveLength(2);
+  });
+
+  /** 행 끝 chevron 16 칸이 실물에 있다(4-W9) — 없으면 도착 순간 결과 열이 16+12 밀린다. 첫 행은 헤더 급 선이다(4-Y3). */
+  it("Logs: 이벤트 행 셋 — 행마다 chevron 칸, 첫 행은 헤더 급 선", async () => {
+    const { container } = await render(<LogsLoading />);
+    const rows = [...container.querySelectorAll("[data-skeleton-event]")];
+    expect(rows).toHaveLength(3);
+    for (const row of rows) expect(row.lastElementChild?.className).toContain("size-4");
+    expect(rows[0]?.className).toContain("border-foreground/[0.06]");
+    expect(rows[1]?.className).toContain("border-border");
   });
 
   it("Translations: 세 패널 — 트리 · 키 목록 · 상세", async () => {
