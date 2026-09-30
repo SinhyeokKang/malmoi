@@ -57,8 +57,7 @@ app/
                         ContentPanel은 각 갈래의 레이아웃이 든다(shell-layout.test.ts가 라우트마다
                         정확히 하나인지 센다)
     error.tsx           오류 경계. ⚠️ 예외 메시지를 그대로 뿌리지 않는다
-    actions.ts          saveTranslationKey · previewTranslationRevert · revertTranslationKey · triggerPullAction ·
-                        loadMoreTranslationKeys(키 목록 다음 페이지 — 읽기 전용이라 revalidatePath를 안 부른다).
+    actions.ts          saveTranslationKey · previewTranslationRevert · revertTranslationKey · triggerPullAction.
                         ⚠️ 무효화는 /projects/<slug> 서브트리 + 목록 둘이다 — 그 행을 읽는 화면이 넷이라
                         경로를 나열하면 다섯째가 조용히 빠진다
     publish-actions.ts  loadPublishPreview 하나. ⚠️ actions.ts와 갈라 둔다 — 모달이 열릴 때만 부르는
@@ -498,6 +497,8 @@ lib/
                         query(URL 계약 — 요청값을 들고 옛 `state=untranslated`·`locales`를 받는다, `sort` 없음) ·
                         summary(키 집계 oracle · Incomplete first 안정 분할 · effectiveCompletion) · text-direction(값 셀 dir·lang — RTL 값이 페이지 ltr을 상속하지 않게, malmoi#91) ·
                         draft(saved/draft/inFlight 세 층 reducer + 세션 복구 사본) · saved-rows · navigation ·
+                        tree-narrow(필터 → 트리 반영 — 전량 목록의 행으로 소스·네임스페이스를 세고 0 노드를 숨긴다, 위치·세대 노드는 남긴다.
+                        트리 이동의 첫 키 `firstRowAt`도 여기다. translation-filter-scope) ·
                         baseline(미전달 셀 delta 기준 — ARCHITECTURE §5.8) · layout(세 패널 폭 계약 — 로케일 ≥420을 마지막까지 지킨다) · context(전달 확인의 context 지문 — ⚠️ **이것만 잎이 아니다**:
                         `node:crypto`를 물어 서버 전용이고 `lib/pull/load.ts`·Save가 쓴다). 나머지는 잎이다 — import는 서로와
                         잎인 `lib/routes.ts`뿐이다. 키 단위 저장 계획(`planKeySave`)은 `planSave` 옆 `keys/save.ts`에 있다
