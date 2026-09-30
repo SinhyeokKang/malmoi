@@ -29,7 +29,9 @@ describe("loadHomeRuns", () => {
     await loadHomeRuns(prisma, "p1");
     const wheres = (findFirst.mock.calls as unknown as [{ where: Record<string, unknown> }][]).map(([args]) => args.where);
     expect(wheres[0]).toMatchObject({ kind: "IMPORT", result: { in: ["imported", "partial"] } });
-    expect(wheres[1]).toMatchObject({ kind: "IMPORT", result: { in: ["imported", "partial", "deferred"] } });
+    // ⚠️ 보류 한 줄은 **최신 적재 종류 사건 그대로**다 — 결과로 거르면 PR이 닫힌 뒤의 실패·upToDate를 건너뛰고 옛 open-pr 보류를 읽는다
+    // (Codex 교차 리뷰 🟡). 주체는 첫 조회(성공만)가 정하므로 여기서 거를 이유가 없다.
+    expect(wheres[1]).toEqual({ projectId: "p1", kind: "IMPORT" });
     expect(wheres[2]).toMatchObject({ kind: "PUBLISH", OR: [{ result: "sent" }, { syncRun: { status: "SUCCEEDED" } }] });
   });
 

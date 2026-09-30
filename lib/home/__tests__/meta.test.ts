@@ -158,6 +158,10 @@ describe("homeTriggers — 사건 → 주체", () => {
     ["pr-check-failed 보류", { result: "deferred", payload: { deferReason: "pr-check-failed" } }],
     ["옛 보류(사유 없음)", { result: "deferred", payload: {} }],
     ["적재 성공", { result: "imported", payload: { deferReason: "open-pr" } }],
+    // PR이 닫힌 뒤의 최신 사건 — 보류가 풀렸다(Codex 교차 리뷰 🟡).
+    ["야간 적재 실패", { result: "failed", payload: {} }],
+    ["야간 스킵 upToDate", { result: "upToDate", payload: {} }],
+    ["진행 중(결과 없음)", { result: null, payload: {} }],
   ] as const)("%s는 보류 한 줄을 세우지 않는다", (_, over) => {
     const latestImport = event({ actorKind: "AUTOMATION", subtype: "import.nightly", ...over });
     expect(homeTriggers({ lastImport: null, latestImport, lastPublish: null }).heldByOpenPr).toBe(false);
