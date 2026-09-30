@@ -15,6 +15,7 @@ import { TranslationWorkspace } from "@/components/translations/workspace/worksp
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { m } from "@/lib/i18n";
 import { STATE } from "@/lib/status/canon";
+import { connectionReason } from "@/lib/translations/connection-reason";
 
 import { props } from "./helpers/workspace-props";
 
@@ -39,8 +40,36 @@ describe("첫 렌더 — DB 판정", () => {
     const { sync, publish } = buttons(container);
     expect(off(sync)).toBe(true);
     expect(off(publish)).toBe(true);
-    // 꺼진 이유는 끊김이다 — Publish 대기 문구가 아니다.
-    expect(sync?.getAttribute("title")).toBe(m.repositorySync.paused);
+    // 꺼진 이유는 끊김이다 — Publish 대기 문구도, 원인 없는 "currently unavailable"도 아니다(malmoi#160).
+    expect(sync?.getAttribute("title")).toBe(connectionReason(status, "OWNER"));
+  });
+
+  /**
+   * **원인을 말한다** (malmoi#160) — 이 화면엔 Home의 연결 배너가 없어 사유가 "…currently unavailable"뿐이었다. 두 버튼의 사유가
+   * Home 배너와 같은 낱말 + 역할별 해법이다.
+   */
+  it.each(["OWNER", "EDITOR"] as const)("unpinned · %s — Publish·Sync 사유가 끊김과 해법을 말한다", async (role) => {
+    const { container } = await render(<TranslationWorkspace {...props({ role, unpublished: 2, connection: { status: "unpinned" } })} />);
+    const reason = connectionReason("unpinned", role)!;
+    const { publish } = buttons(container);
+    expect(document.getElementById(publish?.getAttribute("aria-describedby") ?? "")?.textContent).toBe(reason);
+    if (role === "OWNER") expect(buttons(container).sync?.getAttribute("title")).toBe(reason);
+  });
+
+  /**
+   * **보류 배너가 꺼진 Publish를 가리키지 않는다** (malmoi#160) — [Send with Publish ↑]는 포커스만 옮기는데 그 버튼이 꺼져 있었다. Publish가
+   * 연결 때문에 꺼진 동안은 그 액션을 세우지 않고 같은 사유를 배너 문장에 잇는다(화면에 보이는 유일한 원인 문장이다).
+   */
+  it("unpinned면 보류 배너에 Send with Publish가 없고 끊김 사유를 잇는다", async () => {
+    const { container } = await render(<TranslationWorkspace {...props({ unpublished: 2, connection: { status: "unpinned" } })} />);
+    const banner = [...container.querySelectorAll('[role="status"], [role="alert"], div')].find((el) => el.textContent?.startsWith(m.translations.banner.paused(2)))!;
+    expect(banner.textContent).toContain(connectionReason("unpinned", "OWNER")!);
+    expect([...container.querySelectorAll("button")].some((b) => b.textContent?.includes(m.translations.banner.sendWithPublish))).toBe(false);
+  });
+
+  it("연결되면 보류 배너가 Send with Publish를 든다", async () => {
+    const { container } = await render(<TranslationWorkspace {...props({ unpublished: 2, connection: { status: "unknown" } })} />);
+    expect([...container.querySelectorAll("button")].some((b) => b.textContent?.includes(m.translations.banner.sendWithPublish))).toBe(true);
   });
 
   /** 첫 페인트(SSR HTML — hydration 전)부터 꺼져 있다. 클라이언트 effect에 기대면 hydration 전 한동안 눌린다(U7 r1 — 런타임 (b)4에서 옮겼다). */

@@ -22,6 +22,7 @@ import { useLandAfter, useLandAfterCommit } from "@/components/ui/focus";
 import { useArrived } from "@/components/use-arrived";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { planActionAvailability } from "@/lib/home/state";
+import { connectionReason } from "@/lib/translations/connection-reason";
 import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
 import type { TranslationList, TranslationListRow, TranslationTree } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
@@ -530,6 +531,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   // 식별 키는 프로젝트 · 경로 소스다 — 옮겨도 이 화면이 마운트된 채 남으면 옛 소스의 판정이 새 조회까지 버튼을 붙잡았다(U7 r2).
   const arrived = useArrived(props.connection.later, `${slug}/${routeSurfaceSlug}`)?.status ?? null;
   const availability = planActionAvailability({ archived: false, connection: arrived ?? props.connection.status });
+  // 꺼진 원인 문장 (malmoi#160) — 이 화면엔 Home의 연결 배너가 없어서 Publish·Sync 사유와 보류 배너가 원인·해법을 직접 말한다.
+  const connectionBlock = availability.publish ? null : connectionReason(arrived ?? props.connection.status, role);
   /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
   const openSync = () => { if (!publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
 
@@ -629,7 +632,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               <span onClickCapture={event => { if (dirty.length > 0 && availability.sync) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
                 {/* 끊김이 먼저다 — 그 원인은 Publish가 끝나도 풀리지 않는다(Home 머리와 같은 순서). */}
                 <SyncButton slug={slug} surfaceSlug={routeSurfaceSlug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
-                  paused={!availability.sync || publish.pending} pausedReason={availability.sync ? m.repositorySync.waitPublish : m.repositorySync.paused}
+                  paused={!availability.sync || publish.pending} pausedReason={availability.sync ? m.repositorySync.waitPublish : connectionBlock ?? m.repositorySync.paused}
                   open={syncOpen} onOpenChange={setSyncOpen} onPendingChange={setSyncPending}
                   onResult={setSyncOutcome} fallbackFocusRef={titleRef} />
               </span>
@@ -648,7 +651,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               const onPublish = event.target instanceof Element && event.target.closest(`[id="${publishButtonId}"]:not([aria-disabled="true"])`) !== null;
               if (onPublish && dirty.length > 0 && !publish.pending) { event.preventDefault(); event.stopPropagation(); setDialog({ kind: "publish", locales: dirty }); }
             }}>
-              <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} disabled={syncPending || !availability.publish} />
+              <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} disabled={syncPending || !availability.publish} pausedReason={connectionBlock ?? undefined} />
             </span>
 
           </span>
@@ -696,7 +699,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         */}
         <div className="space-y-3 empty:hidden">
           <BasePendingBanner baseLocale={props.baseLocale} declaredBaseLocale={props.declaredBaseLocale} />
-          <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} />
+          <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} blockedReason={connectionBlock} />
           <SyncResult slug={slug} branch={props.sync.branch} outcome={syncOutcome} onDismiss={() => setSyncOutcome(null)}
             retryDisabled={publish.pending} onRetry={role === "OWNER" ? openSync : undefined} />
           {/* 지연 문구는 실제로 도는 동안만이다 — 재검증 트리 대기(malmoi#103)는 넣지 않는다. */}

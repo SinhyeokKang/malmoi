@@ -43,7 +43,8 @@ export const en = {
      */
     action: "Sync",
     /**
-     * 멈춘 [Sync]의 사유 (audit #37) — `aria-describedby`로만 읽힌다. 미연결·보관은 같은 화면의 배너가 원인을 말한다.
+     * 멈춘 [Sync]의 사유 (audit #37) — `aria-describedby`로만 읽힌다. Home에서는 미연결·보관을 같은 화면의 배너가 말한다.
+     * ⚠️ **번역 화면에는 그 배너가 없다** — 연결 때문에 꺼지면 이 문장 대신 `connectionReason`(원인 + 해법)을 넘긴다(malmoi#160).
      * ⚠️ **Publish 진행은 이 문장이 아니라 `waitPublish`다** (audit-ux #10) — 옆 버튼의 `Publishing…` 라벨이 원인을 말하던 시절의
      * 분담이었는데 D1이 그 라벨을 걷었다. `translations.publish.paused`와 같은 형이다.
      */
@@ -2440,6 +2441,19 @@ export const en = {
     },
 
     cellLabel: (key: string, locale: string): string => `${key} · ${locale}`,
+
+    /**
+     * 연결 때문에 꺼진 Publish·Sync의 해법 (malmoi#160) — `connectionReason`이 Home 배너 제목(`home.banner.*.title`) 뒤에 잇는다.
+     * EDITOR의 끊김·미연결은 Home 배너의 `editor` 문장을 그대로 쓰고, 그 배너에 EDITOR 문장이 없는 다른 리포만 여기 있다.
+     */
+    connection: {
+      owner: {
+        disconnected: "Reconnect it in Settings.",
+        notConnected: "Connect it in Settings.",
+        wrongRepository: "Check it in Settings.",
+      },
+      editor: { wrongRepository: "Ask a project owner to check it." },
+    },
 
     banner: {
       /**

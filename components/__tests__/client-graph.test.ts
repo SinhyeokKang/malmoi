@@ -180,6 +180,8 @@ const CLIENT_LIB_FILES = [
   "lib/sources/base-language.ts",
   "lib/surfaces/plan.ts",
   "lib/tone.ts",
+  // 번역 화면의 연결 사유(malmoi#160) — `lib/home/state.ts`·`lib/i18n`만 읽는 순수 문장 조립이다.
+  "lib/translations/connection-reason.ts",
   // translation-rework 작업 화면의 잎 여섯 — 전부 import가 서로와 `lib/routes.ts`뿐이다(`lib/translations/context.ts`는 서버 전용이라 없다).
   "lib/translations/draft.ts",
   "lib/translations/layout.ts",

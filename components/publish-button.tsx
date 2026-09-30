@@ -116,8 +116,8 @@ export function usePublish(slug: string, server?: unknown) {
 export type PublishController = ReturnType<typeof usePublish>;
 
 /** @param id 번역 화면의 보류 배너가 포커스를 옮기는 대상 — 둘째 트리거를 만들지 않으려는 것이다 (sync-edit-protection T13). */
-export function PublishButton({ id, count, publish, disabled = false }: { id?: string; count: number; publish: PublishController; disabled?: boolean }) {
-  const plan = planPublishButton({ count, paused: disabled, otherPending: false, publishPending: publish.pending });
+export function PublishButton({ id, count, publish, disabled = false, pausedReason }: { id?: string; count: number; publish: PublishController; disabled?: boolean; pausedReason?: string }) {
+  const plan = planPublishButton({ count, paused: disabled, otherPending: false, publishPending: publish.pending, pausedReason });
   const reasonId = useId();
   // ⚠️ **꺼진 Publish는 `aria-disabled`다** — 진짜 `disabled`면 사유가 hover `title`에만 남아 키보드·스크린리더로
   // 닿지 않는다 (DESIGN §6.65). 포커스를 받으므로 모달을 닫으면 이 버튼으로 돌아온다.
