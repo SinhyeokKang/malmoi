@@ -3218,6 +3218,8 @@ export const en = {
       fields: {
         branch: "Base branch",
         branchHelp: "Syncs read this branch, and pull requests open against it.",
+        /** 리포 id가 없는 프로젝트(`unpinned`, malmoi#159) — 목록 조회가 반드시 거부되므로 부르지 않고 연결 행과 같은 해법을 말한다. */
+        branchDisconnected: "Reconnect the repository to change the base branch.",
         save: "Save",
       saved: "Saved",
         failed: "We couldn't save this. Try again in a moment.",
@@ -3243,6 +3245,8 @@ export const en = {
         </>
       ),
       rotate: "Rotate token",
+      /** 리포 id가 없어 쓰기 권한을 확인할 수 없다(`unpinned`, malmoi#159) — 꺼진 [Rotate token]의 사유이자 경합 뒤 거부 문장이다. */
+      disconnected: "Reconnect the repository to rotate the token.",
       warning: "You won't see this again after you leave this page. If you lose it, rotate it again.",
       failed: "We couldn't rotate the token. Try again in a moment.",
       /** 호출이 끊겼다 — 옛 토큰이 이미 죽었을 수 있다 (audit-ux #14). 새 원문은 다시 발급해야만 받는다. */

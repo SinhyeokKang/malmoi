@@ -4,11 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { RepositoryCard } from "@/components/settings/repository-card";
 import { RepositoryForm } from "@/components/settings/repository-form";
+import { CiCard } from "@/components/settings/ci-card";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { input, render } from "./helpers/dom";
 const actions = vi.hoisted(() => ({ connectRepository: vi.fn(), updateRepositorySettings: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => actions);
-const branches = vi.hoisted(() => ({ listRepoBranches: vi.fn(), listProjectBranches: vi.fn() }));
+const branches = vi.hoisted(() => ({ listRepoBranches: vi.fn(), listProjectBranches: vi.fn(), rotatePushToken: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => branches);
 beforeEach(() => {
   branches.listRepoBranches.mockReset();
@@ -190,4 +191,41 @@ it("Base branch 라벨은 편집 컨트롤을 for로 가리킨다", async () => 
   const { container } = await render(<RepositoryForm owner="acme" repo="web" slug="acme" baseBranch="main" />);
   expect(container.querySelector("#base-branch-label")!.getAttribute("for")).toBe("base-branch");
   expect(container.querySelector("#base-branch")!.tagName).toBe("BUTTON");
+});
+
+/**
+ * **리포 id가 없는 프로젝트(`unpinned`)의 카드는 한 원인만 말한다** (malmoi#159). 행이 Disconnected·Reconnect인데 기준 브랜치 캡션과
+ * 토큰 회전 거부가 "App을 설치하라"(`repo-not-installed`)를 말했다 — App은 설치돼 있다. 목록 조회는 리포 id를 요구해 반드시 거부되므로
+ * 부르지 않고, 저장된 값을 문단으로 세운 채 Reconnect를 말한다.
+ */
+it("unpinned면 브랜치 목록을 조회하지 않고 캡션이 Reconnect를 말한다", async () => {
+  const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="dev" unpinned />);
+  expect(branches.listProjectBranches).not.toHaveBeenCalled();
+  expect(container.querySelector("#base-branch")!.tagName).toBe("P");
+  expect(container.querySelector("#base-branch")!.textContent).toBe("dev");
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(container.querySelector("#base-branch-caption")!.textContent).toBe("Reconnect the repository to change the base branch.");
+  expect(container.textContent).not.toContain("isn't installed");
+  expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
+});
+it("RepositoryCard가 unpinned를 폼에 넘긴다", async () => {
+  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} unpinned health={Promise.resolve({ status: "unpinned" })} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" />);
+  expect(branches.listProjectBranches).not.toHaveBeenCalled();
+  expect(container.textContent).not.toContain("isn't installed");
+});
+it("unpinned면 Rotate token이 꺼지고 사유가 Reconnect를 말한다", async () => {
+  const { container } = await render(<CiCard slug="acme" archived={false} unpinned stale={[]}>{null}</CiCard>);
+  const rotate = [...container.querySelectorAll("button")].find(b => b.textContent === "Rotate token")!;
+  expect(rotate.disabled).toBe(true);
+  const reason = document.getElementById(rotate.getAttribute("aria-describedby") ?? "");
+  expect(reason?.textContent).toBe("Reconnect the repository to rotate the token.");
+});
+/** 화면이 연결된 상태로 그려진 뒤 리포 id가 풀린 경합 — 서버의 `unpinned` 거부도 같은 문장이다. */
+it("회전 거부 unpinned는 Disconnected 쪽 문장이다", async () => {
+  branches.rotatePushToken.mockResolvedValueOnce({ ok: false, error: "unpinned" });
+  const { container } = await render(<CiCard slug="acme" archived={false} stale={[]}>{null}</CiCard>);
+  await act(async () => { await userEvent.setup().click([...container.querySelectorAll("button")].find(b => b.textContent === "Rotate token")!); });
+  const confirm = [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find(b => b.textContent === "Rotate and show new token")!;
+  await act(async () => { await userEvent.setup().click(confirm); });
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe("Reconnect the repository to rotate the token.");
 });

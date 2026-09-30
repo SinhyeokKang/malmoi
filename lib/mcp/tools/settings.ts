@@ -78,7 +78,8 @@ export const rotatePushToken = defineTool({
     const gate = await checkProjectTool(prisma, subject, { name: "rotate_push_token", slug });
     if (gate.status !== "ok") return gate;
     const result = await rotateToken(prisma, coreSubject(subject), { slug });
-    if (!result.ok) return redrawIfArchived(slug, result.error, { status: "refused", code: result.error });
+    // ⚠️ **코드 값 목록을 넓히지 않는다** (ux-drift-unify Q12 · `sync_repository`와 같은 결) — 화면용 `unpinned`는 외부에 전과 같은 코드다.
+    if (!result.ok) return redrawIfArchived(slug, result.error, { status: "refused", code: result.error === "unpinned" ? "repo-not-installed" : result.error });
     settleRevalidate("rotate-token", () => revalidatePath(`/projects/${slug}/settings`));
     /**
      * ⚠️ **원문이 도구 결과로 나간다** (2026-09-28 사용자 확정) — 프로젝트 한정·`/api/push` 한 곳의 쓰기·재발급이 곧 폐기다. 안내는 원문을

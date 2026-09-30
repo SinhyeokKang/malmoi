@@ -11,7 +11,7 @@ import { checkRepoAccess, type OnboardFailure } from "./access";
 
 export type RotateTokenResult =
   | { ok: true; pushToken: string }
-  | { ok: false; error: OnboardFailure | AccessError };
+  | { ok: false; error: OnboardFailure | AccessError | "unpinned" };
 
 /**
  * **push 토큰 재발급의 공유 코어** (mcp-connector T4-c) — 편집 UI 설정과 MCP `rotate_push_token`. **원문은 이 반환값에만 있다.**
@@ -39,7 +39,10 @@ export async function rotateToken(prisma: PrismaClient, subject: Subject, input:
   });
   if (project === null) return { ok: false, error: "not-found" };
   // 확인할 리포가 없다 — 쓰기 권한을 증명할 수단이 없으므로 발급하지 않는다.
-  if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "repo-not-installed" };
+  if (project.installationId === null) return { ok: false, error: "repo-not-installed" };
+  // ⚠️ **설치는 있고 리포 id만 없으면 `unpinned`다** (malmoi#159) — 같은 카드가 Disconnected·Reconnect를 말하는데
+  // "App을 설치하라"로 거부하면 원인이 둘이 된다. 고정은 [Reconnect]가 한다.
+  if (project.repositoryId === null) return { ok: false, error: "unpinned" };
   const repo = await checkRepoAccess(prisma, userId, project.repoOwner, project.repoName, true);
   if (repo.status !== "ok") return { ok: false, error: repo.error };
   // 같은 이름의 **다른** 리포에 쓸 수 있는 것은 근거가 아니다 — 고정된 신원으로 대조한다.

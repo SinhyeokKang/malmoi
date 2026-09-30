@@ -222,6 +222,12 @@ describe("결과 문장은 화면과 같은 키", () => {
    * ⚠️ **거부 코드 값 목록은 외부 계약이다** (ux-drift-unify r1 · Q12와 같은 결) — 화면은 리포 id 미고정을 `unpinned`로 가르지만
    * `sync_repository`의 `code`는 넓히지 않는다: 경계가 `not-connected`로 접는다. 문장은 화면과 같은 키다.
    */
+  /** 토큰 회전의 `unpinned`(malmoi#159)도 같은 결 — 코어가 화면용으로 가른 코드를 외부에는 전과 같은 `repo-not-installed`로 낸다. */
+  it("rotate_push_token 거부 unpinned는 출력 경계에서 repo-not-installed 코드다", async () => {
+    h.core.mockResolvedValueOnce({ ok: false, error: "unpinned" });
+    expect(code(await run("rotate_push_token", subject("owner"), { slug: "acme" }))).toBe("repo-not-installed");
+  });
+
   it("Sync 거부 unpinned는 출력 경계에서 not-connected 코드이고 문장은 화면의 Disconnected다", async () => {
     h.core.mockResolvedValueOnce({ outcome: { ok: false, error: "unpinned" }, attempted: true });
     expect(await run("sync_repository", subject("owner"), { slug: "acme", approval: "a" }))

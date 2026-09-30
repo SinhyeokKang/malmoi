@@ -24,8 +24,8 @@ import { repositoryConnectionState } from "./connection-state";
  * 그만큼 늦게 선다 — 카드 머리와 기준 브랜치 폼(DB 값)은 먼저 서고, **그 둘을 쓰는 세 자리만** Suspense 뒤에서
  * 도착한다: 머리 아래 Alert · 연결 행 · 계정 복구 줄. 같은 promise를 셋이 `use`하므로 한 번에 풀린다.
  */
-export function RepositoryCard({ slug, owner, repo, branch, archived, health, account, appSlug }: {
-  slug: string; owner: string; repo: string; branch: string; archived: boolean; health: Promise<ConnectionHealth>; account: Promise<AccountView>; appSlug?: string;
+export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned = false, health, account, appSlug }: {
+  slug: string; owner: string; repo: string; branch: string; archived: boolean; unpinned?: boolean; health: Promise<ConnectionHealth>; account: Promise<AccountView>; appSlug?: string;
 }) {
   const [failure, setFailure] = useState<string | null>(null);
   // 보관 상태가 오면 옛 거부를 내린다 — 카드가 보관 상태를 대신 말한다 (QA D1).
@@ -37,7 +37,8 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, health, ac
     <Suspense fallback={<ConnectionRowPending />}>
       <ConnectionRow health={health} slug={slug} owner={owner} repo={repo} archived={archived} onFailure={setFailure} />
     </Suspense>
-    <RepositoryForm owner={owner} repo={repo} slug={slug} baseBranch={branch} disabled={archived} />
+    {/* `unpinned`는 DB 값이라 `health`를 기다리지 않는다 — 폼은 GitHub 왕복 없이 먼저 선다. */}
+    <RepositoryForm owner={owner} repo={repo} slug={slug} baseBranch={branch} disabled={archived} unpinned={unpinned} />
     {/* 가장 흔한 모양(연결된 계정)에는 이 줄이 없다 — 골격도 없다. 틀리면 두 번 튄다. */}
     <Suspense fallback={null}><Recovery account={account} /></Suspense>
   </PanelCard>;

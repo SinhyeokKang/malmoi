@@ -1,7 +1,7 @@
 "use client";
 
 import { KeyRound } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 
 import { rotatePushToken } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
@@ -26,8 +26,14 @@ import { IconTile } from "@/components/ui/icon-tile";
  * ⚠️ **이 블록은 readiness와 무관하다** — 조건부 분기가 없으므로 `revalidatePath`가 결과를 씻지 않는다
  * (POSTMORTEM 2026-09-07).
  */
-export function PushTokenPanel({ slug, disabled = false }: { slug: string; disabled?: boolean }) {
+export function PushTokenPanel({ slug, disabled = false, unpinned = false }: { slug: string; disabled?: boolean; unpinned?: boolean }) {
   const [pending, startTransition] = useTransition();
+  /*
+    ⚠️ **리포 id가 없으면(`unpinned`) 서버가 반드시 거부한다** (malmoi#159) — 쓰기 권한을 확인할 리포가 없다. 되돌릴 수 없는 확인 창을
+    연 뒤에 거부하지 않고 처음부터 끈다. 보관이 먼저다 — 그 사유는 카드 아래 `archivedReason`이 든다.
+  */
+  const reasonId = useId();
+  const blocked = unpinned && !disabled;
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,7 +54,8 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
           <Button
             variant="danger"
             className="@max-[640px]:col-start-2 @max-[640px]:justify-self-start"
-            disabled={disabled}
+            disabled={disabled || unpinned}
+            aria-describedby={blocked ? reasonId : undefined}
             /* ⚠️ `loading`이 아니라 `busy`다 (audit #32) — 확정하면 Dialog가 이 트리거로 포커스를 돌려주는데, 같은 커밋에
                진짜 `disabled`가 되면 그 포커스가 `body`로 빠진다. */
             busy={pending}
@@ -88,6 +95,7 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
         />
       </Dialog>
       </div>
+      {blocked && <p id={reasonId} className="text-muted-foreground text-xs">{m.settings.token.disconnected}</p>}
       {token !== null && (
         <div className="space-y-1">
           {/*
@@ -112,6 +120,7 @@ const UNCONFIRMED = "unconfirmed";
 
 function messageFor(error: string): string {
   if (error === UNCONFIRMED) return m.settings.token.unconfirmed;
+  if (error === "unpinned") return m.settings.token.disconnected;
   if (isOnboardError(error)) return onboardErrorMessage(error);
   // 쓰기 권한 확인(sec-audit-3 결정 I)이 `reauthorize`·`not-connected` 같은 연결 사유를 낸다.
   if (isConnectError(error)) return connectErrorMessage(error);

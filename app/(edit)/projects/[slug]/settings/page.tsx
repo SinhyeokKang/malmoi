@@ -13,6 +13,7 @@ import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { optionalEnv } from "@/lib/env";
 import { loadConnectionHealth } from "@/lib/github";
+import { storedConnection } from "@/lib/github-connect/health";
 import { loadAccountView } from "@/lib/github-connect/account-view";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
@@ -49,6 +50,8 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   const account = loadAccountView(prisma, userId);
   const openPrUrl = loadOpenPrUrl(slug, project);
   const archived = project.archivedAt !== null;
+  // 연결 행의 Disconnected와 같은 DB 판정이다(D1) — 브랜치 목록·토큰 회전이 거부될 요청을 부르지 않는다(malmoi#159).
+  const unpinned = storedConnection(project)?.status === "unpinned";
   const archive = <PanelCard title={archived ? m.archive.restore : m.archive.title}>
     <div className="flex items-center justify-between gap-4 px-4 py-[13px] @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start @max-[640px]:[&>[data-archive-card]]:col-start-2 @max-[640px]:[&>[data-archive-card]]:justify-self-start">
       <IconTile><Archive aria-hidden /></IconTile><p className="text-muted-foreground flex-1 text-xs">{archived ? m.archive.archivedBy(<time dateTime={project.archivedAt!.toISOString()}>{utcDay(project.archivedAt!)}</time>) : m.archive.description}</p>
@@ -65,8 +68,8 @@ export default async function SettingsPage({ params, searchParams }: { params: P
       {notice !== null && <Alert variant="danger">{notice}</Alert>}
       {archived && archive}
       <GeneralCard slug={slug} name={project.name} image={project.image} archived={archived} />
-      <RepositoryCard slug={slug} owner={project.repoOwner} repo={project.repoName} branch={project.baseBranch} archived={archived} health={health} account={account} appSlug={optionalEnv("GITHUB_APP_SLUG")} />
-      <CiCard slug={slug} archived={archived} stale={planWorkflowStale(project.surfaces)}>{workflow}</CiCard>
+      <RepositoryCard slug={slug} owner={project.repoOwner} repo={project.repoName} branch={project.baseBranch} archived={archived} unpinned={unpinned} health={health} account={account} appSlug={optionalEnv("GITHUB_APP_SLUG")} />
+      <CiCard slug={slug} archived={archived} unpinned={unpinned} stale={planWorkflowStale(project.surfaces)}>{workflow}</CiCard>
       {!archived && archive}
     </PanelBody>
   </>;
