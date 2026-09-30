@@ -46,6 +46,12 @@
    CLAUDE.md "프리미티브 26개"(실제 29).
 7. **세는 그물이 없다** — 행 규격·링크 파랑·선택 행·비밀값 칸·오류 경계는 손 사본을 세는 테스트가 없다. 프리미티브 렌더 테스트 공백:
    Select · Input · Textarea · Radio · ListItemButton(링 검사만 — `focus-ring.test.ts:227-236`) · BannerLine · EmptyRowCard · Badge variant 전수 · Button 전용.
+8. **필드 셋의 형이 호출부에서 갈린다**(2026-10-01 사용자 — 번역 화면 검색칸의 x가 어색하다) — 프리미티브 셋은 `fieldClass` 하나를 지나지만,
+   필터 드롭다운 트리거 두 벌(`filter-menu.tsx:43` · `log-filters.tsx:261`)이 `SelectTrigger`와 따로 손으로 조립돼 disabled 면·hover·글리프가 다르다.
+   검색 칸 셋의 앞 글리프 자리가 셋 다 다르고, 지우기는 **브라우저 기본 x**(`type="search"` — 크롬·사파리만, lucide도 우리 버튼도 아니다)라 모양이 안 맞는다.
+   게다가 SearchInput에서 그 x는 칸만 비우고 결과는 옛 질의로 남는다(Enter만 제출). 높이 32 필드·메뉴 안 무테 필드·읽기 전용 필드는 호출부 `className`이 만든다.
+9. **포커스 링이 테두리 바깥에 겹친다**(2026-10-01 사용자) — 링 셋이 `ring-2`(테두리 바깥 box-shadow)라, 테두리를 가진 컨트롤(입력·셀렉트·default 버튼·체크박스·라디오)은
+   포커스 때 **흰 면 | 회색 1px | 파랑 2px**의 샌드위치로 보인다.
 
 ## 전달 단위 (결정 S3)
 
@@ -55,7 +61,7 @@
 |---|---|---|
 | **①** 토큰·철자·정리 | 철자 접기 · 토큰 신설 · 소비자 0 삭제(C4) · 문서 교정 | **0** (자동 동치 테스트) |
 | **②** API 이름 규약 | design §3 — 상태 색 · hue · 크기 · 폭 · 진행 · 슬롯 · a11y 철자 · className 이름 | **0** (이름만) |
-| **③** 통합·신설 | design §4 — Card · EmptyState/NoMatch · LargeModal · ListRow · SelectRow · Popover · ButtonLink · Link 등 + §6.3 교정 | **있음** — design §6.3 결정표가 전부 |
+| **③** 통합·신설 | design §4 — Card · EmptyState/NoMatch · LargeModal · ListRow · SelectRow · Popover · ButtonLink · Link 등 + **필드 셋(§4.1)** · **포커스 링 테두리형(§4.2)** + §6.3 교정 | **있음** — design §6.3 결정표가 전부 |
 
 ## 완료 조건 (검증 가능한 문장)
 
@@ -80,6 +86,10 @@
 7. design §4 표의 통합·신설(ux-drift 산출물 행 제외)이 전부 들어갔고, 각 행이 `hand-copies.test.ts`(design §5.1) 표에 한 줄씩 — ui 밖 사본 0 · 스캔 하한 · 양성 카나리아.
 8. `buttonClass()`를 `<a>`에 직접 쓰는 곳 0(외부는 `ButtonLink external`, 내부는 `ButtonLink`), 인라인 링크는 `Link` 프리미티브 — 포커스 링 없는 링크 0.
 9. design §6.3 결정표의 행이 전부 ✓이고, 그 표에 없는 모양 변화는 [수동] 레이아웃 QA(1280·1440·1890, 화면 목록 tasks)에서 0건이다.
+9a. **필드 셋**(design §4.1): 필드형 드롭다운 트리거는 `FieldTrigger` 하나(손 사본 0), 호출부 `Input`의 `h-*`·`text-xs`·`border-0`·검색 글리프 절대 배치 0,
+   브라우저 기본 지우기 버튼이 어느 브라우저에도 서지 않고 검색 칸 셋의 지우기가 같은 lucide `X`다. SearchInput의 지우기는 검색을 해제한다(`onSearch("")` 단언).
+9b. **포커스 링**(design §4.2): 테두리를 가진 포커스 대상은 포커스 때 테두리가 링 색 + 링 1px이다 — `focus-ring.test.ts`가 렌더 클래스로 테두리형·무테형을 갈라 센다.
+   invalid 필드의 포커스는 테두리·링 모두 destructive다.
 
 **공통**
 10. DESIGN §2·§2.1·§4·§5·§6.2·§6.3·§6.4·§6.625·§6.8·§8, `globals.css` 주석, CLAUDE.md(UI 행 개수 · Radix 목록 · 작업 원칙 예외 한 줄), DIRECTORY가 코드와 모순되지 않는다(design §6.4 목록 전부 ✓).
@@ -93,6 +103,8 @@
 - **다크 모드 · 테마 전환** — 라이트 단일(DESIGN §3)은 그대로다.
 - **Storybook·린터·컴포넌트 문서 사이트** — 스택에 없고(CLAUDE.md "린터는 없다"), 계약은 테스트가 든다.
 - **화면 동작·문구 변경** — 상태 판정·사전은 ux-drift의 몫이었다. 이 기능은 형과 이름만 옮긴다.
+  **예외 하나**: SearchInput의 지우기가 검색을 해제한다(S12 — 지금의 기본 x는 칸만 비워 결과와 어긋난다). 사전 키는 그 버튼 이름 하나만 는다.
+- **콤보박스 프리미티브** — "검색 + 목록"은 형이 다른 둘뿐이다(S12). global-search가 셋째가 될 때 판정한다.
 - **`radix-ui` 밖 새 의존성** — Popover는 이미 설치된 `radix-ui`에서 온다(CLAUDE.md UI 행).
 - **번역 화면 세 패널의 레이아웃** — 소비자 교체(프리미티브 채택)만 한다. `key-list` 행 교체는 전후 렌더 측정을 붙인다(결정 Y16).
 - **사본이 없는 축** — 쓰는 곳 없는 슬롯·placement·급, 전 프리미티브 rest props(결정 S5).
@@ -122,4 +134,6 @@
 | Y5 | Facts 라벨 = `neutral-400`(회색 토큰 후보) | 2026-10-01 |
 | Y6 | Button 아이콘 크기 **넷**(`icon-xs/sm/md/lg` = 24·28·32·36) — 값 변화 0 | 2026-10-01 |
 | Y7 | "tone" 개명은 **lib까지**(`lib/tone.ts` → `lib/hue.ts`) | 2026-10-01 |
+| S12 | **필드 셋(입력·콤보박스·드롭다운 트리거)의 형을 맞춘다** — 사용자 요청. 형: `FieldTrigger` 신설 · `Input` `size`/`bare`/`icon`/`clearable`/읽기 전용 · 기본 지우기 끔 · SearchInput 지우기 = 검색 해제 · 콤보박스 프리미티브는 만들지 않음(design §4.1 — 형은 추천이고 T0 전 확인 가능) | 2026-10-01 |
+| S13 | **포커스 링이 테두리 바깥에 샌드위치로 겹치지 않게** — 사용자 요청. 형: 테두리형은 포커스 때 테두리 = 링 색 + 링 1px(한 띠 2px), invalid면 둘 다 destructive(design §4.2 — 형은 추천) | 2026-10-01 |
 | Y-a | ErrorState `role="alert"` · `ButtonLink external`은 글리프 없음 + 새 탭은 별도 prop · 메일 hex `#262626` 예외 · BannerLine은 divider 접기 제외 · 알파 규칙은 "같은 값 두 철자만" | 2026-10-01 |

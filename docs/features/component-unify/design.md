@@ -25,7 +25,7 @@
 | 상태 색 | **상태는 `StatusBadge state: StateKey` 하나로 들어온다**(S6). 매핑은 `lib/status/canon.ts`. `EventResult`·surface status → `StateKey` 변환은 `lib/`의 순수 함수(canon 또는 `lib/events/view.ts`). `tone: StateTone`은 tone을 이미 가진 프리미티브(BannerLine·IconTile·Note)에서만 이 이름이다 | `result-badge.tsx:9` · `source-status.tsx:19` · `event-detail.tsx:236` 매핑 사본 · PanelRow `statusTone` · BannerLine `tone`에 `muted` 대신 다른 이름이 섞인 곳(T0 확인) |
 | 형태 | `variant` — 상태가 아닌 모양. Badge 면/글자·개수·역할·로케일 코드, Alert `info`(파랑 — StateTone 밖, 소비자 4), Button primary/default/danger/ghost/link | Badge `muted`(글자)·`neutral`(면)이 상태 이름을 빌림 · DESIGN §2.4 "neutral" ↔ 코드 `muted`(`sync-result.tsx:142` 손 변환) — 이름 하나로 T0이 정해 DESIGN에 적는다 |
 | 아바타 색 | `lib/tone.ts` → **`lib/hue.ts`**(`Hue`·`HUES`·`hueOf`), `toneFill` → **`hueFill`** — "tone"은 상태 하나의 뜻(Y7) | `components/ui/tone.ts:29` · `lib/tone.ts:17,19,34` · `canon.ts` 주석 |
-| 크기 | `size` — 문자 스케일 `sm/md/lg` + 아이콘 버튼 **`icon-xs/sm/md/lg` = 24·28·32·36**(Y6, 값 변화 0). Button `size`가 스피너 크기를 정한다. 숫자 크기는 Avatar(사진 규격)만 | Alert `default/compact` · SkeletonLine `text=` · 아이콘 버튼 손 조립(`project-switcher:92` · `key-list:89` · `user-menu:61` · `invite-modal:356`) · `[&_.animate-spin]:size-` 12 |
+| 크기 | `size` — 문자 스케일 `sm/md/lg`(입력·필드 트리거는 §4.1의 md 36 · sm 32/28) + 아이콘 버튼 **`icon-xs/sm/md/lg` = 24·28·32·36**(Y6, 값 변화 0). Button `size`가 스피너 크기를 정한다. 숫자 크기는 Avatar(사진 규격)만 | Alert `default/compact` · SkeletonLine `text=` · 아이콘 버튼 손 조립(`project-switcher:92` · `key-list:89` · `user-menu:61` · `invite-modal:356`) · `[&_.animate-spin]:size-` 12 |
 | 폭 | 입력류(Input·SelectTrigger·SearchInput)에 **`width` prop**(S9). 값 목록은 T0이 호출부 폭 분포에서 확정하고 여기 적는다(예: `sm/md/lg/full`) — 목록 밖 폭은 prop에 넣지 않고 호출부가 감싼다. global-search의 `FieldButton`은 입력류가 아니고 소비자가 하나라 이 규약의 대상이 아니다(S5 — 폭은 그 파일이 소유한다) | 100% `className` 덮어쓰기 |
 | 진행 | `busy`(클릭 차단 + aria-busy) / `loading`(표시만). 앞 글리프 교체는 Button이 든다(ux-drift U3) | `nextPending`(Modal) · 손 삼항 · `{!pending && <Icon/>}` 3곳 |
 | 슬롯 | 동작 `action`(하나)·`actions`(여럿) · 설명 `description` · 개수 `count`+`countLabel` · 값 `badge`(개수가 아닌 값) · 알림 `notice` · 글리프 `icon` | `footer`(Dialog 버튼 / Modal 문장) · `headerAction` · `subtitle`·`secondary`·`detail` · `glyph`·`leading` |
@@ -63,6 +63,37 @@
 ⚠️ **POSTMORTEM 2026-09-15🔁 · 09-14**: 형제 export마다 소비자를 따로 세고(위 Card 행), 슬롯 유무에 따라 여백·선이 갈리는 곳은 코드 조건으로 쓴다 —
 `connected-apps-card:137-157`(`first={index===0 && unconfirmed===null}`) · `token-card:148,157,233`(`afterAlert`) · `pending-invitations:161-187`(`first={index===0}`가 Alert를 무시 — 기존 결함 의심).
 표의 "흡수" 열이 곧 전수 목록이고 T0 재조사가 갱신한다.
+
+### 4.1 필드 셋 — 입력 · 콤보박스 · 드롭다운 트리거 (S12, 단위 ③)
+
+**프리미티브 셋(Input·Textarea·SelectTrigger)은 이미 `fieldClass` 하나를 지난다**(`components/ui/input.tsx:17-21`). 어긋남은 **호출부와 손 트리거**에 있다.
+
+| 대상 | 변경 | 흡수하는 손 사본 · 어긋남 |
+|---|---|---|
+| **FieldTrigger**(필드형 드롭다운 트리거) | `SelectTrigger`와 필터 `DropdownMenuTrigger`가 같은 형 하나 — `fieldClass` + `size`(md 36 · sm 28) + 뒤 글리프 + `active`(켜짐 = `border-foreground font-medium`). Radix 트리거에 `asChild`로 얹는다(자식 옆 글리프는 `Slot.Slottable` — POSTMORTEM 2026-09-09) | `translations/workspace/filter-menu.tsx:43`(md/sm 두 크기 — md 소비자 3, sm 1 `locale-panel:80`) · `logs/log-filters.tsx:261`(주석이 "FilterMenu md와 같은 형"이라 적은 손 사본). 어긋남(§6.3): 테두리 이름 `border-border`↔`border-input`(값은 같다 — `globals.css:194,205`) · disabled `bg-accent`↔`bg-muted` · hover 면 유무 · 글리프 색 상속↔muted · 열림 글리프 뒤집기(`ChevronUp`) 유무 |
+| **Input `size`** | md 36(기본) · sm 32(`h-8 text-xs`) — 사본이 있는 크기만(S5) | `tree-panel.tsx:60` `h-8 … text-xs` · `project-switcher.tsx:117` `h-8` |
+| **Input `variant="bare"`** | 메뉴 머리 안의 테두리 없는 필드 — 캐럿이 포커스를 말한다(링 없음, DESIGN:744) | `project-switcher.tsx:117` `border-0 px-1 shadow-none focus-visible:ring-0` |
+| **Input 앞 글리프 · 지우기 슬롯** | `icon`(앞 글리프 자리·크기를 프리미티브가 든다) + `clearable`(뒤 지우기 = lucide `X` + Button `icon-xs`, 이름은 사전 키 하나). **브라우저 기본 지우기(`::-webkit-search-cancel-button`)는 `globals.css`에서 끈다** — 크롬·사파리만 그리고 모양이 브라우저 것이다(파이어폭스는 없다) | 검색 칸 셋의 글리프 자리가 셋 다 다르다: `search-input.tsx:46` `top-2.5 left-2 size-4` · `repo.tsx:171` `top-2.5 left-2.5 size-4` + `pr-2.5 pl-8` · `tree-panel.tsx:53` `top-2 left-2.5 size-3.5`. 기본 x가 서는 곳은 `type="search"` 둘(`search-input.tsx:48` · `tree-panel.tsx:54`) — `repo.tsx`는 `type="search"`가 아니라 x가 없다 |
+| **SearchInput 지우기 = 검색 해제** | 지우기가 칸을 비우고 **`onSearch("")`까지** 부른다. ⚠️ **이 기능에서 유일한 동작 변경이다**(spec 비목표의 예외) — 지금은 기본 x가 칸만 비우고 결과는 옛 질의로 남는다(Enter만 제출). 즉시 필터형(tree·repo)은 `onChange`로 이미 풀린다 | `search-input.tsx:50-58` |
+| **Input 읽기 전용 형** | `read-only:` 한 형을 `Input`이 든다(`bg-muted` + 글자색 T0). **`Textarea`는 제외** — 번역 셀의 `readOnly`는 이동 중 잠금이지 표시가 아니다(`workspace.tsx:747` · `locale-panel.tsx:124,213`) | `account/page.tsx:189` `bg-muted cursor-default` · `general-card.tsx:100` `bg-muted text-muted-foreground` · `locale-panel.tsx:280` 복사 실패 칸(무표시) |
+
+**콤보박스 프리미티브는 만들지 않는다** — 지금 "검색 + 목록"은 스위처(`DropdownMenu` 재사용 — 2026-09-27 사용자, DESIGN:744)와 온보딩 repo(검색 칸 + `SelectRow` 목록) 둘이고 형이 다르다.
+global-search의 `CommandDialog`가 셋째가 되면 그쪽이 판정한다. **제외**: 네이티브 `<input type="date">` 둘(`log-filters.tsx:311,314` — DESIGN §6.68의 의도된 이탈),
+`SelectContent`↔`DropdownMenuContent` 면(이미 같은 값 — 최소 폭만 역할대로 다르다).
+
+### 4.2 포커스 링 — 테두리와 겹치지 않게 (S13, 단위 ③)
+
+**지금**: 링 셋은 `ring-2`(box-shadow — 테두리 **바깥**)이고 회색 테두리가 그대로 남아, 테두리를 가진 컨트롤이 포커스를 받으면
+**흰 면 | 회색 1px | 파랑 2px** 세 겹으로 보인다(`--input` #e5e5e5 · Checkbox·Radio `neutral-300` · `--ring` blue-400 `globals.css:235`).
+
+**규약**: **테두리를 가진 포커스 대상은 포커스 때 테두리가 링 색이 되고 링은 1px 덧댄다** — `focus-visible:border-ring focus-visible:ring-1`.
+테두리 1 + 링 1이 파랑 2px 한 띠로 읽혀 테두리 없는 컨트롤의 `ring-2`와 두께가 같다(2026-09-11 사용자 2px 결정 유지). 테두리 없는 것(Button primary·ghost·link · `ring-inset` 행)은 그대로다.
+
+- **대상**: Input · Textarea · SelectTrigger/FieldTrigger · Button `default`(`button.tsx:79` `border-input`) · ButtonLink `default` · Checkbox(`checkbox.tsx:13`) · Radio(`radio.tsx:42`). `variant="bare"` Input은 링 없음 그대로.
+- ⚠️ **오류 테두리가 포커스에 덮이지 않는다** — 지금 `aria-[invalid=true]:border-destructive`(`input.tsx:20`)는 링이 바깥이라 포커스 중에도 빨강이 보인다. 테두리를 링 색으로 바꾸면 빨강이 사라지므로, invalid면 포커스 중에도 **테두리·링 모두 destructive**다.
+- ⚠️ **Checkbox·Radio의 checked 테두리**(`border-foreground`)도 포커스 중엔 링 색이 이긴다 — 포커스가 풀리면 돌아온다.
+- **그물**: `focus-ring.test.ts`의 `RING`(`:28`)이 둘이 된다 — 테두리형 {`focus-visible:ring-ring` · `focus-visible:ring-1` · `focus-visible:border-ring` · `focus-visible:outline-none`} / 무테형 기존 셋.
+  어느 쪽인지는 **렌더된 클래스에 `border` 유틸이 있는가**로 테스트가 스스로 가른다(호출부가 고르지 않게). DESIGN §7 링 셋 문장이 함께 바뀐다.
 
 ## 5. 그물 (테스트)
 
@@ -120,12 +151,18 @@ foreground 알파 `/2`·`/3` 10건 → 괄호 철자 · divider와 같은 불투
 | 외부·내부 링크 버튼 링 | 링 없음 6 | 포커스 링 | spec 사용자 |
 | 인라인 링크 링 | 링 없음 9 | 포커스 링 | spec 사용자 |
 | token-grant-fields | `ul role="group"` · 손 조립 `span role="radio"`(화살표 안 닿음, `:160`) | SelectRow 역할 | a11y |
+| 필드 트리거(§4.1) | 필터: disabled `bg-accent` · hover 면 · 글리프 상속색 · 열림 `ChevronUp` / Select: `bg-muted` · hover 없음 · 글리프 muted · 고정 `ChevronDown` | T0 — S11(번역 화면 `FilterMenu`가 이긴다) | S12 |
+| 검색 칸 글리프 자리 | 세 벌(§4.1) | `Input` `icon` 슬롯 하나 | S12 |
+| 검색 칸 지우기 | 브라우저 기본 x(크롬·사파리, `type="search"` 둘) · repo 칸은 없음 · SearchInput은 비워도 결과 유지 | lucide `X` 슬롯 셋 모두 · SearchInput은 지우면 검색 해제(유일한 동작 변경) | S12 |
+| 읽기 전용 입력 | `bg-muted` + 기본 글자 · `bg-muted` + muted 글자 · 무표시 | `Input` `read-only:` 한 형(글자색 T0) | S12 |
+| 포커스 링(테두리형, §4.2) | 흰 면 · 회색 1px · 파랑 2px | 테두리 파랑 + 링 1px(한 띠 2px) · invalid면 둘 다 destructive | S13 |
 | Sources 행 hover · 배지 글리프 · 닫기 버튼 | `/2`·`/5` · `source-detail-modal:169` | T0 — ux-drift가 고친 것은 뺀다(`sources-screen:95` 닫기는 이미 `CloseButton`) | — |
 
 ### 6.4 문서 교정 (T16)
 - **DESIGN**: 체크리스트 bare `rounded` = 12(실제 4px) · `:35` Breadcrumb 소비자(삭제) · `:672` RowCard 소비자·치수(→ Card) · `:673` EntityCard 소비자 · `:675` Avatar 프로젝트 형 ·
   `:651` danger disabled hover · `:681` EmptyState 대기 초대 · `rounded-3xl` 개수 · 자간 "아홉"(`:219` · `:2052` → 8) · §2 토큰 표(`divider` 행 누락 + 새 토큰) · §2.1(accent=secondary=muted) ·
-  §6.2 등재 목록·`REGISTERED` · §6.3 링크 색 · §6.8 아이콘 무채 계단 · §6.625 메일 hex 표 · §8 API 규약 표(§3) · `:509` BannerLine 선.
+  §6.2 등재 목록·`REGISTERED` · §6.3 링크 색 · §6.8 아이콘 무채 계단 · §6.625 메일 hex 표 · §8 API 규약 표(§3) · `:509` BannerLine 선 ·
+  §6.4 입력 행(FieldTrigger · `size`·`bare`·슬롯 · 읽기 전용 형 · 기본 지우기 끔) · **§7 포커스 링 셋(`:1920` — 테두리형 넷 / 무테형 셋, §4.2)** · `:744` 스위처 입력 → `Input variant="bare"`.
 - **`globals.css` 주석**: `#e2e8f0`(`:37,196,201`) · "소비자 66곳".
 - **CLAUDE.md**: UI 행 "프리미티브 26개"(실제 29, 이 기능 뒤 다시 셈) · "Radix 여섯"(+Popover) · 작업 원칙에 `ui-primitives-first` 예외 한 줄(spec 원칙 — 손 사본이 실재하는 형은 선반영이 아니다).
 - **DIRECTORY**: 새 프리미티브·이동 파일(`hue.ts` · `search-input` · `copy-button` · `large-modal`).
@@ -143,7 +180,7 @@ foreground 알파 `/2`·`/3` 10건 → 괄호 철자 · divider와 같은 불투
 
   | 서버 호환(지시문·훅 없음) | 클라이언트 |
   |---|---|
-  | EmptyState · NoMatch(`href` 출구) · Skeleton · Link · ButtonLink · ProjectThumbnail · ListRow(`onClick` 형은 클라이언트 소비자만) · Facts · Meter | Card(`useId`) · LargeModal · Popover · SelectRow · SearchInput · CopyButton · SecretField · ErrorState(`reset`) |
+  | EmptyState · NoMatch(`href` 출구) · Skeleton · Link · ButtonLink · ProjectThumbnail · ListRow(`onClick` 형은 클라이언트 소비자만) · Facts · Meter | Card(`useId`) · LargeModal · Popover · SelectRow · SearchInput · FieldTrigger · CopyButton · SecretField · ErrorState(`reset`) |
 
 - **게이트 트리거**: `lib/__tests__/`(`globals-css.test.ts`)·`lib/invitation-email/`을 건드리는 커밋은 `scripts/gate-plan.ts`가 postgres 스위트를 붙인다(로컬 postgres 필요).
 
@@ -159,6 +196,9 @@ foreground 알파 `/2`·`/3` 10건 → 괄호 철자 · divider와 같은 불투
 | `event-dialog`를 LargeModal에 흡수 | 서버 헤더·id 복귀 어댑터가 필요해 껍데기가 커진다(C2) |
 | Skeleton 기본 radius를 `rounded-md`로 | 지정 없는 28곳의 값이 바뀐다 — 값 변화 0 원칙과 충돌 |
 | 아이콘 버튼 두 크기(28·36) | 24·32 소비자의 값이 바뀐다(Y6) |
+| 콤보박스 프리미티브 신설 | "검색 + 목록" 둘(스위처·repo)의 형이 다르고, 스위처는 사용자가 `DropdownMenu` 재사용을 골랐다(2026-09-27) — 셋째(global-search)가 판정한다(S12) |
+| 포커스 링을 `ring-inset`이나 음수 `outline-offset`으로 테두리 위에 겹친다 | 테두리 색이 그대로라 겹침만 안쪽으로 옮겨진다 · `focus-ring.test.ts`의 여는 태그 리터럴 규칙과 따로 논다 — 테두리를 링 색으로 바꾸는 쪽이 한 띠로 읽힌다(S13) |
+| 링을 2px 그대로 두고 테두리만 링 색 | 한 띠가 3px로 두꺼워져 테두리 없는 컨트롤(2px)과 갈린다(S13) |
 | computed style 스냅샷 diff 도구 | 새 도구를 만들어야 한다 — 단위 ①은 컴파일 동치, ③은 결정표 + 수동으로 충분(S10) |
 
 ## 8. 결정 (spec "사용자 결정" 표가 정본)

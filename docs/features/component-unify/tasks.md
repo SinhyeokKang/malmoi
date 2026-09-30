@@ -88,11 +88,19 @@
   검증 [자동]: 열린 채 토글 누름 → 닫힘 유지(재열림 0) · 바깥 클릭 시 트리거로 포커스 미복귀 · Esc 시 복귀. [수동] 번역 화면에서 열고 닫기.
 - **T19** ProjectThumbnail · SearchInput(정의 둘 → 하나) · CopyButton 이동 · Skeleton(`SkeletonLine` 흡수, 기본값 T0 판정대로).
   검증 [자동]: 각 행 사본 0 · `components/onboarding/copy-button` 경로 import 0.
-  `[commit]` T12–T19 프리미티브마다 하나 — `feat(ui): …` / `refactor(ui): …`
+- **T19a** 필드 셋(design §4.1, S12) — FieldTrigger(`SelectTrigger` + 필터 트리거 둘) · `Input` `size`·`variant="bare"`·`icon`·`clearable` · 읽기 전용 형 · `globals.css` 기본 지우기 끔 · SearchInput 지우기 = `onSearch("")` · 지우기 이름 사전 키(`messages/en.tsx`).
+  테스트 먼저: SearchInput 지우기 → `onSearch("")` 1회 · 조합 중 아님 · 즉시 필터형은 `onChange("")` · 지우기 버튼은 값이 빌 때 사라진다 · FieldTrigger `active`·`size`·`asChild` 자식 하나(Slot).
+  뒤집는 테스트: `search-input.test.tsx` · `project-switcher.test.tsx` · `disabled-pairing.test.ts`(SelectTrigger `aria-disabled` 짝) · FilterMenu·log-filters를 렌더하는 `translations-screen.test.ts`·`logs-*` · `focus-ring.test.ts`(project-switcher의 `ring-0` 면제가 `bare`로 옮겨 간다).
+  검증 [자동]: `hand-copies.test.ts`에 필터 트리거 손 클래스(`inline-flex h-9 … rounded-md border`) · 검색 글리프 절대 배치(`absolute top-* left-*` + `Search`) · 호출부 `Input`의 `h-*`·`text-xs`·`border-0` 0 · `rg -n "search-cancel-button" app/globals.css` 1.
+  [수동] 번역 화면·/projects·온보딩 repo·트리 필터에서 값 입력 → 지우기 모양·위치가 같고 크롬·사파리에 브라우저 x가 없다 · 필터 트리거와 Select가 나란한 자리(Sources 추가 모달 · 번역 툴바)에서 높이·테두리·글리프 일치.
+- **T19b** 포커스 링 테두리형(design §4.2, S13) — 대상 일곱(Input · Textarea · SelectTrigger/FieldTrigger · Button `default` · ButtonLink `default` · Checkbox · Radio). DESIGN §7 링 셋 문장을 같은 커밋에서 고친다.
+  테스트 먼저: `focus-ring.test.ts` `RING` 둘(테두리형 넷 / 무테형 셋) — 렌더 클래스에 `border` 유틸이 있으면 테두리형을 요구 · 카나리아(테두리형에 `ring-2`만 남기면 red) · invalid Input 포커스 클래스에 `border-destructive`·`ring-destructive`.
+  검증 [자동]: 위 테스트 green · 동치 테스트(design §5.3)로 `border-ring` = `--ring` 값 확인. [수동] Tab으로 화면 목록의 필드·default 버튼·체크박스·라디오를 훑어 회색 테두리가 파랑 띠 안에 끼지 않는다 · 오류 필드 포커스가 빨강 한 띠.
+  `[commit]` T12–T19b 프리미티브마다 하나 — `feat(ui): …` / `refactor(ui): …` / `fix(ui): focus ring takes over the border on bordered controls`
 - **T20** design §6.3 남은 행(통합에 딸리지 않은 것 — token-grant-fields 역할 · 링 없는 링크 · BannerLine 선 · Facts 라벨 1곳).
   검증 [수동]: 화면 목록 × 3 뷰포트 — 바뀐 자리가 §6.3 행과 1:1.
   `[commit] fix(ui): …`
-- **단위 ③ 끝**: `/runtime-test` — 픽스처 보관 프로젝트 · 오류 경계(`error.tsx` 유도) · 검색 0건(Logs·/projects·온보딩 repo·번역) · 포털은 트리거를 눌러 연다(Popover · LargeModal · event-dialog) → `/push`.
+- **단위 ③ 끝**: `/runtime-test` — 픽스처 보관 프로젝트 · 오류 경계(`error.tsx` 유도) · 검색 0건(Logs·/projects·온보딩 repo·번역) · 포털은 트리거를 눌러 연다(Popover · LargeModal · event-dialog) · 키보드 Tab으로 필드·트리거 포커스 링(S13) → `/push`.
 
 ## F. 문서 · 종료
 
