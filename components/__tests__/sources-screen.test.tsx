@@ -356,3 +356,14 @@ it("변경이 없으면 확인창 없이 바로 닫는다", async () => {
   expect(document.body.textContent).not.toContain("Discard the base language change?");
   expect(document.querySelector('[role="dialog"]')).toBeNull();
 });
+/** 보관 화면 — 머리 배지는 `StatusBadge archived`, 보관 시각은 Settings 보관 카드와 같은 날짜 형(`utcDay`, 2-Y19), 출구는 "Open settings"(4-Y24). */
+it("보관된 Sources는 날짜만 말하고 출구 낱말이 보관 화면들과 같다", async () => {
+  const { SourcesArchived } = await import("@/components/sources/sources-archived");
+  const at = new Date("2026-09-20T13:45:00Z");
+  await render(<SourcesArchived slug="p" role="OWNER" archivedAt={at} />);
+  const time = document.querySelector("time")!;
+  expect(time.textContent).toBe("Sep 20, 2026");
+  expect(time.getAttribute("dateTime")).toBe(at.toISOString());
+  expect(document.querySelector('a[href*="settings"]')?.textContent).toBe(m.archive.empty.action);
+  expect(document.querySelector('a[href*="settings"] svg')?.getAttribute("class")).toContain("lucide-chevron-right");
+});
