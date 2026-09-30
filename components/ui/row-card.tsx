@@ -41,7 +41,7 @@ export function RowCard({
   /** `<ul aria-labelledby>`와 포커스 착지점이 이 id를 쓴다 (멤버 화면). `/projects`는 안 준다. */
   titleId?: string;
   /**
-   * 카운트 배지. ⚠️ **선택이다** (mcp-connector 핸드오프 §4) — `/mcp`의 토큰·Connect 카드는 셀 것이 없다(계정당 하나).
+   * 카운트 배지. ⚠️ **선택이다** (mcp-connector 핸드오프 §4) — `/mcp`의 토큰 카드는 셀 것이 없다(계정당 하나).
    * 없으면 배지를 그리지 않는다. `/projects`·멤버는 그대로 넘기므로 동작이 안 바뀐다.
    */
   count?: number;

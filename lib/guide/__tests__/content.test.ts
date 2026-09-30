@@ -11,7 +11,6 @@ import { PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
 import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { MEMBER_LIMIT } from "@/lib/auth/invitation";
 import { SKIP_MARKER } from "@/lib/pull/payload";
-import { CONNECT_CLIENTS, TOKEN_ENV, connectSnippet } from "@/lib/mcp/snippets";
 import { allowedActions } from "./helpers/allowed-actions";
 import { servedGuideFiles } from "./helpers/served";
 import { collectLinks, collectUiLabels } from "../collect";
@@ -95,28 +94,9 @@ describe("실물 가이드 본문 게이트", () => {
     expect(slugToFile(["setup", "workflow"], nav().map(({ file }) => file))).toBe("setup/workflow.md");
   });
 
-  // `/mcp`의 Connect 카드와 가이드가 같은 조각을 보여야 한다 — 한쪽만 바뀌면 에이전트 설정이 두 모양이 된다(정본은 snippets.ts).
-  it("AI 에이전트 연결 조각이 /mcp의 조각과 글자 단위로 같다", () => {
-    // 조각은 두 페이지에 나뉜다 — 토큰 방식은 token.md, 브라우저 방식은 browser.md.
-    const blocksOf = (file: string) => {
-      const blocks: { meta: string; body: string }[] = [];
-      visit(tree(file), "code", (node) => {
-        blocks.push({ meta: node.meta ?? "", body: node.value });
-      });
-      return blocks;
-    };
-    let blocks = blocksOf("ai-agents/token.md");
-    for (const client of CONNECT_CLIENTS) {
-      const snippet = connectSnippet(client, "https://mal-moi.com/api/mcp", "token");
-      expect(blocks, client).toContainEqual(expect.objectContaining({ meta: expect.stringContaining(`title="${snippet.path}"`), body: snippet.body }));
-    }
-    // 브라우저 로그인 방식(mcp-oauth) — 조각이 있는 클라이언트는 둘이다(claude.ai는 웹 화면의 단계라 조각이 없다).
-    blocks = blocksOf("ai-agents/browser.md");
-    for (const client of ["claude-code", "codex"] as const) {
-      const snippet = connectSnippet(client, "https://mal-moi.com/api/mcp", "browser");
-      expect(blocks, `browser ${client}`).toContainEqual(expect.objectContaining({ meta: expect.stringContaining(`title="${snippet.path}"`), body: snippet.body }));
-    }
-    expect(sectionByAnchor(tree("ai-agents/token.md"), "token")).toContain(TOKEN_ENV);
+  // 에이전트 연결 조각의 정본은 가이드다 — `/mcp`의 Connect 카드를 걷은 뒤(2026-09-30) 앱 안 사본이 없다. 토큰은 원문이 아니라 환경변수 참조다.
+  it("AI 에이전트 연결 조각이 토큰 원문 대신 MALMOI_TOKEN을 참조한다", () => {
+    expect(sectionByAnchor(tree("ai-agents/token.md"), "token")).toContain("MALMOI_TOKEN");
     expect(sectionByAnchor(tree("ai-agents/prompts.md"), "push-token")).toContain("gh secret set PUSH_TOKEN --repo OWNER/REPO");
   });
 });

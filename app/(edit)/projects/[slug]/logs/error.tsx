@@ -24,7 +24,7 @@ import { m } from "@/lib/i18n";
  */
 export default function LogsError({ retry }: { error: Error & { digest?: string }; retry: () => void }) {
   return (
-    <PanelBody width="fluid">
+    <PanelBody>
       <EmptyState
         icon={CircleAlert}
         title={m.logs.queryError.title}

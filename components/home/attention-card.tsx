@@ -143,8 +143,8 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
         </span>
         {ownerRetries && <span className="text-muted-foreground text-xs">{m.projects.importFailure.ownerRetries}</span>}
       </span>
-      {/* ⚠️ 시각은 `neutral-400`이다 — 보조 줄(`#737373`)보다 한 단계 더 물러난다. */}
-      <span className="shrink-0 text-xs text-neutral-400">
+      {/* 시각은 `muted`다(2026-09-30 사용자 — 같은 Home의 Log 행 시각과 맞췄다. 옛 `neutral-400`은 2.5:1이라 읽기 어려웠다). */}
+      <span className="text-muted-foreground shrink-0 text-xs">
         {item.at === null ? m.home.meta.never : relativeTime(item.at, now)}
       </span>
       <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden />

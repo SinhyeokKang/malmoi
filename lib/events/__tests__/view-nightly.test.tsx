@@ -94,7 +94,8 @@ describe("eventMeta — 주체 낱말과 보류 사유", () => {
 
   it("사람 행은 manual을 그대로 든다", () => {
     const parts = eventMeta(metaRow({ subtype: "import.run", result: "imported", actor: { kind: "USER" }, payload: payload({ source: "manual" }) }), false);
-    expect(parts).toContain(m.logs.meta.manual);
+    // 배지로 선다(2026-09-30 사용자 — Home 요약과 같은 모양).
+    expect(parts).toContainEqual({ kind: "badge", text: m.logs.meta.manual });
   });
 });
 

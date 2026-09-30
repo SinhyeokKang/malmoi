@@ -16,7 +16,7 @@ export default function LogsLoading() {
   return (
     <>
       <span className="sr-only" role="status">{m.logs.loading.list}</span>
-      <PanelHeader width="fluid" aria-hidden>
+      <PanelHeader aria-hidden>
         <div className="flex items-center gap-2">
           <Skeleton className="h-6 w-16 rounded-md" />
           <span className="ml-auto flex items-center gap-2">
@@ -25,7 +25,7 @@ export default function LogsLoading() {
           </span>
         </div>
       </PanelHeader>
-      <PanelBody width="fluid" className="space-y-4" aria-hidden>
+      <PanelBody className="space-y-4" aria-hidden>
         <div className="border-border overflow-hidden rounded-xl border">
           <div className="flex min-h-12 items-center px-4 py-3">
             <Skeleton className="h-[15px] w-24 rounded-md" />

@@ -128,7 +128,7 @@ export function ProjectList({
 
   return (
     <>
-      <PanelHeader width="fluid">
+      <PanelHeader>
         {/*
           ⚠️ **`min-h-9`가 제목 행에 있다** (DESIGN §5.1). 버튼이 없는 갈래(`1b` — 프로젝트 0건)에서
           줄 높이가 28로 떨어지면 머리 높이가 라우트마다 4px 튄다.
@@ -169,7 +169,7 @@ export function ProjectList({
         {message !== null && <Alert variant="danger">{message}</Alert>}
       </PanelHeader>
 
-      <PanelBody width="fluid" className="flex flex-col gap-4">
+      <PanelBody className="flex flex-col gap-4">
         {body.kind === "groups" ? (
           body.cards.map((card) => (
             <RowCard

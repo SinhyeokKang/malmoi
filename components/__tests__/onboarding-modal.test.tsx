@@ -200,7 +200,7 @@ describe("primary button state styles", () => {
     const { container } = await render(<Button variant="primary" disabled={disabled}>Save</Button>);
     const button = find<HTMLButtonElement>(container, "button");
     expect(button.disabled).toBe(disabled);
-    for (const cls of ["bg-primary", "text-primary-foreground", "hover:bg-foreground",
+    for (const cls of ["bg-primary", "text-primary-foreground", "hover:bg-primary/85",
       "disabled:bg-muted", "disabled:text-muted-foreground", "disabled:cursor-not-allowed"]) {
       expect(button.classList.contains(cls)).toBe(true);
     }

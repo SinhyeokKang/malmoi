@@ -191,7 +191,9 @@ it.each([
   await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [row] }} adapters={[]} now={new Date()} />);
   const all = [...document.querySelectorAll(`[data-source-status="${state}"]`)];
   expect(all).toHaveLength(2);
-  const status = all[0]!;
+  // 상태는 배지다(2026-09-30 사용자) — 바깥 칸이 표시·표식을, 안의 알약이 글리프와 낱말을 든다.
+  const status = all[0]!.firstElementChild!;
+  expect(status.className).toContain("rounded-full");
   expect(status.textContent).toContain(label);
   // 실패는 `circle-alert`, 적재 중은 테두리 스피너 — 매체가 달라도 "글리프가 선다"는 같다.
   expect(status.firstElementChild !== null).toBe(icon);
@@ -210,6 +212,17 @@ it("상세의 적재 상태는 칩 하나와 두 줄로 선다", async () => {
   // 목록 줄을 상세에 다시 쓰지 않는다 — 두 벌이 되면 실패 낱말이 화면마다 갈린다.
   expect(dialog.querySelector("[data-source-status]")).toBeNull();
   expect(dialog.querySelector('[role="alert"]')).toBeNull();
+});
+// 2026-09-30 사용자 — 행의 [Open translations]를 걷고, 상세 모달 바닥에 [Close](보조) [Open translations](primary) 순으로 둔다.
+it("목록 행에 Open translations가 없고, 상세 모달 바닥이 Close → Open translations(primary)다", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
+  expect(document.querySelector("li")?.textContent).not.toContain("Open translations");
+  await open();
+  const dialog = document.querySelector('[role="dialog"]')!;
+  const footer = [...dialog.querySelectorAll("a, button")].filter((el) => ["Close", "Open translations"].includes(el.textContent?.trim() ?? ""));
+  expect(footer.map((el) => el.textContent?.trim())).toEqual(["Close", "Open translations"]);
+  expect(footer[1]!.className.split(" ")).toContain("bg-primary");
+  expect(footer[0]!.className.split(" ")).not.toContain("bg-primary");
 });
 it("상세를 읽지 못하면 설명이 로딩 중이라고 말하지 않는다", async () => {
   mocks.load.mockResolvedValue({ failed: true });

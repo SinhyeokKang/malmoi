@@ -17,7 +17,7 @@ export default function MembersLoading() {
   return (
     <>
       <span className="sr-only" role="status">{m.members.loading}</span>
-      <PanelHeader width="fluid" aria-hidden>
+      <PanelHeader aria-hidden>
         <div className="flex min-h-9 flex-wrap items-center justify-between gap-2">
           <SkeletonLine text="text-lg" className="w-24" />
           <div className="flex items-center gap-3">
@@ -27,7 +27,7 @@ export default function MembersLoading() {
         </div>
       </PanelHeader>
 
-      <PanelBody width="fluid" className="space-y-4" aria-hidden>
+      <PanelBody className="space-y-4" aria-hidden>
         <Card>
           {[0, 1].map((i) => (
             <div key={i} data-skeleton-member className={i === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}>

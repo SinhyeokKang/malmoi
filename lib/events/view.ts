@@ -463,7 +463,8 @@ export type EventMetaRow = {
   run: { changed: number | null; prUrl: string | null; errorCode: string | null } | null;
 };
 
-export type EventMetaPart = string | { kind: "code" | "link"; text: string };
+/** `badge` — 정해진 값 중 하나(트리거 `manual`)는 배지로 선다(2026-09-30 사용자 — Home 요약과 같은 모양). */
+export type EventMetaPart = string | { kind: "code" | "link" | "badge"; text: string };
 
 /** 적재 실패를 발송 실패 문구로 설명하면 복구 방향이 반대가 된다. */
 export function eventFailureMessage(row: Pick<EventMetaRow, "kind" | "subtype" | "payload" | "run">, archived: boolean): string {
@@ -500,7 +501,7 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
     case "PUBLISH": {
       parts.push(m.logs.kinds.publish);
       // ⚠️ 자동화 행은 행위자(`Nightly`·`CI`)가 문장 머리에 선다 — 보조줄에서 주체를 두 번 말하지 않는다.
-      if (triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "manual") parts.push(m.logs.meta.manual);
+      if (triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "manual") parts.push({ kind: "badge", text: m.logs.meta.manual });
       parts.push(row.run?.changed === null || row.run === null ? `${m.logs.detail.labels.files}: ${m.logs.none}` : m.logs.meta.files(row.run.changed));
       if (row.run?.prUrl != null) parts.push({ kind: "link", text: m.translations.publish.viewLink });
       else if (row.result !== "running") parts.push(m.logs.meta.noPullRequest);
@@ -510,7 +511,7 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
     case "IMPORT": {
       parts.push(m.logs.kinds.imports);
       if (payload?.kind !== "IMPORT") break;
-      if (triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "manual") parts.push(m.logs.meta.manual);
+      if (triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "manual") parts.push({ kind: "badge", text: m.logs.meta.manual });
       const deferred = row.result === "deferred" ? deferredText(payload) : null;
       if (payload.refusal !== null) parts.push(refusalMessage(payload.refusal), m.logs.meta.nothingImported);
       else if (deferred !== null) parts.push(deferred);

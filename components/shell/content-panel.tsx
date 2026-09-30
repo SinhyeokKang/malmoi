@@ -40,35 +40,15 @@ export function ContentPanel({ children }: { children: ReactNode }) {
 }
 
 /**
- * **콘텐츠의 최대 폭 — 등급 둘** (2026-09-11 사용자 · 2026-09-15에 prop으로 올렸다).
- * 패널은 남은 폭을 다 쓰지만 **그 안의 내용은 1280 또는 896에서 멈춘다** — 둘 다 Tailwind 스케일의
- * 값이라 임의 치수를 늘리지 않는다(규약 6).
+ * **콘텐츠의 최대 폭 — 1280 하나** (2026-09-30 사용자 — *"좁은 너비를 쓰는 곳은 이제 없음"*). 패널은 남은 폭을
+ * 다 쓰지만 그 안의 내용은 1280에서 멈춘다. 설정·계정이 쓰던 896(`limited`)이 사라지며 등급 prop도 함께
+ * 없앴다 — 소비자가 하나뿐인 값을 고르게 두면 좁은 등급이 되살아날 자리만 남는다.
  *
- * ⚠️ **등급을 셋으로 늘린 것이 아니다** (DESIGN §5.1). 화면이 고르던 둘을 **프리미티브의 prop**으로
- * 올렸을 뿐이다 — 전에는 fluid가 여기 상수였고 limited 일곱은 **안쪽 래퍼**가 `max-w-4xl`을 다시
- * 씌웠다. 그 이중구조가 여백도 두 벌로 만들었고(`px-6 pt-6 pb-3`을 열한 곳이 각자 적었다),
- * **여백만 프리미티브로 올리면 limited 일곱이 `16 + 24 = 40`이 된다.** 두 값은 한 층에서 같이 정해진다.
- *
- * ⚠️ **fluid의 1280은 최소 폭과 같은 숫자다** — 셸 루트가 `min-w-[1280px]`이므로 "콘텐츠는 1280에서
+ * ⚠️ **1280은 최소 폭과 같은 숫자다** — 셸 루트가 `min-w-[1280px]`이므로 "콘텐츠는 1280에서
  * 1280까지"가 한 문장이 된다. 1440을 고르지 않은 이유는 그것이 **뷰포트 2032px부터** 걸려서다:
  * 1920 디스플레이(패널 1328)에서는 아무 일도 안 한다.
  */
-const CONTENT_MAX = {
-  fluid: "mx-auto w-full max-w-7xl",
-  limited: "mx-auto w-full max-w-4xl",
-} as const;
-
-/**
- * ⚠️ **기본이 `limited`인데 이제 그쪽이 소수다** (2026-09-20 사용자 판정 — *"limited를 쓰는 것은
- * 설정 페이지 둘뿐"*). `PanelHeader` 소비자 열둘 중 **fluid 아홉 · limited 셋**(프로젝트 설정 ·
- * `/account`와 그 스켈레톤)이고, `PanelBody`는 거기에 **본문 전용 셋**(`error` · `ProjectArchived` ·
- * `ProjectNotReady`)이 limited로 더 붙는다.
- *
- * ⚠️ **그래도 기본값을 뒤집지 않는다.** 근거가 "다수"가 아니라 **빠뜨렸을 때의 증상**이라서다 —
- * 좁아지는 쪽이 넘치는 쪽보다 눈에 띈다. 기본을 fluid로 돌리면 위 본문 전용 셋이 **아무도 안 본 채**
- * 1280으로 넓어진다(그 셋은 세로 중앙 빈 상태라 폭이 커져도 화면이 "그럭저럭" 보인다).
- */
-type PanelWidth = keyof typeof CONTENT_MAX;
+const CONTENT_MAX = "mx-auto w-full max-w-7xl";
 
 /**
  * 패널 안에서 **스크롤하지 않는** 머리 — 제목 · 툴바 · 전역 `Alert` · (선택) 설명 한 줄.
@@ -78,7 +58,7 @@ type PanelWidth = keyof typeof CONTENT_MAX;
  *
  * ⚠️ **여백을 이제 이쪽이 든다** (projects-panel-rework · 캔버스 `1a`~`1d`의 `padding:16`).
  * 전엔 열한 곳이 각자 `px-6 pt-6 pb-3`을 적었고 그중 하나(`add-surface`)가 이미 `px-6 py-5`로
- * 어긋나 있었다. **폭 등급을 함께 든 것이 그것을 가능하게 한 조건이다** — `CONTENT_MAX` 주석 참조.
+ * 어긋나 있었다. 폭 상한도 이쪽이 든다 — `CONTENT_MAX` 주석 참조.
  *
  * ⚠️ **아래 선이 바깥에 있다.** 선은 패널 **전폭**이라 폭 상한 안쪽에 두면 1280을 넘는 화면에서
  * 잘린다 — 그 화면에서만 제목 줄이 다시 "떠 있는 요소"로 읽힌다.
@@ -94,15 +74,14 @@ type PanelWidth = keyof typeof CONTENT_MAX;
  * ⚠️ **`className`이 안쪽 래퍼로 간다** — 여백이 상한 **안**에 있어야 머리와 본문의 왼쪽이 맞는다.
  */
 export function PanelHeader({
-  width = "limited",
   description,
   children,
   className,
   ...props
-}: ComponentPropsWithoutRef<"div"> & { width?: PanelWidth; description?: ReactNode }) {
+}: ComponentPropsWithoutRef<"div"> & { description?: ReactNode }) {
   return (
     <div className="border-border shrink-0 border-b" {...props}>
-      <div className={cn(CONTENT_MAX[width], "flex flex-col gap-3 px-4 py-3", className)}>
+      <div className={cn(CONTENT_MAX, "flex flex-col gap-3 px-4 py-3", className)}>
         {children}
         {description !== undefined && <p className="text-muted-foreground text-xs">{description}</p>}
       </div>
@@ -117,7 +96,7 @@ export function PanelHeader({
  * 통째로 늘어나고, 스크롤이 여기가 아니라 바깥에 생긴다 — 그러면 머리가 다시 같이 올라간다.
  *
  * ⚠️ **폭 상한을 스크롤 컨테이너에 직접 주지 않는다** — 그러면 **스크롤바가 콘텐츠 옆에** 생긴다.
- * 그래서 등급은 안쪽 래퍼가 들고 스크롤은 바깥이 든다. 눈으로는 "폭이 맞네"로 보이고, 콘텐츠가
+ * 그래서 폭 상한은 안쪽 래퍼가 들고 스크롤은 바깥이 든다. 눈으로는 "폭이 맞네"로 보이고, 콘텐츠가
  * 넘칠 때만 드러나는 부류다.
  *
  * ⚠️ **래퍼가 `min-h-full`을 든다** — 소비자가 `flex flex-col`을 넘겨 빈 상태를 `flex-1`로 세로
@@ -128,14 +107,13 @@ export function PanelHeader({
  * 이 주석 자체가 한 번 셋으로 틀렸다 (POSTMORTEM 2026-09-15).
  */
 export function PanelBody({
-  width = "limited",
   children,
   className,
   ...props
-}: ComponentPropsWithoutRef<"div"> & { width?: PanelWidth }) {
+}: ComponentPropsWithoutRef<"div">) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto" {...props}>
-      <div className={cn(CONTENT_MAX[width], "min-h-full p-4", className)}>{children}</div>
+      <div className={cn(CONTENT_MAX, "min-h-full p-4", className)}>{children}</div>
     </div>
   );
 }

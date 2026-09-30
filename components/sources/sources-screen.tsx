@@ -9,7 +9,7 @@ import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { PanelCard } from "@/components/ui/panel-card";
 import { Badge } from "@/components/ui/badge";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { neighbourFocus } from "@/components/ui/focus";
 import { failureText } from "@/components/onboarding/failure";
 import { canPerform, type Role } from "@/lib/auth/permission";
@@ -17,9 +17,8 @@ import { cn } from "@/lib/utils";
 import { m } from "@/lib/i18n";
 import { ingestHeadline } from "@/lib/onboarding/message";
 import type { AdapterChoice } from "@/lib/onboarding/types";
-import { routes, ALL_NAMESPACES } from "@/lib/routes";
+import { routes } from "@/lib/routes";
 import { planSurfaceImportStatus } from "@/lib/import/surface-status";
-import { planSourceActions } from "@/lib/sources/actions";
 import type { SourcesData } from "@/lib/sources/query";
 import { summarizeAddResults, type SurfaceAdded } from "@/lib/surfaces/plan-add";
 import { AddSourcesModal } from "./add-sources-modal";
@@ -67,7 +66,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
   return <div data-sources-screen className="@container/panel flex min-h-0 flex-1 flex-col">
     {/* ⚠️ **좁은 폭 판정을 패널이 든다** (시안 `1h` — 콘텐츠 패널 1016). 카드도 `@container`라
         이름 없는 질의는 카드를 잡는다 — `/panel`이 그 갈림을 막는다. */}
-    <PanelHeader width="fluid"><div className="flex items-center gap-3">
+    <PanelHeader><div className="flex items-center gap-3">
       <span className="flex items-center gap-2"><h1 ref={heading} id="sources-heading" tabIndex={-1} className="text-lg font-medium">{m.sources.title}</h1>
         {/* 시안 `1f` — 개수 배지는 0을 그리지 않는다. */}
         {data.sources.length > 0 && <Badge variant="neutral">{data.sources.length}</Badge>}</span>
@@ -75,7 +74,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           1016 이하에서는 시안이 이 줄을 **버린다** — 버리는 순서의 첫째다. */}
       {canEdit && <Button ref={trigger} variant="primary" className="ml-auto" onClick={() => setAdding(true)}><Plus className="size-3.5" aria-hidden />{m.sources.add}</Button>}
     </div></PanelHeader>
-    <PanelBody width="fluid" className="space-y-4">
+    <PanelBody className="space-y-4">
       <PanelCard title={m.sources.title} badge={data.sources.length > 0 ? <Badge variant="neutral">{data.sources.length}</Badge> : undefined}
         subtitle={data.repository ? <span className="flex items-center gap-1.5"><GithubIcon className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}>
         {/* ⚠️ **추가 결과는 카드의 첫 행이다** (시안 `1i`) — 토스트도, 카드 밖 Alert도 아니다. 적재가
@@ -99,8 +98,6 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
               <span className="text-muted-foreground max-w-[460px] text-xs leading-[1.7]">{canEdit ? m.sources.emptyOwner : m.sources.emptyEditor}</span>
             </div>
           : <ul>{data.sources.map(source => {
-          const actions = planSourceActions({ ...source, role, archived: false, installed: data.installed, pending: busy });
-          const openReason = !data.installed ? canEdit ? m.sources.reconnectOwner : m.sources.reconnectEditor : !source.lastCommitSha ? m.sources.firstImport : m.sources.noLanguages;
           const Glyph = source.connection?.adapterName === "json-catalog" || source.connection?.adapterName === "chrome-locales" ? FileJson2 : FileCode2;
           // 시안은 실패한 소스에서 **글리프 칩만** 붉다 — 행 전체를 칠하면 눈이 먼저 닿는 것이 파일 이름이 아니게 된다.
           const failed = planSurfaceImportStatus(source).state.startsWith("failed");
@@ -119,9 +116,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
                 </span>
                 <SourceStatus icon source={source} now={now} className="@max-[1016px]/panel:hidden" />
               </Button>
-              {actions.canOpen && source.locales > 0 ? <ButtonLink href={routes.surfaceTranslations(slug, source.slug, { ns: ALL_NAMESPACES })}>{m.sources.open}</ButtonLink>
-                : <><span id={`source-open-reason-${source.id}`} className="sr-only">{openReason}</span><Button aria-disabled aria-describedby={`source-open-reason-${source.id}`} onClick={event => event.preventDefault()}>{m.sources.open}</Button></>}
-              {/* 시안 순서가 상태 → [Open translations] → chevron이다. 버튼 안에 두면 그 순서를 못 만든다. */}
+              {/* [Open translations]는 행에서 걷었다(2026-09-30 사용자) — 번역 화면으로 가는 길은 상세 모달의 같은 버튼이다. */}
               <ChevronRight className="size-4 shrink-0 text-neutral-400 @max-[1016px]/panel:mt-2" aria-hidden />
             </div>
           </li>;

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { EventGlyph } from "@/components/logs/glyph";
 import { RowChevron } from "@/components/logs/row-chevron";
+import { ResultBadge } from "@/components/logs/result-badge";
 import { Badge } from "@/components/ui/badge";
 import { eventGlyph, eventSentence, eventView, eventMeta, triggerOf } from "@/lib/events/view";
 import type { EventRow as Row } from "@/lib/events/query";
@@ -69,16 +70,21 @@ export function EventRow({
       <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
         <span className="text-base [overflow-wrap:anywhere]">{sentence}</span>
         <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs [overflow-wrap:anywhere]">
-          {!showTime && view.label !== null && <ResultLabel view={view} />}
+          {!showTime && view.label !== null && <ResultBadge tone={view.tone} label={view.label} />}
           {!showTime && view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
-          {eventMeta(row, archived).map((part, index) => (
-            <span key={index} className={typeof part !== "string" && part.kind === "link" ? "text-blue-600" : undefined}>{typeof part === "string" ? part : part.text}</span>
-          ))}
+          {eventMeta(row, archived).map((part, index) =>
+            typeof part !== "string" && part.kind === "badge" ? (
+              <Badge key={index} variant="neutral">{part.text}</Badge>
+            ) : (
+              <span key={index} className={typeof part !== "string" && part.kind === "link" ? "text-blue-600" : undefined}>{typeof part === "string" ? part : part.text}</span>
+            ),
+          )}
         </span>
       </span>
+      {/* 결과 배지는 칸 오른쪽 끝이다(2026-09-30 사용자 — Sources 행 상태처럼 chevron 바로 옆). 칸 폭 172는 그대로라 긴 문장 열이 흔들리지 않는다. */}
       {showTime ? (
-        <span className="flex w-[172px] shrink-0 flex-wrap items-center gap-1.5">
-          {view.label !== null && <ResultLabel view={view} />}
+        <span className="flex w-[172px] shrink-0 flex-wrap items-center justify-end gap-1.5">
+          {view.label !== null && <ResultBadge tone={view.tone} label={view.label} />}
           {view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
         </span>
       ) : (
@@ -89,22 +95,6 @@ export function EventRow({
       </span>
     </Link>
   );
-}
-
-/**
- * 결과 라벨. **muted는 배경 없는 평문**이고 warning·danger만 배지·색을 든다 (캔버스 근거 카드) —
- * 가장 흔한 상태가 가장 조용하다.
- */
-function ResultLabel({ view }: { view: ReturnType<typeof eventView> }) {
-  if (view.tone === "muted") {
-    return (
-      <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
-        {view.label}
-      </span>
-    );
-  }
-  if (view.tone === "danger") return <span className="text-destructive text-xs font-medium">{view.label}</span>;
-  return <Badge variant="warning">{view.label}</Badge>;
 }
 
 /**

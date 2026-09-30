@@ -124,13 +124,14 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
         {/*
           ⚠️ **LNB 맨 아래다** (2026-09-28 사용자). 리사이저로도 접고 편다 — 하한(200) 밑으로 끌면 접히고, 접힌 채 끌면 펴진다(`collapsible`).
           `Button`이지 raw `<button>`이 아니다(ui/ 밖 raw 태그 0 게이트) — 항목과 같은 틀(`ROW`)로 덮는다.
+          ⚠️ **`font-normal`로 되누른다** (2026-09-30 사용자) — Button 라벨은 500이지만 LNB 내비는 그 규칙 밖이라 옆 항목(400)과 같아야 한다.
         */}
         <Button
           variant="ghost"
           onClick={toggle}
           aria-expanded={!collapsed}
           title={collapsed ? m.common.nav.expandSidebar : undefined}
-          className={cn(ROW, "text-foreground hover:text-foreground h-8 justify-start hover:bg-foreground/[0.03]")}
+          className={cn(ROW, "text-foreground hover:text-foreground h-8 justify-start font-normal hover:bg-foreground/[0.03]")}
         >
           <span className="flex size-4 shrink-0 items-center justify-center">
             {collapsed ? <PanelLeftOpen className="size-4" aria-hidden /> : <PanelLeftClose className="size-4" aria-hidden />}

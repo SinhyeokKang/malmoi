@@ -228,16 +228,17 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    * 못 받는다. 실제로 옛 문자열의 hover가 `--accent`(#f5f5f5)에 남아 2026-09-13의 교체를 놓쳤다.
    * ⚠️ **`ButtonLink`가 아닌 이유는 목적지 셋 중 하나가 `target="_blank"`라서다.**
    */
-  it("푸터가 버튼 폼을 빌려 쓴다 — [Close]는 `Button`, 목적지는 `buttonClass()`다", () => {
-    expect(body).toContain("buttonClass()");
+  it("푸터가 버튼 폼을 빌려 쓴다 — [Close]는 `Button`, 목적지는 primary `buttonClass()`다", () => {
+    expect(body).toContain('buttonClass({ variant: "primary" })');
     expect(body).toMatch(/<DialogClose asChild>\s*<Button/);
     expect(body).not.toMatch(/hover:bg-accent[^"]*rounded-\[10px\]/);
   });
 
-  /** ⚠️ **화살표가 "여기를 떠난다"를 말한다** — 캔버스가 목적지 셋 모두에 달았다(`1d`·`1e`·`1f`). */
-  // translation-rework T12가 넷째(`Open this translation`)를 더했다 — 문구는 그 전부터 사전에 있었고 소비자가 없었다.
-  it("목적지 링크 넷이 모두 화살표를 든다", () => {
-    expect(body.match(/\{LEAVE\}/g)).toHaveLength(4);
+  /** 푸터는 `[Close](보조) [목적지](primary)`다(2026-09-30 사용자 — Sources 상세 모달과 같은 판). primary라 옛 "떠난다" 화살표는 걷었다. */
+  it("푸터 순서가 Close → 목적지다", () => {
+    const footer = /data-event-detail-footer[\s\S]*?<\/div>/.exec(body)?.[0] ?? "";
+    expect(footer.indexOf("<DialogClose")).toBeLessThan(footer.indexOf("destination("));
+    expect(body).not.toContain("{LEAVE}");
   });
 });
 

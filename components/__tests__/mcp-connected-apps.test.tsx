@@ -3,7 +3,6 @@ import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ConnectCard } from "@/components/mcp/connect-card";
 import { ConnectedAppsCard, type ConnectedAppData } from "@/components/mcp/connected-apps-card";
 
 import { find, render } from "./helpers/dom";
@@ -31,6 +30,7 @@ function installFocusFixup(): MutationObserver {
 }
 
 const NOW = "2026-09-29T12:00:00.000Z";
+const SERVER_URL = "https://mal-moi.com/api/mcp";
 const app = (over: Partial<ConnectedAppData>): ConnectedAppData => ({
   id: "c1",
   name: "Claude Code",
@@ -41,12 +41,13 @@ const app = (over: Partial<ConnectedAppData>): ConnectedAppData => ({
   createdAt: "2026-09-01T00:00:00.000Z",
   lastUsedAt: "2026-09-29T11:48:00.000Z",
   expiresAt: "2026-12-26T12:00:00.000Z",
+  brand: "claude",
   ...over,
 });
 const APPS = [
   app({}),
   app({ id: "c2", name: "Claude", ident: "claude.ai/oauth/mcp-client-metadata", grants: [], scope: { kind: "projects", projectIds: ["p1", "p2"] }, lastUsedAt: null }),
-  app({ id: "c3", name: "Claude", ident: "chatgpt.com/oauth/codex/x/client.json", grants: ["translation:write"], scope: { kind: "projects", projectIds: ["p1"] } }),
+  app({ id: "c3", name: "Claude", ident: "chatgpt.com/oauth/codex/x/client.json", grants: ["translation:write"], scope: { kind: "projects", projectIds: ["p1"] }, brand: "openai" }),
 ];
 
 let fixup: MutationObserver;
@@ -56,7 +57,7 @@ afterEach(() => fixup.disconnect());
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
 async function mount(apps: ConnectedAppData[] | null) {
   await settle();
-  const view = await render(<ConnectedAppsCard apps={apps} now={NOW} />);
+  const view = await render(<ConnectedAppsCard apps={apps} now={NOW} serverUrl={SERVER_URL} />);
   await settle();
   return view;
 }
@@ -75,7 +76,8 @@ describe("목록", () => {
     expect(card().querySelector("h2 + span")?.textContent).toContain("3");
     const first = find<HTMLElement>(card(), '[data-app-row="c1"]');
     expect(first.textContent).toContain("claude.ai/oauth/claude-code-client-metadata");
-    expect(first.textContent).toContain("Translate & publish · Project settings");
+    // 권한마다 배지 하나다(2026-09-30 사용자).
+    expect([...first.querySelectorAll("dd .rounded-full")].map((b) => b.textContent)).toEqual(expect.arrayContaining(["Translate & publish", "Project settings"]));
     expect(first.textContent).toContain("All projects");
     expect(first.textContent).toContain("12 minutes ago");
     const second = find<HTMLElement>(card(), '[data-app-row="c2"]');
@@ -120,11 +122,11 @@ describe("목록", () => {
     expect(rowButton("c1")).not.toBeNull();
   });
 
-  it("빈 목록 — 빈 상태 · 버튼 없음 · 카운트 없음", async () => {
+  it("빈 목록 — 빈 상태 · 머리의 복사 버튼만 · 카운트 없음", async () => {
     await mount([]);
     expect(card().textContent).toContain("No connected apps");
     expect(card().querySelector("h2 + span")).toBeNull();
-    expect(card().querySelectorAll("button")).toHaveLength(0);
+    expect([...card().querySelectorAll("button")].map((b) => b.textContent?.trim())).toEqual(["Copy server URL"]);
   });
 
   it("조회 장애 — 빈 상태가 아니다 · danger 행 + Try again(재조회) · 카운트 없음", async () => {
@@ -230,46 +232,50 @@ describe("끊기", () => {
   });
 });
 
-describe("Connect 카드 — 방식 세그먼트", () => {
-  const URL = "https://mal-moi.com/api/mcp";
-  const radios = (label: string) => [...find<HTMLElement>(document.body, `[aria-label="${label}"]`).querySelectorAll<HTMLElement>('[role="radio"]')];
-  const radio = (label: string, name: string) => radios(label).find((r) => r.textContent?.trim() === name) ?? null;
+describe("연결 행 — 왼쪽 로고 칸(IconTile lg)", () => {
+  const tile = (id: string) => find<HTMLElement>(document.body, `[data-app-row="${id}"] [data-app-logo]`);
 
-  it("기본은 브라우저 방식 · Claude Code — 헤더 없는 조각 + 다음 한 줄 + 전환 안내 · 방식 설명이 그룹을 설명한다", async () => {
-    await render(<ConnectCard serverUrl={URL} />);
-    expect(radio("Connection method", "Sign in with browser")?.getAttribute("aria-checked")).toBe("true");
-    const group = find<HTMLElement>(document.body, '[aria-label="Connection method"]');
-    expect(document.getElementById(group.getAttribute("aria-describedby") ?? "")?.textContent).toContain("There is no token to copy.");
-    expect(radios("Agent").map((r) => r.textContent?.trim())).toEqual(["Claude Code", "Codex", "claude.ai"]);
-    const pre = find<HTMLElement>(document.body, "pre");
-    expect(pre.textContent).toContain(URL);
-    expect(pre.textContent).not.toMatch(/MALMOI_TOKEN|Authorization/);
-    expect(document.body.textContent).toContain("Then run /mcp in Claude Code");
-    expect(document.body.textContent).toContain("Remove the headers entry first.");
+  /** 로고는 서버가 client_id 호스트로 고른 `brand`만 따른다 — 이름이 "Claude Code"여도 brand가 없으면 MCP 기본 아이콘이다. */
+  it("brand가 있으면 그 로고, 없으면 MCP 아이콘", async () => {
+    await mount([app({}), app({ id: "c9", name: "Claude Code", ident: "example.com/claude-code.json", brand: null })]);
+    expect(tile("c1").querySelector("img")?.getAttribute("src")).toBe("/brand/agents/claude.svg");
+    expect(tile("c9").querySelector("img")).toBeNull();
+    expect(tile("c9").querySelector("svg")).not.toBeNull();
+    // 40 칸이다(DESIGN IconTile lg) — 행 안의 28 칸이 아니다(사용자 지시).
+    expect(tile("c1").className).toContain("size-10");
   });
 
-  it("claude.ai — 조각 없이 단계 셋", async () => {
-    await render(<ConnectCard serverUrl={URL} />);
-    await click(radio("Agent", "claude.ai"));
-    expect(document.querySelector("pre")).toBeNull();
-    const steps = [...find<HTMLElement>(document.body, "[data-connect-steps]").querySelectorAll("li")].map((li) => li.textContent ?? "");
-    expect(steps).toHaveLength(3);
-    // 메뉴 경로는 T1 실측(design §0.1 — claude.ai/customize/connectors)이다. 시안 샘플의 Settings 경로로 돌아가면 사용자가 메뉴를 못 찾는다.
-    expect(steps[0]).toMatch(/Customize → Connectors.*Add.*Add custom connector/);
-    expect(steps.join(" ")).not.toContain("Settings");
-    expect(steps[1]).toContain("server URL");
-    expect(steps[2]).toMatch(/Connect.*sign in to Malmoi.*Authorize/);
-    // Team·Enterprise 멤버는 조직 소유자가 먼저 등록해야 한다(mcp-oauth 결정 기록) — 단계 아래 한 줄이다.
-    expect(find<HTMLElement>(document.body, "[data-connect-org-note]").textContent).toMatch(/Team or Enterprise.*owner of your claude.ai organization/);
+  /** OpenAI 원본은 마크가 뷰박스의 67%뿐이라 표시만 1.5배다 — 파일을 고치지 않는다(브랜드 규정). */
+  it("OpenAI 로고만 표시 크기를 키운다", async () => {
+    await mount([app({}), app({ id: "c3", ident: "chatgpt.com/oauth/codex/x/client.json", brand: "openai" })]);
+    expect(tile("c3").querySelector("img")?.className).toContain("scale-150");
+    expect(tile("c1").querySelector("img")?.className).not.toContain("scale-150");
   });
 
-  it("개인 토큰으로 바꾸면 클라이언트가 Claude Code로 돌아가고 목록에 Cursor가 선다 — 기존 헤더 조각 그대로", async () => {
-    await render(<ConnectCard serverUrl={URL} />);
-    await click(radio("Agent", "Codex"));
-    await click(radio("Connection method", "Personal token"));
-    expect(radios("Agent").map((r) => r.textContent?.trim())).toEqual(["Claude Code", "Codex", "Cursor"]);
-    expect(radio("Agent", "Claude Code")?.getAttribute("aria-checked")).toBe("true");
-    expect(find<HTMLElement>(document.body, "pre").textContent).toContain("Bearer ${MALMOI_TOKEN}");
-    expect(document.querySelector("[data-connect-then]")).toBeNull();
+  it("Disconnect는 danger다 — 행의 다른 동작과 구분된다", async () => {
+    await mount([app({})]);
+    expect(rowButton("c1")?.className).toContain("bg-destructive/8");
+  });
+
+  it("끊기 확인창의 카드도 같은 로고 칸을 든다", async () => {
+    await mount([app({})]);
+    await click(rowButton("c1"));
+    const box = find<HTMLElement>(dialog()!, "[data-disconnect-app]");
+    expect(box.querySelector("img")?.getAttribute("src")).toBe("/brand/agents/claude.svg");
+    expect(box.textContent).toContain("claude.ai/oauth/claude-code-client-metadata");
+  });
+});
+
+/** Connect 카드를 걷고(2026-09-30 사용자) 서버 주소는 카드 머리의 복사 버튼 하나로 남았다 — 다른 복사 버튼과 같은 `CopyButton`이다. */
+describe("머리 — Copy server URL", () => {
+  it("연결이 없어도 머리에 서고, 누르면 이 환경의 서버 주소를 복사한다", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await mount([]);
+    const copy = button(card(), "Copy server URL");
+    expect(copy).not.toBeNull();
+    await click(copy);
+    expect(writeText).toHaveBeenCalledWith(SERVER_URL);
+    expect(button(card(), "Copied")).not.toBeNull();
   });
 });

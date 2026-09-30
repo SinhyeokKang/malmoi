@@ -44,7 +44,7 @@ function Pill({ children }: { children: ReactNode }) {
 }
 
 function PublishCount({ n }: { n: number }) {
-  return <span className="bg-background/20 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-xs">{count(n)}</span>;
+  return <span className="bg-background/20 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-px text-2xs">{count(n)}</span>;
 }
 
 /** `filter-menu.tsx`의 꺼진 트리거 — md 36(머리) · sm 28(카드 머리). */

@@ -20,10 +20,10 @@ import { IconTile } from "@/components/ui/icon-tile";
 export function SourcesArchived({ slug, role, archivedAt }: { slug: string; role: Role; archivedAt: Date | null }) {
   const canEdit = canPerform(role, "project:settings");
   return <div className="flex min-h-0 flex-1 flex-col">
-    <PanelHeader width="fluid"><div className="flex items-center gap-3">
+    <PanelHeader><div className="flex items-center gap-3">
       <span className="flex items-center gap-2"><h1 className="text-lg font-medium">{m.sources.title}</h1><Badge variant="neutral">{m.logs.archived.badge}</Badge></span>
     </div></PanelHeader>
-    <PanelBody width="fluid">
+    <PanelBody>
       <PanelCard title={m.sources.title}>
         <div className="border-divider flex items-center gap-3 border-t px-4 py-[13px]">
           <IconTile><Archive aria-hidden /></IconTile>

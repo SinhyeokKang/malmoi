@@ -36,7 +36,7 @@ export default function ProjectsLoading() {
         사라졌다. 하나라도 빠지면 스크린리더가 회색 블록을 읽는다.
       */}
       {/* 머리 — 여백·선·폭 등급은 `PanelHeader`가 든다. */}
-      <PanelHeader width="fluid" aria-hidden>
+      <PanelHeader aria-hidden>
         {/* 제목 줄: 제목 + 총계 배지 ── ml-auto ─→ 검색 + [New project] */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -49,7 +49,7 @@ export default function ProjectsLoading() {
       </PanelHeader>
 
       {/* 본문 — 그룹 헤더 하나 + 카드 안의 행 둘. */}
-      <PanelBody width="fluid" className="flex flex-col gap-4" aria-hidden>
+      <PanelBody className="flex flex-col gap-4" aria-hidden>
         <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
           {/* 카드 헤더 — 실물과 같은 `px-4 py-3`이라야 첫 행의 y가 안 튄다. */}
           <div className="flex min-h-12 items-center gap-2 px-4 py-3">

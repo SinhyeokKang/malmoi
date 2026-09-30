@@ -5,13 +5,18 @@ import { unstable_rethrow, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { disconnectOAuthConnection, type OAuthDisconnectResult } from "@/app/(edit)/mcp/actions";
+import { BrandLogo } from "@/components/mcp/brand-logo";
+import { GrantBadges } from "@/components/mcp/grant-badges";
+import { CopyButton } from "@/components/onboarding/copy-button";
 import { McpIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { IconTile } from "@/components/ui/icon-tile";
 import { EmptyRowCard, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
 import { m } from "@/lib/i18n";
+import type { Brand } from "@/lib/mcp/brand";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { relativeTime } from "@/lib/relative-time";
 import { utcDay } from "@/lib/utc-time";
@@ -36,11 +41,14 @@ export type ConnectedAppData = {
   createdAt: string;
   lastUsedAt: string | null;
   expiresAt: string;
+  /** 서버가 client_id 호스트로만 고른 로고(`lib/mcp/brand.ts`) — 이름으로 고르지 않는다. 없으면 MCP 기본 아이콘. */
+  brand: Brand | null;
 };
 
 const TITLE_ID = "mcp-apps-title";
 
-export function ConnectedAppsCard({ apps, now }: { apps: readonly ConnectedAppData[] | null; now: string }) {
+/** `serverUrl` — 이 요청의 origin으로 만든 MCP 주소(preview·로컬이면 그 주소). Connect 카드를 걷고 머리의 복사 버튼 하나로 남겼다(2026-09-30 사용자). */
+export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly ConnectedAppData[] | null; now: string; serverUrl: string }) {
   const router = useRouter();
   // 대상은 닫힌 뒤에도 남긴다 — Dialog가 닫히는 동안 제목이 비지 않고, 닫힘 포커스 처리가 같은 콘텐츠에서 돈다.
   const [target, setTarget] = useState<ConnectedAppData | null>(null);
@@ -119,6 +127,11 @@ export function ConnectedAppsCard({ apps, now }: { apps: readonly ConnectedAppDa
         titleId={TITLE_ID}
         count={rows !== null && rows.length > 0 ? rows.length : undefined}
         countLabel={rows === null ? undefined : m.mcpConnector.apps.title}
+        action={
+          <div className="ml-auto shrink-0">
+            <CopyButton value={serverUrl} label={m.mcpConnector.apps.copyServerUrl} />
+          </div>
+        }
       >
         {unconfirmed !== null && (
           <Alert variant="warning" inset live="status">
@@ -178,9 +191,15 @@ export function ConnectedAppsCard({ apps, now }: { apps: readonly ConnectedAppDa
           >
             <div className="flex flex-col gap-3">
               {/* 이름만으로는 같은 이름의 두 연결을 못 가른다 — 식별 줄까지 보인다(핸드오프 §7.5). */}
-              <div data-disconnect-app className="border-border flex flex-col gap-px rounded-lg border p-3">
-                <span className="text-sm font-medium [overflow-wrap:anywhere]">{target.name}</span>
-                <span className="text-muted-foreground text-xs break-all">{target.ident}</span>
+              <div data-disconnect-app className="border-border flex items-center gap-3 rounded-lg border p-3">
+                {/* 행과 같은 로고 칸이다 — 무엇을 끊는지 목록에서 본 모양 그대로 알아본다. */}
+                <IconTile size="lg">
+                  {target.brand === null ? <McpIcon /> : <BrandLogo brand={target.brand} className="size-5" />}
+                </IconTile>
+                <div className="flex min-w-0 flex-col gap-px">
+                  <span className="text-sm font-medium [overflow-wrap:anywhere]">{target.name}</span>
+                  <span className="text-muted-foreground text-xs break-all">{target.ident}</span>
+                </div>
               </div>
               {failed && <Alert variant="danger">{m.errors.access.unavailable}</Alert>}
             </div>
@@ -195,17 +214,20 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
   const expired = app.state === "expired";
   const expires = new Date(app.expiresAt);
   const lastUsed = app.lastUsedAt === null ? null : new Date(app.lastUsedAt);
-  const grants = app.grants.length === 0 ? m.mcpConnector.token.readOnly : app.grants.map((g) => m.mcpConnector.grants[g].label).join(" · ");
   const scope = app.scope.kind === "all" ? m.mcpConnector.token.allProjects : m.mcpConnector.token.projects(app.scope.projectIds.length);
   // 만료 행은 기록으로 남기되 흐리게 하고 시각은 절대 날짜다(토큰 카드의 만료와 같다).
   const facts: [string, ReactNode][] = [
-    [m.mcpConnector.token.facts.grants, grants],
+    [m.mcpConnector.token.facts.grants, <GrantBadges key="g" grants={app.grants} dimmed={expired} />],
     [m.mcpConnector.token.facts.scope, scope],
     [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time dateTime={app.lastUsedAt ?? ""}>{expired ? utcDay(lastUsed) : relativeTime(lastUsed, now)}</time>],
     [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? utcDay(expires) : relativeTime(expires, now)}</time>],
   ];
   return (
     <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-3.5">
+      {/* 왼쪽 로고 칸은 40(`lg`)이다(2026-09-30 사용자). 만료 행도 로고는 그대로다 — 흐리게 하면 원본 색이 바뀐다. */}
+      <IconTile size="lg" data-app-logo className="self-start">
+        {app.brand === null ? <McpIcon /> : <BrandLogo brand={app.brand} className="size-5" />}
+      </IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex min-w-0 items-start gap-2">
           <span className={cn("min-w-0 text-base font-medium [overflow-wrap:anywhere]", expired && "text-neutral-400")}>{app.name}</span>
@@ -221,7 +243,7 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
           ))}
         </dl>
       </div>
-      <Button data-app-disconnect={app.id} className="shrink-0" aria-label={m.mcpConnector.apps.disconnectLabel(app.name, app.ident)} onClick={onDisconnect}>
+      <Button data-app-disconnect={app.id} variant="danger" className="shrink-0" aria-label={m.mcpConnector.apps.disconnectLabel(app.name, app.ident)} onClick={onDisconnect}>
         {m.mcpConnector.apps.disconnect}
       </Button>
     </div>

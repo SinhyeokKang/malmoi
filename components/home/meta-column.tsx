@@ -104,12 +104,13 @@ function value(row: MetaRow, now: Date): ReactNode {
     case "locales":
       /* ⚠️ 매핑이 없는 코드는 `LocaleFlag`가 `null`을 낸다 — 물음표·지구본을 대신 그리지 않는다. */
       return (
-        <span className="flex flex-wrap items-center gap-2.5">
+        <span className="flex flex-wrap items-center gap-1.5">
           {row.codes.map((code) => (
-            <span key={code} className="inline-flex items-center gap-1.5">
+            // 국기 + 코드는 배지 하나다(2026-09-30 사용자 — 프로젝트 행 Meter 머리와 같은 모양).
+            <Badge key={code} variant="neutral" className="gap-1">
               <LocaleFlag code={code} />
               {code}
-            </span>
+            </Badge>
           ))}
         </span>
       );
@@ -120,7 +121,7 @@ function value(row: MetaRow, now: Date): ReactNode {
     case "lastSync":
       return (
         <span>
-          {row.at === null ? m.home.meta.never : `${relativeTime(row.at, now)}${triggerSuffix(row.trigger)}`}
+          {row.at === null ? m.home.meta.never : <>{relativeTime(row.at, now)}<TriggerBadge trigger={row.trigger} /></>}
           {/* `2b`에서만 실패가 붙는다 — `1d ago · nightly · failed 10m ago`(시각 → 주체 → 실패). */}
           {row.failedAt !== null && (
             <span className="text-destructive"> · {m.home.meta.failedAt(relativeTime(row.failedAt, now))}</span>
@@ -134,7 +135,7 @@ function value(row: MetaRow, now: Date): ReactNode {
       const pr = pullNumberFrom(row.prUrl);
       if (row.at === null) return m.home.meta.never;
       return pr === null || row.prUrl === null ? (
-        `${relativeTime(row.at, now)}${triggerSuffix(row.trigger)}`
+        <span>{relativeTime(row.at, now)}<TriggerBadge trigger={row.trigger} /></span>
       ) : (
         /* 캔버스는 **PR이 앞이고 시각이 뒤**다 — 이 행이 답하는 질문이 "무엇을 보냈나"라서다. */
         <span>
@@ -151,7 +152,8 @@ function value(row: MetaRow, now: Date): ReactNode {
           >
             {m.home.meta.pr(pr)}
           </a>
-          {` · ${relativeTime(row.at, now)}${triggerSuffix(row.trigger)}`}
+          {` · ${relativeTime(row.at, now)}`}
+          <TriggerBadge trigger={row.trigger} />
         </span>
       );
     }
@@ -167,6 +169,11 @@ function value(row: MetaRow, now: Date): ReactNode {
  */
 const TRIGGER_WORD = { manual: m.logs.meta.manual, nightly: m.logs.meta.nightly, ci: m.logs.meta.ci } satisfies Record<Trigger, string>;
 
-function triggerSuffix(trigger: Trigger | null): string {
-  return trigger === null ? "" : ` · ${TRIGGER_WORD[trigger]}`;
+/**
+ * ⚠️ **배지다, 글자가 아니다** (2026-09-30 사용자 — ` · nightly` 글자에서 바꿨다). 요약 줄 행간이 20이고 배지도 20이라 줄 높이가 안 흔들린다.
+ * 앞의 ` · `를 떼고 간격(6)으로 가른다 — 배지 자체가 경계다.
+ */
+function TriggerBadge({ trigger }: { trigger: Trigger | null }) {
+  if (trigger === null) return null;
+  return <Badge variant="neutral" className="ml-1.5 align-middle">{TRIGGER_WORD[trigger]}</Badge>;
 }

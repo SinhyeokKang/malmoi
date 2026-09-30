@@ -255,7 +255,7 @@ export default async function ProjectHomePage({
       B의 Home에 남고 진행 중 잠금까지 넘어온다 (handoff §T9 · `home-screen.test.ts`가 센다).
     */
     <HomeActions key={slug} slug={slug}>
-      <PanelHeader width="fluid">
+      <PanelHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
           <HomeTitle image={project.image} archived={state === "archived"}>{project.name}</HomeTitle>
@@ -306,7 +306,7 @@ export default async function ProjectHomePage({
         ⚠️ **간격이 20이다** — 블록 사이도 같은 20이라 세로·가로가 한 격자로 읽힌다. 카드 넷 사이만
         8이고, 그 차이가 넷을 한 덩어리로 묶는다.
       */}
-      <PanelBody width="fluid" className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
+      <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
         <div className="flex min-w-0 flex-col gap-5">
           <CountCards
             cards={countCards({

@@ -113,7 +113,7 @@ it("hover: 예외가 buttonClass에서 실제로 쓰인다", () => {
  * ⚠️ **한쪽만 옅히면 색이 섞인다.** 실제로 그렇게 나가 있었다: 테두리는 `destructive/40` 그대로인데
  * 글자만 회색이라 **붉은 테두리 + 회색 글자**였다. 그래서 선과 글자를 **짝으로** 센다.
  */
-it("꺼진 danger가 destructive 계열을 유지한다 — 선과 글자가 함께 옅어진다", () => {
+it("꺼진 danger가 destructive 계열을 유지한다 — 면과 글자가 함께 옅어진다", () => {
   const source = read(BUTTON);
   const danger = /danger: cn\(([\s\S]*?)\n        \),/.exec(source)?.[1];
   expect(danger, "danger variant를 못 찾았다").toBeDefined();
@@ -122,9 +122,21 @@ it("꺼진 danger가 destructive 계열을 유지한다 — 선과 글자가 함
     // 글자: muted로 접지 않고 destructive의 알파를 쓴다.
     expect(utilities, prefix).not.toContain("text-muted-foreground");
     expect(utilities.some((u) => u.startsWith("text-destructive/")), `${prefix} 글자`).toBe(true);
-    // 선: 켜진 상태(40)보다 옅어진다 — 안 건드리면 붉은 테두리에 회색 글자가 된다.
-    expect(utilities.some((u) => u.startsWith("border-destructive/")), `${prefix} 선`).toBe(true);
+    // 면: 켜진 상태(/8)보다 옅어진다 — 안 건드리면 붉은 면에 옅은 글자가 된다.
+    expect(utilities.some((u) => u.startsWith("bg-destructive/")), `${prefix} 면`).toBe(true);
   }
+});
+
+/**
+ * **danger는 연한 붉은 면 + 붉은 글자이고 테두리가 없다** (2026-09-30 사용자 — 흰 면 + 붉은 테두리에서 바꿨다).
+ * 면·글자는 Sources 실패 칩(`IconTile`)과 같은 조합이다 — 같은 날 붉은 면 넷을 하나로 통일했다.
+ */
+it("켜진 danger는 면 bg-destructive/8 · 글자 text-destructive · 테두리 없음이다", () => {
+  const danger = /danger: cn\(([\s\S]*?)\n        \),/.exec(read(BUTTON))?.[1] ?? "";
+  const base = [...danger.matchAll(/(?<![\w:/-])([a-z][^\s"'`:]*)(?=[\s"'`])/g)].map((x) => x[1]!);
+  expect(base).toContain("bg-destructive/8");
+  expect(base).toContain("text-destructive");
+  expect(base.filter((u) => u === "border" || u.startsWith("border-"))).toEqual([]);
 });
 
 it("aria-disabled: 스타일을 buttonClass 밖에서 쓰지 않는다", () => {

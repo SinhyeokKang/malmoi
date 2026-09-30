@@ -109,13 +109,14 @@ describe("projectSections — 역할이 항목을 정한다", () => {
    * ⚠️ **순서가 시안이다** (8-3) — Locales가 Translations **앞**이다. "어떤 언어가 있나"가
    * "그 언어를 채운다"보다 앞선 질문이어서이고, 순서를 바꾸면 사이드바가 다른 이야기를 한다.
    */
-  it("OWNER는 여섯을 본다 — 순서까지 시안이다", () => {
+  // 2026-09-30 사용자 — 시안의 Members · Logs를 맞바꿨다.
+  it("OWNER는 여섯을 본다 — Logs가 Members 앞이다", () => {
     expect(projectSections("OWNER").map((s) => s.key)).toEqual([
       "home",
       "sources",
       "translations",
-      "members",
       "logs",
+      "members",
       "settings",
     ]);
   });
@@ -125,8 +126,8 @@ describe("projectSections — 역할이 항목을 정한다", () => {
       "home",
       "sources",
       "translations",
-      "members",
       "logs",
+      "members",
     ]);
   });
 

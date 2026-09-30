@@ -68,10 +68,13 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
   return <OnboardingModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, detail.locales)}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : failed ? undefined : m.sources.loading}
     onClose={() => leave()} closeDisabled={busy} returnFocusRef={returnFocusRef} fallbackFocusRef={fallbackFocusRef} quiet={fieldError}
     panelClassName={cn(failed ? "min-h-0" : "min-h-[min(560px,calc(100svh-96px))] max-h-[min(800px,calc(100svh-96px))]")}
-    headerAction={canOpen && sourceSlug && !busy
-      ? <ButtonLink href={routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })); } }}>{m.sources.open}<ArrowRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>
-      : detail ? <Button aria-disabled aria-describedby="source-open-reason" onClick={event => event.preventDefault()}>{m.sources.open}<ArrowRight className="text-muted-foreground size-3.5" aria-hidden /></Button> : undefined}
-    actions={<Button size="lg" variant="primary" disabled={busy} onClick={() => leave()}>{m.common.close}</Button>} footer={<span id="source-open-reason" className="text-muted-foreground text-xs">{!canOpen && detail ? (busy ? importing ? m.settings.sources.importing : m.locales.field.saving : disabledReason) : m.sources.readOnlyNote}</span>}>
+    // [Open translations]는 바닥 행동 줄의 primary다(2026-09-30 사용자 — 머리 우측에서 옮겼다). [Close]가 보조다. 목록 행의 같은 버튼은 걷혔고 이 모달이 유일한 입구다.
+    actions={<>
+      <Button size="lg" disabled={busy} onClick={() => leave()}>{m.common.close}</Button>
+      {canOpen && sourceSlug && !busy
+        ? <ButtonLink size="lg" variant="primary" href={routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })); } }}>{m.sources.open}</ButtonLink>
+        : detail ? <Button size="lg" variant="primary" aria-disabled aria-describedby="source-open-reason" onClick={event => event.preventDefault()}>{m.sources.open}</Button> : null}
+    </>} footer={<span id="source-open-reason" className="text-muted-foreground text-xs">{!canOpen && detail ? (busy ? importing ? m.settings.sources.importing : m.locales.field.saving : disabledReason) : m.sources.readOnlyNote}</span>}>
     {/* 골격은 장식이다 — 불러오는 중은 대화상자 설명(`description`)이 말한다. 역할 없는 div의 `aria-label`은 읽히지 않는다 (audit #89). */}
     {state.status === "loading" && <div className="space-y-6" data-source-loading aria-hidden>
       {[1, 2, 3].map(n => <div key={n} className="space-y-3"><Skeleton className="h-4 w-32" /><Skeleton className="h-5 w-64" /></div>)}

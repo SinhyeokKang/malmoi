@@ -516,8 +516,18 @@ it.each([
 });
 
 /**
- * ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). 마지막 수단의 [Disconnect]와
- * 사진이 없을 때의 [Delete] 둘이 이 부류다.
+ * **사진이 없으면 [Delete]를 그리지 않는다** (2026-09-30 사용자 — 꺼진 버튼 + "You haven't added one yet."을 걷었다).
+ * 그 전엔 이 화면의 사유 붙은 `disabled` 대표가 그 버튼이었다.
+ */
+it("사진이 없으면 Delete가 없고, 있으면 선다", async () => {
+  const none = await screen({}, [{ provider: "github" }]);
+  expect([...none.querySelectorAll("button")].some((b) => b.textContent?.trim() === "Delete")).toBe(false);
+  expect(none.textContent).not.toContain("You haven't added one yet.");
+});
+
+/**
+ * ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). 사진이 없을 때의 [Delete]는 2026-09-30부터 아예 안 그리므로
+ * 이 화면의 기본 상태에서 걸리는 컨트롤이 0일 수 있다 — 새로 생기면 그때 이 검사가 사유를 요구한다.
  */
 it("사유 없는 disabled가 0이다", async () => {
   const container = await screen({}, [{ provider: "github" }]);
@@ -528,7 +538,6 @@ it("사유 없는 disabled가 0이다", async () => {
    */
   const disabled = [...container.querySelectorAll("button[disabled], input[disabled]")]
     .filter((el) => !el.hasAttribute("aria-hidden") && el.querySelector(".animate-spin") === null);
-  expect(disabled.length).toBeGreaterThan(0);
   for (const control of disabled) {
     const nearby = [...(control.parentElement?.children ?? [])]
       .filter((sibling) => sibling !== control)
