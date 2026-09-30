@@ -91,3 +91,10 @@
   검증 [자동]: `pnpm test` green + `pnpm guide:check` 출력 인용(스크린샷 stale 후보는 `/guide-shots` 플래그).
 - **T12** 기능 종료 시 `docs/features/translation-filter-scope/` 삭제.
   검증: PRODUCT §3 · DESIGN §6.1a · ARCHITECTURE §1.95·§1.96·§6.45에 결론이 올라간 것을 확인한 뒤 디렉터리 부재(`ls docs/features/translation-filter-scope` 실패).
+
+## 결정 기록
+
+- **2026-09-30 T5 fixture** (사용자): dev의 `bugshot-i18n-test-qa3`(base branch 삭제로 사용 불가)를 **id로 삭제**해 OWNER 한도 슬롯을 비우고,
+  그 자리에 `.scratch/` 시드가 폐기용 대량 프로젝트를 만든다. 측정 뒤 시드 프로젝트도 id로 지운다. 상주 `bugshot-i18n-test-qa`·`i18n-order-check`는 건드리지 않는다.
+- **2026-09-30 배치 구성** (지휘자): 태스크가 `query.ts`·`workspace.tsx`·`key-list.tsx`를 공유해 병렬 불가 — 워커 하나(TFS)가 T1–T4 → 인계 →
+  T5(main 체크아웃 측정 워커) 통과 뒤 T6–T8·T10·T11을 잇는다. T9는 main 체크아웃 QA 워커, T12는 지휘자. dev push는 T7 이후.
