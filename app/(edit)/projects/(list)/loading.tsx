@@ -1,5 +1,6 @@
 import { ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
+import { m } from "@/lib/i18n";
 
 /**
  * 목록이 서버에서 오는 동안의 스켈레톤 (2026-09-11 사용자).
@@ -31,17 +32,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function ProjectsLoading() {
   return (
     <ContentPanel>
+      {/* 골격이 `aria-hidden`이라 접근성 트리가 통째로 빈다 — 이 한 줄이 그 자리를 메운다(4-Y17 — 형제 화면의 골격과 같은 형). */}
+      <span className="sr-only" role="status">{m.projects.loading}</span>
       {/*
         ⚠️ **`aria-hidden`이 둘로 갈렸다** — 머리와 본문이 형제가 되면서 그것을 함께 감싸던 래퍼가
         사라졌다. 하나라도 빠지면 스크린리더가 회색 블록을 읽는다.
       */}
       {/* 머리 — 여백·선·폭 등급은 `PanelHeader`가 든다. */}
       <PanelHeader aria-hidden>
-        {/* 제목 줄: 제목 + 총계 배지 ── ml-auto ─→ 검색 + [New project] */}
+        {/*
+          제목 줄: 제목 ── ml-auto ─→ 검색 + [New project]. ⚠️ **카운트 원을 그리지 않는다**(4-W13) — 실물 `CountBadge`는 0이면 서지 않아
+          골격이 그 자리를 예고하면 0건에서 튄다.
+        */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Skeleton className="h-7 w-40" />
-            <Skeleton className="size-5 rounded-full" />
           </div>
           <Skeleton className="ml-auto h-9 w-64" />
           <Skeleton className="h-9 w-32" />
@@ -54,7 +59,6 @@ export default function ProjectsLoading() {
           {/* 카드 헤더 — 실물과 같은 `px-4 py-3`이라야 첫 행의 y가 안 튄다. */}
           <div className="flex min-h-12 items-center gap-2 px-4 py-3">
             <Skeleton className="h-5 w-32" />
-            <Skeleton className="size-5 rounded-full" />
           </div>
           <ul>
             {[0, 1].map((i) => (
@@ -65,7 +69,8 @@ export default function ProjectsLoading() {
                 <Skeleton className="size-7 rounded-[4px]" />
                 <div className="flex w-[420px] shrink-0 flex-col gap-0.5">
                   <Skeleton className="h-5 w-48" />
-                  <Skeleton className="h-5 w-72" />
+                  {/* 메타 줄은 13이다(4-Y9) — 실물 행과 같은 높이라야 도착 때 안 튄다. */}
+                  <Skeleton className="h-4 w-72" />
                 </div>
                 <Skeleton className="ml-auto h-5 w-16 rounded-full" />
               </li>

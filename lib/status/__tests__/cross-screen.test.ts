@@ -11,7 +11,7 @@ import { assembleProjectListRows, type ProjectListAggregates, type ProjectListMe
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { importFailureTone } from "@/lib/projects/import-failure";
 import { importOutcomeFields, isImportFailureCode, type ImportFailureCode } from "@/lib/projects/import-status";
-import { rowBanner, rowChip, worstFailingSurface, type RowBanner, type RowChip } from "@/lib/projects/list";
+import { CHIP_STATE, rowBanner, rowChip, worstFailingSurface, type RowBanner } from "@/lib/projects/list";
 import { openPrGateApplies, planHoldNotice, type HoldReason } from "@/lib/protection/plan";
 
 import { STATE, type StateKey } from "../canon";
@@ -29,9 +29,9 @@ import { STATE, type StateKey } from "../canon";
  * - 입력 축이 판정의 매개변수에 없다 — 아래 `RECEIVES`가 **타입으로** 고정한다(판정이 그 축을 받기 시작하면 컴파일이 red다).
  * - readiness가 먼저 막는다 — Home(`ProjectNotReady`)·적재 거부(`not-ready`)가 그 판정에 닿지 않는다.
  *
- * ⚠️ **화면 쪽 매핑(판정 결과 → 상태 키)은 여기 사본이 남은 것이 있다** — 칩 매핑(`components/projects/project-list.tsx`)은 컴포넌트 안에 있다.
- * Home 배너 갈래는 `HomeNotices`가 부르는 `homeBannerState`를(ux-drift-unify T18), Settings 배지는 컴포넌트가 쓰는
- * `repositoryConnectionState`(`components/settings/connection-state.ts`)를 그대로 지난다. 사본이 낡지 않도록 칩 낱말은 컴포넌트와 같은 사전 키에서 읽어 `STATE` 낱말과 대조한다.
+ * ⚠️ **화면 쪽 매핑(판정 결과 → 상태 키)은 사본이 남은 것이 있다** — 목록 띠(`project-list.tsx` `ProjectBanner`)는 컴포넌트 안에 있다.
+ * 칩(`CHIP_STATE`)·Home 배너 갈래(`homeBannerState`)·Settings 배지(`repositoryConnectionState`, `components/settings/connection-state.ts`)는
+ * 화면이 쓰는 그 순수 매핑을 그대로 부른다(ux-drift-unify T18·T19·T22).
  */
 
 // ── 판정 묶음 — 카나리아가 한 판정만 바꿔 넣는다 ─────────────────────────────
@@ -84,16 +84,6 @@ const fixture = (over: Partial<Fixture> = {}): Fixture => ({
 
 // ── 화면 쪽 매핑의 사본 (위 머리 주석) ─────────────────────────────────────
 
-/** `project-list.tsx`의 칩 — `STATUS_CHIP` + 실패 둘. */
-const CHIP_KEY = {
-  active: "active", setup: "setup", awaiting_first_sync: "notSyncedYet", needs_reconnect: "disconnected", archived: "archived",
-  sync_failed: "syncFailed", partially_synced: "partiallySynced",
-} as const satisfies Record<RowChip, StateKey>;
-
-/** 컴포넌트가 칩에 싣는 낱말 — 같은 사전 키를 읽는다(`project-list.tsx`의 `chip` 삼항). */
-const chipLabel = (chip: RowChip): string =>
-  chip === "sync_failed" ? m.settings.sources.failedAfter : chip === "partially_synced" ? m.logs.status.partial : m.projects.status[chip];
-
 const failureKey = (code: ImportFailureCode): StateKey => (importFailureTone(code) === "danger" ? "syncFailed" : "partiallySynced");
 
 /** `project-list.tsx`의 띠 — 상태를 말하지 않는 띠(`repo_ahead`·`review`)는 이 행렬에 들지 않는다. */
@@ -139,7 +129,8 @@ function observe(f: Fixture, J: Judgments): Observed {
   };
   const [row] = assembleProjectListRows([member], { ...EMPTY, unsent: new Map([["p1", f.pending]]) }, new Map([["p1", { openPr: f.openPr, repoAheadFiles: 0 }]]));
   if (row === undefined) throw new Error("no row");
-  const list = { chip: CHIP_KEY[J.rowChip(row)], banner: bannerKey(J.rowBanner(row)) };
+  // 칩은 화면이 `StatusBadge`에 넘기는 그 맵이다(ux-drift-unify T19 — 전엔 여기 사본이었다).
+  const list = { chip: CHIP_STATE[J.rowChip(row)], banner: bannerKey(J.rowBanner(row)) };
 
   const health = J.planConnectionHealth({ project, probe: f.probe });
   const problem = J.connectionProblem(health.status);
@@ -419,11 +410,6 @@ describe("교차 행렬 — 같은 입력은 어느 화면에서도 같은 STATE
 });
 
 describe("화면 매핑 사본이 낡지 않았다", () => {
-  /** 칩 매핑 사본의 낱말이 컴포넌트가 읽는 사전 키와 같다 — 사본이 컴포넌트와 갈리면 여기가 red다. */
-  it.each(Object.entries(CHIP_KEY) as [RowChip, StateKey][])("칩 %s → %s", (chip, key) => {
-    expect(chipLabel(chip)).toBe(STATE[key].label);
-  });
-
   it("띠의 PR 조회 실패 문장이 Couldn't check 축이다", () => {
     expect(m.projects.banner.prCheckFailed.toLowerCase()).toContain(STATE.couldNotCheck.label.toLowerCase());
   });

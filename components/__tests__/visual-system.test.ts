@@ -136,7 +136,6 @@ const REGISTERED: Record<string, string[]> = {
     "components/logs/event-meta.tsx",
     "components/onboarding/steps/repo.tsx",
     "components/privacy/privacy-doc.tsx",
-    "components/projects/empty-projects.tsx",
     "components/projects/project-list.tsx",
     "components/publish-button.tsx",
     "components/settings/archive-card.tsx",
@@ -180,7 +179,6 @@ const REGISTERED: Record<string, string[]> = {
     "components/home/sync-button.tsx",
     // 랜딩 목업은 번역 작업 화면의 정적 복제라 그 화면의 색을 그대로 쓴다(새 값 0).
     "components/landing/mockup/translations.tsx",
-    "components/projects/project-list.tsx",
     "components/translations/workspace/key-list.tsx",
     "components/translations/workspace/locale-panel.tsx",
     "components/translations/workspace/tree-panel.tsx",

@@ -1,6 +1,7 @@
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { importFailureTone } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
+import type { StateKey } from "@/lib/status/canon";
 
 /**
  * 프로젝트 목록의 순수 판정 (8-3).
@@ -216,6 +217,16 @@ export function rowBanner(row: RowInput): RowBanner {
  * 띠(`rowBanner`)·Home(`planHomeState`)과 같이 **끊김이 먼저**다 — 공유 우선순위 표는 두지 않고(세 소비자의 어휘가 다르다) 일치는 테스트가 고정한다.
  */
 export type RowChip = ProjectStatus | "sync_failed" | "partially_synced";
+
+/**
+ * 칩 → 상태 키 (DESIGN §2.4) — `project-list.tsx`가 `StatusBadge`로 그리고, 교차 테스트가 Home·Settings와 같은 키인지 센다. 배지 variant·낱말은
+ * `STATE`가 든다 — 화면이 variant를 고르던 맵(`STATUS_CHIP`)과 실패 삼항이 이것으로 접혔다(ux-drift-unify T19).
+ * ⚠️ **맵 + `satisfies`다** — 갈래가 늘면 키가 없어 컴파일 에러다(삼항은 새 갈래를 사유 없이 기본값으로 떨어뜨린다).
+ */
+export const CHIP_STATE = {
+  active: "active", setup: "setup", awaiting_first_sync: "notSyncedYet", needs_reconnect: "disconnected", archived: "archived",
+  sync_failed: "syncFailed", partially_synced: "partiallySynced",
+} as const satisfies Record<RowChip, StateKey>;
 
 export function rowChip(row: RowInput): RowChip {
   const status = projectStatus(row);

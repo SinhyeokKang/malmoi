@@ -1440,6 +1440,8 @@ export const en = {
   },
 
   projects: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다** (4-Y17 — 목록 골격만 빠져 있었다). */
+    loading: "Loading projects…",
     /**
      * 툴바 우측의 이름 검색 (2026-09-11).
      *
