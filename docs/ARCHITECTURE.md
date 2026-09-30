@@ -821,7 +821,7 @@ Publish·Revert·폐기 Sync를 함께 말한다 — 응답 계약은 그대로�
   방문 기록의 유일한 예외이고, 그래서 다음 밤 정렬이 그 프로젝트를 앞으로 가져온다(되돌리지 않으면 "방금 방문함"으로 맨 뒤에 선다).
   head 조회도 `GITHUB_WAIT_MS`(8초) 안이라 **스킵·마감 갈래의 최악이 예산 45초 + head 대기 8초 ≈ 53초 < 60**이다. ⚠️ **이 경계는 스킵·마감
   갈래만이다** — 44초께 시작한 Publish(GitHub 쓰기 여러 번)나 20초 전에 시작한 다표면 적재(표면당 트랜잭션 30초)는 그 밖이라 `maxDuration`을
-  넘길 수 있다. 그래서 함수가 죽어 남은 `running` 적재 행은 다음 방문의 만료 닫기(§5.7.2)가 닫는다.
+  넘길 수 있다. 그래서 함수가 죽어 남은 `running` 적재 행은 **다음 방문이 갈래와 무관하게** 닫는다 — `runNightly`가 방문 기록 직후 `closeExpiredImportRuns`(`lib/import/run.ts`)를 `Project` 잠금 안에서 돌리고, 살아 있는 실행(`hasLiveInternalImport`)은 닫지 않는다(§5.7.2). 새 사건은 없다.
   ⚠️ **응답의 `unprocessed`는 방문하지 않은 수만이다**(예산·상한) — 마감으로 멈춘 방문은 `results`의 항목이고 요약에서는 `deadline=`으로 센다.
   합치면 `results.length + unprocessed`가 고른 수보다 커진다(두 번 센다). 대가: **GitHub 장애 밤**엔 방문마다 head 대기 8초를 다 쓸 수 있어
   뒤쪽 프로젝트가 `unprocessed`로 다음 밤에 넘어간다.
@@ -848,7 +848,8 @@ countPending > 0 ─────────────────────
 createGitClient → getRefSha(base)  (8초 마감 안)
   throw · 마감 ─────────────────────────────────► nightly.skip · failed · base-unreadable (사건만)
   null(브랜치 없음) ────────────────────────────► 같은 사건 + 활성 표면 lastImportError (같은 tx, #155)
-비교 대상 전부 lastCommitSha == head ────────────► nightly.skip · upToDate
+비교 대상 전부 lastCommitSha == head · 실패 상태 없음 ─► nightly.skip · upToDate
+  (실패 상태(lastImportError)가 남은 표면은 같은 head여도 아래 적재 쪽 — 부분 적재 · #155 같은 SHA 복구)
 경과 > NIGHTLY_IMPORT_START_MS ─────────────────► 사건 없음 · unprocessed (PR 조회 안 함 · 요약 deadline=)
 열린 PR 조회(삼상태, 같은 클라이언트, 8초 마감) → planOpenPrGate
   undefined(실패·마감) ─────────────────────────► nightly.skip · deferred · pr-check-failed
@@ -863,6 +864,10 @@ createGitClient → getRefSha(base)  (8초 마감 안)
   상태와 섞지 않는다(POSTMORTEM 2026-09-09).
 - ⚠️ **비교 대상을 좁힌다** — `lastCommitSha`가 null이거나 포맷이 불완전한 표면은 적재해도 전진하지 않으므로, 넣으면 `upToDate`가 영원히 안 서서
   매일 전 표면을 다시 적재한다. **빈 배열의 `every`는 참이라** 비교 대상 0개를 먼저 `notReady`로 뺀다. 적재 자체는 수동 Sync와 같은 표면 집합을 돈다.
+- ⚠️ **SHA 일치는 완전한 적재의 증거가 아니다** (2026-09-30 사용자 판정) — `partial-import`도 `lastCommitSha`를 전진시키므로, 실패 상태(`lastImportError`)가
+  남은 비교 대상 표면은 같은 head여도 `upToDate`가 아니라 적재 쪽으로 간다(미전달 편집·열린 PR 게이트는 그대로). 일시 실패는 다음 밤 스스로 풀린다.
+  **대가**: 영구히 깨진 로케일 파일이 있으면 고칠 때까지 **밤마다 `import.nightly` · `partial` 한 행**이 서고 head가 같아도 매일 트리·blob을 읽는다.
+  #155 브랜치 부재도 같은 부류다 — 되살리기 전까지는 `base-unreadable`, 같은 SHA로 되살린 뒤 첫 밤에 적재해 실패가 풀린다.
 - ⚠️ **실패를 "PR 없음"·"같은 head"로 읽는 경로가 없다** — 열린 PR 입력은 `{ url }` 상자에 담긴다: "아직 안 물었다"(상자 없음 → `need`)와
   "물었는데 확인 못 함"(`url: undefined` → `pr-check-failed`)이 같은 `undefined`로 접히지 않게(POSTMORTEM 2026-09-03). head가 던지거나
   마감을 넘기거나 `null`(base 브랜치 없음·권한 없는 404)이면 `base-unreadable`이다 — `null`만 표면 실패 상태도 쓴다(아래 §5.5.2 분류, #155). ⚠️ **클라이언트 생성(토큰 발급 + 리포 신원)부터 그 마감 안이다** —
@@ -1796,6 +1801,9 @@ Recent logs가 **같은 조회**(`lib/events/query.ts`)를 읽는다. `SyncRun`�
   갱신 건수를 돌려준다(0행 갱신은 조용하다 — POSTMORTEM 2026-09-14).
 - **중단된 내부 Import는 다음 실행이 닫는다** — lease를 얻는 트랜잭션에서 `import:` 접두의 미종료 행을
   `failed`로 닫는다. Publish의 stale 처리와 같은 형이고, **조회·브라우저는 상태를 바꾸지 않는다.**
+  ⚠️ **닫는 자리는 둘이다** (2026-09-30, nightly-sync) — 적재 진입(`acquire`)과 **야간 방문마다**(`closeExpiredImportRuns` — head가 같아 적재가 안 도는 밤에도
+  죽은 행이 `Running…`으로 남지 않게). 둘 다 같은 닫기(`closeImportRunsInTx`)를 쓰고, "살아 있나"는 공유 술어 `hasLiveInternalImport`(`lib/import/plan.ts` —
+  실행권 토큰 ∨ 활성 표면 진행 표시; `planRepositoryImport`의 `already-running`도 이것이다)가 정한다. 첫 적재는 실행권 없이 표면 표시만 세우므로 사본을 두면 그 행을 닫는다.
 
 ### 5.7.3 값을 복제하지 않는다
 
@@ -1865,7 +1873,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
   기존 `Promise.all` 한 라운드 안에서 읽는다. ⚠️ **행위자를 고르지 않는다**(POSTMORTEM 2026-09-29 #146). ⚠️ `Last sync`의 주체는 **`lastImportedAt`을
   적어도 한 표면에서 전진시킨** 적재의 것이다 — 표면이 전부 실패한 `partial`의 주체를 붙이면 더 옛 실행의 시각에 거짓 주체가 선다. 고른 사건이 못 쓰이면
   더 옛 사건으로 물러나지 않는다(틀린 주체보다 주체 없음). ⚠️ **`lastSyncAt`과 사건 시각을 대조하지 않는다** — 트랜잭션 경계가 달라 밀리초가 갈리고,
-  대조가 실패하면 주체가 조용히 사라진다. 보류 한 줄("held until the pull request is merged or closed")은 최근 적재 사건이 `deferred` · `open-pr`일 때만이다.
+  대조가 실패하면 주체가 조용히 사라진다. 보류 한 줄("held until the pull request is merged or closed")은 **최신 적재 종류 사건**(결과 무관 — 실패·`upToDate`·진행 중 포함)이 `deferred` · `open-pr`일 때만이다 — 결과로 거르면 PR을 닫은 뒤 선 실패·`upToDate`를 건너뛰어 옛 보류가 남는다(`lib/home/runs.ts`, 실제 행은 `runs.integration.ts`).
 
 ## 5.8 전달 기준과 Revert (translation-rework — 2026-09-23 구현 · 프로덕션, #71–#73)
 
