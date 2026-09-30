@@ -52,7 +52,7 @@ export default async function TranslationsPage({
   if (archived) return <ProjectArchived slug={slug} role={role} />;
 
   // 옛 링크(`state=untranslated` · `locales` · `focus` · `cursor`)는 새 요청값으로 옮겨 정규 주소로 보낸다 — 공유·새로고침이 같은 URL을 쓴다.
-  // ⚠️ `cursor`는 더 이상 주소에 싣지 않는다 (audit-ux #19 — More는 `loadMoreTranslationKeys`가 누적한다). 남은 옛 주소는 첫 페이지로 연다.
+  // ⚠️ `cursor`는 더 이상 주소에 싣지 않는다 (audit-ux #19) — 화면 목록은 전량이다(translation-filter-scope). 남은 옛 주소는 그대로 연다.
   const parsed = parseTranslationQuery(raw);
   const legacy = raw.locales !== undefined || raw.focus !== undefined || raw.state === "untranslated" || raw.cursor !== undefined;
   if (legacy) {

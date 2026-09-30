@@ -156,7 +156,6 @@ const USER_SCOPED_ACTIONS = new Set([
 const DELEGATED_CORES = new Map([
   ["saveTranslation", "lib/keys/save-translation.ts"],
   ["saveTranslationBatch", "lib/keys/save-translation.ts"],
-  ["loadMoreKeys", "lib/keys/load-more.ts"],
   ["previewRevert", "lib/keys/revert-translation.ts"],
   ["runRevert", "lib/keys/revert-translation.ts"],
   ["publishProject", "lib/sync/publish.ts"],

@@ -2,7 +2,6 @@ import "server-only";
 import { z } from "zod";
 
 import { m } from "@/lib/i18n";
-import { MoreInput } from "@/lib/keys/load-more";
 import { previewRevert, RevertInput } from "@/lib/keys/revert-translation";
 import { loadTranslationDetail, loadTranslationList } from "@/lib/keys/translation-list";
 import { isProjectReady } from "@/lib/projects/ready";
@@ -17,8 +16,15 @@ import { coreSubject, defineTool, ok } from "./define";
  * 첫 적재 전에는 볼 것이 없다.
  */
 
-/** 목록 조건은 번역 화면 주소와 같은 해석(`parseTranslationQuery`)이다 — 입력 모양은 "다음 페이지" Action의 스키마를 재사용한다. */
-const ListKeysInput = MoreInput.extend({ cursor: MoreInput.shape.cursor.optional(), query: MoreInput.shape.query.optional() });
+/**
+ * 목록 조건은 번역 화면 주소와 같은 해석(`parseTranslationQuery`)이다 — `scope`가 없으면 화면처럼 전 소스다(translation-filter-scope).
+ * ⚠️ **cursor 페이징은 이 도구의 외부 계약이다** — 화면은 전량을 한 번에 싣지만 도구는 `pageSize`·`nextCursor`를 그대로 둔다.
+ * 상한은 주소창 값의 합리적인 크기다 — 검색어(`Q_MAX_LENGTH` 200)·키 id·cursor(키 이름을 든다)를 넉넉히 덮고 그 이상은 조작이다.
+ */
+const ListKeysInput = z.object({
+  slug: z.string().min(1).max(200), surfaceSlug: z.string().min(1).max(200),
+  query: z.record(z.string().max(64), z.string().max(1024)).optional(), cursor: z.string().min(1).max(2048).optional(),
+});
 
 export const listKeys = defineTool({
   name: "list_keys",
@@ -29,7 +35,7 @@ export const listKeys = defineTool({
     const access = await getSurfaceAccess(prisma, { userId: subject.userId, slug: input.slug, surfaceSlug: input.surfaceSlug, permission: "translation:write" });
     if (access.status !== "ok") return { status: "refused", code: access.status };
     if (!(await isProjectReady(prisma, access.projectId))) return { status: "refused", code: "not-ready" };
-    // 선택 키·상세 언어는 목록과 무관하다 — "다음 페이지" Action과 같게 목록 조건만 남긴다.
+    // 선택 키·상세 언어는 목록과 무관하다 — 목록 조건만 남긴다.
     const { key: _key, keySurface: _keySurface, language: _language, ...conditions } = parseTranslationQuery(input.query ?? {});
     const page = await loadTranslationList(prisma, { projectId: access.projectId, routeSurfaceId: access.surfaceId, query: { ...conditions, cursor: input.cursor } });
     return ok({

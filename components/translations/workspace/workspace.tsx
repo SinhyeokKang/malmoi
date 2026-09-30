@@ -4,7 +4,7 @@ import { ArrowDownToLine, Languages, Loader2, RotateCcw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
 
-import { loadMoreTranslationKeys, previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
+import { previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
 import { useCommitWait } from "@/components/commit-wait";
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
 import { SearchInput } from "@/components/search-input";
@@ -26,7 +26,7 @@ import { routes } from "@/lib/routes";
 import { dirtyLocales, initKeyDraft, planDraftRecovery, reduceKeyDraft, type KeyDraftAction, type KeyDraftState } from "@/lib/translations/draft";
 import { planTranslationPanelLayout, stepPanelWidth, PANEL } from "@/lib/translations/layout";
 import { planEditorNavigation, type EditorIntent } from "@/lib/translations/navigation";
-import { ALL_NAMESPACES, clearFilters, DEFAULT_TRANSLATION_QUERY, FIRST_KEY, nextQuery, serializeTranslationQuery, translationsHref, treeQuery, type TranslationQuery } from "@/lib/translations/query";
+import { ALL_NAMESPACES, clearFilters, DEFAULT_TRANSLATION_QUERY, FIRST_KEY, nextQuery, translationsHref, treeQuery, type TranslationQuery } from "@/lib/translations/query";
 import { applySavedRow, mergeServerRows, savedOutCount, startListGeneration, type ListGeneration } from "@/lib/translations/saved-rows";
 import { summarizeKey } from "@/lib/translations/summary";
 import { cn } from "@/lib/utils";
@@ -237,13 +237,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   /*
     ⚠️ **새 목록은 렌더 중에 받는다, effect가 아니다** (audit-ux #29) — effect로 받으면 조건이 바뀐 첫 커밋이 새 제목·수 아래 옛 행을
     그렸고, 결과가 0↔N으로 바뀔 때 빈 상태가 한 프레임 번쩍였다.
-    ⚠️ **More로 붙인 행은 이 화면이 든다** (audit-ux #19) — 재검증은 언제나 첫 페이지라 그 밖의 행은 `mergeServerRows`가 자리에 남기고,
-    다음 cursor도 붙인 페이지 뒤의 것을 지킨다(첫 페이지의 cursor로 되돌아가면 같은 행을 다시 붙인다).
+    ⚠️ **서버 목록은 전량이다** (translation-filter-scope) — 같은 세대의 재검증에서 서버 행에 없는 행은 곧 조건 이탈이라 `savedOut`이 된다.
   */
   const conditionKey = JSON.stringify([routeSurfaceSlug, query.ns, query.scope, query.completion, query.missingLocale, query.state, query.q]);
-  /** `more`도 세대에 묶는다 — 새 조건에서 옛 조건의 실패 문구가 남거나, 옛 조건의 늦은 응답이 새 목록의 버튼을 잠그지 않게. */
-  type ListState = { source: typeof list; key: string; rows: ListGeneration<TranslationListRow>; cursor: string | null; extended: boolean; more: "idle" | "loading" | "failed" };
-  const [listState, setListState] = useState<ListState>(() => ({ source: list, key: conditionKey, rows: startListGeneration(list.rows, 0), cursor: list.nextCursor, extended: false, more: "idle" }));
+  type ListState = { source: typeof list; key: string; rows: ListGeneration<TranslationListRow> };
+  const [listState, setListState] = useState<ListState>(() => ({ source: list, key: conditionKey, rows: startListGeneration(list.rows, 0) }));
   /*
     ⚠️ **Sync 성공은 새 세대다** (감사 #11) — 같은 조건의 재검증은 행을 끼워 넣지 않으므로, 들여온 키가 목록에 영영 안 섰다(처음 목록이
     비었으면 계속 비었다). 기준은 **Sync를 시작한 순간의 목록**이다 — 결과와 새 트리 중 어느 쪽이 먼저 커밋돼도 그 뒤에 온 목록에서 시작한다.
@@ -255,53 +253,14 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   if (listState.source !== list || resyncDue) {
     if (resyncDue) setResync(null);
     if (listState.key !== conditionKey || resyncDue) {
-      shownList = { source: list, key: conditionKey, rows: startListGeneration(list.rows, listState.rows.generation + 1), cursor: list.nextCursor, extended: false, more: "idle" };
+      shownList = { source: list, key: conditionKey, rows: startListGeneration(list.rows, listState.rows.generation + 1) };
     } else {
-      // 서버 응답은 첫 페이지다. 페이지 밖의 행은 유지하고, 전체 조건 판정이 있는 선택 키만 이탈 여부를 갱신한다.
-      const membership = new Map<string, boolean>();
-      if (query.key !== undefined && list.selectedInResult !== null) membership.set(query.key, list.selectedInResult);
-      shownList = { ...listState, source: list, rows: mergeServerRows(listState.rows, list.rows, membership), cursor: listState.extended ? listState.cursor : list.nextCursor };
+      shownList = { ...listState, source: list, rows: mergeServerRows(listState.rows, list.rows) };
     }
     setListState(shownList);
   }
   const rows = shownList.rows;
   const setRows = (update: (prev: ListGeneration<TranslationListRow>) => ListGeneration<TranslationListRow>) => setListState(prev => ({ ...prev, rows: update(prev.rows) }));
-
-  /** 요청 중인 세대 — 연타는 막고, 조건이 바뀐 뒤의 새 세대는 옛 요청을 기다리지 않는다. */
-  const moreBusy = useRef<number | null>(null);
-  async function loadMore() {
-    const { cursor, rows: { generation } } = shownList;
-    if (cursor === null || moreBusy.current === generation) return;
-    moreBusy.current = generation;
-    // 기다리는 동안 조건이 바뀌었으면 옛 조건의 응답이다 — 새 세대의 행·문구·버튼을 건드리지 않는다.
-    const settle = (update: (prev: ListState) => ListState) => setListState(prev => prev.rows.generation === generation ? update(prev) : prev);
-    settle(prev => ({ ...prev, more: "loading" }));
-    try {
-      const result = await loadMoreTranslationKeys({ slug, surfaceSlug: routeSurfaceSlug, query: serializeTranslationQuery(query), cursor });
-      if (result.ok) {
-        settle(prev => {
-          const known = new Set(prev.rows.rows.map(entry => entry.row.keyId));
-          const appended = result.rows.filter(row => !known.has(row.keyId)).map(row => ({ row, savedOut: false }));
-          return { ...prev, rows: { generation, rows: [...prev.rows.rows, ...appended] }, cursor: result.nextCursor, extended: true, more: "idle" };
-        });
-      } else {
-        /*
-          ⚠️ **상태 때문의 거부는 그 상태로 옮긴다** (POSTMORTEM 2026-09-24 — "그 화면이 그 상태를 알고 있나") — 보관·권한 상실·세션
-          만료를 "다시 시도"로 말하면 다시 눌러도 같은 거부다. 저장 거부와 같은 푸터 상태·편집 잠금을 쓴다.
-        */
-        const refusal: FooterStatus | null = result.error === "archived" ? { kind: "archived" }
-          : result.error === "forbidden" || result.error === "not-found" ? { kind: "lost-access" }
-          : result.error === "unauthorized" ? { kind: "session" }
-          : null;
-        if (refusal !== null) setStatus(refusal);
-        settle(prev => ({ ...prev, more: refusal === null ? "failed" : "idle" }));
-      }
-    } catch {
-      settle(prev => ({ ...prev, more: "failed" }));
-    } finally {
-      if (moreBusy.current === generation) moreBusy.current = null;
-    }
-  }
 
   /*
     ⚠️ **이동이 대기 중이면 상세가 읽기 전용이다** (audit-ux #1) — 확인창 판정은 클릭 시점의 draft로 끝나는데 응답 전까지 옛 키의
@@ -680,9 +639,6 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               selectedKeyId={view.keyId}
               showSource={query.scope === "project"}
               onSelect={onSelectRow}
-              onMore={shownList.cursor === null ? null : () => void loadMore()}
-              moreLoading={shownList.more === "loading"}
-              moreFailed={shownList.more === "failed"}
               busy={navigating}
               treeButton={treeCollapsed ? { open: treeOverlay, controls: treeOverlayId, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span className="text-muted-foreground text-xs">{routeSurfaceSlug}</span> } : undefined}
               empty={listEmpty}

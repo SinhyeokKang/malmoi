@@ -2295,8 +2295,6 @@ export const en = {
         notSent: "Unsent",
         needsReview: "Needs review",
         saved: "Saved",
-        more: "Show more keys",
-        moreFailed: "Couldn't load more keys. Try again.",
       },
       detail: {
         languages: (filled: number, total: number): string => `${filled.toLocaleString("en-US")} of ${total.toLocaleString("en-US")} languages`,

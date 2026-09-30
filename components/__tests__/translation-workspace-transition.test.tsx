@@ -11,15 +11,15 @@ import { render } from "./helpers/dom";
  * ⚠️ **`router`를 Next처럼 흉내 낸다** (`translation-workspace-navigation.test.tsx`와 같은 하네스) — 목이 하네스 상태를 바꾸고
  * 그 렌더가 `gate`에서 suspend한다. 이동이 transition 안이면 옛 화면이 그대로 서고, 응답 도착은 `gate`를 푸는 것이다.
  * 주소창도 흉내 낸다 — `push`·`replace`가 `history`를 바꾸고 `useSearchParams`는 그 주소를 읽는다.
- * ⚠️ **gate와 More 응답은 테스트 끝에서 전부 푼다** (POSTMORTEM 2026-09-18).
+ * ⚠️ **gate는 테스트 끝에서 전부 푼다** (POSTMORTEM 2026-09-18).
  */
-const mocks = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), save: vi.fn(), more: vi.fn(), prepare: vi.fn(), pr: vi.fn() }));
+const mocks = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), save: vi.fn(), prepare: vi.fn(), pr: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }),
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 vi.mock("@/app/(edit)/actions", () => ({
-  saveTranslationKey: mocks.save, previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn(), loadMoreTranslationKeys: mocks.more,
+  saveTranslationKey: mocks.save, previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn(),
 }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare }));
@@ -185,86 +185,33 @@ it("상세의 언어 필터는 서버로 가지 않고 주소만 바꾸며, 다�
   expect(mocks.replace).toHaveBeenCalledExactlyOnceWith(expect.stringContaining("language=ko"));
 });
 
-// ── #19 ─────────────────────────────────────────────────────────────────────
-
-it("More는 주소를 바꾸지 않고 다음 페이지를 붙이며, 기다리는 동안 버튼이 loading이다", async () => {
-  const user = userEvent.setup();
-  const initial = props();
-  let settle: (value: unknown) => void = () => {};
-  mocks.more.mockReturnValue(new Promise(resolve => { settle = resolve; }));
-  settles.push(() => settle({ ok: false, error: "late" }));
-  respond = () => ({ next: { ...initial, query: { ...initial.query, key: "k3" }, detail: detailOf("k3") }, gate: null });
-  const { container } = await render(<Harness initial={{ ...initial, list: { ...initial.list, nextCursor: "c1" } }} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(mocks.more).toHaveBeenCalledExactlyOnceWith({ slug: "acme", surfaceSlug: "web", query: expect.objectContaining({ key: "k1" }), cursor: "c1" });
-  expect(button(m.translations.workspace.list.more)?.disabled).toBe(true);
-  // 연타는 요청을 늘리지 않는다.
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(mocks.more).toHaveBeenCalledTimes(1);
-  await act(async () => settle({ ok: true, rows: [rowOf("k3")], nextCursor: null }));
-  expect(rowIds(container)).toEqual(["k1", "k2", "k3"]);
-  expect(button(m.translations.workspace.list.more)).toBeUndefined();
-  expect(mocks.push).not.toHaveBeenCalled();
-  expect(mocks.replace).not.toHaveBeenCalled();
-  expect(window.location.search).not.toContain("cursor");
-  await user.click(row(container, "k3")!);
-  expect(mocks.replace).toHaveBeenCalledTimes(1);
-  expect(mocks.replace.mock.calls[0]?.[0]).not.toContain("cursor");
-});
-
-it("More가 실패하면 버튼이 돌아오고 이유를 한 줄로 말한다", async () => {
-  const user = userEvent.setup();
-  mocks.more.mockResolvedValue({ ok: false, error: "unavailable" });
-  const initial = props();
-  const { container } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(button(m.translations.workspace.list.more)?.disabled).toBe(false);
-  expect(container.textContent).toContain(m.translations.workspace.list.moreFailed);
-  expect(rowIds(container)).toEqual(["k1", "k2"]);
-});
-
-it("조건이 바뀐 뒤 도착한 More 응답은 버린다 — 옛 조건의 행을 새 목록에 붙이지 않는다", async () => {
-  const user = userEvent.setup();
-  const initial = props();
-  let settle: (value: unknown) => void = () => {};
-  mocks.more.mockReturnValue(new Promise(resolve => { settle = resolve; }));
-  const { container, rerender } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, q: "save" }} list={{ ...initial.list, rows: [initial.list.rows[1]!], nextCursor: null }} />);
-  await act(async () => settle({ ok: true, rows: [rowOf("k3")], nextCursor: null }));
-  expect(rowIds(container)).toEqual(["k2"]);
-});
+// ── #19 → 전량 목록 (translation-filter-scope T6) ───────────────────────────
 
 /*
-  POSTMORTEM 2026-09-23의 두 회귀를 cursor 없는 형으로 옮긴다 — 재검증은 이제 언제나 첫 페이지다.
-  페이지 밖(More로 붙인) 행은 부재가 조건 이탈의 증거가 아니고, 선택 키의 이탈만 서버 판정(`selectedInResult`)으로 Saved가 된다.
+  POSTMORTEM 2026-09-23의 두 회귀를 전량 목록 형으로 옮긴다 — More가 사라져 재검증 응답이 곧 조건의 전부다.
+  서버 목록에 남은 행은 Saved가 되지 않고, 빠진 행은 선택 여부와 무관하게 자리에 남아 Saved다.
 */
-it("More로 붙인 행은 첫 페이지 재검증에서 Saved가 되지 않는다", async () => {
-  const user = userEvent.setup();
+it("재검증 목록에 남은 행은 Saved가 되지 않는다", async () => {
   const initial = props();
-  const first = { ...initial.list, rows: [initial.list.rows[0]!], nextCursor: "c1" };
-  mocks.more.mockResolvedValue({ ok: true, rows: [initial.list.rows[1]!], nextCursor: null });
-  const { container, rerender } = await render(<TranslationWorkspace {...initial} list={first} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(rowIds(container)).toEqual(["k1", "k2"]);
-  await rerender(<TranslationWorkspace {...initial} list={{ ...first }} />);
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  await rerender(<TranslationWorkspace {...initial} list={{ ...initial.list }} />);
   expect(rowIds(container)).toEqual(["k1", "k2"]);
   expect(row(container, "k2")?.textContent).not.toContain("Saved");
   expect(container.textContent).not.toContain("+1 saved");
-  // 첫 페이지가 cursor를 새로 줘도 이미 붙인 페이지 뒤를 잇는다 — 첫 페이지의 다음을 다시 붙이지 않는다.
-  expect(button(m.translations.workspace.list.more)).toBeUndefined();
 });
 
-it("More로 붙인 선택 키가 조건을 벗어나면 재검증이 그 행만 Saved로 남긴다", async () => {
-  const user = userEvent.setup();
+it("선택 키가 조건을 벗어나면 재검증이 그 행을 Saved로 남기고, 남은 행은 새 요약으로 바뀐다", async () => {
   const initial = props({ query: { ...props().query, key: "k2" }, detail: detailOf("k2") });
-  const first = { ...initial.list, rows: [initial.list.rows[0]!], nextCursor: "c1" };
-  mocks.more.mockResolvedValue({ ok: true, rows: [initial.list.rows[1]!], nextCursor: null });
-  const { container, rerender } = await render(<TranslationWorkspace {...initial} list={first} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  await rerender(<TranslationWorkspace {...initial} list={{ ...first, rows: [{ ...initial.list.rows[0]!, missingCount: 2 }], selectedInResult: false }} />);
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  await rerender(<TranslationWorkspace {...initial} list={{ ...initial.list, rows: [{ ...initial.list.rows[0]!, missingCount: 2 }], selectedInResult: false }} />);
   expect(row(container, "k2")?.textContent).toContain("Saved");
   expect(row(container, "k1")?.textContent).toContain("2 untranslated");
+});
+
+it("목록에 More 버튼이 없다 — 화면 목록은 전량이다", async () => {
+  const initial = props();
+  const { container } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
+  expect([...container.querySelectorAll("button")].some(b => /more keys/i.test(b.textContent ?? ""))).toBe(false);
 });
 
 // ── #29 ─────────────────────────────────────────────────────────────────────
@@ -389,36 +336,3 @@ it("검색 이동을 기다리는 동안 언어 메뉴가 잠기고, 도착하�
   expect(languages().disabled).toBe(false);
 });
 
-it.each([
-  ["archived", (): string => m.translations.workspace.footer.archived],
-  ["not-found", (): string => m.translations.workspace.footer.lostAccess],
-  ["forbidden", (): string => m.translations.workspace.footer.lostAccess],
-] as const)("More의 %s 거부는 그 상태를 말하고 편집기를 잠근다 — 일반 재시도 문구가 아니다", async (error, text) => {
-  const user = userEvent.setup();
-  mocks.more.mockResolvedValue({ ok: false, error });
-  const initial = props();
-  const { container } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(container.textContent).toContain(text());
-  expect(container.textContent).not.toContain(m.translations.workspace.list.moreFailed);
-  expect(area(container, "zh")?.readOnly).toBe(true);
-});
-
-it("More 실패 문구는 조건이 바뀌면 사라지고, 옛 조건의 늦은 실패는 새 목록에 서지 않는다", async () => {
-  const user = userEvent.setup();
-  const initial = props();
-  mocks.more.mockResolvedValueOnce({ ok: false, error: "unavailable" });
-  const { container, rerender } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(container.textContent).toContain(m.translations.workspace.list.moreFailed);
-  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, q: "save" }} list={{ ...initial.list, nextCursor: "c2" }} />);
-  expect(container.textContent).not.toContain(m.translations.workspace.list.moreFailed);
-  // 새 조건에서 More를 누르고, 응답 전에 조건이 또 바뀐 뒤 실패가 온다.
-  let settle: (value: unknown) => void = () => {};
-  mocks.more.mockReturnValueOnce(new Promise(resolve => { settle = resolve; }));
-  await user.click(button(m.translations.workspace.list.more)!);
-  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, q: "other" }} list={{ ...initial.list, nextCursor: "c3" }} />);
-  await act(async () => settle({ ok: false, error: "unavailable" }));
-  expect(container.textContent).not.toContain(m.translations.workspace.list.moreFailed);
-  expect(button(m.translations.workspace.list.more)?.disabled).toBe(false);
-});

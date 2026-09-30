@@ -126,6 +126,18 @@ describe("list_keys 기본 범위 (translation-filter-scope 조건 13 — 2026-0
     expect(listed().scope).toBe("project");
   });
 
+  // 옛 "다음 페이지" Action의 입력 상한을 물려받는다 — 주소창 값의 합리적인 크기이고 그 이상은 조작이다(translation-filter-scope T6).
+  it("입력 상한: cursor·query는 선택이고, 길이·타입을 벗어나면 거부한다", () => {
+    const schema = tool("list_keys").inputSchema as { safeParse(v: unknown): { success: boolean } };
+    expect(schema.safeParse(SURFACE).success).toBe(true);
+    expect(schema.safeParse({ ...SURFACE, query: { ns: "common", scope: "namespace" }, cursor: "c1" }).success).toBe(true);
+    expect(schema.safeParse({ ...SURFACE, query: { ns: 3 } }).success).toBe(false);
+    expect(schema.safeParse({ ...SURFACE, cursor: "" }).success).toBe(false);
+    expect(schema.safeParse({ ...SURFACE, cursor: "c".repeat(2049) }).success).toBe(false);
+    expect(schema.safeParse({ ...SURFACE, query: { q: "x".repeat(1025) } }).success).toBe(false);
+    expect(schema.safeParse({ ...SURFACE, slug: "" }).success).toBe(false);
+  });
+
   it("scope=source는 그대로 경로 소스로 좁히고, cursor는 그대로 실린다", async () => {
     await call("list_keys", subject("owner"), { ...SURFACE, query: { scope: "source" }, cursor: "c1" });
     expect(listed()).toMatchObject({ scope: "source", cursor: "c1" });

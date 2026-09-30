@@ -111,8 +111,10 @@ describe("Sync 뒤 목록", () => {
     return withRow(base, [base.list.rows[0]!, newRow, later]);
   }
   function expectMerged(container: HTMLElement) {
-    // k2(Save)는 서버 첫 페이지에서 빠졌지만 자리에 남아 savedOut이다. k4는 끼워 넣지 않는다.
+    // k2(Save)는 서버 목록에서 빠졌지만 자리에 남아 savedOut이다 — 목록이 전량이라 선택 키가 아니어도 부재가 곧 조건 이탈이다(T6).
+    // k4는 끼워 넣지 않는다.
     expect(listText(container)).toContain("Save");
+    expect(container.querySelector('[data-key-row="k2"]')?.textContent).toContain(m.translations.workspace.list.saved);
     expect(listText(container)).not.toContain("Later");
   }
 
