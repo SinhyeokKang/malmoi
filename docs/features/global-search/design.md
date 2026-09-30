@@ -1,5 +1,7 @@
 # global-search — 설계
 
+> **착수 조건: component-unify 종료 뒤**(spec 머리). file:line은 dev 2026-10-01 기준이고, 그 기능이 옮기는 자리(`modal.tsx` → `LargeModal` · `components/search-input.tsx` → `ui/` · `project-list.tsx` 행 → `ListRow` · 슬롯 개명)는 tasks T0이 다시 잰다.
+
 ## 영향 받는 흐름
 
 **편집 UI 셸 + 공개 셸의 헤더, 그리고 번역 데이터의 읽기 조회 하나다.** push·pull·export·DB 쓰기와 닿는 곳이 없다.
@@ -139,7 +141,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 
 **원칙 (2026-10-01 사용자)**: 손 조립을 피하고 재사용 단위의 공통 컴포넌트를 쓴다. **없는 단위는 이번에 `components/ui/` 프리미티브로 만든다** — "일단 손으로 짜고 나중에 정리"는 그 자체가 부채다. 그래서 이 기능은 새 프리미티브를 먼저 세우고(tasks D), 같은 형을 이미 손으로 짠 **기존 사본도 같은 커밋 묶음에서 그 프리미티브로 옮긴다** — 새 프리미티브 옆에 옛 사본이 남으면 형이 두 벌이다.
 
-**어휘는 component-unify 규약을 따른다** (2026-10-01 사용자) — 슬롯 `icon` · `description` · `action`, 모든 새 프리미티브가 루트에 `...rest`(data-*·aria-*)를 넘긴다. 비정본 슬롯 이름(`detail`·`subtitle`·`glyph`·`leading` 등)을 쓰지 않는다.
+**어휘는 component-unify 규약을 따른다** (그 design §3) — 슬롯 `icon` · `description` · `action` · `badge`(개수가 아닌 값). 비정본 슬롯 이름(`detail`·`subtitle`·`glyph`·`leading` 등)을 쓰지 않는다. **rest props는 실수요 자리만**(그 결정 S5) — 이 기능의 새 프리미티브에는 실수요가 없어 열지 않는다. 사본 스캔은 그 기능의 `components/__tests__/hand-copies.test.ts`(§5.1 — 표 주도 파일 하나)에 **행으로** 더한다 — 스캔 파일을 새로 만들지 않는다.
 
 **시각 참고는 GitLab 검색 패널이다** (2026-10-01 사용자 참고 이미지) — 위에서 열리는 큰 패널, 입력 줄 + 전폭 구분선, 굵은 그룹 머리 + 그룹 사이 구분선, 한 줄 `제목 · 맥락` 행, 활성 행의 `Go to ↵` 힌트, 그룹 끝 `View all …` 행.
 
@@ -149,14 +151,14 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 
 | 자리 | 단위 | 비고 |
 |---|---|---|
-| 결과 0건 | `EmptyState`(`SearchX` — DESIGN "필터·검색 0건") | 제목 `No results for “{q}”`, 설명 한 문장, **액션 없음**(입력이 바로 위다 — DESIGN "좁혀서 0건인 빈 상태의 출구는 `EmptyState` + `default` 버튼 + `RotateCcw`"의 **예외로 등재**한다, D7) |
+| 결과 0건 | `NoMatch`(component-unify — `EmptyState` 위 `SearchX` 고정 형) | 제목 `No results for “{q}”`, 설명 한 문장, **출구 없음**(입력이 바로 위다). `NoMatch`는 출구(`href`·`onClick`)가 필수라 **출구 없는 형을 이 기능이 더한다** — 소비자가 함께 생기는 축이라 S5와 맞고, DESIGN "좁혀서 0건인 빈 상태의 출구" 규칙에 예외로 등재한다(D7) |
 | 보관 프로젝트 표시 | `Badge` (스위처·`/projects` 행과 같은 `Archived`) | |
 | 프로젝트 글리프 | `ProjectThumbnail` size 16 | 스위처와 같다 |
 | `View all …` 글리프 | `lib/shell/nav.ts`의 같은 목적지 `NavItem.icon` — `navWorkItems()`의 Projects 항목 · `navFooterItems()`의 Docs 항목 | 같은 목적지 = 같은 글리프 |
-| 입력 바탕 | `Input` | 새 프리미티브 `CommandInput`이 감싼다 |
+| 입력 바탕 | `Input`(component-unify가 더한 글리프 슬롯) | `CommandInput`이 `Search` 글리프를 그 슬롯에 넣고 테두리를 끈다 — 글리프 배치를 새로 짜지 않는다 |
 | Dialog 첫 포커스 | `components/ui/dialog.tsx`의 `[data-initial-focus]` 규칙 | `CommandInput`이 그 표식을 단다 — 새 `onOpenAutoFocus`·새 표식(`data-command-input`)을 만들지 않는다(`primitive-focus.test.tsx`가 손 `onOpenAutoFocus` 0을 강제한다) |
 | Dialog 포커스 복귀 | `dialog.tsx`의 최근 포커스 기록(`returnTarget`) | 새 Content가 **같은 파일 안에서** 재사용한다 — 기록이 두 벌이면 복귀 대상이 갈린다 |
-| 대형 모달 치수·면·dim | `components/ui/modal.tsx`(`OnboardingModal`)의 패널·Overlay 클래스 | **상수로 export해 `CommandDialog`와 공유한다** — 폭·높이가 두 벌이면 한쪽만 움직인다(2026-10-01 사용자 "대형 모달과 동일, 다른 건 top") |
+| 대형 모달 치수·면·dim | `LargeModal` 치수 상수(component-unify C2 — `event-dialog`와 공유하려 뗀 것) | **그 상수를 import한다** — 새 export를 만들지 않는다(2026-10-01 사용자 "대형 모달과 동일, 다른 건 top") |
 
 ### 새로 만드는 프리미티브 (`components/ui/`, DESIGN §6.4 등재)
 
@@ -164,9 +166,9 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 |---|---|---|
 | **`Kbd`** (`kbd.tsx`) | **`<kbd>` 태그**를 렌더하는 키 칩 — `shrink-0 rounded border px-1.5 py-0.5 text-xs` muted, `font-sans`(preflight가 `kbd`에 mono를 깐다 — DESIGN) | `project-switcher.tsx:119`의 손 `<kbd>` → `Kbd`(클래스가 같아 높이 불변 — `project-switcher.test.tsx:58`의 `[role="menu"] kbd` 셀렉터가 그대로 잡는다) |
 | **`Highlight`** (`highlight.tsx`) | `{ text, match }[]`를 받아 일치 구간을 `<mark>`(DESIGN §6.2 `bg-blue-600/[0.14]` · `rounded-[3px]` · `px-px`)로 그린다 — 조각을 **만들지 않고 그리기만** 한다 | `components/projects/project-list.tsx:286-288`의 손 `<mark>` → `Highlight`(조각은 기존 `highlightName` — `lib/projects/list.ts:552` — 이 그대로 만든다). `visual-system.test.ts`의 `bg-blue-600/[0.14]` 등재 위치와 `projects-screen.test.ts`의 클래스 단언을 **의도적으로 옮긴다** |
-| **`FieldButton`** (`field-button.tsx`) | **입력처럼 보이는 버튼** — 캡슐(`rounded-full`), 높이 36(`h-9`), 폭 320(`w-80`), 면은 콘텐츠 패널과 같다(`bg-background border border-border-subtle shadow-low` — 2026-10-01 사용자). 슬롯 `icon` · `placeholder`(muted) · `shortcut`(`Kbd`). hover 면 `bg-foreground/[0.03]` 겹침, 포커스 링은 여는 태그에 리터럴(§7). 폭은 파일이 소유하고 prop으로 열지 않는다 — 소비자가 하나다. 두 번째 소비자가 생기면 component-unify 폭 규약대로 연다 | 없음(첫 소비자) |
-| **`CommandDialog`** (`dialog.tsx`에 추가 export) | 위에서 여는 대형 패널 — **폭·높이·면·dim은 대형 모달 상수**(`w-[calc(100%-96px)] max-w-[1024px]` · 높이 `min(80svh,800px,calc(100svh-96px))`~`min(800px,calc(100svh-96px))` · `rounded-xl` · `shadow-medium` · `bg-foreground/32` + `backdrop-blur-[6px]`), **다른 것은 `top-4 left-1/2 -translate-x-1/2`(세로 가운데 아님)** · `Title` sr-only(prop `title` 필수) · 첫 포커스는 `[data-initial-focus]` 규칙 · 닫힘 복귀는 `DialogContent`와 같은 기록 · 머리·바닥·닫기 버튼 없음 | 없음. ⚠️ `DialogContent`는 **고치지 않는다**(소비자 14파일 — DESIGN의 세는 명령 `grep -rln "import .*DialogContent" components app \| grep -v __tests__ \| grep -v ui/dialog`) — 같은 파일의 형제 export라 복귀 로직을 공유한다 |
-| **`Command*`** (`command.tsx`) | combobox + listbox 한 벌(WAI-ARIA 1.2). `Command`(활성 id·id 발급 context, ↑↓ = `nextActive`, Enter = **활성 option 안 링크의 `.click()`**, 조합 중 무시) · `CommandInput`(`Search` 글리프 16 · 테두리 없는 `Input` · `role="combobox"` · `aria-activedescendant` · `data-initial-focus` · 아래 전폭 구분선) · `CommandStatus`(**listbox 밖**, 입력 아래 muted 한 줄들 — 로딩·부분 실패, `aria-live="polite"`) · `CommandList`(`role="listbox"` · 남은 높이 스크롤 · 활성 항목 `scrollIntoView({ block: "nearest" })`) · `CommandGroup`(`role="group"` + `aria-labelledby` 머리 — `text-xs font-medium` foreground, 그룹 사이 전폭 구분선) · `CommandItem`(`role="option"` · 슬롯 `icon`(선택) · `title` · `context`(같은 줄 ` · ` 뒤 muted 작은 글자) · `description`(둘째 줄, 한 줄 말줄임) · `badge` · `href`(필수 — 모든 결과가 목적지다) · 활성: `bg-accent` + 포커스 링과 같은 테두리 + 오른쪽 `Go to` `Kbd` `↵` · hover가 활성을 옮기되 포커스는 입력에 남는다 · 행에 `tabIndex` 없음) · sr-only 결과 수 공지(`{n} results`, 디바운스) | 없음. ⚠️ **스위처(`project-switcher.tsx`)는 옮기지 않는다** — 사용자가 2026-09-27에 `DropdownMenu` 재사용을 골랐고 형이 메뉴다(DESIGN §6.5 "알려진 접근성 한계(수용)"). 옮길지는 이 기능 뒤 사용자 판정이다 |
+| **`FieldButton`** (`field-button.tsx`) | **입력처럼 보이는 버튼** — 캡슐(`rounded-full`), 높이 36(`h-9`), 폭 320(`w-80`), 면은 콘텐츠 패널과 같다(`bg-background border border-border-subtle shadow-low` — 2026-10-01 사용자). 슬롯 `icon` · `placeholder`(muted) · `shortcut`(`Kbd`). hover 면 `bg-foreground/[0.03]` 겹침, 포커스 링은 여는 태그에 리터럴(§7). 폭은 파일이 소유하고 prop으로 열지 않는다 — 입력류가 아니고 소비자가 하나다(component-unify S5 — 그 design §3·§6.4도 이 판정으로 맞췄다). 두 번째 소비자가 생기면 그 폭 규약대로 연다 | 없음(첫 소비자) |
+| **`CommandDialog`** (`dialog.tsx`에 추가 export) | 위에서 여는 대형 패널 — **폭·높이·면·dim은 대형 모달 상수**(`LargeModal` 치수 상수 — 지금 값 `w-[calc(100%-96px)] max-w-[1024px]` · 높이 `min(80svh,800px,calc(100svh-96px))`~`min(800px,calc(100svh-96px))` · `rounded-xl` · `shadow-medium` · `bg-foreground/32` + `backdrop-blur-[6px]`), **다른 것은 `top-4 left-1/2 -translate-x-1/2`(세로 가운데 아님)** · `Title` sr-only(prop `title` 필수) · 첫 포커스는 `[data-initial-focus]` 규칙 · 닫힘 복귀는 `DialogContent`와 같은 기록 · 머리·바닥·닫기 버튼 없음 | 없음. ⚠️ `DialogContent`는 **고치지 않는다**(소비자 14파일 — DESIGN의 세는 명령 `grep -rln "import .*DialogContent" components app \| grep -v __tests__ \| grep -v ui/dialog`) — 같은 파일의 형제 export라 복귀 로직을 공유한다 |
+| **`Command*`** (`command.tsx`) | combobox + listbox 한 벌(WAI-ARIA 1.2). `Command`(활성 id·id 발급 context, ↑↓ = `nextActive`, Enter = **활성 option 안 링크의 `.click()`**, 조합 중 무시) · `CommandInput`(`Input` 글리프 슬롯에 `Search` 16 · 테두리 없음 · `role="combobox"` · `aria-activedescendant` · `data-initial-focus` · 아래 전폭 구분선) · `CommandStatus`(**listbox 밖**, 입력 아래 muted 한 줄들 — 로딩·부분 실패, `aria-live="polite"`) · `CommandList`(`role="listbox"` · 남은 높이 스크롤 · 활성 항목 `scrollIntoView({ block: "nearest" })`) · `CommandGroup`(`role="group"` + `aria-labelledby` 머리 — `text-xs font-medium` foreground, 그룹 사이 전폭 구분선) · `CommandItem`(`role="option"` · 슬롯 `icon`(선택) · `title` · `context`(같은 줄 ` · ` 뒤 muted 작은 글자) · `description`(둘째 줄, 한 줄 말줄임) · `badge` · `href`(필수 — 모든 결과가 목적지다) · 활성: `bg-accent` + 포커스 링과 같은 테두리 + 오른쪽 `Go to` `Kbd` `↵` · hover가 활성을 옮기되 포커스는 입력에 남는다 · 행에 `tabIndex` 없음) · sr-only 결과 수 공지(`{n} results`, 디바운스) | 없음. ⚠️ **스위처(`project-switcher.tsx`)는 옮기지 않는다** — 사용자가 2026-09-27에 `DropdownMenu` 재사용을 골랐고 형이 메뉴다(DESIGN §6.5 "알려진 접근성 한계(수용)"). 옮길지는 이 기능 뒤 사용자 판정이다 |
 | **`HeaderBar`** (`components/shell/header-bar.tsx` — 셸 레이아웃이라 `ui/` 밖) | 헤더 3칸 — `grid h-10 grid-cols-[1fr_auto_1fr] items-center px-1`, 슬롯 `start` · `center` · `end`(각 `justify-self-start/center/end`). 좌우 폭이 달라도 가운데가 뷰포트 중앙이다. 두 셸 다 `min-w-[1280px]`라 좌우 묶음(앱 약 32/170, 공개 약 200/215)과 320 캡슐이 겹치지 않는다 | 앱 셸 `header.tsx`와 공개 셸 `public-shell/header.tsx`가 **둘 다** 이것을 쓴다 — 지금 두 파일이 각자 `flex`로 짠 바깥 줄을 걷는다(높이·padding은 그대로 40·4) |
 
 - ⚠️ **`Command*`에 기능을 선반영하지 않는다** — 그룹 필터링·퍼지·가상화·다중 선택·`onSelect` 전용 항목은 넣지 않는다(CLAUDE.md "확장성을 위한 선반영은 결함"). 이 기능이 쓰는 슬롯만 연다.
@@ -177,7 +179,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 ### 화면 (`components/search/`, 조립만)
 
 - `search-trigger.tsx` — `HeaderBar` 가운데 슬롯의 `FieldButton`(`Search` 글리프 · `Search…` · 단축키 칩) + 전역 단축키 리스너(`isSearchShortcut` · `shouldIgnoreShortcut`) + `CommandDialog` 열림 상태. 접근 이름 `Search`(말줄임 없음), `aria-haspopup="dialog"`, 플랫폼별 `aria-keyshortcuts`.
-- `search-dialog.tsx` — `Command` 안에 `CommandInput` · `CommandStatus` · `CommandList` · 그룹 넷(`CommandGroup` — `Projects · Menus · Keys · Docs`) · 결과(`CommandItem` — 일치한 필드마다 `Highlight`: 제목·context·description) · 빈 질의의 미리보기(`previewGroups`, `View all …` 행) · 0건(`EmptyState`, 대기 중 조회가 없을 때만). Keys 번역값 줄은 로케일 코드와 값을 따로 렌더한다(문자열 조립 금지).
+- `search-dialog.tsx` — `Command` 안에 `CommandInput` · `CommandStatus` · `CommandList` · 그룹 넷(`CommandGroup` — `Projects · Menus · Keys · Docs`) · 결과(`CommandItem` — 일치한 필드마다 `Highlight`: 제목·context·description) · 빈 질의의 미리보기(`previewGroups`, `View all …` 행) · 0건(`NoMatch` 출구 없는 형, 대기 중 조회가 없을 때만). Keys 번역값 줄은 로케일 코드와 값을 따로 렌더한다(문자열 조립 금지).
 - **착지 규칙 (spec 13 · 13a)**:
   - 같은 가이드 페이지 해시 이동은 스크롤러가 재마운트되지 않아 스크롤·포커스가 일어나지 않는다(`public-doc-toc.tsx:90-106` · `scroller.tsx:36-43`). 목차 클릭과 **같은 함수**로 대상 제목 스크롤(48 오프셋) + 제목 포커스를 한다 — 목차가 가진 로직을 공유 헬퍼로 끌어내 둘이 부른다(두 벌 금지). Dialog 닫힘 복귀가 포커스를 트리거로 돌리면 제목 포커스를 덮으므로, 해시 착지에서는 복귀를 건너뛴다.
   - 같은 소스 번역 화면에서 Keys 결과를 고르면 쿼리만 바뀌어 재마운트가 없고, 스크롤은 마운트·트리 이동에만 돈다(`workspace.tsx:303-313`). **선택 키가 바뀌면 목록이 그 행으로 스크롤**하도록 그 effect의 조건에 선택 키 변경을 더한다 — 번역 화면 파일을 건드리는 유일한 변경이다.
@@ -186,7 +188,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 
 - §6.4 프리미티브 표에 `Kbd` · `Highlight` · `FieldButton` · `CommandDialog` · `Command*` 행(행마다 서수 라벨 — 총수 문장은 없다). §6.5 헤더 행에 `HeaderBar` 3칸 규칙 + 캡슐이 **헤더의 첫 면·테두리 요소**라는 예외(헤더는 "배경·border·그림자 0"). §6.5 스위처 행의 "새 combobox 프리미티브 없음" 판정 갱신. §6.8 헤더 행("로고와 사용자 메뉴 아바타뿐" — `New project` 때부터 낡음).
 - §6.5 "GitLab top bar의 검색·`+`·카운터 셋은 넣지 않는다" → 검색은 들어왔고 카운터는 여전히 없다(판정 경위 한 줄). §9.2 같은 줄 → 카운터만 남긴다.
-- §6.2 `bg-blue-600/[0.14]`의 자리 → `components/ui/highlight.tsx`. `EmptyState` 액션 없음 예외(검색 Dialog). 대형 모달 행에 "`CommandDialog`가 치수를 공유하고 top만 다르다".
+- §6.2 `bg-blue-600/[0.14]`의 자리 → `components/ui/highlight.tsx`. `NoMatch` 출구 없는 형(검색 Dialog) — 출구 규칙의 예외. `LargeModal` 행에 "`CommandDialog`가 치수 상수를 공유하고 top만 다르다".
 - 아이콘 표: `Search`(트리거·입력). 활성 행 힌트의 `↵`는 글리프가 아니라 `Kbd` 안의 문자다.
 - 문구는 `messages/en.tsx`의 `search` 절 하나 — 그룹 이름 `Menus`(2026-10-01 사용자 — `Pages`는 가이드 페이지와 헷갈린다).
 
@@ -222,7 +224,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 | 2026-09-13 소문자화 위치로 원문을 잘라 강조가 어긋났다 | `highlightSegments`가 원문 인덱스를 직접 찾는다 — 전용 테스트(`İ`) |
 | 2026-09-13 세션 만료가 모달을 벗어나는 서버 redirect였다 | Action이 `requireUser`를 쓰지 않고 `readSession` union을 돌려준다 |
 | 2026-09-13 🔁 늦은 응답 재사용 / Radix 이관의 실시간 지연 | Keys 응답은 요청 번호로 가르고 A→B→A를 잰다 · Dialog는 실제 타이머로 연 뒤 가짜 타이머 |
-| 2026-09-14 · 09-18 방어선이 이름을 셌다 · 셋 다 지워도 green | 새 소스 스캔·`MEMBER_JOIN_CORES`마다 주석 제거 · 대상 수 > 0 · 심은 위반 탐지 · 뮤테이션 1회 |
+| 2026-09-14 · 09-18 방어선이 이름을 셌다 · 셋 다 지워도 green | 사본 스캔은 `hand-copies.test.ts` 행(그 파일이 카나리아·하한·뮤테이션을 든다), 그 밖 스캔·`MEMBER_JOIN_CORES`는 주석 제거 · 대상 수 > 0 · 심은 위반 탐지 · 뮤테이션 1회 |
 | 2026-09-18 · 09-23 관계 필터 count 5.5초 / 다른 테넌트 12만 행 | 멤버 id를 먼저 확정 · 커밋된 성능 테스트가 통계 없음·비멤버 대형 테넌트를 잰다 |
 | 2026-09-18 async transition 누수 | "늦은 응답" 테스트의 지연 Promise를 테스트 끝에서 푼다 |
 | 2026-09-20 / 2026-09-24 포커스 복귀·초기 포커스가 브라우저에서만 깨졌다 | 초기 포커스는 기존 `data-initial-focus` 규칙, 닫힘 복귀는 트리거(해시 착지 제외) — jsdom 단언은 테스트 쪽 fixup observer 관용구(`members-focus.test.tsx`)를 쓰고 `/runtime-test`로 실측 |

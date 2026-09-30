@@ -5,8 +5,17 @@
 - **UI 검증은 수동이다** — 이 리포에 e2e가 없다. DOM 테스트(jsdom)는 자동, `pnpm dev`·`/runtime-test`로 보는 것은 수동으로 적는다. jsdom은 레이아웃을 계산하지 않는다(가로 중앙 rect·실제 스크롤은 G1), `scrollIntoView`는 `vitest.setup.ts`가 no-op 스텁이라 호출은 spy로만 잰다.
 - **스키마는 조건부다** — B3 실측이 기준을 넘을 때만 B4가 생긴다.
 - 신규 페이지가 아니라 Claude Design 핸드오프가 없다 — `/design-sync` 대상이 아니다(2026-10-01 사용자 확인). 시각값은 DESIGN 토큰·기존 프리미티브·대형 모달 치수, 레이아웃은 GitLab 검색 패널 참고 이미지가 정한다.
-- **새 소스 스캔은 전부 같은 네 장치를 든다**(POSTMORTEM 2026-09-14 · 09-18): (a) 주석을 벗기고 (b) 대상 파일 수 > 0 (c) 심은 위반 하나를 잡는 자기 검사 (d) 실제 코드에 뮤테이션 1회를 걸어 red를 확인한 사실을 커밋 메시지 본문에 남긴다. 선례 `focus-ring.test.ts:167-172` · `:274-324`.
-- **component-unify와 착수 순서는 독립**이고 새 프리미티브의 어휘는 그 규약을 따른다(design "UI").
+- **사본 스캔(손 `<kbd>`·`<mark>`, spec 16의 raw 태그)은 component-unify의 `hand-copies.test.ts` 표에 행으로 더한다** — 카나리아·하한·뮤테이션은 그 파일 규약이다. **그 밖의 새 소스 스캔은 네 장치를 든다**(POSTMORTEM 2026-09-14 · 09-18): (a) 주석을 벗기고 (b) 대상 파일 수 > 0 (c) 심은 위반 하나를 잡는 자기 검사 (d) 실제 코드에 뮤테이션 1회를 걸어 red를 확인한 사실을 커밋 메시지 본문에 남긴다. 선례 `focus-ring.test.ts:167-172` · `:274-324`.
+- **착수 조건: component-unify 종료**(`test ! -d docs/features/component-unify` — 그 기능의 결정 S9, 2026-10-01 사용자 재확인). 새 프리미티브의 어휘는 그 규약을 따르고 그 산출물을 재사용한다(design "UI").
+
+## 0. 착수 전
+
+- [ ] **T0** 재확인 — 전제: `test ! -d docs/features/component-unify`.
+  - component-unify 산출물이 코드에 있는지 확인한다: `LargeModal` 치수 상수 · `Input` 글리프 슬롯 · `NoMatch`(출구 필수 형) · `components/__tests__/hand-copies.test.ts` · `ui/` `SearchInput` · 슬롯 규약(`description`·`badge`). 없으면 멈추고 사용자에게 묻는다.
+  - spec·design·tasks의 file:line을 다시 잰다 — 특히 `project-list.tsx`의 `<mark>`(ListRow 이관 뒤) · `project-switcher.tsx`의 `<kbd>` · `visual-system.test.ts` `REGISTERED` · `projects-screen.test.ts` 단언 · `shell-layout`·`shell-header`·`public-shell` 테스트 줄 · `dialog.tsx`·`primitive-focus.test.tsx` 줄 · `client-graph.test.ts` 목록 줄 · `entry-points.test.ts` 맵 이름.
+  — 검증: `rg -n ':[0-9]+' docs/features/global-search/*.md`로 뽑은 file:line을 한 줄씩 대조해 어긋난 것 0 · 산출물 확인 목록 전부 ✓.
+
+── 커밋: `docs(feature): global-search refreshed references after component-unify`
 
 ## A. 순수 함수 (`/tdd interface` 진입점)
 
@@ -57,18 +66,20 @@
 ## D. 프리미티브 (`components/ui/` — 화면보다 먼저)
 
 - [ ] **D1** `Kbd`(`<kbd>` 태그, `shrink-0 … py-0.5` 포함) + 스위처의 손 `<kbd>` 이관.
-  — 검증: `project-switcher.test.tsx` 무수정 green(`[role="menu"] kbd` 셀렉터가 `Kbd`를 잡는다) · 소스 스캔(네 장치): `components/ui/` 밖 `<kbd` 0 · `pnpm test` green.
+  — 검증: `project-switcher.test.tsx` 무수정 green(`[role="menu"] kbd` 셀렉터가 `Kbd`를 잡는다) · `hand-copies.test.ts`에 `Kbd` 행(`components/ui/` 밖 `<kbd` 0 · 카나리아 · 하한) · `pnpm test` green.
 - [ ] **D2** `Highlight` + `/projects` 손 `<mark>` 이관(조각은 `highlightName` 그대로). **의도한 테스트 갱신 둘**: `visual-system.test.ts:151` `REGISTERED`의 `bg-blue-600/[0.14]` 위치를 `components/ui/highlight.tsx`로, `projects-screen.test.ts:524-530`의 클래스 단언을 "`Highlight`에 `highlightName(row.name, q)` 조각을 넘긴다"로.
-  — 검증: 위 두 테스트 갱신 뒤 green · 그 밖 `projects-*` 무수정 green · 소스 스캔(네 장치): `ui/` 밖 `<mark` 0 · `pnpm test` green.
-- [ ] **D3** `FieldButton` — 캡슐 `rounded-full` · `h-9` · `w-80` · 패널 면(`bg-background border border-border-subtle shadow-low`) · 슬롯 셋 · 포커스 링 리터럴 · `...rest`.
+  — 검증: 위 두 테스트 갱신 뒤 green · 그 밖 `projects-*` 무수정 green · `hand-copies.test.ts`에 `Highlight` 행(`ui/` 밖 `<mark` 0 · 카나리아 · 하한) · `pnpm test` green.
+- [ ] **D3** `FieldButton` — 캡슐 `rounded-full` · `h-9` · `w-80` · 패널 면(`bg-background border border-border-subtle shadow-low`) · 슬롯 셋 · 포커스 링 리터럴(rest props 없음 — component-unify S5).
   — 검증: `focus-ring.test.ts`의 `FIXTURES`(:120)에 `FieldButton` 픽스처 추가 후 green(`ui/` 안 raw `<button>`은 등록 필수 — :175-176) · `visual-system` green · jsdom: `shortcut` 슬롯이 비어도 자리 폭 유지 · `pnpm test` green.
-- [ ] **D4** `CommandDialog`(`dialog.tsx` 형제 export — 복귀 기록 공유, `DialogContent` 불변). 대형 모달의 패널·Overlay 클래스를 `modal.tsx`에서 상수로 export해 공유하고, 위치만 `top-4 left-1/2 -translate-x-1/2`. 첫 포커스는 `[data-initial-focus]` 규칙(새 `onOpenAutoFocus` 없음).
-  — 검증: 기존 Dialog 소비자 테스트 무수정 green — `primitive-focus.test.tsx` · `focus-return` · `dialog-layer` + 대형 모달 소비자 테스트 · `primitive-focus.test.tsx:236`의 손 `onOpenAutoFocus` 0 스캔 대상에 `<CommandDialog` 소비자를 더한다 · jsdom: 열면 포커스가 `[data-initial-focus]` 입력 · 닫으면 연 자리로(테스트 쪽 fixup observer 관용구 — `members-focus.test.tsx`) · 패널 클래스가 대형 모달 상수와 같은 문자열(치수 두 벌 방지) · Dialog 소비자 수 14를 DESIGN 명령으로 다시 세어 D7에 기록 · `pnpm test` green.
+- [ ] **D4** `CommandDialog`(`dialog.tsx` 형제 export — 복귀 기록 공유, `DialogContent` 불변). `LargeModal` 치수 상수(component-unify C2)를 import하고, 위치만 `top-4 left-1/2 -translate-x-1/2`. 첫 포커스는 `[data-initial-focus]` 규칙(새 `onOpenAutoFocus` 없음).
+  — 검증: 기존 Dialog 소비자 테스트 무수정 green — `primitive-focus.test.tsx` · `focus-return` · `dialog-layer` + 대형 모달 소비자 테스트 · `primitive-focus.test.tsx:236`의 손 `onOpenAutoFocus` 0 스캔 대상에 `<CommandDialog` 소비자를 더한다 · jsdom: 열면 포커스가 `[data-initial-focus]` 입력 · 닫으면 연 자리로(테스트 쪽 fixup observer 관용구 — `members-focus.test.tsx`) · 패널 클래스가 `LargeModal` 치수 상수를 쓴다(새 치수 리터럴 0 — 두 벌 방지) · Dialog 소비자 수 14를 DESIGN 명령으로 다시 세어 D7에 기록 · `pnpm test` green.
 - [ ] **D5** `Command` · `CommandInput` · `CommandStatus` · `CommandList` · `CommandGroup` · `CommandItem` · 결과 수 sr-only 공지.
   — 검증: jsdom — ARIA(`combobox`·`aria-expanded`·`aria-controls`·`aria-activedescendant`·`listbox`·`group`+`aria-labelledby`·`option`+`aria-selected`) · **`aria-activedescendant`가 가리키는 id의 요소가 실재**(존재 단언 따로 — 코드베이스 첫 사용, POSTMORTEM 2026-09-14 optional chaining 공허) · listbox의 자식이 option·group뿐(`CommandStatus`는 listbox 밖) · ↑↓ 순환 · **Enter가 활성 option 안 링크의 `click`을 부른다**(spy) · 조합 중 Enter 무시 · hover가 활성을 옮기고 `document.activeElement`는 입력 · 항목에 `tabIndex` 없음 · 활성 행에만 `Go to` 힌트 · `CommandStatus`가 `aria-live` · `scrollIntoView` 호출(spy) · `pnpm test` green.
+- [ ] **D5a** `NoMatch` 출구 없는 형 — 출구 prop(`href`·`onClick`)을 선택으로 연다. 소비자는 검색 Dialog 하나(E2)이고 기존 소비자의 출구는 그대로다.
+  — 검증: 렌더 테스트 — 출구 없으면 버튼 0 · 기존 `href`·`onClick` 형 무수정 green · component-unify `api-contract` 허용 목록에 새 행 0 · `pnpm test` green.
 - [ ] **D6** `components/shell/header-bar.tsx` `HeaderBar` + 앱 셸·공개 셸 헤더 이관(가운데 슬롯은 아직 비움). **의도한 테스트 갱신**: `app/(edit)/__tests__/shell-layout.test.ts:135-139`의 `h-10` 단언을 `header-bar.tsx`로 옮긴다 · `components/__tests__/shell-header.test.tsx:35`(`header > div:last-child` 우측 자식 순서)와 `components/__tests__/public-shell.test.tsx`의 우측 자식 순서 단언을 `HeaderBar` `end` 슬롯 기준으로 고친다.
   — 검증: 새 구조 테스트 — `HeaderBar`가 `grid-cols-[1fr_auto_1fr]`이고 세 슬롯이 `justify-self-start/center/end`, 두 헤더가 `HeaderBar`를 렌더한다(DOM) · 위 세 테스트 갱신 뒤 green · `label-weight.test.ts`(`NAV_LINK`·`PUBLIC_HEADER_LINK`) 무수정 green · `pnpm dev`에서 두 헤더 모양이 이관 전과 같다(수동).
-- [ ] **D7** DESIGN §6.4 프리미티브 행 · §6.5 헤더 규칙(`HeaderBar` · 캡슐이 헤더의 첫 면·테두리 요소라는 예외) · §6.5 스위처 행 "새 combobox 프리미티브 없음" 갱신 · §6.2 강조 색 자리 · `EmptyState` 액션 없음 예외 · 대형 모달 행에 `CommandDialog` 공유(이 커밋 묶음의 문서 짝 — 별도 커밋).
+- [ ] **D7** DESIGN §6.4 프리미티브 행 · §6.5 헤더 규칙(`HeaderBar` · 캡슐이 헤더의 첫 면·테두리 요소라는 예외) · §6.5 스위처 행 "새 combobox 프리미티브 없음" 갱신 · §6.2 강조 색 자리 · `NoMatch` 출구 없는 형(출구 규칙의 예외) · 대형 모달 행에 `CommandDialog` 공유(이 커밋 묶음의 문서 짝 — 별도 커밋).
   — 검증: 갱신한 절마다 코드 값과 대조(클래스 문자열 · 파일 경로 · Dialog 소비자 수 14 명령 출력) · `visual-system`·`focus-ring` green.
 
 ── 커밋: `feat(ui): add Kbd and Highlight primitives and move existing copies onto them`
@@ -87,12 +98,12 @@
   - 빈 질의 = 미리보기(로그인·프로젝트 있음/0/비로그인 세 경우, `View all` 행)
   - 입력 → Projects·Menus 즉시 · Keys는 2자 이상 250ms 뒤 한 번 · `"  a "` → 조회 0회 · 늦은 응답 A→B→A가 새 질의를 안 덮는다 · Keys `{ ok: false }` → 상태 줄 한 줄, 다른 그룹 유지
   - `"settings demo"`: Menus는 토큰 AND로 일치, Keys Action 인자는 질의 전체 문자열(두 판정이 다름을 고정)
-  - 색인 로딩·실패 각 상태 줄 한 줄 · 대기 중 조회가 있으면 `EmptyState` 없음 · 대기 없음 + 0건 → `EmptyState`
+  - 색인 로딩·실패 각 상태 줄 한 줄 · 대기 중 조회가 있으면 `NoMatch` 없음 · 대기 없음 + 0건 → `NoMatch`(출구 없음)
   - 일치한 필드(제목·context·description)마다 `<mark>` · Keys 번역값 줄에 로케일 코드와 값이 따로 렌더
   - 늦은 Keys 그룹이 끼어든 뒤 Enter가 **처음 활성이던 항목**을 연다
   - 선택(클릭·Enter) 뒤 Dialog 닫힘 · 조합 중 Esc가 닫지 않음
   - 단축키: 다른 Dialog·메뉴가 열려 있으면 무시 · textarea에 포커스면 무시 · macOS Ctrl+K 무시
-  - 소스 스캔(네 장치): `components/search/*`에 raw `button`·`input`·`a`·`kbd`·`mark` 태그·hex·`[Npx]` 0(spec 16)
+  - `hand-copies.test.ts` 행: `components/search/*`에 raw `button`·`input`·`a`·`kbd`·`mark` 태그·hex·`[Npx]` 0(spec 16)
   - `client-graph` green(정확 일치 목록 갱신) · `pnpm gate` green.
 
 ── 커밋: `feat(search): add the global search trigger and dialog to both shells`

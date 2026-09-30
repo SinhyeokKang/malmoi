@@ -15,7 +15,7 @@ PRODUCT §4.2 목록에 직접 걸리는 항목은 없고, 코어 설계 원칙(
 
 **키·번역값 검색은 범위 안이다** (2026-10-01 사용자 — 처음엔 "내비게이션만"을 골랐다가 성능 판단을 듣고 넣었다). 조건: 트라이그램 인덱스 없이 시작하고, 실측이 기준을 넘을 때만 additive 마이그레이션으로 인덱스를 넣는다(완료 조건 20).
 
-**component-unify와의 관계**: 착수 순서는 독립이고, 새 프리미티브의 **prop·슬롯 어휘는 component-unify 규약**(`docs/features/component-unify/design.md` 축 표 — 슬롯 `icon`·`description`·`action`, `...rest` 전달)을 따른다.
+**착수 조건: component-unify 종료 뒤** — 판정은 `test ! -d docs/features/component-unify`(그 기능의 결정 S9 — 입력 폭 규약을 그쪽이 먼저 세운다, 2026-10-01 사용자 재확인). 새 프리미티브의 **prop·슬롯 어휘는 component-unify 규약**(그 design §3 — 슬롯 `icon`·`description`·`action`·`badge`, rest props는 실수요 자리만)을 따르고, 그 기능이 세운 단위를 재사용한다: `LargeModal` 치수 상수(C2) · `Input` 글리프 슬롯 · `NoMatch` · `hand-copies.test.ts`(사본 스캔 표). 이 문서의 file:line은 dev 2026-10-01 기준이라 착수 첫 태스크(tasks T0)가 갱신한다.
 
 ## 사용자
 
@@ -46,10 +46,10 @@ PRODUCT §4.2 목록에 직접 걸리는 항목은 없고, 코어 설계 원칙(
 
 Dialog (레이아웃은 GitLab 검색 패널을 따른다 — 2026-10-01 사용자 참고 이미지):
 
-3a. **자리·크기** (2026-10-01 사용자): **폭·높이·면·dim은 대형 모달(`components/ui/modal.tsx` `OnboardingModal`)과 같고, 다른 것은 위치 하나다** — 가로 중앙(트리거와 같은 축), **위 16**(`top-4` — 헤더를 덮는다, 세로 가운데 정렬이 아니다). 폭 `w-[calc(100%-96px)] max-w-[1024px]`, 높이 `min(80svh,800px,calc(100svh-96px))` ~ `min(800px,calc(100svh-96px))`, `rounded-xl` · `shadow-medium` · dim `bg-foreground/32` + `backdrop-blur-[6px]`. 입력 줄이 맨 위이고 그 아래 전폭 구분선, 그 아래 결과 목록이 남은 높이 안에서 스크롤한다. 바닥 줄·닫기 버튼은 없다(Esc·배경 클릭으로 닫는다).
+3a. **자리·크기** (2026-10-01 사용자): **폭·높이·면·dim은 대형 모달(`LargeModal` — component-unify C2가 `OnboardingModal`을 개명하고 치수 상수를 뗀다)과 같고, 다른 것은 위치 하나다** — 가로 중앙(트리거와 같은 축), **위 16**(`top-4` — 헤더를 덮는다, 세로 가운데 정렬이 아니다). 폭 `w-[calc(100%-96px)] max-w-[1024px]`, 높이 `min(80svh,800px,calc(100svh-96px))` ~ `min(800px,calc(100svh-96px))`, `rounded-xl` · `shadow-medium` · dim `bg-foreground/32` + `backdrop-blur-[6px]`. 입력 줄이 맨 위이고 그 아래 전폭 구분선, 그 아래 결과 목록이 남은 높이 안에서 스크롤한다. 바닥 줄·닫기 버튼은 없다(Esc·배경 클릭으로 닫는다).
 3b. **목록 모양**: 그룹마다 굵은 머리(`Projects` 등)와 그룹 사이 전폭 구분선. 행은 **한 줄** `제목 · 맥락`(맥락은 muted 작은 글자 — 예: 프로젝트 행의 slug, 메뉴 행의 프로젝트 이름)이고, 엔터티 행(Projects)만 앞 글리프(썸네일)를 든다. Keys·Docs 행은 일치한 필드 한 줄을 둘째 줄로 든다. **활성 행**은 면(`bg-accent`) + 포커스 링과 같은 테두리이고 오른쪽 끝에 `Go to` + `Kbd` `↵` 힌트가 선다(활성 행에만).
 4. 입력이 비어 있으면 **미리보기**가 선다(2026-10-01 사용자) — 로그인·프로젝트 있음: Projects 앞 3(지금 프로젝트 먼저 → 멤버십 순서) + 끝 행 `View all projects`(→ `/projects`) · Menus 앞 3(지금 프로젝트, 없으면 첫 프로젝트의 메뉴 — `navZones` 순서) · Docs 앞 3(SUMMARY 순서의 페이지 도입부) + 끝 행 `Browse all docs`(→ `/docs`). 로그인·프로젝트 0: Menus(사용자 메뉴·하단) 앞 3 · Docs 앞 3 + `Browse all docs`. 비로그인: Menus(하단) · Docs 앞 3 + `Browse all docs`. Keys는 미리보기에 없다. `View all …` 행은 글리프를 들고 3개 상한에 세지 않으며, 질의가 있으면 서지 않는다.
-5. 입력하면 결과가 **그룹**으로 선다 — 순서 `Projects · Menus · Keys · Docs`, 그룹당 최대 5행, 빈 그룹은 그리지 않는다. 결과 0건이고 **대기 중인 조회가 없으면** `EmptyState` `No results for “{q}”`(곡선 따옴표 — DESIGN §6.63, 액션 없음 — 입력이 바로 위다). 대기 중인 조회(Keys·색인)가 있으면 `EmptyState` 대신 상태 줄만 선다.
+5. 입력하면 결과가 **그룹**으로 선다 — 순서 `Projects · Menus · Keys · Docs`, 그룹당 최대 5행, 빈 그룹은 그리지 않는다. 결과 0건이고 **대기 중인 조회가 없으면** `NoMatch`(component-unify) `No results for “{q}”`(곡선 따옴표 — DESIGN §6.63) — **출구 없는 형**이다(입력이 바로 위다). `NoMatch`의 출구는 지금 `href`·`onClick` 필수라 이 기능이 소비자와 함께 출구 없는 형을 더한다(component-unify S5 — 소비자가 생기는 축). 대기 중인 조회(Keys·색인)가 있으면 `NoMatch` 대신 상태 줄만 선다.
 6. 결과를 고르면(클릭 또는 Enter) 그 목적지로 이동하고 Dialog가 닫힌다. **Enter는 활성 option 안 링크의 `.click()`이다** — 마우스 클릭과 같은 경로라 번역 화면 이탈 가드(`use-leave-guard.ts`)·navigation-dim·`Link`가 한 벌이다. 가드가 이탈 확인을 띄우면 검색 Dialog는 닫혀 있다(두 Dialog가 겹치지 않는다).
 7. 키보드: ↑↓로 활성 행이 이동하고(끝에서 반대편으로 순환), Enter가 활성 행을 연다. 포커스는 입력에 남는다(`aria-activedescendant` — 가리키는 id의 요소가 실재한다). **활성 행은 항목 id로 잡는다** — 질의가 바뀌면 첫 행이 활성, 결과만 늘면(늦게 온 Keys·Docs 그룹) 활성 id가 그대로이고, 그 id가 사라지면 첫 행이다. 조합 중 Enter·Esc는 조합 확정·취소이고 이동·닫기가 아니다. Esc는 닫는다. 마우스 hover는 활성 행을 바꾸되 포커스를 입력에서 빼앗지 않는다(스위처와 같은 이유 — 한글 첫 글자 유실).
 8. 결과 행의 **일치한 필드**가 `<mark>`로 칠해진다 — 제목뿐 아니라 Keys의 원문·번역값 줄, Docs 본문 스니펫까지(§6.63 "칠한 곳 = 찾은 곳"). `/projects` 검색 강조와 같은 형이다. `İ`처럼 소문자화로 길이가 바뀌는 글자에서 강조가 어긋나지 않는다(POSTMORTEM 2026-09-13 재발 방지 테스트).
@@ -74,8 +74,8 @@ Dialog (레이아웃은 GitLab 검색 패널을 따른다 — 2026-10-01 사용�
 
 14. 검색어는 URL·서버 로그·분석 이벤트·브라우저 저장소 어디에도 실리지 않는다 — Dialog는 라우트가 아니고(PRODUCT §7.7 "모달도 라우트가 아니다"), 색인 요청은 질의 없는 GET 하나다. Keys 조회는 질의를 Server Action 본문으로 보내고 서버는 그것을 기록하지 않는다(`console.*`에 싣지 않는다).
 15. `/privacy`는 **고치지 않는다** — 새 수집·새 브라우저 저장·새 전송처가 없다. 그것이 여전히 참인지 `/push` 4단계가 대조한다.
-16. **UI는 프리미티브 조립이다** (2026-10-01 사용자) — `components/search/*`에 raw 상호작용·표식 태그(`button`·`input`·`a`·`kbd`·`mark`)·hex 색·`[Npx]` 임의값이 0이고, 새로 만든 `Kbd`·`Highlight`로 기존 손 사본 둘(스위처 `<kbd>` · `/projects` `<mark>`)이 옮겨져 소스에 손 `<kbd>`·`<mark>`가 `components/ui/` 밖에 0이다(소스 스캔 테스트 — 주석 제거 · 대상 파일 수 > 0 · 심은 위반 탐지).
-17. **정본 문서가 판정을 따라간다** — PRODUCT §4.1(글로벌 검색) · IA("검색은 라우트가 아니다"), DESIGN §6.5 헤더 행·스위처 행 · §6.8 헤더 행 · §9.2 · §6.4 프리미티브 행 · §6.2 강조 색 위치 · `EmptyState` 액션 없음 예외 · 아이콘 표, ARCHITECTURE §6 인증 경계 표(`/api/search-index` · Keys 조회의 멤버십 조인)와 §1.96(pg_trgm 판정과의 관계), CLAUDE.md 데이터 경로 표, DIRECTORY, README.
+16. **UI는 프리미티브 조립이다** (2026-10-01 사용자) — `components/search/*`에 raw 상호작용·표식 태그(`button`·`input`·`a`·`kbd`·`mark`)·hex 색·`[Npx]` 임의값이 0이고, 새로 만든 `Kbd`·`Highlight`로 기존 손 사본 둘(스위처 `<kbd>` · `/projects` `<mark>`)이 옮겨져 소스에 손 `<kbd>`·`<mark>`가 `components/ui/` 밖에 0이다(`hand-copies.test.ts` 표의 행 — 그 파일의 카나리아·하한·뮤테이션 규약).
+17. **정본 문서가 판정을 따라간다** — PRODUCT §4.1(글로벌 검색) · IA("검색은 라우트가 아니다"), DESIGN §6.5 헤더 행·스위처 행 · §6.8 헤더 행 · §9.2 · §6.4 프리미티브 행 · §6.2 강조 색 위치 · `NoMatch` 출구 없는 형 · 아이콘 표, ARCHITECTURE §6 인증 경계 표(`/api/search-index` · Keys 조회의 멤버십 조인)와 §1.96(pg_trgm 판정과의 관계), CLAUDE.md 데이터 경로 표, DIRECTORY, README.
 17a. `pnpm gate` green(typecheck · test · build · 미러 · 트리거 시 격리 postgres).
 
 성능:
