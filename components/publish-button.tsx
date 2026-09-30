@@ -9,7 +9,7 @@ import { triggerPullAction } from "@/app/(edit)/actions";
 import { useCommitWait } from "@/components/commit-wait";
 import { loadPublishPreview } from "@/app/(edit)/publish-actions";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Button, ButtonLink, buttonClass } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -216,7 +216,7 @@ function PrCard({ repo, number, note }: { repo: string; number: number | null; n
       <span className="truncate text-sm">{repo}{number !== null && ` #${number}`}</span>
       <span className="text-muted-foreground text-xs">{note}</span>
     </span>
-    <Badge variant="neutral">{p.prState}</Badge>
+    <StatusBadge state="prOpen" />
   </div>;
 }
 

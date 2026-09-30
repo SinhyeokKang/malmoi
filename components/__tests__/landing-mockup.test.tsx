@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { mockupScenes } from "@/components/landing/mockup";
 import { Stage } from "@/components/landing/stage";
+import { buttonClass } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
 import { navFooterItems, navZones } from "@/lib/shell/nav";
 
@@ -163,6 +164,13 @@ describe("목업 — 제품과 같은 구조다", () => {
     const container = await mount();
     expect(layer(container, 1).textContent).not.toContain(m.translations.workspace.revert.button);
     expect(layer(container, 3).textContent).toContain(m.translations.workspace.revert.button);
+  });
+
+  /** 실물의 Revert는 편집을 버리는 동작이라 `danger`다(§2.4 동작 규칙) — 목업만 `default`면 랜딩이 실물과 갈린다. */
+  it("③ `Revert to last sent`가 실물과 같은 danger다", async () => {
+    const container = await mount();
+    const revert = [...layer(container, 3).querySelectorAll("span")].find((node) => node.textContent === m.translations.workspace.revert.button);
+    expect(revert?.className).toBe(buttonClass({ variant: "danger" }));
   });
 });
 

@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { Badge } from "@/components/ui/badge";
@@ -41,5 +44,20 @@ describe("StatusBadge", () => {
     expect(gone.className).not.toContain("text-destructive");
     const missing = (await render(<Badge variant="missing">x</Badge>)).container.firstElementChild!;
     expect(missing.className).not.toContain("gap-1.5");
+  });
+});
+
+/**
+ * **STATE 키가 있는 상태를 `Badge`로 직접 그리지 않는다** (ux-drift-unify — U11 핸드오프). PR `Open`(`prOpen`)·보관(`archived`)이
+ * 마지막 직접 소비자였다 — 직접 쓰면 variant·낱말을 호출부가 다시 고르고, 표가 바뀔 때 그 자리만 낡는다.
+ */
+describe("마지막 직접 상태 배지", () => {
+  it.each([
+    ["components/publish-button.tsx", "prOpen", "p.prState"],
+    ["components/shell/project-switcher.tsx", "archived", "m.projects.status.archived"],
+  ])("%s가 %s를 StatusBadge로 그린다", (path, key, label) => {
+    const source = readFileSync(join(process.cwd(), path), "utf8");
+    expect(source).toContain(`<StatusBadge state="${key}"`);
+    expect(source).not.toMatch(new RegExp(`<Badge\\b[^>]*>\\s*\\{${label.replace(/\./g, "\\.")}\\}`));
   });
 });

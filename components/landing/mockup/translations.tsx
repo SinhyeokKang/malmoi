@@ -288,7 +288,8 @@ function Footer({ phase }: { phase: Phase }) {
   const unsaved = <span className="text-xs text-amber-700">{f.unsaved(1)}</span>;
   const saved = <span className="text-muted-foreground text-xs">{f.savedNotSent}</span>;
   const text = phase === "missing" ? null : phase === "typing" ? unsaved : <Swap phase={phase} before={unsaved} after={saved} />;
-  const revert = <span className={buttonClass({ variant: "default" })}>{w.revert.button}</span>;
+  // 실물과 같은 `danger`다 — 편집을 버리는 동작이다(DESIGN §2.4 동작 규칙).
+  const revert = <span className={buttonClass({ variant: "danger" })}>{w.revert.button}</span>;
   // 저장할 것이 없으면 Save가 꺼진다(`saveDisabled = dirty === 0`) — 씬 ③에서 저장되는 순간 함께 꺼진다.
   const saveOn = <span className={buttonClass({ variant: "primary" })}>{f.save}</span>;
   const saveOff = <span className={cn(buttonClass({ variant: "primary" }), "bg-muted text-muted-foreground")}>{f.save}</span>;
