@@ -256,7 +256,7 @@
 ## 런타임 검증 (2026-10-01 사용자 — 이 기능 안으로 당겼다, `/orchestrate` 마지막 단계)
 
 - `/runtime-test` — 🔴 15건을 브라우저로 한 번씩 밟는다(특히 C·E·F: 픽스처가 필요하다 — `repositoryId` null 프로젝트, 표면 둘 중 하나 실패) + 각 배치 인계의 (b) 목록 + T18·T20 측정.
-- `/guide-shots` — `pnpm guide:check` stale 컷 재촬영(state-filter · home-paused · sources · project-home 외). runtime-test가 찾은 결함이 dev에 들어간 뒤.
+- `/guide-shots` — **전 컷 재촬영**(2026-10-01 사용자 — 직전 병합 때 촬영을 건너뛰었다): `public/guide/` 앱 화면 컷 전부 + README 전용 둘(`docs/assets/readme/hero.webp` · `logs.webp`) + 지난번 남은 `create-ready`. GitHub 화면 둘(`push-token-secret` · `actions-policy`)은 이 기능이 바꾸지 않은 GitHub UI라 SHA 대조만. runtime-test가 찾은 결함이 dev에 들어간 뒤.
 
 ## 오케스트레이션 (2026-10-01 `/orchestrate`)
 
@@ -296,3 +296,4 @@
 - 2026-10-01 지휘자(U5): spec 완료 조건 3의 "표면 0개 → Setup"은 표가 틀렸다 — 설치 있고 활성 표면 0이면 `awaiting_first_sync`(목록 Not synced yet · Home not-ready)이고 목록·Home이 일치한다. 판정은 그대로 두고 테스트가 이것을 고정한다.
 - 2026-10-01 U3: `PanelHeader`에는 `count` prop을 두지 않았다(제목 슬롯이 없다) — 머리 개수 두 곳이 `CountBadge`를 직접 쓴다. `Button` `loading`/`busy`는 `aria-hidden` 앞 글리프를 교체한다(지금 Logs 둘).
 - 2026-10-01 U9: 가이드 원고의 축약형(could not 등 55건)은 원고 금지 목록에서 뺐다 — DESIGN §10은 화면 문체 규칙이고 감사 항목이 아니다(범위 밖, 후속 후보). `dict:` 소스는 보이는 문자열 잎 키만.
+- 2026-10-01 사용자: `/guide-shots`는 stale 목록이 아니라 **전 컷 + README 두 장** 재촬영(직전 병합 때 건너뜀).
