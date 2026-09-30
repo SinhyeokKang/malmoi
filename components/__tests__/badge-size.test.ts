@@ -19,8 +19,14 @@ describe("배지 라벨 12px", () => {
     expect(css).toMatch(/--text-2xs--line-height:\s*calc\(1 \/ 0\.75\);/);
   });
 
-  // Badge 프리미티브 + 랜딩 목업의 손으로 만든 개수 알약(Publish 버튼 복제). 실물 Publish 버튼은 2026-10-01부터 `CountBadge`다.
-  it.each(["components/ui/badge.tsx", "components/landing/mockup/translations.tsx"])(
+  // Badge 프리미티브 하나다 — 랜딩 목업의 손 조립 개수 알약은 2026-10-01에 실물 `CountBadge`로 바뀌었다(ux-drift-unify T24).
+  it("랜딩 목업은 손 조립 알약 없이 `CountBadge`를 쓴다", () => {
+    const mockup = read("components/landing/mockup/translations.tsx");
+    expect(mockup).not.toMatch(/rounded-full px-1\.5/);
+    expect(mockup).toContain("<CountBadge");
+  });
+
+  it.each(["components/ui/badge.tsx"])(
     "%s의 알약이 text-2xs다",
     (path) => {
       const pills = [...read(path).matchAll(/"[^"]*rounded-full px-1\.5[^"]*"/g)].map((match) => match[0]);
