@@ -226,8 +226,9 @@ components/
   mcp/                  `/mcp` 조각(2026-09-28 · mcp-oauth 2026-09-29) — token-card(RowCard 머리에 행동 — 없음·만료 = Create, 활성 = Rotate · Revoke.
                         결과 미확인은 이 세션에만 산다) · token-modal(OnboardingModal 2단계 — ① 폼 ② 원문 1회, Done이 유일한 출구) ·
                         token-grant-fields(권한·범위 **필드만** — 모달과 동의 화면이 공유한다, columns 1|2 · 상태 슬롯·버튼·Alert는 호스트 소유) ·
-                        connected-apps-card(OAuth 연결 목록 · 끊기 Dialog · 조회 장애 ≠ 빈 목록 · RowCardList) ·
-                        connect-card(방식 세그먼트 브라우저/개인 토큰 + SegmentedControl + WorkflowBlock 형 조각 — 공개 문서 CodeBlock이 아니라 mono 자리가 안 는다).
+                        connected-apps-card(OAuth 연결 목록 · 머리의 Copy server URL · 행 왼쪽 로고 칸 · 끊기 Dialog · 조회 장애 ≠ 빈 목록 · RowCardList) ·
+                        brand-logo(에이전트 공식 로고를 `<img>`로 그대로 — 색을 입히지 않는다).
+                        ⚠️ Connect 카드(조각 · 방식·에이전트 탭)는 2026-09-30에 걷었다 — 연결 조각의 정본은 가이드(guide/ai-agents/)다.
                         ⚠️ grant 어휘·만료 선택지를 **다시 적는다** — TOKEN_GRANTS를 값으로 import하면 lib/auth/access가
                         클라이언트 그래프에 들어온다(client-graph). 두 벌의 대가는 components/__tests__/mcp-token이 순서까지 고정해 진다
   oauth/                `/oauth/authorize` 조각(mcp-oauth) — app-card(앱 이름 + clientId 식별 줄, 말줄임 없음 · 칩 IconTile lg — 서버·클라이언트 공용) ·
@@ -587,10 +588,10 @@ lib/
   mcp/                  MCP 커넥터(2026-09-28, ARCHITECTURE §6.45). **순수 판정이 대부분이고 server-only가 셋뿐이다** —
                         token(생성·해시·Bearer 파싱·planApiTokenUse·shouldTouch) · grant(planToolAccess — 범위 → 멤버십 → 역할 →
                         보관 → 토큰) · issue-plan · batch(100키 상한·중복) · confirm(샘플 확인값 소비) · locked-token(잠금 뒤 재판정) ·
-                        result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · snippets(연결 조각 — 토큰은
-                        $MALMOI_TOKEN 참조로만) · catalog(도구 28 — 이름·순서·annotations·요구 조건의 코드 정본).
+                        result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · brand(연결 로고 — client_id 호스트 정확
+                        일치만, 이름으로 고르지 않는다) · catalog(도구 28 — 이름·순서·annotations·요구 조건의 코드 정본).
                         server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveApiToken) · tools/.
-                        ⚠️ catalog·snippets는 잎이다(import 0). snippets는 /mcp 클라이언트(connect-card)가 값으로 읽는다(client-graph).
+                        ⚠️ catalog·brand는 잎이다(import 0). brand는 /mcp 클라이언트(connected-apps-card · brand-logo)가 값으로 읽는다(client-graph).
                         catalog의 소비자는 서버 쪽 셋(server · tools/access · lib/auth/lock)이다 — 그래도 잎인 이유는 모든 쓰기 코어가
                         지나는 lock.ts가 물기 때문이고(값 import가 쓰기 경로 전부로 번진다), 도구 구현 → catalog 방향이 뒤집히면 순환이다.
                         순수 모듈에 server-only가 없는 것은 lib/mcp/__tests__/pure-boundary가 센다
@@ -775,7 +776,9 @@ public/brand/ flags/ email/
                         ⚠️ 커밋된 원본이다(fonts/는 반대로 생성물). email/logo@2x.png·box@2x.png(썸네일 없는 프로젝트 카드의 흰 Box 글리프, 32×32 투명 —
                         lucide box의 __iconNode로 만든 산출물, 생성 스크립트는 남기지 않는다)는 초대 메일이 프로덕션 절대 URL로 참조한다 — 옮기면 이미 보낸 메일이 깨진다(middleware matcher 제외). flags 253개는 lib/keys/flag.ts의
                         FLAG_INVENTORY와 정확히 같아야 한다(flag-assets.test.ts가 양방향으로 센다).
-                        flags 원본은 country-flag-icons@1.6.20 3x2(MIT) — flags/LICENSE가 그 원문이다
+                        flags 원본은 country-flag-icons@1.6.20 3x2(MIT) — flags/LICENSE가 그 원문이다.
+                        brand/agents/는 남의 로고다(2026-09-30) — Anthropic press kit Claude Spark · OpenAI black monoblossom을 **받은 그대로** 둔다
+                        (색·비율 변경 금지 — 크기 보정은 BrandLogo의 표시 배율로 한다). 우리 로고(brand/ 바로 아래)와 섞지 않는다
 LICENSE                 MIT. ⚠️ 전문에 문장을 더하지 않는다 — GitHub가 유사도로 판정해 한 줄만 붙여도 인식이 풀린다
 guide/                  **사용 가이드 원고**(en) — SUMMARY.md(IA 정본 · 내비 순서) + README.md(개요) + <장>/README.md + <장>/<페이지>.md.
                         AUTHORING.md·SHOOTING.md는 한국어 매뉴얼이고 SUMMARY 밖이라 서빙되지 않는다(`/docs/AUTHORING`은 404).
