@@ -114,20 +114,6 @@ describe("PanelHeader — 여백·선·폭을 프리미티브가 든다", () => 
     expect(inner.classList.contains("[&>:first-child]:min-h-9")).toBe(true);
   });
 
-  /**
-   * **`notice` 슬롯 — 설명 아래, 제목 블록 뒤다** (4-Y7). 페이지 수준 거부 Alert가 h1 **위**에 서던 화면(Settings)이 있었다.
-   */
-  it("notice는 설명 아래에 선다 — 제목 행이 여전히 첫 자식이다", async () => {
-    const outer = await header({ children: <h1>Settings</h1>, description: "Line.", notice: <div role="alert">Refused</div> });
-    const inner = find<HTMLElement>(outer, ":scope > div");
-    expect([...inner.children].map((node) => node.tagName.toLowerCase() + (node.getAttribute("role") ? `[${node.getAttribute("role")}]` : ""))).toEqual(["h1", "p", "div[alert]"]);
-  });
-
-  it("notice가 없으면 그리지 않는다", async () => {
-    const outer = await header({ children: <h1>Settings</h1> });
-    expect(find<HTMLElement>(outer, ":scope > div").children).toHaveLength(1);
-  });
-
   /** 설명이 없으면 그 자리가 DOM에 없다 — 빈 `<p>`의 line-height가 머리를 늘린다. */
   it("설명이 없으면 그리지 않는다", async () => {
     const outer = await header({ children: <h1>Projects</h1> });
@@ -138,7 +124,7 @@ describe("PanelHeader — 여백·선·폭을 프리미티브가 든다", () => 
    * ⚠️ **머리 여백(상하 12)의 전제는 "제목 줄 하나"다.** 설명이 붙으면 세로로 늘어야 하므로 래퍼가 열이고
    * 간격이 12다 — 그 조건을 주석이 아니라 코드가 든다 (POSTMORTEM 2026-09-14).
    */
-  it("래퍼가 열이고 간격 12다 — 설명·거부 Alert이 제목 줄 아래로 쌓인다", async () => {
+  it("래퍼가 열이고 간격 12다 — 설명이 제목 줄 아래로 쌓인다", async () => {
     const outer = await header({ children: <h1>Projects</h1> });
     const inner = find<HTMLElement>(outer, ":scope > div");
     expect(inner.classList.contains("flex")).toBe(true);

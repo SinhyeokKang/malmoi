@@ -127,16 +127,15 @@ export function ProjectList({
             </>
           )}
         </div>
-
-        {/*
-          페이지 수준 거부는 **global Alert**다 (DESIGN §6.4).
-          ⚠️ **제목 줄 아래이고 머리 안이다** — 본문으로 내리면 스크롤로 사라지고, 사용자는 버튼이
-          안 눌린 것으로 본다 (POSTMORTEM 2026-09-06). 세로로 쌓는 것은 `PanelHeader`의 열 레이아웃이다.
-        */}
-        {message !== null && <Alert variant="danger">{message}</Alert>}
       </PanelHeader>
 
       <PanelBody className="flex flex-col gap-4">
+        {/*
+          페이지 수준 거부는 **global Alert**이고 본문의 첫 블록이다 (DESIGN §6.4).
+          ⚠️ **본문과 함께 스크롤한다** (2026-10-01 사용자) — 옛 자리는 머리 안 제목 줄 아래였고 근거는 POSTMORTEM 2026-09-06
+          ("스크롤로 사라지면 버튼이 안 눌린 것으로 본다")였다. 사용자가 뒤집었다: 머리는 제목·툴바 한 띠로 고정된다.
+        */}
+        {message !== null && <Alert variant="danger">{message}</Alert>}
         {body.kind === "groups" ? (
           body.cards.map((card) => (
             <RowCard

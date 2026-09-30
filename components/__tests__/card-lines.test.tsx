@@ -83,11 +83,11 @@ describe("Sources 상세 Status 카드 — 결과 줄 유무", () => {
   });
 });
 
-/** Settings의 거부 Alert는 머리의 `notice` 슬롯으로 넘긴다 — 제목 아래다(4-Y7). */
-it("Settings가 거부 Alert를 PanelHeader notice로 넘긴다 — 머리 children에 Alert가 없다", () => {
+/** Settings의 거부 Alert는 머리에 없다 — 본문의 첫 블록이다(2026-10-01 사용자, 옛 자리는 머리 `notice` 슬롯). 본문 안인지는 `page-alert-placement.test.ts`가 잰다. */
+it("Settings 머리에 거부 Alert가 없다 — 본문과 함께 스크롤한다", () => {
   const source = readFileSync(join(process.cwd(), "app/(edit)/projects/[slug]/settings/page.tsx"), "utf8");
   const tag = source.match(/<PanelHeader\b([\s\S]*?)>([\s\S]*?)<\/PanelHeader>/);
-  expect(tag?.[1]).toContain("notice={notice !== null && <Alert");
+  expect(tag?.[1]).not.toContain("notice");
   expect(tag?.[2]).not.toContain("<Alert");
 });
 

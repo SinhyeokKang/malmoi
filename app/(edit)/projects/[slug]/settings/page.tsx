@@ -59,9 +59,10 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   const apiUrl = project.surfaces.length > 0 ? await requestApiUrl() : undefined;
   const workflow = project.surfaces.length > 0 && <WorkflowBlock yaml={renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), ...(apiUrl === undefined ? {} : { apiUrl }) })} />;
   return <>
-    {/* 거부 Alert는 제목 **아래**다(`notice` 슬롯 — 2026-10-01 4-Y7, 옛 자리는 h1 위였다). */}
-    <PanelHeader notice={notice !== null && <Alert variant="danger">{notice}</Alert>}><h1 className="flex items-center text-lg font-medium">{m.common.nav.projectSettings}</h1></PanelHeader>
+    <PanelHeader><h1 className="flex items-center text-lg font-medium">{m.common.nav.projectSettings}</h1></PanelHeader>
     <PanelBody className="space-y-4">
+      {/* 거부 Alert는 본문의 첫 블록이다 — 본문과 함께 스크롤한다(2026-10-01 사용자 — 머리는 제목 한 띠로 고정. 그 전 4-Y7은 머리 안 제목 아래, 더 전엔 h1 위였다). */}
+      {notice !== null && <Alert variant="danger">{notice}</Alert>}
       {archived && archive}
       <GeneralCard slug={slug} name={project.name} image={project.image} archived={archived} />
       <RepositoryCard slug={slug} owner={project.repoOwner} repo={project.repoName} branch={project.baseBranch} archived={archived} health={health} account={account} appSlug={optionalEnv("GITHUB_APP_SLUG")} />

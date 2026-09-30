@@ -229,12 +229,12 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
 
   return (
     /*
-      ⚠️ **여백을 이 블록이 든다** (2026-09-15 리뷰 🔴1) — 바깥 래퍼에 두면 `:empty`가 이 `<div>`를
-      자식으로 보고 영원히 거짓이 되어, 배너가 0개인 **가장 흔한 화면**에 그 여백이 유령으로 남는다.
-      ⚠️ **위가 16이고 아래가 0이다** (2026-09-29 사용자) — 캔버스의 `margin:0 24px 20px`를 옮겨 위를 0으로 뒀더니
-      머리의 `border-b`에 Alert가 붙었다(캔버스 머리엔 선이 없다). 아래는 `PanelBody`의 `p-4`가 16을 든다.
+      ⚠️ **본문 격자의 첫 칸이다** (2026-10-01 사용자 — 배너가 본문과 함께 스크롤한다). 여백·폭 상한은 `PanelBody`(`p-4` · `max-w-7xl`)가
+      들고 블록 사이는 격자의 `gap-5`다 — 여기서 다시 적으면 두 번 걸린다. 두 열 격자를 가로질러야 하므로 `col-span-full`을 든다.
+      ⚠️ **`empty:hidden`을 이 블록이 든다** (2026-09-15 리뷰 🔴1) — 바깥 래퍼에 두면 `:empty`가 이 `<div>`를 자식으로 보고 영원히
+      거짓이 된다. 배너가 0개인 **가장 흔한 화면**에서 이 칸이 `display:none`이어야 격자에 빈 행과 그 `gap`이 안 생긴다.
     */
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pt-4 empty:hidden">
+    <div className="col-span-full flex flex-col gap-3 empty:hidden">
       {(banner === "syncFailed" || banner === "partiallySynced") && failedSurface !== null && reason !== null && (
         <Alert
           // 톤은 실패 코드가 정한다 — 일부만 반영된 적재는 호박, 나머지는 빨강(2026-09-30 상태 통일).

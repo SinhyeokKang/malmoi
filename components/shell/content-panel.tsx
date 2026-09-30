@@ -51,7 +51,10 @@ export function ContentPanel({ children }: { children: ReactNode }) {
 const CONTENT_MAX = "mx-auto w-full max-w-7xl";
 
 /**
- * 패널 안에서 **스크롤하지 않는** 머리 — 제목 · 툴바 · 전역 `Alert` · (선택) 설명 한 줄.
+ * 패널 안에서 **스크롤하지 않는** 머리 — 제목 · 툴바 · (선택) 설명 한 줄.
+ *
+ * ⚠️ **페이지 수준 `Alert`는 여기 서지 않는다 — 본문의 첫 블록이다** (2026-10-01 사용자). 머리는 제목·툴바 **한 띠**로
+ * 고정되고, Alert는 자기가 설명하는 콘텐츠와 함께 스크롤한다. 그래서 `notice` 슬롯(4-Y7)을 걷었다 — 소비자가 0이 됐다.
  *
  * ⚠️ **`shrink-0`이 없으면 본문이 길 때 머리가 눌린다.** flex 자식의 축소 하한은 콘텐츠 높이가
  * 아니라 0이다.
@@ -75,24 +78,20 @@ const CONTENT_MAX = "mx-auto w-full max-w-7xl";
  *
  * ⚠️ **제목 행의 최소 높이 36(`min-h-9`)을 여기가 든다** (2026-10-01 ux-drift-unify 4-Y8). 버튼 없는 화면에서 줄 높이가 28로
  * 떨어지면 머리가 라우트마다 4px 튄다 — 전엔 소비자 넷이 손으로 적고 나머지는 툴바 버튼의 36에 기댔다. **첫 자식이 제목 행이다**
- * (소비자 전부가 그렇게 쓴다 — 그래서 `notice`가 children 뒤에 선다). 제목 행을 prop으로 올리지 않은 이유: 소비자마다 행의
+ * (소비자 전부가 그렇게 쓴다). 제목 행을 prop으로 올리지 않은 이유: 소비자마다 행의
  * 내용(툴바·필터·액션 묶음)이 달라 슬롯 하나로 못 접는다.
- *
- * ⚠️ **`notice`는 설명 아래다** (4-Y7) — 페이지 수준 거부 `Alert`가 제목 **위**에 서던 화면(Settings)이 있었다. 순서를 슬롯이 든다.
  */
 export function PanelHeader({
   description,
-  notice,
   children,
   className,
   ...props
-}: ComponentPropsWithoutRef<"div"> & { description?: ReactNode; notice?: ReactNode }) {
+}: ComponentPropsWithoutRef<"div"> & { description?: ReactNode }) {
   return (
     <div className="border-border shrink-0 border-b" {...props}>
       <div className={cn(CONTENT_MAX, "flex flex-col gap-3 px-4 py-3 [&>:first-child]:min-h-9", className)}>
         {children}
         {description !== undefined && <p className="text-muted-foreground text-xs">{description}</p>}
-        {notice}
       </div>
     </div>
   );
