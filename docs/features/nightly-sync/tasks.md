@@ -19,19 +19,19 @@
 
 ## B. 스키마 (선행 조건 충족 뒤)
 
-- [ ] **B1** `/db` — `Project.lastNightlyAt DateTime?` (additive). `--create-only`로 SQL을 눈으로 본 뒤 dev 적용 · dev·prod `has_schema_privilege` false 확인. **prod `db:deploy`는 `/merge` 1단계다 — `/push` 시점으로 당기지 않는다.** dev 드리프트가 보이면 보고 후 리셋(dev는 `push:local`로 복구된다).
+- [x] **B1** `/db` — `Project.lastNightlyAt DateTime?` (additive). `--create-only`로 SQL을 눈으로 본 뒤 dev 적용 · dev·prod `has_schema_privilege` false 확인. **prod `db:deploy`는 `/merge` 1단계다 — `/push` 시점으로 당기지 않는다.** dev 드리프트가 보이면 보고 후 리셋(dev는 `push:local`로 복구된다).
   — 검증: `pnpm db:status` clean · `pnpm typecheck` green.
 
 ── 커밋: `feat(db): add Project.lastNightlyAt for nightly ordering` (스키마+마이그레이션만)
 
 ## C. 서버 적재 자동화 갈래
 
-- [ ] **C1** `runRepositoryImportFromReader` 입력을 `actor` 합으로 가른다. `acquire`·`current`의 USER 전용 판정을 갈래 안으로. `source`·subtype을 입력으로. AUTOMATION이면 `finishSurface` 트랜잭션 안 **사후 재집계**, `resource-limit` → `deferred` · `too-large`(표면 `lastImportError` 무기록). `vitest.projects.config.ts` include에 `lib/import/__tests__/*.integration.ts`·`lib/nightly/__tests__/*.integration.ts`를 더한다(안 더하면 새 통합 테스트를 어느 스위트도 안 돌린다 — POSTMORTEM 2026-09-10).
+- [x] **C1** `runRepositoryImportFromReader` 입력을 `actor` 합으로 가른다. `acquire`·`current`의 USER 전용 판정을 갈래 안으로. `source`·subtype을 입력으로. AUTOMATION이면 `finishSurface` 트랜잭션 안 **사후 재집계**, `resource-limit` → `deferred` · `too-large`(표면 `lastImportError` 무기록). `vitest.projects.config.ts` include에 `lib/import/__tests__/*.integration.ts`·`lib/nightly/__tests__/*.integration.ts`를 더한다(안 더하면 새 통합 테스트를 어느 스위트도 안 돌린다 — POSTMORTEM 2026-09-10).
   — 검증: 기존 수동 Sync 테스트 전부 green(행동 불변) · `lib/import/__tests__/automation.integration.ts`: pending 0에서 적재 · 적재된 표면마다 `lastCommitSha`·`lastCommitAt`이 head로 전진 · 표면 둘 중 두 번째 트랜잭션 전에 편집 저장 → 첫 표면만 커밋 + 결과 `partial` · 첫 표면 전에 저장 → `deferred` `pending-edits` · 토큰 있는 셀을 덮지 않는다 · `resource-limit` → `deferred` `too-large` + `lastImportError` null 유지 · `already-running` → 사건 0행 · 사건 actor `AUTOMATION` + subtype `import.nightly` + `source: "nightly"` · `pnpm test:projects:postgres` 출력에 새 파일이 잡힌다.
 
 ── 커밋: `feat(import): run server-side import as automation`
 
-- [ ] **C2** `changedValues` 관측 — `applyPushInTransaction`에서 세고, 생산자 다섯이 싣는다: CI `onApplied`(`app/api/push/route.ts:241`) · 수동/야간 `close`(`lib/import/run.ts:217`) · 첫 적재(`lib/surfaces/create.ts:110` · `lib/onboarding-run/create.ts:302` · `app/(edit)/projects/actions.ts:720`).
+- [x] **C2** `changedValues` 관측 — `applyPushInTransaction`에서 세고, 생산자 다섯이 싣는다: CI `onApplied`(`app/api/push/route.ts:241`) · 수동/야간 `close`(`lib/import/run.ts:217`) · 첫 적재(`lib/surfaces/create.ts:110` · `lib/onboarding-run/create.ts:302` · `app/(edit)/projects/actions.ts:720`).
   — 검증: 통합 테스트 — 같은 값 재적재 0 · 값 2개 변경 2 · 새 셀 삽입 포함 · description만 바뀐 셀은 세지 않는다 · 토큰 있어 안 덮인 셀은 세지 않는다 · 생산자 다섯의 사건에 값이 있다 · 1446키 픽스처(`repository-import.integration.ts:70` 경로)에서 `ANALYZE` 전·후 `EXPLAIN (FORMAT JSON)`의 `Index Name`이 `Translation_keyId_localeCode_key`(선례 `lib/keys/__tests__/source-counts.integration.ts:80-81`)이고 시간이 그 테스트의 기존 상한 안 · **판정 코드가 이 값을 읽지 않는다**: `rg changedValues lib/protection lib/nightly lib/pull` 0건.
 
 ── 커밋: `feat(import): record changed value count on every import event`
