@@ -15,7 +15,7 @@
 
 ## A. 정본 문서
 
-- **T1** `docs/DESIGN.md`
+- ✅ **T1** (U1) `docs/DESIGN.md`
   - §2.4 상태 표: `unpinned`(설치 있음·리포 미고정) → Disconnected 행(D1) · "알려진 틈"에 넷 — App 제거 · `installation-changed` · `repo-replaced` · 목록(`lastPrUrl` 번호)/Home(sync 브랜치) PR 조회 대상 차이(D2) ·
     **예외 둘**(번역 화면 `pending-edits` 배너 neutral · Logs 성공 neutral — D3①·D3③) · §2.4가 `lib/status/canon.ts`를 코드판 정본으로 가리키는 한 줄 ·
     **글리프 열**(실패 `CircleX` · 경고 `TriangleAlert` · 필드 오류 `CircleAlert` · 검토 대기 `Eye`, 5-Y4·5-Y5) ·
@@ -38,13 +38,13 @@
   검증 [수동]: 아래 체크리스트를 §2.4와 나란히 읽어 전부 ✓ — D3① · D3② · D3③ · D3④ · D3⑤ · Q1 · Q2 · Q3 · Q4(§6.67) · Q5 · Q6 · Q8 · Q9 · Q10 · 예외 둘 · 알려진 틈 넷 · 글리프 열 · 동작 규칙 둘.
   DESIGN을 읽는 자동 테스트는 **지금 없다**. [자동] `pnpm test` green(문서만 바뀌므로 회귀 없음 확인).
   `[commit] docs(DESIGN): state table owns tone, word, glyph and action rules`
-- **T2** `guide/AUTHORING.md` `#labels` 표: 미전달 = 화면 상태 낱말 **Unsent**, 산문 "unsent edits" · 보류 산문 "held"(CI 로그 인용 `deferred` 예외) (7-#5·#4).
+- ✅ **T2** (U1) `guide/AUTHORING.md` `#labels` 표: 미전달 = 화면 상태 낱말 **Unsent**, 산문 "unsent edits" · 보류 산문 "held"(CI 로그 인용 `deferred` 예외) (7-#5·#4).
   검증 [수동]: `#labels` 표의 상태 낱말이 §2.4 낱말과 한 줄씩 대조해 모순 0.
   `[commit] docs(guide): align the authoring vocabulary with the state table`
 
 ## B. 순수 판정 (테스트 먼저) — 커밋 넷
 
-- **T3** 연결 — 🔴 C · 6-Y6 · D1.
+- ✅ **T3** (U2) 연결 — 🔴 C · 6-Y6 · D1.
   - `lib/github-connect/health.ts` `unpinned` 갈래 · `lib/github.ts:167` `repositoryId === null`이면 probe 생략 · `lib/home/state.ts` `connectionProblem`·`planHomeState` ·
     `components/settings/repository-card.tsx`가 `connectionProblem`을 부름(`isDisconnected` 삭제, `unpinned` 버튼 Reconnect).
   - 적재 거부 경로(`lib/import/run.ts:89` · `lib/onboarding-run/import.ts:49` · `lib/import/plan.ts:19`)의 `repositoryId null` 갈래 문구 → Disconnected 낱말(코드 값 불변).
@@ -55,7 +55,7 @@
     거부 문구 키, `read-tools.test.ts`에 `repositoryId null` → `connection: "not-connected"`, `connectRepository`의 `revalidatePath` 인자 단언.
   검증 [자동]: `pnpm exec vitest run lib/github-connect lib/home lib/import lib/mcp components/__tests__/*repository* app/\(edit\)/projects` green.
   `[commit] refactor(connection): unpinned projects read as disconnected everywhere`
-- **T4** 실패 집계 — 🔴 E · 6-Y7 · 6-⚪15 · Q2.
+- ✅ **T4** (U2) 실패 집계 — 🔴 E · 6-Y7 · 6-⚪15 · Q2.
   - `projectSyncFailure(surfaces)` 신규 · `lib/keys/query.ts:349-350`의 행 조립을 **순수 함수로 떼고** 평탄화 제거(표면 배열을 넘김) · 칩·띠·`meterSlot`·Home 배너(`page.tsx:224`)가 부름.
   - **칩 순서만 고친다**(`project-list.tsx:246-249`, 끊김 먼저). 공유 우선순위 표는 두지 않는다.
   - 테스트: A 동기화 중 + B 실패 → failing · A partial + B failed → failed · 전부 동기화 중 → null · 빈 배열 → null · `repositoryId null` + 실패 → 칩·띠 모두 Disconnected ·
@@ -63,15 +63,15 @@
   - 뒤집는 테스트: `projects-screen.test.ts:130-139`(`STATUS_CHIP` — 칩 순서 단언이 없으면 신규). `list.test.ts`에 칩·띠 일치 신규.
   검증 [자동]: `pnpm exec vitest run lib/projects lib/keys components/__tests__/projects-screen.test.ts` green + `pnpm test:projects:postgres` green(`pnpm gate`가 `lib/keys/` 트리거로 붙인다 — 손으로 판정하지 않는다).
   `[commit] fix(projects): pick the worst surface failure and put disconnection first on the chip`
-- **T5** 행동 가용성 — 🔴 F(순수). `planActionAvailability` 신규, Home `page.tsx:243`이 부름. 테스트: 보관 · 보관+끊김(꺼짐) · not_connected 넷 · `unpinned` · `unknown`(켜짐).
+- ✅ **T5** (U2) 행동 가용성 — 🔴 F(순수). `planActionAvailability` 신규, Home `page.tsx:243`이 부름. 테스트: 보관 · 보관+끊김(꺼짐) · not_connected 넷 · `unpinned` · `unknown`(켜짐).
   검증 [자동]: `pnpm exec vitest run lib/home` green.
-- **T6** 결과 톤 — 🔴 B. `TONES` export · `summarizeImport.tone` ← `TONES[summarizeImportEvent]`, 타입 `EventTone`으로 확장(소비자 `sync-result.tsx:82`).
+- ✅ **T6** (U2) 결과 톤 — 🔴 B. `TONES` export · `summarizeImport.tone` ← `TONES[summarizeImportEvent]`, 타입 `EventTone`으로 확장(소비자 `sync-result.tsx:82`).
   `result.test.ts:11` 뒤집기 + 합치 테스트(입력원 `view.test.ts:293-319`, `finishSurface` 모양만 — POSTMORTEM 2026-09-16, 일부 superseded + 일부 partial 포함).
   검증 [자동]: `pnpm exec vitest run lib/import lib/events components/__tests__/sync-result.test.tsx` green.
-- **T7** 표면 적재 상태 — 🔴 A1 · 6-Y8 · 6-⚪13. `planSurfaceImportStatus` → `{ state, tone, labelKey, at: lastImportedAt }`. 테스트: partial → warning, imported → success.
+- ✅ **T7** (U2) 표면 적재 상태 — 🔴 A1 · 6-Y8 · 6-⚪13. `planSurfaceImportStatus` → `{ state, tone, labelKey, at: lastImportedAt }`. 테스트: partial → warning, imported → success.
   뒤집는 테스트: `surface-status.test.ts:8-9`.
   검증 [자동]: `pnpm exec vitest run lib/import` green.
-- **T7a** 보류 표시 — 6-Y9 · 6-Y10 · Q6.
+- ✅ **T7a** (U2) 보류 표시 — 6-Y9 · 6-Y10 · Q6.
   - `planHoldNotice({ pending, openPr, gateApplies, archived, connection })` 신규 — **`lib/protection/plan.ts` 안**(잎, `client-graph.test.ts:405-411` 그대로).
     테스트: 보관·끊김 → null · 편집 > 0 → pending-edits · 편집 > 0 + PR 조회 실패 → pending-edits · `gateApplies=false` + 편집 > 0 → pending-edits ·
     편집 0 + PR 열림 → open-pr · 편집 0 + PR 조회 실패 → pr-check-failed · 편집 0 + `gateApplies=false` → null.
@@ -82,12 +82,12 @@
   - 뒤집는 테스트: `cards.test.ts:83-84` · `meta.test.ts:27,91,93,135,153,167,190` · `runs.test.ts:42` · `sync-time.test.ts:37` · `runs.integration.ts:72,82`.
   검증 [자동]: `pnpm exec vitest run lib/protection lib/home lib/projects` green + `pnpm test:projects:postgres` green(④가 `query.ts`).
   `[commit] refactor(status): one judgment for actions, run tone, surface status and holds` (T5–T7a) — `pnpm gate` green.
-- **T8** `lib/status/canon.ts` 신규 — design §3.6. `StateTone`(EventTone 어휘) · 행마다 `{ tone, variant, label }` · **소비자가 쓰는 키만**.
+- ✅ **T8** (U2) `lib/status/canon.ts` 신규 — design §3.6. `StateTone`(EventTone 어휘) · 행마다 `{ tone, variant, label }` · **소비자가 쓰는 키만**.
   테스트: 전 키의 `label`이 사전 값 · `danger` 톤 → `missing` variant · `client-graph.test.ts`의 `CLIENT_LIB_FILES`(93-)에 등재 + 잎 테스트(363-447 관례). **DESIGN 행 수 대조는 두지 않는다.**
   검증 [자동]: `pnpm exec vitest run lib/status components/__tests__/client-graph.test.ts` green.
-- **T9** `isExpired(expiresAt, now)` — 6-⚪14. 초대·MCP 토큰 사본 여섯(design §3.7)을 교체, 경계(정각 = 만료) 테스트. OAuth 5곳은 제외(spec Q14).
+- ✅ **T9** (U2) `isExpired(expiresAt, now)` — 6-⚪14. 초대·MCP 토큰 사본 여섯(design §3.7)을 교체, 경계(정각 = 만료) 테스트. OAuth 5곳은 제외(spec Q14).
   검증 [자동]: `pnpm exec vitest run lib/auth lib/invitation-email lib/mcp` green.
-- **T10** Logs 판정 `lib/events/view.ts` — 1-Y2/2-Y2(Sync `Syncing…`/Publish `Publishing…`) · 4-Y20(IMPORT 인라인 결과 낱말 제거, 소스는 배지) · Q1(Sync 실패 결과 배지는 "Failed" 유지) ·
+- ✅ **T10** (U2) Logs 판정 `lib/events/view.ts` — 1-Y2/2-Y2(Sync `Syncing…`/Publish `Publishing…`) · 4-Y20(IMPORT 인라인 결과 낱말 제거, 소스는 배지) · Q1(Sync 실패 결과 배지는 "Failed" 유지) ·
   **성공 톤 `muted`(D3③ 예외, 1-Y16)** · 2-W9 일부(`view.ts:118` `NIGHTLY_CLAUSE` 리터럴 사본 → 사전) · `notSent`는 그대로(Q14) · `view.test.ts:31-33` 전제를 "(종류, 결과)마다"로. 결과 칩 톤을 `STATE`에서(D3③).
   검증 [자동]: `pnpm exec vitest run lib/events` green.
   `[commit] refactor(status): state canon, expiry and Logs judgment` (T8–T10) — `pnpm gate` green.
@@ -291,3 +291,5 @@
   Home **Recent logs**는 같은 스트림·행 컴포넌트라 neutral을 따른다. Home 카드·메타·Sync 결과 Alert·Sources·목록은 success. 그래야 spec 완료 조건 6의
   합치 테스트(`TONES[summarizeImportEvent(x)] === summarizeImport(x).tone`)가 성공을 포함한 전 조합에서 선다.
 - 2026-10-01 지휘자(U1 해석 승인): Logs **설정** 종류 칩(slate)은 D3③("별도 축은 blue·teal·violet만")에 따라 neutral 칸으로 간다 — 최종 보고에 알린다.
+- 2026-10-01 지휘자(U2 리뷰 r1): 리포 id 미고정 거부는 자기 코드 `unpinned`(Disconnected 문구·Reconnect), `not-connected`는 사용자 GitHub 계정 미연결(ConnectError) 문구로 되돌렸다. MCP `sync_repository`는 `unpinned`를 `not-connected`로 접는다(외부 계약 불변).
+- ⚠️ U2 ~ T18 사이 dev에서는 Home 메타의 "held until PR merged" 줄이 서지 않는다(`openPr: null`) — **T18이 dev에 들어가기 전에 `/merge`하지 않는다.**
