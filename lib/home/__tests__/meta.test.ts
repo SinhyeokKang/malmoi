@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { metaRows, type MetaRow } from "../meta";
+import { homeTriggers, metaRows, type MetaRow, type RunEvent } from "../meta";
 
 /**
  * 오른쪽 `Project` 메타 열 (캔버스 `2a` 오른쪽 · DESIGN §6.64). **행이 상태에 따라 사라지거나 는다** —
@@ -24,6 +24,7 @@ const base = {
   lastPrUrl: "https://github.com/acme/web/pull/12",
   createdAt: at("2026-08-01T00:00:00Z"),
   archivedAt: null,
+  triggers: { sync: null, publish: null, heldByOpenPr: false },
 };
 
 const kinds = (input: Parameters<typeof metaRows>[0]) => metaRows(input).map((r) => r.kind);
@@ -51,10 +52,10 @@ describe("metaRows — 아홉 행", () => {
 
   it("Publish 행이 PR 링크를 든다 — 없으면 시각만이다", () => {
     expect(row(base, "lastPublish")).toEqual({
-      kind: "lastPublish", at: at("2026-09-13T00:00:00Z"), prUrl: "https://github.com/acme/web/pull/12",
+      kind: "lastPublish", at: at("2026-09-13T00:00:00Z"), prUrl: "https://github.com/acme/web/pull/12", trigger: null,
     });
     expect(row({ ...base, lastPublishedAt: null, lastPrUrl: null }, "lastPublish")).toEqual({
-      kind: "lastPublish", at: null, prUrl: null,
+      kind: "lastPublish", at: null, prUrl: null, trigger: null,
     });
   });
 });
@@ -87,9 +88,9 @@ describe("metaRows — 상태가 행을 바꾼다", () => {
   it("Sync 실패면 마지막 Sync 행이 값 둘을 든다 — 성공 시각과 실패 시각", () => {
     const failed = { ...base, state: "import_failed" as const, lastImportFailedAt: at("2026-09-15T09:00:00Z") };
     expect(row(failed, "lastSync")).toEqual({
-      kind: "lastSync", at: at("2026-09-14T00:00:00Z"), failedAt: at("2026-09-15T09:00:00Z"),
+      kind: "lastSync", at: at("2026-09-14T00:00:00Z"), failedAt: at("2026-09-15T09:00:00Z"), trigger: null, heldByOpenPr: false,
     });
-    expect(row(base, "lastSync")).toEqual({ kind: "lastSync", at: at("2026-09-14T00:00:00Z"), failedAt: null });
+    expect(row(base, "lastSync")).toEqual({ kind: "lastSync", at: at("2026-09-14T00:00:00Z"), failedAt: null, trigger: null, heldByOpenPr: false });
   });
 
   /**
@@ -107,5 +108,63 @@ describe("metaRows — 상태가 행을 바꾼다", () => {
   /** 보관 시각이 없으면 그 행도 없다 — 시각 없는 사건을 세우지 않는다(활동 스트림과 같은 규칙). */
   it("보관 상태여도 시각이 없으면 행을 만들지 않는다", () => {
     expect(kinds({ ...base, state: "archived", archivedAt: null })).not.toContain("archived");
+  });
+});
+
+/**
+ * nightly-sync F2 — Home 메타 열이 실행 주체를 붙인다(`12 hours ago · nightly`). 주체는 **최근 성공 적재**와 **최근 성공 Publish**의
+ * 사건에서 `triggerOf`로 온다. 보류 한 줄은 **최근 적재 사건**이 `deferred` · `open-pr`일 때만이다.
+ */
+describe("homeTriggers — 사건 → 주체", () => {
+  const event = (over: Partial<RunEvent> = {}): RunEvent => ({
+    actorKind: "USER", kind: "IMPORT", subtype: "import.run", result: "imported", payload: { source: "manual" }, ...over,
+  });
+
+  it.each([
+    ["수동 Sync", event(), "manual"],
+    ["첫 적재", event({ subtype: "import.first", payload: { source: "first" } }), "manual"],
+    ["야간 적재", event({ actorKind: "AUTOMATION", subtype: "import.nightly", payload: { source: "nightly" } }), "nightly"],
+    ["CI 적재", event({ actorKind: "AUTOMATION", subtype: "import.ci", payload: { source: "ci" } }), "ci"],
+    ["부분 성공도 성공이다", event({ actorKind: "AUTOMATION", subtype: "import.nightly", result: "partial" }), "nightly"],
+  ] as const)("%s → %s", (_, lastImport, trigger) => {
+    expect(homeTriggers({ lastImport, latestImport: lastImport, lastPublish: null }).sync).toBe(trigger);
+  });
+
+  it("사건이 없으면 주체가 없다 — 이력 도입 전", () => {
+    expect(homeTriggers({ lastImport: null, latestImport: null, lastPublish: null })).toEqual({ sync: null, publish: null, heldByOpenPr: false });
+  });
+
+  /** ⚠️ 성공 술어는 `lastImportedAt`을 전진시키는 집합(imported·partial)과 같다 — 갈리면 수동 Sync 시각에 `nightly`가 붙는다. */
+  it.each(["deferred", "superseded", "failed", "upToDate", "running", null] as const)("성공이 아닌 적재(%s)는 주체를 가리키지 않는다", (result) => {
+    const lastImport = event({ actorKind: "AUTOMATION", subtype: "import.nightly", result });
+    expect(homeTriggers({ lastImport, latestImport: lastImport, lastPublish: null }).sync).toBeNull();
+  });
+
+  it("Publish 주체 — 야간은 nightly, 사람은 manual", () => {
+    const nightly = event({ actorKind: "AUTOMATION", kind: "PUBLISH", subtype: "publish.run", result: null, payload: {} });
+    expect(homeTriggers({ lastImport: null, latestImport: null, lastPublish: nightly }).publish).toBe("nightly");
+    expect(homeTriggers({ lastImport: null, latestImport: null, lastPublish: { ...nightly, actorKind: "USER" } }).publish).toBe("manual");
+  });
+
+  it("최근 적재가 open-pr 보류면 보류 한 줄이 서고, 주체는 그 전 성공 적재의 것이다", () => {
+    const lastImport = event();
+    const latestImport = event({ actorKind: "AUTOMATION", subtype: "import.ci", result: "deferred", payload: { source: "ci", deferReason: "open-pr" } });
+    expect(homeTriggers({ lastImport, latestImport, lastPublish: null })).toEqual({ sync: "manual", publish: null, heldByOpenPr: true });
+  });
+
+  it.each([
+    ["pending-edits 보류", { result: "deferred", payload: { deferReason: "pending-edits" } }],
+    ["pr-check-failed 보류", { result: "deferred", payload: { deferReason: "pr-check-failed" } }],
+    ["옛 보류(사유 없음)", { result: "deferred", payload: {} }],
+    ["적재 성공", { result: "imported", payload: { deferReason: "open-pr" } }],
+  ] as const)("%s는 보류 한 줄을 세우지 않는다", (_, over) => {
+    const latestImport = event({ actorKind: "AUTOMATION", subtype: "import.nightly", ...over });
+    expect(homeTriggers({ lastImport: null, latestImport, lastPublish: null }).heldByOpenPr).toBe(false);
+  });
+
+  it("주체와 보류가 메타 행에 실린다", () => {
+    const rows = metaRows({ ...base, triggers: { sync: "nightly", publish: "ci", heldByOpenPr: true } });
+    expect(rows.find((r) => r.kind === "lastSync")).toMatchObject({ trigger: "nightly", heldByOpenPr: true });
+    expect(rows.find((r) => r.kind === "lastPublish")).toMatchObject({ trigger: "ci" });
   });
 });

@@ -111,7 +111,7 @@ describe("메타 열 — 외부 링크 글리프", () => {
         canOpenSettings
         rows={[
           { kind: "repository", owner: "acme", name: "web", href: "https://github.com/acme/web", disconnected: false },
-          { kind: "lastPublish", at, prUrl: "https://github.com/acme/web/pull/127" },
+          { kind: "lastPublish", at, prUrl: "https://github.com/acme/web/pull/127", trigger: null },
         ]}
       />,
     );
