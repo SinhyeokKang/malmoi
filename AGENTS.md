@@ -134,7 +134,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
 | MCP 개인 토큰 발급·폐기 | **Server Action** (`app/(edit)/mcp/actions.ts`) | `/mcp` — `requireUser`만, `userId`로 좁힌다. 발급 = 기존 행 삭제 + 삽입 한 tx라 Create·Rotate가 같은 Action이다. ⚠️ **MCP 도구에 발급·폐기가 없다** — 토큰이 토큰을 만들지 않는다 |
 | Publish 미리보기 | **Server Action** (`app/(edit)/publish-actions.ts`) | 편집 UI — **읽기만 한다.** 그래서 `revalidatePath`를 부르지 않는다 |
-| 읽기 전용 조회 — Revert 미리보기(`previewTranslationRevert`), 키 목록 다음 페이지(`loadMoreTranslationKeys`) | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI — Publish 미리보기와 같이 **`revalidatePath`를 부르지 않는다.** 인증·인가·readiness는 쓰기 Action과 같은 판정을 지난다. More가 Action인 이유는 cursor를 주소에 싣지 않으려는 것이다(audit-ux #19) |
+| 읽기 전용 조회 — Revert 미리보기(`previewTranslationRevert`) | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI — Publish 미리보기와 같이 **`revalidatePath`를 부르지 않는다.** 인증·인가·readiness는 쓰기 Action과 같은 판정을 지난다. 키 목록은 전량이라 "다음 페이지" Action이 없다(2026-10-01, translation-filter-scope) |
 | `/api/push` | Route Handler | GitHub Actions — Bearer가 **그 프로젝트의 토큰 원문**이다 |
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
 | `/api/mcp` | Route Handler | CLI·코딩 에이전트 — Bearer가 **그 사용자의 개인 토큰**이다(`ApiToken`). **쿠키를 읽지 않는다**(CSRF 방어의 전부). 도구는 Action과 **같은 코어의 형제 껍데기**이고 Action을 부르지 않는다(ARCHITECTURE §6.45) |
