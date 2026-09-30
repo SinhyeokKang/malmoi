@@ -133,6 +133,7 @@ async function readHead(target: NightlyTarget): Promise<{ client: GitClient | nu
       const client = await createGitClient(target.repoOwner, target.repoName, installationId, repositoryId);
       return { client, head: { ok: true as const, sha: await client.getRefSha(`heads/${target.baseBranch}`) } };
     } catch (error) {
+      // 설정 오류(개인키 누락 등)도 여기서 값이 된다 — 던지지 않는 대신 `failed.base-unreadable` 카운터와 이 로그가 그것을 말한다.
       logCaught("nightly", "head", error);
       return { client: null, head: { ok: false as const } };
     }

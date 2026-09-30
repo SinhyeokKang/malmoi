@@ -25,16 +25,21 @@ const planned: Same<Extract<NightlyPlan, { action: "skip" | "none" }>, Extract<N
 void planned;
 
 /** 로그 줄에 **0이어도** 싣는 주 카운터. 부재와 0이 구별되어야 grep이 성립한다. */
-const MAIN = ["targets", "published", "imported", "skipped", "deferred", "failed", "notReady", "unprocessed"] as const;
+const MAIN = ["targets", "published", "imported", "skipped", "deferred", "failed", "notReady", "unprocessed", "deadline"] as const;
+
+/** `runSync`가 행 없이 돌려보내는 실행권 거부 — 사건이 없는 갈래라 실패가 아니라 코드별 거부다(spec 8). */
+const PUBLISH_REFUSALS: readonly string[] = ["already-running", "too-soon"];
 
 /**
- * 야간 요약 한 줄 (`[pull] targets= published= imported= skipped= deferred= failed= notReady= unprocessed= …`).
+ * 야간 요약 한 줄 (`[pull] targets= published= imported= skipped= deferred= failed= notReady= unprocessed= deadline= …`).
  *
- * 주 카운터 뒤에 **세부 카운터**가 붙는다(0이면 뺀다, 이름 순): `deferred.<사유>` · `refused.<코드>`(사건 없는 거부 — 코드별) ·
- * `failed.base-unreadable` · `partial`(imported 안의 부분 적재) · `superseded`(skipped 안의 대체).
+ * 주 카운터 뒤에 **세부 카운터**가 붙는다(0이면 뺀다, 이름 순): `deferred.<사유>` · `skipped.<Publish 스킵 사유>` · `refused.<코드>`(사건 없는
+ * 거부 — 적재·Publish 모두 코드별) · `failed.base-unreadable` · `partial`(imported 안의 부분 적재) · `superseded`(skipped 안의 대체).
  * ⚠️ `refused.*`는 주 카운터 어디에도 더하지 않는다 — 사건이 없는 갈래라 성공·실패 어느 쪽도 아니다.
+ * ⚠️ `published`는 **보낸 것**(committed)만이다 — Publish 갈래의 스킵(no-changes·withheld·writer-warnings…)은 `skipped`다.
  *
- * @param budgetUnprocessed 루프 예산·상한으로 **방문하지 않은** 수. 적재 시작 마감으로 방문만 하고 멈춘 수(`none unprocessed`)와 합친다.
+ * @param budgetUnprocessed 루프 예산·상한으로 **방문하지 않은** 수 — 그대로 `unprocessed`다. 방문했지만 마감으로 멈춘 항목(`none unprocessed`)은
+ *   결과 배열에 있으므로 `deadline`으로 따로 센다. 둘을 합치면 `targets + unprocessed`가 고른 수보다 커진다(두 번 센다).
  */
 export function summarizeNightly(items: readonly PullItem[], budgetUnprocessed: number): { counts: Record<string, number>; line: string } {
   const counts: Record<string, number> = Object.create(null) as Record<string, number>;
@@ -46,7 +51,9 @@ export function summarizeNightly(items: readonly PullItem[], budgetUnprocessed: 
     if (!("action" in item)) { add("failed"); continue; }
     switch (item.action) {
       case "publish":
-        add(item.status === "failed" ? "failed" : "published");
+        if (item.status === "failed") add(PUBLISH_REFUSALS.includes(item.error) ? `refused.${item.error}` : "failed");
+        else if (item.status === "skipped") { add("skipped"); add(`skipped.${item.reason}`); }
+        else add("published");
         break;
       case "import":
         if (!item.recorded) { add(`refused.${item.error}`); break; }
@@ -61,7 +68,7 @@ export function summarizeNightly(items: readonly PullItem[], budgetUnprocessed: 
         else { add("failed"); add(`failed.${item.reason}`); }
         break;
       default:
-        add(item.counter);
+        add(item.counter === "unprocessed" ? "deadline" : item.counter);
     }
   }
   const main = MAIN.map((key) => `${key}=${counts[key] ?? 0}`);

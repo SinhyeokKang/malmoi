@@ -41,7 +41,8 @@ const ready = (slug: string) => ({
 function durations(ms: Record<string, number>) {
   hoisted.runNightly.mockImplementation(async (_prisma: unknown, input: { slug: string }) => {
     vi.setSystemTime(Date.now() + (ms[input.slug] ?? 0));
-    return { status: "no-changes" };
+    // 방문 결과 모양(`NightlyVisit`) — 옛 `PullResult` 모양이면 요약이 조용히 `failed`로 센다.
+    return { action: "skip", outcome: "upToDate" };
   });
 }
 
@@ -100,4 +101,6 @@ it("앞이 예산을 다 쓰면 나머지는 시작하지 않고 unprocessed로 
   expect(hoisted.runNightly).toHaveBeenCalledTimes(2);
   // 요약 줄이 남는 것이 예산의 요지다 — 넘긴 수가 거기 실린다.
   expect(console.log).toHaveBeenCalledWith(expect.stringContaining("unprocessed=1"));
+  // 요약 한 줄 — 돈 둘은 스킵이고 실패가 아니다(mock이 방문 모양이어야 성립한다).
+  expect(console.log).toHaveBeenCalledWith("[pull] targets=2 published=0 imported=0 skipped=2 deferred=0 failed=0 notReady=0 unprocessed=1 deadline=0");
 });

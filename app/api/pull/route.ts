@@ -106,10 +106,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     // ⚠️ **요약을 한 줄 남긴다.** 응답이 항상 200 배열이라 cron 실행은 성공으로 표시되고, cron은 본문을
     // 버린다 — 요약이 없으면 "전 프로젝트가 매일 밤 실패한다"가 성공과 같은 관측값이 된다
     // (POSTMORTEM 2026-09-06의 형태). 로그 grep 하나로 잡히는 자리를 만든다.
-    const summary = summarizeNightly(results, unprocessed);
-    console.log(summary.line);
-    // 적재 시작 마감으로 방문만 하고 멈춘 프로젝트도 "못 돈 것"이다 — 응답의 미처리 수에 합친다(`summarizeNightly`와 같은 수).
-    unprocessed = summary.counts.unprocessed ?? unprocessed;
+    // ⚠️ 응답의 `unprocessed`는 **방문하지 않은 수**만이다 — 마감으로 멈춘 방문은 `results`의 항목(`action: "none"`)이고 요약에서는 `deadline`으로
+    // 센다. 합치면 `results.length + unprocessed`가 고른 수보다 커진다.
+    console.log(summarizeNightly(results, unprocessed).line);
     // ⚠️ **미처리를 배열 밖에 싣는다** — 항목으로 섞으면 `PullItem` 계약이 흔들리고, 소비자가
     // 그것을 프로젝트 하나로 센다. 0이어도 필드를 뺀 적이 없어야 부재와 0이 구별된다.
     return NextResponse.json({ results, unprocessed });

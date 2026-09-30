@@ -14,6 +14,12 @@ import { summarizeNightly } from "../summary";
 const items: PullItem[] = [
   { slug: "p1", action: "publish", status: "committed", delivered: 2, prUrl: "https://github.com/o/r/pull/1" } as PullItem,
   { slug: "p2", action: "publish", status: "failed", error: "x", delivery: "not-started" },
+  // Publish의 스킵은 보낸 것이 아니다 — published가 아니라 skipped다(r2).
+  { slug: "p3", action: "publish", status: "skipped", reason: "no-changes" },
+  { slug: "p4", action: "publish", status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } },
+  // 실행권 거부는 사건이 없는 갈래다 — 실패가 아니라 코드별 거부다(spec 8).
+  { slug: "p5", action: "publish", status: "failed", error: "already-running", delivery: "not-started", retryable: false },
+  { slug: "p6", action: "publish", status: "failed", error: "too-soon", delivery: "not-started", retryable: false, retryAfterSeconds: 30 },
   { slug: "i1", action: "import", recorded: true, result: "imported", deferReason: null },
   { slug: "i2", action: "import", recorded: true, result: "partial", deferReason: null },
   { slug: "i3", action: "import", recorded: true, result: "deferred", deferReason: "too-large" },
@@ -37,29 +43,30 @@ describe("summarizeNightly", () => {
 
   it("주 카운터 — 갈래마다", () => {
     expect(counts).toMatchObject({
-      targets: items.length, published: 1, imported: 2, skipped: 2, deferred: 4, failed: 4, notReady: 1,
-      // 예산 미방문 3 + 적재 시작 마감 1
-      unprocessed: 4,
+      targets: items.length, published: 1, imported: 2, skipped: 4, deferred: 4, failed: 4, notReady: 1,
+      // ⚠️ 예산 미방문만이다 — 마감으로 멈춘 방문은 결과 항목이므로 `deadline`으로 따로 센다(두 번 세지 않는다).
+      unprocessed: 3, deadline: 1,
     });
   });
 
   it("세부 카운터 — 보류 사유별 · 거부 코드별 · 부분 · 대체", () => {
     expect(counts).toMatchObject({
       "deferred.too-large": 1, "deferred.pending-edits": 1, "deferred.open-pr": 1, "deferred.pr-check-failed": 1,
-      "refused.already-running": 2, "refused.repo-replaced": 1, partial: 1, superseded: 1, "failed.base-unreadable": 1,
+      "refused.already-running": 3, "refused.repo-replaced": 1, "refused.too-soon": 1, partial: 1, superseded: 1, "failed.base-unreadable": 1,
+      "skipped.no-changes": 1, "skipped.withheld": 1,
     });
   });
 
   it("로그 한 줄에 전부 싣는다 — 주 카운터는 0이어도 싣는다", () => {
-    expect(line.startsWith("[pull] targets=18 published=1 imported=2 skipped=2 deferred=4 failed=4 notReady=1 unprocessed=4")).toBe(true);
-    expect(line).toContain("refused.already-running=2");
+    expect(line.startsWith("[pull] targets=22 published=1 imported=2 skipped=4 deferred=4 failed=4 notReady=1 unprocessed=3 deadline=1")).toBe(true);
+    expect(line).toContain("refused.already-running=3");
     expect(line).toContain("deferred.too-large=1");
     expect(line.split("\n")).toHaveLength(1);
-    expect(summarizeNightly([], 0).line).toBe("[pull] targets=0 published=0 imported=0 skipped=0 deferred=0 failed=0 notReady=0 unprocessed=0");
+    expect(summarizeNightly([], 0).line).toBe("[pull] targets=0 published=0 imported=0 skipped=0 deferred=0 failed=0 notReady=0 unprocessed=0 deadline=0");
   });
 
   it("세부 키는 정렬 순서다 — 같은 밤이 같은 줄을 낸다", () => {
-    const extras = line.split(" ").slice(9).map((part) => part.split("=")[0]);
+    const extras = line.split(" ").slice(10).map((part) => part.split("=")[0]);
     expect(extras).toEqual([...extras].sort());
   });
 });

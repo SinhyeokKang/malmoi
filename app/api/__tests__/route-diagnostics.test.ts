@@ -171,14 +171,14 @@ describe("/api/pull — 전 프로젝트를 순회한다 (ARCHITECTURE §3.05)",
 
   it("준비된 프로젝트마다 한 번씩, `slug` 오름차순으로 부른다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("zulu"), ready("alpha")]);
-    hoisted.runNightly.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    hoisted.runNightly.mockResolvedValue({ action: "publish", status: "skipped", reason: "no-edits" });
     const res = await pullGet(pullRequest());
     expect(res.status).toBe(200);
     expect(hoisted.runNightly.mock.calls.map((c) => (c[1] as { slug: string }).slug)).toEqual(["alpha", "zulu"]);
     await expect(res.json()).resolves.toEqual({
       results: [
-        { slug: "alpha", status: "skipped", reason: "no-edits" },
-        { slug: "zulu", status: "skipped", reason: "no-edits" },
+        { slug: "alpha", action: "publish", status: "skipped", reason: "no-edits" },
+        { slug: "zulu", action: "publish", status: "skipped", reason: "no-edits" },
       ],
       unprocessed: 0,
     });
@@ -189,7 +189,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (ARCHITECTURE §3.05)",
       { ...ready("skillflo-web"), installationId: null, lastCommitSha: "deadbeef" },
       ready("order-check"),
     ]);
-    hoisted.runNightly.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    hoisted.runNightly.mockResolvedValue({ action: "publish", status: "skipped", reason: "no-edits" });
     await pullGet(pullRequest());
     expect(hoisted.runNightly.mock.calls.map((c) => (c[1] as { slug: string }).slug)).toEqual(["order-check"]);
   });
@@ -197,9 +197,9 @@ describe("/api/pull — 전 프로젝트를 순회한다 (ARCHITECTURE §3.05)",
   it("한 프로젝트가 던져도 나머지가 돈다 — 그 항목만 `failed` + `ref`다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a"), ready("b"), ready("c")]);
     hoisted.runNightly
-      .mockResolvedValueOnce({ status: "skipped", reason: "no-edits" })
+      .mockResolvedValueOnce({ action: "publish", status: "skipped", reason: "no-edits" })
       .mockRejectedValueOnce(new Error("GitHub App 토큰 발급 실패"))
-      .mockResolvedValueOnce({ status: "committed", commitSha: "abc", prUrl: "u", changed: [] });
+      .mockResolvedValueOnce({ action: "publish", status: "committed", commitSha: "abc", prUrl: "u", changed: [] });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await pullGet(pullRequest());
 
@@ -275,7 +275,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (ARCHITECTURE §3.05)",
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a"), ready("b")]);
     hoisted.runNightly
       .mockRejectedValueOnce("문자열 throw")
-      .mockResolvedValueOnce({ status: "skipped", reason: "no-edits" });
+      .mockResolvedValueOnce({ action: "publish", status: "skipped", reason: "no-edits" });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { results: body } = await (await pullGet(pullRequest())).json();
     expect(body).toHaveLength(2);
@@ -286,16 +286,16 @@ describe("/api/pull — 전 프로젝트를 순회한다 (ARCHITECTURE §3.05)",
 
   it("`runNightly`에 라우트가 만든 prisma 인스턴스를 넘긴다 — 두 클라이언트를 만들지 않는다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a")]);
-    hoisted.runNightly.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    hoisted.runNightly.mockResolvedValue({ action: "publish", status: "skipped", reason: "no-edits" });
     await pullGet(pullRequest());
     expect(hoisted.runNightly.mock.calls[0]?.[0]).toBe(hoisted.prisma);
   });
 
   it("`runNightly`가 실패를 **값**으로 주면 그대로 배열에 남는다 — 던지는 경우와 구별한다", async () => {
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a")]);
-    hoisted.runNightly.mockResolvedValue({ status: "skipped", reason: "no-changes", warnings: ["w"] });
+    hoisted.runNightly.mockResolvedValue({ action: "publish", status: "skipped", reason: "no-changes", warnings: ["w"] });
     await expect((await pullGet(pullRequest())).json()).resolves.toEqual({
-      results: [{ slug: "a", status: "skipped", reason: "no-changes", warnings: ["w"] }],
+      results: [{ slug: "a", action: "publish", status: "skipped", reason: "no-changes", warnings: ["w"] }],
       unprocessed: 0,
     });
   });
@@ -327,7 +327,7 @@ describe("/api/pull — 전 프로젝트를 순회한다 (ARCHITECTURE §3.05)",
   it("서버 env `ACTIVE_PROJECT_SLUG`가 없어도 돈다 — cron이 그 값을 더 읽지 않는다", async () => {
     vi.stubEnv("ACTIVE_PROJECT_SLUG", "");
     hoisted.prisma.project.findMany.mockResolvedValue([ready("a")]);
-    hoisted.runNightly.mockResolvedValue({ status: "skipped", reason: "no-edits" });
+    hoisted.runNightly.mockResolvedValue({ action: "publish", status: "skipped", reason: "no-edits" });
     expect((await pullGet(pullRequest())).status).toBe(200);
   });
 });
