@@ -40,7 +40,7 @@ export type RemoteTarget = {
 };
 
 /**
- * @param openPr 삼상태 — 열린 PR · `null`(없음 또는 게이트가 서지 않는 행: 설치·리포 없음 · 보관 · PR 번호 없음) · `undefined`(확인 못 함).
+ * @param openPr 삼상태 — 열린 PR · `null`(없음 또는 목록이 묻지 않는 행: 설치·리포 없음 · 보관 · PR 번호 없음) · `undefined`(확인 못 함).
  */
 export type RemoteSignals = { openPr: { number: number; url: string } | null | undefined; repoAheadFiles: number; repoAheadFrom?: string };
 
@@ -84,13 +84,16 @@ export async function loadRemoteSignals(
   return new Map(targets.map((target, index) => [target.projectId, signals[index] ?? unknownFor(target)]));
 }
 
-/** 이 행의 PR을 물어야 하나 — 보관·설치·리포 id·PR 번호 중 하나라도 없으면 게이트가 서지 않는 쪽이라 "없음"이다. */
+/**
+ * 이 행의 PR을 물을 수 있나 — 보관·설치·리포 id가 없으면 묻지 않고, **PR 번호가 없으면 목록은 물을 수단이 없다**(목록은 마지막 Publish PR 번호로만
+ * 묻는다). ⚠️ 게이트가 서지 않는다는 뜻이 아니다 — 실제 게이트(`loadOpenPrUrl`)는 `lastPrUrl`과 무관하게 sync 브랜치를 `findOpenPr`로 본다(DESIGN §2.4 알려진 틈 4).
+ */
 function pullNumberToCheck(target: RemoteTarget): number | null {
   if (target.archived || target.installationId === null || target.repositoryId === null) return null;
   return pullNumberFrom(target.lastPrUrl);
 }
 
-/** 확인하지 못한 행의 신호 — PR을 물었어야 하면 모름, 아니면 없음. compare는 모름을 말할 자리가 없어 0이다. */
+/** 확인하지 못한 행의 신호 — PR을 물었어야 하면 모름, 물을 수 없던 행은 없음. compare는 모름을 말할 자리가 없어 0이다. */
 function unknownFor(target: RemoteTarget): RemoteSignals {
   return pullNumberToCheck(target) === null ? NONE : { openPr: undefined, repoAheadFiles: 0 };
 }

@@ -154,7 +154,7 @@ it("compare만 거부되면 PR 결과를 보존하고 원격 변경은 0이다",
   expect(got.get("p1")).toEqual({ openPr: { number: 142, url: "https://github.com/o/r/pull/142" }, repoAheadFiles: 0 });
 });
 
-it("PR 번호가 없는 행은 클라이언트가 실패해도 PR이 null이다 — 게이트가 서지 않는 쪽이다", async () => {
+it("PR 번호가 없는 행은 클라이언트가 실패해도 PR이 null이다 — 목록은 번호 없이 물을 수단이 없다", async () => {
   const createClient = vi.fn(async () => { throw new Error("installation revoked"); });
   const got = await loadRemoteSignals([target({ lastPrUrl: null })], { createClient });
   expect(got.get("p1")).toEqual({ openPr: null, repoAheadFiles: 0 });
@@ -323,7 +323,7 @@ it("응답이 영영 안 오면 마감에서 신호 없이 돌려준다", async 
     // 행은 목록에 남는다 — 지연도 실패와 같은 갈래라 **PR 번호가 있는 모든 행**의 PR이 모름이다(ux-drift-unify Q6 ③). 정직한 결과다.
     expect(got.get("p1")).toEqual({ openPr: undefined, repoAheadFiles: 0 });
     expect(got.get("p2")).toEqual({ openPr: undefined, repoAheadFiles: 0 });
-    // PR 번호가 없거나 보관이면 게이트가 서지 않는 쪽이라 null이다.
+    // PR 번호가 없거나 보관이면 목록이 묻지 않는 행이라 null이다.
     expect(got.get("p3")).toEqual({ openPr: null, repoAheadFiles: 0 });
     expect(got.get("p4")).toEqual({ openPr: null, repoAheadFiles: 0 });
   } finally {

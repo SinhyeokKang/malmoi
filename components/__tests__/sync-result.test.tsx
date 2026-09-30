@@ -160,8 +160,13 @@ it("거부는 tone·닫기·액션이 갈래마다 갈린다", async () => {
   expect(view.container.querySelector('a[href="/projects/acme/settings"]')?.textContent).toBe("Open settings");
   expect(alert(view.container)?.className).toContain("bg-amber-50");
 
-  await view.rerender(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "not-connected" }} />);
+  // 리포 id 미고정은 [Reconnect], 계정 미연결(ConnectError)은 리포가 멀쩡하므로 끊김을 말하지 않고 설정으로 보낸다(ux-drift-unify r1).
+  await view.rerender(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "unpinned" }} />);
   expect(view.container.querySelector('a[href="/projects/acme/settings"]')?.textContent).toBe("Reconnect");
+  expect(view.container.textContent).toContain("This repository is disconnected");
+  await view.rerender(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "not-connected" }} />);
+  expect(view.container.querySelector('a[href="/projects/acme/settings"]')?.textContent).toBe("Open settings");
+  expect(view.container.textContent).not.toMatch(/disconnected/i);
 
   // ⚠️ 리포는 생성 시점 고정이라 [Reconnect]가 눌러도 실패할 버튼이다 (DESIGN §6.2).
   await view.rerender(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "repo-replaced" }} />);

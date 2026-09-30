@@ -6,7 +6,8 @@ import { m } from "@/lib/i18n";
  *
  * ⚠️ **잎이다 — 사전(`lib/i18n`)만 문다.** 클라이언트가 값으로 읽으므로 Prisma·`lib/keys/query.ts` 그래프를 물면
  * `client-graph.test.ts`가 red다(POSTMORTEM 2026-09-07의 7.2MB 청크). ⚠️ **`lib/`는 Tailwind를 모른다** — 클래스는 `components/ui/`가 든다.
- * ⚠️ **소비자가 0인 키는 넣지 않는다** — 셀 상태(`needsReview`·`untranslated`)·초대 `expired` 등은 소비자가 생길 때 올린다.
+ * ⚠️ **U3(`StatusBadge`)·U5(교차 테스트)를 위해 미리 넣은 키가 있다** — 기능 종료 때 여전히 소비자가 없으면 뺀다. 그 밖의 상태
+ *   (셀 `needsReview`·`untranslated`, 초대 `expired` 등)는 소비자가 생길 때 올린다.
  * ⚠️ DESIGN 표와의 행 수 대조 테스트는 없다 — 빠진 키는 `Record<StateKey, …>`가 컴파일에서 막는다. 이 표와 §2.4가 어긋나면 둘을 함께 고친다.
  */
 

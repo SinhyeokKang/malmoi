@@ -67,7 +67,7 @@ describe("summarizeImport.tone = TONES[summarizeImportEvent]", () => {
  * 부른다 — 그 트리를 기다려야 Publish가 Sync가 버렸을지 모를 편집으로 켜지지 않는다 (malmoi#132).
  */
 describe("importRevalidates", () => {
-  it.each(["reconfirm", "already-running", "not-ready", "not-connected", "repo-replaced", "ingest-failed", "no-surfaces"] as const)("try 안의 거부 %s는 트리가 온다", error => {
+  it.each(["reconfirm", "already-running", "not-ready", "not-connected", "unpinned", "repo-replaced", "ingest-failed", "no-surfaces"] as const)("try 안의 거부 %s는 트리가 온다", error => {
     expect(importRevalidates({ ok: false, error })).toBe(true);
   });
   it.each(["invalid input", "unauthorized", "forbidden", "unavailable", "not-found", "archived"] as const)("try 앞의 거부 %s는 트리가 없다", error => {

@@ -86,7 +86,8 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
     if (apiToken?.grant === "token-scope") return { ok: false, error: "token-scope" };
     const surfaces = await tx.translationSurface.findMany({ where: { projectId: input.projectId }, orderBy: { slug: "asc" } });
     const expected = input.repository;
-    const identity = project.repositoryId === null || project.installationId === null ? "not-connected" :
+    // 설치 없음은 readiness가 먼저 `not-ready`로 거른다 — 여기 닿는 null은 리포 id 미고정이다(`unpinned`, ux-drift-unify r1).
+    const identity = project.repositoryId === null || project.installationId === null ? "unpinned" :
       project.repositoryId !== expected.repositoryId || project.installationId !== expected.installationId || project.repoOwner !== expected.repoOwner ||
       project.repoName !== expected.repoName || project.baseBranch !== expected.baseBranch ? "repo-replaced" : "ok";
     const startedAt = new Date();

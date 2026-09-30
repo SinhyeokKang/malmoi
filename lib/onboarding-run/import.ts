@@ -46,7 +46,8 @@ async function runAuthorized(prisma: PrismaClient, subject: Subject, projectId: 
     if (project === null) return { ok: false, error: "not-found" };
     if (project.archivedAt !== null) return await refuse("archived");
     if (planProjectReadiness(project) !== "ready") return await refuse("not-ready");
-    if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "not-connected" };
+    // ⚠️ **`not-connected`가 아니다** (ux-drift-unify r1) — 그 코드는 아래 `checkRepoAccess`가 "계정이 연결되지 않았다"로 낸다. 설치 없음은 readiness가 먼저 걸렀다.
+    if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "unpinned" };
     // 재적재는 리포를 읽기만 한다 — 쓰기 권한 없이 초대된 OWNER도 여기선 통과한다 (sec-audit-3 1a 범위 밖).
     const connected = await checkRepoAccess(prisma, userId, project.repoOwner, project.repoName, false);
     if (connected.status !== "ok") return await refuse(connected.error);

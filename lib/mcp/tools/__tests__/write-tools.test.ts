@@ -218,6 +218,19 @@ describe("결과 문장은 화면과 같은 키", () => {
     expect(toToolResult(await run("sync_repository", subject("owner"), { slug: "acme", approval: "a" })).content[0]?.text).toBe(m.repositorySync.errors.reconfirm);
   });
 
+  /**
+   * ⚠️ **거부 코드 값 목록은 외부 계약이다** (ux-drift-unify r1 · Q12와 같은 결) — 화면은 리포 id 미고정을 `unpinned`로 가르지만
+   * `sync_repository`의 `code`는 넓히지 않는다: 경계가 `not-connected`로 접는다. 문장은 화면과 같은 키다.
+   */
+  it("Sync 거부 unpinned는 출력 경계에서 not-connected 코드이고 문장은 화면의 Disconnected다", async () => {
+    h.core.mockResolvedValueOnce({ outcome: { ok: false, error: "unpinned" }, attempted: true });
+    expect(await run("sync_repository", subject("owner"), { slug: "acme", approval: "a" }))
+      .toMatchObject({ status: "refused", code: "not-connected", message: m.repositorySync.errors.unpinned });
+    h.core.mockResolvedValueOnce({ outcome: { ok: false, error: "not-connected" }, attempted: true });
+    expect(await run("sync_repository", subject("owner"), { slug: "acme", approval: "a" }))
+      .toMatchObject({ status: "refused", code: "not-connected", message: m.repositorySync.errors["not-connected"] });
+  });
+
   it("Revert의 잠금 뒤 재측정 불일치는 번역 화면의 문장", async () => {
     h.core.mockResolvedValueOnce({ status: "reconfirm" });
     expect(toToolResult(await run("revert_to_last_sent", subject("owner"), { ...S, keyId: "k1", confirmation: "c".repeat(64) })).content[0]?.text)

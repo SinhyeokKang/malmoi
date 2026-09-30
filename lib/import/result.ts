@@ -14,12 +14,16 @@ export type SurfaceImportResult = {
   errors: readonly { path: string; code: AdapterError["code"] }[];
 };
 /**
+ * `unpinned` — 설치는 있고 리포 id가 고정되지 않은 프로젝트(ux-drift-unify D1 · r1). ⚠️ **`not-connected`와 다르다** — 그것은 `checkRepoAccess`가
+ * 내는 ConnectError("이 사람의 GitHub 계정이 연결되지 않았다")다. 한 코드로 두면 계정만 없는 OWNER가 멀쩡한 리포를 "끊겼다"로 본다.
+ * MCP 출력 경계는 이 코드를 `not-connected`로 접는다(외부 계약 불변 — `lib/mcp/tools/sync.ts`).
+ *
  * `reconfirm` — 폐기 승인 지문이 없거나 잠금 뒤 재계산과 달랐다(Dialog 뒤 편집·적용·설정 변경). sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인.
  *
  * `unconfirmed` — **클라이언트만 낸다**: Action 호출이 throw했다(malmoi#132). 요청이 나간 뒤 응답을 잃었으면 서버가 Sync를 끝냈을 수
  * 있으므로 `unavailable`("didn't go through")로 접지 않는다 — 되돌릴 수 없는 폐기를 안 일어난 일로 말하게 된다.
  */
-export type RepositoryImportError = AccessError | OnboardError | ConnectError | "invalid input" | "not-ready" | "not-connected" | "repo-replaced" | "already-running" | "no-surfaces" | "reconfirm" | "unconfirmed";
+export type RepositoryImportError = AccessError | OnboardError | ConnectError | "invalid input" | "not-ready" | "not-connected" | "unpinned" | "repo-replaced" | "already-running" | "no-surfaces" | "reconfirm" | "unconfirmed";
 /**
  * @param remainingEdits 실행이 끝난 뒤 남은 미전달 편집 — 승인 뒤 저장됐거나 리포에 값이 없어 안 덮인 셀. 0이 아니면 리포 갱신은 계속 멈춘다.
  */
