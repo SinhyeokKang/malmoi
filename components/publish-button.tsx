@@ -2,7 +2,7 @@
 import { utcMinute } from "@/lib/utc-time";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
-import { CircleCheck, FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
+import { FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, Send, TriangleAlert } from "lucide-react";
 import { useEffect, useId, useRef, useState, type RefObject, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { triggerPullAction } from "@/app/(edit)/actions";
@@ -11,7 +11,7 @@ import { loadPublishPreview } from "@/app/(edit)/publish-actions";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { CountBadge } from "@/components/ui/count-badge";
-import { Button, buttonClass } from "@/components/ui/button";
+import { Button, ButtonLink, buttonClass } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OnboardingModal } from "@/components/ui/modal";
 import { m } from "@/lib/i18n";
@@ -159,42 +159,27 @@ const PANEL = {
   previewError: "min-h-[min(440px,calc(100svh-96px))] max-h-[min(480px,calc(100svh-96px))]",
 } as const;
 
-/**
- * 무색 블록 — `1a`의 PR 줄 · `1e`·`1g`의 브랜치 경고 · `1f`의 본문이 같은 급이다.
- *
- * ⚠️ **글리프 칸의 높이가 첫 줄의 line-height와 같다** (시안 §5). `margin-top`으로 눈대중 보정하면
- * 글자 크기가 다른 블록마다 어긋나고, 그 어긋남은 한 화면 안에서만 안 보인다.
- */
 /*
- * ⚠️ **블록에 `aria-live`를 주지 않는다** — 시안은 PR 줄에 `polite`를 적었지만 **리뷰 6번이
+ * ⚠️ **PR 줄·결과 블록은 `Alert`다** (ux-drift-unify Q10) — 옛 손 조립 무색 `Notice`는 같은 성공을 Home Sync(초록 Alert)와 다르게 그렸고
+ * 경고도 무색 글리프였다. tone은 뜻으로 고른다: 열린 PR 있음·없음은 정보(neutral), 조회 실패·브랜치 교체는 warning, 바뀐 것 없음은 success.
+ * ⚠️ **블록에 `aria-live`를 주지 않는다**(Alert의 비-danger 기본값) — 시안은 PR 줄에 `polite`를 적었지만 **리뷰 6번이
  * "껍데기의 polite live 한 곳"으로 정정했다**: 같은 전이를 둘이 알리면 중복 낭독이 되고,
  * `translations-screen.test.ts`가 번역 작업 화면의 live 영역을 푸터 결과 영역 하나로 고정한다.
  */
-function Notice({ icon: Icon, title, children }: { icon: typeof Info; title?: string; children: ReactNode }) {
-  // ⚠️ 제목 없는 형(`1f`)은 padding 16이고 제목 있는 형은 14 16이다 — 시안이 그 둘을 갈라 그렸다.
-  return <div className={`border-border flex shrink-0 gap-3 rounded-lg border ${title === undefined ? "p-4" : "px-4 py-3.5"}`}>
-    <span className={`text-muted-foreground flex shrink-0 items-center ${title === undefined ? "h-6" : "h-[17px]"}`}><Icon className="size-4" aria-hidden /></span>
-    <span className="flex min-w-0 flex-1 flex-col gap-1">
-      {title !== undefined && <span className="text-sm font-medium">{title}</span>}
-      <span className={title === undefined ? "text-sm leading-[1.7] text-pretty" : "text-muted-foreground text-xs leading-[1.7]"}>{children}</span>
-    </span>
-  </div>;
-}
 
 /**
- * PR 줄의 조회 중 자리 — 제목 있는 `Notice`와 같은 박스라 준비되면 표가 안 밀린다.
+ * PR 줄의 조회 중 자리 — 제목 있는 `Alert`와 같은 상자(radius 12 · padding 16 · 제목 20 + 4 + 본문 20)라 준비되면 표가 안 밀린다.
  *
  * ⚠️ **`prUnknown`으로 대신하지 않는다** (malmoi#49). 그 문장은 조회가 **실패했다**는 말이라, 로딩에
  * 세우면 몇 초 동안 일어나지 않은 실패와 "열린 PR을 덮을 수 있다"를 읽힌다.
  */
-function NoticeSkeleton() {
-  return <div aria-hidden className="border-border flex shrink-0 gap-3 rounded-lg border px-4 py-3.5">
-    <span className="flex h-[17px] shrink-0 items-center"><Skeleton className="size-4 rounded-full" /></span>
-    {/* ⚠️ **막대가 아니라 줄 상자가 높이를 든다** — 제목 20 + 본문 13/1.7(22.1)이 `Notice`의 실측이고,
-        막대 높이로 맞추면 소수 줄 높이가 안 맞아 준비될 때 표가 5px 밀렸다(2026-09-17 실측 71 → 76). */}
+function AlertSkeleton() {
+  return <div aria-hidden className="bg-muted flex shrink-0 gap-3 rounded-lg p-4">
+    <span className="flex h-5 shrink-0 items-center"><Skeleton className="size-4 rounded-full" /></span>
+    {/* ⚠️ **막대가 아니라 줄 상자가 높이를 든다** — 막대 높이로 맞추면 준비될 때 표가 밀린다(2026-09-17 실측 71 → 76). */}
     <span className="flex min-w-0 flex-1 flex-col gap-1">
       <span className="flex h-5 items-center"><Skeleton className="h-3.5 w-56" /></span>
-      <span className="flex items-center text-xs leading-[1.7]">{"\u200b"}<Skeleton className="h-3 w-full" /></span>
+      <span className="flex h-5 items-center"><Skeleton className="h-3.5 w-full" /></span>
     </span>
   </div>;
 }
@@ -236,7 +221,7 @@ function PrCard({ repo, number, note }: { repo: string; number: number | null; n
 
 /** `1e`·`1g`가 공유하는 브랜치 경고 — 조건은 `pr === "updated"` 하나다(warnings와 무관하다). */
 function Replaced({ branch, base }: { branch: string; base: string }) {
-  return <Notice icon={RefreshCw} title={p.replacedTitle}>{p.replacedBody(branch, base)}</Notice>;
+  return <Alert variant="warning" className="shrink-0" title={p.replacedTitle}>{p.replacedBody(branch, base)}</Alert>;
 }
 
 /**
@@ -299,7 +284,7 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
               </td>}
               <td className="border-divider w-[84px] border-t border-r px-3 py-[11px] align-top">
                 <span className="flex items-start gap-2">
-                  {flag !== null && <img src={`/flags/${flag}.svg`} alt="" className="mt-[5px] h-[11px] w-4 shrink-0 rounded-xs ring-1 ring-foreground/6" />}
+                  {flag !== null && <img src={`/flags/${flag}.svg`} alt="" className="mt-[5px] h-[11px] w-4 shrink-0 rounded-xs ring-1 ring-foreground/[0.06]" />}
                   <span className="text-xs leading-5 font-medium">{row.localeCode}</span>
                 </span>
               </td>
@@ -361,11 +346,12 @@ function Progress({ branch }: { branch: string }) {
 /** `1g` — 펼친 목록이다(불변식 9). 단위가 **파일**이고 키 이름이 없다 — 경고 문자열에 없다. */
 function Warnings({ warnings }: { warnings: readonly string[] }) {
   const groups = summarizeWarnings(warnings);
-  return <section className="border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-sm border">
+  // 4-W2 · 1-Y5 — 카드 규격(radius 12)이고 개수는 배지다. 머리 글리프는 Held back(warning)의 톤을 든다 — 무색이면 결과가 경고인지 안 읽힌다.
+  return <section className="border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
     <div className="border-divider flex shrink-0 items-center gap-2 border-b px-4 py-3">
-      <TriangleAlert className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
+      <TriangleAlert className="size-3.5 shrink-0 text-amber-700" aria-hidden />
       <h3 className="text-sm font-medium">{p.notWritten}</h3>
-      <span className="text-muted-foreground ml-auto shrink-0 text-xs">{p.warnings(warnings.length)}</span>
+      <CountBadge count={warnings.length} label={p.warnings(warnings.length)} className="ml-auto shrink-0" />
     </div>
     <div className="min-h-0 flex-1 overflow-y-auto">
       {groups.map((group, i) => group.messages.map((message, j) => <div key={`${i}:${j}`} className="border-divider flex items-start gap-3 border-b px-4 py-[11px]">
@@ -421,7 +407,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
     case "preview-loading":
       title = p.previewTitle(count); description = p.previewIntro(label); footer = p.changes(count);
       body = <>
-        <NoticeSkeleton />
+        <AlertSkeleton />
         <TableShell>
           <table className="w-full table-fixed border-separate border-spacing-0"><TableHead /></table>
           <Skeleton className="min-h-0 flex-1 rounded-none" />
@@ -433,7 +419,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       panel = PANEL.configError; inner = false; quiet = true;
       const r = state.reason === "base-file-unreadable" ? p.baseFileUnreadable : p.baseFileMissing;
       title = r.title; description = r.description(state.path, state.branch); footer = p.notStarted;
-      actions = role === "OWNER" ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.settings(slug)}>{p.settings}</a> : null;
+      actions = role === "OWNER" ? <ButtonLink variant="primary" size="lg" href={routes.settings(slug)}>{p.settings}</ButtonLink> : null;
       body = <Stack><Alert variant="danger" title={p.wontHelp}>{role === "OWNER" ? r.owner : r.editor}</Alert></Stack>;
       break;
     }
@@ -493,10 +479,10 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       body = <>
         {/* ⚠️ **삼상태를 `null`로 접지 않는다** — "없다"와 "모른다"는 다른 줄이다. 줄은 조회 전에도 선다. */}
         {open === undefined
-          ? <Notice icon={Info} title={p.prUnknown.title}>{p.prUnknown.body}</Notice>
+          ? <Alert variant="warning" className="shrink-0" title={p.prUnknown.title}>{p.prUnknown.body}</Alert>
           : open === null
-            ? <Notice icon={GitPullRequestArrow} title={p.prNone.title(label)}>{p.prNone.body(sending)}</Notice>
-            : <Notice icon={GitPullRequestArrow} title={p.prOpen.title(open.number)}>{p.prOpen.body(open.number, sending)}</Notice>}
+            ? <Alert variant="neutral" className="shrink-0" title={p.prNone.title(label)}>{p.prNone.body(sending)}</Alert>
+            : <Alert variant="neutral" className="shrink-0" title={p.prOpen.title(open.number)}>{p.prOpen.body(open.number, sending)}</Alert>}
         <PreviewTable preview={data} />
       </>;
       break;
@@ -575,7 +561,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           title = p.noChanges; description = closed === undefined ? p.noChangesDescription : p.closedPr.description(repo.branch);
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;
           body = <Stack>
-            <Notice icon={CircleCheck}>{p.noChangesBody(repo.branch)}</Notice>
+            <Alert variant="success" className="shrink-0">{p.noChangesBody(repo.branch)}</Alert>
             {closedLine}
             {withheld}
             <Hint icon={History}>{p.inLogs}</Hint>
@@ -592,7 +578,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           footer = failed?.delivery === "unknown" ? p.unknownDelivery : p.notStarted;
           quiet = true;
           actions = hasCode && role === "OWNER"
-            ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.settings(slug)}>{p.settings}</a>
+            ? <ButtonLink variant="primary" size="lg" href={routes.settings(slug)}>{p.settings}</ButtonLink>
             // 세션이 끝난 것은 역할과 무관하다 — 다시 로그인하는 것은 누구나 할 수 있다.
             : failed?.error === "unauthorized"
               ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.signIn()} target="_blank" rel="noreferrer">{p.signIn}</a>

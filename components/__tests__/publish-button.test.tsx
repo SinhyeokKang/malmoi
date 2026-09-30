@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -349,6 +351,41 @@ it("보류가 섞인 미리보기는 나가는 수로 말하고 '전부 간다'�
   expect(text).not.toContain(p.previewIntro("owner/repo"));
   expect(text).toContain(p.previewIntroPartial("owner/repo"));
 });
+/**
+ * **Publish의 블록은 `Alert`의 tone으로 말한다** (ux-drift-unify Q10 · 5-Y16) — 옛 손 조립 무색 `Notice`는 같은 성공을 Home Sync(초록 Alert)와
+ * 다르게 그렸고 경고도 무색 글리프였다. 단언은 클래스가 아니라 `data-alert`다.
+ */
+it.each([
+  ["열린 PR 없음", null, "neutral", (p: typeof m.translations.publish): string => p.prNone.title("owner/repo")],
+  ["열린 PR", { number: 9, url: "https://github.com/owner/repo/pull/9" }, "neutral", (p: typeof m.translations.publish): string => p.prOpen.title(9)],
+  ["PR 조회 실패", undefined, "warning", (p: typeof m.translations.publish): string => p.prUnknown.title],
+] as const)("미리보기 PR 줄(%s)은 뜻에 맞는 Alert tone이다", async (_name, openPr, tone, title) => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, openPr }));
+  await render(<Host />); await click("Publish1");
+  const block = [...document.querySelectorAll("[data-alert]")].find(node => node.textContent?.includes(title(m.translations.publish)));
+  expect(block?.getAttribute("data-alert")).toBe(tone);
+});
+it.each([
+  ["no-changes", { status: "skipped", reason: "no-changes" }, "success"],
+  ["updated", { ...committedWith(), pr: "updated" }, "warning"],
+] as const)("결과 %s의 블록은 뜻에 맞는 Alert tone이다", async (name, outcome, tone) => {
+  mocks.pull.mockResolvedValueOnce(outcome);
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  const blocks = [...document.querySelectorAll('[role="dialog"] [data-alert]')];
+  expect(blocks.map(node => node.getAttribute("data-alert"))).toEqual([tone]);
+  if (name === "updated") expect(blocks[0]?.textContent).toContain(m.translations.publish.replacedTitle);
+});
+/** 4-W2 · 1-Y5 — 버린 값 목록은 카드 규격(radius 12)이고 개수는 배지(`CountBadge`)이며 머리 글리프가 warning 톤이다. */
+it("writer 경고 목록은 카드 radius · 개수 배지 · warning 글리프다", async () => {
+  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "writer-warnings", warnings: ["web: ko.json: bad", "web: ko.json: worse"] });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  const list = document.querySelector('[role="dialog"] section');
+  expect(list?.className).toContain("rounded-lg");
+  const head = list?.firstElementChild;
+  expect(head?.querySelector('[aria-hidden="true"]:not(svg)')?.textContent).toBe("2");
+  expect(head?.querySelector(".sr-only")?.textContent).toBe(m.translations.publish.warnings(2));
+  expect(head?.querySelector("svg")?.getAttribute("class")).toContain("text-amber-700");
+});
 it("전부 보류면 PR 버튼이 없고 이유를 말한다 · 실행하지 않는다", async () => {
   mocks.preview.mockResolvedValue(ok({ ...preview, total: 1, keys: 1, withoutFile: 1, sendable: { total: 0, keys: 0 }, openPr: { number: 9, url: "https://github.com/owner/repo/pull/9" } }));
   await render(<Host count={1} />); await click("Publish1");
@@ -577,4 +614,15 @@ it("실패 시각은 <time dateTime>에 UTC 라벨로 선다", async () => {
   expect(new Date(time?.getAttribute("dateTime") ?? "").toISOString()).toBe(time?.getAttribute("dateTime"));
 });
 
+});
+/**
+ * **앱 안 이동은 `ButtonLink`다** (ux-drift-unify 3-⚪12) — raw `<a>` + `buttonClass`는 전체 새로고침이라 같은 "Open settings"가
+ * Sync 결과·Logs(`ButtonLink`)와 다르게 움직였다. `<a>` + `buttonClass`는 새 탭 외부(`target="_blank"`)만 남는다.
+ */
+it("Publish 모달의 raw <a> 버튼은 전부 새 탭 외부 링크다", () => {
+  const source = readFileSync(join(process.cwd(), "components/publish-button.tsx"), "utf8");
+  const anchors = source.match(/<a className=\{buttonClass\([^>]*>/g) ?? [];
+  expect(anchors.length).toBeGreaterThan(0);
+  for (const anchor of anchors) expect(anchor).toContain('target="_blank"');
+  expect(source).not.toMatch(/<a [^>]*href=\{routes\.settings/);
 });

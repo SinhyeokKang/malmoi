@@ -109,6 +109,8 @@ const REGISTERED: Record<string, string[]> = {
     "components/translations/workspace/key-list.tsx",
     "components/translations/workspace/locale-panel.tsx",
     "components/translations/workspace/workspace.tsx",
+    // Publish 결과의 버린 값 목록 머리 — Held back(warning) 글리프 (2026-10-01 ux-drift-unify 1-Y5)
+    "components/publish-button.tsx",
     // Alert warning 글리프 (2026-09-29 — 색은 배경과 글리프만 든다)
     "components/ui/alert.tsx",
   ],
@@ -307,8 +309,9 @@ describe("아이콘은 §6.8의 넷(16·14·12·20)이다 (audit #48)", () => {
    * 아이콘 색은 상속이 기본이고, 예외는 **한 단계 아래 글리프**(§6.8 "형")와 Alert·EmptyState·PR 글리프다.
    * 그 밖의 색상(hue)을 아이콘에 주지 않는다 — 색만으로 말하는 글리프가 생긴다.
    */
-  it("아이콘에 붙는 색은 무채 계단·destructive·PR 초록뿐이다", () => {
-    const ALLOWED = new Set(["text-muted-foreground", "text-foreground", "text-destructive", "text-neutral-300", "text-neutral-400", "text-neutral-600", "text-green-800"]);
+  it("아이콘에 붙는 색은 무채 계단·destructive·PR 초록·warning 글리프뿐이다", () => {
+    // `text-amber-700`은 §2.4 글리프 열의 warning 글리프다(Publish Held back 목록 머리, 2026-10-01 1-Y5) — 파일 범위는 위 `REGISTERED`가 묶는다.
+    const ALLOWED = new Set(["text-muted-foreground", "text-foreground", "text-destructive", "text-neutral-300", "text-neutral-400", "text-neutral-600", "text-green-800", "text-amber-700"]);
     const icons = SOURCES.flatMap(({ path, source }) => {
       const names = [...source.matchAll(/import\s*\{([^}]*)\}\s*from\s*"lucide-react"/g)].flatMap((match) => (match[1] ?? "").split(",").map((name) => name.trim()).filter(Boolean));
       // ⚠️ `className={cn(…)}`·템플릿 리터럴도 읽는다 — 여는 태그 안의 문자열 조각을 전부 모은다.

@@ -2,6 +2,7 @@ import { FileJson2, GitPullRequestArrow, Info, X } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { LocaleFlag } from "@/components/translations/locale-badge";
+import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { m } from "@/lib/i18n";
@@ -39,21 +40,6 @@ function Shell({ title, description, children, meta, action, tall }: { title: st
         <span className="text-muted-foreground text-xs leading-[1.6]">{meta}</span>
         <div className="flex items-center gap-2">{action}</div>
       </div>
-    </div>
-  );
-}
-
-/** `publish-button.tsx`의 제목 있는 `Notice` — 글리프 칸의 높이가 제목 줄과 같다. */
-function Notice({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="border-border flex shrink-0 gap-3 rounded-lg border px-4 py-3.5">
-      <span className="text-muted-foreground flex h-[17px] shrink-0 items-center">
-        <GitPullRequestArrow className="size-4" aria-hidden />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-sm font-medium">{title}</span>
-        <span className="text-muted-foreground text-xs leading-[1.7]">{children}</span>
-      </span>
     </div>
   );
 }
@@ -98,7 +84,7 @@ export function PreviewModal() {
       meta={p.previewSummary(rows.length, keys, rows.length)}
       action={<span className={buttonClass({ variant: "primary", size: "lg" })}>{p.openPr}</span>}
     >
-      <Notice title={p.prNone.title(fixture.repo)}>{p.prNone.body(rows.length)}</Notice>
+      <Alert variant="neutral" className="shrink-0" title={p.prNone.title(fixture.repo)}>{p.prNone.body(rows.length)}</Alert>
       <div className="border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
         <div className="bg-primary-foreground border-border text-muted-foreground flex border-b text-xs">
           <span className="border-divider w-[220px] shrink-0 border-r px-3.5 py-[9px]">{p.key}</span>
