@@ -3463,7 +3463,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   - ⚠️ **미고정 행은 cron 순회에서도 빠진다** (§3.05). 화면이 할 일(Reconnect)을 말하는 동안
     `/logs`가 실패로 채워지면 7단계 이력의 첫 화면이 무의미해진다.
   - **설치는 있고 리포 id가 없으면 연결 건강성은 `unpinned`다** (2026-10-01, ux-drift-unify D1) — probe 결과와 무관하고(`ok`·`not-installed`·`error`
-    전부 `unpinned`), `repositoryId === null`이면 probe를 부르지 않는다(`lib/github.ts`). 화면은 전부 **Disconnected(호박) + Reconnect**다 —
+    전부 `unpinned`), `repositoryId === null`이면 probe를 부르지 않는다 — 판정은 `storedConnection`(`lib/github-connect/health.ts`)이고, `loadConnectionHealth`(`lib/github.ts`)가 그 결론이 서면 probe 전에 돌아간다. 화면은 전부 **Disconnected(호박) + Reconnect**다 —
     목록·Home·Settings가 `connectionProblem`(`lib/home/state.ts`) 하나를 읽는다(전엔 목록 Disconnected · Home 회색 not-connected · Settings "Not connected"로
     셋이 갈렸다). 적재 거부도 같은 낱말의 자기 코드 `unpinned`다(`lib/import/plan.ts` → `run.ts`·`onboarding-run/import.ts`) — `not-connected`는
     **사용자 GitHub 계정 미연결**(`checkRepoAccess`의 ConnectError)이라 둘을 한 코드로 접으면 "계정을 연결하라"는 틀린 안내가 선다.
