@@ -527,7 +527,7 @@ lib/
                         조회해 다시 부른다 — "무엇을 묻지 않는가"(편집이 있으면 head를, head가 같으면 PR 목록을)가 이 함수에서
                         정해지고, 그래서 조회를 `Promise.all`로 몰지 않는다(POSTMORTEM 2026-09-13).
                         ⚠️ lib/pull/에 두지 않는 이유: pull은 DB → PR 한 방향이고 이 판정은 그 방향과 반대(적재)까지 고른다
-                        · run(`runNightly` — 방문 하나의 껍데기. 머리에서 `lastNightlyAt`을 쓰는 **유일한 자리**이고, `need`마다
+                        · run(`runNightly` — 방문 하나의 껍데기. `lastNightlyAt`을 쓰는 자리가 여기뿐이고(머리의 방문 기록 + 유일한 예외인 마감 복원 — 머리 값 그대로일 때만 되돌리는 조건부), `need`마다
                         head·PR을 순차로 조회해 다시 판정한 뒤 정확히 한 갈래(`runSync` · `runAutomationImport` · `nightly.skip`
                         사건)를 부른다. server-only) · summary(`NightlyVisit` — `/api/pull` 응답 항목 `PullItem`의 본체와
                         요약 로그 줄 `summarizeNightly`, 순수). ⚠️ `NightlyVisit`을 손으로 적고 판정의 skip·none 갈래와 같은지
