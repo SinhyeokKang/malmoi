@@ -139,7 +139,7 @@
 각 태스크는 **상태 키·tone을 넘기고 variant·색 문자열을 고르지 않는다**. 뒤집는 테스트는 클래스 문자열 대신 상태 키·`data-tone`으로 단언을 옮긴다.
 **화면 태스크의 공통 검증** — [자동] 그 화면 스위트 + 뒤집은 단언이 상태 키·`data-tone`으로 옮겨졌는지 `pnpm exec vitest run <파일들>` green. [수동]은 태스크별로 적는다.
 
-- **T17 Sources** — 🔴 A1(행 칸 `IconTile tone`) · 🔴 J(결과 행 `BannerLine tone`, 상세도) · 5-Y6(성공 칸 초록) · 4-Y6(총계 카드에만) · 4-Y11(chevron muted) ·
+- ✅ (U6) **T17 Sources** — 🔴 A1(행 칸 `IconTile tone`) · 🔴 J(결과 행 `BannerLine tone`, 상세도) · 5-Y6(성공 칸 초록) · 4-Y6(총계 카드에만) · 4-Y11(chevron muted) ·
   4-Y14(0개 = `EmptyRowCard inset`) · 4-Y16(골격 설명 줄·버튼 제거) · 4-Y23(`ArrowRight` → `ChevronRight`) · 5-Y7(선택 면 0.07) · 5-Y10(사라짐 띠 → `BannerLine danger`) ·
   5-Y14(수제 원 스피너) · 5-Y18(Meter 막대 — `LocaleMeter`와 공유) · 5-Y19(배지 글리프) · 5-W4(`Plus` 16) · 6-⚪13(`statusAt` 인라인 제거) ·
   4-Y24·5-Y1(Sources 보관 화면 — 머리 Archived 배지 = `StatusBadge archived`, 출구 낱말 하나) · 4-W13(`sources/loading.tsx:31,45` 골격 카운트 원).
@@ -164,7 +164,7 @@
   preview(`dev.mal-moi.com`)에서 1회 교차 확인. 결과를 ARCHITECTURE §1.95 표에 추가(T29).
   검증 [자동]: `pnpm exec vitest run components/__tests__/translations-screen.test.ts lib/github-connect/__tests__/probe-memo.test.ts` green(memo 호출부 불변).
   [수동]: 선택 행·hover 행 위의 Unsent 배지 대비 · `repositoryId null` 프로젝트에서 Publish·Sync 첫 렌더부터 꺼짐.
-- **T21 Logs** — D3③/1-Y16(결과 칩 §2.4 칸, 성공 neutral) · 4-Y2/5-Y11(`rounded-lg`, 골격도) · 4-Y3(첫 행 선) · 4-Y21(상세 머리 `[종류][결과]` 배지) · 3-Y6(상세 바닥 `lg`) · 3-⚪16(`CloseButton`) · 4-W9(골격 chevron 칸).
+- ✅ (U6) **T21 Logs** — D3③/1-Y16(결과 칩 §2.4 칸, 성공 neutral) · 4-Y2/5-Y11(`rounded-lg`, 골격도) · 4-Y3(첫 행 선) · 4-Y21(상세 머리 `[종류][결과]` 배지) · 3-Y6(상세 바닥 `lg`) · 3-⚪16(`CloseButton`) · 4-W9(골격 chevron 칸).
   뒤집는 테스트: `visual-system.test.ts:199,225`.
   검증 [자동]: `pnpm exec vitest run components/__tests__/logs-* components/__tests__/visual-system.test.ts` green.
 - ✅ **T22** (U8) **Settings · Account · MCP · Members · 온보딩** — 3-Y10 나머지(확정 = 동사+목적어 — `members.remove`·`settings.account.disconnect`·`link.methods.disconnect`의 확정용 키, U4에서 넘어옴) · 🔴 L(MCP rotate 확정 `danger`, 트리거 "Rotate token") · 3-Y2(push rotate 트리거 `danger`) · 3-Y3(sessions → (a)) ·
@@ -179,7 +179,7 @@
   5-Y16·1-Y5(Q10: Publish 결과 `Notice` → `Alert` success·neutral·warning, 일부 보류 글리프에 톤) · IconTile 색 덮기 잔여(`onboarding/steps/{naming:256,files:178,repo:247}` · `token-grant-fields.tsx:134,173,220` — 면 색은 T28 허용 목록).
   뒤집는 테스트: `projects-screen.test.ts:269,301` · `sidebar-selection.test.ts:27` · `public-shell.test.tsx:218`(hover — T19에서 옮김).
   검증 [자동]: `pnpm exec vitest run components app` green.
-- **T24 랜딩 목업** — 🔴 G(PR 카드 실물 `PrCard` 또는 같은 variant) · 1-Y10(미번역 muted) · 5-Y7(선택 면) · Unsent 표식(`mockup/translations.tsx:42`의 `Pill` 사본 → T20과 같은 형). 가능하면 실물 컴포넌트·상수를 import한다.
+- ✅ (U6) **T24 랜딩 목업** — 🔴 G(PR 카드 실물 `PrCard` 또는 같은 variant) · 1-Y10(미번역 muted) · 5-Y7(선택 면) · Unsent 표식(`mockup/translations.tsx:42`의 `Pill` 사본 → T20과 같은 형). 가능하면 실물 컴포넌트·상수를 import한다.
   뒤집는 테스트: `visual-system.test.ts:104-106,111,117`(등재 목록에서 목업 줄 제거).
   검증 [자동]: `pnpm exec vitest run components/__tests__/visual-system.test.ts components/__tests__/*landing*` green + `Pill` export 0(고아 없음).
   `[commit]` 화면마다 하나(T17–T24, 8개) — `fix(sources): …` 꼴. 각각 `pnpm gate` green.
@@ -297,3 +297,5 @@
 - 2026-10-01 U3: `PanelHeader`에는 `count` prop을 두지 않았다(제목 슬롯이 없다) — 머리 개수 두 곳이 `CountBadge`를 직접 쓴다. `Button` `loading`/`busy`는 `aria-hidden` 앞 글리프를 교체한다(지금 Logs 둘).
 - 2026-10-01 U9: 가이드 원고의 축약형(could not 등 55건)은 원고 금지 목록에서 뺐다 — DESIGN §10은 화면 문체 규칙이고 감사 항목이 아니다(범위 밖, 후속 후보). `dict:` 소스는 보이는 문자열 잎 키만.
 - 2026-10-01 사용자: `/guide-shots`는 stale 목록이 아니라 **전 컷 + README 두 장** 재촬영(직전 병합 때 건너뜀).
+- 2026-10-01 지휘자(U6 리뷰): 지문 재확인으로 멈춘 Publish도 Logs 결과 배지는 "Held back" 그대로(필터·Publish 결과 낱말 일치) — 사유는 보조줄. DESIGN §2.4 Held back 행에 적는다(T29).
+- 2026-10-01 지휘자(U7 리뷰): **번역 화면도 probe 메모를 켠다**(Home과 같은 `PROBE_MEMO_TTL_MS`) — 메모 없이 키 선택·저장마다 GitHub probe 1–2회가 나가 설치 rate limit을 번역자 수만큼 태운다. 메모를 끄는 이유(Settings는 고치러 가는 자리, MCP는 판정 근거)는 번역 화면에 없고, 버튼 클릭은 서버가 다시 판정한다. design §3.3의 "memo 없음"을 뒤집는다. 스트리밍 도착은 `use()`가 아니라 effect 구독(직전 값 유지) — 전환 중 `use(새 promise)`가 이동을 GitHub 대기에 묶는다.
