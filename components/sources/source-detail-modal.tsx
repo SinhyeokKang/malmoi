@@ -90,7 +90,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
           <div className="border-border min-w-0 space-y-1 border-l px-4 py-3.5 @max-[850px]:border-t"><dt className="text-muted-foreground text-xs">{m.sources.repository}</dt><dd className="[overflow-wrap:anywhere]">{detail.repository.repoOwner}/<wbr />{detail.repository.repoName} · {detail.repository.baseBranch}</dd></div>
         </dl>
       </section>}
-      {/* ⚠️ **시안 `1d`의 행 형이다** — 28 칩 + 제목/보조 두 줄 + 오른쪽 행동. `Alert` 상자가 아니다:
+      {/* ⚠️ **상태 줄은 시안 `1d`의 행 형이다** — 28 칩 + 제목/보조 두 줄 + 오른쪽 행동. 상태 줄은 `Alert` 상자가 아니다(결과 notice만 Alert다):
           같은 카드 안에서 상태가 상자를 쓰면 실패만 다른 그릇이 된다. */}
       {/* 적재 결과는 카드 notice다(🔴 J) — 계산한 톤을 `Alert inset`이 그리고, 실패는 `alert`로 읽던 것을 끊는다. 머리 아래 선은 notice 아래로 내려간다(4-Y1). */}
       <PanelCard title={m.sources.status} subtitle={m.sources.statusHelp}

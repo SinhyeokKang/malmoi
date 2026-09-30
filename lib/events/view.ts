@@ -507,11 +507,6 @@ export function importReasonMessage(code: string | null): string {
 }
 
 /**
- * 보조줄 — **그 종류가 실제로 가진 맥락만** 적는다. 없는 값을 자리 채우려고 적지 않는다.
- *
- * ⚠️ **파일 수 `null`은 `—`이고 `0`이 아니다** — 0으로 적으면 "아무것도 안 바뀐 성공"과 같아진다.
- */
-/**
  * 종류 배지의 낱말 — 실행(동기화·Publish)은 주체와 합친 한 낱말이다(`Manual sync`). 행 보조줄의 첫 배지와 상세 머리의 종류 배지가
  * 이것 하나를 쓴다(ux-drift-unify 4-Y21 — 상세가 `Sync run` 같은 두 번째 낱말을 들고 있었다).
  */
@@ -520,6 +515,11 @@ export function eventKindWord(row: Pick<EventMetaRow, "kind" | "subtype" | "acto
   return row.kind === "IMPORT" || row.kind === "PUBLISH" ? m.logs.meta.runType[row.kind][trigger] : m.logs.meta.type[row.kind];
 }
 
+/**
+ * 보조줄 — **그 종류가 실제로 가진 맥락만** 적는다. 없는 값을 자리 채우려고 적지 않는다.
+ *
+ * ⚠️ **파일 수 `null`은 `—`이고 `0`이 아니다** — 0으로 적으면 "아무것도 안 바뀐 성공"과 같아진다.
+ */
 export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[] {
   const payload = row.payload;
   // 종류가 맨 앞 배지다 — 배지만 훑어도 무슨 사건인지 안다(2026-09-30 사용자).
