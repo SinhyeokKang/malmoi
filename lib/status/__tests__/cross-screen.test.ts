@@ -392,9 +392,9 @@ describe("교차 행렬 — 같은 입력은 어느 화면에서도 같은 STATE
   });
 
   /**
-   * ⚠️ **spec 표의 "표면 0개 → Setup · Setup"은 지금 판정과 다르다.** 설치가 있고 활성 표면이 0이면 readiness가 `awaiting_first_sync`라
-   * 목록 칩은 Not synced yet이고 Home은 `ProjectNotReady`가 선다(Setup은 설치 없음 갈래다). 목록과 Home은 **같은 readiness에서 파생돼
-   * 서로 어긋나지는 않는다**(아래 green 칸). 표의 기대가 틀렸는지 판정이 틀렸는지는 conductor 판정 대기다 — 판정을 여기서 고치지 않는다.
+   * **표면 0개** — 설치가 있고 활성 표면이 0이면 readiness가 `awaiting_first_sync`다: 목록 칩 Not synced yet·띠 없음, Home은 `ProjectNotReady`,
+   * 적재 거부는 `not-ready`. 목록과 Home이 같은 readiness에서 파생되는 것이 불변식이다.
+   * ux-drift-unify 지휘자 2026-10-01 — spec 완료 조건 3 표의 'Setup'은 설치 없음 갈래였다.
    */
   describe("표면 0개", () => {
     const zero = fixture({ surfaces: [] });
@@ -405,12 +405,6 @@ describe("교차 행렬 — 같은 입력은 어느 화면에서도 같은 STATE
       expect(got.home).toEqual({ na: "readiness:awaiting_first_sync" });
       expect(got.refusal).toEqual({ error: "not-ready", tone: "warning", message: m.repositorySync.errors["not-ready"] });
       expect(got.sources).toEqual([]);
-    });
-
-    it.fails("spec 표 그대로 — 목록·Home 모두 Setup", () => {
-      const got = observe(zero, REAL);
-      expect(got.list.chip).toBe("setup");
-      expect(got.home).toEqual({ banner: "setup" });
     });
   });
 });
