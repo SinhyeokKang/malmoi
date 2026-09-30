@@ -3,6 +3,7 @@ import "server-only";
 import { AppError, logCaught } from "@/lib/failure";
 import { createGitClient } from "@/lib/github";
 import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
+import { openPrGateApplies } from "@/lib/protection/plan";
 import { syncBranchFor } from "@/lib/pull/sync-branch";
 
 /**
@@ -13,7 +14,7 @@ export async function loadOpenPrForImportGate(
   slug: string,
   project: { repoOwner: string; repoName: string; installationId: string | null; repositoryId: string | null; archivedAt: Date | null },
 ): Promise<string | null | undefined> {
-  if (project.installationId === null || project.repositoryId === null) return null;
+  if (!openPrGateApplies(project)) return null;
   return loadOpenPrUrl(slug, project);
 }
 

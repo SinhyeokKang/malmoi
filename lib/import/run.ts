@@ -13,7 +13,7 @@ import { applyPushInTransaction } from "@/lib/push/apply";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { planDiscardConfirmation, planProtectedImport } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
-import { runTokenFor, type EventPayload } from "@/lib/events/payload";
+import { importEventPayload as importPayload, runTokenFor } from "@/lib/events/payload";
 import { finishRun, recordEvent, recordImportRefusal, recordRun } from "@/lib/events/record";
 import { readDiscardApproval } from "./approval";
 import { classifySnapshotFailure, classifySurfaceFailure, summarizeRun, type ImportEventSummary } from "./automation";
@@ -250,11 +250,6 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
   }, transactionOptions);
   tally.changedValues += finished.changedValues;
   return finished.surface;
-}
-
-/** IMPORT 페이로드 — 관측하지 않은 칸은 `null`이다. 필드가 늘 때 생산자마다 빠뜨리지 않게 이 한 자리에서 채운다. */
-function importPayload(input: Partial<Omit<Extract<EventPayload, { kind: "IMPORT" }>, "kind">> & Pick<Extract<EventPayload, { kind: "IMPORT" }>, "source" | "surfaceSlugs">): EventPayload {
-  return { kind: "IMPORT", keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null, deferReason: null, changedValues: null, ...input };
 }
 
 /** callback은 실행 소유권을 원자적으로 얻은 뒤에만 설치 reader를 연다. */

@@ -2,7 +2,7 @@
  * **GitHub 대기 마감** (ARCHITECTURE §6.5.2 · audit-ux D5). 화면을 그리는 동안 GitHub을 기다리는 자리는 전부 이 값을 읽는다
  * — 목록의 원격 신호(`lib/projects/remote.ts`), 설정·Home의 연결 확인(`probeRepo`), 설정의 열린 PR(`loadOpenPrUrl`),
  * 계정 조회(`loadAccountView`), `/account`의 설치된 리포 수(`loadInstalledRepoCount`), CI 적재의 열린 PR 게이트(`loadOpenPrForImportGate` —
- * `/api/push`, 넘기면 `pr-check-failed` 보류).
+ * `/api/push`, 넘기면 `pr-check-failed` 보류), 야간 판정의 head·열린 PR 조회(`runNightly` — 넘기면 `base-unreadable`·`pr-check-failed`).
  *
  * ⚠️ **값이 하나여야 한다.** 같은 원격을 기다리는 두 화면이 마감이 다르면 한쪽은 "확인할 수 없음", 다른 쪽은 아직
  * 매달린 채로 갈린다 — 사본 둘을 두면 다시 갈린다.

@@ -14,6 +14,7 @@ import { optionalEnv } from "@/lib/env";
 
 import { PROJECT_WIDE, parseLogFilter, type LogFilter } from "../filter";
 import { ACTOR_AUTOMATION, ACTOR_REMOVED, loadEvent, loadEventActors, loadEvents } from "../query";
+import { triggerOf } from "../view";
 
 /**
  * **활동 스트림이 실제 Postgres에서 같은 행을 내는가** (logs-rework T3c·T3d).
@@ -81,7 +82,7 @@ async function seed() {
 let seq = 0;
 
 async function event(over: Partial<{
-  projectId: string; kind: "TRANSLATION" | "IMPORT" | "PUBLISH" | "SURFACE" | "MEMBER" | "SETTINGS";
+  projectId: string; kind: "TRANSLATION" | "IMPORT" | "PUBLISH" | "SURFACE" | "MEMBER" | "SETTINGS"; subtype: string;
   occurredAt: Date; result: string | null; actorKind: "USER" | "AUTOMATION"; actorUserId: string | null;
   surfaceIds: string[]; surfaceScope: string; searchText: string | null; syncRunId: string | null; payload: object;
 }> = {}) {
@@ -93,7 +94,7 @@ async function event(over: Partial<{
       ref: id,
       projectId: over.projectId ?? "p1",
       kind: over.kind ?? "TRANSLATION",
-      subtype: "test",
+      subtype: over.subtype ?? "test",
       occurredAt: over.occurredAt ?? AT,
       result: over.result ?? null,
       actorKind: over.actorKind ?? "USER",
@@ -406,4 +407,71 @@ it("project-wide라는 실제 소스와 프로젝트 전역 사건이 구별된�
   const source = await event({ surfaceIds: ["sWide"] });
   await event({ kind: "SETTINGS", surfaceIds: [], surfaceScope: "project-wide" });
   expect((await loadEvents(prisma, "p1", base({ sources: ["project-wide"] }))).rows.map(row => row.ref)).toEqual([source]);
+});
+
+/**
+ * **주체 필터와 보류 사유가 실제 행에서 한 어휘로 떨어진다** (nightly-sync E2). `triggerWhere`(필터)와 `triggerOf`(라벨)는 같은 컬럼을
+ * 보지만 **같은 모듈끼리의 순수 비교는 공허하다**(POSTMORTEM 2026-09-14) — 실제 행을 심고 조회 결과로 잰다. 결과 어휘(`deferred` + 사유 넷,
+ * `upToDate`)도 `eventResult`·`resultWhere`가 같은 행을 가른다(POSTMORTEM 2026-09-27 — 같은 조건이 두 소비자에서 다른 어휘로 섰다).
+ */
+describe("주체 필터 ci · nightly · automation (nightly-sync)", () => {
+  const importPayload = (over: object) => ({ kind: "IMPORT", surfaceSlugs: ["a"], keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null, ...over });
+  const automation = { actorKind: "AUTOMATION" as const, actorUserId: null };
+
+  // 프로젝트·소스·사용자는 `beforeEach`의 `seed()`가 이미 심었다.
+  async function seedRows() {
+    const rows = {
+      publish: await event({ ...automation, kind: "PUBLISH", subtype: "publish.run", payload: { kind: "PUBLISH", surfaceSlugs: ["a"], refusal: null } }),
+      ci: await event({ ...automation, kind: "IMPORT", subtype: "import.ci", result: "imported", payload: importPayload({ source: "ci" }) }),
+      // `source`·`deferReason`가 없던 옛 CI 보류 행 — 사유는 `pending-edits`였다.
+      ciOld: await event({ ...automation, kind: "IMPORT", subtype: "import.ci", result: "deferred", payload: importPayload({ pendingEdits: 2 }) }),
+      ciPending: await event({ ...automation, kind: "IMPORT", subtype: "import.ci", result: "deferred", payload: importPayload({ source: "ci", deferReason: "pending-edits", pendingEdits: 1 }) }),
+      ciCheck: await event({ ...automation, kind: "IMPORT", subtype: "import.ci", result: "deferred", payload: importPayload({ source: "ci", deferReason: "pr-check-failed" }) }),
+      nightlyImport: await event({ ...automation, kind: "IMPORT", subtype: "import.nightly", result: "imported", payload: importPayload({ source: "nightly", changedValues: 3 }) }),
+      nightlyLarge: await event({ ...automation, kind: "IMPORT", subtype: "import.nightly", result: "deferred", payload: importPayload({ source: "nightly", deferReason: "too-large" }) }),
+      skipUpToDate: await event({ ...automation, kind: "IMPORT", subtype: "nightly.skip", result: "upToDate", payload: importPayload({ source: "nightly" }) }),
+      skipOpenPr: await event({ ...automation, kind: "IMPORT", subtype: "nightly.skip", result: "deferred", payload: importPayload({ source: "nightly", deferReason: "open-pr" }) }),
+      manual: await event({ kind: "IMPORT", subtype: "import.run", result: "imported", payload: importPayload({ source: "manual" }) }),
+      manualPublish: await event({ kind: "PUBLISH", subtype: "publish.run", payload: { kind: "PUBLISH", surfaceSlugs: ["a"], refusal: null } }),
+    };
+    return rows;
+  }
+
+  const refs = async (filter: Partial<LogFilter>) => (await loadEvents(prisma, "p1", base(filter))).rows.map((row) => row.ref).sort();
+
+  it("?actor=ci · nightly · 옛 automation이 각각 기대 행만 낸다", async () => {
+    const r = await seedRows();
+    expect(await refs({ actor: "ci" })).toEqual([r.ci, r.ciOld, r.ciPending, r.ciCheck].sort());
+    expect(await refs({ actor: "nightly" })).toEqual([r.publish, r.nightlyImport, r.nightlyLarge, r.skipUpToDate, r.skipOpenPr].sort());
+    expect(await refs({ actor: ACTOR_AUTOMATION })).toEqual(
+      [r.publish, r.ci, r.ciOld, r.ciPending, r.ciCheck, r.nightlyImport, r.nightlyLarge, r.skipUpToDate, r.skipOpenPr].sort());
+  });
+
+  it("모든 행에서 triggerOf(행)와 필터 소속이 일치한다 — URL로 파싱한 값 그대로", async () => {
+    await seedRows();
+    const all = (await loadEvents(prisma, "p1", base())).rows;
+    expect(all.length).toBe(11);
+    const ci = new Set(await refs(parseLogFilter({ actor: "ci" })));
+    const nightly = new Set(await refs(parseLogFilter({ actor: "nightly" })));
+    for (const row of all) {
+      const trigger = triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype });
+      expect({ ref: row.ref, ci: ci.has(row.ref), nightly: nightly.has(row.ref) }, row.subtype)
+        .toEqual({ ref: row.ref, ci: trigger === "ci", nightly: trigger === "nightly" });
+    }
+  });
+
+  it("결과 필터 deferred가 사유 넷(과 사유 없는 옛 행)을 다 잡는다", async () => {
+    const r = await seedRows();
+    expect(await refs({ results: ["deferred"] })).toEqual([r.ciOld, r.ciPending, r.ciCheck, r.nightlyLarge, r.skipOpenPr].sort());
+    const rows = (await loadEvents(prisma, "p1", base({ results: ["deferred"] }))).rows;
+    expect(new Set(rows.map((row) => row.payload?.kind === "IMPORT" ? row.payload.deferReason : "x")))
+      .toEqual(new Set([null, "pending-edits", "pr-check-failed", "too-large", "open-pr"]));
+  });
+
+  it("upToDate 행은 결과가 비지 않는다 — 목록과 결과 필터가 같은 행", async () => {
+    const r = await seedRows();
+    const row = (await loadEvents(prisma, "p1", base())).rows.find((item) => item.ref === r.skipUpToDate);
+    expect(row?.result).toBe("upToDate");
+    expect(await refs({ results: ["upToDate"] })).toEqual([r.skipUpToDate]);
+  });
 });

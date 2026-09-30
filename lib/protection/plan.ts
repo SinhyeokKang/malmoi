@@ -41,6 +41,15 @@ export function planOpenPrGate(input: { openPr: string | null | undefined }): Op
   return { action: "defer", reason: "open-pr" };
 }
 
+/**
+ * 열린 PR 게이트가 **서는가** (nightly-sync). 설치·리포 고정이 없으면 Malmoi가 PR을 낼 수 없으므로 열린 Malmoi PR도 없다 — 조회하지 않고
+ * `null`(게이트 없음)이다. CI 게이트(`loadOpenPrForImportGate`)와 야간 판정(`runNightly`)이 이 판정 하나를 쓴다 — 사본을 두면 한쪽만 옛 행을
+ * 영구 보류한다(`loadOpenPrUrl`은 `repositoryId null`을 `undefined`로 읽는다).
+ */
+export function openPrGateApplies(project: { installationId: string | null; repositoryId: string | null }): boolean {
+  return project.installationId !== null && project.repositoryId !== null;
+}
+
 export type ProtectedPublish =
   | { action: "proceed" }
   | { action: "skip"; reason: "no-edits" }

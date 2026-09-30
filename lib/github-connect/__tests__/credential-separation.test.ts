@@ -88,7 +88,8 @@ const ONBOARDING_SOURCES = [
  * 사용자 토큰을 물면 두 자격증명이 한 파일에서 만난다. 전에는 이 루트들을 안 훑어 `lib/projects/open-pr.ts` 같은 자리가
  * 2홉 뒤에 사용자 토큰을 물어도 green이었다 (POSTMORTEM "2홉은 못 본다").
  */
-const APP_TOKEN_SOURCES = ["lib/pull", "lib/push", "lib/projects", "lib/publish", "lib/import"].flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
+// `lib/nightly` — 야간 판정이 head·열린 PR을 installation 토큰으로 읽는다(nightly-sync).
+const APP_TOKEN_SOURCES = ["lib/pull", "lib/push", "lib/projects", "lib/publish", "lib/import", "lib/nightly"].flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
 /**
  * **두 자격증명이 만나는 코어** (mcp-connector T4-c — design §1.3). Server Action과 MCP 도구가 같은 코어를 부르므로 만남점이 Server Action
  * 하나가 아니게 됐다. 규칙은 Server Action과 같다 — **둘 다 import할 수 있고, 쓰기는 App 토큰 경로(`@/lib/github`)만** 한다: App 개인키를
@@ -142,8 +143,8 @@ describe("검사식이 실제로 잡는다 — 스캐너가 공허하게 통과�
   it("스캔 대상을 실제로 찾았다", () => {
     expect(CONNECT_SOURCES.length).toBeGreaterThan(3);
     expect(ONBOARDING_SOURCES.length).toBeGreaterThan(3);
-    // 다섯 다 들어왔는가 — 한 디렉터리가 이름이 바뀌면 조용히 0개가 된다.
-    for (const dir of ["lib/pull", "lib/push", "lib/projects", "lib/publish", "lib/import"]) {
+    // 여섯 다 들어왔는가 — 한 디렉터리가 이름이 바뀌면 조용히 0개가 된다.
+    for (const dir of ["lib/pull", "lib/push", "lib/projects", "lib/publish", "lib/import", "lib/nightly"]) {
       expect(APP_TOKEN_SOURCES.some((f) => f.rel.startsWith(`${dir}/`)), dir).toBe(true);
     }
   });
@@ -187,7 +188,7 @@ describe("App 토큰 경로가 사용자 토큰을 모른다", () => {
     expect(consumers.map((f) => f.rel).filter((rel) => !scanned.has(rel))).toEqual([]);
   });
 
-  it("lib/pull·push·projects·publish·import가 사용자 토큰 모듈을 import하지 않는다", () => {
+  it("lib/pull·push·projects·publish·import·nightly가 사용자 토큰 모듈을 import하지 않는다", () => {
     const offenders = APP_TOKEN_SOURCES.filter((f) => USER_TOKEN_IMPORT.test(codeOnly(f.source))).map((f) => f.rel);
     expect(offenders).toEqual([]);
   });

@@ -19,7 +19,7 @@ const project = (
     repositoryId: string | null;
     surfaces: { archivedAt: Date | null; lastCommitSha: string | null }[];
     archivedAt: Date | null;
-    syncRuns: { startedAt: Date }[];
+    lastNightlyAt: Date | null;
   }> = {},
 ) => ({
   slug: "acme",
@@ -27,8 +27,8 @@ const project = (
   repositoryId: "1035512",
   surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
   archivedAt: null,
-  // 라우트가 `take: 1, orderBy: { startedAt: desc }`로 읽는 모양 그대로다 — 판정층이 재조립하지 않는다.
-  syncRuns: [] as { startedAt: Date }[],
+  // 마지막 야간 방문 (nightly-sync) — 스킵·실패 방문도 쓴다. null은 한 번도 방문 안 한 프로젝트다.
+  lastNightlyAt: null as Date | null,
   ...over,
 });
 
@@ -146,19 +146,19 @@ describe("selectPullTargets — 보관 제외", () => {
 });
 
 describe("selectPullTargets — 오래 안 돈 것부터", () => {
-  const at = (iso: string) => [{ startedAt: new Date(iso) }];
+  const at = (iso: string) => new Date(iso);
 
-  it("마지막 실행이 오래된 프로젝트가 앞이다", () => {
+  it("마지막 야간 방문이 오래된 프로젝트가 앞이다", () => {
     const rows = [
-      project({ slug: "recent", syncRuns: at("2026-09-09T00:00:00Z") }),
-      project({ slug: "old", syncRuns: at("2026-09-01T00:00:00Z") }),
+      project({ slug: "recent", lastNightlyAt: at("2026-09-09T00:00:00Z") }),
+      project({ slug: "old", lastNightlyAt: at("2026-09-01T00:00:00Z") }),
     ];
     expect(selectPullTargets(rows, 50).targets).toEqual(["old", "recent"]);
   });
 
   it("한 번도 안 돈 프로젝트가 맨 앞이다 — 새 프로젝트가 뒤에서 굶지 않는다", () => {
     const rows = [
-      project({ slug: "ran", syncRuns: at("2026-09-01T00:00:00Z") }),
+      project({ slug: "ran", lastNightlyAt: at("2026-09-01T00:00:00Z") }),
       project({ slug: "never" }),
     ];
     expect(selectPullTargets(rows, 50).targets).toEqual(["never", "ran"]);
@@ -166,20 +166,34 @@ describe("selectPullTargets — 오래 안 돈 것부터", () => {
 
   it("동점은 slug다 — 순서가 결정적이어야 실패 지점이 재현된다", () => {
     const rows = [
-      project({ slug: "zulu", syncRuns: at("2026-09-01T00:00:00Z") }),
-      project({ slug: "alpha", syncRuns: at("2026-09-01T00:00:00Z") }),
+      project({ slug: "zulu", lastNightlyAt: at("2026-09-01T00:00:00Z") }),
+      project({ slug: "alpha", lastNightlyAt: at("2026-09-01T00:00:00Z") }),
     ];
     expect(selectPullTargets(rows, 50).targets).toEqual(["alpha", "zulu"]);
   });
 
   it("⚠️ 잘린 뒤쪽이 다음 밤에는 앞이다 — 그것이 이 정렬의 목적 전부다", () => {
-    // 어젯밤 a·b가 돌고 c·d가 잘렸다면, 오늘 밤 입력은 c·d에 실행 기록이 없다.
+    // 어젯밤 a·b가 방문되고 c·d가 잘렸다면, 오늘 밤 입력은 c·d에 방문 기록이 없다.
     const rows = [
-      project({ slug: "a", syncRuns: at("2026-09-09T18:00:00Z") }),
-      project({ slug: "b", syncRuns: at("2026-09-09T18:00:10Z") }),
+      project({ slug: "a", lastNightlyAt: at("2026-09-09T18:00:00Z") }),
+      project({ slug: "b", lastNightlyAt: at("2026-09-09T18:00:10Z") }),
       project({ slug: "c" }),
       project({ slug: "d" }),
     ];
     expect(selectPullTargets(rows, 2)).toEqual({ targets: ["c", "d"], unprocessed: 2 });
+  });
+});
+
+/**
+ * ⚠️ **정렬 키가 `SyncRun`이 아니라 `lastNightlyAt`이다** (nightly-sync). 편집 없는 프로젝트는 더는 `SyncRun`을 만들지 않으므로,
+ * 옛 키로는 그 프로젝트가 영원히 "한 번도 안 돈 것"이 되어 50개 상한의 앞을 채운다 — 편집 있는 프로젝트가 잘린다.
+ */
+describe("selectPullTargets — 정렬 키는 마지막 야간 방문", () => {
+  it("방문했지만 SyncRun이 없는 프로젝트(편집 없는 밤)도 방문 순서로 뒤로 간다", () => {
+    const rows = [
+      project({ slug: "visited-no-edits", lastNightlyAt: new Date("2026-09-29T18:00:00Z") }),
+      project({ slug: "stale", lastNightlyAt: new Date("2026-09-20T18:00:00Z") }),
+    ];
+    expect(selectPullTargets(rows, 1)).toEqual({ targets: ["stale"], unprocessed: 1 });
   });
 });

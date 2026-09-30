@@ -14,12 +14,13 @@ import { PULL_TIME_BUDGET_MS } from "@/lib/pull/targets";
 
 const hoisted = vi.hoisted(() => ({
   findMany: vi.fn(),
-  runSync: vi.fn(),
+  runNightly: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({ project: { findMany: hoisted.findMany } }) }));
-vi.mock("@/lib/sync/run", () => ({ runSync: hoisted.runSync }));
+// 경계는 방문 하나(`runNightly`)다 — 갈래별 동작(Publish·적재·스킵)은 `pull-nightly.test.ts`가 실제 `runNightly`로 잰다(nightly-sync E1).
+vi.mock("@/lib/nightly/run", () => ({ runNightly: hoisted.runNightly }));
 
 const { GET } = await import("../pull/route");
 
@@ -33,12 +34,12 @@ const ready = (slug: string) => ({
   repositoryId: "r1",
   surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
   archivedAt: null,
-  syncRuns: [],
+  lastNightlyAt: null,
 });
 
 /** 프로젝트마다 걸리는 시간(ms). 가짜 시계를 그만큼 민다. */
 function durations(ms: Record<string, number>) {
-  hoisted.runSync.mockImplementation(async (_prisma: unknown, input: { slug: string }) => {
+  hoisted.runNightly.mockImplementation(async (_prisma: unknown, input: { slug: string }) => {
     vi.setSystemTime(Date.now() + (ms[input.slug] ?? 0));
     return { status: "no-changes" };
   });
@@ -96,7 +97,7 @@ it("앞이 예산을 다 쓰면 나머지는 시작하지 않고 unprocessed로 
   const body = await call();
   expect(body.results.map((r) => r.slug)).toEqual(["a", "b"]);
   expect(body.unprocessed).toBe(1);
-  expect(hoisted.runSync).toHaveBeenCalledTimes(2);
+  expect(hoisted.runNightly).toHaveBeenCalledTimes(2);
   // 요약 줄이 남는 것이 예산의 요지다 — 넘긴 수가 거기 실린다.
   expect(console.log).toHaveBeenCalledWith(expect.stringContaining("unprocessed=1"));
 });

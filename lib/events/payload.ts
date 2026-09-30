@@ -158,6 +158,16 @@ export type EventPayload =
       value: ValueChange | null;
     };
 
+type ImportPayload = Extract<EventPayload, { kind: "IMPORT" }>;
+
+/**
+ * IMPORT 페이로드 — **관측하지 않은 칸은 `null`이다.** 필드가 늘 때 생산자마다 빠뜨리지 않게 한 자리에서 채운다
+ * (서버 적재 `lib/import/run.ts`·야간 스킵 `lib/nightly/run.ts`).
+ */
+export function importEventPayload(input: Partial<Omit<ImportPayload, "kind">> & Pick<ImportPayload, "source" | "surfaceSlugs">): EventPayload {
+  return { kind: "IMPORT", keys: null, pendingEdits: null, surfaces: [], errorCode: null, refusal: null, deferReason: null, changedValues: null, ...input };
+}
+
 /**
  * 실행 하나를 가리키는 **멱등 키**. 서버가 실행 종류와 소스 범위를 붙인다 (design §3.3).
  *
