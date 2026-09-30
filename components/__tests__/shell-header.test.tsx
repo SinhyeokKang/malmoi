@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { createContext, useContext, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
@@ -12,6 +13,20 @@ import { render } from "./helpers/dom";
  * **앱 셸 헤더 우측** (2026-09-30 사용자) — 공개 셸 헤더와 같은 패턴이고 GitHub 자리만 `New project`다:
  * `New project · 구분선 · 아바타 메뉴`. 링크 모양은 공개 셸의 GitHub 링크와 **같은 클래스 한 벌**이다.
  */
+/** `useLinkStatus`는 jsdom에서 늘 false라 가짜 `Link`가 문맥으로 pending을 만든다(`sidebar-pending.test.tsx`와 같다). */
+const pendingHref = vi.hoisted(() => ({ value: "" }));
+vi.mock("next/link", () => {
+  const Status = createContext(false);
+  return {
+    default: ({ href, children, ...props }: { href: string; children: ReactNode }) => (
+      <Status.Provider value={href === pendingHref.value}>
+        <a href={href} {...props}>{children}</a>
+      </Status.Provider>
+    ),
+    useLinkStatus: () => ({ pending: useContext(Status) }),
+  };
+});
+
 const header = () => render(<Header name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} />);
 
 describe("앱 셸 헤더", () => {
@@ -35,5 +50,14 @@ describe("앱 셸 헤더", () => {
     const icon = link?.querySelector("svg");
     expect(icon?.getAttribute("class")).toContain("lucide-plus");
     expect(icon?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  /** POSTMORTEM 2026-09-17 — 모달 도착까지 1초 남짓 반응이 없으면 클릭이 안 먹은 것처럼 보인다. */
+  it("이동 중에는 Plus 대신 스피너다", async () => {
+    pendingHref.value = routes.newProject();
+    const { container } = await header();
+    const icon = container.querySelector(`header a[href="${routes.newProject()}"] svg`);
+    expect(icon?.getAttribute("class")).toContain("animate-spin");
+    pendingHref.value = "";
   });
 });

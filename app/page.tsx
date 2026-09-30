@@ -1,4 +1,5 @@
-import { CircleHelp, LogIn } from "lucide-react";
+import { ArrowRight, CircleHelp, LogIn } from "lucide-react";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -7,6 +8,7 @@ import { Stage } from "@/components/landing/stage";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { buttonClass, ButtonLink } from "@/components/ui/button";
+import { appVersion } from "@/lib/app-version";
 import { rootView } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
@@ -51,6 +53,18 @@ export default async function Root() {
     <PublicShell account={null}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(LANDING_LD) }} />
       <section aria-labelledby="landing-hero" className="flex flex-col items-center px-8 pt-30 text-center">
+        {/*
+          최신 릴리스 알약(2026-09-30 사용자) — 버전은 빌드가 박은 `APP_VERSION`이다. ⚠️ GitHub Releases를 부르지 않는다 — 랜딩 첫 진입이
+          외부 API(콜드 캐시 최대 3초)에 묶이지 않게. 머지마다 릴리스라 배포 버전이 곧 최신 릴리스다.
+        */}
+        <Link
+          href={routes.changelog()}
+          data-landing-latest
+          className="bg-muted hover:bg-foreground/[0.07] focus-visible:ring-ring mb-6 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium focus-visible:ring-2 focus-visible:outline-none"
+        >
+          {hero.latest(appVersion())}
+          <ArrowRight className="size-4 shrink-0" aria-hidden />
+        </Link>
         {/* h1·CTA h2는 48/600 — DESIGN §4가 예고한 weight 600의 첫 소비자다(§6.615). */}
         <h1 id="landing-hero" className="m-0 text-5xl leading-[1.1] font-semibold">
           {hero.title[0]}

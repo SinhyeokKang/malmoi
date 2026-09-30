@@ -19,10 +19,10 @@ import { routes } from "@/lib/routes";
 import { navWorkItems, type NavItem } from "@/lib/shell/nav";
 
 /**
- * top bar 우측. **항목이 일곱이고 순서가 사용자 결정이다** (2026-09-27):
- * `Projects · New project · Account | Changelog · Docs · Privacy Policy | Sign out`. 첫 묶음은 사이드바 사용자 구역과
+ * top bar 우측. **순서가 사용자 결정이다** (2026-09-27 — 2026-09-30에 New project가 헤더 버튼으로 빠졌다):
+ * `Projects · MCP connector · Account | Changelog · Docs · Privacy Policy | Sign out`. 첫 묶음은 사이드바 사용자 구역과
  * **같은 목록**(`navWorkItems`)이고, LNB와 겹치는 항목은 의도다. **모든 줄이 필터 메뉴와 같은 `DropdownMenuItem` 모양이고 앞 아이콘 하나를 든다** —
- * 아이콘은 같은 목적지를 가리키는 다른 자리와 같은 글리프다(Projects `Box` · New project `Plus` · Account `CircleUser` ·
+ * 아이콘은 같은 목적지를 가리키는 다른 자리와 같은 글리프다(Projects `Box` · Account `CircleUser` ·
  * Docs `CircleHelp`는 LNB, Changelog `Compass`는 LNB 하단과 공유). 전부 앱 안 목적지다 — Changelog는 2026-09-28에 GitHub Releases
  * 외부 링크에서 `/changelog`로 바뀌었다.
  *
