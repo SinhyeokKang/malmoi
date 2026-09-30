@@ -154,3 +154,21 @@ it.each([
   expect(trigger("Date").textContent).toContain(label);
   expect(trigger("Date").textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
 });
+
+/**
+ * **첫 포커스는 From 칸이다** (malmoi#161). Dialog를 여는 항목이 메뉴 안에 있어, 메뉴가 닫히며 돌려주는 포커스(트리거로 — FocusScope의
+ * 언마운트 복귀는 한 틱 뒤다)가 Dialog의 `autoFocus`보다 늦게 도착했다. 트리거는 모달 트랩 밖이라 트랩이 첫 tabbable(헤더 X)로 되돌렸다.
+ * 한 틱을 흘려보낸 뒤를 잰다 — 연 직후만 보면 그 복귀를 못 본다.
+ */
+it.each(["keyboard", "mouse"] as const)("%s로 열어도 메뉴의 복귀가 지나간 뒤 포커스가 From에 있다", async (how) => {
+  const user = userEvent.setup();
+  await render(<LogFilters {...props} filter={parseLogFilter({})} />);
+  if (how === "keyboard") await openCustom(user);
+  else {
+    await act(async () => user.click(trigger("Date")));
+    const item = [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find(node => node.textContent === m.logs.range.customOpen)!;
+    await act(async () => user.click(item));
+  }
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
+  expect(document.activeElement).toBe(field(m.logs.range.from));
+});

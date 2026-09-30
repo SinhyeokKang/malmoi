@@ -83,6 +83,20 @@ export function LogFilters({
   const [customRun, setCustomRun] = useState(0);
   const dateTrigger = useRef<HTMLButtonElement>(null);
   /**
+   * ⚠️ **Dialog는 메뉴가 다 닫힌 뒤에 연다** (malmoi#161). 항목의 `onSelect`에서 바로 열면 메뉴의 포커스 트랩(모달 메뉴)이 아직
+   * 살아 있는 커밋에서 From의 `autoFocus`가 돌고 — 트랩 해제는 passive effect 정리라 그보다 늦다 — 트랩이 포커스를 메뉴로 되끌어,
+   * 그것을 본 Dialog 트랩이 첫 tabbable(헤더 X)로 갔다. 그래서 `onSelect`는 표시만 하고, 메뉴 FocusScope의 언마운트 복귀
+   * (`onCloseAutoFocus` — 트랩이 풀린 뒤다)를 막으며 그 자리에서 연다. 닫힐 때의 복귀는 `CustomRangeDialog`가 Date 트리거로 든다.
+   */
+  const customHandoff = useRef(false);
+  function handOffToCustom(event: Event) {
+    if (!customHandoff.current) return;
+    customHandoff.current = false;
+    event.preventDefault();
+    setCustomRun(run => run + 1);
+    setCustomOpen(true);
+  }
+  /**
    * ⚠️ **[Refresh]·[Clear filters]가 transition을 하나씩 든다** (audit-ux #28). 전엔 둘 다 맨 `router` 호출이라
    * 바뀐 게 없으면 눌렸는지조차 알 수 없었다 — pending이 새 서버 렌더의 커밋까지 이어진다. 둘을 나누는 것은
    * 스피너가 **누른 버튼에만** 서야 해서다. 필터 메뉴의 `go`는 이 항목 밖이다.
@@ -129,7 +143,7 @@ export function LogFilters({
           ))}
         </Filter>
 
-        <Filter triggerRef={dateTrigger} axis={m.logs.filters.axis.date} label={dateLabel(filter)} on={filter.from !== null || filter.to !== null}>
+        <Filter triggerRef={dateTrigger} onCloseAutoFocus={handOffToCustom} axis={m.logs.filters.axis.date} label={dateLabel(filter)} on={filter.from !== null || filter.to !== null}>
           <DropdownMenuItem selected={filter.from === null && filter.to === null} onSelect={() => go({ from: null, to: null })}>
             {m.logs.filters.anyDate}
           </DropdownMenuItem>
@@ -145,7 +159,7 @@ export function LogFilters({
             ⚠️ **입력 칸을 메뉴 안에 두지 않는다** (audit #8 — WCAG 2.1.1). 메뉴의 roving focus는 `menuitem`만 들르고
             Tab은 메뉴를 닫으므로, 안에 둔 `<input>`에는 키보드로 도달할 수 없었다. 항목 하나가 Dialog를 연다.
           */}
-          <DropdownMenuItem onSelect={() => { setCustomRun(run => run + 1); setCustomOpen(true); }}>{m.logs.range.customOpen}</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => { customHandoff.current = true; }}>{m.logs.range.customOpen}</DropdownMenuItem>
         </Filter>
 
         <Filter axis={m.logs.filters.axis.actor} label={actorLabel(filter, actors)} on={filter.actor !== null}>
@@ -250,7 +264,7 @@ export function LogFilters({
   ⚠️ **트리거에 `id`를 넘기지 않는다** (r1) — Radix는 `context.triggerId`를 트리거의 id로 쓰고 메뉴의 `aria-labelledby`가 그것을
   가리키는데, `id` prop이 그 값을 덮는다(값이 `undefined`여도 덮인다). 다섯 메뉴가 전부 없는 id를 가리켰다. 포커스 복귀는 ref가 든다.
 */
-function Filter({ triggerRef, axis, label, on, children }: { triggerRef?: RefObject<HTMLButtonElement | null>; axis: string; label: string; on: boolean; children: ReactNode }) {
+function Filter({ triggerRef, onCloseAutoFocus, axis, label, on, children }: { triggerRef?: RefObject<HTMLButtonElement | null>; onCloseAutoFocus?: (event: Event) => void; axis: string; label: string; on: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const Chevron = open ? ChevronUp : ChevronDown;
   return (
@@ -267,7 +281,7 @@ function Filter({ triggerRef, axis, label, on, children }: { triggerRef?: RefObj
         {label}
         <Chevron className="size-4 shrink-0" aria-hidden />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="min-w-53">{children}</DropdownMenuContent>
+      <DropdownMenuContent className="min-w-53" onCloseAutoFocus={onCloseAutoFocus}>{children}</DropdownMenuContent>
     </DropdownMenu>
   );
 }
