@@ -18,6 +18,12 @@ export type NightlySurface = {
   /** 적재에 필요한 포맷 컬럼이 다 있다. */
   formatComplete: boolean;
   lastCommitSha: string | null;
+  /**
+   * 표면 실패 상태가 있다(`lastImportError`). ⚠️ **SHA 일치를 완전한 적재의 증거로 읽지 않게 한다** — 부분 적재(`partial-import`)도
+   * `lastCommitSha`를 전진시키고, 브랜치 부재(#155)를 같은 SHA로 되살리면 실패가 안 지워진다. 이 표면은 같은 head여도 매일 다시 적재한다
+   * (2026-09-30 사용자 판정). 대가: 영구히 깨진 로케일 파일이 있으면 밤마다 `partial` 한 행이 선다.
+   */
+  failed: boolean;
 };
 
 export type NightlyInput = {
@@ -60,7 +66,8 @@ export function planNightly(input: NightlyInput): NightlyPlan {
   if (!input.head.ok) return { action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: false };
   if (input.head.sha === null) return { action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: true };
   const head = input.head.sha;
-  if (compared.every((surface) => surface.lastCommitSha === head)) return { action: "skip", outcome: "upToDate" };
+  // ⚠️ 실패 상태가 남은 표면은 같은 head여도 "받을 것이 없다"가 아니다 — 게이트(PR·마감)는 그대로 지난다.
+  if (compared.every((surface) => surface.lastCommitSha === head && !surface.failed)) return { action: "skip", outcome: "upToDate" };
 
   // ⚠️ **마감 뒤에는 PR을 묻지 않는다** — 루프 예산은 방문 시작 전에만 재므로, 늦게 시작한 방문이 head 대기 + PR 대기를 더 쓰면 `maxDuration`을
   // 넘겨 그 밤의 요약이 사라진다(POSTMORTEM 2026-09-06). 마감 뒤의 PR 조회는 어차피 적재를 못 시작한다 — 사건 없이 미처리로 세고 다음 밤 정렬이 앞으로 가져온다.

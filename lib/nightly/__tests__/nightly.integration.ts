@@ -89,7 +89,7 @@ async function seed() {
 async function target() {
   const row = await prisma.project.findUniqueOrThrow({ where: { id: "p" }, select: {
     id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
-    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true } },
+    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true } },
   } });
   return row;
 }
@@ -200,7 +200,7 @@ it("마감으로 멈춘 프로젝트는 다음 밤 제때 방문한 프로젝트
   // q는 제때 방문했다(upToDate) — 방문 기록이 지금으로 전진한다.
   const q = await prisma.project.findUniqueOrThrow({ where: { id: "q" }, select: {
     id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
-    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true } } } });
+    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true } } } });
   expect(await runNightly(prisma, q, () => 0)).toEqual({ action: "skip", outcome: "upToDate" });
   // p는 마감으로 멈췄다.
   github({});
@@ -252,4 +252,53 @@ it("브랜치가 돌아온 뒤 야간 적재가 성공하면 lastImportError가 
   github({});
   expect(await visit()).toMatchObject({ action: "import", result: "imported" });
   expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" } })).toMatchObject({ lastImportError: null, lastImportFailedAt: null, lastCommitSha: MERGE });
+});
+
+/**
+ * **실패 상태가 있는 표면은 같은 head여도 다시 적재한다** (Codex 교차 리뷰 🔴, 2026-09-30 사용자 판정). SHA 일치로 `upToDate`를 내면
+ * 부분 적재가 놓친 파일·#155의 표면 실패가 새 커밋 전까지 그대로 남는다.
+ */
+const valueOf = async (locale: string) => (await prisma.translation.findFirst({ where: { projectId: "p", localeCode: locale } }))?.value ?? null;
+const surfaceState = () => prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" } });
+
+it("(a) 한 로케일 내려받기 실패 → partial → 같은 head에서 정상화 → 빠진 값이 들어오고 실패 상태가 지워진다", async () => {
+  await seed();
+  github({});
+  // 머리 커밋에 fr 파일이 새로 생겼다 — en·ko는 받고 fr만 못 받는다(부분 적재). ⚠️ 로케일 둘 중 하나가 빠지면 포맷 재확인부터 실패해 전체 실패다.
+  const files = ["en", "ko", "fr"].map((locale) => ({ path: `i18n/${locale}.json`, sha: locale, size: 50 }));
+  const content: Record<string, string> = { en: '{"hello":"Hello"}', ko: '{"hello":"안녕하세요"}', fr: '{"hello":"Bonjour"}' };
+  let frDown = true;
+  fakes.reader = {
+    snapshot: vi.fn<RepoReader["snapshot"]>(async () => ({ status: "ok", headSha: MERGE, headCommittedAt: mergeAt, files })),
+    blob: vi.fn(async (sha: string) => (sha === "fr" && frDown ? undefined : content[sha])),
+  };
+  expect(await visit()).toMatchObject({ action: "import", result: "partial" });
+  expect(await surfaceState()).toMatchObject({ lastCommitSha: MERGE, lastImportError: "partial-import" });
+  expect(await valueOf("fr")).toBeNull();
+  // 둘째 방문 — head는 같다. 옛 판정이면 upToDate로 끝나 fr을 새 커밋 전까지 안 받는다.
+  frDown = false;
+  expect(await visit()).toMatchObject({ action: "import", result: "imported" });
+  expect(await valueOf("fr")).toBe("Bonjour");
+  expect(await surfaceState()).toMatchObject({ lastCommitSha: MERGE, lastImportError: null, lastImportFailedAt: null });
+  // 셋째 방문 — 실패 상태가 지워졌으니 이제 upToDate다(밤마다 적재하지 않는다).
+  expect(await visit()).toEqual({ action: "skip", outcome: "upToDate" });
+});
+
+it("(b) base 브랜치 부재 → 같은 SHA로 되살림 → 다음 방문이 적재해 Home 실패가 지워진다 (#155)", async () => {
+  await seed();
+  github({ refSha: {} });
+  await visit();
+  expect(await surfaceState()).toMatchObject({ lastImportError: "import-failed", lastCommitSha: OLD });
+  // 같은 커밋(OLD)으로 브랜치를 되살렸다 — reader도 그 커밋의 트리를 낸다.
+  github({ refSha: { "heads/main": OLD } });
+  fakes.reader = { ...fakes.reader!, snapshot: vi.fn<RepoReader["snapshot"]>(async () => ({ status: "ok", headSha: OLD, headCommittedAt: oldAt.toISOString(),
+    files: ["en", "ko"].map((locale) => ({ path: `i18n/${locale}.json`, sha: locale, size: 50 })) })) };
+  expect(await visit()).toMatchObject({ action: "import", result: "imported" });
+  expect(await surfaceState()).toMatchObject({ lastImportError: null, lastImportFailedAt: null, lastCommitSha: OLD });
+});
+
+it("실패 상태 없는 같은 head는 여전히 upToDate다 (짝)", async () => {
+  await seed();
+  github({ refSha: { "heads/main": OLD } });
+  expect(await visit()).toEqual({ action: "skip", outcome: "upToDate" });
 });

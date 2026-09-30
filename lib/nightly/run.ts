@@ -48,6 +48,8 @@ export type NightlyTarget = {
     adapterName: string | null;
     pathTemplate: string | null;
     baseLocale: string | null;
+    /** 표면 실패 상태 — 있으면 같은 head여도 다시 적재한다(`NightlySurface.failed`). */
+    lastImportError: string | null;
   }[];
 };
 
@@ -70,6 +72,7 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
       active: surface.archivedAt === null,
       formatComplete: surface.adapterName !== null && isAdapterName(surface.adapterName) && !!surface.pathTemplate && !!surface.baseLocale,
       lastCommitSha: surface.lastCommitSha,
+      failed: surface.lastImportError !== null,
     })),
     elapsedMs: elapsedMs(),
   };

@@ -66,7 +66,7 @@ function row(slug: string, over: { lastCommitSha?: string } = {}) {
   return {
     id: `id-${slug}`, slug, repoOwner: "o", repoName: slug, baseBranch: "main", installationId: "77", repositoryId: `r-${slug}`,
     archivedAt: null, lastNightlyAt: null,
-    surfaces: [{ id: `s-${slug}`, slug: "default", archivedAt: null, lastCommitSha: over.lastCommitSha ?? OLD, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" }],
+    surfaces: [{ id: `s-${slug}`, slug: "default", archivedAt: null, lastCommitSha: over.lastCommitSha ?? OLD, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", lastImportError: null }],
   };
 }
 

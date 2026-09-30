@@ -19,6 +19,7 @@ const surface = (over: Partial<NightlyInput["surfaces"][number]> = {}): NightlyI
   active: true,
   formatComplete: true,
   lastCommitSha: OLD,
+  failed: false,
   ...over,
 });
 
@@ -98,6 +99,34 @@ describe("planNightly — base head", () => {
   it("하나라도 다르면 적재 쪽 — 먼저 열린 PR을 묻는다", () => {
     const surfaces = [surface({ lastCommitSha: HEAD }), surface({ lastCommitSha: OLD })];
     expect(planNightly(input({ surfaces, head: { ok: true, sha: HEAD } }))).toEqual({ action: "need", input: "open-pr" });
+  });
+});
+
+/**
+ * ⚠️ **SHA 일치는 완전한 적재의 증거가 아니다** (Codex 교차 리뷰 🔴, 2026-09-30 사용자 판정 "실패 상태가 있는 표면은 매일 다시 시도한다").
+ * 부분 적재(`partial-import`)도 `lastCommitSha`를 head로 전진시킨다 — `upToDate`로 끝내면 실패한 파일을 새 커밋 전까지 영영 안 받는다.
+ * base 브랜치 부재(#155)를 같은 SHA로 되살린 경우도 같다 — 표면 실패가 안 지워진다.
+ */
+describe("planNightly — 실패 상태가 있는 표면은 같은 head여도 다시 적재한다", () => {
+  it("비교 대상 중 하나라도 실패 상태면 upToDate가 아니다 — PR을 묻는다(게이트는 그대로)", () => {
+    const surfaces = [surface({ lastCommitSha: HEAD }), surface({ lastCommitSha: HEAD, failed: true })];
+    expect(planNightly(input({ surfaces, head: { ok: true, sha: HEAD } }))).toEqual({ action: "need", input: "open-pr" });
+  });
+
+  it("PR 없음 → import · 열린 PR → 보류 — 실패 재시도도 게이트를 지난다", () => {
+    const surfaces = [surface({ lastCommitSha: HEAD, failed: true })];
+    const at = { surfaces, head: { ok: true, sha: HEAD } } as const;
+    expect(planNightly(input({ ...at, openPr: { url: null } }))).toEqual({ action: "import" });
+    expect(planNightly(input({ ...at, openPr: { url: "https://github.com/o/r/pull/1" } }))).toEqual({ action: "skip", outcome: "deferred", reason: "open-pr" });
+  });
+
+  it("미전달 편집이 있으면 여전히 Publish다 — 실패 재시도가 편집 보호를 넘지 않는다", () => {
+    expect(planNightly(input({ pending: 1, surfaces: [surface({ lastCommitSha: HEAD, failed: true })] }))).toEqual({ action: "publish" });
+  });
+
+  it("비교 대상 밖(보관) 표면의 실패는 재시도를 부르지 않는다", () => {
+    const surfaces = [surface({ lastCommitSha: HEAD }), surface({ active: false, lastCommitSha: HEAD, failed: true })];
+    expect(planNightly(input({ surfaces, head: { ok: true, sha: HEAD } }))).toEqual({ action: "skip", outcome: "upToDate" });
   });
 });
 
