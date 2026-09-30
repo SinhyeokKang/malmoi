@@ -1,4 +1,5 @@
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
+import { importFailureTone } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 
 /**
@@ -91,6 +92,17 @@ export function projectStatus(row: ProjectStatusInput): ProjectStatus {
  * 생산자 없는 갈래를 union에 남기지 않는 것이 이 리포의 규칙이기도 하다.
  */
 
+/**
+ * 표면 하나의 적재 상태 — 행은 이것을 **표면 배열 그대로** 든다(ux-drift-unify §3.2). 평탄화(`find` · `some`)하면 표면 A가 동기화 중일 때
+ * 표면 B의 실패가 통째로 가려졌다(🔴 E). 판정은 `projectSyncFailure` 하나가 한다.
+ */
+export type SurfaceImportState = {
+  /** 마지막으로 수신한 임포트 실패. */
+  importError: ImportFailureCode | null;
+  /** 서버 적재가 지금 돌고 있나. */
+  importing: boolean;
+};
+
 /** 행이 아는 사건들. DB 집계와 GitHub 조회가 채우고, 조회가 실패하면 원격 둘이 "없음"으로 온다. */
 export type ProjectEvents = {
   /** 검토 대기 셀 수. */
@@ -101,10 +113,6 @@ export type ProjectEvents = {
   openPr: { number: number; url: string } | null;
   /** base가 앞선 **로케일 파일 수**. ⚠️ 키 수가 아니다 (C′) — 서버는 리포의 키를 모른다. */
   repoAheadFiles: number;
-  /** 마지막으로 수신한 임포트 실패. */
-  importError: ImportFailureCode | null;
-  /** 서버 적재가 지금 돌고 있나. */
-  importing: boolean;
 };
 
 export type ProjectGroup = "needs_attention" | "all_set" | "archived";
@@ -112,15 +120,36 @@ export type ProjectGroup = "needs_attention" | "all_set" | "archived";
 /** 그룹 순서 — **손볼 것이 먼저다.** 이 배열이 곧 화면의 목차 순서다. */
 const GROUP_ORDER = ["needs_attention", "all_set", "archived"] as const satisfies readonly ProjectGroup[];
 
-type RowInput = ProjectStatusInput & ProjectEvents;
+/** 판정 셋이 받는 행 — `surfaces`가 readiness 두 컬럼과 적재 상태를 함께 든다. */
+export type RowInput = Omit<ProjectStatusInput, "surfaces"> & ProjectEvents & {
+  surfaces: readonly (ProjectStatusInput["surfaces"][number] & SurfaceImportState)[];
+};
 
 /**
  * ⚠️ **"지금 돌고 있다"가 "지난번에 실패했다"를 이긴다.** `lastImportStartedAt`이 서 있다는 것은 새
  * 실행이 시작됐다는 뜻이고, 남아 있는 코드는 이전 실행의 것이다 — 끝나면 성공이 비우거나 실패가
  * 덮어쓴다. 이 한 줄이 그룹·띠·Meter 셋에서 같은 뜻으로 쓰인다.
  */
-export function failing(row: { importError: ImportFailureCode | null; importing: boolean }): boolean {
+export function failing(row: SurfaceImportState): boolean {
   return row.importError !== null && !row.importing;
+}
+
+/**
+ * **표면별로 `failing`을 적용한 뒤 가장 나쁜 표면 하나** (ux-drift-unify §3.2). 급은 `importFailureTone` 순(danger > warning)이고,
+ * 같은 급이면 먼저 온 표면이다 — 호출부가 slug 순으로 넘기므로 결정적이다. 목록 칩·띠·Meter와 Home 배너가 이것 하나를 부른다.
+ */
+export function worstFailingSurface<T extends SurfaceImportState>(surfaces: readonly T[]): (T & { importError: ImportFailureCode }) | null {
+  let worst: (T & { importError: ImportFailureCode }) | null = null;
+  for (const surface of surfaces) {
+    const code = surface.importError;
+    if (code === null || !failing(surface)) continue;
+    if (worst === null || (importFailureTone(code) === "danger" && importFailureTone(worst.importError) !== "danger")) worst = { ...surface, importError: code };
+  }
+  return worst;
+}
+
+export function projectSyncFailure(surfaces: readonly SurfaceImportState[]): ImportFailureCode | null {
+  return worstFailingSurface(surfaces)?.importError ?? null;
 }
 
 /**
@@ -133,7 +162,7 @@ export function projectGroup(row: RowInput): ProjectGroup {
   const status = projectStatus(row);
   if (status === "archived") return "archived";
   if (status !== "active") return "needs_attention";
-  if (failing(row)) return "needs_attention";
+  if (projectSyncFailure(row.surfaces) !== null) return "needs_attention";
   return row.unsent > 0 || row.repoAheadFiles > 0 ? "needs_attention" : "all_set";
 }
 
@@ -163,7 +192,8 @@ export function rowBanner(row: RowInput): RowBanner {
   if (status === "archived") return null;
   // 끊긴 연결은 모든 것을 덮는다 — 그 밑의 사건은 전부 손댈 수 없는 상태다.
   if (status === "needs_reconnect") return { kind: "needs_reconnect" };
-  if (failing(row) && row.importError !== null) return { kind: "import_failed", reason: row.importError };
+  const failure = projectSyncFailure(row.surfaces);
+  if (failure !== null) return { kind: "import_failed", reason: failure };
   if (status === "setup") return { kind: "setup" };
   // ⚠️ 첫 적재 대기는 띠가 없다 (DESIGN §6.63) — 그 문장은 Meter 자리가 든다.
   if (status === "awaiting_first_sync") return null;
@@ -173,6 +203,20 @@ export function rowBanner(row: RowInput): RowBanner {
   if (row.repoAheadFiles > 0) return { kind: "repo_ahead", files: row.repoAheadFiles };
   if (row.review > 0) return { kind: "review", count: row.review };
   return null;
+}
+
+/**
+ * 행 우측 칩 — **그 프로젝트의 가장 나쁜 상태 하나** (ux-drift-unify Q2). 순서: 보관 > 끊김 > 동기화 실패 > 일부 반영 > readiness(Not synced yet·Setup) > Active.
+ * 띠(`rowBanner`)·Home(`planHomeState`)과 같이 **끊김이 먼저**다 — 공유 우선순위 표는 두지 않고(세 소비자의 어휘가 다르다) 일치는 테스트가 고정한다.
+ */
+export type RowChip = ProjectStatus | "sync_failed" | "partially_synced";
+
+export function rowChip(row: RowInput): RowChip {
+  const status = projectStatus(row);
+  if (status === "archived" || status === "needs_reconnect") return status;
+  const failure = projectSyncFailure(row.surfaces);
+  if (failure !== null) return importFailureTone(failure) === "danger" ? "sync_failed" : "partially_synced";
+  return status;
 }
 
 /**
@@ -214,8 +258,8 @@ export function meterSlot(
   const status = projectStatus(row);
   if (status === "setup") return { kind: "note", note: "setup" };
   if (status === "awaiting_first_sync") {
-    if (row.importing) return { kind: "note", note: "importing" };
-    return { kind: "note", note: row.importError === null ? "waiting" : "failed" };
+    if (row.surfaces.some((surface) => surface.importing)) return { kind: "note", note: "importing" };
+    return { kind: "note", note: projectSyncFailure(row.surfaces) === null ? "waiting" : "failed" };
   }
   return { kind: "meters", locales };
 }

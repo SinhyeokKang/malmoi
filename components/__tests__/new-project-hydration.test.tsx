@@ -27,9 +27,9 @@ import type { ProjectListRow } from "@/lib/keys/query";
  */
 const BASE: ProjectListRow = {
   image: null, slug: "admin-console", name: "admin-console", role: "OWNER", installationId: "i",
-  surfaces: [{ archivedAt: null, lastCommitSha: "s" }], archivedAt: null, repoOwner: "day1company", repoName: "admin-console",
+  surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }], archivedAt: null, repoOwner: "day1company", repoName: "admin-console",
   repositoryId: "9001", memberCount: 6, baseBranch: "main", lastPrUrl: null, reviewSurfaceSlug: null, unsentSurfaceSlug: null,
-  repoAheadFrom: null, meters: [], review: 0, unsent: 0, openPr: null, repoAheadFiles: 0, importError: null, importing: false,
+  repoAheadFrom: null, meters: [], review: 0, unsent: 0, openPr: null, repoAheadFiles: 0,
 };
 
 async function hydrate(server: React.ReactElement, client: React.ReactElement): Promise<unknown[]> {

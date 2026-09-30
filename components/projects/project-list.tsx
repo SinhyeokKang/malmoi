@@ -28,12 +28,12 @@ import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
 import { importFailureMessage, importFailureTone } from "@/lib/projects/import-failure";
 import {
-  failing,
   highlightName,
   listBody,
   meterSlot,
   projectStatus,
   rowBanner,
+  rowChip,
   type ProjectGroup,
   type ProjectStatus,
   type RowBanner,
@@ -240,13 +240,13 @@ function RowList({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
 function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
   const status = projectStatus(row);
   /*
-    칩은 **그 프로젝트의 가장 나쁜 상태 하나**다(2026-09-30 상태 통일 — 실패 중인데 초록 `Active`가 섰다).
-    동기화 실패(빨강) · 일부 반영(호박)이 readiness 칩을 이기고, 보관은 그대로 보관이다. 톤은 `importFailureTone`이 정한다.
+    칩은 **그 프로젝트의 가장 나쁜 상태 하나**다(2026-09-30 상태 통일 — 실패 중인데 초록 `Active`가 섰다). 순서는 `rowChip`이 정한다:
+    끊김이 먼저이고(ux-drift-unify Q2 — 띠·Home과 같다), 동기화 실패(빨강) · 일부 반영(호박)이 readiness 칩을 이긴다.
   */
-  const failure = status !== "archived" && failing(row) && row.importError !== null ? importFailureTone(row.importError) : null;
-  const chip = failure === "danger" ? { variant: "missing" as const, tone: "", label: m.settings.sources.failedAfter }
-    : failure === "warning" ? { variant: "warning" as const, tone: "", label: m.logs.status.partial }
-    : { ...STATUS_CHIP[status], label: m.projects.status[status] };
+  const chipState = rowChip(row);
+  const chip = chipState === "sync_failed" ? { variant: "missing" as const, tone: "", label: m.settings.sources.failedAfter }
+    : chipState === "partially_synced" ? { variant: "warning" as const, tone: "", label: m.logs.status.partial }
+    : { ...STATUS_CHIP[chipState], label: m.projects.status[chipState] };
   const slot = meterSlot(row, row.meters);
   const banner = rowBanner(row);
 

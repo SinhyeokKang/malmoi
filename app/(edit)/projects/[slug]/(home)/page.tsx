@@ -32,7 +32,7 @@ import {
 import { actorLabel } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { isImportFailureCode } from "@/lib/projects/import-status";
-import { failing, reviewByLocale, summaryQueue } from "@/lib/projects/list";
+import { reviewByLocale, summaryQueue, worstFailingSurface } from "@/lib/projects/list";
 import { pullNumberFrom } from "@/lib/projects/remote-plan";
 import { routes } from "@/lib/routes";
 
@@ -220,8 +220,8 @@ export default async function ProjectHomePage({
       .map((locale) => ({ surfaceSlug: surface.slug, code: locale.code, name: locale.name, keys: total, at: locale.createdAt }));
   });
 
-  // 배너가 지목하는 표면 하나 — slug 오름차순의 첫째다. 나머지 실패는 항목으로 남는다.
-  const failed = surfaces.find((s) => failing(s)) ?? null;
+  // 배너가 지목하는 표면 하나 — 목록 칩·띠와 같은 판정으로 **가장 나쁜 것**(danger > warning, 같은 급이면 slug 순)이다. 나머지 실패는 항목으로 남는다.
+  const failed = worstFailingSurface(surfaces);
 
   const items = attentionItems({
     state,

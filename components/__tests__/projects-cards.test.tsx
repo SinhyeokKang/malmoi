@@ -28,7 +28,7 @@ const BASE: ProjectListRow = {
   name: "admin-console",
   role: "OWNER",
   installationId: "i",
-  surfaces: [{ archivedAt: null, lastCommitSha: "s" }],
+  surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }],
   archivedAt: null,
   repoOwner: "day1company",
   repoName: "admin-console",
@@ -44,8 +44,6 @@ const BASE: ProjectListRow = {
   unsent: 0,
   openPr: null,
   repoAheadFiles: 0,
-  importError: null,
-  importing: false,
 };
 
 /** `1a`의 셋 — 손볼 것 하나 · 정상 하나 · 보관 하나. */

@@ -34,7 +34,7 @@ const BASE: ProjectListRow = {
   name: "Acme",
   role: "OWNER",
   installationId: "i",
-  surfaces: [{ archivedAt: null, lastCommitSha: "s" }],
+  surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }],
   archivedAt: null,
   repoOwner: "o",
   repoName: "r",
@@ -47,8 +47,6 @@ const BASE: ProjectListRow = {
   unsent: 0,
   openPr: null,
   repoAheadFiles: 0,
-  importError: null,
-  importing: false,
 };
 
 const draw = async (over: Partial<ProjectListRow>) => {
@@ -105,7 +103,7 @@ it.each([
  * `translation:write`라 EDITOR도 열어 사유를 읽는다). 재시도만 OWNER 전용이라 EDITOR에게 그 한 줄이 붙는다.
  */
 it("임포트 실패: EDITOR도 Sources 링크를 받고 재시도는 소유자 몫이라는 한 줄이 붙는다", async () => {
-  const over = { importError: "parse-failed" as const };
+  const over = { surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: "parse-failed" as const, importing: false }] };
   const owner = await draw({ ...over, role: "OWNER" });
   // ⚠️ **상세·재시도가 사는 곳은 Sources다** (audit #6) — Settings에는 가져오기 실패에 관한 정보가 0이다.
   expect(links(owner).find((a) => a.text === m.projects.banner.action.viewDetails)?.href).toBe("/projects/acme/sources");

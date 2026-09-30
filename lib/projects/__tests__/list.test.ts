@@ -9,7 +9,9 @@ import {
   meterSlot,
   projectGroup,
   projectStatus,
+  projectSyncFailure,
   rowBanner,
+  rowChip,
   reviewByLocale,
   rowLocaleProgress,
   searchProjects,
@@ -150,9 +152,13 @@ describe("상태 문구", () => {
  * 1:1이다 — 표에 없는 조합을 여기서 발명하지 않는다.
  */
 
-const READY = { installationId: "i", surfaces: [{ archivedAt: null, lastCommitSha: "s" }], repositoryId: "r", archivedAt: null } as const;
-const QUIET = { review: 0, unsent: 0, openPr: null, repoAheadFiles: 0, importError: null, importing: false } as const;
+/** 표면 하나의 적재 상태 — 행은 **표면 배열을 그대로** 든다(ux-drift-unify §3.2, 평탄화하면 A 동기화 중이 B 실패를 가렸다). */
+const S = { archivedAt: null, lastCommitSha: "s", importError: null, importing: false } as const;
+const FIRST = { ...S, lastCommitSha: null } as const;
+const READY = { installationId: "i", surfaces: [S], repositoryId: "r", archivedAt: null } as const;
+const QUIET = { review: 0, unsent: 0, openPr: null, repoAheadFiles: 0 } as const;
 const row = (over: Partial<Parameters<typeof rowBanner>[0]> = {}) => ({ ...READY, ...QUIET, ...over });
+const failed = (importError: "parse-failed" | "partial-import" | "import-failed", importing = false) => ({ surfaces: [{ ...S, importError, importing }] });
 
 describe("projectGroup — 상태표의 그룹 열과 1:1 (DESIGN §6.63)", () => {
   it.each([
@@ -166,10 +172,10 @@ describe("projectGroup — 상태표의 그룹 열과 1:1 (DESIGN §6.63)", () =
   it.each([
     ["unsent edits", { unsent: 24 }],
     ["repo moved ahead", { repoAheadFiles: 3 }],
-    ["awaiting first sync", { surfaces: [{ archivedAt: null, lastCommitSha: null }] }],
+    ["awaiting first sync", { surfaces: [FIRST] }],
     ["setup", { installationId: null }],
     ["needs reconnect", { repositoryId: null }],
-    ["import failed", { importError: "parse-failed" as const }],
+    ["import failed", failed("parse-failed")],
   ])("%s은 Needs attention이다", (_label, over) => {
     expect(projectGroup(row(over))).toBe("needs_attention");
   });
@@ -194,7 +200,7 @@ describe("rowBanner — 겹치면 하나만 (DESIGN §6.63 띠 우선순위)", (
   });
 
   it("임포트 실패가 사건을 덮는다 — 적재된 프로젝트에서도 뜬다", () => {
-    expect(rowBanner(row({ importError: "parse-failed", review: 9 }))).toEqual({
+    expect(rowBanner(row({ ...failed("parse-failed"), review: 9 }))).toEqual({
       kind: "import_failed",
       reason: "parse-failed",
     });
@@ -206,12 +212,12 @@ describe("rowBanner — 겹치면 하나만 (DESIGN §6.63 띠 우선순위)", (
    * 실패가 덮어쓴다.
    */
   it("적재가 도는 중에는 옛 실패 띠를 그리지 않는다", () => {
-    expect(rowBanner(row({ importError: "parse-failed", importing: true }))).toBeNull();
+    expect(rowBanner(row(failed("parse-failed", true)))).toBeNull();
   });
 
   it("setup은 자기 띠를 갖고, 첫 적재 대기는 안 갖는다 — 그 문장은 Meter 자리가 든다", () => {
     expect(rowBanner(row({ installationId: null }))).toEqual({ kind: "setup" });
-    expect(rowBanner(row({ surfaces: [{ archivedAt: null, lastCommitSha: null }] }))).toBeNull();
+    expect(rowBanner(row({ surfaces: [FIRST] }))).toBeNull();
   });
 
   /** E: 머지만 남은 프로젝트도 편집이 남아 있으면 그 사실을 먼저 본다. */
@@ -245,6 +251,70 @@ describe("rowBanner — 겹치면 하나만 (DESIGN §6.63 띠 우선순위)", (
   });
 });
 
+/**
+ * **표면별 `failing` 후 가장 나쁜 것 하나** (ux-drift-unify §3.2 · 🔴 E). 행을 평탄화하면(`find` · `some`) 표면 A가 동기화 중일 때
+ * 표면 B의 실패가 통째로 가려졌고, partial이 slug 순으로 앞서면 failed가 호박으로 섰다.
+ */
+describe("projectSyncFailure", () => {
+  const syncing = { importError: null, importing: true } as const;
+  it.each([
+    ["A 동기화 중 + B 실패 → B의 실패", [syncing, { importError: "parse-failed", importing: false }], "parse-failed"],
+    ["A partial + B failed → failed", [{ importError: "partial-import", importing: false }, { importError: "import-failed", importing: false }], "import-failed"],
+    ["A failed + B partial → failed", [{ importError: "import-failed", importing: false }, { importError: "partial-import", importing: false }], "import-failed"],
+    ["partial 하나 → partial", [{ importError: "partial-import", importing: false }], "partial-import"],
+    ["전부 동기화 중 → 없음", [syncing, { importError: "parse-failed", importing: true }], null],
+    ["빈 배열 → 없음", [], null],
+  ] as const)("%s", (_label, surfaces, expected) => {
+    expect(projectSyncFailure(surfaces)).toBe(expected);
+  });
+
+  it("같은 급이면 먼저 온 표면(slug 순)의 코드다 — 결정적이다", () => {
+    expect(projectSyncFailure([{ importError: "parse-failed", importing: false }, { importError: "import-failed", importing: false }])).toBe("parse-failed");
+  });
+});
+
+/**
+ * **칩은 끊김이 먼저다** (ux-drift-unify Q2) — Disconnected > Sync failed > Partially synced > Not synced yet·Setup > Active.
+ * 띠(`rowBanner`)와 Home(`planHomeState`)은 이미 끊김이 먼저였고 칩만 실패가 먼저였다.
+ */
+describe("rowChip — 끊김 > 실패 > 일부 반영 > readiness", () => {
+  it.each([
+    ["끊김 + 실패", { repositoryId: null, ...failed("import-failed") }, "needs_reconnect"],
+    ["끊김 + 일부 반영", { repositoryId: null, ...failed("partial-import") }, "needs_reconnect"],
+    ["실패", failed("parse-failed"), "sync_failed"],
+    ["일부 반영", failed("partial-import"), "partially_synced"],
+    ["A 동기화 중 + B 실패", { surfaces: [{ ...S, importing: true }, { ...S, importError: "parse-failed" as const }] }, "sync_failed"],
+    ["A partial + B failed", { surfaces: [{ ...S, importError: "partial-import" as const }, { ...S, importError: "import-failed" as const }] }, "sync_failed"],
+    ["첫 적재 실패", { surfaces: [{ ...FIRST, importError: "parse-failed" as const }] }, "sync_failed"],
+    ["setup + 실패", { installationId: null, ...failed("parse-failed") }, "sync_failed"],
+    ["첫 적재 대기", { surfaces: [FIRST] }, "awaiting_first_sync"],
+    ["setup", { installationId: null }, "setup"],
+    ["정상", {}, "active"],
+    ["보관 + 끊김 + 실패", { archivedAt: new Date(0), repositoryId: null, ...failed("parse-failed") }, "archived"],
+  ] as const)("%s → %s", (_label, over, chip) => {
+    expect(rowChip(row(over))).toBe(chip);
+  });
+
+  /**
+   * ⚠️ **칩이 끊김·실패·일부 반영이면 같은 행의 띠도 같은 상태를 말한다** (spec 완료 조건 7a). 칩 Active + 띠 Unsent·PR open·검토 대기는 정상 조합이다.
+   */
+  it.each([
+    [{ repositoryId: null, ...failed("import-failed"), unsent: 3 }],
+    [{ ...failed("partial-import"), unsent: 3 }],
+    [{ surfaces: [{ ...S, importing: true }, { ...S, importError: "parse-failed" as const }], review: 2 }],
+    [{ surfaces: [{ ...S, importError: "partial-import" as const }, { ...S, importError: "import-failed" as const }] }],
+    [{ installationId: null, ...failed("parse-failed") }],
+  ])("칩과 띠가 같은 상태를 말한다 %#", (over) => {
+    const chip = rowChip(row(over));
+    const banner = rowBanner(row(over));
+    if (chip === "needs_reconnect") expect(banner).toEqual({ kind: "needs_reconnect" });
+    else if (chip === "sync_failed") expect(banner).toMatchObject({ kind: "import_failed" });
+    else if (chip === "partially_synced") expect(banner).toEqual({ kind: "import_failed", reason: "partial-import" });
+    else throw new Error(`unexpected chip ${chip}`);
+    if (chip === "sync_failed") expect(banner?.kind === "import_failed" && banner.reason).not.toBe("partial-import");
+  });
+});
+
 describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (DESIGN §6.63)", () => {
   it("값이 있는 상태는 바를 그린다", () => {
     const locales = [{ surfaceSlug: "default", code: "ko", isBase: false, total: 10, done: 5, review: 1, percent: 50 }];
@@ -253,9 +323,9 @@ describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (DESIGN §6.6
 
   it.each([
     ["setup", { installationId: null }, "setup"],
-    ["첫 적재 대기", { surfaces: [{ archivedAt: null, lastCommitSha: null }] }, "waiting"],
-    ["적재 진행 중", { surfaces: [{ archivedAt: null, lastCommitSha: null }], importing: true }, "importing"],
-    ["첫 적재 실패", { surfaces: [{ archivedAt: null, lastCommitSha: null }], importError: "parse-failed" as const }, "failed"],
+    ["첫 적재 대기", { surfaces: [FIRST] }, "waiting"],
+    ["적재 진행 중", { surfaces: [{ ...FIRST, importing: true }] }, "importing"],
+    ["첫 적재 실패", { surfaces: [{ ...FIRST, importError: "parse-failed" as const }] }, "failed"],
   ])("%s은 바가 아니라 문장이다", (_label, over, note) => {
     expect(meterSlot(row(over), [])).toEqual({ kind: "note", note });
   });
@@ -266,12 +336,12 @@ describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (DESIGN §6.6
    */
   it("적재된 뒤의 실패는 바를 유지한다", () => {
     const locales = [{ surfaceSlug: "default", code: "ko", isBase: false, total: 10, done: 5, review: 1, percent: 50 }];
-    expect(meterSlot(row({ importError: "partial-import" }), locales)).toEqual({ kind: "meters", locales });
+    expect(meterSlot(row(failed("partial-import")), locales)).toEqual({ kind: "meters", locales });
   });
 
   /** 진행 중이 더 최신 사실이다 — 남아 있는 코드는 이전 실행의 것이다. */
   it("첫 적재 대기에서 진행이 실패를 이긴다", () => {
-    expect(meterSlot(row({ surfaces: [{ archivedAt: null, lastCommitSha: null }], importError: "parse-failed", importing: true }), [])).toEqual({
+    expect(meterSlot(row({ surfaces: [{ ...FIRST, importError: "parse-failed", importing: true }] }), [])).toEqual({
       kind: "note",
       note: "importing",
     });

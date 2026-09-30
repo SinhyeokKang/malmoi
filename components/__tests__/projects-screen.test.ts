@@ -111,7 +111,17 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
   it("배지 색이 맵 + `satisfies`다", () => {
     const src = PAGE.map(code).join("\n");
     expect(src).toMatch(/satisfies Record<ProjectStatus,/);
-    expect(src).toContain("STATUS_CHIP[status]");
+    expect(src).toContain("STATUS_CHIP[chipState]");
+  });
+
+  /**
+   * ⚠️ **칩 순서는 `rowChip` 하나가 정한다** (ux-drift-unify Q2 — 끊김 > 실패 > 일부 반영 > readiness). 전에는 이 화면이 실패를
+   * readiness 앞에 손으로 끼워 넣어 끊김보다 실패가 먼저였다. 순서 자체는 `lib/projects/__tests__/list.test.ts`가 센다.
+   */
+  it("칩 갈래를 화면이 고르지 않고 `rowChip`에서 받는다", () => {
+    const src = PAGE.map(code).join("\n");
+    expect(src).toContain("rowChip(row)");
+    expect(src).not.toMatch(/failing\(row\)/);
   });
 
   /**

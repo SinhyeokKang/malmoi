@@ -11,8 +11,8 @@ import { optionalEnv } from "@/lib/env";
 import { PrismaClient } from "@/generated/prisma/client";
 import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
-import { reviewByLocale } from "@/lib/projects/list";
-import { countUnpublishedBySurface, loadProjectListAggregates, loadReviewAttention } from "../query";
+import { reviewByLocale, rowBanner, rowChip } from "@/lib/projects/list";
+import { countUnpublishedBySurface, loadProjectList, loadProjectListAggregates, loadReviewAttention } from "../query";
 import { countPending } from "@/lib/protection/where";
 import { loadPullState } from "@/lib/pull/load";
 import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
@@ -445,6 +445,29 @@ it("인가 집합 밖의 프로젝트는 섞이지 않는다", async () => {
   expect(got.cells.every((c) => c.projectId === "p1")).toBe(true);
 });
 
+
+/**
+ * **표면 A 동기화 중 + 표면 B 실패** (ux-drift-unify §3.2 · 🔴 E). 조립이 표면을 평탄화하면(`some` 동기화 중) B의 실패가 통째로
+ * 가려졌다 — 판정 단위 테스트는 통과하고 조회·조립에서 사실이 달라지는 부류라(POSTMORTEM 2026-09-20) 실제 조회로 칩·띠까지 잰다.
+ */
+it("목록 행이 표면 A 동기화 중 + 표면 B 실패를 실패로 말한다", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  await prisma.project.update({ where: { id: "p1" }, data: { installationId: "1", repositoryId: "10" } });
+  await prisma.translationSurface.update({ where: { id: "surface-p1" }, data: { lastCommitSha: "a".repeat(40), lastImportStartedAt: AFTER } });
+  await prisma.translationSurface.create({ data: { id: "surface-p1-b", projectId: "p1", slug: "second", adapterName: "json-catalog",
+    pathTemplate: "second/{locale}.json", nested: false, baseLocale: "en", lastCommitSha: "b".repeat(40), lastImportError: "parse-failed", lastImportFailedAt: AFTER } });
+  await prisma.user.create({ data: { id: "owner", email: "fixture" } });
+  await prisma.projectMember.create({ data: { projectId: "p1", userId: "owner", role: "OWNER" } });
+
+  const { rows: [row] } = await loadProjectList(prisma, "owner", { loadRemote: async () => new Map() });
+  if (row === undefined) throw new Error("no row");
+  expect(row.surfaces.map(({ importError, importing }) => ({ importError, importing }))).toEqual([
+    { importError: null, importing: true },
+    { importError: "parse-failed", importing: false },
+  ]);
+  expect(rowChip(row)).toBe("sync_failed");
+  expect(rowBanner(row)).toEqual({ kind: "import_failed", reason: "parse-failed" });
+});
 
 it("먼저 시작한 적재가 성공해도 나중 실행의 진행 표시와 실패 기록을 빼앗지 않는다", async () => {
   await seed({ id: "p1", lastPulledAt: null, archived: false });

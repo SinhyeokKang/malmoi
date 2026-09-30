@@ -7,13 +7,14 @@ import type { PrismaClient } from "@/generated/prisma/client";
 // 의도"라고 못박아 두고 `canPerform`이 그 union을 든다. 사이드바가 이 값을 그쪽으로 넘긴다.
 import type { Role } from "@/lib/auth/permission";
 import { isImportFailureCode } from "@/lib/projects/import-status";
-import { loadRemoteSignals } from "@/lib/projects/remote";
+import { loadRemoteSignals, type RemoteSignals } from "@/lib/projects/remote";
 import {
   rowLocaleProgress,
   rowReviewCounts,
   type LiveLocale,
   type LocaleCellCount,
   type ProjectEvents,
+  type RowInput,
   type RowLocaleProgress,
 } from "@/lib/projects/list";
 import { countPendingBySurface } from "@/lib/protection/where";
@@ -205,13 +206,15 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
   ⚠️ **`defaultSurfaceSlug`를 뺀다** — 셸 사이드바만 쓰는 값이고(audit-ux #4), 목록 행은 표면 주소를 자기 필드
   (`reviewSurfaceSlug`·`unsentSurfaceSlug`)로 든다. 여기 남기면 목록 조회가 쓰지 않을 관계를 하나 더 싣는다.
 */
-export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceCount" | "keyCount"> &
+export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceCount" | "keyCount" | "surfaces"> &
   /**
    * ⚠️ **사건을 중첩하지 않고 펼친다** — 판정 셋(`projectStatus`·`rowBanner`·`meterSlot`)이
    * `ProjectStatusInput & ProjectEvents`를 받으므로, 중첩하면 화면이 렌더마다 `{...row, ...row.events}`를
    * 새로 만들어야 하고 그 합성이 판정의 입력이 된다.
    */
   ProjectEvents & {
+  /** readiness 두 컬럼 + 표면별 적재 상태 — **평탄화하지 않는다**(`assembleProjectListRows`). */
+  surfaces: RowInput["surfaces"];
   image: string | null;
   repoOwner: string;
   repoName: string;
@@ -316,40 +319,67 @@ export async function loadProjectList(
       })),
     ),
   ]);
+  return { rows: assembleProjectListRows(rows, aggregates, remote) };
+}
+
+/** `loadProjectList`의 멤버십 select 한 행 — 조립 함수의 입력이다(쓰는 필드만). */
+export type ProjectListMemberRow = {
+  role: Role;
+  project: {
+    id: string; slug: string; name: string; image: string | null; installationId: string | null;
+    archivedAt: Date | null; repoOwner: string; repoName: string; repositoryId: string | null; baseBranch: string; lastPrUrl: string | null;
+    surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null; lastImportError: string | null; lastImportStartedAt: Date | null }[];
+    _count: { members: number };
+  };
+};
+
+/**
+ * 행 조립 — **I/O가 없다** (ux-drift-unify §3.2). 🔴 E의 결함은 판정이 아니라 여기(표면 평탄화)에 있었고 postgres 스위트가
+ * 이 층을 단언하지 않았다(POSTMORTEM 2026-09-20 "판정은 통과했지만 조회·렌더에서 사실이 달라졌다") — 그래서 떼어 단위로 센다.
+ *
+ * ⚠️ **표면의 적재 상태를 평탄화하지 않는다.** 전에는 `find`(첫 실패 코드)·`some`(하나라도 동기화 중)으로 접어, 표면 A가 동기화 중이면
+ * 표면 B의 실패가 통째로 가려졌다. 판정(`projectSyncFailure`)이 표면별로 `failing`을 적용한다.
+ */
+export function assembleProjectListRows(
+  rows: readonly ProjectListMemberRow[],
+  aggregates: ProjectListAggregates,
+  remote: ReadonlyMap<string, RemoteSignals>,
+): ProjectListRow[] {
   const meters = rowLocaleProgress(aggregates.locales, aggregates.keyTotals, aggregates.cells);
 
   // ③은 orphaned 로케일의 셀을 포함할 수 있다 — 그 필터는 `rowReviewCounts`가 Meter와 **같은 접기**로 한다.
   const review = rowReviewCounts(aggregates.locales, aggregates.cells);
 
-  return {
-    rows: rows.map((r) => ({
-      slug: r.project.slug,
-      name: r.project.name,
-      image: r.project.image,
-      role: r.role,
-      installationId: r.project.installationId,
-      surfaces: r.project.surfaces.map(s => ({ archivedAt: s.archivedAt, lastCommitSha: s.lastCommitSha })),
-      archivedAt: r.project.archivedAt,
-      repoOwner: r.project.repoOwner,
-      repoName: r.project.repoName,
-      repositoryId: r.project.repositoryId,
-      memberCount: r.project._count.members,
-      baseBranch: r.project.baseBranch,
-      lastPrUrl: r.project.lastPrUrl,
-      meters: meters.get(r.project.id) ?? [],
-      reviewSurfaceSlug: aggregates.locales.filter(l => l.projectId === r.project.id && aggregates.cells.some(c => c.surfaceId === l.surfaceId && c.localeCode === l.code && c.needsReview && c.count > 0)).map(l => l.surfaceSlug).sort()[0] ?? null,
-      unsentSurfaceSlug: aggregates.unsentSurfaces.get(r.project.id) ?? null,
-      repoAheadFrom: remote.get(r.project.id)?.repoAheadFrom ?? null,
-      review: review.get(r.project.id) ?? 0,
-      unsent: aggregates.unsent.get(r.project.id) ?? 0,
-      // 조회가 실패했거나 입력이 없으면 둘 다 "없음"이다 — 그 띠만 빠지고 나머지는 DB만으로 선다.
-      openPr: remote.get(r.project.id)?.openPr ?? null,
-      repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
+  return rows.map((r) => ({
+    slug: r.project.slug,
+    name: r.project.name,
+    image: r.project.image,
+    role: r.role,
+    installationId: r.project.installationId,
+    surfaces: r.project.surfaces.map(s => ({
+      archivedAt: s.archivedAt,
+      lastCommitSha: s.lastCommitSha,
       // DB 컬럼의 문자열이라 판정 함수로 거른다 — 모르는 값은 무시한다.
-      importError: r.project.surfaces.map(s => s.lastImportError).find(isImportFailureCode) ?? null,
-      importing: r.project.surfaces.some(s => s.lastImportStartedAt !== null),
+      importError: isImportFailureCode(s.lastImportError) ? s.lastImportError : null,
+      importing: s.lastImportStartedAt !== null,
     })),
-  };
+    archivedAt: r.project.archivedAt,
+    repoOwner: r.project.repoOwner,
+    repoName: r.project.repoName,
+    repositoryId: r.project.repositoryId,
+    memberCount: r.project._count.members,
+    baseBranch: r.project.baseBranch,
+    lastPrUrl: r.project.lastPrUrl,
+    meters: meters.get(r.project.id) ?? [],
+    reviewSurfaceSlug: aggregates.locales.filter(l => l.projectId === r.project.id && aggregates.cells.some(c => c.surfaceId === l.surfaceId && c.localeCode === l.code && c.needsReview && c.count > 0)).map(l => l.surfaceSlug).sort()[0] ?? null,
+    unsentSurfaceSlug: aggregates.unsentSurfaces.get(r.project.id) ?? null,
+    repoAheadFrom: remote.get(r.project.id)?.repoAheadFrom ?? null,
+    review: review.get(r.project.id) ?? 0,
+    unsent: aggregates.unsent.get(r.project.id) ?? 0,
+    // 조회가 실패했거나 입력이 없으면 둘 다 "없음"이다 — 그 띠만 빠지고 나머지는 DB만으로 선다.
+    openPr: remote.get(r.project.id)?.openPr ?? null,
+    repoAheadFiles: remote.get(r.project.id)?.repoAheadFiles ?? 0,
+  }));
 }
 
 /**
