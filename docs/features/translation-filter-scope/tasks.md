@@ -98,3 +98,5 @@
   그 자리에 `.scratch/` 시드가 폐기용 대량 프로젝트를 만든다. 측정 뒤 시드 프로젝트도 id로 지운다. 상주 `bugshot-i18n-test-qa`·`i18n-order-check`는 건드리지 않는다.
 - **2026-09-30 배치 구성** (지휘자): 태스크가 `query.ts`·`workspace.tsx`·`key-list.tsx`를 공유해 병렬 불가 — 워커 하나(TFS)가 T1–T4 → 인계 →
   T5(main 체크아웃 측정 워커) 통과 뒤 T6–T8·T10·T11을 잇는다. T9는 main 체크아웃 QA 워커, T12는 지휘자. dev push는 T7 이후.
+- **2026-09-30 빈 상태 보조 버튼** (사용자): 검색어가 있는 빈 상태의 보조 버튼은 쿼리 그대로(`clearFilters` — q 유지), 라벨만 기존 `Clear filters`로.
+  검색어가 없을 때는 `Show all n keys` 유지. spec 조건 9의 "`Show all n keys` 보조 버튼"은 검색어가 있을 때 "`Clear filters` 보조 버튼"으로 읽는다.
