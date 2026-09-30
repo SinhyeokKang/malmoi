@@ -32,8 +32,10 @@ description: dev → main PR 생성 + 버전 bump + CI 대기 + squash 머지 + 
 pnpm db:deploy
 ```
 
-- 이 스킬이 자동 실행하지 **않는다.** 프로덕션 DB를 바꾸는 일이라 사용자가 돌린다.
-- **사용자에게 실행 여부를 확인받고 대기한다.** 안 돌린 채 머지하면 배포 직후 프로덕션이 없는 컬럼을 조회한다 (additive-first 원칙, ARCHITECTURE §7).
+- **이 스킬이 사용자 확인 없이 실행한다** (2026-09-30 사용자). `/merge`를 부른 것이 곧 프로덕션 반영 승인이다. 안 돌린 채 머지하면 배포 직후 프로덕션이 없는 컬럼을 조회한다 (additive-first 원칙, ARCHITECTURE §7).
+  - 실행 전에 반영될 마이그레이션 이름과 SQL(`git diff origin/main...origin/dev -- prisma/migrations/`)을 리포트에 싣는다 — 확인은 없어도 무엇이 나갔는지는 남긴다.
+  - 실행 뒤 `pnpm db:status:prod`가 up to date가 아니거나 `db:deploy`가 실패하면 **중단**한다 — 머지로 넘어가지 않는다.
+  - 실행 후 anon 권한 확인(`has_schema_privilege` false — `/db` 5단계)을 prod에도 돈다.
 - **⚠️ 확인은 `pnpm db:status:prod`다, `db:status`가 아니다** (2026-09-04 dev/prod 분리 뒤). 후자는 **dev**를 본다 — dev엔 이미 적용돼 있으므로 "up to date"가 나오고, 그걸 prod 상태로 읽으면 그대로 머지된다. 분리 전에는 인스턴스가 하나여서 `migrate dev`가 프로덕션까지 바꿔놨고 그래서 이 게이트를 잊어도 안 깨졌다. **분리가 만든 새 실패 모드이고, 그 실패가 나타나는 지점이 바로 여기다.**
 - `/push`가 "마이그레이션 포함 — /merge에서 db:deploy 필요"를 리포트에 남겼다면 그것이 이 단계의 입력이다.
 
@@ -230,7 +232,7 @@ dev 동기화: fetch→검사→reset→lease push 완료 / ⚠️ 보류(<사�
 
 ## 금지 사항
 
-- **`pnpm db:deploy` 자동 실행 금지** — 사용자 확인 후 사용자가 돌린다.
+- **`pnpm db:deploy` 외의 명령으로 prod 스키마를 움직이지 않는다** — `prisma migrate deploy`를 `PRISMA_TARGET`을 손으로 붙여 부르거나 `credentials:finalize:prod --apply`로 대신하지 않는다.
 - **마이그레이션이 미적용인 채 머지 금지.**
 - **CI 실패·진행 중 상태에서 머지 금지.**
 - **merge commit·rebase 머지 금지** — squash만.
