@@ -16,7 +16,7 @@ export type NightlyVisit =
   // ⚠️ `Omit<union>`은 union을 접어 갈래별 필드(`reason`)를 지운다 — 판정(`NightlyPlan`)과 같은 모양을 손으로 적는다.
   | { action: "skip"; outcome: "upToDate" }
   | { action: "skip"; outcome: "deferred"; reason: "open-pr" | "pr-check-failed" }
-  | { action: "skip"; outcome: "failed"; reason: "base-unreadable" }
+  | { action: "skip"; outcome: "failed"; reason: "base-unreadable"; branchMissing: boolean }
   | { action: "none"; counter: "notReady" | "unprocessed" };
 
 /** 판정의 스킵·없음 갈래가 위 모양과 같은지 컴파일 타임에 잰다 — 판정에 갈래가 늘면 여기서 걸린다. */

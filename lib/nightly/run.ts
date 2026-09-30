@@ -3,6 +3,7 @@ import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { isAdapterName } from "@/lib/adapters";
 import { importEventPayload } from "@/lib/events/payload";
+import { importOutcomeFields } from "@/lib/projects/import-status";
 import { recordEvent } from "@/lib/events/record";
 import { AppError, logCaught } from "@/lib/failure";
 import { createGitClient, openRepoReader } from "@/lib/github";
@@ -101,7 +102,7 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
       return { action: "import", ...result };
     }
     case "skip": {
-      await recordEvent(prisma, {
+      const event = {
         projectId: target.id,
         subtype: "nightly.skip",
         actor: { kind: "AUTOMATION" },
@@ -114,7 +115,23 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
           deferReason: plan.outcome === "deferred" ? plan.reason : null,
           errorCode: plan.outcome === "failed" ? plan.reason : null,
         }),
-      });
+      } as const;
+      if (plan.outcome === "failed" && plan.branchMissing) {
+        /**
+         * ⚠️ **base 브랜치가 정말 없으면 표면 실패 상태도 쓴다** (#155, 2026-09-30 사용자 판정). 사건만 남기면 Home이 "Nothing needs you"라고
+         * 말한다 — 주의 항목·`failed` 접미는 표면 `lastImportError`만 읽는다. 수동 Sync가 같은 상황(`base-branch-missing`)에서 쓰는 코드·표면
+         * (`import-failed`, 활성 표면)을 그대로 쓴다 — 새 코드를 만들지 않는다. 다음 성공 적재(야간·CI·수동)가 같은 컬럼을 비운다.
+         * ⚠️ 진행 표시(`lastImportStartedAt`·`lastImportToken`)는 건드리지 않는다 — 이 방문은 적재를 시작하지 않았고, 도는 CI의 표시를 뺏지 않는다.
+         * ⚠️ 사건과 **같은 트랜잭션**이다(상태 변경 사건 — 어느 쪽이 실패해도 둘 다 롤백된다).
+         */
+        const { lastImportError, lastImportFailedAt } = importOutcomeFields("import-failed", new Date());
+        await prisma.$transaction(async (tx) => {
+          await tx.translationSurface.updateMany({ where: { projectId: target.id, id: { in: active.map((surface) => surface.id) } }, data: { lastImportError, lastImportFailedAt } });
+          await recordEvent(tx, event);
+        });
+      } else {
+        await recordEvent(prisma, event);
+      }
       const { action: _, ...rest } = plan;
       return { action: "skip", ...rest };
     }

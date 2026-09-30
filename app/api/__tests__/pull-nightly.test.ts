@@ -22,6 +22,7 @@ const state = vi.hoisted(() => ({
   events: [] as Record<string, unknown>[],
   visits: [] as { id: string; lastNightlyAt: Date }[],
   restores: [] as { where: Record<string, unknown>; data: { lastNightlyAt: Date | null } }[],
+  surfaceFailures: [] as { where: Record<string, unknown>; data: Record<string, unknown> }[],
   clients: {} as Record<string, GitClient>,
   createGitClient: vi.fn(),
   openRepoReader: vi.fn(),
@@ -29,8 +30,8 @@ const state = vi.hoisted(() => ({
   runAutomationImport: vi.fn(),
 }));
 
-vi.mock("@/lib/db", () => ({
-  getPrisma: () => ({
+vi.mock("@/lib/db", () => {
+  const db = {
     project: {
       findMany: async () => state.rows,
       update: async ({ where, data }: { where: { id: string }; data: { lastNightlyAt: Date } }) => {
@@ -44,8 +45,12 @@ vi.mock("@/lib/db", () => ({
     },
     translation: { count: async ({ where }: { where: { projectId: string } }) => state.pending[where.projectId] ?? 0 },
     projectEvent: { create: async ({ data }: { data: Record<string, unknown> }) => { state.events.push(data); return data; } },
-  }),
-}));
+    // base 브랜치 부재의 표면 실패 기록(#155) — 사건과 같은 트랜잭션이다.
+    translationSurface: { updateMany: async (args: { where: Record<string, unknown>; data: Record<string, unknown> }) => { state.surfaceFailures.push(args); return { count: 1 }; } },
+    $transaction: async <T,>(run: (tx: unknown) => Promise<T>) => run(db),
+  };
+  return { getPrisma: () => db };
+});
 vi.mock("@/lib/github", () => ({ createGitClient: state.createGitClient, openRepoReader: state.openRepoReader }));
 vi.mock("@/lib/sync/run", () => ({ runSync: state.runSync }));
 vi.mock("@/lib/import/run", () => ({ runAutomationImport: state.runAutomationImport }));
@@ -86,6 +91,7 @@ beforeEach(() => {
   state.events = [];
   state.visits = [];
   state.restores = [];
+  state.surfaceFailures = [];
   state.clients = {};
   state.createGitClient.mockImplementation(async (_owner: string, repo: string) => {
     const found = state.clients[repo];
@@ -185,13 +191,15 @@ describe("갈래별 호출", () => {
   });
 
   it.each([
-    ["getRefSha throw", { failOn: "getRefSha" as const }],
-    ["base 브랜치 없음(sha null)", { refSha: {} }],
-  ])("%s → skip failed base-unreadable · PR 조회 0회", async (_name, options) => {
+    ["getRefSha throw", { failOn: "getRefSha" as const }, false],
+    ["base 브랜치 없음(sha null)", { refSha: {} }, true],
+  ])("%s → skip failed base-unreadable · PR 조회 0회", async (_name, options, branchMissing) => {
     const p = row("head-bad");
     state.rows = [p];
     const calls = client(p, options);
-    expect((await call()).results[0]).toEqual({ slug: "head-bad", action: "skip", outcome: "failed", reason: "base-unreadable" });
+    expect((await call()).results[0]).toEqual({ slug: "head-bad", action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing });
+    // 브랜치가 정말 없을 때만 표면 실패 상태를 쓴다(#155) — 일시 실패는 사건만.
+    expect(state.surfaceFailures).toEqual(branchMissing ? [expect.objectContaining({ where: expect.objectContaining({ projectId: p.id }), data: expect.objectContaining({ lastImportError: "import-failed" }) })] : []);
     expect(calls.filter((c) => c.method === "findOpenPr")).toHaveLength(0);
     expect(state.events[0]).toMatchObject({ result: "failed", payload: expect.objectContaining({ errorCode: "base-unreadable" }) });
   });

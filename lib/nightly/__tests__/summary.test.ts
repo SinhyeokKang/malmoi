@@ -32,7 +32,7 @@ const items: PullItem[] = [
   { slug: "s1", action: "skip", outcome: "upToDate" },
   { slug: "s2", action: "skip", outcome: "deferred", reason: "open-pr" },
   { slug: "s3", action: "skip", outcome: "deferred", reason: "pr-check-failed" },
-  { slug: "s4", action: "skip", outcome: "failed", reason: "base-unreadable" },
+  { slug: "s4", action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: false },
   { slug: "n1", action: "none", counter: "notReady" },
   { slug: "n2", action: "none", counter: "unprocessed" },
   { slug: "t1", status: "failed", error: "db down" },

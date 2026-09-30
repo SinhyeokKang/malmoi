@@ -75,7 +75,8 @@ describe("planNightly — base head", () => {
   });
 
   it("head 조회 throw({ ok: false }) → skip failed base-unreadable", () => {
-    expect(planNightly(input({ head: { ok: false } }))).toEqual({ action: "skip", outcome: "failed", reason: "base-unreadable" });
+    // 일시·설정 실패다 — 표면 실패 상태를 쓰지 않는다(#155의 transient 갈래).
+    expect(planNightly(input({ head: { ok: false } }))).toEqual({ action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: false });
   });
 
   it("base 브랜치 없음(sha null) → skip failed base-unreadable — upToDate가 아니다", () => {
@@ -84,6 +85,8 @@ describe("planNightly — base head", () => {
       action: "skip",
       outcome: "failed",
       reason: "base-unreadable",
+      // ⚠️ 브랜치가 **정말 없다** — Publish도 못 도는 영구 설정 문제라 표면 실패 상태를 쓴다(#155, 2026-09-30 사용자 판정).
+      branchMissing: true,
     });
   });
 
@@ -160,7 +163,7 @@ describe("planNightly — 마감 뒤에는 PR 조회를 요구하지 않는다",
   });
 
   it("head를 못 읽은 방문은 마감 뒤에도 base-unreadable 사건이다 — 이미 쓴 대기의 결과를 버리지 않는다", () => {
-    expect(planNightly(input({ head: { ok: false }, elapsedMs: NIGHTLY_IMPORT_START_MS * 2 }))).toEqual({ action: "skip", outcome: "failed", reason: "base-unreadable" });
+    expect(planNightly(input({ head: { ok: false }, elapsedMs: NIGHTLY_IMPORT_START_MS * 2 }))).toEqual({ action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: false });
   });
 });
 

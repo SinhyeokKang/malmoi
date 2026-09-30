@@ -40,7 +40,11 @@ export type NightlyPlan =
   | { action: "import" }
   | { action: "skip"; outcome: "upToDate" }
   | { action: "skip"; outcome: "deferred"; reason: "open-pr" | "pr-check-failed" }
-  | { action: "skip"; outcome: "failed"; reason: "base-unreadable" }
+  /**
+   * @param branchMissing base 브랜치가 **정말 없다**(`getRefSha` → `null`) — Publish도 못 도는 영구 설정 문제라 껍데기가 표면 실패 상태를 쓴다(#155).
+   *   `false`는 조회가 던졌거나 늦었다 — 일시·설정 실패라 사건만 남긴다(야간이 CI로 건강한 프로젝트를 Home에서 뒤집지 않는다).
+   */
+  | { action: "skip"; outcome: "failed"; reason: "base-unreadable"; branchMissing: boolean }
   | { action: "none"; counter: "notReady" | "unprocessed" };
 
 export function planNightly(input: NightlyInput): NightlyPlan {
@@ -53,7 +57,8 @@ export function planNightly(input: NightlyInput): NightlyPlan {
   if (compared.length === 0) return { action: "none", counter: "notReady" };
 
   if (input.head === undefined) return { action: "need", input: "head" };
-  if (!input.head.ok || input.head.sha === null) return { action: "skip", outcome: "failed", reason: "base-unreadable" };
+  if (!input.head.ok) return { action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: false };
+  if (input.head.sha === null) return { action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: true };
   const head = input.head.sha;
   if (compared.every((surface) => surface.lastCommitSha === head)) return { action: "skip", outcome: "upToDate" };
 

@@ -217,3 +217,39 @@ it("마감 외 갈래는 방문을 기록한다 — 실패 방문도 (짝)", asy
   await visit();
   expect(await stampOf("p")).not.toBeNull();
 });
+
+/**
+ * **base 브랜치가 정말 없으면 표면 실패 상태를 쓴다** (#155, 2026-09-30 사용자 판정). 사건만 남기면 Home이 "Nothing needs you"라고 말한다 —
+ * Home의 주의 항목·`failed` 접미는 표면 `lastImportError`만 읽는다. 브랜치 부재는 Publish도 못 도는 영구 설정 문제라 수동 Sync와 같은
+ * 코드(`import-failed`)를 같은 표면(활성)에 쓴다. ⚠️ **일시 실패(head 조회 throw·마감)는 그대로 사건만**이다 — 야간이 CI로 건강한 프로젝트를 뒤집지 않는다.
+ */
+it("base 브랜치 없음(sha null) → 활성 표면 lastImportError import-failed + nightly.skip 한 행, 보관 표면은 안 쓴다", async () => {
+  await seed();
+  await prisma.translationSurface.create({ data: { id: "s-arch", projectId: "p", slug: "old", archivedAt: new Date("2026-09-01T00:00:00Z") } });
+  github({ refSha: {} });
+  expect(await visit()).toEqual({ action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: true });
+  const rows = await events();
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({ subtype: "nightly.skip", result: "failed" });
+  expect(rows[0]?.payload).toMatchObject({ errorCode: "base-unreadable" });
+  const surface = await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" } });
+  expect(surface).toMatchObject({ lastImportError: "import-failed", lastCommitSha: OLD });
+  expect(surface.lastImportFailedAt).not.toBeNull();
+  expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s-arch" } })).toMatchObject({ lastImportError: null });
+});
+
+it("head 조회 throw → 사건만, 표면 실패 상태 무기록 (짝)", async () => {
+  await seed();
+  github({ failOn: "getRefSha" });
+  expect(await visit()).toMatchObject({ outcome: "failed", branchMissing: false });
+  expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" } })).toMatchObject({ lastImportError: null, lastImportFailedAt: null });
+});
+
+it("브랜치가 돌아온 뒤 야간 적재가 성공하면 lastImportError가 지워진다", async () => {
+  await seed();
+  github({ refSha: {} });
+  await visit();
+  github({});
+  expect(await visit()).toMatchObject({ action: "import", result: "imported" });
+  expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" } })).toMatchObject({ lastImportError: null, lastImportFailedAt: null, lastCommitSha: MERGE });
+});
