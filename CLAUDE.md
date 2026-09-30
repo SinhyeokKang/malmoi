@@ -222,7 +222,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **21개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/runtime-test`·`/design-sync`·`/orchestrate`·`/guide-shots` 일곱은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, 뒤의 넷은 Codex에 런타임이 없다: `/runtime-test`는 ego-browser, `/design-sync`는 그 위에 **`DesignSync` 도구**까지 쓰고, `/orchestrate`는 Orca 워커 세션을 띄워 push까지 지휘하고, `/guide-shots`는 ego-browser로 가이드 스크린샷을 찍는다 — 그 stale 목록만은 `pnpm guide:check`로 어디서든 받는다).
+스킬 **22개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/runtime-test`·`/design-sync`·`/orchestrate`·`/guide-shots` 일곱은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, 뒤의 넷은 Codex에 런타임이 없다: `/runtime-test`는 ego-browser, `/design-sync`는 그 위에 **`DesignSync` 도구**까지 쓰고, `/orchestrate`는 Orca 워커 세션을 띄워 push까지 지휘하고, `/guide-shots`는 ego-browser로 가이드 스크린샷을 찍는다 — 그 stale 목록만은 `pnpm guide:check`로 어디서든 받는다).
 
 **권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/design-sync`) → (`/db`) → `/push`(dev) → `/merge`(프로덕션 + 릴리스). ⚠️ **`/design-sync`는 신규 페이지를 핸드오프로 처음 구현할 때만** 끼고, `/ship`도 6.5단계에서 같은 조건으로 부른다. 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
 
@@ -230,6 +230,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 - **`/feature`가 기능의 시작점이다.** 산출물은 `docs/features/<name>/`에 `spec`·`design`·`tasks`로 남고, **기능이 끝나면 결론을 정본(PRODUCT — 제품 판정 / ARCHITECTURE — 불변식·함정 / DESIGN — 시각 규칙)으로 올리고 그 디렉터리는 지운다.** 근거 기록을 쌓아 두지 않는다 — 되살릴 일이 생기면 `git log`가 답한다.
 - **`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고 `docs/POSTMORTEM.md` 전 항목의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. 리포트 전용이라 배포 경로와 무관하다.
+- **`/ux-audit`도 이 흐름 밖이다** (2026-10-01, ux-drift-unify). `/audit` 옆 레인이고 **화면과 화면 사이**를 본다 — 같은 개념이 화면마다 다른 톤·낱말·형태·배치인지를 차원 일곱(상태 · 문구 · 동작 · 구조 · 토큰 · 판정 중복 · 가이드↔화면)으로 병렬 감사한다. 기준은 DESIGN §2.4·§10.1과 화면 간 불변식 테스트다. **`/merge` 전 또는 새 화면 핸드오프 뒤**에 돌리고, 🔴는 이슈 후보로 · 정본 제안은 §2.4 행 후보로 낸다. 리포트 전용이다.
 - **`/sync`는 파괴적이다** — dev를 `origin/main`으로 hard reset + force push한다. 미커밋·미푸시·미머지 세 검사를 전부 통과해야 실행한다. `/merge`가 10단계에서 자동으로 하므로, 손으로 부르는 것은 그게 실패했거나 **다른 머신·창구가 머지한 뒤**다.
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정도 거기서 한다. **프로덕션 반영은 `/merge` 1단계다.**
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`.** 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.
