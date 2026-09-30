@@ -71,13 +71,15 @@ describe("Sources 상세 Status 카드 — 결과 줄 유무", () => {
     expect(lined(status.querySelector("header"), "b")).toBe(true);
   });
 
-  it("결과 줄이 있으면 머리 선 + 결과 줄 아래 선 둘이다 — 첫 줄이 `border-t`를 들지 않는다", async () => {
+  /** 결과 줄은 카드 `notice`다(🔴 J — `Alert inset`) — 머리 아래 선이 notice 아래로 내려가 선은 여전히 하나다(4-Y1). */
+  it("결과 줄이 있으면 선은 notice 아래 하나다 — 머리도 첫 줄도 선을 들지 않는다", async () => {
     await draw({ text: "Synced 3 keys.", tone: "success" });
     const status = card(document, m.sources.status);
-    expect(rules(status)).toHaveLength(2);
-    const result = status.querySelector('[role="status"]');
-    expect(lined(result, "b")).toBe(true);
-    expect(lined(result, "t")).toBe(false);
+    expect(rules(status)).toHaveLength(1);
+    expect(lined(status.querySelector("header"), "b")).toBe(false);
+    const notice = status.querySelector("[data-card-notice]");
+    expect(notice?.querySelector('[role="status"]')?.getAttribute("data-alert")).toBe("success");
+    expect(lined(notice, "b")).toBe(true);
   });
 });
 

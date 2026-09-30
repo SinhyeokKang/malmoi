@@ -98,8 +98,19 @@ describe("패널 폭 질의 — 실물과 같은 변형", () => {
   it("그 질의가 걸릴 이름 있는 컨테이너(`@container/panel`)를 골격 스스로 세운다", async () => {
     const { container } = await render(<SourcesLoading />);
     expect(container.querySelector('[class~="@container/panel"]')).not.toBeNull();
-    const description = container.querySelector("[data-skeleton-description]");
-    expect(description?.className).toContain("@max-[1016px]/panel:hidden");
+  });
+
+  /*
+    ⚠️ **골격 = 실물** (4-Y16 · 4-W13 · 4-Y6) — 실물 머리엔 설명 줄이 없고, 행의 [Open translations]는 2026-09-30에 걷혔고,
+    총계 배지는 카드 머리 한 곳이다. 없는 요소를 골격이 그리면 도착 순간 행 폭이 튄다.
+  */
+  it("실물에 없는 머리 설명·머리 개수·행 버튼을 그리지 않는다", async () => {
+    const { container } = await render(<SourcesLoading />);
+    expect(container.querySelector("[data-skeleton-description]")).toBeNull();
+    const header = container.querySelector("[data-skeleton-header]")!;
+    expect(header.querySelectorAll(".rounded-full")).toHaveLength(0);
+    const row = container.querySelector("[data-skeleton-source]")!;
+    expect(row.querySelector(".h-9")).toBeNull();
   });
 });
 

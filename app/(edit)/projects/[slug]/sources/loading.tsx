@@ -7,9 +7,12 @@ import { m } from "@/lib/i18n";
  *
  * ⚠️ **`ContentPanel`을 들지 않는다** — `[slug]/layout.tsx`가 든다.
  *
- * ⚠️ **치수는 `sources-screen.tsx` 그대로다** — 머리(제목 + 배지 · 설명 · [Add source]) · `PanelCard` 헤더(`px-4 py-3`,
- * 아래 `border-divider`, 오른쪽 끝 리포 · 브랜치) · 소스 행(`px-4 py-[13px]` · 글리프 28 · 본문·경로 두 줄 · 상태 ·
- * [Open translations] · chevron). 첫 행은 헤더의 선을 쓰고 자기 선이 없다(`first:border-t-0`).
+ * ⚠️ **치수는 `sources-screen.tsx` 그대로다** — 머리(제목 · [Add source]) · `PanelCard` 헤더(`px-4 py-3`,
+ * 아래 `border-divider`, 제목 + 개수 배지, 오른쪽 끝 리포 · 브랜치) · 소스 행(`px-4 py-[13px]` · 글리프 28 · 본문·경로 두 줄 · 상태 ·
+ * chevron). 첫 행은 헤더의 선을 쓰고 자기 선이 없다(`first:border-t-0`). 실물에 없는 요소(머리 설명 · 머리 개수 · 행 버튼)를
+ * 그리지 않는다 — 도착 순간 폭이 튄다(4-Y16 · 4-Y6).
+ * ⚠️ **개수 원은 카드 머리 하나만 그린다**(4-W13) — 실물 `CountBadge`는 0이면 서지 않지만, 골격은 아래 "행은 하나다"와 같은
+ * 가정(소스 하나)을 그리고 그때 실물 배지는 선다. 머리의 원은 실물에 총계가 없어 지웠다.
  *
  * ⚠️ **패널 폭 질의도 실물 그대로다** (malmoi#101) — 실물은 콘텐츠 패널 1016 이하에서 머리 설명을 버리고 행 상태를
  * 셋째 줄로 내린다(`@max-[1016px]/panel:*`). 셸 최소 폭 1280에서 패널이 1014라 **가장 흔한 폭이 좁은 쪽**이다. 그래서
@@ -24,16 +27,9 @@ export default function SourcesLoading() {
     <div className="@container/panel flex min-h-0 flex-1 flex-col">
       <span className="sr-only" role="status">{m.sources.screenLoading}</span>
       <PanelHeader aria-hidden>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            {/* 제목 + 배지 폭이 실물(`Sources` + 한 자리 배지 = 96)과 같게 — 68 + gap 8 + 20. */}
-            <SkeletonLine text="text-lg" className="w-[68px]" />
-            <Skeleton className="size-5 rounded-full" />
-          </div>
-          {/* 실물 설명 문구의 13px 폭(334) — 1016 이하에서는 실물처럼 사라진다. */}
-          <div data-skeleton-description className="min-w-0 @max-[1016px]/panel:hidden">
-            <SkeletonLine text="text-xs" className="w-[334px] max-w-full" />
-          </div>
+        <div data-skeleton-header className="flex items-center gap-3">
+          {/* 제목 폭이 실물 `Sources`(68)와 같게. */}
+          <SkeletonLine text="text-lg" className="w-[68px]" />
           <Skeleton className="ml-auto h-9 w-32 rounded-md" />
         </div>
       </PanelHeader>
@@ -62,7 +58,6 @@ export default function SourcesLoading() {
               {/* 넓은 폭의 상태 — 행 높이는 왼쪽 두 줄이 정하므로 줄 자리가 아니라 블록 하나다. */}
               <Skeleton className="h-3 w-24 shrink-0 rounded-md @max-[1016px]/panel:hidden" />
             </div>
-            <Skeleton className="h-9 w-36 shrink-0 rounded-md" />
             <Skeleton className="size-4 shrink-0 rounded @max-[1016px]/panel:mt-2" />
           </div>
         </div>
