@@ -97,3 +97,11 @@ describe("eventMeta — 주체 낱말과 보류 사유", () => {
     expect(parts).toContain(m.logs.meta.manual);
   });
 });
+
+/** 서버 적재 예산은 수동 Sync도 지난다 — too-large 문구가 [Sync]를 복구 수단으로 권하면 같은 이유로 또 실패한다. */
+it("too-large 문구는 서버 적재 전체의 한계로 말하고 워크플로를 출구로 든다", () => {
+  const text = m.logs.deferReasons["too-large"];
+  expect(text).not.toMatch(/automatically|ask your developers to sync/);
+  expect(text).toContain("workflow");
+  expect(renderToStaticMarkup(<>{m.logs.sentence.import.held["too-large"]("WHO")}</>)).not.toContain("automatically");
+});

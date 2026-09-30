@@ -125,7 +125,8 @@ function value(row: MetaRow, now: Date): ReactNode {
           {row.failedAt !== null && (
             <span className="text-destructive"> · {m.home.meta.failedAt(relativeTime(row.failedAt, now))}</span>
           )}
-          {row.heldByOpenPr && ` · ${m.home.meta.heldByOpenPr}`}
+          {/* Never에는 아무것도 붙이지 않는다 — 주체와 같은 규칙. */}
+          {row.at !== null && row.heldByOpenPr && ` · ${m.home.meta.heldByOpenPr}`}
         </span>
       );
     case "lastPublish": {

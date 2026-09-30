@@ -46,6 +46,7 @@ describe("메타 열 — 실행 주체", () => {
   it("Never에는 주체가 붙지 않는다", async () => {
     expect(await valueOf({ kind: "lastSync", at: null, failedAt: null, trigger: "nightly", heldByOpenPr: false })).toBe(m.home.meta.never);
     expect(await valueOf({ kind: "lastPublish", at: null, prUrl: null, trigger: "nightly" })).toBe(m.home.meta.never);
+    expect(await valueOf({ kind: "lastSync", at: null, failedAt: null, trigger: null, heldByOpenPr: true })).toBe(m.home.meta.never);
   });
 
   it("Last publish — PR · 시각 · 주체, PR이 없으면 시각 · 주체", async () => {

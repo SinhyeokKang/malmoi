@@ -1076,7 +1076,8 @@ export const en = {
     deferReasons: {
       "open-pr": "A Malmoi pull request is still open. Nothing was synced — syncing resumes once it's merged or closed.",
       "pr-check-failed": "We couldn't check GitHub for an open Malmoi pull request, so nothing was synced. The next run checks again.",
-      "too-large": "The repository change is too large to sync automatically. Nothing was synced — ask your developers to sync it.",
+      /** ⚠️ 서버 적재 예산은 수동 Sync도 지난다 — [Sync]를 출구로 권하면 같은 이유로 또 실패한다. 예산 밖 경로는 리포 워크플로다. */
+      "too-large": "The repository change is too large for a server-side sync. Nothing was synced — your repository's workflow can still deliver it.",
     },
     empty: {
       title: "No activity yet",
@@ -1168,7 +1169,7 @@ export const en = {
         held: {
           "open-pr": (who: ReactNode): ReactNode => <>{who} held the sync — a Malmoi pull request is still open</>,
           "pr-check-failed": (who: ReactNode): ReactNode => <>{who} held the sync — GitHub didn&rsquo;t answer about pull requests</>,
-          "too-large": (who: ReactNode): ReactNode => <>{who} held the sync — the change is too large to sync automatically</>,
+          "too-large": (who: ReactNode): ReactNode => <>{who} held the sync — the change is too large for a server-side sync</>,
         },
       },
       member: {
