@@ -200,7 +200,7 @@
 
 ## G. 화면 간 불변식 테스트
 
-- **T27** 신규 `lib/status/__tests__/cross-screen.test.ts` — design §3.8, spec 완료 조건 3의 행렬 전 칸(N/A 칸은 "받지 않음" 단언).
+- ✅ **T27** (U5) 신규 `lib/status/__tests__/cross-screen.test.ts` — design §3.8, spec 완료 조건 3의 행렬 전 칸(N/A 칸은 "받지 않음" 단언).
   입력은 `finishSurface`·조회가 실제로 만드는 모양만.
   검증 [자동]: `pnpm exec vitest run lib/status` green. 카나리아: 한 판정(예: `connectionProblem`의 `unpinned`)을 메모리에서 바꾸면 red.
 - **T28** `components/__tests__/visual-system.test.ts` 확장 + DOM 테스트.
@@ -293,3 +293,4 @@
 - 2026-10-01 지휘자(U1 해석 승인): Logs **설정** 종류 칩(slate)은 D3③("별도 축은 blue·teal·violet만")에 따라 neutral 칸으로 간다 — 최종 보고에 알린다.
 - 2026-10-01 지휘자(U2 리뷰 r1): 리포 id 미고정 거부는 자기 코드 `unpinned`(Disconnected 문구·Reconnect), `not-connected`는 사용자 GitHub 계정 미연결(ConnectError) 문구로 되돌렸다. MCP `sync_repository`는 `unpinned`를 `not-connected`로 접는다(외부 계약 불변).
 - ⚠️ U2 ~ T18 사이 dev에서는 Home 메타의 "held until PR merged" 줄이 서지 않는다(`openPr: null`) — **T18이 dev에 들어가기 전에 `/merge`하지 않는다.**
+- 2026-10-01 지휘자(U5): spec 완료 조건 3의 "표면 0개 → Setup"은 표가 틀렸다 — 설치 있고 활성 표면 0이면 `awaiting_first_sync`(목록 Not synced yet · Home not-ready)이고 목록·Home이 일치한다. 판정은 그대로 두고 테스트가 이것을 고정한다.
