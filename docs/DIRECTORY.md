@@ -679,6 +679,10 @@ lib/
                         Publish·Sync 화면이 "이미 열려 있다"를 말할 근거다. loadOpenPrForImportGate(2026-09-30)는
                         `/api/push` 게이트용 입력이다 — ⚠️ `installationId`·`repositoryId` null이면 `null`(게이트 없음)이고
                         loadOpenPrUrl의 `repositoryId null → undefined`를 그대로 쓰지 않는다(옛 행의 CI가 영구 보류된다)
+                        · loadOpenPrUrlMemo — **Home 표시 전용**(아래 open-pr-memo를 지난다). 게이트는 쓰지 않는다
+  projects/open-pr-memo.ts
+                        Home의 열린 PR 조회 30초 메모(probe-memo와 같은 TTL·상한). 순수 — `server-only`가 없어
+                        runSync·importRepository가 forgetOpenPr로 그 프로젝트 항목을 지운다(Publish가 연 PR을 가리지 않게)
   projects/pr-url.ts    parseGithubPrUrl(순수). ⚠️ 저장된 URL을 **그 프로젝트의 owner/name으로 다시 검증**한다
                         — DB 문자열을 그대로 링크로 내면 남의 리포를 가리키는 값이 화면에 선다
   projects/import-failure.ts
