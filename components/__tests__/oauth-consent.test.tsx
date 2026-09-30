@@ -97,6 +97,14 @@ describe("기본", () => {
     expect(document.body.textContent).not.toContain("Step 1 of 2");
   });
 
+  /** 2026-09-30 사용자 — 동의 화면의 만료 선택은 폼 폭을 채운다(토큰 발급 모달은 360 고정 그대로). */
+  it("만료 선택이 폼 폭을 가득 채운다", async () => {
+    await mount();
+    const expiry = document.querySelector('[role="radiogroup"][aria-label="Expires in"]');
+    expect(expiry?.className.split(" ")).toContain("w-full");
+    expect(expiry?.className).not.toContain("w-[360px]");
+  });
+
   it("Authorize는 고른 값을 보낸다 — 성공은 Action의 redirect라 화면이 아무것도 단정하지 않는다", async () => {
     mocks.authorize.mockResolvedValue(undefined);
     await mount();

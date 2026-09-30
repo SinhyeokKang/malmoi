@@ -1,8 +1,9 @@
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, Plus } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import logo from "@/public/brand/malmoi-icon-black.svg";
  * 목업 안의 앱 셸 — 헤더 40 · LNB 240 · 핸들 8 · `ContentPanel`을 **정적 복제**로 그린다(DESIGN §6.615 — 실제 셸은 Server Action·세션에 묶여 있다).
  * 치수는 `app/(edit)/layout.tsx`(`p-2 gap-2`) · `components/shell/shell-panels.tsx`(기본 240 · 핸들 `w-2`) · `sidebar.tsx`와 같다.
  *
- * ⚠️ **구역·항목·배지를 실제 판정(`navZones` · `navFooterItems`)에서 뽑는다** — 사용자 구역(Projects · Account)과 프로젝트 구역,
+ * ⚠️ **구역·항목·배지를 실제 판정(`navZones` · `navFooterItems`)에서 뽑는다** — 사용자 구역(Projects · MCP connector · Account, 머리 줄 없음)과 프로젝트 구역,
  * 하단 목록까지 사이드바와 같은 목록이다. 손으로 나열하면 사이드바가 바뀔 때 목업만 낡는다(옛 목업엔 계정 구역이 없었다).
  *
  * ⚠️ **인터랙티브 태그를 두지 않는다** — 프레임은 `aria-hidden` + `inert`이지만 jsdom이 `inert`를 모르므로 태그 수로 센다.
@@ -46,24 +47,33 @@ export function AppFrame({ children, overlay }: { children: ReactNode; overlay?:
         <span className="flex size-8 items-center justify-center rounded-lg">
           <Image src={logo} alt="" width={32} height={32} />
         </span>
-        <span className="flex size-8 items-center justify-center rounded-full">
-          <Avatar name={fixture.user} size={32} />
-        </span>
+        {/* 앱 셸 헤더(`components/shell/header.tsx`)와 같은 우측 — New project · 연한 세로선 · 아바타. */}
+        <div data-landing-header-right="" className="flex items-center gap-3">
+          <span className={PUBLIC_HEADER_LINK}>
+            <Plus className="size-4 shrink-0" aria-hidden />
+            {m.common.nav.newProject}
+          </span>
+          <span aria-hidden className="bg-border-subtle h-5 w-px" />
+          <span className="flex size-8 items-center justify-center rounded-full">
+            <Avatar name={fixture.user} size={32} />
+          </span>
+        </div>
       </div>
       <div className="flex min-h-0 flex-1">
         <div data-landing-lnb="" className="flex h-full w-[240px] shrink-0 flex-col gap-2 overflow-hidden p-1">
           {zones.map((zone, index) => (
             <div key={zone.key} data-landing-zone={zone.key} className={cn("flex flex-col gap-0.5", index > 0 && "border-border border-t pt-2")}>
-              <p className="text-foreground flex items-center gap-2 p-1.5 text-sm font-medium">
-                {zone.key === "work" ? <Avatar name={fixture.user} size={16} /> : <ProjectThumbnail name={zone.label} size={16} />}
-                <span className="min-w-0 truncate">{zone.label}</span>
-                {/* 프로젝트 전환 트리거(`components/shell/project-switcher.tsx`) — 같은 ghost 24 · 글리프 16 · 머리 오른쪽 끝. 메뉴는 그리지 않는다. */}
-                {zone.key === "project" && (
+              {/* 머리 줄은 프로젝트 구역에만 있다 — 사이드바와 같다(2026-09-30). */}
+              {zone.key === "project" && (
+                <p className="text-foreground flex items-center gap-2 p-1.5 text-sm font-medium">
+                  <ProjectThumbnail name={zone.label} size={16} />
+                  <span className="min-w-0 truncate">{zone.label}</span>
+                  {/* 프로젝트 전환 트리거(`components/shell/project-switcher.tsx`) — 같은 ghost 24 · 글리프 16 · 머리 오른쪽 끝. 메뉴는 그리지 않는다. */}
                   <span data-landing-switcher="" className={cn(buttonClass({ variant: "ghost" }), "-my-0.5 ml-auto size-6 shrink-0 rounded-sm p-0")}>
                     <ChevronsUpDown className="size-4" aria-hidden />
                   </span>
-                )}
-              </p>
+                </p>
+              )}
               {zone.items.map((item) => (
                 <Item key={item.key} item={item} active={item.key === "translations"} />
               ))}

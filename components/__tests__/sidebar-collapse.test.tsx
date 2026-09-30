@@ -16,7 +16,7 @@ const memberships = [{ slug: "beta", name: "Beta", role: "OWNER" as const, archi
 function sidebar(collapsed: boolean, toggle = () => {}) {
   return render(
     <SidebarCollapseContext.Provider value={{ collapsed, toggle }}>
-      <Sidebar memberships={memberships} userName="Kim" userImage={null} />
+      <Sidebar memberships={memberships} userName="Kim" />
     </SidebarCollapseContext.Provider>,
   );
 }

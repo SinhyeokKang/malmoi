@@ -19,8 +19,9 @@ const NAV_LINK =
 /**
  * ⚠️ **버튼이 아니라 앱 사이드바 항목(`components/shell/sidebar.tsx`의 `Item`)과 같은 모양이다** (2026-09-28 사용자) — p 6 · gap 8 ·
  * radius 8 · 아이콘 16 · 14px, 보더 없이 hover 때만 면이 선다. 헤더도 사이드바처럼 캔버스 위에 얹혀 있어 같은 알파가 같은 면이다.
+ * ⚠️ **앱 셸 헤더의 New project도 이 값이다** (2026-09-30 사용자 — 같은 패턴에서 GitHub 자리만 바뀐다). 한 벌로 둔다.
  */
-const GITHUB_LINK =
+export const PUBLIC_HEADER_LINK =
   "text-foreground flex items-center gap-2 rounded-sm p-1.5 text-sm hover:bg-foreground/[0.03] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
 export type HeaderCurrent = "docs" | "changelog";
@@ -57,7 +58,7 @@ export function PublicHeader({ account, current }: { account: PublicAccount | nu
       </nav>
       <div className="ml-auto flex items-center gap-3">
         {/* 외부 링크 — 새 탭 + `noreferrer`(공개 셸의 외부 링크 규칙). */}
-        <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" className={GITHUB_LINK}>
+        <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" className={PUBLIC_HEADER_LINK}>
           <GithubIcon className="size-4 shrink-0" />
           {m.landing.shell.github}
         </a>

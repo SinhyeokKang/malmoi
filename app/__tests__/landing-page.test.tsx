@@ -29,7 +29,7 @@ beforeEach(() => {
   mocks.redirect.mockClear();
   vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
 });
-afterEach(() => { vi.unstubAllGlobals(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 async function page(status: SessionRead["status"]) {
   mocks.status = status;
@@ -108,7 +108,7 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     const { container } = await render(await page(status));
     const hero = container.querySelector("section[aria-labelledby=landing-hero]");
     const closing = container.querySelector("section[aria-labelledby=landing-closing]");
-    const buttons = [...(hero?.querySelectorAll("a") ?? []), ...(closing?.querySelectorAll("a") ?? [])];
+    const buttons = [...(hero?.querySelectorAll("a:not([data-landing-latest])") ?? []), ...(closing?.querySelectorAll("a") ?? [])];
     expect(buttons).toHaveLength(4);
     for (const a of buttons) {
       const first = a.firstElementChild;
@@ -126,6 +126,32 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     expect(icon(buttons[3])).toContain("lucide-log-in");
     // GitHub 글리프는 lucide 클래스가 없는 리포 자산이다 — `GithubIcon`과 마크업이 같은지로 가린다.
     expect(buttons[2]?.firstElementChild?.outerHTML).toBe(renderToStaticMarkup(createElement(GithubIcon)));
+  });
+
+  /**
+   * **h1 위의 최신 changelog 알약** (2026-09-30 사용자) — 배포된 앱 버전(`APP_VERSION`)을 싣고 `/changelog`로 간다(같은 탭).
+   * GitHub를 부르지 않는다 — 랜딩이 외부 API 지연에 묶이지 않게. 버전이 비면 버전 없는 문구로 떨어진다.
+   */
+  it("h1 위에 최신 버전 알약이 서고 `/changelog`로 간다", async () => {
+    vi.stubEnv("APP_VERSION", "1.2.3");
+    const { container } = await render(await page(status));
+    const hero = container.querySelector("section[aria-labelledby=landing-hero]");
+    const pill = hero?.querySelector<HTMLAnchorElement>("a[data-landing-latest]");
+    expect(pill?.textContent).toBe("What's new in v1.2.3");
+    expect(pill?.getAttribute("href")).toBe(routes.changelog());
+    expect(pill?.hasAttribute("target")).toBe(false);
+    // 화살표는 뒤에 서는 장식이다.
+    expect(pill?.lastElementChild?.getAttribute("class")).toContain("lucide-arrow-right");
+    expect(pill?.lastElementChild?.getAttribute("aria-hidden")).toBe("true");
+    // h1보다 앞이다.
+    const h1 = hero?.querySelector("h1");
+    expect(pill && h1 ? pill.compareDocumentPosition(h1) & Node.DOCUMENT_POSITION_FOLLOWING : 0).toBeTruthy();
+  });
+
+  it("버전이 비면 `Latest changelog`다", async () => {
+    vi.stubEnv("APP_VERSION", "");
+    const { container } = await render(await page(status));
+    expect(container.querySelector("a[data-landing-latest]")?.textContent).toBe("Latest changelog");
   });
 
   it("목업 프레임은 `aria-hidden`이고 캡션 다섯은 숨은 `<ol>`이 든다", async () => {

@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { ProjectSwitcher } from "@/components/shell/project-switcher";
-import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
@@ -45,15 +44,7 @@ const FADE = "transition-opacity duration-200";
  * ⚠️ **pathname에서 뽑은 slug는 표시용이다** — `activeProject`가 그것을 **내 멤버십 목록 안에서**
  * 찾고 없으면 컨텍스트가 없다. 데이터 접근은 여전히 각 페이지가 판정한 `projectId`로만 한다.
  */
-export function Sidebar({
-  memberships,
-  userName,
-  userImage,
-}: {
-  memberships: NavProject[];
-  userName: string;
-  userImage: string | null;
-}) {
+export function Sidebar({ memberships, userName }: { memberships: NavProject[]; userName: string }) {
   const pathname = usePathname();
   const project = activeProject(pathname, memberships);
   const zones = navZones(project, { userName, projectCount: memberships.length });
@@ -73,8 +64,10 @@ export function Sidebar({
       {/*
         **구역 둘** (PRODUCT §7.7). ⚠️ **라벨이 이름 그대로다** — 사용자 축은 사용자 이름, 프로젝트 축은
         프로젝트 이름(8-3, 시안). 6b-4의 `Your work` 라벨을 대체했다.
-        ⚠️ **2026-09-27에 8-3의 두 결정이 뒤집혔다** (사용자): 사용자 축에 `New project`가 돌아왔고(`navWorkItems`),
-        프로젝트 머리에 **전환 메뉴**(`ProjectSwitcher`)가 섰다 — 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었다.
+        ⚠️ **2026-09-27에 8-3의 두 결정이 뒤집혔다** (사용자): 사용자 축에 `New project`가 돌아왔고(`navWorkItems` — 2026-09-30에
+        헤더 버튼으로 다시 빠졌다), 프로젝트 머리에 **전환 메뉴**(`ProjectSwitcher`)가 섰다 — 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었다.
+        ⚠️ **사용자 구역엔 머리 줄이 없다** (2026-09-30 사용자) — 아바타·이름은 헤더 사용자 메뉴가 이미 든다. `aria-label`(사용자 이름)은
+        남긴다 — landmark 둘을 가르는 접근 이름이라서다.
       */}
       {zones.map((zone, index) => (
         <nav
@@ -85,16 +78,17 @@ export function Sidebar({
           className={cn("flex flex-col gap-0.5", index === 0 ? undefined : "border-border border-t pt-2")}
         >
           {/*
-            ⚠️ **라벨 앞에 대상의 얼굴이 선다** (2026-09-24 사용자) — 사용자는 `Avatar`(원), 프로젝트는
-            `ProjectThumbnail`(라운드 사각). 모양이 대상을 말한다(DESIGN §6.4).
+            ⚠️ **라벨 앞에 프로젝트의 얼굴이 선다** (2026-09-24 사용자) — `ProjectThumbnail`(라운드 사각). 사용자 구역의 `Avatar`(원) 머리는
+            2026-09-30에 빠졌다.
             ⚠️ **얼굴이 아래 항목 아이콘과 같은 규격이다** (2026-09-25 사용자 — 24 · `px-0.5 py-1`에서) —
             16 · `p-1.5` · `gap-2`가 `Item`과 같아서 머리 라벨과 항목 라벨의 시작점이 한 세로선에 선다.
             줄 높이도 항목과 같은 32다. 중심만 맞추던 옛 판정은 라벨 시작점이 4px 어긋났다.
           */}
           {/*
-            ⚠️ **접히면 구역 머리(사용자 이름·프로젝트 이름 줄)가 사라진다** (2026-09-28 사용자) — 구역 사이의 수평선은 남는다.
+            ⚠️ **접히면 구역 머리(프로젝트 이름 줄)가 사라진다** (2026-09-28 사용자) — 구역 사이의 수평선은 남는다.
             높이를 grid 행으로 접어 아래 항목이 튀지 않고 올라온다. `inert`가 접힌 머리의 전환 메뉴를 Tab 순서에서 뺀다.
           */}
+          {zone.key === "project" && (
           <div
             inert={collapsed}
             className={cn("grid transition-[grid-template-rows,opacity,margin] duration-200", collapsed ? "-mb-0.5 grid-rows-[0fr] opacity-0" : "grid-rows-[1fr]")}
@@ -102,20 +96,17 @@ export function Sidebar({
           {/* ⚠️ 행을 접는 것은 이 겹이다 — `h-8`을 든 `<p>`에 `overflow-hidden`을 걸면 제 높이 32를 지켜 0fr 행 밖으로 넘친다. */}
           <div className="min-h-0 overflow-hidden">
           <p data-zone-head className={cn(ROW, "text-foreground font-medium")}>
-            {zone.key === "work" ? (
-              <Avatar name={userName} src={userImage} size={16} />
-            ) : (
-              <ProjectThumbnail name={zone.label} src={project?.image} size={16} />
-            )}
+            <ProjectThumbnail name={zone.label} src={project?.image} size={16} />
             <span className="min-w-0 truncate">{zone.label}</span>
             {/*
               ⚠️ **전환 메뉴는 프로젝트 머리의 오른쪽 끝이다** (2026-09-27 사용자 — 8-3이 지운 스위처가 메뉴 트리거로 돌아왔다).
               목록은 이미 받은 멤버십이다 — 조회를 더하지 않는다.
             */}
-            {zone.key === "project" && <ProjectSwitcher projects={memberships} current={project?.slug ?? null} />}
+            <ProjectSwitcher projects={memberships} current={project?.slug ?? null} />
           </p>
           </div>
           </div>
+          )}
           {zone.items.map((item) => (
             <Item key={item.key} item={item} active={isActive(pathname, item)} collapsed={collapsed} />
           ))}

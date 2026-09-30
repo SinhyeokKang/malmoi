@@ -1,14 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 
+import { NewProjectIcon } from "./new-project-icon";
 import { UserMenu } from "./user-menu";
 
 /**
- * 셸의 전폭 헤더 — **로고 좌측 · 사용자 메뉴 우측, 그 둘뿐이다** (8-2, 시안 `212:937`의 `header`).
+ * 셸의 전폭 헤더 — **로고 좌측 · 우측 `New project | 사용자 메뉴`** (8-2, 시안 `212:937`의 `header`).
+ *
+ * ⚠️ **우측은 공개 셸 헤더(`components/public-shell/header.tsx`)와 같은 패턴이다** (2026-09-30 사용자) — 링크 모양·`gap-3`·연한 세로선이
+ * 같고 GitHub 자리만 `New project`다. LNB·사용자 메뉴의 `New project`는 이때 빠졌다(`navWorkItems`).
  *
  * ⚠️ **PRODUCT의 "top bar가 사라진다"는 *지금의* top bar 얘기다.** 시안에는 전폭 48 헤더가 있고,
  * 이 파일이 옛 `top-bar.tsx`를 대체한다 — 상단이 두 벌이 되지 않게 그쪽은 지웠다.
@@ -41,7 +46,15 @@ export function Header({
         {/* 로고는 커밋된 원본이다(`public/brand/`) — 폰트와 달리 생성물이 아니다 (규약 2). */}
         <Image src={logo} alt="" width={32} height={32} priority />
       </Link>
-      <UserMenu name={name} email={email} image={image} signOut={signOut} />
+      <div className="flex items-center gap-3">
+        <Link href={routes.newProject()} className={PUBLIC_HEADER_LINK}>
+          <NewProjectIcon />
+          {m.common.nav.newProject}
+        </Link>
+        {/* 장식이다 — 공개 셸 헤더와 같은 선(`border-subtle`이 캔버스 위에서 보이는 가장 연한 선이다). */}
+        <span aria-hidden className="bg-border-subtle h-5 w-px" />
+        <UserMenu name={name} email={email} image={image} signOut={signOut} />
+      </div>
     </header>
   );
 }

@@ -77,7 +77,6 @@ export default async function EditLayout({ children }: { children: React.ReactNo
               counts: { sources: sourceCount, members: memberCount, keys: keyCount },
             }))}
             userName={name}
-            userImage={session.image}
           />
         }
       >

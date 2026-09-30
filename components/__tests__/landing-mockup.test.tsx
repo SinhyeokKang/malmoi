@@ -61,16 +61,18 @@ describe("목업 — 제품과 같은 구조다", () => {
     { userName: fixture.user, projectCount: fixture.projectCount },
   );
 
-  it("LNB가 사이드바와 같은 구역·항목·배지다 — 사용자 구역(Projects · New project · MCP connector · Account) · 프로젝트 구역 · 하단 목록", async () => {
+  it("LNB가 사이드바와 같은 구역·항목·배지다 — 사용자 구역(Projects · MCP connector · Account, 머리 없음) · 프로젝트 구역 · 하단 목록", async () => {
     const scene = layer(await mount(), 0);
     const zoneText = (key: string) => find(scene, `[data-landing-zone="${key}"]`);
     const items = (key: string) => [...zoneText(key).querySelectorAll("[data-landing-nav]")].map((node) => node.textContent);
     expect(zones.map((zone) => zone.key)).toEqual(["work", "project"]);
     for (const zone of zones) {
-      expect(zoneText(zone.key).querySelector("p > span.truncate")?.textContent).toBe(zone.label);
       expect(items(zone.key)).toEqual(zone.items.map((item) => `${item.label}${item.badge ?? ""}`));
     }
-    expect(items("work")).toEqual([`${m.common.nav.projects}${fixture.projectCount}`, m.common.nav.newProject, m.common.nav.mcp, m.common.nav.account]);
+    // 머리 줄은 프로젝트 구역에만 있다 — 사용자 구역의 아바타·이름 줄은 2026-09-30에 빠졌다(사이드바와 같다).
+    expect(zoneText("project").querySelector("p > span.truncate")?.textContent).toBe(fixture.project);
+    expect(zoneText("work").querySelector("p")).toBeNull();
+    expect(items("work")).toEqual([`${m.common.nav.projects}${fixture.projectCount}`, m.common.nav.mcp, m.common.nav.account]);
     expect(items("footer")).toEqual(navFooterItems().map((item) => item.label));
     // Sign out은 하단이 아니라 아바타 메뉴의 것이다(MISC 배치) — 목업 LNB에 따로 서지 않는다.
     expect(scene.querySelector("[data-landing-lnb]")?.textContent).not.toContain(m.common.nav.signOut);
@@ -91,6 +93,17 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect(glyph?.getAttribute("class")).toContain("size-4");
     expect(scene.querySelectorAll("[data-landing-switcher]")).toHaveLength(1);
     expect(find(scene, '[data-landing-zone="work"]').querySelector("[data-landing-switcher]")).toBeNull();
+  });
+
+  /** 앱 셸 헤더와 같다(2026-09-30) — 우측 `New project · 구분선 · 아바타`. */
+  it("헤더 우측이 New project · 구분선 · 아바타다", async () => {
+    const scene = layer(await mount(), 0);
+    const right = find(scene, "[data-landing-header-right]");
+    const kids = [...right.children];
+    expect(kids).toHaveLength(3);
+    expect(kids[0]?.textContent).toBe(m.common.nav.newProject);
+    expect(kids[0]?.querySelector("svg")?.getAttribute("class")).toContain("lucide-plus");
+    expect(kids[1]?.className).toContain("bg-border-subtle");
   });
 
   it("LNB 폭이 실제 셸의 기본 240이다", async () => {

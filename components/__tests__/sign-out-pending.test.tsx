@@ -35,7 +35,7 @@ const signOutItem = () => {
  * ⚠️ **사이드바에는 Sign out이 없다** (2026-09-27 사용자) — 로그아웃은 사용자 메뉴 하나에만 있다. 하단은 Changelog · Docs 둘이다.
  */
 it("사이드바 하단에 Sign out이 없고 Changelog · Docs 순이다 — 둘 다 같은 탭", async () => {
-  const { container } = await render(<Sidebar memberships={[]} userName="Kim" userImage={null} />);
+  const { container } = await render(<Sidebar memberships={[]} userName="Kim" />);
   expect(container.querySelector("form")).toBeNull();
   expect([...container.querySelectorAll("button")].some(b => b.textContent?.trim() === m.common.nav.signOut)).toBe(false);
   const footer = [...container.querySelectorAll<HTMLAnchorElement>('[data-sidebar-zone="footer"] a')];

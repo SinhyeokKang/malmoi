@@ -392,6 +392,8 @@ export const en = {
        * 분량을 늘리지 않는다(히어로 줄 수).
        */
       body: "Malmoi is a localization tool for GitHub repos: it finds your translation files, lets teammates edit them in the browser, and sends every change back as one pull request.",
+      /** h1 위 알약(2026-09-30 사용자) — 배포된 앱 버전(`APP_VERSION`)이 비면 버전 없는 문구다. */
+      latest: (version: string) => (version === "" ? "Latest changelog" : `What's new in v${version}`),
     },
     /** 스크롤 구동 목업 — 캡션 다섯은 씬 순서다. 보이는 캡션은 `aria-hidden`이고 visually-hidden `<ol>`이 늘 담는다. */
     stage: {
