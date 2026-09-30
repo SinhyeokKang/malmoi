@@ -26,7 +26,7 @@ export function PanelCard({
    * 어긋난다. 이 화면에는 툴바가 없어 그 자리가 비어 있었다.
    */
   subtitle?: ReactNode;
-  /** 카드 Alert — **헤더 아래·리스트 위**다. 머리 Alert와 달리 닫기가 없다. 머리 아래 선은 이 래퍼 아래로 내려간다. */
+  /** 카드 Alert — **헤더 아래·리스트 위**다. 본문 첫 블록 Alert(`DismissibleAlert`)와 달리 닫기가 없다. 머리 아래 선은 이 래퍼 아래로 내려간다. */
   notice?: ReactNode;
   children: ReactNode;
 } & CountProps) {

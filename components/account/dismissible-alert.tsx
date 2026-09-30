@@ -6,7 +6,8 @@ import { useState, type ReactNode } from "react";
 import { Alert } from "@/components/ui/alert";
 
 /**
- * 머리 Alert — **[Dismiss]가 붙는 유일한 자리다** (account-settings 태스크 4).
+ * 본문 첫 블록 Alert — **[Dismiss]가 붙는 유일한 자리다** (account-settings 태스크 4). 옛 이름은 "머리 Alert"였다 — 2026-10-01에 머리에서
+ * 본문 첫 블록으로 내려갔다(본문과 함께 스크롤한다).
  *
  * ⚠️ **가르는 축은 "다시 시도할 자리가 어디인가"다** (2026-09-14 정정). 전에는 *"머리는 일회성
  * 사유, 구역은 현재 상태"*라고 적었는데 `?connect=`가 그 규칙을 깬다 — 그것도 왕복에서 돌아온

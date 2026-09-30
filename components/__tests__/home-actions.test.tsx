@@ -287,3 +287,18 @@ it("배너가 PanelBody 스크롤 컨테이너 안에서 격자 전폭을 쓴다
   expect(block.classList.contains("empty:hidden")).toBe(true);
   for (const cls of [...block.classList]) expect(cls).not.toMatch(/^(p|px|pt|pb|mx)-|^max-w-/);
 });
+
+/**
+ * **배너가 0개면 블록에 자식 노드가 없다** (U12 r1) — 클래스만 세면 공회전이다. 안에 사는 `SlowNotice`·결과 자리·Publish 모달이 한가할 때
+ * DOM을 하나라도 남기면 `:empty`가 거짓이 되어 Home 격자에 **빈 행 + gap 20**이 선다(가장 흔한 화면이다).
+ */
+it("배너가 없으면 블록이 비어 있다 — 격자에 빈 행이 안 선다", async () => {
+  const { container } = await render(<HomeActions slug="acme">
+    <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
+      <HomeNotices {...props} state="default" failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} />
+    </PanelBody>
+  </HomeActions>);
+  const block = container.querySelector('[class~="empty:hidden"]');
+  expect(block).not.toBeNull();
+  expect(block?.childNodes).toHaveLength(0);
+});

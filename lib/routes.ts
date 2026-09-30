@@ -148,7 +148,7 @@ export const routes = {
    */
   /**
    * ⚠️ **`e`가 2026-09-14에 붙었다** — 연결 callback이 문자열 연결로 실어 보내던 키이고 이 화면이
-   * 이미 읽고 있었다. 여기 없으면 **머리 Alert의 닫기가 자기 쿼리만 지운 주소를 만들 수 없다**
+   * 이미 읽고 있었다. 여기 없으면 **본문 첫 블록 Alert의 닫기가 자기 쿼리만 지운 주소를 만들 수 없다**
    * (하나를 닫을 때 다른 하나까지 지워진다).
    */
   account: (query: { e?: string; sessionRevocation?: string; link?: string; connect?: string } = {}): string => withQuery("/account", query),

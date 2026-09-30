@@ -333,15 +333,15 @@ it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 �
 });
 
 /**
- * ⚠️ **머리에 남는 것은 `?e=` 하나다.** 가르는 축은 "다시 시도할 컨트롤이 이 화면에 있는가"이고
+ * ⚠️ **본문 첫 블록 Alert는 `?e=` 하나다** (2026-10-01에 머리에서 본문 첫 블록으로 내려갔다). 가르는 축은 "다시 시도할 컨트롤이 이 화면에 있는가"이고
  * (2026-09-14 리뷰 🟢8), `?link=`는 **그 카드 안에** 다시 누를 행이 있으므로 카드로 내려간다.
- * 그래야 둘이 함께 와도 머리 높이가 하나로 고정된다 — 전엔 둘이 쌓여 본문이 밀렸다.
+ * 그래야 둘이 함께 와도 카드 밖 Alert가 하나로 고정된다 — 전엔 둘이 쌓여 본문이 밀렸다.
  */
-it("`?e=`가 머리 Alert에 닿는다", async () => {
+it("`?e=`가 본문 첫 블록 Alert에 닿는다", async () => {
   const container = await screen({ e: "unavailable" });
   const alert = container.querySelector('[role="alert"]');
   expect(alert).not.toBeNull();
-  // 머리다 — 어느 카드에도 속하지 않는다.
+  // 본문 첫 블록이다 — 어느 카드에도 속하지 않는다.
   expect(alert!.closest("section")).toBeNull();
 });
 
@@ -366,10 +366,10 @@ it("수단 해제 실패는 수단 카드 안에 서고 닫기가 없다", async
 });
 
 /**
- * ⚠️ **둘이 함께 와도 머리에는 하나뿐이다.** 전엔 `?e=`·`?link=`가 **동시에 설 수 있었고** 그때
- * 본문이 밀렸다 — 머리 높이가 무엇이 실패했는지에 따라 달라지면 그 자체가 상태가 된다.
+ * ⚠️ **둘이 함께 와도 카드 밖(본문 첫 블록)에는 하나뿐이다.** 전엔 `?e=`·`?link=`가 **동시에 설 수 있었고** 그때
+ * 본문이 밀렸다 — 카드 밖 Alert 수가 무엇이 실패했는지에 따라 달라지면 그 자체가 상태가 된다.
  */
-it("`?e=`와 `?link=`가 함께 와도 머리 Alert는 하나다", async () => {
+it("`?e=`와 `?link=`가 함께 와도 본문 첫 블록 Alert는 하나다", async () => {
   const container = await screen({ e: "unavailable", link: "unavailable" });
   const alerts = [...container.querySelectorAll('[role="alert"]')];
   expect(alerts.filter((alert) => alert.closest("section") === null)).toHaveLength(1);

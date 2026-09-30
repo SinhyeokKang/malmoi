@@ -24,6 +24,18 @@ const PAGES: Array<[path: string, alert: RegExp]> = [
   ["components/projects/project-list.tsx", /<Alert variant="danger">\{message\}<\/Alert>/],
 ];
 
+/**
+ * 본문 여는 태그와 Alert 사이에 다른 블록이 없는가. 허용하는 것은 Alert를 감싸는 **마지막** 조건식 `{… && ` 하나다.
+ * ⚠️ `[^{}<]`여야 한다 — `[^<]`면 첫 `{`부터 걷어서 `{archived && archive}\n{notice !== null && `가 통째로 빈 문자열이 되고,
+ * 카드를 Alert 위로 올려도 이 검사가 지나간다(U12 r1 리뷰).
+ */
+const isFirstBlock = (source: string, alert: RegExp) => {
+  const bodyOpen = source.search(/<PanelBody\b/);
+  const at = source.search(alert);
+  const between = source.slice(source.indexOf(">", bodyOpen) + 1, at);
+  return between.replace(/\{[^{}<]*$/, "").trim() === "";
+};
+
 describe("페이지 수준 Alert가 PanelBody 안 첫 블록이다", () => {
   it.each(PAGES)("%s", (path, alert) => {
     const source = strip(readFileSync(join(ROOT, path), "utf8"));
@@ -37,9 +49,18 @@ describe("페이지 수준 Alert가 PanelBody 안 첫 블록이다", () => {
     // 머리 띠 안도, 머리와 본문 사이도 아니다 — 본문 안이다.
     expect(at).toBeGreaterThan(bodyOpen);
     expect(at).toBeLessThan(bodyClose);
-    // 첫 블록이다 — 여는 태그와 Alert 사이에 다른 요소가 없다(조건식 `{… && ` 만 허용).
-    const between = source.slice(source.indexOf(">", bodyOpen) + 1, at);
-    expect(between.replace(/\{[^<]*$/, "").trim(), path).toBe("");
+    expect(isFirstBlock(source, alert), path).toBe(true);
+  });
+
+  /** 역검사 — 검사가 공회전하지 않는다. Settings의 실제 두 줄을 뒤바꾸면(보관 카드가 Alert 위) red여야 한다. */
+  it("다른 블록이 Alert 앞에 서면 잡는다", () => {
+    const alert = /<Alert variant="danger">\{notice\}<\/Alert>/;
+    const ok = '<PanelBody className="space-y-4">\n  {notice !== null && <Alert variant="danger">{notice}</Alert>}\n  {archived && archive}\n</PanelBody>';
+    const swapped = '<PanelBody className="space-y-4">\n  {archived && archive}\n  {notice !== null && <Alert variant="danger">{notice}</Alert>}\n</PanelBody>';
+    const element = '<PanelBody className="space-y-4">\n  <GeneralCard />\n  {notice !== null && <Alert variant="danger">{notice}</Alert>}\n</PanelBody>';
+    expect(isFirstBlock(ok, alert)).toBe(true);
+    expect(isFirstBlock(swapped, alert)).toBe(false);
+    expect(isFirstBlock(element, alert)).toBe(false);
   });
 
   it("PanelHeader가 notice 슬롯을 더는 받지 않는다", () => {
