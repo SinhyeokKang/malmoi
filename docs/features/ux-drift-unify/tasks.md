@@ -174,7 +174,7 @@
   2-Y18(`repo.tsx:174-175` placeholder `…` + label 분리 — 번역 트리는 비목표) · 2-W9(`files.tsx:564,574` 리터럴 → 사전) — T16에서 옮김.
   뒤집는 테스트: `account/__tests__/structure.test.tsx:299-333`.
   검증 [자동]: `pnpm exec vitest run components app lib/utc-time` green. [수동]: 로그아웃이 확인 없이 되고 "Sign out everywhere"는 확인 · sessions 폐기 뒤 포커스 복귀(POSTMORTEM 2026-09-20·24).
-- **T23 앱 셸 · 공통** — 3-⚪12(`publish-button.tsx:434,593` 내부 `<a>` → `ButtonLink` — T22에서 옮김, 파일 소유) · 4-Y24(project-archived 화면 — 출구 낱말을 T17과 하나로) · 4-Y18(`app/(edit)/error.tsx` = Logs 경계 형) · 4-W6(404 아이콘) · 4-Y17(`account/loading.tsx` 낭독 줄) · 4-W7·1-W7·2-W10(낡은 주석) ·
+- ✅ (U10) **T23 앱 셸 · 공통** — 3-⚪12(`publish-button.tsx:434,593` 내부 `<a>` → `ButtonLink` — T22에서 옮김, 파일 소유) · 4-Y24(project-archived 화면 — 출구 낱말을 T17과 하나로) · 4-Y18(`app/(edit)/error.tsx` = Logs 경계 형) · 4-W6(404 아이콘) · 4-Y17(`account/loading.tsx` 낭독 줄) · 4-W7·1-W7·2-W10(낡은 주석) ·
   4-W3(행 padding `py-[13px]`) · 4-W4·5-Y8(hover·선 철자 하나) · 4-W8(px 골격 → `SkeletonLine`) · 5-W2(`RotateCcw` = Clear filters만, Retry·재발급 글리프 정리) · 4-W2(Publish 경고 카드 radius·개수 배지) ·
   5-Y16·1-Y5(Q10: Publish 결과 `Notice` → `Alert` success·neutral·warning, 일부 보류 글리프에 톤) · IconTile 색 덮기 잔여(`onboarding/steps/{naming:256,files:178,repo:247}` · `token-grant-fields.tsx:134,173,220` — 면 색은 T28 허용 목록).
   뒤집는 테스트: `projects-screen.test.ts:269,301` · `sidebar-selection.test.ts:27` · `public-shell.test.tsx:218`(hover — T19에서 옮김).
