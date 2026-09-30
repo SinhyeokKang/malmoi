@@ -26,8 +26,9 @@ import { routes } from "@/lib/routes";
 import { dirtyLocales, initKeyDraft, planDraftRecovery, reduceKeyDraft, type KeyDraftAction, type KeyDraftState } from "@/lib/translations/draft";
 import { planTranslationPanelLayout, stepPanelWidth, PANEL } from "@/lib/translations/layout";
 import { planEditorNavigation, type EditorIntent } from "@/lib/translations/navigation";
-import { ALL_NAMESPACES, clearFilters, DEFAULT_TRANSLATION_QUERY, FIRST_KEY, nextQuery, translationsHref, treeQuery, type TranslationQuery } from "@/lib/translations/query";
+import { clearFilters, DEFAULT_TRANSLATION_QUERY, emptyActions, FIRST_KEY, hasConditions, isNarrowed, nextQuery, translationsHref, treeQuery, type EmptyAction, type TranslationQuery } from "@/lib/translations/query";
 import { applySavedRow, mergeServerRows, savedOutCount, startListGeneration, type ListGeneration } from "@/lib/translations/saved-rows";
+import { countRows, narrowTree, nodeKey } from "@/lib/translations/tree-narrow";
 import { summarizeKey } from "@/lib/translations/summary";
 import { cn } from "@/lib/utils";
 
@@ -288,6 +289,19 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     if (!navigating && params.get("key") === FIRST_KEY) window.history.replaceState(null, "", translationsHref(slug, routeSurfaceSlug, query));
   }); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /*
+    ⚠️ **선택 행으로 스크롤하는 것은 착지뿐이다** (translation-filter-scope design §3.2) — 마운트(딥링크·새로고침·다른 소스로의 이동은 재마운트다)와
+    트리 이동의 도착. 목록에서 직접 누른 행은 이미 보이는 행이라 스크롤하지 않는다. 포커스는 옮기지 않는다.
+    대기 중에는 기다린다 — 트리 이동의 선택은 응답이 고른 첫 키다. 확인창에서 취소한 트리 이동은 표식을 세우지 않는다.
+  */
+  const scrollPending = useRef(true);
+  useEffect(() => {
+    if (!scrollPending.current || navigating) return;
+    scrollPending.current = false;
+    if (keyId === undefined) return;
+    [...(bodyRef.current?.querySelectorAll<HTMLElement>("[data-key-row]") ?? [])].find(el => el.dataset.keyRow === keyId)?.scrollIntoView({ block: "nearest" });
+  });
+
   // 필터·검색은 선택이 결과 밖이면 상세를 비운다 — 다른 키를 자동 선택하지 않는다.
   const pendingSelection = useRef<"filter" | null>(null);
   useEffect(() => {
@@ -336,12 +350,20 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const onSelectRow = useCallback((row: TranslationListRow) => selectRowRef.current(row), []);
   function selectTree(surface: string, ns: string) {
     const next = treeQuery(view.query, ns);
-    attempt({ kind: "tree", target: `${surface}/${ns}` }, () => navigate(withQuery(next, surface), "push", { query: next, keyId: undefined, surface }));
+    attempt({ kind: "tree", target: `${surface}/${ns}` }, () => { scrollPending.current = true; navigate(withQuery(next, surface), "push", { query: next, keyId: undefined, surface }); });
   }
   function filter(patch: Partial<TranslationQuery>, kind: "filter" | "search" | "clear" = "filter") {
     const next = kind === "clear" ? clearFilters(view.query) : nextQuery(view.query, patch);
     attempt({ kind }, () => { pendingSelection.current = "filter"; navigate(withQuery(next), "push", { query: next }); });
   }
+  const [emptyPressed, setEmptyPressed] = useState<"primary" | "secondary" | null>(null);
+  const listTitleRef = useRef<HTMLHeadingElement>(null);
+  function runEmpty(slot: "primary" | "secondary", action: EmptyAction) {
+    const kind = action.kind === "clear-search" ? "search" : action.kind === "show-all" ? "clear" : "filter";
+    attempt({ kind }, () => { setEmptyPressed(slot); pendingSelection.current = "filter"; navigate(withQuery(action.query), "push", { query: action.query }); });
+  }
+  useLandAfter(navigating && emptyPressed !== null, () => listTitleRef.current);
+  useEffect(() => { if (!navigating && emptyPressed !== null) setEmptyPressed(null); });
 
   // ── Save ──────────────────────────────────────────────────────────────────
   async function save() {
@@ -520,20 +542,49 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     : w.filters.completion[shown.completion === "missing" ? "all" : shown.completion];
   const stateLabel = shown.state === undefined ? w.filters.state.any : w.filters.state[shown.state];
   const scopeLabel = w.filters.scope[shown.scope];
-  const narrowed = shown.completion !== "all" || shown.state !== undefined || shown.scope !== DEFAULT_TRANSLATION_QUERY.scope;
+  const narrowed = isNarrowed(shown);
   const substituted = list.effective.substituted && query.missingLocale !== undefined;
 
   const listTitle = query.completion === "incomplete" ? w.list.incompleteKeys : w.list.keys;
+  /*
+    ⚠️ **빈 상태의 버튼은 표 하나(`emptyActions`)가 정한다** (translation-filter-scope design §2.3) — 검색어가 있는데 범위가 좁으면 먼저 범위를
+    넓히라고 말한다. 다음 주소는 낙관값(`shown`) 위에 쌓는다(POSTMORTEM 2026-09-12). 누른 버튼은 도착까지 `busy`(포커스를 지킨다)이고,
+    도착하면 목록 제목으로 착지한다 — 빈 상태가 사라지면서 포커스가 `body`로 빠지지 않게(POSTMORTEM 2026-09-24).
+  */
+  const empty = emptyActions(shown, { noKeys });
+  const emptyLabel = (action: EmptyAction) => action.label === "showAll" ? w.empty.showAll(tree.projectKeyCount)
+    : action.label === "clearFilters" ? w.filters.clear : w.empty[action.label];
+  const emptyButton = (slot: "primary" | "secondary", action: EmptyAction | null) => action !== null && (
+    <Button size="sm" variant={slot === "primary" ? "default" : "ghost"} busy={navigating && emptyPressed === slot} onClick={() => runEmpty(slot, action)}>
+      {emptyLabel(action)}
+    </Button>
+  );
   const listEmpty = (
     <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
       <p className="text-sm">{query.q !== undefined ? w.empty.noMatch(query.q) : noKeys ? w.empty.noActive : w.empty.filteredOut}</p>
       {/* 활성 키가 0이면 좁힌 것이 아니라 아직 온 것이 없다 — 다음 일을 말한다 (audit #31). */}
       {query.q === undefined && noKeys && <p className="text-muted-foreground text-xs">{m.translations.empty.noKeys.description}</p>}
-      {query.q !== undefined
-        ? <Button size="sm" onClick={() => filter({ q: undefined }, "search")}>{w.empty.clearSearch}</Button>
-        : narrowed && <Button size="sm" onClick={() => filter({}, "clear")}>{w.empty.showAll(tree.projectKeyCount)}</Button>}
+      {(empty.primary !== null || empty.secondary !== null) && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {emptyButton("primary", empty.primary)}
+          {emptyButton("secondary", empty.secondary)}
+        </div>
+      )}
     </div>
   );
+
+  /*
+    ⚠️ **필터가 트리를 좁힌다 — 트리 숫자는 서버 목록의 행에서 센다** (design §4). 새 조회가 없어 "트리 숫자 = 목록 수"가 구조로 맞는다.
+    남기는 노드: 위치(낙관값 — 강조가 사라지지 않게) + 이 목록 세대의 행이 선 노드. 세대의 행은 Save로 조건을 벗어나도 `savedOut`으로 남으므로,
+    같은 세대의 재검증으로 0이 된 노드는 숫자만 0이 된다. 결과는 `TreePanel`의 노드에만 쓴다 — 머리 배지·`Filter namespaces` 임계·
+    `showSource`·Missing in 선택지는 원본 트리다.
+  */
+  const treeCounts = useMemo(() => (hasConditions(query) ? countRows(list.rows) : null), [query, list.rows]);
+  const treeNodes = useMemo(() => {
+    const keep = new Set([nodeKey(view.surface), nodeKey(view.surface, view.query.ns)]);
+    for (const { row } of rows.rows) keep.add(nodeKey(row.surfaceSlug, row.namespace));
+    return narrowTree(tree, treeCounts, keep);
+  }, [tree, treeCounts, rows, view.surface, view.query.ns]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -593,7 +644,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             ]}
             onSelect={value => filter({ state: value === "" ? undefined : value as TranslationQuery["state"] })}
           />
-          <FilterMenu axis={w.filters.scope.axis} label={scopeLabel} on={shown.scope !== "source"} size="md" disabled={noKeys}
+          <FilterMenu axis={w.filters.scope.axis} label={scopeLabel} on={shown.scope !== DEFAULT_TRANSLATION_QUERY.scope} size="md" disabled={noKeys}
             value={shown.scope}
             options={[
               { value: "namespace", label: w.filters.scope.namespace },
@@ -628,16 +679,18 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           <div className="border-border bg-background relative flex min-h-0 shrink-0 overflow-hidden rounded-lg border" style={layout ? { width: layout.left } : { width: PANEL.tree + PANEL.list }}>
             {/* 트리 강조는 위치(`ns`)다 — 범위 필터가 아니다(translation-filter-scope). */}
             {!treeCollapsed && (
-              <TreePanel tree={tree} surfaceSlug={view.surface} ns={shown.ns} onSelect={selectTree}
+              <TreePanel tree={tree} nodes={treeNodes} surfaceSlug={view.surface} ns={shown.ns} onSelect={selectTree}
                 className="border-border shrink-0 border-r" width={layout?.tree ?? PANEL.tree} />
             )}
             <KeyList
               list={rows}
               title={listTitle}
+              titleRef={listTitleRef}
               count={list.matchedKeyCount}
               savedExtra={savedOutCount(rows)}
               selectedKeyId={view.keyId}
-              showSource={query.scope === "project"}
+              // 접두는 원본 트리의 소스가 둘 이상일 때만 — 좁힌 트리로 판정하면 필터마다 붙었다 떨어진다.
+              showSource={query.scope === "project" && tree.surfaces.length > 1}
               onSelect={onSelectRow}
               busy={navigating}
               treeButton={treeCollapsed ? { open: treeOverlay, controls: treeOverlayId, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span className="text-muted-foreground text-xs">{routeSurfaceSlug}</span> } : undefined}
@@ -645,7 +698,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             />
             {treeCollapsed && treeOverlay && (
               <TreeOverlay id={treeOverlayId} onClose={() => setTreeOverlay(false)}>
-                <TreePanel tree={tree} surfaceSlug={view.surface} ns={shown.ns}
+                <TreePanel tree={tree} nodes={treeNodes} surfaceSlug={view.surface} ns={shown.ns}
                   // 선택한 항목이 오버레이와 함께 사라지므로 토글로 돌려준다 — 안 하면 이동이 있든 없든 body로 떨어진다(T19 실측).
                   onSelect={(surface, ns) => { focusController(treeOverlayId); setTreeOverlay(false); selectTree(surface, ns); }} />
               </TreeOverlay>
@@ -679,7 +732,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                 onEdit={(code, value) => edit({ type: "edit", locale: code, value })}
                 onReset={code => edit({ type: "reset", locale: code })}
                 onSave={() => void save()}
-                copyHref={withQuery({ ...DEFAULT_TRANSLATION_QUERY, ns: detail.key.namespace, scope: "namespace", key: detail.key.id, keySurface: detail.key.surfaceSlug }, detail.key.surfaceSlug)}
+                copyHref={withQuery({ ...DEFAULT_TRANSLATION_QUERY, ns: detail.key.namespace, key: detail.key.id, keySurface: detail.key.surfaceSlug }, detail.key.surfaceSlug)}
                 readOnly={navigating || status?.kind === "archived" || status?.kind === "lost-access"}
                 invalid={status?.kind === "cannot-clear" ? { locales: status.locales, describedBy: footerAlertId } : undefined}
                 footer={

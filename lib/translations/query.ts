@@ -141,21 +141,24 @@ export function hasConditions(query: TranslationQuery): boolean {
   return isNarrowed(query) || query.q !== undefined;
 }
 
-export type EmptyAction = { kind: "search-all" | "clear-search" | "show-all"; query: TranslationQuery };
+/** `label`은 문구 키다 — 잎이라 문구를 import하지 않고, 화면이 `m.translations.workspace`에서 고른다. */
+export type EmptyAction = { kind: "search-all" | "clear-search" | "show-all"; label: "searchAll" | "clearSearch" | "showAll" | "clearFilters"; query: TranslationQuery };
 
 /**
  * 검색·필터 결과 0건의 버튼 (translation-filter-scope — design §2.3 · spec 조건 9). 검색어가 있는데 범위가 좁으면 먼저 범위를 넓히라고
  * 말한다 — 전엔 `Clear search` 하나라 다른 소스에 있는 값이 없는 것처럼 보였다. `Show all`은 완성도·상태가 켜졌을 때만 보조로 선다
  * (범위만 좁혔을 때의 `Show all`은 `Search all sources`와 같은 쿼리라 중복이다).
+ * ⚠️ 검색어가 있으면 `show-all`의 라벨이 `Clear filters`다 (2026-09-30 사용자) — 쿼리는 `clearFilters`라 검색어가 남으므로
+ * `Show all n keys`(프로젝트 전체 수)가 결과와 맞지 않는다.
  */
 export function emptyActions(query: TranslationQuery, { noKeys }: { noKeys: boolean }): { primary: EmptyAction | null; secondary: EmptyAction | null } {
   if (noKeys) return { primary: null, secondary: null };
-  const showAll: EmptyAction = { kind: "show-all", query: clearFilters(query) };
+  const showAll: EmptyAction = { kind: "show-all", label: query.q === undefined ? "showAll" : "clearFilters", query: clearFilters(query) };
   if (query.q === undefined) return { primary: isNarrowed(query) ? showAll : null, secondary: null };
   const filtered = query.completion !== DEFAULT_TRANSLATION_QUERY.completion || query.state !== undefined;
   const primary: EmptyAction = query.scope !== DEFAULT_TRANSLATION_QUERY.scope
-    ? { kind: "search-all", query: nextQuery(query, { scope: DEFAULT_TRANSLATION_QUERY.scope }) }
-    : { kind: "clear-search", query: nextQuery(query, { q: undefined }) };
+    ? { kind: "search-all", label: "searchAll", query: nextQuery(query, { scope: DEFAULT_TRANSLATION_QUERY.scope }) }
+    : { kind: "clear-search", label: "clearSearch", query: nextQuery(query, { q: undefined }) };
   return { primary, secondary: filtered ? showAll : null };
 }
 

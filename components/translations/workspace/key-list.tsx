@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelLeftOpen } from "lucide-react";
-import { memo, useId, type ReactNode } from "react";
+import { memo, useId, type ReactNode, type Ref } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,11 @@ import { cn } from "@/lib/utils";
  * ⚠️ **저장으로 조건을 벗어난 행은 자리에 남는다**(취소선 + `Saved`) — 다른 키를 눌러도 그대로이고 재필터에서만 빠진다.
  * ⚠️ **선택은 배경만 바꾼다** — 굵기를 주지 않는다(`sidebar.tsx`).
  */
-export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSource, onSelect, busy = false, treeButton, empty }: {
+export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyId, showSource, onSelect, busy = false, treeButton, empty }: {
   list: ListGeneration<TranslationListRow>;
   title: string;
+  /** 빈 상태 버튼의 이동이 끝나면 포커스가 여기로 착지한다 — 빈 상태가 사라지며 `body`로 빠지지 않게. */
+  titleRef?: Ref<HTMLHeadingElement>;
   count: number;
   savedExtra: number;
   selectedKeyId: string | undefined;
@@ -42,7 +44,7 @@ export function KeyList({ list, title, count, savedExtra, selectedKeyId, showSou
             <PanelLeftOpen className="size-3.5 text-neutral-600" aria-hidden />
           </Button>
         )}
-        <h2 id={headingId} className="text-base font-medium">{title}</h2>
+        <h2 id={headingId} ref={titleRef} tabIndex={-1} className="text-base font-medium">{title}</h2>
         <Badge variant="neutral">{count.toLocaleString("en-US")}</Badge>
         {treeButton !== undefined && <span className="min-w-0 truncate">{treeButton.breadcrumb}</span>}
         <span className="text-muted-foreground ml-auto shrink-0 text-xs">

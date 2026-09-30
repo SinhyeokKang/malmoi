@@ -328,5 +328,6 @@ async function findKeyByName(prisma: PrismaClient, input: { projectId: string; s
 export async function translationLinkFor(prisma: PrismaClient, input: { projectId: string; slug: string; surfaceSlug: string; key: string }): Promise<string | null> {
   const row = await findKeyByName(prisma, input);
   if (row === null) return null;
-  return translationsHref(input.slug, input.surfaceSlug, { ...DEFAULT_TRANSLATION_QUERY, ns: row.namespace, scope: "namespace", key: row.id, keySurface: input.surfaceSlug });
+  // 필터를 켜지 않는다 — 위치(ns)와 선택 키만 싣는다(translation-filter-scope). 트리 강조가 위치를 말한다.
+  return translationsHref(input.slug, input.surfaceSlug, { ...DEFAULT_TRANSLATION_QUERY, ns: row.namespace, key: row.id, keySurface: input.surfaceSlug });
 }

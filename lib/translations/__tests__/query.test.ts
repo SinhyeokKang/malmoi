@@ -286,7 +286,7 @@ describe("emptyActions — 0건 빈 상태의 버튼 (translation-filter-scope d
     const query = q({ q: "hi", scope: "namespace", ns: "auth", completion: "missing", missingLocale: "ja", state: "review", key: "k1", keySurface: "web", cursor: "c1" });
     const { primary, secondary } = emptyActions(query, { noKeys: false });
     const { cursor: _cursor, ...rest } = query;
-    expect(primary).toEqual({ kind: "search-all", query: { ...rest, scope: "project" } });
+    expect(primary).toEqual({ kind: "search-all", label: "searchAll", query: { ...rest, scope: "project" } });
     expect(secondary?.kind).toBe("show-all");
   });
 
@@ -300,8 +300,21 @@ describe("emptyActions — 0건 빈 상태의 버튼 (translation-filter-scope d
   it("검색어 없이 좁혔으면 Show all 하나 — clearFilters와 같은 쿼리다", () => {
     for (const over of [{ scope: "source" as const }, { completion: "incomplete" as const }, { state: "unsent" as const }]) {
       const query = q(over);
-      expect(emptyActions(query, { noKeys: false })).toEqual({ primary: { kind: "show-all", query: clearFilters(query) }, secondary: null });
+      expect(emptyActions(query, { noKeys: false })).toEqual({ primary: { kind: "show-all", label: "showAll", query: clearFilters(query) }, secondary: null });
     }
+  });
+
+  /*
+    2026-09-30 사용자: 검색어가 있으면 보조 show-all의 라벨은 기존 `Clear filters`다 — 쿼리는 그대로(`clearFilters`, 검색어 유지)라
+    `Show all n keys`(프로젝트 전체 수)는 결과와 맞지 않는다. 검색어가 없으면 `Show all n keys`를 유지한다.
+  */
+  it("검색어가 있는 보조 show-all은 라벨이 Clear filters이고 검색어를 남긴다 — 검색어가 없으면 Show all n keys", () => {
+    const searched = q({ q: "hi", completion: "incomplete" });
+    expect(emptyActions(searched, { noKeys: false }).secondary).toEqual({ kind: "show-all", label: "clearFilters", query: clearFilters(searched) });
+    expect(emptyActions(searched, { noKeys: false }).secondary?.query.q).toBe("hi");
+    expect(emptyActions(q({ q: "hi", scope: "source", state: "new" }), { noKeys: false }).secondary?.label).toBe("clearFilters");
+    expect(emptyActions(q({ q: "hi" }), { noKeys: false }).primary?.label).toBe("clearSearch");
+    expect(emptyActions(q({ state: "new" }), { noKeys: false }).primary?.label).toBe("showAll");
   });
 
   it("검색어도 필터도 없으면 버튼이 없다", () => {

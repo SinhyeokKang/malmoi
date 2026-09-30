@@ -378,7 +378,8 @@ describe("resolveKeyIdByName — Logs의 옛 사건이 가리키는 키", () => 
 describe("translationLinkFor — Logs 상세의 'Open this translation'", () => {
   it("사건의 소스·키 이름으로 현재 키를 찾아 그 키에 착지하는 주소를 만든다", async () => {
     const href = await translationLinkFor(prisma, { projectId: "p", slug: "p", surfaceSlug: "web", key: "common.save" });
-    expect(href).toBe("/projects/p/surfaces/web/translations?ns=common&scope=namespace&key=w1&keySurface=web");
+    // 필터를 켜지 않는다 — 위치(ns)와 선택 키만 싣는다(translation-filter-scope 조건 10).
+    expect(href).toBe("/projects/p/surfaces/web/translations?ns=common&key=w1&keySurface=web");
   });
 
   it("사라진 키·다른 프로젝트의 키는 링크가 없다 — 그리지 않는다", async () => {
