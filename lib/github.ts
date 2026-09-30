@@ -158,6 +158,7 @@ async function readProbe(app: App, owner: string, repo: string): Promise<ProbeRe
  * @param options.memo **Home과 번역 화면만 켠다** (malmoi#107 ① · ux-drift-unify U7 r1) — probe를 `PROBE_MEMO_TTL_MS` 동안 기억한다. 둘 다
  *   **표시 전용**이다(버튼을 끄는 판단일 뿐, 누르면 서버가 다시 판정한다) — 번역 화면은 키 클릭·저장마다 다시 렌더되어 메모 없이는 번역자마다
  *   GitHub 호출이 쌓인다. 설정 화면·MCP는 끈 채로 실물을 본다(`probe-memo.ts`).
+ *   Home의 다른 GitHub 조회(열린 PR)도 같은 TTL로 따로 기억한다 — `loadOpenPrUrlMemo`(`lib/projects/open-pr-memo.ts`).
  */
 export async function loadConnectionHealth(project: {
   repoOwner: string;

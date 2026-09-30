@@ -51,3 +51,19 @@ describe("importRepository — 연결 거부 둘", () => {
     expect(planImportRefusal("unpinned")).toEqual({ tone: "warning", dismissible: false, action: "reconnect" });
   });
 });
+
+/**
+ * **수동 Sync가 Home의 열린 PR 메모를 지운다** (ux-drift-unify U15). 리포에서 PR을 머지한 사람이 다음에 누르는 버튼이라, 그 뒤 Home이
+ * TTL 동안 옛 "PR 열림"을 말하지 않게 한다. 거부에도 지운다 — 사람이 다시 확인하러 온 순간이다.
+ */
+describe("importRepository — 열린 PR 메모", () => {
+  it("인가를 지난 실행은 거부로 끝나도 그 프로젝트의 항목을 지운다", async () => {
+    const { homeOpenPrMemo } = await import("@/lib/projects/open-pr-memo");
+    const identity = { repoOwner: "o", repoName: "r", installationId: "1", repositoryId: "10" };
+    await homeOpenPrMemo.load("acme", identity, async () => "https://github.com/o/r/pull/3");
+    await importRepository(prismaWith(project({ repositoryId: null })), subject, { slug: "acme", approval: null });
+    const again = vi.fn(async () => null);
+    expect(await homeOpenPrMemo.load("acme", identity, again)).toBeNull();
+    expect(again).toHaveBeenCalledOnce();
+  });
+});

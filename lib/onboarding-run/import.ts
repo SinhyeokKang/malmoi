@@ -10,6 +10,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import type { RepositoryImportError, RepositoryImportOutcome } from "@/lib/import/result";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
+import { forgetOpenPr } from "@/lib/projects/open-pr-memo";
 
 import { checkRepoAccess } from "./access";
 
@@ -30,7 +31,13 @@ export async function importRepository(
   const { userId } = subject;
   const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "project:settings" });
   if (access.status !== "ok") return { outcome: { ok: false, error: access.status }, attempted: false };
-  return { outcome: await runAuthorized(prisma, subject, access.projectId, input.approval), attempted: true };
+  // ⚠️ **Home의 열린 PR 메모를 지운다** (U15) — 리포에서 PR을 머지한 사람이 다음에 누르는 버튼이 이것이라, 그 뒤 Home이 TTL 동안
+  // 옛 "PR 열림"을 말하지 않게 한다. 거부·실패에도 지운다 — 사람이 다시 확인하러 온 순간이다.
+  try {
+    return { outcome: await runAuthorized(prisma, subject, access.projectId, input.approval), attempted: true };
+  } finally {
+    forgetOpenPr(input.slug);
+  }
 }
 
 /** 인가를 지난 뒤 — 여기서 나는 거부는 이력에 남는다(`refuse`). 던지지 않는다: 호출자가 직렬화 경계다. */

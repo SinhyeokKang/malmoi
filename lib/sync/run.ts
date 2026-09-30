@@ -6,6 +6,7 @@ import type { Credential } from "@/lib/auth/subject";
 import { runTokenFor } from "@/lib/events/payload";
 import { recordRun } from "@/lib/events/record";
 import { classifyFailure } from "@/lib/failure";
+import { forgetOpenPr } from "@/lib/projects/open-pr-memo";
 import type { PullOutcome } from "@/lib/pull/message";
 import { triggerPull } from "@/lib/pull/trigger";
 
@@ -46,6 +47,10 @@ export async function runSync(
   if (started.status !== "ok") return started.outcome;
   const runId = started.runId;
 
+  /*
+    ⚠️ **실행에 닿았으면 결과와 무관하게 Home의 열린 PR 메모를 지운다** (U15 — `open-pr-memo.ts`). 웹·MCP·야간 Publish가 모두 여기를
+    지나고, PR을 만든 뒤 던졌을 수도 있다. 안 지우면 방금 연 PR을 Home이 TTL 동안 "보류 없음"으로 말한다.
+  */
   let result: Parameters<typeof planSyncFinish>[0];
   let outcome: PullOutcome;
   try {
@@ -55,6 +60,8 @@ export async function runSync(
   } catch (error) {
     result = { thrown: error };
     outcome = failureOutcome(slug, error);
+  } finally {
+    forgetOpenPr(slug);
   }
 
   const finish = planSyncFinish(result);

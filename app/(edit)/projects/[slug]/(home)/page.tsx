@@ -33,7 +33,7 @@ import { actorLabel } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { isImportFailureCode } from "@/lib/projects/import-status";
 import { reviewByLocale, summaryQueue, worstFailingSurface } from "@/lib/projects/list";
-import { loadOpenPrUrl } from "@/lib/projects/open-pr";
+import { loadOpenPrUrlMemo } from "@/lib/projects/open-pr";
 import { pullNumberFrom } from "@/lib/projects/remote-plan";
 import { openPrGateApplies } from "@/lib/protection/plan";
 import { routes } from "@/lib/routes";
@@ -250,10 +250,12 @@ export default async function ProjectHomePage({
    * 조회가 필요하면 promise를 **기다리지 않고** 카드 보조 줄·메타 열의 클라이언트 섬(`HoldLater` — effect 구독, `use()`는 전환을 붙잡는다)으로 내린다 — 본문 렌더를 막지 않는다(malmoi#107이 메모로 줄인
    * 착지 병목을 되살리지 않는다). 조회는 여기서 출발하므로 본문과 동시에 돈다.
    * ⚠️ **거부를 삼킨다** — Home은 모든 프로젝트의 착지 화면이라(위 연결 조회와 같은 판정) 조회 실패는 보류(`pr-check-failed`)로 말한다.
+   * ⚠️ **메모를 거친다** (U15 — T18 실측: 착지·상세마다 GitHub 2회) — 연결 확인과 같은 TTL이다. 표시 전용이라서이고 게이트는 실물을 본다.
+   * Publish·수동 Sync가 이 프로젝트의 항목을 지우므로 방금 연 PR은 바로 보이고, GitHub에서 직접 머지한 PR만 TTL 동안 늦게 보인다(`open-pr-memo.ts`).
    */
   const hold = planHomeHold(
     { pending: counts.toSend, gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected" },
-    () => loadOpenPrUrl(slug, project).catch((error: unknown) => {
+    () => loadOpenPrUrlMemo(slug, project).catch((error: unknown) => {
       logFailure("home-open-pr", error);
       return undefined;
     }),

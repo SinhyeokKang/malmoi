@@ -269,7 +269,8 @@ describe("Home — 보류 판정", () => {
     expect(src).toContain("planHomeHold(");
     expect(src).not.toMatch(/await planHomeHold/);
     expect(src).not.toMatch(/await\s+hold\b/);
-    expect(src).toContain("loadOpenPrUrl(slug, project)");
+    // 표시 전용이라 메모를 거친다(U15) — 게이트 경로는 `loadOpenPrUrl`을 그대로 부른다(`open-pr-memo.test.ts` 배선).
+    expect(src).toContain("loadOpenPrUrlMemo(slug, project)");
   });
 
   it("같은 promise가 카드와 메타 열 둘 다에 간다", () => {
