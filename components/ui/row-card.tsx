@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode, SVGProps } from "react";
 
-import { CountBadge } from "@/components/ui/count-badge";
+import { CountBadge, type CountProps } from "@/components/ui/count-badge";
 import { cn } from "@/lib/utils";
 import { IconTile } from "./icon-tile";
 
@@ -41,19 +41,6 @@ export function RowCard({
   /** `<ul aria-labelledby>`와 포커스 착지점이 이 id를 쓴다 (멤버 화면). `/projects`는 안 준다. */
   titleId?: string;
   /**
-   * 카운트 배지. ⚠️ **선택이다** (mcp-connector 핸드오프 §4) — `/mcp`의 토큰 카드는 셀 것이 없다(계정당 하나).
-   * 없으면 배지를 그리지 않는다. ⚠️ **0이어도 그리지 않는다**(2026-10-01 Q13 — `CountBadge`) — 대기 초대 0건의 카드 머리에 `0`이 서지 않는다.
-   */
-  count?: number;
-  /**
-   * 카운트 배지의 sr-only 문장. `count`가 있을 때만 쓴다.
-   *
-   * ⚠️ **기본값을 두지 않는다** — 전에는 `m.projects.count(count)`가 이 자리에 박혀 있어서, 그대로
-   * 공유하면 멤버 카드가 "3 projects"를 낭독한다. 숫자만 그리면 접근 이름이 "Members 3"이 되므로
-   * 보이는 것은 숫자로 두고 스크린리더에는 완전한 문장을 준다.
-   */
-  countLabel?: string;
-  /**
    * 헤더의 설명 한 줄.
    *
    * ⚠️ **`/projects`가 이 슬롯을 안 쓰는 소비자다.** POSTMORTEM 2026-09-14가 정확히 이 모양이었다 —
@@ -64,7 +51,12 @@ export function RowCard({
   /** 헤더 오른쪽 슬롯 — `/projects` 검색 결과 카드의 `Clear search` 하나가 쓴다. */
   action?: ReactNode;
   children: ReactNode;
-}) {
+} & CountProps) {
+  /*
+    카운트 배지(`count` + `countLabel`, 타입이 짝을 강제한다). ⚠️ **선택이다** (mcp-connector 핸드오프 §4) — `/mcp`의 토큰 카드는 셀 것이
+    없다(계정당 하나). ⚠️ **0이어도 그리지 않는다**(2026-10-01 Q13 — `CountBadge`). ⚠️ **문장에 기본값을 두지 않는다** — 전에는
+    `m.projects.count(count)`가 박혀 있어 멤버 카드가 "3 projects"를 낭독했다.
+  */
   return (
     <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
       {/*
@@ -87,7 +79,7 @@ export function RowCard({
         </h2>
         {/* ⚠️ **배지가 `h2`의 바로 다음 형제여야 한다** — 두 렌더 테스트가 `h2 + span`으로 집는다. */}
         {/* 0이면 서지 않는다 — `CountBadge`가 든다(Q13). */}
-        {count !== undefined && <CountBadge count={count} label={countLabel ?? ""} />}
+        {count !== undefined && <CountBadge count={count} label={countLabel} />}
         {description !== undefined && (
           <span className="text-muted-foreground ml-auto truncate text-xs">{description}</span>
         )}

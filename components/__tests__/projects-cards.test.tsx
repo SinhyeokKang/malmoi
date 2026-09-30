@@ -167,10 +167,13 @@ describe("`1b`·`1d` 빈 상태 둘 — 같은 카드, 반대 출구", () => {
     expect(container.textContent).toContain(m.projects.empty.description);
   });
 
-  /** ⚠️ **머리가 검색·[New project]를 그리지 않는다**(`hasProjects === false`). 배지 `0`은 남는다. */
-  /** ⚠️ **0은 배지로 서지 않는다** (2026-10-01 Q13 — `CountBadge`). 옛 단언은 `0` 배지를 고정했다. */
+  /**
+   * ⚠️ **머리가 검색·[New project]를 그리지 않는다**(`hasProjects === false`). ⚠️ **0은 배지로 서지 않는다** (2026-10-01 Q13 —
+   * `CountBadge`). 옛 단언은 `0` 배지를 고정했다.
+   */
   it("0건의 머리가 제목뿐이다 — 개수 배지 0이 서지 않는다", async () => {
     const container = await draw({ all: [] });
+    expect(container.querySelector("h1")?.textContent).toBe(m.common.nav.projects);
     expect(container.querySelector("h1 + span")).toBeNull();
     expect(container.querySelector("input")).toBeNull();
   });

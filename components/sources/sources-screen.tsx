@@ -91,7 +91,8 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
               <p className="text-muted-foreground text-xs">{m.sources.workflow} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></p></>}
           </div>
           {/* ⚠️ 닫기 전에 이웃으로 포커스를 옮긴다 (audit #35) — 이 버튼이 결과 행과 함께 사라져 포커스가 `body`로 빠졌다(`Alert`와 같다). */}
-          <CloseButton label={m.common.close} onClick={event => { neighbourFocus(event.currentTarget.closest('[role="status"]') ?? event.currentTarget)?.focus(); setResult(null); }} />
+          {/* 음수 마진이 36을 한 줄 행 높이 안에 넣는다 — Alert 닫기와 같다(없으면 행이 8px 커진다). */}
+          <CloseButton label={m.common.close} className="-my-2 -mr-2" onClick={event => { neighbourFocus(event.currentTarget.closest('[role="status"]') ?? event.currentTarget)?.focus(); setResult(null); }} />
         </div>}
         {data.sources.length === 0
           ? <div className="flex flex-col items-center gap-2.5 px-6 py-10 text-center">

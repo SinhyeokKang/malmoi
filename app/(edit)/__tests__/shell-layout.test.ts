@@ -88,7 +88,7 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
     expect(contentPanel).toMatch(/const CONTENT_MAX = "mx-auto w-full max-w-7xl"/);
     expect(contentPanel).not.toContain("max-w-4xl");
     // 머리 래퍼는 제목 행의 최소 높이(`[&>:first-child]:min-h-9`, 2026-10-01 T14)를 함께 든다 — 폭 상한과 무관한 뒤쪽 클래스다.
-    expect(contentPanel).toMatch(/cn\(CONTENT_MAX, "flex flex-col gap-3 px-4 py-3[^"]*", className\)/);
+    expect(contentPanel).toContain('cn(CONTENT_MAX, "flex flex-col gap-3 px-4 py-3 [&>:first-child]:min-h-9", className)');
     expect(contentPanel).toMatch(/cn\(CONTENT_MAX, "min-h-full p-4", className\)/);
   });
 

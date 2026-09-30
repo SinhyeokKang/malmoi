@@ -31,6 +31,10 @@ const SIZE = {
 export type IconTileSize = keyof typeof SIZE;
 
 /** 나머지 속성(`data-*` 표식 등)은 칸 `<span>`에 그대로 선다. */
-export function IconTile({ size = "sm", tone = "muted", className, ...props }: ComponentProps<"span"> & { size?: IconTileSize; tone?: StateTone }) {
-  return <span className={cn("flex shrink-0 items-center justify-center", TONE[tone], SIZE[size], className)} {...props} />;
+/**
+ * `data-tone`은 **상태 칸일 때만**(호출부가 `tone`을 줬을 때) 선다 — 화면 테스트가 클래스 문자열이 아니라 상태 톤으로 단언한다.
+ * 종류 색(Logs 파랑·청록·보라)처럼 `className`이 면을 든 칸에는 없다. 호출부가 `data-tone`을 직접 넘기면 그것이 이긴다.
+ */
+export function IconTile({ size = "sm", tone, className, ...props }: ComponentProps<"span"> & { size?: IconTileSize; tone?: StateTone }) {
+  return <span data-tone={tone} className={cn("flex shrink-0 items-center justify-center", TONE[tone ?? "muted"], SIZE[size], className)} {...props} />;
 }

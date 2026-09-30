@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { IconTile } from "@/components/ui/icon-tile";
+import { type CountProps } from "@/components/ui/count-badge";
 import { EmptyRowCard, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
 import { m } from "@/lib/i18n";
 import type { Brand } from "@/lib/mcp/brand";
@@ -119,13 +120,14 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
     });
   }
 
+  // 조회 전에는 개수가 없다 — 개수와 sr 문장은 짝이다(`CountProps`).
+  const countProps: CountProps = rows === null ? {} : { count: rows.length, countLabel: m.mcpConnector.apps.count(rows.length) };
   return (
     <>
       <RowCard
         title={m.mcpConnector.apps.title}
         titleId={TITLE_ID}
-        count={rows !== null && rows.length > 0 ? rows.length : undefined}
-        countLabel={rows === null ? undefined : m.mcpConnector.apps.title}
+        {...countProps}
         action={
           <div className="ml-auto shrink-0">
             <CopyButton value={serverUrl} label={m.mcpConnector.apps.copyServerUrl} />

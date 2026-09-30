@@ -50,6 +50,14 @@ describe("닫기 X — 손으로 그린 사본이 없다", () => {
    * `<X`를 그리는 파일은 프리미티브와 둘뿐이다 — 초대 모달의 행 지우기(닫기가 아니라 받는 사람 한 줄을 빼는 동작)와
    * 랜딩 목업(실물 모달 머리의 정적 복제).
    */
+  /** 한 줄 행 안의 닫기는 음수 마진으로 행 높이를 안 늘린다 — Alert(`-my-2 -mr-2`)와 Sources 결과 행이 같다(U3 r1). */
+  it("한 줄 행 안의 CloseButton 둘이 같은 음수 마진을 든다", () => {
+    for (const path of ["components/ui/alert.tsx", "components/sources/sources-screen.tsx"]) {
+      const tag = files.find((f) => f.path === path)?.text.match(/<CloseButton\b[\s\S]*?className="([^"]*)"/)?.[1];
+      expect(tag, path).toBe("-my-2 -mr-2");
+    }
+  });
+
   it("`<X` 글리프가 CloseButton 밖에서 서지 않는다", () => {
     const drawn = files.filter((f) => /<X\b/.test(f.text)).map((f) => f.path).sort();
     expect(drawn).toEqual(["components/landing/mockup/publish.tsx", "components/members/invite-modal.tsx", "components/ui/close-button.tsx"]);

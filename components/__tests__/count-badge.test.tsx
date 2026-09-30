@@ -42,3 +42,12 @@ describe("카드 머리의 count prop", () => {
     expect(one.querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe("1 invitation");
   });
 });
+
+/** 개수와 sr 문장은 짝이다 — 문장 없는 개수는 타입에서 막힌다(U3 r1: 빈 문장으로 배지가 섰다). */
+it("count만 넘기고 countLabel을 빼면 타입 오류다", () => {
+  // @ts-expect-error — countLabel이 없다.
+  const card = <PanelCard title="Sources" count={2}><p>x</p></PanelCard>;
+  // @ts-expect-error — countLabel이 없다.
+  const row = <RowCard title="Pending" count={1}><ul /></RowCard>;
+  expect([card, row]).toHaveLength(2);
+});

@@ -2,7 +2,7 @@
 
 import { useId, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
-import { CountBadge } from "@/components/ui/count-badge";
+import { CountBadge, type CountProps } from "@/components/ui/count-badge";
 import { cn } from "@/lib/utils";
 import { IconTile } from "./icon-tile";
 
@@ -21,9 +21,6 @@ export function PanelCard({
    * 헤더 제목 옆 배지 — **개수가 아닌 값**만 여기다(대기 수 `Waiting to apply` · 로그인 수단 `x of y`). 개수는 `count`다.
    */
   badge?: ReactNode;
-  /** 헤더 제목 옆 개수 — `CountBadge`(0이면 서지 않는다 · 숫자 `aria-hidden` + `countLabel` 문장, 2026-10-01 Q13). */
-  count?: number;
-  countLabel?: string;
   /**
    * 헤더 오른쪽 한 줄. ⚠️ **제목 아래로 쌓지 않는다** — 머리 높이가 카드마다 달라져 행 시작선이
    * 어긋난다. 이 화면에는 툴바가 없어 그 자리가 비어 있었다.
@@ -32,7 +29,8 @@ export function PanelCard({
   /** 카드 Alert — **헤더 아래·리스트 위**다. 머리 Alert와 달리 닫기가 없다. 머리 아래 선은 이 래퍼 아래로 내려간다. */
   notice?: ReactNode;
   children: ReactNode;
-}) {
+} & CountProps) {
+  // 헤더 제목 옆 개수는 `count` + `countLabel`(`CountBadge` — 0이면 서지 않는다, 2026-10-01 Q13). 타입이 짝을 강제한다.
   /**
    * ⚠️ **카드에 접근 이름을 건다.** 없으면 Chrome이 `<section>`을 `generic`으로 접어 **접근성
    * 트리에서 카드가 통째로 사라진다** (POSTMORTEM 2026-09-15 #2). 이 화면의 요지가 *"같은 화면에
@@ -56,7 +54,7 @@ export function PanelCard({
       {title !== undefined && <header className={cn("flex min-h-12 flex-wrap items-center gap-2 px-4 py-3", notice === undefined && "border-divider border-b")}>
         {/* 제목 자간은 손으로 들지 않는다 — RowCard·Home 카드와 한 벌이다(4-W1). */}
         <h2 id={titleId} className="text-base font-medium">{title}</h2>
-        {count !== undefined && <CountBadge count={count} label={countLabel ?? ""} />}
+        {count !== undefined && <CountBadge count={count} label={countLabel} />}
         {badge}
         {subtitle !== undefined && <div className="text-muted-foreground ml-auto @max-[640px]:ml-0 @max-[640px]:w-full text-xs tracking-[0.02em]">{subtitle}</div>}
       </header>}

@@ -1885,6 +1885,8 @@ export const en = {
     /** 연결된 앱(mcp-oauth 핸드오프 §7.3 · §7.5) — OAuth 연결 목록. 개인 토큰 카드와 어휘(`token.facts`)를 공유한다. */
     apps: {
       title: "Connected apps",
+      /** 카드 머리 개수 배지의 sr 문장 — 숫자는 `aria-hidden`이다(`CountBadge`). */
+      count: (n: number): string => `${n.toLocaleString("en-US")} connected ${n === 1 ? "app" : "apps"}`,
       copyServerUrl: "Copy server URL",
       emptyTitle: "No connected apps",
       emptyBody: "Apps you authorize from Claude Code, Codex or claude.ai show up here.",

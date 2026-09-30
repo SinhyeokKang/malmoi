@@ -270,6 +270,8 @@ describe("소비자 열여섯 — 여백을 넘기지 않는다", () => {
   it.each(CONSUMERS)("%s가 머리 제목 행에 min-h-9를 적지 않는다", (path) => {
     const source = readFileSync(join(ROOT, path), "utf8");
     const heads = [...source.matchAll(/<PanelHeader\b[^>]*>([\s\S]*?)<\/PanelHeader>/g)].map((match) => match[1] ?? "");
+    // 빈 스캔은 공회전이다 — 머리를 못 찾으면 이 검사가 아무것도 안 잰다.
+    expect(heads.length, path).toBeGreaterThan(0);
     for (const head of heads) expect(head, path).not.toMatch(/className="[^"]*\bmin-h-9\b/);
   });
 

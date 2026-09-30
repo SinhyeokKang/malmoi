@@ -19,3 +19,9 @@ export function CountBadge({ count, label, className }: { count: number; label: 
     </Badge>
   );
 }
+
+/**
+ * 카드 머리의 개수 prop — **개수와 sr 문장은 짝이다**. 문장 없는 개수는 타입 오류다(전엔 `countLabel ?? ""`로 빈 문장의 배지가 섰고,
+ * 연결 앱 카드는 카드 제목을 문장으로 넘겨 스크린리더가 개수를 못 들었다).
+ */
+export type CountProps = { count: number; countLabel: string } | { count?: undefined; countLabel?: undefined };
