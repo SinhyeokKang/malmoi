@@ -145,7 +145,7 @@
   4-Y24·5-Y1(Sources 보관 화면 — 머리 Archived 배지 = `StatusBadge archived`, 출구 낱말 하나) · 4-W13(`sources/loading.tsx:31,45` 골격 카운트 원).
   뒤집는 테스트: `sources-screen.test.tsx:201` · `sibling-loading.test.tsx:101-102` · `screens.test.ts:402`(소스 문자열 확인).
   검증 [자동]: `pnpm exec vitest run components/__tests__/sources-screen.test.tsx app` green. [수동]: partial 소스 행이 호박·"Partially synced".
-- **T18 Home** — 🔴 A2(메타 "failed" → partial은 warning 배지 · 실패만 Sync failed) · 🔴 B(Sync 결과 neutral) · 1-Y7/5-Y1(보관 `StatusBadge`) · 1-Y14(미연결 거부 neutral / 끊김 warning) ·
+- ✅ (U7) **T18 Home** — 🔴 A2(메타 "failed" → partial은 warning 배지 · 실패만 Sync failed) · 🔴 B(Sync 결과 neutral) · 1-Y7/5-Y1(보관 `StatusBadge`) · 1-Y14(미연결 거부 neutral / 끊김 warning) ·
   4-Y4(행 선 RowCard 규칙) · 4-Y19·4-W11(메타 배지-먼저, `[Nightly sync] 1d ago`, 색 글자 → 배지) · 5-Y3(호박 글자 700) · 5-Y4(`CircleX`) · 5-Y5(`Eye`) ·
   5-Y12(카드 셋 → `PanelCard`) · 3-⚪15(Try again 글리프) · 4-Y10(Q9: 할 일 행 보조줄 아래로) · D3⑤/4-W12(Recent logs 배지 오른쪽) · 1-W4(메타 꼬리 소문자 — 배지화로 소멸) ·
   4-Y14(Home 부분 — `attention-card.tsx:66`·`logs-card.tsx:37` 카드 안 빈 상태를 Sources와 같은 형) ·
@@ -153,11 +153,11 @@
   측정 [수동]: T20과 같은 방식·판정선으로 Home 착지.
   뒤집는 테스트: `home-meta-trigger.test.tsx:32,40,41,46-58` · `sync-result.test.tsx:161`(거부 tone, 1-Y14) · `home-vocabulary.test.ts:137` · `home-screen.test.ts:244,248` · `home-landmarks.test.tsx`.
   검증 [자동]: `pnpm exec vitest run lib/home components/__tests__/home-* components/__tests__/sync-result.test.tsx` green. [수동]: PR 열림·편집 0 프로젝트 Home에서 Held 보조줄이 늦게 도착하고 본문은 막히지 않음.
-- **T19 /projects** — 🔴 N(내부 이동 foreground + chevron, 외부만 파랑) · 1-Y8(`text-neutral-600` 덮개 제거) · 4-Y9(보조줄 13) · 5-Y4(띠 실패 `CircleX`) ·
+- ✅ (U7) **T19 /projects** — 🔴 N(내부 이동 foreground + chevron, 외부만 파랑) · 1-Y8(`text-neutral-600` 덮개 제거) · 4-Y9(보조줄 13) · 5-Y4(띠 실패 `CircleX`) ·
   4-Y15(좁힌 0건 = Logs 형) · 4-Y17(loading 낭독 줄) · 4-W13(골격 카운트 원) · Q6(PR 조회 실패 띠 "Couldn't check for an open pull request" 렌더).
   뒤집는 테스트: `projects-screen.test.ts:151-152`.
   검증 [자동]: `pnpm exec vitest run components/__tests__/projects-screen.test.ts` green.
-- **T20 번역 화면** — 🔴 F(**DB 판정으로 첫 렌더부터 끔** + `loadConnectionHealth` promise를 Suspense로 내려 나머지 갈래, `memo` 없음, 워크스페이스가 `planActionAvailability`) ·
+- ✅ (U7) **T20 번역 화면** — 🔴 F(**DB 판정으로 첫 렌더부터 끔** + `loadConnectionHealth` promise를 Suspense로 내려 나머지 갈래, `memo` 없음, 워크스페이스가 `planActionAvailability`) ·
   1-Y9/5-Y2(Unsent `Pill`(`key-list.tsx:99,112`·`locale-panel.tsx:250`) → `StatusBadge unsent`, Q3) · 보류 배너 `pending-edits` neutral(D3① 예외) ·
   3-Y2(Revert 트리거 `danger`) · 3-⚪13(스피너) · 5-Y17(팝오버 `shadow-md`).
   측정 [수동]: 기준 SHA = **T17 직전 커밋**, 로컬 production 빌드에서 번역 화면 착지의 `loadEventEnd`·`responseEnd`를 전후 **5회씩 중앙값** — +150ms 또는 +15% 초과면 멈추고 보고한다(spec Q7).
@@ -299,3 +299,4 @@
 - 2026-10-01 사용자: `/guide-shots`는 stale 목록이 아니라 **전 컷 + README 두 장** 재촬영(직전 병합 때 건너뜀).
 - 2026-10-01 지휘자(U6 리뷰): 지문 재확인으로 멈춘 Publish도 Logs 결과 배지는 "Held back" 그대로(필터·Publish 결과 낱말 일치) — 사유는 보조줄. DESIGN §2.4 Held back 행에 적는다(T29).
 - 2026-10-01 지휘자(U7 리뷰): **번역 화면도 probe 메모를 켠다**(Home과 같은 `PROBE_MEMO_TTL_MS`) — 메모 없이 키 선택·저장마다 GitHub probe 1–2회가 나가 설치 rate limit을 번역자 수만큼 태운다. 메모를 끄는 이유(Settings는 고치러 가는 자리, MCP는 판정 근거)는 번역 화면에 없고, 버튼 클릭은 서버가 다시 판정한다. design §3.3의 "memo 없음"을 뒤집는다. 스트리밍 도착은 `use()`가 아니라 effect 구독(직전 값 유지) — 전환 중 `use(새 promise)`가 이동을 GitHub 대기에 묶는다.
+- 2026-10-01 U7: Home 메타 열은 `<aside>`(랜드마크 테스트) 그대로 두고 `PanelCard`로 옮기지 않았다 — §6.64 이탈 표에 올린다(T29). 스트리밍 판정은 `useArrived(promise, identity)`(프로젝트·소스가 바뀌면 옛 값 즉시 폐기).
