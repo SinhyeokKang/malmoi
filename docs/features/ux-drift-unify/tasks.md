@@ -203,7 +203,7 @@
 - ✅ **T27** (U5) 신규 `lib/status/__tests__/cross-screen.test.ts` — design §3.8, spec 완료 조건 3의 행렬 전 칸(N/A 칸은 "받지 않음" 단언).
   입력은 `finishSurface`·조회가 실제로 만드는 모양만.
   검증 [자동]: `pnpm exec vitest run lib/status` green. 카나리아: 한 판정(예: `connectionProblem`의 `unpinned`)을 메모리에서 바꾸면 red.
-- **T28** `components/__tests__/visual-system.test.ts` 확장 + DOM 테스트.
+- ✅ **T28** (U11) `components/__tests__/visual-system.test.ts` 확장 + DOM 테스트.
   - **위반표 먼저** — 규칙마다 "지금 위반 목록 → 해소 태스크"를 표로 두고, 해소되지 않는 항목은 사유와 함께 허용 목록:
     | 규칙 | 지금 위반 | 해소 |
     |---|---|---|
@@ -222,10 +222,10 @@
 
 ## H. 문서 마무리
 
-- **T29** `docs/DIRECTORY.md`(신규 `lib/status/`·`components/ui` 프리미티브) · `docs/ARCHITECTURE.md`(`unpinned` 연결 갈래 · §1.95에 T18·T20 측정 행 · 번역 화면 연결은 DB 판정 + 스트리밍) ·
+- ✅ **T29** (U11) `docs/DIRECTORY.md`(신규 `lib/status/`·`components/ui` 프리미티브) · `docs/ARCHITECTURE.md`(`unpinned` 연결 갈래 · §1.95에 T18·T20 측정 행 · 번역 화면 연결은 DB 판정 + 스트리밍) ·
   T1에서 미래형으로 적은 문장이 구현과 맞는지 재대조. (MCP §6.45는 출력 불변이라 고치지 않는다 — spec Q12.)
   검증 [수동]: `/doc-check` 대상 DIRECTORY·ARCHITECTURE·DESIGN을 이 기능 diff와 대조해 틀린 단언 0.
-- **T30** (Q11) `.claude/commands/ux-audit.md` 신설 — 리포트 전용, `/audit`과 같은 레인. 입력은 2026-09-30 조사 프롬프트(차원 7개 병렬), 기준은 DESIGN §2.4 +
+- ✅ **T30** (U11) (Q11) `.claude/commands/ux-audit.md` 신설 — 리포트 전용, `/audit`과 같은 레인. 입력은 2026-09-30 조사 프롬프트(차원 7개 병렬), 기준은 DESIGN §2.4 +
   이번에 세운 불변식 테스트. 주기: `/merge` 전 또는 새 화면 핸드오프 뒤. 🔴는 이슈로, 정본 제안은 §2.4 후보로. ·
   `.claude/commands/implement.md`에 "새 사전 키를 만들기 전 같은 개념의 기존 키를 grep(DESIGN §2.4·§10.1 표)" 한 줄.
   **Codex 미러 포함**(리포트 전용이라 미러 제외 일곱에 들지 않는다) — `pnpm sync:agents` · CLAUDE.md 스킬 수 21 → 22와 워크플로 절(`/audit` 옆에 `/ux-audit`).
@@ -300,3 +300,6 @@
 - 2026-10-01 지휘자(U6 리뷰): 지문 재확인으로 멈춘 Publish도 Logs 결과 배지는 "Held back" 그대로(필터·Publish 결과 낱말 일치) — 사유는 보조줄. DESIGN §2.4 Held back 행에 적는다(T29).
 - 2026-10-01 지휘자(U7 리뷰): **번역 화면도 probe 메모를 켠다**(Home과 같은 `PROBE_MEMO_TTL_MS`) — 메모 없이 키 선택·저장마다 GitHub probe 1–2회가 나가 설치 rate limit을 번역자 수만큼 태운다. 메모를 끄는 이유(Settings는 고치러 가는 자리, MCP는 판정 근거)는 번역 화면에 없고, 버튼 클릭은 서버가 다시 판정한다. design §3.3의 "memo 없음"을 뒤집는다. 스트리밍 도착은 `use()`가 아니라 effect 구독(직전 값 유지) — 전환 중 `use(새 promise)`가 이동을 GitHub 대기에 묶는다.
 - 2026-10-01 U7: Home 메타 열은 `<aside>`(랜드마크 테스트) 그대로 두고 `PanelCard`로 옮기지 않았다 — §6.64 이탈 표에 올린다(T29). 스트리밍 판정은 `useArrived(promise, identity)`(프로젝트·소스가 바뀌면 옛 값 즉시 폐기).
+- 2026-10-01 지휘자(U11): `/ux-audit`는 🔴를 이슈로 직접 내지 않고 **이슈 후보 목록**으로 낸다(리포트 전용 레인 — `/audit`과 같다). spec Q11에서 벗어남, 수용.
+- 2026-10-01 사용자(U12): **페이지 수준 Alert는 본문의 첫 블록이고 본문과 함께 스크롤한다** — Settings·Home·Account·`/projects`. POSTMORTEM 2026-09-06의 "머리에 둔다"를 뒤집었다. `PanelHeader`의 `notice` 슬롯은 지웠다. 번역 화면은 머리·본문 스크롤 구조가 없어 배너가 고정 띠에 남는다.
+- 2026-10-01 QA1: 이슈 #159–#166(전부 BugShot). 측정은 Home 편집 0(PR 조회 스트리밍) 갈래가 판정선 초과 — 사용자 판단 대기.
