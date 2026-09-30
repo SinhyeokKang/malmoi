@@ -3362,7 +3362,7 @@ export const en = {
       list_repositories: "List the GitHub repositories you can connect to a new project. Needs the Create projects permission.",
       list_branches: "List a repository's branches. Pass { owner, repo } for a new project or { slug } for an existing one, not both.",
       detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new project or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
-      list_keys: "List a source's translation keys with their completion. Takes the same filters as the translations screen and a cursor for the next page.",
+      list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace. Takes the same filters as the translations screen and a cursor for the next page.",
       get_key: "Show one key: its source text, every language's value, review and unsent flags, and where the code uses it.",
       preview_publish: "Preview what Publish would send in a pull request. Returns a fingerprint to pass to publish, and pullRequest: open (with its url), none, or unknown when GitHub couldn't be checked.",
       preview_sync: "Preview a sync from the repository and how many unsent edits it would discard. Returns an approval to pass to sync_repository.",

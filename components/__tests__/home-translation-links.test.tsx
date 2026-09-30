@@ -8,8 +8,8 @@ import { render } from "./helpers/dom";
  * **Home의 번역 링크가 표면 경로를 직접 가리킨다** (audit-ux #4b). 옛 `routes.translations`는 기본 표면으로 redirect하는
  * 공가 라우트라, 카드를 누를 때마다 서버 왕복이 하나 더 붙고 그 동안 화면에 아무 표시가 없었다.
  *
- * ⚠️ **요청값은 그대로 싣는다** — 카드의 수는 프로젝트 전체라 `scope=project`이고, 미번역은 완성도 축이다
- * (`count-cards.tsx`의 `cardQuery`).
+ * ⚠️ **요청값은 그대로 싣는다** — 카드의 수는 프로젝트 전체라 범위가 All sources이고(기본값이라 주소에서 빠진다 — translation-filter-scope),
+ * 미번역은 완성도 축이다(`count-cards.tsx`의 `cardQuery`). ⚠️ `ns=*`는 남는다(POSTMORTEM 2026-09-15).
  */
 const card = (key: HomeCard["key"]): HomeCard => ({ key, value: 1, unit: "cells", muted: false, tone: null, subline: { kind: "nothingPending" } });
 const cards = (["newFromGithub", "toTranslate", "toReview", "toSend"] as const).map(card);
@@ -17,10 +17,10 @@ const cards = (["newFromGithub", "toTranslate", "toReview", "toSend"] as const).
 it("카드 넷이 기본 표면의 번역 화면을 요청값과 함께 가리킨다", async () => {
   const { container } = await render(<CountCards cards={cards} slug="acme" surfaceSlug="web" now={new Date()} />);
   expect([...container.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual([
-    "/projects/acme/surfaces/web/translations?ns=*&scope=project&state=new",
-    "/projects/acme/surfaces/web/translations?ns=*&scope=project&completion=incomplete",
-    "/projects/acme/surfaces/web/translations?ns=*&scope=project&state=review",
-    "/projects/acme/surfaces/web/translations?ns=*&scope=project&state=unsent",
+    "/projects/acme/surfaces/web/translations?ns=*&state=new",
+    "/projects/acme/surfaces/web/translations?ns=*&completion=incomplete",
+    "/projects/acme/surfaces/web/translations?ns=*&state=review",
+    "/projects/acme/surfaces/web/translations?ns=*&state=unsent",
   ]);
 });
 

@@ -40,7 +40,11 @@ export type TranslationQuery = {
   language?: string;
 };
 
-export const DEFAULT_TRANSLATION_QUERY: TranslationQuery = { ns: ALL_NAMESPACES, scope: "source", completion: "all" };
+/**
+ * ⚠️ **기본 범위는 All sources다** (translation-filter-scope — 2026-09-30 사용자). 필터는 사용자가 직접 켤 때만 붙는다 — 트리 위치는
+ * 조회 조건이 아니다(`treeQuery`). `scope` 없는 옛 링크도 여기로 열린다(넓어지는 쪽이라 0건 착지를 만들지 않는다).
+ */
+export const DEFAULT_TRANSLATION_QUERY: TranslationQuery = { ns: ALL_NAMESPACES, scope: "project", completion: "all" };
 
 type RawParams = Readonly<Record<string, string | readonly string[] | undefined>>;
 
@@ -73,7 +77,7 @@ export function parseTranslationQuery(raw: RawParams): TranslationQuery {
 
   const query: TranslationQuery = {
     ns: read(raw, "ns") ?? ALL_NAMESPACES,
-    scope: pick(SCOPES, read(raw, "scope")) ?? "source",
+    scope: pick(SCOPES, read(raw, "scope")) ?? DEFAULT_TRANSLATION_QUERY.scope,
     completion,
   };
   if (missingLocale !== undefined) query.missingLocale = missingLocale;
@@ -92,7 +96,7 @@ export function parseTranslationQuery(raw: RawParams): TranslationQuery {
 export function serializeTranslationQuery(query: TranslationQuery): TranslationsQuery {
   const out: TranslationsQuery = {};
   if (query.ns !== ALL_NAMESPACES) out.ns = query.ns;
-  if (query.scope !== "source") out.scope = query.scope;
+  if (query.scope !== DEFAULT_TRANSLATION_QUERY.scope) out.scope = query.scope;
   if (query.completion !== "all") out.completion = query.completion;
   if (query.state !== undefined) out.state = query.state;
   for (const name of ["missingLocale", "q", "cursor", "key", "keySurface", "language"] as const) {
@@ -120,19 +124,49 @@ export function nextQuery(query: TranslationQuery, patch: Partial<TranslationQue
 
 /** `Clear filters` — 완성도·상태·범위 세 축만. 검색어·트리 선택·상세 언어·선택 키는 남는다. */
 export function clearFilters(query: TranslationQuery): TranslationQuery {
-  const next: TranslationQuery = { ...query, scope: "source", completion: "all" };
+  const next: TranslationQuery = { ...query, scope: DEFAULT_TRANSLATION_QUERY.scope, completion: DEFAULT_TRANSLATION_QUERY.completion };
   delete next.missingLocale;
   delete next.state;
   delete next.cursor;
   return next;
 }
 
+/** 필터 콤보박스(완성도·상태·범위)가 하나라도 켜졌나 — `Clear filters`와 빈 상태 `Show all`이 서는 조건이다. */
+export function isNarrowed(query: TranslationQuery): boolean {
+  return query.completion !== DEFAULT_TRANSLATION_QUERY.completion || query.state !== undefined || query.scope !== DEFAULT_TRANSLATION_QUERY.scope;
+}
+
+/** 조회 조건이 하나라도 붙었나(필터 + 검색) — 트리를 일치 키로 좁힐지의 판정이다. 트리 위치(`ns`)는 조건이 아니다. */
+export function hasConditions(query: TranslationQuery): boolean {
+  return isNarrowed(query) || query.q !== undefined;
+}
+
+export type EmptyAction = { kind: "search-all" | "clear-search" | "show-all"; query: TranslationQuery };
+
 /**
- * 트리 클릭 — 네임스페이스는 This namespace, 전체는 This source. 첫 키는 새 목록이 정하므로 선택 자리에 `FIRST_KEY`를 싣는다.
+ * 검색·필터 결과 0건의 버튼 (translation-filter-scope — design §2.3 · spec 조건 9). 검색어가 있는데 범위가 좁으면 먼저 범위를 넓히라고
+ * 말한다 — 전엔 `Clear search` 하나라 다른 소스에 있는 값이 없는 것처럼 보였다. `Show all`은 완성도·상태가 켜졌을 때만 보조로 선다
+ * (범위만 좁혔을 때의 `Show all`은 `Search all sources`와 같은 쿼리라 중복이다).
+ */
+export function emptyActions(query: TranslationQuery, { noKeys }: { noKeys: boolean }): { primary: EmptyAction | null; secondary: EmptyAction | null } {
+  if (noKeys) return { primary: null, secondary: null };
+  const showAll: EmptyAction = { kind: "show-all", query: clearFilters(query) };
+  if (query.q === undefined) return { primary: isNarrowed(query) ? showAll : null, secondary: null };
+  const filtered = query.completion !== DEFAULT_TRANSLATION_QUERY.completion || query.state !== undefined;
+  const primary: EmptyAction = query.scope !== DEFAULT_TRANSLATION_QUERY.scope
+    ? { kind: "search-all", query: nextQuery(query, { scope: DEFAULT_TRANSLATION_QUERY.scope }) }
+    : { kind: "clear-search", query: nextQuery(query, { q: undefined }) };
+  return { primary, secondary: filtered ? showAll : null };
+}
+
+/**
+ * 트리 클릭은 **위치**다, 필터가 아니다 (translation-filter-scope — 2026-09-30 사용자). `ns`만 바꾸고 scope·완성도·상태·검색어는 그대로
+ * 둔다 — 전엔 scope를 This source/namespace로 덮어 `All sources`로 넓힌 상태가 트리 클릭에 조용히 좁혀졌다. `This namespace`는
+ * "현재 위치의 네임스페이스"라 대상이 새 `ns`를 따라간다. 첫 키는 새 목록이 정하므로 선택 자리에 `FIRST_KEY`를 싣는다.
  * ⚠️ **선택을 비우지 않는다** (audit-ux #18) — 비운 주소는 상세를 "Select a key"로 한 번 그리고, 첫 키를 고르는 두 번째 왕복이 따랐다.
  */
 export function treeQuery(query: TranslationQuery, ns: string): TranslationQuery {
-  const next: TranslationQuery = { ...query, ns, scope: ns === ALL_NAMESPACES ? "source" : "namespace", key: FIRST_KEY };
+  const next: TranslationQuery = { ...query, ns, key: FIRST_KEY };
   delete next.cursor;
   delete next.keySurface;
   return next;

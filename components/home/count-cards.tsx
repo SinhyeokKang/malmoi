@@ -164,9 +164,10 @@ function sublineText(subline: CardSubline, now: Date): string {
 
 /**
  * 카드 → 번역 화면의 요청값 (translation-rework T12). **카드의 수는 프로젝트 전체라 범위도 `All sources`다** — 한 소스로 착지하면
- * 합계와 목록이 갈린다. 미번역은 완성도 축(`Incomplete`)으로, 나머지 셋은 상태 축으로 간다.
+ * 합계와 목록이 갈린다. 그 범위가 기본값이라 주소에 `scope`를 싣지 않는다(translation-filter-scope). 미번역은 완성도 축(`Incomplete`)으로,
+ * 나머지 셋은 상태 축으로 간다. ⚠️ `ns=*`는 남긴다 — 빼면 상태 링크가 네임스페이스로도 좁혀져 0건 착지한다(POSTMORTEM 2026-09-15).
  * ⚠️ 카드는 **셀**을 세고 목록은 **키**를 센다 — 두 수가 같다고 주장하지 않는다(design §3 옛 링크).
  */
 function cardQuery(state: (typeof CARD_STATE)[keyof typeof CARD_STATE]) {
-  return state === "untranslated" ? { ns: ALL_NAMESPACES, scope: "project", completion: "incomplete" } : { ns: ALL_NAMESPACES, scope: "project", state };
+  return state === "untranslated" ? { ns: ALL_NAMESPACES, completion: "incomplete" } : { ns: ALL_NAMESPACES, state };
 }

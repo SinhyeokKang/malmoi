@@ -660,8 +660,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       <div ref={bodyRef} className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden p-4">
         <div className="flex h-full min-h-0" style={layout?.scrollWidth ? { minWidth: layout.scrollWidth } : undefined}>
           <div className="border-border bg-background relative flex min-h-0 shrink-0 overflow-hidden rounded-lg border" style={layout ? { width: layout.left } : { width: PANEL.tree + PANEL.list }}>
+            {/* 트리 강조는 위치(`ns`)다 — 범위 필터가 아니다(translation-filter-scope). */}
             {!treeCollapsed && (
-              <TreePanel tree={tree} surfaceSlug={view.surface} ns={shown.scope === "namespace" ? shown.ns : ALL_NAMESPACES} onSelect={selectTree}
+              <TreePanel tree={tree} surfaceSlug={view.surface} ns={shown.ns} onSelect={selectTree}
                 className="border-border shrink-0 border-r" width={layout?.tree ?? PANEL.tree} />
             )}
             <KeyList
@@ -681,7 +682,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             />
             {treeCollapsed && treeOverlay && (
               <TreeOverlay id={treeOverlayId} onClose={() => setTreeOverlay(false)}>
-                <TreePanel tree={tree} surfaceSlug={view.surface} ns={shown.scope === "namespace" ? shown.ns : ALL_NAMESPACES}
+                <TreePanel tree={tree} surfaceSlug={view.surface} ns={shown.ns}
                   // 선택한 항목이 오버레이와 함께 사라지므로 토글로 돌려준다 — 안 하면 이동이 있든 없든 body로 떨어진다(T19 실측).
                   onSelect={(surface, ns) => { focusController(treeOverlayId); setTreeOverlay(false); selectTree(surface, ns); }} />
               </TreeOverlay>

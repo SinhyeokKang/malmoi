@@ -118,6 +118,20 @@ describe("역할 × 빈 grants", () => {
   });
 });
 
+describe("list_keys 기본 범위 (translation-filter-scope 조건 13 — 2026-09-30 사용자)", () => {
+  const listed = () => (h.loadTranslationList.mock.calls[0]?.[1] as { query: { scope: string; cursor?: string } }).query;
+
+  it("scope 없이 부르면 전 활성 소스(All sources)로 읽는다 — 화면 최초 진입과 같은 기본값", async () => {
+    expect(status(await call("list_keys", subject("owner"), SURFACE))).toBe("ok");
+    expect(listed().scope).toBe("project");
+  });
+
+  it("scope=source는 그대로 경로 소스로 좁히고, cursor는 그대로 실린다", async () => {
+    await call("list_keys", subject("owner"), { ...SURFACE, query: { scope: "source" }, cursor: "c1" });
+    expect(listed()).toMatchObject({ scope: "source", cursor: "c1" });
+  });
+});
+
 describe("범위", () => {
   const PROJECT_TOOLS: [string, Record<string, unknown>][] = [
     ["get_project", { slug: "acme" }], ["list_keys", SURFACE], ["get_key", { ...SURFACE, keyId: "k1" }], ["preview_sync", { slug: "acme" }],

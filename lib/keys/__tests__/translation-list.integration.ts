@@ -125,7 +125,8 @@ async function oracle(surfaceIds: string[], filter: Parameters<typeof keyMatches
   return orderKeySummaries(out);
 }
 
-const q = (over: Partial<TranslationQuery>): TranslationQuery => ({ ...DEFAULT_TRANSLATION_QUERY, ...over });
+// ⚠️ 이 파일의 oracle은 This source(p-web)를 기준으로 쓰였다 — 기본 범위가 All sources로 바뀐 뒤(translation-filter-scope) 명시한다.
+const q = (over: Partial<TranslationQuery>): TranslationQuery => ({ ...DEFAULT_TRANSLATION_QUERY, scope: "source", ...over });
 const list = (query: TranslationQuery, pageSize?: number) => loadTranslationList(prisma, { projectId: "p", routeSurfaceId: "p-web", query, pageSize });
 
 describe("loadTranslationTree", () => {
@@ -160,6 +161,11 @@ describe("loadTranslationList — oracle 대조", () => {
     const project = await list(q({ scope: "project" }));
     expect(project.rows.map(r => r.keyId)).toEqual((await oracle(["p-app", "p-web"], { completion: "all" })).map(e => e.keyId));
     expect(project.rows.find(r => r.keyId === "a2")).toMatchObject({ surfaceSlug: "app", namespace: "app", totalLocales: 2, missingCount: 1 });
+  });
+
+  it("기본 쿼리(범위 생략)는 전 활성 소스다 — 최초 진입 (translation-filter-scope 조건 1)", async () => {
+    const result = await list(DEFAULT_TRANSLATION_QUERY);
+    expect(result.rows.map(r => r.keyId)).toEqual((await oracle(["p-app", "p-web"], { completion: "all" })).map(e => e.keyId));
   });
 
   it("This namespace인데 네임스페이스가 전체(*)면 This source와 같다 — `*`라는 이름을 찾아 0건이 되지 않는다", async () => {

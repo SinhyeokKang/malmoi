@@ -60,7 +60,7 @@ it("옛 locales 하나는 상세 언어로, focus는 버리고 보낸다", async
 it("ns가 없으면 전체다 — 기본 네임스페이스로 URL을 고정하지 않는다", async () => {
   const page = await render({ state: "review" });
   expect(state.redirect).not.toHaveBeenCalled();
-  expect(page.props.query).toMatchObject({ ns: "*", scope: "source", state: "review" });
+  expect(page.props.query).toMatchObject({ ns: "*", scope: "project", state: "review" });
 });
 
 it("미전달 수는 표면별 합이다", async () => {
