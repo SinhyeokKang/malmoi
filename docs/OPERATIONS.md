@@ -269,12 +269,12 @@ pnpm credentials:dev --mode=verify
   공유 DB URL을 읽지 않는다. 기본 바이너리는 `/opt/homebrew/opt/postgresql@17/bin`이고 다른 환경은
   `CREDENTIAL_PG_BIN`에 로컬 PostgreSQL bin 디렉터리를 지정한다. initdb/pg_ctl/pg_dump/psql이 필요하며
   테스트용 프로세스가 root이면 실행할 수 없다.
-  ⚠️ **`pnpm test`에 없다**(별도 config). `/push` 게이트가 안 돌리므로 `lib/credentials/**`를
-  건드렸으면 손으로 돌린다.
+  ⚠️ **`pnpm test`에 없다**(별도 config). `lib/credentials/**`를 건드리면
+  `pnpm gate`가 붙인다(트리거 정본 `scripts/gate-plan.ts`).
 - `pnpm test:projects:postgres` — 같은 방식으로 격리 클러스터를 띄워(`CREDENTIAL_PG_BIN` 동일) 목록 집계,
   Add surface 원자성·동일 key/locale 공존·교차 FK 거부·실제 Project 생성, 편집 토큰의 조건부 쓰기를
-  검사한다. ⚠️ **이것도 `pnpm test` 밖이다** — `lib/keys/**`·`lib/surfaces/**`·`lib/protection/**` 등
-  전체 목록은 [CLAUDE.md](../CLAUDE.md) 명령어 표에 있다.
+  검사한다. ⚠️ **이것도 `pnpm test` 밖이다** — 트리거 경로를 건드리면
+  `pnpm gate`가 붙인다 — 전체 목록의 정본은 `scripts/gate-plan.ts`다.
 - 격리 테스트는 실제 Auth.js 핸들러와 **가짜** OAuth 응답, 실제 DB unique/잠금/CAS, 중단·재개·백업
   복원을 검사한다. **실제 공급자·배포 차단·키보드/포커스 검증을 대신하지 않는다.**
 
