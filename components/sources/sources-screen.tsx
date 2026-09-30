@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileCode2, FileJson2, Folder, Plus, X } from "lucide-react";
+import { ChevronRight, FileCode2, FileJson2, Folder, Plus } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { loadSourceDetail } from "@/app/(edit)/projects/[slug]/sources/actions";
 import { runFirstIngest } from "@/app/(edit)/projects/actions";
@@ -10,6 +10,7 @@ import { GithubIcon } from "@/components/signin/brand-icons";
 import { PanelCard } from "@/components/ui/panel-card";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "@/components/ui/close-button";
 import { neighbourFocus } from "@/components/ui/focus";
 import { failureText } from "@/components/onboarding/failure";
 import { canPerform, type Role } from "@/lib/auth/permission";
@@ -89,7 +90,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
               <p className="text-muted-foreground text-xs">{m.sources.workflow} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></p></>}
           </div>
           {/* ⚠️ 닫기 전에 이웃으로 포커스를 옮긴다 (audit #35) — 이 버튼이 결과 행과 함께 사라져 포커스가 `body`로 빠졌다(`Alert`와 같다). */}
-          <Button variant="ghost" aria-label={m.common.close} className="hover:bg-foreground/5 size-7 shrink-0 rounded-full px-0" onClick={event => { neighbourFocus(event.currentTarget.closest('[role="status"]') ?? event.currentTarget)?.focus(); setResult(null); }}><X className="size-4" aria-hidden /></Button>
+          <CloseButton label={m.common.close} onClick={event => { neighbourFocus(event.currentTarget.closest('[role="status"]') ?? event.currentTarget)?.focus(); setResult(null); }} />
         </div>}
         {data.sources.length === 0
           ? <div className="border-divider flex flex-col items-center gap-2.5 border-t px-6 py-10 text-center">

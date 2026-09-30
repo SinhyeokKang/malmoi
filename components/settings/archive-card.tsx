@@ -57,7 +57,6 @@ export function ArchiveCard({
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const cancel = useRef<HTMLButtonElement>(null);
   /**
    * ⚠️ **성공하면 버튼이 바뀐다** (audit #32) — 보관 ↔ 복원이 서로 다른 갈래라 누른 버튼이 언마운트되고 포커스가 `body`로
    * 빠진다. 두 갈래가 같은 ref를 쥐고, revalidate가 실린 커밋 뒤에 새 버튼으로 착지한다. [Archive]는 Dialog 트리거라 진행 중에도
@@ -115,13 +114,12 @@ export function ArchiveCard({
           </Button>
         </DialogTrigger>
         <DialogContent
-          onOpenAutoFocus={event => { event.preventDefault(); cancel.current?.focus(); }}
           title={m.archive.confirm.title(name)}
           description={m.archive.confirm.body}
           footer={
             <>
               <DialogClose asChild>
-                <Button ref={cancel} variant="default">{m.archive.confirm.cancel}</Button>
+                <Button data-initial-focus variant="default">{m.archive.confirm.cancel}</Button>
               </DialogClose>
               <DialogClose asChild>
                 <Button

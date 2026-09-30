@@ -64,7 +64,6 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
 
   const rows = apps === null ? null : apps.filter((app) => !removed.has(app.id));
   const heading = () => document.getElementById(TITLE_ID);
-  const cancelRef = useRef<HTMLButtonElement | null>(null);
   const confirmRef = useRef<HTMLButtonElement | null>(null);
   /*
     명시 실패 뒤 Dialog가 남는다 — 진행 중 `disabled`가 포커스를 떨어뜨리므로 재시도 자리(확정 버튼)로 되돌린다(POSTMORTEM 2026-09-24).
@@ -169,8 +168,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
           <DialogContent
             title={m.mcpConnector.apps.confirmTitle(target.name)}
             description={m.mcpConnector.apps.confirmBody}
-            // 초기 포커스는 Cancel — 되돌리기 쉬운 쪽이다(핸드오프 §8 · 토큰 폐기와 같다).
-            onOpenAutoFocus={(event) => { event.preventDefault(); cancelRef.current?.focus(); }}
+            // 초기 포커스는 Cancel — 되돌리기 쉬운 쪽이다(핸드오프 §8 · 토큰 폐기와 같다). 표식은 `DialogContent`가 읽는다.
             onCloseAutoFocus={(event) => {
               // 끊은 뒤엔 누른 버튼이 사라진다 — 다음 행 → 이전 행 → 카드 제목(핸드오프 §8). 취소면 누른 행으로 돌아간다.
               event.preventDefault();
@@ -180,7 +178,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
             }}
             footer={
               <>
-                <Button ref={cancelRef} disabled={pending} onClick={() => setOpen(false)}>
+                <Button data-initial-focus disabled={pending} onClick={() => setOpen(false)}>
                   {m.common.cancel}
                 </Button>
                 <Button ref={confirmRef} data-disconnect-confirm variant="danger" loading={pending} onClick={confirm}>

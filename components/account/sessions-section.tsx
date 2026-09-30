@@ -84,7 +84,7 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
             footer={
               <>
                 <DialogClose asChild>
-                  <Button variant="default">{m.common.cancel}</Button>
+                  <Button data-initial-focus variant="default">{m.common.cancel}</Button>
                 </DialogClose>
                 {/*
                   ⚠️ **제출 지점이 Dialog 안이다.** 실패 Alert는 구역에 남으므로 Dialog가 닫힌 뒤에도
@@ -129,7 +129,7 @@ function SignOutButton({ signOut }: { signOut: () => void }) {
         footer={
           <>
             <DialogClose asChild>
-              <Button variant="default">{m.common.cancel}</Button>
+              <Button data-initial-focus variant="default">{m.common.cancel}</Button>
             </DialogClose>
             <form action={signOut}>
               <SubmitSignOut />

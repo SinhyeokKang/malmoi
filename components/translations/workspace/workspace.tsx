@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownToLine, Languages, Loader2, RotateCcw } from "lucide-react";
+import { ArrowDownToLine, Languages, RotateCcw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
 
@@ -823,10 +823,9 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
         <span className="ml-auto inline-flex items-center gap-2">
           {hasPending && (
             // ⚠️ **`loading`을 쓰지 않는다** — 그쪽은 진짜 `disabled`를 걸어 방금 누른 버튼이 포커스를 잃고
-            // busy 사유(describedby)에 닿을 길이 사라진다 (DESIGN §6.65). 스피너만 같은 모양으로 직접 둔다.
+            // busy 사유(describedby)에 닿을 길이 사라진다 (DESIGN §6.65). `busy`가 포커스를 지키며 스피너를 든다.
             <Button aria-disabled={revertBlocked !== null ? "true" : undefined} aria-describedby={revertBlocked !== null ? reasonId : undefined}
-              aria-busy={revertBusy || undefined} onClick={() => { if (revertBlocked === null) onRevert(); }}>
-              {revertBusy && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              busy={revertBusy} onClick={() => { if (revertBlocked === null) onRevert(); }}>
               {w.revert.button}
             </Button>
           )}

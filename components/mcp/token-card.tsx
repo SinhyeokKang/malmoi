@@ -197,7 +197,7 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
           }}
           footer={
             <>
-              <Button disabled={revoking} onClick={() => setRevokeOpen(false)}>
+              <Button data-initial-focus disabled={revoking} onClick={() => setRevokeOpen(false)}>
                 {m.common.cancel}
               </Button>
               <Button data-revoke-confirm variant="danger" loading={revoking} onClick={revoke}>

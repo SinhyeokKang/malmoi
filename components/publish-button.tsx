@@ -635,7 +635,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         case "already-running":
           alert = true;
           title = p.alreadyRunning; description = p.alreadyRunningBody;
-          actions = <Button variant="primary" onClick={publish.close}>{p.close}</Button>;
+          // 작은 Dialog의 유일한 동작이라 첫 포커스가 여기다 — 되돌릴 수 없는 일을 하지 않는다(`DialogContent` 표식).
+          actions = <Button data-initial-focus variant="primary" onClick={publish.close}>{p.close}</Button>;
           body = null;
           break;
         case "too-soon": {
@@ -647,7 +648,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             꺼진 버튼은 스스로 풀리지 않아 "18초 뒤에 다시 하라"는 라벨이 영영 못 지키는 약속이 된다.
             라벨이 시키는 것을 화면이 실제로 할 수 있어야 한다.
           */
-          actions = <Button variant="primary" onClick={() => void publish.preview()}>{p.wait(seconds)}</Button>;
+          actions = <Button data-initial-focus variant="primary" onClick={() => void publish.preview()}>{p.wait(seconds)}</Button>;
           body = null;
           break;
         }

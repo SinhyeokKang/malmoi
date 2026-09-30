@@ -1,10 +1,10 @@
 "use client";
 
-import { X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Dialog as Primitive } from "radix-ui";
 import type { ReactNode } from "react";
 
+import { CloseButton } from "@/components/ui/close-button";
 import { m } from "@/lib/i18n";
 
 /**
@@ -68,11 +68,9 @@ export function EventDialog({
           }}
         >
           {children}
-          <Primitive.Close
-            aria-label={m.logs.detail.actions.close}
-            className="text-muted-foreground hover:bg-accent focus-visible:ring-ring absolute top-6 right-6 inline-flex size-9 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:outline-none"
-          >
-            <X className="size-5" aria-hidden />
+          {/* 닫기는 `CloseButton` 한 형이다(2026-10-01). Close 하나에 자식 하나라 `asChild`가 안전하다(POSTMORTEM 2026-09-09는 형제를 둔 형이다). */}
+          <Primitive.Close asChild>
+            <CloseButton label={m.logs.detail.actions.close} className="absolute top-6 right-6" />
           </Primitive.Close>
         </Primitive.Content>
       </Primitive.Portal>

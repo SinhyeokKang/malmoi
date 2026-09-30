@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Loader2, RefreshCw, RotateCcw } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
 
@@ -108,13 +108,12 @@ export function LogFilters({
             <Button
               type="button"
               variant="default"
-              aria-busy={refreshing || undefined}
-              aria-disabled={refreshing || undefined}
+              // `busy`가 포커스를 지키며 클릭을 막고, 앞 글리프를 스피너로 교체한다 (DESIGN §6.4 `Button loading`).
+              busy={refreshing}
               onClick={() => { if (!refreshing) startRefresh(() => router.refresh()); }}
               className="gap-1.5"
             >
-              {/* 아이콘이 있는 버튼이라 스피너를 더하지 않고 교체한다 (DESIGN §6 `Button loading`). */}
-              {refreshing ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden /> : <RefreshCw className="size-4 shrink-0" aria-hidden />}
+              <RefreshCw className="size-4 shrink-0" aria-hidden />
               {m.logs.refresh}
             </Button>
           )}
@@ -221,11 +220,10 @@ export function LogFilters({
           <Button
             type="button"
             variant="ghost"
-            aria-busy={clearing || undefined}
-            aria-disabled={clearing || undefined}
+            busy={clearing}
             onClick={() => { if (!clearing) startClear(() => router.push(routes.logs(slug, clearedLogsQuery({ ...filter, event: null })))); }}
           >
-            {clearing ? <Loader2 className="animate-spin" aria-hidden /> : <RotateCcw aria-hidden />}
+            <RotateCcw aria-hidden />
             {m.logs.filters.clear}
           </Button>
         )}
@@ -309,7 +307,8 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
       >
         <div className="grid grid-cols-2 gap-3">
           <FormGroup label={m.logs.range.from} htmlFor={fromId}>
-            <Input id={fromId} type="date" value={from} onChange={event => setFrom(event.target.value)} className="w-full" />
+            {/* 첫 포커스는 첫 날짜다 — 이 Dialog는 입력이 할 일이라 Cancel 표식(`DialogContent`)에서 빠진다. */}
+            <Input id={fromId} type="date" value={from} onChange={event => setFrom(event.target.value)} className="w-full" autoFocus />
           </FormGroup>
           <FormGroup label={m.logs.range.to} htmlFor={toId}>
             <Input id={toId} type="date" value={to} onChange={event => setTo(event.target.value)} className="w-full" />

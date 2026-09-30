@@ -58,7 +58,7 @@ export function PushTokenPanel({ slug, disabled = false }: { slug: string; disab
           footer={
             <>
               <DialogClose asChild>
-                <Button variant="default">{m.common.cancel}</Button>
+                <Button data-initial-focus variant="default">{m.common.cancel}</Button>
               </DialogClose>
               <DialogClose asChild>
                 <Button

@@ -185,7 +185,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
     {confirm !== null && detail && <Dialog open onOpenChange={next => { if (!next) setConfirm(null); }}>
       <DialogContent title={m.sources.discardTitle} description={m.sources.discardBody(draft ?? "", detail.baseLocale ?? "")}
         footer={<>
-          <DialogClose asChild><Button>{m.sources.keepEditing}</Button></DialogClose>
+          <DialogClose asChild><Button data-initial-focus>{m.sources.keepEditing}</Button></DialogClose>
           <DialogClose asChild><Button variant="danger" onClick={() => { const href = confirm.href; setConfirm(null); setDraft(null); if (href) router.push(href); else onClose(); }}>{m.sources.discardChange}</Button></DialogClose>
         </>} />
     </Dialog>}

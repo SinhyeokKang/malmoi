@@ -171,7 +171,7 @@ function DisconnectButton({ label, pending, onConfirm }: { label: string; pendin
         footer={
           <>
             <DialogClose asChild>
-              <Button variant="default">{m.common.cancel}</Button>
+              <Button data-initial-focus variant="default">{m.common.cancel}</Button>
             </DialogClose>
             <DialogClose asChild>
               <Button variant="danger" onClick={onConfirm}>

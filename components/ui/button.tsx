@@ -1,7 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import type { ButtonHTMLAttributes, MouseEventHandler, ReactNode, Ref } from "react";
+import { Children, isValidElement, type ButtonHTMLAttributes, type MouseEventHandler, type ReactNode, type Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -188,9 +188,25 @@ export function Button({
     >
       {/* 스피너가 라벨 **앞에** 선다 — 16px는 §6.8의 기본 크기다. */}
       {(loading || busy) && <Loader2 className="size-4 animate-spin" aria-hidden />}
-      {children}
+      {glyphSlot(children, loading || busy)}
     </button>
   );
+}
+
+/**
+ * **아이콘이 있는 버튼은 스피너를 더하지 않고 교체한다** (DESIGN §6.4 `Button loading` · 2026-10-01 ux-drift-unify T13) — 더하면 버튼이
+ * 글리프 하나만큼 넓어졌다 좁아진다. 전엔 그 교체를 호출부 다섯이 `pending ? <Loader2/> : <Icon/>` 삼항으로 손수 들었다.
+ *
+ * ⚠️ **앞 글리프 = `aria-hidden`을 든 첫 자식 요소**다 — 장식 글리프만 그 표식을 든다(§7). 라벨 글자·라벨 조각(`<span>`)은 교체되지
+ * 않는다. 표식이 없는 글리프(브랜드 마크 `GithubIcon`)는 더하는 쪽에 남는다. CSS 형제 선택자로 숨기지 않은 이유: DOM에 남으면
+ * 스크린리더·테스트가 두 글리프를 보고, jsdom은 CSS를 안 태워 검증할 수 없다.
+ */
+function glyphSlot(children: ReactNode, spinning: boolean): ReactNode {
+  // ⚠️ 돌지 않을 때도 배열로 낸다 — 두 상태의 key가 같아야 라벨 요소가 토글마다 다시 마운트되지 않는다.
+  const all = Children.toArray(children);
+  const [first, ...rest] = all;
+  const decorative = isValidElement<{ "aria-hidden"?: unknown }>(first) && (first.props["aria-hidden"] === true || first.props["aria-hidden"] === "true");
+  return spinning && decorative ? rest : all;
 }
 
 /**
