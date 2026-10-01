@@ -38,8 +38,8 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
   /** 위치 — 경로 소스와 `ns`. 범위가 전 소스가 아니면 이것이 범위다. */
   surfaceSlug: string;
   ns: string;
-  /** `All sources` 노드 — 검색 중이고 활성 소스가 둘 이상일 때만(호출부가 판정). 숫자는 전 소스 일치 수다. */
-  allSources?: { count: number } | null;
+  /** `All sources` 노드 — 검색 중이고 활성 소스가 둘 이상일 때만(호출부가 판정). 숫자는 전 소스 일치 수이고, 응답을 기다리는 동안은 `null`(비운다)이다. */
+  allSources?: { count: number | null } | null;
   /** 범위가 전 소스인가(전 소스 검색). */
   rangeAll?: boolean;
   onSelect: (surfaceSlug: string, ns: string) => void;
@@ -110,7 +110,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
           >
             <span className="flex text-neutral-600"><Search className="size-4" aria-hidden /></span>
             <span className="min-w-0 flex-1 truncate font-medium">{m.translations.workspace.tree.allSources}</span>
-            <span className="text-muted-foreground text-xs">{allSources.count.toLocaleString("en-US")}</span>
+            {allSources.count !== null && <span className="text-muted-foreground text-xs">{allSources.count.toLocaleString("en-US")}</span>}
           </ListItemButton>
         )}
         {nodes.surfaces.map(surface => {

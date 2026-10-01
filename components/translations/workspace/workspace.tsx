@@ -683,8 +683,10 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   */
   const treeNodes = useMemo(() => countTree(tree, props.counts), [tree, props.counts]);
   const rangeAll = isAllSources(shown);
+  // ⚠️ 응답이 오기 전(누른 검색·Status가 서버 조건과 다를 때)에는 숫자를 비운다 — 서버의 일치 수가 없어 전체 키 수를 일치 수처럼 말하게 된다.
+  const countsCurrent = props.counts !== null && query.q === shown.q && statusOf(query) === statusOf(shown);
   const allSourcesNode = shown.q !== undefined && tree.surfaces.length > 1
-    ? { count: props.counts === null ? tree.projectKeyCount : props.counts.reduce((sum, node) => sum + node.count, 0) }
+    ? { count: countsCurrent ? props.counts!.reduce((sum, node) => sum + node.count, 0) : null }
     : null;
   const selectAllSources = () => go(allSourcesQuery(view.query), "filter");
   // 접힌 레이아웃에서 범위를 말하는 유일한 단서다 — 범위 콤보가 없다(design §4.5).

@@ -411,6 +411,22 @@ it("ns=*에서 전 소스 검색 → 같은 소스 키 선택 → 그 네임스�
   expect(treeNode(container, "auth")?.getAttribute("aria-current")).toBe("true");
 });
 
+it("새 검색을 기다리는 동안 All sources 노드는 숫자를 비운다 — 서버의 일치 수가 오기 전에 전체 키 수를 일치 수처럼 말하지 않는다", async () => {
+  const user = userEvent.setup();
+  const base = props({ tree: TREE2 });
+  const initial: WorkspaceProps = { ...base, query: { ...base.query, ns: "common", scope: "namespace" } };
+  const b = gate();
+  respond = () => ({ next: searching({ ns: "common" }, [rowOf("k1", "web", "common")]), gate: b });
+  const { container } = await render(<Harness initial={initial} />);
+  await user.type(searchInput(container), "k{Enter}");
+  const node = () => treeNode(container, w.tree.allSources)!;
+  expect(node()).toBeDefined();
+  expect(node().textContent).toBe(w.tree.allSources);
+  await arrive(b);
+  // 짝 — 도착하면 전 소스 일치 수(1)이고, 전체 키 수(4)가 아니다.
+  expect(node().textContent).toBe(`${w.tree.allSources}1`);
+});
+
 // ── 스크롤 (조건 8 · design §4.3) ─────────────────────────────────────────────────
 
 /** 전 소스 검색 → 같은 소스의 다른 네임스페이스 키 선택 → 검색 지우기. 서버 응답은 주소에서 만든다. */
