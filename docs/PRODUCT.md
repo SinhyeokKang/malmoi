@@ -249,10 +249,10 @@ Save 재검증이 한계를 넘었지만(ARCHITECTURE §1.95) 사용자가 받�
   응답 유실은 "전송 여부를 확인하지 못함"이다(ARCHITECTURE §5.6.3).
 - **SyncRun** — 실행 이력·동시 실행 차단. ⚠️ **idempotency는 여기 없다** — `idempotencyKey`는
   일부러 안 만들었고(ARCHITECTURE §5.1), **push를 이 테이블에 넣을 때** 의미가 생긴다.
-  ⚠️ **임포트 결과는 당분간 이 테이블이 아니라 `Project` 컬럼 둘이 든다**(2026-09-13 —
-  `lastImportStartedAt`·`lastImportError`). **마지막 하나**만 남기는 것이고 이력이 아니다:
-  목록이 답할 질문이 "지금 이 프로젝트가 막혀 있나"뿐이라 그 이상을 저장할 이유가 없었다.
-  이력이 필요해지면 그때 위 문장이 말한 대로 `SyncRun`으로 옮긴다
+  ⚠️ **임포트 결과의 현재 상태는 이 테이블이 아니라 `TranslationSurface` 컬럼이 든다**(2026-09-13 `Project` 컬럼 둘로
+  시작해 2026-09-14 multi-surface에서 표면으로 옮겼다 — `lastImportStartedAt`·`lastImportError`·`lastImportFailedAt`·
+  `lastImportedAt`). 표면별 **마지막 하나**만 남기는 것이고 이력이 아니다: 목록이 답할 질문이 "지금 이 프로젝트가
+  막혀 있나"뿐이다. 적재 이력은 `ProjectEvent`(Logs의 Imports)가 든다(§7.7 결정 3)
 - **계정 설정 — 프로필 편집과 사진** (판정 2026-09-13 · **2026-09-14 프로덕션**). 이름을 **사용자 소유**로
   옮기고 이메일은 provider 소유로 남긴다. 뒤집는 근거: 이름은 멤버 목록·초대에서 **남이 나를 알아보는
   이름**이고 provider의 표시 이름이 그 자리에 맞지 않을 수 있다. ⚠️ **이메일은 계속 못 고친다** —
@@ -514,8 +514,8 @@ setup → awaiting_first_sync → ready
 `planProjectReadiness`가 보는 것이 `installationId`와 표면의 `lastCommitSha` **둘뿐**이라 실패 상태를
 낼 자리가 구조적으로 없다. `needs_reconnect`만 **다른 축에 실재한다**(아래 문단 — 목록의
 `ProjectStatus`다). `error`·`needs_configuration`은 **어느 축에도 생산자가 없다**: 리포에 남은 것은
-`lib/push/guard.ts`의 주석 한 줄(옛 7단계 계획)이고, 적재 실패를 실제로 드는 자리는 `Project` 컬럼
-둘(`lastImportStartedAt`·`lastImportError` — §4.1)이다.
+`lib/push/guard.ts`의 주석 한 줄(옛 7단계 계획)이고, 적재 실패를 실제로 드는 자리는 `TranslationSurface`
+컬럼(`lastImportStartedAt`·`lastImportError` 등 — §4.1)이다.
 
 **별도 상태 컬럼을 즉시 만들지 않는다** — 초기에는 기존 nullable 필드와 최근 `SyncRun` 결과로 계산할
 수 있다. 다만 `ready` 전 프로젝트가 번역 화면에 들어가는 것은 막는다.
@@ -528,10 +528,10 @@ setup → awaiting_first_sync → ready
 
 ⚠️ **연결 건강성은 이것과 별개 축이고, 4단계가 먼저 세웠다.** 이 절이 묻는 것은 "편집 가능한가"이고,
 건강성이 묻는 것은 "리포·설치가 지금 어떤 상태인가"다. 후자는 **상태 컬럼 없이 매 렌더 계산**하며
-(`planConnectionHealth` **7갈래** — `ok`·`not-connected`·`app-uninstalled`·`installation-changed`·
+(`planConnectionHealth` **8갈래** — `ok`·`not-connected`·**`unpinned`**·`app-uninstalled`·`installation-changed`·
 `repo-moved`·**`repo-replaced`**·`unknown`), ⚠️ **위 다이어그램의 `needs_reconnect`는 그 union에는
 없고 다른 축에는 실재한다** (2026-09-11 정정 — 한때 "코드에 없는 이름"으로 적혀 있었다). 건강성의
-대응값은 `app-uninstalled`이고, **같은 낱말이 목록의 `ProjectStatus`에는 진짜 값으로 있다**
+대응값은 `unpinned`(설치 있음 + 리포 id 없음 — 2026-10-01 ux-drift-unify D1)이고, **같은 낱말이 목록의 `ProjectStatus`에는 진짜 값으로 있다**
 (`lib/projects/list.ts`의 `PROJECT_STATUSES`·`projectStatus` — 조건은 `repositoryId === null`,
 화면 라벨은 `Disconnected`). 둘을 섞지 않는다: 건강성은 **GitHub에 물어** 매 렌더 계산하고,
 `ProjectStatus`는 **저장된 행만 보고** 목록 배지를 낸다. 그 축의 결정 셋:
@@ -542,14 +542,14 @@ setup → awaiting_first_sync → ready
   드러낸다** (`Disconnected` 배지 — 2026-09-10 `/doc-check`이 잡았고 2026-09-11에 한 낱말로 줄였다). sec-audit-2 이전에 만들어진 행이 그 상태이고
   결과는 셋이었다 — 목록에서 **`Active`로 보였고**(`planProjectReadiness`가 그 컬럼을 안 본다 →
   `projectStatus`가 `active`를 낸다), 야간 순회에서 **조용히 빠지며**(`selectPullTargets`),
-  Publish만 `not-installed`로 죽는다. 설정 화면의 건강성 행조차 `not-connected`("연결 안 됨")로 접어
-  **리포 미고정임을 말하지 않는다.** `Needs reconnect` 문자열은 리포 전수 0건이다.
+  Publish만 `not-installed`로 죽는다. ✅ 설정 화면의 건강성 행도 2026-10-01부터 `unpinned`를 `disconnected`로
+  말한다(`connectionProblem` — `lib/home/state.ts`, 전에는 `not-connected`로 접어 리포 미고정임을 말하지 않았다). `Needs reconnect` 문자열은 리포 전수 0건이다.
   - **자리는 `lib/projects/list.ts`의 `projectStatus`이고 `ProjectReadiness` union이 아니다**
     (ARCHITECTURE §6.36) — 그 union을 늘리면 설정 화면·`ProjectNotReady`의 정책이 함께 움직인다.
     ⚠️ **`ready`일 때만 본다**: 그 컬럼이 막는 것은 **되돌려보내기**이고, 첫 적재도 안 끝난
     프로젝트에서 "다시 연결하라"는 답할 질문이 아니다.
-    ⚠️ **Home은 아직 안 드러낸다** — 그 화면은 `ProjectNotReady` 갈래를 쓰지 목록 배지가 없다.
-    필요해지면 같은 순수 함수를 읽는다.
+    ✅ **Home도 드러낸다** (2026-10-01) — `unpinned`가 `not_connected`로 접히고 `disconnected` 배너가 OWNER에게
+    [Reconnect]를 띄운다(`components/home/actions.tsx`). 설정 배지와 같은 `connectionProblem`을 읽는다.
 - **`repo-moved`·`installation-changed`를 자동으로 따라가지 않는다** — 리네임·이전을 서버가 조용히
   받아들이면 "내가 모르는 사이에 다른 리포로 PR이 갔다"가 성립한다. 사람이 다시 연결한다.
 - **`repo-replaced`는 사람도 못 따라간다** (2026-09-10, sec-audit-2 발견 34). 이름은 주소이고
@@ -558,12 +558,10 @@ setup → awaiting_first_sync → ready
   거부하므로 답은 "새 프로젝트"다. ⚠️ **ID 대조가 이름 대조보다 앞이다**: 리네임 뒤 같은 조직이 옛
   이름으로 리포를 새로 만들면 `fullName`도 `installationId`도 저장값과 같아, ID를 안 보면 이 화면이
   초록을 띄운다.
-  - ⚠️ **Home은 그 결정을 지키지 않는다 — 알려진 결함이다** (2026-09-18 확인). `planHomeState`가
-    `repo-replaced`를 `not_connected`로 접고(`lib/home/state.ts`), 그 상태의 Home 배너는 OWNER에게
-    [Reconnect]를 띄운다(`components/home/actions.tsx`). 누르면 `connectRepository`가
-    `repo-forbidden`으로 거부하므로 **문서가 "없다"고 한 버튼이 Home에 서 있고 막다른 길이다.**
-    접는 것 자체는 옳다(그 프로젝트는 실제로 돌지 않는다) — 틀린 것은 **그 갈래에 같은 동작을 주는
-    것**이고, 답은 "새 프로젝트"를 말하는 별도 문구다.
+  - ✅ **Home도 그 결정을 지킨다** (2026-10-01 해소, ux-drift-unify — 2026-09-18에 알려진 결함이었다). `planHomeState`는
+    여전히 `repo-replaced`를 `not_connected`로 접지만(그 프로젝트는 실제로 돌지 않는다), 갈래가 `wrong-repository`로 따로
+    서서 Home 배너가 **버튼 없는** danger Alert다(`components/home/actions.tsx`). 전에는 같은 [Reconnect]를 띄워 누르면
+    `connectRepository`가 `repo-forbidden`으로 거부하는 막다른 길이었다.
 
 ### 7.6 Publish — PR 생성은 완료가 아니다
 
@@ -638,7 +636,8 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 **`/changelog`가 판정 셋을 뒤집었다** (2026-09-28 사용자). ① 사이드바 하단·사용자 메뉴의 `Release notes`(GitHub Releases
 외부 링크) → 라벨 `Changelog`의 앱 안 링크 — 목적지가 앱 안 페이지가 됐고 화면 라벨은 그 페이지 제목과 같은 키여야 한다.
 ② 공개 헤더 `Home · Docs · GitHub` → `Home · Docs · Changelog` — 헤더 내비는 앱 안 목적지만 들고, GitHub는 푸터 첫 링크·
-랜딩 CTA에 남아 도달성이 줄지 않는다. ③ 절대 날짜·시각 형이 `Sep 27, 2026` / `Sep 27, 2026 16:34 UTC` 하나로 모였다 — 날짜만
+랜딩 CTA에 남아 도달성이 줄지 않는다. ⚠️ 같은 날 다시 바뀌었다 — 내비는 `Docs · Changelog`(Home은 빠지고 로고가 홈 링크)이고
+GitHub는 내비가 아니라 헤더 우측 primary 왼쪽에 돌아왔다(아래 랜딩 문단, `components/public-shell/header.tsx`). ③ 절대 날짜·시각 형이 `Sep 27, 2026` / `Sep 27, 2026 16:34 UTC` 하나로 모였다 — 날짜만
 쓰는 자리와 시각을 쓰는 자리가 서로 달랐고 이 페이지가 셋째 형을 들일 참이었다("UTC를 말한다"는 그대로다). **원문의 정본은
 GitHub Release**라 소스에 사본이 없고, 본문 이미지는 `<img>`가 아니라 링크로 나간다(CSP·방침 전송처를 넓히지 않는다).
 비범위: 버전별 하위 페이지 · 검색·필터·페이지네이션(100건 초과분은 GitHub 링크 한 문장) · RSS·구독·새 버전 배지(§4.2 알림
@@ -704,7 +703,8 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
      늘어난다.** 그래서 `Home`의 완료 조건에 그 대가를 갚는 항목이 들어간다 — **거기서 번역으로 가는
      경로가 화면의 주된 동작이어야 한다**(로케일별 진행률이 곧 `?locales=` 링크, 최근 활동이 곧 `?ns=`·
      `?locales=` 링크 — 8-4가 `?focus=`를 그 이름으로 바꿨다). 개요만 있고 링크가 없으면 그 클릭이 순손실이다.
-     ✅ 구현은 갚는다 — 2026-09-15에 수단이 바뀌었다: **카운트 카드 넷이 각자 `?state=`로 착지**하고
+     ✅ 구현은 갚는다 — 2026-09-15에 수단이 바뀌었다: **카운트 카드 넷이 각자 번역 화면의 좁힘으로 착지**하고(셋은 `?state=`,
+     미번역은 `?completion=incomplete` — `components/home/count-cards.tsx`의 `cardQuery`)
      **할 일 항목 행이 그 로케일의 번역 화면으로** 간다. `[Open translations]` primary와 진행률 행
      링크는 그때 사라졌다(카드가 더 좁은 목적지를 주므로 같은 클릭이 더 멀리 간다).
      `components/__tests__/home-screen.test.ts`가 그 구조를 소스로 센다.
@@ -802,14 +802,15 @@ Sources의 Add sources 모달이 부르는 `addSurfaces`의 `project:settings`�
 합친다. **`New from GitHub`(`state=new`)은 `StringKey.createdAt > Project.lastPulledAt`이고**(`lastPulledAt`이 null이면 활성 키 전체)
 **Sync 시각이 아니다.**
 
-⚠️ **`?e=`는 일부만 생성기를 지난다** (거부 사유 — 읽는 라우트 **여덟**: `projects`·`projects/new`·`account`·
-`settings`·`sources`·`surfaces/new`·`invite/[token]`·`signin/link/[challenge]`). `routes.sources({ add, e })`·`routes.account({ e, … })`·
-`routes.signInLink(challenge, { e })`는 생성기를 지나고, 아래 세 자리만 문자열 연결로 만든다. ⚠️ **`/projects/new?e=`는 2026-09-13부터 "모달이 열린 채 그 사유를
+⚠️ **`?e=`는 일부만 생성기를 지난다** (거부 사유 — 읽는 라우트: `projects`·`projects/new`·`account`·
+`settings`·`sources`·`surfaces/new`·`invite/[token]`·`signin/link/[challenge]`·`oauth/authorize`. 정본은 각 페이지의 `searchParams` 타입이다). `routes.sources({ add, e })`·`routes.account({ e, … })`·
+`routes.signInLink(challenge, { e })`·`routes.oauthAuthorize({ request, e })`는 생성기를 지나고, 아래 자리만 문자열 연결로 만든다. ⚠️ **`/projects/new?e=`는 2026-09-13부터 "모달이 열린 채 그 사유를
 든다"이다** — 그 라우트가 목록 위의 모달 딥링크가 되면서, 사유는 페이지 머리가 아니라 ① 본문 맨 위
 배너로 선다. 그 라우트는 `?q=`도 함께 받아 **뒤 목록에 반영**하고, 닫으면 그 값을 들고
-`/projects`로 돌아간다 (`routes.newProject({ q })`). 남은 세 자리가 `redirect()`의 문자열 연결이고
-(`lib/auth/session.ts`·`app/api/github/callback/route.ts`·`app/invite/[token]/page.tsx`),
-**이 문서가 바로 위에서 경고한 그 형태다** — 위 목록의 키들과 달리 그 세 자리의 `?e=`는 생성기↔수신자 대조의
+`/projects`로 돌아간다 (`routes.newProject({ q })`). 남은 자리가 `redirect()`의 문자열 연결이고
+(`lib/auth/session.ts`·`app/api/github/callback/route.ts`·`app/invite/[token]/page.tsx`, 그리고 프로젝트 페이지들이
+행을 못 찾을 때의 `` `${routes.projects()}?e=not-found` `` — `routes.projects`가 `q`만 받는다),
+**이 문서가 바로 위에서 경고한 그 형태다** — 위 목록의 키들과 달리 그 자리들의 `?e=`는 생성기↔수신자 대조의
 바깥에 있다. 늘릴 일이 생기면 `routes.*`의 쿼리 인자로 먼저 옮긴다. `/signin`의 `?error=`·
 `?sessions=`는 반대로 `routes.signIn({...})`이 만든다(8-1a).
 
@@ -836,7 +837,7 @@ Sources의 Add sources 모달이 부르는 `addSurfaces`의 `project:settings`�
 ⚠️ **CI 진입점은 둘이고 토큰은 하나다** — `/api/push`(적재)와 **`/api/push/failure`**(적재 실패
 사실만). 뒤가 있는 이유는 **로케일 파일을 파싱조차 못 하면 `/api/push`가 아예 안 불리기** 때문이다:
 그 실패는 여태 대상 리포의 Actions 로그에만 있었고 말모이 쪽에서는 프로젝트가 그냥 조용했다. 그
-보고가 `Project`의 `lastImportStartedAt`·`lastImportError`(§4.1)를 채우고, 화면에는 사유 문장
+보고가 대상 `TranslationSurface`의 `lastImportError` 등(§4.1)을 채우고, 화면에는 사유 문장
 **여섯**(`lib/projects/import-failure.ts`)과 복구 안내 **두 갈래**(첫 적재 전이면 이 화면의 버튼이
 다시 돌리고, 적재된 뒤면 고칠 곳이 대상 리포의 CI다)로 선다. ⚠️ **새 토큰을 만들지 않았다**(같은
 `PUSH_TOKEN`이라 인증 경로가 늘지 않는다) ⚠️ **아무것도 적재하지 않는다**(`lastCommitSha`·
@@ -957,5 +958,6 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 - **`publish-pr-handoff`** (2026-09-18, 같은 분리 — 착수 전 `/feature`가 필요하다). PR 전달 → Sync → 새 편집 → 재Publish가 이전 PR
   내용을 교체하는 것을 사람이 검토하는 화면이 없다. 열린 PR 대비 **파일 diff**·페이지네이션·미리보기 승인 지문이 그 spec의 범위이고,
   딸려 오는 것이 셋이다: Claude Design 핸드오프 선행 · `components/ui/`에 없는 pagination 프리미티브 · **EDITOR의 열린 PR 인가**
-  (`checkOpenPullRequest`가 `project:settings`라 EDITOR는 열린 PR을 영영 모른다 — ARCHITECTURE §5.6.35). 그때까지 Publish 미리보기는
+  (`checkOpenPullRequest`가 `project:settings`라 EDITOR는 그 조회를 못 쓴다 — Publish 미리보기만 `translation:write`로 열린 PR을
+  따로 읽어 EDITOR에게도 보인다, ARCHITECTURE §5.6.35). 그때까지 Publish 미리보기는
   base 대비 목록이고 **표시 전용**이다.
