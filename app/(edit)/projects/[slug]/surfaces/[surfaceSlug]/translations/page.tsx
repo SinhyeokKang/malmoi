@@ -152,6 +152,7 @@ export default async function TranslationsPage({
       baseLocale={project.baseLocale}
       declaredBaseLocale={project.declaredBaseLocale}
       connection={connection}
+      writeLock={project.writeLock}
     />
   );
 }

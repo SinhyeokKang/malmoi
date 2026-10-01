@@ -9,6 +9,7 @@ import { useCommitWait } from "@/components/commit-wait";
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
 import { SearchInput } from "@/components/search-input";
 import { SyncButton } from "@/components/home/sync-button";
+import { SyncLockBanner, SyncLockDialog } from "@/components/translations/sync-lock";
 import { BasePendingBanner } from "@/components/translations/base-pending-banner";
 import { EditLossBanner } from "@/components/translations/edit-loss-banner";
 import { Alert } from "@/components/ui/alert";
@@ -71,6 +72,11 @@ export type WorkspaceProps = {
    * `later`는 GitHub 판정의 promise다(App 제거 · 설치 교체 · 리포 교체). 도착하면 그것이 이긴다. ⚠️ **`unknown`은 버튼을 끄지 않는다.**
    */
   connection: { status: ConnectionHealth["status"]; later?: Promise<ConnectionHealth> };
+  /**
+   * 착지 시점의 적재 lease (sync-lock R1) — 서버가 `planWriteLock`으로 판정해 시각만 넘긴다(토큰 없음). 헤더 배너와 OWNER [Sync]의 사유만 읽는다.
+   * ⚠️ **행(`KeyRow`)까지 내리지 않는다** — lease 하나로 5,000행 memo가 깨진다(POSTMORTEM 2026-10-01). ⚠️ Save를 끄지 않는다 — 막는 것은 서버 거부다.
+   */
+  writeLock: { startedAt: Date; reopensBy: Date } | null;
 };
 
 type DraftAction = KeyDraftAction | { type: "replace"; state: KeyDraftState };
@@ -386,6 +392,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   useEffect(() => { if (!navigating && emptyPressed !== null) setEmptyPressed(null); });
 
   // ── Save ──────────────────────────────────────────────────────────────────
+  /** 쓰기 거부(`sync-running`)의 다시 열리는 시각 — 값이 있으면 Syncing… Dialog가 선다(저장·Revert 공용 — R4). */
+  const [syncLock, setSyncLock] = useState<Date | null>(null);
   async function save() {
     // Publish가 도는 동안은 잠긴다 (audit-ux #10 · D3) — Action이 순서대로 실행돼 PR 생성 뒤에 줄을 선다. 단축키도 이 문을 지난다.
     if (detail === null || savingRef.current || dirty.length === 0 || publish.pending) return;
@@ -414,6 +422,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         });
       } else {
         dispatch({ type: "failure", requestId });
+        /*
+          ⚠️ **`sync-running`은 푸터 Alert가 아니라 Dialog다** (sync-lock S4) — 아래 연쇄의 끝(`save-failed`)으로 떨어지면 "다시 해 보라"가 되는데,
+          다시 눌러도 lease가 끝날 때까지 같은 거부다. 상태 줄은 비운다.
+        */
+        if (result.error === "sync-running") { setSyncLock(result.reopensBy); return; }
         setStatus(result.error === "unauthorized" ? { kind: "session" }
           : result.error === "archived" ? { kind: "archived" }
           : result.error === "forbidden" || result.error === "not-found" ? { kind: "lost-access" }
@@ -447,6 +460,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     try {
       const preview = await previewTranslationRevert({ slug, surfaceSlug: detail.key.surfaceSlug, keyId: detail.key.id });
       if (preview.status === "ready") setDialog({ kind: "revert", locales: preview.locales, confirmation: preview.confirmation });
+      // R4 — lease 거부는 저장 거부와 같은 Dialog다. `unavailable`로 접지 않는다(사유가 남아 lease가 끝난 뒤에도 Revert를 막는다).
+      else if (preview.status === "blocked" && preview.reason === "sync-running") setSyncLock(preview.reopensBy);
       else if (preview.status === "blocked") setRevertReason(preview.reason === "forbidden" ? "forbidden" : preview.reason === "busy" ? "busy" : preview.reason === "unsaved" ? "unsaved" : "unavailable");
       else setStatus({ kind: "revert-failed" });
     } catch {
@@ -474,6 +489,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         // 싣고 오고, 또 부르면 결과가 선 뒤 두 번째 전체 렌더가 표시 없이 돌았다.
       } else if (result.status === "reconfirm") {
         setDialog({ kind: "revert-changed" });
+      } else if (result.status === "blocked" && result.reason === "sync-running") {
+        setSyncLock(result.reopensBy);
       } else if (result.status === "blocked") {
         setRevertReason(result.reason === "busy" ? "busy" : result.reason === "forbidden" ? "forbidden" : "unavailable");
       } else {
@@ -627,7 +644,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               <span onClickCapture={event => { if (dirty.length > 0 && availability.sync) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
                 {/* 끊김이 먼저다 — 그 원인은 Publish가 끝나도 풀리지 않는다(Home 머리와 같은 순서). */}
                 <SyncButton slug={slug} surfaceSlug={routeSurfaceSlug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
-                  paused={!availability.sync || publish.pending} pausedReason={availability.sync ? m.repositorySync.waitPublish : connectionBlock ?? m.repositorySync.paused}
+                  paused={!availability.sync || publish.pending || props.writeLock !== null}
+                  /* 끊김 → Publish 진행 → 다른 실행의 lease 순이다 — 앞의 둘은 lease가 끝나도 풀리지 않는다. */
+                  pausedReason={!availability.sync ? connectionBlock ?? m.repositorySync.paused : publish.pending ? m.repositorySync.waitPublish : w.sync.running}
                   open={syncOpen} onOpenChange={setSyncOpen} onPendingChange={setSyncPending}
                   onResult={onSyncResult} fallbackFocusRef={titleRef} />
               </span>
@@ -693,6 +712,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           상태를 언마운트한다. 대기 배너가 먼저다: "왜 지금 보내야 하는가"가 "보내라"보다 앞이다. Sync 결과는 Sync Dialog가 든다(sync-lock S5).
         */}
         <div className="space-y-3 empty:hidden">
+          <SyncLockBanner reopensBy={props.writeLock?.reopensBy ?? null} />
           <BasePendingBanner baseLocale={props.baseLocale} declaredBaseLocale={props.declaredBaseLocale} />
           <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} blockedReason={connectionBlock} />
         </div>
@@ -795,6 +815,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         onRevert={confirmation => void confirmRevert(confirmation)}
         onReview={() => { setDialog(null); router.refresh(); }}
       />
+      <SyncLockDialog reopensBy={syncLock} onClose={() => setSyncLock(null)} />
     </div>
   );
 }

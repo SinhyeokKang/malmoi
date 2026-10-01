@@ -18,6 +18,7 @@ import {
   type RowLocaleProgress,
 } from "@/lib/projects/list";
 import { countPendingBySurface } from "@/lib/protection/where";
+import { planWriteLock } from "@/lib/sync/plan";
 import type { Actor } from "./view";
 
 /**
@@ -64,6 +65,11 @@ export type ProjectContext = {
   lastPublishedAt: Date | null;
   lastPrUrl: string | null;
   locales: LocaleRow[];
+  /**
+   * 착지 시점에 적재 lease가 살아 있나 (sync-lock R1) — 번역 화면의 배너·[Sync] 사유가 읽는다. 판정은 저장 거부와 같은 `planWriteLock`이다.
+   * ⚠️ **실행권 토큰(`repositoryImportToken`)은 싣지 않는다** — 이 값은 클라이언트 prop이 된다. ⚠️ 착지의 사실일 뿐이다: 막는 것은 서버 거부다.
+   */
+  writeLock: { startedAt: Date; reopensBy: Date } | null;
 };
 
 /**
@@ -79,6 +85,7 @@ export async function loadProject(prisma: PrismaClient, projectId: string, surfa
       id: true, slug: true, name: true, repoOwner: true, repoName: true, baseBranch: true,
       installationId: true, repositoryId: true,
       lastPulledAt: true, lastPublishedAt: true, lastPrUrl: true,
+      repositoryImportToken: true, repositoryImportStartedAt: true,
       surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: {
         locales: { select: { code: true, name: true, isBase: true, orphaned: true }, orderBy: { code: "asc" } },
       } },
@@ -86,7 +93,9 @@ export async function loadProject(prisma: PrismaClient, projectId: string, surfa
   });
   const surface = project?.surfaces.find(s => s.id === surfaceId);
   if (!project || !surface) return null;
-  return { ...project, surfaceId, surfaceSlug: surface.slug, lastCommitSha: surface.lastCommitSha,
+  const { repositoryImportToken, repositoryImportStartedAt, ...rest } = project;
+  const lock = planWriteLock({ now: new Date(), repositoryImportToken, repositoryImportStartedAt });
+  return { ...rest, writeLock: lock === null ? null : { startedAt: lock.startedAt, reopensBy: lock.reopensBy }, surfaceId, surfaceSlug: surface.slug, lastCommitSha: surface.lastCommitSha,
     baseLocale: surface.baseLocale, declaredBaseLocale: surface.declaredBaseLocale, locales: surface.locales };
 }
 

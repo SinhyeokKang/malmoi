@@ -2416,7 +2416,23 @@ export const en = {
         changed: { title: "The values changed while this was open", body: "Someone saved new values for this key. Look at them before you revert — this dialog no longer matches what is saved.", again: "Review again" },
         reverted: "Reverted to the version last confirmed as sent",
       },
-      sync: { ownerOnly: "Only project owners can sync." },
+      sync: {
+        ownerOnly: "Only project owners can sync.",
+        /** 적재 lease가 살아 있는 동안 꺼진 OWNER [Sync]의 사유 (sync-lock) — 착지 시점의 사실이다. 누르면 서버도 `already-running`이다. */
+        running: "A sync is already running.",
+      },
+      /**
+       * **Sync가 도는 동안의 쓰기 거부** (sync-lock S4 · R4) — 저장·Revert가 `sync-running`으로 거부되면 같은 Dialog가 선다. 화면 밖 사건이
+       * 끼어드는 유일한 거부라 푸터 Alert가 아니라 Dialog다(DESIGN §7). ⚠️ 시각은 `<time>` 조각이라 호출부가 감싼다(사전은 잎이다).
+       * ⚠️ **"at the latest"가 요지다** — 시각은 죽은 적재가 풀리는 상한(`startedAt` + 300초를 다음 분으로 올림)이고, 보통은 그 전에 끝난다.
+       */
+      syncLock: {
+        title: "Syncing…",
+        body: (time: ReactNode): ReactNode => <>You can't save edits until the sync finishes — by {time} at the latest.</>,
+        ok: "OK",
+        /** 착지 배너 (R1) — 한 줄이고 Save를 끄지 않는다. 막는 것은 서버 거부다. */
+        banner: (time: ReactNode): ReactNode => <>Syncing… Edits can be saved again by {time} at the latest</>,
+      },
       publish: {
         title: "Publish without saving your changes?",
         body: (project: string, list: string, key: string, n: number): string =>
@@ -3456,7 +3472,7 @@ export const en = {
       list_members: "List a project's members with masked email labels. Owners also see pending invitations.",
       create_project: "Create a project from a repository using the candidates and confirmations from detect_formats, and run the first sync. Returns a push token once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
       add_sources: "Add translation sources to a project using the candidates and confirmations from detect_formats({ slug }), and run their first sync.",
-      set_translations: "Save translations for up to 100 keys in one call. A rejected key is skipped and the rest are saved.",
+      set_translations: "Save translations for up to 100 keys in one call. A rejected key is skipped and the rest are saved; while a sync is running, the whole call is refused with the time to try again.",
       publish: "Send saved changes to the repository as a pull request. Call preview_publish first and pass its fingerprint.",
       sync_repository: "Load the repository's values into Malmoi, discarding unsent edits. Call preview_sync first and pass its approval.",
       revert_to_last_sent: "Revert one key's unsent languages to the version last confirmed as sent. Call preview_revert first and pass its confirmation.",

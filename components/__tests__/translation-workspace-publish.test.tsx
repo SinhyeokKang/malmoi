@@ -32,7 +32,7 @@ it("미저장이 있어도 View result는 결과를 연다 — 확인창은 Publ
   window.sessionStorage.clear();
   const { container } = await render(
     <TranslationWorkspace
-      slug="acme" routeSurfaceSlug="web" role="OWNER" userId="u1"
+      slug="acme" routeSurfaceSlug="web" role="OWNER" userId="u1" writeLock={null}
       query={{ ...DEFAULT_TRANSLATION_QUERY, key: "k1", keySurface: "web" }}
       tree={{ projectKeyCount: 1, surfaces: [{ id: "s1", slug: "web", baseLocale: "en", locales: ["en", "zh"], keyCount: 1, namespaces: [] }] }}
       list={{ rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, nextCursor: null, effective: { completion: "all", substituted: false, excludedSurfaceIds: [] }, selectedInResult: true }}
