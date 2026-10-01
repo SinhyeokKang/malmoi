@@ -605,8 +605,10 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
   아니라 사용자가 일부러 고르는 전체 보기다(기본 착지는 load까지 1초). **다음에 이 화면이 느리다는
   제보가 오면 FCP가 아니라 이 표의 `loadEventEnd`부터 본다.**
 
-⚠️ **2026-10-01 — 위 판정의 전제("전체 보기는 기본 경로가 아니다")가 바뀌었다** (translation-filter-scope, 2026-09-30 사용자). 기본 범위가
-**All sources**이고 화면 목록이 **전량**(`pageSize: "all"`, "더 보기" 버튼 없음)이라 전 소스 × 전 키가 기본 착지다. 목록은 요약 행뿐이고
+⚠️ **2026-10-01 — 위 판정의 전제("전체 보기는 기본 경로가 아니다")가 바뀌었다** (translation-filter-scope, 2026-09-30 사용자). 화면 목록이
+**전량**(`pageSize: "all"`, "더 보기" 버튼 없음)이고 **서버는 모든 착지에서 전 소스를 한 번 읽는다** — 같은 날 translation-tree-range가 기본 범위를
+트리 위치로 되돌렸지만, 범위는 읽은 뒤 JS로 자른다(§1.96). 그래서 아래 측정의 조회(전 소스 × 전 키)가 모든 착지의 조회이고, RSC에 실리는 것은
+범위의 행 + 노드별 수(`counts`)뿐이라 응답은 이 표보다 작다. 목록은 요약 행뿐이고
 입력은 선택 키 하나라(`<Textarea>` 2,721개 시절과 다른 화면) 가상화 없이 측정 게이트를 세웠다. 로컬 production 빌드(`pnpm build && pnpm start`,
 dev DB = 로컬 Mac → 도쿄 pooler), 소스 셋 fixture, warm-up 1회 버림 + 3회 중앙값:
 
@@ -693,8 +695,13 @@ Home 편집 1 행은 첫 측정(dev `ae0f2f98`, 교대 없이 5회 중앙값)이
 - **정렬은 `Incomplete first` 하나이고 URL에 `sort`가 없다** — 고를 것이 없는 파라미터는 만들지 않는다.
 - **화면 목록은 전량이다 — `pageSize: "all"`** (translation-filter-scope, 2026-09-30 사용자). 안정 분할이 범위 전체 집계를 요구하므로 비용은
   페이지 크기가 아니라 `scope`에 좌우된다 — 페이지를 나눠도 조회 시간이 줄지 않았다. `"all"`은 LIMIT·cursor가 없고 **SQL count를 따로 돌리지
-  않는다**(CTE가 한 번만 돈다 — 집계는 행에서 센다). 트리의 조건별 숫자도 이 행에서 센다(`lib/translations/tree-narrow.ts` — 새 조회가 없다).
-  측정 게이트와 그 판정은 §1.95.
+  않는다**(CTE가 한 번만 돈다 — 집계는 행에서 센다). 측정 게이트와 그 판정은 §1.95.
+  - **화면은 늘 전 소스로 읽고 JS로 범위를 자른다** (translation-tree-range §3, 2026-10-01). 페이지가 `scope: "project"`로 한 번 읽고
+    `inRange`(트리 위치 · 전 소스 검색)로 자른다 — **읽기 경로가 하나라** SQL `scope` 경로와 JS 경로가 같은 행을 내는지 지킬 필요가 없고, 트리의
+    조건별 숫자(`tallyRows` → `countTree`, `lib/translations/tree-narrow.ts`)가 같은 전 소스 행에서 나와 "트리 숫자 = 그 노드를 눌렀을 때의 목록 수"가
+    구조로 맞는다. 목록의 `matchedKeyCount`·`incompleteKeyCount`·`selectedInResult`는 **자른 행에서 다시 센다** — 로더의 전 소스 값을 그대로 쓰면 범위 밖
+    선택을 "결과 안"으로 읽는다(POSTMORTEM 2026-09-23). 목록 조회는 redirect 판정이 바꾸는 값(경로·`ns`·언어)과 무관해 트리·상세와 같은 라운드에 떠난다.
+    두 경로(JS 자르기 · MCP의 SQL `scope`)가 같은 행·순서인지는 `translation-list.integration.ts`가 실제 DB에서 단언한다.
   - ⚠️ **검색 일치 조각은 키당 한 행이다**(`matchesFor`의 `DISTINCT ON (keyId)`, 로케일 `COLLATE "C"` 첫 것) — 전량에서 흔한 단어를 찾으면
     키 × 로케일 행이 Node로 왔다.
   - **재검증 응답이 곧 조건의 전부다** — 같은 세대의 재검증에서 서버 행에 없는 행은 선택 여부와 무관하게 `savedOut`이다(`mergeServerRows`).
@@ -2940,7 +2947,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `list_repositories` | 없음(생성 준비) | `project:create` | 연결 가능한 리포. 연결·설치가 없으면 `needs-browser` |
 | `list_branches` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / **기존: 없음** | 기존 프로젝트의 브랜치 목록은 PRODUCT §3의 읽기 예외다. sync 브랜치 제외 |
 | `detect_formats` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / 기존: `project:settings` | 파일 다운로드라 두 경로 다 grant. 둘 다 리포 쓰기 권한 확인. 샘플 확인값 발급 |
-| `list_keys` | OWNER / EDITOR (표면) | 없음 | 검색·상태 필터·cursor, 페이지 100. **`scope`가 없으면 전 활성 소스다** — 화면 기본값과 같은 파서(2026-09-30 사용자, translation-filter-scope). 경로 소스만 보려면 `query.scope: "source"` |
+| `list_keys` | OWNER / EDITOR (표면) | 없음 | 검색·완성도(`missing`·`complete` 포함)·상태 필터·cursor, 페이지 100. **`scope`가 없으면 전 활성 소스다**(2026-09-30). 경로 소스만 보려면 `query.scope: "source"`. ⚠️ **입력 해석은 동결된 파서(`parseTranslationQuery`)다 — 화면 필터가 아니다** (2026-10-01 translation-tree-range): 화면은 그 위의 화면 층(`screenQuery` — Status 하나 · 트리 범위)을 쓰고, 이 도구는 바꾸지 않는다. 도구 설명도 받는 축을 직접 나열한다 |
 | `get_key` | OWNER / EDITOR (표면) | 없음 | 로케일 값·설명·사용처·플래그 |
 | `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR — `pullRequest: { status: "open", number, url } \| { status: "none" } \| { status: "unknown" }`. ⚠️ 조회 실패·시간 초과(`loadOpenPrUrl`의 `undefined`)를 "없음"으로 접지 않는다 — `undefined`는 JSON에서 필드째 사라지므로 상태가 값이다(Codex review CR-04) |
 | `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라) |
