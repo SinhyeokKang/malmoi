@@ -192,10 +192,11 @@ if (unreadable.length) {
   process.exit(1);
 }
 
-// ⚠️ **경고(`duplicate-property`)는 red가 아니다** (B7a r1, 2026-09-24 사용자 결정 · docs/ACTIONS.md §3) — code-dict·ts-dict의
-// 중복 프로퍼티는 JS 의미대로 마지막 값이 적재되고 잃는 번역이 없다. 찍고 계속한다.
-const warnings = read.errors.filter((e) => adapterErrorKind(e.code) === "warning");
-const blocking = read.errors.filter((e) => adapterErrorKind(e.code) !== "warning");
+// ⚠️ **`failure`만 red다** (docs/ACTIONS.md §3). 경고(`duplicate-property`)는 JS 의미대로 마지막 값이 적재되고(B7a r1, 2026-09-24
+// 사용자 결정), `unmanaged`(코드의 식·YAML 숫자)는 surgical writer가 파일에 그대로 남긴다(2026-10-01 사용자 판정) — 둘 다 잃는
+// 번역이 없고 서버 적재도 통과시키는 항목이라 남의 리포 CI를 막지 않는다. 찍고 계속한다.
+const warnings = read.errors.filter((e) => adapterErrorKind(e.code) !== "failure");
+const blocking = read.errors.filter((e) => adapterErrorKind(e.code) === "failure");
 if (blocking.length) {
   console.error(`적재 에러 ${blocking.length}건 — CI를 실패시킨다:`);
   for (const e of blocking.slice(0, 10)) console.error(`  ${e.path}  ${adapterErrorMessage(e)}`);
