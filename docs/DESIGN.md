@@ -229,12 +229,11 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 
 ### 4.1 mono는 코드 블록 전용이다 — 13px / 18px
 
-⚠️ **2026-09-23에 화면에서 mono를 통째로 걷었다** (사용자 — "YAML 같은 코드 블록 제외하고 전부 sans"). 살아 있는 자리는 **둘**이다(2026-09-26 — `/docs`의 코드 블록이 하나 늘렸다):
+⚠️ **2026-09-23에 화면에서 mono를 통째로 걷었다** (사용자 — "YAML 같은 코드 블록 제외하고 전부 sans"). 살아 있는 자리는 **하나**다(2026-09-26에 `/docs`의 코드 블록이 둘째가 됐고, 2026-10-01에 둘이 `CodeBlock` 하나로 합쳐졌다):
 
 | 자리 | 왜 남았나 |
 |---|---|
-| `components/onboarding/workflow-block.tsx` `<pre>` | 워크플로 YAML — 원본 줄바꿈과 들여쓰기가 값의 일부다 |
-| `components/docs/code-block.tsx` `<pre>` | `/docs` 원고의 코드 펜스 — 같은 이유다(§6.61) |
+| `components/ui/code-block.tsx` `<pre>` | `/docs` 원고의 코드 펜스와 앱의 워크플로 YAML(`workflow-block.tsx`가 이것을 쓴다) — 원본 줄바꿈과 들여쓰기가 값의 일부다(§6.61) |
 
 ⚠️ **`/docs` 원고의 인라인 코드도 mono다**(시안 1b — §6.61) — 이 표 밖의 **예외 하나**다. 크기가 `text-mono`(13 고정)가 아니라 0.875em이라 문장 크기를 따르고, 클래스는 `components/docs/classes.ts`의 `INLINE_CODE` 한 상수다(`font-mono` — `surface-rules.test.ts`가 그 상수를 따로 고정한다). 앱 화면의 `<code>` 값 칩은 여전히 sans다.
 
@@ -258,7 +257,7 @@ shadcn 생성 코드가 사라져(2026-09-08) `dark:`를 쓰는 소스는 0곳�
 - **13px인 이유**: 12px이 작고, 14px는 mono 자폭이 sans의 1.2배라 트렁케이션·가로 스크롤이 함께 늘어난다.
 - **`text-[13px]`가 아니라 `text-mono`를 쓴다.** 임의값은 행간이 따라오지 않아 표면마다 갈린다. 소비 경로는 **`@utility text-mono` 하나**이고 font-family·font-size·line-height 셋을 함께 싣는다 — 두 번째 경로를 만들지 않는다(2026-09-06에 font-size 토큰만 있어 **글꼴이 안 실린** 채 이름만 mono였다).
 - ⚠️ **`text-mono`는 `white-space`를 안 든다** (2026-09-08). 접혀선 안 되는 값(옛 `first-ingest-retry.tsx`의 파서 원문 — 2026-09-24 삭제)에는 `whitespace-pre-wrap`을 같은 태그에 함께 적는다 — 실제로 파서 원문이 세 자리에서 한 줄로 접혀 나갔다(POSTMORTEM 2026-09-08). `components/__tests__/multiline-detail.test.ts`가 그 자리를 상시로 센다. `<pre>` 쪽은 `overflow-x-auto`가 대신 붙는다. 가르는 기준은 "긴 줄을 접어야 하나(pre-wrap)"와 "원본 줄바꿈을 지켜야 하나(pre)"다.
-- ⚠️ **`components/__tests__/home-vocabulary.test.ts`의 카나리아가 `workflow-block.tsx`를 본다.** 스캐너가 실제로 red를 낼 수 있는지 재는 자리인데, 앱에서 mono를 쓰는 파일이 그것 하나뿐이라 **그 파일을 sans로 바꾸면 카나리아도 함께 옮겨야 한다** — 안 옮기면 매칭 0인 스캐너가 장식으로 남는다.
+- ⚠️ **`components/__tests__/home-vocabulary.test.ts`의 카나리아가 `ui/code-block.tsx`를 본다**(2026-10-01 전엔 `workflow-block.tsx`). 스캐너가 실제로 red를 낼 수 있는지 재는 자리인데, mono를 쓰는 파일이 그것 하나뿐이라 **그 파일을 sans로 바꾸면 카나리아도 함께 옮겨야 한다** — 안 옮기면 매칭 0인 스캐너가 장식으로 남는다.
 
 ### 4.2 ⚠ `text-mono`를 twMerge에 등록해야 한다
 
@@ -678,7 +677,7 @@ logs 상세 `components/logs/event-dialog.tsx`(2026-09-24, §6.68), 그리고 �
 | **Button `size` 셋** | `md` `h-9 rounded-md px-3`(기본 — 2026-09-11에 32에서 36으로 올렸다, 시안의 기본 버튼이 36이고 입력 셋도 같이 올라갔다) · `sm` `h-7 rounded-sm px-2 text-xs` · `lg` `h-10 rounded-lg px-4`(**셸 밖 카드 전용** — 로그인·초대 수락). ⚠️ **넷으로 늘리지 않는다** — 그러면 "어느 걸 쓰나"가 매 화면 판단이 된다. ⚠️ **radius가 base가 아니라 `size`에 붙어 있다**(§5) — base에 두고 size가 덮으면 cva가 충돌하는 클래스 둘을 내고 twMerge가 이기는 것에 기대게 된다. ⚠️ **`size="icon"`은 없다** — 정사각 아이콘 버튼은 `ghost` + 정사각 유틸이다(`user-menu.tsx`·칩 행의 초기화) |
 | **EmptyState** | ⚠️ **아이콘이 칩 안이다** — `IconTile lg`(40 · radius 8 · 아이콘 20, 2026-09-28 사용자 — 옛 48 원 + 16). 맨 아이콘은 텍스트에 붙어 제목의 일부처럼 읽히는데 칩이 그것을 **그림 자리**로 만든다. 제목 **`text-lg font-medium` + `mb-1`** (2026-09-11 — `--text-base`가 15px로 내려가 설명 14와 1px 차이가 됐다) ≤5단어 마침표 없음 · 설명 `text-sm text-muted-foreground` **`max-w-[46ch]`** 완전 문장 (2026-09-13 — 시안값. `max-w-prose`(65ch)는 한 문장을 세 줄로 흘려 칩·제목과 무게가 뒤집힌다) · 액션 **버튼 하나** · 일러스트 없음. ⚠️ **액션 래퍼가 `mt-4 flex flex-wrap items-center justify-center gap-2`다** (2026-09-13 사용자 실물) — 액션 둘(검색 0건, 아래 예외 2)을 호출부가 `<>`로 넘기므로 사이를 벌릴 자리가 거기뿐이고, `mt-4`만 들고 있으면 버튼 둘이 **간격 0으로 맞붙는다**. 바로 아래 "컨테이너 `gap` 금지"와 충돌하지 않는다: 그쪽은 칩·제목·설명·액션 **사이**의 수직 간격이고 이것은 액션 **안**의 수평 간격이다. ⚠️ **수직 중앙을 컴포넌트가 하지 않는다** — 표 안(`logs`·대기 초대)에서도 쓰여서 자리마다 다르다. `flex-1`은 호출부가 든다. ⚠️ **컨테이너에 `gap`이 없다** (2026-09-11) — 칩 `mb-3` · 제목 `mb-1` · 액션 `mt-4`가 각자 여백을 들어 gap이 **거기에 더해지고**, 그러면 하나를 건드릴 때 세 간격이 함께 움직인다. 구조는 shadcn `Empty`와 1:1이고 **CLI를 돌리지 않는다**(Radix 없는 순수 마크업이다) |
 | **값 칩** | `bg-muted rounded px-2 py-1` — **sans다**(§4.1, 2026-09-23). ⚠️ `<code>`로 그리면 preflight의 mono를 `font-sans`로 덮는다. 블록 요소면 `inline-block` |
-| **코드 블록** | `<pre className="text-mono bg-muted min-h-0 flex-1 overflow-auto rounded-md p-3">`(블록 자신이 스크롤한다 — `workflow-block.tsx`) + **블록 위 한 줄의 오른쪽**에 [Copy] `default` `sm`(아이콘 `Copy` → `Check`) → 라벨 교체 "Copied", 실패는 "Couldn't copy — select it yourself"(`m.common.copyFailed` — 삼키면 사용자가 복사된 줄 알고 떠난다) |
+| **코드 블록** | `CodeBlock`(`components/ui/code-block.tsx`) 하나 — `/docs` 원고와 앱의 워크플로 YAML이 같은 형이다(2026-10-01 사용자 — 앱 쪽이 docs 형으로 맞췄다. 전엔 앱이 `bg-muted` 면 + 블록 위 [Copy]였다). 카드(선 · radius 12) · 파일명이 있으면 바 40 안에 파일명 + [Copy] `sm`, 없으면 본문 오른쪽 위에 [Copy] · 라벨 교체 "Copied" 2초, 실패는 `m.common.copyFailed`(삼키면 사용자가 복사된 줄 알고 떠난다) · 형은 §6.61. **`fill`** — 남은 높이를 먹고 블록 자신이 두 축으로 스크롤한다(온보딩 ④·설정 Workflow 모달 — 본문이 스크롤하면 ④의 토큰 칩이 밀려난다). 바깥 여백은 소비자가 `className`으로 준다(원고 `mt-6`). 워크플로 블록은 경로를 바에 두고 위 문장(`m.settings.workflow.saveAs`)은 경로 없이 할 일만 말한다 |
 
 **같은 행동은 같은 형이다** (2026-09-24, audit #49·#50 — 화면마다 손으로 다시 만든 형이 갈라져 있었다):
 
@@ -1664,7 +1663,7 @@ green이었고, 증상이 "내용이 안 보인다"가 아니라 **"여백이 �
 옛 Locales 두 주소는 인가 뒤 이 목록으로 보낸다. orphaned 언어의 사유·복구 안내를 유지하며,
 로케일 코드도 **경로도 sans**다(§4.1). ⚠️ **2026-09-23에 한 번 더 뒤집혔다** — 이 절이 처음 쓰인
 2026-09-22에는 "경로에만 mono를 쓴다"였는데, 다음 날 §4.1이 **mono를 `<pre>` 코드 블록 전용**으로
-못 박으면서 경로도 그 밖이 됐다. 코드가 따라갔다 — Sources의 경로는 sans이고 `text-mono`는 `<pre>` 표면 둘(`workflow-block`·`docs/code-block`)에만 남는다.
+못 박으면서 경로도 그 밖이 됐다. 코드가 따라갔다 — Sources의 경로는 sans이고 `text-mono`는 `<pre>` 표면(지금은 `ui/code-block` 하나 — 2026-10-01에 둘이 합쳐졌다)에만 남는다.
 로컬 정본은 `design_handoff_sources/Sources.dc.html`이다. 확정 spec이 덮는 동작은
 미저장 이탈 확인창 없음·Open translations의 바닥 배치·절대 UTC 시각이다.
 
