@@ -212,6 +212,9 @@ it("조건이 켜지면 노드를 숨기지 않고 숫자만 일치 수다 — 0
   const appAll = treeNode(container, w.tree.allNamespaces, "app")!;
   expect(appAll.disabled).toBe(true);
   expect(appAll.className).toContain("text-muted-foreground");
+  // 누를 수 없는 노드에 hover 면이 서면 누를 수 있는 것처럼 보인다 — 짝: 누를 수 있는 노드는 hover 면이 있다.
+  expect(appAll.className).not.toContain("hover:bg-foreground");
+  expect(treeNode(container, "common")?.className).toContain("hover:bg-foreground/[0.03]");
   expect(treeNode(container, "common")?.disabled).toBe(false);
 });
 
