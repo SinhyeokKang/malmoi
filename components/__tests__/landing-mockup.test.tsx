@@ -132,12 +132,13 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect([...tree.querySelectorAll(".bg-foreground\\/\\[0\\.07\\]")].map((node) => node.textContent)).toEqual([`${m.translations.workspace.tree.allNamespaces}${current?.keyCount}`]);
   });
 
-  it("머리에 필터 하나(Status)와 검색이 있다 — 범위 콤보가 없다", async () => {
+  it("머리는 검색 하나이고, Status 필터는 키 목록 머리에 있다 — 범위 콤보가 없다", async () => {
     const scene = layer(await mount(), 0);
     const f = m.translations.workspace.filters;
-    expect(scene.textContent).toContain(f.state.any);
     expect(scene.textContent).not.toContain("This source");
     expect(find(scene, "[data-landing-search]").textContent).toBe(f.searchPlaceholder);
+    const listHead = [...scene.querySelectorAll<HTMLElement>("span")].find(el => el.textContent === m.translations.workspace.list.incompleteFirst)?.parentElement;
+    expect(listHead?.textContent).toContain(f.state.any);
   });
 
   /** 실제 목록은 미완을 먼저 둔다(`Incomplete first` — `rank`). 목업이 완료 행을 앞에 두면 머리 문구가 거짓이다. */

@@ -217,10 +217,10 @@ it("전 소스 검색 0건 + Status가 켜졌으면 주 버튼은 Clear search, 
   const initial: WorkspaceProps = { ...base, query, detail: null, list: { ...base.list, rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, selectedInResult: null } };
   respond = () => ({ next: initial, gate: null });
   const { container } = await render(<Harness initial={initial} />);
-  // 툴바에도 Clear filters가 있다 — 빈 상태(목록 패널) 안의 버튼만 본다.
-  const emptyButtons = () => [...panel(container, "list").querySelectorAll<HTMLButtonElement>("button")].map(b => b.textContent?.trim());
+  // 목록 머리에 Status 트리거가 있다 — 빈 상태 안의 버튼만 본다.
+  const emptyButtons = () => [...panel(container, "list").querySelectorAll<HTMLButtonElement>("[data-list-empty] button")].map(b => b.textContent?.trim());
   expect(emptyButtons()).toEqual([m.translations.workspace.empty.clearSearch, m.translations.workspace.filters.clear]);
-  await user.click([...panel(container, "list").querySelectorAll<HTMLButtonElement>("button")][1]!);
+  await user.click([...panel(container, "list").querySelectorAll<HTMLButtonElement>("[data-list-empty] button")][1]!);
   const next = new URL(mocks.push.mock.calls[0]![0] as string, "http://x").searchParams;
   expect(next.get("q")).toBe("zz");
   expect(next.get("completion")).toBeNull();
@@ -241,7 +241,7 @@ it.each([
   const b = gate();
   respond = href => ({ next: { ...initial, query: { ...DEFAULT_TRANSLATION_QUERY, ...(new URL(href, "http://x").searchParams.get("q") === null ? {} : { q: "zz" }) }, list: { ...base.list, rows: [rowOf("k7")], selectedInResult: null } }, gate: b });
   const { container } = await render(<Harness initial={initial} />);
-  const pressed = [...panel(container, "list").querySelectorAll<HTMLButtonElement>("button")][index]!;
+  const pressed = [...panel(container, "list").querySelectorAll<HTMLButtonElement>("[data-list-empty] button")][index]!;
   const label = pressed.textContent;
   await user.click(pressed);
   expect(mocks.push).toHaveBeenCalledOnce();
@@ -367,11 +367,12 @@ it("조건이 바뀐 첫 커밋부터 새 행이다 — 새 라벨 아래 옛 �
   const initial = props();
   const frames: { title: string; rows: (string | undefined)[] }[] = [];
   let host: HTMLElement | null = null;
-  const onRender = () => { if (host !== null) frames.push({ title: host.querySelector("[data-panel=list] h2")?.textContent ?? "", rows: rowIds(host) }); };
+  // 목록 제목은 고정(`Keys`)이라 키 목록 머리의 Status 라벨로 조건을 잰다 — 서버 조건이 그대로 서는 재렌더라 낙관값이 아니다.
+  const onRender = () => { if (host !== null) frames.push({ title: host.querySelector('[data-panel=list] button[aria-label^="Status:"]')?.getAttribute("aria-label") ?? "", rows: rowIds(host) }); };
   const { container, rerender } = await render(<Profiler id="w" onRender={onRender}><TranslationWorkspace {...initial} /></Profiler>);
   host = container;
   await rerender(<Profiler id="w" onRender={onRender}><TranslationWorkspace {...initial} query={{ ...initial.query, completion: "incomplete" }} list={{ ...initial.list, rows: [rowOf("k9")] }} /></Profiler>);
-  const titled = frames.filter(f => f.title === m.translations.workspace.list.incompleteKeys);
+  const titled = frames.filter(f => f.title === `Status: ${m.translations.workspace.filters.state.incomplete}`);
   // 짝 단언 — 새 조건의 프레임이 실제로 있다.
   expect(titled.length).toBeGreaterThan(0);
   expect(titled.every(f => f.rows.join() === "k9")).toBe(true);

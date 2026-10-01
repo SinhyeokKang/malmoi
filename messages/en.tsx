@@ -2366,14 +2366,12 @@ export const en = {
         /** 검색 입력의 접근 이름 — 위치로 좁힌 검색 중에도 참이어야 해서 범위를 말하지 않는다. 범위는 플레이스홀더(입력이 빌 때만 보인다 — 그때 새 검색은 언제나 전 소스다)가 말한다. */
         search: "Search keys",
         searchPlaceholder: "Search all sources…",
-        nothingToFilter: "Nothing to filter yet",
       },
       tree: { title: "Sources", allNamespaces: "All namespaces", allSources: "All sources", filter: "Filter namespaces", open: "Show sources" },
       /** 키 목록 ↔ 로케일 카드 구분선 — `common.resizeSidebar`와 같은 이유로 이름이 필요하다(이름 없는 separator는 스크린리더가 "구분선"만 읽는다). */
       resize: "Resize key list",
       list: {
         keys: "Keys",
-        incompleteKeys: "Incomplete keys",
         incompleteFirst: "Incomplete first",
         savedExtra: (n: number): string => `+${n.toLocaleString("en-US")} saved`,
         missing: (n: number): string => `${n.toLocaleString("en-US")} untranslated`,

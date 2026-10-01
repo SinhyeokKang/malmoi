@@ -82,10 +82,8 @@ export function TranslationsView({ phase }: { phase: Phase }) {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {/* 필터 축은 Status 하나다(translation-tree-range) — 범위는 트리가 든다. */}
-          <FilterTrigger label={w.filters.state.any} size="md" />
-          {/* `search-input.tsx` — 320 입력 + 왼쪽 16 글리프. 값이 없어 placeholder가 보인다. */}
-          <span data-landing-search="" className="relative ml-auto flex">
+          {/* 툴바는 검색 하나뿐이고 왼쪽에 선다 — Status는 키 목록 머리가 든다(2026-10-02). `search-input.tsx` — 320 입력 + 왼쪽 16 글리프. 값이 없어 placeholder가 보인다. */}
+          <span data-landing-search="" className="relative flex">
             <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2 size-4" aria-hidden />
             <span className={cn(fieldClass, "text-muted-foreground flex h-9 w-80 items-center pl-8")}>{w.filters.searchPlaceholder}</span>
           </span>
@@ -168,7 +166,9 @@ function KeyList({ phase }: { phase: Phase }) {
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         <span className="text-base font-medium">{list.keys}</span>
         <CountBadge count={current?.keyCount ?? 0} label={m.translations.keys(current?.keyCount ?? 0)} />
-        <span className="text-muted-foreground ml-auto shrink-0 text-xs">{list.incompleteFirst}</span>
+        <span className="text-muted-foreground ml-auto min-w-0 truncate text-xs">{list.incompleteFirst}</span>
+        {/* 이 목록을 좁히는 필터는 머리 오른쪽 끝이다 — 실물 `key-list.tsx`의 `filter` 자리(번역값 패널의 언어 메뉴와 같은 자리). */}
+        <FilterTrigger label={w.filters.state.any} size="sm" />
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {fixture.rows.map((row, index) => {

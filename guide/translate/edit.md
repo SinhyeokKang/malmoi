@@ -6,13 +6,13 @@ Before you start: Join a project and choose **Translations** in the project navi
 
 ## Find a key {#find-key}
 
-The key list is on the left. Each row is one piece of text in the app — a *key* — and shows its source text followed by its key name. Select a row to open its translations in every language on the right. Use the search box to find a key by its name, its source text, or a translation.
+The key list is on the left. Each row is one piece of text in the app — a *key* — and shows its source text followed by its key name. Select a row to open its translations in every language on the right. Use the search box above the panels to find a key by its name, its source text, or a translation.
 
 ![The translation screen with a key selected in the list and its text in three languages](/guide/translation-editor.webp "Select a row to edit its text in every language.")
 
 In the key list, the arrow keys move between rows and Enter opens the row; Tab moves past the whole list in one step.
 
-The **Sources** panel sets which keys the list shows. Select **All namespaces** under a source to list all of its keys, or select a group to list only that group. One filter sits above the list and shows its current choice: **All keys**, **Incomplete**, **Needs review**, **Unsent**, or **New from GitHub**. Needs review marks translations whose source text changed; it is not an approval step. Selecting a group keeps the filter, and changing the filter keeps the group. While the filter or a search is on, each source and group in the panel shows how many of its keys match, and groups with no matches are dimmed and can't be selected.
+The **Sources** panel sets which keys the list shows. Select **All namespaces** under a source to list all of its keys, or select a group to list only that group. The filter at the top right of the key list shows its current choice: **All keys**, **Incomplete**, **Needs review**, **Unsent**, or **New from GitHub**. Needs review marks translations whose source text changed; it is not an approval step. Selecting a group keeps the filter, and changing the filter keeps the group. While the filter or a search is on, each source and group in the panel shows how many of its keys match, and groups with no matches are dimmed and can't be selected.
 
 Search looks through every source in the project. While you search, **All sources** appears at the top of the **Sources** panel, and in a project with several sources the list shows each key's source before its name. Select **All namespaces** under a source, or a group, to narrow the results to it, or **All sources** to search everywhere again; typing a new search always searches everywhere. If you select a key from another source, the screen moves to that source. Clear the search to go back to the group of the key you selected. When nothing matches, choose **Search all sources** to widen a narrowed search, or **Clear search**. **Clear filters** sets the filter back to **All keys** and keeps your search text.
 

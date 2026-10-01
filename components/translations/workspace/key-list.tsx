@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
  *    눌러야 했다. 정지점은 방금 포커스한 행 → 선택 행 → 첫 행 순이고, ↑/↓·Home/End가 포커스를 옮기며 Enter·Space(버튼 기본 동작)가 선택한다.
  *    포커스한 행이 목록에서 사라지면 정지점(없으면 목록 제목)으로 옮긴다 — `body`로 빠지지 않게(POSTMORTEM 2026-09-24).
  */
-export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyId, showSource, onSelect, busy = false, treeButton, empty }: {
+export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyId, showSource, onSelect, busy = false, treeButton, filter, empty }: {
   list: ListGeneration<TranslationListRow>;
   title: string;
   /** 빈 상태 버튼의 이동이 끝나면 포커스가 여기로 착지한다 — 빈 상태가 사라지며 `body`로 빠지지 않게. */
@@ -36,6 +36,11 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
   busy?: boolean;
   /** 트리가 접혔을 때 목록 머리에 들어가는 트리 버튼(README §7 — 아이콘 레일을 만들지 않는다). */
   treeButton?: { open: boolean; controls: string; onToggle: () => void; breadcrumb: ReactNode };
+  /**
+   * 머리 오른쪽 끝의 필터 — 이 목록을 좁히는 Status다(2026-10-02 사용자: 패널마다 자기를 좁히는 필터를 든다 — 번역값 패널의 언어 메뉴와 같은 자리).
+   * ⚠️ 좁은 폭에서 트리거는 줄지 않는다 — 범위 라벨이 먼저, 그다음 `Incomplete first` 문구가 잘린다.
+   */
+  filter?: ReactNode;
   empty: ReactNode;
 }) {
   const w = m.translations.workspace.list;
@@ -93,10 +98,11 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
         )}
         <h2 id={headingId} ref={titleRef} tabIndex={-1} className="text-base font-medium">{title}</h2>
         <CountBadge count={count} label={m.translations.keys(count)} />
-        {treeButton !== undefined && <span className="min-w-0 truncate">{treeButton.breadcrumb}</span>}
-        <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+        {treeButton !== undefined && <span className="min-w-0 shrink-[4] truncate">{treeButton.breadcrumb}</span>}
+        <span className="text-muted-foreground ml-auto min-w-0 truncate text-xs">
           {savedExtra > 0 && <>{w.savedExtra(savedExtra)} · </>}{w.incompleteFirst}
         </span>
+        {filter}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {/* <ul>이어야 스크린리더가 "n개 중 m번째"를 읽는다 — 옛 표는 행 수를 알려 줬다. */}

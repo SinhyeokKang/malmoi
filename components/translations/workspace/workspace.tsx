@@ -652,7 +652,6 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const shown = view.query;
   const shownStatus = statusOf(shown);
 
-  const listTitle = statusOf(query) === "incomplete" ? w.list.incompleteKeys : w.list.keys;
   /*
     ⚠️ **빈 상태의 버튼은 표 하나(`emptyActions`)가 정한다** (translation-tree-range design §2.1) — 검색이 위치로 좁혀졌으면 먼저 범위를 넓히라고(`Search
     all sources`), 전 소스면 검색을 지우라고 말한다. `Clear filters`는 Status가 켜졌을 때만이다. 누른 버튼은 도착까지 `busy`(포커스를 지킨다)이고,
@@ -671,7 +670,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     : statusOf(query) !== "all" ? w.empty.filteredOut
     : w.empty.noKeys(query.ns === ALL_NAMESPACES ? routeSurfaceSlug : query.ns);
   const listEmpty = (
-    <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+    <div data-list-empty="" className="flex flex-col items-center gap-2 px-4 py-10 text-center">
       <p className="text-sm">{emptyText}</p>
       {/* 활성 키가 0이면 좁힌 것이 아니라 아직 온 것이 없다 — 다음 일을 말한다 (audit #31). */}
       {query.q === undefined && noKeys && <p className="text-muted-foreground text-xs">{m.translations.empty.noKeys.description}</p>}
@@ -769,16 +768,12 @@ export function TranslationWorkspace(props: WorkspaceProps) {
 
           </span>
         </div>
-        <div ref={toolbarRef} className="flex flex-wrap items-center gap-2">
-          {/* 필터 축은 Status 하나다(조건 3) — 범위는 트리가, 검색은 전 소스가 든다. */}
-          <FilterMenu axis={w.filters.state.axis} label={STATUS_LABEL[shownStatus]()} on={shownStatus !== "all"} size="md" disabled={noKeys}
-            value={shownStatus} hint={w.filters.state.newHint}
-            options={STATUSES.map(status => ({ value: status, label: STATUS_LABEL[status]() }))}
-            onSelect={value => go(withStatus(view.query, value as Status), "filter")}
-          />
-          {noKeys && <span className="text-muted-foreground text-xs">{w.filters.nothingToFilter}</span>}
-          {/* label과 placeholder를 가른다(DESIGN §10) — 좁힌 검색 중에도 접근 이름이 참이어야 한다. 플레이스홀더는 입력이 빌 때만 보이고 그때 새 검색은 언제나 전 소스다. */}
-          <SearchInput className="ml-auto" inputClassName="w-80" value={query.q} label={w.filters.search} placeholder={w.filters.searchPlaceholder} onSearch={search} />
+        {/*
+          ⚠️ **툴바는 검색 하나뿐이고 왼쪽에 선다** (2026-10-02 사용자 — 패널마다 자기를 좁히는 필터를 든다: 트리 = 범위 · 키 목록 = Status · 번역값 = 언어).
+          검색은 어느 패널의 것도 아니라 전 소스를 본다. label과 placeholder를 가른다(DESIGN §10) — 좁힌 검색 중에도 접근 이름이 참이어야 한다.
+        */}
+        <div ref={toolbarRef} data-toolbar="" className="flex flex-wrap items-center gap-2">
+          <SearchInput inputClassName="w-80" value={query.q} label={w.filters.search} placeholder={w.filters.searchPlaceholder} onSearch={search} />
         </div>
         {/*
           ⚠️ **두 배너는 조건부 분기 밖의 형제다** (DESIGN §6.1 · POSTMORTEM 2026-09-07) — 분기 안에 두면 `router.refresh()`가 방금 만든
@@ -801,7 +796,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             )}
             <KeyList
               list={rows}
-              title={listTitle}
+              // 제목은 `Keys`로 고정이다 — Status는 머리의 메뉴 라벨이 말한다(2026-10-02).
+              title={w.list.keys}
               titleRef={listTitleRef}
               count={list.matchedKeyCount}
               savedExtra={savedOutCount(rows)}
@@ -812,6 +808,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               busy={navigating}
               treeButton={treeCollapsed ? { open: treeOverlay, controls: treeOverlayId, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span data-range-label="" className="text-muted-foreground text-xs">{rangeLabel}</span> } : undefined}
               empty={listEmpty}
+              filter={
+                <FilterMenu axis={w.filters.state.axis} label={STATUS_LABEL[shownStatus]()} on={shownStatus !== "all"} size="sm" disabled={noKeys}
+                  value={shownStatus} hint={w.filters.state.newHint}
+                  options={STATUSES.map(status => ({ value: status, label: STATUS_LABEL[status]() }))}
+                  onSelect={value => go(withStatus(view.query, value as Status), "filter")}
+                />
+              }
             />
             {treeCollapsed && treeOverlay && (
               <TreeOverlay id={treeOverlayId} onClose={() => setTreeOverlay(false)}>

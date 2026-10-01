@@ -115,16 +115,39 @@ afterEach(async () => {
 
 // ── 툴바 (조건 3) ─────────────────────────────────────────────────────────────────
 
-it("필터 트리거는 Status 하나이고 선택지는 다섯이다 — Scope 트리거와 툴바 Clear filters가 없다", async () => {
+/*
+  **패널마다 자기를 좁히는 필터를 든다** (2026-10-02 사용자) — 트리 = 범위 · 키 목록 = Status · 번역값 = 언어. 툴바는 검색 하나뿐이고 왼쪽에 선다.
+*/
+it("Status 트리거는 키 목록 머리에 하나이고 선택지는 다섯이다 — 툴바에는 검색 입력 하나뿐이다", async () => {
   const user = userEvent.setup();
   const base = props({ tree: TREE2 });
   const { container } = await render(<TranslationWorkspace {...base} query={{ ...base.query, state: "review" }} />);
-  const triggers = [...container.querySelectorAll<HTMLButtonElement>('button[aria-haspopup="menu"]')].filter(b => !b.closest("[data-panel]"));
-  expect(triggers.map(b => b.getAttribute("aria-label"))).toEqual([`${w.filters.state.axis}: ${w.filters.state.review}`]);
-  // 툴바(목록·상세 패널 밖)에 Clear filters가 없다 — 축이 하나라 Status 콤보의 All keys가 그 일이다.
-  expect([...container.querySelectorAll("button")].filter(b => !b.closest("[data-panel]") && b.textContent?.trim() === w.filters.clear)).toEqual([]);
+  const list = container.querySelector<HTMLElement>("[data-panel=list]")!;
+  const triggers = [...container.querySelectorAll<HTMLButtonElement>(`button[aria-label^="${w.filters.state.axis}:"]`)];
+  expect(triggers).toHaveLength(1);
+  expect(list.contains(triggers[0]!)).toBe(true);
+  expect(triggers[0]!.getAttribute("aria-label")).toBe(`${w.filters.state.axis}: ${w.filters.state.review}`);
+  // 툴바 — 누를 수 있는 것은 검색 입력 하나다(필터·범위 콤보·Clear filters 없음). 왼쪽 정렬이라 `ml-auto`가 없다.
+  const toolbar = container.querySelector<HTMLElement>("[data-toolbar]")!;
+  expect([...toolbar.querySelectorAll("button, input, a, [role=combobox]")]).toEqual([searchInput(container)]);
+  expect(toolbar.innerHTML).not.toContain("ml-auto");
   await user.click(statusTrigger(container)!);
   expect(menuItems()).toEqual([w.filters.state.any, w.filters.state.incomplete, w.filters.state.review, w.filters.state.unsent, w.filters.state.new]);
+});
+
+it("목록 제목은 Status와 무관하게 Keys다 — 메뉴 라벨이 Incomplete를 말한다", async () => {
+  const base = props({ tree: TREE2 });
+  const { container } = await render(<TranslationWorkspace {...base} query={{ ...base.query, completion: "incomplete" }} />);
+  expect(container.querySelector("[data-panel=list] h2")?.textContent).toBe(w.list.keys);
+  expect(statusTrigger(container)?.getAttribute("aria-label")).toBe(`${w.filters.state.axis}: ${w.filters.state.incomplete}`);
+});
+
+it("Status는 검색어·범위를 남긴 채 바뀐다", async () => {
+  const user = userEvent.setup();
+  const { container } = await render(<TranslationWorkspace {...searching({ ns: "auth", scope: "namespace" })} />);
+  await user.click(statusTrigger(container)!);
+  await user.click([...document.querySelectorAll<HTMLElement>('[role^="menuitem"]')].find(el => el.textContent?.trim() === w.filters.state.unsent)!);
+  expect(Object.fromEntries(pushed().searchParams)).toMatchObject({ ns: "auth", scope: "namespace", q: "k", state: "unsent" });
 });
 
 it("Status를 고르면 completion·state 한 쌍만 바꾼 주소로 push한다 — 위치·검색어는 남는다", async () => {
