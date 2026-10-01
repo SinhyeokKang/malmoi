@@ -135,8 +135,16 @@ type RevertReason = keyof typeof REVERT_REASONS;
  * 바뀌는 이동일 때만 쓴다(취소된 이동은 표식을 남기지 않는다). 마운트가 한 번 읽고 지우며, 표식의 소스가 마운트한 경로와 같을 때만 포커스를 옮긴다
  * (다르면 — 세션 만료 → 로그인 왕복 등 — 버린다). 새로고침·뒤로가기·딥링크는 표식이 없어 스크롤만 한다.
  */
-type Landing = { surfaceSlug: string; target: { kind: "tree"; ns: string } | { kind: "row"; keyId: string } | { kind: "search" } };
+type Landing = { surfaceSlug: string; at: number; target: { kind: "tree"; ns: string } | { kind: "row"; keyId: string } | { kind: "search" } };
 let landing: Landing | null = null;
+/**
+ * ⚠️ **표식은 만료된다** — 목적지가 워크스페이스를 그리지 않으면(ProjectNotReady · 오류 경계) 아무도 지우지 않아, 나중에 같은 소스를 따로 열 때 포커스를
+ * 뺏는다. 서버 렌더 한 번(실측 ~1–3초)을 넉넉히 덮는 값이다. 이동마다 지우는 형은 쓸 수 없다 — 셸 링크 이동은 이 화면을 지나지 않는다.
+ */
+const LANDING_TTL_MS = 15_000;
+const landingFor = (surfaceSlug: string, target: Landing["target"]): Landing => ({ surfaceSlug, at: Date.now(), target });
+const landsHere = (mark: Landing | null | undefined, routeSurfaceSlug: string) =>
+  mark !== null && mark !== undefined && mark.surfaceSlug === routeSurfaceSlug && Date.now() - mark.at <= LANDING_TTL_MS;
 
 const STATUS_LABEL = {
   all: () => m.translations.workspace.filters.state.any,
@@ -158,7 +166,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   */
   const arrival = useRef<Landing | null | undefined>(undefined);
   if (arrival.current === undefined) arrival.current = landing;
-  const arrivedInApp = arrival.current !== null && arrival.current.surfaceSlug === routeSurfaceSlug;
+  const arrivedInApp = landsHere(arrival.current, routeSurfaceSlug);
   /*
     ⚠️ **상세의 언어 필터는 서버로 가지 않는다** (audit-ux #16) — 거르기는 받은 상세 위의 클라이언트 일이라 `history.replaceState`로
     주소만 맞춘다(`useProjectQuery`와 같은 형). ⚠️ **원천은 서버 prop이 아니라 주소다** — `replaceState`는 prop을 못 바꾸므로 prop을
@@ -390,7 +398,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     const { query: next, surfaceSlug } = selectQuery(view.query, row);
     const surface = surfaceSlug ?? view.surface;
     attempt({ kind: "select-key", target: row.keyId }, () => {
-      if (surface !== routeSurfaceSlug) landing = { surfaceSlug: surface, target: { kind: "row", keyId: row.keyId } };
+      if (surface !== routeSurfaceSlug) landing = landingFor(surface, { kind: "row", keyId: row.keyId });
       navigate(withQuery(next, surface), "replace", { query: next, keyId: row.keyId, surface });
     });
   }
@@ -406,7 +414,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     const next = treeQuery(view.query, ns);
     attempt({ kind: "tree", target: `${surface}/${ns}` }, () => {
       scrollPending.current = true;
-      if (surface !== routeSurfaceSlug) landing = { surfaceSlug: surface, target: { kind: "tree", ns } };
+      if (surface !== routeSurfaceSlug) landing = landingFor(surface, { kind: "tree", ns });
       navigate(withQuery(next, surface), "push", { query: next, keyId: undefined, surface });
     });
   }
@@ -416,7 +424,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
       pendingSelection.current = "filter";
       // 검색 지우기가 위치로 돌아가면 고른 키로 스크롤한다(조건 8). 다른 소스면 재마운트라 검색 입력으로 착지한다(조건 14).
       if (next.q === undefined && view.query.q !== undefined) scrollPending.current = true;
-      if (kind === "search" && surface !== routeSurfaceSlug) landing = { surfaceSlug: surface, target: { kind: "search" } };
+      if (kind === "search" && surface !== routeSurfaceSlug) landing = landingFor(surface, { kind: "search" });
       navigate(withQuery(next, surface), "push", { query: next, surface });
     });
   }
@@ -699,7 +707,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   useLayoutEffect(() => {
     const mark = arrival.current;
     if (landing === mark) landing = null;
-    if (mark === null || mark === undefined || mark.surfaceSlug !== routeSurfaceSlug) return;
+    if (!landsHere(mark, routeSurfaceSlug) || mark === null || mark === undefined) return;
     const { target } = mark;
     if (target.kind === "row") [...(bodyRef.current?.querySelectorAll<HTMLElement>("[data-key-row]") ?? [])].find(el => el.dataset.keyRow === target.keyId)?.focus();
     else if (target.kind === "search") toolbarRef.current?.querySelector<HTMLElement>("input[type=\"search\"]")?.focus();

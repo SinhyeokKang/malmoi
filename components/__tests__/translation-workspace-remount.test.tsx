@@ -66,7 +66,8 @@ function serve(href: string): WorkspaceProps {
   };
 }
 
-let respond: (href: string) => WorkspaceProps = serve;
+/** `null`은 목적지가 워크스페이스를 그리지 않은 경우다(ProjectNotReady · 오류 경계 등). */
+let respond: (href: string) => WorkspaceProps | null = serve;
 function Commit({ entry }: { entry: { how: "push" | "replace"; href: string } | null }) {
   useLayoutEffect(() => { if (entry !== null) window.history[entry.how === "push" ? "pushState" : "replaceState"](null, "", entry.href); }, [entry]);
   return null;
@@ -77,7 +78,7 @@ function FocusProbe() {
   return null;
 }
 function Harness({ initial }: { initial: WorkspaceProps }) {
-  const [state, setState] = useState<{ props: WorkspaceProps; entry: { how: "push" | "replace"; href: string } | null }>({ props: initial, entry: null });
+  const [state, setState] = useState<{ props: WorkspaceProps | null; entry: { how: "push" | "replace"; href: string } | null }>({ props: initial, entry: null });
   const move = (how: "push" | "replace") => (href: string) => setState({ props: respond(href), entry: { how, href } });
   mocks.push.mockImplementation(move("push"));
   mocks.replace.mockImplementation(move("replace"));
@@ -85,7 +86,7 @@ function Harness({ initial }: { initial: WorkspaceProps }) {
     <Suspense fallback={null}>
       <Commit entry={state.entry} />
       {/* `surfaces/[surfaceSlug]` 세그먼트가 바뀌면 Next가 화면을 재마운트한다. */}
-      <TranslationWorkspace key={state.props.routeSurfaceSlug} {...state.props} />
+      {state.props === null ? <p data-not-workspace="" /> : <TranslationWorkspace key={state.props.routeSurfaceSlug} {...state.props} />}
       <FocusProbe />
     </Suspense>
   );
@@ -212,7 +213,7 @@ it("넓은 화면에서 다른 소스로 옮기면 그 소스가 펼쳐진 채 �
 it("표식의 소스가 마운트한 경로와 다르면 읽고 버리며 포커스를 옮기지 않는다 — 그 뒤 그 소스로 마운트해도 다시 쓰지 않는다", async () => {
   const user = userEvent.setup();
   // 이동한 곳이 다른 경로로 끝났다(세션 만료 → 로그인 왕복 등).
-  respond = href => ({ ...serve(href), routeSurfaceSlug: "elsewhere" });
+  respond = href => ({ ...serve(href)!, routeSurfaceSlug: "elsewhere" });
   await render(<Harness initial={searching()} />);
   await user.click(row("a1")!);
   await settle();
@@ -247,4 +248,21 @@ it("앱 안 소스 전환으로 도착하면 세션 복구 문구가 뜨지 않�
   copy();
   const fresh = await render(<TranslationWorkspace {...serve("/projects/acme/surfaces/app/translations?ns=home&q=k&key=a1")} />);
   expect(fresh.container.textContent).toContain(w.footer.session.restored(1));
+});
+
+it("목적지가 워크스페이스를 그리지 않았으면 표식이 만료된다 — 나중에 그 소스를 따로 열어도 포커스를 뺏지 않는다", async () => {
+  const user = userEvent.setup();
+  respond = () => null;
+  await render(<Harness initial={searching()} />);
+  await user.click(row("a1")!);
+  await settle();
+  expect(document.querySelector("[data-not-workspace]")).not.toBeNull();
+  // 한참 뒤 사이드바 등으로 같은 소스를 연다.
+  const later = Date.now() + 60_000;
+  const now = vi.spyOn(Date, "now").mockReturnValue(later);
+  try {
+    (document.activeElement as HTMLElement | null)?.blur();
+    await render(<TranslationWorkspace {...serve("/projects/acme/surfaces/app/translations?ns=home&q=k&key=a1")} />);
+    expect(document.activeElement).toBe(document.body);
+  } finally { now.mockRestore(); }
 });
