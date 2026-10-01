@@ -97,7 +97,8 @@ before and after. History is kept for the life of the project.
 
 Malmoi generates the GitHub Actions workflow. Every push to the base branch
 brings new keys into Malmoi and marks translations whose source text changed as
-**Needs review** — unless unsent edits are holding syncing back.
+**Needs review** — unless unsent edits are holding syncing back. It also
+collects code references, so each key shows where your code uses it.
 
 </td>
 <td width="50%">
@@ -115,7 +116,8 @@ brings new keys into Malmoi and marks translations whose source text changed as
 - **Nightly sync** — once a night (18:00 UTC), for active, connected projects
   whose first sync has succeeded: saved changes nobody published go out as a
   pull request, and otherwise new commits on the base branch come in — so the
-  workflow is optional ([details](https://mal-moi.com/docs/sync/nightly)).
+  workflow is optional, though only the workflow collects code references
+  ([details](https://mal-moi.com/docs/sync/nightly)).
 - **Two roles** — owners manage the repository, settings, and members; editors
   translate and publish. Invite teammates by email and pick a role per invite.
 - **AI agents over MCP** — add the server URL to Claude Code, Codex, or a
