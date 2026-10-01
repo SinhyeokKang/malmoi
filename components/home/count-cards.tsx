@@ -186,6 +186,6 @@ function sublineText(subline: CardSubline, now: Date): string {
  * ⚠️ `ns=*`는 남긴다 — 빼면 상태 링크가 네임스페이스로도 좁혀져 0건 착지한다(POSTMORTEM 2026-09-15). 화면은 그것을 생략과 같은 정규 주소로 본다(redirect 없음).
  * ⚠️ 카드는 **셀**을 세고 목록은 **키**를 센다 — 두 수가 같다고 주장하지 않는다(design §3 옛 링크).
  */
-function cardQuery(state: (typeof CARD_STATE)[keyof typeof CARD_STATE]) {
+export function cardQuery(state: (typeof CARD_STATE)[keyof typeof CARD_STATE]) {
   return state === "untranslated" ? { ns: ALL_NAMESPACES, completion: "incomplete" } : { ns: ALL_NAMESPACES, state };
 }

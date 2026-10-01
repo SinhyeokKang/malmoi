@@ -11,12 +11,14 @@ import { optionalEnv } from "@/lib/env";
 import { PrismaClient } from "@/generated/prisma/client";
 import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
-import { cardLandings, surfaceQueues } from "@/lib/home/cards";
+import { cardQuery } from "@/components/home/count-cards";
+import { CARD_KEYS, CARD_STATE, cardLandings, surfaceQueues } from "@/lib/home/cards";
+import { inRange, rangeOf } from "@/lib/translations/tree-narrow";
 import { reviewByLocale, rowBanner, rowChip, summaryQueue } from "@/lib/projects/list";
 import { countUnpublishedBySurface, loadProjectList, loadProjectListAggregates, loadReviewAttention } from "../query";
 import { countPending } from "@/lib/protection/where";
 import { loadPullState } from "@/lib/pull/load";
-import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
+import { DEFAULT_TRANSLATION_QUERY, screenQuery } from "@/lib/translations/query";
 import { loadTranslationDetail, loadTranslationList } from "../translation-list";
 import { addSurfacesFromSnapshot, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 
@@ -399,7 +401,8 @@ it("④⑤의 표면 축이 표면별 판정과 같고, Home 카드가 일치가
   await prisma.translationSurface.create({ data: { id: "s-web", projectId: "p1", slug: "web", pathTemplate: "web/{locale}.json", adapterName: "json-catalog", baseLocale: "en" } });
   await prisma.locale.createMany({ data: ["en", "ko"].map(code => ({ projectId: "p1", surfaceId: "s-web", code, name: code, isBase: code === "en" })) });
   await prisma.stringKey.create({ data: { id: "w-key", projectId: "p1", surfaceId: "s-web", key: "w.key", namespace: "w", sourceText: "w", sourceHash: "w", createdAt: AFTER } });
-  await prisma.translation.create({ data: { projectId: "p1", surfaceId: "s-web", keyId: "w-key", localeCode: "ko", value: "w", updatedBy: "u1", pendingEditToken: "tok-w" } });
+  // 검토 대기도 web에만 둔다 — 네 카드가 전부 기본 소스 밖에 일치를 갖는다(미번역만 두 소스 다).
+  await prisma.translation.create({ data: { projectId: "p1", surfaceId: "s-web", keyId: "w-key", localeCode: "ko", value: "w", updatedBy: "u1", pendingEditToken: "tok-w", needsReview: true } });
 
   const aggregates = await loadProjectListAggregates(prisma, ["p1"]);
   expect(aggregates.unsentBySurface.get("s-web")).toBe(await countPending(prisma, "p1", "s-web"));
@@ -415,10 +418,24 @@ it("④⑤의 표면 축이 표면별 판정과 같고, Home 카드가 일치가
     expect(queues.reduce((sum, q) => sum + q.counts[key], 0), key).toBe(whole[key]);
   }
   const landings = cardLandings(queues, "default");
+  /*
+    ⚠️ **카드는 셀을, 화면은 키를 센다** (POSTMORTEM 2026-09-15가 이 부류다) — 착지 slug가 맞아도 그 소스의 그 Status 목록이 비면 0건 착지다.
+    카드의 실제 링크 쿼리(`cardQuery`)를 화면 요청값(`screenQuery`)으로 읽고, 페이지와 같은 경로(전 소스로 한 번 읽고 그 소스 범위로 자른다)로 센다.
+  */
+  const ids = new Map([["default", "surface-p1"], ["web", "s-web"]]);
+  for (const key of CARD_KEYS) {
+    const slug = landings[key]!;
+    const screen = screenQuery(cardQuery(CARD_STATE[key]));
+    const full = await loadTranslationList(prisma, { projectId: "p1", routeSurfaceId: ids.get(slug)!, query: { ...screen, scope: "project" }, pageSize: "all" });
+    const rows = full.rows.filter(row => inRange(row, rangeOf(screen, slug)));
+    expect(whole[key], key).toBeGreaterThan(0);
+    expect(rows.length, `${key} → ${slug}`).toBeGreaterThan(0);
+  }
   expect(landings.newFromGithub).toBe("web");
   expect(landings.toSend).toBe("web");
   // 미번역은 두 소스 다 있다(en이 비었다) — 트리 순서의 첫 소스다.
   expect(landings.toTranslate).toBe("default");
+  expect(landings.toReview).toBe("web");
 });
 
 /** 첫 pull 전후가 같은 답이다 — 토큰 술어는 `lastPulledAt`을 읽지 않는다. */
