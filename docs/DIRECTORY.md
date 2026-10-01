@@ -99,7 +99,8 @@ app/
       locales/         Sources 목록으로 보내는 legacy redirect
       sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale + 읽기 전용 loadSourceDetail) · loading.tsx 골격
       surfaces/[surfaceSlug]/translations/  번역 작업 화면(트리·키 목록·로케일 세 패널 — translation-rework C4).
-                        URL 계약은 lib/translations/query.ts 하나다. 선택 키의 permalink는 서버가 조립한다
+                        URL 계약은 lib/translations/query.ts 하나다(화면 층 — 옛 주소는 정규 주소로 redirect). 전 소스를 한 번 읽고 범위로 자른다.
+                        선택 키의 permalink는 서버가 조립한다
                         loading.tsx 골격 — ⚠️ PanelHeader·PanelBody를 안 쓴다(작업 화면처럼 폭 등급 없이 세 패널)
                         ⚠️ maxDuration=60이 여기 있어야 한다 — 없으면 기본 300이 STALE_AFTER_SECONDS와
                         같아져 정상 실행이 스스로를 stale로 본다
@@ -524,11 +525,12 @@ lib/
                         조회, oracle은 `lib/translations/summary.ts`) · save-key(키 단위 저장 + 복원 기준 기록) · revert(Revert
                         미리보기·실행) · delivery(전달 확인 상태 — 저장과 Revert가 같은 판정을 쓴다). 넷 다 `server-only`가 없다(격리 PG가 직접 부른다)
   translations/         **번역 화면 리워크의 순수 계약** (2026-09-23, translation-rework C1 — 소비자는 C3/C4에서 붙었다).
-                        query(URL 계약 — 요청값을 들고 옛 `state=untranslated`·`locales`를 받는다, `sort` 없음) ·
+                        query(URL 계약 두 층 — 아래는 MCP `list_keys`가 쓰는 동결 파서·직렬화(요청값, 옛 `state=untranslated`·`locales`를 받는다, `sort` 없음),
+                        위는 화면 층(`screenQuery` — 옛 주소 접기·`scope` 파생 · Status · 트리/검색/키 선택 쿼리 · 빈 상태 표 · 목록 세대 키, translation-tree-range)) ·
                         summary(키 집계 oracle · Incomplete first 안정 분할 · effectiveCompletion) · text-direction(값 셀 dir·lang — RTL 값이 페이지 ltr을 상속하지 않게, malmoi#91) ·
                         draft(saved/draft/inFlight 세 층 reducer + 세션 복구 사본) · saved-rows · navigation ·
-                        tree-narrow(필터 → 트리 반영 — 전량 목록의 행으로 소스·네임스페이스를 세고 0 노드를 숨긴다, 위치·세대 노드는 남긴다.
-                        트리 이동의 첫 키 `firstRowAt`도 여기다. translation-filter-scope) ·
+                        tree-narrow(목록 범위 — 전 소스 행을 트리 위치·전 소스 검색으로 자르고(`inRange`) 노드별 일치 수를 센다(`tallyRows`·`countTree` —
+                        숨기지 않고 숫자만 바꾼다). 트리 이동의 첫 키 `firstRowAt`도 여기다. translation-tree-range) ·
                         baseline(미전달 셀 delta 기준 — ARCHITECTURE §5.8) · layout(세 패널 폭 계약 — 로케일 ≥420을 마지막까지 지킨다) · context(전달 확인의 context 지문 — ⚠️ **이것만 잎이 아니다**:
                         `node:crypto`를 물어 서버 전용이고 `lib/pull/load.ts`·Save가 쓴다) · connection-reason(연결 때문에 꺼진 Publish·Sync의
                         사유 문장 — 갈래는 lib/home/state의 connectionProblem을 그대로 쓰고 역할별 해법을 잇는다, malmoi#160).
@@ -671,7 +673,7 @@ lib/
                         ⚠️ 무효화도 코어 쪽이다 — keys/revalidate-readers를 두 껍데기가 같이 불러야 한쪽만 옛 숫자를 남기지 않는다
   home/                 Home의 순수 판정 다섯 (2026-09-15 재편). state(여섯 아트보드 → 값 하나 —
                         ⚠️ 로딩은 갈래가 아니다: 라우트의 loading.tsx이고 union에 넣으면 생산자 없는
-                        갈래가 남는다) · cards(보조 줄과 0 갈래 — ⚠️ 상태의 보조 줄이 0 갈래를 이긴다) ·
+                        갈래가 남는다) · cards(보조 줄과 0 갈래 — ⚠️ 상태의 보조 줄이 0 갈래를 이긴다 · 카드마다 수가 있는 첫 소스의 착지 `cardLandings`, translation-tree-range) ·
                         attention(세 종을 한 시간축에 · 상한 5 · ⚠️ 폴백은 actors 맵의 키 존재로 판정한다,
                         actorLabel의 null이 아니다) · meta(행이 상태에 따라 사라지거나 는다) ·
                         sync-time(lastSyncTime — lastImportedAt의 최댓값, 시각 컬럼 이전 적재는 "unrecorded"로 null과 가른다)
