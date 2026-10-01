@@ -20,7 +20,8 @@ const stamp = (at: Date) => <time dateTime={at.toISOString()}>{utcMinute(at)}</t
  */
 export function SyncLockBanner({ reopensBy }: { reopensBy: Date | null }) {
   if (reopensBy === null) return null;
-  return <Alert variant="neutral" title={m.translations.workspace.syncLock.banner(stamp(reopensBy))} />;
+  const w = m.translations.workspace.syncLock;
+  return <Alert variant="neutral" title={<>{w.title} {w.until(stamp(reopensBy))}</>} />;
 }
 
 /**
@@ -34,7 +35,7 @@ export function SyncLockDialog({ reopensBy, onClose }: { reopensBy: Date | null;
   return (
     <Dialog open={reopensBy !== null} onOpenChange={next => { if (!next) onClose(); }}>
       {reopensBy !== null && (
-        <DialogContent title={w.title} description={w.body(stamp(reopensBy))}
+        <DialogContent title={w.title} description={<>{w.until(stamp(reopensBy))}.</>}
           footer={<DialogClose asChild><Button variant="primary" data-initial-focus>{w.ok}</Button></DialogClose>} />
       )}
     </Dialog>

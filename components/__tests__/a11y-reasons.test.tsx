@@ -59,8 +59,10 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
   it("Home 실패 배너의 [Try again]도 같은 형이다", () => {
     const source = read("components/home/actions.tsx");
     expect(source).not.toMatch(/<Button disabled=\{publishPending\}/);
-    expect(source).toMatch(/aria-disabled=\{publishPending/);
+    // 잠금 사유가 둘이다(Publish 진행 · 착지 lease — sync-lock R5). 하나의 `retryBlock`이 aria-disabled·title·describedby를 함께 든다.
+    expect(source).toMatch(/aria-disabled=\{retryBlock !== null/);
     expect(source).toContain("m.repositorySync.waitPublish");
+    expect(source).toContain("m.repositorySync.running");
   });
 
   it("마지막 로그인 수단의 [Disconnect]는 포커스를 받고 사유를 든다", async () => {
@@ -102,7 +104,7 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
     expect(read("components/home/sync-button.tsx")).toMatch(/title=\{pausedReason\}/);
     expect(read("components/home/sync-button.tsx")).toMatch(/pausedReason = m\.repositorySync\.paused/);
     // 결과의 [Try again]은 Sync Dialog 안이라 Publish가 같이 돌 수 없다 — 잠금 사유를 들지 않는다(sync-lock S5).
-    expect(read("components/home/actions.tsx")).toMatch(/title=\{publishPending \? m\.repositorySync\.waitPublish/);
+    expect(read("components/home/actions.tsx")).toMatch(/title=\{retryBlock \?\? undefined\}/);
   });
 });
 

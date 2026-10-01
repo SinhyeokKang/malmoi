@@ -8,8 +8,8 @@ import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { checkOpenPullRequest, prepareRepositorySync, runRepositoryImport } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { SyncResult } from "@/components/home/sync-result";
-import { useSlow } from "@/components/slow-notice";
+import { SyncResult, syncResultTitle } from "@/components/home/sync-result";
+import { SlowLine, useSlow } from "@/components/slow-notice";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { m } from "@/lib/i18n";
 import { planImportConfirmation, type OpenImportPr } from "@/lib/import/confirm";
@@ -74,6 +74,18 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
   const openRef = useRef(open);
   openRef.current = open;
   const closeRef = useRef<HTMLButtonElement | null>(null);
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
+  /** [Try again]으로 확인 단계에 돌아왔다 — 누른 버튼이 본문과 함께 사라져 포커스가 컨테이너로 빠지므로 Cancel로 옮긴다(POSTMORTEM 2026-09-20). */
+  const returning = useRef(false);
+  /*
+    ⚠️ **연 자리를 렌더 시점에 잡는다** (U 리뷰 🟡) — Home 배너의 [Try again]으로 연 Sync가 성공하면 재검증 트리가 배너를 **닫기 전에** 걷고,
+    `DialogContent`의 최근 포커스 기록이 더 오래된 요소(사이드바 링크 등)로 거슬러 갔다. 열린 직후 렌더에는 포커스가 아직 연 자리에 있다
+    (Radix의 포커스 이동은 커밋 뒤다). ⚠️ Safari처럼 클릭이 포커스를 주지 않으면 `body`라 "모름"으로 친다 — 그때는 트리거로 간다.
+  */
+  const opener = useRef<Element | null>(null);
+  const wasOpen = useRef(open);
+  if (open && !wasOpen.current && typeof document !== "undefined") opener.current = document.activeElement;
+  wasOpen.current = open;
   const slow = useSlow(pending);
   /** ⚠️ **`"checking"`을 `undefined`(실패)로 접지 않는다** (malmoi#75) — 조회 중과 조회 실패는 다른 줄이다. */
   const [openPr, setOpenPr] = useState<OpenImportPr | "checking">("checking");
@@ -122,7 +134,10 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
     return () => clearTimeout(timer);
   }, [pending]);
   // 결과로 바뀌면 포커스가 [Close]로 간다 — 확정 버튼이 본문과 함께 사라지므로 두면 `body`로 빠진다(POSTMORTEM 2026-09-24).
-  useEffect(() => { if (outcome !== null) closeRef.current?.focus(); }, [outcome]);
+  useEffect(() => {
+    if (outcome !== null) closeRef.current?.focus();
+    else if (returning.current) { returning.current = false; cancelRef.current?.focus(); }
+  }, [outcome]);
   /*
     ⚠️ **`pending`을 호스트로 끌어올리지 않고 알리기만 한다** — 이 값은 `open && !pending`과 트리거
     라벨이 쓰는 지역 상태이고, 올리면 프롭이 controlled 쌍으로 늘어난다. 이 effect가 그 하나의
@@ -141,6 +156,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
   }
   /** 결과의 [Try again] — 같은 Dialog를 확인 단계로 되돌린다. 실행하지 않는다: 새 지문을 받고 사람이 다시 확정한다. */
   function retry() {
+    returning.current = true;
     setOutcome(null);
     setAttempt(value => value + 1);
   }
@@ -232,14 +248,20 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
       closeDisabled={closeDisabled}
       /* 포커스는 [Cancel]이다 — 확인에 두면 Enter 한 번으로 되돌릴 수 없는 동작이 실행된다 (시안 §8). 표식은 `DialogContent`가 읽는다. */
       onCloseAutoFocus={event => {
-        // 트리거가 없거나 아직 도는 중(70초 출구로 닫음)이면 Home 제목이 받는다 — 꺼진 트리거에 서면 다음 Enter가 무반응이다.
+        /*
+          연 자리(배너의 [Try again] 등)가 아직 붙어 있으면 `DialogContent`의 기록이 그리로 돌려준다. 떨어졌거나 모르면 호출부가 고른다:
+          트리거 → (트리거가 없거나 아직 도는 중 — 70초 출구로 닫음) 화면 제목. 꺼진 트리거에 서면 다음 Enter가 무반응이다.
+        */
         const trigger = document.getElementById(triggerId);
-        if ((trigger === null || trigger.getAttribute("aria-disabled") === "true") && fallbackFocusRef?.current) {
-          event.preventDefault();
-          fallbackFocusRef.current.focus();
-        }
+        const from = opener.current;
+        if (from instanceof HTMLElement && from !== document.body && from !== trigger && from.isConnected) return;
+        const target = trigger !== null && trigger.getAttribute("aria-disabled") !== "true" ? trigger : fallbackFocusRef?.current ?? null;
+        if (target === null) return;
+        event.preventDefault();
+        target.focus();
       }}
-      title={m.repositorySync.title(name)}
+      /* 결과 단계는 결과별 제목이다(R6 — Publish 모달 §6.646과 같은 형). 확인 질문은 이미 답했다. */
+      title={outcome !== null ? syncResultTitle(outcome) : m.repositorySync.title(name)}
       /*
         ⚠️ **경고 블록을 `aria-describedby`에 넣는다.** Radix는 그것을 `Description` 하나에만 걸어서,
         열릴 때 읽히는 것이 "리포를 읽어 덮는다"까지였다 — **무엇이 지워지는지는 안 읽혔다.** 포커스가
@@ -262,7 +284,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
           */}
           {expired
             ? <DialogClose asChild><Button>{m.common.close}</Button></DialogClose>
-            : <DialogClose asChild><Button data-initial-focus aria-disabled={pending || undefined} onClick={event => { if (pending) event.preventDefault(); }}>{m.common.cancel}</Button></DialogClose>}
+            : <DialogClose asChild><Button ref={cancelRef} data-initial-focus aria-disabled={pending || undefined} onClick={event => { if (pending) event.preventDefault(); }}>{m.common.cancel}</Button></DialogClose>}
           {/* ⚠️ 무엇을 버리는지를 라벨이 먼저 말한다 — 미전달이 있으면 확정이 곧 폐기다 (sync-edit-protection spec "수동 Sync"). */}
           {/*
             ⚠️ `disabled`가 아니라 `aria-disabled`다 — 지문이 도착하면 같은 버튼이 풀리므로 포커스·Tab 순서가 그대로 남아야 한다.
@@ -325,8 +347,9 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
             : null}
       </>}
       {/* 지연 문구는 Dialog 안이다 — 띠가 걷혔다(DESIGN §6.644). 둘 다 판정이 아니다. */}
-      {slow && <p role="status" className="text-muted-foreground">{m.common.slow}</p>}
-      {expired && <p className="text-muted-foreground">{m.repositorySync.resultInLogs}</p>}
+      {slow && <SlowLine />}
+      {/* ⚠️ `status`다 — 포커스는 도는 확정 버튼에 머물러 있어, 알리지 않으면 스크린리더 사용자는 [Close]가 돌아온 것을 모른다. */}
+      {expired && <p role="status" className="text-muted-foreground">{m.repositorySync.resultInLogs}</p>}
       </>}
     </DialogContent>
   </Dialog>;

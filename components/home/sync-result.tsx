@@ -28,6 +28,18 @@ function reasonMessage(reason: RepositoryImportError | SurfaceImportReason): str
 }
 
 /**
+ * Sync Dialog **결과 단계의 제목** (sync-lock R6 — Publish 모달 §6.646과 같은 형). 제목은 결과의 종류이고 본문 Alert 헤드라인이 내용이다 —
+ * 같은 문장이 두 번 서지 않는다. ⚠️ 판정은 헤드라인과 같은 재료(`summarizeImport`)라 둘이 어긋나지 않는다.
+ */
+export function syncResultTitle(outcome: RepositoryImportOutcome): string {
+  const t = m.repositorySync.resultTitle;
+  if (!outcome.ok) return outcome.error === "unconfirmed" ? t.unknown : t.didntRun;
+  const summary = summarizeImport(outcome.surfaces);
+  if (summary.imported + summary.partial === 0) return t.nothingReplaced;
+  return summary.tone === "success" && outcome.remainingEdits === 0 ? t.complete : t.issues;
+}
+
+/**
  * Sync Dialog 본문에 서는 **결과와 거부** (시안 `4e`·`4f` · sync-lock S5). 한 번에 하나만 선다. 전엔 Home·번역 화면의 띠 Alert였고
  * Dialog로 옮겼다(DESIGN §6.644) — 형·문장·톤은 그대로다.
  *
@@ -44,7 +56,7 @@ function reasonMessage(reason: RepositoryImportError | SurfaceImportReason): str
  * 결과로 바꾸면 같은 자리에서 뜻이 두 번 바뀐다")는 **띠**의 것이었다 — Dialog에서 확인 → 진행 → 결과는 한 동작의 단계라 Publish 모달
  * (§6.646)과 같은 형이다. 그래도 진행 Alert는 세우지 않는다: 진행은 확정 버튼의 스피너, 결과만 이 Alert다.
  */
-export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, onDismiss }: {
+export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry }: {
   outcome: RepositoryImportOutcome | null;
   slug: string;
   branch: string;
@@ -58,7 +70,6 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, onD
    * Sync Dialog에서는 같은 Dialog를 확인 단계로 되돌린다 — 실행하지 않는다.
    */
   onRetry?: () => void;
-  onDismiss?: () => void;
 }) {
   if (outcome === null) return null;
   if (!outcome.ok) {
@@ -75,7 +86,6 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, onD
     */
     const retryRefusal = onRetry !== undefined && action === null && refusal.dismissible && outcome.error !== "unconfirmed";
     return <Alert variant={refusal.tone} live={refusal.tone === "danger" ? "alert" : "status"} title={title}
-      onDismiss={refusal.dismissible ? onDismiss : undefined}
       actions={action === null ? (retryRefusal ? <Button onClick={onRetry}><ArrowDownToLine className="size-3.5" aria-hidden />{m.common.retry}</Button> : undefined)
         /*
           ⚠️ **로그인은 새 탭이다** (QA D2) — 같은 화면의 편집자 세션 Alert와 같은 형. 이 탭을 떠나면 번역 화면의 draft가
@@ -148,7 +158,7 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, onD
       </div>)}
   </>;
   // 결과 톤은 Logs와 같은 어휘다(`EventTone`) — 무색(`muted`, 전 표면 superseded)은 Alert의 `neutral`이다.
-  return <Alert variant={tone === "muted" ? "neutral" : tone} live={tone === "danger" ? "alert" : "status"} title={title} onDismiss={onDismiss}
+  return <Alert variant={tone === "muted" ? "neutral" : tone} live={tone === "danger" ? "alert" : "status"} title={title}
     /* ⚠️ 잠금 사유(`waitPublish`)를 더는 들지 않는다 — Dialog 안이라 Publish가 같이 돌 수 없다(sync-lock S5 — 띠에서 옮겼다). */
     actions={retry && onRetry ? <Button onClick={onRetry}>{/* Sync의 글리프다(5-W2 — `RotateCcw`는 Clear filters 전용). 같은 Dialog를 여는 머리 [Sync]와 같은 모양이다. */}<ArrowDownToLine className="size-3.5" aria-hidden />{m.common.retry}</Button> : undefined}>
     {details}

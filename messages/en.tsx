@@ -51,6 +51,25 @@ export const en = {
     paused: "Syncing is currently unavailable.",
     /** Publish가 도는 동안 꺼진 쓰기 트리거의 사유 (audit #37 · audit-ux #10) — [Sync]·[Try again]·번역 화면의 [Save]가 함께 쓴다(§6.64). */
     waitPublish: "Wait for Publish to finish.",
+    /**
+     * 착지 때 다른 실행의 적재 lease가 살아 있어 꺼진 [Sync]·배너 [Try again]의 사유 (sync-lock R1·R5) — Home과 번역 화면이 같은 문장이다.
+     * 착지 시점의 사실이고, 그 사이 끝났어도 눌러 보면 서버가 다시 판정한다.
+     */
+    running: "A sync is already running.",
+    /**
+     * Sync Dialog **결과 단계의 제목** (sync-lock R6 — Publish 모달 §6.646과 같은 형). 제목은 결과의 **종류**이고 본문 Alert 헤드라인이
+     * **내용**(몇 키 · 무엇이 막혔나)이다 — 같은 문장이 두 번 서지 않는다(`sync-result.test.tsx`가 갈래마다 잰다).
+     */
+    resultTitle: {
+      complete: "Sync complete",
+      issues: "Sync finished with issues",
+      /** 전 표면 실패·전 표면 밀림 — 둘 다 들어간 값이 없다. 헤드라인이 실패인지 밀림인지를 가른다. */
+      nothingReplaced: "Nothing was replaced",
+      /** 실행 전 거부 — 아무것도 읽거나 버리지 않았다. */
+      didntRun: "Sync didn't run",
+      /** `unconfirmed` — 응답을 잃어 서버가 끝냈는지 모른다(malmoi#132). "didn't"를 쓰지 않는다. */
+      unknown: "Sync result unknown",
+    },
     confirm: "Sync from repository",
     /**
      * 미전달 편집이 있을 때의 확정 라벨 (sync-edit-protection spec "수동 Sync"). 트리거 `Sync`와 접근 이름이 달라야 한다는
@@ -2416,11 +2435,7 @@ export const en = {
         changed: { title: "The values changed while this was open", body: "Someone saved new values for this key. Look at them before you revert — this dialog no longer matches what is saved.", again: "Review again" },
         reverted: "Reverted to the version last confirmed as sent",
       },
-      sync: {
-        ownerOnly: "Only project owners can sync.",
-        /** 적재 lease가 살아 있는 동안 꺼진 OWNER [Sync]의 사유 (sync-lock) — 착지 시점의 사실이다. 누르면 서버도 `already-running`이다. */
-        running: "A sync is already running.",
-      },
+      sync: { ownerOnly: "Only project owners can sync." },
       /**
        * **Sync가 도는 동안의 쓰기 거부** (sync-lock S4 · R4) — 저장·Revert가 `sync-running`으로 거부되면 같은 Dialog가 선다. 화면 밖 사건이
        * 끼어드는 유일한 거부라 푸터 Alert가 아니라 Dialog다(DESIGN §7). ⚠️ 시각은 `<time>` 조각이라 호출부가 감싼다(사전은 잎이다).
@@ -2428,10 +2443,9 @@ export const en = {
        */
       syncLock: {
         title: "Syncing…",
-        body: (time: ReactNode): ReactNode => <>You can't save edits until the sync finishes — by {time} at the latest.</>,
+        /** ⚠️ **Dialog 본문과 착지 배너가 같은 문장이다** (U 리뷰) — 같은 사실을 두 모양으로 말하지 않는다. 배너는 제목 자리라 마침표가 없다. */
+        until: (time: ReactNode): ReactNode => <>You can't save edits until the sync finishes — by {time} at the latest</>,
         ok: "OK",
-        /** 착지 배너 (R1) — 한 줄이고 Save를 끄지 않는다. 막는 것은 서버 거부다. */
-        banner: (time: ReactNode): ReactNode => <>Syncing… Edits can be saved again by {time} at the latest</>,
       },
       publish: {
         title: "Publish without saving your changes?",
