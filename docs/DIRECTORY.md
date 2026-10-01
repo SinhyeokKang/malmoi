@@ -159,7 +159,7 @@ middleware.ts           인증 차단의 유일한 1차 지점 + CSP의 유일�
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 29개(2026-09-28 IconTile · 2026-10-01 StatusBadge·CountBadge·CloseButton) + tone.ts·focus.ts 헬퍼 (focus.ts는 2026-09-24 audit B5 —
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브(목록은 `components/ui/*.tsx` — 2026-09-28 IconTile · 2026-10-01 StatusBadge·CountBadge·CloseButton·CodeBlock) + tone.ts·focus.ts 헬퍼 (focus.ts는 2026-09-24 audit B5 —
                         포커스 착지 넷 landFocus·neighbourFocus·useLandAfter·useLandAfterCommit, DESIGN §7) (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
@@ -193,6 +193,8 @@ components/
                         **상태 키만 받는 두 형**(2026-10-01, ux-drift-unify — DESIGN §2.4). StatusBadge는 state 하나로 variant·낱말을
                         lib/status/canon의 STATE에서 읽고, IconTile은 tone(StateTone)으로 §2.4 아이콘 칸의 면·글자를 든다.
                         ⚠️ variant·색 prop이 없다 — 호출부가 고르는 자리가 남으면 같은 상태가 화면마다 다른 알약이 된다(보관 세 모양이 그랬다)
+  ui/code-block.tsx     코드 블록(클라이언트 — Copy + visually-hidden live region · `fill`). `/docs` 원고와 워크플로 YAML(onboarding/workflow-block)이 같이 쓴다 —
+                        2026-10-01에 components/docs/에서 올라왔다(앱 쪽이 docs 형으로 맞췄다, DESIGN §6.4)
   ui/count-badge.tsx    개수 배지 — 0이면 null, 숫자는 aria-hidden이고 label이 sr 문장이다. PanelCard·RowCard의 count prop이 이것을 그린다
                         (CountProps — 개수와 문장이 짝이라 문장 없는 개수는 타입 오류). ⚠️ 0을 숨기는 것은 화면 규칙이고 판정은 0을 값으로 낸다(lib/shell/nav)
   ui/close-button.tsx   닫기 X 한 형(ghost · 36 · 원형 · X 20) — Dialog · 1024 모달 · 이력 상세 · Alert · Sources 결과 행이 쓴다. modal.tsx에서 추출했다.
@@ -263,7 +265,7 @@ components/
   privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로)
   docs/                 `/docs/*` 조각 — guide-markdown(서버 — react-markdown에 로더 트리 사본을 꽂고 요소를 매핑한다.
                         ⚠️ urlTransform을 덮지 않는다 · rehype-raw 없음 — raw HTML은 글자로 나가므로 원고에서 게이트가 막는다) · doc-frame(그릇 · 이전/다음 · 장 개요 행 · 개요 두 갈래) ·
-                        code-block(클라이언트 — Copy + visually-hidden live region) · nav-link(클라이언트 — usePathname 정확 일치) ·
+                        nav-link(클라이언트 — usePathname 정확 일치) ·
                         legacy-hash(클라이언트 — 옛 /docs#id → router.replace, 표는 서버가 넘긴다) · requested-path(404 주소) ·
                         classes.ts(서버·클라이언트가 같이 쓰는 클래스 — "use client" 모듈에 두면 값이 아니라 참조가 온다. 공개 문서 셋(/docs·/privacy·/changelog)의
                         글자 급·간격 한 벌: SECTION_HEADING · SUB_HEADING · MINOR_HEADING · PROSE · LIST)
