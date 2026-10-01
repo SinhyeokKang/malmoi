@@ -16,7 +16,8 @@ const state = vi.hoisted(() => ({
   tree: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ redirect: state.redirect }));
-vi.mock("@/lib/surfaces/access", () => ({ requireSurfaceAccess: async () => ({ projectId: "p", surfaceId: "s", role: "EDITOR", archived: false, userId: "u" }) }));
+// 경로 소스 → 인가된 표면 id. redirect 목적지를 **그 경로에서** 다시 열 수 있게 slug로 고른다.
+vi.mock("@/lib/surfaces/access", () => ({ requireSurfaceAccess: async ({ surfaceSlug }: { surfaceSlug: string }) => ({ projectId: "p", surfaceId: surfaceSlug === "app" ? "s2" : "s", role: "EDITOR", archived: false, userId: "u" }) }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({}) }));
 vi.mock("@/lib/keys/query", () => ({
   loadProject: async () => ({ id: "p", name: "Demo", surfaces: [{ id: "s", slug: "default", archivedAt: null, lastCommitSha: "sha", pathTemplate: "i18n/{locale}.json" }], slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", lastCommitSha: "sha", baseLocale: "en", declaredBaseLocale: "en", lastPulledAt: null, lastPublishedAt: null, lastPrUrl: null, locales: [] }),
@@ -49,9 +50,22 @@ const KEYS: Record<string, [surfaceSlug: string, namespace: string]> = { a1: ["a
 
 const render = (searchParams: Record<string, string | undefined>) =>
   Page({ params: Promise.resolve({ slug: "demo", surfaceSlug: "default" }), searchParams: Promise.resolve(searchParams) });
+/** 주소 하나를 **그 경로의 소스로** 연다 — redirect 목적지의 재렌더용. */
+const renderAt = (href: string) => {
+  const url = new URL(href, "http://x");
+  return Page({ params: Promise.resolve({ slug: "demo", surfaceSlug: url.pathname.split("/")[4]! }), searchParams: Promise.resolve(Object.fromEntries(url.searchParams)) });
+};
+/**
+ * redirect 목적지를 돌려준다. ⚠️ **목적지를 그 경로에서 다시 열어 redirect가 없음을 함께 단언한다** — 루프 없음(design §3.1)은 경로가 바뀌는 보정
+ * (`keySurface` 이동)에서도 성립해야 하는데, 경로 소스를 하나로 고정한 렌더로는 그 목적지를 못 잰다.
+ */
 const redirected = async (searchParams: Record<string, string | undefined>) => {
   await expect(render(searchParams)).rejects.toThrow(/^redirect:/);
-  return state.redirect.mock.calls.at(-1)![0] as string;
+  const target = state.redirect.mock.calls.at(-1)![0] as string;
+  state.redirect.mockClear();
+  await renderAt(target);
+  expect(state.redirect, `목적지 ${target}가 다시 redirect한다`).not.toHaveBeenCalled();
+  return target;
 };
 const listQuery = () => (state.list.mock.calls.at(-1)![1] as { query: { scope: string } }).query;
 
@@ -113,7 +127,8 @@ it("다른 소스의 사라진 키는 네임스페이스를 추측하지 않는�
 
 it("모르는·보관된 keySurface는 버린다 — 상세를 읽지 않고 다른 프로젝트의 소스로 넓히지 않는다", async () => {
   expect(await redirected({ key: "k1", keySurface: "elsewhere" })).toBe("/projects/demo/surfaces/default/translations?key=k1");
-  expect(state.detail).not.toHaveBeenCalled();
+  // 상세는 목적지(경로 소스 default)를 다시 열 때 한 번만 읽힌다 — 모르는 소스로는 한 번도 가지 않는다.
+  expect(state.detail.mock.calls.map(([, input]) => (input as { surfaceId: string }).surfaceId)).toEqual(["s"]);
 });
 
 it("Home 상태 링크의 ns=*는 생략과 같다 — redirect 왕복을 더하지 않는다", async () => {
@@ -139,15 +154,21 @@ it("상세 대상 소스에 없는 언어는 정규 주소에서 지운다 — �
     const page = await render(raw);
     expect(page.props.query.language).toBe(raw.language);
   }
-  expect(state.redirect).toHaveBeenCalledOnce();
+  expect(state.redirect).not.toHaveBeenCalled();
 });
 
 it("언어는 상세 대상 소스로 잰다 — 다른 소스의 키(전 소스 검색)와 소스를 옮기는 옛 링크는 그 소스 기준이다", async () => {
   const page = await render({ q: "x", key: "a1", keySurface: "app", language: "ja" });
   expect(state.redirect).not.toHaveBeenCalled();
   expect(page.props.query.language).toBe("ja");
+  // 경로 소스(default)에는 있지만 목적지(app)에는 없는 언어는 목적지 기준으로 지운다 — 경로 기준이면 목적지가 다시 redirect한다.
+  expect(await redirected({ ns: "checkout", key: "a1", keySurface: "app", language: "ko" })).toBe("/projects/demo/surfaces/app/translations?ns=common&key=a1&keySurface=app");
+  // 상세가 없으면(사라진 키) 목적지 **경로** 소스 기준이다 — 옮기기 전 경로 기준이면 목적지가 다시 redirect한다.
+  expect(await redirected({ ns: "checkout", key: "gone", keySurface: "app", language: "ko" })).toBe("/projects/demo/surfaces/app/translations?ns=checkout&key=gone&keySurface=app");
   const target = await redirected({ ns: "checkout", key: "a1", keySurface: "app", language: "ja" });
   expect(target).toBe("/projects/demo/surfaces/app/translations?ns=common&key=a1&keySurface=app&language=ja");
+  // 목적지(app)에서 다시 열면 상세가 app 소스의 키이고 언어가 남는다 — `redirected`가 루프 없음을 이미 단언했다.
+  expect((await renderAt(target)).props.query).toMatchObject({ ns: "common", key: "a1", keySurface: "app", language: "ja" });
 });
 
 // ── 늘 전 소스로 읽고 범위로 자른다 (조건 1·9) ─────────────────────────────────────
