@@ -3,14 +3,14 @@
 import { ArrowDownToLine } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import { checkOpenPullRequest, prepareRepositorySync, runRepositoryImport } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { SyncResult, syncResultTitle } from "@/components/home/sync-result";
 import { SlowLine, useSlow } from "@/components/slow-notice";
-import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogTrigger, lastRecorded } from "@/components/ui/dialog";
 import { m } from "@/lib/i18n";
 import { planImportConfirmation, type OpenImportPr } from "@/lib/import/confirm";
 import type { RepositoryImportOutcome } from "@/lib/import/result";
@@ -78,14 +78,14 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
   /** [Try again]으로 확인 단계에 돌아왔다 — 누른 버튼이 본문과 함께 사라져 포커스가 컨테이너로 빠지므로 Cancel로 옮긴다(POSTMORTEM 2026-09-20). */
   const returning = useRef(false);
   /*
-    ⚠️ **연 자리를 렌더 시점에 잡는다** (U 리뷰 🟡) — Home 배너의 [Try again]으로 연 Sync가 성공하면 재검증 트리가 배너를 **닫기 전에** 걷고,
-    `DialogContent`의 최근 포커스 기록이 더 오래된 요소(사이드바 링크 등)로 거슬러 갔다. 열린 직후 렌더에는 포커스가 아직 연 자리에 있다
-    (Radix의 포커스 이동은 커밋 뒤다). ⚠️ Safari처럼 클릭이 포커스를 주지 않으면 `body`라 "모름"으로 친다 — 그때는 트리거로 간다.
+    ⚠️ **연 자리를 프리미티브의 기록에서 잡는다** (U 리뷰 r1·r2) — Home 배너의 [Try again]으로 연 Sync가 성공하면 재검증 트리가 배너를 **닫기 전에**
+    걷고, `DialogContent`의 최근 포커스 기록이 더 오래된 요소(사이드바 링크 등)로 거슬러 갔다. 그래서 연 자리가 떨어졌으면 이 호출부가 트리거로 보낸다.
+    ⚠️ **`activeElement`가 아니다** — Safari·macOS Firefox는 클릭이 포커스를 주지 않아 `body`였고, 배너가 그대로인데도 머리 [Sync]로 튀었다
+    (malmoi#86 회귀 — POSTMORTEM 2026-09-24가 같은 이유로 `pointerdown` 기록을 들였다). ⚠️ **layout effect다** — Radix의 열림 포커스 이동은
+    passive effect라 그보다 먼저 돌아야 기록의 마지막이 연 자리다. 렌더 중 ref 쓰기는 버려진 렌더가 값을 남긴다.
   */
-  const opener = useRef<Element | null>(null);
-  const wasOpen = useRef(open);
-  if (open && !wasOpen.current && typeof document !== "undefined") opener.current = document.activeElement;
-  wasOpen.current = open;
+  const opener = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => { if (open) opener.current = lastRecorded(); }, [open]);
   const slow = useSlow(pending);
   /** ⚠️ **`"checking"`을 `undefined`(실패)로 접지 않는다** (malmoi#75) — 조회 중과 조회 실패는 다른 줄이다. */
   const [openPr, setOpenPr] = useState<OpenImportPr | "checking">("checking");
@@ -254,7 +254,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
         */
         const trigger = document.getElementById(triggerId);
         const from = opener.current;
-        if (from instanceof HTMLElement && from !== document.body && from !== trigger && from.isConnected) return;
+        if (from !== null && from !== trigger && from.isConnected) return;
         const target = trigger !== null && trigger.getAttribute("aria-disabled") !== "true" ? trigger : fallbackFocusRef?.current ?? null;
         if (target === null) return;
         event.preventDefault();

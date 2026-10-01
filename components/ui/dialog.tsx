@@ -52,6 +52,15 @@ if (typeof document !== "undefined") {
     if (event.target instanceof Element) remember(event.target.closest<HTMLElement>('button, a[href], [role="option"], [tabindex]'));
   }, true);
 }
+/**
+ * 가장 최근에 기록된 요소 — 붙어 있든 떨어졌든 그대로 준다. **상태로 여는 Dialog의 호출부가 열리는 순간 "누가 열었나"를 잡는 용도다**
+ * (Sync — 배너가 결과의 재검증 트리로 닫히기 전에 사라지면 그 호출부가 트리거로 보낸다). `activeElement`로 잡으면 Safari·macOS Firefox에서
+ * `body`다 — 위 `pointerdown` 기록이 그 갈래를 메운다. ⚠️ **"떨어진 연 자리에서 더 거슬러 가지 않는다"를 여기(전역)로 올리지 않는다** —
+ * Select 옵션에서 여는 Dialog는 연 자리(옵션)가 늘 떨어져 있고, 그때는 거슬러 가는 것이 맞다.
+ */
+export function lastRecorded(): HTMLElement | null {
+  return recent[recent.length - 1] ?? null;
+}
 function returnTarget(): HTMLElement | null {
   for (let i = recent.length - 1; i >= 0; i--) {
     const node = recent[i];
