@@ -16,7 +16,8 @@ import {
   resolveKeyIdByName,
   translationLinkFor,
 } from "@/lib/keys/translation-list";
-import { DEFAULT_TRANSLATION_QUERY, type TranslationQuery } from "@/lib/translations/query";
+import { ALL_NAMESPACES, DEFAULT_TRANSLATION_QUERY, screenQuery, STATUSES, withStatus, type TranslationQuery } from "@/lib/translations/query";
+import { countTree, inRange, rangeOf, tallyRows } from "@/lib/translations/tree-narrow";
 import { keyMatches, orderKeySummaries, summarizeKey } from "@/lib/translations/summary";
 
 /**
@@ -345,6 +346,43 @@ describe("loadTranslationList — 전량(pageSize: \"all\") (translation-filter-
     await project("z", null);
     const result = await loadTranslationList(prisma, { projectId: "z", routeSurfaceId: "none", query: DEFAULT_TRANSLATION_QUERY, pageSize: "all", selectedKeyId: "w1" });
     expect(result).toMatchObject({ rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, nextCursor: null, selectedInResult: false });
+  });
+});
+
+/*
+  ── 화면 범위 (translation-tree-range §3 · 조건 1·9) ────────────────────────────────────────────
+  화면은 늘 전 소스를 한 번 읽고 JS로 범위를 자른다. 그 결과가 MCP가 쓰는 SQL `scope` 경로와 같은 행·같은 순서인지, 그리고 트리 숫자(뷰 모델 `countTree`)가
+  "그 노드를 눌렀을 때의 목록 수"인지를 실제 DB에서 잰다 — 순수 함수 단위 테스트와 페이지 테스트(로더 mock)가 각각은 있지만 둘을 잇는 자리가 여기다.
+*/
+describe("화면 범위 — 전 소스 한 번 읽고 자르기", () => {
+  const RANGES: { surfaceSlug: string; surfaceId: string; ns: string }[] = [
+    { surfaceSlug: "web", surfaceId: "p-web", ns: ALL_NAMESPACES }, { surfaceSlug: "web", surfaceId: "p-web", ns: "auth" },
+    { surfaceSlug: "web", surfaceId: "p-web", ns: "common" }, { surfaceSlug: "app", surfaceId: "p-app", ns: ALL_NAMESPACES }, { surfaceSlug: "app", surfaceId: "p-app", ns: "app" },
+  ];
+
+  it.each(STATUSES.flatMap(status => [undefined, "a"].map(text => [status, text] as const)))("Status %s · 검색 %s: 자른 행 = SQL scope 경로의 행이고, 트리 숫자 = 그 노드의 목록 수다", async (status, text) => {
+    const tree = await loadTranslationTree(prisma, "p");
+    for (const range of RANGES) {
+      const screen = withStatus(screenQuery({ ns: range.ns, ...(text === undefined ? {} : { q: text, scope: range.ns === ALL_NAMESPACES ? "source" : "namespace" }) }), status);
+      const full = await loadTranslationList(prisma, { projectId: "p", routeSurfaceId: range.surfaceId, query: { ...screen, scope: "project" }, pageSize: "all" });
+      const sliced = full.rows.filter(row => inRange(row, rangeOf(screen, range.surfaceSlug)));
+      const sql = await loadTranslationList(prisma, { projectId: "p", routeSurfaceId: range.surfaceId, query: screen, pageSize: "all" });
+      expect(sliced, `${range.surfaceSlug}/${range.ns}`).toEqual(sql.rows);
+      // 트리 숫자 — 조건이 없으면 원본(같은 참조), 있으면 전 소스 행의 일치 수이고 그 노드를 눌렀을 때의 목록 수와 같다.
+      const counted = countTree(tree, tallyRows(full.rows));
+      const surface = counted.surfaces.find(s => s.slug === range.surfaceSlug)!;
+      const node = range.ns === ALL_NAMESPACES ? surface.keyCount : surface.namespaces.find(n => n.name === range.ns)!.keyCount;
+      expect(node, `${range.surfaceSlug}/${range.ns}`).toBe(sliced.length);
+    }
+  });
+
+  it("전 소스 검색은 두 소스의 일치를 한 목록에 담고 다른 테넌트는 섞이지 않는다", async () => {
+    const screen = screenQuery({ q: "a" });
+    expect(screen.scope).toBe("project");
+    const full = await loadTranslationList(prisma, { projectId: "p", routeSurfaceId: "p-web", query: screen, pageSize: "all" });
+    const sliced = full.rows.filter(row => inRange(row, rangeOf(screen, "web")));
+    expect(new Set(sliced.map(row => row.surfaceSlug))).toEqual(new Set(["web", "app"]));
+    expect(sliced.some(row => row.keyId === "q1")).toBe(false);
   });
 });
 
