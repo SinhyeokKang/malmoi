@@ -956,7 +956,7 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
   });
 
   it("정적 자산은 matcher 밖이다 — 폰트·청크마다 미들웨어를 타지 않는다", () => {
-    const ASSETS = ["/_next/static/chunks/app.js", "/_next/image", "/fonts/pretendard/x.woff2", "/guide/setup.png", "/brand/logo.svg", "/email/logo.png", "/flags/fr.svg", "/icon.svg"];
+    const ASSETS = ["/_next/static/chunks/app.js", "/_next/image", "/fonts/pretendard/x.woff2", "/guide/setup.png", "/brand/logo.svg", "/email/logo.png", "/flags/fr.svg", "/icon.svg", "/og.png"];
     expect(ASSETS.filter(matched)).toEqual([]);
   });
 
