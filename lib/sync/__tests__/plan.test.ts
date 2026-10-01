@@ -9,6 +9,7 @@ import {
   classifySyncError,
   planSyncFinish,
   planSyncStart,
+  planWriteLock,
 } from "../plan";
 
 /**
@@ -345,5 +346,52 @@ describe("planSyncFinish — reconfirm", () => {
 
   it("다른 스킵은 errorCode가 없다 (짝)", () => {
     expect(planSyncFinish({ status: "skipped", reason: "no-edits" })).toMatchObject({ status: "SKIPPED", errorCode: null });
+  });
+});
+
+/**
+ * **번역 쓰기 잠금** (sync-lock design §2). 수동 Sync·야간 적재의 lease(`Project.repositoryImportToken`·`repositoryImportStartedAt`)가 살아 있는
+ * 동안 저장·Revert를 거부한다. 경계는 Publish 게이트와 같은 `isRunActive`다 — 정각은 활성이다.
+ */
+describe("planWriteLock — 적재 lease가 번역 쓰기를 막는가", () => {
+  const lease = (age: number, token: string | null = "t") => ({ now: NOW, repositoryImportToken: token, repositoryImportStartedAt: new Date(NOW.getTime() - age) });
+
+  it("lease가 없으면 null이다 — 토큰만 비어도(시각이 남아도) 없다", () => {
+    expect(planWriteLock({ now: NOW, repositoryImportToken: null, repositoryImportStartedAt: null })).toBeNull();
+    expect(planWriteLock(lease(5_000, null))).toBeNull();
+    expect(planWriteLock({ now: NOW, repositoryImportToken: "t", repositoryImportStartedAt: null })).toBeNull();
+  });
+
+  it("살아 있으면 sync-running과 시작 시각을 낸다", () => {
+    expect(planWriteLock(lease(100_000))).toEqual({ reason: "sync-running", startedAt: ago(100), reopensBy: expect.any(Date) });
+  });
+
+  it("경계 정각은 아직 활성이고, 1ms 뒤에 풀린다", () => {
+    expect(planWriteLock(lease(STALE_AFTER_SECONDS * 1000))).not.toBeNull();
+    expect(planWriteLock(lease(300_001))).toBeNull();
+  });
+
+  /** ⚠️ Publish 게이트와 경계가 두 벌이면 한쪽만 막는 1ms가 생긴다 — 같은 입력에서 같은 답이어야 한다. */
+  it.each([0, STALE_AFTER_SECONDS * 1000, STALE_AFTER_SECONDS * 1000 + 1])("Publish 게이트(planSyncStart)와 같은 경계다 — %s ms", age => {
+    const startedAt = new Date(NOW.getTime() - age);
+    const publishBlocked = planSyncStart({ now: NOW, running: null, lastSettled: null, trigger: "manual", activeImport: { startedAt } }).status === "already-running";
+    expect(planWriteLock({ now: NOW, repositoryImportToken: "t", repositoryImportStartedAt: startedAt }) !== null).toBe(publishBlocked);
+  });
+
+  /**
+   * `reopensBy`는 표시용이다 — `utcMinute`이 초를 버리고 정각도 활성이라, 그대로 내면 표시가 실제보다 최대 59초 이르다. 그래서 다음 분으로 올린다.
+   * 그 시각에는 반드시 풀려 있어야 한다.
+   */
+  it.each([
+    ["2026-10-01T16:30:12.345Z", "2026-10-01T16:36:00.000Z"],
+    ["2026-10-01T16:30:59.999Z", "2026-10-01T16:36:00.000Z"],
+    ["2026-10-01T16:30:00.001Z", "2026-10-01T16:36:00.000Z"],
+    // 만료 시각이 분 정각이면 그 분은 아직 활성이다 — 다음 분이다.
+    ["2026-10-01T16:30:00.000Z", "2026-10-01T16:36:00.000Z"],
+  ])("reopensBy는 만료 시각을 다음 분으로 올린다 — %s 시작 → %s", (startedAt, reopensBy) => {
+    const start = new Date(startedAt);
+    const lock = planWriteLock({ now: start, repositoryImportToken: "t", repositoryImportStartedAt: start });
+    expect(lock?.reopensBy.toISOString()).toBe(reopensBy);
+    expect(planWriteLock({ now: lock!.reopensBy, repositoryImportToken: "t", repositoryImportStartedAt: start })).toBeNull();
   });
 });

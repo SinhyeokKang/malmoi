@@ -59,7 +59,7 @@ export default async function LogsPage({
     select: { repoOwner: true, repoName: true, archivedAt: true, activityCoverageStartedAt: true },
   });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 문구가 존재 여부를 말하지 않는 곳으로 보낸다.
-  if (project === null) redirect(`${routes.projects()}?e=not-found`);
+  if (project === null) redirect(routes.projects({ e: "not-found" }));
 
   const [sources, actors, page, openEvent] = await Promise.all([
     prisma.translationSurface.findMany({ where: { projectId, archivedAt: null }, select: { slug: true }, orderBy: { slug: "asc" } }),

@@ -13,11 +13,11 @@ import { buildPermalink } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { syncBranchFor } from "@/lib/pull/sync-branch";
 import { relativeTime } from "@/lib/relative-time";
-import { routes } from "@/lib/routes";
+import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import type { Raw } from "@/lib/search-params";
 import { requireSurfaceAccess } from "@/lib/surfaces/access";
-import { FIRST_KEY, landOnFirstKey, parseTranslationQuery, serializeTranslationQuery } from "@/lib/translations/query";
-import { firstRowAt } from "@/lib/translations/tree-narrow";
+import { FIRST_KEY, isScreenCanonical, landOnFirstKey, MISSING_LANGUAGES, screenQuery, serializeScreenQuery, statusOf, treeFollowsSearch, withStatus, type TranslationQuery } from "@/lib/translations/query";
+import { firstRowAt, inRange, rangeOf, tallyRows } from "@/lib/translations/tree-narrow";
 
 /**
  * 번역 화면 — **트리 · 요약 목록 · 선택 키 상세** 세 패널 (translation-rework — 핸드오프 `2a`, spec §3).
@@ -54,59 +54,74 @@ export default async function TranslationsPage({
   const { projectId, surfaceId, role, archived, userId } = await requireSurfaceAccess({ slug, surfaceSlug, permission: "translation:write" });
   if (archived) return <ProjectArchived slug={slug} role={role} />;
 
-  // 옛 링크(`state=untranslated` · `locales` · `focus` · `cursor`)는 새 요청값으로 옮겨 정규 주소로 보낸다 — 공유·새로고침이 같은 URL을 쓴다.
-  // ⚠️ `cursor`는 더 이상 주소에 싣지 않는다 (audit-ux #19) — 화면 목록은 전량이다(translation-filter-scope). 남은 옛 주소는 cursor를 뺀 정규 주소로 redirect한다.
-  const parsed = parseTranslationQuery(raw);
-  const legacy = raw.locales !== undefined || raw.focus !== undefined || raw.state === "untranslated" || raw.cursor !== undefined;
-  if (legacy) {
-    const { cursor: _cursor, ...canonical } = parsed;
-    redirect(routes.surfaceTranslations(slug, surfaceSlug, serializeTranslationQuery(canonical)));
-  }
-
   /*
-    ⚠️ **서로 의존하지 않는 조회는 함께 떠난다** (audit-ux #7) — 전엔 await 다섯 단계를 순서대로 돌아 조작마다 그만큼 멈췄다.
-    상세만 기다림이 남는다: 다른 소스의 키(`keySurface`)는 트리가 그 소스를 확인한 뒤, 트리 이동의 첫 키(`FIRST_KEY`)는 목록 뒤다.
+    ⚠️ **화면 요청값은 `screenQuery`다** (translation-tree-range design §3) — 옛 주소(`Untranslated in`·`Complete`·검색어 없는 `scope`·cursor·
+    `locales`·`focus`)는 아래에서 위치·언어까지 보정한 **정규 주소로 redirect**한다. 공유·새로고침이 같은 URL을 쓴다.
+    ⚠️ **서로 의존하지 않는 조회는 함께 떠난다** (audit-ux #7) — 목록은 늘 전 소스(`scope: "project"`)라 redirect가 바꾸는 값(경로·`ns`·언어)과
+    무관하다. 그래서 redirect 판정을 기다리지 않고 같은 라운드에 떠난다(옛 주소에서만 한 번 버려진다). 다른 소스의 상세는 트리가 그 소스를 확인한 뒤다.
   */
+  const screen = screenQuery(raw);
   const prisma = getPrisma();
-  const firstKey = parsed.key === FIRST_KEY;
-  const { key: _selected, ...unselected } = parsed;
+  const firstKey = screen.key === FIRST_KEY;
+  const selected = firstKey ? undefined : screen.key;
+  const { key: _key, ...unselected } = screen;
   const readDetail = (surface: { id: string } | undefined, key: string | undefined) =>
     key === undefined || surface === undefined ? null : loadTranslationDetail(prisma, { projectId, surfaceId: surface.id, keyId: key });
-  const onRoute = parsed.keySurface === undefined || parsed.keySurface === surfaceSlug;
-  const [project, tree, listed, unsentBySurface, early] = await Promise.all([
+  const onRoute = screen.keySurface === undefined || screen.keySurface === surfaceSlug;
+  /*
+    ⚠️ **트리 숫자는 검색만 따른다** (2026-10-02 사용자 — 아래 필터인 Status는 위로 새지 않는다). 검색 + Status면 숫자용으로 **Status 없는 같은 검색**을
+    한 번 더 읽는다(같은 라운드). Status 술어를 JS로 다시 쓰지 않는다 — 두 술어가 같은 행을 세야 하는 함정을 design §3이 걷었다. 검색만이면 목록의 행이
+    곧 숫자다(추가 읽기 없음).
+  */
+  const searchOnly = treeFollowsSearch(screen) && statusOf(screen) !== "all"
+    ? loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: { ...withStatus(unselected, "all"), scope: "project" }, pageSize: "all" })
+    : null;
+  const [project, tree, full, unsentBySurface, early, counted] = await Promise.all([
     loadProject(prisma, projectId, surfaceId),
     loadTranslationTree(prisma, projectId),
-    // ⚠️ **화면 목록은 전량이다** (translation-filter-scope — 2026-09-30 사용자) — 눌러서 더 읽는 페이지가 없다. cursor 페이징은 MCP 전용이다.
-    firstKey || parsed.key === undefined
-      ? loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: unselected, pageSize: "all" })
-      : loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: parsed, selectedKeyId: parsed.key, pageSize: "all" }),
+    // ⚠️ **화면 목록은 전량이다** (translation-filter-scope) — 눌러서 더 읽는 페이지가 없다. cursor 페이징은 MCP 전용이다.
+    loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: { ...unselected, scope: "project" }, pageSize: "all", ...(selected === undefined ? {} : { selectedKeyId: selected }) }),
     countUnpublishedBySurface(prisma, projectId),
-    !firstKey && onRoute ? readDetail({ id: surfaceId }, parsed.key) : null,
+    onRoute ? readDetail({ id: surfaceId }, selected) : null,
+    searchOnly,
   ]);
   if (!project) redirect(routes.projects());
   const readiness = planProjectReadiness(project);
   if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} />;
 
+  // 상세의 소스는 `keySurface`가 정한다 — 인가된 프로젝트의 **활성** 표면 안에서만 고른다. 모르는·보관된 소스는 버린다(다른 프로젝트로 넓히지 않는다).
+  const keySurface = screen.keySurface === undefined ? undefined : tree.surfaces.find(s => s.slug === screen.keySurface);
+  const detail = onRoute ? early : await readDetail(keySurface, selected);
+  const { route, query: corrected } = correctLocation(screen, surfaceSlug, { keySurface: screen.keySurface === undefined ? undefined : keySurface?.slug ?? null, detail, real: selected !== undefined });
+  const located = withValidLanguage(corrected, tree.surfaces.find(s => s.slug === (detail?.status === "ok" ? detail.key.surfaceSlug : route))?.locales ?? []);
+  if (!isScreenCanonical(raw, located) || route !== surfaceSlug) redirect(routes.surfaceTranslations(slug, route, serializeScreenQuery(located)));
+
   /*
-    ⚠️ **트리 이동의 첫 키를 같은 렌더가 싣는다** (audit-ux #18) — 전엔 선택 없는 응답이 상세를 "Select a key"로 비웠고, 클라이언트
-    effect가 첫 키로 `replace`를 한 번 더 했다. 다른 소스로 가면 화면이 새로 마운트되어 그 effect의 표식도 잃었다.
-    주소의 예약값은 화면이 `history.replaceState`로 첫 키로 맞춘다.
-    ⚠️ **첫 키는 목록 첫 행이 아니라 그 위치(경로 소스·`ns`)의 첫 키다** (translation-filter-scope design §3.2) — 범위가 All sources면 목록
-    첫 행이 다른 소스의 것일 수 있다. 정렬이 `Incomplete first`라 네임스페이스가 연속하지 않으므로 목록 순서상 처음 나오는 것을 고른다.
+    ⚠️ **늘 전 소스로 읽고 JS로 자른다** (design §3) — 목록과 범위 자르기의 읽기 경로가 하나다. 트리 숫자는 검색만 따르므로 검색 + Status일 때만 Status
+    없는 읽기가 하나 더 있다(위). 목록의 수·선택 포함 여부는
+    **자른 행에서 다시 센다** — 로더의 전 소스 값을 그대로 쓰면 범위 밖의 선택을 "결과 안"으로 읽는다(POSTMORTEM 2026-09-23 — 부분 응답을 전체로 해석).
+    ⚠️ **트리 이동의 첫 키를 같은 렌더가 싣는다** (audit-ux #18) — 그 위치(경로 소스·`ns`)의 첫 키다. 주소의 예약값은 화면이 `history.replaceState`로 맞춘다.
   */
-  const first = firstKey ? firstRowAt(listed.rows, surfaceSlug, parsed.ns) : undefined;
-  const query = firstKey ? landOnFirstKey(parsed, first) : parsed;
-  const list = first === undefined ? listed : { ...listed, selectedInResult: true };
-  // 상세의 소스는 `keySurface`가 정한다(전체 범위의 다른 소스 결과) — 인가된 프로젝트의 활성 표면 안에서만 고른다.
-  const detail = !firstKey && onRoute ? early
-    : await readDetail(query.keySurface === undefined || query.keySurface === surfaceSlug ? { id: surfaceId } : tree.surfaces.find(s => s.slug === query.keySurface), query.key);
-  const actors = detail?.status === "ok" ? await loadActors(prisma, detail.locales.flatMap(l => l.updatedBy === null ? [] : [l.updatedBy])) : new Map();
-  const detailView = detail === null
+  const rows = full.rows.filter(row => inRange(row, rangeOf(located, surfaceSlug)));
+  const first = firstKey ? firstRowAt(rows, surfaceSlug, located.ns) : undefined;
+  const query = firstKey ? landOnFirstKey(located, first) : located;
+  const list = {
+    ...full,
+    rows,
+    matchedKeyCount: rows.length,
+    incompleteKeyCount: rows.filter(row => row.missingCount > 0).length,
+    selectedInResult: first !== undefined ? true : selected === undefined ? null : rows.some(row => row.keyId === selected),
+  };
+  // 검색 중일 때만 트리 숫자를 검색 일치 수로 — 범위 밖 노드도 Status를 끈 채 그 노드를 눌렀을 때의 목록 수다(조건 9 · 2026-10-02).
+  const counts = treeFollowsSearch(located) ? tallyRows((counted ?? full).rows) : null;
+  const shown = first === undefined ? detail : await readDetail({ id: surfaceId }, first.keyId);
+  const actors = shown?.status === "ok" ? await loadActors(prisma, shown.locales.flatMap(l => l.updatedBy === null ? [] : [l.updatedBy])) : new Map();
+  const detailView = shown === null
     ? (query.key === undefined ? null : { absent: true as const, surfaceSlug: query.keySurface ?? surfaceSlug })
-    : detail.status === "absent"
+    : shown.status === "absent"
       ? { absent: true as const, surfaceSlug: query.keySurface ?? surfaceSlug }
       : (() => {
-          const labeled = withActorLabels(detail, actors);
+          const labeled = withActorLabels(shown, actors);
           // permalink는 서버가 만든다 — 그 판정이 사는 모듈(`lib/keys/view.ts`)은 어댑터를 물어 클라이언트가 읽으면 안 된다.
           return {
             key: labeled.key,
@@ -140,6 +155,7 @@ export default async function TranslationsPage({
       query={query}
       tree={tree}
       list={list}
+      counts={counts}
       detail={detailView}
       unpublished={[...unsentBySurface.values()].reduce((sum, n) => sum + n, 0)}
       publish={{
@@ -152,6 +168,39 @@ export default async function TranslationsPage({
       baseLocale={project.baseLocale}
       declaredBaseLocale={project.declaredBaseLocale}
       connection={connection}
+      writeLock={project.writeLock}
     />
   );
+}
+
+/**
+ * **검색어 없이 키를 가리키는 링크는 그 키의 위치로 연다** (design §3.1 · 조건 11). 범위가 트리 위치라, 다른 소스나 다른 네임스페이스의 키를 고른
+ * 옛 링크(전 소스 범위 시절의 퍼머링크·Logs의 옛 주소)를 그대로 열면 선택 키가 목록 범위 밖에 선다.
+ * - 다른 활성 소스의 키 → 그 소스 경로로. 상세가 있으면 `ns`도 그 키의 실제 네임스페이스로(없는 키에서 추측하지 않는다).
+ * - 같은 소스라도 선택 키가 `ns` 범위 밖이면 그 키의 네임스페이스로(`ALL_NAMESPACES`는 이미 범위 안이다).
+ * - 모르는·보관된 `keySurface`는 버린다(`keySurface === null`). 검색 중에는 범위가 전 소스이거나 사용자가 좁힌 노드라 옮기지 않는다.
+ */
+function correctLocation(
+  screen: TranslationQuery,
+  routeSurfaceSlug: string,
+  input: { keySurface: string | null | undefined; detail: Awaited<ReturnType<typeof loadTranslationDetail>> | null; real: boolean },
+): { route: string; query: TranslationQuery } {
+  const query: TranslationQuery = { ...screen };
+  if (input.keySurface === null) delete query.keySurface;
+  if (!input.real || screen.q !== undefined) return { route: routeSurfaceSlug, query };
+  const route = input.keySurface ?? routeSurfaceSlug;
+  const detail = input.detail?.status === "ok" ? input.detail : null;
+  const outside = route !== routeSurfaceSlug || (query.ns !== ALL_NAMESPACES && detail !== null && detail.key.namespace !== query.ns);
+  // 위치가 바뀌면 범위(`scope`)도 따라간다 — 정규화를 한 번 더 지나 파생한다(규칙을 여기 다시 쓰지 않는다).
+  return { route, query: outside && detail !== null ? screenQuery(serializeScreenQuery({ ...query, ns: detail.key.namespace })) : query };
+}
+
+/**
+ * 상세 언어는 **상세 대상 소스의 활성 로케일**이어야 한다(조건 12) — 없는 코드는 정규 주소에서도 지운다. 화면이 언어를 주소에서 다시 읽으므로
+ * prop만 지우면 라벨이 바로잡히지 않는다. 없음(All languages)·`@missing`(Missing only)은 보존한다.
+ */
+function withValidLanguage(query: TranslationQuery, locales: readonly string[]): TranslationQuery {
+  if (query.language === undefined || query.language === MISSING_LANGUAGES || locales.includes(query.language)) return query;
+  const { language: _dropped, ...rest } = query;
+  return rest;
 }

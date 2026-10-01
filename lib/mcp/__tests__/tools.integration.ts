@@ -13,7 +13,7 @@ import { signSampleConfirmation } from "@/lib/onboarding/sample-confirmation";
 
 import type { TokenGrant } from "../grant";
 import { hashApiToken } from "../token";
-import type { ToolOutcome } from "../result";
+import { toToolResult, type ToolOutcome } from "../result";
 import type { ApiTokenSubject } from "../token-store";
 
 /**
@@ -393,5 +393,32 @@ describe("OAuth 연결 주체", () => {
     const outcome = await call("whoami", await subjectOf(access), {});
     const { expiresAt } = await prisma.oAuthConnection.findUniqueOrThrow({ where: { id } });
     expect(outcome).toMatchObject({ status: "ok", data: { token: { expiresAt: expiresAt.toISOString() } } });
+  });
+});
+
+/**
+ * **적재 lease 중 `set_translations`** (sync-lock C4) — 실제 코어·잠금·결과 변환까지. 에이전트가 받는 출력이 `sync-running` + `retryable` + 다시
+ * 열리는 시각이고, 모르는 코드로 접혀 `unavailable`이 되지 않는다. 번역·사건은 그대로다.
+ */
+describe("적재 lease 중 set_translations", () => {
+  const entries = [{ keyId: "k1", changes: [{ localeCode: "ko", value: "새 값" }] }];
+
+  it("호출 전체가 sync-running(retryable · 시각)이고 아무것도 안 쓴다 — lease가 풀리면 같은 호출이 저장한다", async () => {
+    const subject = await token("editor");
+    const startedAt = new Date(Date.now() - 100_000);
+    await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: "live", repositoryImportStartedAt: startedAt } });
+    const refused = toToolResult(await call("set_translations", subject, { slug: "p", surfaceSlug: "default", entries }));
+    expect(refused.isError).toBe(true);
+    expect(refused.structuredContent).toEqual({
+      status: "sync-running", message: expect.any(String), retryable: true,
+      startedAt: startedAt.toISOString(), reopensBy: expect.stringMatching(/:00\.000Z$/),
+    });
+    expect(Date.parse(refused.structuredContent.reopensBy as string)).toBeGreaterThan(startedAt.getTime() + 300_000);
+    expect(await koValue()).toBe("안녕");
+    expect(await events()).toBe(0);
+
+    await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: null, repositoryImportStartedAt: null } });
+    expect(toToolResult(await call("set_translations", subject, { slug: "p", surfaceSlug: "default", entries })).isError).toBe(false);
+    expect(await koValue()).toBe("새 값");
   });
 });

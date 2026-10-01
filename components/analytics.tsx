@@ -8,7 +8,7 @@ import { redactAnalyticsEvent } from "@/lib/seo/analytics";
  * Vercel Web Analytics (seo-geo T10). ⚠️ **래퍼가 필요한 이유** — 루트 레이아웃은 서버 컴포넌트라 `beforeSend`(함수)를 넘길 수
  * 없다. 함수는 RSC 경계를 못 넘고, 그 위반은 `next build`만 잡는다.
  *
- * ⚠️ **루트에 둔다** — 추적 경로(`/`·`/signin`·`/docs`·`/privacy`)에 공통 레이아웃 세그먼트가 없다. 그래서 앱 화면에서도 로드되고
+ * ⚠️ **루트에 둔다** — 추적 경로(정본은 `lib/seo/analytics.ts`의 정규식)에 공통 레이아웃 세그먼트가 없다. 그래서 앱 화면에서도 로드되고
  * **허용 목록이 유일한 거름망**이다. 쿠키를 쓰지 않는다(`/privacy` 쿠키 절이 참으로 남는 근거).
  *
  * ⚠️ **개발 서버에서는 렌더하지 않는다** — dev 모드의 패키지는 `va.vercel-scripts.com` 디버그 스크립트를 부르는데 CSP

@@ -161,6 +161,11 @@ const RING_FIXTURE_EXEMPT = [
    * 받는 `<div role="separator" tabindex="0">`이라 그 넷 중 어느 것도 아니어서다.
    */
   "components/ui/resizable.tsx",
+  /**
+   * Radix가 아니다 — 링은 Tab을 받는 `<pre tabIndex={0}>` 스크롤 region의 것이고, 아래 "`tabIndex={0}`을 든 여는 태그" 검사가
+   * 그 태그를 센다. Copy는 `Button`이라 자기 링을 든다(dialog·modal과 같은 사정). 2026-10-01 `docs/`에서 `ui/`로 옮기며 이 스캔에 들어왔다.
+   */
+  "components/ui/code-block.tsx",
 ];
 
 describe("포커스 링 (DESIGN §7)", () => {

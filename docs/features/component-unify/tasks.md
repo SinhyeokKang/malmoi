@@ -10,7 +10,21 @@
 
 ## 0. 착수 전
 
-- **T0** 재조사 — 전제: `test ! -d docs/features/ux-drift-unify`(ux-drift T31 완료).
+> ⚠️ **선행 — translation-tree-range(TTR)가 dev에 들어간 뒤 착수한다** (2026-10-02 지휘자 메모). TTR이 이 계획의 재료 파일을 고쳤다 — T0 재조사가 아래를
+> 반드시 다시 센다(이 계획의 file:line·소비자 수는 TTR 전 값이다).
+> - **`filter-menu.tsx`**: `align` prop 신설(오른쪽 끝 트리거 = `end`). 번역 툴바의 필터가 사라지고 Status가 **키 목록 머리 오른쪽**(`size="sm"`)으로 갔다 —
+>   design §4.1 FieldTrigger 행의 "md 소비자 3, sm 1"과 T19a [수동]의 "번역 툴바(필터 트리거와 Select가 나란한 자리)"가 낡았다. FieldTrigger가 `align`을 삼키지 않게 한다.
+> - **`components/ui/dropdown-menu.tsx`**: `DropdownMenuContent`가 `collisionPadding = 8`을 기본으로 든다. 형제인 `SelectContent`(`ui/select.tsx`)엔 없다 —
+>   팝업 배치 형(§6.3 placement)을 맞출 때 같이 본다.
+> - **`ListItemButton`**: `disabled`면 hover 면이 없다(TTR r1). ListRow가 흡수할 때 이 동작을 잃지 않는다.
+> - **`tree-panel.tsx`**: `All sources` 노드 · 범위 `aria-current="true"` / 위치 `aria-current="location"`(면 없음) · 검색 중 0 노드 `disabled`. 손 검색 칸(`tree-panel:51`)의 줄 번호가 바뀌었다.
+> - **`key-list.tsx`**: 머리에 필터 슬롯·`data-panel=list`. `key-list:89`(아이콘 버튼 손 조립)·`:126`(ListItemButton) 줄 번호를 다시 잡는다.
+> - **`SearchInput`**: 번역 툴바가 검색 하나(왼쪽 정렬)이고 label(`Search keys`)과 placeholder(`Search all sources…`)가 갈렸다. T19a의 지우기(`onSearch("")`)와 함께
+>   **Esc를 같은 동작으로 묶을지**를 정한다(지금 크롬 Esc는 칸만 비운다 — S12와 같은 결함).
+> - **`workspace.tsx`**: 이 계획이 인용한 줄 번호(`:747` · `:854` · `:932` · `:938`)가 전부 움직였다.
+
+
+- **T0** 재조사 — 전제: `test ! -d docs/features/ux-drift-unify`(ux-drift T31 완료) · `test ! -d docs/features/translation-tree-range`(TTR T12 완료 — 위 메모).
   - design §9 명령을 다시 돌려 표·spec·design 수치를 갱신한다. ux-drift가 이미 해소한 행(닫기 버튼 · Sources hover · 배지 글리프 · 철자 5-Y8 · 행 패딩 4-W3 등)은 지운다.
   - ux-drift 산출물(S4 — Meter · SecretField · Facts · ErrorState/404 · FieldError · `StatusBadge` 화면 소비자)이 코드에 있는지 확인하고 §4 행의 file:line을 채운다. 없으면 멈추고 사용자에게 묻는다.
   - design §8 "남은 T0 판정" 다섯을 채운다(`width` 값 목록 · 상태/중립 이름 · 확정 토큰 이름 · §6.3 "T0" 칸 · placement 형별 소비자 수).

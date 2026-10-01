@@ -7,9 +7,9 @@ import type { RepositoryImportError } from "./result";
  *
  * ⚠️ **tone과 `dismissible`의 판정 기준이 다르다** — 아래 타입의 주석이 근거다.
  *
- * ⚠️ **거부는 Alert이고 Dialog 안이 아니다** — 게이트 여섯은 확인을 누른 **뒤**에 돌므로, 답을
- * Dialog 안에 띄우면 이미 답한 질문 위에 새 문장이 얹히고 사람이 "닫아도 되는지"를 다시 판단해야
- * 한다. 결과와 거부가 같은 한 자리에 서서 한 번 누른 일의 답이 두 곳에 나지 않는다.
+ * ⚠️ **거부는 Sync Dialog 본문의 Alert다** (2026-10-01 sync-lock — 옛 판은 "Dialog 안이 아니다"였다). 진행·결과가 같은 Dialog로
+ * 들어가며 확인 질문(설명문·위험 블록)은 결과 단계에서 걷히므로 이미 답한 질문 위에 문장이 얹히지 않는다. 결과와 거부가 같은 한
+ * 자리에 서는 것은 그대로다. `dismissible`은 Dialog 안에서 [Try again]이 서는지를 가른다(`SyncResult`).
  *
  * ⚠️ **아래 넷은 `[Sync]`에서 도달할 수 없다** (2026-09-16 브라우저 실측 · T11). 전에 이 주석은
  * *"사전 비활성화를 만들지 않는다 — `not-ready`·`not-connected`는 렌더 시점에 알 수 있지만 그것으로
@@ -19,7 +19,7 @@ import type { RepositoryImportError } from "./result";
  *   대신 뜬다. 거기엔 `[Sync]`가 없다(`[Run first import]`뿐). `lastCommitSha`를 **null로 되돌리는
  *   코드가 없어서**(`lib/push/apply.ts`가 세우기만 한다) 한 번 `ready`가 된 프로젝트는 여기 못 온다.
  * - `unpinned`·`repo-replaced` — `planHomeState`가 둘을 `not_connected` 하나로 접고, Home의
- *   `paused`가 트리거를 native `disabled`로 만든다(`app/(edit)/projects/[slug]/(home)/page.tsx`).
+ *   `paused`가 트리거를 `aria-disabled`로 막는다(`app/(edit)/projects/[slug]/(home)/page.tsx` → `components/home/sync-button.tsx`).
  *
  * **손실은 아니다** — 그 화면은 `not_connected` 배너가 `[Reconnect]`를 들어 아래 `action`이 하려던
  * 일을 이미 한다. **계획을 지우지도 않는다**: Action은 경합(렌더 후 상태가 바뀜)에서 여전히 이 코드를

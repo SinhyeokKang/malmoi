@@ -34,7 +34,7 @@ function deferred<T>() { let resolve!: (x: T) => void; let reject!: (x: unknown)
 beforeEach(() => { vi.clearAllMocks(); mocks.preview.mockResolvedValue(ok(preview)); mocks.pull.mockResolvedValue({ status: "skipped", reason: "no-edits" }); });
 describe.each(["translations", "home"])("%s 호스트", kind => {
 function Host({ count = 1, role = "EDITOR" }: { count?: number; role?: "OWNER" | "EDITOR" }) {
-  if (kind === "home") return <HomeActions slug="acme"><HomeTitle archived={false}>Host</HomeTitle>
+  if (kind === "home") return <HomeActions slug="acme" writeLock={null}><HomeTitle archived={false}>Host</HomeTitle>
     <HomeHeaderActions slug="acme" name="Host" branch="main" role={role} unsent={count} paused={false} />
     <HomeNotices slug="acme" name="Host" branch="main" role={role} state="default" repo={{ owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }} unsent={count} failedSurface={null} reason={null} lastSyncAt={null} now={new Date()} />
   </HomeActions>;

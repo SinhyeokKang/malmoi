@@ -3,9 +3,8 @@ import { lockCredential } from "@/lib/auth/lock";
 import type { Credential } from "@/lib/auth/subject";
 import { recordEvent } from "@/lib/events/record";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
-import { hasActiveImport } from "@/lib/import/plan";
 import { pendingWhere } from "@/lib/protection/where";
-import { STALE_AFTER_SECONDS } from "@/lib/sync/plan";
+import { planWriteLock, STALE_AFTER_SECONDS } from "@/lib/sync/plan";
 import { planKeyRevert, revertSettled, type RevertPlan } from "@/lib/translations/baseline";
 import { revertFingerprint } from "@/lib/translations/context";
 
@@ -22,7 +21,15 @@ import { readDeliveryState } from "./delivery";
  */
 export type RevertTarget = { projectId: string; surfaceId: string; surfaceSlug: string; keyId: string; userId: string };
 
-type Blocked = { status: "blocked"; reason: Exclude<RevertPlan, { ok: true }>["reason"] | "key-unavailable"; localeCodes?: string[] };
+export type RevertBlockReason = Exclude<RevertPlan, { ok: true }>["reason"] | "key-unavailable" | "sync-running";
+
+/**
+ * ⚠️ **적재 lease는 `busy`가 아니라 `sync-running`이다** (sync-lock R2) — 저장 거부와 같은 판정(`planWriteLock`)·같은 다시 열리는 시각이다.
+ * `busy`는 Publish RUNNING 갈래만 남는다.
+ */
+type Blocked =
+  | { status: "blocked"; reason: Exclude<RevertBlockReason, "sync-running">; localeCodes?: string[] }
+  | { status: "blocked"; reason: "sync-running"; startedAt: Date; reopensBy: Date };
 
 export type RevertPreview = { status: "ready"; locales: { code: string; before: string; after: string }[]; confirmation: string } | Blocked;
 export type RevertResult = { status: "reverted"; cells: { localeCode: string; value: string }[] } | { status: "reconfirm" } | Blocked
@@ -46,7 +53,7 @@ async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): 
   });
   const baselines = await tx.translationBaseline.findMany({ where: { projectId, surfaceId, keyId }, select: { localeCode: true, restoreValue: true, revision: true } });
   const delivery = await readDeliveryState(tx, projectId, surfaceId);
-  // 실행 흔적은 공통 활성 경계(`isRunActive`)로만 busy다 — 강제 종료가 남긴 RUNNING·import 토큰이 Revert를 영구히 막지 않는다(감사 #9).
+  // 실행 흔적은 공통 활성 경계(`isRunActive`)로만 막는다 — 강제 종료가 남긴 RUNNING·import 토큰이 Revert를 영구히 막지 않는다(감사 #9).
   const now = new Date();
   // `isRunActive`와 같은 창이다(같은 `STALE_AFTER_SECONDS`, 경계 정각은 활성) — 쿼리에 싣느라 인라인으로 풀었다.
   const activeSince = new Date(now.getTime() - STALE_AFTER_SECONDS * 1000);
@@ -64,6 +71,10 @@ async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): 
     select: { startedAt: true },
   });
 
+  // 실행 경로에서는 `Project` 잠금 뒤에 읽은 lease다(`executeKeyRevert`) — 저장 거부와 같은 자리·같은 판정이다.
+  const lock = importing === null ? null : planWriteLock({ now, ...importing });
+  if (lock !== null) return { ok: false, blocked: { status: "blocked", reason: lock.reason, startedAt: lock.startedAt, reopensBy: lock.reopensBy } };
+
   const cells = targets.flatMap(t => t.pendingEditToken === null ? [] : [{ localeCode: t.localeCode, token: t.pendingEditToken, currentValue: t.value, needsReview: t.needsReview }]);
   const plan = planKeyRevert({
     targets: cells,
@@ -75,7 +86,7 @@ async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): 
     },
     canRevert: true,
     draftDirty: false,
-    busy: running > 0 || (importing?.repositoryImportToken != null && hasActiveImport(importing.repositoryImportStartedAt, now)),
+    busy: running > 0,
   });
   if (!plan.ok) {
     const blocked: Blocked = { status: "blocked", reason: plan.reason };

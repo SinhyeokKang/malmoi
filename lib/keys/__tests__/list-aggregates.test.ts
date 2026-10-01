@@ -51,7 +51,7 @@ it.each([1, 5, 40])("프로젝트가 %i개여도 집계는 다섯 번이다", as
 it("프로젝트가 0개면 아무것도 조회하지 않는다", async () => {
   const got = await loadProjectListAggregates(db, []);
   expect(calls()).toBe(0);
-  expect(got).toEqual({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map() });
+  expect(got).toEqual({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() });
 });
 
 it("모든 조회가 인가된 id 집합으로 좁혀진다 — 테넌트 간 유출 경로가 여기다", async () => {

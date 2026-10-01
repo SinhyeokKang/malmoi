@@ -28,6 +28,8 @@ const EXPECTED_MESSAGE: Record<ToolRejection, string> = {
   "invalid-input": m.mcp.errors["invalid-input"],
   "too-many": m.mcp.errors["too-many"](100),
   "duplicate-key": m.mcp.errors["duplicate-key"],
+  // 적재 lease 중 번역 쓰기 거부(sync-lock C4) — Sync 결과 화면의 문장이다. 다시 열리는 시각은 `detail`이 든다.
+  "sync-running": m.repositorySync.errors["already-running"],
 };
 
 describe("toToolResult — 성공", () => {
@@ -52,10 +54,10 @@ describe("toToolResult — 거부", () => {
     expect(result.structuredContent).toMatchObject({ status, message });
   });
 
-  it("unavailable만 retryable: true를 싣는다", () => {
+  it("unavailable·sync-running만 retryable: true를 싣는다", () => {
     for (const status of TOOL_REJECTIONS) {
       const result = toToolResult({ status });
-      if (status === "unavailable") expect(result.structuredContent.retryable).toBe(true);
+      if (status === "unavailable" || status === "sync-running") expect(result.structuredContent.retryable, status).toBe(true);
       else expect("retryable" in result.structuredContent, status).toBe(false);
     }
   });
@@ -131,6 +133,22 @@ describe("toToolResult — refused(코어 거부 코드)", () => {
 
   it("unavailable은 refused로 와도 retryable이다", () => {
     expect(toToolResult({ status: "refused", code: "unavailable" }).structuredContent).toMatchObject({ status: "unavailable", retryable: true });
+  });
+
+  /**
+   * **sync-running은 거부지만 기다리면 풀린다** (sync-lock C4) — `retryable: true`와 다시 열리는 시각(`detail`)을 함께 싣는다. 모르는 코드로
+   * 접혀 `unavailable`이 되면 에이전트가 "장애"로 읽고 시각을 잃는다.
+   */
+  it("sync-running은 refused로 와도 retryable이고 detail의 시각을 싣는다 — unavailable로 접히지 않는다", () => {
+    const detail = { startedAt: "2026-10-01T16:30:12.345Z", reopensBy: "2026-10-01T16:36:00.000Z" };
+    const result = toToolResult({ status: "refused", code: "sync-running", detail });
+    expect(result).toEqual({
+      isError: true,
+      content: [{ type: "text", text: m.repositorySync.errors["already-running"] }],
+      structuredContent: { ...detail, status: "sync-running", message: m.repositorySync.errors["already-running"], retryable: true },
+    });
+    // 호출부가 화면 문장을 골라 넘겨도(Revert) 재시도 표시는 코드가 정한다.
+    expect(toToolResult({ status: "refused", code: "sync-running", message: "x", detail }).structuredContent).toMatchObject({ status: "sync-running", retryable: true, ...detail });
   });
 
   it("어느 사전에도 없는 코드·프로토타입 이름은 unavailable로 접힌다 — 코드 원문을 싣지 않는다", () => {

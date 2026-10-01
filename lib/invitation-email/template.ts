@@ -20,8 +20,9 @@
  * `overflow:hidden`은 넘치는 자리표시를 막는다(메일 클라이언트마다 지원이 갈린다 — 1차 방어는 중첩 표다).
  */
 /**
- * 썸네일 갈래. ⚠️ **width·height 속성이 없다** — `normalizeImage`가 `fit: "inside"`라 가로·세로로 긴 것이
- * 오고 메일은 `object-fit`을 무시한다. `width="32"`를 두면 세로로 긴 이미지가 `max-height`에 눌려 찌그러진다.
+ * 썸네일 갈래. ⚠️ **width·height 속성이 없다** — `max-width`·`max-height` 32가 크기를 든다. 지금 원본은 메일 경로
+ * (`/api/images/email/…` — `emailThumbnailPng`)가 96 정사각 PNG로 주지만, 그 전엔 `normalizeImage`(`fit: "inside"`)의 긴 원본이
+ * 와서 `width="32"`가 그것을 `max-height`에 눌러 찌그러뜨렸다(메일은 `object-fit`을 무시한다).
  * radius는 `<img>`에 건다(Gmail은 `<td>` radius가 자식을 자르지 않는다). 셀에 색을 깔지 않는다 — 투명
  * 이미지의 배경이 프로젝트마다 달라지면 안 된다(`ImageTile`과 같은 판정). `alt=""`는 이름이 바로 옆이라서다.
  */

@@ -38,7 +38,7 @@ export default async function SettingsPage({ params, searchParams }: { params: P
     name: true, image: true, repoOwner: true, repoName: true, installationId: true, repositoryId: true,
     surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" } }, baseBranch: true, archivedAt: true,
   } });
-  if (project === null) redirect(`${routes.projects()}?e=not-found`);
+  if (project === null) redirect(routes.projects({ e: "not-found" }));
   /*
     ⚠️ **셋 다 await하지 않는다** (audit-ux #8) — 전부 GitHub 왕복이고(연결 확인은 설치 조회·토큰·리포 조회), 쓰는
     자리는 연결 카드의 세 줄과 보관 Dialog의 한 줄뿐이다. promise로 내려 그 자리만 Suspense 뒤에서 도착하게 한다 —

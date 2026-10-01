@@ -6,6 +6,7 @@ import type { LockedAccess } from "@/lib/auth/access";
 import { lockProjectAccess } from "@/lib/auth/lock";
 import type { Credential } from "@/lib/auth/subject";
 import { recordEvents } from "@/lib/events/record";
+import { planWriteLock, type WriteLock } from "@/lib/sync/plan";
 import { planBaselineOnSave } from "@/lib/translations/baseline";
 
 import { publishInFlight, readDeliveryState } from "./delivery";
@@ -20,17 +21,34 @@ import { planKeySave, type KeySavePlan } from "./save";
  * ⚠️ `server-only`를 붙이지 않는다 — 격리 PG 통합 테스트가 직접 부른다.
  * ⚠️ **인가는 잠금 뒤 한 번 더 본다** (감사 #10) — Action 입구 판정 뒤 적재 잠금을 최대 30초 기다리는 동안 제거된 EDITOR의
  *   저장·사건이 커밋되면 안 된다.
+ * ⚠️ **적재 lease가 살아 있으면 쓰지 않는다** (sync-lock) — 판정은 인가 뒤, 같은 잠금 안에서 읽은 lease다(`readWriteLock`).
  */
 export type KeySaveResult =
   | { ok: true; keyId: string; cells: { localeCode: string; value: string }[] }
   | Exclude<KeySavePlan, { ok: true }>
   | { ok: false; error: "key-unavailable" }
+  | SyncRunning
   | { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] };
+
+/** 적재 lease 중 거부 — 배치 전체의 판정이라 키별 결과(`KeyEntryResult`)에는 없다(sync-lock C4). 시각은 `planWriteLock`이 낸 값 그대로다. */
+export type SyncRunning = { ok: false; error: WriteLock["reason"] } & Omit<WriteLock, "reason">;
 
 type KeyChanges = readonly { localeCode: string; value: string }[];
 type KeySaveTarget = { projectId: string; surfaceId: string; surfaceSlug: string; userId: string; credential: Credential | undefined };
-/** 잠금 뒤 인가를 지난 한 키의 결과 — 접근 거부는 배치 전체의 결과라 여기 없다. */
-export type KeyEntryResult = Exclude<KeySaveResult, { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] }>;
+/** 잠금 뒤 인가·lease를 지난 한 키의 결과 — 접근 거부·`sync-running`은 배치 전체의 결과라 여기 없다. */
+export type KeyEntryResult = Exclude<KeySaveResult, { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] } | SyncRunning>;
+
+/**
+ * 잠금 **뒤에** lease를 읽는다 (POSTMORTEM 2026-09-13 — 잠금 전에 읽은 값으로 판정하지 않는다). 적재의 `acquire`가 같은 `Project FOR UPDATE` 안에서
+ * lease를 세우므로 둘은 직렬이다 — 저장이 먼저면 적재가 지문 재확인으로 잡고, 적재가 먼저면 여기서 거부된다.
+ * ⚠️ `lockProjectAccess`의 select를 넓히지 않는다 — 공유 계약이라 따로 한 번 읽는다(키 수와 무관한 상수 왕복).
+ * ⚠️ 수동 Sync·야간 적재 자신의 쓰기는 `applyPushInTransaction`을 지나 여기를 안 지난다 — 자기 lease에 막히지 않는다.
+ */
+async function readWriteLock(tx: Prisma.TransactionClient, projectId: string): Promise<SyncRunning | null> {
+  const project = await tx.project.findUnique({ where: { id: projectId }, select: { repositoryImportToken: true, repositoryImportStartedAt: true } });
+  const lock = project === null ? null : planWriteLock({ now: new Date(), ...project });
+  return lock === null ? null : { ok: false, error: lock.reason, startedAt: lock.startedAt, reopensBy: lock.reopensBy };
+}
 
 export async function applyKeySave(
   prisma: PrismaClient,
@@ -40,6 +58,8 @@ export async function applyKeySave(
   return prisma.$transaction(async (tx) => {
     const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId, credential });
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
+    const lock = await readWriteLock(tx, projectId);
+    if (lock !== null) return lock;
     const [result] = await saveKeysLocked(tx, input, [{ keyId: input.keyId, changes: input.changes }]);
     return result!;
   }, { maxWait: 10_000, timeout: 30_000 });
@@ -47,12 +67,13 @@ export async function applyKeySave(
 
 export type KeyBatchSaveResult =
   | { ok: true; results: { keyId: string; result: KeyEntryResult }[] }
+  | SyncRunning
   | { ok: false; error: Exclude<LockedAccess, { status: "ok" }>["status"] };
 
 /**
  * **여러 키를 한 잠금·한 트랜잭션으로 저장한다** (mcp-connector design §2.2 — `set_translations`). 잠금·인가 재확인은 배치에 한 번이고
  * 키마다 `applyKeySave`와 같은 판정(`saveKeysLocked`)을 돌려 결과를 입력 순서대로 모은다. **거부된 키는 그 키만 건너뛴다** — 일부 키의
- * 거부가 정상 결과다. DB 실패는 던지고 앞 키까지 전부 롤백된다.
+ * 거부가 정상 결과다. DB 실패는 던지고 앞 키까지 전부 롤백된다. **적재 lease 거부(`sync-running`)는 배치 전체다** — 키별 거부가 아니다(sync-lock C4).
  *
  * ⚠️ 키별 tx가 아닌 이유: 잠금 tx 실측이 키당 0.5–0.7초라 100키가 60초 안에 못 든다. 한 tx 안의 읽기는 상수 번이다(`saveKeysLocked` — #145).
  * ⚠️ 상한·중복 키 거부는 호출자의 입력 검증이다(`planBatchSave`) — 여기는 검증된 목록을 받는다.
@@ -65,6 +86,8 @@ export async function applyKeySaveBatch(
   return prisma.$transaction(async (tx) => {
     const locked = await lockProjectAccess(tx, { projectId, userId, permission: "translation:write", surfaceId, credential });
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
+    const lock = await readWriteLock(tx, projectId);
+    if (lock !== null) return lock;
     const results = await saveKeysLocked(tx, input, input.entries);
     return { ok: true, results: input.entries.map((entry, index) => ({ keyId: entry.keyId, result: results[index]! })) } as const;
   }, { maxWait: 10_000, timeout: 30_000 });

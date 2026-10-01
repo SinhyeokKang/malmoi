@@ -130,8 +130,9 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
       : routes.surfaceTranslations(slug, item.surfaceSlug, item.kind === "review"
           // 그 로케일의 검토 대기 — 상세 언어를 그 로케일로 좁힌다(translation-rework T12).
           ? { ns: ALL_NAMESPACES, state: "review", language: item.code }
-          // 그 로케일이 비어 있는 키 — `Missing in {locale}`이 정확히 그 뜻이다.
-          : { ns: ALL_NAMESPACES, completion: "missing", missingLocale: item.code });
+          // 그 로케일이 비어 있는 키 — `Incomplete` + 상세 언어 그 로케일이다(translation-tree-range — `Untranslated in` 목록 필터가 사라졌다).
+          // 다른 로케일만 빈 키가 섞이는 것은 사용자가 수용한 대가다(spec "잃는 것").
+          : { ns: ALL_NAMESPACES, completion: "incomplete", language: item.code });
   // 실패 칩의 톤은 코드가 정한다 — 일부 반영은 호박(2026-09-30 상태 통일).
   const tile = item.kind === "import_failed" && importFailureTone(item.reason) === "warning" ? PARTIAL_TILE : TILE[item.kind];
   const Tile = tile.icon;

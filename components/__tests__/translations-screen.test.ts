@@ -41,6 +41,8 @@ const WORKSPACE_LOCALE = "components/translations/workspace/locale-panel.tsx";
 /** 세 패널의 나머지 조각 — live region·`<main>` 검사가 파일 전수를 본다. */
 const WORKSPACE_PARTS = ["tree-panel", "key-list", "filter-menu"].map(name => `components/translations/workspace/${name}.tsx`);
 const BANNER = "components/translations/edit-loss-banner.tsx";
+/** sync-lock — 착지 배너는 상시 상태, 거부 Dialog는 `role="dialog"`라 둘 다 live 영역을 더하지 않는다(live region 수 불변). */
+const SYNC_LOCK = "components/translations/sync-lock.tsx";
 const PUBLISH = "components/publish-button.tsx";
 const LOCALE_BADGE = "components/translations/locale-badge.tsx";
 const PANEL = "components/shell/content-panel.tsx";
@@ -98,7 +100,7 @@ describe("Publish — 결과가 모달 갈래 열하나로 가는 길이 한 줄
 
 describe("live region — 표 하나에 하나다 (DESIGN §7)", () => {
   it("작업 화면 밖의 조각에는 `aria-live`가 없다 — 로케일 200개면 행마다 두는 순간 200개다", () => {
-    for (const path of [PAGE, BANNER, PUBLISH, LOCALE_BADGE, ...WORKSPACE_PARTS]) {
+    for (const path of [PAGE, BANNER, SYNC_LOCK, PUBLISH, LOCALE_BADGE, ...WORKSPACE_PARTS]) {
       expect(read(path), path).not.toMatch(/aria-live/);
     }
     expect(read(WORKSPACE_LOCALE)).not.toMatch(/role="status"/);
@@ -376,6 +378,6 @@ describe("번역 화면 — 연결 판정", () => {
     // 도착은 effect 구독이다 — `use()`는 전환을 GitHub probe에 붙잡는다(U7 r1).
     expect(workspace).toContain("useArrived(props.connection.later, `${slug}/${routeSurfaceSlug}`)");
     expect(workspace).not.toMatch(/\buse\(/);
-    expect(workspace).toContain("paused={!availability.sync || publish.pending}");
+    expect(workspace).toContain("paused={!syncAvailable || publish.pending}");
   });
 });

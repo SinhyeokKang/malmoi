@@ -244,3 +244,17 @@ describe("바닥의 액션 무리 (#87)", () => {
     expect(footer().children).toHaveLength(1);
   });
 });
+
+/** #169 — 같은 부류: `closeDisabled` 동안 오버레이 mousedown이 포커스를 `body`로 떨어뜨리지 않는다(기본 동작을 막는다). 짝: 열려 있으면 막지 않는다. */
+describe("OnboardingModal — closeDisabled 동안 오버레이", () => {
+  const overlay = () => [...document.querySelectorAll<HTMLElement>("div[data-state='open']")].find(element => element.getAttribute("role") !== "dialog" && element.querySelector('[role="dialog"]') === null)!;
+  const mousedown = (node: Element) => { const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true }); node.dispatchEvent(event); return event.defaultPrevented; };
+  it("mousedown 기본 동작을 막는다", async () => {
+    await render(shell({ closeDisabled: true }));
+    expect(mousedown(overlay())).toBe(true);
+  });
+  it("닫을 수 있으면 막지 않는다", async () => {
+    await render(shell({ closeDisabled: false }));
+    expect(mousedown(overlay())).toBe(false);
+  });
+});

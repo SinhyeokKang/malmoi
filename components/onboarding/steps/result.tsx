@@ -20,16 +20,7 @@ export function ResultStep({ pushToken, yaml }: { pushToken: string; yaml: strin
       </section>
 
       {/* ⚠️ **워크플로 블록이 남은 높이를 먹는다** — 그래서 토큰 칩이 늘 화면에 남는다. */}
-      <WorkflowBlock
-        yaml={yaml}
-        saveAs={
-          <>
-            {m.newProject.result.workflow.saveAs}{" "}
-            <span className="text-foreground">.github/workflows/malmoi-i18n.yml</span>
-          </>
-        }
-        copyLabel={m.common.copy}
-      />
+      <WorkflowBlock yaml={yaml} />
 
       <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">{m.newProject.result.ingest.refsHint}</p>
     </div>

@@ -43,7 +43,7 @@ it("워크플로 모달에 저장 경로 문장이 한 번만 선다", async () 
   await new Promise((resolve) => setTimeout(resolve, 0));
   const dialog = document.querySelector('[role="dialog"]');
   expect(dialog).not.toBeNull();
-  const count = (dialog?.textContent ?? "").split("Save this in your repository as").length - 1;
+  const count = (dialog?.textContent ?? "").split(m.settings.workflow.saveAs).length - 1;
   expect(count).toBe(1);
 });
 

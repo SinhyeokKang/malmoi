@@ -15,6 +15,7 @@ import { HomeActions, HomeTitle } from "@/components/home/actions";
 import { ProjectList } from "@/components/projects/project-list";
 import type { ProjectListRow } from "@/lib/keys/query";
 import { m } from "@/lib/i18n";
+import { isScreenCanonical, screenQuery } from "@/lib/translations/query";
 
 /**
  * **띠의 역할 분기를 실제로 렌더해서 본다** (DESIGN §6.63).
@@ -57,12 +58,18 @@ const draw = async (over: Partial<ProjectListRow>) => {
 const links = (container: HTMLElement) =>
   [...container.querySelectorAll("a")].map((a) => ({ text: a.textContent?.trim() ?? "", href: a.getAttribute("href") }));
 
+/*
+  띠의 링크는 **그 일이 있는 소스로, 그 Status로 걸러** 간다 (2026-10-02 사용자 — translation-tree-range 결정 기록). 번역 화면의 범위가 트리 위치라
+  필터 없이 가면 그 소스 전체 목록에서 일을 다시 찾아야 한다. `ns=*`는 남긴다(POSTMORTEM 2026-09-15). 만든 주소는 화면 정규형이라 redirect가 없다.
+*/
 it.each([
-  ["review", { review: 88 }, m.projects.banner.action.review, "/projects/acme/surfaces/default/translations"],
-  ["unsent", { unsent: 24 }, m.projects.banner.action.send, "/projects/acme/surfaces/default/translations"],
-])("%s 띠가 번역 화면으로 보낸다", async (_label, over, label, href) => {
-  const found = links(await draw(over)).find((a) => a.text === label);
+  ["review", { review: 88 }, m.projects.banner.action.review, "/projects/acme/surfaces/web/translations?ns=*&state=review"],
+  ["unsent", { unsent: 24 }, m.projects.banner.action.send, "/projects/acme/surfaces/app/translations?ns=*&state=unsent"],
+])("%s 띠가 그 소스의 번역 화면을 그 Status로 걸러 보낸다", async (_label, over, label, href) => {
+  const found = links(await draw({ ...over, reviewSurfaceSlug: "web", unsentSurfaceSlug: "app" })).find((a) => a.text === label);
   expect(found?.href).toBe(href);
+  const raw = Object.fromEntries(new URL(found!.href!, "http://x").searchParams);
+  expect(isScreenCanonical(raw, screenQuery(raw))).toBe(true);
 });
 
 /** ⚠️ **외부로 나가는 둘은 새 탭이다** — 목적지가 GitHub이라 이 앱의 라우트가 아니다. */
@@ -142,7 +149,7 @@ it("띠 링크가 행 링크 안에 있지 않다", async () => {
 
 it.each(["Acme", "말모이", "Example"])("%s 프로젝트의 목록과 상세 썸네일 배경·모서리가 같다", async (name) => {
   const list = await draw({ name });
-  const home = await render(<HomeActions slug="acme"><HomeTitle archived={false}>{name}</HomeTitle></HomeActions>);
+  const home = await render(<HomeActions slug="acme" writeLock={null}><HomeTitle archived={false}>{name}</HomeTitle></HomeActions>);
   const listTile = list.querySelector("svg.lucide-box")?.parentElement;
   const homeTile = home.container.querySelector("svg.lucide-box")?.parentElement;
   expect(listTile).not.toBeNull();
@@ -154,7 +161,7 @@ it.each(["Acme", "말모이", "Example"])("%s 프로젝트의 목록과 상세 �
 it.each(["/saved.webp", "/replacement.webp", null])("목록·Home·초대에 최신 프로젝트 이미지 %s를 전달한다", async image => {
   const { InviteProjectCard } = await import("@/components/invite/project-card");
   const list = await draw({ image });
-  const home = await render(<HomeActions slug="acme"><HomeTitle archived={false} image={image}>Acme</HomeTitle></HomeActions>);
+  const home = await render(<HomeActions slug="acme" writeLock={null}><HomeTitle archived={false} image={image}>Acme</HomeTitle></HomeActions>);
   const invite = await render(<InviteProjectCard name="Acme" role="Editor" locales={[]} image={image} />);
   for (const node of [list, home.container, invite.container]) {
     expect(node.querySelector("img")?.getAttribute("src") ?? null).toBe(image);
@@ -175,7 +182,7 @@ it.each(["list", "home", "invite"])("%s의 이미지 로드 실패는 이름 색
   const { act } = await import("react");
   const src = "https://store.public.blob.vercel-storage.com/projects/p/gone.webp";
   const container = where === "list" ? await draw({ image: src })
-    : where === "home" ? (await render(<HomeActions slug="acme"><HomeTitle archived={false} image={src}>Acme</HomeTitle></HomeActions>)).container
+    : where === "home" ? (await render(<HomeActions slug="acme" writeLock={null}><HomeTitle archived={false} image={src}>Acme</HomeTitle></HomeActions>)).container
     : (await render(<InviteProjectCard name="Acme" role="Editor" locales={[]} image={src} />)).container;
   const image = container.querySelector("img")!;
   expect(image).not.toBeNull();

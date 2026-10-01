@@ -301,3 +301,19 @@ describe("get_project — connection 출력 불변", () => {
     expect(outcome.status === "ok" && outcome.data.connection).toBe("ok");
   });
 });
+
+/**
+ * **preview_revert의 lease 갈래** (sync-lock R2) — 막힌 갈래는 미리보기의 답(`ok`)이지만, `sync-running`이면 다시 열리는 시각을 함께 싣는다.
+ * 실행(`revert_to_last_sent`)이 같은 시각을 싣는데 미리보기만 빠지면 에이전트가 언제 다시 볼지 모른다. 시각은 JSON이라 ISO 문자열이다.
+ */
+describe("preview_revert — sync-running", () => {
+  it("lease 중이면 revertable false · reason sync-running · startedAt·reopensBy(ISO)를 싣는다 (다른 막힘은 시각이 없다)", async () => {
+    h.previewRevert.mockResolvedValueOnce({ status: "blocked", reason: "sync-running", startedAt: new Date("2026-10-01T16:30:12.345Z"), reopensBy: new Date("2026-10-01T16:36:00.000Z") });
+    expect(await call("preview_revert", subject("owner", ["project:settings"]), { ...SURFACE, keyId: "k1" })).toMatchObject({
+      status: "ok", data: { revertable: false, reason: "sync-running", startedAt: "2026-10-01T16:30:12.345Z", reopensBy: "2026-10-01T16:36:00.000Z" },
+    });
+    h.previewRevert.mockResolvedValueOnce({ status: "blocked", reason: "busy" });
+    const busy = await call("preview_revert", subject("owner", ["project:settings"]), { ...SURFACE, keyId: "k1" });
+    expect(busy.status === "ok" && busy.data).toEqual({ revertable: false, reason: "busy" });
+  });
+});

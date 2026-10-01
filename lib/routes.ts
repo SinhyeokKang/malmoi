@@ -122,8 +122,10 @@ export const routes = {
    *
    * ⚠️ **`q`는 이름 검색이다** (2026-09-11) — 번역 화면의 `q`와 이름은 같지만 대상이 다르다
    * (그쪽은 키 + 값, 여기는 프로젝트 이름 하나).
+   *
+   * `e`는 프로젝트 화면이 목록으로 돌려보낼 때의 거부 사유다(`requireProjectAccess` · 프로젝트를 못 찾은 페이지).
    */
-  projects: (query: { q?: string } = {}): string => withQuery("/projects", query),
+  projects: (query: { q?: string; e?: string } = {}): string => withQuery("/projects", query),
   /**
    * 새 프로젝트 모달의 **딥링크** (DESIGN §6.7). `/projects` 위에 모달이 열린 주소이고,
    * 그래서 목록과 **같은 쿼리**를 받는다 — 뒤 목록이 열기 직전과 같아야 하고, 닫으면 그 값을 들고

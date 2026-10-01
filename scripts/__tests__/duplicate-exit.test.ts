@@ -65,6 +65,20 @@ it("code-dict 중복 프로퍼티는 경고 한 줄과 함께 exit 0이고 적�
   expect(result.out).toMatch(/src\/locale\/en\.ts {2}a — /);
 }, 60000);
 
+/**
+ * **`unmanaged`도 red가 아니다** (2026-10-01 doc-check C2 사용자 판정 · ARCHITECTURE §1 "read 오류의 두 갈래"). surgical writer가
+ * 파일에 그대로 남기는 값(코드의 식·YAML 숫자)이라 잃는 번역이 없다 — 서버 적재가 통과시키는 항목으로 대상 리포 CI를 막지 않는다.
+ */
+it.each([
+  ["code-dict 비리터럴 값", { "src/locale/en.ts": "const x = 'X';\nexport default {\n  a: x,\n  b: 'B',\n}\n", "src/locale/ko.ts": "export default {\n  b: '나',\n}\n" }],
+  ["yaml 숫자 값", { "locales/en.yml": "a: 3\nb: B\n", "locales/ko.yml": "b: 비\n" }],
+])("%s(unmanaged)는 exit 0이고 적재를 보낸다", async (_name, files) => {
+  const url = await fakeServer();
+  const result = await push(fixtureRepo(files), url);
+  expect(result.code, result.out).toBe(0);
+  expect(received).toEqual(["/api/push"]);
+}, 60000);
+
 it.each([
   ["yaml 같은 이름", { "locales/en.yml": "a: one\na: two\nb: B\n", "locales/ko.yml": "a: 하나\nb: 비\n" }],
   ["json 평탄화 충돌", { "locales/en.json": '{"a.b": "flat", "a": {"b": "nested"}, "c": "C"}\n', "locales/ko.json": '{"c": "씨"}\n' }],

@@ -253,3 +253,39 @@ it("DialogContent 소비자가 전부 첫 포커스를 정하고, 손으로 지�
   expect(short).toEqual([]);
   expect(consumers.filter(({ text }) => text.includes("onOpenAutoFocus")).map(({ path }) => path)).toEqual([]);
 });
+
+/**
+ * #169 — 닫기를 막은 동안(`closeDisabled`, Sync 진행) 오버레이를 누르면 Dialog는 안 닫히지만 **브라우저의 mousedown 기본 동작**이 포커스를
+ * 포커스 불가 오버레이로 옮기며 `body`로 떨어뜨렸다(Chromium 실측). Radix의 `onInteractOutside` preventDefault는 닫힘만 막는다.
+ * ⚠️ jsdom은 mousedown의 기본 포커스 이동을 하지 않아 증상 자체는 red가 안 된다 — 그 기본 동작을 막았는지(`defaultPrevented`)를 잰다.
+ */
+function overlay() {
+  const node = [...document.querySelectorAll<HTMLElement>("div[data-state='open']")].find(element => element.getAttribute("role") !== "dialog" && element.querySelector('[role="dialog"]') === null);
+  if (node === undefined) throw new Error("no overlay");
+  return node;
+}
+function mousedown(node: Element) {
+  const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+  node.dispatchEvent(event);
+  return event;
+}
+it("closeDisabled 동안 오버레이의 mousedown 기본 동작을 막아 포커스가 남는다 — 짝: 막지 않으면 오버레이 클릭이 닫는다", async () => {
+  function Host({ locked }: { locked: boolean }) {
+    const [open, setOpen] = useState(true);
+    return <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent title="Syncing" closeDisabled={locked} footer={<Button aria-disabled busy>Run</Button>} />
+    </Dialog>;
+  }
+  const view = await render(<Host locked />);
+  byText("Run").focus();
+  const event = mousedown(overlay());
+  await act(async () => { overlay().dispatchEvent(new Event("pointerdown", { bubbles: true })); });
+  expect(event.defaultPrevented).toBe(true);
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  expect(document.activeElement).toBe(byText("Run"));
+
+  await view.rerender(<Host locked={false} />);
+  expect(mousedown(overlay()).defaultPrevented).toBe(false);
+  await act(async () => { overlay().dispatchEvent(new Event("pointerdown", { bubbles: true })); });
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+});

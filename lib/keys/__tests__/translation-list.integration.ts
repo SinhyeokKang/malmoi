@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
@@ -16,8 +16,21 @@ import {
   resolveKeyIdByName,
   translationLinkFor,
 } from "@/lib/keys/translation-list";
-import { DEFAULT_TRANSLATION_QUERY, type TranslationQuery } from "@/lib/translations/query";
+import { ALL_NAMESPACES, DEFAULT_TRANSLATION_QUERY, screenQuery, serializeScreenQuery, STATUSES, withStatus, type TranslationQuery } from "@/lib/translations/query";
 import { keyMatches, orderKeySummaries, summarizeKey } from "@/lib/translations/summary";
+
+/*
+  실제 번역 페이지(`surfaces/[surfaceSlug]/translations/page.tsx`)를 격리 DB 위에서 부른다 — 인가(`requireSurfaceAccess`)와 DB 핸들(`getPrisma`)만 갈아
+  끼운다. redirect는 던져서 잡고, 클라이언트 화면은 props만 보면 되므로 그리지 않는다.
+*/
+const host = vi.hoisted(() => ({ prisma: null as unknown, redirect: vi.fn((url: string) => { throw new Error(`redirect:${url}`); }) }));
+vi.mock("@/lib/db", () => ({ getPrisma: () => host.prisma }));
+vi.mock("next/navigation", () => ({ redirect: host.redirect, notFound: () => { throw new Error("notFound"); } }));
+vi.mock("@/lib/surfaces/access", () => ({
+  requireSurfaceAccess: async ({ surfaceSlug }: { surfaceSlug: string }) => ({ projectId: "p", surfaceId: `p-${surfaceSlug}`, role: "OWNER", archived: false, userId: "u" }),
+}));
+vi.mock("@/components/translations/workspace/workspace", () => ({ TranslationWorkspace: () => null }));
+import TranslationsPage from "@/app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page";
 
 /**
  * **번역 목록·트리·상세 조회** (translation-rework T9 — spec §3.2·§3.3 · design §2 · §10.2).
@@ -42,6 +55,7 @@ beforeAll(async () => {
   const config = { host: directory, port: PORT, user: "postgres", database: "postgres" };
   pool = new Pool(config);
   prisma = new PrismaClient({ adapter: new PrismaPg(config), log: [] });
+  host.prisma = prisma;
 });
 
 type CellSeed = [locale: string, value: string, opts?: { review?: boolean; pending?: boolean }];
@@ -345,6 +359,65 @@ describe("loadTranslationList — 전량(pageSize: \"all\") (translation-filter-
     await project("z", null);
     const result = await loadTranslationList(prisma, { projectId: "z", routeSurfaceId: "none", query: DEFAULT_TRANSLATION_QUERY, pageSize: "all", selectedKeyId: "w1" });
     expect(result).toMatchObject({ rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, nextCursor: null, selectedInResult: false });
+  });
+});
+
+/*
+  ── 화면 범위 (translation-tree-range §3 · 조건 1·9) ────────────────────────────────────────────
+  **실제 페이지**가 전 소스를 한 번 읽고 범위로 자른 결과(props `list`·`counts`)를, MCP가 쓰는 SQL `scope` 경로(같은 로더에 범위를 넘긴 것)와 대조한다.
+  페이지 조립(자르기·다시 세기·`selectedInResult`·노드 수)을 테스트에서 다시 구현하지 않는다 — 그러면 페이지↔로더 드리프트가 안 보인다.
+*/
+describe("화면 범위 — 실제 페이지가 전 소스를 한 번 읽고 자른다", () => {
+  const NODES: { surfaceSlug: string; surfaceId: string; ns: string }[] = [
+    { surfaceSlug: "web", surfaceId: "p-web", ns: ALL_NAMESPACES }, { surfaceSlug: "web", surfaceId: "p-web", ns: "auth" },
+    { surfaceSlug: "web", surfaceId: "p-web", ns: "common" }, { surfaceSlug: "app", surfaceId: "p-app", ns: ALL_NAMESPACES }, { surfaceSlug: "app", surfaceId: "p-app", ns: "app" },
+  ];
+  type Props = { list: { rows: { keyId: string }[]; matchedKeyCount: number; incompleteKeyCount: number; selectedInResult: boolean | null }; counts: { surfaceSlug: string; namespace: string; count: number }[] | null };
+  const open = async (surfaceSlug: string, raw: Record<string, string | undefined>): Promise<Props> => {
+    host.redirect.mockClear();
+    const page = await TranslationsPage({ params: Promise.resolve({ slug: "p", surfaceSlug }), searchParams: Promise.resolve(raw) });
+    expect(host.redirect, JSON.stringify(raw)).not.toHaveBeenCalled();
+    return (page as unknown as { props: Props }).props;
+  };
+  // 노드를 눌렀을 때의 목록 — 그 노드를 범위로 한 화면 요청값을 SQL scope 경로로 읽는다(독립 경로).
+  const screenAt = (node: (typeof NODES)[number], status: (typeof STATUSES)[number], text: string | undefined) =>
+    withStatus(screenQuery({ ns: node.ns, ...(text === undefined ? {} : { q: text, scope: node.ns === ALL_NAMESPACES ? "source" : "namespace" }) }), status);
+  const sqlRows = async (node: (typeof NODES)[number], status: (typeof STATUSES)[number], text: string | undefined) =>
+    loadTranslationList(prisma, { projectId: "p", routeSurfaceId: node.surfaceId, query: screenAt(node, status, text), pageSize: "all" });
+  const nodeSum = (counts: NonNullable<Props["counts"]>, node: (typeof NODES)[number]) =>
+    counts.filter(c => c.surfaceSlug === node.surfaceSlug && (node.ns === ALL_NAMESPACES || c.namespace === node.ns)).reduce((sum, c) => sum + c.count, 0);
+
+  /*
+    트리 숫자는 **검색만** 따른다(2026-10-02 사용자 — 아래 필터인 Status는 위로 새지 않는다). 검색이 없으면 `counts`는 null(원본 숫자)이고, 검색 중이면
+    노드마다 **Status 없는** 같은 검색의 목록 수다 — 그 기준도 SQL scope 경로로 따로 읽는다.
+  */
+  it.each(STATUSES.flatMap(status => [undefined, "a"].map(text => [status, text] as const)))("Status %s · 검색 %s: 노드마다 페이지 목록 = SQL scope 경로이고, 트리 숫자 = Status 없는 같은 검색의 그 노드 목록 수다", async (status, text) => {
+    const expected = await Promise.all(NODES.map(node => sqlRows(node, status, text)));
+    const searchOnly = await Promise.all(NODES.map(node => sqlRows(node, "all", text)));
+    for (const [index, node] of NODES.entries()) {
+      const sql = expected[index]!;
+      const selected = sql.rows[0]?.keyId;
+      const raw = { ...serializeScreenQuery(screenAt(node, status, text)), ...(selected === undefined ? {} : { key: selected }) };
+      const props = await open(node.surfaceSlug, raw);
+      const where = `${node.surfaceSlug}/${node.ns}`;
+      expect(props.list.rows, where).toEqual(sql.rows);
+      expect(props.list.matchedKeyCount, where).toBe(sql.matchedKeyCount);
+      expect(props.list.incompleteKeyCount, where).toBe(sql.incompleteKeyCount);
+      expect(props.list.selectedInResult, where).toBe(selected === undefined ? null : true);
+      if (text === undefined) { expect(props.counts, where).toBeNull(); continue; }
+      // 범위 밖 노드도 — Status를 끈 채 그 노드를 눌렀을 때의 목록 수다.
+      for (const [other, otherNode] of NODES.entries()) expect(nodeSum(props.counts!, otherNode), `${where} → ${otherNode.surfaceSlug}/${otherNode.ns}`).toBe(searchOnly[other]!.rows.length);
+    }
+  });
+
+  it("전 소스 검색은 두 소스의 일치를 한 목록에 담고, 범위 밖 선택은 결과 밖이며, 다른 테넌트는 섞이지 않는다", async () => {
+    const all = await loadTranslationList(prisma, { projectId: "p", routeSurfaceId: "p-web", query: screenQuery({ q: "a" }), pageSize: "all" });
+    const props = await open("web", { q: "a", key: "a1", keySurface: "app" });
+    expect(props.list.rows).toEqual(all.rows);
+    expect(new Set(props.list.rows.map(row => (row as unknown as { surfaceSlug: string }).surfaceSlug))).toEqual(new Set(["web", "app"]));
+    expect(props.list.rows.some(row => row.keyId === "q1")).toBe(false);
+    // 위치로 좁힌 검색에서 다른 소스의 키는 범위 밖이다 — 로더의 전 소스 값(true)을 그대로 쓰지 않는다(POSTMORTEM 2026-09-23).
+    expect((await open("web", { q: "a", scope: "source", key: "a1", keySurface: "app" })).list.selectedInResult).toBe(false);
   });
 });
 

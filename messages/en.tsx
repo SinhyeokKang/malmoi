@@ -51,12 +51,52 @@ export const en = {
     paused: "Syncing is currently unavailable.",
     /** Publish가 도는 동안 꺼진 쓰기 트리거의 사유 (audit #37 · audit-ux #10) — [Sync]·[Try again]·번역 화면의 [Save]가 함께 쓴다(§6.64). */
     waitPublish: "Wait for Publish to finish.",
+    /**
+     * 착지 때 다른 실행의 적재 lease가 살아 있어 꺼진 [Sync]·배너 [Try again]의 사유 (sync-lock R1·R5) — Home과 번역 화면이 같은 문장이다.
+     * 착지 시점의 사실이고, 그 사이 끝났어도 눌러 보면 서버가 다시 판정한다.
+     */
+    running: "A sync is already running.",
+    /**
+     * Sync Dialog **결과 단계의 제목** (sync-lock R6 — Publish 모달 §6.646과 같은 형). 제목은 결과의 **종류**이고 본문 Alert 헤드라인이
+     * **내용**(몇 키 · 무엇이 막혔나)이다 — 같은 문장이 두 번 서지 않는다(`sync-result.test.tsx`가 갈래마다 잰다).
+     */
+    resultTitle: {
+      complete: "Sync complete",
+      issues: "Sync finished with issues",
+      /** 전 표면 실패·전 표면 밀림 — 둘 다 들어간 값이 없다. 헤드라인이 실패인지 밀림인지를 가른다. */
+      nothingReplaced: "Nothing was replaced",
+      /**
+       * **실행 전 거부만이다** — 세션·입력·인가·`acquire`의 판정(readiness·lease·식별·폐기 지문)이라 아무것도 읽거나 버리지 않았다.
+       * ⚠️ 단계를 모르는 거부(`unavailable`·`ingest-failed`·연결 오류)에 쓰지 않는다 — `ingest-failed`는 lease를 잡고 표면 실패까지 기록한 뒤다(U 리뷰 r2).
+       */
+      didntRun: "Sync didn't run",
+      /** 단계를 모르는 실패 — Logs의 Failed와 같은 낱말이다. 어디서 멈췄는지 말하지 않는다(아래 `errors["ingest-failed"]` 주석의 실수를 되풀이하지 않는다). */
+      failed: "Sync failed",
+      /** `unconfirmed` — 응답을 잃어 서버가 끝냈는지 모른다(malmoi#132). "didn't"를 쓰지 않는다. */
+      unknown: "Sync result unknown",
+    },
+    /**
+     * **Dialog 결과 단계에서만 바꿔 쓰는 헤드라인** (U 리뷰 r2) — 제목이 사실을 말하므로 헤드라인은 다음 행동으로 기운다. 같은 말이 제목과
+     * 헤드라인에 두 번 서던 넷이다(`Sync failed` ↔ `didn't go through` · `Sync result unknown` ↔ `couldn't confirm` · `didn't run` ↔ `nothing was synced`).
+     * ⚠️ **`errors`를 고치지 않는다** — 그 사전은 MCP `sync_repository`와 Logs 원인 줄도 읽고, 거기엔 제목이 없어 사실 문장이 필요하다.
+     */
+    resultHeadline: {
+      "unavailable": "Try again in a moment — Logs shows anything that was recorded",
+      "ingest-failed": "Try again in a moment — Logs shows anything that was recorded",
+      "unauthorized": "Your session ended — sign in, then sync again",
+      "unconfirmed": "The response didn't come back — check Logs before syncing again",
+    },
     confirm: "Sync from repository",
     /**
      * 미전달 편집이 있을 때의 확정 라벨 (sync-edit-protection spec "수동 Sync"). 트리거 `Sync`와 접근 이름이 달라야 한다는
      * 규칙(DESIGN §6.646)은 이 라벨에도 선다. 무엇을 버리는지를 동사가 먼저 말한다.
      */
     confirmDiscard: "Discard changes and sync",
+    /**
+     * 응답 없이 70초가 지난 진행 Dialog의 한 줄 (sync-lock R3) — 닫기가 이 줄과 함께 돌아온다. ⚠️ **판정이 아니다** — 끝났다고도 실패했다고도
+     * 말하지 않는다. 함수 상한(60초)을 넘겨 응답이 영영 안 올 수 있고, 무엇이 됐는지는 서버가 Logs에 남긴다.
+     */
+    resultInLogs: "The result will be in Logs.",
     /** 제목이 대상을 들므로 확인 버튼은 **동작 + 방향**만 말한다 (시안 §4). */
     title: (name: string): string => `Sync ${name} from the repository?`,
     /** ⚠️ 브랜치는 **mono 표면**이다 — 호출부가 감싼다(사전은 잎이라 클래스를 들지 않는다). */
@@ -2300,9 +2340,6 @@ export const en = {
         // 목적지(프로젝트 Home)를 말한다 — 2026-09-29 전엔 번역 화면으로 가는 "Start translating"이었다.
         open: "Open project",
       },
-      workflow: {
-        saveAs: "Save as",
-      },
       failed: "We couldn't finish. Try again in a moment.",
     },
   },
@@ -2320,21 +2357,21 @@ export const en = {
      */
     workspace: {
       filters: {
-        completion: { axis: "Completeness", all: "All keys", incomplete: "Incomplete", missingIn: (locale: string): string => `Untranslated in ${locale}`, missingMenu: "Untranslated in…", complete: "Complete" },
-        state: { axis: "State", any: "Any state", unsent: "Unsent", review: "Needs review", new: "New from GitHub", newHint: "Keys that arrived after Malmoi last confirmed your files." },
-        scope: { axis: "Scope", namespace: "This namespace", source: "This source", project: "All sources" },
+        /**
+         * **필터 축은 Status 하나다** (translation-tree-range — 2026-10-01 사용자). 범위는 트리가, 검색은 전 소스가 든다.
+         * ⚠️ 키 이름이 `state`인 것은 `guide/SHOOTING.md`의 `state-filter.webp` 매핑(`dict:…filters.state.*`)이 여기를 가리키기 때문이다 — 축 이름은 `Status`다.
+         */
+        state: { axis: "Status", any: "All keys", incomplete: "Incomplete", review: "Needs review", unsent: "Unsent", new: "New from GitHub", newHint: "Keys that arrived after Malmoi last confirmed your files." },
         clear: "Clear filters",
+        /** 검색 입력의 접근 이름 — 위치로 좁힌 검색 중에도 참이어야 해서 범위를 말하지 않는다. 범위는 플레이스홀더(입력이 빌 때만 보인다 — 그때 새 검색은 언제나 전 소스다)가 말한다. */
         search: "Search keys",
-        substituted: (source: string, locale: string): string => `${source} has no ${locale}. Showing incomplete keys instead.`,
-        nothingToFilter: "Nothing to filter yet",
+        searchPlaceholder: "Search all sources…",
       },
-      tree: { title: "Sources", allNamespaces: "All namespaces", filter: "Filter namespaces", open: "Show sources" },
+      tree: { title: "Sources", allNamespaces: "All namespaces", allSources: "All sources", filter: "Filter namespaces", open: "Show sources" },
       /** 키 목록 ↔ 로케일 카드 구분선 — `common.resizeSidebar`와 같은 이유로 이름이 필요하다(이름 없는 separator는 스크린리더가 "구분선"만 읽는다). */
       resize: "Resize key list",
       list: {
         keys: "Keys",
-        incompleteKeys: "Incomplete keys",
-        incompleteFirst: "Incomplete first",
         savedExtra: (n: number): string => `+${n.toLocaleString("en-US")} saved`,
         missing: (n: number): string => `${n.toLocaleString("en-US")} untranslated`,
         complete: "Complete",
@@ -2412,6 +2449,17 @@ export const en = {
         reverted: "Reverted to the version last confirmed as sent",
       },
       sync: { ownerOnly: "Only project owners can sync." },
+      /**
+       * **Sync가 도는 동안의 쓰기 거부** (sync-lock S4 · R4) — 저장·Revert가 `sync-running`으로 거부되면 같은 Dialog가 선다. 화면 밖 사건이
+       * 끼어드는 유일한 거부라 푸터 Alert가 아니라 Dialog다(DESIGN §7). ⚠️ 시각은 `<time>` 조각이라 호출부가 감싼다(사전은 잎이다).
+       * ⚠️ **"at the latest"가 요지다** — 시각은 죽은 적재가 풀리는 상한(`startedAt` + 300초를 다음 분으로 올림)이고, 보통은 그 전에 끝난다.
+       */
+      syncLock: {
+        title: "Syncing…",
+        /** ⚠️ **Dialog 본문과 착지 배너가 같은 문장이다** (U 리뷰) — 같은 사실을 두 모양으로 말하지 않는다. 배너는 제목 자리라 마침표가 없다. */
+        until: (time: ReactNode): ReactNode => <>You can't save edits until the sync finishes — by {time} at the latest</>,
+        ok: "OK",
+      },
       publish: {
         title: "Publish without saving your changes?",
         body: (project: string, list: string, key: string, n: number): string =>
@@ -2432,7 +2480,6 @@ export const en = {
         noMatch: (q: string): string => `No keys match "${q}"`,
         noIncompleteMatch: (q: string): string => `No incomplete keys match "${q}"`,
         filteredOut: "No keys match these filters",
-        showAll: (n: number): string => `Show all ${n.toLocaleString("en-US")} keys`,
         searchAll: "Search all sources",
         clearSearch: "Clear search",
         noKeys: (ns: string): string => `No keys in ${ns}`,
@@ -3277,11 +3324,8 @@ export const en = {
     },
 
     workflow: {
-      /**
-       * 문장을 사전이 소유한다 — JSX 노드로 쪼개면 ko가 어순을 바꿀 수 없다 (CLAUDE.md 코드 컨벤션).
-       */
-      saveAs: (path: ReactNode): ReactNode => <>Save this in your repository as {path}.</>,
-      copy: "Copy YAML",
+      /** 경로를 싣지 않는다 — 코드 블록 머리의 파일명 바가 든다(2026-10-01, 온보딩 ④와 설정이 같은 문장). */
+      saveAs: "Save this file in your repository.",
       /** ⚠️ 훅으로 번역을 읽는 리포는 `wrapper` 없이는 코드 참조가 조용히 0이다 (ARCHITECTURE §4). */
       hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
         <>
@@ -3441,7 +3485,7 @@ export const en = {
       list_repositories: "List the GitHub repositories you can connect to a new project. Needs the Create projects permission.",
       list_branches: "List a repository's branches. Pass { owner, repo } for a new project or { slug } for an existing one, not both.",
       detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new project or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
-      list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace. Takes the same filters as the translations screen and a cursor for the next page.",
+      list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace (ns picks the namespace). The query takes completion (incomplete, missing with missingLocale, or complete), state (unsent, review, or new), and q to search keys, source text, and translations, plus a cursor for the next page.",
       get_key: "Show one key: its source text, every language's value, review and unsent flags, and where the code uses it.",
       preview_publish: "Preview what Publish would send in a pull request. Returns a fingerprint to pass to publish, and pullRequest: open (with its url), none, or unknown when GitHub couldn't be checked.",
       preview_sync: "Preview a sync from the repository and how many unsent edits it would discard. Returns an approval to pass to sync_repository.",
@@ -3451,7 +3495,7 @@ export const en = {
       list_members: "List a project's members with masked email labels. Owners also see pending invitations.",
       create_project: "Create a project from a repository using the candidates and confirmations from detect_formats, and run the first sync. Returns a push token once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
       add_sources: "Add translation sources to a project using the candidates and confirmations from detect_formats({ slug }), and run their first sync.",
-      set_translations: "Save translations for up to 100 keys in one call. A rejected key is skipped and the rest are saved.",
+      set_translations: "Save translations for up to 100 keys in one call. A rejected key is skipped and the rest are saved; while a sync is running, the whole call is refused with the time to try again.",
       publish: "Send saved changes to the repository as a pull request. Call preview_publish first and pass its fingerprint.",
       sync_repository: "Load the repository's values into Malmoi, discarding unsent edits. Call preview_sync first and pass its approval.",
       revert_to_last_sent: "Revert one key's unsent languages to the version last confirmed as sent. Call preview_revert first and pass its confirmation.",

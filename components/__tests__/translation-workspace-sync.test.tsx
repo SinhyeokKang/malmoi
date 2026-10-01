@@ -50,7 +50,8 @@ it.each(["already-running", "reconfirm", "unauthorized"] as const)("거부(%s)�
   expect(mocks.run).toHaveBeenCalledOnce();
   const status = [...document.querySelectorAll('[role="status"], [role="alert"]')].map(node => node.textContent ?? "").join(" ");
   // ⚠️ 세션 만료도 Sync 문장이다 (QA D2) — 공용 접근 문장("save your work")을 빌리지 않는다.
-  const expected = m.repositorySync.errors[error];
+  // Dialog 결과 단계는 세션 만료의 헤드라인을 다음 행동으로 바꿔 쓴다(R6 r2 — 제목이 "didn't run"을 말한다).
+  const expected = error === "unauthorized" ? m.repositorySync.resultHeadline.unauthorized : m.repositorySync.errors[error];
   expect(status).toContain(expected);
   expect(mocks.refresh).not.toHaveBeenCalled();
 });

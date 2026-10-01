@@ -132,14 +132,17 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect([...tree.querySelectorAll(".bg-foreground\\/\\[0\\.07\\]")].map((node) => node.textContent)).toEqual([`${m.translations.workspace.tree.allNamespaces}${current?.keyCount}`]);
   });
 
-  it("머리에 필터 셋(완성도 · 상태 · 범위)과 검색이 있다", async () => {
+  it("머리는 검색 하나이고, Status 필터는 키 목록 머리에 있다 — 범위 콤보가 없다", async () => {
     const scene = layer(await mount(), 0);
     const f = m.translations.workspace.filters;
-    for (const label of [f.completion.all, f.state.any, f.scope.source]) expect(scene.textContent).toContain(label);
-    expect(find(scene, "[data-landing-search]").textContent).toBe(f.search);
+    expect(scene.textContent).not.toContain("This source");
+    expect(find(scene, "[data-landing-search]").textContent).toBe(f.searchPlaceholder);
+    const listHead = [...scene.querySelectorAll<HTMLElement>("span")].find(el => el.textContent === m.translations.workspace.list.keys)?.parentElement;
+    expect(listHead?.textContent).toContain(f.state.any);
+    expect(listHead?.textContent).not.toContain("Incomplete first");
   });
 
-  /** 실제 목록은 미완을 먼저 둔다(`Incomplete first` — `rank`). 목업이 완료 행을 앞에 두면 머리 문구가 거짓이다. */
+  /** 실제 목록은 미완을 먼저 둔다(`rank`). 목업이 완료 행을 앞에 두면 실물과 다른 순서를 보인다(머리의 정렬 문구는 2026-10-02에 걷었다). */
   it("키 목록이 미완 먼저다", () => {
     const ranks = fixture.rows.map((row) => (row.missing > 0 ? 0 : 1));
     expect(ranks).toEqual([...ranks].sort((a, b) => a - b));

@@ -12,7 +12,7 @@ import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
  * UI 문자열의 단일 출처는 `messages/en.tsx`이고, 그 규칙을 지키는 것은 리뷰가 아니라 이 검사다.
  *
  * ✅ **2026-09-08 6b-1에서 목록이 둘로 줄고 `lib/adapters/**` 제외가 풀렸다.** 남은 둘은 화면이 아니다 —
- * `auth.ts`의 서버 로그 · `lib/push/apply.ts`의 SQL 주석. 즉 **`app/`·`components/`·`lib/adapters/`에
+ * `auth.ts`의 서버 로그 · `lib/push/apply.ts`의 SQL 주석 — 그 뒤 `auth.ts`도 빠져 지금은 `apply.ts` 하나다. 즉 **`app/`·`components/`·`lib/adapters/`에
  * 대해서는 전면 방어선이고**, 새 화면이나 어댑터가 한글 리터럴을 심으면 그 커밋이 red다.
  *
  * **단언이 둘인 것이 요지다**: 목록 **밖**은 0자(회귀 즉시 red) · 목록 **안**은 ≥1자(낡은 항목 금지).
@@ -66,7 +66,7 @@ const SKIP_DIR = new Set(["__tests__", "node_modules", "generated"]);
  * 소스 스캐너가 원리적으로 못 본다 — 이 검사가 답하는 것은 "리터럴이 있는가"뿐이다.
  */
 const KOREAN_ALLOWED = [
-  // ⚠️ 사용자 문자열이 아니라 **서버 로그**다(`console.warn`) — 화면에 닿지 않으므로 옮길 대상이 아니고,
+  // ⚠️ 사용자 문자열이 아니라 `$queryRaw` 템플릿 안의 **SQL 주석**(`--`)이다 — 스캐너는 JS 주석만 벗기므로 남고, 화면에 닿지 않아 옮길 대상이 아니다.
   // 이 목록에 이름이 있어야 스캐너가 루트 파일을 실제로 훑는다는 것이 고정된다.
   "lib/push/apply.ts",
 ];

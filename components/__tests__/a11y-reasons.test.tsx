@@ -24,7 +24,6 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, 
 import { LoginMethods } from "@/components/account/login-methods";
 import { ProfileNameForm } from "@/components/account/profile-name-form";
 import { SyncButton } from "@/components/home/sync-button";
-import { SyncResult } from "@/components/home/sync-result";
 import { CiCard } from "@/components/settings/ci-card";
 import { GeneralCard } from "@/components/settings/general-card";
 import { SourceStatus } from "@/components/sources/source-status";
@@ -55,24 +54,15 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
-  it("Publish가 도는 동안 결과의 [Try again]은 포커스를 받고 사유를 들며 눌러도 아무 일이 없다 — 짝: 풀리면 연다", async () => {
-    const onRetry = vi.fn();
-    const outcome = { ok: true as const, remainingEdits: 0, surfaces: [{ surfaceSlug: "web", status: "failed" as const, count: 0, failed: 0, unmanaged: 0, reason: "parse-failed" as const, errors: [] }] };
-    const view = await render(<SyncResult slug="acme" branch="main" outcome={outcome} onRetry={onRetry} retryDisabled />);
-    const retry = byText(m.common.retry);
-    expectReasoned(retry, m.repositorySync.waitPublish);
-    await act(async () => { await userEvent.setup().click(retry); });
-    expect(onRetry).not.toHaveBeenCalled();
-    await view.rerender(<SyncResult slug="acme" branch="main" outcome={outcome} onRetry={onRetry} retryDisabled={false} />);
-    await act(async () => { await userEvent.setup().click(byText(m.common.retry)); });
-    expect(onRetry).toHaveBeenCalledTimes(1);
-  });
+  // 결과의 [Try again]은 sync-lock S5로 Sync Dialog 안에 섰다 — Publish와 같이 돌 수 없어 잠금 갈래가 사라졌다.
 
   it("Home 실패 배너의 [Try again]도 같은 형이다", () => {
     const source = read("components/home/actions.tsx");
     expect(source).not.toMatch(/<Button disabled=\{publishPending\}/);
-    expect(source).toMatch(/aria-disabled=\{publishPending/);
+    // 잠금 사유가 둘이다(Publish 진행 · 착지 lease — sync-lock R5). 하나의 `retryBlock`이 aria-disabled·title·describedby를 함께 든다.
+    expect(source).toMatch(/aria-disabled=\{retryBlock !== null/);
     expect(source).toContain("m.repositorySync.waitPublish");
+    expect(source).toContain("m.repositorySync.running");
   });
 
   it("마지막 로그인 수단의 [Disconnect]는 포커스를 받고 사유를 든다", async () => {
@@ -113,8 +103,8 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
     // 멈춘 사유는 호스트가 원인을 넘긴다 (audit-ux #10) — 기본값은 `paused`, Publish 진행이면 `waitPublish`다.
     expect(read("components/home/sync-button.tsx")).toMatch(/title=\{pausedReason\}/);
     expect(read("components/home/sync-button.tsx")).toMatch(/pausedReason = m\.repositorySync\.paused/);
-    expect(read("components/home/sync-result.tsx")).toMatch(/title=\{retryDisabled \? m\.repositorySync\.waitPublish/);
-    expect(read("components/home/actions.tsx")).toMatch(/title=\{publishPending \? m\.repositorySync\.waitPublish/);
+    // 결과의 [Try again]은 Sync Dialog 안이라 Publish가 같이 돌 수 없다 — 잠금 사유를 들지 않는다(sync-lock S5).
+    expect(read("components/home/actions.tsx")).toMatch(/title=\{retryBlock \?\? undefined\}/);
   });
 });
 

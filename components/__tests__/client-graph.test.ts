@@ -340,8 +340,8 @@ describe("클라이언트 그래프", () => {
    * ⚠️ **의도된 확장이 실제로 필요한지, 그리고 그 셋만인지 센다.** 목록을 넓히는 것은 결정이므로
    * 그 결정이 지워졌을 때(누가 셋 중 하나를 지웠을 때) 검사가 조용해지면 안 된다.
    */
-  it("의도적으로 허용된 다섯 — 하나씩 빼면 걸린다", () => {
-    for (const pkg of ["radix-ui", "class-variance-authority", "lucide-react", "sonner", "react-resizable-panels"]) {
+  it("의도적으로 허용된 여섯 — 하나씩 빼면 걸린다", () => {
+    for (const pkg of ["radix-ui", "class-variance-authority", "lucide-react", "sonner", "react-resizable-panels", "@vercel/analytics"]) {
       expect(allowed(pkg), pkg).toBe(true);
       expect(allowed(pkg, ALLOWED.filter((ok) => ok !== pkg)), pkg).toBe(false);
     }

@@ -34,5 +34,13 @@ export function useSlow(active: boolean): boolean {
  */
 export function SlowNotice({ active, className }: { active: boolean; className?: string }) {
   if (!useSlow(active)) return null;
+  return <SlowLine className={className} />;
+}
+
+/**
+ * 지연 문구 한 줄 — 시점을 호출부가 이미 아는 자리용이다(Sync Dialog는 `useSlow`로 본문 유무를 먼저 정해야 해서 `SlowNotice`를 그 안에 두면
+ * 타이머가 한 번 더 돈다). ⚠️ 마크업 사본을 만들지 않는다 — `SlowNotice`도 이것을 그린다.
+ */
+export function SlowLine({ className }: { className?: string }) {
   return <p role="status" className={cn("text-muted-foreground text-xs", className)}>{m.common.slow}</p>;
 }

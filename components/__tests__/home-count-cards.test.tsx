@@ -18,7 +18,7 @@ const input = (hold: HoldReason | null, toSend = 0) => countCards({
   lastSyncAt: new Date("2026-09-19T12:00:00Z"), reviewByLocale: [], hold,
 });
 const toSend = async (cards: ReturnType<typeof countCards>, heldLater?: Promise<HoldReason | null>) => {
-  const { container } = await render(<CountCards cards={cards} slug="acme" surfaceSlug="web" now={now} heldLater={heldLater} />);
+  const { container } = await render(<CountCards cards={cards} slug="acme" surfaceSlugs={{ newFromGithub: "web", toTranslate: "web", toReview: "web", toSend: "web" }} now={now} heldLater={heldLater} />);
   return container.querySelectorAll("li")[3]?.textContent ?? "";
 };
 
@@ -36,7 +36,7 @@ describe("To send 보조 줄 — 보류 사유", () => {
   });
 
   it("늦게 도착하는 사유는 To send 카드만 바꾼다 — 다른 카드는 먼저 선다", async () => {
-    const { container } = await render(<CountCards cards={input(null)} slug="acme" surfaceSlug="web" now={now} heldLater={new Promise(() => {})} />);
+    const { container } = await render(<CountCards cards={input(null)} slug="acme" surfaceSlugs={{ newFromGithub: "web", toTranslate: "web", toReview: "web", toSend: "web" }} now={now} heldLater={new Promise(() => {})} />);
     expect(container.querySelectorAll("li")).toHaveLength(4);
     expect(container.querySelectorAll("li")[0]?.textContent).toContain(m.projects.summary.newFromGithub);
   });

@@ -186,6 +186,9 @@ const FORMAT = {
   lastImportToken: null as string | null,
   lastImportError: null as string | null,
   archivedAt: null as Date | null,
+  /** 수동 Sync·야간 적재의 lease (`Project` 컬럼). 저장 경로가 잠금 뒤 읽는다(sync-lock) — 없으면 `undefined`가 판정에 닿는다. */
+  repositoryImportToken: null as string | null,
+  repositoryImportStartedAt: null as Date | null,
 };
 
 export type Seed = {

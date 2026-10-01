@@ -25,7 +25,7 @@ export function createMcpServer(subject: ApiTokenSubject, origin: string | null 
   const implemented = new Map(TOOLS.map(tool => [tool.name, tool]));
   for (const tool of toolCatalog()) {
     const definition = implemented.get(tool.name);
-    // 카탈로그와 구현이 어긋났다 — 설정 오류라 요청을 받기 전에 던진다(`tools/registry.test.ts`가 상시로 센다).
+    // 카탈로그와 구현이 어긋났다 — 설정 오류라 요청을 받기 전에 던진다(`app/api/__tests__/mcp-route.test.ts`가 이 서버로 `tools/list`를 불러 상시로 센다).
     if (definition === undefined) throw new Error(`MCP tool ${tool.name} has no implementation`);
     server.registerTool(tool.name, { description: toolDescription(tool.name), annotations: tool.annotations, inputSchema: definition.inputSchema },
       async (input: unknown) => executeTool(definition, () => ({ prisma: getPrisma(), subject, now: new Date(), origin }), input));

@@ -48,3 +48,38 @@ it("상세에서 한 글자 치면 목록 행은 하나도 다시 렌더되지 �
   expect(zh.value).toBe("空");
   expect(mocks.rowRenders).toEqual([]);
 });
+
+/**
+ * #157 — 키 클릭(`?key=`)·저장 뒤 재검증마다 서버가 **값이 같은 전량 목록을 새 객체로** 다시 보낸다. `mergeServerRows`가 값이 같은
+ * 행의 참조를 지켜야 `KeyRow` memo가 그 응답에서도 행을 막는다(QA3 실측: 고치기 전 5,000행 클릭당 행 렌더 3,626회).
+ */
+it("값이 같은 목록이 새 객체로 다시 와도 목록 행은 다시 렌더되지 않는다 (#157)", async () => {
+  const initial = props();
+  const { rerender } = await render(<TranslationWorkspace {...initial} />);
+  mocks.rowRenders.length = 0;
+  const copied = { ...initial.list, rows: initial.list.rows.map(row => JSON.parse(JSON.stringify(row)) as typeof row) };
+  await rerender(<TranslationWorkspace {...initial} list={copied} />);
+  expect(mocks.rowRenders).toEqual([]);
+});
+
+it("한 행만 값이 바뀌어 오면 그 행만 다시 렌더된다 (#157)", async () => {
+  const initial = props();
+  const { rerender } = await render(<TranslationWorkspace {...initial} />);
+  mocks.rowRenders.length = 0;
+  const changed = { ...initial.list, rows: initial.list.rows.map((row, i) => i === 1 ? { ...row, missingCount: row.missingCount + 1 } : { ...row }) };
+  await rerender(<TranslationWorkspace {...initial} list={changed} />);
+  expect(new Set(mocks.rowRenders)).toEqual(new Set([initial.list.rows[1]!.keyId]));
+});
+
+/**
+ * sync-lock — 착지 lease는 헤더 배너와 [Sync]에만 닿는다. 행까지 내려가면 lease 하나로 5,000행 memo가 한꺼번에 깨진다(POSTMORTEM 2026-10-01).
+ */
+it("lease 상태가 바뀌어도 목록 행은 다시 렌더되지 않는다", async () => {
+  const initial = props();
+  const { rerender } = await render(<TranslationWorkspace {...initial} />);
+  mocks.rowRenders.length = 0;
+  const writeLock = { startedAt: new Date("2026-10-01T16:30:12.000Z"), reopensBy: new Date("2026-10-01T16:36:00.000Z") };
+  await rerender(<TranslationWorkspace {...initial} writeLock={writeLock} />);
+  expect(document.body.textContent).toContain("Syncing…");
+  expect(mocks.rowRenders).toEqual([]);
+});

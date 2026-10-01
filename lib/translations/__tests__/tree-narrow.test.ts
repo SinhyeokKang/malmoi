@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { ALL_NAMESPACES } from "../query";
-import { countRows, firstRowAt, narrowTree, nodeKey, type NarrowableTree } from "../tree-narrow";
+import { ALL_NAMESPACES, DEFAULT_TRANSLATION_QUERY, type TranslationQuery } from "../query";
+import { countTree, firstRowAt, inRange, rangeOf, tallyRows, type CountableTree } from "../tree-narrow";
 
 /**
- * **필터 → 트리 반영** (translation-filter-scope — design §4). 트리 숫자는 전량 목록의 행에서 센다 — 새 SQL이 없어서 "트리 숫자 = 목록 수"가
- * 구조로 보장된다. 0 노드는 숨기되 위치 노드와 이 세대에서 이미 본 노드(`keep`)는 남는다 — 편집 중인 위치가 Save 재검증으로 사라지면
- * 포커스가 body로 빠진다(POSTMORTEM 2026-09-24 부류).
+ * **트리 = 목록 범위, 숫자는 (검색 중이면) Status를 끈 채 그 노드를 눌렀을 때의 목록 수** (translation-tree-range — design §2.2·§3).
+ * 서버가 전 소스를 한 번 읽고 범위로 자른다 — 트리 숫자는 같은 전 소스 행에서 센다. 트리는 노드를 숨기지 않는다(0 노드는 화면이 `disabled`로 그린다).
  */
-const tree: NarrowableTree = {
+const tree: CountableTree = {
   projectKeyCount: 9,
   surfaces: [
     { slug: "app", keyCount: 2, namespaces: [{ name: "app", keyCount: 2 }] },
@@ -16,76 +15,74 @@ const tree: NarrowableTree = {
   ],
 };
 const row = (keyId: string, surfaceSlug: string, namespace: string) => ({ keyId, surfaceSlug, namespace });
+const q = (over: Partial<TranslationQuery>): TranslationQuery => ({ ...DEFAULT_TRANSLATION_QUERY, ...over });
 
-describe("countRows", () => {
-  it("빈 rows는 빈 Map이다", () => {
-    expect(countRows([]).size).toBe(0);
+describe("rangeOf · inRange — 목록 범위", () => {
+  it("전 소스 검색이면 all, 아니면 경로 소스·ns다", () => {
+    expect(rangeOf(q({ scope: "project", q: "hi", ns: "auth" }), "web")).toBe("all");
+    expect(rangeOf(q({ scope: "source" }), "web")).toEqual({ surfaceSlug: "web", ns: ALL_NAMESPACES });
+    expect(rangeOf(q({ scope: "namespace", ns: "auth", q: "hi" }), "web")).toEqual({ surfaceSlug: "web", ns: "auth" });
   });
 
-  it("소스·네임스페이스별로 세고, 합은 rows.length다", () => {
-    const rows = [row("w1", "web", "auth"), row("a1", "app", "app"), row("w2", "web", "auth"), row("w3", "web", "common")];
-    const counts = countRows(rows);
-    expect(counts.get("web")?.get("auth")).toBe(2);
-    expect(counts.get("web")?.get("common")).toBe(1);
-    expect(counts.get("app")?.get("app")).toBe(1);
-    expect([...counts.values()].flatMap(m => [...m.values()]).reduce((a, b) => a + b, 0)).toBe(rows.length);
-  });
-
-  it("남이 정한 이름(__proto__)도 센다 — Map이라 프로토타입을 타지 않는다", () => {
-    expect(countRows([row("x", "web", "__proto__")]).get("web")?.get("__proto__")).toBe(1);
+  it("세 갈래 — 전 소스 · 소스 · 네임스페이스(다른 소스의 같은 이름은 빠진다)", () => {
+    expect(inRange(row("a", "app", "common"), "all")).toBe(true);
+    expect(inRange(row("a", "web", "auth"), { surfaceSlug: "web", ns: ALL_NAMESPACES })).toBe(true);
+    expect(inRange(row("a", "app", "auth"), { surfaceSlug: "web", ns: ALL_NAMESPACES })).toBe(false);
+    expect(inRange(row("a", "web", "common"), { surfaceSlug: "web", ns: "common" })).toBe(true);
+    expect(inRange(row("a", "web", "auth"), { surfaceSlug: "web", ns: "common" })).toBe(false);
+    expect(inRange(row("a", "app", "common"), { surfaceSlug: "web", ns: "common" })).toBe(false);
   });
 });
 
-describe("narrowTree", () => {
-  const none = new Set<string>();
-
-  it("counts가 null(조건 없음)이면 원본 그대로다", () => {
-    expect(narrowTree(tree, null, none)).toBe(tree);
+describe("tallyRows — 소스·네임스페이스별 수", () => {
+  it("빈 행은 빈 배열이고, 합이 행 수다", () => {
+    expect(tallyRows([])).toEqual([]);
+    const rows = [row("w1", "web", "auth"), row("w2", "web", "common"), row("w3", "web", "common"), row("a1", "app", "app")];
+    const tally = tallyRows(rows);
+    expect(tally.reduce((sum, t) => sum + t.count, 0)).toBe(rows.length);
+    expect(tally).toContainEqual({ surfaceSlug: "web", namespace: "common", count: 2 });
+    expect(tally).toContainEqual({ surfaceSlug: "app", namespace: "app", count: 1 });
   });
 
-  it("숫자를 일치 수로 바꾸고 0인 네임스페이스·소스를 숨긴다", () => {
-    const narrowed = narrowTree(tree, countRows([row("w1", "web", "common"), row("w2", "web", "common")]), none);
-    expect(narrowed.surfaces).toEqual([{ slug: "web", keyCount: 2, namespaces: [{ name: "common", keyCount: 2 }] }]);
-  });
-
-  it("projectKeyCount는 바꾸지 않는다 — 제목 배지 단위는 조건과 무관하다 (DESIGN §6.1a)", () => {
-    expect(narrowTree(tree, countRows([]), none).projectKeyCount).toBe(9);
-  });
-
-  it("다른 소스의 필드(id·locales 등)는 그대로 싣는다", () => {
-    const rich = { projectKeyCount: 1, surfaces: [{ slug: "web", id: "s1", locales: ["en"], keyCount: 1, namespaces: [{ name: "a", keyCount: 1 }] }] };
-    expect(narrowTree(rich, countRows([row("k", "web", "a")]), none).surfaces[0]).toMatchObject({ id: "s1", locales: ["en"] });
-  });
-
-  it("위치 소스는 일치가 0이어도 0으로 남는다 — A 경로에서 C 값을 검색한 경우 (조건 2)", () => {
-    const narrowed = narrowTree(tree, countRows([row("a1", "app", "app")]), new Set([nodeKey("web")]));
-    expect(narrowed.surfaces).toEqual([
-      { slug: "app", keyCount: 1, namespaces: [{ name: "app", keyCount: 1 }] },
-      { slug: "web", keyCount: 0, namespaces: [] },
+  it("남이 정한 이름 — __proto__·constructor도 센다", () => {
+    expect(tallyRows([row("x", "web", "__proto__"), row("y", "web", "__proto__"), row("z", "constructor", "constructor")])).toEqual([
+      { surfaceSlug: "web", namespace: "__proto__", count: 2 },
+      { surfaceSlug: "constructor", namespace: "constructor", count: 1 },
     ]);
   });
+});
 
-  it("위치 네임스페이스는 0이어도 남고, 그 소스도 함께 남는다", () => {
-    const narrowed = narrowTree(tree, countRows([]), new Set([nodeKey("web"), nodeKey("web", "auth")]));
-    expect(narrowed.surfaces).toEqual([{ slug: "web", keyCount: 0, namespaces: [{ name: "auth", keyCount: 0 }] }]);
+describe("countTree — 숨김 없이 숫자만 일치 수로", () => {
+  it("counts가 null(조건 없음)이면 원본 그대로 — 같은 참조", () => {
+    expect(countTree(tree, null)).toBe(tree);
   });
 
-  it("keep에 있는 0 노드는 남는다 — 같은 세대의 Save로 0이 된 노드는 숫자만 바뀐다 (조건 6)", () => {
-    const first = narrowTree(tree, countRows([row("w1", "web", "auth"), row("a1", "app", "app")]), none);
-    const keep = new Set(first.surfaces.flatMap(s => [nodeKey(s.slug), ...s.namespaces.map(ns => nodeKey(s.slug, ns.name))]));
-    const after = narrowTree(tree, countRows([row("a1", "app", "app")]), keep);
-    expect(after.surfaces).toEqual([
-      { slug: "app", keyCount: 1, namespaces: [{ name: "app", keyCount: 1 }] },
-      { slug: "web", keyCount: 0, namespaces: [{ name: "auth", keyCount: 0 }] },
-    ]);
+  it("모든 노드를 남기고 숫자만 바꾼다 — 0 노드도 남는다", () => {
+    const counted = countTree(tree, tallyRows([row("w1", "web", "common"), row("w2", "web", "common")]));
+    expect(counted.surfaces.map(s => s.slug)).toEqual(["app", "web"]);
+    expect(counted.surfaces[0]).toMatchObject({ slug: "app", keyCount: 0, namespaces: [{ name: "app", keyCount: 0 }] });
+    expect(counted.surfaces[1]).toMatchObject({ slug: "web", keyCount: 2, namespaces: [{ name: "auth", keyCount: 0 }, { name: "common", keyCount: 2 }] });
   });
 
-  it("ALL_NAMESPACES는 네임스페이스 노드가 아니다 — 위치가 소스 전체면 소스만 남긴다", () => {
-    expect(nodeKey("web", ALL_NAMESPACES)).toBe(nodeKey("web"));
+  it("projectKeyCount와 노드의 다른 필드는 바꾸지 않는다", () => {
+    expect(countTree(tree, tallyRows([])).projectKeyCount).toBe(9);
+    const rich = { projectKeyCount: 1, surfaces: [{ id: "s1", slug: "web", locales: ["en"], keyCount: 1, namespaces: [{ name: "a", keyCount: 1 }] }] };
+    expect(countTree(rich, tallyRows([])).surfaces[0]).toMatchObject({ id: "s1", locales: ["en"], keyCount: 0 });
   });
 
-  it("소스 slug와 네임스페이스 이름의 결합이 다른 노드와 겹치지 않는다", () => {
-    expect(nodeKey("a", "b/c")).not.toBe(nodeKey("a/b", "c"));
+  it("__proto__ 네임스페이스의 수를 프로토타입에서 찾지 않는다", () => {
+    const odd = { projectKeyCount: 2, surfaces: [{ slug: "web", keyCount: 2, namespaces: [{ name: "__proto__", keyCount: 1 }, { name: "constructor", keyCount: 1 }] }] };
+    const counted = countTree(odd, tallyRows([row("x", "web", "__proto__")]));
+    expect(counted.surfaces[0]?.namespaces).toEqual([{ name: "__proto__", keyCount: 1 }, { name: "constructor", keyCount: 0 }]);
+  });
+
+  it("트리 숫자 = 같은 행으로 그 노드를 눌렀을 때의 목록 수다 — 호출부가 Status 없는 검색 행을 넘긴다 (조건 9)", () => {
+    const rows = [row("w1", "web", "auth"), row("w2", "web", "common"), row("a1", "app", "app"), row("w3", "web", "common")];
+    const counted = countTree(tree, tallyRows(rows));
+    for (const surface of counted.surfaces) {
+      expect(surface.keyCount).toBe(rows.filter(r => inRange(r, { surfaceSlug: surface.slug, ns: ALL_NAMESPACES })).length);
+      for (const ns of surface.namespaces) expect(ns.keyCount).toBe(rows.filter(r => inRange(r, { surfaceSlug: surface.slug, ns: ns.name })).length);
+    }
   });
 });
 

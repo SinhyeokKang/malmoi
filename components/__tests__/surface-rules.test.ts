@@ -62,10 +62,9 @@ describe("DESIGN §4.1 — mono는 코드 블록 전용이다", () => {
    * 같은 값(`base-locale:` 한 줄)은 Sources 상세가 **sans `<code>`**로 낸다.
    */
   const ALLOWED = [
-    // 워크플로 YAML — 원본 줄바꿈과 들여쓰기가 값의 일부다.
-    "components/onboarding/workflow-block.tsx",
-    // `/docs` 원고의 코드 블록 — 펜스의 줄바꿈과 들여쓰기가 값의 일부다(DESIGN §6.61).
-    "components/docs/code-block.tsx",
+    // 코드 블록 — `/docs` 원고의 펜스와 앱의 워크플로 YAML이 함께 쓴다. 줄바꿈과 들여쓰기가 값의 일부다(DESIGN §6.61).
+    // ⚠️ 2026-10-01에 둘(`workflow-block`·`docs/code-block`)이 이 프리미티브 하나로 합쳐졌다.
+    "components/ui/code-block.tsx",
   ];
 
   it("허용 목록 밖에서 `text-mono`를 쓰지 않는다", () => {

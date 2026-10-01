@@ -1,23 +1,25 @@
-<h1 align="center">
-  <a href="https://mal-moi.com"><picture><source media="(prefers-color-scheme: dark)" srcset="public/brand/malmoi-icon-white.svg" /><img src="public/brand/malmoi-icon-black.svg" alt="Malmoi" width="56" valign="middle" /></picture></a> Malmoi
+<h1>
+  <a href="https://mal-moi.com"><picture><source media="(prefers-color-scheme: dark)" srcset="public/brand/malmoi-icon-white.svg" /><img src="public/brand/malmoi-icon-black.svg" alt="Malmoi" width="48" valign="middle" /></picture></a> Malmoi
 </h1>
 
-<p align="center">
-  <a href="https://github.com/SinhyeokKang/malmoi/actions/workflows/ci.yml"><img src="https://github.com/SinhyeokKang/malmoi/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
+<p>
+  <a href="https://github.com/SinhyeokKang/malmoi/releases/latest"><img src="https://img.shields.io/github/v/release/SinhyeokKang/malmoi?filter=v*&amp;style=flat" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/formats-JSON%20%7C%20YAML%20%7C%20TS%2FJS%20%7C%20Chrome%20__locales-4493F8?style=flat" alt="Supported formats: JSON, YAML, TS/JS dictionaries, Chrome _locales" />
   <img src="https://img.shields.io/badge/price-free-08C?style=flat" alt="Free, no paid plans" />
+  <a href="https://mal-moi.com/docs/ai-agents"><img src="https://img.shields.io/badge/MCP-supported-8A63D2?style=flat" alt="MCP server for coding agents" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat" alt="License: MIT" /></a>
 </p>
 
-<p align="center">
+<p>
   <strong>Connect your projects, translate &amp; ship together.</strong><br/>
-  Malmoi is a localization tool for GitHub repositories. It finds the translation files already in your repo,<br/>
-  lets teammates edit them in the browser, and sends every change back as one pull request.<br/>
+  Malmoi is a localization tool for GitHub repositories. It finds the translation files already in your repo,
+  lets teammates edit them in the browser, and sends every change back as one pull request.
   Coding agents can do the same work over MCP — sign in through your browser, no token to copy.
 </p>
 
-<h3 align="center"><a href="https://mal-moi.com"><ins>Open Malmoi</ins></a> · <a href="https://mal-moi.com/docs">Read the docs</a></h3>
+<h3><a href="https://mal-moi.com"><ins>Get started</ins></a> · <a href="https://mal-moi.com/docs">Read the docs</a></h3>
 
-<p align="center">
+<p>
   <img src="docs/assets/readme/hero.webp" alt="The translation editor: source tree, key list, and one key in English, French, and Korean" width="960" />
 </p>
 
@@ -42,7 +44,7 @@ The two sides are never merged: an update replaces Malmoi's values with the
 repository's (unless edits are waiting or a Malmoi pull request is still open),
 and Publish writes Malmoi's values back.
 
-[Get started →](https://mal-moi.com/docs/setup/create-project)
+[Create your first project →](https://mal-moi.com/docs/setup/create-project)
 
 ## Features
 
@@ -95,11 +97,12 @@ before and after. History is kept for the life of the project.
 
 Malmoi generates the GitHub Actions workflow. Every push to the base branch
 brings new keys into Malmoi and marks translations whose source text changed as
-**Needs review** — unless unsent edits are holding syncing back.
+**Needs review** — unless unsent edits are holding syncing back. It also
+collects code references, so each key shows where your code uses it.
 
 </td>
 <td width="50%">
-  <img src="public/guide/workflow-file.webp" alt="The Workflow file dialog in Malmoi Settings with the generated YAML and a Copy YAML button" width="100%" />
+  <img src="public/guide/workflow-file.webp" alt="The Workflow file dialog in Malmoi Settings with the generated YAML and a Copy button" width="100%" />
 </td>
 </tr>
 </table>
@@ -113,7 +116,8 @@ brings new keys into Malmoi and marks translations whose source text changed as
 - **Nightly sync** — once a night (18:00 UTC), for active, connected projects
   whose first sync has succeeded: saved changes nobody published go out as a
   pull request, and otherwise new commits on the base branch come in — so the
-  workflow is optional ([details](https://mal-moi.com/docs/sync/nightly)).
+  workflow is optional, though only the workflow collects code references
+  ([details](https://mal-moi.com/docs/sync/nightly)).
 - **Two roles** — owners manage the repository, settings, and members; editors
   translate and publish. Invite teammates by email and pick a role per invite.
 - **AI agents over MCP** — add the server URL to Claude Code, Codex, or a

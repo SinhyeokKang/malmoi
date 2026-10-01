@@ -85,7 +85,7 @@ if (hasFlag(argv, "--json")) {
   // 프로세스가 죽으면 출력이 잘린다(skillflo의 --json이 73KB에서 끊겼다).
   // 대신 exitCode만 세우므로 **여기서 명시적으로 빠져나가야** 한다 — 안 그러면 아래
   // 사람용 출력이 이어져 JSON 문서가 두 개 나온다.
-  if (result.errors.some((e) => adapterErrorKind(e.code) !== "warning")) process.exitCode = 1;
+  if (result.errors.some((e) => adapterErrorKind(e.code) === "failure")) process.exitCode = 1;
 } else {
 
 console.log(`어댑터: ${format.adapter}${result.nested ? " (중첩)" : " (flat)"}`);
@@ -155,8 +155,8 @@ if (baseLocale) {
     console.error(`\n에러 ${result.errors.length}건:`);
     for (const e of result.errors.slice(0, 15)) console.error(`  ${e.path}  ${adapterErrorMessage(e)}`);
     if (result.errors.length > 15) console.error(`  ... ${result.errors.length - 15}건 더`);
-    // 경고(`duplicate-property`)만이면 push:local처럼 실패로 끝내지 않는다(B7a r1).
-    if (result.errors.some((e) => adapterErrorKind(e.code) !== "warning")) process.exitCode = 1;
+    // `failure`가 없으면 push:local처럼 실패로 끝내지 않는다 — 경고(B7a r1)·`unmanaged`(2026-10-01)는 잃는 번역이 없다.
+    if (result.errors.some((e) => adapterErrorKind(e.code) === "failure")) process.exitCode = 1;
   }
   // ⚠️ **exitCode를 낮추지 않는다** (audit #53) — 위 왕복 게이트가 의미 손실로 세운 1을 `errors.length ? 1 : 0`이 0으로 덮었다.
 }

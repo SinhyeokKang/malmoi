@@ -58,12 +58,12 @@ export const config = {
    *
    * 빠지는 것: `/api/*`와 정적 자산. ⚠️ **`/api/*`는 빼야 한다** — `/api/auth/*`가 걸리면 로그인 자체가 막힐 여지가
    * 생기고, `/api/github/callback`은 302되면 `code`가 사라진다(CLAUDE.md). API 응답은 문서가 아니라 CSP가 할 일도 없다.
-   * 정적 자산(`_next/static`·`_next/image`와 `public/`의 최상위 디렉터리·`icon.svg`)은 매 요청이 미들웨어를 타면 느려진다 —
+   * 정적 자산(`_next/static`·`_next/image`와 `public/`의 최상위 디렉터리·`icon.svg`·`og.png`)은 매 요청이 미들웨어를 타면 느려진다 —
    * **`public/`에 최상위 항목을 늘리면 여기도 늘린다**(안 늘리면 느려질 뿐 깨지지는 않는다).
    *
    * ⚠️ **prefetch를 빼지 않는다**(Next 문서 예시의 `missing` 조건) — 빼면 쿠키 없는 보호 경로 prefetch가 1차 차단을 지나친다.
    *
    * ⚠️ `entry-points.test.ts`가 이 문자열을 **정규식으로 불러** 보호·공개 페이지 전부가 걸리고 자산·`/api`가 안 걸리는지 센다.
    */
-  matcher: ["/((?!api/|_next/static/|_next/image|fonts/|guide/|brand/|email/|flags/|icon\\.svg$).*)"],
+  matcher: ["/((?!api/|_next/static/|_next/image|fonts/|guide/|brand/|email/|flags/|icon\\.svg$|og\\.png$).*)"],
 };

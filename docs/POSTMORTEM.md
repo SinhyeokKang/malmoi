@@ -2581,3 +2581,45 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - grep: `rg -n "pnpm (-s )?(test|typecheck|build|gate)[^\n]*\| *(grep|head|tail)" .claude/commands .agents/skills scripts CLAUDE.md docs --glob '!docs/POSTMORTEM.md'` → **게이트 명령에 파이프가 붙은 자리**. 2026-09-30 실행 결과 남은 것은 경고문 3곳(`orchestrate.md:100` · `gate-plan.ts:4` · `gate-plan.test.ts:9`)뿐이고 실행 예시는 0건.
   - 셸에서 게이트를 굳이 손으로 돌려야 하면 `set -o pipefail`을 먼저 건다 — 그리고 "성공 줄만 grep"한 출력을 근거로 쓰지 않는다.
   - 마커 감시는 **줄 머리 일치**(`re.match(r'\s*(?:[⏺•]\s*)?<marker>(?:\s|$)')`, `orchestrate.md` §2). grep: `rg -n "fullmatch" .claude/commands` → 0건이어야 한다.
+
+### 2026-10-01 — 5,000행 키 클릭 "2초 멈춤"을 앱 회귀로 추적했는데 측정 브라우저의 확장이었다 (#157)
+
+- **영역**: 측정 절차(ego-browser 프로필) · `lib/translations/saved-rows.ts` `mergeServerRows` · `components/translations/workspace/key-list.tsx` `KeyRow`
+- **증상**: translation-filter-scope T5 측정이 5,000행 All sources 목록에서 키 클릭마다 메인 스레드 ~2.05초 블로킹(LoAF 2,085ms)을 기록했고, Save 전후
+  ~2.0초(5,000)/~0.86초(2,000) 긴 작업도 "행 수에 비례하는 클라이언트 몫"으로 ARCHITECTURE §1.95에 올라갔다. #157로 하루 동안 앱 회귀로 추적됐다.
+- **근본 원인**: ① 그 긴 작업의 CPU self time 1,985–2,085ms가 측정 프로필(ego lite)에 깔린 **BetterBugs 확장의 `content.bundle.js`**(DOM 직렬화 —
+  MutationObserver 콜백·mousemove에서 childNodes·attributes 순회)였다. 노드 수에 비례하고(36k ~2.0초 · 14.6k ~0.85초) 클릭 한 번 걸러 한 번 떠서, 2,000행
+  표본이 "관측 없음"을 본 것도 운이었다. **측정 절차에 "확장 없는 프로필" 조건이 없었다** — ego는 사용자의 로그인 세션을 쓰려고 고른 브라우저라 사용자 확장도 같이 따라온다.
+  ② 별개로 실제 낭비가 하나 있었다: `?key=` 이동·저장 재검증마다 서버가 전량 목록을 새 객체로 다시 보내고, `mergeServerRows`가 모든 entry를 `{ row: next }`로
+  새로 만들어 `KeyRow`의 `memo`가 한 행도 막지 못했다(클릭당 행 렌더 3,626회). 렌더는 transition이라 5ms 조각으로 나뉘어 긴 작업을 만들지 않았고, 그래서 ①에 가려졌다.
+- **그물**: 놓친 것 — T5 측정 게이트(브라우저 하나로만 잼), 정적 리뷰("memo가 있다"만 봄 — 상위에서 prop 정체성이 매번 바뀌는지는 안 봄),
+  `translation-workspace-render.test.tsx`(타이핑 경로만 셈 — 서버 목록 재도착 경로는 안 셈). 잡은 것 — QA3가 **CDP trace의 CPU self time을 스크립트 URL별로 가른 것**,
+  그리고 **같은 빌드를 확장 없는 Chrome(임시 프로필, `--disable-extensions`)으로 다시 잰 대조군**.
+- **재발 방지**:
+  - 성능 판정용 측정은 **확장 없는 프로필**(임시 프로필 + `--disable-extensions`)로 하고, 긴 작업이 나오면 **self time을 스크립트 URL별로 가른다** — `chrome-extension://`
+    이 섞여 있으면 앱 회귀로 기록하지 않는다(ARCHITECTURE §1.95 정정 문단). ego-browser는 로그인·조작 검증용으로 쓰고 성능 수치의 근거로 쓰지 않는다.
+  - 서버 prop을 클라이언트 상태로 옮겨 담는 병합 함수는 **값이 같으면 이전 참조를 유지**한다(`sameValue`, `saved-rows.ts`). 회귀 테스트: `translation-workspace-render.test.tsx`의
+    "값이 같은 목록이 새 객체로 다시 와도 목록 행은 다시 렌더되지 않는다".
+  - grep(실행): `git grep -n "= memo(\|memo(function" -- 'components/**/*.tsx' 'app/**/*.tsx'` → **`KeyRow` 1곳뿐** — 다른 memo 소비자가 생기면 그 prop이 서버 재검증 뒤에도 같은 참조인지 본다.
+
+### 2026-10-02 — 테스트가 전부 통과했는데 PR CI가 `EnvironmentTeardownError`로 red였다 — 게이트 재시도가 진짜 결함을 가렸다 (PR #171)
+
+- **영역**: `app/api/__tests__/pull-nightly.test.ts` · `app/api/__tests__/push-open-pr.test.ts`의 `vi.mock("@/lib/github-wait")` 손 사본 · `scripts/gate.ts`의 테스트 재시도
+- **증상**: v1.1.6 PR #171의 `verify`가 두 번 연속 red — 637파일 9,623건 전부 통과, `Errors 3` = `EnvironmentTeardownError: Closing rpc while "onUserConsoleLog" was pending`
+  (출처 `pull-nightly.test.ts`). 같은 SHA의 dev push run은 green이었고, 로컬 `pnpm gate`는 같은 오류를 `retried: test`로 넘겼다(translation-tree-range r8).
+- **근본 원인**: 두 라우트 테스트가 `withinGithubWait`를 **실물을 다시 짠 손 사본**으로 갈아 끼웠다 — `Promise.race([work, setTimeout(() => resolve(late()), 20)])`.
+  실물(`lib/github-wait.ts`)은 `finally`에서 `clearTimeout`하지만 사본엔 그 줄이 없어, **작업이 이긴 뒤에도 20ms 뒤 `late()`가 돌았다.** `late()`는
+  `logCaught`(→ `console.error`)를 부르므로, 파일의 마지막 테스트 뒤 `restoreAllMocks`가 진짜 console을 되돌린 다음 로그가 나가 vitest 워커가 닫히는 중의 RPC와
+  부딪혔다. 타이밍에 달린 결정적 결함이라 부하에 따라 나기도 안 나기도 했다. ⚠️ **게이트의 재시도 판정(`scripts/gate-plan.ts` — "테스트 전부 통과 + 워커 종료
+  오류만"이면 한 번 더)이 이 부류를 "부하 걸린 머신의 잡음"으로 가정했고**, 그래서 로컬에서는 매번 green으로 접혔다. CI에는 재시도가 없다.
+- **그물**: 놓친 것 — 로컬 게이트(재시도가 삼킴, `retried:` 꼬리표는 남았지만 아무도 출처 파일을 안 봤다) · dev push CI(운으로 green). 잡은 것 — PR CI(재시도 없음)와
+  `--log-failed`의 `This error originated in "<file>"` 줄.
+- **재발 방지**:
+  - 실물 helper를 테스트용으로 바꿔 끼울 땐 **손으로 다시 짜지 않고 공유 사본 하나**를 쓴다 — `lib/__tests__/fast-github-wait.ts`(마감만 짧고 타이머 정리까지 실물과 같다),
+    `vi.mock("@/lib/github-wait", () => import("@/lib/__tests__/fast-github-wait"))`. 회귀 테스트 `fast-github-wait.test.ts`("작업이 이기면 마감이 지나도 late()를
+    부르지 않는다" — `clearTimeout`을 지우면 red 2).
+  - grep(실행): `git grep -n "setTimeout(() => resolve(late" -- app lib components` → 실물과 공유 사본 둘뿐. `git grep -l "Promise.race" -- '*.test.ts' '*.test.tsx'` →
+    `components/__tests__/settings-streaming.test.tsx` 1건 — 그쪽 타이머는 `"hung"`만 내고 로그를 안 써서 이 부류가 아니다(타이머는 남는다).
+  - **`pnpm gate` 끝줄에 `retried: test`가 찍히면 통과로 읽지 않는다** — 그 run의 `This error originated in` 파일을 찾아 테스트 뒤에 살아남는 작업(끄지 않은 타이머·
+    기다리지 않은 promise·복원된 console에 쓰는 로그)이 있는지 본다. 재시도는 머지를 막지 않게 할 뿐 원인을 지우지 않는다 — CI는 재시도하지 않는다.
+    후속 후보: 게이트가 재시도할 때 출처 파일을 끝줄에 함께 싣는다(지금은 단계 이름뿐).

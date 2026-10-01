@@ -17,7 +17,8 @@ export function ListItemButton({ selected = false, className, type = "button", .
       aria-current={selected ? "true" : undefined}
       className={cn(
         "w-full text-left focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
-        selected ? "bg-foreground/[0.07]" : "hover:bg-foreground/[0.03]",
+        // ⚠️ 누를 수 없는 행(트리의 0 노드 — translation-tree-range)에는 hover 면을 주지 않는다 — 면이 서면 누를 수 있는 것처럼 보인다.
+        selected ? "bg-foreground/[0.07]" : props.disabled ? undefined : "hover:bg-foreground/[0.03]",
         className,
       )}
       {...props}

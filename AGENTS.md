@@ -91,14 +91,14 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 29개 + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select 여섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
-| 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 컴포넌트다** |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 30개 + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select 여섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
+| 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 UI 컴포넌트다**(그 옆 `SiteAnalytics`는 화면이 없다) |
 | 패널 리사이즈 | `react-resizable-panels` — `resizable.tsx` 하나가 쓴다. ⚠️ **jsdom에서는 화면의 모든 클릭을 삼킨다** — `vitest.setup.ts`가 막는다 |
 | 아이콘·폰트 | `lucide-react` / **Pretendard Variable 동적 서브셋, 자사 호스트** |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 |
-| MCP 서버 | `@modelcontextprotocol/server` — **exact 고정**(`/api/mcp`, ARCHITECTURE §6.45). ⚠️ **클라이언트마다 개정이 다르다**(Claude Code 2026-07-28 · Codex 2025 handshake) — route가 둘 다 받고, SDK 기본값으로는 2025 응답이 SSE이고 `listChanged` 기본 true가 끝나지 않는 SSE를 연다. 올리기 전에 그 절을 읽는다 |
+| MCP 서버 | `@modelcontextprotocol/server` — **exact 고정**(`/api/mcp`, ARCHITECTURE §6.45). ⚠️ **클라이언트마다 개정이 다르다**(Claude Code 2026-07-28 · Codex 2025 handshake) — route가 둘 다 받고, SDK 기본값으로는 2025 응답이 SSE이고 `listChanged` 기본 true가 끝나지 않는 SSE를 연다. 올리기 전에 그 절을 읽는다. **OAuth AS도 이 앱이다**(`lib/oauth-server/`, §6.45.9) |
 | YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`) |
-| 사용처 수집 | `ts-morph` AST + 정규식 — **`refs` 전담, 실패는 경고** |
+| 사용처 수집 | `ts-morph` AST + 정규식 — **`refs` 전담, 실패는 경고**. `ts-morph`는 `ts-dict` 수술적 치환의 파서이기도 하다 |
 | 가이드 파싱 | `unified` + `remark-parse` + `remark-gfm` → **mdast 한 벌**(`lib/guide/parse.ts`) — 게이트·목차·렌더러가 같은 파서 구성을 쓴다. 렌더러는 `react-markdown`(서버 컴포넌트, `rehype-raw` 없음) |
 | 테스트 | Vitest — **순수 함수 단위 + DOM**(파일 머리의 `// @vitest-environment jsdom`. ⚠️ **기본은 그대로 `node`다** — 전역으로 켜면 순수 모듈 수백 개가 이유 없이 jsdom을 세운다) |
 | Node | `.nvmrc` **24**. **정본은 Vercel 프로젝트의 Node.js Version이다** — 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 |
@@ -132,12 +132,15 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 초대·멤버·보관·프로젝트 생성·온보딩 | **Server Action** (`app/(edit)/projects/actions.ts` 등) | 편집 UI |
 | 기준 로케일 선언, 소스 상세 조회 | **Server Action** (`app/(edit)/projects/[slug]/sources/actions.ts`) | 편집 UI — `updateBaseLocale`이 `Project`→`TranslationSurface` 잠금과 같은 트랜잭션의 `ProjectEvent`를 든다 |
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
-| MCP 개인 토큰 발급·폐기 | **Server Action** (`app/(edit)/mcp/actions.ts`) | `/mcp` — `requireUser`만, `userId`로 좁힌다. 발급 = 기존 행 삭제 + 삽입 한 tx라 Create·Rotate가 같은 Action이다. ⚠️ **MCP 도구에 발급·폐기가 없다** — 토큰이 토큰을 만들지 않는다 |
+| 계정 — 프로필·로그인 수단 연결·해제·세션 폐기 | **Server Action** (`app/(edit)/account/actions.ts`) | `/account` — `requireUser`만 |
+| MCP 개인 토큰 발급·폐기, OAuth 연결 끊기 | **Server Action** (`app/(edit)/mcp/actions.ts`) | `/mcp` — `requireUser`만, `userId`로 좁힌다. 발급 = 기존 행 삭제 + 삽입 한 tx라 Create·Rotate가 같은 Action이다. ⚠️ **MCP 도구에 개인 토큰 발급·폐기가 없다** — 개인 토큰이 개인 토큰을 만들지 않는다(프로젝트 push 토큰 회전 `rotate_push_token`은 별개) |
+| OAuth 동의 — Authorize·Deny | **Server Action** (`app/oauth/authorize/actions.ts`) | `/oauth/authorize` — 세션을 Action 안에서 다시 읽는다(화면을 그린 뒤 끝났을 수 있다). 판정·소비는 `lib/oauth-server/` |
 | Publish 미리보기 | **Server Action** (`app/(edit)/publish-actions.ts`) | 편집 UI — **읽기만 한다.** 그래서 `revalidatePath`를 부르지 않는다 |
 | 읽기 전용 조회 — Revert 미리보기(`previewTranslationRevert`) | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI — Publish 미리보기와 같이 **`revalidatePath`를 부르지 않는다.** 인증·인가·readiness는 쓰기 Action과 같은 판정을 지난다. 키 목록은 전량이라 "다음 페이지" Action이 없다(2026-10-01, translation-filter-scope) |
 | `/api/push` | Route Handler | GitHub Actions — Bearer가 **그 프로젝트의 토큰 원문**이다 |
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
-| `/api/mcp` | Route Handler | CLI·코딩 에이전트 — Bearer가 **그 사용자의 개인 토큰**이다(`ApiToken`). **쿠키를 읽지 않는다**(CSRF 방어의 전부). 도구는 Action과 **같은 코어의 형제 껍데기**이고 Action을 부르지 않는다(ARCHITECTURE §6.45) |
+| `/api/mcp` | Route Handler | CLI·코딩 에이전트 — Bearer가 **그 사용자의 개인 토큰**(`ApiToken`, `mlm_`) 또는 **OAuth access**(`OAuthConnection`, `mlo_`)이고 입구는 `resolveBearer` 하나다. **쿠키를 읽지 않는다**(CSRF 방어의 전부). 도구는 Action과 **같은 코어의 형제 껍데기**이고 Action을 부르지 않는다(ARCHITECTURE §6.45) |
+| `/oauth/token` · `/oauth/revoke` | Route Handler | MCP 클라이언트 — Malmoi가 OAuth AS다(code+PKCE·refresh 교환, 폐기). public client라 클라이언트 인증이 없고 **쿠키를 읽지 않는다**. 발견 문서는 `app/.well-known/` 아래 둘이다(ARCHITECTURE §6.45.9) |
 | `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) |
 | `/api/github/callback` | Route Handler | GitHub 리다이렉트 복귀. **나가는 쪽은 Server Action**이 쿠키를 심고 `redirect`한다 — 돌아오는 쪽은 전체 페이지 내비게이션이라 Action이 받을 수 없다. ⚠️ `middleware.ts` matcher에 넣지 않는다(302되면 `code`가 사라진다). **설치·인가·리포 선택 변경이 전부 여기로 온다**(ARCHITECTURE §6.4) |
 
@@ -232,6 +235,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 | 게이트 | 어디 | 무엇을 막나 |
 |---|---|---|
+| `PostToolUse` 훅 — 결정성 경로 편집 시 `pnpm test`, CLAUDE.md·`.claude/commands/` 편집 시 미러 재생성 | `.claude/settings.json` (Claude Code의 Edit·Write마다 — 경로 목록은 그 파일이 정본) | export 결정성·판정이 깨진 채 다음 편집으로 넘어가는 것 · 미러 드리프트. **실패하면 그 편집을 막는다**(exit 2) |
 | `pnpm gate` (typecheck · test · 트리거 시 격리 postgres · build · 미러) | `/push` 1단계 (로컬) | dev·preview에 red가 나가는 것 |
 | PR `verify` 체크 | `/merge` 7단계 (GitHub) | **프로덕션에 red가 나가는 것** |
 
@@ -281,7 +285,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 ## 코드 컨벤션
 
 - **커밋 메시지는 영문**, Conventional Commits (`feat:` `fix:` `test:` `refactor:` `docs(scope):` `chore:`).
-- **⚠️ 화면 문구는 `messages/en.tsx`를 지난다 — 소스에 한글 UI 리터럴 금지.** `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts`를 훑고 허용 목록은 하나뿐이다(`lib/push/apply.ts`의 `$queryRaw` 안 SQL 주석 — 스캐너가 JS 주석만 벗긴다). **주석은 벗기고 세므로 아래 항목과 충돌하지 않는다.**
+- **⚠️ 화면 문구는 `messages/en.tsx`를 지난다 — 소스에 한글 UI 리터럴 금지.** `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts`를 훑고(`lib/survey/`·`lib/scan/`은 CLI 출력이라 `EXCLUDED_PREFIX`로 뺀다) 허용 목록은 하나뿐이다(`lib/push/apply.ts`의 `$queryRaw` 안 SQL 주석 — 스캐너가 JS 주석만 벗긴다). **주석은 벗기고 세므로 아래 항목과 충돌하지 않는다.**
 - **⚠️ 제품 이름은 화면에서 `Malmoi`이고 식별자에서 `malmoi`다.** `lib/i18n/__tests__/brand-spelling.test.ts`가 이웃 글자로 둘을 가르고 그 밖의 변형을 0으로 고정한다. ⚠️ **식별자를 대문자로 올리지 않는다** — 암호 문맥(`malmoi/pii` 등)이 바뀌면 저장된 봉투를 못 연다.
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다.
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
@@ -291,7 +295,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`). 인가 판정에 넘기는 값(`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다. 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 단 테스트가 직접 import하는 순수 모듈엔 붙이지 않는다. ⚠️ **`vitest.setup.ts`가 그것을 전역 mock하므로 "테스트가 죽는다"는 더 이상 잎 모듈을 분리시키는 압력이 아니다** — **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**이고 그것은 `"use client"` 그래프만 본다.
-- **날짜는 UTC로 저장하고, 절대 날짜·시각도 UTC로 말한다** — `<time dateTime>` 안에 `lib/utc-time.ts`가 만든 형 하나: 날짜만 `Sep 27, 2026`(`utcDay`), 시각까지 `Sep 27, 2026 16:34 UTC`(`utcMinute`). 생산자는 그 파일 하나이고 `toLocaleDateString`은 쓰지 않는다. 라벨 없는 로컬 시각은 보는 사람이 어느 시간대인지 모른다. 상대 시각(`lib/relative-time.ts`)만 보는 시점 기준이다.
+- **날짜는 UTC로 저장하고, 절대 날짜·시각도 UTC로 말한다** — `<time dateTime>` 안에 `lib/utc-time.ts`가 export하는 형만 쓴다(날짜만 `Sep 27, 2026`(`utcDay`), 시각까지 `Sep 27, 2026 16:34 UTC`(`utcMinute`) 등 — 목록은 그 파일이 정본). 생산자는 그 파일 하나이고 `toLocaleDateString`은 쓰지 않는다. 라벨 없는 로컬 시각은 보는 사람이 어느 시간대인지 모른다. 상대 시각(`lib/relative-time.ts`)만 보는 시점 기준이다.
 - **일회성 실험 스크립트는 `.scratch/`에 둔다.** 리포 **안**이어야 tsconfig·경로 별칭이 잡히고, `.gitignore`에 있어야 `git add -A`에 안 딸려간다.
 - **⚠️ 차단은 두 층이고, 조건부 렌더는 어느 층도 아니다.** 1차 `middleware.ts`는 렌더 요청(GET·HEAD)에 쿠키 이름만 보는 값싼 차단이고, **본판정은 진입점**이다 — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. App Router가 레이아웃과 페이지를 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). **새 보호 라우트는 `isProtectedPath`(`lib/auth/cookie.ts`)에 추가한다** — matcher는 CSP nonce 때문에 전 페이지다(ARCHITECTURE §8).
 - **⚠️ 로케일 파일이 키의 진실, 코드 스캔은 `refs`만 준다.** 스캔 실패로 적재를 막지 않는다 — 남의 리포 CI를 우리 규칙으로 실패시키지 않는다.

@@ -40,7 +40,7 @@ import {
   type ProjectGroup,
   type RowBanner,
 } from "@/lib/projects/list";
-import { routes } from "@/lib/routes";
+import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 /**
@@ -413,11 +413,11 @@ function BannerAction({
 
   switch (banner.kind) {
     case "review":
-      // ⚠️ **`?state=`가 없다** — 검토 대기만 걸러 보내는 쿼리는 8-4가 폐기했다.
-      return row.reviewSurfaceSlug === null ? null : internal(routes.surfaceTranslations(row.slug, row.reviewSurfaceSlug), m.projects.banner.action.review);
+      // 그 Status로 걸러 간다 — 범위가 트리 위치라 필터 없이 가면 그 소스 전체에서 일을 다시 찾아야 한다(2026-10-02 사용자).
+      return row.reviewSurfaceSlug === null ? null : internal(bannerTranslationsHref(row.slug, row.reviewSurfaceSlug, "review"), m.projects.banner.action.review);
     case "unsent":
-      // ⚠️ **Publish는 라우트가 아니다** — 번역 화면 툴바의 버튼으로 데려갈 뿐이다.
-      return row.unsentSurfaceSlug === null ? null : internal(routes.surfaceTranslations(row.slug, row.unsentSurfaceSlug), m.projects.banner.action.send);
+      // ⚠️ **Publish는 라우트가 아니다** — 번역 화면 툴바의 버튼으로 데려갈 뿐이다. 보낼 편집만 걸러 보인다.
+      return row.unsentSurfaceSlug === null ? null : internal(bannerTranslationsHref(row.slug, row.unsentSurfaceSlug, "unsent"), m.projects.banner.action.send);
     case "pr_open":
       return external(banner.url, m.projects.banner.action.viewPr);
     case "pr_check_failed":
@@ -448,4 +448,13 @@ function BannerAction({
 /** 링크를 뺀 자리. **버튼처럼 보이지 않아야 한다** — 누를 것이 없다. */
 function ownerOnly(sentence: string) {
   return <span className="ml-1 shrink-0">{sentence}</span>;
+}
+
+/**
+ * 목록 띠의 번역 링크 — 그 일이 있는 소스(`reviewSurfaceSlug`·`unsentSurfaceSlug`)를 그 Status로 연다(translation-tree-range 결정 기록, 2026-10-02).
+ * Home 카운트 카드와 같은 생성기(`routes.surfaceTranslations`)·같은 모양이다. ⚠️ `ns=*`를 남긴다 — 빼면 상태 링크가 네임스페이스로도 좁혀져 0건
+ * 착지한다(POSTMORTEM 2026-09-15). 화면은 `ns=*`를 생략과 같은 정규 주소로 본다(redirect 없음).
+ */
+export function bannerTranslationsHref(slug: string, surfaceSlug: string, state: "review" | "unsent"): string {
+  return routes.surfaceTranslations(slug, surfaceSlug, { ns: ALL_NAMESPACES, state });
 }

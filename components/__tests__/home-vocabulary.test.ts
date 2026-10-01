@@ -101,7 +101,7 @@ describe("완료 조건 8 — Home 소스에 고정폭 글꼴이 0이다", () =>
    * **전수로 세는 것은 `surface-rules.test.ts`다** — 여기는 Home 그래프만 본다.
    */
   it("스캐너가 실제로 잡는다 — mono를 쓰는 파일에서는 red다", () => {
-    expect(bare(read("components/onboarding/workflow-block.tsx"))).toMatch(/text-mono/);
+    expect(bare(read("components/ui/code-block.tsx"))).toMatch(/text-mono/);
   });
 });
 

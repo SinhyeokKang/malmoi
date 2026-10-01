@@ -370,7 +370,7 @@ it("필터 변경 뒤 같은 키가 남아도 Discard는 메모리의 입력까�
   const initial = props();
   const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
   await user.type(area(container, "zh"), "draft");
-  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="Completeness:"]')!);
+  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="Status:"]')!);
   const option = [...document.querySelectorAll<HTMLElement>('[role^="menuitem"]')].find(el => el.textContent?.includes("Incomplete"));
   if (!option) throw new Error("no Incomplete option");
   await user.click(option);

@@ -11,7 +11,7 @@ import { CloseButton } from "./close-button";
 /**
  * 초대 폼·확인 모달 (DESIGN §6.4).
  *
- * ⚠️ **닫히는 길이 넷이다** — Esc·배경·X·Cancel. 앞의 둘은 Radix가, 뒤의 둘은 호출부가 든다.
+ * ⚠️ **닫히는 길이 넷이다** — Esc·배경·X·Cancel. 앞의 둘은 Radix가, 뒤의 둘은 호출부가 든다. 예외는 `closeDisabled` 하나다(Sync 진행).
  * 제목은 **대상을 명시한 질문**이고 액션 라벨은 결과다 (§10) — "Remove Jane Doe from bugshot-2?" / "Remove member".
  */
 export const Dialog = Primitive.Root;
@@ -52,6 +52,15 @@ if (typeof document !== "undefined") {
     if (event.target instanceof Element) remember(event.target.closest<HTMLElement>('button, a[href], [role="option"], [tabindex]'));
   }, true);
 }
+/**
+ * 가장 최근에 기록된 요소 — 붙어 있든 떨어졌든 그대로 준다. **상태로 여는 Dialog의 호출부가 열리는 순간 "누가 열었나"를 잡는 용도다**
+ * (Sync — 배너가 결과의 재검증 트리로 닫히기 전에 사라지면 그 호출부가 트리거로 보낸다). `activeElement`로 잡으면 Safari·macOS Firefox에서
+ * `body`다 — 위 `pointerdown` 기록이 그 갈래를 메운다. ⚠️ **"떨어진 연 자리에서 더 거슬러 가지 않는다"를 여기(전역)로 올리지 않는다** —
+ * Select 옵션에서 여는 Dialog는 연 자리(옵션)가 늘 떨어져 있고, 그때는 거슬러 가는 것이 맞다.
+ */
+export function lastRecorded(): HTMLElement | null {
+  return recent[recent.length - 1] ?? null;
+}
 function returnTarget(): HTMLElement | null {
   for (let i = recent.length - 1; i >= 0; i--) {
     const node = recent[i];
@@ -71,15 +80,28 @@ export function DialogContent({
   children,
   onOpenAutoFocus,
   onCloseAutoFocus,
+  onEscapeKeyDown,
+  onInteractOutside,
+  closeDisabled = false,
   ...props
 }: ComponentProps<typeof Primitive.Content> & {
   title: ReactNode;
   description?: ReactNode;
   footer?: ReactNode;
+  /**
+   * 닫는 길을 전부 막는다 (sync-lock — Sync가 도는 동안). `OnboardingModal`과 같은 이름·같은 동작이다: **X는 숨기지 않고 끄고**
+   * Esc·배경을 무시한다. ⚠️ Cancel은 호출부의 버튼이라 호출부가 끈다 — 이 프리미티브는 푸터 안을 모른다.
+   */
+  closeDisabled?: boolean;
 }) {
   return (
     <Primitive.Portal>
-      <Primitive.Overlay className="bg-foreground/40 fixed inset-0 z-50" />
+      {/*
+        ⚠️ **닫기를 막은 동안엔 오버레이의 mousedown 기본 동작도 막는다** (#169) — `onInteractOutside`의 preventDefault는 닫힘만 막고, 브라우저가
+        mousedown에서 포커스를 포커스 불가 오버레이로 옮겨 `body`로 떨어뜨렸다(Chromium 실측 — 도는 확정 버튼의 포커스가 사라졌다).
+        Radix의 포커스 트랩은 `relatedTarget`이 없는 focusout을 되돌리지 않는다. 닫을 수 있을 때는 그대로 둔다 — 그 클릭은 닫힘이고 복귀가 받는다.
+      */}
+      <Primitive.Overlay className="bg-foreground/40 fixed inset-0 z-50" onMouseDown={closeDisabled ? (event) => event.preventDefault() : undefined} />
       <Primitive.Content
         className={cn(
           /**
@@ -95,6 +117,15 @@ export function DialogContent({
           className,
         )}
         {...props}
+        onEscapeKeyDown={(event) => {
+          if (closeDisabled) event.preventDefault();
+          onEscapeKeyDown?.(event);
+        }}
+        // `onInteractOutside`가 pointerdown·focus 바깥 둘을 다 받는다 — 하나로 막는다.
+        onInteractOutside={(event) => {
+          if (closeDisabled) event.preventDefault();
+          onInteractOutside?.(event);
+        }}
         /*
           ⚠️ **첫 포커스는 푸터 Cancel이다** (2026-10-01 ux-drift-unify 3-Y4 — DESIGN §6.4). 호출부가 Cancel에 `data-initial-focus`를 달면
           그리로 간다. 전엔 소비자 셋만 `onOpenAutoFocus`로 손수 Cancel을 지정했고 나머지는 Radix 기본(첫 tabbable = 헤더 X)이라,
@@ -124,7 +155,7 @@ export function DialogContent({
           <Primitive.Title className="text-base font-medium">{title}</Primitive.Title>
           <DialogClose asChild>
             {/* 닫기는 `CloseButton` 한 형이다(2026-10-01 — 옛 36 정방). 음수 마진은 캔버스의 `-6px -8px 0 0`이다. */}
-            <CloseButton label={m.common.close} className="-mt-1.5 -mr-2" />
+            <CloseButton label={m.common.close} disabled={closeDisabled} className="-mt-1.5 -mr-2" />
           </DialogClose>
         </header>
         {/*
