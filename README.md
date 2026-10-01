@@ -102,7 +102,7 @@ collects code references, so each key shows where your code uses it.
 
 </td>
 <td width="50%">
-  <img src="public/guide/workflow-file.webp" alt="The Workflow file dialog in Malmoi Settings with the generated YAML and a Copy YAML button" width="100%" />
+  <img src="public/guide/workflow-file.webp" alt="The Workflow file dialog in Malmoi Settings with the generated YAML and a Copy button" width="100%" />
 </td>
 </tr>
 </table>
