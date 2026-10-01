@@ -146,7 +146,8 @@ export function OnboardingModal({
           dim은 `bg-foreground/32` — 기존 `Dialog`의 `/40`과 값이 갈리는 것이 의도다(이 모달은 뒤의
           목록이 읽혀야 한다). ⚠️ **리포 최초의 `backdrop-*`다** (DESIGN §6.2 등재 대상).
         */}
-        <Primitive.Overlay className="bg-foreground/32 fixed inset-0 z-50 backdrop-blur-[6px]" />
+        {/* ⚠️ 닫기를 막은 동안 오버레이 mousedown이 포커스를 `body`로 떨어뜨리지 않게 한다 — `Dialog`와 같은 이유다(#169). */}
+        <Primitive.Overlay className="bg-foreground/32 fixed inset-0 z-50 backdrop-blur-[6px]" onMouseDown={closeDisabled ? (event) => event.preventDefault() : undefined} />
         <Primitive.Content
           /**
            * ⚠️ **높이를 dim padding(48×2)을 뺀 값에 물린다.** 핸드아웃의 `min-height:80vh;
