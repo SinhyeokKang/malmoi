@@ -608,7 +608,7 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 ⚠️ **2026-10-01 — 위 판정의 전제("전체 보기는 기본 경로가 아니다")가 바뀌었다** (translation-filter-scope, 2026-09-30 사용자). 화면 목록이
 **전량**(`pageSize: "all"`, "더 보기" 버튼 없음)이고 **서버는 모든 착지에서 전 소스를 한 번 읽는다** — 같은 날 translation-tree-range가 기본 범위를
 트리 위치로 되돌렸지만, 범위는 읽은 뒤 JS로 자른다(§1.96). 그래서 아래 측정의 조회(전 소스 × 전 키)가 모든 착지의 조회이고, RSC에 실리는 것은
-범위의 행 + 노드별 수(`counts`)뿐이라 응답은 이 표보다 작다. 목록은 요약 행뿐이고
+범위의 행 + 노드별 수(`counts`)뿐이라 응답은 이 표보다 작거나 같다(전 소스 검색이면 같은 행 수다). 목록은 요약 행뿐이고
 입력은 선택 키 하나라(`<Textarea>` 2,721개 시절과 다른 화면) 가상화 없이 측정 게이트를 세웠다. 로컬 production 빌드(`pnpm build && pnpm start`,
 dev DB = 로컬 Mac → 도쿄 pooler), 소스 셋 fixture, warm-up 1회 버림 + 3회 중앙값:
 
@@ -697,7 +697,7 @@ Home 편집 1 행은 첫 측정(dev `ae0f2f98`, 교대 없이 5회 중앙값)이
   페이지 크기가 아니라 `scope`에 좌우된다 — 페이지를 나눠도 조회 시간이 줄지 않았다. `"all"`은 LIMIT·cursor가 없고 **SQL count를 따로 돌리지
   않는다**(CTE가 한 번만 돈다 — 집계는 행에서 센다). 측정 게이트와 그 판정은 §1.95.
   - **화면은 늘 전 소스로 읽고 JS로 범위를 자른다** (translation-tree-range §3, 2026-10-01). 페이지가 `scope: "project"`로 한 번 읽고
-    `inRange`(트리 위치 · 전 소스 검색)로 자른다 — **읽기 경로가 하나라** SQL `scope` 경로와 JS 경로가 같은 행을 내는지 지킬 필요가 없고, 트리의
+    `inRange`(트리 위치 · 전 소스 검색)로 자른다 — **화면의 읽기 경로가 하나라** 화면이 SQL `scope` 경로와 JS 경로가 같은 행을 내는지 지킬 필요가 없고(그 SQL 경로는 MCP `list_keys`가 쓴다 — 둘의 일치는 아래 통합 테스트가 잰다), 트리의
     조건별 숫자(`tallyRows` → `countTree`, `lib/translations/tree-narrow.ts`)가 같은 전 소스 행에서 나와 "트리 숫자 = 그 노드를 눌렀을 때의 목록 수"가
     구조로 맞는다. 목록의 `matchedKeyCount`·`incompleteKeyCount`·`selectedInResult`는 **자른 행에서 다시 센다** — 로더의 전 소스 값을 그대로 쓰면 범위 밖
     선택을 "결과 안"으로 읽는다(POSTMORTEM 2026-09-23). 목록 조회는 redirect 판정이 바꾸는 값(경로·`ns`·언어)과 무관해 트리·상세와 같은 라운드에 떠난다.
