@@ -150,22 +150,43 @@ Publish는 미저장을 **버리지 않는다** — 확인창에서 저장된 �
 명시적인 경계가 없었다 — 찾는 곳(소스 트리 + 키 목록)과 고치는 곳(선택 키의 로케일 상세)을 나누고, 경계를 Save 하나로 세웠다(사용자 확정).
 여러 언어의 Save는 원자적이다 — 한 셀이나 사건 기록이 실패하면 전부 롤백한다.
 
-**찾기의 기본값** (translation-rework, 사용자 승인 — 범위·트리는 2026-09-30 사용자가 뒤집었다, translation-filter-scope). 검색은 키 이름·
+**찾기의 기본값** (translation-rework, 사용자 승인 — 범위·트리·필터는 2026-10-01 사용자가 다시 뒤집었다, translation-tree-range). 검색은 키 이름·
 원문(`sourceText`)·활성 로케일의 **저장된** 번역값을 대소문자 무시 부분 일치로 찾는다 — 설명(description)은 대상이 아니다.
-**최초 진입과 `Clear filters`의 범위는 `All sources`다**(옛 `This source` — 다른 소스에만 있는 문구를 검색하면 0건이었고 넓히라는 안내가
-없었다). `Clear filters`는 완성도·상태·범위 **세 축만** 되돌린다 — 검색어·트리 위치·상세 언어·선택 키는 남는다.
 
-**트리는 위치이고 필터가 아니다** (2026-09-30 사용자). 필터는 사용자가 콤보박스(Completion · State · Scope)와 검색을 직접 조작할 때만
-붙는다 — 트리·키 선택은 필터 값을 바꾸지 않는다(옛 트리 클릭은 범위를 `This source`/`This namespace`로 덮어써, 넓혀 둔 범위가 조용히
-좁혀졌다). 트리 클릭은 그 위치의 **첫 키 한 행**으로 가고 그 행이 보이게 스크롤한다. 정렬이 `Incomplete first`라 같은 네임스페이스의
-키는 목록에 흩어진다 — 그 네임스페이스만 보려면 Scope `This namespace`를 고른다(**현재 위치의** 네임스페이스라 트리로 옮기면 대상도 따라간다).
-**필터가 켜지면 트리에 반영된다** — 조건에 맞는 키가 없는 소스·네임스페이스는 숨기고 숫자는 일치 키 수가 된다. 예외 둘: 위치 노드는 0이어도
-흐린 행으로 남고, 목록 세대 안에서 한 번 보인 노드는 Save로 0이 되어도 숫자만 바뀐다. 검색이 0건인데 범위가 좁으면 빈 상태가
-`Search all sources`를 먼저 권한다.
+**트리 = 목록 범위, 필터는 Status 하나, 검색은 전 소스** (2026-10-01 사용자: "설계 자체가 잘못됐다 — 소스 트리·키·번역값은 연동돼야 한다").
+- **트리가 목록 범위다.** 소스 아래 `All namespaces`는 그 소스 전체, 네임스페이스 행은 그 네임스페이스다(소스 행은 펼침 토글). 키를 고르면
+  상세가 그 키다. 범위 콤보(옛 Scope)는 없다. 트리 클릭은 서버 왕복이고 새 범위의 첫 키(`@first`)로 착지한다.
+- **필터는 Status 하나다** — `All keys` · `Incomplete` · `Needs review` · `Unsent` · `New from GitHub`. 트리·키 선택은 Status를 바꾸지 않고(원래
+  의도 ① — 아래 패널의 선택이 사용자가 켜지 않은 필터로 흘러들지 않는다), Status는 범위를 바꾸지 않는다.
+- **검색은 전 소스다**(원래 의도 ②). 검색어가 있는 동안만 트리 맨 위에 `All sources` 노드가 선다(활성 소스가 둘 이상일 때 — 하나면 그 소스의
+  `All namespaces`가 전 소스 범위를 표시한다). 새 검색어는 언제나 전 소스이고, 같은 검색어를 다시 제출하면 범위가 남는다. 검색 중 노드를 누르면
+  결과를 그 노드로 좁히고, `All sources`를 누르면 다시 넓힌다.
+- **전 소스 결과에서 키를 고르면 위치가 그 키의 소스·네임스페이스로 옮긴다**(트리에 위치로 약하게 강조 — 범위 `All sources`는 선택 표시로 남는다).
+  다른 소스의 키면 화면이 그 소스로 옮겨 가 재마운트된다 — 목록은 같은 전 소스 결과로 다시 오지만 저장으로 조건에서 빠진 행(`+n saved`)은 사라진다
+  (사용자 수용). 검색어를 지우면 범위가 그 위치(= 고른 키의 소스·네임스페이스)로 돌아간다.
+- **트리는 노드를 숨기지 않는다.** Status나 검색이 켜지면 숫자만 일치 키 수(= 그 노드를 눌렀을 때의 목록 수)가 되고 0 노드는 흐리고 누를 수 없다 —
+  지금 범위·위치 노드는 예외다.
+- 빈 상태: 위치로 좁힌 검색 → `Search all sources` · 전 소스 검색 → `Clear search` · Status가 켜졌으면 `Clear filters`(검색 중엔 보조). 툴바의
+  `Clear filters`는 없다 — 축이 하나라 Status 콤보의 `All keys`가 그 일이다.
+
+⚠️ **뒤집은 판정** — 2026-09-30 translation-filter-scope는 "트리는 위치이고 필터가 아니다"(기본 범위 `All sources`, 트리 클릭은 첫 키로 점프)로
+옛 문제(트리 클릭이 Scope를 덮어써 사용자가 켜지 않은 필터가 켜짐)를 고쳤지만, 트리를 눌러도 목록이 안 바뀌어 세 패널이 같은 위치를 가리키지
+않았다. 목록 범위의 주인이 트리와 Scope 콤보 둘이었던 것이 원인이라 콤보를 걷고 트리 하나로 모았다.
+
+**잃는 것** (사용자 수용, 2026-10-01):
+
+| 무엇 | 전 | 후 |
+|---|---|---|
+| `Incomplete` + `Needs review` 같은 조합 | 두 축이라 함께 걸린다 | Status 하나라 한 번에 하나. 옛 주소에 둘이 오면 `state` 하나 |
+| `Complete` | 완성도 축의 선택지 | 없다 — 옛 `completion=complete`는 `All keys` |
+| `Untranslated in {locale}` | 그 로케일이 빈 키만 목록에 | 없다 — `Incomplete` + 상세 언어 그 로케일로 갈음(다른 로케일만 빈 키가 섞인다 — 한 로케일만 맡은 편집자가 내는 비용) |
+| 검색어 없는 `scope=project` 북마크 | 전 소스 목록 | 무시되고 경로 소스·`ns` 범위 — 범위가 **좁아진다** |
+| 로케일 없는 소스의 `Untranslated in` 대체 안내 | 안내 문구 | 없다 — 그 소스에 없는 `language`는 정규 URL에서도 지운다(`@missing`은 보존) |
+| 툴바 `Clear filters` | 세 축을 한 번에 되돌림 | 없다 — Status 콤보에서 `All keys`. 빈 상태의 `Clear filters`는 남는다 |
 
 **화면 목록은 한 번에 전부 싣는다** (2026-09-30 사용자 — 옛 100행 + "더 보기" 버튼의 반전). 눌러서 더 읽는 버튼이 없다. 측정 게이트에서
-Save 재검증이 한계를 넘었지만(ARCHITECTURE §1.95) 사용자가 받아들였다(2026-10-01). MCP `list_keys`는 cursor 페이징을 외부 계약으로 유지하고,
-기본 범위만 화면처럼 전 소스로 넓어졌다.
+Save 재검증이 한계를 넘었지만(ARCHITECTURE §1.95) 사용자가 받아들였다(2026-10-01). MCP `list_keys`는 cursor 페이징·기본 범위(전 소스)·
+`scope`·`completion`(`missing`·`complete` 포함)·`state`를 외부 계약으로 유지한다 — 화면이 Status 하나가 되어도 도구의 입력 해석은 바뀌지 않는다(2026-10-01).
 
 **저장한 행은 목록에서 바로 빠지지 않는다** (translation-rework, 사용자 승인). 저장으로 조건을 벗어난 행은 취소선 + `Saved`로
 자리에 남고, 목록 머리의 `+n saved`가 그 수를 따로 센다. 다른 키를 눌러도 남는다 — 목록 세대가 바뀔 때(필터·검색·범위·트리
@@ -645,7 +666,7 @@ GitHub Release**라 소스에 사본이 없고, 본문 이미지는 `<img>`가 �
 
 **번역은 표면 아래, 소스 관리는 프로젝트 아래다.** 내부 링크는 `routes.surfaceTranslations`와
 `routes.sources`를 쓴다. `routes.translations`의 옛 주소는 저장된 기본 표면으로 보내며
-`?ns=`·`?locales=`·`?q=`·`?state=`와 번역 작업 화면의 키(`scope`·`completion`·`missingLocale`·`key`·`keySurface`·`language`)를 `parseTranslationQuery`→`serializeTranslationQuery` 한 경로로 보존한다. ⚠️ **`cursor`는 주소에 없다**(audit-ux #19 — 화면 목록은 전량이다) — 옛 `?cursor=` 주소는 cursor를 뺀 정규 주소로 redirect한다. `scope`가 없는 주소는 `All sources`다. `key=@first`는 트리 이동이 싣는 예약값으로, 서버가 같은 렌더에서 목록 순서상 그 위치(소스·네임스페이스)의 첫 키로 풀고 화면이 주소를 그 키로 맞춘다. 옛 Locales 두 주소는 권한 검사 후 Sources 목록으로 간다.
+`?ns=`·`?locales=`·`?q=`·`?state=`와 번역 작업 화면의 키(`scope`·`completion`·`missingLocale`·`key`·`keySurface`·`language`)를 화면 정규형(`screenQuery`→`serializeScreenQuery`)으로 옮긴다 — 소스·키·언어의 존재 보정은 목적지 페이지가 한다. ⚠️ **`cursor`는 주소에 없다**(audit-ux #19 — 화면 목록은 전량이다) — 옛 `?cursor=` 주소는 cursor를 뺀 정규 주소로 redirect한다. 검색어가 없으면 범위는 트리 위치(`ns`)이고 `scope`는 무시된다 — `scope`는 위치로 좁힌 검색(`source`·`namespace`)일 때만 주소에 선다(translation-tree-range). `key=@first`는 트리 이동이 싣는 예약값으로, 서버가 같은 렌더에서 목록 순서상 그 위치(소스·네임스페이스)의 첫 키로 풀고 화면이 주소를 그 키로 맞춘다. 옛 Locales 두 주소는 권한 검사 후 Sources 목록으로 간다.
 `/settings?add=sources`도 Sources로 보내고 OAuth 오류 `e`를 보존한다.
 Sources 상세 선택은 클라이언트 상태라 주소·이력이 바뀌지 않고 전체 새로고침은 목록이다.
 Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#68).
@@ -704,8 +725,9 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
      경로가 화면의 주된 동작이어야 한다**(로케일별 진행률이 곧 `?locales=` 링크, 최근 활동이 곧 `?ns=`·
      `?locales=` 링크 — 8-4가 `?focus=`를 그 이름으로 바꿨다). 개요만 있고 링크가 없으면 그 클릭이 순손실이다.
      ✅ 구현은 갚는다 — 2026-09-15에 수단이 바뀌었다: **카운트 카드 넷이 각자 번역 화면의 좁힘으로 착지**하고(셋은 `?state=`,
-     미번역은 `?completion=incomplete` — `components/home/count-cards.tsx`의 `cardQuery`)
-     **할 일 항목 행이 그 로케일의 번역 화면으로** 간다. `[Open translations]` primary와 진행률 행
+     미번역은 `?completion=incomplete` — `components/home/count-cards.tsx`의 `cardQuery`) — 2026-10-01부터 **그 카드의 수가 있는 첫 활성
+     소스**(트리 순서, 없으면 기본 소스)로 간다(`cardLandings` — 범위가 트리 위치라 기본 소스로 가면 0건일 수 있다, translation-tree-range) —
+     **할 일 항목 행이 그 로케일의 번역 화면으로** 간다(빈 로케일 행은 `Incomplete` + 상세 언어 그 로케일). `[Open translations]` primary와 진행률 행
      링크는 그때 사라졌다(카드가 더 좁은 목적지를 주므로 같은 클릭이 더 멀리 간다).
      `components/__tests__/home-screen.test.ts`가 그 구조를 소스로 센다.
    - ✅ **`/projects` 목록의 링크가 바뀌었다** — `routes.translations(slug)`에서
@@ -792,15 +814,17 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
 경로의 redirect 껍데기이고(권한 검사 후 `/sources?add=sources` — 앱 안에서 가리키는 곳 0), 표면 추가 판정은
 Sources의 Add sources 모달이 부르는 `addSurfaces`의 `project:settings`가 한다. `member:manage` 뒤에 두는 **페이지는 없다**(§3).
 
-⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?scope=`·`?completion=`(+`?missingLocale=`)·`?q=`와 선택 키 `?key=`(예약값 `@first` = 트리 이동의 첫 키, audit-ux #18)·`?keySurface=`·상세 언어 `?language=`(translation-rework — 정본은 `lib/translations/query.ts`. ⚠️ 번역 목록의 `?cursor=`는 2026-09-25에 주소에서 빠졌다 — 옛 주소는 redirect다(2026-10-01부터 화면 목록은 전량이다). 상세 언어는 서버로 가지 않고 `history.replaceState`로 주소만 맞춘다. ⚠️ 옛 `?locales=`는 단일 코드일 때만 `language`로, `?state=untranslated`는 `completion=incomplete`로 읽고 다시 내보내지 않는다. 8-4가 `?focus=`를 폐기했다)·**`?state=`**(`unsent`·`review`·`new`)(⚠️ **8-4가 뺐다가 2026-09-15에 Home 카운트 카드가 되살렸다** — 카드 넷이 수만 말하고 목적지가 없으면 개요가 일로 이어지지 않는다(결정 1의 대가). 섹션 안 pending 우선 정렬은 그대로 남는다: 그쪽은 필터를 안 건 사람을 위한 것이고 이쪽은 특정 구간을 보러 온 사람을 위한 것이다)와 **목록의 `?q=`(이름 검색, 2026-09-11 — ⚠️ `?filter=`는 2026-09-13에 사라졌다: 상태를 말하는 자리가 탭에서 **그룹 셋**으로 옮겨갔고, 옛 링크의 그 키는 `?focus=`와 같은 관용구로 **조용히 무시된다**)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. `/account`도 같은 계약 안이다 — `routes.account({ e, sessionRevocation, link, connect })`가 넷을 만들고, **`?connect=`는 GitHub App 연동/해제의 결과**다(`lib/account-connect/http.ts`가 읽는 쪽이고, 만드는 쪽과 읽는 쪽을 같은 함수로 묶지 않는다 — 아래 `?sessionRevocation=` 항목과 같은 이유). 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
+⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`(= 트리 범위)·`?completion=incomplete` 또는 `?state=`(둘 중 하나 = Status)·`?q=`(+ 위치로 좁힌 검색의 `?scope=`)와 선택 키 `?key=`(예약값 `@first` = 트리 이동의 첫 키, audit-ux #18)·`?keySurface=`·상세 언어 `?language=`(translation-rework — 정본은 `lib/translations/query.ts`. ⚠️ 번역 목록의 `?cursor=`는 2026-09-25에 주소에서 빠졌다 — 옛 주소는 redirect다(2026-10-01부터 화면 목록은 전량이다). 상세 언어는 서버로 가지 않고 `history.replaceState`로 주소만 맞춘다. ⚠️ 옛 `?locales=`는 단일 코드일 때만 `language`로, `?state=untranslated`는 `completion=incomplete`로 읽고 다시 내보내지 않는다. 8-4가 `?focus=`를 폐기했다)·**`?state=`**(`unsent`·`review`·`new`)(⚠️ **8-4가 뺐다가 2026-09-15에 Home 카운트 카드가 되살렸다** — 카드 넷이 수만 말하고 목적지가 없으면 개요가 일로 이어지지 않는다(결정 1의 대가). 섹션 안 pending 우선 정렬은 그대로 남는다: 그쪽은 필터를 안 건 사람을 위한 것이고 이쪽은 특정 구간을 보러 온 사람을 위한 것이다)와 **목록의 `?q=`(이름 검색, 2026-09-11 — ⚠️ `?filter=`는 2026-09-13에 사라졌다: 상태를 말하는 자리가 탭에서 **그룹 셋**으로 옮겨갔고, 옛 링크의 그 키는 `?focus=`와 같은 관용구로 **조용히 무시된다**)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. `/account`도 같은 계약 안이다 — `routes.account({ e, sessionRevocation, link, connect })`가 넷을 만들고, **`?connect=`는 GitHub App 연동/해제의 결과**다(`lib/account-connect/http.ts`가 읽는 쪽이고, 만드는 쪽과 읽는 쪽을 같은 함수로 묶지 않는다 — 아래 `?sessionRevocation=` 항목과 같은 이유). 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
 
-⚠️ **번역 화면의 URL은 요청값을, 조회는 적용값을 든다** (translation-rework). `?completion=missing&missingLocale=ja`는 ja가 없는
-범위에서도 URL에 남는다 — 범위 안 소스 **전부**에 ja가 없으면 `Incomplete`로, 일부에만 없으면 **그 소스를 결과에서 빼고** 계산한다
-(`effectiveCompletion`, `lib/translations/summary.ts`). ja가 없는 소스의 키를 전부 미번역으로 세지 않는다 — 분모는 각 소스의 활성
-로케일이다. 범위를 다시 넓히면 ja가 돌아오고, 뒤로/앞으로·새로고침·공유 링크가 같은 요청값에서 같은 결과를 낸다. 다른 완성도를
-고르거나 `Clear filters`를 누르면 기억한 언어도 버린다. 상태 축(`?state=`)은 `All sources`에서도 선다 — 소스별 활성 셀로 판정한 뒤
-합친다. **`New from GitHub`(`state=new`)은 `StringKey.createdAt > Project.lastPulledAt`이고**(`lastPulledAt`이 null이면 활성 키 전체)
-**Sync 시각이 아니다.**
+⚠️ **번역 화면의 URL은 화면 정규형이다 — 옛 주소는 접어서 redirect한다** (translation-tree-range — 정본 `screenQuery`, `lib/translations/query.ts`).
+`?completion=missing&missingLocale=ja` → `Incomplete` + 상세 언어 ja · 로케일 없는 `missing` → `Incomplete` · `completion` 없이 온 `missingLocale` → 버림 ·
+`complete` → `All keys` · `incomplete`와 `state`가 함께 오면 `state` 하나 · 검색어 없는 `scope` → 버림 · cursor → 버림. 검색어 없이 다른 활성 소스(또는 같은
+소스의 다른 네임스페이스)의 키를 가리키는 옛 링크는 그 키의 소스·네임스페이스로 옮긴다. 상세 언어가 상세 대상 소스에 없는 로케일이면 정규 URL에서도
+지운다(`@missing`은 보존). 정규 주소는 redirect하지 않는다 — `ns=*`는 생략과 같다(Home 상태 링크가 싣는다).
+⚠️ **MCP `list_keys`는 이 층을 지나지 않는다** — 동결된 파서(`parseTranslationQuery`)가 옛 해석 그대로다: `missing`은 요청값으로 남아 적용값을
+`effectiveCompletion`(`lib/translations/summary.ts`)이 계산한다(범위 안 소스 **전부**에 ja가 없으면 `Incomplete`, 일부에만 없으면 그 소스를 빼고 계산).
+상태 축(`state`)은 전 소스에서도 소스별 활성 셀로 판정한 뒤 합친다. **`New from GitHub`(`state=new`)은 `StringKey.createdAt > Project.lastPulledAt`이고**
+(`lastPulledAt`이 null이면 활성 키 전체) **Sync 시각이 아니다.**
 
 ⚠️ **`?e=`는 일부만 생성기를 지난다** (거부 사유 — 읽는 라우트: `projects`·`projects/new`·`account`·
 `settings`·`sources`·`surfaces/new`·`invite/[token]`·`signin/link/[challenge]`·`oauth/authorize`. 정본은 각 페이지의 `searchParams` 타입이다). `routes.projects({ e })`·`routes.sources({ add, e })`·`routes.account({ e, … })`·
