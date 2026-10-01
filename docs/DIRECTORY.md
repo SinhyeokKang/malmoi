@@ -107,6 +107,7 @@ app/
                         ⚠️ 앱 안에서 여기로 보내는 곳이 0이다 — GitHub callback도 Sources로 바로 간다(audit-ux #31)
       surfaces/[surfaceSlug]/not-found.tsx  없는 표면의 제품 안내(requireSurfaceAccess의 notFound). translations/not-found.tsx가 다시 내보낸다
       not-found.tsx    프로젝트 세그먼트 경계 — ⚠️ 무엇을 잃었는지 단정하지 않는다(그 아래 notFound()가 여럿이다). Projects 복귀
+      [...rest]/       맞는 라우트가 없는 하위 주소 — 인가 뒤 notFound()로 위 경계를 세운다(없으면 루트 RootFallback이 셸 안에 섰다, malmoi#167)
       members/ logs/ settings/   (settings/actions.ts — GitHub 연결 시작 · 리포 (재)연결 · 리포 설정 갱신 · 프로젝트 이름/이미지)
                         셋 다 loading.tsx 골격을 든다(audit-ux #5 — [slug]/에 하나로 두지 않는다, malmoi#95)
                         ⚠️ 넷 다 게이트가 translation:write다(settings만 project:settings) — EDITOR도
