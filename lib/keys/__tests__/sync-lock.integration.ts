@@ -87,14 +87,14 @@ async function writable() {
 /** 실제 Publish 성공 확정 — 전달 확인이 있어야 성공 저장이 복원 기준을 쓴다(거부가 그것을 안 쓴다는 대조가 선다). */
 async function confirm() {
   await prisma.syncRun.create({ data: { id: "run", projectId: "p", status: "RUNNING", trigger: "MANUAL", startedAt: new Date(Date.now() - 600_000) } });
-  const state = await loadPullState(prisma, "p");
+  const state = await loadPullState(prisma, "fixture");
   await saveLastPulledAt(prisma, "p", new Date(), undefined, state.pendingEdits, { runId: "run", contexts: state.deliveryContexts ?? [] });
   await prisma.syncRun.update({ where: { id: "run" }, data: { status: "SUCCEEDED", finishedAt: new Date() } });
 }
 
-function deferred<T = void>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>(done => { resolve = done; });
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>(done => { resolve = done; });
   return { promise, resolve };
 }
 

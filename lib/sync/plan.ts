@@ -40,6 +40,25 @@ export function isRunActive(startedAt: Date, now: Date): boolean {
   return now.getTime() - startedAt.getTime() <= STALE_AFTER_SECONDS * 1000;
 }
 
+export type WriteLock = { reason: "sync-running"; startedAt: Date; reopensBy: Date };
+
+/**
+ * 적재 lease(`Project.repositoryImportToken`·`repositoryImportStartedAt` — 수동 Sync·야간 적재)가 번역 쓰기를 막는가 (sync-lock — ARCHITECTURE §5.6.1).
+ * 저장(`applyKeySave(Batch)`)과 Revert가 **잠금 안에서 읽은 lease**로 부른다. 경계는 Publish 게이트와 같은 `isRunActive`다.
+ *
+ * ⚠️ **CI·첫 적재의 표면 표시(`TranslationSurface.lastImportStartedAt`)는 입력이 아니다** — 넣으면 CI push마다 편집자를 막는다(sync-lock C2·C5).
+ * ⚠️ **화면은 이 함수를 import하지 않는다** — 이 모듈은 `lib/failure`(→ `node:crypto`)를 물어 잎이 아니다. 페이지가 판정해 시각만 넘긴다.
+ *
+ * `reopensBy`는 **표시용**이다 — 만료 시각을 다음 분으로 올린다. `isRunActive`는 정각도 활성이고 `utcMinute`은 초를 버리므로, 그대로 내면
+ * 표시가 실제보다 최대 59초 이르다. 올린 시각에는 반드시 풀려 있다. 화면·MCP·Revert가 같은 값을 받도록 여기서 올린다.
+ */
+export function planWriteLock(input: { now: Date; repositoryImportToken: string | null; repositoryImportStartedAt: Date | null }): WriteLock | null {
+  const startedAt = input.repositoryImportStartedAt;
+  if (input.repositoryImportToken === null || startedAt === null || !isRunActive(startedAt, input.now)) return null;
+  const expiry = startedAt.getTime() + STALE_AFTER_SECONDS * 1000;
+  return { reason: "sync-running", startedAt, reopensBy: new Date(Math.floor(expiry / 60_000) * 60_000 + 60_000) };
+}
+
 // ⚠️ **다른 두 제한은 여기 없다** — 상수는 **소비자 옆**에 두고 모음 파일을 만들지 않는다:
 // `PROJECT_LIMIT`은 `lib/onboarding/create-plan.ts`, `MEMBER_LIMIT`은 `lib/auth/invitation.ts`다.
 // 위 둘이 여기 있는 이유는 소비자가 sync 경로 안에서 여럿(게이트·껍데기)이어서다.

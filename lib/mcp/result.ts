@@ -12,7 +12,8 @@ import { BATCH_SAVE_LIMIT } from "./batch";
  *
  * - 거부는 `isError: true` + 기존 거부 코드 + **화면과 같은 문장**이다. 화면에 있는 거부는 화면의 키를 가리키고, 도구에만 있는
  *   갈래만 `m.mcp`에 있다 — 같은 거부에 문구가 두 벌이면 안 된다.
- * - **장애는 거부가 아니다**(ARCHITECTURE §6.00 ②) — `unavailable`만 `retryable: true`를 싣는다.
+ * - **장애는 거부가 아니다**(ARCHITECTURE §6.00 ②) — `unavailable`은 `retryable: true`를 싣는다. 거부 중에는 `sync-running`(적재 lease —
+ *   기다리면 풀린다, sync-lock C4)만 같은 표시와 다시 열리는 시각(`detail`)을 싣는다.
  * - **예외 문구를 싣지 않는다**(§6.0) — 결과 모양에 예외 자리가 없고, 입력의 다른 필드는 읽지 않는다.
  *
  * 도구가 새 거부 갈래를 내면 `TOOL_REJECTIONS`와 `MESSAGE`에 함께 늘린다 — `satisfies`가 빠진 갈래를 잡는다.
@@ -22,7 +23,7 @@ import { BATCH_SAVE_LIMIT } from "./batch";
 export const TOOL_REJECTIONS = [
   "not-found", "forbidden", "archived", "unavailable", "token-scope",
   "repo-read-only", "sample-expired", "manual-no-match", "not-ready",
-  "reconfirm", "invalid-input", "too-many", "duplicate-key",
+  "reconfirm", "invalid-input", "too-many", "duplicate-key", "sync-running",
 ] as const;
 export type ToolRejection = (typeof TOOL_REJECTIONS)[number];
 
@@ -59,6 +60,8 @@ const MESSAGE = {
   "invalid-input": m.mcp.errors["invalid-input"],
   "too-many": m.mcp.errors["too-many"](BATCH_SAVE_LIMIT),
   "duplicate-key": m.mcp.errors["duplicate-key"],
+  // 적재 lease 중 번역 쓰기 거부(sync-lock C4) — Sync 결과 화면의 문장이다. 다시 열리는 시각은 호출부가 `detail`로 싣는다.
+  "sync-running": m.repositorySync.errors["already-running"],
 } satisfies Record<ToolRejection, string>;
 
 const text = (value: string): ToolResult["content"] => [{ type: "text", text: value }];
@@ -93,7 +96,9 @@ export function toToolResult(outcome: ToolOutcome, credential?: Credential["kind
       return { isError: true, content: text(MESSAGE.unavailable), structuredContent: { ...outcome.detail, status: "unavailable", message: MESSAGE.unavailable, retryable: true } };
     }
     // `detail`은 호출부가 고른 값(행 오류 인덱스·재시도 시각 등)이다 — 예외·원문을 싣지 않는다.
-    return { isError: true, content: text(message), structuredContent: { ...outcome.detail, status: outcome.code, message } };
+    // ⚠️ 재시도 표시는 코드가 정한다 — 호출부가 화면 문장(`message`)을 골라 넘겨도 `sync-running`은 기다리면 풀리는 거부다.
+    const retryable = outcome.code === "sync-running" ? { retryable: true } : {};
+    return { isError: true, content: text(message), structuredContent: { ...outcome.detail, status: outcome.code, message, ...retryable } };
   }
   if (outcome.status === "needs-browser") {
     const message = m.mcp.needsBrowser[outcome.reason];
@@ -105,6 +110,6 @@ export function toToolResult(outcome: ToolOutcome, credential?: Credential["kind
   return {
     isError: true,
     content: text(message),
-    structuredContent: status === "unavailable" ? { status, message, retryable: true } : { status, message },
+    structuredContent: status === "unavailable" || status === "sync-running" ? { status, message, retryable: true } : { status, message },
   };
 }
