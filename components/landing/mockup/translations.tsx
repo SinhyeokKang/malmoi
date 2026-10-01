@@ -166,9 +166,10 @@ function KeyList({ phase }: { phase: Phase }) {
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         <span className="text-base font-medium">{list.keys}</span>
         <CountBadge count={current?.keyCount ?? 0} label={m.translations.keys(current?.keyCount ?? 0)} />
-        <span className="text-muted-foreground ml-auto min-w-0 truncate text-xs">{list.incompleteFirst}</span>
-        {/* 이 목록을 좁히는 필터는 머리 오른쪽 끝이다 — 실물 `key-list.tsx`의 `filter` 자리(번역값 패널의 언어 메뉴와 같은 자리). */}
-        <FilterTrigger label={w.filters.state.any} size="sm" />
+        {/* 이 목록을 좁히는 필터는 머리 오른쪽 끝이다 — 실물 `key-list.tsx`의 `filter` 자리(번역값 패널의 언어 메뉴와 같은 자리). 정렬 문구는 없다(2026-10-02). */}
+        <span className="ml-auto flex">
+          <FilterTrigger label={w.filters.state.any} size="sm" />
+        </span>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {fixture.rows.map((row, index) => {

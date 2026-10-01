@@ -2372,7 +2372,6 @@ export const en = {
       resize: "Resize key list",
       list: {
         keys: "Keys",
-        incompleteFirst: "Incomplete first",
         savedExtra: (n: number): string => `+${n.toLocaleString("en-US")} saved`,
         missing: (n: number): string => `${n.toLocaleString("en-US")} untranslated`,
         complete: "Complete",

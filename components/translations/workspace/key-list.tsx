@@ -38,7 +38,7 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
   treeButton?: { open: boolean; controls: string; onToggle: () => void; breadcrumb: ReactNode };
   /**
    * 머리 오른쪽 끝의 필터 — 이 목록을 좁히는 Status다(2026-10-02 사용자: 패널마다 자기를 좁히는 필터를 든다 — 번역값 패널의 언어 메뉴와 같은 자리).
-   * ⚠️ 좁은 폭에서 트리거는 줄지 않는다 — 범위 라벨이 먼저, 그다음 `Incomplete first` 문구가 잘린다.
+   * ⚠️ 좁은 폭에서 잘리는 것은 **범위 라벨 하나**다(#170 — 정렬 문구와 함께 줄었다) — 제목·수·`+n saved`·트리거는 줄지 않는다.
    */
   filter?: ReactNode;
   empty: ReactNode;
@@ -98,9 +98,10 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
         )}
         <h2 id={headingId} ref={titleRef} tabIndex={-1} className="text-base font-medium">{title}</h2>
         <CountBadge count={count} label={m.translations.keys(count)} />
-        {treeButton !== undefined && <span className="min-w-0 shrink-[4] truncate">{treeButton.breadcrumb}</span>}
-        <span className="text-muted-foreground ml-auto min-w-0 truncate text-xs">
-          {savedExtra > 0 && <>{w.savedExtra(savedExtra)} · </>}{w.incompleteFirst}
+        {treeButton !== undefined && <span className="min-w-0 truncate">{treeButton.breadcrumb}</span>}
+        {/* 정렬(미완 먼저)은 그대로이고 그 문구는 걷었다(2026-10-02 사용자). 이 칸은 비어도 남아 트리거를 오른쪽 끝으로 민다. */}
+        <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+          {savedExtra > 0 && w.savedExtra(savedExtra)}
         </span>
         {filter}
       </div>

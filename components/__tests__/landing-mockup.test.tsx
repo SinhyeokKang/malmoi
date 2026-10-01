@@ -137,11 +137,12 @@ describe("목업 — 제품과 같은 구조다", () => {
     const f = m.translations.workspace.filters;
     expect(scene.textContent).not.toContain("This source");
     expect(find(scene, "[data-landing-search]").textContent).toBe(f.searchPlaceholder);
-    const listHead = [...scene.querySelectorAll<HTMLElement>("span")].find(el => el.textContent === m.translations.workspace.list.incompleteFirst)?.parentElement;
+    const listHead = [...scene.querySelectorAll<HTMLElement>("span")].find(el => el.textContent === m.translations.workspace.list.keys)?.parentElement;
     expect(listHead?.textContent).toContain(f.state.any);
+    expect(listHead?.textContent).not.toContain("Incomplete first");
   });
 
-  /** 실제 목록은 미완을 먼저 둔다(`Incomplete first` — `rank`). 목업이 완료 행을 앞에 두면 머리 문구가 거짓이다. */
+  /** 실제 목록은 미완을 먼저 둔다(`rank`). 목업이 완료 행을 앞에 두면 실물과 다른 순서를 보인다(머리의 정렬 문구는 2026-10-02에 걷었다). */
   it("키 목록이 미완 먼저다", () => {
     const ranks = fixture.rows.map((row) => (row.missing > 0 ? 0 : 1));
     expect(ranks).toEqual([...ranks].sort((a, b) => a - b));

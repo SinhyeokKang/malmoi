@@ -136,6 +136,37 @@ it("Status 트리거는 키 목록 머리에 하나이고 선택지는 다섯이
   expect(menuItems()).toEqual([w.filters.state.any, w.filters.state.incomplete, w.filters.state.review, w.filters.state.unsent, w.filters.state.new]);
 });
 
+/*
+  `Incomplete first` 문구는 걷었다(2026-10-02 사용자) — 정렬(미완 먼저)은 그대로이고, 머리는 제목·수·(저장으로 빠진 수)·Status 트리거만 든다.
+*/
+it("키 목록 머리에 정렬 문구가 없다 — 저장으로 빠진 수와 Status 트리거는 남는다", async () => {
+  const base = props({ tree: TREE2 });
+  const { container } = await render(<TranslationWorkspace {...base} />);
+  const head = () => container.querySelector<HTMLElement>("[data-panel=list] h2")!.parentElement!;
+  expect(head().textContent).not.toContain("Incomplete first");
+  expect(head().querySelector(`button[aria-label^="${w.filters.state.axis}:"]`)).not.toBeNull();
+});
+
+/*
+  #170 — 접힌 레이아웃에서 범위 라벨과 정렬 문구가 함께 줄었다. 머리에서 잘리는 것은 **범위 라벨 하나**다 — 제목·수·`+n saved`·Status 트리거는 줄지 않는다.
+  jsdom은 폭을 재지 못하므로 줄어들 수 있는 요소(`min-w-0` + `truncate`)의 수를 센다.
+*/
+it("접힌 레이아웃의 키 목록 머리에서 잘리는 것은 범위 라벨 하나다 (#170)", async () => {
+  vi.stubGlobal("ResizeObserver", class {
+    constructor(private readonly callback: ResizeObserverCallback) {}
+    observe() { this.callback([{ contentRect: { width: 700 } } as ResizeObserverEntry], this as unknown as ResizeObserver); }
+    disconnect() {}
+    unobserve() {}
+  });
+  try {
+    const { container } = await render(<TranslationWorkspace {...searching({ ns: "auth", scope: "namespace" })} />);
+    const head = container.querySelector<HTMLElement>("[data-panel=list] h2")!.parentElement!;
+    const shrinkable = [...head.querySelectorAll<HTMLElement>("*")].filter(el => el.classList.contains("truncate") && el.classList.contains("min-w-0"));
+    expect(shrinkable).toHaveLength(1);
+    expect(shrinkable[0]!.querySelector("[data-range-label]")).not.toBeNull();
+  } finally { vi.unstubAllGlobals(); }
+});
+
 it("목록 제목은 Status와 무관하게 Keys다 — 메뉴 라벨이 Incomplete를 말한다", async () => {
   const base = props({ tree: TREE2 });
   const { container } = await render(<TranslationWorkspace {...base} query={{ ...base.query, completion: "incomplete" }} />);
