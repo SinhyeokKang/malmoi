@@ -1484,6 +1484,8 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 **미전달 편집이 있으면 CI 적재를 통째로 보류한다** (2026-09-18, sync-edit-protection — 옛 판정 "편집 손실 창은 코드에서 지우지 않는다, 완화는 pull 주기를 줄이는 쪽에서만"의 반전). 그 옛 판정이 금지한 것은 **변경 감지와 병합**이었고, 보류는 둘 다 하지 않는다: **자동 적재 판정은 리포 값을 보지 않는다** — 입력은 프로젝트 전체의 미전달 편집 수(`countPending`)와 **"Malmoi PR이 열려 있나"**이고(⚠️ 2026-09-30 nightly-sync가 둘째를 더했다 — 옛 문장 "입력은 미전달 편집 수 하나"의 반전, 아래 열린 PR 게이트. 야간의 head 동일성은 **스킵**(`upToDate`)의 입력이지 보류의 입력이 아니다 — §3.05), 둘 다 비면 이 절의 strict 적재가 한 줄도 안 바뀐 채 돈다. 리포 값과 DB 값을 견주는 코드가 없어 승자를 고르는 자리도 없다.
 
+⚠️ **보류와 잠금은 다르다** (2026-10-01, sync-lock) — 보류는 미전달 편집이 **적재를** 막는 것이고(값을 안 보고 적재 전체를 미룬다), 잠금은 살아 있는 적재 lease가 **번역 쓰기를** 막는 것이다(§5.6.1 "번역 쓰기 ↔ 적재 lease"). 방향이 반대이고 둘 다 셀을 고르지 않는다.
+
 **보류 사유는 넷이다** (`DEFER_REASONS` — `lib/events/payload.ts`). IMPORT 사건의 `deferReason`과 Logs 문장이 넷을 가른다 — 편집 수가 아닌 셋이 "0 unsent edits are being protected"로 떨어지지 않게 `m.logs.deferReasons`가 `satisfies Record<…>`로 누락을 잡는다(`lib/events/view.ts`).
 
 | 사유 | 누가 내나 | 뜻 | 풀리는 길 |
@@ -1675,6 +1677,22 @@ $transaction(tx):
   실행"이고, **아직 존재하지 않는 행은 잠글 수 없다.** `issueInvitations`·`changeMember`·`createProject`가
   같은 형이다.
 - ⚠️ **Publish와 수동 Sync가 서로를 막는다** (2026-09-18, sync-edit-protection). 방향이 반대인 두 실행이 겹치면 **남는 값이 두 요청의 도착 순서에 달린다** — Sync는 리포 값으로 DB를 덮고 Publish는 DB로 리포를 덮는다. ⚠️ **읽는 주체는 판정 함수가 아니라 껍데기다** — `planSyncStart`·`planRepositoryImport`는 I/O가 0이라 컬럼을 못 읽고, 서로의 상태를 **인자로 받는다**(`activeImport` · `runningSync`). 실제 조회는 `lib/sync/run.ts`가 같은 `Project` 잠금 안에서 `Project.repositoryImportToken`·`repositoryImportStartedAt`을, `lib/import/run.ts`가 같은 잠금 안에서 `SyncRun`의 `RUNNING` 행을 읽어 넘기는 것이다. **잠금 안이라는 사실이 이 방어의 전부이고**, 판정을 순수하게 둔 덕에 두 방향이 DB 없이 테스트된다. **stale 경계는 하나다**(`isRunActive` — `STALE_AFTER_SECONDS` 300초, 경계 정각은 아직 진행 중): 두 벌이면 한쪽은 막고 한쪽은 여는 창이 생긴다. 상수·판정이 `lib/sync/plan.ts`에 있고 `lib/import/plan.ts`가 그것을 쓴다 — **방향이 그쪽이다**(`lib/import/plan.ts`는 `@/lib/adapters`를 물어 화면 그래프로 새면 안 된다).
+- ⚠️ **번역 쓰기 ↔ 적재 lease** (2026-10-01, sync-lock). 수동 Sync·야간 적재의 lease(`Project.repositoryImportToken`·`repositoryImportStartedAt`)가
+  살아 있으면 저장(화면·MCP 단건·배치)과 Revert가 **`sync-running`**(+`startedAt`·`reopensBy`)으로 거부되고 아무 행도 안 바뀐다(값·토큰·저자·기준·사건 0).
+  판정은 `planWriteLock`(`lib/sync/plan.ts`) 하나이고 경계는 위의 `isRunActive`다. **저장은 `lockProjectAccess` 뒤 같은 트랜잭션에서 lease를 읽는다**
+  (`lib/keys/save-key.ts#readWriteLock` — 공유 select를 넓히지 않고 한 번 더 읽는다). `acquire`가 같은 `Project FOR UPDATE` 안에서 lease를 세우므로
+  둘은 직렬이다 — 저장이 먼저면 적재의 지문 재확인(USER `reconfirm` · AUTOMATION `deferred`)이 잡고, 적재가 먼저면 저장이 거부된다(두 순서 —
+  `lib/keys/__tests__/sync-lock.integration.ts`). 적재 자신의 쓰기는 `applyPushInTransaction`이라 자기 lease에 막히지 않는다.
+  배치(`set_translations`)는 **호출 전체**를 한 번 거부한다 — lease는 키의 성질이 아니라 `KeyEntryResult`에 그 갈래가 없다.
+  Revert는 lease 갈래만 `sync-running`이고 Publish RUNNING 갈래는 `busy` 그대로다.
+  - **판정에 넣지 않는 것**: 표면 표시(`TranslationSurface.lastImportStartedAt` — CI push·첫 적재)는 입력이 아니다(`hasLiveInternalImport`를 쓰지 않는다).
+    넣으면 CI push마다 편집자를 막는다. 소스 추가·base locale 선언도 막지 않는다.
+  - `reopensBy`는 **표시용**이다 — `startedAt + STALE_AFTER_SECONDS`를 다음 분으로 올린다(`utcMinute`이 초를 버리고 정각도 활성이라 그대로 내면 최대 59초
+    이르다). 그 시각에는 반드시 풀려 있다.
+  - ⚠️ **대가: 죽은 적재 하나가 그 프로젝트의 편집자 전원을 최대 300초 막는다.** 해제 트랜잭션 실패는 로그만 남기고(`lib/import/run.ts`의 `finally`)
+    lease는 stale 경계에서야 풀린다. OWNER가 수동으로 푸는 수단은 없다(비범위) — 경계를 줄이지 않는다(§5.6.2의 `maxDuration` 근거).
+- ⚠️ **Publish는 번역 쓰기의 잠금 대상이 아니다** (sync-lock) — Publish RUNNING 중 저장은 그대로 된다. 스냅샷 뒤 저장은 전달 확인 CAS가 새 토큰으로
+  남겨 다음 Publish로 넘긴다(§5.8). 잠그면 PR을 내는 수십 초 동안 편집이 막히는데 막아서 지키는 것이 없다.
 - ⚠️ **부분 유니크 인덱스(`WHERE status='RUNNING'`)를 쓰지 않는다** — Prisma가 그 문법을 못 내서
   마이그레이션에 raw SQL을 손으로 넣어야 하고, 스키마와 실제 DB가 갈리는 자리가 하나 는다.
 - ⚠️ **잠금 트랜잭션 안에서 GitHub을 부르지 않는다.** 여기까지가 수 ms이고 실제 pull은 밖에서 돈다 —
@@ -1986,8 +2004,9 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 - **교체·실패 실행의 외부 쓰기 종료 근거는 플랫폼 `maxDuration` 강제 종료다**(사용자 결정 2026-09-23). sync 브랜치를 `updateRefForce`로 옮기므로
   후속 실행의 성공은 증거가 아니다. 그 실행의 `startedAt + STALE_AFTER_SECONDS` 이후에 **시작해** 성공한 전달 확인이 있어야 Revert가 열린다.
   ⚠️ **`maxDuration`을 `STALE_AFTER_SECONDS`(300) 넘게 올리면 이 근거가 깨진다.**
-  ⚠️ **Revert의 busy도 같은 경계(`isRunActive`·`hasActiveImport`)다** (2026-09-27, 감사 #9) — 강제 종료가 남긴 RUNNING·import 토큰이
-  Revert를 영구히 막지 않는다. 대신 확인보다 먼저 시작해 **만료된 RUNNING은 FAILED와 같이** 위 종료 판정에 든다 — busy에서 빠진 흔적이
+  ⚠️ **Revert의 막힘도 같은 경계(`isRunActive`)다** (2026-09-27, 감사 #9) — 강제 종료가 남긴 RUNNING·import 토큰이
+  Revert를 영구히 막지 않는다. 2026-10-01(sync-lock)부터 import lease 갈래는 `busy`가 아니라 `sync-running`이고 판정 입구가 `planWriteLock`이다
+  (§5.6.1) — `busy`는 Publish RUNNING 갈래만 남는다. 대신 확인보다 먼저 시작해 **만료된 RUNNING은 FAILED와 같이** 위 종료 판정에 든다 — busy에서 빠진 흔적이
   확인되지 않은 기준을 유효하게 만들지 않는다. 저장의 기준 기록(`publishInFlight`)은 아직 경계 없는 RUNNING 수를 본다(범위 밖으로 남겼다).
 - **기준값은 "전달 확인된 DB 상태"이지 파일에 있던 문자열의 백업이 아니다.** 기준은 캡처한 DB 값에서 export 폴백으로 유도하고
   리포를 읽지 않는다 — 원본 파일에서 읽는 것은 여전히 구조·표현뿐이다(불변식 2). 그래서 수술적 writer가 비-base 빈값 자리에 원본 값을
@@ -2960,7 +2979,12 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
   문장**이다 — 에이전트가 사용자에게 옮길 문장이 화면과 같아야 한다. 화면의 공용 사전(Access·Onboard·Connect·Settings)을 그대로
   지나고, 화면이 사전 밖에서 문장을 고르는 거부(Publish 모달·Sync 결과·Revert·초대)는 **그 화면의 키**를 넘긴다. 새 문장은 도구에만
   있는 갈래(`token-scope`·`reconfirm`·`invalid-input`·`too-many`·`duplicate-key`)뿐이다. 모르는 코드는 원문을 싣지 않고 장애로 접는다.
-- **장애는 거부가 아니다** — `unavailable`만 `retryable: true`를 싣는다.
+- **장애는 거부가 아니다** — `unavailable`은 `retryable: true`를 싣는다. 거부 중에는 **`sync-running`만** 같은 표시를 싣는다(2026-10-01, sync-lock —
+  출력 계약을 한 값 넓힌 **의도된 확장**이다): 적재 lease 중 `set_translations`(호출 전체 · 키별 결과 없음)와 `revert_to_last_sent`가 받고,
+  `detail { startedAt, reopensBy }`(ISO)를 싣는다 — 기다리면 풀리는 거부라 에이전트가 `reopensBy` 뒤에 같은 호출을 다시 하면 된다. 문장은 Sync 결과
+  화면의 `m.repositorySync.errors["already-running"]`이다. 재시도 표시는 **코드가 정한다** — 호출부가 화면 문장을 넘겨도 붙는다. `preview_revert`는
+  막힌 갈래가 거부가 아니라 답(`revertable: false`)이라 같은 시각을 `data`에 싣는다. ⚠️ 모르는 코드는 `unavailable`로 접히므로 새 거부 코드는
+  `TOOL_REJECTIONS`·`MESSAGE`(`satisfies`)·`result.test.ts`의 `EXPECTED_MESSAGE`에 함께 등재한다 — 빠지면 lease 거부가 "장애"로 읽혀 시각이 사라진다.
 - **`publish`의 실패는 `outcome.code`(`SyncErrorCode`)와 `retryable`로 가른다** — ⚠️ `outcome.error`는 코드가 아니라 실행기가 고른 safe
   문장이거나 `internal (ref …)`다. 문장으로 가르면 갈래가 조용히 틀린다(M3 r1에서 고쳤다). 재시도 가능 → `unavailable` + `detail { code,
   delivery }`(문장은 싣지 않는다 — ref일 수 있다). 재시도 불가(설정) → 그 코드로 거부 + Publish 화면의 `configError` 틀(리포·base branch)
@@ -3506,8 +3530,8 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
     목록·Home·Settings가 `connectionProblem`(`lib/home/state.ts`) 하나를 읽는다(전엔 목록 Disconnected · Home 회색 not-connected · Settings "Not connected"로
     셋이 갈렸다). 적재 거부도 같은 낱말의 자기 코드 `unpinned`다(`lib/import/plan.ts` → `run.ts`·`onboarding-run/import.ts`) — `not-connected`는
     **사용자 GitHub 계정 미연결**(`checkRepoAccess`의 ConnectError)이라 둘을 한 코드로 접으면 "계정을 연결하라"는 틀린 안내가 선다.
-    ⚠️ **MCP 출력은 넓히지 않는다**(§6.45 외부 계약 불변) — `get_project`의 `connection`과 `sync_repository`의 거부 코드가 `unpinned`를 `not-connected`로 접는다
-    (`lib/mcp/tools/project.ts`·`sync.ts`).
+    ⚠️ **이 화면용 갈림으로 MCP 출력을 넓히지 않는다**(§6.45 외부 계약) — `get_project`의 `connection`과 `sync_repository`의 거부 코드가 `unpinned`를 `not-connected`로 접는다
+    (`lib/mcp/tools/project.ts`·`sync.ts`). 출력 계약을 넓히는 것은 에이전트가 다르게 행동해야 하는 새 갈래일 때뿐이고 §6.45.6에 등재한다(예: `sync-running`).
 - nullable 컬럼 추가 마이그레이션 `20260910030000_pin_repository_id`를 앱 배포보다 먼저 적용한다.
   기존 프로젝트는 자동 고정하지 않는다. OWNER 재연결 전까지 Publish가 차단된다.
 - `loadPullState`는 프로젝트·키·번역 값·최대 수정 시각을 **같은 RepeatableRead 트랜잭션**에서 읽는다.
