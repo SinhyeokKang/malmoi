@@ -30,12 +30,8 @@ vi.mock("@/lib/events/ci", async () => ({
   recordCiImport: state.record,
 }));
 vi.mock("@/lib/github", () => ({ createGitClient: state.createGitClient }));
-// 마감을 짧게 — 같은 모양(늦으면 `late()`)을 유지한다.
-vi.mock("@/lib/github-wait", () => ({
-  GITHUB_WAIT_MS: 20,
-  withinGithubWait: <T,>(work: Promise<T>, late: () => T) =>
-    Promise.race([work, new Promise<T>(resolve => setTimeout(() => resolve(late()), 20))]),
-}));
+// 마감만 짧은 실물 사본 — 이긴 뒤 타이머를 끈다(손 사본이 안 꺼서 파일 뒤에 로그가 나갔다, PR #171).
+vi.mock("@/lib/github-wait", () => import("@/lib/__tests__/fast-github-wait"));
 
 const { POST } = await import("../push/route");
 

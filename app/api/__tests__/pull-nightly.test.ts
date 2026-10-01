@@ -55,11 +55,8 @@ vi.mock("@/lib/db", () => {
 vi.mock("@/lib/github", () => ({ createGitClient: state.createGitClient, openRepoReader: state.openRepoReader }));
 vi.mock("@/lib/sync/run", () => ({ runSync: state.runSync }));
 vi.mock("@/lib/import/run", () => ({ runAutomationImport: state.runAutomationImport, closeExpiredImportRuns: state.closeExpiredImportRuns }));
-vi.mock("@/lib/github-wait", () => ({
-  GITHUB_WAIT_MS: 20,
-  withinGithubWait: <T,>(work: Promise<T>, late: () => T) =>
-    Promise.race([work, new Promise<T>(resolve => setTimeout(() => resolve(late()), 20))]),
-}));
+// 마감만 짧은 실물 사본 — 이긴 뒤 타이머를 끈다(손 사본이 안 꺼서 파일 뒤에 로그가 나갔다, PR #171).
+vi.mock("@/lib/github-wait", () => import("@/lib/__tests__/fast-github-wait"));
 
 const { GET } = await import("../pull/route");
 
