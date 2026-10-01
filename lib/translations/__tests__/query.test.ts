@@ -9,7 +9,7 @@ import {
   allSourcesQuery,
   applyEmptyAction,
   emptyActions,
-  hasConditions,
+  treeFollowsSearch,
   isAllSources,
   isScreenCanonical,
   landOnFirstKey,
@@ -446,21 +446,26 @@ describe("selectQuery — 키 선택 (조건 7)", () => {
   });
 });
 
-describe("isAllSources · hasConditions", () => {
+/*
+  **위 필터는 아래를 좁히고, 아래 필터는 위로 새지 않는다** (2026-10-02 사용자). 검색(툴바 — 모든 패널 위)은 트리 숫자를 바꾸고, Status(키 목록)·
+  언어(번역값)는 트리 숫자를 바꾸지 않는다.
+*/
+describe("isAllSources · treeFollowsSearch", () => {
   const cases: [string, Partial<TranslationQuery>, boolean, boolean][] = [
     ["위치(소스)", { scope: "source" }, false, false],
     ["검색어 없는 project(옛 값)", { scope: "project" }, false, false],
     ["전 소스 검색", { scope: "project", q: "hi" }, true, true],
     ["위치로 좁힌 검색", { scope: "namespace", ns: "auth", q: "hi" }, false, true],
-    ["Status", { scope: "source", state: "review" }, false, true],
-    ["Incomplete", { scope: "source", completion: "incomplete" }, false, true],
+    ["Status는 트리로 새지 않는다", { scope: "source", state: "review" }, false, false],
+    ["Incomplete도", { scope: "source", completion: "incomplete" }, false, false],
+    ["검색 + Status — 검색만 본다", { scope: "project", q: "hi", state: "unsent" }, true, true],
     ["옛 Complete는 조건이 아니다", { scope: "source", completion: "complete" }, false, false],
     ["위치·선택·언어", { scope: "namespace", ns: "auth", key: "k1", keySurface: "web", language: "ko" }, false, false],
   ];
   for (const [name, over, all, conditions] of cases) {
-    it(`${name} → isAllSources ${all} · hasConditions ${conditions}`, () => {
+    it(`${name} → isAllSources ${all} · treeFollowsSearch ${conditions}`, () => {
       expect(isAllSources(q(over))).toBe(all);
-      expect(hasConditions(q(over))).toBe(conditions);
+      expect(treeFollowsSearch(q(over))).toBe(conditions);
     });
   }
 });

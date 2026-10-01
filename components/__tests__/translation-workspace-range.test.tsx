@@ -218,10 +218,10 @@ it("전 소스 결과에서 고른 키의 네임스페이스는 위치(location)
   expect(treeNode(container, w.tree.allSources)?.getAttribute("aria-current")).toBe("true");
 });
 
-it("조건이 켜지면 노드를 숨기지 않고 숫자만 일치 수다 — 0 노드는 disabled, 범위 노드는 0이어도 활성 (조건 9)", async () => {
+it("검색 중이면 노드를 숨기지 않고 숫자만 검색 일치 수다 — 0 노드는 disabled, 범위 노드는 0이어도 활성 (조건 9)", async () => {
   const base = props({ tree: TREE2 });
   const rows = [rowOf("k1", "web", "common")];
-  const { container } = await render(<TranslationWorkspace {...base} query={{ ...base.query, ns: "auth", scope: "namespace", state: "review", key: undefined, keySurface: undefined }} detail={null} list={withList(base, [])} counts={tallyRows(rows)} />);
+  const { container } = await render(<TranslationWorkspace {...base} query={{ ...base.query, ns: "auth", scope: "namespace", q: "k1", key: undefined, keySurface: undefined }} detail={null} list={withList(base, [])} counts={tallyRows(rows)} />);
   const labels = treeButtons(container).map(b => b.querySelector("span.min-w-0")?.textContent);
   for (const label of ["app", "web", "auth", "common"]) expect(labels).toContain(label);
   expect(treeNode(container, "common")?.textContent).toContain("1");
@@ -239,6 +239,56 @@ it("조건이 켜지면 노드를 숨기지 않고 숫자만 일치 수다 — 0
   expect(appAll.className).not.toContain("hover:bg-foreground");
   expect(treeNode(container, "common")?.className).toContain("hover:bg-foreground/[0.03]");
   expect(treeNode(container, "common")?.disabled).toBe(false);
+});
+
+/*
+  **아래 필터는 위로 새지 않는다** (2026-10-02 사용자) — Status는 키 목록의 필터라 트리 숫자·비활성을 바꾸지 않는다. 서버는 검색이 없으면 `counts`를
+  싣지 않고(null), 검색 중이면 Status 없는 검색 일치 수를 싣는다.
+*/
+it("Status만 켜면 트리는 원본 숫자이고 비활성 노드가 없다", async () => {
+  const base = props({ tree: TREE2 });
+  const { container } = await render(<TranslationWorkspace {...base} query={{ ...base.query, state: "review" }} list={withList(base, [rowOf("k1", "web", "common")])} counts={null} />);
+  expect(treeNode(container, "common")?.textContent).toContain("2");
+  expect(treeNode(container, "auth")?.textContent).toContain("1");
+  expect(treeButtons(container).some(b => b.disabled)).toBe(false);
+});
+
+it("검색 + Status: 검색 일치가 있고 Status 일치가 0인 노드도 활성이고 검색 수를 보인다", async () => {
+  const base = props({ tree: TREE2 });
+  // 서버의 숫자는 Status 없는 검색 결과(auth 1 · common 2)다. 목록(Status 적용)은 common의 한 행뿐이다.
+  const searchOnly = [rowOf("k1", "web", "common"), rowOf("k2", "web", "common"), rowOf("k3", "web", "auth")];
+  const { container } = await render(<TranslationWorkspace {...base} query={{ ...base.query, ns: "common", scope: "namespace", q: "k", state: "review" }}
+    list={withList(base, [rowOf("k1", "web", "common")])} counts={tallyRows(searchOnly)} />);
+  expect(treeNode(container, "auth")?.disabled).toBe(false);
+  expect(treeNode(container, "auth")?.textContent).toContain("1");
+  expect(treeNode(container, "common")?.textContent).toContain("2");
+});
+
+it("Status를 바꾸는 동안 All sources 숫자는 그대로다 — 그 수는 검색만 따른다", async () => {
+  const user = userEvent.setup();
+  const initial = searching({ ns: "*" });
+  const b = gate();
+  respond = () => ({ next: initial, gate: b });
+  const { container } = await render(<Harness initial={initial} />);
+  await user.click(statusTrigger(container)!);
+  await user.click([...document.querySelectorAll<HTMLElement>('[role^="menuitem"]')].find(el => el.textContent?.trim() === w.filters.state.unsent)!);
+  expect(treeNode(container, w.tree.allSources)?.textContent).toBe(`${w.tree.allSources}4`);
+  await arrive(b);
+});
+
+it("트리 클릭으로 Status 일치가 0인 노드에 오면 빈 상태가 필터를 말하고 Clear filters를 준다", async () => {
+  const user = userEvent.setup();
+  const base = props({ tree: TREE2 });
+  const initial: WorkspaceProps = { ...base, query: { ...base.query, ns: "common", scope: "namespace", state: "review" } };
+  respond = href => ({ next: { ...initial, query: { ...initial.query, ns: new URL(href, "http://x").searchParams.get("ns") ?? "*", key: undefined, keySurface: undefined }, detail: null, list: withList(initial, []) }, gate: null });
+  const { container } = await render(<Harness initial={initial} />);
+  // Status는 트리로 새지 않는다 — auth는 Status 일치가 없어도 누를 수 있다.
+  expect(treeNode(container, "auth")?.disabled).toBe(false);
+  await user.click(treeNode(container, "auth")!);
+  await act(async () => {});
+  const empty = container.querySelector<HTMLElement>("[data-list-empty]")!;
+  expect(empty.textContent).toContain(w.empty.filteredOut);
+  expect([...empty.querySelectorAll("button")].map(b => b.textContent?.trim())).toEqual([w.filters.clear]);
 });
 
 it("조건이 없으면 트리는 원본 숫자다 — 목록과 무관한 활성 키 수", async () => {

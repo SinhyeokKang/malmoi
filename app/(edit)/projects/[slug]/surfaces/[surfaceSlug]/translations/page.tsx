@@ -16,7 +16,7 @@ import { relativeTime } from "@/lib/relative-time";
 import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import type { Raw } from "@/lib/search-params";
 import { requireSurfaceAccess } from "@/lib/surfaces/access";
-import { FIRST_KEY, hasConditions, isScreenCanonical, landOnFirstKey, MISSING_LANGUAGES, screenQuery, serializeScreenQuery, type TranslationQuery } from "@/lib/translations/query";
+import { FIRST_KEY, isScreenCanonical, landOnFirstKey, MISSING_LANGUAGES, screenQuery, serializeScreenQuery, statusOf, treeFollowsSearch, withStatus, type TranslationQuery } from "@/lib/translations/query";
 import { firstRowAt, inRange, rangeOf, tallyRows } from "@/lib/translations/tree-narrow";
 
 /**
@@ -68,13 +68,22 @@ export default async function TranslationsPage({
   const readDetail = (surface: { id: string } | undefined, key: string | undefined) =>
     key === undefined || surface === undefined ? null : loadTranslationDetail(prisma, { projectId, surfaceId: surface.id, keyId: key });
   const onRoute = screen.keySurface === undefined || screen.keySurface === surfaceSlug;
-  const [project, tree, full, unsentBySurface, early] = await Promise.all([
+  /*
+    ⚠️ **트리 숫자는 검색만 따른다** (2026-10-02 사용자 — 아래 필터인 Status는 위로 새지 않는다). 검색 + Status면 숫자용으로 **Status 없는 같은 검색**을
+    한 번 더 읽는다(같은 라운드). Status 술어를 JS로 다시 쓰지 않는다 — 두 술어가 같은 행을 세야 하는 함정을 design §3이 걷었다. 검색만이면 목록의 행이
+    곧 숫자다(추가 읽기 없음).
+  */
+  const searchOnly = treeFollowsSearch(screen) && statusOf(screen) !== "all"
+    ? loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: { ...withStatus(unselected, "all"), scope: "project" }, pageSize: "all" })
+    : null;
+  const [project, tree, full, unsentBySurface, early, counted] = await Promise.all([
     loadProject(prisma, projectId, surfaceId),
     loadTranslationTree(prisma, projectId),
     // ⚠️ **화면 목록은 전량이다** (translation-filter-scope) — 눌러서 더 읽는 페이지가 없다. cursor 페이징은 MCP 전용이다.
     loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: { ...unselected, scope: "project" }, pageSize: "all", ...(selected === undefined ? {} : { selectedKeyId: selected }) }),
     countUnpublishedBySurface(prisma, projectId),
     onRoute ? readDetail({ id: surfaceId }, selected) : null,
+    searchOnly,
   ]);
   if (!project) redirect(routes.projects());
   const readiness = planProjectReadiness(project);
@@ -102,8 +111,8 @@ export default async function TranslationsPage({
     incompleteKeyCount: rows.filter(row => row.missingCount > 0).length,
     selectedInResult: first !== undefined ? true : selected === undefined ? null : rows.some(row => row.keyId === selected),
   };
-  // 조건(Status·검색)이 켜졌을 때만 트리 숫자를 일치 수로 — 범위 밖 노드도 그 노드를 눌렀을 때의 목록 수다(조건 9).
-  const counts = hasConditions(located) ? tallyRows(full.rows) : null;
+  // 검색 중일 때만 트리 숫자를 검색 일치 수로 — 범위 밖 노드도 Status를 끈 채 그 노드를 눌렀을 때의 목록 수다(조건 9 · 2026-10-02).
+  const counts = treeFollowsSearch(located) ? tallyRows((counted ?? full).rows) : null;
   const shown = first === undefined ? detail : await readDetail({ id: surfaceId }, first.keyId);
   const actors = shown?.status === "ok" ? await loadActors(prisma, shown.locales.flatMap(l => l.updatedBy === null ? [] : [l.updatedBy])) : new Map();
   const detailView = shown === null

@@ -16,7 +16,7 @@ import {
   resolveKeyIdByName,
   translationLinkFor,
 } from "@/lib/keys/translation-list";
-import { ALL_NAMESPACES, DEFAULT_TRANSLATION_QUERY, hasConditions, screenQuery, serializeScreenQuery, STATUSES, withStatus, type TranslationQuery } from "@/lib/translations/query";
+import { ALL_NAMESPACES, DEFAULT_TRANSLATION_QUERY, screenQuery, serializeScreenQuery, STATUSES, withStatus, type TranslationQuery } from "@/lib/translations/query";
 import { keyMatches, orderKeySummaries, summarizeKey } from "@/lib/translations/summary";
 
 /*
@@ -387,8 +387,13 @@ describe("화면 범위 — 실제 페이지가 전 소스를 한 번 읽고 자
   const nodeSum = (counts: NonNullable<Props["counts"]>, node: (typeof NODES)[number]) =>
     counts.filter(c => c.surfaceSlug === node.surfaceSlug && (node.ns === ALL_NAMESPACES || c.namespace === node.ns)).reduce((sum, c) => sum + c.count, 0);
 
-  it.each(STATUSES.flatMap(status => [undefined, "a"].map(text => [status, text] as const)))("Status %s · 검색 %s: 노드마다 페이지 목록 = SQL scope 경로이고, 트리 숫자 = 그 노드를 눌렀을 때의 목록 수다", async (status, text) => {
+  /*
+    트리 숫자는 **검색만** 따른다(2026-10-02 사용자 — 아래 필터인 Status는 위로 새지 않는다). 검색이 없으면 `counts`는 null(원본 숫자)이고, 검색 중이면
+    노드마다 **Status 없는** 같은 검색의 목록 수다 — 그 기준도 SQL scope 경로로 따로 읽는다.
+  */
+  it.each(STATUSES.flatMap(status => [undefined, "a"].map(text => [status, text] as const)))("Status %s · 검색 %s: 노드마다 페이지 목록 = SQL scope 경로이고, 트리 숫자 = Status 없는 같은 검색의 그 노드 목록 수다", async (status, text) => {
     const expected = await Promise.all(NODES.map(node => sqlRows(node, status, text)));
+    const searchOnly = await Promise.all(NODES.map(node => sqlRows(node, "all", text)));
     for (const [index, node] of NODES.entries()) {
       const sql = expected[index]!;
       const selected = sql.rows[0]?.keyId;
@@ -399,9 +404,9 @@ describe("화면 범위 — 실제 페이지가 전 소스를 한 번 읽고 자
       expect(props.list.matchedKeyCount, where).toBe(sql.matchedKeyCount);
       expect(props.list.incompleteKeyCount, where).toBe(sql.incompleteKeyCount);
       expect(props.list.selectedInResult, where).toBe(selected === undefined ? null : true);
-      if (!hasConditions(screenAt(node, status, text))) { expect(props.counts, where).toBeNull(); continue; }
-      // 범위 밖 노드도 — 그 노드를 눌렀을 때의 목록 수다.
-      for (const [other, otherNode] of NODES.entries()) expect(nodeSum(props.counts!, otherNode), `${where} → ${otherNode.surfaceSlug}/${otherNode.ns}`).toBe(expected[other]!.rows.length);
+      if (text === undefined) { expect(props.counts, where).toBeNull(); continue; }
+      // 범위 밖 노드도 — Status를 끈 채 그 노드를 눌렀을 때의 목록 수다.
+      for (const [other, otherNode] of NODES.entries()) expect(nodeSum(props.counts!, otherNode), `${where} → ${otherNode.surfaceSlug}/${otherNode.ns}`).toBe(searchOnly[other]!.rows.length);
     }
   });
 

@@ -207,11 +207,29 @@ it("전 소스 검색은 모든 활성 소스의 행이고, 위치로 좁힌 검
   expect(narrowed.props.list.incompleteKeyCount).toBe(1);
 });
 
-it("조건이 있을 때만 트리 숫자(counts)를 전 소스 행에서 센다", async () => {
+/*
+  **트리 숫자는 검색만 따른다** (2026-10-02 사용자 — 위 필터는 아래를 좁히고 아래 필터는 위로 새지 않는다). Status는 키 목록의 필터라 트리 숫자를
+  바꾸지 않는다. 검색 + Status면 Status 없는 읽기 하나가 더 떠나 그 결과로 센다 — Status 술어를 JS로 다시 쓰지 않는다.
+*/
+it("트리 숫자(counts)는 검색 중에만 서고, Status는 그 수를 바꾸지 않는다", async () => {
+  // Status를 걸면 로더가 일부만 낸다 — 트리 숫자가 그 결과를 따르면 안 된다.
+  state.list.mockImplementation(async (_prisma: unknown, input: { query: { state?: string; completion: string } }) =>
+    listOf(input.query.state !== undefined || input.query.completion !== "all" ? ROWS.slice(0, 1) : ROWS));
   expect((await render({ ns: "auth" })).props.counts).toBeNull();
-  const counted = (await render({ state: "review", ns: "auth" })).props.counts as { surfaceSlug: string; namespace: string; count: number }[];
+  expect((await render({ state: "review", ns: "auth" })).props.counts).toBeNull();
+  state.list.mockClear();
+  const counted = (await render({ q: "x", state: "review" })).props.counts as { surfaceSlug: string; namespace: string; count: number }[];
   expect(counted.reduce((sum, c) => sum + c.count, 0)).toBe(ROWS.length);
-  expect(counted).toContainEqual({ surfaceSlug: "app", namespace: "common", count: 1 });
+  expect(counted).toContainEqual({ surfaceSlug: "default", namespace: "auth", count: 2 });
+  // 목록용(Status 있음) 하나 + 숫자용(Status 없음) 하나 — 둘 다 전 소스, 같은 검색어, 같은 라운드.
+  const queries = state.list.mock.calls.map(([, input]) => (input as { query: { scope: string; q?: string; state?: string; completion: string } }).query);
+  expect(queries).toHaveLength(2);
+  expect(queries.every(query => query.scope === "project" && query.q === "x")).toBe(true);
+  expect(queries.filter(query => query.state === undefined && query.completion === "all")).toHaveLength(1);
+  // 검색만이면 읽기는 하나다 — 목록의 행이 곧 숫자다.
+  state.list.mockClear();
+  await render({ q: "x" });
+  expect(state.list).toHaveBeenCalledOnce();
 });
 
 // ── 선택 · 첫 키 ────────────────────────────────────────────────────────────────

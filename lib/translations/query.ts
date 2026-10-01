@@ -204,9 +204,12 @@ export function isAllSources(query: Pick<TranslationQuery, "q" | "scope">): bool
   return query.q !== undefined && query.scope === "project";
 }
 
-/** 조회 조건이 붙었나(Status + 검색) — 트리 숫자를 일치 수로 바꿀지의 판정이다. 트리 위치(`ns`)는 조건이 아니다. */
-export function hasConditions(query: TranslationQuery): boolean {
-  return statusOf(query) !== "all" || query.q !== undefined;
+/**
+ * 트리 숫자가 일치 수로 바뀌나 — **검색 중일 때만이다** (2026-10-02 사용자: 위 필터는 아래를 좁히고, 아래 필터는 위로 새지 않는다). 검색은 툴바(모든
+ * 패널 위)라 트리 숫자를 바꾸고, Status(키 목록)·언어(번역값)는 바꾸지 않는다. 트리 위치(`ns`)도 조건이 아니다.
+ */
+export function treeFollowsSearch(query: Pick<TranslationQuery, "q">): boolean {
+  return query.q !== undefined;
 }
 
 /**
