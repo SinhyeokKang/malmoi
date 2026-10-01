@@ -163,8 +163,9 @@ CLI의 대응 옵션은 `--surface`·`--path-template`이다. 서버의 `surface
 → 표면 → 포맷 → 커밋 순서의 다섯 개다. 아래 step은 동일 프로젝트 토큰과 concurrency job을 공유한다.
 Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 step을 복사한다.
 그 화면을 벗어났으면 **Settings의 워크플로 블록이 활성 표면 전부의 step을 담은 파일 전체를 낸다**
-(`renderProjectWorkflowYaml`) — slug·path-template을 손으로 조립하지 않는다. 토큰이 프로젝트 단위라
-틀린 `surface:`는 409가 아니라 다른 표면을 덮어쓴다.
+(`renderProjectWorkflowYaml`) — slug·path-template을 손으로 조립하지 않는다. 틀린 `surface:`는
+그 표면에 저장된 포맷과 맞지 않아 409 `format mismatch`다(없는 slug면 `surface mismatch`) — 한 프로젝트의
+표면은 `pathTemplate`이 겹치지 않고 `checkFormat`이 그것까지 비교한다.
 `malmoi-i18n-push-v1`(8511d37)·`-v2` 둘 다 surfaceSlug를 생산한다. 삭제된 옛 `l10n-push-v1`은 생산하지 않았다.
 
 <!-- additional-surface-step -->
@@ -229,8 +230,9 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 | `api-url`이 https가 아니다(루프백 `http:` 제외) | **red** (exit 2 — 토큰을 평문으로 보내기 전에 멈춘다) |
 | **박아 둔 `adapter`·`base-locale`이 그 리포의 실제 탐지 결과와 안 맞는다** | **red** (exit 1 — **서버까지 가지 않는다**). 정확히 이 문서가 "박아라"라고 권하는 두 input의 실패 경로다 |
 | **말모이에 아직 안 보낸 번역 편집이 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"pending-edits","pendingCount":N,…}` (2026-09-18, sync-edit-protection). 미전달 편집이 하나라도 있으면 **프로젝트 전체 적재를 보류**해 편집이 리포 값에 덮이지 않게 한다. 이 run의 새 키·삭제·로케일 변경도 앱에 **안 들어갔다**. 풀리는 길: 번역자가 Publish해 PR로 보낸 뒤 이 job을 **다시 돌리기**(다음 push도 된다), 또는 OWNER가 앱의 `[Sync]`에서 편집 폐기를 승인하기. ⚠️ **Publish로 안 나가는 편집이 있다** (#129) — 언어 파일이나 키 자리가 리포에 없으면(코드에서 지운 base 키 포함) 그 편집은 보류되어 Publish 뒤에도 `deferred`가 이어진다. 그때 주된 해법은 **파일·키를 리포에 되돌려 놓기**이고, 아니면 폐기 승인 Sync, 되돌릴 기준이 있는 셀이면 OWNER의 `Revert to last sent`다. 경고 줄이 이 순서로 함께 말한다(응답 필드는 그대로다 — 서버는 어느 편집이 보류인지 모른다). ⚠️ **red가 아니다** — 남의 리포 CI를 앱 상태로 실패시키지 않는다. 새 CLI는 `::warning title=Malmoi import deferred::…` 한 줄을 더 낸다(구 태그 `@malmoi-i18n-push-v1`은 본문만 찍는다 — 그래도 exit 0이라 안전하다. 성공 본문은 `"status":"applied"`로 시작한다) |
-| **말모이 번역 PR(`malmoi-i18n/sync-<project>`)이 아직 열려 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"open-pr",…}`(`pendingCount` 없음, 2026-09-30 nightly-sync). 미전달 편집이 0이어도 그렇다 — Publish가 커밋에 성공하면 편집 토큰이 비워지므로, PR이 머지되기 전에 적재하면 그 PR의 번역이 DB에서 옛 리포 값으로 덮인다. 이 run의 새 키·삭제도 앱에 **안 들어갔다.** 풀리는 길: **그 PR을 머지하거나 닫는다** — 그 뒤 **다음 push나 야간 동기화가 받는다.** ⚠️ **이 job을 다시 돌리지 않는다** — PR이 머지된 뒤 옛 커밋의 job을 다시 돌리면 그 커밋의 옛 값이 방금 머지된 번역을 strict로 덮는다(야간이 이미 더 새 커밋을 적재했으면 `stale-commit` 409다). 닫은(머지 안 한) PR은 열린 PR로 세지 않는다. ⚠️ **GitHub App 설치나 리포 고정(`installationId`·`repositoryId`)이 없는 프로젝트엔 이 게이트가 없다** — PR을 낼 수 없으니 열린 PR도 없다. v2 CLI는 경고 없이 본문만 찍는다(§2 "v3") |
+| **말모이 번역 PR(`malmoi-i18n/sync-<project>`)이 아직 열려 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"open-pr",…}`(`pendingCount` 없음, 2026-09-30 nightly-sync). 미전달 편집이 0이어도 그렇다 — Publish가 커밋에 성공하면 편집 토큰이 비워지므로, PR이 머지되기 전에 적재하면 그 PR의 번역이 DB에서 옛 리포 값으로 덮인다. 이 run의 새 키·삭제도 앱에 **안 들어갔다.** 풀리는 길: **그 PR을 머지하거나 닫는다** — 그 뒤 **다음 push나 야간 동기화가 받는다.** ⚠️ **이 job을 다시 돌리지 않는다** — PR이 머지된 뒤 옛 커밋의 job을 다시 돌리면 그 커밋의 옛 값이 방금 머지된 번역을 strict로 덮는다(야간이 이미 더 새 커밋을 적재했으면 409 `stale commit`이다). 닫은(머지 안 한) PR은 열린 PR로 세지 않는다. ⚠️ **GitHub App 설치나 리포 고정(`installationId`·`repositoryId`)이 없는 프로젝트엔 이 게이트가 없다** — PR을 낼 수 없으니 열린 PR도 없다. v2 CLI는 경고 없이 본문만 찍는다(§2 "v3") |
 | **말모이가 열린 PR을 확인하지 못했다**(GitHub 오류·설치 토큰 실패·마감 초과) | **green + 적재 없음** — 200 `{"status":"deferred","reason":"pr-check-failed",…}`. ⚠️ **"PR 없음"으로 읽지 않는다**(fail-closed) — 그렇게 읽으면 GitHub 장애 동안 열린 PR의 번역이 덮인다. 대가로 **CI 적재가 GitHub 가용성에 묶인다.** 할 일: 나중에 이 job을 **다시 돌린다**(야간 동기화도 다시 묻는다). 계속되면 말모이 설정의 GitHub 연결(설치·리포 선택)을 본다 |
+| **`PUSH_TOKEN` secret이 비었다**(미등록·오타 이름) | **red** (exit 1 — 적재·스캔 전에 멈춘다. **서버까지 가지 않고 실패 보고도 없다**). composite action은 `required: true`를 강제하지 않아 빈 문자열이 넘어오고, 스크립트가 그것을 없음으로 읽는다. 401이 아니라 로그의 `PUSH_TOKEN이 없다`로 구별된다 |
 | `head_commit.message`에 `[skip-malmoi-i18n]` | **green + `::notice`, 적재 없음** — pull이 만든 커밋이 머지될 때 무한 루프를 막는 가드다. 마커는 **커밋 메시지와 PR 제목 둘 다**에 있어 squash·rebase·merge commit 어느 방식이든 잡힌다(아래 "머지 방식"). "적재가 안 됐다"의 흔한 원인이라 여기 적는다 |
 | 동적 키만 있어 `refs`가 0건 | green + 로그 한 줄 |
 | 로케일 파일에 없는 키를 코드가 참조 | green + 로그 한 줄 |
