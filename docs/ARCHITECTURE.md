@@ -3434,7 +3434,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   - **CSP를 받는 응답이 바뀌었다** (2026-09-27). 전: `/(.*)` 전부(페이지·`/api/*`·`_next/static`·`public/`). 지금: **미들웨어
     matcher에 걸리는 응답 = 모든 페이지**(RSC 요청 포함). 빠지는 것은 `/api/*`(JSON·리다이렉트 — 문서가 아니다. `/api/github/callback`은
     302되면 `code`가 사라지므로 matcher에 넣지 않는다는 규칙이 그대로 참이다)와 정적 자산(`_next/static`·`_next/image`·`public/`의
-    최상위 디렉터리·`icon.svg`). ⚠️ **그 접두 아래의 없는 경로가 그리는 404도 CSP 없이 나간다** — 정적 문구뿐이라 받아들였다.
+    최상위 디렉터리·`icon.svg`·`og.png`). ⚠️ **그 접두 아래의 없는 경로가 그리는 404도 CSP 없이 나간다** — 정적 문구뿐이라 받아들였다.
     로그인으로 돌려보낼지는 matcher가 아니라 **`isProtectedPath`**(`lib/auth/cookie.ts`)가 정한다(§6.1). `/oauth/authorize`는 matcher에
     걸려 CSP nonce를 받지만 보호 경로는 아니다(§6.1 — 무세션이 정상 진입이다). `/oauth/token`·`/oauth/revoke`·`/.well-known/*`은 route라 JSON이다.
   - **CSP는 enforce이고 환경 셋으로 갈린다** (2026-09-24 사용자 판정 "보안 강하게" — 2026-09-09의 "Report-Only로
