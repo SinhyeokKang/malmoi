@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { syncBranchFor } from "@/lib/pull/sync-branch";
 
 import { HomeActions, HomeHeaderActions, HomeNotices, HomeTitle } from "@/components/home/actions";
+import { loadWriteLock } from "@/lib/home/write-lock";
 import { AttentionCard } from "@/components/home/attention-card";
 import { CountCards } from "@/components/home/count-cards";
 import { EventDetail } from "@/components/logs/event-detail";
@@ -135,7 +136,7 @@ export default async function ProjectHomePage({
    * ⚠️ **연결 조회는 `installationId`가 있을 때만 GitHub을 친다** — `loadConnectionHealth`가 그
    * 가드를 든다. GitHub 장애는 값(`unknown`)으로 오므로 이 화면이 그것에 죽지 않는다.
    */
-  const [aggregates, events, review, openEvent, health, triggers] = await Promise.all([
+  const [aggregates, events, review, openEvent, health, triggers, writeLock] = await Promise.all([
     loadProjectListAggregates(prisma, [projectId]),
     /**
      * ⚠️ **Logs와 같은 함수다** (logs-rework 결정 — 조합 쿼리 넷이 사라졌다). 같은 수를 두 번 세지
@@ -163,6 +164,8 @@ export default async function ProjectHomePage({
     }),
     // 메타 열의 실행 주체(`12 hours ago · nightly`) — 행위자를 싣지 않는 사건 셋이다(nightly-sync F2).
     loadHomeRuns(prisma, projectId),
+    // 다른 실행의 적재 lease — [Sync]·배너 [Try again]을 멈춘다(sync-lock R5). 같은 라운드라 왕복이 늘지 않는다.
+    loadWriteLock(prisma, projectId, now),
   ]);
   // 번역 사건은 키 **이름**을 든다 — Logs와 같은 해석이다(translation-rework T12).
   const translationHref = openEvent?.payload?.kind === "TRANSLATION"
@@ -275,7 +278,7 @@ export default async function ProjectHomePage({
       Provider를 같은 자리로 화해시킨다. 없으면 A에서 낸 결과 Alert가 **A의 브랜치 이름을 단 채로**
       B의 Home에 남고 진행 중 잠금까지 넘어온다 (handoff §T9 · `home-screen.test.ts`가 센다).
     */
-    <HomeActions key={slug} slug={slug}>
+    <HomeActions key={slug} slug={slug} writeLock={writeLock}>
       <PanelHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
