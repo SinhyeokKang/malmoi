@@ -44,7 +44,7 @@ The two sides are never merged: an update replaces Malmoi's values with the
 repository's (unless edits are waiting or a Malmoi pull request is still open),
 and Publish writes Malmoi's values back.
 
-[Get started →](https://mal-moi.com/docs/setup/create-project)
+[Create your first project →](https://mal-moi.com/docs/setup/create-project)
 
 ## Features
 
