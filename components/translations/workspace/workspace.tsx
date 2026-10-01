@@ -545,8 +545,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const availability = planActionAvailability({ archived: false, connection: arrived ?? props.connection.status });
   // 꺼진 원인 문장 (malmoi#160) — 이 화면엔 Home의 연결 배너가 없어서 Publish·Sync 사유와 보류 배너가 원인·해법을 직접 말한다.
   const connectionBlock = availability.publish ? null : connectionReason(arrived ?? props.connection.status, role);
-  /** 결과의 [Try again]도 머리의 [Sync]와 같은 미저장 확인을 지난다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
-  const openSync = () => { if (!publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
+  /**
+   * [Sync]를 열 수 있나 — 연결과 착지 lease 둘이다. ⚠️ **미저장 가로채기와 `openSync`가 이 한 값을 본다** (U 리뷰 🔴) — 가로채기가 연결만 보던 때
+   * lease로 멈춘 [Sync]를 누르면 "Discard your changes?"가 서고, 확정하면 초안이 버려진 채 Sync Dialog는 열리지 않았다.
+   */
+  const syncAvailable = availability.sync && props.writeLock === null;
+  /** 미저장 확인을 지나 Sync Dialog를 연다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
+  const openSync = () => { if (syncAvailable && !publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
 
   const isPending = (locale: { code: string; pending: boolean }) => (locale.pending || savedLocales.has(locale.code)) && !revertedLocales.has(locale.code);
   const pendingLocales = detail?.locales.filter(isPending).map(l => l.code) ?? [];
@@ -641,12 +646,12 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           </span>
           <span className="ml-auto flex items-center gap-2">
             {role === "OWNER" ? (
-              <span onClickCapture={event => { if (dirty.length > 0 && availability.sync) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
+              <span onClickCapture={event => { if (dirty.length > 0 && syncAvailable) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
                 {/* 끊김이 먼저다 — 그 원인은 Publish가 끝나도 풀리지 않는다(Home 머리와 같은 순서). */}
                 <SyncButton slug={slug} surfaceSlug={routeSurfaceSlug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
-                  paused={!availability.sync || publish.pending || props.writeLock !== null}
+                  paused={!syncAvailable || publish.pending}
                   /* 끊김 → Publish 진행 → 다른 실행의 lease 순이다 — 앞의 둘은 lease가 끝나도 풀리지 않는다. */
-                  pausedReason={!availability.sync ? connectionBlock ?? m.repositorySync.paused : publish.pending ? m.repositorySync.waitPublish : w.sync.running}
+                  pausedReason={!availability.sync ? connectionBlock ?? m.repositorySync.paused : publish.pending ? m.repositorySync.waitPublish : m.repositorySync.running}
                   open={syncOpen} onOpenChange={setSyncOpen} onPendingChange={setSyncPending}
                   onResult={onSyncResult} fallbackFocusRef={titleRef} />
               </span>

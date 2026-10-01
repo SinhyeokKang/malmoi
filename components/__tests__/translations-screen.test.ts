@@ -378,6 +378,6 @@ describe("번역 화면 — 연결 판정", () => {
     // 도착은 effect 구독이다 — `use()`는 전환을 GitHub probe에 붙잡는다(U7 r1).
     expect(workspace).toContain("useArrived(props.connection.later, `${slug}/${routeSurfaceSlug}`)");
     expect(workspace).not.toMatch(/\buse\(/);
-    expect(workspace).toContain("paused={!availability.sync || publish.pending || props.writeLock !== null}");
+    expect(workspace).toContain("paused={!syncAvailable || publish.pending}");
   });
 });
