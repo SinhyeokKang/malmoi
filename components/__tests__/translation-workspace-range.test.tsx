@@ -411,6 +411,60 @@ it("ns=*에서 전 소스 검색 → 같은 소스 키 선택 → 그 네임스�
   expect(treeNode(container, "auth")?.getAttribute("aria-current")).toBe("true");
 });
 
+// ── 스크롤 (조건 8 · design §4.3) ─────────────────────────────────────────────────
+
+/** 전 소스 검색 → 같은 소스의 다른 네임스페이스 키 선택 → 검색 지우기. 서버 응답은 주소에서 만든다. */
+function serveSearch(initial: WorkspaceProps) {
+  const base = props({ tree: TREE2 });
+  return (href: string) => {
+    const url = new URL(href, "http://x");
+    const q = url.searchParams.get("q") ?? undefined;
+    const ns = url.searchParams.get("ns") ?? "*";
+    const key = url.searchParams.get("key") ?? undefined;
+    const rows = q === undefined ? ALL_ROWS.filter(r => r.surfaceSlug === "web" && (ns === "*" || r.namespace === ns)) : ALL_ROWS;
+    const at = ALL_ROWS.find(r => r.keyId === key);
+    const detail = at === undefined ? null : { ...(base.detail as Exclude<WorkspaceProps["detail"], null | { absent: true }>), key: { id: at.keyId, key: at.key, namespace: at.namespace, sourceText: at.keyId, description: null, surfaceSlug: at.surfaceSlug } };
+    const query = { ...initial.query, ns, q, scope: q === undefined ? (ns === "*" ? "source" as const : "namespace" as const) : "project" as const, key, keySurface: at?.surfaceSlug };
+    return { next: { ...initial, query, list: withList(initial, rows), counts: q === undefined ? null : tallyRows(rows), detail }, gate: null };
+  };
+}
+
+it("검색을 지우면 고른 키의 행으로 스크롤한다 — 목록에서 누를 때는 스크롤하지 않는다 (조건 8)", async () => {
+  const user = userEvent.setup();
+  const initial = searching({ ns: "common" });
+  respond = serveSearch(initial);
+  const { container } = await render(<Harness initial={initial} />);
+  const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  const rowScrolls = () => scroll.mock.contexts.filter(el => el instanceof HTMLElement && el.dataset.keyRow !== undefined);
+  try {
+    await user.click(container.querySelector<HTMLElement>('[data-key-row="k3"]')!);
+    await act(async () => {});
+    // 짝 — 보이는 행을 누른 것이라 스크롤하지 않는다.
+    expect(rowScrolls()).toEqual([]);
+    await user.clear(searchInput(container));
+    await user.type(searchInput(container), "{Enter}");
+    await act(async () => {});
+    expect(Object.fromEntries(pushed().searchParams)).toEqual({ ns: "auth", key: "k3", keySurface: "web" });
+    expect(rowScrolls()).toEqual([container.querySelector('[data-key-row="k3"]')]);
+  } finally { scroll.mockRestore(); }
+});
+
+it("전 소스 결과에서 다른 네임스페이스 키를 고르면 트리의 그 위치 노드를 보이게 스크롤한다 — 마운트에는 하지 않는다", async () => {
+  const user = userEvent.setup();
+  const initial = searching({ ns: "common" });
+  respond = serveSearch(initial);
+  const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  const treeScrolls = () => scroll.mock.contexts.filter(el => el instanceof HTMLElement && el.dataset.treeNs !== undefined);
+  try {
+    const { container } = await render(<Harness initial={initial} />);
+    expect(treeScrolls()).toEqual([]);
+    await user.click(container.querySelector<HTMLElement>('[data-key-row="k3"]')!);
+    await act(async () => {});
+    expect(treeScrolls()).toEqual([treeNode(container, "auth")]);
+    expect(scroll).toHaveBeenCalledWith({ block: "nearest" });
+  } finally { scroll.mockRestore(); }
+});
+
 // ── 상세 언어 (조건 12) ──────────────────────────────────────────────────────────
 
 it("language=@missing은 키·트리 이동에 이어진다 — 서버가 지운 언어는 주소에서 되살아나지 않는다", async () => {
