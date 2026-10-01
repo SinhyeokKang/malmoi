@@ -75,14 +75,15 @@ describe("사전 — 관사는 데이터를 따라가지 못한다", () => {
 
 describe("사전 — 노드를 삽입하는 값", () => {
   it("받은 노드를 그대로(참조 동일성) 문장 안에 둔다 — 문장은 사전이 소유한다", () => {
-    const path = createElement("code", null, ".github/workflows/malmoi-i18n.yml");
-    const sentence = m.settings.workflow.saveAs(path);
+    // ⚠️ 2026-10-01 전엔 `settings.workflow.saveAs(path)`로 쟀다 — 경로가 코드 블록 머리로 옮겨 그 값이 문자열이 됐다.
+    const hook = createElement("code", null, "useTranslations()");
+    const sentence = m.settings.workflow.hookHint(hook, "wrapper", "the guide");
 
     expect(isValidElement(sentence)).toBe(true);
     const children = (sentence as ReactElement<{ children: unknown[] }>).props.children;
-    expect(children).toContain(path);
+    expect(children).toContain(hook);
     // 문장의 나머지를 사전이 든다 — 화면이 앞뒤 조각을 들면 ko가 어순을 못 바꾼다.
-    expect(children.some((child) => typeof child === "string" && child.includes("Save this"))).toBe(true);
+    expect(children.some((child) => typeof child === "string" && child.includes("Repositories that read"))).toBe(true);
   });
 });
 
