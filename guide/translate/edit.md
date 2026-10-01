@@ -24,6 +24,8 @@ Three filters sit above the list, each showing its current choice. **All keys** 
 
 **Saved** confirms the save. Moving to another field does not save. Press Escape while editing a field to undo what you typed in that field. If any language fails to save, none of them are saved — try again. If Malmoi says it could not confirm the save, check the current values before saving again. Saving clears **Needs review** for the languages you saved.
 
+If a project owner is syncing from the repository, saving waits: Malmoi shows **Syncing…** with the latest time you can save again, and your text stays. Choose **OK** and save again after the sync finishes. If a sync is already running when you open Translations, a note at the top says so; you can keep typing.
+
 Some projects do not allow an empty translation. If Malmoi refuses an empty field, enter a value or press Escape in that field to undo the edit, then save any other changes. Nothing is saved while the invalid empty edit remains.
 
 ## Leave unsaved changes {#unsaved-changes}
