@@ -1,5 +1,5 @@
 <h1 align="center">
-  <a href="https://mal-moi.com"><picture><source media="(prefers-color-scheme: dark)" srcset="public/brand/malmoi-icon-white.svg" /><img src="public/brand/malmoi-icon-black.svg" alt="Malmoi" width="56" valign="middle" /></picture></a> Malmoi
+  <a href="https://mal-moi.com"><picture><source media="(prefers-color-scheme: dark)" srcset="public/brand/malmoi-icon-white.svg" /><img src="public/brand/malmoi-icon-black.svg" alt="Malmoi" width="48" valign="middle" /></picture></a> Malmoi
 </h1>
 
 <p align="center">
