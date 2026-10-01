@@ -54,7 +54,8 @@
 | **Link**(인라인) | 문장 안 인라인 링크 형(파랑 + 링) — 상수 `DOC_LINK`(`components/docs/classes.ts:7`)를 프리미티브로 | 인라인 파랑 링크 25줄, 그중 링 없음 9(`publish-button:523` · `project-list:427,436` · `event-detail:270,277` · `locale-panel:106` · `workspace:854` · `repo.tsx:287` — §6.3) | 서버 호환 |
 | **ProjectThumbnail**(`ImageTile`+`hueFill`) | 크기 prop으로 세 벌을 하나로 | `project-thumbnail:45` · `invite/project-card:45` · `general-card:48` | 서버 호환 |
 | **SearchInput** | 정의 둘(`components/search-input.tsx` · `components/projects/search-input.tsx`)을 `components/ui/`로 하나, 글리프 슬롯을 `Input`에, 폭은 `width`(§3) | 손 검색 칸 `repo.tsx:170` · `tree-panel:51`(즉시 필터 형은 prop — 소비자 교체만) | 클라이언트 |
-| **CopyButton** | `components/onboarding/` → `components/ui/` 이동 | 손 조립 `docs/code-block:42` · `locale-panel:287` | 클라이언트 |
+| **CopyButton** | `components/onboarding/` → `components/ui/` 이동 | 손 조립 `ui/code-block`(2026-10-01 이동 — 아래 행) · `locale-panel:287` | 클라이언트 |
+| **CodeBlock** | ✅ **선행 완료(2026-10-01 `/ship`)** — `components/docs/code-block` → `components/ui/code-block` + `fill`, 워크플로 YAML(`workflow-block`)이 이것을 쓴다(docs 형으로 맞췄다). T0은 세기만 하고 다시 만들지 않는다 | 옛 `workflow-block`의 `bg-muted` `<pre>` + 블록 위 `CopyButton` | 클라이언트 |
 | **Skeleton** | `SkeletonLine` 재구현 흡수. **기본 radius는 바꾸지 않는다** — 지정 없는 28곳이 4→10px로 바뀌므로, 명시한 `rounded-md` 61곳의 className만 걷어낼지 T0이 §6.3에서 판정 | `members/loading:64` · `sources/loading:59` | 서버 호환 |
 | **상태 배지 래퍼 셋** | `StatusBadge`(ux-drift) 하나로 — §3 상태 색 행 | `result-badge.tsx` · `source-status.tsx` · `event-detail.tsx:236` | — |
 | **sr 상태 줄** | 프리미티브가 아니라 glob 테스트(`loading.tsx`마다 `role="status"` 한 줄) | `loading.tsx` 8곳 중 없는 2(`account/` — ux-drift T23 4-Y17 · `projects/(list)/`) | — |
