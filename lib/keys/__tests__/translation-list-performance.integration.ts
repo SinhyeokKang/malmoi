@@ -105,6 +105,24 @@ it.each(["never", "small", "busy"])("loads count and page with %s statistics", a
   const searched = await loadTranslationList(prisma, { projectId: "target", routeSurfaceId: target.surfaceId, query: { ...DEFAULT_TRANSLATION_QUERY, q: "value 1" } });
   expect(searched.matchedKeyCount).toBe(111);
   await expectBoundedScans();
+
+  // 전량(translation-filter-scope T3) — count를 생략해 목록 CTE가 한 번만 돈다.
+  captured.length = 0;
+  const full = await loadTranslationList(prisma, { projectId: "target", routeSurfaceId: target.surfaceId, query: DEFAULT_TRANSLATION_QUERY, pageSize: "all" });
+  expect(full.rows).toHaveLength(619);
+  expect(full.matchedKeyCount).toBe(619);
+  expect(full.nextCursor).toBeNull();
+  await expectBoundedScans(1);
+  captured.length = 0;
+  const fullSearch = await loadTranslationList(prisma, { projectId: "target", routeSurfaceId: target.surfaceId, query: { ...DEFAULT_TRANSLATION_QUERY, q: "value 1" }, pageSize: "all" });
+  expect(fullSearch.rows).toHaveLength(111);
+  await expectBoundedScans(1);
+  // ⚠️ 일치 조각은 키당 한 행만 Node로 온다 — 흔한 단어면 키 × 로케일 행이 전부 오던 자리다(design §3.1).
+  const matches = captured.filter(q => q.query.includes('FROM "Translation" t') && !q.query.includes("WITH lc"));
+  expect(matches).toHaveLength(1);
+  const matched = await pool.query(matches[0]!.query, JSON.parse(matches[0]!.params));
+  expect(matched.rowCount).toBe(111);
+  expect(fullSearch.rows.every(row => row.match?.field === "translation")).toBe(true);
 });
 
 type PlanNode = {
@@ -117,9 +135,10 @@ function translationVisits(node: PlanNode): number {
   return own + (node.Plans ?? []).reduce((sum, child) => sum + translationVisits(child), 0);
 }
 
-async function expectBoundedScans() {
+/** 목록 CTE 쿼리 수 — 숫자 pageSize는 count + page 둘, 전량은 page 하나다. */
+async function expectBoundedScans(expected = 2) {
   const queries = captured.filter(q => q.query.includes("WITH lc"));
-  expect(queries).toHaveLength(2);
+  expect(queries).toHaveLength(expected);
   const total = Number((await pool.query('SELECT count(*) FROM "Translation"')).rows[0].count);
   for (const q of queries) {
     const explained = await pool.query('EXPLAIN (ANALYZE, FORMAT JSON) ' + q.query, JSON.parse(q.params));

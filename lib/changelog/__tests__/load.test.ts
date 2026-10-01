@@ -48,6 +48,22 @@ describe("loadReleases — 요청 모양", () => {
     expect(lastRequest().init.next).toEqual({ revalidate: 3600 });
   });
 
+  /**
+   * **배포마다 캐시 키가 바뀐다** (2026-09-30 사용자 — 머지 직후 `/changelog`가 최대 1시간 옛 목록이었다). 데이터 캐시는 배포를 넘어 남고,
+   * 키는 URL이다 — 빌드가 박은 앱 버전을 쿼리로 실으면 새 배포의 첫 요청이 새로 가져온다. GitHub는 모르는 쿼리를 무시한다.
+   */
+  it("앱 버전을 쿼리로 실어 배포마다 캐시 키가 바뀐다 — 버전이 없으면 싣지 않는다", async () => {
+    vi.stubEnv("APP_VERSION", "1.1.5");
+    fetchMock.mockResolvedValueOnce(json([V1_0_1]));
+    await loadReleases();
+    expect(lastRequest().url).toBe(`${GITHUB_RELEASES_API_URL}?per_page=100&deploy=1.1.5`);
+    vi.stubEnv("APP_VERSION", "");
+    fetchMock.mockResolvedValueOnce(json([V1_0_1]));
+    await loadReleases();
+    expect(lastRequest().url).toBe(`${GITHUB_RELEASES_API_URL}?per_page=100`);
+    vi.unstubAllEnvs();
+  });
+
   it("GitHub API 헤더를 싣고 Authorization은 없다", async () => {
     fetchMock.mockResolvedValueOnce(json([]));
     await loadReleases();

@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowRight, X } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Dialog as Primitive } from "radix-ui";
 import { useEffect, useRef, useState, type RefObject, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "@/components/ui/close-button";
 import { m } from "@/lib/i18n";
 import type { Step } from "@/lib/onboarding/next-enabled";
 import { cn } from "@/lib/utils";
@@ -202,16 +203,7 @@ export function OnboardingModal({
             */}
             <div className="flex shrink-0 items-center gap-2">
             {headerAction}
-            <Button
-              type="button"
-              variant="ghost"
-              aria-label={closeLabel ?? m.newProject.modal.close}
-              disabled={closeDisabled}
-              onClick={onClose}
-              className="hover:bg-foreground/3 size-9 rounded-full px-0"
-            >
-              <X className="size-5" aria-hidden />
-            </Button>
+            <CloseButton type="button" label={closeLabel ?? m.newProject.modal.close} disabled={closeDisabled} onClick={onClose} />
             </div>
           </header>
 

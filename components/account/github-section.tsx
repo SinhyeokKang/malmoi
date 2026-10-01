@@ -71,6 +71,7 @@ export function GithubSection({
           : connected ? m.account.github.connected
           : m.account.github.notConnected
         }
+        statusTone={account.status === "reauthorize" || account.status === "unavailable" ? "warning" : connected ? "success" : "neutral"}
         detail={
           account.status === "reauthorize" ? m.account.github.hintReauthorize
           : account.status === "unavailable" ? m.account.github.hintUnavailable

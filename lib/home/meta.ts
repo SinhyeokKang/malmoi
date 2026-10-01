@@ -1,7 +1,9 @@
 import { readPayload, type ActorKind, type EventKind } from "@/lib/events/payload";
 import { triggerOf, type Trigger } from "@/lib/events/view";
+import type { ImportFailureCode } from "@/lib/projects/import-status";
+import type { HoldReason } from "@/lib/protection/plan";
 
-import type { HomeState } from "./state";
+import { failureState, type ConnectionProblem, type HomeState } from "./state";
 import type { SyncTime } from "./sync-time";
 
 /**
@@ -21,21 +23,28 @@ export type MetaRow =
    * 그 함수 한 줄이 지키는 것이었다.
    */
   | { kind: "repository"; owner: string; name: string; disconnected: false; href: string }
-  | { kind: "repository"; owner: string; name: string; disconnected: true }
+  | { kind: "repository"; owner: string; name: string; disconnected: true; problem: ConnectionProblem }
   | { kind: "branch"; branch: string }
   | { kind: "surfaces"; count: number }
   | { kind: "locales"; codes: readonly string[] }
   | { kind: "keys"; count: number }
   | { kind: "members"; count: number }
-  /** ⚠️ **`2b`에서 값이 둘이다** — `1d ago · failed 10m ago`. 뒤쪽이 `lastImportFailedAt`이다. */
+  /** ⚠️ **`2b`에서 값이 둘이다** — `1d ago · [Sync failed] 10m ago`. 뒤쪽이 `lastImportFailedAt`이다. */
   | {
       kind: "lastSync";
       at: Date | null;
-      failedAt: Date | null;
+      /**
+       * 마지막 적재의 실패 — 상태 키가 배지 낱말이다(4-W11 — 옛 붉은 `failed 10m ago` 글자). ⚠️ **일부 반영은 `partiallySynced`다**(🔴 A2) —
+       * 데이터가 들어간 적재를 "failed"로 말하지 않는다.
+       */
+      failed: { at: Date; state: "syncFailed" | "partiallySynced" } | null;
       /** 최근 성공 적재의 주체 (nightly-sync 14). 사건이 없으면(이력 도입 전) `null`이고 주체를 붙이지 않는다. */
       trigger: Trigger | null;
-      /** 최근 적재 사건이 열린 Malmoi PR로 보류됐다 (14a). */
-      heldByOpenPr: boolean;
+      /**
+       * 지금 자동 적재가 보류 중인가, 왜 (ux-drift-unify Q6 · 6-Y10). ⚠️ **마지막 사건이 아니라 지금의 판정이다** — 사건으로 판정하던 때는
+       * PR이 닫혀도 옛 보류를 말할 수 있었고 조회 실패(게이트 fail-closed)를 말할 자리가 없었다. 입력은 게이트와 같다(`planHoldNotice`).
+       */
+      held: HoldReason | null;
     }
   | { kind: "lastPublish"; at: Date | null; prUrl: string | null; trigger: Trigger | null }
   | { kind: "created"; at: Date }
@@ -54,16 +63,25 @@ export function metaRows(input: {
   /** `"unrecorded"`면 행을 그리지 않는다 — 적재는 됐는데 시각이 없다. `Never`는 거짓이다 (malmoi#81). */
   lastSyncAt: SyncTime;
   lastImportFailedAt: Date | null;
+  /** 배너가 지목하는 표면의 실패 코드(`worstFailingSurface`) — 실패 배지의 낱말이 그것으로 갈린다. */
+  lastImportError: ImportFailureCode | null;
   lastPublishedAt: Date | null;
   lastPrUrl: string | null;
   createdAt: Date;
   archivedAt: Date | null;
   triggers: HomeTriggers;
+  /** 미연결 갈래 — 배지 색·낱말이 셋으로 갈린다(2026-09-30 상태 통일). 없으면 `not-connected`로 읽는다. */
+  connection?: ConnectionProblem | null;
+  /**
+   * 지금의 보류 사유 — `planHomeHold`의 결론(게이트와 같은 입력, ux-drift-unify Q6). ⚠️ **PR 조회를 기다리는 동안은 `null`이다** — 그 사유는
+   * Suspense로 늦게 도착한다(`MetaColumn`의 `heldLater`).
+   */
+  held: HoldReason | null;
 }): MetaRow[] {
   const disconnected = input.state === "not_connected";
   const rows: MetaRow[] = [
     disconnected
-      ? { kind: "repository", owner: input.repoOwner, name: input.repoName, disconnected: true }
+      ? { kind: "repository", owner: input.repoOwner, name: input.repoName, disconnected: true, problem: input.connection ?? "not-connected" }
       : { kind: "repository", owner: input.repoOwner, name: input.repoName, disconnected: false,
           href: `https://github.com/${input.repoOwner}/${input.repoName}` },
     { kind: "branch", branch: input.baseBranch },
@@ -78,8 +96,11 @@ export function metaRows(input: {
   );
   if (input.lastSyncAt !== "unrecorded")
     rows.push({
-      kind: "lastSync", at: input.lastSyncAt, failedAt: input.state === "import_failed" ? input.lastImportFailedAt : null,
-      trigger: input.triggers.sync, heldByOpenPr: input.triggers.heldByOpenPr,
+      kind: "lastSync", at: input.lastSyncAt,
+      failed: input.state === "import_failed" && input.lastImportFailedAt !== null && input.lastImportError !== null
+        ? { at: input.lastImportFailedAt, state: failureState(input.lastImportError) } : null,
+      trigger: input.triggers.sync,
+      held: input.held,
     });
   rows.push(
     { kind: "lastPublish", at: input.lastPublishedAt, prUrl: input.lastPrUrl, trigger: input.triggers.publish },
@@ -93,7 +114,7 @@ export function metaRows(input: {
 /** Home이 읽는 사건 한 줄 — **행위자를 싣지 않는다**(POSTMORTEM 2026-09-29 #146). 주체는 컬럼 셋(`triggerOf`)이 정한다. */
 export type RunEvent = { actorKind: ActorKind; kind: EventKind; subtype: string; result: string | null; payload: unknown };
 
-export type HomeTriggers = { sync: Trigger | null; publish: Trigger | null; heldByOpenPr: boolean };
+export type HomeTriggers = { sync: Trigger | null; publish: Trigger | null };
 
 /**
  * 성공 적재 — `lastImportedAt`을 전진시키는 집합과 같다. ⚠️ 두 집합이 갈리면 "12시간 전 수동 Sync" 옆에 그 뒤 보류된 야간 행의
@@ -113,20 +134,17 @@ function advancedSyncTime(event: RunEvent): boolean {
 }
 
 /**
- * 사건 셋 → 메타 열의 주체와 보류 한 줄 (nightly-sync 14·14a).
+ * 사건 둘 → 메타 열의 주체 (nightly-sync 14). ⚠️ **보류 한 줄은 여기서 오지 않는다** (ux-drift-unify Q6) — `metaRows`가 지금의 판정으로 든다.
  *
  * ⚠️ **고른 적재 사건이 못 쓰이면 더 옛 사건으로 물러나지 않는다** — 물러난 사건이 `lastSyncAt`과 다른 실행일 수 있다. 틀린 주체보다 주체 없음이 낫다.
  *
  * ⚠️ **`lastSyncAt`(표면 `lastImportedAt`)과 사건 시각을 대조하지 않는다** — 트랜잭션 경계가 달라 밀리초가 갈리고, 대조가
  * 실패하면 주체가 조용히 사라진다.
  */
-export function homeTriggers(input: { lastImport: RunEvent | null; latestImport: RunEvent | null; lastPublish: RunEvent | null }): HomeTriggers {
+export function homeTriggers(input: { lastImport: RunEvent | null; lastPublish: RunEvent | null }): HomeTriggers {
   const last = input.lastImport;
-  const latest = input.latestImport;
-  const payload = latest === null ? null : readPayload(latest.kind, latest.payload);
   return {
     sync: last !== null && advancedSyncTime(last) ? triggerOf(last) : null,
     publish: input.lastPublish === null ? null : triggerOf(input.lastPublish),
-    heldByOpenPr: latest?.result === "deferred" && payload?.kind === "IMPORT" && payload.deferReason === "open-pr",
   };
 }

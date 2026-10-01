@@ -60,7 +60,7 @@ it("옛 locales 하나는 상세 언어로, focus는 버리고 보낸다", async
 it("ns가 없으면 전체다 — 기본 네임스페이스로 URL을 고정하지 않는다", async () => {
   const page = await render({ state: "review" });
   expect(state.redirect).not.toHaveBeenCalled();
-  expect(page.props.query).toMatchObject({ ns: "*", scope: "source", state: "review" });
+  expect(page.props.query).toMatchObject({ ns: "*", scope: "project", state: "review" });
 });
 
 it("미전달 수는 표면별 합이다", async () => {
@@ -99,17 +99,49 @@ it("옛 cursor는 버리고 정규 주소로 보낸다 — 새로고침·공유�
   ⚠️ **트리 이동의 첫 키는 같은 렌더가 싣는다** (audit-ux #18) — 전엔 선택 없는 응답이 상세를 "Select a key"로 비웠다가
   클라이언트 effect가 첫 키로 `replace`를 한 번 더 했다. 소스를 바꾸면 화면이 새로 마운트되어 그 effect의 표식도 잃었다.
 */
-it("key=@first는 목록의 첫 행을 선택으로 싣고 그 상세를 같은 응답에 담는다", async () => {
-  state.list.mockResolvedValue({ rows: [ROW], matchedKeyCount: 1, incompleteKeyCount: 0, nextCursor: null, effective: { completion: "all", substituted: false, excludedSurfaceIds: [] }, selectedInResult: null });
-  state.detail.mockResolvedValue({ status: "ok", key: { id: "k7", key: "auth.title", namespace: "auth", sourceText: "Sign in", description: null, surfaceSlug: "app" }, lastCommitSha: null, refs: [], locales: [] });
-  const page = await render({ ns: "auth", scope: "namespace", key: "@first" });
+const listOf = (rows: object[]) => ({ rows, matchedKeyCount: rows.length, incompleteKeyCount: 0, nextCursor: null, effective: { completion: "all", substituted: false, excludedSurfaceIds: [] }, selectedInResult: null });
+const at = (keyId: string, surfaceSlug: string, namespace: string) => ({ ...ROW, keyId, surfaceSlug, namespace, key: `${namespace}.${keyId}` });
+
+it("목록은 전량으로 읽는다 — 화면에 다음 페이지가 없다 (translation-filter-scope T4 · 조건 5)", async () => {
+  state.list.mockClear();
+  await render({});
+  await render({ key: "k1" }).catch(() => undefined);
+  expect(state.list.mock.calls.every(([, input]) => (input as { pageSize?: unknown }).pageSize === "all")).toBe(true);
+  expect(state.list).toHaveBeenCalledTimes(2);
+});
+
+it("key=@first는 목록 순서에서 그 위치(경로 소스·ns)의 첫 키를 선택으로 싣고 그 상세를 같은 응답에 담는다", async () => {
+  // All sources의 목록 — 다른 소스의 행이 앞에 있어도 위치의 키로 간다.
+  state.list.mockResolvedValue(listOf([at("x1", "app", "auth"), at("k2", "default", "common"), at("k7", "default", "auth"), at("k9", "default", "auth")]));
+  state.detail.mockResolvedValue({ status: "ok", key: { id: "k7", key: "auth.k7", namespace: "auth", sourceText: "Sign in", description: null, surfaceSlug: "default" }, lastCommitSha: null, refs: [], locales: [] });
+  const page = await render({ ns: "auth", key: "@first" });
   expect(state.redirect).not.toHaveBeenCalled();
   // 목록은 선택 없이 읽는다 — 예약값을 키 id로 재지 않는다.
   expect(state.list).toHaveBeenCalledWith({}, expect.not.objectContaining({ selectedKeyId: expect.anything() }));
-  expect(state.detail).toHaveBeenCalledExactlyOnceWith({}, { projectId: "p", surfaceId: "s2", keyId: "k7" });
-  expect(page.props.query).toMatchObject({ ns: "auth", scope: "namespace", key: "k7", keySurface: "app" });
+  expect(state.detail).toHaveBeenCalledExactlyOnceWith({}, { projectId: "p", surfaceId: "s", keyId: "k7" });
+  expect(page.props.query).toMatchObject({ ns: "auth", scope: "project", key: "k7", keySurface: "default" });
   expect(page.props.list.selectedInResult).toBe(true);
   expect(page.props.detail).toMatchObject({ key: { id: "k7" } });
+});
+
+it("key=@first + ns=*는 경로 소스의 첫 행이다 — 앞선 다른 소스의 행을 고르지 않는다", async () => {
+  state.list.mockResolvedValue(listOf([at("x1", "app", "auth"), at("k2", "default", "common")]));
+  state.detail.mockResolvedValue({ status: "ok", key: { id: "k2", key: "common.k2", namespace: "common", sourceText: "Hi", description: null, surfaceSlug: "default" }, lastCommitSha: null, refs: [], locales: [] });
+  const page = await render({ key: "@first" });
+  expect(page.props.query).toMatchObject({ key: "k2", keySurface: "default" });
+});
+
+it("key=@first인데 목록에 그 위치의 키가 없으면 선택 없음이다 — 다른 소스의 행으로 가지 않는다", async () => {
+  state.list.mockResolvedValue(listOf([at("x1", "app", "auth"), at("k2", "default", "common")]));
+  const page = await render({ ns: "auth", key: "@first" });
+  expect(state.detail).not.toHaveBeenCalled();
+  expect(page.props.query.key).toBeUndefined();
+  expect(page.props.list.selectedInResult).toBeNull();
+  expect(page.props.detail).toBeNull();
+});
+
+it("scope 없는 옛 cursor 주소도 cursor만 버리고 보낸다 — 범위는 기본값(All sources)이라 주소에 싣지 않는다", async () => {
+  await expect(render({ ns: "auth", cursor: "c1" })).rejects.toThrow("redirect:/projects/demo/surfaces/default/translations?ns=auth");
 });
 
 it("key=@first인데 행이 없으면 선택 없는 빈 상세다 — 예약값이 키로 새지 않는다", async () => {

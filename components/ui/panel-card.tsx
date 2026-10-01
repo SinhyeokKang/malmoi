@@ -1,28 +1,36 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
+import { CountBadge, type CountProps } from "@/components/ui/count-badge";
+import { cn } from "@/lib/utils";
 import { IconTile } from "./icon-tile";
 
 /** Shared account and project settings card. Header and row dividers have distinct roles. */
 export function PanelCard({
   title,
   badge,
+  count,
+  countLabel,
   subtitle,
   notice,
   children,
 }: {
   title?: ReactNode;
-  /** 헤더 제목 옆 카운트 배지 — **수단 카드에만** 있다(세는 값이 그 카드에만 있다). */
+  /**
+   * 헤더 제목 옆 배지 — **개수가 아닌 값**만 여기다(대기 수 `Waiting to apply` · 로그인 수단 `x of y`). 개수는 `count`다.
+   */
   badge?: ReactNode;
   /**
    * 헤더 오른쪽 한 줄. ⚠️ **제목 아래로 쌓지 않는다** — 머리 높이가 카드마다 달라져 행 시작선이
    * 어긋난다. 이 화면에는 툴바가 없어 그 자리가 비어 있었다.
    */
   subtitle?: ReactNode;
-  /** 카드 Alert — **헤더 아래·리스트 위**다. 머리 Alert와 달리 닫기가 없다. */
+  /** 카드 Alert — **헤더 아래·리스트 위**다. 본문 첫 블록 Alert(`DismissibleAlert`)와 달리 닫기가 없다. 머리 아래 선은 이 래퍼 아래로 내려간다. */
   notice?: ReactNode;
   children: ReactNode;
-}) {
+} & CountProps) {
+  // 헤더 제목 옆 개수는 `count` + `countLabel`(`CountBadge` — 0이면 서지 않는다, 2026-10-01 Q13). 타입이 짝을 강제한다.
   /**
    * ⚠️ **카드에 접근 이름을 건다.** 없으면 Chrome이 `<section>`을 `generic`으로 접어 **접근성
    * 트리에서 카드가 통째로 사라진다** (POSTMORTEM 2026-09-15 #2). 이 화면의 요지가 *"같은 화면에
@@ -36,13 +44,21 @@ export function PanelCard({
       // 배경을 카드가 든다 — 캔버스가 `#fff`를 카드에 명시했다. 오늘은 패널과 같은 값이다.
       className="@container border-border bg-background overflow-hidden rounded-lg border"
     >
+      {/*
+        ⚠️ **머리 아래 선은 카드가 긋는다 — notice가 있으면 notice 아래 한 줄** (2026-10-01 ux-drift-unify 4-Y1). 전엔 notice가 있으면
+        머리가 선을 내려놓고 자식(`<Divider/>`·첫 행 `border-t`)이 대신 그어, 선이 둘이거나 0인 카드가 섞였다. **자식은 첫 줄에
+        `border-t`를 들지 않는다** — 행 사이 선만 자식 몫이다. 선의 자리는 둘 중 하나다: notice가 없으면 머리, 있으면 notice 래퍼.
+        notice가 Suspense처럼 비어 도착해도 래퍼가 선을 든다.
+      */}
       {/* 머리는 한 줄이다 — 제목·배지가 왼쪽, 설명이 `ml-auto`로 툴바 자리에 선다. */}
-      {title !== undefined && <header className={`border-divider flex min-h-12 flex-wrap items-center gap-2 px-4 py-3 ${notice === undefined ? "border-b" : ""}`}>
-        <h2 id={titleId} className="text-base font-medium tracking-[0.015em]">{title}</h2>
+      {title !== undefined && <header className={cn("flex min-h-12 flex-wrap items-center gap-2 px-4 py-3", notice === undefined && "border-divider border-b")}>
+        {/* 제목 자간은 손으로 들지 않는다 — RowCard·Home 카드와 한 벌이다(4-W1). */}
+        <h2 id={titleId} className="text-base font-medium">{title}</h2>
+        {count !== undefined && <CountBadge count={count} label={countLabel} />}
         {badge}
         {subtitle !== undefined && <div className="text-muted-foreground ml-auto @max-[640px]:ml-0 @max-[640px]:w-full text-xs tracking-[0.02em]">{subtitle}</div>}
       </header>}
-      {notice}
+      {notice !== undefined && <div data-card-notice className="border-divider border-b">{notice}</div>}
       {/*
         ⚠️ **카드가 `<ul>`을 만들지 않는다** — Profile 카드의 몸통은 목록이 아니라 사실 블록이다.
         여기서 감싸면 `<ul>` 안에 `<div>`가 들어가 구조가 깨지고, 스크린리더가 편집 폼을 목록으로
@@ -77,17 +93,18 @@ export function PanelRow({
   name,
   status,
   detail,
+  statusTone = "neutral",
   children,
 }: {
   glyph: ReactNode;
   /** 이 행이 무엇에 대한 것인가 — 굵다. */
   name: ReactNode;
   /**
-   * 이 행이 답하는 **상태**. ⚠️ **이름과 같은 줄·같은 크기다** — 13 보조 줄로 내리면 **부연으로
-   * 읽히는데**, 상태는 이 행이 묻는 질문의 답이다. 구분자(em dash)는 여기서 든다: 호출부마다
-   * 문자열에 박으면 한 화면에 `—`와 `-`가 섞인다.
+   * 이 행이 답하는 **상태** — 이름 옆 **배지**다(2026-09-30 사용자 — 옛 `이름 — 상태` 글자). 연결됨은 `success`(초록),
+   * 미연결은 `neutral`(회색), 재인가·조회 실패는 `warning`이다. 상태가 없는 행은 배지를 그리지 않는다 — 사족을 붙이지 않는다.
    */
   status?: ReactNode;
+  statusTone?: "success" | "neutral" | "warning";
   /** **다음에 할 일**을 든다. 없으면 그리지 않는다 — 빈 줄이 서면 행 높이가 이유 없이 갈린다. */
   detail?: ReactNode;
   children?: ReactNode;
@@ -96,9 +113,9 @@ export function PanelRow({
     <li className="border-border flex items-center gap-3 border-t px-4 py-[13px] first:border-t-0">
       <IconTile>{glyph}</IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <span className="truncate text-base tracking-[0.015em]">
-          <span className="font-medium">{name}</span>
-          {status !== undefined && <> — {status}</>}
+        <span className="flex min-w-0 items-center gap-2 text-base tracking-[0.015em]">
+          <span className="truncate font-medium">{name}</span>
+          {status !== undefined && <Badge variant={statusTone} className="shrink-0">{status}</Badge>}
         </span>
         {/* 보조 문구의 행간이 1.5다 — `text-xs` 기본(1.333)보다 한 단계 넓다. */}
         {detail !== undefined && <span className="text-muted-foreground text-xs leading-normal tracking-[0.02em]">{detail}</span>}

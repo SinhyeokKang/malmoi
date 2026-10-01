@@ -16,7 +16,7 @@ describe("planRepositoryImport", () => {
     expect(planRepositoryImport(input({ readiness: "setup", identity: "repo-replaced", repositoryImportToken: "other", repositoryImportStartedAt: now, surfaces: [] })))
       .toEqual({ ok: false, error: "not-ready" });
   });
-  it.each(["not-connected", "repo-replaced"] as const)("정체성 %s는 실행권보다 먼저다", identity => {
+  it.each(["unpinned", "repo-replaced"] as const)("정체성 %s는 실행권보다 먼저다", identity => {
     expect(planRepositoryImport(input({ identity, repositoryImportToken: "other", repositoryImportStartedAt: now }))).toEqual({ ok: false, error: identity });
   });
   it.each([0, 300_000, 300_001])("프로젝트 실행권 stale 경계 %s ms", age => {

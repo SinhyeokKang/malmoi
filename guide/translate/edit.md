@@ -10,9 +10,11 @@ The key list is on the left. Each row is one piece of text in the app — a *key
 
 ![The translation screen with a key selected in the list and its text in three languages](/guide/translation-editor.webp "Select a row to edit its text in every language.")
 
-**Scope** starts at **This source**, which shows only keys from the same set of translation files; choose **All sources** to widen it. Choose **This namespace** to narrow the list to the selected group of keys. **Clear filters** resets the scope, completion, and state filters; it keeps your search text. The **State** filter includes **Not sent**, **Needs review**, and **New from GitHub**. Needs review marks translations whose source text changed; it is not an approval step.
+In the key list, the arrow keys move between rows and Enter opens the row; Tab moves past the whole list in one step.
 
-![The translation screen with the state filter open, listing Any state, Not sent, Needs review, and New from GitHub](/guide/state-filter.webp "Narrow the list by state.")
+Three filters sit above the list, each showing its current choice. **All keys** narrows by completeness: **Incomplete**, a language's untranslated keys, or **Complete**. **Any state** narrows by state: **Unsent**, **Needs review**, or **New from GitHub**. Needs review marks translations whose source text changed; it is not an approval step. **All sources** sets where the list and search look: every set of translation files in the project, **This source** for keys from the source you are in, or **This namespace** for the group of keys you are in. The **Sources** panel shows where you are. Selecting a group, or **All namespaces** under a source, jumps to its first key in the list; it does not change your filters. While a filter or search is on, the panel shows only the sources and groups with matching keys, and the one you are in stays, dimmed, even when nothing in it matches. If a search finds nothing in a narrower scope, choose **Search all sources**. **Clear filters** resets all three filters; it keeps your search text.
+
+![The translation screen with the state filter open, listing Any state, Unsent, Needs review, and New from GitHub](/guide/state-filter.webp "Narrow the list by state.")
 
 ## Edit and save {#save}
 

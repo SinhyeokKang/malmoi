@@ -124,11 +124,13 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
         action={
           <>
             {/* ⚠️ `h2` 바로 뒤다 — 이 화면의 배지는 이것 하나다(핸드오프 §4). */}
-            {expired && <Badge variant="neutral">{m.mcpConnector.token.expired}</Badge>}
+            {/* 만료는 호박이다 — GitHub 인가 만료와 같은 톤(2026-09-30 상태 통일). */}
+            {expired && <Badge variant="warning">{m.mcpConnector.token.expired}</Badge>}
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {live ? (
                 <>
-                  <Button ref={rotateRef} data-token-action="rotate" onClick={() => setModal({ mode: "rotate", key: Date.now() })}>
+                  {/* 회전 확정이 `danger`라 트리거도 `danger`다(🔴 L — push 토큰과 같은 동작·같은 형). */}
+                  <Button ref={rotateRef} data-token-action="rotate" variant="danger" onClick={() => setModal({ mode: "rotate", key: Date.now() })}>
                     {m.mcpConnector.token.rotate}
                   </Button>
                   <Button ref={revokeRef} data-token-action="revoke" variant="danger" onClick={() => { setRevokeFailed(false); setRevokeOpen(true); }}>
@@ -196,7 +198,7 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
           }}
           footer={
             <>
-              <Button disabled={revoking} onClick={() => setRevokeOpen(false)}>
+              <Button data-initial-focus disabled={revoking} onClick={() => setRevokeOpen(false)}>
                 {m.common.cancel}
               </Button>
               <Button data-revoke-confirm variant="danger" loading={revoking} onClick={revoke}>
@@ -232,7 +234,7 @@ function TokenFacts({ token, now, afterAlert }: { token: Exclude<TokenCardData, 
     <dl data-token-facts className={cn("grid grid-cols-[120px_1fr] items-baseline gap-x-3 gap-y-2.5 border-t px-4 py-3.5", afterAlert ? "border-border" : "border-foreground/[0.06]")}>
       {facts.map(([label, content]) => (
         <div key={label} className="contents">
-          <dt className="text-xs text-neutral-400">{label}</dt>
+          <dt className="text-muted-foreground text-xs">{label}</dt>
           <dd className={value}>{content}</dd>
         </div>
       ))}

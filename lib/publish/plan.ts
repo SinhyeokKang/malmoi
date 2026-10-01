@@ -14,11 +14,12 @@ export function planPublishView(outcome: PullOutcome): PublishView {
     default: { const exhaustive: never = outcome; return exhaustive; }
   }
 }
-export function planPublishButton({ count, paused, otherPending, publishPending }: { count: number; paused: boolean; otherPending: boolean; publishPending: boolean }) {
+/** @param pausedReason 꺼진 원인을 호출부가 알 때의 사유 — 번역 화면의 연결 끊김(malmoi#160). 없으면 원인 없는 `paused`다. */
+export function planPublishButton({ count, paused, otherPending, publishPending, pausedReason }: { count: number; paused: boolean; otherPending: boolean; publishPending: boolean; pausedReason?: string }) {
   return { mode: publishPending ? "progress" as const : "preview" as const,
     disabled: !publishPending && (count === 0 || paused || otherPending),
     badge: !publishPending && count > 0 ? count : null,
-    hint: count === 0 ? m.translations.publish.nothing : paused || otherPending ? m.translations.publish.paused : "" };
+    hint: count === 0 ? m.translations.publish.nothing : paused || otherPending ? pausedReason ?? m.translations.publish.paused : "" };
 }
 
 /**

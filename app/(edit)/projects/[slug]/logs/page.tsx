@@ -125,7 +125,8 @@ export default async function LogsPage({
         ) : (
           groups.map((group) => (
             // ⚠️ 카드가 본문의 직계 자식이어야 한다 — `space-y-4`의 margin은 `display: contents` 래퍼에 안 걸린다.
-            <div key={group.dayKey} className="border-border overflow-hidden rounded-xl border bg-background">
+            // 셸 안 카드라 radius 12다(4-Y2 — 16은 패널 하나뿐이다, DESIGN §5).
+            <div key={group.dayKey} className="border-border overflow-hidden rounded-lg border bg-background">
               {/*
                 ⚠️ **경계선이 경계가 드러나는 행 바로 위에 한 번** 선다 (spec §7.1) — 페이지 경계에
                 걸리면 아래 페이지가 들고, 커서가 이미 과거면 그리지 않는다.
@@ -134,11 +135,13 @@ export default async function LogsPage({
                 <h2 className="text-base font-medium">{group.heading}</h2>
                 {group.label !== null && <span className="text-muted-foreground text-xs">{group.label}</span>}
               </div>
-              {group.rows.map((row) => {
+              {group.rows.map((row, position) => {
                 const showBoundary = index === boundary && project.activityCoverageStartedAt !== null;
                 index += 1;
+                // 머리↔첫 행은 헤더 급 선이다(RowCard 규칙, 4-Y3) — `first:`는 카드의 첫 자식이 머리라 한 번도 걸리지 않았다.
+                const first = position === 0;
                 return (
-                  <div key={row.id} className="border-border border-t first:border-foreground/[0.06]">
+                  <div key={row.id} className={first ? "border-foreground/[0.06] border-t" : "border-border border-t"}>
                     {showBoundary && (
                       <div className="flex items-center gap-3 px-4 py-3">
                         <span className="bg-border h-px flex-1" />
@@ -181,7 +184,7 @@ export default async function LogsPage({
           <Alert
             variant="neutral"
             /* ⚠️ **복원 링크는 OWNER에게만** — EDITOR에게 누를 수 없는 것을 보이지 않는다. */
-            actions={canPerform(role, "project:settings") ? <ButtonLink href={routes.settings(slug)}>{m.logs.archived.restoreAction}</ButtonLink> : undefined}
+            actions={canPerform(role, "project:settings") ? <ButtonLink href={routes.settings(slug)}>{m.archive.empty.action}</ButtonLink> : undefined}
           >
             {m.logs.archived.restoreLine(utcDay(project.archivedAt))}
           </Alert>

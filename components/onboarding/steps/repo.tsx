@@ -171,8 +171,8 @@ export function RepoStep({
         <Input
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder={m.newProject.repo.search}
-          aria-label={m.newProject.repo.search}
+          placeholder={m.newProject.repo.search.placeholder}
+          aria-label={m.newProject.repo.search.label}
           className="w-full pr-2.5 pl-8"
         />
       </div>
@@ -230,7 +230,7 @@ export function RepoStep({
                 className={cn(
                   index > 0 && "border-t",
                   index > 0 && (active || prevActive ? "border-border" : "border-divider"),
-                  active ? "bg-muted" : "hover:bg-foreground/3",
+                  active ? "bg-muted" : "hover:bg-foreground/[0.03]",
                 )}
               >
                 <div className="p-3">

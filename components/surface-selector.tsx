@@ -1,7 +1,7 @@
 "use client";
 import { useId } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { m } from "@/lib/i18n";
 import { surfaceLabel } from "@/lib/surfaces/plan";
 
@@ -23,7 +23,7 @@ export function SurfaceSelector({ value, surfaces, pending, onChange }: {
         <span className="flex flex-col items-start">
           <span>{surface.pathTemplate === null ? surface.slug : surfaceLabel(surface.pathTemplate)}</span>
           {surface.pathTemplate !== null && <span className="text-muted-foreground text-xs">{surface.pathTemplate}</span>}
-        </span>{surface.unpublished > 0 && <Badge>{surface.unpublished}</Badge>}
+        </span><CountBadge count={surface.unpublished} label={m.translations.publish.unsentCount(surface.unpublished)} />
       </span>
     </SelectItem>)}</SelectContent>
   </Select>;

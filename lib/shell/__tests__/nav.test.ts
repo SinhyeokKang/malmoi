@@ -246,8 +246,9 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
   });
 
   /**
-   * ⚠️ **`0`도 배지가 붙는다.** `undefined`와 `0`이 다르다 — 프로젝트가 없다는 사실은 그 자체로
-   * 정보이고, 화면이 `badge && …`로 쓰면 0이 falsy라 조용히 사라진다.
+   * ⚠️ **판정은 `0`을 값으로 낸다** — `undefined`(개수 축이 없는 항목)와 `0`(셌더니 없음)은 다른 사실이다.
+   * **0을 숨기는 것은 화면의 규칙이다**(2026-10-01 ux-drift-unify Q13 — `CountBadge`가 0이면 서지 않는다, DESIGN §6.4).
+   * 여기서 0을 `undefined`로 접으면 그 규칙이 판정 층으로 새어 "셀 수 없음"과 "없음"이 한 값이 된다.
    */
   it("`Projects`에만 개수 배지가 붙고, 0도 값이다", () => {
     const items = navZones(null, { userName: "Shin", projectCount: 0 })[0]?.items ?? [];

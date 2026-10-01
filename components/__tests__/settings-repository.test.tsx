@@ -4,11 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { RepositoryCard } from "@/components/settings/repository-card";
 import { RepositoryForm } from "@/components/settings/repository-form";
+import { CiCard } from "@/components/settings/ci-card";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { input, render } from "./helpers/dom";
 const actions = vi.hoisted(() => ({ connectRepository: vi.fn(), updateRepositorySettings: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => actions);
-const branches = vi.hoisted(() => ({ listRepoBranches: vi.fn(), listProjectBranches: vi.fn() }));
+const branches = vi.hoisted(() => ({ listRepoBranches: vi.fn(), listProjectBranches: vi.fn(), rotatePushToken: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => branches);
 beforeEach(() => {
   branches.listRepoBranches.mockReset();
@@ -21,6 +22,49 @@ async function choose(container: HTMLElement, name: string) {
   await act(async () => { await userEvent.setup().click(option); });
 }
 const healths: ConnectionHealth[] = [{ status: "ok" }, { status: "not-connected" }, { status: "app-uninstalled" }, { status: "installation-changed", installationId: "2" }, { status: "repo-moved", fullName: "new/repo" }, { status: "repo-replaced" }, { status: "unknown" }];
+/**
+ * 배지·버튼 표 (ux-drift-unify D1) — Settings가 `connectionProblem`으로 Home과 같은 판정을 읽는다.
+ * 설치는 있고 리포 id가 없는 `unpinned`는 목록·Home과 같은 **Disconnected**이고 버튼은 **Reconnect**다.
+ */
+it.each([
+  [{ status: "ok" }, "Connected", null],
+  [{ status: "not-connected" }, "Not connected", "Connect"],
+  [{ status: "unpinned" }, "Disconnected", "Reconnect"],
+  [{ status: "app-uninstalled" }, "Disconnected", "Reconnect"],
+  [{ status: "installation-changed", installationId: "2" }, "Disconnected", "Reconnect"],
+  [{ status: "repo-moved", fullName: "new/repo" }, "Connected", "Reconnect"],
+  [{ status: "repo-replaced" }, "Wrong repository", null],
+  [{ status: "unknown" }, "Couldn't check", null],
+] as const)("건강성 %o → 배지 %s · 버튼 %s", async (health, badge, button) => {
+  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve(health as ConnectionHealth)} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" />);
+  const row = container.querySelector("p.text-base")!;
+  expect(row.textContent).toBe(`acme/web${badge}`);
+  const connect = [...container.querySelectorAll("button")].map(b => b.textContent).filter(t => t === "Connect" || t === "Reconnect");
+  expect(connect).toEqual(button === null ? [] : [button]);
+});
+
+/**
+ * 아이콘 칸도 배지와 같은 상태 톤이다 (ux-drift-unify 1-Y15 — 전엔 칸만 회색이었다). 리포로 나가는 버튼은 색·새 탭이 신호라
+ * 글리프를 달지 않는다 (DESIGN §6.3 · 3-Y9).
+ */
+it.each([
+  [{ status: "ok" }, "success"],
+  [{ status: "not-connected" }, "muted"],
+  [{ status: "unpinned" }, "warning"],
+  [{ status: "repo-replaced" }, "danger"],
+  [{ status: "unknown" }, "warning"],
+] as const)("건강성 %o → 아이콘 칸 %s", async (health, tone) => {
+  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve(health as ConnectionHealth)} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" />);
+  expect(container.querySelector("[data-tone]")?.getAttribute("data-tone")).toBe(tone);
+});
+
+it("Open on GitHub는 새 탭이고 글리프가 없다", async () => {
+  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve({ status: "ok" })} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" />);
+  const open = [...container.querySelectorAll("a")].find(a => a.textContent === "Open on GitHub")!;
+  expect(open.getAttribute("target")).toBe("_blank");
+  expect(open.querySelector("svg")).toBeNull();
+});
+
 it.each(healths)("건강성 $status를 보존하고 복구 가능한 갈래에만 재연결을 둔다", async health => {
   const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve(health)} account={Promise.resolve({ status: "reauthorize" })} appSlug="malmoi" />);
   const connect = [...container.querySelectorAll("button")].filter(b => ["Connect", "Reconnect"].includes(b.textContent ?? ""));
@@ -147,4 +191,41 @@ it("Base branch 라벨은 편집 컨트롤을 for로 가리킨다", async () => 
   const { container } = await render(<RepositoryForm owner="acme" repo="web" slug="acme" baseBranch="main" />);
   expect(container.querySelector("#base-branch-label")!.getAttribute("for")).toBe("base-branch");
   expect(container.querySelector("#base-branch")!.tagName).toBe("BUTTON");
+});
+
+/**
+ * **리포 id가 없는 프로젝트(`unpinned`)의 카드는 한 원인만 말한다** (malmoi#159). 행이 Disconnected·Reconnect인데 기준 브랜치 캡션과
+ * 토큰 회전 거부가 "App을 설치하라"(`repo-not-installed`)를 말했다 — App은 설치돼 있다. 목록 조회는 리포 id를 요구해 반드시 거부되므로
+ * 부르지 않고, 저장된 값을 문단으로 세운 채 Reconnect를 말한다.
+ */
+it("unpinned면 브랜치 목록을 조회하지 않고 캡션이 Reconnect를 말한다", async () => {
+  const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="dev" unpinned />);
+  expect(branches.listProjectBranches).not.toHaveBeenCalled();
+  expect(container.querySelector("#base-branch")!.tagName).toBe("P");
+  expect(container.querySelector("#base-branch")!.textContent).toBe("dev");
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(container.querySelector("#base-branch-caption")!.textContent).toBe("Reconnect the repository to change the base branch.");
+  expect(container.textContent).not.toContain("isn't installed");
+  expect(container.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
+});
+it("RepositoryCard가 unpinned를 폼에 넘긴다", async () => {
+  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} unpinned health={Promise.resolve({ status: "unpinned" })} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" />);
+  expect(branches.listProjectBranches).not.toHaveBeenCalled();
+  expect(container.textContent).not.toContain("isn't installed");
+});
+it("unpinned면 Rotate token이 꺼지고 사유가 Reconnect를 말한다", async () => {
+  const { container } = await render(<CiCard slug="acme" archived={false} unpinned stale={[]}>{null}</CiCard>);
+  const rotate = [...container.querySelectorAll("button")].find(b => b.textContent === "Rotate token")!;
+  expect(rotate.disabled).toBe(true);
+  const reason = document.getElementById(rotate.getAttribute("aria-describedby") ?? "");
+  expect(reason?.textContent).toBe("Reconnect the repository to rotate the token.");
+});
+/** 화면이 연결된 상태로 그려진 뒤 리포 id가 풀린 경합 — 서버의 `unpinned` 거부도 같은 문장이다. */
+it("회전 거부 unpinned는 Disconnected 쪽 문장이다", async () => {
+  branches.rotatePushToken.mockResolvedValueOnce({ ok: false, error: "unpinned" });
+  const { container } = await render(<CiCard slug="acme" archived={false} stale={[]}>{null}</CiCard>);
+  await act(async () => { await userEvent.setup().click([...container.querySelectorAll("button")].find(b => b.textContent === "Rotate token")!); });
+  const confirm = [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find(b => b.textContent === "Rotate and show new token")!;
+  await act(async () => { await userEvent.setup().click(confirm); });
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe("Reconnect the repository to rotate the token.");
 });

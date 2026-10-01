@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { HomeActions, HomeHeaderActions, HomeNotices } from "@/components/home/actions";
+import { PanelBody } from "@/components/shell/content-panel";
 import { render } from "./helpers/dom";
 import { m } from "@/lib/i18n";
 
@@ -246,4 +247,58 @@ it("동기화 실패 배너의 본문을 muted로 덮지 않는다", async () =>
   const banner = [...document.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(m.home.banner.syncFailed.title));
   expect(banner).toBeDefined();
   expect(banner!.querySelector(".text-muted-foreground")).toBeNull();
+});
+
+/**
+ * **일부 반영은 실패 문장을 빌리지 않는다** (ux-drift-unify 🔴 A2 · spec 완료 조건 8) — `partial-import`는 데이터가 들어간 상태인데
+ * 배너 제목이 "The last sync couldn't finish"였다. 제목·본문이 Partially synced 쪽이고, "마지막 성공의 값"(`safe`)도 거짓이라 세우지 않는다.
+ */
+it("partial-import 배너는 warning Partially synced이고 실패·마지막 성공 문장이 없다", async () => {
+  const now = new Date("2026-09-15T12:00:00Z");
+  const { container } = await render(<HomeActions slug="acme">
+    <HomeNotices {...props} state="import_failed" failedSurface="web" reason="partial-import" lastSyncAt={new Date("2026-09-15T11:00:00Z")} now={now} />
+  </HomeActions>);
+  const banner = container.querySelector('[data-alert="warning"]');
+  expect(banner?.textContent).toContain(m.home.banner.partial.title);
+  expect(banner?.textContent).toContain(m.home.banner.partial.body("web", "main", m.projects.importFailure.partialImport));
+  expect(banner?.textContent).not.toMatch(/fail|couldn['’]t finish|could not/i);
+  expect(banner?.textContent).not.toContain("last successful sync");
+  // 대조 — 진짜 실패는 danger 실패 제목이다
+  const failed = await render(<HomeActions slug="acme">
+    <HomeNotices {...props} state="import_failed" failedSurface="web" reason="import-failed" lastSyncAt={null} now={now} />
+  </HomeActions>);
+  expect(failed.container.querySelector('[data-alert="danger"]')?.textContent).toContain(m.home.banner.syncFailed.title);
+});
+
+/**
+ * **배너가 본문과 함께 스크롤한다** (2026-10-01 사용자 — POSTMORTEM 2026-09-06의 "머리 고정"을 뒤집었다). 본문의 첫 블록이고
+ * Home 본문은 두 열 격자라 전폭(`col-span-full`)을 가로지른다. 여백·폭 상한은 본문(`p-4`·`max-w-7xl`)이 들므로 블록이 다시 적지 않는다.
+ */
+it("배너가 PanelBody 스크롤 컨테이너 안에서 격자 전폭을 쓴다", async () => {
+  const { container } = await render(<HomeActions slug="acme">
+    <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
+      <HomeNotices {...props} state="import_failed" failedSurface="web" reason="import-failed" lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} />
+    </PanelBody>
+  </HomeActions>);
+  const banner = container.querySelector('[data-alert="danger"]');
+  expect(banner?.closest(".overflow-y-auto")).not.toBeNull();
+  const block = banner?.parentElement as HTMLElement;
+  expect(block.classList.contains("col-span-full")).toBe(true);
+  expect(block.classList.contains("empty:hidden")).toBe(true);
+  for (const cls of [...block.classList]) expect(cls).not.toMatch(/^(p|px|pt|pb|mx)-|^max-w-/);
+});
+
+/**
+ * **배너가 0개면 블록에 자식 노드가 없다** (U12 r1) — 클래스만 세면 공회전이다. 안에 사는 `SlowNotice`·결과 자리·Publish 모달이 한가할 때
+ * DOM을 하나라도 남기면 `:empty`가 거짓이 되어 Home 격자에 **빈 행 + gap 20**이 선다(가장 흔한 화면이다).
+ */
+it("배너가 없으면 블록이 비어 있다 — 격자에 빈 행이 안 선다", async () => {
+  const { container } = await render(<HomeActions slug="acme">
+    <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
+      <HomeNotices {...props} state="default" failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} />
+    </PanelBody>
+  </HomeActions>);
+  const block = container.querySelector('[class~="empty:hidden"]');
+  expect(block).not.toBeNull();
+  expect(block?.childNodes).toHaveLength(0);
 });

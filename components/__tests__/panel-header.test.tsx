@@ -104,6 +104,16 @@ describe("PanelHeader — 여백·선·폭을 프리미티브가 든다", () => 
     expect(line.classList.contains("text-muted-foreground")).toBe(true);
   });
 
+  /**
+   * **제목 행의 최소 높이 36(`min-h-9`)을 프리미티브가 든다** (2026-10-01 ux-drift-unify T14 · 4-Y8) — 버튼 없는 화면에서 줄 높이가
+   * 28로 떨어지면 머리가 라우트마다 4px 튄다. 전엔 소비자 넷이 손으로 적었다. 첫 자식이 제목 행이다.
+   */
+  it("첫 자식(제목 행)이 최소 높이 36을 받는다", async () => {
+    const outer = await header({ children: <h1>Projects</h1> });
+    const inner = find<HTMLElement>(outer, ":scope > div");
+    expect(inner.classList.contains("[&>:first-child]:min-h-9")).toBe(true);
+  });
+
   /** 설명이 없으면 그 자리가 DOM에 없다 — 빈 `<p>`의 line-height가 머리를 늘린다. */
   it("설명이 없으면 그리지 않는다", async () => {
     const outer = await header({ children: <h1>Projects</h1> });
@@ -114,7 +124,7 @@ describe("PanelHeader — 여백·선·폭을 프리미티브가 든다", () => 
    * ⚠️ **머리 여백(상하 12)의 전제는 "제목 줄 하나"다.** 설명이 붙으면 세로로 늘어야 하므로 래퍼가 열이고
    * 간격이 12다 — 그 조건을 주석이 아니라 코드가 든다 (POSTMORTEM 2026-09-14).
    */
-  it("래퍼가 열이고 간격 12다 — 설명·거부 Alert이 제목 줄 아래로 쌓인다", async () => {
+  it("래퍼가 열이고 간격 12다 — 설명이 제목 줄 아래로 쌓인다", async () => {
     const outer = await header({ children: <h1>Projects</h1> });
     const inner = find<HTMLElement>(outer, ":scope > div");
     expect(inner.classList.contains("flex")).toBe(true);
@@ -206,12 +216,15 @@ describe("소비자 열여섯 — 여백을 넘기지 않는다", () => {
    * 세는 명령 (2026-09-20에 다시 돌렸다 — 주석의 이름 인용을 빼고 센다):
    * `grep -rn "<PanelHeader" components app | grep -v __tests__ | grep -v content-panel` → **13**
    * `grep -rn "<PanelBody" components app | grep -v __tests__ | grep -v content-panel` → **17**
-   * 차이 넷이 아래 `BODY_ONLY`다.
+   * 차이 넷이 아래 `BODY_ONLY`다. (2026-10-01 malmoi#162 — not-found 둘이 더해 여섯이다.)
    */
   const BODY_ONLY = [
     "components/project-archived.tsx",
     "components/project-not-ready.tsx",
     "app/(edit)/error.tsx",
+    /** 셸 안 not-found 둘 (malmoi#162) — 제목 없는 빈 상태라 본문만 들고, 세로 중앙은 셸 오류 경계와 같은 형이다. */
+    "app/(edit)/projects/[slug]/not-found.tsx",
+    "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/not-found.tsx",
     /**
      * ⚠️ **Logs 전용 오류 화면이다** (logs-rework 결정 16) — 조회 실패를 빈 목록으로 접지 않으려면
      * 문구가 "이력이 없다"가 아니라 "이력을 못 읽었다"여야 하고, 그 문구는 세그먼트 공용 오류가
@@ -242,6 +255,15 @@ describe("소비자 열여섯 — 여백을 넘기지 않는다", () => {
     expect(uses("<PanelBody").sort()).toEqual([...CONSUMERS, ...BODY_ONLY].sort());
   });
 
+  /** 제목 행의 `min-h-9`는 프리미티브가 든다(T14) — 소비자가 다시 적으면 두 곳이 된다. 머리 안 첫 줄만 센다. */
+  it.each(CONSUMERS)("%s가 머리 제목 행에 min-h-9를 적지 않는다", (path) => {
+    const source = readFileSync(join(ROOT, path), "utf8");
+    const heads = [...source.matchAll(/<PanelHeader\b[^>]*>([\s\S]*?)<\/PanelHeader>/g)].map((match) => match[1] ?? "");
+    // 빈 스캔은 공회전이다 — 머리를 못 찾으면 이 검사가 아무것도 안 잰다.
+    expect(heads.length, path).toBeGreaterThan(0);
+    for (const head of heads) expect(head, path).not.toMatch(/className="[^"]*\bmin-h-9\b/);
+  });
+
   /** 등급 prop이 사라졌다 — 소비자가 `width=`를 넘기면 좁은 등급이 되살아날 자리가 생긴다. */
   it("소비자가 Panel에 width를 넘기지 않는다", () => {
     for (const path of [...CONSUMERS, ...BODY_ONLY]) {
@@ -250,11 +272,12 @@ describe("소비자 열여섯 — 여백을 넘기지 않는다", () => {
     }
   });
 
-  it("소비자가 열여섯 + 본문 전용 넷이다 — 수가 바뀌면 다시 센다", () => {
+  it("소비자가 열여섯 + 본문 전용 여섯이다 — 수가 바뀌면 다시 센다", () => {
     // translation-rework T16 — 옛 번역 머리가 빠졌다. 새 작업 화면은 `PanelHeader`를 쓰지 않는다(세 패널이 본문 전체를 든다).
     // mcp-connector — `/mcp`가 하나 더했다(15 → 16).
     expect(CONSUMERS).toHaveLength(16);
-    expect(BODY_ONLY).toHaveLength(4);
+    // malmoi#162 — 셸 안 not-found 둘이 더했다(4 → 6).
+    expect(BODY_ONLY).toHaveLength(6);
   });
 
   it.each(BODY_ONLY)("%s도 여백·폭을 다시 정하지 않는다", (path) => {

@@ -51,9 +51,12 @@
 - 굵게는 UI 라벨에만, 기울임은 강조에 쓴다. 각 절에서 화면 라벨을 처음 언급할 때 사전의 문자열을 대소문자·구두점·말줄임표까지 정확히 굵게 쓴다.
 - 사전 대조 통과만으로 충분하지 않다. 그 라벨이 해당 절에서 안내하는 실제 화면의 문구인지도 확인하고 검증 결과를 기록한다.
 - 라벨은 `dictionaryStrings(m)`에 포함된 문자열 또는 아래 외부 라벨 표에 있어야 한다. 옛 `publicDocs.docs.sections` 본문은 제거됐고, 라벨 게이트는 전체 사전을 대상으로 한다. 함수·JSX 값은 제외한다.
+- **보이는 글자만 굵게 쓴다.** 필터 축 이름(`State`·`Kind`처럼 `aria-label`에만 붙는 값)은 화면에 없다 — 트리거가 보이는 현재 값(**Any state**·**All activity**)을 쓴다. 라벨 게이트가 그 경로를 `ARIA_ONLY`(`lib/guide/__tests__/content.test.ts`)로 빼고 세며, 새 aria 전용 키를 만들면 거기에 더한다.
+- 상태 낱말의 금지 동의어(`unpublished`·`on hold`·`deferred`(코드 밖)·보류 문맥의 `wait` 등)는 `lib/i18n/__tests__/terminology.test.ts`의 원고용 색인이 원고 문장에서 센다.
 - `Publish 3 changes` 같은 보간 라벨과 `hookHint` 같은 함수형 문구는 굵게 쓰지 않는다. 숫자 예시를 사전에 있는 고정 라벨처럼 취급하지 않는다.
 - GitHub 등 외부 화면의 라벨도 굵게 쓰되 아래 표에 정확한 문구·화면·근거를 먼저 기록한다. 사전에 이미 있는 라벨이라도 그 화면에 실제로 있는지는 원고 검토에서 확인한다.
-- 사용자가 보는 이름으로 쓴다. 아래 표의 내부 단어는 오른쪽 표현으로 바꾼다. 화면 문구를 그대로 인용할 때는 `Not sent` 같은 라벨을 예외로 쓸 수 있다.
+- 사용자가 보는 이름으로 쓴다. 아래 표의 내부 단어는 오른쪽 표현으로 바꾼다. 화면 문구를 그대로 인용할 때는 `Revert to last sent` 같은 라벨을 예외로 쓸 수 있다.
+- **상태 낱말은 `docs/DESIGN.md` §2.4가 정본이다.** 표의 상태 행은 그 표의 낱말을 가이드 산문으로 옮긴 것이고, 둘이 갈리면 §2.4를 따르고 이 표를 고친다.
 
 | 내부 단어 | 가이드 표현 |
 | --- | --- |
@@ -62,7 +65,13 @@
 | repository → Malmoi | update |
 | owner control | Sync |
 | Malmoi → GitHub | Publish |
-| sent / delivered / delivery-confirmed | published |
+| sent / delivered / delivery-confirmed | published (동작을 설명할 때) |
+| unsent / pending / unpublished (미전달 편집) | 화면 상태 낱말 **Unsent**, 산문 "unsent edits" — "unpublished edits"를 쓰지 않는다 |
+| hold / defer / pause / wait (리포 갱신 보류) | 화면 라벨 **Held**, 산문 "held"("Repository updates are held until …") — "on hold"·"paused"·"waits"를 쓰지 않는다. CI 로그의 `deferred`를 인용할 때만 예외이고, 한 번은 "Logs shows it as **Held**"로 잇는다 |
+| partial import (일부 반영) | **Partially synced** — "failed"·"couldn't finish"로 쓰지 않는다(데이터는 들어갔다) |
+| import failed (동기화 실패) | **Sync failed**, 문장은 "the last sync couldn't finish" (Logs 결과 칸만 **Failed**) |
+| Publish withheld (일부 보류) | **Held back** — Sync 문장에는 쓰지 않는다 |
+| disconnected / unpinned (연결 끊김) | **Disconnected** → **Reconnect**. 결과는 "syncs and publishes stop until it's reconnected" — "paused"를 쓰지 않는다 |
 | project role | Owner / Editor; first mention: translators (Editor role) |
 | address | the name in the project URL |
 
@@ -109,6 +118,7 @@
 
 - 짧은 문장으로 지금 할 일과 그 결과를 설명한다. 절차는 사용자가 실행하는 순서로 쓴다.
 - 독자를 `you`로 부르고, 역할을 제한할 때는 `project owners`라고 쓴다. 편집자에게 내부 DB·어댑터·토큰 구조를 설명하지 않는다. 화면에 없는 pull request, transaction, token, namespace, cron, OAuth, challenge, database는 같은 문장에서 뜻을 풀지 않으면 쓰지 않는다. Editor 원고의 key도 처음 뜻을 풀지 않으면 쓰지 않으며, base branch, payload, request도 내부 용어로 쓰지 않는다. 자동 검사는 금지어 전체를 보장하지 않는다.
+- **축약형(`could not`·`does not` …)은 원고에서 금지하지 않는다** — 축약형은 화면 문장의 문체 규칙(DESIGN §10)이지 개념 동의어가 아니고, 원고는 설명문이라 오독되지 않는다(2026-10-01, ux-drift-unify — `terminology.test.ts`의 원고 색인이 뺀다). 원고 문체를 화면에 맞출지는 후속 후보다.
 - 성공·실패·확인 불가를 구별한다. 확인하지 못한 PR을 없다고 쓰거나, 저장만 된 변경을 전달됐다고 쓰지 않는다.
 - `TODO`·`TBD`·`lorem` 같은 자리표시자를 원고에 남기지 않는다. 검증하지 않은 동작을 약속하지 않는다.
 - 독자가 파일로 저장할 코드 블록에는 `title=".github/workflows/malmoi-i18n.yml"`처럼 파일명 메타를 붙인다. 설정 필드에 붙이는 목록이나 코드 조각은 파일명이 없어도 된다.

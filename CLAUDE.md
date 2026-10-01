@@ -72,7 +72,7 @@
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 26개 + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select 여섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 29개 + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select 여섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
 | 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 컴포넌트다** |
 | 패널 리사이즈 | `react-resizable-panels` — `resizable.tsx` 하나가 쓴다. ⚠️ **jsdom에서는 화면의 모든 클릭을 삼킨다** — `vitest.setup.ts`가 막는다 |
 | 아이콘·폰트 | `lucide-react` / **Pretendard Variable 동적 서브셋, 자사 호스트** |
@@ -115,7 +115,7 @@
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
 | MCP 개인 토큰 발급·폐기 | **Server Action** (`app/(edit)/mcp/actions.ts`) | `/mcp` — `requireUser`만, `userId`로 좁힌다. 발급 = 기존 행 삭제 + 삽입 한 tx라 Create·Rotate가 같은 Action이다. ⚠️ **MCP 도구에 발급·폐기가 없다** — 토큰이 토큰을 만들지 않는다 |
 | Publish 미리보기 | **Server Action** (`app/(edit)/publish-actions.ts`) | 편집 UI — **읽기만 한다.** 그래서 `revalidatePath`를 부르지 않는다 |
-| 읽기 전용 조회 — Revert 미리보기(`previewTranslationRevert`), 키 목록 다음 페이지(`loadMoreTranslationKeys`) | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI — Publish 미리보기와 같이 **`revalidatePath`를 부르지 않는다.** 인증·인가·readiness는 쓰기 Action과 같은 판정을 지난다. More가 Action인 이유는 cursor를 주소에 싣지 않으려는 것이다(audit-ux #19) |
+| 읽기 전용 조회 — Revert 미리보기(`previewTranslationRevert`) | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI — Publish 미리보기와 같이 **`revalidatePath`를 부르지 않는다.** 인증·인가·readiness는 쓰기 Action과 같은 판정을 지난다. 키 목록은 전량이라 "다음 페이지" Action이 없다(2026-10-01, translation-filter-scope) |
 | `/api/push` | Route Handler | GitHub Actions — Bearer가 **그 프로젝트의 토큰 원문**이다 |
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
 | `/api/mcp` | Route Handler | CLI·코딩 에이전트 — Bearer가 **그 사용자의 개인 토큰**이다(`ApiToken`). **쿠키를 읽지 않는다**(CSRF 방어의 전부). 도구는 Action과 **같은 코어의 형제 껍데기**이고 Action을 부르지 않는다(ARCHITECTURE §6.45) |
@@ -222,7 +222,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **21개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/runtime-test`·`/design-sync`·`/orchestrate`·`/guide-shots` 일곱은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, 뒤의 넷은 Codex에 런타임이 없다: `/runtime-test`는 ego-browser, `/design-sync`는 그 위에 **`DesignSync` 도구**까지 쓰고, `/orchestrate`는 Orca 워커 세션을 띄워 push까지 지휘하고, `/guide-shots`는 ego-browser로 가이드 스크린샷을 찍는다 — 그 stale 목록만은 `pnpm guide:check`로 어디서든 받는다).
+스킬 **22개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/runtime-test`·`/design-sync`·`/orchestrate`·`/guide-shots` 일곱은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, 뒤의 넷은 Codex에 런타임이 없다: `/runtime-test`는 ego-browser, `/design-sync`는 그 위에 **`DesignSync` 도구**까지 쓰고, `/orchestrate`는 Orca 워커 세션을 띄워 push까지 지휘하고, `/guide-shots`는 ego-browser로 가이드 스크린샷을 찍는다 — 그 stale 목록만은 `pnpm guide:check`로 어디서든 받는다).
 
 **권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/design-sync`) → (`/db`) → `/push`(dev) → `/merge`(프로덕션 + 릴리스). ⚠️ **`/design-sync`는 신규 페이지를 핸드오프로 처음 구현할 때만** 끼고, `/ship`도 6.5단계에서 같은 조건으로 부른다. 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
 
@@ -230,6 +230,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 - **`/feature`가 기능의 시작점이다.** 산출물은 `docs/features/<name>/`에 `spec`·`design`·`tasks`로 남고, **기능이 끝나면 결론을 정본(PRODUCT — 제품 판정 / ARCHITECTURE — 불변식·함정 / DESIGN — 시각 규칙)으로 올리고 그 디렉터리는 지운다.** 근거 기록을 쌓아 두지 않는다 — 되살릴 일이 생기면 `git log`가 답한다.
 - **`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고 `docs/POSTMORTEM.md` 전 항목의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. 리포트 전용이라 배포 경로와 무관하다.
+- **`/ux-audit`도 이 흐름 밖이다** (2026-10-01, ux-drift-unify). `/audit` 옆 레인이고 **화면과 화면 사이**를 본다 — 같은 개념이 화면마다 다른 톤·낱말·형태·배치인지를 차원 일곱(상태 · 문구 · 동작 · 구조 · 토큰 · 판정 중복 · 가이드↔화면)으로 병렬 감사한다. 기준은 DESIGN §2.4·§10.1과 화면 간 불변식 테스트다. **`/merge` 전 또는 새 화면 핸드오프 뒤**에 돌리고, 🔴는 이슈 후보로 · 정본 제안은 §2.4 행 후보로 낸다. 리포트 전용이다.
 - **`/sync`는 파괴적이다** — dev를 `origin/main`으로 hard reset + force push한다. 미커밋·미푸시·미머지 세 검사를 전부 통과해야 실행한다. `/merge`가 10단계에서 자동으로 하므로, 손으로 부르는 것은 그게 실패했거나 **다른 머신·창구가 머지한 뒤**다.
 - **스키마를 건드렸으면 `/push` 전에 `/db`** — 마이그레이션 파일이 코드와 같은 커밋에 들어가야 하고, 배포 순서 판정도 거기서 한다. **프로덕션 반영은 `/merge` 1단계다.**
 - **회귀·버그를 잡아 고쳤으면 `/postmortem`.** 역으로 `/implement`·`/refactor`·`/code-review`는 **착수 전 변경 영역으로 `docs/POSTMORTEM.md`를 grep**해 과거 함정을 소환한다 — 쓰기만 하고 안 읽으면 죽은 로그다.

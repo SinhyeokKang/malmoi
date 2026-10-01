@@ -3,6 +3,7 @@
 import {
   ChevronRight,
   CircleDashed,
+  CircleX,
   Eye,
   GitMerge,
   GitPullRequest,
@@ -21,20 +22,22 @@ import { GithubIcon } from "@/components/signin/brand-icons";
 import { NewProjectButton } from "@/components/projects/new-project-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { BannerLine, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { canPerform } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
-import { importFailureMessage } from "@/lib/projects/import-failure";
+import { importFailureMessage, importFailureTone } from "@/lib/projects/import-failure";
 import {
+  CHIP_STATE,
   highlightName,
   listBody,
   meterSlot,
   projectStatus,
   rowBanner,
+  rowChip,
   type ProjectGroup,
-  type ProjectStatus,
   type RowBanner,
 } from "@/lib/projects/list";
 import { routes } from "@/lib/routes";
@@ -59,39 +62,6 @@ import { cn } from "@/lib/utils";
  * ⚠️ **fluid다** — `max-w-4xl`이 아니다 (DESIGN §5.1). 이름 칸 420 + Meter 셋 + 우측 배지가
  * 896px에서는 겹친다.
  */
-
-/**
- * 상태 배지의 색 (8-3).
- *
- * ⚠️ **amber는 `Disconnected` 하나뿐이다** (2026-09-11 사용자 — `Setup`·`Pending`을 무색으로
- * 내렸다). 축이 "덜 됐나"가 아니라 **"깨졌나"**다: 앞의 둘은 새 프로젝트가 지나가는 정상 경로이고
- * 시간이 지나면 저절로 `Active`가 되지만, `Disconnected`는 **한때 돌던 것이 멈춘 것**이라
- * 사람이 손대야 풀린다.
- *
- * ⚠️ **`Active`가 초록이다**. DESIGN §6.1("가장 흔한 상태가 가장 조용하다")의 예외이고 근거는
- * **이 목록이 훑어보는 화면**이라는 것 — 손볼 프로젝트가 튀어나오려면 정상인 것도 색을 들어
- * 대비가 생겨야 한다.
- *
- * ⚠️ **삼항이 아니라 맵 + `satisfies`다** (`lib/auth/landing.ts`와 같은 관용구). 갈래가 늘면 키가
- * 없어 컴파일 에러가 나는데, 삼항이면 새 갈래가 **사유 없이** 기본값으로 떨어지고 `tsc`가 조용하다.
- */
-const STATUS_CHIP = {
-  active: { variant: "success", tone: "" },
-  /**
-   * ⚠️ **보관만 `#a3a3a3`이고 나머지 무색 둘은 `#525252`다**. `Badge neutral`의 기본 글자색은
-   * foreground(`#0a0a0a`)이므로 셋 다 호출부에서 내린다 — 프리미티브를 바꾸면 이 루프가 보지 않은
-   * 화면의 배지가 함께 움직인다.
-   *
-   * ⚠️ **`#737373`이었다** (캔버스 `1c` · 2026-09-20에 사용자가 한 단계 더 내렸다 — *"거의 비활성
-   * 상태에 가깝게"*). 그 값은 이 리포에서 **꺼진 컨트롤의 글자색**이라(`button.tsx`·`select.tsx`)
-   * 더 내려갈 데가 없었고, 이름·메타와 **함께** 움직여야 한다: 배지만 남으면 그것이 행에서 가장
-   * 진한 것이 되어 물러나게 하려던 행으로 눈이 먼저 간다.
-   */
-  archived: { variant: "neutral", tone: "text-neutral-400" },
-  setup: { variant: "neutral", tone: "text-neutral-600" },
-  awaiting_first_sync: { variant: "neutral", tone: "text-neutral-600" },
-  needs_reconnect: { variant: "warning", tone: "" },
-} as const satisfies Record<ProjectStatus, { variant: "neutral" | "warning" | "success"; tone: string }>;
 
 const GROUP_LABEL = {
   needs_attention: m.projects.group.needsAttention,
@@ -130,10 +100,10 @@ export function ProjectList({
     <>
       <PanelHeader>
         {/*
-          ⚠️ **`min-h-9`가 제목 행에 있다** (DESIGN §5.1). 버튼이 없는 갈래(`1b` — 프로젝트 0건)에서
-          줄 높이가 28로 떨어지면 머리 높이가 라우트마다 4px 튄다.
+          ⚠️ **제목 행의 `min-h-9`는 `PanelHeader`가 첫 자식에 든다** (DESIGN §5.1 · 2026-10-01). 버튼이 없는 갈래(`1b` — 프로젝트
+          0건)에서 줄 높이가 28로 떨어지면 머리 높이가 라우트마다 4px 튄다 — 이 행이 첫 자식이어야 하는 이유다.
         */}
-        <div className="flex min-h-9 items-center gap-3">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-medium">{m.common.nav.projects}</h1>
             {/*
@@ -141,10 +111,7 @@ export function ProjectList({
               답한다. 좁혀진 수는 결과 카드의 카운트가 든다 (캔버스 `1c`: 배지 3 · 카드 1).
             */}
             {/* ⚠️ **카드 배지와 같은 처방이다** — 셋만 문장을 들면 같은 화면 두 줄 안에서 갈린다. */}
-            <Badge variant="neutral">
-              <span aria-hidden>{all.length}</span>
-              <span className="sr-only">{m.projects.count(all.length)}</span>
-            </Badge>
+            <CountBadge count={all.length} label={m.projects.count(all.length)} />
           </div>
           {/*
             ⚠️ **프로젝트가 하나도 없으면 검색·[New project]를 그리지 않는다** (캔버스 `1b`).
@@ -160,16 +127,15 @@ export function ProjectList({
             </>
           )}
         </div>
-
-        {/*
-          페이지 수준 거부는 **global Alert**다 (DESIGN §6.4).
-          ⚠️ **제목 줄 아래이고 머리 안이다** — 본문으로 내리면 스크롤로 사라지고, 사용자는 버튼이
-          안 눌린 것으로 본다 (POSTMORTEM 2026-09-06). 세로로 쌓는 것은 `PanelHeader`의 열 레이아웃이다.
-        */}
-        {message !== null && <Alert variant="danger">{message}</Alert>}
       </PanelHeader>
 
       <PanelBody className="flex flex-col gap-4">
+        {/*
+          페이지 수준 거부는 **global Alert**이고 본문의 첫 블록이다 (DESIGN §6.4).
+          ⚠️ **본문과 함께 스크롤한다** (2026-10-01 사용자) — 옛 자리는 머리 안 제목 줄 아래였고 근거는 POSTMORTEM 2026-09-06
+          ("스크롤로 사라지면 버튼이 안 눌린 것으로 본다")였다. 사용자가 뒤집었다: 머리는 제목·툴바 한 띠로 고정된다.
+        */}
+        {message !== null && <Alert variant="danger">{message}</Alert>}
         {body.kind === "groups" ? (
           body.cards.map((card) => (
             <RowCard
@@ -199,12 +165,15 @@ export function ProjectList({
               (2026-09-11 실측 — 카드 모서리를 자르는 `overflow-hidden`이 바깥 링을 통째로 먹었다).
             */
             action={
+              /* 앱 안 이동이라 파랑이 아니다 — 파랑은 새 탭 외부 링크만이다(DESIGN §2.4 동작 규칙 · §6.63). */
               <Link
                 href={routes.projects()}
                 onNavigate={clear}
-                className="focus-visible:ring-ring ml-auto text-sm text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+                className="focus-visible:ring-ring text-foreground ml-auto inline-flex items-center gap-0.5 text-sm focus-visible:ring-2 focus-visible:outline-none"
               >
                 {m.projects.clearSearch}
+                {/* 앱 안 이동의 표식 — 파랑 대신 chevron이다(DESIGN §6.3 동작 규칙). */}
+                <ChevronRight className="text-muted-foreground size-4" aria-hidden />
               </Link>
             }
           >
@@ -238,7 +207,11 @@ function RowList({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
 
 function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
   const status = projectStatus(row);
-  const chip = STATUS_CHIP[status];
+  /*
+    칩은 **그 프로젝트의 가장 나쁜 상태 하나**다(2026-09-30 상태 통일 — 실패 중인데 초록 `Active`가 섰다). 순서는 `rowChip`이 정한다:
+    끊김이 먼저이고(ux-drift-unify Q2 — 띠·Home과 같다), 동기화 실패(빨강) · 일부 반영(호박)이 readiness 칩을 이긴다.
+  */
+  const chipState = rowChip(row);
   const slot = meterSlot(row, row.meters);
   const banner = rowBanner(row);
 
@@ -252,7 +225,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
          * 포커스가 아예 안 보였다.** 그 `overflow-hidden`은 `rounded-lg`가 첫·끝 행의 모서리를
          * 자르는 수단이라 뗄 수 없으므로, 링을 안쪽으로 그린다.
          */
-        className="hover:bg-foreground/[0.02] focus-visible:ring-ring flex items-center gap-4 py-3.5 pr-3.5 pl-3 focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
+        className="hover:bg-foreground/[0.02] focus-visible:ring-ring flex items-center gap-4 py-[13px] pr-3.5 pl-3 focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
       >
         <ProjectThumbnail name={row.name} src={row.image} />
 
@@ -286,7 +259,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             )}
           </span>
           {/*
-            메타 한 줄 — **owner/repo · 역할 · 멤버 수**. ⚠️ **`https://github.com/`를 뗀다**(시안):
+            메타 한 줄 — **owner/repo 하나**다(2026-09-30 사용자 — 역할·멤버 수를 걷었다). ⚠️ **`https://github.com/`를 뗀다**(시안):
             행 폭의 3분의 1을 모든 행이 같은 문자열로 쓰는 것이 그 접두다.
 
             ⚠️ **리포가 링크가 아니다** — 행 전체가 이미 `<a>`라 중첩할 수 없다.
@@ -295,14 +268,11 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             Sources 머리와 같은 크기다. 색은 상속이라 보관 행이면 함께 물러난다. 말줄임은 안쪽 글자 span이 든다 —
             바깥이 `flex`라 `truncate`를 거기 두면 마크까지 잘리는 대신 줄임표가 안 선다.
           */}
-          <span className={cn("flex min-w-0 items-center gap-1.5 text-sm", status === "archived" ? "text-neutral-400" : "text-muted-foreground")}>
+          {/* 보조줄은 13이다 — 행 보조줄 한 벌(4-Y9 · `PanelRow`·`EventMeta`와 같다). */}
+          <span className={cn("flex min-w-0 items-center gap-1.5 text-xs", status === "archived" ? "text-neutral-400" : "text-muted-foreground")}>
             <GithubIcon className="size-3.5 shrink-0" />
             <span className="truncate">
               {`${row.repoOwner}/${row.repoName}`}
-              {" · "}
-              {m.projects.role[row.role]}
-              {" · "}
-              {m.projects.memberCount(row.memberCount)}
             </span>
           </span>
         </span>
@@ -335,10 +305,12 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
           "흔들리는 것은 빈 공간뿐"을 만드는 장치다 — 셋 중 하나만 빠져도 칩의 x가 행마다 달라진다.
         */}
         <span className="ml-auto flex shrink-0 items-center gap-3">
-          {/* ⚠️ **칩만 `px-2`다** — 총계·그룹 카운트 배지는 `px-1.5` 그대로여야 `min-w-5`가 이겨 원형이 된다. */}
-          <Badge variant={chip.variant} className={cn("px-2", chip.tone)}>
-            {m.projects.status[status]}
-          </Badge>
+          {/*
+            칩은 상태 키만 넘긴다 — variant·낱말은 `STATE`가 든다(`CHIP_STATE` · DESIGN §2.4). 온보딩 중인 둘의 `#525252` 덮개는 걷었다(1-Y8 —
+            Sources의 같은 배지와 글자색이 갈렸다). ⚠️ **보관만 `#a3a3a3`이다** — 이름·메타와 한 색으로 물러나는 등재된 이탈이다(DESIGN §6.63 보관 행).
+            ⚠️ **칩만 `px-2`다** — 총계·그룹 카운트 배지는 `px-1.5` 그대로여야 `min-w-5`가 이겨 원형이 된다.
+          */}
+          <StatusBadge state={CHIP_STATE[chipState]} className={cn("px-2", chipState === "archived" && "text-neutral-400")} />
           <ChevronRight aria-hidden className="text-muted-foreground size-4" />
         </span>
       </Link>
@@ -366,11 +338,14 @@ function ProjectBanner({ row, banner }: { row: ProjectListRow; banner: NonNullab
   return (
     <BannerLine
       icon={<BannerIcon banner={banner} />}
+      // 띠 전체가 상태의 색이다 — 실패는 Home Alert·Logs·Sources와 같은 빨강, 재연결 필요는 Home Alert와 같은 호박(2026-09-30 사용자).
+      tone={banner.kind === "import_failed" ? importFailureTone(banner.reason) : banner.kind === "needs_reconnect" || banner.kind === "review" || banner.kind === "pr_check_failed" ? "warning" : "muted"}
       action={<BannerAction row={row} banner={banner} canSettle={canSettle} />}
     >
       {banner.kind === "review" && m.projects.banner.review(banner.count)}
       {banner.kind === "unsent" && m.projects.banner.unsent(banner.count)}
       {banner.kind === "pr_open" && m.projects.banner.prOpen(banner.number)}
+      {banner.kind === "pr_check_failed" && m.projects.banner.prCheckFailed}
       {banner.kind === "repo_ahead" && m.projects.banner.repoAhead(banner.files, row.baseBranch)}
       {banner.kind === "setup" && m.projects.banner.setup}
       {banner.kind === "needs_reconnect" && m.projects.banner.needsReconnect}
@@ -390,11 +365,15 @@ function BannerIcon({ banner }: { banner: NonNullable<RowBanner> }) {
    * 같은 색 알파를 쓰면 획이 만나는 접점에서 알파가 **누적돼 그 점만 진해진다.**
    */
   const icon = {
-    needs_reconnect: { glyph: Unplug, tone: "text-amber-800" },
-    import_failed: { glyph: TriangleAlert, tone: "text-red-800" },
+    // 색은 띠(`BannerLine tone`)가 든다 — 글리프는 글자색을 상속한다.
+    needs_reconnect: { glyph: Unplug, tone: "" },
+    // 실패는 `CircleX`, 일부 반영은 경고 삼각이다(DESIGN §2.4 글리프 열 — `TriangleAlert`는 danger 옆에 서지 않는다, 5-Y4).
+    import_failed: { glyph: banner.kind === "import_failed" && importFailureTone(banner.reason) === "danger" ? CircleX : TriangleAlert, tone: "" },
     setup: { glyph: CircleDashed, tone: "" },
     unsent: { glyph: GitPullRequestArrow, tone: "" },
     pr_open: { glyph: GitPullRequest, tone: "" },
+    // 확인 못 한 열린 PR — 경고 글리프다(게이트가 fail-closed라 적재가 실제로 멈춘다).
+    pr_check_failed: { glyph: TriangleAlert, tone: "" },
     repo_ahead: { glyph: GitMerge, tone: "" },
     review: { glyph: Eye, tone: "" },
   }[banner.kind];
@@ -403,8 +382,8 @@ function BannerIcon({ banner }: { banner: NonNullable<RowBanner> }) {
 }
 
 /**
- * 띠의 링크는 **하나까지**다. 외부로 나가는 둘은 `target="_blank"`만 다르고 **모양이 내부 링크와
- * 같다** — 글리프를 달지 않는다 (DESIGN §6.3, 2026-09-18). 띠가 한 줄이라 12px 아이콘이 자리만 먹었다.
+ * 띠의 링크는 **하나까지**다. ⚠️ **파랑은 새 탭 외부(`View PR`·`Review changes`)만이다** (🔴 N · DESIGN §2.4 동작 규칙) — 앱 안 이동은 muted 글자 +
+ * chevron 12다. 전엔 둘이 같은 파랑이라 새 탭으로 나가는지 알 수 없었다. 외부 링크에는 글리프를 달지 않는다(DESIGN §6.3).
  */
 function BannerAction({
   row,
@@ -416,8 +395,9 @@ function BannerAction({
   canSettle: boolean;
 }) {
   const internal = (href: string, label: string) => (
-    <Link href={href} className="ml-1 shrink-0 text-blue-600">
+    <Link href={href} className="text-muted-foreground ml-1 inline-flex shrink-0 items-center gap-0.5">
       {label}
+      <ChevronRight className="size-3" aria-hidden />
     </Link>
   );
   const external = (href: string, label: string) => (
@@ -440,6 +420,9 @@ function BannerAction({
       return row.unsentSurfaceSlug === null ? null : internal(routes.surfaceTranslations(row.slug, row.unsentSurfaceSlug), m.projects.banner.action.send);
     case "pr_open":
       return external(banner.url, m.projects.banner.action.viewPr);
+    case "pr_check_failed":
+      // 갈 곳이 없다 — 다음 방문에서 다시 확인한다.
+      return null;
     case "repo_ahead":
       // compare 범위는 원격 조회가 이미 계산한 것과 같다 — 화면이 그 범위를 그대로 연다.
       return external(

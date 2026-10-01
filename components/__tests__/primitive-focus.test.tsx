@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
-import { act, useState } from "react";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
+import { act, useState, type ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
@@ -171,4 +173,83 @@ it("포커스 없이 버튼을 눌러 상태로 연 Dialog도 그 버튼으로 �
   await act(async () => { clickWithoutFocus(byText("Keep editing")); });
   // 위 테스트와 같은 이유로 폴링한다 — 고정 대기는 부하에서 한 번씩 red였다.
   await vi.waitFor(() => expect(document.activeElement).toBe(byText("Open")));
+});
+
+/**
+ * **확인 Dialog의 첫 포커스는 푸터 Cancel이다** (DESIGN §6.4 Dialog · ux-drift-unify T13 · 3-Y4). 전엔 소비자 셋만 손으로 Cancel을
+ * 지정했고 나머지는 Radix 기본(첫 tabbable = 헤더 X)에 떨어져, 같은 파괴 확인인데 첫 Tab·Enter가 닿는 곳이 갈렸다.
+ * 표식(`data-initial-focus`)이 붙은 요소로 가되, 호출부가 `onOpenAutoFocus`를 막았거나 안쪽 `autoFocus`가 있으면 비켜선다.
+ * ⚠️ jsdom 단언만으로 끝내지 않는다 — 브라우저 확인이 인계 (b) 목록에 있다(POSTMORTEM 2026-09-24: Radix의 열림 포커스가 소비자
+ * effect보다 늦게 돌아 jsdom에서만 참이었다).
+ */
+function Confirm({ onOpenAutoFocus, inner }: { onOpenAutoFocus?: (event: Event) => void; inner?: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <Button onClick={() => setOpen(true)}>Open</Button>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent title="Remove Jane?" onOpenAutoFocus={onOpenAutoFocus}
+        footer={<><DialogClose asChild><Button data-initial-focus>Cancel</Button></DialogClose><Button variant="danger">Remove member</Button></>}>
+        {inner}
+      </DialogContent>
+    </Dialog>
+  </>;
+}
+
+it("열리면 표식 붙은 푸터 Cancel에 포커스가 선다 — 헤더 X도 파괴 확정도 아니다", async () => {
+  await render(<Confirm />);
+  await click(byText("Open"));
+  expect(document.activeElement).toBe(byText("Cancel"));
+});
+
+it("호출부가 onOpenAutoFocus를 막으면 비켜선다", async () => {
+  await render(<Confirm onOpenAutoFocus={event => event.preventDefault()} />);
+  await click(byText("Open"));
+  expect(document.activeElement).not.toBe(byText("Cancel"));
+});
+
+it("안쪽 autoFocus가 있으면 그것이 이긴다", async () => {
+  await render(<Confirm inner={<input aria-label="From" autoFocus />} />);
+  await click(byText("Open"));
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("From");
+});
+
+it("표식이 없으면 Radix 기본이다 — 첫 tabbable(헤더 닫기)", async () => {
+  function Plain() {
+    const [open, setOpen] = useState(false);
+    return <>
+      <Button onClick={() => setOpen(true)}>Open</Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent title="Plain" footer={<DialogClose asChild><Button>Cancel</Button></DialogClose>} />
+      </Dialog>
+    </>;
+  }
+  await render(<Plain />);
+  await click(byText("Open"));
+  expect(document.activeElement?.getAttribute("aria-label")).toBe(m.common.close);
+});
+
+/**
+ * **확인 Dialog 소비자 전부가 첫 포커스를 정한다** — 푸터 Cancel 표식이거나(`data-initial-focus`), 입력이 할 일인 Dialog의 `autoFocus`다.
+ * 둘 다 없으면 Radix 기본(헤더 X)에 떨어진다 — 3-Y4가 그 모양이었다. 새 Dialog가 표식을 빠뜨리면 이 목록이 red다.
+ * ⚠️ `onOpenAutoFocus`로 손수 지정하는 형은 0이다 — 표식이 그 셋을 대체했다(archive · Sync · 연결 앱).
+ */
+it("DialogContent 소비자가 전부 첫 포커스를 정하고, 손으로 지정하는 onOpenAutoFocus가 0이다", () => {
+  const ROOT = process.cwd();
+  const walk = (dir: string): string[] => readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) return name === "__tests__" ? [] : walk(path);
+    return name.endsWith(".tsx") ? [path] : [];
+  });
+  const consumers = ["app", "components"].flatMap((d) => walk(join(ROOT, d)))
+    .map((path) => ({ path: relative(ROOT, path), text: readFileSync(path, "utf8") }))
+    .filter(({ path, text }) => path !== "components/ui/dialog.tsx" && text.includes("<DialogContent"));
+  expect(consumers.length).toBeGreaterThanOrEqual(14);
+  // 파일 단위가 아니라 Dialog 수로 센다 — 한 파일의 Dialog 둘이 표식 하나로 통과하면 안 된다(U3 r1).
+  const count = (text: string, pattern: RegExp) => text.match(pattern)?.length ?? 0;
+  const short = consumers
+    .map(({ path, text }) => ({ path, dialogs: count(text, /<DialogContent\b/g), marks: count(text, /\bdata-initial-focus\b/g) + count(text, /\bautoFocus\b/g) }))
+    .filter(({ dialogs, marks }) => dialogs > marks)
+    .map(({ path, dialogs, marks }) => `${path}: ${dialogs} dialogs, ${marks} marks`);
+  expect(short).toEqual([]);
+  expect(consumers.filter(({ text }) => text.includes("onOpenAutoFocus")).map(({ path }) => path)).toEqual([]);
 });

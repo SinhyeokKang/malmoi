@@ -18,7 +18,8 @@ import { NIGHTLY_SUBTYPES, type ActorKind, type DeferReason, type EventKind, typ
  */
 
 /** ⚠️ **`Badge` variant와 같은 이름이다** (DESIGN §6.2) — 화면이 매핑 표를 또 들지 않는다. */
-export type EventTone = "muted" | "warning" | "danger";
+/** `success` — 실제로 보냈거나 받은 실행(2026-09-30 사용자 — Synced·Sent는 성공 계열이라 초록). 할 일이 없던 실행은 여전히 무색이다. */
+export type EventTone = "success" | "muted" | "warning" | "danger";
 
 export type EventViewRow = {
   kind: EventKind;
@@ -42,12 +43,12 @@ export type EventView = {
  * 결과 → 배지 색. **셋뿐이라 낱말이 구별을 든다** (DESIGN §6.2는 새 raw 색을 금지한다).
  * 가장 흔한 다섯이 가장 조용하고, 사람이 고쳐야 풀리는 셋만 warning이며, 실패만 danger다.
  */
-const TONES: Readonly<Record<EventResult, EventTone>> = {
+export const TONES: Readonly<Record<EventResult, EventTone>> = {
   running: "muted",
-  sent: "muted",
+  sent: "success",
   nothingToSend: "muted",
   notSent: "warning",
-  imported: "muted",
+  imported: "success",
   superseded: "muted",
   deferred: "warning",
   partial: "warning",
@@ -56,8 +57,18 @@ const TONES: Readonly<Record<EventResult, EventTone>> = {
   upToDate: "muted",
 };
 
-const LABELS: Readonly<Record<EventResult, string>> = {
-  running: m.logs.status.running,
+/**
+ * **Logs 스트림의 결과 톤** (DESIGN §2.4 예외 2 · D3③) — 성공(`Sent`·`Synced`)은 무색이다: 이력은 성공이 대부분이라 초록이 배경이 된다.
+ * Home Recent logs도 같은 스트림·같은 행 컴포넌트라 같다. ⚠️ **`TONES`를 바꾸지 않는다** — Home Sync 결과 Alert(`summarizeImport`)가 공유 톤을
+ * 읽고 거기서는 성공이 초록이다. 예외는 이 표시 층 하나가 든다.
+ */
+export function logsResultTone(result: EventResult): EventTone {
+  const tone = TONES[result];
+  return tone === "success" ? "muted" : tone;
+}
+
+/** ⚠️ `running`은 여기 없다 — 종류가 낱말을 정한다(`resultLabel`). */
+const LABELS: Readonly<Record<Exclude<EventResult, "running">, string>> = {
   sent: m.logs.status.succeeded,
   nothingToSend: m.logs.status.skipped,
   notSent: m.logs.status.notSent,
@@ -70,11 +81,17 @@ const LABELS: Readonly<Record<EventResult, string>> = {
   upToDate: m.logs.status.upToDate,
 };
 
+/** 결과 낱말 — 진행 중만 종류가 가른다(Sync `Syncing…` · Publish `Publishing…`, 1-Y2). */
+function resultLabel(kind: EventKind, result: EventResult): string {
+  if (result !== "running") return LABELS[result];
+  return kind === "PUBLISH" ? m.logs.status.publishing : m.logs.status.syncing;
+}
+
 export function eventView(row: EventViewRow): EventView {
   const result = row.result;
   return {
-    tone: result === null ? "muted" : TONES[result],
-    label: result === null ? null : LABELS[result],
+    tone: result === null ? "muted" : logsResultTone(result),
+    label: result === null ? null : resultLabel(row.kind, result),
     // 음수는 없는 것으로 읽는다 — 화면에 `-1 dropped`를 내지 않는다.
     warningsLabel: row.warnings > 0 ? m.logs.warnings(row.warnings) : null,
     reasonKey: result === "failed" ? reasonKey(row.errorCode) : isReconfirm(result, row.errorCode) ? "reconfirm" : null,
@@ -114,12 +131,11 @@ function reasonKey(errorCode: string | null): ReasonKey {
  * 그래서 "The next nightly run tries again."이 **거짓이 된다.** 사전 문구를 고쳐도 검사가 남도록
  * `view.test.ts`가 "보관이면 어느 사유에도 nightly가 없다"를 전 갈래로 센다.
  */
-const NIGHTLY_CLAUSE = "The next nightly run tries again.";
-
 export function planArchivedReason(key: string, archived: boolean): string {
   const sentence = m.logs.reasons[reasonKey(key)];
   if (!archived) return sentence;
-  return sentence.replace(NIGHTLY_CLAUSE, "").replace(/\s{2,}/g, " ").trim();
+  // 절은 사전 값이다(2-W9) — 리터럴 사본이면 사전 문구가 바뀌는 순간 치환이 조용히 빈다.
+  return sentence.replace(m.logs.nightlyRetry, "").replace(/\s{2,}/g, " ").trim();
 }
 
 /** `Unavailable`을 뜻하는 입력. **문자열 센티넬이 아니다** — 실제 값이 그것과 같을 수 있다. */
@@ -146,11 +162,10 @@ export function valueState(value: RecordedValue): ValueView {
 /**
  * 글리프 칩의 색 (캔버스 `1a` 근거 카드).
  *
- * ⚠️ **배지 톤 셋과 별도 축이다** — 칩은 **훑기용 보조**이고 뜻은 결과 열의 낱말과 문장이 든다.
- * 색만으로 구별되는 정보는 칩에 싣지 않았다.
+ * 칩은 **훑기용 보조**이고 뜻은 결과 열의 낱말과 문장이 든다. 색만으로 구별되는 정보는 칩에 싣지 않았다.
  *
- * 규칙이 둘이다: **실행은 결과의 색**(성공 green · 보류/부분/거부 amber · 실패 red · 진행 중과
- * `Nothing to send`는 slate — 보낸 것이 없는 것은 성공이 아니다), **그 외는 종류의 색**.
+ * 규칙이 둘이다: **실행은 결과 톤의 색**(D3③ — §2.4 아이콘 칸과 같은 축이다. Logs 결과 톤이라 성공은 neutral 칸이다 — `slate`는 `IconTile tone="muted"`로 그려진다: `logsResultTone`, DESIGN §6.2),
+ * **그 외는 종류의 색**(파랑·청록·보라 — 이것만 별도 축이다).
  */
 export type GlyphTone = "green" | "amber" | "red" | "slate" | "blue" | "teal" | "purple";
 
@@ -167,19 +182,8 @@ export type GlyphIcon =
   | "archive"
   | "settings";
 
-const RESULT_GLYPH_TONE: Readonly<Record<EventResult, GlyphTone>> = {
-  imported: "green",
-  sent: "green",
-  deferred: "amber",
-  partial: "amber",
-  notStarted: "amber",
-  failed: "red",
-  running: "slate",
-  nothingToSend: "slate",
-  notSent: "amber",
-  superseded: "slate",
-  upToDate: "slate",
-};
+/** 결과 톤 → 칩 색. 결과마다 색 표를 따로 두지 않는다 — 두 벌이면 배지와 칩이 다시 갈린다. */
+const TONE_GLYPH: Readonly<Record<EventTone, GlyphTone>> = { success: "green", muted: "slate", warning: "amber", danger: "red" };
 
 const KIND_GLYPH_TONE: Readonly<Record<EventKind, GlyphTone>> = {
   TRANSLATION: "blue",
@@ -199,7 +203,7 @@ export function eventGlyph(row: Pick<EventViewRow, "kind" | "result"> & { subtyp
   tone: GlyphTone;
 } {
   const run = row.kind === "IMPORT" || row.kind === "PUBLISH";
-  const tone = run && row.result !== null ? RESULT_GLYPH_TONE[row.result] : KIND_GLYPH_TONE[row.kind];
+  const tone = run && row.result !== null ? TONE_GLYPH[logsResultTone(row.result)] : KIND_GLYPH_TONE[row.kind];
   return { icon: glyphIcon(row.kind, row.subtype), tone };
 }
 
@@ -249,7 +253,7 @@ export function triggerOf(row: { actorKind: ActorKind; kind: EventKind; subtype:
  * ⚠️ **모르는 하위 종류는 던지지 않는다** — 종류 이름으로 떨어진다(읽는 쪽이 폴백을 든다).
  */
 export function eventSentence(
-  row: { kind: EventKind; subtype: string; result: EventResult | null; payload: EventPayload | null },
+  row: { kind: EventKind; subtype: string; result: EventResult | null; payload: EventPayload | null; run?: { errorCode: string | null } | null },
   nodes: { actor: ReactNode; key: ReactNode },
 ): ReactNode {
   const { actor } = nodes;
@@ -273,7 +277,8 @@ export function eventSentence(
         case "nothingToSend":
           return m.logs.sentence.publish.nothing(actor);
         case "notSent":
-          return m.logs.sentence.publish.notSent(actor);
+          // 지문 재확인으로 멈춘 실행은 보류가 아니다 — 아무것도 안 보냈고 편집은 남아 있다(U4 리뷰, `isReconfirm`).
+          return isReconfirm(row.result, row.run?.errorCode ?? null) ? m.logs.sentence.publish.reconfirm(actor) : m.logs.sentence.publish.notSent(actor);
         case "notStarted":
           return m.logs.sentence.publish.notStarted(actor);
         default:
@@ -439,8 +444,8 @@ export function coverageBoundaryIndex(
 }
 
 /**
- * 소스별 결과 → 결과 어휘 (spec §6). `summarizeImport`의 tone 판정과 같은 근거이고, 이쪽은
- * **낱말**을 낸다.
+ * 소스별 결과 → 결과 어휘 (spec §6). **`summarizeImport`의 tone은 이 값을 `TONES`로 옮긴 것이다** (ux-drift-unify 🔴 B) —
+ * Home의 Sync 결과와 Logs가 같은 실행을 같은 톤으로 말한다.
  *
  * ⚠️ **빈 결과를 전체 성공으로 접지 않는다** — 관측이 없었다는 것은 성공이 아니다.
  */
@@ -463,8 +468,28 @@ export type EventMetaRow = {
   run: { changed: number | null; prUrl: string | null; errorCode: string | null } | null;
 };
 
-/** `badge` — 정해진 값 중 하나(트리거 `manual`)는 배지로 선다(2026-09-30 사용자 — Home 요약과 같은 모양). */
-export type EventMetaPart = string | { kind: "code" | "link" | "badge"; text: string };
+/**
+ * 보조줄 조각. **문법이 하나다** (2026-09-30 사용자 — 결과·종류·주체·사실이 규칙 없이 섞여 같은 사실을 세 번 말했다):
+ * `[배지…]  사실 · 사실 · 사실`. 배지(`badge` · 역할 `roles`)는 정해진 값만이고 맨 앞에 모이며, 나머지는 글자로 ` · `가 가른다.
+ * ⚠️ **종류 낱말과 결과를 싣지 않는다** — 종류는 글리프와 문장 동사가, 결과는 문장과 결과 열이 이미 말한다.
+ * Home 최근 로그와 Logs가 **같은 조각을 같은 컴포넌트로** 그린다(`components/logs/event-row.tsx`).
+ */
+export type EventMetaPart =
+  | string
+  | { kind: "link" | "badge"; text: string }
+  | { kind: "roles"; before: string | null; after: string | null }
+  | { kind: "locale"; code: string };
+
+/** 배지 조각인가 — 렌더러가 배지를 맨 앞에 모으고 나머지를 ` · `로 잇는다. */
+export function isBadgePart(part: EventMetaPart): boolean {
+  return typeof part !== "string" && (part.kind === "badge" || part.kind === "roles" || part.kind === "locale");
+}
+
+/** `이전 → 이후` — 이전이 없으면(첫 설정) 이후 하나만 말한다. `— → en`은 "없던 것이 생겼다"를 기호로 말해 읽히지 않았다. */
+function change(before: string | null, after: string | null): string {
+  if (before === null) return after ?? m.logs.none;
+  return `${before} → ${after ?? m.logs.none}`;
+}
 
 /** 적재 실패를 발송 실패 문구로 설명하면 복구 방향이 반대가 된다. */
 export function eventFailureMessage(row: Pick<EventMetaRow, "kind" | "subtype" | "payload" | "run">, archived: boolean): string {
@@ -482,26 +507,33 @@ export function importReasonMessage(code: string | null): string {
 }
 
 /**
+ * 종류 배지의 낱말 — 실행(동기화·Publish)은 주체와 합친 한 낱말이다(`Manual sync`). 행 보조줄의 첫 배지와 상세 머리의 종류 배지가
+ * 이것 하나를 쓴다(ux-drift-unify 4-Y21 — 상세가 `Sync run` 같은 두 번째 낱말을 들고 있었다).
+ */
+export function eventKindWord(row: Pick<EventMetaRow, "kind" | "subtype" | "actor">): string {
+  const trigger = triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype });
+  return row.kind === "IMPORT" || row.kind === "PUBLISH" ? m.logs.meta.runType[row.kind][trigger] : m.logs.meta.type[row.kind];
+}
+
+/**
  * 보조줄 — **그 종류가 실제로 가진 맥락만** 적는다. 없는 값을 자리 채우려고 적지 않는다.
  *
  * ⚠️ **파일 수 `null`은 `—`이고 `0`이 아니다** — 0으로 적으면 "아무것도 안 바뀐 성공"과 같아진다.
  */
 export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[] {
   const payload = row.payload;
-  const parts: EventMetaPart[] = [];
+  // 종류가 맨 앞 배지다 — 배지만 훑어도 무슨 사건인지 안다(2026-09-30 사용자).
+  const parts: EventMetaPart[] = [{ kind: "badge", text: eventKindWord(row) }];
   switch (row.kind) {
     case "TRANSLATION": {
       if (payload?.kind !== "TRANSLATION") break;
-      parts.push(payload.surfaceSlug, payload.locale);
+      parts.push({ kind: "locale", code: payload.locale }, { kind: "badge", text: payload.surfaceSlug });
       const before = valueState(payload.before);
       const after = valueState(payload.after);
       parts.push(`${before.kind === "text" ? before.text : before.label} → ${after.kind === "text" ? after.text : after.label}`);
       break;
     }
     case "PUBLISH": {
-      parts.push(m.logs.kinds.publish);
-      // ⚠️ 자동화 행은 행위자(`Nightly`·`CI`)가 문장 머리에 선다 — 보조줄에서 주체를 두 번 말하지 않는다.
-      if (triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "manual") parts.push({ kind: "badge", text: m.logs.meta.manual });
       parts.push(row.run?.changed === null || row.run === null ? `${m.logs.detail.labels.files}: ${m.logs.none}` : m.logs.meta.files(row.run.changed));
       if (row.run?.prUrl != null) parts.push({ kind: "link", text: m.translations.publish.viewLink });
       else if (row.result !== "running") parts.push(m.logs.meta.noPullRequest);
@@ -509,42 +541,44 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
       break;
     }
     case "IMPORT": {
-      parts.push(m.logs.kinds.imports);
       if (payload?.kind !== "IMPORT") break;
-      if (triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "manual") parts.push({ kind: "badge", text: m.logs.meta.manual });
       const deferred = row.result === "deferred" ? deferredText(payload) : null;
       if (payload.refusal !== null) parts.push(refusalMessage(payload.refusal), m.logs.meta.nothingImported);
       else if (deferred !== null) parts.push(deferred);
       else if (payload.surfaces.length > 0) {
-        parts.push(payload.surfaces.map((surface) => `${surface.surfaceSlug}: ${resultWord(surface.status)}${surface.count === null ? "" : `, ${m.logs.meta.keys(surface.count)}`}`).join(" · "));
+        /*
+          ⚠️ **소스는 언제나 배지이고 결과 낱말을 싣지 않는다** (ux-drift-unify 4-Y20) — "web 12 keys partially synced"가 행 오른쪽 결과 배지를
+          인라인에서 한 번 더 말했다. 소스별 결과는 상세가 든다. 배지는 렌더러가 앞에 모으므로 키 수는 합 하나로 싣는다.
+        */
+        for (const surface of payload.surfaces) parts.push({ kind: "badge", text: surface.surfaceSlug });
+        const counts = payload.surfaces.flatMap((surface) => (surface.count === null ? [] : [surface.count]));
+        if (counts.length > 0) parts.push(m.logs.meta.keys(counts.reduce((sum, n) => sum + n, 0)));
       } else if (payload.keys !== null) parts.push(m.logs.meta.keys(payload.keys));
       if (row.result !== "deferred" && (payload.pendingEdits ?? 0) > 0) parts.push(m.repositorySync.kept(payload.pendingEdits!));
       break;
     }
     case "MEMBER": {
-      parts.push(m.logs.kinds.members);
       if (payload?.kind !== "MEMBER") break;
-      if (payload.role !== null) parts.push(`${roleWord(payload.role.before)} → ${roleWord(payload.role.after)}`);
+      // 역할은 배지다 — 합류(이전 없음)면 새 역할 하나, 변경이면 이전 → 이후.
+      if (payload.role !== null) parts.push({ kind: "roles", before: payload.role.before === null ? null : roleWord(payload.role.before), after: payload.role.after === null ? null : roleWord(payload.role.after) });
       else parts.push(payload.targetLabel);
       break;
     }
     case "SURFACE": {
-      parts.push(m.logs.kinds.sources);
       if (payload?.kind !== "SURFACE") break;
-      if (payload.adapter !== null) parts.push({ kind: "code", text: payload.adapter });
+      if (payload.adapter !== null) parts.push({ kind: "badge", text: payload.adapter });
       if (payload.baseLocale !== null) {
-        parts.push(`${payload.baseLocale.before ?? m.logs.none} → ${payload.baseLocale.after ?? m.logs.none}`);
+        parts.push(change(payload.baseLocale.before, payload.baseLocale.after));
         if (row.subtype.startsWith("surface.baseLocale")) parts.push(m.logs.meta.declarationOnly);
       }
       break;
     }
     default: {
-      parts.push(m.logs.kinds.settings);
       if (payload?.kind !== "SETTINGS") break;
       if (row.subtype === "settings.pushTokenRotated") parts.push(m.logs.meta.tokenEffect);
       else if (row.subtype === "settings.archived") parts.push(m.logs.meta.archivedEffect);
       else if (row.subtype === "settings.restored") parts.push(m.logs.meta.restoredEffect);
-      else if (payload.value !== null) parts.push(`${payload.value.before ?? m.logs.none} → ${payload.value.after ?? m.logs.none}`);
+      else if (payload.value !== null) parts.push(change(payload.value.before, payload.value.after));
       break;
     }
   }
@@ -557,13 +591,6 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
   return parts;
 }
 
-function resultWord(status: "imported" | "partial" | "failed" | "superseded"): string {
-  if (status === "imported") return m.logs.status.imported;
-  if (status === "partial") return m.logs.status.partial;
-  if (status === "superseded") return m.logs.status.superseded;
-  return m.logs.status.failed;
-}
-
-function roleWord(role: string | null): string {
+export function roleWord(role: string | null): string {
   return role === null ? m.logs.none : role.charAt(0) + role.slice(1).toLowerCase();
 }

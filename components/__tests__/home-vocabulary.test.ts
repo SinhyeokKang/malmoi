@@ -44,6 +44,8 @@ const HOME_GRAPH = [
    * 조용히 줄어든다 — 옮기는 것 자체가 검사를 회피시키는 모양이다.
    */
   "components/logs/event-row.tsx",
+  // 2026-09-30 — 보조줄이 `EventMetaLine`으로 옮겨 PR 링크 파랑도 이 파일로 왔다(같은 이유로 넣는다).
+  "components/logs/event-meta.tsx",
 ];
 
 describe("완료 조건 7 — 화면에 `pull`·`push` 낱말이 0이다", () => {
@@ -133,7 +135,8 @@ describe("완료 조건 9 — 파랑이 정확히 네 자리다", () => {
    */
   it("로그 카드에는 파랑이 없고, 행의 PR 번호 하나가 그 자리를 든다", () => {
     expect(count("components/home/logs-card.tsx")).toBe(0);
-    expect(count("components/logs/event-row.tsx")).toBe(1);
+    expect(count("components/logs/event-row.tsx")).toBe(0);
+    expect(count("components/logs/event-meta.tsx")).toBe(1);
   });
 
   it("메타가 리포 주소와 PR 번호로 둘을 든다", () => {
@@ -168,7 +171,6 @@ describe("완료 조건 9 — 파랑이 정확히 네 자리다", () => {
 const NOT_A_COUNT: Record<string, string> = {
   // 상한이 **코드 상수**로 강제된다 — 재검토가 필요 없는 부류다.
   "projects.count": "PROJECT_LIMIT = 3",
-  "projects.memberCount": "MEMBER_LIMIT = 10",
   // 좌석 넷도 같은 상수가 강제한다 — 분모가 `MEMBER_LIMIT`이고 분자는 그보다 클 수 없다.
   "members.seats": "MEMBER_LIMIT = 10",
   "members.seatsFull": "MEMBER_LIMIT = 10",

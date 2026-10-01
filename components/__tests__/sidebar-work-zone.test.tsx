@@ -37,3 +37,23 @@ describe("사이드바 — 사용자 구역", () => {
     expect(container.querySelector('nav[aria-label="Acme"] [data-zone-head]')?.textContent).toBe("Acme");
   });
 });
+
+/**
+ * **개수 배지는 0이면 서지 않고 sr 문장을 든다** (2026-10-01 ux-drift-unify Q13 — 옛 규칙 "0도 보인다"의 철회).
+ * `lib/shell/nav.ts`는 0을 그대로 낸다 — 그것을 읽히는 방식은 화면(`CountBadge`)이 정한다.
+ */
+describe("사이드바 — 개수 배지", () => {
+  it("프로젝트 0개면 Projects 항목에 배지가 없다", async () => {
+    path.value = "/projects";
+    const { container } = await render(<Sidebar memberships={[]} userName="Kim" />);
+    expect(container.querySelector('a[href="/projects"] .rounded-full')).toBeNull();
+  });
+
+  it("프로젝트가 있으면 숫자는 aria-hidden이고 문장이 짝이다", async () => {
+    path.value = "/projects";
+    const { container } = await render(<Sidebar memberships={memberships} userName="Kim" />);
+    const pill = container.querySelector('a[href="/projects"] .rounded-full')!;
+    expect(pill.querySelector("[aria-hidden]")?.textContent).toBe("1");
+    expect(pill.querySelector(".sr-only")?.textContent).toBe(m.projects.count(1));
+  });
+});

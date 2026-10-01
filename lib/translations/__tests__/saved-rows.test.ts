@@ -65,6 +65,11 @@ describe("mergeServerRows — 같은 세대의 재검증", () => {
     expect(merged.rows.map(r => r.row.keyId)).toEqual(["a", "b", "c"]);
   });
 
+  it("전체 목록 재검증: 서버 목록에 없는 비선택 행도 savedOut이다 — 목록이 전량이라 부재가 곧 조건 이탈이다 (translation-filter-scope T6)", () => {
+    const merged = mergeServerRows(startListGeneration(rows, 1), [rows[0]!]);
+    expect(merged.rows.map(r => [r.row.keyId, r.savedOut])).toEqual([["a", false], ["b", true], ["c", true]]);
+  });
+
   it("다시 서버 목록에 들어오면 savedOut을 푼다", () => {
     const out = mergeServerRows(startListGeneration(rows, 1), [rows[0]!, rows[2]!]);
     expect(savedOutCount(mergeServerRows(out, rows))).toBe(0);

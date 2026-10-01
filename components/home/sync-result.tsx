@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCcw } from "lucide-react";
+import { ArrowDownToLine } from "lucide-react";
 import { useId } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -29,7 +29,8 @@ function reasonMessage(reason: RepositoryImportError | SurfaceImportReason): str
 }
 
 /**
- * PanelHeader 아래 고정 자리에 서는 **결과와 거부** (시안 `4e`·`4f`). 한 번에 하나만 선다.
+ * 배너 자리에 서는 **결과와 거부** (시안 `4e`·`4f`). 한 번에 하나만 선다. Home에선 본문 첫 블록이라 본문과 함께 스크롤하고
+ * (2026-10-01 사용자), 번역 화면에선 스크롤 컨테이너가 없는 고정 띠다.
  *
  * ⚠️ **형이 둘이고 그것이 방어다** — 성공은 **한 줄**(헤드라인뿐)이고 표면별 사고만 **두 줄**(헤드라인 +
  * 원인)이다. 색만 다르면 `Synced …`라는 앞머리가 같아 스캔에서 성공으로 읽힌다 — 높이와 줄 수가
@@ -77,7 +78,9 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, ret
         */
         : action === "sign-in"
           ? <a href={routes.signIn()} target="_blank" rel="noreferrer" className={buttonClass()}>{m.repositorySync.signIn}</a>
-          : <ButtonLink href={routes.settings(slug)}>{action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;
+          : action === "account"
+            ? <ButtonLink href={routes.account()}>{m.repositorySync.openAccount}</ButtonLink>
+            : <ButtonLink href={routes.settings(slug)}>{action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;
   }
   const summary = summarizeImport(outcome.surfaces);
   /*
@@ -94,7 +97,8 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, ret
    * 성공일 때만 참이고, 그 갈래는 시안에 없다(전 표면 실패는 `4e` 다섯에 안 그려져 있다).
    * ⚠️ `could not be read`와 `was not replaced`를 한 문장으로 접지 않는다 — 뒤엣것은 읽혔고 적용만 안 됐다.
    */
-  const title = !replaced ? m.repositorySync.failedTitle
+  // 전 표면이 밀렸으면(`muted`) 실패가 아니다 — Logs와 같은 Superseded다(🔴 B). 원인 줄이 보조 문장을 든다.
+  const title = !replaced ? (summary.tone === "muted" ? m.repositorySync.supersededTitle : m.repositorySync.failedTitle)
     : summary.unreadable.length ? m.repositorySync.withIssue(m.repositorySync.syncedKeys(summary.keys), m.repositorySync.unreadable(summary.unreadable.length))
     : notReplaced ? m.repositorySync.withIssue(m.repositorySync.syncedKeys(summary.keys), m.repositorySync.notReplaced(notReplaced))
     // ⚠️ **파일 일부 실패(`partial`)도 성공 헤드라인을 쓰지 않는다** — 표면은 전부 들어갔지만 값이
@@ -138,11 +142,12 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry, ret
         {surface.errors.map((error, index) => <p key={index} data-error-code={error.code} className="whitespace-pre-wrap break-words">{error.path}: {adapterErrorMessage(error)}</p>)}
       </div>)}
   </>;
-  return <Alert variant={tone} live={tone === "danger" ? "alert" : "status"} title={title} onDismiss={onDismiss}
+  // 결과 톤은 Logs와 같은 어휘다(`EventTone`) — 무색(`muted`, 전 표면 superseded)은 Alert의 `neutral`이다.
+  return <Alert variant={tone === "muted" ? "neutral" : tone} live={tone === "danger" ? "alert" : "status"} title={title} onDismiss={onDismiss}
     /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 진짜 `disabled`는 포커스를 못 받아 왜 꺼졌는지 닿지 않았다.
        사유는 `<span>`이다 — 이 Alert의 형(줄 수)을 `<p>`로 센다. */
     actions={retry && onRetry ? <>
-      <Button aria-disabled={retryDisabled || undefined} aria-describedby={retryDisabled ? retryReasonId : undefined} title={retryDisabled ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!retryDisabled) onRetry(); }}><RotateCcw className="size-3.5" aria-hidden />{m.common.retry}</Button>
+      <Button aria-disabled={retryDisabled || undefined} aria-describedby={retryDisabled ? retryReasonId : undefined} title={retryDisabled ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!retryDisabled) onRetry(); }}>{/* Sync의 글리프다(5-W2 — `RotateCcw`는 Clear filters 전용). 같은 Dialog를 여는 머리 [Sync]와 같은 모양이다. */}<ArrowDownToLine className="size-3.5" aria-hidden />{m.common.retry}</Button>
       {retryDisabled && <span id={retryReasonId} className="sr-only">{m.repositorySync.waitPublish}</span>}
     </> : undefined}>
     {details}

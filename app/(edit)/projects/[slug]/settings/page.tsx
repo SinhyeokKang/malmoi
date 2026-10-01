@@ -13,6 +13,7 @@ import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { optionalEnv } from "@/lib/env";
 import { loadConnectionHealth } from "@/lib/github";
+import { storedConnection } from "@/lib/github-connect/health";
 import { loadAccountView } from "@/lib/github-connect/account-view";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
@@ -20,7 +21,7 @@ import { requestOrigin } from "@/lib/github-connect/origin";
 import { planWorkflowStale, renderProjectWorkflowYaml, workflowApiUrl, workflowSurfaceOf } from "@/lib/onboarding/workflow";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { routes } from "@/lib/routes";
-import { utcMinute } from "@/lib/utc-time";
+import { utcDay } from "@/lib/utc-time";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 import { IconTile } from "@/components/ui/icon-tile";
 
@@ -49,9 +50,11 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   const account = loadAccountView(prisma, userId);
   const openPrUrl = loadOpenPrUrl(slug, project);
   const archived = project.archivedAt !== null;
+  // 연결 행의 Disconnected와 같은 DB 판정이다(D1) — 브랜치 목록·토큰 회전이 거부될 요청을 부르지 않는다(malmoi#159).
+  const unpinned = storedConnection(project)?.status === "unpinned";
   const archive = <PanelCard title={archived ? m.archive.restore : m.archive.title}>
     <div className="flex items-center justify-between gap-4 px-4 py-[13px] @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start @max-[640px]:[&>[data-archive-card]]:col-start-2 @max-[640px]:[&>[data-archive-card]]:justify-self-start">
-      <IconTile><Archive aria-hidden /></IconTile><p className="text-muted-foreground flex-1 text-xs">{archived ? m.archive.archivedBy(<time dateTime={project.archivedAt!.toISOString()}>{utcMinute(project.archivedAt!)}</time>) : m.archive.description}</p>
+      <IconTile><Archive aria-hidden /></IconTile><p className="text-muted-foreground flex-1 text-xs">{archived ? m.archive.archivedBy(<time dateTime={project.archivedAt!.toISOString()}>{utcDay(project.archivedAt!)}</time>) : m.archive.description}</p>
       <ArchiveCard slug={slug} name={project.name} archived={archived} openPrUrl={openPrUrl} />
     </div>
   </PanelCard>;
@@ -59,12 +62,14 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   const apiUrl = project.surfaces.length > 0 ? await requestApiUrl() : undefined;
   const workflow = project.surfaces.length > 0 && <WorkflowBlock yaml={renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), ...(apiUrl === undefined ? {} : { apiUrl }) })} />;
   return <>
-    <PanelHeader>{notice !== null && <Alert variant="danger">{notice}</Alert>}<h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.projectSettings}</h1></PanelHeader>
+    <PanelHeader><h1 className="flex items-center text-lg font-medium">{m.common.nav.projectSettings}</h1></PanelHeader>
     <PanelBody className="space-y-4">
+      {/* 거부 Alert는 본문의 첫 블록이다 — 본문과 함께 스크롤한다(2026-10-01 사용자 — 머리는 제목 한 띠로 고정. 그 전 4-Y7은 머리 안 제목 아래, 더 전엔 h1 위였다). */}
+      {notice !== null && <Alert variant="danger">{notice}</Alert>}
       {archived && archive}
       <GeneralCard slug={slug} name={project.name} image={project.image} archived={archived} />
-      <RepositoryCard slug={slug} owner={project.repoOwner} repo={project.repoName} branch={project.baseBranch} archived={archived} health={health} account={account} appSlug={optionalEnv("GITHUB_APP_SLUG")} />
-      <CiCard slug={slug} archived={archived} stale={planWorkflowStale(project.surfaces)}>{workflow}</CiCard>
+      <RepositoryCard slug={slug} owner={project.repoOwner} repo={project.repoName} branch={project.baseBranch} archived={archived} unpinned={unpinned} health={health} account={account} appSlug={optionalEnv("GITHUB_APP_SLUG")} />
+      <CiCard slug={slug} archived={archived} unpinned={unpinned} stale={planWorkflowStale(project.surfaces)}>{workflow}</CiCard>
       {!archived && archive}
     </PanelBody>
   </>;

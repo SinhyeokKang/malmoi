@@ -191,11 +191,11 @@ it("리포 변경도 이전 이름·주소를 새 리포에 가져오지 않는�
 
 it("리포 검색어는 ②에서 Back으로 돌아와도 남는다", async () => {
   await mount();
-  await input(find(document.body, 'input[placeholder="Find a repository by name"]'), "web");
+  await input(find(document.body, 'input[placeholder="Search repositories…"]'), "web");
   await click(find(document.body, '[role="radio"]'));
   await click(button("Next"));
   await click(button("Back"));
-  expect(find<HTMLInputElement>(document.body, 'input[placeholder="Find a repository by name"]').value).toBe("web");
+  expect(find<HTMLInputElement>(document.body, 'input[placeholder="Search repositories…"]').value).toBe("web");
 });
 
 it("미리보기의 세션 만료는 ②에 머물고 Next를 잠근다", async () => {
@@ -389,7 +389,7 @@ it("초기 샘플에서 못 읽은 언어는 빈 표가 아니라 읽지 못했�
 it("검색 결과에서 선택한 리포가 사라지면 Next를 막는다", async () => {
   await mount();
   await click(find(document.body, '[role="radio"]'));
-  await input(find(document.body, 'input[placeholder="Find a repository by name"]'), "absent");
+  await input(find(document.body, 'input[placeholder="Search repositories…"]'), "absent");
   expect(button("Next").disabled).toBe(true);
 });
 
@@ -472,7 +472,7 @@ it("상한 도달이면 ①이 빈 상태로 서고 프로젝트 목록으로 �
     initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
   expect(document.body.textContent).toContain("Project limit reached");
   expect(document.body.textContent).toMatch(/archive/i);
-  const link = [...document.body.querySelectorAll("a")].find((a) => a.textContent === "Open projects");
+  const link = [...document.body.querySelectorAll("a")].find((a) => a.textContent === "Go to your projects");
   expect(link?.getAttribute("href")).toBe("/projects");
   // 설치 안내와 섞이지 않는다 — 상한은 연결 상태와 무관한 막힘이다.
   expect(document.body.textContent).not.toContain("Install GitHub App");
@@ -747,7 +747,7 @@ it("① 설치에 리포가 없는 빈 상태도 같은 자리다", async () => 
 
 it("① 검색 0건도 세로 중앙이다 — 검색 필드는 위에 남는다", async () => {
   await mount();
-  await input(find<HTMLInputElement>(document.body, 'input[aria-label="Find a repository by name"]'), "zzz");
+  await input(find<HTMLInputElement>(document.body, 'input[aria-label="Search repositories"]'), "zzz");
 
   expect(document.body.textContent).toContain('No repository matches "zzz".');
   expectCentered(emptyWrapper());
@@ -1085,7 +1085,7 @@ it("① D: 승인돼 목록이 서면 포커스가 검색 필드로 간다 — �
   await view.rerender(<NewProject repos={repos} listError={undefined} installUrl={SETTINGS} pending={false}
     now="2026-09-13T00:00:00Z" initialError={undefined} backQuery={{ q: "format" }} closeMode="list" adapters={[]} />);
 
-  expect(document.activeElement?.getAttribute("aria-label")).toBe("Find a repository by name");
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Search repositories");
 });
 
 it("① reauthorize: 분리된 블록 — Reconnect GitHub + [Reauthorize GitHub App](Authorize)", async () => {

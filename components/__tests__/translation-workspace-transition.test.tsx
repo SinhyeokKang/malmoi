@@ -11,15 +11,15 @@ import { render } from "./helpers/dom";
  * ⚠️ **`router`를 Next처럼 흉내 낸다** (`translation-workspace-navigation.test.tsx`와 같은 하네스) — 목이 하네스 상태를 바꾸고
  * 그 렌더가 `gate`에서 suspend한다. 이동이 transition 안이면 옛 화면이 그대로 서고, 응답 도착은 `gate`를 푸는 것이다.
  * 주소창도 흉내 낸다 — `push`·`replace`가 `history`를 바꾸고 `useSearchParams`는 그 주소를 읽는다.
- * ⚠️ **gate와 More 응답은 테스트 끝에서 전부 푼다** (POSTMORTEM 2026-09-18).
+ * ⚠️ **gate는 테스트 끝에서 전부 푼다** (POSTMORTEM 2026-09-18).
  */
-const mocks = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), save: vi.fn(), more: vi.fn(), prepare: vi.fn(), pr: vi.fn() }));
+const mocks = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), save: vi.fn(), prepare: vi.fn(), pr: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }),
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 vi.mock("@/app/(edit)/actions", () => ({
-  saveTranslationKey: mocks.save, previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn(), loadMoreTranslationKeys: mocks.more,
+  saveTranslationKey: mocks.save, previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn(),
 }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare }));
@@ -27,6 +27,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), 
 import { TranslationWorkspace, type WorkspaceProps } from "@/components/translations/workspace/workspace";
 import type { TranslationListRow } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
+import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
 
 import { props } from "./helpers/workspace-props";
 
@@ -73,8 +74,19 @@ function Harness({ initial }: { initial: WorkspaceProps }) {
       <Wait on={state.wait} />
       <Commit entry={state.entry} />
       <TranslationWorkspace {...state.props} />
+      <FocusProbe />
     </Suspense>
   );
+}
+/*
+  #158 — 커밋마다 **layout 단계 끝**의 포커스를 기록한다. 형제 순서상 워크스페이스의 layout effect 뒤, passive effect(`useEffect`) 앞이다 —
+  브라우저는 그 사이에 칠할 수 있으므로 여기서 `body`면 사용자가 그 프레임을 본다. `act()`는 passive effect까지 비우므로 끝난 뒤의
+  `activeElement`만 보면 이 틈을 못 잰다.
+*/
+const commitFocus: (Element | null)[] = [];
+function FocusProbe() {
+  useLayoutEffect(() => { commitFocus.push(document.activeElement); });
+  return null;
 }
 const arrive = async (entry: Gate) => { await act(async () => { entry.open(); await entry.promise; }); };
 
@@ -144,7 +156,7 @@ it("트리 클릭은 첫 키 예약값으로 한 번만 push하고, 응답이 �
   const user = userEvent.setup();
   const initial = props();
   const b = gate();
-  respond = () => ({ next: { ...initial, query: { ...initial.query, ns: "common", scope: "namespace", key: "k2", keySurface: "web" }, list: { ...initial.list }, detail: detailOf("k2") }, gate: b });
+  respond = () => ({ next: { ...initial, query: { ...initial.query, ns: "common", key: "k2", keySurface: "web" }, list: { ...initial.list }, detail: detailOf("k2") }, gate: b });
   const { container } = await render(<Harness initial={initial} />);
   const node = [...container.querySelectorAll<HTMLButtonElement>("button")].find(el => el.textContent?.includes("common") && !el.closest("[data-key-row]"))!;
   await user.click(node);
@@ -155,6 +167,8 @@ it("트리 클릭은 첫 키 예약값으로 한 번만 push하고, 응답이 �
   expect(container.querySelector("[data-skeleton-detail]")).not.toBeNull();
   const replaceState = vi.spyOn(window.history, "replaceState");
   await arrive(b);
+  // 트리 클릭은 위치다 — 응답의 범위가 그대로(All sources)여도 누른 네임스페이스가 강조로 남는다(translation-filter-scope).
+  expect(node.getAttribute("aria-current")).toBe("true");
   expect(container.textContent).not.toContain(m.translations.workspace.detail.selectKey);
   expect(container.textContent).toContain("common.k2");
   expect(mocks.replace).not.toHaveBeenCalled();
@@ -162,6 +176,140 @@ it("트리 클릭은 첫 키 예약값으로 한 번만 push하고, 응답이 �
   expect(replaceState).toHaveBeenCalled();
   expect(window.location.search).toContain("key=k2");
   expect(window.location.search).not.toContain("first");
+});
+
+// ── translation-filter-scope T7 — 빈 상태 · 선택 행 스크롤 ─────────────────────
+
+const treeNodeButton = (container: HTMLElement, label: string) =>
+  [...container.querySelectorAll<HTMLButtonElement>("button")].find(el => !el.closest("[data-key-row]") && el.querySelector("span.min-w-0")?.textContent === label)!;
+
+it("검색 0건 + 좁힌 범위의 Search all sources는 scope만 넓히고, 기다리는 동안 busy이며, 도착하면 목록 제목으로 착지한다 (조건 9)", async () => {
+  const user = userEvent.setup();
+  const base = props();
+  const narrowedQuery = { ...base.query, scope: "source" as const, q: "zz", state: "review" as const, key: undefined, keySurface: undefined };
+  const initial: WorkspaceProps = { ...base, query: narrowedQuery, detail: null, list: { ...base.list, rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, selectedInResult: null } };
+  const b = gate();
+  respond = () => ({ next: { ...initial, query: { ...narrowedQuery, scope: "project" }, list: { ...base.list, rows: [rowOf("k7")], selectedInResult: null } }, gate: b });
+  const { container } = await render(<Harness initial={initial} />);
+  expect(button(m.translations.workspace.filters.clear)).toBeDefined();
+  const searchAll = button(m.translations.workspace.empty.searchAll)!;
+  await user.click(searchAll);
+  expect(mocks.push).toHaveBeenCalledOnce();
+  const next = new URL(mocks.push.mock.calls[0]![0] as string, "http://x").searchParams;
+  expect(next.get("scope")).toBeNull();
+  expect(next.get("q")).toBe("zz");
+  expect(next.get("state")).toBe("review");
+  expect(searchAll.getAttribute("aria-busy")).toBe("true");
+  // 대기 중에도 누른 버튼이 같은 라벨로 남는다 — 표시는 빈 문구와 같은 서버 쿼리다(TFS r2 🔴1).
+  expect(searchAll.isConnected).toBe(true);
+  expect(searchAll.textContent?.trim()).toBe(m.translations.workspace.empty.searchAll);
+  expect(document.activeElement).toBe(searchAll);
+  await arrive(b);
+  expect(rowIds(container)).toEqual(["k7"]);
+  expect(document.activeElement).not.toBe(document.body);
+  expect(document.activeElement).toBe(panel(container, "list").querySelector("h2"));
+});
+
+it("검색 0건 + 완성도가 켜졌으면 보조 버튼은 Clear filters이고 검색어를 남긴다 (2026-09-30 사용자)", async () => {
+  const user = userEvent.setup();
+  const base = props();
+  const query = { ...base.query, q: "zz", completion: "incomplete" as const, key: undefined, keySurface: undefined };
+  const initial: WorkspaceProps = { ...base, query, detail: null, list: { ...base.list, rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, selectedInResult: null } };
+  respond = () => ({ next: initial, gate: null });
+  const { container } = await render(<Harness initial={initial} />);
+  // 툴바에도 Clear filters가 있다 — 빈 상태(목록 패널) 안의 버튼만 본다.
+  const emptyButtons = () => [...panel(container, "list").querySelectorAll<HTMLButtonElement>("button")].map(b => b.textContent?.trim());
+  expect(emptyButtons()).toEqual([m.translations.workspace.empty.clearSearch, m.translations.workspace.filters.clear]);
+  await user.click([...panel(container, "list").querySelectorAll<HTMLButtonElement>("button")][1]!);
+  const next = new URL(mocks.push.mock.calls[0]![0] as string, "http://x").searchParams;
+  expect(next.get("q")).toBe("zz");
+  expect(next.get("completion")).toBeNull();
+});
+
+/*
+  TFS r2 🔴1 — 버튼을 낙관값으로 고르면 `Show all`을 누른 순간 좁힘이 풀려 버튼이 사라지고 포커스가 body로 빠졌다. 누른 버튼은 도착까지
+  같은 자리에 busy로 남고 포커스를 지킨다(DESIGN §6.1a).
+*/
+it.each([
+  ["주 버튼 Show all n keys(검색어 없음 · 좁힘)", { state: "review" as const }, 0],
+  ["보조 버튼 Clear filters(검색어 + 완성도)", { q: "zz", completion: "incomplete" as const }, 1],
+])("%s는 대기 중에도 busy로 남고 포커스를 지킨다", async (_name, over, index) => {
+  const user = userEvent.setup();
+  const base = props();
+  const query = { ...base.query, ...over, key: undefined, keySurface: undefined };
+  const initial: WorkspaceProps = { ...base, query, detail: null, list: { ...base.list, rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, selectedInResult: null } };
+  const b = gate();
+  respond = href => ({ next: { ...initial, query: { ...DEFAULT_TRANSLATION_QUERY, ...(new URL(href, "http://x").searchParams.get("q") === null ? {} : { q: "zz" }) }, list: { ...base.list, rows: [rowOf("k7")], selectedInResult: null } }, gate: b });
+  const { container } = await render(<Harness initial={initial} />);
+  const pressed = [...panel(container, "list").querySelectorAll<HTMLButtonElement>("button")][index]!;
+  const label = pressed.textContent;
+  await user.click(pressed);
+  expect(mocks.push).toHaveBeenCalledOnce();
+  expect(pressed.isConnected).toBe(true);
+  expect(pressed.textContent).toBe(label);
+  expect(pressed.getAttribute("aria-busy")).toBe("true");
+  expect(document.activeElement).not.toBe(document.body);
+  expect(document.activeElement).toBe(pressed);
+  commitFocus.length = 0;
+  await arrive(b);
+  // #158 — 버튼을 지우는 도착 커밋에서 이미 목록 제목이다. passive effect까지 기다리면 그 사이 칠해진 프레임이 `body`였다(5,000행에서 3.3초).
+  expect(pressed.isConnected).toBe(false);
+  expect(commitFocus.length).toBeGreaterThan(0);
+  expect(commitFocus[0]).not.toBe(document.body);
+  expect(commitFocus[0]).toBe(panel(container, "list").querySelector("h2"));
+  expect(document.activeElement).toBe(panel(container, "list").querySelector("h2"));
+});
+
+it("마운트 착지는 선택 행으로 스크롤한다 — 딥링크·새로고침", async () => {
+  const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  const base = props();
+  const { container } = await render(<TranslationWorkspace {...base} query={{ ...base.query, key: "k2" }} detail={detailOf("k2")} />);
+  expect(scroll).toHaveBeenCalledOnce();
+  expect(scroll.mock.contexts[0]).toBe(container.querySelector('[data-key-row="k2"]'));
+  expect(scroll).toHaveBeenCalledWith({ block: "nearest" });
+});
+
+it("트리 이동은 도착한 선택 행으로 스크롤하고, 대기 중에는 스크롤도 @first 주소 교체도 하지 않는다 (조건 4)", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  const b = gate();
+  respond = () => ({ next: { ...initial, query: { ...initial.query, ns: "common", key: "k2", keySurface: "web" }, list: { ...initial.list }, detail: detailOf("k2") }, gate: b });
+  const { container } = await render(<Harness initial={initial} />);
+  const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  const replaceState = vi.spyOn(window.history, "replaceState");
+  await user.click(treeNodeButton(container, "common"));
+  expect(scroll).not.toHaveBeenCalled();
+  expect(replaceState).not.toHaveBeenCalled();
+  await arrive(b);
+  expect(scroll).toHaveBeenCalledOnce();
+  expect(scroll.mock.contexts[0]).toBe(container.querySelector('[data-key-row="k2"]'));
+  expect(replaceState).toHaveBeenCalled();
+});
+
+it("목록에서 직접 누른 행은 스크롤하지 않는다", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  respond = () => ({ next: { ...initial, query: { ...initial.query, key: "k2" }, detail: detailOf("k2") }, gate: null });
+  const { container } = await render(<Harness initial={initial} />);
+  const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  await user.click(row(container, "k2")!);
+  expect(mocks.replace).toHaveBeenCalledOnce();
+  // 도착한 커밋까지 기다린 뒤 본다 — 스크롤 effect는 그 커밋에 돈다.
+  await vi.waitFor(() => expect(container.textContent).toContain("common.k2"));
+  expect(scroll).not.toHaveBeenCalled();
+});
+
+it("미저장 draft가 있으면 트리 이동 전에 확인창이 서고, 취소하면 이동도 스크롤도 없다", async () => {
+  const user = userEvent.setup();
+  const initial = props();
+  const { container } = await render(<Harness initial={initial} />);
+  await user.type(area(container, "zh")!, "空");
+  const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  await user.click(treeNodeButton(container, "common"));
+  expect(button("Keep editing")).toBeDefined();
+  await user.click(button("Keep editing")!);
+  expect(mocks.push).not.toHaveBeenCalled();
+  expect(scroll).not.toHaveBeenCalled();
 });
 
 // ── #16 ─────────────────────────────────────────────────────────────────────
@@ -183,86 +331,33 @@ it("상세의 언어 필터는 서버로 가지 않고 주소만 바꾸며, 다�
   expect(mocks.replace).toHaveBeenCalledExactlyOnceWith(expect.stringContaining("language=ko"));
 });
 
-// ── #19 ─────────────────────────────────────────────────────────────────────
-
-it("More는 주소를 바꾸지 않고 다음 페이지를 붙이며, 기다리는 동안 버튼이 loading이다", async () => {
-  const user = userEvent.setup();
-  const initial = props();
-  let settle: (value: unknown) => void = () => {};
-  mocks.more.mockReturnValue(new Promise(resolve => { settle = resolve; }));
-  settles.push(() => settle({ ok: false, error: "late" }));
-  respond = () => ({ next: { ...initial, query: { ...initial.query, key: "k3" }, detail: detailOf("k3") }, gate: null });
-  const { container } = await render(<Harness initial={{ ...initial, list: { ...initial.list, nextCursor: "c1" } }} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(mocks.more).toHaveBeenCalledExactlyOnceWith({ slug: "acme", surfaceSlug: "web", query: expect.objectContaining({ key: "k1" }), cursor: "c1" });
-  expect(button(m.translations.workspace.list.more)?.disabled).toBe(true);
-  // 연타는 요청을 늘리지 않는다.
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(mocks.more).toHaveBeenCalledTimes(1);
-  await act(async () => settle({ ok: true, rows: [rowOf("k3")], nextCursor: null }));
-  expect(rowIds(container)).toEqual(["k1", "k2", "k3"]);
-  expect(button(m.translations.workspace.list.more)).toBeUndefined();
-  expect(mocks.push).not.toHaveBeenCalled();
-  expect(mocks.replace).not.toHaveBeenCalled();
-  expect(window.location.search).not.toContain("cursor");
-  await user.click(row(container, "k3")!);
-  expect(mocks.replace).toHaveBeenCalledTimes(1);
-  expect(mocks.replace.mock.calls[0]?.[0]).not.toContain("cursor");
-});
-
-it("More가 실패하면 버튼이 돌아오고 이유를 한 줄로 말한다", async () => {
-  const user = userEvent.setup();
-  mocks.more.mockResolvedValue({ ok: false, error: "unavailable" });
-  const initial = props();
-  const { container } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(button(m.translations.workspace.list.more)?.disabled).toBe(false);
-  expect(container.textContent).toContain(m.translations.workspace.list.moreFailed);
-  expect(rowIds(container)).toEqual(["k1", "k2"]);
-});
-
-it("조건이 바뀐 뒤 도착한 More 응답은 버린다 — 옛 조건의 행을 새 목록에 붙이지 않는다", async () => {
-  const user = userEvent.setup();
-  const initial = props();
-  let settle: (value: unknown) => void = () => {};
-  mocks.more.mockReturnValue(new Promise(resolve => { settle = resolve; }));
-  const { container, rerender } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, q: "save" }} list={{ ...initial.list, rows: [initial.list.rows[1]!], nextCursor: null }} />);
-  await act(async () => settle({ ok: true, rows: [rowOf("k3")], nextCursor: null }));
-  expect(rowIds(container)).toEqual(["k2"]);
-});
+// ── #19 → 전량 목록 (translation-filter-scope T6) ───────────────────────────
 
 /*
-  POSTMORTEM 2026-09-23의 두 회귀를 cursor 없는 형으로 옮긴다 — 재검증은 이제 언제나 첫 페이지다.
-  페이지 밖(More로 붙인) 행은 부재가 조건 이탈의 증거가 아니고, 선택 키의 이탈만 서버 판정(`selectedInResult`)으로 Saved가 된다.
+  POSTMORTEM 2026-09-23의 두 회귀를 전량 목록 형으로 옮긴다 — More가 사라져 재검증 응답이 곧 조건의 전부다.
+  서버 목록에 남은 행은 Saved가 되지 않고, 빠진 행은 선택 여부와 무관하게 자리에 남아 Saved다.
 */
-it("More로 붙인 행은 첫 페이지 재검증에서 Saved가 되지 않는다", async () => {
-  const user = userEvent.setup();
+it("재검증 목록에 남은 행은 Saved가 되지 않는다", async () => {
   const initial = props();
-  const first = { ...initial.list, rows: [initial.list.rows[0]!], nextCursor: "c1" };
-  mocks.more.mockResolvedValue({ ok: true, rows: [initial.list.rows[1]!], nextCursor: null });
-  const { container, rerender } = await render(<TranslationWorkspace {...initial} list={first} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(rowIds(container)).toEqual(["k1", "k2"]);
-  await rerender(<TranslationWorkspace {...initial} list={{ ...first }} />);
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  await rerender(<TranslationWorkspace {...initial} list={{ ...initial.list }} />);
   expect(rowIds(container)).toEqual(["k1", "k2"]);
   expect(row(container, "k2")?.textContent).not.toContain("Saved");
   expect(container.textContent).not.toContain("+1 saved");
-  // 첫 페이지가 cursor를 새로 줘도 이미 붙인 페이지 뒤를 잇는다 — 첫 페이지의 다음을 다시 붙이지 않는다.
-  expect(button(m.translations.workspace.list.more)).toBeUndefined();
 });
 
-it("More로 붙인 선택 키가 조건을 벗어나면 재검증이 그 행만 Saved로 남긴다", async () => {
-  const user = userEvent.setup();
+it("선택 키가 조건을 벗어나면 재검증이 그 행을 Saved로 남기고, 남은 행은 새 요약으로 바뀐다", async () => {
   const initial = props({ query: { ...props().query, key: "k2" }, detail: detailOf("k2") });
-  const first = { ...initial.list, rows: [initial.list.rows[0]!], nextCursor: "c1" };
-  mocks.more.mockResolvedValue({ ok: true, rows: [initial.list.rows[1]!], nextCursor: null });
-  const { container, rerender } = await render(<TranslationWorkspace {...initial} list={first} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  await rerender(<TranslationWorkspace {...initial} list={{ ...first, rows: [{ ...initial.list.rows[0]!, missingCount: 2 }], selectedInResult: false }} />);
+  const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
+  await rerender(<TranslationWorkspace {...initial} list={{ ...initial.list, rows: [{ ...initial.list.rows[0]!, missingCount: 2 }], selectedInResult: false }} />);
   expect(row(container, "k2")?.textContent).toContain("Saved");
-  expect(row(container, "k1")?.textContent).toContain("2 missing");
+  expect(row(container, "k1")?.textContent).toContain("2 untranslated");
+});
+
+it("목록에 More 버튼이 없다 — 화면 목록은 전량이다", async () => {
+  const initial = props();
+  const { container } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
+  expect([...container.querySelectorAll("button")].some(b => /more keys/i.test(b.textContent ?? ""))).toBe(false);
 });
 
 // ── #29 ─────────────────────────────────────────────────────────────────────
@@ -387,36 +482,3 @@ it("검색 이동을 기다리는 동안 언어 메뉴가 잠기고, 도착하�
   expect(languages().disabled).toBe(false);
 });
 
-it.each([
-  ["archived", (): string => m.translations.workspace.footer.archived],
-  ["not-found", (): string => m.translations.workspace.footer.lostAccess],
-  ["forbidden", (): string => m.translations.workspace.footer.lostAccess],
-] as const)("More의 %s 거부는 그 상태를 말하고 편집기를 잠근다 — 일반 재시도 문구가 아니다", async (error, text) => {
-  const user = userEvent.setup();
-  mocks.more.mockResolvedValue({ ok: false, error });
-  const initial = props();
-  const { container } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(container.textContent).toContain(text());
-  expect(container.textContent).not.toContain(m.translations.workspace.list.moreFailed);
-  expect(area(container, "zh")?.readOnly).toBe(true);
-});
-
-it("More 실패 문구는 조건이 바뀌면 사라지고, 옛 조건의 늦은 실패는 새 목록에 서지 않는다", async () => {
-  const user = userEvent.setup();
-  const initial = props();
-  mocks.more.mockResolvedValueOnce({ ok: false, error: "unavailable" });
-  const { container, rerender } = await render(<TranslationWorkspace {...initial} list={{ ...initial.list, nextCursor: "c1" }} />);
-  await user.click(button(m.translations.workspace.list.more)!);
-  expect(container.textContent).toContain(m.translations.workspace.list.moreFailed);
-  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, q: "save" }} list={{ ...initial.list, nextCursor: "c2" }} />);
-  expect(container.textContent).not.toContain(m.translations.workspace.list.moreFailed);
-  // 새 조건에서 More를 누르고, 응답 전에 조건이 또 바뀐 뒤 실패가 온다.
-  let settle: (value: unknown) => void = () => {};
-  mocks.more.mockReturnValueOnce(new Promise(resolve => { settle = resolve; }));
-  await user.click(button(m.translations.workspace.list.more)!);
-  await rerender(<TranslationWorkspace {...initial} query={{ ...initial.query, q: "other" }} list={{ ...initial.list, nextCursor: "c3" }} />);
-  await act(async () => settle({ ok: false, error: "unavailable" }));
-  expect(container.textContent).not.toContain(m.translations.workspace.list.moreFailed);
-  expect(button(m.translations.workspace.list.more)?.disabled).toBe(false);
-});

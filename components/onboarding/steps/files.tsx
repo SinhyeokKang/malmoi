@@ -195,7 +195,7 @@ export function FilesStep({
               locked && "opacity-50",
               index > 0 && "border-t",
               index > 0 && (active || prevActive ? "border-border" : "border-divider"),
-              active ? "bg-muted" : "hover:bg-foreground/3",
+              active ? "bg-muted" : "hover:bg-foreground/[0.03]",
             )}
           >
             <div className={cn("p-3", selection && "flex items-center gap-3")}>
@@ -561,7 +561,7 @@ function ManualForm({
           aria-describedby={state.manualError === undefined ? "manual-path-help" : "manual-path-error"}
           value={manual.pathTemplate}
           onChange={(e) => onManual({ ...manual, pathTemplate: e.target.value })}
-          placeholder={choice?.example ?? "src/locales/{locale}.json"}
+          placeholder={choice?.example ?? m.newProject.formats["json-catalog"].example}
           className="w-full"
         />
       </FormGroup>
@@ -571,7 +571,7 @@ function ManualForm({
           id="manual-base"
           value={manual.baseLocale}
           onChange={(e) => onManual({ ...manual, baseLocale: e.target.value })}
-          placeholder="en"
+          placeholder={m.newProject.files.manual.baseLocalePlaceholder}
           className="w-full"
         />
       </FormGroup>

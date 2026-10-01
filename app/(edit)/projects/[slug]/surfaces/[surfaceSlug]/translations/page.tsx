@@ -4,6 +4,9 @@ import { ProjectArchived } from "@/components/project-archived";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import { getPrisma } from "@/lib/db";
+import { loadConnectionHealth } from "@/lib/github";
+import { storedConnection } from "@/lib/github-connect/health";
+import { logFailure } from "@/lib/github-connect/log";
 import { countUnpublishedBySurface, loadActors, loadProject } from "@/lib/keys/query";
 import { loadTranslationDetail, loadTranslationList, loadTranslationTree, withActorLabels } from "@/lib/keys/translation-list";
 import { buildPermalink } from "@/lib/keys/view";
@@ -14,6 +17,7 @@ import { routes } from "@/lib/routes";
 import type { Raw } from "@/lib/search-params";
 import { requireSurfaceAccess } from "@/lib/surfaces/access";
 import { FIRST_KEY, landOnFirstKey, parseTranslationQuery, serializeTranslationQuery } from "@/lib/translations/query";
+import { firstRowAt } from "@/lib/translations/tree-narrow";
 
 /**
  * 번역 화면 — **트리 · 요약 목록 · 선택 키 상세** 세 패널 (translation-rework — 핸드오프 `2a`, spec §3).
@@ -51,7 +55,7 @@ export default async function TranslationsPage({
   if (archived) return <ProjectArchived slug={slug} role={role} />;
 
   // 옛 링크(`state=untranslated` · `locales` · `focus` · `cursor`)는 새 요청값으로 옮겨 정규 주소로 보낸다 — 공유·새로고침이 같은 URL을 쓴다.
-  // ⚠️ `cursor`는 더 이상 주소에 싣지 않는다 (audit-ux #19 — More는 `loadMoreTranslationKeys`가 누적한다). 남은 옛 주소는 첫 페이지로 연다.
+  // ⚠️ `cursor`는 더 이상 주소에 싣지 않는다 (audit-ux #19) — 화면 목록은 전량이다(translation-filter-scope). 남은 옛 주소는 cursor를 뺀 정규 주소로 redirect한다.
   const parsed = parseTranslationQuery(raw);
   const legacy = raw.locales !== undefined || raw.focus !== undefined || raw.state === "untranslated" || raw.cursor !== undefined;
   if (legacy) {
@@ -72,9 +76,10 @@ export default async function TranslationsPage({
   const [project, tree, listed, unsentBySurface, early] = await Promise.all([
     loadProject(prisma, projectId, surfaceId),
     loadTranslationTree(prisma, projectId),
+    // ⚠️ **화면 목록은 전량이다** (translation-filter-scope — 2026-09-30 사용자) — 눌러서 더 읽는 페이지가 없다. cursor 페이징은 MCP 전용이다.
     firstKey || parsed.key === undefined
-      ? loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: unselected })
-      : loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: parsed, selectedKeyId: parsed.key }),
+      ? loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: unselected, pageSize: "all" })
+      : loadTranslationList(prisma, { projectId, routeSurfaceId: surfaceId, query: parsed, selectedKeyId: parsed.key, pageSize: "all" }),
     countUnpublishedBySurface(prisma, projectId),
     !firstKey && onRoute ? readDetail({ id: surfaceId }, parsed.key) : null,
   ]);
@@ -86,8 +91,10 @@ export default async function TranslationsPage({
     ⚠️ **트리 이동의 첫 키를 같은 렌더가 싣는다** (audit-ux #18) — 전엔 선택 없는 응답이 상세를 "Select a key"로 비웠고, 클라이언트
     effect가 첫 키로 `replace`를 한 번 더 했다. 다른 소스로 가면 화면이 새로 마운트되어 그 effect의 표식도 잃었다.
     주소의 예약값은 화면이 `history.replaceState`로 첫 키로 맞춘다.
+    ⚠️ **첫 키는 목록 첫 행이 아니라 그 위치(경로 소스·`ns`)의 첫 키다** (translation-filter-scope design §3.2) — 범위가 All sources면 목록
+    첫 행이 다른 소스의 것일 수 있다. 정렬이 `Incomplete first`라 네임스페이스가 연속하지 않으므로 목록 순서상 처음 나오는 것을 고른다.
   */
-  const first = firstKey ? listed.rows[0] : undefined;
+  const first = firstKey ? firstRowAt(listed.rows, surfaceSlug, parsed.ns) : undefined;
   const query = firstKey ? landOnFirstKey(parsed, first) : parsed;
   const list = first === undefined ? listed : { ...listed, selectedInResult: true };
   // 상세의 소스는 `keySurface`가 정한다(전체 범위의 다른 소스 결과) — 인가된 프로젝트의 활성 표면 안에서만 고른다.
@@ -107,6 +114,22 @@ export default async function TranslationsPage({
             refs: labeled.refs.map(ref => ({ ...ref, href: buildPermalink({ repoOwner: project.repoOwner, repoName: project.repoName, lastCommitSha: labeled.lastCommitSha }, ref) })),
           };
         })();
+
+  /*
+    ⚠️ **연결은 DB 판정이 먼저고 GitHub 판정은 스트리밍이다** (ux-drift-unify §3.3 · 🔴 F — #52 재발 경로였다: 끊겨도 Publish·Sync가 켜져 있었다).
+    설치·리포 id로 가를 수 있는 둘(`not-connected`·`unpinned`)은 첫 렌더부터 버튼을 끈다 — GitHub 왕복 0. 나머지(App 제거 · 설치 교체 · 리포 교체)는
+    `loadConnectionHealth` promise를 **기다리지 않고** 워크스페이스로 내려 도착한 뒤 끈다(설정 화면과 같은 형) — ARCHITECTURE §1.95의 착지 시간을 늘리지 않는다.
+    ⚠️ **`memo`를 켠다**(U7 r1 지휘자 결정 — Home과 둘) — 이 화면은 키 클릭·저장마다 다시 렌더되어, 메모 없이는 번역자마다 GitHub 1–2회가 설치 한도를
+    먹는다. 표시 전용이라 괜찮다 — 누르면 서버가 다시 판정한다. ⚠️ 거부는 `unknown`으로 접는다 — 버튼을 끄지 않는다(Home과 같다).
+  */
+  const stored = storedConnection(project);
+  const connection = stored !== null ? { status: stored.status } : {
+    status: "unknown" as const,
+    later: loadConnectionHealth(project, { memo: true }).catch((error: unknown) => {
+      logFailure("translations-connection-health", error);
+      return { status: "unknown" } as const;
+    }),
+  };
 
   return (
     <TranslationWorkspace
@@ -128,6 +151,7 @@ export default async function TranslationsPage({
       sync={{ name: project.name, branch: project.baseBranch }}
       baseLocale={project.baseLocale}
       declaredBaseLocale={project.declaredBaseLocale}
+      connection={connection}
     />
   );
 }

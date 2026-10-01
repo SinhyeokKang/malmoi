@@ -33,8 +33,8 @@ describe("lastSyncTime", () => {
 
 const meta = {
   state: "default" as const, repoOwner: "o", repoName: "r", baseBranch: "main", surfaces: 1, locales: ["en"],
-  keys: 1, members: 1, lastImportFailedAt: null, lastPublishedAt: null, lastPrUrl: null, createdAt: at("2026-09-01T00:00:00Z"), archivedAt: null,
-  triggers: { sync: null, publish: null, heldByOpenPr: false },
+  keys: 1, members: 1, lastImportFailedAt: null, lastImportError: null, lastPublishedAt: null, lastPrUrl: null, createdAt: at("2026-09-01T00:00:00Z"), archivedAt: null,
+  triggers: { sync: null, publish: null }, held: null,
 };
 
 describe("시각이 기록되지 않은 Sync", () => {
@@ -45,7 +45,7 @@ describe("시각이 기록되지 않은 Sync", () => {
   });
 
   it("카드는 'not synced yet'이 아니라 시각 없는 문장이다", () => {
-    const cards = countCards({ state: "default", counts: { newFromGithub: 1, toTranslate: 0, toReview: 0, toSend: 0 }, surfaces: 1, keys: 1, lastSyncAt: "unrecorded", reviewByLocale: [] });
+    const cards = countCards({ state: "default", counts: { newFromGithub: 1, toTranslate: 0, toReview: 0, toSend: 0 }, surfaces: 1, keys: 1, lastSyncAt: "unrecorded", reviewByLocale: [], hold: null });
     expect(cards.find((c) => c.key === "newFromGithub")?.subline).toEqual({ kind: "asOfLastSync" });
   });
 });

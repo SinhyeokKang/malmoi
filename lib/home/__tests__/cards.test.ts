@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { summaryQueue } from "@/lib/projects/list";
 
-import { countCards } from "../cards";
+import { countCards, planHomeHold } from "../cards";
 
 /**
  * 카운트 카드 넷 (캔버스 `2a`). **수와 문구는 이미 있는 것을 쓴다** — 값은 `summaryQueue`,
@@ -21,6 +21,8 @@ const base = {
   lastSyncAt: at("2026-09-14T00:00:00Z"),
   lastPublishedAt: at("2026-09-13T00:00:00Z"),
   reviewByLocale: [{ code: "en", count: 5 }, { code: "ja", count: 3 }],
+  // 보류 결론 — 호출부가 `planHomeHold`로 낸다(ux-drift-unify Q6). 편집 24건이라 pending-edits다.
+  hold: "pending-edits" as const,
 };
 
 const card = (input: Parameters<typeof countCards>[0], key: string) =>
@@ -66,7 +68,7 @@ describe("countCards — 보조 줄이 그 수의 기준을 말한다", () => {
       { kind: "synced", at: at("2026-09-14T00:00:00Z") },
       { kind: "acrossSurfaces", surfaces: 3 },
       { kind: "reviewByLocale", locales: [{ code: "en", count: 5 }, { code: "ja", count: 3 }] },
-      { kind: "repositoryUpdatesPaused" },
+      { kind: "repositoryUpdatesPaused", reason: "pending-edits" },
     ]);
   });
 
@@ -80,16 +82,30 @@ describe("countCards — 보조 줄이 그 수의 기준을 말한다", () => {
    * 0이면 기존 `nothing pending` 갈래다(아래 0 갈래 테스트).
    */
   it("[C12] 보낼 편집이 있으면 repository updates paused를 말한다", () => {
-    expect(card(base, "toSend")?.subline).toEqual({ kind: "repositoryUpdatesPaused" });
-    expect(card({ ...base, counts: { ...counts, toSend: 0 } }, "toSend")?.subline).toEqual({ kind: "nothingPending" });
+    expect(card(base, "toSend")?.subline).toEqual({ kind: "repositoryUpdatesPaused", reason: "pending-edits" });
+    expect(card({ ...base, counts: { ...counts, toSend: 0 }, hold: null }, "toSend")?.subline).toEqual({ kind: "nothingPending" });
+  });
+
+  /**
+   * **편집 0이어도 말모이 PR이 열려 있으면 보류다** (ux-drift-unify Q6 · 6-Y9) — 사유 셋이 그대로 보조 줄로 간다. 판정은 `planHomeHold`(아래)다.
+   */
+  it.each(["open-pr", "pr-check-failed"] as const)("편집 0 + %s", (reason) => {
+    expect(card({ ...base, counts: { ...counts, toSend: 0 }, hold: reason }, "toSend")?.subline).toEqual({ kind: "repositoryUpdatesPaused", reason });
+  });
+
+  /** 상태가 보류를 이긴다 — 끊김·보관에서는 보낼 수 없다는 말이 먼저다(게이트도 그 상태에선 보류를 말하지 않는다). */
+  it("끊김·보관은 보류 사유를 쓰지 않는다", () => {
+    expect(card({ ...base, state: "not_connected" }, "toSend")?.subline).toEqual({ kind: "pausedCannotSend" });
+    expect(card({ ...base, state: "archived" }, "toSend")?.subline).toEqual({ kind: "neverSent" });
   });
 
   it("0이면 근거가 바뀐다 — 다 채웠다 / 대기 없음", () => {
-    const zero = { ...base, counts: { newFromGithub: 0, toTranslate: 0, toReview: 0, toSend: 0 }, state: "empty" as const };
+    const zero = { ...base, counts: { newFromGithub: 0, toTranslate: 0, toReview: 0, toSend: 0 }, state: "empty" as const, hold: null };
     expect(countCards(zero).map((c) => c.subline)).toEqual([
       { kind: "synced", at: at("2026-09-14T00:00:00Z") },
       { kind: "allFilled", keys: 903 },
-      { kind: "nothingPending" },
+      // 검토 0과 보낼 것 0은 다른 문장이다 — "nothing to send"가 To review 칸에 서면 거짓이다(fix1 🔴2).
+      { kind: "nothingToReview" },
       { kind: "nothingPending" },
     ]);
   });
@@ -182,5 +198,42 @@ describe("세 셀 구간의 겹침 0 — summaryQueue가 같은 셀을 두 번 �
   it("첫 칸은 그 합에 들어가지 않는다 — 단위가 keys다", () => {
     expect(summaryQueue(input).newFromGithub).toBe(6);
     expect(countCards({ ...base, counts: summaryQueue(input) }).map((c) => c.unit)).toEqual(["keys", "cells", "cells", "cells"]);
+  });
+});
+
+/**
+ * **Home의 보류 판정과 PR 조회 생략** (ux-drift-unify Q6 · T18) — 편집 > 0이면 PR 결과와 무관하게 pending-edits이므로 GitHub을 부르지 않는다
+ * (malmoi#107이 줄인 착지 병목을 되살리지 않는다). 조회가 필요할 때만 promise가 나오고, 조회 실패·거부는 Held(게이트가 fail-closed)다.
+ */
+describe("planHomeHold", () => {
+  const input = { pending: 0, gateApplies: true, archived: false, disconnected: false };
+  const lookup = (value: string | null | undefined) => vi.fn(() => Promise.resolve(value));
+
+  it.each([
+    ["편집 > 0", { pending: 3 }, "pending-edits"],
+    ["보관", { archived: true, pending: 3 }, null],
+    ["끊김", { disconnected: true }, null],
+    ["게이트가 서지 않는 프로젝트", { gateApplies: false }, null],
+    ["게이트가 없어도 편집 > 0", { gateApplies: false, pending: 2 }, "pending-edits"],
+  ] as const)("%s → 조회 없이 결론이다", (_label, over, expected) => {
+    const find = lookup("https://github.com/acme/web/pull/7");
+    expect(planHomeHold({ ...input, ...over }, find)).toBe(expected);
+    expect(find).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["PR 열림", "https://github.com/acme/web/pull/7", "open-pr"],
+    ["PR 없음", null, null],
+    ["조회 실패", undefined, "pr-check-failed"],
+  ] as const)("편집 0 + %s → 조회 한 번 뒤 결론이다", async (_label, openPr, expected) => {
+    const find = lookup(openPr);
+    const hold = planHomeHold(input, find);
+    expect(hold).toBeInstanceOf(Promise);
+    await expect(hold).resolves.toBe(expected);
+    expect(find).toHaveBeenCalledTimes(1);
+  });
+
+  it("조회가 던지면 Held다 — 게이트가 fail-closed다", async () => {
+    await expect(planHomeHold(input, () => Promise.reject(new Error("boom")))).resolves.toBe("pr-check-failed");
   });
 });

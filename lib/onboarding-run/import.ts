@@ -10,6 +10,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import type { RepositoryImportError, RepositoryImportOutcome } from "@/lib/import/result";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
+import { forgetOpenPr } from "@/lib/projects/open-pr-memo";
 
 import { checkRepoAccess } from "./access";
 
@@ -30,7 +31,13 @@ export async function importRepository(
   const { userId } = subject;
   const access = await getProjectAccess(prisma, { userId, slug: input.slug, permission: "project:settings" });
   if (access.status !== "ok") return { outcome: { ok: false, error: access.status }, attempted: false };
-  return { outcome: await runAuthorized(prisma, subject, access.projectId, input.approval), attempted: true };
+  // ⚠️ **Home의 열린 PR 메모를 지운다** (U15) — 리포에서 PR을 머지한 사람이 다음에 누르는 버튼이 이것이라, 그 뒤 Home이 TTL 동안
+  // 옛 "PR 열림"을 말하지 않게 한다. 거부·실패에도 지운다 — 사람이 다시 확인하러 온 순간이다.
+  try {
+    return { outcome: await runAuthorized(prisma, subject, access.projectId, input.approval), attempted: true };
+  } finally {
+    forgetOpenPr(input.slug);
+  }
 }
 
 /** 인가를 지난 뒤 — 여기서 나는 거부는 이력에 남는다(`refuse`). 던지지 않는다: 호출자가 직렬화 경계다. */
@@ -46,7 +53,8 @@ async function runAuthorized(prisma: PrismaClient, subject: Subject, projectId: 
     if (project === null) return { ok: false, error: "not-found" };
     if (project.archivedAt !== null) return await refuse("archived");
     if (planProjectReadiness(project) !== "ready") return await refuse("not-ready");
-    if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "not-connected" };
+    // ⚠️ **`not-connected`가 아니다** (ux-drift-unify r1) — 그 코드는 아래 `checkRepoAccess`가 "계정이 연결되지 않았다"로 낸다. 설치 없음은 readiness가 먼저 걸렀다.
+    if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "unpinned" };
     // 재적재는 리포를 읽기만 한다 — 쓰기 권한 없이 초대된 OWNER도 여기선 통과한다 (sec-audit-3 1a 범위 밖).
     const connected = await checkRepoAccess(prisma, userId, project.repoOwner, project.repoName, false);
     if (connected.status !== "ok") return await refuse(connected.error);

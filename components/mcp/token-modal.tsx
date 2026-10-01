@@ -118,7 +118,8 @@ export function TokenModal({
             <Button type="button" size="lg" disabled={pending} onClick={onClose}>
               {m.common.cancel}
             </Button>
-            <Button ref={submitRef} type="button" variant="primary" size="lg" loading={pending} disabled={emptyChoice} onClick={submit}>
+            {/* 회전은 옛 토큰을 즉시 죽인다 — push 토큰 회전 확정과 같은 `danger`다(🔴 L). 생성은 잃는 것이 없어 `primary`다. */}
+            <Button ref={submitRef} type="button" variant={mode === "rotate" ? "danger" : "primary"} size="lg" loading={pending} disabled={emptyChoice} onClick={submit}>
               {mode === "rotate" ? m.mcpConnector.form.rotateConfirm : m.mcpConnector.form.create}
             </Button>
           </>

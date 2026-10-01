@@ -2,7 +2,7 @@
 
 Create a project by connecting a repository and choosing the translation files Malmoi should manage.
 
-Before you start: Sign in with a verified email, open **Projects**, and choose **New project**. You can own up to three active projects.
+Before you start: Sign in with a verified email, go to **Projects**, and choose **New project**. You can own up to three active projects.
 
 ## Connect GitHub {#connect-github}
 
@@ -23,7 +23,7 @@ Malmoi shows one source for each selected set of files. A source can use a diffe
 
 ![Step 2 of 4 with two detected sets of translation files selected and a preview of one set's keys and values](/guide/create-files.webp "Select the detected files and check their keys.")
 
-## Name the project {#confirm-project}
+## Fill in project details {#confirm-project}
 
 1. Check each source's **Base language**. Its file decides which keys exist; keys found only in another language are left out.
 2. Enter the project **Name** and **Address**. The address is the name in the project URL; it must be globally unique and cannot be changed later.
@@ -31,7 +31,7 @@ Malmoi shows one source for each selected set of files. A source can use a diffe
 
 ![Step 3 of 4 with the project name and address filled in and English chosen as a source's base language](/guide/create-name.webp "Check the base language, name, and address before you create the project.")
 
-The project is ready immediately. The first page inside creation says **Malmoi is ready**, and you can translate and invite teammates right away.
+The project is ready immediately. The last step says **Malmoi is ready**, and you can translate and invite teammates right away.
 
 ## Finish setup {#finish-setup}
 

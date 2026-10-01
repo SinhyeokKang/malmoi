@@ -68,7 +68,7 @@ it("확인 Dialog의 접근 가능한 설명이 경고 블록까지 든다", asy
   expect(described).toHaveLength(2);
   const text = described.map(id => document.getElementById(id)?.textContent ?? "").join(" ");
   expect(text).toContain("replace what's in the app with them");
-  expect(text).toContain("7 unsent translation changes");
+  expect(text).toContain("7 unsent edits");
   expect(text).toContain("pull request #42");
 
   // 조용한 갈래에는 경고 블록이 없으므로 설명문 하나만 남는다.
@@ -137,8 +137,8 @@ it("미발송과 열린 PR을 각각의 줄로 말하고 권유는 번역 화면
   await render(<SyncButton {...props} unsent={7} />); await click("Sync");
   const lines = [...document.querySelectorAll('[aria-live="polite"] p')].map(p => p.textContent ?? "");
   expect(lines).toHaveLength(2);
-  expect(lines[0]).toContain("Sync will discard 7 unsent translation changes");
-  expect(lines[1]).toContain("pull request #42 are not in main yet");
+  expect(lines[0]).toContain("Sync will discard 7 unsent edits");
+  expect(lines[1]).toContain("pull request #42 aren't in main yet");
   // audit #28 — 링크가 도착 화면에 실제로 있는 버튼 이름(`Publish`)을 부른다 (POSTMORTEM 2026-09-14).
   // audit-ux #4b — 공가 redirect를 거치지 않고 기본 표면으로 바로 간다.
   expect(document.querySelector('a[href="/projects/acme/surfaces/web/translations"]')?.textContent).toBe("Publish first");
@@ -319,7 +319,7 @@ it("[C4] 미전달 편집의 경고 줄은 discard와 replace를 한 번씩만 �
   await render(<SyncButton {...props} unsent={3} />);
   await click("Sync");
   const warning = document.querySelector('[aria-live="polite"]')?.textContent ?? "";
-  expect(warning).toContain("Sync will discard 3 unsent translation changes and replace them with repository values.");
+  expect(warning).toContain("Sync will discard 3 unsent edits and replace them with repository values.");
   expect(warning.match(/discard/g)).toHaveLength(1);
   expect(warning.match(/replace/g)).toHaveLength(1);
   await click("Cancel");
@@ -332,7 +332,7 @@ it("미전달 편집이 하나면 경고 줄의 대명사가 it이다", async ()
   await render(<SyncButton {...props} unsent={1} />);
   await click("Sync");
   const warning = document.querySelector('[aria-live="polite"]')?.textContent ?? "";
-  expect(warning).toContain("Sync will discard 1 unsent translation change and replace it with repository values.");
+  expect(warning).toContain("Sync will discard 1 unsent edit and replace it with repository values.");
   expect(document.body.textContent).toContain("To keep it, Publish first");
 });
 
@@ -368,7 +368,7 @@ it("화면 0건·서버 3건이면 서버 건수로 폐기를 경고하고 그 �
   await render(<SyncButton {...props} unsent={0} />);
   await click("Sync");
   await vi.waitFor(() => expect(button("Discard changes and sync").getAttribute("aria-disabled")).not.toBe("true"));
-  expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain("Sync will discard 3 unsent translation changes");
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain("Sync will discard 3 unsent edits");
   expect((dialog()?.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean)).toHaveLength(2);
   await click("Discard changes and sync");
   expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: "fp-with-3" });
@@ -401,7 +401,7 @@ it("닫고 다시 열면 늦게 온 이전 응답을 쓰지 않고 새 응답의
   await click("Sync from repository");
   expect(mocks.run).not.toHaveBeenCalled();
   await act(async () => second.resolve({ approval: "fp-new", unsent: 1 }));
-  expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain("Sync will discard 1 unsent translation change");
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toContain("Sync will discard 1 unsent edit");
   await click("Discard changes and sync");
   expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: "fp-new" });
 });

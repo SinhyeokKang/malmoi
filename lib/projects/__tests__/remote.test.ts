@@ -104,7 +104,11 @@ it("동시에 도는 프로젝트가 셋을 넘지 않고, 하나가 끝나면 �
   expect(peak).toBe(3);
 });
 
-it("하나가 실패해도 나머지를 끝까지 처리하고, 그 행은 두 띠만 잃는다", async () => {
+/**
+ * ⚠️ **실패는 "없음"이 아니라 "모름"이다** (ux-drift-unify Q6 ②) — 클라이언트·토큰을 못 만들면 PR 번호가 있는 행의 `openPr`은 `undefined`이고
+ * 목록은 "Couldn't check for an open pull request" 띠를 세운다. compare 쪽은 말할 자리가 없어 전처럼 0이다.
+ */
+it("하나가 실패해도 나머지를 끝까지 처리하고, 그 행은 PR을 모름으로 둔다", async () => {
   const targets = [target({ projectId: "p0" }), target({ projectId: "p1" }), target({ projectId: "p2" })];
   const createClient = vi.fn(async (t: RemoteTarget) => {
     if (t.projectId === "p1") throw new Error("installation revoked");
@@ -120,20 +124,39 @@ it("하나가 실패해도 나머지를 끝까지 처리하고, 그 행은 두 �
 
   const got = await loadRemoteSignals(targets, { createClient });
 
-  expect(got.get("p1")).toEqual({ openPr: null, repoAheadFiles: 0 });
+  expect(got.get("p1")).toEqual({ openPr: undefined, repoAheadFiles: 0 });
   for (const id of ["p0", "p2"]) {
     expect(got.get(id)).toEqual({ openPr: { number: 142, url: "https://github.com/o/r/pull/142" }, repoAheadFiles: 1, repoAheadFrom: "a".repeat(40) });
   }
 });
 
-/** 부분 실패도 둘 다 뺀다 — 실패를 성공처럼 그리지 않는다. */
-it("PR 조회만 실패해도 compare 결과를 쓰지 않는다", async () => {
+/**
+ * **PR과 compare를 따로 읽는다** (ux-drift-unify Q6 ①) — 전에는 한 `Promise.all` 판정이 한쪽 거부로 둘을 같이 버렸고, PR 거부가 "PR 없음"이 됐다.
+ */
+it("PR 조회만 실패하면 PR은 모름이고 compare 결과는 쓴다", async () => {
   const { createClient } = fakes({
     async isPullRequestOpen() {
       throw new Error("not found");
     },
   });
   const got = await loadRemoteSignals([target()], { createClient });
+  expect(got.get("p1")).toEqual({ openPr: undefined, repoAheadFiles: 1, repoAheadFrom: "a".repeat(40) });
+});
+
+/** compare 거부는 기존대로 "없음"이다 — compare 쪽은 모름을 말할 자리가 없다. PR 결과는 버리지 않는다. */
+it("compare만 거부되면 PR 결과를 보존하고 원격 변경은 0이다", async () => {
+  const { createClient } = fakes({
+    async compareToBase() {
+      throw new Error("compare unavailable");
+    },
+  });
+  const got = await loadRemoteSignals([target()], { createClient });
+  expect(got.get("p1")).toEqual({ openPr: { number: 142, url: "https://github.com/o/r/pull/142" }, repoAheadFiles: 0 });
+});
+
+it("PR 번호가 없는 행은 클라이언트가 실패해도 PR이 null이다 — 목록은 번호 없이 물을 수단이 없다", async () => {
+  const createClient = vi.fn(async () => { throw new Error("installation revoked"); });
+  const got = await loadRemoteSignals([target({ lastPrUrl: null })], { createClient });
   expect(got.get("p1")).toEqual({ openPr: null, repoAheadFiles: 0 });
 });
 
@@ -293,13 +316,16 @@ it("응답이 영영 안 오면 마감에서 신호 없이 돌려준다", async 
     const createClient = async () =>
       ({ compareToBase: hang, isPullRequestOpen: hang }) as unknown as GitClient;
 
-    const pending = loadRemoteSignals([target(), target({ projectId: "p2" })], { createClient });
+    const pending = loadRemoteSignals([target(), target({ projectId: "p2" }), target({ projectId: "p3", lastPrUrl: null }), target({ projectId: "p4", archived: true })], { createClient });
     await vi.advanceTimersByTimeAsync(8_000);
 
     const got = await pending;
-    // 행은 목록에 남고 두 띠만 빠진다 — 지연도 실패와 같은 갈래다.
-    expect(got.get("p1")).toEqual({ openPr: null, repoAheadFiles: 0 });
-    expect(got.get("p2")).toEqual({ openPr: null, repoAheadFiles: 0 });
+    // 행은 목록에 남는다 — 지연도 실패와 같은 갈래라 **PR 번호가 있는 모든 행**의 PR이 모름이다(ux-drift-unify Q6 ③). 정직한 결과다.
+    expect(got.get("p1")).toEqual({ openPr: undefined, repoAheadFiles: 0 });
+    expect(got.get("p2")).toEqual({ openPr: undefined, repoAheadFiles: 0 });
+    // PR 번호가 없거나 보관이면 목록이 묻지 않는 행이라 null이다.
+    expect(got.get("p3")).toEqual({ openPr: null, repoAheadFiles: 0 });
+    expect(got.get("p4")).toEqual({ openPr: null, repoAheadFiles: 0 });
   } finally {
     vi.useRealTimers();
   }

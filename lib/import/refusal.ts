@@ -18,7 +18,7 @@ import type { RepositoryImportError } from "./result";
  * - `not-ready`·`no-surfaces` — `planProjectReadiness`가 `ready`가 아니면 Home이 서지 않고 설정 화면이
  *   대신 뜬다. 거기엔 `[Sync]`가 없다(`[Run first import]`뿐). `lastCommitSha`를 **null로 되돌리는
  *   코드가 없어서**(`lib/push/apply.ts`가 세우기만 한다) 한 번 `ready`가 된 프로젝트는 여기 못 온다.
- * - `not-connected`·`repo-replaced` — `planHomeState`가 둘을 `not_connected` 하나로 접고, Home의
+ * - `unpinned`·`repo-replaced` — `planHomeState`가 둘을 `not_connected` 하나로 접고, Home의
  *   `paused`가 트리거를 native `disabled`로 만든다(`app/(edit)/projects/[slug]/(home)/page.tsx`).
  *
  * **손실은 아니다** — 그 화면은 `not_connected` 배너가 `[Reconnect]`를 들어 아래 `action`이 하려던
@@ -48,7 +48,7 @@ export type ImportRefusalPlan = {
    * 고칠 자리로 보내는 링크. 표면 추가·포맷 수정은 이 Alert가 보낼 곳이 아니다(액션이 둘이 된다).
    * `sign-in`은 **새 탭**의 로그인이다 — 같은 화면의 편집자 세션 Alert와 같은 형이라 이 탭(번역 화면의 draft)을 떠나지 않는다.
    */
-  action: "settings" | "reconnect" | "sign-in" | null;
+  action: "settings" | "reconnect" | "account" | "sign-in" | null;
 };
 
 const PLANS: Partial<Record<string, ImportRefusalPlan>> = {
@@ -61,7 +61,13 @@ const PLANS: Partial<Record<string, ImportRefusalPlan>> = {
   "not-ready": { tone: "warning", dismissible: false, action: "settings" },
   /** 설정의 base branch가 리포에서 사라졌다 (malmoi#85) — 고칠 자리는 Settings → Base branch다. 다시 눌러도 같다. */
   "base-branch-missing": { tone: "warning", dismissible: false, action: "settings" },
-  "not-connected": { tone: "warning", dismissible: false, action: "reconnect" },
+  /** 리포 id가 고정되지 않았다 — 목록·Home·Settings와 같은 Disconnected이고 고칠 자리는 [Reconnect]다(ux-drift-unify D1). */
+  "unpinned": { tone: "warning", dismissible: false, action: "reconnect" },
+  /**
+   * ⚠️ **이 사람의 GitHub 계정이 연결되지 않았다**(ConnectError, `checkRepoAccess` → `ensureUserToken`) — 리포는 멀쩡하다(ux-drift-unify r1).
+   * [Reconnect]가 아니라 이 사람의 GitHub 연결이 사는 Account 화면으로 보낸다 — 문장("connect it in Account")과 버튼이 같은 곳을 가리킨다(ux-drift-unify fix1).
+   */
+  "not-connected": { tone: "warning", dismissible: false, action: "account" },
   "no-surfaces": { tone: "warning", dismissible: false, action: null },
   /**
    * ⚠️ **danger이고 액션이 없다** (DESIGN §6.2 · 2026-09-10 sec-audit-2 발견 34). 리포는 생성 시점에

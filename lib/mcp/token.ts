@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 
 import { hashInviteToken } from "@/lib/auth/invitation";
+import { isExpired } from "@/lib/expiry";
 
 /**
  * MCP 개인 토큰 (mcp-connector design §1.2). **원문은 저장하지 않는다** — 발급 직후 한 번 보이고 `ApiToken.tokenHash`에 해시만 남는다.
@@ -36,7 +37,7 @@ export type ApiTokenUse = { status: "ok" } | { status: "rejected" };
  */
 export function planApiTokenUse(input: { row: { expiresAt: Date } | null; now: Date }): ApiTokenUse {
   if (input.row === null) return { status: "rejected" };
-  if (input.row.expiresAt.getTime() <= input.now.getTime()) return { status: "rejected" };
+  if (isExpired(input.row.expiresAt, input.now)) return { status: "rejected" };
   return { status: "ok" };
 }
 

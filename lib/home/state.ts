@@ -1,7 +1,9 @@
 import type { ConnectionHealth } from "@/lib/github-connect/health";
+import { importFailureTone } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import { failing } from "@/lib/projects/list";
 import type { SummaryQueue } from "@/lib/projects/list";
+import type { StateKey } from "@/lib/status/canon";
 
 /**
  * Home이 그리는 화면 갈래 (캔버스 `2a`~`2d` · DESIGN §6.64).
@@ -38,12 +40,64 @@ export function planHomeState(input: {
   counts: SummaryQueue;
 }): HomeState {
   if (input.archived) return "archived";
-  const { status } = input.connection;
-  if (status === "not-connected" || status === "app-uninstalled" || status === "installation-changed" || status === "repo-replaced") {
-    return "not_connected";
-  }
+  if (blocksActions(input.connection.status)) return "not_connected";
   // "지금 돌고 있다"가 "지난번에 실패했다"를 이긴다 — 목록·설정과 **같은 술어**다.
   if (input.surfaces.some((surface) => failing(surface))) return "import_failed";
   const { newFromGithub, toTranslate, toReview, toSend } = input.counts;
   return newFromGithub + toTranslate + toReview + toSend === 0 ? "empty" : "default";
+}
+
+/** 이 연결로는 Sync·Publish가 돌 수 없다 — `planHomeState`의 `not_connected`와 `planActionAvailability`가 같은 술어를 쓴다. */
+function blocksActions(status: ConnectionHealth["status"]): boolean {
+  return status === "not-connected" || status === "unpinned" || status === "app-uninstalled" || status === "installation-changed" || status === "repo-replaced";
+}
+
+/**
+ * **Publish·Sync를 켤 수 있나** (ux-drift-unify §3.3 · 🔴 F) — Home과 번역 화면이 이것 하나를 부른다. 번역 화면이 끊김에도 둘을 켜 두어
+ * #52(누르면 실패만 반복되고 [Reconnect]로 가는 길이 없다)의 재발 경로였다.
+ *
+ * ⚠️ **모름(`unknown`)은 끄지 않는다** — `planHomeState`가 조회 실패를 미연결로 접지 않는 것과 같은 축이다. 누르면 서버가 어차피 다시 판정한다.
+ * ⚠️ 둘이 지금은 같은 값이지만 필드를 가른 것은 소비자가 둘을 따로 그리기 때문이다(Home 머리 · 번역 화면 툴바).
+ */
+export function planActionAvailability(input: { archived: boolean; connection: ConnectionHealth["status"] }): { publish: boolean; sync: boolean } {
+  const on = !input.archived && !blocksActions(input.connection);
+  return { publish: on, sync: on };
+}
+
+/**
+ * 연결 문제의 **갈래** (2026-09-30 상태 통일) — Home이 넷을 `not_connected` 하나로 접으면서 배너 문구·색이 한 벌이었다.
+ * 톤: 미연결(설치 없음) 회색 · 끊김(App 제거·재설치·리포 id 미고정 — 재연결 필요) 호박 · 다른 리포(repo-replaced) 빨강.
+ * **설정 화면의 배지가 이 함수를 부른다** — 목록의 `needs_reconnect`(설치 있음 + 리포 id 없음)와 같은 결론이다(ux-drift-unify D1).
+ */
+export type ConnectionProblem = "not-connected" | "disconnected" | "wrong-repository";
+
+export function connectionProblem(status: ConnectionHealth["status"]): ConnectionProblem | null {
+  if (status === "not-connected") return "not-connected";
+  if (status === "unpinned" || status === "app-uninstalled" || status === "installation-changed") return "disconnected";
+  if (status === "repo-replaced") return "wrong-repository";
+  return null;
+}
+
+const PROBLEM_STATE = { "not-connected": "notConnected", disconnected: "disconnected", "wrong-repository": "wrongRepository" } as const satisfies Record<ConnectionProblem, StateKey>;
+
+/** 연결 갈래 → 상태 키 — Home 배너·메타 열 배지가 같은 낱말·톤을 쓴다(설정 카드와 같은 `STATE` 행). */
+export function connectionState(problem: ConnectionProblem): StateKey {
+  return PROBLEM_STATE[problem];
+}
+
+/** 적재 실패 코드 → 상태 키 — 일부 반영은 "실패"가 아니다(🔴 A2, DESIGN §2.4). Home 배너·메타 열이 같은 낱말을 쓰게 한 자리에서 가른다. */
+export function failureState(code: ImportFailureCode): "syncFailed" | "partiallySynced" {
+  return importFailureTone(code) === "danger" ? "syncFailed" : "partiallySynced";
+}
+
+/**
+ * **Home 배너가 말하는 상태 하나** (DESIGN §2.4) — `HomeNotices`가 이 키로 배너를 고르고, 교차 테스트(`lib/status/__tests__/cross-screen.test.ts`)가
+ * 목록 칩·Settings 배지와 같은 키인지 센다. 전에는 갈래가 컴포넌트 JSX에 있어 테스트가 사본을 들었다.
+ * @param failure 배너가 지목하는 표면의 실패 코드(`worstFailingSurface`) — `import_failed`에서만 읽는다.
+ */
+export function homeBannerState(input: { state: HomeState; problem: ConnectionProblem | null; failure: ImportFailureCode | null }): StateKey | null {
+  if (input.state === "archived") return "archived";
+  if (input.state === "not_connected") return input.problem === null ? null : connectionState(input.problem);
+  if (input.state === "import_failed") return input.failure === null ? null : failureState(input.failure);
+  return null;
 }

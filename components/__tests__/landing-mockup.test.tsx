@@ -6,8 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { mockupScenes } from "@/components/landing/mockup";
 import { Stage } from "@/components/landing/stage";
+import { buttonClass } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
 import { navFooterItems, navZones } from "@/lib/shell/nav";
+
+import { CloseButton } from "@/components/ui/close-button";
+import { ListItemButton } from "@/components/ui/list-item";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 import { find, render } from "./helpers/dom";
 
@@ -123,8 +128,8 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect((current?.namespaces ?? []).reduce((sum, n) => sum + n.keyCount, 0)).toBe(current?.keyCount);
     expect(fixture.sources.reduce((sum, source) => sum + source.keyCount, 0)).toBe(fixture.keyCount);
     for (const source of rest) expect(find(tree, `[data-landing-source="${source.slug}"]`).children).toHaveLength(1);
-    // 선택된 네임스페이스 칸은 보고 있는 소스 안의 `All namespaces` 하나다.
-    expect([...tree.querySelectorAll(".bg-foreground\\/\\[0\\.04\\]")].map((node) => node.textContent)).toEqual([`${m.translations.workspace.tree.allNamespaces}${current?.keyCount}`]);
+    // 선택된 네임스페이스 칸은 보고 있는 소스 안의 `All namespaces` 하나다. 면은 실물 `ListItemButton selected`의 0.07이다(5-Y7).
+    expect([...tree.querySelectorAll(".bg-foreground\\/\\[0\\.07\\]")].map((node) => node.textContent)).toEqual([`${m.translations.workspace.tree.allNamespaces}${current?.keyCount}`]);
   });
 
   it("머리에 필터 셋(완성도 · 상태 · 범위)과 검색이 있다", async () => {
@@ -159,6 +164,13 @@ describe("목업 — 제품과 같은 구조다", () => {
     const container = await mount();
     expect(layer(container, 1).textContent).not.toContain(m.translations.workspace.revert.button);
     expect(layer(container, 3).textContent).toContain(m.translations.workspace.revert.button);
+  });
+
+  /** 실물의 Revert는 편집을 버리는 동작이라 `danger`다(§2.4 동작 규칙) — 목업만 `default`면 랜딩이 실물과 갈린다. */
+  it("③ `Revert to last sent`가 실물과 같은 danger다", async () => {
+    const container = await mount();
+    const revert = [...layer(container, 3).querySelectorAll("span")].find((node) => node.textContent === m.translations.workspace.revert.button);
+    expect(revert?.className).toBe(buttonClass({ variant: "danger" }));
   });
 });
 
@@ -271,8 +283,8 @@ describe("목업 소스 — 문구는 사전을 지난다", () => {
     expect(offenders).toEqual([]);
   });
 
-  /** 열거형 prop(`phase`·`variant`·`size`)은 문구가 아니라 코드 값이다. */
-  const CODE_PROPS = new Set(["className", "phase", "variant", "size"]);
+  /** 열거형 prop(`phase`·`variant`·`size`·상태 키 `state`)은 문구가 아니라 코드 값이다. */
+  const CODE_PROPS = new Set(["className", "phase", "variant", "size", "state"]);
 
   it("문자열 prop 리터럴이 className·data-*·열거형 말고 없다", () => {
     const offenders = files.flatMap((name) =>
@@ -329,5 +341,59 @@ describe("공개 화면 소스 — 문구는 사전을 지난다", () => {
         .map((match) => `${file}: ${match[0].trim()}`),
     );
     expect(offenders).toEqual([]);
+  });
+});
+
+/**
+ * **목업의 상태 표시는 실물과 같은 형이다** (ux-drift-unify 🔴 G · 1-Y10 · 5-Y7 · Q3 — spec 완료 조건 12). 목업이 사본을 들면 실물이 바뀔 때
+ * 목업만 낡는다(PR 열림이 초록 · 선택 면 0.04 · Unsent 테두리 알약 · 미번역 호박이 그렇게 남았다). 실물 컴포넌트를 렌더해 클래스를 견준다.
+ */
+describe("목업 — 상태 표시가 실물과 같다", () => {
+  const classes = async (node: React.ReactNode) => (await render(<>{node}</>)).container.firstElementChild!.className;
+
+  it("Unsent는 실물 `StatusBadge unsent`다 — 손 조립 알약이 아니다 (Q3)", async () => {
+    const real = await classes(<StatusBadge state="unsent" />);
+    const scene = layer(await mount(), 4);
+    const badges = [...scene.querySelectorAll("span")].filter((node) => node.textContent === m.translations.workspace.list.notSent && node.children.length === 0);
+    expect(badges.length).toBeGreaterThan(0);
+    for (const badge of badges) expect(badge.className).toBe(real);
+  });
+
+  it("PR 열림은 실물 PR 카드와 같은 회색이다 — 초록 success가 아니다 (🔴 G)", async () => {
+    const real = await classes(<StatusBadge state="prOpen" />);
+    const scene = layer(await mount(), 4);
+    const badge = [...scene.querySelectorAll("span")].find((node) => node.textContent === p.prState && node.children.length === 0)!;
+    expect(badge.className).toBe(real);
+    const glyph = badge.parentElement!.querySelector("svg.lucide-git-pull-request-arrow")!;
+    expect(glyph.getAttribute("class")).toContain("text-muted-foreground");
+    expect(glyph.getAttribute("class")).not.toContain("green");
+  });
+
+  it("선택 면은 실물 `ListItemButton selected`의 값이다 (5-Y7)", async () => {
+    const face = (await classes(<ListItemButton selected />)).split(" ").find((token) => token.startsWith("bg-foreground/"))!;
+    const scene = layer(await mount(), 0);
+    expect(find(scene, `[data-landing-row="${fixture.selected.key}"]`).className.split(" ")).toContain(face);
+    expect(scene.innerHTML).not.toContain("bg-foreground/[0.04]");
+  });
+
+  it("미번역은 회색이다 — 호박은 검토 대기·저장 전만 든다 (1-Y10)", async () => {
+    const scene = layer(await mount(), 0);
+    const untranslated = [...scene.querySelectorAll("span")].filter((node) => node.children.length === 0 && /untranslated/i.test(node.textContent ?? ""));
+    expect(untranslated.length).toBeGreaterThan(0);
+    for (const node of untranslated) expect(node.className).not.toContain("amber");
+  });
+
+  it("개수 배지는 실물 `CountBadge`다 — 숫자는 `aria-hidden`이고 sr 문장이 붙는다 (Q13)", async () => {
+    const scene = layer(await mount(), 0);
+    const tree = find(scene, "[data-landing-tree]");
+    expect(tree.querySelector('[aria-hidden="true"]')?.textContent).toBe(String(fixture.sources.length));
+    expect(tree.querySelector(".sr-only")?.textContent).toBe(m.sources.count(fixture.sources.length));
+  });
+
+  it("모달 닫기 X는 실물 `CloseButton`과 같은 클래스다 — 태그만 `<span>`이다", async () => {
+    const real = new Set((await render(<CloseButton label="x" />)).container.querySelector("button")!.className.split(" "));
+    const scene = layer(await mount(), 4);
+    const x = scene.querySelector("svg.lucide-x")!.parentElement!;
+    expect(new Set(x.className.split(" "))).toEqual(real);
   });
 });

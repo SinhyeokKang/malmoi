@@ -199,8 +199,8 @@ it.each([
     const spans = bodyLines(row);
     return { body: spans[0]?.textContent ?? "", hasHint: spans.length === 2 };
   });
-  expect(shapes[0]!.body).toContain(m.account.signOut.scope);
-  expect(shapes[1]!.body).toContain(m.account.sessions.scope);
+  // 사족(`— this device` 등)을 걷었다(2026-09-30 사용자) — 두 행 모두 이름만이고 상태 배지가 없다.
+  for (const row of rows) expect(row.querySelector(".rounded-full")).toBeNull();
   // 둘이 같이 있거나 같이 없다 — 한쪽만 있으면 행 높이가 갈린다.
   expect(shapes[0]!.hasHint).toBe(shapes[1]!.hasHint);
   // ⚠️ provider 이름이 행에 없다 — 그것이 들어가면 위 갈래에서 이 줄만 사라진다.
@@ -208,22 +208,18 @@ it.each([
 });
 
 /**
- * ⚠️ **이 화면의 행은 예외 없이 상태를 든다.** 하나라도 이름만 남으면 그 행만 "무엇에 대한
- * 것인가"는 말하고 "어떤가"는 안 말한다.
- *
- * ⚠️ **비대칭(`status`가 없으면 대시도 없다)은 여기서 못 잰다** — 이 화면의 행 다섯이 전부
- * `status`를 넘기므로 프리미티브의 가드를 지워도 DOM이 안 바뀐다. **그 축은 `account-card.test.tsx`가
- * 프리미티브를 직접 렌더해서 든다** (2026-09-16 재검토 🟡B — 이 검사가 한때 그것을 센다고
- * 주장했는데 실제로는 긍정 방향만 세고 있었다).
+ * **연결 상태는 배지다** (2026-09-30 사용자 — 옛 `이름 — 상태` 글자). 연결됨 초록 · 미연결 회색이고, 구분자 대시는 없다.
+ * 상태가 없는 행(Sessions)은 배지도 없다 — 사족을 붙이지 않는다.
  */
-it("화면의 모든 행이 상태를 들고 구분자가 선다", async () => {
+it("연결 행의 상태는 배지이고 대시가 없다 — 연결됨 초록 · 미연결 회색", async () => {
   const container = await screen();
-  const bodies = [...container.querySelectorAll("section[aria-labelledby] li")].map((row) => bodyLines(row)[0]);
-  expect(bodies.length).toBeGreaterThan(0);
-  for (const body of bodies) {
-    expect(body).not.toBeUndefined();
-    expect(body!.textContent, body!.textContent ?? "").toContain(" — ");
+  for (const row of container.querySelectorAll("section[aria-labelledby] li")) {
+    expect(bodyLines(row)[0]?.textContent ?? "").not.toContain(" — ");
   }
+  const methods = [...card(container, m.link.methods.title).querySelectorAll("li")];
+  const pills = methods.map((row) => row.querySelector(".rounded-full"));
+  expect(pills.map((p) => p?.textContent)).toEqual([m.link.methods.connected, m.link.methods.connected]);
+  expect(pills[0]!.className).toContain("bg-green-100/80");
 });
 
 /**
@@ -313,7 +309,6 @@ it("되돌릴 수 없는 것마다 확인이 붙고, 직접 제출하는 것이 
     m.link.methods.disconnectLabel(m.link.providers.github),
     m.link.methods.disconnectLabel(m.link.providers.google),
     m.account.sessions.title,
-    m.common.nav.signOut,
     m.settings.account.disconnectLabel,
   ].sort());
   // 접근 이름 충돌은 아래 전용 검사가 든다 — 여기서 세면 비활성 컨트롤이 빠진다.
@@ -321,10 +316,10 @@ it("되돌릴 수 없는 것마다 확인이 붙고, 직접 제출하는 것이 
   /**
    * ⚠️ **남은 폼이 되돌릴 수 있는 것뿐이다.** 확인을 지나는 것은 Dialog 안에서 제출하므로 닫힌
    * 화면의 트리에 없다 — 여기 보이는 `<form>`이 하나라도 늘면 확인 없이 제출하는 자리가 생긴 것이다.
+   * **로그아웃은 확인이 없다**(ux-drift-unify Q4 — 셸 메뉴와 같은 동작, 잃는 것이 재로그인 한 번이다). 그래서 폼이 둘이다.
    */
   const forms = [...container.querySelectorAll("form")];
-  expect(forms).toHaveLength(1);
-  expect(forms[0]!.querySelector("button")?.textContent).toBe(m.account.profile.save);
+  expect(forms.map((form) => form.querySelector("button")?.textContent)).toEqual([m.account.profile.save, m.common.nav.signOut]);
 });
 
 it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 없다", async () => {
@@ -333,19 +328,20 @@ it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 �
     .map((trigger) => trigger.getAttribute("aria-label") ?? trigger.textContent ?? "");
   // 마지막 수단은 비활성이라 Dialog를 지날 문이 없다 — 그래도 이름은 축을 든다(아래 검사).
   expect(labels).not.toContain(m.link.methods.disconnectLabel(m.link.providers.github));
-  expect(labels).toHaveLength(3);
+  // 남는 확인은 둘이다 — Sign out everywhere · GitHub App 해제(로그아웃은 확인이 없다, Q4).
+  expect(labels).toHaveLength(2);
 });
 
 /**
- * ⚠️ **머리에 남는 것은 `?e=` 하나다.** 가르는 축은 "다시 시도할 컨트롤이 이 화면에 있는가"이고
+ * ⚠️ **본문 첫 블록 Alert는 `?e=` 하나다** (2026-10-01에 머리에서 본문 첫 블록으로 내려갔다). 가르는 축은 "다시 시도할 컨트롤이 이 화면에 있는가"이고
  * (2026-09-14 리뷰 🟢8), `?link=`는 **그 카드 안에** 다시 누를 행이 있으므로 카드로 내려간다.
- * 그래야 둘이 함께 와도 머리 높이가 하나로 고정된다 — 전엔 둘이 쌓여 본문이 밀렸다.
+ * 그래야 둘이 함께 와도 카드 밖 Alert가 하나로 고정된다 — 전엔 둘이 쌓여 본문이 밀렸다.
  */
-it("`?e=`가 머리 Alert에 닿는다", async () => {
+it("`?e=`가 본문 첫 블록 Alert에 닿는다", async () => {
   const container = await screen({ e: "unavailable" });
   const alert = container.querySelector('[role="alert"]');
   expect(alert).not.toBeNull();
-  // 머리다 — 어느 카드에도 속하지 않는다.
+  // 본문 첫 블록이다 — 어느 카드에도 속하지 않는다.
   expect(alert!.closest("section")).toBeNull();
 });
 
@@ -370,10 +366,10 @@ it("수단 해제 실패는 수단 카드 안에 서고 닫기가 없다", async
 });
 
 /**
- * ⚠️ **둘이 함께 와도 머리에는 하나뿐이다.** 전엔 `?e=`·`?link=`가 **동시에 설 수 있었고** 그때
- * 본문이 밀렸다 — 머리 높이가 무엇이 실패했는지에 따라 달라지면 그 자체가 상태가 된다.
+ * ⚠️ **둘이 함께 와도 카드 밖(본문 첫 블록)에는 하나뿐이다.** 전엔 `?e=`·`?link=`가 **동시에 설 수 있었고** 그때
+ * 본문이 밀렸다 — 카드 밖 Alert 수가 무엇이 실패했는지에 따라 달라지면 그 자체가 상태가 된다.
  */
-it("`?e=`와 `?link=`가 함께 와도 머리 Alert는 하나다", async () => {
+it("`?e=`와 `?link=`가 함께 와도 본문 첫 블록 Alert는 하나다", async () => {
   const container = await screen({ e: "unavailable", link: "unavailable" });
   const alerts = [...container.querySelectorAll('[role="alert"]')];
   expect(alerts.filter((alert) => alert.closest("section") === null)).toHaveLength(1);

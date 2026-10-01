@@ -6,7 +6,7 @@ import type { TocItem } from "@/lib/guide/toc";
 import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-const ROW_HOVER = "hover:bg-foreground/3 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
+const ROW_HOVER = "hover:bg-foreground/[0.03] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
 /**
  * 행 화살표 — 시안이 글리프 `→`를 `neutral-400`으로 든다(#119, lucide가 아니다 — 굵기·크기가 글자를 따른다).

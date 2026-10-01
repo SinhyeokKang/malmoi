@@ -40,17 +40,15 @@ const badge = cva("inline-flex min-w-5 items-center justify-center rounded-full 
        * ⚠️ amber와 같은 형이다(`-100/80` 배경 + `-800` 글자) — 채도를 맞춰야 둘이 같은 계열로 읽힌다.
        */
       success: "bg-green-100/80 text-green-800",
-      // 배경 없음 — orphaned는 "삭제됨"이 아니라 되돌릴 수 있는 상태다 (§6.2).
-      danger: "text-destructive",
       /**
-       * 채운 붉은 알약 (2026-09-22 — Sources 시안 `1c`의 사라진 언어).
+       * 채운 붉은 알약 — **danger 톤의 배지는 이것 하나다** (DESIGN §2.4 · D3②). 실패 알약(Logs 결과 · Sources 상태) · 사라진 언어 ·
+       * 다른 리포가 같은 면이다. 면·글자는 붉은 면 조합(`bg-destructive/8 text-destructive` — 버튼 `danger`·아이콘 칸과 같다, §2.3).
        *
-       * ⚠️ **`danger`와 축이 다르다.** 그쪽은 같은 행의 다른 배지들과 나란히 서는 표식이라 배경을
-       * 안 들었고, 이쪽은 **비고 열 전체가 그 한 알약**이라 amber `warning`과 같은 무게로 서야
-       * 검토 필요와 사라짐이 한눈에 갈린다. ⚠️ **2026-09-30부터 실패 알약도 이 variant다**(Logs 결과 · Sources 상태) — 면·글자는
-       * Sources 실패 칩과 같은 `bg-destructive/8 text-destructive`로 통일했다(사용자 — 옛 값은 `red-700/10` + `red-700`).
+       * ⚠️ **면 없는 붉은 글자(`danger` variant)를 2026-10-01에 지웠다** — 소비자가 로케일 배지 하나였고, 같은 사라짐이 Sources에서는
+       * 이 면으로 서서 한 상태가 두 모양이었다. ⚠️ **글리프 간격(`gap-1.5`)도 지웠다** — 배지 안에는 글리프를 넣지 않는다(§2.4·§6.8).
+       * 국기는 상태 글리프가 아니라 면제이고, 그 간격은 로케일 배지가 `gap-1`로 든다.
        */
-      missing: "gap-1.5 bg-destructive/8 text-destructive",
+      missing: "bg-destructive/8 text-destructive",
       /**
        * 회색 알약 (8-3 — 목록 행의 상태 · 제목 옆 총계). ⚠️ **새 raw 색이 아니다**:
        * `--foreground`의 알파라 §6.2의 "등재된 것이 전부" 규칙 밖이다.

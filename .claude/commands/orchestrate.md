@@ -23,16 +23,27 @@ description: 여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고,
 2. **결정을 먼저 전부 받는다.** 🔒 항목·해석이 갈리는 곳을 `AskUserQuestion`으로 **하나씩** 묻고(추천 하나 + 이유), 답을 계획 문서의 "결정 기록"에 적는다.
    워커가 도중에 결정 지점에서 멈추면 병렬이 직렬이 된다.
    - 설계가 필요한 배치는 `/feature` → `/feature-review`를 이 세션에서 먼저 돈다(워커가 계획 원본으로 쓴다).
-3. **파일 겹침 행렬로 병렬/직렬을 가른다.** 두 배치가 같은 파일을 고치면 병렬로 띄우지 않는다 — 선행이 dev에 들어간 뒤 후행을 띄우거나,
+3. **배치마다 워커 모델·effort를 정해 배치 표에 적는다** (2026-10-01 사용자 — 이 스킬의 워커에 한한다. 메인 세션과 `/ship` 단독 실행의 모델은 사용자가 정한다).
+   ⚠️ **경계는 철칙이다** — 모델은 `claude-opus-5-5`·`claude-sonnet-5-5` 둘뿐이고, effort는 `low`·`medium`·`high`까지다(`xhigh`·`max` 금지). 도중 조정도 이 안에서만 한다.
+   **경계 안의 선택은 지휘자 판단이다** — 과업 종류마다 달라서 고정 규칙으로 두지 않는다. 아래 표는 판정할 때 한 번 대보는 참고일 뿐이고, 벗어나도 된다. 배치 표에 고른 값과 이유 한 줄을 같이 적어 사용자에게 보인다.
+
+   | 참고 예 | 모델 · effort |
+   |---|---|
+   | 문구·문서·가이드, 단일 컴포넌트 UI, 기계적 치환 | Sonnet · medium |
+   | 일반 기능(여러 파일, 새 Action·테스트), QA 워커 | Opus · medium |
+   | 불변식 영역 — push/pull·어댑터 결정성·보호 게이트·인가·암호화·스키마(ARCHITECTURE §0) | Opus · high |
+
+   Codex 워커는 이 항목 밖이다(모델은 사용자 지시를 따른다).
+4. **파일 겹침 행렬로 병렬/직렬을 가른다.** 두 배치가 같은 파일을 고치면 병렬로 띄우지 않는다 — 선행이 dev에 들어간 뒤 후행을 띄우거나,
    후행에게 "T6 전에 멈추고 `WAITING FOR <X>`를 찍어라, 신호를 받으면 `git rebase dev`"를 브리프에 넣는다.
    ⚠️ **`messages/en.tsx`·`workspace.tsx`·`publish-button.tsx`는 거의 모든 UI 배치가 건드린다** — 겹침 판정에서 빠뜨리지 않는다.
-4. **계획 문서를 dev에 로컬 커밋한다** — 워크트리는 로컬 dev에서 갈라지므로, 커밋 안 된 계획은 워커가 못 읽는다.
+5. **계획 문서를 dev에 로컬 커밋한다** — 워크트리는 로컬 dev에서 갈라지므로, 커밋 안 된 계획은 워커가 못 읽는다.
 
 ## 1. 워커 띄우기
 
 ```bash
 W=$(orca worktree create --repo id:<repoId> --name <batch> --base-branch dev --no-parent --json | jq -r .result.worktree.id)
-T=$(orca terminal create --worktree "id:$W" --title <batch> --command 'claude --permission-mode bypassPermissions' --json | jq -r .result.terminal.handle)
+T=$(orca terminal create --worktree "id:$W" --title <batch> --command 'claude --model <model> --effort <effort> --permission-mode bypassPermissions' --json | jq -r .result.terminal.handle)
 orca terminal wait --terminal $T --for tui-idle --timeout-ms 60000 --json
 orca terminal send --terminal $T --text "Read <scratchpad>/brief-<batch>.md and follow it exactly." --enter --json
 ```
@@ -86,6 +97,7 @@ Codex 워커의 차이는 브리프에 명시한다:
    - **런타임 목록 분류도 판정시킨다** (2026-09-30) — (b)에 남긴 항목 중 진입점 → 격리 DB → 뷰 모델로 결정적으로 잴 수 있는 것은 🟡("시나리오 테스트로 옮겨라")다. 시나리오 테스트가 DB 행에서 멈추고 뷰 모델 출력을 단언하지 않으면 그것도 🟡다 — #155가 그 틈으로 런타임까지 갔다.
 2. 🔴·🟡 지적과 **사용자 결정이 필요한 항목**을 가른다. 결정은 `AskUserQuestion`으로 받는다.
 3. 수정 라운드 브리프(`brief-<batch>-fix<N>.md`)를 같은 워커 터미널로 보낸다 — 워커는 컨텍스트를 들고 있으므로 새 세션을 열지 않는다. 마커는 `HANDOFF READY: <batch> r<N>`.
+   - 리뷰·수정 라운드에서 판정이 빗나갔다고 보이면 브리프를 보내기 전에 같은 터미널에 `/model`·`/effort`를 보내 조정한다 — 새 세션을 열지 않는다. 경계(0단계 3번)는 그대로다.
 4. 🔴 0이 될 때까지 반복한다. 워커가 스스로 계획과 다르게 간 곳(「계획과 다른 점」)은 리뷰가 반드시 판정한다.
 
 ## 4. 통합 (main 체크아웃 = dev)

@@ -161,7 +161,8 @@ describe("리포 갱신 보류 배너 (sync-edit-protection T13)", () => {
     expect(src).not.toMatch(/onDismiss/);
   });
 
-  it("[C11] neutral tone이다 — 안전한 상태에 색을 띄우지 않는다(DESIGN §6.1)", () => {
+  // 보류는 어디서나 호박이지만 이 화면의 `pending-edits` 배너만 neutral이다(DESIGN §2.4 예외 1 · D3① 2026-10-01) — 편집 한 건마다 상시로 선다.
+  it("[C11] neutral tone이다 — 번역 화면의 pending-edits 예외", () => {
     expect(src).toMatch(/variant="neutral"/);
     expect(src).not.toMatch(/variant="warning"/);
   });
@@ -279,7 +280,7 @@ describe("행 축 (8-4)", () => {
    */
   it("로케일 배지가 orphaned 표시를 든다", () => {
     const src = read(LOCALE_BADGE);
-    expect(src).toMatch(/orphaned \? "danger"/);
+    expect(src).toMatch(/orphaned \? "missing"/);
     expect(src).toMatch(/sr-only/);
   });
 
@@ -329,7 +330,8 @@ describe("행 축 (8-4)", () => {
 
   /** ⚠️ 숫자만 그리면 접근 이름이 "Translations 1134"다 — 시안의 숫자 배지를 유지하며 문장을 준다. */
   it("개수 배지가 접근 이름으로 완전한 문장을 든다", () => {
-    expect(read(WORKSPACE)).toMatch(/sr-only[^>]*>\{m\.translations\.keys\(/);
+    // 숫자 `aria-hidden` + sr 문장은 `CountBadge`가 든다 — 여기서 재는 것은 그 문장이 키 수 문장인가다.
+    expect(read(WORKSPACE)).toMatch(/<CountBadge count=\{tree\.projectKeyCount\} label=\{m\.translations\.keys\(/);
   });
 
   /** ⚠️ 왼쪽 패널이 **소스에서** 사라졌다 — 남으면 같은 필터가 두 곳이고 하나가 낡는다. */
@@ -350,5 +352,30 @@ describe("행 축 (8-4)", () => {
     expect(/<a\b/.test('<Announcer>')).toBe(false);
     expect(/<main\b/.test('  <main className="x">')).toBe(true);
     expect(/NamespacePanel|NsLink/.test("      <NsLink href={x} />")).toBe(true);
+  });
+});
+
+/**
+ * **연결 판정의 배선** (ux-drift-unify T20 · 🔴 F) — 첫 렌더는 DB 판정(`storedConnection`), GitHub 판정은 promise로 내려 기다리지 않는다.
+ * ⚠️ 메모를 켠다(U7 r1 — Home과 둘, `probe-memo.test.ts`) — 키 클릭·저장마다 다시 렌더된다. ⚠️ 페이지가 GitHub 판정을 await하면 ARCHITECTURE §1.95의 착지가 는다.
+ */
+describe("번역 화면 — 연결 판정", () => {
+  const page = read(PAGE);
+
+  it("DB 판정이 먼저이고 GitHub 판정은 기다리지 않는 promise다", () => {
+    expect(page).toContain("storedConnection(project)");
+    expect(page).toContain("later: loadConnectionHealth(project, { memo: true })");
+    expect(page).not.toMatch(/await loadConnectionHealth/);
+    expect(page).toMatch(/connection=\{connection\}/);
+  });
+
+  it("작업 화면이 Home과 같은 판정으로 Sync·Publish를 끈다", () => {
+    const workspace = read(WORKSPACE);
+    expect(workspace).toContain("planActionAvailability({ archived: false, connection: arrived ?? props.connection.status })");
+    expect(workspace).toContain("!availability.publish");
+    // 도착은 effect 구독이다 — `use()`는 전환을 GitHub probe에 붙잡는다(U7 r1).
+    expect(workspace).toContain("useArrived(props.connection.later, `${slug}/${routeSurfaceSlug}`)");
+    expect(workspace).not.toMatch(/\buse\(/);
+    expect(workspace).toContain("paused={!availability.sync || publish.pending}");
   });
 });

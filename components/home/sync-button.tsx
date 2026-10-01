@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownToLine, LoaderCircle } from "lucide-react";
+import { ArrowDownToLine } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
@@ -52,7 +52,6 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
   onPendingChange?: (pending: boolean) => void;
 }) {
   const triggerId = useId();
-  const cancelId = useId();
   const describedId = useId();
   const warningId = useId();
   const pausedReasonId = useId();
@@ -189,8 +188,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
       </Button>
     </DialogTrigger>
     <DialogContent
-      /** 포커스는 [Cancel]이다 — 확인에 두면 Enter 한 번으로 되돌릴 수 없는 동작이 실행된다 (시안 §8). */
-      onOpenAutoFocus={event => { event.preventDefault(); document.getElementById(cancelId)?.focus(); }}
+      /* 포커스는 [Cancel]이다 — 확인에 두면 Enter 한 번으로 되돌릴 수 없는 동작이 실행된다 (시안 §8). 표식은 `DialogContent`가 읽는다. */
       onCloseAutoFocus={event => {
         if (!document.getElementById(triggerId) && fallbackFocusRef?.current) {
           event.preventDefault();
@@ -208,11 +206,10 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
       aria-describedby={plan.atRisk ? `${describedId} ${warningId}` : describedId}
       description={<span id={describedId}>{m.repositorySync.body(<span className="text-neutral-600">{branch}</span>)}</span>}
       footer={<>
-        <DialogClose asChild><Button id={cancelId}>{m.common.cancel}</Button></DialogClose>
+        <DialogClose asChild><Button data-initial-focus>{m.common.cancel}</Button></DialogClose>
         {/* ⚠️ 무엇을 버리는지를 라벨이 먼저 말한다 — 미전달이 있으면 확정이 곧 폐기다 (sync-edit-protection spec "수동 Sync"). */}
         {/* ⚠️ `disabled`가 아니라 `aria-disabled`다 — 지문이 도착하면 같은 버튼이 풀리므로 포커스·Tab 순서가 그대로 남아야 한다. */}
-        <Button variant="danger" aria-disabled={approvalPending} onClick={() => void confirm()}>
-          {approvalPending && <LoaderCircle className="size-3.5 animate-spin" aria-hidden />}
+        <Button variant="danger" className="[&_.animate-spin]:size-3.5" busy={approvalPending} onClick={() => void confirm()}>
           {shownUnsent > 0 ? m.repositorySync.confirmDiscard : m.repositorySync.confirm}
         </Button>
       </>}>

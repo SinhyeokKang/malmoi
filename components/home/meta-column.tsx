@@ -2,13 +2,18 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { HoldLater } from "@/components/home/hold-later";
 import { LocaleFlag } from "@/components/translations/locale-badge";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import type { Trigger } from "@/lib/events/view";
 import type { MetaRow } from "@/lib/home/meta";
+import { connectionState } from "@/lib/home/state";
 import { m } from "@/lib/i18n";
+import type { HoldReason } from "@/lib/protection/plan";
 import { pullNumberFrom } from "@/lib/projects/remote-plan";
 import { relativeTime } from "@/lib/relative-time";
+import { cn } from "@/lib/utils";
 import { routes } from "@/lib/routes";
 
 /**
@@ -25,22 +30,29 @@ import { routes } from "@/lib/routes";
 /** 시각을 드는 행들 — 아래 구역으로 내려간다. */
 const TIMES: readonly MetaRow["kind"][] = ["lastSync", "lastPublish", "created", "archived"];
 
-export function MetaColumn({ rows, slug, now, canOpenSettings }: {
+export function MetaColumn({ rows, slug, now, canOpenSettings, heldLater }: {
   rows: readonly MetaRow[];
   slug: string;
   now: Date;
   canOpenSettings: boolean;
+  /**
+   * 열린 PR 조회에 달린 보류 사유 — **본문을 막지 않고 늦게 도착한다**(ux-drift-unify Q6 · malmoi#107 — 클라이언트 섬 `HoldLater`가 받는다). 없으면 `Last sync` 행의 `held`가 결론이다.
+   * `planHomeHold`가 promise를 낼 때만 온다(편집 0 · 게이트 있음).
+   */
+  heldLater?: Promise<HoldReason | null>;
 }) {
   const facts = rows.filter((row) => !TIMES.includes(row.kind));
   const times = rows.filter((row) => TIMES.includes(row.kind));
 
   return (
     <aside className="border-border flex h-fit flex-col overflow-hidden rounded-lg border" aria-labelledby="home-meta-title">
-      <h2 id="home-meta-title" className="flex min-h-12 items-center px-4 py-3 text-base font-medium">
+      {/* 머리 아래 선은 머리가 긋는다(2026-10-01 4-Y1 — `PanelCard`와 한 규약) · 머리 gap은 카드 머리 한 벌이다(4-W1). */}
+      <h2 id="home-meta-title" className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3 text-base font-medium">
         {m.home.meta.title}
       </h2>
-      <MetaGroup rows={facts} now={now} />
-      <MetaGroup rows={times} now={now} />
+      {/* 구역 사이 선만 구역이 든다 — 머리 바로 아래 구역은 머리 선을 쓴다. */}
+      <MetaGroup rows={facts} now={now} divided={false} />
+      <MetaGroup rows={times} now={now} divided={facts.length > 0} heldLater={heldLater} slug={slug} />
       {canOpenSettings && (
         <Link
           href={routes.settings(slug)}
@@ -58,28 +70,29 @@ export function MetaColumn({ rows, slug, now, canOpenSettings }: {
  * ⚠️ **라벨 폭이 96으로 고정이다** — `justify-between`으로 벌리면 값의 시작 위치가 라벨 길이를 따라
  * 행마다 달라지고, 아홉 행이 한 열로 안 읽힌다.
  */
-function MetaGroup({ rows, now }: { rows: readonly MetaRow[]; now: Date }) {
+function MetaGroup({ rows, now, divided, heldLater, slug }: { rows: readonly MetaRow[]; now: Date; divided: boolean; heldLater?: Promise<HoldReason | null>; slug?: string }) {
   if (rows.length === 0) return null;
   return (
-    <dl className="border-divider flex flex-col gap-2.5 border-t px-4 py-3.5">
+    <dl className={cn("flex flex-col gap-2.5 px-4 py-3.5", divided && "border-divider border-t")}>
       {rows.map((row) => (
         <div key={row.kind} className="flex items-baseline gap-3">
           <dt className="w-24 shrink-0 text-xs text-neutral-400">{m.home.meta[row.kind]}</dt>
-          <dd className="min-w-0 flex-1 text-sm">{value(row, now)}</dd>
+          <dd className="min-w-0 flex-1 text-sm">{value(row, now, heldLater, slug)}</dd>
         </div>
       ))}
     </dl>
   );
 }
 
-function value(row: MetaRow, now: Date): ReactNode {
+function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>, slug = ""): ReactNode {
   switch (row.kind) {
     case "repository":
       return row.disconnected ? (
         <span className="flex flex-wrap items-center gap-1.5">
           {`${row.owner}/${row.name}`}
           {/* ⚠️ **링크가 사라지고 pill이 선다** — 지금 읽을 수 없는 자리를 링크로 두면 화면이 거짓말한다. */}
-          <Badge variant="warning">{m.home.meta.notConnected}</Badge>
+          {/* 배지는 연결 갈래의 상태 키다 — 미연결 회색 · 끊김 호박 · 다른 리포 빨강(DESIGN §2.4, 설정 카드와 같은 `STATE` 행). */}
+          <StatusBadge state={connectionState(row.problem)} />
         </span>
       ) : (
         /*
@@ -119,15 +132,19 @@ function value(row: MetaRow, now: Date): ReactNode {
       // 로케일을 고정한다 — 서버 로케일에 따라 구분자가 갈리면 같은 DB 상태가 다른 화면을 낸다.
       return row.count.toLocaleString("en-US");
     case "lastSync":
+      /*
+        ⚠️ **배지가 먼저고 사실이 뒤다** (4-Y19 — Logs 보조줄의 `[배지…] 사실` 문법) — `[Nightly sync] 1d ago · [Sync failed] 10m ago · [Held]`.
+        상태 조각이 색 글자가 아니라 배지다(4-W11 — 옛 붉은 `failed 10m ago` · 호박 `held until …`). 첫 동기화 전에는 아무것도 붙이지 않는다.
+      */
+      if (row.at === null) return m.home.meta.notSyncedYet;
       return (
-        <span>
-          {row.at === null ? m.home.meta.never : <>{relativeTime(row.at, now)}<TriggerBadge trigger={row.trigger} /></>}
-          {/* `2b`에서만 실패가 붙는다 — `1d ago · nightly · failed 10m ago`(시각 → 주체 → 실패). */}
-          {row.failedAt !== null && (
-            <span className="text-destructive"> · {m.home.meta.failedAt(relativeTime(row.failedAt, now))}</span>
-          )}
-          {/* Never에는 아무것도 붙이지 않는다 — 주체와 같은 규칙. */}
-          {row.at !== null && row.heldByOpenPr && ` · ${m.home.meta.heldByOpenPr}`}
+        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+          <span><TriggerBadge trigger={row.trigger} kind="IMPORT" />{relativeTime(row.at, now)}</span>
+          {/* `2b`에서만 선다 — 일부 반영은 `Partially synced`다(🔴 A2, "failed"로 말하지 않는다). */}
+          {row.failed !== null && <span>· <StatusBadge state={row.failed.state} className="mr-1.5 align-middle" />{relativeTime(row.failed.at, now)}</span>}
+          {/* 보류는 지금의 판정이다(ux-drift-unify Q6) — 사유 문장은 `To send` 카드 보조 줄이 든다. PR에 달린 사유는 늦게 도착한다. */}
+          {/* 늦게 도착하는 사유는 클라이언트 섬이 effect로 받는다 — `use()`로 받으면 `?event=`·재검증 전환이 조회를 기다린다(U7 r1). */}
+          {heldLater === undefined ? <Held reason={row.held} /> : <HoldLater hold={heldLater} as="badge" identity={slug} />}
         </span>
       );
     case "lastPublish": {
@@ -135,7 +152,7 @@ function value(row: MetaRow, now: Date): ReactNode {
       const pr = pullNumberFrom(row.prUrl);
       if (row.at === null) return m.home.meta.never;
       return pr === null || row.prUrl === null ? (
-        <span>{relativeTime(row.at, now)}<TriggerBadge trigger={row.trigger} /></span>
+        <span><TriggerBadge trigger={row.trigger} kind="PUBLISH" />{relativeTime(row.at, now)}</span>
       ) : (
         /* 캔버스는 **PR이 앞이고 시각이 뒤**다 — 이 행이 답하는 질문이 "무엇을 보냈나"라서다. */
         <span>
@@ -152,8 +169,9 @@ function value(row: MetaRow, now: Date): ReactNode {
           >
             {m.home.meta.pr(pr)}
           </a>
-          {` · ${relativeTime(row.at, now)}`}
-          <TriggerBadge trigger={row.trigger} />
+          {" · "}
+          <TriggerBadge trigger={row.trigger} kind="PUBLISH" />
+          {relativeTime(row.at, now)}
         </span>
       );
     }
@@ -163,17 +181,18 @@ function value(row: MetaRow, now: Date): ReactNode {
   }
 }
 
-/**
- * 실행 주체 (nightly-sync 14) — Logs 사람 행의 보조줄과 같은 사전(`m.logs.meta`)에서 뽑는다. 사건이 없으면(`null`) 붙이지 않는다 —
- * 이력 도입 전 실행에 주체를 추정해 적지 않는다.
- */
-const TRIGGER_WORD = { manual: m.logs.meta.manual, nightly: m.logs.meta.nightly, ci: m.logs.meta.ci } satisfies Record<Trigger, string>;
+/** 보류 배지 — 사유가 셋이어도 낱말은 `Held` 하나다(DESIGN §2.4). 사유는 카드 보조 줄이 든다. */
+function Held({ reason }: { reason: HoldReason | null }) {
+  return reason === null ? null : <span>· <StatusBadge state="held" className="align-middle" /></span>;
+}
 
 /**
- * ⚠️ **배지다, 글자가 아니다** (2026-09-30 사용자 — ` · nightly` 글자에서 바꿨다). 요약 줄 행간이 20이고 배지도 20이라 줄 높이가 안 흔들린다.
- * 앞의 ` · `를 떼고 간격(6)으로 가른다 — 배지 자체가 경계다.
+ * 실행 주체 (nightly-sync 14) — **Logs 보조줄과 같은 실행 종류 배지**다(4-Y19 — `Manual sync`·`Nightly publish` …, `m.logs.meta.runType`). 옛 소문자
+ * `nightly`가 같은 Home의 Recent logs `Nightly sync` 옆에 섰다. 사건이 없으면(`null`) 붙이지 않는다 — 이력 도입 전 실행에 주체를 추정해 적지 않는다.
+ *
+ * ⚠️ **배지다, 글자가 아니다** (2026-09-30 사용자). 요약 줄 행간이 20이고 배지도 20이라 줄 높이가 안 흔들린다. 배지 자체가 경계라 `·`를 두지 않는다.
  */
-function TriggerBadge({ trigger }: { trigger: Trigger | null }) {
+function TriggerBadge({ trigger, kind }: { trigger: Trigger | null; kind: "IMPORT" | "PUBLISH" }) {
   if (trigger === null) return null;
-  return <Badge variant="neutral" className="ml-1.5 align-middle">{TRIGGER_WORD[trigger]}</Badge>;
+  return <Badge variant="neutral" className="mr-1.5 align-middle">{m.logs.meta.runType[kind][trigger]}</Badge>;
 }

@@ -1,6 +1,7 @@
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 /**
  * Home이 서버에서 오는 동안의 골격 (캔버스 `2e`).
@@ -36,7 +37,7 @@ export default function ProjectHomeLoading() {
       <PanelHeader aria-hidden>
         <div className="flex items-center gap-2.5">
           <Skeleton className="size-7 rounded" />
-          <Skeleton className="h-6 w-48 rounded-md" />
+          <SkeletonLine text="text-lg" className="w-48" />
           <span className="ml-auto flex items-center gap-2">
             <Skeleton className="h-9 w-24 rounded-md" />
             <Skeleton className="h-9 w-28 rounded-md" />
@@ -46,19 +47,23 @@ export default function ProjectHomeLoading() {
 
       <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5" aria-hidden>
         <div className="flex min-w-0 flex-col gap-5">
-          <div className="grid grid-cols-4 gap-2">
+          {/* ⚠️ **실물과 같은 컨테이너·클래스다** (`count-cards.tsx`) — 고정 4열이면 컨테이너 672 미만(뷰포트 ~1310 아래)에서 실물은 2×2라 도착 때 아래가 ~120px 튄다(#165). 선언과 질문은 다른 요소다. */}
+          <div className="@container/cards">
+          <ul className="grid grid-cols-2 gap-2 @[672px]/cards:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="border-border flex flex-col gap-3 rounded-lg border p-3.5">
+              <li key={i}><div className="border-border flex flex-col gap-3 rounded-lg border p-3.5">
                 <span className="flex items-center gap-2">
-                  <Skeleton className="h-3.5 w-[62%] rounded-md" />
+                  <div className="min-w-0 flex-1"><SkeletonLine text="text-sm" className="w-[62%]" /></div>
                   <Skeleton className="ml-auto size-4 rounded-full" />
                 </span>
                 <span className="flex flex-col gap-1.5">
-                  <Skeleton className="h-6 w-14 rounded-md" />
-                  <Skeleton className="h-3 w-[72%] rounded-md" />
+                  {/* 수치는 24/600이다 — `SkeletonLine`의 급 밖이라 같은 줄 상자(보이지 않는 글자 + em 블록)를 여기서 세운다. */}
+                  <div className="flex items-center text-2xl font-semibold">{"\u200b"}<Skeleton className="h-[0.8em] w-14 rounded-md" /></div>
+                  <SkeletonLine text="text-xs" className="w-[72%]" />
                 </span>
-              </div>
+              </div></li>
             ))}
+          </ul>
           </div>
 
           {/* ⚠️ **할 일 카드에는 바닥 링크가 없다** — 골격이 그것을 그리면 데이터 도착 시 약 45px 줄어든다. */}
@@ -75,7 +80,7 @@ export default function ProjectHomeLoading() {
         */}
         <aside className="border-border overflow-hidden rounded-lg border">
           <div className="flex min-h-12 items-center px-4 py-3">
-            <Skeleton className="h-5 w-20 rounded-md" />
+            <SkeletonLine text="text-base" className="w-20" />
           </div>
           <MetaGroup rows={6} />
           <MetaGroup rows={3} />
@@ -97,27 +102,29 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
   return (
     <section className="border-border overflow-hidden rounded-lg border">
       <div className="flex min-h-12 items-center px-4 py-3">
-        <Skeleton className="h-5 w-40 rounded-md" />
+        <SkeletonLine text="text-base" className="w-40" />
       </div>
       <ul className={divided ? undefined : "border-divider border-t px-4 pt-3.5"}>
         {Array.from({ length: rows }, (_, i) => (
           <li
             key={i}
-            className={divided ? "border-divider flex items-center gap-3 border-t px-4 py-3.5" : "flex items-center gap-3 pb-4"}
+            // 선은 실물과 같은 `RowCard` 규칙이다(4-Y4) — 첫 줄이 머리 선(`--divider`), 행↔행은 `--border`.
+            className={divided ? cn("flex items-center gap-3 border-t px-4 py-[13px]", i === 0 ? "border-divider" : "border-border") : "flex items-center gap-3 pb-4"}
           >
             {/* 두 카드 다 행 칸이 `IconTile sm`(28 · radius 4)이다 — Logs 카드의 옛 10 점은 실물(사건 칸 28)과 달라 도착 때 튀었다. */}
             <Skeleton className="size-7 shrink-0 rounded" />
             {/*
-              ⚠️ **자리의 높이는 블록이 아니라 컨테이너가 든다** (2026-09-16 실측) — 블록을 두껍게
+              ⚠️ **자리의 높이는 블록이 아니라 줄 상자가 든다** (2026-09-16 실측 · 4-W8) — 블록을 두껍게
               키우면 행 높이는 맞아도 회색 덩어리가 글자보다 굵어진다. 할 일 행은 실물이 **두 줄**
-              (표면·로케일 13 + 문장 15)이라 42, 로그 행은 한 줄이라 22다. 전에는 둘 다 14로 서서
+              (문장 15 + 표면·로케일 13), 로그 행은 한 줄이다. 전에는 둘 다 14 블록으로 서서
               도착하는 순간 할 일이 행마다 ~15, 로그가 ~8.5 늘어났다.
             */}
-            <span className={`flex min-w-0 flex-1 flex-col justify-center gap-1 ${divided ? "h-[42px]" : "h-[22px]"}`}>
-              {divided && <Skeleton className="h-[17px] w-[62%] rounded-md" />}
-              <Skeleton className="h-[21px] w-[72%] rounded-md" />
+            <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+              {/* 할 일 행은 문장(15)이 먼저고 표면·로케일(13)이 아래다 — 실물과 같은 순서(Q9). */}
+              <SkeletonLine text="text-base" className="w-[72%]" />
+              {divided && <SkeletonLine text="text-xs" className="w-[62%]" />}
             </span>
-            <Skeleton className="ml-auto h-3 w-12 shrink-0 rounded-md" />
+            <SkeletonLine text="text-xs" className="w-12" />
           </li>
         ))}
       </ul>
@@ -135,7 +142,7 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
 function FooterLink() {
   return (
     <div className="border-divider flex h-[45px] items-center justify-center border-t px-4">
-      <Skeleton className="h-3.5 w-16 rounded-md" />
+      <SkeletonLine text="text-sm" className="w-16" />
     </div>
   );
 }
@@ -151,8 +158,8 @@ function MetaGroup({ rows }: { rows: number }) {
     <div className="border-divider flex flex-col gap-2.5 border-t px-4 py-3.5">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex h-5 items-center gap-3">
-          <Skeleton className="h-3 w-24 shrink-0 rounded-md" />
-          <Skeleton className="h-3.5 w-[62%] rounded-md" />
+          <div className="w-24 shrink-0"><SkeletonLine text="text-xs" className="w-full" /></div>
+          <div className="min-w-0 flex-1"><SkeletonLine text="text-sm" className="w-[62%]" /></div>
         </div>
       ))}
     </div>

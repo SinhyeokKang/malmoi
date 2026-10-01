@@ -139,6 +139,27 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
   });
 });
 
+/**
+ * **Publish가 Home의 열린 PR 메모를 지운다** (ux-drift-unify U15). 웹·MCP·야간이 모두 이 껍데기를 지나므로 여기 하나다 —
+ * 지우지 않으면 방금 연 PR을 Home이 TTL 동안 "보류 없음"으로 말한다. ⚠️ **실패·스킵에도 지운다** — PR을 만든 뒤 던졌을 수 있다.
+ */
+describe("runSync — 열린 PR 메모", () => {
+  const project = { repoOwner: "o", repoName: "r", installationId: "1", repositoryId: "10" };
+
+  it.each([
+    ["성공", () => hoisted.triggerPull.mockResolvedValue(COMMITTED)],
+    ["던짐", () => hoisted.triggerPull.mockRejectedValue(new Error("boom"))],
+  ])("%s 뒤 그 프로젝트의 항목이 비어 다음 Home이 다시 묻는다", async (_, arrange) => {
+    const { homeOpenPrMemo } = await import("@/lib/projects/open-pr-memo");
+    await homeOpenPrMemo.load("acme", project, async () => null);
+    arrange();
+    await runSync(harness().prisma, { projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
+    const again = vi.fn(async () => "https://github.com/o/r/pull/9");
+    expect(await homeOpenPrMemo.load("acme", project, again)).toBe("https://github.com/o/r/pull/9");
+    expect(again).toHaveBeenCalledOnce();
+  });
+});
+
 describe("runSync — 잠금과 순서", () => {
   it("Project 행을 FOR UPDATE로 잠그고, 그것이 행 생성보다 앞이다", async () => {
     const h = harness();

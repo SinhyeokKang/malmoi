@@ -1,3 +1,6 @@
+import { FileQuestionMark } from "lucide-react";
+
+import { PanelBody } from "@/components/shell/content-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
@@ -9,6 +12,9 @@ import { routes } from "@/lib/routes";
  * 두면 그 아래 모든 `notFound()`(Sources 조회 실패 등)가 표면 이야기를 한다.
  */
 export default function NotFound() {
-  return <EmptyState title={m.surfaces.missingTitle} description={m.surfaces.missingDescription}
-    action={<ButtonLink href={routes.projects()}>{m.surfaces.projects}</ButtonLink>} />;
+  /* 세로 중앙은 `flex-1`이 든다 — `ProjectArchived`와 같은 형(malmoi#162). `ContentPanel`은 `[slug]/layout`이 이미 든다. */
+  return <PanelBody className="flex flex-col"><div className="flex flex-1 items-center justify-center">
+    <EmptyState icon={FileQuestionMark} title={m.surfaces.missingTitle} description={m.surfaces.missingDescription}
+      action={<ButtonLink href={routes.projects()}>{m.surfaces.projects}</ButtonLink>} />
+  </div></PanelBody>;
 }

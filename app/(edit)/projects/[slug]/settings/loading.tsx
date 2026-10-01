@@ -21,7 +21,7 @@ export default function SettingsLoading() {
     <>
       <span className="sr-only" role="status">{m.settings.loading}</span>
       <PanelHeader aria-hidden>
-        <div className="flex min-h-9 items-center">
+        <div className="flex items-center">
           <SkeletonLine text="text-lg" className="w-20" />
         </div>
       </PanelHeader>

@@ -117,7 +117,8 @@ export default async function InvitePage({
       */
       cta = view.retry ? (
         <form method="get" action={routes.invite(token)}>
-          <Button type="submit">{m.common.retry}</Button>
+          {/* 페이지의 유일한 출구라 형제 CTA와 같은 `primary lg w-full`이다(DESIGN §6.4 Retry · ux-drift-unify 3-⚪14). */}
+          <Button type="submit" variant="primary" size="lg" className="w-full">{m.common.retry}</Button>
         </form>
       ) : session.status === "ok" ? (
         <ButtonLink size="lg" className="w-full" href={routes.projects()}>{m.invite.openProjects}</ButtonLink>

@@ -50,7 +50,8 @@ export const syncRepository = defineTool({
       if (outcome.error === "unavailable") return { status: "unavailable" };
       // Home의 Sync 결과와 같은 문장 — 그 화면이 고르는 사전이 먼저다(`m.repositorySync.errors`).
       const screen = pick(m.repositorySync.errors, outcome.error, "");
-      return { status: "refused", code: outcome.error, ...(screen === "" ? {} : { message: screen }) };
+      // ⚠️ **코드 값 목록을 넓히지 않는다** (ux-drift-unify r1 · Q12와 같은 결) — 화면의 `unpinned`는 외부 계약에서 `not-connected`다. 문장은 화면 것이다.
+      return { status: "refused", code: outcome.error === "unpinned" ? "not-connected" : outcome.error, ...(screen === "" ? {} : { message: screen }) };
     }
     // 불변식 9 — 표면별 결과(부분 실패·교체 안 됨)와 남은 미전달 편집을 그대로 싣는다.
     return ok({ sources: outcome.surfaces, remainingEdits: outcome.remainingEdits }, m.mcp.summary.synced(outcome.remainingEdits));

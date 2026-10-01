@@ -27,7 +27,7 @@ app/
   privacy/              방침. 공개 셸 안의 components/privacy/(DESIGN §6.616) · 본문은 messages/en.tsx의 publicDocs.privacy.
                         ⚠️ 세션을 읽는 이유는 차단이 아니다 — 헤더 우측(publicAccount: 로그인이면 앱 셸과 같은 아바타 메뉴,
                         아니면 Get started → /signin). 그래서 동적이다
-  changelog/            릴리스 노트(DESIGN §6.617). 공개 셸 안 · 원문은 lib/changelog/load(GitHub Release, 토큰 없이 1시간 캐시).
+  changelog/            릴리스 노트(DESIGN §6.617). 공개 셸 안 · 원문은 lib/changelog/load(GitHub Release, 토큰 없이 1시간 캐시 — 키에 앱 버전이 실려 배포마다 새로 받는다).
                         ⚠️ 세션을 읽는 이유는 /privacy와 같다(헤더 primary) — 인가 없음(entry-points EXEMPT). GitHub가 실패해도 200이다
   docs/                 사용 가이드(DESIGN §6.61). layout(공개 셸 bare + 문서 내비 — SUMMARY를 읽는다) ·
                         [[...slug]]/page(개요·장 개요·일반 문서 — 본문 스크롤러를 페이지가 key={slug}로 든다, 없는 slug는
@@ -57,8 +57,7 @@ app/
                         ContentPanel은 각 갈래의 레이아웃이 든다(shell-layout.test.ts가 라우트마다
                         정확히 하나인지 센다)
     error.tsx           오류 경계. ⚠️ 예외 메시지를 그대로 뿌리지 않는다
-    actions.ts          saveTranslationKey · previewTranslationRevert · revertTranslationKey · triggerPullAction ·
-                        loadMoreTranslationKeys(키 목록 다음 페이지 — 읽기 전용이라 revalidatePath를 안 부른다).
+    actions.ts          saveTranslationKey · previewTranslationRevert · revertTranslationKey · triggerPullAction.
                         ⚠️ 무효화는 /projects/<slug> 서브트리 + 목록 둘이다 — 그 행을 읽는 화면이 넷이라
                         경로를 나열하면 다섯째가 조용히 빠진다
     publish-actions.ts  loadPublishPreview 하나. ⚠️ actions.ts와 갈라 둔다 — 모달이 열릴 때만 부르는
@@ -108,6 +107,7 @@ app/
                         ⚠️ 앱 안에서 여기로 보내는 곳이 0이다 — GitHub callback도 Sources로 바로 간다(audit-ux #31)
       surfaces/[surfaceSlug]/not-found.tsx  없는 표면의 제품 안내(requireSurfaceAccess의 notFound). translations/not-found.tsx가 다시 내보낸다
       not-found.tsx    프로젝트 세그먼트 경계 — ⚠️ 무엇을 잃었는지 단정하지 않는다(그 아래 notFound()가 여럿이다). Projects 복귀
+      [...rest]/       맞는 라우트가 없는 하위 주소 — 인가 뒤 notFound()로 위 경계를 세운다(없으면 루트 RootFallback이 셸 안에 섰다, malmoi#167)
       members/ logs/ settings/   (settings/actions.ts — GitHub 연결 시작 · 리포 (재)연결 · 리포 설정 갱신 · 프로젝트 이름/이미지)
                         셋 다 loading.tsx 골격을 든다(audit-ux #5 — [slug]/에 하나로 두지 않는다, malmoi#95)
                         ⚠️ 넷 다 게이트가 translation:write다(settings만 project:settings) — EDITOR도
@@ -156,8 +156,8 @@ middleware.ts           인증 차단의 유일한 1차 지점 + CSP의 유일�
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 26개(2026-09-28 IconTile) + tone.ts·focus.ts 헬퍼 (focus.ts는 2026-09-24 audit B5 —
-                        포커스 착지 셋 landFocus·neighbourFocus·useLandAfter, DESIGN §7) (skeleton이 2026-09-13에
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브 29개(2026-09-28 IconTile · 2026-10-01 StatusBadge·CountBadge·CloseButton) + tone.ts·focus.ts 헬퍼 (focus.ts는 2026-09-24 audit B5 —
+                        포커스 착지 넷 landFocus·neighbourFocus·useLandAfter·useLandAfterCommit, DESIGN §7) (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
@@ -185,6 +185,15 @@ components/
                         components/__tests__/image-origin.test.tsx
   ui/panel-card.tsx     PanelCard/Rows/Row/Facts. 계정 구역에서 승격, 제목 없는 카드도 지원.
                         옛 ui/card.tsx와 account/account-section.tsx는 마지막 소비자 전환과 함께 삭제
+                        ⚠️ 머리 아래 선은 머리가 긋는다(notice가 있으면 그 아래) — 자식은 border-t를 들지 않는다(2026-10-01)
+  ui/status-badge.tsx · ui/icon-tile.tsx
+                        **상태 키만 받는 두 형**(2026-10-01, ux-drift-unify — DESIGN §2.4). StatusBadge는 state 하나로 variant·낱말을
+                        lib/status/canon의 STATE에서 읽고, IconTile은 tone(StateTone)으로 §2.4 아이콘 칸의 면·글자를 든다.
+                        ⚠️ variant·색 prop이 없다 — 호출부가 고르는 자리가 남으면 같은 상태가 화면마다 다른 알약이 된다(보관 세 모양이 그랬다)
+  ui/count-badge.tsx    개수 배지 — 0이면 null, 숫자는 aria-hidden이고 label이 sr 문장이다. PanelCard·RowCard의 count prop이 이것을 그린다
+                        (CountProps — 개수와 문장이 짝이라 문장 없는 개수는 타입 오류). ⚠️ 0을 숨기는 것은 화면 규칙이고 판정은 0을 값으로 낸다(lib/shell/nav)
+  ui/close-button.tsx   닫기 X 한 형(ghost · 36 · 원형 · X 20) — Dialog · 1024 모달 · 이력 상세 · Alert · Sources 결과 행이 쓴다. modal.tsx에서 추출했다.
+                        ⚠️ label이 필수다 — 자리마다 접근 이름이 다르다(Close · Dismiss)
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
   ui/modal.tsx          모달 껍데기. ⚠️ 소비자가 여섯이다 — 새 프로젝트 온보딩(네 단계) · Publish 모달
                         (갈래 열하나) · 초대 모달(폼→링크 두 얼굴) · Sources 추가/상세 · 설정 Workflow. ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고 Radix
@@ -227,7 +236,7 @@ components/
                         결과 미확인은 이 세션에만 산다) · token-modal(OnboardingModal 2단계 — ① 폼 ② 원문 1회, Done이 유일한 출구) ·
                         token-grant-fields(권한·범위 **필드만** — 모달과 동의 화면이 공유한다, columns 1|2 · 상태 슬롯·버튼·Alert는 호스트 소유) ·
                         connected-apps-card(OAuth 연결 목록 · 머리의 Copy server URL · 행 왼쪽 로고 칸 · 끊기 Dialog · 조회 장애 ≠ 빈 목록 · RowCardList) ·
-                        brand-logo(에이전트 공식 로고를 `<img>`로 그대로 — 색을 입히지 않는다).
+                        brand-logo(에이전트 공식 로고를 `<img>`로 그대로 — 색을 입히지 않는다) · grant-badges(`Allowed actions` — 권한마다 배지 하나).
                         ⚠️ Connect 카드(조각 · 방식·에이전트 탭)는 2026-09-30에 걷었다 — 연결 조각의 정본은 가이드(guide/ai-agents/)다.
                         ⚠️ grant 어휘·만료 선택지를 **다시 적는다** — TOKEN_GRANTS를 값으로 import하면 lib/auth/access가
                         클라이언트 그래프에 들어온다(client-graph). 두 벌의 대가는 components/__tests__/mcp-token이 순서까지 고정해 진다
@@ -288,9 +297,11 @@ components/
   logs/                 **활동 스트림의 화면 조각** (2026-09-20, logs-rework — DESIGN §6.68)
                         glyph(칩 28 · 팔레트 일곱) · event-row(행 다섯 칸) · log-filters(`"use client"` —
                         드롭다운 다섯 + 검색 + [Refresh]) · event-detail(640 본문) · event-dialog(껍데기) ·
-                        row-chevron(`"use client"` — useLinkStatus로 누른 행을 스피너로, 행이 서버 컴포넌트라 이것만 뗐다)
+                        row-chevron(`"use client"` — useLinkStatus로 누른 행을 스피너로, 행이 서버 컴포넌트라 이것만 뗐다) ·
+                        event-meta(보조줄 `[배지…] 사실 · 사실` — 2026-09-30) · role-badges(역할 배지, 행·상세 공용) ·
+                        result-badge(결과 배지 — success·neutral·warning·붉은 면)
                         ⚠️ **Home의 Recent logs가 `event-row`를 그대로 쓴다** — 같은 사건이 두 화면에서
-                        같은 모양이어야 한다. 그래서 파랑 한 자리도 이 파일에 있다(home-vocabulary가 센다)
+                        같은 모양이어야 한다. PR 링크 파랑 한 자리는 `event-meta`에 있다(home-vocabulary가 센다)
                         ⚠️ **상세 본문은 서버가 그린다** — 클라이언트는 열림·닫힘·포커스만 든다
   home/                 Home 화면의 블록 넷 + 클라이언트 호스트. count-cards · attention-card ·
                         logs-card · meta-column은 **순수 서버 컴포넌트**다(`+n more`가 <details>라
@@ -300,6 +311,8 @@ components/
                         Provider는 DOM을 안 만들어 PanelHeader·PanelBody 형제 구조가 그대로 남는다
                         ⚠️ **sync-button·sync-result는 sync-repository의 산출물이다** — 같은 디렉터리에
                         살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다
+                        hold-later.tsx("use client" 섬 — 열린 PR 조회에 달린 보류 사유를 `To send` 보조 줄·메타 `Held` 배지 두 자리에
+                        늦게 그린다. 본문은 그 조회를 기다리지 않는다 — 판정은 lib/home/cards의 planHomeHold, 도착은 use-arrived)
   onboarding/modal.tsx  components/ui/modal.tsx를 그대로 재수출한다 — 호출부를 안 건드리려는 한 줄이다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
                         sources-archived 여섯.
@@ -310,6 +323,8 @@ components/
   settings/             general-card · repository-card/repository-form ·
                         ci-card · archive-card · push-token-panel. 독립 add-surface.tsx는 모달 전환 뒤
                         삭제했고, push-token-panel은 소비자가 ci-card 하나뿐이라 onboarding/에서 옮겼다.
+                        connection-state.ts(순수 — 연결 행의 상태 키. 끊김·미연결·다른 리포는 lib/home/state의 connectionProblem을
+                        그대로 옮기고 repo-moved·unknown만 덧붙인다 — 여기서 다시 가르면 unpinned가 한 화면에서만 다른 낱말이 된다)
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
@@ -331,7 +346,11 @@ components/
                         (publish-button·github-section과 같은 관용구)
   locale-meter.tsx
                         Projects·Sources 공유 로케일 Meter. 치수가 캔버스 리터럴 그대로이고 폭만 인라인 스타일이다
-                        (퍼센트가 데이터라서 — 나머지를 스타일로 만들면 소스 검사 밖으로 나간다)
+                        (퍼센트가 데이터라서 — 나머지를 스타일로 만들면 소스 검사 밖으로 나간다). 막대만 떼어 낸 MeterBar를
+                        Sources 상세의 언어 행이 공유한다(2026-10-01 — 손 사본을 걷었다)
+  use-arrived.ts        useArrived(promise, identity) — 서버가 내려 준 promise의 마지막 도착값(Home 보류 사유 · 번역 화면 연결 판정).
+                        ⚠️ use() + Suspense로 받지 않는다 — 재렌더마다 새 promise가 와서 키 선택·저장 뒤 전환이 GitHub 조회를 기다렸다.
+                        ⚠️ identity(프로젝트·소스)가 바뀌면 그 렌더에서 옛 값을 버린다 — 다른 프로젝트의 판정이 버튼을 끄거나 켜지 않게
   projects/empty-projects.tsx
                         본문이 빌 때의 **카드 둘** — 프로젝트 0건(`EmptyProjects`)과 검색 0건
                         (`NoProjectsMatch`). ⚠️ 부품이 같고 다른 것은 아이콘과 **출구의 무게**뿐이다
@@ -496,6 +515,8 @@ lib/
                         query(URL 계약 — 요청값을 들고 옛 `state=untranslated`·`locales`를 받는다, `sort` 없음) ·
                         summary(키 집계 oracle · Incomplete first 안정 분할 · effectiveCompletion) · text-direction(값 셀 dir·lang — RTL 값이 페이지 ltr을 상속하지 않게, malmoi#91) ·
                         draft(saved/draft/inFlight 세 층 reducer + 세션 복구 사본) · saved-rows · navigation ·
+                        tree-narrow(필터 → 트리 반영 — 전량 목록의 행으로 소스·네임스페이스를 세고 0 노드를 숨긴다, 위치·세대 노드는 남긴다.
+                        트리 이동의 첫 키 `firstRowAt`도 여기다. translation-filter-scope) ·
                         baseline(미전달 셀 delta 기준 — ARCHITECTURE §5.8) · layout(세 패널 폭 계약 — 로케일 ≥420을 마지막까지 지킨다) · context(전달 확인의 context 지문 — ⚠️ **이것만 잎이 아니다**:
                         `node:crypto`를 물어 서버 전용이고 `lib/pull/load.ts`·Save가 쓴다). 나머지는 잎이다 — import는 서로와
                         잎인 `lib/routes.ts`뿐이다. 키 단위 저장 계획(`planKeySave`)은 `planSave` 옆 `keys/save.ts`에 있다
@@ -508,7 +529,14 @@ lib/
   surfaces/create.ts   Project 잠금 후 인가·리포·출력 경로 재검사, 다중 생성+첫 적재 한 tx 확정
   surfaces/plan-add.ts  기존 소스 잠금·중복 템플릿·추가 결과/부분 적재 경고·집계 문구 순수 판정
   keys/query.ts         loadSurfaceCounts — 활성 표면의 non-orphan 키/언어 수를 SQL 하나로 집계
-  import/surface-status.ts  소스 적재 상태 다섯 갈래와 최초 적재 재시도 가능 여부
+  import/surface-status.ts  소스 적재 상태 다섯 갈래와 최초 적재 재시도 가능 여부 — planSurfaceImportStatus가 { state, tone, labelKey, at }을
+                        내고 tone은 STATE[labelKey].tone이다(Sources 행·상세 칸이 같은 값을 읽는다)
+  status/               **상태 톤·낱말의 코드판 정본** (2026-10-01, ux-drift-unify — DESIGN §2.4가 가리킨다). canon(StateTone · StateKey ·
+                        STATE — 행마다 { tone, variant, label }, label은 사전 값). ⚠️ 잎이다 — 사전만 문다(클라이언트가 값으로 읽는다,
+                        client-graph). ⚠️ lib/는 Tailwind를 모른다 — 클래스는 components/ui/가 든다. ⚠️ 소비자가 있는 키만 둔다.
+                        __tests__/cross-screen은 목록·Home·Settings·Sources·거부 문구가 같은 입력에서 같은 상태를 말하는지 한 행렬로 잰다
+  expiry.ts             ⚠️ 잎. isExpired(expiresAt, now) — 초대·MCP 토큰의 만료 경계 하나(정각 = 만료). 인증 경계와 카드 표시가 같은 식이어야
+                        카드가 "활성"이라 말하는 순간에 401이 나지 않는다. OAuth 인라인 비교는 범위 밖이다
   publish/              Publish 모달이 읽는 순수 판정 다섯. diff(셀 단위 조립·키 병합·상한) ·
                         plan(결과 8갈래 planPublishView + 버튼 planPublishButton, 둘 다 never 검사) ·
                         warnings(파일별 묶기 — 파서 원문의 개행을 보존한다) · words(낱말 diff) ·
@@ -520,6 +548,8 @@ lib/
                         파일 목록으로 고정) · where(토큰 술어 pendingWhere — **미전달 술어의 주인**. countPending·
                         loadPendingEdits는 토큰 컬럼만 보는 count가 0이면 관계 조인을 건너뛴다, POSTMORTEM 2026-09-18) ·
                         backfill(옛 술어 ∧ 활성 ∧ 토큰 없음 SQL 한 문장 — 배포 B precondition 마이그레이션이 같은 조건을 복제한다)
+                        plan의 planHoldNotice(2026-10-01)가 보류 표시 갈래(pending-edits · open-pr · pr-check-failed)를 하나로 고른다 —
+                        Home 카드·메타·번역 화면 배너가 같이 읽는다
                         ⚠️ plan에 **열린 PR 게이트**(`planOpenPrGate`, 2026-09-30 nightly-sync)가 산다 — `/api/push` 사전 판정과
                         야간 판정이 공유한다. `planProtectedImport`와 합치지 않은 이유는 트랜잭션 안 재판정(push/apply)이 GitHub을
                         못 부르기 때문이다(ARCHITECTURE §5.5.2)
@@ -621,6 +651,9 @@ lib/
                         attention(세 종을 한 시간축에 · 상한 5 · ⚠️ 폴백은 actors 맵의 키 존재로 판정한다,
                         actorLabel의 null이 아니다) · meta(행이 상태에 따라 사라지거나 는다) ·
                         sync-time(lastSyncTime — lastImportedAt의 최댓값, 시각 컬럼 이전 적재는 "unrecorded"로 null과 가른다)
+                        state에 connectionProblem(연결 판정 → Disconnected·Not connected·Wrong repository — 목록·Settings·거부 문구가 같이 읽는다)과
+                        planActionAvailability(보관·끊김이면 Publish·Sync를 끈다 — Home·번역 화면이 같이 읽는다)가, cards에 planHomeHold(보류 사유의
+                        **지금** 판정 — 편집 수와 열린 PR 조회, 2026-10-01)가 산다
                         ⚠️ **전부 I/O가 없고 server-only를 안 붙인다** — 테스트가 직접 import한다
                         ⚠️ **예외 하나 — runs(2026-09-30, nightly-sync)는 server-only 조회다**: 메타 열의 실행 주체용 사건 셋
                         (최근 성공 적재 · 최근 적재(보류 포함) · 최근 성공 Publish)을 읽어 meta의 `homeTriggers`에 넘긴다.
@@ -630,14 +663,16 @@ lib/
                         ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다
   projects/list.ts      ⚠️ **잎이어야 한다**(client-graph). 목록 판정 전부가 여기 산다 — 그룹·띠·
                         Meter 자리·진행률 접기·계정 합계·그룹 나누기·검색 강조. 오케스트레이션
-                        파일에 두면 클라이언트 번들이 그 그래프를 따라온다
+                        파일에 두면 클라이언트 번들이 그 그래프를 따라온다. projectSyncFailure(표면 배열 → 가장 나쁜 실패 하나 —
+                        칩·띠·Meter 자리·Home 배너가 같이 부른다, 2026-10-01. 전엔 조회가 표면을 평탄화해 서로 다른 표면의 값이 섞였다)
   projects/import-status.ts
                         임포트 결과의 순수 계약(닫힌 보고 스키마 · 대표 코드 · 화면 문장). ⚠️ 잎이라
                         @/lib/adapters/types를 **타입만** 가져온다
   projects/import-status-store.ts
                         Surface 결과의 쓰기 껍데기. ⚠️ 조건부 UPDATE가 방어선이고 선조회는 진단용이다
   projects/remote.ts    목록의 원격 신호 둘(열린 PR · base 드리프트). installation 토큰이고,
-                        보관 제외 전부를 동시 3으로 돈다. ⚠️ 실패도 지연도 값으로 흐른다
+                        보관 제외 전부를 동시 3으로 돈다. ⚠️ 실패도 지연도 값으로 흐른다 — 열린 PR은 삼상태다(2026-10-01):
+                        열림 · 없음(null) · 확인 못 함(undefined → 행 띠 "Couldn't check…"). PR·compare는 따로 settle한다
   projects/remote-plan.ts
                         그 판정의 순수 부분(변경된 로케일 **파일 수** · PR 번호 파싱). ⚠️ 키 수가
                         아니다 — 서버는 그 커밋을 체크아웃하지 않아 셀 수가 없다
@@ -645,6 +680,10 @@ lib/
                         Publish·Sync 화면이 "이미 열려 있다"를 말할 근거다. loadOpenPrForImportGate(2026-09-30)는
                         `/api/push` 게이트용 입력이다 — ⚠️ `installationId`·`repositoryId` null이면 `null`(게이트 없음)이고
                         loadOpenPrUrl의 `repositoryId null → undefined`를 그대로 쓰지 않는다(옛 행의 CI가 영구 보류된다)
+                        · loadOpenPrUrlMemo — **Home 표시 전용**(아래 open-pr-memo를 지난다). 게이트는 쓰지 않는다
+  projects/open-pr-memo.ts
+                        Home의 열린 PR 조회 30초 메모(probe-memo와 같은 TTL·상한). 순수 — `server-only`가 없어
+                        runSync·importRepository가 forgetOpenPr로 그 프로젝트 항목을 지운다(Publish가 연 PR을 가리지 않게)
   projects/pr-url.ts    parseGithubPrUrl(순수). ⚠️ 저장된 URL을 **그 프로젝트의 owner/name으로 다시 검증**한다
                         — DB 문자열을 그대로 링크로 내면 남의 리포를 가리키는 값이 화면에 선다
   projects/import-failure.ts

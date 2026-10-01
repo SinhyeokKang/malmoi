@@ -274,7 +274,9 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
   it("보관을 읽는 화면은 배너와 야간 문구 제거를 함께 든다", () => {
     expect(read(LOGS)).toContain("m.logs.archived");
     // 추출된 판정에 보관 상태가 도달해야 야간 절이 사라진다 — 실제 문장은 DOM 회귀 테스트가 센다.
-    expect(read("components/logs/event-row.tsx")).toContain("eventMeta(row, archived)");
+    // 보조줄은 `EventMetaLine`이 그린다(2026-09-30) — 행이 보관 상태를 넘기고, 그 컴포넌트가 판정에 넘긴다.
+    expect(read("components/logs/event-row.tsx")).toContain("<EventMetaLine row={row} archived={archived} />");
+    expect(read("components/logs/event-meta.tsx")).toContain("eventMeta(row, archived)");
     expect(read("components/logs/event-detail.tsx")).toContain("eventFailureMessage(row, archived)");
     expect(read("lib/events/view.ts")).toContain("planArchivedReason(row.run?.errorCode");
     expect(read(LOGS)).not.toContain("syncReasonMessage");

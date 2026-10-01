@@ -6,7 +6,7 @@ Each source is one set of translation files in your repository. Project owners c
 
 ## Open Sources {#sources}
 
-Open **Sources** from the project navigation. Each row shows whether the source has been read, whether its status is **Last sync failed** or **First sync failed**, and which languages are available.
+Open **Sources** from the project navigation. Each row shows the source's status — **Not synced yet**, **Syncing…**, **Synced**, **Partially synced**, or **Sync failed** — and how many keys and languages it has.
 
 ![The Sources page listing two synced sources with their file paths, key counts, and languages](/guide/sources.webp "Each source is one set of translation files.")
 
@@ -20,9 +20,9 @@ Open **Sources** from the project navigation. Each row shows whether the source 
 
 ## Change the base language {#base-language}
 
-1. Open the source's details from **Sources**. Under **Base language**, choose the language that supplies the source text, then choose **Save**. The change applies on the next update from your repository's GitHub Actions workflow. Choosing **Sync** does not apply it.
+1. Open the source's details from **Sources**. Under **Base language**, choose the language that supplies the source text, then choose **Save**. Until it applies, the source's details show **Waiting to apply**. The change applies on the next update from your repository's GitHub Actions workflow. Choosing **Sync** does not apply it.
 2. Edit the workflow's `base-locale:` value to match it.
-3. Run the workflow. If unpublished edits are waiting, the run is deferred. Publish or resolve those edits, then run the workflow again.
+3. Run the workflow. If there are unsent edits, the update is held. Publish or resolve those edits, then run the workflow again.
 
 [Sync from the repository](../sync/revert.md#resync) replaces values but keeps the current base language.
 

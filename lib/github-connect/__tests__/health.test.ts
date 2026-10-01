@@ -142,10 +142,24 @@ describe("planConnectionHealth — 정상", () => {
 });
 
 describe("planConnectionHealth — 리포 정체성", () => {
-  it("고정된 ID가 없는 옛 행은 not-connected다 — 이름만 맞는 것을 연결로 세지 않는다", () => {
-    expect(
-      planConnectionHealth({ project: { ...project, repositoryId: null }, probe: okProbe }),
-    ).toEqual({ status: "not-connected" });
+  /**
+   * ⚠️ **설치는 있고 리포 id가 없으면 `unpinned`다** (ux-drift-unify D1) — 목록이 이미 Disconnected(재연결 필요)로 말하던
+   * 상태를 Home·Settings도 같게 말한다. 이름만 맞는 것을 연결로 세지 않는 것은 그대로다(`createGitClient`가 쓰기 직전에 거부한다).
+   * **probe 결과와 무관하다** — 저장된 것이 판정을 끝낸다.
+   */
+  it.each<ProbeResult>([okProbe, { status: "not-installed" }, { status: "error" }])(
+    "고정된 ID가 없는 행은 probe($status)와 무관하게 unpinned다",
+    (probe) => {
+      expect(planConnectionHealth({ project: { ...project, repositoryId: null }, probe })).toEqual({ status: "unpinned" });
+    },
+  );
+
+  it("설치가 없으면 리포 id와 무관하게 not-connected다 — 설치 없음이 먼저다", () => {
+    for (const repositoryId of [null, "1035512"]) {
+      expect(
+        planConnectionHealth({ project: { ...project, installationId: null, repositoryId }, probe: okProbe }),
+      ).toEqual({ status: "not-connected" });
+    }
   });
 
   it("⚠️ **이름이 같아도 ID가 다르면 repo-replaced다** — 이름 재사용이 여기서 갈린다", () => {

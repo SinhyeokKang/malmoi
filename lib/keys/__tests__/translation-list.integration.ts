@@ -125,7 +125,8 @@ async function oracle(surfaceIds: string[], filter: Parameters<typeof keyMatches
   return orderKeySummaries(out);
 }
 
-const q = (over: Partial<TranslationQuery>): TranslationQuery => ({ ...DEFAULT_TRANSLATION_QUERY, ...over });
+// ⚠️ 이 파일의 oracle은 This source(p-web)를 기준으로 쓰였다 — 기본 범위가 All sources로 바뀐 뒤(translation-filter-scope) 명시한다.
+const q = (over: Partial<TranslationQuery>): TranslationQuery => ({ ...DEFAULT_TRANSLATION_QUERY, scope: "source", ...over });
 const list = (query: TranslationQuery, pageSize?: number) => loadTranslationList(prisma, { projectId: "p", routeSurfaceId: "p-web", query, pageSize });
 
 describe("loadTranslationTree", () => {
@@ -160,6 +161,11 @@ describe("loadTranslationList — oracle 대조", () => {
     const project = await list(q({ scope: "project" }));
     expect(project.rows.map(r => r.keyId)).toEqual((await oracle(["p-app", "p-web"], { completion: "all" })).map(e => e.keyId));
     expect(project.rows.find(r => r.keyId === "a2")).toMatchObject({ surfaceSlug: "app", namespace: "app", totalLocales: 2, missingCount: 1 });
+  });
+
+  it("기본 쿼리(범위 생략)는 전 활성 소스다 — 최초 진입 (translation-filter-scope 조건 1)", async () => {
+    const result = await list(DEFAULT_TRANSLATION_QUERY);
+    expect(result.rows.map(r => r.keyId)).toEqual((await oracle(["p-app", "p-web"], { completion: "all" })).map(e => e.keyId));
   });
 
   it("This namespace인데 네임스페이스가 전체(*)면 This source와 같다 — `*`라는 이름을 찾아 0건이 되지 않는다", async () => {
@@ -227,6 +233,16 @@ describe("loadTranslationList — 검색", () => {
     expect((await list(q({ q: "_" }))).rows.map(r => r.keyId)).toEqual(["w4"]);
   });
 
+  it("여러 로케일이 일치하면 COLLATE \"C\"로 첫 로케일의 셀 하나다 — 전량·숫자 페이지가 같다 (DISTINCT ON)", async () => {
+    // 삽입 순서를 코드순과 반대로(ko → ja) 둔다 — 우연히 먼저 넣은 행이 이기는 것과 구분한다.
+    await keys("p", "web", [{ id: "w8", key: "common.both", ns: "common", source: "Both", sort: 3, cells: [["en", "Both"], ["ko", "zzword 한"], ["ja", "zzword 日"]] }]);
+    for (const pageSize of ["all", 100] as const) {
+      const result = await loadTranslationList(prisma, { projectId: "p", routeSurfaceId: "p-web", query: q({ q: "zzword" }), pageSize });
+      expect(result.rows.map(r => r.keyId)).toEqual(["w8"]);
+      expect(result.rows[0]?.match).toEqual({ field: "translation", localeCode: "ja", text: "zzword 日", start: 0, length: 6 });
+    }
+  });
+
   it("일치 조각은 어느 필드·언어인지와 범위를 준다 — HTML이 아니다", async () => {
     const row = (await list(q({ q: "로그" }))).rows[0];
     expect(row?.match).toEqual({ field: "translation", localeCode: "ko", text: "로그인", start: 0, length: 2 });
@@ -256,6 +272,79 @@ describe("loadTranslationList — 페이지", () => {
 
   it("알 수 없는 cursor는 첫 페이지다 — 조작된 값으로 범위를 넓히지 않는다", async () => {
     expect((await list(q({ cursor: "not-a-cursor" }))).rows.map(r => r.keyId)).toEqual((await list(q({}))).rows.map(r => r.keyId));
+  });
+});
+
+describe("loadTranslationList — 전량(pageSize: \"all\") (translation-filter-scope T3 · 조건 5)", () => {
+  const all = (query: TranslationQuery, extra: { routeSurfaceId?: string; selectedKeyId?: string } = {}) =>
+    loadTranslationList(prisma, { projectId: "p", routeSurfaceId: extra.routeSurfaceId ?? "p-web", query, pageSize: "all", ...(extra.selectedKeyId === undefined ? {} : { selectedKeyId: extra.selectedKeyId }) });
+  const paged = (query: TranslationQuery, extra: { routeSurfaceId?: string; selectedKeyId?: string } = {}) =>
+    loadTranslationList(prisma, { projectId: "p", routeSurfaceId: extra.routeSurfaceId ?? "p-web", query, pageSize: 1000, ...(extra.selectedKeyId === undefined ? {} : { selectedKeyId: extra.selectedKeyId }) });
+
+  const CASES: [string, TranslationQuery][] = [
+    ["기본(All sources)", DEFAULT_TRANSLATION_QUERY],
+    ["This source", q({})],
+    ["This namespace", q({ scope: "namespace", ns: "auth" })],
+    ["incomplete", q({ scope: "project", completion: "incomplete" })],
+    ["Missing in ja", q({ scope: "project", completion: "missing", missingLocale: "ja" })],
+    ["review", q({ scope: "project", state: "review" })],
+    ["new", q({ scope: "project", state: "new" })],
+    ["검색 — 키·원문", q({ scope: "project", q: "a" })],
+    ["검색 — 번역값", q({ scope: "project", q: "로그" })],
+  ];
+
+  it.each(CASES)("%s: 숫자 pageSize 경로와 행·일치 조각·집계가 같고, 행 수 = matchedKeyCount · nextCursor 없음", async (_name, query) => {
+    for (const selectedKeyId of [undefined, "w7", "w1", "a2"]) {
+      const full = await all(query, { selectedKeyId });
+      const reference = await paged(query, { selectedKeyId });
+      expect(full.rows).toEqual(reference.rows);
+      expect(full.rows).toHaveLength(full.matchedKeyCount);
+      expect(full.matchedKeyCount).toBe(reference.matchedKeyCount);
+      expect(full.incompleteKeyCount).toBe(reference.incompleteKeyCount);
+      expect(full.selectedInResult).toBe(reference.selectedInResult);
+      expect(full.effective).toEqual(reference.effective);
+      expect(full.nextCursor).toBeNull();
+    }
+  });
+
+  it("cursor를 무시하고 처음부터 전부 싣는다 — 전량에는 다음 페이지가 없다", async () => {
+    const first = await list(q({ scope: "project" }), 2);
+    expect(first.nextCursor).not.toBeNull();
+    expect((await all(q({ scope: "project", cursor: first.nextCursor! }))).rows.map(r => r.keyId)).toEqual((await all(q({ scope: "project" }))).rows.map(r => r.keyId));
+  });
+
+  it("다른 테넌트의 키는 0이다 — 같은 이름·같은 문장이어도", async () => {
+    const rows = (await all(q({ scope: "project", q: "Save" }))).rows;
+    expect(rows.map(r => r.keyId)).toEqual(["w1"]);
+    expect((await all(DEFAULT_TRANSLATION_QUERY)).rows.some(r => r.keyId.startsWith("q"))).toBe(false);
+  });
+
+  it("orphaned 키와 보관 소스의 키는 0이다", async () => {
+    await surface("p", "old", ["en"]);
+    await keys("p", "old", [{ id: "o1", key: "old.title", ns: "old", source: "Old title", sort: 0, cells: [["en", "Old title"]] }]);
+    await prisma.translationSurface.update({ where: { id: "p-old" }, data: { archivedAt: new Date("2026-09-25T00:00:00Z") } });
+    const ids = (await all(DEFAULT_TRANSLATION_QUERY)).rows.map(r => r.keyId);
+    expect(ids).not.toContain("w6");
+    expect(ids).not.toContain("o1");
+    expect(ids.sort()).toEqual(["a1", "a2", "w1", "w2", "w3", "w4", "w5", "w7"]);
+  });
+
+  it("This source·This namespace는 경로 밖 소스를 싣지 않는다", async () => {
+    expect((await all(q({}))).rows.every(r => r.surfaceSlug === "web")).toBe(true);
+    expect((await all(q({ scope: "namespace", ns: "auth" }))).rows.every(r => r.surfaceSlug === "web" && r.namespace === "auth")).toBe(true);
+    expect((await all(q({}), { routeSurfaceId: "p-app" })).rows.map(r => r.keyId)).toEqual(["a2", "a1"]);
+  });
+
+  it("Missing in ja는 ja가 없는 소스(app)의 행을 싣지 않는다", async () => {
+    const result = await all(q({ scope: "project", completion: "missing", missingLocale: "ja" }));
+    expect(result.rows.some(r => r.surfaceSlug === "app")).toBe(false);
+    expect(result.effective.excludedSurfaceIds).toEqual(["p-app"]);
+  });
+
+  it("활성 소스가 없는 프로젝트는 빈 목록이다", async () => {
+    await project("z", null);
+    const result = await loadTranslationList(prisma, { projectId: "z", routeSurfaceId: "none", query: DEFAULT_TRANSLATION_QUERY, pageSize: "all", selectedKeyId: "w1" });
+    expect(result).toMatchObject({ rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, nextCursor: null, selectedInResult: false });
   });
 });
 
@@ -289,7 +378,8 @@ describe("resolveKeyIdByName — Logs의 옛 사건이 가리키는 키", () => 
 describe("translationLinkFor — Logs 상세의 'Open this translation'", () => {
   it("사건의 소스·키 이름으로 현재 키를 찾아 그 키에 착지하는 주소를 만든다", async () => {
     const href = await translationLinkFor(prisma, { projectId: "p", slug: "p", surfaceSlug: "web", key: "common.save" });
-    expect(href).toBe("/projects/p/surfaces/web/translations?ns=common&scope=namespace&key=w1&keySurface=web");
+    // 필터를 켜지 않는다 — 위치(ns)와 선택 키만 싣는다(translation-filter-scope 조건 10).
+    expect(href).toBe("/projects/p/surfaces/web/translations?ns=common&key=w1&keySurface=web");
   });
 
   it("사라진 키·다른 프로젝트의 키는 링크가 없다 — 그리지 않는다", async () => {

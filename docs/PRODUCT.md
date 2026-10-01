@@ -148,10 +148,22 @@ Publish는 미저장을 **버리지 않는다** — 확인창에서 저장된 �
 명시적인 경계가 없었다 — 찾는 곳(소스 트리 + 키 목록)과 고치는 곳(선택 키의 로케일 상세)을 나누고, 경계를 Save 하나로 세웠다(사용자 확정).
 여러 언어의 Save는 원자적이다 — 한 셀이나 사건 기록이 실패하면 전부 롤백한다.
 
-**찾기의 기본값** (translation-rework, 사용자 승인). 검색은 키 이름·원문(`sourceText`)·활성 로케일의 **저장된** 번역값을
-대소문자 무시 부분 일치로 찾는다 — 설명(description)은 대상이 아니다. 최초 진입과 `Clear filters`의 범위는 `This source`이고,
-트리에서 네임스페이스를 누르면 `This namespace`가 함께 선다. `Clear filters`는 완성도·상태·범위 **세 축만** 되돌린다 — 검색어·트리
-선택·상세 언어·선택 키는 남는다.
+**찾기의 기본값** (translation-rework, 사용자 승인 — 범위·트리는 2026-09-30 사용자가 뒤집었다, translation-filter-scope). 검색은 키 이름·
+원문(`sourceText`)·활성 로케일의 **저장된** 번역값을 대소문자 무시 부분 일치로 찾는다 — 설명(description)은 대상이 아니다.
+**최초 진입과 `Clear filters`의 범위는 `All sources`다**(옛 `This source` — 다른 소스에만 있는 문구를 검색하면 0건이었고 넓히라는 안내가
+없었다). `Clear filters`는 완성도·상태·범위 **세 축만** 되돌린다 — 검색어·트리 위치·상세 언어·선택 키는 남는다.
+
+**트리는 위치이고 필터가 아니다** (2026-09-30 사용자). 필터는 사용자가 콤보박스(Completion · State · Scope)와 검색을 직접 조작할 때만
+붙는다 — 트리·키 선택은 필터 값을 바꾸지 않는다(옛 트리 클릭은 범위를 `This source`/`This namespace`로 덮어써, 넓혀 둔 범위가 조용히
+좁혀졌다). 트리 클릭은 그 위치의 **첫 키 한 행**으로 가고 그 행이 보이게 스크롤한다. 정렬이 `Incomplete first`라 같은 네임스페이스의
+키는 목록에 흩어진다 — 그 네임스페이스만 보려면 Scope `This namespace`를 고른다(**현재 위치의** 네임스페이스라 트리로 옮기면 대상도 따라간다).
+**필터가 켜지면 트리에 반영된다** — 조건에 맞는 키가 없는 소스·네임스페이스는 숨기고 숫자는 일치 키 수가 된다. 예외 둘: 위치 노드는 0이어도
+흐린 행으로 남고, 목록 세대 안에서 한 번 보인 노드는 Save로 0이 되어도 숫자만 바뀐다. 검색이 0건인데 범위가 좁으면 빈 상태가
+`Search all sources`를 먼저 권한다.
+
+**화면 목록은 한 번에 전부 싣는다** (2026-09-30 사용자 — 옛 100행 + "더 보기" 버튼의 반전). 눌러서 더 읽는 버튼이 없다. 측정 게이트에서
+Save 재검증이 한계를 넘었지만(ARCHITECTURE §1.95) 사용자가 받아들였다(2026-10-01). MCP `list_keys`는 cursor 페이징을 외부 계약으로 유지하고,
+기본 범위만 화면처럼 전 소스로 넓어졌다.
 
 **저장한 행은 목록에서 바로 빠지지 않는다** (translation-rework, 사용자 승인). 저장으로 조건을 벗어난 행은 취소선 + `Saved`로
 자리에 남고, 목록 머리의 `+n saved`가 그 수를 따로 센다. 다른 키를 눌러도 남는다 — 목록 세대가 바뀔 때(필터·검색·범위·트리
@@ -595,7 +607,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /docs · /docs/:slug*           ✅ 사용 가이드 — 원고 guide/**.md · 순서 guide/SUMMARY.md · 공개 셸 + 문서 내비 ← docs-guide (2026-09-26)
                                /docs = 개요(독자 두 갈래 Set up / Translate) · 없는 slug·AUTHORING·SHOOTING은 404
                                옛 /docs#<id> 일곱은 개요가 새 페이지로 보낸다 · 앱 안 링크는 routes.docs(page?, anchor?)
-/changelog                     릴리스 노트 — 원문은 GitHub Release(공개 리포, 토큰 없이 1시간 캐시) · 공개 셸 · #v<x.y.z> 착지 ← changelog (2026-09-28)
+/changelog                     릴리스 노트 — 원문은 GitHub Release(공개 리포, 토큰 없이 1시간 캐시 · 배포마다 새로 받는다) · 공개 셸 · #v<x.y.z> 착지 ← changelog (2026-09-28)
                                앱 태그 v<x.y.z>만(draft·prerelease·액션 태그 제외) · GitHub 실패·0건도 200 + GitHub Releases 안내
 /robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
 /sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /changelog · /privacy — /signin은 noindex라 없다 ← seo-geo
@@ -632,7 +644,7 @@ GitHub Release**라 소스에 사본이 없고, 본문 이미지는 `<img>`가 �
 
 **번역은 표면 아래, 소스 관리는 프로젝트 아래다.** 내부 링크는 `routes.surfaceTranslations`와
 `routes.sources`를 쓴다. `routes.translations`의 옛 주소는 저장된 기본 표면으로 보내며
-`?ns=`·`?locales=`·`?q=`·`?state=`와 번역 작업 화면의 키(`scope`·`completion`·`missingLocale`·`key`·`keySurface`·`language`)를 `parseTranslationQuery`→`serializeTranslationQuery` 한 경로로 보존한다. ⚠️ **`cursor`는 주소에 없다**(audit-ux #19 — "Show more keys"는 화면이 누적한다) — 옛 `?cursor=` 주소는 cursor를 뺀 정규 주소로 redirect한다. `key=@first`는 트리 이동이 싣는 예약값으로, 서버가 같은 렌더에서 목록의 첫 키로 풀고 화면이 주소를 그 키로 맞춘다. 옛 Locales 두 주소는 권한 검사 후 Sources 목록으로 간다.
+`?ns=`·`?locales=`·`?q=`·`?state=`와 번역 작업 화면의 키(`scope`·`completion`·`missingLocale`·`key`·`keySurface`·`language`)를 `parseTranslationQuery`→`serializeTranslationQuery` 한 경로로 보존한다. ⚠️ **`cursor`는 주소에 없다**(audit-ux #19 — 화면 목록은 전량이다) — 옛 `?cursor=` 주소는 cursor를 뺀 정규 주소로 redirect한다. `scope`가 없는 주소는 `All sources`다. `key=@first`는 트리 이동이 싣는 예약값으로, 서버가 같은 렌더에서 목록 순서상 그 위치(소스·네임스페이스)의 첫 키로 풀고 화면이 주소를 그 키로 맞춘다. 옛 Locales 두 주소는 권한 검사 후 Sources 목록으로 간다.
 `/settings?add=sources`도 Sources로 보내고 OAuth 오류 `e`를 보존한다.
 Sources 상세 선택은 클라이언트 상태라 주소·이력이 바뀌지 않고 전체 새로고침은 목록이다.
 Sources 변경은 2026-09-22에 `/merge`를 지나 **프로덕션에 있다**(#68).
@@ -778,7 +790,7 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
 경로의 redirect 껍데기이고(권한 검사 후 `/sources?add=sources` — 앱 안에서 가리키는 곳 0), 표면 추가 판정은
 Sources의 Add sources 모달이 부르는 `addSurfaces`의 `project:settings`가 한다. `member:manage` 뒤에 두는 **페이지는 없다**(§3).
 
-⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?scope=`·`?completion=`(+`?missingLocale=`)·`?q=`와 선택 키 `?key=`(예약값 `@first` = 트리 이동의 첫 키, audit-ux #18)·`?keySurface=`·상세 언어 `?language=`(translation-rework — 정본은 `lib/translations/query.ts`. ⚠️ 번역 목록의 `?cursor=`는 2026-09-25에 주소에서 빠졌다 — More는 클라이언트 누적이고 옛 주소는 redirect다. 상세 언어는 서버로 가지 않고 `history.replaceState`로 주소만 맞춘다. ⚠️ 옛 `?locales=`는 단일 코드일 때만 `language`로, `?state=untranslated`는 `completion=incomplete`로 읽고 다시 내보내지 않는다. 8-4가 `?focus=`를 폐기했다)·**`?state=`**(`unsent`·`review`·`new`)(⚠️ **8-4가 뺐다가 2026-09-15에 Home 카운트 카드가 되살렸다** — 카드 넷이 수만 말하고 목적지가 없으면 개요가 일로 이어지지 않는다(결정 1의 대가). 섹션 안 pending 우선 정렬은 그대로 남는다: 그쪽은 필터를 안 건 사람을 위한 것이고 이쪽은 특정 구간을 보러 온 사람을 위한 것이다)와 **목록의 `?q=`(이름 검색, 2026-09-11 — ⚠️ `?filter=`는 2026-09-13에 사라졌다: 상태를 말하는 자리가 탭에서 **그룹 셋**으로 옮겨갔고, 옛 링크의 그 키는 `?focus=`와 같은 관용구로 **조용히 무시된다**)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. `/account`도 같은 계약 안이다 — `routes.account({ e, sessionRevocation, link, connect })`가 넷을 만들고, **`?connect=`는 GitHub App 연동/해제의 결과**다(`lib/account-connect/http.ts`가 읽는 쪽이고, 만드는 쪽과 읽는 쪽을 같은 함수로 묶지 않는다 — 아래 `?sessionRevocation=` 항목과 같은 이유). 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
+⚠️ **필터는 쿼리 상태다** (2026-09-08 ship 3 — 8-3이 목록으로 넓혔다) — 번역 화면의 `?ns=`·`?scope=`·`?completion=`(+`?missingLocale=`)·`?q=`와 선택 키 `?key=`(예약값 `@first` = 트리 이동의 첫 키, audit-ux #18)·`?keySurface=`·상세 언어 `?language=`(translation-rework — 정본은 `lib/translations/query.ts`. ⚠️ 번역 목록의 `?cursor=`는 2026-09-25에 주소에서 빠졌다 — 옛 주소는 redirect다(2026-10-01부터 화면 목록은 전량이다). 상세 언어는 서버로 가지 않고 `history.replaceState`로 주소만 맞춘다. ⚠️ 옛 `?locales=`는 단일 코드일 때만 `language`로, `?state=untranslated`는 `completion=incomplete`로 읽고 다시 내보내지 않는다. 8-4가 `?focus=`를 폐기했다)·**`?state=`**(`unsent`·`review`·`new`)(⚠️ **8-4가 뺐다가 2026-09-15에 Home 카운트 카드가 되살렸다** — 카드 넷이 수만 말하고 목적지가 없으면 개요가 일로 이어지지 않는다(결정 1의 대가). 섹션 안 pending 우선 정렬은 그대로 남는다: 그쪽은 필터를 안 건 사람을 위한 것이고 이쪽은 특정 구간을 보러 온 사람을 위한 것이다)와 **목록의 `?q=`(이름 검색, 2026-09-11 — ⚠️ `?filter=`는 2026-09-13에 사라졌다: 상태를 말하는 자리가 탭에서 **그룹 셋**으로 옮겨갔고, 옛 링크의 그 키는 `?focus=`와 같은 관용구로 **조용히 무시된다**)**, 이력의 `?cursor=`(7단계)를 페이지가 `searchParams`로 읽어 링크가 공유되고 뒤로가기가 성립한다. `/account`도 같은 계약 안이다 — `routes.account({ e, sessionRevocation, link, connect })`가 넷을 만들고, **`?connect=`는 GitHub App 연동/해제의 결과**다(`lib/account-connect/http.ts`가 읽는 쪽이고, 만드는 쪽과 읽는 쪽을 같은 함수로 묶지 않는다 — 아래 `?sessionRevocation=` 항목과 같은 이유). 생성기는 `lib/routes.ts` **하나**이고 `app/__tests__/entry-points.test.ts`가 생성기↔수신자를 상시로 대조한다.
 
 ⚠️ **번역 화면의 URL은 요청값을, 조회는 적용값을 든다** (translation-rework). `?completion=missing&missingLocale=ja`는 ja가 없는
 범위에서도 URL에 남는다 — 범위 안 소스 **전부**에 ja가 없으면 `Incomplete`로, 일부에만 없으면 **그 소스를 결과에서 빼고** 계산한다

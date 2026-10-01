@@ -182,36 +182,91 @@ it.each(["OWNER", "EDITOR"] as const)("소스가 없을 때 안내와 추가 권
 });
 // 아래 셋은 실브라우저 대조(2026-09-22)에서 시안과 갈린 자리다 — 색·글리프라 값 테스트로는 안 잡힌다.
 const failedFirst = { ...source, lastCommitSha: null, lastImportError: "parse-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") };
+const partialAfter = { ...source, lastImportError: "partial-import", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") };
+/*
+  칸 톤은 §2.4 상태 톤이다(`planSurfaceImportStatus().tone` — 2026-10-01 🔴 A1·5-Y6). 옛 판은 `failed`/`default` 둘이라
+  일부 반영이 붉은 칸, 성공이 회색 칸이었다 — 같은 행의 배지와 톤이 갈렸다.
+*/
 it.each([
-  { state: "imported" as const, row: source, icon: false, tone: "default", label: "Synced" },
-  { state: "failed-first" as const, row: failedFirst, icon: true, tone: "failed", label: "First sync failed" },
-  { state: "failed-after" as const, row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") }, icon: true, tone: "failed", label: "Last sync failed" },
-  { state: "importing" as const, row: { ...source, lastCommitSha: null, lastImportStartedAt: new Date() }, icon: true, tone: "default", label: "Syncing" },
-])("목록 행은 적재 상태를 색이 아니라 낱말과 글리프로도 말한다 $state", async ({ state, row, icon, tone, label }) => {
+  { state: "imported" as const, row: source, tone: "success", label: "Synced" },
+  { state: "failed-first" as const, row: failedFirst, tone: "danger", label: "Sync failed" },
+  { state: "failed-after" as const, row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") }, tone: "danger", label: "Sync failed" },
+  { state: "failed-after" as const, row: partialAfter, tone: "warning", label: "Partially synced" },
+  { state: "importing" as const, row: { ...source, lastCommitSha: null, lastImportStartedAt: new Date() }, tone: "muted", label: "Syncing" },
+])("목록 행은 적재 상태를 색이 아니라 낱말로도 말한다 $state · $label", async ({ state, row, tone, label }) => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [row] }} adapters={[]} now={new Date()} />);
   const all = [...document.querySelectorAll(`[data-source-status="${state}"]`)];
   expect(all).toHaveLength(2);
-  // 상태는 배지다(2026-09-30 사용자) — 바깥 칸이 표시·표식을, 안의 알약이 글리프와 낱말을 든다.
+  // 상태는 배지다(2026-09-30 사용자) — 바깥 칸이 표시·표식을, 안의 알약이 낱말을 든다.
   const status = all[0]!.firstElementChild!;
   expect(status.className).toContain("rounded-full");
   expect(status.textContent).toContain(label);
-  // 실패는 `circle-alert`, 적재 중은 테두리 스피너 — 매체가 달라도 "글리프가 선다"는 같다.
-  expect(status.firstElementChild !== null).toBe(icon);
-  // 장식이라 접근성 트리에 이름 없는 그래픽으로 새면 "색만으로 말하지 않는다"가 반대로 깨진다.
-  // `<time>`은 장식이 아니라 시각이다 — UTC 접근 이름을 든다 (audit #41).
-  expect([...status.children].filter(node => node.tagName !== "TIME").every(node => node.getAttribute("aria-hidden") !== null)).toBe(true);
+  // 배지 안에 글리프·시각을 넣지 않는다(§2.4 — 배지는 낱말뿐). 시각은 배지 옆 `<time>`이다.
+  expect([...status.children]).toEqual([]);
   expect(document.querySelector("[data-source-glyph]")?.getAttribute("data-tone")).toBe(tone);
+});
+it("진행 중 시각은 배지 밖 `<time>`이 UTC 접근 이름을 든다", async () => {
+  const started = new Date(Date.now() - 5 * 60_000);
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [{ ...source, lastCommitSha: null, lastImportStartedAt: started }] }} adapters={[]} now={new Date()} />);
+  const time = document.querySelector('[data-source-status="importing"] time')!;
+  expect(time.getAttribute("aria-label")).toContain("UTC");
+  expect(time.closest(".rounded-full")).toBeNull();
+});
+it("총계는 카드 머리 한 곳이다 — 화면 제목 옆에 같은 개수를 두 번 세우지 않는다 (4-Y6)", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
+  expect(document.querySelector("h1")!.parentElement!.textContent).toBe("Sources");
+  expect(document.querySelector("section h2")!.parentElement!.textContent).toContain(m.sources.count(1));
+});
+it("행 chevron은 다른 행과 같은 muted이고, 선택·hover 면은 `/[0.0N]` 철자다 (4-Y11 · 5-Y7)", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
+  const row = document.querySelector("[data-source-row]")!;
+  expect(row.className).toContain("disabled:bg-foreground/[0.07]");
+  expect(row.className).toContain("hover:bg-foreground/[0.02]");
+  const chevron = row.parentElement!.querySelector("svg.lucide-chevron-right")!;
+  expect(chevron.getAttribute("class")).toContain("text-muted-foreground");
+});
+it("소스 0개는 카드 안 `EmptyRowCard inset`이다 — 손 조립 중앙 블록이 아니다 (4-Y14)", async () => {
+  await render(<SourcesScreen slug="p" role="OWNER" data={{ installed: true, sources: [] }} adapters={[]} now={new Date()} />);
+  const empty = [...document.querySelectorAll("p")].find(node => node.textContent === m.sources.emptyTitle)!;
+  expect(empty.className).toContain("text-base font-medium");
+  expect(document.querySelector("section")!.innerHTML).not.toContain("max-w-[460px]");
+});
+it.each([
+  { outcome: { ok: true, count: 7, failed: 0 }, tone: "success", role: "status" },
+  { outcome: { ok: true, count: 7, failed: 1 }, tone: "warning", role: "status" },
+  { outcome: { ok: false, error: "prepare-failed" }, tone: "danger", role: "alert" },
+])("첫 적재 결과는 계산한 톤을 버리지 않는다 — 목록 카드·상세 카드 모두 `Alert inset` $tone (🔴 J)", async ({ outcome, tone, role }) => {
+  await runFirst(outcome);
+  const results = [...document.querySelectorAll("[data-card-notice] [data-alert]")];
+  // 상세 모달의 Sync status 카드 하나 — 목록 카드의 결과는 모달이 닫힌 뒤에도 남는다(아래 그 자리).
+  expect(results.map(node => node.getAttribute("data-alert"))).toEqual([tone, tone]);
+  expect(results.every(node => node.getAttribute("role") === role)).toBe(true);
 });
 it("상세의 적재 상태는 칩 하나와 두 줄로 선다", async () => {
   mocks.load.mockResolvedValue({ ok: true, detail: { ...detail, ...failedFirst } });
   await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [failedFirst] }} adapters={[]} now={new Date()} />);
   await open();
   const dialog = document.querySelector('[role="dialog"]')!;
-  expect(dialog.textContent).toContain("First sync failed");
+  expect(dialog.textContent).toContain("Sync failed");
   expect(dialog.textContent).toContain("Updated by syncs from your repository.");
   // 목록 줄을 상세에 다시 쓰지 않는다 — 두 벌이 되면 실패 낱말이 화면마다 갈린다.
   expect(dialog.querySelector("[data-source-status]")).toBeNull();
   expect(dialog.querySelector('[role="alert"]')).toBeNull();
+});
+it.each([
+  { name: "첫 실패", row: failedFirst, tone: "danger", glyph: "lucide-circle-x" },
+  { name: "일부 반영", row: partialAfter, tone: "warning", glyph: "lucide-triangle-alert" },
+  { name: "성공", row: source, tone: "success", glyph: "lucide-circle-check" },
+  { name: "진행 중", row: { ...source, lastCommitSha: null, lastImportStartedAt: new Date() }, tone: "muted", glyph: "lucide-loader-circle" },
+])("상세 칸의 톤·글리프는 §2.4 열이다 — $name (5-Y4 · 5-Y14)", async ({ row, tone, glyph }) => {
+  mocks.load.mockResolvedValue({ ok: true, detail: { ...detail, ...row } });
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [row] }} adapters={[]} now={new Date()} />);
+  await open();
+  const tile = document.querySelector('[role="dialog"] [data-source-status-tile]')!;
+  expect(tile.getAttribute("data-tone")).toBe(tone);
+  expect(tile.querySelector("svg")!.getAttribute("class")).toContain(glyph);
+  // 실패 옆에 경고 삼각을 세우지 않는다 — `TriangleAlert`는 경고 전용이다(§2.4 글리프 열).
+  if (tone === "danger") expect(tile.querySelector(".lucide-triangle-alert")).toBeNull();
 });
 // 2026-09-30 사용자 — 행의 [Open translations]를 걷고, 상세 모달 바닥에 [Close](보조) [Open translations](primary) 순으로 둔다.
 it("목록 행에 Open translations가 없고, 상세 모달 바닥이 Close → Open translations(primary)다", async () => {
@@ -232,12 +287,19 @@ it("상세를 읽지 못하면 설명이 로딩 중이라고 말하지 않는다
   expect(dialog.textContent).toContain("We couldn't load this source");
   expect(dialog.textContent).not.toContain("Loading source details");
 });
-it("사라진 언어는 낱말과 색을 함께 들되 파일이 사라졌다고 단정하지 않는다", async () => {
+it("사라진 언어는 낱말과 색을 함께 든다 — `Removed from repository` 한 낱말(2026-09-30 상태 통일)", async () => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
   await open();
   const row = [...document.querySelectorAll('[role="dialog"] li')].find(node => node.textContent?.startsWith("ja"))!;
-  expect(row.textContent).toContain("Missing from repository");
-  expect(document.querySelector('[role="dialog"]')!.textContent).toContain("was not found in the last sync");
+  expect(row.textContent).toContain("Removed from repository");
+  // 배지 안에는 글리프가 없다(5-Y19) — `CircleAlert`는 필드 오류 전용이다.
+  expect(row.querySelector(".rounded-full svg")).toBeNull();
+  // 카드 바닥 띠는 danger 톤을 든다(5-Y10) — 손 조립 붉은 글자 줄이 아니다.
+  const strip = document.querySelector('[role="dialog"] [data-alert="danger"]')!;
+  expect(strip.textContent).toContain("was removed from the repository");
+  expect(strip.getAttribute("role")).toBeNull();
+  // 언어 행 [Open]은 앱 안 이동이라 chevron이다(4-Y23).
+  expect(document.querySelector('[role="dialog"] a[href*="language=en"] svg')!.getAttribute("class")).toContain("lucide-chevron-right");
   expect(document.body.textContent).not.toContain("File missing");
 });
 it("적용 대기는 배지·필드 표식·값 두 줄 셋으로 말하고 같은 낱말을 두 번 쓰지 않는다", async () => {
@@ -293,4 +355,30 @@ it("변경이 없으면 확인창 없이 바로 닫는다", async () => {
   await act(async () => { await userEvent.setup().click(button("Close")); });
   expect(document.body.textContent).not.toContain("Discard the base language change?");
   expect(document.querySelector('[role="dialog"]')).toBeNull();
+});
+/** 보관 화면 — 머리 배지는 `StatusBadge archived`, 보관 시각은 Settings 보관 카드와 같은 날짜 형(`utcDay`, 2-Y19), 출구는 "Open settings"(4-Y24). */
+it("보관된 Sources는 날짜만 말하고 출구 낱말이 보관 화면들과 같다", async () => {
+  const { SourcesArchived } = await import("@/components/sources/sources-archived");
+  const at = new Date("2026-09-20T13:45:00Z");
+  await render(<SourcesArchived slug="p" role="OWNER" archivedAt={at} />);
+  const time = document.querySelector("time")!;
+  expect(time.textContent).toBe("Sep 20, 2026");
+  expect(time.getAttribute("dateTime")).toBe(at.toISOString());
+  expect(document.querySelector('a[href*="settings"]')?.textContent).toBe(m.archive.empty.action);
+  expect(document.querySelector('a[href*="settings"] svg')?.getAttribute("class")).toContain("lucide-chevron-right");
+});
+/*
+  EDITOR의 "누가 돌려야 하나" 문장은 OWNER 줄과 같은 갈림을 탄다(#164) — 이전에 성공한 적이 있는 표면(`failed-after`)에
+  "first sync"를 말하면 거짓이다. Home 배너의 EDITOR 문장과 같은 말이다.
+*/
+it.each([
+  { name: "첫 적재 실패", row: failedFirst, want: m.sources.askOwner, not: m.sources.askOwnerRerun },
+  { name: "이후 실패", row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") }, want: m.sources.askOwnerRerun, not: m.sources.askOwner },
+  { name: "일부 반영", row: partialAfter, want: m.sources.askOwnerRerun, not: m.sources.askOwner },
+])("EDITOR는 $name 상태에서 그 상태에 맞는 요청 문장을 본다", async ({ row, want, not }) => {
+  mocks.load.mockResolvedValue({ ok: true, detail: { ...detail, ...row } });
+  await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [row] }} adapters={[]} now={new Date()} />);
+  await open();
+  expect(document.body.textContent).toContain(want);
+  expect(document.body.textContent).not.toContain(not);
 });

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ArrowRight, Check, CircleAlert, Clock, Lock } from "lucide-react";
+import { ChevronRight, CircleCheck, CircleX, Info, LoaderCircle, Lock, TriangleAlert } from "lucide-react";
 import { Fragment, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { OnboardingModal } from "@/components/ui/modal";
@@ -12,19 +12,20 @@ import { PanelCard } from "@/components/ui/panel-card";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LocaleFlag } from "@/components/translations/locale-badge";
+import { MeterBar } from "@/components/locale-meter";
 import { relativeTime } from "@/lib/relative-time";
 import { CopyButton } from "@/components/onboarding/copy-button";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
-import { planSurfaceImportStatus } from "@/lib/import/surface-status";
+import { planSurfaceImportStatus, type SurfaceImportStatus } from "@/lib/import/surface-status";
 import { basePending } from "@/lib/onboarding/base-pending";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
 import { routes, ALL_NAMESPACES } from "@/lib/routes";
 import { planSourceActions } from "@/lib/sources/actions";
+import { STATE } from "@/lib/status/canon";
 import type { SourceDetail } from "@/lib/sources/query";
 import { utcMinute } from "@/lib/utc-time";
 import { BaseLanguageForm } from "./base-language-form";
-import { SourceStatus } from "./source-status";
 import { IconTile } from "@/components/ui/icon-tile";
 
 export type DetailState = { status: "loading" } | { status: "failed" | "rejected" } | { status: "ready"; detail: SourceDetail; refreshFailed?: boolean };
@@ -57,14 +58,12 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
   const canOpen = !!actions?.canOpen && detail !== null && detail.locales > 0;
   const disabledReason = !detail?.installed ? canEdit ? m.sources.reconnectOwner : m.sources.reconnectEditor : !detail?.lastCommitSha ? m.sources.firstImport : m.sources.noLanguages;
   const failed = state.status === "failed" || state.status === "rejected";
-  const statusFailed = importStatus?.state.startsWith("failed") ?? false;
-  /** 상태마다 "얼마나 됐나"의 출처가 다르다 — 없으면 시각을 생략하고 추정하지 않는다. */
-  const statusAt = detail === null ? null
-    : importStatus?.state === "importing" ? detail.lastImportStartedAt
-    : importStatus?.state === "not-imported" ? detail.createdAt
-    : statusFailed ? detail.lastImportFailedAt
-    : detail.lastImportedAt;
-  const statusLabel = importStatus === null ? "" : { "not-imported": m.settings.sources.notImported, importing: m.settings.sources.importing, "failed-first": m.settings.sources.failed, "failed-after": m.settings.sources.failedAfter, imported: m.settings.sources.imported }[importStatus.state];
+  const statusFailed = importStatus?.state === "failed-first" || importStatus?.state === "failed-after";
+  /*
+    상태의 시각은 판정이 든다(`planSurfaceImportStatus().at` — 6-⚪13, 목록과 같은 값). 미적재만 판정에 시각이 없고,
+    여기서는 "언제 더했나"(`createdAt`)를 따로 말한다 — 없으면 시각을 생략하고 추정하지 않는다.
+  */
+  const statusAt = detail === null || importStatus === null ? null : importStatus.state === "not-imported" ? detail.createdAt : importStatus.at;
   return <OnboardingModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, detail.locales)}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : failed ? undefined : m.sources.loading}
     onClose={() => leave()} closeDisabled={busy} returnFocusRef={returnFocusRef} fallbackFocusRef={fallbackFocusRef} quiet={fieldError}
     panelClassName={cn(failed ? "min-h-0" : "min-h-[min(560px,calc(100svh-96px))] max-h-[min(800px,calc(100svh-96px))]")}
@@ -91,26 +90,23 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
           <div className="border-border min-w-0 space-y-1 border-l px-4 py-3.5 @max-[850px]:border-t"><dt className="text-muted-foreground text-xs">{m.sources.repository}</dt><dd className="[overflow-wrap:anywhere]">{detail.repository.repoOwner}/<wbr />{detail.repository.repoName} · {detail.repository.baseBranch}</dd></div>
         </dl>
       </section>}
-      {/* ⚠️ **시안 `1d`의 행 형이다** — 28 칩 + 제목/보조 두 줄 + 오른쪽 행동. `Alert` 상자가 아니다:
+      {/* ⚠️ **상태 줄은 시안 `1d`의 행 형이다** — 28 칩 + 제목/보조 두 줄 + 오른쪽 행동. 상태 줄은 `Alert` 상자가 아니다(결과 notice만 Alert다):
           같은 카드 안에서 상태가 상자를 쓰면 실패만 다른 그릇이 된다. */}
-      <PanelCard title={m.sources.status} subtitle={m.sources.statusHelp}>
-        {importResult && <div role="status" className="border-divider text-base border-t px-4 py-[13px]">{importResult.text}</div>}
-        <div className="border-divider flex items-center gap-3 border-t px-4 py-[13px]">
-          <IconTile className={statusFailed ? "bg-destructive/8 text-destructive" : undefined}>
-            {statusFailed ? <CircleAlert aria-hidden />
-              : importStatus?.state === "importing" ? <span aria-hidden className="border-foreground/15 border-t-muted-foreground size-3.5 animate-spin rounded-full border-2 [animation-duration:0.7s]" />
-              : importStatus?.state === "not-imported" ? <Clock aria-hidden />
-              : <Check aria-hidden />}
-          </IconTile>
+      {/* 적재 결과는 카드 notice다(🔴 J) — 계산한 톤을 `Alert inset`이 그리고, 실패는 `alert`로 읽던 것을 끊는다. 머리 아래 선은 notice 아래로 내려간다(4-Y1). */}
+      <PanelCard title={m.sources.status} subtitle={m.sources.statusHelp}
+        notice={importResult ? <Alert inset variant={importResult.tone} live={importResult.tone === "danger" ? "alert" : "status"}>{importResult.text}</Alert> : undefined}>
+        <div className="flex items-center gap-3 px-4 py-[13px]">
+          {importStatus && <IconTile data-source-status-tile tone={importStatus.tone}><StatusGlyph labelKey={importStatus.labelKey} /></IconTile>}
           <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-            <span className="text-base"><span className="font-medium">{statusLabel}</span>
+            <span className="text-base"><span className="font-medium">{importStatus && STATE[importStatus.labelKey].label}</span>
               {statusAt !== null && <> — {importStatus?.state === "importing" && <>{m.sources.started} </>}{importStatus?.state === "not-imported" && <>{m.sources.addedAgo} </>}<RelativeAt at={statusAt} now={now} /></>}</span>
-            <span className={cn("text-xs leading-[1.6]", statusFailed ? "text-destructive" : "text-muted-foreground")}>
+            {/* 보조 문장은 본문 색이다 — 톤은 칸과 낱말이 든다(§6.2 "Alert는 글자를 본문 색으로"와 같은 규칙, 옛 판은 호출부가 호박·빨강 글자를 골랐다). */}
+            <span className="text-muted-foreground text-xs leading-[1.6]">
               {isImportFailureCode(detail.lastImportError) ? importFailureMessage(detail.lastImportError)
                 : detail.lastCommitSha ? m.sources.importedSummary(detail.keys, detail.locales)
                 : m.sources.notImportedHelp}
-              {statusFailed && !canEdit && <span className="text-muted-foreground"> {m.sources.askOwner}</span>}
-              {importStatus?.state === "failed-after" && canEdit && <span className="text-muted-foreground"> {m.settings.sources.rerun}</span>}
+              {statusFailed && !canEdit && <> {importStatus?.state === "failed-after" ? m.sources.askOwnerRerun : m.sources.askOwner}</>}
+              {importStatus?.state === "failed-after" && canEdit && <> {m.settings.sources.rerun}</>}
             </span>
             {!detail.installed && <span className="text-muted-foreground text-xs">{canEdit ? <>{m.sources.reconnectOwner} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></> : m.sources.reconnectEditor}</span>}
           </span>
@@ -120,12 +116,12 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         {/* ⚠️ **적재 이후 실패는 두 행이다** (`1d` ④) — 실패 한 줄만 두면 지금 보이는 키가 유효한지 알 수 없다.
             ⚠️ **둘째 행이 말하는 것은 적재 시각이 아니라 원본 커밋이다** — 적재 완료 시각을 저장하는 컬럼이 없다. */}
         {importStatus?.state === "failed-after" && detail.lastImportedAt && <div className="border-border flex items-center gap-3 border-t px-4 py-[13px]">
-          <IconTile><Check aria-hidden /></IconTile>
+          <IconTile tone={STATE.synced.tone}><CircleCheck aria-hidden /></IconTile>
           <span className="min-w-0 flex-1 text-base"><span className="font-medium">{m.sources.lastSuccess}</span> — <SourceTime at={detail.lastImportedAt} /></span>
         </div>}
       </PanelCard>
       <PanelCard title={m.locales.field.label} subtitle={m.sources.baseHelp} badge={basePending(detail) ? <Badge variant="warning">{m.sources.waiting}</Badge> : undefined}>
-        <div className="border-divider border-t px-4 py-[13px]">
+        <div className="px-4 py-[13px]">
         {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned).map(row => row.code)} awaiting={basePending(detail)} onDirty={setDraft} onPending={onBusy} onError={setFieldError} onSaved={onSaved} />
           : <div className="flex items-center gap-3">
               {/* 시안 `1e` ④ — EDITOR는 점선 칩과 자물쇠이고 컨트롤이 없다. */}
@@ -139,13 +135,13 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         </div>}
         </div>
       </PanelCard>
-      <PanelCard title={m.sources.languages} badge={<Badge variant="neutral">{detail.locales}</Badge>} subtitle={m.sources.languagesHelp}>
-        {detail.languages.length === 0 ? <p className="text-muted-foreground border-divider border-t px-4 py-[13px] text-xs">{m.locales.empty.description}</p>
+      <PanelCard title={m.sources.languages} count={detail.locales} countLabel={m.sources.languageCount(detail.locales)} subtitle={m.sources.languagesHelp}>
+        {detail.languages.length === 0 ? <p className="text-muted-foreground px-4 py-[13px] text-xs">{m.locales.empty.description}</p>
           : <ul>{detail.languages.map((row, index) => {
           // 집계 두 쿼리 사이 적재가 바뀌어도 막대 합은 트랙을 넘지 않는다. 퍼센트는 완료만 센다.
           const done = Math.min(row.total, row.translated);
           const review = Math.min(Math.max(0, row.total - done), row.needsReview);
-          return <li key={row.code} className={cn("flex items-center gap-4 px-4 py-[13px] @max-[640px]:flex-wrap", index === 0 ? "border-divider border-t" : "border-border border-t")}>
+          return <li key={row.code} className={cn("flex items-center gap-4 px-4 py-[13px] @max-[640px]:flex-wrap", index > 0 && "border-border border-t")}>
             <span className="flex w-[150px] shrink-0 items-center gap-2 @max-[850px]:w-[120px]">
               <span className={cn("flex", row.orphaned && "opacity-50")}><LocaleFlag code={row.code} /></span>
               <span className={cn("text-base", row.orphaned && "text-muted-foreground")}>{row.code}</span>
@@ -155,35 +151,35 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
               <span className={cn("flex items-baseline text-xs", row.orphaned ? "text-neutral-400" : "text-muted-foreground")}>
                 <span className={cn(!row.orphaned && "text-foreground")}>{row.percent}%</span><span className="ml-auto">{row.translated} of {row.total}</span>
               </span>
-              <span aria-hidden className="bg-foreground/[0.08] flex h-1 overflow-hidden rounded-full">
-                <span className={cn("h-1", row.orphaned ? "bg-foreground/25" : "bg-foreground/85")} style={{ width: `${row.total === 0 ? 0 : (done / row.total) * 100}%` }} />
-                {!row.orphaned && <span className="h-1 bg-amber-500" style={{ width: `${row.total === 0 ? 0 : (review / row.total) * 100}%` }} />}
-              </span>
+              <MeterBar done={row.total === 0 ? 0 : (done / row.total) * 100} review={row.orphaned || row.total === 0 ? 0 : (review / row.total) * 100} dimmed={row.orphaned} />
             </span>
             {/* ⚠️ **좁은 폭에서 숨기지 않고 행 아래로 내린다** (audit #42) — 숨기면 `aria-hidden` Meter의 amber 조각만 남아 검토·누락이
                 색으로만 전달됐다. 비어 있으면 줄을 만들지 않는다. */}
             <span className="min-w-0 flex-1 text-xs @max-[640px]:order-last @max-[640px]:basis-full @max-[640px]:empty:hidden">
-              {row.orphaned ? <Badge variant="missing"><CircleAlert className="size-3.5" aria-hidden />{m.sources.missingRepo}</Badge>
+              {row.orphaned ? <Badge variant="missing">{m.sources.missingRepo}</Badge>
                 : row.needsReview > 0 ? <Badge variant="warning">{m.sources.needReview(row.needsReview)}</Badge>
                 : row.isBase ? <span className="text-muted-foreground">{m.sources.baseRow}</span> : null}
             </span>
-            {canOpen && !row.orphaned ? <ButtonLink size="sm" className="shrink-0" href={routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })); } }}>{m.sources.openLanguage}<ArrowRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>
+            {canOpen && !row.orphaned ? <ButtonLink size="sm" className="shrink-0" href={routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })); } }}>{m.sources.openLanguage}<ChevronRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>
               : busy ? <Button size="sm" className="shrink-0" disabled>{m.sources.openLanguage}</Button>
               : <><span id={`language-open-reason-${row.code}`} className="sr-only">{row.orphaned ? m.sources.orphanReason : disabledReason}</span><Button size="sm" className="shrink-0" aria-disabled aria-describedby={`language-open-reason-${row.code}`} onClick={event => event.preventDefault()}>{m.sources.openLanguage}</Button></>}
           </li>;
         })}</ul>}
         {/* ⚠️ **사라짐 안내는 행이 아니라 카드 바닥의 스트립이다** (시안 `1c`) — 행에 넣으면 비고 열이
-            두 배로 길어져 같은 표에서 행 높이가 갈린다. 파일이 사라졌다고 단정하지 않는다. */}
-        {detail.languages.filter(row => row.orphaned).map(row => <div key={`missing-${row.code}`} className="border-divider bg-foreground/2 text-destructive flex items-start gap-2 border-t px-4 pt-2.5 pb-3 text-xs">
-          <CircleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
-          <span className="leading-[1.55] text-red-700"><span className="text-foreground">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated, detail.locales)}</span></span>
+            두 배로 길어져 같은 표에서 행 높이가 갈린다. 파일이 사라졌다고 단정하지 않는다.
+            ⚠️ **`BannerLine`이 아니라 `Alert inset danger`다**(5-Y10) — `BannerLine`은 한 줄로 자르는데 이 안내는 세 문장이다(복구 길까지).
+            지난 상태라 `live="off"`다 — 모달을 여는 순간 assertive로 끼어들지 않는다. */}
+        {detail.languages.filter(row => row.orphaned).map(row => <div key={`missing-${row.code}`} className="border-divider border-t">
+          <Alert inset size="compact" variant="danger" live="off">
+            <span className="leading-[1.55]"><span className="font-medium">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated, detail.locales)}</span></span>
+          </Alert>
         </div>)}
       </PanelCard>
     </div>}
     {confirm !== null && detail && <Dialog open onOpenChange={next => { if (!next) setConfirm(null); }}>
       <DialogContent title={m.sources.discardTitle} description={m.sources.discardBody(draft ?? "", detail.baseLocale ?? "")}
         footer={<>
-          <DialogClose asChild><Button>{m.sources.keepEditing}</Button></DialogClose>
+          <DialogClose asChild><Button data-initial-focus>{m.sources.keepEditing}</Button></DialogClose>
           <DialogClose asChild><Button variant="danger" onClick={() => { const href = confirm.href; setConfirm(null); setDraft(null); if (href) router.push(href); else onClose(); }}>{m.sources.discardChange}</Button></DialogClose>
         </>} />
     </Dialog>}
@@ -198,5 +194,18 @@ function slashBreaks(text: string) {
   return text.split("/").map((part, index) => <Fragment key={index}>{index > 0 && <>/<wbr /></>}{part}</Fragment>);
 }
 function SourceTime({ at }: { at: Date }) { return <time dateTime={at.toISOString()} aria-label={utcMinute(at)}>{utcMinute(at)}</time>; }
+/**
+ * 상세 칸의 글리프 — §2.4 글리프 열이다(5-Y4): 실패 `CircleX` · 경고 `TriangleAlert` · 성공 `CircleCheck` · 그 밖 `Info`.
+ * 진행 중은 `LoaderCircle` 회전이다(5-Y14 — 옛 손 조립 원 스피너. 칸 안 자리 교체라 `Button loading`으로 못 옮긴다).
+ */
+function StatusGlyph({ labelKey }: { labelKey: SurfaceImportStatus["labelKey"] }) {
+  switch (labelKey) {
+    case "syncFailed": return <CircleX aria-hidden />;
+    case "partiallySynced": return <TriangleAlert aria-hidden />;
+    case "synced": return <CircleCheck aria-hidden />;
+    case "syncing": return <LoaderCircle className="animate-spin" aria-hidden />;
+    case "notSyncedYet": return <Info aria-hidden />;
+  }
+}
 /** 상대 표기여도 절대 값을 함께 든다 — 화면의 낱말이 "5분 전"이어도 접근 이름은 UTC다 (DESIGN §6.68). */
 function RelativeAt({ at, now }: { at: Date; now: Date }) { return <time dateTime={at.toISOString()} aria-label={utcMinute(at)}>{relativeTime(at, now)}</time>; }

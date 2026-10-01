@@ -1,12 +1,13 @@
 "use client";
 
-import { CircleX, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useEffect, useRef, useState, useTransition, type ClipboardEvent, type KeyboardEvent, type RefObject } from "react";
 import { toast } from "sonner";
 
 import { createInvitations, type InvitationsResult } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { OnboardingModal } from "@/components/ui/modal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -264,6 +265,9 @@ export function InviteModal({
         </span>
       }
       actions={
+        <>
+        {/* 입력 폼 모달은 Cancel을 든다(3-Y6 — MCP 토큰·소스 추가와 같다). 보내는 동안은 X와 같이 막힌다. */}
+        <Button type="button" size="lg" disabled={pending} onClick={onClose}>{m.common.cancel}</Button>
         <Button
           ref={submitRef}
           type="submit"
@@ -275,6 +279,7 @@ export function InviteModal({
         >
           {m.members.invite.send(filledCount)}
         </Button>
+        </>
       }
     >
       <form id={FORM_ID}
@@ -367,10 +372,10 @@ export function InviteModal({
                 </div>
                 {error !== undefined && (
                   /* 오른쪽 44는 열 머리와 같은 그리드다 — 사유가 역할 칸 아래로 번지지 않는다. */
-                  <p id={reasonId} data-row-reason className="text-destructive flex items-center gap-2 pr-11 text-xs leading-[1.6]">
-                    <CircleX aria-hidden className="size-3.5 shrink-0" />
+                  /* 알림은 바닥 상태 문장이 한 번 한다 — 행마다 alert면 사유가 줄 수만큼 끼어든다. */
+                  <FieldError id={reasonId} data-row-reason="" role={undefined} className="pr-11">
                     <span>{error}</span>
-                  </p>
+                  </FieldError>
                 )}
               </li>
             );

@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConnectedAppsCard, type ConnectedAppData } from "@/components/mcp/connected-apps-card";
 
+import { m } from "@/lib/i18n";
+
 import { find, render } from "./helpers/dom";
 
 const mocks = vi.hoisted(() => ({ disconnect: vi.fn(), refresh: vi.fn() }));
@@ -74,6 +76,8 @@ describe("목록", () => {
     await mount(APPS);
     expect(card().querySelectorAll("[data-app-row]")).toHaveLength(3);
     expect(card().querySelector("h2 + span")?.textContent).toContain("3");
+    // 숫자는 aria-hidden이고 sr 문장은 연결 수다 — 카드 제목을 되읽지 않는다(U3 r1).
+    expect(card().querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe(m.mcpConnector.apps.count(3));
     const first = find<HTMLElement>(card(), '[data-app-row="c1"]');
     expect(first.textContent).toContain("claude.ai/oauth/claude-code-client-metadata");
     // 권한마다 배지 하나다(2026-09-30 사용자).
@@ -132,7 +136,10 @@ describe("목록", () => {
   it("조회 장애 — 빈 상태가 아니다 · danger 행 + Try again(재조회) · 카운트 없음", async () => {
     await mount(null);
     const failed = find<HTMLElement>(card(), "[data-apps-failed]");
-    expect(failed.getAttribute("role")).toBe("alert");
+    // 카드에 붙는 실패는 `Alert inset danger`다(ux-drift-unify 5-Y10) — 손 조립 행은 글자 전체가 빨갰다(§6.2 "Alert는 글자를 본문 색으로").
+    const alert = find<HTMLElement>(failed, '[data-alert="danger"]');
+    expect(alert.getAttribute("role")).toBe("alert");
+    expect(alert.className).not.toContain("text-destructive");
     expect(failed.textContent).toContain("We couldn't load your connected apps.");
     expect(card().textContent).not.toContain("No connected apps");
     expect(card().querySelector("h2 + span")).toBeNull();
@@ -162,7 +169,7 @@ describe("끊기", () => {
     expect(mocks.disconnect).toHaveBeenCalledWith("c2");
     expect(dialog()).toBeNull();
     expect(rowButton("c2")).toBeNull();
-    expect(live().textContent).toBe("Disconnected Claude.");
+    expect(live().textContent).toBe("Disconnected Claude");
     expect(document.activeElement).toBe(rowButton("c3"));
   });
 

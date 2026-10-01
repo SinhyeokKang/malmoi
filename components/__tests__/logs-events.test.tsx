@@ -47,7 +47,10 @@ describe("활동 행과 상세의 실제 동작", () => {
 
   it("수동 적재 성공은 보호 보류라고 말하지 않고 소스별 결과를 보인다", async () => {
     const { container } = await render(<EventRow row={row()} href="/logs" now={now} archived={false} />);
-    expect(container.textContent).toContain("web: Synced");
+    // 보조줄은 `[Manual sync] [web]  4 keys` — 소스는 언제나 배지이고 결과 낱말을 인라인에 싣지 않는다(ux-drift-unify 4-Y20).
+    const badges = [...container.querySelectorAll("[data-event-meta] .rounded-full")].map((node) => node.textContent);
+    expect(badges).toEqual(["Manual sync", "web"]);
+    expect(container.querySelector("[data-event-meta]")?.textContent).toContain("4 keys");
     expect(container.textContent).not.toContain("Nothing was imported");
   });
 
@@ -201,5 +204,66 @@ describe("상세 껍데기 — 실측이 잡은 자리", () => {
     const rows = [...container.querySelectorAll("[data-event-detail-body] table tr")];
     expect(rows.length).toBeGreaterThan(1);
     for (const tr of rows) expect(tr.className).toMatch(/\bh-12\b/);
+  });
+});
+
+/** ux-drift-unify T21 — 상세 머리가 행과 같은 문법이다. */
+describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
+  it("머리는 `[종류 배지][결과 배지]`이고 종류 낱말은 행 보조줄의 첫 배지와 같다", async () => {
+    const value = row();
+    const { container: rowView } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
+    const kind = rowView.querySelector("[data-event-meta] .rounded-full")?.textContent;
+    const { container } = await detail(value);
+    const badges = [...container.querySelectorAll("[data-event-detail-kind] .rounded-full")].map((node) => node.textContent);
+    expect(badges).toEqual([kind, m.logs.status.imported]);
+    // 옛 muted 글자 `Sync run`은 걷혔다 — 같은 종류가 두 낱말이었다.
+    expect(container.querySelector("[data-event-detail-kind]")?.className).not.toContain("text-muted-foreground");
+  });
+
+  it("바닥 버튼은 1024 표면의 `lg`다 — [Close]와 목적지가 같은 크기다", async () => {
+    const { container } = await render(
+      <Dialog.Root open><Dialog.Content aria-describedby={undefined}>
+        <EventDetail row={row({ kind: "MEMBER", subtype: "member.joined", result: null, finishedAt: null, payload: { kind: "MEMBER", targetLabel: "a@b", role: null } })} slug="alpha" now={now} archived={false} canOpenSettings repoUrl={null} />
+      </Dialog.Content></Dialog.Root>,
+    );
+    const actions = [...container.querySelectorAll("[data-event-detail-footer] a, [data-event-detail-footer] button")];
+    expect(actions).toHaveLength(2);
+    for (const node of actions) expect(node.className.split(" ")).toContain("h-10");
+  });
+
+  /** U4 리뷰 — 지문 재확인으로 멈춘 Publish는 "held back its edits"가 아니다(아무것도 안 보냈고 보류가 아니다). */
+  it("reconfirm으로 멈춘 Publish는 자기 문장을 든다 · 보류로 인한 notSent는 그대로 (짝)", async () => {
+    const publish = (errorCode: string | null) => row({ kind: "PUBLISH", subtype: "publish.run", result: "notSent",
+      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, warnings: 0, withheld: errorCode === null ? 2 : 0, prUrl: null, errorCode } });
+    const { container: stopped } = await render(<EventRow row={publish("reconfirm")} href="/logs" now={now} archived={false} />);
+    expect(stopped.textContent).not.toContain("held back its edits");
+    expect(stopped.textContent).toContain("stopped before sending");
+    const { container: held } = await render(<EventRow row={publish(null)} href="/logs" now={now} archived={false} />);
+    expect(held.textContent).toContain("held back its edits");
+  });
+});
+
+/**
+ * **소스별 결과도 Logs의 결과 톤이다** (malmoi#163 · D3③ — Logs의 성공은 무색). 머리의 Synced는 neutral인데 같은 모달의 소스별 Synced가
+ * 별도 표(`SURFACE_VARIANT`)로 초록이었다 — 같은 낱말이 한 모달에서 두 톤이었다. 부분은 warning, 실패는 danger 알약(`missing`, design §3.6)이다.
+ */
+describe("상세 — Result per source", () => {
+  it("머리와 소스별 결과가 같은 낱말이면 같은 톤이다", async () => {
+    const value = row();
+    if (value.payload?.kind !== "IMPORT") throw new Error("fixture");
+    value.payload.surfaces = [
+      { surfaceSlug: "web", status: "imported", count: 4, reason: null },
+      { surfaceSlug: "app", status: "partial", count: 2, reason: null },
+      { surfaceSlug: "docs", status: "failed", count: null, reason: null },
+    ];
+    const { container } = await detail(value);
+    const head = [...container.querySelectorAll("[data-event-detail-kind] .rounded-full")].find((b) => b.textContent === m.logs.status.imported)!;
+    const perSource = (word: string) => [...container.querySelectorAll(".rounded-full")].filter((b) => b.textContent === word && !b.closest("[data-event-detail-kind]"));
+    const synced = perSource(m.logs.status.imported);
+    expect(synced).toHaveLength(1);
+    expect(synced[0]!.className).toBe(head.className);
+    expect(synced[0]!.className).not.toMatch(/green/);
+    expect(perSource(m.logs.status.partial)[0]!.className).toMatch(/amber/);
+    expect(perSource(m.logs.status.failed)[0]!.className).toContain("text-destructive");
   });
 });

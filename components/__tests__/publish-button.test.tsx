@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,8 +18,14 @@ vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectReposit
 const preview = { groups: [], truncated: 0, total: 1, keys: 1, openPr: null, withoutFile: 0, withoutKey: 0, changedFiles: ["ko.json"] as string[], sendable: { total: 1, keys: 1 } };
 const PUBLISH_LIVE = '[aria-live="polite"]:not([data-footer-result])';
 const ok = (data: unknown) => ({ status: "ok", preview: data });
+/** 보이는 글자 — 개수 배지의 sr 문장(`CountBadge`)은 빼고 센다. 버튼 이름 `Publish1`은 보이는 라벨 + 숫자다. */
+function visible(node: Element): string {
+  const copy = node.cloneNode(true) as Element;
+  copy.querySelectorAll(".sr-only").forEach(sr => sr.remove());
+  return copy.textContent?.trim() ?? "";
+}
 function button(name: string) {
-  const node = [...document.querySelectorAll("button")].find(b => b.textContent?.trim() === name || b.getAttribute("aria-label") === name);
+  const node = [...document.querySelectorAll("button")].find(b => visible(b) === name || b.getAttribute("aria-label") === name);
   if (!node) throw new Error(`Missing ${name}`);
   return node;
 }
@@ -61,7 +69,7 @@ it("닫힌 동안 실행을 유지하고 완료가 자동으로 열리지 않는
   // 재검증 트리가 커밋되기 전까지는 Publish가 잠긴 채다 (malmoi#103) — 서버 렌더를 흉내 낸다.
   await view.rerender(<Host />);
   // writer 경고는 쓰기 전에 멈춘 결과다(T10) — PR 카드가 없고 "보내지 않았다"가 제목이며 버린 값은 펼친 목록이다.
-  await click("View result"); expect(document.body.textContent).toContain("Not sent"); expect(document.body.textContent).not.toContain("#12");
+  await click("View result"); expect(document.body.textContent).toContain("Held back"); expect(document.body.textContent).not.toContain("#12");
   expect(document.querySelector("details")).toBeNull();
   expect(document.body.textContent).toContain("bad\n ^");
 });
@@ -182,7 +190,7 @@ it("꺼진 Publish는 aria-disabled이고 사유를 describedby로 든다", asyn
   const publish = button("Publish");
   expect(publish.hasAttribute("disabled")).toBe(false);
   expect(publish.getAttribute("aria-disabled")).toBe("true");
-  expect(document.getElementById(publish.getAttribute("aria-describedby") ?? "")?.textContent).toBe("Everything you've edited is already sent.");
+  expect(document.getElementById(publish.getAttribute("aria-describedby") ?? "")?.textContent).toBe("Nothing to send — every edit is already sent.");
   await click("Publish");
   expect(mocks.preview).not.toHaveBeenCalled();
 });
@@ -232,6 +240,11 @@ it.each([
   expect(document.body.textContent).toContain("Nothing was sent");
   const links = [...document.querySelectorAll('[role="dialog"] a')].map(a => a.getAttribute("href"));
   expect(links.filter(h => h === "/signin")).toHaveLength(href === null ? 0 : 1);
+  // 세션 만료 뒤 재로그인은 새 탭이다(ux-drift-unify 3-Y7) — 이 탭을 떠나면 번역 화면의 draft가 함께 사라진다(Sync 결과·편집 화면과 같다).
+  for (const a of document.querySelectorAll('[role="dialog"] a[href="/signin"]')) {
+    expect(a.getAttribute("target")).toBe("_blank");
+    expect(a.getAttribute("rel")).toBe("noreferrer");
+  }
   expect(links).not.toContain("/projects/acme/settings");
   expect(mocks.pull).not.toHaveBeenCalled();
 });
@@ -337,6 +350,54 @@ it("보류가 섞인 미리보기는 나가는 수로 말하고 '전부 간다'�
   expect(text).toContain(p.prNone.body(1));
   expect(text).not.toContain(p.previewIntro("owner/repo"));
   expect(text).toContain(p.previewIntroPartial("owner/repo"));
+});
+/**
+ * **Publish의 블록은 `Alert`의 tone으로 말한다** (ux-drift-unify Q10 · 5-Y16) — 옛 손 조립 무색 `Notice`는 같은 성공을 Home Sync(초록 Alert)와
+ * 다르게 그렸고 경고도 무색 글리프였다. 단언은 클래스가 아니라 `data-alert`다.
+ */
+it.each([
+  ["열린 PR 없음", null, "neutral", (p: typeof m.translations.publish): string => p.prNone.title("owner/repo")],
+  ["열린 PR", { number: 9, url: "https://github.com/owner/repo/pull/9" }, "neutral", (p: typeof m.translations.publish): string => p.prOpen.title(9)],
+  ["PR 조회 실패", undefined, "warning", (p: typeof m.translations.publish): string => p.prUnknown.title],
+] as const)("미리보기 PR 줄(%s)은 뜻에 맞는 Alert tone이다", async (_name, openPr, tone, title) => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, openPr }));
+  await render(<Host />); await click("Publish1");
+  const block = [...document.querySelectorAll("[data-alert]")].find(node => node.textContent?.includes(title(m.translations.publish)));
+  expect(block?.getAttribute("data-alert")).toBe(tone);
+});
+it.each([
+  ["no-changes", { status: "skipped", reason: "no-changes" }, "success"],
+  // 교체는 `updated`의 상시 조건이고 버린 것이 없다 — 미리보기 `prOpen`(neutral)과 같은 사실이라 같은 톤이다(r1).
+  ["updated", { ...committedWith(), pr: "updated" }, "neutral"],
+] as const)("결과 %s의 블록은 뜻에 맞는 Alert tone이다", async (name, outcome, tone) => {
+  mocks.pull.mockResolvedValueOnce(outcome);
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  const blocks = [...document.querySelectorAll('[role="dialog"] [data-alert]')];
+  expect(blocks.map(node => node.getAttribute("data-alert"))).toEqual([tone]);
+  if (name === "updated") expect(blocks[0]?.textContent).toContain(m.translations.publish.replacedTitle);
+});
+/**
+ * **열린 PR 줄 본문은 한 줄에 선다** (r1) — 본문이 14px `Alert`로 커지며 긴 문장이 1024 모달에서 두 줄로 접히면, 한 줄 골격(`AlertSkeleton`)에서
+ * 도착할 때 표가 20px 밀린다(2026-09-17 71 → 76과 같은 부류). 가장 긴 수(큰 changes)에서도 한 줄 길이 안이다.
+ */
+it("열린 PR 줄 본문은 한 줄 길이다", async () => {
+  mocks.preview.mockResolvedValue(ok({ ...preview, openPr: { number: 12345, url: "https://github.com/owner/repo/pull/12345" }, sendable: { total: 123456, keys: 1 } }));
+  await render(<Host />); await click("Publish1");
+  const block = [...document.querySelectorAll('[data-alert="neutral"]')].find(node => node.textContent?.includes(m.translations.publish.prOpen.title(12345)));
+  const body = block?.querySelector("p + div")?.textContent ?? "";
+  expect(body.length).toBeGreaterThan(0);
+  expect(body.length).toBeLessThanOrEqual(100);
+});
+/** 4-W2 · 1-Y5 — 버린 값 목록은 카드 규격(radius 12)이고 개수는 배지(`CountBadge`)이며 머리 글리프가 warning 톤이다. */
+it("writer 경고 목록은 카드 radius · 개수 배지 · warning 글리프다", async () => {
+  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "writer-warnings", warnings: ["web: ko.json: bad", "web: ko.json: worse"] });
+  await render(<Host />); await click("Publish1"); await click("Open pull request");
+  const list = document.querySelector('[role="dialog"] section');
+  expect(list?.className).toContain("rounded-lg");
+  const head = list?.firstElementChild;
+  expect(head?.querySelector('[aria-hidden="true"]:not(svg)')?.textContent).toBe("2");
+  expect(head?.querySelector(".sr-only")?.textContent).toBe(m.translations.publish.warnings(2));
+  expect(head?.querySelector("svg")?.getAttribute("class")).toContain("text-amber-700");
 });
 it("전부 보류면 PR 버튼이 없고 이유를 말한다 · 실행하지 않는다", async () => {
   mocks.preview.mockResolvedValue(ok({ ...preview, total: 1, keys: 1, withoutFile: 1, sendable: { total: 0, keys: 0 }, openPr: { number: 9, url: "https://github.com/owner/repo/pull/9" } }));
@@ -566,4 +627,15 @@ it("실패 시각은 <time dateTime>에 UTC 라벨로 선다", async () => {
   expect(new Date(time?.getAttribute("dateTime") ?? "").toISOString()).toBe(time?.getAttribute("dateTime"));
 });
 
+});
+/**
+ * **앱 안 이동은 `ButtonLink`다** (ux-drift-unify 3-⚪12) — raw `<a>` + `buttonClass`는 전체 새로고침이라 같은 "Open settings"가
+ * Sync 결과·Logs(`ButtonLink`)와 다르게 움직였다. `<a>` + `buttonClass`는 새 탭 외부(`target="_blank"`)만 남는다.
+ */
+it("Publish 모달의 raw <a> 버튼은 전부 새 탭 외부 링크다", () => {
+  const source = readFileSync(join(process.cwd(), "components/publish-button.tsx"), "utf8");
+  const anchors = source.match(/<a className=\{buttonClass\([^>]*>/g) ?? [];
+  expect(anchors.length).toBeGreaterThan(0);
+  for (const anchor of anchors) expect(anchor).toContain('target="_blank"');
+  expect(source).not.toMatch(/<a [^>]*href=\{routes\.settings/);
 });

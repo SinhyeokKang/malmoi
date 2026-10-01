@@ -129,23 +129,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         화면이 다시 정하면 그 값이 두 번 적용된다.
       */}
       <PanelHeader>
-        <h1 className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.account}</h1>
-        {/*
-          페이지 수준 거부는 **global Alert**이고 제목 **아래**다 (DESIGN §6.4).
-          ⚠️ **머리에 있으므로 스크롤하지 않는다** — 거부 사유가 화면 밖으로 밀려나면 사용자는
-          버튼이 안 눌린 것으로 본다 (POSTMORTEM 2026-09-06).
-          ⚠️ **[Dismiss]가 붙는 자리는 여기뿐이다** — 위 판정 주석의 축 그대로다: 여기 서는 둘은
-          **다시 시도할 컨트롤이 이 화면에 없다.** 구역 Alert는 바로 옆 컨트롤을 다시 누르는 것이
-          다음 행동이라, 치우면 그 자리에서 사유만 사라진다. ⚠️ **"일회성이냐 현재 상태냐"로 가르지
-          않는다** (2026-09-14) — `?connect=`도 왕복에서 돌아온 일회성 값인데 구역에 선다.
-        */}
-        {/*
-          ⚠️ **머리에 남는 것은 `?e=` 하나다** (2026-09-16). `?link=`는 수단 카드 안으로 내려갔다 —
-          다시 누를 행이 그 카드에 있으므로 축("다시 시도할 컨트롤이 이 화면에 있는가")이 그쪽을
-          가리킨다. 둘이 쌓일 수 있던 동안에는 무엇이 실패했는지에 따라 **머리 높이가 달라졌다.**
-          ⚠️ `?e=`에는 `href`를 주지 않는다 — 하드 내비게이션으로만 오므로 지역 상태로 충분하다.
-        */}
-        {notice !== null && <DismissibleAlert>{notice}</DismissibleAlert>}
+        <h1 className="flex items-center text-lg font-medium">{m.common.nav.account}</h1>
       </PanelHeader>
 
       {/*
@@ -153,6 +137,23 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         들어간 뒤로는 **카드 자체가 축**이라 간격이 하나면 되고, 리듬이 Project Home과 같아진다.
       */}
       <PanelBody className="space-y-4">
+        {/*
+          페이지 수준 거부는 **global Alert**이고 본문의 첫 블록이다 (DESIGN §6.4).
+          ⚠️ **본문과 함께 스크롤한다** (2026-10-01 사용자) — 옛 자리는 머리 안이었고 근거는 POSTMORTEM 2026-09-06
+          ("사유가 화면 밖으로 밀려나면 버튼이 안 눌린 것으로 본다")였다. 사용자가 뒤집었다: 머리는 제목 한 띠로
+          고정되고, 사유는 자기가 설명하는 콘텐츠와 같이 움직인다. 첫 화면 위치는 그대로 제목 바로 아래다.
+          ⚠️ **[Dismiss]가 붙는 자리는 여기뿐이다** — 위 판정 주석의 축 그대로다: 여기 서는 둘은
+          **다시 시도할 컨트롤이 이 화면에 없다.** 구역 Alert는 바로 옆 컨트롤을 다시 누르는 것이
+          다음 행동이라, 치우면 그 자리에서 사유만 사라진다. ⚠️ **"일회성이냐 현재 상태냐"로 가르지
+          않는다** (2026-09-14) — `?connect=`도 왕복에서 돌아온 일회성 값인데 구역에 선다.
+        */}
+        {/*
+          ⚠️ **여기 서는 것은 `?e=` 하나다** (2026-09-16). `?link=`는 수단 카드 안으로 내려갔다 —
+          다시 누를 행이 그 카드에 있으므로 축("다시 시도할 컨트롤이 이 화면에 있는가")이 그쪽을
+          가리킨다. 둘이 쌓일 수 있던 동안에는 무엇이 실패했는지에 따라 **머리 높이가 달라졌다.**
+          ⚠️ `?e=`에는 `href`를 주지 않는다 — 하드 내비게이션으로만 오므로 지역 상태로 충분하다.
+        */}
+        {notice !== null && <DismissibleAlert>{notice}</DismissibleAlert>}
         {/*
           ⚠️ **Profile이 카드가 됐다** — 전엔 패널 머리에 붙은 블록이라 카드 셋과 형이 달랐다.
           아바타 행만 두 열을 가로지른다: 아바타와 버튼 사이 간격(16)이 라벨 열 폭과 무관해야 한다.
@@ -163,17 +164,17 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             ⚠️ **아바타 행도 라벨을 든다** — 두 열을 가로지르게 두면 이 행만 형이 달라지고, 값 열의
             시작선이 아래 두 행과 어긋난다.
           */}
-          <span className="text-xs tracking-[0.02em] text-neutral-400">{m.account.profile.avatar}</span>
+          <span className="text-muted-foreground text-xs tracking-[0.02em]">{m.account.profile.avatar}</span>
           <div className="flex items-center gap-4">
             {/* ⚠️ **셸의 32와 같은 판정·같은 입력이다** — 한쪽만 사진이면 같은 계정이 두 얼굴이 된다. */}
             <Avatar name={displayName(profile?.name, profile?.email)} src={profile?.image} size={56} />
             <ProfilePicture hasPicture={(profile?.image ?? null) !== null} />
           </div>
 
-          <label className="text-xs tracking-[0.02em] text-neutral-400" htmlFor="account-name">{m.account.profile.name}</label>
+          <label className="text-muted-foreground text-xs tracking-[0.02em]" htmlFor="account-name">{m.account.profile.name}</label>
           <ProfileNameForm name={name} inputId="account-name" />
 
-          <label className="text-xs tracking-[0.02em] text-neutral-400" htmlFor="account-email">{m.account.profile.email}</label>
+          <label className="text-muted-foreground text-xs tracking-[0.02em]" htmlFor="account-email">{m.account.profile.email}</label>
           <div className="flex items-center gap-3">
             {/*
               ⚠️ **`disabled`가 아니라 `readOnly`다** — disabled 필드는 접근성 트리에서 빠져

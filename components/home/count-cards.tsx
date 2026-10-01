@@ -2,8 +2,10 @@ import { ArrowDownToLine, Eye, GitPullRequestArrow, Languages } from "lucide-rea
 import Link from "next/link";
 import type { ComponentType } from "react";
 
+import { HoldLater } from "@/components/home/hold-later";
 import { CARD_STATE, type CardSubline, type HomeCard } from "@/lib/home/cards";
 import { m } from "@/lib/i18n";
+import type { HoldReason } from "@/lib/protection/plan";
 import { relativeTime } from "@/lib/relative-time";
 import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
@@ -30,7 +32,17 @@ const GLYPH: Record<HomeCard["key"], ComponentType<{ className?: string }>> = {
  *   기본 표면으로 redirect하는 공가 라우트라 누를 때마다 서버 왕복이 하나 더 붙었다. `null`(기본 표면 없음)이면 옛
  *   경로로 남는다 — 그 라우트가 "표면이 없다"를 말하는 자리다.
  */
-export function CountCards({ cards, slug, surfaceSlug, now }: { cards: readonly HomeCard[]; slug: string; surfaceSlug: string | null; now: Date }) {
+export function CountCards({ cards, slug, surfaceSlug, now, heldLater }: {
+  cards: readonly HomeCard[];
+  slug: string;
+  surfaceSlug: string | null;
+  now: Date;
+  /**
+   * 열린 PR 조회에 달린 보류 사유 (ux-drift-unify Q6) — **`To send` 보조 줄만 늦게 도착한다**, 본문은 기다리지 않는다(malmoi#107이 줄인 착지 병목).
+   * 도착 전에는 `nothing to send`(편집 0이라 참이다)가 선다. ⚠️ 받는 것은 클라이언트 섬(`HoldLater`)이다 — `use()`로 받으면 전환이 조회를 기다린다(U7 r1).
+   */
+  heldLater?: Promise<HoldReason | null>;
+}) {
   return (
     /*
       카드 넷 사이만 8이다 — 블록 사이(20)보다 좁아야 넷이 **한 덩어리**로 읽힌다 (캔버스 `2a`).
@@ -106,7 +118,10 @@ export function CountCards({ cards, slug, surfaceSlug, now }: { cards: readonly 
                     {value(card)}
                   </span>
                   <span className="text-muted-foreground text-xs">
-                    {m.home.cards.unit[card.unit]} · {sublineText(card.subline, now)}
+                    {m.home.cards.unit[card.unit]} ·{" "}
+                    {card.key === "toSend" && heldLater !== undefined
+                      ? <HoldLater hold={heldLater} as="subline" identity={slug} />
+                      : sublineText(card.subline, now)}
                   </span>
                 </span>
               </Link>
@@ -145,6 +160,8 @@ function sublineText(subline: CardSubline, now: Date): string {
       return m.home.cards.allFilled(subline.keys);
     case "nothingPending":
       return m.home.cards.nothingPending;
+    case "nothingToReview":
+      return m.home.cards.nothingToReview;
     case "lastGoodSync":
       return m.home.cards.lastGoodSync(when(subline.at));
     case "asOf":
@@ -158,15 +175,16 @@ function sublineText(subline: CardSubline, now: Date): string {
     case "neverSent":
       return m.home.cards.neverSent;
     case "repositoryUpdatesPaused":
-      return m.home.cards.repositoryUpdatesPaused;
+      return m.home.cards.held[subline.reason];
   }
 }
 
 /**
  * 카드 → 번역 화면의 요청값 (translation-rework T12). **카드의 수는 프로젝트 전체라 범위도 `All sources`다** — 한 소스로 착지하면
- * 합계와 목록이 갈린다. 미번역은 완성도 축(`Incomplete`)으로, 나머지 셋은 상태 축으로 간다.
+ * 합계와 목록이 갈린다. 그 범위가 기본값이라 주소에 `scope`를 싣지 않는다(translation-filter-scope). 미번역은 완성도 축(`Incomplete`)으로,
+ * 나머지 셋은 상태 축으로 간다. ⚠️ `ns=*`는 남긴다 — 빼면 상태 링크가 네임스페이스로도 좁혀져 0건 착지한다(POSTMORTEM 2026-09-15).
  * ⚠️ 카드는 **셀**을 세고 목록은 **키**를 센다 — 두 수가 같다고 주장하지 않는다(design §3 옛 링크).
  */
 function cardQuery(state: (typeof CARD_STATE)[keyof typeof CARD_STATE]) {
-  return state === "untranslated" ? { ns: ALL_NAMESPACES, scope: "project", completion: "incomplete" } : { ns: ALL_NAMESPACES, scope: "project", state };
+  return state === "untranslated" ? { ns: ALL_NAMESPACES, completion: "incomplete" } : { ns: ALL_NAMESPACES, state };
 }

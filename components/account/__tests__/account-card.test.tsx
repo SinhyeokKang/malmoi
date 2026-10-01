@@ -25,13 +25,14 @@ import { PanelCard, PanelFacts, PanelRow, PanelRows } from "@/components/ui/pane
  * 메우지 않는다.**
  */
 
-it("구분자는 상태가 있을 때만 선다 — 없으면 이름만 남는다", async () => {
+it("상태 배지는 상태가 있을 때만 선다 — 없으면 이름만 남는다(2026-09-30 — 대시에서 배지로)", async () => {
   const withStatus = await render(
     <PanelRows>
       <PanelRow glyph={<i />} name="GitHub" status="Connected" />
     </PanelRows>,
   );
-  expect(withStatus.container.textContent).toBe("GitHub — Connected");
+  expect(withStatus.container.textContent).toBe("GitHubConnected");
+  expect(withStatus.container.querySelector(".rounded-full")?.textContent).toBe("Connected");
 
   const withoutStatus = await render(
     <PanelRows>

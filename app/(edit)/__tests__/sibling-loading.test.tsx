@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 
+import AccountLoading from "../account/loading";
+import LogsLoading from "../projects/[slug]/logs/loading";
 import MembersLoading from "../projects/[slug]/members/loading";
 import SettingsLoading from "../projects/[slug]/settings/loading";
 import SourcesLoading from "../projects/[slug]/sources/loading";
@@ -21,6 +23,8 @@ import TranslationsLoading from "../projects/[slug]/surfaces/[surfaceSlug]/trans
  */
 const ROOT = join(__dirname, "..");
 const SCREENS = [
+  // `/account`는 `[slug]` 형제가 아니지만 같은 골격 계약이다(4-Y17 — 낭독 줄이 없어 접근성 트리가 통째로 비었다). 패널은 `account/layout.tsx`가 든다.
+  { name: "account", Loading: AccountLoading },
   { name: "members", Loading: MembersLoading },
   { name: "settings", Loading: SettingsLoading },
   { name: "sources", Loading: SourcesLoading },
@@ -67,6 +71,16 @@ describe("줄 수 — 실물의 가장 흔한 모양", () => {
     expect(rows[0]?.querySelectorAll("[data-skeleton-line]")).toHaveLength(2);
   });
 
+  /** 행 끝 chevron 16 칸이 실물에 있다(4-W9) — 없으면 도착 순간 결과 열이 16+12 밀린다. 첫 행은 헤더 급 선이다(4-Y3). */
+  it("Logs: 이벤트 행 셋 — 행마다 chevron 칸, 첫 행은 헤더 급 선", async () => {
+    const { container } = await render(<LogsLoading />);
+    const rows = [...container.querySelectorAll("[data-skeleton-event]")];
+    expect(rows).toHaveLength(3);
+    for (const row of rows) expect(row.lastElementChild?.className).toContain("size-4");
+    expect(rows[0]?.className).toContain("border-foreground/[0.06]");
+    expect(rows[1]?.className).toContain("border-border");
+  });
+
   it("Translations: 세 패널 — 트리 · 키 목록 · 상세", async () => {
     const { container } = await render(<TranslationsLoading />);
     expect(container.querySelector("[data-skeleton-tree]")).not.toBeNull();
@@ -98,8 +112,19 @@ describe("패널 폭 질의 — 실물과 같은 변형", () => {
   it("그 질의가 걸릴 이름 있는 컨테이너(`@container/panel`)를 골격 스스로 세운다", async () => {
     const { container } = await render(<SourcesLoading />);
     expect(container.querySelector('[class~="@container/panel"]')).not.toBeNull();
-    const description = container.querySelector("[data-skeleton-description]");
-    expect(description?.className).toContain("@max-[1016px]/panel:hidden");
+  });
+
+  /*
+    ⚠️ **골격 = 실물** (4-Y16 · 4-W13 · 4-Y6) — 실물 머리엔 설명 줄이 없고, 행의 [Open translations]는 2026-09-30에 걷혔고,
+    총계 배지는 카드 머리 한 곳이다. 없는 요소를 골격이 그리면 도착 순간 행 폭이 튄다.
+  */
+  it("실물에 없는 머리 설명·머리 개수·행 버튼을 그리지 않는다", async () => {
+    const { container } = await render(<SourcesLoading />);
+    expect(container.querySelector("[data-skeleton-description]")).toBeNull();
+    const header = container.querySelector("[data-skeleton-header]")!;
+    expect(header.querySelectorAll(".rounded-full")).toHaveLength(0);
+    const row = container.querySelector("[data-skeleton-source]")!;
+    expect(row.querySelector(".h-9")).toBeNull();
   });
 });
 
@@ -130,5 +155,36 @@ describe("목록 경계의 자리", () => {
     for (const segment of ["members", "settings", "sources", "surfaces/[surfaceSlug]/translations"]) {
       expect(existsSync(join(ROOT, `projects/[slug]/${segment}/loading.tsx`)), segment).toBe(true);
     }
+  });
+});
+
+/**
+ * **글자 줄 자리는 `SkeletonLine`이다** (ux-drift-unify 4-W8 — `skeleton.tsx`의 규칙). px 높이 블록(`h-4`·`h-5`…)은 `--text-*` 토큰이 바뀔 때
+ * 골격만 떠내려간다. 남는 px 블록은 컨트롤 높이(`h-9` — 버튼·필드)와 정사각 글리프(`size-*`)뿐이다.
+ */
+describe("글자 줄은 SkeletonLine이다", () => {
+  const FILES = [
+    "app/(edit)/account/loading.tsx",
+    "app/(edit)/projects/(list)/loading.tsx",
+    "app/(edit)/projects/[slug]/(home)/loading.tsx",
+    "app/(edit)/projects/[slug]/logs/loading.tsx",
+    "components/settings/repository-card.tsx",
+  ];
+  // 알약(`rounded-full` — 배지 자리)은 글자 줄이 아니라 뺀다.
+  // `h-[0.8em]`은 글자 크기의 비율이라 줄 상자와 함께 움직인다 — `SkeletonLine`과 같은 수단이다.
+  const PX_LINE = /<Skeleton className="(?![^"]*rounded-full)[^"]*\bh-(?!9\b)(?:[\d.]+\b|\[(?![\d.]+em\]))/g;
+  it.each(FILES)("%s에 글자 줄 px 블록이 없다", (path) => {
+    const source = readFileSync(join(__dirname, "../../..", path), "utf8");
+    expect(source).toContain("SkeletonLine");
+    expect(source.match(PX_LINE) ?? []).toEqual([]);
+  });
+  it("판정식이 글자 줄 블록을 잡고 컨트롤 높이는 놓아준다 (카나리아)", () => {
+    expect('<Skeleton className="h-4 w-12" />'.match(PX_LINE)).toHaveLength(1);
+    expect('<Skeleton className="h-3.5 w-[62%] rounded-md" />'.match(PX_LINE)).toHaveLength(1);
+    expect('<Skeleton className="h-[21px] w-[72%] rounded-md" />'.match(PX_LINE)).toHaveLength(1);
+    expect('<Skeleton className="h-9 w-32 rounded-md" />'.match(PX_LINE)).toBeNull();
+    expect('<Skeleton className="size-7 rounded" />'.match(PX_LINE)).toBeNull();
+    expect('<Skeleton className="h-[0.8em] w-14 rounded-md" />'.match(PX_LINE)).toBeNull();
+    expect('<Skeleton className="ml-auto h-5 w-16 rounded-full" />'.match(PX_LINE)).toBeNull();
   });
 });

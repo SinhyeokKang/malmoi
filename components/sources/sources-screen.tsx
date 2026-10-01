@@ -1,19 +1,18 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileCode2, FileJson2, Plus, X } from "lucide-react";
+import { ChevronRight, FileCode2, FileJson2, Folder, Plus } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { loadSourceDetail } from "@/app/(edit)/projects/[slug]/sources/actions";
 import { runFirstIngest } from "@/app/(edit)/projects/actions";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { PanelCard } from "@/components/ui/panel-card";
-import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { neighbourFocus } from "@/components/ui/focus";
+import { EmptyRowCard } from "@/components/ui/row-card";
 import { failureText } from "@/components/onboarding/failure";
 import { canPerform, type Role } from "@/lib/auth/permission";
-import { cn } from "@/lib/utils";
 import { m } from "@/lib/i18n";
 import { ingestHeadline } from "@/lib/onboarding/message";
 import type { AdapterChoice } from "@/lib/onboarding/types";
@@ -67,57 +66,53 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
     {/* ⚠️ **좁은 폭 판정을 패널이 든다** (시안 `1h` — 콘텐츠 패널 1016). 카드도 `@container`라
         이름 없는 질의는 카드를 잡는다 — `/panel`이 그 갈림을 막는다. */}
     <PanelHeader><div className="flex items-center gap-3">
-      <span className="flex items-center gap-2"><h1 ref={heading} id="sources-heading" tabIndex={-1} className="text-lg font-medium">{m.sources.title}</h1>
-        {/* 시안 `1f` — 개수 배지는 0을 그리지 않는다. */}
-        {data.sources.length > 0 && <Badge variant="neutral">{data.sources.length}</Badge>}</span>
-      {/* ⚠️ `min-w-0`이 없으면 flex 자식의 최소 크기가 min-content라 이 문장이 좁은 폭에서 [Add source]를 민다.
-          1016 이하에서는 시안이 이 줄을 **버린다** — 버리는 순서의 첫째다. */}
-      {canEdit && <Button ref={trigger} variant="primary" className="ml-auto" onClick={() => setAdding(true)}><Plus className="size-3.5" aria-hidden />{m.sources.add}</Button>}
+      {/* 총계는 카드 머리 한 곳이다(4-Y6) — 바로 아래 카드가 같은 제목·같은 배지를 든다. */}
+      <h1 ref={heading} id="sources-heading" tabIndex={-1} className="text-lg font-medium">{m.sources.title}</h1>
+      {canEdit && <Button ref={trigger} variant="primary" className="ml-auto" onClick={() => setAdding(true)}><Plus className="size-4" aria-hidden />{m.sources.add}</Button>}
     </div></PanelHeader>
     <PanelBody className="space-y-4">
-      <PanelCard title={m.sources.title} badge={data.sources.length > 0 ? <Badge variant="neutral">{data.sources.length}</Badge> : undefined}
-        subtitle={data.repository ? <span className="flex items-center gap-1.5"><GithubIcon className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}>
-        {/* ⚠️ **추가 결과는 카드의 첫 행이다** (시안 `1i`) — 토스트도, 카드 밖 Alert도 아니다. 적재가
-            토스트보다 오래 걸리고, 닫는 것은 사람이다. */}
-        {result && <div role="status" className="border-divider bg-foreground/2 flex items-start gap-3 border-t px-4 py-[13px]">
-          <div className="min-w-0 flex-1 space-y-[3px]">
-            {result.text && <p className="text-base">{result.source && <><span className="font-medium">{result.source}</span> — </>}{result.text}</p>}
-            {result.added && <><p className="text-base"><span className="font-medium">{m.sources.addedCount(result.added.length)}</span> — {result.added.map((source, index) => <Fragment key={source.surfaceSlug}>
+      <PanelCard title={m.sources.title} count={data.sources.length} countLabel={m.sources.count(data.sources.length)}
+        subtitle={data.repository ? <span className="flex items-center gap-1.5"><GithubIcon className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}
+        /*
+          ⚠️ **추가 결과는 카드의 첫 줄이다** (시안 `1i`) — 토스트도, 카드 밖 Alert도 아니다. 적재가 토스트보다 오래 걸리고, 닫는 것은 사람이다.
+          ⚠️ **계산한 톤을 그린다** (🔴 J — 옛 판은 `tone`을 세워 두고 무색 `role="status"` 줄로 그려 실패가 성공과 같은 줄이었다).
+          `Alert inset`이 톤·글리프·닫기 포커스 이동(audit #35)을 들고, 실패는 `alert`로 읽던 것을 끊는다.
+        */
+        notice={result ? <Alert inset variant={result.tone} live={result.tone === "danger" ? "alert" : "status"} onDismiss={() => setResult(null)}>
+          <div className="space-y-[3px]">
+            {result.text && <p>{result.source && <><span className="font-medium">{result.source}</span> — </>}{result.text}</p>}
+            {result.added && <><p><span className="font-medium">{m.sources.addedCount(result.added.length)}</span> — {result.added.map((source, index) => <Fragment key={source.surfaceSlug}>
                 {index > 0 && ", "}<span className={source.failed > 0 ? "text-destructive" : undefined}>{source.surfaceSlug}</span> {source.failed > 0 ? m.sources.addedFailed : m.sources.addedOne(source.count)}
               </Fragment>)}.</p>
               <p className="text-muted-foreground text-xs">{m.sources.resultKeep}</p>
               <p className="text-muted-foreground text-xs">{m.sources.workflow} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></p></>}
           </div>
-          {/* ⚠️ 닫기 전에 이웃으로 포커스를 옮긴다 (audit #35) — 이 버튼이 결과 행과 함께 사라져 포커스가 `body`로 빠졌다(`Alert`와 같다). */}
-          <Button variant="ghost" aria-label={m.common.close} className="hover:bg-foreground/5 size-7 shrink-0 rounded-full px-0" onClick={event => { neighbourFocus(event.currentTarget.closest('[role="status"]') ?? event.currentTarget)?.focus(); setResult(null); }}><X className="size-4" aria-hidden /></Button>
-        </div>}
+        </Alert> : undefined}>
         {data.sources.length === 0
-          ? <div className="border-divider flex flex-col items-center gap-2.5 border-t px-6 py-10 text-center">
-              <IconTile size="lg"><FileJson2 aria-hidden /></IconTile>
-              <span className="text-base font-medium">{m.sources.emptyTitle}</span>
-              <span className="text-muted-foreground max-w-[460px] text-xs leading-[1.7]">{canEdit ? m.sources.emptyOwner : m.sources.emptyEditor}</span>
-            </div>
+          /* ⚠️ `-mt-px` — `EmptyRowCard inset`은 자기 위 선(`border-t`)을 드는데 `PanelCard`는 머리가 선을 긋는다. 같은 색 두 줄을 한 줄로 겹친다. */
+          ? <div className="-mt-px"><EmptyRowCard inset icon={FileJson2} title={m.sources.emptyTitle} description={canEdit ? m.sources.emptyOwner : m.sources.emptyEditor} /></div>
           : <ul>{data.sources.map(source => {
           const Glyph = source.connection?.adapterName === "json-catalog" || source.connection?.adapterName === "chrome-locales" ? FileJson2 : FileCode2;
-          // 시안은 실패한 소스에서 **글리프 칩만** 붉다 — 행 전체를 칠하면 눈이 먼저 닿는 것이 파일 이름이 아니게 된다.
-          const failed = planSurfaceImportStatus(source).state.startsWith("failed");
+          // 칸만 상태 톤을 든다 — 행 전체를 칠하면 눈이 먼저 닿는 것이 파일 이름이 아니게 된다. 톤은 배지와 같은 판정이다(🔴 A1).
+          const { tone } = planSurfaceImportStatus(source);
           return <li key={source.id} className="border-border border-t first:border-t-0">
             {/* ⚠️ **1016 이하에서 행이 `items-start`가 되고 상태가 셋째 줄로 내려간다** (시안 `1h`).
                 상태를 오른쪽에 두면 긴 경로와 버튼 사이에서 먼저 줄바꿈되는 것이 경로가 된다. */}
             <div className="flex items-center gap-3 pr-4 @max-[1016px]/panel:items-start">
-              <Button variant="ghost" type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="hover:bg-foreground/2 disabled:bg-foreground/3 h-auto min-w-0 flex-1 justify-start gap-3 whitespace-normal rounded-none px-4 py-[13px] text-left focus-visible:ring-inset @max-[1016px]/panel:items-start" onClick={event => {
+              <Button variant="ghost" type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="hover:bg-foreground/[0.02] disabled:bg-foreground/[0.07] h-auto min-w-0 flex-1 justify-start gap-3 whitespace-normal rounded-none px-4 py-[13px] text-left focus-visible:ring-inset @max-[1016px]/panel:items-start" onClick={event => {
                 returnFocus.current = event.currentTarget; selection.current = source.slug; setSelected(source.slug); void load(source.slug, false);
               }}>
-                <IconTile data-source-glyph data-tone={failed ? "failed" : "default"} className={failed ? "bg-destructive/8 text-destructive" : undefined}><Glyph className="size-4" aria-hidden /></IconTile>
+                <IconTile data-source-glyph tone={tone}><Glyph className="size-4" aria-hidden /></IconTile>
                 <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-foreground text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
                   {/* ⚠️ 경로가 sans다 — mono는 `<pre>` 코드 블록 전용이다 (DESIGN §4.1, 2026-09-23). `text-xs`가 13px라 옛 `text-mono`와 크기는 같다. */}
-                  {source.connection && <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">{source.connection.pathTemplate ?? m.sources.notConfigured}</span>}
-                  <SourceStatus icon source={source} now={now} className="hidden pt-0.5 @max-[1016px]/panel:flex" />
+                  {/* 경로 앞 `Folder` 14 — `/projects` 행 메타의 리포 앞 GitHub 로고와 같은 패턴이다(2026-09-30 사용자). 색은 글자를 상속한다. */}
+                  {source.connection && <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"><Folder className="size-3.5 shrink-0" aria-hidden /><span className="min-w-0 [overflow-wrap:anywhere]">{source.connection.pathTemplate ?? m.sources.notConfigured}</span></span>}
+                  <SourceStatus source={source} now={now} className="hidden pt-0.5 @max-[1016px]/panel:flex" />
                 </span>
-                <SourceStatus icon source={source} now={now} className="@max-[1016px]/panel:hidden" />
+                <SourceStatus source={source} now={now} className="@max-[1016px]/panel:hidden" />
               </Button>
               {/* [Open translations]는 행에서 걷었다(2026-09-30 사용자) — 번역 화면으로 가는 길은 상세 모달의 같은 버튼이다. */}
-              <ChevronRight className="size-4 shrink-0 text-neutral-400 @max-[1016px]/panel:mt-2" aria-hidden />
+              <ChevronRight className="text-muted-foreground size-4 shrink-0 @max-[1016px]/panel:mt-2" aria-hidden />
             </div>
           </li>;
         })}</ul>}

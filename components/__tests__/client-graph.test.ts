@@ -106,6 +106,8 @@ const CLIENT_LIB_FILES = [
   // Logs의 필터 바가 값으로 읽는 잎 둘 — 조회(`lib/events/query.ts`)는 이 그래프에 없다.
   "lib/events/filter.ts",
   "lib/events/payload.ts",
+  // Home의 Sync 결과 톤이 Logs와 같은 길(`summarizeImportEvent` → `TONES`)로 나온다(ux-drift-unify 🔴 B) — 아래 잎 검사가 그 그래프를 고정한다.
+  "lib/events/view.ts",
   // Settings recovery now owns its card notice; this leaf only assembles public URLs.
   "lib/github-connect/installation-url.ts",
   "lib/github-connect/message.ts",
@@ -113,6 +115,8 @@ const CLIENT_LIB_FILES = [
   "lib/github-wait.ts",
   // `/docs` 개요의 옛 해시 잎이 값으로 읽는다 — import 0인 잎이고, 표는 서버가 prop으로 넘긴다.
   "lib/guide/legacy.ts",
+  // Settings 연결 카드가 Home과 같은 연결 판정(`connectionProblem`)을 읽는다(ux-drift-unify D1) — 값 import는 `lib/projects/list.ts` 하나다.
+  "lib/home/state.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
   "lib/import/confirm.ts",
@@ -168,12 +172,16 @@ const CLIENT_LIB_FILES = [
   "lib/shell/nav.ts",
   "lib/shell/panel-size.ts",
   "lib/signin/dot-field.ts",
+  // 상태 톤·낱말의 정본(ux-drift-unify §3.6) — `lib/i18n`만 무는 잎이다(아래 잎 검사). Sources 상태 판정이 톤을 여기서 읽는다.
+  "lib/status/canon.ts",
   "lib/sources/actions.ts",
   // Add sources의 꺼진 사유 (malmoi#93) — `lib/i18n` 하나만 문다.
   "lib/sources/add-block.ts",
   "lib/sources/base-language.ts",
   "lib/surfaces/plan.ts",
   "lib/tone.ts",
+  // 번역 화면의 연결 사유(malmoi#160) — `lib/home/state.ts`·`lib/i18n`만 읽는 순수 문장 조립이다.
+  "lib/translations/connection-reason.ts",
   // translation-rework 작업 화면의 잎 여섯 — 전부 import가 서로와 `lib/routes.ts`뿐이다(`lib/translations/context.ts`는 서버 전용이라 없다).
   "lib/translations/draft.ts",
   "lib/translations/layout.ts",
@@ -183,6 +191,8 @@ const CLIENT_LIB_FILES = [
   "lib/translations/summary.ts",
   // malmoi#91 — 셀의 `dir`·`lang`. import가 없는 잎이다.
   "lib/translations/text-direction.ts",
+  // translation-filter-scope — 필터 → 트리 반영·트리 이동의 첫 키. import는 잎인 lib/routes.ts 하나다.
+  "lib/translations/tree-narrow.ts",
   "lib/upload/image.ts",
   "lib/upload/message.ts",
   // Logs 커서의 base64url 코덱 (audit #73) — import가 없는 잎이다.
@@ -400,6 +410,13 @@ describe("클라이언트 그래프", () => {
     const redact = walk([join(ROOT, "lib/seo/analytics.ts")]);
     expect([...redact.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/seo/analytics.ts"]);
     expect([...redact.packages]).toEqual([]);
+  });
+
+  /** 상태 정본은 클라이언트 프리미티브(`StatusBadge`·`IconTile`)가 값으로 읽는다 — 사전 밖의 것을 무는 순간을 여기서 직접 건다. */
+  it("`lib/status/canon.ts`는 사전만 문다", () => {
+    const canon = walk([join(ROOT, "lib/status/canon.ts")]);
+    expect([...canon.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/i18n/index.ts", "lib/status/canon.ts", "messages/en.tsx"]);
+    expect([...canon.packages].filter((name) => !allowed(name))).toEqual([]);
   });
 
   it("`lib/protection/plan.ts`는 잎이다 — `fingerprint.ts`(crypto)를 물지 않는다", () => {

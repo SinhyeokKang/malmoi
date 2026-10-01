@@ -1,10 +1,11 @@
 "use client";
 
-import { Box, Check, CircleAlert } from "lucide-react";
+import { Box, Check } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { deleteProjectImage, updateProjectName, uploadProjectImage } from "@/app/(edit)/projects/[slug]/settings/actions";
 import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
+import { FieldError } from "@/components/ui/form-group";
 import { useLandAfter } from "@/components/ui/focus";
 import { Input } from "@/components/ui/input";
 import { ImageTile } from "@/components/ui/image-tile";
@@ -17,6 +18,9 @@ import { settingsAccessMessage } from "@/lib/settings/message";
 import { planImagePick } from "@/lib/upload/image";
 import { uploadRejectMessage } from "@/lib/upload/message";
 import { cn } from "@/lib/utils";
+
+/** 이름 줄 캡션의 배치 — 오류(`FieldError`)와 안내가 같은 자리에 선다. */
+const CAPTION = "min-w-0 flex-1 basis-40 @max-[640px]:basis-full";
 
 export function GeneralCard({ slug, name, image, archived }: { slug: string; name: string; image: string | null; archived: boolean }) {
   const [value, setValue] = useState(name);
@@ -42,7 +46,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
   const caption = archived ? m.settings.archivedReason : pending ? m.settings.general.busy : imageError ?? m.settings.general.caption;
   return <PanelCard title={m.settings.general.title}>
     <PanelFacts>
-      <span className="text-xs text-neutral-400">{m.settings.general.thumbnail}</span>
+      <span className="text-muted-foreground text-xs">{m.settings.general.thumbnail}</span>
       <div className="flex items-center gap-4">
         {/* 깨진 URL의 폴백은 목록·Home·초대와 같은 `ImageTile`이 든다 (malmoi#50). */}
         <ImageTile
@@ -72,12 +76,12 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
               run(async () => { try { const result = await deleteProjectImage(slug); if (!result.ok) setImageError(isAccessError(result.reason) ? settingsAccessMessage(result.reason) : uploadRejectMessage(result.reason)); } catch { setImageError(uploadRejectMessage("unavailable")); } });
             }}>{m.settings.general.remove}</Button>}
           </div>
-          <p id="project-image-caption" role={shownImageError ? "alert" : undefined} className={cn("text-xs", shownImageError ? "text-destructive" : "text-muted-foreground")}>{shownImageError && <CircleAlert aria-hidden className="mr-1 inline size-3.5" />}{caption}</p>
+          {shownImageError ? <FieldError id="project-image-caption">{caption}</FieldError> : <p id="project-image-caption" className="text-muted-foreground text-xs">{caption}</p>}
         </div>
       </div>
     </PanelFacts>
     <div className="border-border border-t"><PanelFacts>
-      <label htmlFor="project-name" className="text-xs text-neutral-400">{m.settings.general.name}</label>
+      <label htmlFor="project-name" className="text-muted-foreground text-xs">{m.settings.general.name}</label>
       <form className="flex min-w-0 flex-wrap items-center gap-2" onSubmit={event => {
         event.preventDefault(); if (archived || saving || !plan.ok) return;
         setError(null); setSaved(false);
@@ -85,9 +89,11 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
       }}>
         <Input ref={nameRef} id="project-name" className="w-[320px] max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={archived ? current : value} maxLength={PROJECT_NAME_MAX_CHARS} disabled={archived || saving} aria-invalid={nameError !== null} aria-describedby="project-name-caption" onChange={event => { setValue(event.target.value); setSaved(false); setError(null); }} />
         <Button ref={saveRef} className="[&_.animate-spin]:size-3.5" type="submit" loading={saving} aria-busy={saving} disabled={archived || !plan.ok || plan.name === current} aria-describedby="project-name-caption">{m.settings.repository.fields.save}</Button>
-        <p id="project-name-caption" role={nameError ? "alert" : undefined} className={cn("min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs", nameError ? "text-destructive" : "text-muted-foreground")}>
-          {nameError ? <><CircleAlert aria-hidden className="mr-1 inline size-3.5" />{nameError}</> : archived ? m.settings.archivedReason : saved ? <><Check aria-hidden className="mr-1 inline size-3.5" />{m.settings.repository.fields.saved}</> : null}
-        </p>
+        {nameError ? <FieldError id="project-name-caption" className={CAPTION}>{nameError}</FieldError> : (
+          <p id="project-name-caption" className={cn(CAPTION, "text-muted-foreground text-xs")}>
+            {archived ? m.settings.archivedReason : saved ? <><Check aria-hidden className="mr-1 inline size-3.5" />{m.settings.repository.fields.saved}</> : null}
+          </p>
+        )}
         {/* ⚠️ **성공은 전부터 있던 live 영역에 쓴다** (audit #39) — 캡션이 `Saved`로 바뀌는 것만으로는 아무도 알리지 않고,
             텍스트와 함께 새로 붙는 `role="status"`는 스크린리더가 놓친다. ⚠️ **성공 뒤 착지가 이름 칸으로 오면 `Saved`가 두 번 읽힐 수 있다** — 칸의 describedby(캡션)와 이 영역이다. 착지는
             포커스가 빠졌을 때만 일어나므로 이 영역을 뺄 수 없고, 한 번 더 읽히는 쪽을 받는다(B5 리뷰 r1). */}
@@ -95,7 +101,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
       </form>
     </PanelFacts></div>
     <div className="border-border border-t"><PanelFacts>
-      <label htmlFor="project-address" className="text-xs text-neutral-400">{m.settings.general.address}</label>
+      <label htmlFor="project-address" className="text-muted-foreground text-xs">{m.settings.general.address}</label>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <Input id="project-address" className="bg-muted text-muted-foreground w-[320px] max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={slug} readOnly />
       </div>

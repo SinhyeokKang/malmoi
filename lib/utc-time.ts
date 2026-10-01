@@ -1,5 +1,5 @@
 /**
- * 절대 날짜 `Sep 27, 2026` · 절대 시각 `Sep 27, 2026 16:34 UTC` — 앱의 절대 날짜·시각은 전부 이 파일을 지난다
+ * 절대 날짜 `Sep 27, 2026` · 절대 시각 `Sep 27, 2026 16:34 UTC` · 달 `Sep 2026` — 앱의 절대 날짜·시각은 전부 이 파일을 지난다
  * (launch-readiness L7.1 결정 "UTC라고 말한다" — 표기는 2026-09-28 changelog에서 날짜만 쓰는 자리와 한 형으로 모았다).
  *
  * ⚠️ **UTC라고 말한다.** 서버 렌더의 `toLocaleString`은 서버 타임존(Vercel은 UTC)을 쓸 뿐 보는 사람의 것이 아니고,
@@ -19,4 +19,9 @@ export function utcDay(at: Date): string {
 
 export function utcMinute(at: Date): string {
   return `${utcDay(at)} ${at.toISOString().slice(11, 16)} UTC`;
+}
+
+/** 날짜가 과한 자리(계정 병합 확인의 가입 시점)의 형 — 로케일 포맷터 대신 같은 월 약어를 쓴다. */
+export function utcMonth(at: Date): string {
+  return `${MONTHS[at.getUTCMonth()]} ${at.getUTCFullYear()}`;
 }

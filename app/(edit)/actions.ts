@@ -2,7 +2,6 @@
 
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
-import { loadMoreKeys, MoreInput, type MoreKeysResult } from "@/lib/keys/load-more";
 import type { RevertPreview, RevertResult } from "@/lib/keys/revert";
 import { previewRevert, RevertExecuteInput, RevertInput, runRevert, type RevertAccessError } from "@/lib/keys/revert-translation";
 import { revalidateTranslationReaders } from "@/lib/keys/revalidate-readers";
@@ -38,20 +37,6 @@ export async function saveTranslationKey(raw: unknown): Promise<KeySaveActionRes
   // no-op만 있던 저장은 아무것도 안 바꿨다 — 화면을 다시 그릴 이유가 없다.
   if (result.ok && result.cells.length > 0) revalidateTranslationReaders(parsed.data.slug);
   return result;
-}
-
-/**
- * **키 목록의 다음 페이지** (audit-ux #19). 읽기 전용이다 — 그래서 `revalidatePath`가 없다(Revert 미리보기와 같다).
- * ⚠️ **cursor를 주소에 싣지 않으려고 Action이다** — 전엔 `?cursor=`로 페이지를 이동해 새로고침·공유·뒤로가기가 그 페이지만 보였고,
- * 키 선택이 cursor를 달고 다녔다. 행은 화면이 누적한다.
- */
-export async function loadMoreTranslationKeys(raw: unknown): Promise<MoreKeysResult> {
-  const session = await readSession();
-  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
-  if (session.status === "none") return { ok: false, error: "unauthorized" };
-  const parsed = MoreInput.safeParse(raw);
-  if (!parsed.success) return { ok: false, error: "invalid input" };
-  return loadMoreKeys(getPrisma(), { userId: session.userId }, parsed.data);
 }
 
 /**

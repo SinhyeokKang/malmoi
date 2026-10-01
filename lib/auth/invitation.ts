@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { normalizeEmail } from "./email";
+import { isExpired } from "@/lib/expiry";
 
 /**
  * 초대 토큰과 수락 판정 (ARCHITECTURE §6.02).
@@ -53,7 +54,7 @@ export function planInvitationAccept(input: {
   if (invitation === null) return "not-found";
   if (invitation.acceptedAt !== null) return "already-accepted";
   // 만료 시각 정각은 이미 만료다 — 유효 구간을 만료 이전까지로 닫는다.
-  if (now.getTime() >= invitation.expiresAt.getTime()) return "expired";
+  if (isExpired(invitation.expiresAt, now)) return "expired";
 
   const verified = normalizeEmail(verifiedEmail);
   // 빈 이메일을 일치로 읽지 않는다. 초대 쪽도 비어 있으면 둘 다 ""가 되어 통과하는 구멍이 생긴다 —

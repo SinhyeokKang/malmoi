@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -132,9 +132,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
                 <span className="min-w-0 flex-1 truncate">{project.name}</span>
                 {project.archived && (
                   // ⚠️ `/projects` 행 칩과 같은 형·같은 키다(`project-list.tsx`의 `archived` 칩) — 두 벌이면 하나가 낡는다.
-                  <Badge variant="neutral" className="shrink-0 px-2 text-neutral-400">
-                    {m.projects.status.archived}
-                  </Badge>
+                  <StatusBadge state="archived" className="shrink-0 px-2 text-neutral-400" />
                 )}
               </Link>
             </DropdownMenuItem>

@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { CHIP_STATE } from "@/lib/projects/list";
+import { STATE } from "@/lib/status/canon";
+
 /**
  * 프로젝트 목록 화면의 배선을 **소스로** 센다 (8-3 — `translations-screen`·`home-screen`과 같은 계보).
  * 렌더 테스트가 없는 리포라 이 층이 방어선이다.
@@ -96,68 +99,47 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
   });
 
   /**
-   * ⚠️ **보관을 목록에서 숨기지 않는다** (7단계). `Archived` 탭이 생겨도 기본 탭이 `all`이므로 그
-   * 결정은 그대로다 — 배지가 없으면 `all`에서 보관된 프로젝트가 살아 있는 것과 구별되지 않는다.
+   * **칩은 상태 키만 넘긴다** (ux-drift-unify T19 · DESIGN §2.4) — variant·낱말은 `STATE`가 든다. 전에는 이 화면이 `STATUS_CHIP` 맵으로 variant와
+   * 덮개 색을 골랐고 실패 둘은 삼항이었다 — 같은 "Not synced yet"이 Sources와 글자색이 갈렸다(1-Y8). 맵(`CHIP_STATE`)은 `satisfies Record<RowChip, StateKey>`라
+   * 갈래가 늘면 컴파일 에러다(삼항은 새 갈래를 사유 없이 기본값으로 떨어뜨린다).
    */
-  it("상태 문구를 사전에서 읽는다 — 네 갈래가 전부 화면에 닿는다", () => {
-    expect(PAGE.map(code).join("\n")).toMatch(/m\.projects\.status\[/);
-  });
-
-  /**
-   * ⚠️ **배지 색을 삼항으로 고르지 않는다.** 갈래가 늘면 맵은 키가 없어 컴파일 에러가 나지만,
-   * 삼항은 새 갈래를 **사유 없이** 기본값으로 떨어뜨리고 `tsc`가 조용하다
-   * (`lib/auth/landing.ts`가 같은 이유로 맵 + `satisfies`를 쓴다 — 실측된 함정이다).
-   */
-  it("배지 색이 맵 + `satisfies`다", () => {
+  it("칩이 `StatusBadge`에 `CHIP_STATE` 키를 넘기고 variant를 고르지 않는다", () => {
     const src = PAGE.map(code).join("\n");
-    expect(src).toMatch(/satisfies Record<ProjectStatus,/);
-    expect(src).toContain("STATUS_CHIP[status]");
+    expect(src).toContain("<StatusBadge state={CHIP_STATE[chipState]}");
+    expect(src).not.toContain("STATUS_CHIP");
+    expect(src).not.toMatch(/variant: "(missing|warning|success|neutral)"/);
   });
 
   /**
-   * ⚠️ **`warning`은 "누군가 뭔가를 더 해야 끝나는" 셋에만 붙는다.** `Archived`를 amber로 칠하면
-   * 의도된 상태가 문제처럼 읽힌다.
-   *
-   * ⚠️ **`Active`가 초록이다** (2026-09-11 사용자 — 그 전엔 `neutral`이었고 이 단언이 그것을
-   * 고정했다). DESIGN §6.1("가장 흔한 상태가 가장 조용하다")의 예외이고, 근거는 **이 목록이
-   * 훑어보는 화면**이라는 것 — 손볼 프로젝트가 튀어나오려면 정상인 것도 색을 들어야 대비가 생긴다.
-   * 예외를 문서가 아니라 여기서도 고정하는 이유는, 다음 사람이 §6.1만 읽고 되돌리면 그 되돌림이
-   * 조용하기 때문이다.
+   * 톤은 `STATE` 행 그대로다 — 정상은 초록(목록은 훑어보는 화면이라 정상도 색을 든다, DESIGN §6.63), 끊김은 호박, 온보딩 중인 둘과 보관은 무색.
+   * ⚠️ **온보딩 둘의 `#525252` 덮개는 걷었다**(1-Y8). **보관만 `#a3a3a3` 덮개가 남는다** — 이름·메타와 한 색으로 물러나는 등재된 이탈이다(5-W7 제외).
    */
-  it("정상은 초록, amber는 `Disconnected` 하나, 나머지 셋은 무색이다", () => {
-    const map = /const STATUS_CHIP = \{([\s\S]*?)\n\} as const/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
-    expect(map).not.toBe("");
-    expect(map).toMatch(/archived:\s*\{ variant: "neutral"/);
-    expect(map).toMatch(/active:\s*\{ variant: "success"/);
-    /**
-     * ⚠️ **온보딩 중인 둘은 amber가 아니다** (2026-09-11 사용자). 새 프로젝트가 지나가는 정상
-     * 경로이고 시간이 지나면 저절로 `Active`가 된다 — amber로 칠하면 고장난 것처럼 보인다.
-     */
-    expect(map).toMatch(/setup:\s*\{ variant: "neutral"/);
-    expect(map).toMatch(/awaiting_first_sync:\s*\{ variant: "neutral"/);
-    /** ⚠️ **한때 돌던 것이 멈춘 것**이라 사람이 손대야 풀린다 — amber가 여기 하나만 남았다. */
-    expect(map).toMatch(/needs_reconnect:\s*\{ variant: "warning"/);
+  it("칩 톤이 STATE 행이고 덮개는 보관 하나다", () => {
+    expect(STATE[CHIP_STATE.active].variant).toBe("success");
+    expect(STATE[CHIP_STATE.needs_reconnect].variant).toBe("warning");
+    for (const chip of ["setup", "awaiting_first_sync", "archived"] as const) expect(STATE[CHIP_STATE[chip]].variant).toBe("neutral");
+    const src = PAGE.map(code).join("\n");
+    expect(src).not.toContain("text-neutral-600");
+    expect(src).toContain('chipState === "archived" && "text-neutral-400"');
   });
 
   /**
-   * ⚠️ **무색 배지의 글자색이 셋으로 갈린다**: 보관은 **`#a3a3a3`**(2026-09-20 — 이름·메타와 한 색으로
-   * 내려갔다, DESIGN §6.63), 온보딩 중인 둘은 `#525252`, 총계·그룹 카운트는 foreground 그대로다.
-   * `Badge neutral`의 기본이 foreground이므로 **호출부에서 내린다** — 프리미티브를 바꾸면 이 루프가
-   * 보지 않은 화면의 배지가 함께 움직인다.
+   * ⚠️ **칩 순서는 `rowChip` 하나가 정한다** (ux-drift-unify Q2 — 끊김 > 실패 > 일부 반영 > readiness). 전에는 이 화면이 실패를
+   * readiness 앞에 손으로 끼워 넣어 끊김보다 실패가 먼저였다. 순서 자체는 `lib/projects/__tests__/list.test.ts`가 센다.
    */
-  it("무색 배지의 글자색을 호출부가 내린다", () => {
-    const map = /const STATUS_CHIP = \{([\s\S]*?)\n\} as const/.exec(PAGE.map(code).join("\n"))?.[1] ?? "";
-    expect(map).toMatch(/archived:[^\n]*tone: "text-neutral-400"/);
-    expect(map).toMatch(/setup:[^\n]*tone: "text-neutral-600"/);
-    expect(map).toMatch(/awaiting_first_sync:[^\n]*tone: "text-neutral-600"/);
+  it("칩 갈래를 화면이 고르지 않고 `rowChip`에서 받는다", () => {
+    const src = PAGE.map(code).join("\n");
+    expect(src).toContain("rowChip(row)");
+    expect(src).not.toMatch(/failing\(row\)/);
   });
 
   /**
    * ⚠️ **역할이 배지가 아니라 메타 평문이다** (시안 개정). 배지로 만들면 우측에서 상태와 나란히
    * 놓여 어느 쪽이 "지금 벌어지는 일"인지 흐려진다.
    */
-  it("역할을 메타 줄이 든다", () => {
-    expect(PAGE.map(code).join("\n")).toContain("m.projects.role[row.role]");
+  // 2026-09-30 사용자 — 행 메타에서 역할·멤버 수를 걷었다(리포 하나). 역할을 배지로 되살리지도 않는다.
+  it("행 메타가 역할을 싣지 않는다", () => {
+    expect(PAGE.map(code).join("\n")).not.toContain("m.projects.role[row.role]");
     expect(PAGE.map(code).join("\n")).not.toMatch(/<Badge[^>]*>\s*\{m\.projects\.role/);
   });
 });
@@ -264,7 +246,8 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   it.each([
     ["이름 칸 420", "w-[420px]"],
     ["행 요소 gap 16", "gap-4"],
-    ["행 padding 14/14/12", "py-3.5"],
+    // 4-W3(ux-drift-unify) — 행 세로 padding은 `py-[13px]` 한 벌이다(PanelRow·EventRow·Sources·Settings와 같다).
+    ["행 padding 13/14/12", "py-[13px]"],
     ["행 hover 2%", "hover:bg-foreground/[0.02]"],
     ["헤더↔첫 행 hairline #f0f0f0", "border-foreground/[0.06]"],
     ["띠 좌측 들여쓰기 56", "pl-14"],
@@ -295,8 +278,11 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
     expect(BODY).not.toContain("divide-border");
   });
 
-  /** ⚠️ **행 hover는 2%다** — 3%로 두면 시안보다 진하다. */
-  it("옛 hover 3%가 남아 있지 않다", () => {
+  /**
+   * ⚠️ **행 hover는 카드 안 행의 급(2%)이다** (DESIGN §5 — 3%는 캔버스·모달 위 행의 급). 3%로 두면 시안보다 진하다.
+   * 철자(`/[0.0N]` 하나)는 `visual-system.test.ts`의 "알파 면·선의 철자"가 전역으로 센다(5-Y8) — 여기는 급만 본다.
+   */
+  it("카드 안 행이라 캔버스 급 hover 3%가 없다", () => {
     expect(BODY).not.toContain("hover:bg-foreground/[0.03]");
   });
 
@@ -525,5 +511,12 @@ describe("캔버스 대조로 잡은 자리", () => {
     expect(BODY).toContain("m.projects.resultsFor(");
     expect(BODY).not.toContain("m.projects.searchResult");
     expect(BODY).toContain("m.projects.clearSearch");
+  });
+
+  /** 결과 카드 머리의 `Clear search`는 앱 안 이동이다 — 파랑이 아니다(DESIGN §2.4 동작 규칙 · §6.63, ux-drift-unify T19). */
+  it("Clear search 머리 링크가 파랑이 아니다", () => {
+    expect(BODY).toContain('className="focus-visible:ring-ring text-foreground ml-auto inline-flex items-center gap-0.5 text-sm');
+    expect(BODY).toMatch(/\{m\.projects\.clearSearch\}[^<]*<ChevronRight/);
+    expect(BODY).not.toContain("ml-auto text-sm text-blue-600");
   });
 });

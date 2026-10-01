@@ -3,7 +3,7 @@
 import { ChevronDown, ChevronRight, FileJson2, Folder, Layers, Search } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { Input } from "@/components/ui/input";
 import { ListItemButton } from "@/components/ui/list-item";
 import type { TranslationTree } from "@/lib/keys/translation-list";
@@ -17,11 +17,16 @@ import { cn } from "@/lib/utils";
  * ⚠️ **선택은 배경만 바꾸고 굵기는 그대로다** — 굵기는 계층만 든다(소스 500 · 네임스페이스 400, `sidebar.tsx`와 같은 규칙).
  * ⚠️ **leadingIcon**: 소스 `chevron + file-json-2`(16 · `#525252`), `All namespaces`는 `layers`, 네임스페이스는 `folder`(14 · `#a3a3a3`) — 2k-B 확정.
  * ⚠️ **숫자는 언어와 무관한 활성 키 수다** — 남은 수를 넣으면 같은 열의 숫자가 언어에 따라 통째로 바뀐다(README §4).
+ *    조건(필터·검색)이 켜지면 그 조건의 일치 키 수다(`nodes` — translation-filter-scope design §4). 0으로 남은 위치 노드는 흐리다.
+ * ⚠️ **머리 배지와 `Filter namespaces` 임계는 원본 트리(`tree`)다** — 좁힌 트리로 재면 조건마다 배지가 흔들리고, 입력이 사라지면서
+ *    남은 검색어가 보이지 않는 필터가 된다.
  */
 const FILTER_AT = 13;
 
-export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }: {
+export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, onSelect, className, width }: {
   tree: TranslationTree;
+  /** 그릴 노드 — 조건으로 좁힌 트리(`narrowTree`). 없으면 원본이다. */
+  nodes?: TranslationTree;
   /** px — 폭 계약(`planTranslationPanelLayout`)이 정한다. 겹친 패널 안에서는 주지 않는다(부모 폭을 채운다). */
   width?: number;
   surfaceSlug: string;
@@ -33,12 +38,13 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
   const [filter, setFilter] = useState("");
   const namespaceCount = tree.surfaces.reduce((sum, s) => sum + s.namespaces.length, 0);
   const needle = filter.trim().toLowerCase();
+  const narrowed = nodes !== tree;
 
   return (
     <div className={cn("flex min-h-0 flex-col", className)} style={width === undefined ? undefined : { width }}>
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         <h2 className="text-base font-medium">{m.translations.workspace.tree.title}</h2>
-        <Badge variant="neutral">{tree.surfaces.length}</Badge>
+        <CountBadge count={tree.surfaces.length} label={m.sources.count(tree.surfaces.length)} />
       </div>
       <div className="border-divider flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto border-t p-2">
         {namespaceCount >= FILTER_AT && (
@@ -55,7 +61,7 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
             />
           </div>
         )}
-        {tree.surfaces.map(surface => {
+        {nodes.surfaces.map(surface => {
           const open = !collapsed.has(surface.slug);
           const namespaces = needle === "" ? surface.namespaces : surface.namespaces.filter(n => n.name.toLowerCase().includes(needle));
           const current = surface.slug === surfaceSlug;
@@ -64,7 +70,7 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
               <ListItemButton
                 aria-expanded={open}
                 onClick={() => setCollapsed(prev => { const next = new Set(prev); if (open) next.add(surface.slug); else next.delete(surface.slug); return next; })}
-                className="flex items-center gap-2 rounded-sm px-2 py-[7px] text-sm"
+                className={cn("flex items-center gap-2 rounded-sm px-2 py-[7px] text-sm", narrowed && surface.keyCount === 0 && "text-muted-foreground")}
               >
                 <span className="flex text-neutral-600">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
                 <span className="flex text-neutral-600"><FileJson2 className="size-4" aria-hidden /></span>
@@ -77,6 +83,7 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
                     icon={<Layers className="size-3.5" aria-hidden />}
                     label={m.translations.workspace.tree.allNamespaces}
                     count={surface.keyCount}
+                    dim={narrowed && surface.keyCount === 0}
                     selected={current && ns === ALL_NAMESPACES}
                     onClick={() => onSelect(surface.slug, ALL_NAMESPACES)}
                   />
@@ -86,6 +93,7 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
                       icon={<Folder className="size-3.5" aria-hidden />}
                       label={namespace.name}
                       count={namespace.keyCount}
+                      dim={narrowed && namespace.keyCount === 0}
                       selected={current && ns === namespace.name}
                       onClick={() => onSelect(surface.slug, namespace.name)}
                     />
@@ -100,10 +108,11 @@ export function TreePanel({ tree, surfaceSlug, ns, onSelect, className, width }:
   );
 }
 
-function TreeItem({ icon, label, count, selected, onClick }: { icon: ReactNode; label: string; count: number; selected: boolean; onClick: () => void }) {
+/** `dim` — 조건의 일치가 0인데 남은 노드(위치 · 같은 세대에서 이미 본 노드). 기존 토큰만 쓴다(design §4). */
+function TreeItem({ icon, label, count, dim = false, selected, onClick }: { icon: ReactNode; label: string; count: number; dim?: boolean; selected: boolean; onClick: () => void }) {
   return (
     // 30 = 소스 행의 px-2(8) + chevron(14) + gap(8) — 네임스페이스 아이콘의 왼쪽 끝을 소스 아이콘과 맞춘다(시안은 34로 4px 어긋났다, 사용자 결정).
-    <ListItemButton selected={selected} onClick={onClick} className="flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-[30px] text-sm">
+    <ListItemButton selected={selected} onClick={onClick} className={cn("flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-[30px] text-sm", dim && "text-muted-foreground")}>
       <span className="flex text-neutral-400">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       <span className="text-muted-foreground text-xs">{count.toLocaleString("en-US")}</span>

@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSea
 import { ProjectList } from "@/components/projects/project-list";
 import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
+import { STATE } from "@/lib/status/canon";
 
 /**
  * **목록의 그릇** — 아트보드 `1a`~`1d` (projects-panel-rework T4·T5·T6·T7).
@@ -28,7 +29,7 @@ const BASE: ProjectListRow = {
   name: "admin-console",
   role: "OWNER",
   installationId: "i",
-  surfaces: [{ archivedAt: null, lastCommitSha: "s" }],
+  surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }],
   archivedAt: null,
   repoOwner: "day1company",
   repoName: "admin-console",
@@ -44,8 +45,6 @@ const BASE: ProjectListRow = {
   unsent: 0,
   openPr: null,
   repoAheadFiles: 0,
-  importError: null,
-  importing: false,
 };
 
 /** `1a`의 셋 — 손볼 것 하나 · 정상 하나 · 보관 하나. */
@@ -169,10 +168,14 @@ describe("`1b`·`1d` 빈 상태 둘 — 같은 카드, 반대 출구", () => {
     expect(container.textContent).toContain(m.projects.empty.description);
   });
 
-  /** ⚠️ **머리가 검색·[New project]를 그리지 않는다**(`hasProjects === false`). 배지 `0`은 남는다. */
-  it("0건의 머리가 제목과 배지 0뿐이다", async () => {
+  /**
+   * ⚠️ **머리가 검색·[New project]를 그리지 않는다**(`hasProjects === false`). ⚠️ **0은 배지로 서지 않는다** (2026-10-01 Q13 —
+   * `CountBadge`). 옛 단언은 `0` 배지를 고정했다.
+   */
+  it("0건의 머리가 제목뿐이다 — 개수 배지 0이 서지 않는다", async () => {
     const container = await draw({ all: [] });
-    expect(find<HTMLElement>(container, "h1 + span [aria-hidden]").textContent).toBe("0");
+    expect(container.querySelector("h1")?.textContent).toBe(m.common.nav.projects);
+    expect(container.querySelector("h1 + span")).toBeNull();
     expect(container.querySelector("input")).toBeNull();
   });
 
@@ -226,7 +229,7 @@ describe("보관 행이 한 단계 더 물러난다", () => {
   const activeRow = (container: HTMLElement) => find<HTMLElement>(cards(container)[1]!, "li");
   const nameOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-base");
   // 메타 줄은 GitHub 마크 + 말줄임 글자의 flex 줄이다(2026-09-25) — 색은 그 바깥 줄이 든다.
-  const metaOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-sm.min-w-0");
+  const metaOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-xs.min-w-0");
 
   /**
    * ⚠️ **이름·메타·배지가 `#a3a3a3` 한 색이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).
@@ -240,7 +243,7 @@ describe("보관 행이 한 단계 더 물러난다", () => {
     expect(nameOf(row).className).toContain("text-neutral-400");
     expect(metaOf(row).className).toContain("text-neutral-400");
     const badge = find<HTMLElement>(row, "span.rounded-full");
-    expect(badge.textContent).toBe(m.projects.archived);
+    expect(badge.textContent).toBe(STATE.archived.label);
     expect(badge.className).toContain("text-neutral-400");
   });
 

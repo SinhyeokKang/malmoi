@@ -455,7 +455,9 @@ describe("loadProjectList", () => {
       `lib/projects/__tests__/list.test.ts`에 그대로 있고, `project-home`이 새 호출부가 된다.
     */
     // ⚠️ 사건은 **행에 펼쳐져 있다** — 판정 셋이 그 모양을 그대로 받는다.
-    expect(rows[0]).toMatchObject({ review: 1, unsent: 1, openPr: null, repoAheadFiles: 0, importing: false });
+    expect(rows[0]).toMatchObject({ review: 1, unsent: 1, openPr: null, repoAheadFiles: 0 });
+    // 적재 상태는 **표면마다** 싣는다 — 평탄화하면 한 표면의 동기화 중이 다른 표면의 실패를 가린다(ux-drift-unify §3.2).
+    expect(rows[0]?.surfaces.every((surface) => surface.importing === false && surface.importError === null)).toBe(true);
     // base가 먼저다 — 폭이 좁아지면 앞에서부터 남으므로 "하나면 base"가 공짜로 성립한다.
     expect(rows[0]?.meters.map((m) => m.code)).toEqual(["en", "ko"]);
     expect(rows[0]?.meters[0]).toMatchObject({ code: "en", total: 2, done: 1, review: 0, percent: 50 });

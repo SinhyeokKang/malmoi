@@ -34,13 +34,13 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
    * "can be lost … automatically"는 절반이 거짓이다.
    */
   it("배너는 1건과 여러 건의 문장이 갈리고 손실을 예고하지 않는다", () => {
-    expect(m.translations.banner.paused(1)).toBe("Repository updates are paused until 1 unsent change is sent.");
-    expect(m.translations.banner.paused(4)).toBe("Repository updates are paused until 4 unsent changes are sent.");
+    expect(m.translations.banner.paused(1)).toBe("Repository updates are held until 1 unsent edit is sent.");
+    expect(m.translations.banner.paused(4)).toBe("Repository updates are held until 4 unsent edits are sent.");
     expect(m.translations.banner.paused(2)).not.toMatch(/can be lost|automatically/);
   });
 
   it("[C12] Home 발송 카드의 보류 보조 줄", () => {
-    expect(m.home.cards.repositoryUpdatesPaused).toBe("repository updates paused");
+    expect(m.home.cards.held["pending-edits"]).toBe("repository updates held");
   });
 
   it("Publish의 수는 미리보기 제목이 든다", () => {
@@ -118,8 +118,9 @@ describe("pick — 모르는 키에 항상 문자열", () => {
 
 describe("사전 — Revert 확인 문장의 주어와 동사가 수를 맞춘다", () => {
   // T19 실브라우저에서 "Your 1 language … go back"을 봤다 — 관계절 동사만 갈라 주동사가 복수로 고정돼 있었다.
-  it("단수는 goes back, 복수는 go back", () => {
-    expect(m.translations.workspace.revert.body(1, "ko")).toContain("Your 1 language that isn't sent yet — ko — goes back");
-    expect(m.translations.workspace.revert.body(2, "ko, ja")).toContain("Your 2 languages that aren't sent yet — ko, ja — go back");
+  // fix1 — 주어가 언제나 복수(`unsent edits`)라 동사는 go back 하나다. 수는 언어 명사만 가른다("aren't sent yet"은 미전달 금지어였다).
+  it("주어는 unsent edits이고 언어 수만 단수·복수로 갈린다", () => {
+    expect(m.translations.workspace.revert.body(1, "ko")).toContain("Your unsent edits in 1 language — ko — go back");
+    expect(m.translations.workspace.revert.body(2, "ko, ja")).toContain("Your unsent edits in 2 languages — ko, ja — go back");
   });
 });

@@ -44,7 +44,7 @@ it("미저장이 있어도 View result는 결과를 연다 — 확인창은 Publ
       unpublished={0}
       publish={{ repo: { owner: "o", name: "r", branch: "main", syncBranch: "s" }, lastSentLabel: null, lastPrUrl: null }}
       sync={{ name: "acme", branch: "main" }}
-      baseLocale="en" declaredBaseLocale={null}
+      baseLocale="en" declaredBaseLocale={null} connection={{ status: "unknown" }}
     />,
   );
   await user.type(container.querySelector<HTMLTextAreaElement>('textarea[data-locale="zh"]')!, "空");

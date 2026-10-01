@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
  * 깔면 diff가 왔을 때 그것이 다른 표면과 구별되지 않는다. 여기서는 부수 효과도 있다 — `text-mono`가
  * 13px/18px이라 배지 높이가 22였고, 시안 `SolidBadge`는 19다.
  *
- * ⚠️ **orphaned는 배지 자체를 `danger`로 바꾼다.** 로케일 칸이 80px이고 배지가 이미 거의 다 쓰므로
+ * ⚠️ **orphaned는 배지 자체를 `missing`(붉은 면)으로 바꾼다.** 로케일 칸이 80px이고 배지가 이미 거의 다 쓰므로
  * "Orphaned" 배지를 옆에 붙일 자리가 없다. 로케일 헤더가 사라져 그 표시가 살 자리가 여기뿐이고,
  * 사유 문장은 `disabled` 입력의 placeholder가 든다.
  *
@@ -77,10 +77,11 @@ export function LocaleFlag({ code, size = "sm" }: { code: string; size?: "sm" | 
 
 export function LocaleBadge({ code, orphaned }: { code: string; orphaned: boolean }) {
   return (
-    <Badge variant={orphaned ? "danger" : "neutral"} className="gap-1">
+    // 사라진 언어는 `missing` 하나다(DESIGN §2.4 · D3②) — 국기는 상태 글리프가 아니라 면제라 배지 안에 남는다.
+    <Badge variant={orphaned ? "missing" : "neutral"} className="gap-1">
       <LocaleFlag code={code} />
       <span>{code}</span>
-      {/* 색만으로는 말하지 않는다 — 배지가 `danger`인 이유를 스크린리더에도 준다 (DESIGN §7). */}
+      {/* 색만으로는 말하지 않는다 — 배지가 붉은 이유를 스크린리더에도 준다 (DESIGN §7). */}
       {orphaned && <span className="sr-only">{m.locales.orphaned.badge}</span>}
     </Badge>
   );

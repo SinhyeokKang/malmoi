@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { updateRepositorySettings } from "@/app/(edit)/projects/[slug]/settings/actions";
-import { Check, CircleAlert, GitBranch } from "lucide-react";
+import { Check, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/form-group";
 import { useLandAfter } from "@/components/ui/focus";
 import { listProjectBranches } from "@/app/(edit)/projects/actions";
 import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
@@ -17,8 +18,17 @@ import { m } from "@/lib/i18n";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { isRepositorySettingsError, repositorySettingsErrorMessage, settingsAccessMessage } from "@/lib/settings/message";
+import { cn } from "@/lib/utils";
 
-export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false }: { slug: string; owner: string; repo: string; baseBranch: string; disabled?: boolean }) {
+/** 기준 브랜치 캡션의 배치 — 오류(`FieldError`)와 안내가 같은 자리에 선다. */
+const CAPTION = "min-w-0 flex-1 basis-40 @max-[640px]:basis-full";
+
+/**
+ * ⚠️ **`unpinned`는 DB 판정이다**(`storedConnection` — 설치는 있고 리포 id가 없다, ux-drift-unify D1). 그 프로젝트의 목록 조회는
+ * 서버가 반드시 `repo-not-installed`로 거부하고 그 문장("App을 설치하라")이 같은 카드의 Disconnected·Reconnect와 어긋났다
+ * (malmoi#159). 거부될 조회를 부르지 않고 저장된 값을 문단으로 세운 채 연결 행과 같은 해법을 말한다.
+ */
+export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false, unpinned = false }: { slug: string; owner: string; repo: string; baseBranch: string; disabled?: boolean; unpinned?: boolean }) {
   const [pending, startTransition] = useTransition();
   const [branch, setBranch] = useState(baseBranch);
   const [result, setResult] = useState<"idle" | "saved" | { error: string }>("idle");
@@ -34,7 +44,7 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
     setBranch(baseBranch);
     setCurrent(baseBranch);
     // 저장 후 새 props가 와도 성공 안내는 다음 사용자 선택까지 유지한다.
-    if (disabled) return;
+    if (disabled || unpinned) return;
     // 연결된 프로젝트의 목록은 읽기다 — 온보딩 ①의 `listRepoBranches`(쓰기 권한 요구)가 아니다 (#123).
     void listProjectBranches({ slug }).then(response => {
       if (!active) return;
@@ -51,11 +61,13 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
       setLookupError("unavailable");
     });
     return () => { active = false; };
-  }, [slug, owner, repo, baseBranch, disabled]);
+  }, [slug, owner, repo, baseBranch, disabled, unpinned]);
   const saveRef = useRef<HTMLButtonElement>(null);
   // ⚠️ 저장이 끝나면 착지한다 (audit #32) — `GeneralCard`의 이름 행과 같은 형이다. 필드는 셀렉트·입력 둘 중 하나라 id로 찾는다.
   useLandAfter(pending, () => [saveRef.current, document.getElementById("base-branch")]);
-  const editable = !disabled && choice !== undefined && choice.mode !== "fixed";
+  // 편집 컨트롤이 서지 않는 갈래 — 보관·미고정·고정 목록. 셋 다 값이 문단이다.
+  const fixed = disabled || unpinned || choice?.mode === "fixed";
+  const editable = !fixed && choice !== undefined;
   // 보관 상태가 오면(`disabled`) 옛 거부를 내린다 — 다른 행과 같은 `archivedReason` 한 문장만 선다 (QA D1).
   const failure = disabled || typeof result !== "object" ? null : result.error;
 
@@ -84,9 +96,9 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
       {/* ⚠️ 이 행은 `bg-muted` 면이다 — 그 위의 `text-muted-foreground`는 4.35:1로 AA 하한을 깨서 캡션이 `text-foreground/60`이다 (온보딩 ①과 같은 판정). */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-[6px] px-4 py-3.5">
         {/* `for`는 편집 컨트롤이 설 때만 — 보관·고정 갈래의 값은 문단이고 조회 중엔 대상이 없다 (audit #89). */}
-        <label htmlFor={disabled || choice === undefined || choice.mode === "fixed" ? undefined : "base-branch"} className="text-foreground flex shrink-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap @max-[640px]:basis-full" id="base-branch-label"><GitBranch className="size-3.5 shrink-0" aria-hidden />{m.settings.repository.fields.branch}</label>
+        <label htmlFor={fixed || choice === undefined ? undefined : "base-branch"} className="text-foreground flex shrink-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap @max-[640px]:basis-full" id="base-branch-label"><GitBranch className="size-3.5 shrink-0" aria-hidden />{m.settings.repository.fields.branch}</label>
         <div className="[&_.animate-spin]:size-3.5 flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          {disabled || choice?.mode === "fixed" ? <p id="base-branch" className="text-sm">{branch}</p>
+          {fixed ? <p id="base-branch" className="text-sm">{branch}</p>
             : choice === undefined ? <div aria-busy="true"><Skeleton className="h-9 w-60 rounded-md" /></div>
             : choice.mode === "select" ? (
               <Select name="baseBranch" value={branch} disabled={pending} onValueChange={value => { setBranch(value); setResult("idle"); }}>
@@ -99,9 +111,11 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
               aria-invalid={typeof result === "object"} aria-describedby="base-branch-caption"
               onChange={event => { setBranch(event.target.value); setResult("idle"); }} />}
           <Button ref={saveRef} type="submit" loading={pending} aria-busy={pending} disabled={!editable || branch === current}>{m.settings.repository.fields.save}</Button>
-          <p id="base-branch-caption" role={lookupError || failure !== null ? "alert" : undefined} className={lookupError || failure !== null ? "text-destructive min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs" : "text-foreground/60 min-w-0 flex-1 basis-40 @max-[640px]:basis-full text-xs"}>
-            {lookupError ? <><CircleAlert className="mr-1 inline size-3.5" aria-hidden />{failureText(lookupError)}</> : failure !== null ? <><CircleAlert className="mr-1 inline size-3.5" aria-hidden />{messageFor(failure)}</> : disabled ? m.settings.archivedReason : result === "saved" ? <><Check className="mr-1 inline size-3.5" aria-hidden />{m.settings.repository.fields.saved}</> : choice?.mode === "input" ? m.newProject.repo.branchTooMany : m.settings.repository.fields.branchHelp}
-          </p>
+          {lookupError || failure !== null ? <FieldError id="base-branch-caption" className={CAPTION}>{lookupError ? failureText(lookupError) : failure !== null ? messageFor(failure) : null}</FieldError> : (
+            <p id="base-branch-caption" className={cn(CAPTION, "text-foreground/60 text-xs")}>
+              {disabled ? m.settings.archivedReason : unpinned ? m.settings.repository.fields.branchDisconnected : result === "saved" ? <><Check className="mr-1 inline size-3.5" aria-hidden />{m.settings.repository.fields.saved}</> : choice?.mode === "input" ? m.newProject.repo.branchTooMany : m.settings.repository.fields.branchHelp}
+            </p>
+          )}
           {/* 성공은 전부터 있던 live 영역에 쓴다 (audit #39 — `GeneralCard`와 같은 형). */}
           <span role="status" data-save-status="base-branch" className="sr-only">{result === "saved" && !disabled ? m.settings.repository.fields.saved : ""}</span>
         </div>

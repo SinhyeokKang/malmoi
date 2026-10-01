@@ -63,7 +63,7 @@ it("선택 키의 활성 언어를 base 우선으로 그리고, 빈 칸에는 �
   expect(zh.placeholder).toBe("");
   const help = document.getElementById(zh.getAttribute("aria-describedby") ?? "");
   expect(help?.textContent).toBe("Nothing here");
-  expect(container.textContent).toContain("1 missing");
+  expect(container.textContent).toContain("1 untranslated");
 });
 
 it("blur·Tab은 저장하지 않는다 — Save가 바뀐 로케일만 한 번에 보낸다", async () => {
@@ -161,7 +161,7 @@ it("OWNER의 Revert는 미리보기 확인창을 거쳐 발급된 지문으로 �
   await user.click(button("Revert to last sent"));
   expect(mocks.preview).toHaveBeenCalledWith({ slug: "acme", surfaceSlug: "web", keyId: "k1" });
   expect(document.body.textContent).toContain("Revert to the last confirmed version?");
-  await user.click(button("Revert"));
+  await user.click(button("Revert translations"));
   expect(mocks.revert).toHaveBeenCalledWith({ slug: "acme", surfaceSlug: "web", keyId: "k1", confirmation: "f".repeat(64) });
   expect(area(container, "ko").value).toBe("없음");
   expect(document.activeElement?.getAttribute("data-footer-result")).toBe("true");
@@ -389,7 +389,7 @@ it("Revert 뒤 같은 셀을 저장하면 Not sent와 Revert가 다시 나타난
   mocks.revert.mockResolvedValue({ status: "reverted", cells: [{ localeCode: "ko", value: "없음" }] });
   const { container, rerender } = await render(<TranslationWorkspace {...initial} />);
   await user.click(button("Revert to last sent"));
-  await user.click(button("Revert"));
+  await user.click(button("Revert translations"));
   const restored = { ...initial.detail, locales: initial.detail.locales.map(l => l.code === "ko" ? { ...l, value: "없음", pending: false } : l) };
   await rerender(<TranslationWorkspace {...initial} detail={restored} />);
   await user.type(area(container, "ko"), "!");
@@ -397,7 +397,7 @@ it("Revert 뒤 같은 셀을 저장하면 Not sent와 Revert가 다시 나타난
   await user.click(button("Save"));
   await rerender(<TranslationWorkspace {...initial} detail={{ ...restored, locales: restored.locales.map(l => l.code === "ko" ? { ...l, value: "없음!", pending: true } : l) }} />);
   expect(button("Revert to last sent").getAttribute("aria-disabled")).toBeNull();
-  expect(container.textContent).toContain("Not sent");
+  expect(container.textContent).toContain("Unsent");
 });
 
 // 페이지 추가·재검증의 두 회귀(POSTMORTEM 2026-09-23)는 cursor 없는 More로 옮겨 `translation-workspace-transition.test.tsx`가 든다 (audit-ux #19).

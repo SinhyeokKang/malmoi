@@ -251,7 +251,7 @@ export function PendingInvitations({
                                 footer={
                                   <>
                                     <DialogClose asChild>
-                                      <Button variant="default">{m.members.cancel}</Button>
+                                      <Button data-initial-focus variant="default">{m.members.cancel}</Button>
                                     </DialogClose>
                                     <DialogClose asChild>
                                       <Button variant="danger" onClick={() => revoke(invitation.id, invitation.emailLabel)}>

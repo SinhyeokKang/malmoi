@@ -1,6 +1,5 @@
 "use client";
 
-import { CircleX } from "lucide-react";
 import { unstable_rethrow, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
@@ -14,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { IconTile } from "@/components/ui/icon-tile";
+import { type CountProps } from "@/components/ui/count-badge";
 import { EmptyRowCard, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
 import { m } from "@/lib/i18n";
 import type { Brand } from "@/lib/mcp/brand";
@@ -64,7 +64,6 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
 
   const rows = apps === null ? null : apps.filter((app) => !removed.has(app.id));
   const heading = () => document.getElementById(TITLE_ID);
-  const cancelRef = useRef<HTMLButtonElement | null>(null);
   const confirmRef = useRef<HTMLButtonElement | null>(null);
   /*
     명시 실패 뒤 Dialog가 남는다 — 진행 중 `disabled`가 포커스를 떨어뜨리므로 재시도 자리(확정 버튼)로 되돌린다(POSTMORTEM 2026-09-24).
@@ -120,13 +119,14 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
     });
   }
 
+  // 조회 전에는 개수가 없다 — 개수와 sr 문장은 짝이다(`CountProps`).
+  const countProps: CountProps = rows === null ? {} : { count: rows.length, countLabel: m.mcpConnector.apps.count(rows.length) };
   return (
     <>
       <RowCard
         title={m.mcpConnector.apps.title}
         titleId={TITLE_ID}
-        count={rows !== null && rows.length > 0 ? rows.length : undefined}
-        countLabel={rows === null ? undefined : m.mcpConnector.apps.title}
+        {...countProps}
         action={
           <div className="ml-auto shrink-0">
             <CopyButton value={serverUrl} label={m.mcpConnector.apps.copyServerUrl} />
@@ -139,12 +139,11 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
           </Alert>
         )}
         {rows === null ? (
-          <div role="alert" data-apps-failed className="border-foreground/[0.06] text-destructive flex items-center gap-3 border-t px-4 py-[13px]">
-            <CircleX className="size-4 shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1 text-sm">{m.mcpConnector.apps.loadFailed}</span>
-            <Button className="text-foreground shrink-0" onClick={() => router.refresh()}>
-              {m.common.retry}
-            </Button>
+          /* 카드에 붙는 실패는 `Alert inset danger`다(ux-drift-unify 5-Y10) — 손 조립 행은 글자 전체가 빨갰다(§6.2 "글자는 본문 색"). */
+          <div data-apps-failed>
+            <Alert inset variant="danger" actions={<Button onClick={() => router.refresh()}>{m.common.retry}</Button>}>
+              {m.mcpConnector.apps.loadFailed}
+            </Alert>
           </div>
         ) : rows.length === 0 ? (
           <EmptyRowCard inset icon={McpIcon} title={m.mcpConnector.apps.emptyTitle} description={m.mcpConnector.apps.emptyBody} />
@@ -169,8 +168,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
           <DialogContent
             title={m.mcpConnector.apps.confirmTitle(target.name)}
             description={m.mcpConnector.apps.confirmBody}
-            // 초기 포커스는 Cancel — 되돌리기 쉬운 쪽이다(핸드오프 §8 · 토큰 폐기와 같다).
-            onOpenAutoFocus={(event) => { event.preventDefault(); cancelRef.current?.focus(); }}
+            // 초기 포커스는 Cancel — 되돌리기 쉬운 쪽이다(핸드오프 §8 · 토큰 폐기와 같다). 표식은 `DialogContent`가 읽는다.
             onCloseAutoFocus={(event) => {
               // 끊은 뒤엔 누른 버튼이 사라진다 — 다음 행 → 이전 행 → 카드 제목(핸드오프 §8). 취소면 누른 행으로 돌아간다.
               event.preventDefault();
@@ -180,7 +178,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
             }}
             footer={
               <>
-                <Button ref={cancelRef} disabled={pending} onClick={() => setOpen(false)}>
+                <Button data-initial-focus disabled={pending} onClick={() => setOpen(false)}>
                   {m.common.cancel}
                 </Button>
                 <Button ref={confirmRef} data-disconnect-confirm variant="danger" loading={pending} onClick={confirm}>
@@ -223,7 +221,7 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
     [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? utcDay(expires) : relativeTime(expires, now)}</time>],
   ];
   return (
-    <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-3.5">
+    <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-[13px]">
       {/* 왼쪽 로고 칸은 40(`lg`)이다(2026-09-30 사용자). 만료 행도 로고는 그대로다 — 흐리게 하면 원본 색이 바뀐다. */}
       <IconTile size="lg" data-app-logo className="self-start">
         {app.brand === null ? <McpIcon /> : <BrandLogo brand={app.brand} className="size-5" />}
@@ -231,13 +229,13 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex min-w-0 items-start gap-2">
           <span className={cn("min-w-0 text-base font-medium [overflow-wrap:anywhere]", expired && "text-neutral-400")}>{app.name}</span>
-          {expired && <Badge variant="neutral" className="shrink-0">{m.mcpConnector.token.expired}</Badge>}
+          {expired && <Badge variant="warning" className="shrink-0">{m.mcpConnector.token.expired}</Badge>}
         </div>
         <span className="text-muted-foreground min-w-0 text-xs break-all">{app.ident}</span>
         <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1">
           {facts.map(([label, content]) => (
             <div key={label} className="flex items-baseline gap-2">
-              <dt className="text-xs text-neutral-400">{label}</dt>
+              <dt className="text-muted-foreground text-xs">{label}</dt>
               <dd className={cn("text-sm", expired && "text-neutral-400")}>{content}</dd>
             </div>
           ))}

@@ -2,6 +2,9 @@
 import { expect, it, vi } from "vitest";
 import { SyncResult } from "@/components/home/sync-result";
 import type { SurfaceImportResult } from "@/lib/import/result";
+import { planImportRefusal } from "@/lib/import/refusal";
+import { STATE } from "@/lib/status/canon";
+import { m } from "@/lib/i18n";
 import { render } from "./helpers/dom";
 
 const props = { slug: "acme", branch: "main" };
@@ -45,9 +48,9 @@ it("keeps unreadable and unapplied surfaces distinct with original diagnostics",
   ] }} />);
   expect(container.querySelector('[role="status"]')).not.toBeNull();
   // ⚠️ 사고가 붙는 헤드라인에는 브랜치가 없다 (시안 `4e`) — 절이 셋이 되면 사고가 뒤로 밀린다.
-  expect(container.textContent).toContain("Synced 4 keys, but 1 source could not be read");
+  expect(container.textContent).toContain("Synced 4 keys, but 1 source couldn't be read");
   expect(container.textContent).not.toContain("keys from main");
-  expect(container.textContent).toContain("2 sources were not replaced");
+  expect(container.textContent).toContain("2 sources weren't replaced");
   // 표면 이름은 헤드라인이 아니라 **원인 줄**에 산다 (DESIGN §6.644) — 성공한 `web`은 서지 않는다.
   for (const text of ["ci", "format", "broken", "locales/ko.json"]) expect(container.textContent).toContain(text);
   expect(container.querySelector('[role="status"] [data-surface]')?.textContent).toBe("broken");
@@ -63,14 +66,15 @@ it("keeps unreadable and unapplied surfaces distinct with original diagnostics",
 it("전 표면 실패는 성공 절을 앞에 두지 않는다", async () => {
   const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [row("web", "failed", "parse-failed")] }} />);
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
-  expect(container.textContent).toContain("Sync could not finish");
+  // 동기화 실패의 문장은 하나다(DESIGN §2.4) — Home 배너 제목과 같다.
+  expect(container.textContent).toContain("The last sync couldn't finish");
   expect(container.textContent).not.toContain("but");
   expect(container.textContent).toContain("web");
 });
 
 it("포맷 누락은 표면별 결과이고 재시도가 없다", async () => {
   const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [row("web", "failed", "invalid-format")] }} />);
-  expect(container.textContent).not.toContain("could not be read");
+  expect(container.textContent).not.toContain("couldn't be read");
   expect(container.textContent).toContain("This source has no valid file format.");
   expect([...container.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(false);
 });
@@ -84,7 +88,7 @@ it("distinguishes partial file failures from whole-surface failures", async () =
   const { container } = await render(<SyncResult {...props} outcome={{ ok: true, remainingEdits: 0, surfaces: [{ ...row("web", "partial", null), count: 8, failed: 2,
     errors: [{ path: "locales/ja.yml", code: "parse-failed" }] }] }} />);
   expect(container.querySelector('[role="status"]')).not.toBeNull(); expect(container.textContent).toContain("2");
-  expect(container.textContent).not.toContain("surface could not be read");
+  expect(container.textContent).not.toContain("source couldn't be read");
   // ⚠️ 표면은 전부 들어갔지만 값이 버려졌다 — 브랜치를 붙이면 전부 성공한 헤드라인과 글자까지 같아진다.
   expect(container.querySelector("p")?.textContent).toBe("Synced 8 keys");
   expect(container.textContent).not.toContain("keys from main");
@@ -105,7 +109,7 @@ it("파일 일부 실패는 없는 사유를 만들어 내지 않는다 — 원�
     { ...row("locales", "partial", null), count: 18, failed: 1, errors: [{ path: "locales/ja.yml", code: "parse-failed" }] },
   ] }} />);
   expect(container.textContent).toContain("Synced 18 keys");
-  expect(container.textContent).not.toContain("The last import did not finish");
+  expect(container.textContent).not.toContain("The last sync couldn't finish");
   // 파일 줄은 그대로다 — 무엇이 버려졌는지를 말하는 유일한 문장이다.
   expect(container.querySelector('[data-error-code="parse-failed"]')?.textContent).toBe("locales/ja.yml: The file couldn't be parsed.");
   // 표면 이름은 파일 경로가 이미 들고 있다 — 원인 줄의 slug를 따로 세우지 않는다.
@@ -138,7 +142,7 @@ it("superseded는 사유가 있으므로 원인 줄이 그대로 선다", async 
   const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [
     { ...row("i18n", "imported", null), count: 9 }, row("locales", "superseded", "superseded"),
   ] }} />);
-  expect(container.textContent).toContain("Synced 9 keys, but 1 source was not replaced");
+  expect(container.textContent).toContain("Synced 9 keys, but 1 source wasn't replaced");
   expect(container.querySelector('[data-reason="superseded"]')?.textContent).toContain("New repository data arrived while syncing");
   expect(container.querySelector('[role="status"] [data-surface]')?.textContent).toBe("locales");
 });
@@ -160,8 +164,17 @@ it("거부는 tone·닫기·액션이 갈래마다 갈린다", async () => {
   expect(view.container.querySelector('a[href="/projects/acme/settings"]')?.textContent).toBe("Open settings");
   expect(alert(view.container)?.className).toContain("bg-amber-50");
 
-  await view.rerender(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "not-connected" }} />);
+  // 리포 id 미고정은 [Reconnect], 계정 미연결(ConnectError)은 리포가 멀쩡하므로 끊김을 말하지 않고 설정으로 보낸다(ux-drift-unify r1).
+  await view.rerender(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "unpinned" }} />);
   expect(view.container.querySelector('a[href="/projects/acme/settings"]')?.textContent).toBe("Reconnect");
+  expect(view.container.textContent).toContain("This repository is disconnected");
+  // 1-Y14 — 끊김 거부는 Home 배너·목록 칩의 Disconnected와 같은 톤이다(호박). 미연결(설치 없음)은 readiness가 먼저 막는다(`not-ready`).
+  expect(planImportRefusal("unpinned").tone).toBe(STATE.disconnected.tone);
+  expect(alert(view.container)?.className).toContain("bg-amber-50");
+  await view.rerender(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "not-connected" }} />);
+  expect(view.container.querySelector('a[href="/account"]')?.textContent).toBe(m.repositorySync.openAccount);
+  expect(view.container.textContent).toContain("Account");
+  expect(view.container.textContent).not.toMatch(/disconnected/i);
 
   // ⚠️ 리포는 생성 시점 고정이라 [Reconnect]가 눌러도 실패할 버튼이다 (DESIGN §6.2).
   await view.rerender(<SyncResult {...props} onDismiss={vi.fn()} outcome={{ ok: false, error: "repo-replaced" }} />);
@@ -180,7 +193,7 @@ it("거부는 tone·닫기·액션이 갈래마다 갈린다", async () => {
  */
 it("[C4][C10] 남은 편집이 있으면 두 줄 warning이고 브랜치 헤드라인을 쓰지 않는다 (0이면 한 줄 성공 대조는 첫 테스트)", async () => {
   const { container } = await render(<SyncResult {...props} outcome={{ ok: true, remainingEdits: 2, surfaces: [row("web", "imported", null)] }} />);
-  expect(container.textContent).toContain("2 unsent changes were kept");
+  expect(container.textContent).toContain("2 unsent edits were kept");
   expect(container.textContent).not.toContain("from main");
   expect(lines(container)).toBe(2);
   expect(container.querySelector('[data-alert="warning"]')).not.toBeNull();
@@ -243,4 +256,20 @@ it("reconfirm은 원인을 가리지 않는 문장으로 말하고 지운 것이
   expect(text).not.toMatch(/changed/i);
   expect(text).toContain("nothing was discarded");
   expect(text).toContain("Open Sync again to review and confirm");
+});
+
+/**
+ * **전 표면 superseded는 실패가 아니라 밀림이다** (ux-drift-unify 🔴 B) — Logs가 회색 Superseded로 말하는 실행을 Home이 호박으로 말했다.
+ * 톤은 `summarizeImport`(= `TONES[summarizeImportEvent]`)에서 오고, 무색(`muted`)은 Alert의 `neutral`이다.
+ */
+it("전 표면 superseded는 neutral Alert다 — Logs와 같은 톤", async () => {
+  const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: true, remainingEdits: 0, surfaces: [
+    row("web", "superseded", "superseded"), row("emails", "superseded", "lease-lost"),
+  ] }} />);
+  expect(container.querySelector("[data-alert]")?.getAttribute("data-alert")).toBe("neutral");
+  expect(alert(container)?.getAttribute("role")).toBe("status");
+  // 낱말도 Logs와 같다 — 실패 문장("couldn't finish")을 빌리지 않고, 표면별 원인 줄이 보조 문장을 든다.
+  expect(container.textContent).toContain("Superseded");
+  expect(container.textContent).not.toMatch(/couldn['’]t finish/);
+  expect(container.querySelector('[data-reason="superseded"]')?.textContent).toContain("New repository data arrived while syncing");
 });

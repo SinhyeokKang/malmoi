@@ -17,20 +17,26 @@ import { m } from "@/lib/i18n";
  * 닫기가 스스로를 무효화한다(DESIGN §6.67과 같은 형). 숨길 지역 상태가 없으니 SSR 플래시 방지용 마운트 대기도 없다.
  * ⚠️ **액션은 둘째 Publish 트리거가 아니다** — Publish 모달의 트리거는 헤더 버튼 하나이고 `returnFocusRef`·`publishPending`
  * 잠금이 그 자리에 묶여 있다. 여기서는 그 버튼으로 포커스만 옮긴다.
+ * ⚠️ **Publish가 연결 때문에 꺼졌으면(`blockedReason`) 그 액션을 세우지 않는다** (malmoi#160) — 꺼진 버튼으로 포커스만 옮기는 막다른 길이었다.
+ * 대신 같은 사유를 문장에 잇는다 — 이 화면엔 Home의 연결 배너가 없어 보이는 원인 문장이 여기뿐이다. 새 배너는 만들지 않는다.
  */
-export function EditLossBanner({ count, publishButtonId }: { count: number; publishButtonId: string }) {
+export function EditLossBanner({ count, publishButtonId, blockedReason = null }: { count: number; publishButtonId: string; blockedReason?: string | null }) {
   if (count === 0) return null;
   return (
     <Alert
+      /*
+        ⚠️ **이 화면의 `pending-edits` 보류만 neutral이다** (DESIGN §2.4 예외 1 · D3①) — 편집 한 건마다 상시로 서고, 같은 화면의 Unsent가 neutral이다.
+        같은 보류가 Home 보조 줄·메타·Logs에서는 warning Held다.
+      */
       variant="neutral"
-      actions={
+      actions={blockedReason === null && (
         <Button onClick={() => document.getElementById(publishButtonId)?.focus()}>
           {m.translations.banner.sendWithPublish}
           <ArrowUp className="size-3.5" aria-hidden />
         </Button>
-      }
+      )}
     >
-      {m.translations.banner.paused(count)}
+      {m.translations.banner.paused(count)}{blockedReason !== null && <> {blockedReason}</>}
     </Alert>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowDownToLine } from "lucide-react";
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { useCommitWait } from "@/components/commit-wait";
@@ -11,15 +12,16 @@ import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { landFocus } from "@/components/ui/focus";
 import { m } from "@/lib/i18n";
 import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
-import type { HomeState } from "@/lib/home/state";
+import { homeBannerState, type ConnectionProblem, type HomeState } from "@/lib/home/state";
 import { importFailureMessage } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import { relativeTime } from "@/lib/relative-time";
+import { STATE } from "@/lib/status/canon";
 
 /**
  * Home의 **두 자리에 걸친 상태 하나** (project-home T6 · sync-repository T9).
@@ -116,8 +118,8 @@ export function HomeTitle({ archived, children, image }: { archived: boolean; ch
       <h1 ref={titleRef} tabIndex={-1} className="truncate text-lg font-medium">
         {children}
       </h1>
-      {/* 보관은 **머리에서** 말한다 — 배너는 스크롤되지만 이 pill은 제목과 함께 남는다. */}
-      {archived && <Badge>{m.home.meta.archived}</Badge>}
+      {/* 보관은 **머리에서** 말한다 — 배너는 스크롤되지만 이 pill은 제목과 함께 남는다. 모양은 다른 화면의 Archived와 같다(1-Y7 · `STATE`). */}
+      {archived && <StatusBadge state="archived" />}
     </span>
   );
 }
@@ -186,10 +188,12 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
   있는 상태**이지 방금 일어난 사건이 아니다. assertive live 영역을 상시 상태에 쓰면 그 화면에
   들어올 때마다 스크린리더가 읽던 것을 끊는다. 의도된 이탈이고 `docs/DESIGN.md`에 있다.
 */
-export function HomeNotices({ slug, name, state, role, branch, repo, unsent, failedSurface, reason, lastSyncAt, now }: {
+export function HomeNotices({ slug, name, state, role, branch, repo, unsent, failedSurface, reason, lastSyncAt, now, problem = null }: {
   slug: string;
   name: string;
   state: HomeState;
+  /** `state === "not_connected"`일 때의 갈래 — 배너 색·문구·동작이 셋으로 갈린다(`connectionProblem`). */
+  problem?: ConnectionProblem | null;
   role: "OWNER" | "EDITOR";
   branch: string;
   /** ⚠️ **서버가 만든다** — `syncBranch`의 규칙이 사는 모듈은 클라이언트가 물면 안 된다(번들 7.2MB). */
@@ -216,25 +220,34 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
     wasArchived.current = state === "archived";
   }, [state, titleRef]);
 
+  /*
+    배너는 상태 키 하나로 고른다(`homeBannerState` — 교차 테스트가 목록 칩·Settings 배지와 같은 키인지 센다). 톤은 `STATE`가 든다.
+    일부만 반영된 적재는 제목·본문이 따로다 — 실패 문장을 빌리지 않고, `safe`(마지막 성공의 값)도 거짓이라 세우지 않는다(DESIGN §2.4).
+  */
+  const banner = homeBannerState({ state, problem, failure: reason });
+  const partial = banner === "partiallySynced";
+
   return (
     /*
-      ⚠️ **여백을 이 블록이 든다** (2026-09-15 리뷰 🔴1) — 바깥 래퍼에 두면 `:empty`가 이 `<div>`를
-      자식으로 보고 영원히 거짓이 되어, 배너가 0개인 **가장 흔한 화면**에 그 여백이 유령으로 남는다.
-      ⚠️ **위가 16이고 아래가 0이다** (2026-09-29 사용자) — 캔버스의 `margin:0 24px 20px`를 옮겨 위를 0으로 뒀더니
-      머리의 `border-b`에 Alert가 붙었다(캔버스 머리엔 선이 없다). 아래는 `PanelBody`의 `p-4`가 16을 든다.
+      ⚠️ **본문 격자의 첫 칸이다** (2026-10-01 사용자 — 배너가 본문과 함께 스크롤한다). 여백·폭 상한은 `PanelBody`(`p-4` · `max-w-7xl`)가
+      들고 블록 사이는 격자의 `gap-5`다 — 여기서 다시 적으면 두 번 걸린다. 두 열 격자를 가로질러야 하므로 `col-span-full`을 든다.
+      ⚠️ **`empty:hidden`을 이 블록이 든다** (2026-09-15 리뷰 🔴1) — 바깥 래퍼에 두면 `:empty`가 이 `<div>`를 자식으로 보고 영원히
+      거짓이 된다. 배너가 0개인 **가장 흔한 화면**에서 이 칸이 `display:none`이어야 격자에 빈 행과 그 `gap`이 안 생긴다.
     */
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 pt-4 empty:hidden">
-      {state === "import_failed" && failedSurface !== null && reason !== null && (
+    <div className="col-span-full flex flex-col gap-3 empty:hidden">
+      {(banner === "syncFailed" || banner === "partiallySynced") && failedSurface !== null && reason !== null && (
         <Alert
-          variant="danger"
-          title={m.home.banner.syncFailed.title}
+          // 톤은 실패 코드가 정한다 — 일부만 반영된 적재는 호박, 나머지는 빨강(2026-09-30 상태 통일).
+          variant={STATE[banner].tone === "danger" ? "danger" : "warning"}
+          title={partial ? m.home.banner.partial.title : m.home.banner.syncFailed.title}
           /* ⚠️ **원인 문장은 `importFailureMessage`가 든다** — 사전을 직접 인덱싱하면 그 폴백을 우회한다. */
           /* ⚠️ **`[Try again]`은 `[Sync]`와 같은 Action이다** — 확인 Dialog를 건너뛰지 않는다. */
           /* ⚠️ **머리의 `[Sync]`와 같은 잠금을 받는다** — 같은 Action을 여는 세 자리가 다르게 움직이면
              "같은 라벨·같은 Action"이 화면에서 깨진다. 무반응인 버튼은 비활성보다 한 단계 아래다. */
           /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 결과 Alert의 [Try again]과 같은 형이다. */
           actions={owner ? <>
-            <Button aria-disabled={publishPending || undefined} aria-describedby={publishPending ? retryReasonId : undefined} title={publishPending ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!publishPending) setSyncOpen(true); }}>{m.home.banner.syncFailed.action}</Button>
+            {/* 결과 Alert의 [Try again]과 같은 글리프다(3-⚪15) — 같은 Dialog를 여는 두 자리가 다른 모양이었다. Sync의 글리프다(5-W2 — `RotateCcw`는 Clear filters 전용). */}
+            <Button aria-disabled={publishPending || undefined} aria-describedby={publishPending ? retryReasonId : undefined} title={publishPending ? m.repositorySync.waitPublish : undefined} onClick={() => { if (!publishPending) setSyncOpen(true); }}><ArrowDownToLine className="size-3.5" aria-hidden />{m.home.banner.syncFailed.action}</Button>
             {publishPending && <span id={retryReasonId} className="sr-only">{m.repositorySync.waitPublish}</span>}
           </> : undefined}
         >
@@ -243,27 +256,37 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
             "무엇이 안전한가"(나머지 표면은 들어왔다 · 값은 마지막 성공의 것이다)까지 경고로 읽힌다 — 전엔 danger 본문이 빨개서
             여기만 muted로 덮었고, Alert가 그 규칙을 들게 된 뒤로 덮개가 이 배너만 흐리게 했다.
           */}
-          {m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
-          {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}
+          {partial
+            ? m.home.banner.partial.body(failedSurface, branch, importFailureMessage(reason))
+            : <>{m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
+              {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}</>}
           {!owner && <> {m.home.banner.syncFailed.editor}</>}
         </Alert>
       )}
 
-      {state === "not_connected" && (
+      {banner === "wrongRepository" && (
+        // ⚠️ **[Reconnect]를 주지 않는다** — 리포는 생성 시점에 고정이라 다른 id로의 재연결을 서버가 거부한다(설정 카드와 같은 판정).
+        <Alert variant="danger" title={m.home.banner.wrongRepository.title}>
+          {m.home.banner.wrongRepository.body}
+        </Alert>
+      )}
+      {(banner === "disconnected" || banner === "notConnected") && (
         <Alert
-          variant="warning"
-          title={m.home.banner.notConnected.title}
+          // 미연결(설치 없음)은 회색, 끊김(재연결 필요)은 호박이다(2026-09-30 상태 통일).
+          variant={STATE[banner].tone === "warning" ? "warning" : "neutral"}
+          title={problem === "disconnected" ? m.home.banner.disconnected.title : m.home.banner.notConnected.title}
           /* ⚠️ **이 화면에서만 검정이 Publish가 아니다** (캔버스 `2c`) — 할 수 있는 일이 하나뿐이다. */
-          actions={owner ? <ReconnectButton slug={slug} server={repo} variant="primary" label={m.home.banner.notConnected.action} /> : undefined}
+          actions={owner ? <ReconnectButton slug={slug} server={repo} variant="primary" label={problem === "disconnected" ? m.home.banner.disconnected.action : m.home.banner.notConnected.action} /> : undefined}
         >
-          {m.home.banner.notConnected.body}
-          {!owner && <> {m.home.banner.notConnected.editor}</>}
+          {problem === "disconnected" ? m.home.banner.disconnected.body : m.home.banner.notConnected.body}
+          {!owner && <> {problem === "disconnected" ? m.home.banner.disconnected.editor : m.home.banner.notConnected.editor}</>}
         </Alert>
       )}
 
-      {state === "archived" && (
+      {banner === "archived" && (
         <Alert
-          variant="warning"
+          // 보관은 이상이 아니라 상태다 — 회색(2026-09-30 상태 통일, Logs·번역 화면과 같은 톤).
+          variant="neutral"
           title={m.home.banner.archived.title}
           /* 되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다 (`ArchiveCard`의 규칙). */
           /*

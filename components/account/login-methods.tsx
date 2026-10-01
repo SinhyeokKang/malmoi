@@ -101,6 +101,7 @@ function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginPr
        * 문서화된 이탈이다(DESIGN §6.67).
        */
       status={row.connected ? m.link.methods.connected : m.link.methods.notConnected}
+      statusTone={row.connected ? "success" : "neutral"}
     >
       <div ref={controls} className="contents">
       {!row.connected ? (
@@ -170,11 +171,11 @@ function DisconnectButton({ label, pending, onConfirm }: { label: string; pendin
         footer={
           <>
             <DialogClose asChild>
-              <Button variant="default">{m.common.cancel}</Button>
+              <Button data-initial-focus variant="default">{m.common.cancel}</Button>
             </DialogClose>
             <DialogClose asChild>
               <Button variant="danger" onClick={onConfirm}>
-                {m.link.methods.disconnect}
+                {m.link.methods.disconnectConfirm}
               </Button>
             </DialogClose>
           </>

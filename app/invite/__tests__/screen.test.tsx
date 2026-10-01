@@ -161,6 +161,12 @@ it("사용자 또는 멤버 조회 장애는 토큰 보존 재시도만 낸다",
     const markup = await renderPage();
     expect(markup).toContain('action="/invite/t"');
     expect(markup).toContain(m.common.retry);
+    // 페이지의 유일한 출구라 `primary lg w-full`이다 — 형제 CTA·OAuth 동의 화면의 Retry와 같은 형(ux-drift-unify 3-⚪14).
+    const retry = /<button[^>]*>[^<]*<\/button>/.exec(markup.slice(markup.indexOf('action="/invite/t"')))?.[0] ?? "";
+    expect(retry).toContain(m.common.retry);
+    expect(retry).toMatch(/bg-primary/);
+    expect(retry).toMatch(/w-full/);
+    expect(retry).toMatch(/h-10/);
     expect(markup).not.toContain(m.invite.accept);
     expect(markup).not.toContain(m.invite.otherAccount);
     expect(markup).not.toContain("bugshot-2");

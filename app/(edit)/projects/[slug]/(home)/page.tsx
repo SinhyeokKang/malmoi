@@ -21,19 +21,21 @@ import { HOME_EVENT_LIMIT, loadEvent, loadEvents } from "@/lib/events/query";
 import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems } from "@/lib/home/attention";
-import { countCards } from "@/lib/home/cards";
+import { countCards, planHomeHold } from "@/lib/home/cards";
 import { metaRows } from "@/lib/home/meta";
 import { loadHomeRuns } from "@/lib/home/runs";
 import { lastSyncTime } from "@/lib/home/sync-time";
-import { planHomeState } from "@/lib/home/state";
+import { connectionProblem, planActionAvailability, planHomeState } from "@/lib/home/state";
 import {
   loadActors, loadProjectListAggregates, loadReviewAttention,
 } from "@/lib/keys/query";
 import { actorLabel } from "@/lib/keys/view";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { isImportFailureCode } from "@/lib/projects/import-status";
-import { failing, reviewByLocale, summaryQueue } from "@/lib/projects/list";
+import { reviewByLocale, summaryQueue, worstFailingSurface } from "@/lib/projects/list";
+import { loadOpenPrUrlMemo } from "@/lib/projects/open-pr";
 import { pullNumberFrom } from "@/lib/projects/remote-plan";
+import { openPrGateApplies } from "@/lib/protection/plan";
 import { routes } from "@/lib/routes";
 
 /**
@@ -220,8 +222,8 @@ export default async function ProjectHomePage({
       .map((locale) => ({ surfaceSlug: surface.slug, code: locale.code, name: locale.name, keys: total, at: locale.createdAt }));
   });
 
-  // 배너가 지목하는 표면 하나 — slug 오름차순의 첫째다. 나머지 실패는 항목으로 남는다.
-  const failed = surfaces.find((s) => failing(s)) ?? null;
+  // 배너가 지목하는 표면 하나 — 목록 칩·띠와 같은 판정으로 **가장 나쁜 것**(danger > warning, 같은 급이면 slug 순)이다. 나머지 실패는 항목으로 남는다.
+  const failed = worstFailingSurface(surfaces);
 
   const items = attentionItems({
     state,
@@ -240,7 +242,26 @@ export default async function ProjectHomePage({
     actors,
   });
 
-  const paused = state === "not_connected" || state === "archived";
+  // 번역 화면과 같은 판정이다(ux-drift-unify §3.3) — 끊김·보관이면 머리의 Sync·Publish가 함께 꺼진다.
+  const availability = planActionAvailability({ archived, connection: health.status });
+  const paused = !availability.sync || !availability.publish;
+  /**
+   * 보류 판정 — 게이트와 같은 입력이다(`planHomeHold` → `planHoldNotice`, ux-drift-unify Q6). ⚠️ **편집이 있으면 PR을 조회하지 않는다**(결과가 같다).
+   * 조회가 필요하면 promise를 **기다리지 않고** 카드 보조 줄·메타 열의 클라이언트 섬(`HoldLater` — effect 구독, `use()`는 전환을 붙잡는다)으로 내린다 — 본문 렌더를 막지 않는다(malmoi#107이 메모로 줄인
+   * 착지 병목을 되살리지 않는다). 조회는 여기서 출발하므로 본문과 동시에 돈다.
+   * ⚠️ **거부를 삼킨다** — Home은 모든 프로젝트의 착지 화면이라(위 연결 조회와 같은 판정) 조회 실패는 보류(`pr-check-failed`)로 말한다.
+   * ⚠️ **메모를 거친다** (U15 — T18 실측: 착지·상세마다 GitHub 2회) — 연결 확인과 같은 TTL이다. 표시 전용이라서이고 게이트는 실물을 본다.
+   * Publish·수동 Sync가 이 프로젝트의 항목을 지우므로 방금 연 PR은 바로 보이고, GitHub에서 직접 머지한 PR만 TTL 동안 늦게 보인다(`open-pr-memo.ts`).
+   */
+  const hold = planHomeHold(
+    { pending: counts.toSend, gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected" },
+    () => loadOpenPrUrlMemo(slug, project).catch((error: unknown) => {
+      logFailure("home-open-pr", error);
+      return undefined;
+    }),
+  );
+  const heldNow = hold instanceof Promise ? null : hold;
+  const heldLater = hold instanceof Promise ? hold : undefined;
   const defaultSurface = project.defaultSurface?.archivedAt === null ? project.defaultSurface.slug : null;
 
   return (
@@ -272,41 +293,42 @@ export default async function ProjectHomePage({
       </PanelHeader>
 
       {/*
-        ⚠️ **배너가 머리와 본문 사이에 있다** (캔버스 `2b`·`2c`·`2d`). 여백은 `HomeNotices`가 든다(위 16 · 아래는 본문의 16).
-        본문 안에 두면 스크롤과 함께 밀려 올라가고, 그러면 "왜 버튼이 안 눌리나"를 말하는 문장이
-        화면 밖으로 나간다 (POSTMORTEM 2026-09-06).
-
-        ⚠️ **무조건 렌더한다** — 결과 Alert가 이 안에 있고, 조건부 분기에 두면 `revalidatePath`가
-        방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07).
-
-        ⚠️ **여백을 바깥 래퍼에 두지 않는다** (2026-09-15 리뷰 🔴1). `:empty`는 자식 **요소**가
-        하나라도 있으면 거짓인데 `HomeNotices`는 배너가 0개여도 자기 `<div>`를 언제나 렌더한다 —
-        래퍼에 `empty:hidden`을 걸면 안쪽만 숨고 바깥 `pb-4`가 남아 **가장 흔한 화면에 16px 유령
-        띠**가 선다. 로딩 골격엔 그 띠가 없어 데이터가 도착하는 순간 본문이 그만큼 튄다.
-      */}
-      <HomeNotices
-        slug={slug}
-        name={project.name}
-        state={state}
-        role={role}
-        branch={project.baseBranch}
-        /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
-        repo={{ owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) }}
-        unsent={counts.toSend}
-        failedSurface={failed?.slug ?? null}
-        reason={failed?.importError ?? null}
-        /* 시각 없는 성공은 "이 Sync 전의 값"으로 말한다 — 지어낸 시각을 배너에 넣지 않는다 (malmoi#81). */
-        lastSyncAt={lastSyncAt === "unrecorded" ? null : lastSyncAt}
-        now={now}
-      />
-
-      {/*
         ⚠️ **오른쪽 열이 320 고정이고 왼쪽이 `minmax(0,1fr)`이다** (캔버스). `flex-1`로 두면 카드
         안의 긴 문장이 왼쪽 열을 밀어 오른쪽이 좁아진다 — `min-width:auto`가 기본이라서다.
         ⚠️ **간격이 20이다** — 블록 사이도 같은 20이라 세로·가로가 한 격자로 읽힌다. 카드 넷 사이만
         8이고, 그 차이가 넷을 한 덩어리로 묶는다.
       */}
       <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
+        {/*
+          ⚠️ **배너가 본문의 첫 블록이다 — 본문과 함께 스크롤한다** (2026-10-01 사용자, 옛 자리는 머리와 본문 사이였다 — 캔버스 `2b`·`2c`·`2d`).
+          옛 근거는 POSTMORTEM 2026-09-06("본문에 두면 스크롤로 밀려 올라가 왜 버튼이 안 눌리나를 말하는 문장이 화면 밖으로 나간다")였는데
+          사용자가 뒤집었다: 머리는 제목·툴바 **한 띠**로 고정되어야 하고, 배너는 자기가 설명하는 콘텐츠와 같이 움직인다. 첫 화면의
+          위치는 그대로다 — 스크롤하기 전엔 여전히 머리 바로 아래다. 여백·격자 전폭은 `HomeNotices`가 든다.
+
+          ⚠️ **무조건 렌더한다** — 결과 Alert가 이 안에 있고, 조건부 분기에 두면 `revalidatePath`가
+          방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07).
+
+          ⚠️ **여백을 바깥 래퍼에 두지 않는다** (2026-09-15 리뷰 🔴1). `:empty`는 자식 **요소**가
+          하나라도 있으면 거짓인데 `HomeNotices`는 배너가 0개여도 자기 `<div>`를 언제나 렌더한다 —
+          래퍼에 `empty:hidden`을 걸면 안쪽만 숨고 바깥 칸이 남아 **가장 흔한 화면에 격자 한 행과 그 gap이
+          유령으로** 선다. 로딩 골격엔 그 띠가 없어 데이터가 도착하는 순간 본문이 그만큼 튄다.
+        */}
+        <HomeNotices
+          slug={slug}
+          name={project.name}
+          state={state}
+          role={role}
+          branch={project.baseBranch}
+          /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
+          repo={{ owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) }}
+          unsent={counts.toSend}
+          failedSurface={failed?.slug ?? null}
+          reason={failed?.importError ?? null}
+          /* 시각 없는 성공은 "이 Sync 전의 값"으로 말한다 — 지어낸 시각을 배너에 넣지 않는다 (malmoi#81). */
+          lastSyncAt={lastSyncAt === "unrecorded" ? null : lastSyncAt}
+          now={now}
+          problem={connectionProblem(health.status)}
+        />
         <div className="flex min-w-0 flex-col gap-5">
           <CountCards
             cards={countCards({
@@ -315,10 +337,12 @@ export default async function ProjectHomePage({
               keys,
               lastSyncAt,
               reviewByLocale: reviewByLocale(aggregates.locales, aggregates.cells).get(projectId) ?? [],
+              hold: heldNow,
             })}
             slug={slug}
             surfaceSlug={defaultSurface}
             now={now}
+            heldLater={heldLater}
           />
           <AttentionCard items={items} slug={slug} role={role} state={state} now={now} />
           <LogsCard rows={events.rows} slug={slug} now={now} archived={archived} syncedBefore={lastSyncAt !== null} />
@@ -336,15 +360,19 @@ export default async function ProjectHomePage({
             members: project._count.members,
             lastSyncAt,
             lastImportFailedAt: failed?.lastImportFailedAt ?? null,
+            lastImportError: failed?.importError ?? null,
             lastPublishedAt: project.lastPublishedAt,
             lastPrUrl: project.lastPrUrl,
             createdAt: project.createdAt,
             archivedAt: project.archivedAt,
             triggers,
+            connection: connectionProblem(health.status),
+            held: heldNow,
           })}
           slug={slug}
           now={now}
           canOpenSettings={canPerform(role, "project:settings")}
+          heldLater={heldLater}
         />
       </PanelBody>
 

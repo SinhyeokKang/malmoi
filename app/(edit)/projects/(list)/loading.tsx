@@ -1,5 +1,6 @@
 import { ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { m } from "@/lib/i18n";
 
 /**
  * 목록이 서버에서 오는 동안의 스켈레톤 (2026-09-11 사용자).
@@ -25,23 +26,29 @@ import { Skeleton } from "@/components/ui/skeleton";
  * ⚠️ **행을 둘만 그린다** — 스켈레톤은 "곧 온다"를 말하는 것이지 몇 개가 올지를 예고하는 것이
  * 아니다. 실제 개수를 흉내 내면 그 수가 틀렸을 때 두 번 튄다.
  *
+ * ⚠️ **글자 줄은 `SkeletonLine`이다** (4-W8) — 줄 높이를 px로 적으면 `--text-*` 토큰이 바뀔 때 골격만 떠내려간다.
+ *
  * ⚠️ **`motion-safe:`가 붙어 있다** — 움직임을 줄인 사용자에게는 정지한 회색 블록으로 선다
  * (로그인 화면의 점 필드가 같은 판정이다).
  */
 export default function ProjectsLoading() {
   return (
     <ContentPanel>
+      {/* 골격이 `aria-hidden`이라 접근성 트리가 통째로 빈다 — 이 한 줄이 그 자리를 메운다(4-Y17 — 형제 화면의 골격과 같은 형). */}
+      <span className="sr-only" role="status">{m.projects.loading}</span>
       {/*
         ⚠️ **`aria-hidden`이 둘로 갈렸다** — 머리와 본문이 형제가 되면서 그것을 함께 감싸던 래퍼가
         사라졌다. 하나라도 빠지면 스크린리더가 회색 블록을 읽는다.
       */}
       {/* 머리 — 여백·선·폭 등급은 `PanelHeader`가 든다. */}
       <PanelHeader aria-hidden>
-        {/* 제목 줄: 제목 + 총계 배지 ── ml-auto ─→ 검색 + [New project] */}
+        {/*
+          제목 줄: 제목 ── ml-auto ─→ 검색 + [New project]. ⚠️ **카운트 원을 그리지 않는다**(4-W13) — 실물 `CountBadge`는 0이면 서지 않아
+          골격이 그 자리를 예고하면 0건에서 튄다.
+        */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Skeleton className="h-7 w-40" />
-            <Skeleton className="size-5 rounded-full" />
+            <SkeletonLine text="text-lg" className="w-40" />
           </div>
           <Skeleton className="ml-auto h-9 w-64" />
           <Skeleton className="h-9 w-32" />
@@ -53,19 +60,19 @@ export default function ProjectsLoading() {
         <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
           {/* 카드 헤더 — 실물과 같은 `px-4 py-3`이라야 첫 행의 y가 안 튄다. */}
           <div className="flex min-h-12 items-center gap-2 px-4 py-3">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="size-5 rounded-full" />
+            <SkeletonLine text="text-base" className="w-32" />
           </div>
           <ul>
             {[0, 1].map((i) => (
               <li
                 key={i}
-                className={`flex items-center gap-4 py-3.5 pr-3.5 pl-3 ${i === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}`}
+                className={`flex items-center gap-4 py-[13px] pr-3.5 pl-3 ${i === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}`}
               >
                 <Skeleton className="size-7 rounded-[4px]" />
                 <div className="flex w-[420px] shrink-0 flex-col gap-0.5">
-                  <Skeleton className="h-5 w-48" />
-                  <Skeleton className="h-5 w-72" />
+                  <SkeletonLine text="text-base" className="w-48" />
+                  {/* 메타 줄은 13이다(4-Y9) — 실물 행과 같은 높이라야 도착 때 안 튄다. */}
+                  <SkeletonLine text="text-xs" className="w-72" />
                 </div>
                 <Skeleton className="ml-auto h-5 w-16 rounded-full" />
               </li>

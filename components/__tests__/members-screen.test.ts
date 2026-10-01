@@ -199,7 +199,8 @@ describe("멤버 행 — 캔버스 값 그대로", () => {
   });
 
   it.each([
-    ["행 padding 14/14/14/12", ROW, ["py-3.5", "pr-3.5", "pl-3"]],
+    // 4-W3(ux-drift-unify) — 누를 수 있는·목록 행의 세로 padding은 `py-[13px]` 한 벌이다(PanelRow·EventRow·Sources·Settings와 같다).
+    ["행 padding 13/14/13/12", ROW, ["py-[13px]", "pr-3.5", "pl-3"]],
     ["행 요소 gap 16", ROW, ["gap-4"]],
     ["오른쪽 군 gap 8", ROW, ["gap-2"]],
     /** ⚠️ **무게까지 센다** — 15만 세면 `font-medium`을 지워도 green이다(리뷰 🟡5에서 실측). */
@@ -230,7 +231,8 @@ describe("멤버 행 — 캔버스 값 그대로", () => {
    * `members-cards.test.tsx`가 렌더한 띠의 `className`으로 잰다.
    */
   it("행이 아바타 폭에 맞는 들여쓰기를 요청한다", () => {
-    expect(read(ROW)).toContain('indent="avatar"');
+    // 글리프를 받은 행(대기 초대의 28 칸)은 행 규칙이다(ux-drift-unify 4-Y13) — 두 값의 렌더는 `members-cards.test.tsx`가 잰다.
+    expect(read(ROW)).toMatch(/indent=\{glyph === undefined \? "avatar" : "row"\}/);
   });
 
   /** ⚠️ **1행의 첫 글자를 아바타 씨앗으로 쓰지 않는다** — 셸 아바타와 다른 글자가 된다. */

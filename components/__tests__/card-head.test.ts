@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
  * 같은 날 같은 값으로 옮겼다 — `panel-header.test.tsx`. **최소 48(`min-h-12`)** 은 같은 날 더했다 — 설명 문구를 걷어 낸 카드와 든
  * 카드의 머리 높이가 갈리지 않게 한다.
  *
- * ⚠️ **카드 머리는 한 프리미티브가 들지 않는다.** `PanelCard`·`RowCard` 둘이 대부분을 들고, Home·Logs의 카드 넷이 같은 값을 손으로
+ * ⚠️ **카드 머리는 한 프리미티브가 들지 않는다.** `PanelCard`·`RowCard` 둘이 대부분을 들고, Home 메타 열·Logs 날짜 카드 둘이 같은 값을 손으로
  * 적고, 로딩 골격 여덟이 그 모양을 흉내 낸다(골격이 실물과 다르면 도착하는 순간 첫 행이 튄다). 규격이 바뀌면 손으로 적은 쪽이 옛
  * 값에 남으므로 **소스에서 센다** — 자리마다 옛 문자열은 0, 새 문자열은 정해진 수다.
  */
@@ -16,12 +16,12 @@ const ROOT = process.cwd();
 
 const SITES: { path: string; head: string; count: number }[] = [
   // 프리미티브
-  { path: "components/ui/panel-card.tsx", head: "border-divider flex min-h-12 flex-wrap items-center gap-2 {pad} ", count: 1 },
+  // 머리 아래 선은 notice 유무에 따라 머리 또는 notice 래퍼가 든다(2026-10-01 4-Y1) — 그래서 머리 줄 문자열에 선이 없다.
+  { path: "components/ui/panel-card.tsx", head: '"flex min-h-12 flex-wrap items-center gap-2 {pad}"', count: 1 },
   { path: "components/ui/row-card.tsx", head: '"flex min-h-12 items-center gap-2 {pad}"', count: 1 },
-  // 손으로 적은 실물 — Home 카드 셋과 Logs 날짜 카드
-  { path: "components/home/attention-card.tsx", head: '"flex min-h-12 items-center gap-2 {pad} text-base font-medium"', count: 1 },
-  { path: "components/home/logs-card.tsx", head: '"flex min-h-12 shrink-0 items-center {pad} text-base font-medium"', count: 1 },
-  { path: "components/home/meta-column.tsx", head: '"flex min-h-12 items-center {pad} text-base font-medium"', count: 1 },
+  // 손으로 적은 실물 — Home 메타 열과 Logs 날짜 카드. 메타 열은 머리가 아래 선을 긋고 gap이 한 벌이다(2026-10-01 4-Y1 · 4-W1).
+  // Home의 할 일·로그 카드는 `PanelCard`로 옮겼다(5-Y12) — 메타 열은 `complementary` 랜드마크(`<aside>`)라 손으로 남는다.
+  { path: "components/home/meta-column.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad} text-base font-medium"', count: 1 },
   { path: "app/(edit)/projects/[slug]/logs/page.tsx", head: '"flex min-h-12 items-center gap-2 {pad}"', count: 1 },
   // 로딩 골격 — PanelCard형 셋 · RowCard형 둘 · Home · Logs
   { path: "app/(edit)/projects/[slug]/settings/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },

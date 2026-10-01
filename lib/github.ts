@@ -8,7 +8,7 @@ import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
 import { requirePinnedRepositoryId, requireSameRepository } from "@/lib/github-connect/repository-id";
 
 import { parsePrivateKey, requireEnv } from "@/lib/env";
-import { planConnectionHealth, probeFromError, type ConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
+import { planConnectionHealth, probeFromError, storedConnection, type ConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
 import { logFailure } from "@/lib/github-connect/log";
 import { createProbeMemo, probeMemoKey, PROBE_MEMO_MAX, PROBE_MEMO_TTL_MS } from "@/lib/github-connect/probe-memo";
 import type { GitClient, GitTreeBlob } from "@/lib/pull/client";
@@ -145,18 +145,20 @@ async function readProbe(app: App, owner: string, repo: string): Promise<ProbeRe
 }
 
 /**
- * 저장된 값 + probe → 연결 건강성 (ARCHITECTURE §6.5.1). **소비자가 둘이다** — 설정 화면과 Home.
+ * 저장된 값 + probe → 연결 건강성 (ARCHITECTURE §6.5.1). **소비자가 셋이다** — 설정 화면·Home·번역 화면(MCP는 따로 부른다).
  *
- * ⚠️ **저장된 설치가 없으면 probe를 안 부른다** — `planConnectionHealth`가 그때 `not-connected`를
- * 주므로 App JWT 조회와 토큰 발급 두 번이 헛돈다.
+ * ⚠️ **저장된 설치나 리포 id가 없으면 probe를 안 부른다** — `planConnectionHealth`가 그때 probe 결과를 버리고
+ * `not-connected`·`unpinned`를 주므로 App JWT 조회와 토큰 발급 두 번이 헛돈다(`storedConnection`).
  *
  * ⚠️ **try로 감싸지 않는다.** `probeRepo`는 GitHub 실패를 값(`error` → `unknown`)으로 주고 던지는
  * 것은 환경변수 누락뿐이다 — 그것까지 `unknown`("잠시 뒤 다시")으로 접으면 **설정 오류가 영원히
  * 일시 장애로 보인다** (code-review 2026-09-07). 블록의 독립 실패는 GitHub 장애에 대한 것이지
  * 설정 오류가 아니다.
  *
- * @param options.memo **Home만 켠다** (malmoi#107 ①) — probe를 `PROBE_MEMO_TTL_MS` 동안 기억한다. 설정 화면·MCP는 끈 채로
- *   실물을 본다(`probe-memo.ts`).
+ * @param options.memo **Home과 번역 화면만 켠다** (malmoi#107 ① · ux-drift-unify U7 r1) — probe를 `PROBE_MEMO_TTL_MS` 동안 기억한다. 둘 다
+ *   **표시 전용**이다(버튼을 끄는 판단일 뿐, 누르면 서버가 다시 판정한다) — 번역 화면은 키 클릭·저장마다 다시 렌더되어 메모 없이는 번역자마다
+ *   GitHub 호출이 쌓인다. 설정 화면·MCP는 끈 채로 실물을 본다(`probe-memo.ts`).
+ *   Home의 다른 GitHub 조회(열린 PR)도 같은 TTL로 따로 기억한다 — `loadOpenPrUrlMemo`(`lib/projects/open-pr-memo.ts`).
  */
 export async function loadConnectionHealth(project: {
   repoOwner: string;
@@ -164,7 +166,8 @@ export async function loadConnectionHealth(project: {
   installationId: string | null;
   repositoryId: string | null;
 }, options: { memo?: boolean } = {}): Promise<ConnectionHealth> {
-  if (project.installationId === null) return { status: "not-connected" };
+  const stored = storedConnection(project);
+  if (stored !== null) return stored;
   const probe = () => probeRepo(project.repoOwner, project.repoName);
   return planConnectionHealth({ project, probe: await (options.memo ? homeProbeMemo(probeMemoKey(project), probe) : probe()) });
 }

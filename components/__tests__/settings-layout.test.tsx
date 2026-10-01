@@ -36,11 +36,12 @@ it.each(["/saved.webp", "/replaced.webp", null])("설정 서버 조회가 보낸
  * 라벨 없는 로컬 날짜는 보는 사람이 어느 시간대인지 모른다: KST 09-21 08:30에 보관한 사람이
  * "9/20/2026"을 보면 자기가 어제 보관한 것으로 읽는다. 정확한 값은 `<time dateTime>`이 든다.
  */
-it("보관 일시가 `<time dateTime>` 안의 UTC 한 줄이다", async () => {
+it("보관 일시가 `<time dateTime>` 안의 UTC 날짜다", async () => {
   state.archived = true;
   const { container } = await render(await page());
   const stamp = container.querySelector("time");
   expect(stamp?.getAttribute("dateTime")).toBe(new Date("2026-09-20").toISOString());
-  expect(stamp?.textContent).toBe("Sep 20, 2026 00:00 UTC");
-  expect(container.textContent).toContain("Archived on Sep 20, 2026 00:00 UTC");
+  // 날짜만이다 — Logs의 "Archived on {date}."와 같은 형(ux-drift-unify 2-Y19). 정확한 시각은 `dateTime`이 든다.
+  expect(stamp?.textContent).toBe("Sep 20, 2026");
+  expect(container.textContent).toContain("Archived on Sep 20, 2026");
 });

@@ -194,12 +194,21 @@ describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () =
     expect(source).toMatch(/<FooterLink \/>\s*<\/aside>/);
   });
 
-  it("행 높이는 블록이 아니라 컨테이너가 든다", () => {
+  /*
+    ⚠️ **4-W8(ux-drift-unify)에서 뒤집었다** — 할 일·로그 행의 높이는 px 컨테이너(`h-[42px]`·`h-[22px]`)가 아니라 실물과 같은 글자 급의
+    줄 상자(`SkeletonLine`)가 든다. px로 적으면 `--text-*` 토큰이 바뀔 때 골격만 떠내려간다.
+  */
+  it("행 높이는 블록이 아니라 줄 상자가 든다", () => {
     const source = skeleton();
-    // 할 일 행은 두 줄(42) · 로그 행은 한 줄(22) · 메타 행은 `text-sm`의 20이다.
-    expect(source).toMatch(/h-\[42px\]/);
-    expect(source).toMatch(/h-\[22px\]/);
+    // 할 일 행은 두 줄(문장 15 · 표면·로케일 13) · 로그 행은 한 줄 · 메타 행은 `text-sm`의 20이다.
+    expect(source).not.toMatch(/h-\[(?:42|22|21|17)px\]/);
+    expect(source).toContain('<SkeletonLine text="text-base" className="w-[72%]" />');
+    expect(source).toContain('{divided && <SkeletonLine text="text-xs" className="w-[62%]" />}');
     expect(source).toMatch(/flex h-5 items-center/);
+    // 두 줄 사이 간격도 실물 행과 같다(r1) — px 컨테이너가 사라져 gap 차이(4 vs 2)가 그대로 행 높이 2px가 됐다.
+    const gap = (text: string) => text.match(/<span className="flex min-w-0 flex-1 flex-col[^"]*\b(gap-[\d.]+)/)?.[1];
+    expect(gap(source)).toBeDefined();
+    expect(gap(source)).toBe(gap(read("components/home/attention-card.tsx")));
     expect(source).toMatch(/flex h-\[45px\] items-center/);
   });
 
@@ -246,5 +255,26 @@ describe("Home — 활동은 이벤트 스트림 하나다", () => {
 
   it("카드가 Logs와 **같은 행 컴포넌트**를 쓴다 — 같은 사건이 두 모양이 되지 않는다", () => {
     expect(read("components/home/logs-card.tsx")).toContain('from "@/components/logs/event-row"');
+  });
+});
+
+/**
+ * **보류 판정의 배선** (ux-drift-unify Q6 · U7 r1 ⚪7) — Home은 `planHomeHold`로 판정하고, PR에 달린 사유는 promise를 **기다리지 않고** 두 자리
+ * (카드 보조 줄 · 메타 열)에 똑같이 내린다. 기다리면 malmoi#107이 줄인 착지 병목이 되살아난다.
+ */
+describe("Home — 보류 판정", () => {
+  const src = read(HOME);
+
+  it("planHomeHold 하나가 판정하고 그 promise를 await하지 않는다", () => {
+    expect(src).toContain("planHomeHold(");
+    expect(src).not.toMatch(/await planHomeHold/);
+    expect(src).not.toMatch(/await\s+hold\b/);
+    // 표시 전용이라 메모를 거친다(U15) — 게이트 경로는 `loadOpenPrUrl`을 그대로 부른다(`open-pr-memo.test.ts` 배선).
+    expect(src).toContain("loadOpenPrUrlMemo(slug, project)");
+  });
+
+  it("같은 promise가 카드와 메타 열 둘 다에 간다", () => {
+    expect(src).toContain("const heldLater = hold instanceof Promise ? hold : undefined;");
+    expect(src.match(/heldLater=\{heldLater\}/g)).toHaveLength(2);
   });
 });

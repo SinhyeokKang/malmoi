@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { m } from "@/lib/i18n";
+import { planRepositoryImport } from "@/lib/import/plan";
 import { planImportRefusal } from "@/lib/import/refusal";
 import type { RepositoryImportError } from "@/lib/import/result";
 
@@ -13,9 +15,12 @@ describe("planImportRefusal", () => {
     expect(planImportRefusal("already-running")).toEqual({ tone: "info", dismissible: true, action: null });
   });
 
-  it("다른 화면에서 고쳐야 풀리는 둘은 amber이고 닫기 대신 고칠 자리로 보낸다", () => {
+  it("다른 화면에서 고쳐야 풀리는 셋은 amber이고 닫기 대신 고칠 자리로 보낸다", () => {
     expect(planImportRefusal("not-ready")).toEqual({ tone: "warning", dismissible: false, action: "settings" });
-    expect(planImportRefusal("not-connected")).toEqual({ tone: "warning", dismissible: false, action: "reconnect" });
+    expect(planImportRefusal("unpinned")).toEqual({ tone: "warning", dismissible: false, action: "reconnect" });
+    // 계정 미연결(ConnectError)은 리포 재연결이 아니다 — 설정의 계정 복구 줄로 보낸다(ux-drift-unify r1).
+    // 이 사람의 GitHub 계정 연결은 Account 화면에 산다 — 문장("connect it in Account")과 버튼이 같은 곳을 가리킨다(fix1 🟡8).
+    expect(planImportRefusal("not-connected")).toEqual({ tone: "warning", dismissible: false, action: "account" });
   });
 
   it("표면 추가는 이 Alert가 보낼 곳이 아니다 — no-surfaces에 액션이 없다", () => {
@@ -107,11 +112,12 @@ describe("planImportRefusal", () => {
      */
     const repeats = [
       // 이 기능이 직접 내는 것
-      "not-ready", "not-connected", "no-surfaces", "repo-replaced", "invalid input",
+      "not-ready", "unpinned", "no-surfaces", "repo-replaced", "invalid input",
       // 인가 — 다시 눌러도 같다(세션 만료는 아래 transient — 다시 로그인하면 풀린다)
       "forbidden", "not-found", "archived", "last-owner", "not-member",
       // 연결·설치 — 사람이 GitHub에서 손대야 풀린다
-      "reauthorize", "repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only",
+      // `not-connected`는 이 사람의 GitHub 계정이 없다는 ConnectError다(ux-drift-unify r1) — 계정을 연결해야 풀린다.
+      "not-connected", "reauthorize", "repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only",
       "no-installations", "no-repos", "no-candidates",
       // 온보딩 판정 — 리포나 설정이 바뀌어야 답이 달라진다
       "base-branch-missing", "invalid-branch", "sync-branch", "invalid-slug", "slug-taken", "limit-reached",
@@ -151,5 +157,24 @@ describe("planImportRefusal", () => {
 describe("reconfirm — 승인 뒤 편집·설정이 바뀌었다 (sync-edit-protection T9)", () => {
   it("warning이고 닫을 수 있고 액션이 없다 — 다음 행동은 [Sync]를 다시 열어 새 내용을 확인하는 것이다", () => {
     expect(planImportRefusal("reconfirm")).toEqual({ tone: "warning", dismissible: true, action: null });
+  });
+});
+
+/**
+ * **리포 id 미고정은 `unpinned`이고 Disconnected 낱말이다** (ux-drift-unify D1 · r1). 설치가 없으면 readiness가 먼저 `not-ready`를 낸다.
+ * ⚠️ `not-connected`는 계정 미연결(ConnectError)이라 이 낱말을 쓰지 않는다 — 실제 경로의 재현은 `lib/onboarding-run/__tests__/import.test.ts`.
+ */
+describe("unpinned 거부 문구", () => {
+  const surface = { id: "s", slug: "default", archivedAt: null, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", lastImportStartedAt: null };
+  const input = { now: new Date(0), repositoryImportToken: null, repositoryImportStartedAt: null, surfaces: [surface], runningSync: null };
+
+  it("설치가 없으면 not-connected에 닿지 않는다 — readiness가 먼저다", () => {
+    expect(planRepositoryImport({ ...input, readiness: "setup", identity: "unpinned" })).toEqual({ ok: false, error: "not-ready" });
+    expect(planRepositoryImport({ ...input, readiness: "ready", identity: "unpinned" })).toEqual({ ok: false, error: "unpinned" });
+  });
+
+  it("문구가 Home 배너와 같은 Disconnected 낱말이고 'not connected'라 말하지 않는다", () => {
+    expect(m.repositorySync.errors.unpinned).toBe(m.home.banner.disconnected.title);
+    expect(m.repositorySync.errors.unpinned).not.toMatch(/not connected/i);
   });
 });

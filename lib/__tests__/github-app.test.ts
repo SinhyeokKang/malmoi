@@ -25,7 +25,7 @@ vi.mock("octokit", () => ({
   },
 }));
 
-const { probeRepo, createGitClient } = await import("@/lib/github");
+const { probeRepo, createGitClient, loadConnectionHealth } = await import("@/lib/github");
 const { GITHUB_WAIT_MS } = await import("@/lib/github-wait");
 
 /**
@@ -126,5 +126,28 @@ describe("createGitClient.findOpenPr", () => {
     hoisted.request.mockResolvedValueOnce({ data: [] });
     await expect(client.findOpenPr("o:malmoi-i18n/sync-acme")).resolves.toBeNull();
     expect(hoisted.request).toHaveBeenLastCalledWith("GET /repos/{owner}/{repo}/pulls", expect.objectContaining({ head: "o:malmoi-i18n/sync-acme", state: "open" }));
+  });
+});
+
+/**
+ * **저장된 것이 판정을 끝내면 GitHub을 치지 않는다** (ux-drift-unify §3.1). 설치가 없거나 리포 id가 없으면
+ * `planConnectionHealth`가 probe 결과를 버리므로 App JWT 조회·토큰 발급·리포 조회가 헛돈다.
+ */
+describe("loadConnectionHealth probe 생략", () => {
+  const project = { repoOwner: "o", repoName: "r", installationId: "7", repositoryId: "9" };
+  it.each([
+    [{ ...project, installationId: null }, "not-connected"],
+    [{ ...project, repositoryId: null }, "unpinned"],
+    [{ ...project, installationId: null, repositoryId: null }, "not-connected"],
+  ] as const)("%o → %s, GitHub 호출 0", async (stored, status) => {
+    await expect(loadConnectionHealth(stored)).resolves.toEqual({ status });
+    expect(hoisted.appRequest).not.toHaveBeenCalled();
+    expect(hoisted.getInstallationOctokit).not.toHaveBeenCalled();
+    expect(hoisted.request).not.toHaveBeenCalled();
+  });
+
+  it("둘 다 있으면 probe한다", async () => {
+    await loadConnectionHealth(project);
+    expect(hoisted.appRequest).toHaveBeenCalled();
   });
 });

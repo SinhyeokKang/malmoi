@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert } from "lucide-react";
+import { CircleX } from "lucide-react";
 
 import { PanelBody } from "@/components/shell/content-panel";
 import { Button } from "@/components/ui/button";
@@ -21,20 +21,25 @@ import { m } from "@/lib/i18n";
  * ⚠️ **`reset`이 아니라 `retry`다** (audit-ux #11 — Next 16.3). `reset`은 다시 그리기만 하고 서버에서 다시 가져오지
  * 않아 같은 조회 실패가 그대로 났다(이 주석이 반대를 말하고 있었다). `retry`가 **현재 URL을 다시 조회한다** —
  * 필터·검색·커서·`event`가 그대로 남아 있으므로 재시도가 보고 있던 것을 되찾는다.
+ *
+ * 글리프는 §2.4 글리프 열의 실패 `CircleX`다(2026-10-01 — `CircleAlert`는 필드 오류 전용). 셸 공용 경계(`(edit)/error.tsx`)가 같은 형이다.
  */
 export default function LogsError({ retry }: { error: Error & { digest?: string }; retry: () => void }) {
   return (
-    <PanelBody>
-      <EmptyState
-        icon={CircleAlert}
-        title={m.logs.queryError.title}
-        description={m.logs.queryError.description}
-        action={
-          <Button type="button" variant="primary" onClick={() => retry()}>
-            {m.logs.queryError.retry}
-          </Button>
-        }
-      />
+    // 세로 중앙은 `flex-1`이 든다 — 셸 오류 경계·not-found 둘과 같은 형(malmoi#162).
+    <PanelBody className="flex flex-col">
+      <div className="flex flex-1 items-center justify-center">
+        <EmptyState
+          icon={CircleX}
+          title={m.logs.queryError.title}
+          description={m.logs.queryError.description}
+          action={
+            <Button type="button" variant="primary" onClick={() => retry()}>
+              {m.logs.queryError.retry}
+            </Button>
+          }
+        />
+      </div>
     </PanelBody>
   );
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio";
-import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,7 +36,7 @@ const UNSELECTED = "text-muted-foreground hover:text-foreground";
  * 꽂는데(`h-3.5 w-3.5 shrink-0` · `ml-0.5 h-5 min-w-5 px-1.5 text-[10px]`), 그 치수를 호출부마다
  * 손으로 반복하다 **배지 크기가 두 벌로 갈렸다**(h-5 / h-4). prop이면 규칙이 여기 한 곳에 남는다.
  *
- * ⚠️ **배지는 `Badge` 프리미티브를 쓴다** — 저쪽은 선택/미선택에 상관없이 `bg-primary` 고정이라
+ * ⚠️ **배지는 `CountBadge` 프리미티브를 쓴다** — 저쪽은 선택/미선택에 상관없이 `bg-primary` 고정이라
  * 흰 칸 위와 캔버스 칸 위의 대비가 갈렸다. `neutral`은 `--foreground`의 알파라 두 배경 모두에서
  * 같은 관계를 유지한다.
  */
@@ -53,12 +53,10 @@ export type SegmentContent = {
   /** 라벨 **왼쪽**. `lucide-react` 컴포넌트를 그대로 넘긴다. */
   icon?: ComponentType<{ className?: string }>;
   /**
-   * 라벨 **오른쪽**의 개수.
-   *
-   * ⚠️ **0도 보인다** — `undefined`와 `0`이 다르다. "그 탭에 아무것도 없다"는 그 자체로 정보이고,
-   * `badge && …`로 쓰면 0이 falsy라 조용히 사라진다 (`NavItem.badge`와 같은 판정).
+   * 라벨 **오른쪽**의 개수 — `CountBadge`다: 0이면 서지 않고 숫자는 `aria-hidden` + `label` 문장이다(2026-10-01 Q13 — 옛 규칙
+   * "0도 보인다"의 철회. 같은 개수가 카드 머리와 여기서 다르게 굴었다).
    */
-  badge?: number;
+  badge?: { count: number; label: string };
 };
 
 /**
@@ -73,11 +71,7 @@ function SegmentBody({ leading, icon: Icon, label, badge }: SegmentContent) {
       {leading}
       {Icon !== undefined && <Icon className="size-4 shrink-0" aria-hidden />}
       <span className="min-w-0 truncate">{label}</span>
-      {badge !== undefined && (
-        <Badge variant="neutral" className="shrink-0">
-          {badge}
-        </Badge>
-      )}
+      {badge !== undefined && <CountBadge count={badge.count} label={badge.label} className="shrink-0" />}
     </>
   );
 }

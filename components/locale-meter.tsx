@@ -44,10 +44,20 @@ export function LocaleMeter({ locale }: { locale: RowLocaleProgress }) {
         스크린리더에 중복이 되지 않게 바만 장식으로 둔다. 완료율·검토 대기율을 함께 읽는 추가 설명은
         이번 범위에서 제외했다 (2026-09-13 사용자).
       */}
-      <span aria-hidden className="bg-foreground/[0.08] flex h-1 overflow-hidden rounded-full">
-        <span className="bg-foreground/85 h-1" style={{ width: `${done}%` }} />
-        <span className="h-1 bg-amber-500" style={{ width: `${review}%` }} />
-      </span>
+      <MeterBar done={done} review={review} />
     </div>
+  );
+}
+
+/**
+ * Meter의 막대만 — 목록 행과 Sources 상세 언어 행이 같이 쓴다(5-Y18 — 상세가 값이 같은 사본을 들고 있었다).
+ * 폭은 퍼센트(0–100)이고 두 구간이 겹치지 않게 호출부가 접는다. `dimmed`는 사라진 언어다 — 완료가 흐려지고 검토 구간은 호출부가 0으로 준다.
+ */
+export function MeterBar({ done, review, dimmed = false }: { done: number; review: number; dimmed?: boolean }) {
+  return (
+    <span aria-hidden className="bg-foreground/[0.08] flex h-1 overflow-hidden rounded-full">
+      <span className={dimmed ? "bg-foreground/25 h-1" : "bg-foreground/85 h-1"} style={{ width: `${done}%` }} />
+      <span className="h-1 bg-amber-500" style={{ width: `${review}%` }} />
+    </span>
   );
 }

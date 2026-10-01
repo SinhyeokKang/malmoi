@@ -28,7 +28,11 @@ vi.mock("@/lib/import/prepare", () => ({ prepareSync: h.prepareSync }));
 vi.mock("@/lib/keys/query", async (orig) => ({ ...(await orig<object>()),
   loadProjectListAggregates: async () => ({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map() }),
   loadSurfaceCounts: async () => [] }));
-vi.mock("@/lib/github", async (orig) => ({ ...(await orig<object>()), loadConnectionHealth: async () => ({ status: "ok" }) }));
+// 저장된 두 컬럼이 끝내는 갈래(`not-connected`·`unpinned`)는 실제 판정을 지나고, probe가 필요한 쪽만 `ok`로 둔다.
+vi.mock("@/lib/github", async (orig) => {
+  const { storedConnection } = await import("@/lib/github-connect/health");
+  return { ...(await orig<object>()), loadConnectionHealth: async (project: { installationId: string | null; repositoryId: string | null }) => storedConnection(project) ?? { status: "ok" } };
+});
 
 const { TOOLS } = await import("..");
 const tool = (name: string) => {
@@ -115,6 +119,32 @@ describe("역할 × 빈 grants", () => {
     expect(h.detectProjectFormats).toHaveBeenCalledExactlyOnceWith(prisma, { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" } }, { kind: "existing", slug: "acme" });
     // 같은 토큰의 신규 경로는 project:create가 없다.
     expect(status(await call("detect_formats", settingsOnly, { owner: "o", repo: "r" }))).toBe("token-scope");
+  });
+});
+
+describe("list_keys 기본 범위 (translation-filter-scope 조건 13 — 2026-09-30 사용자)", () => {
+  const listed = () => (h.loadTranslationList.mock.calls[0]?.[1] as { query: { scope: string; cursor?: string } }).query;
+
+  it("scope 없이 부르면 전 활성 소스(All sources)로 읽는다 — 화면 최초 진입과 같은 기본값", async () => {
+    expect(status(await call("list_keys", subject("owner"), SURFACE))).toBe("ok");
+    expect(listed().scope).toBe("project");
+  });
+
+  // 옛 "다음 페이지" Action의 입력 상한을 물려받는다 — 주소창 값의 합리적인 크기이고 그 이상은 조작이다(translation-filter-scope T6).
+  it("입력 상한: cursor·query는 선택이고, 길이·타입을 벗어나면 거부한다", () => {
+    const schema = tool("list_keys").inputSchema as { safeParse(v: unknown): { success: boolean } };
+    expect(schema.safeParse(SURFACE).success).toBe(true);
+    expect(schema.safeParse({ ...SURFACE, query: { ns: "common", scope: "namespace" }, cursor: "c1" }).success).toBe(true);
+    expect(schema.safeParse({ ...SURFACE, query: { ns: 3 } }).success).toBe(false);
+    expect(schema.safeParse({ ...SURFACE, cursor: "" }).success).toBe(false);
+    expect(schema.safeParse({ ...SURFACE, cursor: "c".repeat(2049) }).success).toBe(false);
+    expect(schema.safeParse({ ...SURFACE, query: { q: "x".repeat(1025) } }).success).toBe(false);
+    expect(schema.safeParse({ ...SURFACE, slug: "" }).success).toBe(false);
+  });
+
+  it("scope=source는 그대로 경로 소스로 좁히고, cursor는 그대로 실린다", async () => {
+    await call("list_keys", subject("owner"), { ...SURFACE, query: { scope: "source" }, cursor: "c1" });
+    expect(listed()).toMatchObject({ scope: "source", cursor: "c1" });
   });
 });
 
@@ -248,5 +278,26 @@ describe("get_project — 마지막 Publish의 PR", () => {
     const { m } = await import("@/lib/i18n");
     expect(m.mcp.tools.get_project).not.toMatch(/open pull request/i);
     expect(m.mcp.tools.get_project).toContain("preview_publish");
+  });
+});
+
+/**
+ * **`connection`의 값 목록은 외부 계약이다** (ux-drift-unify spec Q12). 화면은 설치는 있고 리포 id가 없는 프로젝트를 `unpinned`
+ * (Disconnected)로 가르지만, MCP 출력은 넓히지 않는다 — 출력 경계가 `not-connected`로 접는다.
+ */
+describe("get_project — connection 출력 불변", () => {
+  const setProject = (data: Record<string, unknown>) =>
+    (prisma as unknown as { project: { update: (a: unknown) => Promise<unknown> } }).project.update({ where: { id: "p1" }, data });
+
+  it("리포 id가 없는 프로젝트는 not-connected다", async () => {
+    await setProject({ installationId: "1", repositoryId: null });
+    const outcome = await call("get_project", subject("owner"), { slug: "acme" });
+    expect(outcome.status === "ok" && outcome.data.connection).toBe("not-connected");
+  });
+
+  it("리포 id가 있으면 판정값을 그대로 싣는다", async () => {
+    await setProject({ installationId: "1", repositoryId: "10" });
+    const outcome = await call("get_project", subject("owner"), { slug: "acme" });
+    expect(outcome.status === "ok" && outcome.data.connection).toBe("ok");
   });
 });

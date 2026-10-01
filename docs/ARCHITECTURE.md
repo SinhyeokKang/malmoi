@@ -605,6 +605,74 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
   아니라 사용자가 일부러 고르는 전체 보기다(기본 착지는 load까지 1초). **다음에 이 화면이 느리다는
   제보가 오면 FCP가 아니라 이 표의 `loadEventEnd`부터 본다.**
 
+⚠️ **2026-10-01 — 위 판정의 전제("전체 보기는 기본 경로가 아니다")가 바뀌었다** (translation-filter-scope, 2026-09-30 사용자). 기본 범위가
+**All sources**이고 화면 목록이 **전량**(`pageSize: "all"`, "더 보기" 버튼 없음)이라 전 소스 × 전 키가 기본 착지다. 목록은 요약 행뿐이고
+입력은 선택 키 하나라(`<Textarea>` 2,721개 시절과 다른 화면) 가상화 없이 측정 게이트를 세웠다. 로컬 production 빌드(`pnpm build && pnpm start`,
+dev DB = 로컬 Mac → 도쿄 pooler), 소스 셋 fixture, warm-up 1회 버림 + 3회 중앙값:
+
+| 지표 | 한계(5,000행) | 5,000행 | 2,000행 | 판정 |
+|---|---|---|---|---|
+| `loadEventEnd` | ≤ 2.0초 | **1.33초** | 1.11초 | 통과 |
+| 문서 `transferSize`(gzip) | ≤ 1.5MB | **0.38MB**(디코드 4.87MB) | 0.17MB | 통과 |
+| 상세 타이핑 INP | ≤ 200ms | 판정 불가 — 메인 스레드 몫 39ms | 28ms | **미판정** |
+| Save → 재검증 `responseEnd` | ≤ 1.0초 | **2.49초**(TTFB 1.17초) | 2.55초 | **미달 — 사용자가 수용**(2026-10-01) |
+| └ Save 클릭 → 재검증 `responseEnd` | (참고) | **5.61초** | 3.63초 | 행 수에 비례하는 몫이 있다 |
+| └ Save 전후 긴 작업 | (참고) | **~2.0–2.1초** | ~0.86–0.90초 | 행 수에 비례 — #157과 같은 경로 |
+| 키 클릭 → 상세 열기 긴 작업 | (게이트 밖) | **~2.05초** | 관측 없음 | 별건 [#157](https://github.com/SinhyeokKang/malmoi/issues/157) |
+
+- **Save 비용은 두 몫이다.** 재검증 요청 자체(`responseEnd − startTime`)는 행 수와 무관하다 — 2,000행도 2.55초이고 TTFB가 ~1.2초다(로컬 →
+  도쿄 pooler 왕복). 그러나 **클라이언트 몫은 행 수에 비례한다** — 클릭에서 재검증 도착까지 5.61초(5,000) 대 3.63초(2,000), Save 전후의
+  긴 작업 ~2.0–2.1초 대 ~0.86–0.90초. 키 클릭 멈춤(#157)과 같은 경로(전량 목록의 재렌더)다. 사용자가 한계선을 완화하고 More 삭제로
+  진행했다. 다음에 저장이 느리다는 제보가 오면 네트워크 몫은 TTFB로, 클라이언트 몫은 긴 작업으로 따로 본다.
+- **INP는 이 측정 브라우저(ego)에서 판정하지 못했다** — 로그인한 앱 셸에서만 rAF가 ~1초 간격으로 떨어져 event duration이 목록 크기와 무관하게
+  ~1초였다(1행 대조군도 같다). 메인 스레드 몫(입력 지연 + 처리)만 39ms로 한계 안이다. 확정하려면 일반 Chrome에서 다시 잰다.
+- **5,000행에서 키를 클릭하는 순간 메인 스레드가 ~2.05초 막힌다**(매 회, LoAF blocking 2,085ms) — INP 정의상 이 클릭이 페이지 INP다.
+  게이트 밖이라 #157로 따로 추적한다.
+- 20,000키×200언어 fixture(§1.96과 같은 SQL)의 전량 조회 — **기록이지 판정이 아니다**(§1.96의 389ms는 LIMIT 100 + count였다):
+  All sources 26,000행 **221ms** · `JSON.stringify(rows)` **5.86MB** / 모든 키가 일치하는 검색 477ms · 8.70MB / This source 20,000행 244ms · 4.53MB.
+
+⚠️ **2026-10-01 — 연결·보류 판정의 스트리밍이 착지에 얹혔다** (ux-drift-unify T18·T20 — §6.5.2). 번역 화면은 연결 promise를, Home은 열린 PR 조회
+promise를 기다리지 않고 내린다. 기준 SHA `9a197d35`(첫 화면 커밋 직전 dev) 대 dev `e667e1a5`. 로컬 production 빌드(`pnpm build && pnpm start`) · 1280×900 ·
+하드 내비게이션 · 프로젝트 `bugshot-i18n-test-qa`(소스 2 · 907키). **부하 < 3에서만 시작하고 base·dev를 A,B,A,B로 교대**했다(같은 빌드 사본을 `.next`로
+바꿔 끼움) — 연속 5회 × 2라운드 = 10회 중앙값(ms). GitHub 호출 수는 전역 `fetch`를 감싸 `api.github.com` 요청만 센 값이다.
+
+| 착지 | 빌드 | TTFB | FCP | `responseEnd` | `loadEventEnd` | GitHub 호출 |
+|---|---|---|---|---|---|---|
+| Home · 편집 0(PR 조회 스트리밍) | base | 258.5 | 382 | 515.5 | 592.5 | 측정 0×10(워밍 3 — probe) |
+| | dev | 262.5 | 392 | 506 (−9.5) | 577.5 (−15) | 측정 0×10(워밍 5 — probe 3 + PR 2) |
+| Home · 편집 1(PR 조회 생략) | base | 263 | 376 | 706 | 814 | 0×5 |
+| | dev | 246 | 380 | 567 (−139) | 687 (−127) | 0×5 |
+| 번역 화면 | base | 250 | 374 | 593 | 702.5 | 0×10 |
+| | dev | 256 | 386 | 651.5 (+58.5, +9.9%) | 755 (+52.5, +7.5%) | 0,2,0,0,0 ×2(메모 만료와 겹친 착지) |
+
+Home 편집 1 행은 첫 측정(dev `ae0f2f98`, 교대 없이 5회 중앙값)이다 — 그 측정의 Home 편집 0(+540/+532)은 열린 PR 조회에 메모가 없던 판(매 착지 GitHub 2회)이고,
+아래 메모(U15)로 닫혔다.
+
+| 상호작용 커밋 시간 | base | dev | GitHub 호출/클릭 |
+|---|---|---|---|
+| Home `?event=` 상세 열기(편집 0) | 538 | 553 | 0,2,0,0,0 → 0,4,0,0,0 |
+| 번역 키 클릭(편집 1 · 같은 부하 구간에서 연달아) | 1074 / 1012 | 1105 / 930 | 0 → 클릭당 2,0,0,0,0 / 0,2,0,0,0,0,0 |
+
+번역 키 클릭은 첫 측정에서 2615ms(5회)·1784ms(7회)였는데 **부하 잡음으로 반박됐다**(load average 7–15, 다른 워커 빌드와 겹침) — 같은 구간 연달아 잰 쌍은
+차이가 없고, 클릭 `?key=` RSC 중앙값도 base 544 · dev 572로 같다. dev의 클릭이 GitHub을 부르는 것은 probe 메모 만료와 겹친 클릭뿐이다.
+
+**콜드 착지**(마지막 요청 뒤 35초 이상 — 메모 만료, 각 3회 중앙값). 콜드에서는 base·dev 모두 TTFB가 600~1200ms로 오른다(DB·서버도 식음):
+
+| 착지 | 빌드 | `responseEnd` | `loadEventEnd` | GitHub 호출 |
+|---|---|---|---|---|
+| Home · 편집 0 | base | 1645 | 1759 | 2(probe) |
+| | dev | **2466 (+821, +50%)** | **2546 (+787, +45%)** | 4(probe 2 + PR 조회 2) |
+| 번역 화면 | base | 1263 | 1376 | 0(base 번역 화면은 probe를 안 불렀다) |
+| | dev | **2066 (+803, +64%)** | **2577 (+1201, +87%)** | 2(probe) |
+
+- **스트리밍 라우트의 판정선은 FCP와 상호작용 시간으로 읽는다 — `responseEnd`·`loadEventEnd`가 아니다** (2026-10-01 사용자 — spec Q7의 해석).
+  스트리밍된 GitHub 조회(Home 열린 PR · 번역 화면 연결 확인)는 문서를 늦게 **닫을** 뿐이고 TTFB·FCP·상호작용은 그대로다 — 그 사이 화면은 이미 그려져
+  있고 버튼은 DB 판정으로 첫 렌더부터 서 있다. 그래서 **콜드 착지의 비용(위 표)은 수용한 결정이다.** 다음에 이 화면이 느리다는 제보가 오면 FCP·클릭
+  커밋 시간부터 보고, 문서 종료 시각은 GitHub 왕복 수(위 열)와 함께 본다.
+- **따뜻한 착지가 평평한 이유는 메모 둘이다** — probe 메모(§6.5.2 — Home·번역 화면, 30초)와 **Home 열린 PR 메모**(`lib/projects/open-pr-memo.ts` —
+  `OPEN_PR_MEMO_TTL_MS` = probe와 같은 30초, **Home 표시 전용**이라 `/api/push` 게이트는 쓰지 않는다). Publish와 수동 Sync가 그 프로젝트의 항목을
+  지운다(`forgetOpenPr`) — 방금 연 PR은 바로 보이고, GitHub에서 직접 머지·닫은 PR만 TTL 동안 늦게 보인다.
+
 ⚠️ **절대값 판정에 `pnpm dev`를 쓰지 않는다.** 같은 화면을 dev 서버로 재면 FCP가 688ms인데
 `responseEnd`가 **10,086ms**이고 본문이 1MB다 — 헤더와 셸이 먼저 나가고 서버가 표를 10초 붙들고 있다.
 같은 코드가 Vercel 빌드에서 0.74초·181KB다. **스트리밍 응답에서는 `responseEnd`와 `transferSize`를
@@ -619,12 +687,16 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 - **신규 인덱스가 없다.** 키 요약은 기존 `(projectId, surfaceId, …)` 인덱스 위의 키 단위 집계이고 KeyRef를 조인하지 않는다.
   **pg_trgm GIN(value·sourceText)은 기각했다** — 키별 EXISTS 계획이라 131→94ms · 36→11ms로 확장 하나를 들일 값이 아니었다.
 - **정렬은 `Incomplete first` 하나이고 URL에 `sort`가 없다** — 고를 것이 없는 파라미터는 만들지 않는다.
-- **`PAGE_SIZE` 100 + keyset cursor**(`lib/keys/translation-list.ts`). 안정 분할이 범위 전체 집계를 요구하므로 비용은 페이지 크기가
-  아니라 `scope`에 좌우된다 — 페이지를 줄여 빨라지길 기대하지 않는다. 조건이 바뀌면 cursor를 푼다.
-  ⚠️ **다음 페이지는 주소가 아니라 `loadMoreTranslationKeys`(읽기 전용 Server Action)로 읽고 화면이 누적한다** (audit-ux #19, 2026-09-25) —
-  cursor가 주소에 있으면 새로고침·공유·뒤로가기가 그 페이지만 보였다. 대가: **저장 뒤 재검증은 첫 페이지만 다시 그린다** — 붙인 행은
-  `mergeServerRows`가 자리에 남기고, 요약이 바뀌는 길은 저장한 행의 `applySavedRow`와 선택 키의 `selectedInResult`뿐이다(남이 바꾼 뒤쪽
-  행의 배지는 재필터까지 낡을 수 있다). More의 행·cursor·대기 상태는 목록 세대에 묶여 조건이 바뀌면 버려진다.
+- **화면 목록은 전량이다 — `pageSize: "all"`** (translation-filter-scope, 2026-09-30 사용자). 안정 분할이 범위 전체 집계를 요구하므로 비용은
+  페이지 크기가 아니라 `scope`에 좌우된다 — 페이지를 나눠도 조회 시간이 줄지 않았다. `"all"`은 LIMIT·cursor가 없고 **SQL count를 따로 돌리지
+  않는다**(CTE가 한 번만 돈다 — 집계는 행에서 센다). 트리의 조건별 숫자도 이 행에서 센다(`lib/translations/tree-narrow.ts` — 새 조회가 없다).
+  측정 게이트와 그 판정은 §1.95.
+  - ⚠️ **검색 일치 조각은 키당 한 행이다**(`matchesFor`의 `DISTINCT ON (keyId)`, 로케일 `COLLATE "C"` 첫 것) — 전량에서 흔한 단어를 찾으면
+    키 × 로케일 행이 Node로 왔다.
+  - **재검증 응답이 곧 조건의 전부다** — 같은 세대의 재검증에서 서버 행에 없는 행은 선택 여부와 무관하게 `savedOut`이다(`mergeServerRows`).
+    전엔 More로 붙인 페이지 밖 행 때문에 선택 키만 판정했다("다음 페이지" Server Action은 2026-10-01에 지웠다).
+  - ⚠️ **`PAGE_SIZE` 100 + keyset cursor는 MCP `list_keys` 전용으로 남는다** — 외부 계약이다(§6.45). 숫자 `pageSize` 경로는 SQL count를 유지하고,
+    통합 테스트가 두 경로의 행·집계가 같음을 단언한다. cursor는 주소에 없다(audit-ux #19) — 옛 `?cursor=` 주소는 cursor를 뺀 주소로 redirect한다.
   ⚠️ **Sync 성공도 새 세대다** (2026-09-27, 감사 #11) — 같은 조건의 재검증은 행을 끼워 넣지 않아 들여온 키가 목록에 안 섰다. 기준은 Sync를
   시작한 순간의 목록이고, 결과와 새 트리 중 어느 쪽이 먼저 커밋돼도 그 목록과 다른 첫 목록에서 새 세대를 시작한다(`workspace.tsx`).
 - **`q`는 200자**(`Q_MAX_LENGTH`) — trim 뒤 비면 검색 없음, LIKE 메타문자는 escape한다.
@@ -1873,7 +1945,12 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
   기존 `Promise.all` 한 라운드 안에서 읽는다. ⚠️ **행위자를 고르지 않는다**(POSTMORTEM 2026-09-29 #146). ⚠️ `Last sync`의 주체는 **`lastImportedAt`을
   적어도 한 표면에서 전진시킨** 적재의 것이다 — 표면이 전부 실패한 `partial`의 주체를 붙이면 더 옛 실행의 시각에 거짓 주체가 선다. 고른 사건이 못 쓰이면
   더 옛 사건으로 물러나지 않는다(틀린 주체보다 주체 없음). ⚠️ **`lastSyncAt`과 사건 시각을 대조하지 않는다** — 트랜잭션 경계가 달라 밀리초가 갈리고,
-  대조가 실패하면 주체가 조용히 사라진다. 보류 한 줄("held until the pull request is merged or closed")은 **최신 적재 종류 사건**(결과 무관 — 실패·`upToDate`·진행 중 포함)이 `deferred` · `open-pr`일 때만이다 — 결과로 거르면 PR을 닫은 뒤 선 실패·`upToDate`를 건너뛰어 옛 보류가 남는다(`lib/home/runs.ts`, 실제 행은 `runs.integration.ts`).
+  대조가 실패하면 주체가 조용히 사라진다. **보류(`Held` 배지·`To send` 보조 줄)는 사건 이력이 아니라 지금의 판정이다** (2026-10-01, ux-drift-unify Q6 — 옛 판은
+  최신 적재 사건이 `deferred`·`open-pr`일 때만 섰다): `planHomeHold`(`lib/home/cards.ts`)가 게이트와 같은 입력(미전달 편집 수 · `openPrGateApplies` · 보관 · 끊김)으로
+  `planHoldNotice`(`lib/protection/plan.ts`)를 부르고, **PR을 몰라도 결론이 서면**(편집 > 0 · 보관 · 끊김 · 게이트 없음) 조회하지 않는다. 조회가 필요할 때만
+  `loadOpenPrUrl` promise를 돌려주고, 페이지는 그것을 기다리지 않고 클라이언트 섬(`HoldLater` — `useArrived` 구독)으로 내린다 — 본문 착지를 GitHub에 묶지 않는다
+  (malmoi#107). ⚠️ 조회가 던지거나 마감을 넘기면 `pr-check-failed`(보류 + "couldn't check for an open pull request")다 — 게이트가 fail-closed라 화면도 같은 쪽으로 말한다.
+  사건 이력은 실행 주체(`[Nightly sync] 1d ago`)만 든다.
 
 ## 5.8 전달 기준과 Revert (translation-rework — 2026-09-23 구현 · 프로덕션, #71–#73)
 
@@ -2826,7 +2903,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `list_repositories` | 없음(생성 준비) | `project:create` | 연결 가능한 리포. 연결·설치가 없으면 `needs-browser` |
 | `list_branches` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / **기존: 없음** | 기존 프로젝트의 브랜치 목록은 PRODUCT §3의 읽기 예외다. sync 브랜치 제외 |
 | `detect_formats` | 신규: 없음 / 기존: OWNER | 신규: `project:create` / 기존: `project:settings` | 파일 다운로드라 두 경로 다 grant. 둘 다 리포 쓰기 권한 확인. 샘플 확인값 발급 |
-| `list_keys` | OWNER / EDITOR (표면) | 없음 | 검색·상태 필터·cursor, 페이지 100 |
+| `list_keys` | OWNER / EDITOR (표면) | 없음 | 검색·상태 필터·cursor, 페이지 100. **`scope`가 없으면 전 활성 소스다** — 화면 기본값과 같은 파서(2026-09-30 사용자, translation-filter-scope). 경로 소스만 보려면 `query.scope: "source"` |
 | `get_key` | OWNER / EDITOR (표면) | 없음 | 로케일 값·설명·사용처·플래그 |
 | `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR — `pullRequest: { status: "open", number, url } \| { status: "none" } \| { status: "unknown" }`. ⚠️ 조회 실패·시간 초과(`loadOpenPrUrl`의 `undefined`)를 "없음"으로 접지 않는다 — `undefined`는 JSON에서 필드째 사라지므로 상태가 값이다(Codex review CR-04) |
 | `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라) |
@@ -3023,7 +3100,16 @@ GitHub 왕복 둘이 통째로 낭비였다). grep: `grep -rn "ensureUserToken" 
 
 **화면을 그리는 동안 GitHub을 기다리는 자리는 전부 `lib/github-wait.ts`의 `GITHUB_WAIT_MS`(8초)를 읽는다** — 목록의 원격 신호(`loadRemoteSignals`)·연결 확인(`probeRepo`)·설정의 열린 PR(`loadOpenPrUrl`)·계정 조회(`loadAccountView` — 설정·`/account`). 넘기면 각자의 실패 갈래(신호 없음 · `error`→`unknown` · `undefined` · `unavailable`)로 접고 로그 한 줄을 남긴다. 같은 원격을 기다리는 두 화면의 마감이 다르면 한쪽은 "확인할 수 없음", 다른 쪽은 아직 매달린 채로 갈린다 — 그래서 사본을 두지 않는다. 설정 화면은 그 셋을 await하지 않고 Suspense로 스트리밍하며, **App 인스턴스는 요청 사이에 남는다**(설치 토큰 캐시가 인스턴스에 붙어 있다 — `createApp`). ⚠️ 그래서 캐시가 만료 직전 토큰을 줄 수 있고, 고정 토큰을 쥐는 `createGitClient`는 만료가 5분 안이면 `refresh: true`로 다시 받는다.
 
-⚠️ **Home만 probe를 30초 기억한다** (2026-09-29, malmoi#107 — `lib/github-connect/probe-memo.ts`). Home은 probe로 상태 매트릭스(DESIGN §6.64)를 정해 Suspense로 뺄 수 없고, 사건 상세를 열 때마다 GitHub 2홉을 다시 기다렸다(Home 1.4–1.9 s vs Logs 0.6–0.8 s). 키에 **저장된 `installationId`·`repositoryId`**가 들어 Reconnect 직후 옛 결과로 `installation-changed`를 거짓 표시하지 않고, `error`는 기억하지 않으며, 인스턴스마다 최대 500개다. **대가는 App 제거 뒤 TTL 동안 Home이 옛 `ok`를 말하는 것**이다 — 그동안 Publish가 켜져도 서버가 GitHub에서 판정한다. 설정 화면·MCP·재연결 Action은 메모를 거치지 않는다(`loadConnectionHealth`의 `memo`를 켜는 곳이 Home 하나인지 `probe-memo.test.ts`가 소스에서 센다).
+⚠️ **Home과 번역 화면만 probe를 30초 기억한다** (2026-09-29 Home, malmoi#107 · 2026-10-01 번역 화면, ux-drift-unify — `lib/github-connect/probe-memo.ts`). Home은 probe로 상태 매트릭스(DESIGN §6.64)를 정해 Suspense로 뺄 수 없고, 사건 상세를 열 때마다 GitHub 2홉을 다시 기다렸다(Home 1.4–1.9 s vs Logs 0.6–0.8 s). 키에 **저장된 `installationId`·`repositoryId`**가 들어 Reconnect 직후 옛 결과로 `installation-changed`를 거짓 표시하지 않고, `error`는 기억하지 않으며, 인스턴스마다 최대 500개다. **대가는 App 제거 뒤 TTL 동안 Home이 옛 `ok`를 말하는 것**이다 — 그동안 Publish가 켜져도 서버가 GitHub에서 판정한다. 설정 화면·MCP·재연결 Action은 메모를 거치지 않는다 — 설정은 고치러 가는 자리이고 MCP는 그 값이 판정 근거다(`loadConnectionHealth`의 `memo`를 켜는 곳이 그 둘뿐인지 `probe-memo.test.ts`가 소스에서 센다).
+
+⚠️ **Home의 열린 PR 조회도 같은 TTL로 따로 기억한다** (2026-10-01, ux-drift-unify U15 — `lib/projects/open-pr-memo.ts`). 편집 0인 프로젝트는 보류 사유(Q6)를 말하려고 착지·`?event=` 상세마다 GitHub 2회(리포 신원 + PR 목록)를 냈다. 스트리밍은 그대로이고 메모가 그 호출을 없앤다. 키는 **slug(= sync 브랜치) + 저장된 owner/repo/`installationId`/`repositoryId`**이고, **모름(`undefined`)은 기억하지 않는다** — `pr-check-failed`는 fail-closed 보류라 일시 장애를 TTL 동안 붙잡을 이유가 없다. **Publish(`runSync` — 웹·MCP·야간)와 수동 Sync(`importRepository`)가 그 프로젝트의 항목을 결과와 무관하게 지우고**, 지우는 사이에 돌던 조회의 답은 넣지 않는다 — 방금 연 PR을 "보류 없음"으로 말하지 않게. **대가는 GitHub에서 직접 머지·닫은 PR을 TTL 동안 열린 것으로 말하는 것**이다. ⚠️ **메모된 조회(`loadOpenPrUrlMemo`)의 호출부는 Home 하나다** — `/api/push`·야간·Publish 미리보기·Sync 확인·설정·MCP는 `loadOpenPrUrl`로 실물을 본다(옛 "없음"이 적재를 통과시키면 게이트가 fail-open이 된다). `open-pr-memo.test.ts`가 소스에서 센다.
+
+**번역 화면의 연결은 DB 판정이 먼저고 GitHub 판정은 스트리밍이다** (2026-10-01, ux-drift-unify 🔴 F — #52 재발 경로였다: 끊겨도 Publish·Sync가 켜져 있었다).
+설치·리포 id로 가를 수 있는 둘(`not-connected`·`unpinned`)은 첫 렌더부터 버튼을 끈다 — GitHub 왕복 0. 나머지(App 제거 · 설치 교체 · 리포 교체)는
+`loadConnectionHealth({ memo: true })` promise를 **기다리지 않고** 워크스페이스로 내려 도착한 뒤 끈다(`useArrived` — `use()` + Suspense면 키 선택·저장 뒤 전환이
+GitHub 조회를 기다렸다). 메모를 켜는 이유는 이 화면이 키 클릭·저장마다 다시 렌더되어, 메모 없이는 번역자마다 GitHub 1–2회가 설치 한도를 먹기 때문이다.
+표시 전용이라 괜찮다 — 누르면 서버가 다시 판정한다. 거부는 `unknown`으로 접고 버튼을 끄지 않는다(Home과 같다). 가용성 판정은 Home과 같은
+`planActionAvailability`(`lib/home/state.ts`)다. 착지 시간 측정은 §1.95.
 
 `loadInstalledRepoCount`(`/account` — 설치 목록 + 설치별 리포)도 같은 마감이다 (2026-09-29, malmoi#107) — 넘기면 `null`("말할 수 없다" — 그 줄을 안 그린다)이다.
 
@@ -3409,8 +3495,15 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   - ⚠️ **`ProbeResult.repositoryId`는 optional이 아니다.** `probeRepo`는 항상 채우는데 타입이 부재를
     허용하면 판정 쪽 `=== null` 검사를 `undefined`가 조용히 지나간다. 부재를 표현할 곳은 **저장된
     행**이지 방금 받은 응답이 아니다 — 필수로 바꾸자 픽스처 넷이 컴파일에서 걸렸다.
-  - ⚠️ **미고정 행은 cron 순회에서도 빠진다** (§3.05). 화면이 `not-connected`로 할 일을 말하는 동안
+  - ⚠️ **미고정 행은 cron 순회에서도 빠진다** (§3.05). 화면이 할 일(Reconnect)을 말하는 동안
     `/logs`가 실패로 채워지면 7단계 이력의 첫 화면이 무의미해진다.
+  - **설치는 있고 리포 id가 없으면 연결 건강성은 `unpinned`다** (2026-10-01, ux-drift-unify D1) — probe 결과와 무관하고(`ok`·`not-installed`·`error`
+    전부 `unpinned`), `repositoryId === null`이면 probe를 부르지 않는다 — 판정은 `storedConnection`(`lib/github-connect/health.ts`)이고, `loadConnectionHealth`(`lib/github.ts`)가 그 결론이 서면 probe 전에 돌아간다. 화면은 전부 **Disconnected(호박) + Reconnect**다 —
+    목록·Home·Settings가 `connectionProblem`(`lib/home/state.ts`) 하나를 읽는다(전엔 목록 Disconnected · Home 회색 not-connected · Settings "Not connected"로
+    셋이 갈렸다). 적재 거부도 같은 낱말의 자기 코드 `unpinned`다(`lib/import/plan.ts` → `run.ts`·`onboarding-run/import.ts`) — `not-connected`는
+    **사용자 GitHub 계정 미연결**(`checkRepoAccess`의 ConnectError)이라 둘을 한 코드로 접으면 "계정을 연결하라"는 틀린 안내가 선다.
+    ⚠️ **MCP 출력은 넓히지 않는다**(§6.45 외부 계약 불변) — `get_project`의 `connection`과 `sync_repository`의 거부 코드가 `unpinned`를 `not-connected`로 접는다
+    (`lib/mcp/tools/project.ts`·`sync.ts`).
 - nullable 컬럼 추가 마이그레이션 `20260910030000_pin_repository_id`를 앱 배포보다 먼저 적용한다.
   기존 프로젝트는 자동 고정하지 않는다. OWNER 재연결 전까지 Publish가 차단된다.
 - `loadPullState`는 프로젝트·키·번역 값·최대 수정 시각을 **같은 RepeatableRead 트랜잭션**에서 읽는다.

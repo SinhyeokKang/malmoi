@@ -208,7 +208,10 @@ describe("공개 셸 — 헤더", () => {
     }
   });
 
-  /** 버튼이 아니라 좌측 내비 항목 모양이다 — 보더 없이 hover 때만 면이 선다(앱 사이드바 `Item`과 같은 값). */
+  /**
+   * 버튼이 아니라 좌측 내비 항목 모양이다 — 보더 없이 hover 때만 면이 선다(앱 사이드바 `Item`과 같은 캔버스 급 3%, DESIGN §5).
+   * 철자는 `visual-system.test.ts`가 전역으로 센다(5-Y8) — 헤더 `Docs`·`Changelog`의 옛 `/3`도 거기서 잡혔다.
+   */
   it("GitHub는 아이콘 + GitHub 글자이고 사이드바 항목 모양이다", async () => {
     const { container } = await shell();
     const github = container.querySelector(`header a[href="${GITHUB_REPO_URL}"]`);

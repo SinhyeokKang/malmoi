@@ -4,7 +4,7 @@ import { planSourceActions } from "../actions";
 import { createBaseLanguageForm, planBaseLanguageForm } from "../base-language";
 import { localeProgress } from "@/lib/keys/view";
 
-const input = { role: "OWNER" as const, archived: false, installed: true, pending: false, lastCommitSha: null, lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastCommitAt: null };
+const input = { role: "OWNER" as const, archived: false, installed: true, pending: false, lastCommitSha: null, lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: null };
 describe("소스 행의 행동", () => {
   it("소유자만 첫 적재를 실행한다", () => {
     expect(planSourceActions(input)).toMatchObject({ canEdit: true, canRetry: true, canOpen: false });

@@ -21,7 +21,8 @@ it.each([
 ])("%s renders an accessible error inside the sessions section", (outcome, message) => {
   const html = render(outcome);
   expect(html).toContain('role="alert"');
-  expect(html).toContain(message);
+  // 정적 마크업은 아포스트로피를 `&#x27;`로 이스케이프한다 — 축약형 문장(couldn't)을 그대로 대조하려면 되돌린다.
+  expect(html.replaceAll("&#x27;", "'")).toContain(message);
   expect(html).toContain(m.account.sessions.title);
 });
 

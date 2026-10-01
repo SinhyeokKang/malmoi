@@ -2,8 +2,9 @@ import { FileJson2, GitPullRequestArrow, Info, X } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { LocaleFlag } from "@/components/translations/locale-badge";
-import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { m } from "@/lib/i18n";
 import { diffWords } from "@/lib/publish/words";
 import { cn } from "@/lib/utils";
@@ -29,7 +30,8 @@ function Shell({ title, description, children, meta, action, tall }: { title: st
           <span className="text-xl font-medium">{title}</span>
           <span className="text-muted-foreground text-sm text-pretty">{description}</span>
         </div>
-        <span className={cn(buttonClass({ variant: "ghost" }), "size-9 rounded-full px-0")}>
+        {/* `CloseButton`과 같은 클래스다(태그만 `<span>` — 프레임 안에 인터랙티브 태그를 두지 않는다). `landing-mockup.test.tsx`가 실물을 렌더해 견준다. */}
+        <span className={cn(buttonClass({ variant: "ghost" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", "hover:bg-foreground/[0.03] size-9 shrink-0 rounded-full px-0")}>
           <X className="size-5" aria-hidden />
         </span>
       </div>
@@ -38,21 +40,6 @@ function Shell({ title, description, children, meta, action, tall }: { title: st
         <span className="text-muted-foreground text-xs leading-[1.6]">{meta}</span>
         <div className="flex items-center gap-2">{action}</div>
       </div>
-    </div>
-  );
-}
-
-/** `publish-button.tsx`의 제목 있는 `Notice` — 글리프 칸의 높이가 제목 줄과 같다. */
-function Notice({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="border-border flex shrink-0 gap-3 rounded-lg border px-4 py-3.5">
-      <span className="text-muted-foreground flex h-[17px] shrink-0 items-center">
-        <GitPullRequestArrow className="size-4" aria-hidden />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="text-sm font-medium">{title}</span>
-        <span className="text-muted-foreground text-xs leading-[1.7]">{children}</span>
-      </span>
     </div>
   );
 }
@@ -97,7 +84,7 @@ export function PreviewModal() {
       meta={p.previewSummary(rows.length, keys, rows.length)}
       action={<span className={buttonClass({ variant: "primary", size: "lg" })}>{p.openPr}</span>}
     >
-      <Notice title={p.prNone.title(fixture.repo)}>{p.prNone.body(rows.length)}</Notice>
+      <Alert variant="neutral" className="shrink-0" title={p.prNone.title(fixture.repo)}>{p.prNone.body(rows.length)}</Alert>
       <div className="border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
         <div className="bg-primary-foreground border-border text-muted-foreground flex border-b text-xs">
           <span className="border-divider w-[220px] shrink-0 border-r px-3.5 py-[9px]">{p.key}</span>
@@ -152,13 +139,14 @@ export function ResultModal() {
       action={<span className={buttonClass({ variant: "primary", size: "lg" })}>{p.viewLink}</span>}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-3">
+        {/* 실물 `PrCard`(`publish-button.tsx`)와 같은 형이다 — 열린 PR은 정보라 회색이고 배지는 상태 키가 든다(🔴 G · §2.4 PR 열림). */}
         <div className="border-border flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3.5">
-          <GitPullRequestArrow className="size-4 shrink-0 text-green-800" aria-hidden />
+          <GitPullRequestArrow className="text-muted-foreground size-4 shrink-0" aria-hidden />
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
             <span className="truncate text-sm">{`${fixture.repo} #${fixture.pullRequest}`}</span>
             <span className="text-muted-foreground text-xs">{p.openedJustNow}</span>
           </span>
-          <Badge variant="success">{p.prState}</Badge>
+          <StatusBadge state="prOpen" />
         </div>
         <div className="text-muted-foreground flex gap-2.5 text-xs leading-[1.6]">
           <span className="flex h-[21px] shrink-0 items-center">

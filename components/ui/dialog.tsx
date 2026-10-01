@@ -1,13 +1,12 @@
 "use client";
 
-import { X } from "lucide-react";
 import { Dialog as Primitive } from "radix-ui";
 import type { ComponentProps, ReactNode } from "react";
 
 import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-import { Button } from "./button";
+import { CloseButton } from "./close-button";
 
 /**
  * 초대 폼·확인 모달 (DESIGN §6.4).
@@ -70,6 +69,7 @@ export function DialogContent({
   footer,
   className,
   children,
+  onOpenAutoFocus,
   onCloseAutoFocus,
   ...props
 }: ComponentProps<typeof Primitive.Content> & {
@@ -95,6 +95,22 @@ export function DialogContent({
           className,
         )}
         {...props}
+        /*
+          ⚠️ **첫 포커스는 푸터 Cancel이다** (2026-10-01 ux-drift-unify 3-Y4 — DESIGN §6.4). 호출부가 Cancel에 `data-initial-focus`를 달면
+          그리로 간다. 전엔 소비자 셋만 `onOpenAutoFocus`로 손수 Cancel을 지정했고 나머지는 Radix 기본(첫 tabbable = 헤더 X)이라,
+          같은 파괴 확인인데 첫 Enter가 닿는 곳이 갈렸다. 푸터는 전부 `[Cancel][확정]` 순이라 표식이 확정으로 갈 일이 없다.
+          ⚠️ **조건부다** — 호출부가 막았으면(`preventDefault`) 손대지 않는다. 안쪽 `autoFocus`는 FocusScope의 mount 이벤트보다 먼저
+          돌아 이 핸들러가 아예 안 오지만(위 `recent` 주석), 포커스가 이미 안에 있으면 한 번 더 비켜선다.
+        */
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event);
+          if (event.defaultPrevented || !(event.target instanceof HTMLElement)) return;
+          if (event.target.contains(document.activeElement)) return;
+          const target = event.target.querySelector<HTMLElement>("[data-initial-focus]");
+          if (target === null) return;
+          event.preventDefault();
+          target.focus();
+        }}
         onCloseAutoFocus={(event) => {
           onCloseAutoFocus?.(event);
           if (event.defaultPrevented) return;
@@ -107,14 +123,8 @@ export function DialogContent({
         <header className="flex items-start justify-between gap-2 p-4 pb-2">
           <Primitive.Title className="text-base font-medium">{title}</Primitive.Title>
           <DialogClose asChild>
-            {/*
-              ⚠️ **36 정방이다 — `size="sm"`(28 / radius 8)이 아니었다** (2026-09-13 핸드오프).
-              `size="icon"`을 만들지 않는다(DESIGN §6.4가 size를 셋으로 묶었다) — `md`의 높이·radius를
-              그대로 쓰고 정사각 유틸로 폭만 맞춘다. 음수 마진은 캔버스의 `-6px -8px 0 0`이다.
-            */}
-            <Button variant="ghost" aria-label={m.common.close} className="-mt-1.5 -mr-2 size-9 rounded-md p-0">
-              <X aria-hidden />
-            </Button>
+            {/* 닫기는 `CloseButton` 한 형이다(2026-10-01 — 옛 36 정방). 음수 마진은 캔버스의 `-6px -8px 0 0`이다. */}
+            <CloseButton label={m.common.close} className="-mt-1.5 -mr-2" />
           </DialogClose>
         </header>
         {/*

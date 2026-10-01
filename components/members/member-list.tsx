@@ -165,7 +165,7 @@ export function MemberList({
              * 오너는 **막힌 예외가 아니라 상시 상태**다: 오너가 하나인 프로젝트에서 그 행은 언제나
              * 참이라, 붉은 띠로 말하면 경고가 배경이 되고 진짜 거부(사후 `Alert`)와 구별되지 않는다.
              *
-             * ⚠️ **못 읽음은 EDITOR에게도 보인다** — 행이 `Couldn't be read`라고 말하는 이유를 설명하는
+             * ⚠️ **못 읽음은 EDITOR에게도 보인다** — 행이 `Unavailable`이라고 말하는 이유를 설명하는
              * 문장이지 막힌 행동을 설명하는 문장이 아니다.
              */
             const sentences = [
@@ -237,7 +237,7 @@ export function MemberList({
             footer={
               <>
                 <DialogClose asChild>
-                  <Button variant="default">{m.members.cancel}</Button>
+                  <Button data-initial-focus variant="default">{m.members.cancel}</Button>
                 </DialogClose>
                 <DialogClose asChild>
                   {/* 자기 강등은 본인에게 되돌릴 수 없다 — danger다. 남의 변경은 되돌릴 수 있어 primary로 둔다 (r1). */}
@@ -387,11 +387,11 @@ function RemoveButton({
         footer={
           <>
             <DialogClose asChild>
-              <Button variant="default">{m.members.cancel}</Button>
+              <Button data-initial-focus variant="default">{m.members.cancel}</Button>
             </DialogClose>
             <DialogClose asChild>
               <Button variant="danger" onClick={onConfirm}>
-                {m.members.remove}
+                {m.members.removeConfirm}
               </Button>
             </DialogClose>
           </>

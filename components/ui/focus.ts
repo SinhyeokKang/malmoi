@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 /**
  * 포커스 착지 (audit #32·#35 — DESIGN §7).
@@ -53,9 +53,26 @@ export function neighbourFocus(node: Element, visible: (el: HTMLElement) => bool
  * `focus()`가 조용히 무시된다(malmoi#53·#64). `useTransition`의 `isPending`은 커밋 시점을 고를 수 없으므로 effect가
  * 그 값을 직접 본다. `candidates`는 그 커밋의 DOM을 읽는 함수다 — 서버 revalidate가 같은 커밋에 행을 바꾼다.
  */
-export function useLandAfter(pending: boolean, candidates: () => (HTMLElement | null | undefined)[] | HTMLElement | null | undefined): void {
+type Candidates = () => (HTMLElement | null | undefined)[] | HTMLElement | null | undefined;
+
+export function useLandAfter(pending: boolean, candidates: Candidates): void {
+  useLandWith(useEffect, pending, candidates);
+}
+
+/**
+ * `useLandAfter`와 같은 판정을 **그 커밋의 layout 단계**에서 한다 — 누른 컨트롤이 **착지와 같은 커밋에서 사라지는** 자리 전용이다.
+ * passive effect는 커밋이 칠해진 뒤에 돌 수 있어 그 사이 프레임의 포커스가 `body`였다 — 번역 빈 상태 버튼은 전량 목록이 선 뒤라
+ * 5,000행에서 3.3초였다(malmoi#158 · POSTMORTEM 2026-09-24의 "포커스가 body로 빠지는 자리" 부류).
+ * ⚠️ **Dialog가 같은 커밋에 닫히는 자리에는 쓰지 않는다** — Radix의 포커스 복귀는 passive 단계라, 여기서 먼저 착지하면 복귀가 그것을
+ * 덮어 "빠졌을 때만 옮긴다"는 순서가 뒤집힌다. 그런 호출부는 `useLandAfter`로 둔다.
+ */
+export function useLandAfterCommit(pending: boolean, candidates: Candidates): void {
+  useLandWith(useLayoutEffect, pending, candidates);
+}
+
+function useLandWith(useEffectHook: typeof useEffect, pending: boolean, candidates: Candidates): void {
   const was = useRef(pending);
-  useEffect(() => {
+  useEffectHook(() => {
     const ended = was.current && !pending;
     was.current = pending;
     if (!ended) return;

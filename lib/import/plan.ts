@@ -16,7 +16,8 @@ export type ImportPlanSurface = {
 };
 export type ImportPlanInput = {
   now: Date; readiness: ProjectReadiness;
-  identity: "ok" | "not-connected" | "repo-replaced";
+  /** `unpinned` — 리포 id가 고정되지 않았다. 설치 없음은 readiness(`not-ready`)가 먼저 거른다. */
+  identity: "ok" | "unpinned" | "repo-replaced";
   repositoryImportToken: string | null; repositoryImportStartedAt: Date | null;
   surfaces: readonly ImportPlanSurface[];
   /** 진행 중인 Publish(`SyncRun` RUNNING). 껍데기(`lib/import/run.ts`)가 같은 Project 잠금 안에서 읽어 넘긴다. */

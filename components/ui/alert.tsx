@@ -1,13 +1,13 @@
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";
-import { CircleCheck, CircleX, Info, TriangleAlert, X } from "lucide-react";
+import { CircleCheck, CircleX, Info, TriangleAlert } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
 import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-import { Button } from "./button";
+import { CloseButton } from "./close-button";
 import { neighbourFocus } from "./focus";
 
 /**
@@ -112,7 +112,7 @@ export function Alert({
         {actions !== undefined && <div className="flex gap-2">{actions}</div>}
       </div>
       {/*
-        ⚠️ Dialog의 닫기와 **같은 36 정방**이다 (2026-09-13 핸드오프). ⚠️ **위아래가 모두 −8이다** — 위쪽만 당기면
+        ⚠️ Dialog의 닫기와 **같은 `CloseButton`**이다(2026-10-01 — 옛 36 정방). ⚠️ **위아래가 모두 −8이다** — 위쪽만 당기면
         버튼(28)이 한 줄 행의 높이를 잡아 제목 아래가 7px 넓어진다 (2026-09-29 사용자).
       */}
       {onDismiss !== undefined && (
@@ -120,9 +120,7 @@ export function Alert({
           ⚠️ **닫기 전에 이웃으로 포커스를 옮긴다** (audit #35) — 이 버튼이 Alert와 함께 언마운트되어 포커스가 `body`로
           빠졌다. 옮긴 뒤에 닫으므로 커밋 시점을 기다릴 필요가 없다(착지점은 이 Alert 밖이다).
         */
-        <Button variant="ghost" onClick={(event) => { neighbourFocus(event.currentTarget.closest("[data-alert]") ?? event.currentTarget)?.focus(); onDismiss(); }} aria-label={m.common.dismiss} className="-my-2 -mr-2 size-9 shrink-0 rounded-md p-0">
-          <X aria-hidden />
-        </Button>
+        <CloseButton label={m.common.dismiss} onClick={(event) => { neighbourFocus(event.currentTarget.closest("[data-alert]") ?? event.currentTarget)?.focus(); onDismiss(); }} className="-my-2 -mr-2" />
       )}
     </div>
   );
