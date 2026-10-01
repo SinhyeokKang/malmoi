@@ -8,10 +8,10 @@
   <img src="https://img.shields.io/badge/price-free-08C?style=flat" alt="Free, no paid plans" />
 </p>
 
-<p align="center">
+<p align="left">
   <strong>Connect your projects, translate &amp; ship together.</strong><br/>
-  Malmoi is a localization tool for GitHub repositories. It finds the translation files already in your repo,<br/>
-  lets teammates edit them in the browser, and sends every change back as one pull request.<br/>
+  Malmoi is a localization tool for GitHub repositories. It finds the translation files already in your repo,
+  lets teammates edit them in the browser, and sends every change back as one pull request.
   Coding agents can do the same work over MCP — sign in through your browser, no token to copy.
 </p>
 
