@@ -1231,12 +1231,13 @@ Publish 모달(§6.646)과 같은 형이다. ③ 결과 자리가 하나가 된�
 |---|---|
 | 진행 | 확정해도 닫히지 않는다. 확정 버튼이 `busy`(라벨 그대로 · `aria-disabled` · 누른 포커스 유지) · Cancel `aria-disabled` · **`closeDisabled`**(X 끔 · Esc·배경 무시) · 8초 뒤 `common.slow` 한 줄이 Dialog 본문에 선다. ⚠️ **종료 조건은 Action 응답(resolve·reject)과 70초 출구뿐이다 — lease가 아니다**(POSTMORTEM 2026-09-15) |
 | 응답 없음 70초 | 본문 아래 `The result will be in Logs.` + 푸터 Cancel 자리가 `[Close]`로 바뀌고 닫기가 돌아온다. **판정이 아니다**(끝났다고도 실패했다고도 말하지 않는다). 닫은 뒤 늦게 온 응답은 Dialog를 다시 열지 않는다 — 호스트의 교차 잠금 대기(malmoi#103)만 받는다 |
-| 결과 | 설명문이 빠지고 본문이 `SyncResult`(아래 결과 표 — 형·문장·톤 그대로)로 바뀐다. 푸터는 **`[Close]` `primary` 하나**(결과를 받고 닫는 자리)이고 포커스가 그리로 간다. Alert의 Dismiss는 없다. **[Try again]은 같은 Dialog를 확인 단계로 되돌리고 지문을 다시 받는다** — 실행하지 않는다. 서는 갈래: 읽기 실패·superseded와 **닫을 수 있고 갈 곳이 없는 거부**(`reconfirm`·`already-running`·`unavailable`·`ingest-failed`). `unconfirmed`엔 없다 — 다시 돌리면 두 번 돈다(malmoi#132) |
-| 닫힌 뒤 | 포커스는 연 자리(트리거 · Home 배너의 [Try again])다. 트리거가 사라졌거나 아직 도는 중(70초 출구)이면 화면 제목(`fallbackFocusRef`)이다 |
+| 결과 | **제목이 결과별로 바뀐다**(R6 — Publish 모달 §6.646과 같은 형): 성공 `Sync complete` · 사고가 붙은 성공(부분·일부 표면·남은 편집) `Sync finished with issues` · 들어간 값이 없음(전 표면 실패·밀림) `Nothing was replaced` · 실행 전 거부 `Sync didn't run` · 응답 확인 못 함 `Sync result unknown`. ⚠️ **제목은 결과의 종류, 본문 Alert 헤드라인은 내용**(몇 키 · 무엇이 막혔나)이라 같은 문장이 두 번 서지 않는다 — `syncResultTitle`이 헤드라인과 같은 재료(`summarizeImport`)로 고르고 `sync-result.test.tsx`가 갈래마다 잰다. 설명문이 빠지고 본문이 `SyncResult`(아래 결과 표 — 형·문장·톤 그대로)로 바뀐다. 푸터는 **`[Close]` `primary` 하나**(결과를 받고 닫는 자리)이고 포커스가 그리로 간다. Alert의 Dismiss는 없다. **[Try again]은 같은 Dialog를 확인 단계로 되돌리고 지문을 다시 받는다** — 실행하지 않는다. 서는 갈래: 읽기 실패·superseded와 **닫을 수 있고 갈 곳이 없는 거부**(`reconfirm`·`already-running`·`unavailable`·`ingest-failed`). `unconfirmed`엔 없다 — 다시 돌리면 두 번 돈다(malmoi#132) |
+| 닫힌 뒤 | 포커스는 연 자리(트리거 · Home 배너의 [Try again])다. ⚠️ **연 자리가 떨어졌으면**(배너가 성공의 재검증 트리로 닫기 **전에** 사라진다) 최근 포커스 기록을 거슬러 가지 않고 **트리거**로 간다 — 연 자리는 열린 직후 렌더에서 잡는다(클릭이 포커스를 안 주는 Safari면 "모름"이라 트리거). 트리거가 사라졌거나 아직 도는 중(70초 출구)이면 화면 제목(`fallbackFocusRef`)이다. [Try again]으로 확인 단계에 돌아오면 포커스는 Cancel이다 — 누른 버튼이 본문과 함께 사라진다 |
+| 70초 안내 · 지연 문구 | 둘 다 `role="status"`다 — 포커스가 도는 확정 버튼에 머물러 있어 알리지 않으면 [Close]가 돌아온 것을 모른다. 지연 줄은 `SlowLine`(`SlowNotice`와 같은 마크업)이다 |
 
 ⚠️ **Home·번역 화면의 결과 띠와 `SlowNotice`는 없다** — 호스트는 결과 콜백에서 교차 잠금 대기(`syncCommit.wait()`)만 잇는다.
 ⚠️ `unconfirmed`의 `router.refresh()`가 MPA 폴백(5xx·세션 만료·배포 스큐)으로 전체 리로드되면 결과가 Dialog째 사라진다 — 그때의 기록은 Logs다.
-⚠️ **번역 화면 착지 때 다른 실행의 lease가 살아 있으면 OWNER의 [Sync]가 `aria-disabled` + 사유(`A sync is already running.`)다** — 착지 시점의 사실이고, 누르면 서버도 `already-running`이다.
+⚠️ **착지 때 다른 실행의 lease가 살아 있으면 OWNER의 [Sync]가 `aria-disabled` + 사유(`A sync is already running.`)다 — Home과 번역 화면 둘 다**(R5 — 같은 `SyncButton`이 화면마다 다르게 멈추면 드리프트다). Home 실패 배너의 [Try again]도 같은 잠금·같은 사유다. 착지 시점의 사실이고, 누르면 서버도 `already-running`이다. ⚠️ **번역 화면의 미저장 가로채기도 같은 판정(`syncAvailable`)을 본다** — 연결만 보던 때 멈춘 [Sync]가 "Discard your changes?"를 띄워 초안만 버렸다.
 
 시안은 Claude Design 핸드오프 `design_handoff_sync_repository`(아트보드 `4a`~`4f`)이고 **캔버스가 px 단위
 정본**이다. 아래는 Chrome computed style + CDP 접근성 트리로 **실측한** 값이다. ⚠️ **Home의 핸드오프가
@@ -1270,7 +1271,7 @@ Publish 모달(§6.646)과 같은 형이다. ③ 결과 자리가 하나가 된�
 
 | 갈래 | 형 | 실측 |
 |---|---|---|
-| 전부 성공 / 정상 0키 | **한 줄** | `Synced 18 keys from dev` · `CircleCheck` 16 `green-800` · bg `green-50` · 선 없음 · Dismiss만 |
+| 전부 성공 / 정상 0키 | **한 줄** | `Synced 18 keys from dev` · `CircleCheck` 16 `green-800` · bg `green-50` · 선 없음 · 버튼 없음(닫기는 Dialog 푸터 [Close]) |
 | 전부 성공 + 관리하지 않는 항목 (2026-09-24, B2 r3 · QA5) | 헤드라인 + **안내 줄** · **success 톤 그대로** | `Synced 904 keys from main`(**브랜치가 남는다** — 성공이다) + `2 entries aren't plain text and stay in the code.` — ts-dict `String(…)`처럼 코드에 남는 항목이라 실패가 아니다(ARCHITECTURE §1 "read 오류의 두 갈래"). ⚠️ **"성공 = 한 줄" 규칙의 등재된 이탈이다** — 구별은 톤과 브랜치가 든다 |
 | 파일 일부 실패 | 헤드라인 + 파일 줄 | `Synced 18 keys`(브랜치 없음 — 붙이면 전부 성공과 **글자까지 같아진다**) + `1 item was not imported.` + `locales/ja.yml: The file couldn't be parsed.` |
 | CI 미적용 | **두 줄** | `Synced 9 keys, but 1 source wasn't replaced` + `locales — New repository data arrived while syncing. This source wasn't replaced. Try again if needed.`(slug는 sans, `[data-surface]`가 자리를 든다) · `[Try again]` 있음 |
