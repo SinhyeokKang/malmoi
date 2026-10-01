@@ -116,7 +116,7 @@
 서버 적재(첫 Sync·Add source·수동 Sync)는 read 오류가 하나라도 있으면 `partial-import`를 남겼다. 그런데 ts-dict의
 `"x": String(…)`처럼 **malmoi가 일부러 다루지 않는 항목**은 수술적 writer가 파일에 그대로 남기므로 번역을 하나도 잃지 않는다 —
 904키가 다 들어간 소스가 그것 하나로 "Last sync failed"·Home 위험 배너가 됐다. 판정은 **"다음 Publish에서 그 값이 살아남는가"**다.
-`adapterErrorKind`(`lib/adapters/types.ts`)가 코드마다 정하고, `prepareFirstSnapshot`이 `unmanaged`만 `failed`에서 빼서 따로 센다. `warning`은 **어느 수에도 세지 않고**, CI(`push:local`·`ingest`)도 Publish 미리보기도 막지 않는다 — 찍기만 한다.
+`adapterErrorKind`(`lib/adapters/types.ts`)가 코드마다 정하고, `prepareFirstSnapshot`이 `unmanaged`만 `failed`에서 빼서 따로 센다. `warning`은 **어느 수에도 세지 않고**, CI(`push:local`·`ingest`)도 Publish 미리보기도 막지 않는다 — 찍기만 한다. ⚠️ **CI를 red로 만드는 것은 `failure`뿐이다**(2026-10-01 사용자 판정) — `unmanaged`도 서버 적재가 통과시키는 항목이라 대상 리포 CI를 막지 않고 경고 줄로 찍힌다(`scripts/__tests__/duplicate-exit.test.ts`). 전에는 `warning`이 아닌 전부에서 exit 1이었다 — v2 태그의 스크립트는 그대로다(docs/ACTIONS.md §2 "v3").
 
 | 갈래 | 코드 | 왜 |
 |---|---|---|
