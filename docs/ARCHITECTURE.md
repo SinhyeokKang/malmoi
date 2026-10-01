@@ -698,8 +698,9 @@ Home 편집 1 행은 첫 측정(dev `ae0f2f98`, 교대 없이 5회 중앙값)이
   않는다**(CTE가 한 번만 돈다 — 집계는 행에서 센다). 측정 게이트와 그 판정은 §1.95.
   - **화면은 늘 전 소스로 읽고 JS로 범위를 자른다** (translation-tree-range §3, 2026-10-01). 페이지가 `scope: "project"`로 한 번 읽고
     `inRange`(트리 위치 · 전 소스 검색)로 자른다 — **화면의 읽기 경로가 하나라** 화면이 SQL `scope` 경로와 JS 경로가 같은 행을 내는지 지킬 필요가 없고(그 SQL 경로는 MCP `list_keys`가 쓴다 — 둘의 일치는 아래 통합 테스트가 잰다), 트리의
-    조건별 숫자(`tallyRows` → `countTree`, `lib/translations/tree-narrow.ts`)가 같은 전 소스 행에서 나와 "트리 숫자 = 그 노드를 눌렀을 때의 목록 수"가
-    구조로 맞는다. 목록의 `matchedKeyCount`·`incompleteKeyCount`·`selectedInResult`는 **자른 행에서 다시 센다** — 로더의 전 소스 값을 그대로 쓰면 범위 밖
+    숫자(`tallyRows` → `countTree`, `lib/translations/tree-narrow.ts`)는 **검색 중에만** 서고 **Status를 보지 않는다**(2026-10-02 — 아래 필터는 위로 새지
+    않는다). 검색만이면 목록의 같은 전 소스 행에서 세고, **검색 + Status면 Status 없는 같은 검색을 한 번 더 읽어** 센다(같은 라운드 — 그 조합에서만 전량
+    읽기가 둘이다). Status 술어를 JS로 다시 쓰지 않는다 — 두 술어가 같은 행을 세야 하는 사본을 만들지 않는다. 목록의 `matchedKeyCount`·`incompleteKeyCount`·`selectedInResult`는 **자른 행에서 다시 센다** — 로더의 전 소스 값을 그대로 쓰면 범위 밖
     선택을 "결과 안"으로 읽는다(POSTMORTEM 2026-09-23). 목록 조회는 redirect 판정이 바꾸는 값(경로·`ns`·언어)과 무관해 트리·상세와 같은 라운드에 떠난다.
     두 경로(JS 자르기 · MCP의 SQL `scope`)가 같은 행·순서인지는 `translation-list.integration.ts`가 실제 DB에서 단언한다.
   - ⚠️ **검색 일치 조각은 키당 한 행이다**(`matchesFor`의 `DISTINCT ON (keyId)`, 로케일 `COLLATE "C"` 첫 것) — 전량에서 흔한 단어를 찾으면
