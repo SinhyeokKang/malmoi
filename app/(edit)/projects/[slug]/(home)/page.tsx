@@ -116,7 +116,7 @@ export default async function ProjectHomePage({
     },
   });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 문구가 존재 여부를 말하지 않는 곳으로 보낸다.
-  if (project === null) redirect(`${routes.projects()}?e=not-found`);
+  if (project === null) redirect(routes.projects({ e: "not-found" }));
 
   /**
    * 첫 적재 전에는 볼 것이 없다. **정책과 문구는 `ProjectNotReady`가 든다** — 번역 화면도 같은

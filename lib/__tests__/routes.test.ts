@@ -12,6 +12,11 @@ describe("routes — 정적 경로", () => {
     expect(routes.newProject()).toBe("/projects/new");
   });
 
+  it("목록의 거부 사유 `e`도 `withQuery`를 지난다 — 문자열 연결이면 수신자 검사를 회피한다", () => {
+    expect(routes.projects({ e: "not-found" })).toBe("/projects?e=not-found");
+    expect(routes.projects({ e: "" })).toBe("/projects");
+  });
+
   /**
    * ⚠️ **사용자 축이다** (PRODUCT §7.7 — 6b-4). slug를 받지 않고, 1차 차단이 `/projects` 접두
    * 하나였으므로 이 경로는 **1차 차단 밖에서 태어난다** —

@@ -38,7 +38,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 문구가 존재 여부를 말하지 않는 곳으로 보낸다.
-  if (project === null) redirect(`${routes.projects()}?e=not-found`);
+  if (project === null) redirect(routes.projects({ e: "not-found" }));
 
   /**
    * ⚠️ **기준 시각을 서버에서 한 번 만들어 내려보낸다.** 두 표가 각자 `new Date()`를 부르면 상대
