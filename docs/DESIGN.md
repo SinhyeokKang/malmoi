@@ -426,8 +426,14 @@ computed style로 잰 것이다.
 `Needs review`가 한 키에 같이 선다(`Complete`는 승인 완료라는 뜻이 아니다).
 
 **트리 = 목록 범위다** (2026-10-01 사용자, translation-tree-range — 09-30의 "트리는 위치다, 필터가 아니다"를 뒤집었다). 소스 아래 `All namespaces`는
-그 소스 전체, 네임스페이스 행은 그 네임스페이스이고 소스 행은 펼침 토글이다. 툴바의 필터는 **Status 하나**(`FilterMenu`, 축 이름 `Status`는 접근
-이름에만 — `All keys`·`Incomplete`·`Needs review`·`Unsent`·`New from GitHub`)이고 범위 콤보·툴바 `Clear filters`·`Untranslated in` 대체 안내가 없다.
+그 소스 전체, 네임스페이스 행은 그 네임스페이스이고 소스 행은 펼침 토글이다.
+
+**패널마다 자기를 좁히는 필터를 든다** (2026-10-02 사용자) — 트리 = 범위 · 키 목록 = Status · 번역값 = 언어. **툴바는 검색 입력 하나뿐이고 왼쪽에
+선다**(`ml-auto` 없음, `w-80`) — 검색은 어느 패널의 것도 아니라 전 소스를 본다. **Status는 키 목록 머리 오른쪽 끝**의 `FilterMenu size="sm"`이다
+(번역값 패널 머리의 언어 메뉴와 같은 자리·같은 크기. 축 이름 `Status`는 접근 이름에만 — `All keys`·`Incomplete`·`Needs review`·`Unsent`·
+`New from GitHub`). **목록 제목은 `Keys`로 고정**이다 — Status는 메뉴 라벨이 말한다(옛 `Incomplete keys` 전환은 걷었다). 범위 콤보·툴바 `Clear filters`·
+`Untranslated in` 대체 안내가 없다. ⚠️ **좁은 폭(목록 336)에서 머리가 겹치거나 잘리지 않는다** — 줄어드는 순서는 범위 라벨(접힌 레이아웃) → `Incomplete
+first` 문구이고, 메뉴 트리거는 라벨보다 좁아지지 않는다(`FilterMenu`가 `shrink-0`).
 검색 입력은 **label과 placeholder가 갈린다** — 접근 이름 `Search keys`(위치로 좁힌 검색 중에도 참), 플레이스홀더 `Search all sources…`(빈 입력에서만
 보이고 그때 새 검색은 언제나 전 소스다 — §10).
 
@@ -933,7 +939,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | JS 전 · JS 없음 | **준비 전엔 프레임이 보이지 않는다** — 프레임·크롬이 `invisible`이고(`group-data-[ready]/track:visible`), 트랙은 **패널 1개 높이**로 접혀 있다(`data-ready`가 선 뒤에만 `--landing-track-h`). 배율이 없는 SSR에서 1464×834 베젤이 패널을 넘치기 때문이다 |
 | sticky 층 | `pointer-events-none` — 투명하지만 positioned라 겹친 형제의 클릭을 먹는다(옛 구조에서 끌어올린 CTA의 `Get started`가 안 눌렸다). 지금 CTA는 겹치지 않지만 프레임이 `inert`라 잃는 것이 없어 그대로 둔다 |
 | 접근성 | 프레임 `aria-hidden` + `inert`, **안에 인터랙티브 태그 0**(jsdom은 `inert`를 모른다 — 버튼 모양은 `buttonClass`를 `<span>`에). 보이는 캡션도 `aria-hidden`이고 트랙 첫머리의 visually-hidden `<ol>`이 다섯 문장을 늘 담는다(`aria-live` 없음). 섹션 셋이 전부 이름을 갖는다 — 히어로·CTA `aria-labelledby`, 트랙 `aria-label="How Malmoi works"` |
-| 목업 씬 구조 | 제품의 1440×810 화면 그대로다. **셸** — 헤더 40(로고 32 · 우측 `New project` · 세로선 · 아바타 32 — 앱 셸 헤더와 같다) · LNB 240(`SHELL_SIDEBAR_PX.default`) · 핸들 8 · `ContentPanel`. ⚠️ **LNB의 구역·항목·배지는 실제 판정(`navZones` · `navFooterItems`)에서 뽑는다** — 사용자 구역(머리 줄 없음 · `Projects` 배지 · `MCP connector` · `Account` — `navZones`가 주는 대로) · 프로젝트 구역(썸네일 · 이름 · **머리 오른쪽 끝 전환 트리거 글리프**(`project-switcher.tsx`의 ghost 24 · `ChevronsUpDown` 16, 메뉴는 그리지 않는다) · Home · Sources · Translations · Logs · Members · Settings, 배지 셋) · 하단 목록(`navFooterItems` 한 곳 — `app-frame.tsx`의 `FOOTER_ITEMS`). Sign out은 하단에 그리지 않는다(아바타 메뉴의 것). **번역 화면** — 머리(제목·배지 · Sync · Publish / Status 필터 `All keys` 하나 · 검색 320 — 플레이스홀더 `Search all sources…`) · 본문 `p-4`: 왼쪽 카드 = **소스 트리 260**(보고 있는 소스만 펼침 · `All namespaces` 선택) + 키 목록 392(**미완 먼저**) · 핸들 16 · 오른쪽 로케일 상세(경로 머리 · 키 · N of M · 복사 · 설명 · 행 셋 · 푸터 — 저장 뒤 `Revert to last sent`가 서고 Save가 꺼진다). **Publish** — `OnboardingModal` 치수(폭 1024 · 미리보기 620 / 결과 420 · dim `bg-foreground/32` + blur 6), 미리보기는 열린 PR 없음 `Alert neutral` + 표(저자 열) + 확정 버튼 **`Open pull request` 하나**(Cancel 없음), 결과는 PR 카드 + 안내 + `View pull request`. 모달 제목의 자간 `0.005em`은 목업에서 뺐다(`tracking-*` 등재 밖, 20px에서 0.1px) |
+| 목업 씬 구조 | 제품의 1440×810 화면 그대로다. **셸** — 헤더 40(로고 32 · 우측 `New project` · 세로선 · 아바타 32 — 앱 셸 헤더와 같다) · LNB 240(`SHELL_SIDEBAR_PX.default`) · 핸들 8 · `ContentPanel`. ⚠️ **LNB의 구역·항목·배지는 실제 판정(`navZones` · `navFooterItems`)에서 뽑는다** — 사용자 구역(머리 줄 없음 · `Projects` 배지 · `MCP connector` · `Account` — `navZones`가 주는 대로) · 프로젝트 구역(썸네일 · 이름 · **머리 오른쪽 끝 전환 트리거 글리프**(`project-switcher.tsx`의 ghost 24 · `ChevronsUpDown` 16, 메뉴는 그리지 않는다) · Home · Sources · Translations · Logs · Members · Settings, 배지 셋) · 하단 목록(`navFooterItems` 한 곳 — `app-frame.tsx`의 `FOOTER_ITEMS`). Sign out은 하단에 그리지 않는다(아바타 메뉴의 것). **번역 화면** — 머리(제목·배지 · Sync · Publish / 검색 320 하나, 왼쪽 — 플레이스홀더 `Search all sources…`) · 키 목록 머리 오른쪽 끝에 Status 필터 `All keys`(sm) · 본문 `p-4`: 왼쪽 카드 = **소스 트리 260**(보고 있는 소스만 펼침 · `All namespaces` 선택) + 키 목록 392(**미완 먼저**) · 핸들 16 · 오른쪽 로케일 상세(경로 머리 · 키 · N of M · 복사 · 설명 · 행 셋 · 푸터 — 저장 뒤 `Revert to last sent`가 서고 Save가 꺼진다). **Publish** — `OnboardingModal` 치수(폭 1024 · 미리보기 620 / 결과 420 · dim `bg-foreground/32` + blur 6), 미리보기는 열린 PR 없음 `Alert neutral` + 표(저자 열) + 확정 버튼 **`Open pull request` 하나**(Cancel 없음), 결과는 PR 카드 + 안내 + `View pull request`. 모달 제목의 자간 `0.005em`은 목업에서 뺐다(`tracking-*` 등재 밖, 20px에서 0.1px) |
 | 목업 문구 | 앱 라벨은 **실제 사전 키**(`m.common.nav` · `m.translations.workspace` · `m.translations.publish` · `m.repositorySync.action`)와 실제 판정(`navZones`)을 읽는다 — 목업과 앱이 다른 말을 하면 랜딩이 거짓이다. 가상 데이터(`Acme web` · `acme/web` · 키·값)는 `m.landing.mockup`. 타이핑 값은 `fr`(한글은 `no-korean-ui`, 일본어는 폰트가 걸린다). 목업 소스에 JSX 텍스트 리터럴 0(`landing-mockup.test.tsx`) |
 | 목업이 스크롤에 반응하는 자리 | 둘뿐이다 — `[data-landing-typed]`의 텍스트(스테이지가 `typedPrefix`로 쓴다)와 프레임의 `data-badge`(`group-data-[badge=1]/frame:`). ⚠️ **프레임마다 setState하지 않는다** — 스테이지가 ref로 DOM에 직접 쓴다 |
 | 새 색 | **0** — 셸은 토큰만, 목업은 번역 화면·Publish 모달의 등재 값을 같은 자리에 쓴다(§6.2) |
