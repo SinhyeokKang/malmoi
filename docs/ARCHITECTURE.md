@@ -606,7 +606,9 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
   제보가 오면 FCP가 아니라 이 표의 `loadEventEnd`부터 본다.**
 
 ⚠️ **2026-10-01 — 위 판정의 전제("전체 보기는 기본 경로가 아니다")가 바뀌었다** (translation-filter-scope, 2026-09-30 사용자). 화면 목록이
-**전량**(`pageSize: "all"`, "더 보기" 버튼 없음)이고 **서버는 모든 착지에서 전 소스를 한 번 읽는다** — 같은 날 translation-tree-range가 기본 범위를
+**전량**(`pageSize: "all"`, "더 보기" 버튼 없음)이고 **서버는 모든 착지에서 전 소스를 한 번 읽는다** — ⚠️ **예외: 검색 + Status면 트리 숫자용으로 Status
+없는 같은 검색을 한 번 더 읽는다**(2026-10-02, §1.96 — 같은 라운드라 왕복은 같고 DB 일은 대략 두 배). 그 조합은 아래 측정에 없다 — QA가 5,000행에서
+`loadEventEnd`를 잰다. 같은 날 translation-tree-range가 기본 범위를
 트리 위치로 되돌렸지만, 범위는 읽은 뒤 JS로 자른다(§1.96). 그래서 아래 측정의 조회(전 소스 × 전 키)가 모든 착지의 조회이고, RSC에 실리는 것은
 범위의 행 + 노드별 수(`counts`)뿐이라 응답은 이 표보다 작거나 같다(전 소스 검색이면 같은 행 수다). 목록은 요약 행뿐이고
 입력은 선택 키 하나라(`<Textarea>` 2,721개 시절과 다른 화면) 가상화 없이 측정 게이트를 세웠다. 로컬 production 빌드(`pnpm build && pnpm start`,
