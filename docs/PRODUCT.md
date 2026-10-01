@@ -733,7 +733,9 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
      `components/__tests__/home-screen.test.ts`가 그 구조를 소스로 센다.
    - ✅ **`/projects` 목록의 링크가 바뀌었다** — `routes.translations(slug)`에서
      `routes.project(slug)`로(`components/projects/project-list.tsx`). 생성기가 `lib/routes.ts` 하나라 그 파일과 `entry-points` 대조가
-     같은 커밋에서 움직인다.
+     같은 커밋에서 움직인다. 행 아래 띠 둘은 번역 화면으로 간다 — **검토 대기 띠(`Review`)는 그 일이 있는 소스(`reviewSurfaceSlug`)를 `Needs review`로,
+     보낼 편집 띠(`Send`)는 `unsentSurfaceSlug`를 `Unsent`로 걸러** 연다(`?ns=*&state=…` — 2026-10-02 사용자, translation-tree-range: 범위가 트리 위치라
+     필터 없이 가면 그 소스 전체에서 일을 다시 찾아야 했다). 띠의 수와 화면의 Status는 같은 술어(`pendingEditToken` · 값이 있는 셀의 `needsReview`)를 센다.
 2. ⚠️ **`Home`이 프로젝트 합계를 소유한다 — 단 합계는 표면별 값의 합으로만 만든다**
    (2026-09-15 정정). 원문은 *"`Home`은 다른 화면의 지표를 복제하지 않는다"*였고 근거는 번역 화면
    툴바가 키 수·미배포 건수·마지막 전송·PR 링크를 이미 든다는 것이었다. **표면이 여럿이 되면서 그
