@@ -17,7 +17,9 @@ import { coreSubject, defineTool, ok } from "./define";
  */
 
 /**
- * 목록 조건은 번역 화면 주소와 같은 해석(`parseTranslationQuery`)이다 — `scope`가 없으면 화면처럼 전 소스다(translation-filter-scope).
+ * 목록 조건은 **동결된 파서**(`parseTranslationQuery`)의 해석이다 — `scope`가 없으면 전 소스, `completion`(`missing`·`complete` 포함)·`state`·cursor를 그대로
+ * 받는다. ⚠️ **화면과 같은 필터가 아니다** (translation-tree-range §2.4) — 화면은 그 위의 화면 층(`screenQuery`)으로 Status 하나·트리 범위를 쓴다. 이 도구의
+ * 입력 해석을 화면에 맞춰 바꾸지 않는다(외부 계약). 설명 문장(`m.mcp.tools.list_keys`)도 화면이 아니라 받는 축을 나열한다.
  * ⚠️ **cursor 페이징은 이 도구의 외부 계약이다** — 화면은 전량을 한 번에 싣지만 도구는 `pageSize`·`nextCursor`를 그대로 둔다.
  * 상한은 주소창 값의 합리적인 크기다 — 검색어(`Q_MAX_LENGTH` 200)·키 id·cursor(키 이름을 든다)를 넉넉히 덮고 그 이상은 조작이다.
  */

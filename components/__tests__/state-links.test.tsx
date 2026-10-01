@@ -8,7 +8,7 @@ import { render } from "./helpers/dom";
  *
  * 그 항목의 재발 방지는 grep이었는데 `cardQuery()` 도입 뒤 0건이라 공허하게 참이었다 — 규칙대로 **테스트가 센다**(POSTMORTEM 2026-09-15
  * 두 번째 항목). 생산자 셋 전수: Home 카운트 카드(`cardQuery`) · Home 주의 카드(`attention-card.tsx`) · 옛 `/translations` redirect.
- * 범위는 기본값(All sources)이라 주소에 `scope`가 없다(translation-filter-scope).
+ * 범위는 트리 위치라 주소에 `scope`가 없다 — 카드는 그 수가 있는 첫 소스의 `All namespaces`로 간다(translation-tree-range §5).
  */
 const nav = vi.hoisted(() => ({ redirect: vi.fn((url: string) => { throw new Error(`redirect:${url}`); }) }));
 vi.mock("next/navigation", () => ({ redirect: nav.redirect, notFound: () => { throw new Error("notFound"); }, useRouter: () => ({ push: vi.fn() }) }));
@@ -27,12 +27,14 @@ const narrowing = (href: string) => {
   return { ns: params.get("ns"), scope: params.get("scope"), state: params.get("state"), completion: params.get("completion"), parsedNs: parseTranslationQuery(Object.fromEntries(params)).ns };
 };
 
-it("Home 카운트 카드 넷은 ns=*를 싣는다", async () => {
+it("Home 카운트 카드 넷은 ns=*를 싣고 카드마다 착지 소스가 다르다", async () => {
   const card = (key: HomeCard["key"]): HomeCard => ({ key, value: 1, unit: "cells", muted: false, tone: null, subline: { kind: "nothingPending" } });
-  const { container } = await render(<CountCards cards={(["newFromGithub", "toTranslate", "toReview", "toSend"] as const).map(card)} slug="acme" surfaceSlug="web" now={now} />);
+  const surfaceSlugs = { newFromGithub: "web", toTranslate: "app", toReview: "web", toSend: "docs" };
+  const { container } = await render(<CountCards cards={(["newFromGithub", "toTranslate", "toReview", "toSend"] as const).map(card)} slug="acme" surfaceSlugs={surfaceSlugs} now={now} />);
   const hrefs = [...container.querySelectorAll("a")].map(a => a.getAttribute("href")!);
   expect(hrefs).toHaveLength(4);
   for (const href of hrefs) expect(narrowing(href)).toMatchObject({ ns: "*", scope: null, parsedNs: "*" });
+  expect(hrefs.map(href => new URL(href, "http://x").pathname.split("/")[4])).toEqual(["web", "app", "web", "docs"]);
 });
 
 it("Home 주의 카드의 검토 대기·빈 로케일 링크는 ns=*를 싣는다", async () => {
@@ -44,7 +46,10 @@ it("Home 주의 카드의 검토 대기·빈 로케일 링크는 ns=*를 싣는�
   const hrefs = [...container.querySelectorAll("a")].map(a => a.getAttribute("href")!).filter(href => href.includes("/translations"));
   expect(hrefs).toHaveLength(2);
   expect(narrowing(hrefs[0]!)).toMatchObject({ ns: "*", state: "review", parsedNs: "*" });
-  expect(narrowing(hrefs[1]!)).toMatchObject({ ns: "*", completion: "missing", parsedNs: "*" });
+  // 빈 로케일 → `Incomplete` + 상세 언어 그 로케일 · 그 소스 경로(조건 12).
+  expect(narrowing(hrefs[1]!)).toMatchObject({ ns: "*", completion: "incomplete", parsedNs: "*" });
+  expect(new URL(hrefs[1]!, "http://x").searchParams.get("language")).toBe("ja");
+  expect(new URL(hrefs[1]!, "http://x").pathname).toBe("/projects/acme/surfaces/app/translations");
 });
 
 /*

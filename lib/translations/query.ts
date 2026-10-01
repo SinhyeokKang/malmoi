@@ -1,10 +1,14 @@
 import { ALL_NAMESPACES, routes, type TranslationsQuery } from "@/lib/routes";
 
 /**
- * 번역 화면의 URL 계약 (translation-rework — design §3·§3.1·§10.2).
+ * 번역 화면의 URL 계약 (translation-rework — design §3·§3.1·§10.2 · translation-tree-range design §2.1).
+ *
+ * **두 층이다.** 아래 파서·직렬화·기본값(`parseTranslationQuery`·`serializeTranslationQuery`·`DEFAULT_TRANSLATION_QUERY`)은 MCP `list_keys`의
+ * **외부 계약으로 동결**한다 — `scope`·`completion`(`missing`·`complete`)·`state`·cursor를 그대로 받는다. 화면은 그 위의 **화면 층**
+ * (`screenQuery` 이하)만 쓴다: 트리 = 목록 범위, 필터는 Status 하나, 검색은 전 소스다(2026-10-01 사용자 — 09-30의 "트리는 위치이고 필터가
+ * 아니다"를 뒤집었다).
  *
  * ⚠️ **잎이다 — import는 잎인 `lib/routes.ts` 하나다.** 클라이언트 화면 소유자가 읽는다.
- * ⚠️ **URL은 요청값을 든다.** `Missing in ja`는 ja가 없는 범위에서도 남고, 적용값은 `effectiveCompletion`이 계산한다.
  * ⚠️ **정렬 파라미터가 없다** — 정렬은 `Incomplete first` 하나이고 항상 적용한다(T1 결정).
  */
 export { ALL_NAMESPACES };
@@ -41,8 +45,8 @@ export type TranslationQuery = {
 };
 
 /**
- * ⚠️ **기본 범위는 All sources다** (translation-filter-scope — 2026-09-30 사용자). 필터는 사용자가 직접 켤 때만 붙는다 — 트리 위치는
- * 조회 조건이 아니다(`treeQuery`). `scope` 없는 옛 링크도 여기로 열린다(넓어지는 쪽이라 0건 착지를 만들지 않는다).
+ * ⚠️ **MCP 계약의 기본값이다 — 화면의 기본값이 아니다** (translation-tree-range). `list_keys`는 `scope`가 없으면 전 소스를 읽는다.
+ * 화면은 검색어가 없으면 `scope`를 무시하고 위치(`ns`)에서 파생한다(`screenQuery`) — 검색어 없는 `scope=project` 북마크는 범위가 좁아진다.
  */
 export const DEFAULT_TRANSLATION_QUERY: TranslationQuery = { ns: ALL_NAMESPACES, scope: "project", completion: "all" };
 
@@ -122,70 +126,6 @@ export function nextQuery(query: TranslationQuery, patch: Partial<TranslationQue
   return next;
 }
 
-/** `Clear filters` — 완성도·상태·범위 세 축만. 검색어·트리 선택·상세 언어·선택 키는 남는다. */
-export function clearFilters(query: TranslationQuery): TranslationQuery {
-  const next: TranslationQuery = { ...query, scope: DEFAULT_TRANSLATION_QUERY.scope, completion: DEFAULT_TRANSLATION_QUERY.completion };
-  delete next.missingLocale;
-  delete next.state;
-  delete next.cursor;
-  return next;
-}
-
-/** 필터 콤보박스(완성도·상태·범위)가 하나라도 켜졌나 — `Clear filters`와 빈 상태 `Show all`이 서는 조건이다. */
-export function isNarrowed(query: TranslationQuery): boolean {
-  return query.completion !== DEFAULT_TRANSLATION_QUERY.completion || query.state !== undefined || query.scope !== DEFAULT_TRANSLATION_QUERY.scope;
-}
-
-/** 조회 조건이 하나라도 붙었나(필터 + 검색) — 트리를 일치 키로 좁힐지의 판정이다. 트리 위치(`ns`)는 조건이 아니다. */
-export function hasConditions(query: TranslationQuery): boolean {
-  return isNarrowed(query) || query.q !== undefined;
-}
-
-/** `label`은 문구 키다 — 잎이라 문구를 import하지 않고, 화면이 `m.translations.workspace`에서 고른다. */
-export type EmptyAction = { kind: "search-all" | "clear-search" | "show-all"; label: "searchAll" | "clearSearch" | "showAll" | "clearFilters"; query: TranslationQuery };
-
-/**
- * 검색·필터 결과 0건의 버튼 (translation-filter-scope — design §2.3 · spec 조건 9). 검색어가 있는데 범위가 좁으면 먼저 범위를 넓히라고
- * 말한다 — 전엔 `Clear search` 하나라 다른 소스에 있는 값이 없는 것처럼 보였다. `Show all`은 완성도·상태가 켜졌을 때만 보조로 선다
- * (범위만 좁혔을 때의 `Show all`은 `Search all sources`와 같은 쿼리라 중복이다).
- * ⚠️ 검색어가 있으면 `show-all`의 라벨이 `Clear filters`다 (2026-09-30 사용자) — 쿼리는 `clearFilters`라 검색어가 남으므로
- * `Show all n keys`(프로젝트 전체 수)가 결과와 맞지 않는다.
- */
-export function emptyActions(query: TranslationQuery, { noKeys }: { noKeys: boolean }): { primary: EmptyAction | null; secondary: EmptyAction | null } {
-  if (noKeys) return { primary: null, secondary: null };
-  const showAll: EmptyAction = { kind: "show-all", label: query.q === undefined ? "showAll" : "clearFilters", query: applyEmptyAction("show-all", query) };
-  if (query.q === undefined) return { primary: isNarrowed(query) ? showAll : null, secondary: null };
-  const filtered = query.completion !== DEFAULT_TRANSLATION_QUERY.completion || query.state !== undefined;
-  const primary: EmptyAction = query.scope !== DEFAULT_TRANSLATION_QUERY.scope
-    ? { kind: "search-all", label: "searchAll", query: applyEmptyAction("search-all", query) }
-    : { kind: "clear-search", label: "clearSearch", query: applyEmptyAction("clear-search", query) };
-  return { primary, secondary: filtered ? showAll : null };
-}
-
-/**
- * 빈 상태 버튼 종류를 쿼리에 적용한다. ⚠️ **표시와 목적지의 기준이 다르다** — 화면은 버튼을 빈 문구와 같은 서버 쿼리로 고르고(`emptyActions(query)`),
- * 주소는 누른 순간의 낙관값에 이 함수를 적용해 만든다(POSTMORTEM 2026-09-12). 표시까지 낙관값으로 고르면 `Show all`을 누른 순간 좁힘이 풀려
- * 그 버튼이 대기 중에 사라지고 포커스가 `body`로 빠졌다.
- */
-export function applyEmptyAction(kind: EmptyAction["kind"], query: TranslationQuery): TranslationQuery {
-  return kind === "search-all" ? nextQuery(query, { scope: DEFAULT_TRANSLATION_QUERY.scope })
-    : kind === "clear-search" ? nextQuery(query, { q: undefined })
-    : clearFilters(query);
-}
-
-/**
- * 트리 클릭은 **위치**다, 필터가 아니다 (translation-filter-scope — 2026-09-30 사용자). `ns`만 바꾸고 scope·완성도·상태·검색어는 그대로
- * 둔다 — 전엔 scope를 This source/namespace로 덮어 `All sources`로 넓힌 상태가 트리 클릭에 조용히 좁혀졌다. `This namespace`는
- * "현재 위치의 네임스페이스"라 대상이 새 `ns`를 따라간다. 첫 키는 새 목록이 정하므로 선택 자리에 `FIRST_KEY`를 싣는다.
- * ⚠️ **선택을 비우지 않는다** (audit-ux #18) — 비운 주소는 상세를 "Select a key"로 한 번 그리고, 첫 키를 고르는 두 번째 왕복이 따랐다.
- */
-export function treeQuery(query: TranslationQuery, ns: string): TranslationQuery {
-  const next: TranslationQuery = { ...query, ns, key: FIRST_KEY };
-  delete next.cursor;
-  delete next.keySurface;
-  return next;
-}
-
 /** 서버가 `FIRST_KEY`를 푼다 — 첫 행이 있으면 그 키, 없으면 선택 없음. 예약값이 상세 조회·주소로 새지 않는다. */
 export function landOnFirstKey(query: TranslationQuery, first: { keyId: string; surfaceSlug: string } | undefined): TranslationQuery {
   const next: TranslationQuery = { ...query };
@@ -194,7 +134,158 @@ export function landOnFirstKey(query: TranslationQuery, first: { keyId: string; 
   return first === undefined ? next : { ...next, key: first.keyId, keySurface: first.surfaceSlug };
 }
 
-/** 작업 화면의 링크 — 경로 리터럴은 `lib/routes.ts`가 든다(`entry-points.test.ts`의 죽은 라우트·쿼리 수신자 검사). */
+// ── 화면 층 (translation-tree-range — design §2.1) ──────────────────────────────────────────────────
+
+/** 필터 축은 Status 하나다 (spec 조건 3). 순서가 메뉴 순서다. */
+export const STATUSES = ["all", "incomplete", "review", "unsent", "new"] as const;
+export type Status = (typeof STATUSES)[number];
+
+/** 옛 `missing`(Untranslated in)은 `Incomplete`, 옛 `complete`는 `All keys`다 — 둘 다 화면 선택지에서 사라졌다. 상태가 있으면 상태가 이긴다. */
+export function statusOf(query: TranslationQuery): Status {
+  return query.state ?? (query.completion === "incomplete" || query.completion === "missing" ? "incomplete" : "all");
+}
+
+/** `completion`·`state` 한 쌍만 바꾼다 — 둘이 동시에 서지 않는다. 위치·검색어·선택·언어는 남긴다. */
+export function withStatus(query: TranslationQuery, status: Status): TranslationQuery {
+  return nextQuery(query, status === "all" || status === "incomplete" ? { completion: status, state: undefined } : { completion: "all", state: status });
+}
+
+/** 위치의 범위 — `ALL_NAMESPACES`는 네임스페이스가 아니라 소스 전체다. */
+function locationScope(ns: string): Scope {
+  return ns === ALL_NAMESPACES ? "source" : "namespace";
+}
+
+/**
+ * 원본 URL 입력 → 화면 요청값. **MCP 파서를 무수정으로 부르고 그 위에 화면 규칙을 얹는다** — 로케일 없는 `completion=missing`은 파서가
+ * `all`로 접으므로 원본에서 먼저 읽어 둔다(화면은 `Incomplete`, MCP는 `All keys` — 조건 15).
+ * - `scope`는 파생값이다: 검색어가 없으면 위치, 있으면 전 소스(기본) 또는 위치로 좁힌 검색(`source`·`namespace`가 왔을 때).
+ * - `completion`은 `all | incomplete`만, `state`와 동시에 서지 않는다. 옛 `missing` → `incomplete` + 상세 언어(`language ??= missingLocale`).
+ * - `cursor`는 항상 뺀다 — 화면 목록은 전량이다(cursor 보존은 MCP 계약으로 남는다).
+ * ⚠️ 정규화된 값은 왕복 고정점이다(`screenQuery(serializeScreenQuery(x))` = x) — 페이지의 redirect가 루프하지 않는 근거다.
+ */
+export function screenQuery(raw: RawParams): TranslationQuery {
+  const parsed = parseTranslationQuery(raw);
+  const next: TranslationQuery = { ...parsed };
+  delete next.cursor;
+  delete next.missingLocale;
+  if (read(raw, "completion") === "missing") {
+    next.completion = "incomplete";
+    if (next.language === undefined && parsed.missingLocale !== undefined) next.language = parsed.missingLocale;
+  }
+  if (next.completion === "complete" || next.completion === "missing" || next.state !== undefined) next.completion = "all";
+  const narrowedSearch = next.q !== undefined && pick(SCOPES, read(raw, "scope")) !== undefined && read(raw, "scope") !== "project";
+  next.scope = next.q !== undefined && !narrowedSearch ? "project" : locationScope(next.ns);
+  return next;
+}
+
+/** `serializeTranslationQuery` + **`scope`는 위치로 좁힌 검색일 때만 싣는다** — 위치 탐색과 전 소스 검색은 주소에 없다(파생값이다). */
+export function serializeScreenQuery(query: TranslationQuery): TranslationsQuery {
+  const out = serializeTranslationQuery(query);
+  if (query.q === undefined || query.scope === "project") delete out.scope;
+  else out.scope = query.scope;
+  return out;
+}
+
+/**
+ * 원본 주소가 이미 정규 주소인가 (design §3.1) — **파라미터 집합(키·값)을 비교한다**, 문자열 순서가 아니다. 파서가 버리는 잔여 파라미터
+ * (`completion` 없는 `missingLocale`·옛 `locales`·모르는 이름)도 차이로 잡는다.
+ * ⚠️ **`ns=*`는 생략과 같다** — Home의 상태 링크가 그것을 싣는다(POSTMORTEM 2026-09-15). 다르게 보면 카드를 누를 때마다 redirect 왕복이
+ * 하나 더 붙는다(audit-ux #4b가 없앤 왕복).
+ */
+export function isScreenCanonical(raw: RawParams, query: TranslationQuery): boolean {
+  const canonical: Readonly<Record<string, string | undefined>> = serializeScreenQuery(query);
+  const given = Object.entries(raw).filter(([name, value]) => value !== undefined && !(name === "ns" && value === ALL_NAMESPACES));
+  const expected = Object.entries(canonical).filter(([, value]) => value !== undefined);
+  return given.length === expected.length && given.every(([name, value]) => typeof value === "string" && Object.hasOwn(canonical, name) && canonical[name] === value);
+}
+
+/** 범위가 전 소스인가 — 검색 중에만 선다. 검색어 없는 `project`는 화면에서 오지 않는다(`screenQuery`가 위치로 바꾼다). */
+export function isAllSources(query: Pick<TranslationQuery, "q" | "scope">): boolean {
+  return query.q !== undefined && query.scope === "project";
+}
+
+/** 조회 조건이 붙었나(Status + 검색) — 트리 숫자를 일치 수로 바꿀지의 판정이다. 트리 위치(`ns`)는 조건이 아니다. */
+export function hasConditions(query: TranslationQuery): boolean {
+  return statusOf(query) !== "all" || query.q !== undefined;
+}
+
+/**
+ * 트리 클릭 = 그 노드가 목록 범위다 (spec 조건 1). Status·검색어·상세 언어는 그대로 둔다(조건 2) — 검색 중이면 결과를 그 노드로 좁힌다(조건 6).
+ * 첫 키는 새 목록이 정하므로 선택 자리에 `FIRST_KEY`를 싣는다.
+ * ⚠️ **선택을 비우지 않는다** (audit-ux #18) — 비운 주소는 상세를 "Select a key"로 한 번 그리고, 첫 키를 고르는 두 번째 왕복이 따랐다.
+ */
+export function treeQuery(query: TranslationQuery, ns: string): TranslationQuery {
+  const next: TranslationQuery = { ...query, ns, scope: locationScope(ns), key: FIRST_KEY };
+  delete next.cursor;
+  delete next.keySurface;
+  return next;
+}
+
+/** 트리 맨 위 `All sources` 노드 — 범위만 전 소스로. 위치·선택·검색어·Status는 남는다. */
+export function allSourcesQuery(query: TranslationQuery): TranslationQuery {
+  return nextQuery(query, { scope: "project" });
+}
+
+/**
+ * 검색 제출. **새 검색어는 전 소스다**(조건 4·5) · **같은 검색어는 쿼리 그대로**(좁힌 범위가 남는다 — 조건 5) · **공백만은 지우기**(범위가
+ * 위치로 돌아간다 — 새 전 소스 검색이 아니다). 키 선택이 위치를 그 키로 옮겨 두었으므로 위치 = 마지막으로 고른 키의 소스·네임스페이스다(조건 8).
+ */
+export function searchQuery(query: TranslationQuery, q: string | undefined): TranslationQuery {
+  const text = (q ?? "").trim().slice(0, Q_MAX_LENGTH);
+  if (text === "") return nextQuery(query, { q: undefined, scope: locationScope(query.ns) });
+  if (text === query.q) return query;
+  return nextQuery(query, { q: text, scope: "project" });
+}
+
+/**
+ * 키 선택. **전 소스 범위면 항상** 위치를 그 키의 소스·네임스페이스로 맞춘다(`ns=*`도 예외 없다 — 조건 7). `surfaceSlug`는 이동 대상 소스이고,
+ * 호출부가 경로와 다르면 그 소스로 옮긴다(재마운트). 위치 범위·좁힌 검색에서는 범위를 바꾸지 않는다(`null`).
+ */
+export function selectQuery(query: TranslationQuery, row: { keyId: string; surfaceSlug: string; namespace: string }): { query: TranslationQuery; surfaceSlug: string | null } {
+  const next: TranslationQuery = { ...query, key: row.keyId, keySurface: row.surfaceSlug };
+  if (!isAllSources(query)) return { query: next, surfaceSlug: null };
+  return { query: { ...next, ns: row.namespace }, surfaceSlug: row.surfaceSlug };
+}
+
+/** `label`은 문구 키다 — 잎이라 문구를 import하지 않고, 화면이 `m.translations.workspace`에서 고른다. */
+export type EmptyAction = { kind: "search-all" | "clear-search" | "clear-filters"; label: "searchAll" | "clearSearch" | "clearFilters"; query: TranslationQuery };
+
+/**
+ * 0건 빈 상태의 버튼 (translation-tree-range design §2.1 표 · spec 조건 13). 검색어가 위치로 좁혀졌으면 먼저 범위를 넓히라고 말하고,
+ * 전 소스면 검색을 지우라고 말한다. `Clear filters`는 Status가 켜졌을 때만 — 검색 중엔 보조, 아니면 주다.
+ */
+export function emptyActions(query: TranslationQuery, { noKeys }: { noKeys: boolean }): { primary: EmptyAction | null; secondary: EmptyAction | null } {
+  if (noKeys) return { primary: null, secondary: null };
+  const action = (kind: EmptyAction["kind"], label: EmptyAction["label"]): EmptyAction => ({ kind, label, query: applyEmptyAction(kind, query) });
+  const clear = statusOf(query) === "all" ? null : action("clear-filters", "clearFilters");
+  if (query.q === undefined) return { primary: clear, secondary: null };
+  return { primary: isAllSources(query) ? action("clear-search", "clearSearch") : action("search-all", "searchAll"), secondary: clear };
+}
+
+/**
+ * 빈 상태 버튼 종류를 쿼리에 적용한다. ⚠️ **표시와 목적지의 기준이 다르다** — 화면은 버튼을 빈 문구와 같은 서버 쿼리로 고르고(`emptyActions(query)`),
+ * 주소는 누른 순간의 낙관값에 이 함수를 적용해 만든다(POSTMORTEM 2026-09-12). 표시까지 낙관값으로 고르면 누른 버튼이 대기 중에 사라지고
+ * 포커스가 `body`로 빠졌다.
+ */
+export function applyEmptyAction(kind: EmptyAction["kind"], query: TranslationQuery): TranslationQuery {
+  return kind === "search-all" ? allSourcesQuery(query)
+    : kind === "clear-search" ? searchQuery(query, undefined)
+    : withStatus(query, "all");
+}
+
+/**
+ * 목록 세대 키 (design §2.3) — 이 값이 바뀔 때만 목록이 새로 시작한다. **전 소스 범위는 위치(`ns`·경로)를 보지 않는다** — 전 소스 결과에서
+ * 같은 소스의 다른 네임스페이스 키를 골라 `ns`가 바뀌어도 `savedOut` 행·행 memo가 남는다(POSTMORTEM 2026-10-01 #157). 다른 소스는 재마운트라 무관하다.
+ */
+export function listGenerationKey(query: TranslationQuery, routeSurfaceSlug: string): string {
+  const conditions = [query.scope, statusOf(query), query.q ?? null];
+  return JSON.stringify(isAllSources(query) ? conditions : [routeSurfaceSlug, query.ns, ...conditions]);
+}
+
+/**
+ * 작업 화면의 링크 — 받은 쿼리를 **화면 정규형으로 직렬화한다**(옛 필터 형도 — `Untranslated in` → `Incomplete` + 상세 언어). 소스·키·언어의
+ * 존재 보정은 페이지가 맡는다. 경로 리터럴은 `lib/routes.ts`가 든다(`entry-points.test.ts`의 죽은 라우트·쿼리 수신자 검사).
+ */
 export function translationsHref(slug: string, surfaceSlug: string, query: TranslationQuery): string {
-  return routes.surfaceTranslations(slug, surfaceSlug, serializeTranslationQuery(query));
+  return routes.surfaceTranslations(slug, surfaceSlug, serializeScreenQuery(screenQuery(serializeTranslationQuery(query))));
 }

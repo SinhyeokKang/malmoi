@@ -34,9 +34,7 @@ const nav = () => flattenNav(parseSummary(tree("SUMMARY.md")));
  */
 const ARIA_ONLY: ReadonlySet<string> = new Set([
   "logs.filters.axis",
-  "translations.workspace.filters.completion.axis",
   "translations.workspace.filters.state.axis",
-  "translations.workspace.filters.scope.axis",
 ]);
 
 function headingsBefore(treeValue: ReturnType<typeof parseMd>, node: { position?: { start: { line: number } } }): string | null {

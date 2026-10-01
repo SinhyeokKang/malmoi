@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { summaryQueue } from "@/lib/projects/list";
 
-import { countCards, planHomeHold } from "../cards";
+import { cardLandings, countCards, firstSurfaceWith, planHomeHold, surfaceQueues } from "../cards";
 
 /**
  * 카운트 카드 넷 (캔버스 `2a`). **수와 문구는 이미 있는 것을 쓴다** — 값은 `summaryQueue`,
@@ -235,5 +235,71 @@ describe("planHomeHold", () => {
 
   it("조회가 던지면 Held다 — 게이트가 fail-closed다", async () => {
     await expect(planHomeHold(input, () => Promise.reject(new Error("boom")))).resolves.toBe("pr-check-failed");
+  });
+});
+
+/*
+  ── 카드의 착지 소스 (translation-tree-range — design §5 · spec 조건 16) ─────────────────────────────
+  번역 화면의 범위가 트리 위치가 되면서 기본 소스로 착지한 카드가 0건 목록을 낼 수 있다 — POSTMORTEM 2026-09-15(네임스페이스 축)의
+  같은 부류가 소스 축에서 다시 열린다. 카드마다 그 Status에 일치가 있는 첫 활성 소스(트리 순서)로 간다.
+*/
+describe("firstSurfaceWith — 일치가 있는 첫 소스", () => {
+  it("트리 순서에서 처음으로 수가 0보다 큰 소스다", () => {
+    expect(firstSurfaceWith(new Map([["web", 3], ["app", 2]]), ["app", "docs", "web"])).toBe("app");
+    expect(firstSurfaceWith(new Map([["web", 3], ["app", 0]]), ["app", "docs", "web"])).toBe("web");
+  });
+
+  it("전부 0이거나 비었으면 null — 호출부가 기본 소스로 간다", () => {
+    expect(firstSurfaceWith(new Map([["web", 0]]), ["web"])).toBeNull();
+    expect(firstSurfaceWith(new Map(), ["web"])).toBeNull();
+  });
+
+  it("순서에 없는(보관된) 소스는 고르지 않는다", () => {
+    expect(firstSurfaceWith(new Map([["old", 5], ["web", 0]]), ["web"])).toBeNull();
+  });
+
+  it("__proto__ slug도 이름 그대로 센다", () => {
+    expect(firstSurfaceWith(new Map([["__proto__", 1]]), ["constructor", "__proto__"])).toBe("__proto__");
+    expect(firstSurfaceWith(new Map([["web", 1]]), ["__proto__", "web"])).toBe("web");
+  });
+});
+
+describe("surfaceQueues · cardLandings — 소스별 카드 수와 카드별 착지", () => {
+  const live = (surfaceId: string, surfaceSlug: string, code: string) => ({ projectId: "p", surfaceId, surfaceSlug, code, isBase: code === "en" });
+  const aggregates = {
+    locales: [live("s-web", "web", "en"), live("s-web", "web", "ko"), live("s-app", "app", "en"), live("s-app", "app", "ko")],
+    keyTotals: new Map([["s-web", 2], ["s-app", 1]]),
+    // web은 다 찼고 검토 대기 하나, app은 ko가 비었다.
+    cells: [
+      { projectId: "p", surfaceId: "s-web", localeCode: "en", needsReview: false, count: 2 },
+      { projectId: "p", surfaceId: "s-web", localeCode: "ko", needsReview: false, count: 1 },
+      { projectId: "p", surfaceId: "s-web", localeCode: "ko", needsReview: true, count: 1 },
+      { projectId: "p", surfaceId: "s-app", localeCode: "en", needsReview: false, count: 1 },
+    ],
+    newKeysBySurface: new Map([["s-web", 1]]),
+    unsentBySurface: new Map([["s-app", 4]]),
+  };
+  const surfaces = [{ id: "s-web", slug: "web" }, { id: "s-app", slug: "app" }];
+
+  it("소스별 수가 summaryQueue와 같은 접기이고, 합이 프로젝트 수와 같다 — 트리 순서(slug 코드 단위)다", () => {
+    const queues = surfaceQueues("p", surfaces, aggregates);
+    expect(queues.map(q => q.slug)).toEqual(["app", "web"]);
+    expect(queues).toEqual([
+      { slug: "app", counts: { newFromGithub: 0, toTranslate: 1, toReview: 0, toSend: 4 } },
+      { slug: "web", counts: { newFromGithub: 1, toTranslate: 0, toReview: 1, toSend: 0 } },
+    ]);
+    const whole = summaryQueue({ projects: [{ projectId: "p", archived: false }], locales: aggregates.locales, keyTotals: aggregates.keyTotals, cells: aggregates.cells,
+      newKeys: new Map([["p", 1]]), unsent: new Map([["p", 4]]) });
+    for (const key of ["newFromGithub", "toTranslate", "toReview", "toSend"] as const) {
+      expect(queues.reduce((sum, q) => sum + q.counts[key], 0), key).toBe(whole[key]);
+    }
+  });
+
+  it("카드마다 일치가 있는 첫 소스로, 어디에도 없으면 기본 소스로 간다", () => {
+    const landings = cardLandings(surfaceQueues("p", surfaces, aggregates), "web");
+    expect(landings).toEqual({ newFromGithub: "web", toTranslate: "app", toReview: "web", toSend: "app" });
+    const empty = surfaceQueues("p", surfaces, { ...aggregates, cells: [], newKeysBySurface: new Map(), unsentBySurface: new Map(), keyTotals: new Map() });
+    expect(cardLandings(empty, "web")).toEqual({ newFromGithub: "web", toTranslate: "web", toReview: "web", toSend: "web" });
+    expect(cardLandings(empty, null)).toEqual({ newFromGithub: null, toTranslate: null, toReview: null, toSend: null });
   });
 });

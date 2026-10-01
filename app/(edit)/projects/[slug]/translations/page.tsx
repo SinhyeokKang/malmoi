@@ -3,7 +3,7 @@ import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { routes } from "@/lib/routes";
 import type { Raw } from "@/lib/search-params";
-import { parseTranslationQuery, serializeTranslationQuery } from "@/lib/translations/query";
+import { screenQuery, serializeScreenQuery } from "@/lib/translations/query";
 
 export const maxDuration = 60;
 /**
@@ -19,6 +19,7 @@ export default async function LegacyTranslations({ params, searchParams }: {
   const project = await getPrisma().project.findUnique({ where: { id: projectId }, select: { defaultSurface: true } });
   const surface = project?.defaultSurface;
   if (!surface || surface.archivedAt !== null) notFound();
-  // ⚠️ 주소창 값이라 허용 목록 파서를 지난다 — 모르는 값은 실어 보내지 않는다 (POSTMORTEM 2026-09-08). 옛 키는 새 요청값으로 옮긴다.
-  redirect(routes.surfaceTranslations(slug, surface.slug, serializeTranslationQuery(parseTranslationQuery(await searchParams))));
+  // ⚠️ 주소창 값이라 허용 목록 파서를 지난다 — 모르는 값은 실어 보내지 않는다 (POSTMORTEM 2026-09-08). 옛 키는 화면 정규형으로 옮긴다.
+  // 소스·키·언어의 존재 보정은 목적지 페이지가 한다(translation-tree-range design §3.1).
+  redirect(routes.surfaceTranslations(slug, surface.slug, serializeScreenQuery(screenQuery(await searchParams))));
 }

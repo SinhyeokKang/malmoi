@@ -137,17 +137,17 @@ it("필터를 고르면 응답 전에 트리거 라벨이 바뀐다 — 필터�
   const b = gate();
   respond = () => ({ next: { ...initial, query: { ...initial.query, completion: "incomplete" }, list: { ...initial.list } }, gate: b });
   const { container } = await render(<Harness initial={initial} />);
-  const trigger = () => container.querySelector<HTMLButtonElement>('button[aria-label^="Completeness:"]')!;
-  expect(trigger().getAttribute("aria-label")).toBe("Completeness: All keys");
+  const trigger = () => container.querySelector<HTMLButtonElement>('button[aria-label^="Status:"]')!;
+  expect(trigger().getAttribute("aria-label")).toBe("Status: All keys");
   await user.click(trigger());
-  await user.click(menuItem(m.translations.workspace.filters.completion.incomplete));
+  await user.click(menuItem(m.translations.workspace.filters.state.incomplete));
   expect(mocks.push).toHaveBeenCalledTimes(1);
-  expect(trigger().getAttribute("aria-label")).toBe(`Completeness: ${m.translations.workspace.filters.completion.incomplete}`);
+  expect(trigger().getAttribute("aria-label")).toBe(`Status: ${m.translations.workspace.filters.state.incomplete}`);
   expect(panel(container, "list").getAttribute("aria-busy")).toBe("true");
   // 필터는 선택을 옮기지 않는다 — 상세는 같은 키라 골격으로 바꾸지 않는다.
   expect(panel(container, "detail").querySelector("[data-skeleton-detail]")).toBeNull();
   await arrive(b);
-  expect(trigger().getAttribute("aria-label")).toBe(`Completeness: ${m.translations.workspace.filters.completion.incomplete}`);
+  expect(trigger().getAttribute("aria-label")).toBe(`Status: ${m.translations.workspace.filters.state.incomplete}`);
 });
 
 // ── #18 ─────────────────────────────────────────────────────────────────────
@@ -167,7 +167,7 @@ it("트리 클릭은 첫 키 예약값으로 한 번만 push하고, 응답이 �
   expect(container.querySelector("[data-skeleton-detail]")).not.toBeNull();
   const replaceState = vi.spyOn(window.history, "replaceState");
   await arrive(b);
-  // 트리 클릭은 위치다 — 응답의 범위가 그대로(All sources)여도 누른 네임스페이스가 강조로 남는다(translation-filter-scope).
+  // 트리 클릭은 그 노드가 범위다(translation-tree-range) — 누른 네임스페이스가 강조로 남는다.
   expect(node.getAttribute("aria-current")).toBe("true");
   expect(container.textContent).not.toContain(m.translations.workspace.detail.selectKey);
   expect(container.textContent).toContain("common.k2");
@@ -183,7 +183,7 @@ it("트리 클릭은 첫 키 예약값으로 한 번만 push하고, 응답이 �
 const treeNodeButton = (container: HTMLElement, label: string) =>
   [...container.querySelectorAll<HTMLButtonElement>("button")].find(el => !el.closest("[data-key-row]") && el.querySelector("span.min-w-0")?.textContent === label)!;
 
-it("검색 0건 + 좁힌 범위의 Search all sources는 scope만 넓히고, 기다리는 동안 busy이며, 도착하면 목록 제목으로 착지한다 (조건 9)", async () => {
+it("검색 0건 + 위치로 좁힌 검색의 Search all sources는 범위만 넓히고, 기다리는 동안 busy이며, 도착하면 목록 제목으로 착지한다 (조건 13)", async () => {
   const user = userEvent.setup();
   const base = props();
   const narrowedQuery = { ...base.query, scope: "source" as const, q: "zz", state: "review" as const, key: undefined, keySurface: undefined };
@@ -210,10 +210,10 @@ it("검색 0건 + 좁힌 범위의 Search all sources는 scope만 넓히고, 기
   expect(document.activeElement).toBe(panel(container, "list").querySelector("h2"));
 });
 
-it("검색 0건 + 완성도가 켜졌으면 보조 버튼은 Clear filters이고 검색어를 남긴다 (2026-09-30 사용자)", async () => {
+it("전 소스 검색 0건 + Status가 켜졌으면 주 버튼은 Clear search, 보조 버튼은 Clear filters이고 검색어를 남긴다 (조건 13)", async () => {
   const user = userEvent.setup();
   const base = props();
-  const query = { ...base.query, q: "zz", completion: "incomplete" as const, key: undefined, keySurface: undefined };
+  const query = { ...base.query, q: "zz", scope: "project" as const, completion: "incomplete" as const, key: undefined, keySurface: undefined };
   const initial: WorkspaceProps = { ...base, query, detail: null, list: { ...base.list, rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, selectedInResult: null } };
   respond = () => ({ next: initial, gate: null });
   const { container } = await render(<Harness initial={initial} />);
@@ -231,8 +231,8 @@ it("검색 0건 + 완성도가 켜졌으면 보조 버튼은 Clear filters이고
   같은 자리에 busy로 남고 포커스를 지킨다(DESIGN §6.1a).
 */
 it.each([
-  ["주 버튼 Show all n keys(검색어 없음 · 좁힘)", { state: "review" as const }, 0],
-  ["보조 버튼 Clear filters(검색어 + 완성도)", { q: "zz", completion: "incomplete" as const }, 1],
+  ["주 버튼 Clear filters(검색어 없음 · Status)", { state: "review" as const }, 0],
+  ["보조 버튼 Clear filters(검색어 + Status)", { q: "zz", completion: "incomplete" as const }, 1],
 ])("%s는 대기 중에도 busy로 남고 포커스를 지킨다", async (_name, over, index) => {
   const user = userEvent.setup();
   const base = props();
@@ -276,13 +276,14 @@ it("트리 이동은 도착한 선택 행으로 스크롤하고, 대기 중에�
   respond = () => ({ next: { ...initial, query: { ...initial.query, ns: "common", key: "k2", keySurface: "web" }, list: { ...initial.list }, detail: detailOf("k2") }, gate: b });
   const { container } = await render(<Harness initial={initial} />);
   const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  // 목록 행의 스크롤만 센다 — 트리는 위치가 바뀌면 그 노드를 보이게 한다(`nearest`, 이미 보이면 무동작).
+  const rowScrolls = () => scroll.mock.contexts.filter(el => el instanceof HTMLElement && el.dataset.keyRow !== undefined);
   const replaceState = vi.spyOn(window.history, "replaceState");
   await user.click(treeNodeButton(container, "common"));
-  expect(scroll).not.toHaveBeenCalled();
+  expect(rowScrolls()).toEqual([]);
   expect(replaceState).not.toHaveBeenCalled();
   await arrive(b);
-  expect(scroll).toHaveBeenCalledOnce();
-  expect(scroll.mock.contexts[0]).toBe(container.querySelector('[data-key-row="k2"]'));
+  expect(rowScrolls()).toEqual([container.querySelector('[data-key-row="k2"]')]);
   expect(replaceState).toHaveBeenCalled();
 });
 
@@ -433,21 +434,20 @@ it("번역 화면의 Sync 확인창이 권하는 Publish 링크는 지금 소스
   ⚠️ **대기 중의 두 번째 조작은 낙관값 위에 쌓는다** (POSTMORTEM 2026-09-12 부류) — 트리거가 누른 값으로 먼저 서므로 사용자는 다음 축을
   바로 고른다. 그 주소를 서버 prop(`query`)으로 조립하면 첫 선택이 조용히 되돌아간다.
 */
-it("응답 전에 두 축을 잇달아 고르면 둘째 이동이 첫 선택을 싣는다", async () => {
+it("응답 전에 Status와 검색을 잇달아 고르면 둘째 이동이 첫 선택을 싣는다", async () => {
   const user = userEvent.setup();
   const initial = props();
   respond = () => ({ next: initial, gate: gate() });
   const { container } = await render(<Harness initial={initial} />);
-  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="Completeness:"]')!);
-  await user.click(menuItem(m.translations.workspace.filters.completion.incomplete));
-  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="State:"]')!);
-  await user.click(menuItem(m.translations.workspace.filters.state.unsent));
+  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="Status:"]')!);
+  await user.click(menuItem(m.translations.workspace.filters.state.incomplete));
+  await user.type(container.querySelector<HTMLInputElement>('input[type="search"]')!, "zz{Enter}");
   expect(mocks.push).toHaveBeenCalledTimes(2);
-  // 짝 — 첫 이동은 첫 축만, 둘째는 둘 다.
+  // 짝 — 첫 이동은 Status만, 둘째는 둘 다.
   expect(mocks.push.mock.calls[0]?.[0]).toContain("completion=incomplete");
-  expect(mocks.push.mock.calls[0]?.[0]).not.toContain("state=");
+  expect(mocks.push.mock.calls[0]?.[0]).not.toContain("q=");
   expect(mocks.push.mock.calls[1]?.[0]).toContain("completion=incomplete");
-  expect(mocks.push.mock.calls[1]?.[0]).toContain("state=unsent");
+  expect(mocks.push.mock.calls[1]?.[0]).toContain("q=zz");
 });
 
 it("응답 전에 키를 고른 뒤 필터를 고르면 필터 이동이 새 키를 잇는다", async () => {
@@ -456,7 +456,7 @@ it("응답 전에 키를 고른 뒤 필터를 고르면 필터 이동이 새 키
   respond = () => ({ next: initial, gate: gate() });
   const { container } = await render(<Harness initial={initial} />);
   await user.click(row(container, "k2")!);
-  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="State:"]')!);
+  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="Status:"]')!);
   await user.click(menuItem(m.translations.workspace.filters.state.unsent));
   expect(mocks.push.mock.calls[0]?.[0]).toContain("key=k2");
 });

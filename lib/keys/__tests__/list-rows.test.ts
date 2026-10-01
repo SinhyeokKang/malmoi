@@ -10,7 +10,7 @@ import { assembleProjectListRows, type ProjectListAggregates, type ProjectListMe
  * 조립은 I/O가 없으므로 여기서 칩·띠까지 이어서 센다(POSTMORTEM 2026-09-20 — 판정만 통과하고 조립에서 사실이 달라졌다).
  */
 
-const EMPTY: ProjectListAggregates = { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map() };
+const EMPTY: ProjectListAggregates = { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() };
 const surface = (over: Partial<ProjectListMemberRow["project"]["surfaces"][number]> = {}) =>
   ({ archivedAt: null, lastCommitSha: "sha", lastImportError: null, lastImportStartedAt: null, ...over });
 const member = (surfaces: ProjectListMemberRow["project"]["surfaces"], over: Partial<ProjectListMemberRow["project"]> = {}): ProjectListMemberRow => ({

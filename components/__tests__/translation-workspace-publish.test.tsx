@@ -36,6 +36,7 @@ it("미저장이 있어도 View result는 결과를 연다 — 확인창은 Publ
       query={{ ...DEFAULT_TRANSLATION_QUERY, key: "k1", keySurface: "web" }}
       tree={{ projectKeyCount: 1, surfaces: [{ id: "s1", slug: "web", baseLocale: "en", locales: ["en", "zh"], keyCount: 1, namespaces: [] }] }}
       list={{ rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, nextCursor: null, effective: { completion: "all", substituted: false, excludedSurfaceIds: [] }, selectedInResult: true }}
+      counts={null}
       detail={{
         key: { id: "k1", key: "k", namespace: "common", sourceText: "Hi", description: null, surfaceSlug: "web" },
         refs: [],

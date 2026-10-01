@@ -82,13 +82,12 @@ export function TranslationsView({ phase }: { phase: Phase }) {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <FilterTrigger label={w.filters.completion.all} size="md" />
+          {/* 필터 축은 Status 하나다(translation-tree-range) — 범위는 트리가 든다. */}
           <FilterTrigger label={w.filters.state.any} size="md" />
-          <FilterTrigger label={w.filters.scope.source} size="md" />
-          {/* `search-input.tsx` — 320 입력 + 왼쪽 16 글리프. 값이 없어 placeholder(= 라벨)가 보인다. */}
+          {/* `search-input.tsx` — 320 입력 + 왼쪽 16 글리프. 값이 없어 placeholder가 보인다. */}
           <span data-landing-search="" className="relative ml-auto flex">
             <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2 size-4" aria-hidden />
-            <span className={cn(fieldClass, "text-muted-foreground flex h-9 w-80 items-center pl-8")}>{w.filters.search}</span>
+            <span className={cn(fieldClass, "text-muted-foreground flex h-9 w-80 items-center pl-8")}>{w.filters.searchPlaceholder}</span>
           </span>
         </div>
       </div>

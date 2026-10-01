@@ -451,6 +451,12 @@ export type ProjectListAggregates = {
   /** ⑤ 안 보낸 편집 수. */
   unsent: Map<string, number>;
   unsentSurfaces: Map<string, string>;
+  /**
+   * ④⑤의 **표면(surfaceId)별** 분해 — 같은 쿼리의 소스 축이다(translation-tree-range design §5). Home 카드가 일치가 있는 첫 소스로 착지하는 근거다
+   * (`surfaceQueues`). 프로젝트 합(`newKeys`·`unsent`)은 이 행들의 합이다.
+   */
+  newKeysBySurface: Map<string, number>;
+  unsentBySurface: Map<string, number>;
 };
 
 export async function loadProjectListAggregates(
@@ -459,7 +465,7 @@ export async function loadProjectListAggregates(
 ): Promise<ProjectListAggregates> {
   // 빈 `in`으로 왕복을 만들지 않는다 — `loadActors`가 같은 이유로 같은 가드를 든다.
   if (projectIds.length === 0) {
-    return { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map() };
+    return { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() };
   }
   const ids = [...projectIds];
 
@@ -491,8 +497,8 @@ export async function loadProjectListAggregates(
      *
      * ⚠️ **파라미터화한 `ANY`다** — 문자열 연결·`$queryRawUnsafe`를 쓰지 않는다.
      */
-    prisma.$queryRaw<{ projectId: string; n: number }[]>`
-      SELECT k."projectId", COUNT(*)::int AS n
+    prisma.$queryRaw<{ projectId: string; surfaceId: string; n: number }[]>`
+      SELECT k."projectId", k."surfaceId", COUNT(*)::int AS n
       FROM "StringKey" k JOIN "Project" p ON p."id" = k."projectId"
       JOIN "TranslationSurface" s ON s."projectId" = k."projectId" AND s."id" = k."surfaceId"
       WHERE k."projectId" = ANY(${ids}::text[])
@@ -500,7 +506,7 @@ export async function loadProjectListAggregates(
         AND s."archivedAt" IS NULL
         AND p."archivedAt" IS NULL
         AND (p."lastPulledAt" IS NULL OR k."createdAt" > p."lastPulledAt")
-      GROUP BY k."projectId"`,
+      GROUP BY k."projectId", k."surfaceId"`,
     /**
      * ⑤ 미발송 — **`pendingWhere`(`lib/protection/where.ts`)의 SQL 사본이다.** `countPending`·
      * 번역 화면의 목록·상세 투영·pull 1층·Publish 미리보기와 같은 행을 센다(`pnpm test:projects:postgres`가 대조한다).
@@ -511,8 +517,8 @@ export async function loadProjectListAggregates(
      * 그 셀은 export에 안 나가므로 세면 Publish로 영영 0이 안 되는 수가 되고, 보호 배포 뒤엔 CI가 영구 보류된다.
      * `p."archivedAt" IS NULL`은 목록 Summary의 **프로젝트 선택 조건**이지 셀 술어가 아니다.
      */
-    prisma.$queryRaw<{ projectId: string; surfaceSlug: string; n: number }[]>`
-      SELECT t."projectId", MIN(s."slug") AS "surfaceSlug", COUNT(*)::int AS n
+    prisma.$queryRaw<{ projectId: string; surfaceId: string; surfaceSlug: string; n: number }[]>`
+      SELECT t."projectId", t."surfaceId", s."slug" AS "surfaceSlug", COUNT(*)::int AS n
       FROM "Translation" t JOIN "Project" p ON p."id" = t."projectId"
       JOIN "TranslationSurface" s ON s."projectId" = t."projectId" AND s."id" = t."surfaceId"
       JOIN "StringKey" k ON k."projectId" = t."projectId" AND k."surfaceId" = t."surfaceId" AND k."id" = t."keyId"
@@ -523,8 +529,19 @@ export async function loadProjectListAggregates(
         AND k."orphaned" = false
         AND l."orphaned" = false
         AND p."archivedAt" IS NULL
-      GROUP BY t."projectId"`,
+      GROUP BY t."projectId", t."surfaceId", s."slug"`,
   ]);
+  // 소스 축으로 받은 행을 프로젝트로 접는다 — 합과 "가장 앞 slug"(옛 `MIN(s."slug")`)는 이 행들에서 나온다.
+  const sumBy = (rows: readonly { projectId: string; n: number }[]) => {
+    const out = new Map<string, number>();
+    for (const row of rows) out.set(row.projectId, (out.get(row.projectId) ?? 0) + row.n);
+    return out;
+  };
+  const unsentSurfaces = new Map<string, string>();
+  for (const row of unsentRows) {
+    const seen = unsentSurfaces.get(row.projectId);
+    if (seen === undefined || row.surfaceSlug < seen) unsentSurfaces.set(row.projectId, row.surfaceSlug);
+  }
 
   return {
     locales: locales.flatMap(l => l.surfaceId === null || l.surface === null ? [] : [{ projectId: l.projectId,
@@ -545,9 +562,11 @@ export async function loadProjectListAggregates(
      * ⚠️ **지웠다 다시 만들면 미발송 술어의 넷째 벌을 만드는 셈이다** — CLAUDE.md가 명시적으로
      * 금지하고, `pnpm test:projects:postgres`가 "셋이 같은 행을 세나"를 재는 유일한 자리다.
      */
-    newKeys: new Map(newRows.map((r) => [r.projectId, r.n])),
-    unsent: new Map(unsentRows.map((r) => [r.projectId, r.n])),
-    unsentSurfaces: new Map(unsentRows.map((r) => [r.projectId, r.surfaceSlug])),
+    newKeys: sumBy(newRows),
+    unsent: sumBy(unsentRows),
+    unsentSurfaces,
+    newKeysBySurface: new Map(newRows.map((r) => [r.surfaceId, r.n])),
+    unsentBySurface: new Map(unsentRows.map((r) => [r.surfaceId, r.n])),
   };
 }
 

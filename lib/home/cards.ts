@@ -1,4 +1,4 @@
-import type { SummaryQueue } from "@/lib/projects/list";
+import { summaryQueue, type LiveLocale, type LocaleCellCount, type SummaryQueue } from "@/lib/projects/list";
 import { planHoldNotice, type HoldReason } from "@/lib/protection/plan";
 
 import type { HomeState } from "./state";
@@ -170,4 +170,51 @@ export function planHomeHold(
     (openPr) => planHoldNotice({ ...input, openPr })?.reason ?? null,
     () => "pr-check-failed" as const,
   );
+}
+
+/**
+ * **일치가 있는 첫 소스** (translation-tree-range — design §5 · spec 조건 16). 번역 화면의 범위가 트리 위치라, 기본 소스로 착지한 카드는 일치가
+ * 다른 소스에만 있을 때 0건 목록을 냈다 — POSTMORTEM 2026-09-15(네임스페이스 축)의 같은 부류가 소스 축에서 열린 것이다. `order`는 활성 소스의
+ * 트리 순서이고, 그 밖의 소스(보관)는 고르지 않는다. 없으면 `null` — 호출부가 기본 소스로 간다.
+ */
+export function firstSurfaceWith(perSurface: ReadonlyMap<string, number>, order: readonly string[]): string | null {
+  return order.find((slug) => (perSurface.get(slug) ?? 0) > 0) ?? null;
+}
+
+const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+/**
+ * 카드 수의 **소스별** 분해 — 트리 순서(slug 코드 단위, `loadTranslationTree`와 같다)다. ⚠️ **접기는 `summaryQueue` 그대로다** — 입력을 그 소스로
+ * 좁혀 부를 뿐이라 미번역·검토 대기의 셈이 카드와 갈리지 않는다(넷째 집계 경로를 만들지 않는다 — 위 머리 주석). `newKeysBySurface`·`unsentBySurface`는
+ * 카드 집계와 같은 쿼리의 소스 축이다(`loadProjectListAggregates`).
+ */
+export function surfaceQueues(
+  projectId: string,
+  surfaces: readonly { id: string; slug: string }[],
+  aggregates: {
+    locales: readonly LiveLocale[];
+    keyTotals: ReadonlyMap<string, number>;
+    cells: readonly LocaleCellCount[];
+    newKeysBySurface: ReadonlyMap<string, number>;
+    unsentBySurface: ReadonlyMap<string, number>;
+  },
+): { slug: string; counts: SummaryQueue }[] {
+  return [...surfaces].sort((a, b) => byCodeUnit(a.slug, b.slug)).map((surface) => ({
+    slug: surface.slug,
+    counts: summaryQueue({
+      projects: [{ projectId, archived: false }],
+      locales: aggregates.locales.filter((locale) => locale.surfaceId === surface.id),
+      keyTotals: aggregates.keyTotals,
+      cells: aggregates.cells.filter((cell) => cell.surfaceId === surface.id),
+      newKeys: new Map([[projectId, aggregates.newKeysBySurface.get(surface.id) ?? 0]]),
+      unsent: new Map([[projectId, aggregates.unsentBySurface.get(surface.id) ?? 0]]),
+    }),
+  }));
+}
+
+/** 카드마다 착지할 소스 — 그 카드의 수가 있는 첫 소스, 어디에도 없으면 `fallback`(기본 소스. `null`이면 카드가 옛 공가 경로로 남는다). */
+export function cardLandings(queues: readonly { slug: string; counts: SummaryQueue }[], fallback: string | null): Record<CardKey, string | null> {
+  const order = queues.map((q) => q.slug);
+  const landing = (key: CardKey) => firstSurfaceWith(new Map(queues.map((q) => [q.slug, q.counts[key]])), order) ?? fallback;
+  return { newFromGithub: landing("newFromGithub"), toTranslate: landing("toTranslate"), toReview: landing("toReview"), toSend: landing("toSend") };
 }

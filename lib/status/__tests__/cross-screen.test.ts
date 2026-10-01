@@ -112,7 +112,7 @@ type Observed = {
   refusal: { error: string; tone: string; message: string } | NotApplicable;
 };
 
-const EMPTY: ProjectListAggregates = { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map() };
+const EMPTY: ProjectListAggregates = { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() };
 
 function observe(f: Fixture, J: Judgments): Observed {
   const project = { installationId: f.installationId, repositoryId: f.repositoryId, repoOwner: "acme", repoName: "web", surfaces: f.surfaces };

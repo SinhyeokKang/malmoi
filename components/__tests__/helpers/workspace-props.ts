@@ -5,7 +5,8 @@ import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
 export function props(over: Partial<WorkspaceProps> = {}): WorkspaceProps {
   return {
     slug: "acme", routeSurfaceSlug: "web", role: "OWNER", userId: "u1",
-    query: { ...DEFAULT_TRANSLATION_QUERY, key: "k1", keySurface: "web" },
+    // 화면 정규형이다(`screenQuery`) — 검색어가 없으면 범위는 위치(`ns=*` → 소스)다.
+    query: { ...DEFAULT_TRANSLATION_QUERY, scope: "source", key: "k1", keySurface: "web" },
     tree: { projectKeyCount: 2, surfaces: [{ id: "s1", slug: "web", baseLocale: "en", locales: ["en", "ko", "zh"], keyCount: 2, namespaces: [{ name: "common", keyCount: 2 }] }] },
     list: {
       rows: [
@@ -15,6 +16,7 @@ export function props(over: Partial<WorkspaceProps> = {}): WorkspaceProps {
       matchedKeyCount: 2, incompleteKeyCount: 1, nextCursor: null,
       effective: { completion: "all", substituted: false, excludedSurfaceIds: [] }, selectedInResult: true,
     },
+    counts: null,
     detail: {
       key: { id: "k1", key: "common.empty", namespace: "common", sourceText: "Nothing here", description: "Shown on the empty list.", surfaceSlug: "web" },
       refs: [{ path: "src/empty.tsx", line: 24, href: "https://github.com/o/r/blob/abc/src/empty.tsx#L24" }],

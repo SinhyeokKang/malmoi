@@ -21,7 +21,7 @@ import { HOME_EVENT_LIMIT, loadEvent, loadEvents } from "@/lib/events/query";
 import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems } from "@/lib/home/attention";
-import { countCards, planHomeHold } from "@/lib/home/cards";
+import { cardLandings, countCards, planHomeHold, surfaceQueues } from "@/lib/home/cards";
 import { metaRows } from "@/lib/home/meta";
 import { loadHomeRuns } from "@/lib/home/runs";
 import { lastSyncTime } from "@/lib/home/sync-time";
@@ -343,7 +343,8 @@ export default async function ProjectHomePage({
               hold: heldNow,
             })}
             slug={slug}
-            surfaceSlug={defaultSurface}
+            // 카드마다 그 수가 있는 첫 소스로 — 번역 화면의 범위가 트리 위치라 기본 소스로 가면 0건일 수 있다(translation-tree-range §5).
+            surfaceSlugs={cardLandings(surfaceQueues(projectId, surfaces, aggregates), defaultSurface)}
             now={now}
             heldLater={heldLater}
           />

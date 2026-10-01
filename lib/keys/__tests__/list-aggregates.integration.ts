@@ -11,7 +11,8 @@ import { optionalEnv } from "@/lib/env";
 import { PrismaClient } from "@/generated/prisma/client";
 import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
-import { reviewByLocale, rowBanner, rowChip } from "@/lib/projects/list";
+import { cardLandings, surfaceQueues } from "@/lib/home/cards";
+import { reviewByLocale, rowBanner, rowChip, summaryQueue } from "@/lib/projects/list";
 import { countUnpublishedBySurface, loadProjectList, loadProjectListAggregates, loadReviewAttention } from "../query";
 import { countPending } from "@/lib/protection/where";
 import { loadPullState } from "@/lib/pull/load";
@@ -386,6 +387,40 @@ it("countUnpublishedBySurface가 표면별 개별 호출·전체 합과 같고, 
   expect(queries).toBe(1);
 });
 
+/**
+ * **④⑤의 소스 축** (translation-tree-range design §5 · 조건 16) — 같은 쿼리를 표면으로 갈랐을 뿐이라 표면별 판정(`countPending` · 활성 키 수)과 같고 합이
+ * 프로젝트 수다. 끝 단언은 Home 카드의 착지(`cardLandings`)다 — 일치가 기본 소스(`default`)가 아닌 소스에만 있으면 그 소스로 간다.
+ */
+it("④⑤의 표면 축이 표면별 판정과 같고, Home 카드가 일치가 있는 첫 소스로 착지한다", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  // 기본 소스(`default`)의 미발송·신규를 비우고, 트리에서 뒤에 오는 `web`에만 둔다 — 기본 소스로 착지하면 0건이다.
+  await prisma.translation.updateMany({ where: { projectId: "p1" }, data: { pendingEditToken: null } });
+  await prisma.stringKey.updateMany({ where: { projectId: "p1" }, data: { createdAt: BEFORE } });
+  await prisma.translationSurface.create({ data: { id: "s-web", projectId: "p1", slug: "web", pathTemplate: "web/{locale}.json", adapterName: "json-catalog", baseLocale: "en" } });
+  await prisma.locale.createMany({ data: ["en", "ko"].map(code => ({ projectId: "p1", surfaceId: "s-web", code, name: code, isBase: code === "en" })) });
+  await prisma.stringKey.create({ data: { id: "w-key", projectId: "p1", surfaceId: "s-web", key: "w.key", namespace: "w", sourceText: "w", sourceHash: "w", createdAt: AFTER } });
+  await prisma.translation.create({ data: { projectId: "p1", surfaceId: "s-web", keyId: "w-key", localeCode: "ko", value: "w", updatedBy: "u1", pendingEditToken: "tok-w" } });
+
+  const aggregates = await loadProjectListAggregates(prisma, ["p1"]);
+  expect(aggregates.unsentBySurface.get("s-web")).toBe(await countPending(prisma, "p1", "s-web"));
+  expect(aggregates.unsentBySurface.has("surface-p1")).toBe(false);
+  expect(aggregates.newKeysBySurface.get("s-web")).toBe(1);
+  expect(aggregates.newKeysBySurface.has("surface-p1")).toBe(false);
+  expect(aggregates.unsent.get("p1")).toBe(await countPending(prisma, "p1"));
+  expect(aggregates.unsentSurfaces.get("p1")).toBe("web");
+
+  const queues = surfaceQueues("p1", [{ id: "surface-p1", slug: "default" }, { id: "s-web", slug: "web" }], aggregates);
+  const whole = summaryQueue({ projects: [{ projectId: "p1", archived: false }], ...aggregates });
+  for (const key of ["newFromGithub", "toTranslate", "toReview", "toSend"] as const) {
+    expect(queues.reduce((sum, q) => sum + q.counts[key], 0), key).toBe(whole[key]);
+  }
+  const landings = cardLandings(queues, "default");
+  expect(landings.newFromGithub).toBe("web");
+  expect(landings.toSend).toBe("web");
+  // 미번역은 두 소스 다 있다(en이 비었다) — 트리 순서의 첫 소스다.
+  expect(landings.toTranslate).toBe("default");
+});
+
 /** 첫 pull 전후가 같은 답이다 — 토큰 술어는 `lastPulledAt`을 읽지 않는다. */
 it("첫 pull 전에도 세 판정이 같다", async () => {
   await seed({ id: "p1", lastPulledAt: null, archived: false });
@@ -441,6 +476,8 @@ it("인가 집합 밖의 프로젝트는 섞이지 않는다", async () => {
 
   expect(got.newKeys.get("p2")).toBeUndefined();
   expect(got.unsent.get("p2")).toBeUndefined();
+  expect(got.newKeysBySurface.has("surface-p2")).toBe(false);
+  expect(got.unsentBySurface.has("surface-p2")).toBe(false);
   expect(got.locales.every((l) => l.projectId === "p1")).toBe(true);
   expect(got.cells.every((c) => c.projectId === "p1")).toBe(true);
 });

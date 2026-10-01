@@ -28,14 +28,14 @@ const GLYPH: Record<HomeCard["key"], ComponentType<{ className?: string }>> = {
 };
 
 /**
- * @param surfaceSlug 기본 표면. ⚠️ **링크가 표면 경로를 직접 가리킨다** (audit-ux #4b) — 옛 `routes.translations`는
- *   기본 표면으로 redirect하는 공가 라우트라 누를 때마다 서버 왕복이 하나 더 붙었다. `null`(기본 표면 없음)이면 옛
- *   경로로 남는다 — 그 라우트가 "표면이 없다"를 말하는 자리다.
+ * @param surfaceSlugs 카드마다 착지할 표면 — 그 카드의 수가 있는 첫 활성 소스, 없으면 기본 소스다(`cardLandings` — translation-tree-range §5).
+ *   ⚠️ **링크가 표면 경로를 직접 가리킨다** (audit-ux #4b) — 옛 `routes.translations`는 기본 표면으로 redirect하는 공가 라우트라 누를 때마다
+ *   서버 왕복이 하나 더 붙었다. `null`(기본 표면 없음)이면 옛 경로로 남는다 — 그 라우트가 "표면이 없다"를 말하는 자리다.
  */
-export function CountCards({ cards, slug, surfaceSlug, now, heldLater }: {
+export function CountCards({ cards, slug, surfaceSlugs, now, heldLater }: {
   cards: readonly HomeCard[];
   slug: string;
-  surfaceSlug: string | null;
+  surfaceSlugs: Readonly<Record<HomeCard["key"], string | null>>;
   now: Date;
   /**
    * 열린 PR 조회에 달린 보류 사유 (ux-drift-unify Q6) — **`To send` 보조 줄만 늦게 도착한다**, 본문은 기다리지 않는다(malmoi#107이 줄인 착지 병목).
@@ -68,6 +68,7 @@ export function CountCards({ cards, slug, surfaceSlug, now, heldLater }: {
       <ul className="grid grid-cols-2 gap-2 @[672px]/cards:grid-cols-4">
         {cards.map((card) => {
           const Glyph = GLYPH[card.key];
+          const surfaceSlug = surfaceSlugs[card.key];
           return (
             <li key={card.key}>
               {/*
@@ -180,9 +181,9 @@ function sublineText(subline: CardSubline, now: Date): string {
 }
 
 /**
- * 카드 → 번역 화면의 요청값 (translation-rework T12). **카드의 수는 프로젝트 전체라 범위도 `All sources`다** — 한 소스로 착지하면
- * 합계와 목록이 갈린다. 그 범위가 기본값이라 주소에 `scope`를 싣지 않는다(translation-filter-scope). 미번역은 완성도 축(`Incomplete`)으로,
- * 나머지 셋은 상태 축으로 간다. ⚠️ `ns=*`는 남긴다 — 빼면 상태 링크가 네임스페이스로도 좁혀져 0건 착지한다(POSTMORTEM 2026-09-15).
+ * 카드 → 번역 화면의 요청값 (translation-rework T12 · translation-tree-range §5). 범위는 트리 위치라 **카드의 수가 있는 첫 소스의 `All namespaces`**로
+ * 착지한다(`surfaceSlugs`) — 기본 소스로 가면 일치가 다른 소스에만 있을 때 0건이다. 미번역은 `Incomplete`로, 나머지 셋은 그 Status로 간다.
+ * ⚠️ `ns=*`는 남긴다 — 빼면 상태 링크가 네임스페이스로도 좁혀져 0건 착지한다(POSTMORTEM 2026-09-15). 화면은 그것을 생략과 같은 정규 주소로 본다(redirect 없음).
  * ⚠️ 카드는 **셀**을 세고 목록은 **키**를 센다 — 두 수가 같다고 주장하지 않는다(design §3 옛 링크).
  */
 function cardQuery(state: (typeof CARD_STATE)[keyof typeof CARD_STATE]) {

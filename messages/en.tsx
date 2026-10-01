@@ -2357,15 +2357,18 @@ export const en = {
      */
     workspace: {
       filters: {
-        completion: { axis: "Completeness", all: "All keys", incomplete: "Incomplete", missingIn: (locale: string): string => `Untranslated in ${locale}`, missingMenu: "Untranslated in…", complete: "Complete" },
-        state: { axis: "State", any: "Any state", unsent: "Unsent", review: "Needs review", new: "New from GitHub", newHint: "Keys that arrived after Malmoi last confirmed your files." },
-        scope: { axis: "Scope", namespace: "This namespace", source: "This source", project: "All sources" },
+        /**
+         * **필터 축은 Status 하나다** (translation-tree-range — 2026-10-01 사용자). 범위는 트리가, 검색은 전 소스가 든다.
+         * ⚠️ 키 이름이 `state`인 것은 `guide/SHOOTING.md`의 `state-filter.webp` 매핑(`dict:…filters.state.*`)이 여기를 가리키기 때문이다 — 축 이름은 `Status`다.
+         */
+        state: { axis: "Status", any: "All keys", incomplete: "Incomplete", review: "Needs review", unsent: "Unsent", new: "New from GitHub", newHint: "Keys that arrived after Malmoi last confirmed your files." },
         clear: "Clear filters",
+        /** 검색 입력의 접근 이름 — 위치로 좁힌 검색 중에도 참이어야 해서 범위를 말하지 않는다. 범위는 플레이스홀더(입력이 빌 때만 보인다 — 그때 새 검색은 언제나 전 소스다)가 말한다. */
         search: "Search keys",
-        substituted: (source: string, locale: string): string => `${source} has no ${locale}. Showing incomplete keys instead.`,
+        searchPlaceholder: "Search all sources…",
         nothingToFilter: "Nothing to filter yet",
       },
-      tree: { title: "Sources", allNamespaces: "All namespaces", filter: "Filter namespaces", open: "Show sources" },
+      tree: { title: "Sources", allNamespaces: "All namespaces", allSources: "All sources", filter: "Filter namespaces", open: "Show sources" },
       /** 키 목록 ↔ 로케일 카드 구분선 — `common.resizeSidebar`와 같은 이유로 이름이 필요하다(이름 없는 separator는 스크린리더가 "구분선"만 읽는다). */
       resize: "Resize key list",
       list: {
@@ -2480,7 +2483,6 @@ export const en = {
         noMatch: (q: string): string => `No keys match "${q}"`,
         noIncompleteMatch: (q: string): string => `No incomplete keys match "${q}"`,
         filteredOut: "No keys match these filters",
-        showAll: (n: number): string => `Show all ${n.toLocaleString("en-US")} keys`,
         searchAll: "Search all sources",
         clearSearch: "Clear search",
         noKeys: (ns: string): string => `No keys in ${ns}`,
@@ -3486,7 +3488,7 @@ export const en = {
       list_repositories: "List the GitHub repositories you can connect to a new project. Needs the Create projects permission.",
       list_branches: "List a repository's branches. Pass { owner, repo } for a new project or { slug } for an existing one, not both.",
       detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new project or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
-      list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace. Takes the same filters as the translations screen and a cursor for the next page.",
+      list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace (ns picks the namespace). The query takes completion (incomplete, missing with missingLocale, or complete), state (unsent, review, or new), and q to search keys, source text, and translations, plus a cursor for the next page.",
       get_key: "Show one key: its source text, every language's value, review and unsent flags, and where the code uses it.",
       preview_publish: "Preview what Publish would send in a pull request. Returns a fingerprint to pass to publish, and pullRequest: open (with its url), none, or unknown when GitHub couldn't be checked.",
       preview_sync: "Preview a sync from the repository and how many unsent edits it would discard. Returns an approval to pass to sync_repository.",
