@@ -137,17 +137,17 @@ it("필터를 고르면 응답 전에 트리거 라벨이 바뀐다 — 필터�
   const b = gate();
   respond = () => ({ next: { ...initial, query: { ...initial.query, completion: "incomplete" }, list: { ...initial.list } }, gate: b });
   const { container } = await render(<Harness initial={initial} />);
-  const trigger = () => container.querySelector<HTMLButtonElement>('button[aria-label^="Status:"]')!;
-  expect(trigger().getAttribute("aria-label")).toBe("Status: All keys");
+  const trigger = () => container.querySelector<HTMLButtonElement>(`button[aria-label^="${m.translations.workspace.filters.state.axis}:"]`)!;
+  expect(trigger().getAttribute("aria-label")).toBe(`${m.translations.workspace.filters.state.axis}: ${m.translations.workspace.filters.state.any}`);
   await user.click(trigger());
   await user.click(menuItem(m.translations.workspace.filters.state.incomplete));
   expect(mocks.push).toHaveBeenCalledTimes(1);
-  expect(trigger().getAttribute("aria-label")).toBe(`Status: ${m.translations.workspace.filters.state.incomplete}`);
+  expect(trigger().getAttribute("aria-label")).toBe(`${m.translations.workspace.filters.state.axis}: ${m.translations.workspace.filters.state.incomplete}`);
   expect(panel(container, "list").getAttribute("aria-busy")).toBe("true");
   // 필터는 선택을 옮기지 않는다 — 상세는 같은 키라 골격으로 바꾸지 않는다.
   expect(panel(container, "detail").querySelector("[data-skeleton-detail]")).toBeNull();
   await arrive(b);
-  expect(trigger().getAttribute("aria-label")).toBe(`Status: ${m.translations.workspace.filters.state.incomplete}`);
+  expect(trigger().getAttribute("aria-label")).toBe(`${m.translations.workspace.filters.state.axis}: ${m.translations.workspace.filters.state.incomplete}`);
 });
 
 // ── #18 ─────────────────────────────────────────────────────────────────────
@@ -368,11 +368,11 @@ it("조건이 바뀐 첫 커밋부터 새 행이다 — 새 라벨 아래 옛 �
   const frames: { title: string; rows: (string | undefined)[] }[] = [];
   let host: HTMLElement | null = null;
   // 목록 제목은 고정(`Keys`)이라 키 목록 머리의 Status 라벨로 조건을 잰다 — 서버 조건이 그대로 서는 재렌더라 낙관값이 아니다.
-  const onRender = () => { if (host !== null) frames.push({ title: host.querySelector('[data-panel=list] button[aria-label^="Status:"]')?.getAttribute("aria-label") ?? "", rows: rowIds(host) }); };
+  const onRender = () => { if (host !== null) frames.push({ title: host.querySelector(`[data-panel=list] button[aria-label^="${m.translations.workspace.filters.state.axis}:"]`)?.getAttribute("aria-label") ?? "", rows: rowIds(host) }); };
   const { container, rerender } = await render(<Profiler id="w" onRender={onRender}><TranslationWorkspace {...initial} /></Profiler>);
   host = container;
   await rerender(<Profiler id="w" onRender={onRender}><TranslationWorkspace {...initial} query={{ ...initial.query, completion: "incomplete" }} list={{ ...initial.list, rows: [rowOf("k9")] }} /></Profiler>);
-  const titled = frames.filter(f => f.title === `Status: ${m.translations.workspace.filters.state.incomplete}`);
+  const titled = frames.filter(f => f.title === `${m.translations.workspace.filters.state.axis}: ${m.translations.workspace.filters.state.incomplete}`);
   // 짝 단언 — 새 조건의 프레임이 실제로 있다.
   expect(titled.length).toBeGreaterThan(0);
   expect(titled.every(f => f.rows.join() === "k9")).toBe(true);
@@ -440,7 +440,7 @@ it("응답 전에 Status와 검색을 잇달아 고르면 둘째 이동이 첫 �
   const initial = props();
   respond = () => ({ next: initial, gate: gate() });
   const { container } = await render(<Harness initial={initial} />);
-  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="Status:"]')!);
+  await user.click(container.querySelector<HTMLButtonElement>(`button[aria-label^="${m.translations.workspace.filters.state.axis}:"]`)!);
   await user.click(menuItem(m.translations.workspace.filters.state.incomplete));
   await user.type(container.querySelector<HTMLInputElement>('input[type="search"]')!, "zz{Enter}");
   expect(mocks.push).toHaveBeenCalledTimes(2);
@@ -457,7 +457,7 @@ it("응답 전에 키를 고른 뒤 필터를 고르면 필터 이동이 새 키
   respond = () => ({ next: initial, gate: gate() });
   const { container } = await render(<Harness initial={initial} />);
   await user.click(row(container, "k2")!);
-  await user.click(container.querySelector<HTMLButtonElement>('button[aria-label^="Status:"]')!);
+  await user.click(container.querySelector<HTMLButtonElement>(`button[aria-label^="${m.translations.workspace.filters.state.axis}:"]`)!);
   await user.click(menuItem(m.translations.workspace.filters.state.unsent));
   expect(mocks.push.mock.calls[0]?.[0]).toContain("key=k2");
 });
@@ -483,3 +483,38 @@ it("검색 이동을 기다리는 동안 언어 메뉴가 잠기고, 도착하�
   expect(languages().disabled).toBe(false);
 });
 
+
+/*
+  Status 트리거는 응답마다 본문이 바뀌는(`aria-busy`) 목록 패널 안에 있다 — 메뉴를 닫은 포커스가 트리거로 돌아온 뒤, 0건 응답이 목록을 빈 상태로
+  바꾸는 커밋까지 한 번도 `body`로 빠지지 않는다(#158의 커밋 단위 측정).
+*/
+it("Status를 고르면 도착(0건 빈 상태 포함)까지 모든 커밋에서 포커스가 트리거에 있다", async () => {
+  /*
+    ⚠️ jsdom에는 focus fixup이 없다(POSTMORTEM 2026-09-20) — 포커스된 트리거가 `disabled`가 되어도 `activeElement`가 남는다. 브라우저처럼 `body`로 돌린다.
+  */
+  const fixup = new MutationObserver(() => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !active.matches(":disabled")) return;
+    active.removeAttribute("disabled");
+    active.blur();
+    active.setAttribute("disabled", "");
+  });
+  fixup.observe(document.body, { attributes: true, attributeFilter: ["disabled"], subtree: true });
+  settles.push(() => fixup.disconnect());
+  const user = userEvent.setup();
+  const initial = props();
+  const b = gate();
+  respond = () => ({ next: { ...initial, query: { ...initial.query, state: "unsent" }, list: { ...initial.list, rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, selectedInResult: false } }, gate: b });
+  const { container } = await render(<Harness initial={initial} />);
+  const trigger = () => container.querySelector<HTMLButtonElement>(`[data-panel="list"] button[aria-label^="${m.translations.workspace.filters.state.axis}:"]`)!;
+  await user.click(trigger());
+  await user.click(menuItem(m.translations.workspace.filters.state.unsent));
+  expect(mocks.push).toHaveBeenCalledOnce();
+  expect(document.activeElement).toBe(trigger());
+  commitFocus.length = 0;
+  await arrive(b);
+  expect(container.querySelector("[data-list-empty]")).not.toBeNull();
+  expect(commitFocus.length).toBeGreaterThan(0);
+  expect(commitFocus.filter(el => el === document.body || el === null)).toEqual([]);
+  expect(document.activeElement).toBe(trigger());
+});
