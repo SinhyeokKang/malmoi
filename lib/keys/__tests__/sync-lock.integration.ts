@@ -12,6 +12,7 @@ import { optionalEnv } from "@/lib/env";
 import type { RepoReader } from "@/lib/github";
 import { readDiscardApproval } from "@/lib/import/approval";
 import { runAutomationImport, runRepositoryImportFromReader } from "@/lib/import/run";
+import { loadProject } from "@/lib/keys/query";
 import { applyKeySave, applyKeySaveBatch } from "@/lib/keys/save-key";
 import { loadPullState, saveLastPulledAt } from "@/lib/pull/load";
 
@@ -242,4 +243,26 @@ it("야간 적재가 세운 lease도 저장을 막는다 — C1, 같은 acquire�
     await nightly;
   }
   expect(await save()).toMatchObject({ ok: true });
+});
+
+/**
+ * **번역 화면 착지의 lease** (sync-lock S4 · R1) — 페이지가 `loadProject`의 `writeLock`을 화면 prop으로 넘긴다. 진입점 → 격리 DB → 뷰 모델로
+ * 잰다(POSTMORTEM 2026-09-14 — select 누락은 typecheck가 못 본다). ⚠️ **실행권 토큰은 뷰 모델에 실리지 않는다** — 클라이언트로 가는 값이다.
+ */
+describe("착지 뷰 모델의 writeLock", () => {
+  it("lease가 살아 있으면 시작·다시 열리는 시각만 싣고 토큰은 없다", async () => {
+    const startedAt = new Date(Date.now() - 100_000);
+    await lease(startedAt);
+    const project = await loadProject(prisma, "p", "s");
+    expect(project?.writeLock).toEqual({ startedAt, reopensBy: expect.any(Date) });
+    expect(project?.writeLock?.reopensBy.getTime()).toBeGreaterThan(startedAt.getTime() + 300_000);
+    expect(JSON.stringify(project)).not.toContain("live-sync");
+    expect(project).not.toHaveProperty("repositoryImportToken");
+  });
+
+  it("lease가 없거나 만료됐으면 null이다", async () => {
+    expect((await loadProject(prisma, "p", "s"))?.writeLock).toBeNull();
+    await lease(new Date(Date.now() - 301_000));
+    expect((await loadProject(prisma, "p", "s"))?.writeLock).toBeNull();
+  });
 });

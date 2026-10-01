@@ -29,6 +29,7 @@ export function props(over: Partial<WorkspaceProps> = {}): WorkspaceProps {
     sync: { name: "acme", branch: "main" },
     baseLocale: "en", declaredBaseLocale: null,
     connection: { status: "unknown" },
+    writeLock: null,
     ...over,
   };
 }

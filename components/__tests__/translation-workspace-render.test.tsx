@@ -70,3 +70,16 @@ it("한 행만 값이 바뀌어 오면 그 행만 다시 렌더된다 (#157)", a
   await rerender(<TranslationWorkspace {...initial} list={changed} />);
   expect(new Set(mocks.rowRenders)).toEqual(new Set([initial.list.rows[1]!.keyId]));
 });
+
+/**
+ * sync-lock — 착지 lease는 헤더 배너와 [Sync]에만 닿는다. 행까지 내려가면 lease 하나로 5,000행 memo가 한꺼번에 깨진다(POSTMORTEM 2026-10-01).
+ */
+it("lease 상태가 바뀌어도 목록 행은 다시 렌더되지 않는다", async () => {
+  const initial = props();
+  const { rerender } = await render(<TranslationWorkspace {...initial} />);
+  mocks.rowRenders.length = 0;
+  const writeLock = { startedAt: new Date("2026-10-01T16:30:12.000Z"), reopensBy: new Date("2026-10-01T16:36:00.000Z") };
+  await rerender(<TranslationWorkspace {...initial} writeLock={writeLock} />);
+  expect(document.body.textContent).toContain("Syncing…");
+  expect(mocks.rowRenders).toEqual([]);
+});
