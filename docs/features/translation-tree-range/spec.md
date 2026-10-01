@@ -103,5 +103,10 @@
 - **`Filter namespaces` 입력(13개 이상)은 그대로.**
 - **트리를 클라이언트 전용 이동으로 만들지 않는다** — 트리 클릭은 지금처럼 서버 왕복(새 목록 세대)이다.
 - 키 단위 `Untranslated in {locale}` 목록 필터의 대체물은 만들지 않는다 — 상세 언어가 그 로케일을 보여 주는 것으로 갈음한다(사용자 확정).
-- **사이드바 Translations 배지·프로젝트 목록 배너는 그대로** — 배지는 Status 없이 기본 소스로 가고 프로젝트 전체 키 수를 센다(트리 머리 배지와 같은 수).
-  배너는 이미 일치가 있는 소스(`reviewSurfaceSlug`·`unsentSurfaceSlug`)로 간다.
+- **사이드바 Translations 배지는 그대로** — Status 없이 기본 소스로 가고 프로젝트 전체 키 수를 센다(트리 머리 배지와 같은 수).
+
+## 결정 기록
+
+- **2026-10-02 (사용자) — 프로젝트 목록 배너의 `Review`·`Send` 링크에 Status를 싣는다.** 비목표였던 "배너는 그대로"를 범위로 끌어들인다.
+  이 변경 뒤 배너는 일치가 있는 소스(`reviewSurfaceSlug`·`unsentSurfaceSlug`)의 **무필터** 목록에 착지해 검토·미발송 키가 섞여 보인다.
+  `{ ns: ALL_NAMESPACES, state: "review" | "unsent" }`로 그 소스에 착지한다(Home 카운트 카드와 같은 형, POSTMORTEM 2026-09-15). 착지 목록이 1행 이상임을 시나리오 테스트로 잰다.
