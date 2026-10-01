@@ -662,6 +662,8 @@ lib/
                         ⚠️ **예외 하나 — runs(2026-09-30, nightly-sync)는 server-only 조회다**: 메타 열의 실행 주체용 사건 셋
                         (최근 성공 적재 · 최근 적재(보류 포함) · 최근 성공 Publish)을 읽어 meta의 `homeTriggers`에 넘긴다.
                         행위자를 select하지 않는다(POSTMORTEM 2026-09-29 #146). 판정(주체·보류 한 줄)은 meta에 남아 순수다
+                        ⚠️ **write-lock(2026-10-01, sync-lock R5)도 server-only 조회다** — 적재 lease 두 컬럼을 읽어 lib/sync/plan의
+                        planWriteLock에 넘기고 시각만 돌려준다(토큰 없음). Home의 [Sync]·배너 [Try again]이 그것으로 멈춘다
   shell/panel-size.ts   px 치수 → 리사이즈 패널의 % 제약. ⚠️ 분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다
                         — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
                         ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다
