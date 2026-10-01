@@ -6,6 +6,7 @@
   <a href="https://github.com/SinhyeokKang/malmoi/actions/workflows/ci.yml"><img src="https://github.com/SinhyeokKang/malmoi/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
   <img src="https://img.shields.io/badge/formats-JSON%20%7C%20YAML%20%7C%20TS%2FJS%20%7C%20Chrome%20__locales-4493F8?style=flat" alt="Supported formats: JSON, YAML, TS/JS dictionaries, Chrome _locales" />
   <img src="https://img.shields.io/badge/price-free-08C?style=flat" alt="Free, no paid plans" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat" alt="License: MIT" /></a>
 </p>
 
 <p align="left">
