@@ -74,7 +74,7 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
 실브라우저 폭·키보드·IME·접힌 트리·재로그인 복구는 Chrome으로, 실리포 왕복은 `bugshot-i18n-test` PR #3(chrome-locales) ·
 `i18n-format-check` PR #8(yaml-catalog)으로 전달 → 재편집 → Revert → 머지 → Sync · `no-changes`까지 확인했다.
 
-1. **옛 셀 저장이 남아 있는 빌드와 섞이지 않게 한다** — 옛 `saveTranslation`(T16에서 지웠다)은 복원 기준을 기록하지 않고 값을 쓴다.
+1. **옛 셀 저장이 남아 있는 빌드와 섞이지 않게 한다** — 옛 셀 단위 Server Action `saveTranslation`(T16에서 지웠다 — 지금의 공유 코어 `lib/keys/save-translation.ts`와 다른 것)은 복원 기준을 기록하지 않고 값을 쓴다.
    그 Action이 살아 있는 빌드로 되돌렸다가 다시 올리면, 그 사이 저장된 셀의 기준이 없거나 낡았다. **재전진 직후 한 번** 위 4번의
    전부 무효화를 돌린다(다음 편집 있는 Publish가 되살린다 — 그 사이 Revert는 `baseline-unknown`으로 막힌다. 막히는 쪽이 옳다).
 2. **확인**: 위 3번의 두 쿼리가 계속 0이어야 한다. Revert가 거부만 낸다면(`baseline-unknown`·`baseline-stale`) 먼저 그 소스의 확인이
@@ -96,8 +96,9 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
 
 1. **Node를 `.nvmrc`에 맞춘다**(24). **어긋났을 때 맞추는 방향은 Vercel 쪽이다** — 프로덕션이 진실이고 `.nvmrc`가 따라간다.
 2. `pnpm install`
-3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **암호화 키 셋(환경변수 여섯)이 비면 로그인·초대·멤버 조회가 통째로 죽는다** — TOKEN·PII는 `*_ENCRYPTION_KEYS`와 `*_ACTIVE_KEY_ID` 쌍이고 EMAIL_LOOKUP만 `EMAIL_LOOKUP_KEY`·`_KEY_ID`다. ⚠️ **서명 키 `APP_SIGNING_SECRET`도 비면 GitHub 연결(시작·callback)과 온보딩 탐지·샘플이 500이다** — 로그인은 된다. 초대 메일 셋(`RESEND_API_KEY` 등)은 비어도 되고 그때 초대 발급만 막힌다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다** — 전부 Vercel의 **Sensitive**라 CLI도 대시보드도 값을 못 읽는다. **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**다.
+3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **암호화 키 셋(환경변수 여섯)이 비면 로그인·초대·멤버 조회가 통째로 죽는다** — TOKEN·PII는 `*_ENCRYPTION_KEYS`와 `*_ACTIVE_KEY_ID` 쌍이고 EMAIL_LOOKUP만 `EMAIL_LOOKUP_KEY`·`_KEY_ID`다. ⚠️ **서명 키 `APP_SIGNING_SECRET`도 비면 GitHub 연결(시작·callback)과 온보딩 탐지·샘플이 500이다**(MCP 탐지·생성 도구는 `unavailable`) — 로그인은 된다. 초대 메일 셋(`RESEND_API_KEY` 등)은 비어도 되고 그때 초대 발급만 막힌다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다** — 전부 Vercel의 **Sensitive**라 CLI도 대시보드도 값을 못 읽는다. **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**다.
    - **GitHub OAuth 앱은 하나(`malmoi`)이고 세 환경이 같은 값을 쓴다** — Google과 같은 모양이다. ⚠️ **2026-09-14 이전 기록에 "앱이 셋"이 나오면 그건 낡았다**: GitHub이 OAuth App에 **Add redirect URI**를 열어 "callback URL은 앱당 하나"가 거짓이 됐고, 그래서 `malmoi-dev`·`malmoi-local`을 접었다.
+   - prod 키 작업(`credentials:prod`·`credentials:finalize:prod`)을 할 머신이면 **`.env.prod.local`도 옮긴다** — prod 키를 담는 파일이고 같은 이유로 gitignore다(§1).
    - ⚠️ **Google은 반대로 클라이언트가 하나다** — redirect URI를 여러 개 등록할 수 있어 로컬·preview·프로덕션 셋을 한 클라이언트에 넣고 같은 값을 세 곳에 둔다.
 4. `pnpm db:status`(dev) · `pnpm db:status:prod`(prod)로 접속을 확인한다. ⚠️ 두 출력이 **같아 보인다**(pooler 호스트가 같고 ref는 사용자명에 있다) — 구별 신호는 **적용된 마이그레이션 개수**다.
 5. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다.
@@ -201,9 +202,11 @@ pnpm credentials:dev --mode=verify
 
 ### 서명 키 회전 (`APP_SIGNING_SECRET`)
 
-**차단·drain이 필요 없다** — 이 키로 만든 것은 DB에 없고 쿠키·모달 상태로만 산다(최장 30분). 새 값을 넣고
-재배포하면 끝이고, 그 순간 진행 중이던 GitHub 연결 왕복과 열린 새 프로젝트 모달의 확인값이 **한 번** 실패한다
-(연결은 다시 누르고, 모달은 다시 탐지하면 새 확인값을 받는다). 이중 키 검증은 두지 않았다.
+**차단·drain이 필요 없다** — 이 키로 만든 것은 DB에 없고 쿠키·모달 상태와 MCP 에이전트가 든 확인값으로만 산다(최장 30분).
+새 값을 넣고 재배포하면 끝이고, 그 순간 진행 중이던 GitHub 연결 왕복과 열린 새 프로젝트 모달의 확인값, 에이전트가
+`detect_formats`에서 받아 둔 확인값이 **한 번** 실패한다(연결은 다시 누르고, 모달은 다시 탐지하면 새 확인값을 받는다.
+MCP `create_project`·`add_sources`는 `sample-expired`를 받고 `detect_formats`를 다시 부르면 풀린다 — `lib/mcp/confirm.ts`).
+이중 키 검증은 두지 않았다.
 
 최초 등록은 2026-09-27 — Vercel Development · Preview · Production과 메인 체크아웃의 `.env.local`. **두 번째 머신의
 `.env.local`은 확인되지 않았다** — 그 머신에서 연결·탐지가 500이면 이 키부터 본다.
@@ -211,8 +214,9 @@ pnpm credentials:dev --mode=verify
 1. 새 값 생성: `node -e 'console.log(require("crypto").randomBytes(32).toString("base64url"))'` — 환경마다 다른 값.
 2. `.env.local`(머신 둘)과 Vercel Production · Preview · Development에 넣는다. ⚠️ **`vercel env add`는 환경을 하나씩만
    받고 `--force`의 성공 메시지를 믿지 않는다** — `vercel env ls <environment>`의 시각 열로 확인한다(CLAUDE.md).
-3. 재배포. **값이 없으면 연결 시작·callback·온보딩 탐지가 `requireEnv`로 500**이다(fail-closed) — 로그인은
-   `AUTH_SECRET`만 쓰므로 그대로 된다. 증상이 "연결만 죽었다"이면 이 키부터 본다.
+3. 재배포. **값이 없으면 연결 시작·callback·온보딩 탐지가 `requireEnv`로 500**이다(fail-closed) — MCP 탐지·생성
+   도구는 같은 실패를 `unavailable`로 접는다(`lib/mcp/tools/execute.ts`). 로그인은 `AUTH_SECRET`만 쓰므로 그대로 된다.
+   증상이 "연결만 죽었다"이면 이 키부터 본다.
 
 - **`AUTH_SECRET` 회전은 이 키와 무관하다** — 진행 중 로그인 왕복만 깨고 DB 세션도, 연결 state도, 샘플 확인값도
   건드리지 않는다.
@@ -228,7 +232,13 @@ pnpm credentials:dev --mode=verify
 - 암호화 백업 복원 후에도 **트래픽을 차단한 상태에서** 해당 keyring으로 `verify`를 끝낸다.
 - **평문 코드로 rollback하지 않는다.**
 - **백업 복원·새 DB에서는 `pnpm credentials:finalize:dev` / `:prod`로 finalize 마이그레이션 상태를 먼저
-  확인한다** — 기본 check-only라 `pending`만 보고한다.
+  확인한다** — 기본 check-only라 `pending`만 보고한다. 그다음은 트래픽을 막은 채로 둘이다:
+  ```sh
+  pnpm credentials:dev --apply --traffic-blocked --writers-drained            # 평문 행이 남아 있으면 — 기본 모드가 backfill이다
+  pnpm credentials:finalize:dev --apply --traffic-blocked --writers-drained   # pending이면 — migrate deploy 뒤 verify를 다시 돈다
+  ```
+  prod는 명령 이름만 `:prod`로 바꾸고 §1처럼 `.env.prod.local`을 source한다. finalize도 먼저 `verify`를 돌아 그것이
+  실패하면 아무것도 적용하지 않는다(`scripts/finalize-credentials.ts`).
 - 마이그레이션 실패 시 `_prisma_migrations`와 실제 DDL을 대조한다. 전부 롤백된 것이 확인된 경우에만
   검토 후 `migrate resolve --rolled-back <name>`으로 재시도하고, **체크섬 수정·무조건 applied·DB
   reset으로 통과시키지 않는다.**
@@ -354,7 +364,7 @@ CLAUDE.md) ④ 재배포 ⑤ 초대 한 통을 지정 수신자로 보내 접수
 **보존**: Resend는 보낸 메시지(수신 주소·제목, 그리고 링크·프로젝트 이름·썸네일 주소(있을 때)·역할이 든 본문)를 **30일** 보관한다(Free 플랜 값 — 요금제를 바꾸면 방침 `retention` 절도 확인한다).
 방침 `third-parties`·`retention` 절이 이 사실을 공표한다.
 
-**한도**: 앱 쪽은 같은 주소 60초 · 프로젝트 최근 1시간 20건이고(`lib/invitation-email/limits.ts`), Resend 요금제 한도는 그보다 넓다고 가정한다 —
+**한도**: 앱 쪽은 같은 주소 60초 · 프로젝트 최근 1시간 20건 · 발급자 1인 전 프로젝트 합산 1시간 30건이고(`lib/invitation-email/limits.ts`), Resend 요금제 한도는 그보다 넓다고 가정한다 —
 넘으면 429가 `email-rejected`로 보인다.
 
 ## HSTS preload 제출 — 오너 수동 절차 (2026-09-24)
