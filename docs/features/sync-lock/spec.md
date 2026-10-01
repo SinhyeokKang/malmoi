@@ -99,3 +99,4 @@ OWNER 쪽 문제는 따로 있다. 확인 Dialog가 닫힌 뒤 결과가 화면�
 | R1 | 착지 시 lease가 살아 있으면 **배너만** — Save를 끄지 않고, 착지 Dialog도 없다 (feature-review) |
 | R2 | Revert의 lease 갈래는 `sync-running`(+`reopensBy`), Publish RUNNING 갈래는 `busy`로 남는다 (feature-review) |
 | R3 | 진행 Dialog는 응답 없이 70초가 지나면 [Close]를 돌려준다(결과는 Logs) (feature-review) |
+| R4 | 번역 화면 Revert가 `sync-running`으로 거부되면(미리보기·확정 두 경로) **저장 거부와 같은 "Syncing…" Dialog**를 띄운다 — 원인이 같으니 형도 같다. `unavailable`로 접지 않는다 (orchestrate 인테이크) |

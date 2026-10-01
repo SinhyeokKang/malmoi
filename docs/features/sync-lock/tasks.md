@@ -1,6 +1,16 @@
 # sync-lock — tasks
 
 **순서**: 순수 판정 → 서버 거부 → MCP → 저장 거부 UI → Sync Dialog → 문서.
+## 배치 (orchestrate 2026-10-01)
+
+| 배치 | 항목 | 건드리는 파일(주) | 모델 · effort | 순서 |
+|---|---|---|---|---|
+| A | S1–S3 + 서버 쪽 문서(ARCHITECTURE §5.6.1·§5.5.2·§6.45.6, `guide/ai-agents/permissions.md`) | `lib/sync/plan.ts` · `lib/keys/**` · `lib/translations/baseline.ts` · `lib/mcp/**` | Opus · high — 잠금·인가 불변식 영역 | 즉시 |
+| U | S5 → (A 통합 대기) → S4(+R4) + 화면 쪽 문서(DESIGN·DIRECTORY·PRODUCT·`guide/sync/*`·`guide/translate/edit.md`) | `components/home/*` · `components/ui/dialog.tsx` · `workspace.tsx` · `messages/en.tsx` · 번역 페이지·`lib/keys/query.ts` | Opus · medium — 여러 파일 UI·DOM 테스트 | S5 즉시, S4는 `WAITING FOR A` |
+
+- 겹침: A는 `lib/`만, U의 S5는 `components/`·`messages/`만 → 병렬. S4는 A의 결과 타입에 기대고 `lib/keys/query.ts`를 건드려 A 뒤.
+- S7(기능 종료)은 지휘자가 한다.
+
 **게이트**: `[commit]`마다 `pnpm gate` green이어야 한다. 출력을 파이프로 거르지 않는다(POSTMORTEM 2026-09-30).
 
 ## S1 — `planWriteLock` + Revert 경로
