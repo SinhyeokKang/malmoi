@@ -148,7 +148,7 @@ it("Action이 throw하면 unconfirmed 결과로 바뀌고 닫기가 돌아온다
   await render(<SyncButton />);
   await click("Sync"); await click("Sync from repository");
   await act(async () => run.reject(new Error("offline")));
-  await vi.waitFor(() => expect(dialog()?.textContent).toContain(m.repositorySync.errors.unconfirmed));
+  await vi.waitFor(() => expect(dialog()?.textContent).toContain(m.repositorySync.resultHeadline.unconfirmed));
   expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "unconfirmed" });
   expect(mocks.refresh).toHaveBeenCalledOnce();
   expect(button("Close").disabled).toBe(false);

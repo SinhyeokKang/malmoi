@@ -65,10 +65,26 @@ export const en = {
       issues: "Sync finished with issues",
       /** 전 표면 실패·전 표면 밀림 — 둘 다 들어간 값이 없다. 헤드라인이 실패인지 밀림인지를 가른다. */
       nothingReplaced: "Nothing was replaced",
-      /** 실행 전 거부 — 아무것도 읽거나 버리지 않았다. */
+      /**
+       * **실행 전 거부만이다** — 세션·입력·인가·`acquire`의 판정(readiness·lease·식별·폐기 지문)이라 아무것도 읽거나 버리지 않았다.
+       * ⚠️ 단계를 모르는 거부(`unavailable`·`ingest-failed`·연결 오류)에 쓰지 않는다 — `ingest-failed`는 lease를 잡고 표면 실패까지 기록한 뒤다(U 리뷰 r2).
+       */
       didntRun: "Sync didn't run",
+      /** 단계를 모르는 실패 — Logs의 Failed와 같은 낱말이다. 어디서 멈췄는지 말하지 않는다(아래 `errors["ingest-failed"]` 주석의 실수를 되풀이하지 않는다). */
+      failed: "Sync failed",
       /** `unconfirmed` — 응답을 잃어 서버가 끝냈는지 모른다(malmoi#132). "didn't"를 쓰지 않는다. */
       unknown: "Sync result unknown",
+    },
+    /**
+     * **Dialog 결과 단계에서만 바꿔 쓰는 헤드라인** (U 리뷰 r2) — 제목이 사실을 말하므로 헤드라인은 다음 행동으로 기운다. 같은 말이 제목과
+     * 헤드라인에 두 번 서던 넷이다(`Sync failed` ↔ `didn't go through` · `Sync result unknown` ↔ `couldn't confirm` · `didn't run` ↔ `nothing was synced`).
+     * ⚠️ **`errors`를 고치지 않는다** — 그 사전은 MCP `sync_repository`와 Logs 원인 줄도 읽고, 거기엔 제목이 없어 사실 문장이 필요하다.
+     */
+    resultHeadline: {
+      "unavailable": "Try again in a moment — Logs shows anything that was recorded",
+      "ingest-failed": "Try again in a moment — Logs shows anything that was recorded",
+      "unauthorized": "Your session ended — sign in, then sync again",
+      "unconfirmed": "The response didn't come back — check Logs before syncing again",
     },
     confirm: "Sync from repository",
     /**

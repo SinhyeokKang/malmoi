@@ -211,7 +211,7 @@ it("unauthorized 거부는 Sync 문장 + 새 탭 [Sign in]을 들고 [Try again]
   const { m } = await import("@/lib/i18n");
   const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: false, error: "unauthorized" }} />);
   const text = container.textContent ?? "";
-  expect(text).toContain(m.repositorySync.errors.unauthorized);
+  expect(text).toContain(m.repositorySync.resultHeadline.unauthorized);
   expect(text).not.toContain("save your work");
   const signIn = [...container.querySelectorAll("a")].find(a => a.textContent?.trim() === m.repositorySync.signIn);
   expect(signIn?.getAttribute("href")).toBe("/signin");

@@ -31,9 +31,17 @@ function reasonMessage(reason: RepositoryImportError | SurfaceImportReason): str
  * Sync Dialog **결과 단계의 제목** (sync-lock R6 — Publish 모달 §6.646과 같은 형). 제목은 결과의 종류이고 본문 Alert 헤드라인이 내용이다 —
  * 같은 문장이 두 번 서지 않는다. ⚠️ 판정은 헤드라인과 같은 재료(`summarizeImport`)라 둘이 어긋나지 않는다.
  */
+/**
+ * 실행 전 거부 — 세션·입력(Action 껍데기) · 인가(`isAccessError`) · `acquire`의 판정(`planSyncStart` · 식별 · 폐기 지문). 여기 없는 거부는 단계를
+ * 모른다(`unavailable`은 세션 저장소와 저장소 접근 둘에서, `ingest-failed`는 lease 뒤 바깥 catch에서 나온다).
+ */
+const PRE_RUN: ReadonlySet<string> = new Set(["reconfirm", "already-running", "unauthorized", "invalid input", "not-ready", "no-surfaces", "unpinned", "repo-replaced"]);
 export function syncResultTitle(outcome: RepositoryImportOutcome): string {
   const t = m.repositorySync.resultTitle;
-  if (!outcome.ok) return outcome.error === "unconfirmed" ? t.unknown : t.didntRun;
+  if (!outcome.ok) {
+    if (outcome.error === "unconfirmed") return t.unknown;
+    return PRE_RUN.has(outcome.error) || (isAccessError(outcome.error) && outcome.error !== "unavailable") ? t.didntRun : t.failed;
+  }
   const summary = summarizeImport(outcome.surfaces);
   if (summary.imported + summary.partial === 0) return t.nothingReplaced;
   return summary.tone === "success" && outcome.remainingEdits === 0 ? t.complete : t.issues;
@@ -78,6 +86,8 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry }: {
     // 온보딩 문장을 빌리지 않는다 (malmoi#85) — 없는 것은 리포의 기본 브랜치가 아니라 설정된 base branch다.
     const title = outcome.error === "base-branch-missing"
       ? (owner ? m.repositorySync.baseBranchMissing.owner(branch) : m.repositorySync.baseBranchMissing.editor(branch))
+      // 제목이 사실을 말하는 Dialog라 헤드라인은 다음 행동이다(R6 r2) — 그 밖의 거부는 `errors` 문장 그대로다.
+      : Object.hasOwn(m.repositorySync.resultHeadline, outcome.error) ? m.repositorySync.resultHeadline[outcome.error as keyof typeof m.repositorySync.resultHeadline]
       : reasonMessage(outcome.error);
     const action = !owner && (refusal.action === "settings" || refusal.action === "reconnect") ? null : refusal.action;
     /*
