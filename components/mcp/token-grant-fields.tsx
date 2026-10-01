@@ -124,7 +124,7 @@ export function TokenGrantFields({
             const line = columns === 2 ? cn(index % 2 === 1 && "border-divider border-l", index >= 2 && "border-divider border-t") : index > 0 && "border-divider border-t";
             return (
               <li key={grant} className={cn(line)}>
-                <label className="hover:bg-foreground/[0.03] flex cursor-pointer items-center gap-3 p-3">
+                <label className={cn("flex cursor-pointer items-center gap-3 p-3", !disabled && ROW_HOVER)}>
                   <Checkbox
                     data-grant={grant}
                     checked={value.grants.has(grant)}
@@ -155,7 +155,7 @@ export function TokenGrantFields({
           disabled={disabled}
           className="border-border flex flex-col overflow-hidden rounded-md border"
         >
-          <ScopeRow value="all" icon={Box} label={m.mcpConnector.form.allMine} selected={value.scope === "all"} />
+          <ScopeRow value="all" icon={Box} label={m.mcpConnector.form.allMine} selected={value.scope === "all"} disabled={disabled} />
           {noMembership ? (
             /*
               ⚠️ **`aria-disabled` + 사유다 — 사유 없는 `disabled` 0건 원칙**(§6.65). 포커스를 받고 둘째 줄을 읽힌다.
@@ -181,13 +181,13 @@ export function TokenGrantFields({
           ) : (
             /* 선택된 `Chosen projects` 행과 하위 체크 행이 한 `#f5f5f5` 면이다(`2e`). 닫혀 있는 동안 Scope가 두 행으로 끝난다. */
             <div className={cn("border-border border-t", value.scope === "projects" && "bg-muted")}>
-              <ScopeRow value="projects" icon={ListChecks} label={m.mcpConnector.form.chosen} selected={value.scope === "projects"} />
+              <ScopeRow value="projects" icon={ListChecks} label={m.mcpConnector.form.chosen} selected={value.scope === "projects"} disabled={disabled} />
               {value.scope === "projects" && (
                 <ul data-scope-projects>
                   {projects.map((project) => (
                     <li key={project.id} className="border-border border-t">
                       {/* 들여쓰기 80 = 라디오 16 + gap 12 + 칩 40 + gap 12 — 선택 행의 이름과 같은 x에서 시작한다. */}
-                      <label className="flex cursor-pointer items-center gap-3 py-3 pr-3 pl-20">
+                      <label className={cn("flex cursor-pointer items-center gap-3 py-3 pr-3 pl-20", !disabled && ROW_HOVER)}>
                         <Checkbox
                           data-scope-project={project.id}
                           checked={value.chosen.has(project.id)}
@@ -209,12 +209,15 @@ export function TokenGrantFields({
   );
 }
 
-function ScopeRow({ value, icon: Icon, label, selected }: { value: "all" | "projects"; icon: LucideIcon; label: string; selected: boolean }) {
+/** 같은 Dialog의 선택 행 셋(Allowed actions · Scope · 고른 프로젝트)이 한 hover 면을 든다. disabled 행에는 붙이지 않는다(#166). */
+const ROW_HOVER = "hover:bg-foreground/[0.03]";
+
+function ScopeRow({ value, icon: Icon, label, selected, disabled }: { value: "all" | "projects"; icon: LucideIcon; label: string; selected: boolean; disabled: boolean }) {
   return (
     <Radio
       value={value}
       data-scope={value}
-      labelClassName={cn("gap-3 p-3", value === "all" && selected && "bg-muted")}
+      labelClassName={cn("gap-3 p-3", value === "all" && selected && "bg-muted", !disabled && ROW_HOVER)}
       label={
         <>
           <IconTile size="lg" className={selected ? "bg-background" : "bg-muted"}>
