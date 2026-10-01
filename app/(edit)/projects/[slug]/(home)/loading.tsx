@@ -47,9 +47,11 @@ export default function ProjectHomeLoading() {
 
       <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5" aria-hidden>
         <div className="flex min-w-0 flex-col gap-5">
-          <div className="grid grid-cols-4 gap-2">
+          {/* ⚠️ **실물과 같은 컨테이너·클래스다** (`count-cards.tsx`) — 고정 4열이면 컨테이너 672 미만(뷰포트 ~1310 아래)에서 실물은 2×2라 도착 때 아래가 ~120px 튄다(#165). 선언과 질문은 다른 요소다. */}
+          <div className="@container/cards">
+          <ul className="grid grid-cols-2 gap-2 @[672px]/cards:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="border-border flex flex-col gap-3 rounded-lg border p-3.5">
+              <li key={i}><div className="border-border flex flex-col gap-3 rounded-lg border p-3.5">
                 <span className="flex items-center gap-2">
                   <div className="min-w-0 flex-1"><SkeletonLine text="text-sm" className="w-[62%]" /></div>
                   <Skeleton className="ml-auto size-4 rounded-full" />
@@ -59,8 +61,9 @@ export default function ProjectHomeLoading() {
                   <div className="flex items-center text-2xl font-semibold">{"\u200b"}<Skeleton className="h-[0.8em] w-14 rounded-md" /></div>
                   <SkeletonLine text="text-xs" className="w-[72%]" />
                 </span>
-              </div>
+              </div></li>
             ))}
+          </ul>
           </div>
 
           {/* ⚠️ **할 일 카드에는 바닥 링크가 없다** — 골격이 그것을 그리면 데이터 도착 시 약 45px 줄어든다. */}
