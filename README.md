@@ -17,7 +17,7 @@
   Coding agents can do the same work over MCP — sign in through your browser, no token to copy.
 </p>
 
-<h3 align="center"><a href="https://mal-moi.com"><ins>Open Malmoi</ins></a> · <a href="https://mal-moi.com/docs">Read the docs</a></h3>
+<h3 align="center"><a href="https://mal-moi.com"><ins>Get started</ins></a> · <a href="https://mal-moi.com/docs">Read the docs</a></h3>
 
 <p align="center">
   <img src="docs/assets/readme/hero.webp" alt="The translation editor: source tree, key list, and one key in English, French, and Korean" width="960" />
