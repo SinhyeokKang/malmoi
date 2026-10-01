@@ -35,11 +35,33 @@ export function savedOutCount(list: ListGeneration<unknown>): number {
  */
 export function mergeServerRows<Row extends { keyId: string }>(list: ListGeneration<Row>, server: readonly Row[]): ListGeneration<Row> {
   const fresh = new Map(server.map(row => [row.keyId, row]));
-  return {
-    generation: list.generation,
-    rows: list.rows.map(entry => {
-      const next = fresh.get(entry.row.keyId);
-      return next === undefined ? { row: entry.row, savedOut: true } : { row: next, savedOut: false };
-    }),
-  };
+  let changed = false;
+  /*
+    ⚠️ **값이 같으면 이전 참조를 그대로 둔다** (#157) — 키 클릭(`?key=`)과 저장 뒤 재검증마다 서버가 전량 목록을 새 객체로 다시 보낸다.
+    전부 새 객체로 바꾸면 `KeyRow`의 memo가 한 행도 막지 못해 5,000행이 매번 다시 렌더됐다(QA3 실측 — 클릭당 행 렌더 3,626회).
+    바뀐 행이 없으면 목록 객체 자체를 돌려줘 그 위의 `useMemo`도 다시 돌지 않는다.
+  */
+  const rows = list.rows.map(entry => {
+    const next = fresh.get(entry.row.keyId);
+    if (next === undefined) {
+      if (entry.savedOut) return entry;
+      changed = true;
+      return { row: entry.row, savedOut: true };
+    }
+    const row = sameValue(entry.row, next) ? entry.row : next;
+    if (row === entry.row && !entry.savedOut) return entry;
+    changed = true;
+    return { row, savedOut: false };
+  });
+  return changed ? { generation: list.generation, rows } : list;
+}
+
+/** 서버가 내려 준 행(JSON 값 — 원시값·평범한 객체·배열)의 구조적 동치. */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const aKeys = Object.keys(a);
+  if (aKeys.length !== Object.keys(b).length) return false;
+  return aKeys.every(key => Object.hasOwn(b, key) && sameValue((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]));
 }
