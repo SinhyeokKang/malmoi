@@ -166,7 +166,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   */
   const arrival = useRef<Landing | null | undefined>(undefined);
   if (arrival.current === undefined) arrival.current = landing;
-  const arrivedInApp = landsHere(arrival.current, routeSurfaceSlug);
+  // ⚠️ **마운트에서 한 번만 판정한다** — 렌더마다 `Date.now()`로 다시 재면 만료(15초) 뒤 처음 고른 키에서 복구 문구가 떴다.
+  const [arrivedInApp] = useState(() => landsHere(arrival.current, routeSurfaceSlug));
   /*
     ⚠️ **상세의 언어 필터는 서버로 가지 않는다** (audit-ux #16) — 거르기는 받은 상세 위의 클라이언트 일이라 `history.replaceState`로
     주소만 맞춘다(`useProjectQuery`와 같은 형). ⚠️ **원천은 서버 prop이 아니라 주소다** — `replaceState`는 prop을 못 바꾸므로 prop을
@@ -648,7 +649,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
 
   // ── 머리 ──────────────────────────────────────────────────────────────────
   const noKeys = tree.projectKeyCount === 0;
-  // 필터 트리거·트리 강조는 누른 값으로 먼저 선다(`view` — audit-ux #7). 목록 제목·빈 상태는 응답이 온 `query`다.
+  // 필터 트리거·트리 강조는 누른 값으로 먼저 선다(`view` — audit-ux #7). 빈 상태(문구·버튼)는 응답이 온 `query`다(목록 제목은 `Keys` 고정).
   const shown = view.query;
   const shownStatus = statusOf(shown);
 

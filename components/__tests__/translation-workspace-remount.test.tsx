@@ -266,3 +266,43 @@ it("목적지가 워크스페이스를 그리지 않았으면 표식이 만료�
     expect(document.activeElement).toBe(document.body);
   } finally { now.mockRestore(); }
 });
+
+it("표식을 쓰고 서버가 몇 초 걸려 재마운트해도 착지한다 — 만료는 서버 렌더 한 번보다 길다", async () => {
+  const user = userEvent.setup();
+  const start = Date.now();
+  const now = vi.spyOn(Date, "now");
+  try {
+    // 표식을 쓴 뒤 서버 렌더에 5초가 걸렸다.
+    respond = href => { now.mockReturnValue(start + 5_000); return serve(href); };
+    await render(<Harness initial={searching()} />);
+    await user.click(row("a1")!);
+    await settle();
+    expect(document.activeElement).toBe(row("a1"));
+  } finally { now.mockRestore(); }
+});
+
+it("앱 안에서 도착한 화면은 한참 뒤 처음 고른 키에서도 세션 복구 문구를 띄우지 않는다 (malmoi#100) — 판정은 마운트에서 한 번이다", async () => {
+  const user = userEvent.setup();
+  const start = Date.now();
+  const now = vi.spyOn(Date, "now");
+  try {
+    // 트리로 app에 왔는데 선택 키가 없었다(빈 선택) — 복구 판정은 처음 고르는 키에서 돈다.
+    respond = href => {
+      const served = serve(href);
+      return new URL(href, "http://x").searchParams.get("key") === "@first" ? { ...served, query: { ...served.query, key: undefined, keySurface: undefined }, detail: null } : served;
+    };
+    window.history.replaceState(null, "", "/projects/acme/surfaces/web/translations");
+    await render(<Harness initial={serve("/projects/acme/surfaces/web/translations")} />);
+    await user.click([...document.querySelectorAll<HTMLElement>("[data-tree-surface]")].find(el => el.dataset.treeSurface === "app" && el.dataset.treeNs === undefined)!);
+    await user.click(treeNode("app", "home")!);
+    await settle();
+    expect(document.activeElement).toBe(treeNode("app", "home"));
+    window.sessionStorage.setItem("malmoi.translation-draft.u1.acme", JSON.stringify({ surfaceSlug: "app", keyId: "a1", saved: { en: "Nothing here", ko: "비어 있음" }, draft: { en: "Nothing here", ko: "복구" } }));
+    // 20초 뒤(표식 만료보다 늦게) 처음 키를 고른다.
+    now.mockReturnValue(start + 20_000);
+    await user.click(row("a1")!);
+    await settle();
+    expect(document.querySelector('textarea[data-locale="ko"]')).not.toBeNull();
+    expect(document.body.textContent).not.toContain(w.footer.session.restored(1));
+  } finally { now.mockRestore(); }
+});
