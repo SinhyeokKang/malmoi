@@ -8,6 +8,9 @@ import { PanelBody } from "@/components/shell/content-panel";
 import { render } from "./helpers/dom";
 import { m } from "@/lib/i18n";
 
+// user-event의 실시간 지연이 병렬 실행에서 기본 5초를 넘긴다 (POSTMORTEM 2026-09-13).
+vi.setConfig({ testTimeout: 20_000 });
+
 /**
  * **머리의 버튼 둘이 서로를 잠근다** (시안 `4f` · sync-repository T9 연결 계약).
  *
@@ -56,10 +59,10 @@ async function click(name: string) {
 }
 
 /** 머리의 버튼 둘과 **본문의 실패 배너**를 한 Provider 안에 세운다 — 실제 Home의 배치다. */
-function Host() {
+function Host({ state = "import_failed" }: { state?: "import_failed" | "default" }) {
   return <>
     <HomeHeaderActions {...props} />
-    <HomeNotices {...props} state="import_failed" failedSurface="web" reason="import-failed" lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} />
+    <HomeNotices {...props} state={state} failedSurface="web" reason="import-failed" lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} />
   </>;
 }
 
@@ -304,4 +307,42 @@ it("배너가 없으면 블록이 비어 있다 — 격자에 빈 행이 안 선
   const block = container.querySelector('[class~="empty:hidden"]');
   expect(block).not.toBeNull();
   expect(block?.childNodes).toHaveLength(0);
+});
+
+/**
+ * 🟡 (U 리뷰) — 배너의 [Try again]으로 연 Sync가 성공하면 재검증 트리가 배너를 **닫기 전에** 걷는다. 그때 최근 포커스 기록이 더 오래된 요소
+ * (사이드바 링크 등)로 거슬러 갔다 — 연 자리가 떨어졌으면 트리거로 간다.
+ */
+it("배너에서 연 Sync가 성공해 배너가 사라지면 [Close] 뒤 포커스가 머리의 [Sync]다", async () => {
+  mocks.run.mockResolvedValue({ ok: true, surfaces: [], remainingEdits: 0 });
+  const older = document.createElement("a"); older.href = "#older"; older.textContent = "older"; document.body.prepend(older);
+  try {
+    const user = userEvent.setup();
+    const view = await render(<HomeActions slug="acme"><Host /></HomeActions>);
+    older.focus();
+    const retry = button("Try again");
+    retry.focus();
+    await act(async () => { await user.keyboard("{Enter}"); });
+    await click("Discard changes and sync");
+    await vi.waitFor(() => expect(document.querySelector('[role="dialog"] footer button')?.textContent).toBe("Close"));
+    await view.rerender(<HomeActions slug="acme"><Host state="default" /></HomeActions>);
+    await act(async () => { await user.click(document.querySelector<HTMLButtonElement>('[role="dialog"] footer button')!); });
+    await vi.waitFor(() => expect(document.activeElement).toBe(button("Sync")));
+  } finally { older.remove(); }
+});
+
+/** sync-lock R5 — 착지 때 다른 실행의 lease가 살아 있으면 Home의 [Sync]도 번역 화면과 같은 사유로 멈춘다. 배너의 [Try again]도 같은 잠금이다. */
+it("착지 lease가 있으면 머리 [Sync]와 배너 [Try again]이 같은 사유로 멈춘다 — 짝: 없으면 열린다", async () => {
+  const writeLock = { startedAt: new Date("2026-10-01T16:30:12Z"), reopensBy: new Date("2026-10-01T16:36:00Z") };
+  const view = await render(<HomeActions slug="acme" writeLock={writeLock}><Host /></HomeActions>);
+  for (const name of ["Sync", "Try again"]) {
+    const node = button(name);
+    expect(node.getAttribute("aria-disabled")).toBe("true");
+    expect(document.getElementById(node.getAttribute("aria-describedby") ?? "")?.textContent).toBe(m.repositorySync.running);
+  }
+  await click("Sync");
+  await click("Try again");
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  await view.rerender(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
+  expect(button("Sync").getAttribute("aria-disabled")).not.toBe("true");
 });

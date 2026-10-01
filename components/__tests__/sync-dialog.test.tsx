@@ -177,3 +177,38 @@ it("8초 뒤 지연 문구가 Dialog 안에 서고, 응답 없이 70초가 지�
   expect(dialog()).toBeNull();
   expect(props.onResult).toHaveBeenCalledWith(success);
 });
+
+const heading = () => dialog()?.querySelector("h2")?.textContent;
+
+it("결과 단계 제목은 결과별이다 (R6) — 확인 질문을 그대로 두지 않는다", async () => {
+  await render(<SyncButton />);
+  await click("Sync");
+  expect(heading()).toBe("Sync malmoi web from the repository?");
+  await click("Sync from repository");
+  await vi.waitFor(() => expect(heading()).toBe("Sync complete"));
+});
+
+it("[Try again]으로 확인 단계에 돌아오면 포커스가 Cancel이다 — 누른 버튼이 사라져 컨테이너로 빠지지 않는다", async () => {
+  mocks.run.mockResolvedValueOnce({ ok: false, error: "already-running" });
+  await render(<SyncButton />);
+  await click("Sync"); await click("Sync from repository");
+  await vi.waitFor(() => expect(button("Try again")).toBeTruthy());
+  await click("Try again");
+  await vi.waitFor(() => expect(document.activeElement).toBe(button("Cancel")));
+});
+
+it("70초 출구 안내는 status로 알려지고, 그때 닫으면 아직 도는 트리거 대신 화면 제목으로 간다", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  hang();
+  const fallback = { current: document.createElement("h1") };
+  fallback.current.tabIndex = -1; document.body.append(fallback.current);
+  try {
+    await render(<SyncButton fallbackFocusRef={fallback} />);
+    await click("Sync"); await click("Sync from repository");
+    await act(async () => { vi.advanceTimersByTime(70_000); });
+    const line = [...dialog()?.querySelectorAll('[role="status"]') ?? []].find(node => node.textContent === "The result will be in Logs.");
+    expect(line).toBeTruthy();
+    await click("Close");
+    await vi.waitFor(() => expect(document.activeElement).toBe(fallback.current));
+  } finally { fallback.current.remove(); }
+});

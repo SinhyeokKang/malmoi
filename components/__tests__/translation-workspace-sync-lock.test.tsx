@@ -104,6 +104,8 @@ it("Revert 미리보기가 sync-running이면 같은 Dialog이고 unavailable �
   expect(dialog()?.querySelector("time")?.getAttribute("dateTime")).toBe(reopensBy.toISOString());
   await user.click(button("OK"));
   expect(document.body.textContent).not.toContain(m.translations.workspace.revert.unavailable);
+  // 닫히면 연 자리 — Revert 버튼이다.
+  await vi.waitFor(() => expect(document.activeElement).toBe(button(m.translations.workspace.revert.button)));
   // 거부는 그 순간의 사실이다 — Revert를 사유로 잠그지 않는다(lease가 끝나면 바로 다시 된다).
   expect(button(m.translations.workspace.revert.button).getAttribute("aria-disabled")).not.toBe("true");
 });
@@ -120,6 +122,24 @@ it("Revert 확정이 sync-running이면 같은 Dialog다 (R4)", async () => {
   expect(document.body.textContent).not.toContain(m.translations.workspace.revert.failed.title);
   await user.click(button("OK"));
   expect(document.body.textContent).not.toContain(m.translations.workspace.revert.unavailable);
+  // 확정 경로는 기록 순서가 다르다(Revert Dialog 닫힘 → busy → 이 Dialog) — 그래도 Revert 버튼으로 간다.
+  await vi.waitFor(() => expect(document.activeElement).toBe(button(m.translations.workspace.revert.button)));
+});
+
+/**
+ * 🔴 (U 리뷰) — 착지 lease로 [Sync]가 멈춰 있는데 미저장 가로채기가 `availability.sync`만 보고 "Discard your changes?"를 띄웠다. 확정하면
+ * 초안이 버려지고 Sync Dialog는 열리지 않는다. 판정은 `syncAvailable` 하나다.
+ */
+it("lease로 멈춘 [Sync]를 미저장 상태에서 눌러도 폐기 확인창이 서지 않는다 — 짝: lease가 없으면 선다", async () => {
+  const user = userEvent.setup();
+  const view = await render(<TranslationWorkspace {...props({ writeLock: { startedAt, reopensBy } })} />);
+  await user.type(area(view.container, "zh"), "空");
+  await user.click(button("Sync"));
+  expect(document.body.textContent).not.toContain("Discard your changes?");
+  expect(area(view.container, "zh").value).toBe("空");
+  await view.rerender(<TranslationWorkspace {...props({ writeLock: null })} />);
+  await user.click(button("Sync"));
+  expect(document.body.textContent).toContain("Discard your changes?");
 });
 
 it("착지 때 lease가 살아 있으면 배너가 서고 Save는 켜진 채이며 OWNER의 [Sync]는 사유를 든 채 꺼진다", async () => {
@@ -137,7 +157,7 @@ it("착지 때 lease가 살아 있으면 배너가 서고 Save는 켜진 채이�
   expect(save.getAttribute("aria-disabled")).not.toBe("true");
   const sync = button("Sync");
   expect(sync.getAttribute("aria-disabled")).toBe("true");
-  expect(document.getElementById(sync.getAttribute("aria-describedby") ?? "")?.textContent).toBe(m.translations.workspace.sync.running);
+  expect(document.getElementById(sync.getAttribute("aria-describedby") ?? "")?.textContent).toBe(m.repositorySync.running);
 });
 
 it("lease가 없으면 배너도 Dialog도 없다 — 짝 단언", async () => {

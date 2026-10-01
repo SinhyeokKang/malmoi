@@ -5,6 +5,9 @@ import { beforeEach, expect, it, vi } from "vitest";
 
 import { render } from "./helpers/dom";
 
+// user-event의 실시간 지연이 병렬 실행에서 기본 5초를 넘긴다 (POSTMORTEM 2026-09-13).
+vi.setConfig({ testTimeout: 20_000 });
+
 /**
  * **번역 화면의 Sync와 Publish는 서로를 잠그고, Revert는 둘 다에 잠긴다** (audit-ux #2 · #3 — DESIGN §6 "진행 중 상호 잠금").
  * 전엔 Home만 호스트가 두 pending을 배선했고 번역 화면은 각 버튼이 자기 연타만 막아, 한쪽이 도는 동안 다른 쪽이 눌렸다.

@@ -7,6 +7,9 @@ import { SyncResult } from "@/components/home/sync-result";
 import type { RepositoryImportOutcome } from "@/lib/import/result";
 import { render } from "./helpers/dom";
 
+// user-event의 실시간 지연이 병렬 실행에서 기본 5초를 넘긴다 (POSTMORTEM 2026-09-13).
+vi.setConfig({ testTimeout: 20_000 });
+
 const mocks = vi.hoisted(() => ({ run: vi.fn(), pr: vi.fn(), refresh: vi.fn(), prepare: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run, checkOpenPullRequest: mocks.pr, prepareRepositorySync: mocks.prepare }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
@@ -209,12 +212,13 @@ it("Action 통신 실패는 확인 못 한 결과로 떨어지고 화면을 다�
  * 옛 `To send`를 그대로 두었다 — OWNER에게 되돌릴 수 없는 폐기가 안 일어났다고 말했다. 재실행하지 않는다: 두 번 돌 수 있다.
  */
 it("응답을 잃은 Sync는 실패를 단언하지 않는다 (malmoi#132)", async () => {
-  await render(<SyncResult slug="acme" branch="main" outcome={{ ok: false, error: "unconfirmed" }} onDismiss={() => {}} />);
+  await render(<SyncResult slug="acme" branch="main" outcome={{ ok: false, error: "unconfirmed" }} onRetry={() => {}} />);
   const alert = document.querySelector('[role="status"]');
   expect(alert?.textContent).toContain("We couldn't confirm whether the sync finished");
   expect(alert?.textContent).not.toContain("didn't go through");
   expect(document.querySelector('[role="alert"]')).toBeNull();
-  expect(alert?.querySelector('button[aria-label="Dismiss"]')).not.toBeNull();
+  // 다시 돌리지 않는다 — 서버가 끝냈을 수 있다. 닫기는 Dialog 푸터의 [Close]다.
+  expect(alert?.querySelector("button")).toBeNull();
 });
 
 /** ⚠️ **오프라인이면 다시 읽지 않는다** — Next는 RSC fetch가 실패하면 브라우저 내비게이션으로 떨어져 오프라인 오류 페이지가 이 화면을 덮는다. */
@@ -244,14 +248,14 @@ it("오프라인에서 응답을 잃으면 refresh를 부르지 않는다", asyn
  * 절이 "내 번역은 안전하다"로 읽히면 불변식이 말하는 것의 정반대다).
  */
 it.each(["unavailable", "ingest-failed"] as const)("요청이 못 간 거부(%s)가 닫히고 거짓 문장을 안 쓴다", async (error) => {
-  await render(<SyncResult slug="acme" branch="main" outcome={{ ok: false, error }} onDismiss={() => {}} />);
+  await render(<SyncResult slug="acme" branch="main" outcome={{ ok: false, error }} onRetry={() => {}} />);
   const alert = document.querySelector('[role="status"], [role="alert"]');
   const text = alert?.textContent ?? "";
   expect(text).not.toContain("first import");
   expect(text).not.toContain("from settings");
   expect(text).not.toContain("your text is kept");
-  // 닫을 수 있어야 한다 — 일시적 실패는 "닫아도 같은 거부가 반복된다"에 해당하지 않는다.
-  expect(alert?.querySelector('button[aria-label="Dismiss"]')).not.toBeNull();
+  // 다시 확인할 수 있어야 한다 — 일시적 실패는 "다시 해도 같은 거부가 반복된다"에 해당하지 않는다.
+  expect([...alert?.querySelectorAll("button") ?? []].some(b => b.textContent?.trim() === "Try again")).toBe(true);
 });
 
 /**
