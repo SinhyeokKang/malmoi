@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
  */
 export type FilterOption = { value: string; label: string; group?: string };
 
-export function FilterMenu({ axis, label, on, size, options, value, onSelect, disabled = false, hint }: {
+export function FilterMenu({ axis, label, on, size, options, value, onSelect, disabled = false, hint, align = "start" }: {
   axis: string;
   label: string;
   on: boolean;
@@ -26,6 +26,8 @@ export function FilterMenu({ axis, label, on, size, options, value, onSelect, di
   disabled?: boolean;
   /** 메뉴 바닥의 설명 한 줄(`New from GitHub`의 기준). */
   hint?: ReactNode;
+  /** 메뉴 정렬 — 패널 머리 오른쪽 끝의 트리거는 `end`다(시작 정렬이면 트리거보다 넓은 메뉴가 화면 끝 쪽으로 자란다). 자리는 호출부가 안다. */
+  align?: "start" | "end";
 }) {
   const [open, setOpen] = useState(false);
   const Chevron = open ? ChevronUp : ChevronDown;
@@ -50,7 +52,7 @@ export function FilterMenu({ axis, label, on, size, options, value, onSelect, di
         {label}
         <Chevron className={cn("shrink-0", size === "md" ? "size-4" : "size-3.5")} aria-hidden />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="min-w-53">
+      <DropdownMenuContent align={align} className="min-w-53">
         {groups.map((group, index) => (
           <div key={`${group.name ?? ""}-${index}`}>
             {index > 0 && <DropdownMenuSeparator />}

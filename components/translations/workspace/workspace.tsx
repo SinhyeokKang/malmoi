@@ -809,7 +809,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               treeButton={treeCollapsed ? { open: treeOverlay, controls: treeOverlayId, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span data-range-label="" className="text-muted-foreground text-xs">{rangeLabel}</span> } : undefined}
               empty={listEmpty}
               filter={
-                <FilterMenu axis={w.filters.state.axis} label={STATUS_LABEL[shownStatus]()} on={shownStatus !== "all"} size="sm" disabled={noKeys}
+                <FilterMenu axis={w.filters.state.axis} label={STATUS_LABEL[shownStatus]()} on={shownStatus !== "all"} size="sm" disabled={noKeys} align="end"
                   value={shownStatus} hint={w.filters.state.newHint}
                   options={STATUSES.map(status => ({ value: status, label: STATUS_LABEL[status]() }))}
                   onSelect={value => go(withStatus(view.query, value as Status), "filter")}

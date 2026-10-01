@@ -78,6 +78,8 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
             label={languageLabel}
             on={language !== undefined}
             size="sm"
+            // 머리 오른쪽 끝이다 — 끝 정렬이어야 메뉴가 화면 밖으로 나가지 않는다(2026-10-02).
+            align="end"
             disabled={languageLocked}
             value={language ?? ""}
             options={[
