@@ -156,6 +156,36 @@ describe("set_translations 입력", () => {
   });
 });
 
+/**
+ * **적재 lease 중 쓰기** (sync-lock C4 · R2). `set_translations`는 호출 **전체**를 한 번 거부한다 — 키별 결과가 없다. `revert_to_last_sent`도 lease
+ * 갈래는 같은 코드이고, Publish RUNNING 갈래는 `busy`로 남는다. 둘 다 `retryable: true` + 다시 열리는 시각을 싣는다.
+ */
+describe("sync-running", () => {
+  const startedAt = new Date("2026-10-01T16:30:12.345Z");
+  const reopensBy = new Date("2026-10-01T16:36:00.000Z");
+  const detail = { startedAt: "2026-10-01T16:30:12.345Z", reopensBy: "2026-10-01T16:36:00.000Z" };
+
+  it("set_translations — 배치 전체 거부 · 키별 결과 없음 · 다시 그리지 않는다", async () => {
+    h.core.mockResolvedValueOnce({ ok: false, error: "sync-running", startedAt, reopensBy });
+    const outcome = await run("set_translations", subject("editor"), { ...S, entries: [{ keyId: "k1", changes: [{ localeCode: "ko", value: "v" }] }, { keyId: "k2", changes: [{ localeCode: "ko", value: "v" }] }] });
+    expect(outcome).toEqual({ status: "refused", code: "sync-running", detail });
+    const result = toToolResult(outcome);
+    expect(result.structuredContent).toEqual({ ...detail, status: "sync-running", message: m.repositorySync.errors["already-running"], retryable: true });
+    expect("results" in result.structuredContent).toBe(false);
+    expect(h.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("revert_to_last_sent — lease는 sync-running(+시각), Publish RUNNING은 busy 그대로", async () => {
+    const input = { ...S, keyId: "k1", confirmation: "c".repeat(64) };
+    h.core.mockResolvedValueOnce({ status: "blocked", reason: "sync-running", startedAt, reopensBy });
+    expect(toToolResult(await run("revert_to_last_sent", subject("owner"), input)).structuredContent)
+      .toEqual({ ...detail, status: "sync-running", message: m.repositorySync.errors["already-running"], retryable: true });
+    h.core.mockResolvedValueOnce({ status: "blocked", reason: "busy" });
+    expect(toToolResult(await run("revert_to_last_sent", subject("owner"), input)).structuredContent)
+      .toEqual({ status: "busy", message: m.translations.workspace.revert.busy });
+  });
+});
+
 describe("preview_publish", () => {
   const preview = () => run("preview_publish", subject("editor", []), { slug: "acme" });
   it("grant 없는 EDITOR도 지문을 받는다 — 실행은 publish가 역할·grant를 다시 본다", async () => {

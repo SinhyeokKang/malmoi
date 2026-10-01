@@ -118,15 +118,20 @@ describe("previewKeyRevert", () => {
     expect(await previewKeyRevert(prisma, target)).toEqual({ status: "blocked", reason: "busy" });
   });
 
-  it("활성 시간(300초)이 지난 RUNNING·import 흔적은 busy가 아니다 (경계 안이면 busy — 감사 #9)", async () => {
+  /**
+   * ⚠️ **lease 갈래는 `busy`가 아니라 `sync-running`이다** (sync-lock R2) — 저장 거부와 같은 판정(`planWriteLock`)·같은 다시 열리는 시각을 든다.
+   * Publish RUNNING 갈래만 `busy`로 남는다.
+   */
+  it("활성 시간(300초)이 지난 RUNNING·import 흔적은 막지 않는다 (경계 안이면 lease는 sync-running, RUNNING은 busy — 감사 #9)", async () => {
     const now = Date.now();
     await confirm(new Date(now - 500_000));
     await save([{ localeCode: "ko", value: "x" }]);
     await prisma.syncRun.create({ data: { id: "dead", projectId: "p", status: "RUNNING", trigger: "MANUAL", startedAt: new Date(now - 400_000) } });
     await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: "dead-import", repositoryImportStartedAt: new Date(now - 400_000) } });
     expect((await previewKeyRevert(prisma, target)).status).toBe("ready");
-    await prisma.project.update({ where: { id: "p" }, data: { repositoryImportStartedAt: new Date(now - 100_000) } });
-    expect(await previewKeyRevert(prisma, target)).toEqual({ status: "blocked", reason: "busy" });
+    const leaseAt = new Date(now - 100_000);
+    await prisma.project.update({ where: { id: "p" }, data: { repositoryImportStartedAt: leaseAt } });
+    expect(await previewKeyRevert(prisma, target)).toEqual({ status: "blocked", reason: "sync-running", startedAt: leaseAt, reopensBy: expect.any(Date) });
     await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: null, repositoryImportStartedAt: null } });
     await prisma.syncRun.update({ where: { id: "dead" }, data: { startedAt: new Date(now - 100_000) } });
     expect(await previewKeyRevert(prisma, target)).toEqual({ status: "blocked", reason: "busy" });
@@ -212,6 +217,20 @@ describe("executeKeyRevert", () => {
     await prisma.syncRun.create({ data: { id: "live", projectId: "p", status: "RUNNING", trigger: "MANUAL" } });
     expect(await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation, credential: undefined })).toEqual({ status: "blocked", reason: "busy" });
     expect((await cell("ko"))?.value).toBe("새 값");
+  });
+
+  it("실행 시점에 적재 lease가 살아 있으면 sync-running이고 쓰기 0건이다 (lease 없음 → 성공 대조)", async () => {
+    await edited();
+    const preview = await previewKeyRevert(prisma, target);
+    if (preview.status !== "ready") throw new Error("unreachable");
+    const leaseAt = new Date(Date.now() - 100_000);
+    await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: "live-import", repositoryImportStartedAt: leaseAt } });
+    expect(await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation, credential: undefined }))
+      .toEqual({ status: "blocked", reason: "sync-running", startedAt: leaseAt, reopensBy: expect.any(Date) });
+    expect((await cell("ko"))?.value).toBe("새 값");
+    expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "translation.reverted" } })).toBe(0);
+    await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: null, repositoryImportStartedAt: null } });
+    expect((await executeKeyRevert(prisma, { ...target, confirmation: preview.confirmation, credential: undefined })).status).toBe("reverted");
   });
 
   it("같은 확인으로 두 번 실행하면 둘째는 되돌릴 것이 없다 — 재시도가 새 편집을 버리지 않는다", async () => {
