@@ -5,7 +5,8 @@ import { beforeEach, expect, it, vi } from "vitest";
  *
  * - 화면 요청값은 `screenQuery(raw)`다 — 옛 주소(`Untranslated in`·`Complete`·검색어 없는 `scope`·cursor·`locales`·`focus`)는 **정규 주소로 redirect**한다.
  *   정규 주소는 redirect하지 않는다(루프 없음).
- * - 목록은 **늘 전 소스로 한 번 읽고** 범위(트리 위치 · 전 소스 검색)로 자른다. 트리 숫자(`counts`)는 같은 전 소스 행에서 센다.
+ * - 목록은 **늘 전 소스로 읽고** 범위(트리 위치 · 전 소스 검색)로 자른다. 트리 숫자(`counts`)는 검색 중에만, Status 없는 같은 검색의 전 소스 행에서
+ *   센다(검색 + Status면 읽기가 하나 더다).
  * - 검색어 없이 다른 소스의 키를 가리키는 옛 링크는 그 키의 소스·네임스페이스로 옮긴다. 사라진 키는 다른 키로 바꾸지 않고 부재로 넘긴다.
  * - `ns`가 없으면 전체다 — "남은 일이 있는 첫 네임스페이스"로 착지하지 않는다(POSTMORTEM 2026-09-15 — 0건 착지).
  */
@@ -216,7 +217,10 @@ it("트리 숫자(counts)는 검색 중에만 서고, Status는 그 수를 바�
   state.list.mockImplementation(async (_prisma: unknown, input: { query: { state?: string; completion: string } }) =>
     listOf(input.query.state !== undefined || input.query.completion !== "all" ? ROWS.slice(0, 1) : ROWS));
   expect((await render({ ns: "auth" })).props.counts).toBeNull();
+  state.list.mockClear();
   expect((await render({ state: "review", ns: "auth" })).props.counts).toBeNull();
+  // Status만이면 숫자용 읽기가 떠나지 않는다 — 추가 읽기는 검색 + Status 조합 하나뿐이다.
+  expect(state.list).toHaveBeenCalledOnce();
   state.list.mockClear();
   const counted = (await render({ q: "x", state: "review" })).props.counts as { surfaceSlug: string; namespace: string; count: number }[];
   expect(counted.reduce((sum, c) => sum + c.count, 0)).toBe(ROWS.length);

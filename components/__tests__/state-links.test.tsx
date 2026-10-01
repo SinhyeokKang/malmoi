@@ -12,14 +12,21 @@ import { render } from "./helpers/dom";
  * 범위는 트리 위치라 주소에 `scope`가 없다 — 카드는 그 수가 있는 첫 소스의 `All namespaces`로 간다(translation-tree-range §5).
  */
 const nav = vi.hoisted(() => ({ redirect: vi.fn((url: string) => { throw new Error(`redirect:${url}`); }) }));
-vi.mock("next/navigation", () => ({ redirect: nav.redirect, notFound: () => { throw new Error("notFound"); }, useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ redirect: nav.redirect, notFound: () => { throw new Error("notFound"); }, useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }));
+// 프로젝트 목록을 그리면 행의 Action들이 import된다 — 이 스위트가 재는 것은 띠의 링크다.
+vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));
+vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectRepository: vi.fn() }));
+vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: vi.fn() }));
+vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({ requireProjectAccess: async () => ({ projectId: "p" }) }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({ project: { findUnique: async () => ({ defaultSurface: { slug: "web", archivedAt: null } }) } }) }));
 
 import LegacyTranslations from "@/app/(edit)/projects/[slug]/translations/page";
 import { AttentionCard } from "@/components/home/attention-card";
 import { CountCards } from "@/components/home/count-cards";
-import { bannerTranslationsHref } from "@/components/projects/project-list";
+import { bannerTranslationsHref, ProjectList } from "@/components/projects/project-list";
+import type { ProjectListRow } from "@/lib/keys/query";
+import { m } from "@/lib/i18n";
 import type { HomeCard } from "@/lib/home/cards";
 import { parseTranslationQuery } from "@/lib/translations/query";
 
@@ -72,8 +79,23 @@ it.each([
   expect(landed.state ?? landed.completion).not.toBeNull();
 });
 
-it("프로젝트 목록 띠의 검토 대기·보낼 편집 링크는 ns=*를 싣는다", () => {
+it("프로젝트 목록 띠의 검토 대기·보낼 편집 링크는 ns=*를 싣는다 — 그린 띠의 앵커가 그 생성기를 쓴다", async () => {
   for (const state of ["review", "unsent"] as const) {
     expect(narrowing(bannerTranslationsHref("acme", "web", state))).toMatchObject({ ns: "*", scope: null, state, parsedNs: "*" });
+  }
+  // 실제 목록을 그려 띠의 앵커를 센다 — 띠가 손으로 주소를 조립하면 여기서 갈린다.
+  const row = (over: Partial<ProjectListRow>): ProjectListRow => ({
+    image: null, slug: "acme", reviewSurfaceSlug: "web", unsentSurfaceSlug: "app", repoAheadFrom: null, name: "Acme", role: "OWNER", installationId: "i",
+    surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }], archivedAt: null, repoOwner: "o", repoName: "r", repositoryId: "9001",
+    memberCount: 2, baseBranch: "main", lastPrUrl: null, meters: [], review: 0, unsent: 0, openPr: null, repoAheadFiles: 0, ...over,
+  });
+  for (const [over, label, href] of [
+    [{ review: 3 }, m.projects.banner.action.review, bannerTranslationsHref("acme", "web", "review")],
+    [{ unsent: 2 }, m.projects.banner.action.send, bannerTranslationsHref("acme", "app", "unsent")],
+  ] as const) {
+    const { container } = await render(<ProjectList all={[row(over)]} />);
+    const anchor = [...container.querySelectorAll("a")].find(a => a.textContent?.trim() === label);
+    expect(anchor?.getAttribute("href"), label).toBe(href);
+    expect(narrowing(anchor!.getAttribute("href")!)).toMatchObject({ ns: "*", parsedNs: "*" });
   }
 });
