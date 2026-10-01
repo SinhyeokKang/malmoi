@@ -531,7 +531,8 @@ export async function loadProjectListAggregates(
         AND p."archivedAt" IS NULL
       GROUP BY t."projectId", t."surfaceId", s."slug"`,
   ]);
-  // 소스 축으로 받은 행을 프로젝트로 접는다 — 합과 "가장 앞 slug"(옛 `MIN(s."slug")`)는 이 행들에서 나온다.
+  // 소스 축으로 받은 행을 프로젝트로 접는다 — 합과 "가장 앞 slug"가 이 행들에서 나온다. ⚠️ "가장 앞"은 **코드 단위 최솟값**이다(DB collation의
+  // `MIN(s."slug")`가 아니다) — `reviewSurfaceSlug`의 JS `sort()`·번역 트리 순서(`loadTranslationTree`)와 같은 자를 쓴다.
   const sumBy = (rows: readonly { projectId: string; n: number }[]) => {
     const out = new Map<string, number>();
     for (const row of rows) out.set(row.projectId, (out.get(row.projectId) ?? 0) + row.n);
