@@ -2340,9 +2340,6 @@ export const en = {
         // 목적지(프로젝트 Home)를 말한다 — 2026-09-29 전엔 번역 화면으로 가는 "Start translating"이었다.
         open: "Open project",
       },
-      workflow: {
-        saveAs: "Save as",
-      },
       failed: "We couldn't finish. Try again in a moment.",
     },
   },
@@ -3328,11 +3325,8 @@ export const en = {
     },
 
     workflow: {
-      /**
-       * 문장을 사전이 소유한다 — JSX 노드로 쪼개면 ko가 어순을 바꿀 수 없다 (CLAUDE.md 코드 컨벤션).
-       */
-      saveAs: (path: ReactNode): ReactNode => <>Save this in your repository as {path}.</>,
-      copy: "Copy YAML",
+      /** 경로를 싣지 않는다 — 코드 블록 머리의 파일명 바가 든다(2026-10-01, 온보딩 ④와 설정이 같은 문장). */
+      saveAs: "Save this file in your repository.",
       /** ⚠️ 훅으로 번역을 읽는 리포는 `wrapper` 없이는 코드 참조가 조용히 0이다 (ARCHITECTURE §4). */
       hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
         <>

@@ -5,13 +5,13 @@ import Markdown, { type Components, type ExtraProps } from "react-markdown";
 
 import { DOC_TABLE, DOC_TABLE_HEAD, DOC_TABLE_ROW, DocTableFrame } from "@/components/public-doc-table";
 import { Alert } from "@/components/ui/alert";
+import { CodeBlock } from "@/components/ui/code-block";
 import { TableBody, TableHead, TableHeader, TableRow, Td } from "@/components/ui/table";
 import { remarkGuide } from "@/lib/guide/remark";
 import type { ShotSize } from "@/lib/guide/shots";
 
 import { DOC_LINK, INLINE_CODE, LIST, PROSE, SECTION_HEADING, SUB_HEADING } from "./classes";
 import { cn } from "@/lib/utils";
-import { CodeBlock } from "./code-block";
 
 const NO_SIZES: Record<string, ShotSize> = Object.create(null);
 
@@ -63,7 +63,7 @@ function components(sizes: Record<string, ShotSize>): Components {
       if (code?.type !== "element") return null;
       const filename = code.properties.dataFilename;
       // 끝 개행 하나는 펜스의 것이다 — 복사 값에 싣지 않는다.
-      return <CodeBlock code={hastText(code).replace(/\n$/, "")} filename={typeof filename === "string" ? filename : null} />;
+      return <CodeBlock code={hastText(code).replace(/\n$/, "")} filename={typeof filename === "string" ? filename : null} className="mt-6" />;
     },
     blockquote: ({ node: _node, children }) => (
       <Alert variant="info" className="mt-6 leading-[1.6] [&_p]:mt-0 [&_p]:text-sm [&_p]:leading-[1.6] [&_p+p]:mt-2">
