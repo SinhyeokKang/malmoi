@@ -75,3 +75,64 @@ describe("mergeServerRows — 같은 세대의 재검증", () => {
     expect(savedOutCount(mergeServerRows(out, rows))).toBe(0);
   });
 });
+
+/**
+ * #157 — 키 클릭·저장 뒤 재검증마다 서버가 전량 목록을 새 객체로 다시 보낸다. 값이 같은 행까지 새 객체로 바꾸면 `KeyRow`의 memo가
+ * 한 행도 막지 못해 5,000행이 매번 다시 렌더된다(QA3 실측: 클릭당 행 렌더 3,626회). 값이 같으면 이전 참조를 그대로 둔다.
+ */
+describe("mergeServerRows — 값이 같은 행은 이전 참조를 재사용한다 (#157)", () => {
+  type Full = { keyId: string; missingCount: number; match?: { field: string; text: string; start: number } };
+  const base: Full[] = [
+    { keyId: "a", missingCount: 2, match: { field: "key", text: "a", start: 0 } },
+    { keyId: "b", missingCount: 1 },
+    { keyId: "c", missingCount: 3 },
+  ];
+  const copy = (rows: Full[]): Full[] => rows.map(r => JSON.parse(JSON.stringify(r)) as Full);
+
+  it("전부 같으면 목록 객체 자체를 그대로 돌려준다", () => {
+    const list = startListGeneration(base, 1);
+    expect(mergeServerRows(list, copy(base))).toBe(list);
+  });
+
+  it("바뀐 행만 새 객체이고 나머지 entry·row는 같은 참조다", () => {
+    const list = startListGeneration(base, 1);
+    const server = copy(base);
+    server[1] = { keyId: "b", missingCount: 0 };
+    const merged = mergeServerRows(list, server);
+    expect(merged).not.toBe(list);
+    expect(merged.rows[0]).toBe(list.rows[0]);
+    expect(merged.rows[2]).toBe(list.rows[2]);
+    expect(merged.rows[1]).toEqual({ row: { keyId: "b", missingCount: 0 }, savedOut: false });
+  });
+
+  it("중첩 값(match)까지 비교한다 — 같으면 재사용, 다르면 새 객체", () => {
+    const list = startListGeneration(base, 1);
+    const same = mergeServerRows(list, copy(base));
+    expect(same.rows[0]).toBe(list.rows[0]);
+    const server = copy(base);
+    server[0] = { ...server[0]!, match: { field: "key", text: "a", start: 1 } };
+    expect(mergeServerRows(list, server).rows[0]).not.toBe(list.rows[0]);
+  });
+
+  it("필드가 사라지거나 생겨도 다른 행이다", () => {
+    const list = startListGeneration(base, 1);
+    const server = copy(base);
+    delete server[0]!.match;
+    expect(mergeServerRows(list, server).rows[0]!.row).toEqual({ keyId: "a", missingCount: 2 });
+  });
+
+  it("savedOut이 바뀌면 row가 같아도 entry는 새로 만든다 — row 참조는 재사용한다", () => {
+    const out = mergeServerRows(startListGeneration(base, 1), copy(base).filter(r => r.keyId !== "b"));
+    expect(out.rows[1]!.savedOut).toBe(true);
+    const back = mergeServerRows(out, copy(base));
+    expect(back.rows[1]).toEqual({ row: base[1], savedOut: false });
+    expect(back.rows[1]!.row).toBe(out.rows[1]!.row);
+    expect(back.rows[0]).toBe(out.rows[0]);
+  });
+
+  it("이미 savedOut인 행이 계속 빠져 있으면 entry를 그대로 둔다", () => {
+    const out = mergeServerRows(startListGeneration(base, 1), copy(base).filter(r => r.keyId !== "b"));
+    const again = mergeServerRows(out, copy(base).filter(r => r.keyId !== "b"));
+    expect(again).toBe(out);
+  });
+});
