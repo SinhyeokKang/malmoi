@@ -8,8 +8,8 @@
 |---|---|---|
 | `lib/translations/query.ts` | 파서·직렬화가 화면과 MCP 공용. 기본 `scope: "project"`, `treeQuery`는 `ns`만, `clearFilters`·`isNarrowed`·`hasConditions`·`emptyActions` | 파서·기본값은 **MCP 계약으로 동결**. 그 위에 화면 층(§2.1) |
 | `lib/translations/tree-narrow.ts` | `countRows`·`narrowTree`(0 노드 숨김 + `keep`)·`nodeKey`·`firstRowAt` | `rangeOf`·`inRange`·`tallyRows`·`countTree`(숨김 없음)·`firstRowAt` (§2.2) |
-| `app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx` | `parseTranslationQuery` → 옛 주소 판정(`legacy` — cursor·focus·locales, `page.tsx:60-64`) → 로더(`scope` 그대로) | `screenQuery` → redirect 판정(§3.1) → **늘 전 소스 로드** → JS 범위 자르기 → 노드 수 (§3) |
-| `app/(edit)/projects/[slug]/translations/page.tsx`(공가 redirect) | `serializeTranslationQuery(parse…)` | `serializeScreenQuery(screenQuery(parse…))` |
+| `app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx` | `parseTranslationQuery` → 옛 주소 판정(`legacy` — cursor·focus·locales, `page.tsx:60-64`) → 로더(`scope` 그대로) | `screenQuery(raw)` → 선택 키 위치·언어 정규화 → redirect 판정(§3.1) → **늘 전 소스 로드** → JS 범위 자르기 → 노드 수 (§3) |
+| `app/(edit)/projects/[slug]/translations/page.tsx`(공가 redirect) | `serializeTranslationQuery(parse…)` | `serializeScreenQuery(screenQuery(raw))` |
 | `components/translations/workspace/workspace.tsx` | 콤보 셋 + Clear filters + 대체 안내, `seen` 세대 집합, 트리 클릭 = 첫 키 점프 | Status 콤보 하나, 트리 클릭 = 범위, 검색 = 전 소스, 위치 이동·재마운트 착지(§4) |
 | `components/translations/workspace/tree-panel.tsx` | 좁힌 트리 `nodes`, 선택 = 위치 | 숨김 없는 `nodes`, 0 노드 `disabled`, 검색 중 `All sources` 노드, 범위·위치 이중 표시(§4.3) |
 | `components/home/attention-card.tsx` | `completion: "missing", missingLocale` | `completion: "incomplete", language` |
@@ -33,15 +33,15 @@
 | `STATUSES` · `type Status` | `"all" \| "incomplete" \| "review" \| "unsent" \| "new"` |
 | `statusOf(query)` | `state ?? (completion ∈ {incomplete, missing} ? "incomplete" : "all")` — 옛 `complete`는 `all` |
 | `withStatus(query, status)` | `nextQuery`로 `completion`·`state` 한 쌍만 바꾼다(`missingLocale` 제거). 위치·검색어·선택·언어는 남긴다 |
-| `screenQuery(parsed)` | 주소 → 화면 요청값. 옛 `missing` → `incomplete` + `language ??= missingLocale`(로케일 없으면 `incomplete`만) · `completion` 없는 `missingLocale` 버림 · `complete` → `all` · `incomplete`+`state` → `state` · `scope` 파생(위). **멱등** |
+| `screenQuery(raw)` | **원본 URL 입력** → 화면 요청값. 기존 `read`로 로케일 없는 `completion=missing` 여부를 보존한 뒤 `parseTranslationQuery`를 호출하고 화면 규칙을 적용한다(MCP 파서 무변경). 옛 `missing` → `incomplete` + `language ??= missingLocale`(로케일 없으면 `incomplete`만) · `completion` 없는 `missingLocale` 버림 · `complete` → `all` · `incomplete`+`state` → `state` · `scope` 파생(위). **`cursor`는 항상 제거**. 정규 URL 왕복 고정점 |
 | `isAllSources(query)` | `q !== undefined && scope === "project"` |
 | `hasConditions(query)` | **재정의**(지금은 `isNarrowed` 위에 선다 — `query.ts:140`) → `statusOf(query) !== "all" \|\| q !== undefined`. 트리 숫자를 일치 수로 바꿀지 |
 | `treeQuery(query, ns)` | `ns`, `scope: locationScope(ns)`, `key: FIRST_KEY`, `cursor`·`keySurface` 제거. Status·`q`·`language` 유지 |
 | `allSourcesQuery(query)` | `scope: "project"`만 — 위치·선택·`q`·Status 유지 |
 | `searchQuery(query, q)` | `q`(앞뒤 공백 제거)가 비면 `q` 제거 + `scope: locationScope(ns)`. **지금 `q`와 같으면 쿼리 그대로**(좁힌 범위 유지 — spec 조건 5). 다르면 `scope: "project"` |
-| `selectQuery(query, row)` | 키 선택. `key`·`keySurface`. **전 소스 범위이고 행이 위치 노드 밖이면** `ns: row.namespace`와 이동 대상 소스 `row.surfaceSlug`를 함께 낸다(§4.2) |
+| `selectQuery(query, row)` | 키 선택. `key`·`keySurface`. **전 소스 범위이면 항상** `ns: row.namespace`와 이동 대상 소스 `row.surfaceSlug`를 함께 낸다(`ns=*`도 예외 없음, 두 값이 이미 같으면 유지)(§4.2) |
 | `serializeScreenQuery(query)` | `serializeTranslationQuery` + **`scope`는 위치로 좁힌 검색일 때만 싣는다**(전 소스 검색·위치 탐색은 주소에 없다) |
-| `translationsHref` | 받은 쿼리를 **안에서 `screenQuery`로 정규화**한 뒤 `serializeScreenQuery` — 호출부가 옛 형을 넘겨도 링크마다 redirect가 생기지 않는다 |
+| `translationsHref` | 받은 쿼리를 `serializeTranslationQuery`로 원본 입력 형태로 바꾸고 **`screenQuery`로 정규화**한 뒤 `serializeScreenQuery` — 옛 필터 형도 화면 정규형으로 직렬화한다. 소스·키·언어 존재 여부의 보정은 페이지가 맡는다 |
 | `emptyActions(query, { noKeys })` | 아래 표. `kind`: `search-all` · `clear-search` · `clear-filters` |
 | `applyEmptyAction(kind, query)` | `search-all` = `allSourcesQuery` · `clear-search` = `searchQuery(q, undefined)` · `clear-filters` = `withStatus(q, "all")` |
 | `listGenerationKey(query, routeSurfaceSlug)` | §2.3 |
@@ -56,7 +56,7 @@
 | 검색어 없음 · Status 켜짐 | `Clear filters` | 없음 |
 | 검색어 없음 · Status 꺼짐(빈 위치) | 없음 | 없음 |
 
-**지우는 것**(이 변경이 만드는 고아 — **T6 커밋에서 지운다**, 그 전 커밋은 추가만 해 gate가 green이다): `clearFilters` · `isNarrowed` · 화면의 Scope·
+**지우는 것**(이 변경이 만드는 고아 — **T6에서 소비자와 함께 지우고 T1–T8 통합 커밋으로 전환한다**): `clearFilters` · `isNarrowed` · 화면의 Scope·
 Completeness·State 콤보 문구와 `missingIn`·`missingMenu`·`complete`·`substituted` 문구(`messages/en.tsx`). `parseTranslationQuery`·
 `serializeTranslationQuery`·`DEFAULT_TRANSLATION_QUERY`·`nextQuery`·`landOnFirstKey`·`FIRST_KEY`는 남는다(MCP·로더·첫 키).
 
@@ -71,7 +71,7 @@ Completeness·State 콤보 문구와 `missingIn`·`missingMenu`·`complete`·`su
 | `countTree(tree, counts)` | `null`이면 원본 그대로(같은 참조). 아니면 모든 노드를 남기고 숫자만 일치 수로(이름 조회는 `Object.hasOwn`·`Map` — `__proto__` 네임스페이스). `projectKeyCount` 불변 |
 | `firstRowAt` | 그대로 — 이제 범위로 자른 행에 쓰므로 사실상 첫 행이지만, 전 소스 범위의 `@first`가 없도록 판정을 남긴다 |
 
-**지우는 것**(T6 커밋): `countRows` · `narrowTree` · `nodeKey`(`seen` 집합과 함께). 재마운트 착지 표식은 노드를 `{ surfaceSlug, ns }`로 들어 `nodeKey`가 필요 없다(§4.4).
+**지우는 것**(T6, T1–T8 통합 커밋): `countRows` · `narrowTree` · `nodeKey`(`seen` 집합과 함께). 재마운트 착지 표식은 노드를 `{ surfaceSlug, ns }`로 들어 `nodeKey`가 필요 없다(§4.4).
 
 ### 2.3 목록 세대 키 — 순수로 뺀다
 
@@ -83,20 +83,21 @@ Completeness·State 콤보 문구와 `missingIn`·`missingMenu`·`complete`·`su
 ### 2.4 MCP `list_keys` — 동결
 
 `list_keys`가 같은 파서·로더를 **외부 계약**으로 쓴다(`lib/mcp/tools/keys.ts:39` — `scope` 없으면 전 소스, `completion=missing|complete`, `state`, cursor).
-화면 층은 파서 **위에** 얹히므로 MCP 입력의 해석은 한 글자도 바뀌지 않는다. MCP 출력엔 링크 필드가 없다(`keys.ts:42-47`). 바뀌는 것은 설명 문장 하나 —
+화면 층은 원본 입력에서 필요한 옛 주소 정보를 보존한 뒤 기존 파서를 호출한다. MCP는 기존 파서를 직접 호출하므로 입력 해석이 바뀌지 않는다. MCP 출력엔 링크 필드가 없다(`keys.ts:42-47`). 바뀌는 것은 설명 문장 하나 —
 `messages/en.tsx`의 `list_keys`가 "Takes the same filters as the translations screen"이라 단언하는데 화면이 Status 하나가 되면 거짓이다. 도구가 받는 축을
 직접 나열하는 문장으로 고친다. ⚠️ `read-tools.test.ts`는 로더를 mock하므로 동결의 오라클은 파서 단언이다(tasks T1).
 
 ## 3. 서버 — 늘 전 소스, JS로 자르기
 
 ```
-screen = screenQuery(parse(raw))                    // §3.1 판정에 걸리면 redirect
+screen = screenQuery(raw)
+// 인가된 활성 소스·선택 키로 목적지 경로/ns를 맞추고, 상세 대상 소스의 language를 검증한다(§3.1).
+// 이 결과와 raw URL을 비교해 redirect한 뒤 목록을 읽는다.
 range  = rangeOf(screen, route)
 full   = loadTranslationList({ ...screen, scope: "project" }, pageSize "all", selectedKeyId)
 rows   = full.rows.filter(r => inRange(r, range))
 list   = { ...full, rows, matchedKeyCount: rows.length, incompleteKeyCount: …, selectedInResult: … }   // rows에서 다시 센다
 counts = hasConditions(screen) ? tallyRows(full.rows) : null
-language = screen.language가 그 소스의 로케일이 아니면 undefined
 ```
 
 - **읽기 경로가 하나다.** 조건이 있든 없든 전 소스를 한 번 읽고 범위로 자른다 — 지금의 기본 착지와 같은 조회라 비용이 늘지 않는다(ARCHITECTURE §1.95:
@@ -111,10 +112,18 @@ language = screen.language가 그 소스의 로케일이 아니면 undefined
 
 - 술어: **raw 주소의 파라미터 집합(키·값)이 `serializeScreenQuery(screen)`의 파라미터 집합과 다르면** redirect한다 — 문자열 순서로 판정하지 않고,
   파서가 버리는 잔여 파라미터(`completion` 없는 `missingLocale` 등)도 차이로 잡는다. 기존 `legacy` 판정(cursor·focus·locales)은 같은 술어에 합친다.
-- 루프 없음의 근거: `screenQuery`가 멱등이고 `serializeScreenQuery`의 출력은 `screenQuery(parse(·))`의 고정점이다 — 정규형은 다시 redirect되지 않는다.
-- **검색어 없이 `keySurface`가 경로 소스와 다르고 활성 소스이면** 그 `keySurface` 소스 경로로 redirect한다(`screenQuery`는 경로를 모르므로 페이지가
-  판정한다). 지금 `All sources` 기본에서 키를 고르면 주소창에 남는 형이라 공유·북마크된 링크에 많다 — 그대로 두면 빈 목록 + `selectedInResult=false`다.
-  비활성·없는 소스면 `keySurface`를 버린다.
+- 화면 파서는 `cursor`를 항상 제거한다. 기존 파서·직렬화기의 cursor 보존은 MCP 계약으로 남긴다.
+- 루프 없음의 근거: 정규화된 `screen`은 `screenQuery(serializeScreenQuery(screen))`과 같다. 아래 위치·언어 보정도 이미 유효한 값은 그대로 두므로,
+  **경로와 파라미터를 모두** 정규화한 주소는 다시 redirect되지 않는다.
+- **검색어 없이 `keySurface`가 경로 소스와 다르고 활성 소스이면** 그 소스 경로로 옮긴다. 인가된 프로젝트·활성 소스로 제한한 상세 조회에서 유효한 선택 키를
+  찾았으면 **`ns`도 그 키의 실제 네임스페이스로 맞춘다**. 기존 `selectRow`는 `ns`를 남기므로 경로만 바꾸면 이전 소스의 빈 네임스페이스에 착지한다.
+  같은 소스 링크도 선택 키가 명시된 네임스페이스 범위 밖이면 `ns`를 맞춘다(`ns=ALL_NAMESPACES`면 이미 범위 안이므로 유지).
+  비활성·없는 소스면 `keySurface`를 버린다. 없는 키나 `@first`에서 네임스페이스를 추측하지 않고 기존 부재·첫 키 처리를 유지한다.
+- **언어 검증은 redirect 비교 전에 한다.** `undefined`와 `MISSING_LANGUAGES`(`@missing`)는 보존하고, 실제 로케일 코드만 상세 대상 소스의 활성 로케일과
+  대조한다(선택 상세가 없으면 목적지 경로 소스). 없는 코드는 `screen.language`와 정규 URL에서 함께 제거한다. 화면은 `useSearchParams`에서 언어를 다시 읽으므로
+  prop만 지워서는 라벨을 바로잡을 수 없다. 키 위치 보정으로 소스가 바뀌면 목적지 기준으로 검사한다.
+- 순서: `requireSurfaceAccess` → `screenQuery(raw)` → 인가된 트리·선택 상세 조회 → 목적지 경로/네임스페이스·언어 보정 → 정규 URL 비교 → 목록 조회.
+  선택 상세는 렌더에 재사용하고, 독립적인 프로젝트·트리·상세 조회의 기존 병렬 배선은 유지한다. 공가 redirect는 `screenQuery(raw)`를 직렬화하고 소스·키·언어 검증은 목적지 페이지가 맡는다.
 
 ## 4. 화면
 
@@ -131,17 +140,17 @@ language = screen.language가 그 소스의 로케일이 아니면 undefined
 
 - **트리 클릭** = `treeQuery` + 그 소스 경로(`push`). 지금과 같은 서버 왕복이고 목록 세대가 새로 시작한다.
 - **`All sources` 노드**(검색 중 · 활성 소스 둘 이상) = `allSourcesQuery`(`push`). 선택 키는 남는다.
-- **키 선택** = `selectQuery`(`replace`). 전 소스 범위에서 위치 노드 밖의 키를 고르면:
-  - 같은 소스·다른 네임스페이스 → 주소의 `ns`만 바뀐다. 세대 키가 위치를 안 보므로 목록이 그대로다(§2.3).
+- **키 선택** = `selectQuery`(`replace`). 전 소스 범위에서는 항상 위치를 `{ surfaceSlug: row.surfaceSlug, ns: row.namespace }`로 맞춘다. 이미 두 값이 같을 때만 위치를 유지한다:
+  - 같은 소스·다른 네임스페이스 또는 `All namespaces` → 주소의 `ns`만 바뀐다. 세대 키가 위치를 안 보므로 목록이 그대로다(§2.3).
   - **다른 소스 → 경로가 그 소스로 바뀌어 화면이 재마운트된다**(`surfaces/[surfaceSlug]` 세그먼트, 사용자 확정). 목록은 전 소스 결과 그대로 다시 오고 마운트
     착지가 선택 행으로 스크롤한다. **대가**(spec 조건 7에 명시): 목록 세대가 새로 서서 저장으로 조건에서 빠진 행(`savedOut`·`+n saved`)이 사라지고, 트리
     펼침 상태가 초기화되며(`tree-panel.tsx:37`), `loading.tsx` 골격이 한 번 선다. draft는 `attempt`의 discard 확인을 지나므로 잃지 않는다.
     ⚠️ 재마운트 뒤 `restoredFor`가 `null`이라 세션 복구 문구(`workspace.tsx:208`, malmoi#100)가 앱 안 소스 전환에서 뜨면 안 된다 — 테스트로 고정(T7).
     ⚠️ 포커스는 §4.4.
-  - 위치 노드 **안**의 키(위치로 좁힌 검색·탐색에서는 언제나)는 위치를 안 옮긴다.
+  - 위치로 좁힌 검색·탐색에서는 키 선택이 범위를 바꾸지 않는다.
 - **검색 지우기** = `searchQuery(…, undefined)` — 범위가 위치(= 마지막으로 고른 키의 소스·네임스페이스)로 돌아간다. 다른 소스 키를 고를 때 이미 경로가
   그 소스로 옮겨 갔으므로 보통 재마운트가 아니다. 재마운트가 되는 것은 `keySurface ≠ route`인 검색 딥링크뿐이다 — 이때 `searchQuery`는 그 `keySurface`
-  경로로 이동한다(완료 조건 8이 그 경우에도 성립하도록).
+  경로로 이동하며, 선택 상세의 실제 네임스페이스도 함께 맞춘다(완료 조건 8이 그 경우에도 성립하도록).
 
 ### 4.3 트리 표시 — 범위와 위치
 
@@ -168,8 +177,11 @@ language = screen.language가 그 소스의 로케일이 아니면 undefined
   `{ surfaceSlug, target: { kind: "tree", ns } | { kind: "row", keyId } | { kind: "search" } }`.
 - **쓰는 자리**: 이동 확인(discard 확인창)을 지난 `proceed` 안에서, **경로 소스가 바뀌는 이동일 때만**. 취소된 이동은 표식을 남기지 않는다.
 - **소비**: 마운트가 한 번 읽고 지운다. **표식의 `surfaceSlug`가 마운트한 경로와 같을 때만** 포커스를 옮긴다 — 다르면(세션 만료 → signin 왕복 등) 버린다.
+- **트리 착지의 접힌 레이아웃 예외**: 오버레이는 선택 뒤 닫히고 새 마운트에서도 닫혀 있으므로, 트리 노드가 없으면 **트리 열기 버튼**으로 착지한다.
+  최초 마운트 뒤 `ResizeObserver`의 폭 측정으로 트리가 접히는 경우에도, 이번 착지 대상 노드가 사라지기 전에 포커스를 그 버튼으로 이어 준다.
+  이미 사용자가 다른 컨트롤로 옮긴 포커스는 뺏지 않는다. 넓은 화면의 소스 접기는 대상 소스를 펼친 뒤 노드로 착지한다.
 - 새로고침·뒤로가기·딥링크는 표식이 없어 지금처럼 스크롤만 한다.
-- ⚠️ DESIGN 번역 화면 절의 "마운트 착지 … 포커스는 옮기지 않는다"(DESIGN.md 432행 부근) 문장이 이 예외로 바뀐다 — §10 갱신 대상.
+- ⚠️ DESIGN 번역 화면 절의 "마운트 착지 … 포커스는 옮기지 않는다"(DESIGN.md 432행 부근) 문장이 이 예외로 바뀐다 — §11 갱신 대상.
 - ⚠️ **규칙(09-24): 성공 뒤 착지를 컴포넌트 안에서 기다리면 호출부가 그 컴포넌트를 같은 자리에 두는가를 호출부 조립으로 잰다** — 테스트는 경로가 다른
   두 렌더(언마운트 → 새 마운트)로 잰다. 같은 소스 안 이동은 재마운트가 아니므로 지금의 `navigating` 착지가 그대로다.
 
@@ -225,11 +237,11 @@ language = screen.language가 그 소스의 로케일이 아니면 undefined
 - **PRODUCT** §3 "찾기의 기본값"·"트리는 위치이고 필터가 아니다" 문단 → 이 모델로 교체(뒤집은 판정과 날짜, spec "잃는 것" 표). §7.7 `?scope=`·`?completion=`·
   `?missingLocale=` 서술과 "번역 화면의 URL은 요청값을…" 문단 → 화면 층(옛 주소 접기)과 MCP 동결을 나눠 적는다. Home 카드 착지 서술(PRODUCT.md 705-708행
   부근 `cardQuery`) → 일치 있는 첫 소스.
-- **DESIGN** 번역 화면 절 — "숫자마다 단위" 문장의 조건 목록, "트리는 위치다" 문단, 0 노드 숨김 → `disabled`, 마운트 착지 "포커스는 옮기지 않는다" 예외,
+- **DESIGN** 번역 화면 절 — "숫자마다 단위" 문장의 조건 목록, "트리는 위치다" 문단, 0 노드 숨김 → `disabled`, 마운트 착지 "포커스는 옮기지 않는다" 예외와 접힌 트리의 열기 버튼 착지,
   빈 상태 표와 `clearFilters` 쿼리 언급(444행 부근), 범위·위치 이중 표시(§4.3), breadcrumb 범위 라벨. 버튼 표의 `translation-filter-scope` 참조(688행 부근).
 - **ARCHITECTURE** §1.95 "2026-10-01 — 기본 범위가 All sources" 전제 문단과 §1.96 "트리의 조건별 숫자도 이 행에서 센다" → 늘 전 소스 조회 + JS 자르기.
   §6.45 `list_keys` 기본 범위 서술 확인.
 - **DIRECTORY** — `tree-narrow.ts` 설명, `query.ts` 설명(527행 부근 — 화면 층·옛 주소 접기).
-- **가이드** `guide/translate/edit.md`의 필터 문단 — 본문은 **T6 커밋에 함께**(`content.test.ts`가 굵은 라벨을 사전과 대조한다). 스크린샷:
+- **가이드** `guide/translate/edit.md`의 필터 문단 — 본문은 **T6에서 고쳐 T1–T8 통합 커밋에 함께**(`content.test.ts`가 굵은 라벨을 사전과 대조한다). 스크린샷:
   `pnpm guide:check`가 못 보는 것 — `translation-editor.webp`의 추적 소스에 `workspace.tsx`·`tree-panel.tsx`가 없다(SHOOTING 매핑 표),
   README `hero.webp`(`README.md:23`)는 매핑 표에 행이 없다, `state-filter.webp`의 `dict:` 키, SHOOTING 촬영 절차의 `?scope=source`. 이 넷은 손으로 판정한다.
