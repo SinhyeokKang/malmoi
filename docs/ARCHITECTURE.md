@@ -2960,7 +2960,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 - **`set_translations`는 한 잠금·한 tx에 키 최대 100개**다(`lib/mcp/batch.ts#planBatchSave` → `applyKeySaveBatch`). 거부된 키는 그 키만
   건너뛰고 나머지는 같은 tx로 커밋된다 — "키마다 원자"의 뜻은 **일부 키의 거부가 정상 결과**라는 것이다. 키별 tx를 버린 이유는
   잠금 tx 실측이 키당 0.5–0.7초라 100키가 60초에 못 들어서다. 한 tx 100키는 로컬 PG 190–218 ms였다(T7 — 도쿄 pooler는 재측정 대상).
-  상한 초과(`too-many`)·중복 키(`duplicate-key` — 어느 값이 이겼는지를 판정하게 된다, `detail.keyId`가 그 키다)는 호출 전체를 거부한다.
+  상한 초과(`too-many`)·중복 키(`duplicate-key` — 어느 값이 이겼는지를 판정하게 된다, `detail.keyId`가 그 키다)·적재 lease(`sync-running` — `retryable` + `detail { startedAt, reopensBy }`, §6.45.6)는 호출 전체를 거부한다.
   거부된 키는 결과 행에 `error` 코드와 **번역 화면 저장 바닥의 같은 문장**(`cannot-clear`는 로케일 목록까지)을 싣는다. 사건은 키마다 하나.
 - **`create_project`가 첫 적재까지다** — `runFirstIngest`를 도구로 따로 두지 않는다(§3.1). `requirePush: true`(POSTMORTEM 2026-09-27).
 - ⚠️ **push 토큰 원문이 도구 결과로 나간다**(`create_project`·`rotate_push_token`, 2026-09-28 사용자) — 결과는 에이전트 대화(= LLM
