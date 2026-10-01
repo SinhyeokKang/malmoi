@@ -418,31 +418,52 @@ computed style로 잰 것이다.
 키 카드 머리는 캔버스 후보 중 **2c**를 골랐다. 목록 머리 우측은 2a의 `All keys` 드롭다운 칩이 아니라 평문 `+n saved · Incomplete first`다 — 캔버스 안에서도 아트보드마다 칩형과 평문형이 엇갈리고, 정렬이 하나뿐이라 고를 것이 없는 칩은 누를 이유가 없는 버튼이다. Publish 버튼 아이콘은 §6.646의 헤더 버튼과 같은 것을 쓴다.
 
 **숫자마다 단위가 다르고, 섞지 않는다.** 제목 배지 = 활성 소스 전체의 활성 키 수 · 트리 숫자 = **조건이 없을 때** 언어와 무관한 활성 키 수,
-**조건(완성도·상태·범위·검색)이 하나라도 있으면 그 조건의 일치 키 수**(언어 무관은 그대로 — 상세 언어는 서버로 가지 않는다. 2026-09-30 사용자) ·
+**조건(Status·검색)이 하나라도 있으면 그 조건의 일치 키 수 = 그 노드를 눌렀을 때의 목록 수**(범위 밖 노드도 — 서버가 전 소스 행에서 센다. 언어 무관은
+그대로 — 상세 언어는 서버로 가지 않는다. 2026-09-30 · 2026-10-01 사용자) ·
 트리 머리 배지 = 조건과 무관한 원본 활성 소스 수 · 키 목록 배지 = 현재 조건을 만족한 **키** 수 · Publish 배지 = 프로젝트 전체의 미전달 **셀** 수.
 키 집계는 저장된 값만 본다.
 ⚠️ **`needsReview`는 결측이 아니다** — 결측(null·행 부재·빈 문자열) 0인 키는 검토필요가 남아도 `Complete`라서, `Complete`와
 `Needs review`가 한 키에 같이 선다(`Complete`는 승인 완료라는 뜻이 아니다).
 
-**트리는 위치다, 필터가 아니다** (2026-09-30 사용자, translation-filter-scope). 트리 강조는 조건과 무관하게 **위치**(경로 소스 · `ns`)다 —
-전 소스라는 사실은 Scope 트리거(`All sources`, 기본값이라 꺼진 표시)와 행의 `surface · key` 접두가 말한다. 접두는 **원본** 트리의 소스가 둘
-이상일 때만 선다(좁힌 트리로 판정하면 필터마다 붙었다 떨어진다). 조건이 켜지면 트리는 일치 키가 있는 노드만 그린다 — **위치 노드와 이 목록
-세대에서 한 번 보인 노드는 0이어도 남고 `text-muted-foreground`로 흐리다**(새 토큰 없음). 머리 배지와 `Filter namespaces`(13개 이상) 임계는
-원본 트리로 판정한다 — 입력이 사라지면 남은 검색어가 보이지 않는 필터가 된다. 트리 이동과 마운트 착지(딥링크·새로고침·다른 소스)는 선택 행을
-`scrollIntoView({ block: "nearest" })`로 보이게 한다 — 포커스는 옮기지 않고, 목록에서 직접 누른 행은 스크롤하지 않는다.
+**트리 = 목록 범위다** (2026-10-01 사용자, translation-tree-range — 09-30의 "트리는 위치다, 필터가 아니다"를 뒤집었다). 소스 아래 `All namespaces`는
+그 소스 전체, 네임스페이스 행은 그 네임스페이스이고 소스 행은 펼침 토글이다. 툴바의 필터는 **Status 하나**(`FilterMenu`, 축 이름 `Status`는 접근
+이름에만 — `All keys`·`Incomplete`·`Needs review`·`Unsent`·`New from GitHub`)이고 범위 콤보·툴바 `Clear filters`·`Untranslated in` 대체 안내가 없다.
+검색 입력은 **label과 placeholder가 갈린다** — 접근 이름 `Search keys`(위치로 좁힌 검색 중에도 참), 플레이스홀더 `Search all sources…`(빈 입력에서만
+보이고 그때 새 검색은 언제나 전 소스다 — §10).
+
+- **표시가 둘이다** (§4.3 — `tree-panel.tsx`). **범위**는 `ListItemButton selected`(면 0.07 + `aria-current="true"`)다 — 전 소스 검색이면 `All sources`
+  노드, 아니면 위치 노드. 전 소스 범위의 **위치**(고른 키의 소스·네임스페이스)는 `aria-current="location"`이고 **면을 비운다** — hover 0.03과 겹치면
+  포인터 아래 항목처럼 보인다(§6.5). 글자만 한 단계 올린다: 라벨 `font-medium` · 숫자 `text-foreground` · 아이콘 `text-neutral-600`(선례: 공개 문서
+  목차의 `location`). ⚠️ `ListItemButton`은 `aria-current`를 `selected`로만 세우므로 호출부 prop이 뒤에서 덮는다(`{...props}`가 마지막 — 테스트가 고정한다).
+- **`All sources` 노드** — 검색 중이고 활성 소스가 둘 이상일 때만, `Filter namespaces` 입력 **아래** 소스 행들의 맨 위. 소스 행과 같은 높이·굵기 500,
+  `Search`(16 · `text-neutral-600`), 숫자는 전 소스 일치 수. 활성 소스가 하나면 노드가 없고 그 소스의 `All namespaces`가 전 소스 범위를 표시한다.
+- **노드를 숨기지 않는다.** 조건이 켜지면 숫자만 바뀌고 **0 노드는 `text-muted-foreground` + `disabled`**(누를 수 없음 — hover 면도 없다, `ListItemButton`이
+  `disabled`면 hover를 빼다)다. 지금 범위·위치 노드는 0이어도 누를 수 있다(오버레이를 열 때의 포커스 대상 `[aria-current="true"]`가 사라지지 않게).
+  소스 행(펼침 토글)은 0이어도 활성이다. 09-30의 "0 노드 숨김 + 이 세대에서 본 노드 유지"(`seen`)는 걷었다.
+- 위치가 바뀌면 그 소스를 펼치고, `Filter namespaces` 검색어가 위치 노드를 숨기지 않게 통과시키고, 그 노드를 `scrollIntoView({ block: "nearest" })`로
+  보이게 한다(마운트에는 하지 않는다).
+- 행의 `surface · key` 접두는 **범위가 `All sources`이고** 원본 트리의 소스가 둘 이상일 때만 선다. 머리 배지와 `Filter namespaces`(13개 이상) 임계는
+  원본 트리로 판정한다 — 입력이 사라지면 남은 검색어가 보이지 않는 필터가 된다.
+- 트리가 접힌 레이아웃의 목록 머리 breadcrumb은 **범위 라벨**이다 — 전 소스면 `All sources`, 아니면 `surface`(`ns`가 있으면 `surface / ns`). 범위
+  콤보가 없어 접힌 레이아웃에서 범위를 말하는 유일한 단서다.
+- **선택 행 스크롤** — 트리 이동·검색 지우기의 도착과 마운트 착지(딥링크·새로고침·다른 소스)는 선택 행을 `scrollIntoView({ block: "nearest" })`로
+  보이게 한다. 목록에서 직접 누른 행은 스크롤하지 않는다.
+- **마운트 착지의 포커스** — 새로고침·뒤로가기·딥링크는 포커스를 옮기지 않는다. ⚠️ **예외: 앱 안의 다른 소스 이동은 재마운트라** 누른 컨트롤이
+  사라진다 — 트리로 옮겼으면 트리의 그 노드, 다른 소스 키를 골랐으면 그 행, 검색을 지워 옮겼으면 검색 입력으로 착지한다. **트리가 접힌 레이아웃이면
+  트리 열기 버튼**이고, 마운트 직후 폭 측정이 트리를 접어도 그 버튼으로 잇는다(이미 다른 컨트롤로 옮긴 포커스는 뺏지 않는다). 착지는 layout 단계다
+  (passive면 `body` 프레임이 칠해진다 — malmoi#158). 앱 안 소스 전환 뒤에는 세션 복구 문구(malmoi#100)를 띄우지 않는다.
 
 **빈 상태(0건)의 버튼 표** (`emptyActions` — `lib/translations/query.ts`). 누른 버튼은 도착까지 `busy`(포커스를 지킨다)이고, 도착하면 목록 제목
-(`h2`, `tabIndex=-1`)으로 착지한다. 주 버튼은 `default`, 보조는 `ghost`다.
+(`h2`, `tabIndex=-1`)으로 착지한다. 주 버튼은 `default`, 보조는 `ghost`다. `Clear filters`는 `RotateCcw`를 들고 Status만 `All keys`로 되돌린다(검색어는
+남는다 — 쿼리는 `withStatus(q, "all")`).
 
 | 상태 | 주 | 보조 |
 |---|---|---|
 | 활성 키 0 | 없음 | 없음 |
-| 검색어 · 범위 ≠ All sources | `Search all sources`(범위만 넓힌다) | 완성도·상태가 켜졌으면 `Clear filters` |
-| 검색어 · All sources | `Clear search` | 완성도·상태가 켜졌으면 `Clear filters` |
-| 검색어 없음 · 좁힘 | `Show all n keys` | 없음 |
-
-⚠️ 검색어가 있는 보조 버튼의 라벨이 `Clear filters`인 이유 (2026-09-30 사용자) — 쿼리는 `clearFilters`라 검색어가 남으므로 `Show all n keys`
-(프로젝트 전체 수)가 결과와 맞지 않는다.
+| 검색어 · 위치로 좁힘 | `Search all sources`(범위만 넓힌다) | Status가 켜졌으면 `Clear filters` |
+| 검색어 · All sources | `Clear search` | Status가 켜졌으면 `Clear filters` |
+| 검색어 없음 · Status 켜짐 | `Clear filters` | 없음 |
+| 검색어 없음 · Status 꺼짐(빈 위치) | 없음 — 문구 `No keys in <ns 또는 소스>` | 없음 |
 
 **목록은 Tab 정지점 하나다** (roving tabindex, 2026-10-01) — 정지점은 방금 포커스한 행 → 선택 행 → 첫 행 순이고, ↑/↓·Home/End가 포커스를
 옮기며 Enter·Space가 선택한다(버튼 기본 동작). 목록을 떠나면 정지점은 다시 선택 행이다. 포커스한 행이 목록에서 사라지면 정지점으로(목록이 비면
@@ -686,7 +707,7 @@ logs 상세 `components/logs/event-dialog.tsx`(2026-09-24, §6.68), 그리고 �
 | **연결 해제**(`/account`의 GitHub App · 로그인 수단 둘) | 트리거가 **`danger`**다 — 꺼진 형(마지막 수단)도 `danger` + `aria-disabled` | 위 `danger` 행이 소비자로 이미 "연결 해제"를 적는다. 2026-09-13 핸드오프가 트리거를 `default`로 내렸지만 **같은 표의 나머지 되돌릴 수 없는 동작(Sign out everywhere · Remove · Archive)과 무게가 갈렸다** — 확인 Dialog가 무게를 든다는 근거는 그 셋에도 똑같이 참이다. ⚠️ **시안이 아직 `default`다** — 핸드오프를 사람이 고쳐야 `/design-sync`가 되돌리지 않는다 |
 | **Retry**(`Try again`) — 페이지의 유일한 출구 | **`primary`** — `app/error.tsx`·`(edit)/error.tsx`·logs 조회 실패 셋 | 그 화면에서 할 수 있는 일이 그것 하나다. ⚠️ **블록 안 Retry(Alert의 액션 — Sync 결과 등)는 `default`로 남는다** — 화면의 primary가 따로 있다 |
 | **되돌리기**(`Clear filters`) | **primary가 아니다** — 툴바는 `ghost`, 빈 상태 본문은 `default`. 둘 다 **`RotateCcw`**를 든다(§6.8) | 되돌리기는 확정이 아니다. primary는 "만들라·보내라"의 자리이고(§6.4 예외 2의 [New project]), 빈 상태에서 되돌리기를 primary로 칠하면 그 화면에서 가장 무거운 동작이 된다 |
-| **검색 비우기**(`Clear search`) | 좁혀서 0건인 빈 상태의 출구는 **어디서나 `EmptyState` + `default` 버튼 + `RotateCcw`**(Logs 형 — 2026-10-01, 4-Y15. 번역 화면은 `translation-filter-scope`가 따로 설계한다. ⚠️ 온보딩 ①의 리포 검색 0건은 글리프 없는 버튼이다 — 모달 안 목록이라 이 형 밖이다) · `/projects` 검색 결과 카드 머리의 `Clear search`는 링크로 남되 **앱 안 이동이라 파랑이 아니다**(§2.4 동작 규칙) | 2026-09-24에 `/projects`의 둘을 파란 링크로 두었는데(캔버스 `1c`·`1d`), 같은 색이 새 탭 외부 링크를 뜻하게 되며 빈 상태 쪽은 다른 화면과 같은 버튼으로, 머리 쪽은 foreground 링크로 갈랐다 |
+| **검색 비우기**(`Clear search`) | 좁혀서 0건인 빈 상태의 출구는 **어디서나 `EmptyState` + `default` 버튼 + `RotateCcw`**(Logs 형 — 2026-10-01, 4-Y15. 번역 화면은 `translation-tree-range`가 따로 설계한다 — 위 번역 화면 절의 빈 상태 표. ⚠️ 온보딩 ①의 리포 검색 0건은 글리프 없는 버튼이다 — 모달 안 목록이라 이 형 밖이다) · `/projects` 검색 결과 카드 머리의 `Clear search`는 링크로 남되 **앱 안 이동이라 파랑이 아니다**(§2.4 동작 규칙) | 2026-09-24에 `/projects`의 둘을 파란 링크로 두었는데(캔버스 `1c`·`1d`), 같은 색이 새 탭 외부 링크를 뜻하게 되며 빈 상태 쪽은 다른 화면과 같은 버튼으로, 머리 쪽은 foreground 링크로 갈랐다 |
 | 로딩 블록 | **`Skeleton`** 프리미티브(`bg-foreground/5` · `motion-safe:animate-pulse` · `aria-hidden`) | 라우트 `loading.tsx` 셋이 로컬 `Block`을, Publish 표가 `bg-muted animate-pulse`를 들어 **회색 값 둘·움직임 규칙 둘**이 섰다. `animate-pulse`는 `skeleton.tsx` 밖에 0건이다. 글자 한 줄의 자리는 **`SkeletonLine`**(같은 파일 — 글자 크기 클래스 + U+200B가 실물 line box를 세운다, px 줄높이 금지 · 2026-09-25 audit-ux U2) |
 | 긴 실행의 지연 문구 | **`SlowNotice`**(`components/slow-notice.tsx`) — 원격 실행이 **`SLOW_AFTER_MS`(8초)** 를 넘기면 muted `text-xs` 한 줄 `common.slow`가 `role="status"`로 선다 (2026-09-25 audit-ux #23). 자리는 리포 탐지·샘플 로드(`FilesStep` — 온보딩 ②와 [Add sources]가 공유) · 첫 적재(프로젝트 생성의 상태 줄 · [Add sources] 바닥) · Sync(진행 Dialog 안 — 2026-10-01 sync-lock, 전엔 두 호스트의 결과 띠 자리) · Publish 진행 모달이다 | 스켈레톤·스피너만 30초를 넘게 돌면 "멈췄다"와 "도는 중"이 구별되지 않았다. ⚠️ **값이 하나다** — 화면마다 다르면 같은 대기가 다르게 읽힌다. ⚠️ **단계를 주장하지 않는다** — 진행 이벤트 API가 없다. Publish 모달의 단계 셋은 **하는 일의 목록**이고 체크가 넘어가지 않는다(전엔 2.5초·6.5초 타이머가 일어나지 않은 단계를 넘겼다) |
 | 상태 배지 · 개수 배지 | **`StatusBadge state`**(§2.4 `STATE`의 variant·낱말 — 호출부가 variant를 고르지 않는다) · **`CountBadge`**(0이면 서지 않고, 숫자는 `aria-hidden` + sr 문장 — 카드·머리의 `count` prop과 트리·세그먼트·필터·Publish 버튼의 로컬 개수 전부, 2026-10-01 Q13) | 같은 상태가 화면마다 다른 variant·글자색으로, 개수가 0에서도 서거나 sr 문장 없이 섰다 |
@@ -912,7 +933,7 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 | JS 전 · JS 없음 | **준비 전엔 프레임이 보이지 않는다** — 프레임·크롬이 `invisible`이고(`group-data-[ready]/track:visible`), 트랙은 **패널 1개 높이**로 접혀 있다(`data-ready`가 선 뒤에만 `--landing-track-h`). 배율이 없는 SSR에서 1464×834 베젤이 패널을 넘치기 때문이다 |
 | sticky 층 | `pointer-events-none` — 투명하지만 positioned라 겹친 형제의 클릭을 먹는다(옛 구조에서 끌어올린 CTA의 `Get started`가 안 눌렸다). 지금 CTA는 겹치지 않지만 프레임이 `inert`라 잃는 것이 없어 그대로 둔다 |
 | 접근성 | 프레임 `aria-hidden` + `inert`, **안에 인터랙티브 태그 0**(jsdom은 `inert`를 모른다 — 버튼 모양은 `buttonClass`를 `<span>`에). 보이는 캡션도 `aria-hidden`이고 트랙 첫머리의 visually-hidden `<ol>`이 다섯 문장을 늘 담는다(`aria-live` 없음). 섹션 셋이 전부 이름을 갖는다 — 히어로·CTA `aria-labelledby`, 트랙 `aria-label="How Malmoi works"` |
-| 목업 씬 구조 | 제품의 1440×810 화면 그대로다. **셸** — 헤더 40(로고 32 · 우측 `New project` · 세로선 · 아바타 32 — 앱 셸 헤더와 같다) · LNB 240(`SHELL_SIDEBAR_PX.default`) · 핸들 8 · `ContentPanel`. ⚠️ **LNB의 구역·항목·배지는 실제 판정(`navZones` · `navFooterItems`)에서 뽑는다** — 사용자 구역(머리 줄 없음 · `Projects` 배지 · `MCP connector` · `Account` — `navZones`가 주는 대로) · 프로젝트 구역(썸네일 · 이름 · **머리 오른쪽 끝 전환 트리거 글리프**(`project-switcher.tsx`의 ghost 24 · `ChevronsUpDown` 16, 메뉴는 그리지 않는다) · Home · Sources · Translations · Logs · Members · Settings, 배지 셋) · 하단 목록(`navFooterItems` 한 곳 — `app-frame.tsx`의 `FOOTER_ITEMS`). Sign out은 하단에 그리지 않는다(아바타 메뉴의 것). **번역 화면** — 머리(제목·배지 · Sync · Publish / 필터 셋 `All keys · Any state · This source` · 검색 320) · 본문 `p-4`: 왼쪽 카드 = **소스 트리 260**(보고 있는 소스만 펼침 · `All namespaces` 선택) + 키 목록 392(**미완 먼저**) · 핸들 16 · 오른쪽 로케일 상세(경로 머리 · 키 · N of M · 복사 · 설명 · 행 셋 · 푸터 — 저장 뒤 `Revert to last sent`가 서고 Save가 꺼진다). **Publish** — `OnboardingModal` 치수(폭 1024 · 미리보기 620 / 결과 420 · dim `bg-foreground/32` + blur 6), 미리보기는 열린 PR 없음 `Alert neutral` + 표(저자 열) + 확정 버튼 **`Open pull request` 하나**(Cancel 없음), 결과는 PR 카드 + 안내 + `View pull request`. 모달 제목의 자간 `0.005em`은 목업에서 뺐다(`tracking-*` 등재 밖, 20px에서 0.1px) |
+| 목업 씬 구조 | 제품의 1440×810 화면 그대로다. **셸** — 헤더 40(로고 32 · 우측 `New project` · 세로선 · 아바타 32 — 앱 셸 헤더와 같다) · LNB 240(`SHELL_SIDEBAR_PX.default`) · 핸들 8 · `ContentPanel`. ⚠️ **LNB의 구역·항목·배지는 실제 판정(`navZones` · `navFooterItems`)에서 뽑는다** — 사용자 구역(머리 줄 없음 · `Projects` 배지 · `MCP connector` · `Account` — `navZones`가 주는 대로) · 프로젝트 구역(썸네일 · 이름 · **머리 오른쪽 끝 전환 트리거 글리프**(`project-switcher.tsx`의 ghost 24 · `ChevronsUpDown` 16, 메뉴는 그리지 않는다) · Home · Sources · Translations · Logs · Members · Settings, 배지 셋) · 하단 목록(`navFooterItems` 한 곳 — `app-frame.tsx`의 `FOOTER_ITEMS`). Sign out은 하단에 그리지 않는다(아바타 메뉴의 것). **번역 화면** — 머리(제목·배지 · Sync · Publish / Status 필터 `All keys` 하나 · 검색 320 — 플레이스홀더 `Search all sources…`) · 본문 `p-4`: 왼쪽 카드 = **소스 트리 260**(보고 있는 소스만 펼침 · `All namespaces` 선택) + 키 목록 392(**미완 먼저**) · 핸들 16 · 오른쪽 로케일 상세(경로 머리 · 키 · N of M · 복사 · 설명 · 행 셋 · 푸터 — 저장 뒤 `Revert to last sent`가 서고 Save가 꺼진다). **Publish** — `OnboardingModal` 치수(폭 1024 · 미리보기 620 / 결과 420 · dim `bg-foreground/32` + blur 6), 미리보기는 열린 PR 없음 `Alert neutral` + 표(저자 열) + 확정 버튼 **`Open pull request` 하나**(Cancel 없음), 결과는 PR 카드 + 안내 + `View pull request`. 모달 제목의 자간 `0.005em`은 목업에서 뺐다(`tracking-*` 등재 밖, 20px에서 0.1px) |
 | 목업 문구 | 앱 라벨은 **실제 사전 키**(`m.common.nav` · `m.translations.workspace` · `m.translations.publish` · `m.repositorySync.action`)와 실제 판정(`navZones`)을 읽는다 — 목업과 앱이 다른 말을 하면 랜딩이 거짓이다. 가상 데이터(`Acme web` · `acme/web` · 키·값)는 `m.landing.mockup`. 타이핑 값은 `fr`(한글은 `no-korean-ui`, 일본어는 폰트가 걸린다). 목업 소스에 JSX 텍스트 리터럴 0(`landing-mockup.test.tsx`) |
 | 목업이 스크롤에 반응하는 자리 | 둘뿐이다 — `[data-landing-typed]`의 텍스트(스테이지가 `typedPrefix`로 쓴다)와 프레임의 `data-badge`(`group-data-[badge=1]/frame:`). ⚠️ **프레임마다 setState하지 않는다** — 스테이지가 ref로 DOM에 직접 쓴다 |
 | 새 색 | **0** — 셸은 토큰만, 목업은 번역 화면·Publish 모달의 등재 값을 같은 자리에 쓴다(§6.2) |
