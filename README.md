@@ -1,8 +1,8 @@
-<h1 align="center">
+<h1>
   <a href="https://mal-moi.com"><picture><source media="(prefers-color-scheme: dark)" srcset="public/brand/malmoi-icon-white.svg" /><img src="public/brand/malmoi-icon-black.svg" alt="Malmoi" width="48" valign="middle" /></picture></a> Malmoi
 </h1>
 
-<p align="center">
+<p>
   <a href="https://github.com/SinhyeokKang/malmoi/releases/latest"><img src="https://img.shields.io/github/v/release/SinhyeokKang/malmoi?filter=v*&amp;style=flat" alt="Latest release" /></a>
   <img src="https://img.shields.io/badge/formats-JSON%20%7C%20YAML%20%7C%20TS%2FJS%20%7C%20Chrome%20__locales-4493F8?style=flat" alt="Supported formats: JSON, YAML, TS/JS dictionaries, Chrome _locales" />
   <img src="https://img.shields.io/badge/price-free-08C?style=flat" alt="Free, no paid plans" />
@@ -10,16 +10,16 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat" alt="License: MIT" /></a>
 </p>
 
-<p align="left">
+<p>
   <strong>Connect your projects, translate &amp; ship together.</strong><br/>
   Malmoi is a localization tool for GitHub repositories. It finds the translation files already in your repo,
   lets teammates edit them in the browser, and sends every change back as one pull request.
   Coding agents can do the same work over MCP — sign in through your browser, no token to copy.
 </p>
 
-<h3 align="center"><a href="https://mal-moi.com"><ins>Get started</ins></a> · <a href="https://mal-moi.com/docs">Read the docs</a></h3>
+<h3><a href="https://mal-moi.com"><ins>Get started</ins></a> · <a href="https://mal-moi.com/docs">Read the docs</a></h3>
 
-<p align="center">
+<p>
   <img src="docs/assets/readme/hero.webp" alt="The translation editor: source tree, key list, and one key in English, French, and Korean" width="960" />
 </p>
 
