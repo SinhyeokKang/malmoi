@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { syncBranchFor } from "@/lib/pull/sync-branch";
 
 import { HomeActions, HomeHeaderActions, HomeNotices, HomeTitle } from "@/components/home/actions";
-import { loadWriteLock } from "@/lib/home/write-lock";
 import { AttentionCard } from "@/components/home/attention-card";
 import { CountCards } from "@/components/home/count-cards";
 import { EventDetail } from "@/components/logs/event-detail";
@@ -27,6 +26,7 @@ import { metaRows } from "@/lib/home/meta";
 import { loadHomeRuns } from "@/lib/home/runs";
 import { lastSyncTime } from "@/lib/home/sync-time";
 import { connectionProblem, planActionAvailability, planHomeState } from "@/lib/home/state";
+import { loadWriteLock } from "@/lib/home/write-lock";
 import {
   loadActors, loadProjectListAggregates, loadReviewAttention,
 } from "@/lib/keys/query";

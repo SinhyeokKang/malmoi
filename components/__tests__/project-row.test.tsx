@@ -142,7 +142,7 @@ it("띠 링크가 행 링크 안에 있지 않다", async () => {
 
 it.each(["Acme", "말모이", "Example"])("%s 프로젝트의 목록과 상세 썸네일 배경·모서리가 같다", async (name) => {
   const list = await draw({ name });
-  const home = await render(<HomeActions slug="acme"><HomeTitle archived={false}>{name}</HomeTitle></HomeActions>);
+  const home = await render(<HomeActions slug="acme" writeLock={null}><HomeTitle archived={false}>{name}</HomeTitle></HomeActions>);
   const listTile = list.querySelector("svg.lucide-box")?.parentElement;
   const homeTile = home.container.querySelector("svg.lucide-box")?.parentElement;
   expect(listTile).not.toBeNull();
@@ -154,7 +154,7 @@ it.each(["Acme", "말모이", "Example"])("%s 프로젝트의 목록과 상세 �
 it.each(["/saved.webp", "/replacement.webp", null])("목록·Home·초대에 최신 프로젝트 이미지 %s를 전달한다", async image => {
   const { InviteProjectCard } = await import("@/components/invite/project-card");
   const list = await draw({ image });
-  const home = await render(<HomeActions slug="acme"><HomeTitle archived={false} image={image}>Acme</HomeTitle></HomeActions>);
+  const home = await render(<HomeActions slug="acme" writeLock={null}><HomeTitle archived={false} image={image}>Acme</HomeTitle></HomeActions>);
   const invite = await render(<InviteProjectCard name="Acme" role="Editor" locales={[]} image={image} />);
   for (const node of [list, home.container, invite.container]) {
     expect(node.querySelector("img")?.getAttribute("src") ?? null).toBe(image);
@@ -175,7 +175,7 @@ it.each(["list", "home", "invite"])("%s의 이미지 로드 실패는 이름 색
   const { act } = await import("react");
   const src = "https://store.public.blob.vercel-storage.com/projects/p/gone.webp";
   const container = where === "list" ? await draw({ image: src })
-    : where === "home" ? (await render(<HomeActions slug="acme"><HomeTitle archived={false} image={src}>Acme</HomeTitle></HomeActions>)).container
+    : where === "home" ? (await render(<HomeActions slug="acme" writeLock={null}><HomeTitle archived={false} image={src}>Acme</HomeTitle></HomeActions>)).container
     : (await render(<InviteProjectCard name="Acme" role="Editor" locales={[]} image={src} />)).container;
   const image = container.querySelector("img")!;
   expect(image).not.toBeNull();

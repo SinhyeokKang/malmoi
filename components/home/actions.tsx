@@ -62,7 +62,7 @@ function useHomeActions(): HomeActionsValue {
   return value;
 }
 
-export function HomeActions({ children, slug, writeLock = null }: { children: ReactNode; slug: string; writeLock?: { startedAt: Date; reopensBy: Date } | null }) {
+export function HomeActions({ children, slug, writeLock }: { children: ReactNode; slug: string; writeLock: { startedAt: Date; reopensBy: Date } | null }) {
   const [syncOpen, openSync] = useState(false);
   /*
     ⚠️ **교차 잠금은 새 서버 트리까지 간다** (malmoi#103) — 신호는 `children`이다: 서버 페이지가 렌더할 때마다 새 객체가 되고, 수치

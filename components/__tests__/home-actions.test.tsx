@@ -71,7 +71,7 @@ beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.p
 it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", async () => {
   const run = deferred<{ ok: true; surfaces: []; remainingEdits: number }>();
   mocks.run.mockReturnValue(run.promise);
-  const view = await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  const view = await render(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
 
   expect(locked(button("Publish"))).toBe(false);
   await click("Sync");
@@ -92,7 +92,7 @@ it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", asyn
   await click("Close");
   // 성공은 재검증 트리가 커밋될 때까지 잠긴 채다 (malmoi#103) — 새 `children`이 서버 렌더다.
   expect(locked(button("Publish"))).toBe(true);
-  await view.rerender(<HomeActions slug="acme"><Host /></HomeActions>);
+  await view.rerender(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
   expect(locked(button("Publish"))).toBe(false);
 });
 
@@ -100,7 +100,7 @@ it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", asyn
 it("Sync가 8초를 넘기면 지연 문구가 서고 끝나면 사라진다", async () => {
   const run = deferred<{ ok: true; surfaces: []; remainingEdits: number }>();
   mocks.run.mockReturnValue(run.promise);
-  await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  await render(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
   await click("Sync");
   vi.useFakeTimers({ shouldAdvanceTime: true });
   try {
@@ -117,7 +117,7 @@ it("Sync가 8초를 넘기면 지연 문구가 서고 끝나면 사라진다", a
 it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는다", async () => {
   const pull = deferred<{ status: "skipped"; reason: "no-edits" }>();
   mocks.pull.mockReturnValue(pull.promise);
-  const view = await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  const view = await render(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
 
   await click("Publish");
   expect(mocks.pull).not.toHaveBeenCalled();
@@ -134,7 +134,7 @@ it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는
 
   await act(async () => { pull.resolve({ status: "skipped", reason: "no-edits" }); await pull.promise; });
   expect(locked(button("Sync"))).toBe(true);
-  await view.rerender(<HomeActions slug="acme"><Host /></HomeActions>);
+  await view.rerender(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
   expect(locked(button("Sync"))).toBe(false);
 });
 
@@ -145,7 +145,7 @@ it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는
 it("EDITOR에게는 Publish가 도는 동안에도 Sync가 서지 않는다", async () => {
   const pull = deferred<{ status: "skipped"; reason: "no-edits" }>();
   mocks.pull.mockReturnValue(pull.promise);
-  await render(<HomeActions slug="acme"><HomeHeaderActions {...props} role="EDITOR" /></HomeActions>);
+  await render(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} role="EDITOR" /></HomeActions>);
 
   await click("Publish");
   expect([...document.querySelectorAll("button")].some(b => (b.textContent ?? "").includes("Sync"))).toBe(false);
@@ -163,7 +163,7 @@ it("EDITOR에게는 Publish가 도는 동안에도 Sync가 서지 않는다", as
 it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼자 열리지 않는다", async () => {
   const pull = deferred<{ status: "skipped"; reason: "no-edits" }>();
   mocks.pull.mockReturnValue(pull.promise);
-  const view = await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  const view = await render(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
   await click("Publish");
   await click("Open pull request");
   await act(async () => { (document.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click(); });
@@ -179,7 +179,7 @@ it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼�
   expect(document.querySelector('[role="dialog"]')).toBeNull();
 
   await act(async () => { pull.resolve({ status: "skipped", reason: "no-edits" }); await pull.promise; });
-  await view.rerender(<HomeActions slug="acme"><Host /></HomeActions>);
+  await view.rerender(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   expect(mocks.run).not.toHaveBeenCalled();
 
@@ -200,7 +200,7 @@ it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼�
 it("보관 배너에서 복원이 거부되면 사유 Alert가 배너 밖 형제로 선다", async () => {
   mocks.unarchive.mockResolvedValue({ ok: false, error: "forbidden" });
   const { m } = await import("@/lib/i18n");
-  await render(<HomeActions slug="acme"><HomeNotices {...props} state="archived" failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} /></HomeActions>);
+  await render(<HomeActions slug="acme" writeLock={null}><HomeNotices {...props} state="archived" failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} /></HomeActions>);
   await click("Restore project");
   const failure = [...document.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(m.errors.access.forbidden));
   expect(failure).toBeDefined();
@@ -219,7 +219,7 @@ it("보관 배너에서 복원이 거부되면 사유 Alert가 배너 밖 형제
 it("보관 배너에서 복원이 성공하면 Home 제목으로 착지한다", async () => {
   const { HomeTitle } = await import("@/components/home/actions");
   mocks.unarchive.mockResolvedValue({ ok: true });
-  const view = (state: "archived" | "default") => <HomeActions slug="acme"><HomeTitle archived={state === "archived"}>acme</HomeTitle>
+  const view = (state: "archived" | "default") => <HomeActions slug="acme" writeLock={null}><HomeTitle archived={state === "archived"}>acme</HomeTitle>
     <HomeNotices {...props} state={state} failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} /></HomeActions>;
   const { rerender } = await render(view("archived"));
   await click("Restore project");
@@ -233,7 +233,7 @@ it("보관 배너에서 복원이 성공하면 Home 제목으로 착지한다", 
  */
 it("배너 [Try again] → Enter → Esc면 포커스가 그 [Try again]에 선다 — 머리의 [Sync]가 아니다", async () => {
   const user = userEvent.setup();
-  await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  await render(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
   const retry = button("Try again");
   retry.focus();
   await act(async () => { await user.keyboard("{Enter}"); });
@@ -249,7 +249,7 @@ it("배너 [Try again] → Enter → Esc면 포커스가 그 [Try again]에 선�
  * danger 본문이 빨개서 이 배너만 muted로 덮었는데, 그 덮개가 남아 새 규칙에서 혼자 흐렸다.
  */
 it("동기화 실패 배너의 본문을 muted로 덮지 않는다", async () => {
-  await render(<HomeActions slug="acme"><Host /></HomeActions>);
+  await render(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
   const banner = [...document.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(m.home.banner.syncFailed.title));
   expect(banner).toBeDefined();
   expect(banner!.querySelector(".text-muted-foreground")).toBeNull();
@@ -261,7 +261,7 @@ it("동기화 실패 배너의 본문을 muted로 덮지 않는다", async () =>
  */
 it("partial-import 배너는 warning Partially synced이고 실패·마지막 성공 문장이 없다", async () => {
   const now = new Date("2026-09-15T12:00:00Z");
-  const { container } = await render(<HomeActions slug="acme">
+  const { container } = await render(<HomeActions slug="acme" writeLock={null}>
     <HomeNotices {...props} state="import_failed" failedSurface="web" reason="partial-import" lastSyncAt={new Date("2026-09-15T11:00:00Z")} now={now} />
   </HomeActions>);
   const banner = container.querySelector('[data-alert="warning"]');
@@ -270,7 +270,7 @@ it("partial-import 배너는 warning Partially synced이고 실패·마지막 �
   expect(banner?.textContent).not.toMatch(/fail|couldn['’]t finish|could not/i);
   expect(banner?.textContent).not.toContain("last successful sync");
   // 대조 — 진짜 실패는 danger 실패 제목이다
-  const failed = await render(<HomeActions slug="acme">
+  const failed = await render(<HomeActions slug="acme" writeLock={null}>
     <HomeNotices {...props} state="import_failed" failedSurface="web" reason="import-failed" lastSyncAt={null} now={now} />
   </HomeActions>);
   expect(failed.container.querySelector('[data-alert="danger"]')?.textContent).toContain(m.home.banner.syncFailed.title);
@@ -281,7 +281,7 @@ it("partial-import 배너는 warning Partially synced이고 실패·마지막 �
  * Home 본문은 두 열 격자라 전폭(`col-span-full`)을 가로지른다. 여백·폭 상한은 본문(`p-4`·`max-w-7xl`)이 들므로 블록이 다시 적지 않는다.
  */
 it("배너가 PanelBody 스크롤 컨테이너 안에서 격자 전폭을 쓴다", async () => {
-  const { container } = await render(<HomeActions slug="acme">
+  const { container } = await render(<HomeActions slug="acme" writeLock={null}>
     <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
       <HomeNotices {...props} state="import_failed" failedSurface="web" reason="import-failed" lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} />
     </PanelBody>
@@ -299,7 +299,7 @@ it("배너가 PanelBody 스크롤 컨테이너 안에서 격자 전폭을 쓴다
  * DOM을 하나라도 남기면 `:empty`가 거짓이 되어 Home 격자에 **빈 행 + gap 20**이 선다(가장 흔한 화면이다).
  */
 it("배너가 없으면 블록이 비어 있다 — 격자에 빈 행이 안 선다", async () => {
-  const { container } = await render(<HomeActions slug="acme">
+  const { container } = await render(<HomeActions slug="acme" writeLock={null}>
     <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5">
       <HomeNotices {...props} state="default" failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} />
     </PanelBody>
@@ -318,14 +318,14 @@ it("배너에서 연 Sync가 성공해 배너가 사라지면 [Close] 뒤 포커
   const older = document.createElement("a"); older.href = "#older"; older.textContent = "older"; document.body.prepend(older);
   try {
     const user = userEvent.setup();
-    const view = await render(<HomeActions slug="acme"><Host /></HomeActions>);
+    const view = await render(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
     older.focus();
     const retry = button("Try again");
     retry.focus();
     await act(async () => { await user.keyboard("{Enter}"); });
     await click("Discard changes and sync");
     await vi.waitFor(() => expect(document.querySelector('[role="dialog"] footer button')?.textContent).toBe("Close"));
-    await view.rerender(<HomeActions slug="acme"><Host state="default" /></HomeActions>);
+    await view.rerender(<HomeActions slug="acme" writeLock={null}><Host state="default" /></HomeActions>);
     await act(async () => { await user.click(document.querySelector<HTMLButtonElement>('[role="dialog"] footer button')!); });
     await vi.waitFor(() => expect(document.activeElement).toBe(button("Sync")));
   } finally { older.remove(); }

@@ -51,7 +51,7 @@ describe("Home", () => {
   const repo = { owner: "o", name: "r", branch: "main", syncBranch: "malmoi-i18n/sync-acme" };
   /** `revision`이 바뀌면 서버가 새 트리를 보낸 것이다 — `HomeActions`의 `children`이 새 객체가 된다. */
   function Home({ unsent, revision }: { unsent: number; revision: number }) {
-    return <HomeActions slug="acme">
+    return <HomeActions slug="acme" writeLock={null}>
       <HomeHeaderActions slug="acme" name="acme" branch="main" role="OWNER" unsent={unsent} paused={false} />
       <HomeNotices slug="acme" name="acme" branch="main" role="OWNER" state="default" repo={repo} unsent={unsent} failedSurface={null} reason={null} lastSyncAt={null} now={new Date()} />
       <output data-revision={revision} />
