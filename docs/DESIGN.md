@@ -1240,17 +1240,22 @@ Publish 모달(§6.646)과 같은 형이다. ③ 결과 자리가 하나가 된�
 ⚠️ **착지 때 다른 실행의 lease가 살아 있으면 OWNER의 [Sync]가 `aria-disabled` + 사유(`A sync is already running.`)다 — Home과 번역 화면 둘 다**(R5 — 같은 `SyncButton`이 화면마다 다르게 멈추면 드리프트다). Home 실패 배너의 [Try again]도 같은 잠금·같은 사유다. 착지 시점의 사실이고, 누르면 서버도 `already-running`이다. ⚠️ **번역 화면의 미저장 가로채기도 같은 판정(`syncAvailable`)을 본다** — 연결만 보던 때 멈춘 [Sync]가 "Discard your changes?"를 띄워 초안만 버렸다.
 
 시안은 Claude Design 핸드오프 `design_handoff_sync_repository`(아트보드 `4a`~`4f`)이고 **캔버스가 px 단위
-정본**이다. 아래는 Chrome computed style + CDP 접근성 트리로 **실측한** 값이다. ⚠️ **Home의 핸드오프가
+정본**이다. 아래는 Chrome computed style + CDP 접근성 트리로 **실측한** 값이다 — **2026-10-01 Dialog 형, Chromium 152**
+(뷰포트 높이 900 · 폭 1280/1440/1890에서 Dialog 치수가 같고 x만 가운데로 움직인다). ⚠️ **Home의 핸드오프가
 아니다** — 그 둘은 파랑 규칙도 다르다(§6.64 마지막 ⚠️).
 
 | 요소 | 실측값 |
 |---|---|
-| Dialog | 360 · radius 12 · shadow `rgba(22,24,27,.15) 0 6px 16px 2px` · 400px 뷰포트에서도 360 유지 |
-| 머리 | padding `16 16 8` · gap 8 · 제목 15/500/22.5px/0.225px |
-| 설명문 | 13/20.8px/0.26px/`#737373`/padding `0 16` · 브랜치는 **sans** 13/`#525252`(§4.1 — 2026-09-23까지 mono 13/18px이었다) |
-| 본문 | padding `16 16 0` · 블록 사이 8 |
+| Dialog | **440**(옛 360) · 높이는 단계가 정한다 — 결과 **192** · 진행+지연 줄(위험 블록 없음) **198.9** · 확인+위험 블록(PR 조회 중) **240.3** · 확인+미전달 2건 경고 **269** |
+| 머리 | `header` padding `16 16 8` · 높이 54 · 제목 15/500/22.5px `rgb(10,10,10)` · X `CloseButton` 36×36 원형 |
+| 설명문(확인·진행) | padding `0 16` · 두 줄 41.6(= 13/20.8) · 브랜치는 **sans** 13/`#525252`(§4.1 — 2026-09-23까지 mono 13/18px이었다) |
+| 본문 | padding `16 16 0` · `text-xs leading-[1.6]` |
+| 결과 Alert(성공) | 406×52 · padding 16 · gap 12 · 14/20 · bg `green-50` · `role=status` · Dismiss 없음. 결과 단계 본문 블록 높이 68(Alert 52 + 위 16) · `aria-describedby` 없음 |
+| 지연 줄(8초) | `SlowLine` — `common.slow` 한 줄 · `role=status` · 13px / **lh 17.33**(본문의 1.6이 아니라 `text-xs` 기본 1.333 — `SlowNotice`와 같은 마크업) · `#737373` · 406 폭 · 설명문 바로 아래(본문 위 +16) |
 | 위험 블록 | **`Alert warning compact`**(2026-09-29 — 손으로 그린 감축형이었다) · radius 10 · padding 12 · 13px · 글리프 14 mt 2 · **줄 사이 6** · bg `amber-50` · 선 없음 · 글자 본문 색 · **수에만 weight 500** · `aria-live`는 Alert가 아니라 안쪽 줄 묶음이 든다 |
-| 푸터 | padding 16 · gap 8 · flex-end · 버튼 36/radius 10/px 12/14px |
+| 푸터 | padding 16 · gap 8 · flex-end · 높이 68 · 버튼 36/radius 10/px 12/14px — 진행 Cancel 71.8×36 · 확정 `Sync from repository` 184.9×36(danger + 스피너) · 결과 [Close] 61.5×36 `primary` |
+| 번역 화면 lease 배너 | 헤더 배너 스택의 `Alert neutral` · 높이 52 · 글리프 16 · 본문 14/20 **한 줄**(1280에서도) · `<time>` weight 500 · live 없음(착지 사실) · 폭 = 콘텐츠 폭(1280: 982 · 1440: 1143 · 1890: 1591) |
+| Home 멈춘 [Sync](lease) | 80.9×36 · 글자 `#737373` · 흰 면 · `cursor: not-allowed` · `aria-disabled` · 사유는 `title` + sr-only `aria-describedby` · [Publish]와 gap 8 |
 | 확정 버튼 | **위험 집계가 0이어도 danger다** — `Button danger`(§6.4 — 면 `destructive/8` · 글자 `destructive` · 테두리 없음) |
 | 포커스 | 열릴 때 `Cancel`. 접근 이름 `Sync` ≠ 확정 라벨 — **확정 라벨이 건수로 갈린다** (2026-09-18): 미발송 0이면 `Sync from repository`, N이면 `Discard changes and sync`(무엇을 버리는지를 동사가 먼저 말한다). ⚠️ **N은 폐기 승인 지문과 같은 응답의 건수다** (audit #2) — 화면 건수는 발급 전 잠정값이고, 그동안 확정은 `aria-disabled`라 잠정값으로 승인되지 않는다. 둘 다 트리거와 이름이 다르다 |
 | `aria-describedby` | ⚠️ **Radix는 설명문 하나에만 건다** — 경고 블록 id를 함께 넘겨 넓힌다. 안 넓히면 열릴 때 읽히는 것이 "덮는다"까지이고 **무엇이 지워지는지는 안 읽힌다** |
@@ -1300,7 +1305,7 @@ Publish 모달(§6.646)과 같은 형이다. ③ 결과 자리가 하나가 된�
 `[Sync]`를 다시 누른다. 제목은 Sync 전용 문장이고 공용 `access.unauthorized`("…to save your work")를 빌리지 않는다 —
 `[Sync]`에는 저장할 입력이 없다. Home과 번역 화면이 같은 `SyncButton` Dialog를 써서 두 자리가 함께 움직인다.
 
-**실측 상태** — ⚠️ **아래 표는 2026-09-16 띠 시절의 실측이다. 2026-10-01 Dialog 형(진행 · 70초 출구 · 결과 · 닫힘 포커스)은 아직 브라우저로 재지 않았다** — 재기 전까지 jsdom(`sync-dialog.test.tsx`)이 유일한 근거다. ⚠️ **jsdom 통과를 실물 검증으로 바꿔 적지 않는다.** `sync-button.test.tsx`·
+**실측 상태** (2026-10-01, Chromium 152 — Dialog 형은 위 치수 표). ⚠️ **jsdom 통과를 실물 검증으로 바꿔 적지 않는다.** `sync-button.test.tsx`·
 `sync-result.test.tsx`가 재는 것은 **판정**이고 여기가 재는 것은 **시안과 같은가**다.
 
 | 갈래 | 상태 | 밟는 방법 |
@@ -1310,6 +1315,8 @@ Publish 모달(§6.646)과 같은 형이다. ③ 결과 자리가 하나가 된�
 | 거부 — `unavailable`(요청이 못 감) | ✅ 실측 | CDP로 오프라인 |
 | 거부 — `already-running` | ✅ 실측 | `Project.repositoryImportToken`·`repositoryImportStartedAt`을 세운다(5분 안에 누른다) |
 | 거부 — 나머지 넷 | ⛔ **도달 불가** | 위 참조. `pnpm test`의 판정 테스트가 유일한 방어선이다 |
+| Dialog 형 — 확인 · 진행(닫기 차단) · 결과 · 닫힘 포커스(Home·번역 화면) · lease 착지 · 저장 거부 · Revert 미리보기 거부 | ✅ 실측 (2026-10-01) | `Project.repositoryImportToken`·`repositoryImportStartedAt`을 세워 lease를 만든다. ⚠️ 진행 중 배경 클릭이 포커스를 `body`로 떨어뜨렸다(#169 — 오버레이 mousedown 기본 동작을 막아 고쳤다, 재실측 필요) |
+| 70초 출구 · Revert 확정 경로의 거부 · Safari/Firefox 포커스 · `unconfirmed`의 MPA 폴백 | ⏭ 미실측 | 70초는 서버를 멈춰야 닿는다 · Revert 확정은 쓸 수 있는 기준값(Publish)이 있어야 닿는다. 넷 다 DOM 테스트가 판정을 고정한다 |
 
 ### 6.645 ⚠️ 이메일 칸에는 상태가 **셋**이다 (2026-09-10)
 
