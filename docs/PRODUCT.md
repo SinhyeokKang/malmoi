@@ -803,13 +803,13 @@ Sources의 Add sources 모달이 부르는 `addSurfaces`의 `project:settings`�
 **Sync 시각이 아니다.**
 
 ⚠️ **`?e=`는 일부만 생성기를 지난다** (거부 사유 — 읽는 라우트: `projects`·`projects/new`·`account`·
-`settings`·`sources`·`surfaces/new`·`invite/[token]`·`signin/link/[challenge]`·`oauth/authorize`. 정본은 각 페이지의 `searchParams` 타입이다). `routes.sources({ add, e })`·`routes.account({ e, … })`·
+`settings`·`sources`·`surfaces/new`·`invite/[token]`·`signin/link/[challenge]`·`oauth/authorize`. 정본은 각 페이지의 `searchParams` 타입이다). `routes.projects({ e })`·`routes.sources({ add, e })`·`routes.account({ e, … })`·
 `routes.signInLink(challenge, { e })`·`routes.oauthAuthorize({ request, e })`는 생성기를 지나고, 아래 자리만 문자열 연결로 만든다. ⚠️ **`/projects/new?e=`는 2026-09-13부터 "모달이 열린 채 그 사유를
 든다"이다** — 그 라우트가 목록 위의 모달 딥링크가 되면서, 사유는 페이지 머리가 아니라 ① 본문 맨 위
 배너로 선다. 그 라우트는 `?q=`도 함께 받아 **뒤 목록에 반영**하고, 닫으면 그 값을 들고
 `/projects`로 돌아간다 (`routes.newProject({ q })`). 남은 자리가 `redirect()`의 문자열 연결이고
-(`lib/auth/session.ts`·`app/api/github/callback/route.ts`·`app/invite/[token]/page.tsx`, 그리고 프로젝트 페이지들이
-행을 못 찾을 때의 `` `${routes.projects()}?e=not-found` `` — `routes.projects`가 `q`만 받는다),
+(`app/api/github/callback/route.ts`·`app/invite/[token]/page.tsx` — `requireProjectAccess`와 프로젝트를 못 찾은 페이지들은
+2026-10-01에 `routes.projects({ e })`로 옮겼다),
 **이 문서가 바로 위에서 경고한 그 형태다** — 위 목록의 키들과 달리 그 자리들의 `?e=`는 생성기↔수신자 대조의
 바깥에 있다. 늘릴 일이 생기면 `routes.*`의 쿼리 인자로 먼저 옮긴다. `/signin`의 `?error=`·
 `?sessions=`는 반대로 `routes.signIn({...})`이 만든다(8-1a).
