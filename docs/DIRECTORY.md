@@ -225,7 +225,9 @@ components/
                         filter-menu · use-leave-guard(뒤로가기는 capture 단계 popstate에서 되돌리고 새로고침·닫기는
                         beforeunload다). ⚠️ 카드 사이 핸들은 react-resizable-panels가 아니다 — px 하한 셋(420·336·208)을
                         % 환산 없이 지키려고 lib/translations/layout.ts가 폭을 계획한다
-  translations/         작업 화면 밖에 남은 조각 셋 — edit-loss-banner · base-pending-banner(⚠️ 둘은 sync-edit-protection의
+  translations/         작업 화면 밖에 남은 조각 넷 — sync-lock(⚠️ Sync가 도는 동안의 쓰기 잠금을 보이는 두 자리 — 착지 배너와
+                        저장·Revert 거부 Dialog. **판정하지 않는다** — lease 판정 planWriteLock은 lib/sync/plan.ts에 있고 잎이 아니라
+                        서버가 시각만 넘긴다) · edit-loss-banner · base-pending-banner(⚠️ 둘은 sync-edit-protection의
                         화면 쪽 산출물이고 **판정을 다시 쓰지 않는다** — 앞은 미전달 편집 수를 값으로 받아
                         "손실"이 아니라 "리포 갱신 보류"를 말하고, 뒤는 lib/onboarding/base-pending을
                         불러 설정 화면의 Alert와 같은 조건 하나를 공유한다. 둘 다 닫기가 없다) · locale-badge
@@ -306,11 +308,13 @@ components/
   home/                 Home 화면의 블록 넷 + 클라이언트 호스트. count-cards · attention-card ·
                         logs-card · meta-column은 **순수 서버 컴포넌트**다(`+n more`가 <details>라
                         클라이언트 상태가 0이다) · actions.tsx만 "use client"
-                        ⚠️ **actions.tsx가 컨텍스트 Provider다** — [Sync]는 머리에 있고 그 결과·배너는
-                        본문에 있어서, 한쪽이 상태를 소유하면 배너의 [Try again]이 같은 Dialog를 못 연다.
+                        ⚠️ **actions.tsx가 컨텍스트 Provider다** — [Sync]는 머리에 있고 실패 배너는
+                        본문에 있어서, 한쪽이 열림 상태를 소유하면 배너의 [Try again]이 같은 Dialog를 못 연다.
                         Provider는 DOM을 안 만들어 PanelHeader·PanelBody 형제 구조가 그대로 남는다
                         ⚠️ **sync-button·sync-result는 sync-repository의 산출물이다** — 같은 디렉터리에
-                        살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다
+                        살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다.
+                        Home과 번역 화면이 같은 sync-button을 쓰고, 확인 → 진행 → 결과가 그 Dialog 하나다
+                        (2026-10-01 sync-lock — sync-result는 이제 Dialog 본문이고 두 화면의 결과 띠는 없다)
                         hold-later.tsx("use client" 섬 — 열린 PR 조회에 달린 보류 사유를 `To send` 보조 줄·메타 `Held` 배지 두 자리에
                         늦게 그린다. 본문은 그 조회를 기다리지 않는다 — 판정은 lib/home/cards의 planHomeHold, 도착은 use-arrived)
   onboarding/modal.tsx  components/ui/modal.tsx를 그대로 재수출한다 — 호출부를 안 건드리려는 한 줄이다
