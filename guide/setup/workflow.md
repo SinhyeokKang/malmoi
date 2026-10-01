@@ -17,7 +17,7 @@ Before you start: Have the push token from the **Malmoi is ready** page. Store t
 2. If your organization restricts actions, follow [Allow the actions](allowed-actions.md).
 3. Commit the file on the base branch you chose during setup. The generated workflow has one step for each source.
 
-![The Workflow file dialog in Malmoi Settings showing the generated YAML and a Copy YAML button](/guide/workflow-file.webp "Copy the YAML and save it as .github/workflows/malmoi-i18n.yml.")
+![The Workflow file dialog in Malmoi Settings showing the generated YAML and a Copy button](/guide/workflow-file.webp "Copy the YAML and save it as .github/workflows/malmoi-i18n.yml.")
 
 If your code reads translations through a wrapper function other than the default `@/i18n#t`, add the `wrapper` input under that step's `with:`. Use `module#export` for a direct function, or append `()` for a hook, such as `next-intl#useTranslations()`. For multiple wrappers, use a YAML `|` block with one per line. Setup does not ask for this input. It helps Malmoi find code references; it does not decide which translation keys exist.
 
