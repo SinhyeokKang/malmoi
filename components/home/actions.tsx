@@ -5,8 +5,6 @@ import { createContext, useContext, useEffect, useId, useRef, useState, type Rea
 
 import { useCommitWait } from "@/components/commit-wait";
 import { SyncButton } from "@/components/home/sync-button";
-import { SlowNotice } from "@/components/slow-notice";
-import { SyncResult } from "@/components/home/sync-result";
 import { PublishButton, PublishModal, usePublish, type PublishController } from "@/components/publish-button";
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
 import { ReconnectButton } from "@/components/reconnect-button";
@@ -26,12 +24,9 @@ import { STATE } from "@/lib/status/canon";
 /**
  * Home의 **두 자리에 걸친 상태 하나** (project-home T6 · sync-repository T9).
  *
- * ⚠️ **[Sync]는 머리에 있고 그 결과·배너는 본문에 있다.** 한 컴포넌트가 두 자리를 그릴 수 없고,
- * 결과를 아래쪽이 소유하면 머리의 `[Try again]`이 같은 Dialog를 못 연다 — 그래서 상태를 **컨텍스트가
- * 든다.** Provider는 DOM을 만들지 않으므로 `PanelHeader`·`PanelBody` 형제 구조가 그대로 남는다.
- *
- * ⚠️ **결과 자리가 무조건 렌더되는 곳이어야 한다** — 조건부 분기 안에 두면 `revalidatePath`·
- * `router.refresh()`가 방금 받은 결과를 언마운트한다 (POSTMORTEM 2026-09-07).
+ * ⚠️ **[Sync]는 머리에 있고 실패 배너는 본문에 있다.** 배너의 `[Try again]`이 머리의 같은 Dialog를 열어야 해서 열림 상태를
+ * **컨텍스트가 든다.** Provider는 DOM을 만들지 않으므로 `PanelHeader`·`PanelBody` 형제 구조가 그대로 남는다.
+ * Sync 결과는 Dialog 안에 선다(sync-lock S5 — 본문의 결과 띠를 걷었다).
  */
 type HomeActionsValue = {
   syncOpen: boolean;
@@ -45,13 +40,11 @@ type HomeActionsValue = {
    * `disabled`로 떨어지고, Dialog가 포커스를 되돌릴 대상이 사라진다 (DESIGN §6.64).
    */
   syncPending: boolean;
-  /** `syncPending`에서 재검증 트리 대기를 뺀 것 — 지연 문구는 실제로 도는 동안만이다 (malmoi#103). */
-  syncRunning: boolean;
   setSyncPending: (pending: boolean) => void;
   publishPending: boolean;
   publish: PublishController;
-  outcome: RepositoryImportOutcome | null;
-  setOutcome: (outcome: RepositoryImportOutcome | null) => void;
+  /** Sync 결과가 왔다 — 재검증 트리까지 교차 잠금을 잇는다(malmoi#103). 결과 표시는 Dialog가 든다. */
+  onSyncResult: (outcome: RepositoryImportOutcome) => void;
   titleRef: RefObject<HTMLHeadingElement | null>;
 };
 
@@ -82,17 +75,16 @@ export function HomeActions({ children, slug }: { children: ReactNode; slug: str
     `syncOpen`을 참으로 만들면 **화면엔 아무 일도 없고 Publish가 끝나는 순간 되돌릴 수 없는 동작의
     확인 창이 혼자 열린다** — 사람이 이미 다른 것을 보고 있어도.
 
-    ⚠️ **문을 하나로 좁힌다** — 여는 자리가 셋(머리의 트리거 · 실패 배너의 `[Try again]` · 결과
-    Alert의 `[Try again]`)이라 호출부마다 조건을 달면 넷째 자리가 생길 때 빠진다. 반대 방향(창이
+    ⚠️ **문을 하나로 좁힌다** — 여는 자리가 둘(머리의 트리거 · 실패 배너의 `[Try again]`)이라
+    호출부마다 조건을 달면 셋째 자리가 생길 때 빠진다. 결과의 `[Try again]`은 이미 열린 Dialog 안이다. 반대 방향(창이
     열린 채 Publish가 시작)은 Dialog가 modal이라 그 버튼에 클릭이 닿지 않는다.
   */
   const setSyncOpen = (open: boolean) => openSync(open && !publishPending);
-  const [outcome, setOutcomeState] = useState<RepositoryImportOutcome | null>(null);
   // 트리를 싣고 오는 결과만 기다린다 — `try` 안의 거부(`reconfirm`…)도 온다, 그 앞의 거부는 안 온다 (`importRevalidates`).
-  const setOutcome = (next: RepositoryImportOutcome | null) => { if (next !== null && importRevalidates(next)) syncCommit.wait(); setOutcomeState(next); };
+  const onSyncResult = (next: RepositoryImportOutcome) => { if (importRevalidates(next)) syncCommit.wait(); };
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   return (
-    <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, syncRunning, setSyncPending, publishPending, publish, outcome, setOutcome, titleRef }}>
+    <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, onSyncResult, titleRef }}>
       {children}
     </Ctx.Provider>
   );
@@ -146,7 +138,7 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
    */
   paused: boolean;
 }) {
-  const { syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, setOutcome, titleRef } = useHomeActions();
+  const { syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, onSyncResult, titleRef } = useHomeActions();
   return (
     <div className="flex items-center gap-2">
       <SyncButton
@@ -167,7 +159,7 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
         open={syncOpen}
         onOpenChange={setSyncOpen}
         onPendingChange={setSyncPending}
-        onResult={setOutcome}
+        onResult={onSyncResult}
         fallbackFocusRef={titleRef}
       />
       {/* ⚠️ 보낼 것이 없으면 비활성이다 — 누르면 "보낼 것이 없다"만 말하는 버튼이 된다. */}
@@ -177,10 +169,8 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
 }
 
 /**
- * 본문 맨 위의 **고정 자리** — 상태 배너 하나 + Sync 결과와 Publish 모달.
- *
- * ⚠️ **배너와 결과가 같은 자리를 다투지 않는다.** 배너는 "지금 이 프로젝트가 어떤 상태인가"이고
- * 결과는 "방금 누른 것이 어떻게 됐나"라, 둘 다 서 있는 순간이 정상이다.
+ * 본문 맨 위의 **고정 자리** — 상태 배너 하나 + Publish 모달. 배너는 "지금 이 프로젝트가 어떤 상태인가"이고,
+ * "방금 누른 Sync가 어떻게 됐나"는 Sync Dialog가 든다(sync-lock S5).
  */
 /*
   ⚠️ **`role="alert"`을 셋에 다 주지 않는다** — 캔버스는 셋 다 그렇게 적었지만 프리미티브의
@@ -205,7 +195,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
   lastSyncAt: Date | null;
   now: Date;
 }) {
-  const { outcome, setOutcome, publish, titleRef, setSyncOpen, publishPending, syncPending, syncRunning } = useHomeActions();
+  const { publish, titleRef, setSyncOpen, publishPending } = useHomeActions();
   const owner = role === "OWNER";
   /** 복원 거부 — 배너 `actions` 안이 아니라 **배너의 형제**로 선다 (audit #7 r1: 경고 속 경고가 됐다). */
   const [restoreError, setRestoreError] = useState<string | null>(null);
@@ -303,20 +293,6 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
       )}
       {state === "archived" && restoreError !== null && <Alert variant="danger">{restoreError}</Alert>}
 
-      <SyncResult
-        slug={slug}
-        branch={branch}
-        outcome={outcome}
-        onDismiss={() => setOutcome(null)}
-        retryDisabled={publishPending}
-        /*
-          ⚠️ **역할로 가른다 — 위 배너 셋과 같은 모양이다.** EDITOR에게 `[Try again]`이 서면
-          `SyncButton`이 `role !== "OWNER"`에서 `null`이라 눌러도 확인 창이 안 열린다. 지금은 EDITOR가
-          결과를 가질 경로가 없어 도달 불가지만, **무반응인 버튼은 비활성보다 한 단계 아래다**.
-        */
-        onRetry={owner ? () => setSyncOpen(true) : undefined}
-      />
-      <SlowNotice active={syncRunning} />
       <PublishModal slug={slug} publish={publish} fallbackFocusRef={titleRef} count={unsent} repo={repo} role={role} />
     </div>
   );

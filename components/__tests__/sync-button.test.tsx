@@ -24,6 +24,11 @@ function button(name: string) {
 }
 function dialog() { return document.querySelector('[role="dialog"]'); }
 async function click(name: string) { await act(async () => userEvent.setup().click(button(name))); }
+/** 결과 Dialog의 [Close] — 헤더 X와 접근 이름이 같아 푸터에서 집는다. 결과는 Dialog 안에 선다(sync-lock S5). */
+async function closeResult() {
+  await vi.waitFor(() => expect(dialog()?.querySelector("footer button")?.textContent).toBe("Close"));
+  await act(async () => userEvent.setup().click(dialog()!.querySelector<HTMLButtonElement>("footer button")!));
+}
 beforeEach(() => { vi.clearAllMocks(); mocks.pr.mockResolvedValue(null); mocks.run.mockResolvedValue(success); mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 0 }); });
 
 it("EDITOR에게는 없고 위험이 없는 OWNER도 별도 이름의 danger 확인을 거친다", async () => {
@@ -82,7 +87,7 @@ it("확인 Dialog의 접근 가능한 설명이 경고 블록까지 든다", asy
   expect(document.getElementById(only)?.textContent).toContain("translation files on main");
 });
 
-it("실행 중 트리거는 포커스를 받고 클릭과 Enter 연타를 막는다", async () => {
+it("실행 중 트리거는 포커스를 받을 수 있는 채로 진행을 들고 확정 연타·Enter는 한 번만 부른다", async () => {
   const run = deferred<RepositoryImportOutcome>(); mocks.run.mockReturnValue(run.promise);
   await render(<SyncButton {...props} />); await click("Sync"); await click("Sync from repository");
   // D1 (audit-ux #25) — 라벨은 `Sync` 그대로이고 스피너가 아이콘을 교체한다. 라벨이 접근 이름이라 진행 신호는 `aria-busy`가 든다.
@@ -92,11 +97,14 @@ it("실행 중 트리거는 포커스를 받고 클릭과 Enter 연타를 막는
   expect(trigger.querySelectorAll("svg")).toHaveLength(1);
   expect(trigger.querySelector("svg")?.classList.contains("animate-spin")).toBe(true);
   expect(document.body.textContent).not.toContain("Syncing");
-  expect(document.activeElement).toBe(trigger);
-  await click("Sync"); await act(async () => userEvent.setup().keyboard("{Enter}{Enter}"));
-  expect(dialog()).toBeNull(); expect(mocks.run).toHaveBeenCalledOnce();
+  // 진행은 Dialog가 든다(sync-lock S5) — 누른 확정 버튼에 포커스가 머물고, 연타와 Enter가 그 버튼에 닿아도 한 번만 부른다.
+  expect(document.activeElement).toBe(button("Sync from repository"));
+  await click("Sync from repository"); await act(async () => userEvent.setup().keyboard("{Enter}{Enter}"));
+  expect(dialog()).not.toBeNull(); expect(mocks.run).toHaveBeenCalledOnce();
   await act(async () => run.resolve(success));
-  expect(trigger.getAttribute("aria-disabled")).toBe("false"); expect(document.activeElement).toBe(trigger);
+  await closeResult();
+  expect(trigger.getAttribute("aria-disabled")).toBe("false");
+  await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
   expect(trigger.getAttribute("aria-busy")).toBeNull();
   expect(trigger.querySelector("svg")?.classList.contains("animate-spin")).toBe(false);
   expect(trigger.textContent?.trim()).toBe("Sync");
@@ -169,14 +177,13 @@ it("미발송 0이어도 열린 PR이 있으면 경고가 서고 권유가 외�
   expect(link?.getAttribute("target")).toBe("_blank");
 });
 
-it("Home 호스트는 원결과를 소유해 refresh 후 재렌더에서도 보존한다", async () => {
+it("결과는 Action 재검증의 재렌더에서도 Dialog 안에 남는다", async () => {
   function Host({ refreshed }: { refreshed: number }) {
-    const [outcome, setOutcome] = useState<RepositoryImportOutcome | null>(null);
-    return <div data-refreshed={refreshed}><SyncButton {...props} onResult={setOutcome} /><SyncResult slug="acme" branch="main" outcome={outcome} /></div>;
+    return <div data-refreshed={refreshed}><SyncButton {...props} /></div>;
   }
   const view = await render(<Host refreshed={0} />); await click("Sync"); await click("Sync from repository");
   await view.rerender(<Host refreshed={1} />);
-  expect(document.querySelector('[role="status"]')?.textContent).toContain("Synced 0 keys from main");
+  await vi.waitFor(() => expect(dialog()?.querySelector('[role="status"]')?.textContent).toContain("Synced 0 keys from main"));
 });
 
 /**
@@ -258,11 +265,13 @@ it("응답이 온 거부·성공에는 refresh를 부르지 않고 응답을 잃
   await click("Sync"); await click("Sync from repository");
   expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "unauthorized" });
   expect(mocks.refresh).not.toHaveBeenCalled();
+  await closeResult();
 
   mocks.run.mockRejectedValue(new Error("offline"));
   await click("Sync"); await click("Sync from repository");
   expect(props.onResult).toHaveBeenLastCalledWith({ ok: false, error: "unconfirmed" });
   expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  await closeResult();
 
   mocks.run.mockResolvedValue(success);
   await view.rerender(<SyncButton {...props} />);
@@ -303,6 +312,7 @@ it("[C4] Dialog를 열 때 받은 지문을 확정에 싣는다 — 발급 실�
   await vi.waitFor(() => expect(mocks.prepare).toHaveBeenCalledWith({ slug: "acme" }));
   await click("Discard changes and sync");
   expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: "digest-1" });
+  await closeResult();
 
   mocks.prepare.mockRejectedValue(new Error("offline"));
   await click("Sync");

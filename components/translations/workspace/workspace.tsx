@@ -9,8 +9,6 @@ import { useCommitWait } from "@/components/commit-wait";
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
 import { SearchInput } from "@/components/search-input";
 import { SyncButton } from "@/components/home/sync-button";
-import { SyncResult } from "@/components/home/sync-result";
-import { SlowNotice } from "@/components/slow-notice";
 import { BasePendingBanner } from "@/components/translations/base-pending-banner";
 import { EditLossBanner } from "@/components/translations/edit-loss-banner";
 import { Alert } from "@/components/ui/alert";
@@ -509,19 +507,16 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   useEffect(() => { if (!syncPending && resync !== null && resync.from === list) setResync(null); }, [syncPending, resync, list]);
   const setSyncOpen = (open: boolean) => openSyncDialog(open && !publish.pending);
   /**
-   * ⚠️ **[Sync]의 원결과를 이 화면이 든다** (audit #5 — POSTMORTEM 2026-09-08 재발) — 전엔 `onResult`가 결과를 버리고
-   * refresh만 불러 거부가 설명 없이 버튼만 복귀했다. 지금은 Action의 재검증이 새 트리를 싣고 오고, **응답을 잃은 실행(`unconfirmed`)만**
-   * `SyncButton`이 refresh로 트리를 부른다(malmoi#132). 트리를 싣고 오는 결과만 새 트리를 기다린다 — `try` 안의 거부(`reconfirm`…)도
-   * 온다 (`importRevalidates`, malmoi#103 r1).
+   * **[Sync]의 결과가 왔다** — 표시는 Sync Dialog가 든다(sync-lock S5 — 이 화면의 결과 띠를 걷었다). 여기서는 교차 잠금과 목록 세대만 잇는다.
+   * Action의 재검증이 새 트리를 싣고 오고, **응답을 잃은 실행(`unconfirmed`)만** `SyncButton`이 refresh로 트리를 부른다(malmoi#132).
+   * 트리를 싣고 오는 결과만 새 트리를 기다린다 — `try` 안의 거부(`reconfirm`…)도 온다 (`importRevalidates`, malmoi#103 r1).
    * ⚠️ **`unconfirmed`도 새 세대다** (malmoi#132 r1) — 서버가 끝냈다면 refresh 트리에 Sync가 들여온 키가 있고, 병합하면 끼워 넣지 않아
    * 목록에 안 선다(감사 #11). 끝내지 않았으면 트리가 같아 새 세대가 곧 병합과 같은 목록이다. 트리가 안 오면(오프라인) 위 effect가 상한 뒤 버린다.
    */
-  const [syncOutcome, setSyncOutcomeState] = useState<RepositoryImportOutcome | null>(null);
-  const setSyncOutcome = (next: RepositoryImportOutcome | null) => {
-    if (next !== null && importRevalidates(next)) syncCommit.wait();
-    const replaced = next !== null && (next.ok || next.error === "unconfirmed");
+  const onSyncResult = (next: RepositoryImportOutcome) => {
+    if (importRevalidates(next)) syncCommit.wait();
+    const replaced = next.ok || next.error === "unconfirmed";
     if (replaced && syncListFrom.current !== null) setResync({ from: syncListFrom.current });
-    setSyncOutcomeState(next);
   };
   /*
     **끊기면 Sync·Publish가 함께 꺼진다** — Home 머리와 같은 판정(`planActionAvailability`)이다(🔴 F · #52 재발 경로). 보관은 이 화면에 오지 않는다
@@ -634,7 +629,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                 <SyncButton slug={slug} surfaceSlug={routeSurfaceSlug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
                   paused={!availability.sync || publish.pending} pausedReason={availability.sync ? m.repositorySync.waitPublish : connectionBlock ?? m.repositorySync.paused}
                   open={syncOpen} onOpenChange={setSyncOpen} onPendingChange={setSyncPending}
-                  onResult={setSyncOutcome} fallbackFocusRef={titleRef} />
+                  onResult={onSyncResult} fallbackFocusRef={titleRef} />
               </span>
             ) : (
               <>
@@ -694,16 +689,12 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           <p className="text-muted-foreground text-xs">{w.filters.substituted(routeSurfaceSlug, query.missingLocale ?? "")}</p>
         )}
         {/*
-          ⚠️ **두 배너와 Sync 결과는 조건부 분기 밖의 형제다** (DESIGN §6.1 · POSTMORTEM 2026-09-07) — 분기 안에 두면 `router.refresh()`가 방금 만든
-          상태를 언마운트한다. 대기 배너가 먼저다: "왜 지금 보내야 하는가"가 "보내라"보다 앞이다.
+          ⚠️ **두 배너는 조건부 분기 밖의 형제다** (DESIGN §6.1 · POSTMORTEM 2026-09-07) — 분기 안에 두면 `router.refresh()`가 방금 만든
+          상태를 언마운트한다. 대기 배너가 먼저다: "왜 지금 보내야 하는가"가 "보내라"보다 앞이다. Sync 결과는 Sync Dialog가 든다(sync-lock S5).
         */}
         <div className="space-y-3 empty:hidden">
           <BasePendingBanner baseLocale={props.baseLocale} declaredBaseLocale={props.declaredBaseLocale} />
           <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} blockedReason={connectionBlock} />
-          <SyncResult slug={slug} branch={props.sync.branch} outcome={syncOutcome} onDismiss={() => setSyncOutcome(null)}
-            retryDisabled={publish.pending} onRetry={role === "OWNER" ? openSync : undefined} />
-          {/* 지연 문구는 실제로 도는 동안만이다 — 재검증 트리 대기(malmoi#103)는 넣지 않는다. */}
-          <SlowNotice active={syncRunning} />
         </div>
       </div>
 

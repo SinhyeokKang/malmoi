@@ -79,18 +79,21 @@ it("Sync가 도는 동안 Publish가 잠기고 끝나면 함께 풀린다", asyn
   expect(button("Sync").getAttribute("aria-busy")).toBe("true");
   expect(document.body.textContent).not.toContain("Syncing");
   expect(locked(button("Publish"))).toBe(true);
-  // ⚠️ 잠겼어도 **호출까지 막혀야 한다** — 비활성 표시만 하고 핸들러가 살아 있으면 Enter가 통과한다.
-  await click("Publish");
+  // ⚠️ 잠겼어도 **호출까지 막혀야 한다** — 비활성 표시만 하고 핸들러가 살아 있으면 Enter가 통과한다. 진행 Dialog가 모달이라 포인터는
+  // 닿지 않지만, 70초 출구로 닫은 뒤에는 닿는다 — 그래서 핸들러를 직접 친다.
+  await act(async () => { button("Publish").click(); });
   expect(mocks.pull).not.toHaveBeenCalled();
 
   await act(async () => { run.resolve({ ok: true, surfaces: [], remainingEdits: 0 }); await run.promise; });
+  // 결과는 Dialog 안에 선다(sync-lock S5) — 닫아야 머리의 버튼에 닿는다.
+  await click("Close");
   // 성공은 재검증 트리가 커밋될 때까지 잠긴 채다 (malmoi#103) — 새 `children`이 서버 렌더다.
   expect(locked(button("Publish"))).toBe(true);
   await view.rerender(<HomeActions slug="acme"><Host /></HomeActions>);
   expect(locked(button("Publish"))).toBe(false);
 });
 
-/** audit-ux #23 — Sync는 큰 리포에서 30초를 넘긴다. 8초가 지나면 본문에 "큰 리포는 오래 걸린다" 한 줄이 선다. */
+/** audit-ux #23 — Sync는 큰 리포에서 30초를 넘긴다. 8초가 지나면 진행 Dialog 안에 "큰 리포는 오래 걸린다" 한 줄이 선다(sync-lock S5). */
 it("Sync가 8초를 넘기면 지연 문구가 서고 끝나면 사라진다", async () => {
   const run = deferred<{ ok: true; surfaces: []; remainingEdits: number }>();
   mocks.run.mockReturnValue(run.promise);

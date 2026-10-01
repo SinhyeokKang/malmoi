@@ -102,7 +102,11 @@ it("미저장이 있을 때 Publish 진행 중 Sync를 눌러도 폐기 확인�
   expect(document.body.textContent).not.toContain("Discard your changes?");
 });
 
-it("Sync가 도는 동안 미저장이 생겨도 [Sync]를 누르면 폐기 확인창이 서지 않는다", async () => {
+/**
+ * Sync가 도는 동안은 Dialog가 진행을 들어 편집 자체가 막힌다(sync-lock S5 — 모달이다). 미저장이 다시 생기는 길은 70초 출구로 닫은 뒤뿐이고,
+ * 그때도 [Sync]는 도는 중이라 폐기 확인창을 세우지 않는다.
+ */
+it("Sync가 도는 동안 Dialog가 진행을 들고, 70초 출구로 닫은 뒤 미저장이 생겨도 [Sync]가 폐기 확인창을 세우지 않는다", async () => {
   const user = userEvent.setup();
   let settle: (value: unknown) => void = () => {};
   mocks.run.mockImplementation(() => new Promise(resolve => { settle = resolve; }));
@@ -113,8 +117,16 @@ it("Sync가 도는 동안 미저장이 생겨도 [Sync]를 누르면 폐기 확�
   await user.click(button("Sync"));
   expect(document.body.textContent).toContain("Discard your changes?");
   await act(async () => user.click(button("Discard changes")));
-  await act(async () => user.click(button("Discard changes and sync")));
-  expect(mocks.run).toHaveBeenCalledOnce();
+  // 70초 출구의 타이머만 가짜로 잰다 — 열림 순서까지 가짜 시계에 두면 Radix가 확인창을 `pointer-events: none`으로 남긴다.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    await act(async () => userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(button("Discard changes and sync")));
+    expect(mocks.run).toHaveBeenCalledOnce();
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    await act(async () => { vi.advanceTimersByTime(70_000); });
+  } finally { vi.useRealTimers(); }
+  await act(async () => user.click(button("Close")));
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
   await user.type(zh(), "空");
   await user.click(button("Sync"));
   expect(document.body.textContent).not.toContain("Discard your changes?");

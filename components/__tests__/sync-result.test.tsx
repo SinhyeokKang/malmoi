@@ -273,3 +273,20 @@ it("전 표면 superseded는 neutral Alert다 — Logs와 같은 톤", async () 
   expect(container.textContent).not.toMatch(/couldn['’]t finish/);
   expect(container.querySelector('[data-reason="superseded"]')?.textContent).toContain("New repository data arrived while syncing");
 });
+
+/**
+ * sync-lock S5 — 결과가 Dialog 안으로 옮기며 거부에도 [Try again]이 선다. **닫을 수 있고 갈 곳이 없는 거부만**이다(`dismissible` · 액션 없음).
+ * `unconfirmed`는 뺀다 — 서버가 끝냈을 수 있어 다시 돌리면 두 번 돈다(malmoi#132).
+ */
+it.each([
+  ["reconfirm", true], ["already-running", true], ["unavailable", true], ["ingest-failed", true],
+  ["unconfirmed", false], ["unauthorized", false], ["repo-replaced", false], ["not-ready", false],
+] as const)("거부 %s의 [Try again]은 %s", async (error, shown) => {
+  const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: false, error }} />);
+  expect([...container.querySelectorAll("button")].some(b => b.textContent?.trim() === m.common.retry)).toBe(shown);
+});
+
+it("onRetry가 없으면 거부에도 [Try again]이 서지 않는다", async () => {
+  const { container } = await render(<SyncResult {...props} outcome={{ ok: false, error: "reconfirm" }} />);
+  expect(container.querySelector("button")).toBeNull();
+});

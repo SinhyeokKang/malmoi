@@ -57,6 +57,11 @@ export const en = {
      * 규칙(DESIGN §6.646)은 이 라벨에도 선다. 무엇을 버리는지를 동사가 먼저 말한다.
      */
     confirmDiscard: "Discard changes and sync",
+    /**
+     * 응답 없이 70초가 지난 진행 Dialog의 한 줄 (sync-lock R3) — 닫기가 이 줄과 함께 돌아온다. ⚠️ **판정이 아니다** — 끝났다고도 실패했다고도
+     * 말하지 않는다. 함수 상한(60초)을 넘겨 응답이 영영 안 올 수 있고, 무엇이 됐는지는 서버가 Logs에 남긴다.
+     */
+    resultInLogs: "The result will be in Logs.",
     /** 제목이 대상을 들므로 확인 버튼은 **동작 + 방향**만 말한다 (시안 §4). */
     title: (name: string): string => `Sync ${name} from the repository?`,
     /** ⚠️ 브랜치는 **mono 표면**이다 — 호출부가 감싼다(사전은 잎이라 클래스를 들지 않는다). */

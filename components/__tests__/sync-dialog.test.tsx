@@ -74,8 +74,8 @@ it("진행 중에는 Escape·바깥 클릭·X·Cancel 어느 것으로도 닫히
   await click("Sync"); await click("Sync from repository");
   await act(async () => userEvent.setup().keyboard("{Escape}"));
   expect(dialog()).not.toBeNull();
-  const overlay = document.querySelector<HTMLElement>("[data-state='open']:not([role='dialog'])");
-  if (overlay !== null) await act(async () => userEvent.setup().pointer({ keys: "[MouseLeft]", target: overlay }));
+  // 바깥 클릭 — Radix는 document의 pointerdown으로 판정한다(모달이라 body가 `pointer-events: none`이어서 user-event로는 못 누른다).
+  await act(async () => { document.body.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, cancelable: true })); });
   expect(dialog()).not.toBeNull();
   const close = button("Close");
   // X는 숨기지 않고 끈다 — `OnboardingModal`의 `closeDisabled`와 같은 동작이다.

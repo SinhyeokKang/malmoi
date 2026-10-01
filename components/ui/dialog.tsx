@@ -11,7 +11,7 @@ import { CloseButton } from "./close-button";
 /**
  * 초대 폼·확인 모달 (DESIGN §6.4).
  *
- * ⚠️ **닫히는 길이 넷이다** — Esc·배경·X·Cancel. 앞의 둘은 Radix가, 뒤의 둘은 호출부가 든다.
+ * ⚠️ **닫히는 길이 넷이다** — Esc·배경·X·Cancel. 앞의 둘은 Radix가, 뒤의 둘은 호출부가 든다. 예외는 `closeDisabled` 하나다(Sync 진행).
  * 제목은 **대상을 명시한 질문**이고 액션 라벨은 결과다 (§10) — "Remove Jane Doe from bugshot-2?" / "Remove member".
  */
 export const Dialog = Primitive.Root;
@@ -71,11 +71,19 @@ export function DialogContent({
   children,
   onOpenAutoFocus,
   onCloseAutoFocus,
+  onEscapeKeyDown,
+  onInteractOutside,
+  closeDisabled = false,
   ...props
 }: ComponentProps<typeof Primitive.Content> & {
   title: ReactNode;
   description?: ReactNode;
   footer?: ReactNode;
+  /**
+   * 닫는 길을 전부 막는다 (sync-lock — Sync가 도는 동안). `OnboardingModal`과 같은 이름·같은 동작이다: **X는 숨기지 않고 끄고**
+   * Esc·배경을 무시한다. ⚠️ Cancel은 호출부의 버튼이라 호출부가 끈다 — 이 프리미티브는 푸터 안을 모른다.
+   */
+  closeDisabled?: boolean;
 }) {
   return (
     <Primitive.Portal>
@@ -95,6 +103,15 @@ export function DialogContent({
           className,
         )}
         {...props}
+        onEscapeKeyDown={(event) => {
+          if (closeDisabled) event.preventDefault();
+          onEscapeKeyDown?.(event);
+        }}
+        // `onInteractOutside`가 pointerdown·focus 바깥 둘을 다 받는다 — 하나로 막는다.
+        onInteractOutside={(event) => {
+          if (closeDisabled) event.preventDefault();
+          onInteractOutside?.(event);
+        }}
         /*
           ⚠️ **첫 포커스는 푸터 Cancel이다** (2026-10-01 ux-drift-unify 3-Y4 — DESIGN §6.4). 호출부가 Cancel에 `data-initial-focus`를 달면
           그리로 간다. 전엔 소비자 셋만 `onOpenAutoFocus`로 손수 Cancel을 지정했고 나머지는 Radix 기본(첫 tabbable = 헤더 X)이라,
@@ -124,7 +141,7 @@ export function DialogContent({
           <Primitive.Title className="text-base font-medium">{title}</Primitive.Title>
           <DialogClose asChild>
             {/* 닫기는 `CloseButton` 한 형이다(2026-10-01 — 옛 36 정방). 음수 마진은 캔버스의 `-6px -8px 0 0`이다. */}
-            <CloseButton label={m.common.close} className="-mt-1.5 -mr-2" />
+            <CloseButton label={m.common.close} disabled={closeDisabled} className="-mt-1.5 -mr-2" />
           </DialogClose>
         </header>
         {/*
