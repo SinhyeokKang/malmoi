@@ -8,7 +8,8 @@ import { render } from "./helpers/dom";
 /**
  * **트리 = 목록 범위, 필터는 Status 하나, 검색은 전 소스** (translation-tree-range T5·T6 — spec 조건 1–10·13 · design §4).
  *
- * - 트리는 노드를 숨기지 않는다. 조건(Status·검색)이 켜지면 숫자만 일치 수이고 0 노드는 `disabled`다 — 지금 범위·위치 노드는 예외.
+ * - 트리는 노드를 숨기지 않는다. **검색 중이면** 숫자만 검색 일치 수이고 0 노드는 `disabled`다 — 지금 범위·위치 노드는 예외. Status·언어는 트리
+ *   숫자·비활성을 바꾸지 않는다(2026-10-02 — 아래 필터는 위로 새지 않는다).
  * - 검색 중이고 활성 소스가 둘 이상이면 트리 맨 위에 `All sources` 노드가 선다. 범위는 `aria-current="true"`, 전 소스 범위의 위치는
  *   `aria-current="location"`(면 없이 글자만)이다.
  * - 트리 클릭·키 선택은 Status·검색어를 바꾸지 않는다(조건 2). 새 검색어는 전 소스, 같은 검색어는 범위 유지(조건 5).
@@ -299,7 +300,7 @@ it("조건이 없으면 트리는 원본 숫자다 — 목록과 무관한 활�
   expect(treeButtons(container).some(b => b.disabled)).toBe(false);
 });
 
-it("검색 중 범위 밖 노드의 숫자는 그 노드를 눌렀을 때의 목록 수다 (조건 9)", async () => {
+it("검색 중 범위 밖 노드의 숫자는 Status를 끈 채 그 노드를 눌렀을 때의 목록 수다 (조건 9)", async () => {
   const { container } = await render(<TranslationWorkspace {...searching({ ns: "common" })} />);
   expect(treeNode(container, "auth")?.textContent).toContain("1");
   expect(treeNode(container, w.tree.allNamespaces, "web")?.textContent).toContain("3");

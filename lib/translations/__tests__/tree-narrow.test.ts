@@ -4,7 +4,7 @@ import { ALL_NAMESPACES, DEFAULT_TRANSLATION_QUERY, type TranslationQuery } from
 import { countTree, firstRowAt, inRange, rangeOf, tallyRows, type CountableTree } from "../tree-narrow";
 
 /**
- * **트리 = 목록 범위, 숫자는 그 노드를 눌렀을 때의 목록 수** (translation-tree-range — design §2.2·§3).
+ * **트리 = 목록 범위, 숫자는 (검색 중이면) Status를 끈 채 그 노드를 눌렀을 때의 목록 수** (translation-tree-range — design §2.2·§3).
  * 서버가 전 소스를 한 번 읽고 범위로 자른다 — 트리 숫자는 같은 전 소스 행에서 센다. 트리는 노드를 숨기지 않는다(0 노드는 화면이 `disabled`로 그린다).
  */
 const tree: CountableTree = {
@@ -76,7 +76,7 @@ describe("countTree — 숨김 없이 숫자만 일치 수로", () => {
     expect(counted.surfaces[0]?.namespaces).toEqual([{ name: "__proto__", keyCount: 1 }, { name: "constructor", keyCount: 0 }]);
   });
 
-  it("트리 숫자 = 그 노드를 눌렀을 때의 목록 수다 (조건 9)", () => {
+  it("트리 숫자 = 같은 행으로 그 노드를 눌렀을 때의 목록 수다 — 호출부가 Status 없는 검색 행을 넘긴다 (조건 9)", () => {
     const rows = [row("w1", "web", "auth"), row("w2", "web", "common"), row("a1", "app", "app"), row("w3", "web", "common")];
     const counted = countTree(tree, tallyRows(rows));
     for (const surface of counted.surfaces) {

@@ -22,8 +22,9 @@ import { cn } from "@/lib/utils";
  *    비운다 — hover 0.03과 겹치면 포인터 아래 항목처럼 보인다(DESIGN §6.5). 글자만 한 단계 올린다(선례: 공개 문서 목차의 `location`).
  * ⚠️ **leadingIcon**: 소스 `chevron + file-json-2`(16 · `#525252`), `All namespaces`는 `layers`, 네임스페이스는 `folder`(14 · `#a3a3a3`) — 2k-B 확정.
  *    `All sources`는 `search`(16 · `#525252`) — 검색 중에만 서는 노드라는 표지다.
- * ⚠️ **숫자는 언어와 무관한 활성 키 수다** — 남은 수를 넣으면 같은 열의 숫자가 언어에 따라 통째로 바뀐다(README §4). 조건(Status·검색)이 켜지면
- *    그 조건의 일치 키 수이고(`nodes` — 그 노드를 눌렀을 때의 목록 수), **노드를 숨기지 않는다** — 0 노드는 흐리고 누를 수 없다(지금 범위·위치 노드는 예외).
+ * ⚠️ **숫자는 언어와 무관한 활성 키 수다** — 남은 수를 넣으면 같은 열의 숫자가 언어에 따라 통째로 바뀐다(README §4). **검색 중이면** 그 검색의
+ *    일치 키 수이고(`nodes` — Status를 끈 채 그 노드를 눌렀을 때의 목록 수. Status·언어는 트리로 새지 않는다 — 2026-10-02), **노드를 숨기지 않는다** —
+ *    0 노드는 흐리고 누를 수 없다(지금 범위·위치 노드는 예외).
  * ⚠️ **머리 배지와 `Filter namespaces` 임계는 원본 트리(`tree`)다** — 조건마다 배지가 흔들리지 않고, 입력이 사라지면서 남은 검색어가 보이지 않는
  *    필터가 되지 않는다.
  */
@@ -31,7 +32,7 @@ const FILTER_AT = 13;
 
 export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = null, rangeAll = false, onSelect, onSelectAll, className, width }: {
   tree: TranslationTree;
-  /** 그릴 노드 — 조건의 일치 수로 바꾼 트리(`countTree`). 없거나 원본이면 조건이 없다. */
+  /** 그릴 노드 — 검색 일치 수로 바꾼 트리(`countTree`). 없거나 원본이면 검색 중이 아니다. */
   nodes?: TranslationTree;
   /** px — 폭 계약(`planTranslationPanelLayout`)이 정한다. 겹친 패널 안에서는 주지 않는다(부모 폭을 채운다). */
   width?: number;
@@ -167,7 +168,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
 }
 
 /**
- * `counted` — 조건이 켜졌다. 그때 0 노드는 흐리고 **누를 수 없다**(눌러도 빈 목록이다). 범위·위치 노드는 0이어도 누를 수 있다 — 오버레이를 열 때의
+ * `counted` — 검색 중이다. 그때 0 노드는 흐리고 **누를 수 없다**(눌러도 빈 목록이다 — Status는 이 판정에 없다). 범위·위치 노드는 0이어도 누를 수 있다 — 오버레이를 열 때의
  * 포커스 대상(`[aria-current="true"]`)이 사라지지 않게. 기존 토큰만 쓴다(design §4.3).
  * ⚠️ `ListItemButton`은 `aria-current`를 `selected`로만 세운다 — 위치 표시는 호출부 prop이 뒤에서 덮는다(`{...props}`가 마지막이다).
  */

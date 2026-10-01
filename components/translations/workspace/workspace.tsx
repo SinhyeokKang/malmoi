@@ -65,7 +65,7 @@ export type WorkspaceProps = {
   tree: TranslationTree;
   /** 범위로 자른 목록 — 서버가 전 소스를 한 번 읽고 자른다(design §3). */
   list: TranslationList;
-  /** 조건(Status·검색)이 켜졌을 때 전 소스 행의 노드별 일치 수, 아니면 `null` — 트리 숫자다(그 노드를 눌렀을 때의 목록 수). */
+  /** 검색 중일 때 전 소스의 **Status 없는** 검색 결과의 노드별 일치 수, 아니면 `null` — 트리 숫자다(Status를 끈 채 그 노드를 눌렀을 때의 목록 수). */
   counts: readonly NodeCount[] | null;
   /** `null`은 선택 없음, `absent`는 URL의 키가 사라졌다(부재 안내 — 다른 키로 바꾸지 않는다). */
   detail: DetailView | { absent: true; surfaceSlug: string } | null;
@@ -685,8 +685,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   );
 
   /*
-    ⚠️ **트리는 노드를 숨기지 않는다 — 숫자만 일치 수다** (design §4.3). 수는 서버가 전 소스 행에서 센다(`counts`) — 범위 밖 노드도 그 노드를 눌렀을 때의
-    목록 수다. 머리 배지·`Filter namespaces` 임계·`showSource`는 원본 트리다.
+    ⚠️ **트리는 노드를 숨기지 않는다 — 숫자만 검색 일치 수다** (design §4.3). 수는 서버가 전 소스의 Status 없는 검색 결과에서 센다(`counts`) — 범위 밖
+    노드도 Status를 끈 채 그 노드를 눌렀을 때의 목록 수다(Status·언어는 트리로 새지 않는다 — 2026-10-02). 머리 배지·`Filter namespaces` 임계·`showSource`는 원본 트리다.
     `All sources` 노드는 검색 중이고 활성 소스가 둘 이상일 때만 선다 — 하나면 그 소스의 `All namespaces`가 전 소스 범위의 표시를 든다.
   */
   const treeNodes = useMemo(() => countTree(tree, props.counts), [tree, props.counts]);

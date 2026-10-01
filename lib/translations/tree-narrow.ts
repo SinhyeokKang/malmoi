@@ -3,10 +3,11 @@ import { ALL_NAMESPACES } from "@/lib/routes";
 import { isAllSources, type TranslationQuery } from "./query";
 
 /**
- * **트리 = 목록 범위, 숫자는 그 노드를 눌렀을 때의 목록 수** (translation-tree-range — design §2.2·§3).
+ * **트리 = 목록 범위, 숫자는 (검색 중이면) Status를 끈 채 그 노드를 눌렀을 때의 목록 수** (translation-tree-range — design §2.2·§3).
  *
- * ⚠️ **서버는 늘 전 소스를 한 번 읽고 JS로 범위를 자른다** — 조건별 트리 숫자도 같은 전 소스 행에서 센다(`tallyRows`). 목록과 트리가 같은 행에서
- *    나오므로 "트리 숫자 = 그 노드를 눌렀을 때의 목록 수"가 구조로 맞고, SQL `scope` 경로와 JS 경로가 같은 행을 내는지 지킬 필요가 없다.
+ * ⚠️ **서버는 늘 전 소스를 읽고 JS로 범위를 자른다** — 트리 숫자는 검색 중에만 서고(`tallyRows`) Status 없는 같은 검색의 전 소스 행에서 센다(검색만이면
+ *    목록 행 그대로, 검색 + Status면 Status 없는 읽기 하나 — 2026-10-02: Status·언어는 트리로 새지 않는다). 화면이 SQL `scope` 경로와 JS 경로가 같은
+ *    행을 내는지 지킬 필요가 없다.
  * ⚠️ **트리는 노드를 숨기지 않는다** — 0 노드는 화면이 `disabled`로 그린다(지금 범위·위치 노드는 예외). 09-30의 "0 노드 숨김 + 본 노드 유지"(`seen`)를 걷었다.
  * ⚠️ **잎이다 — import는 잎인 `lib/routes.ts`·`./query` 둘이다.** 클라이언트 화면이 읽는다. 행·트리 모양은 구조 타입으로 받는다.
  */

@@ -97,7 +97,8 @@ export default async function TranslationsPage({
   if (!isScreenCanonical(raw, located) || route !== surfaceSlug) redirect(routes.surfaceTranslations(slug, route, serializeScreenQuery(located)));
 
   /*
-    ⚠️ **늘 전 소스로 읽고 JS로 자른다** (design §3) — 읽기 경로가 하나라 "트리 숫자 = 그 노드를 눌렀을 때의 목록 수"가 구조로 맞는다. 수·선택 포함 여부는
+    ⚠️ **늘 전 소스로 읽고 JS로 자른다** (design §3) — 목록과 범위 자르기의 읽기 경로가 하나다. 트리 숫자는 검색만 따르므로 검색 + Status일 때만 Status
+    없는 읽기가 하나 더 있다(위). 목록의 수·선택 포함 여부는
     **자른 행에서 다시 센다** — 로더의 전 소스 값을 그대로 쓰면 범위 밖의 선택을 "결과 안"으로 읽는다(POSTMORTEM 2026-09-23 — 부분 응답을 전체로 해석).
     ⚠️ **트리 이동의 첫 키를 같은 렌더가 싣는다** (audit-ux #18) — 그 위치(경로 소스·`ns`)의 첫 키다. 주소의 예약값은 화면이 `history.replaceState`로 맞춘다.
   */
