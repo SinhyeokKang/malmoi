@@ -7,7 +7,8 @@ import { render } from "./helpers/dom";
  * **`state=`·완성도로 좁히는 앱 내부 링크는 네임스페이스로 좁히지 않는다** (POSTMORTEM 2026-09-15 — 두 좁힘이 교집합을 비워 0건 착지).
  *
  * 그 항목의 재발 방지는 grep이었는데 `cardQuery()` 도입 뒤 0건이라 공허하게 참이었다 — 규칙대로 **테스트가 센다**(POSTMORTEM 2026-09-15
- * 두 번째 항목). 생산자 셋 전수: Home 카운트 카드(`cardQuery`) · Home 주의 카드(`attention-card.tsx`) · 옛 `/translations` redirect.
+ * 두 번째 항목). 생산자 넷 전수: Home 카운트 카드(`cardQuery`) · Home 주의 카드(`attention-card.tsx`) · 옛 `/translations` redirect ·
+ * 프로젝트 목록 띠(`bannerTranslationsHref` — 2026-10-02에 Status를 싣게 되며 넷째가 됐다). 새 `state=` 생산자를 더하면 여기 센다.
  * 범위는 트리 위치라 주소에 `scope`가 없다 — 카드는 그 수가 있는 첫 소스의 `All namespaces`로 간다(translation-tree-range §5).
  */
 const nav = vi.hoisted(() => ({ redirect: vi.fn((url: string) => { throw new Error(`redirect:${url}`); }) }));
@@ -18,6 +19,7 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => ({ project: { findUnique: async ()
 import LegacyTranslations from "@/app/(edit)/projects/[slug]/translations/page";
 import { AttentionCard } from "@/components/home/attention-card";
 import { CountCards } from "@/components/home/count-cards";
+import { bannerTranslationsHref } from "@/components/projects/project-list";
 import type { HomeCard } from "@/lib/home/cards";
 import { parseTranslationQuery } from "@/lib/translations/query";
 
@@ -68,4 +70,10 @@ it.each([
   expect(landed.ns === null || landed.ns === "*").toBe(true);
   expect(landed.parsedNs).toBe("*");
   expect(landed.state ?? landed.completion).not.toBeNull();
+});
+
+it("프로젝트 목록 띠의 검토 대기·보낼 편집 링크는 ns=*를 싣는다", () => {
+  for (const state of ["review", "unsent"] as const) {
+    expect(narrowing(bannerTranslationsHref("acme", "web", state))).toMatchObject({ ns: "*", scope: null, state, parsedNs: "*" });
+  }
 });
