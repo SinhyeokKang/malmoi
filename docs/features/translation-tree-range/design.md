@@ -129,7 +129,6 @@ counts = hasConditions(screen) ? tallyRows(full.rows) : null
 
 ### 4.1 툴바
 
-> ⚠️ **2026-10-02 결정으로 대체** (spec 결정 기록): Status `FilterMenu`는 툴바가 아니라 **키 목록 패널 머리 오른쪽**(로케일 패널의 언어 메뉴와 같은 형)이다. 툴바는 검색 입력만. §4.5의 목록 제목은 `Keys` 고정.
 
 - `FilterMenu` 하나 — axis `Status`, 라벨은 선택값(`All keys` 기본, 꺼진 표시). `New from GitHub` 힌트는 그대로. `withStatus`로 이동(`push`).
 - 툴바 `Clear filters` 버튼 · Scope 콤보 · Completeness·State 콤보 · `substituted` 안내 · `surfaceLocales`(Missing in 선택지 전용) 제거.
