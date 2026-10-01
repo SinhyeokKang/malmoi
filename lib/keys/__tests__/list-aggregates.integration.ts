@@ -12,6 +12,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
 import { cardQuery } from "@/components/home/count-cards";
+import { bannerTranslationsHref } from "@/components/projects/project-list";
 import { CARD_KEYS, CARD_STATE, cardLandings, surfaceQueues } from "@/lib/home/cards";
 import { inRange, rangeOf } from "@/lib/translations/tree-narrow";
 import { reviewByLocale, rowBanner, rowChip, summaryQueue } from "@/lib/projects/list";
@@ -521,6 +522,54 @@ it("목록 행이 표면 A 동기화 중 + 표면 B 실패를 실패로 말한�
   ]);
   expect(rowChip(row)).toBe("sync_failed");
   expect(rowBanner(row)).toEqual({ kind: "import_failed", reason: "parse-failed" });
+});
+
+/**
+ * **목록 띠의 링크가 0건에 착지하지 않는다** (2026-10-02 사용자 — 띠가 Status를 싣는다). 띠의 수와 소스는 목록 집계(`reviewSurfaceSlug`·
+ * `unsentSurfaceSlug` · ⑤ `pendingEditToken`)가 정하고, 화면의 `state=review`·`state=unsent`는 번역 목록 SQL이 정한다 — **두 술어가 같은 행을
+ * 세야 한다.** 띠의 실제 링크(`bannerTranslationsHref`)를 화면 요청값으로 읽어 페이지와 같은 경로(전 소스로 읽고 그 소스 범위로 자른다)로 센다.
+ */
+it("띠의 검토 대기·보낼 편집 링크가 그 소스·그 Status로 착지하고, 목록이 띠와 같은 키를 센다", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  // 기본 소스(default)의 미발송을 비우고 `web`에만 검토 대기, `app`에만 보낼 편집을 둔다 — 소스를 잘못 고르면 0건이다.
+  await prisma.translation.updateMany({ where: { projectId: "p1" }, data: { pendingEditToken: null } });
+  for (const [id, slug] of [["s-web", "web"], ["s-app", "app"]] as const) {
+    await prisma.translationSurface.create({ data: { id, projectId: "p1", slug, pathTemplate: `${slug}/{locale}.json`, adapterName: "json-catalog", baseLocale: "en" } });
+    await prisma.locale.createMany({ data: ["en", "ko"].map(code => ({ projectId: "p1", surfaceId: id, code, name: code, isBase: code === "en" })) });
+    await prisma.stringKey.create({ data: { id: `${slug}-key`, projectId: "p1", surfaceId: id, key: `${slug}.key`, namespace: slug, sourceText: slug, sourceHash: slug } });
+    // 일이 없는 키 — Status 없이 가면 이 키도 목록에 선다(짝).
+    await prisma.stringKey.create({ data: { id: `${slug}-plain`, projectId: "p1", surfaceId: id, key: `${slug}.plain`, namespace: slug, sourceText: `${slug} plain`, sourceHash: `${slug}-plain` } });
+  }
+  await prisma.translation.create({ data: { projectId: "p1", surfaceId: "s-web", keyId: "web-key", localeCode: "ko", value: "w", updatedBy: "u1", needsReview: true } });
+  await prisma.translation.create({ data: { projectId: "p1", surfaceId: "s-app", keyId: "app-key", localeCode: "ko", value: "a", updatedBy: "u1", pendingEditToken: "tok-app" } });
+  // orphan 로케일의 토큰 — 띠(⑤)도 화면도 세지 않아야 한다(술어 대조의 경계).
+  await prisma.locale.create({ data: { projectId: "p1", surfaceId: "s-web", code: "fr", name: "fr", orphaned: true } });
+  await prisma.translation.create({ data: { projectId: "p1", surfaceId: "s-web", keyId: "web-key", localeCode: "fr", value: "f", updatedBy: "u1", pendingEditToken: "tok-fr" } });
+  await prisma.user.create({ data: { id: "owner", email: "fixture" } });
+  await prisma.projectMember.create({ data: { projectId: "p1", userId: "owner", role: "OWNER" } });
+
+  const { rows: [row] } = await loadProjectList(prisma, "owner", { loadRemote: async () => new Map() });
+  if (row === undefined) throw new Error("no row");
+  expect(row.reviewSurfaceSlug).toBe("web");
+  expect(row.unsentSurfaceSlug).toBe("app");
+
+  const ids = new Map([["default", "surface-p1"], ["web", "s-web"], ["app", "s-app"]]);
+  const landed = async (slug: string, state: "review" | "unsent") => {
+    const url = new URL(bannerTranslationsHref("p1", slug, state), "http://x");
+    const screen = screenQuery(Object.fromEntries(url.searchParams));
+    const full = await loadTranslationList(prisma, { projectId: "p1", routeSurfaceId: ids.get(slug)!, query: { ...screen, scope: "project" }, pageSize: "all" });
+    return { all: full.rows, here: full.rows.filter(r => inRange(r, rangeOf(screen, slug))) };
+  };
+  const review = await landed(row.reviewSurfaceSlug!, "review");
+  const unsent = await landed(row.unsentSurfaceSlug!, "unsent");
+  expect(review.here.map(r => r.keyId)).toEqual(["web-key"]);
+  expect(unsent.here.map(r => r.keyId)).toEqual(["app-key"]);
+  // 술어 대조 — 띠의 ⑤(보낼 편집 셀 수)와 `countPending`, 화면의 `state=unsent`가 같은 키·셀을 센다(orphan 로케일의 토큰은 셋 다 뺀다).
+  expect(row.unsent).toBe(await countPending(prisma, "p1"));
+  expect(row.unsent).toBe(1);
+  expect(unsent.all.map(r => r.keyId)).toEqual(["app-key"]);
+  // 검토 대기 — 띠의 소스 판정(값이 있는 셀의 needsReview)과 화면의 `state=review`가 같은 키다.
+  expect(review.all.map(r => r.keyId)).toEqual(["web-key"]);
 });
 
 it("먼저 시작한 적재가 성공해도 나중 실행의 진행 표시와 실패 기록을 빼앗지 않는다", async () => {

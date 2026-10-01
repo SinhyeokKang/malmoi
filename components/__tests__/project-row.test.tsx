@@ -15,6 +15,7 @@ import { HomeActions, HomeTitle } from "@/components/home/actions";
 import { ProjectList } from "@/components/projects/project-list";
 import type { ProjectListRow } from "@/lib/keys/query";
 import { m } from "@/lib/i18n";
+import { isScreenCanonical, screenQuery } from "@/lib/translations/query";
 
 /**
  * **띠의 역할 분기를 실제로 렌더해서 본다** (DESIGN §6.63).
@@ -57,12 +58,18 @@ const draw = async (over: Partial<ProjectListRow>) => {
 const links = (container: HTMLElement) =>
   [...container.querySelectorAll("a")].map((a) => ({ text: a.textContent?.trim() ?? "", href: a.getAttribute("href") }));
 
+/*
+  띠의 링크는 **그 일이 있는 소스로, 그 Status로 걸러** 간다 (2026-10-02 사용자 — translation-tree-range 결정 기록). 번역 화면의 범위가 트리 위치라
+  필터 없이 가면 그 소스 전체 목록에서 일을 다시 찾아야 한다. `ns=*`는 남긴다(POSTMORTEM 2026-09-15). 만든 주소는 화면 정규형이라 redirect가 없다.
+*/
 it.each([
-  ["review", { review: 88 }, m.projects.banner.action.review, "/projects/acme/surfaces/default/translations"],
-  ["unsent", { unsent: 24 }, m.projects.banner.action.send, "/projects/acme/surfaces/default/translations"],
-])("%s 띠가 번역 화면으로 보낸다", async (_label, over, label, href) => {
-  const found = links(await draw(over)).find((a) => a.text === label);
+  ["review", { review: 88 }, m.projects.banner.action.review, "/projects/acme/surfaces/web/translations?ns=*&state=review"],
+  ["unsent", { unsent: 24 }, m.projects.banner.action.send, "/projects/acme/surfaces/app/translations?ns=*&state=unsent"],
+])("%s 띠가 그 소스의 번역 화면을 그 Status로 걸러 보낸다", async (_label, over, label, href) => {
+  const found = links(await draw({ ...over, reviewSurfaceSlug: "web", unsentSurfaceSlug: "app" })).find((a) => a.text === label);
   expect(found?.href).toBe(href);
+  const raw = Object.fromEntries(new URL(found!.href!, "http://x").searchParams);
+  expect(isScreenCanonical(raw, screenQuery(raw))).toBe(true);
 });
 
 /** ⚠️ **외부로 나가는 둘은 새 탭이다** — 목적지가 GitHub이라 이 앱의 라우트가 아니다. */

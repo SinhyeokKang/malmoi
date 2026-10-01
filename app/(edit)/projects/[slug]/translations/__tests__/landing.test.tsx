@@ -34,6 +34,7 @@ vi.mock("@/components/translations/workspace/workspace", () => ({ TranslationWor
 vi.mock("@/components/project-archived", () => ({ ProjectArchived: () => null }));
 vi.mock("@/components/project-not-ready", () => ({ ProjectNotReady: () => null }));
 import Page from "../../surfaces/[surfaceSlug]/translations/page";
+import { bannerTranslationsHref } from "@/components/projects/project-list";
 
 // 트리 순서(slug)다 — 경로 소스는 `default`(id `s`), 다른 활성 소스는 `app`(id `s2`).
 const TREE = { projectKeyCount: 4, surfaces: [
@@ -129,6 +130,14 @@ it("모르는·보관된 keySurface는 버린다 — 상세를 읽지 않고 다
   expect(await redirected({ key: "k1", keySurface: "elsewhere" })).toBe("/projects/demo/surfaces/default/translations?key=k1");
   // 상세는 목적지(경로 소스 default)를 다시 열 때 한 번만 읽힌다 — 모르는 소스로는 한 번도 가지 않는다.
   expect(state.detail.mock.calls.map(([, input]) => (input as { surfaceId: string }).surfaceId)).toEqual(["s"]);
+});
+
+it("프로젝트 목록 띠의 링크(소스 + Status)를 그 소스 경로에서 열면 redirect가 없다", async () => {
+  for (const href of [bannerTranslationsHref("demo", "default", "review"), bannerTranslationsHref("demo", "app", "unsent")]) {
+    const page = await renderAt(href);
+    expect(state.redirect, href).not.toHaveBeenCalled();
+    expect(page.props.query.state).toBe(new URL(href, "http://x").searchParams.get("state"));
+  }
 });
 
 it("Home 상태 링크의 ns=*는 생략과 같다 — redirect 왕복을 더하지 않는다", async () => {
