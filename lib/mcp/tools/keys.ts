@@ -75,8 +75,11 @@ export const previewRevertTool = defineTool({
     if (gate.status !== "ok") return gate;
     const preview = await previewRevert(prisma, coreSubject(subject), input);
     if (preview.status === "error") return { status: "refused", code: preview.error };
-    // 막힌 갈래는 거부가 아니라 미리보기의 답이다 — 무엇이 막는지를 값으로 싣는다(확인값 없음).
-    if (preview.status === "blocked") return ok({ revertable: false, reason: preview.reason, ...("localeCodes" in preview ? { localeCodes: preview.localeCodes } : {}) }, m.mcp.summary.revertBlocked);
+    // 막힌 갈래는 거부가 아니라 미리보기의 답이다 — 무엇이 막는지를 값으로 싣는다(확인값 없음). lease 갈래는 실행과 같은 시각을 싣는다(sync-lock R2).
+    if (preview.status === "blocked") {
+      const times = preview.reason === "sync-running" ? { startedAt: preview.startedAt.toISOString(), reopensBy: preview.reopensBy.toISOString() } : {};
+      return ok({ revertable: false, reason: preview.reason, ...("localeCodes" in preview ? { localeCodes: preview.localeCodes } : {}), ...times }, m.mcp.summary.revertBlocked);
+    }
     // 확인값은 `revert_to_last_sent`가 소비한다 — 실행은 역할·쓰기 grant·잠금 뒤 재측정을 다시 지난다(읽기 토큰의 핸들로는 못 쓴다).
     return ok({ revertable: true, locales: preview.locales, confirmation: preview.confirmation }, m.mcp.summary.revertReady(preview.locales.length));
   },
