@@ -5,6 +5,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { SyncButton as Control } from "@/components/home/sync-button";
 import { SyncResult } from "@/components/home/sync-result";
 import type { RepositoryImportOutcome } from "@/lib/import/result";
+import { m } from "@/lib/i18n";
 import { render } from "./helpers/dom";
 
 // user-event의 실시간 지연이 병렬 실행에서 기본 5초를 넘긴다 (POSTMORTEM 2026-09-13).
@@ -214,7 +215,7 @@ it("Action 통신 실패는 확인 못 한 결과로 떨어지고 화면을 다�
 it("응답을 잃은 Sync는 실패를 단언하지 않는다 (malmoi#132)", async () => {
   await render(<SyncResult slug="acme" branch="main" outcome={{ ok: false, error: "unconfirmed" }} onRetry={() => {}} />);
   const alert = document.querySelector('[role="status"]');
-  expect(alert?.textContent).toContain("We couldn't confirm whether the sync finished");
+  expect(alert?.textContent).toContain(m.repositorySync.errors.unconfirmed);
   expect(alert?.textContent).not.toContain("didn't go through");
   expect(document.querySelector('[role="alert"]')).toBeNull();
   // 다시 돌리지 않는다 — 서버가 끝냈을 수 있다. 닫기는 Dialog 푸터의 [Close]다.

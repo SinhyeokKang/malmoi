@@ -295,26 +295,35 @@ it("onRetry가 없으면 거부에도 [Try again]이 서지 않는다", async ()
 
 /**
  * sync-lock R6 — Dialog 결과 단계는 **결과별 제목**을 단다(Publish 모달 §6.646과 같은 형). 제목은 결과의 **종류**이고 본문 Alert 헤드라인은
- * 그 **내용**이라 같은 문장이 두 번 서지 않는다 — design §4 결과 갈래 표의 행 전부.
+ * 그 **내용**이라 같은 말이 두 번 서지 않는다 — design §4 결과 갈래 표의 행 전부 + 거부 코드 전부.
+ * ⚠️ **"didn't run"은 실행 전 거부만이다** (U 리뷰 r2) — `ingest-failed`는 lease를 잡고 표면 실패까지 기록한 뒤의 바깥 catch라 Logs엔
+ * 실패한 Sync가 남는다. 단계를 모르는 실패는 Logs의 Failed 낱말이다.
+ * ⚠️ **겹침은 부분 문자열이 아니라 낱말로 잰다** — 바꿔 말한 같은 문장("didn't run" · "didn't go through")은 부분 문자열 검사를 지난다.
  */
 const surface = (status: SurfaceImportResult["status"], reason: SurfaceImportResult["reason"] = null): SurfaceImportResult =>
   ({ ...row("web", status, reason), count: status === "imported" || status === "partial" ? 4 : 0, failed: status === "partial" ? 1 : 0 });
-it.each([
-  ["성공", { ok: true, remainingEdits: 0, surfaces: [surface("imported")] }, m.repositorySync.resultTitle.complete],
-  ["남은 편집", { ok: true, remainingEdits: 2, surfaces: [surface("imported")] }, m.repositorySync.resultTitle.issues],
-  ["부분", { ok: true, remainingEdits: 0, surfaces: [surface("partial")] }, m.repositorySync.resultTitle.issues],
-  ["일부 표면 실패", { ok: true, remainingEdits: 0, surfaces: [surface("imported"), { ...surface("failed", "parse-failed"), surfaceSlug: "emails" }] }, m.repositorySync.resultTitle.issues],
-  ["전 표면 실패", { ok: true, remainingEdits: 0, surfaces: [surface("failed", "parse-failed")] }, m.repositorySync.resultTitle.nothingReplaced],
-  ["전 표면 밀림", { ok: true, remainingEdits: 0, surfaces: [surface("superseded", "superseded")] }, m.repositorySync.resultTitle.nothingReplaced],
-  ["reconfirm", { ok: false, error: "reconfirm" }, m.repositorySync.resultTitle.didntRun],
-  ["already-running", { ok: false, error: "already-running" }, m.repositorySync.resultTitle.didntRun],
-  ["unauthorized", { ok: false, error: "unauthorized" }, m.repositorySync.resultTitle.didntRun],
-  ["unavailable", { ok: false, error: "unavailable" }, m.repositorySync.resultTitle.didntRun],
-  ["unconfirmed", { ok: false, error: "unconfirmed" }, m.repositorySync.resultTitle.unknown],
-] as const)("결과 제목 — %s", async (_, outcome, title) => {
-  expect(syncResultTitle(outcome as RepositoryImportOutcome)).toBe(title);
-  const { container } = await render(<SyncResult {...props} outcome={outcome as RepositoryImportOutcome} />);
-  const headline = alert(container)?.querySelector("[data-alert-title], p, div")?.textContent ?? "";
-  expect(headline.trim().toLowerCase()).not.toBe(title.toLowerCase());
-  expect(container.textContent?.toLowerCase()).not.toContain(title.toLowerCase());
+const t = m.repositorySync.resultTitle;
+const PAIRS: [string, RepositoryImportOutcome, string][] = [
+  ["성공", { ok: true, remainingEdits: 0, surfaces: [surface("imported")] }, t.complete],
+  ["남은 편집", { ok: true, remainingEdits: 2, surfaces: [surface("imported")] }, t.issues],
+  ["부분", { ok: true, remainingEdits: 0, surfaces: [surface("partial")] }, t.issues],
+  ["일부 표면 실패", { ok: true, remainingEdits: 0, surfaces: [surface("imported"), { ...surface("failed", "parse-failed"), surfaceSlug: "emails" }] }, t.issues],
+  ["일부 표면 밀림", { ok: true, remainingEdits: 0, surfaces: [surface("imported"), { ...surface("superseded", "superseded"), surfaceSlug: "emails" }] }, t.issues],
+  ["전 표면 실패", { ok: true, remainingEdits: 0, surfaces: [surface("failed", "parse-failed")] }, t.nothingReplaced],
+  ["전 표면 밀림", { ok: true, remainingEdits: 0, surfaces: [surface("superseded", "superseded")] }, t.nothingReplaced],
+  ...(["reconfirm", "already-running", "unauthorized", "invalid input", "not-ready", "no-surfaces", "unpinned", "repo-replaced", "forbidden", "not-found", "archived"] as const)
+    .map(error => [error, { ok: false, error }, t.didntRun] as [string, RepositoryImportOutcome, string]),
+  ...(["unavailable", "ingest-failed", "not-connected", "base-branch-missing", "reauthorize", "repo-not-installed"] as const)
+    .map(error => [error, { ok: false, error }, t.failed] as [string, RepositoryImportOutcome, string]),
+  ["unconfirmed", { ok: false, error: "unconfirmed" }, t.unknown],
+];
+const IGNORED = new Set(["sync", "synced", "the", "a", "is", "was", "were", "with"]);
+const words = (text: string) => new Set(text.toLowerCase().replace(/[^a-z' ]/g, " ").split(/\s+/).filter(word => word !== "" && !IGNORED.has(word)));
+it.each(PAIRS)("결과 제목 — %s", async (_, outcome, title) => {
+  expect(syncResultTitle(outcome)).toBe(title);
+  const { container } = await render(<SyncResult {...props} outcome={outcome} />);
+  const headline = alert(container)?.querySelector("p.font-medium")?.textContent ?? "";
+  expect(headline).not.toBe("");
+  const shared = [...words(title)].filter(word => words(headline).has(word));
+  expect(shared, `${title} ↔ ${headline}`).toEqual([]);
 });

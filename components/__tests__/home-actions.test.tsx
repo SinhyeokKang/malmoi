@@ -346,3 +346,21 @@ it("착지 lease가 있으면 머리 [Sync]와 배너 [Try again]이 같은 사�
   await view.rerender(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
   expect(button("Sync").getAttribute("aria-disabled")).not.toBe("true");
 });
+
+/**
+ * 🟡 (U 리뷰 r2) — Safari·macOS Firefox는 클릭이 버튼에 포커스를 주지 않는다. 연 자리를 `activeElement`로 잡으면 `body`가 되어, 배너가
+ * 그대로인데도 닫힐 때 머리 [Sync]로 튀었다(malmoi#86 회귀). 연 자리는 프리미티브의 기록(`pointerdown` 포함)에서 온다.
+ */
+function clickWithoutFocus(node: Element) {
+  node.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+  node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+}
+it("포커스 없이 배너 [Try again]으로 연 Sync를 Cancel로 닫으면 그 [Try again]으로 돌아온다", async () => {
+  await render(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
+  (document.activeElement as HTMLElement | null)?.blur();
+  await act(async () => { clickWithoutFocus(button("Try again")); });
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  await click("Cancel");
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  await vi.waitFor(() => expect(document.activeElement).toBe(button("Try again")));
+});
