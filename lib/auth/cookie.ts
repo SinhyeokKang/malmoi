@@ -28,7 +28,7 @@ export function hasSessionCookie(names: readonly string[]): boolean {
 }
 
 /**
- * 미들웨어가 `/`로 돌려보낼 요청인가 — **렌더 요청(GET·HEAD)에 세션 쿠키가 없을 때만**이다.
+ * 미들웨어가 `/signin`으로 돌려보낼 요청인가 — **렌더 요청(GET·HEAD)에 세션 쿠키가 없을 때만**이다.
  *
  * ⚠️ **Server Action POST는 돌려보내지 않는다.** Action은 현재 페이지 URL로 POST되어 같은 matcher에
  * 걸리는데, 쿠키가 없을 때 307을 내면 `fetch`가 POST를 `/`로 재전송하고 거기엔 그 action id가 없어
