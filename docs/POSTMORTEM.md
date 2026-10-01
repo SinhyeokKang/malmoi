@@ -2601,3 +2601,25 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - 서버 prop을 클라이언트 상태로 옮겨 담는 병합 함수는 **값이 같으면 이전 참조를 유지**한다(`sameValue`, `saved-rows.ts`). 회귀 테스트: `translation-workspace-render.test.tsx`의
     "값이 같은 목록이 새 객체로 다시 와도 목록 행은 다시 렌더되지 않는다".
   - grep(실행): `git grep -n "= memo(\|memo(function" -- 'components/**/*.tsx' 'app/**/*.tsx'` → **`KeyRow` 1곳뿐** — 다른 memo 소비자가 생기면 그 prop이 서버 재검증 뒤에도 같은 참조인지 본다.
+
+### 2026-10-02 — 테스트가 전부 통과했는데 PR CI가 `EnvironmentTeardownError`로 red였다 — 게이트 재시도가 진짜 결함을 가렸다 (PR #171)
+
+- **영역**: `app/api/__tests__/pull-nightly.test.ts` · `app/api/__tests__/push-open-pr.test.ts`의 `vi.mock("@/lib/github-wait")` 손 사본 · `scripts/gate.ts`의 테스트 재시도
+- **증상**: v1.1.6 PR #171의 `verify`가 두 번 연속 red — 637파일 9,623건 전부 통과, `Errors 3` = `EnvironmentTeardownError: Closing rpc while "onUserConsoleLog" was pending`
+  (출처 `pull-nightly.test.ts`). 같은 SHA의 dev push run은 green이었고, 로컬 `pnpm gate`는 같은 오류를 `retried: test`로 넘겼다(translation-tree-range r8).
+- **근본 원인**: 두 라우트 테스트가 `withinGithubWait`를 **실물을 다시 짠 손 사본**으로 갈아 끼웠다 — `Promise.race([work, setTimeout(() => resolve(late()), 20)])`.
+  실물(`lib/github-wait.ts`)은 `finally`에서 `clearTimeout`하지만 사본엔 그 줄이 없어, **작업이 이긴 뒤에도 20ms 뒤 `late()`가 돌았다.** `late()`는
+  `logCaught`(→ `console.error`)를 부르므로, 파일의 마지막 테스트 뒤 `restoreAllMocks`가 진짜 console을 되돌린 다음 로그가 나가 vitest 워커가 닫히는 중의 RPC와
+  부딪혔다. 타이밍에 달린 결정적 결함이라 부하에 따라 나기도 안 나기도 했다. ⚠️ **게이트의 재시도 판정(`scripts/gate-plan.ts` — "테스트 전부 통과 + 워커 종료
+  오류만"이면 한 번 더)이 이 부류를 "부하 걸린 머신의 잡음"으로 가정했고**, 그래서 로컬에서는 매번 green으로 접혔다. CI에는 재시도가 없다.
+- **그물**: 놓친 것 — 로컬 게이트(재시도가 삼킴, `retried:` 꼬리표는 남았지만 아무도 출처 파일을 안 봤다) · dev push CI(운으로 green). 잡은 것 — PR CI(재시도 없음)와
+  `--log-failed`의 `This error originated in "<file>"` 줄.
+- **재발 방지**:
+  - 실물 helper를 테스트용으로 바꿔 끼울 땐 **손으로 다시 짜지 않고 공유 사본 하나**를 쓴다 — `lib/__tests__/fast-github-wait.ts`(마감만 짧고 타이머 정리까지 실물과 같다),
+    `vi.mock("@/lib/github-wait", () => import("@/lib/__tests__/fast-github-wait"))`. 회귀 테스트 `fast-github-wait.test.ts`("작업이 이기면 마감이 지나도 late()를
+    부르지 않는다" — `clearTimeout`을 지우면 red 2).
+  - grep(실행): `git grep -n "setTimeout(() => resolve(late" -- app lib components` → 실물과 공유 사본 둘뿐. `git grep -l "Promise.race" -- '*.test.ts' '*.test.tsx'` →
+    `components/__tests__/settings-streaming.test.tsx` 1건 — 그쪽 타이머는 `"hung"`만 내고 로그를 안 써서 이 부류가 아니다(타이머는 남는다).
+  - **`pnpm gate` 끝줄에 `retried: test`가 찍히면 통과로 읽지 않는다** — 그 run의 `This error originated in` 파일을 찾아 테스트 뒤에 살아남는 작업(끄지 않은 타이머·
+    기다리지 않은 promise·복원된 console에 쓰는 로그)이 있는지 본다. 재시도는 머지를 막지 않게 할 뿐 원인을 지우지 않는다 — CI는 재시도하지 않는다.
+    후속 후보: 게이트가 재시도할 때 출처 파일을 끝줄에 함께 싣는다(지금은 단계 이름뿐).
