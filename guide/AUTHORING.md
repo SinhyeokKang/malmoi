@@ -118,6 +118,7 @@
 
 - 짧은 문장으로 지금 할 일과 그 결과를 설명한다. 절차는 사용자가 실행하는 순서로 쓴다.
 - 독자를 `you`로 부르고, 역할을 제한할 때는 `project owners`라고 쓴다. 편집자에게 내부 DB·어댑터·토큰 구조를 설명하지 않는다. 화면에 없는 pull request, transaction, token, namespace, cron, OAuth, challenge, database는 같은 문장에서 뜻을 풀지 않으면 쓰지 않는다. Editor 원고의 key도 처음 뜻을 풀지 않으면 쓰지 않으며, base branch, payload, request도 내부 용어로 쓰지 않는다. 자동 검사는 금지어 전체를 보장하지 않는다.
+- **축약형(`could not`·`does not` …)은 원고에서 금지하지 않는다** — 축약형은 화면 문장의 문체 규칙(DESIGN §10)이지 개념 동의어가 아니고, 원고는 설명문이라 오독되지 않는다(2026-10-01, ux-drift-unify — `terminology.test.ts`의 원고 색인이 뺀다). 원고 문체를 화면에 맞출지는 후속 후보다.
 - 성공·실패·확인 불가를 구별한다. 확인하지 못한 PR을 없다고 쓰거나, 저장만 된 변경을 전달됐다고 쓰지 않는다.
 - `TODO`·`TBD`·`lorem` 같은 자리표시자를 원고에 남기지 않는다. 검증하지 않은 동작을 약속하지 않는다.
 - 독자가 파일로 저장할 코드 블록에는 `title=".github/workflows/malmoi-i18n.yml"`처럼 파일명 메타를 붙인다. 설정 필드에 붙이는 목록이나 코드 조각은 파일명이 없어도 된다.
