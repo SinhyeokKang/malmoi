@@ -10,7 +10,7 @@ vi.mock("@/lib/guide/load", async importOriginal => {
 import { loadSummary } from "@/lib/guide/load";
 import { dynamic, GET } from "../route";
 
-it("公開 가이드만 정적으로 서빙하고 세션·DB·쿠키를 부르지 않는다", async () => {
+it("공개 가이드만 정적으로 서빙하고 세션·DB·쿠키를 부르지 않는다", async () => {
   expect(dynamic).toBe("force-static");
   const response = GET();
   expect(response.status).toBe(200);
