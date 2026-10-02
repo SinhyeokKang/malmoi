@@ -127,5 +127,7 @@
 
 ## G. 실물 검증 (`/runtime-test`, 로컬)
 
+실행 결과: Chromium 주요 시나리오는 통과했지만 OS IME·Safari·AT 및 일부 native focus는 미검증이다. 세부 근거와 한계는 orch.md 최종 QA 기록에 보존한다. 전체 native 통과로 체크하지 않는다.
+
 - [ ] **G1** 두 셸에서 캡슐이 뷰포트 가로 중앙(좌우 오프셋 차 ≤ 1px — computed rect) · 캡슐 36 높이·패널 면 · Dialog가 위 16에 대형 모달과 같은 폭·높이로 열림 · macOS ⌘K 열림 / Ctrl+K는 textarea에서 줄 끝 지우기 그대로 · textarea 포커스 중 ⌘K 무시 · 한글 조합 중 Enter·Esc · 빈 질의 미리보기 · 결과 클릭·Enter 이동 · Tab·Shift+Tab이 결과 링크를 순회하지 않음 · 긴 원문/번역값 후반의 일치 구간이 실제로 보임 · 공개 셸 검색 후 프로젝트 생성·보관·역할 변경을 하고 재열면 최신 목록 · **draft 있는 번역 화면에서 결과 선택 → 이탈 확인이 뜨고 검색 Dialog는 닫혀 있음** · `/docs/x` → `/docs/x#y` 같은 페이지 해시 착지(제목 스크롤·포커스) · Keys 결과 → 번역 화면 선택 키(다른 화면에서, 그리고 같은 소스 화면에서 선택 행 스크롤) · 닫힘 포커스 복귀 · 로그인 상태로 `/docs`에서 열면 Projects·Keys가 서고 로그아웃 상태면 Menus(하단)·Docs만.
   — 검증: BugShot 이슈 0 또는 이슈 링크 목록.

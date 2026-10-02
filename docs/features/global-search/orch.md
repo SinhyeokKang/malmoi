@@ -74,4 +74,13 @@ GS5a 증거: 원본96d7bea4, 문서3커밋을 dev9f7c4eef까지 통합. Node24 g
 
 GS4 최종 증거: 원본c2083d9d, Node24 gate exit0,10527 passed+기존1 skipped, 격리PG541 passed. fix1 최초 테스트 scrollTo 오버로드 타입 실패를 수정했고 독립 Astra 재검토 red0/yellow0/white0으로 두 지적 해소. dev ccc84462까지8커밋 통합. 실제 브라우저 치수·착지·IME는 GS6 미검증이다. GS5는 이 구현을 기준으로 F1/F2/F5/F6/F7 및 가이드를 수행한다. 지휘자 통합 gate와 문서 작업은 별도 체크아웃에서 병행하고 PG 성능 실행은 겹치지 않는다.
 
+## 최종 QA·정리
+
+- dev dac8bcf2..5116080d push 완료. 최종 Node24 gate exit0,10527 passed+기존1 skipped, 격리PG541 passed, build/mirror 통과. CI37059221943 success. GS5 문서 재리뷰 red0/yellow0/white0.
+- GS6 Chromium 여섯 화면: capsule320×36, 중앙 오차0, Dialog top16, 가로 넘침0. 문서 hash/focus/TOC, 키 선택·스크롤, pointer/Enter dirty guard, 긴 문자열, 로그인/익명·멤버십/보관/역할 재조회 통과. 말모이 결함0.
+- 미검증: OS 한글IME, Safari, 스크린리더, disabled-origin focus, native 새 탭 modifier, 일시적 navigation-dim 프레임 녹화. CDP 조합 관측을 OS 검증으로 세지 않는다. G1 전체 native PASS는 주장하지 않는다.
+- BugShot 첫 crop 회색 틴트1/2 관측과 정상 재시도는 bugshot-2#246으로 별도 제출. 도구 수정은 범위 밖이며 말모이 가짜 제출·gh 폴백 없음.
+- QA 임시 데이터·timestamp·쿠키 원복, DB7표 행 수 동일, 생성 fixture 부재 확인. 소유 서버 종료와 tracked tree clean 확인. 지휘자가 TaskSpace23을 finish({keep:[]})1회로 닫고 모든 워커·child worktree를 정리했다.
+- guide:check stale25컷50건은 미갱신 경고로 남는다. 새 검색 가이드 본문 완료. 결론을 정본으로 올렸으므로 다음 커밋에서 기능 디렉터리를 제거한다. orch.md 선작성·커밋 규칙은 원본 명령과 미러에 남는다. 마이그레이션·프로덕션 배포 없음.
+
 통합 gate4: dev1ea0dde1, Node24 exit0,10527 passed+기존1 skipped, 격리PG/build/mirror 전부 통과. GS5 원본e5866015의 문서5커밋을 dev6e035b0e까지 통합, gate exit0(10527 passed+기존1 skipped). 가이드 용어 검사 최초1실패는 first sync로 수정했다. 독립 리뷰에서 DIRECTORY의 NoMatch action 필수 설명1건을 발견해 지휘자가 문서 신선도 커밋66769ac6으로 수정했고 재확인 중이다. guide:check stale25컷50건은 보존; 검색 관련 가이드 본문은 갱신했고 스크린샷은 미갱신 경고로 남긴다. G1은 push 후 TaskSpace23에서 검증한다.
