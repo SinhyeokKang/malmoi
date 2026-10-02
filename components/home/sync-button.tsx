@@ -240,7 +240,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
         (`spinnerSize="sm"`이 글리프 폭을 맞춘다), 라벨이 접근 이름이라 진행 신호는 `busy`의 `aria-busy`가 든다.
       */}
       <Button id={triggerId} spinnerSize="sm" busy={pending} aria-disabled={pending} onClick={event => { if (busy.current) event.preventDefault(); }}>
-        {!pending && <ArrowDownToLine className="size-3.5 text-gray-strong" aria-hidden />}
+        <ArrowDownToLine className="size-3.5 text-gray-strong" aria-hidden />
         {m.repositorySync.action}
       </Button>
     </DialogTrigger>

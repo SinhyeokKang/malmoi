@@ -153,3 +153,25 @@ it.each(["connect", "manual"] as const)("AddSourcesModal %s의 조상14px는 실
     expect(button.getAttribute("aria-busy")).toBe(operation === "manual" ? "true" : null);
   } finally { await act(async () => { call.resolve({ ok: false, error: "unavailable" }); }); }
 });
+
+
+it("Reconnect pending replaces its glyph once and keeps label/native lock through failure", async () => {
+  const call = deferred<{ ok: false; error: string }>();
+  mocks.connectRepository.mockReturnValue(call.promise);
+  await render(<ReconnectButton slug="acme" label="Reconnect" server={{}} spinnerSize="sm" />);
+  const button = byText("Reconnect");
+  expect(button.querySelector(".lucide-refresh-cw")).not.toBeNull();
+  try {
+    await click(button);
+    expect(button.disabled).toBe(true); expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(button.querySelectorAll("svg")).toHaveLength(1);
+    expect(button.querySelector(".lucide-refresh-cw")).toBeNull();
+    expect(button.querySelector(".animate-spin")?.classList.contains("size-3.5")).toBe(true);
+    expect(byText("Reconnect")).toBe(button); expect(button.textContent).toBe("Reconnect");
+    await act(async () => { button.click(); });
+    expect(mocks.connectRepository).toHaveBeenCalledTimes(1);
+  } finally { await act(async () => { call.resolve({ ok: false, error: "unavailable" }); }); }
+  expect(button.disabled).toBe(false); expect(button.getAttribute("aria-busy")).toBe("false");
+  expect(button.querySelector(".lucide-refresh-cw")).not.toBeNull();
+  expect(byText("Reconnect")).toBe(button);
+});

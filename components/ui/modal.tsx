@@ -67,7 +67,7 @@ export type OnboardingModalProps = {
   nextArrow?: boolean;
   nextDisabled?: boolean;
   /** ③ 제출 중 — [Next]만 잠긴다. 본문은 그대로 서서 입력값을 보인다. */
-  nextPending?: boolean;
+  busy?: boolean;
   /** ①④는 false — ①의 닫는 길은 X·Esc·backdrop이고, ④는 되돌릴 것이 없다. */
   showBack?: boolean;
   /** ②만 `row`. */
@@ -89,7 +89,7 @@ export function OnboardingModal({
   nextLabel,
   nextArrow = true,
   nextDisabled = false,
-  nextPending = false,
+  busy = false,
   showBack = false,
   bodyDirection = "column",
   bodyScroll = "auto",
@@ -240,7 +240,7 @@ export function OnboardingModal({
             */}
             {actions !== undefined ? (actions === null || actions === false ? null : <div className="flex items-center gap-2">{actions}</div>) : <div className="flex items-center gap-2">
               {showBack && (
-                <Button type="button" size="lg" onClick={onBack} disabled={nextPending}>
+                <Button type="button" size="lg" onClick={onBack} disabled={busy}>
                   {m.newProject.modal.back}
                 </Button>
               )}
@@ -254,7 +254,7 @@ export function OnboardingModal({
                 size="lg"
                 onClick={onNext}
                 disabled={nextDisabled}
-                loading={nextPending}
+                loading={busy}
               >
                 {nextLabel ?? m.newProject.modal.next}
                 {nextArrow && <ArrowRight className="size-4" aria-hidden />}

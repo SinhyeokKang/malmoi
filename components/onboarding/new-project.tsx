@@ -474,7 +474,7 @@ export function NewProject({
       // ⚠️ **③→④만 [Next]가 로딩이다** — 예외 I가 ③에 머물러야 하므로 미리 넘어갈 수 없다.
       // 나머지 전이는 "다음 단계 안의 스켈레톤"이 규칙이다 (DESIGN §6.7).
       // ④의 [Open project]도 이동이 커밋될 때까지 로딩이다 (audit-ux #22) — 전엔 transition 없는 `push`라 누른 뒤 무반응이었다.
-      nextPending={(step === 3 && pending) || (step === 4 && opening)}
+      busy={(step === 3 && pending) || (step === 4 && opening)}
       showBack={step === 2 || step === 3}
       bodyDirection={step === 2 ? "row" : "column"}
       bodyScroll={step === 2 || step === 4 ? "hidden" : "auto"}

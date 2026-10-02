@@ -414,7 +414,7 @@ const REST_DEMAND: readonly { path: string; symbol: string }[] = [];
 const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   state: { rows: 0, occurrences: 0 }, variant: { rows: 0, occurrences: 0 },
   hue: { rows: 0, occurrences: 0 }, size: { rows: 6, occurrences: 6 },
-  width: { rows: 0, occurrences: 0 }, progress: { rows: 7, occurrences: 7 },
+  width: { rows: 0, occurrences: 0 }, progress: { rows: 3, occurrences: 3 },
   slots: { rows: 8, occurrences: 8 }, rest: { rows: 0, occurrences: 0 },
   "data-tone": { rows: 1, occurrences: 1 }, aria: { rows: 3, occurrences: 3 },
   className: { rows: 3, occurrences: 3 },
@@ -430,10 +430,6 @@ const ALLOWLIST: Debt[] = [
   { rule: "className", path: "components/ui/modal.tsx", symbol: "OnboardingModal", detail: "panelClassName", count: 1, task: "T11" },
   { rule: "className", path: "components/ui/radio.tsx", symbol: "Radio", detail: "labelClassName", count: 1, task: "T11" },
   { rule: "data-tone", path: "components/ui/row-card.tsx", symbol: "BannerLine", detail: "missing data-tone", count: 1, task: "T11" },
-  { rule: "progress", path: "components/home/sync-button.tsx", symbol: "Button", detail: "pending glyph guard", count: 1, task: "T11" },
-  { rule: "progress", path: "components/reconnect-button.tsx", symbol: "Button", detail: "pending glyph guard", count: 1, task: "T11" },
-  { rule: "progress", path: "components/submit-button.tsx", symbol: "Button", detail: "pending glyph guard", count: 1, task: "T11" },
-  { rule: "progress", path: "components/ui/modal.tsx", symbol: "OnboardingModal", detail: "nextPending", count: 1, task: "T11" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "border-0", count: 1, task: "T19a" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "h-8", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/locale-panel.tsx", symbol: "Input", detail: "h-7", count: 1, task: "T19a" },
@@ -511,6 +507,26 @@ describe("primitive API contract — design §3", () => {
     const good = source('export function Screen() {return <Button spinnerSize="sm"/>;}', "components/canary.tsx");
     expect(scan([bad]).filter(row => row.rule === "size")).toHaveLength(3);
     expect(scan([good]).filter(row => row.rule === "size")).toEqual([]);
+  });
+
+  it("T11A removes only its four progress debts", () => {
+    expect(ALLOWLIST.filter(row => row.rule === "progress" && row.task === "T11")).toEqual([]);
+    expect(scan(SOURCES).filter(row => row.rule === "progress")).toEqual(ALLOWLIST.filter(row => row.rule === "progress").map(({task: _task, ...row}) => row).sort((a, b) => a.path.localeCompare(b.path)));
+  });
+
+  it("current Modal path distinguishes nextPending from busy", () => {
+    const path = "components/ui/modal.tsx";
+    const bad = source('export function OnboardingModal({nextPending}: {nextPending?: boolean}) {return <div/>;}', path);
+    const good = source('export function OnboardingModal({busy}: {busy?: boolean}) {return <div/>;}', path);
+    expect(scan([bad])).toEqual([{rule: "progress", path, symbol: "OnboardingModal", detail: "nextPending", count: 1}]);
+    expect(scan([good])).toEqual([]);
+  });
+
+  it.each(["components/home/sync-button.tsx", "components/reconnect-button.tsx", "components/submit-button.tsx"])("current consumer %s rejects a pending glyph guard", path => {
+    const button = source('export function Button({children}: {children?: ReactNode}) {return <button>{children}</button>;}', "components/ui/button.tsx");
+    const code = (glyph: string) => source(`import {Button as Control} from "@/components/ui/button"; export function Wrapper() {return <Control loading={pending}>${glyph}Save</Control>;}`, path);
+    expect(scan([button, code('{!pending && <Icon aria-hidden/>}')])).toEqual([{rule: "progress", path, symbol: "Button", detail: "pending glyph guard", count: 1}]);
+    expect(scan([button, code('<Icon aria-hidden/>')])).toEqual([]);
   });
 
   it("scans the production tree, never comments or test fixtures", () => {

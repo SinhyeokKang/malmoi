@@ -430,3 +430,27 @@ it("발급이 undefined로 돌아오면 null 승인을 보낸다", async () => {
   await click("Sync from repository");
   expect(mocks.run).toHaveBeenCalledWith({ slug: "acme", approval: null });
 });
+
+
+it("Sync pending replaces the trigger glyph once and preserves focusable busy and label", async () => {
+  const response = deferred<RepositoryImportOutcome>();
+  mocks.run.mockReturnValue(response.promise);
+  await render(<SyncButton {...props} />);
+  const trigger = button("Sync");
+  expect(trigger.querySelector(".lucide-arrow-down-to-line")).not.toBeNull();
+  await click("Sync");
+  try {
+    await click("Sync from repository");
+    expect(trigger.disabled).toBe(false);
+    expect(trigger.getAttribute("aria-disabled")).toBe("true");
+    expect(trigger.getAttribute("aria-busy")).toBe("true");
+    expect(trigger.querySelectorAll("svg")).toHaveLength(1);
+    expect(trigger.querySelector(".lucide-arrow-down-to-line")).toBeNull();
+    expect(trigger.querySelector(".animate-spin")?.classList.contains("size-3.5")).toBe(true);
+    expect(button("Sync")).toBe(trigger); expect(trigger.textContent).toBe("Sync");
+    await act(async () => { trigger.click(); });
+    expect(mocks.run).toHaveBeenCalledTimes(1);
+  } finally { await act(async () => { response.resolve(success); }); }
+  expect(trigger.querySelector(".lucide-arrow-down-to-line")).not.toBeNull();
+  expect(button("Sync")).toBe(trigger);
+});

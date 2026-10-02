@@ -122,7 +122,7 @@ function ProviderButton({
       <ProviderSubmit
         label={label}
         variant={variant}
-        icon={provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
+        icon={provider === "github" ? <GithubIcon aria-hidden className="size-4" /> : <GoogleIcon aria-hidden className="size-4" />}
       />
     </form>
   );

@@ -270,7 +270,7 @@ function ProviderButton({ provider, requestId, autoFocus }: { provider: LoginPro
       <ProviderSubmit
         label={provider === "github" ? m.signIn.github : m.signIn.google}
         variant={provider === "github" ? "primary" : "default"}
-        icon={provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
+        icon={provider === "github" ? <GithubIcon aria-hidden className="size-4" /> : <GoogleIcon aria-hidden className="size-4" />}
         autoFocus={autoFocus}
       />
     </form>

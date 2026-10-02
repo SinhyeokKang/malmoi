@@ -10,7 +10,7 @@ export function SubmitButton({ icon, children, ...props }: Omit<ButtonProps, "lo
   const { pending } = useFormStatus();
   return (
     <Button {...props} type="submit" loading={pending}>
-      {!pending && icon}
+      {icon}
       {children}
     </Button>
   );

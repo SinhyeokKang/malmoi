@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { OnboardingModal } from "@/components/onboarding/modal";
@@ -88,9 +89,9 @@ describe("OnboardingModal — [Next]는 껍데기가 소유한다", () => {
     expect(buttonNamed("Next")).toBeUndefined();
   });
 
-  it("`nextPending`이면 눌리지 않는다 — 같은 제출이 두 번 나가지 않는다", async () => {
+  it("`busy`이면 눌리지 않는다 — 같은 제출이 두 번 나가지 않는다", async () => {
     const onNext = vi.fn();
-    await render(shell({ nextPending: true, onNext }));
+    await render(shell({ busy: true, onNext }));
 
     buttonNamed("Next")?.click();
     expect(onNext).not.toHaveBeenCalled();
@@ -257,4 +258,34 @@ describe("OnboardingModal — closeDisabled 동안 오버레이", () => {
     await render(shell({ closeDisabled: false }));
     expect(mousedown(overlay())).toBe(false);
   });
+});
+
+
+it("busy keeps Next and Back natively disabled, preserves the label, then restores actions", async () => {
+  const onNext = vi.fn(); const onBack = vi.fn(); const onClose = vi.fn();
+  const view = await render(shell({ busy: false, showBack: true, onNext, onBack, onClose }));
+  const next = buttonNamed("Next")!; const label = next.firstChild;
+  await view.rerender(shell({ busy: true, showBack: true, onNext, onBack, onClose }));
+  expect(next.disabled).toBe(true); expect(buttonNamed("Back")!.disabled).toBe(true);
+  expect(next.getAttribute("aria-disabled")).toBeNull();
+  expect(next.querySelectorAll("svg")).toHaveLength(2);
+  expect(next.querySelector(".lucide-arrow-right")).not.toBeNull();
+  expect(next.querySelector(".animate-spin")?.classList.contains("size-4")).toBe(true);
+  expect(next.childNodes[1]).toBe(label);
+  await act(async () => { next.click(); buttonNamed("Back")!.click(); next.click(); });
+  expect(onNext).not.toHaveBeenCalled(); expect(onBack).not.toHaveBeenCalled();
+  expect(find<HTMLButtonElement>(document.body, '[aria-label="Close"]').disabled).toBe(false);
+  await view.rerender(shell({ busy: false, showBack: true, onNext, onBack, onClose }));
+  expect(next.querySelector(".animate-spin")).toBeNull(); expect(next.disabled).toBe(false);
+  expect(next.firstChild).toBe(label);
+  await act(async () => { next.click(); buttonNamed("Back")!.click(); });
+  expect(onNext).toHaveBeenCalledTimes(1); expect(onBack).toHaveBeenCalledTimes(1);
+});
+
+it("busy does not rewrite custom actions and closeDisabled remains separate", async () => {
+  await render(shell({ busy: true, closeDisabled: true, actions: <Button>Custom</Button> }));
+  expect(buttonNamed("Next")).toBeUndefined();
+  expect(buttonNamed("Custom")!.disabled).toBe(false);
+  expect(buttonNamed("Custom")!.querySelector(".animate-spin")).toBeNull();
+  expect(find<HTMLButtonElement>(document.body, '[aria-label="Close"]').disabled).toBe(true);
 });
