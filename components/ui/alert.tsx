@@ -28,15 +28,15 @@ const alert = cva("flex", {
       danger: "bg-red-50",
     },
     /**
-     * ⚠️ `compact`는 좁은 자리(360 Dialog · 상세 노트)의 형이다 — `p-4`면 360 Dialog 본문 폭이 296으로 떨어져
+     * ⚠️ `sm`은 좁은 자리(360 Dialog · 상세 노트)의 형이다 — `p-4`면 360 Dialog 본문 폭이 296으로 떨어져
      * 두 줄 문장이 네 줄이 된다 (Sync 시안 §7).
      */
     size: {
-      default: "gap-3 rounded-lg p-4 text-sm",
-      compact: "gap-2 rounded-md p-3 text-xs",
+      md: "gap-3 rounded-lg p-4 text-sm",
+      sm: "gap-2 rounded-md p-3 text-xs",
     },
   },
-  defaultVariants: { variant: "neutral", size: "default" },
+  defaultVariants: { variant: "neutral", size: "md" },
 });
 
 type Tone = NonNullable<VariantProps<typeof alert>["variant"]>;
@@ -99,14 +99,14 @@ export function Alert({
   children?: ReactNode;
 }) {
   const tone = variant ?? "neutral";
-  const compact = size === "compact";
+  const compact = size === "sm";
   const Icon = ICON[tone];
   const mode = live ?? (tone === "danger" ? "alert" : "off");
   return (
     <div id={id} className={cn(alert({ variant, size }), inset && "rounded-none px-4 py-row-y", className)} role={mode === "off" ? undefined : mode} data-alert={tone}>
       <Icon className={cn("mt-0.5 shrink-0", compact ? "size-3.5" : "size-4", ICON_CLASS[tone])} aria-hidden />
       <div className={cn("flex min-w-0 flex-1 flex-col", compact ? "gap-1.5" : "gap-2")}>
-        {/* 제목↔본문은 기본 4 · compact 2다(2026-09-30 사용자) — 열 gap(8 · 6)에서 −4를 당긴다. 본문↔액션은 열 gap 그대로다. */}
+        {/* 제목↔본문은 기본 4 · sm 2다(2026-09-30 사용자) — 열 gap(8 · 6)에서 −4를 당긴다. 본문↔액션은 열 gap 그대로다. */}
         {title !== undefined && <p className={cn("font-medium", children !== undefined && "-mb-1")}>{title}</p>}
         {children !== undefined && <div>{children}</div>}
         {actions !== undefined && <div className="flex gap-2">{actions}</div>}

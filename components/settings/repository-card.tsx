@@ -76,7 +76,7 @@ function ConnectionRow({ health: pending, slug, owner, repo, archived, onFailure
   return <div className={ROW}>
     <IconTile tone={STATE[state].tone}>{disconnected ? <Unplug className="size-4" aria-hidden /> : problem === "not-connected" ? <Link2 className="size-4" aria-hidden /> : <GithubIcon className="size-4" />}</IconTile>
     <div className="min-w-0 flex-1 space-y-copy-gap"><p className="text-base break-all"><span className="font-medium">{owner}/{repo}</span><StatusBadge state={state} className="ml-2 align-middle" /></p>{detail && <p className="text-muted-foreground text-xs">{detail}</p>}</div>
-    {canConnect ? <fieldset className="[&_.animate-spin]:size-3.5" disabled={archived}><ReconnectButton onFailure={onFailure} slug={slug} server={health} label={problem === "not-connected" ? m.settings.repository.connect : m.settings.repository.reconnect} variant={health.status === "repo-moved" ? undefined : "primary"} /></fieldset>
+    {canConnect ? <fieldset disabled={archived}><ReconnectButton spinnerSize="sm" onFailure={onFailure} slug={slug} server={health} label={problem === "not-connected" ? m.settings.repository.connect : m.settings.repository.reconnect} variant={health.status === "repo-moved" ? undefined : "primary"} /></fieldset>
       : health.status === "ok" && <a className={buttonClass({ variant: "default", size: "md" }) + " focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none"} href={`https://github.com/${owner}/${repo}`} target="_blank" rel="noreferrer">{m.settings.openRepo}</a>}
   </div>;
 }
@@ -91,8 +91,8 @@ function ConnectionRowPending() {
     <Skeleton className="size-7 shrink-0 rounded" />
     <div className="min-w-0 flex-1 space-y-copy-gap">
       {/* 줄 칸 높이(24 — 이름 옆 배지 · 16)는 실물 행이 든다. 글자 자리는 `SkeletonLine`이다(4-W8). */}
-      <div className="flex h-6 items-center *:flex-1"><SkeletonLine text="text-base" className="w-[45%]" /></div>
-      <div className="flex h-4 items-center *:flex-1"><SkeletonLine text="text-xs" className="w-[30%]" /></div>
+      <div className="flex h-6 items-center *:flex-1"><SkeletonLine size="md" className="w-[45%]" /></div>
+      <div className="flex h-4 items-center *:flex-1"><SkeletonLine size="xs" className="w-[30%]" /></div>
     </div>
     <Skeleton className="h-9 w-32 shrink-0 rounded-md @max-form:col-start-2" />
   </div>;

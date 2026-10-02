@@ -37,7 +37,7 @@ export default function ProjectHomeLoading() {
       <PanelHeader aria-hidden>
         <div className="flex items-center gap-2.5">
           <Skeleton className="size-7 rounded" />
-          <SkeletonLine text="text-lg" className="w-48" />
+          <SkeletonLine size="lg" className="w-48" />
           <span className="ml-auto flex items-center gap-2">
             <Skeleton className="h-9 w-24 rounded-md" />
             <Skeleton className="h-9 w-28 rounded-md" />
@@ -53,13 +53,13 @@ export default function ProjectHomeLoading() {
             {[0, 1, 2, 3].map((i) => (
               <li key={i}><div className="border-border flex flex-col gap-3 rounded-lg border p-3.5">
                 <span className="flex items-center gap-2">
-                  <div className="min-w-0 flex-1"><SkeletonLine text="text-sm" className="w-[62%]" /></div>
+                  <div className="min-w-0 flex-1"><SkeletonLine size="sm" className="w-[62%]" /></div>
                   <Skeleton className="ml-auto size-4 rounded-full" />
                 </span>
                 <span className="flex flex-col gap-1.5">
                   {/* 수치는 24/600이다 — `SkeletonLine`의 급 밖이라 같은 줄 상자(보이지 않는 글자 + em 블록)를 여기서 세운다. */}
                   <div className="flex items-center text-2xl font-semibold">{"\u200b"}<Skeleton className="h-[0.8em] w-14 rounded-md" /></div>
-                  <SkeletonLine text="text-xs" className="w-[72%]" />
+                  <SkeletonLine size="xs" className="w-[72%]" />
                 </span>
               </div></li>
             ))}
@@ -80,7 +80,7 @@ export default function ProjectHomeLoading() {
         */}
         <aside className="border-border overflow-hidden rounded-lg border">
           <div className="flex min-h-12 items-center px-4 py-3">
-            <SkeletonLine text="text-base" className="w-20" />
+            <SkeletonLine size="md" className="w-20" />
           </div>
           <MetaGroup rows={6} />
           <MetaGroup rows={3} />
@@ -102,7 +102,7 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
   return (
     <section className="border-border overflow-hidden rounded-lg border">
       <div className="flex min-h-12 items-center px-4 py-3">
-        <SkeletonLine text="text-base" className="w-40" />
+        <SkeletonLine size="md" className="w-40" />
       </div>
       <ul className={divided ? undefined : "border-divider border-t px-4 pt-3.5"}>
         {Array.from({ length: rows }, (_, i) => (
@@ -121,10 +121,10 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
             */}
             <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
               {/* 할 일 행은 문장(15)이 먼저고 표면·로케일(13)이 아래다 — 실물과 같은 순서(Q9). */}
-              <SkeletonLine text="text-base" className="w-[72%]" />
-              {divided && <SkeletonLine text="text-xs" className="w-[62%]" />}
+              <SkeletonLine size="md" className="w-[72%]" />
+              {divided && <SkeletonLine size="xs" className="w-[62%]" />}
             </span>
-            <SkeletonLine text="text-xs" className="w-12" />
+            <SkeletonLine size="xs" className="w-12" />
           </li>
         ))}
       </ul>
@@ -142,7 +142,7 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
 function FooterLink() {
   return (
     <div className="border-divider flex h-[45px] items-center justify-center border-t px-4">
-      <SkeletonLine text="text-sm" className="w-16" />
+      <SkeletonLine size="sm" className="w-16" />
     </div>
   );
 }
@@ -158,8 +158,8 @@ function MetaGroup({ rows }: { rows: number }) {
     <div className="border-divider flex flex-col gap-2.5 border-t px-4 py-3.5">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex h-5 items-center gap-3">
-          <div className="w-24 shrink-0"><SkeletonLine text="text-xs" className="w-full" /></div>
-          <div className="min-w-0 flex-1"><SkeletonLine text="text-sm" className="w-[62%]" /></div>
+          <div className="w-24 shrink-0"><SkeletonLine size="xs" className="w-full" /></div>
+          <div className="min-w-0 flex-1"><SkeletonLine size="sm" className="w-[62%]" /></div>
         </div>
       ))}
     </div>

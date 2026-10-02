@@ -39,7 +39,7 @@ export default function AccountLoading() {
       <PanelHeader aria-hidden>
         {/* 제목 줄은 실물과 같은 min-h-9다 — 머리 높이가 안 튄다. */}
         <div className="flex items-center">
-          <SkeletonLine text="text-lg" className="w-32" />
+          <SkeletonLine size="lg" className="w-32" />
         </div>
       </PanelHeader>
 
@@ -48,7 +48,7 @@ export default function AccountLoading() {
         <SkeletonCard>
           <div className="grid grid-cols-[96px_1fr] items-center gap-x-3 gap-y-[14px] px-4 py-3.5">
             {/* 아바타 행도 라벨 열을 든다 — 실물이 그렇다. 안 그리면 아바타가 108px 왼쪽에서 출발한다. */}
-            <SkeletonLine text="text-xs" className="w-12" />
+            <SkeletonLine size="xs" className="w-12" />
             <div className="flex items-center gap-4">
               <Skeleton className="size-14 rounded-full" />
               <div className="flex flex-col gap-1.5">
@@ -56,20 +56,20 @@ export default function AccountLoading() {
                   <Skeleton className="h-9 w-32 rounded-md" />
                   <Skeleton className="h-9 w-20 rounded-md" />
                 </div>
-                <SkeletonLine text="text-xs" className="w-64" />
+                <SkeletonLine size="xs" className="w-64" />
               </div>
             </div>
 
-            <SkeletonLine text="text-xs" className="w-12" />
+            <SkeletonLine size="xs" className="w-12" />
             <div className="flex items-center gap-2">
               <Skeleton className="h-9 w-80 rounded-md" />
               <Skeleton className="h-9 w-16 rounded-md" />
             </div>
 
-            <SkeletonLine text="text-xs" className="w-12" />
+            <SkeletonLine size="xs" className="w-12" />
             <div className="flex items-center gap-3">
               <Skeleton className="h-9 w-80 rounded-md" />
-              <SkeletonLine text="text-xs" className="w-56" />
+              <SkeletonLine size="xs" className="w-56" />
             </div>
           </div>
         </SkeletonCard>
@@ -81,13 +81,13 @@ export default function AccountLoading() {
               <div key={row} className={`flex items-center gap-3 px-4 py-row-y ${row === 0 ? "" : "border-border border-t"}`}>
                 <Skeleton className="size-7 rounded" />
                 <div className="flex flex-1 flex-col gap-copy-gap">
-                  <SkeletonLine text="text-base" className="w-40" />
+                  <SkeletonLine size="md" className="w-40" />
                   {/*
                     ⚠️ **줄 수가 카드마다 다르다** — 수단 카드는 보조 줄을 안 그리고(데이터가 없다),
                     GitHub App 카드는 집계를 든다. 골격이 둘 다 두 줄이면 데이터 도착 순간 수단
                     카드만 줄어들고 그 아래 카드가 위로 밀린다.
                   */}
-                  {hint && <SkeletonLine text="text-xs" className="w-56" />}
+                  {hint && <SkeletonLine size="xs" className="w-56" />}
                 </div>
                 <Skeleton className="h-9 w-24 rounded-md" />
               </div>
@@ -107,8 +107,8 @@ function SkeletonCard({ children }: { children: ReactNode }) {
   return (
     <div className="border-border overflow-hidden rounded-lg border">
       <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
-        <SkeletonLine text="text-base" className="w-28" />
-        <div className="ml-auto w-48"><SkeletonLine text="text-xs" className="w-full" /></div>
+        <SkeletonLine size="md" className="w-28" />
+        <div className="ml-auto w-48"><SkeletonLine size="xs" className="w-full" /></div>
       </div>
       {children}
     </div>

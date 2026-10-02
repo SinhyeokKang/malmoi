@@ -212,7 +212,7 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
 function Note({ tone, body, note }: { tone: "danger" | "muted"; body: string; note: string | null }) {
   return (
     <div data-event-note>
-      <Alert variant={tone === "muted" ? "neutral" : tone} size="compact" live="off">
+      <Alert variant={tone === "muted" ? "neutral" : tone} size="sm" live="off">
         <p className="text-pretty">{body}</p>
         {note !== null && <p className="text-muted-foreground mt-1 text-xs text-pretty">{note}</p>}
       </Alert>

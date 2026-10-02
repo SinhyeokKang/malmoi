@@ -114,8 +114,7 @@ export const buttonClass = cva(
         /**
          * ⚠️ **32 → 36으로 올렸다** (2026-09-11 사용자 — 시안의 기본 버튼이 36이다). §6.4가 "마지막
          * 화면이 옮겨온 뒤 base를 바꾼다"로 미뤄 둔 그 교체이고, 미룬 이유(소비자 26파일이 함께
-         * 움직인다)는 그대로이되 **시안의 기본값이 드러난 지금이 그 시점**이다. `size`를 넷으로
-         * 늘리지 않는 것이 요지다 — 그러면 "어느 걸 쓰나"가 매 화면 판단이 된다.
+         * 움직인다)는 그대로이되 **시안의 기본값이 드러난 지금이 그 시점**이다. 문자 버튼 세 크기는 유지하고, 실재하는 정방형 크기는 `icon-*`가 든다.
          */
         md: "h-9 rounded-md px-3",
         sm: "h-7 rounded-sm px-2 text-xs",
@@ -137,6 +136,10 @@ export const buttonClass = cva(
          * 크기와 정확히 같다 — 새 `size`를 만들면 "어느 걸 쓰나"가 매 화면 판단이 된다.
          */
         lg: "h-10 rounded-lg px-4",
+        "icon-xs": "size-6 rounded-sm px-0",
+        "icon-sm": "size-7 rounded-sm px-0 text-xs",
+        "icon-md": "size-8 rounded-md px-0",
+        "icon-lg": "size-9 rounded-md px-0",
       },
     },
     defaultVariants: { variant: "default", size: "md" },
@@ -153,6 +156,8 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { ref?: Ref<
      * 도는지는 **스피너 위치**가 이미 말한다.
      */
     loading?: boolean;
+    /** 같은 md 버튼도 14/16px가 실재하므로 버튼 크기와 독립이다. 기본 16px는 그대로다. */
+    spinnerSize?: "sm" | "md";
     /**
      * 진행 중이되 **포커스를 지킨다** (audit #32 — DESIGN §6.65). `loading`과 같은 스피너이고 `disabled` 대신
      * `aria-disabled` + `aria-busy`를 걸며 클릭은 막는다.
@@ -170,6 +175,7 @@ export function Button({
   className,
   variant,
   size,
+  spinnerSize = "md",
   loading = false,
   busy = false,
   children,
@@ -187,7 +193,7 @@ export function Button({
       onClick={busy ? event => event.preventDefault() : onClick}
     >
       {/* 스피너가 라벨 **앞에** 선다 — 16px는 §6.8의 기본 크기다. */}
-      {(loading || busy) && <Loader2 className="size-4 animate-spin" aria-hidden />}
+      {(loading || busy) && <Loader2 className={cn(spinnerSize === "sm" ? "size-3.5" : "size-4", "animate-spin")} aria-hidden />}
       {glyphSlot(children, loading || busy)}
     </button>
   );

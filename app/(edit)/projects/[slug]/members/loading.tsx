@@ -19,9 +19,9 @@ export default function MembersLoading() {
       <span className="sr-only" role="status">{m.members.loading}</span>
       <PanelHeader aria-hidden>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <SkeletonLine text="text-lg" className="w-24" />
+          <SkeletonLine size="lg" className="w-24" />
           <div className="flex items-center gap-3">
-            <SkeletonLine text="text-xs" className="w-24" />
+            <SkeletonLine size="xs" className="w-24" />
             <Skeleton className="h-9 w-36 rounded-md" />
           </div>
         </div>
@@ -34,8 +34,8 @@ export default function MembersLoading() {
               <div className="flex items-center gap-4 py-row-y pr-3.5 pl-3">
                 <Skeleton className="size-8 shrink-0 rounded-full" />
                 <div className="flex w-[300px] min-w-0 shrink-0 flex-col gap-0.5">
-                  <SkeletonLine text="text-base" className="w-[45%]" />
-                  <SkeletonLine text="text-sm" className="w-[62%]" />
+                  <SkeletonLine size="md" className="w-[45%]" />
+                  <SkeletonLine size="sm" className="w-[62%]" />
                 </div>
                 {/* 메타 150 — 행 높이는 이름 열이 정하므로 줄 자리가 아니라 블록 하나다. */}
                 <div className="w-[150px] shrink-0">
@@ -57,7 +57,7 @@ export default function MembersLoading() {
           <div data-skeleton-empty className="border-foreground/[0.06] flex flex-col items-center gap-2.5 border-t p-8">
             <Skeleton className="size-10 rounded-sm" />
             <div className="flex w-full flex-col items-center gap-1.5">
-              <SkeletonLine text="text-base" className="w-48" />
+              <SkeletonLine size="md" className="w-48" />
               {["w-80", "w-56"].map((width) => (
                 <div key={width} className="flex w-full justify-center text-sm leading-relaxed">
                   {"\u200b"}
@@ -77,10 +77,10 @@ function Card({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
       <div className="flex min-h-12 items-center gap-2 px-4 py-3">
-        <SkeletonLine text="text-base" className="w-28" />
+        <SkeletonLine size="md" className="w-28" />
         <Skeleton className="h-5 w-5 rounded-full" />
         <div className="ml-auto w-72">
-          <SkeletonLine text="text-xs" className="ml-auto w-full" />
+          <SkeletonLine size="xs" className="ml-auto w-full" />
         </div>
       </div>
       {children}

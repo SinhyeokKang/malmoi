@@ -229,3 +229,27 @@ it("회전 거부 unpinned는 Disconnected 쪽 문장이다", async () => {
   await act(async () => { await userEvent.setup().click(confirm); });
   expect(container.querySelector('[role="alert"]')?.textContent).toBe("Reconnect the repository to rotate the token.");
 });
+
+
+it("설정 Reconnect의 fieldset14px는 실제 버튼으로 이동한다", async () => {
+  let resolve!: (value: { ok: false; error: string }) => void;
+  actions.connectRepository.mockReturnValue(new Promise<{ ok: false; error: string }>(done => { resolve = done; }));
+  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve({ status: "not-connected" })} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" />);
+  try {
+    const button = [...container.querySelectorAll("button")].find(button => button.textContent === "Connect")!;
+    await act(async () => { await userEvent.setup().click(button); });
+    expect(button.querySelector(".animate-spin")?.classList.contains("size-3.5")).toBe(true);
+  } finally { await act(async () => { resolve({ ok: false, error: "unavailable" }); }); }
+});
+
+it("base branch Save의 조상14px는 실제 버튼으로 이동한다", async () => {
+  let resolve!: (value: { ok: false; error: string }) => void;
+  actions.updateRepositorySettings.mockReturnValue(new Promise<{ ok: false; error: string }>(done => { resolve = done; }));
+  const { container } = await render(<RepositoryForm owner="acme" repo="web" slug="acme" baseBranch="main" />);
+  try {
+    await choose(container, "dev");
+    const button = [...container.querySelectorAll("button")].find(button => button.textContent === "Save")!;
+    await act(async () => { await userEvent.setup().click(button); });
+    expect(button.querySelector(".animate-spin")?.classList.contains("size-3.5")).toBe(true);
+  } finally { await act(async () => { resolve({ ok: false, error: "unavailable" }); }); }
+});

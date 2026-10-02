@@ -171,7 +171,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             ⚠️ **`BannerLine`이 아니라 `Alert inset danger`다**(5-Y10) — `BannerLine`은 한 줄로 자르는데 이 안내는 세 문장이다(복구 길까지).
             지난 상태라 `live="off"`다 — 모달을 여는 순간 assertive로 끼어들지 않는다. */}
         {detail.languages.filter(row => row.orphaned).map(row => <div key={`missing-${row.code}`} className="border-divider border-t">
-          <Alert inset size="compact" variant="danger" live="off">
+          <Alert inset size="sm" variant="danger" live="off">
             <span className="leading-translation"><span className="font-medium">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated, detail.locales)}</span></span>
           </Alert>
         </div>)}

@@ -48,7 +48,7 @@ export default function ProjectsLoading() {
         */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <SkeletonLine text="text-lg" className="w-40" />
+            <SkeletonLine size="lg" className="w-40" />
           </div>
           <Skeleton className="ml-auto h-9 w-64" />
           <Skeleton className="h-9 w-32" />
@@ -60,7 +60,7 @@ export default function ProjectsLoading() {
         <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
           {/* 카드 헤더 — 실물과 같은 `px-4 py-3`이라야 첫 행의 y가 안 튄다. */}
           <div className="flex min-h-12 items-center gap-2 px-4 py-3">
-            <SkeletonLine text="text-base" className="w-32" />
+            <SkeletonLine size="md" className="w-32" />
           </div>
           <ul>
             {[0, 1].map((i) => (
@@ -70,9 +70,9 @@ export default function ProjectsLoading() {
               >
                 <Skeleton className="size-7 rounded-[4px]" />
                 <div className="flex w-[420px] shrink-0 flex-col gap-0.5">
-                  <SkeletonLine text="text-base" className="w-48" />
+                  <SkeletonLine size="md" className="w-48" />
                   {/* 메타 줄은 13이다(4-Y9) — 실물 행과 같은 높이라야 도착 때 안 튄다. */}
-                  <SkeletonLine text="text-xs" className="w-72" />
+                  <SkeletonLine size="xs" className="w-72" />
                 </div>
                 <Skeleton className="ml-auto h-5 w-16 rounded-full" />
               </li>

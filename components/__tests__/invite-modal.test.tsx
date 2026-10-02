@@ -46,6 +46,7 @@ const open = async () => {
   await settle();
   await render(<InviteModal slug="acme" open onClose={onClose} seats={{ n: 4, limit: 10 }} returnFocusRef={ref} />);
   await settle();
+  for (const token of ["size-9", "rounded-md", "px-0"]) expect(remove(0).classList.contains(token)).toBe(true);
 };
 const panel = () => find<HTMLElement>(document.body, "[data-onboarding-panel]");
 const submit = () => find<HTMLButtonElement>(panel(), 'button[type="submit"]');

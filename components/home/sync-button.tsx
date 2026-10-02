@@ -237,9 +237,9 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
         든다. 전엔 이 자리가 자기 철자를 들고 있었고, 같은 pending이 로그인·New project와 달라 보였다.
 
         ⚠️ **라벨은 도는 동안에도 `Sync`다** (audit-ux D1 — Button `loading` 규칙에 예외가 없다). 스피너가 아이콘을 **교체**하고
-        (`[&_.animate-spin]:size-3.5`가 글리프 폭을 맞춘다), 라벨이 접근 이름이라 진행 신호는 `busy`의 `aria-busy`가 든다.
+        (`spinnerSize="sm"`이 글리프 폭을 맞춘다), 라벨이 접근 이름이라 진행 신호는 `busy`의 `aria-busy`가 든다.
       */}
-      <Button id={triggerId} className="[&_.animate-spin]:size-3.5" busy={pending} aria-disabled={pending} onClick={event => { if (busy.current) event.preventDefault(); }}>
+      <Button id={triggerId} spinnerSize="sm" busy={pending} aria-disabled={pending} onClick={event => { if (busy.current) event.preventDefault(); }}>
         {!pending && <ArrowDownToLine className="size-3.5 text-gray-strong" aria-hidden />}
         {m.repositorySync.action}
       </Button>
@@ -290,7 +290,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
             ⚠️ `disabled`가 아니라 `aria-disabled`다 — 지문이 도착하면 같은 버튼이 풀리므로 포커스·Tab 순서가 그대로 남아야 한다.
             ⚠️ **진행도 이 버튼이 든다**(DESIGN §6.4 Dialog (b) 절차) — 라벨은 그대로, 스피너가 아이콘 자리에 서고 누른 포커스가 머문다.
           */}
-          <Button variant="danger" className="[&_.animate-spin]:size-3.5" busy={approvalPending || pending} onClick={() => void confirm()}>
+          <Button variant="danger" spinnerSize="sm" busy={approvalPending || pending} onClick={() => void confirm()}>
             {shownUnsent > 0 ? m.repositorySync.confirmDiscard : m.repositorySync.confirm}
           </Button>
         </>}>
@@ -313,7 +313,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
           ⚠️ **글리프는 블록 머리에 하나다** — 줄마다 주면 경고가 둘인 화면이 되는데, 실제로는 한
           경고("덮인다")의 근거가 둘이다.
         */}
-        <Alert id={warningId} variant="warning" size="compact">
+        <Alert id={warningId} variant="warning" size="sm">
           {/*
             PR 조회가 돌아오면 이 줄이 **바뀐다**(미확인 → PR 번호). 그 교체를 알리는 것이 live의 몫이다.
             ⚠️ **줄이 사라지는 것은 알리지 못한다** — `aria-relevant` 기본값이 `additions text`라 제거는

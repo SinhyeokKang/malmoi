@@ -361,11 +361,12 @@ export function InviteModal({
                   <Button
                     type="button"
                     variant="ghost"
+                    size="icon-lg"
                     data-remove
                     aria-label={m.members.invite.removeRecipient(who)}
                     disabled={pending || rows.length === 1}
                     onClick={() => removeRow(index)}
-                    className="text-muted-foreground size-9 shrink-0 px-0"
+                    className="text-muted-foreground shrink-0"
                   >
                     <X className="size-4" aria-hidden />
                   </Button>

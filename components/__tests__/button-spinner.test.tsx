@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { MemberList } from "@/components/members/member-list";
 import { ArchiveCard } from "@/components/settings/archive-card";
+import { FileInput } from "@/components/ui/file-input";
 import { Button } from "@/components/ui/button";
 import type { MemberView } from "@/lib/auth/query";
 import { m } from "@/lib/i18n";
@@ -166,7 +167,7 @@ describe("Button progress semantics before the API rename", () => {
   it.each(["loading", "busy"] as const)("%s preserves 14px override versus 16px default on the same md danger Button", async (mode) => {
     const progress = mode === "loading" ? { loading: true } : { busy: true };
     const { container } = await render(<>
-      <Button variant="danger" {...progress} className="[&_.animate-spin]:size-3.5" data-case="archive">Archive</Button>
+      <Button variant="danger" {...progress} spinnerSize="sm" data-case="archive">Archive</Button>
       <Button variant="danger" {...progress} data-case="member">Remove</Button>
     </>);
     const archive = find<HTMLButtonElement>(container, '[data-case="archive"]');
@@ -220,5 +221,31 @@ describe("Button progress semantics before the API rename", () => {
       await archiveResponse.finish();
       await memberResponse.finish();
     }
+  });
+});
+
+
+describe("명시적 스피너 크기와 독립적인 버튼 크기", () => {
+  it.each(["loading", "busy"] as const)("%s의 기본16·명시14/16은 모든 버튼 크기에서 같다", async mode => {
+    const progress = mode === "loading" ? { loading: true } : { busy: true };
+    for (const size of ["sm", "md", "lg", "icon-xs", "icon-sm", "icon-md", "icon-lg"] as const) {
+      for (const [spinnerSize, pixels] of [[undefined, 16], ["sm", 14], ["md", 16]] as const) {
+        const view = await render(<Button size={size} spinnerSize={spinnerSize} {...progress}>Save</Button>);
+        const button = find<HTMLButtonElement>(view.container, "button");
+        expect(await spinnerDimensions(button)).toEqual([pixels, pixels]);
+        expect(button.hasAttribute("spinnerSize")).toBe(false);
+        expect(button.textContent).toBe("Save");
+        await view.rerender(null);
+      }
+    }
+  });
+
+  it.each([[undefined, 16], ["sm", 14], ["md", 16]] as const)("FileInput은 spinnerSize %s를 실제 버튼으로 전달한다", async (spinnerSize, pixels) => {
+    const { container } = await render(<FileInput accept="image/png" onPick={() => {}} loading spinnerSize={spinnerSize}>Upload</FileInput>);
+    const button = find<HTMLButtonElement>(container, "button");
+    expect(await spinnerDimensions(button)).toEqual([pixels, pixels]);
+    expect(button.disabled).toBe(true);
+    expect(button.hasAttribute("spinnerSize")).toBe(false);
+    expect(container.querySelector("input")?.getAttribute("aria-hidden")).toBe("true");
   });
 });

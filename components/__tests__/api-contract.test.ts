@@ -413,7 +413,7 @@ const REST_DEMAND: readonly { path: string; symbol: string }[] = [];
 // Update only the affected cells when resolving debt, alongside its exact allowlist rows.
 const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   state: { rows: 0, occurrences: 0 }, variant: { rows: 0, occurrences: 0 },
-  hue: { rows: 0, occurrences: 0 }, size: { rows: 21, occurrences: 24 },
+  hue: { rows: 0, occurrences: 0 }, size: { rows: 6, occurrences: 6 },
   width: { rows: 36, occurrences: 42 }, progress: { rows: 7, occurrences: 7 },
   slots: { rows: 8, occurrences: 8 }, rest: { rows: 0, occurrences: 0 },
   "data-tone": { rows: 1, occurrences: 1 }, aria: { rows: 3, occurrences: 3 },
@@ -435,27 +435,12 @@ const ALLOWLIST: Debt[] = [
   { rule: "progress", path: "components/reconnect-button.tsx", symbol: "Button", detail: "pending glyph guard", count: 1, task: "T11" },
   { rule: "progress", path: "components/submit-button.tsx", symbol: "Button", detail: "pending glyph guard", count: 1, task: "T11" },
   { rule: "progress", path: "components/ui/modal.tsx", symbol: "OnboardingModal", detail: "nextPending", count: 1, task: "T11" },
-  { rule: "size", path: "components/home/sync-button.tsx", symbol: "Button", detail: "[&_.animate-spin]:size-3.5", count: 2, task: "T9" },
-  { rule: "size", path: "components/members/invite-modal.tsx", symbol: "Button", detail: "size-9", count: 1, task: "T9" },
-  { rule: "size", path: "components/settings/archive-card.tsx", symbol: "Button", detail: "[&_.animate-spin]:size-3.5", count: 2, task: "T9" },
-  { rule: "size", path: "components/settings/general-card.tsx", symbol: "Button", detail: "[&_.animate-spin]:size-3.5", count: 2, task: "T9" },
-  { rule: "size", path: "components/settings/general-card.tsx", symbol: "div", detail: "[&_.animate-spin]:size-3.5", count: 1, task: "T9" },
-  { rule: "size", path: "components/settings/repository-card.tsx", symbol: "fieldset", detail: "[&_.animate-spin]:size-3.5", count: 1, task: "T9" },
-  { rule: "size", path: "components/settings/repository-form.tsx", symbol: "div", detail: "[&_.animate-spin]:size-3.5", count: 1, task: "T9" },
-  { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Button", detail: "size-6", count: 1, task: "T9" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "border-0", count: 1, task: "T19a" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "h-8", count: 1, task: "T19a" },
-  { rule: "size", path: "components/shell/user-menu.tsx", symbol: "Button", detail: "size-8", count: 1, task: "T9" },
-  { rule: "size", path: "components/sources/add-sources-modal.tsx", symbol: "OnboardingModal", detail: "[&_.animate-spin]:size-3.5", count: 1, task: "T9" },
-  { rule: "size", path: "components/translations/workspace/key-list.tsx", symbol: "Button", detail: "size-7", count: 1, task: "T9" },
   { rule: "size", path: "components/translations/workspace/locale-panel.tsx", symbol: "Input", detail: "h-7", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/locale-panel.tsx", symbol: "Input", detail: "text-xs", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/tree-panel.tsx", symbol: "Input", detail: "h-8", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/tree-panel.tsx", symbol: "Input", detail: "text-xs", count: 1, task: "T19a" },
-  { rule: "size", path: "components/ui/alert.tsx", symbol: "alert", detail: "compact", count: 1, task: "T9" },
-  { rule: "size", path: "components/ui/alert.tsx", symbol: "alert", detail: "default", count: 1, task: "T9" },
-  { rule: "size", path: "components/ui/close-button.tsx", symbol: "Button", detail: "size-9", count: 1, task: "T9" },
-  { rule: "size", path: "components/ui/skeleton.tsx", symbol: "SkeletonLine", detail: "text", count: 1, task: "T9" },
   { rule: "slots", path: "components/ui/dialog.tsx", symbol: "DialogContent", detail: "footer", count: 1, task: "T11" },
   { rule: "slots", path: "components/ui/entity-card.tsx", symbol: "EntityCard", detail: "secondary", count: 1, task: "T11" },
   { rule: "slots", path: "components/ui/modal.tsx", symbol: "OnboardingModal", detail: "footer", count: 1, task: "T11" },
@@ -532,6 +517,37 @@ describe("primitive API contract — design §3", () => {
     expect(copies).toEqual([]);
     expect(scan(SOURCES).filter(row => row.rule === "state" || row.rule === "variant")).toEqual([]);
     expect(ALLOWLIST.filter(row => row.task === "T7")).toEqual([]);
+  });
+
+  it("T9 크기 부채는 없고 이후 Input 필드 크기 부채만 남는다", () => {
+    const remaining = scan(SOURCES).filter(row => row.rule === "size");
+    expect(remaining.every(row => row.symbol === "Input")).toBe(true);
+    expect(remaining).toHaveLength(6);
+    expect(ALLOWLIST.filter(row => row.task === "T9")).toEqual([]);
+  });
+
+  it("현재 Alert 경로의 옛 크기 이름과 새 이름을 정확히 구분한다", () => {
+    const bad = source('const alert = cva("flex", {variants: {size: {default: "p-4", compact: "p-3"}}});', "components/ui/alert.tsx");
+    const good = source('const alert = cva("flex", {variants: {size: {md: "p-4", sm: "p-3"}}});', "components/ui/alert.tsx");
+    expect(scan([bad])).toEqual([
+      { rule: "size", path: "components/ui/alert.tsx", symbol: "alert", detail: "compact", count: 1 },
+      { rule: "size", path: "components/ui/alert.tsx", symbol: "alert", detail: "default", count: 1 },
+    ]);
+    expect(scan([good])).toEqual([]);
+  });
+
+  it("현재 SkeletonLine 경로의 필수 text와 필수 size를 정확히 구분한다", () => {
+    const bad = source('export function SkeletonLine({text}: {text: "text-xs" | "text-sm" | "text-base" | "text-lg"}) {return <div className={text}/>;}', "components/ui/skeleton.tsx");
+    const good = source('export function SkeletonLine({size}: {size: "xs" | "sm" | "md" | "lg"}) {return <div/>;}', "components/ui/skeleton.tsx");
+    expect(scan([bad])).toEqual([{ rule: "size", path: "components/ui/skeleton.tsx", symbol: "SkeletonLine", detail: "text", count: 1 }]);
+    expect(scan([good])).toEqual([]);
+  });
+
+  it("조상과 패널의 스피너 selector도 부채로 잡는다", () => {
+    const bad = source('export function Screen() {return <><div className="[&_.animate-spin]:size-3.5"/><fieldset className="[&_.animate-spin]:size-3.5"/><Modal panelClassName="[&_.animate-spin]:size-3.5"/></>;}', "components/canary.tsx");
+    const good = source('export function Screen() {return <Button spinnerSize="sm"/>;}', "components/canary.tsx");
+    expect(scan([bad]).filter(row => row.rule === "size")).toHaveLength(3);
+    expect(scan([good]).filter(row => row.rule === "size")).toEqual([]);
   });
 
   it("scans the production tree, never comments or test fixtures", () => {
@@ -651,8 +667,8 @@ describe("primitive API contract — design §3", () => {
   it("guards Note tone vocabulary through its conditional Alert adapter", () => {
     const alert = source('export function Alert(props: Props) {return <div/>;}', "components/ui/alert.tsx");
     const local = (tone: string, alias: boolean): Source => source(alias
-      ? `import {Alert as Message} from "@/components/ui/alert"; function Note({tone: statusTone, width}: {tone: "danger" | "${tone}"; width: "wide"}) {const variant = statusTone === "muted" ? "neutral" : statusTone; return <Message variant={variant} size="compact" live="off"/>;}`
-      : `import {Alert} from "@/components/ui/alert"; function Note({tone}: {tone: "danger" | "${tone}"}) {return <Alert variant={tone === "muted" ? "neutral" : tone} size="compact" live="off"/>;}`, "components/canary.tsx");
+      ? `import {Alert as Message} from "@/components/ui/alert"; function Note({tone: statusTone, width}: {tone: "danger" | "${tone}"; width: "wide"}) {const variant = statusTone === "muted" ? "neutral" : statusTone; return <Message variant={variant} size="sm" live="off"/>;}`
+      : `import {Alert} from "@/components/ui/alert"; function Note({tone}: {tone: "danger" | "${tone}"}) {return <Alert variant={tone === "muted" ? "neutral" : tone} size="sm" live="off"/>;}`, "components/canary.tsx");
     for (const alias of [false, true]) {
       expect(scan([alert, local("neutral", alias)])).toEqual([{ rule: "state", path: "components/canary.tsx", symbol: "Note", detail: "tone is not StateTone", count: 1 }]);
       expect(scan([alert, local("muted", alias)])).toEqual([]);

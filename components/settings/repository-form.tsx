@@ -97,7 +97,7 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
       <div className="flex flex-wrap items-center gap-x-3 gap-y-[6px] px-4 py-3.5">
         {/* `for`는 편집 컨트롤이 설 때만 — 보관·고정 갈래의 값은 문단이고 조회 중엔 대상이 없다 (audit #89). */}
         <label htmlFor={fixed || choice === undefined ? undefined : "base-branch"} className="text-foreground flex shrink-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap @max-form:basis-full" id="base-branch-label"><GitBranch className="size-3.5 shrink-0" aria-hidden />{m.settings.repository.fields.branch}</label>
-        <div className="[&_.animate-spin]:size-3.5 flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           {fixed ? <p id="base-branch" className="text-sm">{branch}</p>
             : choice === undefined ? <div aria-busy="true"><Skeleton className="h-9 w-60 rounded-md" /></div>
             : choice.mode === "select" ? (
@@ -110,7 +110,7 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
             ) : <Input id="base-branch" name="baseBranch" className="w-60 max-w-full @max-form:min-w-0 @max-form:flex-1" value={branch} disabled={pending}
               aria-invalid={typeof result === "object"} aria-describedby="base-branch-caption"
               onChange={event => { setBranch(event.target.value); setResult("idle"); }} />}
-          <Button ref={saveRef} type="submit" loading={pending} aria-busy={pending} disabled={!editable || branch === current}>{m.settings.repository.fields.save}</Button>
+          <Button spinnerSize="sm" ref={saveRef} type="submit" loading={pending} aria-busy={pending} disabled={!editable || branch === current}>{m.settings.repository.fields.save}</Button>
           {lookupError || failure !== null ? <FieldError id="base-branch-caption" className={CAPTION}>{lookupError ? failureText(lookupError) : failure !== null ? messageFor(failure) : null}</FieldError> : (
             <p id="base-branch-caption" className={cn(CAPTION, "text-foreground/60 text-xs")}>
               {disabled ? m.settings.archivedReason : unpinned ? m.settings.repository.fields.branchDisconnected : result === "saved" ? <><Check className="mr-1 inline size-3.5" aria-hidden />{m.settings.repository.fields.saved}</> : choice?.mode === "input" ? m.newProject.repo.branchTooMany : m.settings.repository.fields.branchHelp}

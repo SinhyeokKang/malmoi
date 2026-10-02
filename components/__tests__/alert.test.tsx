@@ -42,7 +42,7 @@ it("live — danger 기본은 alert, 나머지는 없음, 명시하면 그것이
 });
 
 it("size — compact는 radius 10 · padding 12 · 13px · 글리프 14다", async () => {
-  const { container } = await render(<><Alert>a</Alert><Alert size="compact">b</Alert></>);
+  const { container } = await render(<><Alert>a</Alert><Alert size="sm">b</Alert></>);
   const [normal, compact] = [...container.querySelectorAll("[data-alert]")];
   expect(tokens(normal)).toEqual(expect.arrayContaining(["rounded-lg", "p-4", "gap-3", "text-sm"]));
   expect(tokens(compact)).toEqual(expect.arrayContaining(["rounded-md", "p-3", "gap-2", "text-xs"]));
@@ -77,4 +77,10 @@ it("제목은 본문이 있을 때만 -mb-1로 붙는다", async () => {
   expect(withBody.querySelector("p.font-medium")?.className).toContain("-mb-1");
   const titleOnly = (await render(<Alert title="Synced" />)).container;
   expect(titleOnly.querySelector("p.font-medium")?.className).not.toContain("-mb-1");
+});
+
+it("명시적 md는 기본 크기의 클래스·본문 간격과 같다", async () => {
+  const { container } = await render(<><Alert title="Title">Body</Alert><Alert size="md" title="Title">Body</Alert></>);
+  const [implicit, explicit] = [...container.querySelectorAll("[data-alert]")];
+  expect(explicit?.outerHTML).toBe(implicit?.outerHTML);
 });

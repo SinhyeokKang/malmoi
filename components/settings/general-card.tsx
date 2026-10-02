@@ -57,8 +57,8 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
           <Box className="size-5" />
         </ImageTile>
         <div className="flex min-w-0 flex-col gap-1.5">
-          <div className="flex items-center gap-2 [&_.animate-spin]:size-3.5">
-            <FileInput aria-describedby="project-image-caption" aria-invalid={shownImageError !== null} accept="image/png,image/jpeg" disabled={archived || pending} loading={pending && operation === "upload"} aria-busy={pending && operation === "upload"} onPick={file => {
+          <div className="flex items-center gap-2">
+            <FileInput spinnerSize="sm" aria-describedby="project-image-caption" aria-invalid={shownImageError !== null} accept="image/png,image/jpeg" disabled={archived || pending} loading={pending && operation === "upload"} aria-busy={pending && operation === "upload"} onPick={file => {
               if (!file || pending || archived) return;
               setImageError(null);
               const picked = planImagePick(file);
@@ -71,7 +71,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
               });
             }}>{m.settings.general.upload}</FileInput>
             {/* 썸네일이 없으면 [Remove]를 그리지 않는다(2026-09-30 사용자 — 꺼진 버튼을 걷었다). */}
-            {image && <Button className="[&_.animate-spin]:size-3.5" variant="ghost" aria-describedby="project-image-caption" disabled={archived || pending} loading={pending && operation === "remove"} aria-busy={pending && operation === "remove"} onClick={() => {
+            {image && <Button spinnerSize="sm" variant="ghost" aria-describedby="project-image-caption" disabled={archived || pending} loading={pending && operation === "remove"} aria-busy={pending && operation === "remove"} onClick={() => {
               setImageError(null); setOperation("remove");
               run(async () => { try { const result = await deleteProjectImage(slug); if (!result.ok) setImageError(isAccessError(result.reason) ? settingsAccessMessage(result.reason) : uploadRejectMessage(result.reason)); } catch { setImageError(uploadRejectMessage("unavailable")); } });
             }}>{m.settings.general.remove}</Button>}
@@ -88,7 +88,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
         save(async () => { try { const result = await updateProjectName({ slug, name: value }); if (result.ok) { setCurrent(result.name); setSaved(true); } else setError(isAccessError(result.error) ? settingsAccessMessage(result.error) : result.error === "empty" ? m.settings.general.emptyName : result.error === "too-long" ? m.settings.general.longName : m.settings.repository.fields.failed); } catch { setError(m.settings.repository.fields.failed); } });
       }}>
         <Input ref={nameRef} id="project-name" className="w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1" value={archived ? current : value} maxLength={PROJECT_NAME_MAX_CHARS} disabled={archived || saving} aria-invalid={nameError !== null} aria-describedby="project-name-caption" onChange={event => { setValue(event.target.value); setSaved(false); setError(null); }} />
-        <Button ref={saveRef} className="[&_.animate-spin]:size-3.5" type="submit" loading={saving} aria-busy={saving} disabled={archived || !plan.ok || plan.name === current} aria-describedby="project-name-caption">{m.settings.repository.fields.save}</Button>
+        <Button ref={saveRef} spinnerSize="sm" type="submit" loading={saving} aria-busy={saving} disabled={archived || !plan.ok || plan.name === current} aria-describedby="project-name-caption">{m.settings.repository.fields.save}</Button>
         {nameError ? <FieldError id="project-name-caption" className={CAPTION}>{nameError}</FieldError> : (
           <p id="project-name-caption" className={cn(CAPTION, "text-muted-foreground text-xs")}>
             {archived ? m.settings.archivedReason : saved ? <><Check aria-hidden className="mr-1 inline size-3.5" />{m.settings.repository.fields.saved}</> : null}

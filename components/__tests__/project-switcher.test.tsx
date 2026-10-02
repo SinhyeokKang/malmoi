@@ -134,6 +134,7 @@ describe("ProjectSwitcher", () => {
     clicked.hrefs = [];
     const user = userEvent.setup();
     await render(<ProjectSwitcher projects={projects} current="old" />);
+    for (const token of ["size-6", "rounded-sm", "px-0"]) expect(trigger().classList.contains(token)).toBe(true);
     await act(async () => user.click(trigger()));
     const row = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((r) => r.getAttribute("href") === routes.project("old"))!;
     expect(row.getAttribute("aria-checked")).toBe("true");

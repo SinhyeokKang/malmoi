@@ -3,7 +3,7 @@ import { act, startTransition, useState } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { render } from "./helpers/dom";
+import { render, input } from "./helpers/dom";
 
 /**
  * **오래 도는 Action을 `startTransition(async …)`로 감싸지 않는다** (ARCHITECTURE §3 · malmoi#107 ②). React 19는 열린 async
@@ -24,6 +24,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({
 
 import { ReconnectButton } from "@/components/reconnect-button";
 import { AddSourcesModal } from "@/components/sources/add-sources-modal";
+import { m } from "@/lib/i18n";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 
 beforeEach(() => { vi.clearAllMocks(); });
@@ -100,10 +101,12 @@ describe("AddSourcesModal", () => {
     const call = deferred<{ ok: true; results: typeof results }>();
     mocks.addSurfaces.mockReturnValue(call.promise);
     await render(<>{modal({ server: {} })}<Navigate /></>);
-    await add();
-    await navigate();
-    expect(moved()).toBe(true);
-    await act(async () => { call.resolve({ ok: true, results }); });
+    try {
+      await add();
+      expect(document.querySelector("[data-add-sources] .animate-spin")?.classList.contains("size-3.5")).toBe(true);
+      await navigate();
+      expect(moved()).toBe(true);
+    } finally { await act(async () => { call.resolve({ ok: true, results }); }); }
   });
 
   it("닫기와 결과는 새 서버 트리가 커밋된 뒤다", async () => {
@@ -117,4 +120,36 @@ describe("AddSourcesModal", () => {
     expect(onAdded).toHaveBeenCalledExactlyOnceWith(results);
     expect(onClose).toHaveBeenCalledOnce();
   });
+});
+
+
+describe("실수요 ReconnectButton 스피너 전달", () => {
+  it.each([[undefined, "size-4"], ["sm", "size-3.5"], ["md", "size-4"]] as const)("%s는 실제 pending 버튼의 크기를 지킨다", async (spinnerSize, size) => {
+    const call = deferred<{ ok: false; error: string }>();
+    mocks.connectRepository.mockReturnValue(call.promise);
+    await render(<ReconnectButton slug="acme" label="Reconnect" server={{}} spinnerSize={spinnerSize} />);
+    try {
+      await click(byText("Reconnect"));
+      expect(byText("Reconnect").querySelector(".animate-spin")?.classList.contains(size)).toBe(true);
+      expect(byText("Reconnect").hasAttribute("spinnerSize")).toBe(false);
+    } finally { await act(async () => { call.resolve({ ok: false, error: "unavailable" }); }); }
+  });
+});
+
+
+it.each(["connect", "manual"] as const)("AddSourcesModal %s의 조상14px는 실제 버튼으로 이동한다", async operation => {
+  mocks.detectRepoFormats.mockResolvedValue(operation === "connect" ? { ok: false, error: "reauthorize" } : { ok: true, candidates: [] });
+  const call = deferred<{ ok: false; error: string }>();
+  (operation === "connect" ? mocks.startGithubConnect : mocks.confirmManualFormat).mockReturnValue(call.promise);
+  await render(<AddSourcesModal open onClose={() => {}} onAdded={() => {}} returnFocusRef={{ current: null }} slug="p" owner="o" repo="r" branch="main" existing={[]} adapters={[]} server={{}} />);
+  try {
+    if (operation === "manual") {
+      await input(document.querySelector<HTMLInputElement>("#manual-path")!, "i18n/{locale}.json");
+      await input(document.querySelector<HTMLInputElement>("#manual-base")!, "en");
+    }
+    const button = byText(operation === "connect" ? m.newProject.empty.connect.reauthorize : m.surfaces.confirm);
+    await click(button);
+    expect(button.querySelector(".animate-spin")?.classList.contains("size-3.5")).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe(operation === "manual" ? "true" : null);
+  } finally { await act(async () => { call.resolve({ ok: false, error: "unavailable" }); }); }
 });

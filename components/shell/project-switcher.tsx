@@ -89,7 +89,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
     <DropdownMenu onOpenChange={(open) => { if (!open) setQ(""); }}>
       <DropdownMenuTrigger asChild>
         {/* ⚠️ 머리 줄은 32다 — 24 버튼을 `-my-0.5`로 그 안에 넣는다(안 그러면 머리만 36이 된다). */}
-        <Button variant="ghost" aria-label={m.common.nav.projectSwitcher.label} className="-my-0.5 ml-auto size-6 shrink-0 rounded-sm p-0">
+        <Button size="icon-xs" variant="ghost" aria-label={m.common.nav.projectSwitcher.label} className="-my-0.5 ml-auto shrink-0 rounded-sm">
           <ChevronsUpDown className="size-4" aria-hidden />
         </Button>
       </DropdownMenuTrigger>

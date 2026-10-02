@@ -105,9 +105,9 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   const manualBlocked = !manual.pathTemplate.trim() || !manual.baseLocale.trim();
   return <OnboardingModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}
     title={m.settings.sources.add} description={m.settings.sources.description} bodyScroll="hidden"
-    panelClassName="[&_.animate-spin]:size-3.5 h-[min(680px,calc(100svh-var(--spacing-modal-gutter)))] min-h-0" actions={<>
+    panelClassName="h-[min(680px,calc(100svh-var(--spacing-modal-gutter)))] min-h-0" actions={<>
       <Button size="lg" disabled={pending} onClick={onClose}>{m.surfaces.cancel}</Button>
-      <Button size="lg" data-add-sources variant="primary" busy={pending && operation === "add"} aria-disabled={addBlocked || pending || undefined} aria-describedby={addBlocked ? "add-source-help" : undefined} onClick={() => {
+      <Button spinnerSize="sm" size="lg" data-add-sources variant="primary" busy={pending && operation === "add"} aria-disabled={addBlocked || pending || undefined} aria-describedby={addBlocked ? "add-source-help" : undefined} onClick={() => {
         if (addBlocked) return;
         const plan = planAddSources({ picked: candidates.filter((_, i) => checked.has(i)), existing });
         if (!plan.ok || plan.add.length === 0 || pending) return;
@@ -129,7 +129,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     {manualError && <Alert variant="danger">{failureText(manualError)}</Alert>}
     {unknown && <Alert variant="warning">{m.settings.sources.unknown}</Alert>}
     {/* ⚠️ 성공은 GitHub으로 가는 redirect라 되던진다 (audit-ux #14) — 그 밖의 throw는 거부와 같은 자리로 접는다. */}
-    {connect && <Button disabled={pending && operation !== "connect"} loading={pending && operation === "connect"} onClick={() => { setOperation("connect"); run(async () => {
+    {connect && <Button spinnerSize="sm" disabled={pending && operation !== "connect"} loading={pending && operation === "connect"} onClick={() => { setOperation("connect"); run(async () => {
       try { const result = await startGithubConnect({ slug, returnTo: "add-surface" }); if (!result.ok) setError(result.error); }
       catch (thrown) { unstable_rethrow(thrown); setError("unavailable"); }
     }); }}>{connect === "reauthorize" ? m.newProject.empty.connect.reauthorize : m.newProject.empty.connect.action}</Button>}
@@ -140,7 +140,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
         onManual={value => { setPicked(null); setManual(value); setManualError(undefined); }} onRetry={() => setRevision(v => v + 1)} />
     </div>
     <div className="flex shrink-0 items-center gap-3">
-      {picked === null && !detecting && <Button busy={pending && operation === "manual"} aria-disabled={manualBlocked || pending || undefined} aria-describedby={manualBlocked ? "add-source-manual-reason" : undefined} onClick={() => { if (manualBlocked || pending) return; setOperation("manual"); run(async () => {
+      {picked === null && !detecting && <Button spinnerSize="sm" busy={pending && operation === "manual"} aria-disabled={manualBlocked || pending || undefined} aria-describedby={manualBlocked ? "add-source-manual-reason" : undefined} onClick={() => { if (manualBlocked || pending) return; setOperation("manual"); run(async () => {
         setManualError(undefined);
         try {
           const result = await confirmManualFormat({ owner, repo, ref: branch, ...manual });

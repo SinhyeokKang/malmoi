@@ -2,7 +2,7 @@
 
 import { useRef, type ChangeEvent, type ReactNode, type AriaAttributes } from "react";
 
-import { Button } from "./button";
+import { Button, type ButtonProps } from "./button";
 
 /**
  * 파일 고르기 — **프리미티브 19번째** (account-settings 태스크 4b).
@@ -19,10 +19,11 @@ import { Button } from "./button";
  * ⚠️ **`accept`가 방어선이 아니다** — 파일 대화상자의 필터일 뿐이고 사용자는 "모든 파일"을 고를 수
  * 있다. 판정은 `planImagePick`(클라이언트)과 `planImageUpload`(서버)가 든다.
  */
-export function FileInput({ accept, onPick, loading = false, disabled = false, children, ...accessibility }: {
+export function FileInput({ accept, onPick, spinnerSize, loading = false, disabled = false, children, ...accessibility }: {
   accept: string;
   onPick: (file: File | null) => void;
   loading?: boolean;
+  spinnerSize?: ButtonProps["spinnerSize"];
   /** ⚠️ `loading`과 갈라 둔다 — **다른 컨트롤이 도는 동안** 이 자리를 막되 스피너는 그쪽에 세운다. */
   disabled?: boolean;
   children: ReactNode;
@@ -47,7 +48,7 @@ export function FileInput({ accept, onPick, loading = false, disabled = false, c
           event.target.value = "";
         }}
       />
-      <Button {...accessibility} type="button" loading={loading} disabled={disabled} onClick={() => input.current?.click()}>
+      <Button {...accessibility} type="button" spinnerSize={spinnerSize} loading={loading} disabled={disabled} onClick={() => input.current?.click()}>
         {children}
       </Button>
     </>

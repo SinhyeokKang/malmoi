@@ -16,7 +16,9 @@ import { render } from "./helpers/dom";
  */
 async function open() {
   await render(<UserMenu name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} />);
-  await act(async () => userEvent.setup().click(document.querySelector<HTMLButtonElement>(`button[aria-label="${m.common.nav.userMenu}"]`)!));
+  const trigger = document.querySelector<HTMLButtonElement>(`button[aria-label="${m.common.nav.userMenu}"]`)!;
+  for (const token of ["size-8", "rounded-full", "px-0"]) expect(trigger.classList.contains(token)).toBe(true);
+  await act(async () => userEvent.setup().click(trigger));
   return document.querySelector<HTMLElement>('[role="menu"]')!;
 }
 /** 메뉴의 줄 — 항목은 라벨, 구분선은 `---`. */
