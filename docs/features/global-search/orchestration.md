@@ -31,3 +31,7 @@
 ## 완료 증거
 
 각 배치의 커밋·gate 결과·리뷰·런타임 (b) 항목은 인계 문서에서 확인한 뒤 이 표와 정본에 반영한다. 완료 후 기능 문서의 결론을 정본으로 옮기고 이 디렉터리는 삭제한다.
+
+### 2026-10-03 독립 UI 부분의 병렬 분리
+
+GS1의 T0가 끝난 뒤 실제 파일 집합을 다시 대조했다. GS3a = D1·D2·D6만 따로 실행한다. 소유 경로는 kbd.tsx·highlight.tsx·project-switcher.tsx·project-list.tsx·header-bar.tsx·두 header와 해당 hand-copies/focus/visual/projects-screen/shell-layout/shell-header/public-shell 테스트다. GS1 수정의 lib/search/highlight.ts 및 GS2의 SQL/Action/route/client-graph와 겹치지 않는다. GS3a는 client-graph·layout.tsx·messages·DESIGN·feature 문서를 편집하지 않는다. GS3는 나머지 D3·D4·D5·D5a·D7만 GS2와 GS3a 통합 뒤 수행한다. GS3a Sol/high, gate와 독립 리뷰 필수. 기존 행의 광범위 GS2↔GS3 충돌을 피하려는 실제 파일 분리다.
