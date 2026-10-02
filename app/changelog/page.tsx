@@ -62,7 +62,7 @@ export default async function Changelog() {
               {loaded.releases.length === 0 ? (
                 <Sentence>{m.changelog.empty(releases)}</Sentence>
               ) : (
-                loaded.releases.map((release) => <ReleaseEntry key={release.tag} release={release} />)
+                loaded.releases.map((release, index) => <ReleaseEntry key={release.tag} release={release} latest={index === 0} />)
               )}
               {/*
                 ⚠️ 빈 목록에도 선다 — 원 배열 100칸을 액션 태그 릴리스가 다 채우면 거른 뒤 0건이어도 그 너머에 앱 릴리스가

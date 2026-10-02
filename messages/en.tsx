@@ -836,6 +836,7 @@ export const en = {
    */
   changelog: {
     title: "Changelog",
+    latest: "Latest",
     /** 검색·링크 미리보기 설명 — 소개 문장의 첫 문장과 같은 말이다. */
     description: "What changed in each release of Malmoi, newest first.",
     releases: "GitHub Releases",

@@ -126,6 +126,22 @@ describe("`/changelog` — 항목 틀", () => {
 });
 
 describe("`/changelog` — 목록", () => {
+  it("최신 버전에만 초록 Latest 배지가 버전·날짜·본문 위에 선다", async () => {
+    const container = await page({ ok: true, releases: TWO, truncated: false });
+    const sections = [...main(container).querySelectorAll("section")];
+    const badge = sections[0]!.firstElementChild;
+    expect(badge?.textContent).toBe("Latest");
+    expect(badge?.className).toContain("bg-green-100/80");
+    expect(badge?.className).toContain("text-green-800");
+    expect(badge?.nextElementSibling?.tagName).toBe("H1");
+    expect(badge?.nextElementSibling?.textContent).toBe(TWO[0]!.tag);
+    expect(badge?.nextElementSibling?.nextElementSibling?.querySelector("time")?.textContent).toBe("Sep 27, 2026");
+    expect(sections[1]!.textContent).not.toContain("Latest");
+    for (const loaded of [{ ok: false }, { ok: true, releases: [], truncated: false }] as LoadedReleases[]) {
+      expect(main(await page(loaded)).textContent).not.toContain("Latest");
+    }
+  });
+
   it("릴리스가 받은 순서대로 항목이 된다", async () => {
     const container = await page({ ok: true, releases: TWO, truncated: false });
     expect([...main(container).querySelectorAll("section > h1")].map((h) => h.id)).toEqual(["v1.0.1", "v1.0.0"]);

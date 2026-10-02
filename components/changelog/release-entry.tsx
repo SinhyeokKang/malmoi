@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/badge";
+import { m } from "@/lib/i18n";
 import type { Release } from "@/lib/changelog/parse";
 import { releaseTagUrl } from "@/lib/links";
 import { utcDay } from "@/lib/utc-time";
@@ -22,11 +24,12 @@ export const ENTRY_BLOCK = "border-border border-t py-12";
  * compare가 없는 첫 판에도 서도록 Release 페이지(`releaseTagUrl`)로 간다. 버전 주소의 해시 착지·포커스는 `h1`의 `id`를 `PublicScroller`가
  * 그대로 받는다. 태그가 `v<x.y.z>`만 지나오므로(`parseReleases`) `id`로 안전하다.
  */
-export function ReleaseEntry({ release }: { release: Release }) {
+export function ReleaseEntry({ release, latest = false }: { release: Release; latest?: boolean }) {
   const { tag, publishedAt, body } = release;
   return (
     // 이름 없는 `<section>`을 두지 않는다 (POSTMORTEM 2026-09-15) — 이름은 버전 `h1`이 댄다.
     <section aria-labelledby={tag} className={ENTRY_BLOCK}>
+      {latest && <Badge variant="soft-green" className="mb-2">{m.changelog.latest}</Badge>}
       {/* `scroll-mt-12` — 해시 착지가 헤더 아래 48에 선다. `tabIndex={-1}` — 착지 포커스 대상이라 링을 그리지 않는다. */}
       <h1 id={tag} tabIndex={-1} className="m-0 scroll-mt-12 text-3xl leading-[1.3] font-semibold focus:outline-none">
         {/*

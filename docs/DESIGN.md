@@ -1008,14 +1008,14 @@ GitLab top bar의 검색·`+`·카운터 셋은 **넣지 않는다** — 대응�
 셸은 §6.615의 공개 셸 그대로(`current: "changelog"`)이고 이 절은 **패널 안**만 정한다. ⚠️ **본문은 사전을 지나지 않는 유일한 공개
 텍스트다** — GitHub Release 원문(`/merge` 5단계 ② 양식)이라 화면 문구가 아니라 외부 데이터다. 그래서 렌더러(`components/changelog/release-markdown.tsx`)가
 방어선이다: `rehype-raw` 없음(raw HTML은 글자로) · 기본 `urlTransform`(`javascript:` 걷힘) · **이미지는 `<img>`가 아니라 alt 글자의 링크**(CSP `img-src`와
-방침 전송처를 넓히지 않는다). 소개·실패·빈 목록·100건 안내 넷만 사전(`m.changelog`)이다.
+방침 전송처를 넓히지 않는다). 소개·실패·빈 목록·100건 안내와 Latest 배지는 사전(`m.changelog`)이다.
 
 | 요소 | 규칙 |
 |---|---|
 | 그릇 | ⚠️ **`mx-auto max-w-[800px] px-10 pt-16 pb-30` 한 겹** — 본문 720 + 좌우 40, 위 64(§6.61 `/docs`와 같다), 아래 120. **목차가 없어 §6.61·§6.616의 720 + 목차 200 격자를 따르지 않는다** — 빈 200 열을 남기면 본문이 왼쪽으로 쏠린다. 시안의 1120 바깥 그릇에서도 이탈했다 |
 | `h1` · 소개 | `h1` 36/1.3/600(§6.616과 같다) · 소개 `PROSE`(16/1.6) · **위 20**(§6.61 `h1+p`와 같다). 소개가 `Dates are in UTC.`를 한 번 말하고 항목의 날짜엔 라벨이 없다 |
 | 목록 | 소개 아래 32. **모든 항목이 같은 틀**(`ENTRY_BLOCK` — `border-t` `--border` + 위아래 **48**, 2026-09-28 사용자 — 옛 40) — ⚠️ **첫 항목도 예외가 아니다**. 선이 소개와 목록을 가른다. 특례(`first:` 류)는 `changelog-page.test.tsx`가 막는다. **항목은 `<section aria-labelledby={tag}>`**(이름 없는 section 금지) |
-| 항목 머리 | 버전 **`h1`** 30/1.3/600(2026-09-28 사용자 — 태그째 올렸다. 페이지 제목 `Changelog`도 `h1`이라 한 문서에 `h1`이 여럿이다) → 4 → 날짜 14/1.6 muted(`<time dateTime>`에 원 ISO, 보이는 쪽은 `utcDay`) → 24 → 본문 |
+| 항목 머리 | 최신 항목만 초록 `Badge soft-green`의 `Latest` → 8 → 버전 **`h1`** 30/1.3/600(2026-09-28 사용자 — 태그째 올렸다. 페이지 제목 `Changelog`도 `h1`이라 한 문서에 `h1`이 여럿이다) → 4 → 날짜 14/1.6 muted(`<time dateTime>`에 원 ISO, 보이는 쪽은 `utcDay`) → 24 → 본문 |
 | 버전 링크 | ⚠️ **`h1` 안의 버전 글자가 곧 그 판의 GitHub Release 링크다**(2026-09-28 사용자 — 옛 자기 앵커 `#v1.0.1`과 본문 아래 `View on GitHub` 버튼을 함께 대체했다) · 새 탭 + `noreferrer` · **글리프 없음**(§6.3 — 외부 링크 아이콘을 잠깐 세웠다가 걷었다) · `aria-label` 없음(접근 이름 = 보이는 버전 — 구역 이름도 이것이다). 색은 **`primary`** · hover는 글자색만 `muted-foreground` + 포커스 링. `h1`은 `id={tag}` · `tabIndex={-1}` · `scroll-mt-12` · `focus:outline-none` — 버전 주소(`/changelog#v1.0.1`)의 해시 착지·포커스는 `PublicScroller`가 그대로 한다. ⚠️ **페이지 안에서 버전 주소를 복사하는 길은 없다** |
 | 본문 제목 | 원문의 최소 깊이를 **`h1`**로 맞춘다(`shiftHeadings` — `##`·`###` → `h1`·`h2`, 2026-09-28 사용자 — 버전과 같은 태그 급). 모양은 공개 문서 공통 급(`components/docs/classes.ts` — `/docs`·`/privacy`·`/changelog` 한 벌, 2026-09-28 사용자): `h1` = `SECTION_HEADING`(24/1.4/600 · 위 32) · `h2` = `SUB_HEADING`(20/1.4/500 · 위 20) · `h3` = `MINOR_HEADING`(18/1.5/500 · 위 16). ⚠️ **`h4`~`h6`는 이 화면이 정한 급이다** — `text-prose`(16) · 1.6 · 500 · 위 16(없으면 브라우저 기본 700이 나온다). 버전(30)과 본문 절(24)은 크기로 갈린다 |
 | 본문 | 문단·목록·굵게·인라인 코드·hr은 §6.61의 원고 급과 같은 클래스 상수다(`components/docs/classes.ts`의 `PROSE`·`LIST`·`INLINE_CODE`·`DOC_LINK` — 16/1.6 · 위 8 · 항목 간격 4). 링크는 `text-link`(§6.3), 스킴이 있거나 `//`로 시작하면 새 탭 + `noreferrer`(원고의 `resolveDocLink`와 같은 외부 판정). 목록 항목은 `text-pretty`(굵은 머리 + 긴 문장이라 끝줄에 낱말 하나가 떨어지기 쉽다). 끝의 `**Full changelog:**` 줄은 걷는다(버전 링크가 대신한다) |
