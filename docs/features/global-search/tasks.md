@@ -114,9 +114,9 @@
   — 검증: §4.1·IA 문장을 spec 완료 조건과 대조 · §4.2 비범위와 충돌 문장 0.
 - [ ] **F2** `docs(DESIGN)`: §6.5 "검색 넣지 않는다" 뒤집기 경위 · §9.2 카운터만 남김 · §6.8 헤더 행 · 아이콘 표 · 검색 Dialog 절(D7에 안 들어간 화면 규칙 — 미리보기 · 착지 · GitLab 참고).
   — 검증: 절마다 코드 값과 대조 · `visual-system` green.
-- [ ] **F3** `docs(ARCHITECTURE)`: §6 "인증 경계" 표에 `/api/search-index`(공개 · 세션 없음 · `force-static`) · Keys 조회의 멤버 id 조인(테넌트 경계) · §1.96 pg_trgm 기각과 B3 측정값의 관계.
+- [x] **F3** `docs(ARCHITECTURE)`: §6 "인증 경계" 표에 `/api/search-index`(공개 · 세션 없음 · `force-static`) · Keys 조회의 멤버 id 조인(테넌트 경계) · §1.96 pg_trgm 기각과 B3 측정값의 관계.
   — 검증: 표 행이 `entry-points.test.ts` `EXEMPT` 사유와 같은 말 · 측정값이 design.md와 같은 수.
-- [ ] **F4** `docs(CLAUDE)`: 데이터 경로 표에 `/api/search-index` · `searchKeysAction`·`loadSearchMembershipsAction`(`app/search/actions.ts`) 행 → `pnpm sync:agents`.
+- [x] **F4** `docs(CLAUDE)`: 데이터 경로 표에 `/api/search-index` · `searchKeysAction`·`loadSearchMembershipsAction`(`app/search/actions.ts`) 행 → `pnpm sync:agents`.
   — 검증: `pnpm sync:agents:check` green.
 - [ ] **F5** `docs(DIRECTORY)`: `lib/search/` · `components/search/` · `app/api/search-index/` · `app/search/actions.ts` · `components/shell/header-bar.tsx` · 새 `ui/` 파일.
   — 검증: 적은 경로가 전부 실재(`ls`) · 새로 만든 파일 중 빠진 것 0(`git diff --name-only --diff-filter=A origin/dev` 대조).

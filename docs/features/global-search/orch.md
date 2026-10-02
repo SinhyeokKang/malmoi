@@ -63,3 +63,5 @@ GS3 D5/D7 증거: 원본6a10d83a, Node24 gate exit0, 10489 passed + 기존1 skip
 - dev f57dd20e의 Node24 통합 `pnpm gate` exit0, db:generate/typecheck/test/격리PG/build/mirror 전부 통과. 로그 `.scratch/global-search/gate-integration-3.log`.
 - GS4(E/F6)가 화면 코드를 구현하는 동안 GS5a(F3/F4)는 이미 통합된 B/C의 서버 사실만 문서화한다. 소유 파일은 ARCHITECTURE.md, CLAUDE.md+AGENTS.md, 새 lib/search 문서 트리거 등록용 .claude/commands/push.md+해당 미러다. GS4 코드·테스트와 교집합 없음. Sol/high, 문서별 커밋·gate·독립 Astra 리뷰 필수.
 - GS5는 GS4+GS5a 통합 후 F1/F2/F5/F6 최종 대조/F7·가이드를 맡는다. GS5a는 화면이 이미 조립됐다고 서술하지 않는다. 사용자 결정이나 제품 범위 변경 없음.
+
+GS5a 증거: 원본96d7bea4, 문서3커밋을 dev9f7c4eef까지 통합. Node24 gate exit0,10489 passed+기존1 skipped, 독립 Astra red0/yellow0/white0. 최초 의존성 미설치 실패는 frozen-lockfile 설치로 해소. GS4의 격리PG 성능 검사와 겹치지 않도록 다음 지휘자 통합 게이트는 GS4 통합 뒤 함께 실행한다.
