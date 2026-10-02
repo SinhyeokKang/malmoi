@@ -15,7 +15,7 @@ PRODUCT §4.2 목록에 직접 걸리는 항목은 없고, 코어 설계 원칙(
 
 **키·번역값 검색은 범위 안이다** (2026-10-01 사용자 — 처음엔 "내비게이션만"을 골랐다가 성능 판단을 듣고 넣었다). 조건: 트라이그램 인덱스 없이 시작하고, 실측이 기준을 넘을 때만 additive 마이그레이션으로 인덱스를 넣는다(완료 조건 20).
 
-**착수 조건: component-unify 종료 뒤** — 판정은 `test ! -d docs/features/component-unify`(그 기능의 결정 S9 — 입력 폭 규약을 그쪽이 먼저 세운다, 2026-10-01 사용자 재확인). 새 프리미티브의 **prop·슬롯 어휘는 component-unify 규약**(DESIGN §8 — 슬롯 `icon`·`description`·`action`·`badge`, rest props는 실수요 자리만)을 따르고, 그 기능이 세운 단위를 재사용한다: `LargeModal`의 `LARGE_MODAL_PANEL`·`LARGE_MODAL_OVERLAY` 상수(DESIGN §6.4) · `Input` 글리프 슬롯 · `NoMatch` · `hand-copies.test.ts`(사본 스캔 표). 이 문서의 file:line은 dev 2026-10-01 기준이라 착수 첫 태스크(tasks T0)가 갱신한다.
+**착수 조건: component-unify 종료 뒤** — 판정은 `test ! -d docs/features/component-unify`(그 기능의 결정 S9 — 입력 폭 규약을 그쪽이 먼저 세운다, 2026-10-01 사용자 재확인). 새 프리미티브의 **prop·슬롯 어휘는 component-unify 규약**(DESIGN §8 — 슬롯 `icon`·`description`·`action`·`badge`, rest props는 실수요 자리만)을 따르고, 그 기능이 세운 단위를 재사용한다: `LargeModal`의 `LARGE_MODAL_PANEL`·`LARGE_MODAL_OVERLAY` 상수(DESIGN §6.4) · `Input` 글리프 슬롯 · `NoMatch` · `hand-copies.test.ts`(사본 스캔 표). 이 문서의 file:line은 dev 2026-10-03(T0 대조) 기준이라 착수 첫 태스크(tasks T0)가 갱신한다.
 
 ## 사용자
 
@@ -46,7 +46,7 @@ PRODUCT §4.2 목록에 직접 걸리는 항목은 없고, 코어 설계 원칙(
 
 Dialog (레이아웃은 GitLab 검색 패널을 따른다 — 2026-10-01 사용자 참고 이미지):
 
-3a. **자리·크기** (2026-10-01 사용자): **폭·높이·면·dim은 대형 모달(`LargeModal` — `components/ui/large-modal.tsx`의 `LARGE_MODAL_PANEL`·`LARGE_MODAL_OVERLAY`, DESIGN §6.4)과 같고, 다른 것은 위치 하나다** — 가로 중앙(트리거와 같은 축), **위 16**(`top-4` — 헤더를 덮는다, 세로 가운데 정렬이 아니다). 폭 `w-[calc(100%-96px)] max-w-[1024px]`, 높이 `min(80svh,800px,calc(100svh-96px))` ~ `min(800px,calc(100svh-96px))`, `rounded-xl` · `shadow-medium` · dim `bg-foreground/32` + `backdrop-blur-[6px]`. 입력 줄이 맨 위이고 그 아래 전폭 구분선, 그 아래 결과 목록이 남은 높이 안에서 스크롤한다. 바닥 줄·닫기 버튼은 없다(Esc·배경 클릭으로 닫는다).
+3a. **자리·크기** (2026-10-01 사용자): **폭·높이·면·dim은 대형 모달(`LargeModal` — `components/ui/large-modal.tsx`의 `LARGE_MODAL_PANEL`·`LARGE_MODAL_OVERLAY`, DESIGN §6.4)과 같고, 다른 것은 위치 하나다** — 가로 중앙(트리거와 같은 축), **위 16**(`top-4` — 헤더를 덮는다, 세로 가운데 정렬이 아니다). 폭 `w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px]`, 높이 `min(80svh,800px,calc(100svh-96px))` ~ `min(800px,calc(100svh-96px))`, `rounded-xl` · `shadow-medium` · dim `bg-foreground/32` + `backdrop-blur-[6px]`. 입력 줄이 맨 위이고 그 아래 전폭 구분선, 그 아래 결과 목록이 남은 높이 안에서 스크롤한다. 바닥 줄·닫기 버튼은 없다(Esc·배경 클릭으로 닫는다).
 3b. **목록 모양**: 그룹마다 굵은 머리(`Projects` 등)와 그룹 사이 전폭 구분선. 행은 **한 줄** `제목 · 맥락`(맥락은 muted 작은 글자 — 예: 프로젝트 행의 slug, 메뉴 행의 프로젝트 이름)이고, 엔터티 행(Projects)만 앞 글리프(썸네일)를 든다. Keys·Docs 행은 일치한 필드 한 줄을 둘째 줄로 든다. **활성 행**은 면(`bg-accent`) + 포커스 링과 같은 테두리이고 오른쪽 끝에 `Go to` + `Kbd` `↵` 힌트가 선다(활성 행에만).
 4. 입력이 비어 있으면 **미리보기**가 선다(2026-10-01 사용자) — 로그인·프로젝트 있음: Projects 앞 3(지금 프로젝트 먼저 → 멤버십 순서) + 끝 행 `View all projects`(→ `/projects`) · Menus 앞 3(지금 프로젝트, 없으면 첫 프로젝트의 메뉴 — `navZones` 순서) · Docs 앞 3(SUMMARY 순서의 페이지 도입부) + 끝 행 `Browse all docs`(→ `/docs`). 로그인·프로젝트 0: Menus(사용자 메뉴·하단) 앞 3 · Docs 앞 3 + `Browse all docs`. 비로그인: Menus(하단) · Docs 앞 3 + `Browse all docs`. Keys는 미리보기에 없다. `View all …` 행은 글리프를 들고 3개 상한에 세지 않으며, 질의가 있으면 서지 않는다.
 5. 입력하면 결과가 **그룹**으로 선다 — 순서 `Projects · Menus · Keys · Docs`, 그룹당 최대 5행, 빈 그룹은 그리지 않는다. 결과 0건이고 **대기 중인 조회가 없으면** `NoMatch`(component-unify) `No results for “{q}”`(곡선 따옴표 — DESIGN §6.63) — **출구 없는 형**이다(입력이 바로 위다). `NoMatch`의 `action: ReactElement` 출구 슬롯은 현재 필수라 이 기능이 소비자와 함께 출구 없는 형을 더한다(component-unify S5 — 소비자가 생기는 축). 대기 중인 조회(Keys·색인)가 있으면 `NoMatch` 대신 상태 줄만 선다.

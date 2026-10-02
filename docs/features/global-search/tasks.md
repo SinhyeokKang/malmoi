@@ -5,7 +5,7 @@
 - **UI 검증은 수동이다** — 이 리포에 e2e가 없다. DOM 테스트(jsdom)는 자동, `pnpm dev`·`/runtime-test`로 보는 것은 수동으로 적는다. jsdom은 레이아웃을 계산하지 않는다(가로 중앙 rect·실제 스크롤은 G1), `scrollIntoView`는 `vitest.setup.ts`가 no-op 스텁이라 호출은 spy로만 잰다.
 - **스키마는 조건부다** — B3 실측이 기준을 넘을 때만 B4가 생긴다.
 - 신규 페이지가 아니라 Claude Design 핸드오프가 없다 — `/design-sync` 대상이 아니다(2026-10-01 사용자 확인). 시각값은 DESIGN 토큰·기존 프리미티브·대형 모달 치수, 레이아웃은 GitLab 검색 패널 참고 이미지가 정한다.
-- **사본 스캔(손 `<kbd>`·`<mark>`, spec 16의 raw 태그)은 component-unify의 `hand-copies.test.ts` 표에 행으로 더한다** — 카나리아·하한·뮤테이션은 그 파일 규약이다. **그 밖의 새 소스 스캔은 네 장치를 든다**(POSTMORTEM 2026-09-14 · 09-18): (a) 주석을 벗기고 (b) 대상 파일 수 > 0 (c) 심은 위반 하나를 잡는 자기 검사 (d) 실제 코드에 뮤테이션 1회를 걸어 red를 확인한 사실을 커밋 메시지 본문에 남긴다. 선례 `focus-ring.test.ts:167-172` · `:274-324`.
+- **사본 스캔(손 `<kbd>`·`<mark>`, spec 16의 raw 태그)은 component-unify의 `hand-copies.test.ts` 표에 행으로 더한다** — 카나리아·하한·뮤테이션은 그 파일 규약이다. **그 밖의 새 소스 스캔은 네 장치를 든다**(POSTMORTEM 2026-09-14 · 09-18): (a) 주석을 벗기고 (b) 대상 파일 수 > 0 (c) 심은 위반 하나를 잡는 자기 검사 (d) 실제 코드에 뮤테이션 1회를 걸어 red를 확인한 사실을 커밋 메시지 본문에 남긴다. 선례 `focus-ring.test.ts:330-345` · `:272-320`.
 - **착수 조건: component-unify 종료**(`test ! -d docs/features/component-unify` — 그 기능의 결정 S9, 2026-10-01 사용자 재확인). 새 프리미티브의 어휘는 그 규약을 따르고 그 산출물을 재사용한다(design "UI").
 
 ## 0. 착수 전
@@ -33,7 +33,7 @@
   — 검증: macOS Meta+K true · macOS Ctrl+K false · 그 밖 Ctrl+K true · 그 밖 Meta+K false · 조합 중(`isComposing` · `keyCode 229`) false · Shift/Alt 조합 false · `input`·`textarea`·`contenteditable` 대상이면 무시 · 문서에 열린 `[role="dialog"]`·`[role="menu"]`가 있으면 무시 · ids 0 → null · id 순환 · 질의 변경 → 첫 id · 늦은 그룹 삽입 뒤 id 불변 · 사라진 id → 첫 id · `pnpm test` green.
 - [ ] **A8** `lib/keys/search.ts`의 순수 부분 — `keySearchQuery` · `mergeKeyHits`, `lib/search/key-href.ts` `keyResultHref`(+ `KeyHit` 타입 소유). `lib/keys/translation-list.ts`의 `likePattern`을 export만 한다.
   — 검증: 1자 → null · 공백 둘러싼 1자(`"  a "`) → null · `50%_off`·`\` 이스케이프가 번역 화면과 같은 문자열 · 201자 → 앞 200자 패턴(`Q_MAX_LENGTH`) · ①이 5건이면 ② 무시 · **같은 이름·다른 id 둘 다 남음**(중복 제거는 id) · 키 id 최종 정렬로 동점 6개 이상에서 입력 순서와 무관한 상위 5개 · href가 `translationsHref(slug, surfaceSlug, { ...DEFAULT_TRANSLATION_QUERY, ns, key: id, keySurface })`(`lib/translations/query.ts`)와 같은 문자열 · 필터 키 없음 · `lib/keys/search.ts`가 `KeyHit`을 `import type`으로만 읽음 · `pnpm test` green.
-- [ ] **A9** 의존 그래프 검사 — A1·A2·A5·A7·`key-href.ts`마다 `client-graph.test.ts`에 검사한다. 독립 모듈만 자기 자신을 단언하고, `nav-index`·`key-href`는 design에 적은 의도한 전이 파일 집합의 정확 일치와 허용 패키지를 단언한다(`lib/events/view.ts` 검사 선례). **`CLIENT_LIB_FILES` 목록은 여기서 넓히지 않는다** — 소비자가 없는 지금 더하면 정확 일치 단언(:464-468)이 초과로 red다. 목록 추가는 E2다.
+- [ ] **A9** 의존 그래프 검사 — A1·A2·A5·A7·`key-href.ts`마다 `client-graph.test.ts`에 검사한다. 독립 모듈만 자기 자신을 단언하고, `nav-index`·`key-href`는 design에 적은 의도한 전이 파일 집합의 정확 일치와 허용 패키지를 단언한다(`lib/events/view.ts` 검사 선례). **`CLIENT_LIB_FILES` 목록은 여기서 넓히지 않는다** — 소비자가 없는 지금 더하면 정확 일치 단언(:468-471)이 초과로 red다. 목록 추가는 E2다.
   — 검증: 모듈별 기대 그래프가 명시되고 정상 재사용은 통과하며, 하나에 `lib/keys/translation-list.ts` 값 import를 심으면 red(뮤테이션 1회) · `pnpm test` green.
 
 ── 커밋: `feat(search): add pure matching, highlighting and index builders for global search`
@@ -67,10 +67,10 @@
 
 - [ ] **D1** `Kbd`(`<kbd>` 태그, `shrink-0 … py-0.5` 포함) + 스위처의 손 `<kbd>` 이관.
   — 검증: `project-switcher.test.tsx` 무수정 green(`[role="menu"] kbd` 셀렉터가 `Kbd`를 잡는다) · `hand-copies.test.ts`에 `Kbd` 행(`components/ui/` 밖 `<kbd` 0 · 카나리아 · 하한) · `pnpm test` green.
-- [ ] **D2** `Highlight` + `/projects` 손 `<mark>` 이관(조각은 `highlightName` 그대로). **의도한 테스트 갱신 둘**: `visual-system.test.ts:151` `REGISTERED`의 `bg-blue-600/[0.14]` 위치를 `components/ui/highlight.tsx`로, `projects-screen.test.ts:524-530`의 클래스 단언을 "`Highlight`에 `highlightName(row.name, q)` 조각을 넘긴다"로.
+- [ ] **D2** `Highlight` + `/projects` 손 `<mark>` 이관(조각은 `highlightName` 그대로). **의도한 테스트 갱신 둘**: `visual-system.test.ts:95` `REGISTERED`에는 의미 토큰 `bg-link/[0.14]`가 없음을 유지하고, `projects-screen.test.ts:517-522`의 클래스 단언을 "`Highlight`에 `highlightName(row.name, q)` 조각을 넘긴다"로.
   — 검증: 위 두 테스트 갱신 뒤 green · 그 밖 `projects-*` 무수정 green · `hand-copies.test.ts`에 `Highlight` 행(`ui/` 밖 `<mark` 0 · 카나리아 · 하한) · `pnpm test` green.
 - [ ] **D3** `FieldButton` — 캡슐 `rounded-full` · `h-9` · `w-80` · 패널 면(`bg-background border border-border-subtle shadow-low`) · 슬롯 셋 · 포커스 링 리터럴(rest props 없음 — component-unify S5).
-  — 검증: `focus-ring.test.ts`의 `FIXTURES`(:120)에 `FieldButton` 픽스처 추가 후 green(`ui/` 안 raw `<button>`은 등록 필수 — :175-176) · `visual-system` green · jsdom: `shortcut` 슬롯이 비어도 자리 폭 유지 · `pnpm test` green.
+  — 검증: `focus-ring.test.ts`의 `FIXTURES`(:132)에 `FieldButton` 픽스처 추가 후 green(`ui/` 안 raw `<button>`은 등록 필수 — :204-211) · `visual-system` green · jsdom: `shortcut` 슬롯이 비어도 자리 폭 유지 · `pnpm test` green.
 - [ ] **D4** `CommandDialog`(`dialog.tsx` 형제 export — 복귀 기록 공유, `DialogContent` 불변). `ui/large-modal.tsx`의 `LARGE_MODAL_PANEL`·`LARGE_MODAL_OVERLAY`를 import하고, 위치만 `top-4 left-1/2 -translate-x-1/2`. 첫 포커스는 `[data-initial-focus]` 규칙(새 `onOpenAutoFocus` 없음).
   — 검증: 기존 Dialog 소비자 테스트 무수정 green — `primitive-focus.test.tsx` · `focus-return` · `dialog-layer` + 대형 모달 소비자 테스트 · `primitive-focus.test.tsx:236`의 손 `onOpenAutoFocus` 0 스캔 대상에 `<CommandDialog` 소비자를 더한다 · jsdom: 열면 포커스가 `[data-initial-focus]` 입력 · 닫으면 연 자리로(테스트 쪽 fixup observer 관용구 — `members-focus.test.tsx`) · 패널 클래스가 `LargeModal` 치수 상수를 쓴다(새 치수 리터럴 0 — 두 벌 방지) · Dialog 소비자 수 14를 DESIGN 명령으로 다시 세어 D7에 기록 · `pnpm test` green.
 - [ ] **D5** `Command` · `CommandInput` · `CommandStatus` · `CommandList` · `CommandGroup` · `CommandItem` · 결과 수 sr-only 공지.
@@ -92,7 +92,7 @@
 - [ ] **E1** `messages/en.tsx` `search` 절(트리거 라벨 `Search` · placeholder `Search…` · 그룹 제목 넷 `Projects`·`Menus`·`Keys`·`Docs` · `View all projects` · `Browse all docs` · `Go to` · 로딩 둘(Keys·Docs) · 실패 둘 · 결과 수 공지 · 0건 제목/설명).
   — 검증: `no-korean-ui` · `brand-spelling` · `terminology` green · placeholder는 U+2026, 접근 이름엔 없음.
 - [ ] **E2** `components/search/search-trigger.tsx` · `search-dialog.tsx` — 프리미티브 조립만. 앱 셸 `layout.tsx`가 사이드바와 같은 `toNavProjects` 결과를 Header에도 넘긴다, 공개 셸 헤더는 `account`만 넘기고 Dialog가 로그인일 때 `load-memberships.ts`를 부른다. **`CLIENT_LIB_FILES`에 `lib/search/{match,highlight,nav-index,keys,key-href,load-index,load-memberships}.ts`를 더한다**(소비자가 생기는 이 커밋). 번역 화면 `workspace.tsx`의 선택 행 스크롤 effect 조건에 선택 키 변경을 더하고(spec 13a), 목차의 해시 착지 로직을 공유 헬퍼로 끌어내 목차와 Dialog가 함께 부른다(spec 13).
-  — 테스트 절차: user-event 파일 머리에 `vi.setConfig({ testTimeout: 20_000 })` · Dialog는 **실제 타이머로 연 뒤** `vi.useFakeTimers({ shouldAdvanceTime: true })` + `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })`(선례 `home-actions.test.tsx:97-100`) · 지연 Promise는 테스트 끝에서 푼다(POSTMORTEM 2026-09-18).
+  — 테스트 절차: user-event 파일 머리에 `vi.setConfig({ testTimeout: 20_000 })` · Dialog는 **실제 타이머로 연 뒤** `vi.useFakeTimers({ shouldAdvanceTime: true })` + `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })`(선례 `home-actions.test.tsx:104-108`) · 지연 Promise는 테스트 끝에서 푼다(POSTMORTEM 2026-09-18).
   — 검증: jsdom —
   - 공개 셸 로그인 매 열기에 멤버십 Action 1회 · 같은 열기 내 재렌더·질의 변경은 추가 호출 0회 · 같은 페이지/다른 공개 페이지에서 재열기 시 각각 새 호출 · 생성·보관·역할 변경 뒤 재열기에서 최신 목록 · 다시 열면 이전 목록 대신 로딩 · 닫힘/재열기 뒤 도착한 이전 응답 무시 · 비로그인 0회 · 멤버십 `{ ok: false }` → 비로그인 결과 · 공개 셸 로그인에서 Projects·Keys가 선다
   - 빈 질의 = 미리보기(로그인·프로젝트 있음/0/비로그인 세 경우, `View all` 행)
