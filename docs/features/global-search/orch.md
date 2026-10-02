@@ -1,5 +1,7 @@
 # global-search orchestration
 
+원본 계획: [spec](./spec.md) · [design](./design.md) · [tasks](./tasks.md).
+
 ## 결정 기록
 
 - 2026-10-03: 사용자가 `/orchestrate docs/features/global-search` 실행을 요청했다. spec의 기존 사용자 결정과 2026-10-03 멤버십 재조회 결정을 유지한다. 새 제품 결정 없음.
@@ -49,3 +51,7 @@ GS3a 증거: 원본 6ae19606, 전체 10385 passed + 기존 1 skipped, gate exit0
 GS3b 증거: 원본 feedca23, 전체10444 passed + 기존1 skipped, gate exit0. 독립 리뷰 red0/yellow0, 기존 DialogContent 바이트 동일 확인. LARGE_MODAL_HEIGHT 공유 추출 수용. 로컬 통합 후 다음 통합 gate는 B3 단독 실측 종료를 기다려 실행한다.
 
 GS2 증거: 원본 bfc1f089, 전체10470 passed + 기존1 skipped, 격리PG539 passed, Node24 gate exit0. 독립 Astra 리뷰 red0/yellow0/white0. 최악 중앙값253.221ms, 최대 Translation 방문200100 <400200, 두 통계 상태의 전체 스캔 대조군 거부. B4 생략으로 마이그레이션 없음. 최종 SQL은 멤버별 LATERAL·두 materialization·C 배열 min 집계이며 설계와 동일 결과/권한 경계라는 독립 판정. 측정값은 design에 보존했고 GS5가 ARCHITECTURE로 옮긴다.
+
+2026-10-03 사용자 결정: 지휘 계획을 먼저 문서화·커밋하고 시작하는 방식을 `/orchestrate`의 고정 절차로 채택했다. 파일 이름은 `orch.md`이며 이번 문서도 이름을 맞췄다. 원본 명령 `.claude/commands/orchestrate.md`와 Codex 미러에 반영한다.
+
+통합 증거: dev24a8f2bd의 Node24 `pnpm gate` exit0, db:generate/typecheck/test/격리PG/build/mirror 전부 통과. 로그 `.scratch/global-search/gate-integration-2.log`.
