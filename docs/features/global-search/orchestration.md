@@ -39,3 +39,9 @@ GS1의 T0가 끝난 뒤 실제 파일 집합을 다시 대조했다. GS3a = D1·
 GS1 증거: 원본 최종 255bf325, 전체 10410 passed + 기존 1 skipped, 격리 PG 521 passed, gate exit 0. 독립 리뷰 공백 스니펫 yellow1은 수정·재리뷰 red0/yellow0. 한 줄 표시는 E 소비자의 normal/nowrap 계약으로 검증한다.
 
 GS3a 증거: 원본 6ae19606, 전체 10385 passed + 기존 1 skipped, gate exit0, 독립 리뷰 red0/yellow0 및 집중196건 통과. dev e143a126까지 통합. 실제 헤더 rect는 GS6. 전용 highlight-kbd.test.tsx 소유권을 승인했다. GS2는 34b8cbd7 기반 Astra/high로 진행 중.
+
+### GS3b 병렬 분리와 통합 게이트
+
+- dev e1127736의 GS1+GS3a 통합 `pnpm gate` exit0, 마지막 `gate: ok` 확인(Prisma/typecheck/test/격리 PG/build/mirror). 로그 `.scratch/global-search/gate-integration-1.log`.
+- GS3b = D3·D4·D5a만 먼저 병행한다. FieldButton·dialog.tsx 형제 CommandDialog·NoMatch 선택 action 및 해당 focus/DOM tests 소유. GS2의 lib/keys·search loaders·Action/route·entry-points·client-graph와 교집합 없음. GS3b는 lib/**·client-graph·messages·문서를 편집하지 않는다. Sol/high, gate 및 독립 리뷰 필수.
+- 남은 GS3 = D5·D7이며 GS2·GS3b 모두 통합 후 수행한다. Command가 처음 keys.ts를 소비하는 정확 그래프 등록은 여기다. GS4는 그 뒤다.
