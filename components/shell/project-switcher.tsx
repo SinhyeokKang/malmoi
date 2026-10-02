@@ -4,7 +4,7 @@ import { ChevronsUpDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
-import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -129,7 +129,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
           shown.map((project) => (
             <DropdownMenuItem key={project.slug} asChild selected={project.slug === current} {...keepInputFocus}>
               <Link href={routes.project(project.slug)}>
-                <ProjectThumbnail name={project.name} src={project.image} size={16} />
+                <ProjectThumbnail name={project.name} src={project.image} size="xs" />
                 {/* ⚠️ 이름이 남는 폭을 먹는다(`flex-1`) — 그래야 배지 뒤의 `Check`(`ml-auto`)가 배지에 붙는다. 둘 다 `ml-auto`면 빈 폭을 나눠 갖는다. */}
                 <span className="min-w-0 flex-1 truncate">{project.name}</span>
                 {project.archived && (

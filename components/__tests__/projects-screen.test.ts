@@ -283,7 +283,7 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
    */
   it("행 글리프 radius 8은 공통 프로젝트 썸네일이 소유한다", () => {
     expect(BODY).toContain("<ProjectThumbnail name={row.name}");
-    expect(code("components/projects/project-thumbnail.tsx")).toContain("rounded-sm");
+    expect(code("components/ui/project-thumbnail.tsx")).toContain("rounded-sm");
   });
 
   /**

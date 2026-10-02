@@ -3,7 +3,7 @@ import { act } from "react";
 import type { ReactElement } from "react";
 import { expect, it, vi } from "vitest";
 import { ImageTile } from "@/components/ui/image-tile";
-import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { InviteProjectCard } from "@/components/invite/project-card";
 import { GeneralCard } from "@/components/settings/general-card";
 import { hueFill } from "@/components/ui/tone";
@@ -24,7 +24,7 @@ it.each([undefined, null, ""])("fallback %s uses the same single span with merge
 
 const boxes: [string, (src: string | null) => ReactElement, string, string, string][] = [
   ["project28", src => <ProjectThumbnail name="Acme" src={src} />, "size-7", "rounded-sm", "size-4"],
-  ["project16", src => <ProjectThumbnail name="Acme" src={src} size={16} />, "size-4", "rounded", "size-3"],
+  ["project16", src => <ProjectThumbnail name="Acme" src={src} size="xs" />, "size-4", "rounded", "size-3"],
   ["invite32", image => <InviteProjectCard name="Acme" image={image} role="Translator" locales={[]} />, "size-8", "rounded-sm", "size-4"],
   ["settings56", image => <GeneralCard slug="acme" name="Acme" image={image} archived={false} />, "size-14", "rounded-sm", "size-5"],
 ];

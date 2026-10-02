@@ -321,3 +321,9 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 | 멤버 제목 | `components/__tests__/members-screen.test.ts:69` | id+포커스 착지 |
 
 그 밖 T1–T21에 열거한 테스트 파일은 존재를 재확인하고 파일 단위로 유지했다. 옛 행 번호를 새 테스트 위치로 가장하지 않는다. 신규 SearchInput X/Escape·FieldTrigger·S14 계약은 아직 없으며 해당 태스크가 먼저 작성한다.
+
+## P3 작은 체크포인트 — 2026-10-02
+
+- Thumbnail 후보: ui ProjectThumbnail과 실제 소비자7곳(목록/Home/스위처/사이드바/랜딩/초대/설정), xs/sm/md/lg geometry·투명 이미지·폴백·URL 재시도, 이전 모듈 제거 및 실제 base150 사본 카나리아를 같은 작은 커밋에 묶는다.
+- 독립 리뷰: Thumbnail 및 Skeleton/loading 각각 0 findings 승인. 이 항목은 Thumbnail만 포함한다.
+- 검증: Thumbnail 단독 트리 관련11파일/291테스트 통과(초기 1개 구경로 테스트 실패 후 경로 이관, 해당 파일 재통과), typecheck exit0 · diff check exit0. 전체 P3 첫 gate는 테스트6실패(exit1); 빌드/미러 미실행이며 최종 누적 gate·잔여6체크포인트·R3·T20a/T21/T22는 미완이다.

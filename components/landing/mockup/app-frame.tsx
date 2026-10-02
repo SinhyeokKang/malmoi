@@ -2,7 +2,7 @@ import { ChevronsUpDown, PanelLeftClose, Plus } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
-import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -66,7 +66,7 @@ export function AppFrame({ children, overlay }: { children: ReactNode; overlay?:
               {/* 머리 줄은 프로젝트 구역에만 있다 — 사이드바와 같다(2026-09-30). */}
               {zone.key === "project" && (
                 <p className="text-foreground flex h-8 items-center gap-2 px-2 text-sm font-medium">
-                  <ProjectThumbnail name={zone.label} size={16} />
+                  <ProjectThumbnail name={zone.label} size="xs" />
                   <span className="min-w-0 truncate">{zone.label}</span>
                   {/* 프로젝트 전환 트리거(`components/shell/project-switcher.tsx`) — 같은 ghost 24 · 글리프 16 · 머리 오른쪽 끝. 메뉴는 그리지 않는다. */}
                   <span data-landing-switcher="" className={cn(buttonClass({ variant: "ghost" }), "-my-0.5 ml-auto size-6 shrink-0 rounded-sm p-0")}>

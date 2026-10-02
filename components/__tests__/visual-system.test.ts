@@ -129,7 +129,7 @@ const REGISTERED: Record<string, string[]> = {
   "bg-neutral-50": ["components/logs/event-detail.tsx"],
   // 흑백 둘 (§6.2 "흑백 둘과 남의 자산은 이 규칙 밖이다")
   "bg-white": ["components/signin/auth-layout.tsx"],
-  "text-white": ["components/invite/project-card.tsx", "components/projects/project-thumbnail.tsx", "components/settings/general-card.tsx", "components/ui/avatar.tsx"],
+  "text-white": ["components/ui/project-thumbnail.tsx", "components/ui/avatar.tsx"],
   // tone 여덟 (`-600`)
   ...Object.fromEntries(["rose", "orange", "amber", "emerald", "teal", "sky", "indigo", "fuchsia"].map((tone) => [`bg-${tone}-600`, TONE_FILES])),
   // 활동 글리프 칩 — 종류 색 셋만 남는다(D3③ — 결과 색은 `IconTile tone`이 든다, §6.68)

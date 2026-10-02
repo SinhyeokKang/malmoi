@@ -19,7 +19,7 @@ import type { ReactNode } from "react";
 import { EmptyProjects, NoProjectsMatch } from "@/components/projects/empty-projects";
 import { LocaleMeter } from "@/components/locale-meter";
 import { ProjectSearch, useProjectQuery } from "@/components/projects/search-input";
-import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { NewProjectButton } from "@/components/projects/new-project-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";

@@ -36,11 +36,13 @@ import { hueFill } from "@/components/ui/tone";
  * 보이고, 옆의 사용자 원과 구별되지 않아 "모양이 대상을 말한다"(§6.4)가 깨진다. 28의 8과 비율이 비슷하다.
  */
 const SIZE = {
-  28: { tile: "size-7", glyph: "size-4", radius: "rounded-sm" },
-  16: { tile: "size-4", glyph: "size-3", radius: "rounded" },
+  sm: { tile: "size-7", glyph: "size-4", radius: "rounded-sm" },
+  xs: { tile: "size-4", glyph: "size-3", radius: "rounded" },
+  md: { tile: "size-8", glyph: "size-4", radius: "rounded-sm" },
+  lg: { tile: "size-14", glyph: "size-5", radius: "rounded-sm" },
 } as const;
 
-export function ProjectThumbnail({ name, src, size = 28 }: { name: string; src?: string | null; size?: keyof typeof SIZE }) {
+export function ProjectThumbnail({ name, src, size = "sm" }: { name: string; src?: string | null; size?: keyof typeof SIZE }) {
   return (
     <ImageTile
       src={src}

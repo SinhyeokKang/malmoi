@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
-import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { hueFill } from "@/components/ui/tone";
 import { render } from "./helpers/dom";
 

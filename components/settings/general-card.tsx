@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { deleteProjectImage, updateProjectName, uploadProjectImage } from "@/app/(edit)/projects/[slug]/settings/actions";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,9 @@ import { FileInput } from "@/components/ui/file-input";
 import { FieldError } from "@/components/ui/form-group";
 import { useLandAfter } from "@/components/ui/focus";
 import { Input } from "@/components/ui/input";
-import { ImageTile } from "@/components/ui/image-tile";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { PanelFacts } from "@/components/ui/panel-card";
 import { Card } from "@/components/ui/card";
-import { hueFill } from "@/components/ui/tone";
 import { isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 import { planProjectName, PROJECT_NAME_MAX_CHARS } from "@/lib/projects/plan";
@@ -50,11 +49,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
       <span className="text-muted-foreground text-xs">{m.settings.general.thumbnail}</span>
       <div className="flex items-center gap-4">
         {/* 깨진 URL의 폴백은 목록·Home·초대와 같은 `ImageTile`이 든다 (malmoi#50). */}
-        <ImageTile
-          src={image}
-          className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-sm"
-          fallback={<span className={`text-white ${hueFill(name)}`}><Box className="size-5" /></span>}
-        />
+        <ProjectThumbnail src={image} name={name} size="lg" />
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <FileInput spinnerSize="sm" aria-describedby="project-image-caption" aria-invalid={shownImageError !== null} accept="image/png,image/jpeg" disabled={archived || pending} loading={pending && operation === "upload"} aria-busy={pending && operation === "upload"} onPick={file => {

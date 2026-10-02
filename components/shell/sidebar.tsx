@@ -4,7 +4,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
-import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { ProjectSwitcher } from "@/components/shell/project-switcher";
 import { Badge } from "@/components/ui/badge";
 import { CountBadge } from "@/components/ui/count-badge";
@@ -97,7 +97,7 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
           {/* ⚠️ 행을 접는 것은 이 겹이다 — `h-8`을 든 `<p>`에 `overflow-hidden`을 걸면 제 높이 32를 지켜 0fr 행 밖으로 넘친다. */}
           <div className="min-h-0 overflow-hidden">
           <p data-zone-head className={cn(ROW, "text-foreground font-medium")}>
-            <ProjectThumbnail name={zone.label} src={project?.image} size={16} />
+            <ProjectThumbnail name={zone.label} src={project?.image} size="xs" />
             <span className="min-w-0 truncate">{zone.label}</span>
             {/*
               ⚠️ **전환 메뉴는 프로젝트 머리의 오른쪽 끝이다** (2026-09-27 사용자 — 8-3이 지운 스위처가 메뉴 트리거로 돌아왔다).

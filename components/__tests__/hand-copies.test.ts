@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 // 소비자 사본과 퇴역 API를 한 워커·표에서 검사한다. 각 행의 실제 경로 카나리아가 검사기 삭제도 잡는다.
 type Source = { path: string; code: string };
-type Rule = { primitive: string; retired: string[]; paths: string[]; handCopy: (node: ts.JsxOpeningElement | ts.JsxSelfClosingElement, file: ts.SourceFile) => boolean; bad: string; good: string; minimum: number };
+type Rule = { primitive: string; retired: string[]; retiredModules?: string[]; paths: string[]; handCopy: (node: ts.JsxOpeningElement | ts.JsxSelfClosingElement, file: ts.SourceFile) => boolean; bad: string; good: string; minimum: number };
 type Opening = ts.JsxOpeningElement | ts.JsxSelfClosingElement;
 function classes(node: Opening, file: ts.SourceFile): string {
   const variables = new Map<string, ts.Expression>();
@@ -44,53 +44,72 @@ function rawLink(node: Opening, file: ts.SourceFile): boolean {
   return file.statements.some(statement => ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "next/link" && statement.importClause?.name?.text === tag);
 }
 
+// 이름을 바꾼 import·namespace도 같은 화면 컨트롤이다.
+function canonicalTag(node: Opening, file: ts.SourceFile): string {
+  const tag = node.tagName.getText(file);
+  for (const statement of file.statements) {
+    if (!ts.isImportDeclaration(statement)) continue;
+    const binding = statement.importClause?.namedBindings;
+    if (binding && ts.isNamedImports(binding)) {
+      const item = binding.elements.find(item => item.name.text === tag);
+      if (item) return (item.propertyName ?? item.name).text;
+    }
+    if (binding && ts.isNamespaceImport(binding) && tag.startsWith(`${binding.name.text}.`)) return tag.slice(binding.name.text.length + 1);
+  }
+  return tag;
+}
+
 const RETIRED_WIZARD_FOOTER = "export const Demo = () => (<div className=\"flex items-center gap-2\">\n              {showBack && (\n                <Button type=\"button\" size=\"lg\" onClick={onBack} disabled={busy}>\n                  {m.newProject.modal.back}\n                </Button>\n              )}\n              {/*\n                \u26a0\ufe0f **\ube44\ud65c\uc131 \ubaa8\uc591\uc744 \uaecd\ub370\uae30\uac00 \ub4e0\ub2e4** \u2014 \ud770 \ubc30\uacbd + border + muted \uae00\uc790 + `not-allowed`.\n                \ub2e8\uacc4\ub9c8\ub2e4 \ub2e4\uc2dc \ub9cc\ub4e4\uba74 \uac08\ub9b0\ub2e4.\n              */}\n              <Button\n                type=\"button\"\n                variant=\"primary\"\n                size=\"lg\"\n                onClick={onNext}\n                disabled={nextDisabled}\n                loading={busy}\n              >\n                {nextLabel ?? m.newProject.modal.next}\n                {nextArrow && <ArrowRight className=\"size-4\" aria-hidden />}\n              </Button>\n            </div>);";
 
 const RULES: Rule[] = [
-  { primitive: "Card", retired: ["PanelCard", "RowCard", "PanelRows", "RowCardList", "RowCardItem"], paths: [], minimum: 20,
+{ primitive: "Card", retired: ["PanelCard", "RowCard", "PanelRows", "RowCardList", "RowCardItem"], paths: [], minimum: 20,
     handCopy: () => false,
     bad: 'import { RowCard as Local } from "@/components/ui/row-card"; export const Demo = () => <Local title="Title">Body</Local>;',
     good: 'import { Card } from "@/components/ui/card"; export const Demo = () => <Card title="Title">Body</Card>;' },
-  { primitive: "EmptyState", retired: ["EmptyRowCard"], paths: ["components/projects/empty-projects.tsx", "components/onboarding/steps/repo.tsx", "app/(edit)/projects/[slug]/logs/page.tsx"], minimum: 15,
+{ primitive: "EmptyState", retired: ["EmptyRowCard"], paths: ["components/projects/empty-projects.tsx", "components/onboarding/steps/repo.tsx", "app/(edit)/projects/[slug]/logs/page.tsx"], minimum: 15,
     handCopy: (node, file) => /icon=\{SearchX\}/.test(node.getText(file)),
     bad: 'import { EmptyRowCard as Blank } from "@/components/ui/row-card"; export const Demo = () => <Blank title="Empty" />;',
     good: 'import { EmptyState } from "@/components/ui/empty-state"; export const Demo = () => <EmptyState placement="inset" title="Empty" />;' },
-  { primitive: "ListRow", retired: ["PanelRow", "ListItemButton"], paths: ["components/logs/event-row.tsx", "components/home/attention-card.tsx", "components/projects/project-list.tsx", "components/settings/ci-card.tsx", "components/sources/sources-screen.tsx", "components/sources/source-detail-modal.tsx"], minimum: 10,
+{ primitive: "ListRow", retired: ["PanelRow", "ListItemButton"], paths: ["components/logs/event-row.tsx", "components/home/attention-card.tsx", "components/projects/project-list.tsx", "components/settings/ci-card.tsx", "components/sources/sources-screen.tsx", "components/sources/source-detail-modal.tsx"], minimum: 10,
     handCopy: (node, file) => /^(?:a|button|div|Link|Button)$/.test(node.tagName.getText(file)) && /\bpy-row-y\b/.test(classes(node, file)) && /\b(?:items-center|justify-start)\b/.test(classes(node, file)),
     bad: 'export const Demo = () => <button className="flex items-center gap-3 px-4 py-row-y">Row</button>;',
     good: 'import { ListRow } from "@/components/ui/list-row"; export const Demo = () => <ListRow as="button">Row</ListRow>;' },
-  { primitive: "Fact", retired: [], paths: ["components/home/meta-column.tsx", "components/mcp/token-card.tsx", "components/mcp/connected-apps-card.tsx", "components/logs/event-detail.tsx", "components/sources/source-detail-modal.tsx"], minimum: 5,
+{ primitive: "Fact", retired: [], paths: ["components/home/meta-column.tsx", "components/mcp/token-card.tsx", "components/mcp/connected-apps-card.tsx", "components/logs/event-detail.tsx", "components/sources/source-detail-modal.tsx"], minimum: 5,
     handCopy: (node, file) => /^(?:dt|th|TableHead)$/.test(node.tagName.getText(file)),
     bad: 'export const Demo = () => <dl><dt className="text-muted-foreground text-xs">Label</dt><dd>Value</dd></dl>;',
     good: 'import { Fact } from "@/components/ui/facts"; export const Demo = () => <dl><Fact label="Label">Value</Fact></dl>;' },
-  { primitive: "LargeModal", retired: ["OnboardingModal", "OnboardingModalProps"], paths: ["components/logs/event-dialog.tsx"], minimum: 7,
+{ primitive: "LargeModal", retired: ["OnboardingModal", "OnboardingModalProps"], paths: ["components/logs/event-dialog.tsx"], minimum: 7,
     handCopy: (node, file) => /Content$/.test(node.tagName.getText(file)) && /max-w-\[1024px\]/.test(classes(node, file)),
     bad: 'export const Demo = () => <Primitive.Content className="fixed max-w-[1024px] rounded-xl">Body</Primitive.Content>;',
     good: 'import { LARGE_MODAL_PANEL } from "@/components/ui/large-modal"; export const Demo = () => <Primitive.Content className={LARGE_MODAL_PANEL}>Body</Primitive.Content>;' },
-  { primitive: "WizardFooter", retired: [], paths: ["components/onboarding/new-project.tsx"], minimum: 1,
+{ primitive: "WizardFooter", retired: [], paths: ["components/onboarding/new-project.tsx"], minimum: 1,
     handCopy: (node, file) => node.tagName.getText(file) === "Button" && /size="lg"/.test(node.getText(file)) && /m\.(?:common|newProject\.modal)\.(?:back|next)/.test(node.parent.getText(file)),
     bad: RETIRED_WIZARD_FOOTER,
     good: 'import { WizardFooter } from "@/components/ui/wizard-footer"; export const Demo = () => <WizardFooter onNext={() => {}} />;' },
-  { primitive: "ButtonLink", retired: [], paths: ["components/publish-button.tsx", "*"], minimum: 8,
+{ primitive: "ButtonLink", retired: [], paths: ["components/publish-button.tsx", "*"], minimum: 8,
     handCopy: (node, file) => rawLink(node, file) && /#buttonClass/.test(classes(node, file)),
     bad: 'import NextLink from "next/link"; import {buttonClass as style} from "@/components/ui/button"; const FOOTER_LINK = cn(style({variant: "default"}), "gap-2"); export const Demo = () => <NextLink\n href="/docs"\n className={FOOTER_LINK}>Docs</NextLink>;',
     good: 'import {ButtonLink} from "@/components/ui/button"; export const Demo = () => <ButtonLink href="/docs">Docs</ButtonLink>;' },
-  { primitive: "Link", retired: ["DOC_LINK"], paths: ["components/docs/guide-markdown.tsx", "*"], minimum: 15,
+{ primitive: "Link", retired: ["DOC_LINK"], paths: ["components/docs/guide-markdown.tsx", "*"], minimum: 15,
     handCopy: (node, file) => rawLink(node, file) && /(?:^|\s)text-link(?:\s|$)|#DOC_LINK/.test(classes(node, file)),
     bad: 'import Alias from "next/link"; const BLUE = "text-link"; export const Demo = () => <Alias className={cn(BLUE, "ring-2")} href="/docs">Docs</Alias>;',
     good: 'import {Link} from "@/components/ui/link"; export const Demo = () => <><Link href="/docs">Docs</Link><span className="text-link">Color only</span></>;' },
-  { primitive: "Popover", retired: ["TreeOverlay"], paths: ["components/translations/workspace/workspace.tsx"], minimum: 1,
+{ primitive: "Popover", retired: ["TreeOverlay"], paths: ["components/translations/workspace/workspace.tsx"], minimum: 1,
     handCopy: (node, file) => node.tagName.getText(file) === "div" && /\babsolute\b/.test(classes(node, file)) && /\btop-14\b/.test(classes(node, file)) && /\bw-70\b/.test(classes(node, file)),
     bad: 'export const Demo = () => <div className="absolute top-14 left-3 w-70 shadow-md">Tree</div>;',
     good: 'import {Popover} from "@/components/ui/popover"; export const Demo = () => <Popover open id="tree" aria-label="Sources" anchor={ref} onOpenChange={change}>Tree</Popover>;' },
-  { primitive: "Meter", retired: ["MeterBar"], paths: ["components/locale-meter.tsx", "components/sources/source-detail-modal.tsx"], minimum: 2,
+{ primitive: "Meter", retired: ["MeterBar"], paths: ["components/locale-meter.tsx", "components/sources/source-detail-modal.tsx"], minimum: 2,
     handCopy: (node, file) => /^(?:div|span)$/.test(node.tagName.getText(file)) && /\bh-1\b/.test(classes(node, file)) && /\brounded-full\b/.test(classes(node, file)),
     bad: 'export const Demo = () => <span aria-hidden className="flex h-1 rounded-full"><span style={{width: "40%"}} /></span>;',
     good: 'import {Meter} from "@/components/ui/meter"; export const Demo = () => <Meter done={40} review={0} />;' },
-  { primitive: "ErrorState", retired: [], paths: ["app/(edit)/error.tsx", "app/(edit)/projects/[slug]/logs/error.tsx"], minimum: 2,
+{ primitive: "ErrorState", retired: [], paths: ["app/(edit)/error.tsx", "app/(edit)/projects/[slug]/logs/error.tsx"], minimum: 2,
     handCopy: (node, file) => node.tagName.getText(file) === "EmptyState" && /icon=\{CircleX\}/.test(node.getText(file)),
     bad: 'export const Demo = () => <EmptyState icon={CircleX} title="Failed" action={<Button onClick={retry}>Retry</Button>} />;',
     good: 'import {ErrorState} from "@/components/ui/error-state"; export const Demo = () => <ErrorState title="Failed" retry={retry} retryLabel="Retry" />;' },
+{ primitive: "ProjectThumbnail", retired: [], retiredModules: ["@/components/projects/project-thumbnail"], paths: ["components/invite/project-card.tsx", "components/settings/general-card.tsx"], minimum: 7,
+    handCopy: (node, file) => canonicalTag(node, file) === "ImageTile" && /hueFill/.test(node.getText(file)),
+    bad: 'export const Demo = () => <ImageTile className="size-8 rounded-sm" fallback={<span className={hueFill(name)}><Box /></span>} />;',
+    good: 'import {ProjectThumbnail} from "@/components/ui/project-thumbnail"; export const Demo = () => <ProjectThumbnail size="md" name={name} />;' }
 ];
 
 function scan(source: Source, rule: Rule): string[] {
@@ -100,6 +119,7 @@ function scan(source: Source, rule: Rule): string[] {
   const namespaces = new Set<string>();
   for (const statement of file.statements) {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier) || !/(?:^@\/components\/|^\.\.?\/)/.test(statement.moduleSpecifier.text)) continue;
+    if (rule.retiredModules?.includes(statement.moduleSpecifier.text)) hits.push(`module:${statement.moduleSpecifier.text}`);
     const clause = statement.importClause?.namedBindings;
     if (clause && ts.isNamedImports(clause)) for (const item of clause.elements) {
       const name = (item.propertyName ?? item.name).text; aliases.set(item.name.text, name);
@@ -113,6 +133,7 @@ function scan(source: Source, rule: Rule): string[] {
     }
     if ((ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node)) && rule.retired.includes(node.name.text) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) hits.push(`export:${node.name.text}`);
     if (ts.isFunctionDeclaration(node) && node.name && rule.retired.includes(node.name.text) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) hits.push(`export:${node.name.text}`);
+    if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && rule.retiredModules?.includes(node.moduleSpecifier.text)) hits.push(`module:${node.moduleSpecifier.text}`);
     if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) for (const item of node.exportClause.elements) if (rule.retired.includes((item.propertyName ?? item.name).text)) hits.push(`export:${item.name.text}`);
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tag = node.tagName.getText(file);
@@ -141,11 +162,18 @@ describe.each(RULES)("$primitive production contract", rule => {
     expect(consumers.length).toBeGreaterThanOrEqual(rule.minimum);
     expect(sources.flatMap(s => scan(s, rule).map(hit => `${s.path}:${hit}`))).toEqual([]);
   });
-  it("detects a real hand copy on its current path and permits the replacement", () => {
+  it("detects a synthetic canary on its current path and permits the replacement", () => {
     const path = rule.paths[0] ?? "components/members/member-list.tsx";
     expect(scan({ path, code: rule.bad }, rule).length).toBeGreaterThan(0);
     expect(scan({ path, code: rule.good }, rule)).toEqual([]);
     expect(scan({ path, code: `${rule.bad.split("\n").map(line => `// ${line}`).join("\n")}\nconst note = ${JSON.stringify(rule.bad)};` }, rule)).toEqual([]);
+  });
+  it("tracks moved module aliases, namespaces and reexports", () => {
+    for (const module of rule.retiredModules ?? []) for (const code of [
+      `import {${rule.primitive} as Local} from "${module}"; export const Demo = () => <Local />;`,
+      `import * as UI from "${module}"; export const Demo = () => <UI.${rule.primitive} />;`,
+      `export {${rule.primitive} as Local} from "${module}";`,
+    ]) expect(scan({path: rule.paths[0] ?? "components/example.tsx", code}, rule)).toContain(`module:${module}`);
   });
   it("tracks renamed imports and namespace members", () => {
     for (const retired of rule.retired) {
@@ -208,4 +236,21 @@ it("the header retains its one exact navigation contract and rejects neighboring
   expect(actual).not.toContain('"use client"');
   expect(headerSite(actual+' function Neighbor(){return <Link href={routes.newProject()} className={PUBLIC_HEADER_LINK}><NewProjectIcon /></Link>;}')).toEqual(["Header/new-project", "unexpected header copy"]);
   expect(headerSite(actual.replace('className={PUBLIC_HEADER_LINK}', 'className="text-link"'))).toEqual([]);
+});
+
+
+
+// base150d221c의 실제 퇴역 JSX·함수 조각이다. 래퍼만 파서용으로 덧붙인다.
+const RETIRED_P3_SOURCES = [
+{
+    "primitive": "ProjectThumbnail",
+    "path": "components/invite/project-card.tsx",
+    "code": "const P3RetiredProbe = () => (<ImageTile\n        src={image}\n        className=\"flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm text-white\"\n        fallback={<span className={hueFill(name)}><Box className=\"size-4\" /></span>}\n      />);"
+  }
+];
+
+it.each(RETIRED_P3_SOURCES)("$primitive actual retired base150 source is detected on $path", fixture => {
+  const parsed = ts.createSourceFile(fixture.path, fixture.code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX) as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] };
+  expect(parsed.parseDiagnostics).toEqual([]);
+  expect(scan(fixture, RULES.find(rule => rule.primitive === fixture.primitive)!).length).toBeGreaterThan(0);
 });
