@@ -86,10 +86,66 @@
 - **구체적 겹침 처리:** workspace/key/tree/locale 및 home/mcp/members/logs/source-detail 소비자는 위 순서로 이관한다. source-detail은 P1 Facts 뒤 P2 Modal/Meter, onboarding/token은 P2 Modal 뒤 P3 Select/Copy/Secret, ButtonLink는 P2 뒤 P3 링이다. P1 ListRow는 현행 링크 계약을 보존하며 P2가 최종 Link 소비를 이관한다. 컴포넌트 간 선행이 새로 발견되면 독립 범위를 계속 작업하면서 해당 부분만 대기한다.
 - **커밋·검증 묶음:** 작은 태스크마다 전체 빌드를 반복하지 않는다. 태스크별 의미 있는 red/green·사본 카나리아·현재 경로 mutation은 유지하고, 실제 소비자/공통 게이트/문서를 모두 이관한 **P 배치마다 전체 `pnpm gate --base <통합 시작 dev SHA>` + 독립 리뷰 → 신설과 이관을 함께 1커밋**한다. 임시 준비만 커밋하여 dev에 올리지 않는다. 통합 충돌은 담당 워커가 해결하고 변경 후 재검증한다.
 - **리소스:** 워커는 전부 Codex. 동시에 구현 워커 최대3명이고 무거운 전체 gate/build는 한 번에1개만 실행한다. 대기 워커 슬롯은 독립 리뷰에 재사용할 수 있다. 단위② R2 브라우저 QA와 새 워크트리 구현은 병렬 가능하나 QA 중 root dev cherry-pick/build는 금지한다.
-- **마무리:** P1–P3 뒤 T20 잔여 승인 교정 → 전체 통합 gate/R3 3뷰포트 QA → dev push → T21 정본 문서 → T22 종료까지 계속한다. 프로덕션/main과 환경·비밀값은 건드리지 않는다. 독립 워크트리는 tracked clean 및 dev에 모든 커밋 반영을 확인한 뒤 정리한다.
+- **마무리:** P1–P3 뒤 T20 잔여 승인 교정 → **T21 정본 문서** → 전체 통합 gate/R3 3뷰포트 QA → 단위③ dev push → T22 종료(폴더 삭제·최종 gate·커밋·dev push)까지 계속한다. `/push` 문서 신선도 규칙을 지키고 중복 gate를 줄이기 위해 T21 문서를 R3 앞으로 옮겼다. T21 loading glob 테스트는 P3가 맡는다. 프로덕션/main과 환경·비밀값은 건드리지 않는다. 독립 워크트리는 tracked clean 및 dev에 모든 커밋 반영을 확인한 뒤 정리한다.
 
 
 **원격 경계**: 2026-10-02 사용자 “push 허용”·“멈추지말고 계속 진행해”에 따라 **Codex 지휘자가 단위별 게이트·QA 후 dev push까지 수행하고 다음 단위로 계속 진행한다.** 구현 워커는 로컬 커밋까지만 맡고 원격 쓰기는 지휘자 한 창구다. 프로덕션/main·DB·비밀값 변경 없음. QA는 Codex가 제공된 브라우저 기능으로 직접 수행 가능한 항목만 측정하며, 런타임 접근이 없으면 미검증으로 남긴다.
+
+## 다음 세션 인계 — 2026-10-02 20:40 KST
+
+**미완: P3 최종 검증·독립 리뷰·커밋/통합, T20 최종 대조, T21 정본 반영, R3 브라우저 QA, 단위③ push, T22 종료.** 전체 약80%는 작업량 추정이며 테스트 커버리지 수치가 아니다. 사용자의 이번 지시는 **이 tasks.md만 즉시 갱신·로컬 커밋**이다. 이 체크포인트는 전체 기능 완료나 추가 push를 뜻하지 않는다.
+
+### 최신 실행 방식 변경 — 사용자 2026-10-02
+
+**“병렬 배치 이번턴 끝나고 걷어들이고 직렬 세션으로 전환”** 지시를 우선한다. **새 병렬 배치·새 워커·재사용 dispatch를 만들지 않는다.** 현재 P3 구현은 진행 중인 이관/검증 단계만 마치고 모든 mutation을 복원한 뒤 exact manifest·인계·남은 일을 저장하여 대기하도록 통지했다. 현재 Astra 리뷰도 이미 승인된 읽기 전용 검토 결과와 미검토 범위를 저장해 회수 대기하도록 통지했다. **아직 회수/종료 완료가 아니다.**
+
+다음 세션은 기존 두 dispatch의 마지막 결과를 먼저 회수하고 실제 작업 파일/증거를 보존한다. 미완을 완료로 처리하지 말고 스킬의 명시적 인계/settlement 절차로 현재 배치를 닫은 뒤 **단일 직렬 세션**으로 P3 잔여 검증·리뷰·통합부터 이어간다. 아래 원래 순서의 “리뷰와 gate 병행” 및 병렬 worker 재사용은 이 최신 지시로 대체한다. 전체 기능 범위·dev push 권한·검증 게이트는 유지한다. 현재 워커 파일을 root로 옮길 때에는 무커밋 diff/new files를 먼저 보존하고, 임시 테스트 변조가 모두 복원되었는지 확인한다.
+
+### 확정 상태
+
+| 항목 | 상태 / 증거 |
+|---|---|
+| root 체크아웃 | `/Users/sinhyeok/code/malmoi`, **dev**. 체크포인트 직전 HEAD `150d221c4b70369831b46428551aea873a6202b1`, tracked clean. 이 문서 커밋은 그 위에 놓인다. main은 건드리지 않았다 |
+| 원격 | 마지막 dev push `e289289e87e456c843123ad16ff1f8f55aa62c81`; [CI 36993216714](https://github.com/SinhyeokKang/malmoi/actions/runs/36993216714) 정확한 SHA의 success 확인. P1/P2는 아직 로컬만 통합 |
+| 단위② / R2 | 완료. root gate exit0:651파일/10126테스트 + 격리 PostgreSQL31파일/520테스트 + typecheck/build/미러. Chromium17상태×3폭=51PNG 시각 검사. `.scratch/component-unify-r2-qa.md`, `.scratch/component-unify/r2/`, `r2-gate.log`, `r2-gate.exit` |
+| P1 | **완료·통합**. 워커 `fa1f0b828a5afc01f872afdfc84d8faef302b60c` → root `591fb58a3936ce5d4e38048b2c489c5e8e90a776`. 70경로 독립 리뷰0건, 최종 gate653파일/10151테스트+기존 opt-in profiler1skip, build/미러 exit0. Sources chevron 간격/위치 회귀와 기존 계정 구조 테스트 수정 재검증 완료 |
+| P2 | **완료·통합**. 워커 `e1db2f6038e76d912913415cbeec6746d81eddd6` → root `150d221c4b70369831b46428551aea873a6202b1`. 67경로 manifest `b7f4edb9ace1924fc79e5ac3d41f08cdfab09ae1b9a6d1cdf593115493a809c9`, 독립 리뷰0건. 최종 gate657파일/10210테스트+기존 profiler1skip, build/미러 exit0; PG 미선택. 첫 gate22실패는 기존 테스트7파일 이관으로 수정했고 최종 재실행 통과 |
+| P3 | **진행 중·미커밋**. 정확한 통합 base `150d221c4b70369831b46428551aea873a6202b1`로 stash(새 파일 포함)→rebase→복원 충돌 없이 완료. 실제 소비자 이관, 관련110검사/typecheck0, repo 화살표 조회0·명시 확정8검사 통과 보고. 실제 옛 사본8종·loading 소스 제거 mutation 실패를 관측했으나 **최종 STABLE/전체 gate/전체 리뷰는 아직 미수령**. 임시 mutation 중인 파일을 최종 변경으로 취급하지 않는다 |
+| 문서 초안 | P2의 DIRECTORY 초안 별도 태스크 완료·수용. `.scratch/component-unify/t21-drafts/t21-DIRECTORY-draft.md`, SHA `0b637e8f444f662c8182c3c53987acfe6ba80e878132b9ecbc30de8b40f18c57`. P3 행은 provisional이며 최종 코드 대조 뒤 적용. global-search3문서·CLAUDE 초안도 같은 폴더; CLAUDE의 `FINAL_UI_COUNT`는 최종 실측으로 바꿔야 한다 |
+| 정리 | P2 터미널은 worker-release로 종료·전사 보존, worktree는 clean/`git cherry dev`의 +0 확인 후 Orca로 삭제 완료. 인계/로그는 root `.scratch/component-unify/{p1-evidence,p2-evidence,handoff-p1.md,handoff-p2.md,p1-review.md,p2-review.md}`에 보존 |
+
+### 살아 있는 Orca 작업 — 중복 워커를 띄우지 않는다
+
+Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7d06c32ba323`**. 새 세션은 먼저 `orchestration` 스킬과 live runtime의 태스크/dispatch/메시지를 확인하고 기존 Run의 인계 절차를 따른다. 종료된 것으로 추정해 재시작하거나 무작정 reset하지 않는다.
+
+| 소유자 | 워크트리 / 모델 | task / dispatch / terminal |
+|---|---|---|
+| P3 구현 | `/Users/sinhyeok/orca/workspaces/malmoi/component-unify-p3`, branch `SinhyeokKang/component-unify-p3`, Codex GPT-6.1 Sol high | `task_f191f68071af` / `ctx_917330f3503a` / `term_19e5295f-860f-4041-8321-b5df384b5b33` |
+| P3 독립 리뷰·T20 | `/Users/sinhyeok/orca/workspaces/malmoi/component-unify-p1`, Codex GPT-6 Astra high, **읽기 전용** | `task_c5a6bfbff251` / `ctx_7e927548190e` / `term_3502e1bc-eba0-4269-9586-d5b6d4eb8807` |
+
+- P3는 최종 STABLE 전에 고정된 production subset을 먼저 보내 리뷰를 병행하도록 지시받았다. naming/files/token-grant3소비자+Radio 폭/실제 Tab 검증(early9)과 projects-search/filter-menu2소비자(early3)는 이미 독립 리뷰0건이다. 최종 전체 파일 검증을 대체하지는 않는다.
+- P3 handoff: 워커 `.scratch/handoff-component-unify-p3.md`, 증거 `.scratch/component-unify-p3/`. 리뷰: P1 워커 `.scratch/p3-final-review.md`. root 브리프는 `.scratch/component-unify/brief-p3.md`, `brief-p3-final-review.md`, 소유권은 `parallel-worker-rules.md`, 상세 일지는 `coordinator.md`.
+- P3 전체 gate는 아직 허가하지 않았다. **최종 바이트 고정 → 독립 리뷰와 gate를 병행 → 둘 다 통과 후 COMMIT → root cherry-pick**. 무거운 gate/build는 동시에1개. 구현/테스트 수정은 계속 P3 워커 소유다.
+- 현재 P3 pane의 최초 readiness 실패 resource holder는 `ctx_45e9e58a4671`이다. runtime에 reclaimable로 보여도 **같은 pane의 현재 P3가 실행 중이므로 release하지 않는다**. 실제 settlement 뒤 live receipt에 따라 정리한다.
+- `worker_done`는 해당 task/dispatch의 실제 결과로 처리한다. 수용 후 즉시 다음 태스크에 재사용하거나 `worker-release`하고 delivery ACK. 단순 heartbeat/timeout은 완료나 실패가 아니다. 이 문서만 보고 active 워커를 종료하지 않는다.
+
+### 이어서 실행할 순서
+
+1. **P3 인계 수령·리뷰.** 최종 manifest의 변경/신규/삭제 집합과 각 해시를 실제 base150d221c diff와 비교한다. API 허용 부채0, 옛 실제 코드8종의 유효 TSX(parseDiagnostics0) mutation, 검사기 무력화 red/복원 green, loading.tsx glob8/8 및 실제 소스 제거 red를 확인한다. repo `detail=0` 접근성 클릭·Enter/Space 확정1회, 파일 Preview/Include 분리, readonly/invalid/checked 링 우선순위, copy 반복2초·실패 선택을 보존해야 한다. 기존 테스트 이관이 단언 약화인지 리뷰한다.
+2. **P3 전체 gate·커밋·통합.** `pnpm gate --base 150d221c4b70369831b46428551aea873a6202b1`의 실제 exit0/전체 로그, 독립 리뷰0건, 동일 최종 바이트를 확인한 뒤 English+Codex trailer 커밋을 root dev에 cherry-pick한다. 이번 tasks 체크포인트는 P3 소유 파일과 겹치지 않는다. QA 서버가 돌 때 cherry-pick/build 금지.
+3. **T20·T21.** 승인된 design§6.3 잔여 표와 최종 diff를 대조한다(사전 조사에서는 추가 delta 없음; 임의 cleanup을 만들지 않는다). 최종 코드 기준 DESIGN/DIRECTORY/CLAUDE/global-search를 대조·문서별 커밋. 원본 CLAUDE 수정 후 `pnpm sync:agents`, 생성된 AGENTS 직접 편집 금지. `t21-doc-checklist.md`·`t21-canonical-doc-proposal.md`·초안을 사용한다.
+4. **root 최종 gate → R3.** 최종 코드+문서에 전체 gate 후 HEAD 고정, `.scratch/component-unify/r3-qa-plan.md`대로1280/1440/1890×900 측정. 기존 **Ego TaskSpace22 / p1** 재사용(아직 finish하지 않음), 현재 root dev 서버 없음. 캡처 helper `.scratch/component-unify/r3/capture.mjs`. 실제 버그는 BugShot 흐름으로 기록하고 P3에 수정 라우팅한다.
+5. **단위③ dev push.** QA 뒤 서버 종료, `.next/dev`만 정리하고 generated next-env 복원. gate 뒤 tracked 바이트가 같으면 불필요한 전체 gate 반복 없이 문서 신선도/guide check 확인 후 허용된 dev push, 정확한 SHA의 CI 확인. main/prod는 금지.
+6. **T22.** 영구 결론·한계·후속을 정본/종료 보고로 승격했는지 확인하고 이 feature 폴더를 삭제, 필수 최종 gate 후 `docs: close component-unify` 커밋/dev push. active worker settlement/증거 보존/clean/+0 확인 후 Orca cleanup, TaskSpace22 finish는 성공 시 한 번만.
+
+### 최종 문서·QA에서 놓치지 말 것
+
+- 실제 P1은 `ui/empty-state.tsx`의 **NoMatch(action: ReactElement 필수)**, `ui/facts.tsx`의 **Fact**다. global-search의 출구 선택화는 미래 D5a로 남긴다. `PanelFacts`/`BannerLine`, `ui/tone.ts`/`ui/focus.ts`는 남아 있다.
+- P2 LargeModal은 `LARGE_MODAL_PANEL`/`LARGE_MODAL_OVERLAY`, 필수 actions, WizardFooter 별도다. Button **asChild 없음**. 일반 ButtonLink에 자동 Next pending을 더하지 않았다. 정확한 Privacy mailto1곳 예외만 허용하며 사전 파일 전체 면제 아님.
+- DESIGN Meter 정밀 교정: Sources 막대의 done/review clamp는 **source-detail-modal 안**, 표시 percent의 clamp/floor는 **lib/keys/view localeProgress**다. LocaleMeter는 done/review 비율을 나누고 공급된 percent를 표시한다.
+- R3 Popover는1280에서 **shell sidebar** 리사이저를320으로 넓혀 실제 트리를 접고 트리거로 연다(React 로컬 상태; reload복원). **translation divider는 저장되므로 건드리지 않는다.** MCP 초기 토큰 폼은 실제 소스에서 발급이 submit에만 있음을 재확인 후 열 수 있지만 **Create/Rotate 확인·원문 표시·폐기 금지**.
+- R2는 Safari/AT·실제 쓰기 busy·온보딩4·TreeOverlay 미검증. R3에서 가능한 범위만 추가하고 나머지는 솔직히 남긴다. 온보딩 라우트 닫힘 후 BODY 포커스는 기존 정책으로 확인했으며 새 회귀로 만들지 않는다. public landing/signin은 인증 리다이렉트로 R2 미측정.
+- 최신 `guide:check`는 **stale25컷49건**(이전39건은 과거 기록). 재촬영 후속이며 게이트 실패는 아니다. 스키마/마이그레이션 변경 없음, prod db:deploy 불필요. `.env.local` 읽기·복사·편집, 공유 DB 업무 데이터 쓰기, main/prod 작업은 하지 않는다.
 
 ## 실행 기록 — 2026-10-02
 
