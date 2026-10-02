@@ -141,7 +141,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 
 **원칙 (2026-10-01 사용자)**: 손 조립을 피하고 재사용 단위의 공통 컴포넌트를 쓴다. **없는 단위는 이번에 `components/ui/` 프리미티브로 만든다** — "일단 손으로 짜고 나중에 정리"는 그 자체가 부채다. 그래서 이 기능은 새 프리미티브를 먼저 세우고(tasks D), 같은 형을 이미 손으로 짠 **기존 사본도 같은 커밋 묶음에서 그 프리미티브로 옮긴다** — 새 프리미티브 옆에 옛 사본이 남으면 형이 두 벌이다.
 
-**어휘는 component-unify 규약을 따른다** (그 design §3) — 슬롯 `icon` · `description` · `action` · `badge`(개수가 아닌 값). 비정본 슬롯 이름(`detail`·`subtitle`·`glyph`·`leading` 등)을 쓰지 않는다. **rest props는 실수요 자리만**(그 결정 S5) — 이 기능의 새 프리미티브에는 실수요가 없어 열지 않는다. 사본 스캔은 그 기능의 `components/__tests__/hand-copies.test.ts`(§5.1 — 표 주도 파일 하나)에 **행으로** 더한다 — 스캔 파일을 새로 만들지 않는다.
+**어휘는 component-unify 규약을 따른다** (DESIGN §8) — 슬롯 `icon` · `description` · `action` · `badge`(개수가 아닌 값). 비정본 슬롯 이름(`detail`·`subtitle`·`glyph`·`leading` 등)을 쓰지 않는다. **rest props는 실수요 자리만**(DESIGN §8) — 이 기능의 새 프리미티브에는 실수요가 없어 열지 않는다. 사본 스캔은 그 기능의 `components/__tests__/hand-copies.test.ts`(§5.1 — 표 주도 파일 하나)에 **행으로** 더한다 — 스캔 파일을 새로 만들지 않는다.
 
 **시각 참고는 GitLab 검색 패널이다** (2026-10-01 사용자 참고 이미지) — 위에서 열리는 큰 패널, 입력 줄 + 전폭 구분선, 굵은 그룹 머리 + 그룹 사이 구분선, 한 줄 `제목 · 맥락` 행, 활성 행의 `Go to ↵` 힌트, 그룹 끝 `View all …` 행.
 
@@ -151,14 +151,14 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 
 | 자리 | 단위 | 비고 |
 |---|---|---|
-| 결과 0건 | `NoMatch`(component-unify — `EmptyState` 위 `SearchX` 고정 형) | 제목 `No results for “{q}”`, 설명 한 문장, **출구 없음**(입력이 바로 위다). `NoMatch`는 출구(`href`·`onClick`)가 필수라 **출구 없는 형을 이 기능이 더한다** — 소비자가 함께 생기는 축이라 S5와 맞고, DESIGN "좁혀서 0건인 빈 상태의 출구" 규칙에 예외로 등재한다(D7) |
+| 결과 0건 | `NoMatch`(component-unify — `EmptyState` 위 `SearchX` 고정 형) | 제목 `No results for “{q}”`, 설명 한 문장, **출구 없음**(입력이 바로 위다). `NoMatch`는 `action: ReactElement` 출구 슬롯이 필수라 **출구 없는 형을 이 기능이 더한다** — 소비자가 함께 생기는 축이라 S5와 맞고, DESIGN "좁혀서 0건인 빈 상태의 출구" 규칙에 예외로 등재한다(D7) |
 | 보관 프로젝트 표시 | `Badge` (스위처·`/projects` 행과 같은 `Archived`) | |
 | 프로젝트 글리프 | `ProjectThumbnail` size 16 | 스위처와 같다 |
 | `View all …` 글리프 | `lib/shell/nav.ts`의 같은 목적지 `NavItem.icon` — `navWorkItems()`의 Projects 항목 · `navFooterItems()`의 Docs 항목 | 같은 목적지 = 같은 글리프 |
 | 입력 바탕 | `Input`(component-unify가 더한 글리프 슬롯) | `CommandInput`이 `Search` 글리프를 그 슬롯에 넣고 테두리를 끈다 — 글리프 배치를 새로 짜지 않는다 |
 | Dialog 첫 포커스 | `components/ui/dialog.tsx`의 `[data-initial-focus]` 규칙 | `CommandInput`이 그 표식을 단다 — 새 `onOpenAutoFocus`·새 표식(`data-command-input`)을 만들지 않는다(`primitive-focus.test.tsx`가 손 `onOpenAutoFocus` 0을 강제한다) |
 | Dialog 포커스 복귀 | `dialog.tsx`의 최근 포커스 기록(`returnTarget`) | 새 Content가 **같은 파일 안에서** 재사용한다 — 기록이 두 벌이면 복귀 대상이 갈린다 |
-| 대형 모달 치수·면·dim | `LargeModal` 치수 상수(component-unify C2 — `event-dialog`와 공유하려 뗀 것) | **그 상수를 import한다** — 새 export를 만들지 않는다(2026-10-01 사용자 "대형 모달과 동일, 다른 건 top") |
+| 대형 모달 치수·면·dim | `LargeModal` 상수(`ui/large-modal.tsx`의 `LARGE_MODAL_PANEL`·`LARGE_MODAL_OVERLAY` — `event-dialog`와 공유) | **그 상수를 import한다** — 새 export를 만들지 않는다(2026-10-01 사용자 "대형 모달과 동일, 다른 건 top") |
 
 ### 새로 만드는 프리미티브 (`components/ui/`, DESIGN §6.4 등재)
 
@@ -166,7 +166,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 |---|---|---|
 | **`Kbd`** (`kbd.tsx`) | **`<kbd>` 태그**를 렌더하는 키 칩 — `shrink-0 rounded border px-1.5 py-0.5 text-xs` muted, `font-sans`(preflight가 `kbd`에 mono를 깐다 — DESIGN) | `project-switcher.tsx:119`의 손 `<kbd>` → `Kbd`(클래스가 같아 높이 불변 — `project-switcher.test.tsx:58`의 `[role="menu"] kbd` 셀렉터가 그대로 잡는다) |
 | **`Highlight`** (`highlight.tsx`) | `{ text, match }[]`를 받아 일치 구간을 `<mark>`(DESIGN §6.2 `bg-blue-600/[0.14]` · `rounded-[3px]` · `px-px`)로 그린다 — 조각을 **만들지 않고 그리기만** 한다 | `components/projects/project-list.tsx:286-288`의 손 `<mark>` → `Highlight`(조각은 기존 `highlightName` — `lib/projects/list.ts:552` — 이 그대로 만든다). `visual-system.test.ts`의 `bg-blue-600/[0.14]` 등재 위치와 `projects-screen.test.ts`의 클래스 단언을 **의도적으로 옮긴다** |
-| **`FieldButton`** (`field-button.tsx`) | **입력처럼 보이는 버튼** — 캡슐(`rounded-full`), 높이 36(`h-9`), 폭 320(`w-80`), 면은 콘텐츠 패널과 같다(`bg-background border border-border-subtle shadow-low` — 2026-10-01 사용자). 슬롯 `icon` · `placeholder`(muted) · `shortcut`(`Kbd`). hover 면 `bg-foreground/[0.03]` 겹침, 포커스 링은 여는 태그에 리터럴(§7). 폭은 파일이 소유하고 prop으로 열지 않는다 — 입력류가 아니고 소비자가 하나다(component-unify S5 — 그 design §3·§6.4도 이 판정으로 맞췄다). 두 번째 소비자가 생기면 그 폭 규약대로 연다 | 없음(첫 소비자) |
+| **`FieldButton`** (`field-button.tsx`) | **입력처럼 보이는 버튼** — 캡슐(`rounded-full`), 높이 36(`h-9`), 폭 320(`w-80`), 면은 콘텐츠 패널과 같다(`bg-background border border-border-subtle shadow-low` — 2026-10-01 사용자). 슬롯 `icon` · `placeholder`(muted) · `shortcut`(`Kbd`). hover 면 `bg-foreground/[0.03]` 겹침, 포커스 링은 여는 태그에 리터럴(§7). 폭은 파일이 소유하고 prop으로 열지 않는다 — 입력류가 아니고 소비자가 하나다(component-unify S5 — DESIGN §8·§6.4도 이 판정으로 맞췄다). 두 번째 소비자가 생기면 그 폭 규약대로 연다 | 없음(첫 소비자) |
 | **`CommandDialog`** (`dialog.tsx`에 추가 export) | 위에서 여는 대형 패널 — **폭·높이·면·dim은 대형 모달 상수**(`LargeModal` 치수 상수 — 지금 값 `w-[calc(100%-96px)] max-w-[1024px]` · 높이 `min(80svh,800px,calc(100svh-96px))`~`min(800px,calc(100svh-96px))` · `rounded-xl` · `shadow-medium` · `bg-foreground/32` + `backdrop-blur-[6px]`), **다른 것은 `top-4 left-1/2 -translate-x-1/2`(세로 가운데 아님)** · `Title` sr-only(prop `title` 필수) · 첫 포커스는 `[data-initial-focus]` 규칙 · 닫힘 복귀는 `DialogContent`와 같은 기록 · 머리·바닥·닫기 버튼 없음 | 없음. ⚠️ `DialogContent`는 **고치지 않는다**(소비자 14파일 — DESIGN의 세는 명령 `grep -rln "import .*DialogContent" components app \| grep -v __tests__ \| grep -v ui/dialog`) — 같은 파일의 형제 export라 복귀 로직을 공유한다 |
 | **`Command*`** (`command.tsx`) | combobox + listbox 한 벌(WAI-ARIA 1.2). `Command`(활성 id·id 발급 context, ↑↓ = `nextActive`, Enter = **활성 option 안 링크의 `.click()`**, 조합 중 무시) · `CommandInput`(`Input` 글리프 슬롯에 `Search` 16 · 테두리 없음 · `role="combobox"` · `aria-activedescendant` · `data-initial-focus` · 아래 전폭 구분선) · `CommandStatus`(**listbox 밖**, 입력 아래 muted 한 줄들 — 로딩·부분 실패, `aria-live="polite"`) · `CommandList`(`role="listbox"` · 남은 높이 스크롤 · 활성 항목 `scrollIntoView({ block: "nearest" })`) · `CommandGroup`(`role="group"` + `aria-labelledby` 머리 — `text-xs font-medium` foreground, 그룹 사이 전폭 구분선) · `CommandItem`(`role="option"` · 슬롯 `icon`(선택) · `title` · `context`(같은 줄 ` · ` 뒤 muted 작은 글자) · `description`(둘째 줄, 한 줄 말줄임) · `badge` · `href`(필수 — 모든 결과가 목적지다) · 활성: `bg-accent` + 포커스 링과 같은 테두리 + 오른쪽 `Go to` `Kbd` `↵` · hover가 활성을 옮기되 포커스는 입력에 남는다 · 행에 `tabIndex` 없음) · sr-only 결과 수 공지(`{n} results`, 디바운스) | 없음. ⚠️ **스위처(`project-switcher.tsx`)는 옮기지 않는다** — 사용자가 2026-09-27에 `DropdownMenu` 재사용을 골랐고 형이 메뉴다(DESIGN §6.5 "알려진 접근성 한계(수용)"). 옮길지는 이 기능 뒤 사용자 판정이다 |
 | **`HeaderBar`** (`components/shell/header-bar.tsx` — 셸 레이아웃이라 `ui/` 밖) | 헤더 3칸 — `grid h-10 grid-cols-[1fr_auto_1fr] items-center px-1`, 슬롯 `start` · `center` · `end`(각 `justify-self-start/center/end`). 좌우 폭이 달라도 가운데가 뷰포트 중앙이다. 두 셸 다 `min-w-[1280px]`라 좌우 묶음(앱 약 32/170, 공개 약 200/215)과 320 캡슐이 겹치지 않는다 | 앱 셸 `header.tsx`와 공개 셸 `public-shell/header.tsx`가 **둘 다** 이것을 쓴다 — 지금 두 파일이 각자 `flex`로 짠 바깥 줄을 걷는다(높이·padding은 그대로 40·4) |
