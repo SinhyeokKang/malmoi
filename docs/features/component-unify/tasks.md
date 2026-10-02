@@ -83,7 +83,7 @@
 - **1280×900 R1**: Home·Projects·Translations·Sources·Logs·Settings를 T0와 대조했다. Home/Logs/Sources는 픽셀 차이0, Projects5·Translations4·Settings24픽셀의 미세 렌더링 차이만 남았다. Home/Logs/Settings의 267/406/157개 보이는 HTML 요소 좌표와 계산된 CSS 14속성은 전부 같았다. 승인 밖 레이아웃·색 변화는 발견하지 않았다.
 - 최초 촬영 뒤 브라우저 스크롤바 모드가 달라져, Home/Logs/Settings는 동일 T0 SHA를 임시 디렉터리에서 같은 브라우저·Webpack dev 조건으로 재촬영했다. 상대 시간 문구·개발 도구 렌더링 표시는 안정 상태에서 구분했다. 환경 파일 복사·프로젝트 데이터 변경 없이 검증했고 서버·임시 디렉터리·브라우저 공간을 정리했다.
 - 상세 로컬 증거: `.scratch/component-unify-r1-qa.md`, `.scratch/component-unify/{before,after,baseline-current-browser,after-current-browser}/`, `dom-comparison.json`. 각 배치 인계서는 `.scratch/handoff-component-unify-b1{a,b,c,d}.md`다.
-- **단위 ② T5–T10 완료, T11A/B 완료, T11C 진행. T11 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
+- **단위 ② T5–T10 완료, T11A/B/C 완료, T11D 진행. T11 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
 
 - **T5·T6 계약 그물 완료.** T5 `b9515558`은 현재 프리미티브 59계약과 7개 mutation을 고정했다. T6 `993b4190`은 실제 위반 111행/120회와 해소 태스크를 기록했다. 독립 리뷰에서 발견한 상태 6건 누락·로컬 크기 타입 별칭 검출 공백을 수정했고, 22카나리아·실제 Note 허용행 삭제 red/동일 바이트 복원 green·전체 gate646파일/9869테스트·typecheck·build·미러 exit0을 통과했다. 태스크 경계 명시는 `90cc5218`이며, T7은 이 커밋을 기준으로 시작한다.
 
@@ -98,6 +98,8 @@
 - **T11A 진행 상태 API 통합 완료 `009da5f4`.** Modal busy와 세 Button 소비자의 중복 분기를 정리하고 인증 진입점 세 곳의 여섯 provider 아이콘을 단일 로딩 glyph로 보존했다. 관련261테스트·실제 provider 표식 제거6실패/복원·검출분기 mutation을 확인했으며 전체 gate649파일/10053테스트·build·미러 exit0와 독립 리뷰0건을 통과했다. T11B–E와 실제 브라우저 검증은 남아 있다.
 
 - **T11B 슬롯 API 통합 완료 `8aad2cc0`.** Dialog·Modal·Panel·Entity·Segment와 실제 소비자를 이관하고 담당 허용행7개를 해소했다. 관련180테스트·소비자404테스트와 검출분기/실제 래퍼·잠금 변이를 검증했으며 전체 gate649파일/10097테스트·build·미러 exit0 및 독립 리뷰0건을 확인했다. 기존 DOM 순서·조건부 래퍼·CSS·포커스·이벤트를 보존했다.
+
+- **T11C 접근성 API 통합 완료 `e03e692e`.** RowCardList·SegmentedControl의 표준 ARIA 이름과 FormGroup8곳의 실제 Input/SelectTrigger 설명 연결을 통일하고 담당 허용행3개를 해소했다. 관련178·소비자220테스트와 ID 처리/검출분기 변이를 검증했다. 첫 게이트의 Members 옛 prop 기대값2건을 같은 제목 연결 계약으로 이관한 뒤 최종 gate650파일/10107테스트·build·미러 exit0와 독립 리뷰0건을 통과했다.
 
 ## 단위 ① 토큰 · 정리 — 값 변화 0
 
