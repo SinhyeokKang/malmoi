@@ -65,3 +65,9 @@ GS3 D5/D7 증거: 원본6a10d83a, Node24 gate exit0, 10489 passed + 기존1 skip
 - GS5는 GS4+GS5a 통합 후 F1/F2/F5/F6 최종 대조/F7·가이드를 맡는다. GS5a는 화면이 이미 조립됐다고 서술하지 않는다. 사용자 결정이나 제품 범위 변경 없음.
 
 GS5a 증거: 원본96d7bea4, 문서3커밋을 dev9f7c4eef까지 통합. Node24 gate exit0,10489 passed+기존1 skipped, 독립 Astra red0/yellow0/white0. 최초 의존성 미설치 실패는 frozen-lockfile 설치로 해소. GS4의 격리PG 성능 검사와 겹치지 않도록 다음 지휘자 통합 게이트는 GS4 통합 뒤 함께 실행한다.
+
+### GS4 독립 리뷰 수정 라운드
+
+- GS4 원본0e8a81fb: Node24 gate exit0,10524 passed+기존1 skipped, 격리PG541 passed. 초기 게이트15건 실패(직접 행 클릭 스크롤·검색 초기 마운트)는 작성자가 수정했다.
+- 독립 Astra 리뷰 red0/yellow2: 같은 문서 검색 착지 후 목차 aria-current가 이전 절에 남음(실제 소비자 재현), NavigationDim 정상/이탈 차단 pointer·Enter 경로의 결정적 테스트가 scratch에만 있고 저장소에는 없음. GS4는 아직 미통합이다.
+- GS4-fix1은 같은 GS4 워크트리의 후속 Sol/high Dispatch가 맡는다. 기존 작성자는 컨텍스트88%↑로 해제했고 인계·로그를 보존했다. 소유권은 목차·공유 착지 helper·필요한 검색 소비자와 회귀 테스트뿐이다. 테스트 red→fix→gate 및 기존 독립 리뷰어의 재검토 후 통합한다. GS5/GS6는 그 뒤다.
