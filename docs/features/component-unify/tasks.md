@@ -36,7 +36,7 @@
 | B3a T7 | `ui/badge.tsx`, `ui/status-badge.tsx`, `ui/panel-card.tsx`, `lib/status/canon.ts`, `lib/events/view.ts`, `logs/result-badge.tsx`, `logs/event-detail.tsx`, Badge 소비자·C | T6 / 상태축1커밋 | GPT-6 Astra high / 결과 의미·색 예외 결합 | 완료 `17ad3852`: 41파일·상태 위반18행 해소·문구/CSS 보존·리뷰 보완·gate646파일/9951테스트+격리PG520 green |
 | B3b T8 | `lib/tone.ts→hue.ts`, `ui/tone.ts`, avatar/image 소비자, client-graph 테스트 | T7 / hue축1커밋 | GPT-6.1 Sol medium / 이름 변경 | 완료 `486a9e97`: hue 개명·팔레트/CSS 보존·13허용행 해소·Unicode mutation 보강·gate647파일/9965테스트+격리PG520 green |
 | B3c T9 | `ui/button.tsx`, `ui/alert.tsx`, `ui/skeleton.tsx`, 스피너 전달 `ui/file-input.tsx`·`reconnect-button.tsx`, 해당 호출부(특히 publish/workspace), C | T8 / 크기축1커밋 | GPT-6.1 Sol high / 크기·busy 렌더 계약 | 완료 `447c34da`: 42파일·spinner14/16·icon24/28/32/36·Skeleton70호출 보존·gate647파일/9991테스트 green |
-| B3d T10 | `ui/input.tsx`, `ui/select.tsx`, `components/search-input.tsx`, design §9 폭 호출부, C | T9 / 폭축1커밋 | GPT-6.1 Sol high / responsive 폭 보존 | G, 래퍼 포함 값0 |
+| B3d T10 | `ui/input.tsx`, `ui/select.tsx`, `components/search-input.tsx`, design §9 폭 호출부, C | T9 / 폭축1커밋 | GPT-6.1 Sol high / responsive 폭 보존 | 완료 `92fdd6a6`: 34파일·27필드/검색3소비자 폭·래퍼 보존·37허용행 해소·gate648파일/10038테스트 green |
 | B3e T11 | `ui/modal.tsx`, dialog/row-card/form-group/segmented-control/image-tile, 해당 슬롯 호출부, C | T10 / 슬롯 등 축별커밋 | GPT-6.1 Sol high / 포커스·슬롯 경계 | G, ② 허용목록 규약행0 |
 | R2 리뷰·② QA | 읽기 전용 전체 이름 변경 | T11 / 커밋 없음 | GPT-6.1 Sol high / 결합 회귀 | 전체 화면·포털·기능 QA 후 지휘자 /push |
 | B4 T12 | `ui/panel-card.tsx`·`ui/row-card.tsx`의 Card/행 export→`ui/card.tsx`(EmptyRowCard·BannerLine은 row-card에 유지), export별 소비자, mcp token/connected·members·projects·home, C | R2 / Card1커밋 | GPT-6 Astra high / 헤더선·슬롯·자식 결합 | G, 선1개·notice 유무 |
@@ -83,7 +83,7 @@
 - **1280×900 R1**: Home·Projects·Translations·Sources·Logs·Settings를 T0와 대조했다. Home/Logs/Sources는 픽셀 차이0, Projects5·Translations4·Settings24픽셀의 미세 렌더링 차이만 남았다. Home/Logs/Settings의 267/406/157개 보이는 HTML 요소 좌표와 계산된 CSS 14속성은 전부 같았다. 승인 밖 레이아웃·색 변화는 발견하지 않았다.
 - 최초 촬영 뒤 브라우저 스크롤바 모드가 달라져, Home/Logs/Settings는 동일 T0 SHA를 임시 디렉터리에서 같은 브라우저·Webpack dev 조건으로 재촬영했다. 상대 시간 문구·개발 도구 렌더링 표시는 안정 상태에서 구분했다. 환경 파일 복사·프로젝트 데이터 변경 없이 검증했고 서버·임시 디렉터리·브라우저 공간을 정리했다.
 - 상세 로컬 증거: `.scratch/component-unify-r1-qa.md`, `.scratch/component-unify/{before,after,baseline-current-browser,after-current-browser}/`, `dom-comparison.json`. 각 배치 인계서는 `.scratch/handoff-component-unify-b1{a,b,c,d}.md`다.
-- **단위 ② T5–T9 완료, T10 진행. T10 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
+- **단위 ② T5–T10 완료, T11A 진행. T11 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
 
 - **T5·T6 계약 그물 완료.** T5 `b9515558`은 현재 프리미티브 59계약과 7개 mutation을 고정했다. T6 `993b4190`은 실제 위반 111행/120회와 해소 태스크를 기록했다. 독립 리뷰에서 발견한 상태 6건 누락·로컬 크기 타입 별칭 검출 공백을 수정했고, 22카나리아·실제 Note 허용행 삭제 red/동일 바이트 복원 green·전체 gate646파일/9869테스트·typecheck·build·미러 exit0을 통과했다. 태스크 경계 명시는 `90cc5218`이며, T7은 이 커밋을 기준으로 시작한다.
 
@@ -92,6 +92,8 @@
 - **T8 hue 개명 완료 `486a9e97`.** 색상 결정 잎과 실제 소비자·메일 상수의 이름만 바꾸고 팔레트·해시·CSS·hex를 보존했다. 독립 리뷰에서 Unicode 회귀 테스트를 보강해 실제 UTF16 mutation 실패를 확인했으며, 최종 gate647파일/9965테스트·격리 PostgreSQL31파일/520테스트·build·미러 exit0 및 미해결 지적0건을 확인했다. ARCHITECTURE와 push 문서의 잎 경로도 갱신했다.
 
 - **T9 크기 API 통합 완료 `447c34da`.** Button 아이콘·스피너, Alert, SkeletonLine과 실제 소비자를 새 이름으로 이관했다. 기존 14/16px 스피너·24/28/32/36px 아이콘 버튼·SkeletonLine70호출의 치수를 보존했고, 담당 허용행15개를 해소했다. 독립 리뷰의 옛 API 검출 카나리아를 보강한 뒤 최종 gate647파일/9991테스트·typecheck·build·미러 exit0 및 미해결 지적0건을 확인했다.
+
+- **T10 폭 API 통합 완료 `92fdd6a6`.** Input·SelectTrigger·SearchInput의 실제 폭·단위·반응형 래퍼와 기존 ref/disabled/asChild/IME 계약을 보존하고 담당 허용행37개를 해소했다. 테스트 우선 red 이후 관련464테스트·6검출분기 mutation을 확인했으며, 최종 gate648파일/10038테스트·build·미러 exit0와 독립 리뷰0건을 통과했다. 실제 브라우저 반응형 배치 검증은 R2에 남아 있다.
 
 ## 단위 ① 토큰 · 정리 — 값 변화 0
 
