@@ -432,7 +432,6 @@ it("slug-taken이 아닌 거부에서는 주소 입력으로 포커스를 옮기
  */
 it.each([
   ["manual-no-match", /No files of that format/],
-  ["single-locale", /second language/],
 ])("수동 확인이 %s면 경로 필드 아래에 사유가 서고 입력이 그것을 가리킨다", async (error, pattern) => {
   mocks.confirmManualFormat.mockResolvedValue({ ok: false, error });
   await files(true);
@@ -457,10 +456,11 @@ it("수동 확인 사유는 입력을 바꾸면 걷힌다 — 새 입력의 판�
   expect(field("manual-path").getAttribute("aria-describedby")).toBe("manual-path-help");
 });
 
-/** ② 진입 설명이 연결 조건을 말한다 — 로케일 1개 리포에 "didn't find any"는 거짓이었다 (malmoi#99). */
-it("후보 0개 설명이 2개 이상 언어 조건을 말한다", async () => {
+/** 단일 언어도 지원하므로 후보가 없을 때 둘째 언어를 요구하지 않는다. */
+it("후보 0개 설명은 경로 확인을 안내하고 둘째 언어를 요구하지 않는다", async () => {
   await files(true);
-  expect(document.body.textContent).toMatch(/2 or more languages/);
+  expect(document.body.textContent).toMatch(/Set the path/);
+  expect(document.body.textContent).not.toMatch(/2 or more languages/);
 });
 
 /**

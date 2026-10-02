@@ -10,7 +10,7 @@ import { tsDictProbePaths } from "../ts-dict";
  * `probeTargets`에 안 실리고 → 2패스에도 내용이 없어 또 0이다. 이 함수가 그 고리를 끊는다.
  *
  * ⚠️ **씨앗은 "후보"가 아니라 "내려받을 대상"이다.** 판정은 내용이 한다 — 아래 `src/i18n/`이 그
- * 성질의 증거다(파일마다 로케일 객체가 하나뿐이라 2패스에서 스스로 떨어진다).
+ * 성질의 증거다(직접 정의한 문자열 없이 spread만 있어 2패스에서 스스로 떨어진다).
  */
 
 /** bugshot-2의 실제 모양 (2026-09-14 실측) — `.ts` 디렉터리 40여 개 중 i18n 신호는 셋이다. */
@@ -48,7 +48,7 @@ const fr = { "common.ok": "OK" };
 export const common = { ko, en, fr };
 `;
 
-/** `src/i18n/en.ts` — 로케일 객체가 **하나**뿐이라 딕셔너리가 아니다. */
+/** `src/i18n/en.ts` — 문자열 없이 spread만 있어 딕셔너리가 아니다. */
 const SINGLE_LOCALE_SOURCE = `
 import { common } from "./namespaces/common";
 const en = { ...common.en };
@@ -90,8 +90,8 @@ describe("tsDictProbePaths — 경로만 보는 씨앗", () => {
     ]);
   });
 
-  it("파일이 하나뿐인 디렉터리는 딕셔너리가 아니다", () => {
-    expect(tsDictProbePaths(["src/i18n/only.ts"])).toEqual([]);
+  it("파일 하나인 디렉터리도 내용 검증 대상으로 고른다", () => {
+    expect(tsDictProbePaths(["src/i18n/only.ts"])).toEqual(["src/i18n/only.ts"]);
   });
 
   /**
@@ -144,7 +144,7 @@ describe("자동 탐지에 ts-dict가 후보로 오른다", () => {
     expect(found.map((c) => c.pathTemplate)).toContain("src/i18n/namespaces/*.ts");
   });
 
-  it("로케일 객체가 하나뿐인 디렉터리는 스스로 떨어진다 — 판정은 내용이 한다", () => {
+  it("spread만 모은 디렉터리는 스스로 떨어진다 — 판정은 내용이 한다", () => {
     const found = detectCandidatesAcross(BUGSHOT2, probe);
     expect(found.map((c) => c.pathTemplate)).not.toContain("src/i18n/*.ts");
   });
@@ -219,7 +219,7 @@ describe("ts-dict — 확장자별 후보 (audit #13)", () => {
     expect(found.map((c) => c.pathTemplate).sort()).toEqual(["src/i18n/*.ts", "src/i18n/*.tsx"]);
   });
 
-  it("씨앗도 확장자별로 센다 — 파일 하나짜리 확장자는 딕셔너리 디렉터리로 안 친다", () => {
-    expect(tsDictProbePaths(["src/i18n/a.ts", "src/i18n/b.tsx"])).toEqual([]);
+  it("씨앗도 확장자별로 센다 — 파일 하나짜리 확장자도 읽는다", () => {
+    expect(tsDictProbePaths(["src/i18n/a.ts", "src/i18n/b.tsx"])).toEqual(["src/i18n/a.ts", "src/i18n/b.tsx"]);
   });
 });

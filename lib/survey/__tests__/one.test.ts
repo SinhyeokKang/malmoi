@@ -85,7 +85,7 @@ describe("candidatesFor — [0]이 항상 detectFormat 결과다", () => {
 });
 
 describe("selectSurveyFiles — 무엇을 물리화할지가 로직이다", () => {
-  it("로케일이 2개 이상인 디렉터리의 JSON만 고른다", () => {
+  it("단일 언어 JSON도 내용 검사 대상으로 고른다", () => {
     const { paths } = selectSurveyFiles([
       "src/i18n/en.json",
       "src/i18n/ko.json",
@@ -93,7 +93,7 @@ describe("selectSurveyFiles — 무엇을 물리화할지가 로직이다", () =
       "config/en.json",
       "README.md",
     ]);
-    expect(paths).toEqual(["src/i18n/en.json", "src/i18n/ko.json"]);
+    expect(paths).toEqual(["config/en.json", "src/i18n/en.json", "src/i18n/ko.json"]);
   });
 
   it("chrome _locales는 전부 고른다", () => {
