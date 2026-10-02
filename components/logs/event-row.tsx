@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ListRow } from "@/components/ui/list-row";
 
 import { EventMetaLine } from "@/components/logs/event-meta";
 import { EventGlyph } from "@/components/logs/glyph";
@@ -50,9 +50,11 @@ export function EventRow({
   });
 
   return (
-    <Link
+    <ListRow
       href={href}
-      className="focus-visible:ring-ring flex items-center gap-3 px-4 py-row-y hover:bg-foreground/[0.02] focus-visible:ring-2 focus-visible:outline-none"
+      aside={<span className="text-muted-foreground flex shrink-0">
+        <RowChevron />
+      </span>}
     >
       {showTime && (
         /*
@@ -85,10 +87,7 @@ export function EventRow({
           <span className="text-muted-foreground text-xs">{relativeTime(row.occurredAt, now)}</span>
         </span>
       )}
-      <span className="text-muted-foreground flex shrink-0">
-        <RowChevron />
-      </span>
-    </Link>
+    </ListRow>
   );
 }
 

@@ -11,7 +11,7 @@ import { m } from "@/lib/i18n";
 import { navFooterItems, navZones } from "@/lib/shell/nav";
 
 import { CloseButton } from "@/components/ui/close-button";
-import { ListItemButton } from "@/components/ui/list-item";
+import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 import { find, render } from "./helpers/dom";
@@ -159,7 +159,7 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect((current?.namespaces ?? []).reduce((sum, n) => sum + n.keyCount, 0)).toBe(current?.keyCount);
     expect(fixture.sources.reduce((sum, source) => sum + source.keyCount, 0)).toBe(fixture.keyCount);
     for (const source of rest) expect(find(tree, `[data-landing-source="${source.slug}"]`).children).toHaveLength(1);
-    // 선택된 네임스페이스 칸은 보고 있는 소스 안의 `All namespaces` 하나다. 면은 실물 `ListItemButton selected`의 0.07이다(5-Y7).
+    // 선택된 네임스페이스 칸은 보고 있는 소스 안의 `All namespaces` 하나다. 면은 실물 `ListRow selected`의 0.07이다(5-Y7).
     expect([...tree.querySelectorAll(".bg-foreground\\/\\[0\\.07\\]")].map((node) => node.textContent)).toEqual([`${m.translations.workspace.tree.allNamespaces}${current?.keyCount}`]);
   });
 
@@ -444,8 +444,8 @@ describe("목업 — 상태 표시가 실물과 같다", () => {
     expect(glyph.getAttribute("class")).not.toContain("green");
   });
 
-  it("선택 면은 실물 `ListItemButton selected`의 값이다 (5-Y7)", async () => {
-    const face = (await classes(<ListItemButton selected />)).split(" ").find((token) => token.startsWith("bg-foreground/"))!;
+  it("선택 면은 실물 `ListRow selected`의 값이다 (5-Y7)", async () => {
+    const face = (await classes(<ListRow as="button" variant="canvas" ringInset selected />)).split(" ").find((token) => token.startsWith("bg-foreground/"))!;
     const scene = layer(await mount(), 0);
     expect(find(scene, `[data-landing-row="${fixture.selected.key}"]`).className.split(" ")).toContain(face);
     expect(scene.innerHTML).not.toContain("bg-foreground/[0.04]");

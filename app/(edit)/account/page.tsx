@@ -1,6 +1,7 @@
 import { connectOutcome, isUnlinkOutcome } from "@/lib/account-connect/plan";
 import { decodeUser } from "@/lib/credentials/records";
-import { PanelCard, PanelFacts } from "@/components/ui/panel-card";
+import { PanelFacts } from "@/components/ui/panel-card";
+import { Card } from "@/components/ui/card";
 import { DismissibleAlert } from "@/components/account/dismissible-alert";
 import { GithubSection } from "@/components/account/github-section";
 import { LoginMethods } from "@/components/account/login-methods";
@@ -158,7 +159,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           ⚠️ **Profile이 카드가 됐다** — 전엔 패널 머리에 붙은 블록이라 카드 셋과 형이 달랐다.
           아바타 행만 두 열을 가로지른다: 아바타와 버튼 사이 간격(16)이 라벨 열 폭과 무관해야 한다.
         */}
-        <PanelCard title={m.account.profile.title}>
+        <Card title={m.account.profile.title}>
           <PanelFacts>
           {/*
             ⚠️ **아바타 행도 라벨을 든다** — 두 열을 가로지르게 두면 이 행만 형이 달라지고, 값 열의
@@ -191,7 +192,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             />
           </div>
           </PanelFacts>
-        </PanelCard>
+        </Card>
 
         {/*
           ⚠️ **같은 화면에 "GitHub"이 세 군데 나온다** — 로그인 수단 · 리포 쓰기 권한 · 전체

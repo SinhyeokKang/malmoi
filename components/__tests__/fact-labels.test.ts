@@ -9,8 +9,6 @@ import { expect, it } from "vitest";
 const LABELS: [file: string, pattern: RegExp][] = [
   ["app/(edit)/account/page.tsx", /<(?:span|label)[^>]*className="[^"]*text-xs[^"]*"[^>]*>\{m\.account\.profile\.\w+\}/g],
   ["components/settings/general-card.tsx", /<(?:span|label)[^>]*className="[^"]*text-xs[^"]*"[^>]*>\{m\.settings\.general\.\w+\}/g],
-  ["components/mcp/token-card.tsx", /<dt className="[^"]*"/g],
-  ["components/mcp/connected-apps-card.tsx", /<dt className="[^"]*"/g],
 ];
 
 it.each(LABELS)("%s의 사실 라벨이 muted 한 벌이다", (file, pattern) => {
@@ -19,5 +17,17 @@ it.each(LABELS)("%s의 사실 라벨이 muted 한 벌이다", (file, pattern) =>
   for (const tag of found) {
     expect(tag).toContain("text-muted-foreground");
     expect(tag).not.toContain("gray-dim");
+  }
+});
+
+// P1 Y5 applies to display Facts, not editable profile/general form labels.
+it("display Facts use gray-dim for dl and table labels", () => {
+  const source = readFileSync("components/ui/facts.tsx", "utf8");
+  expect(source).toContain('"text-gray-dim text-xs"');
+  expect(source).toContain('<TableHead scope="row" className="text-gray-dim');
+  for (const file of ["components/mcp/token-card.tsx", "components/mcp/connected-apps-card.tsx"]) {
+    const consumer = readFileSync(file, "utf8");
+    expect(consumer).toContain("<Fact ");
+    expect(consumer).not.toContain("<dt ");
   }
 });

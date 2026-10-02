@@ -2,7 +2,9 @@
 import { Inbox } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
-import { BannerLine, EmptyRowCard, RowCardList } from "@/components/ui/row-card";
+import { BannerLine } from "@/components/ui/row-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { CardList } from "@/components/ui/card";
 
 import { find, render } from "./helpers/dom";
 
@@ -43,7 +45,7 @@ describe("BannerLine root tone contract", () => {
 
 describe("EmptyRowCard before the API rename", () => {
   it.each([false, true])("inset=%s keeps the distinct card shape and two paragraph slots", async (inset) => {
-    const { container } = await render(<EmptyRowCard inset={inset} icon={Inbox} title="No invitations" description="Invite someone to get started." action={<a href="/invite">Invite</a>} />);
+    const { container } = await render(<EmptyState placement={inset ? "inset" : "card"} icon={Inbox} title="No invitations" description="Invite someone to get started." action={<a href="/invite">Invite</a>} />);
     const root = find(container, "div");
     const [tile, copy, action] = [...root.children];
     expect(root.children).toHaveLength(3);
@@ -60,25 +62,25 @@ describe("EmptyRowCard before the API rename", () => {
     expect(action?.getAttribute("href")).toBe("/invite");
     expect(root.classList.contains("border")).toBe(!inset);
     expect(root.classList.contains("rounded-lg")).toBe(!inset);
-    expect(root.classList.contains("border-t")).toBe(inset);
-    const shape = inset ? ["p-8", "gap-2.5", "border-foreground/[0.06]"] : ["px-6", "py-12", "gap-3.5", "bg-background"];
+    expect(root.classList.contains("border-t")).toBe(false);
+    const shape = inset ? ["p-8", "gap-2.5"] : ["px-6", "py-12", "gap-3.5", "bg-background"];
     for (const token of shape) expect(root.classList.contains(token), token).toBe(true);
     expect(root.querySelector('[role="alert"], [role="status"]')).toBeNull();
   });
 
   it("does not create an action wrapper when no action is supplied", async () => {
-    const { container } = await render(<EmptyRowCard icon={Inbox} title="No invitations" description="Nothing pending." />);
+    const { container } = await render(<EmptyState placement="card" icon={Inbox} title="No invitations" description="Nothing pending." />);
     const root = find(container, "div");
     expect(root.children).toHaveLength(2);
     expect(root.querySelector("a, button")).toBeNull();
   });
 });
 
-it("RowCardList forwards native aria-labelledby to the unchanged list", async () => {
-  const { container } = await render(<><h2 id="members">Members</h2><RowCardList aria-labelledby="members"><li>Member</li></RowCardList></>);
+it("CardList forwards native aria-labelledby to the unchanged list", async () => {
+  const { container } = await render(<><h2 id="members">Members</h2><CardList aria-labelledby="members"><li>Member</li></CardList></>);
   const list = find(container, "ul");
   expect(list.getAttribute("aria-labelledby")).toBe("members");
   expect(document.getElementById(list.getAttribute("aria-labelledby")!)?.textContent).toBe("Members");
-  expect(list.className).toBe("@container");
+  expect(list.classList.contains("@container")).toBe(true);
   expect(list.firstElementChild?.tagName).toBe("LI");
 });

@@ -1,3 +1,4 @@
+import { Fact } from "@/components/ui/facts";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -9,7 +10,7 @@ import { RoleBadges } from "@/components/logs/role-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { Table, TableBody } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
 import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, surfaceResultState, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
@@ -87,17 +88,17 @@ export function EventDetail({
         <div className="border-border overflow-hidden rounded-lg border">
           <Table scrollable={false}>
             <TableBody>
-              <Field label={m.logs.detail.labels.reference}>
+              <Fact as="tr" label={m.logs.detail.labels.reference}>
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="wrap-anywhere">{row.ref}</span>
                   {/* 동료에게 붙여넣는 것이 링크보다 짧고 **권한과 무관**하다 — 받은 사람은 검색창에 넣는다. */}
                   <CopyButton value={row.ref} label={m.logs.detail.actions.copy} size="sm" />
                 </span>
-              </Field>
+              </Fact>
               {fields(row).map(([label, value]) => (
-                <Field key={label} label={label}>
+                <Fact as="tr" key={label} label={label}>
                   {value}
-                </Field>
+                </Fact>
               ))}
             </TableBody>
           </Table>
@@ -170,16 +171,6 @@ export function EventDetail({
  * 표 행의 `height`는 최소값으로 동작해 여러 줄 값은 그대로 늘어난다. 높이가 고정되면 baseline이
  * 위로 몰리므로 세로 정렬은 가운데다.
  */
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <TableRow className="h-12 hover:bg-transparent">
-      <TableHead scope="row" className="text-gray-dim h-auto w-[104px] px-3.5 py-2.5 align-middle text-xs font-normal">
-        {label}
-      </TableHead>
-      <TableCell className="px-3.5 py-2.5 align-middle text-base whitespace-normal">{children}</TableCell>
-    </TableRow>
-  );
-}
 
 /** ⚠️ **값이 아닌 상태는 점선 테두리 + 회색 글자**로 한 번 더 갈린다 (캔버스 `1d`). */
 function ValueBlock({ label, value, muted }: { label: string; value: string | null; muted: boolean }) {

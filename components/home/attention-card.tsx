@@ -1,9 +1,10 @@
+import { ListRow } from "@/components/ui/list-row";
 import { Archive, ChevronRight, CircleCheck, CircleX, Eye, Languages, TriangleAlert } from "lucide-react";
-import Link from "next/link";
 import type { ComponentType } from "react";
 
-import { PanelCard } from "@/components/ui/panel-card";
-import { EmptyRowCard } from "@/components/ui/row-card";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { canPerform, type Role } from "@/lib/auth/permission";
 import type { AttentionItem, AttentionList } from "@/lib/home/attention";
 import type { HomeState } from "@/lib/home/state";
@@ -58,23 +59,19 @@ export function AttentionCard({ items, slug, role, state, now }: {
       화면에도 jsdom 테스트에도 안 나타나는 부류다 (2026-09-13의 `combobox` 빈 이름과 같은 축).
     */
     /*
-      카드 머리는 `PanelCard`가 든다(5-Y12 — 손으로 복제한 머리가 셋이었다). 머리 아래 선도 머리가 긋고, 접근 이름(`region`)도 프리미티브가 건다.
+      카드 머리는 `Card`가 든다(5-Y12 — 손으로 복제한 머리가 셋이었다). 머리 아래 선도 머리가 긋고, 접근 이름(`region`)도 프리미티브가 건다.
       ⚠️ **빈 상태에는 pill이 없다** (캔버스 `2a-empty`) — `0`을 배지로 세우면 하나의 항목처럼 읽힌다. `CountBadge`가 든다.
     */
-    <PanelCard title={m.home.attention.title} count={items.count} countLabel={m.home.attention.count(items.count)}>
+    <Card title={m.home.attention.title} count={items.count} countLabel={m.home.attention.count(items.count)}>
       {items.count === 0 ? (
         /*
-          카드 안 0건은 `EmptyRowCard inset` 하나다(4-Y14 — Sources·대기 초대와 같은 형). ⚠️ `-mt-px` — inset은 자기 위 선을 드는데
-          `PanelCard`는 머리가 선을 긋는다. 같은 색 두 줄을 한 줄로 겹친다.
+          카드 안 0건은 `EmptyState placement="inset"`이다. 머리 선은 Card가 하나만 긋는다.
         */
-        <div className="-mt-px">
-          <EmptyRowCard
-            inset
+        <EmptyState placement="inset"
             icon={state === "archived" ? Archive : CircleCheck}
             title={state === "archived" ? m.home.attention.archived.title : m.home.attention.empty.title}
             description={state === "archived" ? m.home.attention.archived.description : m.home.attention.empty.description}
           />
-        </div>
       ) : (
         <>
           <ul>
@@ -107,7 +104,7 @@ export function AttentionCard({ items, slug, role, state, now }: {
           )}
         </>
       )}
-    </PanelCard>
+    </Card>
   );
 }
 
@@ -119,7 +116,7 @@ export function AttentionCard({ items, slug, role, state, now }: {
  * ⚠️ **EDITOR도 같은 링크다** (audit #6 r1 — 사용자 결정) — Sources는 `translation:write`라 EDITOR도 열어 사유를
  * 읽는다. 재시도만 `project:settings` 뒤라 그 사실 한 줄이 붙는다 (`/projects` 목록 띠와 같은 규칙).
  *
- * ⚠️ **선은 `RowCard` 규칙이다** (4-Y4 · DESIGN §6.64) — 머리↔첫 행은 머리의 `--divider`(#f0f0f0), 행↔행은 `--border`(#e5e5e5).
+ * ⚠️ **선은 `Card` 규칙이다** (4-Y4 · DESIGN §6.64) — 머리↔첫 행은 머리의 `--divider`(#f0f0f0), 행↔행은 `--border`(#e5e5e5).
  * 옛 판은 행↔행도 `--divider`라 같은 `EventRow`가 Home과 Logs에서 반대 색이었다.
  */
 function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: string; role: Role; now: Date }) {
@@ -138,14 +135,14 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
   const Tile = tile.icon;
 
   return (
-    <Link
+    <ListRow chevron
       href={href}
-      className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-border flex items-center gap-3 border-t px-4 py-row-y focus-visible:ring-2 focus-visible:outline-none"
+      className="border-border border-t"
     >
       <IconTile tone={tile.tone}>
         <Tile aria-hidden />
       </IconTile>
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
         <span className="text-base">
           {/* 굵은 조각이 **사실**이고 나머지가 그 근거다 — 색이 아니라 무게로 가른다 (캔버스). */}
           <span className="font-medium">{body(item)}</span>
@@ -163,8 +160,7 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
         ⚠️ **시각이 없으면 칸을 비운다** — 실패 시각이 기록되지 않은 실패 항목에 "Never"를 적으면 거짓이다(실패는 일어났다).
       */}
       {item.at !== null && <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now)}</span>}
-      <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
-    </Link>
+    </ListRow>
   );
 }
 

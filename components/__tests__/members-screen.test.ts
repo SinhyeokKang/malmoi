@@ -67,8 +67,8 @@ describe("멤버 화면 — 페이지", () => {
    * 여기서는 프리미티브가 그 짝을 놓지 않는지만 본다.
    */
   it("카드 제목은 id가 있으면 포커스도 받는다", () => {
-    const card = read("components/ui/row-card.tsx");
-    expect(card).toMatch(/id=\{titleId\}/);
+    const card = read("components/ui/card.tsx");
+    expect(card).toMatch(/id=\{id\}/);
     expect(card).toMatch(/tabIndex=\{titleId === undefined \? undefined : -1\}/);
   });
 
@@ -144,10 +144,10 @@ describe("멤버 화면 — 카드", () => {
 
   it.each([LIST, PENDING])("%s가 공유 카드 프리미티브를 쓴다 — `/projects`와 같은 그릇이다", (file) => {
     const src = read(file);
-    expect(src).toContain('from "@/components/ui/row-card"');
-    expect(src).toMatch(/<RowCard\b/);
-    expect(src).toMatch(/<RowCardList\b/);
-    expect(src).toMatch(/<RowCardItem\b/);
+    expect(src).toContain('from "@/components/ui/card"');
+    expect(src).toMatch(/<Card\b/);
+    expect(src).toMatch(/<CardList\b/);
+    expect(src).toMatch(/<li\b/);
   });
 
   /**

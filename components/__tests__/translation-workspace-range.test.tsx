@@ -21,13 +21,13 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replac
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn() }));
-vi.mock("@/components/ui/list-item", async (orig) => {
-  const actual = await orig<typeof import("@/components/ui/list-item")>();
+vi.mock("@/components/ui/list-row", async (orig) => {
+  const actual = await orig<typeof import("@/components/ui/list-row")>();
   return {
     ...actual,
-    ListItemButton: (props: Parameters<typeof actual.ListItemButton>[0] & { "data-key-row"?: string }) => {
+    ListRow: (props: Parameters<typeof actual.ListRow>[0] & { "data-key-row"?: string }) => {
       if (props["data-key-row"] !== undefined) mocks.rowRenders.push(props["data-key-row"]);
-      return actual.ListItemButton(props);
+      return actual.ListRow(props);
     },
   };
 });

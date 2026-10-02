@@ -9,7 +9,8 @@ import { FieldError } from "@/components/ui/form-group";
 import { useLandAfter } from "@/components/ui/focus";
 import { Input } from "@/components/ui/input";
 import { ImageTile } from "@/components/ui/image-tile";
-import { PanelCard, PanelFacts } from "@/components/ui/panel-card";
+import { PanelFacts } from "@/components/ui/panel-card";
+import { Card } from "@/components/ui/card";
 import { hueFill } from "@/components/ui/tone";
 import { isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
@@ -44,7 +45,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
   const nameError = archived ? null : error ?? (!plan.ok ? plan.reason === "empty" ? m.settings.general.emptyName : m.settings.general.longName : null);
   const shownImageError = archived ? null : imageError;
   const caption = archived ? m.settings.archivedReason : pending ? m.settings.general.busy : imageError ?? m.settings.general.caption;
-  return <PanelCard title={m.settings.general.title}>
+  return <Card title={m.settings.general.title}>
     <PanelFacts>
       <span className="text-muted-foreground text-xs">{m.settings.general.thumbnail}</span>
       <div className="flex items-center gap-4">
@@ -108,5 +109,5 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
         </div>
       </div>
     </PanelFacts></div>
-  </PanelCard>;
+  </Card>;
 }

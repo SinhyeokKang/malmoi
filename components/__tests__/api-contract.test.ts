@@ -242,7 +242,7 @@ function scan(sources: readonly Source[], restDemand: readonly { path: string; s
         if (prop === "spinnerSize" && type) for (const value of axisValues(type)) {
           if (!["sm", "md"].includes(String(value))) add("size", path, name, `spinnerSize:${value}`);
         }
-        if (prop === "width" && type) for (const value of axisValues(type)) {
+        if (prop === "width" && ["Input", "SelectTrigger", "SearchInput"].includes(name) && type) for (const value of axisValues(type)) {
           if (![132, 160, 168, 192, 220, 240, 256, 320, "full"].includes(value)) add("width", path, name, `width:${value}`);
         }
         if (prop === "tone" && type) {
@@ -322,7 +322,7 @@ function scan(sources: readonly Source[], restDemand: readonly { path: string; s
             let owner: ts.Node | undefined = node.parent;
             while (owner && !ts.isFunctionLike(owner)) owner = owner.parent;
             const symbol = owner && ts.isFunctionDeclaration(owner) && owner.name ? owner.name.text : "glyph replacement";
-            add("progress", path, symbol, "manual pending glyph replacement");
+            if (!(path === "components/ui/list-row.tsx" && symbol === "ListRowChevron")) add("progress", path, symbol, "manual pending glyph replacement");
           }
         }
       }
@@ -361,7 +361,7 @@ function scan(sources: readonly Source[], restDemand: readonly { path: string; s
       if (primitive) {
         for (const token of inputClasses) if (/(?:^|:)(?:w|min-w|max-w)-/.test(token)) add("width", path, symbol, `inputClassName:${token}`);
         const width = attr("width")?.initializer;
-        if (width) {
+        if (width && ["Input", "SelectTrigger", "SearchInput"].includes(symbol)) {
           const value = ts.isStringLiteral(width) ? width.text : ts.isJsxExpression(width) && width.expression && ts.isNumericLiteral(width.expression) ? Number(width.expression.text) : undefined;
           if (value !== undefined && ![132, 160, 168, 192, 220, 240, 256, 320, "full"].includes(value)) add("width", path, symbol, `width:${value}`);
         }
@@ -414,7 +414,7 @@ const REST_DEMAND: readonly { path: string; symbol: string }[] = [];
 const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   state: { rows: 0, occurrences: 0 }, variant: { rows: 0, occurrences: 0 },
   hue: { rows: 0, occurrences: 0 }, size: { rows: 6, occurrences: 6 },
-  width: { rows: 0, occurrences: 0 }, progress: { rows: 3, occurrences: 3 },
+  width: { rows: 0, occurrences: 0 }, progress: { rows: 2, occurrences: 2 },
   slots: { rows: 1, occurrences: 1 }, rest: { rows: 0, occurrences: 0 },
   "data-tone": { rows: 0, occurrences: 0 }, aria: { rows: 0, occurrences: 0 },
   className: { rows: 0, occurrences: 0 },
@@ -422,7 +422,6 @@ const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
 const ALLOWLIST: Debt[] = [
   { rule: "progress", path: "components/projects/new-project-button.tsx", symbol: "NewProjectButton", detail: "manual pending glyph replacement", count: 1, task: "T15" },
   { rule: "progress", path: "components/shell/new-project-icon.tsx", symbol: "NewProjectIcon", detail: "manual pending glyph replacement", count: 1, task: "T15" },
-  { rule: "progress", path: "components/logs/row-chevron.tsx", symbol: "RowChevron", detail: "manual pending glyph replacement", count: 1, task: "T16" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "border-0", count: 1, task: "T19a" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "h-8", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/locale-panel.tsx", symbol: "Input", detail: "h-7", count: 1, task: "T19a" },
@@ -451,13 +450,12 @@ describe("primitive API contract — design §3", () => {
     }
   });
 
-  it("T7–T11 leave zero owned debts and preserve exactly ten later-task rows", () => {
+  it("T7–T11 leave zero owned debts and preserve exactly nine later-task rows", () => {
     expect(ALLOWLIST.filter(row => /^T(?:7|8|9|10|11)[a-f]?$/.test(row.task))).toEqual([]);
     expect(ALLOWLIST.map(({task, rule, symbol, count}) => [task, rule, symbol, count]).sort()).toEqual([
       ["T14", "slots", "OnboardingModal", 1],
       ["T15", "progress", "NewProjectButton", 1],
       ["T15", "progress", "NewProjectIcon", 1],
-      ["T16", "progress", "RowChevron", 1],
       ...Array.from({length:6}, () => ["T19a", "size", "Input", 1]),
     ].sort());
     expect(ALLOWLIST.find(row => row.task === "T14")?.detail).toBe("headerAction");
@@ -535,7 +533,7 @@ describe("primitive API contract — design §3", () => {
 
   const source = (code: string, path = "components/ui/canary.tsx"): Source => ({ path, code });
   it.each([
-    ["components/ui/row-card.tsx", "RowCardList", "labelledBy", "aria-labelledby"],
+    ["components/ui/card.tsx", "CardList", "labelledBy", "aria-labelledby"],
     ["components/ui/segmented-control.tsx", "SegmentedControl", "describedBy", "aria-describedby"],
   ])("T11C current-path aria alias %s %s", (path, symbol, old, native) => {
     const definition = (prop: string) => source(`export function ${symbol}(props: {"${prop}"?: string}) {return <div/>;}`, path);
@@ -568,9 +566,9 @@ describe("primitive API contract — design §3", () => {
   const slotRenames = [
     ["components/ui/dialog.tsx", "DialogContent", "footer", "actions"],
     ["components/ui/modal.tsx", "OnboardingModal", "footer", "notice"],
-    ["components/ui/panel-card.tsx", "PanelCard", "subtitle", "description"],
-    ["components/ui/panel-card.tsx", "PanelRow", "detail", "description"],
-    ["components/ui/panel-card.tsx", "PanelRow", "glyph", "icon"],
+    ["components/ui/card.tsx", "Card", "subtitle", "description"],
+    ["components/ui/list-row.tsx", "ListRow", "detail", "description"],
+    ["components/ui/list-row.tsx", "ListRow", "glyph", "icon"],
     ["components/ui/entity-card.tsx", "EntityCard", "secondary", "description"],
     ["components/ui/segmented-control.tsx", "SegmentContent", "leading", "icon"],
   ] as const;
@@ -741,4 +739,14 @@ describe("primitive API contract — design §3", () => {
     expect(scan([source('type Width = 320 | 999; type Spinner = "sm" | "tiny"; export function Input(props: {width: Width; spinnerSize: Spinner}) {return <input/>;}')]).filter(row => row.rule === "width" || row.rule === "size")).toHaveLength(2);
     expect(scan([source('type Width = 320 | "full"; type Spinner = "sm" | "md"; export function Input(props: {width: Width; spinnerSize: Spinner}) {return <input/>;}')])).toEqual([]);
   });
+});
+
+it("P1 allows Facts label widths, and exempts only the owned chevron progress implementation", () => {
+  const source = (code: string, path: string): Source => ({ code, path });
+  const fact = source('export function Fact({width}: {width?: 96 | 120}) {return <dt/>;}', "components/ui/facts.tsx");
+  expect(scan([fact, source('import {Fact} from "@/components/ui/facts"; export function Home(){return <Fact width={96}/>;}', "components/home/meta-column.tsx")])).toEqual([]);
+  const path = "components/ui/list-row.tsx";
+  const code = 'import {Loader2, ChevronRight} from "lucide-react"; export function ListRowChevron(){return busy ? <Loader2/> : <ChevronRight/>;}';
+  expect(scan([source(code, path)])).toEqual([]);
+  expect(scan([source(code.replaceAll("ListRowChevron", "Another"), path)]).filter(row => row.rule === "progress")).toHaveLength(1);
 });

@@ -7,7 +7,7 @@ import { m } from "@/lib/i18n";
  *
  * ⚠️ **`ContentPanel`을 들지 않는다** — `[slug]/layout.tsx`가 든다. 여기서 또 감싸면 로딩 동안 패널이 둘이 된다.
  *
- * ⚠️ **치수는 실물 그대로다** — 머리(`min-h-9` 제목 행) · `RowCard` 헤더(`px-4 py-3`, 설명이 같은 줄 오른쪽) · 멤버 행
+ * ⚠️ **치수는 실물 그대로다** — 머리(`min-h-9` 제목 행) · `Card` 헤더(`px-4 py-3`, 설명이 같은 줄 오른쪽) · 멤버 행
  * (`py-row-y pr-3.5 pl-3` · 아바타 32 · 이름 열 300 · 메타 150 · 역할 셀렉트 132 + [Remove]) · 첫 행만 약한 선.
  *
  * ⚠️ **개수는 가장 흔한 모양이다** — 멤버 둘(이름·이메일 두 줄), 대기 초대 0(빈 상태). 실제 수를 맞히려 들면 틀렸을 때
@@ -72,7 +72,7 @@ export default function MembersLoading() {
   );
 }
 
-/** `RowCard`의 껍데기와 헤더(제목 · 개수 배지 · 오른쪽 끝 설명). ⚠️ **`<section>`이 아니다** — 이름 없는 골격이다. */
+/** `Card`의 껍데기와 헤더(제목 · 개수 배지 · 오른쪽 끝 설명). ⚠️ **`<section>`이 아니다** — 이름 없는 골격이다. */
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">

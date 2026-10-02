@@ -206,7 +206,8 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    * 시각·설명 `#737373`(`text-muted-foreground`)이고 구현이 둘을 하나로 합쳐 두었다.
    */
   it("필드 라벨이 `text-gray-dim`이다", () => {
-    expect(body).toMatch(/<TableHead scope="row" className="text-gray-dim/);
+    expect(body).toContain('<Fact as="tr"');
+    expect(read("components/ui/facts.tsx")).toMatch(/<TableHead scope="row" className="text-gray-dim/);
   });
 
   /**

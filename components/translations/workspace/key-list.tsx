@@ -5,7 +5,7 @@ import { memo, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEven
 
 import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
-import { ListItemButton } from "@/components/ui/list-item";
+import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { TranslationListRow } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
@@ -131,7 +131,7 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
   const w = m.translations.workspace.list;
   return (
     <li>
-      <ListItemButton
+      <ListRow as="button" variant="canvas" ringInset
         data-key-row={row.keyId}
         selected={selected}
         tabIndex={tabStop ? 0 : -1}
@@ -152,7 +152,7 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
         <span className="text-muted-foreground shrink-0 text-xs">
           {savedOut ? w.saved : row.missingCount > 0 ? w.missing(row.missingCount) : w.complete}
         </span>
-      </ListItemButton>
+      </ListRow>
     </li>
   );
 });

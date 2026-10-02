@@ -1,15 +1,16 @@
 "use client";
+import { ListRow } from "@/components/ui/list-row";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { routes } from "@/lib/routes";
 import { useId, useRef, useState, type ReactNode } from "react";
 import { OnboardingModal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
-import { FileCode2, ChevronRight } from "lucide-react";
-import { PanelCard } from "@/components/ui/panel-card";
+import { FileCode2 } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { PushTokenPanel } from "./push-token-panel";
 import { m } from "@/lib/i18n";
 import { IconTile } from "@/components/ui/icon-tile";
-import { cn } from "@/lib/utils";
 export function CiCard({ slug, archived, unpinned = false, stale, children }: { slug: string; archived: boolean; unpinned?: boolean; stale: readonly string[]; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -22,14 +23,13 @@ export function CiCard({ slug, archived, unpinned = false, stale, children }: { 
   const blocked = archived ? archivedId : !children ? noSourcesId : undefined;
   // 누를 수 있는 행의 hover 면(4-Y12)은 막힌 행에 서지 않는다 — `ghost`는 `aria-disabled` hover를 잠그지 않는다(`button.tsx`).
   // ⚠️ `aria-disabled:` 철자로 끄지 않는다 — 그 변형은 `buttonClass` 밖에서 금지다(`disabled-pairing.test.ts`). 막힌 동안 클래스를 빼는다.
-  return <PanelCard title={m.settings.ci.title} description={m.settings.ci.description}>
+  return <Card title={m.settings.ci.title} description={m.settings.ci.description}>
     <PushTokenPanel slug={slug} disabled={archived} unpinned={unpinned} />
     <div className="border-border border-t">
-      <Button ref={trigger} variant="ghost" className={cn("text-foreground focus-visible:ring-inset h-auto w-full justify-start gap-3 rounded-none px-4 py-row-y text-left", blocked === undefined && "hover:bg-foreground/[0.02]")} aria-disabled={blocked !== undefined || undefined} aria-describedby={blocked} onClick={() => { if (blocked === undefined) setOpen(true); }}>
+      <ListRow as="button" chevron ringInset className={cn("text-foreground text-sm font-medium transition-colors", blocked !== undefined && "cursor-not-allowed")} ref={trigger} aria-disabled={blocked !== undefined || undefined} aria-describedby={blocked} onClick={() => { if (blocked === undefined) setOpen(true); }}>
         <IconTile><FileCode2 aria-hidden /></IconTile>
         <span className="flex min-w-0 flex-1 flex-col gap-copy-gap"><span className="text-base font-medium">{m.settings.ci.workflow}</span><span className="text-muted-foreground text-xs">.github/workflows/malmoi-i18n.yml</span></span>
-        <ChevronRight className="text-muted-foreground size-4" aria-hidden />
-      </Button>
+      </ListRow>
     </div>
     {/*
       ⚠️ **낱말 하나가 아니라 문장이다** (Sources 시안 §13-2 — 소스 카드를 걷은 자리의 안내). `Sources` 한 낱말만
@@ -44,5 +44,5 @@ export function CiCard({ slug, archived, unpinned = false, stale, children }: { 
       {children}
       <p className="text-muted-foreground text-xs leading-body">{m.settings.workflow.hookHint("useTranslations()", "wrapper", <Link className="text-link focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.docs("setup/workflow", "workflow")}>{m.settings.workflow.hookDoc}</Link>)}</p>
     </OnboardingModal>
-  </PanelCard>;
+  </Card>;
 }

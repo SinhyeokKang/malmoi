@@ -7,7 +7,7 @@ import { m } from "@/lib/i18n";
  *
  * ⚠️ **`ContentPanel`을 들지 않는다** — `[slug]/layout.tsx`가 든다.
  *
- * ⚠️ **치수는 `sources-screen.tsx` 그대로다** — 머리(제목 · [Add source]) · `PanelCard` 헤더(`px-4 py-3`,
+ * ⚠️ **치수는 `sources-screen.tsx` 그대로다** — 머리(제목 · [Add source]) · `Card` 헤더(`px-4 py-3`,
  * 아래 `border-divider`, 제목 + 개수 배지, 오른쪽 끝 리포 · 브랜치) · 소스 행(`px-4 py-row-y` · 글리프 28 · 본문·경로 두 줄 · 상태 ·
  * chevron). 첫 행은 헤더의 선을 쓰고 자기 선이 없다(`first:border-t-0`). 실물에 없는 요소(머리 설명 · 머리 개수 · 행 버튼)를
  * 그리지 않는다 — 도착 순간 폭이 튄다(4-Y16 · 4-Y6).

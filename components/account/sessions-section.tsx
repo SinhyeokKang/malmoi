@@ -1,4 +1,5 @@
 "use client";
+import { IconTile } from "@/components/ui/icon-tile";
 
 import { LogOut, MonitorSmartphone } from "lucide-react";
 import { unstable_rethrow } from "next/navigation";
@@ -6,7 +7,8 @@ import { startTransition, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { startSessionRevocation } from "@/app/(edit)/account/actions";
-import { PanelCard, PanelRow, PanelRows } from "@/components/ui/panel-card";
+import { ListRow } from "@/components/ui/list-row";
+import { Card, CardRows } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -42,31 +44,23 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
   const message = failed ? m.account.sessions.failed : sessionRevocationMessage(outcome);
 
   return (
-    <PanelCard
+    <Card
       title={m.account.sessionsSection.title}
       notice={message !== null ? <Alert inset variant="danger">{message}</Alert> : undefined}
     >
-      <PanelRows>
-      <PanelRow
-        icon={<LogOut className="text-muted-foreground size-4" aria-hidden />}
-        name={m.account.signOut.title}
-        description={m.account.signOut.description}
-        actions={<SignOutButton signOut={signOut} />}
-      />
-      <PanelRow
-        icon={<MonitorSmartphone className="text-muted-foreground size-4" aria-hidden />}
-        name={m.account.sessions.title}
-        /**
-         * ⚠️ **확인이 둘이 된다는 사실을 누르기 전에 말한다** — 이 왕복은 provider 화면을 한 번 더
-         * 지나고, 예고가 없으면 그 두 번째가 실패로 읽힌다.
-         *
-         * ⚠️ **provider 이름이 없는 문구다.** `confirmDetail(provider)`를 쓰면 확인 상대를 못 고르는
-         * 갈래에서 이 줄만 사라져 **위 행과 높이가 갈린다** — 수단 카드에서 보조 줄 둘을 다 지운 것과
-         * 같은 논거를 여기서 반대로 적용하지 않는다. provider 이름은 Dialog의 검은 줄이 든다.
-         */
-        description={m.account.sessions.willConfirm}
-        actions={
-          <Dialog>
+      <CardRows>
+      <ListRow
+        as="li"
+        className="border-border border-t first:border-t-0"
+        icon={<IconTile>{<LogOut className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
+        title={<span className="flex min-w-0 items-center gap-2 text-base"><span className="truncate font-medium">{m.account.signOut.title}</span></span>}
+        description={m.account.signOut.description} actions={<SignOutButton signOut={signOut} />} />
+      <ListRow
+        as="li"
+        className="border-border border-t first:border-t-0"
+        icon={<IconTile>{<MonitorSmartphone className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
+        title={<span className="flex min-w-0 items-center gap-2 text-base"><span className="truncate font-medium">{m.account.sessions.title}</span></span>}
+        description={m.account.sessions.willConfirm} actions={<Dialog>
             <DialogTrigger asChild>
               {/*
                 ⚠️ **넷 중 이것만 행에서도 붉다** — 되돌리려면 모든 기기에서 다시 로그인해야 하고,
@@ -98,11 +92,9 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
               {/* 검은 줄 — *지금 참인 값*이다. 확인 상대를 모르면 그리지 않는다(없으면 안 그린다). */}
               {confirmProvider !== null && m.account.sessions.confirmDetail(confirmProvider)}
             </DialogContent>
-          </Dialog>
-        }
-      />
-      </PanelRows>
-    </PanelCard>
+          </Dialog>} />
+      </CardRows>
+    </Card>
   );
 }
 

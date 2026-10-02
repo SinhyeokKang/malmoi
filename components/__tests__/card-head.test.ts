@@ -17,8 +17,7 @@ const ROOT = process.cwd();
 const SITES: { path: string; head: string; count: number }[] = [
   // 프리미티브
   // 머리 아래 선은 notice 유무에 따라 머리 또는 notice 래퍼가 든다(2026-10-01 4-Y1) — 그래서 머리 줄 문자열에 선이 없다.
-  { path: "components/ui/panel-card.tsx", head: '"flex min-h-12 flex-wrap items-center gap-2 {pad}"', count: 1 },
-  { path: "components/ui/row-card.tsx", head: '"flex min-h-12 items-center gap-2 {pad}"', count: 1 },
+  { path: "components/ui/card.tsx", head: '"flex min-h-12 flex-wrap items-center gap-2 {pad}"', count: 1 },
   // 손으로 적은 실물 — Home 메타 열과 Logs 날짜 카드. 메타 열은 머리가 아래 선을 긋고 gap이 한 벌이다(2026-10-01 4-Y1 · 4-W1).
   // Home의 할 일·로그 카드는 `PanelCard`로 옮겼다(5-Y12) — 메타 열은 `complementary` 랜드마크(`<aside>`)라 손으로 남는다.
   { path: "components/home/meta-column.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad} text-base font-medium"', count: 1 },

@@ -1,4 +1,6 @@
 "use client";
+import { ListRow } from "@/components/ui/list-row";
+import { Fact } from "@/components/ui/facts";
 import Link from "next/link";
 import { ChevronRight, CircleCheck, CircleX, Info, LoaderCircle, Lock, TriangleAlert } from "lucide-react";
 import { Fragment, useState, type RefObject } from "react";
@@ -9,7 +11,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { PanelCard } from "@/components/ui/panel-card";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LocaleFlag } from "@/components/translations/locale-badge";
@@ -86,17 +88,17 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
       {detail.connection && detail.repository && <section data-source-connection aria-label={m.sources.files} className="border-border bg-muted/40 overflow-hidden rounded-lg border">
         {/* ⚠️ 경로 셀이 형제 둘과 같은 14다 — 13이었던 것은 옛 `text-mono`(13/18)가 강제한 값이고, mono를 걷으면서 핸드오프의 14로 돌아왔다 (DESIGN §4.1·§6.66) */}
         <dl className="grid grid-cols-[minmax(0,1fr)_180px_280px] text-sm @max-[850px]:grid-cols-2">
-          <div className="min-w-0 space-y-1 px-4 py-3.5 @max-[850px]:col-span-2"><dt className="text-muted-foreground text-xs">{m.sources.path}</dt><dd className="wrap-anywhere">{detail.connection.pathTemplate === null ? m.sources.notConfigured : slashBreaks(detail.connection.pathTemplate)}</dd></div>
-          <div className="border-border space-y-1 border-l px-4 py-3.5 @max-[850px]:border-t @max-[850px]:border-l-0"><dt className="text-muted-foreground text-xs">{m.sources.format}</dt><dd>{detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}</dd></div>
-          <div className="border-border min-w-0 space-y-1 border-l px-4 py-3.5 @max-[850px]:border-t"><dt className="text-muted-foreground text-xs">{m.sources.repository}</dt><dd className="wrap-anywhere">{detail.repository.repoOwner}/<wbr />{detail.repository.repoName} · {detail.repository.baseBranch}</dd></div>
+          <Fact layout="stacked" className="min-w-0 px-4 py-3.5 @max-[850px]:col-span-2" label={m.sources.path}><span className="wrap-anywhere">{detail.connection.pathTemplate === null ? m.sources.notConfigured : slashBreaks(detail.connection.pathTemplate)}</span></Fact>
+          <Fact layout="stacked" className="border-border border-l px-4 py-3.5 @max-[850px]:border-t @max-[850px]:border-l-0" label={m.sources.format}>{detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}</Fact>
+          <Fact layout="stacked" className="border-border min-w-0 border-l px-4 py-3.5 @max-[850px]:border-t" label={m.sources.repository}><span className="wrap-anywhere">{detail.repository.repoOwner}/<wbr />{detail.repository.repoName} · {detail.repository.baseBranch}</span></Fact>
         </dl>
       </section>}
       {/* ⚠️ **상태 줄은 시안 `1d`의 행 형이다** — 28 칩 + 제목/보조 두 줄 + 오른쪽 행동. 상태 줄은 `Alert` 상자가 아니다(결과 notice만 Alert다):
           같은 카드 안에서 상태가 상자를 쓰면 실패만 다른 그릇이 된다. */}
       {/* 적재 결과는 카드 notice다(🔴 J) — 계산한 톤을 `Alert inset`이 그리고, 실패는 `alert`로 읽던 것을 끊는다. 머리 아래 선은 notice 아래로 내려간다(4-Y1). */}
-      <PanelCard title={m.sources.status} description={m.sources.statusHelp}
+      <Card title={m.sources.status} description={m.sources.statusHelp}
         notice={importResult ? <Alert inset variant={importResult.tone} live={importResult.tone === "danger" ? "alert" : "status"}>{importResult.text}</Alert> : undefined}>
-        <div className="flex items-center gap-3 px-4 py-row-y">
+        <ListRow>
           {importStatus && <IconTile data-source-status-tile tone={importStatus.tone}><StatusGlyph labelKey={importStatus.labelKey} /></IconTile>}
           <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
             <span className="text-base"><span className="font-medium">{importStatus && STATE[importStatus.labelKey].label}</span>
@@ -113,15 +115,15 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
           </span>
           {/* ⚠️ 스피너는 첫 Sync일 때만 돈다 (audit-ux #26) — 기준 언어 저장도 `busy`를 세우고, 그때는 `canRetry`가 꺼서 잠그기만 한다. */}
           {importStatus?.canRetry && canEdit && <Button className="shrink-0" loading={importing} disabled={!actions?.canRetry} onClick={onImport}>{m.settings.sources.retry}</Button>}
-        </div>
+        </ListRow>
         {/* ⚠️ **적재 이후 실패는 두 행이다** (`1d` ④) — 실패 한 줄만 두면 지금 보이는 키가 유효한지 알 수 없다.
             ⚠️ **둘째 행이 말하는 것은 적재 시각이 아니라 원본 커밋이다** — 적재 완료 시각을 저장하는 컬럼이 없다. */}
-        {importStatus?.state === "failed-after" && detail.lastImportedAt && <div className="border-border flex items-center gap-3 border-t px-4 py-row-y">
+        {importStatus?.state === "failed-after" && detail.lastImportedAt && <ListRow className="border-border border-t">
           <IconTile tone={STATE.synced.tone}><CircleCheck aria-hidden /></IconTile>
           <span className="min-w-0 flex-1 text-base"><span className="font-medium">{m.sources.lastSuccess}</span> — <SourceTime at={detail.lastImportedAt} /></span>
-        </div>}
-      </PanelCard>
-      <PanelCard title={m.locales.field.label} description={m.sources.baseHelp} badge={basePending(detail) ? <StatusBadge state="waitingToApply" /> : undefined}>
+        </ListRow>}
+      </Card>
+      <Card title={m.locales.field.label} description={m.sources.baseHelp} badge={basePending(detail) ? <StatusBadge state="waitingToApply" /> : undefined}>
         <div className="px-4 py-row-y">
         {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned).map(row => row.code)} awaiting={basePending(detail)} onDirty={setDraft} onPending={onBusy} onError={setFieldError} onSaved={onSaved} />
           : <div className="flex items-center gap-3">
@@ -135,8 +137,8 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
           {canEdit && <><p className="text-muted-foreground leading-body">{m.sources.pendingHelp}</p>{detail.workflowLine && <div className="flex items-center gap-3"><code className="font-sans">{detail.workflowLine}</code><CopyButton value={detail.workflowLine} label={m.locales.pending.copy} /></div>}</>}
         </div>}
         </div>
-      </PanelCard>
-      <PanelCard title={m.sources.languages} count={detail.locales} countLabel={m.sources.languageCount(detail.locales)} description={m.sources.languagesHelp}>
+      </Card>
+      <Card title={m.sources.languages} count={detail.locales} countLabel={m.sources.languageCount(detail.locales)} description={m.sources.languagesHelp}>
         {detail.languages.length === 0 ? <p className="text-muted-foreground px-4 py-row-y text-xs">{m.locales.empty.description}</p>
           : <ul>{detail.languages.map((row, index) => {
           // 집계 두 쿼리 사이 적재가 바뀌어도 막대 합은 트랙을 넘지 않는다. 퍼센트는 완료만 센다.
@@ -175,7 +177,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             <span className="leading-translation"><span className="font-medium">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated, detail.locales)}</span></span>
           </Alert>
         </div>)}
-      </PanelCard>
+      </Card>
     </div>}
     {confirm !== null && detail && <Dialog open onOpenChange={next => { if (!next) setConfirm(null); }}>
       <DialogContent title={m.sources.discardTitle} description={m.sources.discardBody(draft ?? "", detail.baseLocale ?? "")}

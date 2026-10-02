@@ -2,8 +2,9 @@ import { ChevronRight, History } from "lucide-react";
 import Link from "next/link";
 
 import { EventRow } from "@/components/logs/event-row";
-import { PanelCard } from "@/components/ui/panel-card";
-import { EmptyRowCard } from "@/components/ui/row-card";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+
 import type { EventRow as Row } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
@@ -30,22 +31,19 @@ export function LogsCard({ rows, slug, now, archived, syncedBefore }: {
   syncedBefore: boolean;
 }) {
   return (
-    /* 머리·머리 아래 선·접근 이름(`region`)은 `PanelCard`가 든다(5-Y12 — 손으로 복제한 머리가 셋이었다). */
-    <PanelCard title={m.home.logs.title}>
+    /* 머리·머리 아래 선·접근 이름(`region`)은 `Card`가 든다(5-Y12 — 손으로 복제한 머리가 셋이었다). */
+    <Card title={m.home.logs.title}>
       {rows.length === 0 ? (
-        /* 카드 안 0건은 `EmptyRowCard inset` 하나다(4-Y14). ⚠️ `-mt-px` — inset의 위 선과 머리 선을 한 줄로 겹친다(`attention-card`와 같다). */
-        <div className="-mt-px">
-          <EmptyRowCard
-            inset
+        /* Card owns the header boundary; inset EmptyState keeps the existing 32px padding. */
+        <EmptyState placement="inset"
             icon={History}
             title={m.logs.empty.title}
             description={syncedBefore ? m.logs.empty.description : m.home.logs.empty.beforeFirstSync}
           />
-        </div>
       ) : (
         <ul className="flex flex-col">
           {rows.map((row) => (
-            /* 선은 `RowCard` 규칙이다(4-Y4) — 머리↔첫 행은 머리 선, 행↔행은 `--border`. Logs 화면의 같은 행과 같은 색이다. */
+            /* 선은 `Card` 규칙이다(4-Y4) — 머리↔첫 행은 머리 선, 행↔행은 `--border`. Logs 화면의 같은 행과 같은 색이다. */
             <li key={row.id} id={`event-${row.ref}`} tabIndex={-1} className="border-border not-first:border-t">
               {/* ⚠️ **시각 열이 없다** — 날짜 카드가 없으므로 오른쪽에 상대 시각이 서고, 결과 배지는 행 오른쪽 그 앞이다(D3⑤ · `event-row`). */}
               <EventRow row={row} href={routes.project(slug, { event: row.ref })} now={now} archived={archived} showTime={false} />
@@ -63,6 +61,6 @@ export function LogsCard({ rows, slug, now, archived, syncedBefore }: {
         {/* 화면 **안**으로 가는 이동은 전부 chevron이다 — 파랑은 바깥으로 나가는 것에만 남는다 (캔버스). */}
         <ChevronRight className="text-muted-foreground size-4" aria-hidden />
       </Link>
-    </PanelCard>
+    </Card>
   );
 }

@@ -39,7 +39,7 @@ const PAGE = ["app/(edit)/projects/(list)/page.tsx", "components/projects/projec
  * 부정 단언(`divide-y` 없음 등)은 **넓어진다**.
  */
 const ROW_CARD = "components/ui/row-card.tsx";
-const LIST_AND_CARD = [code("components/projects/project-list.tsx"), code(ROW_CARD)].join("\n");
+const LIST_AND_CARD = [code("components/projects/project-list.tsx"), code(ROW_CARD), code("components/ui/card.tsx"), code("components/ui/list-row.tsx")].join("\n");
 
 describe("프로젝트 목록 — 검색은 로컬로 거르고 주소가 그 값을 든다", () => {
   /**
@@ -172,7 +172,7 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
    * `PanelBody`의 flex 자식이 `<ul>`이 아니라 카드가 됐다. **불변식은 그대로이고 요소만 바뀐다.**
    */
   it("목록이 축소되지 않는다 — 카드가 `shrink-0`을 든다", () => {
-    const card = /<section className="([^"]*)"/.exec(LIST_AND_CARD)?.[1] ?? "";
+    const card = /<section[^>]*className="([^"]*)"/.exec(LIST_AND_CARD)?.[1] ?? "";
     expect(card).not.toBe("");
     expect(card).toContain("shrink-0");
     expect(card).toContain("overflow-hidden");
@@ -294,7 +294,8 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
    * 철자(`/[0.0N]` 하나)는 `visual-system.test.ts`의 "알파 면·선의 철자"가 전역으로 센다(5-Y8) — 여기는 급만 본다.
    */
   it("카드 안 행이라 캔버스 급 hover 3%가 없다", () => {
-    expect(BODY).not.toContain("hover:bg-foreground/[0.03]");
+    expect(code("components/projects/project-list.tsx")).not.toContain('variant="canvas"');
+    expect(code("components/ui/list-row.tsx")).toContain('variant = "card"');
   });
 
   /**
@@ -321,7 +322,7 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
    * ⚠️ **띠는 행의 형제다** — `<a>` 안에 넣으면 링크가 중첩되고, 그 안의 [Review]는 누를 수 없다.
    */
   it("띠가 행 링크 밖에 있다", () => {
-    expect(BODY).toMatch(/<\/Link>\s*\n\s*\{banner !== null && <ProjectBanner/);
+    expect(BODY).toMatch(/<\/ListRow>\s*\n\s*\{banner !== null && <ProjectBanner/);
   });
 
   it("그룹 헤더 셋을 사전에서 가져온다 — 배지 낱말과 두 벌이 되지 않는다", () => {
@@ -466,7 +467,7 @@ describe("Meter 폭 축소 — 컨테이너 기준", () => {
  */
 describe("캔버스 대조로 잡은 자리", () => {
   const BODY = LIST_AND_CARD;
-  const EMPTY = [code("components/projects/empty-projects.tsx"), code(ROW_CARD)].join("\n");
+  const EMPTY = [code("components/projects/empty-projects.tsx"), code("components/ui/empty-state.tsx")].join("\n");
 
   /**
    * ⚠️ **빈 상태가 카드 규격으로 내려온다** (캔버스 `1b`). 다른 블록이 전부 `border 1 · radius 12 ·

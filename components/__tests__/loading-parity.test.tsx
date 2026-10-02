@@ -31,13 +31,14 @@ it("Home 골격의 숫자 카드 grid는 실물과 같은 컨테이너 쿼리 �
 it("Home 골격의 할 일 행은 실물 행·줄 묶음과 같은 클래스다", async () => {
   const real = source("components/home/attention-card.tsx");
   const row = "flex items-center gap-3 border-t px-4 py-row-y";
-  expect(real).toContain(row);
-  expect(real).toContain("flex min-w-0 flex-1 flex-col gap-0.5");
+  expect(real).toContain("<ListRow");
+  expect(source("components/ui/list-row.tsx")).toContain("flex items-center gap-3 px-4 py-row-y");
+  expect(real).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
   const { container } = await render(HomeLoading());
   const li = [...container.querySelectorAll("li")].find((node) => node.className.includes("py-row-y"))!;
   expect(li.className).toContain(row);
-  // `justify-center`는 줄 둘이 칸을 채우는 실물에서 효과가 없다 — 간격(gap-0.5)과 방향만 같으면 된다.
-  expect(li.querySelector(":scope > span")!.className).toMatch(/flex-col.*gap-0\.5/);
+  // `justify-center`는 줄 둘이 칸을 채우는 실물에서 효과가 없다 — 간격(gap-copy-gap)과 방향만 같으면 된다.
+  expect(li.querySelector(":scope > span")!.className).toMatch(/flex-col.*gap-copy-gap/);
   // 실물은 문장(15) + 표면·로케일(13) 두 줄이다.
   expect(li.querySelectorAll("[data-skeleton-line]")).toHaveLength(3);
 });
@@ -53,7 +54,8 @@ it("Logs 골격 머리는 필터 행을 든다 — 실물과 같은 행 클래�
 
 it("Logs 골격 행은 실물 EventRow와 같은 padding·줄 묶음이고 보조 줄이 있다", async () => {
   const real = source("components/logs/event-row.tsx");
-  expect(real).toContain("flex items-center gap-3 px-4 py-row-y");
+  expect(real).toContain("<ListRow");
+  expect(source("components/ui/list-row.tsx")).toContain("flex items-center gap-3 px-4 py-row-y");
   expect(real).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
   const { container } = await render(LogsLoading());
   const row = container.querySelector<HTMLElement>("[data-skeleton-event]")!;

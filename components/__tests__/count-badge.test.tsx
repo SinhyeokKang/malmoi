@@ -2,8 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import { CountBadge } from "@/components/ui/count-badge";
-import { PanelCard } from "@/components/ui/panel-card";
-import { RowCard } from "@/components/ui/row-card";
+import { Card } from "@/components/ui/card";
 
 import { render } from "./helpers/dom";
 
@@ -28,17 +27,17 @@ describe("CountBadge", () => {
 });
 
 describe("카드 머리의 count prop", () => {
-  it("PanelCard — 0이면 머리에 배지가 없고, 있으면 제목 바로 다음이다", async () => {
-    const zero = (await render(<PanelCard title="Sources" count={0} countLabel="0 sources"><p>x</p></PanelCard>)).container;
+  it("Card — 0이면 머리에 배지가 없고, 있으면 제목 바로 다음이다", async () => {
+    const zero = (await render(<Card title="Sources" count={0} countLabel="0 sources"><p>x</p></Card>)).container;
     expect(zero.querySelector("h2 + span")).toBeNull();
-    const two = (await render(<PanelCard title="Sources" count={2} countLabel="2 sources"><p>x</p></PanelCard>)).container;
+    const two = (await render(<Card title="Sources" count={2} countLabel="2 sources"><p>x</p></Card>)).container;
     expect(two.querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe("2 sources");
   });
 
-  it("RowCard — 0이면 머리에 배지가 없다", async () => {
-    const zero = (await render(<RowCard title="Pending" count={0} countLabel="0 invitations"><ul /></RowCard>)).container;
+  it("Card — 0이면 머리에 배지가 없다", async () => {
+    const zero = (await render(<Card title="Pending" count={0} countLabel="0 invitations"><ul /></Card>)).container;
     expect(zero.querySelector("h2 + span")).toBeNull();
-    const one = (await render(<RowCard title="Pending" count={1} countLabel="1 invitation"><ul /></RowCard>)).container;
+    const one = (await render(<Card title="Pending" count={1} countLabel="1 invitation"><ul /></Card>)).container;
     expect(one.querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe("1 invitation");
   });
 });
@@ -46,8 +45,8 @@ describe("카드 머리의 count prop", () => {
 /** 개수와 sr 문장은 짝이다 — 문장 없는 개수는 타입에서 막힌다(U3 r1: 빈 문장으로 배지가 섰다). */
 it("count만 넘기고 countLabel을 빼면 타입 오류다", () => {
   // @ts-expect-error — countLabel이 없다.
-  const card = <PanelCard title="Sources" count={2}><p>x</p></PanelCard>;
+  const card = <Card title="Sources" count={2}><p>x</p></Card>;
   // @ts-expect-error — countLabel이 없다.
-  const row = <RowCard title="Pending" count={1}><ul /></RowCard>;
+  const row = <Card title="Pending" count={1}><ul /></Card>;
   expect([card, row]).toHaveLength(2);
 });

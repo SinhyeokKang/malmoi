@@ -16,7 +16,7 @@ import { Alert } from "@/components/ui/alert";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState, NoMatch } from "@/components/ui/empty-state";
 import { useLandAfter, useLandAfterCommit } from "@/components/ui/focus";
 import { useArrived } from "@/components/use-arrived";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
@@ -670,7 +670,12 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     : noKeys ? w.empty.noActive
     : statusOf(query) !== "all" ? w.empty.filteredOut
     : w.empty.noKeys(query.ns === ALL_NAMESPACES ? routeSurfaceSlug : query.ns);
-  const listEmpty = (
+  const listEmpty = empty.primary !== null || empty.secondary !== null ? (
+    <div data-list-empty=""><NoMatch layout="list" title={emptyText} action={<>
+      {emptyButton("primary", empty.primary)}
+      {emptyButton("secondary", empty.secondary)}
+    </>} /></div>
+  ) : (
     <div data-list-empty="" className="flex flex-col items-center gap-2 px-4 py-10 text-center">
       <p className="text-sm">{emptyText}</p>
       {/* 활성 키가 0이면 좁힌 것이 아니라 아직 온 것이 없다 — 다음 일을 말한다 (audit #31). */}

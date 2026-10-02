@@ -1,3 +1,4 @@
+import { Fact } from "@/components/ui/facts";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -46,7 +47,7 @@ export function MetaColumn({ rows, slug, now, canOpenSettings, heldLater }: {
 
   return (
     <aside className="border-border flex h-fit flex-col overflow-hidden rounded-lg border" aria-labelledby="home-meta-title">
-      {/* 머리 아래 선은 머리가 긋는다(2026-10-01 4-Y1 — `PanelCard`와 한 규약) · 머리 gap은 카드 머리 한 벌이다(4-W1). */}
+      {/* 머리 아래 선은 머리가 긋는다(2026-10-01 4-Y1 — `Card`와 한 규약) · 머리 gap은 카드 머리 한 벌이다(4-W1). */}
       <h2 id="home-meta-title" className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3 text-base font-medium">
         {m.home.meta.title}
       </h2>
@@ -75,10 +76,7 @@ function MetaGroup({ rows, now, divided, heldLater, slug }: { rows: readonly Met
   return (
     <dl className={cn("flex flex-col gap-2.5 px-4 py-3.5", divided && "border-divider border-t")}>
       {rows.map((row) => (
-        <div key={row.kind} className="flex items-baseline gap-3">
-          <dt className="w-24 shrink-0 text-xs text-gray-dim">{m.home.meta[row.kind]}</dt>
-          <dd className="min-w-0 flex-1 text-sm">{value(row, now, heldLater, slug)}</dd>
-        </div>
+        <Fact key={row.kind} width={96} label={m.home.meta[row.kind]}>{value(row, now, heldLater, slug)}</Fact>
       ))}
     </dl>
   );

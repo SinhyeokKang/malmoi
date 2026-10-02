@@ -416,6 +416,7 @@ describe("폐기", () => {
     expect(mocks.revoke).toHaveBeenCalledTimes(1);
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
     // Alert 다음 사실 블록은 행↔행 선이다(4b).
-    expect(find<HTMLElement>(card(), "[data-token-facts]").className).toContain("border-border");
+    expect(find<HTMLElement>(card(), "[data-token-facts]").classList.contains("border-t")).toBe(false);
+    expect(card().querySelector("[data-card-notice]")?.className).toContain("border-divider border-b");
   });
 });

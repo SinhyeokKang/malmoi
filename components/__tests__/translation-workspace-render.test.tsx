@@ -9,20 +9,20 @@ import { render } from "./helpers/dom";
  *
  * 화면 목록이 전량이 되어 수천 행이 한 번에 서는데, draft `useReducer`가 워크스페이스 최상위라 상세에서 한 글자 칠 때마다 워크스페이스가
  * 다시 렌더된다. 행(`KeyRow`)의 `memo`가 그 비용을 막는다 — 호출부가 `onSelect`를 인라인 함수로 바꾸면 memo가 조용히 무력화되므로
- * 행이 그리는 `ListItemButton`의 렌더 수를 센다.
+ * 행이 그리는 `ListRow`의 렌더 수를 센다.
  */
 const mocks = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), rowRenders: [] as string[] }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }), useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn() }));
-vi.mock("@/components/ui/list-item", async (orig) => {
-  const actual = await orig<typeof import("@/components/ui/list-item")>();
+vi.mock("@/components/ui/list-row", async (orig) => {
+  const actual = await orig<typeof import("@/components/ui/list-row")>();
   return {
     ...actual,
-    ListItemButton: (props: Parameters<typeof actual.ListItemButton>[0] & { "data-key-row"?: string }) => {
+    ListRow: (props: Parameters<typeof actual.ListRow>[0] & { "data-key-row"?: string }) => {
       if (props["data-key-row"] !== undefined) mocks.rowRenders.push(props["data-key-row"]);
-      return actual.ListItemButton(props);
+      return actual.ListRow(props);
     },
   };
 });

@@ -8,7 +8,7 @@ import { createElement as h } from "react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ImageTile } from "@/components/ui/image-tile";
-import { ListItemButton } from "@/components/ui/list-item";
+import { ListRow } from "@/components/ui/list-row";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -122,7 +122,7 @@ const FIXTURES = {
   "components/ui/button.tsx": h(Button, null, "Save"),
   "components/ui/input.tsx": h(Input, { "aria-label": "Search" }),
   "components/ui/textarea.tsx": h(Textarea, { "aria-label": "Translation" }),
-  "components/ui/list-item.tsx": h(ListItemButton, null, "common.save"),
+  "components/ui/list-row.tsx": h(ListRow, { as: "button", variant: "canvas", ringInset: true }, "common.save"),
 };
 
 /**

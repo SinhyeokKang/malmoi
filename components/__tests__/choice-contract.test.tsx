@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { act, createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ListItemButton } from "@/components/ui/list-item";
+import { ListRow } from "@/components/ui/list-row";
 import { Radio, RadioGroup } from "@/components/ui/radio";
 
 import { find, key, render } from "./helpers/dom";
@@ -56,11 +56,11 @@ describe("Radio className contract", () => {
   });
 });
 
-describe("ListItemButton before the API rename", () => {
+describe("ListRow before the API rename", () => {
   it("defaults to a non-submitting full-width row with an inset focus ring", async () => {
     const ref = createRef<HTMLButtonElement>();
     const clicked = vi.fn();
-    const view = await render(<ListItemButton ref={ref} id="key-row" data-key="greeting" onClick={clicked}>Greeting</ListItemButton>);
+    const view = await render(<ListRow as="button" variant="canvas" ringInset ref={ref} id="key-row" data-key="greeting" onClick={clicked}>Greeting</ListRow>);
     const row = find<HTMLButtonElement>(view.container, "button");
     expect(ref.current).toBe(row);
     expect(row.type).toBe("button");
@@ -70,7 +70,7 @@ describe("ListItemButton before the API rename", () => {
     for (const token of ["w-full", "text-left", "focus-visible:ring-inset", "hover:bg-foreground/[0.03]"]) expect(row.classList.contains(token), token).toBe(true);
     await act(async () => { await userEvent.setup().click(row); });
     expect(clicked).toHaveBeenCalledTimes(1);
-    await view.rerender(<ListItemButton selected type="submit" className="font-medium">Greeting</ListItemButton>);
+    await view.rerender(<ListRow as="button" variant="canvas" ringInset selected type="submit" className="font-medium">Greeting</ListRow>);
     expect(row.type).toBe("submit");
     expect(row.getAttribute("aria-current")).toBe("true");
     expect(row.classList.contains("bg-foreground/[0.07]")).toBe(true);
@@ -80,7 +80,7 @@ describe("ListItemButton before the API rename", () => {
 
   it.each([false, true])("disabled selected=%s keeps its selection semantics and has no hover or click", async (selected) => {
     const clicked = vi.fn();
-    const { container } = await render(<ListItemButton selected={selected} disabled onClick={clicked}>Empty namespace</ListItemButton>);
+    const { container } = await render(<ListRow as="button" variant="canvas" ringInset selected={selected} disabled onClick={clicked}>Empty namespace</ListRow>);
     const row = find<HTMLButtonElement>(container, "button");
     expect(row.disabled).toBe(true);
     expect(row.getAttribute("aria-current")).toBe(selected ? "true" : null);

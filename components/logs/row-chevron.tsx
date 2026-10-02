@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Loader2 } from "lucide-react";
+import { ListRowChevron } from "@/components/ui/list-row";
 import { useLinkStatus } from "next/link";
 
 /**
@@ -15,7 +15,5 @@ import { useLinkStatus } from "next/link";
  */
 export function RowChevron() {
   const { pending } = useLinkStatus();
-  return pending
-    ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-    : <ChevronRight className="size-4 shrink-0" aria-hidden />;
+  return <ListRowChevron busy={pending} />;
 }

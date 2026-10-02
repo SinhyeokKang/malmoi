@@ -7,7 +7,7 @@ import { ArchiveCard } from "@/components/settings/archive-card";
 import { RepositoryCard } from "@/components/settings/repository-card";
 import { WorkflowBlock } from "@/components/onboarding/workflow-block";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { PanelCard } from "@/components/ui/panel-card";
+import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
@@ -52,12 +52,12 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   const archived = project.archivedAt !== null;
   // 연결 행의 Disconnected와 같은 DB 판정이다(D1) — 브랜치 목록·토큰 회전이 거부될 요청을 부르지 않는다(malmoi#159).
   const unpinned = storedConnection(project)?.status === "unpinned";
-  const archive = <PanelCard title={archived ? m.archive.restore : m.archive.title}>
+  const archive = <Card title={archived ? m.archive.restore : m.archive.title}>
     <div className="flex items-center justify-between gap-4 px-4 py-row-y @max-form:grid @max-form:grid-cols-[28px_1fr] @max-form:items-start @max-form:[&>[data-archive-card]]:col-start-2 @max-form:[&>[data-archive-card]]:justify-self-start">
       <IconTile><Archive aria-hidden /></IconTile><p className="text-muted-foreground flex-1 text-xs">{archived ? m.archive.archivedBy(<time dateTime={project.archivedAt!.toISOString()}>{utcDay(project.archivedAt!)}</time>) : m.archive.description}</p>
       <ArchiveCard slug={slug} name={project.name} archived={archived} openPrUrl={openPrUrl} />
     </div>
-  </PanelCard>;
+  </Card>;
   // `api-url`은 이 화면을 연 앱을 가리킨다 — 워크플로를 그릴 때만 요청 헤더를 읽는다.
   const apiUrl = project.surfaces.length > 0 ? await requestApiUrl() : undefined;
   const workflow = project.surfaces.length > 0 && <WorkflowBlock yaml={renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), ...(apiUrl === undefined ? {} : { apiUrl }) })} />;

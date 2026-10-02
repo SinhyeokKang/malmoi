@@ -19,8 +19,8 @@ const strip = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replac
  */
 it("경로·리포 셀이 break-all이 아니라 overflow-wrap:anywhere이고 / 뒤에 줄바꿈 기회를 둔다", () => {
   const source = strip(readFileSync(join(process.cwd(), "components/sources/source-detail-modal.tsx"), "utf8"));
-  expect(source).not.toMatch(/<dd className="break-all">/);
-  expect(source.match(/<dd className="wrap-anywhere">/g) ?? []).toHaveLength(2);
+  expect(source).not.toMatch(/<span className="break-all">/);
+  expect(source.match(/<span className="wrap-anywhere">/g) ?? []).toHaveLength(2);
   expect(source).toMatch(/<wbr \/>/);
 });
 

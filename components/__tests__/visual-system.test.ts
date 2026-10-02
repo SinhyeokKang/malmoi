@@ -414,9 +414,8 @@ describe("T1 동치 철자와 값 보존 예외", () => {
       "app/(edit)/projects/[slug]/logs/page.tsx": 1,
       "app/(edit)/projects/[slug]/members/loading.tsx": 2,
       "components/landing/mockup/publish.tsx": 1,
-      "components/mcp/token-card.tsx": 1,
       "components/publish-button.tsx": 1,
-      "components/ui/row-card.tsx": 3,
+      "components/ui/row-card.tsx": 1,
     });
   });
 
@@ -514,7 +513,6 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
       // `buttonClass`를 입은 `Link` + `useTransition` — `ButtonLink`는 `loading`·`onNavigate`를 받지 않는다.
       "components/projects/new-project-button.tsx": { count: 1, why: "link with its own transition" },
       // 행 끝 chevron 자리 교체 — 버튼이 아니다(행 전체가 `Link`).
-      "components/logs/row-chevron.tsx": { count: 1, why: "row chevron slot" },
       // 상태 칸(`IconTile`) 안 글리프 교체 — 버튼이 아니다.
       "components/sources/source-detail-modal.tsx": { count: 1, why: "status tile glyph" },
     };

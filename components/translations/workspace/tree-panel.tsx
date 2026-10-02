@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { CountBadge } from "@/components/ui/count-badge";
 import { Input } from "@/components/ui/input";
-import { ListItemButton } from "@/components/ui/list-item";
+import { ListRow } from "@/components/ui/list-row";
 import type { TranslationTree } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
 import { ALL_NAMESPACES } from "@/lib/translations/query";
@@ -102,7 +102,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
         )}
         {allSources !== null && (
           // 소스 행과 같은 높이·굵기(500)다 — 소스 위의 층이라 들여쓰지 않는다.
-          <ListItemButton
+          <ListRow as="button" variant="canvas" ringInset
             data-tree-all=""
             selected={rangeAll}
             disabled={counted && allSources.count === 0 && !rangeAll}
@@ -112,7 +112,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
             <span className="flex text-gray-strong"><Search className="size-4" aria-hidden /></span>
             <span className="min-w-0 flex-1 truncate font-medium">{m.translations.workspace.tree.allSources}</span>
             {allSources.count !== null && <span className="text-muted-foreground text-xs">{allSources.count.toLocaleString("en-US")}</span>}
-          </ListItemButton>
+          </ListRow>
         )}
         {nodes.surfaces.map(surface => {
           const open = !collapsed.has(surface.slug);
@@ -121,7 +121,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
             : surface.namespaces.filter(n => n.name.toLowerCase().includes(needle) || (surface.slug === surfaceSlug && n.name === ns));
           return (
             <div key={surface.id} className="flex flex-col gap-0.5">
-              <ListItemButton
+              <ListRow as="button" variant="canvas" ringInset
                 aria-expanded={open}
                 data-tree-surface={surface.slug}
                 onClick={() => setCollapsed(prev => { const next = new Set(prev); if (open) next.add(surface.slug); else next.delete(surface.slug); return next; })}
@@ -131,7 +131,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
                 <span className="flex text-gray-strong"><FileJson2 className="size-4" aria-hidden /></span>
                 <span className="min-w-0 flex-1 truncate font-medium">{surface.slug}</span>
                 <span className="text-muted-foreground text-xs">{surface.keyCount.toLocaleString("en-US")}</span>
-              </ListItemButton>
+              </ListRow>
               {open && (
                 <>
                   <TreeItem
@@ -170,7 +170,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
 /**
  * `counted` — 검색 중이다. 그때 0 노드는 흐리고 **누를 수 없다**(눌러도 빈 목록이다 — Status는 이 판정에 없다). 범위·위치 노드는 0이어도 누를 수 있다 — 오버레이를 열 때의
  * 포커스 대상(`[aria-current="true"]`)이 사라지지 않게. 기존 토큰만 쓴다(design §4.3).
- * ⚠️ `ListItemButton`은 `aria-current`를 `selected`로만 세운다 — 위치 표시는 호출부 prop이 뒤에서 덮는다(`{...props}`가 마지막이다).
+ * ⚠️ `ListRow`은 `aria-current`를 `selected`로만 세운다 — 위치 표시는 호출부 prop이 뒤에서 덮는다(`{...props}`가 마지막이다).
  */
 function TreeItem({ surface, ns, icon, label, count, counted, mark, onClick }: {
   surface: string; ns: string; icon: ReactNode; label: string; count: number; counted: boolean; mark: "true" | "location" | undefined; onClick: () => void;
@@ -179,7 +179,7 @@ function TreeItem({ surface, ns, icon, label, count, counted, mark, onClick }: {
   const empty = counted && count === 0;
   return (
     // 30 = 소스 행의 px-2(8) + chevron(14) + gap(8) — 네임스페이스 아이콘의 왼쪽 끝을 소스 아이콘과 맞춘다(시안은 34로 4px 어긋났다, 사용자 결정).
-    <ListItemButton
+    <ListRow as="button" variant="canvas" ringInset
       selected={mark === "true"}
       aria-current={mark}
       data-tree-surface={surface}
@@ -191,6 +191,6 @@ function TreeItem({ surface, ns, icon, label, count, counted, mark, onClick }: {
       <span className={cn("flex", location ? "text-gray-strong" : "text-gray-dim")}>{icon}</span>
       <span className={cn("min-w-0 flex-1 truncate", location && "font-medium")}>{label}</span>
       <span className={cn("text-xs", location ? "text-foreground" : "text-muted-foreground")}>{count.toLocaleString("en-US")}</span>
-    </ListItemButton>
+    </ListRow>
   );
 }

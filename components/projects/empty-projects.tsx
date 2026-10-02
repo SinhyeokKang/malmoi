@@ -1,9 +1,9 @@
-import { Box, RotateCcw, SearchX } from "lucide-react";
+import { Box, RotateCcw } from "lucide-react";
 import Link from "next/link";
 
 import { NewProjectButton } from "@/components/projects/new-project-button";
 import { buttonClass } from "@/components/ui/button";
-import { EmptyRowCard } from "@/components/ui/row-card";
+import { EmptyState, NoMatch } from "@/components/ui/empty-state";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
@@ -14,8 +14,7 @@ import { routes } from "@/lib/routes";
  * **만들기**(채운 버튼)이고, 검색이 빈 것의 출구는 **되돌리기**(`default` 버튼 + `RotateCcw`)다 — 되돌리는 일에 채운 버튼을
  * 쓰면 그것이 이 화면의 목적처럼 보인다.
  *
- * ⚠️ **카드 자체(`EmptyRowCard`)는 `components/ui/row-card.tsx`로 올라갔다** — 멤버 화면의 대기 초대
- * 0건이 같은 규격을 쓴다. 장식을 걷어낸 근거(2026-09-15)와 `EmptyState`를 안 쓰는 근거는 그 파일에 있다.
+ * Card placement preserves the standalone empty card; NoMatch owns search-zero icon semantics.
  */
 
 /**
@@ -27,7 +26,7 @@ import { routes } from "@/lib/routes";
  */
 export function EmptyProjects() {
   return (
-    <EmptyRowCard
+    <EmptyState placement="card"
       icon={Box}
       title={m.projects.empty.title}
       description={m.projects.empty.description}
@@ -52,8 +51,7 @@ export function NoProjectsMatch({ query, onReset }: {
   onReset: (event: { preventDefault(): void }) => void;
 }) {
   return (
-    <EmptyRowCard
-      icon={SearchX}
+    <NoMatch placement="card"
       title={m.projects.narrowed.title(query)}
       description={m.projects.narrowed.description}
       /*

@@ -99,9 +99,10 @@ describe("`1a` 그룹 카드 — 헤더가 카드 안으로 들어온다", () =>
     const container = await draw({ all: [THREE[0]!, { ...BASE, unsent: 3 }] });
     const rows = [...find(container, "section").querySelectorAll(":scope > ul > li")];
     expect(rows).toHaveLength(2);
-    expect(rows[0]!.className).toContain("border-foreground/[0.06]");
+    expect(rows[0]!.classList.contains("border-t")).toBe(false);
+    expect(rows[0]!.closest("section")?.querySelector("header")?.className).toContain("border-divider border-b");
     expect(rows[0]!.className).not.toContain("border-border");
-    expect(rows[1]!.className).toContain("border-border");
+    expect(rows[1]!.parentElement?.className).toContain("[&>li+li]:border-border [&>li+li]:border-t");
   });
 
   /** ⚠️ **행 목록이 `<ul>`로 남는다** — 카드로 감싸면서 list role을 잃으면 스크린리더가 개수를 못 읽는다. */

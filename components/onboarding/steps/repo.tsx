@@ -9,7 +9,7 @@ import { GithubIcon } from "@/components/signin/brand-icons";
 import { useGithubConnect } from "@/components/onboarding/connect-github";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonClass } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState, NoMatch } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Radio, RadioGroup } from "@/components/ui/radio";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -184,8 +184,7 @@ export function RepoStep({
           "리포가 안 보이면 설치에 추가하라"는 지금 화면의 두 번째 출구라 블록에 붙어야 한다.
         */
         <div className="flex flex-1 flex-col items-center justify-center gap-3">
-          <EmptyState
-            icon={Search}
+          <NoMatch
             title={m.newProject.repo.searchEmpty(query.trim())}
             action={
               <Button variant="default" onClick={() => onQueryChange("")}>

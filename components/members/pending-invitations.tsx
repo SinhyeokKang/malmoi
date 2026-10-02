@@ -10,7 +10,8 @@ import { RoleChip } from "@/components/members/role-chip";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { EmptyRowCard, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Card, CardList } from "@/components/ui/card";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { planMemberIdentity } from "@/lib/auth/member-identity";
@@ -152,30 +153,30 @@ export function PendingInvitations({
       {/* ⚠️ **빈 상태 갈래 밖에 둔다** — 마지막 초대를 지우면 카드가 빈 상태로 접히는데, 그때 live 영역이
           같이 사라지면 알림이 읽히지 않는다. */}
       <p role="status" className="sr-only">{announcement}</p>
-      <RowCard
+      <Card
         title={m.members.pending.title}
         titleId={headingId}
         count={invitations.length}
         countLabel={m.members.pending.count(invitations.length)}
-      >
-        {cardAlert !== null && (
+        notice={cardAlert !== null ? (
           <div data-pending-alert>
             <Alert inset variant={cardAlert.variant} onDismiss={() => setCardAlert(null)}>
               {cardAlert.text}
             </Alert>
           </div>
-        )}
+        ) : undefined}
+      >
+
         {invitations.length === 0 ? (
           /* ⚠️ **버튼이 없다** — 여기서 할 일은 헤더의 [Invite]이고, 카드가 그것을 두 번 말하지 않는다. */
-          <EmptyRowCard
+          <EmptyState placement="inset"
             icon={MailPlus}
             title={m.members.pending.empty.title}
             description={m.members.pending.empty.description}
-            inset
           />
         ) : (
-          <RowCardList aria-labelledby={headingId}>
-            {invitations.map((invitation, index) => {
+          <CardList aria-labelledby={headingId}>
+            {invitations.map((invitation) => {
               /* ⚠️ **`name: null`을 박는다** — `PendingInvitation`에는 이름이 없다(`invitedByName`은
                  초대한 **다른** 사람이다). 그래서 마스킹 라벨이 1행으로 올라가고 아바타는 중립 원이다. */
               const identity = planMemberIdentity({
@@ -184,7 +185,7 @@ export function PendingInvitations({
                 readable: invitation.readable,
               });
               return (
-                <RowCardItem key={invitation.id} first={index === 0}>
+                <li key={invitation.id}>
                   <MemberRow
                     id={invitation.id}
                     identity={identity}
@@ -281,12 +282,12 @@ export function PendingInvitations({
                       ) : null
                     }
                   />
-                </RowCardItem>
+                </li>
               );
             })}
-          </RowCardList>
+          </CardList>
         )}
-      </RowCard>
+      </Card>
     </>
   );
 }

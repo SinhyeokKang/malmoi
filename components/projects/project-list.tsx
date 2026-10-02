@@ -1,4 +1,5 @@
 "use client";
+import { ListRow } from "@/components/ui/list-row";
 
 import {
   ChevronRight,
@@ -23,7 +24,8 @@ import { NewProjectButton } from "@/components/projects/new-project-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { CountBadge } from "@/components/ui/count-badge";
-import { BannerLine, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
+import { BannerLine } from "@/components/ui/row-card";
+import { Card, CardList } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { canPerform } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -138,21 +140,21 @@ export function ProjectList({
         {message !== null && <Alert variant="danger">{message}</Alert>}
         {body.kind === "groups" ? (
           body.cards.map((card) => (
-            <RowCard
+            <Card
               key={card.group}
               title={GROUP_LABEL[card.group]}
               count={card.rows.length}
               countLabel={m.projects.count(card.rows.length)}
             >
               <RowList rows={card.rows} />
-            </RowCard>
+            </Card>
           ))
         ) : body.kind === "results" ? (
           /*
             ⚠️ **결과를 그룹으로 쪼개지 않는다** (캔버스 `1c`). 결과 1건에 헤더 셋이면 둘이 빈 카드가
             되고, 이 화면이 답할 질문은 "어느 그룹인가"가 아니라 "찾았나"다. 상태는 행의 칩이 말한다.
           */
-          <RowCard
+          <Card
             title={m.projects.resultsFor(body.query)}
             count={body.rows.length}
             countLabel={m.projects.count(body.rows.length)}
@@ -178,7 +180,7 @@ export function ProjectList({
             }
           >
             <RowList rows={body.rows} q={q} />
-          </RowCard>
+          </Card>
         ) : body.kind === "empty" ? (
           <EmptyProjects />
         ) : (
@@ -195,13 +197,13 @@ export function ProjectList({
  */
 function RowList({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
   return (
-    <RowCardList>
-      {rows.map((row, index) => (
-        <RowCardItem key={row.slug} first={index === 0}>
+    <CardList>
+      {rows.map((row) => (
+        <li key={row.slug}>
           <ProjectRow row={row} q={q} />
-        </RowCardItem>
+        </li>
       ))}
-    </RowCardList>
+    </CardList>
   );
 }
 
@@ -217,7 +219,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
 
   return (
     <>
-      <Link
+      <ListRow ringInset
         href={routes.project(row.slug)}
         /**
          * ⚠️ **링이 `ring-inset`이다** (2026-09-11 실측). 링은 box-shadow라 요소 **밖으로** 3px
@@ -225,7 +227,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
          * 포커스가 아예 안 보였다.** 그 `overflow-hidden`은 `rounded-lg`가 첫·끝 행의 모서리를
          * 자르는 수단이라 뗄 수 없으므로, 링을 안쪽으로 그린다.
          */
-        className="hover:bg-foreground/[0.02] focus-visible:ring-ring flex items-center gap-4 py-row-y pr-3.5 pl-3 focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
+        className="gap-4 pr-3.5 pl-3"
       >
         <ProjectThumbnail name={row.name} src={row.image} />
 
@@ -313,7 +315,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
           <StatusBadge state={CHIP_STATE[chipState]} className={cn("px-2", chipState === "archived" && "text-gray-dim")} />
           <ChevronRight aria-hidden className="text-muted-foreground size-4" />
         </span>
-      </Link>
+      </ListRow>
 
       {banner !== null && <ProjectBanner row={row} banner={banner} />}
     </>
@@ -395,7 +397,7 @@ function BannerAction({
   canSettle: boolean;
 }) {
   const internal = (href: string, label: string) => (
-    <Link href={href} className="text-muted-foreground ml-1 inline-flex shrink-0 items-center gap-0.5">
+    <Link href={href} className="text-muted-foreground ml-1 inline-flex shrink-0 gap-0.5">
       {label}
       <ChevronRight className="size-3" aria-hidden />
     </Link>

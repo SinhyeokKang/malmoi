@@ -84,7 +84,7 @@ export default function SettingsLoading() {
   );
 }
 
-/** `PanelCard` 껍데기 + 헤더(제목 · 오른쪽 끝 부제). 헤더 아래 선은 `border-divider`다. */
+/** `Card` 껍데기 + 헤더(제목 · 오른쪽 끝 부제). 헤더 아래 선은 `border-divider`다. */
 function Card({ title, subtitle = false, children }: { title: string; subtitle?: boolean; children: ReactNode }) {
   return (
     <div data-skeleton-card className="border-border bg-background overflow-hidden rounded-lg border">

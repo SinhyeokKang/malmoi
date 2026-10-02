@@ -108,7 +108,7 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
         {Array.from({ length: rows }, (_, i) => (
           <li
             key={i}
-            // 선은 실물과 같은 `RowCard` 규칙이다(4-Y4) — 첫 줄이 머리 선(`--divider`), 행↔행은 `--border`.
+            // 선은 실물과 같은 `Card` 규칙이다(4-Y4) — 첫 줄이 머리 선(`--divider`), 행↔행은 `--border`.
             className={divided ? cn("flex items-center gap-3 border-t px-4 py-row-y", i === 0 ? "border-divider" : "border-border") : "flex items-center gap-3 pb-4"}
           >
             {/* 두 카드 다 행 칸이 `IconTile sm`(28 · radius 4)이다 — Logs 카드의 옛 10 점은 실물(사건 칸 28)과 달라 도착 때 튀었다. */}
@@ -119,7 +119,7 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
               (문장 15 + 표면·로케일 13), 로그 행은 한 줄이다. 전에는 둘 다 14 블록으로 서서
               도착하는 순간 할 일이 행마다 ~15, 로그가 ~8.5 늘어났다.
             */}
-            <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+            <span className="flex min-w-0 flex-1 flex-col justify-center gap-copy-gap">
               {/* 할 일 행은 문장(15)이 먼저고 표면·로케일(13)이 아래다 — 실물과 같은 순서(Q9). */}
               <SkeletonLine size="md" className="w-[72%]" />
               {divided && <SkeletonLine size="xs" className="w-[62%]" />}

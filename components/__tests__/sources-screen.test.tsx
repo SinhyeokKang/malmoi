@@ -382,3 +382,28 @@ it.each([
   expect(document.body.textContent).toContain(want);
   expect(document.body.textContent).not.toContain(not);
 });
+
+
+it("Sources chevron shares the button while preserving wide 28px separation and narrow top 8px", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
+  const row = document.querySelector<HTMLButtonElement>("[data-source-row]")!;
+  const chevron = row.querySelector("svg.lucide-chevron-right")!;
+  const body = row.querySelector<HTMLElement>("[data-source-content]")!;
+  expect(body).not.toBeNull();
+  // Wide geometry: the old content padding16 + outer gap12 = status-to-chevron28.
+  expect(body.classList.contains("px-4")).toBe(true);
+  expect(body.lastElementChild?.hasAttribute("data-source-status")).toBe(true);
+  expect(row.classList.contains("gap-3")).toBe(true);
+  expect(row.classList.contains("pr-4")).toBe(true);
+  // Narrow geometry: the chevron is offset8 from the unpadded button; content alone has row padding13.
+  expect(row.classList.contains("p-0")).toBe(true);
+  expect(row.classList.contains("py-row-y")).toBe(false);
+  expect(body.classList.contains("py-row-y")).toBe(true);
+  expect(row.classList.contains("@max-[1016px]/panel:items-start")).toBe(true);
+  expect(body.classList.contains("@max-[1016px]/panel:items-start")).toBe(true);
+  expect(chevron.classList.contains("@max-[1016px]/panel:mt-2")).toBe(true);
+  expect(chevron.parentElement).toBe(row);
+  await act(async () => { await userEvent.setup().click(chevron); });
+  expect(mocks.load).toHaveBeenCalledExactlyOnceWith({ slug: "p", surfaceSlug: source.slug });
+  expect(row.getAttribute("aria-expanded")).toBe("true");
+});

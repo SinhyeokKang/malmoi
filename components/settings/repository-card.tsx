@@ -6,7 +6,7 @@ import { GithubIcon } from "@/components/signin/brand-icons";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { Alert } from "@/components/ui/alert";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
-import { PanelCard } from "@/components/ui/panel-card";
+import { Card } from "@/components/ui/card";
 import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 import type { AccountView } from "@/lib/github-connect/account-view";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
@@ -30,8 +30,8 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned =
   const [failure, setFailure] = useState<string | null>(null);
   // 보관 상태가 오면 옛 거부를 내린다 — 카드가 보관 상태를 대신 말한다 (QA D1).
   const shown = failure && !archived ? failure : null;
-  // 머리 아래 선은 `PanelCard`가 notice 아래에 긋는다(2026-10-01 4-Y1) — 비어 도착하는 Suspense notice도 선을 따로 들지 않는다.
-  return <PanelCard title={m.settings.repository.title} notice={
+  // 머리 아래 선은 `Card`가 notice 아래에 긋는다(2026-10-01 4-Y1) — 비어 도착하는 Suspense notice도 선을 따로 들지 않는다.
+  return <Card title={m.settings.repository.title} notice={
     <Suspense fallback={null}><Notice health={health} failure={shown} appSlug={appSlug} /></Suspense>
   }>
     <Suspense fallback={<ConnectionRowPending />}>
@@ -41,7 +41,7 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned =
     <RepositoryForm owner={owner} repo={repo} slug={slug} baseBranch={branch} disabled={archived} unpinned={unpinned} />
     {/* 가장 흔한 모양(연결된 계정)에는 이 줄이 없다 — 골격도 없다. 틀리면 두 번 튄다. */}
     <Suspense fallback={null}><Recovery account={account} /></Suspense>
-  </PanelCard>;
+  </Card>;
 }
 
 function Notice({ health: pending, failure, appSlug }: { health: Promise<ConnectionHealth>; failure: string | null; appSlug?: string }) {

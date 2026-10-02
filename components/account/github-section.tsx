@@ -1,9 +1,12 @@
 "use client";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { IconTile } from "@/components/ui/icon-tile";
 
 import { Link2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { PanelCard, PanelRow, PanelRows } from "@/components/ui/panel-card";
+import { ListRow } from "@/components/ui/list-row";
+import { Card, CardRows } from "@/components/ui/card";
 import { DisconnectGithubButton } from "@/components/github-account";
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { GithubIcon } from "@/components/signin/brand-icons";
@@ -52,40 +55,29 @@ export function GithubSection({
   }, [connected]);
 
   return (
-    <PanelCard
+    <Card
       title={m.account.github.title}
       notice={failure !== null ? <Alert inset variant="danger">{failure}</Alert> : undefined}
     >
-      <PanelRows>
+      <CardRows>
       {/*
         ⚠️ **브랜드 마크는 연결됐을 때뿐이다** — 붙어 있는 것이 그 계정이기 때문이다. 미연결·장애는
         대상이 아직 없으므로 동작을 가리키는 lucide 글리프(`link-2`, 회색)가 선다.
       */}
-      <PanelRow
-        icon={connected ? <GithubIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}
-        name={connected ? `@${account.login}` : m.account.github.rowName}
-        // 상태가 본문이고 보조 줄은 **다음에 할 일**을 든다 (핸드오프 v2 §항목 규격).
-        state={account.status === "reauthorize" ? "expired" : account.status === "unavailable" ? "couldNotCheck" : connected ? "connected" : "notConnected"}
-        description={
-          account.status === "reauthorize" ? m.account.github.hintReauthorize
+      <ListRow
+        as="li"
+        className="border-border border-t first:border-t-0"
+        icon={<IconTile>{connected ? <GithubIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
+        title={<span className="flex min-w-0 items-center gap-2 text-base"><span className="truncate font-medium">{connected ? `@${account.login}` : m.account.github.rowName}</span><StatusBadge state={account.status === "reauthorize" ? "expired" : account.status === "unavailable" ? "couldNotCheck" : connected ? "connected" : "notConnected"} className="shrink-0" /></span>}
+        description={account.status === "reauthorize" ? m.account.github.hintReauthorize
           : account.status === "unavailable" ? m.account.github.hintUnavailable
           : !connected ? m.account.github.hintNotConnected
           // ⚠️ **`null`(못 읽었다)과 `0`(고른 것이 없다)은 둘 다 줄을 안 그린다** — `Installed on 0
           // repositories.`는 연결이 깨진 것처럼 읽히고 행 높이만 갈린다 (DESIGN §6.67).
           : installedRepoCount !== null && installedRepoCount > 0
             ? m.account.github.installedOn(installedRepoCount)
-            : undefined
-        }
-        actions={
-          /*
-            ⚠️ **`unavailable`에만 컨트롤이 없다.** 조회가 실패한 상태에서 [Connect]를 세우면 이미
-            연결된 사용자에게 왕복을 한 번 더 시킨다 — 그 자리의 재시도는 페이지 새로고침이다.
-            `reauthorize`는 장애가 아니라 **인가가 만료된 것**이라 다시 연결할 문이 필요하다.
-            ⚠️ **실패 문구를 셋 다 구역 Alert로 올린다** (`onResult`·`onFailure`) — 여기는 리스트
-            항목의 우측 컨트롤이고 그 클러스터가 `shrink-0`이라, Alert를 형제로 두면 행이 밀려난다.
-          */
-          /* `unavailable`에는 컨트롤이 없다 — 래퍼까지 빼야 PanelRow가 빈 컨트롤 칸(gap)을 세우지 않는다. */
-          account.status === "unavailable" ? undefined : <div ref={controls} className="contents">
+            : undefined}
+        actions={account.status === "unavailable" ? undefined : <div ref={controls} className="contents">
           {account.status === "reauthorize" ? (
             // 자동 redirect가 아니라 버튼이다 — 렌더 중 튕기면 callback 실패 시 루프다.
             <ConnectGithubButton dest="account" label={m.settings.account.reconnect} onResult={setFailure} />
@@ -109,10 +101,8 @@ export function GithubSection({
           ) : account.status === "ok" ? (
             <ConnectGithubButton dest="account" label={m.settings.account.connect} onResult={setFailure} />
           ) : undefined}
-          </div>
-        }
-      />
-      </PanelRows>
-    </PanelCard>
+          </div>} />
+      </CardRows>
+    </Card>
   );
 }

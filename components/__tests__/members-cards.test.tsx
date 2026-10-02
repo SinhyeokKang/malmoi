@@ -539,3 +539,18 @@ describe("역할 셀렉트 키보드 선택 (malmoi#133)", () => {
     expect(changeMember).not.toHaveBeenCalled();
   });
 });
+
+/** P1: an actual resend notice moves the one header boundary below the notice. */
+it("pending invitation notice has one header boundary before and after resend failure", async () => {
+  mocks.resendInvitation.mockRejectedValueOnce(new Error("offline"));
+  const container = await drawPending([invitation({ id: "notice-one" })]);
+  const section = container.querySelector("section")!;
+  const borders = () => [...section.children].filter(node => node.classList.contains("border-b"));
+  expect(borders()).toHaveLength(1);
+  expect(borders()[0]?.tagName).toBe("HEADER");
+  await act(async () => { await userEvent.setup().click(document.getElementById("resend-notice-one")!); });
+  expect(section.querySelector("[data-pending-alert]")).not.toBeNull();
+  expect(borders()).toHaveLength(1);
+  expect(borders()[0]?.hasAttribute("data-card-notice")).toBe(true);
+  expect(section.querySelector("ul > li")?.classList.contains("border-t")).toBe(false);
+});
