@@ -10,7 +10,7 @@
 app/(edit)/layout.tsx ─ toNavProjects(memberships) ─┬─ Sidebar (그대로)
                                                    └─ Header ── SearchTrigger ── SearchDialog ("use client")
 components/public-shell/header.tsx ─ account ───────── SearchTrigger ── SearchDialog      │
-                     (account ≠ null이면 탭 수명에 한 번) loadSearchMembershipsAction()    │
+                     (account ≠ null이면 Dialog를 열 때마다) loadSearchMembershipsAction()    │
                                                                                          │ 탭 수명에 한 번
                                                                   GET /api/search-index ─┘
                                                                    └ docsSearchEntries(guide/**)  (force-static)
@@ -21,7 +21,7 @@ SearchDialog (로그인이면) ── 250ms 디바운스 · 2자 이상 ── s
 ```
 
 - **결과 집합은 세션으로 갈린다, 셸로 갈리지 않는다** (2026-10-01 사용자). 판정 입력은 "멤버십을 가졌나"(`NavProject[] | null`) 하나이고 `navSearchEntries`는 셸을 모른다.
-- **Projects·Menus 색인은 클라이언트가 만든다** — 앱 셸은 레이아웃이 이미 받은 멤버십(`NavProject[]`)을 Header에도 넘긴다(**새 DB 조회 0**). 공개 셸은 페이지가 이미 판정한 `account`만 안다 — `account ≠ null`이면 Dialog를 **처음 열 때** `loadSearchMembershipsAction()`(읽기 전용 Action — `readSession` → `loadMemberships(prisma, userId)` → `toNavProjects`)으로 받고, 결과 Promise를 **모듈 수준에 둔다**(`lib/search/load-memberships.ts` — `PublicShell`은 페이지마다 다시 렌더되므로 컴포넌트 state면 페이지를 옮길 때마다 다시 조회한다). 실패 Promise는 버린다. 공개 페이지 렌더에 조회를 얹지 않는 이유: 랜딩·가이드 방문은 대부분 검색을 안 연다. 받는 동안 상태 줄에 로딩 한 줄, 세션이 그새 사라졌으면(`{ ok: false }`) 비로그인 결과로 떨어진다.
+- **Projects·Menus 색인은 클라이언트가 만든다** — 앱 셸은 레이아웃이 이미 받은 멤버십(`NavProject[]`)을 Header에도 넘긴다(**새 DB 조회 0**). 공개 셸은 페이지가 이미 판정한 `account`만 안다 — `account ≠ null`이면 Dialog를 **열 때마다 한 번** `loadSearchMembershipsAction()`(읽기 전용 Action — `readSession` → `loadMemberships(prisma, userId)` → `toNavProjects`)으로 받는다(`lib/search/load-memberships.ts`). **성공·실패 응답을 다음 열기에 캐시하지 않는다**(2026-10-03 리뷰 반영). 현재 열기 안의 재렌더·질의 변경은 재조회하지 않는다. 다시 열 때 이전 멤버십을 비우고 새 요청을 시작하며, 닫거나 다시 연 뒤 도착한 이전 응답은 열기 세대 번호로 무시한다. 같은 탭에서 프로젝트 생성·보관·역할 변경 후 다시 열면 최신 목록을 받는다. 공개 페이지 렌더에 조회를 얹지 않는 이유: 랜딩·가이드 방문은 대부분 검색을 안 연다. 받는 동안 상태 줄에 로딩 한 줄, 세션이 그새 사라졌으면(`{ ok: false }`) 비로그인 결과로 떨어진다.
 - ⚠️ **`toNavProjects`(레이아웃의 `memberships.map(...)`을 옮긴 순수 함수, `lib/shell/nav.ts`)를 두 자리가 함께 쓴다** — 레이아웃과 Action이 각자 좁히면 한쪽에만 필드가 늘어 sec-audit 발견 23(`installationId`·`lastCommitSha`가 RSC에 실렸다)이 재발한다. ⚠️ 입력 타입 `MembershipRow`는 server-only `lib/keys/query.ts`의 것이라 **`import type`**으로만 읽는다(`nav.ts`는 `CLIENT_LIB_FILES`에 있다 — 값 import면 client-graph가 red).
 - **Action 파일은 `app/search/actions.ts`다**(`(edit)` 밖, `page.tsx`가 없으니 라우트가 생기지 않는다) — 공개 셸 페이지도 부르므로 편집 셸 그룹에 두면 경로가 거짓을 말하고, 파일명이 정확히 `actions.ts`여야 `app/__tests__/entry-points.test.ts`의 스캔(`/^(page\.tsx|route\.ts|actions\.ts)$/`)에 든다. (`app/(edit)/publish-actions.ts`가 같은 이유로 스캔 밖이다 — 언급만 하고 고치지 않는다.)
 - **Docs 색인은 공개 GET 하나다** — `app/api/search-index/route.ts`. 질의를 받지 않고 **모두에게 같은 JSON**을 준다.
@@ -66,7 +66,7 @@ JOIN "TranslationSurface" s ON s."projectId" = k."projectId" AND s.id = k."surfa
      AND s."archivedAt" IS NULL AND s."lastCommitSha" IS NOT NULL
 WHERE k."projectId" = ANY($members) AND k.orphaned = false
   AND (k.key ILIKE $pattern OR k."sourceText" ILIKE $pattern)
-ORDER BY "inKey" DESC, (p.slug = $activeSlug) DESC, k.key COLLATE "C"
+ORDER BY "inKey" DESC, (p.slug = $activeSlug) DESC, k.key COLLATE "C", k.id COLLATE "C"
 LIMIT 5;
 
 -- ② ①이 n<5건일 때만: 번역값 (상한 5-n, ①의 키 제외) — 키마다 첫 일치 로케일 하나(로케일 코드 오름차순)
@@ -78,7 +78,7 @@ SELECT … FROM (
   JOIN … (① 과 같은 표면·프로젝트 조인)
   WHERE t."projectId" = ANY($members) AND t.value ILIKE $pattern AND k.orphaned = false AND k.id <> ALL($excluded)
   ORDER BY k.id, t."localeCode" COLLATE "C"
-) x ORDER BY (x.slug = $activeSlug) DESC, x.key COLLATE "C" LIMIT $rest;
+) x ORDER BY (x.slug = $activeSlug) DESC, x.key COLLATE "C", x.id COLLATE "C" LIMIT $rest;
 ```
 
 - ⚠️ **멤버십은 세션 `userId`로만 좁힌다 — 클라이언트가 보낸 slug 목록을 받지 않는다.** Action 입력은 `q`와 `activeSlug`(순위용) 둘뿐이다. `activeSlug`는 남이 정한 문자열이라 `=` 비교에만 쓰고 좁히기에 쓰지 않는다. 전부 `Prisma.sql` 바인딩이다.
@@ -92,7 +92,7 @@ SELECT … FROM (
 - 2026-09-09 기준 가장 큰 프로젝트가 약 1,146행이었다(PRODUCT) — `ILIKE '%q%'`는 앞 와일드카드라 btree를 못 타고 **멤버 프로젝트의 행을 순차로** 거르지만, 이 규모에서는 ms다. 비싼 것은 쿼리가 아니라 왕복(`hnd1`에서 수십 ms)이다.
 - 최악은 push 행 상한(소스 하나당 번역 200,000행)이 멤버십 여럿에 걸친 경우다. ②를 조건부로 둔 이유가 이것이다 — 키·원문에서 5건이 차면 번역값을 훑지 않는다.
 - **트라이그램 인덱스는 재기 전에 넣지 않는다.** 선례는 ARCHITECTURE §1.96 — 번역 화면 검색에서 `pg_trgm` GIN(value·sourceText)을 쟀고 131→94ms라 **기각했다**(키별 EXISTS 계획). 이 조회는 계획이 달라(프로젝트 여럿을 가로지른 순차 ILIKE) 같은 결론이 보장되지 않으므로 실측(tasks B3)으로 가른다.
-- **실측은 커밋된 테스트다** — `lib/keys/__tests__/search-performance.integration.ts`, `translation-list-performance.integration.ts`의 형(autovacuum off · `statement_timeout=5000` · `$on("query")` 수집 · `EXPLAIN (ANALYZE, BUFFERS)` 방문 행 단언). 픽스처: 멤버 프로젝트 둘(하나는 20,000키 × 10로케일 = 200,000행) + **비멤버 대형 테넌트 하나(같은 규모)**. 질의 넷(불일치 · 키 이름 일치 · 번역값만 일치 · 흔한 단어 — `DISTINCT ON`이 일치 행 전부를 정렬하는 경우) × 통계 상태 둘(없음 · `ANALYZE` 뒤). 단언: `Translation` 방문 행 < 멤버 프로젝트 행 수 × 2(비멤버 테넌트를 훑지 않는다 — spec 19) · 최악 질의 중앙값 ≤ 300ms면 B4 생략. 기준은 로컬 PG17의 Execution Time이고 `hnd1`↔도쿄 pooler 왕복을 뺀 값이다.
+- **실측은 커밋된 테스트다** — `lib/keys/__tests__/search-performance.integration.ts`, `translation-list-performance.integration.ts`의 형(autovacuum off · `statement_timeout=5000` · `$on("query")` 수집 · `EXPLAIN (ANALYZE, BUFFERS)` 방문 행 단언). 픽스처: 멤버 프로젝트 둘(하나는 20,000키 × 10로케일 = 200,000행) + **비멤버 대형 테넌트 하나(여러 소스로 구성, 번역 행 수 > 멤버 전체 번역 행 수 × 2)**. 질의 넷(불일치 · 키 이름 일치 · 번역값만 일치 · 흔한 단어 — `DISTINCT ON`이 일치 행 전부를 정렬하는 경우) × 통계 상태 둘(없음 · `ANALYZE` 뒤). 단언: `Translation` 방문 행 < 멤버 전체 번역 행 수 × 2 및 접근 경로의 멤버 `projectId` 제한(`Index Cond` 등). 필터·인덱스 재검사에서 버린 행과 loops까지 방문 수에 포함한다. 동일 픽스처의 전체 `Translation` 순차 스캔을 대조군으로 수집해 같은 검출기가 거부함을 확인한다. 방문 수는 전 테넌트 스캔 방어이고, 비멤버 행 미방문의 단독 증명이 아니다(spec 19) · 최악 질의 중앙값 ≤ 300ms면 B4 생략. 기준은 로컬 PG17의 Execution Time이고 `hnd1`↔도쿄 pooler 왕복을 뺀 값이다.
 - 측정값: _(B3에서 채운다)_
 
 ### 왜 Route Handler인가 (Server Action이 아니라)
@@ -111,7 +111,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 
 ## 순수 함수로 분리 가능한 부분 — `/tdd` 대상
 
-전부 `lib/search/`에 둔다(8의 `lib/keys/search.ts` 순수 부분 제외). **클라이언트가 읽는 모듈**(1·2·5·7·`key-href`·`load-index`·`load-memberships`)은 각각 **잎 검사**를 받고(`client-graph.test.ts`의 `lib/events/search.ts` 선례 — `walk([파일])`이 자기 자신만 낸다), 소비자(E2)가 생기는 커밋에서 `CLIENT_LIB_FILES` 정확 일치 목록에 더한다. `lib/guide/load.ts`(server-only)·`lib/keys/*`(서버 그래프)를 값으로 import하지 않는다.
+전부 `lib/search/`에 둔다(8의 `lib/keys/search.ts` 순수 부분 제외). **클라이언트가 읽는 모듈**(1·2·5·7·`key-href`·`load-index`·`load-memberships`)은 각각 **의존 그래프 검사**를 받는다. 독립 모듈은 `walk([파일])`이 자기 자신만 내는지 검사하고, 재사용 모듈은 **의도한 전이 파일 집합의 정확 일치 + 허용 패키지**를 검사한다(`client-graph.test.ts`의 `lib/events/view.ts` 선례). `nav-index`는 `nav.ts`와 그 클라이언트 의존성, `key-href`는 `translations/query.ts`·`routes.ts`, `load-memberships`는 `app/search/actions.ts` 스텁을 포함한다. `walk`는 Action 파일을 집합에 넣은 뒤 내부 탐색을 멈춘다. 각 기대 집합은 구현 시 실물 대조하여 명시하고 서버 모듈을 직접 import하는 뮤테이션은 실패해야 한다. 소비자(E2)가 생기는 커밋에서 `CLIENT_LIB_FILES` 정확 일치 목록에 더한다. `lib/guide/load.ts`(server-only)·`lib/keys/*`(서버 그래프)를 값으로 import하지 않는다.
 
 | # | 파일 · 함수 | 입력 → 출력 | 핵심 테스트 |
 |---|---|---|---|
@@ -120,13 +120,13 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 | 1 | `match.ts` `searchGroups(index, q, { activeSlug })` | 세 그룹 색인(Projects·Menus·Docs) → 그룹별 상위 5개, 빈 그룹 제거, 그룹 순서 고정(Keys는 서버 결과를 Dialog가 제자리에 끼운다). 같은 점수면 **지금 프로젝트 먼저** → 원래 순서(안정 정렬). 빈 질의 → `[]` | 그룹당 상한 5 · 빈 그룹 없음 · activeSlug 가산 · 안정 정렬 |
 | 1 | `match.ts` `previewGroups(index, { activeSlug })` | 빈 질의 미리보기(spec 4) — Projects 앞 3 + `View all projects` · Menus 앞 3(지금 프로젝트, 없으면 첫 프로젝트) · Docs 앞 3 + `Browse all docs` | 로그인·프로젝트 있음/0/비로그인 세 경우 · 보관 프로젝트는 뒤 · `View all`은 상한에 안 셈 |
 | 2 | `highlight.ts` `highlightSegments(text, tokens)` | 원문 → `{ text, match }[]`, 겹치는 구간 합침 | ⚠️ **`İstanbul`처럼 소문자화로 길이가 바뀌는 글자에서 원문 경계가 어긋나지 않는다**(POSTMORTEM 2026-09-13 — 소문자화한 문자열의 위치로 원문을 자르지 않는다) · 겹침 합치기 · 토큰 없음 → 한 조각 |
-| 2 | `highlight.ts` `snippet(body, tokens, width)` | 본문 → 첫 일치를 가운데 둔 한 줄(앞뒤 `…`), 일치 없으면 `null` | 앞·뒤 경계 · 서로게이트 쌍을 가르지 않는다 |
+| 2 | `highlight.ts` `snippet(body, tokens, width)` | Docs 본문·Keys 원문/번역값 → 첫 일치를 가운데 둔 한 줄(앞뒤 `…`), 일치 없으면 `null`. Keys는 정규화한 질의 전체를 단일 토큰으로 넘겨 서버의 부분 문자열 판정과 맞춘다 | 앞·뒤 경계 · 서로게이트 쌍을 가르지 않는다 · 긴 원문/번역값 후반 일치도 반환 스니펫에 포함 |
 | 3 | `docs-index.ts` `docsSearchEntries(summary, pageOf)` | `NavNode[]` + `(file) => Root` → 절 단위 항목 `{ page, anchor, title, section, body }`. 페이지 도입부(첫 H2 전) 하나 + **표식 있는 H2**마다 하나(`headings()`의 `id`가 null인 H2는 건너뛴다 — 목차와 같은 규칙). 본문은 `toText` 평문, 코드 블록 포함, 이미지 alt 제외 | SUMMARY 순서 유지 · 서빙 안 되는 파일 없음(`pathToSlug` — `lib/guide/summary.ts`) · H3는 부모 H2 절에 합쳐짐 · 표식 없는 H2 스킵 |
 | 5 | `nav-index.ts` `navSearchEntries(memberships: NavProject[] \| null, { activeSlug, userName })` | `NavProject[]` → Projects·Menus 항목. 프로젝트 메뉴는 **멤버십마다 기존 `navZones(project, …)`의 프로젝트 구역을 그대로** 쓴다 — 권한표(`projectSections`·`canPerform`)와 표면 주소 규칙이 한 벌이고 새 export가 0이다. 사용자 메뉴는 `navWorkItems()` + `New project`(헤더 버튼과 같은 `routes.*`), 하단은 `navFooterItems()` | OWNER만 `Settings` · 보관 프로젝트 포함 · `null`(비로그인) → 하단만 · 빈 배열(로그인·프로젝트 0) → 사용자 메뉴 + 하단 · href·라벨이 `navZones` 결과와 같다 |
 | 5 | `lib/shell/nav.ts` `toNavProjects(rows)` | `MembershipRow[]`(`import type`) → `NavProject[]` — 레이아웃의 인라인 map(`app/(edit)/layout.tsx:75-78`)을 옮긴다(동작 불변) | 결과 키 집합이 **지금 레이아웃 map이 만드는 키 일곱**과 같다(`NavProject`의 선택 필드 `surfaceSlug`는 채우지 않는다 · 초과 필드 0) |
 | 7 | `keys.ts` `isSearchShortcut(e, platform)` · `shouldIgnoreShortcut(target, doc)` · `nextActive(ids, activeId, delta)` · `reconcileActive(prevIds, nextIds, activeId, queryChanged)` | 단축키: macOS는 Meta, 그 밖은 Ctrl + `k`/`K`, Alt·Shift·반대편 수식키 없음, `isComposing`·`keyCode 229` 아님. 무시: 대상이 텍스트 입력·`textarea`·`contenteditable`이거나 문서에 열린 `[role="dialog"]`·`[role="menu"]`가 있음. 활성: id 기준 순환 · 질의가 바뀌면 첫 id · 결과만 늘면 id 유지 · id가 사라지면 첫 id | macOS Ctrl+K false · 조합 중 false · Shift+⌘K false · textarea 안 false · 열린 메뉴 false · ids 0 → null · 끝에서 순환 · 늦은 그룹 삽입 뒤 id 불변 |
 | 8 | `lib/keys/search.ts` `keySearchQuery(q)` | 입력 → `{ pattern } \| null` — trim, 2자 미만이면 null, 200자(`Q_MAX_LENGTH`) 초과면 앞 200자, `likePattern` 적용 | 1자 → null · `50%_off`·`\` 이스케이프가 번역 화면과 같은 문자열 · 201자 → 200자 패턴 |
-| 8 | `lib/keys/search.ts` `mergeKeyHits(first, second, activeSlug)` | ①·② 행 → 최종 5건. ① 먼저(키 일치 > 원문 일치), ② 뒤, 같은 급은 지금 프로젝트 → 키 이름 · **중복 제거는 키 id** | 순위 표 · ①이 5건이면 ② 무시 · 같은 이름의 다른 id 둘 다 남음 |
+| 8 | `lib/keys/search.ts` `mergeKeyHits(first, second, activeSlug)` | ①·② 행 → 최종 5건. ① 먼저(키 일치 > 원문 일치), ② 뒤, 같은 급은 지금 프로젝트 → 키 이름 → 키 id(두 SQL과 같은 문자열 순서) · **중복 제거는 키 id** | 순위 표 · ①이 5건이면 ② 무시 · 같은 이름의 다른 id 둘 다 남음 · 동점 6개 이상에서 입력 순서가 달라도 같은 상위 5개 |
 | 8 | `lib/search/key-href.ts` `keyResultHref(hit)` | 행 → `translationsHref(slug, surfaceSlug, { ...DEFAULT_TRANSLATION_QUERY, ns, key: id, keySurface })` — **`lib/translations/query.ts`의 export**(동명의 `lib/shell/nav.ts` 비공개 함수가 아니다) | `translationLinkFor`(`translation-list.ts:328`)가 :332에서 만드는 식과 같은 문자열 · 필터 키 없음 |
 
 `lib/shell/nav.ts`의 비공개 `translationsHref(project)`는 **export하지 않는다** — `navZones`를 부르면 필요 없고, export하면 `lib/translations/query.ts`의 동명 export와 자동 import에서 섞인다.
@@ -135,7 +135,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 
 - `app/api/search-index/route.ts` — `force-static`, `loadSummary`·`loadPage`(기존, `lib/guide/load.ts`) → 3. 응답 `{ docs: DocsEntry[] }`.
 - `lib/search/load-index.ts`("use client" 쪽 모듈 변수) — 첫 호출에 `fetch("/api/search-index")`, 같은 Promise를 탭 수명 동안 재사용. 실패(네트워크 · `!res.ok`)하면 Promise를 버려 다음 열기에 다시 시도한다.
-- `lib/search/load-memberships.ts` — 같은 형으로 `loadSearchMembershipsAction()`을 탭 수명에 한 번. `{ ok: false }`면 버리고 비로그인 결과.
+- `lib/search/load-memberships.ts` — `loadSearchMembershipsAction()`을 호출하는 캐시 없는 껍데기. Dialog가 열기마다 한 번 호출하고 응답은 해당 열기의 state에만 둔다. `{ ok: false }`면 비로그인 결과. 재열기·닫힘 뒤 이전 응답 무시는 Dialog의 열기 세대 번호가 맡는다.
 
 ## UI — 프리미티브 먼저, 화면은 조립만
 
@@ -168,7 +168,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 | **`Highlight`** (`highlight.tsx`) | `{ text, match }[]`를 받아 일치 구간을 `<mark>`(DESIGN §6.2 `bg-blue-600/[0.14]` · `rounded-[3px]` · `px-px`)로 그린다 — 조각을 **만들지 않고 그리기만** 한다 | `components/projects/project-list.tsx:286-288`의 손 `<mark>` → `Highlight`(조각은 기존 `highlightName` — `lib/projects/list.ts:552` — 이 그대로 만든다). `visual-system.test.ts`의 `bg-blue-600/[0.14]` 등재 위치와 `projects-screen.test.ts`의 클래스 단언을 **의도적으로 옮긴다** |
 | **`FieldButton`** (`field-button.tsx`) | **입력처럼 보이는 버튼** — 캡슐(`rounded-full`), 높이 36(`h-9`), 폭 320(`w-80`), 면은 콘텐츠 패널과 같다(`bg-background border border-border-subtle shadow-low` — 2026-10-01 사용자). 슬롯 `icon` · `placeholder`(muted) · `shortcut`(`Kbd`). hover 면 `bg-foreground/[0.03]` 겹침, 포커스 링은 여는 태그에 리터럴(§7). 폭은 파일이 소유하고 prop으로 열지 않는다 — 입력류가 아니고 소비자가 하나다(component-unify S5 — DESIGN §8·§6.4도 이 판정으로 맞췄다). 두 번째 소비자가 생기면 그 폭 규약대로 연다 | 없음(첫 소비자) |
 | **`CommandDialog`** (`dialog.tsx`에 추가 export) | 위에서 여는 대형 패널 — **폭·높이·면·dim은 대형 모달 상수**(`LargeModal` 치수 상수 — 지금 값 `w-[calc(100%-96px)] max-w-[1024px]` · 높이 `min(80svh,800px,calc(100svh-96px))`~`min(800px,calc(100svh-96px))` · `rounded-xl` · `shadow-medium` · `bg-foreground/32` + `backdrop-blur-[6px]`), **다른 것은 `top-4 left-1/2 -translate-x-1/2`(세로 가운데 아님)** · `Title` sr-only(prop `title` 필수) · 첫 포커스는 `[data-initial-focus]` 규칙 · 닫힘 복귀는 `DialogContent`와 같은 기록 · 머리·바닥·닫기 버튼 없음 | 없음. ⚠️ `DialogContent`는 **고치지 않는다**(소비자 14파일 — DESIGN의 세는 명령 `grep -rln "import .*DialogContent" components app \| grep -v __tests__ \| grep -v ui/dialog`) — 같은 파일의 형제 export라 복귀 로직을 공유한다 |
-| **`Command*`** (`command.tsx`) | combobox + listbox 한 벌(WAI-ARIA 1.2). `Command`(활성 id·id 발급 context, ↑↓ = `nextActive`, Enter = **활성 option 안 링크의 `.click()`**, 조합 중 무시) · `CommandInput`(`Input` 글리프 슬롯에 `Search` 16 · 테두리 없음 · `role="combobox"` · `aria-activedescendant` · `data-initial-focus` · 아래 전폭 구분선) · `CommandStatus`(**listbox 밖**, 입력 아래 muted 한 줄들 — 로딩·부분 실패, `aria-live="polite"`) · `CommandList`(`role="listbox"` · 남은 높이 스크롤 · 활성 항목 `scrollIntoView({ block: "nearest" })`) · `CommandGroup`(`role="group"` + `aria-labelledby` 머리 — `text-xs font-medium` foreground, 그룹 사이 전폭 구분선) · `CommandItem`(`role="option"` · 슬롯 `icon`(선택) · `title` · `context`(같은 줄 ` · ` 뒤 muted 작은 글자) · `description`(둘째 줄, 한 줄 말줄임) · `badge` · `href`(필수 — 모든 결과가 목적지다) · 활성: `bg-accent` + 포커스 링과 같은 테두리 + 오른쪽 `Go to` `Kbd` `↵` · hover가 활성을 옮기되 포커스는 입력에 남는다 · 행에 `tabIndex` 없음) · sr-only 결과 수 공지(`{n} results`, 디바운스) | 없음. ⚠️ **스위처(`project-switcher.tsx`)는 옮기지 않는다** — 사용자가 2026-09-27에 `DropdownMenu` 재사용을 골랐고 형이 메뉴다(DESIGN §6.5 "알려진 접근성 한계(수용)"). 옮길지는 이 기능 뒤 사용자 판정이다 |
+| **`Command*`** (`command.tsx`) | combobox + listbox 한 벌(WAI-ARIA 1.2). `Command`(활성 id·id 발급 context, ↑↓ = `nextActive`, Enter = **활성 option 안 링크의 `.click()`**, 조합 중 무시) · `CommandInput`(`Input` 글리프 슬롯에 `Search` 16 · 테두리 없음 · `role="combobox"` · `aria-activedescendant` · `data-initial-focus` · 아래 전폭 구분선) · `CommandStatus`(**listbox 밖**, 입력 아래 muted 한 줄들 — 로딩·부분 실패, `aria-live="polite"`) · `CommandList`(`role="listbox"` · 남은 높이 스크롤 · 활성 항목 `scrollIntoView({ block: "nearest" })`) · `CommandGroup`(`role="group"` + `aria-labelledby` 머리 — `text-xs font-medium` foreground, 그룹 사이 전폭 구분선) · `CommandItem`(`role="option"` · 슬롯 `icon`(선택) · `title` · `context`(같은 줄 ` · ` 뒤 muted 작은 글자) · `description`(둘째 줄, 한 줄 말줄임) · `badge` · `href`(필수 — 모든 결과가 목적지다) · 활성: `bg-accent` + 포커스 링과 같은 테두리 + 오른쪽 `Go to` `Kbd` `↵` · hover가 활성을 옮기되 포커스는 입력에 남는다 · option 컨테이너는 Tab 순서에 넣지 않고 실제 링크에는 `tabIndex={-1}`을 지정) · sr-only 결과 수 공지(`{n} results`, 디바운스) | 없음. ⚠️ **스위처(`project-switcher.tsx`)는 옮기지 않는다** — 사용자가 2026-09-27에 `DropdownMenu` 재사용을 골랐고 형이 메뉴다(DESIGN §6.5 "알려진 접근성 한계(수용)"). 옮길지는 이 기능 뒤 사용자 판정이다 |
 | **`HeaderBar`** (`components/shell/header-bar.tsx` — 셸 레이아웃이라 `ui/` 밖) | 헤더 3칸 — `grid h-10 grid-cols-[1fr_auto_1fr] items-center px-1`, 슬롯 `start` · `center` · `end`(각 `justify-self-start/center/end`). 좌우 폭이 달라도 가운데가 뷰포트 중앙이다. 두 셸 다 `min-w-[1280px]`라 좌우 묶음(앱 약 32/170, 공개 약 200/215)과 320 캡슐이 겹치지 않는다 | 앱 셸 `header.tsx`와 공개 셸 `public-shell/header.tsx`가 **둘 다** 이것을 쓴다 — 지금 두 파일이 각자 `flex`로 짠 바깥 줄을 걷는다(높이·padding은 그대로 40·4) |
 
 - ⚠️ **`Command*`에 기능을 선반영하지 않는다** — 그룹 필터링·퍼지·가상화·다중 선택·`onSelect` 전용 항목은 넣지 않는다(CLAUDE.md "확장성을 위한 선반영은 결함"). 이 기능이 쓰는 슬롯만 연다.
@@ -179,7 +179,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 ### 화면 (`components/search/`, 조립만)
 
 - `search-trigger.tsx` — `HeaderBar` 가운데 슬롯의 `FieldButton`(`Search` 글리프 · `Search…` · 단축키 칩) + 전역 단축키 리스너(`isSearchShortcut` · `shouldIgnoreShortcut`) + `CommandDialog` 열림 상태. 접근 이름 `Search`(말줄임 없음), `aria-haspopup="dialog"`, 플랫폼별 `aria-keyshortcuts`.
-- `search-dialog.tsx` — `Command` 안에 `CommandInput` · `CommandStatus` · `CommandList` · 그룹 넷(`CommandGroup` — `Projects · Menus · Keys · Docs`) · 결과(`CommandItem` — 일치한 필드마다 `Highlight`: 제목·context·description) · 빈 질의의 미리보기(`previewGroups`, `View all …` 행) · 0건(`NoMatch` 출구 없는 형, 대기 중 조회가 없을 때만). Keys 번역값 줄은 로케일 코드와 값을 따로 렌더한다(문자열 조립 금지).
+- `search-dialog.tsx` — `Command` 안에 `CommandInput` · `CommandStatus` · `CommandList` · 그룹 넷(`CommandGroup` — `Projects · Menus · Keys · Docs`) · 결과(`CommandItem` — 일치한 필드마다 `Highlight`: 제목·context·description) · 빈 질의의 미리보기(`previewGroups`, `View all …` 행) · 0건(`NoMatch` 출구 없는 형, 대기 중 조회가 없을 때만). Keys 번역값 줄은 로케일 코드와 값을 따로 렌더한다(문자열 조립 금지). 원문·번역값 일치에는 `snippet`으로 일치 주변을 추린 뒤 `Highlight`를 적용한다. 키 이름만 일치하면 원문 도입부를 표시한다.
 - **착지 규칙 (spec 13 · 13a)**:
   - 같은 가이드 페이지 해시 이동은 스크롤러가 재마운트되지 않아 스크롤·포커스가 일어나지 않는다(`public-doc-toc.tsx:90-106` · `scroller.tsx:36-43`). 목차 클릭과 **같은 함수**로 대상 제목 스크롤(48 오프셋) + 제목 포커스를 한다 — 목차가 가진 로직을 공유 헬퍼로 끌어내 둘이 부른다(두 벌 금지). Dialog 닫힘 복귀가 포커스를 트리거로 돌리면 제목 포커스를 덮으므로, 해시 착지에서는 복귀를 건너뛴다.
   - 같은 소스 번역 화면에서 Keys 결과를 고르면 쿼리만 바뀌어 재마운트가 없고, 스크롤은 마운트·트리 이동에만 돈다(`workspace.tsx:303-313`). **선택 키가 바뀌면 목록이 그 행으로 스크롤**하도록 그 effect의 조건에 선택 키 변경을 더한다 — 번역 화면 파일을 건드리는 유일한 변경이다.
@@ -205,7 +205,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 - **export 결정성 · blob SHA (ARCHITECTURE §1·§2)**: 닿지 않는다 — 리포·DB에 쓰지 않는다.
 - **테넌트 경계 (ARCHITECTURE §6.1 · CLAUDE.md "모든 DB 쿼리는 projectId로 좁힌다")**: Keys 조회는 여러 프로젝트를 한 번에 본다 — `projectId = $1`이 아니라 **세션 `userId`로 확정한 멤버 id 배열**(`projectId = ANY(...)`)로 좁힌다. 보존 방법 —
   - 멤버 id 서브쿼리의 `userId`는 `readSession`이 준 값뿐이다. 입력으로 프로젝트를 받지 않는다.
-  - 격리 postgres 통합 테스트가 **두 사용자 · 두 프로젝트**에서 서로의 키·번역값이 결과에 0건인지, 보관 프로젝트·보관 소스·첫 적재 전 소스·orphaned 키·orphaned 로케일 값이 0건인지 잰다. 성능 테스트가 비멤버 대형 테넌트를 훑지 않음을 `EXPLAIN`으로 잰다.
+  - 격리 postgres 통합 테스트가 **두 사용자 · 두 프로젝트**에서 서로의 키·번역값이 결과에 0건인지, 보관 프로젝트·보관 소스·첫 적재 전 소스·orphaned 키·orphaned 로케일 값이 0건인지 잰다. 성능 테스트가 `EXPLAIN` 접근 경로의 멤버 프로젝트 제한과 방문 행 상한을 함께 검사하고, 전체 스캔 대조군을 거부하는지 잰다.
   - `entry-points.test.ts`의 `MEMBER_JOIN_CORES`가 코어 본문의 멤버십 조인을 상시로 센다(위 "Action 형").
   - `getProjectAccess`를 프로젝트마다 부르지 않는 이유: 읽기 권한 판정이 "멤버인가 + 보관 아닌가 + 준비됐나"이고(번역 읽기는 모든 역할이 갖는다) 그것을 조인이 표현한다. 역할별 차이가 생기면 이 조인이 그 판정의 둘째 벌이 된다 — 주석으로 `lib/auth/access.ts`를 가리킨다.
 - **인증 경계 (§6 "인증 경계" 표)**: 새 인가 없는 진입점이 하나 생긴다(`/api/search-index`). 보존 방법 —
@@ -228,7 +228,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 | 2026-09-18 · 09-23 관계 필터 count 5.5초 / 다른 테넌트 12만 행 | 멤버 id를 먼저 확정 · 커밋된 성능 테스트가 통계 없음·비멤버 대형 테넌트를 잰다 |
 | 2026-09-18 async transition 누수 | "늦은 응답" 테스트의 지연 Promise를 테스트 끝에서 푼다 |
 | 2026-09-20 / 2026-09-24 포커스 복귀·초기 포커스가 브라우저에서만 깨졌다 | 초기 포커스는 기존 `data-initial-focus` 규칙, 닫힘 복귀는 트리거(해시 착지 제외) — jsdom 단언은 테스트 쪽 fixup observer 관용구(`members-focus.test.tsx`)를 쓰고 `/runtime-test`로 실측 |
-| 스위처 "포인터가 항목을 지나도 포커스는 입력에" (DESIGN §6.5) | 이 Dialog는 포커스를 입력에 두고 `aria-activedescendant`로 활성 행을 가리키므로 같은 함정이 구조적으로 없다 — 행에 `tabIndex`를 주지 않는다 |
+| 스위처 "포인터가 항목을 지나도 포커스는 입력에" (DESIGN §6.5) | 이 Dialog는 포커스를 입력에 두고 `aria-activedescendant`로 활성 행을 가리키므로 같은 함정이 구조적으로 없다 — 실제 링크에 `tabIndex={-1}`을 주고 Tab·Shift+Tab이 결과를 순회하지 않는지 검증한다 |
 | 2026-09-06 "`userId`로 좁힌다" (레이아웃 멤버십 조회) | Keys 조회가 같은 축 — 멤버 id의 `userId`가 세션 값뿐인지 통합 테스트로 잰다 |
 | 2026-09-10 "새 integration 디렉터리를 include에 안 더해 아무도 안 돌렸다" | 테스트를 기존 `lib/keys/__tests__/`에 둬서 include·트리거 추가가 없다 |
 | 2026-09-13 강조 어긋남의 **남은 사본** | ⚠️ `lib/keys/translation-list.ts:232`의 `matchesFor`(:234-235)가 `toLowerCase()` 한 문자열의 `indexOf`를 원문 위치로 쓴다 — 같은 부류다. **이 기능은 그 함수를 쓰지 않고**(강조는 `highlightSegments`) 고치지도 않는다(외과적 변경) — 보고에서 언급만 한다 |
