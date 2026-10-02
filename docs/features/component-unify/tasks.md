@@ -343,3 +343,9 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 
 - Input/Search 검증: 이전 트리 dedicated fields6 failed/1 passed, 실제 ProjectSearch 지우기/Escape2 failed/1 passed로 RED. 구현 후 관련16파일473테스트·typecheck exit0. 테두리 링은 기존ring2를 유지했다.
 - 실제 base150 Input/Search 소스를 현재 경로에 넣어 parse0/RED, 추가 unrelated Input X·Escape 삭제·native clear 재노출·hand/API 검사기 제거 각각 RED; 복원 후 관련 검사 GREEN. 구 SearchInput 모듈 제거와 API 부채0, 닫기 X 예외는 정확한 Input clear 분기/이름/크기/한 자식만 허용한다. Input/Search25경로 독립 리뷰0 findings 및 명시적 COMMIT 승인을 받았다. 전체 gate는 미완이다.
+
+- FieldTrigger 후보: Input/Search 체크포인트 `7d1f85d352edca82098d35cc648d40cb74a17313` 뒤에 Select 및 Logs/번역 필터 형을 공유한다. md36/sm28·asChild 자식1·native/ref·진행 중 pointer/click/keyboard 차단·기존 end/collision8 및 열림 글리프를 보존한다. 기존ring2이며 invalid/checked 우선순위와 border-ring/ring1은 마지막 체크포인트에 남긴다.
+- 실제 작은 FilterMenu의 열림 글리프 계약을 이전 트리에서 RED로 확인했다. 관련 검사/typecheck·사본/검사기 무력화 mutation·독립 리뷰 및 명시적 COMMIT은 현재 후보에서 이어서 확인한다. Copy/Secret 및 최종 gate/R3/T20a/T21/T22는 미완이다.
+
+- FieldTrigger 검증: 실제 FilterMenu 열림 글리프 RED 후 관련14파일466테스트 및 typecheck exit0. 실제 base150 FieldTrigger 사본·native/ref/guard 전달 제거·열림 글리프 제거·검사기 무력화가 각각 RED, 소스 복원 후 관련 검사 GREEN.
+- 새로운 FieldTrigger와 위임 Select/SelectRow도 실제 포커스 컨트롤 픽스처로 검사한다. 정상/오류 포커스의 기존ring2는 이번 작은 후보에서 그대로이며 최종 R1 invalid 우선순위 및 ring1 전환은 마지막 링 후보에서 적용한다. FieldTrigger13경로 독립 리뷰0 findings 및 명시적 COMMIT 승인을 받았다.

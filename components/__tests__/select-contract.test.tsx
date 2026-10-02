@@ -88,7 +88,7 @@ describe("Select before the API rename", () => {
     </SelectTrigger><SelectContent><SelectItem value="editor">Editor</SelectItem></SelectContent><p id="reason">Last owner</p></Select>);
     expect(trigger.disabled).toBe(false);
     expect(trigger.getAttribute("aria-disabled")).toBe("true");
-    expect(trigger.classList.contains("aria-disabled:bg-muted")).toBe(true);
+    expect(trigger.classList.contains("aria-disabled:bg-accent")).toBe(true);
     trigger.focus();
     expect(document.activeElement).toBe(trigger);
     await act(async () => { await user.keyboard("{Enter}"); });

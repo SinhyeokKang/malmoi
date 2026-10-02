@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ImageTile } from "@/components/ui/image-tile";
 import { Link } from "@/components/ui/link";
 import { Popover } from "@/components/ui/popover";
+import { FieldTrigger } from "@/components/ui/field-trigger";
 import { SelectRow } from "@/components/ui/select-row";
 import { Input } from "@/components/ui/input";
 import { ListRow } from "@/components/ui/list-row";
@@ -141,18 +142,20 @@ const POPOVER_FIXTURES = { "components/ui/popover.tsx": h(TreePopoverFixture) };
  * `<button>`**이라 링은 여기서 본다. 이 자리를 비우면 Radix 프리미티브의 링이 방어선 밖이 된다.
  */
 const RADIX_FIXTURES = {
-  "components/ui/select.tsx": h(
-    Select,
-    { defaultValue: "en" },
-    h(SelectTrigger, { "aria-label": "Locale" }, h(SelectValue, null)),
-    h(SelectContent, null, h(SelectItem, { value: "en" }, "English")),
-  ),
+  "components/ui/field-trigger.tsx": h(FieldTrigger, null, "Filter"),
   "components/ui/checkbox.tsx": h(Checkbox, { "aria-label": "Include files" }),
   "components/ui/radio.tsx": h(RadioGroup, { "aria-label": "Locale", defaultValue: "en" }, h(Radio, { label: "English", value: "en" })),
 };
 
 // Slot 선택 행은 Checkbox와 Button의 실제 포커스 대상을 검사한다.
 const DELEGATED_RADIX_FIXTURES = {
+  "components/ui/select.tsx": h(
+    Select,
+    { defaultValue: "en" },
+    h(SelectTrigger, { "aria-label": "Locale" }, h(SelectValue, null)),
+    h(SelectContent, null, h(SelectItem, { value: "en" }, "English")),
+  ),
+
   "components/ui/select-row.tsx": h(SelectRow, {input: "checkbox", checked: false, label: "Include", aside: h(Button, null, "Preview")}),
 };
 

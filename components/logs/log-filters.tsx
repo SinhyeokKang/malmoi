@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, RefreshCw, RotateCcw } from "lucide-react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
 
@@ -19,12 +19,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { FieldTrigger } from "@/components/ui/field-trigger";
 import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "@/lib/events/payload";
 import { PROJECT_WIDE, clearedLogsQuery, hasNarrowing, logsQuery, type LogFilter } from "@/lib/events/filter";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { utcDay as dayText } from "@/lib/utc-time";
-import { cn } from "@/lib/utils";
 
 /**
  * 필터 다섯 + 검색 + [Refresh] (캔버스 `1a`·`1m`).
@@ -266,20 +266,12 @@ export function LogFilters({
 */
 function Filter({ triggerRef, onCloseAutoFocus, axis, label, on, children }: { triggerRef?: RefObject<HTMLButtonElement | null>; onCloseAutoFocus?: (event: Event) => void; axis: string; label: string; on: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const Chevron = open ? ChevronUp : ChevronDown;
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger
-        ref={triggerRef}
-        aria-label={`${axis}: ${label}`}
-        className={cn(
-          // ⚠️ 번역 화면 `FilterMenu`의 md와 같은 형이다 (audit #49) — hover는 `default` 버튼의 면(§6.2)이다.
-          "hover:bg-primary-foreground focus-visible:ring-ring bg-background inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-2.5 text-sm focus-visible:ring-2 focus-visible:outline-none",
-          on ? "border-foreground text-foreground font-medium" : "border-border text-muted-foreground",
-        )}
-      >
-        {label}
-        <Chevron className="size-4 shrink-0" aria-hidden />
+      <DropdownMenuTrigger asChild>
+        <FieldTrigger ref={triggerRef} aria-label={`${axis}: ${label}`} active={on} className="shrink-0">
+          {label}
+        </FieldTrigger>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-53" onCloseAutoFocus={onCloseAutoFocus}>{children}</DropdownMenuContent>
     </DropdownMenu>

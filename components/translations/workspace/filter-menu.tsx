@@ -1,10 +1,9 @@
 "use client";
 
-import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { FieldTrigger } from "@/components/ui/field-trigger";
 
 /**
  * **한 컴포넌트 · 크기 둘** (핸드오프 `2b` — README §7 콤보박스). md 36은 PanelHeader, sm 28은 카드 머리다.
@@ -30,7 +29,6 @@ export function FilterMenu({ axis, label, on, size, options, value, onSelect, di
   align?: "start" | "end";
 }) {
   const [open, setOpen] = useState(false);
-  const Chevron = open ? ChevronUp : ChevronDown;
   const groups: { name: string | undefined; items: FilterOption[] }[] = [];
   for (const option of options) {
     const last = groups.at(-1);
@@ -39,18 +37,10 @@ export function FilterMenu({ axis, label, on, size, options, value, onSelect, di
   }
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger
-        aria-label={`${axis}: ${label}`}
-        disabled={disabled}
-        className={cn(
-          "hover:bg-primary-foreground focus-visible:ring-ring bg-background inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border focus-visible:ring-2 focus-visible:outline-none",
-          "disabled:bg-accent disabled:text-muted-foreground disabled:cursor-not-allowed",
-          size === "md" ? "h-9 px-2.5 text-sm" : "h-7 px-2 text-xs",
-          on ? "border-foreground text-foreground font-medium" : "border-border text-muted-foreground",
-        )}
-      >
-        {label}
-        <Chevron className={cn("shrink-0", size === "md" ? "size-4" : "size-3.5")} aria-hidden />
+      <DropdownMenuTrigger asChild>
+        <FieldTrigger aria-label={`${axis}: ${label}`} disabled={disabled} size={size} active={on} className="shrink-0">
+          {label}
+        </FieldTrigger>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} className="min-w-53">
         {groups.map((group, index) => (

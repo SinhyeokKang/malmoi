@@ -26,7 +26,7 @@ const BUTTON = "components/ui/button.tsx";
  * 사전 차단은 사유를 `aria-describedby`로 들려줘야 하고 진짜 `disabled`에는 그 전달 경로가 없다.
  * 목록에 **등재**하는 것이 그 결정이고, 아래 세 검사가 `button.tsx`와 같은 강도로 이 파일도 본다.
  */
-const SELECT = "components/ui/select.tsx";
+const SELECT = "components/ui/field-trigger.tsx";
 const PRIMITIVES = ["components/ui/radio.tsx", BUTTON, SELECT];
 const SKIP = new Set(["__tests__", "node_modules"]);
 

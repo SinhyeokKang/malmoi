@@ -122,6 +122,10 @@ const RULES: Rule[] = [
     handCopy: () => false,
     bad: 'import {SkeletonLine as Line} from "@/components/ui/skeleton"; export const Demo = () => <Line size="xs" />;',
     good: 'import {Skeleton} from "@/components/ui/skeleton"; export const Demo = () => <Skeleton size="xs" />;' },
+{ primitive: "FieldTrigger", retired: [], paths: ["components/logs/log-filters.tsx", "components/translations/workspace/filter-menu.tsx"], minimum: 2,
+    handCopy: (node, file) => /Trigger$/.test(canonicalTag(node, file)) && /inline-flex/.test(classes(node, file)) && /rounded-md/.test(classes(node, file)) && /border/.test(classes(node, file)),
+    bad: 'export const Demo = () => <DropdownMenuTrigger className="inline-flex h-9 rounded-md border px-2.5">Filter</DropdownMenuTrigger>;',
+    good: 'import {FieldTrigger} from "@/components/ui/field-trigger"; export const Demo = () => <DropdownMenuTrigger asChild><FieldTrigger>Filter</FieldTrigger></DropdownMenuTrigger>;' },
 { primitive: "Input", retired: [], paths: ["components/onboarding/steps/repo.tsx", "components/translations/workspace/tree-panel.tsx", "components/shell/project-switcher.tsx", "components/translations/workspace/locale-panel.tsx"], minimum: 10,
     handCopy: (node, file) => canonicalTag(node, file) === "Search" && /absolute/.test(classes(node, file)) && /left-/.test(classes(node, file)) || canonicalTag(node, file) === "Input" && /(?:^|\s)(?:h-\d+|text-xs|border-0)(?:\s|$)/.test(classes(node, file)),
     bad: 'export const Demo = () => <><Search className="absolute top-2 left-2.5" /><Input className="h-8 pl-8 text-xs" /></>;',
@@ -277,6 +281,11 @@ const RETIRED_P3_SOURCES = [
     "primitive": "Skeleton",
     "path": "app/(edit)/account/loading.tsx",
     "code": "import { Skeleton, SkeletonLine } from \"@/components/ui/skeleton\";\nconst P3RetiredProbe = () => (<SkeletonLine size=\"lg\" className=\"w-32\" />);"
+  },
+{
+    "primitive": "FieldTrigger",
+    "path": "components/logs/log-filters.tsx",
+    "code": "const P3RetiredProbe = () => (<DropdownMenuTrigger\n        ref={triggerRef}\n        aria-label={`${axis}: ${label}`}\n        className={cn(\n          // ⚠️ 번역 화면 `FilterMenu`의 md와 같은 형이다 (audit #49) — hover는 `default` 버튼의 면(§6.2)이다.\n          \"hover:bg-primary-foreground focus-visible:ring-ring bg-background inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-2.5 text-sm focus-visible:ring-2 focus-visible:outline-none\",\n          on ? \"border-foreground text-foreground font-medium\" : \"border-border text-muted-foreground\",\n        )}\n      >\n        {label}\n        <Chevron className=\"size-4 shrink-0\" aria-hidden />\n      </DropdownMenuTrigger>);"
   },
 {
     "primitive": "Input",

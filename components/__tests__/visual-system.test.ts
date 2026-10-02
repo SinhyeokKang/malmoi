@@ -268,9 +268,11 @@ describe("프리미티브를 손으로 다시 만들지 않는다 (audit #49)", 
 
   it("필터 트리거 둘의 hover가 `default` 버튼과 같다", () => {
     for (const path of ["components/logs/log-filters.tsx", "components/translations/workspace/filter-menu.tsx"]) {
-      const trigger = read(path).match(/<DropdownMenuTrigger[\s\S]*?>/)?.[0] ?? "";
+      expect(read(path)).toContain("<DropdownMenuTrigger asChild>");
+      expect(read(path)).toContain("<FieldTrigger");
+      const trigger = read("components/ui/field-trigger.tsx");
       expect(trigger, path).toContain("hover:bg-primary-foreground");
-      expect(trigger, path).not.toContain("hover:bg-accent");
+      expect(trigger.match(/(?<![\w:-])hover:bg-accent/g), path).toBeNull();
     }
   });
 
