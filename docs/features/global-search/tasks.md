@@ -27,13 +27,13 @@
   — 검증: 실물 `guide/SUMMARY.md`로 — 항목 수 = 서빙 페이지 수(28) + 표식 있는 H2 수 · AUTHORING·SHOOTING 0건 · 모든 `href`가 `routes.docs(page, anchor)` 모양 · 표식 없는 H2 스킵 · `pnpm test` green.
 - [ ] **A5** `lib/search/nav-index.ts` — `navSearchEntries`. 멤버십마다 `navZones(project, …)`의 프로젝트 구역을 쓴다(`nav.ts`의 비공개 `translationsHref`는 export하지 않는다).
   — 검증: OWNER만 `Settings` · 보관 포함 · `null` → 하단 둘만 · `[]` → 사용자 메뉴(`navWorkItems()` + `New project`) + 하단 · 모든 프로젝트 메뉴 href·라벨이 같은 프로젝트의 `navZones` 결과와 같다 · 기존 `lib/shell/__tests__/` 무수정 green · `pnpm test` green.
-- [ ] **A5a** `lib/shell/nav.ts` `toNavProjects` — `app/(edit)/layout.tsx:75-78`의 인라인 map을 옮기고 레이아웃이 그것을 부른다(동작 불변, `MembershipRow`는 `import type`).
+- [ ] **A5a** `lib/shell/nav.ts` `toNavProjects` — T0에서 대조한 인라인 map을 `lib/shell/nav.ts:45-51`로 옮기고 레이아웃(`app/(edit)/layout.tsx:76`)이 그것을 부른다(동작 불변, `MembershipRow`는 `import type`).
   — 검증: 결과 키 집합 = 지금 레이아웃 map의 키 일곱(`surfaceSlug` 없음 · 초과 0) · `shell-layout` 테스트 무수정 green · `client-graph` green(`nav.ts`가 서버 그래프를 끌지 않는다) · `pnpm test` green.
 - [ ] **A7** `lib/search/keys.ts` — `isSearchShortcut` · `shouldIgnoreShortcut` · `nextActive` · `reconcileActive`.
   — 검증: macOS Meta+K true · macOS Ctrl+K false · 그 밖 Ctrl+K true · 그 밖 Meta+K false · 조합 중(`isComposing` · `keyCode 229`) false · Shift/Alt 조합 false · `input`·`textarea`·`contenteditable` 대상이면 무시 · 문서에 열린 `[role="dialog"]`·`[role="menu"]`가 있으면 무시 · ids 0 → null · id 순환 · 질의 변경 → 첫 id · 늦은 그룹 삽입 뒤 id 불변 · 사라진 id → 첫 id · `pnpm test` green.
 - [ ] **A8** `lib/keys/search.ts`의 순수 부분 — `keySearchQuery` · `mergeKeyHits`, `lib/search/key-href.ts` `keyResultHref`(+ `KeyHit` 타입 소유). `lib/keys/translation-list.ts`의 `likePattern`을 export만 한다.
   — 검증: 1자 → null · 공백 둘러싼 1자(`"  a "`) → null · `50%_off`·`\` 이스케이프가 번역 화면과 같은 문자열 · 201자 → 앞 200자 패턴(`Q_MAX_LENGTH`) · ①이 5건이면 ② 무시 · **같은 이름·다른 id 둘 다 남음**(중복 제거는 id) · 키 id 최종 정렬로 동점 6개 이상에서 입력 순서와 무관한 상위 5개 · href가 `translationsHref(slug, surfaceSlug, { ...DEFAULT_TRANSLATION_QUERY, ns, key: id, keySurface })`(`lib/translations/query.ts`)와 같은 문자열 · 필터 키 없음 · `lib/keys/search.ts`가 `KeyHit`을 `import type`으로만 읽음 · `pnpm test` green.
-- [ ] **A9** 의존 그래프 검사 — A1·A2·A5·A7·`key-href.ts`마다 `client-graph.test.ts`에 검사한다. 독립 모듈만 자기 자신을 단언하고, `nav-index`·`key-href`는 design에 적은 의도한 전이 파일 집합의 정확 일치와 허용 패키지를 단언한다(`lib/events/view.ts` 검사 선례). **`CLIENT_LIB_FILES` 목록은 여기서 넓히지 않는다** — 소비자가 없는 지금 더하면 정확 일치 단언(:468-471)이 초과로 red다. 목록 추가는 E2다.
+- [ ] **A9** 의존 그래프 검사 — A1·A2·A5·A7·`key-href.ts`마다 `client-graph.test.ts`에 검사한다. 독립 모듈만 자기 자신을 단언하고, `nav-index`·`key-href`는 design에 적은 의도한 전이 파일 집합의 정확 일치와 허용 패키지를 단언한다(`lib/events/view.ts` 검사 선례). **`CLIENT_LIB_FILES` 목록은 여기서 넓히지 않는다** — 소비자가 없는 지금 더하면 정확 일치 단언(:502-505)이 초과로 red다. 목록 추가는 E2다.
   — 검증: 모듈별 기대 그래프가 명시되고 정상 재사용은 통과하며, 하나에 `lib/keys/translation-list.ts` 값 import를 심으면 red(뮤테이션 1회) · `pnpm test` green.
 
 ── 커밋: `feat(search): add pure matching, highlighting and index builders for global search`
@@ -67,20 +67,20 @@
 
 - [ ] **D1** `Kbd`(`<kbd>` 태그, `shrink-0 … py-0.5` 포함) + 스위처의 손 `<kbd>` 이관.
   — 검증: `project-switcher.test.tsx` 무수정 green(`[role="menu"] kbd` 셀렉터가 `Kbd`를 잡는다) · `hand-copies.test.ts`에 `Kbd` 행(`components/ui/` 밖 `<kbd` 0 · 카나리아 · 하한) · `pnpm test` green.
-- [ ] **D2** `Highlight` + `/projects` 손 `<mark>` 이관(조각은 `highlightName` 그대로). **의도한 테스트 갱신 둘**: `visual-system.test.ts:95` `REGISTERED`에는 의미 토큰 `bg-link/[0.14]`가 없음을 유지하고, `projects-screen.test.ts:517-522`의 클래스 단언을 "`Highlight`에 `highlightName(row.name, q)` 조각을 넘긴다"로.
-  — 검증: 위 두 테스트 갱신 뒤 green · 그 밖 `projects-*` 무수정 green · `hand-copies.test.ts`에 `Highlight` 행(`ui/` 밖 `<mark` 0 · 카나리아 · 하한) · `pnpm test` green.
+- [ ] **D2** `Highlight` + `/projects` 손 `<mark>` 이관(조각은 `highlightName` 그대로). **의도한 테스트 대조 둘**: `visual-system.test.ts:95` `REGISTERED`에는 의미 토큰 `bg-link/[0.14]`가 없음을 유지하고, `projects-screen.test.ts:517-522`의 클래스 단언을 "`Highlight`에 `highlightName(row.name, q)` 조각을 넘긴다"로.
+  — 검증: 위 두 테스트 대조 뒤 green · 그 밖 `projects-*` 무수정 green · `hand-copies.test.ts`에 `Highlight` 행(`ui/` 밖 `<mark` 0 · 카나리아 · 하한) · `pnpm test` green.
 - [ ] **D3** `FieldButton` — 캡슐 `rounded-full` · `h-9` · `w-80` · 패널 면(`bg-background border border-border-subtle shadow-low`) · 슬롯 셋 · 포커스 링 리터럴(rest props 없음 — component-unify S5).
   — 검증: `focus-ring.test.ts`의 `FIXTURES`(:132)에 `FieldButton` 픽스처 추가 후 green(`ui/` 안 raw `<button>`은 등록 필수 — :204-211) · `visual-system` green · jsdom: `shortcut` 슬롯이 비어도 자리 폭 유지 · `pnpm test` green.
 - [ ] **D4** `CommandDialog`(`dialog.tsx` 형제 export — 복귀 기록 공유, `DialogContent` 불변). `ui/large-modal.tsx`의 `LARGE_MODAL_PANEL`·`LARGE_MODAL_OVERLAY`를 import하고, 위치만 `top-4 left-1/2 -translate-x-1/2`. 첫 포커스는 `[data-initial-focus]` 규칙(새 `onOpenAutoFocus` 없음).
-  — 검증: 기존 Dialog 소비자 테스트 무수정 green — `primitive-focus.test.tsx` · `focus-return` · `dialog-layer` + 대형 모달 소비자 테스트 · `primitive-focus.test.tsx:236`의 손 `onOpenAutoFocus` 0 스캔 대상에 `<CommandDialog` 소비자를 더한다 · jsdom: 열면 포커스가 `[data-initial-focus]` 입력 · 닫으면 연 자리로(테스트 쪽 fixup observer 관용구 — `members-focus.test.tsx`) · 패널 클래스가 `LargeModal` 치수 상수를 쓴다(새 치수 리터럴 0 — 두 벌 방지) · Dialog 소비자 수 14를 DESIGN 명령으로 다시 세어 D7에 기록 · `pnpm test` green.
+  — 검증: 기존 Dialog 소비자 테스트 무수정 green — `primitive-focus.test.tsx` · `focus-return` · `dialog-layer` + 대형 모달 소비자 테스트 · `primitive-focus.test.tsx:236`의 손 `onOpenAutoFocus` 0 스캔 대상에 `<CommandDialog` 소비자를 더한다 · jsdom: 열면 포커스가 `[data-initial-focus]` 입력 · 닫으면 연 자리로(테스트 쪽 fixup observer 관용구 — `members-focus.test.tsx`) · 패널 클래스가 `LargeModal` 치수 상수를 쓴다(새 치수 리터럴 0 — 두 벌 방지) · Dialog 소비자 수 15를 DESIGN 명령으로 다시 세어 D7에 기록 · `pnpm test` green.
 - [ ] **D5** `Command` · `CommandInput` · `CommandStatus` · `CommandList` · `CommandGroup` · `CommandItem` · 결과 수 sr-only 공지.
   — 검증: jsdom — ARIA(`combobox`·`aria-expanded`·`aria-controls`·`aria-activedescendant`·`listbox`·`group`+`aria-labelledby`·`option`+`aria-selected`) · **`aria-activedescendant`가 가리키는 id의 요소가 실재**(존재 단언 따로 — 코드베이스 첫 사용, POSTMORTEM 2026-09-14 optional chaining 공허) · listbox의 자식이 option·group뿐(`CommandStatus`는 listbox 밖) · ↑↓ 순환 · **Enter가 활성 option 안 링크의 `click`을 부른다**(spy) · 조합 중 Enter 무시 · hover가 활성을 옮기고 `document.activeElement`는 입력 · 실제 결과 링크 `tabIndex={-1}` · Tab·Shift+Tab 시 결과 링크를 순회하지 않음 · 활성 행에만 `Go to` 힌트 · `CommandStatus`가 `aria-live` · `scrollIntoView` 호출(spy) · `pnpm test` green.
 - [ ] **D5a** `NoMatch` 출구 없는 형 — 필수 `action: ReactElement` 출구 슬롯을 선택으로 연다. 소비자는 검색 Dialog 하나(E2)이고 기존 소비자의 출구는 그대로다.
   — 검증: 렌더 테스트 — 출구 없으면 버튼 0 · 기존 `action` 출구 소비자 무수정 green · component-unify `api-contract` 허용 목록에 새 행 0 · `pnpm test` green.
-- [ ] **D6** `components/shell/header-bar.tsx` `HeaderBar` + 앱 셸·공개 셸 헤더 이관(가운데 슬롯은 아직 비움). **의도한 테스트 갱신**: `app/(edit)/__tests__/shell-layout.test.ts:135-139`의 `h-10` 단언을 `header-bar.tsx`로 옮긴다 · `components/__tests__/shell-header.test.tsx:35`(`header > div:last-child` 우측 자식 순서)와 `components/__tests__/public-shell.test.tsx`의 우측 자식 순서 단언을 `HeaderBar` `end` 슬롯 기준으로 고친다.
+- [ ] **D6** `components/shell/header-bar.tsx` `HeaderBar` + 앱 셸·공개 셸 헤더 이관(가운데 슬롯은 아직 비움). **의도한 테스트 갱신**: `app/(edit)/__tests__/shell-layout.test.ts:135-139`의 `h-10` 단언을 `header-bar.tsx`로 옮긴다 · `components/__tests__/shell-header.test.tsx:35`(`header > div:last-child` 우측 자식 순서)와 `components/__tests__/public-shell.test.tsx:202-206`의 우측 자식 순서 단언을 `HeaderBar` `end` 슬롯 기준으로 고친다.
   — 검증: 새 구조 테스트 — `HeaderBar`가 `grid-cols-[1fr_auto_1fr]`이고 세 슬롯이 `justify-self-start/center/end`, 두 헤더가 `HeaderBar`를 렌더한다(DOM) · 위 세 테스트 갱신 뒤 green · `label-weight.test.ts`(`NAV_LINK`·`PUBLIC_HEADER_LINK`) 무수정 green · `pnpm dev`에서 두 헤더 모양이 이관 전과 같다(수동).
 - [ ] **D7** DESIGN §6.4 프리미티브 행 · §6.5 헤더 규칙(`HeaderBar` · 캡슐이 헤더의 첫 면·테두리 요소라는 예외) · §6.5 스위처 행 "새 combobox 프리미티브 없음" 갱신 · §6.2 강조 색 자리 · `NoMatch` 출구 없는 형(출구 규칙의 예외) · 대형 모달 행에 `CommandDialog` 공유(이 커밋 묶음의 문서 짝 — 별도 커밋).
-  — 검증: 갱신한 절마다 코드 값과 대조(클래스 문자열 · 파일 경로 · Dialog 소비자 수 14 명령 출력) · `visual-system`·`focus-ring` green.
+  — 검증: 갱신한 절마다 코드 값과 대조(클래스 문자열 · 파일 경로 · Dialog 소비자 수 15 명령 출력) · `visual-system`·`focus-ring` green.
 
 ── 커밋: `feat(ui): add Kbd and Highlight primitives and move existing copies onto them`
 ── 커밋: `feat(ui): add FieldButton, CommandDialog and Command primitives`
