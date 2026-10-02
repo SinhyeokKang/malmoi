@@ -718,6 +718,7 @@ Home 편집 1 행은 첫 측정(dev `ae0f2f98`, 교대 없이 5회 중앙값)이
 
 - **신규 인덱스가 없다.** 키 요약은 기존 `(projectId, surfaceId, …)` 인덱스 위의 키 단위 집계이고 KeyRef를 조인하지 않는다.
   **pg_trgm GIN(value·sourceText)은 기각했다** — 키별 EXISTS 계획이라 131→94ms · 36→11ms로 확장 하나를 들일 값이 아니었다.
+  여러 멤버 프로젝트를 찾는 글로벌 Keys 조회는 다른 실행 계획이므로 이 기각을 그대로 적용하지 않고 따로 쟀다(§1.965).
 - **정렬은 `Incomplete first` 하나이고 URL에 `sort`가 없다** — 고를 것이 없는 파라미터는 만들지 않는다.
 - **화면 목록은 전량이다 — `pageSize: "all"`** (translation-filter-scope, 2026-09-30 사용자). 안정 분할이 범위 전체 집계를 요구하므로 비용은
   페이지 크기가 아니라 `scope`에 좌우된다 — 페이지를 나눠도 조회 시간이 줄지 않았다. `"all"`은 LIMIT·cursor가 없고 **SQL count를 따로 돌리지
@@ -741,6 +742,39 @@ Home 편집 1 행은 첫 측정(dev `ae0f2f98`, 교대 없이 5회 중앙값)이
 - **Save는 `KEY_SAVE_LIMITS`**(`lib/keys/save.ts`) — 값당 10,000 · 로케일 200 · **변경값 합계 UTF-16 1,000,000 코드유닛**. 최악이
   UTF-8 약 3MB(CJK 1유닛=3바이트, 서로게이트 2유닛=4바이트)라 `serverActions.bodySizeLimit: "4mb"` 안에 든다. ⚠️ **둘 중 하나를
   움직이면 다른 쪽을 같이 본다** — 합계가 body 한도를 넘으면 초과가 우리 거부 문구가 아니라 프레임워크 오류로 난다.
+
+### 1.965 글로벌 Keys 조회 — 멤버 범위와 인덱스 판정 (global-search B3, 2026-10-03)
+
+`lib/keys/search.ts`는 키 이름·원문에서 먼저 5건을 찾고, 부족할 때만 번역값에서 나머지를 찾는다(인가·순위는 §6.37).
+**검색 코어의 SQL 왕복은 최대 둘**이고 세션 조회의 DB 왕복은 이 상한에 포함하지 않는다. 멤버 프로젝트 id 확정도 각 SQL 안에서 끝낸다.
+
+**최종 번역값 계획**은 멤버 배열 `unnest` → 프로젝트별 `LATERAL ... OFFSET 0`의 `Translation.projectId = member.id` 인덱스 탐색 →
+`IN (...) IS TRUE`의 독립 로케일 검사 → `matched AS MATERIALIZED` → `first_match AS MATERIALIZED`의 키별
+`min(ARRAY[localeCode,value] COLLATE "C")` 집계 → 키 PK 조회·메타데이터 → 정렬·남은 행 수 LIMIT다.
+`(keyId,localeCode)` 유일성 때문에 집계는 C 순서의 첫 일치 로케일과 **그 셀의 값 한 쌍**을 준다.
+
+경계가 필요한 근거는 B3 실험이다: 직접 다중 조인은 통계 없이 키마다 번역을 재탐색해 5초를 넘었고,
+단순 `ANY(member-array)` materialization은 ANALYZE 뒤 전체 테넌트의 병렬 순차 스캔으로 바뀌었다.
+최종 계획의 `matched` 경계를 합치는 실험도 무통계 `common` 중앙값 437.5ms여서 되돌렸다.
+멤버별 인덱스 탐색과 집계 경계 둘을 유지해야 무통계 재탐색·전체 셀 정렬을 피한다.
+
+**실측**: 로컬 PostgreSQL **17.11**, Node **24.21.0**. 커밋된 `lib/keys/__tests__/search-performance.integration.ts`가
+멤버 2프로젝트 **200,100셀**(20,000키×10 + 10키×10)과 비멤버 1프로젝트·3소스 **600,000셀**을 넣는다.
+autovacuum off · statement_timeout=5000, 통계 없음/ANALYZE 뒤 × 네 질의 × 각 20회(160표본)다.
+아래는 `EXPLAIN (ANALYZE, BUFFERS, VERBOSE)` **실행한 SQL(최대 둘)의 Execution Time 합 중앙값(ms)**이며 앱·pooler 네트워크 왕복은 제외한다.
+
+| 질의 | 통계 없음 | ANALYZE 뒤 | 최대 Translation 방문 |
+|---|---:|---:|---:|
+| 불일치 (`no-match-at-all`) | 61.7215 | 77.9915 | 200,100 |
+| 키 이름 (`key-123`) | 5.3085 | 20.1720 | 0 — 첫 SQL만 실행 |
+| 번역값만 (`unique-translation`) | 59.7620 | 77.0265 | 200,100 |
+| 흔한 단어 (`common`) | 253.0085 | 253.2210 | 200,100 |
+
+**최악 중앙값 253.2210ms ≤ 300ms → 조건부 B4 생략. pg_trgm·신규 인덱스·스키마 마이그레이션이 없다.**
+§1.96의 기각은 번역 목록의 EXISTS 계획에 대한 것이고, 이 판정은 위 멤버 범위 계획을 따로 측정한 결과다.
+방문 수 검출기는 필터·인덱스 재검사 탈락 행과 loops를 포함하고, 방문 **< 400,200**뿐 아니라
+멤버 배열에서 유래한 `projectId` 인덱스 접근도 요구한다. 같은 800,100셀의 실제 전체 순차 스캔 대조군은 두 통계 상태 모두 거부한다.
+방문 수만으로 비멤버 행 미방문을 증명하지 않는다. 수치는 이 로컬 픽스처의 실행 시간이며 다른 서버·플래너의 성능 보장은 아니다.
 
 ### 1.97 ⚠️ 미저장 이탈 guard는 Next 내부 동작에 기댄다 (`components/translations/workspace/use-leave-guard.ts`)
 
@@ -2067,6 +2101,9 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 |---|---|---|
 | 편집 UI **로그인** | GitHub·Google OAuth **App** (Auth.js, DB 세션 / `AUTH_GITHUB_*`) | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다** |
 | 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (§0 불변식 7). 허용 핸들 목록은 2026-09-06에 사라졌다 |
+| `/api/search-index` | **공개 · 세션 없음 · `force-static`** | SUMMARY에 등재된 공개 가이드만 빌드 때 JSON으로 만든다. 인증·DB·쿠키 조회가 없고 원고 실패는 빌드를 실패시킨다. `entry-points.test.ts`의 `EXEMPT` 사유도 이 경계다 (§6.37) |
+| Keys 조회 — `searchKeysAction` (`app/search/actions.ts`) | 세션(`readSession`) + 코어 `searchKeys`의 **`ProjectMember.userId` 조인** | 서버의 userId로 비보관 멤버 프로젝트 id를 확정한다. 클라이언트 프로젝트 목록을 받지 않고 `activeSlug`는 순위에만 쓴다 (§6.37) |
+| 검색 멤버십 — `loadSearchMembershipsAction` (같은 파일) | 세션(`readSession`) + `loadMemberships`의 **userId 제한** | 보관 포함 자기 멤버십만 읽고 `toNavProjects`의 일곱 필드만 반환한다. 성공·실패 모두 다음 호출에 캐시하지 않는다 (§6.37) |
 | GitHub **연결** | GitHub App **user-to-server** 토큰 (`GITHUB_APP_CLIENT_*`, `lib/github-connect/user.ts`) | "이 사람이 이 설치·리포를 볼 수 있는가"를 묻는 데만 쓴다. **GET만 부른다** — 이름에 OAuth가 들어가지만 로그인 토큰과 client id가 다르다 |
 | `malmoi-i18n/sync` 쓰기 | GitHub App **installation** 토큰 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | `/api/github/callback` | 세션(`requireUser`) + userId에 묶인 **state HMAC** + state 쿠키 | 브라우저가 돌아오는 지점이라 CSRF 축이 초대 토큰과 같다 (§6.4) |
@@ -2664,6 +2701,34 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - ⚠️ **grep 한 번으로 확인했다고 하지 않는다.** T6에서 이 경계를 의심해 산출물을 grep했는데 `@octokit`만
   봤고 그건 정말로 없었다 — 그래서 "트리 셰이킹이 떼어냈다"는 **틀린 결론을 주석으로 남겼다.** 한 번의
   grep은 자신이 고른 패턴만 답한다.
+
+### 6.37 검색의 공개·사용자 경계 (`app/search/actions.ts` · `lib/search/`, global-search)
+
+- **공개 색인은 Docs만 든다.** `app/api/search-index/route.ts`는 질의를 받지 않는 GET으로 `{ docs: DocsEntry[] }`를 준다.
+  `loadSummary`·`loadPage` → `docsSearchEntries`가 SUMMARY 순서로 페이지 도입부와 표식 있는 H2 절의 평문을 만든다.
+  프로젝트·키·번역값·Changelog 본문은 이 응답에 없다. `force-static`은 `/llms-full.txt`와 같은 빌드 생성 형이라
+  가이드 원고의 런타임 트레이싱·ISR이 없고 원고 읽기 실패를 빈 색인으로 삼키지 않는다.
+  `/api/*`는 미들웨어 matcher 밖이며 `isProtectedPath`에 넣지 않는다. route 테스트가 세션·DB·쿠키 호출을 던지는 mock으로 막는다.
+- **사용자 조회 둘은 읽기 전용 Server Action이다.** `app/search/actions.ts`에는 페이지가 없고 공개 셸도 호출할 수 있다.
+  두 Action은 호출마다 `readSession`을 읽어 없음은 `unauthorized`, 세션·DB·코어 장애는 `unavailable` union으로 돌려준다.
+  `redirect`·`revalidatePath`·검색어 로그가 없다. 단 `searchKeysAction`의 비문자열 q는 세션 조회 전에 빈 성공 결과로 끝낸다.
+  `loadSearchMembershipsAction`은 `loadMemberships(prisma, session.userId)` → `toNavProjects`로
+  `slug`·`name`·`role`·`archived`·`image`·`defaultSurfaceSlug`·`counts`만 싣는다(보관 포함).
+- **Keys의 테넌트 제한은 SQL 안에서 확정한다.** `searchKeys`는 세션 userId의 `ProjectMember`와 비보관 `Project`로 만든
+  멤버 id 배열로 `projectId`를 좁힌다. 입력은 q와 순위 힌트 `activeSlug`뿐이며 클라이언트 id·slug 목록은 인가에 쓰지 않는다.
+  양쪽 SQL은 보관 소스·첫 적재 전 소스(`lastCommitSha IS NULL`)·orphaned 키를 제외하고, 번역값은 orphaned 아닌 로케일만 본다.
+  준비 여부에 `installationId`를 더하지 않는 근거는 null로 되돌리는 경로가 없다는 현재 계약이다(`lib/auth/access.ts`).
+  질의는 trim 후 앞 200자(`Q_MAX_LENGTH`), `String.length` 2자 미만이면 검색 코어의 DB 조회 0이다.
+  `likePattern`을 번역 목록과 공유해 `%`·`_`·`\`를 escape하고 **질의 전체의 대소문자 무시 부분 일치**로 찾는다.
+  Projects·Menus·Docs의 토큰 AND 판정과 다르다. 순위는 키 이름 > 원문 > 번역값, 같은 급은 지금 프로젝트 →
+  키 이름 → 키 id(`COLLATE "C"`)이고 상한은 5다. 번역값의 여러 일치는 C 순서 첫 로케일 한 셀, 중복 제거는 키 id다.
+  검색 코어의 조건부 두 SQL과 최종 실행 계획·실측은 §1.965가 든다.
+- **캐시 정책은 공개·개인 데이터가 다르다.** `lib/search/load-index.ts`만 동시 호출 Promise와 성공 결과를 탭 수명 동안 재사용한다.
+  네트워크·HTTP·JSON 파싱 실패는 Promise를 비워 다음 호출이 재시도한다. `lib/search/load-memberships.ts`는 매 호출마다 Action을
+  실행하고 성공·실패를 저장하지 않는다(실패는 null). 권한 회수·역할·보관 변경이 다음 서버 호출부터 반영되는 §6.00④를 지킨다.
+- **검사는 코어까지 내려간다.** `entry-points.test.ts`의 `MEMBER_JOIN_CORES`는 `searchKeys` 호출과 Action의 세션 거부를 함께
+  요구하고, 코어 본문의 `ProjectMember`·userId 바인딩도 검사한다. 멤버십 Action은 `USER_SCOPED_ACTIONS`다.
+  `lib/keys/__tests__/search.integration.ts`가 다른 사용자의 비노출·권한 회수·제외 조건·순위·왕복 상한을 실제 DB에서 잰다.
 
 ### 6.4 GitHub 연결의 왕복 — state와 착지 지점 (SaaS 4단계, `lib/github-connect/`)
 
