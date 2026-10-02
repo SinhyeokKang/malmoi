@@ -235,7 +235,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 `detect`는 리포 파일 경로 목록에서 포맷을 찾는다. **경로 사전순으로 후보를 고르면 틀린다** — bugshot-web에서 `public/search/{locale}.json`(검색 인덱스, 최상위가 배열)이 `src/lib/i18n/{locale}.json`보다 먼저 잡혔다.
 
 - 후보를 **i18n 계열 경로 신호 → 예제·픽스처 디렉터리 감점 → 로케일 개수 → 경로 모양 → 얕은 경로 → 경로순**으로 순위 매긴다. **어댑터 간** 순위는 `shared.compareTemplates`다. ⚠️ **어댑터 내부 순위는 갈린다** — `json-catalog`·`yaml-catalog`는 `rankTemplateCandidates`(→ `compareTemplates`)를, `chrome-locales`·`code-dict`는 `rankCandidates`(i18n 신호 → 감점 → 로케일 수 → 디렉터리 — 경로 모양·깊이·`liftAncestors` 없음)를, `ts-dict`는 템플릿 `compareKeys` 순을 쓴다. 그래서 명시 지정 경로(`detectFormatWith`)의 순위는 자동 탐지와 다를 수 있다
-- **로케일이 2개 이상**이고 **강한 로케일 코드가 하나 이상**인 후보만 인정한다 (하나뿐이면 `config/en.json` 같은 우연일 수 있다)
+- **단일 언어도 후보로 인정한다** (2026-10-03). **강한 로케일 코드가 하나 이상**이어야 하고 내용 검증은 유지한다. 자동 탐지·수동 확정·서버 재적재가 같은 판정을 지난다. 단일 언어 조상 후보는 여러 언어 후보보다 승격하지 않는다 — `config/i18n-js.yml` 같은 설정이 하위의 실제 다국어 사전을 가리는 회귀를 막는다. `ts-dict`도 파일 하나·로케일 객체 하나를 받되, 단일 객체에 직접 쓴 문자열이 없으면 import·spread 래퍼로 보고 제외한다.
 - `probe` 콜백을 주면 후보 파일 **여러 개**를 읽어 카탈로그 모양인지 확인한다. **GitHub API에서는 블롭 읽기가 요청 비용**이라 경로로 좁힌 뒤 그 후보만 확인하도록 콜백으로 받는다
 - **`detectCandidates`가 후보 전부를 순위순으로 낸다.** `detect`는 그 `[0]`이다 — 두 함수가 같은 관문을 지나므로 어긋날 수 없고, 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측할 수 있는 것은 이쪽뿐이다. **2026-09-14부터 예외가 0이다** — `ts-dict`가 자동 탐지에 들어오면서 다섯이 같은 계약을 진다. 단 그 어댑터는 **probe가 없으면 `[]`** 이고(경로만으로는 판단하지 않는다), 예외가 생기면 `detect-candidates.test.ts`가 red다
 
@@ -277,7 +277,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 **되돌린 이유**: 그 대가를 실물이 냈다 — bugshot-2의 온보딩 ②에 **4키 `_locales`만** 뜨고 903키 딕셔너리는 목록에 없었다. 명시 지정은 **그 포맷을 아는 사람에게만** 길이고, PRODUCT §7.3이 그 상황을 *"작은 `_locales`(4키)가 실제 UI 딕셔너리(903키)를 가렸고 조용히 작은 쪽으로 떨어져 에러가 나지 않았다"* 로 이미 적어 두고 있었다.
 
-**지금 모양**: `detectCandidates`가 `detectByContent`를 그대로 부르고, **probe가 없으면 빈 배열**이다(경로만으로는 판단하지 않는다). 1패스에서 내려받을 파일은 `tsDictProbePaths`가 경로만 보고 고른다 — `I18N_HINT` 통과 · 곁가지 제외 · **파일이 많은 디렉터리 2개 × 8파일**. 판정은 내용이 하므로 씨앗에 들어온 디렉터리도 로케일 객체가 하나뿐이면 스스로 떨어진다(bugshot-2의 `src/i18n/`이 그 예다).
+**지금 모양**: `detectCandidates`가 `detectByContent`를 그대로 부르고, **probe가 없으면 빈 배열**이다(경로만으로는 판단하지 않는다). 1패스에서 내려받을 파일은 `tsDictProbePaths`가 경로만 보고 고른다 — `I18N_HINT` 통과 · 곁가지 제외 · **파일이 많은 디렉터리 2개 × 8파일**. 파일 하나인 디렉터리도 씨앗이 된다. 판정은 내용이 하므로 직접 쓴 문자열 없이 import·spread만 모은 단일 객체는 떨어진다(bugshot-2의 `src/i18n/`이 그 예다).
 
 **`--adapter ts-dict` / `TranslationSurface.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — 워크플로 YAML은 이 포맷을 포함해 모든 확정 어댑터를 명시한다. 자동 탐지의 1순위가 저장된 포맷이라는 보장이 없다(bugshot-2는 `_locales`가 크롬 버킷이라 언제나 앞선다).
 
@@ -504,6 +504,30 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 | 조용한 손실 | 0건 | 0건 |
 
 새 정의로 재도 비교 가능한 칸은 21차와 한 칸도 안 바뀌었다 — B7a의 BOM·넓은 들여쓰기·YAML 삽입 인용·중복 정렬 수정은 코퍼스에 그 모양이 없거나(결함 케이스만 출력이 바뀐다) 이미 같은 출력이었다.
+
+**23차 (2026-10-03, 단일 언어 탐지 허용 · 조상 승격 회귀 수정 후)** — 학습 109개와 홀드아웃 20개를 모두 재측정했다.
+원문 확인 및 사용자 승인으로 판정 목록도 갱신했다: Huginn(`config/locales/{locale}.yml`), Home Assistant
+(`src/translations/{locale}.json`), unreal-ui-next(`locale/lang/{locale}.ts`), veigar(`locale/{locale}.tsx`)는 단일 언어
+지원 사전이다. n8n의 `packages/@n8n/mcp-apps/src/locales/{locale}.json`은 유효한 추가 경로(`alsoValid`)다.
+따라서 학습의 지원 포맷 분모가 101 → 105로 바뀌었다. **22차와 분모가 달라 단순 증감으로 비교하지 않는다.**
+
+| 지표 | 학습 109 | 홀드아웃 20 |
+|---|---|---|
+| 지원 포맷 탐지 | 105/105 (100%) | 17/17 (100%) |
+| 오탐 — 후보가 있는 리포 기준 | 0/105 (0%) | 3/18 (16.7%) |
+| 오탐 — 지원 포맷 기준 | 0/105 (0%) | 2/17 (11.8%) |
+| 왕복 의미 동일 | 104/105 (siyuan — 기존 1건) | 18/18 |
+| 바이트 고정점 | 105/105 | 18/18 |
+| `writeErrors` > 0 | 1 (siyuan 22) | 0 |
+| 편집 탐침 1헝크 | 32/32 | 4/4 |
+| 조용한 손실 | 0건 | 0건 |
+
+- 최초 재측정이 moebooru의 `config/i18n-js.yml`(단일 후보)을 7언어 정본보다 앞세우는 새 회귀를 잡았다.
+  단일 언어 조상은 다국어 후보 위로 승격하지 않게 수정하고 **두 코퍼스를 다시 측정**한 값이 위 표다.
+- 홀드아웃의 남은 오탐은 Discourse(플러그인 카탈로그), Mattermost(용어집), Stirling-PDF(규칙 팩)다.
+  변경 전 코드(`05d557c8`)로 이 리포들을 별도 재측정해 **같은 경로가 선택됨**을 확인했다. 이번 변경의 회귀가 아니다.
+- 판정 목록을 바꾸기 전의 최종 원자료 집계는 학습 4/105·홀드아웃 4/18 오탐이었다. 추가 확인한 단일 언어 사전 다섯의
+  실제 내용에 따라 판정을 갱신하고, **동일한 원자료를 `summarize`로 재집계**했다. 판정 목록 변경을 탐지 개선으로 세지 않는다.
 
 **판정 넷**
 
