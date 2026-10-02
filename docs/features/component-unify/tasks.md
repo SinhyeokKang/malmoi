@@ -98,7 +98,7 @@
 - **1280×900 R1**: Home·Projects·Translations·Sources·Logs·Settings를 T0와 대조했다. Home/Logs/Sources는 픽셀 차이0, Projects5·Translations4·Settings24픽셀의 미세 렌더링 차이만 남았다. Home/Logs/Settings의 267/406/157개 보이는 HTML 요소 좌표와 계산된 CSS 14속성은 전부 같았다. 승인 밖 레이아웃·색 변화는 발견하지 않았다.
 - 최초 촬영 뒤 브라우저 스크롤바 모드가 달라져, Home/Logs/Settings는 동일 T0 SHA를 임시 디렉터리에서 같은 브라우저·Webpack dev 조건으로 재촬영했다. 상대 시간 문구·개발 도구 렌더링 표시는 안정 상태에서 구분했다. 환경 파일 복사·프로젝트 데이터 변경 없이 검증했고 서버·임시 디렉터리·브라우저 공간을 정리했다.
 - 상세 로컬 증거: `.scratch/component-unify-r1-qa.md`, `.scratch/component-unify/{before,after,baseline-current-browser,after-current-browser}/`, `dom-comparison.json`. 각 배치 인계서는 `.scratch/handoff-component-unify-b1{a,b,c,d}.md`다.
-- **단위 ② T5–T10 완료, T11A/B/C/D 완료, T11E 진행. T11 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
+- **단위 ② T5–T11 완료, R2 Chromium 17화면/상태 × 3뷰포트(51장) 검사 완료. 단위 ③ P1–P3 병렬 진행, T21/T22·Safari/AT·쓰기 상태·온보딩4는 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
 
 - **T5·T6 계약 그물 완료.** T5 `b9515558`은 현재 프리미티브 59계약과 7개 mutation을 고정했다. T6 `993b4190`은 실제 위반 111행/120회와 해소 태스크를 기록했다. 독립 리뷰에서 발견한 상태 6건 누락·로컬 크기 타입 별칭 검출 공백을 수정했고, 22카나리아·실제 Note 허용행 삭제 red/동일 바이트 복원 green·전체 gate646파일/9869테스트·typecheck·build·미러 exit0을 통과했다. 태스크 경계 명시는 `90cc5218`이며, T7은 이 커밋을 기준으로 시작한다.
 
@@ -117,6 +117,9 @@
 - **T11C 접근성 API 통합 완료 `e03e692e`.** RowCardList·SegmentedControl의 표준 ARIA 이름과 FormGroup8곳의 실제 Input/SelectTrigger 설명 연결을 통일하고 담당 허용행3개를 해소했다. 관련178·소비자220테스트와 ID 처리/검출분기 변이를 검증했다. 첫 게이트의 Members 옛 prop 기대값2건을 같은 제목 연결 계약으로 이관한 뒤 최종 gate650파일/10107테스트·build·미러 exit0와 독립 리뷰0건을 통과했다.
 
 - **T11D className API 통합 완료 `0f5eb846`.** Modal·Radio의 실제 루트 className과 ImageTile fallback 슬롯을 실제 소비자까지 이관하고 담당 허용행3개를 해소했다. 관련119·소비자358테스트와5변이를 검증했고, Radix Slot 사용처는 실제 장식 DOM fixture로 포커스 게이트에 등록했다. 공유 이미지 훅·Avatar와 기존 크기·투명 배경·키보드/ref 계약을 보존했으며 최종 gate651파일/10121테스트·build·미러 exit0 및 독립 리뷰0건을 확인했다.
+
+- **T11E 완료 `4b430b96`.** BannerLine 기존 tone을 data-tone으로 노출하고 T7–T11 담당 허용행을 모두 해소했다(후속10행 유지). 관련124테스트·검출분기/표식 제거 변이를 확인했으며 전체 gate651파일/10126테스트·build·미러 exit0와 독립 리뷰0건을 통과했다.
+- **R2 실행 기록.** `042d9c8b`에서 Projects/Home/Translations/Sources/Logs/Members/Settings/MCP/Account 및 모달·온보딩1–3을1280/1440/1890으로 관측했다. 51장 시각 검사·문서 폭/모달 경계에서 회귀 없음. 검색 빈 상태와 주요 모달 Tab/Escape/트리거 복귀를 확인했다. 로그인 세션으로 랜딩/signin은 Projects로 이동하며 Safari/AT·쓰기 busy·온보딩4·TreeOverlay는 미검증이다. 온보딩 닫기 후 BODY 포커스는 P2가 기존 route-close 정책과 일치함을 확인했다. 근거 `.scratch/component-unify-r2-qa.md`. 단위② 최종 게이트·push 진행 중.
 
 ## 단위 ① 토큰 · 정리 — 값 변화 0
 
