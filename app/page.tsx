@@ -89,7 +89,7 @@ export default async function Root() {
             <h2 id="landing-closing" className="m-0 text-5xl leading-[1.1] font-semibold">{closing.title}</h2>
             <p className="mt-5 max-w-[40em] text-lg leading-body text-balance">{closing.body}</p>
             <div className="mt-5 flex gap-2">
-              {/* ⚠️ 외부 링크라 `ButtonLink`(next/link)가 아니라 `<a>` + `buttonClass`다(Publish 결과의 `View pull request`와 같은 형). 새 탭 · 글리프 없음(DESIGN §6.3). */}
+              {/* ⚠️ ButtonLink external은 native <a>다. newTab으로 새 탭을 열고 기존 rel에 noopener·noreferrer를 보존·추가한다(DESIGN §6.3). */}
               <ButtonLink size={"lg"} external href={GITHUB_REPO_URL} newTab rel="noreferrer"
                 >
                 <GithubIcon />{shell.github}

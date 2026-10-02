@@ -87,9 +87,8 @@ export function GithubSection({
                 ⚠️ **연결됨에만 선다** (DESIGN §6.67). 나머지 셋은 설치를 못 믿는 상태이고, 그때 밖으로
                 나가는 문을 두면 사용자가 "고치러 갔는데 고칠 게 없는" 자리에 착지한다.
                 ⚠️ **나가는 것이 왼쪽, 파괴적인 것이 오른쪽 끝이다** — 세션 구역과 같은 순서다.
-                ⚠️ **`ButtonLink`가 아니라 `<a>`다** — 그 프리미티브는 `next/link`라 `target`·`rel`을
-                안 받는다. 프리미티브를 넓히는 대신 `publish-button.tsx`가 이미 쓰는 형을 따른다
-                (POSTMORTEM 2026-09-15 🔁 — 형제 프리미티브를 건드리면 소비자를 따로 세야 한다).
+                ⚠️ **`ButtonLink external`은 native `<a>`다** — `newTab`으로 새 탭을 열고
+                기존 `rel`에 `noopener`·`noreferrer`를 보존·추가한다. 형과 링은 ButtonLink가 소유한다.
               */}
               {settingsUrl !== null && (
                 <ButtonLink external href={settingsUrl} newTab rel="noreferrer">

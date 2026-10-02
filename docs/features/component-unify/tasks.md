@@ -441,3 +441,12 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - T21 DIRECTORY 추가 대조: ProjectThumbnail xs의 radius4와 sm/md/lg의 radius8을 명시해 현재 SIZE 맵과 맞췄다. 문서 diff 검사 통과, 주석 교정·최종 gate는 미완이다.
 
 - 앞 size 교정 체크포인트62b0027a는 치환 문자열이 실제 공백/백틱과 달라 실행 기록만 커밋됐다. 실제 global-search design 행을 이번 커밋에서 교정하고 diff로 확인했다. 앞 기록을 제품 수정의 증거로 세지 않는다.
+
+
+### T20 잔여 대조·ButtonLink 주석 보정 — 2026-10-03
+
+- 최종 root `97962138994783274f8a73edb5471c2d83aa9781`과 승인 design §6.3의22행을 읽기 전용 대조했다. BannerLine 알파 선·Scope 역할/키보드/사유와 지정된 링크 링을 포함해 미처리 소스 delta0이며 근거는 워커의 격리 scratch 보고서에 보존했다. 정본 문서·최종 누적 gate/실브라우저·dev push 판정은 지휘자가 소유한다.
+- 독립 Astra가 발견한 `app/page.tsx`·`components/account/github-section.tsx`의 낡은 주석 두 곳만 실제 ButtonLink external/native a·독립 newTab·기존 rel 보존/보안 rel 추가 계약으로 고친다. JSX·런타임은 바꾸지 않으며 이 실행 기록과3경로 작은 후보로 리뷰를 요청한다.
+- 지휘자 지시에 따라 주석 전용 후보의 diff 검사만 수행하고 전체 테스트·빌드는 반복하지 않는다. 지휘자의 앞선 누적 gate는 문서 교정을 위해 의도적으로 중단한 exit130이며 테스트 실패로 기록하지 않는다. 독립 리뷰·명시적 COMMIT과 지휘자의 최종 gate/푸시는 아직 대기 중이다.
+
+- 지휘자 통합: 위 주석 후보는 root와 독립 Astra0 findings 승인 뒤 a7baf491로 커밋됐다. 기존 root의 전체 R3/T21 기록을 보존하고 이 추가 실행 기록만 병합했다. T20 소스 delta0, T21 정본 승격 완료; 최종 gate/dev push와 T22 종료가 남았다.
