@@ -564,10 +564,11 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
   });
 
   describe("radius 16(`rounded-xl`)은 패널과 1024 모달뿐이다 — 셸 안 카드는 12 (DESIGN §5 · 4-Y2)", () => {
-    /** 패널(셸 `main`·공개 셸·로그인 두 판)과 1024 모달 둘, 그리고 그것을 정적으로 복제한 랜딩 목업 둘. */
+    /** 패널(셸 `main`·공개 셸·로그인 두 판)과 1024 모달 둘, 그리고 그것을 정적으로 복제한 랜딩 목업 둘과 바깥24/베젤8에 맞춘 화면16. */
     const PANEL_16 = [
       "components/landing/mockup/app-frame.tsx",
       "components/landing/mockup/publish.tsx",
+      "components/landing/stage.tsx",
       "components/logs/event-dialog.tsx",
       "components/public-shell/public-shell.tsx",
       "components/shell/content-panel.tsx",
@@ -576,7 +577,7 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
     ];
     const files = (entries: { path: string; source: string }[]) => entries.filter(({ source }) => /(?<![\w-])rounded-xl(?![\w-])/.test(source)).map(({ path }) => path).sort();
 
-    it("등재된 일곱 파일뿐이다", () => {
+    it("등재된 여덟 파일뿐이다", () => {
       expect(files(SOURCES)).toEqual(PANEL_16);
     });
 

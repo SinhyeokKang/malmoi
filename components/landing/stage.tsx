@@ -198,7 +198,7 @@ export function Stage({
             </div>
             <div
               data-landing-screen=""
-              className="absolute overflow-hidden rounded-lg border border-border-subtle bg-background"
+              className="absolute overflow-hidden rounded-xl border border-border-subtle bg-background"
               style={{ top: TOOLBAR_H, right: BEZEL, bottom: BEZEL, left: BEZEL }}
             >
               {scenes.map((scene, k) => (
