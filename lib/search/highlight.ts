@@ -50,7 +50,8 @@ export function highlightSegments(text: string, tokens: readonly string[]): { te
 }
 
 export function snippet(body: string, tokens: readonly string[], width: number): string | null {
-  const text = body.replace(/\s+/g, " ").trim();
+  // Preserve literal matches for Highlight; normal browser whitespace renders them on one line.
+  const text = body;
   const first = matchRanges(text, tokens)[0];
   if (!first) return null;
   const size = Math.max(1, Math.floor(width), first.end - first.start);

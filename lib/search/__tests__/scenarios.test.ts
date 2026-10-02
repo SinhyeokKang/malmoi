@@ -50,4 +50,22 @@ describe("검색 결과 시나리오", () => {
     const url = new URL(keyResultHref(hit), "https://example.com");
     expect(parseTranslationQuery(Object.fromEntries(url.searchParams))).toEqual({ ns: "billing", scope: "project", completion: "all", key: "a", keySurface: "main" });
   });
+  it.each(["  ", "\t", "\n"])("Keys 전체 질의의 공백 %j를 원문·번역값 스니펫과 강조까지 유지한다", whitespace => {
+    for (const q of [`settings${whitespace}demo`, "settings demo"]) {
+      expect(keySearchQuery(`  ${q}  `)).toEqual({ pattern: `%${q}%` });
+      const text = `false settings${q === "settings demo" ? whitespace : " "}demo ` + "Before ".repeat(40) + `actual ${q} After`;
+      const hit: KeyHit = { id: "space", key: "button", namespace: "billing", sourceText: text, surfaceSlug: "main", slug: "demo", name: "Demo", inKey: false, localeCode: "en", value: text };
+      const [result] = mergeKeyHits([], [hit], "demo");
+      expect(result).toEqual(hit);
+      for (const body of [result?.sourceText, result?.value]) {
+        const excerpt = snippet(body ?? "", [q], 30);
+        expect(excerpt).toContain(`actual ${q}`);
+        expect(excerpt).not.toContain("false");
+        expect(highlightSegments(excerpt ?? "", [q]).filter(s => s.match).map(s => s.text)).toEqual([q]);
+        expect(excerpt?.replace(/\s+/g, " ")).toContain("actual settings demo");
+      }
+      const url = new URL(keyResultHref(hit), "https://example.com");
+      expect(parseTranslationQuery(Object.fromEntries(url.searchParams))).toEqual({ ns: "billing", scope: "project", completion: "all", key: "space", keySurface: "main" });
+    }
+  });
 });
