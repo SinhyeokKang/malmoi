@@ -25,7 +25,7 @@ export function docsSearchEntries(summary: readonly NavNode[], pageOf: (file: st
       id: `docs:${page}${anchor === null ? "" : `#${anchor}`}`,
       page, anchor, title, section, ...(section === null ? {} : { context: section }),
       href: `${docHref(slug)}${anchor === null ? "" : `#${anchor}`}`,
-      body: toText({ type: "root", children: nodes }).trim(),
+      body: nodes.map(node => node.type === "heading" ? headingAnchor(node).text : toText(node)).join("\n").trim(),
     }));
   });
 }

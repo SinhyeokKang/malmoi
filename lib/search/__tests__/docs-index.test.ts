@@ -19,12 +19,12 @@ describe("가이드 색인", () => {
   });
   it("표식 없는 H2는 스킵·H3는 부모에 포함·코드는 포함·이미지 alt 제외", () => {
     const summary = parseSummary(parseMd("- [Title](page.md)"));
-    const entries = docsSearchEntries(summary, () => parseMd("# Title\nIntro\n## Skip\nSkipped text\n## Section {#section}\nBody\n### Child\nChild body\n```ts\nTOKEN\n```\n![secret-alt](x.png)"));
+    const entries = docsSearchEntries(summary, () => parseMd("# Title\nIntro\n## Skip\nSkipped text\n## Section {#section}\nBody\n### Child {#child}\nChild body\n```ts\nTOKEN\n```\n![secret-alt](x.png)"));
     expect(entries).toHaveLength(2);
     expect(entries[0]).toMatchObject({ title: "Title", section: null, anchor: null, body: "Intro" });
     expect(entries[1]).toMatchObject({ title: "Title", section: "Section", context: "Section", anchor: "section" });
     expect(entries[1]?.body).toContain("Child body");
     expect(entries[1]?.body).toContain("TOKEN");
-    expect(entries[1]?.body).not.toMatch(/secret-alt|Skipped|#section/);
+    expect(entries[1]?.body).not.toMatch(/secret-alt|Skipped|#section|#child/);
   });
 });
