@@ -1,5 +1,6 @@
 "use client";
 import { Link as InlineLink } from "@/components/ui/link";
+import { Highlight } from "@/components/ui/highlight";
 import { ListRow } from "@/components/ui/list-row";
 
 import {
@@ -251,15 +252,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다.
           */}
           <span className={cn("truncate text-base font-medium", status === "archived" && "text-gray-dim")}>
-            {highlightName(row.name, q).map((part, index) =>
-              part.match ? (
-                <mark key={index} className="rounded-[3px] bg-link/[0.14] px-px text-inherit">
-                  {part.text}
-                </mark>
-              ) : (
-                part.text
-              ),
-            )}
+            <Highlight segments={highlightName(row.name, q)} />
           </span>
           {/*
             메타 한 줄 — **owner/repo 하나**다(2026-09-30 사용자 — 역할·멤버 수를 걷었다). ⚠️ **`https://github.com/`를 뗀다**(시안):

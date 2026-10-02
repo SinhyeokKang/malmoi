@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Kbd } from "@/components/ui/kbd";
 import { Input } from "@/components/ui/input";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
@@ -117,9 +118,9 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
               aria-label={m.common.nav.projectSwitcher.search}
             />
           </div>
-          <kbd className="border-border text-muted-foreground shrink-0 rounded border px-1.5 py-0.5 font-sans text-xs">
+          <Kbd>
             {m.common.nav.projectSwitcher.escHint}
-          </kbd>
+          </Kbd>
         </div>
         <DropdownMenuSeparator />
         {shown.length === 0 ? (
