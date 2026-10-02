@@ -4,6 +4,7 @@ import { act } from "react";
 import { expect, it, vi, afterEach } from "vitest";
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { CopyButton } from "@/components/ui/copy-button";
+import { SecretField } from "@/components/ui/secret-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { render, find } from "./helpers/dom";
 
@@ -58,6 +59,21 @@ it("CopyButton labels success and clipboard absence/rejection without throwing",
   clipboard(vi.fn().mockRejectedValue(new Error("fixture denial")));
   await user.click(button);
   expect(button.textContent).toBe("Couldn't copy — select it yourself");
+});
+
+it.each(["sm", "md"] as const)("SecretField %s is named, readonly and selects its entire fixture on failure", async size => {
+  const user = userEvent.setup();
+  clipboard(undefined);
+  const { container } = await render(<SecretField value="synthetic-fixture" label="Fixture token" size={size} />);
+  const field = find<HTMLInputElement>(container, "input");
+  expect(field.readOnly).toBe(true);
+  expect(field.getAttribute("aria-label")).toBe("Fixture token");
+  expect(field.classList.contains(size === "sm" ? "text-xs" : "text-sm")).toBe(true);
+  if (size === "md") expect(field.classList.contains("select-all")).toBe(true);
+  await user.click(find(container, "button"));
+  expect(document.activeElement).toBe(field);
+  expect(field.selectionStart).toBe(0);
+  expect(field.selectionEnd).toBe("synthetic-fixture".length);
 });
 
 it("link copy failure exposes a selected readonly fallback; code copy has a live status", async () => {

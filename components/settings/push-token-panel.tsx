@@ -13,7 +13,7 @@ import { m } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 
-import { TokenField } from "@/components/onboarding/copy-button";
+import { SecretField } from "@/components/ui/secret-field";
 import { IconTile } from "@/components/ui/icon-tile";
 
 /**
@@ -105,7 +105,7 @@ export function PushTokenPanel({ slug, disabled = false, unpinned = false }: { s
           <p className="text-xs leading-prose">
             <strong className="text-foreground font-normal">{m.settings.token.warning}</strong>
           </p>
-          <TokenField value={token} />
+          <SecretField value={token} label={m.settings.token.title} />
         </div>
       )}
     </div>

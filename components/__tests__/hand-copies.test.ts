@@ -118,7 +118,7 @@ const RULES: Rule[] = [
     handCopy: () => false,
     bad: 'import {SearchInput as Find} from "@/components/search-input"; export const Demo = () => <Find label="Search" onSearch={search} value="" />;',
     good: 'import {SearchInput} from "@/components/ui/search-input"; export const Demo = () => <SearchInput label="Search" onSearch={search} value="" />;' },
-{ primitive: "CopyButton", retired: [], paths: ["components/translations/workspace/locale-panel.tsx", "components/ui/code-block.tsx"], minimum: 4,
+{ primitive: "CopyButton", retired: [], retiredModules: ["@/components/onboarding/copy-button", "../copy-button"], paths: ["components/translations/workspace/locale-panel.tsx", "components/ui/code-block.tsx"], minimum: 4,
     handCopy: (node, file) => canonicalTag(node, file) === "Button" && /(?:clipboard|onClick=\{copy\})/.test(node.getText(file)),
     bad: 'export const Demo = () => <Button size="sm" onClick={() => navigator.clipboard.writeText(value)}>Copy</Button>;',
     good: 'import {CopyButton} from "@/components/ui/copy-button"; export const Demo = () => <CopyButton value={value} variant="code" />;' },
@@ -133,7 +133,11 @@ const RULES: Rule[] = [
 { primitive: "Input", retired: [], paths: ["components/onboarding/steps/repo.tsx", "components/translations/workspace/tree-panel.tsx", "components/shell/project-switcher.tsx", "components/translations/workspace/locale-panel.tsx"], minimum: 10,
     handCopy: (node, file) => canonicalTag(node, file) === "Search" && /absolute/.test(classes(node, file)) && /left-/.test(classes(node, file)) || canonicalTag(node, file) === "Input" && /(?:^|\s)(?:h-\d+|text-xs|border-0)(?:\s|$)/.test(classes(node, file)),
     bad: 'export const Demo = () => <><Search className="absolute top-2 left-2.5" /><Input className="h-8 pl-8 text-xs" /></>;',
-    good: 'import {Input} from "@/components/ui/input"; export const Demo = () => <Input size="sm" icon={<Search />} clearable />;' }
+    good: 'import {Input} from "@/components/ui/input"; export const Demo = () => <Input size="sm" icon={<Search />} clearable />;' },
+{ primitive: "SecretField", retired: ["TokenField"], paths: ["components/mcp/token-modal.tsx", "components/onboarding/steps/result.tsx", "components/settings/push-token-panel.tsx"], minimum: 3,
+    handCopy: (node, file) => canonicalTag(node, file) === "code" && /border-input/.test(classes(node, file)) && /bg-muted/.test(classes(node, file)),
+    bad: 'export const Demo = () => <code className="border-input bg-muted flex h-9 rounded-md border px-2.5 text-sm select-all">fixture</code>;',
+    good: 'import {SecretField} from "@/components/ui/secret-field"; export const Demo = () => <SecretField value="fixture" label="Token" />;' }
 ];
 
 function scan(source: Source, rule: Rule): string[] {
@@ -300,6 +304,11 @@ const RETIRED_P3_SOURCES = [
     "primitive": "Input",
     "path": "components/onboarding/steps/repo.tsx",
     "code": "const P3RetiredProbe = () => (<Search className=\"text-muted-foreground pointer-events-none absolute top-2.5 left-2.5 size-4\" aria-hidden />);"
+  },
+{
+    "primitive": "SecretField",
+    "path": "components/mcp/token-modal.tsx",
+    "code": "const P3RetiredProbe = () => (<code data-token-value className=\"border-input bg-muted flex h-9 min-w-0 flex-1 items-center truncate rounded-md border px-2.5 font-sans text-sm select-all\">\n              {token}\n            </code>);"
   }
 ];
 
@@ -307,4 +316,15 @@ it.each(RETIRED_P3_SOURCES)("$primitive actual retired base150 source is detecte
   const parsed = ts.createSourceFile(fixture.path, fixture.code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX) as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] };
   expect(parsed.parseDiagnostics).toEqual([]);
   expect(scan(fixture, RULES.find(rule => rule.primitive === fixture.primitive)!).length).toBeGreaterThan(0);
+});
+
+it.each([
+  ["Input", 'import {Search as Glyph} from "lucide-react"; const Demo = () => <Glyph className="absolute top-2 left-2" />;'],
+  ["Input", 'import {Input as Entry} from "@/components/ui/input"; const Demo = () => <Entry className="h-8 text-xs" />;'],
+  ["FieldTrigger", 'import {DropdownMenuTrigger as Toggle} from "@/components/ui/dropdown-menu"; const Demo = () => <Toggle className="inline-flex h-9 rounded-md border" />;'],
+  ["ProjectThumbnail", 'import * as UI from "@/components/ui/image-tile"; const Demo = () => <UI.ImageTile fallback={<span className={hueFill(name)}>Image</span>} />;'],
+  ["CopyButton", 'import {Button as Action} from "@/components/ui/button"; const Demo = () => <Action onClick={() => navigator.clipboard.writeText(value)}>Copy</Action>;'],
+])("%s owned hand-copy aliases cannot escape the current-path detector", (primitive, code) => {
+  const rule = RULES.find(rule => rule.primitive === primitive)!;
+  expect(scan({path: rule.paths[0]!, code}, rule).length).toBeGreaterThan(0);
 });

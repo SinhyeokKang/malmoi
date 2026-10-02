@@ -356,3 +356,11 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 
 - Copy 검증: 이전 CopyButton에서 새 variant/오류 계약4 failed 및 missing clipboard uncaught1error로 RED. 구현 후 관련14파일479테스트/typecheck exit0. 이후 fresh rejection/sync-throw 테스트2개를 더해 오류 fallback 콜백도 정확히1회 확인했다. 첫 추가 테스트는 userEvent의 clipboard 모의 덮기를 잡아 순서를 바로잡았고 초기 로그를 별도 보존했다.
 - 실제 base150 CopyLink 소스·반복 live 비우기 삭제·링크 fallback 선택 삭제·검사기 제거 각각 RED. 올바른 clipboard 설정 뒤 catch 삭제도 실제 RED, 복원 후 hand-copy/Copy/CodeBlock3파일117테스트 GREEN 및 복원된 최종 typecheck exit0. 전체 P3 gate는 아직 미완이며 Copy14경로 독립 리뷰0 findings 및 명시적 COMMIT 승인을 받았다.
+
+- Secret 후보: 기존 TokenField와 MCP code칸을 실제 소비자3곳에서 읽기전용 Input+CopyButton으로 이관한다. push36/text-xs와 MCP36/text-sm/select-all 및 사전 접근 이름을 유지하고 복사 실패 시 값 전체 선택을 확인한다. 실제 토큰은 보지 않고 fixture만 쓴다.
+- 이전 Copy 후보가 남긴 TokenField-only compatibility 모듈/두 import를 여기서 제거한다. Copy/Secret 구모듈·TokenField export/import 사본0 및 모든 hand-copy 행/최종 API 부채0을 전수 검사한다. 기존ring2 유지; 독립 리뷰/COMMIT 및 최종 gate/R3/T20a/T21/T22는 미완이다.
+
+- Secret 검증: 이전 실제 ResultStep/PushTokenPanel의 읽기전용 native input 계약 RED 후 관련10파일351테스트 및 typecheck exit0. 모든8행 검사/추가 alias5 카나리아도 GREEN이다. 실제 base150 Secret 사본·실패 시 선택/포커스·readOnly 제거·검사기 무력화가 각각 RED, 복원 후 hand-copy/Copy·Secret/TokenField3파일 계약 GREEN 및 최종 typecheck exit0.
+- Secret13경로 후보를 고정해 독립 리뷰와 명시적 COMMIT을 기다린다. 마지막 테두리 링/invalid Select 우선순위와 최종 누적 gate 및 지휘자 R3/T20a/T21/T22는 미완이다.
+
+- Secret13경로 독립 리뷰0 findings 및 명시적 COMMIT7 승인을 받았다. 관련10파일351 GREEN/복원3파일124 GREEN/최종 alias 포함 hand-copy110 GREEN/최종 typecheck exit0이며 마지막 테두리 링 및 전체 누적 gate는 다음 후보에서 검증한다.

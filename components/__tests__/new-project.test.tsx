@@ -233,7 +233,7 @@ it("④는 모든 적재가 끝난 결과와 토큰을 보존하고 추가 적�
   mocks.createProject.mockResolvedValue({ ok: true, slug: "acme-web", pushToken: "test-token", baseBranch: "main", count: 2, surfaces: [], yaml: "server-workflow" });
   await naming();
   await click(button("Create project"));
-  expect(document.body.textContent).toContain("test-token");
+  expect(find<HTMLInputElement>(document.body, "[data-secret-field]").value).toBe("test-token");
   expect(document.body.textContent).toContain("Synced 2 keys.");
   expect(document.body.textContent).toContain("server-workflow");
   expect(button("Open project").disabled).toBe(false);
@@ -920,7 +920,7 @@ it("두 표면 완료 응답까지 ③에 머문 뒤 서버 YAML과 합산 결�
     surfaces: [{ surfaceSlug: "i18n" }, { surfaceSlug: "other" }], yaml: "surface: i18n\nsurface: other\n" }));
   expect(document.body.textContent).toContain("Step 4 of 4");
   expect(document.body.textContent).toContain("Synced 4 keys.");
-  expect(document.body.textContent).toContain("saved-token");
+  expect(find<HTMLInputElement>(document.body, "[data-secret-field]").value).toBe("saved-token");
   expect(document.body.querySelector("pre")?.textContent?.match(/surface:/g)).toHaveLength(2);
   expect(mocks.runFirstIngest).not.toHaveBeenCalled(); expect(mocks.createProject).toHaveBeenCalledTimes(1);
 });

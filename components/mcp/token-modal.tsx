@@ -4,7 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { useRef, useState, useTransition, type RefObject } from "react";
 
 import { issueApiToken, type ApiTokenIssueResult } from "@/app/(edit)/mcp/actions";
-import { CopyButton } from "@/components/ui/copy-button";
+import { SecretField } from "@/components/ui/secret-field";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useLandAfter } from "@/components/ui/focus";
@@ -135,13 +135,7 @@ export function TokenModal({
           <p className="text-sm">
             <strong className="font-normal">{m.mcpConnector.result.copyNow}</strong>
           </p>
-          <div className="flex items-center gap-2">
-            {/* ④ 토큰 칩과 같은 형(36 · radius 10 · muted) — 크기만 14다(핸드오프 §4). 전체 선택으로 손 복사가 된다. */}
-            <code data-token-value className="border-input bg-muted flex h-9 min-w-0 flex-1 items-center truncate rounded-md border px-2.5 font-sans text-sm select-all">
-              {token}
-            </code>
-            <CopyButton value={token} />
-          </div>
+          <SecretField value={token} label={m.mcpConnector.result.title} size="md" />
           <p className="text-muted-foreground text-xs leading-prose">{m.mcpConnector.result.setEnv}</p>
         </div>
       ) : (
