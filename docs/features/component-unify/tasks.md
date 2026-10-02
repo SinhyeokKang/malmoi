@@ -349,3 +349,10 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 
 - FieldTrigger 검증: 실제 FilterMenu 열림 글리프 RED 후 관련14파일466테스트 및 typecheck exit0. 실제 base150 FieldTrigger 사본·native/ref/guard 전달 제거·열림 글리프 제거·검사기 무력화가 각각 RED, 소스 복원 후 관련 검사 GREEN.
 - 새로운 FieldTrigger와 위임 Select/SelectRow도 실제 포커스 컨트롤 픽스처로 검사한다. 정상/오류 포커스의 기존ring2는 이번 작은 후보에서 그대로이며 최종 R1 invalid 우선순위 및 ring1 전환은 마지막 링 후보에서 적용한다. FieldTrigger13경로 독립 리뷰0 findings 및 명시적 COMMIT 승인을 받았다.
+
+- Copy 후보: UI CopyButton과 Source/Events/Connected apps/MCP 복사 import, CodeBlock code형 및 LocalePanel CopyLink link형을 같은 작은 후보에 이관한다. code는 text-only/상시 live/반복2초 reset, link는 기존 접근 이름/선택된 읽기전용 fallback을 유지한다.
+- 기존 TokenField export만 onboarding/copy-button.tsx에 임시 유지하고 새 UI CopyButton을 사용한다(새 임시 API 없음). 그 파일의 TokenField-only import2곳과 제거는 바로 다음 Secret 후보 소유다. 따라서 전체 구모듈 import0 판정만 다음 후보까지 보류하며 Copy 손사본/실소비자 하한/actual 카나리아는 지금 검사한다. 기존ring2 유지, 실제 fixture 값만 사용한다.
+- 독립 리뷰/COMMIT과 최종 gate는 미완이다.
+
+- Copy 검증: 이전 CopyButton에서 새 variant/오류 계약4 failed 및 missing clipboard uncaught1error로 RED. 구현 후 관련14파일479테스트/typecheck exit0. 이후 fresh rejection/sync-throw 테스트2개를 더해 오류 fallback 콜백도 정확히1회 확인했다. 첫 추가 테스트는 userEvent의 clipboard 모의 덮기를 잡아 순서를 바로잡았고 초기 로그를 별도 보존했다.
+- 실제 base150 CopyLink 소스·반복 live 비우기 삭제·링크 fallback 선택 삭제·검사기 제거 각각 RED. 올바른 clipboard 설정 뒤 catch 삭제도 실제 RED, 복원 후 hand-copy/Copy/CodeBlock3파일117테스트 GREEN 및 복원된 최종 typecheck exit0. 전체 P3 gate는 아직 미완이며 Copy14경로 독립 리뷰0 findings 및 명시적 COMMIT 승인을 받았다.

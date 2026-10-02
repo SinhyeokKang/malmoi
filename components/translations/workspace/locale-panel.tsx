@@ -1,11 +1,10 @@
 "use client";
 import { Link as InlineLink } from "@/components/ui/link";
-import { Check, ChevronRight, FileJson2, Link2 } from "lucide-react";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { ChevronRight, FileJson2 } from "lucide-react";
+import { useId, type ReactNode } from "react";
 
 import { LocaleBadge } from "@/components/translations/locale-badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -269,29 +268,6 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
 
 /** 키 이름 블록 우측 28 버튼 (`2j`). 성공은 같은 자리에서 `Copied` 2초, 실패는 선택된 읽기 전용 주소 입력이다 — 토스트를 쓰지 않는다. */
 function CopyLink({ href }: { href: string }) {
-  const w = m.translations.workspace.detail;
-  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const url = typeof window === "undefined" ? href : new URL(href, window.location.origin).toString();
-  useEffect(() => {
-    if (state === "copied") { const timer = setTimeout(() => setState("idle"), 2000); return () => clearTimeout(timer); }
-    return undefined;
-  }, [state]);
-  return (
-    <span className="flex shrink-0 items-center gap-1.5">
-      {/* 실패하면 주소를 **선택된 채로** 준다 — 손으로 복사할 수 있어야 한다. */}
-      {state === "failed" && <Input width={192} size="xs" autoFocus readOnly value={url} aria-label={w.copyFailed} onFocus={event => event.currentTarget.select()} />}
-      <Button
-        size="sm"
-        // ⚠️ 복사된 동안은 이름을 비운다 (audit #39 · WCAG 2.5.3) — 보이는 `Copied`를 `Copy link`가 덮었다.
-        aria-label={state === "copied" ? undefined : w.copyLink}
-        onClick={() => {
-          if (navigator.clipboard === undefined) { setState("failed"); return; }
-          navigator.clipboard.writeText(url).then(() => setState("copied"), () => setState("failed"));
-        }}
-        className="h-7 min-w-7 gap-1 px-1.5"
-      >
-        {state === "copied" ? <><Check className="size-3.5" aria-hidden />{w.copied}</> : <Link2 className="size-3.5 text-gray-strong" aria-hidden />}
-      </Button>
-    </span>
-  );
+  return <CopyButton value={url} label={m.translations.workspace.detail.copyLink} variant="link" />;
 }

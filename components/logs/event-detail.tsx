@@ -4,7 +4,7 @@ import { Fact } from "@/components/ui/facts";
 
 import type { ReactNode } from "react";
 
-import { CopyButton } from "@/components/onboarding/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { EventGlyph } from "@/components/logs/glyph";
 import { Alert } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/ui/status-badge";

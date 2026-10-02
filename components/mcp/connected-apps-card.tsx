@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from "reac
 import { disconnectOAuthConnection, type OAuthDisconnectResult } from "@/app/(edit)/mcp/actions";
 import { BrandLogo } from "@/components/mcp/brand-logo";
 import { GrantBadges } from "@/components/mcp/grant-badges";
-import { CopyButton } from "@/components/onboarding/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { McpIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/ui/status-badge";

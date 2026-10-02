@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LocaleFlag } from "@/components/translations/locale-badge";
 
 import { relativeTime } from "@/lib/relative-time";
-import { CopyButton } from "@/components/onboarding/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import { planSurfaceImportStatus, type SurfaceImportStatus } from "@/lib/import/surface-status";

@@ -21,6 +21,7 @@ vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ updateProjectN
 vi.mock("@/app/(edit)/account/actions", () => ({ updateProfileName: mocks.updateProfileName, unlinkLoginMethod: mocks.unlinkLoginMethod, startLoginMethodConnect: mocks.startLoginMethodConnect }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, push: vi.fn(), replace: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));
 
+import { CopyButton } from "@/components/ui/copy-button";
 import { LoginMethods } from "@/components/account/login-methods";
 import { ProfileNameForm } from "@/components/account/profile-name-form";
 import { SyncButton } from "@/components/home/sync-button";
@@ -149,9 +150,14 @@ describe("성공은 전부터 있던 live 영역에 쓴다 (#39)", () => {
     expect(region?.textContent).toContain(m.account.profile.saved);
   });
 
-  it("CopyLink의 접근 이름이 보이는 Copied를 덮지 않는다 (WCAG 2.5.3)", () => {
-    const source = read("components/translations/workspace/locale-panel.tsx");
-    expect(source).toMatch(/aria-label=\{state === "copied" \? undefined : w\.copyLink\}/);
+  it("CopyLink의 접근 이름이 보이는 Copied를 덮지 않는다 (WCAG 2.5.3)", async () => {
+    const user = userEvent.setup();
+    const { container } = await render(<CopyButton variant="link" value="https://example.com/fixture" label={m.translations.workspace.detail.copyLink} />);
+    const button = container.querySelector("button")!;
+    expect(button.getAttribute("aria-label")).toBe(m.translations.workspace.detail.copyLink);
+    await act(async () => { await user.click(button); });
+    expect(button.textContent).toBe(m.common.copied);
+    expect(button.hasAttribute("aria-label")).toBe(false);
   });
 });
 

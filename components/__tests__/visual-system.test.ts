@@ -72,7 +72,7 @@ function openingTags(source: string, names: string): string[] {
   return out;
 }
 
-const buttonTags = (source: string): string[] => openingTags(source, "Button|ButtonLink");
+const buttonTags = (source: string): string[] => openingTags(source, "Button|ButtonLink|CopyButton");
 
 /** 넷째 높이 `h-8` · 임의 radius · `size="sm"` 위의 다른 radius — 덮은 className 문자열을 돌려준다. */
 function buttonOverrides(source: string): string[] {
@@ -219,16 +219,18 @@ describe("글자 크기·자간·radius는 스케일이 든다 (audit #45·#46·
     const path = "components/translations/workspace/locale-panel.tsx";
     const source = SOURCES.find((entry) => entry.path === path)?.source ?? "";
     expect(buttonOverrides(source)).toEqual([]);
-    const mutated = source.replace('className="h-7 min-w-7 gap-1 px-1.5"', 'className="h-8 min-w-7 gap-1 px-1.5"');
+    const mutated = source.replace('<CopyButton value={url}', '<CopyButton className="h-8" value={url}');
     expect(mutated).not.toBe(source);
-    expect(buttonOverrides(mutated)).toEqual(["h-8 min-w-7 gap-1 px-1.5"]);
+    expect(buttonOverrides(mutated)).toEqual(["h-8"]);
   });
 
   it("리터럴 Button 여는 태그를 전부 읽는다 — `=>`나 className 뒤의 `size`에서 끊기지 않는다", () => {
     const tags = SOURCES.flatMap(({ source }) => buttonTags(source));
     expect(tags.length).toBeGreaterThan(100);
     const copy = SOURCES.find((entry) => entry.path === "components/translations/workspace/locale-panel.tsx")?.source ?? "";
-    expect(buttonTags(copy).some((tag) => tag.includes('size="sm"') && tag.includes("h-7 min-w-7"))).toBe(true);
+    expect(buttonTags(copy).some(tag => tag.includes("CopyButton"))).toBe(true);
+    const fixture = '<Button onClick={() => navigator.clipboard.writeText(value)} className="h-8" size="sm">Copy</Button>';
+    expect(buttonOverrides(fixture)).toEqual(["h-8"]);
   });
 });
 

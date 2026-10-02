@@ -4,7 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { useRef, useState, useTransition, type RefObject } from "react";
 
 import { issueApiToken, type ApiTokenIssueResult } from "@/app/(edit)/mcp/actions";
-import { CopyButton } from "@/components/onboarding/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useLandAfter } from "@/components/ui/focus";

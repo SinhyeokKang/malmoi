@@ -118,6 +118,10 @@ const RULES: Rule[] = [
     handCopy: () => false,
     bad: 'import {SearchInput as Find} from "@/components/search-input"; export const Demo = () => <Find label="Search" onSearch={search} value="" />;',
     good: 'import {SearchInput} from "@/components/ui/search-input"; export const Demo = () => <SearchInput label="Search" onSearch={search} value="" />;' },
+{ primitive: "CopyButton", retired: [], paths: ["components/translations/workspace/locale-panel.tsx", "components/ui/code-block.tsx"], minimum: 4,
+    handCopy: (node, file) => canonicalTag(node, file) === "Button" && /(?:clipboard|onClick=\{copy\})/.test(node.getText(file)),
+    bad: 'export const Demo = () => <Button size="sm" onClick={() => navigator.clipboard.writeText(value)}>Copy</Button>;',
+    good: 'import {CopyButton} from "@/components/ui/copy-button"; export const Demo = () => <CopyButton value={value} variant="code" />;' },
 { primitive: "Skeleton", retired: ["SkeletonLine"], paths: [], minimum: 10,
     handCopy: () => false,
     bad: 'import {SkeletonLine as Line} from "@/components/ui/skeleton"; export const Demo = () => <Line size="xs" />;',
@@ -276,6 +280,11 @@ const RETIRED_P3_SOURCES = [
     "primitive": "SearchInput",
     "path": "components/projects/search-input.tsx",
     "code": "import { SearchInput } from \"@/components/search-input\";\nconst P3RetiredProbe = () => (<SearchInput\n      value={q}\n      onSearch={onSearch}\n      label={m.projects.search.label}\n      placeholder={m.projects.search.placeholder}\n    />);"
+  },
+{
+    "primitive": "CopyButton",
+    "path": "components/translations/workspace/locale-panel.tsx",
+    "code": "function CopyLink({ href }: { href: string }) {\n  const w = m.translations.workspace.detail;\n  const [state, setState] = useState<\"idle\" | \"copied\" | \"failed\">(\"idle\");\n  const url = typeof window === \"undefined\" ? href : new URL(href, window.location.origin).toString();\n  useEffect(() => {\n    if (state === \"copied\") { const timer = setTimeout(() => setState(\"idle\"), 2000); return () => clearTimeout(timer); }\n    return undefined;\n  }, [state]);\n  return (\n    <span className=\"flex shrink-0 items-center gap-1.5\">\n      {/* 실패하면 주소를 **선택된 채로** 준다 — 손으로 복사할 수 있어야 한다. */}\n      {state === \"failed\" && <Input width={192} autoFocus readOnly value={url} aria-label={w.copyFailed} onFocus={event => event.currentTarget.select()} className=\"h-7 text-xs\" />}\n      <Button\n        size=\"sm\"\n        // ⚠️ 복사된 동안은 이름을 비운다 (audit #39 · WCAG 2.5.3) — 보이는 `Copied`를 `Copy link`가 덮었다.\n        aria-label={state === \"copied\" ? undefined : w.copyLink}\n        onClick={() => {\n          if (navigator.clipboard === undefined) { setState(\"failed\"); return; }\n          navigator.clipboard.writeText(url).then(() => setState(\"copied\"), () => setState(\"failed\"));\n        }}\n        className=\"h-7 min-w-7 gap-1 px-1.5\"\n      >\n        {state === \"copied\" ? <><Check className=\"size-3.5\" aria-hidden />{w.copied}</> : <Link2 className=\"size-3.5 text-gray-strong\" aria-hidden />}\n      </Button>\n    </span>\n  );\n}"
   },
 {
     "primitive": "Skeleton",

@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
-import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-
-/** `Copied`가 서 있는 시간(시안 1b). */
-const COPIED_MS = 2000;
 
 /**
  * 코드 블록 (DESIGN §6.4 · §6.61 · 시안 `Docs.dc.html` 1b) — 카드(선 · radius 12). `/docs` 원고의 펜스와 앱의 워크플로 YAML이
@@ -22,7 +17,7 @@ const COPIED_MS = 2000;
  * 스크린리더가 안정적으로 읽지 않는다. region은 처음부터 DOM에 있어야 한다(나중에 붙은 live region은 무시된다).
  *
  * ⚠️ **`navigator.clipboard`가 실패할 수 있다**(권한 거부·비보안 컨텍스트) — `CopyButton`과 같이 실패를 라벨로 말한다.
- * 그 컴포넌트를 쓰지 않는 것은 되돌림(2초)과 live region 때문이다 — 소비자 다섯의 동작을 여기 맞춰 바꾸지 않는다.
+ * `CopyButton`의 code variant가 되돌림(2초)과 live region을 함께 든다.
  */
 export function CodeBlock({ code, filename, fill = false, className }: {
   code: string;
@@ -30,39 +25,7 @@ export function CodeBlock({ code, filename, fill = false, className }: {
   fill?: boolean;
   className?: string;
 }) {
-  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
-  /**
-   * live region의 글자 — 상태와 따로 둔다. ⚠️ **다시 누르면 먼저 비운다** — 2초 안에 다시 누르면 `Copied` → `Copied`라
-   * 글자가 안 바뀌고, 안 바뀐 live region은 다시 읽히지 않는다.
-   */
-  const [announcement, setAnnouncement] = useState("");
-  const timer = useRef(0);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-
-  const fail = () => {
-    setState("failed");
-    setAnnouncement(m.common.copyFailed);
-  };
-  const copy = () => {
-    window.clearTimeout(timer.current);
-    setAnnouncement("");
-    // ⚠️ 비보안 컨텍스트에는 `navigator.clipboard`가 없다 — `writeText` 호출이 동기로 던진다(locale-panel과 같은 가드).
-    if (navigator.clipboard === undefined) return fail();
-    void navigator.clipboard.writeText(code).then(() => {
-      setState("copied");
-      setAnnouncement(m.common.copied);
-      timer.current = window.setTimeout(() => {
-        setState("idle");
-        setAnnouncement("");
-      }, COPIED_MS);
-    }, fail);
-  };
-
-  const button = (
-    <Button size="sm" onClick={copy} className="min-w-[66px]">
-      {state === "copied" ? m.common.copied : state === "failed" ? m.common.copyFailed : m.common.copy}
-    </Button>
-  );
+  const button = <CopyButton value={code} variant="code" />;
 
   return (
     <div className={cn("border-border relative overflow-hidden rounded-lg border", fill && "flex min-h-0 flex-1 flex-col", className)}>
@@ -87,9 +50,6 @@ export function CodeBlock({ code, filename, fill = false, className }: {
       >
         <code className="text-mono">{code}</code>
       </pre>
-      <span role="status" aria-live="polite" className="sr-only">
-        {announcement}
-      </span>
     </div>
   );
 }
