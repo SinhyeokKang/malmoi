@@ -17,8 +17,8 @@
 | GS1 | T0, A 전체 | feature 참조, lib/search 순수 함수, lib/keys/search 순수 부분, nav.ts, layout.tsx, client-graph tests | 없음 | Sol high | 필수; TDD·뮤테이션·pnpm gate --base dev | 로컬 통합 49f62133, 리뷰 2회/수정 1회 |
 | GS2 | B, C | lib/keys/search, 통합·성능 tests, app/search, api/search-index, loaders, entry-points/client-graph tests, design 측정값 | GS1 | Astra high | 필수; 테넌트·성능·gate, B4 조건부 | 로컬 통합 7863dc0d, 리뷰 1회/수정 0회 |
 | GS3 | D | ui primitives, 두 셸 header, project-list/switcher, 관련 tests, DESIGN D7 | GS2 | Sol high | 필수; 접근성·포커스·사본 스캔·gate | D 전체 통합 894cbfaa, 리뷰 지적0 |
-| GS4 | E, F6 자동 검증 | search UI, messages/en.tsx, layout/headers, workspace, docs hash helper, 관련 tests | GS3 | Sol high | 필수; 레이스·이탈·착지·gate | 대기 |
-| GS5 | F, 문서 마무리 | PRODUCT, DESIGN, ARCHITECTURE, CLAUDE+미러, DIRECTORY, README, guide | GS4 | Sol high | 필수; 사실 대조·미러·가이드 검증 | 대기 |
+| GS4 | E, F6 자동 검증 | search UI, messages/en.tsx, layout/headers, workspace, docs hash helper, 관련 tests | GS3 | Sol high | 필수; 레이스·이탈·착지·gate | 로컬 통합 ccc84462, 리뷰2회/수정1회 |
+| GS5 | F, 문서 마무리 | PRODUCT, DESIGN, ARCHITECTURE, CLAUDE+미러, DIRECTORY, README, guide | GS4 | Sol high | 필수; 사실 대조·미러·가이드 검증 | GS5a 통합, 최종 문서 착수 |
 | GS6 | G | 읽기 전용 QA, handoff | 통합·push | Sol high | 필수; ego-browser·BugShot·1280/1440/1890 | 대기 |
 
 ## 파일 겹침 행렬
@@ -71,3 +71,5 @@ GS5a 증거: 원본96d7bea4, 문서3커밋을 dev9f7c4eef까지 통합. Node24 g
 - GS4 원본0e8a81fb: Node24 gate exit0,10524 passed+기존1 skipped, 격리PG541 passed. 초기 게이트15건 실패(직접 행 클릭 스크롤·검색 초기 마운트)는 작성자가 수정했다.
 - 독립 Astra 리뷰 red0/yellow2: 같은 문서 검색 착지 후 목차 aria-current가 이전 절에 남음(실제 소비자 재현), NavigationDim 정상/이탈 차단 pointer·Enter 경로의 결정적 테스트가 scratch에만 있고 저장소에는 없음. GS4는 아직 미통합이다.
 - GS4-fix1은 같은 GS4 워크트리의 후속 Sol/high Dispatch가 맡는다. 기존 작성자는 컨텍스트88%↑로 해제했고 인계·로그를 보존했다. 소유권은 목차·공유 착지 helper·필요한 검색 소비자와 회귀 테스트뿐이다. 테스트 red→fix→gate 및 기존 독립 리뷰어의 재검토 후 통합한다. GS5/GS6는 그 뒤다.
+
+GS4 최종 증거: 원본c2083d9d, Node24 gate exit0,10527 passed+기존1 skipped, 격리PG541 passed. fix1 최초 테스트 scrollTo 오버로드 타입 실패를 수정했고 독립 Astra 재검토 red0/yellow0/white0으로 두 지적 해소. dev ccc84462까지8커밋 통합. 실제 브라우저 치수·착지·IME는 GS6 미검증이다. GS5는 이 구현을 기준으로 F1/F2/F5/F6/F7 및 가이드를 수행한다. 지휘자 통합 gate와 문서 작업은 별도 체크아웃에서 병행하고 PG 성능 실행은 겹치지 않는다.

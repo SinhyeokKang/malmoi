@@ -89,9 +89,9 @@
 
 ## E. 화면 조립
 
-- [ ] **E1** `messages/en.tsx` `search` 절(트리거 라벨 `Search` · placeholder `Search…` · 그룹 제목 넷 `Projects`·`Menus`·`Keys`·`Docs` · `View all projects` · `Browse all docs` · `Go to` · 로딩 둘(Keys·Docs) · 실패 둘 · 결과 수 공지 · 0건 제목/설명).
+- [x] **E1** `messages/en.tsx` `search` 절(트리거 라벨 `Search` · placeholder `Search…` · 그룹 제목 넷 `Projects`·`Menus`·`Keys`·`Docs` · `View all projects` · `Browse all docs` · `Go to` · 로딩 둘(Keys·Docs) · 실패 둘 · 결과 수 공지 · 0건 제목/설명).
   — 검증: `no-korean-ui` · `brand-spelling` · `terminology` green · placeholder는 U+2026, 접근 이름엔 없음.
-- [ ] **E2** `components/search/search-trigger.tsx` · `search-dialog.tsx` — 프리미티브 조립만. 앱 셸 `layout.tsx`가 사이드바와 같은 `toNavProjects` 결과를 Header에도 넘긴다, 공개 셸 헤더는 `account`만 넘기고 Dialog가 로그인일 때 `load-memberships.ts`를 부른다. **`CLIENT_LIB_FILES`에 `lib/search/{match,highlight,nav-index,keys,key-href,load-index,load-memberships}.ts`를 더한다**(소비자가 생기는 이 커밋). 번역 화면 `workspace.tsx`의 선택 행 스크롤 effect 조건에 선택 키 변경을 더하고(spec 13a), 목차의 해시 착지 로직을 공유 헬퍼로 끌어내 목차와 Dialog가 함께 부른다(spec 13).
+- [x] **E2** `components/search/search-trigger.tsx` · `search-dialog.tsx` — 프리미티브 조립만. 앱 셸 `layout.tsx`가 사이드바와 같은 `toNavProjects` 결과를 Header에도 넘긴다, 공개 셸 헤더는 `account`만 넘기고 Dialog가 로그인일 때 `load-memberships.ts`를 부른다. **`CLIENT_LIB_FILES`에 `lib/search/{match,highlight,nav-index,keys,key-href,load-index,load-memberships}.ts`를 더한다**(소비자가 생기는 이 커밋). 번역 화면 `workspace.tsx`의 선택 행 스크롤 effect 조건에 선택 키 변경을 더하고(spec 13a), 목차의 해시 착지 로직을 공유 헬퍼로 끌어내 목차와 Dialog가 함께 부른다(spec 13).
   — 테스트 절차: user-event 파일 머리에 `vi.setConfig({ testTimeout: 20_000 })` · Dialog는 **실제 타이머로 연 뒤** `vi.useFakeTimers({ shouldAdvanceTime: true })` + `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })`(선례 `home-actions.test.tsx:104-108`) · 지연 Promise는 테스트 끝에서 푼다(POSTMORTEM 2026-09-18).
   — 검증: jsdom —
   - 공개 셸 로그인 매 열기에 멤버십 Action 1회 · 같은 열기 내 재렌더·질의 변경은 추가 호출 0회 · 같은 페이지/다른 공개 페이지에서 재열기 시 각각 새 호출 · 생성·보관·역할 변경 뒤 재열기에서 최신 목록 · 다시 열면 이전 목록 대신 로딩 · 닫힘/재열기 뒤 도착한 이전 응답 무시 · 비로그인 0회 · 멤버십 `{ ok: false }` → 비로그인 결과 · 공개 셸 로그인에서 Projects·Keys가 선다
