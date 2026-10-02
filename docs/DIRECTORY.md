@@ -204,7 +204,7 @@ components/
   ui/facts.tsx          export는 Fact다. 소비자가 dl·grid·값 의미를 소유하고 라벨/값 배치(row/stacked/inline, width96/120)를 공유한다.
                         as="tr"는 TableRow/Head/Cell을 조립하며 행 라벨은 scope="row"다
   ui/empty-state.tsx    EmptyState(page/card/inset, 기존 번역 목록의 list 배치) + NoMatch(SearchX).
-                        NoMatch의 출구 action: ReactElement는 필수다 — href/onClick 전용 API가 아니다
+                        NoMatch의 출구 action?: ReactElement는 선택이다 — 검색 Dialog의 0건 결과는 생략하고 기존 소비자는 출구를 유지한다. href/onClick 전용 API가 아니다
   ui/status-badge.tsx · ui/icon-tile.tsx
                         **StatusBadge는 상태 키, IconTile은 의미 톤을 받는 두 형**(2026-10-01, ux-drift-unify — DESIGN §2.4). StatusBadge는 state 하나로 variant·낱말을
                         lib/status/canon의 STATE에서 읽고, IconTile은 tone(StateTone)으로 §2.4 아이콘 칸의 면·글자를 든다.
