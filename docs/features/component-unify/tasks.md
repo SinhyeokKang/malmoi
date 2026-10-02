@@ -431,3 +431,5 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - T21 global-search spec: 삭제될 feature 설계 대신 DESIGN §8/실제 LargeModal 상수를 참조하고 NoMatch 필수 action 계약과 미래 출구 없는 형의 작업 경계를 대조했다. 이번 커밋은 이 문서와 component-unify 실행 기록만 포함한다. 최종 독립 리뷰·gate/push/T22는 미완이다.
 
 - T21 global-search design: 삭제될 feature 설계 대신 DESIGN §8/실제 LargeModal 상수를 참조하고 NoMatch 필수 action 계약과 미래 출구 없는 형의 작업 경계를 대조했다. 이번 커밋은 이 문서와 component-unify 실행 기록만 포함한다. 최종 독립 리뷰·gate/push/T22는 미완이다.
+
+- T21 global-search tasks: 삭제될 feature 설계 대신 DESIGN §8/실제 LargeModal 상수를 참조하고 NoMatch 필수 action 계약과 미래 출구 없는 형의 작업 경계를 대조했다. 이번 커밋은 이 문서와 component-unify 실행 기록만 포함한다. 최종 독립 리뷰·gate/push/T22는 미완이다.
