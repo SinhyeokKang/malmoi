@@ -31,3 +31,11 @@ it("기존 검색 지우기 출구와 목록 형을 유지한다", async () => {
   expect(button.textContent).toBe("Clear search");
   expect(button.parentElement?.className).toBe("flex flex-wrap items-center justify-center gap-2");
 });
+
+it("목록 형도 출구를 생략하면 액션 래퍼를 만들지 않는다", async () => {
+  const { container } = await render(<NoMatch {...noExit} layout="list" />);
+  const root = find<HTMLElement>(container, "div");
+  expect(root.children).toHaveLength(2);
+  expect(root.lastElementChild?.tagName).toBe("P");
+  expect(root.querySelector("button, a")).toBeNull();
+});

@@ -7,6 +7,7 @@ import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import { CloseButton } from "./close-button";
+import { LARGE_MODAL_HEIGHT, LARGE_MODAL_OVERLAY, LARGE_MODAL_PANEL } from "./large-modal";
 
 /**
  * 초대 폼·확인 모달 (DESIGN §6.4).
@@ -71,6 +72,50 @@ function returnTarget(): HTMLElement | null {
 }
 export const DialogTrigger = Primitive.Trigger;
 export const DialogClose = Primitive.Close;
+
+/** 검색 패널은 대형 모달의 치수를 공유하고 위에서 열린다. 기존 확인 Dialog의 구조는 그대로다. */
+export function CommandDialog({ open, onOpenChange, title, children, onEscapeKeyDown, onCloseAutoFocus }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: ReactNode;
+  children: ReactNode;
+  /** 조합 중 Esc는 닫힘이 아니라 취소다 — 입력을 소유한 호출부가 판정한다. */
+  onEscapeKeyDown?: ComponentProps<typeof Primitive.Content>["onEscapeKeyDown"];
+  /** 같은 가이드 페이지 해시 착지는 제목 포커스가 이기도록 복귀를 막는다. */
+  onCloseAutoFocus?: ComponentProps<typeof Primitive.Content>["onCloseAutoFocus"];
+}) {
+  return <Primitive.Root open={open} onOpenChange={onOpenChange}>
+    <Primitive.Portal>
+      <Primitive.Overlay className={LARGE_MODAL_OVERLAY} />
+      <Primitive.Content
+        aria-modal="true"
+        aria-describedby={undefined}
+        className={cn(LARGE_MODAL_PANEL, LARGE_MODAL_HEIGHT, "top-4 translate-y-0")}
+        onEscapeKeyDown={onEscapeKeyDown}
+        onOpenAutoFocus={event => {
+          // DialogContent와 같은 표식 규칙 — 이미 안쪽 autoFocus가 섰으면 비켜선다.
+          if (event.defaultPrevented || !(event.target instanceof HTMLElement)) return;
+          if (event.target.contains(document.activeElement)) return;
+          const target = event.target.querySelector<HTMLElement>("[data-initial-focus]");
+          if (target === null) return;
+          event.preventDefault();
+          target.focus();
+        }}
+        onCloseAutoFocus={event => {
+          onCloseAutoFocus?.(event);
+          if (event.defaultPrevented) return;
+          const target = returnTarget();
+          if (target === null) return;
+          event.preventDefault();
+          target.focus();
+        }}
+      >
+        <Primitive.Title className="sr-only">{title}</Primitive.Title>
+        {children}
+      </Primitive.Content>
+    </Primitive.Portal>
+  </Primitive.Root>;
+}
 
 export function DialogContent({
   title,

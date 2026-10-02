@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 /** 폭·radius·dim만 공유한다. 이력 상세의 본문·머리·높이 계약은 소비자에 남는다. */
 export const LARGE_MODAL_OVERLAY = "bg-foreground/32 fixed inset-0 z-50 backdrop-blur-[6px]";
 export const LARGE_MODAL_PANEL = "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl shadow-medium";
+/** CommandDialog도 같은 높이를 쓴다 — 위치를 바꿔도 하한·상한은 한 벌이다. */
+export const LARGE_MODAL_HEIGHT = "min-h-[min(80svh,800px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]";
 
 /** 단계 전이·비동기 도착은 live 영역 하나를 공유한다. 버튼군은 호출부가 actions로 공급한다. */
 export type LargeModalProps = {
@@ -131,7 +133,7 @@ export function LargeModal({
           data-onboarding-panel
           className={cn(
             LARGE_MODAL_PANEL,
-            "min-h-[min(80svh,800px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]",
+            LARGE_MODAL_HEIGHT,
             className,
           )}
         >

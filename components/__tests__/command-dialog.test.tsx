@@ -99,6 +99,38 @@ it("Esc를 소비한 호출부는 닫지 않는다 — IME 취소의 경계", as
   expect(onOpenChange).not.toHaveBeenCalled();
 });
 
+it("표식이 없으면 Radix 기본 첫 입력으로 간다", async () => {
+  await render(<CommandDialog open onOpenChange={() => {}} title="Search"><Input aria-label="First" /><Input aria-label="Second" /></CommandDialog>);
+  expect(document.activeElement).toBe(document.querySelector('[aria-label="First"]'));
+});
+
+it("연 버튼이 꺼졌으면 앞의 무관한 컨트롤로 거슬러 가지 않는다", async () => {
+  const closed = vi.fn();
+  function DisabledOrigin() {
+    const [open, setOpen] = useState(false);
+    const [disabled, setDisabled] = useState(false);
+    return <>
+      <Input aria-label="Earlier" />
+      <Button disabled={disabled} onClick={() => setOpen(true)}>Open search</Button>
+      <CommandDialog open={open} onOpenChange={setOpen} title="Search" onCloseAutoFocus={closed}>
+        <Input aria-label="Search query" data-initial-focus />
+        <Button onClick={() => { setDisabled(true); setOpen(false); }}>Run</Button>
+      </CommandDialog>
+    </>;
+  }
+  await render(<DisabledOrigin />);
+  const earlier = find<HTMLInputElement>(document.body, '[aria-label="Earlier"]');
+  earlier.focus();
+  await click(opener());
+  const searchInput = query();
+  await click(find<HTMLElement>(document.body, '[role="dialog"] button'));
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  await vi.waitFor(() => expect(closed).toHaveBeenCalledOnce());
+  expect(opener().disabled).toBe(true);
+  expect(document.activeElement).not.toBe(searchInput);
+  expect(document.activeElement).not.toBe(earlier);
+});
+
 it("오버레이를 누르면 닫히고 연 자리로 돌아온다", async () => {
   await render(<Host />);
   await click(opener());

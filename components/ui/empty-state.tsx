@@ -87,7 +87,7 @@ export function EmptyState({
   );
 }
 
-/** Search/filter zero has an explicit exit; server consumers pass a link. */
-export function NoMatch(props: Omit<Parameters<typeof EmptyState>[0], "icon" | "action"> & { action: ReactElement }) {
+/** Search/filter zero has an exit unless its input remains immediately available (CommandDialog). */
+export function NoMatch(props: Omit<Parameters<typeof EmptyState>[0], "icon" | "action"> & { action?: ReactElement }) {
   return <EmptyState {...props} icon={SearchX} />;
 }
