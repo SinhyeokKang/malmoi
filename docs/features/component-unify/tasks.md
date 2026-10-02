@@ -35,7 +35,7 @@
 | B2 T5–T6 | primitive 계약 테스트들, `components/__tests__/api-contract.test.ts` | R1 push 완료 / T5·T6 별도 | GPT-6.1 Sol high / 계약·허용목록 그물 | T5 완료 `b9515558`: 7파일59계약·mutation7건·gate645파일/9847테스트·독립 리뷰 green. T6 완료 `993b4190`: 111행/120회·22카나리아·독립 리뷰2건 수정·gate646파일/9869테스트 green |
 | B3a T7 | `ui/badge.tsx`, `ui/status-badge.tsx`, `ui/panel-card.tsx`, `lib/status/canon.ts`, `lib/events/view.ts`, `logs/result-badge.tsx`, `logs/event-detail.tsx`, Badge 소비자·C | T6 / 상태축1커밋 | GPT-6 Astra high / 결과 의미·색 예외 결합 | 완료 `17ad3852`: 41파일·상태 위반18행 해소·문구/CSS 보존·리뷰 보완·gate646파일/9951테스트+격리PG520 green |
 | B3b T8 | `lib/tone.ts→hue.ts`, `ui/tone.ts`, avatar/image 소비자, client-graph 테스트 | T7 / hue축1커밋 | GPT-6.1 Sol medium / 이름 변경 | 완료 `486a9e97`: hue 개명·팔레트/CSS 보존·13허용행 해소·Unicode mutation 보강·gate647파일/9965테스트+격리PG520 green |
-| B3c T9 | `ui/button.tsx`, `ui/alert.tsx`, `ui/skeleton.tsx`, 스피너 전달 `ui/file-input.tsx`·`reconnect-button.tsx`, 해당 호출부(특히 publish/workspace), C | T8 / 크기축1커밋 | GPT-6.1 Sol high / 크기·busy 렌더 계약 | G, spinnerSize 14/16·기본16 보존, 값0 |
+| B3c T9 | `ui/button.tsx`, `ui/alert.tsx`, `ui/skeleton.tsx`, 스피너 전달 `ui/file-input.tsx`·`reconnect-button.tsx`, 해당 호출부(특히 publish/workspace), C | T8 / 크기축1커밋 | GPT-6.1 Sol high / 크기·busy 렌더 계약 | 완료 `447c34da`: 42파일·spinner14/16·icon24/28/32/36·Skeleton70호출 보존·gate647파일/9991테스트 green |
 | B3d T10 | `ui/input.tsx`, `ui/select.tsx`, `components/search-input.tsx`, design §9 폭 호출부, C | T9 / 폭축1커밋 | GPT-6.1 Sol high / responsive 폭 보존 | G, 래퍼 포함 값0 |
 | B3e T11 | `ui/modal.tsx`, dialog/row-card/form-group/segmented-control/image-tile, 해당 슬롯 호출부, C | T10 / 슬롯 등 축별커밋 | GPT-6.1 Sol high / 포커스·슬롯 경계 | G, ② 허용목록 규약행0 |
 | R2 리뷰·② QA | 읽기 전용 전체 이름 변경 | T11 / 커밋 없음 | GPT-6.1 Sol high / 결합 회귀 | 전체 화면·포털·기능 QA 후 지휘자 /push |
@@ -83,13 +83,15 @@
 - **1280×900 R1**: Home·Projects·Translations·Sources·Logs·Settings를 T0와 대조했다. Home/Logs/Sources는 픽셀 차이0, Projects5·Translations4·Settings24픽셀의 미세 렌더링 차이만 남았다. Home/Logs/Settings의 267/406/157개 보이는 HTML 요소 좌표와 계산된 CSS 14속성은 전부 같았다. 승인 밖 레이아웃·색 변화는 발견하지 않았다.
 - 최초 촬영 뒤 브라우저 스크롤바 모드가 달라져, Home/Logs/Settings는 동일 T0 SHA를 임시 디렉터리에서 같은 브라우저·Webpack dev 조건으로 재촬영했다. 상대 시간 문구·개발 도구 렌더링 표시는 안정 상태에서 구분했다. 환경 파일 복사·프로젝트 데이터 변경 없이 검증했고 서버·임시 디렉터리·브라우저 공간을 정리했다.
 - 상세 로컬 증거: `.scratch/component-unify-r1-qa.md`, `.scratch/component-unify/{before,after,baseline-current-browser,after-current-browser}/`, `dom-comparison.json`. 각 배치 인계서는 `.scratch/handoff-component-unify-b1{a,b,c,d}.md`다.
-- **단위 ② T5–T8 완료, T9 진행. T9 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
+- **단위 ② T5–T9 완료, T10 진행. T10 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
 
 - **T5·T6 계약 그물 완료.** T5 `b9515558`은 현재 프리미티브 59계약과 7개 mutation을 고정했다. T6 `993b4190`은 실제 위반 111행/120회와 해소 태스크를 기록했다. 독립 리뷰에서 발견한 상태 6건 누락·로컬 크기 타입 별칭 검출 공백을 수정했고, 22카나리아·실제 Note 허용행 삭제 red/동일 바이트 복원 green·전체 gate646파일/9869테스트·typecheck·build·미러 exit0을 통과했다. 태스크 경계 명시는 `90cc5218`이며, T7은 이 커밋을 기준으로 시작한다.
 
 - **T7 상태 통합 완료 `17ad3852`.** Badge 모양 이름과 의미 상태를 분리하고 Logs·표면 결과·PanelRow·Note·직접 상태 배지5곳을 같은 상태 정본으로 이관했다. Logs의 회색 성공·Failed 낱말과 기존 CSS·슬롯을 보존했다. 기존 API 기대값4건과 독립 리뷰의 Note 조건식 스캐너 공백을 수정했으며, 최종 gate646파일/9951테스트·격리 PostgreSQL31파일/520테스트·typecheck·build·미러 exit0 및 독립 리뷰0건을 확인했다. 실제 브라우저·AT 검증은 R2에 남아 있다.
 
 - **T8 hue 개명 완료 `486a9e97`.** 색상 결정 잎과 실제 소비자·메일 상수의 이름만 바꾸고 팔레트·해시·CSS·hex를 보존했다. 독립 리뷰에서 Unicode 회귀 테스트를 보강해 실제 UTF16 mutation 실패를 확인했으며, 최종 gate647파일/9965테스트·격리 PostgreSQL31파일/520테스트·build·미러 exit0 및 미해결 지적0건을 확인했다. ARCHITECTURE와 push 문서의 잎 경로도 갱신했다.
+
+- **T9 크기 API 통합 완료 `447c34da`.** Button 아이콘·스피너, Alert, SkeletonLine과 실제 소비자를 새 이름으로 이관했다. 기존 14/16px 스피너·24/28/32/36px 아이콘 버튼·SkeletonLine70호출의 치수를 보존했고, 담당 허용행15개를 해소했다. 독립 리뷰의 옛 API 검출 카나리아를 보강한 뒤 최종 gate647파일/9991테스트·typecheck·build·미러 exit0 및 미해결 지적0건을 확인했다.
 
 ## 단위 ① 토큰 · 정리 — 값 변화 0
 
@@ -135,6 +137,7 @@
 - **T11** 진행 · 슬롯 · a11y 철자 · className 이름 · rest props(실수요 자리) · `data-tone`(tone 가진 프리미티브).
   뒤집는 테스트: `onboarding-modal.test.tsx`(`nextPending`·`headerAction`·`footer`) · `members-screen.test.ts` · `focus-ring.test.ts` 해당 행.
   검증 [자동]: T7–T11 소유 허용 목록 행 0 · `pnpm typecheck`. `Modal.headerAction`은 명시된 삭제 태스크 T14까지 남긴다. `RowCardList.labelledBy`는 T11에서 `aria-labelledby`로 바꾸고, T12의 컴포넌트 교체와 구분한다. 전체 허용 목록 0(spec 완료 조건 4)은 design §5.2대로 단위 ③ 종료 때 확인한다.
+  T11은 진행(A) → 슬롯(B) → native aria·FormGroup(C) → className(D) → data-tone(E) 다섯 축으로 나누며, 각 축마다 독립 리뷰·전체 gate·커밋을 둔다. T10 뒤 허용행28개 중 T11 소유18개를 해소하면 T14 1·T15 2·T16 1·T19a 6의 **10개**가 남는다. Modal Next의 기존 native disabled/loading, 실제 provider glyph 교체, 설명 id 병합과 이미지 폴백의 투명 배경 계약을 보존한다.
   `[commit]` T7–T11 각각 — `refactor(ui): …`
 - **단위 ② 끝**: `/runtime-test`(화면 목록 전수 — 이름만 바뀌었으므로 기능 회귀 확인) → `/push`.
 
