@@ -75,11 +75,10 @@ export function TranslationsView({ phase }: { phase: Phase }) {
               <ArrowDownToLine className="text-gray-strong" aria-hidden />
               {m.repositorySync.action}
             </span>
-            <span data-landing-publish="" aria-disabled={phase === "published" ? "true" : undefined} className={cn(buttonClass({ variant: "primary" }), phase === "published" && "bg-muted text-muted-foreground")}>
-              <Send aria-hidden />
-              {m.translations.publish.button}
-              {phase !== "published" && <Swap phase={phase} before={<PublishCount n={fixture.unsentBefore} />} after={<PublishCount n={fixture.unsentAfter} />} />}
-            </span>
+            <Swap phase={phase === "published" ? "missing" : phase}
+              before={<span data-landing-publish="" aria-disabled className={cn(buttonClass({ variant: "primary" }), "bg-muted text-muted-foreground")}><Send aria-hidden />{m.translations.publish.button}</span>}
+              after={<span data-landing-publish="" className={buttonClass({ variant: "primary" })}><Send aria-hidden />{m.translations.publish.button}<PublishCount n={fixture.unsentAfter} /></span>}
+            />
             {phase === "published" && <span className={buttonClass({ variant: "default" })}>{m.translations.publish.viewResult}</span>}
           </span>
         </div>
@@ -91,11 +90,13 @@ export function TranslationsView({ phase }: { phase: Phase }) {
           </span>
         </div>
         {phase !== "published" && (
-          <div data-landing-hold="">
-            <Alert variant="neutral" actions={<span className={buttonClass({ variant: "default" })}>{m.translations.banner.sendWithPublish}<ArrowUp className="size-3.5" aria-hidden /></span>}>
-              <Swap phase={phase} before={m.translations.banner.paused(fixture.unsentBefore)} after={m.translations.banner.paused(fixture.unsentAfter)} />
-            </Alert>
-          </div>
+          <Swap phase={phase} display="flex" before={null} after={
+            <div data-landing-hold="" className="w-full">
+              <Alert variant="neutral" actions={<span className={buttonClass({ variant: "default" })}>{m.translations.banner.sendWithPublish}<ArrowUp className="size-3.5" aria-hidden /></span>}>
+                {m.translations.banner.paused(fixture.unsentAfter)}
+              </Alert>
+            </div>
+          } />
         )}
       </div>
       <div className="min-h-0 flex-1 overflow-hidden p-4">

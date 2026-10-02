@@ -221,16 +221,23 @@ describe("목업 — 씬이 이야기를 든다", () => {
     expect(scene.querySelector("[data-landing-hold]")).toBeNull();
   });
 
-  it("①~④ 미전달 편집 보류 안내가 있고 ③ 저장 시 개수도 바뀐다", async () => {
+  it("①②는 미전달 없이 시작하고 ③ 저장 뒤에만 보류 안내가 생긴다", async () => {
     const container = await mount();
-    for (const k of [0, 1, 2, 3]) {
-      const banner = find(layer(container, k), "[data-landing-hold]");
-      expect(banner.textContent).toContain(m.translations.banner.sendWithPublish);
-      expect(banner.textContent).toContain(m.translations.banner.paused(k === 3 ? fixture.unsentAfter : fixture.unsentBefore));
-      expect(banner.querySelector('[data-alert="neutral"]')).not.toBeNull();
+    expect(fixture.unsentBefore).toBe(0);
+    expect(fixture.unsentAfter).toBe(1);
+    for (const k of [0, 1]) {
+      const scene = layer(container, k);
+      expect(scene.querySelector("[data-landing-hold]")).toBeNull();
+      expect(scene.textContent).not.toContain(m.translations.workspace.list.notSent);
+      const publish = find(scene, "[data-landing-publish]");
+      expect(publish.getAttribute("aria-disabled")).toBe("true");
+      expect(publish.textContent).toBe(p.button);
     }
     const saving = find(layer(container, 2), "[data-landing-hold]");
-    expect(saving.querySelector('[data-landing-badge="after"]')?.textContent).toBe(m.translations.banner.paused(fixture.unsentAfter));
+    expect(saving.closest('[data-landing-badge="after"]')).not.toBeNull();
+    const saved = find(layer(container, 3), "[data-landing-hold]");
+    expect(saved.textContent).toContain(m.translations.banner.paused(1));
+    expect(fixture.diff).toEqual([{ key: fixture.selected.key, code: fixture.selected.typedCode, before: null, after: fixture.selected.typed }]);
   });
 
   it("② 타이핑 입력에 실제 Textarea의 활성 링이 있다", async () => {
@@ -270,7 +277,8 @@ describe("목업 — 씬이 이야기를 든다", () => {
     const scene = layer(await mount(), 2);
     const before = find<HTMLElement>(scene, "[data-landing-badge=before]");
     const after = find<HTMLElement>(scene, "[data-landing-badge=after]");
-    expect(before.textContent).toContain(String(fixture.unsentBefore));
+    expect(before.querySelector("[data-landing-publish]")?.getAttribute("aria-disabled")).toBe("true");
+    expect(before.textContent).toBe(p.button);
     expect(after.textContent).toContain(String(fixture.unsentAfter));
     expect(before.className).toContain("group-data-[badge=1]/frame:hidden");
     expect(after.className).toMatch(/(^|\s)hidden(\s|$)/);
@@ -281,7 +289,7 @@ describe("목업 — 씬이 이야기를 든다", () => {
     const text = layer(await mount(), 3).textContent ?? "";
     expect(text).toContain(p.previewTitle(fixture.unsentAfter));
     expect(text).toContain(p.previewIntro(fixture.repo));
-    expect(text).toContain(p.beforeLabel);
+    expect(text).not.toContain(p.beforeLabel);
     expect(text).toContain(p.afterLabel);
     for (const row of fixture.diff) expect(text).toContain(row.after);
   });
@@ -359,7 +367,7 @@ describe("목업 소스 — 문구는 사전을 지난다", () => {
   });
 
   /** 열거형 prop(`phase`·`variant`·`size`·상태 키 `state`)은 문구가 아니라 코드 값이다. */
-  const CODE_PROPS = new Set(["className", "phase", "variant", "size", "state"]);
+  const CODE_PROPS = new Set(["className", "phase", "variant", "size", "state", "display"]);
 
   it("문자열 prop 리터럴이 className·data-*·열거형 말고 없다", () => {
     const offenders = files.flatMap((name) =>

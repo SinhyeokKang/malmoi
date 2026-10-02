@@ -534,8 +534,8 @@ export const en = {
       ],
       keyCount: 288,
       /** Publish 배지 — 씬 ③의 저장 전 → 후. */
-      unsentBefore: 1,
-      unsentAfter: 2,
+      unsentBefore: 0,
+      unsentAfter: 1,
       /** 언어 → 파일 경로. diff가 파일 이름을 따로 들지 않는다 — 언어와 파일이 어긋날 자리를 없앤다. */
       file: (code: string): string => `messages/${code}.json`,
       /**
@@ -544,7 +544,6 @@ export const en = {
        * 프로젝트를 말한다(#114). 선택 키의 편집은 ②③이 만든 `fr` 하나다.
        */
       diff: [
-        { key: "cart.empty", code: "de", before: "Ihr Warenkorb ist leer", after: "Dein Warenkorb ist leer" },
         { key: "checkout.submit", code: "fr", before: null, after: "Passer la commande" },
       ],
       pullRequest: 128,
