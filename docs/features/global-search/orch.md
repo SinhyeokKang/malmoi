@@ -16,7 +16,7 @@
 |---|---|---|---|---|---|---|
 | GS1 | T0, A 전체 | feature 참조, lib/search 순수 함수, lib/keys/search 순수 부분, nav.ts, layout.tsx, client-graph tests | 없음 | Sol high | 필수; TDD·뮤테이션·pnpm gate --base dev | 로컬 통합 49f62133, 리뷰 2회/수정 1회 |
 | GS2 | B, C | lib/keys/search, 통합·성능 tests, app/search, api/search-index, loaders, entry-points/client-graph tests, design 측정값 | GS1 | Astra high | 필수; 테넌트·성능·gate, B4 조건부 | 로컬 통합 7863dc0d, 리뷰 1회/수정 0회 |
-| GS3 | D | ui primitives, 두 셸 header, project-list/switcher, 관련 tests, DESIGN D7 | GS2 | Sol high | 필수; 접근성·포커스·사본 스캔·gate | 대기 |
+| GS3 | D | ui primitives, 두 셸 header, project-list/switcher, 관련 tests, DESIGN D7 | GS2 | Sol high | 필수; 접근성·포커스·사본 스캔·gate | D 전체 통합 894cbfaa, 리뷰 지적0 |
 | GS4 | E, F6 자동 검증 | search UI, messages/en.tsx, layout/headers, workspace, docs hash helper, 관련 tests | GS3 | Sol high | 필수; 레이스·이탈·착지·gate | 대기 |
 | GS5 | F, 문서 마무리 | PRODUCT, DESIGN, ARCHITECTURE, CLAUDE+미러, DIRECTORY, README, guide | GS4 | Sol high | 필수; 사실 대조·미러·가이드 검증 | 대기 |
 | GS6 | G | 읽기 전용 QA, handoff | 통합·push | Sol high | 필수; ego-browser·BugShot·1280/1440/1890 | 대기 |
@@ -55,3 +55,5 @@ GS2 증거: 원본 bfc1f089, 전체10470 passed + 기존1 skipped, 격리PG539 p
 2026-10-03 사용자 결정: 지휘 계획을 먼저 문서화·커밋하고 시작하는 방식을 `/orchestrate`의 고정 절차로 채택했다. 파일 이름은 `orch.md`이며 이번 문서도 이름을 맞췄다. 원본 명령 `.claude/commands/orchestrate.md`와 Codex 미러에 반영한다.
 
 통합 증거: dev24a8f2bd의 Node24 `pnpm gate` exit0, db:generate/typecheck/test/격리PG/build/mirror 전부 통과. 로그 `.scratch/global-search/gate-integration-2.log`.
+
+GS3 D5/D7 증거: 원본6a10d83a, Node24 gate exit0, 10489 passed + 기존1 skipped, 집중215건. 독립 Astra 리뷰 red0/yellow0/white0. Command의 실제 client entry 명시·keys.ts 등록 시점, window capture 선택 콜백 편차 수용. E는 닫힘 예약 후 연결된 링크 클릭을 유지하고 실제 이탈 가드/해시 소비자 시나리오를 검사한다.
