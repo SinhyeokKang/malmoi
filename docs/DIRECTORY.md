@@ -127,6 +127,11 @@ app/
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
                         entry-points의 면제가 파일이 아니라 **export 단위**(EXEMPT_ACTIONS)다 — 파일 단위면
                         여기 붙는 둘째 export가 조용히 무인가로 열린다
+  search/actions.ts    검색 읽기 전용 Action 둘(searchKeysAction · loadSearchMembershipsAction). page.tsx가 없어 검색 라우트는 없다.
+                        readSession union → 세션 userId로 키 코어/멤버십을 좁힌다. redirect·revalidate·질의 로그 없음.
+                        __tests__/actions.test.ts는 만료·장애·입력·일곱 NavProject 필드 투영을 센다
+  api/search-index/    route.ts — SUMMARY 가이드 절의 공개 JSON { docs }, force-static. 질의·세션·DB·쿠키 없음.
+                        원고 실패는 빌드 실패고 __tests__/route.test.ts가 이 경계를 센다
   api/push/             CI → DB. Bearer가 그 프로젝트의 토큰 원문이다(서버 env가 아니다)
   api/push/failure/     CI가 **적재에 실패했다는 사실**만 남긴다(2026-09-13). 파싱이 깨지면 /api/push는
                         아예 안 불려서 그 실패가 대상 리포 로그에만 있었다. 같은 토큰 · 코드 넷 ·
@@ -210,6 +215,13 @@ components/
                         (CountProps — 개수와 문장이 짝이라 문장 없는 개수는 타입 오류). ⚠️ 0을 숨기는 것은 화면 규칙이고 판정은 0을 값으로 낸다(lib/shell/nav)
   ui/close-button.tsx   닫기 X 한 형(ghost · 36 · 원형 · X 20) — Dialog · 1024 모달 · 이력 상세 · Alert · Sources 결과 행이 쓴다. modal.tsx에서 추출했다.
                         ⚠️ label이 필수다 — 자리마다 접근 이름이 다르다(Close · Dismiss)
+  ui/kbd.tsx           Kbd — 스위처 Esc와 검색 플랫폼/Enter 칩의 한 벌. aria-hidden은 소비자 슬롯이 든다. 기존 손 kbd를 이관했다
+  ui/highlight.tsx     Highlight — highlightSegments의 text/match 조각을 mark로 그린다. /projects와 검색의 손 mark를 모았다
+  ui/field-button.tsx  FieldButton — 검색 캡슐 320×36/rounded-full · icon/placeholder/shortcut 슬롯 · 접근 이름 필수
+  ui/dialog.tsx       기존 440 Dialog + 형제 CommandDialog. 검색만 LargeModal 패널·높이·dim을 공유하며 top16으로 옮긴다.
+                        입력 첫 포커스·Esc/배경 닫힘·연 자리 복귀, 조합 Esc·해시 착지 복귀 억제는 소비자가 잇는다
+  ui/command.tsx      Command/CommandInput/CommandStatus/CommandList/CommandGroup/CommandItem — combobox/listbox.
+                        활성 id·실제 링크 click·입력 포커스·sr 결과 수를 소유하며 검색/필터 판정은 소비자다
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
   ui/large-modal.tsx    LargeModal/LargeModalProps — 공용 1024 껍데기. 온보딩·Publish·초대·Sources 추가/상세·Workflow·MCP 토큰 모달이 쓴다.
                         ⚠️ ui/dialog.tsx(440)의 Overlay·padding·바닥 배치를 바꾸지 않고 Radix Dialog.*를 직접 조립한다.
@@ -245,6 +257,10 @@ components/
                         토큰의 공개 시점·저장·발급 정책은 호스트가 소유한다
   ui/skeleton.tsx       Skeleton — size가 없으면 블록, xs/sm/md/lg면 line 모드. 기존 기본 radius4와 명시 radius·줄 높이를 유지한다.
                         line은 U+200B로 줄 상자를 보존하고 장식은 aria-hidden이다
+  search/               search-trigger(두 셸의 FieldButton · 플랫폼 단축키 · 열기마다 새 Dialog 세대) ·
+                        search-dialog(미리보기·Projects/Menus/Keys/Docs 조립 · Docs 탭 캐시 · 공개 멤버십 매 열기 재조회 ·
+                        Keys 250ms/세대 무효화 · 실제 링크 이동 · 같은 문서 해시 착지). 프리미티브만 조립한다.
+                        __tests__/global-search · search-privacy는 부분 실패/레이스/이탈·dim/목차 소비자와 저장·추적0을 센다
   shell/                앱 셸. ⚠️ 루트가 h-svh overflow-hidden이고 min-h-svh가 아니다 — min-이면
                         aside가 문서 높이만큼 늘어 Sign out이 화면 밖으로 나간다(malmoi#13)
                         ⚠️ min-w-[1280px]과 CONTENT_MAX(max-w-7xl)가 같은 숫자다 — 최소폭에서 상한까지
@@ -253,6 +269,8 @@ components/
                         "지금 보고 있는 것"을 말할 것이 사라진다
                         ⚠️ 본문 랜드마크를 ContentPanel이 든다 — 화면은 자기 <main>을 안 든다
                         ⚠️ 사이드바 항목 노출은 편의이고 차단이 아니다(방어는 페이지) — 판정은 lib/shell/nav.ts
+                        header-bar.tsx  앱·공개 헤더의 공통3칸 grid(start/center/end), 검색을 뷰포트 가운데에 둔다.
+                        header.tsx는 받은 멤버십을 검색에 넘기고 public-shell/header.tsx는 계정만 넘긴다
                         navigation-dim.tsx  화면 이동 dim — 셸이 아니라 루트 레이아웃이 든다(공개 셸·로그인에도 선다).
                         판정(다른 pathname만)은 lib/shell/navigation-dim.ts
                         new-project-icon.tsx  헤더 [New project] 링크의 앞 아이콘을 ui/LinkProgress에 넘기는 클라이언트 잎.
@@ -313,7 +331,7 @@ components/
                         rehype-raw 없음 · urlTransform 기본값 · 이미지는 링크로. 원고와 같은 급은 docs/classes.ts 상수로만 공유한다)
   public-doc-toc.tsx · public-doc-table.tsx
                         두 공개 문서가 한 벌씩 쓰는 목차 Toc(클라이언트 잎 — [data-public-scroller] 구독 → rAF →
-                        lib/public-doc/toc의 currentSection, 클릭은 scrollTo(top − 48) + 절 h2로 포커스)와 표
+                        lib/public-doc/toc의 currentSection, 클릭·검색 착지는 lib/public-doc/landing의 공통48 오프셋 + 절 h2 포커스 + 목차 현재 절 고정)와 표
                         DocTable/DocTableFrame(role=region 스크롤 래퍼 + scrollable={false} — POSTMORTEM 2026-09-19 ·
                         급은 DOC_TABLE 한 상수). /docs는 칸을 react-markdown이 그리므로 틀(DocTableFrame)만 쓴다
   landing/              랜딩(`/`) 화면. 셸은 components/public-shell/다.
@@ -438,7 +456,9 @@ components/
                         인라인 Alert로 내고 redirect하지 않는다. submit-button은 useFormStatus 하나를
                         감싸 로그인·초대 폼이 같은 pending을 쓰게 한다. slow-notice(useSlow)는 긴 원격 실행(탐지·첫 적재·Sync·
                         Publish)에 지연 문구 한 줄을 띄운다 — ⚠️ SLOW_AFTER_MS = GITHUB_WAIT_MS로 값이 한 벌이다, 사본을 두지 않는다
-  __tests__/            focus-ring(소스 스캔 — 탭으로 지나가야 보이는 결함이라 눈으로 두 번 놓쳤다) ·
+  __tests__/            command-dialog · command · field-button · highlight-kbd · no-match(신규 검색 프리미티브의 DOM/포커스/IME) ·
+                        global-search(실제 이탈·dim·해시 착지 소비자) · search-privacy(저장·쿠키·추적0 + 검출기 자기검사) ·
+                        focus-ring(소스 스캔 — 탭으로 지나가야 보이는 결함이라 눈으로 두 번 놓쳤다) ·
                         docs-content(`/docs`의 상한·포맷·action 넷·마커를 정본 상수와 실제 `uses:`에 대조) ·
                         disabled-pairing(⚠️ buttonClass의 disabled: 유틸리티마다 aria-disabled: 짝이
                         있는지 + 그 스타일을 ui/button.tsx 밖에서 쓰지 않는지. <a>와 Radix 트리거는
@@ -559,6 +579,9 @@ lib/
                         save(planSave·planKeySave·KeySaveInput — 셀 판정의 정본은 planSave 하나다) ·
                         flag(국기 253 — ⚠️ 매핑이 원리적으로 실패하고,
                         계약은 실패했을 때 코드만 그리는 것이다)
+                        · search(글로벌 Keys 서버 조회 — 세션 userId의 비보관 멤버 프로젝트만 SQL 안에서 확정, 최대2문장,
+                        첫 적재 완료 비보관 소스·활성 키/로케일). __tests__/search.test · search.integration · search-ui.integration ·
+                        search-performance.integration은 순수 입력/권한/착지/계획·방문 상한을 센다(search-fixture는 격리PG 시드)
                         · translation-rework 서버 경로 넷(2026-09-23 — 화면은 C4에서 붙는다): translation-list(트리·요약 목록·상세
                         조회, oracle은 `lib/translations/summary.ts`) · save-key(키 단위 저장 + 복원 기준 기록) · revert(Revert
                         미리보기·실행) · delivery(전달 확인 상태 — 저장과 Revert가 같은 판정을 쓴다). 넷 다 `server-only`가 없다(격리 PG가 직접 부른다)
@@ -724,6 +747,8 @@ lib/
                         행위자를 select하지 않는다(POSTMORTEM 2026-09-29 #146). 판정(주체·보류 한 줄)은 meta에 남아 순수다
                         ⚠️ **write-lock(2026-10-01, sync-lock R5)도 server-only 조회다** — 적재 lease 두 컬럼을 읽어 lib/sync/plan의
                         planWriteLock에 넘기고 시각만 돌려준다(토큰 없음). Home의 [Sync]·배너 [Try again]이 그것으로 멈춘다
+  shell/nav.ts         역할별 구역·항목과 activeProject·toNavProjects(레이아웃/검색 Action의 일곱 필드 투영).
+                        __tests__/nav-projects.test.ts가 보관·기본 소스·집계와 서버 전용 필드 미노출을 센다
   shell/panel-size.ts   px 치수 → 리사이즈 패널의 % 제약. ⚠️ 분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다
                         — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
                         ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다
@@ -785,7 +810,13 @@ lib/
                         시각은 semver 숫자순 · truncated = 거르기 전 100건) · markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog ·
                         imagesToLinks) · load(server-only 껍데기 — fetch · revalidate 3600 · 3초 타임아웃 · ⚠️ 던지지 않는다, 로그엔 status와
                         남은 한도만). ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
-  public-doc/           공개 문서 목차의 현재 절 판정 — toc(currentSection). ⚠️ 잎(import 0) — 목차 클라이언트가 값으로 읽는다
+  search/               match(토큰 AND·순위·상한·빈 입력 미리보기) · nav-index(역할별 내비→Projects/Menus) ·
+                        docs-index(순수 함수 — SUMMARY 원고→페이지 도입/H2 절·평문) · highlight(원문 위치 보존 강조·일치 주변 snippet) ·
+                        keys(플랫폼 단축키/조합·입력·열린 Dialog 제외/활성 id) · key-href(KeyHit 타입·선택 키 번역 주소) ·
+                        load-index(공개 GET의 pending/성공 Promise 탭 재사용·실패 재시도) · load-memberships(매 호출 Action, 캐시 없음).
+                        __tests__/는 각 계약 + scenarios의 세션/역할/판정 차이/스니펫 시나리오를 센다. 클라이언트 전이 그래프는 정확 일치로 등록한다
+  public-doc/           toc(currentSection) · landing(documentTop · landDocumentHeading). 둘 다 서버 의존 없는 클라이언트 잎이다.
+                        목차·검색이 같은48 오프셋/제목 포커스/해시 착지를 쓰고, 스크롤러-local 사건으로 목차의 현재 절 고정도 옮긴다
   guide/                `/docs` 원고의 순수 함수 + 로더. parse(mdast 한 벌 — 게이트·목차·렌더러가 같은 트리) · summary(SUMMARY →
                         내비, slug ↔ 파일) · collect(링크·라벨·이미지 수집, resolveDocLink) · sections(절·표·도입 문단) ·
                         toc(extractToc — H2만, 둘 미만이면 빈 목록 · tableLabel) · rules(렌더러가 약속하지 않는 원고 문법 — raw HTML · 섞인/링크 이미지 · 각주 · SUMMARY 셋째 단) · dictionary(dictionaryStrings — 사전의 문자열 잎, 굵은 라벨 게이트) · remark(렌더 직전 손질 — {#id} → id · 링크 해소 ·
