@@ -13,7 +13,7 @@
 **조사 기준 `aed73f32`, 2026-10-02.** 선행 디렉터리 둘은 없다. S4 프리미티브 누락은 **S14 사용자 승인**으로 단위 ③(T19c–f)에 포함했다. T0은 수치·범위를 갱신한 계획 작업이며 구현 완료를 뜻하지 않는다.
 
 - 완료한 조사: design §9 패턴 재실행, JSX AST 호출 수·width·placement, TTR 이동 참조, 선행 해소 항목 제거, 전체 배치와 겹침 행렬.
-- **계획 완료**: 독립 리뷰 지적2건(T12/T13 제거 경계·T9 스피너 값0)을 수정하고 지휘자가 대조했다. 수정 뒤 `pnpm gate --base aed73f32` green(638파일/9634테스트·빌드·미러), 전체 배치 수립을 사용자에게 알렸다. 이 문서 커밋이 T0 경계이며 구현은 미착수다. 사용자 선택 S14·S15와 지휘자의 기존 결정 적용 D2–D7은 design §8에 반영했다.
+- **계획 완료**: 독립 리뷰 지적2건(T12/T13 제거 경계·T9 스피너 값0)을 수정하고 지휘자가 대조했다. 수정 뒤 `pnpm gate --base aed73f32` green(638파일/9634테스트·빌드·미러), 전체 배치 수립을 사용자에게 알렸다. 이 문서의 T0 커밋 당시 구현은 미착수였다. 이후 진행은 아래 실행 기록이 정본이다. 사용자 선택 S14·S15와 지휘자의 기존 결정 적용 D2–D7은 design §8에 반영했다.
 - **TTR 보존 계약**: FilterMenu md0/sm2(`workspace.tsx:814`, `locale-panel.tsx:76`, 둘 다 align=end), DropdownMenu collisionPadding8, ListItemButton disabled hover 없음, 범위 aria-current=true/위치 location, 목록 memo와 필터 슬롯 유지. 검색 label과 placeholder를 합치지 않는다.
 - **검증**: design §9 문자열 수는 주석 포함이고 UI 호출 수는 JSX 노드다. 파일 수 기준 C5 탈락(11px·1016px·850px)을 토큰으로 만들지 않는다. 미결 칸을 완료 처리하지 않는다.
 - `[commit] docs(feature): component-unify refreshed inventory` — **지휘자 소유**, 본 T0 워커는 커밋·빌드·구현하지 않는다.
@@ -28,10 +28,10 @@
 |---|---|---|---|---|
 | B0 T0 | 이 폴더 spec/design/tasks | 결정·독립 리뷰 후 문서1커밋 | GPT-6 Astra high / 선행 불일치·계약 정합 | 완료: 실측·결정·독립 리뷰2건 수정·지휘자 대조·gate green·전체 계획 알림 |
 | B1a T1 | `app/globals.css` 기존 철자 소비자, `components/__tests__/visual-system.test.ts`, 새 동치 테스트 | B0 / T1커밋 | GPT-6.1 Sol high / 여러줄 철자·CSS 동치 | 완료 `3fcc9e11`: 15파일24곳·컴파일13테스트·gate639파일/9652테스트·Sol 독립 리뷰 통과. 비동치 예외는 §6.1 |
-| B1b T2 | `globals.css`, §6.2 토큰 소비자 app/components/lib/messages, DESIGN·REGISTERED 테스트 | T1 / T2커밋 | GPT-6.1 Sol high / 값0 토큰 전수치환 | G, 3파일 근거·raw0 |
-| B1c T3 | `ui/breadcrumb.tsx`, `ui/segmented-control.tsx`, `ui/avatar.tsx`, `globals.css`, `lib/__tests__/globals-css.test.ts`, invitation-email 테스트, focus-ring 테스트 | T2 / T3커밋 | GPT-6.1 Sol high / dead export·메일 값 대조 | G(postgres 자동 판정), 소비자0 |
-| B1d T4 | `docs/DESIGN.md`, `app/globals.css` 주석 | T3 / 문서·주석 경계 | GPT-6.1 Sol medium / 사실 교정 | 문구 대조+G, ① 종료 |
-| R1 리뷰·① QA | 읽기 전용 diff/스크린샷 | T4 / 커밋 없음 | GPT-6.1 Sol high / 값0 검증 | 1280 기준 이미지; **Claude Code /push 대기** |
+| B1b T2 | `globals.css`, §6.2 토큰 소비자 app/components/lib/messages, DESIGN·REGISTERED 테스트 | T1 / T2커밋 | GPT-6.1 Sol high / 값0 토큰 전수치환 | 완료 `d11f99c6`: 12토큰·232곳, CSS79쌍·merge 충돌 계약, 독립 리뷰2건 수정, gate green |
+| B1c T3 | `ui/breadcrumb.tsx`, `ui/segmented-control.tsx`, `ui/avatar.tsx`, `globals.css`, `lib/__tests__/globals-css.test.ts`, invitation-email 테스트, focus-ring 테스트 | T2 / T3커밋 | GPT-6.1 Sol high / dead export·메일 값 대조 | 완료 `2c0f3ffd`: 소비자0·메일 값 보존, 독립 리뷰2건 수정, gate640파일/9795테스트+격리PG520 green |
+| B1d T4 | `docs/DESIGN.md`, `app/globals.css` 주석 | T3 / 문서·주석 경계 | GPT-6.1 Sol medium / 사실 교정 | 완료 `bc535749`: DESIGN·CSS 주석만, 독립 리뷰1문장 수정, gate640파일/9795테스트 green |
+| R1 리뷰·① QA | 읽기 전용 diff/스크린샷 | T4 / 커밋 없음 | GPT-6.1 Sol high 독립 리뷰 / 브라우저는 지휘자 | 완료: 6화면 1280 비교, 시각 회귀 없음. **Claude Code /push 대기** |
 | B2 T5–T6 | primitive 계약 테스트들, `components/__tests__/api-contract.test.ts` | R1 push 완료 / T5·T6 별도 | GPT-6.1 Sol high / 계약·허용목록 그물 | G, mutation 기록 |
 | B3a T7 | `ui/badge.tsx`, `ui/status-badge.tsx`, `ui/panel-card.tsx`, `lib/status/canon.ts`, `lib/events/view.ts`, `logs/result-badge.tsx`, `logs/event-detail.tsx`, Badge 소비자·C | T6 / 상태축1커밋 | GPT-6 Astra high / 결과 의미·색 예외 결합 | G, Logs 성공 회색·라벨 보존 |
 | B3b T8 | `lib/tone.ts→hue.ts`, `ui/tone.ts`, avatar/image 소비자, client-graph 테스트 | T7 / hue축1커밋 | GPT-6.1 Sol medium / 이름 변경 | G, 옛 import0 |
@@ -76,6 +76,15 @@
 
 **원격 경계**: Codex는 로컬 작업·커밋까지. 단위 ① 끝에는 “dev 푸시 대기 — Claude Code에서 /push 실행”으로 멈추고 **②③은 미착수**로 남긴다. 이후 단위도 같은 경계다. 프로덕션/DB/비밀값 변경 없음. QA는 Codex가 제공된 브라우저 기능으로 직접 수행 가능한 항목만 측정하며, 런타임 접근이 없으면 미검증으로 남긴다(로컬 스킬의 과거 ‘Codex QA 불가’ 문장을 사용자 all-Codex 요청보다 우선하지 않는다).
 
+## 실행 기록 — 2026-10-02
+
+- **단위 ① T1–T4 및 R1 완료, 원격 미반영.** T0 `b731533a` → T1 `3fcc9e11` → 동치 경계 문서 `9239b351` → T2 `d11f99c6` → T3 `2c0f3ffd` → T4 `bc535749`. 구현·문서·독립 리뷰 워커는 전부 Codex이며, T1–T4는 Sol(high/high/high/medium)로 수행했다.
+- 각 구현 경계의 전체 gate·독립 리뷰를 통과했다. 최종 코드 검증은 640파일/9795테스트, T3 자동 격리 PostgreSQL 31파일/520테스트, typecheck·build·미러 green. T2의 tailwind-merge 별칭 등록과 색 스캐너 접두 누락, T3의 메일 색 파서/hex 누락을 회귀 테스트로 고정했다.
+- **1280×900 R1**: Home·Projects·Translations·Sources·Logs·Settings를 T0와 대조했다. Home/Logs/Sources는 픽셀 차이0, Projects5·Translations4·Settings24픽셀의 미세 렌더링 차이만 남았다. Home/Logs/Settings의 267/406/157개 보이는 HTML 요소 좌표와 계산된 CSS 14속성은 전부 같았다. 승인 밖 레이아웃·색 변화는 발견하지 않았다.
+- 최초 촬영 뒤 브라우저 스크롤바 모드가 달라져, Home/Logs/Settings는 동일 T0 SHA를 임시 디렉터리에서 같은 브라우저·Webpack dev 조건으로 재촬영했다. 상대 시간 문구·개발 도구 렌더링 표시는 안정 상태에서 구분했다. 환경 파일 복사·프로젝트 데이터 변경 없이 검증했고 서버·임시 디렉터리·브라우저 공간을 정리했다.
+- 상세 로컬 증거: `.scratch/component-unify-r1-qa.md`, `.scratch/component-unify/{before,after,baseline-current-browser,after-current-browser}/`, `dom-comparison.json`. 각 배치 인계서는 `.scratch/handoff-component-unify-b1{a,b,c,d}.md`다.
+- **단위 ②·③, T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미착수/미검증.** 단위 ①의 필수 `/push` 경계에서 멈춘다. dev 푸시 대기 — Claude Code에서 `/push` 실행. 스키마·마이그레이션 변경 없음.
+
 ## 단위 ① 토큰 · 정리 — 값 변화 0
 
 - **T1** 철자 접기(design §6.1 — 모든 알파 선·링과 고정4px 제외). 먼저 **동치 테스트**(design §5.3 — `tailwindcss` `compile`로 옛·새 철자 쌍의 CSS 변수 해석 뒤 선언 동일; 색 반올림·px/rem 가정 금지)를 쓰고, 그다음 접는다.
@@ -89,7 +98,7 @@
   - hex 대조(design §5.3 — hsl→hex, `#262626` 예외 목록, `TONE_HEX` 포함, `message.test.ts` 옆).
   - 뒤집는 테스트: `focus-ring.test.ts`(`SegmentedLinks` 렌더 · `toHaveLength(3)`).
   - ⚠️ `lib/__tests__/`·`lib/invitation-email/`을 건드려 `pnpm gate`가 postgres 스위트를 붙인다(`scripts/gate-plan.ts:27`).
-  검증 [자동]: `rg -n "Breadcrumb|SegmentedLinks|shape=\"square\"" components app` 0 · `globals-css.test.ts` 남은 토큰마다 소비자 ≥1 · hex 대조 green.
+  검증 [자동]: 주석·테스트 제외 생산 AST에서 정확한 Breadcrumb/SegmentedLinks binding·Avatar shape 소비자 0(SEO의 BreadcrumbList는 별개) · `globals-css.test.ts` 남은 토큰마다 소비자 ≥1 · hex 대조 green.
 - **T4** 문서 교정 중 값과 무관한 것(design §6.4 DESIGN 체크리스트·줄 교정, `globals.css` 주석 `#e2e8f0` 세 줄·"66곳").
   검증 [수동]: design §6.4의 DESIGN·`globals.css` 항목을 한 줄씩 코드와 대조해 전부 ✓.
   `[commit]` T1·T2·T3·T4 각각 — `refactor(tokens): …` / `docs(DESIGN): …`
