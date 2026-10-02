@@ -14,6 +14,8 @@ import { m } from "@/lib/i18n";
 import { FOOTER_LINKS, GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
+vi.mock("next/navigation", () => ({ usePathname: () => "/docs" }));
+
 import { render } from "./helpers/dom";
 
 // 헤더가 로그아웃 Action을 참조로 넘긴다 — 실물은 `@/auth`를 물어 jsdom에서 세울 수 없다.
@@ -121,7 +123,7 @@ describe("공개 셸 — 구조", () => {
 });
 
 describe("공개 셸 — 헤더", () => {
-  it("HeaderBar를 쓰고 로고·내비는 start, 가운데는 비어 있다", async () => {
+  it("HeaderBar를 쓰고 로고·내비는 start, 가운데는 검색 캡슐이다", async () => {
     const { container } = await shell();
     const bar = container.querySelector("header");
     expect(bar).not.toBeNull();
@@ -134,7 +136,7 @@ describe("공개 셸 — 헤더", () => {
     expect(start.querySelector(`a[aria-label="${m.landing.shell.logo}"]`)).not.toBeNull();
     expect(start.firstElementChild?.className.split(/\s+/)).toEqual(expect.arrayContaining(["flex", "items-center", "gap-5"]));
     expect(bar?.children[1]?.className).toBe("justify-self-center");
-    expect(bar?.children[1]?.childNodes).toHaveLength(0);
+    expect(bar!.children[1]!.querySelector('button[aria-label="Search"]')).not.toBeNull();
     expect(bar?.children[2]?.className).toBe("justify-self-end");
   });
   it("로고가 Home으로 가고 이름을 갖는다", async () => {

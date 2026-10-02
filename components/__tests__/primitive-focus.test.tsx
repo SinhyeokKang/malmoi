@@ -246,8 +246,13 @@ it("DialogContent 소비자가 전부 첫 포커스를 정하고, 손으로 지�
   expect(consumers.length).toBeGreaterThanOrEqual(14);
   // 파일 단위가 아니라 Dialog 수로 센다 — 한 파일의 Dialog 둘이 표식 하나로 통과하면 안 된다(U3 r1).
   const count = (text: string, pattern: RegExp) => text.match(pattern)?.length ?? 0;
-  const short = consumers
-    .map(({ path, text }) => ({ path, dialogs: count(text, /<(?:DialogContent|CommandDialog)\b/g), marks: count(text, /\bdata-initial-focus\b/g) + count(text, /\bautoFocus\b/g) }))
+  const stripComments = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
+  const commandInput = stripComments(readFileSync(join(ROOT, "components/ui/command.tsx"), "utf8"));
+  const commandHasMarker = /export function CommandInput\b[\s\S]*?\bdata-initial-focus\b/.test(commandInput);
+  const composedMarks = (text: string) => commandHasMarker && /import\s*\{[^}]*\bCommandInput\b[^}]*\}\s*from\s*["']@\/components\/ui\/command["']/.test(text) ? count(text, /<CommandInput\b/g) : 0;
+  // Count the actual imported focus-owning primitive; SearchDialog's DOM test proves its initial focus.
+  const short = consumers.map(({ path, text }) => ({ path, text: stripComments(text) }))
+    .map(({ path, text }) => ({ path, dialogs: count(text, /<(?:DialogContent|CommandDialog)\b/g), marks: count(text, /\bdata-initial-focus\b/g) + count(text, /\bautoFocus\b/g) + composedMarks(text) }))
     .filter(({ dialogs, marks }) => dialogs > marks)
     .map(({ path, dialogs, marks }) => `${path}: ${dialogs} dialogs, ${marks} marks`);
   expect(short).toEqual([]);

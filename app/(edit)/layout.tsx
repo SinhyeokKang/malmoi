@@ -37,6 +37,7 @@ export default async function EditLayout({ children }: { children: React.ReactNo
   // 멤버십 목록을 넘기면 클라이언트가 pathname으로 그 안에서 찾는다 (DESIGN §6.5).
   // **`userId`로 좁힌다** (POSTMORTEM 2026-09-06). 사용자당 3개 제한이라 가볍다.
   const memberships = await loadMemberships(getPrisma(), session.userId);
+  const navMemberships = toNavProjects(memberships);
 
   // GitHub 핸들이 사라진 자리다 — Google로 로그인한 사용자에게는 핸들이 없다.
   // `User.id`는 사람이 읽을 값이 아니므로 이름·이메일 순으로 떨어진다.
@@ -55,7 +56,7 @@ export default async function EditLayout({ children }: { children: React.ReactNo
      */
     <div className="bg-canvas flex h-svh min-w-shell-min flex-col gap-2 overflow-hidden p-2">
       {/* ⚠️ **`image`가 여기를 지난다** — 세션을 읽는 것이 이 파일이라 앞뒤만 고치면 값이 `undefined`로 흐른다. */}
-      <Header name={name} email={session.email} image={session.image} signOut={signOutAction} />
+      <Header name={name} email={session.email} image={session.image} signOut={signOutAction} memberships={navMemberships} />
       {/*
         ⚠️ **행의 `gap-2`가 리사이즈 핸들로 옮겨 갔다.** flex `gap` 안에 핸들을 형제로 끼우면 간격이
         `gap + 핸들 + gap`이 되므로, 핸들이 그 8px을 투명 스트립으로 든다
@@ -73,7 +74,7 @@ export default async function EditLayout({ children }: { children: React.ReactNo
             비밀은 아니지만 `lib/shell/nav.ts`가 좁힌 계약이 무의미해진다.
           */
           <Sidebar
-            memberships={toNavProjects(memberships)}
+            memberships={navMemberships}
             userName={name}
           />
         }

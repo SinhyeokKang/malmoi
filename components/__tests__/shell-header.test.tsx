@@ -28,7 +28,9 @@ vi.mock("next/link", () => {
   };
 });
 
-const header = () => render(<Header name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} />);
+vi.mock("next/navigation", () => ({ usePathname: () => "/projects" }));
+
+const header = () => render(<Header name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} memberships={[]} />);
 
 describe("HeaderBar — 세 슬롯", () => {
   it("동일 폭 양옆 칸과 세 정렬 슬롯으로 가운데를 고정한다", async () => {
@@ -42,7 +44,7 @@ describe("HeaderBar — 세 슬롯", () => {
 });
 
 describe("앱 셸 헤더", () => {
-  it("HeaderBar를 쓰고 가운데 슬롯은 비어 있다", async () => {
+  it("HeaderBar를 쓰고 가운데 슬롯에 검색 캡슐이 선다", async () => {
     const { container } = await header();
     const bar = container.querySelector("header");
     expect(bar).not.toBeNull();
@@ -50,7 +52,7 @@ describe("앱 셸 헤더", () => {
     expect(bar?.children).toHaveLength(3);
     expect(bar?.children[0]?.className).toBe("justify-self-start");
     expect(bar?.children[1]?.className).toBe("justify-self-center");
-    expect(bar?.children[1]?.childNodes).toHaveLength(0);
+    expect(bar!.children[1]!.querySelector('button[aria-label="Search"]')).not.toBeNull();
     expect(bar?.children[2]?.className).toBe("justify-self-end");
   });
   it("우측은 New project · 구분선 · 사용자 메뉴 순서다", async () => {

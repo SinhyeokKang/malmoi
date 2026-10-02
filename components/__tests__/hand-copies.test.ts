@@ -62,7 +62,7 @@ function canonicalTag(node: Opening, file: ts.SourceFile): string {
 const RETIRED_WIZARD_FOOTER = "export const Demo = () => (<div className=\"flex items-center gap-2\">\n              {showBack && (\n                <Button type=\"button\" size=\"lg\" onClick={onBack} disabled={busy}>\n                  {m.newProject.modal.back}\n                </Button>\n              )}\n              {/*\n                \u26a0\ufe0f **\ube44\ud65c\uc131 \ubaa8\uc591\uc744 \uaecd\ub370\uae30\uac00 \ub4e0\ub2e4** \u2014 \ud770 \ubc30\uacbd + border + muted \uae00\uc790 + `not-allowed`.\n                \ub2e8\uacc4\ub9c8\ub2e4 \ub2e4\uc2dc \ub9cc\ub4e4\uba74 \uac08\ub9b0\ub2e4.\n              */}\n              <Button\n                type=\"button\"\n                variant=\"primary\"\n                size=\"lg\"\n                onClick={onNext}\n                disabled={nextDisabled}\n                loading={busy}\n              >\n                {nextLabel ?? m.newProject.modal.next}\n                {nextArrow && <ArrowRight className=\"size-4\" aria-hidden />}\n              </Button>\n            </div>);";
 
 const RULES: Rule[] = [
-{ primitive: "Command", retired: [], paths: ["components/search/search-trigger.tsx", "components/search/search-dialog.tsx"], minimum: 1,
+{ primitive: "Command", retired: [], paths: ["components/search/search-trigger.tsx", "components/search/*"], minimum: 1,
     handCopy: (node, file) => /^(button|input|a|kbd|mark)$/.test(node.tagName.getText(file)) || /#[\da-fA-F]{3,8}\b|\[\d+(?:\.\d+)?px\]/.test(classes(node, file)),
     bad: 'export const Demo = () => <button className="text-[#abc] w-[17px]">Search</button>;',
     good: 'import {Command} from "@/components/ui/command"; export const Demo = () => <Command ids={[]} query="">Body</Command>;' },
@@ -175,11 +175,12 @@ function scan(source: Source, rule: Rule): string[] {
     if (ts.isFunctionDeclaration(node) && node.name && rule.retired.includes(node.name.text) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) hits.push(`export:${node.name.text}`);
     if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && rule.retiredModules?.includes(node.moduleSpecifier.text)) hits.push(`module:${node.moduleSpecifier.text}`);
     if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) for (const item of node.exportClause.elements) if (rule.retired.includes((item.propertyName ?? item.name).text)) hits.push(`export:${item.name.text}`);
+    if (rule.primitive === "Command" && source.path.startsWith("components/search/") && ts.isStringLiteralLike(node) && /^#[\da-fA-F]{3,8}$/.test(node.text)) hits.push("search-style");
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tag = node.tagName.getText(file);
       const name = aliases.get(tag) ?? (tag.includes(".") && namespaces.has(tag.split(".")[0]!) ? tag.split(".")[1]! : tag);
       if (rule.retired.includes(name)) hits.push(`jsx:${name}`);
-      if ((rule.paths.includes(source.path) || rule.paths.includes("*") && !source.path.startsWith("components/ui/")) && rule.handCopy(node, file)) hits.push(`copy:${tag}`);
+      if ((rule.paths.includes(source.path) || rule.paths.some(path => path.endsWith("/*") && source.path.startsWith(path.slice(0, -1))) || rule.paths.includes("*") && !source.path.startsWith("components/ui/")) && rule.handCopy(node, file)) hits.push(`copy:${tag}`);
     }
     ts.forEachChild(node, visit);
   };
@@ -339,4 +340,12 @@ it.each([
 ])("%s owned hand-copy aliases cannot escape the current-path detector", (primitive, code) => {
   const rule = RULES.find(rule => rule.primitive === primitive)!;
   expect(scan({path: rule.paths[0]!, code}, rule).length).toBeGreaterThan(0);
+});
+
+
+it("search directory rules catch each raw tag and literal style independently", () => {
+  const rule = RULES.find(row => row.primitive === "Command");
+  if (!rule) throw new Error("Search composition rule is missing");
+  for (const tag of ["button", "input", "a", "kbd", "mark"]) expect(scan({ path: "components/search/new-consumer.tsx", code: `export const Demo = () => <${tag} />;` }, rule).length).toBeGreaterThan(0);
+  for (const code of ['const color = "#abc"; export const Demo = () => <div style={{color}} />;', 'export const Demo = () => <div className="w-[17px]" />;']) expect(scan({ path: "components/search/new-consumer.tsx", code }, rule).length).toBeGreaterThan(0);
 });

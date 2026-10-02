@@ -28,6 +28,18 @@ const NIGHTLY_RETRY = "The next nightly run tries again.";
 
 export const en = {
   search: {
+    label: "Search",
+    placeholder: "Search…",
+    groups: { projects: "Projects", menus: "Menus", keys: "Keys", docs: "Docs" },
+    viewAllProjects: "View all projects",
+    browseAllDocs: "Browse all docs",
+    loadingProjects: "Loading projects…",
+    loadingKeys: "Loading keys…",
+    loadingDocs: "Loading docs…",
+    keysUnavailable: "Keys can't be searched right now.",
+    docsUnavailable: "Docs can't be searched right now.",
+    noResults: (q: string): string => `No results for “${q}”`,
+    noResultsDescription: "Try another search.",
     goTo: "Go to",
     results: (count: number): string => `${count.toLocaleString("en-US")} ${count === 1 ? "result" : "results"}`,
   },

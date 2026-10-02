@@ -2,20 +2,15 @@
 
 import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 
+import { documentTop as topOf, landDocumentHeading } from "@/lib/public-doc/landing";
 import { currentSection } from "@/lib/public-doc/toc";
 import { cn } from "@/lib/utils";
 
 /** 절 윗변이 이만큼 아래를 지나면 그 절이 현재다(시안 Prototype `isPrivacy`). */
 const ACTIVE_OFFSET = 96;
-/** 클릭한 절이 서는 자리 — 스크롤러 윗변에서 48. h2의 `scroll-mt-12`와 같은 값이다. */
-const LAND_OFFSET = 48;
 
 /** 사용자가 스스로 스크롤하는 입력 — 누른 절의 고정을 푼다. */
 const RELEASE = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
-
-/** 절 윗변의 스크롤러 좌표. ⚠️ offsetTop은 offsetParent에 매여 셸 구조가 바뀌면 조용히 틀린다(스테이지와 같은 판단). */
-const topOf = (node: HTMLElement, scroller: HTMLElement) =>
-  node.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
 
 /**
  * 공개 문서의 `On this page` 목차 — 스크롤러의 위치로 현재 절을 강조하고, 누르면 그 절로 스크롤한다 (DESIGN §6.616).
@@ -24,7 +19,7 @@ const topOf = (node: HTMLElement, scroller: HTMLElement) =>
  * ⚠️ **링크가 실제 `href="#id"`다** — JS 전·없이도 fragment 이동이 된다. JS는 그 위에 착지 위치(48)와 모션만 얹는다.
  * ⚠️ **스크롤러는 공개 셸의 것이다**(`[data-public-scroller]` — `/docs`는 페이지가 그 스크롤러를 든다) — 문서는 스크롤되지 않으므로 `window`를 구독하면 아무것도 안 온다.
  * ⚠️ **setState는 값이 바뀔 때만 리렌더한다** — 항목이 열 안팎이라 스테이지처럼 DOM에 직접 쓸 이유가 없다.
- * ⚠️ **`@/lib/**`는 잎 `lib/public-doc/toc.ts`와 `cn`만 읽는다** — 둘 다 `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 있다.
+ * ⚠️ **`@/lib/**`는 판정 `lib/public-doc/toc.ts`·공유 착지 `lib/public-doc/landing.ts`와 `cn`을 읽는다** — 셋 다 `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 있다.
  */
 export function Toc({ label, items }: { label: string; items: readonly { id: string; heading: string }[] }) {
   const titleId = useId();
@@ -97,12 +92,7 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
     event.preventDefault();
     pinned.current = index;
     setCurrent(index);
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    scroller.scrollTo({ top: topOf(target, scroller) - LAND_OFFSET, behavior: reduced ? "auto" : "smooth" });
-    history.replaceState(null, "", `#${id}`);
-    // ⚠️ preventDefault가 fragment 이동의 포커스 이동까지 막는다 — 안 옮기면 키보드·스크린리더가 목차에 남는다.
-    // `preventScroll` — 포커스가 smooth 스크롤을 끊고 즉시 점프시키지 않게 한다.
-    target.focus({ preventScroll: true });
+    landDocumentHeading(id);
   };
 
   return (

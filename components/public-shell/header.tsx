@@ -2,6 +2,7 @@ import { LogIn } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { SearchTrigger } from "@/components/search/search-trigger";
 import { HeaderBar } from "@/components/shell/header-bar";
 import { UserMenu } from "@/components/shell/user-menu";
 import { GithubIcon } from "@/components/signin/brand-icons";
@@ -28,7 +29,7 @@ export const PUBLIC_HEADER_LINK =
 export type HeaderCurrent = "docs" | "changelog";
 
 /**
- * 공개 셸 헤더 — 로고 · `Main` 내비(`Docs · Changelog`) · 우측 GitHub | primary (시안 1a · 1e).
+ * 공개 셸 헤더 — 로고 · `Main` 내비(`Docs · Changelog`) · 가운데 검색 · 우측 GitHub | primary (시안 1a · 1e).
  *
  * ⚠️ **`Home`이 없다** (2026-09-28 사용자) — 로고가 곧 홈 링크다(`aria-label` `Malmoi home`).
  * ⚠️ **GitHub는 내비가 아니라 우측, primary 왼쪽이다** (같은 날 — 내비는 앱 안 목적지만 든다는 판정은 그대로다). primary와 사이에 연한 세로선 하나.
@@ -43,6 +44,7 @@ export function PublicHeader({ account, current }: { account: PublicAccount | nu
   return (
     <HeaderBar
       className="mb-2"
+      center={<SearchTrigger account={account} />}
       start={
         <div className="flex items-center gap-5">
           <Link

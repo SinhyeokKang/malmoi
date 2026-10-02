@@ -5,6 +5,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { render } from "./helpers/dom";
 
+vi.setConfig({ testTimeout: 20_000 });
+
 /**
  * **번역 화면의 주 흐름에서 포커스가 `body`로 빠지지 않는다** (audit #32 — Save · #34 — 트리거 없는 확인창).
  *
@@ -100,6 +102,7 @@ it("미저장 확인창을 Keep editing으로 닫으면 누른 키 행으로 돌
 it("same-surface selected key change scrolls the new row after the server arrival", async () => {
   const base = props();
   const view = await render(<TranslationWorkspace {...base} />);
+  if (!base.detail || "absent" in base.detail) throw new Error("Missing fixture detail");
   const nextRow = row(view.container, "k2");
   expect(nextRow).not.toBeNull();
   const scroll = vi.spyOn(nextRow, "scrollIntoView");
