@@ -49,3 +49,13 @@ it("오류가 없으면 없는 id를 가리키지 않고, 그 자리의 도움�
   expect(described?.getAttribute("role")).toBeNull();
   expect(document.getElementById("project-slug-error")).toBeNull();
 });
+
+it("collapsed locale selector fills its384px cap wrapper without inventing a384 width API", async () => {
+  const locales = Array.from({ length: 11 }, (_, index) => `locale-${index}`);
+  const { container } = await render(<NamingStep state={{ ...state, baseLocale: locales[0]!, locales }} onChange={() => {}} />);
+  const field = container.querySelector<HTMLElement>("#project-base-locale")!;
+  expect(field.classList.contains("w-full")).toBe(true);
+  expect(field.classList.contains("max-w-sm")).toBe(false);
+  expect(field.parentElement?.classList.contains("max-w-sm")).toBe(true);
+  expect(document.getElementById(field.getAttribute("aria-describedby")!)?.textContent).not.toBe("");
+});

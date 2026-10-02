@@ -414,10 +414,10 @@ const REST_DEMAND: readonly { path: string; symbol: string }[] = [];
 const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   state: { rows: 0, occurrences: 0 }, variant: { rows: 0, occurrences: 0 },
   hue: { rows: 0, occurrences: 0 }, size: { rows: 6, occurrences: 6 },
-  width: { rows: 36, occurrences: 42 }, progress: { rows: 7, occurrences: 7 },
+  width: { rows: 0, occurrences: 0 }, progress: { rows: 7, occurrences: 7 },
   slots: { rows: 8, occurrences: 8 }, rest: { rows: 0, occurrences: 0 },
   "data-tone": { rows: 1, occurrences: 1 }, aria: { rows: 3, occurrences: 3 },
-  className: { rows: 4, occurrences: 4 },
+  className: { rows: 3, occurrences: 3 },
 };
 const ALLOWLIST: Debt[] = [
   { rule: "progress", path: "components/projects/new-project-button.tsx", symbol: "NewProjectButton", detail: "manual pending glyph replacement", count: 1, task: "T15" },
@@ -426,7 +426,6 @@ const ALLOWLIST: Debt[] = [
   { rule: "aria", path: "components/ui/form-group.tsx", symbol: "FormGroup", detail: "unconnected children", count: 1, task: "T11" },
   { rule: "aria", path: "components/ui/row-card.tsx", symbol: "RowCardList", detail: "labelledBy", count: 1, task: "T11" },
   { rule: "aria", path: "components/ui/segmented-control.tsx", symbol: "SegmentedControl", detail: "describedBy", count: 1, task: "T11" },
-  { rule: "className", path: "components/search-input.tsx", symbol: "SearchInput", detail: "inputClassName", count: 1, task: "T10" },
   { rule: "className", path: "components/ui/image-tile.tsx", symbol: "ImageTile", detail: "fallbackClassName", count: 1, task: "T11" },
   { rule: "className", path: "components/ui/modal.tsx", symbol: "OnboardingModal", detail: "panelClassName", count: 1, task: "T11" },
   { rule: "className", path: "components/ui/radio.tsx", symbol: "Radio", detail: "labelClassName", count: 1, task: "T11" },
@@ -449,42 +448,6 @@ const ALLOWLIST: Debt[] = [
   { rule: "slots", path: "components/ui/panel-card.tsx", symbol: "PanelRow", detail: "detail", count: 1, task: "T11" },
   { rule: "slots", path: "components/ui/panel-card.tsx", symbol: "PanelRow", detail: "glyph", count: 1, task: "T11" },
   { rule: "slots", path: "components/ui/segmented-control.tsx", symbol: "SegmentContent", detail: "leading", count: 1, task: "T11" },
-  { rule: "width", path: "app/(edit)/account/page.tsx", symbol: "Input", detail: "w-80", count: 1, task: "T10" },
-  { rule: "width", path: "components/account/profile-name-form.tsx", symbol: "Input", detail: "w-80", count: 1, task: "T10" },
-  { rule: "width", path: "components/logs/log-filters.tsx", symbol: "Input", detail: "w-full", count: 2, task: "T10" },
-  { rule: "width", path: "components/logs/log-filters.tsx", symbol: "SearchInput", detail: "inputClassName:w-80", count: 1, task: "T10" },
-  { rule: "width", path: "components/members/invite-modal.tsx", symbol: "Input", detail: "min-w-0", count: 1, task: "T10" },
-  { rule: "width", path: "components/members/invite-modal.tsx", symbol: "SelectTrigger", detail: "w-[168px]", count: 1, task: "T10" },
-  { rule: "width", path: "components/members/member-list.tsx", symbol: "SelectTrigger", detail: "w-[132px]", count: 1, task: "T10" },
-  { rule: "width", path: "components/onboarding/steps/files.tsx", symbol: "Input", detail: "w-full", count: 2, task: "T10" },
-  { rule: "width", path: "components/onboarding/steps/files.tsx", symbol: "SelectTrigger", detail: "w-48", count: 1, task: "T10" },
-  { rule: "width", path: "components/onboarding/steps/files.tsx", symbol: "SelectTrigger", detail: "w-full", count: 1, task: "T10" },
-  { rule: "width", path: "components/onboarding/steps/naming.tsx", symbol: "Input", detail: "w-full", count: 2, task: "T10" },
-  { rule: "width", path: "components/onboarding/steps/naming.tsx", symbol: "SelectTrigger", detail: "max-w-sm", count: 1, task: "T10" },
-  { rule: "width", path: "components/onboarding/steps/naming.tsx", symbol: "SelectTrigger", detail: "w-full", count: 1, task: "T10" },
-  { rule: "width", path: "components/onboarding/steps/repo.tsx", symbol: "Input", detail: "w-[220px]", count: 1, task: "T10" },
-  { rule: "width", path: "components/onboarding/steps/repo.tsx", symbol: "Input", detail: "w-full", count: 1, task: "T10" },
-  { rule: "width", path: "components/onboarding/steps/repo.tsx", symbol: "SelectTrigger", detail: "w-[220px]", count: 1, task: "T10" },
-  { rule: "width", path: "components/search-input.tsx", symbol: "Input", detail: "w-64", count: 1, task: "T10" },
-  { rule: "width", path: "components/search-input.tsx", symbol: "SearchInput", detail: "missing width prop", count: 1, task: "T10" },
-  { rule: "width", path: "components/settings/general-card.tsx", symbol: "Input", detail: "@max-form:min-w-0", count: 2, task: "T10" },
-  { rule: "width", path: "components/settings/general-card.tsx", symbol: "Input", detail: "max-w-full", count: 2, task: "T10" },
-  { rule: "width", path: "components/settings/general-card.tsx", symbol: "Input", detail: "w-[320px]", count: 2, task: "T10" },
-  { rule: "width", path: "components/settings/repository-form.tsx", symbol: "Input", detail: "@max-form:min-w-0", count: 1, task: "T10" },
-  { rule: "width", path: "components/settings/repository-form.tsx", symbol: "Input", detail: "max-w-full", count: 1, task: "T10" },
-  { rule: "width", path: "components/settings/repository-form.tsx", symbol: "Input", detail: "w-60", count: 1, task: "T10" },
-  { rule: "width", path: "components/settings/repository-form.tsx", symbol: "SelectTrigger", detail: "@max-form:min-w-0", count: 1, task: "T10" },
-  { rule: "width", path: "components/settings/repository-form.tsx", symbol: "SelectTrigger", detail: "max-w-full", count: 1, task: "T10" },
-  { rule: "width", path: "components/settings/repository-form.tsx", symbol: "SelectTrigger", detail: "w-60", count: 1, task: "T10" },
-  { rule: "width", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "min-w-0", count: 1, task: "T10" },
-  { rule: "width", path: "components/sources/add-sources-modal.tsx", symbol: "SelectTrigger", detail: "w-40", count: 1, task: "T10" },
-  { rule: "width", path: "components/sources/base-language-form.tsx", symbol: "SelectTrigger", detail: "w-40", count: 1, task: "T10" },
-  { rule: "width", path: "components/surface-selector.tsx", symbol: "SelectTrigger", detail: "w-48", count: 1, task: "T10" },
-  { rule: "width", path: "components/translations/workspace/locale-panel.tsx", symbol: "Input", detail: "w-48", count: 1, task: "T10" },
-  { rule: "width", path: "components/translations/workspace/tree-panel.tsx", symbol: "Input", detail: "w-full", count: 1, task: "T10" },
-  { rule: "width", path: "components/translations/workspace/workspace.tsx", symbol: "SearchInput", detail: "inputClassName:w-80", count: 1, task: "T10" },
-  { rule: "width", path: "components/ui/input.tsx", symbol: "Input", detail: "missing width prop", count: 1, task: "T10" },
-  { rule: "width", path: "components/ui/select.tsx", symbol: "SelectTrigger", detail: "missing width prop", count: 1, task: "T10" },
 ];
 
 function differences(actual: readonly Violation[], allowed: readonly Debt[]): { unknown: Violation[]; stale: Debt[] } {
@@ -586,6 +549,32 @@ describe("primitive API contract — design §3", () => {
     const counts: Record<Rule, number> = { state: 1, variant: 1, hue: 3, size: 3, width: 3, progress: 2, slots: 7, rest: 1, "data-tone": 1, aria: 3, className: 4 };
     expect(scan(bad, demand).filter(row => row.rule === rule).reduce((sum, row) => sum + row.count, 0)).toBe(counts[rule]);
     expect(scan(good, demand).filter(row => row.rule === rule)).toEqual([]);
+  });
+
+  it.each([
+    ["Input", "components/ui/input.tsx"],
+    ["SelectTrigger", "components/ui/select.tsx"],
+    ["SearchInput", "components/search-input.tsx"],
+  ])("detects actual %s definition and consumer width violations", (symbol, path) => {
+    const missing = source(`export function ${symbol}({className}: {className?: string}) {return <div/>;}`, path);
+    expect(scan([missing]).filter(row => row.rule === "width")).toEqual([{rule: "width", path, symbol, detail: "missing width prop", count: 1}]);
+    const definition = source(`export function ${symbol}({width}: {width?: 132 | 160 | 168 | 192 | 220 | 240 | 256 | 320 | "full"}) {return <div/>;}`, path);
+    expect(scan([source(definition.code.replace("132 |", "999 |"), path)]).filter(row => row.rule === "width")).toEqual([{rule: "width", path, symbol, detail: "width:999", count: 1}]);
+    const bad = source(`import {${symbol} as Field} from "@/${path.slice(0, -4)}"; export function Screen() {return <Field className="w-80 max-w-full @max-form:min-w-0" width={999}/>;}`, "components/canary.tsx");
+    expect(scan([definition, bad]).filter(row => row.rule === "width").map(row => row.detail).sort()).toEqual(["@max-form:min-w-0", "max-w-full", "w-80", "width:999"]);
+    const good = source(`import {${symbol} as Field} from "@/${path.slice(0, -4)}"; export function Screen() {return <div className="w-80 max-w-full @max-form:min-w-0 @max-form:flex-1"><Field width="full" className="ml-2"/></div>;}`, "components/canary.tsx");
+    expect(scan([definition, good]).filter(row => row.rule === "width")).toEqual([]);
+  });
+
+  it("detects SearchInput legacy inputClassName on its real definition and aliased consumers", () => {
+    const path = "components/search-input.tsx";
+    const legacy = source('export function SearchInput({width, inputClassName}: {width?: 320; inputClassName?: string}) {return <div/>;}', path);
+    expect(scan([legacy]).filter(row => row.rule === "className")).toEqual([{rule: "className", path, symbol: "SearchInput", detail: "inputClassName", count: 1}]);
+    const bad = source('import {SearchInput as Search} from "@/components/search-input"; const OLD = "w-80"; export function Screen() {return <Search inputClassName={OLD}/>;}', "components/canary.tsx");
+    expect(scan([legacy, bad]).filter(row => row.rule === "width")).toEqual([{rule: "width", path: bad.path, symbol: "SearchInput", detail: "inputClassName:w-80", count: 1}]);
+    const current = source('export function SearchInput({width, className}: {width?: 320; className?: string}) {return <div/>;}', path);
+    const good = source('import {SearchInput as Search} from "@/components/search-input"; export function Screen() {return <Search width={320} className="ml-auto"/>;}', "components/canary.tsx");
+    expect(scan([current, good]).filter(row => row.rule === "width" || row.rule === "className")).toEqual([]);
   });
 
   it("covers every §3 row, including zero live rest demand", () => {

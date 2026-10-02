@@ -349,7 +349,7 @@ function Preview({
           <Select disabled={pending} value={state.locale} onValueChange={value => { if (!pending) onLocale(value); }}>
             {/* ⚠️ 라벨이 트리거 **밖**이다 — 안에 두면 자기 참조가 내용으로 풀릴 때 두 번 읽힌다 (리뷰 2026-09-13). */}
             <span id="preview-language-label" className="sr-only">{m.newProject.files.preview.language}</span>
-            <SelectTrigger id="preview-language" aria-labelledby="preview-language-label preview-language" className="w-48">
+            <SelectTrigger width={192} id="preview-language" aria-labelledby="preview-language-label preview-language">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -533,7 +533,7 @@ function ManualForm({
     <div className="flex flex-col gap-3">
       <FormGroup label={m.newProject.files.manual.format} labelId="manual-format-label" htmlFor="manual-format">
         <Select disabled={pending} value={manual.adapter} onValueChange={(value) => { if (!pending) onManual({ ...manual, adapter: value as AdapterName }); }}>
-          <SelectTrigger id="manual-format" aria-labelledby="manual-format-label manual-format" className="w-full">
+          <SelectTrigger width="full" id="manual-format" aria-labelledby="manual-format-label manual-format">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -554,7 +554,7 @@ function ManualForm({
           <span>{choice?.layout === "multi-locale" ? "*" : "{locale}"}</span>,
         )}
       >
-        <Input
+        <Input width="full"
           disabled={pending}
           id="manual-path"
           aria-invalid={state.manualError === undefined ? undefined : true}
@@ -562,17 +562,15 @@ function ManualForm({
           value={manual.pathTemplate}
           onChange={(e) => onManual({ ...manual, pathTemplate: e.target.value })}
           placeholder={choice?.example ?? m.newProject.formats["json-catalog"].example}
-          className="w-full"
         />
       </FormGroup>
       <FormGroup label={m.newProject.files.manual.baseLocale} htmlFor="manual-base">
-        <Input
+        <Input width="full"
           disabled={pending}
           id="manual-base"
           value={manual.baseLocale}
           onChange={(e) => onManual({ ...manual, baseLocale: e.target.value })}
           placeholder={m.newProject.files.manual.baseLocalePlaceholder}
-          className="w-full"
         />
       </FormGroup>
       {/* ⚠️ 이 문장은 **블록 전체**를 설명한다 — 필드의 `help`로 매달면 그 필드의 설명으로 읽힌다 */}

@@ -311,3 +311,12 @@ it.each([
   expect(wrapper.querySelector('[role="alert"], [role="status"], [aria-live]')).toBeNull();
   expect(wrapper.querySelector("svg")?.getAttribute("class")).toContain("text-muted-foreground");
 });
+
+it("Logs keeps320px search inside the outer ml-auto filter flex item", async () => {
+  const { container } = await render(<LogFilters slug="alpha" sources={[]} actors={[]} refreshable filter={parseLogFilter({})} />);
+  const field = container.querySelector<HTMLElement>('input[type="search"]')!;
+  expect(field.classList.contains("w-80")).toBe(true);
+  expect(field.classList.contains("ml-auto")).toBe(false);
+  expect(field.parentElement?.classList.contains("ml-auto")).toBe(true);
+  expect(field.parentElement).toBe(field.closest("[data-log-filter-row]")?.lastElementChild);
+});

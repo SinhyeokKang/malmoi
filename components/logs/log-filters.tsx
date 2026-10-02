@@ -245,7 +245,7 @@ export function LogFilters({
           onApply={range => go(range)} />
         <SearchInput
           className="ml-auto"
-          inputClassName="w-80"
+          width={320}
           value={filter.q ?? undefined}
           label={m.logs.search.label}
           placeholder={m.logs.search.placeholder}
@@ -322,10 +322,10 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
         <div className="grid grid-cols-2 gap-3">
           <FormGroup label={m.logs.range.from} htmlFor={fromId}>
             {/* 첫 포커스는 첫 날짜다 — 이 Dialog는 입력이 할 일이라 Cancel 표식(`DialogContent`)에서 빠진다. */}
-            <Input id={fromId} type="date" value={from} onChange={event => setFrom(event.target.value)} className="w-full" autoFocus />
+            <Input width="full" id={fromId} type="date" value={from} onChange={event => setFrom(event.target.value)}  autoFocus />
           </FormGroup>
           <FormGroup label={m.logs.range.to} htmlFor={toId}>
-            <Input id={toId} type="date" value={to} onChange={event => setTo(event.target.value)} className="w-full" />
+            <Input width="full" id={toId} type="date" value={to} onChange={event => setTo(event.target.value)}  />
           </FormGroup>
         </div>
       </DialogContent>

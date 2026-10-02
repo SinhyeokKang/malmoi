@@ -83,3 +83,11 @@ it("lease 상태가 바뀌어도 목록 행은 다시 렌더되지 않는다", a
   expect(document.body.textContent).toContain("Syncing…");
   expect(mocks.rowRenders).toEqual([]);
 });
+
+it("translation toolbar retains its320px input and relative outer wrapper", async () => {
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  const field = container.querySelector<HTMLElement>('input[type="search"]')!;
+  expect(field.classList.contains("w-80")).toBe(true);
+  expect(field.parentElement?.classList.contains("relative")).toBe(true);
+  expect(field.closest("[data-toolbar]")).not.toBeNull();
+});

@@ -155,7 +155,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
       }); }}>{m.surfaces.confirm}</Button>}
       {picked === null && !detecting && manualBlocked && <span id="add-source-manual-reason" className="text-muted-foreground text-xs">{m.settings.sources.manualReason}</span>}
       {candidate && <><span className="text-muted-foreground text-xs">{m.surfaces.baseLocale}</span><Select disabled={pending || locked.has(picked!)} value={bases[picked!] ?? candidate.baseLocale} onValueChange={value => { if (!pending && !locked.has(picked!)) setBases(previous => ({ ...previous, [picked!]: value })); }}>
-        <SelectTrigger className="w-40" aria-label={m.surfaces.baseLocale}><SelectValue /></SelectTrigger>
+        <SelectTrigger width={160}  aria-label={m.surfaces.baseLocale}><SelectValue /></SelectTrigger>
         <SelectContent>{candidate.locales.map(code => <SelectItem disabled={pending || locked.has(picked!)} key={code} value={code}>{code}</SelectItem>)}</SelectContent>
       </Select></>}
     </div>

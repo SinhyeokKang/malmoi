@@ -317,28 +317,29 @@ export function InviteModal({
             return (
               <li key={row.id} data-recipient-row className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2">
-                  <Input
-                    ref={index === 0 ? firstEmailRef : undefined}
-                    id={`invite-email-${row.id}`}
-                    /*
-                      ⚠️ **`type="email"`이 아니다** — 브라우저가 값의 앞뒤 공백을 지우고(표시가 원문이 아니게 된다)
-                      제출 전에 자기 검증 말풍선을 띄워 행 사유 검증이 한 번도 돌지 않는다. 판정은 `parseRecipients` 하나다.
-                    */
-                    type="text"
-                    inputMode="email"
-                    autoComplete="off"
-                    spellCheck={false}
-                    placeholder={m.members.invite.placeholder}
-                    aria-label={m.members.invite.columns.email}
-                    aria-invalid={error !== undefined}
-                    aria-describedby={error === undefined ? undefined : reasonId}
-                    value={row.email}
-                    disabled={pending}
-                    onChange={(event) => update(row.id, { email: event.target.value })}
-                    onKeyDown={(event) => onEmailKeyDown(index, event)}
-                    onPaste={(event) => onEmailPaste(index, event)}
-                    className="min-w-0 flex-1"
-                  />
+                  <div className="flex min-w-0 flex-1">
+                    <Input width="full"
+                      ref={index === 0 ? firstEmailRef : undefined}
+                      id={`invite-email-${row.id}`}
+                      /*
+                        ⚠️ **`type="email"`이 아니다** — 브라우저가 값의 앞뒤 공백을 지우고(표시가 원문이 아니게 된다)
+                        제출 전에 자기 검증 말풍선을 띄워 행 사유 검증이 한 번도 돌지 않는다. 판정은 `parseRecipients` 하나다.
+                      */
+                      type="text"
+                      inputMode="email"
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder={m.members.invite.placeholder}
+                      aria-label={m.members.invite.columns.email}
+                      aria-invalid={error !== undefined}
+                      aria-describedby={error === undefined ? undefined : reasonId}
+                      value={row.email}
+                      disabled={pending}
+                      onChange={(event) => update(row.id, { email: event.target.value })}
+                      onKeyDown={(event) => onEmailKeyDown(index, event)}
+                      onPaste={(event) => onEmailPaste(index, event)}
+                    />
+                  </div>
                   {/*
                     ⚠️ **`aria-label`이 아니라 라벨 + 트리거 자신이다** — 버튼형 combobox는 안의 값을 이름에 안 싣는다.
                     `aria-label`만 주면 여덟 행을 탭으로 돌 때 Editor인지 Owner인지 들을 수 없다(리포의 다른 트리거와 같은 형).
@@ -347,7 +348,7 @@ export function InviteModal({
                     {m.members.invite.roleFor(who)}
                   </span>
                   <Select value={row.role} onValueChange={(next) => update(row.id, { role: next as Role })} disabled={pending}>
-                    <SelectTrigger id={`invite-role-${row.id}`} aria-labelledby={`invite-role-label-${row.id} invite-role-${row.id}`} className="w-[168px] shrink-0">
+                    <SelectTrigger width={168} id={`invite-role-${row.id}`} aria-labelledby={`invite-role-label-${row.id} invite-role-${row.id}`} className="shrink-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="w-[280px]">

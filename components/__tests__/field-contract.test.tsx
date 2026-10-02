@@ -56,12 +56,12 @@ describe("field primitives before the API rename", () => {
     expect(changed).not.toHaveBeenCalled();
   });
 
-  it("Input has the existing 36px scale and lets a caller replace height/width", async () => {
+  it("Input has the existing 36px scale and uses width API without changing caller height/font", async () => {
     const view = await render(<Input type="search" />);
     const field = find<HTMLInputElement>(view.container, "input");
     expect(field.type).toBe("search");
     expect(field.classList.contains("h-9")).toBe(true);
-    await view.rerender(<Input type="search" className="h-8 w-40 text-xs" />);
+    await view.rerender(<Input type="search" width={160} className="h-8 text-xs" />);
     expect(field.classList.contains("h-9")).toBe(false);
     for (const token of ["h-8", "w-40", "text-xs"]) expect(field.classList.contains(token)).toBe(true);
     expect(field.classList.contains("text-sm")).toBe(false);

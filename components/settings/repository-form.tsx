@@ -102,14 +102,18 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
             : choice === undefined ? <div aria-busy="true"><Skeleton className="h-9 w-60 rounded-md" /></div>
             : choice.mode === "select" ? (
               <Select name="baseBranch" value={branch} disabled={pending} onValueChange={value => { setBranch(value); setResult("idle"); }}>
-                <SelectTrigger id="base-branch" aria-labelledby="base-branch-label base-branch" aria-describedby="base-branch-caption" aria-invalid={typeof result === "object"} className="w-60 max-w-full @max-form:min-w-0 @max-form:flex-1">
-                  <SelectValue />
-                </SelectTrigger>
+                <div className="flex w-60 max-w-full @max-form:min-w-0 @max-form:flex-1">
+                  <SelectTrigger width="full" id="base-branch" aria-labelledby="base-branch-label base-branch" aria-describedby="base-branch-caption" aria-invalid={typeof result === "object"}>
+                    <SelectValue />
+                  </SelectTrigger>
+                </div>
                 <SelectContent>{choice.names.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>
               </Select>
-            ) : <Input id="base-branch" name="baseBranch" className="w-60 max-w-full @max-form:min-w-0 @max-form:flex-1" value={branch} disabled={pending}
-              aria-invalid={typeof result === "object"} aria-describedby="base-branch-caption"
-              onChange={event => { setBranch(event.target.value); setResult("idle"); }} />}
+            ) : <div className="flex w-60 max-w-full @max-form:min-w-0 @max-form:flex-1">
+              <Input width="full" id="base-branch" name="baseBranch" value={branch} disabled={pending}
+                aria-invalid={typeof result === "object"} aria-describedby="base-branch-caption"
+                onChange={event => { setBranch(event.target.value); setResult("idle"); }} />
+            </div>}
           <Button spinnerSize="sm" ref={saveRef} type="submit" loading={pending} aria-busy={pending} disabled={!editable || branch === current}>{m.settings.repository.fields.save}</Button>
           {lookupError || failure !== null ? <FieldError id="base-branch-caption" className={CAPTION}>{lookupError ? failureText(lookupError) : failure !== null ? messageFor(failure) : null}</FieldError> : (
             <p id="base-branch-caption" className={cn(CAPTION, "text-foreground/60 text-xs")}>

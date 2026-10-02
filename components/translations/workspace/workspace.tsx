@@ -775,7 +775,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           검색은 어느 패널의 것도 아니라 전 소스를 본다. label과 placeholder를 가른다(DESIGN §10) — 좁힌 검색 중에도 접근 이름이 참이어야 한다.
         */}
         <div ref={toolbarRef} data-toolbar="" className="flex flex-wrap items-center gap-2">
-          <SearchInput inputClassName="w-80" value={query.q} label={w.filters.search} placeholder={w.filters.searchPlaceholder} onSearch={search} />
+          <SearchInput width={320} value={query.q} label={w.filters.search} placeholder={w.filters.searchPlaceholder} onSearch={search} />
         </div>
         {/*
           ⚠️ **두 배너는 조건부 분기 밖의 형제다** (DESIGN §6.1 · POSTMORTEM 2026-09-07) — 분기 안에 두면 `router.refresh()`가 방금 만든

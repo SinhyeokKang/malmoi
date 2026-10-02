@@ -6,7 +6,7 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { fieldClass } from "./input";
+import { fieldClass, fieldWidthClass, type FieldWidth } from "./input";
 
 /**
  * **Radix Select다** (2026-09-13 사용자 — shadcn 형으로 리워크). 그 전에는 native `<select>`였고
@@ -21,16 +21,17 @@ import { fieldClass } from "./input";
  * 한 줄에 선 컨트롤이 어긋나지 않는다 (`input.tsx`의 높이 36 주석과 같은 규칙).
  *
  * ⚠️ **폭은 호출부가 준다.** native `<select>`는 내용이 폭을 정했지만 트리거는 `<button>`이라
- * 내용만큼만 넓다 — 목록 안에서 값에 따라 폭이 흔들리는 자리는 `w-*`를 명시한다.
+ * 내용만큼만 넓다 — 목록 안에서 값에 따라 폭이 흔들리는 자리는 `width`를 명시한다.
  */
 export const Select = Primitive.Root;
 export const SelectValue = Primitive.Value;
 
-export function SelectTrigger({ className, children, ...props }: ComponentProps<typeof Primitive.Trigger>) {
+export function SelectTrigger({ className, children, width, ...props }: ComponentProps<typeof Primitive.Trigger> & { width?: FieldWidth }) {
   return (
     <Primitive.Trigger
       className={cn(
         fieldClass,
+        width === undefined ? undefined : fieldWidthClass[width],
         "flex h-9 cursor-pointer items-center justify-between gap-2 whitespace-nowrap",
         /*
           ⚠️ **값을 자르는 규칙이 트리거에 있어야 한다.** native `<select>`는 브라우저가 알아서

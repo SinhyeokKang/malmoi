@@ -2,6 +2,20 @@ import type { InputHTMLAttributes, Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
+/** 실제 필드 폭만 지원한다. 반응형 min/max/flex 배치는 소비자 래퍼가 소유한다. */
+export type FieldWidth = 132 | 160 | 168 | 192 | 220 | 240 | 256 | 320 | "full";
+export const fieldWidthClass: Record<FieldWidth, string> = {
+  132: "w-[132px]",
+  160: "w-40",
+  168: "w-[168px]",
+  192: "w-48",
+  220: "w-[220px]",
+  240: "w-60",
+  256: "w-64",
+  320: "w-80",
+  full: "w-full",
+};
+
 /**
  * 입력 셋(Input·Textarea·Select)의 공통 형 — DESIGN §6.4의 한 행이다.
  *
@@ -24,6 +38,6 @@ export const fieldClass = cn(
  * 높이여야 한다. `Textarea`는 이 규칙 밖이다(`field-sizing-content`라 높이를 내용이 정한다).
  */
 /** `ref`는 React 19의 평범한 prop이라 `...props`로 그대로 내려간다 — `Button`과 같은 형이다. */
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement> & { ref?: Ref<HTMLInputElement> }) {
-  return <input className={cn(fieldClass, "h-9", "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)} {...props} />;
+export function Input({ className, width, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "width"> & { ref?: Ref<HTMLInputElement>; width?: FieldWidth }) {
+  return <input className={cn(fieldClass, "h-9", width === undefined ? undefined : fieldWidthClass[width], "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)} {...props} />;
 }

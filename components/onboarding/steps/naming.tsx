@@ -72,11 +72,10 @@ export function NamingStep({
       <Alert variant="info">{m.newProject.naming.info(state.pathTemplate, state.branch)}</Alert>
 
       <FormGroup label={m.newProject.naming.name} htmlFor="project-name">
-        <Input
+        <Input width="full"
           id="project-name"
           value={state.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          className="w-full"
         />
       </FormGroup>
 
@@ -97,7 +96,7 @@ export function NamingStep({
           <span className="text-foreground">{SYNC_BRANCH_PREFIX}{slug || "…"}</span>,
         )}
       >
-        <Input
+        <Input width="full"
           id="project-slug"
           value={slug}
           /**
@@ -109,7 +108,6 @@ export function NamingStep({
           aria-invalid={slugRejected ? true : undefined}
           aria-describedby={slugRejected ? "project-slug-error" : "project-slug-help"}
           onChange={(e) => onChange({ slug: e.target.value, slugTaken: false })}
-          className="w-full"
         />
       </FormGroup>
 
@@ -190,14 +188,16 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
           help={m.newProject.baseLocale.hint}
         >
           <Select disabled={disabled} value={state.baseLocale} onValueChange={(baseLocale) => onChange({ baseLocale })}>
-            <SelectTrigger
-              id={`${selectId}`}
-              aria-labelledby={`${id}-select-label ${selectId}`}
-              aria-describedby={`${selectId}-help`}
-              className="w-full max-w-sm"
-            >
-              <SelectValue />
-            </SelectTrigger>
+            <div className="max-w-sm">
+              <SelectTrigger
+                id={`${selectId}`}
+                aria-labelledby={`${id}-select-label ${selectId}`}
+                aria-describedby={`${selectId}-help`}
+                width="full"
+              >
+                <SelectValue />
+              </SelectTrigger>
+            </div>
             <SelectContent>
               {locales.map((code) => (
                 <SelectItem key={code} value={code}>

@@ -303,7 +303,7 @@ function RoleSelect({
       <span id={`role-${member.userId}-label`} className="sr-only">
         {m.members.changeRole(who)}
       </span>
-      <SelectTrigger
+      <SelectTrigger width={132}
         id={`role-${member.userId}`}
         aria-labelledby={`role-${member.userId}-label role-${member.userId}`}
         aria-disabled={locked || undefined}
@@ -313,7 +313,6 @@ function RoleSelect({
         onClick={locked ? (event) => event.preventDefault() : undefined}
         // Tab만 통과시킨다 — 포커스는 받아야 사유가 낭독되고, 나머지는 전부 이 컨트롤의 동작이다.
         onKeyDown={locked ? (event) => { if (event.key !== "Tab") event.preventDefault(); } : undefined}
-        className="w-[132px]"
       >
         <SelectValue />
       </SelectTrigger>

@@ -197,3 +197,15 @@ describe("ProjectSwitcher", () => {
     expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 });
+
+it("switcher header keeps the shrinking flex item beside Esc, and autofocus remains on input", async () => {
+  await open();
+  const field = input();
+  const wrapper = field.parentElement!;
+  for (const token of ["flex", "min-w-0", "flex-1"]) expect(wrapper.classList.contains(token)).toBe(true);
+  expect(wrapper.nextElementSibling?.tagName).toBe("KBD");
+  expect(wrapper.parentElement?.classList.contains("flex")).toBe(true);
+  for (const token of ["w-full", "h-8", "border-0", "focus-visible:ring-0"]) expect(field.classList.contains(token)).toBe(true);
+  expect(field.classList.contains("flex-1")).toBe(false);
+  expect(document.activeElement).toBe(field);
+});

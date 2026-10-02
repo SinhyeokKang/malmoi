@@ -11,7 +11,7 @@ describe("Select before the API rename", () => {
   it("forwards trigger identity/ref, placeholder and a caller width without losing the chevron", async () => {
     const ref = createRef<HTMLButtonElement>();
     const { container } = await render(<Select>
-      <SelectTrigger ref={ref} aria-label="Role" aria-describedby="role-help" id="role" data-field="role" className="w-40">
+      <SelectTrigger ref={ref} aria-label="Role" aria-describedby="role-help" id="role" data-field="role" width={160}>
         <SelectValue placeholder="Choose a role" />
       </SelectTrigger>
       <SelectContent><SelectItem value="editor">Editor</SelectItem></SelectContent>

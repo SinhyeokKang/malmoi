@@ -114,3 +114,16 @@ it.each(["Remove", "Save"])("%s의 실제 pending 버튼은14px 스피너를 소
     expect(button(container, label).querySelector(".animate-spin")?.classList.contains("size-3.5")).toBe(true);
   } finally { await act(async () => { resolve({ ok: false, error: "unavailable" }); }); }
 });
+
+it("Name and address keep desktop320 and responsive wrapper shrink/fill, with a full child", async () => {
+  const { container } = await render(view());
+  for (const id of ["project-name", "project-address"]) {
+    const field = container.querySelector<HTMLInputElement>(`#${id}`)!;
+    const wrapper = field.parentElement!;
+    expect([...field.classList].filter(token => /(?:^|:)(?:w|min-w|max-w)-/.test(token))).toEqual(["w-full"]);
+    for (const token of ["flex", "w-[320px]", "max-w-full", "@max-form:min-w-0", "@max-form:flex-1"]) expect(wrapper.classList.contains(token)).toBe(true);
+    expect(wrapper.parentElement?.classList.contains("flex")).toBe(true);
+    expect(field.getAttribute("aria-describedby")).toBe(id === "project-name" ? "project-name-caption" : null);
+  }
+  expect(container.querySelector<HTMLInputElement>("#project-address")!.readOnly).toBe(true);
+});

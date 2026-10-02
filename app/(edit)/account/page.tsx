@@ -182,12 +182,12 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               ⚠️ **글자가 기본색이다** — muted 면 위의 muted 글자는 14px에서 4.35:1로 하한을 깬다.
               ⚠️ **자기 주소라 마스킹하지 않는다** — 남의 주소를 보이는 자리만 `maskEmail`을 지난다.
             */}
-            <Input
+            <Input width={320}
               id="account-email"
               value={profile?.email ?? m.account.profile.none}
               readOnly
               tabIndex={-1}
-              className="bg-muted w-80 cursor-default"
+              className="bg-muted cursor-default"
             />
           </div>
           </PanelFacts>

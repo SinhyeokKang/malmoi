@@ -168,12 +168,12 @@ export function RepoStep({
       */}
       <div ref={search} className="relative shrink-0">
         <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2.5 size-4" aria-hidden />
-        <Input
+        <Input width="full"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder={m.newProject.repo.search.placeholder}
           aria-label={m.newProject.repo.search.label}
-          className="w-full pr-2.5 pl-8"
+          className="pr-2.5 pl-8"
         />
       </div>
 
@@ -333,7 +333,7 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
           <Select value={state.branchValue} onValueChange={onChange}>
             {/* ⚠️ **자기 id를 `aria-labelledby`에 함께 넣는다** — 트리거는 `<button>`이라 접근 값이
                 없어서, 라벨만 이으면 스크린리더가 "Branch"까지만 말하고 고른 브랜치를 말하지 않는다. */}
-            <SelectTrigger id="repo-branch" aria-labelledby="repo-branch-label repo-branch" className="w-[220px] shrink-0">
+            <SelectTrigger width={220} id="repo-branch" aria-labelledby="repo-branch-label repo-branch" className="shrink-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -345,11 +345,10 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
             </SelectContent>
           </Select>
         ) : branch.mode === "input" ? (
-          <Input
+          <Input width={220}
             id="repo-branch"
             value={state.branchValue}
             onChange={(e) => onChange(e.target.value)}
-            className="w-[220px]"
           />
         ) : (
           /* ⚠️ **mono가 아니다** — 브랜치는 읽는 값이다 (핸드오프 1a의 `Select` 값이 sans다). */

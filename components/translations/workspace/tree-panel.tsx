@@ -89,14 +89,14 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
         {namespaceCount >= FILTER_AT && (
           <div className="relative mb-1.5">
             <Search className="text-muted-foreground pointer-events-none absolute top-2 left-2.5 size-3.5" aria-hidden />
-            <Input
+            <Input width="full"
               type="search"
               value={filter}
               onChange={event => setFilter(event.target.value)}
               aria-label={m.translations.workspace.tree.filter}
               placeholder={m.translations.workspace.tree.filter}
-              // `Input` 프리미티브는 폭을 들지 않는다 — 트리 행과 같은 폭으로 채운다.
-              className="h-8 w-full pl-8 text-xs"
+              // 트리 행과 같은 폭으로 채운다.
+              className="h-8 pl-8 text-xs"
             />
           </div>
         )}

@@ -106,16 +106,18 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
             ⚠️ **열리면 포커스는 입력이다** — `autoFocus`가 커밋 때 입력에 포커스를 두면, Radix `FocusScope`는 이미 안에 포커스가
             있는 것을 보고 자기 자동 포커스(콘텐츠·첫 항목)를 건너뛴다. "열면 검색 입력에 포커스" 테스트가 그 경로를 잰다.
           */}
-          <Input
-            ref={input}
-            autoFocus
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-            onKeyDown={onInputKeyDown}
-            placeholder={m.common.nav.projectSwitcher.search}
-            aria-label={m.common.nav.projectSwitcher.search}
-            className="h-8 min-w-0 flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
-          />
+          <div className="flex min-w-0 flex-1">
+            <Input width="full"
+              ref={input}
+              autoFocus
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              onKeyDown={onInputKeyDown}
+              placeholder={m.common.nav.projectSwitcher.search}
+              aria-label={m.common.nav.projectSwitcher.search}
+              className="h-8 border-0 px-1 shadow-none focus-visible:ring-0"
+            />
+          </div>
           <kbd className="border-border text-muted-foreground shrink-0 rounded border px-1.5 py-0.5 font-sans text-xs">
             {m.common.nav.projectSwitcher.escHint}
           </kbd>

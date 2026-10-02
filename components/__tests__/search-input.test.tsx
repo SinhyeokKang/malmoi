@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import userEvent from "@testing-library/user-event";
+import { act } from "react";
 import { expect, it, vi } from "vitest";
 
 import { render } from "./helpers/dom";
@@ -43,4 +44,18 @@ it("제출하지 않은 바깥 변경(검색 지우기·뒤로가기)은 입력�
   await user.type(field(container), "y");
   await rerender(<SearchInput value={undefined} label="Search" onSearch={vi.fn()} />);
   expect(field(container).value).toBe("");
+});
+
+it("width320 preserves trimmed Enter submission and both IME guards", async () => {
+  const onSearch = vi.fn();
+  const { container } = await render(<SearchInput width={320} value={undefined} label="Search" onSearch={onSearch} />);
+  const user = userEvent.setup();
+  await act(async () => { await user.type(field(container), "  hello  "); });
+  for (const options of [{ isComposing: true }, { keyCode: 229 }]) {
+    await act(async () => { field(container).dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true, ...options })); });
+  }
+  expect(onSearch).not.toHaveBeenCalled();
+  await act(async () => { await user.keyboard("{Enter}"); });
+  expect(onSearch).toHaveBeenCalledExactlyOnceWith("hello");
+  expect(field(container).classList.contains("w-80")).toBe(true);
 });
