@@ -36,7 +36,7 @@ description: 저장소 문서(CLAUDE/PRODUCT/ARCHITECTURE/DIRECTORY/DESIGN/OPERA
 
 | 키워드 | 문서 | 대조 관점 |
 |---|---|---|
-| `claude` | **CLAUDE.md** | 스택 표(버전은 `package.json`·`pnpm-lock.yaml`), 명령어 표(`package.json` scripts), 스킬 라인업(`.claude/commands/` 목록·개수·미러 제외 집합이 `scripts/sync-agents.mjs`의 `EXCLUDE`와 같은가), 브랜치·배포·CI 서술(`.github/workflows/ci.yml`·`vercel.json`), 코드 컨벤션의 예시 파일이 실재하는가, 문서 지도가 `docs/` 실제 파일과 같은가 |
+| `claude` | **CLAUDE.md** | 스택 표(버전은 `package.json`·`pnpm-lock.yaml`), 명령어 표(`package.json` scripts), 스킬 라인업(`.claude/commands/` 목록·개수·전체 명령 미러가 `scripts/sync-agents.mjs` 산출물과 같은가), 브랜치·배포·CI 서술(`.github/workflows/ci.yml`·`vercel.json`), 코드 컨벤션의 예시 파일이 실재하는가, 문서 지도가 `docs/` 실제 파일과 같은가 |
 | `architecture` | **docs/ARCHITECTURE.md** | export 결정성 3규칙·`writeStrategy`/`layout` 매트릭스·변경 감지 두 층·커밋/PR 전략·스캐너 계약·스키마 서술·인증 경계(§6 — 미들웨어가 무엇을 막고 무엇을 지나는지, 세션 정책, 이메일 검증 자리, 거부와 장애의 구별)·Supabase/Vercel 함정이 `lib/`·`auth.ts`·`middleware.ts`·`prisma/schema.prisma`와 일치하는가. `(미구현)` 표시가 남았는데 구현된 것 |
 | `product` | **docs/PRODUCT.md** | 완료 조건·포지셔닝·역할과 권한표(§3 — `lib/auth/permission.ts`의 `canPerform`과 칸이 같은가)·범위/비범위(§4)·설계 결정(§7 — 특히 §7.7 IA가 실제 라우트·`lib/routes.ts`와 같은가)·§10 "아직 안 정한 것"(결정됐는데 목록에 남은 것)이 코드와 일치하는가. ⚠️ **절 번호가 띄엄띄엄한 것은 정상이다**(코드 주석이 그 번호를 참조한다 — 재번호 금지) |
 | `directory` | **docs/DIRECTORY.md** | 트리가 실제 파일과 맞는가(없는 파일·새 파일·옮긴 파일), ⚠️ 항목이 가리키는 테스트·상수가 실재하는가, 프리미티브 개수가 `components/ui/*.tsx`와 맞는가 |

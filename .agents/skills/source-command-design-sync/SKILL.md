@@ -1,6 +1,13 @@
 ---
-description: 신규 페이지 초기 구현의 핸드오프를 기준으로 화면을 대조·수정·실측·리뷰. Codex는 사용자 제공 로컬 파일, Claude Code는 DesignSync로 시안을 확보한다. 구현된 화면은 대상이 아니다.
+name: "source-command-design-sync"
+description: "신규 페이지 초기 구현의 핸드오프를 기준으로 화면을 대조·수정·실측·리뷰. Codex는 사용자 제공 로컬 파일, Claude Code는 DesignSync로 시안을 확보한다. 구현된 화면은 대상이 아니다."
 ---
+
+# source-command-design-sync
+
+Use this skill when the user asks to run the migrated source command `design-sync`.
+
+## Command Template
 
 ⚠️ **시안이 정본인 것은 신규 페이지의 초기 구현까지다** (2026-09-27 사용자). 새 페이지를 Claude Design 핸드오프로 처음 구현할 때만 이 루프를 돌고,
 **그 구현이 dev에 들어간 뒤로는 코드베이스(+`docs/DESIGN.md`)가 정본이다** — 이미 구현된 화면에서 시안과 코드가 어긋나면 코드가 이긴다.

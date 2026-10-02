@@ -1,6 +1,13 @@
 ---
-description: guide/ 가이드 스크린샷(public/guide/)을 ego-browser로 촬영·갱신. stale은 pnpm guide:check 출력을 쓴다. 빌드 안 함.
+name: "source-command-guide-shots"
+description: "guide/ 가이드 스크린샷(public/guide/)을 ego-browser로 촬영·갱신. stale은 pnpm guide:check 출력을 쓴다. 빌드 안 함."
 ---
+
+# source-command-guide-shots
+
+Use this skill when the user asks to run the migrated source command `guide-shots`.
+
+## Command Template
 
 `public/guide/*.webp`(가이드 본문이 `/guide/<name>.webp`로 참조하는 스크린샷)를 **실제 앱을 조작해 다시 찍는** 전용 스킬. 본문은 건드리지 않는다 — 본문은 `/guide`, 이미지는 여기.
 

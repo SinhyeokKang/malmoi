@@ -1,6 +1,13 @@
 ---
-description: dev → main PR 생성 + 버전 bump + CI 대기 + squash 머지 + 태그·GitHub Release + dev 동기화. main 머지가 곧 Vercel 프로덕션 배포다.
+name: "source-command-merge"
+description: "dev → main PR 생성 + 버전 bump + CI 대기 + squash 머지 + 태그·GitHub Release + dev 동기화. main 머지가 곧 Vercel 프로덕션 배포다."
 ---
+
+# source-command-merge
+
+Use this skill when the user asks to run the migrated source command `merge`.
+
+## Command Template
 
 > **런타임 공통**: Claude Code와 Codex 모두 실행할 수 있다. 브랜치·워크트리 소유권·CI·DB·lease 등 아래 게이트는 동일하다. 원격 변경은 해당 작업을 맡은 세션 하나가 수행하며 다른 세션과 같은 브랜치를 동시에 움직이지 않는다. 이 스킬의 제공 자체가 프로덕션 배포 승인은 아니다 — `/merge`는 사용자가 별도로 호출해야 한다.
 

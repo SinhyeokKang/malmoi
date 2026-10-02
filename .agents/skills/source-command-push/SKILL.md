@@ -1,6 +1,13 @@
 ---
-description: dev에 푸시 = Vercel preview 배포. 로컬 검증 게이트 + dev 마이그레이션 + 문서 신선도 + Codex 미러 게이트를 통과한 것만 나간다. 프로덕션 배포는 /merge다.
+name: "source-command-push"
+description: "dev에 푸시 = Vercel preview 배포. 로컬 검증 게이트 + dev 마이그레이션 + 문서 신선도 + Codex 미러 게이트를 통과한 것만 나간다. 프로덕션 배포는 /merge다."
 ---
+
+# source-command-push
+
+Use this skill when the user asks to run the migrated source command `push`.
+
+## Command Template
 
 > **런타임 공통**: Claude Code와 Codex 모두 실행할 수 있다. 브랜치·워크트리 소유권·CI·DB·lease 등 아래 게이트는 동일하다. 원격 변경은 해당 작업을 맡은 세션 하나가 수행하며 다른 세션과 같은 브랜치를 동시에 움직이지 않는다. 이 스킬의 제공 자체가 프로덕션 배포 승인은 아니다 — `/merge`는 사용자가 별도로 호출해야 한다.
 

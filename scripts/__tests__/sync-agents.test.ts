@@ -48,3 +48,49 @@ describe(".agents/skills/ 실제 내용", () => {
     for (const d of dirs) expect(isMirrorOutput(d)).toBe(true);
   });
 });
+
+describe("deployment and orchestration skill generation", () => {
+  it("generates runnable command mirrors and detects later drift without touching user skills", async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync, readFileSync, copyFileSync, existsSync, rmSync, realpathSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join, dirname } = await import("node:path");
+    const { spawnSync } = await import("node:child_process");
+    const root = realpathSync(mkdtempSync(join(tmpdir(), "malmoi-agent-mirror-")));
+    const put = (path: string, content: string) => {
+      const full = join(root, path);
+      mkdirSync(dirname(full), { recursive: true });
+      writeFileSync(full, content);
+    };
+    try {
+      put("CLAUDE.md", "# CLAUDE.md\n\nShared rules.\n");
+      put(".agents/PREAMBLE.md", "# AGENTS.md\n");
+      put("scripts/sync-agents.mjs", "");
+      copyFileSync(new URL("../sync-agents.mjs", import.meta.url), join(root, "scripts/sync-agents.mjs"));
+      put(".agents/skills/local-helper/SKILL.md", "User-owned skill");
+      put(".agents/skills/source-command-obsolete/SKILL.md", "Obsolete mirror");
+      const commands = ["push", "merge", "sync", "orchestrate", "ship", "runtime-test", "design-sync", "guide-shots"];
+      for (const name of commands) {
+        put(`.claude/commands/${name}.md`, `---\ndescription: ${name} workflow\n---\n\nKeep ${name} gates.\n`);
+      }
+      const run = (...args: string[]) => spawnSync(process.execPath, [join(root, "scripts/sync-agents.mjs"), ...args], { encoding: "utf8" });
+      expect(run("--check").status).toBe(1);
+      expect(existsSync(join(root, "AGENTS.md"))).toBe(false);
+      expect(run().status).toBe(0);
+      for (const name of commands) {
+        const mirror = readFileSync(join(root, `.agents/skills/source-command-${name}/SKILL.md`), "utf8");
+        expect(mirror).toContain(`name: "source-command-${name}"`);
+        expect(mirror).toContain(`Keep ${name} gates.`);
+      }
+      expect(existsSync(join(root, ".agents/skills/source-command-obsolete"))).toBe(false);
+      expect(readFileSync(join(root, ".agents/skills/local-helper/SKILL.md"), "utf8")).toBe("User-owned skill");
+      expect(run("--check").status).toBe(0);
+      put(".claude/commands/push.md", "---\ndescription: push workflow\n---\n\nUpdated gate.\n");
+      expect(run("--check").status).toBe(1);
+      expect(readFileSync(join(root, ".agents/skills/source-command-push/SKILL.md"), "utf8")).toContain("Keep push gates.");
+      expect(run().status).toBe(0);
+      expect(run("--check").status).toBe(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});

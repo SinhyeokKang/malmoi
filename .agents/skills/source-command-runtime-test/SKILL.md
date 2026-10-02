@@ -1,6 +1,13 @@
 ---
-description: ego-browser 태스크 스페이스에서 앱을 수동 검증하고, 발견한 결함을 BugShot 확장으로 GitHub 이슈로 제출한다. 리포트+이슈 전용 — 코드 수정·빌드·커밋 안 함.
+name: "source-command-runtime-test"
+description: "ego-browser 태스크 스페이스에서 앱을 수동 검증하고, 발견한 결함을 BugShot 확장으로 GitHub 이슈로 제출한다. 리포트+이슈 전용 — 코드 수정·빌드·커밋 안 함."
 ---
+
+# source-command-runtime-test
+
+Use this skill when the user asks to run the migrated source command `runtime-test`.
+
+## Command Template
 
 **실물 브라우저로 편집 UI를 훑어 결함을 찾고, BugShot으로 이슈를 낸다.** `pnpm test`가 값은 보지만 화면은 못 본다 — 라우트 이관·권한 UI 노출·거부 문구·입력값 유지처럼 **렌더 결과가 판정인 축**이 이 스킬의 자리다. `/roundtrip`이 어댑터 표현 층에 대해 하는 일을 편집 UI에 대해 한다.
 

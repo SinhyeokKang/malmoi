@@ -226,7 +226,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **22개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/runtime-test`·`/design-sync`·`/orchestrate`·`/guide-shots` 일곱은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, 뒤의 넷은 Codex에 런타임이 없다: `/runtime-test`는 ego-browser, `/design-sync`는 그 위에 **`DesignSync` 도구**까지 쓰고, `/orchestrate`는 Orca 워커 세션을 띄워 push까지 지휘하고, `/guide-shots`는 ego-browser로 가이드 스크린샷을 찍는다 — 그 stale 목록만은 `pnpm guide:check`로 어디서든 받는다).
+스킬 **22개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, 모두 `.agents/skills/source-command-<name>/SKILL.md`로 미러된다. Claude Code와 Codex 모두 같은 권한·브랜치·검증 게이트로 실행한다. Codex의 `/design-sync`는 사용자 제공 로컬 핸드오프를 받고, Claude Code는 DesignSync로 확보한다. 브라우저 등은 실제 도구 가용성을 확인하며, 없는 도구의 검증을 통과로 취급하지 않는다. 모든 워커·서브에이전트 생성·재사용의 모델 경계는 **Codex 지휘 → Sol·Astra, Claude Code 지휘 → Sonnet·Opus**이며 사용자 명시 허가 없이 교차하지 않는다. `/orchestrate`뿐 아니라 단독 `/design-sync`·`/doc-check`·`/feature-review` 등에도 적용한다.
 
 **권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/design-sync`) → (`/db`) → `/push`(dev) → `/merge`(프로덕션 + 릴리스). ⚠️ **`/design-sync`는 신규 페이지를 핸드오프로 처음 구현할 때만** 끼고, `/ship`도 6.5단계에서 같은 조건으로 부른다. 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
 

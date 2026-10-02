@@ -381,3 +381,11 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - 실제 Next 로컬 로더가 WOFF2를 읽고 자사 호스트 CSS/swap/preload를 생성하며 자동 Arial 폴백이 없는지 검사한다. 파일의 Latin/숫자 및100–900 가변 축, Hangul 미지원도 실제 cmap으로 검사한다. 루트 변수와 sans 순서, 기존 Pretendard 동적 서브셋 link/predev/prebuild·시스템 폴백/mono를 유지한다. 기존 connection/CSP 동작과 의존성 버전은 바꾸지 않는다.
 - 최초 테스트의 TypeScript7 직접 파서 수집 오류는 별도 초기 로그로 보존하고 저장소 기존 ts-morph 파서로 바로잡았다. 이후 실제 기준 코드에서4계약 RED를 확인했고 구현 후 관련3파일25테스트 GREEN/typecheck exit0이다. 실제 순서 역전·루트 변수 삭제·자동 Arial 삽입 각 RED, 복원 후3파일25 GREEN.
 - 고정 후보7경로 독립 Astra 소스 리뷰0 findings 및 명시적 COMMIT 승인을 받았다. 공식 폰트/라이선스 바이트 동치와 baseline/mutation RED·25 GREEN/typecheck를 독립 확인했다. 지휘자의 실제 영문/숫자 Geist·한글 Pretendard 폴백 및3뷰포트 QA와 최종 누적 gate가 남아 T20a 완료 체크는 아직 보류한다. 코드 치수·monospace·기존 생성/로드 경로·환경파일/원격은 변경하지 않았다.
+
+## 추가 요청 — 런타임 공통 하네스 (2026-10-02)
+
+- 사용자 요청으로 `/push`·`/merge`·`/sync`·`/orchestrate` 및 브라우저 관련 명령의 Codex 제외를 제거한다. 모든22개 원본 명령을 Codex 스킬로 생성하며 `/ship`도 dev push까지 동일한 게이트를 따른다. 프로덕션 `/merge` 별도 호출·브랜치/소유권/CI/DB/lease 경계는 유지한다.
+- 지휘자가 Codex면 Sol·Astra, Claude Code면 Sonnet·Opus만 호출한다. 구현·리뷰·QA·재사용·수정 라운드 모두 적용하며 사용자 명시 허가 없이 패밀리를 교차하지 않는다.
+- Codex의 `design-sync`는 사용자에게 로컬 핸드오프 경로(README·HTML·참조 자산)를 요청한다. 제공된 경로는 다시 요구하지 않는다. DesignSync나 Claude 워커로 대체하지 않고 `ego-browser`로 실측한다. 브라우저 QA·가이드 촬영은 실제 도구 연결 여부로 판단한다.
+- 검증: 미러 생성기의 새 통합 테스트를 기존 구현에서 누락된 push 미러로 RED 확인 후 수정했다. 생성/드리프트/read-only check/사용자 스킬 보존6테스트·typecheck·22개 스킬 형식 검증·미러 검사 통과. 전체 `pnpm test`는 exit1: 666파일/10349테스트 통과, 1파일/1테스트 실패, 1스킵. 실패는 앞선 Geist의 `app/layout.tsx`를 import하는 SEO 테스트에서 `next/font/local`이 Vitest 함수가 아닌 문제이며 T20a 워커에 수정 배정했다. 하네스 독립 리뷰의 공통 모델 경계·QA 권한 분기 지적2건을 수정했고 재검토 결과 추가 findings0이다.
+- 이 변경은 하네스 전용이다. Geist 코드 통합(dev `d073963e`) 이후 실제 폰트/3뷰포트 R3·T21 문서·최종 gate·dev push·T22는 계속 미완이다.

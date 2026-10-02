@@ -1,6 +1,13 @@
 ---
-description: 여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고, 이 세션이 리뷰·통합·push·런타임 QA·이슈 라우팅·정리까지 지휘한다. /ship보다 큰 단위 — 배치 계획 문서 하나를 끝까지 태운다. 프로덕션(/merge)은 부르지 않는다.
+name: "source-command-orchestrate"
+description: "여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고, 이 세션이 리뷰·통합·push·런타임 QA·이슈 라우팅·정리까지 지휘한다. /ship보다 큰 단위 — 배치 계획 문서 하나를 끝까지 태운다. 프로덕션(/merge)은 부르지 않는다."
 ---
+
+# source-command-orchestrate
+
+Use this skill when the user asks to run the migrated source command `orchestrate`.
+
+## Command Template
 
 배치 계획 문서(예: `/audit` 결과를 쪼갠 `docs/features/<slug>/tasks.md`) 하나를 **여러 워커 세션에 나눠 태우고**, 이 세션은
 **지휘만** 한다 — 브리프 작성 · 결정 수집 · 리뷰 · dev 통합 · push · 런타임 QA · 이슈 라우팅 · 정리. 구현은 워커가 `/ship bypass`로 한다.
