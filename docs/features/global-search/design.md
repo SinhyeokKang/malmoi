@@ -93,7 +93,18 @@ SELECT … FROM (
 - 최악은 push 행 상한(소스 하나당 번역 200,000행)이 멤버십 여럿에 걸친 경우다. ②를 조건부로 둔 이유가 이것이다 — 키·원문에서 5건이 차면 번역값을 훑지 않는다.
 - **트라이그램 인덱스는 재기 전에 넣지 않는다.** 선례는 ARCHITECTURE §1.96 — 번역 화면 검색에서 `pg_trgm` GIN(value·sourceText)을 쟀고 131→94ms라 **기각했다**(키별 EXISTS 계획). 이 조회는 계획이 달라(프로젝트 여럿을 가로지른 순차 ILIKE) 같은 결론이 보장되지 않으므로 실측(tasks B3)으로 가른다.
 - **실측은 커밋된 테스트다** — `lib/keys/__tests__/search-performance.integration.ts`, `translation-list-performance.integration.ts`의 형(autovacuum off · `statement_timeout=5000` · `$on("query")` 수집 · `EXPLAIN (ANALYZE, BUFFERS)` 방문 행 단언). 픽스처: 멤버 프로젝트 둘(하나는 20,000키 × 10로케일 = 200,000행) + **비멤버 대형 테넌트 하나(여러 소스로 구성, 번역 행 수 > 멤버 전체 번역 행 수 × 2)**. 질의 넷(불일치 · 키 이름 일치 · 번역값만 일치 · 흔한 단어 — `DISTINCT ON`이 일치 행 전부를 정렬하는 경우) × 통계 상태 둘(없음 · `ANALYZE` 뒤). 단언: `Translation` 방문 행 < 멤버 전체 번역 행 수 × 2 및 접근 경로의 멤버 `projectId` 제한(`Index Cond` 등). 필터·인덱스 재검사에서 버린 행과 loops까지 방문 수에 포함한다. 동일 픽스처의 전체 `Translation` 순차 스캔을 대조군으로 수집해 같은 검출기가 거부함을 확인한다. 방문 수는 전 테넌트 스캔 방어이고, 비멤버 행 미방문의 단독 증명이 아니다(spec 19) · 최악 질의 중앙값 ≤ 300ms면 B4 생략. 기준은 로컬 PG17의 Execution Time이고 `hnd1`↔도쿄 pooler 왕복을 뺀 값이다.
-- 측정값: _(B3에서 채운다)_
+- **측정값 (B3, 2026-10-03)**: 로컬 PostgreSQL 17.11, Node 24.21.0. 멤버 2프로젝트 **200,100셀**(20,000키×10 + 10키×10), 비멤버 1프로젝트·3소스 **600,000셀**. autovacuum off · statement_timeout=5000. 아래는 상태·질의마다 **20회**의 `EXPLAIN (ANALYZE, BUFFERS, VERBOSE)` Execution Time **①+② 합 중앙값(ms)**이고, 앱·pooler 네트워크 왕복은 제외한다.
+
+  | 질의 | 통계 없음 | ANALYZE 뒤 | 최대 Translation 방문 |
+  |---|---:|---:|---:|
+  | 불일치 (`no-match-at-all`) | 61.72 | 77.99 | 200,100 |
+  | 키 이름 (`key-123`) | 5.31 | 20.17 | 0 — ①만 실행 |
+  | 번역값만 (`unique-translation`) | 59.76 | 77.03 | 200,100 |
+  | 흔한 단어 (`common`) | 253.01 | 253.22 | 200,100 |
+
+  **최악 중앙값 253.22ms ≤ 300ms → B4 생략, 스키마 변경 없음.** 두 통계 상태 모두 멤버 배열 유래 `projectId` 인덱스 접근과 방문 < 400,200을 단언했고, 같은 800,100셀의 전체 순차 스캔 대조군은 같은 검출기가 거부했다. 방문 수는 필터·재검사 탈락 행과 loops를 포함한다.
+
+  **위 SQL 개요와 달라진 실행 형태**: 직접 다중 조인은 통계 없이 키마다 번역을 재탐색해 5초를 넘었다. 단순 `ANY(member-array)` materialization도 ANALYZE 뒤 전체 병렬 스캔으로 바뀌어 검출기가 거부했다. 최종 ②는 멤버 배열 `unnest` → 프로젝트별 `LATERAL ... OFFSET 0` 인덱스 탐색 → `IN (...) IS TRUE`의 독립 로케일 검사 → `matched` materialization → 키별 `min(ARRAY[localeCode,value] COLLATE "C")` 집계 → 키 PK·메타데이터·상위 5 순서다. `(keyId,localeCode)` 유일성 때문에 최솟값은 C 첫 로케일과 해당 값 한 쌍이고 결과 계약은 그대로다. `matched`를 합치는 단순화는 통계 없음 common 437.5ms로 악화돼 되돌렸다. 두 materialization과 LATERAL 경계는 낡은 통계의 재탐색·전체 정렬을 막는 데 필요하다. 대량 시드는 이미 만든 키×로케일을 넣는 트랜잭션에만 FK 트리거를 끄고 복구하며, 기능 통합 테스트와 실제 측정의 제약·역할은 정상이다.
 
 ### 왜 Route Handler인가 (Server Action이 아니라)
 

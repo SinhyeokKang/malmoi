@@ -1,4 +1,9 @@
-import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
+const mock = vi.hoisted(() => ({ session: vi.fn(), prisma: vi.fn() }));
+vi.mock("@/lib/auth/read-session", () => ({ readSession: mock.session }));
+vi.mock("@/lib/db", () => ({ getPrisma: mock.prisma }));
+import { searchKeysAction, loadSearchMembershipsAction } from "@/app/search/actions";
+import { navSearchEntries } from "@/lib/search/nav-index";
 import { searchKeys } from "@/lib/keys/search";
 import { keyResultHref } from "@/lib/search/key-href";
 import { parseTranslationQuery } from "@/lib/translations/query";
@@ -9,6 +14,8 @@ beforeAll(() => db.start());
 afterAll(() => db.stop());
 beforeEach(async () => {
   await db.reset();
+  mock.session.mockResolvedValue({ status: "ok", userId: "u1" });
+  mock.prisma.mockReturnValue(db.prisma);
   for (const [p, user] of [["p1", "u1"], ["p2", "u2"]] as const) {
     await db.project(p, user);
     await db.surface(p, `${p}-s`);
@@ -39,12 +46,16 @@ it("키 이름 > 원문 > 번역값이고 첫 C 로케일만 반환하며 URL이
   await db.key("p1", "p1-s", "name", "needle", "Source", { en: "needle", ko: "needle" });
   await db.key("p1", "p1-s", "source", "aaa", "needle");
   await db.key("p1", "p1-s", "value", "000", "Source", { en: "needle EN", ko: "needle KO" });
-  const hits = await search("NEEDLE");
+  const response = await searchKeysAction("NEEDLE", "p2");
+  expect(response.ok).toBe(true);
+  if (!response.ok) throw new Error("Search action failed");
+  const hits = response.hits;
   expect(hits.map(h => h.id)).toEqual(["name", "source", "value"]);
   expect(hits[2]).toMatchObject({ localeCode: "en", value: "needle EN", inKey: false });
   expect(hits[0]).toMatchObject({ localeCode: null, value: null, inKey: true });
   const url = new URL(keyResultHref(hits[2]!), "http://localhost");
-  expect(parseTranslationQuery(Object.fromEntries(url.searchParams))).toMatchObject({ key: "value", keySurface: "p1-s", ns: "_root", q: "" });
+  expect(url.searchParams.has("q")).toBe(false);
+  expect(parseTranslationQuery(Object.fromEntries(url.searchParams))).toMatchObject({ key: "value", keySurface: "p1-s", ns: "_root" });
 });
 
 it.each(["name", "value"])("%s 동점 8개는 소스·프로젝트를 넘어서 C id 순서로 다섯 개만 고정한다", async kind => {
@@ -79,4 +90,22 @@ it.each(["50%_off", "a_b", "a%b", "a\\b"])("%s는 LIKE 와일드카드가 아니
   await db.prisma.stringKey.update({ where: { id: "literal" }, data: { key: "other" } });
   await db.prisma.translation.create({ data: { projectId: "p1", surfaceId: "p1-s", keyId: "literal", localeCode: "en", value: q } });
   expect((await search(q)).map(h => h.id)).toEqual(["literal"]);
+});
+
+it("권한 회수 뒤 다음 Action 응답과 화면용 내비에서 프로젝트가 함께 사라진다", async () => {
+  expect((await searchKeysAction("private-value", null))).toMatchObject({ ok: true, hits: [{ id: "p1-key" }] });
+  const before = await loadSearchMembershipsAction();
+  if (!before.ok) throw new Error("Membership action failed");
+  expect(navSearchEntries(before.memberships, { activeSlug: null, userName: "Fixture" }).projects.map(p => p.slug)).toEqual(["p1"]);
+  await db.prisma.projectMember.deleteMany({ where: { projectId: "p1", userId: "u1" } });
+  expect(await searchKeysAction("private-value", null)).toEqual({ ok: true, hits: [] });
+  const after = await loadSearchMembershipsAction();
+  if (!after.ok) throw new Error("Membership action failed");
+  expect(navSearchEntries(after.memberships, { activeSlug: null, userName: "Fixture" }).projects).toEqual([]);
+});
+
+it("일치 로케일은 DB 기본 정렬 대신 C 정렬의 첫 코드다", async () => {
+  await db.surface("p1", "locale-order", ["a", "Z", "é"]);
+  await db.key("p1", "locale-order", "locale-order", "locale-key", "Source", { a: "locale-needle a", Z: "locale-needle Z", é: "locale-needle accent" });
+  expect(await search("locale-needle")).toMatchObject([{ id: "locale-order", localeCode: "Z", value: "locale-needle Z" }]);
 });
