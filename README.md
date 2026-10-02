@@ -48,6 +48,8 @@ and Publish writes Malmoi's values back.
 
 ## Features
 
+Search from either header for guides and menus; sign in to find your projects and their text, with key results limited to nonarchived projects and sources after the first import, excluding removed keys and languages.
+
 <table>
 <tr>
 <td width="50%" valign="middle">
