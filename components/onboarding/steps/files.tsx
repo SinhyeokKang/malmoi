@@ -373,8 +373,8 @@ function Preview({
             label={m.newProject.files.preview.language}
             value={state.locale}
             onChange={value => { if (!pending) onLocale(value); }}
-            /* 칸마다 국기가 앞에 선다 — `leading`이 그 자리다 (`SegmentContent`는 아이콘 컴포넌트만 받는다). */
-            options={locales.map((code) => ({ value: code, label: code, leading: <LocaleFlag code={code} /> }))}
+            /* 국기 ReactNode가 icon 슬롯에 서며 기존 치수·장식 의미를 유지한다. */
+            options={locales.map((code) => ({ value: code, label: code, icon: <LocaleFlag code={code} /> }))}
           /></fieldset>
         )}
         <span className="text-muted-foreground min-w-0 flex-1 truncate text-right text-xs">{candidate?.pathTemplate}</span>

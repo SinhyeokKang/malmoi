@@ -48,14 +48,13 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
     >
       <PanelRows>
       <PanelRow
-        glyph={<LogOut className="text-muted-foreground size-4" aria-hidden />}
+        icon={<LogOut className="text-muted-foreground size-4" aria-hidden />}
         name={m.account.signOut.title}
-        detail={m.account.signOut.description}
-      >
-        <SignOutButton signOut={signOut} />
-      </PanelRow>
+        description={m.account.signOut.description}
+        actions={<SignOutButton signOut={signOut} />}
+      />
       <PanelRow
-        glyph={<MonitorSmartphone className="text-muted-foreground size-4" aria-hidden />}
+        icon={<MonitorSmartphone className="text-muted-foreground size-4" aria-hidden />}
         name={m.account.sessions.title}
         /**
          * ⚠️ **확인이 둘이 된다는 사실을 누르기 전에 말한다** — 이 왕복은 provider 화면을 한 번 더
@@ -65,42 +64,43 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
          * 갈래에서 이 줄만 사라져 **위 행과 높이가 갈린다** — 수단 카드에서 보조 줄 둘을 다 지운 것과
          * 같은 논거를 여기서 반대로 적용하지 않는다. provider 이름은 Dialog의 검은 줄이 든다.
          */
-        detail={m.account.sessions.willConfirm}
-      >
-        <Dialog>
-          <DialogTrigger asChild>
-            {/*
-              ⚠️ **넷 중 이것만 행에서도 붉다** — 되돌리려면 모든 기기에서 다시 로그인해야 하고,
-              바로 위의 [Sign out]과 **같은 리스트의 이웃**이라 무게 차이를 그 자리에서 말해야 한다.
-              ⚠️ **`disabled`가 아니라 `busy`다** (ux-drift-unify 3-⚪17 · 절차 (a)) — 확정하면 Dialog가 닫히며 이 트리거로 포커스를
-              돌려주는데, 진짜 `disabled`면 그 포커스가 `body`로 빠진다. **두 번째 challenge도 여기서 막힌다** — `busy`는 클릭을
-              삼켜 Action이 redirect하기 전에 Dialog를 다시 열 수 없다. 두 번째 `beginRevocation`은 첫 challenge를 지우므로
-              돌아온 첫 callback이 `?sessionRevocation=invalid`가 된다(그래서 옛 판은 Dialog를 연 채 확정에 `loading`을 걸었다).
-            */}
-            <Button variant="danger" busy={pending}>{m.account.sessions.title}</Button>
-          </DialogTrigger>
-          <DialogContent
-            title={m.account.sessions.confirmTitle}
-            description={m.account.sessions.confirmHint}
-            footer={
-              <>
-                <DialogClose asChild>
-                  <Button data-initial-focus variant="default">{m.common.cancel}</Button>
-                </DialogClose>
-                {/* 실패 Alert는 구역에 선다 — Dialog가 닫힌 뒤에도 사유가 보인다(절차 (a), DESIGN §6.4). */}
-                <DialogClose asChild>
-                  <Button variant="danger" onClick={() => startTransition(submit)}>
-                    {confirmProvider === null ? m.account.sessions.button : m.account.sessions.confirmAction(confirmProvider)}
-                  </Button>
-                </DialogClose>
-              </>
-            }
-          >
-            {/* 검은 줄 — *지금 참인 값*이다. 확인 상대를 모르면 그리지 않는다(없으면 안 그린다). */}
-            {confirmProvider !== null && m.account.sessions.confirmDetail(confirmProvider)}
-          </DialogContent>
-        </Dialog>
-      </PanelRow>
+        description={m.account.sessions.willConfirm}
+        actions={
+          <Dialog>
+            <DialogTrigger asChild>
+              {/*
+                ⚠️ **넷 중 이것만 행에서도 붉다** — 되돌리려면 모든 기기에서 다시 로그인해야 하고,
+                바로 위의 [Sign out]과 **같은 리스트의 이웃**이라 무게 차이를 그 자리에서 말해야 한다.
+                ⚠️ **`disabled`가 아니라 `busy`다** (ux-drift-unify 3-⚪17 · 절차 (a)) — 확정하면 Dialog가 닫히며 이 트리거로 포커스를
+                돌려주는데, 진짜 `disabled`면 그 포커스가 `body`로 빠진다. **두 번째 challenge도 여기서 막힌다** — `busy`는 클릭을
+                삼켜 Action이 redirect하기 전에 Dialog를 다시 열 수 없다. 두 번째 `beginRevocation`은 첫 challenge를 지우므로
+                돌아온 첫 callback이 `?sessionRevocation=invalid`가 된다(그래서 옛 판은 Dialog를 연 채 확정에 `loading`을 걸었다).
+              */}
+              <Button variant="danger" busy={pending}>{m.account.sessions.title}</Button>
+            </DialogTrigger>
+            <DialogContent
+              title={m.account.sessions.confirmTitle}
+              description={m.account.sessions.confirmHint}
+              actions={
+                <>
+                  <DialogClose asChild>
+                    <Button data-initial-focus variant="default">{m.common.cancel}</Button>
+                  </DialogClose>
+                  {/* 실패 Alert는 구역에 선다 — Dialog가 닫힌 뒤에도 사유가 보인다(절차 (a), DESIGN §6.4). */}
+                  <DialogClose asChild>
+                    <Button variant="danger" onClick={() => startTransition(submit)}>
+                      {confirmProvider === null ? m.account.sessions.button : m.account.sessions.confirmAction(confirmProvider)}
+                    </Button>
+                  </DialogClose>
+                </>
+              }
+            >
+              {/* 검은 줄 — *지금 참인 값*이다. 확인 상대를 모르면 그리지 않는다(없으면 안 그린다). */}
+              {confirmProvider !== null && m.account.sessions.confirmDetail(confirmProvider)}
+            </DialogContent>
+          </Dialog>
+        }
+      />
       </PanelRows>
     </PanelCard>
   );

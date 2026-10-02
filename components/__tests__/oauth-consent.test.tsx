@@ -252,3 +252,29 @@ describe("Not you?", () => {
     expect(mocks.switchAccount).toHaveBeenCalledWith("req_1");
   });
 });
+
+it("actual Not you form remains the sole trailing gap-1 slot and is natively locked during authorize", async () => {
+  let finish!: (value: unknown) => void;
+  mocks.authorize.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  const view = await mount();
+  const notYou = button("Not you?")!;
+  const form = notYou.parentElement!;
+  const trailing = form.parentElement!;
+  const card = trailing.parentElement!;
+  expect(card.children).toHaveLength(3);
+  expect(card.lastElementChild).toBe(trailing);
+  expect(trailing.className).toBe("flex shrink-0 items-center gap-1");
+  expect(trailing.children).toHaveLength(1);
+  expect(form.tagName).toBe("FORM");
+  expect(card.children[1]?.textContent).toBe("me@example.comSigned in with GitHub");
+  expect(notYou.disabled).toBe(false);
+  await click(button("Authorize"));
+  expect(button("Not you?")).toBe(notYou);
+  expect(notYou.disabled).toBe(true);
+  await click(notYou);
+  expect(mocks.switchAccount).not.toHaveBeenCalled();
+  await act(async () => finish({ ok: false, reason: "unavailable" }));
+  await settle();
+  expect(notYou.disabled).toBe(false);
+  expect(view.container.contains(card)).toBe(true);
+});

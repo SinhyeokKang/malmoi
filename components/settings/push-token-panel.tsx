@@ -66,7 +66,7 @@ export function PushTokenPanel({ slug, disabled = false, unpinned = false }: { s
         <DialogContent
           title={m.settings.token.confirmTitle}
           description={m.settings.token.confirmBody}
-          footer={
+          actions={
             <>
               <DialogClose asChild>
                 <Button data-initial-focus variant="default">{m.common.cancel}</Button>

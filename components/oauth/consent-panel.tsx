@@ -144,8 +144,8 @@ export function ConsentPanel({
           name={account.email}
           avatarName={account.avatarName}
           image={account.image}
-          secondary={account.secondary ?? undefined}
-          meta={
+          description={account.secondary ?? undefined}
+          action={
             // 계정을 바꾸는 것은 **같은 요청**의 로그인 화면으로 가는 것이다(`1s`) — 제출 중에는 막는다(요청이 반쯤 처리된 채 계정이 바뀌지 않게).
             <form action={() => switchOAuthAccount(requestId)}>
               <Button type="submit" variant="link" disabled={locked} className="h-auto p-0 text-xs">

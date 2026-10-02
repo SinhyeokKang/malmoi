@@ -13,7 +13,7 @@ export function PanelCard({
   badge,
   count,
   countLabel,
-  subtitle,
+  description,
   notice,
   children,
 }: {
@@ -26,7 +26,7 @@ export function PanelCard({
    * 헤더 오른쪽 한 줄. ⚠️ **제목 아래로 쌓지 않는다** — 머리 높이가 카드마다 달라져 행 시작선이
    * 어긋난다. 이 화면에는 툴바가 없어 그 자리가 비어 있었다.
    */
-  subtitle?: ReactNode;
+  description?: ReactNode;
   /** 카드 Alert — **헤더 아래·리스트 위**다. 본문 첫 블록 Alert(`DismissibleAlert`)와 달리 닫기가 없다. 머리 아래 선은 이 래퍼 아래로 내려간다. */
   notice?: ReactNode;
   children: ReactNode;
@@ -57,7 +57,7 @@ export function PanelCard({
         <h2 id={titleId} className="text-base font-medium">{title}</h2>
         {count !== undefined && <CountBadge count={count} label={countLabel} />}
         {badge}
-        {subtitle !== undefined && <div className="text-muted-foreground ml-auto @max-form:ml-0 @max-form:w-full text-xs">{subtitle}</div>}
+        {description !== undefined && <div className="text-muted-foreground ml-auto @max-form:ml-0 @max-form:w-full text-xs">{description}</div>}
       </header>}
       {notice !== undefined && <div data-card-notice className="border-divider border-b">{notice}</div>}
       {/*
@@ -90,33 +90,33 @@ export function PanelRows({ children }: { children: ReactNode }) {
  * 줄어들 자리는 본문의 `min-w-0`과 `truncate`가 든다.
  */
 export function PanelRow({
-  glyph,
+  icon,
   name,
   state,
-  detail,
-  children,
+  description,
+  actions,
 }: {
-  glyph: ReactNode;
+  icon: ReactNode;
   /** 이 행이 무엇에 대한 것인가 — 굵다. */
   name: ReactNode;
   /** 상태의 낱말·모양은 정본이 든다. 없는 행에는 배지 슬롯도 서지 않는다. */
   state?: StateKey;
   /** **다음에 할 일**을 든다. 없으면 그리지 않는다 — 빈 줄이 서면 행 높이가 이유 없이 갈린다. */
-  detail?: ReactNode;
-  children?: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
 }) {
   return (
     <li className="border-border flex items-center gap-3 border-t px-4 py-row-y first:border-t-0">
-      <IconTile>{glyph}</IconTile>
+      <IconTile>{icon}</IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
         <span className="flex min-w-0 items-center gap-2 text-base">
           <span className="truncate font-medium">{name}</span>
           {state !== undefined && <StatusBadge state={state} className="shrink-0" />}
         </span>
         {/* 보조 문구의 행간이 1.5다 — `text-xs` 기본(1.333)보다 한 단계 넓다. */}
-        {detail !== undefined && <span className="text-muted-foreground text-xs leading-normal">{detail}</span>}
+        {description !== undefined && <span className="text-muted-foreground text-xs leading-normal">{description}</span>}
       </div>
-      {children !== undefined && <div className="flex shrink-0 items-center gap-2">{children}</div>}
+      {actions !== undefined && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
     </li>
   );
 }

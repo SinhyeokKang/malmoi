@@ -122,7 +122,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
           setAdding(false);
         })();
       }}>{m.settings.sources.confirm}</Button>
-    </>} footer={addReason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{addReason}</span>
+    </>} notice={addReason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{addReason}</span>
       /* 추가는 첫 적재까지 돈다 (audit-ux #23) — 큰 리포면 버튼 스피너 하나로 30초를 넘긴다. */
       : pending && operation === "add" ? <SlowNotice active /> : undefined}>
     {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}</Alert>}

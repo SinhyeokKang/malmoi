@@ -116,7 +116,7 @@ export function ArchiveCard({
         <DialogContent
           title={m.archive.confirm.title(name)}
           description={m.archive.confirm.body}
-          footer={
+          actions={
             <>
               <DialogClose asChild>
                 <Button data-initial-focus variant="default">{m.archive.confirm.cancel}</Button>

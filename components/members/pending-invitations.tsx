@@ -248,7 +248,7 @@ export function PendingInvitations({
                               <DialogContent
                                 title={m.members.pending.confirmRevoke(invitation.emailLabel)}
                                 description={m.members.pending.confirmRevokeHint}
-                                footer={
+                                actions={
                                   <>
                                     <DialogClose asChild>
                                       <Button data-initial-focus variant="default">{m.members.cancel}</Button>

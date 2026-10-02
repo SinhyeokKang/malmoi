@@ -988,36 +988,36 @@ function WorkspaceDialog({ dialog, keyName, projectName, onClose, onPreview, onR
   const open = dialog !== null;
   let title = "";
   let description: string | undefined = undefined;
-  let footer: ReactNode = null;
+  let actions: ReactNode = null;
   if (dialog?.kind === "discard") {
     title = w.discard.title;
     description = w.discard.body(keyName, dialog.locales.join(", "), dialog.locales.length);
-    footer = <>
+    actions = <>
       <DialogClose asChild><Button autoFocus>{w.discard.keep}</Button></DialogClose>
       <Button variant="danger" onClick={() => { const proceed = dialog.proceed; onClose(); proceed(); }}>{w.discard.discard}</Button>
     </>;
   } else if (dialog?.kind === "publish") {
     title = w.publish.title;
     description = w.publish.body(projectName, dialog.locales.join(", "), keyName, dialog.locales.length);
-    footer = <>
+    actions = <>
       <DialogClose asChild><Button autoFocus>{w.publish.keep}</Button></DialogClose>
       <Button variant="primary" onClick={onPreview}>{w.publish.preview}</Button>
     </>;
   } else if (dialog?.kind === "revert") {
     title = w.revert.title;
     description = w.revert.body(dialog.locales.length, dialog.locales.map(l => l.code).join(", "));
-    footer = <>
+    actions = <>
       <DialogClose asChild><Button autoFocus>{m.common.cancel}</Button></DialogClose>
       <Button variant="danger" onClick={() => onRevert(dialog.confirmation)}>{w.revert.confirm}</Button>
     </>;
   } else if (dialog?.kind === "revert-changed") {
     title = w.revert.changed.title;
     description = w.revert.changed.body;
-    footer = <Button autoFocus onClick={onReview}>{w.revert.changed.again}</Button>;
+    actions = <Button autoFocus onClick={onReview}>{w.revert.changed.again}</Button>;
   }
   return (
     <Dialog open={open} onOpenChange={next => { if (!next) onClose(); }}>
-      {open && <DialogContent title={title} description={description} footer={footer} />}
+      {open && <DialogContent title={title} description={description} actions={actions} />}
     </Dialog>
   );
 }

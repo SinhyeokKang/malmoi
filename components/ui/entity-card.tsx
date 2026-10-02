@@ -21,8 +21,9 @@ export function EntityCard({
   name,
   avatarName,
   image,
-  secondary,
-  meta,
+  description,
+  badge,
+  action,
   className,
 }: {
   name: string;
@@ -36,9 +37,11 @@ export function EntityCard({
   avatarName?: string;
   /** provider가 준 프로필 이미지. 없으면 `Avatar`가 이니셜 폴백을 그린다. */
   image?: string | null;
-  secondary?: ReactNode;
-  /** 우측 슬롯 — provider 마크 하나가 보통이다. */
-  meta?: ReactNode;
+  description?: ReactNode;
+  /** 우측 값 — 실제 로그인 provider 마크. */
+  badge?: ReactNode;
+  /** 우측 동작 — 실제 계정 전환 폼. */
+  action?: ReactNode;
   className?: string;
 }) {
   return (
@@ -47,10 +50,10 @@ export function EntityCard({
       <Avatar name={avatarName ?? name} src={image} size={32} />
       <div className="flex min-w-0 flex-1 flex-col gap-px">
         <span className="truncate text-sm">{name}</span>
-        {secondary !== undefined && <span className="text-muted-foreground truncate text-xs">{secondary}</span>}
+        {description !== undefined && <span className="text-muted-foreground truncate text-xs">{description}</span>}
       </div>
       {/* ⚠️ 브랜드 마크는 무채색 위계의 대상이 아니다 — `--foreground`를 그대로 받는다. */}
-      {meta !== undefined && <div className="flex shrink-0 items-center gap-1">{meta}</div>}
+      {(badge !== undefined || action !== undefined) && <div className="flex shrink-0 items-center gap-1">{badge}{action}</div>}
     </div>
   );
 }

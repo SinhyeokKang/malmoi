@@ -25,7 +25,7 @@ function Opener() {
   return <>
     <Button onClick={() => setOpen(true)}>Open</Button>
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent title="Discard?" footer={<DialogClose asChild><Button>Keep editing</Button></DialogClose>} />
+      <DialogContent title="Discard?" actions={<DialogClose asChild><Button>Keep editing</Button></DialogClose>} />
     </Dialog>
   </>;
 }
@@ -48,7 +48,7 @@ it("연 버튼이 사라졌으면 가로채지 않는다 — 호출부의 onClos
       {shown && <Button onClick={() => setOpen(true)}>Open</Button>}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent title="Gone" onCloseAutoFocus={event => { event.preventDefault(); document.getElementById("title")?.focus(); }}
-          footer={<Button onClick={() => { setShown(false); setOpen(false); }}>Close</Button>} />
+          actions={<Button onClick={() => { setShown(false); setOpen(false); }}>Close</Button>} />
       </Dialog>
     </>;
   }
@@ -113,7 +113,7 @@ it("연 버튼이 꺼져 있으면 그 앞의 무관한 버튼으로 가지 않�
       <Button>Older</Button>
       <Button disabled={off} onClick={() => setOpen(true)}>Open</Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Run" footer={<Button onClick={() => { setOff(true); setOpen(false); }}>Run</Button>} />
+        <DialogContent title="Run" actions={<Button onClick={() => { setOff(true); setOpen(false); }}>Run</Button>} />
       </Dialog>
     </>;
   }
@@ -141,7 +141,7 @@ it("포커스 없이 트리거를 눌러 연 Dialog는 닫히면 트리거로 �
     <input id="earlier" />
     <Dialog>
       <DialogTrigger asChild><Button>Rotate</Button></DialogTrigger>
-      <DialogContent title="Rotate?" footer={<DialogClose asChild><Button>Cancel</Button></DialogClose>} />
+      <DialogContent title="Rotate?" actions={<DialogClose asChild><Button>Cancel</Button></DialogClose>} />
     </Dialog>
   </>);
   document.getElementById("earlier")!.focus();
@@ -163,7 +163,7 @@ it("포커스 없이 버튼을 눌러 상태로 연 Dialog도 그 버튼으로 �
       <input id="earlier" />
       <Button onClick={() => setOpen(true)}>Open</Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Discard?" footer={<DialogClose asChild><Button>Keep editing</Button></DialogClose>} />
+        <DialogContent title="Discard?" actions={<DialogClose asChild><Button>Keep editing</Button></DialogClose>} />
       </Dialog>
     </>;
   }
@@ -188,7 +188,7 @@ function Confirm({ onOpenAutoFocus, inner }: { onOpenAutoFocus?: (event: Event) 
     <Button onClick={() => setOpen(true)}>Open</Button>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent title="Remove Jane?" onOpenAutoFocus={onOpenAutoFocus}
-        footer={<><DialogClose asChild><Button data-initial-focus>Cancel</Button></DialogClose><Button variant="danger">Remove member</Button></>}>
+        actions={<><DialogClose asChild><Button data-initial-focus>Cancel</Button></DialogClose><Button variant="danger">Remove member</Button></>}>
         {inner}
       </DialogContent>
     </Dialog>
@@ -219,7 +219,7 @@ it("표식이 없으면 Radix 기본이다 — 첫 tabbable(헤더 닫기)", asy
     return <>
       <Button onClick={() => setOpen(true)}>Open</Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Plain" footer={<DialogClose asChild><Button>Cancel</Button></DialogClose>} />
+        <DialogContent title="Plain" actions={<DialogClose asChild><Button>Cancel</Button></DialogClose>} />
       </Dialog>
     </>;
   }
@@ -273,7 +273,7 @@ it("closeDisabled 동안 오버레이의 mousedown 기본 동작을 막아 포�
   function Host({ locked }: { locked: boolean }) {
     const [open, setOpen] = useState(true);
     return <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent title="Syncing" closeDisabled={locked} footer={<Button aria-disabled busy>Run</Button>} />
+      <DialogContent title="Syncing" closeDisabled={locked} actions={<Button aria-disabled busy>Run</Button>} />
     </Dialog>;
   }
   const view = await render(<Host locked />);

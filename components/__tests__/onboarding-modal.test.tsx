@@ -225,7 +225,7 @@ describe("바닥의 액션 무리 (#87)", () => {
   const footer = () => find<HTMLElement>(document.body, "footer");
 
   it("fragment로 넘긴 버튼 둘도 한 무리(gap-2)에 든다", async () => {
-    await render(shell({ actions: <><Button>Cancel</Button><Button>Add</Button></>, footer: <span>hint</span> }));
+    await render(shell({ actions: <><Button>Cancel</Button><Button>Add</Button></>, notice: <span>hint</span> }));
     expect(footer().children).toHaveLength(2);
     const group = footer().children[1] as HTMLElement;
     expect(group.className).toContain("gap-2");
@@ -288,4 +288,13 @@ it("busy does not rewrite custom actions and closeDisabled remains separate", as
   expect(buttonNamed("Custom")!.disabled).toBe(false);
   expect(buttonNamed("Custom")!.querySelector(".animate-spin")).toBeNull();
   expect(find<HTMLButtonElement>(document.body, '[aria-label="Close"]').disabled).toBe(true);
+});
+
+it.each([undefined, null, false, <></>, <span>Hint</span>])("notice preserves nullish step fallback and fixed footer order (%s)", async (notice) => {
+  await render(shell({ notice }));
+  const footer = find<HTMLElement>(dialog(), "footer");
+  expect(footer.children).toHaveLength(2);
+  expect(footer.firstElementChild?.className).toBe("text-muted-foreground text-xs leading-body");
+  expect(footer.firstElementChild?.textContent).toBe(notice == null ? "Step 1 of 4" : typeof notice === "boolean" ? "" : notice.props.children ?? "");
+  expect(footer.lastElementChild?.className).toBe("flex items-center gap-2");
 });

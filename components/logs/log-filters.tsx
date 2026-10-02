@@ -312,7 +312,7 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
         title={m.logs.range.custom}
         description={m.logs.range.description}
         onCloseAutoFocus={event => { event.preventDefault(); returnFocusRef.current?.focus(); }}
-        footer={<>
+        actions={<>
           <DialogClose asChild><Button>{m.common.cancel}</Button></DialogClose>
           <Button variant="primary" onClick={() => { onApply({ from: from === "" ? null : from, to: to === "" ? null : to }); onOpenChange(false); }}>
             {m.logs.range.apply}

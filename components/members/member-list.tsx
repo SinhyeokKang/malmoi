@@ -234,7 +234,7 @@ export function MemberList({
           <DialogContent
             title={m.members.confirmRole(roleChange.who, m.projects.role[roleChange.next])}
             description={roleChange.userId === viewerId && roleChange.next !== "OWNER" ? m.members.confirmSelfDemote : m.members.confirmRoleHint}
-            footer={
+            actions={
               <>
                 <DialogClose asChild>
                   <Button data-initial-focus variant="default">{m.members.cancel}</Button>
@@ -383,7 +383,7 @@ function RemoveButton({
       <DialogContent
         title={m.members.confirmRemove(who)}
         description={m.members.confirmRemoveHint}
-        footer={
+        actions={
           <>
             <DialogClose asChild>
               <Button data-initial-focus variant="default">{m.members.cancel}</Button>

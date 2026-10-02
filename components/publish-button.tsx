@@ -647,7 +647,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
   }
   if (alert) {
     return <Dialog open={publish.open} onOpenChange={next => { if (!next) publish.close(); }}>
-      <DialogContent title={title} description={description} footer={actions}
+      <DialogContent title={title} description={description} actions={actions}
         // 큰 껍데기와 같은 복귀 규칙 — 호출 버튼, 사라졌으면 호스트 제목.
         onCloseAutoFocus={event => {
           event.preventDefault();
@@ -658,7 +658,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
     </Dialog>;
   }
   return <OnboardingModal open={publish.open} onClose={publish.close} title={title} description={description} closeLabel={m.common.close}
-    footer={footer} actions={actions} transitionKey={state.kind} quiet={quiet} returnFocusRef={publish.triggerRef} fallbackFocusRef={fallbackFocusRef}
+    notice={footer} actions={actions} transitionKey={state.kind} quiet={quiet} returnFocusRef={publish.triggerRef} fallbackFocusRef={fallbackFocusRef}
     /* ⚠️ **안쪽 스크롤러가 있는 갈래만 `hidden`이다** — 나머지는 `shrink-0` 블록만 쌓아서, 낮은 뷰포트에서 잠그면 마지막 줄에 스크롤로도 못 닿는다. */
     panelClassName={panel} bodyScroll={inner ? "hidden" : "auto"}>{body}</OnboardingModal>;
 }

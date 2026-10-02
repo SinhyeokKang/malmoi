@@ -41,7 +41,7 @@ export type OnboardingModalProps = {
   title: ReactNode;
   description?: ReactNode;
   step?: Step;
-  footer?: ReactNode;
+  notice?: ReactNode;
   closeLabel?: string;
   closeDisabled?: boolean;
   /**
@@ -97,7 +97,7 @@ export function OnboardingModal({
   onNext,
   onBack,
   onClose,
-  children, footer, actions, headerAction, closeLabel, closeDisabled = false, panelClassName, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef, initialFocusRef,
+  children, notice, actions, headerAction, closeLabel, closeDisabled = false, panelClassName, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef, initialFocusRef,
 }: OnboardingModalProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   /**
@@ -233,7 +233,7 @@ export function OnboardingModal({
           </div>
 
           <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6">
-            <span className="text-muted-foreground text-xs leading-body">{footer ?? (step === undefined ? null : m.newProject.modal.step(step))}</span>
+            <span className="text-muted-foreground text-xs leading-body">{notice ?? (step === undefined ? null : m.newProject.modal.step(step))}</span>
             {/*
               ⚠️ **소비자의 `actions`도 같은 무리에 싼다** (malmoi#87) — fragment를 넘기면 버튼들이 바닥의 직계 자식이 되어
               `justify-between`이 [Cancel]을 가운데로 띄웠다. `null`(Publish의 버튼 없는 갈래)이면 빈 무리를 세우지 않는다.

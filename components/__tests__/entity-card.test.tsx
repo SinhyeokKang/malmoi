@@ -20,7 +20,7 @@ const SOURCE = readFileSync(join(ROOT, "components/ui/entity-card.tsx"), "utf8")
  */
 it("대상 하나를 아바타·두 줄·우측 슬롯으로 그린다", async () => {
   const { container } = await render(
-    <EntityCard name="s***@example.com" secondary="GitHub · Joined Sep 2026" meta={<span data-testid="mark">gh</span>} />,
+    <EntityCard name="s***@example.com" description="GitHub · Joined Sep 2026" badge={<span data-testid="mark">gh</span>} />,
   );
   expect(container.textContent).toContain("s***@example.com");
   expect(container.textContent).toContain("GitHub · Joined Sep 2026");
@@ -52,4 +52,33 @@ it("기능 디렉터리를 물지 않는다", () => {
   for (const forbidden of ["@/components/translations", "@/components/members", "@/lib/db", "@/app/"]) {
     expect(SOURCE).not.toContain(forbidden);
   }
+});
+
+it.each([undefined, null, false, <></>, "Detail"])("description and badge preserve undefined-specific line and trailing box (%s)", async (slot) => {
+  const { container } = await render(<EntityCard name="Account" description={slot} badge={slot} />);
+  const card = container.firstElementChild!;
+  expect(card.children).toHaveLength(slot === undefined ? 2 : 3);
+  const copy = card.children[1]!;
+  expect(copy.children).toHaveLength(slot === undefined ? 1 : 2);
+  if (slot !== undefined) {
+    expect(copy.lastElementChild?.className).toBe("text-muted-foreground truncate text-xs");
+    expect(card.lastElementChild?.className).toBe("flex shrink-0 items-center gap-1");
+  }
+});
+
+it("action form uses the same single trailing box after the two-line copy", async () => {
+  const { container } = await render(<EntityCard name="Account" description="GitHub" action={<form><button disabled>Not you?</button></form>} />);
+  const card = container.firstElementChild!;
+  expect(card.children).toHaveLength(3);
+  const trailing = card.lastElementChild!;
+  expect(trailing.className).toBe("flex shrink-0 items-center gap-1");
+  expect(trailing.children).toHaveLength(1);
+  expect(trailing.firstElementChild?.tagName).toBe("FORM");
+  expect(trailing.querySelector("button")?.disabled).toBe(true);
+});
+
+it.each([null, false])("defined empty action retains one trailing box (%s)", async (action) => {
+  const { container } = await render(<EntityCard name="Account" action={action} />);
+  expect(container.firstElementChild?.children).toHaveLength(3);
+  expect(container.firstElementChild?.lastElementChild?.className).toBe("flex shrink-0 items-center gap-1");
 });

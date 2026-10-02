@@ -111,7 +111,7 @@ export function TokenModal({
       closeDisabled={pending || step === 2}
       returnFocusRef={returnFocusRef}
       fallbackFocusRef={fallbackFocusRef}
-      footer={<span data-token-status>{status}</span>}
+      notice={<span data-token-status>{status}</span>}
       actions={
         step === 1 ? (
           <>

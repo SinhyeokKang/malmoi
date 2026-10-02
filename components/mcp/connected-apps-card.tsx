@@ -176,7 +176,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
               landOn.current = null;
               (land === null || land === "heading" ? heading() : (disconnectButton(land) ?? heading()))?.focus();
             }}
-            footer={
+            actions={
               <>
                 <Button data-initial-focus disabled={pending} onClick={() => setOpen(false)}>
                   {m.common.cancel}

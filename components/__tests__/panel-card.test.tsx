@@ -13,7 +13,7 @@ it("제목 유무에 따라 접근 이름과 헤더를 함께 제공한다", asy
   expect(unnamed?.querySelector("h2, header")).toBeNull();
 });
 it("승격한 행은 제목·상태·설명·동작을 유지한다", async () => {
-  const { container } = await render(<PanelCard title="Connections"><PanelRows><PanelRow glyph={<span>G</span>} name="GitHub" state="connected" detail="Account"><button>Manage</button></PanelRow></PanelRows></PanelCard>);
+  const { container } = await render(<PanelCard title="Connections"><PanelRows><PanelRow icon={<span>G</span>} name="GitHub" state="connected" description="Account" actions={<button>Manage</button>} /></PanelRows></PanelCard>);
   expect(container.querySelectorAll("ul > li")).toHaveLength(1);
   // 상태는 이름 옆 배지다(2026-09-30 사용자 — 옛 `이름 — 상태`).
   expect(container.querySelector("li .rounded-full")?.textContent).toBe("Connected");
@@ -77,4 +77,29 @@ it("비어 도착하는 notice(Suspense 등)도 선이 하나다", async () => {
 it("카드 제목이 자간을 손으로 들지 않는다", async () => {
   const { container } = await render(<PanelCard title="General"><p>Body</p></PanelCard>);
   expect(container.querySelector("h2")?.className).not.toContain("tracking-");
+});
+
+it.each([undefined, null, false, <></>, "Details"])("description header preserves its defined-slot right-aligned box (%s)", async (description) => {
+  const { container } = await render(<PanelCard title="Title" badge={<span>Badge</span>} description={description}><p>Body</p></PanelCard>);
+  const header = container.querySelector("header")!;
+  const slot = header.querySelector("div");
+  expect(slot === null).toBe(description === undefined);
+  if (slot) {
+    expect(slot.className).toBe("text-muted-foreground ml-auto @max-form:ml-0 @max-form:w-full text-xs");
+    expect(header.lastElementChild).toBe(slot);
+  }
+});
+
+it.each([undefined, null, false, <></>, <button>Manage</button>])("row description/actions keep slot order and undefined wrapper boundary (%s)", async (slot) => {
+  const { container } = await render(<PanelRows><PanelRow icon={<svg aria-hidden className="size-4" />} name="Account" state="connected" description={slot} actions={slot} /></PanelRows>);
+  const row = container.querySelector("li")!;
+  const copy = row.children[1]!;
+  expect(row.children).toHaveLength(slot === undefined ? 2 : 3);
+  expect(copy.children).toHaveLength(slot === undefined ? 1 : 2);
+  expect(row.firstElementChild?.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+  expect(row.firstElementChild?.querySelector("svg")?.classList.contains("size-4")).toBe(true);
+  if (slot !== undefined) {
+    expect(copy.lastElementChild?.className).toBe("text-muted-foreground text-xs leading-normal");
+    expect(row.lastElementChild?.className).toBe("flex shrink-0 items-center gap-2");
+  }
 });

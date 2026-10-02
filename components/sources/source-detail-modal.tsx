@@ -74,7 +74,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
       {canOpen && sourceSlug && !busy
         ? <ButtonLink size="lg" variant="primary" href={routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })); } }}>{m.sources.open}</ButtonLink>
         : detail ? <Button size="lg" variant="primary" aria-disabled aria-describedby="source-open-reason" onClick={event => event.preventDefault()}>{m.sources.open}</Button> : null}
-    </>} footer={<span id="source-open-reason" className="text-muted-foreground text-xs">{!canOpen && detail ? (busy ? importing ? m.settings.sources.importing : m.locales.field.saving : disabledReason) : m.sources.readOnlyNote}</span>}>
+    </>} notice={<span id="source-open-reason" className="text-muted-foreground text-xs">{!canOpen && detail ? (busy ? importing ? m.settings.sources.importing : m.locales.field.saving : disabledReason) : m.sources.readOnlyNote}</span>}>
     {/* 골격은 장식이다 — 불러오는 중은 대화상자 설명(`description`)이 말한다. 역할 없는 div의 `aria-label`은 읽히지 않는다 (audit #89). */}
     {state.status === "loading" && <div className="space-y-6" data-source-loading aria-hidden>
       {[1, 2, 3].map(n => <div key={n} className="space-y-3"><Skeleton className="h-4 w-32" /><Skeleton className="h-5 w-64" /></div>)}
@@ -94,7 +94,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
       {/* ⚠️ **상태 줄은 시안 `1d`의 행 형이다** — 28 칩 + 제목/보조 두 줄 + 오른쪽 행동. 상태 줄은 `Alert` 상자가 아니다(결과 notice만 Alert다):
           같은 카드 안에서 상태가 상자를 쓰면 실패만 다른 그릇이 된다. */}
       {/* 적재 결과는 카드 notice다(🔴 J) — 계산한 톤을 `Alert inset`이 그리고, 실패는 `alert`로 읽던 것을 끊는다. 머리 아래 선은 notice 아래로 내려간다(4-Y1). */}
-      <PanelCard title={m.sources.status} subtitle={m.sources.statusHelp}
+      <PanelCard title={m.sources.status} description={m.sources.statusHelp}
         notice={importResult ? <Alert inset variant={importResult.tone} live={importResult.tone === "danger" ? "alert" : "status"}>{importResult.text}</Alert> : undefined}>
         <div className="flex items-center gap-3 px-4 py-row-y">
           {importStatus && <IconTile data-source-status-tile tone={importStatus.tone}><StatusGlyph labelKey={importStatus.labelKey} /></IconTile>}
@@ -121,7 +121,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
           <span className="min-w-0 flex-1 text-base"><span className="font-medium">{m.sources.lastSuccess}</span> — <SourceTime at={detail.lastImportedAt} /></span>
         </div>}
       </PanelCard>
-      <PanelCard title={m.locales.field.label} subtitle={m.sources.baseHelp} badge={basePending(detail) ? <StatusBadge state="waitingToApply" /> : undefined}>
+      <PanelCard title={m.locales.field.label} description={m.sources.baseHelp} badge={basePending(detail) ? <StatusBadge state="waitingToApply" /> : undefined}>
         <div className="px-4 py-row-y">
         {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned).map(row => row.code)} awaiting={basePending(detail)} onDirty={setDraft} onPending={onBusy} onError={setFieldError} onSaved={onSaved} />
           : <div className="flex items-center gap-3">
@@ -136,7 +136,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         </div>}
         </div>
       </PanelCard>
-      <PanelCard title={m.sources.languages} count={detail.locales} countLabel={m.sources.languageCount(detail.locales)} subtitle={m.sources.languagesHelp}>
+      <PanelCard title={m.sources.languages} count={detail.locales} countLabel={m.sources.languageCount(detail.locales)} description={m.sources.languagesHelp}>
         {detail.languages.length === 0 ? <p className="text-muted-foreground px-4 py-row-y text-xs">{m.locales.empty.description}</p>
           : <ul>{detail.languages.map((row, index) => {
           // 집계 두 쿼리 사이 적재가 바뀌어도 막대 합은 트랙을 넘지 않는다. 퍼센트는 완료만 센다.
@@ -179,7 +179,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
     </div>}
     {confirm !== null && detail && <Dialog open onOpenChange={next => { if (!next) setConfirm(null); }}>
       <DialogContent title={m.sources.discardTitle} description={m.sources.discardBody(draft ?? "", detail.baseLocale ?? "")}
-        footer={<>
+        actions={<>
           <DialogClose asChild><Button data-initial-focus>{m.sources.keepEditing}</Button></DialogClose>
           <DialogClose asChild><Button variant="danger" onClick={() => { const href = confirm.href; setConfirm(null); setDraft(null); if (href) router.push(href); else onClose(); }}>{m.sources.discardChange}</Button></DialogClose>
         </>} />

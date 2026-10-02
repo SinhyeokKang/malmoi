@@ -72,7 +72,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
     </div></PanelHeader>
     <PanelBody className="space-y-4">
       <PanelCard title={m.sources.title} count={data.sources.length} countLabel={m.sources.count(data.sources.length)}
-        subtitle={data.repository ? <span className="flex items-center gap-1.5"><GithubIcon className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}
+        description={data.repository ? <span className="flex items-center gap-1.5"><GithubIcon className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}
         /*
           ⚠️ **추가 결과는 카드의 첫 줄이다** (시안 `1i`) — 토스트도, 카드 밖 Alert도 아니다. 적재가 토스트보다 오래 걸리고, 닫는 것은 사람이다.
           ⚠️ **계산한 톤을 그린다** (🔴 J — 옛 판은 `tone`을 세워 두고 무색 `role="status"` 줄로 그려 실패가 성공과 같은 줄이었다).

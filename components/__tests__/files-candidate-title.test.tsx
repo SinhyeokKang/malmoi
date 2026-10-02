@@ -57,3 +57,15 @@ it.each([
   expect(truncated(list, candidate.pathTemplate)?.getAttribute("title")).toBe(candidate.pathTemplate);
   expect(truncated(list, count)?.getAttribute("title")).toBe(count);
 });
+
+it("actual locale segment keeps one decorative flag immediately before its label", async () => {
+  const { container } = await render(<FilesStep state={state} onPick={noop} onLocale={noop} onManual={noop} onRetry={noop} />);
+  const radios = [...container.querySelectorAll('[role="radiogroup"] [role="radio"]')].filter(node => node.textContent === "en" || node.textContent === "ko" || node.textContent === "fr");
+  expect(radios).toHaveLength(3);
+  for (const radio of radios) {
+    expect(radio.children).toHaveLength(2);
+    expect(radio.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
+    expect(radio.firstElementChild?.className).toContain("shrink-0");
+    expect(radio.lastElementChild?.className).toBe("min-w-0 truncate");
+  }
+});

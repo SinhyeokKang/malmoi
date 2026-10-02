@@ -89,7 +89,7 @@ function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginPr
   return (
     <PanelRow
       // 브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를 그대로 받는다 (DESIGN §6.4).
-      glyph={row.provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
+      icon={row.provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
       name={label}
       /**
        * ⚠️ **상태가 본문이다** — 보조 줄로 내리면 부연으로 읽히는데, 이 행이 답하는 질문이 곧
@@ -101,33 +101,34 @@ function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginPr
        * 문서화된 이탈이다(DESIGN §6.67).
        */
       state={row.connected ? "connected" : "notConnected"}
-    >
-      <div ref={controls} className="contents">
-      {!row.connected ? (
-        <form action={startLoginMethodConnect.bind(null, row.provider)}>
-          <ConnectButton label={label} />
-        </form>
-      ) : removable ? (
-        <DisconnectButton
-          label={label}
-          pending={pending}
-          onConfirm={() => { onUnconfirmed(false); startTransition(async () => {
-            // 성공·거부 모두 `redirect`(= reject)다 — 되던지고, 그 밖의 throw만 확인 불가로 접는다.
-            try { await unlinkLoginMethod(row.provider); } catch (thrown) { unstable_rethrow(thrown); onUnconfirmed(true); }
-          }); }}
-        />
-      ) : (
-        <>
-          {/* ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */}
-          <span id={reasonId} className="text-muted-foreground text-xs">{m.link.methods.lastMethod}</span>
-          {/* ⚠️ **비활성도 접근성 트리에는 남는다** — 이름이 없으면 무엇의 해제인지 말하지 않는다.
-              ⚠️ **`disabled`가 아니라 `aria-disabled`다** (audit #37) — 진짜 `disabled`는 포커스를 못 받아 describedby가
-              닿을 길이 없었다(DESIGN §6.65). 클릭은 여기서 막는다 — Dialog를 아예 세우지 않는 갈래다. */}
-          <Button variant="danger" aria-label={m.link.methods.disconnectLabel(label)} aria-describedby={reasonId} aria-disabled onClick={event => event.preventDefault()}>{m.link.methods.disconnect}</Button>
-        </>
-      )}
-      </div>
-    </PanelRow>
+        actions={
+          <div ref={controls} className="contents">
+        {!row.connected ? (
+          <form action={startLoginMethodConnect.bind(null, row.provider)}>
+            <ConnectButton label={label} />
+          </form>
+        ) : removable ? (
+          <DisconnectButton
+            label={label}
+            pending={pending}
+            onConfirm={() => { onUnconfirmed(false); startTransition(async () => {
+              // 성공·거부 모두 `redirect`(= reject)다 — 되던지고, 그 밖의 throw만 확인 불가로 접는다.
+              try { await unlinkLoginMethod(row.provider); } catch (thrown) { unstable_rethrow(thrown); onUnconfirmed(true); }
+            }); }}
+          />
+        ) : (
+          <>
+            {/* ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */}
+            <span id={reasonId} className="text-muted-foreground text-xs">{m.link.methods.lastMethod}</span>
+            {/* ⚠️ **비활성도 접근성 트리에는 남는다** — 이름이 없으면 무엇의 해제인지 말하지 않는다.
+                ⚠️ **`disabled`가 아니라 `aria-disabled`다** (audit #37) — 진짜 `disabled`는 포커스를 못 받아 describedby가
+                닿을 길이 없었다(DESIGN §6.65). 클릭은 여기서 막는다 — Dialog를 아예 세우지 않는 갈래다. */}
+            <Button variant="danger" aria-label={m.link.methods.disconnectLabel(label)} aria-describedby={reasonId} aria-disabled onClick={event => event.preventDefault()}>{m.link.methods.disconnect}</Button>
+          </>
+        )}
+        </div>
+        }
+      />
   );
 }
 
@@ -167,7 +168,7 @@ function DisconnectButton({ label, pending, onConfirm }: { label: string; pendin
         // 제목이 대상을 명시한다 — 이 화면에 같은 라벨의 [Disconnect]가 둘이다.
         title={m.link.methods.confirmDisconnect(label)}
         description={m.link.methods.confirmHint}
-        footer={
+        actions={
           <>
             <DialogClose asChild>
               <Button data-initial-focus variant="default">{m.common.cancel}</Button>

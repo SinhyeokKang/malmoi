@@ -196,7 +196,7 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
             if (target === createRef.current) landOnCreate.current = false;
             target?.focus();
           }}
-          footer={
+          actions={
             <>
               <Button data-initial-focus disabled={revoking} onClick={() => setRevokeOpen(false)}>
                 {m.common.cancel}

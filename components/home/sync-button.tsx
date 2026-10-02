@@ -274,7 +274,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
       */
       aria-describedby={outcome !== null ? undefined : plan.atRisk ? `${describedId} ${warningId}` : describedId}
       description={outcome !== null ? undefined : <span id={describedId}>{m.repositorySync.body(<span className="text-gray-strong">{branch}</span>)}</span>}
-      footer={outcome !== null
+      actions={outcome !== null
         /* 결과를 받고 닫는 자리라 [Close] 하나이고 `primary`다(DESIGN §6.4 Modal 행). */
         ? <DialogClose asChild><Button ref={closeRef} variant="primary">{m.common.close}</Button></DialogClose>
         : <>

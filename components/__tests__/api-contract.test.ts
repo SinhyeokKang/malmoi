@@ -415,7 +415,7 @@ const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   state: { rows: 0, occurrences: 0 }, variant: { rows: 0, occurrences: 0 },
   hue: { rows: 0, occurrences: 0 }, size: { rows: 6, occurrences: 6 },
   width: { rows: 0, occurrences: 0 }, progress: { rows: 3, occurrences: 3 },
-  slots: { rows: 8, occurrences: 8 }, rest: { rows: 0, occurrences: 0 },
+  slots: { rows: 1, occurrences: 1 }, rest: { rows: 0, occurrences: 0 },
   "data-tone": { rows: 1, occurrences: 1 }, aria: { rows: 3, occurrences: 3 },
   className: { rows: 3, occurrences: 3 },
 };
@@ -436,14 +436,7 @@ const ALLOWLIST: Debt[] = [
   { rule: "size", path: "components/translations/workspace/locale-panel.tsx", symbol: "Input", detail: "text-xs", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/tree-panel.tsx", symbol: "Input", detail: "h-8", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/tree-panel.tsx", symbol: "Input", detail: "text-xs", count: 1, task: "T19a" },
-  { rule: "slots", path: "components/ui/dialog.tsx", symbol: "DialogContent", detail: "footer", count: 1, task: "T11" },
-  { rule: "slots", path: "components/ui/entity-card.tsx", symbol: "EntityCard", detail: "secondary", count: 1, task: "T11" },
-  { rule: "slots", path: "components/ui/modal.tsx", symbol: "OnboardingModal", detail: "footer", count: 1, task: "T11" },
   { rule: "slots", path: "components/ui/modal.tsx", symbol: "OnboardingModal", detail: "headerAction", count: 1, task: "T14" },
-  { rule: "slots", path: "components/ui/panel-card.tsx", symbol: "PanelCard", detail: "subtitle", count: 1, task: "T11" },
-  { rule: "slots", path: "components/ui/panel-card.tsx", symbol: "PanelRow", detail: "detail", count: 1, task: "T11" },
-  { rule: "slots", path: "components/ui/panel-card.tsx", symbol: "PanelRow", detail: "glyph", count: 1, task: "T11" },
-  { rule: "slots", path: "components/ui/segmented-control.tsx", symbol: "SegmentContent", detail: "leading", count: 1, task: "T11" },
 ];
 
 function differences(actual: readonly Violation[], allowed: readonly Debt[]): { unknown: Violation[]; stale: Debt[] } {
@@ -536,6 +529,25 @@ describe("primitive API contract — design §3", () => {
   });
 
   const source = (code: string, path = "components/ui/canary.tsx"): Source => ({ path, code });
+  const slotRenames = [
+    ["components/ui/dialog.tsx", "DialogContent", "footer", "actions"],
+    ["components/ui/modal.tsx", "OnboardingModal", "footer", "notice"],
+    ["components/ui/panel-card.tsx", "PanelCard", "subtitle", "description"],
+    ["components/ui/panel-card.tsx", "PanelRow", "detail", "description"],
+    ["components/ui/panel-card.tsx", "PanelRow", "glyph", "icon"],
+    ["components/ui/entity-card.tsx", "EntityCard", "secondary", "description"],
+    ["components/ui/segmented-control.tsx", "SegmentContent", "leading", "icon"],
+  ] as const;
+  it.each(slotRenames)("T11B current-path slot canary %s %s %s → %s", (path, symbol, bad, good) => {
+    const definition = (prop: string) => source(symbol === "SegmentContent"
+      ? `export type SegmentContent = {label: string; ${prop}?: ReactNode};`
+      : `export function ${symbol}(props: {${prop}?: ReactNode}) {return <div/>;}`, path);
+    expect(scan([definition(bad)]).filter(row => row.rule === "slots")).toEqual([
+      {rule: "slots", path, symbol, detail: bad, count: 1},
+    ]);
+    expect(scan([definition(good)])).toEqual([]);
+  });
+
   it("rejects legacy hue exports and aliased imports on the renamed leaf", () => {
     const rows = scan([
       source('export type Tone = "rose"; export const TONES = ["rose"]; export function toneOf() { return "rose"; }', "lib/hue.ts"),
