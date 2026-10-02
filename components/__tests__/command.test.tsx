@@ -56,7 +56,7 @@ it("combobox·listbox·group·option의 ARIA 참조가 실제 요소를 가리�
   expect(container.querySelectorAll("form")).toHaveLength(0);
 });
 
-it("status와 머리는 listbox의 option/group 자식 밖에 선다", async () => {
+it("status는 listbox 밖에 서고 listbox의 직계 자식은 option/group뿐이다", async () => {
   const { container } = await render(<Fixture />);
   const listbox = find(container, '[role="listbox"]');
   const status = find(container, '[role="status"]');
@@ -64,8 +64,10 @@ it("status와 머리는 listbox의 option/group 자식 밖에 선다", async () 
   expect(listbox.contains(status)).toBe(false);
   expect([...listbox.children].every(node => ["option", "group"].includes(node.getAttribute("role") ?? ""))).toBe(true);
   const group = find(listbox, '[role="group"]');
-  expect([...group.children].every(node => node.getAttribute("role") === "option")).toBe(true);
-  expect(listbox.contains(document.getElementById(group.getAttribute("aria-labelledby")!))).toBe(false);
+  const heading = document.getElementById(group.getAttribute("aria-labelledby")!);
+  expect(heading).not.toBeNull();
+  expect(heading!.classList.contains("text-xs")).toBe(true);
+  expect(heading!.classList.contains("font-medium")).toBe(true);
 });
 
 it("입력은 공통 Input 글리프 슬롯·전폭 선·테두리 없는 형을 쓴다", async () => {
