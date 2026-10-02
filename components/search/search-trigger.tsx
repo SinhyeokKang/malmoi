@@ -34,6 +34,6 @@ export function SearchTrigger({ account, memberships }: { account: PublicAccount
   return <>
     <FieldButton icon={<Search />} placeholder={m.search.placeholder} shortcut={platform === null ? undefined : <Kbd>{mac ? "⌘K" : "Ctrl K"}</Kbd>}
       aria-label={m.search.label} aria-haspopup="dialog" aria-keyshortcuts={platform === null ? undefined : mac ? "Meta+K" : "Control+K"} onClick={show} />
-    <SearchDialog key={generation} open={open} onOpenChange={setOpen} account={account} memberships={memberships} />
+    {generation > 0 && <SearchDialog key={generation} open={open} onOpenChange={setOpen} account={account} memberships={memberships} />}
   </>;
 }
