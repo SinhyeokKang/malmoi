@@ -15,12 +15,15 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(), replace: vi.fn(), refresh: vi.fn(),
   save: vi.fn(), preview: vi.fn(), revert: vi.fn(), pull: vi.fn(), publishPreview: vi.fn(),
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }), useSearchParams: () => new URLSearchParams(window.location.search) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }), useSearchParams: () => new URLSearchParams(window.location.search), usePathname: () => "/projects/acme/surfaces/web/translations" }));
 vi.mock("@/app/(edit)/actions", () => ({
   saveTranslationKey: mocks.save, previewTranslationRevert: mocks.preview, revertTranslationKey: mocks.revert, triggerPullAction: mocks.pull,
 }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: mocks.publishPreview }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn() }));
+
+import { SearchTrigger } from "@/components/search/search-trigger";
+vi.mock("@/app/search/actions", () => ({ searchKeysAction: vi.fn().mockResolvedValue({ ok: true, hits: [] }), loadSearchMembershipsAction: vi.fn() }));
 
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 
@@ -91,4 +94,39 @@ it("미저장 확인창을 Keep editing으로 닫으면 누른 키 행으로 돌
   await user.click(row(container, "k2"));
   await user.click(button("Keep editing"));
   expect(document.activeElement).toBe(row(container, "k2"));
+});
+
+
+it("same-surface selected key change scrolls the new row after the server arrival", async () => {
+  const base = props();
+  const view = await render(<TranslationWorkspace {...base} />);
+  const nextRow = row(view.container, "k2");
+  expect(nextRow).not.toBeNull();
+  const scroll = vi.spyOn(nextRow, "scrollIntoView");
+  await view.rerender(<TranslationWorkspace {...base} query={{ ...base.query, key: "k2", keySurface: base.routeSurfaceSlug }} detail={{ ...base.detail!, key: { ...base.detail!.key, id: "k2" } }} />);
+  expect(scroll).toHaveBeenCalledWith({ block: "nearest" });
+});
+
+
+it.each(["pointer", "Enter"])("real search %s closes before the workspace leave guard opens its confirmation", async how => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ docs: [] }) }));
+  window.history.replaceState(null, "", "/projects/acme/surfaces/web/translations");
+  // Workspace comes first: its document capture guard is mounted before any search item.
+  const { container } = await render(<><TranslationWorkspace {...props()} /><SearchTrigger account={{ name: "Tester", email: null, image: null }} memberships={[{ slug: "acme", name: "Acme", role: "OWNER", archived: false }]} /></>);
+  const user = userEvent.setup();
+  await act(async () => { await user.type(area(container, "zh"), "Draft"); await user.click(document.querySelector('button[aria-label="Search"]')!); });
+  const query = document.querySelector<HTMLInputElement>('[role="combobox"]')!;
+  expect(query).not.toBeNull();
+  await act(async () => { await user.type(query, "settings acme"); });
+  const link = document.querySelector<HTMLAnchorElement>('[role="option"] a')!;
+  expect(link).not.toBeNull();
+  const clicked = vi.spyOn(link, "click");
+  await act(async () => { if (how === "Enter") await user.keyboard("{Enter}"); else link.click(); });
+  if (how === "Enter") expect(clicked).toHaveBeenCalledOnce();
+  expect(document.querySelector('[role="combobox"]')).toBeNull();
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+  expect(button("Keep editing")).not.toBeNull();
+  expect(mocks.push).not.toHaveBeenCalled();
+  await act(async () => { await user.click(button("Keep editing")); });
+  vi.unstubAllGlobals();
 });

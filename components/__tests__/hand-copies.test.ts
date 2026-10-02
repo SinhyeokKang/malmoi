@@ -62,6 +62,10 @@ function canonicalTag(node: Opening, file: ts.SourceFile): string {
 const RETIRED_WIZARD_FOOTER = "export const Demo = () => (<div className=\"flex items-center gap-2\">\n              {showBack && (\n                <Button type=\"button\" size=\"lg\" onClick={onBack} disabled={busy}>\n                  {m.newProject.modal.back}\n                </Button>\n              )}\n              {/*\n                \u26a0\ufe0f **\ube44\ud65c\uc131 \ubaa8\uc591\uc744 \uaecd\ub370\uae30\uac00 \ub4e0\ub2e4** \u2014 \ud770 \ubc30\uacbd + border + muted \uae00\uc790 + `not-allowed`.\n                \ub2e8\uacc4\ub9c8\ub2e4 \ub2e4\uc2dc \ub9cc\ub4e4\uba74 \uac08\ub9b0\ub2e4.\n              */}\n              <Button\n                type=\"button\"\n                variant=\"primary\"\n                size=\"lg\"\n                onClick={onNext}\n                disabled={nextDisabled}\n                loading={busy}\n              >\n                {nextLabel ?? m.newProject.modal.next}\n                {nextArrow && <ArrowRight className=\"size-4\" aria-hidden />}\n              </Button>\n            </div>);";
 
 const RULES: Rule[] = [
+{ primitive: "Command", retired: [], paths: ["components/search/search-trigger.tsx", "components/search/search-dialog.tsx"], minimum: 1,
+    handCopy: (node, file) => /^(button|input|a|kbd|mark)$/.test(node.tagName.getText(file)) || /#[\da-fA-F]{3,8}\b|\[\d+(?:\.\d+)?px\]/.test(classes(node, file)),
+    bad: 'export const Demo = () => <button className="text-[#abc] w-[17px]">Search</button>;',
+    good: 'import {Command} from "@/components/ui/command"; export const Demo = () => <Command ids={[]} query="">Body</Command>;' },
 { primitive: "Kbd", retired: [], paths: ["components/shell/project-switcher.tsx", "*"], minimum: 1,
     handCopy: node => node.tagName.getText() === "kbd",
     bad: 'export const Demo = () => <kbd>Esc</kbd>;',
