@@ -95,7 +95,11 @@ const settle = () => act(async () => {});
 const row = (keyId: string) => document.querySelector<HTMLElement>(`[data-key-row="${keyId}"]`);
 const treeNode = (surface: string, ns: string) => [...document.querySelectorAll<HTMLElement>("[data-tree-ns]")].find(el => el.dataset.treeSurface === surface && el.dataset.treeNs === ns);
 const searchBox = () => document.querySelector<HTMLInputElement>(`input[aria-label="${w.filters.search}"]`)!;
-const toggle = () => document.querySelector<HTMLElement>(`button[aria-label="${w.tree.open}"]`);
+const toggle = () => {
+  const button = document.querySelector<HTMLElement>(`button[aria-label="${w.tree.open}"]`);
+  if (button) for (const token of ["size-7", "rounded-sm", "px-0"]) expect(button.classList.contains(token)).toBe(true);
+  return button;
+};
 const searching = (): WorkspaceProps => serve("/projects/acme/surfaces/web/translations?ns=common&q=k&key=k1");
 
 /** jsdom의 폭 — `observe`가 즉시 부르면 마운트 폭, `later`로 마운트 뒤에 바꾼다. */

@@ -8,7 +8,7 @@ import { RoleChip } from "@/components/members/role-chip";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
+import { Card, CardList } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { planMemberIdentity } from "@/lib/auth/member-identity";
@@ -134,14 +134,14 @@ export function MemberList({
     <>
       {/* ⚠️ **결과 전부터 DOM에 있어야 한다** — 텍스트와 함께 새로 붙는 live 영역은 스크린 리더가 놓친다. */}
       <p role="status" className="sr-only">{announcement}</p>
-      <RowCard
+      <Card
         title={m.common.nav.members}
         titleId={headingId}
         count={members.length}
         countLabel={m.members.count(members.length)}
       >
-        <RowCardList labelledBy={headingId}>
-          {members.map((member, index) => {
+        <CardList aria-labelledby={headingId}>
+          {members.map((member) => {
             const identity = planMemberIdentity(member);
             // 라벨이 대상을 들어야 한다 — 행마다 같은 문구면 어느 사람의 컨트롤인지 구별되지 않는다.
             // ⚠️ **읽기전용 칩만 이 규칙의 예외다** — 포커스를 못 받는 비대화형 요소라 탭으로 도달할 수
@@ -175,7 +175,7 @@ export function MemberList({
             const pending = isPending ? (pendingOps.get(member.userId) ?? null) : null;
 
             return (
-              <RowCardItem key={member.userId} first={index === 0}>
+              <li key={member.userId}>
                 <MemberRow
                   id={member.userId}
                   identity={identity}
@@ -224,17 +224,17 @@ export function MemberList({
                     ) : null
                   }
                 />
-              </RowCardItem>
+              </li>
             );
           })}
-        </RowCardList>
-      </RowCard>
+        </CardList>
+      </Card>
       <Dialog open={roleChange !== null} onOpenChange={(open) => { if (!open) setRoleChange(null); }}>
         {roleChange !== null && (
           <DialogContent
             title={m.members.confirmRole(roleChange.who, m.projects.role[roleChange.next])}
             description={roleChange.userId === viewerId && roleChange.next !== "OWNER" ? m.members.confirmSelfDemote : m.members.confirmRoleHint}
-            footer={
+            actions={
               <>
                 <DialogClose asChild>
                   <Button data-initial-focus variant="default">{m.members.cancel}</Button>
@@ -303,7 +303,7 @@ function RoleSelect({
       <span id={`role-${member.userId}-label`} className="sr-only">
         {m.members.changeRole(who)}
       </span>
-      <SelectTrigger
+      <SelectTrigger width={132}
         id={`role-${member.userId}`}
         aria-labelledby={`role-${member.userId}-label role-${member.userId}`}
         aria-disabled={locked || undefined}
@@ -313,7 +313,6 @@ function RoleSelect({
         onClick={locked ? (event) => event.preventDefault() : undefined}
         // Tab만 통과시킨다 — 포커스는 받아야 사유가 낭독되고, 나머지는 전부 이 컨트롤의 동작이다.
         onKeyDown={locked ? (event) => { if (event.key !== "Tab") event.preventDefault(); } : undefined}
-        className="w-[132px]"
       >
         <SelectValue />
       </SelectTrigger>
@@ -384,7 +383,7 @@ function RemoveButton({
       <DialogContent
         title={m.members.confirmRemove(who)}
         description={m.members.confirmRemoveHint}
-        footer={
+        actions={
           <>
             <DialogClose asChild>
               <Button data-initial-focus variant="default">{m.members.cancel}</Button>

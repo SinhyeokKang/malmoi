@@ -1,19 +1,21 @@
 "use client";
-
+import { ButtonLink } from "@/components/ui/button";
+import { Link as InlineLink } from "@/components/ui/link";
 import { Archive, Clock, FolderGit2, GitBranch, Link2, Search } from "lucide-react";
-import Link from "next/link";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { useGithubConnect } from "@/components/onboarding/connect-github";
 import { Alert } from "@/components/ui/alert";
-import { Button, buttonClass } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
+import { EmptyState, NoMatch } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
-import { Radio, RadioGroup } from "@/components/ui/radio";
+import { RadioGroup } from "@/components/ui/radio";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SelectRow } from "@/components/ui/select-row";
 import { m } from "@/lib/i18n";
 import type { BranchChoice } from "@/lib/onboarding/branch";
 import type { RepoOption } from "@/lib/onboarding/types";
@@ -56,18 +58,27 @@ export type RepoStepState = {
 export function RepoStep({
   state,
   onSelect,
+  onScan,
   onQueryChange,
   onBranchChange,
   onAnnounce,
 }: {
   state: RepoStepState;
   onSelect: (repo: RepoOption) => void;
+  /** 미확정 행을 훑는 동안 Next가 이전 리포로 진행하지 않게 한다. */
+  onScan: (fullName: string) => void;
   onQueryChange: (query: string) => void;
   onBranchChange: (value: string) => void;
   /** 모달의 live 영역 하나로 흘려보낸다 — 영역을 둘로 나누면 같은 전이가 두 번 읽힌다. */
   onAnnounce: (message: string) => void;
 }) {
   const { repos, query, listError, installUrl, now, selected } = state;
+  // 화살표 훑기는 Radix 선택만 움직인다. 브랜치 조회는 명시적 확정에서만 시작한다.
+  const [choice, setChoice] = useState(selected ?? "");
+  const [seenSelection, setSeenSelection] = useState(selected);
+  if (seenSelection !== selected) { setSeenSelection(selected); setChoice(selected ?? ""); }
+  const scanning = useRef(false);
+  const confirm = (repo: RepoOption) => { setChoice(repo.fullName); onSelect(repo); };
   const router = useRouter();
   const search = useRef<HTMLDivElement>(null);
   /**
@@ -141,7 +152,7 @@ export function RepoStep({
             </li>
           ))}
         </ul>
-        <p className="text-muted-foreground text-xs leading-[1.6]">{m.newProject.repo.loading}</p>
+        <p className="text-muted-foreground text-xs leading-body">{m.newProject.repo.loading}</p>
       </div>
     );
   }
@@ -161,19 +172,13 @@ export function RepoStep({
       {/* 다른 설치로 리포가 이미 보여도 요청이 사라진 것은 아니다 — 무음으로 두면 방금 한 요청이 안 먹은 것으로 읽힌다. */}
       {state.pending && <Alert variant="info">{m.newProject.empty.waiting.info}</Alert>}
 
-      {/*
-        ⚠️ **`SearchInput`을 쓰지 않는다** — 그 프리미티브는 Enter 제출형이고 폭을 `w-64`로 못 박았다
-        ("폭을 인자로 열면 툴바마다 검색창이 달라진다"). 여기는 입력 중 즉시 거르는 폭 100% 필드라
-        계약이 다르다. **글리프 자리잡기 관용구만 그 파일에서 그대로 가져온다.**
-      */}
-      <div ref={search} className="relative shrink-0">
-        <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2.5 size-4" aria-hidden />
-        <Input
+      {/* 즉시 검색은 제출형 SearchInput 대신 Input의 글리프·지우기 슬롯을 쓴다. */}
+      <div ref={search} className="shrink-0">
+        <Input width="full" icon={<Search />} clearable
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder={m.newProject.repo.search.placeholder}
           aria-label={m.newProject.repo.search.label}
-          className="w-full pr-2.5 pl-8"
         />
       </div>
 
@@ -184,8 +189,7 @@ export function RepoStep({
           "리포가 안 보이면 설치에 추가하라"는 지금 화면의 두 번째 출구라 블록에 붙어야 한다.
         */
         <div className="flex flex-1 flex-col items-center justify-center gap-3">
-          <EmptyState
-            icon={Search}
+          <NoMatch
             title={m.newProject.repo.searchEmpty(query.trim())}
             action={
               <Button variant="default" onClick={() => onQueryChange("")}>
@@ -205,43 +209,37 @@ export function RepoStep({
         <RadioGroup
           className="shrink-0"
           aria-label={m.newProject.repo.list}
-          value={selected ?? ""}
-          onValueChange={(fullName) => {
-            const picked = shown.find((r) => r.fullName === fullName);
-            if (picked !== undefined) onSelect(picked);
-          }}
+          value={choice}
+          onValueChange={fullName => { setChoice(fullName); if (scanning.current) onScan(fullName); }}
+          onKeyDownCapture={event => { scanning.current = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key); }}
+          onKeyUpCapture={() => { scanning.current = false; }}
+          onPointerDownCapture={() => { scanning.current = false; }}
         >
         <ul className="border-border overflow-hidden rounded-md border">
           {shown.map((repo, index) => {
-            const active = selected === repo.fullName;
+            const active = choice === repo.fullName;
             /*
               ⚠️ **`divide-y`가 아니다** — 구분선 색이 두 벌이기 때문이다: **선택 행(muted 면)에 접한
               경계는 `border`(#e5e5e5)**이고 비선택끼리는 한 단계 연한 `divider`(#f0f0f0)다. 한 값으로
               두면 muted 면의 위아래 가장자리가 면 안에서 풀린다 (핸드오프 1a).
             */
-            const prevActive = index > 0 && selected === shown[index - 1]?.fullName;
+            const prevActive = index > 0 && choice === shown[index - 1]?.fullName;
             return (
               /*
                 ⚠️ **padding이 `<li>`가 아니라 안쪽 둘에 붙는다** — 브랜치 줄의 `border-top`이 행 끝까지
                 가야 하는데, `<li>`가 padding을 들면 그 선이 좌우로 12씩 들여써진다.
               */
-              <li
-                key={repo.fullName}
-                className={cn(
-                  index > 0 && "border-t",
-                  index > 0 && (active || prevActive ? "border-border" : "border-divider"),
-                  active ? "bg-muted" : "hover:bg-foreground/[0.03]",
-                )}
-              >
-                <div className="p-3">
-                  <Radio
+              <li key={repo.fullName}>
+                  <SelectRow input="radio" checked={active} first={index === 0} previousChecked={prevActive}
                     value={repo.fullName}
-                    labelClassName="gap-3"
+                    onClick={() => { if (!scanning.current) confirm(repo); }}
+                    onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); confirm(repo); } }}
+                    expand={active && selected === repo.fullName ? <BranchRow state={state} onChange={onBranchChange} /> : undefined}
                     label={
                       <>
                         {/*
                           ⚠️ **글리프에 톤 색을 주지 않는다** — 아직 프로젝트가 아니라 후보다
-                          (`/projects` 목록의 `toneFill`과 반대). 선택되면 **칩만** 흰색으로 뒤집혀
+                          (`/projects` 목록의 `hueFill`과 반대). 선택되면 **칩만** 흰색으로 뒤집혀
                           muted 면 위에서 떠오른다.
                         */}
                         <IconTile size="lg" className={active ? "bg-background" : "bg-muted"}>
@@ -261,8 +259,6 @@ export function RepoStep({
                       </>
                     }
                   />
-                </div>
-                {active && <BranchRow state={state} onChange={onBranchChange} />}
               </li>
             );
           })}
@@ -282,11 +278,11 @@ export function RepoStep({
 function InstallHint({ installUrl }: { installUrl: string | null }) {
   if (installUrl === null) return null;
   return (
-    <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">
+    <p className="text-muted-foreground shrink-0 text-xs leading-body">
       {m.newProject.repo.notListed}{" "}
-      <a href={installUrl} className="text-blue-600">
+      <InlineLink href={installUrl} >
         {m.newProject.empty.repos.action}
-      </a>
+      </InlineLink>
     </p>
   );
 }
@@ -333,7 +329,7 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
           <Select value={state.branchValue} onValueChange={onChange}>
             {/* ⚠️ **자기 id를 `aria-labelledby`에 함께 넣는다** — 트리거는 `<button>`이라 접근 값이
                 없어서, 라벨만 이으면 스크린리더가 "Branch"까지만 말하고 고른 브랜치를 말하지 않는다. */}
-            <SelectTrigger id="repo-branch" aria-labelledby="repo-branch-label repo-branch" className="w-[220px] shrink-0">
+            <SelectTrigger width={220} id="repo-branch" aria-labelledby="repo-branch-label repo-branch" className="shrink-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -345,11 +341,10 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
             </SelectContent>
           </Select>
         ) : branch.mode === "input" ? (
-          <Input
+          <Input width={220}
             id="repo-branch"
             value={state.branchValue}
             onChange={(e) => onChange(e.target.value)}
-            className="w-[220px]"
           />
         ) : (
           /* ⚠️ **mono가 아니다** — 브랜치는 읽는 값이다 (핸드오프 1a의 `Select` 값이 sans다). */
@@ -360,7 +355,7 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
           AA 미달이다 (핸드오프 · DESIGN §2.2). 같은 이유로 `FormGroup`을 쓰지 않는다 — 그 프리미티브의
           help는 흰 면 전용 색이고, 고치면 다른 화면의 모든 폼이 함께 움직인다.
         */}
-        <p className="text-foreground/60 min-w-0 flex-1 text-xs leading-[1.6]">{help}</p>
+        <p className="text-foreground/60 min-w-0 flex-1 text-xs leading-body">{help}</p>
       </>
     </BranchShell>
   );
@@ -437,9 +432,9 @@ function Blocked({
         title={m.newProject.empty.limit.title}
         description={m.newProject.empty.limit.description(PROJECT_LIMIT)}
         action={
-          <Link href={routes.projects()} className={cn(buttonClass({ variant: "primary" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none")}>
+          <ButtonLink variant="primary" href={routes.projects()} >
             {m.newProject.empty.limit.action}
-          </Link>
+          </ButtonLink>
         }
         secondary={null}
         error={null}
@@ -506,9 +501,9 @@ function Blocked({
         action={
           installUrl === null ? null : (
             // ⚠️ **같은 탭이다** (DESIGN §6.3 예외) — 저장하면 GitHub이 callback으로 되돌려 ①에 착지한다.
-            <a href={installUrl} className={cn(buttonClass({ variant: "primary" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none")}>
+            <ButtonLink variant="primary" external href={installUrl} >
               {m.newProject.empty.repos.action}
-            </a>
+            </ButtonLink>
           )
         }
         secondary={null}
@@ -570,7 +565,7 @@ function BlockShell({
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3">
       <EmptyState icon={icon} title={title} description={description} action={action ?? undefined} />
-      {secondary !== null && <p className="text-muted-foreground text-xs leading-[1.6]">{secondary}</p>}
+      {secondary !== null && <p className="text-muted-foreground text-xs leading-body">{secondary}</p>}
       {error !== null && <Alert variant="danger">{error}</Alert>}
     </div>
   );

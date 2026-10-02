@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { CHIP_STATE } from "@/lib/projects/list";
-import { STATE } from "@/lib/status/canon";
+import { STATE, type StateKey, type StateTone } from "@/lib/status/canon";
 
 /**
  * 프로젝트 목록 화면의 배선을 **소스로** 센다 (8-3 — `translations-screen`·`home-screen`과 같은 계보).
@@ -39,7 +39,7 @@ const PAGE = ["app/(edit)/projects/(list)/page.tsx", "components/projects/projec
  * 부정 단언(`divide-y` 없음 등)은 **넓어진다**.
  */
 const ROW_CARD = "components/ui/row-card.tsx";
-const LIST_AND_CARD = [code("components/projects/project-list.tsx"), code(ROW_CARD)].join("\n");
+const LIST_AND_CARD = [code("components/projects/project-list.tsx"), code(ROW_CARD), code("components/ui/card.tsx"), code("components/ui/list-row.tsx")].join("\n");
 
 describe("프로젝트 목록 — 검색은 로컬로 거르고 주소가 그 값을 든다", () => {
   /**
@@ -115,12 +115,23 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
    * ⚠️ **온보딩 둘의 `#525252` 덮개는 걷었다**(1-Y8). **보관만 `#a3a3a3` 덮개가 남는다** — 이름·메타와 한 색으로 물러나는 등재된 이탈이다(5-W7 제외).
    */
   it("칩 톤이 STATE 행이고 덮개는 보관 하나다", () => {
-    expect(STATE[CHIP_STATE.active].variant).toBe("success");
-    expect(STATE[CHIP_STATE.needs_reconnect].variant).toBe("warning");
-    for (const chip of ["setup", "awaiting_first_sync", "archived"] as const) expect(STATE[CHIP_STATE[chip]].variant).toBe("neutral");
+    const expected = {
+      active: ["active", "success", "Active"],
+      needs_reconnect: ["disconnected", "warning", "Disconnected"],
+      setup: ["setup", "muted", "Setup"],
+      awaiting_first_sync: ["notSyncedYet", "muted", "Not synced yet"],
+      archived: ["archived", "muted", "Archived"],
+      sync_failed: ["syncFailed", "danger", "Sync failed"],
+      partially_synced: ["partiallySynced", "warning", "Partially synced"],
+    } satisfies Record<keyof typeof CHIP_STATE, [StateKey, StateTone, string]>;
+    for (const chip of Object.keys(expected) as (keyof typeof expected)[]) {
+      const [state, tone, label] = expected[chip];
+      expect(CHIP_STATE[chip]).toBe(state);
+      expect(STATE[state]).toMatchObject({ tone, label });
+    }
     const src = PAGE.map(code).join("\n");
-    expect(src).not.toContain("text-neutral-600");
-    expect(src).toContain('chipState === "archived" && "text-neutral-400"');
+    expect(src).not.toContain("text-gray-strong");
+    expect(src).toContain('chipState === "archived" && "text-gray-dim"');
   });
 
   /**
@@ -161,7 +172,7 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
    * `PanelBody`의 flex 자식이 `<ul>`이 아니라 카드가 됐다. **불변식은 그대로이고 요소만 바뀐다.**
    */
   it("목록이 축소되지 않는다 — 카드가 `shrink-0`을 든다", () => {
-    const card = /<section className="([^"]*)"/.exec(LIST_AND_CARD)?.[1] ?? "";
+    const card = /<section[^>]*className="([^"]*)"/.exec(LIST_AND_CARD)?.[1] ?? "";
     expect(card).not.toBe("");
     expect(card).toContain("shrink-0");
     expect(card).toContain("overflow-hidden");
@@ -196,7 +207,13 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
  * `/design-sync`가 든다.
  */
 describe("로케일 Meter — 캔버스 값 그대로", () => {
-  const METER = code("components/locale-meter.tsx");
+  const caller = code("components/locale-meter.tsx");
+  const METER = [caller, code("components/ui/meter.tsx")].join("\n");
+
+  it("로케일 계산이 공유 Meter에 전달된다", () => {
+    expect(caller).toContain('import { Meter } from "@/components/ui/meter"');
+    expect(caller).toContain("<Meter done={done} review={review}");
+  });
 
   it.each([
     ["칸 폭 100", "w-25"],
@@ -246,8 +263,8 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   it.each([
     ["이름 칸 420", "w-[420px]"],
     ["행 요소 gap 16", "gap-4"],
-    // 4-W3(ux-drift-unify) — 행 세로 padding은 `py-[13px]` 한 벌이다(PanelRow·EventRow·Sources·Settings와 같다).
-    ["행 padding 13/14/12", "py-[13px]"],
+    // 4-W3(ux-drift-unify) — 행 세로 padding은 `py-row-y` 한 벌이다(PanelRow·EventRow·Sources·Settings와 같다).
+    ["행 padding 13/14/12", "py-row-y"],
     ["행 hover 2%", "hover:bg-foreground/[0.02]"],
     ["헤더↔첫 행 hairline #f0f0f0", "border-foreground/[0.06]"],
     ["띠 좌측 들여쓰기 56", "pl-14"],
@@ -266,7 +283,7 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
    */
   it("행 글리프 radius 8은 공통 프로젝트 썸네일이 소유한다", () => {
     expect(BODY).toContain("<ProjectThumbnail name={row.name}");
-    expect(code("components/projects/project-thumbnail.tsx")).toContain("rounded-sm");
+    expect(code("components/ui/project-thumbnail.tsx")).toContain("rounded-sm");
   });
 
   /**
@@ -283,7 +300,8 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
    * 철자(`/[0.0N]` 하나)는 `visual-system.test.ts`의 "알파 면·선의 철자"가 전역으로 센다(5-Y8) — 여기는 급만 본다.
    */
   it("카드 안 행이라 캔버스 급 hover 3%가 없다", () => {
-    expect(BODY).not.toContain("hover:bg-foreground/[0.03]");
+    expect(code("components/projects/project-list.tsx")).not.toContain('variant="canvas"');
+    expect(code("components/ui/list-row.tsx")).toContain('variant = "card"');
   });
 
   /**
@@ -310,7 +328,7 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
    * ⚠️ **띠는 행의 형제다** — `<a>` 안에 넣으면 링크가 중첩되고, 그 안의 [Review]는 누를 수 없다.
    */
   it("띠가 행 링크 밖에 있다", () => {
-    expect(BODY).toMatch(/<\/Link>\s*\n\s*\{banner !== null && <ProjectBanner/);
+    expect(BODY).toMatch(/<\/ListRow>\s*\n\s*\{banner !== null && <ProjectBanner/);
   });
 
   it("그룹 헤더 셋을 사전에서 가져온다 — 배지 낱말과 두 벌이 되지 않는다", () => {
@@ -414,7 +432,7 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
 /**
  * **폭 축소는 컨테이너 쿼리다** (DESIGN §6.63).
  *
- * ⚠️ **뷰포트 브레이크포인트로는 영영 안 밟힌다.** 셸이 `min-w-[1280px]`을 들어 가로 스크롤이 먼저
+ * ⚠️ **뷰포트 브레이크포인트로는 영영 안 밟힌다.** 셸이 `min-w-shell-min`을 들어 가로 스크롤이 먼저
  * 생기고, 패널 폭은 같은 뷰포트에서도 **LNB 리사이즈(200~320)**로 두 값이 된다 — 실제로 변하는 것은
  * 카드 폭이다. (2026-09-16까지 근거가 '오른쪽 패널 유무'였고 그 패널을 지웠다 — DESIGN §6.55.)
  */
@@ -455,7 +473,7 @@ describe("Meter 폭 축소 — 컨테이너 기준", () => {
  */
 describe("캔버스 대조로 잡은 자리", () => {
   const BODY = LIST_AND_CARD;
-  const EMPTY = [code("components/projects/empty-projects.tsx"), code(ROW_CARD)].join("\n");
+  const EMPTY = [code("components/projects/empty-projects.tsx"), code("components/ui/empty-state.tsx")].join("\n");
 
   /**
    * ⚠️ **빈 상태가 카드 규격으로 내려온다** (캔버스 `1b`). 다른 블록이 전부 `border 1 · radius 12 ·
@@ -487,9 +505,9 @@ describe("캔버스 대조로 잡은 자리", () => {
    * 이 리포에서 꺼진 컨트롤의 글자색이라 더 내려갈 데가 없었다. **메타도 같은 값으로 따라간다** —
    * 색을 재는 렌더 단언은 `projects-cards.test.tsx`에 있고, 여기서는 갈래가 상태에 묶여 있는지를 센다.
    */
-  it("보관 행의 이름과 메타가 neutral-400이다", () => {
-    expect(BODY).toContain('status === "archived" && "text-neutral-400"');
-    expect(BODY).toContain('status === "archived" ? "text-neutral-400" : "text-muted-foreground"');
+  it("보관 행의 이름과 메타가 gray-dim이다", () => {
+    expect(BODY).toContain('status === "archived" && "text-gray-dim"');
+    expect(BODY).toContain('status === "archived" ? "text-gray-dim" : "text-muted-foreground"');
   });
 
   /**
@@ -498,7 +516,7 @@ describe("캔버스 대조로 잡은 자리", () => {
    */
   it("검색 일치를 이름 칸에서만 칠한다", () => {
     expect(BODY).toContain("highlightName(row.name, q)");
-    expect(BODY).toContain("rounded-[3px] bg-blue-600/[0.14] px-px");
+    expect(BODY).toContain("rounded-[3px] bg-link/[0.14] px-px");
     // 메타 줄은 원문 그대로다.
     expect(BODY).toMatch(/\$\{row\.repoOwner\}\/\$\{row\.repoName\}/);
   });
@@ -517,6 +535,6 @@ describe("캔버스 대조로 잡은 자리", () => {
   it("Clear search 머리 링크가 파랑이 아니다", () => {
     expect(BODY).toContain('className="focus-visible:ring-ring text-foreground ml-auto inline-flex items-center gap-0.5 text-sm');
     expect(BODY).toMatch(/\{m\.projects\.clearSearch\}[^<]*<ChevronRight/);
-    expect(BODY).not.toContain("ml-auto text-sm text-blue-600");
+    expect(BODY).not.toContain("ml-auto text-sm text-link");
   });
 });

@@ -6,6 +6,25 @@ import { Avatar } from "@/components/ui/avatar";
 
 import { find, render } from "./helpers/dom";
 
+it.each([24, 32, 56] as const)("크기 %s의 사진·이니셜이 원형·치수·클래스 override를 보존한다", async (size) => {
+  for (const src of [undefined, "https://example.com/avatar.webp"]) {
+    const { container } = await render(<Avatar name="Malmoi" size={size} src={src} className="opacity-50" />);
+    const node = container.firstElementChild as HTMLElement;
+    expect(node.classList.contains("rounded-full")).toBe(true);
+    expect(node.classList.contains("opacity-50")).toBe(true);
+    expect(node.style.width).toBe(`${size}px`);
+    expect(node.style.height).toBe(`${size}px`);
+    if (src === undefined) {
+      expect(node.textContent).toBe("M");
+      expect(node.classList.contains(size === 56 ? "text-xl" : "text-xs")).toBe(true);
+    } else {
+      expect(node.tagName).toBe("IMG");
+      expect(node.classList.contains("object-cover")).toBe(true);
+      expect(node.getAttribute("alt")).toBe("");
+    }
+  }
+});
+
 /**
  * **사진이 안 뜨면 이니셜로 떨어진다** (malmoi#50).
  *
@@ -51,4 +70,12 @@ it("붙는 시점에 이미 깨져 있는 이미지(complete·naturalWidth 0)도
     if (complete) Object.defineProperty(HTMLImageElement.prototype, "complete", complete);
     if (natural) Object.defineProperty(HTMLImageElement.prototype, "naturalWidth", natural);
   }
+});
+
+/** 빈 이름의 ?도 동일한 sky 면이어야 기존 멤버·계정 폴백과 갈리지 않는다. */
+it.each([["", "?", "bg-sky-600"], ["Acme", "A", "bg-fuchsia-600"]])("%s preserves initial and hue background", async (name, initial, hueClass) => {
+  const { container } = await render(<Avatar name={name} />);
+  expect(container.textContent).toBe(initial);
+  expect(container.firstElementChild?.classList.contains(hueClass)).toBe(true);
+  expect(container.firstElementChild?.classList.contains("text-white")).toBe(true);
 });

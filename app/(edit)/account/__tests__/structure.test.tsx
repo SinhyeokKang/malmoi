@@ -79,11 +79,11 @@ function card(container: ParentNode, title: string): HTMLElement {
  * 기본값이 수단 **둘**이라는 우연이다. **실측으로 확인했다** — 옛 선택자로 그 갈래를 렌더하면
  * `toHaveLength(1)`이 `got 2`로 red다 (2026-09-16 3라운드 🟡).
  *
- * 세려는 불변식은 **본문 div에 대한 진술**이다. `li` 아래를 통째로 세면 "보조 줄이 없다"와
+ * 세려는 불변식은 **본문 슬롯에 대한 진술**이다. `li` 아래를 통째로 세면 "보조 줄이 없다"와
  * "우측에 span이 없다"가 한 수로 접히고, 사유가 붙는 날 **"보조 줄이 생겼다"는 엉뚱한 red**가 난다.
  */
 function bodyLines(row: Element): HTMLSpanElement[] {
-  const body = row.querySelector("div:first-of-type");
+  const body = row.querySelector("[data-row-copy]");
   return body === null ? [] : [...body.querySelectorAll<HTMLSpanElement>(":scope > span")];
 }
 
@@ -139,7 +139,7 @@ it("행 본문이 한 줄로 이름과 상태를 함께 들고, 보조 줄이 �
   expect(body!.textContent).toContain("@octocat");
   expect(body!.textContent).toContain(m.account.github.connected);
   // 이름만 굵다 — 상태가 같은 무게로 서면 행이 무엇을 묻는지가 흐려진다.
-  const strong = body!.querySelector("span");
+  const strong = body!.querySelector(".font-medium");
   expect(strong).not.toBeNull();
   expect(strong!.textContent).toBe("@octocat");
   // 보조 줄은 **다음에 할 일**이다. 상태를 여기로 내리면 부연으로 읽힌다.

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { CountBadge } from "@/components/ui/count-badge";
 import { Input } from "@/components/ui/input";
-import { ListItemButton } from "@/components/ui/list-item";
+import { ListRow } from "@/components/ui/list-row";
 import type { TranslationTree } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
 import { ALL_NAMESPACES } from "@/lib/translations/query";
@@ -88,31 +88,29 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
       <div ref={listRef} className="border-divider flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto border-t p-2">
         {namespaceCount >= FILTER_AT && (
           <div className="relative mb-1.5">
-            <Search className="text-muted-foreground pointer-events-none absolute top-2 left-2.5 size-3.5" aria-hidden />
-            <Input
+            <Input width="full" size="sm" icon={<Search />} clearable
               type="search"
               value={filter}
               onChange={event => setFilter(event.target.value)}
               aria-label={m.translations.workspace.tree.filter}
               placeholder={m.translations.workspace.tree.filter}
-              // `Input` 프리미티브는 폭을 들지 않는다 — 트리 행과 같은 폭으로 채운다.
-              className="h-8 w-full pl-8 text-xs"
+              // 트리 행과 같은 폭으로 채운다.
             />
           </div>
         )}
         {allSources !== null && (
           // 소스 행과 같은 높이·굵기(500)다 — 소스 위의 층이라 들여쓰지 않는다.
-          <ListItemButton
+          <ListRow as="button" variant="canvas" ringInset
             data-tree-all=""
             selected={rangeAll}
             disabled={counted && allSources.count === 0 && !rangeAll}
             onClick={() => onSelectAll?.()}
             className={cn("flex items-center gap-2 rounded-sm px-2 py-[7px] text-sm", counted && allSources.count === 0 && "text-muted-foreground")}
           >
-            <span className="flex text-neutral-600"><Search className="size-4" aria-hidden /></span>
+            <span className="flex text-gray-strong"><Search className="size-4" aria-hidden /></span>
             <span className="min-w-0 flex-1 truncate font-medium">{m.translations.workspace.tree.allSources}</span>
             {allSources.count !== null && <span className="text-muted-foreground text-xs">{allSources.count.toLocaleString("en-US")}</span>}
-          </ListItemButton>
+          </ListRow>
         )}
         {nodes.surfaces.map(surface => {
           const open = !collapsed.has(surface.slug);
@@ -121,17 +119,17 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
             : surface.namespaces.filter(n => n.name.toLowerCase().includes(needle) || (surface.slug === surfaceSlug && n.name === ns));
           return (
             <div key={surface.id} className="flex flex-col gap-0.5">
-              <ListItemButton
+              <ListRow as="button" variant="canvas" ringInset
                 aria-expanded={open}
                 data-tree-surface={surface.slug}
                 onClick={() => setCollapsed(prev => { const next = new Set(prev); if (open) next.add(surface.slug); else next.delete(surface.slug); return next; })}
                 className={cn("flex items-center gap-2 rounded-sm px-2 py-[7px] text-sm", counted && surface.keyCount === 0 && "text-muted-foreground")}
               >
-                <span className="flex text-neutral-600">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
-                <span className="flex text-neutral-600"><FileJson2 className="size-4" aria-hidden /></span>
+                <span className="flex text-gray-strong">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
+                <span className="flex text-gray-strong"><FileJson2 className="size-4" aria-hidden /></span>
                 <span className="min-w-0 flex-1 truncate font-medium">{surface.slug}</span>
                 <span className="text-muted-foreground text-xs">{surface.keyCount.toLocaleString("en-US")}</span>
-              </ListItemButton>
+              </ListRow>
               {open && (
                 <>
                   <TreeItem
@@ -170,7 +168,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
 /**
  * `counted` — 검색 중이다. 그때 0 노드는 흐리고 **누를 수 없다**(눌러도 빈 목록이다 — Status는 이 판정에 없다). 범위·위치 노드는 0이어도 누를 수 있다 — 오버레이를 열 때의
  * 포커스 대상(`[aria-current="true"]`)이 사라지지 않게. 기존 토큰만 쓴다(design §4.3).
- * ⚠️ `ListItemButton`은 `aria-current`를 `selected`로만 세운다 — 위치 표시는 호출부 prop이 뒤에서 덮는다(`{...props}`가 마지막이다).
+ * ⚠️ `ListRow`은 `aria-current`를 `selected`로만 세운다 — 위치 표시는 호출부 prop이 뒤에서 덮는다(`{...props}`가 마지막이다).
  */
 function TreeItem({ surface, ns, icon, label, count, counted, mark, onClick }: {
   surface: string; ns: string; icon: ReactNode; label: string; count: number; counted: boolean; mark: "true" | "location" | undefined; onClick: () => void;
@@ -179,7 +177,7 @@ function TreeItem({ surface, ns, icon, label, count, counted, mark, onClick }: {
   const empty = counted && count === 0;
   return (
     // 30 = 소스 행의 px-2(8) + chevron(14) + gap(8) — 네임스페이스 아이콘의 왼쪽 끝을 소스 아이콘과 맞춘다(시안은 34로 4px 어긋났다, 사용자 결정).
-    <ListItemButton
+    <ListRow as="button" variant="canvas" ringInset
       selected={mark === "true"}
       aria-current={mark}
       data-tree-surface={surface}
@@ -188,9 +186,9 @@ function TreeItem({ surface, ns, icon, label, count, counted, mark, onClick }: {
       onClick={onClick}
       className={cn("flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-[30px] text-sm", empty && "text-muted-foreground")}
     >
-      <span className={cn("flex", location ? "text-neutral-600" : "text-neutral-400")}>{icon}</span>
+      <span className={cn("flex", location ? "text-gray-strong" : "text-gray-dim")}>{icon}</span>
       <span className={cn("min-w-0 flex-1 truncate", location && "font-medium")}>{label}</span>
       <span className={cn("text-xs", location ? "text-foreground" : "text-muted-foreground")}>{count.toLocaleString("en-US")}</span>
-    </ListItemButton>
+    </ListRow>
   );
 }

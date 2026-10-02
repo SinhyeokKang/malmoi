@@ -4,7 +4,7 @@ import { ChevronsUpDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 
-import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -89,7 +89,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
     <DropdownMenu onOpenChange={(open) => { if (!open) setQ(""); }}>
       <DropdownMenuTrigger asChild>
         {/* ⚠️ 머리 줄은 32다 — 24 버튼을 `-my-0.5`로 그 안에 넣는다(안 그러면 머리만 36이 된다). */}
-        <Button variant="ghost" aria-label={m.common.nav.projectSwitcher.label} className="-my-0.5 ml-auto size-6 shrink-0 rounded-sm p-0">
+        <Button size="icon-xs" variant="ghost" aria-label={m.common.nav.projectSwitcher.label} className="-my-0.5 ml-auto shrink-0 rounded-sm">
           <ChevronsUpDown className="size-4" aria-hidden />
         </Button>
       </DropdownMenuTrigger>
@@ -106,16 +106,17 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
             ⚠️ **열리면 포커스는 입력이다** — `autoFocus`가 커밋 때 입력에 포커스를 두면, Radix `FocusScope`는 이미 안에 포커스가
             있는 것을 보고 자기 자동 포커스(콘텐츠·첫 항목)를 건너뛴다. "열면 검색 입력에 포커스" 테스트가 그 경로를 잰다.
           */}
-          <Input
-            ref={input}
-            autoFocus
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-            onKeyDown={onInputKeyDown}
-            placeholder={m.common.nav.projectSwitcher.search}
-            aria-label={m.common.nav.projectSwitcher.search}
-            className="h-8 min-w-0 flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
-          />
+          <div className="flex min-w-0 flex-1">
+            <Input width="full" size="sm" variant="bare"
+              ref={input}
+              autoFocus
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              onKeyDown={onInputKeyDown}
+              placeholder={m.common.nav.projectSwitcher.search}
+              aria-label={m.common.nav.projectSwitcher.search}
+            />
+          </div>
           <kbd className="border-border text-muted-foreground shrink-0 rounded border px-1.5 py-0.5 font-sans text-xs">
             {m.common.nav.projectSwitcher.escHint}
           </kbd>
@@ -127,12 +128,12 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
           shown.map((project) => (
             <DropdownMenuItem key={project.slug} asChild selected={project.slug === current} {...keepInputFocus}>
               <Link href={routes.project(project.slug)}>
-                <ProjectThumbnail name={project.name} src={project.image} size={16} />
+                <ProjectThumbnail name={project.name} src={project.image} size="xs" />
                 {/* ⚠️ 이름이 남는 폭을 먹는다(`flex-1`) — 그래야 배지 뒤의 `Check`(`ml-auto`)가 배지에 붙는다. 둘 다 `ml-auto`면 빈 폭을 나눠 갖는다. */}
                 <span className="min-w-0 flex-1 truncate">{project.name}</span>
                 {project.archived && (
                   // ⚠️ `/projects` 행 칩과 같은 형·같은 키다(`project-list.tsx`의 `archived` 칩) — 두 벌이면 하나가 낡는다.
-                  <StatusBadge state="archived" className="shrink-0 px-2 text-neutral-400" />
+                  <StatusBadge state="archived" className="shrink-0 px-2 text-gray-dim" />
                 )}
               </Link>
             </DropdownMenuItem>

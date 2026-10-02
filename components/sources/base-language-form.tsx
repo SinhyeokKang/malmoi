@@ -48,7 +48,7 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
       <div className="flex flex-wrap items-center gap-3">
         {/* ⚠️ 잠겨도 Tab만 통과시킨다 (audit #18 · `member-list.tsx`의 형) — 포커스가 갇히면 키보드 사용자가 폼을 떠날 수 없다. */}
         <Select value={state.draft} onValueChange={value => { if (!locked) setState(s => planBaseLanguageForm(s, { type: "change", value })); }}>
-          <SelectTrigger id="base-locale" aria-labelledby="base-locale-label base-locale" aria-disabled={locked || undefined} aria-describedby={unavailable ? "base-unavailable" : undefined} data-base-pending={awaiting || undefined} className={cn("w-40", error !== null ? "border-destructive/50" : awaiting && "border-amber-500/50")}
+          <SelectTrigger width={160} id="base-locale" aria-labelledby="base-locale-label base-locale" aria-disabled={locked || undefined} aria-describedby={unavailable ? "base-unavailable" : undefined} data-base-pending={awaiting || undefined} className={cn(error !== null ? "border-destructive/50" : awaiting && "border-amber-500/50")}
             onPointerDown={event => { if (locked) event.preventDefault(); }} onClick={event => { if (locked) event.preventDefault(); }} onKeyDown={event => { if (locked && event.key !== "Tab") event.preventDefault(); }}><SelectValue /></SelectTrigger>
           <SelectContent>{locales.map(code => <SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent>
         </Select>
@@ -56,7 +56,7 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
         <Button ref={submit} type="submit" variant="primary" loading={state.pending} disabled={unavailable || state.draft === state.baseline}>{m.locales.field.save}</Button>
         {state.result === "saved" && <span role="status" className="text-muted-foreground text-xs">{m.locales.field.saved}</span>}
         {/* 설명은 컨트롤 줄 아래로 떨어진다(2026-09-30 사용자 — 옆에 두면 세 줄로 꺾여 컨트롤보다 키가 컸다). */}
-        <p className="text-muted-foreground min-w-0 basis-full text-xs leading-[1.7]">{m.locales.field.help}</p>
+        <p className="text-muted-foreground min-w-0 basis-full text-xs leading-prose">{m.locales.field.help}</p>
       </div>
     {unavailable && <p id="base-unavailable" className="text-muted-foreground text-xs">{baseLocale === null ? m.sources.firstImport : m.locales.field.noLocales}</p>}
     {error && <FieldError>{isRepositorySettingsError(error) ? repositorySettingsErrorMessage(error) : isAccessError(error) ? accessErrorMessage(error) : m.locales.field.failed}</FieldError>}

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { m } from "@/lib/i18n";
+import { STATE, type StateKey, type StateTone } from "@/lib/status/canon";
 import type { SurfaceImportResult } from "@/lib/import/result";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
 import { languageName } from "@/lib/onboarding/language-name";
@@ -8,7 +9,7 @@ import type { SyncErrorCode } from "@/lib/sync/plan";
 import { utcDay } from "@/lib/utc-time";
 
 import type { EventCursor } from "./filter";
-import { NIGHTLY_SUBTYPES, type ActorKind, type DeferReason, type EventKind, type EventPayload, type EventResult } from "./payload";
+import { NIGHTLY_SUBTYPES, type ActorKind, type DeferReason, type EventKind, type EventPayload, type EventResult, type SurfaceOutcome } from "./payload";
 
 /**
  * Logs 행의 **순수 판정** (logs-rework design §6). 화면이 `kind`로 삼항을 엮으면 갈래가 JSX 안에 흩어지고 그 자리에는 누락을 잡는 장치가 없다.
@@ -17,9 +18,8 @@ import { NIGHTLY_SUBTYPES, type ActorKind, type DeferReason, type EventKind, typ
  * 클라이언트 번들에 들어온다 (POSTMORTEM 2026-09-07의 7.2MB 청크).
  */
 
-/** ⚠️ **`Badge` variant와 같은 이름이다** (DESIGN §6.2) — 화면이 매핑 표를 또 들지 않는다. */
-/** `success` — 실제로 보냈거나 받은 실행(2026-09-30 사용자 — Synced·Sent는 성공 계열이라 초록). 할 일이 없던 실행은 여전히 무색이다. */
-export type EventTone = "success" | "muted" | "warning" | "danger";
+/** 성공의 의미 톤은 공유하되 Logs의 회색 표시는 별도 상태 키가 든다. */
+export type EventTone = StateTone;
 
 export type EventViewRow = {
   kind: EventKind;
@@ -30,6 +30,7 @@ export type EventViewRow = {
 };
 
 export type EventView = {
+  state: StateKey | null;
   tone: EventTone;
   /** `null`이면 그 종류에 결과가 없다 — 빈 문자열과 구별된다. */
   label: string | null;
@@ -63,35 +64,39 @@ export const TONES: Readonly<Record<EventResult, EventTone>> = {
  * 읽고 거기서는 성공이 초록이다. 예외는 이 표시 층 하나가 든다.
  */
 export function logsResultTone(result: EventResult): EventTone {
-  const tone = TONES[result];
-  return tone === "success" ? "muted" : tone;
+  return STATE[eventResultState("IMPORT", result)].tone;
 }
 
-/** ⚠️ `running`은 여기 없다 — 종류가 낱말을 정한다(`resultLabel`). */
-const LABELS: Readonly<Record<Exclude<EventResult, "running">, string>> = {
-  sent: m.logs.status.succeeded,
-  nothingToSend: m.logs.status.skipped,
-  notSent: m.logs.status.notSent,
-  imported: m.logs.status.imported,
-  deferred: m.logs.status.deferred,
-  partial: m.logs.status.partial,
-  superseded: m.logs.status.superseded,
-  notStarted: m.logs.status.notStarted,
-  failed: m.logs.status.failed,
-  upToDate: m.logs.status.upToDate,
-};
+const RESULT_STATE = {
+  sent: "logsSent",
+  nothingToSend: "nothingToSend",
+  notSent: "heldBack",
+  imported: "logsSynced",
+  deferred: "held",
+  partial: "partiallySynced",
+  superseded: "superseded",
+  notStarted: "notStarted",
+  failed: "logsFailed",
+  upToDate: "upToDate",
+} as const satisfies Record<Exclude<EventResult, "running">, StateKey>;
 
-/** 결과 낱말 — 진행 중만 종류가 가른다(Sync `Syncing…` · Publish `Publishing…`, 1-Y2). */
-function resultLabel(kind: EventKind, result: EventResult): string {
-  if (result !== "running") return LABELS[result];
-  return kind === "PUBLISH" ? m.logs.status.publishing : m.logs.status.syncing;
+/** 진행 중만 종류가 낱말을 정한다 — 기존 비-Publish의 Syncing… 폴백도 유지한다. */
+export function eventResultState(kind: EventKind, result: EventResult): StateKey {
+  return result === "running" ? (kind === "PUBLISH" ? "publishing" : "syncing") : RESULT_STATE[result];
+}
+
+/** 상세의 소스별 결과도 머리와 같은 Logs 예외를 쓴다. */
+export function surfaceResultState(status: SurfaceOutcome["status"]): StateKey {
+  return eventResultState("IMPORT", status);
 }
 
 export function eventView(row: EventViewRow): EventView {
   const result = row.result;
+  const state = result === null ? null : eventResultState(row.kind, result);
   return {
-    tone: result === null ? "muted" : logsResultTone(result),
-    label: result === null ? null : resultLabel(row.kind, result),
+    state,
+    tone: state === null ? "muted" : STATE[state].tone,
+    label: state === null ? null : STATE[state].label,
     // 음수는 없는 것으로 읽는다 — 화면에 `-1 dropped`를 내지 않는다.
     warningsLabel: row.warnings > 0 ? m.logs.warnings(row.warnings) : null,
     reasonKey: result === "failed" ? reasonKey(row.errorCode) : isReconfirm(result, row.errorCode) ? "reconfirm" : null,

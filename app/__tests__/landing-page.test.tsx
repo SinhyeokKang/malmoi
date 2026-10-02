@@ -91,7 +91,7 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
       [m.landing.shell.getStarted, routes.signIn()],
     ]);
     const [github, start] = links;
-    expect([github?.getAttribute("target"), github?.getAttribute("rel")]).toEqual(["_blank", "noreferrer"]);
+    expect([github?.getAttribute("target"), github?.getAttribute("rel")]).toEqual(["_blank", "noreferrer noopener"]);
     // 같은 크기 — `lg`(h-10 · rounded-lg). 변형은 default(테두리)와 primary다.
     for (const a of links) expect(a.className).toContain("h-10");
     expect(github?.className).toContain("border-input");

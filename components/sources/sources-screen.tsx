@@ -1,5 +1,7 @@
 "use client";
-import Link from "next/link";
+import { Link as InlineLink } from "@/components/ui/link";
+import { ListRow } from "@/components/ui/list-row";
+
 import { useRouter } from "next/navigation";
 import { ChevronRight, FileCode2, FileJson2, Folder, Plus } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
@@ -7,10 +9,11 @@ import { loadSourceDetail } from "@/app/(edit)/projects/[slug]/sources/actions";
 import { runFirstIngest } from "@/app/(edit)/projects/actions";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { GithubIcon } from "@/components/signin/brand-icons";
-import { PanelCard } from "@/components/ui/panel-card";
+import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { EmptyRowCard } from "@/components/ui/row-card";
+import { EmptyState } from "@/components/ui/empty-state";
+
 import { failureText } from "@/components/onboarding/failure";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -71,26 +74,26 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
       {canEdit && <Button ref={trigger} variant="primary" className="ml-auto" onClick={() => setAdding(true)}><Plus className="size-4" aria-hidden />{m.sources.add}</Button>}
     </div></PanelHeader>
     <PanelBody className="space-y-4">
-      <PanelCard title={m.sources.title} count={data.sources.length} countLabel={m.sources.count(data.sources.length)}
-        subtitle={data.repository ? <span className="flex items-center gap-1.5"><GithubIcon className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}
+      <Card title={m.sources.title} count={data.sources.length} countLabel={m.sources.count(data.sources.length)}
+        description={data.repository ? <span className="flex items-center gap-1.5"><GithubIcon className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}
         /*
           ⚠️ **추가 결과는 카드의 첫 줄이다** (시안 `1i`) — 토스트도, 카드 밖 Alert도 아니다. 적재가 토스트보다 오래 걸리고, 닫는 것은 사람이다.
           ⚠️ **계산한 톤을 그린다** (🔴 J — 옛 판은 `tone`을 세워 두고 무색 `role="status"` 줄로 그려 실패가 성공과 같은 줄이었다).
           `Alert inset`이 톤·글리프·닫기 포커스 이동(audit #35)을 들고, 실패는 `alert`로 읽던 것을 끊는다.
         */
         notice={result ? <Alert inset variant={result.tone} live={result.tone === "danger" ? "alert" : "status"} onDismiss={() => setResult(null)}>
-          <div className="space-y-[3px]">
+          <div className="space-y-copy-gap">
             {result.text && <p>{result.source && <><span className="font-medium">{result.source}</span> — </>}{result.text}</p>}
             {result.added && <><p><span className="font-medium">{m.sources.addedCount(result.added.length)}</span> — {result.added.map((source, index) => <Fragment key={source.surfaceSlug}>
                 {index > 0 && ", "}<span className={source.failed > 0 ? "text-destructive" : undefined}>{source.surfaceSlug}</span> {source.failed > 0 ? m.sources.addedFailed : m.sources.addedOne(source.count)}
               </Fragment>)}.</p>
               <p className="text-muted-foreground text-xs">{m.sources.resultKeep}</p>
-              <p className="text-muted-foreground text-xs">{m.sources.workflow} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></p></>}
+              <p className="text-muted-foreground text-xs">{m.sources.workflow} <InlineLink href={routes.settings(slug)}>{m.common.nav.projectSettings}</InlineLink></p></>}
           </div>
         </Alert> : undefined}>
         {data.sources.length === 0
-          /* ⚠️ `-mt-px` — `EmptyRowCard inset`은 자기 위 선(`border-t`)을 드는데 `PanelCard`는 머리가 선을 긋는다. 같은 색 두 줄을 한 줄로 겹친다. */
-          ? <div className="-mt-px"><EmptyRowCard inset icon={FileJson2} title={m.sources.emptyTitle} description={canEdit ? m.sources.emptyOwner : m.sources.emptyEditor} /></div>
+          // Card owns the boundary; inset empty content has no top border.
+          ? <EmptyState placement="inset" icon={FileJson2} title={m.sources.emptyTitle} description={canEdit ? m.sources.emptyOwner : m.sources.emptyEditor} />
           : <ul>{data.sources.map(source => {
           const Glyph = source.connection?.adapterName === "json-catalog" || source.connection?.adapterName === "chrome-locales" ? FileJson2 : FileCode2;
           // 칸만 상태 톤을 든다 — 행 전체를 칠하면 눈이 먼저 닿는 것이 파일 이름이 아니게 된다. 톤은 배지와 같은 판정이다(🔴 A1).
@@ -98,25 +101,26 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           return <li key={source.id} className="border-border border-t first:border-t-0">
             {/* ⚠️ **1016 이하에서 행이 `items-start`가 되고 상태가 셋째 줄로 내려간다** (시안 `1h`).
                 상태를 오른쪽에 두면 긴 경로와 버튼 사이에서 먼저 줄바꿈되는 것이 경로가 된다. */}
-            <div className="flex items-center gap-3 pr-4 @max-[1016px]/panel:items-start">
-              <Button variant="ghost" type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="hover:bg-foreground/[0.02] disabled:bg-foreground/[0.07] h-auto min-w-0 flex-1 justify-start gap-3 whitespace-normal rounded-none px-4 py-[13px] text-left focus-visible:ring-inset @max-[1016px]/panel:items-start" onClick={event => {
+              <ListRow as="button" ringInset type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="p-0 pr-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:bg-foreground/[0.07] min-w-0 whitespace-normal @max-[1016px]/panel:items-start" onClick={event => {
                 returnFocus.current = event.currentTarget; selection.current = source.slug; setSelected(source.slug); void load(source.slug, false);
               }}>
-                <IconTile data-source-glyph tone={tone}><Glyph className="size-4" aria-hidden /></IconTile>
-                <span className="flex min-w-0 flex-1 flex-col gap-[3px]"><span className="text-foreground text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
-                  {/* ⚠️ 경로가 sans다 — mono는 `<pre>` 코드 블록 전용이다 (DESIGN §4.1, 2026-09-23). `text-xs`가 13px라 옛 `text-mono`와 크기는 같다. */}
-                  {/* 경로 앞 `Folder` 14 — `/projects` 행 메타의 리포 앞 GitHub 로고와 같은 패턴이다(2026-09-30 사용자). 색은 글자를 상속한다. */}
-                  {source.connection && <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"><Folder className="size-3.5 shrink-0" aria-hidden /><span className="min-w-0 [overflow-wrap:anywhere]">{source.connection.pathTemplate ?? m.sources.notConfigured}</span></span>}
-                  <SourceStatus source={source} now={now} className="hidden pt-0.5 @max-[1016px]/panel:flex" />
+                {/* Content retains its old padding; the chevron keeps the outer gap and top offset inside this button. */}
+                <span data-source-content className="flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y @max-[1016px]/panel:items-start">
+                  <IconTile data-source-glyph tone={tone}><Glyph className="size-4" aria-hidden /></IconTile>
+                  <span className="flex min-w-0 flex-1 flex-col gap-copy-gap"><span className="text-foreground text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
+                    {/* ⚠️ 경로가 sans다 — mono는 `<pre>` 코드 블록 전용이다 (DESIGN §4.1, 2026-09-23). `text-xs`가 13px라 옛 `text-mono`와 크기는 같다. */}
+                    {/* 경로 앞 `Folder` 14 — `/projects` 행 메타의 리포 앞 GitHub 로고와 같은 패턴이다(2026-09-30 사용자). 색은 글자를 상속한다. */}
+                    {source.connection && <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"><Folder className="size-3.5 shrink-0" aria-hidden /><span className="min-w-0 wrap-anywhere">{source.connection.pathTemplate ?? m.sources.notConfigured}</span></span>}
+                    <SourceStatus source={source} now={now} className="hidden pt-0.5 @max-[1016px]/panel:flex" />
+                  </span>
+                  <SourceStatus source={source} now={now} className="@max-[1016px]/panel:hidden" />
                 </span>
-                <SourceStatus source={source} now={now} className="@max-[1016px]/panel:hidden" />
-              </Button>
-              {/* [Open translations]는 행에서 걷었다(2026-09-30 사용자) — 번역 화면으로 가는 길은 상세 모달의 같은 버튼이다. */}
-              <ChevronRight className="text-muted-foreground size-4 shrink-0 @max-[1016px]/panel:mt-2" aria-hidden />
-            </div>
+                {/* [Open translations]는 행에서 걷었다(2026-09-30 사용자) — 번역 화면으로 가는 길은 상세 모달의 같은 버튼이다. */}
+                <ChevronRight className="text-muted-foreground size-4 shrink-0 @max-[1016px]/panel:mt-2" aria-hidden />
+              </ListRow>
           </li>;
         })}</ul>}
-      </PanelCard>
+      </Card>
     </PanelBody>
     {canEdit && data.repository && <AddSourcesModal open={adding} onClose={closeAdd} onAdded={added => { const summary = summarizeAddResults(added); setResult({ tone: summary.tone, added }); }} returnFocusRef={trigger} slug={slug} owner={data.repository.repoOwner} repo={data.repository.repoName} branch={data.repository.baseBranch} server={data} existing={data.sources.map(source => ({ pathTemplate: source.connection?.pathTemplate ?? null }))} adapters={adapters} />}
     <SourceDetailModal slug={slug} sourceSlug={selected} role={role} state={detail} now={now} importResult={result?.source === selected && result?.text ? { text: result.text, tone: result.tone } : undefined} busy={busy} importing={importing} onBusy={setBusy} onClose={close} onReload={reload} onSaved={reload} returnFocusRef={returnFocus} fallbackFocusRef={heading} onImport={() => {

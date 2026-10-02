@@ -19,7 +19,7 @@ import { DotField } from "./dot-field";
  * 환영 KV로 남는 어긋남이 생겼다(KV에 문구가 구워져 분기별로 못 바꾼다). **기본값이 단일이다** — 새 셸 밖
  * 화면은 넘기지 않으면 단일로 선다. 패널·캔버스·푸터 좌표는 두 형이 같고 그리드만 다르다.
  *
- * ⚠️ **`min-w-[1280px]`가 없으면 규약 3의 "1280 미만에서 가로 스크롤"이 실제로 일어나지 않는다** —
+ * ⚠️ **`min-w-shell-min`가 없으면 규약 3의 "1280 미만에서 가로 스크롤"이 실제로 일어나지 않는다** —
  * grid가 그냥 압축되고 우측 키비주얼만 잘린다. 규약이 허용한 것은 스크롤이지 잘림이 아니다.
  *
  * ⚠️ **푸터는 공개 셸의 `PublicFooter`이고 패널 줄 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
@@ -51,7 +51,7 @@ export function AuthLayout({ children, decoration = false, scroll = false }: { c
         ⚠️ **`h-svh`가 아니라 `min-h-svh`다** — 공개 셸과 달리 스크롤러가 없어서, 좌측 내용이 뷰포트보다 길면 문서가
         스크롤되어야 한다(자르지 않는다). 패널 줄이 `flex-1`로 남은 높이를 채운다.
       */}
-      <div className={cn("bg-canvas flex min-w-[1280px] flex-col px-2 pt-2", scroll ? "h-svh" : "min-h-svh")}>
+      <div className={cn("bg-canvas flex min-w-shell-min flex-col px-2 pt-2", scroll ? "h-svh" : "min-h-svh")}>
         <div className={cn("grid flex-1 gap-2", decoration && "grid-cols-2", scroll && "min-h-0")}>
           {/*
             ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.

@@ -1,15 +1,18 @@
 "use client";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { IconTile } from "@/components/ui/icon-tile";
 
 import { Link2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { PanelCard, PanelRow, PanelRows } from "@/components/ui/panel-card";
+import { ListRow } from "@/components/ui/list-row";
+import { Card, CardRows } from "@/components/ui/card";
 import { DisconnectGithubButton } from "@/components/github-account";
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { landFocus } from "@/components/ui/focus";
-import { buttonClass } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import type { AccountView } from "@/lib/github-connect/account-view";
 import { m } from "@/lib/i18n";
 
@@ -52,72 +55,53 @@ export function GithubSection({
   }, [connected]);
 
   return (
-    <PanelCard
+    <Card
       title={m.account.github.title}
       notice={failure !== null ? <Alert inset variant="danger">{failure}</Alert> : undefined}
     >
-      <PanelRows>
+      <CardRows>
       {/*
         ⚠️ **브랜드 마크는 연결됐을 때뿐이다** — 붙어 있는 것이 그 계정이기 때문이다. 미연결·장애는
         대상이 아직 없으므로 동작을 가리키는 lucide 글리프(`link-2`, 회색)가 선다.
       */}
-      <PanelRow
-        glyph={connected ? <GithubIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}
-        name={connected ? `@${account.login}` : m.account.github.rowName}
-        // 상태가 본문이고 보조 줄은 **다음에 할 일**을 든다 (핸드오프 v2 §항목 규격).
-        status={
-          account.status === "reauthorize" ? m.account.github.statusReauthorize
-          : account.status === "unavailable" ? m.account.github.statusUnavailable
-          : connected ? m.account.github.connected
-          : m.account.github.notConnected
-        }
-        statusTone={account.status === "reauthorize" || account.status === "unavailable" ? "warning" : connected ? "success" : "neutral"}
-        detail={
-          account.status === "reauthorize" ? m.account.github.hintReauthorize
+      <ListRow
+        as="li"
+        className="border-border border-t first:border-t-0"
+        icon={<IconTile>{connected ? <GithubIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
+        title={<span className="flex min-w-0 items-center gap-2 text-base"><span className="truncate font-medium">{connected ? `@${account.login}` : m.account.github.rowName}</span><StatusBadge state={account.status === "reauthorize" ? "expired" : account.status === "unavailable" ? "couldNotCheck" : connected ? "connected" : "notConnected"} className="shrink-0" /></span>}
+        description={account.status === "reauthorize" ? m.account.github.hintReauthorize
           : account.status === "unavailable" ? m.account.github.hintUnavailable
           : !connected ? m.account.github.hintNotConnected
           // ⚠️ **`null`(못 읽었다)과 `0`(고른 것이 없다)은 둘 다 줄을 안 그린다** — `Installed on 0
           // repositories.`는 연결이 깨진 것처럼 읽히고 행 높이만 갈린다 (DESIGN §6.67).
           : installedRepoCount !== null && installedRepoCount > 0
             ? m.account.github.installedOn(installedRepoCount)
-            : undefined
-        }
-      >
-        {/*
-          ⚠️ **`unavailable`에만 컨트롤이 없다.** 조회가 실패한 상태에서 [Connect]를 세우면 이미
-          연결된 사용자에게 왕복을 한 번 더 시킨다 — 그 자리의 재시도는 페이지 새로고침이다.
-          `reauthorize`는 장애가 아니라 **인가가 만료된 것**이라 다시 연결할 문이 필요하다.
-          ⚠️ **실패 문구를 셋 다 구역 Alert로 올린다** (`onResult`·`onFailure`) — 여기는 리스트
-          항목의 우측 컨트롤이고 그 클러스터가 `shrink-0`이라, Alert를 형제로 두면 행이 밀려난다.
-        */}
-        {/* `unavailable`에는 컨트롤이 없다 — 래퍼까지 빼야 PanelRow가 빈 컨트롤 칸(gap)을 세우지 않는다. */}
-        {account.status === "unavailable" ? undefined : <div ref={controls} className="contents">
-        {account.status === "reauthorize" ? (
-          // 자동 redirect가 아니라 버튼이다 — 렌더 중 튕기면 callback 실패 시 루프다.
-          <ConnectGithubButton dest="account" label={m.settings.account.reconnect} onResult={setFailure} />
-        ) : connected ? (
-          <>
-            {/*
-              ⚠️ **연결됨에만 선다** (DESIGN §6.67). 나머지 셋은 설치를 못 믿는 상태이고, 그때 밖으로
-              나가는 문을 두면 사용자가 "고치러 갔는데 고칠 게 없는" 자리에 착지한다.
-              ⚠️ **나가는 것이 왼쪽, 파괴적인 것이 오른쪽 끝이다** — 세션 구역과 같은 순서다.
-              ⚠️ **`ButtonLink`가 아니라 `<a>`다** — 그 프리미티브는 `next/link`라 `target`·`rel`을
-              안 받는다. 프리미티브를 넓히는 대신 `publish-button.tsx`가 이미 쓰는 형을 따른다
-              (POSTMORTEM 2026-09-15 🔁 — 형제 프리미티브를 건드리면 소비자를 따로 세야 한다).
-            */}
-            {settingsUrl !== null && (
-              <a className={buttonClass()} href={settingsUrl} target="_blank" rel="noreferrer">
-                {m.account.github.installationSettings}
-              </a>
-            )}
-            <DisconnectGithubButton onFailure={setFailure} />
-          </>
-        ) : account.status === "ok" ? (
-          <ConnectGithubButton dest="account" label={m.settings.account.connect} onResult={setFailure} />
-        ) : undefined}
-        </div>}
-      </PanelRow>
-      </PanelRows>
-    </PanelCard>
+            : undefined}
+        actions={account.status === "unavailable" ? undefined : <div ref={controls} className="contents">
+          {account.status === "reauthorize" ? (
+            // 자동 redirect가 아니라 버튼이다 — 렌더 중 튕기면 callback 실패 시 루프다.
+            <ConnectGithubButton dest="account" label={m.settings.account.reconnect} onResult={setFailure} />
+          ) : connected ? (
+            <>
+              {/*
+                ⚠️ **연결됨에만 선다** (DESIGN §6.67). 나머지 셋은 설치를 못 믿는 상태이고, 그때 밖으로
+                나가는 문을 두면 사용자가 "고치러 갔는데 고칠 게 없는" 자리에 착지한다.
+                ⚠️ **나가는 것이 왼쪽, 파괴적인 것이 오른쪽 끝이다** — 세션 구역과 같은 순서다.
+                ⚠️ **`ButtonLink external`은 native `<a>`다** — `newTab`으로 새 탭을 열고
+                기존 `rel`에 `noopener`·`noreferrer`를 보존·추가한다. 형과 링은 ButtonLink가 소유한다.
+              */}
+              {settingsUrl !== null && (
+                <ButtonLink external href={settingsUrl} newTab rel="noreferrer">
+                  {m.account.github.installationSettings}
+                </ButtonLink>
+              )}
+              <DisconnectGithubButton onFailure={setFailure} />
+            </>
+          ) : account.status === "ok" ? (
+            <ConnectGithubButton dest="account" label={m.settings.account.connect} onResult={setFailure} />
+          ) : undefined}
+          </div>} />
+      </CardRows>
+    </Card>
   );
 }

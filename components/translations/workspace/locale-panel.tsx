@@ -1,12 +1,11 @@
 "use client";
-
-import { Check, ChevronRight, FileJson2, Link2 } from "lucide-react";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { Link as InlineLink } from "@/components/ui/link";
+import { ChevronRight, FileJson2 } from "lucide-react";
+import { useId, type ReactNode } from "react";
 
 import { LocaleBadge } from "@/components/translations/locale-badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { CopyButton } from "@/components/ui/copy-button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
 import { localeTextAttrs } from "@/lib/translations/text-direction";
@@ -69,7 +68,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
         <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
           <FileJson2 className="size-4 shrink-0" aria-hidden />
           {detail.key.surfaceSlug}
-          <ChevronRight className="size-3.5 shrink-0 text-neutral-400" aria-hidden />
+          <ChevronRight className="size-3.5 shrink-0 text-gray-dim" aria-hidden />
           <span className="text-foreground min-w-0 truncate font-medium">{detail.key.namespace}</span>
         </span>
         <span className="ml-auto">
@@ -94,7 +93,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
       <div className="border-divider flex min-h-0 flex-1 flex-col overflow-hidden border-t">
         <div className="border-divider flex shrink-0 flex-col gap-1 border-b px-4 py-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="min-w-0 flex-1 text-base font-medium [overflow-wrap:anywhere]">{detail.key.key}</span>
+            <span className="min-w-0 flex-1 text-base font-medium wrap-anywhere">{detail.key.key}</span>
             <span className="text-muted-foreground shrink-0 text-xs">{w.languages(filled, total)}</span>
             <CopyLink href={copyHref} />
           </div>
@@ -105,7 +104,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
                 {" · "}
                 {detail.refs[0].href === null
                   ? <span title={w.noCommit}>{`${detail.refs[0].path}:${detail.refs[0].line}`}<span className="sr-only">{` (${w.noCommit})`}</span></span>
-                  : <a href={detail.refs[0].href} target="_blank" rel="noreferrer" className="text-blue-600">{`${lastSegment(detail.refs[0].path)}:${detail.refs[0].line}`}</a>}
+                  : <InlineLink href={detail.refs[0].href} target="_blank" rel="noreferrer">{`${lastSegment(detail.refs[0].path)}:${detail.refs[0].line}`}</InlineLink>}
                 {/* ⚠️ `title`만으로는 hover에서만 읽힌다 (audit #38) — 같은 문장을 sr-only로 겹친다. 보이는 `+N`은 숨긴다(두 번 읽힌다). */}
                 {detail.refs.length > 1 && <span title={w.referenced(detail.refs.length)}><span aria-hidden>{` +${detail.refs.length - 1}`}</span><span className="sr-only">{` · ${w.referenced(detail.refs.length)}`}</span></span>}
               </>
@@ -148,18 +147,18 @@ export function LocalePanelSkeleton() {
     <div data-skeleton-detail className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         <Skeleton className="size-4 shrink-0 rounded" />
-        <SkeletonLine text="text-sm" className="w-32" />
+        <Skeleton size="sm" className="w-32" />
         <Skeleton className="ml-auto h-7 w-28 rounded-md" />
       </div>
       <div className="border-divider flex min-h-0 flex-1 flex-col overflow-hidden border-t">
         <div className="border-divider flex shrink-0 flex-col gap-1 border-b px-4 py-3.5">
           <div className="flex h-7 items-center gap-2.5">
-            {/* ⚠️ 비율 폭은 부모 폭이 있어야 선다 — flex 행의 `SkeletonLine`은 내용 폭이라 `flex-1`이 없으면 0으로 접힌다. */}
-            <div className="min-w-0 flex-1"><SkeletonLine text="text-base" className="w-[45%]" /></div>
+            {/* ⚠️ 비율 폭은 부모 폭이 있어야 선다 — flex 행의 `Skeleton`은 내용 폭이라 `flex-1`이 없으면 0으로 접힌다. */}
+            <div className="min-w-0 flex-1"><Skeleton size="md" className="w-[45%]" /></div>
             <Skeleton className="ml-auto h-3 w-20 rounded-md" />
             <Skeleton className="size-7 shrink-0 rounded-md" />
           </div>
-          <SkeletonLine text="text-xs" className="w-[60%]" />
+          <Skeleton size="xs" className="w-[60%]" />
         </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {[0, 1, 2].map(i => (
@@ -170,7 +169,7 @@ export function LocalePanelSkeleton() {
           ))}
         </div>
         <div className="border-border flex shrink-0 items-center gap-3 border-t px-4 py-3">
-          <SkeletonLine text="text-xs" className="w-24" />
+          <Skeleton size="xs" className="w-24" />
           <Skeleton className="ml-auto h-9 w-16 rounded-md" />
         </div>
       </div>
@@ -230,7 +229,7 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
       }}
       className={cn(
         // ⚠️ `w-full`이 필요하다 — 프리미티브의 `field-sizing-content`가 폭까지 내용에 맞춰 줄인다(실측 473 → 269).
-        "w-full rounded-md text-sm leading-[1.55]",
+        "w-full rounded-md text-sm leading-translation",
         // 빈 칸은 입력이 점선 상자 안쪽 전체다 — 어디를 눌러도 커서가 서고, 원문이 그 첫 줄 자리에 겹친다.
         empty ? "col-start-1 row-start-1 min-h-[42px] border-0 bg-transparent p-0 shadow-none focus-visible:ring-0" : "min-h-[62px] px-2.5 py-2.5",
       )}
@@ -259,9 +258,9 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
         `placeholder` 속성이 아니라 겹친 span인 이유: 접근 이름과 따로 `aria-describedby`로 읽혀야 하고, 포인터를 가로채지 않아야 한다.
         absolute가 아니라 grid 한 칸에 쌓는다 — 원문이 여러 줄이면 상자가 그 높이를 따라야 다음 행을 덮지 않는다.
       */}
-      <div className={cn(empty && "has-[textarea:focus-visible]:ring-ring grid min-h-[62px] rounded-md border border-dashed border-neutral-300 p-2.5 has-[textarea:focus-visible]:ring-2")}>
+      <div className={cn(empty && "has-[textarea:focus-visible]:ring-ring grid min-h-[62px] rounded-md border border-dashed border-gray-light p-2.5 has-[textarea:focus-visible]:ring-2")}>
         {field}
-        {empty && <span id={helpId} {...(sourceCode === undefined ? { dir: "auto" } : localeTextAttrs(sourceCode))} className="text-muted-foreground pointer-events-none col-start-1 row-start-1 text-sm leading-[1.55]">{sourceText}</span>}
+        {empty && <span id={helpId} {...(sourceCode === undefined ? { dir: "auto" } : localeTextAttrs(sourceCode))} className="text-muted-foreground pointer-events-none col-start-1 row-start-1 text-sm leading-translation">{sourceText}</span>}
       </div>
     </div>
   );
@@ -269,29 +268,6 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
 
 /** 키 이름 블록 우측 28 버튼 (`2j`). 성공은 같은 자리에서 `Copied` 2초, 실패는 선택된 읽기 전용 주소 입력이다 — 토스트를 쓰지 않는다. */
 function CopyLink({ href }: { href: string }) {
-  const w = m.translations.workspace.detail;
-  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const url = typeof window === "undefined" ? href : new URL(href, window.location.origin).toString();
-  useEffect(() => {
-    if (state === "copied") { const timer = setTimeout(() => setState("idle"), 2000); return () => clearTimeout(timer); }
-    return undefined;
-  }, [state]);
-  return (
-    <span className="flex shrink-0 items-center gap-1.5">
-      {/* 실패하면 주소를 **선택된 채로** 준다 — 손으로 복사할 수 있어야 한다. */}
-      {state === "failed" && <Input autoFocus readOnly value={url} aria-label={w.copyFailed} onFocus={event => event.currentTarget.select()} className="h-7 w-48 text-xs" />}
-      <Button
-        size="sm"
-        // ⚠️ 복사된 동안은 이름을 비운다 (audit #39 · WCAG 2.5.3) — 보이는 `Copied`를 `Copy link`가 덮었다.
-        aria-label={state === "copied" ? undefined : w.copyLink}
-        onClick={() => {
-          if (navigator.clipboard === undefined) { setState("failed"); return; }
-          navigator.clipboard.writeText(url).then(() => setState("copied"), () => setState("failed"));
-        }}
-        className="h-7 min-w-7 gap-1 px-1.5"
-      >
-        {state === "copied" ? <><Check className="size-3.5" aria-hidden />{w.copied}</> : <Link2 className="size-3.5 text-neutral-600" aria-hidden />}
-      </Button>
-    </span>
-  );
+  return <CopyButton value={url} label={m.translations.workspace.detail.copyLink} variant="link" />;
 }

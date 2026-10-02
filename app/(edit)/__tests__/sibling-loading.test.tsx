@@ -159,10 +159,10 @@ describe("목록 경계의 자리", () => {
 });
 
 /**
- * **글자 줄 자리는 `SkeletonLine`이다** (ux-drift-unify 4-W8 — `skeleton.tsx`의 규칙). px 높이 블록(`h-4`·`h-5`…)은 `--text-*` 토큰이 바뀔 때
+ * **글자 줄 자리는 `Skeleton(size)`이다** (ux-drift-unify 4-W8 — `skeleton.tsx`의 규칙). px 높이 블록(`h-4`·`h-5`…)은 `--text-*` 토큰이 바뀔 때
  * 골격만 떠내려간다. 남는 px 블록은 컨트롤 높이(`h-9` — 버튼·필드)와 정사각 글리프(`size-*`)뿐이다.
  */
-describe("글자 줄은 SkeletonLine이다", () => {
+describe("글자 줄은 Skeleton(size)이다", () => {
   const FILES = [
     "app/(edit)/account/loading.tsx",
     "app/(edit)/projects/(list)/loading.tsx",
@@ -171,11 +171,11 @@ describe("글자 줄은 SkeletonLine이다", () => {
     "components/settings/repository-card.tsx",
   ];
   // 알약(`rounded-full` — 배지 자리)은 글자 줄이 아니라 뺀다.
-  // `h-[0.8em]`은 글자 크기의 비율이라 줄 상자와 함께 움직인다 — `SkeletonLine`과 같은 수단이다.
+  // `h-[0.8em]`은 글자 크기의 비율이라 줄 상자와 함께 움직인다 — `Skeleton(size)`과 같은 수단이다.
   const PX_LINE = /<Skeleton className="(?![^"]*rounded-full)[^"]*\bh-(?!9\b)(?:[\d.]+\b|\[(?![\d.]+em\]))/g;
   it.each(FILES)("%s에 글자 줄 px 블록이 없다", (path) => {
     const source = readFileSync(join(__dirname, "../../..", path), "utf8");
-    expect(source).toContain("SkeletonLine");
+    expect(source).toMatch(/<Skeleton size="(?:xs|sm|md|lg)"/);
     expect(source.match(PX_LINE) ?? []).toEqual([]);
   });
   it("판정식이 글자 줄 블록을 잡고 컨트롤 높이는 놓아준다 (카나리아)", () => {

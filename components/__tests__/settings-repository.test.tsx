@@ -229,3 +229,41 @@ it("회전 거부 unpinned는 Disconnected 쪽 문장이다", async () => {
   await act(async () => { await userEvent.setup().click(confirm); });
   expect(container.querySelector('[role="alert"]')?.textContent).toBe("Reconnect the repository to rotate the token.");
 });
+
+
+it("설정 Reconnect의 fieldset14px는 실제 버튼으로 이동한다", async () => {
+  let resolve!: (value: { ok: false; error: string }) => void;
+  actions.connectRepository.mockReturnValue(new Promise<{ ok: false; error: string }>(done => { resolve = done; }));
+  const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve({ status: "not-connected" })} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" />);
+  try {
+    const button = [...container.querySelectorAll("button")].find(button => button.textContent === "Connect")!;
+    await act(async () => { await userEvent.setup().click(button); });
+    expect(button.querySelector(".animate-spin")?.classList.contains("size-3.5")).toBe(true);
+  } finally { await act(async () => { resolve({ ok: false, error: "unavailable" }); }); }
+});
+
+it("base branch Save의 조상14px는 실제 버튼으로 이동한다", async () => {
+  let resolve!: (value: { ok: false; error: string }) => void;
+  actions.updateRepositorySettings.mockReturnValue(new Promise<{ ok: false; error: string }>(done => { resolve = done; }));
+  const { container } = await render(<RepositoryForm owner="acme" repo="web" slug="acme" baseBranch="main" />);
+  try {
+    await choose(container, "dev");
+    const button = [...container.querySelectorAll("button")].find(button => button.textContent === "Save")!;
+    await act(async () => { await userEvent.setup().click(button); });
+    expect(button.querySelector(".animate-spin")?.classList.contains("size-3.5")).toBe(true);
+  } finally { await act(async () => { resolve({ ok: false, error: "unavailable" }); }); }
+});
+
+it.each([false, true])("Branch mode input=%s keeps desktop240, responsive flex target and full field", async truncated => {
+  branches.listProjectBranches.mockResolvedValueOnce({ ok: true, names: ["main"], defaultBranch: "main", truncated });
+  const { container } = await render(<RepositoryForm slug="acme" owner="acme" repo="web" baseBranch="main" />);
+  const field = container.querySelector<HTMLElement>("#base-branch")!;
+  expect(field.tagName).toBe(truncated ? "INPUT" : "BUTTON");
+  expect(field.classList.contains("w-full")).toBe(true);
+  const wrapper = field.parentElement!;
+  for (const token of ["flex", "w-60", "max-w-full", "@max-form:min-w-0", "@max-form:flex-1"]) expect(wrapper.classList.contains(token)).toBe(true);
+  expect(wrapper.parentElement?.classList.contains("flex")).toBe(true);
+  // Radix also places its existing hidden native select beside the trigger.
+  expect(container.querySelector('button[type="submit"]')?.parentElement).toBe(wrapper.parentElement);
+  expect(field.getAttribute("aria-describedby")).toBe("base-branch-caption");
+});

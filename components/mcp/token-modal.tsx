@@ -4,18 +4,18 @@ import { unstable_rethrow } from "next/navigation";
 import { useRef, useState, useTransition, type RefObject } from "react";
 
 import { issueApiToken, type ApiTokenIssueResult } from "@/app/(edit)/mcp/actions";
-import { CopyButton } from "@/components/onboarding/copy-button";
+import { SecretField } from "@/components/ui/secret-field";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useLandAfter } from "@/components/ui/focus";
-import { OnboardingModal } from "@/components/ui/modal";
+import { LargeModal } from "@/components/ui/large-modal";
 import { m } from "@/lib/i18n";
 import type { TokenGrant } from "@/lib/mcp/grant";
 
 import { chosenProjectIds, GRANT_ORDER, initialGrantFields, TokenGrantFields, type GrantFieldsValue, type ScopeProject } from "./token-grant-fields";
 
 /**
- * 토큰 생성·회전 모달 (핸드오프 `2a`–`2e` · `4a`). **`OnboardingModal` 2단계** — ① 폼 ② 값을 한 번 보여주기. ②에는 Back이 없다:
+ * 토큰 생성·회전 모달 (핸드오프 `2a`–`2e` · `4a`). **`LargeModal` 2단계** — ① 폼 ② 값을 한 번 보여주기. ②에는 Back이 없다:
  * 토큰은 ①의 확정에서 이미 만들어졌다. 생성과 회전이 같은 Action(`issueApiToken`)이고 회전은 경고 한 장과 현재 값 채움만 다르다.
  *
  * ⚠️ **결과를 셋으로 가른다** (design §8): 명시적 거부는 입력을 유지한 채 폼 위 danger Alert(`4a` — 같은 버튼이 재시도), 호출 자체가
@@ -101,7 +101,7 @@ export function TokenModal({
   const status = step === 2 ? m.mcpConnector.form.step(2) : emptyChoice ? m.mcpConnector.form.chooseOne : m.mcpConnector.form.step(1);
 
   return (
-    <OnboardingModal
+    <LargeModal
       open={open}
       onClose={onClose}
       title={title}
@@ -111,7 +111,7 @@ export function TokenModal({
       closeDisabled={pending || step === 2}
       returnFocusRef={returnFocusRef}
       fallbackFocusRef={fallbackFocusRef}
-      footer={<span data-token-status>{status}</span>}
+      notice={<span data-token-status>{status}</span>}
       actions={
         step === 1 ? (
           <>
@@ -135,14 +135,8 @@ export function TokenModal({
           <p className="text-sm">
             <strong className="font-normal">{m.mcpConnector.result.copyNow}</strong>
           </p>
-          <div className="flex items-center gap-2">
-            {/* ④ 토큰 칩과 같은 형(36 · radius 10 · muted) — 크기만 14다(핸드오프 §4). 전체 선택으로 손 복사가 된다. */}
-            <code data-token-value className="border-input bg-muted flex h-9 min-w-0 flex-1 items-center truncate rounded-md border px-2.5 font-sans text-sm select-all">
-              {token}
-            </code>
-            <CopyButton value={token} />
-          </div>
-          <p className="text-muted-foreground text-xs leading-[1.7]">{m.mcpConnector.result.setEnv}</p>
+          <SecretField value={token} label={m.mcpConnector.result.title} size="md" />
+          <p className="text-muted-foreground text-xs leading-prose">{m.mcpConnector.result.setEnv}</p>
         </div>
       ) : (
         <div data-token-form className="flex flex-col gap-6">
@@ -152,6 +146,6 @@ export function TokenModal({
           <TokenGrantFields value={fields} onChange={setFields} projects={projects} disabled={pending} />
         </div>
       )}
-    </OnboardingModal>
+    </LargeModal>
   );
 }

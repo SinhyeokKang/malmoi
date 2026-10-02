@@ -1,8 +1,9 @@
+import { Link as InlineLink } from "@/components/ui/link";
 import type { ReactNode } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { DOC_LINK, INLINE_CODE, LIST, MINOR_HEADING, PROSE, SECTION_HEADING, SUB_HEADING } from "@/components/docs/classes";
+import { INLINE_CODE, LIST, MINOR_HEADING, PROSE, SECTION_HEADING, SUB_HEADING } from "@/components/docs/classes";
 import { dropFullChangelog, imagesToLinks, shiftHeadings } from "@/lib/changelog/markdown";
 
 /**
@@ -16,7 +17,7 @@ const isExternal = (href: string) => SCHEME.test(href) || href.startsWith("//");
  * 제목 급 — 버전이 `h1`이라 본문 `##`도 `h1`이다(`shiftHeadings`). 모양은 공개 문서 공통 급(`components/docs/classes.ts`)이고
  * `h4`~`h6`만 이 화면이 정한 급이다(16/1.6/500 · 위 16 — 원고엔 `h4`가 없다). 정하지 않으면 브라우저 기본 700이 나와 굵기 규칙 밖이다.
  */
-const DEEP = "text-prose m-0 mt-4 leading-[1.6] font-medium";
+const DEEP = "text-prose m-0 mt-4 leading-body font-medium";
 
 const components: Components = {
   h1: ({ node: _node, children }) => <h1 className={SECTION_HEADING}>{children}</h1>,
@@ -36,13 +37,13 @@ const components: Components = {
   // 원고와 달리 hProperties를 싣는 플러그인이 없다 — 외부 판정을 여기서 한다.
   a: ({ node: _node, href = "", children }) =>
     isExternal(href) ? (
-      <a href={href} target="_blank" rel="noreferrer" className={DOC_LINK}>
+      <InlineLink href={href} target="_blank" rel="noreferrer">
         {children}
-      </a>
+      </InlineLink>
     ) : (
-      <a href={href} className={DOC_LINK}>
+      <InlineLink href={href} >
         {children}
-      </a>
+      </InlineLink>
     ),
 };
 

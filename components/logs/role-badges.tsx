@@ -7,14 +7,14 @@ import { Badge } from "@/components/ui/badge";
 export function RoleBadges({ before, after }: { before: string | null; after: string | null }) {
   if (before === null || after === null) {
     const only = after ?? before;
-    return only === null ? null : <Badge variant="neutral">{only}</Badge>;
+    return only === null ? null : <Badge variant="soft-neutral">{only}</Badge>;
   }
   return (
     <span className="inline-flex items-center gap-1">
-      <Badge variant="neutral">{before}</Badge>
+      <Badge variant="soft-neutral">{before}</Badge>
       <span aria-hidden>→</span>
       <span className="sr-only">to</span>
-      <Badge variant="neutral">{after}</Badge>
+      <Badge variant="soft-neutral">{after}</Badge>
     </span>
   );
 }

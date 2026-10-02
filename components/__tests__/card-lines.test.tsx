@@ -25,7 +25,7 @@ const lined = (node: Element | null | undefined, side: "t" | "b") => classes(nod
 const card = (root: ParentNode, title: string) => [...root.querySelectorAll("section")].find((s) => s.querySelector("h2")?.textContent === title)!;
 
 /**
- * **머리 아래 선은 카드가 하나 긋는다 — notice가 있으면 notice 아래** (DESIGN §6.4 PanelCard · ux-drift-unify T14 · 4-Y1 · U3 r1).
+ * **머리 아래 선은 카드가 하나 긋는다 — notice가 있으면 notice 아래** (DESIGN §6.4 Card · ux-drift-unify T14 · 4-Y1 · U3 r1).
  * 선의 위치·개수는 클래스로 결정되므로 jsdom에서 센다: 머리 영역(머리 + notice 래퍼) 선 하나 + 본문 첫 줄의 `border-t` 0.
  */
 function headLines(section: Element) {

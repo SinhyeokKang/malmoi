@@ -145,7 +145,7 @@ describe("카드 상태 셋", () => {
     expect(button(card(), m.mcpConnector.token.rotate)).toBeNull();
     expect(facts()[m.mcpConnector.token.facts.expires]).toBe("Sep 1, 2026");
     expect(facts()[m.mcpConnector.token.facts.lastUsed]).toBe("Aug 30, 2026");
-    for (const dd of card().querySelectorAll("dd")) expect(dd.className).toContain("text-neutral-400");
+    for (const dd of card().querySelectorAll("dd")) expect(dd.className).toContain("text-gray-dim");
   });
 });
 
@@ -161,10 +161,10 @@ describe("생성 ① → ②", () => {
     expect(mocks.issue).toHaveBeenCalledWith({ expiresInDays: 90, grants: [], scope: { kind: "all" } });
     // 서버 확인 전 — 성공으로 보이지 않는다.
     expect(live().textContent).toBe("");
-    expect(panel()?.querySelector("[data-token-value]")).toBeNull();
+    expect(panel()?.querySelector("[data-secret-field]")).toBeNull();
     await act(async () => resolve({ ok: true, token: RAW, expiresAt: "2026-12-27T12:00:00.000Z" }));
     await settle();
-    expect(find<HTMLElement>(panel()!, "[data-token-value]").textContent).toBe(RAW);
+    expect(find<HTMLInputElement>(panel()!, "[data-secret-field]").value).toBe(RAW);
     expect(panel()?.textContent).toContain(m.mcpConnector.result.copyNow);
     expect(live().textContent).toBe(m.mcpConnector.token.status.created);
     expect(button(panel()!, m.newProject.modal.back)).toBeNull();
@@ -195,8 +195,8 @@ describe("생성 ① → ②", () => {
     await click(button(panel()!, m.mcpConnector.form.create));
     await click(button(panel()!, m.common.copy));
     expect(button(panel()!, m.common.copyFailed)).not.toBeNull();
-    expect(find<HTMLElement>(panel()!, "[data-token-value]").textContent).toBe(RAW);
-    expect(find<HTMLElement>(panel()!, "[data-token-value]").className).toContain("select-all");
+    expect(find<HTMLInputElement>(panel()!, "[data-secret-field]").value).toBe(RAW);
+    expect(find<HTMLElement>(panel()!, "[data-secret-field]").className).toContain("select-all");
   });
 
   it("4a 거부 — danger Alert · 입력 유지 · 같은 버튼이 재시도 · 포커스는 확정 버튼", async () => {
@@ -248,7 +248,7 @@ describe("생성 ① → ②", () => {
     expect(panel()).not.toBeNull();
     const close = find<HTMLButtonElement>(panel()!, `button[aria-label="${m.common.close}"]`);
     expect(close.disabled).toBe(true);
-    expect(find<HTMLElement>(panel()!, "[data-token-value]").textContent).toBe(RAW);
+    expect(find<HTMLInputElement>(panel()!, "[data-secret-field]").value).toBe(RAW);
     await click(button(panel()!, m.mcpConnector.result.done));
     expect(panel()).toBeNull();
   });
@@ -416,6 +416,7 @@ describe("폐기", () => {
     expect(mocks.revoke).toHaveBeenCalledTimes(1);
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
     // Alert 다음 사실 블록은 행↔행 선이다(4b).
-    expect(find<HTMLElement>(card(), "[data-token-facts]").className).toContain("border-border");
+    expect(find<HTMLElement>(card(), "[data-token-facts]").classList.contains("border-t")).toBe(false);
+    expect(card().querySelector("[data-card-notice]")?.className).toContain("border-divider border-b");
   });
 });

@@ -1,4 +1,5 @@
 "use client";
+import { Fact } from "@/components/ui/facts";
 
 import { unstable_rethrow, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
@@ -7,15 +8,15 @@ import { revokeApiToken, type ApiTokenRevokeResult } from "@/app/(edit)/mcp/acti
 import { GrantBadges } from "@/components/mcp/grant-badges";
 import { McpIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { EmptyRowCard, RowCard } from "@/components/ui/row-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Card } from "@/components/ui/card";
 import { m } from "@/lib/i18n";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { relativeTime } from "@/lib/relative-time";
 import { utcDay } from "@/lib/utc-time";
-import { cn } from "@/lib/utils";
 
 import type { ScopeProject } from "./token-grant-fields";
 import { TokenModal } from "./token-modal";
@@ -118,14 +119,14 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
 
   return (
     <>
-      <RowCard
+      <Card
         title={m.mcpConnector.token.title}
         titleId={TITLE_ID}
         action={
           <>
             {/* ⚠️ `h2` 바로 뒤다 — 이 화면의 배지는 이것 하나다(핸드오프 §4). */}
             {/* 만료는 호박이다 — GitHub 인가 만료와 같은 톤(2026-09-30 상태 통일). */}
-            {expired && <Badge variant="warning">{m.mcpConnector.token.expired}</Badge>}
+            {expired && <StatusBadge state="expired" />}
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {live ? (
                 <>
@@ -145,22 +146,23 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
             </div>
           </>
         }
-      >
-        {unconfirmed !== null && (
+        notice={unconfirmed !== null ? (
           <Alert variant="warning" inset>
             {unconfirmed === "issue" ? m.mcpConnector.token.unconfirmed : m.mcpConnector.token.revokeUnconfirmed}
           </Alert>
-        )}
+        ) : undefined}
+      >
+
         {token.state === "none" ? (
           // 버튼이 없다 — 할 일이 머리의 Create token이다(대기 초대 0건과 같은 판정).
-          <EmptyRowCard inset icon={McpIcon} title={m.mcpConnector.token.emptyTitle} description={m.mcpConnector.token.emptyBody} />
+          <EmptyState placement="inset" icon={McpIcon} title={m.mcpConnector.token.emptyTitle} description={m.mcpConnector.token.emptyBody} />
         ) : (
-          <TokenFacts token={token} now={new Date(now)} afterAlert={unconfirmed !== null} />
+          <TokenFacts token={token} now={new Date(now)} />
         )}
         <p role="status" data-token-live className="sr-only">
           {status}
         </p>
-      </RowCard>
+      </Card>
 
       {modal !== null && (
         <TokenModal
@@ -196,7 +198,7 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
             if (target === createRef.current) landOnCreate.current = false;
             target?.focus();
           }}
-          footer={
+          actions={
             <>
               <Button data-initial-focus disabled={revoking} onClick={() => setRevokeOpen(false)}>
                 {m.common.cancel}
@@ -214,14 +216,13 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
   );
 }
 
-function TokenFacts({ token, now, afterAlert }: { token: Exclude<TokenCardData, { state: "none" }>; now: Date; afterAlert: boolean }) {
+function TokenFacts({ token, now }: { token: Exclude<TokenCardData, { state: "none" }>; now: Date }) {
   const expired = token.state === "expired";
   const created = new Date(token.createdAt);
   const expires = new Date(token.expiresAt);
   const lastUsed = token.lastUsedAt === null ? null : new Date(token.lastUsedAt);
   const scope = token.scope.kind === "all" ? m.mcpConnector.token.allProjects : m.mcpConnector.token.projects(token.scope.projectIds.length);
   // ⚠️ 만료된 값은 기록으로 남기되 흐리게 한다(핸드오프 결정 7) — 새 토큰을 만들 때 참고할 값이다.
-  const value = cn("text-sm", expired && "text-neutral-400");
   const facts: [string, ReactNode][] = [
     [m.mcpConnector.token.facts.grants, <GrantBadges key="g" grants={token.grants} dimmed={expired} />],
     [m.mcpConnector.token.facts.scope, scope],
@@ -231,12 +232,9 @@ function TokenFacts({ token, now, afterAlert }: { token: Exclude<TokenCardData, 
   ];
   return (
     // Alert 다음 행은 행↔행 선(`#e5e5e5`), 머리 바로 아래면 머리 선(`#f0f0f0`)이다(핸드오프 `4b`).
-    <dl data-token-facts className={cn("grid grid-cols-[120px_1fr] items-baseline gap-x-3 gap-y-2.5 border-t px-4 py-3.5", afterAlert ? "border-border" : "border-foreground/[0.06]")}>
+    <dl data-token-facts className="grid grid-cols-[120px_1fr] items-baseline gap-x-3 gap-y-2.5 px-4 py-3.5">
       {facts.map(([label, content]) => (
-        <div key={label} className="contents">
-          <dt className="text-muted-foreground text-xs">{label}</dt>
-          <dd className={value}>{content}</dd>
-        </div>
+        <Fact key={label} width={120} label={label} dimmed={expired}>{content}</Fact>
       ))}
     </dl>
   );

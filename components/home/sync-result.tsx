@@ -3,7 +3,7 @@
 import { ArrowDownToLine } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
-import { Button, ButtonLink, buttonClass } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { m } from "@/lib/i18n";
@@ -99,10 +99,10 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry }: {
       actions={action === null ? (retryRefusal ? <Button onClick={onRetry}><ArrowDownToLine className="size-3.5" aria-hidden />{m.common.retry}</Button> : undefined)
         /*
           ⚠️ **로그인은 새 탭이다** (QA D2) — 같은 화면의 편집자 세션 Alert와 같은 형. 이 탭을 떠나면 번역 화면의 draft가
-          함께 사라진다. `ButtonLink`는 `next/link`라 `target`을 안 받아 `<a>` + `buttonClass()`다(DESIGN §6.3).
+          함께 사라진다. `ButtonLink external newTab`이 native 새 탭 이동을 유지한다(DESIGN §6.3).
         */
         : action === "sign-in"
-          ? <a href={routes.signIn()} target="_blank" rel="noreferrer" className={buttonClass()}>{m.repositorySync.signIn}</a>
+          ? <ButtonLink external href={routes.signIn()} newTab rel="noreferrer">{m.repositorySync.signIn}</ButtonLink>
           : action === "account"
             ? <ButtonLink href={routes.account()}>{m.repositorySync.openAccount}</ButtonLink>
             : <ButtonLink href={routes.settings(slug)}>{action === "settings" ? m.repositorySync.openSettings : m.repositorySync.reconnect}</ButtonLink>} />;

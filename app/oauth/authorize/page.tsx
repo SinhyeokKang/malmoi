@@ -1,6 +1,7 @@
+import { Link as InlineLink } from "@/components/ui/link";
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
+
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -121,9 +122,9 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
             <ProviderButton provider="google" requestId={requestId} autoFocus={false} />
             <p className="text-muted-foreground text-center text-xs leading-relaxed">
               {m.signIn.consent.before}
-              <Link href={routes.privacy()} className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">
+              <InlineLink href={routes.privacy()} >
                 {m.signIn.consent.link}
-              </Link>
+              </InlineLink>
               {m.signIn.consent.after}
             </p>
           </div>
@@ -270,7 +271,7 @@ function ProviderButton({ provider, requestId, autoFocus }: { provider: LoginPro
       <ProviderSubmit
         label={provider === "github" ? m.signIn.github : m.signIn.google}
         variant={provider === "github" ? "primary" : "default"}
-        icon={provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
+        icon={provider === "github" ? <GithubIcon aria-hidden className="size-4" /> : <GoogleIcon aria-hidden className="size-4" />}
         autoFocus={autoFocus}
       />
     </form>

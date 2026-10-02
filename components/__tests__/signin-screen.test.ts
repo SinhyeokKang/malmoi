@@ -131,7 +131,7 @@ describe("로그인 화면 — 레이아웃 계약", () => {
   });
 
   it("최소 너비 1280px를 든다 — 그 아래에서 스크롤이 나야 한다", () => {
-    expect(src).toMatch(/min-w-\[1280px\]/);
+    expect(src).toMatch(/min-w-shell-min/);
   });
 
   /**

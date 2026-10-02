@@ -1,16 +1,13 @@
-import Link from "next/link";
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio";
-import { CountBadge } from "@/components/ui/count-badge";
+import { CountBadge, type CountProps } from "@/components/ui/count-badge";
 import { cn } from "@/lib/utils";
 
 /**
  * 세그먼트 컨트롤 — **한 표면 안에서 보기를 바꾸는** 컨트롤이다 (시안 `SegmentedControls`).
  *
- * **형이 둘이다**: 상태를 클라이언트가 들면 `SegmentedControl`(버튼), **URL이 들면
- * `SegmentedLinks`(링크)**. 뒤의 것이 기본이다 — 필터·탭은 뒤로가기·공유·새로고침이 그냥 돼야 하고,
- * 그러려면 주소가 진실이어야 한다 (`logs`의 `?cursor=`와 같은 판정).
+ * 상태를 클라이언트가 들고, 선택과 roving focus는 Radix가 소유한다.
  */
 
 /**
@@ -30,11 +27,10 @@ const SELECTED = "bg-background shadow-low font-medium";
 const UNSELECTED = "text-muted-foreground hover:text-foreground";
 
 /**
- * 칸 하나가 실을 수 있는 것 — 라벨은 필수, 아이콘과 배지는 선택이다 (2026-09-11 사용자).
+ * 칸 하나가 실을 수 있는 것 — 라벨은 필수, icon과 count는 선택이다 (2026-09-11 사용자).
  *
- * ⚠️ **children이 아니라 prop이다.** bugshot-2는 `TabsTrigger`의 children으로 아이콘·배지를 직접
- * 꽂는데(`h-3.5 w-3.5 shrink-0` · `ml-0.5 h-5 min-w-5 px-1.5 text-[10px]`), 그 치수를 호출부마다
- * 손으로 반복하다 **배지 크기가 두 벌로 갈렸다**(h-5 / h-4). prop이면 규칙이 여기 한 곳에 남는다.
+ * ⚠️ **icon은 ReactNode 하나다** — 실제 국기의 치수·aria-hidden은 호출부에 남고, count의 모양은
+ * `CountBadge` 한 곳이 든다. 값 슬롯과 개수를 섞지 않도록 count+countLabel의 짝을 강제한다.
  *
  * ⚠️ **배지는 `CountBadge` 프리미티브를 쓴다** — 저쪽은 선택/미선택에 상관없이 `bg-primary` 고정이라
  * 흰 칸 위와 캔버스 칸 위의 대비가 갈렸다. `neutral`은 `--foreground`의 알파라 두 배경 모두에서
@@ -42,36 +38,17 @@ const UNSELECTED = "text-muted-foreground hover:text-foreground";
  */
 export type SegmentContent = {
   label: string;
-  /**
-   * 라벨 **맨 왼쪽** — `icon`보다도 앞이다.
-   *
-   * ⚠️ **`icon`으로 대신할 수 없다.** 그쪽은 `ComponentType`(lucide 컴포넌트)인데 국기는 컴포넌트가
-   * 아니라 인라인 `style`의 `background-image`다 (DESIGN §6.7). 치수·`aria-hidden`은 호출부
-   * 책임이고, 여기서 주는 것은 자리뿐이다.
-   */
-  leading?: ReactNode;
-  /** 라벨 **왼쪽**. `lucide-react` 컴포넌트를 그대로 넘긴다. */
-  icon?: ComponentType<{ className?: string }>;
-  /**
-   * 라벨 **오른쪽**의 개수 — `CountBadge`다: 0이면 서지 않고 숫자는 `aria-hidden` + `label` 문장이다(2026-10-01 Q13 — 옛 규칙
-   * "0도 보인다"의 철회. 같은 개수가 카드 머리와 여기서 다르게 굴었다).
-   */
-  badge?: { count: number; label: string };
-};
+  /** 라벨 왼쪽 장식. 실제 국기·글리프의 치수와 aria-hidden은 호출부가 보존한다. */
+  icon?: ReactNode;
+} & CountProps;
 
-/**
- * 칸 안쪽 — 두 형(버튼·링크)이 같은 것을 그린다.
- *
- * ⚠️ **아이콘에 `aria-hidden`을 붙인다.** 라벨이 늘 옆에 있으므로 아이콘은 장식이다 — bugshot-2는
- * 이걸 한 곳도 안 붙이고 lucide 기본값에 기대고 있다.
- */
-function SegmentBody({ leading, icon: Icon, label, badge }: SegmentContent) {
+/** 칸 안쪽 — 선택·roving focus와 무관한 icon → label → count 순서를 유지한다. */
+function SegmentBody({ icon, label, count, countLabel }: SegmentContent) {
   return (
     <>
-      {leading}
-      {Icon !== undefined && <Icon className="size-4 shrink-0" aria-hidden />}
+      {icon}
       <span className="min-w-0 truncate">{label}</span>
-      {badge !== undefined && <CountBadge count={badge.count} label={badge.label} className="shrink-0" />}
+      {count !== undefined && <CountBadge count={count} label={countLabel} className="shrink-0" />}
     </>
   );
 }
@@ -82,7 +59,7 @@ export function SegmentedControl<T extends string>({
   value,
   options,
   onChange,
-  describedBy,
+  "aria-describedby": describedBy,
   className,
 }: {
   /** 그룹의 이름. 세그먼트 라벨만으로는 "무엇의 General인가"가 안 드러난다. */
@@ -91,7 +68,7 @@ export function SegmentedControl<T extends string>({
   options: readonly ({ value: T } & SegmentContent)[];
   onChange: (value: T) => void;
   /** 그룹 아래 설명 한 줄의 id — 고른 값이 무엇을 뜻하는지 말하는 문장이 있을 때(`/mcp` 연결 방식). */
-  describedBy?: string;
+  "aria-describedby"?: string;
   className?: string;
 }) {
   return (
@@ -133,46 +110,5 @@ export function SegmentedControl<T extends string>({
         );
       })}
     </RadioGroup>
-  );
-}
-
-/**
- * 같은 형의 **링크** 판. 상태가 URL에 있으므로 `aria-current="page"`가 선택을 말한다.
- *
- * ⚠️ **`<nav>`다.** 링크 묶음이라 라디오 그룹이 아니고, `role="radio"`를 링크에 얹으면 스크린리더가
- * "고르는 것"이라 읽는데 실제로는 **이동**한다.
- *
- */
-export function SegmentedLinks({
-  label,
-  current,
-  options,
-  className,
-}: {
-  label: string;
-  current: string;
-  options: readonly ({ value: string; href: string } & SegmentContent)[];
-  className?: string;
-}) {
-  return (
-    <nav aria-label={label} className={cn(TRACK, className)}>
-      {options.map((option) => {
-        const selected = option.value === current;
-        return (
-          <Link
-            key={option.value}
-            href={option.href}
-            aria-current={selected ? "page" : undefined}
-            className={cn(
-              "focus-visible:ring-ring min-w-11 focus-visible:ring-2 focus-visible:outline-none",
-              SEGMENT,
-              selected ? SELECTED : UNSELECTED,
-            )}
-          >
-            <SegmentBody {...option} />
-          </Link>
-        );
-      })}
-    </nav>
   );
 }

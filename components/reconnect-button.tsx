@@ -6,7 +6,7 @@ import { useState } from "react";
 import { connectRepository } from "@/app/(edit)/projects/[slug]/settings/actions";
 import { useCommitWait } from "@/components/commit-wait";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonProps } from "@/components/ui/button";
 import { accessErrorMessage, isAccessError, type AccessError } from "@/lib/auth/message";
 import { settingsAccessMessage } from "@/lib/settings/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
@@ -19,7 +19,7 @@ import { m } from "@/lib/i18n";
  * ⚠️ **성공 문구를 따로 두지 않는다.** `revalidatePath`가 서버에서 돌아 건강성 문구가 `ok`로
  * 바뀌는 것이 곧 성공 신호다 — 문구를 하나 더 두면 그 상태와 어긋날 수 있다.
  */
-export function ReconnectButton({ slug, label, variant, onFailure, server }: {
+export function ReconnectButton({ slug, label, variant, spinnerSize, onFailure, server }: {
   slug: string;
   label: string;
   /**
@@ -27,6 +27,7 @@ export function ReconnectButton({ slug, label, variant, onFailure, server }: {
    * 하나라 검정이 Publish가 아니다. 설정 화면은 블록이 여럿이라 기본형을 쓴다.
    */
   variant?: "primary";
+  spinnerSize?: ButtonProps["spinnerSize"];
   /** Settings owns its card-wide notice; Home keeps the local fallback. */
   onFailure?: (message: string | null) => void;
   /**
@@ -43,6 +44,7 @@ export function ReconnectButton({ slug, label, variant, onFailure, server }: {
     <div className="space-y-2">
       <Button
         variant={variant}
+        spinnerSize={spinnerSize}
         loading={pending}
         aria-busy={pending}
         onClick={() => {
@@ -67,7 +69,7 @@ export function ReconnectButton({ slug, label, variant, onFailure, server }: {
         }}
       >
         {/* 아이콘이 있는 버튼은 스피너를 더하지 않고 교체한다 (DESIGN §6.4 · audit-ux #25) — 더하면 글리프 하나만큼 넓어졌다 좁아진다. */}
-        {!pending && <RefreshCw aria-hidden />}
+        <RefreshCw aria-hidden />
         {label}
       </Button>
       {error !== null && <Alert variant="danger">{messageFor(error)}</Alert>}

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 
 /**
@@ -22,7 +22,7 @@ export default function SettingsLoading() {
       <span className="sr-only" role="status">{m.settings.loading}</span>
       <PanelHeader aria-hidden>
         <div className="flex items-center">
-          <SkeletonLine text="text-lg" className="w-20" />
+          <Skeleton size="lg" className="w-20" />
         </div>
       </PanelHeader>
 
@@ -36,7 +36,7 @@ export default function SettingsLoading() {
                   <Skeleton className="h-9 w-20 rounded-md" />
                   <Skeleton className="h-9 w-20 rounded-md" />
                 </div>
-                <SkeletonLine text="text-xs" className="w-[80%]" />
+                <Skeleton size="xs" className="w-[80%]" />
               </div>
             </div>
           </Fact>
@@ -52,10 +52,10 @@ export default function SettingsLoading() {
           <Row action />
           <div className="border-border bg-muted border-t pl-10">
             <div className="flex items-center gap-x-3 px-4 py-3.5">
-              <SkeletonLine text="text-sm" className="w-24" />
+              <Skeleton size="sm" className="w-24" />
               <Skeleton className="h-9 w-60 shrink-0 rounded-md" />
               <Skeleton className="h-9 w-16 shrink-0 rounded-md" />
-              <SkeletonLine text="text-xs" className="w-[60%]" />
+              <Skeleton size="xs" className="w-[60%]" />
             </div>
           </div>
         </Card>
@@ -65,16 +65,16 @@ export default function SettingsLoading() {
           <div className="border-border border-t">
             <Row chevron />
           </div>
-          <div className="border-border border-t px-4 py-[13px]">
-            <SkeletonLine text="text-xs" className="w-[55%]" />
+          <div className="border-border border-t px-4 py-row-y">
+            <Skeleton size="xs" className="w-[55%]" />
           </div>
         </Card>
 
         <Card title="w-28">
-          <div className="flex items-center justify-between gap-4 px-4 py-[13px]">
+          <div className="flex items-center justify-between gap-4 px-4 py-row-y">
             <Skeleton className="size-7 shrink-0 rounded" />
             <div className="flex-1">
-              <SkeletonLine text="text-xs" className="w-[45%]" />
+              <Skeleton size="xs" className="w-[45%]" />
             </div>
             <Skeleton className="h-9 w-36 shrink-0 rounded-md" />
           </div>
@@ -84,15 +84,15 @@ export default function SettingsLoading() {
   );
 }
 
-/** `PanelCard` 껍데기 + 헤더(제목 · 오른쪽 끝 부제). 헤더 아래 선은 `border-divider`다. */
+/** `Card` 껍데기 + 헤더(제목 · 오른쪽 끝 부제). 헤더 아래 선은 `border-divider`다. */
 function Card({ title, subtitle = false, children }: { title: string; subtitle?: boolean; children: ReactNode }) {
   return (
     <div data-skeleton-card className="border-border bg-background overflow-hidden rounded-lg border">
       <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
-        <SkeletonLine text="text-base" className={title} />
+        <Skeleton size="md" className={title} />
         {subtitle && (
           <div className="ml-auto w-[48%]">
-            <SkeletonLine text="text-xs" className="ml-auto w-full" />
+            <Skeleton size="xs" className="ml-auto w-full" />
           </div>
         )}
       </div>
@@ -106,7 +106,7 @@ function Fact({ divided = false, children }: { divided?: boolean; children: Reac
   return (
     <div className={divided ? "border-border border-t" : undefined}>
       <div className="grid grid-cols-[96px_1fr] items-center gap-x-3 px-4 py-3.5">
-        <SkeletonLine text="text-xs" className="w-16" />
+        <Skeleton size="xs" className="w-16" />
         {children}
       </div>
     </div>
@@ -120,20 +120,20 @@ function Field({ button = false }: { button?: boolean }) {
       <Skeleton className="h-9 w-[320px] shrink-0 rounded-md" />
       {button && <Skeleton className="h-9 w-16 shrink-0 rounded-md" />}
       <div className="min-w-0 flex-1">
-        <SkeletonLine text="text-xs" className="w-[80%]" />
+        <Skeleton size="xs" className="w-[80%]" />
       </div>
     </div>
   );
 }
 
-/** 글리프 28 + 두 줄 + 오른쪽 버튼(또는 chevron) 행 — `px-4 py-[13px]`. */
+/** 글리프 28 + 두 줄 + 오른쪽 버튼(또는 chevron) 행 — `px-4 py-row-y`. */
 function Row({ action = false, chevron = false }: { action?: boolean; chevron?: boolean }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-[13px]">
+    <div className="flex items-center gap-3 px-4 py-row-y">
       <Skeleton className="size-7 shrink-0 rounded" />
-      <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <SkeletonLine text="text-base" className="w-[40%]" />
-        <SkeletonLine text="text-xs" className="w-[60%]" />
+      <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
+        <Skeleton size="md" className="w-[40%]" />
+        <Skeleton size="xs" className="w-[60%]" />
       </div>
       {action && <Skeleton className="h-9 w-36 shrink-0 rounded-md" />}
       {chevron && <Skeleton className="size-4 shrink-0 rounded" />}

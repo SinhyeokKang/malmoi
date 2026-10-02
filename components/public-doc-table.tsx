@@ -22,7 +22,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow, Td } from "@/compon
  * 시안이 이 표만 0.015em을 든다. `:is(th,td)` 하나로 건다 — `--tw-tracking`은 상속되지 않아 표에 걸면 칸의 크기 유틸이 0.02em으로 되돌린다.
  */
 export const DOC_TABLE =
-  "border-border mt-6 min-w-0 overflow-auto rounded-lg border [&_td]:leading-[1.6] [&_th]:text-muted-foreground [&_th]:text-xs [&_th]:px-4 [&_th]:py-2.5 [&_th]:leading-[1.6] [&_:is(th,td)]:tracking-[0.015em]";
+  "border-border mt-6 min-w-0 overflow-auto rounded-lg border [&_td]:leading-body [&_th]:text-muted-foreground [&_th]:text-xs [&_th]:px-4 [&_th]:py-2.5 [&_th]:leading-body [&_:is(th,td)]:tracking-[0.015em]";
 /** 열 머리 칸 — `DocTable`과 원고 표(`components/docs/guide-markdown.tsx`)가 같은 칸을 쓴다. */
 export const DOC_TABLE_HEAD = "bg-primary-foreground h-auto px-4 py-2 whitespace-normal";
 /** 행 — 읽는 화면이라 hover 강조를 주지 않는다(조작 어포던스다, §6.61). 머리 행의 선은 `TableHeader`의 `[&_tr]:border-b`가 되살린다. */

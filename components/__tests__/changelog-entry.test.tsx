@@ -127,7 +127,7 @@ describe("ReleaseEntry — 본문", () => {
       expect(byText(text)?.getAttribute("rel")).toBe("noreferrer");
     }
     expect(byText("below")?.getAttribute("target")).toBeNull();
-    expect(byText("the docs")?.className).toContain("text-blue-600");
+    expect(byText("the docs")?.className).toContain("text-link");
   });
 
   it("끝의 Full changelog 줄은 없다", async () => {

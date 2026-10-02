@@ -1,8 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
-
 import {
   createProject,
   confirmManualFormat,
@@ -10,6 +7,11 @@ import {
   listRepoBranches,
   loadCandidateSample,
 } from "@/app/(edit)/projects/actions";
+import type { CreateProjectResult } from "@/app/(edit)/projects/actions";
+import { WizardFooter } from "@/components/ui/wizard-footer";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+
 import { m } from "@/lib/i18n";
 import { ingestHeadline } from "@/lib/onboarding/message";
 import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
@@ -23,9 +25,8 @@ import { routes } from "@/lib/routes";
 import { SlowNotice } from "@/components/slow-notice";
 import { Alert } from "@/components/ui/alert";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
-import type { CreateProjectResult } from "@/app/(edit)/projects/actions";
 import { failureText, isAccessLost, isRepoScopedRefusal } from "./failure";
-import { OnboardingModal } from "./modal";
+import { LargeModal } from "@/components/ui/large-modal";
 import { FilesStep, failedPreview, previewFailureText, samplePreview, type ManualEntry, type PreviewState } from "./steps/files";
 import { NamingStep } from "./steps/naming";
 import { RepoStep } from "./steps/repo";
@@ -87,6 +88,8 @@ export function NewProject({
   const [branch, setBranch] = useState<BranchChoice | undefined>(undefined);
   const [branchLoading, setBranchLoading] = useState(false);
   const [branchValue, setBranchValue] = useState("");
+  // 체크된 후보와 조회가 끝난 리포가 다르면 Next는 확정을 기다린다.
+  const [repoScanning, setRepoScanning] = useState(false);
   const [accessError, setAccessError] = useState<string | undefined>(undefined);
 
   // ② 후보·미리보기
@@ -166,6 +169,7 @@ export function NewProject({
 
   /** ① 리포 선택 — 브랜치 목록을 받고 그 자리에서 펼친다. 실패는 ①을 막지 않는다 (예외 D). */
   function selectRepo(next: RepoOption) {
+    setRepoScanning(false);
     const request = ++repoRequest.current;
     // 리포 한 곳의 거부가 다른 리포까지 막지는 않는다. 계정·세션 거부는 유지한다.
     if (accessLost !== "unauthorized" && accessLost !== "reauthorize" && accessLost !== "not-connected") {
@@ -462,49 +466,51 @@ export function NewProject({
   } as const;
 
   return (
-    <OnboardingModal
+    <LargeModal
       open
       title={titles[step]}
       description={descriptions[step]}
       step={step}
       announce={announce}
-      nextLabel={step === 3 ? m.newProject.naming.create : step === 4 ? m.newProject.result.ingest.open : undefined}
-      nextArrow={step !== 3 && step !== 4}
-      nextDisabled={!nextEnabled(step, state)}
       // ⚠️ **③→④만 [Next]가 로딩이다** — 예외 I가 ③에 머물러야 하므로 미리 넘어갈 수 없다.
       // 나머지 전이는 "다음 단계 안의 스켈레톤"이 규칙이다 (DESIGN §6.7).
       // ④의 [Open project]도 이동이 커밋될 때까지 로딩이다 (audit-ux #22) — 전엔 transition 없는 `push`라 누른 뒤 무반응이었다.
-      nextPending={(step === 3 && pending) || (step === 4 && opening)}
-      showBack={step === 2 || step === 3}
       bodyDirection={step === 2 ? "row" : "column"}
       bodyScroll={step === 2 || step === 4 ? "hidden" : "auto"}
-      onBack={() => {
-        if (!accessLost) setBanner(null);
-        setCreationFailure(null);
-        if (step === 2) {
-          detectRequest.current += 1;
-          sampleGeneration.current += 1;
-          setDetecting(false);
-          setSamples((prev) => Object.fromEntries(Object.entries(prev).filter(([, value]) => value.status !== "loading")));
-        }
-        setStep(step === 3 ? 2 : 1);
-      }}
-      onNext={() => {
-        if (step === 1) detect();
-        else if (step === 2) toNaming();
-        else if (step === 3) create();
-        /*
-          ⚠️ **`replace`다, `push`가 아니다** (audit-ux #22) — push면 뒤로가기가 가로챈 모달(`/projects/new`)을 다시 띄운다.
-          목적지는 **프로젝트 Home**이다(2026-09-29 사용자 — 전엔 기본 표면의 번역 화면이었다). 가로챈 모달 슬롯은 `@modal/[...rest]`가 비운다.
-        */
-        else if (created !== undefined && !opening) {
-          startOpening(() => router.replace(routes.project(created.slug)));
-        }
-      }}
       // ⚠️ **생성 중에는 닫히지 않는다** (audit #13) — 닫아도 `createProject`는 계속 돌고, ④의 일회용 push 토큰을
       // 볼 자리가 경고 없이 사라진다 (DESIGN §6.4). ×·Esc·배경이 전부 이 한 값을 지난다.
       closeDisabled={pending}
       onClose={close}
+      actions={<WizardFooter
+        nextLabel={step === 3 ? m.newProject.naming.create : step === 4 ? m.newProject.result.ingest.open : undefined}
+        nextArrow={step !== 3 && step !== 4}
+        nextDisabled={!nextEnabled(step, state) || step === 1 && repoScanning}
+        busy={(step === 3 && pending) || (step === 4 && opening)}
+        showBack={step === 2 || step === 3}
+        onBack={() => {
+          if (!accessLost) setBanner(null);
+          setCreationFailure(null);
+          if (step === 2) {
+            detectRequest.current += 1;
+            sampleGeneration.current += 1;
+            setDetecting(false);
+            setSamples((prev) => Object.fromEntries(Object.entries(prev).filter(([, value]) => value.status !== "loading")));
+          }
+          setStep(step === 3 ? 2 : 1);
+        }}
+        onNext={() => {
+          if (step === 1) detect();
+          else if (step === 2) toNaming();
+          else if (step === 3) create();
+          /*
+            ⚠️ **`replace`다, `push`가 아니다** (audit-ux #22) — push면 뒤로가기가 가로챈 모달(`/projects/new`)을 다시 띄운다.
+            목적지는 **프로젝트 Home**이다(2026-09-29 사용자 — 전엔 기본 표면의 번역 화면이었다). 가로챈 모달 슬롯은 `@modal/[...rest]`가 비운다.
+          */
+          else if (created !== undefined && !opening) {
+            startOpening(() => router.replace(routes.project(created.slug)));
+          }
+        }}
+      />}
     >
       {step === 1 && (
         <RepoStep
@@ -526,6 +532,7 @@ export function NewProject({
           onAnnounce={setAnnounce}
           onQueryChange={setRepoQuery}
           onSelect={selectRepo}
+          onScan={fullName => setRepoScanning(fullName !== repo?.fullName)}
           onBranchChange={(value) => {
             setBranchValue(value);
             resetDownstream();
@@ -630,6 +637,6 @@ export function NewProject({
           yaml={created.yaml}
         />
       )}
-    </OnboardingModal>
+    </LargeModal>
   );
 }

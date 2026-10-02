@@ -1,5 +1,7 @@
 "use client";
 
+import { LARGE_MODAL_OVERLAY, LARGE_MODAL_PANEL } from "@/components/ui/large-modal";
+import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { Dialog as Primitive } from "radix-ui";
 import type { ReactNode } from "react";
@@ -11,9 +13,9 @@ import { m } from "@/lib/i18n";
  * 이벤트 상세의 **껍데기 1024** (캔버스 `1d`–`1f`).
  *
  * ⚠️ **폭이 핸드오프를 뒤집은 값이다** (2026-09-22 사용자 — `/design-sync`). 시안 `1d`의 640
- * 판정과 그것을 뒤집은 근거는 **DESIGN §6.68이 정본**이다. `modal.tsx`와 **폭·radius·dim(`/32` + blur 6)이
+ * 판정과 그것을 뒤집은 근거는 **DESIGN §6.68이 정본**이다. `large-modal.tsx`와 **폭·radius·dim(`/32` + blur 6)이
  * 같다** (2026-09-24 사용자) — Sources 상세와 나란히 서는 표면이라 셋이 갈리면 차이가 먼저 보였다.
- * ⚠️ **껍데기 컴포넌트는 따로다** — `OnboardingModal`은 높이 하한 `80svh`와 [Back]/[Next] 바닥을
+ * ⚠️ **껍데기 컴포넌트는 따로다** — `LargeModal`은 높이 하한 `80svh`와 고정 머리·본문·바닥을
  * 들어, 참조 한 줄뿐인 상세가 빈 판이 되고 글리프·시각을 둘 머리 자리가 없다.
  *
  * ⚠️ **본문은 서버가 그린다** (결정 2) — 이 파일은 열림·닫힘·포커스만 든다. 그래서 상세 조회가
@@ -56,12 +58,12 @@ export function EventDialog({
       }}
     >
       <Primitive.Portal>
-        <Primitive.Overlay className="bg-foreground/32 fixed inset-0 z-50 backdrop-blur-[6px]" />
+        <Primitive.Overlay className={LARGE_MODAL_OVERLAY} />
         <Primitive.Content
-          /* ⚠️ **`w-[calc(100%-96px)]`이 dim 여백 48을 든다** — 옛 `max-w-[calc(100vw-48px)]`는 좌우로
-             24씩만 비워 시안의 절반이었다(높이는 그때도 96을 뺐다). 높이는 `svh`다 — 1024 모달(`modal.tsx`)과 같은 단위라
+          /* ⚠️ **`w-[calc(100%-var(--spacing-modal-gutter))]`이 dim 여백 48을 든다** — 옛 `max-w-[calc(100vw-48px)]`는 좌우로
+             24씩만 비워 시안의 절반이었다(높이는 그때도 96을 뺐다). 높이는 `svh`다 — 1024 모달(`large-modal.tsx`)과 같은 단위라
              모바일 주소창이 접혀도 바닥이 화면 밖으로 안 나간다(3-Y6). */
-          className="bg-background fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100svh-96px)] w-[calc(100%-96px)] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl shadow-medium"
+          className={cn(LARGE_MODAL_PANEL, "max-h-[calc(100svh-var(--spacing-modal-gutter))]")}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             const row = document.getElementById(returnFocusId);

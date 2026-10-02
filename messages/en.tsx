@@ -371,6 +371,7 @@ export const en = {
     },
     /** 복사 버튼의 **라벨 교체** 셋 (DESIGN §6.4) — 실패를 삼키면 사용자가 복사된 줄 알고 떠난다. */
     copy: "Copy",
+    clearSearch: "Clear search",
     copied: "Copied",
     copyFailed: "Couldn't copy — select it yourself",
     /**
@@ -486,10 +487,11 @@ export const en = {
       projectCount: 3,
       memberCount: 4,
       /**
-       * 소스 트리 — 첫째가 보고 있는 소스(`source`)라 펼쳐져 있고 나머지는 접힌다(실제 `TreePanel`). 네임스페이스 합이 소스의 키 수다.
+       * 소스 트리 — slug 코드순이며 보고 있는 소스(`source`)만 펼쳐지고 나머지는 접힌다(실제 `TreePanel`). 네임스페이스 합이 소스의 키 수다.
        * 프로젝트 키 수(`keyCount`)는 소스 키 수의 합이다.
        */
       sources: [
+        { slug: "emails", keyCount: 40, namespaces: [] },
         {
           slug: "web",
           keyCount: 248,
@@ -500,10 +502,9 @@ export const en = {
             { name: "product", keyCount: 56 },
           ],
         },
-        { slug: "emails", keyCount: 40, namespaces: [] },
       ],
       /**
-       * 선택된 키 — 씬 ②에서 `fr` 값이 비어 있다가 채워진다. ⚠️ **원문 포함 값은 둘까지다** — 1440×810 안의 로케일 목록이
+       * 선택된 키 — 씬 ②에서 `fr` 값이 비어 있다가 채워진다. ⚠️ **원문 포함 값은 둘까지다** — 목업의 로케일 목록이
        * 행 셋만 담는다(넷이면 `fr` 칸이 푸터 밑으로 들어간다, #112).
        */
       selected: {
@@ -533,8 +534,8 @@ export const en = {
       ],
       keyCount: 288,
       /** Publish 배지 — 씬 ③의 저장 전 → 후. */
-      unsentBefore: 1,
-      unsentAfter: 2,
+      unsentBefore: 0,
+      unsentAfter: 1,
       /** 언어 → 파일 경로. diff가 파일 이름을 따로 들지 않는다 — 언어와 파일이 어긋날 자리를 없앤다. */
       file: (code: string): string => `messages/${code}.json`,
       /**
@@ -543,7 +544,6 @@ export const en = {
        * 프로젝트를 말한다(#114). 선택 키의 편집은 ②③이 만든 `fr` 하나다.
        */
       diff: [
-        { key: "cart.empty", code: "de", before: "Ihr Warenkorb ist leer", after: "Dein Warenkorb ist leer" },
         { key: "checkout.submit", code: "fr", before: null, after: "Passer la commande" },
       ],
       pullRequest: 128,
@@ -836,6 +836,7 @@ export const en = {
    */
   changelog: {
     title: "Changelog",
+    latest: "Latest",
     /** 검색·링크 미리보기 설명 — 소개 문장의 첫 문장과 같은 말이다. */
     description: "What changed in each release of Malmoi, newest first.",
     releases: "GitHub Releases",
@@ -1489,7 +1490,6 @@ export const en = {
      * ⚠️ **`aria-label`은 줄임표가 없다** — 스크린리더가 읽는 **이름**이라 장식이 붙으면 안 된다.
      * 그래서 키가 둘로 갈려 있고, 값이 다르므로 "두 벌이면 하나가 낡는다"에 걸리지 않는다.
      *
-     * ⚠️ **`clear`가 없다** — 지우기는 `type="search"`의 네이티브 ✕가 든다.
      */
     search: { label: "Search projects", placeholder: "Search projects…" },
     /**

@@ -134,12 +134,13 @@ describe("ProjectSwitcher", () => {
     clicked.hrefs = [];
     const user = userEvent.setup();
     await render(<ProjectSwitcher projects={projects} current="old" />);
+    for (const token of ["size-6", "rounded-sm", "px-0"]) expect(trigger().classList.contains(token)).toBe(true);
     await act(async () => user.click(trigger()));
     const row = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((r) => r.getAttribute("href") === routes.project("old"))!;
     expect(row.getAttribute("aria-checked")).toBe("true");
     const badge = [...row.children].find((node) => node.textContent === m.projects.status.archived) as HTMLElement;
     expect(badge.className).toContain("px-2");
-    expect(badge.className).toContain("text-neutral-400");
+    expect(badge.className).toContain("text-gray-dim");
     // 배지 → 체크 순서, 체크가 마지막 자식이다.
     expect(badge.nextElementSibling?.tagName.toLowerCase()).toBe("svg");
     expect(row.lastElementChild).toBe(badge.nextElementSibling);
@@ -195,4 +196,16 @@ describe("ProjectSwitcher", () => {
     });
     expect(document.querySelector('[role="menu"]')).toBeNull();
   });
+});
+
+it("switcher header keeps the shrinking flex item beside Esc, and autofocus remains on input", async () => {
+  await open();
+  const field = input();
+  const wrapper = field.parentElement!;
+  for (const token of ["flex", "min-w-0", "flex-1"]) expect(wrapper.classList.contains(token)).toBe(true);
+  expect(wrapper.nextElementSibling?.tagName).toBe("KBD");
+  expect(wrapper.parentElement?.classList.contains("flex")).toBe(true);
+  for (const token of ["w-full", "h-8", "border-0", "focus-visible:ring-0"]) expect(field.classList.contains(token)).toBe(true);
+  expect(field.classList.contains("flex-1")).toBe(false);
+  expect(document.activeElement).toBe(field);
 });

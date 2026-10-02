@@ -1,5 +1,6 @@
+import { Link as InlineLink } from "@/components/ui/link";
 import type { Root } from "mdast";
-import Link from "next/link";
+
 import type { ComponentProps, ReactNode } from "react";
 import Markdown, { type Components, type ExtraProps } from "react-markdown";
 
@@ -10,7 +11,7 @@ import { TableBody, TableHead, TableHeader, TableRow, Td } from "@/components/ui
 import { remarkGuide } from "@/lib/guide/remark";
 import type { ShotSize } from "@/lib/guide/shots";
 
-import { DOC_LINK, INLINE_CODE, LIST, PROSE, SECTION_HEADING, SUB_HEADING } from "./classes";
+import { INLINE_CODE, LIST, PROSE, SECTION_HEADING, SUB_HEADING } from "./classes";
 import { cn } from "@/lib/utils";
 
 const NO_SIZES: Record<string, ShotSize> = Object.create(null);
@@ -49,13 +50,13 @@ function components(sizes: Record<string, ShotSize>): Components {
     a: ({ node: _node, href = "", children, target, rel }) =>
       // 외부(`target`)는 remarkGuide가 표시한다 — 내부는 원고의 상대 `.md`가 이미 `/docs/...`로 바뀌어 있다.
       target === undefined && href.startsWith("/") ? (
-        <Link href={href} className={DOC_LINK}>
+        <InlineLink href={href} >
           {children}
-        </Link>
+        </InlineLink>
       ) : (
-        <a href={href} target={target} rel={rel} className={DOC_LINK}>
+        <InlineLink href={href} target={target} rel={rel} >
           {children}
-        </a>
+        </InlineLink>
       ),
     code: ({ node: _node, children }) => <code className={INLINE_CODE}>{children}</code>,
     pre: ({ node }) => {
@@ -66,7 +67,7 @@ function components(sizes: Record<string, ShotSize>): Components {
       return <CodeBlock code={hastText(code).replace(/\n$/, "")} filename={typeof filename === "string" ? filename : null} className="mt-6" />;
     },
     blockquote: ({ node: _node, children }) => (
-      <Alert variant="info" className="mt-6 leading-[1.6] [&_p]:mt-0 [&_p]:text-sm [&_p]:leading-[1.6] [&_p+p]:mt-2">
+      <Alert variant="info" className="mt-6 leading-body [&_p]:mt-0 [&_p]:text-sm [&_p]:leading-body [&_p+p]:mt-2">
         {children}
       </Alert>
     ),

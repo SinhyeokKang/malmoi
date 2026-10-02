@@ -91,7 +91,7 @@ describe("목록", () => {
   });
 
   /**
-   * 목록은 이웃 카드와 같은 `RowCardList`/`RowCardItem`이다(design-sync 리뷰) — 손으로 적으면 행 선 규칙이 바뀔 때 이 카드만 남고,
+   * 목록은 이웃 카드와 같은 `CardList`/`RowCardItem`이다(design-sync 리뷰) — 손으로 적으면 행 선 규칙이 바뀔 때 이 카드만 남고,
    * 목록의 접근 이름(카드 제목)이 빠진다.
    */
   it("목록은 카드 제목으로 이름 붙은 RowCardList다 — 선은 머리↔첫 행이 약하고 행↔행이 진하다", async () => {
@@ -100,8 +100,9 @@ describe("목록", () => {
     expect(list.getAttribute("aria-labelledby")).toBe(heading().id);
     const items = [...list.children] as HTMLElement[];
     expect(items.map((li) => li.tagName)).toEqual(["LI", "LI", "LI"]);
-    expect(items[0]!.className).toContain("border-foreground/[0.06]");
-    expect(items[1]!.className).toContain("border-border");
+    expect(items[0]!.classList.contains("border-t")).toBe(false);
+    expect(card().querySelector("header")?.className).toContain("border-divider border-b");
+    expect(list.className).toContain("[&>li+li]:border-border [&>li+li]:border-t");
   });
 
   it("같은 이름의 두 연결은 끊기 버튼의 접근 이름이 다르다", async () => {
@@ -234,7 +235,8 @@ describe("끊기", () => {
     await click(rowButton("c1"));
     await click(dialog()!.querySelector("[data-disconnect-confirm]"));
     const first = find<HTMLElement>(card(), "ul").firstElementChild as HTMLElement;
-    expect(first.className).toContain("border-border");
+    expect(first.classList.contains("border-t")).toBe(false);
+    expect(card().querySelector("[data-card-notice]")?.className).toContain("border-divider border-b");
     expect(first.className).not.toContain("border-foreground/[0.06]");
   });
 });

@@ -9,12 +9,12 @@ import { cn } from "@/lib/utils";
 const ROW_HOVER = "hover:bg-foreground/[0.03] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
 /**
- * 행 화살표 — 시안이 글리프 `→`를 `neutral-400`으로 든다(#119, lucide가 아니다 — 굵기·크기가 글자를 따른다).
+ * 행 화살표 — 시안이 글리프 `→`를 `gray-dim`으로 든다(#119, lucide가 아니다 — 굵기·크기가 글자를 따른다).
  * `data-arrow`는 테스트 표식이다.
  */
 function Arrow() {
   return (
-    <span data-arrow="" aria-hidden className="shrink-0 text-neutral-400">
+    <span data-arrow="" aria-hidden className="shrink-0 text-gray-dim">
       →
     </span>
   );
@@ -53,7 +53,7 @@ export function DocRows({ rows, arrow, className }: { rows: readonly DocLinkRow[
           <Link href={row.href} className={cn("flex items-center gap-4 p-4", ROW_HOVER)}>
             <span className="min-w-0 flex-1">
               <span className="block text-base font-medium">{row.title}</span>
-              {row.description === null ? null : <span className="text-muted-foreground mt-0.5 block text-sm leading-[1.6]">{row.description}</span>}
+              {row.description === null ? null : <span className="text-muted-foreground mt-0.5 block text-sm leading-body">{row.description}</span>}
             </span>
             {arrow ? <Arrow /> : null}
           </Link>
@@ -78,7 +78,7 @@ export function DocTracks({ tracks }: { tracks: readonly DocTrack[] }) {
             <span className="text-muted-foreground block text-xs">{track.audience}</span>
             <span className="mt-1 block text-lg font-medium">{track.chapter.title}</span>
             {track.chapter.description === null ? null : (
-              <span className="text-muted-foreground mt-1 block text-sm leading-[1.6]">{track.chapter.description}</span>
+              <span className="text-muted-foreground mt-1 block text-sm leading-body">{track.chapter.description}</span>
             )}
           </Link>
           {/* 머리 ↔ 첫 행은 `--divider`, 행 ↔ 행은 `--border`(시안 1a, #119) */}

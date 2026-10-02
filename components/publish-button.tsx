@@ -1,4 +1,5 @@
 "use client";
+import { Link as InlineLink } from "@/components/ui/link";
 import { utcMinute } from "@/lib/utc-time";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
@@ -11,9 +12,9 @@ import { loadPublishPreview } from "@/app/(edit)/publish-actions";
 import { Alert } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CountBadge } from "@/components/ui/count-badge";
-import { Button, ButtonLink, buttonClass } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { OnboardingModal } from "@/components/ui/modal";
+import { LargeModal } from "@/components/ui/large-modal";
 import { m } from "@/lib/i18n";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
@@ -148,15 +149,15 @@ const p = m.translations.publish;
  * 허공에 뜬다. ⚠️ **리터럴 문자열이어야 한다** — Tailwind는 소스에 그대로 적힌 클래스만 만든다.
  */
 const PANEL = {
-  preview: "min-h-[min(620px,calc(100svh-96px))] max-h-[min(680px,calc(100svh-96px))]",
-  running: "min-h-[min(340px,calc(100svh-96px))] max-h-[min(380px,calc(100svh-96px))]",
-  created: "min-h-[min(420px,calc(100svh-96px))] max-h-[min(460px,calc(100svh-96px))]",
-  updated: "min-h-[min(460px,calc(100svh-96px))] max-h-[min(500px,calc(100svh-96px))]",
-  noChanges: "min-h-[min(360px,calc(100svh-96px))] max-h-[min(400px,calc(100svh-96px))]",
-  partial: "min-h-[min(560px,calc(100svh-96px))] max-h-[min(600px,calc(100svh-96px))]",
-  configError: "min-h-[min(460px,calc(100svh-96px))] max-h-[min(500px,calc(100svh-96px))]",
-  transientError: "min-h-[min(400px,calc(100svh-96px))] max-h-[min(440px,calc(100svh-96px))]",
-  previewError: "min-h-[min(440px,calc(100svh-96px))] max-h-[min(480px,calc(100svh-96px))]",
+  preview: "min-h-[min(620px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(680px,calc(100svh-var(--spacing-modal-gutter)))]",
+  running: "min-h-[min(340px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(380px,calc(100svh-var(--spacing-modal-gutter)))]",
+  created: "min-h-[min(420px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(460px,calc(100svh-var(--spacing-modal-gutter)))]",
+  updated: "min-h-[min(460px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(500px,calc(100svh-var(--spacing-modal-gutter)))]",
+  noChanges: "min-h-[min(360px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(400px,calc(100svh-var(--spacing-modal-gutter)))]",
+  partial: "min-h-[min(560px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(600px,calc(100svh-var(--spacing-modal-gutter)))]",
+  configError: "min-h-[min(460px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(500px,calc(100svh-var(--spacing-modal-gutter)))]",
+  transientError: "min-h-[min(400px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(440px,calc(100svh-var(--spacing-modal-gutter)))]",
+  previewError: "min-h-[min(440px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(480px,calc(100svh-var(--spacing-modal-gutter)))]",
 } as const;
 
 /*
@@ -195,7 +196,7 @@ function Stack({ children }: { children: ReactNode }) {
 
 /** 바닥 보조 한 줄 — 글리프 21(13/1.6)에 맞춘다. */
 function Hint({ icon: Icon = Info, children }: { icon?: typeof Info; children: ReactNode }) {
-  return <div className="text-muted-foreground flex gap-2.5 text-xs leading-[1.6]">
+  return <div className="text-muted-foreground flex gap-2.5 text-xs leading-body">
     <span className="flex h-[21px] shrink-0 items-center"><Icon className="size-4" aria-hidden /></span>
     <span className="min-w-0 flex-1">{children}</span>
   </div>;
@@ -291,7 +292,7 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
               </td>
               <td className="border-divider border-t px-3.5 py-[11px] align-top">
                 <span className="flex items-start gap-2.5">
-                  <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                  <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                     {/* base와 같은 값은 "변경"이 아니다(B1 r3) — 양쪽이 같은 −/+ 두 줄을 그리지 않고 값 한 줄과 사유를 둔다. */}
                     {row.before !== null && !row.same && <DiffLine sign="−" parts={diff.before} before />}
                     <DiffLine sign="+" parts={diff.after} />
@@ -360,7 +361,7 @@ function Warnings({ warnings }: { warnings: readonly string[] }) {
         <span className="text-muted-foreground min-w-0 flex-1 text-xs leading-5 whitespace-pre-wrap">{message}</span>
       </div>))}
     </div>
-    <p className="text-muted-foreground shrink-0 px-4 py-[11px] text-xs leading-[1.6]">{p.stillHere}</p>
+    <p className="text-muted-foreground shrink-0 px-4 py-[11px] text-xs leading-body">{p.stillHere}</p>
   </section>;
 }
 
@@ -434,7 +435,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5 px-8 py-6 text-center">
             <FileJson2 className="text-muted-foreground size-5" aria-hidden />
             <p className="text-sm font-medium">{p.previewFailedTitle(repo.branch)}</p>
-            <p className="text-muted-foreground max-w-[420px] text-xs leading-[1.7] text-pretty">{p.previewFailedBody(count)}</p>
+            <p className="text-muted-foreground max-w-[420px] text-xs leading-prose text-pretty">{p.previewFailedBody(count)}</p>
           </div>
         </TableShell>
         <Hint>{p.previewFailedHint}</Hint>
@@ -507,7 +508,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       const closed = outcome.status === "skipped" && outcome.reason === "no-changes" ? outcome.closedPr : undefined;
       const closedLine = closed === undefined ? null : <p className="text-muted-foreground text-xs">
         {`${p.closedPr.line(closed.number, repo.branch)} ${role === "OWNER" ? p.closedPr.owner : p.closedPr.editor}`}{" "}
-        <a href={closed.url} target="_blank" rel="noreferrer" className="text-blue-600">{p.closedPr.view(closed.number)}</a>
+        <InlineLink href={closed.url} target="_blank" rel="noreferrer">{p.closedPr.view(closed.number)}</InlineLink>
       </p>;
       // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(DESIGN §6.646).
       const number = outcome.status === "committed"
@@ -515,7 +516,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         : null;
       const files = outcome.status === "committed" ? outcome.changed.length : 0;
       const viewPr = outcome.status === "committed"
-        ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={outcome.prUrl} target="_blank" rel="noreferrer">{p.viewLink}</a>
+        ? <ButtonLink variant="primary" size="lg" external href={outcome.prUrl} newTab rel="noreferrer">{p.viewLink}</ButtonLink>
         : null;
       switch (view) {
         case "created":
@@ -582,7 +583,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             ? <ButtonLink variant="primary" size="lg" href={routes.settings(slug)}>{p.settings}</ButtonLink>
             // 세션이 끝난 것은 역할과 무관하다 — 다시 로그인하는 것은 누구나 할 수 있다.
             : failed?.error === "unauthorized"
-              ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.signIn()} target="_blank" rel="noreferrer">{p.signIn}</a>
+              ? <ButtonLink variant="primary" size="lg" external href={routes.signIn()} newTab rel="noreferrer">{p.signIn}</ButtonLink>
               : null;
           body = <Stack>
             {/* ⚠️ **서버의 safe 메시지를 버리지 않는다** — 코드만 남기면 "안 된대요"가 "base-unreadable이래요"로 바뀔 뿐이다(DESIGN §6.646). 코드가 없는 갈래는 그 문장이 이미 제목이라 본문을 비운다. */}
@@ -647,7 +648,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
   }
   if (alert) {
     return <Dialog open={publish.open} onOpenChange={next => { if (!next) publish.close(); }}>
-      <DialogContent title={title} description={description} footer={actions}
+      <DialogContent title={title} description={description} actions={actions}
         // 큰 껍데기와 같은 복귀 규칙 — 호출 버튼, 사라졌으면 호스트 제목.
         onCloseAutoFocus={event => {
           event.preventDefault();
@@ -657,8 +658,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         }} />
     </Dialog>;
   }
-  return <OnboardingModal open={publish.open} onClose={publish.close} title={title} description={description} closeLabel={m.common.close}
-    footer={footer} actions={actions} transitionKey={state.kind} quiet={quiet} returnFocusRef={publish.triggerRef} fallbackFocusRef={fallbackFocusRef}
+  return <LargeModal open={publish.open} onClose={publish.close} title={title} description={description} closeLabel={m.common.close}
+    notice={footer} actions={actions} transitionKey={state.kind} quiet={quiet} returnFocusRef={publish.triggerRef} fallbackFocusRef={fallbackFocusRef}
     /* ⚠️ **안쪽 스크롤러가 있는 갈래만 `hidden`이다** — 나머지는 `shrink-0` 블록만 쌓아서, 낮은 뷰포트에서 잠그면 마지막 줄에 스크롤로도 못 닿는다. */
-    panelClassName={panel} bodyScroll={inner ? "hidden" : "auto"}>{body}</OnboardingModal>;
+    className={panel} bodyScroll={inner ? "hidden" : "auto"}>{body}</LargeModal>;
 }

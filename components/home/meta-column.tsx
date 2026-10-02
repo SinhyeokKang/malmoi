@@ -1,3 +1,5 @@
+import { Link as InlineLink } from "@/components/ui/link";
+import { Fact } from "@/components/ui/facts";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -46,7 +48,7 @@ export function MetaColumn({ rows, slug, now, canOpenSettings, heldLater }: {
 
   return (
     <aside className="border-border flex h-fit flex-col overflow-hidden rounded-lg border" aria-labelledby="home-meta-title">
-      {/* 머리 아래 선은 머리가 긋는다(2026-10-01 4-Y1 — `PanelCard`와 한 규약) · 머리 gap은 카드 머리 한 벌이다(4-W1). */}
+      {/* 머리 아래 선은 머리가 긋는다(2026-10-01 4-Y1 — `Card`와 한 규약) · 머리 gap은 카드 머리 한 벌이다(4-W1). */}
       <h2 id="home-meta-title" className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3 text-base font-medium">
         {m.home.meta.title}
       </h2>
@@ -75,10 +77,7 @@ function MetaGroup({ rows, now, divided, heldLater, slug }: { rows: readonly Met
   return (
     <dl className={cn("flex flex-col gap-2.5 px-4 py-3.5", divided && "border-divider border-t")}>
       {rows.map((row) => (
-        <div key={row.kind} className="flex items-baseline gap-3">
-          <dt className="w-24 shrink-0 text-xs text-neutral-400">{m.home.meta[row.kind]}</dt>
-          <dd className="min-w-0 flex-1 text-sm">{value(row, now, heldLater, slug)}</dd>
-        </div>
+        <Fact key={row.kind} width={96} label={m.home.meta[row.kind]}>{value(row, now, heldLater, slug)}</Fact>
       ))}
     </dl>
   );
@@ -101,14 +100,14 @@ function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>, 
           나머지 열이 따라왔다. 나가는 신호는 색과 `target="_blank"`가 든다.
           `home-landmarks.test.tsx`가 이 행과 아래 PR 행을 **함께** 세서 한쪽에만 되살아나지 못하게 한다.
         */
-        <a
+        <InlineLink
           href={row.href}
           target="_blank"
           rel="noreferrer"
-          className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+
         >
           {`${row.owner}/${row.name}`}
-        </a>
+        </InlineLink>
       );
     case "branch":
       return row.branch;
@@ -120,7 +119,7 @@ function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>, 
         <span className="flex flex-wrap items-center gap-1.5">
           {row.codes.map((code) => (
             // 국기 + 코드는 배지 하나다(2026-09-30 사용자 — 프로젝트 행 Meter 머리와 같은 모양).
-            <Badge key={code} variant="neutral" className="gap-1">
+            <Badge key={code} variant="soft-neutral" className="gap-1">
               <LocaleFlag code={code} />
               {code}
             </Badge>
@@ -161,14 +160,14 @@ function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>, 
             ⚠️ **글리프 없이 색만 든다** (DESIGN §6.3 — 위 리포 행과 같은 규칙). 접근 이름이 `#127`
             하나뿐이라 앞의 `{m.home.meta.pullRequest}`가 그것이 무엇인지 말하는 몫을 진다.
           */}
-          <a
+          <InlineLink
             href={row.prUrl}
             target="_blank"
             rel="noreferrer"
-            className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+
           >
             {m.home.meta.pr(pr)}
-          </a>
+          </InlineLink>
           {" · "}
           <TriggerBadge trigger={row.trigger} kind="PUBLISH" />
           {relativeTime(row.at, now)}
@@ -194,5 +193,5 @@ function Held({ reason }: { reason: HoldReason | null }) {
  */
 function TriggerBadge({ trigger, kind }: { trigger: Trigger | null; kind: "IMPORT" | "PUBLISH" }) {
   if (trigger === null) return null;
-  return <Badge variant="neutral" className="mr-1.5 align-middle">{m.logs.meta.runType[kind][trigger]}</Badge>;
+  return <Badge variant="soft-neutral" className="mr-1.5 align-middle">{m.logs.meta.runType[kind][trigger]}</Badge>;
 }

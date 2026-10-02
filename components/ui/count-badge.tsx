@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 export function CountBadge({ count, label, className }: { count: number; label: string; className?: string }) {
   if (count === 0) return null;
   return (
-    <Badge variant="neutral" className={cn(className)}>
+    <Badge variant="soft-neutral" className={cn(className)}>
       <span aria-hidden>{count.toLocaleString("en-US")}</span>
       <span className="sr-only">{label}</span>
     </Badge>

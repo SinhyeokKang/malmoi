@@ -5,7 +5,7 @@ import { memo, useId, useLayoutEffect, useMemo, useRef, useState, type FocusEven
 
 import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
-import { ListItemButton } from "@/components/ui/list-item";
+import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { TranslationListRow } from "@/lib/keys/translation-list";
 import { m } from "@/lib/i18n";
@@ -35,7 +35,7 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
   /** 조작의 응답을 기다린다 (audit-ux #7) — 행은 응답이 와야 바뀌므로 목록이 busy다. 선택 행은 호출부가 낙관적으로 먼저 옮긴다. */
   busy?: boolean;
   /** 트리가 접혔을 때 목록 머리에 들어가는 트리 버튼(README §7 — 아이콘 레일을 만들지 않는다). */
-  treeButton?: { open: boolean; controls: string; onToggle: () => void; breadcrumb: ReactNode };
+  treeButton?: { ref?: Ref<HTMLButtonElement>; open: boolean; controls: string; onToggle: () => void; breadcrumb: ReactNode };
   /**
    * 머리 오른쪽 끝의 필터 — 이 목록을 좁히는 Status다(2026-10-02 사용자: 패널마다 자기를 좁히는 필터를 든다 — 번역값 패널의 언어 메뉴와 같은 자리).
    * ⚠️ 좁은 폭에서 잘리는 것은 **범위 라벨 하나**다(#170 — 정렬 문구와 함께 줄었다) — 제목·수·`+n saved`·트리거는 줄지 않는다.
@@ -92,8 +92,8 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
     <div data-panel="list" aria-busy={busy || undefined} className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         {treeButton !== undefined && (
-          <Button size="sm" aria-label={m.translations.workspace.tree.open} aria-expanded={treeButton.open} aria-controls={treeButton.open ? treeButton.controls : undefined} onClick={treeButton.onToggle} className="size-7 p-0">
-            <PanelLeftOpen className="size-3.5 text-neutral-600" aria-hidden />
+          <Button ref={treeButton.ref} size="icon-sm" aria-haspopup="dialog" aria-label={m.translations.workspace.tree.open} aria-expanded={treeButton.open} aria-controls={treeButton.open ? treeButton.controls : undefined} onClick={treeButton.onToggle}>
+            <PanelLeftOpen className="size-3.5 text-gray-strong" aria-hidden />
           </Button>
         )}
         <h2 id={headingId} ref={titleRef} tabIndex={-1} className="text-base font-medium">{title}</h2>
@@ -131,17 +131,17 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
   const w = m.translations.workspace.list;
   return (
     <li>
-      <ListItemButton
+      <ListRow as="button" variant="canvas" ringInset
         data-key-row={row.keyId}
         selected={selected}
         tabIndex={tabStop ? 0 : -1}
         onClick={() => onSelect(row)}
         className={cn("flex items-start gap-3 border-t px-4 py-3", first ? "border-divider" : "border-border")}
       >
-        <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+        <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
           <span className={cn("text-sm leading-[1.45]", savedOut && "text-muted-foreground line-through")}>{row.sourceText}</span>
           <span className="flex flex-wrap items-center gap-1.5">
-            <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
+            <span className="text-muted-foreground text-xs wrap-anywhere">
               {showSource ? `${row.surfaceSlug} · ${row.key}` : row.key}
             </span>
             {/* 미전달은 `Badge neutral` 하나다(Q3 · 1-Y9 — 테두리 알약 `Pill`을 걷었다, 랜딩 목업·Sources와 같은 형). */}
@@ -152,7 +152,7 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
         <span className="text-muted-foreground shrink-0 text-xs">
           {savedOut ? w.saved : row.missingCount > 0 ? w.missing(row.missingCount) : w.complete}
         </span>
-      </ListItemButton>
+      </ListRow>
     </li>
   );
 });

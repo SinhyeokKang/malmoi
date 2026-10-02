@@ -32,7 +32,7 @@ export function PrivacyDoc() {
           사전의 `"YYYY-MM-DD"`는 `dateTime`에 그대로 넣고(날짜만 든 `datetime`은 올바른 HTML이다) 보이는 쪽만
           앱의 날짜 형(`utcDay`)이다 — 사전 값을 바꾸면 `policy-gate`가 개정 이력을 요구한다.
         */}
-        <p className="text-muted-foreground mt-3 text-sm leading-[1.6]">
+        <p className="text-muted-foreground mt-3 text-sm leading-body">
           {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{utcDay(new Date(effectiveDate))}</time>
         </p>
         <p className={cn(PROSE, "mt-6")}>{intro}</p>
@@ -46,7 +46,7 @@ export function PrivacyDoc() {
             className={cn(
               // 절 간격은 공개 문서 공통 급(위 32)이다 — `<h2>`가 아니라 `<section>`이 든다(h2는 `m-0`).
               "mt-8",
-              "[&_a]:text-blue-600 [&_a]:focus-visible:ring-ring [&_a]:focus-visible:ring-2 [&_a]:focus-visible:outline-none",
+              "[&_a]:text-link [&_a]:focus-visible:ring-ring [&_a]:focus-visible:ring-2 [&_a]:focus-visible:outline-none",
             )}
           >
             {/*

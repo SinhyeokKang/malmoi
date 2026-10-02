@@ -94,8 +94,8 @@ export default async function LinkAccountPage({
           name={view.emailLabel}
           avatarName={view.name ?? view.emailLabel}
           image={view.image}
-          secondary={<>{providerLabel(view.have)} · <time dateTime={view.joined.toISOString()}>{joinedLabel(view.joined)}</time></>}
-          meta={view.have === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
+          description={<>{providerLabel(view.have)} · <time dateTime={view.joined.toISOString()}>{joinedLabel(view.joined)}</time></>}
+          badge={view.have === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
         />
 
         <div className="flex w-full flex-col gap-2">

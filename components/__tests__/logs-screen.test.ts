@@ -169,6 +169,13 @@ describe("logs — 사유 사전", () => {
  */
 describe("logs 상세 — 껍데기 시각 값", () => {
   const dialog = read("components/logs/event-dialog.tsx");
+  const shell = [dialog, read("components/ui/large-modal.tsx")].join("\n");
+
+  it("EventDialog가 공유 껍데기와 dim을 실제로 쓴다", () => {
+    expect(dialog).toContain('from "@/components/ui/large-modal"');
+    expect(dialog).toContain("<Primitive.Overlay className={LARGE_MODAL_OVERLAY}");
+    expect(dialog).toMatch(/className=\{cn\(LARGE_MODAL_PANEL,/);
+  });
   const body = read("components/logs/event-detail.tsx");
 
   /**
@@ -177,8 +184,8 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    * 좌우 24만 비워 시안의 절반이었다.
    */
   it("폭이 1024 껍데기 관용구다 — 좁은 화면 여백도 96이다", () => {
-    expect(dialog).toContain("max-w-[1024px]");
-    expect(dialog).toContain("w-[calc(100%-96px)]");
+    expect(shell).toContain("max-w-[1024px]");
+    expect(shell).toContain("w-[calc(100%-var(--spacing-modal-gutter))]");
     expect(dialog).not.toContain("w-[640px]");
     expect(dialog).not.toContain("calc(100vw-48px)");
   });
@@ -188,25 +195,26 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    * 두던 판정(`/35`·blur 없음·`rounded-2xl`)을 접었다. Sources 상세와 나란히 서면 차이가 먼저 보였다.
    */
   it("dim과 radius가 1024 모달과 같다 — `/32` + blur 6 · `rounded-xl`", () => {
-    expect(dialog).toContain("bg-foreground/32");
-    expect(dialog).toContain("backdrop-blur-[6px]");
-    expect(dialog).toContain("rounded-xl");
+    expect(shell).toContain("bg-foreground/32");
+    expect(shell).toContain("backdrop-blur-[6px]");
+    expect(shell).toContain("rounded-xl");
     expect(dialog).not.toContain("bg-foreground/35");
     expect(dialog).not.toContain("rounded-2xl");
   });
 
   /** ⚠️ **`--shadow-medium`이 이 값과 바이트 단위로 같다** — raw로 박으면 토큰이 움직일 때 혼자 남는다. */
   it("그림자가 토큰이다 — raw rgba를 박지 않는다", () => {
-    expect(dialog).toContain("shadow-medium");
+    expect(shell).toContain("shadow-medium");
     expect(dialog).not.toMatch(/rgba\(22,\s*24,\s*27/);
   });
 
   /**
-   * ⚠️ **라벨과 보조 텍스트가 다른 색이다** — 시안은 필드 라벨 `#a3a3a3`(`text-neutral-400`),
+   * ⚠️ **라벨과 보조 텍스트가 다른 색이다** — 시안은 필드 라벨 `#a3a3a3`(`text-gray-dim`),
    * 시각·설명 `#737373`(`text-muted-foreground`)이고 구현이 둘을 하나로 합쳐 두었다.
    */
-  it("필드 라벨이 `text-neutral-400`이다", () => {
-    expect(body).toMatch(/<TableHead scope="row" className="text-neutral-400/);
+  it("필드 라벨이 `text-gray-dim`이다", () => {
+    expect(body).toContain('<Fact as="tr"');
+    expect(read("components/ui/facts.tsx")).toMatch(/<TableHead scope="row" className="text-gray-dim/);
   });
 
   /**
@@ -226,11 +234,12 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    * ⚠️ **푸터 버튼의 폼을 손으로 쓰지 않는다** — `Button` `default`/`md`가 캔버스 값과 정확히
    * 겹치고(h36 · radius 10 · px 12 · hover `#fafafa`), 손수 문자열은 `Button`이 받은 갱신을
    * 못 받는다. 실제로 옛 문자열의 hover가 `--accent`(#f5f5f5)에 남아 2026-09-13의 교체를 놓쳤다.
-   * ⚠️ **`ButtonLink`가 아닌 이유는 목적지 셋 중 하나가 `target="_blank"`라서다.**
+   * 목적지는 `ButtonLink`가 내부 이동·외부 새 탭을 함께 든다.
    */
   /** 1024 표면의 바닥이라 둘 다 `lg`다(3-Y6 — Sources 상세 모달과 같은 판). */
-  it("푸터가 버튼 폼을 빌려 쓴다 — [Close]는 `Button lg`, 목적지는 primary `buttonClass()` lg다", () => {
-    expect(body).toContain('buttonClass({ variant: "primary", size: "lg" })');
+  it("푸터가 버튼 폼을 빌려 쓴다 — [Close]는 `Button lg`, 목적지는 primary `ButtonLink` lg다", () => {
+    expect(body.match(/<ButtonLink variant="primary" size="lg"/g)).toHaveLength(4);
+    expect(body).not.toContain("buttonClass(");
     expect(body).toMatch(/<DialogClose asChild>\s*<Button size="lg"/);
     expect(body).not.toMatch(/hover:bg-accent[^"]*rounded-\[10px\]/);
   });

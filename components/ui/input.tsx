@@ -1,6 +1,24 @@
-import type { InputHTMLAttributes, Ref } from "react";
+import type { InputHTMLAttributes, ReactNode, Ref } from "react";
+
+import { X } from "lucide-react";
+import { Button } from "./button";
+import { m } from "@/lib/i18n";
 
 import { cn } from "@/lib/utils";
+
+/** 실제 필드 폭만 지원한다. 반응형 min/max/flex 배치는 소비자 래퍼가 소유한다. */
+export type FieldWidth = 132 | 160 | 168 | 192 | 220 | 240 | 256 | 320 | "full";
+export const fieldWidthClass: Record<FieldWidth, string> = {
+  132: "w-[132px]",
+  160: "w-40",
+  168: "w-[168px]",
+  192: "w-48",
+  220: "w-[220px]",
+  240: "w-60",
+  256: "w-64",
+  320: "w-80",
+  full: "w-full",
+};
 
 /**
  * 입력 셋(Input·Textarea·Select)의 공통 형 — DESIGN §6.4의 한 행이다.
@@ -24,6 +42,42 @@ export const fieldClass = cn(
  * 높이여야 한다. `Textarea`는 이 규칙 밖이다(`field-sizing-content`라 높이를 내용이 정한다).
  */
 /** `ref`는 React 19의 평범한 prop이라 `...props`로 그대로 내려간다 — `Button`과 같은 형이다. */
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement> & { ref?: Ref<HTMLInputElement> }) {
-  return <input className={cn(fieldClass, "h-9", "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)} {...props} />;
+const INPUT_SIZE = { md: "h-9", sm: "h-8 text-xs", xs: "h-7 text-xs" } as const;
+
+export function Input({ className, width, size = "md", variant = "default", icon, clearable, onClear, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "width" | "size"> & {
+  ref?: Ref<HTMLInputElement>;
+  width?: FieldWidth;
+  size?: keyof typeof INPUT_SIZE;
+  variant?: "default" | "bare";
+  icon?: ReactNode;
+  clearable?: boolean;
+  /** 즉시 필터는 onChange만, 제출형 SearchInput은 확정 질의도 함께 지운다. */
+  onClear?: () => void;
+}) {
+  const hasValue = props.value !== undefined && String(props.value).length > 0;
+  const field = <input className={cn(
+    fieldClass, INPUT_SIZE[size], width === undefined ? undefined : fieldWidthClass[width],
+    "read-only:bg-muted read-only:text-foreground read-only:cursor-default",
+    variant === "bare"
+      ? "border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 focus-visible:outline-none"
+      : "focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none aria-[invalid=true]:focus-visible:border-destructive aria-[invalid=true]:focus-visible:ring-destructive",
+    icon && "pl-8", clearable && "pr-8", className,
+  )} {...props} />;
+  if (!icon && !clearable) return field;
+  return <span className={cn("relative block min-w-0", width === "full" ? "w-full" : "w-fit")}>
+    {icon && <span aria-hidden className={cn("text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 [&>svg]:size-4", size !== "md" && "[&>svg]:size-3.5")}>{icon}</span>}
+    {field}
+    {clearable && hasValue && !props.readOnly && <Button type="button" variant="ghost" size="icon-xs" disabled={props.disabled} aria-label={m.common.clearSearch}
+      className="absolute top-1/2 right-1 -translate-y-1/2"
+      onMouseDown={event => event.preventDefault()}
+      onClick={event => {
+        const input = event.currentTarget.parentElement?.querySelector("input");
+        if (!input) return;
+        // React의 값 추적을 우회하는 native setter여야 빈 값 onChange가 한 번 들어온다.
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        onClear?.();
+        input.focus();
+      }}><X aria-hidden className="size-3.5" /></Button>}
+  </span>;
 }

@@ -161,7 +161,7 @@ describe("#19 push 토큰 회전은 확인을 받는다", () => {
     expect(dialog()?.textContent).toContain(m.settings.token.confirmTitle);
     await click(inDialog(m.settings.token.confirmAction));
     expect(mocks.rotatePushToken).toHaveBeenCalledTimes(1);
-    expect(document.body.textContent).toContain("tok_new");
+    expect(document.querySelector<HTMLInputElement>("input[data-secret-field]")?.value).toBe("tok_new");
     // 방금 받은 토큰도 다시 누르면 확인부터 — 재클릭 한 번으로 죽지 않는다.
     await click(trigger);
     expect(mocks.rotatePushToken).toHaveBeenCalledTimes(1);

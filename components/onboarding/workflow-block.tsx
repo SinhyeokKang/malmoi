@@ -18,7 +18,7 @@ const WORKFLOW_PATH = ".github/workflows/malmoi-i18n.yml";
 export function WorkflowBlock({ yaml }: { yaml: string }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">{m.settings.workflow.saveAs}</p>
+      <p className="text-muted-foreground shrink-0 text-xs leading-body">{m.settings.workflow.saveAs}</p>
       <CodeBlock code={yaml} filename={WORKFLOW_PATH} fill />
     </div>
   );

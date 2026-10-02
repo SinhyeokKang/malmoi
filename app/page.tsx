@@ -7,7 +7,7 @@ import { mockupScenes } from "@/components/landing/mockup";
 import { Stage } from "@/components/landing/stage";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { GithubIcon } from "@/components/signin/brand-icons";
-import { buttonClass, ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { appVersion } from "@/lib/app-version";
 import { rootView } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
@@ -17,7 +17,7 @@ import { routes } from "@/lib/routes";
 import { navFooterItems } from "@/lib/shell/nav";
 import { jsonLdHtml, LANDING_LD } from "@/lib/seo/json-ld";
 import { pageMetadata } from "@/lib/seo/site";
-import { cn } from "@/lib/utils";
+
 
 /** 제목만 absolute다 — 템플릿(`%s · Malmoi`)을 지나면 브랜드가 두 번 선다. */
 export const metadata: Metadata = {
@@ -71,7 +71,7 @@ export default async function Root() {
           <br />
           {hero.title[1]}
         </h1>
-        <p className="mt-5 max-w-[44em] text-lg leading-[1.6] text-balance">{hero.body}</p>
+        <p className="mt-5 max-w-[44em] text-lg leading-body text-balance">{hero.body}</p>
         <div className="mt-5 flex gap-2">
           {/* 선행 아이콘은 `Button`의 svg 슬롯(16 · gap 8)에 맡긴다 — 크기를 여기서 주지 않는다(DESIGN §6.615). */}
           <ButtonLink href={routes.docs()} size="lg"><DocsIcon aria-hidden />{shell.docs}</ButtonLink>
@@ -87,13 +87,13 @@ export default async function Root() {
           // 위아래 여백은 섹션 자신의 padding-block 240이다(2026-09-27 사용자 — 120의 두 배). 이웃의 margin으로 만들지 않는다.
           <section aria-labelledby="landing-closing" className="flex flex-col items-center px-8 py-60 text-center">
             <h2 id="landing-closing" className="m-0 text-5xl leading-[1.1] font-semibold">{closing.title}</h2>
-            <p className="mt-5 max-w-[40em] text-lg leading-[1.6] text-balance">{closing.body}</p>
+            <p className="mt-5 max-w-[40em] text-lg leading-body text-balance">{closing.body}</p>
             <div className="mt-5 flex gap-2">
-              {/* ⚠️ 외부 링크라 `ButtonLink`(next/link)가 아니라 `<a>` + `buttonClass`다(Publish 결과의 `View pull request`와 같은 형). 새 탭 · 글리프 없음(DESIGN §6.3). */}
-              <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer"
-                className={cn(buttonClass({ size: "lg" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none")}>
+              {/* ⚠️ ButtonLink external은 native <a>다. newTab으로 새 탭을 열고 기존 rel에 noopener·noreferrer를 보존·추가한다(DESIGN §6.3). */}
+              <ButtonLink size={"lg"} external href={GITHUB_REPO_URL} newTab rel="noreferrer"
+                >
                 <GithubIcon />{shell.github}
-              </a>
+              </ButtonLink>
               <ButtonLink href={routes.signIn()} variant="primary" size="lg"><LogIn aria-hidden />{shell.getStarted}</ButtonLink>
             </div>
           </section>

@@ -1,8 +1,8 @@
-import { ChevronsUpDown, Plus } from "lucide-react";
+import { ChevronsUpDown, PanelLeftClose, Plus } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
-import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,7 @@ const fixture = m.landing.mockup;
 
 /**
  * LNB 하단 목록의 **출처 한 곳** — 사이드바 하단(`sidebar.tsx`)이 그리는 항목과 같은 판정이다. ⚠️ Sign out은 하단에서 빠져 아바타
- * 메뉴에만 남는다(MISC 배치, 2026-09-27) — 목업은 그것을 따로 그리지 않는다. 하단이 `navFooterItems` 밖에서 정해지게 되면 이 줄만 고친다.
+ * 메뉴에만 남는다(MISC 배치, 2026-09-27) — 목업은 그것을 따로 그리지 않는다. 접기 버튼은 실제 사이드바처럼 이 목록 다음에 따로 그린다.
  */
 const FOOTER_ITEMS: () => NavItem[] = navFooterItems;
 
@@ -65,8 +65,8 @@ export function AppFrame({ children, overlay }: { children: ReactNode; overlay?:
             <div key={zone.key} data-landing-zone={zone.key} className={cn("flex flex-col gap-0.5", index > 0 && "border-border border-t pt-2")}>
               {/* 머리 줄은 프로젝트 구역에만 있다 — 사이드바와 같다(2026-09-30). */}
               {zone.key === "project" && (
-                <p className="text-foreground flex items-center gap-2 p-1.5 text-sm font-medium">
-                  <ProjectThumbnail name={zone.label} size={16} />
+                <p className="text-foreground flex h-8 items-center gap-2 px-2 text-sm font-medium">
+                  <ProjectThumbnail name={zone.label} size="xs" />
                   <span className="min-w-0 truncate">{zone.label}</span>
                   {/* 프로젝트 전환 트리거(`components/shell/project-switcher.tsx`) — 같은 ghost 24 · 글리프 16 · 머리 오른쪽 끝. 메뉴는 그리지 않는다. */}
                   <span data-landing-switcher="" className={cn(buttonClass({ variant: "ghost" }), "-my-0.5 ml-auto size-6 shrink-0 rounded-sm p-0")}>
@@ -83,6 +83,15 @@ export function AppFrame({ children, overlay }: { children: ReactNode; overlay?:
             {FOOTER_ITEMS().map((item) => (
               <Item key={item.key} item={item} active={false} />
             ))}
+            <span
+              data-landing-collapse=""
+              className={cn(buttonClass({ variant: "ghost" }), "text-foreground flex h-8 items-center justify-start gap-2 rounded-sm px-2 text-sm font-normal whitespace-nowrap hover:bg-foreground/[0.03] hover:text-foreground")}
+            >
+              <span className="flex size-4 shrink-0 items-center justify-center">
+                <PanelLeftClose className="size-4" aria-hidden />
+              </span>
+              <span className="min-w-0 truncate">{m.common.nav.collapseSidebar}</span>
+            </span>
           </div>
         </div>
         {/* 리사이즈 핸들 자리 — 실제 셸의 8px 투명 스트립이다. */}
@@ -100,13 +109,13 @@ export function AppFrame({ children, overlay }: { children: ReactNode; overlay?:
 function Item({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon;
   return (
-    <span data-landing-nav={item.key} className={cn("text-foreground flex items-center gap-2 rounded-sm p-1.5 text-sm", active && "bg-foreground/[0.07]")}>
+    <span data-landing-nav={item.key} className={cn("text-foreground flex h-8 items-center gap-2 rounded-sm px-2 text-sm", active && "bg-foreground/[0.07]")}>
       <span className="flex size-4 shrink-0 items-center justify-center">
         <Icon className="size-4" aria-hidden />
       </span>
       <span className="min-w-0 truncate">{item.label}</span>
       {item.badge !== undefined && (
-        <Badge variant="neutral" className="ml-auto shrink-0">
+        <Badge variant="soft-neutral" className="ml-auto shrink-0">
           {item.badge}
         </Badge>
       )}

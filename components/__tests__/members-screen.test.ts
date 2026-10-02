@@ -67,8 +67,8 @@ describe("멤버 화면 — 페이지", () => {
    * 여기서는 프리미티브가 그 짝을 놓지 않는지만 본다.
    */
   it("카드 제목은 id가 있으면 포커스도 받는다", () => {
-    const card = read("components/ui/row-card.tsx");
-    expect(card).toMatch(/id=\{titleId\}/);
+    const card = read("components/ui/card.tsx");
+    expect(card).toMatch(/id=\{id\}/);
     expect(card).toMatch(/tabIndex=\{titleId === undefined \? undefined : -1\}/);
   });
 
@@ -144,17 +144,17 @@ describe("멤버 화면 — 카드", () => {
 
   it.each([LIST, PENDING])("%s가 공유 카드 프리미티브를 쓴다 — `/projects`와 같은 그릇이다", (file) => {
     const src = read(file);
-    expect(src).toContain('from "@/components/ui/row-card"');
-    expect(src).toMatch(/<RowCard\b/);
-    expect(src).toMatch(/<RowCardList\b/);
-    expect(src).toMatch(/<RowCardItem\b/);
+    expect(src).toContain('from "@/components/ui/card"');
+    expect(src).toMatch(/<Card\b/);
+    expect(src).toMatch(/<CardList\b/);
+    expect(src).toMatch(/<li\b/);
   });
 
   /**
    * ⚠️ **`<ul>`이 카드 제목에 묶인다** — 카드가 둘이라 "list, N items"만으로는 어느 목록인지 안 갈린다.
    */
   it.each([LIST, PENDING])("%s가 목록을 카드 제목에 묶는다", (file) => {
-    expect(read(file)).toMatch(/labelledBy=\{headingId\}/);
+    expect(read(file)).toMatch(/aria-labelledby=\{headingId\}/);
   });
 
   /**
@@ -199,8 +199,8 @@ describe("멤버 행 — 캔버스 값 그대로", () => {
   });
 
   it.each([
-    // 4-W3(ux-drift-unify) — 누를 수 있는·목록 행의 세로 padding은 `py-[13px]` 한 벌이다(PanelRow·EventRow·Sources·Settings와 같다).
-    ["행 padding 13/14/13/12", ROW, ["py-[13px]", "pr-3.5", "pl-3"]],
+    // 4-W3(ux-drift-unify) — 누를 수 있는·목록 행의 세로 padding은 `py-row-y` 한 벌이다(PanelRow·EventRow·Sources·Settings와 같다).
+    ["행 padding 13/14/13/12", ROW, ["py-row-y", "pr-3.5", "pl-3"]],
     ["행 요소 gap 16", ROW, ["gap-4"]],
     ["오른쪽 군 gap 8", ROW, ["gap-2"]],
     /** ⚠️ **무게까지 센다** — 15만 세면 `font-medium`을 지워도 green이다(리뷰 🟡5에서 실측). */

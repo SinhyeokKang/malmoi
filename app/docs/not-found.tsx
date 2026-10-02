@@ -1,7 +1,8 @@
-import Link from "next/link";
+import { Link as InlineLink } from "@/components/ui/link";
+
 
 import { DocEyebrow, DocFrame } from "@/components/docs/doc-frame";
-import { DOC_LINK } from "@/components/docs/classes";
+
 import { RequestedPath } from "@/components/docs/requested-path";
 import { PublicScroller } from "@/components/public-shell/scroller";
 import { m } from "@/lib/i18n";
@@ -21,9 +22,9 @@ export default function DocsNotFound() {
         <p className="text-prose mt-5 leading-[1.75] text-pretty">
           {t.body(
             <RequestedPath />,
-            <Link href={routes.docs()} className={DOC_LINK}>
+            <InlineLink href={routes.docs()} >
               {t.overview}
-            </Link>,
+            </InlineLink>,
           )}
         </p>
       </DocFrame>

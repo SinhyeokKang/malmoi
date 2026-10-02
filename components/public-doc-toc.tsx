@@ -118,7 +118,7 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
               onClick={(event) => onClick(event, id, index)}
               aria-current={index === current ? "location" : undefined}
               className={cn(
-                "-ml-px block border-l py-1.5 pr-0 pl-3 text-xs leading-[1.5] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+                "-ml-px block border-l py-1.5 pr-0 pl-3 text-xs leading-normal focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
                 index === current ? "border-foreground text-foreground" : "text-muted-foreground hover:text-foreground border-transparent",
               )}
             >

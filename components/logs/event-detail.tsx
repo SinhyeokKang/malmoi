@@ -1,23 +1,26 @@
-import Link from "next/link";
+import { ButtonLink } from "@/components/ui/button";
+import { Link as InlineLink } from "@/components/ui/link";
+import { Fact } from "@/components/ui/facts";
+
 import type { ReactNode } from "react";
 
-import { CopyButton } from "@/components/onboarding/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { EventGlyph } from "@/components/logs/glyph";
 import { Alert } from "@/components/ui/alert";
-import { ResultBadge } from "@/components/logs/result-badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { RoleBadges } from "@/components/logs/role-badges";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonClass } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { Table, TableBody } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
-import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, logsResultTone, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
+import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, surfaceResultState, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 import { utcMinute } from "@/lib/utc-time";
-import { cn } from "@/lib/utils";
+
 
 /**
  * 이벤트 상세의 **본문** (캔버스 `1d`–`1f`).
@@ -58,9 +61,9 @@ export function EventDetail({
         <span className="flex min-w-0 flex-1 flex-col gap-1 pr-9">
           {/* `[종류][결과]` 배지다(4-Y21) — 종류 낱말은 행 보조줄의 첫 배지와 같다(`eventKindWord`). 옛 muted 글자 `Sync run`은 같은 종류의 두 번째 낱말이었다. */}
           <span data-event-detail-kind className="flex flex-wrap items-center gap-2">
-            <Badge variant="neutral">{eventKindWord(row)}</Badge>
-            {view.label !== null && <ResultBadge tone={view.tone} label={view.label} />}
-            {view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
+            <Badge variant="soft-neutral">{eventKindWord(row)}</Badge>
+            {view.state !== null && <StatusBadge state={view.state} />}
+            {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
           </span>
           <DialogTitleSlot.Title className="text-lg font-medium text-pretty">
             {eventSentence(row, {
@@ -87,17 +90,17 @@ export function EventDetail({
         <div className="border-border overflow-hidden rounded-lg border">
           <Table scrollable={false}>
             <TableBody>
-              <Field label={m.logs.detail.labels.reference}>
+              <Fact as="tr" label={m.logs.detail.labels.reference}>
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="[overflow-wrap:anywhere]">{row.ref}</span>
+                  <span className="wrap-anywhere">{row.ref}</span>
                   {/* 동료에게 붙여넣는 것이 링크보다 짧고 **권한과 무관**하다 — 받은 사람은 검색창에 넣는다. */}
                   <CopyButton value={row.ref} label={m.logs.detail.actions.copy} size="sm" />
                 </span>
-              </Field>
+              </Fact>
               {fields(row).map(([label, value]) => (
-                <Field key={label} label={label}>
+                <Fact as="tr" key={label} label={label}>
                   {value}
-                </Field>
+                </Fact>
               ))}
             </TableBody>
           </Table>
@@ -113,22 +116,22 @@ export function EventDetail({
 
         {row.payload?.kind === "IMPORT" && row.payload.surfaces.length > 0 && (
           <div className="border-divider flex flex-col gap-2 border-t pt-4">
-            <span className="text-neutral-400 text-xs">{m.logs.detail.labels.resultPerSource}</span>
+            <span className="text-gray-dim text-xs">{m.logs.detail.labels.resultPerSource}</span>
             <div className="border-border overflow-hidden rounded-lg border">
               {row.payload.surfaces.map((surface, index) => (
                 <div key={surface.surfaceSlug} className={`flex items-start gap-3 px-3.5 py-3 ${index === 0 ? "" : "border-border border-t"}`}>
-                  <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                  <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                     <span className="text-base font-medium">{surface.surfaceSlug}</span>
-                    <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
+                    <span className="text-muted-foreground text-xs wrap-anywhere">
                       {surface.count === null ? m.logs.value.notRecorded : m.logs.meta.keys(surface.count)}
                       {surface.reason === null ? "" : ` · ${importReasonMessage(surface.reason)}`}
                     </span>
                   </span>
                   {/*
                     ⚠️ **소스별 결과도 머리와 같은 Logs 결과 톤이다** (malmoi#163 · D3③) — 옛 별도 표는 성공이 초록이라 같은 모달의 머리
-                    Synced(무색)와 같은 낱말이 두 톤이었다. 상태 값이 사건 결과와 같은 이름이라 `logsResultTone`을 그대로 지난다.
+                    Synced(무색)와 같은 낱말이 두 톤이었다. 소스별 결과도 `surfaceResultState`가 같은 상태 키로 옮긴다.
                   */}
-                  <span className="shrink-0"><ResultBadge tone={logsResultTone(surface.status)} label={surfaceWord(surface.status)} /></span>
+                  <span className="shrink-0"><StatusBadge state={surfaceResultState(surface.status)} /></span>
                 </div>
               ))}
             </div>
@@ -140,8 +143,8 @@ export function EventDetail({
         {row.result === "failed" && (
           <Note tone="danger" body={eventFailureMessage(row, archived)} note={row.kind === "PUBLISH" ? m.logs.detail.notes.publish : null} />
         )}
-        {row.result === "running" && <Note tone="neutral" body={m.logs.detail.noResult} note={null} />}
-        {row.subtype === "settings.pushTokenRotated" && <Note tone="neutral" body={m.logs.meta.tokenEffect} note={m.logs.detail.notes.token} />}
+        {row.result === "running" && <Note tone="muted" body={m.logs.detail.noResult} note={null} />}
+        {row.subtype === "settings.pushTokenRotated" && <Note tone="muted" body={m.logs.meta.tokenEffect} note={m.logs.detail.notes.token} />}
       </div>
 
       {/*
@@ -170,27 +173,17 @@ export function EventDetail({
  * 표 행의 `height`는 최소값으로 동작해 여러 줄 값은 그대로 늘어난다. 높이가 고정되면 baseline이
  * 위로 몰리므로 세로 정렬은 가운데다.
  */
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <TableRow className="h-12 hover:bg-transparent">
-      <TableHead scope="row" className="text-neutral-400 h-auto w-[104px] px-3.5 py-2.5 align-middle text-xs font-normal">
-        {label}
-      </TableHead>
-      <TableCell className="px-3.5 py-2.5 align-middle text-base whitespace-normal">{children}</TableCell>
-    </TableRow>
-  );
-}
 
 /** ⚠️ **값이 아닌 상태는 점선 테두리 + 회색 글자**로 한 번 더 갈린다 (캔버스 `1d`). */
 function ValueBlock({ label, value, muted }: { label: string; value: string | null; muted: boolean }) {
   const state = valueState(value);
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-neutral-400 text-xs">{label}</span>
+      <span className="text-gray-dim text-xs">{label}</span>
       {state.kind === "text" ? (
         /* ⚠️ **`bg-muted`(#f5f5f5)가 아니라 #fafafa다** — 시안의 Before 면이고, 흰 After와의 대비가
            한 단계 더 연해야 두 블록이 "같은 값의 두 시점"으로 읽힌다. */
-        <div className={`border-border rounded-md border px-3 py-2.5 text-base [overflow-wrap:anywhere] whitespace-pre-wrap ${muted ? "bg-neutral-50" : ""}`}>
+        <div className={`border-border rounded-md border px-3 py-2.5 text-base wrap-anywhere whitespace-pre-wrap ${muted ? "bg-neutral-50" : ""}`}>
           {state.text}
         </div>
       ) : (
@@ -207,12 +200,12 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
  *
  * ⚠️ **실패는 `danger`이되 `live="off"`다** (B6 r1, 2026-09-24 사용자). 상세는 **지난 기록**인데 `danger`의
  * 기본 알림은 `role="alert"`라 여는 순간 assertive로 끼어든다 — 결과가 방금 일어난 자리(Sync·Publish)의 판정을
- * 과거 기록에 적용하는 셈이다. 나머지(진행 중·토큰 회전)는 상시 안내라 `neutral`이다.
+ * 과거 기록에 적용하는 셈이다. 나머지(진행 중·토큰 회전)는 상시 안내라 `muted` 톤을 Alert의 `neutral` 모양으로 옮긴다.
  */
-function Note({ tone, body, note }: { tone: "danger" | "neutral"; body: string; note: string | null }) {
+function Note({ tone, body, note }: { tone: "danger" | "muted"; body: string; note: string | null }) {
   return (
     <div data-event-note>
-      <Alert variant={tone} size="compact" live="off">
+      <Alert variant={tone === "muted" ? "neutral" : tone} size="sm" live="off">
         <p className="text-pretty">{body}</p>
         {note !== null && <p className="text-muted-foreground mt-1 text-xs text-pretty">{note}</p>}
       </Alert>
@@ -225,13 +218,6 @@ function actorLabel(row: EventRow): string {
   if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;
-}
-
-function surfaceWord(status: "imported" | "partial" | "failed" | "superseded"): string {
-  if (status === "imported") return m.logs.status.imported;
-  if (status === "partial") return m.logs.status.partial;
-  if (status === "superseded") return m.logs.status.superseded;
-  return m.logs.status.failed;
 }
 
 /**
@@ -259,16 +245,16 @@ function fields(row: EventRow): [string, ReactNode][] {
     const closed = row.run !== null && row.run.prUrl !== null && (row.result === "nothingToSend" || row.result === "notSent");
     if (closed && row.run?.prUrl) out.push([m.logs.detail.labels.closedPullRequest, <>
       {m.logs.detail.closedPullRequest}{" "}
-      <a href={row.run.prUrl} target="_blank" rel="noreferrer" className="text-blue-600">{m.translations.publish.viewLink}</a>
+      <InlineLink href={row.run.prUrl} target="_blank" rel="noreferrer">{m.translations.publish.viewLink}</InlineLink>
     </>]);
     else out.push([
       m.logs.detail.labels.pullRequest,
       row.run?.prUrl == null ? (
         <span className="text-muted-foreground">{m.logs.detail.noPullRequest}</span>
       ) : (
-        <a href={row.run.prUrl} target="_blank" rel="noreferrer" className="text-blue-600">
+        <InlineLink href={row.run.prUrl} target="_blank" rel="noreferrer">
           {m.translations.publish.viewLink}
-        </a>
+        </InlineLink>
       ),
     ]);
     // 모달의 보류 줄과 같은 수다 — 같은 `SyncRun.withheld`에서 온다(delivery-invariants D7).
@@ -278,7 +264,7 @@ function fields(row: EventRow): [string, ReactNode][] {
   }
   if (payload?.kind === "TRANSLATION") {
     out.push([m.logs.detail.labels.source, payload.surfaceSlug]);
-    out.push([m.logs.detail.labels.key, <span className="[overflow-wrap:anywhere]">{payload.key}</span>]);
+    out.push([m.logs.detail.labels.key, <span className="wrap-anywhere">{payload.key}</span>]);
     out.push([m.logs.detail.labels.locale, payload.locale]);
   }
   if (payload?.kind === "IMPORT") {
@@ -309,17 +295,14 @@ function fields(row: EventRow): [string, ReactNode][] {
 
 /**
  * 시안의 푸터 버튼은 폼이 하나다 — [Close]와 목적지 링크가 `Button` `lg`로 정확히 겹친다
- * (primary — 2026-09-30 사용자 · `lg` — 1024 표면의 바닥, 3-Y6). ⚠️ **`ButtonLink`가 아니라 `buttonClass()`다** —
- * 셋 중 하나가 외부 리포로 나가는 `target="_blank"`라 `<a>`여야 하고, 그 차용은 `button.tsx`가 정한
- * 경로다(손으로 쓴 클래스 문자열은 `Button`이 받은 hover 교체 같은 갱신을 못 받는다).
+ * primary lg는 1024 표면의 다음 이동이다. ButtonLink가 형·링·외부 링크 계약을 함께 소유한다.
  */
-const FOOTER_LINK = cn(buttonClass({ variant: "primary", size: "lg" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none");
 
 /** 목적지 링크 하나 — 권한이 없거나 대상이 없으면 **그리지 않는다.** */
 function destination(row: EventRow, slug: string, canOpenSettings: boolean, repoUrl: string | null, translationHref: string | null): ReactNode {
-  if (row.kind === "TRANSLATION" && translationHref !== null) return <Link href={translationHref} className={FOOTER_LINK}>{m.logs.detail.actions.openTranslation}</Link>;
-  if (row.kind === "MEMBER") return <Link href={routes.members(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openMembers}</Link>;
-  if (row.kind === "SETTINGS" && canOpenSettings) return <Link href={routes.settings(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openSettings}</Link>;
-  if (row.kind === "PUBLISH" && repoUrl !== null) return <a href={repoUrl} target="_blank" rel="noreferrer" className={FOOTER_LINK}>{m.logs.detail.actions.openRepository}</a>;
+  if (row.kind === "TRANSLATION" && translationHref !== null) return <ButtonLink variant="primary" size="lg" href={translationHref}>{m.logs.detail.actions.openTranslation}</ButtonLink>;
+  if (row.kind === "MEMBER") return <ButtonLink variant="primary" size="lg" href={routes.members(slug)} >{m.logs.detail.actions.openMembers}</ButtonLink>;
+  if (row.kind === "SETTINGS" && canOpenSettings) return <ButtonLink variant="primary" size="lg" href={routes.settings(slug)} >{m.logs.detail.actions.openSettings}</ButtonLink>;
+  if (row.kind === "PUBLISH" && repoUrl !== null) return <ButtonLink variant="primary" size="lg" external href={repoUrl} newTab rel="noreferrer">{m.logs.detail.actions.openRepository}</ButtonLink>;
   return null;
 }

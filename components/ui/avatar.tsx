@@ -1,18 +1,16 @@
 "use client";
 
 import { useImageFallback } from "@/components/ui/image-tile";
-import { toneFill } from "@/components/ui/tone";
+import { hueFill } from "@/components/ui/tone";
 import { cn } from "@/lib/utils";
 
 /**
- * ⚠️ **모양이 대상을 말한다** (DESIGN §6.4): 사람은 원, 프로젝트는 라운드 사각. 같은 크기의 원 둘이
- * 사이드바에 나란히 있으면 프로젝트 전환과 사용자 메뉴가 구별되지 않는다.
+ * 사람의 원형 아바타다. 프로젝트 타일은 별도 프리미티브가 들며 shape 축의 소비자는 없다(T3).
  */
 export function Avatar({
   name,
   src,
   size = 24,
-  shape = "circle",
   className,
 }: {
   name: string;
@@ -23,10 +21,8 @@ export function Avatar({
    * ⚠️ **사진 렌더는 이 유니온과 무관하다** — `src`를 이미 받아 `<img>`를 그린다.
    */
   size?: 24 | 32 | 56;
-  shape?: "circle" | "square";
   className?: string;
 }) {
-  const shapeClass = shape === "circle" ? "rounded-full" : "rounded";
   // ⚠️ **테두리가 없다** (2026-09-25 사용자 — 2026-09-20의 `border border-border`를 걷었다). 사진·이니셜 두
   // 갈래가 함께 없어서 폴백이 일어나도 크기가 갈리지 않는다. 프로젝트 타일도 같은 판정이다.
   const style = { width: size, height: size };
@@ -38,7 +34,7 @@ export function Avatar({
     // ⚠️ 공급자 사진은 핫링크라 공급자 쪽 일시 실패·만료가 그대로 여기 온다 — Blob을 지나는 것은 업로드뿐이다.
     // ⚠️ **`ref`가 한 번 더 본다** — 하이드레이션 전에 끝난 실패는 `onError`로 안 온다(서버가 그린 `/account`).
     return <img src={image.shown} alt="" style={style} onError={image.onError} ref={image.ref}
-      className={cn(shapeClass, "shrink-0 object-cover", className)} />;
+      className={cn("rounded-full", "shrink-0 object-cover", className)} />;
   }
   return (
     <span
@@ -53,8 +49,8 @@ export function Avatar({
          */
         "inline-flex shrink-0 items-center justify-center font-medium text-white",
         size === 56 ? "text-xl" : "text-xs",
-        toneFill(name),
-        shapeClass,
+        hueFill(name),
+        "rounded-full",
         className,
       )}
     >

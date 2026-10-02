@@ -1,7 +1,8 @@
+import { Link as InlineLink } from "@/components/ui/link";
 import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
+
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -67,23 +68,23 @@ export default async function SignIn({
           <ProviderButton provider="google" label={m.signIn.google} variant="default" />
 
           {dest.kind === "invite" && (
-            <Link href={routes.invite(dest.token)} className="text-center text-sm text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
+            <InlineLink href={routes.invite(dest.token)} className="text-center text-sm ">
               {m.signIn.backToInvitation}
-            </Link>
+            </InlineLink>
           )}
           {dest.kind === "oauth" && (
-            <Link href={routes.oauthAuthorize({ request: dest.requestId })} className="text-center text-sm text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
+            <InlineLink href={routes.oauthAuthorize({ request: dest.requestId })} className="text-center text-sm ">
               {m.signIn.backToAuthorization}
-            </Link>
+            </InlineLink>
           )}
           <p className="text-muted-foreground text-center text-xs leading-relaxed">
             {m.signIn.consent.before}
-            <Link
+            <InlineLink
               href={routes.privacy()}
-              className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+
             >
               {m.signIn.consent.link}
-            </Link>
+            </InlineLink>
             {m.signIn.consent.after}
           </p>
         </div>
@@ -122,7 +123,7 @@ function ProviderButton({
       <ProviderSubmit
         label={label}
         variant={variant}
-        icon={provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
+        icon={provider === "github" ? <GithubIcon aria-hidden className="size-4" /> : <GoogleIcon aria-hidden className="size-4" />}
       />
     </form>
   );

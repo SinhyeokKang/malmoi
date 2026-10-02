@@ -292,12 +292,14 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
   });
 
   /**
-   * ⚠️ **`text-link`는 테마에 없는 클래스다** (2026-09-23 실측) — Tailwind가 조용히 버려 링크가 본문과 같은
-   * 검정 글자로 섰다. 인라인 링크 색은 `text-blue-600`(Button `link`와 같은 값)이다.
+   * 2026-09-23에는 미등록 `text-link`가 버려져 링크가 검정이었다. T2는 같은 파랑의 별칭을 등록한다.
+   * 등록과 소비를 함께 센다. 실제 CSS 생성·값 동치는 spelling-equivalence.test.ts가 검사한다.
    */
-  it("정의되지 않은 `text-link` 클래스를 쓰지 않는다", () => {
+  it("인라인 링크가 등록된 `text-link` 토큰을 쓴다", () => {
+    expect(read("app/globals.css")).toMatch(/--color-link:\s*var\(--color-blue-600\)/);
+    expect(read("components/ui/link.tsx")).toContain("text-link");
     for (const path of ["components/settings/ci-card.tsx", "components/sources/source-detail-modal.tsx", "components/sources/sources-screen.tsx"]) {
-      expect(read(path), path).not.toContain("text-link");
+      expect(read(path), path).toContain("@/components/ui/link");
     }
   });
 
@@ -413,6 +415,6 @@ describe("설정 화면 — 진행 중이 지난 실패를 이긴다", () => {
  * 전부 같은 자리라 필드마다 `ring-inset`을 덧대는 대신 여기서 2px을 내준다.
  */
 it("온보딩 모달 본문이 포커스 링 자리를 남긴다", () => {
-  const src = read("components/ui/modal.tsx");
+  const src = read("components/ui/large-modal.tsx");
   expect(src).toContain("px-8 pt-0.5 pb-6");
 });

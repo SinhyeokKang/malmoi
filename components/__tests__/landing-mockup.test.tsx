@@ -11,7 +11,7 @@ import { m } from "@/lib/i18n";
 import { navFooterItems, navZones } from "@/lib/shell/nav";
 
 import { CloseButton } from "@/components/ui/close-button";
-import { ListItemButton } from "@/components/ui/list-item";
+import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 import { find, render } from "./helpers/dom";
@@ -43,6 +43,22 @@ async function mount() {
 }
 
 const layer = (container: HTMLElement, k: number) => find<HTMLElement>(container, `[data-landing-layer="${k}"]`);
+
+describe("목업 창", () => {
+  it("16:10 컨테이너 안에서 44px 툴바와 씬 영역이 분리된다", async () => {
+    const container = await mount();
+    const frame = find<HTMLElement>(container, "[data-landing-frame]");
+    expect(frame.style.width).toBe("1440px");
+    expect(frame.style.height).toBe("900px");
+    const toolbar = find<HTMLElement>(frame, "[data-landing-toolbar]");
+    expect(toolbar.style.height).toBe("44px");
+    expect(toolbar.children).toHaveLength(3);
+    const screen = find<HTMLElement>(frame, "[data-landing-screen]");
+    expect(screen.style.top).toBe("44px");
+    expect(screen.querySelectorAll("[data-landing-layer]")).toHaveLength(5);
+    expect(screen.contains(toolbar)).toBe(false);
+  });
+});
 
 describe("목업 — 조작 대상이 아니다", () => {
   it("프레임이 `aria-hidden`+`inert`이고 안에 인터랙티브 태그가 0개다", async () => {
@@ -111,6 +127,19 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect(kids[1]?.className).toContain("bg-border-subtle");
   });
 
+  it("모든 씬의 사이드바 맨 아래에 Collapse가 있다", async () => {
+    const container = await mount();
+    for (let k = 0; k < 5; k += 1) {
+      const footer = find(layer(container, k), '[data-landing-zone="footer"]');
+      const collapse = find<HTMLElement>(footer, "[data-landing-collapse]");
+      expect(footer.lastElementChild).toBe(collapse);
+      expect(collapse.textContent).toBe(m.common.nav.collapseSidebar);
+      expect(collapse.tagName).toBe("SPAN");
+      expect(collapse.querySelector("svg.lucide-panel-left-close")).not.toBeNull();
+      expect(collapse.className.split(" ")).toEqual(expect.arrayContaining(["h-8", "px-2", "font-normal", "justify-start"]));
+    }
+  });
+
   it("LNB 폭이 실제 셸의 기본 240이다", async () => {
     expect(find(layer(await mount(), 0), "[data-landing-lnb]").className).toContain("w-[240px]");
   });
@@ -120,7 +149,9 @@ describe("목업 — 제품과 같은 구조다", () => {
     const tree = find<HTMLElement>(scene, "[data-landing-tree]");
     expect(tree.className).toContain("w-[260px]");
     expect(tree.textContent).toContain(m.translations.workspace.tree.title);
-    const [current, ...rest] = fixture.sources;
+    const current = fixture.sources.find(source => source.slug === fixture.source);
+    const rest = fixture.sources.filter(source => source.slug !== fixture.source);
+    expect([...tree.querySelectorAll("[data-landing-source]")].map(node => node.getAttribute("data-landing-source"))).toEqual(fixture.sources.map(source => source.slug).sort());
     const open = find(tree, `[data-landing-source="${current?.slug}"]`);
     expect(open.textContent).toContain(m.translations.workspace.tree.allNamespaces);
     for (const namespace of current?.namespaces ?? []) expect(open.textContent).toContain(namespace.name);
@@ -128,7 +159,7 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect((current?.namespaces ?? []).reduce((sum, n) => sum + n.keyCount, 0)).toBe(current?.keyCount);
     expect(fixture.sources.reduce((sum, source) => sum + source.keyCount, 0)).toBe(fixture.keyCount);
     for (const source of rest) expect(find(tree, `[data-landing-source="${source.slug}"]`).children).toHaveLength(1);
-    // 선택된 네임스페이스 칸은 보고 있는 소스 안의 `All namespaces` 하나다. 면은 실물 `ListItemButton selected`의 0.07이다(5-Y7).
+    // 선택된 네임스페이스 칸은 보고 있는 소스 안의 `All namespaces` 하나다. 면은 실물 `ListRow selected`의 0.07이다(5-Y7).
     expect([...tree.querySelectorAll(".bg-foreground\\/\\[0\\.07\\]")].map((node) => node.textContent)).toEqual([`${m.translations.workspace.tree.allNamespaces}${current?.keyCount}`]);
   });
 
@@ -178,6 +209,54 @@ describe("목업 — 제품과 같은 구조다", () => {
 });
 
 describe("목업 — 씬이 이야기를 든다", () => {
+  it("⑤ 전달 뒤 배경에는 미전달 표시가 없고 Publish가 꺼지며 결과를 다시 열 수 있다", async () => {
+    const scene = layer(await mount(), 4);
+    const publish = find<HTMLElement>(scene, "[data-landing-publish]");
+    expect(publish.getAttribute("aria-disabled")).toBe("true");
+    expect(publish.textContent).toBe(p.button);
+    expect(scene.textContent).toContain(p.viewResult);
+    expect(scene.textContent).not.toContain(m.translations.workspace.list.notSent);
+    expect(scene.textContent).not.toContain(m.translations.workspace.footer.savedNotSent);
+    expect(scene.textContent).not.toContain(m.translations.workspace.revert.button);
+    expect(scene.querySelector("[data-landing-hold]")).toBeNull();
+  });
+
+  it("①②는 미전달 없이 시작하고 ③ 저장 뒤에만 보류 안내가 생긴다", async () => {
+    const container = await mount();
+    expect(fixture.unsentBefore).toBe(0);
+    expect(fixture.unsentAfter).toBe(1);
+    for (const k of [0, 1]) {
+      const scene = layer(container, k);
+      expect(scene.querySelector("[data-landing-hold]")).toBeNull();
+      expect(scene.textContent).not.toContain(m.translations.workspace.list.notSent);
+      const publish = find(scene, "[data-landing-publish]");
+      expect(publish.getAttribute("aria-disabled")).toBe("true");
+      expect(publish.textContent).toBe(p.button);
+    }
+    const saving = find(layer(container, 2), "[data-landing-hold]");
+    expect(saving.closest('[data-landing-badge="after"]')).not.toBeNull();
+    const saved = find(layer(container, 3), "[data-landing-hold]");
+    expect(saved.textContent).toContain(m.translations.banner.paused(1));
+    expect(fixture.diff).toEqual([{ key: fixture.selected.key, code: fixture.selected.typedCode, before: null, after: fixture.selected.typed }]);
+  });
+
+  it("② 타이핑 입력에 실제 Textarea의 활성 링이 있다", async () => {
+    const field = find(layer(await mount(), 1), "[data-landing-typed]").parentElement!;
+    expect(field.className.split(" ")).toEqual(expect.arrayContaining(["ring-ring", "ring-2"]));
+  });
+
+  it("공통 사이드바의 머리와 행은 실제 ROW의 h-8 px-2를 따른다", async () => {
+    const scene = layer(await mount(), 0);
+    const rows = [...scene.querySelectorAll('[data-landing-nav]'), find(scene, '[data-landing-zone="project"] > p')];
+    for (const row of rows) expect(row.className.split(" ")).toEqual(expect.arrayContaining(["h-8", "px-2"]));
+  });
+
+  it("④ diff 국기에 실제 표와 같은 얇은 윤곽선이 있다", async () => {
+    const flags = layer(await mount(), 3).querySelectorAll('[data-landing-diff-flag]');
+    expect(flags).toHaveLength(fixture.diff.length);
+    for (const flag of flags) expect(flag.className.split(" ")).toEqual(expect.arrayContaining(["ring-1", "ring-foreground/[0.06]", "rounded-xs"]));
+  });
+
   it("① 번역 화면 — 실제 사전의 화면 이름·Publish·키 목록, `fr`은 비어 있다", async () => {
     const text = layer(await mount(), 0).textContent ?? "";
     expect(text).toContain(m.common.nav.translations);
@@ -198,7 +277,8 @@ describe("목업 — 씬이 이야기를 든다", () => {
     const scene = layer(await mount(), 2);
     const before = find<HTMLElement>(scene, "[data-landing-badge=before]");
     const after = find<HTMLElement>(scene, "[data-landing-badge=after]");
-    expect(before.textContent).toContain(String(fixture.unsentBefore));
+    expect(before.querySelector("[data-landing-publish]")?.getAttribute("aria-disabled")).toBe("true");
+    expect(before.textContent).toBe(p.button);
     expect(after.textContent).toContain(String(fixture.unsentAfter));
     expect(before.className).toContain("group-data-[badge=1]/frame:hidden");
     expect(after.className).toMatch(/(^|\s)hidden(\s|$)/);
@@ -209,7 +289,7 @@ describe("목업 — 씬이 이야기를 든다", () => {
     const text = layer(await mount(), 3).textContent ?? "";
     expect(text).toContain(p.previewTitle(fixture.unsentAfter));
     expect(text).toContain(p.previewIntro(fixture.repo));
-    expect(text).toContain(p.beforeLabel);
+    expect(text).not.toContain(p.beforeLabel);
     expect(text).toContain(p.afterLabel);
     for (const row of fixture.diff) expect(text).toContain(row.after);
   });
@@ -222,7 +302,7 @@ describe("목업 — 씬이 이야기를 든다", () => {
   });
 });
 
-describe("목업 — 1440×810 안에 들어간다 (#112)", () => {
+describe("목업 — 화면 영역 안에 들어간다 (#112)", () => {
   /**
    * ⚠️ **jsdom은 레이아웃이 없어 높이를 못 잰다** — 1280×720 시절 실측(0.964 배율, 로케일 목록 358px)에서 행 넷(en·de·es·fr)이 약 400px라
    * `fr` 칸이 푸터 밑으로 들어갔다. 예산을 행 수로 묶고, 목록이 넘쳐도 푸터 위로 칠하지 않게 자르는지 본다.
@@ -287,7 +367,7 @@ describe("목업 소스 — 문구는 사전을 지난다", () => {
   });
 
   /** 열거형 prop(`phase`·`variant`·`size`·상태 키 `state`)은 문구가 아니라 코드 값이다. */
-  const CODE_PROPS = new Set(["className", "phase", "variant", "size", "state"]);
+  const CODE_PROPS = new Set(["className", "phase", "variant", "size", "state", "display"]);
 
   it("문자열 prop 리터럴이 className·data-*·열거형 말고 없다", () => {
     const offenders = files.flatMap((name) =>
@@ -356,7 +436,7 @@ describe("목업 — 상태 표시가 실물과 같다", () => {
 
   it("Unsent는 실물 `StatusBadge unsent`다 — 손 조립 알약이 아니다 (Q3)", async () => {
     const real = await classes(<StatusBadge state="unsent" />);
-    const scene = layer(await mount(), 4);
+    const scene = layer(await mount(), 3);
     const badges = [...scene.querySelectorAll("span")].filter((node) => node.textContent === m.translations.workspace.list.notSent && node.children.length === 0);
     expect(badges.length).toBeGreaterThan(0);
     for (const badge of badges) expect(badge.className).toBe(real);
@@ -372,8 +452,8 @@ describe("목업 — 상태 표시가 실물과 같다", () => {
     expect(glyph.getAttribute("class")).not.toContain("green");
   });
 
-  it("선택 면은 실물 `ListItemButton selected`의 값이다 (5-Y7)", async () => {
-    const face = (await classes(<ListItemButton selected />)).split(" ").find((token) => token.startsWith("bg-foreground/"))!;
+  it("선택 면은 실물 `ListRow selected`의 값이다 (5-Y7)", async () => {
+    const face = (await classes(<ListRow as="button" variant="canvas" ringInset selected />)).split(" ").find((token) => token.startsWith("bg-foreground/"))!;
     const scene = layer(await mount(), 0);
     expect(find(scene, `[data-landing-row="${fixture.selected.key}"]`).className.split(" ")).toContain(face);
     expect(scene.innerHTML).not.toContain("bg-foreground/[0.04]");

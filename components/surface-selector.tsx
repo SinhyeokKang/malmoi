@@ -15,7 +15,7 @@ export function SurfaceSelector({ value, surfaces, pending, onChange }: {
   // ⚠️ 닫힌 선택기의 전체 경로는 `title`(hover)만이 아니라 description으로도 닿는다 (audit #38 — DESIGN §7의 tooltip 줄).
   return <Select value={value} disabled={pending} onValueChange={onChange}>
     {path !== null && <span id={pathId} className="sr-only">{path}</span>}
-    <SelectTrigger className="w-48" aria-label={m.surfaces.label} aria-describedby={path === null ? undefined : pathId} title={path ?? undefined}>
+    <SelectTrigger width={192}  aria-label={m.surfaces.label} aria-describedby={path === null ? undefined : pathId} title={path ?? undefined}>
       <SelectValue>{(() => { const current = surfaces.find(s => s.slug === value); return current?.pathTemplate ? surfaceLabel(current.pathTemplate) : value; })()}</SelectValue>
     </SelectTrigger>
     <SelectContent>{surfaces.map(surface => <SelectItem key={surface.slug} value={surface.slug}>

@@ -1,11 +1,14 @@
 "use client";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { IconTile } from "@/components/ui/icon-tile";
 
 import { useFormStatus } from "react-dom";
 import { unstable_rethrow } from "next/navigation";
 import { useId, useRef, useState, useTransition } from "react";
 
 import { unlinkLoginMethod, startLoginMethodConnect } from "@/app/(edit)/account/actions";
-import { PanelCard, PanelRow, PanelRows } from "@/components/ui/panel-card";
+import { ListRow } from "@/components/ui/list-row";
+import { Card, CardRows } from "@/components/ui/card";
 import type { ConnectOutcome } from "@/lib/account-connect/plan";
 import { Alert } from "@/components/ui/alert";
 import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
@@ -51,22 +54,22 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
     : outcome !== null ? <Alert inset variant={outcome === "connected" ? "success" : "danger"} live={outcome === "connected" ? "status" : undefined}>{m.errors.connectMethod[outcome]}</Alert>
     : undefined;
   return (
-    <PanelCard
+    <Card
       title={m.link.methods.title}
       /**
        * ⚠️ **새 variant를 만들지 않았다** — `neutral`이 이미 `bg-foreground/5 text-foreground`이고
        * 캔버스가 준 배지 스펙(radius 999 · `2px 6px` · 13/500 · `min-width:20px`)과 프리미티브의
        * 기본값이 그대로 맞는다. 같은 값의 variant를 하나 더 두면 다음 사람이 어느 쪽을 쓸지 고민한다.
        */
-      badge={<Badge variant="neutral">{m.link.methods.count(counts.connected, counts.total)}</Badge>}
+      badge={<Badge variant="soft-neutral">{m.link.methods.count(counts.connected, counts.total)}</Badge>}
       notice={notice}
     >
-      <PanelRows>
+      <CardRows>
         {rows.map((row) => (
           <MethodRow key={row.provider} row={row} removable={canUnlink(connected, row.provider)} onUnconfirmed={setUnconfirmed} />
         ))}
-      </PanelRows>
-    </PanelCard>
+      </CardRows>
+    </Card>
   );
 }
 
@@ -87,48 +90,36 @@ function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginPr
   const controls = useRef<HTMLDivElement>(null);
   useLandAfter(pending, () => controls.current?.querySelector<HTMLElement>("button"));
   return (
-    <PanelRow
-      // 브랜드 마크는 무채색 위계의 대상이 아니라 `--foreground`를 그대로 받는다 (DESIGN §6.4).
-      glyph={row.provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
-      name={label}
-      /**
-       * ⚠️ **상태가 본문이다** — 보조 줄로 내리면 부연으로 읽히는데, 이 행이 답하는 질문이 곧
-       * "붙어 있나"다 (핸드오프 v2 §항목 규격).
-       *
-       * ⚠️ **보조 줄을 그리지 않는다.** 캔버스는 연결됨에 `Signed in with this method last on
-       * {date}.`를 두는데 **그 데이터가 리포에 없다**(`Account`에 마지막 사용 컬럼이 없고 `Session`은
-       * provider를 모른다). 미연결 행에만 보조를 그리면 두 행의 높이가 갈리므로 **둘 다 안 그린다** —
-       * 문서화된 이탈이다(DESIGN §6.67).
-       */
-      status={row.connected ? m.link.methods.connected : m.link.methods.notConnected}
-      statusTone={row.connected ? "success" : "neutral"}
-    >
-      <div ref={controls} className="contents">
-      {!row.connected ? (
-        <form action={startLoginMethodConnect.bind(null, row.provider)}>
-          <ConnectButton label={label} />
-        </form>
-      ) : removable ? (
-        <DisconnectButton
-          label={label}
-          pending={pending}
-          onConfirm={() => { onUnconfirmed(false); startTransition(async () => {
-            // 성공·거부 모두 `redirect`(= reject)다 — 되던지고, 그 밖의 throw만 확인 불가로 접는다.
-            try { await unlinkLoginMethod(row.provider); } catch (thrown) { unstable_rethrow(thrown); onUnconfirmed(true); }
-          }); }}
-        />
-      ) : (
-        <>
-          {/* ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */}
-          <span id={reasonId} className="text-muted-foreground text-xs">{m.link.methods.lastMethod}</span>
-          {/* ⚠️ **비활성도 접근성 트리에는 남는다** — 이름이 없으면 무엇의 해제인지 말하지 않는다.
-              ⚠️ **`disabled`가 아니라 `aria-disabled`다** (audit #37) — 진짜 `disabled`는 포커스를 못 받아 describedby가
-              닿을 길이 없었다(DESIGN §6.65). 클릭은 여기서 막는다 — Dialog를 아예 세우지 않는 갈래다. */}
-          <Button variant="danger" aria-label={m.link.methods.disconnectLabel(label)} aria-describedby={reasonId} aria-disabled onClick={event => event.preventDefault()}>{m.link.methods.disconnect}</Button>
-        </>
-      )}
-      </div>
-    </PanelRow>
+    <ListRow
+        as="li"
+        className="border-border border-t first:border-t-0"
+        icon={<IconTile>{row.provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}</IconTile>}
+        title={<span className="flex min-w-0 items-center gap-2 text-base"><span className="truncate font-medium">{label}</span><StatusBadge state={row.connected ? "connected" : "notConnected"} className="shrink-0" /></span>}
+        actions={<div ref={controls} className="contents">
+        {!row.connected ? (
+          <form action={startLoginMethodConnect.bind(null, row.provider)}>
+            <ConnectButton label={label} />
+          </form>
+        ) : removable ? (
+          <DisconnectButton
+            label={label}
+            pending={pending}
+            onConfirm={() => { onUnconfirmed(false); startTransition(async () => {
+              // 성공·거부 모두 `redirect`(= reject)다 — 되던지고, 그 밖의 throw만 확인 불가로 접는다.
+              try { await unlinkLoginMethod(row.provider); } catch (thrown) { unstable_rethrow(thrown); onUnconfirmed(true); }
+            }); }}
+          />
+        ) : (
+          <>
+            {/* ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06). */}
+            <span id={reasonId} className="text-muted-foreground text-xs">{m.link.methods.lastMethod}</span>
+            {/* ⚠️ **비활성도 접근성 트리에는 남는다** — 이름이 없으면 무엇의 해제인지 말하지 않는다.
+                ⚠️ **`disabled`가 아니라 `aria-disabled`다** (audit #37) — 진짜 `disabled`는 포커스를 못 받아 describedby가
+                닿을 길이 없었다(DESIGN §6.65). 클릭은 여기서 막는다 — Dialog를 아예 세우지 않는 갈래다. */}
+            <Button variant="danger" aria-label={m.link.methods.disconnectLabel(label)} aria-describedby={reasonId} aria-disabled onClick={event => event.preventDefault()}>{m.link.methods.disconnect}</Button>
+          </>
+        )}
+        </div>} />
   );
 }
 
@@ -168,7 +159,7 @@ function DisconnectButton({ label, pending, onConfirm }: { label: string; pendin
         // 제목이 대상을 명시한다 — 이 화면에 같은 라벨의 [Disconnect]가 둘이다.
         title={m.link.methods.confirmDisconnect(label)}
         description={m.link.methods.confirmHint}
-        footer={
+        actions={
           <>
             <DialogClose asChild>
               <Button data-initial-focus variant="default">{m.common.cancel}</Button>

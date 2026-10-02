@@ -221,3 +221,21 @@ describe("해제 뒤 행이 바뀌면 그 행의 새 컨트롤로 (#32)", () => 
     expect(document.activeElement?.textContent).toBe(m.settings.account.connect);
   });
 });
+
+it("actual GitHub unavailable omits actions box; connected retains contents ref and disconnect focus landing", async () => {
+  const view = await render(<GithubSection account={{status: "unavailable"}} installedRepoCount={null} settingsUrl={null} />);
+  const row = () => view.container.querySelector("li")!;
+  expect(row().children).toHaveLength(2);
+  expect(row().querySelector(".contents")).toBeNull();
+  expect(row().querySelector("button, a")).toBeNull();
+  await view.rerender(<GithubSection account={{status: "ok", login: "octo"}} installedRepoCount={2} settingsUrl="https://github.com/settings/installations" />);
+  expect(row().children).toHaveLength(3);
+  expect(row().lastElementChild?.className).toBe("flex shrink-0 items-center gap-2");
+  const controls = row().lastElementChild?.firstElementChild;
+  expect(controls?.className).toBe("contents");
+  expect(controls?.querySelector("a")?.getAttribute("href")).toBe("https://github.com/settings/installations");
+  expect(row().textContent).toContain("Installed on 2 repositories.");
+  await view.rerender(<GithubSection account={{status: "ok", login: null}} installedRepoCount={null} settingsUrl={null} />);
+  expect(document.activeElement?.textContent).toBe(m.settings.account.connect);
+  expect(row().lastElementChild?.firstElementChild?.className).toBe("contents");
+});

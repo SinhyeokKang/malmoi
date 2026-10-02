@@ -29,3 +29,40 @@ describe("cn — text-prose 등록", () => {
     expect(cn("text-sm", "text-prose")).toBe("text-prose");
   });
 });
+
+describe("cn — T2 토큰이 기존 철자의 충돌 제거를 보존한다", () => {
+  it.each([
+    ["leading-[1.6]", "leading-body", "leading-normal"],
+    ["leading-[1.7]", "leading-prose", "leading-normal"],
+    ["leading-[1.55]", "leading-translation", "leading-normal"],
+    ["leading-[1.7]", "leading-prose", "text-xs/6"],
+    ["py-[13px]", "py-row-y", "py-0"],
+    ["py-[13px]", "py-row-y", "p-0"],
+    ["gap-[3px]", "gap-copy-gap", "gap-0"],
+    ["gap-[3px]", "gap-copy-gap", "gap-x-0"],
+    ["space-y-[3px]", "space-y-copy-gap", "space-y-0"],
+    ["min-w-[1280px]", "min-w-shell-min", "min-w-0"],
+    ["h-[calc(100svh-96px)]", "h-[calc(100svh-var(--spacing-modal-gutter))]", "h-0"],
+    ["w-[calc(100%-96px)]", "w-[calc(100%-var(--spacing-modal-gutter))]", "w-0"],
+    ["text-blue-600", "text-link", "text-red-700"],
+    ["bg-blue-600/[0.14]", "bg-link/[0.14]", "bg-background"],
+    ["text-neutral-300", "text-gray-light", "text-foreground"],
+    ["text-neutral-400", "text-gray-dim", "text-foreground"],
+    ["text-neutral-600", "text-gray-strong", "text-foreground"],
+    ["border-neutral-300", "border-gray-light", "border-border"],
+    ["@max-[640px]:w-full", "@max-form:w-full", "@max-form:w-0"],
+    ["@min-[640px]:w-full", "@min-form:w-full", "@min-form:w-0"],
+  ])("%s → %s override 양방향·수정자가 같다", (before, after, override) => {
+    const oldOverride = override.replace("@max-form:", "@max-[640px]:").replace("@min-form:", "@min-[640px]:");
+    const renamed = (value: string) => value.replaceAll(before, after).replaceAll(oldOverride, override);
+    for (const prefix of ["", "hover:"]) {
+      expect(cn(`${prefix}${after}`, `${prefix}${override}`)).toBe(renamed(cn(`${prefix}${before}`, `${prefix}${oldOverride}`)));
+      expect(cn(`${prefix}${override}`, `${prefix}${after}`)).toBe(renamed(cn(`${prefix}${oldOverride}`, `${prefix}${before}`)));
+    }
+  });
+
+  it("새 색 토큰은 글꼴 크기와 다른 그룹이다", () => {
+    expect(cn("text-gray-dim", "text-xs")).toBe("text-gray-dim text-xs");
+    expect(cn("text-link", "text-mono")).toBe("text-link text-mono");
+  });
+});

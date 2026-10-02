@@ -36,7 +36,7 @@ export function SyncLockDialog({ reopensBy, onClose }: { reopensBy: Date | null;
     <Dialog open={reopensBy !== null} onOpenChange={next => { if (!next) onClose(); }}>
       {reopensBy !== null && (
         <DialogContent title={w.title} description={<>{w.until(stamp(reopensBy))}.</>}
-          footer={<DialogClose asChild><Button variant="primary" data-initial-focus>{w.ok}</Button></DialogClose>} />
+          actions={<DialogClose asChild><Button variant="primary" data-initial-focus>{w.ok}</Button></DialogClose>} />
       )}
     </Dialog>
   );

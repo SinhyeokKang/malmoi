@@ -56,7 +56,7 @@ it("연결됐으면 설치 설정으로 나가는 링크와 해제 버튼이 함
   expect(links[0]!.textContent).toContain(m.account.github.installationSettings);
   // 나가는 링크는 새 탭이다 (DESIGN §6.3) — 설정을 고치러 간 사이에 이 화면을 잃지 않는다.
   expect(links[0]!.target).toBe("_blank");
-  expect(links[0]!.rel).toBe("noreferrer");
+  expect(links[0]!.rel).toBe("noreferrer noopener");
   // ⚠️ **나가는 것이 왼쪽, 파괴적인 것이 오른쪽 끝이다** — 세션 카드와 같은 순서다.
   const controls = [...container.querySelectorAll("a, button")];
   const linkAt = controls.indexOf(links[0]!);
@@ -94,7 +94,7 @@ function lines(container: ParentNode): { body: string; hint: string | null } {
    * 다(`login-methods.tsx`의 `lastMethod` · `profile-picture.tsx`의 `busy`). [Disconnect]에 그런 사유가
    * 붙는 날 보조 줄이 없는 갈래에서 `spans[1]`이 그 사유가 되어 **엉뚱한 곳을 가리키는 red**가 난다.
    */
-  const body = container.querySelector("li > div:first-of-type");
+  const body = container.querySelector("li > [data-row-copy]");
   const spans = body === null ? [] : [...body.querySelectorAll(":scope > span")];
   return { body: spans[0]?.textContent ?? "", hint: spans[1]?.textContent ?? null };
 }

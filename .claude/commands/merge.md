@@ -2,6 +2,9 @@
 description: dev → main PR 생성 + 버전 bump + CI 대기 + squash 머지 + 태그·GitHub Release + dev 동기화. main 머지가 곧 Vercel 프로덕션 배포다.
 ---
 
+> **런타임 공통**: Claude Code와 Codex 모두 실행할 수 있다. 브랜치·워크트리 소유권·CI·DB·lease 등 아래 게이트는 동일하다. 원격 변경은 해당 작업을 맡은 세션 하나가 수행하며 다른 세션과 같은 브랜치를 동시에 움직이지 않는다. 이 스킬의 제공 자체가 프로덕션 배포 승인은 아니다 — `/merge`는 사용자가 별도로 호출해야 한다.
+
+
 `dev`를 `main`에 반영하고 **그 배포에 버전을 붙인다.** **main 머지가 곧 Vercel 프로덕션 배포이므로 이 스킬이 배포 스킬이다** — 별도 `/deploy`는 없고, `/push`는 dev까지(= preview 배포)만 간다.
 
 > **`main`은 브랜치 프로텍션이 막는다** (2026-09-18 — required check `verify`, `enforce_admins` 켬). 직접 push는 서버가 거부하고 PR 머지는 `verify`가 green이어야 된다. ⚠️ **서버가 보는 것은 `verify` 하나뿐이다** — `db:status:prod`·미커밋·미푸시 검사는 여전히 이 스킬만 한다.
@@ -67,7 +70,7 @@ stdout은 JSON 한 개다(`scripts/release-plan.ts` — 판정은 `scripts/relea
 | exit 1 · `invalid-version` · `behind-last-tag` · `unexpected-version` | **중단 + 리포트.** 누군가 `version`을 손으로 바꿨다 — 4단계 밖에서 바뀌면 안 되는 값이다. `unexpected-version`은 직전 태그보다 크지만 **한 레벨 올린 후보(태그가 없으면 `1.0.0`)가 아닌 값**이다(`v1.2.0` 위의 `5.0.0`, seed 전의 `0.1.0`) — 재실행으로 받으면 그 번호가 조용히 릴리스된다 |
 | exit 1 · `io` | **중단 + 리포트.** git·네트워크·`package.json` 파싱이 실패했다 — `message`를 그대로 옮긴다 |
 | `action: "bump"` · `seed: true` | **묻지 않는다.** 첫 릴리스이고 `candidates`가 셋 다 `1.0.0`이다 |
-| `action: "bump"` · `seed: false` | **`AskUserQuestion`으로 patch·minor·major를 묻는다** (아래) |
+| `action: "bump"` · `seed: false` | **현재 런타임의 질문 도구 또는 일반 질문으로 patch·minor·major를 묻는다** (아래) |
 | `action: "none"` | **묻지 않고 4단계를 건너뛴다.** bump가 이미 dev에 있다(직전 `/merge`가 4단계 뒤·8단계 전에 멈췄다 — `next`가 직전 태그의 다음 후보 중 하나일 때만 이 판정이 나온다). `next`가 이번 버전이다 — 버전이 두 번 오르지 않는다 |
 
 질문 모양:

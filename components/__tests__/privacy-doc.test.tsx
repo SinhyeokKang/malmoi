@@ -86,7 +86,7 @@ describe("PrivacyDoc — 구조", () => {
   it("본문 링크가 파랑이다 — 절 래퍼의 `[&_a]:` 변형", async () => {
     const { container } = await doc();
     for (const section of container.querySelectorAll("section")) {
-      expect(section.className).toContain("[&_a]:text-blue-600");
+      expect(section.className).toContain("[&_a]:text-link");
     }
   });
 
@@ -166,7 +166,7 @@ describe("PrivacyDoc — 급 (DESIGN §6.616)", () => {
     const regions = [...container.querySelectorAll('[role="region"]')];
     expect(regions).toHaveLength(2);
     for (const region of regions) {
-      expect(classes(region)).toEqual(expect.arrayContaining(["[&_th]:text-xs", "[&_th]:text-muted-foreground", "[&_td]:leading-[1.6]"]));
+      expect(classes(region)).toEqual(expect.arrayContaining(["[&_th]:text-xs", "[&_th]:text-muted-foreground", "[&_td]:leading-body"]));
     }
   });
 
@@ -177,7 +177,7 @@ describe("PrivacyDoc — 급 (DESIGN §6.616)", () => {
     expect(classes(document.getElementById(nav.getAttribute("aria-labelledby") ?? ""))).toEqual(expect.arrayContaining(["text-xs", "font-medium"]));
     const links = [...nav.querySelectorAll("a")];
     expect(links.length).toBe(privacy.sections.length);
-    for (const a of links) expect(classes(a)).toEqual(expect.arrayContaining(["text-xs", "leading-[1.5]", "py-1.5", "pr-0", "pl-3"]));
+    for (const a of links) expect(classes(a)).toEqual(expect.arrayContaining(["text-xs", "leading-normal", "py-1.5", "pr-0", "pl-3"]));
   });
 });
 
@@ -196,7 +196,7 @@ describe("PrivacyDoc — 시안 대조 교정", () => {
     const { container } = await doc();
     for (const region of container.querySelectorAll('[role="region"]')) {
       expect(classes(region)).toEqual(
-        expect.arrayContaining(["[&_th]:py-2.5", "[&_th]:px-4", "[&_th]:leading-[1.6]", "[&_:is(th,td)]:tracking-[0.015em]"]),
+        expect.arrayContaining(["[&_th]:py-2.5", "[&_th]:px-4", "[&_th]:leading-body", "[&_:is(th,td)]:tracking-[0.015em]"]),
       );
     }
   });

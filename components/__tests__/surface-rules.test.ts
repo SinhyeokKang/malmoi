@@ -116,7 +116,7 @@ describe("DESIGN §6.3 — 인라인 링크에 밑줄을 쓰지 않는다", () =
 
   /** 0건인 규칙은 정규식이 죽어도 green이라, 무엇을 잡는지 별도로 고정한다. */
   it("같은 정규식이 금지된 클래스를 잡는다", () => {
-    expect(UNDERLINE.test('className="text-blue-600 underline"')).toBe(true);
+    expect(UNDERLINE.test('className="text-link underline"')).toBe(true);
     expect(UNDERLINE.test('className="hover:underline"')).toBe(true);
     // 끄는 쪽은 통과한다 — 이 예외가 없으면 규칙이 자기 해법을 금지한다.
     expect(UNDERLINE.test('className="no-underline"')).toBe(false);

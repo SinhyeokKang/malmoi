@@ -33,7 +33,7 @@ describe("띠 링크 — 파랑은 새 탭 외부만", () => {
   ] as const)("%s 띠의 앱 안 링크는 파랑이 아니고 chevron을 든다", async (_kind, over, label) => {
     const found = link(await draw(over), label);
     expect(found).toBeDefined();
-    expect(found?.className).not.toContain("text-blue-600");
+    expect(found?.className).not.toContain("text-link");
     // 띠 안의 앱 안 링크는 muted 글자다(DESIGN §6.63) — "파랑이 아님"만으로는 무엇이든 통과한다.
     expect(found?.className).toContain("text-muted-foreground");
     expect(found?.getAttribute("target")).toBeNull();
@@ -45,7 +45,7 @@ describe("띠 링크 — 파랑은 새 탭 외부만", () => {
     ["원격 변경", { repoAheadFiles: 2 }, m.projects.banner.action.reviewChanges],
   ] as const)("%s 띠의 외부 링크는 파랑 + 새 탭이다", async (_kind, over, label) => {
     const found = link(await draw(over), label);
-    expect(found?.className).toContain("text-blue-600");
+    expect(found?.className).toContain("text-link");
     expect(found?.getAttribute("target")).toBe("_blank");
   });
 });
@@ -67,7 +67,7 @@ describe("좁힌 0건 · 검색 결과 머리 — 앱 안 되돌리기", () => {
   it("좁힌 0건의 출구는 default 버튼 + RotateCcw이고 파랑이 아니다", async () => {
     const { container } = await render(<NoProjectsMatch query="zzz" onReset={vi.fn()} />);
     const reset = link(container, m.projects.narrowed.reset);
-    expect(reset?.className).not.toContain("text-blue-600");
+    expect(reset?.className).not.toContain("text-link");
     expect(reset?.querySelector("svg.lucide-rotate-ccw")).not.toBeNull();
     expect(reset?.getAttribute("href")).toBe("/projects");
   });

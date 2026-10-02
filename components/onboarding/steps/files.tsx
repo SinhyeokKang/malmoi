@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Radio, RadioGroup } from "@/components/ui/radio";
+import { RadioGroup } from "@/components/ui/radio";
+import { SelectRow } from "@/components/ui/select-row";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -43,7 +43,7 @@ export type ManualEntry = { adapter: AdapterName; pathTemplate: string; baseLoca
 
 /**
  * ② 좌측 패널이 나눠 가질 폭 — **여기는 뷰포트를 따라 변하지 않는다.** 모달이 `max-w-[1024px]`(2026-09-18, 옛 800)이고
- * 본문이 `px-8`(64)이라 952 = 960 − 핸들 8이고, 셸이 `min-w-[1280px]`이라 1280 뷰포트에서도 1024가
+ * 본문이 `px-8`(64)이라 952 = 960 − 핸들 8이고, 셸이 `min-w-shell-min`이라 1280 뷰포트에서도 1024가
  * 그대로 산다(1280 − 96 = 1184). 그래서 `ShellPanels`와 달리 재는 훅이 없다. ⚠️ **모달 폭을 바꾸면 여기도 같이 바꾼다.**
  *
  * ⚠️ **핸들 폭과 같이 움직인다** — 여기가 핸들보다 크면 좌측이 계산한 240보다 넓게 선다(`w-4`
@@ -189,24 +189,17 @@ export function FilesStep({
                   </>
         );
         return (
-          <li
-            key={c.pathTemplate}
-            className={cn(
-              locked && "opacity-50",
-              index > 0 && "border-t",
-              index > 0 && (active || prevActive ? "border-border" : "border-divider"),
-              active ? "bg-muted" : "hover:bg-foreground/[0.03]",
-            )}
-          >
-            <div className={cn("p-3", selection && "flex items-center gap-3")}>
-              {selection ? <>
-                <Checkbox aria-label={m.newProject.files.include(c.pathTemplate)} checked={locked || selection.checked.has(index)} disabled={pending || locked}
-                  onCheckedChange={() => { if (!pending && !locked) selection.onToggle(index); }} />
-                <Button variant="ghost" type="button" aria-label={m.newProject.files.previewCandidate(c.pathTemplate)}
-                  disabled={pending} className="text-foreground h-auto min-w-0 flex-1 justify-start gap-3 rounded p-0 text-left whitespace-normal"
-                  onClick={() => onPick(index)}>{content}</Button>{locked && <span className="sr-only">{m.settings.sources.locked}</span>}
-              </> : <Radio disabled={pending} value={String(index)} labelClassName="gap-3" label={content} />}
-            </div>
+          <li key={c.pathTemplate} className={cn(locked && "opacity-50")}>
+            {selection ? <SelectRow input="checkbox" label={null}
+              active={active} first={index === 0} previousChecked={prevActive}
+              aria-label={m.newProject.files.include(c.pathTemplate)}
+              checked={locked || selection.checked.has(index)} disabled={pending || locked}
+              onCheckedChange={() => { if (!pending && !locked) selection.onToggle(index); }}
+              aside={<Button variant="ghost" type="button" aria-label={m.newProject.files.previewCandidate(c.pathTemplate)}
+                disabled={pending} onClick={() => onPick(index)}>{content}</Button>}
+              expand={locked && <span className="sr-only">{m.settings.sources.locked}</span>}
+            /> : <SelectRow input="radio" disabled={pending} value={String(index)} checked={active}
+              first={index === 0} previousChecked={prevActive} label={content} />}
           </li>
         );
       })}
@@ -349,7 +342,7 @@ function Preview({
           <Select disabled={pending} value={state.locale} onValueChange={value => { if (!pending) onLocale(value); }}>
             {/* ⚠️ 라벨이 트리거 **밖**이다 — 안에 두면 자기 참조가 내용으로 풀릴 때 두 번 읽힌다 (리뷰 2026-09-13). */}
             <span id="preview-language-label" className="sr-only">{m.newProject.files.preview.language}</span>
-            <SelectTrigger id="preview-language" aria-labelledby="preview-language-label preview-language" className="w-48">
+            <SelectTrigger width={192} id="preview-language" aria-labelledby="preview-language-label preview-language">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -373,8 +366,8 @@ function Preview({
             label={m.newProject.files.preview.language}
             value={state.locale}
             onChange={value => { if (!pending) onLocale(value); }}
-            /* 칸마다 국기가 앞에 선다 — `leading`이 그 자리다 (`SegmentContent`는 아이콘 컴포넌트만 받는다). */
-            options={locales.map((code) => ({ value: code, label: code, leading: <LocaleFlag code={code} /> }))}
+            /* 국기 ReactNode가 icon 슬롯에 서며 기존 치수·장식 의미를 유지한다. */
+            options={locales.map((code) => ({ value: code, label: code, icon: <LocaleFlag code={code} /> }))}
           /></fieldset>
         )}
         <span className="text-muted-foreground min-w-0 flex-1 truncate text-right text-xs">{candidate?.pathTemplate}</span>
@@ -532,48 +525,52 @@ function ManualForm({
   return (
     <div className="flex flex-col gap-3">
       <FormGroup label={m.newProject.files.manual.format} labelId="manual-format-label" htmlFor="manual-format">
-        <Select disabled={pending} value={manual.adapter} onValueChange={(value) => { if (!pending) onManual({ ...manual, adapter: value as AdapterName }); }}>
-          <SelectTrigger id="manual-format" aria-labelledby="manual-format-label manual-format" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {adapters.map((c) => (
-              <SelectItem disabled={pending} key={c.adapter} value={c.adapter}>
-                {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {(describe) => (
+          <Select disabled={pending} value={manual.adapter} onValueChange={(value) => { if (!pending) onManual({ ...manual, adapter: value as AdapterName }); }}>
+            <SelectTrigger aria-describedby={describe()} width="full" id="manual-format" aria-labelledby="manual-format-label manual-format">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {adapters.map((c) => (
+                <SelectItem disabled={pending} key={c.adapter} value={c.adapter}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </FormGroup>
       <FormGroup
         label={m.newProject.files.manual.path}
         htmlFor="manual-path"
-        /* ⚠️ **`error`가 `help`를 대신한다**(FormGroup) — 두 속성과 `aria-describedby`가 같은 값을 본다. */
+        /* FormGroup이 오류·도움말 중 현재 렌더된 설명을 선택한다. */
         error={state.manualError === undefined ? undefined : failureText(state.manualError)}
         help={PATH_HINTS[choice?.layout ?? "per-locale"](
           <span>{choice?.layout === "multi-locale" ? "*" : "{locale}"}</span>,
         )}
       >
-        <Input
-          disabled={pending}
-          id="manual-path"
-          aria-invalid={state.manualError === undefined ? undefined : true}
-          aria-describedby={state.manualError === undefined ? "manual-path-help" : "manual-path-error"}
-          value={manual.pathTemplate}
-          onChange={(e) => onManual({ ...manual, pathTemplate: e.target.value })}
-          placeholder={choice?.example ?? m.newProject.formats["json-catalog"].example}
-          className="w-full"
-        />
+        {(describe) => (
+          <Input width="full"
+            disabled={pending}
+            id="manual-path"
+            aria-invalid={state.manualError === undefined ? undefined : true}
+            aria-describedby={describe()}
+            value={manual.pathTemplate}
+            onChange={(e) => onManual({ ...manual, pathTemplate: e.target.value })}
+            placeholder={choice?.example ?? m.newProject.formats["json-catalog"].example}
+          />
+        )}
       </FormGroup>
       <FormGroup label={m.newProject.files.manual.baseLocale} htmlFor="manual-base">
-        <Input
-          disabled={pending}
-          id="manual-base"
-          value={manual.baseLocale}
-          onChange={(e) => onManual({ ...manual, baseLocale: e.target.value })}
-          placeholder={m.newProject.files.manual.baseLocalePlaceholder}
-          className="w-full"
-        />
+        {(describe) => (
+          <Input aria-describedby={describe()} width="full"
+            disabled={pending}
+            id="manual-base"
+            value={manual.baseLocale}
+            onChange={(e) => onManual({ ...manual, baseLocale: e.target.value })}
+            placeholder={m.newProject.files.manual.baseLocalePlaceholder}
+          />
+        )}
       </FormGroup>
       {/* ⚠️ 이 문장은 **블록 전체**를 설명한다 — 필드의 `help`로 매달면 그 필드의 설명으로 읽힌다 */}
       {clearsSelection && <p className="text-muted-foreground text-xs">{m.newProject.files.manual.hint}</p>}

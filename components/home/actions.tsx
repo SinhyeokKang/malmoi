@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useId, useRef, useState, type Rea
 import { useCommitWait } from "@/components/commit-wait";
 import { SyncButton } from "@/components/home/sync-button";
 import { PublishButton, PublishModal, usePublish, type PublishController } from "@/components/publish-button";
-import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { Alert } from "@/components/ui/alert";

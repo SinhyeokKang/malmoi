@@ -89,7 +89,7 @@ const fieldset = () => find<HTMLFieldSetElement>(document.body, "[data-consent-f
 describe("기본", () => {
   it("권한은 한 열 · 만료 90 · All my projects · 돌아갈 곳 · 대체 경고 없음", async () => {
     await mount();
-    expect(document.querySelector('[role="group"]')?.className).toContain("grid-cols-1");
+    expect(document.querySelector('[role="group"] > ul')?.className).toContain("grid-cols-1");
     expect(document.querySelector('[data-scope="all"]')?.getAttribute("aria-checked")).toBe("true");
     expect(status()).toBe("You'll return to localhost:51234.");
     expect(document.body.textContent).not.toContain("replaces it");
@@ -251,4 +251,30 @@ describe("Not you?", () => {
     await click(button("Not you?"));
     expect(mocks.switchAccount).toHaveBeenCalledWith("req_1");
   });
+});
+
+it("actual Not you form remains the sole trailing gap-1 slot and is natively locked during authorize", async () => {
+  let finish!: (value: unknown) => void;
+  mocks.authorize.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+  const view = await mount();
+  const notYou = button("Not you?")!;
+  const form = notYou.parentElement!;
+  const trailing = form.parentElement!;
+  const card = trailing.parentElement!;
+  expect(card.children).toHaveLength(3);
+  expect(card.lastElementChild).toBe(trailing);
+  expect(trailing.className).toBe("flex shrink-0 items-center gap-1");
+  expect(trailing.children).toHaveLength(1);
+  expect(form.tagName).toBe("FORM");
+  expect(card.children[1]?.textContent).toBe("me@example.comSigned in with GitHub");
+  expect(notYou.disabled).toBe(false);
+  await click(button("Authorize"));
+  expect(button("Not you?")).toBe(notYou);
+  expect(notYou.disabled).toBe(true);
+  await click(notYou);
+  expect(mocks.switchAccount).not.toHaveBeenCalled();
+  await act(async () => finish({ ok: false, reason: "unavailable" }));
+  await settle();
+  expect(notYou.disabled).toBe(false);
+  expect(view.container.contains(card)).toBe(true);
 });

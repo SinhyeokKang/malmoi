@@ -1,11 +1,11 @@
 "use client";
 
-import { ChevronDown, ChevronUp, RefreshCw, RotateCcw } from "lucide-react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
 
-import { SearchInput } from "@/components/search-input";
-import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/ui/search-input";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { FormGroup } from "@/components/ui/form-group";
@@ -19,12 +19,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { FieldTrigger } from "@/components/ui/field-trigger";
 import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "@/lib/events/payload";
 import { PROJECT_WIDE, clearedLogsQuery, hasNarrowing, logsQuery, type LogFilter } from "@/lib/events/filter";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { utcDay as dayText } from "@/lib/utc-time";
-import { cn } from "@/lib/utils";
 
 /**
  * 필터 다섯 + 검색 + [Refresh] (캔버스 `1a`·`1m`).
@@ -112,7 +112,7 @@ export function LogFilters({
         {/* ⚠️ `tabIndex={-1}` — 딥링크(`?event=`)로 연 상세의 폴백 복귀 대상이다(`event-dialog.tsx`). 없으면 `focus()`가
             조용히 무시되어 Esc로 닫은 포커스가 `body`로 빠졌다 (audit #33). */}
         <h1 tabIndex={-1} className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.logs}</h1>
-        {!refreshable && <Badge variant="neutral">{m.logs.archived.badge}</Badge>}
+        {!refreshable && <StatusBadge state="archived" />}
         <div className="ml-auto flex items-center gap-2">
           {refreshable && (
             /*
@@ -245,7 +245,7 @@ export function LogFilters({
           onApply={range => go(range)} />
         <SearchInput
           className="ml-auto"
-          inputClassName="w-80"
+          width={320}
           value={filter.q ?? undefined}
           label={m.logs.search.label}
           placeholder={m.logs.search.placeholder}
@@ -266,20 +266,12 @@ export function LogFilters({
 */
 function Filter({ triggerRef, onCloseAutoFocus, axis, label, on, children }: { triggerRef?: RefObject<HTMLButtonElement | null>; onCloseAutoFocus?: (event: Event) => void; axis: string; label: string; on: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const Chevron = open ? ChevronUp : ChevronDown;
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger
-        ref={triggerRef}
-        aria-label={`${axis}: ${label}`}
-        className={cn(
-          // ⚠️ 번역 화면 `FilterMenu`의 md와 같은 형이다 (audit #49) — hover는 `default` 버튼의 면(§6.2)이다.
-          "hover:bg-primary-foreground focus-visible:ring-ring bg-background inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-2.5 text-sm focus-visible:ring-2 focus-visible:outline-none",
-          on ? "border-foreground text-foreground font-medium" : "border-border text-muted-foreground",
-        )}
-      >
-        {label}
-        <Chevron className="size-4 shrink-0" aria-hidden />
+      <DropdownMenuTrigger asChild>
+        <FieldTrigger ref={triggerRef} aria-label={`${axis}: ${label}`} active={on} className="shrink-0">
+          {label}
+        </FieldTrigger>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="min-w-53" onCloseAutoFocus={onCloseAutoFocus}>{children}</DropdownMenuContent>
     </DropdownMenu>
@@ -312,7 +304,7 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
         title={m.logs.range.custom}
         description={m.logs.range.description}
         onCloseAutoFocus={event => { event.preventDefault(); returnFocusRef.current?.focus(); }}
-        footer={<>
+        actions={<>
           <DialogClose asChild><Button>{m.common.cancel}</Button></DialogClose>
           <Button variant="primary" onClick={() => { onApply({ from: from === "" ? null : from, to: to === "" ? null : to }); onOpenChange(false); }}>
             {m.logs.range.apply}
@@ -321,11 +313,17 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
       >
         <div className="grid grid-cols-2 gap-3">
           <FormGroup label={m.logs.range.from} htmlFor={fromId}>
-            {/* 첫 포커스는 첫 날짜다 — 이 Dialog는 입력이 할 일이라 Cancel 표식(`DialogContent`)에서 빠진다. */}
-            <Input id={fromId} type="date" value={from} onChange={event => setFrom(event.target.value)} className="w-full" autoFocus />
+            {(describe) => (
+              <>
+                {/* 첫 포커스는 첫 날짜다 — 이 Dialog는 입력이 할 일이라 Cancel 표식(`DialogContent`)에서 빠진다. */}
+                <Input aria-describedby={describe()} width="full" id={fromId} type="date" value={from} onChange={event => setFrom(event.target.value)}  autoFocus />
+              </>
+            )}
           </FormGroup>
           <FormGroup label={m.logs.range.to} htmlFor={toId}>
-            <Input id={toId} type="date" value={to} onChange={event => setTo(event.target.value)} className="w-full" />
+            {(describe) => (
+              <Input aria-describedby={describe()} width="full" id={toId} type="date" value={to} onChange={event => setTo(event.target.value)}  />
+            )}
           </FormGroup>
         </div>
       </DialogContent>

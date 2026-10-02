@@ -22,7 +22,7 @@ function dictionaryStrings(node: unknown, out: Set<string> = new Set()): Set<str
 // 타입 대조 — 어휘가 갈리면 컴파일이 red다.
 type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 const toneIsEventTone: Same<StateTone, EventTone> = true;
-const variantIsBadgeVariant: StateVariant extends NonNullable<Parameters<typeof Badge>[0]["variant"]> ? true : false = true;
+const variantIsBadgeVariant: Same<StateVariant, NonNullable<Parameters<typeof Badge>[0]["variant"]>> = true;
 const surfaceKeysAreStates: SurfaceImportStatus["labelKey"] extends StateKey ? true : false = true;
 
 describe("STATE", () => {
@@ -36,20 +36,20 @@ describe("STATE", () => {
     expect(dictionaryStrings(m).has(row.label)).toBe(true);
   });
 
-  /** 붉은 면 없는 글자(`danger` variant)는 소비자가 사라진 언어 하나라 지웠다(D3②) — danger 톤은 언제나 `missing` 면이다. */
-  it.each(entries.filter(([, row]) => row.tone === "danger"))("danger 톤 %s → missing variant", (_key, row) => {
-    expect(row.variant).toBe("missing");
+  /** 붉은 면 없는 글자(`danger` variant)는 소비자가 사라진 언어 하나라 지웠다(D3②) — danger 톤은 언제나 `soft-red` 면이다. */
+  it.each(entries.filter(([, row]) => row.tone === "danger"))("danger 톤 %s → soft-red variant", (_key, row) => {
+    expect(row.variant).toBe("soft-red");
   });
 
   it.each(entries)("%s의 variant가 톤과 맞는다", (_key, row) => {
-    const allowed: Record<StateTone, readonly StateVariant[]> = { success: ["success"], warning: ["warning"], danger: ["missing"], muted: ["neutral", "muted"] };
+    const allowed: Record<StateTone, readonly StateVariant[]> = { success: ["soft-green"], warning: ["soft-amber"], danger: ["soft-red"], muted: ["soft-neutral", "text"] };
     expect(allowed[row.tone]).toContain(row.variant);
   });
 
-  /** 무색 배지는 면(`neutral`)이다(Q3) — 글자만(`muted`: Superseded·Unavailable)은 소비자가 이 표를 읽지 않아 행이 없다(T29에서 걷었다). */
+  /** 무색 배지는 면(`soft-neutral`)이다(Q3) — 글자만(`text`)은 소비자가 이 표를 읽지 않아 행이 없다(T29에서 걷었다). */
   it("무색 상태 배지는 면을 든다", () => {
-    expect(STATE.unsent.variant).toBe("neutral");
-    expect(entries.filter(([, row]) => row.variant === "muted")).toEqual([]);
+    expect(STATE.unsent.variant).toBe("soft-neutral");
+    expect(entries.filter(([, row]) => row.variant === "text")).toEqual([]);
   });
 
   it("같은 상태 낱말이 DESIGN §2.4와 같다", () => {
@@ -59,4 +59,12 @@ describe("STATE", () => {
     expect(STATE.held.label).toBe("Held");
     expect(STATE.unsent.label).toBe("Unsent");
   });
+});
+
+it.each([
+  ["expired", "Expired", "warning", "soft-amber"],
+  ["waitingToApply", "Waiting to apply", "warning", "soft-amber"],
+  ["removedFromRepository", "Removed from repository", "danger", "soft-red"],
+] as const)("실제 소비자 상태 %s의 기존 낱말·색", (key, label, tone, variant) => {
+  expect(STATE[key]).toEqual({ label, tone, variant });
 });

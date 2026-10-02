@@ -34,7 +34,7 @@ app/
                         notFound()) · not-found(셸·내비 안 404). 원고는 guide/**.md. ⚠️ 셸이 레이아웃에 있는 유일한 공개 화면이다 —
                         내비가 페이지 이동에 스크롤·포커스를 남겨야 해서다. ⚠️ fs로 읽으므로 next.config.ts의
                         outputFileTracingIncludes가 guide/**/*.md를 싣는다(빠지면 Vercel에서 /docs/* 전부 500)
-  layout.tsx            루트 레이아웃(Pretendard <link> · 머리 기본값 · components/analytics). ⚠️ lang="en" — screens.test.ts가 고정한다.
+  layout.tsx            루트 레이아웃(Geist next/font/local 변수 · Pretendard 폴백 <link> · 머리 기본값 · components/analytics). ⚠️ lang="en" — screens.test.ts가 고정한다.
                         ⚠️ metadata에 canonical·og:url이 없다 — 얕은 병합으로 앱·/signin·/invite·404 전부에 홈 canonical이 번진다
   robots.ts · sitemap.ts  크롤러용 파일 둘(lib/seo/crawl). robots는 force-dynamic(요청 시점 VERCEL_ENV), sitemap은 빌드 prerender.
                         ⚠️ sitemap이 guide/를 읽는데 트레이싱은 /docs 함수에만 싣는다 — 동적으로 바꾸면 Vercel에서만 500
@@ -42,6 +42,7 @@ app/
                         인가가 없다(entry-points의 EXEMPT에 이름으로 등재)
   not-found.tsx · error.tsx · global-error.tsx  셸 밖(/invite·/signin·오타 URL)의 경계. 앞 둘은 components/root-fallback.tsx를
                         쓰고, global-error는 루트 레이아웃을 대신하므로 html·body를 스스로 든 맨 HTML이다(전역 CSS 없음)
+  fonts/geist/          Geist 정방향 가변 WOFF2 원본과 SIL OFL 라이선스·출처/SHA. git 추적 자산이며 next/font/local이 자사 호스트/swap/preload한다.
   globals.css           Tailwind 4 @theme. ⚠️ @custom-variant dark 한 줄이 라이트를 고정한다
   __tests__/            entry-points(진입점 소스 스캔 — 모든 page·route·actions가 인가를 지나는지 fs로
                         센다. 예외 열을 이름으로 고정(2026-09-13에 api/push/failure가 붙어 하나 늘었다)
@@ -59,7 +60,7 @@ app/
     layout.tsx          셸. ⚠️ {children}을 흰 패널로 감싸지 않는다 — 감싸면 흰 패널이 겹쳐 padding이 두 배다.
                         ContentPanel은 각 갈래의 레이아웃이 든다(shell-layout.test.ts가 라우트마다
                         정확히 하나인지 센다)
-    error.tsx           오류 경계. ⚠️ 예외 메시지를 그대로 뿌리지 않는다
+    error.tsx           ErrorState 오류 경계(실제 retry · role=alert 하나). ⚠️ 예외 메시지를 그대로 뿌리지 않는다
     actions.ts          saveTranslationKey · previewTranslationRevert · revertTranslationKey · triggerPullAction.
                         ⚠️ 무효화는 /projects/<slug> 서브트리 + 목록 둘이다 — 그 행을 읽는 화면이 넷이라
                         경로를 나열하면 다섯째가 조용히 빠진다
@@ -165,7 +166,8 @@ components/
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
                         허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
-                        모으면 focus-ring 스캐너가 그 파일을 통째로 못 본다(Button에 asChild가 없는 것도 같은 이유)
+                        모으면 focus-ring 스캐너가 그 파일을 통째로 못 본다(Button에 asChild가 없는 것도 같은 이유).
+                        동적 ListRow·Radix Slot 경로는 같은 검사의 렌더 fixture가 실제 포커스 노드도 확인한다
                         ⚠️ asChild가 닿는 프리미티브는 {children}을 Slot.Slottable로 감싼다 — 형제를
                         렌더하면 Radix Slot이 던지고 그 트리가 죽는다(프로덕션에 있었다)
                         ⚠️ Table은 프리셋 둘·구현 하나다(Th/Td/Tr이 TableHead/Cell/Row를 감싼다)
@@ -174,39 +176,75 @@ components/
                         맡긴다. 링을 숨은 input에 붙이면 보이지도 않는 요소가 링을 들고 검사만 green이다
                         ⚠️ resizable(21번째)만 radix-ui가 아니라 react-resizable-panels를 쓴다 —
                         포인터 히트 판정·전역 커서가 document 레벨이라 CSS로 대신할 수 없다
-                        ⚠️ modal(22번째)은 2026-09-16에 components/onboarding/에서 올라왔다 — 소비자가
+                        ⚠️ 모달은 2026-09-16에 components/onboarding/에서 올라왔다 — 소비자가
                         둘이 되는 순간(온보딩 · Publish) 껍데기가 한쪽 디렉터리에 살면 안 된다.
-                        옛 경로는 재수출로 남아 온보딩 호출부가 한 줄도 안 바뀌었다. 2026-09-19에
-                        초대 모달이 셋째 소비자가 됐다
-                        ⚠️ row-card(23번째)는 행 목록 카드다(RowCard/RowCardList/RowCardItem/
-                        BannerLine/EmptyRowCard) — /projects의 그룹 카드와 멤버 화면 둘이 공유한다.
-                        복사하면 선의 급 둘·divide-y 금지·shrink-0·@container 위치·ring-inset,
-                        주석으로만 지켜지던 함정 다섯이 두 벌로 갈린다 (DESIGN §6.4)
-  ui/image-tile.tsx     프로젝트 타일의 이미지 + 깨진 URL 폴백. useImageFallback은 Avatar와 한 벌이고
-                        마크업만 다르다 — 소비자 셋(목록·Home / 초대 / 설정)은 서버 컴포넌트로 남는다
-                        ⚠️ **읽기 경로 매핑(imageSrc)도 그 훅 안에 있다** — Blob 호스트를 브라우저에 주지
-                        않는 규칙의 소비자를 잎 둘로 고정한다(ARCHITECTURE §6.7). 그물은
-                        components/__tests__/image-origin.test.tsx
-  ui/panel-card.tsx     PanelCard/Rows/Row/Facts. 계정 구역에서 승격, 제목 없는 카드도 지원.
-                        옛 ui/card.tsx와 account/account-section.tsx는 마지막 소비자 전환과 함께 삭제
-                        ⚠️ 머리 아래 선은 머리가 긋는다(notice가 있으면 그 아래) — 자식은 border-t를 들지 않는다(2026-10-01)
+                        당시 재수출로 남긴 옛 경로는 component-unify에서 제거하고 LargeModal로 모았다.
+                        2026-09-19에 초대 모달이 셋째 소비자가 됐다
+                        ⚠️ 행 목록 카드는 Card/CardRows/CardList, 행은 ListRow, 빈 상태는 EmptyState/NoMatch다.
+                        ui/row-card.tsx는 행 아래 사건 띠 BannerLine만 유지한다. 복사하면 선의 급 둘·
+                        divide-y 금지·shrink-0·@container 위치·ring-inset 규칙이 두 벌로 갈린다(DESIGN §6.4)
+  ui/image-tile.tsx     ImageTile + useImageFallback — 프로젝트 이미지와 Avatar가 공유하는 클라이언트 이미지 잎.
+                        ⚠️ 읽기 경로 매핑(imageSrc)과 실패 URL 기억이 훅 하나에 있다 — 새 URL은 다시 시도하고
+                        하이드레이션 전에 끝난 실패는 ref가 잡는다. 이미지 뒤에 hueFill을 깔지 않아 투명 배경을 유지한다.
+                        프로젝트 화면은 이미지 상태를 이 잎에 맡겨 서버 컴포넌트로 남는다(ARCHITECTURE §6.7).
+                        그물은 components/__tests__/image-origin.test.tsx
+  ui/card.tsx           Card/CardRows/CardList. 제목·description·count/countLabel·badge·action·notice와 목록 그릇을 공유한다.
+                        Card는 useId를 쓰는 클라이언트 경계이며 제목이 있을 때만 aria-labelledby를 잇는다.
+                        ⚠️ 머리 아래 선은 머리가 긋는다(notice가 있으면 그 아래) — 자식은 border-t를 들지 않는다(2026-10-01).
+                        계정 구역에서 승격한 PanelCard와 행 카드 RowCard를 통합했고 account/account-section.tsx는 제거했다
+  ui/panel-card.tsx     PanelFacts만 남는다 — 프로필의 사실·폼 grid. 사실 블록을 목록으로 읽히게 만들지 않는다
+  ui/list-row.tsx       ListRow/ListRowChevron. 링크·button·비상호작용 li/div의 실제 태그와 슬롯(title/description/icon/aside/actions)을 공유한다.
+                        card/canvas hover와 selected·명시 aria-current, 원래 inset 포커스 자리를 보존한다.
+                        배너를 함께 드는 li와 목록 의미론은 소비자가 소유한다. ListRowChevron은 busy 표시를 받아 서버 행의 훅을 늘리지 않는다
+  ui/facts.tsx          export는 Fact다. 소비자가 dl·grid·값 의미를 소유하고 라벨/값 배치(row/stacked/inline, width96/120)를 공유한다.
+                        as="tr"는 TableRow/Head/Cell을 조립하며 행 라벨은 scope="row"다
+  ui/empty-state.tsx    EmptyState(page/card/inset, 기존 번역 목록의 list 배치) + NoMatch(SearchX).
+                        NoMatch의 출구 action: ReactElement는 필수다 — href/onClick 전용 API가 아니다
   ui/status-badge.tsx · ui/icon-tile.tsx
-                        **상태 키만 받는 두 형**(2026-10-01, ux-drift-unify — DESIGN §2.4). StatusBadge는 state 하나로 variant·낱말을
+                        **StatusBadge는 상태 키, IconTile은 의미 톤을 받는 두 형**(2026-10-01, ux-drift-unify — DESIGN §2.4). StatusBadge는 state 하나로 variant·낱말을
                         lib/status/canon의 STATE에서 읽고, IconTile은 tone(StateTone)으로 §2.4 아이콘 칸의 면·글자를 든다.
                         ⚠️ variant·색 prop이 없다 — 호출부가 고르는 자리가 남으면 같은 상태가 화면마다 다른 알약이 된다(보관 세 모양이 그랬다)
   ui/code-block.tsx     코드 블록(클라이언트 — Copy + visually-hidden live region · `fill`). `/docs` 원고와 워크플로 YAML(onboarding/workflow-block)이 같이 쓴다 —
                         2026-10-01에 components/docs/에서 올라왔다(앱 쪽이 docs 형으로 맞췄다, DESIGN §6.4)
-  ui/count-badge.tsx    개수 배지 — 0이면 null, 숫자는 aria-hidden이고 label이 sr 문장이다. PanelCard·RowCard의 count prop이 이것을 그린다
+  ui/count-badge.tsx    개수 배지 — 0이면 null, 숫자는 aria-hidden이고 label이 sr 문장이다. Card의 count/countLabel 짝이 이것을 그린다
                         (CountProps — 개수와 문장이 짝이라 문장 없는 개수는 타입 오류). ⚠️ 0을 숨기는 것은 화면 규칙이고 판정은 0을 값으로 낸다(lib/shell/nav)
   ui/close-button.tsx   닫기 X 한 형(ghost · 36 · 원형 · X 20) — Dialog · 1024 모달 · 이력 상세 · Alert · Sources 결과 행이 쓴다. modal.tsx에서 추출했다.
                         ⚠️ label이 필수다 — 자리마다 접근 이름이 다르다(Close · Dismiss)
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
-  ui/modal.tsx          모달 껍데기. ⚠️ 소비자가 여럿이다(`rg -l ui/modal components`) — 새 프로젝트 온보딩(네 단계) · Publish 모달
-                        (갈래 열하나) · 초대 모달(폼→링크 두 얼굴) · Sources 추가/상세 · 설정 Workflow · MCP 토큰 모달. ⚠️ components/ui/dialog.tsx를 쓰지도 고치지도 않고 Radix
-                        Dialog.*를 직접 조립한다 — 그 프리미티브는 Overlay·padding·바닥 배치가
-                        고정이라 1024 껍데기가 안 나오고, 고치면 초대·확인·아카이브·로그인수단 모달
-                        넷이 함께 움직인다. [Back]·[Next]와 "Step n of 4"를 껍데기가 소유하되
-                        actions 슬롯을 주면 그 자리를 호출부가 가져간다(Publish가 갈래별 버튼을 넣는다)
+  ui/large-modal.tsx    LargeModal/LargeModalProps — 공용 1024 껍데기. 온보딩·Publish·초대·Sources 추가/상세·Workflow·MCP 토큰 모달이 쓴다.
+                        ⚠️ ui/dialog.tsx(440)의 Overlay·padding·바닥 배치를 바꾸지 않고 Radix Dialog.*를 직접 조립한다.
+                        actions: ReactNode는 필수이고 step/notice 문장과 바닥 래퍼는 껍데기가 소유한다.
+                        단계/비동기 전이의 live 영역 하나, 닫기 잠금, initial/return/fallback 포커스 ref를 유지한다.
+                        LARGE_MODAL_OVERLAY와 LARGE_MODAL_PANEL은 실제 공용 dim·치수 클래스다.
+                        이력 EventDialog가 이 상수를 공유하되 자체 높이·머리·서버 본문·URL 열림/포커스 의미를 유지한다
+  ui/wizard-footer.tsx  WizardFooter — 온보딩 하나가 LargeModal의 actions로 공급하는 Back/Next 버튼군.
+                        showBack·onBack/onNext·Next 라벨/뒤 화살표·nextDisabled·busy를 받고 버튼 동작을 소유한다.
+                        단계 문장·전이 낭독·닫기 잠금은 LargeModal의 책임이다
+  ui/button.tsx         Button/ButtonLink + buttonClass/glyphSlot. Button은 native button이며 asChild를 받지 않는다.
+                        ButtonLink는 같은 버튼 폼의 Next Link 또는 external native a; newTab은 독립이고 외부/새 탭 rel은 noopener+noreferrer를 보존·추가한다.
+                        실제 ref/data/aria/events와 Next onNavigate를 전달한다. busy는 같은 탭 이동만 막고 수정 키·새 탭 동작을 보존한다.
+                        glyphSlot은 Button/ButtonLink/LinkProgress의 진행 중 앞 장식 교체와 라벨 DOM을 공유한다
+  ui/link.tsx           Link — 파란 인라인 링크와 키보드 링. DOC_LINK와 직접 스타일 사본을 대신하며 서버 소비자는 서버에 남는다.
+                        사전의 import 없는 Privacy mailto 한 곳은 기존 조상 스타일을 유지한다(정확한 위치·주소·개수는 hand-copies가 고정)
+  ui/link-progress.tsx  LinkProgress — Next useLinkStatus를 링크 자손에서 읽는 클라이언트 잎.
+                        셸 헤더의 기존 New project 아이콘 교체만 위임받으며 일반 ButtonLink에 자동 pending을 추가하지 않는다
+  ui/popover.tsx        Popover — Radix Root/Anchor/Portal/Content, 외부 트리거 ref로 연다. 번역 트리 오버레이가 실제 소비자다.
+                        z50·충돌 여백과 기존 폭/높이를 유지한다. 현재 항목 우선 포커스·Escape 트리거 복귀·바깥 클릭 포커스 보존은 여기서 처리한다.
+                        트리 검색·키보드·범위 선택은 소비자가 소유한다
+  ui/meter.tsx          Meter — 장식용 완료/검토 막대. LocaleMeter와 Sources 상세 언어 행이 폭 데이터와 dimmed만 넘긴다.
+                        0분모/비율·표시 percent·Sources clamp 판정은 각 기존 호출부에 남는다
+  ui/error-state.tsx    ErrorState — 편집 셸/Logs 오류 경계의 실패 글리프·문구·primary Retry와 role=alert 하나.
+                        실제 retry 콜백을 호출하며 404·빈 결과는 alert 없는 EmptyState로 남는다
+  ui/select-row.tsx     SelectRow — 선택 행 모양과 radio/checkbox 입력·expand/aside 슬롯을 공유한다.
+                        RadioGroup·목록 역할·선택/확장 시점과 비활성 사유 연결은 실제 소비자가 소유한다
+  ui/field-trigger.tsx  FieldTrigger — 필드형 드롭다운의 md36/sm28·active/disabled·뒤 글리프를 공유한다.
+                        Radix 트리거의 asChild 자식으로 조립하며 슬롯·네이티브 속성은 실제 컨트롤에 남는다
+  ui/copy-button.tsx    CopyButton — onboarding/에서 이동한 복사 동작과 성공/실패 피드백.
+                        기본 버튼·코드 블록·번역 링크 소비자가 같은 복사 처리를 공유한다
+  ui/secret-field.tsx   SecretField — push/MCP 토큰의 읽기 전용 값·접근 이름·복사와 실패 선택.
+                        토큰의 공개 시점·저장·발급 정책은 호스트가 소유한다
+  ui/skeleton.tsx       Skeleton — size가 없으면 블록, xs/sm/md/lg면 line 모드. 기존 기본 radius4와 명시 radius·줄 높이를 유지한다.
+                        line은 U+200B로 줄 상자를 보존하고 장식은 aria-hidden이다
   shell/                앱 셸. ⚠️ 루트가 h-svh overflow-hidden이고 min-h-svh가 아니다 — min-이면
                         aside가 문서 높이만큼 늘어 Sign out이 화면 밖으로 나간다(malmoi#13)
                         ⚠️ min-w-[1280px]과 CONTENT_MAX(max-w-7xl)가 같은 숫자다 — 최소폭에서 상한까지
@@ -217,8 +255,8 @@ components/
                         ⚠️ 사이드바 항목 노출은 편의이고 차단이 아니다(방어는 페이지) — 판정은 lib/shell/nav.ts
                         navigation-dim.tsx  화면 이동 dim — 셸이 아니라 루트 레이아웃이 든다(공개 셸·로그인에도 선다).
                         판정(다른 pathname만)은 lib/shell/navigation-dim.ts
-                        new-project-icon.tsx  헤더 [New project] 링크의 앞 아이콘(이동 중 스피너). useLinkStatus가
-                        링크 자손에서만 값을 내서 이 조각만 "use client"다 — header.tsx는 서버에 남는다
+                        new-project-icon.tsx  헤더 [New project] 링크의 앞 아이콘을 ui/LinkProgress에 넘기는 클라이언트 잎.
+                        링크 자손의 useLinkStatus와 기존 아이콘 교체를 위임하고 header.tsx는 서버에 남는다
                         shell-panels.tsx  LNB ↔ 콘텐츠 리사이저. 서버 레이아웃과 PanelGroup 사이의
                         "use client" 경계이고 sidebar·children을 prop으로 통과시킨다
                         ⚠️ 사이드바 폭이 aside가 아니라 여기 Panel에 있다(200/240/320) — 둘 다 들면
@@ -240,10 +278,10 @@ components/
                         (⚠️ 국기는 CSS background-image다 — 로케일 200개 행에서 <img>면 요소가 그만큼 는다).
                         옛 번역 표 조각(header·filters·filter-chips·key-group·announcer)과 셀 편집
                         translation-input은 translation-rework T16에서 지웠다
-  mcp/                  `/mcp` 조각(2026-09-28 · mcp-oauth 2026-09-29) — token-card(RowCard 머리에 행동 — 없음·만료 = Create, 활성 = Rotate · Revoke.
-                        결과 미확인은 이 세션에만 산다) · token-modal(OnboardingModal 2단계 — ① 폼 ② 원문 1회, Done이 유일한 출구) ·
+  mcp/                  `/mcp` 조각(2026-09-28 · mcp-oauth 2026-09-29) — token-card(Card 머리에 행동 — 없음·만료 = Create, 활성 = Rotate · Revoke.
+                        결과 미확인은 이 세션에만 산다) · token-modal(LargeModal 2단계 — ① 폼 ② 원문 1회, Done이 유일한 출구) ·
                         token-grant-fields(권한·범위 **필드만** — 모달과 동의 화면이 공유한다, columns 1|2 · 상태 슬롯·버튼·Alert는 호스트 소유) ·
-                        connected-apps-card(OAuth 연결 목록 · 머리의 Copy server URL · 행 왼쪽 로고 칸 · 끊기 Dialog · 조회 장애 ≠ 빈 목록 · RowCardList) ·
+                        connected-apps-card(OAuth 연결 목록 · 머리의 Copy server URL · 행 왼쪽 로고 칸 · 끊기 Dialog · 조회 장애 ≠ 빈 목록 · CardList) ·
                         brand-logo(에이전트 공식 로고를 `<img>`로 그대로 — 색을 입히지 않는다) · grant-badges(`Allowed actions` — 권한마다 배지 하나).
                         ⚠️ Connect 카드(조각 · 방식·에이전트 탭)는 2026-09-30에 걷었다 — 연결 조각의 정본은 가이드(guide/ai-agents/)다.
                         ⚠️ grant 어휘·만료 선택지를 **다시 적는다** — TOKEN_GRANTS를 값으로 import하면 lib/auth/access가
@@ -294,7 +332,7 @@ components/
                         (POSTMORTEM 2026-09-19)
                         ⚠️ **maskEmail 금지선이 이 디렉터리를 전수로 훑는다** — 마스킹은 서버의 일이고,
                         파일 목록을 손으로 적던 검사가 파일이 넷이 되자 신설분을 놓쳤다
-  account/              계정 화면 — 공유 ui/panel-card(구역·항목 규격 하나)를 사용하는 머리 하나 + 리스트 셋.
+  account/              계정 화면 — 공유 ui/card의 구역/목록과 ui/panel-card의 프로필 사실 grid PanelFacts를 조립하는 화면.
                         login-methods · github-section · sessions-section · profile-name-form ·
                         profile-picture · dismissible-alert
                         ⚠️ **구역이 자기 리스트와 Alert를 함께 든다** — 구역 Alert 자리가 헤더 아래·
@@ -304,10 +342,9 @@ components/
                         결과를 콜백으로 바깥에 넘긴다(onResult · onFailure)
   logs/                 **활동 스트림의 화면 조각** (2026-09-20, logs-rework — DESIGN §6.68)
                         glyph(칩 28 · 팔레트 일곱) · event-row(행 다섯 칸) · log-filters(`"use client"` —
-                        드롭다운 다섯 + 검색 + [Refresh]) · event-detail(640 본문) · event-dialog(껍데기) ·
+                        드롭다운 다섯 + 검색 + [Refresh]) · event-detail(1024 상세 본문) · event-dialog(공유 치수 상수 + 자체 높이/머리 껍데기) ·
                         row-chevron(`"use client"` — useLinkStatus로 누른 행을 스피너로, 행이 서버 컴포넌트라 이것만 뗐다) ·
                         event-meta(보조줄 `[배지…] 사실 · 사실` — 2026-09-30) · role-badges(역할 배지, 행·상세 공용) ·
-                        result-badge(결과 배지 — success·neutral·warning·붉은 면)
                         ⚠️ **Home의 Recent logs가 `event-row`를 그대로 쓴다** — 같은 사건이 두 화면에서
                         같은 모양이어야 한다. PR 링크 파랑 한 자리는 `event-meta`에 있다(home-vocabulary가 센다)
                         ⚠️ **상세 본문은 서버가 그린다** — 클라이언트는 열림·닫힘·포커스만 든다
@@ -323,7 +360,9 @@ components/
                         (2026-10-01 sync-lock — sync-result는 이제 Dialog 본문이고 두 화면의 결과 띠는 없다)
                         hold-later.tsx("use client" 섬 — 열린 PR 조회에 달린 보류 사유를 `To send` 보조 줄·메타 `Held` 배지 두 자리에
                         늦게 그린다. 본문은 그 조회를 기다리지 않는다 — 판정은 lib/home/cards의 planHomeHold, 도착은 use-arrived)
-  onboarding/modal.tsx  components/ui/modal.tsx를 그대로 재수출한다 — 호출부를 안 건드리려는 한 줄이다
+  onboarding/new-project.tsx
+                        생성 흐름의 상태를 소유하고 LargeModal + WizardFooter로 단계 본문·바닥을 조립한다.
+                        이전 onboarding/modal.tsx 재수출과 ui/modal.tsx 경로는 제거했다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
                         sources-archived 여섯.
                         목록 소유자가 선택·쓰기 결과를 유지. 로딩/거부/장애를 구별하고 쓰기는 기존 Action 경계를 따른다.
@@ -338,13 +377,11 @@ components/
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
-  projects/project-thumbnail.tsx
-                        프로젝트를 가리키는 28 타일. 소비자가 **넷**이다 — 목록 행 · Home 머리 · LNB 프로젝트 구역(16) · 랜딩 목업(16, src 없음).
-                        ⚠️ **2026-09-17까지 화면마다 따로 구현돼 있었고 Home만 고정 bg-foreground였다**
-                        (POSTMORTEM 2026-09-17). ⚠️ radius가 rounded-sm(8)이고 캔버스의 4가 아니다
-                        — 초대 카드(components/invite/project-card.tsx)까지 세 화면을 한 값으로
-                        모은 판정이다 (DESIGN §6.63의 이탈 줄이 정본)
-                        src(프로젝트 이미지)는 앱 셋이 넘긴다 — 없으면 이름 tone 타일로 떨어진다
+  ui/project-thumbnail.tsx
+                        ProjectThumbnail — 프로젝트를 가리키는 타일(xs16/sm28/md32/lg56). 이름 기반 hueFill 폴백과 ImageTile을 조립한다.
+                        ⚠️ 2026-09-17까지 화면마다 따로 구현돼 있었고 Home만 고정 bg-foreground였다(POSTMORTEM 2026-09-17).
+                        xs의 radius는4, sm/md/lg는8이며 초대 카드까지 같은 값으로 모은 판정이다(DESIGN §6.63의 이탈).
+                        프로젝트/초대/설정·셸·목업 소비자는 이 서버 호환 타일을 사용하고 이미지 실패 상태는 ImageTile 잎에 남는다
   projects/new-project-button.tsx
                         [New project] 전용 client 버튼. 소비자가 **둘**이다 — 목록 머리와 EmptyProjects.
                         Link.onNavigate를 가로채 useTransition + router.push로 옮기고 그동안 Plus를
@@ -352,22 +389,19 @@ components/
                         ⚠️ **Next는 같은탭 클릭에만 onNavigate를 부른다** — 수정키·새 탭은 네이티브로
                         떨어진다. 그 전제를 테스트가 mock으로 정의하므로 new-project-button.test.tsx가
                         설치된 next 소스에 따로 고정한다
-                        ⚠️ ButtonLink가 아니라 buttonClass를 빌려 쓴다 — onNavigate가 필요해서다
-                        (publish-button·github-section과 같은 관용구)
-  locale-meter.tsx
-                        Projects·Sources 공유 로케일 Meter. 치수가 캔버스 리터럴 그대로이고 폭만 인라인 스타일이다
-                        (퍼센트가 데이터라서 — 나머지를 스타일로 만들면 소스 검사 밖으로 나간다). 막대만 떼어 낸 MeterBar를
-                        Sources 상세의 언어 행이 공유한다(2026-10-01 — 손 사본을 걷었다)
+                        ButtonLink가 onNavigate와 busy를 전달하고 진행 중 앞 장식 교체를 소유한다
+  locale-meter.tsx      LocaleMeter — 로케일 국기/코드·표시 percent·완료/검토 비율을 조립하는 서버 호환 래퍼.
+                        0분모는 0으로 처리하고 표시 percent는 입력값을 그대로 쓴다. 막대의 스타일·장식 의미는 ui/Meter가 소유한다.
+                        Sources 상세도 같은 Meter를 쓰며 막대 폭의 clamp/비율은 상세 화면이, 표시 percent는 lib/keys/view의 localeProgress가 소유한다
   use-arrived.ts        useArrived(promise, identity) — 서버가 내려 준 promise의 마지막 도착값(Home 보류 사유 · 번역 화면 연결 판정).
                         ⚠️ use() + Suspense로 받지 않는다 — 재렌더마다 새 promise가 와서 키 선택·저장 뒤 전환이 GitHub 조회를 기다렸다.
                         ⚠️ identity(프로젝트·소스)가 바뀌면 그 렌더에서 옛 값을 버린다 — 다른 프로젝트의 판정이 버튼을 끄거나 켜지 않게
   projects/empty-projects.tsx
-                        본문이 빌 때의 **카드 둘** — 프로젝트 0건(`EmptyProjects`)과 검색 0건
-                        (`NoProjectsMatch`). ⚠️ 부품이 같고 다른 것은 아이콘과 **출구의 무게**뿐이다
-                        (만들기=채운 버튼 / 되돌리기=링크). ⚠️ 2026-09-15에 장식(그라데이션·점 필드·KV)
-                        을 걷어냈다 — 본문이 전부 카드가 되면서 빈 상태가 화면 중 가장 화려해졌다.
-                        DESIGN 원칙 5의 "유일한 예외"가 그때 닫혔다. ⚠️ EmptyState 프리미티브를 쓰지
-                        않는다 — 그쪽은 칩 48·py-12이고 여기는 카드 규격(칩 36·padding 48/24)이다
+                        본문이 빌 때의 카드 둘 — 프로젝트 0건(EmptyProjects)은 EmptyState placement="card",
+                        검색 0건(NoProjectsMatch)은 NoMatch placement="card"와 필수 출구를 조립한다.
+                        만들기는 NewProjectButton, 되돌리기는 default ButtonLink이며 href와 같은 탭 onNavigate를 함께 보존한다.
+                        ⚠️ 2026-09-15에 장식(그라데이션·점 필드·KV)을 걷어냈다 — 본문이 전부 카드가 되면서 빈 상태가
+                        화면 중 가장 화려해졌다. DESIGN 원칙5의 "유일한 예외"가 그때 닫혔다
   projects/project-list.tsx
                         목록 본문. ⚠️ <ContentPanel>을 여기서 안 든다 — /projects와 /projects/new가
                         둘 다 그리므로 공유 컴포넌트가 들면 shell-layout이 두 라우트에서 0을 센다
@@ -387,12 +421,13 @@ components/
                         받은 결과를 언마운트한다 ⚠️ **리포 이름·base·sync 브랜치를 서버가 넘긴다** —
                         syncBranchFor가 사는 모듈(lib/pull/sync-branch — 2026-09-24에 trigger에서 뺐다)은
                         lib/failure(node:crypto)를 물어 클라이언트 그래프에 오면 안 된다
-  search-input.tsx      ⚠️ IME 조합 확정 Enter를 거른다(isComposing과 keyCode 229를 둘 다 본다 —
-                        번역 입력의 keyEditCommand(lib/translations/draft.ts)가 같은 판정을 쓴다)
-                        ⚠️ <form> 암시적 submit을 안 쓴다 — 제출 버튼 없는 폼은 Enter로 submit되지 않는다
-                        ⚠️ **이름이 같은 파일이 components/projects/에도 있다** — 그쪽(ProjectSearch · useProjectQuery)은
-                        이것을 감싸 ?q=를 history.replaceState로 따라 쓰는 배선 래퍼이고(서버로 이동하지 않는다 — 거르기가 받은 목록
-                        위의 순수 함수라 router.push면 원격 신호를 다시 기다렸다, audit-ux #17), 여기는 라우터를 모르는 프리미티브다
+  ui/search-input.tsx   SearchInput — 기존 제출형 검색을 components/ui/로 옮겼다. Input의 Search/X 슬롯과 width를 조립하고 라우터를 모른다.
+                        ⚠️ IME 조합 확정 Enter는 isComposing과 keyCode229를 함께 거른다(번역 입력의 keyEditCommand와 같은 판정).
+                        form 암시적 submit을 쓰지 않고 Enter로 제출한다. X/비어 있지 않은 Escape는 빈 질의까지 제출하고,
+                        늦은 응답이 도착해도 그동안 작성한 값을 보존한다. repo/tree의 즉시 필터는 Input 슬롯을 직접 쓴다
+  projects/search-input.tsx
+                        ProjectSearch/useProjectQuery — ui/SearchInput을 감싸 ?q=를 history.replaceState로 따라 쓰는 화면 배선.
+                        서버로 이동하지 않는다 — 거르기가 받은 목록 위의 순수 함수라 router.push면 원격 신호를 다시 기다렸다(audit-ux #17)
   surface-selector.tsx · github-account.tsx · reconnect-button.tsx · submit-button.tsx ·
   project-archived.tsx · project-not-ready.tsx · root-fallback.tsx · slow-notice.tsx
                         화면에 걸치는 조각들. surface-selector는 **소비자가 0인 dead code**다(테스트 둘만 import — 소스 전환은 번역 트리가 든다, audit-ux #34). 지우지 않고 남겨 둔다
@@ -418,7 +453,10 @@ components/
                         multiline-detail · base-locale-screens · table-presets · manual-format-hint ·
                         new-project(모달 상태 전이·응답 역전·수동 검증·세션 만료의 DOM 회귀) ·
                         resizable · shell-panels · files-step-panels(패널 구분선 — 핸들이 옛 gap을
-                        흡수하는지, 재기 전 px 폴백, Panel의 인라인 overflow 되돌리기)
+                        흡수하는지, 재기 전 px 폴백, Panel의 인라인 overflow 되돌리기) ·
+                        hand-copies(공용 표/파일 walker — 실제 소비자 사본·퇴역 API와 유효한 TSX/별칭/주석 카나리아) ·
+                        api-contract(현재 API와 등재된 이행 부채) · parallel-p3-loading-status(loading.tsx glob 전수: sr-loading 단일 상태와 장식 Skeleton)
+                        ⚠️ loading 전수 계약은 기존 sibling-loading의 경계/치수 검사와 역할이 다르다
 ```
 
 ## lib/ — 판정은 순수 함수, I/O는 얇은 껍데기
@@ -472,7 +510,7 @@ lib/
                         displayName — 아바타 이름 폴백)
                         ⚠️ **displayName이 한 자리에 있는 이유**: 셸 32와 /account 56이 같은 얼굴이어야
                         하는데 폴백이 두 자리에 복제돼 연산자가 갈려 있었다(?? vs ||) — 빈 이름에서
-                        toneOf가 다른 색을 냈다
+                        hueOf가 다른 색을 냈다
                         ⚠️ **connection-usage는 2026-09-14에 삭제됐다** — GitHub 해제 Dialog의 근거로
                         `N projects use this connection.`을 그리던 조회인데, 세던 것이 내가 OWNER인
                         **모든** 프로젝트라 이 연결에 의존하지 않는 것까지 들어갔다. 해제가 실제로
@@ -587,7 +625,7 @@ lib/
                         · disclosure(sectionGaps — 등재 ↔ 본문의 절) · doc-text(docText·docDigest — 본문 텍스트·해시,
                         node:crypto라 테스트 전용). 실물 대조는 __tests__/policy-gate.test.tsx(ARCHITECTURE §6.035)
   invitation-email/     초대 메일(PRODUCT §4.1 · ARCHITECTURE §6.02). 순수 판정 — recipients(다중 입력·행별 역할·정규화 중복 거부) ·
-                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html 프로젝트 카드 — 템플릿·카드 조각 두 벌은 template.ts이고 코드가 정본(첫 시안은 대조 기준이 아니다), 사용자 값 1회 치환, 이름은 60 grapheme 자르기 → 이스케이프, 썸네일은 planProjectImageDelete의 키로 mal-moi.com/api/images/email/ 고정 URL(PNG 변환판), 폴백 톤은 TONE_HEX, 로고·Box는 public/email/ 고정 URL) ·
+                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html 프로젝트 카드 — 템플릿·카드 조각 두 벌은 template.ts이고 코드가 정본(첫 시안은 대조 기준이 아니다), 사용자 값 1회 치환, 이름은 60 grapheme 자르기 → 이스케이프, 썸네일은 planProjectImageDelete의 키로 mal-moi.com/api/images/email/ 고정 URL(PNG 변환판), 폴백 색조는 HUE_HEX, 로고·Box는 public/email/ 고정 URL) ·
                         config(env 맵 → ready/unavailable, origin을 VERCEL_ENV와 대조) · result(batch 응답 → 요청 단위
                         accepted/rejected/unknown) · limits(상수, 잎). 껍데기(server-only) — issue(Project 잠금 안 발급·재발급,
                         메일을 안 보낸다 — 재발급은 옛 링크의 조건부 닫기 count=1이 선행조건) · send(commit 뒤 Resend batch 한 번,
@@ -785,7 +823,7 @@ lib/
   utc-time.ts           ⚠️ 잎. 절대 날짜·시각의 UTC 표기 하나(`Sep 27, 2026` · `Sep 27, 2026 16:34 UTC`) — 앱의 절대 날짜가 전부 지난다
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
-  env.ts db.ts githash.ts utils.ts relative-time.ts tone.ts
+  env.ts db.ts githash.ts utils.ts relative-time.ts hue.ts
 ```
 
 ⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `relative-time`·`utc-time`·`compare`·`ref-slug`·`flag`는

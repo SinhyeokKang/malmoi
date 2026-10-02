@@ -1,4 +1,5 @@
-import type { ComponentType, ReactNode } from "react";
+import { SearchX } from "lucide-react";
+import type { ComponentType, ReactElement, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 import { IconTile } from "./icon-tile";
@@ -23,7 +24,12 @@ export function EmptyState({
   description,
   action,
   className,
+  placement = "page",
+  layout,
 }: {
+  placement?: "page" | "card" | "inset";
+  /** Existing translation-list geometry; consumed by NoMatch only. */
+  layout?: "list";
   icon?: ComponentType<{ className?: string }>;
   title: ReactNode;
   description?: ReactNode;
@@ -31,6 +37,20 @@ export function EmptyState({
   /** ⚠️ **여백만 조정하라고 연 자리다** — 모달 본문은 패널보다 낮아 `py-12`가 바닥을 밀어낸다. */
   className?: string;
 }) {
+  if (layout === "list") return <div className={cn("flex flex-col items-center gap-2 px-4 py-10 text-center", className)}>
+    {Icon !== undefined && <IconTile size="lg"><Icon aria-hidden /></IconTile>}
+    <p className="text-sm">{title}</p>
+    {description !== undefined && <p className="text-muted-foreground text-xs">{description}</p>}
+    {action !== undefined && <div className="flex flex-wrap items-center justify-center gap-2">{action}</div>}
+  </div>;
+  if (placement !== "page") return <div className={cn("flex shrink-0 flex-col items-center text-center", placement === "inset" ? "gap-2.5 p-8" : "border-border bg-background gap-3.5 rounded-lg border px-6 py-12", className)}>
+    {Icon !== undefined && <IconTile size="lg"><Icon aria-hidden /></IconTile>}
+    <div className="flex flex-col items-center gap-1.5">
+      <p className="text-base font-medium">{title}</p>
+      {description !== undefined && <p className="text-muted-foreground max-w-[46ch] text-sm leading-relaxed text-pretty">{description}</p>}
+    </div>
+    {action}
+  </div>;
   return (
     /**
      * ⚠️ **컨테이너에 `gap`이 없다** (2026-09-11 사용자). 칩과 액션이 각자 `mb-3`·`mt-4`를 들고
@@ -65,4 +85,9 @@ export function EmptyState({
       )}
     </div>
   );
+}
+
+/** Search/filter zero has an explicit exit; server consumers pass a link. */
+export function NoMatch(props: Omit<Parameters<typeof EmptyState>[0], "icon" | "action"> & { action: ReactElement }) {
+  return <EmptyState {...props} icon={SearchX} />;
 }

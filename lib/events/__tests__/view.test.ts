@@ -4,12 +4,15 @@ import { m } from "@/lib/i18n";
 import type { SurfaceImportResult } from "@/lib/import/result";
 import { importFailureMessage } from "@/lib/projects/import-failure";
 
-import { EVENT_RESULTS } from "../payload";
+import { EVENT_KINDS, EVENT_RESULTS, type EventResult, type SurfaceOutcome } from "../payload";
+import { STATE, type StateKey, type StateTone, type StateVariant } from "@/lib/status/canon";
 import {
   coverageBoundaryIndex,
   eventGlyph,
   eventMeta,
   eventView,
+  eventResultState,
+  surfaceResultState,
   logsResultTone,
   TONES,
   groupByDay,
@@ -463,5 +466,47 @@ describe("reconfirm Publish — Not sent + 사유", () => {
       payload: { kind: "PUBLISH", surfaceSlugs: ["a"], refusal: null }, run: { changed: null, prUrl: null, errorCode } }, false);
     expect(meta("reconfirm").at(-1)).toBe(m.logs.reasons.reconfirm);
     expect(meta(null)).not.toContain(m.logs.reasons.reconfirm);
+  });
+});
+
+/** 결과의 상태 키·낱말·표시 톤을 독립된 기대값으로 고정한다 — 정본을 복사해 기대값으로 쓰지 않는다. */
+describe("Logs 결과의 상태 키", () => {
+  const expected = {
+    running: ["syncing", "Syncing…", "muted", "soft-neutral"],
+    sent: ["logsSent", "Sent", "muted", "soft-neutral"],
+    nothingToSend: ["nothingToSend", "Nothing to send", "muted", "soft-neutral"],
+    notSent: ["heldBack", "Held back", "warning", "soft-amber"],
+    imported: ["logsSynced", "Synced", "muted", "soft-neutral"],
+    deferred: ["held", "Held", "warning", "soft-amber"],
+    partial: ["partiallySynced", "Partially synced", "warning", "soft-amber"],
+    superseded: ["superseded", "Superseded", "muted", "soft-neutral"],
+    notStarted: ["notStarted", "Not started", "warning", "soft-amber"],
+    failed: ["logsFailed", "Failed", "danger", "soft-red"],
+    upToDate: ["upToDate", "Up to date", "muted", "soft-neutral"],
+  } as const satisfies Record<EventResult, readonly [StateKey, string, StateTone, StateVariant]>;
+
+  it.each(EVENT_KINDS)("%s의 결과 전부가 기존 낱말·색의 상태 키다", (kind) => {
+    for (const result of EVENT_RESULTS) {
+      const [key, label, tone, variant] = result === "running" && kind === "PUBLISH"
+        ? ["publishing", "Publishing…", "muted", "soft-neutral"] as const : expected[result];
+      const state = eventResultState(kind, result);
+      expect(state, result).toBe(key);
+      expect(STATE[state], result).toEqual({ label, tone, variant });
+      expect(eventView(row({ kind, result }))).toMatchObject({ state, label, tone });
+    }
+  });
+
+  const surfaceStatuses = { imported: true, partial: true, failed: true, superseded: true } satisfies Record<SurfaceOutcome["status"], true>;
+  it.each(Object.keys(surfaceStatuses) as SurfaceOutcome["status"][])("surface %s도 같은 Logs 상태다", (status) => {
+    const [key, label, tone, variant] = expected[status];
+    expect(surfaceResultState(status)).toBe(key);
+    expect(STATE[surfaceResultState(status)]).toEqual({ label, tone, variant });
+  });
+
+  it("결과가 없는 사건은 상태 슬롯이 없고 경고·재확인 문구는 독립이다", () => {
+    expect(eventView(row({ kind: "MEMBER", result: null }))).toMatchObject({ state: null, label: null, tone: "muted" });
+    expect(eventView(row({ result: "notSent", errorCode: "reconfirm", warnings: 2 }))).toMatchObject({ state: "heldBack", label: "Held back", reasonKey: "reconfirm", warningsLabel: m.logs.warnings(2) });
+    expect(TONES.sent).toBe("success");
+    expect(TONES.imported).toBe("success");
   });
 });

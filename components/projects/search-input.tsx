@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { SearchInput } from "@/components/search-input";
+import { SearchInput } from "@/components/ui/search-input";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 

@@ -91,14 +91,14 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater }: {
                 <span className="flex items-center gap-2">
                   <span className="text-sm font-medium">{m.projects.summary[card.key]}</span>
                   {/*
-                    ⚠️ **기본 글리프가 `neutral-400`이고 `muted-foreground`가 아니다** (캔버스 `#a3a3a3`).
+                    ⚠️ **기본 글리프가 `gray-dim`이고 `muted-foreground`가 아니다** (캔버스 `#a3a3a3`).
                     카드 안에서 글리프는 제목의 보조이지 읽을 것이 아니라, 보조 줄(`#737373`)보다 한
                     단계 더 물러나야 넷이 나란히 섰을 때 색을 든 둘이 튀어나온다.
                   */}
                   <Glyph
                     className={cn(
                       "ml-auto size-4",
-                      card.tone === "accent" ? "text-blue-600" : card.tone === "warning" ? "text-amber-700" : "text-neutral-400",
+                      card.tone === "accent" ? "text-link" : card.tone === "warning" ? "text-amber-700" : "text-gray-dim",
                     )}
                     aria-hidden
                   />
@@ -107,13 +107,13 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater }: {
                   {/*
                     ⚠️ **숫자에 색을 쓰는 유일한 자리다** (DESIGN §6.2 — 이미 등재돼 있다). 넷 중
                     `New from GitHub`만 **내가 만들지 않은 변화**라 그 하나가 색을 든다.
-                    ⚠️ **0이면 `neutral-400`이다** — 값을 지우지 않는 것이 규칙이고(0이 곧 정보다)
+                    ⚠️ **0이면 `gray-dim`이다** — 값을 지우지 않는 것이 규칙이고(0이 곧 정보다)
                     대신 무게를 뺀다.
                   */}
                   <span
                     className={cn(
                       "text-2xl font-semibold",
-                      card.muted ? "text-neutral-400" : card.tone === "accent" ? "text-blue-600" : undefined,
+                      card.muted ? "text-gray-dim" : card.tone === "accent" ? "text-link" : undefined,
                     )}
                   >
                     {value(card)}

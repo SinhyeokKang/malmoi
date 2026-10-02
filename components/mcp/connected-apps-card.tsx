@@ -1,4 +1,5 @@
 "use client";
+import { Fact } from "@/components/ui/facts";
 
 import { unstable_rethrow, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
@@ -6,15 +7,16 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from "reac
 import { disconnectOAuthConnection, type OAuthDisconnectResult } from "@/app/(edit)/mcp/actions";
 import { BrandLogo } from "@/components/mcp/brand-logo";
 import { GrantBadges } from "@/components/mcp/grant-badges";
-import { CopyButton } from "@/components/onboarding/copy-button";
+import { CopyButton } from "@/components/ui/copy-button";
 import { McpIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { IconTile } from "@/components/ui/icon-tile";
 import { type CountProps } from "@/components/ui/count-badge";
-import { EmptyRowCard, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Card, CardList } from "@/components/ui/card";
 import { m } from "@/lib/i18n";
 import type { Brand } from "@/lib/mcp/brand";
 import type { TokenGrant } from "@/lib/mcp/grant";
@@ -123,7 +125,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
   const countProps: CountProps = rows === null ? {} : { count: rows.length, countLabel: m.mcpConnector.apps.count(rows.length) };
   return (
     <>
-      <RowCard
+      <Card
         title={m.mcpConnector.apps.title}
         titleId={TITLE_ID}
         {...countProps}
@@ -132,12 +134,13 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
             <CopyButton value={serverUrl} label={m.mcpConnector.apps.copyServerUrl} />
           </div>
         }
-      >
-        {unconfirmed !== null && (
+        notice={unconfirmed !== null ? (
           <Alert variant="warning" inset live="status">
             {m.mcpConnector.apps.unconfirmed(unconfirmed)}
           </Alert>
-        )}
+        ) : undefined}
+      >
+
         {rows === null ? (
           /* 카드에 붙는 실패는 `Alert inset danger`다(ux-drift-unify 5-Y10) — 손 조립 행은 글자 전체가 빨갰다(§6.2 "글자는 본문 색"). */
           <div data-apps-failed>
@@ -146,22 +149,22 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
             </Alert>
           </div>
         ) : rows.length === 0 ? (
-          <EmptyRowCard inset icon={McpIcon} title={m.mcpConnector.apps.emptyTitle} description={m.mcpConnector.apps.emptyBody} />
+          <EmptyState placement="inset" icon={McpIcon} title={m.mcpConnector.apps.emptyTitle} description={m.mcpConnector.apps.emptyBody} />
         ) : (
           // 선의 두 급(머리↔첫 행 · 행↔행)과 목록의 이름은 프리미티브가 든다 — 이웃 카드와 같은 규칙이 한 자리에 있게. 미확인 알림이 머리
           // 아래에 서면 첫 행은 알림 다음 행이라 행↔행 선이다.
-          <RowCardList labelledBy={TITLE_ID}>
-            {rows.map((app, index) => (
-              <RowCardItem key={app.id} first={index === 0 && unconfirmed === null}>
+          <CardList aria-labelledby={TITLE_ID}>
+            {rows.map((app) => (
+              <li key={app.id}>
                 <AppRow app={app} now={new Date(now)} onDisconnect={() => ask(app)} />
-              </RowCardItem>
+              </li>
             ))}
-          </RowCardList>
+          </CardList>
         )}
         <p role="status" data-apps-live className="sr-only">
           {status}
         </p>
-      </RowCard>
+      </Card>
 
       <Dialog open={open} onOpenChange={(next) => { if (!next && !pending) setOpen(false); }}>
         {target !== null && (
@@ -176,7 +179,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
               landOn.current = null;
               (land === null || land === "heading" ? heading() : (disconnectButton(land) ?? heading()))?.focus();
             }}
-            footer={
+            actions={
               <>
                 <Button data-initial-focus disabled={pending} onClick={() => setOpen(false)}>
                   {m.common.cancel}
@@ -195,7 +198,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
                   {target.brand === null ? <McpIcon /> : <BrandLogo brand={target.brand} className="size-5" />}
                 </IconTile>
                 <div className="flex min-w-0 flex-col gap-px">
-                  <span className="text-sm font-medium [overflow-wrap:anywhere]">{target.name}</span>
+                  <span className="text-sm font-medium wrap-anywhere">{target.name}</span>
                   <span className="text-muted-foreground text-xs break-all">{target.ident}</span>
                 </div>
               </div>
@@ -221,23 +224,20 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
     [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? utcDay(expires) : relativeTime(expires, now)}</time>],
   ];
   return (
-    <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-[13px]">
+    <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-row-y">
       {/* 왼쪽 로고 칸은 40(`lg`)이다(2026-09-30 사용자). 만료 행도 로고는 그대로다 — 흐리게 하면 원본 색이 바뀐다. */}
       <IconTile size="lg" data-app-logo className="self-start">
         {app.brand === null ? <McpIcon /> : <BrandLogo brand={app.brand} className="size-5" />}
       </IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex min-w-0 items-start gap-2">
-          <span className={cn("min-w-0 text-base font-medium [overflow-wrap:anywhere]", expired && "text-neutral-400")}>{app.name}</span>
-          {expired && <Badge variant="warning" className="shrink-0">{m.mcpConnector.token.expired}</Badge>}
+          <span className={cn("min-w-0 text-base font-medium wrap-anywhere", expired && "text-gray-dim")}>{app.name}</span>
+          {expired && <StatusBadge state="expired" className="shrink-0" />}
         </div>
         <span className="text-muted-foreground min-w-0 text-xs break-all">{app.ident}</span>
         <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1">
           {facts.map(([label, content]) => (
-            <div key={label} className="flex items-baseline gap-2">
-              <dt className="text-muted-foreground text-xs">{label}</dt>
-              <dd className={cn("text-sm", expired && "text-neutral-400")}>{content}</dd>
-            </div>
+            <Fact key={label} layout="inline" label={label} dimmed={expired}>{content}</Fact>
           ))}
         </dl>
       </div>

@@ -56,6 +56,7 @@ it("Image operations lock both controls and reflect replacement and deletion", a
   const { container, rerender } = await render(view("/old.webp"));
   await act(async () => { await userEvent.setup().upload(container.querySelector<HTMLInputElement>('input[type="file"]')!, new File(["png"], "logo.png", { type: "image/png" })); });
   expect(button(container, "Upload").disabled).toBe(true); expect(button(container, "Remove").disabled).toBe(true);
+  expect(button(container, "Upload").querySelector(".animate-spin")?.classList.contains("size-3.5")).toBe(true);
   await act(async () => resolve({ ok: true, image: "/new.webp" }));
   await rerender(view("/new.webp"));
   expect(container.querySelector("img")?.getAttribute("src")).toBe("/new.webp");
@@ -100,4 +101,29 @@ it.each([["empty", "Enter a project name."], ["too-long", "Use 200 characters or
   await input(container.querySelector<HTMLInputElement>('#project-name')!, "Renamed");
   await act(async () => { await userEvent.setup().click(button(container, "Save")); });
   expect(container.textContent).toContain(text);
+});
+
+it.each(["Remove", "Save"])("%s의 실제 pending 버튼은14px 스피너를 소유한다", async label => {
+  let resolve!: (value: { ok: false; error: string }) => void;
+  const response = new Promise<{ ok: false; error: string }>(done => { resolve = done; });
+  (label === "Remove" ? actions.deleteProjectImage : actions.updateProjectName).mockReturnValue(response);
+  const { container } = await render(view("/old.webp"));
+  try {
+    if (label === "Save") await input(container.querySelector<HTMLInputElement>("#project-name")!, "Changed");
+    await act(async () => { await userEvent.setup().click(button(container, label)); });
+    expect(button(container, label).querySelector(".animate-spin")?.classList.contains("size-3.5")).toBe(true);
+  } finally { await act(async () => { resolve({ ok: false, error: "unavailable" }); }); }
+});
+
+it("Name and address keep desktop320 and responsive wrapper shrink/fill, with a full child", async () => {
+  const { container } = await render(view());
+  for (const id of ["project-name", "project-address"]) {
+    const field = container.querySelector<HTMLInputElement>(`#${id}`)!;
+    const wrapper = field.parentElement!;
+    expect([...field.classList].filter(token => /(?:^|:)(?:w|min-w|max-w)-/.test(token))).toEqual(["w-full"]);
+    for (const token of ["flex", "w-[320px]", "max-w-full", "@max-form:min-w-0", "@max-form:flex-1"]) expect(wrapper.classList.contains(token)).toBe(true);
+    expect(wrapper.parentElement?.classList.contains("flex")).toBe(true);
+    expect(field.getAttribute("aria-describedby")).toBe(id === "project-name" ? "project-name-caption" : null);
+  }
+  expect(container.querySelector<HTMLInputElement>("#project-address")!.readOnly).toBe(true);
 });

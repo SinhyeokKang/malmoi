@@ -302,15 +302,23 @@ describe("Stage — 크기 변화", () => {
 
 /**
  * **베젤은 흰 두꺼운 테두리 + 얇은 회색 외곽선이다** (2026-09-27 사용자 — 시안). `bg-canvas`면 회색 판 위에 화면이 얹힌
- * 모양이 되어 "기기 테두리"로 읽히지 않는다. 두께 12는 `-inset-3`이 든다.
+ * 모양이 되어 "기기 테두리"로 읽히지 않는다. 좌우·아래 두께는 8이고, 바깥24/안쪽16으로 하단 곡선의 중심을 맞춘다.
  */
 describe("Stage — 베젤", () => {
-  it("대기 베젤이 흰 채움과 얇은 회색 외곽선이다", async () => {
+  it("툴바와 베젤이 흰 채움과 얇은 회색 외곽선이다", async () => {
     const { container } = await mount();
     const bezel = find<HTMLElement>(container, "[data-landing-frame] > .rounded-3xl.border");
     const classes = bezel.className.split(" ");
-    expect(classes).toEqual(expect.arrayContaining(["-inset-3", "border", "border-border", "bg-background"]));
+    expect(classes).toEqual(expect.arrayContaining(["inset-0", "border", "border-border", "bg-background"]));
     expect(classes).not.toContain("bg-canvas");
+  });
+
+  it("안쪽 화면은 radius 16 토큰으로 바깥 24와 베젤 8의 곡선을 맞춘다", async () => {
+    const { container } = await mount();
+    const screen = find<HTMLElement>(container, "[data-landing-screen]");
+    expect(screen.className.split(" ")).toContain("rounded-xl");
+    expect(screen.style.left).toBe("8px");
+    expect(screen.style.bottom).toBe("8px");
   });
 
   /** 확대 트윈을 걷으며 베젤이 사라지지 않게 한다(2026-09-27 사용자 — 베젤은 대기 모양 그대로 상시다). */
@@ -319,7 +327,7 @@ describe("Stage — 베젤", () => {
     await flush();
     await scrollTo(scroller, STAGE_TOP + 2 * H);
     const layers = [...container.querySelectorAll<HTMLElement>("[data-landing-frame] > .rounded-3xl")];
-    expect(layers).toHaveLength(2);
+    expect(layers).toHaveLength(1);
     expect(layers.some((node) => node.className.includes("shadow-medium"))).toBe(true);
     for (const node of layers) {
       expect(node.style.opacity).toBe("");

@@ -98,7 +98,7 @@ describe("useLandAfter", () => {
 
 describe("neighbourFocus — 보이지 않는 요소", () => {
   /**
-   * ⚠️ `display:none`(`@max-[640px]:hidden` · 접힌 LNB) 요소에 `focus()`는 조용히 실패해 `body`로 남는다 (B5 리뷰 r1). jsdom은 모든
+   * ⚠️ `display:none`(`@max-form:hidden` · 접힌 LNB) 요소에 `focus()`는 조용히 실패해 `body`로 남는다 (B5 리뷰 r1). jsdom은 모든
    * rect가 비어 있어 기본 판정(`getClientRects`)을 그대로 쓸 수 없다 — 판정을 주입해 잰다.
    */
   it("보이지 않는 요소를 건너뛴다 — 기본 판정은 getClientRects다", () => {

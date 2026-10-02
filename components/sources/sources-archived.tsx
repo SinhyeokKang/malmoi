@@ -1,6 +1,6 @@
 import { Archive, ChevronRight } from "lucide-react";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { PanelCard } from "@/components/ui/panel-card";
+import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ButtonLink } from "@/components/ui/button";
 import { canPerform, type Role } from "@/lib/auth/permission";
@@ -26,16 +26,16 @@ export function SourcesArchived({ slug, role, archivedAt }: { slug: string; role
       <span className="flex items-center gap-2"><h1 className="text-lg font-medium">{m.sources.title}</h1><StatusBadge state="archived" /></span>
     </div></PanelHeader>
     <PanelBody>
-      <PanelCard title={m.sources.title}>
-        <div className="flex items-center gap-3 px-4 py-[13px]">
+      <Card title={m.sources.title}>
+        <div className="flex items-center gap-3 px-4 py-row-y">
           <IconTile><Archive aria-hidden /></IconTile>
-          <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
             <span className="text-base"><span className="font-medium">{m.logs.archived.badge}</span>{archivedAt && <> — <time dateTime={archivedAt.toISOString()}>{utcDay(archivedAt)}</time></>}</span>
             <span className="text-muted-foreground text-xs">{canEdit ? m.sources.archivedOwner : m.sources.archivedEditor}</span>
           </span>
           {canEdit && <ButtonLink className="shrink-0" href={routes.settings(slug)}>{m.archive.empty.action}<ChevronRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>}
         </div>
-      </PanelCard>
+      </Card>
     </PanelBody>
   </div>;
 }

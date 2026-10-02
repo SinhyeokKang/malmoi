@@ -1,6 +1,7 @@
 import { connectOutcome, isUnlinkOutcome } from "@/lib/account-connect/plan";
 import { decodeUser } from "@/lib/credentials/records";
-import { PanelCard, PanelFacts } from "@/components/ui/panel-card";
+import { PanelFacts } from "@/components/ui/panel-card";
+import { Card } from "@/components/ui/card";
 import { DismissibleAlert } from "@/components/account/dismissible-alert";
 import { GithubSection } from "@/components/account/github-section";
 import { LoginMethods } from "@/components/account/login-methods";
@@ -158,23 +159,23 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           ⚠️ **Profile이 카드가 됐다** — 전엔 패널 머리에 붙은 블록이라 카드 셋과 형이 달랐다.
           아바타 행만 두 열을 가로지른다: 아바타와 버튼 사이 간격(16)이 라벨 열 폭과 무관해야 한다.
         */}
-        <PanelCard title={m.account.profile.title}>
+        <Card title={m.account.profile.title}>
           <PanelFacts>
           {/*
             ⚠️ **아바타 행도 라벨을 든다** — 두 열을 가로지르게 두면 이 행만 형이 달라지고, 값 열의
             시작선이 아래 두 행과 어긋난다.
           */}
-          <span className="text-muted-foreground text-xs tracking-[0.02em]">{m.account.profile.avatar}</span>
+          <span className="text-muted-foreground text-xs">{m.account.profile.avatar}</span>
           <div className="flex items-center gap-4">
             {/* ⚠️ **셸의 32와 같은 판정·같은 입력이다** — 한쪽만 사진이면 같은 계정이 두 얼굴이 된다. */}
             <Avatar name={displayName(profile?.name, profile?.email)} src={profile?.image} size={56} />
             <ProfilePicture hasPicture={(profile?.image ?? null) !== null} />
           </div>
 
-          <label className="text-muted-foreground text-xs tracking-[0.02em]" htmlFor="account-name">{m.account.profile.name}</label>
+          <label className="text-muted-foreground text-xs" htmlFor="account-name">{m.account.profile.name}</label>
           <ProfileNameForm name={name} inputId="account-name" />
 
-          <label className="text-muted-foreground text-xs tracking-[0.02em]" htmlFor="account-email">{m.account.profile.email}</label>
+          <label className="text-muted-foreground text-xs" htmlFor="account-email">{m.account.profile.email}</label>
           <div className="flex items-center gap-3">
             {/*
               ⚠️ **`disabled`가 아니라 `readOnly`다** — disabled 필드는 접근성 트리에서 빠져
@@ -182,16 +183,15 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               ⚠️ **글자가 기본색이다** — muted 면 위의 muted 글자는 14px에서 4.35:1로 하한을 깬다.
               ⚠️ **자기 주소라 마스킹하지 않는다** — 남의 주소를 보이는 자리만 `maskEmail`을 지난다.
             */}
-            <Input
+            <Input width={320}
               id="account-email"
               value={profile?.email ?? m.account.profile.none}
               readOnly
               tabIndex={-1}
-              className="bg-muted w-80 cursor-default"
             />
           </div>
           </PanelFacts>
-        </PanelCard>
+        </Card>
 
         {/*
           ⚠️ **같은 화면에 "GitHub"이 세 군데 나온다** — 로그인 수단 · 리포 쓰기 권한 · 전체

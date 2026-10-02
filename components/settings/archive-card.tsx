@@ -1,5 +1,5 @@
 "use client";
-
+import { Link as InlineLink } from "@/components/ui/link";
 import { Suspense, use, useEffect, useRef, useState, useTransition } from "react";
 
 import { archiveProject, unarchiveProject, type ArchiveResult } from "@/app/(edit)/projects/actions";
@@ -7,7 +7,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { landFocus, useLandAfter } from "@/components/ui/focus";
-import { SkeletonLine } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 
@@ -95,7 +95,7 @@ export function ArchiveCard({
         <Button
           ref={button}
           variant="default"
-          loading={pending} aria-busy={pending} className="[&_.animate-spin]:size-3.5"
+          loading={pending} aria-busy={pending} spinnerSize="sm"
           onClick={() => run(unarchiveProject)}
         >
           {m.archive.restore}
@@ -109,14 +109,14 @@ export function ArchiveCard({
     <div data-archive-card className="shrink-0 space-y-2">
       <Dialog>
         <DialogTrigger asChild>
-          <Button ref={button} variant="danger" busy={pending} className="[&_.animate-spin]:size-3.5">
+          <Button ref={button} variant="danger" busy={pending} spinnerSize="sm">
             {m.archive.action}
           </Button>
         </DialogTrigger>
         <DialogContent
           title={m.archive.confirm.title(name)}
           description={m.archive.confirm.body}
-          footer={
+          actions={
             <>
               <DialogClose asChild>
                 <Button data-initial-focus variant="default">{m.archive.confirm.cancel}</Button>
@@ -136,11 +136,11 @@ export function ArchiveCard({
             /*
               조회가 안 끝났으면 골격이다 — 버튼과 Dialog는 기다리지 않는다(audit-ux #8).
               ⚠️ **두 줄이다** (malmoi#104) — 가장 흔한 도착 모양은 열린 PR 문장이고, 그 문장은 Dialog 폭(406px 열)에서 두 줄로
-              접힌다. 한 줄 골격이면 도착하는 순간 Dialog가 18px 자라 가운데 정렬이 튄다. 줄 높이는 px가 아니라 `SkeletonLine`의
+              접힌다. 한 줄 골격이면 도착하는 순간 Dialog가 18px 자라 가운데 정렬이 튄다. 줄 높이는 px가 아니라 `Skeleton`의
               line box다(실물과 같은 `text-xs`). PR이 없는 프로젝트에서는 도착 때 두 줄만큼 줄어든다 — 보관 전에 확인해야 할
               것이 있는 쪽(열린 PR)에서 안 튀는 것을 골랐다.
             */
-            <Suspense fallback={<div className="flex flex-col"><SkeletonLine text="text-xs" className="w-full" /><SkeletonLine text="text-xs" className="w-2/5" /></div>}>
+            <Suspense fallback={<div className="flex flex-col"><Skeleton size="xs" className="w-full" /><Skeleton size="xs" className="w-2/5" /></div>}>
               <PendingPrLine url={openPrUrl} />
             </Suspense>
           )}
@@ -161,14 +161,14 @@ function PrLine({ url }: { url: string | null | undefined }) {
   return (
     <p className="text-xs">
       {m.archive.confirm.openPr}{" "}
-      <a
+      <InlineLink
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+
       >
         {m.archive.confirm.openPrLink}
-      </a>
+      </InlineLink>
     </p>
   );
 }

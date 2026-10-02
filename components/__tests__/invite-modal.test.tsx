@@ -46,6 +46,7 @@ const open = async () => {
   await settle();
   await render(<InviteModal slug="acme" open onClose={onClose} seats={{ n: 4, limit: 10 }} returnFocusRef={ref} />);
   await settle();
+  for (const token of ["size-9", "rounded-md", "px-0"]) expect(remove(0).classList.contains(token)).toBe(true);
 };
 const panel = () => find<HTMLElement>(document.body, "[data-onboarding-panel]");
 const submit = () => find<HTMLButtonElement>(panel(), 'button[type="submit"]');
@@ -477,4 +478,16 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     await click(submit());
     expect(onClose).toHaveBeenCalled();
   });
+});
+
+it("email keeps a shrinking flex wrapper, role168 stays nonshrinking, and input keeps initial focus", async () => {
+  await open();
+  const field = email(0);
+  const wrapper = field.parentElement!;
+  for (const token of ["flex", "min-w-0", "flex-1"]) expect(wrapper.classList.contains(token)).toBe(true);
+  expect(wrapper.parentElement).toBe(role(0).parentElement);
+  expect(field.classList.contains("w-full")).toBe(true);
+  expect(field.classList.contains("flex-1")).toBe(false);
+  for (const token of ["w-[168px]", "shrink-0"]) expect(role(0).classList.contains(token)).toBe(true);
+  expect(document.activeElement).toBe(field);
 });

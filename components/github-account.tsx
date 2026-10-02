@@ -44,7 +44,7 @@ export function DisconnectGithubButton({ onFailure }: {
         <DialogContent
           title={m.account.github.confirmDisconnect}
           description={m.account.github.confirmHint}
-          footer={
+          actions={
             <>
               <DialogClose asChild>
                 <Button data-initial-focus variant="default">{m.common.cancel}</Button>

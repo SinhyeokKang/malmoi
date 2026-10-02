@@ -2,6 +2,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
+import { ts } from "ts-morph";
 import { describe, expect, it } from "vitest";
 
 import { CloseButton } from "@/components/ui/close-button";
@@ -30,6 +31,34 @@ describe("CloseButton", () => {
     expect(container.querySelector("button")!.className).toContain("-mt-1.5");
   });
 });
+
+// Input의 지우기 X 하나만 이름·크기·조건·소유자를 함께 검증해 허용한다.
+function unownedX(path: string, code: string): string[] {
+  const file = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const hits: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if ((ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) && node.tagName.getText(file) === "X") {
+      const button = node.parent;
+      let owner: ts.Node | undefined = button;
+      let guarded = false;
+      while (owner && !ts.isFunctionDeclaration(owner)) {
+        if (ts.isBinaryExpression(owner) && owner.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+          guarded ||= owner.getText(file).startsWith("clearable && hasValue && !props.readOnly &&");
+        }
+        owner = owner.parent;
+      }
+      const valid = path === "components/ui/input.tsx" && owner !== undefined && ts.isFunctionDeclaration(owner) && owner.name?.text === "Input" && guarded
+        && ts.isJsxElement(button) && button.openingElement.tagName.getText(file) === "Button"
+        && /variant="ghost"/.test(button.openingElement.getText(file)) && /size="icon-xs"/.test(button.openingElement.getText(file))
+        && /aria-label=\{m\.common\.clearSearch\}/.test(button.openingElement.getText(file))
+        && button.children.filter(ts.isJsxSelfClosingElement).length === 1
+        && /aria-hidden/.test(node.getText(file)) && /className="size-3.5"/.test(node.getText(file));
+      if (!valid) hits.push(node.getText(file));
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file); return hits;
+}
 
 /** 다섯 자리가 전부 이 프리미티브를 지난다 — 손으로 X를 그리는 닫기가 남지 않는다. */
 describe("닫기 X — 손으로 그린 사본이 없다", () => {
@@ -63,7 +92,18 @@ describe("닫기 X — 손으로 그린 사본이 없다", () => {
   });
 
   it("`<X` 글리프가 CloseButton 밖에서 서지 않는다", () => {
-    const drawn = files.filter((f) => /<X\b/.test(f.text)).map((f) => f.path).sort();
+    const drawn = files.filter((f) => unownedX(f.path, f.text).length > 0).map((f) => f.path).sort();
     expect(drawn).toEqual(["components/landing/mockup/publish.tsx", "components/members/invite-modal.tsx", "components/ui/close-button.tsx"]);
   });
+});
+
+it("Input clear permits only its named guarded X and rejects an extra close, renamed label and lost guard", () => {
+  const path = "components/ui/input.tsx";
+  const actual = readFileSync(path, "utf8");
+  expect(actual.match(/<X\b/g)).toHaveLength(1);
+  expect(unownedX(path, actual)).toEqual([]);
+  expect(unownedX(path, actual + '\nfunction Neighbor(){return <Button><X aria-hidden className="size-3.5" /></Button>;}')).toHaveLength(1);
+  expect(unownedX(path, actual.replace("m.common.clearSearch", "m.common.close"))).toHaveLength(1);
+  expect(unownedX(path, actual.replace("clearable && hasValue && !props.readOnly &&", "hasValue &&"))).toHaveLength(1);
+  expect(unownedX("components/neighbor.tsx", actual)).toHaveLength(1);
 });

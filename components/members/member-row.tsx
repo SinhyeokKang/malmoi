@@ -62,11 +62,11 @@ export function MemberRow({
   return (
     <>
       {/* ⚠️ **왼쪽 padding만 12다** (`13 14 13 12` — 세로 13은 행 한 벌, 4-W3) — 글리프가 서는 쪽이라 한 단계 좁다. */}
-      <div className="flex items-center gap-4 py-[13px] pr-3.5 pl-3">
+      <div className="flex items-center gap-4 py-row-y pr-3.5 pl-3">
         <span data-avatar className="flex shrink-0">
           {/*
             ⚠️ **씨앗이 없으면 빈 문자열을 넘긴다 — 갈래를 늘리지 않는다** (캔버스 `1a` 넷째 행).
-            `Avatar`가 빈 이름에서 `?` + `toneOf("")`(sky)를 이미 내므로, 그것이 그대로 답이다.
+            `Avatar`가 빈 이름에서 `?` + `hueOf("")`(sky)를 이미 내므로, 그것이 그대로 답이다.
             1행이 마스킹 주소일 때 **그 첫 글자를 쓰면 안 되는** 이유는 그대로다: 이니셜이 `y`가 되어
             셸 아바타(표시 이름에서 온 글자)와 달라지고 같은 계정이 화면마다 다른 사람으로 보인다
             (`entity-card.tsx`가 밟은 함정). 푸는 방법이 "중립 원"이 아니라 **`?`**인 것이 캔버스의 답이다.
@@ -88,7 +88,7 @@ export function MemberRow({
           >
             {identity.primary}
             {/* 자기 표식은 배지다(2026-09-30 사용자 — 괄호 친 `#a3a3a3` 글자에서 바꿨다). 이름 줄 안이라 굵기를 400으로 되누르지 않는다(배지 라벨은 500). */}
-            {you && <Badge variant="neutral" className="ml-2 align-middle">{m.members.you}</Badge>}
+            {you && <Badge variant="soft-neutral" className="ml-2 align-middle">{m.members.you}</Badge>}
           </span>
           {/* ⚠️ **2행이 없으면 그 자리를 그리지 않는다** — 빈 줄은 행 높이만 늘리고 읽을 것을 안 늘린다. */}
           {identity.secondary !== null && (

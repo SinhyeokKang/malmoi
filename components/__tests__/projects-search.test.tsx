@@ -144,3 +144,10 @@ it("[New project]가 지금 걸러진 검색어를 싣는다 — 모달 뒤 목�
   const button = [...container.querySelectorAll("a")].find((a) => a.textContent === m.common.nav.newProject);
   expect(button?.getAttribute("href")).toBe("/projects/new?q=chrome");
 });
+
+it("the actual ProjectSearch caller retains its256px input and no outer width", async () => {
+  const { container } = await render(<ProjectList all={ALL} />);
+  const field = search(container);
+  expect(field.classList.contains("w-64")).toBe(true);
+  expect(field.parentElement?.classList.contains("w-64")).toBe(false);
+});

@@ -72,6 +72,9 @@ describe("#2 OWNER · 오너 1명", () => {
   it("그 행만 셀렉트·[Remove]가 꺼지고 행 아래 띠가 사유를 든다", async () => {
     const container = await draw([owner, editor]);
     expect(bands(container)).toHaveLength(1);
+    expect(bands(container)[0]!.getAttribute("data-tone")).toBe("muted");
+    expect(bands(container)[0]!.classList.contains("pl-15")).toBe(true);
+    expect(bands(container)[0]!.classList.contains("text-muted-foreground")).toBe(true);
     const blocked = rows(container)[0]!;
     expect(blocked.querySelector('[role="combobox"]')?.getAttribute("aria-disabled")).toBe("true");
     expect(blocked.querySelector('[aria-label^="Remove "]')?.getAttribute("aria-disabled")).toBe("true");
@@ -390,6 +393,7 @@ describe("캔버스 대조로 되돌린 자리", () => {
   /** 대기 초대 행의 글리프는 28 칸이라 띠가 행 들여쓰기(56)다 — 아바타 폭(60)이면 4px 어긋난다 (ux-drift-unify 4-Y13). */
   it("대기 초대 행의 띠는 글리프 폭에 맞춰 들여쓰인다", async () => {
     const container = await drawPending([invitation({ id: "i1", readable: false })]);
+    expect(bands(container)[0]!.getAttribute("data-tone")).toBe("muted");
     expect(bands(container)[0]!.className).toContain("pl-14");
     expect(bands(container)[0]!.className).not.toContain("pl-15");
   });
@@ -534,4 +538,19 @@ describe("역할 셀렉트 키보드 선택 (malmoi#133)", () => {
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain(m.members.confirmRole("Name u3", m.projects.role.OWNER));
     expect(changeMember).not.toHaveBeenCalled();
   });
+});
+
+/** P1: an actual resend notice moves the one header boundary below the notice. */
+it("pending invitation notice has one header boundary before and after resend failure", async () => {
+  mocks.resendInvitation.mockRejectedValueOnce(new Error("offline"));
+  const container = await drawPending([invitation({ id: "notice-one" })]);
+  const section = container.querySelector("section")!;
+  const borders = () => [...section.children].filter(node => node.classList.contains("border-b"));
+  expect(borders()).toHaveLength(1);
+  expect(borders()[0]?.tagName).toBe("HEADER");
+  await act(async () => { await userEvent.setup().click(document.getElementById("resend-notice-one")!); });
+  expect(section.querySelector("[data-pending-alert]")).not.toBeNull();
+  expect(borders()).toHaveLength(1);
+  expect(borders()[0]?.hasAttribute("data-card-notice")).toBe(true);
+  expect(section.querySelector("ul > li")?.classList.contains("border-t")).toBe(false);
 });

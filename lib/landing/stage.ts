@@ -13,12 +13,14 @@
 
 /**
  * 목업의 논리 캔버스 — **1440 폭 창에서 본 제품이다**(2026-09-27 사용자). 안은 실제 앱 px라 뷰포트마다 줄바꿈이 달라지지 않는다.
- * 세로 810은 1440×900 화면에서 브라우저 크롬을 뺀 뷰포트(≈16:9)이고, 1440×900 뷰포트의 스테이지(H 802)에 캡션 줄과 함께 들어간다.
+ * 툴바와 베젤을 포함한 바깥 컨테이너가 1440×900(16:10)이다.
  */
 export const CANVAS_W = 1440;
-export const CANVAS_H = 810;
-/** 흰 베젤 두께(`-inset-3`) — 프레임과 함께 배율을 받으므로 맞춤 예산에서 빠진다. */
-export const BEZEL = 12;
+export const CANVAS_H = 900;
+/** 컨테이너 안쪽의 좌우·아래 베젤 두께. */
+export const BEZEL = 8;
+/** 컨테이너 상단 macOS 스타일 툴바. */
+export const TOOLBAR_H = 44;
 /** 베젤 아래 캡션 줄(간격 16 + 줄 28). 세로 예산에서 먼저 빠져야 캡션이 뷰포트 밖으로 안 나간다. */
 const CHROME_GAP = 16;
 const CHROME_H = CHROME_GAP + 28;
@@ -39,7 +41,7 @@ const ease = (t: number): number => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2
 
 export type Fit = {
   scale: number;
-  /** 캔버스(베젤 안쪽) 왼쪽 위의 스크롤러 좌표 */
+  /** 컨테이너 왼쪽 위의 스크롤러 좌표 */
   x: number;
   y: number;
   /** 캡션 줄 윗변 */
@@ -56,10 +58,9 @@ export function fitScale({ W, H }: { W: number; H: number }): Fit {
   const side = clamp(24, 0.04 * W, 64);
   const v = clamp(16, 0.02 * H, 32);
   // 패널이 여백보다 작으면 음수 배율이 거울상을 그린다 — 0으로 묶는다.
-  const scale = Math.max(0, Math.min((W - 2 * side) / (CANVAS_W + 2 * BEZEL), (H - 2 * v - CHROME_H) / (CANVAS_H + 2 * BEZEL), 1));
-  const top = (H - (CANVAS_H + 2 * BEZEL) * scale - CHROME_H) / 2;
-  const y = top + BEZEL * scale;
-  return { scale, x: (W - CANVAS_W * scale) / 2, y, chromeY: y + (CANVAS_H + BEZEL) * scale + CHROME_GAP, side };
+  const scale = Math.max(0, Math.min((W - 2 * side) / CANVAS_W, (H - 2 * v - CHROME_H) / CANVAS_H, 1));
+  const y = (H - CANVAS_H * scale - CHROME_H) / 2;
+  return { scale, x: (W - CANVAS_W * scale) / 2, y, chromeY: y + CANVAS_H * scale + CHROME_GAP, side };
 }
 
 /** 고정 구간 길이(H 단위). 씬 ⑤의 정지는 이 구간 끝까지다 — 고정이 풀릴 때 재생이 끝나 있다. */

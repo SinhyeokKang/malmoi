@@ -66,12 +66,11 @@ export function ProfileNameForm({ name, inputId }: { name: string; inputId: stri
   return (
     <form action={submit} className="space-y-2">
       <div className="flex items-center gap-2">
-        <Input
+        <Input width={320}
           id={inputId}
           name="name"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          className="w-80"
         />
         <Button ref={saveRef} type="submit" variant="default" loading={pending}>
           {m.account.profile.save}

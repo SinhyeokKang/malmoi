@@ -75,7 +75,7 @@ export const DialogClose = Primitive.Close;
 export function DialogContent({
   title,
   description,
-  footer,
+  actions,
   className,
   children,
   onOpenAutoFocus,
@@ -87,7 +87,7 @@ export function DialogContent({
 }: ComponentProps<typeof Primitive.Content> & {
   title: ReactNode;
   description?: ReactNode;
-  footer?: ReactNode;
+  actions?: ReactNode;
   /**
    * 닫는 길을 전부 막는다 (sync-lock — Sync가 도는 동안). `OnboardingModal`과 같은 이름·같은 동작이다: **X는 숨기지 않고 끄고**
    * Esc·배경을 무시한다. ⚠️ Cancel은 호출부의 버튼이라 호출부가 끈다 — 이 프리미티브는 푸터 안을 모른다.
@@ -165,7 +165,7 @@ export function DialogContent({
           여기가 그 경우다. 기본값(`text-xs`의 1.333 = 17.33px)이면 두 줄짜리 질문이 붙어 읽힌다.
         */}
         {description !== undefined && (
-          <Primitive.Description className="text-muted-foreground px-4 text-xs leading-[1.6]">
+          <Primitive.Description className="text-muted-foreground px-4 text-xs leading-body">
             {description}
           </Primitive.Description>
         )}
@@ -183,12 +183,12 @@ export function DialogContent({
           테스트에도 안 나타나는 부류다.
         */}
         {Boolean(children) && (
-          <div className={cn("space-y-2 p-4", footer !== undefined ? "pb-0 text-xs leading-[1.6]" : "text-sm")}>
+          <div className={cn("space-y-2 p-4", actions !== undefined ? "pb-0 text-xs leading-body" : "text-sm")}>
             {children}
           </div>
         )}
         {/* ⚠️ 푸터 위 간격이 16이다 — `pt-2`(8)로 붙어 있었다. */}
-        {footer !== undefined && <footer className="flex justify-end gap-2 p-4">{footer}</footer>}
+        {actions !== undefined && <footer className="flex justify-end gap-2 p-4">{actions}</footer>}
       </Primitive.Content>
     </Primitive.Portal>
   );

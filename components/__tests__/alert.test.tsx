@@ -27,7 +27,7 @@ it("tone마다 배경과 글리프 색이 갈린다", async () => {
   const bg = roots.map(root => tokens(root).find(token => token.startsWith("bg-")));
   const glyph = roots.map(root => tokens(root.querySelector("svg")).find(token => token.startsWith("text-")));
   expect(bg).toEqual(["bg-muted", "bg-blue-50", "bg-green-50", "bg-amber-50", "bg-red-50"]);
-  expect(glyph).toEqual(["text-muted-foreground", "text-blue-600", "text-green-800", "text-amber-700", "text-destructive"]);
+  expect(glyph).toEqual(["text-muted-foreground", "text-link", "text-green-800", "text-amber-700", "text-destructive"]);
 });
 
 /** 알림 방식은 tone이 아니라 `live`가 정한다 — 기본값만 tone에서 온다(danger는 끼어든다). */
@@ -42,7 +42,7 @@ it("live — danger 기본은 alert, 나머지는 없음, 명시하면 그것이
 });
 
 it("size — compact는 radius 10 · padding 12 · 13px · 글리프 14다", async () => {
-  const { container } = await render(<><Alert>a</Alert><Alert size="compact">b</Alert></>);
+  const { container } = await render(<><Alert>a</Alert><Alert size="sm">b</Alert></>);
   const [normal, compact] = [...container.querySelectorAll("[data-alert]")];
   expect(tokens(normal)).toEqual(expect.arrayContaining(["rounded-lg", "p-4", "gap-3", "text-sm"]));
   expect(tokens(compact)).toEqual(expect.arrayContaining(["rounded-md", "p-3", "gap-2", "text-xs"]));
@@ -53,7 +53,7 @@ it("size — compact는 radius 10 · padding 12 · 13px · 글리프 14다", asy
 it("inset — 카드에 붙는 띠라 radius가 없고 선도 없다", async () => {
   const { container } = await render(<Alert inset variant="danger">x</Alert>);
   const root = container.querySelector("[data-alert]");
-  expect(tokens(root)).toEqual(expect.arrayContaining(["rounded-none", "px-4", "py-[13px]"]));
+  expect(tokens(root)).toEqual(expect.arrayContaining(["rounded-none", "px-4", "py-row-y"]));
   expect(tokens(root).filter(token => /^border/.test(token))).toEqual([]);
 });
 
@@ -77,4 +77,10 @@ it("제목은 본문이 있을 때만 -mb-1로 붙는다", async () => {
   expect(withBody.querySelector("p.font-medium")?.className).toContain("-mb-1");
   const titleOnly = (await render(<Alert title="Synced" />)).container;
   expect(titleOnly.querySelector("p.font-medium")?.className).not.toContain("-mb-1");
+});
+
+it("명시적 md는 기본 크기의 클래스·본문 간격과 같다", async () => {
+  const { container } = await render(<><Alert title="Title">Body</Alert><Alert size="md" title="Title">Body</Alert></>);
+  const [implicit, explicit] = [...container.querySelectorAll("[data-alert]")];
+  expect(explicit?.outerHTML).toBe(implicit?.outerHTML);
 });

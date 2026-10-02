@@ -15,7 +15,7 @@ description: guide/ 가이드 스크린샷(public/guide/)을 ego-browser로 촬�
 | 1 | **ego-browser** 스킬(로그인 세션을 쓰는 실 브라우저) | 찍을 대상이 로그인 뒤의 편집 UI다 |
 | 2 | 로컬 `pnpm dev` + dev DB 접속(`.env.local`) | preview는 SSO 뒤이고, 촬영 데이터는 dev DB의 상주 QA 프로젝트다 |
 
-하나라도 없으면 **`check`까지만** 수행하고 촬영 없이 종료한다. `check`는 `pnpm guide:check`(작업 트리의 `git hash-object`만 본다)라 **어느 런타임에서든 돈다** — Codex에서도 "지금 몇 컷이 낡았나"를 싸게 물을 수 있다. ⚠️ **이 스킬은 Codex 미러에서 제외돼 있다**(`scripts/sync-agents.mjs`의 `EXCLUDE`) — Codex에는 1이 없다.
+하나라도 없으면 **`check`까지만** 수행하고 촬영 없이 종료한다. `check`는 `pnpm guide:check`(작업 트리의 `git hash-object`만 본다)라 **어느 런타임에서든 돈다** — Codex에서도 "지금 몇 컷이 낡았나"를 싸게 물을 수 있다. 두 런타임 모두 위 도구와 연결이 있으면 촬영할 수 있다.
 
 ## 사용
 

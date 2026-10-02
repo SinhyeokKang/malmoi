@@ -8,7 +8,7 @@ import { FilesStep, failedPreview, samplePreview, type ManualEntry, type Preview
 import { failureText } from "@/components/onboarding/failure";
 import { useCommitWait } from "@/components/commit-wait";
 import { SlowNotice } from "@/components/slow-notice";
-import { OnboardingModal } from "@/components/ui/modal";
+import { LargeModal } from "@/components/ui/large-modal";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -103,11 +103,11 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   const addReason = planAddBlock({ detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length });
   const addBlocked = addReason !== null;
   const manualBlocked = !manual.pathTemplate.trim() || !manual.baseLocale.trim();
-  return <OnboardingModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}
+  return <LargeModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}
     title={m.settings.sources.add} description={m.settings.sources.description} bodyScroll="hidden"
-    panelClassName="[&_.animate-spin]:size-3.5 h-[min(680px,calc(100svh-96px))] min-h-0" actions={<>
+    className="h-[min(680px,calc(100svh-var(--spacing-modal-gutter)))] min-h-0" actions={<>
       <Button size="lg" disabled={pending} onClick={onClose}>{m.surfaces.cancel}</Button>
-      <Button size="lg" data-add-sources variant="primary" busy={pending && operation === "add"} aria-disabled={addBlocked || pending || undefined} aria-describedby={addBlocked ? "add-source-help" : undefined} onClick={() => {
+      <Button spinnerSize="sm" size="lg" data-add-sources variant="primary" busy={pending && operation === "add"} aria-disabled={addBlocked || pending || undefined} aria-describedby={addBlocked ? "add-source-help" : undefined} onClick={() => {
         if (addBlocked) return;
         const plan = planAddSources({ picked: candidates.filter((_, i) => checked.has(i)), existing });
         if (!plan.ok || plan.add.length === 0 || pending) return;
@@ -122,14 +122,14 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
           setAdding(false);
         })();
       }}>{m.settings.sources.confirm}</Button>
-    </>} footer={addReason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{addReason}</span>
+    </>} notice={addReason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{addReason}</span>
       /* 추가는 첫 적재까지 돈다 (audit-ux #23) — 큰 리포면 버튼 스피너 하나로 30초를 넘긴다. */
       : pending && operation === "add" ? <SlowNotice active /> : undefined}>
     {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}</Alert>}
     {manualError && <Alert variant="danger">{failureText(manualError)}</Alert>}
     {unknown && <Alert variant="warning">{m.settings.sources.unknown}</Alert>}
     {/* ⚠️ 성공은 GitHub으로 가는 redirect라 되던진다 (audit-ux #14) — 그 밖의 throw는 거부와 같은 자리로 접는다. */}
-    {connect && <Button disabled={pending && operation !== "connect"} loading={pending && operation === "connect"} onClick={() => { setOperation("connect"); run(async () => {
+    {connect && <Button spinnerSize="sm" disabled={pending && operation !== "connect"} loading={pending && operation === "connect"} onClick={() => { setOperation("connect"); run(async () => {
       try { const result = await startGithubConnect({ slug, returnTo: "add-surface" }); if (!result.ok) setError(result.error); }
       catch (thrown) { unstable_rethrow(thrown); setError("unavailable"); }
     }); }}>{connect === "reauthorize" ? m.newProject.empty.connect.reauthorize : m.newProject.empty.connect.action}</Button>}
@@ -140,7 +140,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
         onManual={value => { setPicked(null); setManual(value); setManualError(undefined); }} onRetry={() => setRevision(v => v + 1)} />
     </div>
     <div className="flex shrink-0 items-center gap-3">
-      {picked === null && !detecting && <Button busy={pending && operation === "manual"} aria-disabled={manualBlocked || pending || undefined} aria-describedby={manualBlocked ? "add-source-manual-reason" : undefined} onClick={() => { if (manualBlocked || pending) return; setOperation("manual"); run(async () => {
+      {picked === null && !detecting && <Button spinnerSize="sm" busy={pending && operation === "manual"} aria-disabled={manualBlocked || pending || undefined} aria-describedby={manualBlocked ? "add-source-manual-reason" : undefined} onClick={() => { if (manualBlocked || pending) return; setOperation("manual"); run(async () => {
         setManualError(undefined);
         try {
           const result = await confirmManualFormat({ owner, repo, ref: branch, ...manual });
@@ -155,9 +155,9 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
       }); }}>{m.surfaces.confirm}</Button>}
       {picked === null && !detecting && manualBlocked && <span id="add-source-manual-reason" className="text-muted-foreground text-xs">{m.settings.sources.manualReason}</span>}
       {candidate && <><span className="text-muted-foreground text-xs">{m.surfaces.baseLocale}</span><Select disabled={pending || locked.has(picked!)} value={bases[picked!] ?? candidate.baseLocale} onValueChange={value => { if (!pending && !locked.has(picked!)) setBases(previous => ({ ...previous, [picked!]: value })); }}>
-        <SelectTrigger className="w-40" aria-label={m.surfaces.baseLocale}><SelectValue /></SelectTrigger>
+        <SelectTrigger width={160}  aria-label={m.surfaces.baseLocale}><SelectValue /></SelectTrigger>
         <SelectContent>{candidate.locales.map(code => <SelectItem disabled={pending || locked.has(picked!)} key={code} value={code}>{code}</SelectItem>)}</SelectContent>
       </Select></>}
     </div>
-  </OnboardingModal>;
+  </LargeModal>;
 }

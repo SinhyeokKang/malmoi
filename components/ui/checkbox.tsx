@@ -10,9 +10,9 @@ export function Checkbox({ className, ...props }: ComponentProps<typeof Primitiv
   return (
     <Primitive.Root
       className={cn(
-        "bg-background flex cursor-pointer size-4 shrink-0 items-center justify-center rounded border border-neutral-300",
+        "bg-background flex cursor-pointer size-4 shrink-0 items-center justify-center rounded border border-gray-light",
         "data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background",
-        "disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+        "disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none data-[state=checked]:focus-visible:border-ring",
         className,
       )}
       {...props}

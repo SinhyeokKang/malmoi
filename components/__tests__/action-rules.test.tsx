@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
+import userEvent from "@testing-library/user-event";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { act, useState, type ReactNode } from "react";
-import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  *
  * 1. **확인 Dialog의 확정이 `danger`면 트리거도 `danger`다** — 되돌릴 수 없다는 신호가 창을 열기 전에 서야 한다(3-Y2 · 🔴 L).
  *    예외는 Sync 하나다(트리거는 일상 동작이고, 위험은 확인창 안에서 판정된다 — 미전달 편집이 없으면 버릴 것이 없다).
- * 2. **셸 안 독립·행 링크의 파랑(`text-blue-600`)은 새 탭 외부 링크다** — 내부 이동은 foreground + chevron(🔴 N · 4-R2).
+ * 2. **셸 안 독립·행 링크의 파랑(`text-link`)은 새 탭 외부 링크다** — 내부 이동은 foreground + chevron(🔴 N · 4-R2).
  *    문장 안 인라인 링크는 파랑을 허용한다(부모 요소가 링크 밖의 글자를 함께 든다).
  *
  * ⚠️ **대상 목록을 손으로 적되, 목록 밖 파일은 소스 스캔이 red로 잡는다** — 새 확인창·새 파랑 링크는 목록 밖에서 태어난다.
@@ -200,7 +200,7 @@ describe("확인 Dialog의 확정이 danger면 트리거도 danger다 (DESIGN §
    * 새 확인창이 목록 밖에서 태어나면 여기서 red다.
    */
   it("danger 확정을 든 확인창 파일이 전부 목록에 있다", () => {
-    const found = SOURCES.filter(({ source }) => /<(?:DialogContent|OnboardingModal)\b/.test(source) && DANGER_BUTTON.test(source)).map(({ path }) => path).sort();
+    const found = SOURCES.filter(({ source }) => /<(?:DialogContent|LargeModal)\b/.test(source) && DANGER_BUTTON.test(source)).map(({ path }) => path).sort();
     const covered = new Set([...CONFIRMS.flatMap((entry) => entry.file), ...Object.keys(NO_TRIGGER).map((key) => key.split("#")[0]), SYNC_FILE]);
     expect(found.length).toBeGreaterThan(8);
     expect(found.filter((path) => !covered.has(path))).toEqual([]);
@@ -218,7 +218,7 @@ const BLUE_ROW: ProjectListRow = {
 
 /** 파랑 링크 중 규칙을 어기는 것 — 새 탭도 아니고 문장 안도 아닌 것. */
 function strayBlueLinks(root: ParentNode): string[] {
-  return [...root.querySelectorAll<HTMLAnchorElement>("a")].filter((a) => a.className.includes("text-blue-600")).filter((a) => {
+  return [...root.querySelectorAll<HTMLAnchorElement>("a")].filter((a) => a.className.includes("text-link")).filter((a) => {
     if (a.target === "_blank") return false;
     const parent = a.parentElement;
     // 문장 안 인라인 — 링크와 나란한 **글자 노드에 낱말이 있다**(요소 형제는 문장이 아니다 — 행 띠의 사유 `<span>`).
@@ -227,7 +227,7 @@ function strayBlueLinks(root: ParentNode): string[] {
     return !inline;
   }).map((a) => `${a.getAttribute("href")} "${a.textContent}"`);
 }
-const blueLinks = (root: ParentNode) => [...root.querySelectorAll("a")].filter((a) => a.className.includes("text-blue-600")).length;
+const blueLinks = (root: ParentNode) => [...root.querySelectorAll("a")].filter((a) => a.className.includes("text-link")).length;
 
 /**
  * 파랑 링크를 그리는 셸 화면 — 렌더해서 센다. `open`은 창 안의 링크를 드러내는 동작이다.
@@ -260,6 +260,10 @@ const BLUE: { name: string; file: string; ui: () => ReactNode; open?: () => Prom
  * 셸 안 파일은 소스에서 사유를 적는다 — 새 파일이 이 목록에 들어오면 렌더 목록으로 옮기는 것이 먼저다.
  */
 const BLUE_UNRENDERED: Record<string, string> = {
+  "app/changelog/page.tsx": "public documentation navigation, outside the shell",
+  "app/docs/not-found.tsx": "public documentation navigation, outside the shell",
+  "components/changelog/release-markdown.tsx": "public documentation links, outside the shell",
+  "components/docs/guide-markdown.tsx": "public documentation links, outside the shell",
   "app/oauth/authorize/page.tsx": "public — not in the shell",
   "app/signin/page.tsx": "public — not in the shell",
   // 실행 상세의 PR 링크 둘 — `target="_blank"`(logs-events 픽스처가 무겁다)
@@ -287,21 +291,24 @@ describe("셸 안 독립·행 링크의 파랑은 새 탭 외부 링크다 (DESI
   it("판정식 카나리아 — 독립 파랑 내부 링크는 잡고, 새 탭·문장 안은 놓아준다", () => {
     const root = document.createElement("div");
     root.innerHTML = [
-      '<div><a class="text-blue-600" href="/projects/acme/settings">Settings</a></div>',
-      '<div><a class="text-blue-600" href="https://github.com" target="_blank">GitHub</a></div>',
-      '<p>Go to <a class="text-blue-600" href="/projects/acme/sources">Sources</a>.</p>',
+      '<div><a class="text-link" href="/projects/acme/settings">Settings</a></div>',
+      '<div><a class="text-link" href="https://github.com" target="_blank">GitHub</a></div>',
+      '<p>Go to <a class="text-link" href="/projects/acme/sources">Sources</a>.</p>',
       '<div><a class="text-foreground" href="/projects/acme">acme</a></div>',
-      '<div><span>A pull request is open.</span><a class="text-blue-600" href="/pr">View</a></div>',
-      '<div>· <a class="text-blue-600" href="/meta">View</a></div>',
-      '<p> · <a class="text-blue-600" href="/dot">Open</a></p>',
+      '<div><span>A pull request is open.</span><a class="text-link" href="/pr">View</a></div>',
+      '<div>· <a class="text-link" href="/meta">View</a></div>',
+      '<p> · <a class="text-link" href="/dot">Open</a></p>',
     ].join("");
     expect(strayBlueLinks(root)).toEqual(['/projects/acme/settings "Settings"', '/pr "View"', '/meta "View"', '/dot "Open"']);
   });
 
   it("파랑 링크를 그리는 파일이 전부 렌더 목록이나 사유 목록에 있다", () => {
-    // `ButtonLink variant="link"`도 파랑이다(`buttonClass`의 `link` — `text-blue-600`).
-    const blue = (tag: string) => /(?<![\w-])text-blue-600(?![\w-])/.test(tag) || (tag.startsWith("<ButtonLink") && /variant="link"/.test(tag));
-    const found = SOURCES.filter(({ source }) => openingTags(source, "a|Link|ButtonLink").some(blue)).map(({ path }) => path).sort();
+    // `ButtonLink variant="link"`도 파랑이다(`buttonClass`의 `link` — `text-link`).
+    const blue = (tag: string) => /(?<![\w-])text-link(?![\w-])/.test(tag) || (tag.startsWith("<ButtonLink") && /variant="link"/.test(tag));
+    const found = SOURCES.filter(({ source }) => {
+      const inlineNames = [...source.matchAll(/import\s*\{\s*Link(?:\s+as\s+(\w+))?\s*\}\s*from\s*["']@\/components\/ui\/link["']/g)].map(match => match[1] ?? "Link");
+      return openingTags(source, ["a", "Link", "ButtonLink", ...inlineNames].join("|")).some(tag => blue(tag) || inlineNames.some(name => tag.startsWith(`<${name} `)));
+    }).map(({ path }) => path).sort();
     const covered = new Set([...BLUE.map((entry) => entry.file), ...Object.keys(BLUE_UNRENDERED)]);
     expect(found.length).toBeGreaterThan(10);
     expect(found.filter((path) => !covered.has(path))).toEqual([]);

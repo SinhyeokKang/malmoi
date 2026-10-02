@@ -1,3 +1,4 @@
+import { Meter } from "@/components/ui/meter";
 import { LocaleFlag } from "@/components/translations/locale-badge";
 import { Badge } from "@/components/ui/badge";
 import type { RowLocaleProgress } from "@/lib/projects/list";
@@ -32,7 +33,7 @@ export function LocaleMeter({ locale }: { locale: RowLocaleProgress }) {
           `gap-1.5`로 코드가 왼쪽으로 붙는다. 틀린 국기는 없는 것보다 나쁘다는 판정의 연장이다.
         */}
         {/* 국기 + 코드는 배지 하나다(2026-09-30 사용자 — Home 메타 열 Languages와 같은 모양). */}
-        <Badge variant="neutral" className="min-w-0 gap-1">
+        <Badge variant="soft-neutral" className="min-w-0 gap-1">
           <LocaleFlag code={locale.code} />
           <span className="truncate">{locale.code}</span>
         </Badge>
@@ -44,20 +45,7 @@ export function LocaleMeter({ locale }: { locale: RowLocaleProgress }) {
         스크린리더에 중복이 되지 않게 바만 장식으로 둔다. 완료율·검토 대기율을 함께 읽는 추가 설명은
         이번 범위에서 제외했다 (2026-09-13 사용자).
       */}
-      <MeterBar done={done} review={review} />
+      <Meter done={done} review={review} />
     </div>
-  );
-}
-
-/**
- * Meter의 막대만 — 목록 행과 Sources 상세 언어 행이 같이 쓴다(5-Y18 — 상세가 값이 같은 사본을 들고 있었다).
- * 폭은 퍼센트(0–100)이고 두 구간이 겹치지 않게 호출부가 접는다. `dimmed`는 사라진 언어다 — 완료가 흐려지고 검토 구간은 호출부가 0으로 준다.
- */
-export function MeterBar({ done, review, dimmed = false }: { done: number; review: number; dimmed?: boolean }) {
-  return (
-    <span aria-hidden className="bg-foreground/[0.08] flex h-1 overflow-hidden rounded-full">
-      <span className={dimmed ? "bg-foreground/25 h-1" : "bg-foreground/85 h-1"} style={{ width: `${done}%` }} />
-      <span className="h-1 bg-amber-500" style={{ width: `${review}%` }} />
-    </span>
   );
 }

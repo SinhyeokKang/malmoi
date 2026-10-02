@@ -2,9 +2,10 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { toneOf, TONES, type Tone } from "@/lib/tone";
+import { hueOf, HUES, type Hue } from "@/lib/hue";
 
-import { INVITATION_EMAIL_LOGO_URL, INVITATION_EMAIL_SUBJECT, TONE_HEX, buildInvitationEmail, emailProjectName } from "../message";
+import { INVITATION_EMAIL_LOGO_URL, INVITATION_EMAIL_SUBJECT, HUE_HEX, buildInvitationEmail, emailProjectName } from "../message";
+import { INVITATION_EMAIL_HTML, INVITATION_EMAIL_TILE_FALLBACK, INVITATION_EMAIL_TILE_IMAGE } from "../template";
 
 /**
  * 개인별 초대 메일 payload (design §4 · invitation-email-project). **text는 초대 URL 한 줄이고, html은 링크와
@@ -189,7 +190,7 @@ describe("buildInvitationEmail — 이미지", () => {
   ])("썸네일 키가 안 나오는 값(%s)은 톤 셀 + Box PNG 폴백이다", (_name, image) => {
     const { html } = buildInvitationEmail({ ...base, project: { ...project, image } });
     expect(html).not.toContain("/api/images/");
-    const hex = TONE_HEX[toneOf(project.name)];
+    const hex = HUE_HEX[hueOf(project.name)];
     expect(html).toMatch(new RegExp(`<td[^>]*bgcolor="${hex}"[^>]*>\\s*<img src="${BOX_URL.replace(/[.]/g, "\\.")}" width="16" height="16"`));
     expect(html).toMatch(new RegExp(`<img src="${BOX_URL.replace(/[.]/g, "\\.")}"[^>]*alt=""`));
   });
@@ -308,14 +309,14 @@ describe("buildInvitationEmail — 프로젝트 이름", () => {
     let name = "";
     for (let i = 0; i < 1000; i++) {
       const candidate = `${"p".repeat(60)}${i}`;
-      if (toneOf(candidate) !== toneOf(emailProjectName(candidate))) {
+      if (hueOf(candidate) !== hueOf(emailProjectName(candidate))) {
         name = candidate;
         break;
       }
     }
     expect(name).not.toBe("");
     const { html } = buildInvitationEmail({ ...base, project: { name, image: null } });
-    expect(html).toContain(`bgcolor="${TONE_HEX[toneOf(name)]}"`);
+    expect(html).toContain(`bgcolor="${HUE_HEX[hueOf(name)]}"`);
   });
 });
 
@@ -349,8 +350,24 @@ describe("emailProjectName — grapheme 60개 상한", () => {
  * (gamut mapping 아님 — design §3). 손으로 적은 상수끼리 비교하면 v3 값도 통과하므로 원본 CSS에서 환산한다.
  * `visual-system.test.ts`는 `app`·`components`만 훑어 이것이 유일한 방어선이다(POSTMORTEM 2026-09-17).
  */
-describe("TONE_HEX", () => {
-  const css = readFileSync("node_modules/tailwindcss/theme.css", "utf8");
+describe("HUE_HEX", () => {
+  const globals = readFileSync("app/globals.css", "utf8");
+  // 실제 앱의 override/별칭을 기본 팔레트 뒤에 적용한다. 이메일 런타임에는 CSS를 넣지 않는다.
+  const css = `${readFileSync("node_modules/tailwindcss/theme.css", "utf8")}\n${globals}`;
+  const variables = new Map([...css.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)].map((match) => [match[1]!, match[2]!.trim()]));
+
+  function channelsHex(channels: number[]): string {
+    if (!channels.every(Number.isFinite)) throw new Error("비유한 색 채널");
+    return `#${channels.map((channel) => Math.round(channel).toString(16).padStart(2, "0")).join("")}`;
+  }
+
+  function hslToHex(h: number, s: number, l: number): string {
+    const hue = ((h % 360) + 360) % 360 / 60;
+    const chroma = (1 - Math.abs(2 * l - 1)) * s;
+    const x = chroma * (1 - Math.abs(hue % 2 - 1));
+    const channels = hue < 1 ? [chroma, x, 0] : hue < 2 ? [x, chroma, 0] : hue < 3 ? [0, chroma, x] : hue < 4 ? [0, x, chroma] : hue < 5 ? [x, 0, chroma] : [chroma, 0, x];
+    return channelsHex(channels.map((channel) => (channel + l - chroma / 2) * 255));
+  }
 
   function oklchToHex(l: number, c: number, h: number): string {
     const a = c * Math.cos((h * Math.PI) / 180);
@@ -363,6 +380,7 @@ describe("TONE_HEX", () => {
       -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_,
       -0.0041960863 * l_ - 0.7034186147 * m_ + 1.707614701 * s_,
     ];
+    if (!linear.every(Number.isFinite)) throw new Error("비유한 색 채널");
     return `#${linear
       .map((v) => {
         const clamped = Math.min(1, Math.max(0, v));
@@ -374,19 +392,121 @@ describe("TONE_HEX", () => {
       .join("")}`;
   }
 
-  function expected(tone: Tone): string {
-    const match = new RegExp(`--color-${tone}-600:\\s*oklch\\(([\\d.]+)%\\s+([\\d.]+)\\s+([\\d.]+)\\)`).exec(css);
-    if (!match) throw new Error(`theme.css에 --color-${tone}-600이 없다`);
-    return oklchToHex(Number(match[1]) / 100, Number(match[2]), Number(match[3]));
+  // CSS <number>: 소수점 뒤에는 숫자가 필요하며 지수 표기는 유한한 값만 받는다.
+  const number = "[+-]?(?:\\d*\\.\\d+|\\d+)(?:[eE][+-]?\\d+)?";
+  const hslPattern = new RegExp(`^hsl\\((${number})\\s+(${number})%\\s+(${number})%\\)$`);
+  const rgbPattern = new RegExp(`^rgb\\((${number})\\s+(${number})\\s+(${number})\\)$`);
+  const oklchPattern = new RegExp(`^oklch\\((${number})%\\s+(${number})\\s+(${number}|none)\\)$`);
+  function numericChannels(parts: string[]): number[] {
+    const channels = parts.map(Number);
+    if (!channels.every(Number.isFinite)) throw new Error("비유한 색 채널");
+    return channels;
   }
 
+  function colorHex(name: string, seen = new Set<string>()): string {
+    const value = variables.get(name);
+    if (value === undefined || seen.has(name)) throw new Error(`실재 색 선언을 못 풀었다: ${name}`);
+    const alias = /^var\((--[\w-]+)\)$/.exec(value);
+    if (alias) return colorHex(alias[1]!, new Set([...seen, name]));
+    const hsl = hslPattern.exec(value);
+    if (hsl) {
+      const [h, s, l] = numericChannels(hsl.slice(1));
+      return hslToHex(h!, s! / 100, l! / 100);
+    }
+    const rgb = rgbPattern.exec(value);
+    if (rgb) return channelsHex(numericChannels(rgb.slice(1)));
+    const oklch = oklchPattern.exec(value);
+    if (oklch) {
+      const [l, c, h] = numericChannels([oklch[1]!, oklch[2]!, oklch[3] === "none" ? "0" : oklch[3]!]);
+      if (oklch[3] !== "none" || c === 0) return oklchToHex(l! / 100, c!, h!);
+    }
+    throw new Error(`지원하지 않는 색 선언: ${name}: ${value}`);
+  }
+
+  const expected = (hue: Hue): string => colorHex(`--color-${hue}-600`);
+
   it("톤 여덟 전부가 theme.css -600의 sRGB clamp 환산값과 같다", () => {
-    expect(Object.keys(TONE_HEX).sort()).toEqual([...TONES].sort());
-    for (const tone of TONES) expect(TONE_HEX[tone], tone).toBe(expected(tone));
+    expect(Object.keys(HUE_HEX).sort()).toEqual([...HUES].sort());
+    for (const hue of HUES) expect(HUE_HEX[hue], hue).toBe(expected(hue));
   });
 
   it("환산 자체가 설계 표와 맞는다 — 환산식이 틀리면 둘 다 같이 틀리는 것을 막는다", () => {
     expect(expected("rose")).toBe("#ec003f");
     expect(expected("indigo")).toBe("#4f39f6");
+  });
+
+  const TEMPLATE_TOKENS: Record<string, string> = {
+    "#ffffff": "--color-background",
+    "#0a0a0a": "--color-foreground",
+    "#171717": "--color-primary",
+    "#fafafa": "--color-primary-foreground",
+    "#737373": "--color-muted-foreground",
+    "#e5e5e5": "--color-border",
+  };
+  // 메일 CTA hover의 기존 고정값이다. 앱의 custom 토큰에 짝이 없고 메일의 리터럴 출력을 보존한다(Spec Y-a).
+  const EXCEPTIONS = { "#262626": "CTA hover 전용; 대응하는 앱 custom 색 토큰 없음" };
+  const template = `${INVITATION_EMAIL_HTML}\n${INVITATION_EMAIL_TILE_IMAGE}\n${INVITATION_EMAIL_TILE_FALLBACK}`;
+  const hexes = (html: string): string[] => [...new Set([...html.matchAll(/(?<!&)#(?:[\da-f]{8}|[\da-f]{6}|[\da-f]{4}|[\da-f]{3})\b/gi)].map((match) => match[0].toLowerCase()))].sort();
+  const unpaired = (html: string): string[] => hexes(html).filter((hex) => !Object.hasOwn(TEMPLATE_TOKENS, hex) && !Object.hasOwn(EXCEPTIONS, hex));
+
+  it("template의 리터럴 hex 전부가 실제 globals 토큰 값 또는 명시 예외다", () => {
+    expect(hexes(template)).toEqual([...Object.keys(TEMPLATE_TOKENS), ...Object.keys(EXCEPTIONS)].sort());
+    expect(unpaired(template)).toEqual([]);
+    for (const [hex, token] of Object.entries(TEMPLATE_TOKENS)) expect(colorHex(token), token).toBe(hex);
+  });
+
+  it("#262626은 짝 없는 CTA hover 한 자리의 문서화된 예외다", () => {
+    expect(Object.keys(EXCEPTIONS)).toEqual(["#262626"]);
+    expect(EXCEPTIONS["#262626"]).not.toBe("");
+    expect(template.match(/#262626/g)).toHaveLength(1);
+    expect(template).toContain("a.mm-btn:hover{background:#262626!important}");
+    const customColors = [...globals.matchAll(/^\s*(--color-[\w-]+):/gm)].map((match) => colorHex(match[1]!));
+    expect(customColors).not.toContain("#262626");
+  });
+
+  it("HSL 환산과 미등재 hex 검출을 검증한다 (카나리아)", () => {
+    expect(hslToHex(0, 0, 1)).toBe("#ffffff");
+    expect(hslToHex(0, 1, 0.5)).toBe("#ff0000");
+    expect(hslToHex(120, 1, 0.5)).toBe("#00ff00");
+    expect(hslToHex(-120, 1, 0.5)).toBe("#0000ff");
+    expect(unpaired(template.replaceAll("#0a0a0a", "#010203"))).toEqual(["#010203"]);
+  });
+
+  it.each([
+    "hsl(0 0% 100.%)", "hsl(--1 0% 100%)", "hsl(0 0% 1..0%)",
+    "rgb(255. 255 255)", "rgb(2..55 255 255)", "oklch(100.% 0 none)",
+    "hsl(NaN 0% 100%)", "rgb(Infinity 255 255)", "oklch(100% NaN none)",
+    "hsl(1e999 0% 100%)", "rgb(1e999 255 255)", "oklch(100% 1e999 0)",
+    "hsl(0 1e308% 1e308%)", "oklch(100% 1e308 0)",
+  ])("실제 선언 파서가 잘못된 숫자나 비유한 채널을 거부한다: %s", (value) => {
+    variables.set("--test-canary", value);
+    try {
+      expect(() => colorHex("--test-canary")).toThrow();
+    } finally {
+      variables.delete("--test-canary");
+    }
+  });
+
+  it.each([
+    ["hsl(-120 100% 50%)", "#0000ff"],
+    ["rgb(+2.55e2 255 255)", "#ffffff"],
+    ["oklch(100% 0 none)", "#ffffff"],
+  ])("유효한 숫자와 zero-chroma none을 보존한다: %s", (value, hex) => {
+    variables.set("--test-canary", value);
+    try {
+      expect(colorHex("--test-canary")).toBe(hex);
+    } finally {
+      variables.delete("--test-canary");
+    }
+  });
+
+  it.each(["#f00", "#ffff", "#010203", "#010203ff", "#ffffff00"])("미등재 CSS hex를 길이에 관계없이 검출한다: %s", (hex) => {
+    expect(unpaired(`${template}\n<style>.canary{color:${hex}}</style>`)).toEqual([hex]);
+    expect(unpaired(template.replace("#ffffff", hex))).toEqual([hex]);
+  });
+
+  it("HTML 숫자 엔티티는 CSS 색이 아니다", () => {
+    expect(hexes("&#8199;&#847;")).toEqual([]);
+    expect(hexes("color:#AbC;background:#AbCd;fill:#AbCdEf;stroke:#AbCdEf01")).toEqual(["#abc", "#abcd", "#abcdef", "#abcdef01"]);
   });
 });

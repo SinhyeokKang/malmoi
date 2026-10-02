@@ -1,4 +1,6 @@
 "use client";
+import { Link as InlineLink } from "@/components/ui/link";
+import { ListRow } from "@/components/ui/list-row";
 
 import {
   ChevronRight,
@@ -17,13 +19,14 @@ import type { ReactNode } from "react";
 import { EmptyProjects, NoProjectsMatch } from "@/components/projects/empty-projects";
 import { LocaleMeter } from "@/components/locale-meter";
 import { ProjectSearch, useProjectQuery } from "@/components/projects/search-input";
-import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { NewProjectButton } from "@/components/projects/new-project-button";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { CountBadge } from "@/components/ui/count-badge";
-import { BannerLine, RowCard, RowCardItem, RowCardList } from "@/components/ui/row-card";
+import { BannerLine } from "@/components/ui/row-card";
+import { Card, CardList } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { canPerform } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
@@ -138,21 +141,21 @@ export function ProjectList({
         {message !== null && <Alert variant="danger">{message}</Alert>}
         {body.kind === "groups" ? (
           body.cards.map((card) => (
-            <RowCard
+            <Card
               key={card.group}
               title={GROUP_LABEL[card.group]}
               count={card.rows.length}
               countLabel={m.projects.count(card.rows.length)}
             >
               <RowList rows={card.rows} />
-            </RowCard>
+            </Card>
           ))
         ) : body.kind === "results" ? (
           /*
             ⚠️ **결과를 그룹으로 쪼개지 않는다** (캔버스 `1c`). 결과 1건에 헤더 셋이면 둘이 빈 카드가
             되고, 이 화면이 답할 질문은 "어느 그룹인가"가 아니라 "찾았나"다. 상태는 행의 칩이 말한다.
           */
-          <RowCard
+          <Card
             title={m.projects.resultsFor(body.query)}
             count={body.rows.length}
             countLabel={m.projects.count(body.rows.length)}
@@ -178,7 +181,7 @@ export function ProjectList({
             }
           >
             <RowList rows={body.rows} q={q} />
-          </RowCard>
+          </Card>
         ) : body.kind === "empty" ? (
           <EmptyProjects />
         ) : (
@@ -195,13 +198,13 @@ export function ProjectList({
  */
 function RowList({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
   return (
-    <RowCardList>
-      {rows.map((row, index) => (
-        <RowCardItem key={row.slug} first={index === 0}>
+    <CardList>
+      {rows.map((row) => (
+        <li key={row.slug}>
           <ProjectRow row={row} q={q} />
-        </RowCardItem>
+        </li>
       ))}
-    </RowCardList>
+    </CardList>
   );
 }
 
@@ -217,7 +220,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
 
   return (
     <>
-      <Link
+      <ListRow ringInset
         href={routes.project(row.slug)}
         /**
          * ⚠️ **링이 `ring-inset`이다** (2026-09-11 실측). 링은 box-shadow라 요소 **밖으로** 3px
@@ -225,7 +228,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
          * 포커스가 아예 안 보였다.** 그 `overflow-hidden`은 `rounded-lg`가 첫·끝 행의 모서리를
          * 자르는 수단이라 뗄 수 없으므로, 링을 안쪽으로 그린다.
          */
-        className="hover:bg-foreground/[0.02] focus-visible:ring-ring flex items-center gap-4 py-[13px] pr-3.5 pl-3 focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
+        className="gap-4 pr-3.5 pl-3"
       >
         <ProjectThumbnail name={row.name} src={row.image} />
 
@@ -241,16 +244,16 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             ⚠️ **그 회색이 `#a3a3a3`이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).
             `#737373`은 이 리포에서 **꺼진 컨트롤의 글자색**이라 "비활성처럼"의 하한이 아니라 그 값
             자체였다. 아래 메타·배지와 **한 색**이라야 이 행이 통째로 물러난 것으로 읽힌다.
-            ⚠️ **대비가 2.3:1이라 DESIGN §6.2의 `neutral-400` 규칙(*"본문에 쓰지 않는다"*)에서 벗어난
+            ⚠️ **대비가 2.3:1이라 DESIGN §6.2의 `gray-dim` 규칙(*"본문에 쓰지 않는다"*)에서 벗어난
             자리다** — 등재된 이탈이고 근거는 §6.63에 있다.
 
             ⚠️ **일치 구간은 이름에서만 칠한다** — `searchProjects`의 대상이 이름 하나라, 리포 줄까지
             칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다.
           */}
-          <span className={cn("truncate text-base font-medium", status === "archived" && "text-neutral-400")}>
+          <span className={cn("truncate text-base font-medium", status === "archived" && "text-gray-dim")}>
             {highlightName(row.name, q).map((part, index) =>
               part.match ? (
-                <mark key={index} className="rounded-[3px] bg-blue-600/[0.14] px-px text-inherit">
+                <mark key={index} className="rounded-[3px] bg-link/[0.14] px-px text-inherit">
                   {part.text}
                 </mark>
               ) : (
@@ -269,7 +272,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             바깥이 `flex`라 `truncate`를 거기 두면 마크까지 잘리는 대신 줄임표가 안 선다.
           */}
           {/* 보조줄은 13이다 — 행 보조줄 한 벌(4-Y9 · `PanelRow`·`EventMeta`와 같다). */}
-          <span className={cn("flex min-w-0 items-center gap-1.5 text-xs", status === "archived" ? "text-neutral-400" : "text-muted-foreground")}>
+          <span className={cn("flex min-w-0 items-center gap-1.5 text-xs", status === "archived" ? "text-gray-dim" : "text-muted-foreground")}>
             <GithubIcon className="size-3.5 shrink-0" />
             <span className="truncate">
               {`${row.repoOwner}/${row.repoName}`}
@@ -310,10 +313,10 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             Sources의 같은 배지와 글자색이 갈렸다). ⚠️ **보관만 `#a3a3a3`이다** — 이름·메타와 한 색으로 물러나는 등재된 이탈이다(DESIGN §6.63 보관 행).
             ⚠️ **칩만 `px-2`다** — 총계·그룹 카운트 배지는 `px-1.5` 그대로여야 `min-w-5`가 이겨 원형이 된다.
           */}
-          <StatusBadge state={CHIP_STATE[chipState]} className={cn("px-2", chipState === "archived" && "text-neutral-400")} />
+          <StatusBadge state={CHIP_STATE[chipState]} className={cn("px-2", chipState === "archived" && "text-gray-dim")} />
           <ChevronRight aria-hidden className="text-muted-foreground size-4" />
         </span>
-      </Link>
+      </ListRow>
 
       {banner !== null && <ProjectBanner row={row} banner={banner} />}
     </>
@@ -395,20 +398,20 @@ function BannerAction({
   canSettle: boolean;
 }) {
   const internal = (href: string, label: string) => (
-    <Link href={href} className="text-muted-foreground ml-1 inline-flex shrink-0 items-center gap-0.5">
+    <Link href={href} className="text-muted-foreground ml-1 inline-flex shrink-0 gap-0.5">
       {label}
       <ChevronRight className="size-3" aria-hidden />
     </Link>
   );
   const external = (href: string, label: string) => (
-    <a
+    <InlineLink
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="ml-1 shrink-0 text-blue-600"
+      className="ml-1 shrink-0 "
     >
       {label}
-    </a>
+    </InlineLink>
   );
 
   switch (banner.kind) {

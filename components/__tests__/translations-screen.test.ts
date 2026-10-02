@@ -276,15 +276,7 @@ describe("행 축 (8-4)", () => {
     expect(src).toMatch(/onSearch=\{/);
   });
 
-  /**
-   * ⚠️ **로케일 헤더가 사라져 orphaned 로케일의 표시가 살 자리가 배지뿐이다** (DESIGN §6.1).
-   * 색만으로 말하면 스크린리더에 아무것도 안 남으므로 `sr-only` 문구가 함께 있어야 한다.
-   */
-  it("로케일 배지가 orphaned 표시를 든다", () => {
-    const src = read(LOCALE_BADGE);
-    expect(src).toMatch(/orphaned \? "missing"/);
-    expect(src).toMatch(/sr-only/);
-  });
+  // orphaned 배지의 코드·국기·접근 설명은 status-badges.test.tsx에서 실제 DOM으로 잰다.
 
   /**
    * ⚠️ **`Base` 라벨을 배지에서 뺐다** (2026-09-11 사용자). 이 표에서 base 행은 **맨 위 한 줄**이고

@@ -1,4 +1,4 @@
-import { History, RotateCcw, SearchX } from "lucide-react";
+import { History, RotateCcw } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { EventDetail } from "@/components/logs/event-detail";
@@ -9,7 +9,7 @@ import { LogFilters } from "@/components/logs/log-filters";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { ButtonLink } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyState, NoMatch } from "@/components/ui/empty-state";
 import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
@@ -107,8 +107,7 @@ export default async function LogsPage({
         {page.rows.length === 0 ? (
           narrowed ? (
             /* ⚠️ **빈 이력과 원인이 반대다** — 하나는 프로젝트가 비었고 하나는 내가 좁혔다. */
-            <EmptyState
-              icon={SearchX}
+            <NoMatch
               title={m.logs.noMatch.title}
               description={m.logs.noMatch.description}
               action={
@@ -138,7 +137,7 @@ export default async function LogsPage({
               {group.rows.map((row, position) => {
                 const showBoundary = index === boundary && project.activityCoverageStartedAt !== null;
                 index += 1;
-                // 머리↔첫 행은 헤더 급 선이다(RowCard 규칙, 4-Y3) — `first:`는 카드의 첫 자식이 머리라 한 번도 걸리지 않았다.
+                // 머리↔첫 행은 헤더 급 선이다(Card 규칙, 4-Y3) — `first:`는 카드의 첫 자식이 머리라 한 번도 걸리지 않았다.
                 const first = position === 0;
                 return (
                   <div key={row.id} className={first ? "border-foreground/[0.06] border-t" : "border-border border-t"}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { deleteProjectImage, updateProjectName, uploadProjectImage } from "@/app/(edit)/projects/[slug]/settings/actions";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,9 @@ import { FileInput } from "@/components/ui/file-input";
 import { FieldError } from "@/components/ui/form-group";
 import { useLandAfter } from "@/components/ui/focus";
 import { Input } from "@/components/ui/input";
-import { ImageTile } from "@/components/ui/image-tile";
-import { PanelCard, PanelFacts } from "@/components/ui/panel-card";
-import { toneFill } from "@/components/ui/tone";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
+import { PanelFacts } from "@/components/ui/panel-card";
+import { Card } from "@/components/ui/card";
 import { isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 import { planProjectName, PROJECT_NAME_MAX_CHARS } from "@/lib/projects/plan";
@@ -20,7 +20,7 @@ import { uploadRejectMessage } from "@/lib/upload/message";
 import { cn } from "@/lib/utils";
 
 /** 이름 줄 캡션의 배치 — 오류(`FieldError`)와 안내가 같은 자리에 선다. */
-const CAPTION = "min-w-0 flex-1 basis-40 @max-[640px]:basis-full";
+const CAPTION = "min-w-0 flex-1 basis-40 @max-form:basis-full";
 
 export function GeneralCard({ slug, name, image, archived }: { slug: string; name: string; image: string | null; archived: boolean }) {
   const [value, setValue] = useState(name);
@@ -44,21 +44,15 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
   const nameError = archived ? null : error ?? (!plan.ok ? plan.reason === "empty" ? m.settings.general.emptyName : m.settings.general.longName : null);
   const shownImageError = archived ? null : imageError;
   const caption = archived ? m.settings.archivedReason : pending ? m.settings.general.busy : imageError ?? m.settings.general.caption;
-  return <PanelCard title={m.settings.general.title}>
+  return <Card title={m.settings.general.title}>
     <PanelFacts>
       <span className="text-muted-foreground text-xs">{m.settings.general.thumbnail}</span>
       <div className="flex items-center gap-4">
         {/* 깨진 URL의 폴백은 목록·Home·초대와 같은 `ImageTile`이 든다 (malmoi#50). */}
-        <ImageTile
-          src={image}
-          className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-sm"
-          fallbackClassName={`text-white ${toneFill(name)}`}
-        >
-          <Box className="size-5" />
-        </ImageTile>
+        <ProjectThumbnail src={image} name={name} size="lg" />
         <div className="flex min-w-0 flex-col gap-1.5">
-          <div className="flex items-center gap-2 [&_.animate-spin]:size-3.5">
-            <FileInput aria-describedby="project-image-caption" aria-invalid={shownImageError !== null} accept="image/png,image/jpeg" disabled={archived || pending} loading={pending && operation === "upload"} aria-busy={pending && operation === "upload"} onPick={file => {
+          <div className="flex items-center gap-2">
+            <FileInput spinnerSize="sm" aria-describedby="project-image-caption" aria-invalid={shownImageError !== null} accept="image/png,image/jpeg" disabled={archived || pending} loading={pending && operation === "upload"} aria-busy={pending && operation === "upload"} onPick={file => {
               if (!file || pending || archived) return;
               setImageError(null);
               const picked = planImagePick(file);
@@ -71,7 +65,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
               });
             }}>{m.settings.general.upload}</FileInput>
             {/* 썸네일이 없으면 [Remove]를 그리지 않는다(2026-09-30 사용자 — 꺼진 버튼을 걷었다). */}
-            {image && <Button className="[&_.animate-spin]:size-3.5" variant="ghost" aria-describedby="project-image-caption" disabled={archived || pending} loading={pending && operation === "remove"} aria-busy={pending && operation === "remove"} onClick={() => {
+            {image && <Button spinnerSize="sm" variant="ghost" aria-describedby="project-image-caption" disabled={archived || pending} loading={pending && operation === "remove"} aria-busy={pending && operation === "remove"} onClick={() => {
               setImageError(null); setOperation("remove");
               run(async () => { try { const result = await deleteProjectImage(slug); if (!result.ok) setImageError(isAccessError(result.reason) ? settingsAccessMessage(result.reason) : uploadRejectMessage(result.reason)); } catch { setImageError(uploadRejectMessage("unavailable")); } });
             }}>{m.settings.general.remove}</Button>}
@@ -87,8 +81,10 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
         setError(null); setSaved(false);
         save(async () => { try { const result = await updateProjectName({ slug, name: value }); if (result.ok) { setCurrent(result.name); setSaved(true); } else setError(isAccessError(result.error) ? settingsAccessMessage(result.error) : result.error === "empty" ? m.settings.general.emptyName : result.error === "too-long" ? m.settings.general.longName : m.settings.repository.fields.failed); } catch { setError(m.settings.repository.fields.failed); } });
       }}>
-        <Input ref={nameRef} id="project-name" className="w-[320px] max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={archived ? current : value} maxLength={PROJECT_NAME_MAX_CHARS} disabled={archived || saving} aria-invalid={nameError !== null} aria-describedby="project-name-caption" onChange={event => { setValue(event.target.value); setSaved(false); setError(null); }} />
-        <Button ref={saveRef} className="[&_.animate-spin]:size-3.5" type="submit" loading={saving} aria-busy={saving} disabled={archived || !plan.ok || plan.name === current} aria-describedby="project-name-caption">{m.settings.repository.fields.save}</Button>
+        <div className="flex w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1">
+          <Input width="full" ref={nameRef} id="project-name" value={archived ? current : value} maxLength={PROJECT_NAME_MAX_CHARS} disabled={archived || saving} aria-invalid={nameError !== null} aria-describedby="project-name-caption" onChange={event => { setValue(event.target.value); setSaved(false); setError(null); }} />
+        </div>
+        <Button ref={saveRef} spinnerSize="sm" type="submit" loading={saving} aria-busy={saving} disabled={archived || !plan.ok || plan.name === current} aria-describedby="project-name-caption">{m.settings.repository.fields.save}</Button>
         {nameError ? <FieldError id="project-name-caption" className={CAPTION}>{nameError}</FieldError> : (
           <p id="project-name-caption" className={cn(CAPTION, "text-muted-foreground text-xs")}>
             {archived ? m.settings.archivedReason : saved ? <><Check aria-hidden className="mr-1 inline size-3.5" />{m.settings.repository.fields.saved}</> : null}
@@ -103,8 +99,10 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
     <div className="border-border border-t"><PanelFacts>
       <label htmlFor="project-address" className="text-muted-foreground text-xs">{m.settings.general.address}</label>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Input id="project-address" className="bg-muted text-muted-foreground w-[320px] max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={slug} readOnly />
+        <div className="flex w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1">
+          <Input width="full" id="project-address" value={slug} readOnly />
+        </div>
       </div>
     </PanelFacts></div>
-  </PanelCard>;
+  </Card>;
 }

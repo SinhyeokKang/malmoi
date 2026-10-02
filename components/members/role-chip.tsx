@@ -39,7 +39,7 @@ export function RoleChip({ role, reason }: { role: Role; reason: "pending" | "ed
       className="border-border bg-foreground/[0.02] text-muted-foreground inline-flex h-9 w-[132px] shrink-0 items-center gap-1.5 rounded-md border border-dashed px-2.5 text-sm"
     >
       <span aria-hidden>{label}</span>
-      <Lock aria-hidden className="ml-auto size-3 text-neutral-300" />
+      <Lock aria-hidden className="ml-auto size-3 text-gray-light" />
       <span className="sr-only">{m.members.roleLocked[reason](label)}</span>
     </span>
   );

@@ -1,8 +1,6 @@
-import { Box } from "lucide-react";
 
 import { LocaleFlag } from "@/components/translations/locale-badge";
-import { ImageTile } from "@/components/ui/image-tile";
-import { toneFill } from "@/components/ui/tone";
+import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 
 /**
  * 초대의 프로젝트 카드 — **`components/ui/`의 프리미티브가 아니다**.
@@ -42,13 +40,7 @@ export function InviteProjectCard({
         ⚠️ **`overflow-hidden`도 목록과 같다** — 프로젝트 이미지가 생기는 날 이 배경이 그대로 그
         이미지의 자리가 된다(`app/(edit)/projects/(list)/page.tsx`의 같은 주석).
       */}
-      <ImageTile
-        src={image}
-        className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm text-white"
-        fallbackClassName={toneFill(name)}
-      >
-        <Box className="size-4" />
-      </ImageTile>
+      <ProjectThumbnail src={image} name={name} size="md" />
       <div className="flex min-w-0 flex-1 flex-col gap-px">
         <span className="truncate text-sm">{name}</span>
         <span className="text-muted-foreground truncate text-xs">{role}</span>

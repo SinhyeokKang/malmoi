@@ -1,9 +1,9 @@
-import { Box, RotateCcw, SearchX } from "lucide-react";
-import Link from "next/link";
+import { Box, RotateCcw } from "lucide-react";
+
 
 import { NewProjectButton } from "@/components/projects/new-project-button";
-import { buttonClass } from "@/components/ui/button";
-import { EmptyRowCard } from "@/components/ui/row-card";
+import { ButtonLink } from "@/components/ui/button";
+import { EmptyState, NoMatch } from "@/components/ui/empty-state";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
@@ -14,8 +14,7 @@ import { routes } from "@/lib/routes";
  * **만들기**(채운 버튼)이고, 검색이 빈 것의 출구는 **되돌리기**(`default` 버튼 + `RotateCcw`)다 — 되돌리는 일에 채운 버튼을
  * 쓰면 그것이 이 화면의 목적처럼 보인다.
  *
- * ⚠️ **카드 자체(`EmptyRowCard`)는 `components/ui/row-card.tsx`로 올라갔다** — 멤버 화면의 대기 초대
- * 0건이 같은 규격을 쓴다. 장식을 걷어낸 근거(2026-09-15)와 `EmptyState`를 안 쓰는 근거는 그 파일에 있다.
+ * Card placement preserves the standalone empty card; NoMatch owns search-zero icon semantics.
  */
 
 /**
@@ -27,7 +26,7 @@ import { routes } from "@/lib/routes";
  */
 export function EmptyProjects() {
   return (
-    <EmptyRowCard
+    <EmptyState placement="card"
       icon={Box}
       title={m.projects.empty.title}
       description={m.projects.empty.description}
@@ -52,24 +51,22 @@ export function NoProjectsMatch({ query, onReset }: {
   onReset: (event: { preventDefault(): void }) => void;
 }) {
   return (
-    <EmptyRowCard
-      icon={SearchX}
+    <NoMatch placement="card"
       title={m.projects.narrowed.title(query)}
       description={m.projects.narrowed.description}
       /*
         좁힌 0건의 출구는 Logs 필터 0건과 같은 형이다(4-Y15 — `default` 버튼 + `RotateCcw`, 옛 파란 텍스트 링크). 앱 안 이동이라 파랑이 아니다.
-        ⚠️ **`ButtonLink`가 아니라 `Link` + `buttonClass`다** — 같은 탭 클릭만 로컬로 되돌리는 `onNavigate`를 `ButtonLink`가 넘기지 않는다
-        (새 탭·수정 키 클릭은 `href`로 남는다). ⚠️ **링을 직접 든다** — `focus-ring.test.ts`는 `button|input|select|textarea` 넷만 훑는다.
+        ButtonLink가 같은 탭 onNavigate를 전달하므로 수정 키·새 탭의 href는 그대로 남는다.
       */
       action={
-        <Link
+        <ButtonLink
           href={routes.projects()}
           onNavigate={onReset}
-          className={`${buttonClass()} focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none`}
+
         >
           <RotateCcw aria-hidden />
           {m.projects.narrowed.reset}
-        </Link>
+        </ButtonLink>
       }
     />
   );

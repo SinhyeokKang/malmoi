@@ -245,7 +245,7 @@ describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
 
 /**
  * **소스별 결과도 Logs의 결과 톤이다** (malmoi#163 · D3③ — Logs의 성공은 무색). 머리의 Synced는 neutral인데 같은 모달의 소스별 Synced가
- * 별도 표(`SURFACE_VARIANT`)로 초록이었다 — 같은 낱말이 한 모달에서 두 톤이었다. 부분은 warning, 실패는 danger 알약(`missing`, design §3.6)이다.
+ * 별도 표(`SURFACE_VARIANT`)로 초록이었다 — 같은 낱말이 한 모달에서 두 톤이었다. 부분은 warning, 실패는 danger 알약(`soft-red`, design §3.6)이다.
  */
 describe("상세 — Result per source", () => {
   it("머리와 소스별 결과가 같은 낱말이면 같은 톤이다", async () => {
@@ -255,6 +255,7 @@ describe("상세 — Result per source", () => {
       { surfaceSlug: "web", status: "imported", count: 4, reason: null },
       { surfaceSlug: "app", status: "partial", count: 2, reason: null },
       { surfaceSlug: "docs", status: "failed", count: null, reason: null },
+      { surfaceSlug: "old", status: "superseded", count: null, reason: null },
     ];
     const { container } = await detail(value);
     const head = [...container.querySelectorAll("[data-event-detail-kind] .rounded-full")].find((b) => b.textContent === m.logs.status.imported)!;
@@ -265,5 +266,59 @@ describe("상세 — Result per source", () => {
     expect(synced[0]!.className).not.toMatch(/green/);
     expect(perSource(m.logs.status.partial)[0]!.className).toMatch(/amber/);
     expect(perSource(m.logs.status.failed)[0]!.className).toContain("text-destructive");
+    expect(perSource(m.logs.status.superseded)[0]!.className).toContain("bg-foreground/5");
   });
+});
+
+/** 같은 결과가 목록·최근 로그·상세 머리에서 같은 낱말과 면이다. */
+it.each([
+  ["IMPORT", "running", "Syncing…", "bg-foreground/5"],
+  ["PUBLISH", "running", "Publishing…", "bg-foreground/5"],
+  ["PUBLISH", "sent", "Sent", "bg-foreground/5"],
+  ["PUBLISH", "nothingToSend", "Nothing to send", "bg-foreground/5"],
+  ["PUBLISH", "notSent", "Held back", "bg-amber-100/80"],
+  ["IMPORT", "imported", "Synced", "bg-foreground/5"],
+  ["IMPORT", "deferred", "Held", "bg-amber-100/80"],
+  ["IMPORT", "partial", "Partially synced", "bg-amber-100/80"],
+  ["IMPORT", "superseded", "Superseded", "bg-foreground/5"],
+  ["IMPORT", "notStarted", "Not started", "bg-amber-100/80"],
+  ["IMPORT", "failed", "Failed", "bg-destructive/8"],
+  ["IMPORT", "upToDate", "Up to date", "bg-foreground/5"],
+] as const)("%s %s 결과 슬롯은 %s다", async (kind, result, label, face) => {
+  const value = row({ kind, result, ...(kind === "PUBLISH" ? { payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null } as const } : {}) });
+  for (const showTime of [true, false]) {
+    const { container } = await render(<EventRow row={value} href="/logs?event=evt_test" now={now} archived={false} showTime={showTime} />);
+    const pills = [...container.querySelectorAll(".rounded-full")].filter(node => node.textContent === label);
+    expect(pills).toHaveLength(1);
+    expect(pills[0]!.classList.contains(face)).toBe(true);
+    expect(pills[0]!.closest("[data-event-meta]")).toBeNull();
+    expect(container.querySelector("a")?.getAttribute("href")).toBe("/logs?event=evt_test");
+  }
+  const { container } = await detail(value);
+  const pills = [...container.querySelectorAll("[data-event-detail-header] .rounded-full")].filter(node => node.textContent === label);
+  expect(pills).toHaveLength(1);
+  expect(pills[0]!.classList.contains(face)).toBe(true);
+});
+
+it.each([
+  [row({ result: "running" }), m.logs.detail.noResult, null],
+  [row({ kind: "SETTINGS", result: null, subtype: "settings.pushTokenRotated", payload: null }), m.logs.meta.tokenEffect, m.logs.detail.notes.token],
+] as const)("정보 Note는 기존 문구와 비live 슬롯을 유지한다", async (value, body, note) => {
+  const { container } = await detail(value);
+  const wrapper = container.querySelector("[data-event-note]")!;
+  const paragraphs = [...wrapper.querySelectorAll("p")].map(node => node.textContent);
+  expect(paragraphs).toEqual(note === null ? [body] : [body, note]);
+  expect(wrapper.querySelector('[role="alert"], [role="status"], [aria-live]')).toBeNull();
+  expect(wrapper.querySelector("svg")?.getAttribute("class")).toContain("text-muted-foreground");
+});
+
+it("Logs keeps320px search inside the outer ml-auto filter flex item", async () => {
+  const { container } = await render(<LogFilters slug="alpha" sources={[]} actors={[]} refreshable filter={parseLogFilter({})} />);
+  const field = container.querySelector<HTMLElement>('input[type="search"]')!;
+  expect(field.classList.contains("w-80")).toBe(true);
+  expect(field.classList.contains("ml-auto")).toBe(false);
+  const outer = field.closest("[data-log-filter-row]")?.lastElementChild;
+  expect(outer?.contains(field)).toBe(true);
+  expect(outer?.classList.contains("ml-auto")).toBe(true);
+  expect(outer?.parentElement).toBe(field.closest("[data-log-filter-row]"));
 });

@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { LocaleFlag } from "@/components/translations/locale-badge";
-import { Radio, RadioGroup } from "@/components/ui/radio";
+import { RadioGroup } from "@/components/ui/radio";
+import { SelectRow } from "@/components/ui/select-row";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { m } from "@/lib/i18n";
 import { keyGap } from "@/lib/onboarding/key-gap";
@@ -60,7 +61,7 @@ export function NamingStep({
   onChange: (next: Partial<NamingStepState>) => void;
 }) {
   const verdict = planSlug(state.slug);
-  // slug 거부 술어는 하나다 — `aria-invalid`·`aria-describedby`·`FormGroup error`가 같은 것을 본다.
+  // 거부 상태는 aria-invalid에, 렌더된 설명의 선택은 FormGroup에 맡긴다.
   const slugRejected = state.slugTaken || verdict !== "ok";
   const { slug } = state;
 
@@ -72,12 +73,13 @@ export function NamingStep({
       <Alert variant="info">{m.newProject.naming.info(state.pathTemplate, state.branch)}</Alert>
 
       <FormGroup label={m.newProject.naming.name} htmlFor="project-name">
-        <Input
-          id="project-name"
-          value={state.name}
-          onChange={(e) => onChange({ name: e.target.value })}
-          className="w-full"
-        />
+        {(describe) => (
+          <Input aria-describedby={describe()} width="full"
+            id="project-name"
+            value={state.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+          />
+        )}
       </FormGroup>
 
       <FormGroup
@@ -97,20 +99,15 @@ export function NamingStep({
           <span className="text-foreground">{SYNC_BRANCH_PREFIX}{slug || "…"}</span>,
         )}
       >
-        <Input
-          id="project-slug"
-          value={slug}
-          /**
-           * ⚠️ **두 속성이 같은 술어를 쓴다** — `FormGroup`은 `error`가 있을 때만 그 `<p>`를 그리므로,
-           * 갈리면 오류가 없는 동안 **없는 id**를 가리킨다. 안정된 id는 프리미티브가 주고 잇는 것은
-           * 호출부다(DESIGN §6.4) — 안 이으면 포커스가 입력에 있는 사람에게 사유가 안 닿는다. 오류가 없는 동안은
-           * 그 자리에 선 도움말(`-help`)을 가리킨다 (audit #89).
-           */
-          aria-invalid={slugRejected ? true : undefined}
-          aria-describedby={slugRejected ? "project-slug-error" : "project-slug-help"}
-          onChange={(e) => onChange({ slug: e.target.value, slugTaken: false })}
-          className="w-full"
-        />
+        {(describe) => (
+          <Input width="full"
+            id="project-slug"
+            value={slug}
+            aria-invalid={slugRejected ? true : undefined}
+            aria-describedby={describe()}
+            onChange={(e) => onChange({ slug: e.target.value, slugTaken: false })}
+          />
+        )}
       </FormGroup>
 
       {/*
@@ -189,34 +186,38 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
           htmlFor={selectId}
           help={m.newProject.baseLocale.hint}
         >
-          <Select disabled={disabled} value={state.baseLocale} onValueChange={(baseLocale) => onChange({ baseLocale })}>
-            <SelectTrigger
-              id={`${selectId}`}
-              aria-labelledby={`${id}-select-label ${selectId}`}
-              aria-describedby={`${selectId}-help`}
-              className="w-full max-w-sm"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {locales.map((code) => (
-                <SelectItem key={code} value={code}>
-                  {/*
-                    ⚠️ **접혀도 표기가 같아야 한다** — 국기와 자국어 이름이 라디오 갈래에만 있으면 같은
-                    로케일이 로케일 수에 따라 두 가지로 보인다(DESIGN §6.1의 툴바 드롭다운이 같은 이유로
-                    국기를 들였다). **59로케일 리포가 정확히 이 갈래를 밟는다.**
-                  */}
-                  <LocaleFlag code={code} />
-                  {/* 배지 자리가 라벨로 간다 — 키 수와 `Most keys`는 **아는 언어에만** 붙는다. */}
-                  {m.newProject.naming.baseOption(
-                    languageName(code),
-                    countOf(code) === undefined ? undefined : m.newProject.files.keys(countOf(code) ?? 0),
-                    code === leader && known.length > 1,
-                  )}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {(describe) => (
+            <Select disabled={disabled} value={state.baseLocale} onValueChange={(baseLocale) => onChange({ baseLocale })}>
+              <div className="max-w-sm">
+                <SelectTrigger
+                  id={`${selectId}`}
+                  aria-labelledby={`${id}-select-label ${selectId}`}
+                  aria-describedby={describe()}
+                  width="full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+              </div>
+              <SelectContent>
+                {locales.map((code) => (
+                  <SelectItem key={code} value={code}>
+                    {/*
+                      ⚠️ **접혀도 표기가 같아야 한다** — 국기와 자국어 이름이 라디오 갈래에만 있으면 같은
+                      로케일이 로케일 수에 따라 두 가지로 보인다(DESIGN §6.1의 툴바 드롭다운이 같은 이유로
+                      국기를 들였다). **59로케일 리포가 정확히 이 갈래를 밟는다.**
+                    */}
+                    <LocaleFlag code={code} />
+                    {/* 배지 자리가 라벨로 간다 — 키 수와 `Most keys`는 **아는 언어에만** 붙는다. */}
+                    {m.newProject.naming.baseOption(
+                      languageName(code),
+                      countOf(code) === undefined ? undefined : m.newProject.files.keys(countOf(code) ?? 0),
+                      code === leader && known.length > 1,
+                    )}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </FormGroup>
       ) : (
         <div className="flex flex-col gap-2">
@@ -224,7 +225,7 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
             <p id={`${id}-label`} className="text-sm font-medium">
               {label}
             </p>
-            <p className="text-muted-foreground text-xs leading-[1.6]">{m.newProject.baseLocale.hint}</p>
+            <p className="text-muted-foreground text-xs leading-body">{m.newProject.baseLocale.hint}</p>
           </div>
           {/* ⚠️ **①②와 같은 행 형이다** — 글리프 칩 자리에 국기가 들어간다 (핸드오프 1c). */}
           <RadioGroup
@@ -239,48 +240,43 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
                 const prevActive = index > 0 && state.baseLocale === locales[index - 1];
                 const count = countOf(code);
                 return (
-                  <li
-                    key={code}
-                    className={cn(
-                      index > 0 && "border-t",
-                      index > 0 && (active || prevActive ? "border-border" : "border-divider"),
-                      active ? "bg-muted" : "hover:bg-foreground/[0.03]",
-                    )}
-                  >
-                    <div className="p-3">
-                      <Radio
-                        value={code}
-                        labelClassName="gap-3"
-                        label={
-                          <>
-                            <IconTile size="lg" className={active ? "bg-background" : "bg-muted"}>
-                              {/* ⚠️ 매핑이 없으면 `LocaleFlag`가 `null`을 낸다 — 칩은 그대로 서고 안만 빈다. */}
-                              <LocaleFlag code={code} size="md" />
-                            </IconTile>
-                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                              <span className="block truncate text-base font-medium">{languageName(code)}</span>
-                              <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
-                                {m.newProject.baseLocale.row(
-                                  /*
-                                    ⚠️ **`replaceAll`이고 치환값이 함수다.** `{locale}`이 여러 번 나오는
-                                    템플릿(`locales/{locale}/{locale}.json`)을 `confirm.ts`가 상정하므로
-                                    첫 하나만 바꾸면 **실재하지 않는 경로**를 근거로 내밀게 된다. 함수로
-                                    넘기는 것은 로케일 코드에 든 `$&`·`$1`이 특수 해석되는 것을 막는다.
-                                  */
-                                  state.pathTemplate.replaceAll("{locale}", () => code),
-                                  count === undefined ? undefined : m.newProject.files.keys(count),
-                                )}
-                              </span>
+                  <li key={code}>
+                    <SelectRow
+                      input="radio"
+                      checked={active}
+                      first={index === 0}
+                      previousChecked={prevActive}
+                      disabled={disabled}
+                      value={code}
+                      label={
+                        <>
+                          <IconTile size="lg" className={active ? "bg-background" : "bg-muted"}>
+                            {/* ⚠️ 매핑이 없으면 `LocaleFlag`가 `null`을 낸다 — 칩은 그대로 서고 안만 빈다. */}
+                            <LocaleFlag code={code} size="md" />
+                          </IconTile>
+                          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <span className="block truncate text-base font-medium">{languageName(code)}</span>
+                            <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
+                              {m.newProject.baseLocale.row(
+                                /*
+                                  ⚠️ **`replaceAll`이고 치환값이 함수다.** `{locale}`이 여러 번 나오는
+                                  템플릿(`locales/{locale}/{locale}.json`)을 `confirm.ts`가 상정하므로
+                                  첫 하나만 바꾸면 **실재하지 않는 경로**를 근거로 내밀게 된다. 함수로
+                                  넘기는 것은 로케일 코드에 든 `$&`·`$1`이 특수 해석되는 것을 막는다.
+                                */
+                                state.pathTemplate.replaceAll("{locale}", () => code),
+                                count === undefined ? undefined : m.newProject.files.keys(count),
+                              )}
                             </span>
-                            {code === leader && known.length > 1 && (
-                              <Badge variant="neutral" className="shrink-0">
-                                {m.newProject.naming.mostKeys}
-                              </Badge>
-                            )}
-                          </>
-                        }
-                      />
-                    </div>
+                          </span>
+                          {code === leader && known.length > 1 && (
+                            <Badge variant="soft-neutral" className="shrink-0">
+                              {m.newProject.naming.mostKeys}
+                            </Badge>
+                          )}
+                        </>
+                      }
+                    />
                   </li>
                 );
               })}

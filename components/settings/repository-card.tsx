@@ -1,13 +1,13 @@
 "use client";
-
+import { Link as InlineLink } from "@/components/ui/link";
 import { Suspense, use, useState } from "react";
 import { Link2, Unplug } from "lucide-react";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { Alert } from "@/components/ui/alert";
-import { ButtonLink, buttonClass } from "@/components/ui/button";
-import { PanelCard } from "@/components/ui/panel-card";
-import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { ButtonLink } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { AccountView } from "@/lib/github-connect/account-view";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { connectionProblem } from "@/lib/home/state";
@@ -30,8 +30,8 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned =
   const [failure, setFailure] = useState<string | null>(null);
   // 보관 상태가 오면 옛 거부를 내린다 — 카드가 보관 상태를 대신 말한다 (QA D1).
   const shown = failure && !archived ? failure : null;
-  // 머리 아래 선은 `PanelCard`가 notice 아래에 긋는다(2026-10-01 4-Y1) — 비어 도착하는 Suspense notice도 선을 따로 들지 않는다.
-  return <PanelCard title={m.settings.repository.title} notice={
+  // 머리 아래 선은 `Card`가 notice 아래에 긋는다(2026-10-01 4-Y1) — 비어 도착하는 Suspense notice도 선을 따로 들지 않는다.
+  return <Card title={m.settings.repository.title} notice={
     <Suspense fallback={null}><Notice health={health} failure={shown} appSlug={appSlug} /></Suspense>
   }>
     <Suspense fallback={<ConnectionRowPending />}>
@@ -41,7 +41,7 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned =
     <RepositoryForm owner={owner} repo={repo} slug={slug} baseBranch={branch} disabled={archived} unpinned={unpinned} />
     {/* 가장 흔한 모양(연결된 계정)에는 이 줄이 없다 — 골격도 없다. 틀리면 두 번 튄다. */}
     <Suspense fallback={null}><Recovery account={account} /></Suspense>
-  </PanelCard>;
+  </Card>;
 }
 
 function Notice({ health: pending, failure, appSlug }: { health: Promise<ConnectionHealth>; failure: string | null; appSlug?: string }) {
@@ -51,13 +51,13 @@ function Notice({ health: pending, failure, appSlug }: { health: Promise<Connect
     // 연결 끊김(재연결 필요)은 호박, 다른 리포를 가리키는 것은 빨강이다 — 행 배지와 같은 톤(2026-09-30 상태 통일).
     : health.status === "app-uninstalled" || health.status === "installation-changed" || health.status === "repo-replaced" ? <Alert inset variant={health.status === "repo-replaced" ? "danger" : "warning"}>{m.settings.repository.health[health.status]}
       {/* ⚠️ 밑줄을 붙이지 않는다 — 나가는 신호는 색과 새 탭이 든다 (DESIGN §6.3, 전역 규칙) */}
-      {health.status === "app-uninstalled" && installUrl && <> <a className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={installUrl} target="_blank" rel="noreferrer">{m.settings.repository.health.install}</a> — {m.settings.repository.health.installHint}</>}
+      {health.status === "app-uninstalled" && installUrl && <> <InlineLink href={installUrl} target="_blank" rel="noreferrer">{m.settings.repository.health.install}</InlineLink> — {m.settings.repository.health.installHint}</>}
     </Alert> : undefined;
   if (notice === undefined && failure === null) return null;
   return <>{notice}{failure !== null && <Alert inset variant="danger">{failure}</Alert>}</>;
 }
 
-const ROW = "flex items-center gap-3 px-4 py-[13px] @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start @max-[640px]:[&>fieldset]:col-start-2 @max-[640px]:[&>a]:col-start-2 @max-[640px]:[&>a]:justify-self-start";
+const ROW = "flex items-center gap-3 px-4 py-row-y @max-form:grid @max-form:grid-cols-[28px_1fr] @max-form:items-start @max-form:[&>fieldset]:col-start-2 @max-form:[&>a]:col-start-2 @max-form:[&>a]:justify-self-start";
 
 function ConnectionRow({ health: pending, slug, owner, repo, archived, onFailure }: {
   health: Promise<ConnectionHealth>; slug: string; owner: string; repo: string; archived: boolean; onFailure: (message: string | null) => void;
@@ -75,9 +75,9 @@ function ConnectionRow({ health: pending, slug, owner, repo, archived, onFailure
   const detail = health.status === "ok" ? m.settings.installed : health.status === "unknown" ? m.settings.repository.health.unknown : problem === "not-connected" ? m.settings.repository.health["not-connected"] : health.status === "repo-moved" ? m.settings.repository.movedHint : disconnected ? m.settings.repository.paused : null;
   return <div className={ROW}>
     <IconTile tone={STATE[state].tone}>{disconnected ? <Unplug className="size-4" aria-hidden /> : problem === "not-connected" ? <Link2 className="size-4" aria-hidden /> : <GithubIcon className="size-4" />}</IconTile>
-    <div className="min-w-0 flex-1 space-y-[3px]"><p className="text-base break-all"><span className="font-medium">{owner}/{repo}</span><StatusBadge state={state} className="ml-2 align-middle" /></p>{detail && <p className="text-muted-foreground text-xs">{detail}</p>}</div>
-    {canConnect ? <fieldset className="[&_.animate-spin]:size-3.5" disabled={archived}><ReconnectButton onFailure={onFailure} slug={slug} server={health} label={problem === "not-connected" ? m.settings.repository.connect : m.settings.repository.reconnect} variant={health.status === "repo-moved" ? undefined : "primary"} /></fieldset>
-      : health.status === "ok" && <a className={buttonClass({ variant: "default", size: "md" }) + " focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none"} href={`https://github.com/${owner}/${repo}`} target="_blank" rel="noreferrer">{m.settings.openRepo}</a>}
+    <div className="min-w-0 flex-1 space-y-copy-gap"><p className="text-base break-all"><span className="font-medium">{owner}/{repo}</span><StatusBadge state={state} className="ml-2 align-middle" /></p>{detail && <p className="text-muted-foreground text-xs">{detail}</p>}</div>
+    {canConnect ? <fieldset disabled={archived}><ReconnectButton spinnerSize="sm" onFailure={onFailure} slug={slug} server={health} label={problem === "not-connected" ? m.settings.repository.connect : m.settings.repository.reconnect} variant={health.status === "repo-moved" ? undefined : "primary"} /></fieldset>
+      : health.status === "ok" && <ButtonLink variant="default" size="md" external href={`https://github.com/${owner}/${repo}`} newTab rel="noreferrer">{m.settings.openRepo}</ButtonLink>}
   </div>;
 }
 
@@ -89,17 +89,17 @@ function ConnectionRow({ health: pending, slug, owner, repo, archived, onFailure
 function ConnectionRowPending() {
   return <div className={ROW} aria-busy="true" data-connection-pending="">
     <Skeleton className="size-7 shrink-0 rounded" />
-    <div className="min-w-0 flex-1 space-y-[3px]">
-      {/* 줄 칸 높이(24 — 이름 옆 배지 · 16)는 실물 행이 든다. 글자 자리는 `SkeletonLine`이다(4-W8). */}
-      <div className="flex h-6 items-center *:flex-1"><SkeletonLine text="text-base" className="w-[45%]" /></div>
-      <div className="flex h-4 items-center *:flex-1"><SkeletonLine text="text-xs" className="w-[30%]" /></div>
+    <div className="min-w-0 flex-1 space-y-copy-gap">
+      {/* 줄 칸 높이(24 — 이름 옆 배지 · 16)는 실물 행이 든다. 글자 자리는 `Skeleton`이다(4-W8). */}
+      <div className="flex h-6 items-center *:flex-1"><Skeleton size="md" className="w-[45%]" /></div>
+      <div className="flex h-4 items-center *:flex-1"><Skeleton size="xs" className="w-[30%]" /></div>
     </div>
-    <Skeleton className="h-9 w-32 shrink-0 rounded-md @max-[640px]:col-start-2" />
+    <Skeleton className="h-9 w-32 shrink-0 rounded-md @max-form:col-start-2" />
   </div>;
 }
 
 function Recovery({ account: pending }: { account: Promise<AccountView> }) {
   const account = use(pending);
   if (account.status === "ok" && account.login !== null) return null;
-  return <div className="border-divider text-muted-foreground border-t px-4 py-[13px] text-xs">{account.status === "unavailable" ? m.settings.account.unavailable : m.settings.recovery} <ButtonLink variant="link" href="/account">{m.settings.accountLink}</ButtonLink></div>;
+  return <div className="border-divider text-muted-foreground border-t px-4 py-row-y text-xs">{account.status === "unavailable" ? m.settings.account.unavailable : m.settings.recovery} <ButtonLink variant="link" href="/account">{m.settings.accountLink}</ButtonLink></div>;
 }

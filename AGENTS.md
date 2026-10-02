@@ -10,10 +10,11 @@
 Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래는 **직접** 챙긴다.
 
 - **스킬 호출 매핑** — 본문이 `/<name>`으로 부르는 스킬은 Codex에선 `source-command-<name>` 스킬로 로드한다.
-- **미제공 스킬 (역할 분담)** — `/push`·`/merge`·`/sync` 셋은 미러하지 않는다. **Codex는 작업 → 커밋까지, 원격으로 나가는 건 Claude Code**가 단일 창구로 맡는다 — 두 창구가 경쟁하면 원격 상태가 깨진다. `/push`는 dev를 움직이고(preview 배포), `/merge`는 main 머지(= Vercel 프로덕션 배포)이며, `/sync`는 dev를 force update한다. 셋 중 하나가 필요해지면 사용자에게 Claude Code 세션에서 실행하라고 안내하고 멈춘다.
-- **`/ship`은 10단계(마지막 커밋)까지** — `source-command-ship`은 미러돼 있고 커밋 단계까지 전부 돈다. 11단계 push는 **수행하지 않고** "dev 푸시 대기 — Claude Code에서 `/push` 실행"을 리포트에 남기고 종료한다. **Claude Code의 `/ship`도 dev까지다** (2026-09-04 브랜치 분리 — preview 배포). 프로덕션은 어느 런타임에서도 `/ship`이 하지 않고 `/merge`가 받는다. 상세는 스킬 본문의 "push 권한 / 런타임별 종착점".
+- **공통 스킬 권한** — `/push`·`/merge`·`/sync`·`/orchestrate`를 포함해 모든 명령을 미러한다. Codex도 같은 브랜치·소유권·검증 게이트를 거쳐 실행한다. `/ship`·`/orchestrate`는 dev까지이고, 프로덕션은 사용자가 별도로 `/merge`를 호출할 때만 반영한다. 원격 변경은 해당 작업을 맡은 세션 하나가 수행하고, 다른 세션의 같은 브랜치 작업과 겹치면 먼저 조율한다.
+- **워커 모델 경계** — 워커·서브에이전트를 호출하는 세션이 Codex면 Codex의 Sol·Astra, Claude Code면 Claude의 Sonnet·Opus만 호출한다. `/orchestrate`와 단독 리뷰 스킬 모두 적용한다. 구현·리뷰·QA·재사용·수정 라운드에도 같고, 패밀리 교차는 사용자의 명시 허가가 있을 때만 허용한다.
+- **도구 가용성** — 브라우저 QA·촬영·시안 대조는 런타임 이름이 아니라 실제 필요한 도구를 확인한다. Codex의 `/design-sync`는 사용자에게 로컬 핸드오프 파일 경로를 받고 `ego-browser`로 대조한다(DesignSync 대체 호출 없음). 없으면 해당 검증을 미완으로 남기고 실행 가능한 경로를 보고한다. `AskUserQuestion`은 현재 런타임의 질문 도구 또는 일반 질문으로 대응하며, 필요한 답 없이 의존 작업을 진행하지 않는다.
 - **결정성 훅 없음** — Claude Code는 `.claude/settings.json`의 PostToolUse 훅이 `lib/adapters/`·`lib/githash.ts`·`lib/push/`·`lib/keys/`·`lib/scan/` 편집 시 관련 테스트를 자동 실행해 결정성·판정 붕괴를 차단한다. Codex엔 이 훅이 없으니 그 파일을 건드렸으면 손으로 돌린다: `pnpm test`
-- **미러 sync 훅 없음** — Claude Code는 `CLAUDE.md`·`.claude/commands/*.md` 편집 시 훅이 `sync:agents`를 자동 실행한다. Codex엔 없다. 애초에 **Codex는 원본을 편집하지 않는 게 규칙**이고, 부득이 고쳤으면 `pnpm sync:agents`를 직접 돌려 미러를 함께 커밋한다.
+- **미러 sync 훅 없음** — Claude Code는 `CLAUDE.md`·`.claude/commands/*.md` 편집 시 훅이 `sync:agents`를 자동 실행한다. Codex엔 없다. 원본(`CLAUDE.md`·`.claude/commands/`·이 프리앰블)을 고쳤으면 `pnpm sync:agents`를 직접 돌려 미러를 함께 커밋한다.
 - **개인 메모리 없음** — 본문 말미의 `~/.claude/projects/.../memory/`는 Claude Code 전용 저장소다. Codex는 이 경로를 읽지 않는다.
 - **커밋 트레일러** — Codex 세션에서 만든 커밋은 마지막 줄에 `Co-Authored-By: Codex <noreply@openai.com>`를 붙인다(Claude Code의 `Co-Authored-By: Claude ...`와 대칭 — 어느 에이전트가 만든 커밋인지 히스토리에서 구분되게).
 
@@ -66,7 +67,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 ## 작업 원칙
 
 - **가정을 명시**: 해석이 여러 개면 조용히 하나 고르지 말고 선택지를 제시. 불확실하면 물어라.
-- **더 단순한 방법이 있으면 제안**: 200줄을 50줄로 줄일 수 있으면 줄여라. 요청하지 않은 유연성·설정 가능성·추상화 추가 금지. **확장성을 위한 선반영은 그 자체가 결함이다.**
+- **더 단순한 방법이 있으면 제안**: 200줄을 50줄로 줄일 수 있으면 줄여라. 요청하지 않은 유연성·설정 가능성·추상화 추가 금지. **확장성을 위한 선반영은 그 자체가 결함이다.** UI는 기존 프리미티브를 먼저 조립한다. 실재하는 손 사본을 같은 배치에서 새 프리미티브로 이관하는 것은 중복 제거이며, 소비자 없는 API·설정·확장성 선반영은 여전히 금지한다.
 - **외과적 변경**: 요청과 직접 관련 없는 인접 코드 개선·리팩터 금지. 기존 스타일 따르기. 기존 dead code는 언급만 하고 삭제하지 않는다 — 내 변경이 만든 고아만 제거.
 - **검증 가능한 목표로 전환**: "버그 고쳐" → "재현 테스트 작성 후 통과시켜". 멀티스텝 작업은 단계별 검증 체크를 포함한 플랜을 먼저 제시.
 - **테스트 우선**: 신규 인터페이스(함수·헬퍼·어댑터) 추가 시 테스트를 먼저 작성하고 구현한다. 기존 로직 변경 시에도 관련 순수 함수의 단위 테스트를 작성/갱신하고 `pnpm test` 통과를 확인한 뒤 작업을 마친다. 테스트 없이 코드만 변경하지 않는다.
@@ -91,10 +92,10 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 30개 + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select 여섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 43개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover 일곱. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
 | 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 UI 컴포넌트다**(그 옆 `SiteAnalytics`는 화면이 없다) |
 | 패널 리사이즈 | `react-resizable-panels` — `resizable.tsx` 하나가 쓴다. ⚠️ **jsdom에서는 화면의 모든 클릭을 삼킨다** — `vitest.setup.ts`가 막는다 |
-| 아이콘·폰트 | `lucide-react` / **Pretendard Variable 동적 서브셋, 자사 호스트** |
+| 아이콘·폰트 | `lucide-react` / **Geist Sans 우선 → Pretendard Variable 동적 서브셋 폴백, 둘 다 자사 호스트** |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 |
 | MCP 서버 | `@modelcontextprotocol/server` — **exact 고정**(`/api/mcp`, ARCHITECTURE §6.45). ⚠️ **클라이언트마다 개정이 다르다**(Claude Code 2026-07-28 · Codex 2025 handshake) — route가 둘 다 받고, SDK 기본값으로는 2025 응답이 SSE이고 `listChanged` 기본 true가 끝나지 않는 SSE를 연다. 올리기 전에 그 절을 읽는다. **OAuth AS도 이 앱이다**(`lib/oauth-server/`, §6.45.9) |
 | YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`) |
@@ -191,7 +192,9 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 **절차의 정본은 OPERATIONS "새 머신 셋업"이다**(두 대에서 작업한다 — `node_modules`·`generated/prisma`·`public/fonts`는 명령으로 복구되고 `.env.local`만 사람이 채운다). **⚠️ `.env.local`은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다**(전부 Sensitive) — 다른 머신의 `.env.local`을 옮기는 것이 정상 경로다. ⚠️ **`vercel env add`의 성공 메시지를 근거로 삼지 않는다** — 확인 절차는 같은 절.
 
-### 폰트 — Pretendard 동적 서브셋 (생성물)
+### 폰트 — Geist 우선, Pretendard 동적 서브셋 폴백
+
+`app/fonts/geist/Geist.woff2`는 저장소가 소유하는 Geist Sans 가변 폰트(100–900)다. 출처·고정 버전·SHA와 OFL 라이선스는 같은 디렉터리에 둔다. `app/layout.tsx`의 `next/font/local`이 자사 호스트 자산과 preload를 만들고 루트 `--font-geist` 변수를 공급한다. `app/globals.css`의 sans 순서는 Geist → Pretendard Variable → 시스템 폰트다. **`adjustFontFallback: false`는 자동 Arial 폴백이 Pretendard 앞에 끼지 않도록 한다.** 영문·숫자는 Geist, Geist에 없는 한글은 Pretendard로 내려간다. monospace 스택은 별개다.
 
 `scripts/copy-fonts.mjs`가 `node_modules/pretendard`에서 `public/fonts/pretendard/`로 복사하고 `predev`·`prebuild`가 자동 실행한다. **`public/fonts/`는 생성물이라 `.gitignore`에 있다**(3.1MB, 92파일). CSS의 `url()`이 상대 경로라 **디렉터리 구조를 바꾸면 폰트가 조용히 404가 되고 시스템 폰트로 떨어진다**. `<link>`로 `app/layout.tsx`가 불러온다(`@import`로 넣으면 스타일시트 체인이 직렬화돼 폰트 요청이 한 단계 늦게 시작된다). **`.npmrc`의 `enable-pre-post-scripts=true`가 그 자동 실행을 보장한다 — 이 파일을 지우지 않는다.**
 
@@ -245,7 +248,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **22개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, Codex 미러는 `.agents/skills/source-command-<name>/SKILL.md`다 (**`/push`·`/merge`·`/sync`·`/runtime-test`·`/design-sync`·`/orchestrate`·`/guide-shots` 일곱은 미러 제외** — 앞의 셋은 원격 상태를 바꾸는 창구를 Claude Code 하나로 두려는 것이고, 뒤의 넷은 Codex에 런타임이 없다: `/runtime-test`는 ego-browser, `/design-sync`는 그 위에 **`DesignSync` 도구**까지 쓰고, `/orchestrate`는 Orca 워커 세션을 띄워 push까지 지휘하고, `/guide-shots`는 ego-browser로 가이드 스크린샷을 찍는다 — 그 stale 목록만은 `pnpm guide:check`로 어디서든 받는다).
+스킬 **22개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, 모두 `.agents/skills/source-command-<name>/SKILL.md`로 미러된다. Claude Code와 Codex 모두 같은 권한·브랜치·검증 게이트로 실행한다. Codex의 `/design-sync`는 사용자 제공 로컬 핸드오프를 받고, Claude Code는 DesignSync로 확보한다. 브라우저 등은 실제 도구 가용성을 확인하며, 없는 도구의 검증을 통과로 취급하지 않는다. 모든 워커·서브에이전트 생성·재사용의 모델 경계는 **Codex 지휘 → Sol·Astra, Claude Code 지휘 → Sonnet·Opus**이며 사용자 명시 허가 없이 교차하지 않는다. `/orchestrate`뿐 아니라 단독 `/design-sync`·`/doc-check`·`/feature-review` 등에도 적용한다.
 
 **권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/design-sync`) → (`/db`) → `/push`(dev) → `/merge`(프로덕션 + 릴리스). ⚠️ **`/design-sync`는 신규 페이지를 핸드오프로 처음 구현할 때만** 끼고, `/ship`도 6.5단계에서 같은 조건으로 부른다. 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
 

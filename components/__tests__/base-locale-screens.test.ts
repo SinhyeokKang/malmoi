@@ -123,7 +123,7 @@ describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
   it("대기 Alert가 고칠 줄을 `<pre>`로 내고 복사할 수 있다", () => {
     const src = read(LOCALES_PAGE);
     // 시안 `1e` ①은 상자가 아니라 배지 + 사유 행이다 — Alert를 쓰면 카드 안에 그릇이 둘이 된다.
-    expect(src).toMatch(/variant="warning">\{m\.sources\.waiting\}/);
+    expect(src).toContain('<StatusBadge state="waitingToApply"');
     expect(src).toMatch(/<code/);
     expect(src).toMatch(/<CopyButton/);
   });
@@ -180,9 +180,8 @@ describe("로케일 화면 — 폼과 대기 Alert (6b-5)", () => {
    */
   it("orphaned 행이 danger 배지와 설명을 든다", () => {
     const src = read(LOCALES_PAGE);
-    expect(src).toMatch(/variant="missing"/);
+    expect(src).toContain('<StatusBadge state="removedFromRepository"');
     expect(src).toMatch(/orphaned/);
-    expect(src).toMatch(/m\.sources\.missingRepo/);
     expect(src).toMatch(/m\.sources\.orphanStrip/);
     expect(src).toMatch(/m\.sources\.orphanStripRest/);
   });
@@ -262,7 +261,7 @@ describe("설정의 Base branch 행", () => {
     const src = read(SETTINGS_FORM);
     // `for`는 편집 컨트롤이 설 때만 잇는다(audit #89) — 식 안의 `"base-branch"`까지 한 덩어리로 본다.
     expect(src).toMatch(/<label htmlFor=\{[^}]*"base-branch"\} className="[^"]*\btext-foreground\b[^"]*\bfont-medium\b/);
-    expect(src).not.toMatch(/<label htmlFor=\{[^}]*"base-branch"\} className="[^"]*text-neutral-400/);
+    expect(src).not.toMatch(/<label htmlFor=\{[^}]*"base-branch"\} className="[^"]*text-gray-dim/);
     expect(src).toMatch(/<form\s+className="[^"]*\bpl-10\b/);
   });
 

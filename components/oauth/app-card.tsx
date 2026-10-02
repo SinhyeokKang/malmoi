@@ -23,11 +23,11 @@ export function AppCard({ name, ident }: { name: string; ident: string }) {
           <McpIcon />
         </IconTile>
         <span className="flex min-w-0 flex-1 flex-col gap-px">
-          <span className="text-sm font-medium [overflow-wrap:anywhere]">{name}</span>
+          <span className="text-sm font-medium wrap-anywhere">{name}</span>
           <span className="text-muted-foreground text-xs break-all">{ident}</span>
         </span>
       </div>
-      <p className="text-muted-foreground text-xs leading-[1.6]">{m.oauthAuthorize.appNameNote}</p>
+      <p className="text-muted-foreground text-xs leading-body">{m.oauthAuthorize.appNameNote}</p>
     </div>
   );
 }

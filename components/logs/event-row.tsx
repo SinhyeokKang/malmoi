@@ -1,9 +1,9 @@
-import Link from "next/link";
+import { ListRow } from "@/components/ui/list-row";
 
 import { EventMetaLine } from "@/components/logs/event-meta";
 import { EventGlyph } from "@/components/logs/glyph";
 import { RowChevron } from "@/components/logs/row-chevron";
-import { ResultBadge } from "@/components/logs/result-badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { eventGlyph, eventSentence, eventView, triggerOf } from "@/lib/events/view";
 import type { EventRow as Row } from "@/lib/events/query";
@@ -50,9 +50,11 @@ export function EventRow({
   });
 
   return (
-    <Link
+    <ListRow
       href={href}
-      className="focus-visible:ring-ring flex items-center gap-3 px-4 py-[13px] hover:bg-foreground/[0.02] focus-visible:ring-2 focus-visible:outline-none"
+      aside={<span className="text-muted-foreground flex shrink-0">
+        <RowChevron />
+      </span>}
     >
       {showTime && (
         /*
@@ -68,27 +70,24 @@ export function EventRow({
         </time>
       )}
       <EventGlyph icon={glyph.icon} tone={glyph.tone} />
-      <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <span className="text-base [overflow-wrap:anywhere]">{sentence}</span>
+      <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
+        <span className="text-base wrap-anywhere">{sentence}</span>
         <EventMetaLine row={row} archived={archived} />
       </span>
       {/* 결과 배지는 보조줄 밖, 행 오른쪽이다 — Logs는 172 칸의 오른쪽 끝(chevron 옆), Home 최근 로그는 시각 앞(2026-09-30 사용자). */}
       {showTime ? (
         <span className="flex w-[172px] shrink-0 flex-wrap items-center justify-end gap-1.5">
-          {view.label !== null && <ResultBadge tone={view.tone} label={view.label} />}
-          {view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
+          {view.state !== null && <StatusBadge state={view.state} />}
+          {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
         </span>
       ) : (
         <span className="flex shrink-0 items-center gap-2">
-          {view.label !== null && <ResultBadge tone={view.tone} label={view.label} />}
-          {view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
+          {view.state !== null && <StatusBadge state={view.state} />}
+          {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
           <span className="text-muted-foreground text-xs">{relativeTime(row.occurredAt, now)}</span>
         </span>
       )}
-      <span className="text-muted-foreground flex shrink-0">
-        <RowChevron />
-      </span>
-    </Link>
+    </ListRow>
   );
 }
 

@@ -20,20 +20,18 @@ description: 여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고,
 ## 0. 인테이크 (워커를 띄우기 전)
 
 1. **계획 문서를 읽고 배치 표를 만든다** — 배치별 항목 · 건드리는 파일 · 출시 차단 여부 · 검증 게이트.
-2. **결정을 먼저 전부 받는다.** 🔒 항목·해석이 갈리는 곳을 `AskUserQuestion`으로 **하나씩** 묻고(추천 하나 + 이유), 답을 계획 문서의 "결정 기록"에 적는다.
+2. **결정을 먼저 전부 받는다.** 🔒 항목·해석이 갈리는 곳을 현재 런타임의 질문 도구 또는 일반 질문으로 **하나씩** 묻고(추천 하나 + 이유), 답을 계획 문서의 "결정 기록"에 적는다.
    워커가 도중에 결정 지점에서 멈추면 병렬이 직렬이 된다.
    - 설계가 필요한 배치는 `/feature` → `/feature-review`를 이 세션에서 먼저 돈다(워커가 계획 원본으로 쓴다).
-3. **배치마다 워커 모델·effort를 정해 배치 표에 적는다** (2026-10-01 사용자 — 이 스킬의 워커에 한한다. 메인 세션과 `/ship` 단독 실행의 모델은 사용자가 정한다).
-   ⚠️ **경계는 철칙이다** — 모델은 `claude-opus-5-5`·`claude-sonnet-5-5` 둘뿐이고, effort는 `low`·`medium`·`high`까지다(`xhigh`·`max` 금지). 도중 조정도 이 안에서만 한다.
-   **경계 안의 선택은 지휘자 판단이다** — 과업 종류마다 달라서 고정 규칙으로 두지 않는다. 아래 표는 판정할 때 한 번 대보는 참고일 뿐이고, 벗어나도 된다. 배치 표에 고른 값과 이유 한 줄을 같이 적어 사용자에게 보인다.
+3. **배치마다 워커 모델·effort를 정해 배치 표에 적는다.** 지휘자 런타임에 따라 아래 패밀리 안에서 과업 난이도에 맞게 선택한다. 구현·리뷰·QA·재시도·터미널 재사용·수정 라운드 모두 같은 경계다.
 
-   | 참고 예 | 모델 · effort |
+   | 지휘자 | 허용 워커 런타임 / 모델 패밀리 |
    |---|---|
-   | 문구·문서·가이드, 단일 컴포넌트 UI, 기계적 치환 | Sonnet · medium |
-   | 일반 기능(여러 파일, 새 Action·테스트), QA 워커 | Opus · medium |
-   | 불변식 영역 — push/pull·어댑터 결정성·보호 게이트·인가·암호화·스키마(ARCHITECTURE §0) | Opus · high |
+   | Codex | Codex / Sol·Astra |
+   | Claude Code | Claude Code / Sonnet·Opus |
 
-   Codex 워커는 이 항목 밖이다(모델은 사용자 지시를 따른다).
+   **패밀리 교차는 사용자의 명시 허가가 있을 때만** 가능하다. 잔여 토큰 부족·도구 부재·실패·속도 때문에 임의로 교차하지 않는다. 허가한 범위를 계획의 결정 기록에 남긴다.
+   패밀리 안에서는 단순·기계적 구현은 Sol/Sonnet, 복잡한 불변식 판단·독립 리뷰는 Astra/Opus를 우선 고려한다. 실제 사용 가능한 모델 ID와 effort는 현재 런타임에서 확인하고 선택 이유를 한 줄 적는다. Claude 워커의 기존 effort 범위는 low·medium·high이며 Codex는 선택한 모델이 지원하는 effort를 쓴다. 이름이 비슷한 다른 패밀리로 대체하지 않는다.
 4. **파일 겹침 행렬로 병렬/직렬을 가른다.** 두 배치가 같은 파일을 고치면 병렬로 띄우지 않는다 — 선행이 dev에 들어간 뒤 후행을 띄우거나,
    후행에게 "T6 전에 멈추고 `WAITING FOR <X>`를 찍어라, 신호를 받으면 `git rebase dev`"를 브리프에 넣는다.
    ⚠️ **`messages/en.tsx`·`workspace.tsx`·`publish-button.tsx`는 거의 모든 UI 배치가 건드린다** — 겹침 판정에서 빠뜨리지 않는다.
@@ -41,63 +39,38 @@ description: 여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고,
 
 ## 1. 워커 띄우기
 
-```bash
-W=$(orca worktree create --repo id:<repoId> --name <batch> --base-branch dev --no-parent --json | jq -r .result.worktree.id)
-T=$(orca terminal create --worktree "id:$W" --title <batch> --command 'claude --model <model> --effort <effort> --permission-mode bypassPermissions' --json | jq -r .result.terminal.handle)
-orca terminal wait --terminal $T --for tui-idle --timeout-ms 60000 --json
-orca terminal send --terminal $T --text "Read <scratchpad>/brief-<batch>.md and follow it exactly." --enter --json
-```
+먼저 현재 세션의 **`orchestration` 스킬**을 읽고 Orca Run·Task·Dispatch로 배치를 관리한다. CLI 버전별 시작·재사용·완료·정리 절차는 그 스킬과 현재 `orca … --help`를 따른다. 런타임 이름으로 기능을 제한하지 않는다.
 
-- **`--permission-mode bypassPermissions`로 띄운다** (2026-09-30 사용자 — auto의 분류기가 워커의 정당한 셋업(로컬 앱 보관·폐기용 리포 PR 머지·토큰 전달)을 매번 막아 사람 승인이 필요했다). `--agent claude`는 Orca 버그로 승인 대기 상태로 열린다. ⚠️ bypass 확인창은 `~/.claude/settings.json`의 `skipDangerousModePermissionPrompt: true`가 넘긴다 — 그 값이 없으면 워커가 확인창에서 멈춘다. ⚠️ **분류기가 없으므로 경계는 브리프가 진다** — prod DB·`db:deploy`·`git push`·`/merge`·`.env.local` 복사 금지를 브리프에 빠짐없이 적는다(아래 목록). QA 워커(main 체크아웃)도 같다.
-  **다른 세션의 권한 프롬프트를 지휘자가 대신 누르지 않는다.**
+- 파일 소유권이 충돌하는 병렬 구현은 허용된 별도 워크트리에서 한다. 사용자 지정 모델·패밀리와 위 경계를 브리프에 기록하고 시작 응답의 실제 런타임을 확인한다. 기존 터미널 재사용도 같은 경계를 검사한다.
+- 세션의 권한 설정을 존중한다. 지휘자가 권한 우회 플래그를 임의로 추가하거나 다른 세션의 승인 창을 대신 누르지 않는다.
 - **브리프는 파일로 쓰고 한 줄로 보낸다** — 여러 줄을 TUI에 붙이면 깨진다. 브리프에 반드시 넣는 것:
   - 계획 원본 경로와 담당 항목, **다른 배치 소유라 건드리지 말 것** 목록
   - `/ship` 재정의: 임시 워크트리 브랜치 = dev 등가 · **11단계(`/push`) 전에 멈춤** · `/merge`·`/sync`·`git push`·`db:deploy` 금지
   - 스키마 변경: 허용 여부. 허용하면 **DB 없이** `prisma migrate diff`로 SQL만 만들고(⚠️ `prisma.config.ts`가 URL이 없으면 datasource를 빼서 diff가 **빈 출력 + exit 0**이다 — 연결하지 않는 더미 `DIRECT_URL`을 준다), dev DB 적용은 지휘자가 한다
   - **`.env.local`을 복사하지 말 것** — 분류기가 거부한다. 워커 게이트는 **`pnpm gate --base dev`** 하나다(DB 없이 돌고, 트리거 경로면 격리 postgres 스위트를 스스로 붙인다). ⚠️ 출력을 파이프로 거르지 말라고 적는다
   - 런타임 검증은 끝으로 미룬다 — 단 **`/ship` 6.2단계대로 (a) 결정적으로 잴 수 있는 항목은 시나리오 테스트로 먼저 쓰고**, 인계 문서의 "런타임 검증 목록"에는 **(b)만** 남긴다(각 항목이 왜 (b)인지 한 줄)
-  - 인계 프로토콜: `.scratch/handoff-<batch>.md` 작성 → `orca worktree set --worktree active --comment "<batch> HANDOFF READY"` → **`HANDOFF READY: <batch>`** 한 줄 출력 후 정지
+  - 인계 프로토콜: `.scratch/handoff-<batch>.md`에 커밋·정확한 검증 결과·미완 항목을 기록하고 현재 Dispatch의 지침대로 `worker_done`을 한 번 전송한 뒤 대기한다. 터미널 출력 마커는 완료 권한이 아니다.
 - **QA 전용 워커(코드 수정 없음)는 워크트리가 아니라 main 체크아웃에서 띄운다** — 워크트리에는 `.env.local`이 없어 dev 서버가 안 뜬다.
 
-### 워커 런타임 — 기본은 Claude Code, 사용자가 지시하면 Codex
+### 런타임별 호출과 QA
 
-**지휘자는 항상 Claude Code다**(이 스킬은 Codex 미러에서 빠진다). 워커는 기본이 Claude Code이고, **사용자가 배치를 지정해 Codex를 지시했을 때만** Codex로 띄운다 — 지휘자가 임의로 고르지 않는다.
-
-```bash
-orca worktree create --repo id:<repoId> --name <batch> --base-branch dev --no-parent \
-  --agent codex --prompt "Read <scratchpad>/brief-<batch>.md and follow it exactly." --json
-```
-
-Codex 워커의 차이는 브리프에 명시한다:
-- **스킬은 미러로 부른다** — `.agents/skills/source-command-ship/SKILL.md`(= `/ship`)를 따르라고 경로로 적는다. Codex의 `/ship`은 원래 **10단계 커밋에서 멈추므로** "push 전 정지" 재정의가 이미 기본 동작이다.
-- **브라우저·DesignSync 단계가 없다** — `/runtime-test`·`/design-sync`는 미러가 없다. 그래서 **QA 워커는 Codex로 띄우지 않는다**(사용자가 지시해도 불가능하다고 답한다). 코드 배치의 6.5단계는 "시안 대조: 미검증"으로 남는다.
-- **권한 플래그를 붙이지 않는다** — 사용자의 Codex 기본 설정으로 띄운다. 승인 대기가 생기면 사용자에게 알린다.
-- 인계 프로토콜(인계 문서 · 워크트리 코멘트 · `HANDOFF READY: <batch>` 마커)은 같다. 감시·리뷰·통합 절차도 같다 — 워커 종류는 지휘자 쪽 절차를 바꾸지 않는다.
-- 수정 라운드도 같은 Codex 터미널로 보낸다(`orca terminal send`).
+- Claude Code는 원본 명령을, Codex는 `.agents/skills/source-command-<name>/SKILL.md`를 읽는다. 두 런타임의 `/ship` 단독 실행은 dev push까지이므로 **배치 워커는 반드시 11단계 전에 멈추도록** 브리프에서 제한한다. 원격 쓰기는 지휘자 소유다.
+- QA는 어느 패밀리든 실제 `ego-browser`와 필요한 도구가 연결돼 있으면 가능하다. `/runtime-test`·`/guide-shots`도 Codex 미러로 제공된다. 시안 대조는 `/design-sync`를 따른다 — Codex는 사용자 제공 로컬 핸드오프를 요청하고, Claude Code는 DesignSync로 확보한다. 입력·필수 도구가 없으면 해당 검증을 미완으로 남기며 다른 모델 패밀리를 자동 호출하지 않는다.
+- 사용자 결정이 필요하면 현재 런타임의 질문 도구 또는 일반 질문을 사용한다. 이미 받은 허가는 다시 묻지 않는다.
 
 ## 2. 감시
 
-- 워커 터미널을 `orca terminal read`로 읽어 마커를 **줄 머리 일치**(아래)로 찾는 폴링 루프를 **`run_in_background`**로 건다. 끝나면 알림이 온다.
-- ⚠️ **감시 스크립트는 bash 3 호환으로 쓴다** — macOS `/bin/bash`는 `declare -A`가 없고, 실패하면 터미널 인자가 비어 **엉뚱한 터미널의 출력을 읽어 오보를 낸다**(실제로 "ready" 오보가 났다). `pair=B1:term_…` 문자열 분해를 쓴다.
-- ⚠️ `cmd &`로 띄운 백그라운드는 알림이 오지 않는다 — 반드시 `run_in_background`다.
-- ⚠️ **마커는 줄 머리가 마커일 때만 인정한다** — 지휘자가 보낸 지시문("…print `HANDOFF READY: X r1`")도 워커 터미널 입력줄에 그대로 찍혀서, 부분 일치 grep은 **지시를 보낸 직후 오보를 낸다**(2026-09-24 실제로 났다). `re.match(r'\s*(?:[⏺•]\s*)?<marker>(?:\s|$)', line)`처럼 **줄 머리** 일치로 본다. ⚠️ 줄 끝까지 일치(`fullmatch`)는 안 된다 — Codex TUI는 마커 앞에 `•`를, 뒤에 스피너 잔상을 붙여 찍어 2026-09-30 리뷰 인계를 통째로 놓쳤다.
-- 알림을 받으면 **터미널을 직접 다시 읽고, 인계 문서·커밋이 실제로 늘었는지 확인한 뒤** 움직인다.
-- ⚠️ **지시를 보내는 것과 그 마커의 감시를 거는 것은 한 동작이다** (2026-09-25 사용자 — "오케스트레이션 중 이렇게 중단이 발생하면 안 됨").
-  같은 응답에서 `orca terminal send`와 그 마커의 `run_in_background` 감시를 **짝으로** 건다 — 보낸 지시마다 기대 마커가 정확히 하나 있고,
-  그 마커를 보는 감시가 살아 있어야 한다. 실제로 난 일: 워커가 앞 작업(#106)을 하는 중에 다음 수정 라운드(#103 r1)를 줄 세워 보내고,
-  감시는 앞 마커에만 걸어 둔 채 넘어갔다 → 워커는 `HANDOFF READY: U6 i103r1`을 찍고 멈췄는데 알림이 없어 사용자가 물을 때까지 몰랐다.
-  - 한 워커에 지시를 줄 세우면 **마커마다** 감시를 건다(앞 마커 감시가 끝났다고 뒤 지시가 감시되는 것이 아니다).
-  - 대기 목록을 스크래치패드 파일(`expect.txt` — `<batch> <term> <marker>` 한 줄씩)로 들고, 지시를 보낼 때 줄을 더하고 확인할 때 지운다.
-    **백그라운드 감시가 하나도 없는데 `expect.txt`가 비어 있지 않으면 그것이 결함이다** — 응답을 끝내기 전에 이 둘을 대조한다.
-  - 상시 그물로 `expect.txt` 전체를 한 번에 보는 감시 하나를 늘 걸어 둔다(개별 감시가 빠져도 이것이 잡는다). 알림을 받으면 다시 건다.
+- `orchestration` 스킬의 `check --run <run> --wait`로 완료·질문·차단 메시지를 받는다. 도구 반환에 따라 실행 세션을 이어 기다리며, Claude 전용 `run_in_background`나 화면 마커 폴링을 필수로 삼지 않는다.
+- heartbeat·빈 대기·타임아웃은 완료나 실패가 아니다. 현재 Task/Dispatch와 보고서·실제 커밋을 대조한 뒤 다음 배치를 연결한다.
+- 완료된 워커는 Delivery 확인 전에 다음 태스크로 재사용하거나 명시적으로 유지·해제한다. 새 태스크는 새 Dispatch로 보내며, 종료된 lifecycle ID로 계속 지시하지 않는다.
+- 사용자가 결정해야 하는 질문은 전달하고, 코드 수정은 소유 워커에게 돌려보낸다. 받은 메시지는 처리 후 확인하고 미처리 배치를 누락하지 않는다.
 
 ## 3. 리뷰 → 수정 라운드
 
-1. 인계 문서를 읽고, 그 배치 diff(`git log $(git merge-base dev <branch>)..<branch>`)를 **리뷰 서브에이전트**(general-purpose, 리포트 전용)에 맡긴다. 프롬프트에 계획 항목 · 인계 문서 주장 검증 · 관련 POSTMORTEM · 해당 배치 특유의 위험을 넣는다.
+1. 인계 문서를 읽고, 그 배치 diff(`git log $(git merge-base dev <branch>)..<branch>`)를 **독립 리뷰 워커**(같은 모델 패밀리, 리포트 전용)에 맡긴다. 프롬프트에 계획 항목 · 인계 문서 주장 검증 · 관련 POSTMORTEM · 해당 배치 특유의 위험을 넣는다.
    - **런타임 목록 분류도 판정시킨다** (2026-09-30) — (b)에 남긴 항목 중 진입점 → 격리 DB → 뷰 모델로 결정적으로 잴 수 있는 것은 🟡("시나리오 테스트로 옮겨라")다. 시나리오 테스트가 DB 행에서 멈추고 뷰 모델 출력을 단언하지 않으면 그것도 🟡다 — #155가 그 틈으로 런타임까지 갔다.
-2. 🔴·🟡 지적과 **사용자 결정이 필요한 항목**을 가른다. 결정은 `AskUserQuestion`으로 받는다.
-3. 수정 라운드 브리프(`brief-<batch>-fix<N>.md`)를 같은 워커 터미널로 보낸다 — 워커는 컨텍스트를 들고 있으므로 새 세션을 열지 않는다. 마커는 `HANDOFF READY: <batch> r<N>`.
-   - 리뷰·수정 라운드에서 판정이 빗나갔다고 보이면 브리프를 보내기 전에 같은 터미널에 `/model`·`/effort`를 보내 조정한다 — 새 세션을 열지 않는다. 경계(0단계 3번)는 그대로다.
+2. 🔴·🟡 지적과 **사용자 결정이 필요한 항목**을 가른다. 결정은 현재 런타임의 질문 도구 또는 일반 질문으로 받는다.
+3. 수정 라운드 브리프(`brief-<batch>-fix<N>.md`)를 소유 워커에게 보낸다. 활성 Dispatch에는 메시지로 보내고, 완료된 워커는 새 Task/Dispatch로 재사용한다. 모델·effort 조정과 재사용도 위 패밀리 경계를 지킨다.
 4. 🔴 0이 될 때까지 반복한다. 워커가 스스로 계획과 다르게 간 곳(「계획과 다른 점」)은 리뷰가 반드시 판정한다.
 
 ## 4. 통합 (main 체크아웃 = dev)
@@ -125,8 +98,7 @@ git push                                            # = /push 1·3·4·5단계�
   `.scratch/` 아래에 clone하면 vitest가 그 리포의 테스트까지 집어 **수백 파일이 red**다 — clone은 리포 밖(스크래치패드)으로 옮긴다.
   ② QA가 돌린 `pnpm dev`의 `.next/dev/types/validator.ts`가 옮겨진 라우트를 가리켜 **typecheck가 red**다 — `rm -rf .next/dev`.
   둘 다 코드 결함이 아니다.
-- **권한**: QA가 dev DB에 상태를 만들거나 세션 쿠키를 지워야 하면 분류기가 막는다. 그 규칙(`~/.claude/settings.json`의 `autoMode.allow` — **dev ref만**, prod 명시 제외, "작업 후 복구" 조건)은
-  **사용자 승인을 받은 뒤** 지휘자가 추가한다. 워커가 "막혔으니 대신 해 달라"고 하면 그것은 권한 세탁이다 — 사용자에게 올린다.
+- **권한**: QA의 dev DB 변경·세션 쿠키 작업은 현재 세션의 권한과 사용자 승인 범위를 따른다. Claude Code의 분류기 규칙(`~/.claude/settings.json`의 `autoMode.allow`)을 바꿔야 한다면 사용자 승인 후 dev ref·작업 후 복구 조건으로 좁힌다. Codex는 실제 세션의 승인 경로를 따르며 Claude 설정을 편집해 우회하지 않는다. 어느 런타임이든 워커가 차단된 작업을 지휘자가 대신 실행하는 권한 세탁은 금지한다.
 - **이슈 흐름**: QA가 결함을 **BugShot으로** **즉시** 낸다(제목 `[B1]…[B6]`·`[layout]` 태그 — `/runtime-test` §8). ⚠️ **QA 브리프에 `gh issue create`를 쓰지 않는다** (2026-09-27 사용자) — 이 게이트는 BugShot 실사용 테스트를 겸하고, 지휘자가 `gh`로 내라고 적으면 워커가 BugShot을 통째로 건너뛴다. `gh`는 BugShot이 막혔을 때의 폴백뿐이고 그 막힘은 bugshot-2 이슈로 먼저 낸다. 지휘자는 새 이슈 번호를 폴링하고(첫 건 뒤 몇 분 더 모아서),
   **그 화면·파일을 소유한 배치 워커**에게 "`#N` — rebase 후 TDD로 고쳐라"를 보낸다. 고친 뒤 재확인 QA가 이슈를 댓글과 함께 닫는다.
   - 커밋 메시지는 `Refs #N`이지 `Closes #N`이 아니다 — main 머지가 런타임 확인 전에 이슈를 닫지 않게 한다.
@@ -135,10 +107,10 @@ git push                                            # = /push 1·3·4·5단계�
 ## 6. 정리
 
 - 지우기 전에 워크트리마다 확인한다: 추적 중인 미커밋 변경 0 · `git cherry dev <branch>`에 `+` 0(전부 dev에 들어감).
-- `orca worktree rm --worktree id:<…> --force`(브랜치도 함께 지운다) · 끝난 터미널 `orca terminal close`.
+- `orca worktree rm --worktree id:<…> --force`(브랜치도 함께 지운다) — 먼저 `orchestration` 스킬의 worker 해제로 소유 터미널을 정리한다.
 - **인계 문서는 워크트리와 함께 사라진다** — 필요한 결론은 그 전에 정본 문서·커밋 메시지에 올라가 있어야 한다.
 - **끝까지 기다리지 않는다 — GC처럼 수시로 치운다** (2026-09-29 사용자). 위 두 검사를 통과하고 그 워커에게 **보낼 지시가 더 없으면**
-  (소유 파일의 이슈가 남지 않았고, 대기 중인 수정 라운드·마커가 `expect.txt`에 없으면) 전체 QA가 끝나기 전이라도 그 워크트리·터미널을 지운다.
+  (소유 파일의 이슈가 남지 않았고, 대기 중인 Task·Dispatch·수정 라운드가 없으면) 전체 QA가 끝나기 전이라도 그 워크트리·터미널을 지운다.
   끝난 QA 터미널도 인계를 확인한 즉시 닫는다. 뒤에 결함이 올 것 같으면 **컨텍스트가 가장 여유 있는 워커 하나만** 남겨 받는다 —
   컨텍스트가 찬 워커(≈80%↑)부터 치운다. 치운 배치의 결함은 남은 워커나 새 워커에게 보낸다(브리프에 그 배치의 정본 문서를 가리킨다).
 

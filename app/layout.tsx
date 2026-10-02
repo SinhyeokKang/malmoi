@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import { connection } from "next/server";
 import { Toaster } from "sonner";
 
@@ -8,6 +9,17 @@ import { m } from "@/lib/i18n";
 import { OG_IMAGE, SITE_ORIGIN } from "@/lib/seo/site";
 
 import "./globals.css";
+
+const geist = localFont({
+  src: "./fonts/geist/Geist.woff2",
+  variable: "--font-geist",
+  weight: "100 900",
+  style: "normal",
+  display: "swap",
+  preload: true,
+  // Next의 자동 Arial 폴백이 Pretendard보다 앞에 들어오지 않게 한다.
+  adjustFontFallback: false,
+});
 
 /**
  * 전 페이지의 머리 기본값. 앱 화면 탭은 그대로 `Malmoi`이고, 공개 페이지는 각자 `pageMetadata`로 덮는다(seo-geo spec D9).
@@ -36,7 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       바꿨다 — 틀리면 스크린리더가 영어 문장을 한국어 음성 엔진으로 읽는다. ko를 열면 이 값도 같이
       바뀐다 (PRODUCT §10 — 그때 바뀌는 파일이 `lib/i18n/index.ts`와 여기다).
     */
-    <html lang="en">
+    <html lang="en" className={geist.variable}>
       <head>
         {/*
           Pretendard 동적 서브셋. globals.css의 @import가 아니라 <link>로 넣는다 —
